@@ -1,0 +1,20 @@
+# Structure
+```
+src/
+├── app/
+│   ├── (dashboard)/
+│   │   ├── sales/          # 販売
+│   │   ├── purchase/       # 購買
+│   │   ├── production/     # 生産
+│   │   ├── shipping/       # 出荷
+│   │   ├── billing/        # 請求
+│   │   └── master/         # マスタ
+│   └── api/
+│       └── pdf/
+├── components/
+├── lib/
+│   ├── db.ts               # Prisma
+│   ├── journal.ts          # 仕訳エンジン
+│   └── csv-export.ts       # 弥生連携
+└── types/
+```
