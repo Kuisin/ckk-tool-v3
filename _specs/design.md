@@ -1,0 +1,1 @@
+// create plan and rule on UI inside app. plan componnent structure and mantine component.

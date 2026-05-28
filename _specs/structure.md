@@ -177,14 +177,7 @@ src/
 │   │
 │   └── layout.tsx
 │
-├── components/
-│   ├── ui/                                         # 汎用 UI（Mantine ラッパー）
-│   ├── sales/                                      # 販売ドメイン固有
-│   ├── production/
-│   │   └── workflow/                               # 製造ワークフロー表示・操作
-│   ├── shipping/
-│   ├── billing/
-│   └── master/
+├── components/                                     # written in _specs/design.md
 │
 ├── lib/
 │   ├── db.ts                                       # Prisma client
