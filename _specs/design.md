@@ -55,41 +55,41 @@ File: `src/components/layout/AppShell.tsx` — `'use client'`
 
 ## 3. Navigation
 
-Each nav section maps to a route group. Use Mantine `NavLink` with Tabler icon.
+Each nav section maps to a route group. Use Mantine `NavLink` with Tabler icon. Route paths follow the directory structure in `_specs/structure.md`.
 
 ```
-NavLink Dashboard              /
+NavLink Dashboard
 NavLink 販売                   (collapsible)
-  NavLink 価格表               /sales/price-lists
-  NavLink 見積書               /sales/quotes
-  NavLink 注文受諾書           /sales/order-acceptances
-  NavLink 設計依頼書           /sales/design-requests
+  NavLink 価格表
+  NavLink 見積書
+  NavLink 注文受諾書
+  NavLink 設計依頼書
 NavLink 購買                   (collapsible)
-  NavLink 素材入荷             /purchase/material-receipts
-  NavLink 外注依頼             /purchase/outsource-orders
+  NavLink 素材入荷
+  NavLink 外注依頼
 NavLink 生産                   (collapsible)
-  NavLink 受注書               /production/sales-orders
-  NavLink 指示書               /production/work-orders
-  NavLink 承認管理             /production/approvals
-  NavLink 製品在庫             /production/inventory/products
-  NavLink 素材在庫             /production/inventory/materials
+  NavLink 受注書
+  NavLink 指示書
+  NavLink 承認管理
+  NavLink 製品在庫
+  NavLink 素材在庫
 NavLink 出荷                   (collapsible)
-  NavLink 出荷書               /shipping/shipping-orders
-  NavLink 納品書               /shipping/delivery-notes
+  NavLink 出荷書
+  NavLink 納品書
 NavLink 請求                   (collapsible)
-  NavLink 請求書               /billing/invoices
-  NavLink 締日処理             /billing/closings
+  NavLink 請求書
+  NavLink 締日処理
 NavLink マスタ                 (collapsible)
-  NavLink 顧客                 /master/customers
-  NavLink 最終需要家           /master/end-users
-  NavLink 製品                 /master/products
-  NavLink 材種                 /master/material-types
-  NavLink 素材                 /master/materials
-  NavLink 外注企業             /master/suppliers
-  NavLink 工程マスタ           /master/process-steps
-  NavLink 検査表テンプレート   /master/inspection-templates
-  NavLink 不良種類             /master/defect-types
-  NavLink 承認グループ         /master/approval-groups
+  NavLink 顧客
+  NavLink 最終需要家
+  NavLink 製品
+  NavLink 材種
+  NavLink 素材
+  NavLink 外注企業
+  NavLink 工程マスタ
+  NavLink 検査表テンプレート
+  NavLink 不良種類
+  NavLink 承認グループ
 ```
 
 File: `src/components/layout/AppNav.tsx` — `'use client'`
@@ -634,40 +634,3 @@ The manufacturing step execution page (`/production/work-orders/[id]/steps/[step
 - Session lock warning shown prominently (full-width `Alert`).
 
 Other pages are primarily desktop (min-width 1024px). Navbar collapses on `sm` breakpoint.
-
----
-
-## 13. Component File Organization
-
-```
-src/components/
-├── layout/
-│   ├── AppShell.tsx         'use client' — AppShell wrapper
-│   └── AppNav.tsx           'use client' — Navbar nav links
-├── ui/
-│   ├── StatusBadge.tsx      status enum → Badge
-│   ├── FieldValue.tsx       label/value display
-│   ├── PageHeader.tsx       title + breadcrumbs + actions
-│   ├── EmptyState.tsx       empty list placeholder
-│   ├── ConfirmModal.tsx     destructive action confirm
-│   ├── PdfButton.tsx        PDF download button
-│   ├── JsonLocalizedText.tsx ja/en JSON field renderer
-│   └── MoneyText.tsx        formatted currency
-├── sales/
-│   ├── ProductPriceResolverInput.tsx
-│   ├── QuoteItemsTable.tsx
-│   └── OrderAcceptanceForm.tsx
-├── production/
-│   ├── WorkOrderStepsPanel.tsx
-│   ├── StepCard.tsx
-│   ├── ApprovalStatusPanel.tsx
-│   ├── InspectionRecordForm.tsx
-│   ├── DefectRecordForm.tsx
-│   ├── InventoryBadge.tsx
-│   └── AuditTimeline.tsx
-└── master/
-    ├── CustomerSelect.tsx
-    └── [entity]Table.tsx    per master entity
-```
-
-Server components (no `'use client'`) fetch data and pass props to client components.
