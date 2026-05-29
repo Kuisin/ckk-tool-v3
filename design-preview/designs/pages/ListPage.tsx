@@ -2,6 +2,7 @@
 
 import {
   Badge,
+  Box,
   Breadcrumbs,
   Button,
   Center,
@@ -154,7 +155,7 @@ function DataTableStub({ records }: { records: SalesOrderRow[] }) {
           <Text size="sm" style={{ flex: 1 }}>{r.customerName}</Text>
           <Text size="sm" style={{ flex: 2 }}>{r.productName}</Text>
           <Text size="sm" w={60} ta="right">{r.quantity}</Text>
-          <Text size="sm" w={100}><MoneyText value={r.amount} /></Text>
+          <Box w={100}><MoneyText value={r.amount} /></Box>
           <Text size="sm" w={90}>{r.deliveryDate}</Text>
           <Text size="sm" w={80}><StatusBadge status={r.status} /></Text>
         </Group>
