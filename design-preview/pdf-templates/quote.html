@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>見積書</title>
+  <style>
+    @page {
+      size: A4;
+      margin: 15mm 20mm;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Noto Sans JP', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', sans-serif;
+      font-size: 10pt;
+      color: #1a1a1a;
+      line-height: 1.5;
+    }
+
+    /* ─── Header ─────────────────────────────── */
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 24pt;
+    }
+
+    .doc-title {
+      font-size: 22pt;
+      font-weight: bold;
+      letter-spacing: 0.1em;
+      color: #1a1a1a;
+    }
+
+    .issuer {
+      text-align: right;
+      font-size: 9pt;
+      color: #444;
+    }
+
+    .issuer strong {
+      font-size: 11pt;
+      color: #1a1a1a;
+    }
+
+    /* ─── Recipient block ─────────────────────── */
+    .meta-row {
+      display: flex;
+      gap: 40pt;
+      margin-bottom: 20pt;
+    }
+
+    .recipient-block {
+      flex: 1;
+    }
+
+    .recipient-name {
+      font-size: 14pt;
+      font-weight: bold;
+      border-bottom: 2px solid #1a1a1a;
+      padding-bottom: 4pt;
+      margin-bottom: 6pt;
+    }
+
+    .recipient-meta {
+      font-size: 9pt;
+      color: #555;
+    }
+
+    .doc-info {
+      min-width: 180pt;
+      font-size: 9pt;
+    }
+
+    .doc-info table {
+      border-collapse: collapse;
+      width: 100%;
+    }
+
+    .doc-info td {
+      padding: 2pt 6pt;
+    }
+
+    .doc-info td:first-child {
+      color: #666;
+      white-space: nowrap;
+    }
+
+    .doc-info td:last-child {
+      font-weight: bold;
+    }
+
+    /* ─── Line items table ────────────────────── */
+    .items-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 16pt;
+      font-size: 9pt;
+    }
+
+    .items-table thead tr {
+      background: #2c3e50;
+      color: white;
+    }
+
+    .items-table th {
+      padding: 6pt 8pt;
+      text-align: left;
+      font-weight: normal;
+      letter-spacing: 0.02em;
+    }
+
+    .items-table th.right,
+    .items-table td.right {
+      text-align: right;
+    }
+
+    .items-table tbody tr:nth-child(even) {
+      background: #f9f9f9;
+    }
+
+    .items-table td {
+      padding: 5pt 8pt;
+      border-bottom: 1px solid #eee;
+    }
+
+    /* ─── Totals ──────────────────────────────── */
+    .totals {
+      display: flex;
+      justify-content: flex-end;
+      margin-bottom: 24pt;
+    }
+
+    .totals table {
+      border-collapse: collapse;
+      font-size: 9pt;
+      min-width: 200pt;
+    }
+
+    .totals td {
+      padding: 3pt 8pt;
+    }
+
+    .totals td:first-child {
+      color: #555;
+    }
+
+    .totals td:last-child {
+      text-align: right;
+      font-weight: bold;
+    }
+
+    .totals tr.grand-total td {
+      border-top: 2px solid #1a1a1a;
+      font-size: 11pt;
+      padding-top: 6pt;
+    }
+
+    /* ─── Notes ───────────────────────────────── */
+    .notes {
+      border: 1px solid #ddd;
+      border-radius: 4pt;
+      padding: 10pt;
+      font-size: 9pt;
+      color: #555;
+      min-height: 40pt;
+    }
+
+    .notes-label {
+      font-size: 8pt;
+      color: #999;
+      margin-bottom: 4pt;
+    }
+
+    /* ─── Validity strip ──────────────────────── */
+    .validity-strip {
+      background: #f0f7ff;
+      border: 1px solid #b3d4f5;
+      border-radius: 4pt;
+      padding: 8pt 16pt;
+      margin-bottom: 20pt;
+      font-size: 9pt;
+      color: #2c5282;
+    }
+
+    /* ─── Footer ──────────────────────────────── */
+    .footer {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      text-align: center;
+      font-size: 8pt;
+      color: #aaa;
+      padding: 6pt 0;
+      border-top: 1px solid #eee;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Header -->
+  <div class="header">
+    <div class="doc-title">見積書</div>
+    <div class="issuer">
+      <strong>株式会社サンプル製作所</strong><br>
+      〒123-4567 東京都千代田区○○1-2-3<br>
+      TEL: 03-0000-0000　FAX: 03-0000-0001<br>
+      登録番号: T1234567890123
+    </div>
+  </div>
+
+  <!-- Recipient + Doc info -->
+  <div class="meta-row">
+    <div class="recipient-block">
+      <div class="recipient-name">株式会社得意先名　御中</div>
+      <div class="recipient-meta">
+        担当: 営業部　山田 太郎 様<br>
+        〒987-6543 大阪府大阪市△△2-3-4
+      </div>
+    </div>
+    <div class="doc-info">
+      <table>
+        <tr><td>見積書番号</td><td>QOT-202601-00001</td></tr>
+        <tr><td>発行日</td><td>2026年1月10日</td></tr>
+        <tr><td>有効期限</td><td>2026年2月10日</td></tr>
+        <tr><td>担当営業</td><td>田中 一郎</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <!-- Validity notice -->
+  <div class="validity-strip">
+    本見積書の有効期限は <strong>2026年2月10日</strong> までとなります。期限内にご注文をお願いいたします。
+  </div>
+
+  <!-- Line items -->
+  <table class="items-table">
+    <thead>
+      <tr>
+        <th style="width: 35%">製品</th>
+        <th>注文種別</th>
+        <th class="right">数量</th>
+        <th class="right">単価 (円)</th>
+        <th class="right">金額 (円)</th>
+        <th>納期</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>超硬エンドミル φ10 4枚刃<br><span style="color:#888;font-size:8pt">PRD-202601-0001</span></td>
+        <td>本番</td>
+        <td class="right">50</td>
+        <td class="right">8,000</td>
+        <td class="right">400,000</td>
+        <td>2026/02/15</td>
+      </tr>
+      <tr>
+        <td>超硬エンドミル φ6 4枚刃<br><span style="color:#888;font-size:8pt">PRD-202601-0002</span></td>
+        <td>本番</td>
+        <td class="right">100</td>
+        <td class="right">5,500</td>
+        <td class="right">550,000</td>
+        <td>2026/02/20</td>
+      </tr>
+      <tr>
+        <td>超硬ドリル φ8<br><span style="color:#888;font-size:8pt">PRD-202601-0003</span></td>
+        <td>テスト</td>
+        <td class="right">5</td>
+        <td class="right">25,000</td>
+        <td class="right">125,000</td>
+        <td>2026/02/28</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <!-- Totals -->
+  <div class="totals">
+    <table>
+      <tr><td>小計</td><td>¥ 1,075,000</td></tr>
+      <tr><td>消費税（10%）</td><td>¥ 107,500</td></tr>
+      <tr class="grand-total"><td>合計金額（税込）</td><td>¥ 1,182,500</td></tr>
+    </table>
+  </div>
+
+  <!-- Notes -->
+  <div>
+    <div class="notes-label">備考</div>
+    <div class="notes">
+      ・サンプル品については別途ご相談ください。<br>
+      ・本見積はロット単位での価格です。
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <div class="footer">
+    QOT-202601-00001 　 1 / 1
+  </div>
+
+</body>
+</html>

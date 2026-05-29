@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>納品書</title>
+  <style>
+    @page {
+      size: A4;
+      margin: 15mm 20mm;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Noto Sans JP', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', sans-serif;
+      font-size: 10pt;
+      color: #1a1a1a;
+      line-height: 1.5;
+    }
+
+    /* ─── Header ─────────────────────────────── */
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 24pt;
+    }
+
+    .doc-title {
+      font-size: 22pt;
+      font-weight: bold;
+      letter-spacing: 0.1em;
+    }
+
+    .issuer {
+      text-align: right;
+      font-size: 9pt;
+      color: #444;
+    }
+
+    .issuer strong {
+      font-size: 11pt;
+      color: #1a1a1a;
+    }
+
+    /* ─── Meta row ────────────────────────────── */
+    .meta-row {
+      display: flex;
+      gap: 40pt;
+      margin-bottom: 20pt;
+    }
+
+    .recipient-block {
+      flex: 1;
+    }
+
+    .recipient-name {
+      font-size: 14pt;
+      font-weight: bold;
+      border-bottom: 2px solid #1a1a1a;
+      padding-bottom: 4pt;
+      margin-bottom: 6pt;
+    }
+
+    .recipient-meta {
+      font-size: 9pt;
+      color: #555;
+    }
+
+    .doc-info {
+      min-width: 200pt;
+      font-size: 9pt;
+    }
+
+    .doc-info table {
+      border-collapse: collapse;
+      width: 100%;
+    }
+
+    .doc-info td {
+      padding: 2pt 6pt;
+    }
+
+    .doc-info td:first-child {
+      color: #666;
+      white-space: nowrap;
+    }
+
+    .doc-info td:last-child {
+      font-weight: bold;
+    }
+
+    /* ─── Delivery method badge ───────────────── */
+    .method-strip {
+      background: #f3e5f5;
+      border: 1px solid #ce93d8;
+      border-radius: 4pt;
+      padding: 8pt 16pt;
+      margin-bottom: 20pt;
+      display: flex;
+      align-items: center;
+      gap: 12pt;
+      font-size: 9pt;
+      color: #4a148c;
+    }
+
+    .method-badge {
+      display: inline-block;
+      background: #6a1b9a;
+      color: white;
+      padding: 2pt 10pt;
+      border-radius: 3pt;
+      font-size: 9pt;
+      font-weight: bold;
+    }
+
+    .method-badge.normal {
+      background: #1565c0;
+    }
+
+    .method-strip.normal-style {
+      background: #e3f2fd;
+      border-color: #90caf9;
+      color: #0d47a1;
+    }
+
+    /* ─── End-user notice ─────────────────────── */
+    .end-user-notice {
+      background: #fff3e0;
+      border: 1px solid #ffcc80;
+      border-radius: 4pt;
+      padding: 8pt 12pt;
+      margin-bottom: 16pt;
+      font-size: 9pt;
+      color: #e65100;
+    }
+
+    /* ─── Items table ─────────────────────────── */
+    .items-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 16pt;
+      font-size: 9pt;
+    }
+
+    .items-table thead tr {
+      background: #2c3e50;
+      color: white;
+    }
+
+    .items-table th {
+      padding: 6pt 8pt;
+      text-align: left;
+      font-weight: normal;
+      letter-spacing: 0.02em;
+    }
+
+    .items-table th.right,
+    .items-table td.right {
+      text-align: right;
+    }
+
+    .items-table tbody tr:nth-child(even) {
+      background: #f9f9f9;
+    }
+
+    .items-table td {
+      padding: 5pt 8pt;
+      border-bottom: 1px solid #eee;
+    }
+
+    /* ─── Totals ──────────────────────────────── */
+    .totals {
+      display: flex;
+      justify-content: flex-end;
+      margin-bottom: 24pt;
+    }
+
+    .totals table {
+      border-collapse: collapse;
+      font-size: 9pt;
+      min-width: 200pt;
+    }
+
+    .totals td {
+      padding: 3pt 8pt;
+    }
+
+    .totals td:first-child {
+      color: #555;
+    }
+
+    .totals td:last-child {
+      text-align: right;
+      font-weight: bold;
+    }
+
+    .totals tr.grand-total td {
+      border-top: 2px solid #1a1a1a;
+      font-size: 11pt;
+      padding-top: 6pt;
+    }
+
+    /* ─── No-price notice ─────────────────────── */
+    .no-price-notice {
+      background: #fafafa;
+      border: 1px dashed #bbb;
+      border-radius: 4pt;
+      padding: 8pt 12pt;
+      margin-bottom: 16pt;
+      font-size: 9pt;
+      color: #888;
+      text-align: center;
+    }
+
+    /* ─── Notes ───────────────────────────────── */
+    .notes {
+      border: 1px solid #ddd;
+      border-radius: 4pt;
+      padding: 10pt;
+      font-size: 9pt;
+      color: #555;
+      min-height: 40pt;
+    }
+
+    .notes-label {
+      font-size: 8pt;
+      color: #999;
+      margin-bottom: 4pt;
+    }
+
+    /* ─── Receipt confirmation ────────────────── */
+    .receipt-box {
+      margin-top: 24pt;
+      border: 1px solid #ccc;
+      border-radius: 4pt;
+      padding: 10pt 16pt;
+    }
+
+    .receipt-box .receipt-title {
+      font-size: 9pt;
+      color: #888;
+      margin-bottom: 8pt;
+    }
+
+    .receipt-fields {
+      display: flex;
+      gap: 32pt;
+    }
+
+    .receipt-field .r-label {
+      font-size: 8pt;
+      color: #aaa;
+    }
+
+    .receipt-field .r-line {
+      border-bottom: 1px solid #ccc;
+      width: 120pt;
+      height: 20pt;
+    }
+
+    /* ─── Footer ──────────────────────────────── */
+    .footer {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      text-align: center;
+      font-size: 8pt;
+      color: #aaa;
+      padding: 6pt 0;
+      border-top: 1px solid #eee;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Header -->
+  <div class="header">
+    <div class="doc-title">納品書</div>
+    <div class="issuer">
+      <strong>株式会社サンプル製作所</strong><br>
+      〒123-4567 東京都千代田区○○1-2-3<br>
+      TEL: 03-0000-0000　FAX: 03-0000-0001<br>
+      登録番号: T1234567890123
+    </div>
+  </div>
+
+  <!-- Recipient + Doc info -->
+  <div class="meta-row">
+    <div class="recipient-block">
+      <div class="recipient-name">株式会社得意先名　御中</div>
+      <div class="recipient-meta">
+        担当: 購買部　鈴木 花子 様<br>
+        〒987-6543 大阪府大阪市△△2-3-4
+      </div>
+    </div>
+    <div class="doc-info">
+      <table>
+        <tr><td>納品書番号</td><td>DRN-202602-00007</td></tr>
+        <tr><td>発行日</td><td>2026年2月15日</td></tr>
+        <tr><td>納品日</td><td>2026年2月15日</td></tr>
+        <tr><td>出荷書参照</td><td>ORD-202601-00005-01</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <!-- Delivery method -->
+  <div class="method-strip normal-style">
+    <span class="method-badge normal">通常納品</span>
+    <span>受注先へ直接お届けします（納品書同梱）</span>
+  </div>
+
+  <!-- Line items (with price — include_price = true) -->
+  <table class="items-table">
+    <thead>
+      <tr>
+        <th style="width: 35%">製品</th>
+        <th class="right">数量</th>
+        <th>単位</th>
+        <th class="right">単価 (円)</th>
+        <th class="right">金額 (円)</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>超硬エンドミル φ10 4枚刃<br><span style="color:#888;font-size:8pt">PRD-202601-0001　Lot #1042</span></td>
+        <td class="right">50</td>
+        <td>本</td>
+        <td class="right">8,000</td>
+        <td class="right">400,000</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <!-- Totals -->
+  <div class="totals">
+    <table>
+      <tr><td>小計</td><td>¥ 400,000</td></tr>
+      <tr><td>消費税（10%）</td><td>¥ 40,000</td></tr>
+      <tr class="grand-total"><td>合計（税込）</td><td>¥ 440,000</td></tr>
+    </table>
+  </div>
+
+  <!-- Notes -->
+  <div>
+    <div class="notes-label">備考</div>
+    <div class="notes">
+      お受け取りの際はご確認のうえ、受領欄にご署名をお願いいたします。
+    </div>
+  </div>
+
+  <!-- Receipt confirmation -->
+  <div class="receipt-box">
+    <div class="receipt-title">受領確認</div>
+    <div class="receipt-fields">
+      <div class="receipt-field">
+        <div class="r-label">受領日</div>
+        <div class="r-line"></div>
+      </div>
+      <div class="receipt-field">
+        <div class="r-label">受領者署名</div>
+        <div class="r-line"></div>
+      </div>
+      <div class="receipt-field">
+        <div class="r-label">確認印</div>
+        <div class="r-line"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <div class="footer">
+    DRN-202602-00007 　 1 / 1
+  </div>
+
+</body>
+</html>
