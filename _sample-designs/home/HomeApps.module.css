@@ -1,0 +1,35 @@
+/**
+ * HomeApps.module.css
+ *
+ * [Custom CSS module] Hover styles for app cards on the home page.
+ *
+ * Same pattern as AppLauncher.module.css — CSS module preferred over sx/style
+ * for :hover pseudo-selectors in SSR (Mantine v9 recommendation).
+ * Larger scale than the launcher card: the home page card has more space,
+ * so we use a slightly deeper shadow on hover instead of just a background change.
+ */
+
+.appCard {
+  text-decoration: none;
+  color: inherit;
+  display: block;
+  border-radius: var(--mantine-radius-md);
+  transition:
+    transform 120ms ease,
+    box-shadow 120ms ease;
+}
+
+.appCard:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--mantine-shadow-sm);
+}
+
+/* Reduce motion for users who prefer it */
+@media (prefers-reduced-motion: reduce) {
+  .appCard {
+    transition: none;
+  }
+  .appCard:hover {
+    transform: none;
+  }
+}
