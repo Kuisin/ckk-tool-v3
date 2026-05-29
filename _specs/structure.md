@@ -179,8 +179,10 @@ src/
 │
 ├── components/
 │   ├── layout/
-│   │   ├── AppShell.tsx                            # 'use client' — AppShell wrapper
-│   │   └── AppNav.tsx                              # 'use client' — Navbar nav links
+│   │   ├── AppHeader.tsx                           # 'use client' — topbar (app launcher trigger, share, notifications, settings, profile)
+│   │   ├── AppLauncher.tsx                         # 'use client' — app launcher dropdown panel (search + app cards)
+│   │   ├── AppFooter.tsx                           # 'use client' — footer (company name + version, PWA-aware)
+│   │   └── HomeApps.tsx                            # 'use client' — home page app grid (starred + categorized)
 │   ├── ui/
 │   │   ├── StatusBadge.tsx                         # status enum → Badge
 │   │   ├── FieldValue.tsx                          # label/value display
@@ -209,6 +211,8 @@ src/
 ├── lib/
 │   ├── db.ts                                       # Prisma client
 │   ├── auth.ts                                     # Auth.js v5 設定
+│   ├── app-list.ts                                 # アプリランチャー app 定義（カテゴリ・icon・href・requiredPermission）
+│   ├── shortcut-list.ts                            # ショートカット app 定義（頻用サブ画面）
 │   ├── journal.ts                                  # 仕訳エンジン（弥生連携用）
 │   ├── csv-export.ts                               # 弥生会計 Next CSV 生成
 │   ├── inventory.ts                                # 在庫引当・予約ロジック

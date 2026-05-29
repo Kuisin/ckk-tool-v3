@@ -30,69 +30,131 @@ createTheme({
 
 ---
 
-## 2. AppShell Layout
+## 2. App Layout
+
+No sidebar. All navigation is through the App Launcher dropdown in the topbar.
 
 ```
-AppShell
-├── Header (height: 60)
-│   ├── Burger (mobile toggle)
-│   ├── Text "CKK" (logo / brand)
-│   ├── [spacer]
-│   └── Group
-│       ├── ActionIcon (notifications)
-│       └── Menu (user avatar → profile, logout)
-├── Navbar (width: 260, collapsible on mobile)
-│   ├── ScrollArea
-│   │   └── NavSection[] (see §3 Navigation)
-│   └── [bottom] user display name + role badge
-└── AppShell.Main
-    └── <page content>
+App Root (flex column, h-dvh)
+├── AppHeader (topbar)
+│   ├── [left] AppLauncher trigger button
+│   │   ├── Logo image (logo.svg / dark_logo.svg)
+│   │   └── Page title text (current page name, falls back to app name)
+│   │       └── → click opens AppLauncher dropdown panel (see §3)
+│   ├── [left] Share button (Share2Icon) → share current page
+│   ├── [right] NotificationsBell (BellIcon)
+│   │   ├── Unread count badge (red)
+│   │   └── → click/hover opens notifications dropdown
+│   ├── [right] Settings gear (SettingsIcon)
+│   │   └── → dropdown: お気に入り / 一般 / バグ報告
+│   └── [right] UserAvatar (rounded, profile image)
+│       └── → dropdown: profile card, admin settings (if admin), sign out
+├── main (flex-1, overflow-hidden, rounded, bg-gray-50)
+│   └── <page content>
+└── AppFooter
+    └── company name · version (small, muted)
 ```
 
-File: `src/components/layout/AppShell.tsx` — `'use client'`
+Files:
+- `src/components/layout/AppHeader.tsx` — `'use client'` — topbar with launcher trigger + right actions
+- `src/components/layout/AppFooter.tsx` — `'use client'` — footer (company name + version, PWA-aware padding)
+- `src/app/(dashboard)/layout.tsx` — server component wrapping `NavigationProvider` + `AppHeader` + `main` + `AppFooter`
 
 ---
 
-## 3. Navigation
+## 3. App Launcher & Navigation
 
-Each nav section maps to a route group. Use Mantine `NavLink` with Tabler icon. Route paths follow the directory structure in `_specs/structure.md`.
+Navigation uses an App Launcher panel opened from the topbar logo button. No sidebar navbar.
+
+### 3.1 App Launcher Panel
 
 ```
-NavLink Dashboard
-NavLink 販売                   (collapsible)
-  NavLink 価格表
-  NavLink 見積書
-  NavLink 注文受諾書
-  NavLink 設計依頼書
-NavLink 購買                   (collapsible)
-  NavLink 素材入荷
-  NavLink 外注依頼
-NavLink 生産                   (collapsible)
-  NavLink 受注書
-  NavLink 指示書
-  NavLink 承認管理
-  NavLink 製品在庫
-  NavLink 素材在庫
-NavLink 出荷                   (collapsible)
-  NavLink 出荷書
-  NavLink 納品書
-NavLink 請求                   (collapsible)
-  NavLink 請求書
-  NavLink 締日処理
-NavLink マスタ                 (collapsible)
-  NavLink 顧客
-  NavLink 最終需要家
-  NavLink 製品
-  NavLink 材種
-  NavLink 素材
-  NavLink 外注企業
-  NavLink 工程マスタ
-  NavLink 検査表テンプレート
-  NavLink 不良種類
-  NavLink 承認グループ
+AppLauncher dropdown panel (absolute, below topbar)
+├── Home button (HouseIcon) → /
+├── Search input (SearchIcon)
+├── [if starred] Starred apps section
+│   └── grid (2–4 cols) of AppCard (star badge)
+├── [divider if starred]
+└── Regular apps grid (2–4 cols) of AppCard, grouped by category
+    (when searching: flat list with category label)
 ```
 
-File: `src/components/layout/AppNav.tsx` — `'use client'`
+File: `src/components/layout/AppLauncher.tsx` — `'use client'`
+
+Panel opens on click (also hover on desktop) and closes on outside click or navigation.
+
+### 3.2 App List
+
+Apps are defined in `src/lib/app-list.ts`. Each entry:
+
+```ts
+{
+  dictKey: string           // i18n key for app name
+  category: string          // category display name (fallback)
+  categoryDictKey: string   // i18n key for category name
+  icon: IconName            // Tabler/Lucide icon name
+  image: string | null      // optional image override
+  href: string              // route path (e.g. '/sales/quotes')
+  requiredPermission: string[]  // RBAC permission codes
+}
+```
+
+App list by category:
+
+```
+Category: 販売 (Sales)
+  価格表         → /sales/price-lists
+  見積書         → /sales/quotes
+  注文受諾書     → /sales/order-acceptances
+  設計依頼書     → /sales/design-requests
+
+Category: 購買 (Purchase)
+  素材入荷       → /purchase/material-receipts
+  外注依頼       → /purchase/outsource-orders
+
+Category: 生産 (Production)
+  受注書         → /production/sales-orders
+  指示書         → /production/work-orders
+  承認管理       → /production/approvals
+  製品在庫       → /production/inventory/products
+  素材在庫       → /production/inventory/materials
+
+Category: 出荷 (Shipping)
+  出荷書         → /shipping/shipping-orders
+  納品書         → /shipping/delivery-notes
+
+Category: 請求 (Billing)
+  請求書         → /billing/invoices
+  締日処理       → /billing/closings
+
+Category: マスタ (Master)
+  顧客           → /master/customers
+  最終需要家     → /master/end-users
+  製品           → /master/products
+  材種           → /master/material-types
+  素材           → /master/materials
+  外注企業       → /master/suppliers
+  工程マスタ     → /master/process-steps
+  検査表テンプレート → /master/inspection-templates
+  不良種類       → /master/defect-types
+  承認グループ   → /master/approval-groups
+```
+
+Files: `src/lib/app-list.ts`, `src/lib/shortcut-list.ts`
+
+### 3.3 Home Page (Dashboard)
+
+`src/app/(dashboard)/page.tsx` renders the home dashboard:
+
+```
+Stack
+├── user profile card (avatar + display name + department + email)
+└── HomeApps grid
+    ├── [if starred] Starred section (grid, context-menu to un-star)
+    └── Category groups (grid per category, context-menu to star)
+```
+
+File: `src/components/layout/HomeApps.tsx` — `'use client'`
 
 ---
 
