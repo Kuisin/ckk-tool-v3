@@ -52,6 +52,7 @@
  *   Only shown to users with the appropriate permission scope.
  */
 
+import type { ReactNode } from 'react';
 import {
   Badge,
   Box,
@@ -85,7 +86,7 @@ import Link from 'next/link';
 // ── FieldValue helper ────────────────────────────────────────────────────────
 // [Custom] In production: import { FieldValue } from '@/components/ui/FieldValue'
 // Props: label (string), value (ReactNode), span (optional — for SimpleGrid colSpan)
-function FieldValue({ label, value }: { label: string; value: React.ReactNode }) {
+function FieldValue({ label, value }: { label: string; value: ReactNode }) {
   return (
     <Stack gap={2}>
       {/* [Mantine] Text size="xs" c="dimmed" for the label */}

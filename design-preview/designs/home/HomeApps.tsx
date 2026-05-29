@@ -55,6 +55,7 @@
  *          avatar + text layout with a Card for better visual hierarchy.
  */
 
+import type { ComponentType } from 'react';
 import {
   Avatar,
   Badge,
@@ -102,7 +103,7 @@ import classes from './HomeApps.module.css';
 import { CATEGORY_COLORS, type AppCategory, getAppsByCategory } from '../lib/app-list';
 
 // Icon lookup map (same as AppLauncher — extract to a shared util in production)
-const ICON_MAP: Record<string, React.ComponentType<{ size?: number }>> = {
+const ICON_MAP: Record<string, ComponentType<{ size?: number }>> = {
   IconCurrencyYen,
   IconFileText,
   IconClipboardCheck,
@@ -132,7 +133,7 @@ const ICON_MAP: Record<string, React.ComponentType<{ size?: number }>> = {
 
 // Category section header icons
 // [Custom] Each category has a representative "section icon" for the heading
-const CATEGORY_SECTION_ICONS: Record<AppCategory, React.ComponentType<{ size?: number }>> = {
+const CATEGORY_SECTION_ICONS: Record<AppCategory, ComponentType<{ size?: number }>> = {
   '販売': IconCurrencyYen,
   '購買': IconPackageImport,
   '生産': IconSettings2,

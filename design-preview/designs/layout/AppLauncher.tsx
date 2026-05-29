@@ -46,6 +46,7 @@
  *                with Mantine SimpleGrid + CSS variables for theme compatibility.
  */
 
+import type { ComponentType } from 'react';
 import {
   Box,
   Divider,
@@ -96,7 +97,7 @@ import classes from './AppLauncher.module.css';
 // Map icon string names to actual components
 // [Custom] This lookup is needed because app-list.ts stores icon names as strings
 // (for JSON-serializable config). In production, you can import directly instead.
-const ICON_MAP: Record<string, React.ComponentType<{ size?: number }>> = {
+const ICON_MAP: Record<string, ComponentType<{ size?: number }>> = {
   IconCurrencyYen,
   IconFileText,
   IconClipboardCheck,
