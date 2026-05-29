@@ -1,69 +1,5 @@
 'use client';
 
-/**
- * FormPage.tsx — Sample: 見積書 新規作成 (Quote New / Edit)
- *
- * This file shows the standard FORM PAGE pattern for new/page.tsx and [id]/edit/page.tsx.
- * The same structure applies to: order acceptances, sales orders, work orders, invoices.
- *
- * ─── COMPONENT MAP ───────────────────────────────────────────────────────────
- *
- *  Stack (gap="md")
- *  ├── Group (page header: Breadcrumbs + Title)
- *  ├── form (onSubmit → server action or client handler)
- *  │   ├── Paper §1 — 基本情報
- *  │   │   ├── Title order={4} + Divider
- *  │   │   └── SimpleGrid cols={{ base:1, sm:2 }}
- *  │   │       └── TextInput / Select / DatePickerInput / Textarea
- *  │   ├── Paper §2 — 明細
- *  │   │   ├── Title order={4} + Divider
- *  │   │   ├── Table (editable line item rows)
- *  │   │   └── Button variant="subtle" (add row)
- *  │   └── Group (submit + cancel)
- *  │       ├── Button variant="default" component={Link} (cancel)
- *  │       └── Button type="submit" (save)
- *
- * ─── CUSTOMIZATIONS ──────────────────────────────────────────────────────────
- *
- * [Mantine] @mantine/form + zodResolver for form state + validation.
- *   Standard in this project. The useForm hook tracks values, errors, dirty state.
- *   zodResolver connects a Zod schema to Mantine form validation.
- *
- * [Mantine default] Paper, Stack, Group, SimpleGrid, Title, Divider, Breadcrumbs,
- *   TextInput, Select, NumberInput, Textarea, Button — all standard, no customization.
- *
- * [Mantine] DatePickerInput from @mantine/dates — locale="ja" is set globally.
- *   DatePickerInput is used instead of a plain TextInput for date fields
- *   to provide a proper calendar picker UI.
- *
- * [Custom] NumberInput for monetary values:
- *   prefix="¥" + thousandSeparator="," + decimalScale={2} + min={0}
- *   This combination is specific to JPY fields.
- *
- * [Custom] CustomerSelect: two-level Select (parent company → branch).
- *   When a parent is selected, the branch Select repopulates with filtered options.
- *   Defined in src/components/master/CustomerSelect.tsx.
- *
- * [Custom] ProductPriceResolverInput: auto-fills unit_price from price_lists table
- *   after product + quantity are selected. Uses an API call internally.
- *   Defined in src/components/sales/ProductPriceResolverInput.tsx.
- *
- * [Mantine] LoadingOverlay wraps the form during submission.
- *   <Box pos="relative"><LoadingOverlay visible={isPending} />{children}</Box>
- *   Box pos="relative" is required for LoadingOverlay positioning.
- *
- * [Mantine] notifications.show on success/error (from @mantine/notifications).
- *   Called after server action resolves.
- *
- * [Custom] Line items table is editable: add/remove rows, each row has Select + NumberInput.
- *   Row data is managed with form.values.items (array of item objects).
- *   form.insertListItem / form.removeListItem handle row add/remove.
- *
- * [Custom] Server Action submission: form has action={serverAction} prop.
- *   useFormStatus() / useTransition() provides isPending for LoadingOverlay.
- *   In Next.js 15+, Server Actions are the preferred form submission pattern.
- */
-
 import {
   Box,
   Breadcrumbs,
@@ -89,7 +25,7 @@ import {
   IconMinus,
   IconPlus,
 } from '@tabler/icons-react';
-import Link from 'next/link';
+const Link = (props: any) => <a {...props} />;
 import { useTransition } from 'react';
 import { z } from 'zod';
 

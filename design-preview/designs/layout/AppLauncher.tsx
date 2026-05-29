@@ -1,51 +1,5 @@
 'use client';
 
-/**
- * AppLauncher.tsx
- * Rendered inside AppHeader's Popover.
- * Contains app search + categorized app card grid.
- *
- * ─── COMPONENT MAP ───────────────────────────────────────────────────────────
- *
- *  Popover.Dropdown (in AppHeader)
- *  └── AppLauncher
- *      ├── TextInput          [Mantine] search bar with icon
- *      ├── UnstyledButton     [Mantine] home shortcut link
- *      ├── Divider            [Mantine]
- *      └── when searching:
- *          └── Stack          [Mantine]
- *              └── UnstyledButton × N   [Mantine] flat result rows
- *                  └── Group > ThemeIcon + Text
- *          otherwise:
- *          └── Stack          [Mantine] per-category sections
- *              └── Box × N (category)
- *                  ├── Text (category label)    [Mantine]
- *                  └── SimpleGrid cols={3}      [Mantine]
- *                      └── UnstyledButton × N   [Mantine] app card
- *                          └── Stack > ThemeIcon + Text
- *
- * ─── CUSTOMIZATIONS ──────────────────────────────────────────────────────────
- *
- * [Custom] App card layout: icon above text, centered — differs from Mantine's
- *          built-in NavLink (horizontal, left icon). Chosen to match the demo
- *          system's card-grid visual pattern.
- *
- * [Custom] Search flattens the grid into a vertical list of rows, showing
- *          category name as a secondary label. This is not a Mantine built-in.
- *
- * [Custom] ThemeIcon color per category — sourced from CATEGORY_COLORS in app-list.ts.
- *          Each module/section gets a consistent color across Launcher and HomeApps.
- *
- * [CSS module] Hover background + transition on cards — see AppLauncher.module.css.
- *              (Mantine's sx prop doesn't support :hover in SSR; CSS module is preferred.)
- *
- * [Mantine] SimpleGrid cols={3} — chosen for 520px popover width.
- *           At ~170px per card, 3 columns fits comfortably. 4 would be too cramped.
- *
- * [NOT Tailwind] The demo system used raw CSS grid with Tailwind. Replaced entirely
- *                with Mantine SimpleGrid + CSS variables for theme compatibility.
- */
-
 import type { ComponentType } from 'react';
 import {
   Box,

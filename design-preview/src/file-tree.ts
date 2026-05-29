@@ -16,6 +16,11 @@ export function buildFileTree(modulePaths: string[], prefix = DESIGNS_PREFIX, ex
     const relative = modulePath.replace(prefix, '').replace(extRe, '');
     const segments = relative.split('/');
 
+    // Skip if any segment starts with underscore
+    if (segments.some((seg) => seg.startsWith('_'))) {
+      continue;
+    }
+
     let level = root;
     for (let i = 0; i < segments.length; i++) {
       const name = segments[i];

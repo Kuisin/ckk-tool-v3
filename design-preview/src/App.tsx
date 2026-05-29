@@ -107,23 +107,6 @@ export default function App() {
             )}
           </Group>
           <Group gap="xs">
-            <SegmentedControl
-              size="xs"
-              value={mode}
-              onChange={(v) => setMode(v as Mode)}
-              data={[
-                { label: 'UI Designs', value: 'ui' },
-                { label: 'PDF Templates', value: 'pdf' },
-              ]}
-            />
-            <ActionIcon
-              variant="default"
-              title={isDark ? 'ライトモード' : 'ダークモード'}
-              onClick={() => toggleColorScheme()}
-              aria-label="カラーモード切替"
-            >
-              {isDark ? <IconSun size={16} /> : <IconMoon size={16} />}
-            </ActionIcon>
             {mode === 'ui' && (
               <ActionIcon
                 variant="default"
@@ -133,6 +116,23 @@ export default function App() {
                 <IconRefresh size={16} />
               </ActionIcon>
             )}
+            <ActionIcon
+              variant="default"
+              title={isDark ? 'ライトモード' : 'ダークモード'}
+              onClick={() => toggleColorScheme()}
+              aria-label="カラーモード切替"
+            >
+              {isDark ? <IconSun size={16} /> : <IconMoon size={16} />}
+            </ActionIcon>
+            <SegmentedControl
+              size="xs"
+              value={mode}
+              onChange={(v) => setMode(v as Mode)}
+              data={[
+                { label: 'UI Designs', value: 'ui' },
+                { label: 'PDF Templates', value: 'pdf' },
+              ]}
+            />
           </Group>
         </Group>
       </Box>

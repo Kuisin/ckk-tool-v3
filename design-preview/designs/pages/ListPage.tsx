@@ -1,60 +1,5 @@
 'use client';
 
-/**
- * ListPage.tsx — Sample: 受注書一覧 (Sales Orders List)
- *
- * This file shows the standard LIST PAGE pattern used across all index routes.
- * The same structure applies to: quotes, work-orders, invoices, etc.
- *
- * In production, split this into:
- *   - page.tsx (Server Component) — fetches records + pagination
- *   - SalesOrdersTable.tsx ('use client') — filter bar + DataTable + URL sync
- *
- * ─── COMPONENT MAP ───────────────────────────────────────────────────────────
- *
- *  Stack (gap="md")
- *  ├── Group (page header)
- *  │   ├── Stack > Breadcrumbs + Title
- *  │   └── Button (new record)
- *  └── Paper (shadow="xs", p="sm")
- *      ├── Group (filter bar)
- *      │   ├── TextInput (search)
- *      │   ├── Select (status filter)
- *      │   └── Button (reset)
- *      └── DataTable (mantine-datatable)
- *          columns: [番号 / 顧客 / 製品 / 数量 / 金額 / 納期 / ステータス]
- *          — or EmptyState if no records
- *
- * ─── CUSTOMIZATIONS ──────────────────────────────────────────────────────────
- *
- * [Mantine default] Stack, Group, Paper, Button, TextInput, Select, Breadcrumbs, Title
- *   — all standard Mantine, no customization needed.
- *
- * [3rd party] DataTable from mantine-datatable (not Mantine core).
- *   - Chosen over Mantine Table because it provides built-in: pagination, row click,
- *     column sorting, row selection, and virtualization.
- *   - Props withTableBorder + highlightOnHover match the global Mantine Table theme defaults.
- *
- * [Custom] StatusBadge: maps enum string → Mantine Badge color.
- *   Defined in src/components/ui/StatusBadge.tsx (see _specs/design.md §5).
- *   Example: 'IN_PRODUCTION' → <Badge color="violet">製造中</Badge>
- *
- * [Custom] MoneyText: formats number as JPY with Intl.NumberFormat.
- *   Defined in src/components/ui/MoneyText.tsx.
- *   Example: 250000 → ¥250,000
- *
- * [Custom] Document number column uses ff="mono" (monospace font family).
- *   This is a Mantine Text prop (fontFamily token). No CSS override needed.
- *   Convention: all document number columns (QOT-, ORD-, INV-) use monospace.
- *
- * [Custom] Pagination syncs to URL search params in the real implementation.
- *   The 'use client' wrapper component holds filter state in useState and calls
- *   router.push() to update the URL, enabling shareable filtered views.
- *
- * [Custom] EmptyState component (Center > Stack > ThemeIcon + Text + optional Button).
- *   Defined in src/components/ui/EmptyState.tsx (see _specs/design.md §6.3).
- */
-
 import {
   Badge,
   Breadcrumbs,
@@ -202,28 +147,28 @@ function DataTableStub({ records }: { records: SalesOrderRow[] }) {
         <Text size="xs" c="dimmed" w={80}>ステータス</Text>
       </Group>
       {records.map((r) => (
-        <Group
+        <Link
           key={r.id}
-          px="sm"
-          py="xs"
-          component={Link}
           href={`/production/sales-orders/${r.id}`}
-          style={{
-            borderBottom: '1px solid var(--mantine-color-gray-2)',
-            textDecoration: 'none',
-            color: 'inherit',
-            // [Custom] Row hover — in mantine-datatable this is handled by highlightOnHover prop
-          }}
+          style={{ textDecoration: 'none', color: 'inherit' }}
         >
-          {/* [Custom] Monospace font for document numbers */}
-          <Text size="sm" ff="mono" w={170}>{r.salesOrderNumber}</Text>
-          <Text size="sm" style={{ flex: 1 }}>{r.customerName}</Text>
-          <Text size="sm" style={{ flex: 2 }}>{r.productName}</Text>
-          <Text size="sm" w={60} ta="right">{r.quantity}</Text>
-          <Text size="sm" w={100}><MoneyText value={r.amount} /></Text>
-          <Text size="sm" w={90}>{r.deliveryDate}</Text>
-          <Text size="sm" w={80}><StatusBadge status={r.status} /></Text>
-        </Group>
+          <Group
+            px="sm"
+            py="xs"
+            style={{
+              borderBottom: '1px solid var(--mantine-color-gray-2)',
+            }}
+          >
+            {/* [Custom] Monospace font for document numbers */}
+            <Text size="sm" ff="mono" w={170}>{r.salesOrderNumber}</Text>
+            <Text size="sm" style={{ flex: 1 }}>{r.customerName}</Text>
+            <Text size="sm" style={{ flex: 2 }}>{r.productName}</Text>
+            <Text size="sm" w={60} ta="right">{r.quantity}</Text>
+            <Text size="sm" w={100}><MoneyText value={r.amount} /></Text>
+            <Text size="sm" w={90}>{r.deliveryDate}</Text>
+            <Text size="sm" w={80}><StatusBadge status={r.status} /></Text>
+          </Group>
+        </Link>
       ))}
     </Stack>
   );
