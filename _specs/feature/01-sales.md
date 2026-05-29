@@ -1,0 +1,106 @@
+# Sales / Quoting / Ordering
+
+## §1 価格・見積
+
+### 機能概要
+
+価格表マスタ管理と見積書発行。フロー起点。
+
+### 画面
+
+| パス | 内容 |
+|------|------|
+| `/sales/price-lists` | 価格表一覧（顧客・製品・有効日フィルタ） |
+| `/sales/price-lists/new` | 価格表新規作成 |
+| `/sales/price-lists/[id]` | 価格表詳細 |
+| `/sales/price-lists/[id]/edit` | 価格表編集 |
+| `/sales/quotes` | 見積書一覧（ステータス・顧客フィルタ、PGroonga 全文検索） |
+| `/sales/quotes/new` | 見積書新規作成 |
+| `/sales/quotes/[id]` | 見積書詳細 |
+| `/sales/quotes/[id]/edit` | 見積書編集 |
+
+### 主要機能
+
+- 価格表: 顧客＋製品コード＋注文種別（本番/テスト/サンプル/その他）＋本数範囲 = 単価、有効日管理
+- 価格表の自動参照: 見積作成時に顧客・製品・本数から最適な単価を自動提案
+- 見積書採番: `QOT-YYYYMM-NNNNN`（`lib/numbering.ts`）
+- 見積書 PDF 生成: `app/api/pdf/quote/route.ts` → Gotenberg
+- 見積書ステータス管理: `DRAFT → ISSUED → ACCEPTED / REJECTED / EXPIRED`
+- 設計依頼書への分岐: 設計図なしの場合 §10 へ起票リンク
+
+### 業務ルール
+
+- 注文種別: 本番 / テスト / サンプル（金額 0）/ その他
+- 価格表は有効日範囲で管理（重複・空白は検証で防止）
+- 見積書から受注書への転記時のコピー対象を制御（新規品は除外）
+
+---
+
+## §2 注文受付・価格差異
+
+### 機能概要
+
+顧客注文書受領から注文受諾書作成、価格差異照合。
+
+### 画面
+
+| パス | 内容 |
+|------|------|
+| `/sales/order-acceptances` | 注文受諾書一覧（ステータス・顧客フィルタ） |
+| `/sales/order-acceptances/new` | 注文受諾書新規作成 |
+| `/sales/order-acceptances/[id]` | 注文受諾書詳細（注文書 PDF 表示含む） |
+| `/sales/order-acceptances/[id]/edit` | 注文受諾書編集 |
+
+### 主要機能
+
+- 注文受諾書採番: `ORD-YYYYMM-NNNNN`
+- 注文書 PDF アップロード・添付（SeaweedFS）
+- 合計金額の自動計算: 受注書の製品・本数・単価から自動集計（手動編集不可）
+- 価格差異自動照合: 注文価格と見積価格の比較、差異時は担当者へ通知（SSE / メール）
+- ステータス管理: `PENDING → PRICE_DIFF / CONFIRMED`
+
+### 業務ルール
+
+- 顧客は企業・支店の 2 階層
+- 合計金額は受注書から自動計算
+- 価格差異あり時: 営業担当者に通知し見積を再調整後 §3 へ
+
+---
+
+## §3 受注書・指示書
+
+### 機能概要
+
+受注書と指示書（製造ワークフロー）の作成。
+
+### 画面
+
+| パス | 内容 |
+|------|------|
+| `/production/sales-orders` | 受注書一覧 |
+| `/production/sales-orders/new` | 受注書新規作成 |
+| `/production/sales-orders/[id]` | 受注書詳細（注文書 PDF サイドパネル表示） |
+| `/production/sales-orders/[id]/edit` | 受注書編集 |
+| `/production/work-orders` | 指示書一覧（ステータス・日付フィルタ） |
+| `/production/work-orders/new` | 指示書新規作成（工程ワークフロービルダー） |
+| `/production/work-orders/[id]` | 指示書詳細（工程ワークフロー表示） |
+| `/production/work-orders/[id]/edit` | 指示書編集 |
+
+### 主要機能
+
+- 受注書採番: `ORD-YYYYMM-NNNNN-NN`（注文受諾書コード + 連番）
+- 受注書 PDF 生成: `app/api/pdf/sales-order/route.ts`
+- ロット番号割当: 通し連番（指示書番号と共用）
+- 指示書ワークフロービルダー: 工程マスタから工程を選択し順序・同期設定
+- 指示書コピー機能: 同一受注元・製品の最新指示書からのコピー（バージョン変更時は警告）
+- 計画本数入力: ワークフロー作成時に入力
+- 外注・社内の実施場所設定: 工程ごとに社内 / 外注（企業選択）を指定
+- 指示書タイプ: `FROM_STOCK`（在庫分）/ `MANUFACTURE`（製造分）
+- 使用依存・実行依存バリデーション: `lib/workflow.ts` で依存関係を検証
+- 検査表テンプレートを指示書に複数紐付け: `work_order_inspection_templates`
+
+### 業務ルール
+
+- 製品ごとに受注書 1 行
+- ロット番号・本数は必須（定尺材は伝票コード入力）
+- 半製品（外部調達）には指示書不要 — 素材受入のみ
