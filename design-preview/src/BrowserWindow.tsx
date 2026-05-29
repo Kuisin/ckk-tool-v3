@@ -107,12 +107,13 @@ export function BrowserWindow({ url, children, noPadding }: BrowserWindowProps) 
 
       {/* Page content */}
       {noPadding ? (
-        // Full-layout designs: transform creates a containing block for position:fixed children
-        // (AppShell.Header / AppShell.Footer). Height gives the AppShell room to lay out.
+        // Full-layout designs: AppShell header/footer are position:sticky within the shell.
+        // overflow:hidden prevents the *container* from scrolling — AppShell handles its
+        // own internal scroll via overflowY:auto set on the AppShell root. Height:600 acts
+        // as the simulated viewport for the preview.
         <Box
           style={{
-            transform: 'translate(0)',
-            overflow: 'auto',
+            overflow: 'hidden',
             height: 600,
             background: 'var(--mantine-color-body)',
           }}
