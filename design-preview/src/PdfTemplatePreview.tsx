@@ -10,7 +10,7 @@ import {
   ActionIcon,
   Loader,
 } from '@mantine/core';
-import { IconPrinter, IconRefresh } from '@tabler/icons-react';
+import { IconDownload, IconRefresh } from '@tabler/icons-react';
 import { FileTree } from './FileTree';
 import { buildFileTree, formatDesignLabel } from './file-tree';
 
@@ -34,10 +34,20 @@ const fileTree = buildFileTree(templatePaths, PDF_PREFIX, 'html');
 const A4_W = 794;
 const A4_H = 1123;
 
+// Inject body padding to simulate @page margins (15mm top/bottom, 20mm left/right)
+// so the iframe preview matches the printed output.
+function injectPreviewStyles(html: string): string {
+  const style = '<style>body { padding: 15mm 20mm !important; }</style>';
+  return html.includes('</head>')
+    ? html.replace('</head>', `${style}\n</head>`)
+    : style + html;
+}
+
 export function PdfTemplatePreview() {
   const [selected, setSelected] = useState<string | null>(templatePaths[0] ?? null);
   const [htmlContent, setHtmlContent] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [pdfLoading, setPdfLoading] = useState(false);
   const [key, setKey] = useState(0);
 
   useEffect(() => {
@@ -53,15 +63,39 @@ export function PdfTemplatePreview() {
     });
   }, [selected, key]);
 
-  function handlePrint() {
-    if (!htmlContent) return;
-    const win = window.open('', '_blank');
-    if (!win) return;
-    win.document.write(htmlContent);
-    win.document.close();
-    win.focus();
-    // give the browser a moment to render before opening print dialog
-    win.setTimeout(() => win.print(), 400);
+  async function handleDownloadPdf() {
+    if (!htmlContent || pdfLoading) return;
+    setPdfLoading(true);
+    try {
+      const form = new FormData();
+      form.append('files', new Blob([htmlContent], { type: 'text/html' }), 'index.html');
+      const res = await fetch('/api/gotenberg/forms/chromium/convert/html', {
+        method: 'POST',
+        body: form,
+      });
+      if (!res.ok) throw new Error(`Gotenberg returned ${res.status}`);
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${label ?? 'template'}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error('Gotenberg PDF generation failed:', err);
+      // Fallback: open in new window for browser print
+      const win = window.open('', '_blank');
+      if (win) {
+        win.document.write(htmlContent);
+        win.document.close();
+        win.focus();
+        win.setTimeout(() => win.print(), 400);
+      }
+    } finally {
+      setPdfLoading(false);
+    }
   }
 
   const label = selected ? formatDesignLabel(selected, PDF_PREFIX, 'html') : null;
@@ -123,11 +157,12 @@ export function PdfTemplatePreview() {
                 </ActionIcon>
                 <Button
                   size="xs"
-                  leftSection={<IconPrinter size={14} />}
-                  onClick={handlePrint}
+                  leftSection={<IconDownload size={14} />}
+                  onClick={handleDownloadPdf}
                   disabled={!htmlContent}
+                  loading={pdfLoading}
                 >
-                  Print / Save PDF
+                  Save PDF
                 </Button>
               </Group>
             </Group>
@@ -165,7 +200,7 @@ export function PdfTemplatePreview() {
             >
               <iframe
                 key={`${selected}-${key}`}
-                srcDoc={htmlContent}
+                srcDoc={injectPreviewStyles(htmlContent)}
                 title={label ?? 'PDF Template'}
                 style={{
                   width: A4_W,
