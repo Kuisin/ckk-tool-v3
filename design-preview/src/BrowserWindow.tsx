@@ -1,20 +1,28 @@
 import type { ReactNode } from 'react';
-import { ActionIcon, Box, Group, Text } from '@mantine/core';
+import { ActionIcon, Box, Group, Text, Tooltip } from '@mantine/core';
 import {
   IconArrowLeft,
   IconArrowRight,
+  IconDeviceDesktop,
+  IconDeviceMobile,
   IconLock,
   IconRefresh,
 } from '@tabler/icons-react';
+
+export type Viewport = 'desktop' | 'mobile';
 
 interface BrowserWindowProps {
   url: string;
   children: ReactNode;
   /** Remove padding and set a fixed height — used for full-layout designs (AppShell-based) */
   noPadding?: boolean;
+  viewport?: Viewport;
+  onViewportChange?: (v: Viewport) => void;
 }
 
-export function BrowserWindow({ url, children, noPadding }: BrowserWindowProps) {
+export function BrowserWindow({ url, children, noPadding, viewport = 'desktop', onViewportChange }: BrowserWindowProps) {
+  const isMobile = viewport === 'mobile';
+
   return (
     <Box
       style={{
@@ -26,6 +34,8 @@ export function BrowserWindow({ url, children, noPadding }: BrowserWindowProps) 
         display: 'flex',
         flexDirection: 'column',
         width: '100%',
+        maxWidth: isMobile ? 390 : undefined,
+        margin: isMobile ? '0 auto' : undefined,
       }}
     >
       {/* Browser chrome */}
@@ -37,35 +47,48 @@ export function BrowserWindow({ url, children, noPadding }: BrowserWindowProps) 
           flexShrink: 0,
         }}
       >
-        {/* Traffic lights */}
-        <Group gap={8} mb={10}>
-          <Box
-            style={{
-              width: 12,
-              height: 12,
-              borderRadius: '50%',
-              background: '#ff5f57',
-              border: '1px solid rgba(0,0,0,0.12)',
-            }}
-          />
-          <Box
-            style={{
-              width: 12,
-              height: 12,
-              borderRadius: '50%',
-              background: '#febc2e',
-              border: '1px solid rgba(0,0,0,0.12)',
-            }}
-          />
-          <Box
-            style={{
-              width: 12,
-              height: 12,
-              borderRadius: '50%',
-              background: '#28c840',
-              border: '1px solid rgba(0,0,0,0.12)',
-            }}
-          />
+        {/* Traffic lights + viewport toggle */}
+        <Group gap={8} mb={10} justify="space-between">
+          <Group gap={8}>
+            <Box
+              style={{
+                width: 12,
+                height: 12,
+                borderRadius: '50%',
+                background: '#ff5f57',
+                border: '1px solid rgba(0,0,0,0.12)',
+              }}
+            />
+            <Box
+              style={{
+                width: 12,
+                height: 12,
+                borderRadius: '50%',
+                background: '#febc2e',
+                border: '1px solid rgba(0,0,0,0.12)',
+              }}
+            />
+            <Box
+              style={{
+                width: 12,
+                height: 12,
+                borderRadius: '50%',
+                background: '#28c840',
+                border: '1px solid rgba(0,0,0,0.12)',
+              }}
+            />
+          </Group>
+          <Tooltip label={isMobile ? 'Switch to desktop' : 'Switch to mobile'} withArrow>
+            <ActionIcon
+              variant="subtle"
+              color="gray"
+              size="sm"
+              aria-label={isMobile ? 'Switch to desktop' : 'Switch to mobile'}
+              onClick={() => onViewportChange?.(isMobile ? 'desktop' : 'mobile')}
+            >
+              {isMobile ? <IconDeviceDesktop size={14} /> : <IconDeviceMobile size={14} />}
+            </ActionIcon>
+          </Tooltip>
         </Group>
 
         {/* Navigation + URL bar */}
@@ -112,14 +135,14 @@ export function BrowserWindow({ url, children, noPadding }: BrowserWindowProps) 
         // makes them escape this preview box and stick to the real window edges.
         // `transform: translateZ(0)` turns this Box into the containing block for
         // its fixed descendants, so the header/footer are scoped to the simulated
-        // 600px viewport. overflow:hidden clips anything past it; the AppShell root
+        // viewport. overflow:hidden clips anything past it; the AppShell root
         // handles its own internal scroll via overflowY:auto.
         <Box
           style={{
             position: 'relative',
             transform: 'translateZ(0)',
             overflow: 'hidden',
-            height: 600,
+            height: isMobile ? 700 : 600,
             background: 'var(--mantine-color-body)',
           }}
         >
