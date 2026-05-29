@@ -8,8 +8,10 @@ import {
   Center,
   Text,
   ScrollArea,
+  useMantineColorScheme,
+  useComputedColorScheme,
 } from '@mantine/core';
-import { IconRefresh } from '@tabler/icons-react';
+import { IconRefresh, IconSun, IconMoon } from '@tabler/icons-react';
 import { ErrorBoundary } from './ErrorBoundary';
 import { FileTree } from './FileTree';
 import { buildFileTree, formatDesignLabel } from './file-tree';
@@ -71,6 +73,13 @@ export default function App() {
   // key forces ErrorBoundary + DesignCanvas to remount on manual retry
   const [key, setKey] = useState(0);
 
+  const { toggleColorScheme } = useMantineColorScheme();
+  const computedColorScheme = useComputedColorScheme('light', { getInitialValueInEffect: false });
+  const isDark = computedColorScheme === 'dark';
+
+  // Layout files use AppShell (position:fixed header/footer) — need noPadding + containment
+  const isLayoutFile = selected?.includes('/layout/') ?? false;
+
   return (
     <Stack gap={0} h="100vh">
       {/* Toolbar */}
@@ -92,13 +101,23 @@ export default function App() {
               </Text>
             )}
           </Group>
-          <ActionIcon
-            variant="default"
-            title="Re-render"
-            onClick={() => setKey((k) => k + 1)}
-          >
-            <IconRefresh size={16} />
-          </ActionIcon>
+          <Group gap="xs">
+            <ActionIcon
+              variant="default"
+              title={isDark ? 'ライトモード' : 'ダークモード'}
+              onClick={() => toggleColorScheme()}
+              aria-label="カラーモード切替"
+            >
+              {isDark ? <IconSun size={16} /> : <IconMoon size={16} />}
+            </ActionIcon>
+            <ActionIcon
+              variant="default"
+              title="Re-render"
+              onClick={() => setKey((k) => k + 1)}
+            >
+              <IconRefresh size={16} />
+            </ActionIcon>
+          </Group>
         </Group>
       </Box>
 
@@ -132,12 +151,12 @@ export default function App() {
           style={{
             flex: 1,
             overflow: 'auto',
-            background: 'var(--mantine-color-gray-2)',
+            background: isDark ? 'var(--mantine-color-dark-8)' : 'var(--mantine-color-gray-2)',
             padding: 24,
           }}
         >
           {selected ? (
-            <BrowserWindow url={designPathToUrl(selected)}>
+            <BrowserWindow url={designPathToUrl(selected)} noPadding={isLayoutFile}>
               <ErrorBoundary key={`${selected}-${key}`} onReset={() => setKey((k) => k + 1)}>
                 <DesignCanvas key={`${selected}-${key}`} path={selected} />
               </ErrorBoundary>
