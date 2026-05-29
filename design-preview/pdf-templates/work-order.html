@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>指示書</title>
+  <style>
+    @page {
+      size: A4;
+      margin: 15mm 20mm;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Noto Sans JP', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', sans-serif;
+      font-size: 10pt;
+      color: #1a1a1a;
+      line-height: 1.5;
+    }
+
+    /* ─── Header ─────────────────────────────── */
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 20pt;
+    }
+
+    .header-left {
+      display: flex;
+      align-items: baseline;
+      gap: 16pt;
+    }
+
+    .doc-title {
+      font-size: 22pt;
+      font-weight: bold;
+      letter-spacing: 0.1em;
+    }
+
+    .doc-number {
+      font-size: 16pt;
+      font-weight: bold;
+      color: #2c3e50;
+    }
+
+    .issuer {
+      text-align: right;
+      font-size: 9pt;
+      color: #444;
+    }
+
+    .issuer strong {
+      font-size: 11pt;
+      color: #1a1a1a;
+    }
+
+    /* ─── Info grid ───────────────────────────── */
+    .info-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 12pt;
+      margin-bottom: 20pt;
+    }
+
+    .info-block {
+      background: #fafafa;
+      border: 1px solid #e8e8e8;
+      border-radius: 4pt;
+      padding: 8pt 12pt;
+    }
+
+    .info-block h4 {
+      font-size: 8pt;
+      color: #888;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 6pt;
+      padding-bottom: 4pt;
+      border-bottom: 1px solid #e8e8e8;
+    }
+
+    .info-field {
+      display: flex;
+      justify-content: space-between;
+      font-size: 9pt;
+      margin-bottom: 2pt;
+    }
+
+    .info-field .lbl {
+      color: #666;
+    }
+
+    .info-field .val {
+      font-weight: bold;
+    }
+
+    /* ─── Status strip ────────────────────────── */
+    .status-strip {
+      background: #fff8e1;
+      border: 1px solid #ffe082;
+      border-radius: 4pt;
+      padding: 8pt 16pt;
+      margin-bottom: 20pt;
+      display: flex;
+      gap: 32pt;
+      font-size: 9pt;
+    }
+
+    .status-item .status-label {
+      color: #888;
+      font-size: 8pt;
+    }
+
+    .status-item .status-value {
+      font-weight: bold;
+      font-size: 10pt;
+    }
+
+    /* ─── Section title ───────────────────────── */
+    .section-title {
+      font-size: 10pt;
+      font-weight: bold;
+      color: #2c3e50;
+      border-left: 3pt solid #2c3e50;
+      padding-left: 8pt;
+      margin-bottom: 10pt;
+      margin-top: 16pt;
+    }
+
+    /* ─── Process steps table ─────────────────── */
+    .steps-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 16pt;
+      font-size: 9pt;
+    }
+
+    .steps-table thead tr {
+      background: #2c3e50;
+      color: white;
+    }
+
+    .steps-table th {
+      padding: 6pt 8pt;
+      text-align: left;
+      font-weight: normal;
+      letter-spacing: 0.02em;
+    }
+
+    .steps-table th.center,
+    .steps-table td.center {
+      text-align: center;
+    }
+
+    .steps-table tbody tr:nth-child(even) {
+      background: #f9f9f9;
+    }
+
+    .steps-table td {
+      padding: 5pt 8pt;
+      border-bottom: 1px solid #eee;
+    }
+
+    .step-badge {
+      display: inline-block;
+      padding: 1pt 6pt;
+      border-radius: 3pt;
+      font-size: 8pt;
+      font-weight: bold;
+    }
+
+    .badge-internal {
+      background: #e3f2fd;
+      color: #1565c0;
+    }
+
+    .badge-outsource {
+      background: #fce4ec;
+      color: #c62828;
+    }
+
+    .badge-pending {
+      background: #f5f5f5;
+      color: #757575;
+    }
+
+    /* ─── Inspection templates ────────────────── */
+    .template-list {
+      display: flex;
+      gap: 8pt;
+      flex-wrap: wrap;
+      margin-bottom: 16pt;
+    }
+
+    .template-chip {
+      background: #e8f5e9;
+      border: 1px solid #a5d6a7;
+      border-radius: 12pt;
+      padding: 3pt 10pt;
+      font-size: 8pt;
+      color: #2e7d32;
+    }
+
+    /* ─── Sign-off area ───────────────────────── */
+    .sign-off {
+      display: flex;
+      gap: 20pt;
+      margin-top: 24pt;
+    }
+
+    .sign-box {
+      flex: 1;
+      border: 1px solid #ccc;
+      border-radius: 4pt;
+      padding: 8pt;
+      text-align: center;
+    }
+
+    .sign-box .sign-label {
+      font-size: 8pt;
+      color: #888;
+      margin-bottom: 20pt;
+    }
+
+    .sign-box .sign-line {
+      border-top: 1px solid #ccc;
+      margin-top: 8pt;
+      font-size: 7pt;
+      color: #aaa;
+      padding-top: 2pt;
+    }
+
+    /* ─── Notes ───────────────────────────────── */
+    .notes {
+      border: 1px solid #ddd;
+      border-radius: 4pt;
+      padding: 10pt;
+      font-size: 9pt;
+      color: #555;
+      min-height: 36pt;
+    }
+
+    .notes-label {
+      font-size: 8pt;
+      color: #999;
+      margin-bottom: 4pt;
+    }
+
+    /* ─── Footer ──────────────────────────────── */
+    .footer {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      text-align: center;
+      font-size: 8pt;
+      color: #aaa;
+      padding: 6pt 0;
+      border-top: 1px solid #eee;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Header -->
+  <div class="header">
+    <div class="header-left">
+      <div class="doc-title">指示書</div>
+      <div class="doc-number"># 1042</div>
+    </div>
+    <div class="issuer">
+      <strong>株式会社サンプル製作所</strong><br>
+      生産管理部<br>
+      発行日: 2026年1月22日
+    </div>
+  </div>
+
+  <!-- Info grid -->
+  <div class="info-grid">
+    <div class="info-block">
+      <h4>製品情報</h4>
+      <div class="info-field">
+        <span class="lbl">製品コード</span>
+        <span class="val">PRD-202601-0001</span>
+      </div>
+      <div class="info-field">
+        <span class="lbl">製品名</span>
+        <span class="val">超硬エンドミル φ10</span>
+      </div>
+      <div class="info-field">
+        <span class="lbl">素材</span>
+        <span class="val">超硬合金 A01A0001</span>
+      </div>
+    </div>
+    <div class="info-block">
+      <h4>生産情報</h4>
+      <div class="info-field">
+        <span class="lbl">計画本数</span>
+        <span class="val">50 本</span>
+      </div>
+      <div class="info-field">
+        <span class="lbl">指示タイプ</span>
+        <span class="val">製造分</span>
+      </div>
+      <div class="info-field">
+        <span class="lbl">受注書</span>
+        <span class="val">ORD-202601-00005-01</span>
+      </div>
+    </div>
+    <div class="info-block">
+      <h4>スケジュール</h4>
+      <div class="info-field">
+        <span class="lbl">開始日</span>
+        <span class="val">2026/01/24</span>
+      </div>
+      <div class="info-field">
+        <span class="lbl">完了予定</span>
+        <span class="val">2026/02/12</span>
+      </div>
+      <div class="info-field">
+        <span class="lbl">納期</span>
+        <span class="val">2026/02/15</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Status strip -->
+  <div class="status-strip">
+    <div class="status-item">
+      <div class="status-label">ステータス</div>
+      <div class="status-value">承認済</div>
+    </div>
+    <div class="status-item">
+      <div class="status-label">承認ステータス</div>
+      <div class="status-value">第二承認済</div>
+    </div>
+    <div class="status-item">
+      <div class="status-label">承認日時</div>
+      <div class="status-value">2026/01/23 14:30</div>
+    </div>
+  </div>
+
+  <!-- Process steps -->
+  <div class="section-title">工程ワークフロー</div>
+  <table class="steps-table">
+    <thead>
+      <tr>
+        <th style="width: 30pt">#</th>
+        <th style="width: 40%">工程名</th>
+        <th>カテゴリ</th>
+        <th>実施場所</th>
+        <th>外注先</th>
+        <th class="center">ステータス</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>1</td>
+        <td>材料準備</td>
+        <td>材料準備</td>
+        <td><span class="step-badge badge-internal">社内</span></td>
+        <td>—</td>
+        <td class="center"><span class="step-badge badge-pending">待機中</span></td>
+      </tr>
+      <tr>
+        <td>2</td>
+        <td>円筒加工</td>
+        <td>加工</td>
+        <td><span class="step-badge badge-internal">社内</span></td>
+        <td>—</td>
+        <td class="center"><span class="step-badge badge-pending">待機中</span></td>
+      </tr>
+      <tr>
+        <td>3</td>
+        <td>センタレス研磨</td>
+        <td>加工</td>
+        <td><span class="step-badge badge-outsource">外注</span></td>
+        <td>株式会社○○研磨</td>
+        <td class="center"><span class="step-badge badge-pending">待機中</span></td>
+      </tr>
+      <tr>
+        <td>4</td>
+        <td>コーティング</td>
+        <td>コーティング</td>
+        <td><span class="step-badge badge-outsource">外注</span></td>
+        <td>△△コーティング株式会社</td>
+        <td class="center"><span class="step-badge badge-pending">待機中</span></td>
+      </tr>
+      <tr>
+        <td>5</td>
+        <td>寸法検査</td>
+        <td>検査</td>
+        <td><span class="step-badge badge-internal">社内</span></td>
+        <td>—</td>
+        <td class="center"><span class="step-badge badge-pending">待機中</span></td>
+      </tr>
+      <tr>
+        <td>6</td>
+        <td>検査承認</td>
+        <td>検査承認</td>
+        <td><span class="step-badge badge-internal">社内</span></td>
+        <td>—</td>
+        <td class="center"><span class="step-badge badge-pending">待機中</span></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <!-- Inspection templates -->
+  <div class="section-title">検査表テンプレート</div>
+  <div class="template-list">
+    <span class="template-chip">寸法検査表（エンドミル）</span>
+    <span class="template-chip">表面粗さ検査表</span>
+  </div>
+
+  <!-- Notes -->
+  <div>
+    <div class="notes-label">備考・特記事項</div>
+    <div class="notes">
+      コーティング後の納品時に検査成績書を添付のこと。
+    </div>
+  </div>
+
+  <!-- Sign-off area -->
+  <div class="sign-off">
+    <div class="sign-box">
+      <div class="sign-label">作成者</div>
+      <div class="sign-line">田中 一郎　2026/01/22</div>
+    </div>
+    <div class="sign-box">
+      <div class="sign-label">第一承認</div>
+      <div class="sign-line">山本 部長　2026/01/23</div>
+    </div>
+    <div class="sign-box">
+      <div class="sign-label">第二承認</div>
+      <div class="sign-line">佐藤 工場長　2026/01/23</div>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <div class="footer">
+    指示書 #1042 　 ORD-202601-00005-01 　 1 / 1
+  </div>
+
+</body>
+</html>
