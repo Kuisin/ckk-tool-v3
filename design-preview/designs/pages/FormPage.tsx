@@ -27,6 +27,22 @@ import {
 } from '@tabler/icons-react';
 import { useTransition } from 'react';
 import { z } from 'zod';
+import type { FormErrors } from '@mantine/form';
+
+// Bridges a Zod schema to @mantine/form's validate option.
+// Returns a function (values) => FormErrors using dot-notation for nested paths.
+function zodResolver<T>(schema: z.ZodType<T>) {
+  return (values: T): FormErrors => {
+    const result = schema.safeParse(values);
+    if (result.success) return {};
+    const errors: FormErrors = {};
+    for (const issue of result.error.issues) {
+      const key = issue.path.join('.');
+      if (key && !errors[key]) errors[key] = issue.message;
+    }
+    return errors;
+  };
+}
 
 // ── Zod schema ───────────────────────────────────────────────────────────────
 // [Custom] Zod schema defines validation rules.
@@ -76,7 +92,7 @@ export default function QuoteNewPage() {
 
   // [Mantine] useForm with zodResolver
   const form = useForm<QuoteFormValues>({
-    validate: quoteSchema,
+    validate: zodResolver(quoteSchema),
     initialValues: {
       customerId:       '',
       customerBranchId: null,

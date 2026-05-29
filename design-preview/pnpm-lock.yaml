@@ -26,6 +26,9 @@ importers:
       '@tabler/icons-react':
         specifier: ^3.0.0
         version: 3.44.0(react@19.2.6)
+      dayjs:
+        specifier: ^1.11.21
+        version: 1.11.21
       react:
         specifier: ^19.0.0
         version: 19.2.6
