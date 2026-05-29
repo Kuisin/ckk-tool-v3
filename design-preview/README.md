@@ -1,6 +1,6 @@
 # design-preview
 
-Lightweight Vite + React gallery for previewing generated UI designs.
+Lightweight Vite + React gallery for previewing generated UI designs and PDF document templates.
 
 ## Quick start
 
@@ -10,11 +10,24 @@ pnpm install
 pnpm dev          # → http://localhost:5173
 ```
 
-## Workflow
+## Modes
+
+### UI Designs (default)
 
 1. Generate a component with your LLM of choice.
 2. Save it as a `.tsx` file in `designs/` (default export, or named export matching the filename).
 3. Vite HMR picks it up — select it from the file tree to preview it.
+
+### PDF Templates
+
+For previewing HTML+CSS document templates (quote, invoice, work order, etc.) that are sent to Gotenberg.
+
+1. Create or copy an HTML template into `pdf-templates/`.
+2. Switch to **PDF Templates** in the toolbar toggle.
+3. Select a template — it renders in an A4 iframe.
+4. Click **Print / Save PDF** to open the browser print dialog and export as PDF.
+
+See [`pdf-templates/README.md`](./pdf-templates/README.md) for details.
 
 ## Stack
 

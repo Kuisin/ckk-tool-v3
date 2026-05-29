@@ -1,6 +1,6 @@
 export interface FileTreeNode {
   name: string;
-  /** import.meta.glob key — present only on leaf .tsx files */
+  /** import.meta.glob key — present only on leaf files */
   modulePath?: string;
   children?: FileTreeNode[];
 }
@@ -8,13 +8,12 @@ export interface FileTreeNode {
 const DESIGNS_PREFIX = '../designs/';
 
 /** Convert glob paths into a nested folder tree. */
-export function buildFileTree(modulePaths: string[]): FileTreeNode[] {
+export function buildFileTree(modulePaths: string[], prefix = DESIGNS_PREFIX, ext = 'tsx'): FileTreeNode[] {
   const root: FileTreeNode[] = [];
+  const extRe = new RegExp(`\\.${ext}$`);
 
   for (const modulePath of modulePaths) {
-    const relative = modulePath
-      .replace(DESIGNS_PREFIX, '')
-      .replace(/\.tsx$/, '');
+    const relative = modulePath.replace(prefix, '').replace(extRe, '');
     const segments = relative.split('/');
 
     let level = root;
@@ -55,7 +54,7 @@ function sortTree(nodes: FileTreeNode[]): FileTreeNode[] {
     });
 }
 
-/** Human-readable label: "pages/ListPage" */
-export function formatDesignLabel(modulePath: string): string {
-  return modulePath.replace(DESIGNS_PREFIX, '').replace(/\.tsx$/, '');
+/** Human-readable label from a glob path */
+export function formatDesignLabel(modulePath: string, prefix = DESIGNS_PREFIX, ext = 'tsx'): string {
+  return modulePath.replace(prefix, '').replace(new RegExp(`\\.${ext}$`), '');
 }
