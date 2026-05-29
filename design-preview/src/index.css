@@ -1,1 +1,33 @@
 @import "tailwindcss";
+
+@media print {
+  /* Hide all UI chrome */
+  .no-print {
+    display: none !important;
+  }
+
+  /* Remove background from canvas wrapper */
+  .print-canvas {
+    background: white !important;
+    padding: 0 !important;
+    overflow: visible !important;
+  }
+
+  /* Remove Paper shadow and let browser handle page sizing */
+  .print-page {
+    box-shadow: none !important;
+    width: 100% !important;
+    min-height: unset !important;
+    padding: 0 !important;
+  }
+
+  /* Full-bleed page */
+  @page {
+    size: A4;
+    margin: 15mm;
+  }
+
+  body {
+    background: white !important;
+  }
+}
