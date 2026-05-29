@@ -13,6 +13,7 @@ import {
 import { IconDownload, IconRefresh } from '@tabler/icons-react';
 import { FileTree } from './FileTree';
 import { buildFileTree, formatDesignLabel } from './file-tree';
+import baseCss from '../pdf-templates/base.css?raw';
 
 const PDF_PREFIX = '../pdf-templates/';
 
@@ -34,13 +35,24 @@ const fileTree = buildFileTree(templatePaths, PDF_PREFIX, 'html');
 const A4_W = 794;
 const A4_H = 1123;
 
-// Inject body padding to simulate @page margins (15mm top/bottom, 20mm left/right)
-// so the iframe preview matches the printed output.
+// Templates link a shared `base.css`, but a relative <link> can't resolve
+// inside an iframe srcDoc, so we inline the stylesheet here. We also inject
+// body padding to simulate the @page margins (5mm) so the iframe preview
+// matches the printed output.
 function injectPreviewStyles(html: string): string {
-  const style = '<style>body { padding: 15mm 20mm !important; }</style>';
-  return html.includes('</head>')
-    ? html.replace('</head>', `${style}\n</head>`)
-    : style + html;
+  const baseStyle = `<style>\n${baseCss}\n</style>`;
+  const padStyle = '<style>body { padding: 10mm !important; }</style>';
+
+  const linkRe = /<link[^>]*href=["']base\.css["'][^>]*\/?>/i;
+  const withBase = linkRe.test(html)
+    ? html.replace(linkRe, baseStyle)
+    : html.includes('<head>')
+      ? html.replace('<head>', `<head>\n${baseStyle}`)
+      : baseStyle + html;
+
+  return withBase.includes('</head>')
+    ? withBase.replace('</head>', `${padStyle}\n</head>`)
+    : padStyle + withBase;
 }
 
 export function PdfTemplatePreview() {
