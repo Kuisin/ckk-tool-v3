@@ -1,10 +1,12 @@
 # designs/
 
-Drop any `.tsx` file here. It appears automatically in the gallery dropdown — no config needed.
+Drop any `.tsx` file here (including subfolders). It appears automatically in the file tree — no config needed.
 
 ## Requirements for design files
 
-- Must have a **default export** that is a React component.
+- Must export a React component as either:
+  - **`export default function MyPage()`**, or
+  - **`export function MyPage()`** (named export matching the filename, e.g. `AppLauncher.tsx` → `export function AppLauncher`)
 - Both **Mantine v9** (`@mantine/core`, `@mantine/hooks`) and **Tailwind CSS** are available.
 - `@tabler/icons-react` is available.
 - `next/link`, `next/navigation`, and `next/image` are shimmed (no Next.js runtime needed).
@@ -16,10 +18,10 @@ If a design needs helper files, put them in a subdirectory:
 
 ```
 designs/
-├── MyPage.tsx          ← appears in dropdown
-└── my-page/
-    ├── helpers.ts
-    └── MyPage.module.css
+├── pages/
+│   └── ListPage.tsx    ← appears in file tree
+└── layout/
+    ├── AppLauncher.tsx ← named export OK if name matches file
+    └── helpers/
+        └── styles.module.css
 ```
-
-`MyPage.tsx` can import from `./my-page/helpers` as normal.

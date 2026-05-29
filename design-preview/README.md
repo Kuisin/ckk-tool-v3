@@ -13,8 +13,8 @@ pnpm dev          # → http://localhost:5173
 ## Workflow
 
 1. Generate a component with your LLM of choice.
-2. Save it as a `.tsx` file in `designs/` (it must have a `default` export).
-3. Vite HMR picks it up — select it from the dropdown to preview it.
+2. Save it as a `.tsx` file in `designs/` (default export, or named export matching the filename).
+3. Vite HMR picks it up — select it from the file tree to preview it.
 
 ## Stack
 

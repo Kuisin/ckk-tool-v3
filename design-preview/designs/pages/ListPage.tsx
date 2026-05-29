@@ -245,7 +245,7 @@ export default function SalesOrdersListPage() {
   });
 
   return (
-    {/* [Mantine] Stack gap="md" — standard page wrapper */}
+    // [Mantine] Stack gap="md" — standard page wrapper
     <Stack gap="md">
 
       {/* ── Page header ─────────────────────────────────────────────────── */}
