@@ -179,8 +179,11 @@ src/
 │
 ├── components/
 │   ├── layout/
-│   │   ├── AppShell.tsx                            # 'use client' — AppShell wrapper
-│   │   └── AppNav.tsx                              # 'use client' — Navbar nav links
+│   │   ├── AppHeader.tsx                           # 'use client' — topbar (logo button, launcher trigger, notifications, profile)
+│   │   ├── AppLauncher.tsx                         # 'use client' — Popover with app search + SimpleGrid cards
+│   │   ├── AppCard.tsx                             # 'use client' — single app card (icon + label)
+│   │   ├── AppFooter.tsx                           # 'use client' — company name + version footer
+│   │   └── HomeApps.tsx                            # 'use client' — home page app grid (starred + by category)
 │   ├── ui/
 │   │   ├── StatusBadge.tsx                         # status enum → Badge
 │   │   ├── FieldValue.tsx                          # label/value display
@@ -214,7 +217,8 @@ src/
 │   ├── inventory.ts                                # 在庫引当・予約ロジック
 │   ├── numbering.ts                                # 採番ロジック（QOT/ORD/DRN/INV）
 │   ├── workflow.ts                                 # 製造ワークフロー依存解決・実行可否判定
-│   └── notifications.ts                            # 通知（SSE / メール / Nextcloud）
+│   ├── notifications.ts                            # 通知（SSE / メール / Nextcloud）
+│   └── app-list.ts                                 # AppEntry[] — アプリ一覧定義（icon / href / permission / category）
 │
 └── types/
     ├── auth.ts

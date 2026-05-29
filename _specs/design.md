@@ -30,69 +30,213 @@ createTheme({
 
 ---
 
-## 2. AppShell Layout
+## 2. App Layout
+
+No sidebar. Layout is topbar + scrollable main + footer, filling the full viewport.
 
 ```
-AppShell
-├── Header (height: 60)
-│   ├── Burger (mobile toggle)
-│   ├── Text "CKK" (logo / brand)
-│   ├── [spacer]
-│   └── Group
-│       ├── ActionIcon (notifications)
-│       └── Menu (user avatar → profile, logout)
-├── Navbar (width: 260, collapsible on mobile)
-│   ├── ScrollArea
-│   │   └── NavSection[] (see §3 Navigation)
-│   └── [bottom] user display name + role badge
-└── AppShell.Main
-    └── <page content>
+AppShell (header={{ height: 60 }}, footer={{ height: 32 }}, withBorder=false)
+├── AppShell.Header
+│   └── AppHeader (see §3)
+├── AppShell.Main
+│   └── ScrollArea (h="100%")
+│       └── <page content>
+└── AppShell.Footer
+    └── Group (justify="center", gap="md", h="100%")
+        ├── Text size="xs" c="dimmed" — 会社名
+        └── Text size="xs" c="dimmed" — バージョン
 ```
 
-File: `src/components/layout/AppShell.tsx` — `'use client'`
+The `AppShell.Main` background uses `var(--mantine-color-gray-0)` and a subtle box-shadow defined in a CSS module to produce the inset-card effect seen in the demo (Mantine has no direct primitive for this).
+
+Files:
+- `src/app/(dashboard)/layout.tsx` — server component, renders `AppShell`
+- `src/components/layout/AppHeader.tsx` — `'use client'`
+- `src/components/layout/AppFooter.tsx` — `'use client'`
 
 ---
 
-## 3. Navigation
+## 3. App Launcher & Navigation
 
-Each nav section maps to a route group. Use Mantine `NavLink` with Tabler icon. Route paths follow the directory structure in `_specs/structure.md`.
+There is no sidebar. Navigation is accessed through an **App Launcher** in the header.
+
+### 3.1 AppHeader
 
 ```
-NavLink Dashboard
-NavLink 販売                   (collapsible)
-  NavLink 価格表
-  NavLink 見積書
-  NavLink 注文受諾書
-  NavLink 設計依頼書
-NavLink 購買                   (collapsible)
-  NavLink 素材入荷
-  NavLink 外注依頼
-NavLink 生産                   (collapsible)
-  NavLink 受注書
-  NavLink 指示書
-  NavLink 承認管理
-  NavLink 製品在庫
-  NavLink 素材在庫
-NavLink 出荷                   (collapsible)
-  NavLink 出荷書
-  NavLink 納品書
-NavLink 請求                   (collapsible)
-  NavLink 請求書
-  NavLink 締日処理
-NavLink マスタ                 (collapsible)
-  NavLink 顧客
-  NavLink 最終需要家
-  NavLink 製品
-  NavLink 材種
-  NavLink 素材
-  NavLink 外注企業
-  NavLink 工程マスタ
-  NavLink 検査表テンプレート
-  NavLink 不良種類
-  NavLink 承認グループ
+AppShell.Header
+└── Group (justify="space-between", align="center", px="xs", h="100%")
+    ├── [left] Group gap="xs"
+    │   ├── AppLauncher (see §3.2)
+    │   └── ActionIcon variant="subtle" title="ページ共有"
+    │       └── <IconShare2 />
+    └── [right] Group gap="xs"
+        ├── Indicator (inline, label=unreadCount, disabled=unreadCount==0)
+        │   └── ActionIcon variant="subtle" — notifications
+        │       └── <IconBell />
+        │   [Popover: notification list — see §3.4]
+        ├── ActionIcon variant="subtle" — settings
+        │   └── <IconSettings />
+        │   [Popover: settings menu — see §3.5]
+        └── Avatar (radius="xl", size="sm", src=avatarUrl, alt=displayName)
+            [Popover: profile card — see §3.6]
 ```
 
-File: `src/components/layout/AppNav.tsx` — `'use client'`
+File: `src/components/layout/AppHeader.tsx` — `'use client'`
+
+### 3.2 AppLauncher
+
+Trigger is an `UnstyledButton` showing the logo image and the current page title. Clicking opens a `Popover`.
+
+```
+UnstyledButton (px="xs", py={4}) — App Launcher trigger
+└── Group gap="xs"
+    ├── Image src="/logo.svg" width={36} height={36}
+    └── Text size="xl" fw={500} lineClamp={1} — pageTitle | アプリ名
+
+Popover (position="bottom-start", width={480}, shadow="md", opened=isOpen)
+└── Popover.Dropdown p="xs"
+    ├── Group mb="sm" gap="xs"
+    │   ├── ActionIcon variant="subtle" component={Link} href="/"
+    │   │   └── <IconHome />
+    │   └── TextInput flex={1} leftSection=<IconSearch>
+    │       placeholder="アプリを検索..."
+    │       value=searchQuery onChange=setSearchQuery
+    │
+    ├── [searching] Stack gap={4}                         # flat list
+    │   └── [per app] UnstyledButton component={Link}
+    │       └── Group gap="xs" px="xs" py={6}
+    │           ├── ThemeIcon size="md" variant="light"
+    │           │   └── <TablerIcon />
+    │           ├── Text size="sm" fw={500}  — app name
+    │           └── Text size="xs" c="dimmed" — category
+    │
+    └── [not searching] Stack gap="md"
+        ├── [starred] Stack gap="xs"
+        │   ├── Text size="xs" fw={600} c="dimmed" tt="uppercase" — お気に入り
+        │   └── SimpleGrid cols={{ base: 2, sm: 3 }} spacing="xs"
+        │       └── AppCard[] (starred=true)
+        ├── Divider (if starred exists)
+        └── [per category] Stack gap="xs"
+            ├── Text size="xs" fw={600} c="dimmed" tt="uppercase" — カテゴリ名
+            └── SimpleGrid cols={{ base: 2, sm: 3 }} spacing="xs"
+                └── AppCard[]
+```
+
+**AppCard** (`src/components/layout/AppCard.tsx` — `'use client'`)
+
+```
+UnstyledButton component={Link} href={href} w="100%"
+└── Stack align="center" gap={4} p="xs"
+    ├── ThemeIcon size="xl" variant="light" radius="md"
+    │   └── <TablerIcon />
+    └── Text size="xs" ta="center" lineClamp={2}
+```
+
+**App list shape** (`src/lib/app-list.ts`):
+
+```ts
+type AppEntry = {
+  dictKey: string            // i18n key for name
+  category: string           // category label (ja)
+  href: string               // route path (starts with /)
+  icon: TablerIconName       // Tabler icon name
+  requiredPermission: string // permission code checked against user_permissions
+}
+```
+
+**App list by category** (order matches home page grid):
+
+| Category | Apps |
+|----------|------|
+| 販売 | 価格表, 見積書, 注文受諾書, 設計依頼書 |
+| 購買 | 素材入荷, 外注依頼 |
+| 生産 | 受注書, 指示書, 承認管理, 製品在庫, 素材在庫 |
+| 出荷 | 出荷書, 納品書 |
+| 請求 | 請求書, 締日処理 |
+| マスタ | 顧客, 最終需要家, 製品, 材種, 素材, 外注企業, 工程マスタ, 検査表テンプレート, 不良種類, 承認グループ |
+
+File: `src/lib/app-list.ts`
+
+### 3.3 Home Page (`/`)
+
+```
+ScrollArea h="100%"
+└── Stack p="md" gap="xl"
+    ├── [user profile card]
+    │   └── Group gap="md"
+    │       ├── Avatar size="xl" radius="xl"
+    │       └── Stack gap={2}
+    │           ├── Title order={3} — displayName
+    │           └── Text c="dimmed" size="sm" — department / email
+    └── HomeApps (see §3.3.1)
+```
+
+**HomeApps** (`src/components/layout/HomeApps.tsx` — `'use client'`)
+
+Renders all permitted apps grouped by category, with starred apps at top. Right-click (context menu) allows starring/unstarring.
+
+```
+Stack gap="xl"
+├── [starred] Stack gap="xs"
+│   ├── Title order={5} — お気に入り
+│   └── SimpleGrid cols={{ base: 2, sm: 3, lg: 4 }} spacing="md"
+│       └── AppCard[] (size="lg")
+└── [per category] Stack gap="xs"
+    ├── Title order={5} — カテゴリ名
+    ├── Divider mb="xs"
+    └── SimpleGrid cols={{ base: 2, sm: 3, lg: 4 }} spacing="md"
+        └── AppCard[]
+```
+
+### 3.4 Notification Popover
+
+`Popover` opened on `ActionIcon` click. Contains:
+
+```
+Stack w={320} gap={0}
+├── Group justify="space-between" p="xs" style={{ borderBottom: '1px solid var(--mantine-color-gray-2)' }}
+│   ├── Text fw={500} — 通知
+│   └── Anchor size="xs" — 全て既読 | 既読を表示
+├── ScrollArea mah={400}
+│   └── [per notification] UnstyledButton w="100%" p="xs"
+│       ├── [unread] Indicator inline processing color="blue"
+│       ├── Text size="sm" fw={500} lineClamp={1} — title
+│       ├── Badge variant="light" size="xs" — type label
+│       └── Text size="xs" c="dimmed" — timestamp
+├── Divider
+└── Anchor size="xs" ta="center" p="xs" — すべての通知を見る
+```
+
+Unread count badge uses Mantine `Indicator` on the bell `ActionIcon`.
+Ping animation for new arrivals is implemented with Tailwind `animate-ping` since Mantine has no equivalent.
+
+### 3.5 Settings Popover
+
+```
+Popover (position="bottom-end", width={160})
+└── Popover.Dropdown p={4}
+    └── Stack gap={2}
+        ├── Button component={Link} href="/settings/home"    variant="subtle" justify="start" size="xs" — お気に入り
+        ├── Button component={Link} href="/settings/general" variant="subtle" justify="start" size="xs" — 一般
+        └── Button component={Link} href="/settings/bug-report" variant="subtle" justify="start" size="xs" — バグ報告
+```
+
+### 3.6 Profile Popover
+
+```
+Popover (position="bottom-end", width={320})
+└── Popover.Dropdown p="sm"
+    ├── Text fw={500} mb="xs" — プロフィール
+    ├── Divider mb="sm"
+    ├── Group gap="md"
+    │   ├── Avatar size={80} radius="xl"
+    │   └── Stack gap={2}
+    │       ├── Text fw={500}   — displayName
+    │       ├── Text size="sm" c="dimmed" — department
+    │       └── Text size="sm" c="dimmed" — email
+    ├── Divider mt="sm"
+    └── Button color="red" variant="subtle" size="xs" fullWidth mt="xs" — サインアウト
+```
 
 ---
 
@@ -633,4 +777,4 @@ The manufacturing step execution page (`/production/work-orders/[id]/steps/[step
 - Large touch targets (min 44px).
 - Session lock warning shown prominently (full-width `Alert`).
 
-Other pages are primarily desktop (min-width 1024px). Navbar collapses on `sm` breakpoint.
+Other pages are primarily desktop (min-width 1024px). The App Launcher popover width adjusts for mobile (`w={{ base: '100vw', sm: 480 }}`). No sidebar to collapse.
