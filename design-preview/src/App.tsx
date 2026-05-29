@@ -8,6 +8,7 @@ import {
   Center,
   Text,
   ScrollArea,
+  SegmentedControl,
 } from '@mantine/core';
 import { IconRefresh } from '@tabler/icons-react';
 import { ErrorBoundary } from './ErrorBoundary';
@@ -15,6 +16,7 @@ import { FileTree } from './FileTree';
 import { buildFileTree, formatDesignLabel } from './file-tree';
 import { resolveDesignComponent } from './resolve-design';
 import { BrowserWindow } from './BrowserWindow';
+import { PdfTemplatePreview } from './PdfTemplatePreview';
 
 function designPathToUrl(modulePath: string): string {
   const relative = modulePath.replace('../designs/', '').replace(/\.tsx$/, '');
@@ -64,7 +66,10 @@ function DesignCanvas({ path }: { path: string }) {
   );
 }
 
+type Mode = 'ui' | 'pdf';
+
 export default function App() {
+  const [mode, setMode] = useState<Mode>('ui');
   const [selected, setSelected] = useState<string | null>(
     designPaths[0] ?? null,
   );
@@ -86,75 +91,92 @@ export default function App() {
             <Title order={5} style={{ flexShrink: 0 }}>
               Design Preview
             </Title>
-            {selected && (
+            {mode === 'ui' && selected && (
               <Text size="sm" c="dimmed" ff="monospace">
                 {formatDesignLabel(selected)}
               </Text>
             )}
           </Group>
-          <ActionIcon
-            variant="default"
-            title="Re-render"
-            onClick={() => setKey((k) => k + 1)}
-          >
-            <IconRefresh size={16} />
-          </ActionIcon>
+          <Group gap="sm">
+            <SegmentedControl
+              size="xs"
+              value={mode}
+              onChange={(v) => setMode(v as Mode)}
+              data={[
+                { label: 'UI Designs', value: 'ui' },
+                { label: 'PDF Templates', value: 'pdf' },
+              ]}
+            />
+            {mode === 'ui' && (
+              <ActionIcon
+                variant="default"
+                title="Re-render"
+                onClick={() => setKey((k) => k + 1)}
+              >
+                <IconRefresh size={16} />
+              </ActionIcon>
+            )}
+          </Group>
         </Group>
       </Box>
 
-      <Box style={{ flex: 1, display: 'flex', minHeight: 0 }}>
-        {/* File tree sidebar */}
-        <Box
-          w={240}
-          style={{
-            flexShrink: 0,
-            borderRight: '1px solid var(--mantine-color-default-border)',
-            background: 'var(--mantine-color-body)',
-          }}
-        >
-          <ScrollArea h="100%" p="xs">
-            {fileTree.length === 0 ? (
-              <Text size="sm" c="dimmed" p="xs">
-                No .tsx files in designs/ yet.
-              </Text>
-            ) : (
-              <FileTree
-                nodes={fileTree}
-                selected={selected}
-                onSelect={setSelected}
-              />
-            )}
-          </ScrollArea>
-        </Box>
-
-        {/* Canvas — desktop backdrop */}
-        <Box
-          style={{
-            flex: 1,
-            overflow: 'auto',
-            background: 'var(--mantine-color-gray-2)',
-            padding: 24,
-          }}
-        >
-          {selected ? (
-            <BrowserWindow url={designPathToUrl(selected)}>
-              <ErrorBoundary key={`${selected}-${key}`} onReset={() => setKey((k) => k + 1)}>
-                <DesignCanvas key={`${selected}-${key}`} path={selected} />
-              </ErrorBoundary>
-            </BrowserWindow>
-          ) : (
-            <Center style={{ minHeight: '100%' }}>
-              <Stack align="center" gap="xs">
-                <Text c="dimmed">
-                  {designPaths.length === 0
-                    ? 'Drop a .tsx file into design-preview/designs/ to get started.'
-                    : 'Select a design file from the tree on the left.'}
+      {mode === 'pdf' ? (
+        <PdfTemplatePreview />
+      ) : (
+        <Box style={{ flex: 1, display: 'flex', minHeight: 0 }}>
+          {/* File tree sidebar */}
+          <Box
+            w={240}
+            style={{
+              flexShrink: 0,
+              borderRight: '1px solid var(--mantine-color-default-border)',
+              background: 'var(--mantine-color-body)',
+            }}
+          >
+            <ScrollArea h="100%" p="xs">
+              {fileTree.length === 0 ? (
+                <Text size="sm" c="dimmed" p="xs">
+                  No .tsx files in designs/ yet.
                 </Text>
-              </Stack>
-            </Center>
-          )}
+              ) : (
+                <FileTree
+                  nodes={fileTree}
+                  selected={selected}
+                  onSelect={setSelected}
+                />
+              )}
+            </ScrollArea>
+          </Box>
+
+          {/* Canvas — desktop backdrop */}
+          <Box
+            style={{
+              flex: 1,
+              overflow: 'auto',
+              background: 'var(--mantine-color-gray-2)',
+              padding: 24,
+            }}
+          >
+            {selected ? (
+              <BrowserWindow url={designPathToUrl(selected)}>
+                <ErrorBoundary key={`${selected}-${key}`} onReset={() => setKey((k) => k + 1)}>
+                  <DesignCanvas key={`${selected}-${key}`} path={selected} />
+                </ErrorBoundary>
+              </BrowserWindow>
+            ) : (
+              <Center style={{ minHeight: '100%' }}>
+                <Stack align="center" gap="xs">
+                  <Text c="dimmed">
+                    {designPaths.length === 0
+                      ? 'Drop a .tsx file into design-preview/designs/ to get started.'
+                      : 'Select a design file from the tree on the left.'}
+                  </Text>
+                </Stack>
+              </Center>
+            )}
+          </Box>
         </Box>
-      </Box>
+      )}
     </Stack>
   );
 }
