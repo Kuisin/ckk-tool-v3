@@ -177,7 +177,34 @@ src/
 │   │
 │   └── layout.tsx
 │
-├── components/                                     # written in _specs/design.md
+├── components/
+│   ├── layout/
+│   │   ├── AppShell.tsx                            # 'use client' — AppShell wrapper
+│   │   └── AppNav.tsx                              # 'use client' — Navbar nav links
+│   ├── ui/
+│   │   ├── StatusBadge.tsx                         # status enum → Badge
+│   │   ├── FieldValue.tsx                          # label/value display
+│   │   ├── PageHeader.tsx                          # title + breadcrumbs + actions
+│   │   ├── EmptyState.tsx                          # empty list placeholder
+│   │   ├── ConfirmModal.tsx                        # destructive action confirm
+│   │   ├── PdfButton.tsx                           # PDF download button
+│   │   ├── JsonLocalizedText.tsx                   # ja/en JSON field renderer
+│   │   └── MoneyText.tsx                           # formatted currency
+│   ├── sales/
+│   │   ├── ProductPriceResolverInput.tsx
+│   │   ├── QuoteItemsTable.tsx
+│   │   └── OrderAcceptanceForm.tsx
+│   ├── production/
+│   │   ├── WorkOrderStepsPanel.tsx
+│   │   ├── StepCard.tsx
+│   │   ├── ApprovalStatusPanel.tsx
+│   │   ├── InspectionRecordForm.tsx
+│   │   ├── DefectRecordForm.tsx
+│   │   ├── InventoryBadge.tsx
+│   │   └── AuditTimeline.tsx
+│   └── master/
+│       ├── CustomerSelect.tsx
+│       └── [entity]Table.tsx                       # per master entity
 │
 ├── lib/
 │   ├── db.ts                                       # Prisma client
