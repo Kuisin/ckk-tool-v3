@@ -14,6 +14,11 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
       footer={{ height: 40 }}
       // [Mantine] padding="md" → all page content gets 16px inset from AppShell edges
       padding="md"
+      // [Custom] height: 100% fills the BrowserWindow preview container (600px) exactly.
+      // minHeight: 0 overrides Mantine's default min-height: 100dvh, which would otherwise
+      // cause the shell to overflow the preview box and make the outer container scroll.
+      // overflowY: auto lets page content scroll inside the shell while header/footer stay sticky.
+      style={{ height: '100%', minHeight: 0, overflowY: 'auto' }}
     >
       {/* Topbar — 'use client', contains launcher Popover, notifications, user Menu */}
       <AppHeader />
