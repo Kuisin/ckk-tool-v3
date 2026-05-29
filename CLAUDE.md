@@ -11,6 +11,8 @@ Manufacturing Company Business Management System — a Next.js fullstack monolit
 @_specs/structure.md
 @_specs/techstack.md
 @_specs/tables.md
+@_specs/feature.md
+@_specs/design.md
 
 ## Commands
 
@@ -50,16 +52,22 @@ pnpm prisma db push                  # dev-only
 
 **Realtime** — SSE via Next.js Route Handlers. Pub/Sub and presence through Valkey (keys + TTL).
 
-**PDF** — HTML + vanilla CSS templates sent to Gotenberg (`app/api/pdf/`). No headless browser in the app.
+**PDF** — HTML + vanilla CSS templates sent to Gotenberg (`app/api/pdf/`). No headless browser. Generated PDFs are stored in SeaweedFS and referenced via the `files` table.
 
-**Jobs** — BullMQ backed by Valkey. AD → PostgreSQL employee sync runs as a repeatable job.
+**Jobs** — BullMQ backed by Valkey. AD → PostgreSQL employee sync runs as a repeatable job. Monthly billing closing also runs as a BullMQ job.
 
 **Search** — PGroonga extension on PostgreSQL (not a separate service).
 
-**Logging** — App logs via pino → Loki. Row-level audit via `audit_logs` (before_data / after_data JSON). Nginx access logs → Loki via Alloy. Alerts in Grafana.
+**Logging** — App logs via pino → Loki. Row-level audit via `audit_logs` (before_data / after_data JSON). System events (login, PDF generation, CSV export) in `system_logs`. Nginx access logs → Loki via Alloy. Alerts in Grafana.
 
 **i18n** — UI strings via `next-intl` + `messages/` JSON. DB multilingual fields are `{ ja: '', en: '' }` JSON objects — always write both locales.
 
 **Accounting** — `lib/csv-export.ts` produces 弥生会計 Next CSV. Journal logic is isolated in `lib/journal.ts`.
 
 **Data fetching** — React Server Components for server state; Zustand for client-only state.
+
+**Numbering** — `lib/numbering.ts` handles all document numbers with monthly-reset sequences (`numbering_sequences` table). Formats: `QOT-YYYYMM-NNNNN`, `ORD-YYYYMM-NNNNN`, `DRN-YYYYMM-NNNNN`, `INV-YYYYMM-NNNNN`. Work order / lot numbers are global serial integers.
+
+**File storage** — SeaweedFS via S3 API. All uploaded/generated files stored as `files` table rows (`storage_key`, `filename`, `mime_type`).
+
+**Design** — Mantine v9 with `primaryColor: 'blue'`, `defaultRadius: 'sm'`, global `size: 'sm'` defaults. Page patterns: list → `DataTable` + filter bar in `Paper`; detail → summary grid + `Tabs`; form → `Paper` sections + `@mantine/form` with `zodResolver` + Server Actions. See `_specs/design.md` for full component specs and status-badge color map.
