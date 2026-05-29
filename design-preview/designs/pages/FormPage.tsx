@@ -81,7 +81,7 @@ import {
   Textarea,
   Title,
 } from '@mantine/core';
-import { useForm, zodResolver } from '@mantine/form';
+import { useForm } from '@mantine/form';
 import { DatePickerInput } from '@mantine/dates';
 import { notifications } from '@mantine/notifications';
 import {
@@ -141,7 +141,7 @@ export default function QuoteNewPage() {
 
   // [Mantine] useForm with zodResolver
   const form = useForm<QuoteFormValues>({
-    validate: zodResolver(quoteSchema),
+    validate: quoteSchema,
     initialValues: {
       customerId:       '',
       customerBranchId: null,

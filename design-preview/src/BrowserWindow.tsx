@@ -10,17 +10,19 @@ import {
 interface BrowserWindowProps {
   url: string;
   children: ReactNode;
+  /** Remove padding and set a fixed height — used for full-layout designs (AppShell-based) */
+  noPadding?: boolean;
 }
 
-export function BrowserWindow({ url, children }: BrowserWindowProps) {
+export function BrowserWindow({ url, children, noPadding }: BrowserWindowProps) {
   return (
     <Box
       style={{
-        border: '1px solid var(--mantine-color-gray-3)',
+        border: '1px solid var(--mantine-color-default-border)',
         borderRadius: 10,
         overflow: 'hidden',
         boxShadow: '0 8px 40px rgba(0,0,0,0.18)',
-        background: 'white',
+        background: 'var(--mantine-color-body)',
         display: 'flex',
         flexDirection: 'column',
         width: '100%',
@@ -29,8 +31,8 @@ export function BrowserWindow({ url, children }: BrowserWindowProps) {
       {/* Browser chrome */}
       <Box
         style={{
-          background: 'var(--mantine-color-gray-1)',
-          borderBottom: '1px solid var(--mantine-color-gray-3)',
+          background: 'var(--mantine-color-default-hover)',
+          borderBottom: '1px solid var(--mantine-color-default-border)',
           padding: '10px 14px 10px',
           flexShrink: 0,
         }}
@@ -82,10 +84,10 @@ export function BrowserWindow({ url, children }: BrowserWindowProps) {
           <Box
             style={{
               flex: 1,
-              background: 'white',
+              background: 'var(--mantine-color-default)',
               borderRadius: 6,
               padding: '4px 10px',
-              border: '1px solid var(--mantine-color-gray-4)',
+              border: '1px solid var(--mantine-color-default-border)',
               display: 'flex',
               alignItems: 'center',
               gap: 6,
@@ -103,10 +105,26 @@ export function BrowserWindow({ url, children }: BrowserWindowProps) {
         </Group>
       </Box>
 
-      {/* Page content — p="md" mirrors AppShell.Main padding="md" */}
-      <Box p="md" style={{ background: 'white' }}>
-        {children}
-      </Box>
+      {/* Page content */}
+      {noPadding ? (
+        // Full-layout designs: transform creates a containing block for position:fixed children
+        // (AppShell.Header / AppShell.Footer). Height gives the AppShell room to lay out.
+        <Box
+          style={{
+            transform: 'translate(0)',
+            overflow: 'auto',
+            height: 600,
+            background: 'var(--mantine-color-body)',
+          }}
+        >
+          {children}
+        </Box>
+      ) : (
+        // Regular page designs: mirror AppShell.Main padding="md"
+        <Box p="md" style={{ background: 'var(--mantine-color-body)' }}>
+          {children}
+        </Box>
+      )}
     </Box>
   );
 }
