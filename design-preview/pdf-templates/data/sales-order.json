@@ -1,0 +1,36 @@
+{
+  "issuer": {
+    "name": "シー・ケィ・ケー株式会社",
+    "address": "〒123-4567 東京都千代田区○○1-2-3",
+    "tel": "TEL: 03-0000-0000　FAX: 03-0000-0001"
+  },
+  "recipient": {
+    "name": "株式会社得意先名",
+    "contact": "購買部　鈴木 花子 様",
+    "address": "〒987-6543 大阪府大阪市△△2-3-4"
+  },
+  "doc": {
+    "number": "ORD-202601-00005-01",
+    "issued_date": "2026年1月21日",
+    "lot_number": "1042",
+    "order_acceptance": "ORD-202601-00005"
+  },
+  "product": {
+    "code": "PRD-202601-0001",
+    "name": "超硬エンドミル φ10 4枚刃",
+    "order_type": "本番"
+  },
+  "order": {
+    "quantity": "50",
+    "unit": "本",
+    "unit_price": "8,000",
+    "delivery_date": "2026/02/15"
+  },
+  "amount_excl_tax": "400,000",
+  "totals": {
+    "subtotal": "400,000",
+    "tax": "40,000",
+    "grand_total": "440,000"
+  },
+  "notes": "本受注書は注文受諾書 ORD-202601-00005 に基づくものです。"
+}

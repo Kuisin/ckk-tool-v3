@@ -10,26 +10,26 @@
   <div class="header">
     <div class="doc-title">受注書</div>
     <div class="issuer">
-      <strong>株式会社サンプル製作所</strong><br>
-      〒123-4567 東京都千代田区○○1-2-3<br>
-      TEL: 03-0000-0000　FAX: 03-0000-0001
+      <strong>{{issuer.name}}</strong><br>
+      {{issuer.address}}<br>
+      {{issuer.tel}}
     </div>
   </div>
 
   <div class="meta-row">
     <div class="recipient-block">
-      <div class="recipient-name">株式会社得意先名　<span class="onchu">御中</span></div>
+      <div class="recipient-name">{{recipient.name}}　<span class="onchu">御中</span></div>
       <div class="recipient-meta">
-        担当: 購買部　鈴木 花子 様<br>
-        〒987-6543 大阪府大阪市△△2-3-4
+        担当: {{recipient.contact}}<br>
+        {{recipient.address}}
       </div>
     </div>
     <div class="doc-info">
       <table>
-        <tr><td>受注書番号</td><td>ORD-202601-00005-01</td></tr>
-        <tr><td>発行日</td><td>2026年1月21日</td></tr>
-        <tr><td>ロット番号</td><td>#1042</td></tr>
-        <tr><td>注文受諾書</td><td>ORD-202601-00005</td></tr>
+        <tr><td>受注書番号</td><td>{{doc.number}}</td></tr>
+        <tr><td>発行日</td><td>{{doc.issued_date}}</td></tr>
+        <tr><td>ロット番号</td><td>#{{doc.lot_number}}</td></tr>
+        <tr><td>注文受諾書</td><td>{{doc.order_acceptance}}</td></tr>
       </table>
     </div>
   </div>
@@ -37,24 +37,24 @@
   <div class="card-grid cols-2">
     <div class="card">
       <h4>製品情報</h4>
-      <div class="kv"><span class="k">製品コード</span><span class="v">PRD-202601-0001</span></div>
-      <div class="kv"><span class="k">製品名</span><span class="v">超硬エンドミル φ10 4枚刃</span></div>
-      <div class="kv"><span class="k">注文種別</span><span class="v">本番</span></div>
+      <div class="kv"><span class="k">製品コード</span><span class="v">{{product.code}}</span></div>
+      <div class="kv"><span class="k">製品名</span><span class="v">{{product.name}}</span></div>
+      <div class="kv"><span class="k">注文種別</span><span class="v">{{product.order_type}}</span></div>
     </div>
     <div class="card">
       <h4>注文情報</h4>
-      <div class="kv"><span class="k">数量</span><span class="v">50 本</span></div>
-      <div class="kv"><span class="k">単価</span><span class="v">¥ 8,000</span></div>
-      <div class="kv"><span class="k">納期</span><span class="v">2026/02/15</span></div>
+      <div class="kv"><span class="k">数量</span><span class="v">{{order.quantity}} {{order.unit}}</span></div>
+      <div class="kv"><span class="k">単価</span><span class="v">¥ {{order.unit_price}}</span></div>
+      <div class="kv"><span class="k">納期</span><span class="v">{{order.delivery_date}}</span></div>
     </div>
   </div>
 
   <div class="strip between">
     <div>
       <div class="label">受注金額（税抜）</div>
-      <div class="amount">¥ 400,000</div>
+      <div class="amount">¥ {{amount_excl_tax}}</div>
     </div>
-    <div class="label">納期: 2026年2月15日</div>
+    <div class="label">納期: {{order.delivery_date}}</div>
   </div>
 
   <table class="items-table">
@@ -70,33 +70,31 @@
     </thead>
     <tbody>
       <tr>
-        <td>超硬エンドミル φ10 4枚刃<br><span class="sub">PRD-202601-0001</span></td>
-        <td>本番</td>
-        <td class="right">50</td>
-        <td class="right">8,000</td>
-        <td class="right">400,000</td>
-        <td>2026/02/15</td>
+        <td>{{product.name}}<br><span class="sub">{{product.code}}</span></td>
+        <td>{{product.order_type}}</td>
+        <td class="right">{{order.quantity}}</td>
+        <td class="right">{{order.unit_price}}</td>
+        <td class="right">{{totals.subtotal}}</td>
+        <td>{{order.delivery_date}}</td>
       </tr>
     </tbody>
   </table>
 
   <div class="totals">
     <table>
-      <tr><td>小計</td><td>¥ 400,000</td></tr>
-      <tr><td>消費税（10%）</td><td>¥ 40,000</td></tr>
-      <tr class="grand-total"><td>合計（税込）</td><td>¥ 440,000</td></tr>
+      <tr><td>小計</td><td>¥ {{totals.subtotal}}</td></tr>
+      <tr><td>消費税（10%）</td><td>¥ {{totals.tax}}</td></tr>
+      <tr class="grand-total"><td>合計（税込）</td><td>¥ {{totals.grand_total}}</td></tr>
     </table>
   </div>
 
   <div>
     <div class="notes-label">備考</div>
-    <div class="notes">
-      本受注書は注文受諾書 ORD-202601-00005 に基づくものです。
-    </div>
+    <div class="notes">{{notes}}</div>
   </div>
 
   <div class="footer">
-    ORD-202601-00005-01 　 Lot #1042 　 1 / 1
+    {{doc.number}} 　 Lot #{{doc.lot_number}} 　 1 / 1
   </div>
 
 </body>

@@ -10,40 +10,39 @@
   <div class="header">
     <div class="doc-title">請求書</div>
     <div class="issuer">
-      <strong>株式会社サンプル製作所</strong><br>
-      〒123-4567 東京都千代田区○○1-2-3<br>
-      TEL: 03-0000-0000　FAX: 03-0000-0001<br>
-      登録番号: T1234567890123
+      <strong>{{issuer.name}}</strong><br>
+      {{issuer.address}}<br>
+      {{issuer.tel}}<br>
+      登録番号: {{issuer.invoice_reg}}
     </div>
   </div>
 
   <div class="meta-row">
     <div class="recipient-block">
-      <div class="recipient-name">株式会社得意先名　<span class="onchu">御中</span></div>
+      <div class="recipient-name">{{recipient.name}}　<span class="onchu">御中</span></div>
       <div class="recipient-meta">
-        担当: 営業部　山田 太郎 様<br>
-        〒987-6543 大阪府大阪市△△2-3-4
+        担当: {{recipient.contact}}<br>
+        {{recipient.address}}
       </div>
     </div>
     <div class="doc-info">
       <table>
-        <tr><td>請求書番号</td><td>INV-202601-00001</td></tr>
-        <tr><td>発行日</td><td>2026年1月31日</td></tr>
-        <tr><td>請求対象期間</td><td>2026年1月1日 〜 1月31日</td></tr>
-        <tr><td>お支払期限</td><td>2026年2月28日</td></tr>
+        <tr><td>請求書番号</td><td>{{doc.number}}</td></tr>
+        <tr><td>発行日</td><td>{{doc.issued_date}}</td></tr>
+        <tr><td>請求対象期間</td><td>{{doc.period}}</td></tr>
+        <tr><td>お支払期限</td><td>{{doc.payment_due}}</td></tr>
       </table>
     </div>
   </div>
 
   <div class="strip between">
-    <div class="label">お支払期限: 2026年2月28日</div>
+    <div class="label">お支払期限: {{doc.payment_due}}</div>
     <div class="end">
       <div class="label">ご請求金額（税込）</div>
-      <div class="amount">¥ 1,320,000</div>
+      <div class="amount">¥ {{total_display}}</div>
     </div>
   </div>
 
-  <!-- 明細は受注書 → 納品書の単位でグループ化（1テーブル） -->
   <table class="items-table invoice-items">
     <thead>
       <tr>
@@ -54,84 +53,47 @@
       </tr>
     </thead>
     <tbody>
+      {{#each groups}}
       <tr class="invoice-group-head">
         <td colspan="4">
           <div class="invoice-group-head-inner">
-            <span class="ref"><span class="k">受注書</span> ORD-202601-00005-01</span>
+            <span class="ref"><span class="k">受注書</span> {{order_number}}</span>
             <span class="sep">|</span>
-            <span class="ref"><span class="k">納品書</span> DRN-202601-00003</span>
+            <span class="ref"><span class="k">納品書</span> {{delivery_note}}</span>
             <span class="invoice-group-head-end">
-              <span class="ref-date"><span class="k">納品日</span> 2026/1/10</span>
-              <span class="ref-subtotal"><span class="k">小計</span> ¥ 400,000</span>
+              <span class="ref-date"><span class="k">納品日</span> {{delivery_date}}</span>
+              <span class="ref-subtotal"><span class="k">小計</span> ¥ {{group_subtotal}}</span>
             </span>
           </div>
         </td>
       </tr>
+      {{#each items}}
       <tr>
-        <td>超硬エンドミル φ10 4枚刃（本番）<span class="sub">PRD-202601-0001　Lot #1042</span></td>
-        <td class="right">50</td>
-        <td class="right">8,000</td>
-        <td class="right">400,000</td>
+        <td>{{name}}<span class="sub">{{code_lot}}</span></td>
+        <td class="right">{{quantity}}</td>
+        <td class="right">{{unit_price}}</td>
+        <td class="right">{{amount}}</td>
       </tr>
-      <tr class="invoice-group-head">
-        <td colspan="4">
-          <div class="invoice-group-head-inner">
-            <span class="ref"><span class="k">受注書</span> ORD-202601-00006-01</span>
-            <span class="sep">|</span>
-            <span class="ref"><span class="k">納品書</span> DRN-202601-00005</span>
-            <span class="invoice-group-head-end">
-              <span class="ref-date"><span class="k">納品日</span> 2026/1/15</span>
-              <span class="ref-subtotal"><span class="k">小計</span> ¥ 550,000</span>
-            </span>
-          </div>
-        </td>
-      </tr>
-      <tr>
-        <td>超硬エンドミル φ6 4枚刃（本番）<span class="sub">PRD-202601-0002　Lot #1045</span></td>
-        <td class="right">100</td>
-        <td class="right">5,500</td>
-        <td class="right">550,000</td>
-      </tr>
-      <tr class="invoice-group-head">
-        <td colspan="4">
-          <div class="invoice-group-head-inner">
-            <span class="ref"><span class="k">受注書</span> ORD-202601-00008-01</span>
-            <span class="sep">|</span>
-            <span class="ref"><span class="k">納品書</span> DRN-202601-00009</span>
-            <span class="invoice-group-head-end">
-              <span class="ref-date"><span class="k">納品日</span> 2026/1/22</span>
-              <span class="ref-subtotal"><span class="k">小計</span> ¥ 250,000</span>
-            </span>
-          </div>
-        </td>
-      </tr>
-      <tr>
-        <td>超硬ドリル φ8（テスト）<span class="sub">PRD-202601-0003　Lot #1051</span></td>
-        <td class="right">10</td>
-        <td class="right">25,000</td>
-        <td class="right">250,000</td>
-      </tr>
+      {{/each}}
+      {{/each}}
     </tbody>
   </table>
 
   <div class="totals">
     <table>
-      <tr><td>小計</td><td>¥ 1,200,000</td></tr>
-      <tr><td>消費税（10%）</td><td>¥ 120,000</td></tr>
-      <tr class="grand-total"><td>ご請求金額（税込）</td><td>¥ 1,320,000</td></tr>
+      <tr><td>小計</td><td>¥ {{totals.subtotal}}</td></tr>
+      <tr><td>消費税（10%）</td><td>¥ {{totals.tax}}</td></tr>
+      <tr class="grand-total"><td>ご請求金額（税込）</td><td>¥ {{totals.grand_total}}</td></tr>
     </table>
   </div>
 
   <div>
     <div class="notes-label">備考</div>
-    <div class="notes">
-      お振込先: ○○銀行 △△支店　普通 1234567　カ）サンプルセイサクショ<br>
-      振込手数料はご負担ください。
-    </div>
+    <div class="notes">{{notes}}</div>
   </div>
 
   <div class="footer">
-    INV-202601-00001 　 1 / 1
+    {{doc.number}} 　 1 / 1
   </div>
 
 </body>

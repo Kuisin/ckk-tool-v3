@@ -10,27 +10,27 @@
   <div class="header">
     <div class="doc-title">注文受諾書</div>
     <div class="issuer">
-      <strong>株式会社サンプル製作所</strong><br>
-      〒123-4567 東京都千代田区○○1-2-3<br>
-      TEL: 03-0000-0000　FAX: 03-0000-0001<br>
-      登録番号: T1234567890123
+      <strong>{{issuer.name}}</strong><br>
+      {{issuer.address}}<br>
+      {{issuer.tel}}<br>
+      登録番号: {{issuer.invoice_reg}}
     </div>
   </div>
 
   <div class="meta-row">
     <div class="recipient-block">
-      <div class="recipient-name">株式会社得意先名　<span class="onchu">御中</span></div>
+      <div class="recipient-name">{{recipient.name}}　<span class="onchu">御中</span></div>
       <div class="recipient-meta">
-        担当: 購買部　鈴木 花子 様<br>
-        〒987-6543 大阪府大阪市△△2-3-4
+        担当: {{recipient.contact}}<br>
+        {{recipient.address}}
       </div>
     </div>
     <div class="doc-info">
       <table>
-        <tr><td>注文受諾書番号</td><td>ORD-202601-00005</td></tr>
-        <tr><td>発行日</td><td>2026年1月20日</td></tr>
-        <tr><td>顧客注文書番号</td><td>PO-2026-00123</td></tr>
-        <tr><td>担当営業</td><td>田中 一郎</td></tr>
+        <tr><td>注文受諾書番号</td><td>{{doc.number}}</td></tr>
+        <tr><td>発行日</td><td>{{doc.issued_date}}</td></tr>
+        <tr><td>顧客注文書番号</td><td>{{doc.customer_po}}</td></tr>
+        <tr><td>担当営業</td><td>{{doc.sales_rep}}</td></tr>
       </table>
     </div>
   </div>
@@ -38,17 +38,17 @@
   <div class="strip row">
     <div>
       <div class="cell-label">参照見積書</div>
-      <div class="cell-value">QOT-202601-00001</div>
+      <div class="cell-value">{{ref_quote}}</div>
     </div>
     <div>
       <div class="cell-label">ステータス</div>
-      <div class="cell-value">確定</div>
+      <div class="cell-value">{{status}}</div>
     </div>
   </div>
 
   <div class="strip">
     <div class="label">受注金額合計（税込）</div>
-    <div class="amount">¥ 1,182,500</div>
+    <div class="amount">¥ {{total_display}}</div>
   </div>
 
   <table class="items-table">
@@ -63,51 +63,34 @@
       </tr>
     </thead>
     <tbody>
+      {{#each items}}
       <tr>
-        <td>超硬エンドミル φ10 4枚刃<br><span class="sub">PRD-202601-0001</span></td>
-        <td>本番</td>
-        <td class="right">50</td>
-        <td class="right">8,000</td>
-        <td class="right">400,000</td>
-        <td>2026/02/15</td>
+        <td>{{name}}<br><span class="sub">{{code}}</span></td>
+        <td>{{order_type}}</td>
+        <td class="right">{{quantity}}</td>
+        <td class="right">{{unit_price}}</td>
+        <td class="right">{{amount}}</td>
+        <td>{{delivery_date}}</td>
       </tr>
-      <tr>
-        <td>超硬エンドミル φ6 4枚刃<br><span class="sub">PRD-202601-0002</span></td>
-        <td>本番</td>
-        <td class="right">100</td>
-        <td class="right">5,500</td>
-        <td class="right">550,000</td>
-        <td>2026/02/20</td>
-      </tr>
-      <tr>
-        <td>超硬ドリル φ8<br><span class="sub">PRD-202601-0003</span></td>
-        <td>テスト</td>
-        <td class="right">5</td>
-        <td class="right">25,000</td>
-        <td class="right">125,000</td>
-        <td>2026/02/28</td>
-      </tr>
+      {{/each}}
     </tbody>
   </table>
 
   <div class="totals">
     <table>
-      <tr><td>小計</td><td>¥ 1,075,000</td></tr>
-      <tr><td>消費税（10%）</td><td>¥ 107,500</td></tr>
-      <tr class="grand-total"><td>受注金額合計（税込）</td><td>¥ 1,182,500</td></tr>
+      <tr><td>小計</td><td>¥ {{totals.subtotal}}</td></tr>
+      <tr><td>消費税（10%）</td><td>¥ {{totals.tax}}</td></tr>
+      <tr class="grand-total"><td>受注金額合計（税込）</td><td>¥ {{totals.grand_total}}</td></tr>
     </table>
   </div>
 
   <div>
     <div class="notes-label">備考</div>
-    <div class="notes">
-      本書をもって注文の受諾を確認いたします。<br>
-      ご不明な点がございましたら担当営業までお問い合わせください。
-    </div>
+    <div class="notes">{{notes}}</div>
   </div>
 
   <div class="footer">
-    ORD-202601-00005 　 1 / 1
+    {{doc.number}} 　 1 / 1
   </div>
 
 </body>

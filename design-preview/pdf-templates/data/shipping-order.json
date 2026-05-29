@@ -1,0 +1,39 @@
+{
+  "issuer": {
+    "name": "シー・ケィ・ケー株式会社",
+    "address": "〒123-4567 東京都千代田区○○1-2-3",
+    "tel": "TEL: 03-0000-0000　FAX: 03-0000-0001",
+    "issued_date": "2026年2月15日"
+  },
+  "recipient": {
+    "name": "株式会社○○製作所 浜松工場",
+    "address": "〒430-0000 静岡県浜松市□□1-2-3",
+    "contact": "生産技術部　山田 太郎 様"
+  },
+  "doc": {
+    "ship_date": "2026年2月15日",
+    "order_number": "ORD-202601-00005-01",
+    "lot_number": "1042",
+    "staff": "田中 一郎"
+  },
+  "delivery_type_label": "ユーザー直送",
+  "delivery_type_note": "最終需要家（エンドユーザー）へ直接お届けします",
+  "info": {
+    "customer": "株式会社得意先名",
+    "order_number": "ORD-202601-00005-01",
+    "lot_number": "1042"
+  },
+  "items": [
+    {
+      "name": "超硬エンドミル φ10 4枚刃",
+      "code": "PRD-202601-0001",
+      "lot_number": "1042",
+      "quantity": "50",
+      "unit": "本",
+      "item_notes": "—"
+    }
+  ],
+  "total_quantity": "50",
+  "total_unit": "本",
+  "notes": "納品書（DRN-202602-00007）は受注先（株式会社得意先名）へ別送。<br>梱包: 個別保護ケース入り × 50 本。"
+}

@@ -10,46 +10,44 @@
   <div class="header">
     <div class="doc-title">納品書</div>
     <div class="issuer">
-      <strong>株式会社サンプル製作所</strong><br>
-      〒123-4567 東京都千代田区○○1-2-3<br>
-      TEL: 03-0000-0000　FAX: 03-0000-0001<br>
-      登録番号: T1234567890123
+      <strong>{{issuer.name}}</strong><br>
+      {{issuer.address}}<br>
+      {{issuer.tel}}<br>
+      登録番号: {{issuer.invoice_reg}}
     </div>
   </div>
 
   <div class="meta-row">
     <div class="recipient-block">
-      <div class="recipient-name">株式会社得意先名　<span class="onchu">御中</span></div>
+      <div class="recipient-name">{{recipient.name}}　<span class="onchu">御中</span></div>
       <div class="recipient-meta">
-        担当: 購買部　鈴木 花子 様<br>
-        〒987-6543 大阪府大阪市△△2-3-4
+        担当: {{recipient.contact}}<br>
+        {{recipient.address}}
       </div>
     </div>
     <div class="doc-info">
       <table>
-        <tr><td>納品書番号</td><td>DRN-202602-00007</td></tr>
-        <tr><td>発行日</td><td>2026年2月15日</td></tr>
-        <tr><td>納品日</td><td>2026年2月15日</td></tr>
-        <tr><td>出荷書参照</td><td>ORD-202601-00005-01</td></tr>
+        <tr><td>納品書番号</td><td>{{doc.number}}</td></tr>
+        <tr><td>発行日</td><td>{{doc.issued_date}}</td></tr>
+        <tr><td>納品日</td><td>{{doc.delivery_date}}</td></tr>
+        <tr><td>出荷書参照</td><td>{{doc.shipping_ref}}</td></tr>
       </table>
     </div>
   </div>
 
-  <!-- 通常納品の場合は badge テキストを「通常納品」に差し替え、説明文も同梱向けに変更 -->
   <div class="strip row">
-    <span class="badge">ユーザー直送</span>
-    <span>製品は最終需要家へ直送済み。本納品書は受注先宛てに別送します</span>
+    <span class="badge">{{delivery_type_label}}</span>
+    <span>{{delivery_type_note}}</span>
   </div>
 
   <div class="card" style="margin-bottom: 16pt">
     <h4>直送先</h4>
-    <div class="kv"><span class="k">最終需要家</span><span class="v">株式会社○○製作所 浜松工場</span></div>
-    <div class="kv"><span class="k">住所</span><span class="v">〒430-0000 静岡県浜松市□□1-2-3</span></div>
-    <div class="kv"><span class="k">担当</span><span class="v">生産技術部　山田 太郎 様</span></div>
+    <div class="kv"><span class="k">最終需要家</span><span class="v">{{end_user.name}}</span></div>
+    <div class="kv"><span class="k">住所</span><span class="v">{{end_user.address}}</span></div>
+    <div class="kv"><span class="k">担当</span><span class="v">{{end_user.contact}}</span></div>
   </div>
 
-  <!-- include_price = false のときは下の items-table を隠し、代わりに表示:
-       <div class="strip center">単価・金額は別途請求書に記載いたします。</div> -->
+  {{#if include_price}}
   <table class="items-table">
     <thead>
       <tr>
@@ -61,30 +59,34 @@
       </tr>
     </thead>
     <tbody>
+      {{#each items}}
       <tr>
-        <td>超硬エンドミル φ10 4枚刃<br><span class="sub">PRD-202601-0001　Lot #1042</span></td>
-        <td class="right">50</td>
-        <td>本</td>
-        <td class="right">8,000</td>
-        <td class="right">400,000</td>
+        <td>{{name}}<br><span class="sub">{{code_lot}}</span></td>
+        <td class="right">{{quantity}}</td>
+        <td>{{unit}}</td>
+        <td class="right">{{unit_price}}</td>
+        <td class="right">{{amount}}</td>
       </tr>
+      {{/each}}
     </tbody>
   </table>
 
   <div class="totals">
     <table>
-      <tr><td>小計</td><td>¥ 400,000</td></tr>
-      <tr><td>消費税（10%）</td><td>¥ 40,000</td></tr>
-      <tr class="grand-total"><td>合計（税込）</td><td>¥ 440,000</td></tr>
+      <tr><td>小計</td><td>¥ {{totals.subtotal}}</td></tr>
+      <tr><td>消費税（10%）</td><td>¥ {{totals.tax}}</td></tr>
+      <tr class="grand-total"><td>合計（税込）</td><td>¥ {{totals.grand_total}}</td></tr>
     </table>
   </div>
+  {{/if}}
+
+  {{#if hide_price}}
+  <div class="strip center">単価・金額は別途請求書に記載いたします。</div>
+  {{/if}}
 
   <div>
     <div class="notes-label">備考</div>
-    <div class="notes">
-      製品は最終需要家（株式会社○○製作所 浜松工場）へ直送済みです。<br>
-      お受け取りの際はご確認のうえ、受領欄にご署名をお願いいたします。
-    </div>
+    <div class="notes">{{notes}}</div>
   </div>
 
   <div class="card" style="margin-top: 24pt">
@@ -106,7 +108,7 @@
   </div>
 
   <div class="footer">
-    DRN-202602-00007 　 1 / 1
+    {{doc.number}} 　 1 / 1
   </div>
 
 </body>

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import {
   Box,
   Text,
@@ -9,16 +9,23 @@ import {
   ScrollArea,
   ActionIcon,
   Loader,
+  Badge,
+  Tooltip,
 } from '@mantine/core';
-import { IconDownload, IconRefresh } from '@tabler/icons-react';
+import { IconDownload, IconRefresh, IconCode, IconCodeOff } from '@tabler/icons-react';
 import { FileTree } from './FileTree';
 import { buildFileTree, formatDesignLabel } from './file-tree';
+import { renderTemplate } from './template-engine';
 import baseCss from '../pdf-templates/base.css?raw';
 
 const PDF_PREFIX = '../pdf-templates/';
 
-// Discover all .html files under pdf-templates/
 const templateModules = import.meta.glob('../pdf-templates/**/*.html', {
+  query: '?raw',
+  import: 'default',
+}) as Record<string, () => Promise<string>>;
+
+const dataModules = import.meta.glob('../pdf-templates/data/*.json', {
   query: '?raw',
   import: 'default',
 }) as Record<string, () => Promise<string>>;
@@ -31,14 +38,16 @@ const templatePaths = Object.keys(templateModules).sort((a, b) =>
 
 const fileTree = buildFileTree(templatePaths, PDF_PREFIX, 'html');
 
-// A4 at 96 dpi screen equivalent
+/** Map template path → data path, e.g. ../pdf-templates/quote.html → ../pdf-templates/data/quote.json */
+function templateDataPath(templatePath: string): string | null {
+  const name = templatePath.replace(PDF_PREFIX, '').replace(/\.html$/, '');
+  const dataPath = `${PDF_PREFIX}data/${name}.json`;
+  return dataPath in dataModules ? dataPath : null;
+}
+
 const A4_W = 794;
 const A4_H = 1123;
 
-// Templates link a shared `base.css`, but a relative <link> can't resolve
-// inside an iframe srcDoc, so we inline the stylesheet here. We also inject
-// body padding to simulate the @page margins (5mm) so the iframe preview
-// matches the printed output.
 function injectPreviewStyles(html: string): string {
   const baseStyle = `<style>\n${baseCss}\n</style>`;
   const padStyle = '<style>body { padding: 10mm !important; }</style>';
@@ -57,30 +66,51 @@ function injectPreviewStyles(html: string): string {
 
 export function PdfTemplatePreview() {
   const [selected, setSelected] = useState<string | null>(templatePaths[0] ?? null);
-  const [htmlContent, setHtmlContent] = useState<string | null>(null);
+  const [rawHtml, setRawHtml] = useState<string | null>(null);
+  const [defaultJson, setDefaultJson] = useState<string>('{}');
+  const [jsonText, setJsonText] = useState<string>('{}');
   const [loading, setLoading] = useState(false);
   const [pdfLoading, setPdfLoading] = useState(false);
+  const [showDataEditor, setShowDataEditor] = useState(false);
   const [key, setKey] = useState(0);
 
   useEffect(() => {
     if (!selected) {
-      setHtmlContent(null);
+      setRawHtml(null);
+      setJsonText('{}');
+      setDefaultJson('{}');
       return;
     }
     setLoading(true);
-    setHtmlContent(null);
-    templateModules[selected]().then((raw) => {
-      setHtmlContent(raw as string);
+    setRawHtml(null);
+
+    const dataPath = templateDataPath(selected);
+    Promise.all([
+      templateModules[selected](),
+      dataPath ? dataModules[dataPath]() : Promise.resolve(null),
+    ]).then(([html, rawJson]) => {
+      setRawHtml(html as string);
+      const json = rawJson ? (rawJson as string) : '{}';
+      setDefaultJson(json);
+      setJsonText(json);
       setLoading(false);
     });
   }, [selected, key]);
+
+  const { processedHtml, jsonError } = useMemo(() => {
+    if (!rawHtml) return { processedHtml: null, jsonError: null };
+    try {
+      const data = JSON.parse(jsonText) as Record<string, unknown>;
+      return { processedHtml: renderTemplate(rawHtml, data), jsonError: null };
+    } catch (err) {
+      return { processedHtml: rawHtml, jsonError: String(err) };
+    }
+  }, [rawHtml, jsonText]);
 
   async function handleDownloadPdf() {
     if (!selected || pdfLoading) return;
     setPdfLoading(true);
     try {
-      // Server-side generation: the API owns the template, renders it via
-      // Gotenberg, and streams the PDF back. We only pass the template name.
       const template = selected.slice(PDF_PREFIX.length);
       const res = await fetch(`/api/pdf?template=${encodeURIComponent(template)}`, {
         method: 'POST',
@@ -101,13 +131,14 @@ export function PdfTemplatePreview() {
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
     } catch (err) {
-      console.error('Server-side PDF generation failed:', err);
+      console.error('PDF generation failed:', err);
     } finally {
       setPdfLoading(false);
     }
   }
 
   const label = selected ? formatDesignLabel(selected, PDF_PREFIX, 'html') : null;
+  const hasData = templateDataPath(selected ?? '') !== null;
 
   return (
     <Box style={{ flex: 1, display: 'flex', minHeight: 0 }}>
@@ -131,16 +162,8 @@ export function PdfTemplatePreview() {
         </ScrollArea>
       </Box>
 
-      {/* Preview area */}
-      <Box
-        style={{
-          flex: 1,
-          display: 'flex',
-          flexDirection: 'column',
-          minHeight: 0,
-          background: 'var(--mantine-color-gray-2)',
-        }}
-      >
+      {/* Main content */}
+      <Box style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
         {/* Sub-toolbar */}
         {selected && (
           <Box
@@ -164,11 +187,21 @@ export function PdfTemplatePreview() {
                 >
                   <IconRefresh size={16} />
                 </ActionIcon>
+                {hasData && (
+                  <Tooltip label={showDataEditor ? 'Hide data editor' : 'Edit JSON data'}>
+                    <ActionIcon
+                      variant={showDataEditor ? 'filled' : 'default'}
+                      onClick={() => setShowDataEditor((v) => !v)}
+                    >
+                      {showDataEditor ? <IconCodeOff size={16} /> : <IconCode size={16} />}
+                    </ActionIcon>
+                  </Tooltip>
+                )}
                 <Button
                   size="xs"
                   leftSection={<IconDownload size={14} />}
                   onClick={handleDownloadPdf}
-                  disabled={!htmlContent}
+                  disabled={!processedHtml}
                   loading={pdfLoading}
                 >
                   Save PDF
@@ -178,48 +211,120 @@ export function PdfTemplatePreview() {
           </Box>
         )}
 
-        {/* Canvas */}
-        <Box style={{ flex: 1, overflow: 'auto', padding: 32 }}>
-          {!selected ? (
-            <Center style={{ minHeight: '100%' }}>
-              <Text c="dimmed">
-                {templatePaths.length === 0
-                  ? 'Drop an .html file into design-preview/pdf-templates/ to get started.'
-                  : 'Select a template from the tree on the left.'}
-              </Text>
-            </Center>
-          ) : loading ? (
-            <Center style={{ minHeight: '100%' }}>
-              <Stack align="center" gap="xs">
-                <Loader size="sm" />
-                <Text size="sm" c="dimmed">Loading…</Text>
-              </Stack>
-            </Center>
-          ) : htmlContent ? (
-            /* A4 paper sheet */
-            <Box
-              style={{
-                width: A4_W,
-                minHeight: A4_H,
-                background: 'white',
-                boxShadow: '0 4px 32px rgba(0,0,0,0.18)',
-                margin: '0 auto',
-                overflow: 'hidden',
-              }}
-            >
-              <iframe
-                key={`${selected}-${key}`}
-                srcDoc={injectPreviewStyles(htmlContent)}
-                title={label ?? 'PDF Template'}
+        {/* Canvas + optional data editor */}
+        <Box style={{ flex: 1, display: 'flex', minHeight: 0 }}>
+          {/* Preview canvas */}
+          <Box
+            style={{
+              flex: 1,
+              overflow: 'auto',
+              background: 'var(--mantine-color-gray-2)',
+              padding: 32,
+            }}
+          >
+            {!selected ? (
+              <Center style={{ minHeight: '100%' }}>
+                <Text c="dimmed">
+                  {templatePaths.length === 0
+                    ? 'Drop an .html file into design-preview/pdf-templates/ to get started.'
+                    : 'Select a template from the tree on the left.'}
+                </Text>
+              </Center>
+            ) : loading ? (
+              <Center style={{ minHeight: '100%' }}>
+                <Stack align="center" gap="xs">
+                  <Loader size="sm" />
+                  <Text size="sm" c="dimmed">Loading…</Text>
+                </Stack>
+              </Center>
+            ) : processedHtml ? (
+              <Box
                 style={{
                   width: A4_W,
-                  height: A4_H,
+                  minHeight: A4_H,
+                  background: 'white',
+                  boxShadow: '0 4px 32px rgba(0,0,0,0.18)',
+                  margin: '0 auto',
+                  overflow: 'hidden',
+                }}
+              >
+                <iframe
+                  key={`${selected}-${key}-${jsonText}`}
+                  srcDoc={injectPreviewStyles(processedHtml)}
+                  title={label ?? 'PDF Template'}
+                  style={{
+                    width: A4_W,
+                    height: A4_H,
+                    border: 'none',
+                    display: 'block',
+                  }}
+                />
+              </Box>
+            ) : null}
+          </Box>
+
+          {/* Data editor panel */}
+          {showDataEditor && (
+            <Box
+              w={380}
+              style={{
+                flexShrink: 0,
+                borderLeft: '1px solid var(--mantine-color-default-border)',
+                display: 'flex',
+                flexDirection: 'column',
+                background: 'var(--mantine-color-body)',
+              }}
+            >
+              <Box
+                px="sm"
+                py="xs"
+                style={{
+                  borderBottom: '1px solid var(--mantine-color-default-border)',
+                  flexShrink: 0,
+                }}
+              >
+                <Group justify="space-between">
+                  <Group gap="xs">
+                    <Text size="xs" fw={600}>JSON Data</Text>
+                    {jsonError && (
+                      <Tooltip label={jsonError} multiline w={260} withArrow>
+                        <Badge color="red" size="xs" style={{ cursor: 'help' }}>
+                          Parse error
+                        </Badge>
+                      </Tooltip>
+                    )}
+                  </Group>
+                  <Tooltip label="Reset to default">
+                    <ActionIcon
+                      size="xs"
+                      variant="subtle"
+                      onClick={() => setJsonText(defaultJson)}
+                      disabled={jsonText === defaultJson}
+                    >
+                      <IconRefresh size={12} />
+                    </ActionIcon>
+                  </Tooltip>
+                </Group>
+              </Box>
+              <textarea
+                value={jsonText}
+                onChange={(e) => setJsonText(e.target.value)}
+                spellCheck={false}
+                style={{
+                  flex: 1,
+                  resize: 'none',
                   border: 'none',
-                  display: 'block',
+                  outline: 'none',
+                  padding: '10px 12px',
+                  fontFamily: 'ui-monospace, "Cascadia Code", "Fira Code", monospace',
+                  fontSize: '11px',
+                  lineHeight: 1.6,
+                  background: 'var(--mantine-color-body)',
+                  color: 'var(--mantine-color-text)',
                 }}
               />
             </Box>
-          ) : null}
+          )}
         </Box>
       </Box>
     </Box>

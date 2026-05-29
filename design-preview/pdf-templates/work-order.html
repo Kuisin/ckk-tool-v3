@@ -9,12 +9,11 @@
     <div class="header">
       <div class="header-left">
         <div class="doc-title">指示書</div>
-        <div class="doc-number"># 1042</div>
+        <div class="doc-number"># {{doc.number}}</div>
       </div>
       <div class="issuer">
-        <strong>シー・ケィ・ケー株式会社</strong><br />
-        生産管理部<br />
-        発行日: 2026年1月22日
+        <strong>{{issuer.dept}}</strong><br />
+        発行日: {{doc.issued_date}}
       </div>
     </div>
 
@@ -22,69 +21,57 @@
       <div class="card">
         <h4>製品情報</h4>
         <div class="kv">
-          <span class="k">製品コード</span
-          ><span class="v">PRD-202601-0001</span>
+          <span class="k">製品コード</span><span class="v">{{product.code}}</span>
         </div>
         <div class="kv">
-          <span class="k">製品名</span><span class="v">超硬エンドミル φ10</span>
+          <span class="k">製品名</span><span class="v">{{product.name}}</span>
         </div>
         <div class="kv">
-          <span class="k">素材</span><span class="v">超硬合金 A01A0001</span>
+          <span class="k">素材</span><span class="v">{{product.material}}</span>
         </div>
       </div>
       <div class="card">
         <h4>生産情報</h4>
         <div class="kv">
-          <span class="k">計画本数</span><span class="v">50 本</span>
+          <span class="k">計画本数</span><span class="v">{{production.quantity}} {{production.unit}}</span>
         </div>
         <div class="kv">
-          <span class="k">指示タイプ</span><span class="v">製造分</span>
+          <span class="k">指示タイプ</span><span class="v">{{production.type}}</span>
         </div>
         <div class="kv">
-          <span class="k">受注書</span
-          ><span class="v">ORD-202601-00005-01</span>
+          <span class="k">受注書</span><span class="v">{{production.order_ref}}</span>
         </div>
       </div>
       <div class="card">
         <h4>スケジュール</h4>
         <div class="kv">
-          <span class="k">開始日</span><span class="v">2026/01/24</span>
+          <span class="k">開始日</span><span class="v">{{schedule.start_date}}</span>
         </div>
         <div class="kv">
-          <span class="k">完了予定</span><span class="v">2026/02/12</span>
+          <span class="k">完了予定</span><span class="v">{{schedule.due_date}}</span>
         </div>
         <div class="kv">
-          <span class="k">納期</span><span class="v">2026/02/15</span>
+          <span class="k">納期</span><span class="v">{{schedule.delivery_date}}</span>
         </div>
       </div>
     </div>
 
     <div class="section-title">承認記録</div>
     <div class="card-grid cols-3">
+      {{#each approvals}}
       <div class="card">
         <div class="card-head">
-          <h4>作成者</h4>
-        </div>
-        <div class="kv"><span class="k">担当</span><span class="v">田中 一郎</span></div>
-        <div class="kv"><span class="k">日時</span><span class="v">2026/01/22 09:15</span></div>
-      </div>
-      <div class="card">
-        <div class="card-head">
-          <h4>第一承認</h4>
+          <h4>{{role}}</h4>
+          {{#if has_badge}}
           <div class="card-badges">
-            <span class="badge approved">電子承認済</span>
+            <span class="badge {{badge_class}}">{{badge_label}}</span>
           </div>
+          {{/if}}
         </div>
-        <div class="kv"><span class="k">担当</span><span class="v">山本 部長</span></div>
-        <div class="kv"><span class="k">日時</span><span class="v">2026/01/23 10:40</span></div>
+        <div class="kv"><span class="k">担当</span><span class="v">{{name}}</span></div>
+        <div class="kv"><span class="k">日時</span><span class="v">{{datetime}}</span></div>
       </div>
-      <div class="card">
-        <div class="card-head">
-          <h4>第二承認</h4>
-        </div>
-        <div class="kv"><span class="k">担当</span><span class="v">佐藤 工場長</span></div>
-        <div class="kv"><span class="k">日時</span><span class="v">2026/01/23 14:30</span></div>
-      </div>
+      {{/each}}
     </div>
 
     <div class="section-title">工程ワークフロー</div>
@@ -96,72 +83,35 @@
           <th style="width: 120pt">工程名</th>
           <th style="width: 65pt">実施場所</th>
           <th>外注先</th>
-          <th class="center"  style="width: 75pt">ステータス</th>
+          <th class="center" style="width: 75pt">ステータス</th>
         </tr>
       </thead>
       <tbody>
+        {{#each steps}}
         <tr>
-          <td>1</td>
-          <td>材料準備</td>
-          <td>材料準備</td>
-          <td><span class="badge internal">社内</span></td>
-          <td>—</td>
-          <td class="center"><span class="badge pending">待機中</span></td>
+          <td>{{seq}}</td>
+          <td>{{category}}</td>
+          <td>{{name}}</td>
+          <td><span class="badge {{location_class}}">{{location_label}}</span></td>
+          <td>{{outsource}}</td>
+          <td class="center"><span class="badge {{status_class}}">{{status_label}}</span></td>
         </tr>
-        <tr>
-          <td>2</td>
-          <td>加工</td>
-          <td>円筒加工</td>
-          <td><span class="badge internal">社内</span></td>
-          <td>—</td>
-          <td class="center"><span class="badge pending">待機中</span></td>
-        </tr>
-        <tr>
-          <td>3</td>
-          <td>加工</td>
-          <td>センタレス研磨</td>
-          <td><span class="badge outsource">外注</span></td>
-          <td>株式会社○○研磨</td>
-          <td class="center"><span class="badge pending">待機中</span></td>
-        </tr>
-        <tr>
-          <td>4</td>
-          <td>コーティング</td>
-          <td>コーティング</td>
-          <td><span class="badge outsource">外注</span></td>
-          <td>△△コーティング株式会社</td>
-          <td class="center"><span class="badge pending">待機中</span></td>
-        </tr>
-        <tr>
-          <td>5</td>
-          <td>検査</td>
-          <td>寸法検査</td>
-          <td><span class="badge internal">社内</span></td>
-          <td>—</td>
-          <td class="center"><span class="badge pending">待機中</span></td>
-        </tr>
-        <tr>
-          <td>6</td>
-          <td>検査承認</td>
-          <td>検査承認</td>
-          <td><span class="badge internal">社内</span></td>
-          <td>—</td>
-          <td class="center"><span class="badge pending">待機中</span></td>
-        </tr>
+        {{/each}}
       </tbody>
     </table>
 
     <div class="section-title">検査表テンプレート</div>
     <div class="chip-list">
-      <span class="chip">寸法検査表（エンドミル）</span>
-      <span class="chip">表面粗さ検査表</span>
+      {{#each inspection_templates}}
+      <span class="chip">{{name}}</span>
+      {{/each}}
     </div>
 
     <div>
       <div class="notes-label">備考・特記事項</div>
-      <div class="notes">コーティング後の納品時に検査成績書を添付のこと。</div>
+      <div class="notes">{{notes}}</div>
     </div>
 
-    <div class="footer">指示書 #1042 　 ORD-202601-00005-01 　 1 / 1</div>
+    <div class="footer">指示書 #{{doc.number}} 　 {{production.order_ref}} 　 1 / 1</div>
   </body>
 </html>

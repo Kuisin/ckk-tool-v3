@@ -10,43 +10,42 @@
   <div class="header">
     <div class="doc-title">出荷書</div>
     <div class="issuer">
-      <strong>株式会社サンプル製作所</strong><br>
-      〒123-4567 東京都千代田区○○1-2-3<br>
-      TEL: 03-0000-0000　FAX: 03-0000-0001<br>
-      発行日: 2026年2月15日
+      <strong>{{issuer.name}}</strong><br>
+      {{issuer.address}}<br>
+      {{issuer.tel}}<br>
+      発行日: {{issuer.issued_date}}
     </div>
   </div>
 
   <div class="meta-row">
     <div class="recipient-block">
-      <div class="recipient-name">株式会社○○製作所 浜松工場　<span class="onchu">御中</span></div>
+      <div class="recipient-name">{{recipient.name}}　<span class="onchu">御中</span></div>
       <div class="recipient-meta">
-        〒430-0000 静岡県浜松市□□1-2-3<br>
-        担当: 生産技術部　山田 太郎 様
+        {{recipient.address}}<br>
+        担当: {{recipient.contact}}
       </div>
     </div>
     <div class="doc-info">
       <table>
-        <tr><td>出荷日</td><td>2026年2月15日</td></tr>
-        <tr><td>受注書番号</td><td>ORD-202601-00005-01</td></tr>
-        <tr><td>指示書番号</td><td>#1042</td></tr>
-        <tr><td>担当者</td><td>田中 一郎</td></tr>
+        <tr><td>出荷日</td><td>{{doc.ship_date}}</td></tr>
+        <tr><td>受注書番号</td><td>{{doc.order_number}}</td></tr>
+        <tr><td>指示書番号</td><td>#{{doc.lot_number}}</td></tr>
+        <tr><td>担当者</td><td>{{doc.staff}}</td></tr>
       </table>
     </div>
   </div>
 
-  <!-- 在庫保管の場合は badge テキストを「保管」に差し替える -->
   <div class="strip row">
-    <span class="badge">ユーザー直送</span>
-    <span>最終需要家（エンドユーザー）へ直接お届けします</span>
+    <span class="badge">{{delivery_type_label}}</span>
+    <span>{{delivery_type_note}}</span>
   </div>
 
   <div class="card" style="margin-bottom: 16pt">
     <h4>関連情報</h4>
-    <div class="kv"><span class="k">受注先</span><span class="v">株式会社得意先名</span></div>
-    <div class="kv"><span class="k">受注書番号</span><span class="v">ORD-202601-00005-01</span></div>
-    <div class="kv"><span class="k">指示書番号</span><span class="v">#1042</span></div>
-    <div class="kv"><span class="k">ロット番号</span><span class="v">#1042</span></div>
+    <div class="kv"><span class="k">受注先</span><span class="v">{{info.customer}}</span></div>
+    <div class="kv"><span class="k">受注書番号</span><span class="v">{{info.order_number}}</span></div>
+    <div class="kv"><span class="k">指示書番号</span><span class="v">#{{info.lot_number}}</span></div>
+    <div class="kv"><span class="k">ロット番号</span><span class="v">#{{info.lot_number}}</span></div>
   </div>
 
   <table class="items-table">
@@ -60,32 +59,31 @@
       </tr>
     </thead>
     <tbody>
+      {{#each items}}
       <tr>
-        <td>超硬エンドミル φ10 4枚刃<br><span class="sub">PRD-202601-0001</span></td>
-        <td class="center">#1042</td>
-        <td class="right">50</td>
-        <td>本</td>
-        <td>—</td>
+        <td>{{name}}<br><span class="sub">{{code}}</span></td>
+        <td class="center">#{{lot_number}}</td>
+        <td class="right">{{quantity}}</td>
+        <td>{{unit}}</td>
+        <td>{{item_notes}}</td>
       </tr>
+      {{/each}}
     </tbody>
   </table>
 
   <div class="totals">
     <table>
-      <tr class="grand-total"><td>出荷数量合計</td><td>50 本</td></tr>
+      <tr class="grand-total"><td>出荷数量合計</td><td>{{total_quantity}} {{total_unit}}</td></tr>
     </table>
   </div>
 
   <div>
     <div class="notes-label">備考</div>
-    <div class="notes">
-      納品書（DRN-202602-00007）は受注先（株式会社得意先名）へ別送。<br>
-      梱包: 個別保護ケース入り × 50 本。
-    </div>
+    <div class="notes">{{notes}}</div>
   </div>
 
   <div class="footer">
-    出荷書　ORD-202601-00005-01 　 Lot #1042 　 1 / 1
+    出荷書　{{doc.order_number}} 　 Lot #{{doc.lot_number}} 　 1 / 1
   </div>
 
 </body>

@@ -1,0 +1,118 @@
+{
+  "doc": {
+    "number": "1042",
+    "issued_date": "2026年1月22日"
+  },
+  "issuer": {
+    "dept": "生産管理部"
+  },
+  "product": {
+    "code": "PRD-202601-0001",
+    "name": "超硬エンドミル φ10",
+    "material": "超硬合金 A01A0001"
+  },
+  "production": {
+    "quantity": "50",
+    "unit": "本",
+    "type": "製造分",
+    "order_ref": "ORD-202601-00005-01"
+  },
+  "schedule": {
+    "start_date": "2026/01/24",
+    "due_date": "2026/02/12",
+    "delivery_date": "2026/02/15"
+  },
+  "approvals": [
+    {
+      "role": "作成者",
+      "name": "田中 一郎",
+      "datetime": "2026/01/22 09:15",
+      "has_badge": false,
+      "badge_label": "",
+      "badge_class": ""
+    },
+    {
+      "role": "第一承認",
+      "name": "山本 部長",
+      "datetime": "2026/01/23 10:40",
+      "has_badge": true,
+      "badge_label": "電子承認済",
+      "badge_class": "approved"
+    },
+    {
+      "role": "第二承認",
+      "name": "佐藤 工場長",
+      "datetime": "2026/01/23 14:30",
+      "has_badge": false,
+      "badge_label": "",
+      "badge_class": ""
+    }
+  ],
+  "steps": [
+    {
+      "seq": "1",
+      "category": "材料準備",
+      "name": "材料準備",
+      "location_label": "社内",
+      "location_class": "internal",
+      "outsource": "—",
+      "status_label": "待機中",
+      "status_class": "pending"
+    },
+    {
+      "seq": "2",
+      "category": "加工",
+      "name": "円筒加工",
+      "location_label": "社内",
+      "location_class": "internal",
+      "outsource": "—",
+      "status_label": "待機中",
+      "status_class": "pending"
+    },
+    {
+      "seq": "3",
+      "category": "加工",
+      "name": "センタレス研磨",
+      "location_label": "外注",
+      "location_class": "outsource",
+      "outsource": "株式会社○○研磨",
+      "status_label": "待機中",
+      "status_class": "pending"
+    },
+    {
+      "seq": "4",
+      "category": "コーティング",
+      "name": "コーティング",
+      "location_label": "外注",
+      "location_class": "outsource",
+      "outsource": "△△コーティング株式会社",
+      "status_label": "待機中",
+      "status_class": "pending"
+    },
+    {
+      "seq": "5",
+      "category": "検査",
+      "name": "寸法検査",
+      "location_label": "社内",
+      "location_class": "internal",
+      "outsource": "—",
+      "status_label": "待機中",
+      "status_class": "pending"
+    },
+    {
+      "seq": "6",
+      "category": "検査承認",
+      "name": "検査承認",
+      "location_label": "社内",
+      "location_class": "internal",
+      "outsource": "—",
+      "status_label": "待機中",
+      "status_class": "pending"
+    }
+  ],
+  "inspection_templates": [
+    { "name": "寸法検査表（エンドミル）" },
+    { "name": "表面粗さ検査表" }
+  ],
+  "notes": "コーティング後の納品時に検査成績書を添付のこと。"
+}
