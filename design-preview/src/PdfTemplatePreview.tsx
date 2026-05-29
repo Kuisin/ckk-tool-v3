@@ -69,11 +69,11 @@ export function PdfTemplatePreview() {
     try {
       const form = new FormData();
       form.append('files', new Blob([htmlContent], { type: 'text/html' }), 'index.html');
-      const res = await fetch('/api/gotenberg/forms/chromium/convert/html', {
+      const res = await fetch('/api/pdf', {
         method: 'POST',
         body: form,
       });
-      if (!res.ok) throw new Error(`Gotenberg returned ${res.status}`);
+      if (!res.ok) throw new Error(`PDF generation returned ${res.status}`);
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');

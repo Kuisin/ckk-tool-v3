@@ -25,7 +25,8 @@ For previewing HTML+CSS document templates (quote, invoice, work order, etc.) th
 1. Create or copy an HTML template into `pdf-templates/`.
 2. Switch to **PDF Templates** in the toolbar toggle.
 3. Select a template — it renders in an A4 iframe.
-4. Click **Print / Save PDF** to open the browser print dialog and export as PDF.
+4. Click **Save PDF** to generate a PDF via the local `/api/pdf` endpoint (→ Gotenberg) and download it.
+   Requires a running Gotenberg instance (default: `http://localhost:3100`, override with `GOTENBERG_URL`).
 
 See [`pdf-templates/README.md`](./pdf-templates/README.md) for details.
 
