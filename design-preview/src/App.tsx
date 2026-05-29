@@ -14,6 +14,18 @@ import { ErrorBoundary } from './ErrorBoundary';
 import { FileTree } from './FileTree';
 import { buildFileTree, formatDesignLabel } from './file-tree';
 import { resolveDesignComponent } from './resolve-design';
+import { BrowserWindow } from './BrowserWindow';
+
+function designPathToUrl(modulePath: string): string {
+  const relative = modulePath.replace('../designs/', '').replace(/\.tsx$/, '');
+  const kebab = relative
+    .split('/')
+    .map((seg) =>
+      seg.replace(/([A-Z])/g, (_, c, i) => (i === 0 ? c.toLowerCase() : `-${c.toLowerCase()}`)),
+    )
+    .join('/');
+  return `https://ckk.local/${kebab}`;
+}
 
 // Auto-discover all .tsx files under designs/ (including subfolders).
 // Vite watches this glob in dev mode — new files appear after HMR reload.
@@ -115,14 +127,23 @@ export default function App() {
           </ScrollArea>
         </Box>
 
-        {/* Canvas */}
-        <Box style={{ flex: 1, overflow: 'auto' }} p="md">
+        {/* Canvas — desktop backdrop */}
+        <Box
+          style={{
+            flex: 1,
+            overflow: 'auto',
+            background: 'var(--mantine-color-gray-2)',
+            padding: 24,
+          }}
+        >
           {selected ? (
-            <ErrorBoundary key={`${selected}-${key}`} onReset={() => setKey((k) => k + 1)}>
-              <DesignCanvas key={`${selected}-${key}`} path={selected} />
-            </ErrorBoundary>
+            <BrowserWindow url={designPathToUrl(selected)}>
+              <ErrorBoundary key={`${selected}-${key}`} onReset={() => setKey((k) => k + 1)}>
+                <DesignCanvas key={`${selected}-${key}`} path={selected} />
+              </ErrorBoundary>
+            </BrowserWindow>
           ) : (
-            <Center h="100%">
+            <Center style={{ minHeight: '100%' }}>
               <Stack align="center" gap="xs">
                 <Text c="dimmed">
                   {designPaths.length === 0
