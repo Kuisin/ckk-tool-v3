@@ -1,4 +1,4 @@
-import { useState, lazy, Suspense, type ReactNode } from 'react';
+import { useState, useCallback, lazy, Suspense, type ReactNode } from 'react';
 import {
   Stack,
   Box,
@@ -17,7 +17,7 @@ import { ErrorBoundary } from './ErrorBoundary';
 import { FileTree } from './FileTree';
 import { buildFileTree, formatDesignLabel } from './file-tree';
 import { resolveDesignComponent } from './resolve-design';
-import { BrowserWindow } from './BrowserWindow';
+import { BrowserWindow, type Viewport } from './BrowserWindow';
 import { PdfTemplatePreview } from './PdfTemplatePreview';
 
 /** Files whose basename starts with `comp_` render as a bare component, not a browser mock. */
@@ -121,11 +121,36 @@ function LayoutDemoContent() {
 
 type Mode = 'ui' | 'pdf';
 
+function useSearchParam(key: string, defaultValue: string): [string, (v: string) => void] {
+  const [value, setValue] = useState(() => {
+    return new URLSearchParams(window.location.search).get(key) ?? defaultValue;
+  });
+
+  const set = useCallback((v: string) => {
+    const params = new URLSearchParams(window.location.search);
+    if (v) {
+      params.set(key, v);
+    } else {
+      params.delete(key);
+    }
+    window.history.replaceState(null, '', `?${params.toString()}`);
+    setValue(v);
+  }, [key]);
+
+  return [value, set];
+}
+
 export default function App() {
-  const [mode, setMode] = useState<Mode>('ui');
-  const [selected, setSelected] = useState<string | null>(
-    designPaths[0] ?? null,
-  );
+  const [modeParam, setMode] = useSearchParam('mode', 'ui');
+  const mode = (modeParam === 'pdf' ? 'pdf' : 'ui') as Mode;
+
+  const [designParam, setDesignParam] = useSearchParam('design', designPaths[0] ?? '');
+  const selected = designPaths.includes(designParam) ? designParam : (designPaths[0] ?? null);
+  const setSelected = (path: string | null) => setDesignParam(path ?? '');
+
+  const [viewportParam, setViewport] = useSearchParam('viewport', 'desktop');
+  const viewport = (viewportParam === 'mobile' ? 'mobile' : 'desktop') as Viewport;
+
   // key forces ErrorBoundary + DesignCanvas to remount on manual retry
   const [key, setKey] = useState(0);
 
@@ -245,7 +270,12 @@ export default function App() {
                   </Box>
                 </Center>
               ) : (
-                <BrowserWindow url={designPathToUrl(selected)} noPadding={isLayoutFile}>
+                <BrowserWindow
+                  url={designPathToUrl(selected)}
+                  noPadding={isLayoutFile}
+                  viewport={viewport}
+                  onViewportChange={setViewport}
+                >
                   <ErrorBoundary key={`${selected}-${key}`} onReset={() => setKey((k) => k + 1)}>
                     <DesignCanvas key={`${selected}-${key}`} path={selected}>
                       {isLayoutFile ? <LayoutDemoContent /> : undefined}
