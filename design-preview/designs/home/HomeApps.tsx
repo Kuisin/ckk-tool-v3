@@ -98,7 +98,6 @@ import {
   IconUsers,
   IconUsersGroup,
 } from '@tabler/icons-react';
-import Link from 'next/link';
 import classes from './HomeApps.module.css';
 import { CATEGORY_COLORS, type AppCategory, getAppsByCategory } from '../lib/app-list';
 
@@ -236,8 +235,6 @@ export function HomeApps({ user = MOCK_USER, isLoading = false }: HomeAppsProps)
                 ) : (
                   <UnstyledButton
                     key={app.key}
-                    component={Link}
-                    href={app.href}
                     className={classes.appCard}
                   >
                     {/*

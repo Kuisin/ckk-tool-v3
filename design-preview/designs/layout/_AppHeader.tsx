@@ -71,7 +71,7 @@ import {
   IconUser,
 } from '@tabler/icons-react';
 import { useState } from 'react';
-import { AppLauncher } from './AppLauncher';
+import { AppLauncher } from './comp_AppLauncher';
 
 // Mock data — in production, fetch from /api/sse/approvals or a DB query
 const MOCK_NOTIFICATIONS = [
@@ -214,7 +214,7 @@ export function AppHeader() {
                       px="md"
                       py="sm"
                       style={{
-                        borderBottom: '1px solid var(--mantine-color-gray-2)',
+                        borderBottom: '1px solid var(--mantine-color-default-border)',
                         // [Custom] Unread items get a subtle left accent border
                         borderLeft: notif.isRead
                           ? undefined

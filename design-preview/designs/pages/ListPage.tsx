@@ -19,7 +19,6 @@ import {
   IconPlus,
   IconSearch,
 } from '@tabler/icons-react';
-import Link from 'next/link';
 import { useState } from 'react';
 // In production: import { DataTable } from 'mantine-datatable';
 // Shown here as a structural stub so the sample compiles without the package
@@ -119,12 +118,7 @@ function DataTableStub({ records }: { records: SalesOrderRow[] }) {
             <IconClipboardList size={24} />
           </ThemeIcon>
           <Text c="dimmed" size="sm">受注書がありません</Text>
-          <Button
-            component={Link}
-            href="/production/sales-orders/new"
-            variant="subtle"
-            size="sm"
-          >
+          <Button variant="subtle" size="sm">
             新規作成
           </Button>
         </Stack>
@@ -147,28 +141,23 @@ function DataTableStub({ records }: { records: SalesOrderRow[] }) {
         <Text size="xs" c="dimmed" w={80}>ステータス</Text>
       </Group>
       {records.map((r) => (
-        <Link
+        <Group
           key={r.id}
-          href={`/production/sales-orders/${r.id}`}
-          style={{ textDecoration: 'none', color: 'inherit' }}
+          px="sm"
+          py="xs"
+          style={{
+            borderBottom: '1px solid var(--mantine-color-gray-2)',
+          }}
         >
-          <Group
-            px="sm"
-            py="xs"
-            style={{
-              borderBottom: '1px solid var(--mantine-color-gray-2)',
-            }}
-          >
-            {/* [Custom] Monospace font for document numbers */}
-            <Text size="sm" ff="mono" w={170}>{r.salesOrderNumber}</Text>
-            <Text size="sm" style={{ flex: 1 }}>{r.customerName}</Text>
-            <Text size="sm" style={{ flex: 2 }}>{r.productName}</Text>
-            <Text size="sm" w={60} ta="right">{r.quantity}</Text>
-            <Text size="sm" w={100}><MoneyText value={r.amount} /></Text>
-            <Text size="sm" w={90}>{r.deliveryDate}</Text>
-            <Text size="sm" w={80}><StatusBadge status={r.status} /></Text>
-          </Group>
-        </Link>
+          {/* [Custom] Monospace font for document numbers */}
+          <Text size="sm" ff="mono" w={170}>{r.salesOrderNumber}</Text>
+          <Text size="sm" style={{ flex: 1 }}>{r.customerName}</Text>
+          <Text size="sm" style={{ flex: 2 }}>{r.productName}</Text>
+          <Text size="sm" w={60} ta="right">{r.quantity}</Text>
+          <Text size="sm" w={100}><MoneyText value={r.amount} /></Text>
+          <Text size="sm" w={90}>{r.deliveryDate}</Text>
+          <Text size="sm" w={80}><StatusBadge status={r.status} /></Text>
+        </Group>
       ))}
     </Stack>
   );
@@ -198,7 +187,7 @@ export default function SalesOrdersListPage() {
         <Stack gap={2}>
           {/* [Mantine] Breadcrumbs — standard navigation trail */}
           <Breadcrumbs>
-            <Link href="/">ホーム</Link>
+            <Text size="sm">ホーム</Text>
             <Text size="sm">生産</Text>
             <Text size="sm">受注書</Text>
           </Breadcrumbs>
@@ -206,12 +195,7 @@ export default function SalesOrdersListPage() {
           <Title order={2}>受注書</Title>
         </Stack>
         {/* [Mantine] Button — filled (default) with leftSection icon */}
-        {/* [Custom] Links to new record form route */}
-        <Button
-          component={Link}
-          href="/production/sales-orders/new"
-          leftSection={<IconPlus size={16} />}
-        >
+        <Button leftSection={<IconPlus size={16} />}>
           新規作成
         </Button>
       </Group>

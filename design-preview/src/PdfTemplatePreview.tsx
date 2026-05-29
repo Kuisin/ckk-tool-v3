@@ -64,35 +64,32 @@ export function PdfTemplatePreview() {
   }, [selected, key]);
 
   async function handleDownloadPdf() {
-    if (!htmlContent || pdfLoading) return;
+    if (!selected || pdfLoading) return;
     setPdfLoading(true);
     try {
-      const form = new FormData();
-      form.append('files', new Blob([htmlContent], { type: 'text/html' }), 'index.html');
-      const res = await fetch('/api/pdf', {
+      // Server-side generation: the API owns the template, renders it via
+      // Gotenberg, and streams the PDF back. We only pass the template name.
+      const template = selected.slice(PDF_PREFIX.length);
+      const res = await fetch(`/api/pdf?template=${encodeURIComponent(template)}`, {
         method: 'POST',
-        body: form,
       });
       if (!res.ok) throw new Error(`PDF generation returned ${res.status}`);
+
       const blob = await res.blob();
+      const disposition = res.headers.get('content-disposition');
+      const filename =
+        disposition?.match(/filename="?([^"]+)"?/)?.[1] ?? `${label ?? 'template'}.pdf`;
+
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `${label ?? 'template'}.pdf`;
+      a.download = filename;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
     } catch (err) {
-      console.error('Gotenberg PDF generation failed:', err);
-      // Fallback: open in new window for browser print
-      const win = window.open('', '_blank');
-      if (win) {
-        win.document.write(htmlContent);
-        win.document.close();
-        win.focus();
-        win.setTimeout(() => win.print(), 400);
-      }
+      console.error('Server-side PDF generation failed:', err);
     } finally {
       setPdfLoading(false);
     }

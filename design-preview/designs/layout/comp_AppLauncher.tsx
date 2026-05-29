@@ -5,6 +5,7 @@ import {
   Box,
   Divider,
   Group,
+  Paper,
   ScrollArea,
   SimpleGrid,
   Stack,
@@ -43,14 +44,10 @@ import {
   IconUsers,
   IconUsersGroup,
 } from '@tabler/icons-react';
-import Link from 'next/link';
 import { useMemo, useState } from 'react';
-import { CATEGORY_COLORS, appList, getAppsByCategory } from '../lib/app-list';
+import { CATEGORY_COLORS, type AppCategory, appList, getAppsByCategory } from '../lib/app-list';
 import classes from './AppLauncher.module.css';
 
-// Map icon string names to actual components
-// [Custom] This lookup is needed because app-list.ts stores icon names as strings
-// (for JSON-serializable config). In production, you can import directly instead.
 const ICON_MAP: Record<string, ComponentType<{ size?: number }>> = {
   IconCurrencyYen,
   IconFileText,
@@ -79,6 +76,15 @@ const ICON_MAP: Record<string, ComponentType<{ size?: number }>> = {
   IconUsersGroup,
 };
 
+const CATEGORY_SECTION_ICONS: Record<AppCategory, ComponentType<{ size?: number }>> = {
+  '販売': IconCurrencyYen,
+  '購買': IconPackageImport,
+  '生産': IconSettings2,
+  '出荷': IconTruck,
+  '請求': IconFileInvoice,
+  'マスタ': IconBuilding,
+};
+
 interface AppLauncherProps {
   /** Called when the user clicks an app link — used to close the Popover */
   onNavigate?: () => void;
@@ -88,7 +94,6 @@ export function AppLauncher({ onNavigate }: AppLauncherProps) {
   const [search, setSearch] = useState('');
   const categories = getAppsByCategory();
 
-  // Filter for search mode
   const searchResults = useMemo(() => {
     const q = search.trim().toLowerCase();
     if (!q) return null;
@@ -97,8 +102,6 @@ export function AppLauncher({ onNavigate }: AppLauncherProps) {
 
   return (
     <Stack gap="sm" w={520}>
-      {/* ── Search bar ─────────────────────────────────────────────────────── */}
-      {/* [Mantine] TextInput — size="sm" matches global theme default */}
       <TextInput
         placeholder="アプリを検索..."
         leftSection={<IconSearch size={14} />}
@@ -107,17 +110,13 @@ export function AppLauncher({ onNavigate }: AppLauncherProps) {
         autoFocus
       />
 
-      {/* ── Home shortcut ──────────────────────────────────────────────────── */}
-      {/* [Custom] Quick link back to home page, always visible above the grid */}
       <Box
-        component={Link}
-        href="/"
         onClick={onNavigate}
         p="xs"
         className={classes.homeLink}
       >
         <Group gap="xs">
-          <ThemeIcon variant="light" color="blue" size="sm" radius="sm">
+          <ThemeIcon variant="light" color="blue" size="md" radius="sm">
             <IconHome size={14} />
           </ThemeIcon>
           <Text size="sm" c="dimmed">ホーム</Text>
@@ -126,12 +125,8 @@ export function AppLauncher({ onNavigate }: AppLauncherProps) {
 
       <Divider />
 
-      {/* ── App grid or search results ─────────────────────────────────────── */}
-      {/* [Custom] ScrollArea caps height at 420px so the popover doesn't overflow viewport */}
       <ScrollArea mah={420} offsetScrollbars>
         {searchResults ? (
-          /* Search results: flat list */
-          /* [Custom] Flat list replaces the grid when searching, with category label as hint */
           <Stack gap={2}>
             {searchResults.length === 0 ? (
               <Text size="sm" c="dimmed" ta="center" py="md">
@@ -143,8 +138,6 @@ export function AppLauncher({ onNavigate }: AppLauncherProps) {
                 return (
                   <UnstyledButton
                     key={app.key}
-                    component={Link}
-                    href={app.href}
                     onClick={onNavigate}
                     className={classes.searchRow}
                     px="xs"
@@ -154,13 +147,12 @@ export function AppLauncher({ onNavigate }: AppLauncherProps) {
                       <ThemeIcon
                         variant="light"
                         color={CATEGORY_COLORS[app.category]}
-                        size="sm"
+                        size="md"
                         radius="sm"
                       >
-                        <IconComponent size={13} />
+                        <IconComponent size={14} />
                       </ThemeIcon>
                       <Text size="sm">{app.label}</Text>
-                      {/* [Custom] Category shown as a subtle secondary label in search results */}
                       <Text size="xs" c="dimmed">{app.category}</Text>
                     </Group>
                   </UnstyledButton>
@@ -169,49 +161,52 @@ export function AppLauncher({ onNavigate }: AppLauncherProps) {
             )}
           </Stack>
         ) : (
-          /* Default: categorized grid */
           <Stack gap="md">
-            {categories.map((cat) => (
-              <Box key={cat.category}>
-                {/* [Mantine] Title order={6} for category label — small, de-emphasized */}
-                <Title order={6} c="dimmed" tt="uppercase" fz={10} mb="xs" px="xs">
-                  {cat.category}
-                </Title>
-                {/* [Mantine] SimpleGrid cols={3} */}
-                {/* [Custom] spacing="xs" keeps cards compact in the 520px popover */}
-                <SimpleGrid cols={3} spacing="xs">
-                  {cat.apps.map((app) => {
-                    const IconComponent = ICON_MAP[app.icon] ?? IconFileText;
-                    return (
-                      <UnstyledButton
-                        key={app.key}
-                        component={Link}
-                        href={app.href}
-                        onClick={onNavigate}
-                        className={classes.appCard}
-                        p="sm"
-                      >
-                        <Stack align="center" gap={6}>
-                          {/* [Mantine] ThemeIcon — color from CATEGORY_COLORS */}
-                          {/* [Custom] size="xl" radius="md" for a rounded-square icon look */}
-                          <ThemeIcon
-                            variant="light"
-                            color={cat.color}
-                            size="xl"
-                            radius="md"
-                          >
-                            <IconComponent size={20} />
-                          </ThemeIcon>
-                          <Text size="xs" ta="center" lh={1.3}>
-                            {app.label}
-                          </Text>
-                        </Stack>
-                      </UnstyledButton>
-                    );
-                  })}
-                </SimpleGrid>
-              </Box>
-            ))}
+            {categories.map((cat, catIndex) => {
+              const SectionIcon = CATEGORY_SECTION_ICONS[cat.category];
+
+              return (
+                <Stack key={cat.category} gap="sm">
+                  <Group gap="xs">
+                    <ThemeIcon variant="light" color={cat.color} size="md" radius="sm">
+                      <SectionIcon size={14} />
+                    </ThemeIcon>
+                    <Title order={5} c="dimmed">{cat.category}</Title>
+                  </Group>
+
+                  <SimpleGrid cols={3} spacing="sm">
+                    {cat.apps.map((app) => {
+                      const IconComponent = ICON_MAP[app.icon] ?? IconFileText;
+                      return (
+                        <UnstyledButton
+                          key={app.key}
+                          onClick={onNavigate}
+                          className={classes.appCard}
+                        >
+                          <Paper withBorder radius="md" p="md" h="100%">
+                            <Stack align="center" gap="sm">
+                              <ThemeIcon
+                                variant="light"
+                                color={cat.color}
+                                size="xl"
+                                radius="md"
+                              >
+                                <IconComponent size={28} />
+                              </ThemeIcon>
+                              <Text size="sm" ta="center" fw={500} lh={1.3}>
+                                {app.label}
+                              </Text>
+                            </Stack>
+                          </Paper>
+                        </UnstyledButton>
+                      );
+                    })}
+                  </SimpleGrid>
+
+                  {catIndex < categories.length - 1 && <Divider mt="xs" />}
+                </Stack>
+              );
+            })}
           </Stack>
         )}
       </ScrollArea>

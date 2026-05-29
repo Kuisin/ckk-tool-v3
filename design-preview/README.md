@@ -18,6 +18,11 @@ pnpm dev          # → http://localhost:5173
 2. Save it as a `.tsx` file in `designs/` (default export, or named export matching the filename).
 3. Vite HMR picks it up — select it from the file tree to preview it.
 
+Each design renders in one of two display modes:
+
+- **Browser mock** (default) — the design is shown inside a simulated browser window (chrome + URL bar), as a full page would appear.
+- **Component** — prefix the filename with `comp_` (e.g. `comp_PrimaryButton.tsx`) to render the design bare, centered in a card with no browser chrome. Use this for isolated UI components. The expected export name may drop the prefix (`comp_PrimaryButton.tsx` → `export function PrimaryButton`) or keep it.
+
 ### PDF Templates
 
 For previewing HTML+CSS document templates (quote, invoice, work order, etc.) that are sent to Gotenberg.

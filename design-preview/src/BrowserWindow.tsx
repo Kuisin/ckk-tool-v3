@@ -107,12 +107,17 @@ export function BrowserWindow({ url, children, noPadding }: BrowserWindowProps) 
 
       {/* Page content */}
       {noPadding ? (
-        // Full-layout designs: AppShell header/footer are position:sticky within the shell.
-        // overflow:hidden prevents the *container* from scrolling — AppShell handles its
-        // own internal scroll via overflowY:auto set on the AppShell root. Height:600 acts
-        // as the simulated viewport for the preview.
+        // Full-layout designs: Mantine AppShell renders its Header/Footer with
+        // position:fixed, which resolves against the *viewport* by default — that
+        // makes them escape this preview box and stick to the real window edges.
+        // `transform: translateZ(0)` turns this Box into the containing block for
+        // its fixed descendants, so the header/footer are scoped to the simulated
+        // 600px viewport. overflow:hidden clips anything past it; the AppShell root
+        // handles its own internal scroll via overflowY:auto.
         <Box
           style={{
+            position: 'relative',
+            transform: 'translateZ(0)',
             overflow: 'hidden',
             height: 600,
             background: 'var(--mantine-color-body)',

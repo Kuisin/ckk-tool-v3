@@ -1,4 +1,4 @@
-import { useState, lazy, Suspense } from 'react';
+import { useState, lazy, Suspense, type ReactNode } from 'react';
 import {
   Stack,
   Box,
@@ -19,6 +19,12 @@ import { buildFileTree, formatDesignLabel } from './file-tree';
 import { resolveDesignComponent } from './resolve-design';
 import { BrowserWindow } from './BrowserWindow';
 import { PdfTemplatePreview } from './PdfTemplatePreview';
+
+/** Files whose basename starts with `comp_` render as a bare component, not a browser mock. */
+function isComponentFile(modulePath: string): boolean {
+  const basename = modulePath.split('/').pop() ?? '';
+  return basename.startsWith('comp_');
+}
 
 function designPathToUrl(modulePath: string): string {
   const relative = modulePath.replace('../designs/', '').replace(/\.tsx$/, '');
@@ -59,12 +65,57 @@ function getLazy(path: string) {
   return lazyCache.get(path)!;
 }
 
-function DesignCanvas({ path }: { path: string }) {
+function DesignCanvas({ path, children }: { path: string; children?: ReactNode }) {
   const Component = getLazy(path);
   return (
     <Suspense fallback={<Center h={200}><Text c="dimmed">Loading…</Text></Center>}>
-      <Component />
+      <Component>{children}</Component>
     </Suspense>
+  );
+}
+
+// Layout components (layout.tsx) take `children` — the preview renders them with
+// none, leaving AppShell.Main empty. Inject sample page content so layouts show
+// realistic content between the header and footer.
+function LayoutDemoContent() {
+  return (
+    <Stack gap="md">
+      <Title order={3}>ダッシュボード</Title>
+      <Text c="dimmed" size="sm">
+        レイアウトプレビュー用のサンプルコンテンツです。ヘッダーとフッターの間に
+        ページ本文が表示されます。
+      </Text>
+      <Group gap="md" wrap="wrap">
+        {['受注', '指示書', '出荷', '請求'].map((label) => (
+          <Box
+            key={label}
+            p="md"
+            style={{
+              flex: '1 1 160px',
+              borderRadius: 8,
+              border: '1px solid var(--mantine-color-default-border)',
+              background: 'var(--mantine-color-body)',
+            }}
+          >
+            <Text size="sm" c="dimmed">{label}</Text>
+            <Title order={4}>{Math.floor(Math.random() * 900 + 100)}</Title>
+          </Box>
+        ))}
+      </Group>
+      {Array.from({ length: 12 }).map((_, i) => (
+        <Box
+          key={i}
+          p="md"
+          style={{
+            borderRadius: 8,
+            border: '1px solid var(--mantine-color-default-border)',
+            background: 'var(--mantine-color-body)',
+          }}
+        >
+          <Text size="sm">サンプル行 {i + 1} — スクロール時にヘッダー / フッターが固定されることを確認できます。</Text>
+        </Box>
+      ))}
+    </Stack>
   );
 }
 
@@ -84,6 +135,8 @@ export default function App() {
 
   // Layout files use AppShell (position:fixed header/footer) — need noPadding + containment
   const isLayoutFile = selected?.includes('/layout/') ?? false;
+  // `comp_`-prefixed files render bare (centered card) instead of inside the browser mock
+  const isComponent = selected ? isComponentFile(selected) : false;
 
   return (
     <Stack gap={0} h="100vh">
@@ -175,11 +228,31 @@ export default function App() {
             }}
           >
             {selected ? (
-              <BrowserWindow url={designPathToUrl(selected)} noPadding={isLayoutFile}>
-                <ErrorBoundary key={`${selected}-${key}`} onReset={() => setKey((k) => k + 1)}>
-                  <DesignCanvas key={`${selected}-${key}`} path={selected} />
-                </ErrorBoundary>
-              </BrowserWindow>
+              isComponent ? (
+                <Center style={{ minHeight: '100%' }}>
+                  <Box
+                    style={{
+                      borderRadius: 10,
+                      border: '1px solid var(--mantine-color-default-border)',
+                      boxShadow: '0 8px 40px rgba(0,0,0,0.18)',
+                      background: 'var(--mantine-color-body)',
+                      padding: 24,
+                    }}
+                  >
+                    <ErrorBoundary key={`${selected}-${key}`} onReset={() => setKey((k) => k + 1)}>
+                      <DesignCanvas key={`${selected}-${key}`} path={selected} />
+                    </ErrorBoundary>
+                  </Box>
+                </Center>
+              ) : (
+                <BrowserWindow url={designPathToUrl(selected)} noPadding={isLayoutFile}>
+                  <ErrorBoundary key={`${selected}-${key}`} onReset={() => setKey((k) => k + 1)}>
+                    <DesignCanvas key={`${selected}-${key}`} path={selected}>
+                      {isLayoutFile ? <LayoutDemoContent /> : undefined}
+                    </DesignCanvas>
+                  </ErrorBoundary>
+                </BrowserWindow>
+              )
             ) : (
               <Center style={{ minHeight: '100%' }}>
                 <Stack align="center" gap="xs">

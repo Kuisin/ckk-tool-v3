@@ -1,3 +1,5 @@
+import { readFile } from 'node:fs/promises';
+import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
@@ -5,9 +7,11 @@ import tailwindcss from '@tailwindcss/vite';
 import type { Plugin } from 'vite';
 
 const GOTENBERG_URL = process.env.GOTENBERG_URL ?? 'http://localhost:3100';
+const TEMPLATES_DIR = fileURLToPath(new URL('./pdf-templates', import.meta.url));
 
-// Mirrors the main system's app/api/pdf/* route handlers:
-// client → POST /api/pdf → Gotenberg → PDF response
+// Mirrors the main system's app/api/pdf/* route handlers: the server owns the
+// template, renders it server-side, and streams the generated file back.
+//   client → POST /api/pdf?template=<name> → read HTML on server → Gotenberg → PDF download
 function pdfApiPlugin(): Plugin {
   return {
     name: 'pdf-api',
@@ -17,31 +21,63 @@ function pdfApiPlugin(): Plugin {
           next();
           return;
         }
-        const chunks: Buffer[] = [];
-        req.on('data', (chunk: Buffer) => chunks.push(chunk));
-        req.on('end', async () => {
+        void (async () => {
           try {
-            const body = Buffer.concat(chunks);
-            const contentType = req.headers['content-type'] ?? '';
+            const { searchParams } = new URL(req.url ?? '', 'http://localhost');
+            const template = searchParams.get('template');
+            if (!template) {
+              res.statusCode = 400;
+              res.end('Missing "template" query parameter');
+              return;
+            }
+
+            // Resolve the template on the server and guard against path traversal.
+            const filePath = path.resolve(TEMPLATES_DIR, template);
+            if (!filePath.startsWith(TEMPLATES_DIR + path.sep)) {
+              res.statusCode = 400;
+              res.end('Invalid template path');
+              return;
+            }
+
+            let html: string;
+            try {
+              html = await readFile(filePath, 'utf8');
+            } catch {
+              res.statusCode = 404;
+              res.end(`Template not found: ${template}`);
+              return;
+            }
+
+            const form = new FormData();
+            form.append('files', new Blob([html], { type: 'text/html' }), 'index.html');
+            // Default to A4 (210mm × 297mm); Gotenberg otherwise falls back to US Letter.
+            form.append('paperWidth', '210mm');
+            form.append('paperHeight', '297mm');
             const gotenbergRes = await fetch(
               `${GOTENBERG_URL}/forms/chromium/convert/html`,
-              { method: 'POST', headers: { 'content-type': contentType }, body },
+              { method: 'POST', body: form },
             );
             if (!gotenbergRes.ok) {
               res.statusCode = gotenbergRes.status;
               res.end(`Gotenberg error: ${gotenbergRes.status}`);
               return;
             }
+
             const pdf = Buffer.from(await gotenbergRes.arrayBuffer());
+            const downloadName = path.basename(template).replace(/\.html?$/i, '.pdf');
             res.statusCode = 200;
             res.setHeader('content-type', 'application/pdf');
+            res.setHeader(
+              'content-disposition',
+              `attachment; filename="${downloadName}"`,
+            );
             res.end(pdf);
           } catch (err) {
             console.error('[pdf-api]', err);
             res.statusCode = 500;
             res.end('PDF generation failed');
           }
-        });
+        })();
       });
     },
   };

@@ -27,8 +27,6 @@ import {
   IconLoader,
   IconX,
 } from '@tabler/icons-react';
-import Link from 'next/link';
-
 // ── FieldValue helper ────────────────────────────────────────────────────────
 // [Custom] In production: import { FieldValue } from '@/components/ui/FieldValue'
 // Props: label (string), value (ReactNode), span (optional — for SimpleGrid colSpan)
@@ -117,9 +115,9 @@ export default function WorkOrderDetailPage() {
         <Stack gap={4}>
           {/* [Mantine] Breadcrumbs */}
           <Breadcrumbs>
-            <Link href="/">ホーム</Link>
+            <Text size="sm">ホーム</Text>
             <Text size="sm">生産</Text>
-            <Link href="/production/work-orders">指示書</Link>
+            <Text size="sm">指示書</Text>
             <Text size="sm">#{wo.workOrderNumber}</Text>
           </Breadcrumbs>
           {/* [Custom] Title + StatusBadge inline — standard detail page pattern */}
@@ -134,19 +132,14 @@ export default function WorkOrderDetailPage() {
         <Group>
           {/* [Mantine] Button variant="default" for secondary actions */}
           <Button
-            component={Link}
-            href={`/production/work-orders/${wo.id}/edit`}
             variant="default"
             leftSection={<IconEdit size={14} />}
           >
             編集
           </Button>
-          {/* [Custom] PdfButton — links to /api/pdf/work-order route */}
+          {/* [Custom] PdfButton — in production links to /api/pdf/work-order */}
           {/* In production: import { PdfButton } from '@/components/ui/PdfButton' */}
           <Button
-            component="a"
-            href={`/api/pdf/work-order?id=${wo.id}`}
-            target="_blank"
             variant="default"
             leftSection={<IconFileTypePdf size={14} />}
           >
@@ -310,13 +303,7 @@ export default function WorkOrderDetailPage() {
           <Stack gap="xs">
             <Group>
               <Text size="sm" c="dimmed" w={120}>受注書</Text>
-              <Text
-                size="sm"
-                component={Link}
-                href={`/production/sales-orders/1`}
-                ff="mono"
-                c="blue"
-              >
+              <Text size="sm" ff="mono" c="blue">
                 {wo.salesOrderNumber}
               </Text>
             </Group>

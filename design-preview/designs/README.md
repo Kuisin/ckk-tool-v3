@@ -9,7 +9,8 @@ Drop any `.tsx` file here (including subfolders). It appears automatically in th
   - **`export function MyPage()`** (named export matching the filename, e.g. `AppLauncher.tsx` → `export function AppLauncher`)
 - Both **Mantine v9** (`@mantine/core`, `@mantine/hooks`) and **Tailwind CSS** are available.
 - `@tabler/icons-react` is available.
-- `next/link`, `next/navigation`, and `next/image` are shimmed (no Next.js runtime needed).
+- Do not use `next/link` or navigation links — designs are static UI previews only.
+- `next/navigation` and `next/image` are shimmed if needed (no Next.js runtime).
 - CSS Modules (`.module.css`) work out of the box.
 
 ## Multi-file designs

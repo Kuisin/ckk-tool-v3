@@ -25,7 +25,6 @@ import {
   IconMinus,
   IconPlus,
 } from '@tabler/icons-react';
-const Link = (props: any) => <a {...props} />;
 import { useTransition } from 'react';
 import { z } from 'zod';
 
@@ -127,9 +126,9 @@ export default function QuoteNewPage() {
         <Stack gap={2}>
           {/* [Mantine] Breadcrumbs */}
           <Breadcrumbs>
-            <Link href="/">ホーム</Link>
+            <Text size="sm">ホーム</Text>
             <Text size="sm">販売</Text>
-            <Link href="/sales/quotes">見積書</Link>
+            <Text size="sm">見積書</Text>
             <Text size="sm">新規作成</Text>
           </Breadcrumbs>
           <Title order={2}>見積書 新規作成</Title>
@@ -350,11 +349,7 @@ export default function QuoteNewPage() {
            * [Mantine] Button type="submit" — triggers form.onSubmit handler.
            */}
           <Group justify="flex-end" mt="md">
-            <Button
-              variant="default"
-              component={Link}
-              href="/sales/quotes"
-            >
+            <Button variant="default">
               キャンセル
             </Button>
             <Button type="submit" loading={isPending}>

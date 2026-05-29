@@ -13,12 +13,16 @@ export function resolveDesignComponent(
   }
 
   const baseName = modulePath.split('/').pop()?.replace(/\.tsx$/, '') ?? '';
-  const named = mod[baseName];
-  if (typeof named === 'function') {
-    return named as ComponentType;
+  // `comp_`-prefixed files conventionally export the component without the prefix
+  const candidates = [baseName, baseName.replace(/^comp_/, '')];
+  for (const candidate of candidates) {
+    const named = mod[candidate];
+    if (typeof named === 'function') {
+      return named as ComponentType;
+    }
   }
 
   throw new Error(
-    `${formatDesignLabel(modulePath)} has no default export (expected \`export default\` or \`export function ${baseName}\`)`,
+    `${formatDesignLabel(modulePath)} has no default export (expected \`export default\` or \`export function ${candidates.join('` / `')}\`)`,
   );
 }

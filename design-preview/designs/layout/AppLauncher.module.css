@@ -1,36 +1,35 @@
 /**
  * AppLauncher.module.css
  *
- * [Custom CSS module] Hover and transition styles for app cards and interactive rows.
- *
- * WHY CSS module instead of Mantine sx/style prop:
- *   Mantine v9 recommends CSS modules for reusable hover states because the sx prop
- *   does not support :hover pseudo-selectors directly on components in SSR.
- *   CSS modules are also zero-runtime and tree-shakeable.
- *
- * WHY NOT Tailwind:
- *   Mantine provides all needed design tokens (colors, radius) as CSS variables.
- *   Using Mantine variables here keeps colors consistent with the theme
- *   (including dark mode support via [data-mantine-color-scheme]).
+ * [Custom CSS module] Hover styles aligned with HomeApps.module.css.
+ * App cards use lift + shadow on hover; rows use a subtle background change
+ * (compact list items in search / home shortcut).
  */
 
-/* App card in the category grid */
 .appCard {
-  border-radius: var(--mantine-radius-sm);
-  transition: background-color 120ms ease;
   text-decoration: none;
   color: inherit;
+  display: block;
+  border-radius: var(--mantine-radius-md);
+  transition:
+    transform 120ms ease,
+    box-shadow 120ms ease;
 }
 
 .appCard:hover {
-  background-color: var(--mantine-color-gray-0);
+  transform: translateY(-2px);
+  box-shadow: var(--mantine-shadow-sm);
 }
 
-[data-mantine-color-scheme='dark'] .appCard:hover {
-  background-color: var(--mantine-color-dark-6);
+@media (prefers-reduced-motion: reduce) {
+  .appCard {
+    transition: none;
+  }
+  .appCard:hover {
+    transform: none;
+  }
 }
 
-/* Search result row */
 .searchRow {
   border-radius: var(--mantine-radius-sm);
   transition: background-color 120ms ease;
@@ -47,7 +46,6 @@
   background-color: var(--mantine-color-dark-6);
 }
 
-/* Home shortcut link */
 .homeLink {
   border-radius: var(--mantine-radius-sm);
   transition: background-color 120ms ease;

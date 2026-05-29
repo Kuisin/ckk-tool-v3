@@ -1,19 +1,14 @@
 # pdf-templates/
 
-Drop `.html` files here to preview them as document PDF templates.
+HTML + vanilla CSS templates sent to Gotenberg for PDF generation (see `app/api/pdf/`). Drop `.html` files here to preview them in an A4 iframe before wiring them into the Next.js route handlers. Subfolders appear as collapsible groups in the file tree.
 
-## Purpose
-
-These are HTML + vanilla CSS templates that get sent to Gotenberg for PDF generation
-(see `app/api/pdf/`). The design-preview app renders them in an A4 iframe so you can
-iterate on layout and typography before wiring them into the Next.js route handlers.
-
-## Requirements
+## Rules
 
 - Plain HTML + vanilla CSS only — no framework dependencies.
-- Use `@page` and `@media print` CSS rules for print-specific styling.
-- A4 dimensions: 210 mm × 297 mm (794 px × 1123 px at 96 dpi screen equivalent).
-- Subfolders are supported and appear as collapsible groups in the file tree.
+- Use `@page` and `@media print` for print-specific styling.
+- A4 size: 210 mm × 297 mm (794 px × 1123 px at 96 dpi), `margin: 15mm 20mm`.
+- Font: `Noto Sans JP` → `Hiragino Kaku Gothic ProN` → `Yu Gothic` → `sans-serif`.
+- Layout: title + issuer header, recipient + doc-info block, dark `#2c3e50` items table with right-aligned amounts, fixed footer with doc number + page count.
 
 ## Templates
 
@@ -27,21 +22,8 @@ iterate on layout and typography before wiring them into the Next.js route handl
 | `delivery-note.html` | 納品書 | `app/api/pdf/delivery-note/route.ts` | `DRN-YYYYMM-NNNNN` |
 | `invoice.html` | 請求書 | `app/api/pdf/invoice/route.ts` | `INV-YYYYMM-NNNNN` |
 
-## Design conventions
+## Notes
 
-All templates share a common visual language:
-
-- **Font**: `Noto Sans JP` → `Hiragino Kaku Gothic ProN` → `Yu Gothic` → `sans-serif`
-- **Page**: A4, `margin: 15mm 20mm`
-- **Header**: document title (left) + issuer block (right)
-- **Recipient + doc-info block**: recipient name with underline, doc metadata table
-- **Items table**: dark `#2c3e50` header, alternating rows, right-aligned amounts
-- **Footer**: fixed to bottom, doc number + page count
-
-### Template-specific notes
-
-- `delivery-note.html` contains two variants in comments:
-  - **With price** (`include_price = true`): shows unit price + amount columns (default view)
-  - **Without price** (`include_price = false`): hides price columns, shows `.no-price-notice`
-- `work-order.html` includes process step table, inspection template chips, and sign-off boxes.
-- `shipping-order.html` shows `DISPATCH` by default; swap `.type-badge` class to `.storage` for `STOCK_STORAGE` type.
+- `delivery-note.html` has two variants in comments: with price (`include_price = true`, default) shows unit price + amount columns; without price hides them and shows `.no-price-notice`.
+- `work-order.html` includes a process step table, inspection template chips, and sign-off boxes.
+- `shipping-order.html` shows `DISPATCH` by default; swap `.type-badge` to `.storage` for the `STOCK_STORAGE` type.
