@@ -60,5 +60,6 @@ export default defineConfig({
   define: {
     'process.env.NODE_ENV': JSON.stringify(process.env.NODE_ENV ?? 'development'),
     'process.env.NEXT_PUBLIC_APP_VERSION': JSON.stringify('preview'),
+    'import.meta.env.VITE_GOTENBERG_URL': JSON.stringify(GOTENBERG_URL),
   },
 });

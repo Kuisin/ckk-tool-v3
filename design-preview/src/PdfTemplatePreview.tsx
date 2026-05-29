@@ -10,6 +10,7 @@ import {
   ActionIcon,
   Loader,
 } from '@mantine/core';
+import { notifications } from '@mantine/notifications';
 import { IconDownload, IconRefresh } from '@tabler/icons-react';
 import { FileTree } from './FileTree';
 import { buildFileTree, formatDesignLabel } from './file-tree';
@@ -84,15 +85,12 @@ export function PdfTemplatePreview() {
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
     } catch (err) {
-      console.error('Gotenberg PDF generation failed:', err);
-      // Fallback: open in new window for browser print
-      const win = window.open('', '_blank');
-      if (win) {
-        win.document.write(htmlContent);
-        win.document.close();
-        win.focus();
-        win.setTimeout(() => win.print(), 400);
-      }
+      console.error('PDF generation failed:', err);
+      notifications.show({
+        color: 'red',
+        title: 'PDF generation failed',
+        message: 'Could not reach Gotenberg. Make sure the Gotenberg container is running at ' + (import.meta.env.VITE_GOTENBERG_URL ?? 'http://localhost:3100'),
+      });
     } finally {
       setPdfLoading(false);
     }
