@@ -32,6 +32,12 @@
  *                (--app-shell-header-height, --app-shell-footer-height).
  *                No Tailwind or custom CSS needed for the shell structure.
  *
+ * [Custom] height: 100%; minHeight: 0 on AppShell — overrides Mantine's default
+ *          min-height: 100dvh so the shell fits exactly inside the design-preview
+ *          BrowserWindow container (600px) instead of overflowing it.
+ *          overflowY: auto scrolls page content within AppShell rather than
+ *          scrolling the outer preview container, keeping header/footer sticky.
+ *
  * [Custom] The main content area has a subtle box shadow to visually separate it
  *          from the header/footer, matching the demo system's aesthetic.
  *          Uses inline style (single rule) — not worth a CSS module.
@@ -53,6 +59,11 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
       footer={{ height: 40 }}
       // [Mantine] padding="md" → all page content gets 16px inset from AppShell edges
       padding="md"
+      // [Custom] height: 100% fills the BrowserWindow preview container (600px) exactly.
+      // minHeight: 0 overrides Mantine's default min-height: 100dvh, which would otherwise
+      // cause the shell to overflow the preview box and make the outer container scroll.
+      // overflowY: auto lets page content scroll inside the shell while header/footer stay sticky.
+      style={{ height: '100%', minHeight: 0, overflowY: 'auto' }}
     >
       {/* Topbar — 'use client', contains launcher Popover, notifications, user Menu */}
       <AppHeader />
