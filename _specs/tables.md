@@ -101,44 +101,6 @@ View user_permissions {
 ### Master Data
 ```
 // ===========================
-// 顧客（2階層：企業 → 支店）
-// ===========================
-
-Table customers {
-  id              uuid [pk]
-  code            varchar [unique, not null]
-  name            json [not null]         // { ja: '', en: '' }
-  short_name      json                    // { ja: '', en: '' }
-  is_active       boolean [default: true]
-  notes           text
-  created_at      timestamp
-  updated_at      timestamp
-}
-
-Table customer_branches {
-  id              uuid [pk]
-  customer_id     uuid [not null, ref: > customers.id]
-  code            varchar [unique, not null]
-  name            json [not null]         // { ja: '', en: '' }
-  address         text
-  is_active       boolean [default: true]
-  notes           text
-  created_at      timestamp
-  updated_at      timestamp
-}
-
-// 最終需要家（大口顧客のみ任意登録）
-Table end_users {
-  id              uuid [pk]
-  customer_id     uuid [not null, ref: > customers.id]
-  name            json [not null]         // { ja: '', en: '' }
-  is_active       boolean [default: true]
-  notes           text
-  created_at      timestamp
-  updated_at      timestamp
-}
-
-// ===========================
 // 素材・製品
 // ===========================
 
@@ -186,17 +148,6 @@ Table products {
   updated_at      timestamp
 }
 
-// 外注企業（センタレス・コーティング等）
-Table suppliers {
-  id              uuid [pk]
-  code            varchar [unique, not null]
-  name            json [not null]         // { ja: '', en: '' }
-  contact         json                    // 担当者情報 { name, email, phone }
-  is_active       boolean [default: true]
-  notes           text
-  created_at      timestamp
-  updated_at      timestamp
-}
 ```
 
 ### Logic
@@ -208,7 +159,7 @@ Table suppliers {
 // 顧客 + 製品 + 注文種別 + 本数 → 単価。有効日で管理。
 Table price_lists {
   id              uuid [pk]
-  customer_id     uuid [not null, ref: > customers.id]
+  customer_bp_id  uuid [not null, ref: > business_partners.id]
   product_id      varchar [not null, ref: > products.id]
   order_type      ORDER_TYPE [not null]
   min_quantity    int [not null, default: 1]
@@ -237,8 +188,8 @@ Enum ORDER_TYPE {
 Table quotes {
   id              uuid [pk]
   quote_number    varchar [unique, not null]
-  customer_id     uuid [not null, ref: > customers.id]
-  customer_branch_id uuid [ref: > customer_branches.id]
+  customer_bp_id  uuid [not null, ref: > business_partners.id]
+  customer_branch_bp_id uuid [ref: > business_partners.id]
   status          QUOTE_STATUS [not null, default: 'DRAFT']
   valid_until     date
   notes           text
@@ -277,8 +228,8 @@ Table order_acceptances {
   id              uuid [pk]
   order_number    varchar [unique, not null]
   quote_id        uuid [ref: > quotes.id]
-  customer_id     uuid [not null, ref: > customers.id]
-  customer_branch_id uuid [ref: > customer_branches.id]
+  customer_bp_id  uuid [not null, ref: > business_partners.id]
+  customer_branch_bp_id uuid [ref: > business_partners.id]
   customer_order_ref varchar               // 顧客注文書番号（FAX受取）
   status          ORDER_ACCEPTANCE_STATUS [not null, default: 'PENDING']
   total_amount    numeric(12,2)            // 受注書から自動計算
@@ -311,7 +262,7 @@ Table sales_orders {
   amount          numeric(12,2) [not null]
   delivery_date   date
   status          SALES_ORDER_STATUS [not null, default: 'DRAFT']
-  end_user_id     uuid [ref: > end_users.id]  // 任意
+  end_user_bp_id  uuid [ref: > business_partners.id]  // 任意
   is_locked       boolean [not null, default: false]  // 承認依頼中のロック
   notes           text
   created_by      uuid [ref: > users.id]
@@ -454,7 +405,7 @@ Table work_order_steps {
   process_step_id int [not null, ref: > process_step_catalog.id]
   sort_order      int [not null]           // テンプレート順（参考。実行は依存解決で決定）
   execution_location STEP_EXECUTION [not null]
-  supplier_id     uuid [ref: > suppliers.id]     // 外注時
+  supplier_bp_id  uuid [ref: > business_partners.id]  // 外注時
   outsource_requested_at date
   outsource_expected_at  date
   outsource_received_at  date
@@ -705,7 +656,7 @@ Enum TRANSACTION_TYPE {
 Table material_receipts {
   id              uuid [pk]
   material_id     varchar [not null, ref: > materials.id]
-  supplier_id     uuid [ref: > suppliers.id]
+  supplier_bp_id  uuid [ref: > business_partners.id]
   quantity        numeric(12,3) [not null]
   unit            varchar [not null]
   received_at     date [not null]
@@ -758,9 +709,9 @@ Table delivery_notes {
   delivery_number varchar [unique, not null]
   shipping_order_id uuid [not null, ref: > shipping_orders.id]
   delivery_method DELIVERY_METHOD [not null]
-  recipient_id    uuid [not null, ref: > customers.id]
-  recipient_branch_id uuid [ref: > customer_branches.id]
-  end_user_id     uuid [ref: > end_users.id]    // ユーザー直送時
+  recipient_bp_id uuid [not null, ref: > business_partners.id]
+  recipient_branch_bp_id uuid [ref: > business_partners.id]
+  end_user_bp_id  uuid [ref: > business_partners.id]  // ユーザー直送時
   include_price   boolean [not null, default: true]  // 配送完了書に価格記載
   pdf_file_id     uuid [ref: > files.id]
   status          DELIVERY_STATUS [not null, default: 'DRAFT']
@@ -801,8 +752,8 @@ Table delivery_note_items {
 Table invoices {
   id              uuid [pk]
   invoice_number  varchar [unique, not null]
-  customer_id     uuid [not null, ref: > customers.id]
-  customer_branch_id uuid [ref: > customer_branches.id]
+  customer_bp_id  uuid [not null, ref: > business_partners.id]
+  customer_branch_bp_id uuid [ref: > business_partners.id]
   billing_period_from date [not null]
   billing_period_to   date [not null]
   subtotal        numeric(12,2) [not null]
@@ -841,7 +792,7 @@ Table invoice_items {
 
 Table billing_closings {
   id              uuid [pk]
-  customer_id     uuid [not null, ref: > customers.id]
+  customer_bp_id  uuid [not null, ref: > business_partners.id]
   closing_date    date [not null]
   status          CLOSING_STATUS [not null, default: 'PENDING']
   total_amount    numeric(12,2)
@@ -900,11 +851,12 @@ Table design_files {
 }
 ```
 
-### 外部関係者マスタ（Business Partner）
+### Business Partner Master
 ```
 // ===========================
 // 外部関係者マスタ（BP）
 // S/4HANA BP モデルに準拠: 1 法人エンティティ + 複数ロール割当
+// 顧客（CUSTOMER）・仕入先/外注先（VENDOR）・需要家（END_USER）を統合管理
 // ===========================
 
 Enum BP_ROLE {
@@ -981,7 +933,7 @@ Table bp_role_assignments {
 Table bp_customer_attrs {
   bp_id               uuid            [pk, ref: - business_partners.id]
   customer_code       varchar         [unique]          // 旧システム互換コード（任意）
-  billing_bp_id       uuid                              // 請求先が別法人の場合（nullable）
+  billing_bp_id       uuid [ref: > business_partners.id] // 請求先が別法人の場合（nullable）
   closing_day         smallint                          // 締日（1–31、31 = 月末）
   payment_terms_days  int                               // 支払サイト（日数）
   payment_day         smallint                          // 支払日
@@ -1122,6 +1074,14 @@ Table audit_logs {
 // ===========================
 // AD Sync Log
 // ===========================
+
+Enum SYNC_STATUS {
+  RUNNING
+  SUCCESS
+  PARTIAL
+  FAILED
+}
+
 Table ad_sync_logs {
   id              serial      [pk]
   sync_type       varchar     [not null]           // full, delta, single
