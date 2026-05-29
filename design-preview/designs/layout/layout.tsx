@@ -37,12 +37,13 @@
  *          Uses inline style (single rule) — not worth a CSS module.
  */
 
+import type { ReactNode } from 'react';
 import { AppShell } from '@mantine/core';
 import { AppFooter } from '@/components/layout/AppFooter';
 import { AppHeader } from '@/components/layout/AppHeader';
 
 interface DashboardLayoutProps {
-  children: React.ReactNode;
+  children: ReactNode;
 }
 
 export default function DashboardLayout({ children }: DashboardLayoutProps) {
