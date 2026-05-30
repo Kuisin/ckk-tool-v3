@@ -1,4 +1,3 @@
-import type { ReactNode } from 'react';
 import { ActionIcon, Box, Group, Text, Tooltip } from '@mantine/core';
 import {
   IconArrowLeft,
@@ -8,20 +7,31 @@ import {
   IconLock,
   IconRefresh,
 } from '@tabler/icons-react';
+import { buildFrameUrl, type FrameMode, type Viewport } from './build-frame-url';
 
-export type Viewport = 'desktop' | 'mobile';
+export type { Viewport };
 
 interface BrowserWindowProps {
   url: string;
-  children: ReactNode;
-  /** Remove padding and set a fixed height — used for full-layout designs (AppShell-based) */
-  noPadding?: boolean;
+  design: string;
   viewport?: Viewport;
+  scheme: 'light' | 'dark';
+  mode: FrameMode;
+  remountKey?: number;
   onViewportChange?: (v: Viewport) => void;
 }
 
-export function BrowserWindow({ url, children, noPadding, viewport = 'desktop', onViewportChange }: BrowserWindowProps) {
+export function BrowserWindow({
+  url,
+  design,
+  viewport = 'desktop',
+  scheme,
+  mode,
+  remountKey = 0,
+  onViewportChange,
+}: BrowserWindowProps) {
   const isMobile = viewport === 'mobile';
+  const frameSrc = buildFrameUrl({ design, viewport, scheme, mode, remountKey });
 
   return (
     <Box
@@ -34,11 +44,10 @@ export function BrowserWindow({ url, children, noPadding, viewport = 'desktop', 
         display: 'flex',
         flexDirection: 'column',
         width: '100%',
-        maxWidth: isMobile ? 390 : undefined,
-        margin: isMobile ? '0 auto' : undefined,
+        maxWidth: isMobile ? 390 : 1280,
+        margin: '0 auto',
       }}
     >
-      {/* Browser chrome */}
       <Box
         style={{
           background: 'var(--mantine-color-default-hover)',
@@ -47,7 +56,6 @@ export function BrowserWindow({ url, children, noPadding, viewport = 'desktop', 
           flexShrink: 0,
         }}
       >
-        {/* Traffic lights + viewport toggle */}
         <Group gap={8} mb={10} justify="space-between">
           <Group gap={8}>
             <Box
@@ -91,7 +99,6 @@ export function BrowserWindow({ url, children, noPadding, viewport = 'desktop', 
           </Tooltip>
         </Group>
 
-        {/* Navigation + URL bar */}
         <Group gap={6} align="center">
           <ActionIcon variant="subtle" color="gray" size="sm" disabled aria-label="Back">
             <IconArrowLeft size={14} />
@@ -103,7 +110,6 @@ export function BrowserWindow({ url, children, noPadding, viewport = 'desktop', 
             <IconRefresh size={14} />
           </ActionIcon>
 
-          {/* Address bar */}
           <Box
             style={{
               flex: 1,
@@ -128,32 +134,18 @@ export function BrowserWindow({ url, children, noPadding, viewport = 'desktop', 
         </Group>
       </Box>
 
-      {/* Page content */}
-      {noPadding ? (
-        // Full-layout designs: Mantine AppShell renders its Header/Footer with
-        // position:fixed, which resolves against the *viewport* by default — that
-        // makes them escape this preview box and stick to the real window edges.
-        // `transform: translateZ(0)` turns this Box into the containing block for
-        // its fixed descendants, so the header/footer are scoped to the simulated
-        // viewport. overflow:hidden clips anything past it; the AppShell root
-        // handles its own internal scroll via overflowY:auto.
-        <Box
-          style={{
-            position: 'relative',
-            transform: 'translateZ(0)',
-            overflow: 'hidden',
-            height: isMobile ? 700 : 600,
-            background: 'var(--mantine-color-body)',
-          }}
-        >
-          {children}
-        </Box>
-      ) : (
-        // Regular page designs: mirror AppShell.Main padding="md"
-        <Box p="md" style={{ background: 'var(--mantine-color-body)' }}>
-          {children}
-        </Box>
-      )}
+      <iframe
+        key={frameSrc}
+        title="Design preview"
+        src={frameSrc}
+        style={{
+          width: '100%',
+          height: isMobile ? 700 : 600,
+          border: 0,
+          display: 'block',
+          background: 'var(--mantine-color-body)',
+        }}
+      />
     </Box>
   );
 }

@@ -48,16 +48,7 @@
 
 .homeLink {
   border-radius: var(--mantine-radius-sm);
-  transition: background-color 120ms ease;
   text-decoration: none;
   color: inherit;
-  display: block;
-}
-
-.homeLink:hover {
-  background-color: var(--mantine-color-gray-0);
-}
-
-[data-mantine-color-scheme='dark'] .homeLink:hover {
-  background-color: var(--mantine-color-dark-6);
+  flex-shrink: 0;
 }

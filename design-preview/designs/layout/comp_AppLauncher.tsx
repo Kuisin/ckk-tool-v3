@@ -45,6 +45,7 @@ import {
 } from '@tabler/icons-react';
 import { useMemo, useState } from 'react';
 import { CATEGORY_COLORS, type AppCategory, appList, getAppsByCategory } from '../lib/app-list';
+import { resolveOperationCode, searchOperationCodes, navigateByOperationCode, sanitizeOperationCodeInput, formatOperationCodeDisplay } from '../lib/operation-codes';
 import classes from './AppLauncher.module.css';
 
 const ICON_MAP: Record<string, ComponentType<{ size?: number }>> = {
@@ -89,56 +90,90 @@ interface AppLauncherProps {
   onNavigate?: () => void;
 }
 
+function jumpToCode(code: string, onNavigate?: () => void) {
+  navigateByOperationCode(code, {
+    onNavigate: (href) => {
+      onNavigate?.();
+      if (typeof window !== 'undefined') {
+        window.location.assign(href);
+      }
+    },
+  });
+}
+
 export function AppLauncher({ onNavigate }: AppLauncherProps) {
   const [search, setSearch] = useState('');
   const categories = getAppsByCategory();
 
   const searchResults = useMemo(() => {
-    const q = search.trim().toLowerCase();
+    const q = search.trim();
     if (!q) return null;
-    return appList.filter((app) => app.label.toLowerCase().includes(q));
+
+    const codeMatch = resolveOperationCode(q);
+    if (codeMatch) return [codeMatch];
+
+    const codeResults = searchOperationCodes(q, 12);
+    const cleaned = sanitizeOperationCodeInput(q);
+    if (cleaned && codeResults.length > 0) return codeResults;
+
+    const labelResults = appList.filter((app) =>
+      app.label.toLowerCase().includes(q.toLowerCase())
+        || app.operationCode.toUpperCase().startsWith(cleaned),
+    );
+
+    if (labelResults.length > 0) {
+      return labelResults.flatMap((app) => {
+        const resolved = resolveOperationCode(app.operationCode);
+        return resolved ? [resolved] : [];
+      });
+    }
+
+    return codeResults;
   }, [search]);
 
   return (
-    <Stack gap="sm" w={520}>
-      <TextInput
-        placeholder="アプリを検索..."
-        leftSection={<IconSearch size={14} />}
-        value={search}
-        onChange={(e) => setSearch(e.currentTarget.value)}
-        autoFocus
-      />
+    <Stack gap="sm" w="100%" miw={0}>
+      <Group gap="0" wrap="nowrap" align="stretch" px="xs" py="2xs">
+        <UnstyledButton
+          onClick={onNavigate}
+          className={classes.homeLink}
+          px="xs"
+        >
+          <IconHome size={24} stroke={1.5} />
+        </UnstyledButton>
+        <TextInput
+          flex={1}
+          placeholder="操作コード / アプリ名..."
+          leftSection={<IconSearch size={14} />}
+          value={search}
+          onChange={(e) => setSearch(e.currentTarget.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' && search.trim()) {
+              jumpToCode(search.trim(), onNavigate);
+            }
+          }}
+          autoFocus
+        />
+      </Group>
 
-      <UnstyledButton
-        onClick={onNavigate}
-        p="xs"
-        className={classes.homeLink}
-        w="100%"
-      >
-        <Group gap="xs">
-          <ThemeIcon variant="light" color="blue" size="md" radius="sm">
-            <IconHome size={14} />
-          </ThemeIcon>
-          <Text size="sm" c="dimmed">ホーム</Text>
-        </Group>
-      </UnstyledButton>
+      <Divider mx="xs" />
 
-      <Divider />
-
-      <ScrollArea mah={420} offsetScrollbars>
+      <ScrollArea.Autosize mah={420} type="auto" w="100%" miw={0}>
         {searchResults ? (
-          <Stack gap={2}>
+          <Stack gap={2} mx="xs">
             {searchResults.length === 0 ? (
               <Text size="sm" c="dimmed" ta="center" py="md">
                 該当するアプリが見つかりません
               </Text>
             ) : (
-              searchResults.map((app) => {
-                const IconComponent = ICON_MAP[app.icon] ?? IconFileText;
+              searchResults.map((entry) => {
+                const app = appList.find((a) => a.href === entry.href);
+                const IconComponent = app ? (ICON_MAP[app.icon] ?? IconFileText) : IconFileText;
+                const jumpCode = entry.code;
                 return (
                   <UnstyledButton
-                    key={app.key}
-                    onClick={onNavigate}
+                    key={entry.code}
+                    onClick={() => jumpToCode(jumpCode, onNavigate)}
                     className={classes.searchRow}
                     px="xs"
                     py={6}
@@ -146,14 +181,17 @@ export function AppLauncher({ onNavigate }: AppLauncherProps) {
                     <Group gap="sm">
                       <ThemeIcon
                         variant="light"
-                        color={CATEGORY_COLORS[app.category]}
+                        color={entry.category === '共通' ? 'gray' : CATEGORY_COLORS[entry.category as AppCategory]}
                         size="md"
                         radius="sm"
                       >
                         <IconComponent size={14} />
                       </ThemeIcon>
-                      <Text size="sm">{app.label}</Text>
-                      <Text size="xs" c="dimmed">{app.category}</Text>
+                      <Text size="sm" fw={600} style={{ fontVariantNumeric: 'tabular-nums' }}>
+                        {formatOperationCodeDisplay(entry)}
+                      </Text>
+                      <Text size="sm">{entry.label}</Text>
+                      <Text size="xs" c="dimmed">{entry.category}</Text>
                     </Group>
                   </UnstyledButton>
                 );
@@ -161,7 +199,7 @@ export function AppLauncher({ onNavigate }: AppLauncherProps) {
             )}
           </Stack>
         ) : (
-          <Stack gap="md">
+          <Stack gap="md" mx="xs">
             {categories.map((cat, catIndex) => {
               const SectionIcon = CATEGORY_SECTION_ICONS[cat.category];
 
@@ -196,6 +234,9 @@ export function AppLauncher({ onNavigate }: AppLauncherProps) {
                               <Text size="sm" ta="center" fw={500} lh={1.3}>
                                 {app.label}
                               </Text>
+                              <Text size="xs" c="dimmed" style={{ fontVariantNumeric: 'tabular-nums' }}>
+                                {app.operationCode}
+                              </Text>
                             </Stack>
                           </Paper>
                         </UnstyledButton>
@@ -209,7 +250,7 @@ export function AppLauncher({ onNavigate }: AppLauncherProps) {
             })}
           </Stack>
         )}
-      </ScrollArea>
+      </ScrollArea.Autosize>
     </Stack>
   );
 }

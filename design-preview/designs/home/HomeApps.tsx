@@ -70,6 +70,7 @@ import {
   ThemeIcon,
   Title,
   UnstyledButton,
+  useComputedColorScheme,
 } from '@mantine/core';
 import {
   IconAlertTriangle,
@@ -100,6 +101,7 @@ import {
 } from '@tabler/icons-react';
 import classes from './HomeApps.module.css';
 import { CATEGORY_COLORS, type AppCategory, getAppsByCategory } from '../lib/app-list';
+import { useIsMobile } from '../lib/viewport-context';
 
 // Icon lookup map (same as AppLauncher — extract to a shared util in production)
 const ICON_MAP: Record<string, ComponentType<{ size?: number }>> = {
@@ -160,6 +162,9 @@ interface HomeAppsProps {
 
 export function HomeApps({ user = MOCK_USER, isLoading = false }: HomeAppsProps) {
   const categories = getAppsByCategory();
+  const colorScheme = useComputedColorScheme('light', { getInitialValueInEffect: false });
+  const isDark = colorScheme === 'dark';
+  const isMobile = useIsMobile();
 
   return (
     <Stack gap="xl" p="md" maw={1200}>
@@ -167,33 +172,47 @@ export function HomeApps({ user = MOCK_USER, isLoading = false }: HomeAppsProps)
       {/* ── User profile card ─────────────────────────────────────────────── */}
       {/*
        * [Mantine] Card with withBorder + shadow="xs" — standard detail container.
-       * [Custom] This replaces the demo system's plain centered avatar+text.
-       *          A Card provides clearer visual hierarchy and looks more polished.
+       * [Custom] Company logo (from _assets/) sits in the top-right corner of the card,
+       *          switching between light/dark variants via useComputedColorScheme.
+       *          The logo-with-label SVG is used here — it includes the full mark + text.
        */}
       <Card withBorder shadow="xs" radius="md" padding="lg">
-        <Group>
+        <Group justify="space-between" align="flex-start" wrap="nowrap">
+          <Group>
+            {/*
+             * [Mantine] Avatar size="xl" radius="xl" color="blue"
+             * - Shows initials as fallback when src is null
+             * - In production: <Avatar src={user.avatarUrl} ...>{user.initials}</Avatar>
+             */}
+            <Avatar
+              size={72}
+              radius="xl"
+              color="blue"
+              src={user.avatarUrl ?? undefined}
+            >
+              {user.initials}
+            </Avatar>
+            <Stack gap={4}>
+              <Title order={3}>{user.displayName}</Title>
+              <Text size="sm" c="dimmed">{user.username}</Text>
+              {/* [Mantine] Badge for department — more prominent than plain Text */}
+              {/* [Custom] variant="light" keeps it subtle; outline would be too noisy */}
+              <Badge variant="light" color="blue" size="sm">
+                {user.department}
+              </Badge>
+            </Stack>
+          </Group>
+
           {/*
-           * [Mantine] Avatar size="xl" radius="xl" color="blue"
-           * - Shows initials as fallback when src is null
-           * - In production: <Avatar src={user.avatarUrl} ...>{user.initials}</Avatar>
+           * [Custom] Company logo mark — uses the logo-with-label SVG which includes
+           * both the circular mark and the company name text below it.
+           * opacity=0.75 keeps it subtle so it doesn't compete with the user info.
            */}
-          <Avatar
-            size={72}
-            radius="xl"
-            color="blue"
-            src={user.avatarUrl ?? undefined}
-          >
-            {user.initials}
-          </Avatar>
-          <Stack gap={4}>
-            <Title order={3}>{user.displayName}</Title>
-            <Text size="sm" c="dimmed">{user.username}</Text>
-            {/* [Mantine] Badge for department — more prominent than plain Text */}
-            {/* [Custom] variant="light" keeps it subtle; outline would be too noisy */}
-            <Badge variant="light" color="blue" size="sm">
-              {user.department}
-            </Badge>
-          </Stack>
+          <img
+            src={isDark ? '/design-assets/dark_logo-with-label.svg' : '/design-assets/logo-with-label.svg'}
+            alt="シー・ケィ・ケー株式会社"
+            style={{ height: 56, width: 56, opacity: 0.75, flexShrink: 0 }}
+          />
         </Group>
       </Card>
 
@@ -225,7 +244,7 @@ export function HomeApps({ user = MOCK_USER, isLoading = false }: HomeAppsProps)
              * [Custom] spacing="sm" — tighter than the default "md" for a denser grid
              *          that doesn't feel too airy on large screens.
              */}
-            <SimpleGrid cols={{ base: 2, sm: 3, lg: 4 }} spacing="sm">
+            <SimpleGrid cols={isMobile ? 2 : 4} spacing="sm">
               {cat.apps.map((app) => {
                 const IconComponent = ICON_MAP[app.icon] ?? IconFileText;
 
@@ -262,6 +281,9 @@ export function HomeApps({ user = MOCK_USER, isLoading = false }: HomeAppsProps)
                         </ThemeIcon>
                         <Text size="sm" ta="center" fw={500} lh={1.3}>
                           {app.label}
+                        </Text>
+                        <Text size="xs" c="dimmed" style={{ fontVariantNumeric: 'tabular-nums' }}>
+                          {app.operationCode}
                         </Text>
                       </Stack>
                     </Paper>

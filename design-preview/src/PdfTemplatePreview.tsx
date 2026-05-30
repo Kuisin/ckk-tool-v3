@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
+import { useSearchParam } from './use-search-param';
 import {
   Box,
   Text,
@@ -48,7 +49,17 @@ function templateDataPath(templatePath: string): string | null {
 const A4_W = 794;
 const A4_H = 1123;
 
+// Noto Sans JP loaded from _assets served by designAssetsPlugin at /design-assets/
+// Using the variable font so a single file covers all weights (100–900).
+const FONT_FACE_CSS = `@font-face {
+  font-family: 'Noto Sans JP';
+  src: url('/design-assets/fonts/NotoSansJP-VariableFont_wght.ttf') format('truetype');
+  font-weight: 100 900;
+  font-display: swap;
+}`;
+
 function injectPreviewStyles(html: string): string {
+  const fontStyle = `<style>\n${FONT_FACE_CSS}\n</style>`;
   const baseStyle = `<style>\n${baseCss}\n</style>`;
   const padStyle = '<style>body { padding: 10mm !important; }</style>';
 
@@ -59,13 +70,19 @@ function injectPreviewStyles(html: string): string {
       ? html.replace('<head>', `<head>\n${baseStyle}`)
       : baseStyle + html;
 
+  // Inject font-face + padding override before </head>
+  const combined = `${fontStyle}\n${padStyle}`;
   return withBase.includes('</head>')
-    ? withBase.replace('</head>', `${padStyle}\n</head>`)
-    : padStyle + withBase;
+    ? withBase.replace('</head>', `${combined}\n</head>`)
+    : combined + withBase;
 }
 
 export function PdfTemplatePreview() {
-  const [selected, setSelected] = useState<string | null>(templatePaths[0] ?? null);
+  const [templateParam, setTemplateParam] = useSearchParam('template', templatePaths[0] ?? '');
+  const selected = templatePaths.includes(templateParam)
+    ? templateParam
+    : (templatePaths[0] ?? null);
+  const setSelected = (path: string | null) => setTemplateParam(path ?? '');
   const [rawHtml, setRawHtml] = useState<string | null>(null);
   const [defaultJson, setDefaultJson] = useState<string>('{}');
   const [jsonText, setJsonText] = useState<string>('{}');

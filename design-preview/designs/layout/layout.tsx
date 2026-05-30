@@ -10,7 +10,7 @@ interface DashboardLayoutProps {
 export default function DashboardLayout({ children }: DashboardLayoutProps) {
   return (
     <AppShell
-      header={{ height: 60 }}
+      // header={{ height: 60 }}
       footer={{ height: 40 }}
       // [Mantine] padding="md" → all page content gets 16px inset from AppShell edges
       padding="md"

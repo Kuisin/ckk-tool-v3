@@ -27,6 +27,8 @@ export interface AppEntry {
   key: string;
   /** Japanese display label (also used as fallback if i18n not loaded) */
   label: string;
+  /** List-screen operation code — see `_specs/operation-code.md` */
+  operationCode: string;
   /** Route path relative to / */
   href: string;
   /** Tabler icon name — import as Icon{Name} from @tabler/icons-react */
@@ -46,6 +48,7 @@ export const appList: AppEntry[] = [
   {
     key: 'price-lists',
     label: '価格表',
+    operationCode: 'SA01',
     href: '/sales/price-lists',
     icon: 'IconCurrencyYen',
     category: '販売',
@@ -54,6 +57,7 @@ export const appList: AppEntry[] = [
   {
     key: 'quotes',
     label: '見積書',
+    operationCode: 'SA02',
     href: '/sales/quotes',
     icon: 'IconFileText',
     category: '販売',
@@ -62,6 +66,7 @@ export const appList: AppEntry[] = [
   {
     key: 'order-acceptances',
     label: '注文受諾書',
+    operationCode: 'SA03',
     href: '/sales/order-acceptances',
     icon: 'IconClipboardCheck',
     category: '販売',
@@ -70,6 +75,7 @@ export const appList: AppEntry[] = [
   {
     key: 'design-requests',
     label: '設計依頼書',
+    operationCode: 'SA04',
     href: '/sales/design-requests',
     icon: 'IconRuler2',
     category: '販売',
@@ -80,6 +86,7 @@ export const appList: AppEntry[] = [
   {
     key: 'material-receipts',
     label: '素材入荷',
+    operationCode: 'PU01',
     href: '/purchase/material-receipts',
     icon: 'IconPackageImport',
     category: '購買',
@@ -88,6 +95,7 @@ export const appList: AppEntry[] = [
   {
     key: 'outsource-orders',
     label: '外注依頼',
+    operationCode: 'PU02',
     href: '/purchase/outsource-orders',
     icon: 'IconTruckDelivery',
     category: '購買',
@@ -98,6 +106,7 @@ export const appList: AppEntry[] = [
   {
     key: 'sales-orders',
     label: '受注書',
+    operationCode: 'PD01',
     href: '/production/sales-orders',
     icon: 'IconClipboardList',
     category: '生産',
@@ -106,6 +115,7 @@ export const appList: AppEntry[] = [
   {
     key: 'work-orders',
     label: '指示書',
+    operationCode: 'PD02',
     href: '/production/work-orders',
     icon: 'IconSettings2',
     category: '生産',
@@ -114,6 +124,7 @@ export const appList: AppEntry[] = [
   {
     key: 'approvals',
     label: '承認管理',
+    operationCode: 'PD03',
     href: '/production/approvals',
     icon: 'IconShieldCheck',
     category: '生産',
@@ -122,6 +133,7 @@ export const appList: AppEntry[] = [
   {
     key: 'product-inventory',
     label: '製品在庫',
+    operationCode: 'PD04',
     href: '/production/inventory/products',
     icon: 'IconBoxSeam',
     category: '生産',
@@ -130,6 +142,7 @@ export const appList: AppEntry[] = [
   {
     key: 'material-inventory',
     label: '素材在庫',
+    operationCode: 'PD05',
     href: '/production/inventory/materials',
     icon: 'IconStack2',
     category: '生産',
@@ -140,6 +153,7 @@ export const appList: AppEntry[] = [
   {
     key: 'shipping-orders',
     label: '出荷書',
+    operationCode: 'SH01',
     href: '/shipping/shipping-orders',
     icon: 'IconTruck',
     category: '出荷',
@@ -148,6 +162,7 @@ export const appList: AppEntry[] = [
   {
     key: 'delivery-notes',
     label: '納品書',
+    operationCode: 'SH02',
     href: '/shipping/delivery-notes',
     icon: 'IconReceipt',
     category: '出荷',
@@ -158,6 +173,7 @@ export const appList: AppEntry[] = [
   {
     key: 'invoices',
     label: '請求書',
+    operationCode: 'BL01',
     href: '/billing/invoices',
     icon: 'IconFileInvoice',
     category: '請求',
@@ -166,6 +182,7 @@ export const appList: AppEntry[] = [
   {
     key: 'billing-closings',
     label: '締日処理',
+    operationCode: 'BL02',
     href: '/billing/closings',
     icon: 'IconCalendarDue',
     category: '請求',
@@ -176,6 +193,7 @@ export const appList: AppEntry[] = [
   {
     key: 'master-customers',
     label: '顧客',
+    operationCode: 'MS01',
     href: '/master/customers',
     icon: 'IconBuilding',
     category: 'マスタ',
@@ -184,6 +202,7 @@ export const appList: AppEntry[] = [
   {
     key: 'master-end-users',
     label: '最終需要家',
+    operationCode: 'MS02',
     href: '/master/end-users',
     icon: 'IconUsers',
     category: 'マスタ',
@@ -192,6 +211,7 @@ export const appList: AppEntry[] = [
   {
     key: 'master-products',
     label: '製品',
+    operationCode: 'MS03',
     href: '/master/products',
     icon: 'IconCylinder',
     category: 'マスタ',
@@ -200,6 +220,7 @@ export const appList: AppEntry[] = [
   {
     key: 'master-material-types',
     label: '材種',
+    operationCode: 'MS04',
     href: '/master/material-types',
     icon: 'IconAtom',
     category: 'マスタ',
@@ -208,6 +229,7 @@ export const appList: AppEntry[] = [
   {
     key: 'master-materials',
     label: '素材',
+    operationCode: 'MS05',
     href: '/master/materials',
     icon: 'IconBolt',
     category: 'マスタ',
@@ -216,6 +238,7 @@ export const appList: AppEntry[] = [
   {
     key: 'master-suppliers',
     label: '外注企業',
+    operationCode: 'MS06',
     href: '/master/suppliers',
     icon: 'IconBuildingFactory2',
     category: 'マスタ',
@@ -224,6 +247,7 @@ export const appList: AppEntry[] = [
   {
     key: 'master-process-steps',
     label: '工程マスタ',
+    operationCode: 'MS07',
     href: '/master/process-steps',
     icon: 'IconGitBranch',
     category: 'マスタ',
@@ -232,6 +256,7 @@ export const appList: AppEntry[] = [
   {
     key: 'master-inspection-templates',
     label: '検査表テンプレート',
+    operationCode: 'MS08',
     href: '/master/inspection-templates',
     icon: 'IconListCheck',
     category: 'マスタ',
@@ -240,6 +265,7 @@ export const appList: AppEntry[] = [
   {
     key: 'master-defect-types',
     label: '不良種類',
+    operationCode: 'MS09',
     href: '/master/defect-types',
     icon: 'IconAlertTriangle',
     category: 'マスタ',
@@ -248,6 +274,7 @@ export const appList: AppEntry[] = [
   {
     key: 'master-approval-groups',
     label: '承認グループ',
+    operationCode: 'MS0A',
     href: '/master/approval-groups',
     icon: 'IconUsersGroup',
     category: 'マスタ',

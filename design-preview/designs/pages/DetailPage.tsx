@@ -27,22 +27,20 @@ import {
   IconLoader,
   IconX,
 } from '@tabler/icons-react';
+import { useIsMobile } from '../lib/viewport-context';
+
 // ── FieldValue helper ────────────────────────────────────────────────────────
 // [Custom] In production: import { FieldValue } from '@/components/ui/FieldValue'
-// Props: label (string), value (ReactNode), span (optional — for SimpleGrid colSpan)
 function FieldValue({ label, value }: { label: string; value: ReactNode }) {
   return (
     <Stack gap={2}>
-      {/* [Mantine] Text size="xs" c="dimmed" for the label */}
       <Text size="xs" c="dimmed">{label}</Text>
-      {/* [Mantine] Text size="sm" fw={500} for the value */}
       <Text size="sm" fw={500}>{value ?? '—'}</Text>
     </Stack>
   );
 }
 
 // ── StatusBadge helpers ──────────────────────────────────────────────────────
-// [Custom] In production: import { StatusBadge } from '@/components/ui/StatusBadge'
 type WorkOrderStatus = 'DRAFT' | 'PENDING_APPROVAL' | 'APPROVED' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED';
 type StepStatus = 'PENDING' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED';
 
@@ -87,7 +85,6 @@ const MOCK_AUDIT_LOG = [
 ];
 
 // ── Step status icon ─────────────────────────────────────────────────────────
-// [Custom] Color-coded ThemeIcon per STEP_STATUS (see _specs/design.md §7.2)
 function StepStatusIcon({ status }: { status: StepStatus }) {
   const config = {
     PENDING:     { icon: <IconClock size={14} />,  color: 'gray'   },
@@ -104,6 +101,7 @@ function StepStatusIcon({ status }: { status: StepStatus }) {
 
 // ── Main component ───────────────────────────────────────────────────────────
 export default function WorkOrderDetailPage() {
+  const isMobile = useIsMobile();
   const wo = MOCK_WORK_ORDER;
   const { label: statusLabel, color: statusColor } = WO_STATUS[wo.status];
 
@@ -111,130 +109,118 @@ export default function WorkOrderDetailPage() {
     <Stack gap="md">
 
       {/* ── Page header ─────────────────────────────────────────────────── */}
-      <Group justify="space-between" align="flex-start">
-        <Stack gap={4}>
-          {/* [Mantine] Breadcrumbs */}
-          <Breadcrumbs>
-            <Text size="sm">ホーム</Text>
-            <Text size="sm">生産</Text>
-            <Text size="sm">指示書</Text>
-            <Text size="sm">#{wo.workOrderNumber}</Text>
-          </Breadcrumbs>
-          {/* [Custom] Title + StatusBadge inline — standard detail page pattern */}
-          <Group gap="sm" align="center">
-            <Title order={2}>指示書 #{wo.workOrderNumber}</Title>
-            {/* [Mantine] Badge — size/radius come from global theme */}
+      <Group justify="space-between" align="flex-start" wrap="nowrap">
+        <Stack gap={4} style={{ minWidth: 0 }}>
+          {!isMobile && (
+            <Breadcrumbs>
+              <Text size="sm">ホーム</Text>
+              <Text size="sm">生産</Text>
+              <Text size="sm">指示書</Text>
+              <Text size="sm">#{wo.workOrderNumber}</Text>
+            </Breadcrumbs>
+          )}
+          <Group gap="sm" align="center" wrap="nowrap">
+            <Title order={isMobile ? 3 : 2} style={{ whiteSpace: 'nowrap' }}>
+              指示書 #{wo.workOrderNumber}
+            </Title>
             <Badge color={statusColor}>{statusLabel}</Badge>
           </Group>
         </Stack>
 
-        {/* Action buttons */}
-        <Group>
-          {/* [Mantine] Button variant="default" for secondary actions */}
-          <Button
-            variant="default"
-            leftSection={<IconEdit size={14} />}
-          >
-            編集
-          </Button>
-          {/* [Custom] PdfButton — in production links to /api/pdf/work-order */}
-          {/* In production: import { PdfButton } from '@/components/ui/PdfButton' */}
-          <Button
-            variant="default"
-            leftSection={<IconFileTypePdf size={14} />}
-          >
-            PDF
-          </Button>
-          {/* [Mantine] Menu for overflow actions */}
-          <Menu shadow="sm">
+        {/* Action buttons — collapsed into Menu on mobile */}
+        {isMobile ? (
+          <Menu shadow="sm" position="bottom-end">
             <Menu.Target>
-              <Button variant="default" px="xs">
+              <Button variant="default" px="xs" size="sm">
                 <IconDotsVertical size={16} />
               </Button>
             </Menu.Target>
             <Menu.Dropdown>
+              <Menu.Item leftSection={<IconEdit size={14} />}>編集</Menu.Item>
+              <Menu.Item leftSection={<IconFileTypePdf size={14} />}>PDF</Menu.Item>
               <Menu.Item>コピーして新規作成</Menu.Item>
               <Menu.Divider />
               <Menu.Item color="red">キャンセル</Menu.Item>
             </Menu.Dropdown>
           </Menu>
-        </Group>
+        ) : (
+          <Group gap="xs" style={{ flexShrink: 0 }}>
+            <Button variant="default" leftSection={<IconEdit size={14} />}>編集</Button>
+            <Button variant="default" leftSection={<IconFileTypePdf size={14} />}>PDF</Button>
+            <Menu shadow="sm">
+              <Menu.Target>
+                <Button variant="default" px="xs">
+                  <IconDotsVertical size={16} />
+                </Button>
+              </Menu.Target>
+              <Menu.Dropdown>
+                <Menu.Item>コピーして新規作成</Menu.Item>
+                <Menu.Divider />
+                <Menu.Item color="red">キャンセル</Menu.Item>
+              </Menu.Dropdown>
+            </Menu>
+          </Group>
+        )}
       </Group>
 
       {/* ── Summary card (FieldValue grid) ────────────────────────────── */}
       {/*
-       * [Mantine] SimpleGrid cols={{ base: 1, sm: 2, lg: 3 }}
-       * [Custom] FieldValue renders label+value pairs (see above).
-       *          Each FieldValue is one cell in the grid.
+       * [Custom] Grid cols are JS-driven (not CSS breakpoints) so the preview
+       * correctly collapses to 1 column in mobile mode regardless of the real
+       * browser viewport width.
        */}
       <Paper withBorder p="md" radius="md">
-        <SimpleGrid cols={{ base: 1, sm: 2, lg: 3 }} spacing="md">
+        <SimpleGrid cols={isMobile ? 1 : 3} spacing="md">
           <FieldValue label="受注番号" value={<Text size="sm" ff="mono">{wo.salesOrderNumber}</Text>} />
           <FieldValue label="顧客" value={wo.customerName} />
           <FieldValue label="製品" value={wo.productName} />
           <FieldValue label="種別" value={wo.type === 'MANUFACTURE' ? '製造分' : '在庫分'} />
           <FieldValue label="予定数量" value={`${wo.plannedQuantity} 本`} />
           <FieldValue label="素材" value={wo.material} />
-          <FieldValue label="作成者" value={wo.createdBy} />
-          <FieldValue label="作成日時" value={wo.createdAt} />
-          <FieldValue label="更新日時" value={wo.updatedAt} />
+          {!isMobile && (
+            <>
+              <FieldValue label="作成者" value={wo.createdBy} />
+              <FieldValue label="作成日時" value={wo.createdAt} />
+              <FieldValue label="更新日時" value={wo.updatedAt} />
+            </>
+          )}
         </SimpleGrid>
+        {/* Show timestamps inline on mobile to save vertical space */}
+        {isMobile && (
+          <Group gap="xl" mt="sm">
+            <Text size="xs" c="dimmed">作成: {wo.createdAt}</Text>
+            <Text size="xs" c="dimmed">更新: {wo.updatedAt}</Text>
+          </Group>
+        )}
       </Paper>
 
       {/* ── Approval Status Panel ─────────────────────────────────────── */}
-      {/*
-       * [Custom] ApprovalStatusPanel — shown when approval_status != NONE.
-       * In production: import { ApprovalStatusPanel } from '@/components/production/ApprovalStatusPanel'
-       * Uses Mantine Stepper to show 2-step approval flow.
-       */}
       <Paper withBorder p="md" radius="md">
         <Title order={5} mb="md">承認状況</Title>
         {/*
-         * [Mantine] Stepper — active index based on approval_status:
-         *   PENDING_1ST → 0 (step 0 in progress)
-         *   APPROVED_1ST / PENDING_2ND → 1 (step 1 in progress)
-         *   APPROVED → 2 (completed)
-         * [Custom] active={1} here = "第一承認済、第二承認待ち"
+         * [Mantine] Stepper — orientation vertical on mobile to fit narrow width
          */}
-        <Stepper active={1} size="sm">
-          <Stepper.Step
-            label="第一承認"
-            description="工場長・部長クラス"
-            // [Mantine] completedIcon = check (default) when step is done
-          />
-          <Stepper.Step
-            label="第二承認"
-            description="部長クラス"
-            // [Mantine] loading=true shows spinner for the current step
-            loading={false}
-          />
+        <Stepper active={1} size="sm" orientation={isMobile ? 'vertical' : 'horizontal'}>
+          <Stepper.Step label="第一承認" description="工場長・部長クラス" />
+          <Stepper.Step label="第二承認" description="部長クラス" loading={false} />
         </Stepper>
       </Paper>
 
-      {/* ── Work Order Steps (Process Workflow) ───────────────────────── */}
-      {/*
-       * [Custom] WorkOrderStepsPanel with StepCard per step.
-       * In production: import { WorkOrderStepsPanel } from '@/components/production/WorkOrderStepsPanel'
-       */}
+      {/* ── Work Order Steps ─────────────────────────────────────────── */}
       <Paper withBorder p="md" radius="md">
         <Group justify="space-between" mb="sm">
           <Title order={5}>工程ワークフロー</Title>
-          <Button variant="subtle" size="xs">変更承認依頼</Button>
+          {!isMobile && (
+            <Button variant="subtle" size="xs">変更承認依頼</Button>
+          )}
         </Group>
         <Stack gap="xs">
           {MOCK_STEPS.map((step) => (
-            /*
-             * [Custom] StepCard: Paper withBorder p="sm"
-             * Color-coded ThemeIcon by step status (see StepStatusIcon above).
-             * OUTSOURCE steps show supplier info + outsource dates.
-             */
             <Paper key={step.id} withBorder p="sm" radius="sm">
               <Group justify="space-between" wrap="nowrap">
                 <Group gap="sm">
                   <StepStatusIcon status={step.status} />
                   <Text size="sm" fw={600}>{step.name}</Text>
-                  {/* [Mantine] Badge for execution location */}
-                  {/* [Custom] 'light' variant distinguishes it from status badges */}
                   <Badge
                     variant="outline"
                     size="xs"
@@ -243,18 +229,20 @@ export default function WorkOrderDetailPage() {
                     {step.location === 'OUTSOURCE' ? '外注' : '社内'}
                   </Badge>
                 </Group>
-                {step.location === 'OUTSOURCE' && step.supplier && (
+                {!isMobile && step.location === 'OUTSOURCE' && step.supplier && (
                   <Text size="xs" c="dimmed">{step.supplier}</Text>
                 )}
               </Group>
-              {/* Outsource dates */}
+              {/* Supplier info on mobile (relocated under the step name) */}
+              {isMobile && step.location === 'OUTSOURCE' && step.supplier && (
+                <Text size="xs" c="dimmed" mt={4} pl={28}>{step.supplier}</Text>
+              )}
               {step.location === 'OUTSOURCE' && (
                 <Group gap="xl" mt="xs" pl={28}>
                   <Text size="xs" c="dimmed">依頼: {step.startedAt ?? '—'}</Text>
                   <Text size="xs" c="dimmed">入荷予定: {step.expectedAt ?? '—'}</Text>
                 </Group>
               )}
-              {/* Completion info */}
               {step.status === 'COMPLETED' && step.completedAt && (
                 <Group gap="xl" mt="xs" pl={28}>
                   <Text size="xs" c="dimmed">完了: {step.completedAt}（{step.completedBy}）</Text>
@@ -263,13 +251,12 @@ export default function WorkOrderDetailPage() {
             </Paper>
           ))}
         </Stack>
+        {isMobile && (
+          <Button variant="subtle" size="xs" mt="sm" fullWidth>変更承認依頼</Button>
+        )}
       </Paper>
 
       {/* ── Tabs ─────────────────────────────────────────────────────── */}
-      {/*
-       * [Mantine] Tabs — three panels: 明細 / 関連 / 履歴
-       * [Custom] defaultValue="items" shows the line items tab first.
-       */}
       <Tabs defaultValue="items">
         <Tabs.List>
           <Tabs.Tab value="items">明細</Tabs.Tab>
@@ -277,54 +264,40 @@ export default function WorkOrderDetailPage() {
           <Tabs.Tab value="history">履歴</Tabs.Tab>
         </Tabs.List>
 
-        {/* 明細 tab — line items */}
         <Tabs.Panel value="items" pt="md">
-          {/* [Mantine] Table — striped + highlightOnHover set in global theme */}
           <Table>
             <Table.Thead>
               <Table.Tr>
                 <Table.Th>項目</Table.Th>
                 <Table.Th>数量</Table.Th>
-                <Table.Th>備考</Table.Th>
+                {!isMobile && <Table.Th>備考</Table.Th>}
               </Table.Tr>
             </Table.Thead>
             <Table.Tbody>
               <Table.Tr>
                 <Table.Td>{wo.productName}</Table.Td>
                 <Table.Td>{wo.plannedQuantity} 本</Table.Td>
-                <Table.Td>—</Table.Td>
+                {!isMobile && <Table.Td>—</Table.Td>}
               </Table.Tr>
             </Table.Tbody>
           </Table>
         </Tabs.Panel>
 
-        {/* 関連 tab — related documents */}
         <Tabs.Panel value="related" pt="md">
           <Stack gap="xs">
             <Group>
               <Text size="sm" c="dimmed" w={120}>受注書</Text>
-              <Text size="sm" ff="mono" c="blue">
-                {wo.salesOrderNumber}
-              </Text>
+              <Text size="sm" ff="mono" c="blue">{wo.salesOrderNumber}</Text>
             </Group>
           </Stack>
         </Tabs.Panel>
 
-        {/* 履歴 tab — audit timeline */}
-        {/*
-         * [Custom] AuditTimeline renders audit_logs in reverse-chronological order.
-         * In production: import { AuditTimeline } from '@/components/production/AuditTimeline'
-         * Uses Mantine Timeline. Each bullet shows user's first kanji character.
-         */}
         <Tabs.Panel value="history" pt="md">
           <Timeline active={-1} bulletSize={28} lineWidth={2}>
             {MOCK_AUDIT_LOG.map((log) => (
               <Timeline.Item
                 key={log.id}
-                // [Mantine] bullet renders the user's initial character as Avatar
-                bullet={
-                  <Text size="xs" fw={700}>{log.user[0]}</Text>
-                }
+                bullet={<Text size="xs" fw={700}>{log.user[0]}</Text>}
                 title={log.action}
               >
                 <Text size="xs" c="dimmed">{log.at} · {log.user}</Text>
@@ -336,11 +309,15 @@ export default function WorkOrderDetailPage() {
       </Tabs>
 
       {/* ── Footer timestamps ─────────────────────────────────────────── */}
-      <Divider />
-      <Group gap="xl">
-        <Text size="xs" c="dimmed">作成: {wo.createdAt}</Text>
-        <Text size="xs" c="dimmed">更新: {wo.updatedAt}</Text>
-      </Group>
+      {!isMobile && (
+        <>
+          <Divider />
+          <Group gap="xl">
+            <Text size="xs" c="dimmed">作成: {wo.createdAt}</Text>
+            <Text size="xs" c="dimmed">更新: {wo.updatedAt}</Text>
+          </Group>
+        </>
+      )}
 
     </Stack>
   );

@@ -1,4 +1,4 @@
-import { readFile } from 'node:fs/promises';
+import { readFile, stat } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { defineConfig } from 'vite';
@@ -8,6 +8,44 @@ import type { Plugin } from 'vite';
 
 const GOTENBERG_URL = process.env.GOTENBERG_URL ?? 'http://localhost:3100';
 const TEMPLATES_DIR = fileURLToPath(new URL('./pdf-templates', import.meta.url));
+// Shared assets (logos, fonts) from the project root — served at /design-assets/
+const ASSETS_DIR = fileURLToPath(new URL('../_assets', import.meta.url));
+
+const MIME: Record<string, string> = {
+  '.svg':   'image/svg+xml',
+  '.png':   'image/png',
+  '.ttf':   'font/ttf',
+  '.woff':  'font/woff',
+  '.woff2': 'font/woff2',
+};
+
+/** Serves /_assets/** at /design-assets/** so designs and PDF previews can reference real logos and fonts. */
+function designAssetsPlugin(): Plugin {
+  return {
+    name: 'design-assets',
+    configureServer(server) {
+      server.middlewares.use('/design-assets', (req, res, next) => {
+        void (async () => {
+          try {
+            const url = (req.url ?? '/').split('?')[0];
+            const filePath = path.resolve(ASSETS_DIR, url.replace(/^\/+/, ''));
+            // Guard against path traversal
+            if (!filePath.startsWith(ASSETS_DIR + path.sep) && filePath !== ASSETS_DIR) {
+              res.statusCode = 400; res.end(); return;
+            }
+            const s = await stat(filePath).catch(() => null);
+            if (!s?.isFile()) { next(); return; }
+
+            const ext = path.extname(filePath).toLowerCase();
+            res.setHeader('content-type', MIME[ext] ?? 'application/octet-stream');
+            res.setHeader('cache-control', 'public, max-age=3600');
+            res.end(await readFile(filePath));
+          } catch { next(); }
+        })();
+      });
+    },
+  };
+}
 
 // Mirrors the main system's app/api/pdf/* route handlers: the server owns the
 // template, renders it server-side, and streams the generated file back.
@@ -83,8 +121,18 @@ function pdfApiPlugin(): Plugin {
   };
 }
 
+const rootDir = fileURLToPath(new URL('.', import.meta.url));
+
 export default defineConfig({
-  plugins: [react(), tailwindcss(), pdfApiPlugin()],
+  plugins: [react(), tailwindcss(), pdfApiPlugin(), designAssetsPlugin()],
+  build: {
+    rollupOptions: {
+      input: {
+        main: path.resolve(rootDir, 'index.html'),
+        frame: path.resolve(rootDir, 'frame.html'),
+      },
+    },
+  },
   resolve: {
     alias: {
       '@/components/layout': fileURLToPath(new URL('./designs/layout', import.meta.url)),
