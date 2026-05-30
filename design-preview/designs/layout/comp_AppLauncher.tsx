@@ -2,7 +2,6 @@
 
 import type { ComponentType } from 'react';
 import {
-  Box,
   Divider,
   Group,
   Paper,
@@ -110,10 +109,11 @@ export function AppLauncher({ onNavigate }: AppLauncherProps) {
         autoFocus
       />
 
-      <Box
+      <UnstyledButton
         onClick={onNavigate}
         p="xs"
         className={classes.homeLink}
+        w="100%"
       >
         <Group gap="xs">
           <ThemeIcon variant="light" color="blue" size="md" radius="sm">
@@ -121,7 +121,7 @@ export function AppLauncher({ onNavigate }: AppLauncherProps) {
           </ThemeIcon>
           <Text size="sm" c="dimmed">ホーム</Text>
         </Group>
-      </Box>
+      </UnstyledButton>
 
       <Divider />
 

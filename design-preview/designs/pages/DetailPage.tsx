@@ -124,7 +124,7 @@ export default function WorkOrderDetailPage() {
           <Group gap="sm" align="center">
             <Title order={2}>指示書 #{wo.workOrderNumber}</Title>
             {/* [Mantine] Badge — size/radius come from global theme */}
-            <Badge color={statusColor} size="lg">{statusLabel}</Badge>
+            <Badge color={statusColor}>{statusLabel}</Badge>
           </Group>
         </Stack>
 
