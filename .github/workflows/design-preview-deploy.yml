@@ -1,0 +1,50 @@
+name: Deploy Design Preview to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'design-preview/**'
+      - '_assets/**'
+      - '.github/workflows/deploy-design-preview.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write   # needed by peaceiris/actions-gh-pages to push to gh-pages branch
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: latest
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'pnpm'
+          cache-dependency-path: design-preview/pnpm-lock.yaml
+
+      - name: Install dependencies
+        working-directory: design-preview
+        run: pnpm install --frozen-lockfile
+
+      - name: Build
+        working-directory: design-preview
+        env:
+          VITE_BASE_PATH: /ckk-tool-v3/design-preview/
+        run: pnpm build
+
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: design-preview/dist
+          destination_dir: design-preview
+          keep_files: true   # preserves other apps deployed at sibling directories
