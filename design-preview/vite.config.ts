@@ -124,6 +124,7 @@ function pdfApiPlugin(): Plugin {
 const rootDir = fileURLToPath(new URL('.', import.meta.url));
 
 export default defineConfig({
+  base: process.env.VITE_BASE_PATH ?? '/',
   plugins: [react(), tailwindcss(), pdfApiPlugin(), designAssetsPlugin()],
   build: {
     rollupOptions: {
