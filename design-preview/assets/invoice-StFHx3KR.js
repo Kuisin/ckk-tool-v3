@@ -1,0 +1,101 @@
+const n=`<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <title>請求書</title>
+  <link rel="stylesheet" href="base.css" />
+</head>
+<body>
+
+  <div class="header">
+    <div class="doc-title">請求書</div>
+    <div class="issuer">
+      <strong>{{issuer.name}}</strong><br>
+      {{issuer.address}}<br>
+      {{issuer.tel}}<br>
+      登録番号: {{issuer.invoice_reg}}
+    </div>
+  </div>
+
+  <div class="meta-row">
+    <div class="recipient-block">
+      <div class="recipient-name">{{recipient.name}}　<span class="onchu">御中</span></div>
+      <div class="recipient-meta">
+        担当: {{recipient.contact}}<br>
+        {{recipient.address}}
+      </div>
+    </div>
+    <div class="doc-info">
+      <table>
+        <tr><td>請求書番号</td><td>{{doc.number}}</td></tr>
+        <tr><td>発行日</td><td>{{doc.issued_date}}</td></tr>
+        <tr><td>請求対象期間</td><td>{{doc.period}}</td></tr>
+        <tr><td>お支払期限</td><td>{{doc.payment_due}}</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <div class="strip between">
+    <div class="label">お支払期限: {{doc.payment_due}}</div>
+    <div class="end">
+      <div class="label">ご請求金額（税込）</div>
+      <div class="amount">¥ {{total_display}}</div>
+    </div>
+  </div>
+
+  <table class="items-table invoice-items">
+    <thead>
+      <tr>
+        <th style="width: 45%">品目</th>
+        <th class="right">数量</th>
+        <th class="right">単価 (円)</th>
+        <th class="right">金額 (円)</th>
+      </tr>
+    </thead>
+    <tbody>
+      {{#each groups}}
+      <tr class="invoice-group-head">
+        <td colspan="4">
+          <div class="invoice-group-head-inner">
+            <span class="ref"><span class="k">受注書</span> {{order_number}}</span>
+            <span class="sep">|</span>
+            <span class="ref"><span class="k">納品書</span> {{delivery_note}}</span>
+            <span class="invoice-group-head-end">
+              <span class="ref-date"><span class="k">納品日</span> {{delivery_date}}</span>
+              <span class="ref-subtotal"><span class="k">小計</span> ¥ {{group_subtotal}}</span>
+            </span>
+          </div>
+        </td>
+      </tr>
+      {{#each items}}
+      <tr>
+        <td>{{name}}<span class="sub">{{code_lot}}</span></td>
+        <td class="right">{{quantity}}</td>
+        <td class="right">{{unit_price}}</td>
+        <td class="right">{{amount}}</td>
+      </tr>
+      {{/each}}
+      {{/each}}
+    </tbody>
+  </table>
+
+  <div class="totals">
+    <table>
+      <tr><td>小計</td><td>¥ {{totals.subtotal}}</td></tr>
+      <tr><td>消費税（10%）</td><td>¥ {{totals.tax}}</td></tr>
+      <tr class="grand-total"><td>ご請求金額（税込）</td><td>¥ {{totals.grand_total}}</td></tr>
+    </table>
+  </div>
+
+  <div>
+    <div class="notes-label">備考</div>
+    <div class="notes">{{notes}}</div>
+  </div>
+
+  <div class="footer">
+    {{doc.number}} 　 1 / 1
+  </div>
+
+</body>
+</html>
+`;export{n as default};

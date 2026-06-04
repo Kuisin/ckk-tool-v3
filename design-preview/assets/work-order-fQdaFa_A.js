@@ -1,0 +1,118 @@
+const s=`<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <title>指示書</title>
+    <link rel="stylesheet" href="base.css" />
+  </head>
+  <body>
+    <div class="header">
+      <div class="header-left">
+        <div class="doc-title">指示書</div>
+        <div class="doc-number"># {{doc.number}}</div>
+      </div>
+      <div class="issuer">
+        <strong>{{issuer.dept}}</strong><br />
+        発行日: {{doc.issued_date}}
+      </div>
+    </div>
+
+    <div class="card-grid cols-3">
+      <div class="card">
+        <h4>製品情報</h4>
+        <div class="kv">
+          <span class="k">製品コード</span><span class="v">{{product.code}}</span>
+        </div>
+        <div class="kv">
+          <span class="k">製品名</span><span class="v">{{product.name}}</span>
+        </div>
+        <div class="kv">
+          <span class="k">素材</span><span class="v">{{product.material}}</span>
+        </div>
+      </div>
+      <div class="card">
+        <h4>生産情報</h4>
+        <div class="kv">
+          <span class="k">計画本数</span><span class="v">{{production.quantity}} {{production.unit}}</span>
+        </div>
+        <div class="kv">
+          <span class="k">指示タイプ</span><span class="v">{{production.type}}</span>
+        </div>
+        <div class="kv">
+          <span class="k">受注書</span><span class="v">{{production.order_ref}}</span>
+        </div>
+      </div>
+      <div class="card">
+        <h4>スケジュール</h4>
+        <div class="kv">
+          <span class="k">開始日</span><span class="v">{{schedule.start_date}}</span>
+        </div>
+        <div class="kv">
+          <span class="k">完了予定</span><span class="v">{{schedule.due_date}}</span>
+        </div>
+        <div class="kv">
+          <span class="k">納期</span><span class="v">{{schedule.delivery_date}}</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-title">承認記録</div>
+    <div class="card-grid cols-3">
+      {{#each approvals}}
+      <div class="card">
+        <div class="card-head">
+          <h4>{{role}}</h4>
+          {{#if has_badge}}
+          <div class="card-badges">
+            <span class="badge {{badge_class}}">{{badge_label}}</span>
+          </div>
+          {{/if}}
+        </div>
+        <div class="kv"><span class="k">担当</span><span class="v">{{name}}</span></div>
+        <div class="kv"><span class="k">日時</span><span class="v">{{datetime}}</span></div>
+      </div>
+      {{/each}}
+    </div>
+
+    <div class="section-title">工程ワークフロー</div>
+    <table class="items-table">
+      <thead>
+        <tr>
+          <th style="width: 30pt">#</th>
+          <th>カテゴリ</th>
+          <th style="width: 120pt">工程名</th>
+          <th style="width: 65pt">実施場所</th>
+          <th>外注先</th>
+          <th class="center" style="width: 75pt">ステータス</th>
+        </tr>
+      </thead>
+      <tbody>
+        {{#each steps}}
+        <tr>
+          <td>{{seq}}</td>
+          <td>{{category}}</td>
+          <td>{{name}}</td>
+          <td><span class="badge {{location_class}}">{{location_label}}</span></td>
+          <td>{{outsource}}</td>
+          <td class="center"><span class="badge {{status_class}}">{{status_label}}</span></td>
+        </tr>
+        {{/each}}
+      </tbody>
+    </table>
+
+    <div class="section-title">検査表テンプレート</div>
+    <div class="chip-list">
+      {{#each inspection_templates}}
+      <span class="chip">{{name}}</span>
+      {{/each}}
+    </div>
+
+    <div>
+      <div class="notes-label">備考・特記事項</div>
+      <div class="notes">{{notes}}</div>
+    </div>
+
+    <div class="footer">指示書 #{{doc.number}} 　 {{production.order_ref}} 　 1 / 1</div>
+  </body>
+</html>
+`;export{s as default};

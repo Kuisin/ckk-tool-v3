@@ -1,0 +1,102 @@
+const t=`<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <title>受注書</title>
+  <link rel="stylesheet" href="base.css" />
+</head>
+<body>
+
+  <div class="header">
+    <div class="doc-title">受注書</div>
+    <div class="issuer">
+      <strong>{{issuer.name}}</strong><br>
+      {{issuer.address}}<br>
+      {{issuer.tel}}
+    </div>
+  </div>
+
+  <div class="meta-row">
+    <div class="recipient-block">
+      <div class="recipient-name">{{recipient.name}}　<span class="onchu">御中</span></div>
+      <div class="recipient-meta">
+        担当: {{recipient.contact}}<br>
+        {{recipient.address}}
+      </div>
+    </div>
+    <div class="doc-info">
+      <table>
+        <tr><td>受注書番号</td><td>{{doc.number}}</td></tr>
+        <tr><td>発行日</td><td>{{doc.issued_date}}</td></tr>
+        <tr><td>ロット番号</td><td>#{{doc.lot_number}}</td></tr>
+        <tr><td>注文受諾書</td><td>{{doc.order_acceptance}}</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <div class="card-grid cols-2">
+    <div class="card">
+      <h4>製品情報</h4>
+      <div class="kv"><span class="k">製品コード</span><span class="v">{{product.code}}</span></div>
+      <div class="kv"><span class="k">製品名</span><span class="v">{{product.name}}</span></div>
+      <div class="kv"><span class="k">注文種別</span><span class="v">{{product.order_type}}</span></div>
+    </div>
+    <div class="card">
+      <h4>注文情報</h4>
+      <div class="kv"><span class="k">数量</span><span class="v">{{order.quantity}} {{order.unit}}</span></div>
+      <div class="kv"><span class="k">単価</span><span class="v">¥ {{order.unit_price}}</span></div>
+      <div class="kv"><span class="k">納期</span><span class="v">{{order.delivery_date}}</span></div>
+    </div>
+  </div>
+
+  <div class="strip between">
+    <div>
+      <div class="label">受注金額（税抜）</div>
+      <div class="amount">¥ {{amount_excl_tax}}</div>
+    </div>
+    <div class="label">納期: {{order.delivery_date}}</div>
+  </div>
+
+  <table class="items-table">
+    <thead>
+      <tr>
+        <th style="width: 40%">製品</th>
+        <th>注文種別</th>
+        <th class="right">数量</th>
+        <th class="right">単価 (円)</th>
+        <th class="right">金額 (円)</th>
+        <th>納期</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>{{product.name}}<br><span class="sub">{{product.code}}</span></td>
+        <td>{{product.order_type}}</td>
+        <td class="right">{{order.quantity}}</td>
+        <td class="right">{{order.unit_price}}</td>
+        <td class="right">{{totals.subtotal}}</td>
+        <td>{{order.delivery_date}}</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="totals">
+    <table>
+      <tr><td>小計</td><td>¥ {{totals.subtotal}}</td></tr>
+      <tr><td>消費税（10%）</td><td>¥ {{totals.tax}}</td></tr>
+      <tr class="grand-total"><td>合計（税込）</td><td>¥ {{totals.grand_total}}</td></tr>
+    </table>
+  </div>
+
+  <div>
+    <div class="notes-label">備考</div>
+    <div class="notes">{{notes}}</div>
+  </div>
+
+  <div class="footer">
+    {{doc.number}} 　 Lot #{{doc.lot_number}} 　 1 / 1
+  </div>
+
+</body>
+</html>
+`;export{t as default};

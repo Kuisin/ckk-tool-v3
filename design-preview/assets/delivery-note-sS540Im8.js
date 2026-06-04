@@ -1,0 +1,116 @@
+const n=`<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <title>納品書</title>
+  <link rel="stylesheet" href="base.css" />
+</head>
+<body>
+
+  <div class="header">
+    <div class="doc-title">納品書</div>
+    <div class="issuer">
+      <strong>{{issuer.name}}</strong><br>
+      {{issuer.address}}<br>
+      {{issuer.tel}}<br>
+      登録番号: {{issuer.invoice_reg}}
+    </div>
+  </div>
+
+  <div class="meta-row">
+    <div class="recipient-block">
+      <div class="recipient-name">{{recipient.name}}　<span class="onchu">御中</span></div>
+      <div class="recipient-meta">
+        担当: {{recipient.contact}}<br>
+        {{recipient.address}}
+      </div>
+    </div>
+    <div class="doc-info">
+      <table>
+        <tr><td>納品書番号</td><td>{{doc.number}}</td></tr>
+        <tr><td>発行日</td><td>{{doc.issued_date}}</td></tr>
+        <tr><td>納品日</td><td>{{doc.delivery_date}}</td></tr>
+        <tr><td>出荷書参照</td><td>{{doc.shipping_ref}}</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <div class="strip row">
+    <span class="badge">{{delivery_type_label}}</span>
+    <span>{{delivery_type_note}}</span>
+  </div>
+
+  <div class="card" style="margin-bottom: 16pt">
+    <h4>直送先</h4>
+    <div class="kv"><span class="k">最終需要家</span><span class="v">{{end_user.name}}</span></div>
+    <div class="kv"><span class="k">住所</span><span class="v">{{end_user.address}}</span></div>
+    <div class="kv"><span class="k">担当</span><span class="v">{{end_user.contact}}</span></div>
+  </div>
+
+  {{#if include_price}}
+  <table class="items-table">
+    <thead>
+      <tr>
+        <th style="width: 35%">製品</th>
+        <th class="right">数量</th>
+        <th>単位</th>
+        <th class="right">単価 (円)</th>
+        <th class="right">金額 (円)</th>
+      </tr>
+    </thead>
+    <tbody>
+      {{#each items}}
+      <tr>
+        <td>{{name}}<br><span class="sub">{{code_lot}}</span></td>
+        <td class="right">{{quantity}}</td>
+        <td>{{unit}}</td>
+        <td class="right">{{unit_price}}</td>
+        <td class="right">{{amount}}</td>
+      </tr>
+      {{/each}}
+    </tbody>
+  </table>
+
+  <div class="totals">
+    <table>
+      <tr><td>小計</td><td>¥ {{totals.subtotal}}</td></tr>
+      <tr><td>消費税（10%）</td><td>¥ {{totals.tax}}</td></tr>
+      <tr class="grand-total"><td>合計（税込）</td><td>¥ {{totals.grand_total}}</td></tr>
+    </table>
+  </div>
+  {{/if}}
+
+  {{#if hide_price}}
+  <div class="strip center">単価・金額は別途請求書に記載いたします。</div>
+  {{/if}}
+
+  <div>
+    <div class="notes-label">備考</div>
+    <div class="notes">{{notes}}</div>
+  </div>
+
+  <div class="card" style="margin-top: 24pt">
+    <h4>受領確認</h4>
+    <div class="field-lines">
+      <div>
+        <div class="fl-label">受領日</div>
+        <div class="fl-line"></div>
+      </div>
+      <div>
+        <div class="fl-label">受領者署名</div>
+        <div class="fl-line"></div>
+      </div>
+      <div>
+        <div class="fl-label">確認印</div>
+        <div class="fl-line"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer">
+    {{doc.number}} 　 1 / 1
+  </div>
+
+</body>
+</html>
+`;export{n as default};
