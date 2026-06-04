@@ -6,7 +6,7 @@ on:
     paths:
       - 'design-preview/**'
       - '_assets/**'
-      - '.github/workflows/deploy-design-preview.yml'
+      - '.github/workflows/design-preview-deploy.yml'
   workflow_dispatch:
 
 permissions:
