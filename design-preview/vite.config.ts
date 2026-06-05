@@ -1,4 +1,4 @@
-import { readFile, stat } from 'node:fs/promises';
+import { copyFile, mkdir, readdir, stat } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { defineConfig } from 'vite';
@@ -18,6 +18,21 @@ const MIME: Record<string, string> = {
   '.woff':  'font/woff',
   '.woff2': 'font/woff2',
 };
+
+/** Recursively copies src directory into dst. */
+async function copyDir(src: string, dst: string): Promise<void> {
+  await mkdir(dst, { recursive: true });
+  const entries = await readdir(src, { withFileTypes: true });
+  for (const entry of entries) {
+    const srcPath = path.join(src, entry.name);
+    const dstPath = path.join(dst, entry.name);
+    if (entry.isDirectory()) {
+      await copyDir(srcPath, dstPath);
+    } else {
+      await copyFile(srcPath, dstPath);
+    }
+  }
+}
 
 /** Serves /_assets/** at /design-assets/** so designs and PDF previews can reference real logos and fonts. */
 function designAssetsPlugin(): Plugin {
@@ -43,6 +58,11 @@ function designAssetsPlugin(): Plugin {
           } catch { next(); }
         })();
       });
+    },
+    async closeBundle() {
+      // Copy _assets into dist/design-assets so production builds include logos and fonts
+      const outDir = path.resolve(rootDir, 'dist', 'design-assets');
+      await copyDir(ASSETS_DIR, outDir);
     },
   };
 }

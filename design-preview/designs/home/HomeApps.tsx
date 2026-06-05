@@ -209,7 +209,7 @@ export function HomeApps({ user = MOCK_USER, isLoading = false }: HomeAppsProps)
            * opacity=0.75 keeps it subtle so it doesn't compete with the user info.
            */}
           <img
-            src={isDark ? '/design-assets/dark_logo-with-label.svg' : '/design-assets/logo-with-label.svg'}
+            src={isDark ? `${import.meta.env.BASE_URL}design-assets/dark_logo-with-label.svg` : `${import.meta.env.BASE_URL}design-assets/logo-with-label.svg`}
             alt="シー・ケィ・ケー株式会社"
             style={{ height: 56, width: 56, opacity: 0.75, flexShrink: 0 }}
           />

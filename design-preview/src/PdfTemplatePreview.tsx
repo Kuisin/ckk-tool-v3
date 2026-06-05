@@ -51,9 +51,10 @@ const A4_H = 1123;
 
 // Noto Sans JP loaded from _assets served by designAssetsPlugin at /design-assets/
 // Using the variable font so a single file covers all weights (100–900).
+// The font URL must be absolute because the iframe uses srcDoc (about:blank origin).
 const FONT_FACE_CSS = `@font-face {
   font-family: 'Noto Sans JP';
-  src: url('/design-assets/fonts/NotoSansJP-VariableFont_wght.ttf') format('truetype');
+  src: url('${window.location.origin}${import.meta.env.BASE_URL}design-assets/fonts/NotoSansJP-VariableFont_wght.ttf') format('truetype');
   font-weight: 100 900;
   font-display: swap;
 }`;
