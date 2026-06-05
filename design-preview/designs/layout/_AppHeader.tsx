@@ -143,7 +143,7 @@ export function AppHeader() {
               color="gray"
             >
               <img
-                src={isDark ? '/design-assets/dark_logo.svg' : '/design-assets/logo.svg'}
+                src={isDark ? `${import.meta.env.BASE_URL}design-assets/dark_logo.svg` : `${import.meta.env.BASE_URL}design-assets/logo.svg`}
                 alt="CKK"
                 style={{ height: 28, width: 28, display: 'block' }}
               />
