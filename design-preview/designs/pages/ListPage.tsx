@@ -238,7 +238,7 @@ export default function SalesOrdersListPage() {
       </Group>
 
       {/* ── Filter bar + table ────────────────────────────────────────── */}
-      <Paper shadow="xs" p="sm">
+      <Paper withBorder p="sm">
 
         {/* Filter bar — Stack on mobile, Group on desktop */}
         {isMobile ? (

@@ -28,6 +28,7 @@ export const previewTheme = createTheme({
         highlightOnHover: true,
         withTableBorder: true,
         withColumnBorders: false,
+        verticalSpacing: 'xs',
       },
     }),
   },
