@@ -151,7 +151,7 @@ export default function QuoteNewPage() {
         <Stack gap="md">
 
           {/* ── Section 1: 基本情報 ─────────────────────────────────────── */}
-          <Paper shadow="xs" p="md" radius="md">
+          <Paper withBorder p="md" radius="md">
             <Title order={4} mb="xs">基本情報</Title>
             <Divider mb="md" />
             {/*
@@ -199,7 +199,7 @@ export default function QuoteNewPage() {
           </Paper>
 
           {/* ── Section 2: 明細 ─────────────────────────────────────────── */}
-          <Paper shadow="xs" p="md" radius="md">
+          <Paper withBorder p="md" radius="md">
             <Title order={4} mb="xs">明細</Title>
             <Divider mb="md" />
 

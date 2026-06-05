@@ -5,9 +5,9 @@ export const designModules = import.meta.glob('../designs/**/*.tsx') as Record<
   () => Promise<Record<string, unknown>>
 >;
 
-export const designPaths = Object.keys(designModules).sort((a, b) =>
-  formatDesignLabel(a).localeCompare(formatDesignLabel(b)),
-);
+export const designPaths = Object.keys(designModules)
+  .filter((p) => !p.includes('/lib/'))
+  .sort((a, b) => formatDesignLabel(a).localeCompare(formatDesignLabel(b)));
 
 export function isComponentFile(modulePath: string): boolean {
   const basename = modulePath.split('/').pop() ?? '';

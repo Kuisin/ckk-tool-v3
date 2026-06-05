@@ -35,10 +35,7 @@ export function OperationCodeJump({ onNavigate, compact = false }: OperationCode
 
   const options = searchOperationCodes(value);
 
-  useHotkeys([
-    ['mod+K', () => inputRef.current?.focus()],
-    ['mod+G', () => inputRef.current?.focus()],
-  ]);
+  useHotkeys([['mod+/', () => inputRef.current?.focus()]]);
 
   function jump(raw: string) {
     const entry = navigateByOperationCode(raw, { onNavigate });
@@ -107,7 +104,7 @@ export function OperationCodeJump({ onNavigate, compact = false }: OperationCode
               <IconArrowRight size={14} style={{ opacity: 0.5 }} />
             ) : (
               <Group gap={4} wrap="nowrap">
-                <Kbd size="xs">⌘K</Kbd>
+                <Kbd size="xs">⌘/</Kbd>
               </Group>
             )
           }
