@@ -1,0 +1,1 @@
+import{ap as t}from"./design-modules-PRH4_h1E.js";const e=t.createContext("desktop"),r=e.Provider;function n(){return t.useContext(e)}function i(){return t.useContext(e)==="mobile"}export{r as ViewportProvider,i as useIsMobile,n as useViewport};
