@@ -21,3 +21,8 @@ export function isLayoutFile(modulePath: string): boolean {
 export function isAppLauncherFile(modulePath: string): boolean {
   return modulePath.endsWith('comp_AppLauncher.tsx');
 }
+
+/** `_modals/` popups are controlled components — previewed in an opened state. */
+export function isModalFile(modulePath: string): boolean {
+  return modulePath.includes('/_modals/');
+}

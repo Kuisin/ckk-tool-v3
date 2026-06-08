@@ -22,7 +22,16 @@ export function resolveDesignComponent(
     }
   }
 
+  // Fallback: first component-like named export (function whose name is PascalCase).
+  // Covers files whose export name doesn't match the filename — e.g. `_modals/`
+  // popups (`cancel.tsx` → `CancelQuoteModal`) and layout helpers.
+  for (const [name, value] of Object.entries(mod)) {
+    if (typeof value === 'function' && /^[A-Z]/.test(name)) {
+      return value as ComponentType;
+    }
+  }
+
   throw new Error(
-    `${formatDesignLabel(modulePath)} has no default export (expected \`export default\` or \`export function ${candidates.join('` / `')}\`)`,
+    `${formatDesignLabel(modulePath)} has no usable export (expected a default export or a PascalCase component export)`,
   );
 }
