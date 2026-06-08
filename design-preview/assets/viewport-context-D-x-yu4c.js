@@ -1,0 +1,1 @@
+import{aB as t}from"./design-modules-BAnvSQZ-.js";const e=t.createContext("desktop"),r=e.Provider;function n(){return t.useContext(e)}function i(){return t.useContext(e)==="mobile"}export{r as ViewportProvider,i as useIsMobile,n as useViewport};
