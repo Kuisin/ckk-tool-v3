@@ -1,0 +1,6 @@
+import{ap as e,u as l,v as i}from"./design-modules-xRJMvpeD.js";import{A as n}from"./Alert-BUnf7Asu.js";import{FieldValue as r}from"./ui-C5ZGlGxE.js";import{ModalShell as c}from"./modals-DX2QBNeA.js";import{c as m}from"./createReactComponent-DRAdzxvK.js";/**
+ * @license @tabler/icons-react v3.44.0 - MIT
+ *
+ * This source code is licensed under the MIT license.
+ * See the LICENSE file in the root directory of this source tree.
+ */const d=[["path",{d:"M8 7a4 4 0 1 0 8 0a4 4 0 0 0 -8 0",key:"svg-0"}],["path",{d:"M6 21v-2a4 4 0 0 1 4 -4h3",key:"svg-1"}],["path",{d:"M16 22l5 -5",key:"svg-2"}],["path",{d:"M21 21.5v-4.5h-4.5",key:"svg-3"}]],p=m("outline","user-share","UserShare",d);function h({opened:s,onClose:a,delegatorName:o,validUntil:t}){return e.jsxs(c,{opened:s,onClose:a,title:"代理承認",confirmLabel:"確認しました",confirmColor:"blue",onConfirm:a,cancelLabel:"閉じる",size:"sm",children:[e.jsxs(n,{color:"blue",variant:"light",icon:e.jsx(p,{size:16}),children:["あなたは ",o," の代理承認者として操作しています。"]}),e.jsxs(l,{gap:"xs",children:[e.jsx(r,{label:"原承認者",value:o}),e.jsx(r,{label:"代理期間",value:`〜 ${t}`}),e.jsx(i,{size:"xs",c:"dimmed",children:"承認・差し戻しの記録には原承認者が併記されます。"})]})]})}const b=Object.freeze(Object.defineProperty({__proto__:null,DelegateModal:h},Symbol.toStringTag,{value:"Module"}));export{h as D,p as I,b as d};
