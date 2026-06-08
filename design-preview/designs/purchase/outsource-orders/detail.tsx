@@ -1,29 +1,24 @@
+'use client';
+
+import { useState } from 'react';
+import { Divider, Group, Stack, Tabs, Text } from '@mantine/core';
 import {
-  Button,
-  Divider,
-  Group,
-  Menu,
-  Paper,
-  SimpleGrid,
-  Stack,
-  Tabs,
-  Text,
-  Timeline,
-} from '@mantine/core';
-import {
-  IconDotsVertical,
-  IconEdit,
+  IconCalendarStats,
   IconPackageImport,
+  IconX,
 } from '@tabler/icons-react';
-import {
-  DocNumber,
-  FieldValue,
-  formatDate,
-  formatDateTime,
-  PageHeader,
-} from '../../lib/ui';
+import { DocNumber, FieldValue, formatDate, formatDateTime } from '../../lib/ui';
 import { StatusBadge } from '../../lib/status';
-import { useIsMobile } from '../../lib/viewport-context';
+import {
+  AuditTimeline,
+  DetailShell,
+  ResourceActions,
+  SummaryGrid,
+  type AuditEntry,
+} from '../../lib/shells';
+import { RecordArrivalModal } from './_modals/record-arrival';
+import { CancelOutsourceOrderModal } from './_modals/cancel';
+import { RescheduleOutsourceOrderModal } from './_modals/reschedule';
 
 // ── Mock data ────────────────────────────────────────────────────────────────
 const ORDER = {
@@ -41,86 +36,46 @@ const ORDER = {
   updatedAt: '2026-05-26 13:00',
 };
 
-const AUDIT = [
+const AUDIT: AuditEntry[] = [
   { id: 1, action: 'UPDATE', user: '中村 花子', at: '2026-05-26 13:00', detail: 'センタレス: 外注依頼（外注研磨株式会社）' },
   { id: 2, action: 'CREATE', user: '鈴木 一郎', at: '2026-05-20 09:15', detail: '指示書 #1042 の工程として生成' },
 ];
 
 export default function OutsourceOrderDetailPage() {
-  const isMobile = useIsMobile();
+  const label = `${ORDER.supplierName} — ${ORDER.stepName}（指示書 #${ORDER.workOrderNumber}）`;
 
-  const actions = isMobile ? (
-    <Menu shadow="sm" position="bottom-end">
-      <Menu.Target>
-        <Button variant="default" px="xs" size="sm">
-          <IconDotsVertical size={16} />
-        </Button>
-      </Menu.Target>
-      <Menu.Dropdown>
-        <Menu.Item leftSection={<IconEdit size={14} />}>編集</Menu.Item>
-        <Menu.Item leftSection={<IconPackageImport size={14} />}>入荷を記録</Menu.Item>
-        <Menu.Divider />
-        <Menu.Item color="red">キャンセル</Menu.Item>
-      </Menu.Dropdown>
-    </Menu>
-  ) : (
-    <Group gap="xs" style={{ flexShrink: 0 }}>
-      <Button variant="default" leftSection={<IconEdit size={14} />}>
-        編集
-      </Button>
-      <Button color="blue" leftSection={<IconPackageImport size={14} />}>
-        入荷を記録
-      </Button>
-      <Menu shadow="sm">
-        <Menu.Target>
-          <Button variant="default" px="xs">
-            <IconDotsVertical size={16} />
-          </Button>
-        </Menu.Target>
-        <Menu.Dropdown>
-          <Menu.Item color="red">キャンセル</Menu.Item>
-        </Menu.Dropdown>
-      </Menu>
-    </Group>
-  );
+  const [arrivalOpen, setArrivalOpen] = useState(false);
+  const [cancelOpen, setCancelOpen] = useState(false);
+  const [rescheduleOpen, setRescheduleOpen] = useState(false);
 
   return (
-    <Stack gap="md">
-      <PageHeader
-        breadcrumbs={['ホーム', '購買', '外注依頼', `指示書 #${ORDER.workOrderNumber}`]}
-        title={`外注依頼 — ${ORDER.stepName}`}
-        status={<StatusBadge entity="Step" status={ORDER.status} />}
-        actions={actions}
-        align="flex-start"
-      />
+    <DetailShell
+      breadcrumbs={['ホーム', '購買', '外注依頼', `指示書 #${ORDER.workOrderNumber}`]}
+      title={`外注依頼 — ${ORDER.stepName}`}
+      status={<StatusBadge entity="Step" status={ORDER.status} />}
+      createdAt={`${formatDateTime(ORDER.createdAt)}（${ORDER.createdBy}）`}
+      updatedAt={formatDateTime(ORDER.updatedAt)}
+      actions={
+        <ResourceActions
+          onEdit={() => {}}
+          menuItems={[
+            { label: '入荷を記録', icon: <IconPackageImport size={14} />, onClick: () => setArrivalOpen(true) },
+            { label: '入荷予定日変更', icon: <IconCalendarStats size={14} />, onClick: () => setRescheduleOpen(true) },
+            { label: 'キャンセル', icon: <IconX size={14} />, color: 'red', divider: true, onClick: () => setCancelOpen(true) },
+          ]}
+        />
+      }
+    >
+      <SummaryGrid>
+        <FieldValue label="外注先" value={ORDER.supplierName} />
+        <FieldValue label="工程" value={ORDER.stepName} />
+        <FieldValue label="指示書" value={<DocNumber c="blue">#{ORDER.workOrderNumber}</DocNumber>} />
+        <FieldValue label="依頼日" value={formatDate(ORDER.requestedAt)} />
+        <FieldValue label="入荷予定日" value={formatDate(ORDER.expectedAt)} />
+        <FieldValue label="入荷日" value={ORDER.receivedAt ? formatDate(ORDER.receivedAt) : '未入荷'} />
+        <FieldValue label="備考" value={ORDER.notes} />
+      </SummaryGrid>
 
-      {/* Summary */}
-      <Paper withBorder p="md" radius="md">
-        <SimpleGrid cols={isMobile ? 1 : 3} spacing="md">
-          <FieldValue label="外注先" value={ORDER.supplierName} />
-          <FieldValue label="工程" value={ORDER.stepName} />
-          <FieldValue
-            label="指示書"
-            value={<DocNumber c="blue">#{ORDER.workOrderNumber}</DocNumber>}
-          />
-          <FieldValue label="依頼日" value={formatDate(ORDER.requestedAt)} />
-          <FieldValue label="入荷予定日" value={formatDate(ORDER.expectedAt)} />
-          <FieldValue
-            label="入荷日"
-            value={ORDER.receivedAt ? formatDate(ORDER.receivedAt) : '未入荷'}
-          />
-          <FieldValue label="備考" value={ORDER.notes} />
-        </SimpleGrid>
-        {isMobile && (
-          <Group gap="xl" mt="sm">
-            <Text size="xs" c="dimmed">
-              依頼: {formatDateTime(ORDER.createdAt)}（{ORDER.createdBy}）
-            </Text>
-          </Group>
-        )}
-      </Paper>
-
-      {/* Tabs */}
       <Tabs defaultValue="related">
         <Tabs.List>
           <Tabs.Tab value="related">関連</Tabs.Tab>
@@ -130,58 +85,30 @@ export default function OutsourceOrderDetailPage() {
         <Tabs.Panel value="related" pt="md">
           <Stack gap="sm">
             <Group>
-              <Text size="sm" c="dimmed" w={120}>
-                指示書
-              </Text>
+              <Text size="sm" c="dimmed" w={120}>指示書</Text>
               <DocNumber c="blue">#{ORDER.workOrderNumber}</DocNumber>
             </Group>
             <Divider />
             <Group>
-              <Text size="sm" c="dimmed" w={120}>
-                製品
-              </Text>
+              <Text size="sm" c="dimmed" w={120}>製品</Text>
               <Text size="sm">{ORDER.productName}</Text>
             </Group>
           </Stack>
         </Tabs.Panel>
 
         <Tabs.Panel value="history" pt="md">
-          <Timeline active={-1} bulletSize={28} lineWidth={2}>
-            {AUDIT.map((log) => (
-              <Timeline.Item
-                key={log.id}
-                bullet={
-                  <Text size="xs" fw={700}>
-                    {log.user[0]}
-                  </Text>
-                }
-                title={log.action}
-              >
-                <Text size="xs" c="dimmed">
-                  {formatDateTime(log.at)} · {log.user}
-                </Text>
-                <Text size="sm" mt={4}>
-                  {log.detail}
-                </Text>
-              </Timeline.Item>
-            ))}
-          </Timeline>
+          <AuditTimeline entries={AUDIT} />
         </Tabs.Panel>
       </Tabs>
 
-      {!isMobile && (
-        <>
-          <Divider />
-          <Group gap="xl">
-            <Text size="xs" c="dimmed">
-              依頼: {formatDateTime(ORDER.createdAt)}（{ORDER.createdBy}）
-            </Text>
-            <Text size="xs" c="dimmed">
-              更新: {formatDateTime(ORDER.updatedAt)}
-            </Text>
-          </Group>
-        </>
-      )}
-    </Stack>
+      <RecordArrivalModal opened={arrivalOpen} onClose={() => setArrivalOpen(false)} label={label} />
+      <CancelOutsourceOrderModal opened={cancelOpen} onClose={() => setCancelOpen(false)} label={label} />
+      <RescheduleOutsourceOrderModal
+        opened={rescheduleOpen}
+        onClose={() => setRescheduleOpen(false)}
+        label={label}
+        currentExpectedAt={ORDER.expectedAt}
+      />
+    </DetailShell>
   );
 }

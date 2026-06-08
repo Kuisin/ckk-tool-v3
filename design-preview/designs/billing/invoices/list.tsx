@@ -1,30 +1,22 @@
 'use client';
 
-import {
-  Box,
-  Button,
-  Group,
-  Paper,
-  Select,
-  Stack,
-  Table,
-  Text,
-  TextInput,
-} from '@mantine/core';
-import { IconFileInvoice, IconSearch } from '@tabler/icons-react';
 import { useState } from 'react';
+import { Select, TextInput } from '@mantine/core';
 import {
-  DocNumber,
-  EmptyState,
-  formatDate,
-  MoneyText,
-  PageHeader,
-} from '../../lib/ui';
+  IconCircleCheck,
+  IconFileExport,
+  IconFileInvoice,
+  IconFileTypePdf,
+  IconSearch,
+  IconSend,
+} from '@tabler/icons-react';
+import { DocNumber, formatDate, MoneyText } from '../../lib/ui';
 import { StatusBadge, statusOptions } from '../../lib/status';
+import { DataTable, type Column } from '../../lib/data-table';
+import { ListShell } from '../../lib/shells';
 import { CUSTOMERS } from '../../lib/mock';
 import { useIsMobile } from '../../lib/viewport-context';
 
-// ── Mock data ────────────────────────────────────────────────────────────────
 interface InvoiceRow {
   id: string;
   invoiceNumber: string;
@@ -37,46 +29,10 @@ interface InvoiceRow {
 }
 
 const MOCK_RECORDS: InvoiceRow[] = [
-  {
-    id: '1',
-    invoiceNumber: 'INV-202605-00008',
-    customerName: '株式会社ABC製作所',
-    periodFrom: '2026-05-01',
-    periodTo: '2026-05-31',
-    totalAmount: 1485000,
-    status: 'SENT',
-    issuedAt: '2026-06-01',
-  },
-  {
-    id: '2',
-    invoiceNumber: 'INV-202605-00007',
-    customerName: '合同会社XYZ工業',
-    periodFrom: '2026-05-01',
-    periodTo: '2026-05-31',
-    totalAmount: 660000,
-    status: 'PAID',
-    issuedAt: '2026-06-01',
-  },
-  {
-    id: '3',
-    invoiceNumber: 'INV-202605-00006',
-    customerName: '株式会社DEFエンジニアリング',
-    periodFrom: '2026-05-01',
-    periodTo: '2026-05-31',
-    totalAmount: 209000,
-    status: 'ISSUED',
-    issuedAt: '2026-06-01',
-  },
-  {
-    id: '4',
-    invoiceNumber: 'INV-202606-00001',
-    customerName: '東邦精密株式会社',
-    periodFrom: '2026-06-01',
-    periodTo: '2026-06-30',
-    totalAmount: 0,
-    status: 'DRAFT',
-    issuedAt: null,
-  },
+  { id: '1', invoiceNumber: 'INV-202605-00008', customerName: '株式会社ABC製作所', periodFrom: '2026-05-01', periodTo: '2026-05-31', totalAmount: 1485000, status: 'SENT', issuedAt: '2026-06-01' },
+  { id: '2', invoiceNumber: 'INV-202605-00007', customerName: '合同会社XYZ工業', periodFrom: '2026-05-01', periodTo: '2026-05-31', totalAmount: 660000, status: 'PAID', issuedAt: '2026-06-01' },
+  { id: '3', invoiceNumber: 'INV-202605-00006', customerName: '株式会社DEFエンジニアリング', periodFrom: '2026-05-01', periodTo: '2026-05-31', totalAmount: 209000, status: 'ISSUED', issuedAt: '2026-06-01' },
+  { id: '4', invoiceNumber: 'INV-202606-00001', customerName: '東邦精密株式会社', periodFrom: '2026-06-01', periodTo: '2026-06-30', totalAmount: 0, status: 'DRAFT', issuedAt: null },
 ];
 
 export default function InvoicesListPage() {
@@ -85,165 +41,75 @@ export default function InvoicesListPage() {
   const [statusFilter, setStatusFilter] = useState<string | null>(null);
   const [customerFilter, setCustomerFilter] = useState<string | null>(null);
 
+  const reset = () => { setSearch(''); setStatusFilter(null); setCustomerFilter(null); };
+
   const filtered = MOCK_RECORDS.filter((r) => {
-    const matchesSearch =
-      !search || r.invoiceNumber.includes(search) || r.customerName.includes(search);
+    const matchesSearch = !search || r.invoiceNumber.includes(search) || r.customerName.includes(search);
     const matchesStatus = !statusFilter || r.status === statusFilter;
     const matchesCustomer = !customerFilter || r.customerName.includes(customerFilter);
     return matchesSearch && matchesStatus && matchesCustomer;
   });
 
-  const reset = () => {
-    setSearch('');
-    setStatusFilter(null);
-    setCustomerFilter(null);
-  };
-
   const customerOptions = CUSTOMERS.map((c) => ({ value: c.label, label: c.label }));
-
   const period = (r: InvoiceRow) => `${formatDate(r.periodFrom)} 〜 ${formatDate(r.periodTo)}`;
 
+  const columns: Column<InvoiceRow>[] = [
+    { key: 'invoiceNumber', header: '請求番号', sortable: true, width: 170, render: (r) => <DocNumber>{r.invoiceNumber}</DocNumber> },
+    { key: 'customerName', header: '顧客', sortable: true, render: (r) => r.customerName },
+    { key: 'period', header: '請求期間', hideable: true, sortable: true, sortValue: (r) => r.periodFrom, render: (r) => period(r) },
+    { key: 'totalAmount', header: '合計金額', sortable: true, align: 'right', width: 130, sortValue: (r) => r.totalAmount, render: (r) => <MoneyText value={r.totalAmount} /> },
+    { key: 'status', header: '状態', sortable: true, width: 100, render: (r) => <StatusBadge entity="Invoice" status={r.status} /> },
+    { key: 'issuedAt', header: '発行日', sortable: true, hideable: true, width: 120, sortValue: (r) => r.issuedAt ?? '', render: (r) => formatDate(r.issuedAt) },
+  ];
+
   return (
-    <Stack gap="md">
+    <ListShell
+      breadcrumbs={['ホーム', '請求', '請求書']}
+      title="請求書"
+      onReset={reset}
+      search={
+        <TextInput
+          placeholder="請求番号・顧客で検索"
+          leftSection={<IconSearch size={14} />}
+          value={search}
+          onChange={(e) => setSearch(e.currentTarget.value)}
+        />
+      }
+      filters={
+        <>
+          <Select
+            placeholder="状態" data={statusOptions('Invoice')} value={statusFilter} onChange={setStatusFilter}
+            clearable w={isMobile ? undefined : 150} style={isMobile ? { flex: 1 } : undefined}
+          />
+          <Select
+            placeholder="顧客" data={customerOptions} value={customerFilter} onChange={setCustomerFilter}
+            searchable clearable w={isMobile ? undefined : 200} style={isMobile ? { flex: 1 } : undefined}
+          />
+        </>
+      }
+    >
       {/* 請求書 is generated by the closing job — no NewButton */}
-      <PageHeader breadcrumbs={['ホーム', '請求', '請求書']} title="請求書" />
-
-      <Paper withBorder p="sm">
-        {/* Filter bar */}
-        {isMobile ? (
-          <Stack gap="xs" mb="sm">
-            <TextInput
-              placeholder="請求番号・顧客で検索"
-              leftSection={<IconSearch size={14} />}
-              value={search}
-              onChange={(e) => setSearch(e.currentTarget.value)}
-            />
-            <Group gap="xs">
-              <Select
-                placeholder="状態"
-                data={statusOptions('Invoice')}
-                value={statusFilter}
-                onChange={setStatusFilter}
-                clearable
-                style={{ flex: 1 }}
-              />
-              <Select
-                placeholder="顧客"
-                data={customerOptions}
-                value={customerFilter}
-                onChange={setCustomerFilter}
-                searchable
-                clearable
-                style={{ flex: 1 }}
-              />
-            </Group>
-            <Button variant="subtle" size="sm" onClick={reset}>
-              リセット
-            </Button>
-          </Stack>
-        ) : (
-          <Group mb="sm" align="flex-end">
-            <TextInput
-              placeholder="請求番号・顧客で検索"
-              leftSection={<IconSearch size={14} />}
-              value={search}
-              onChange={(e) => setSearch(e.currentTarget.value)}
-              style={{ flex: 1 }}
-            />
-            <Select
-              placeholder="状態"
-              data={statusOptions('Invoice')}
-              value={statusFilter}
-              onChange={setStatusFilter}
-              clearable
-              w={150}
-            />
-            <Select
-              placeholder="顧客"
-              data={customerOptions}
-              value={customerFilter}
-              onChange={setCustomerFilter}
-              searchable
-              clearable
-              w={200}
-            />
-            <Button variant="subtle" onClick={reset}>
-              リセット
-            </Button>
-          </Group>
-        )}
-
-        {/* Records */}
-        {filtered.length === 0 ? (
-          <EmptyState icon={<IconFileInvoice size={24} />} message="請求書がありません" />
-        ) : isMobile ? (
-          <Stack gap="xs">
-            {filtered.map((r) => (
-              <Paper key={r.id} p="sm" withBorder radius="sm" style={{ cursor: 'pointer' }}>
-                <Group justify="space-between" wrap="nowrap" align="flex-start">
-                  <Stack gap={3} style={{ minWidth: 0 }}>
-                    <DocNumber c="dimmed">{r.invoiceNumber}</DocNumber>
-                    <Text size="sm" fw={600} truncate>
-                      {r.customerName}
-                    </Text>
-                    <Text size="xs" c="dimmed">
-                      {period(r)}
-                    </Text>
-                    <Text size="sm" fw={500} mt={2}>
-                      {new Intl.NumberFormat('ja-JP', { style: 'currency', currency: 'JPY' }).format(
-                        r.totalAmount,
-                      )}
-                    </Text>
-                  </Stack>
-                  <Stack gap={4} align="flex-end" style={{ flexShrink: 0 }}>
-                    <StatusBadge entity="Invoice" status={r.status} />
-                    <Text size="xs" c="dimmed">
-                      {formatDate(r.issuedAt)}
-                    </Text>
-                  </Stack>
-                </Group>
-              </Paper>
-            ))}
-          </Stack>
-        ) : (
-          <Table striped highlightOnHover withTableBorder>
-            <Table.Thead>
-              <Table.Tr>
-                <Table.Th>請求番号</Table.Th>
-                <Table.Th>顧客</Table.Th>
-                <Table.Th>請求期間</Table.Th>
-                <Table.Th ta="right">合計金額</Table.Th>
-                <Table.Th>状態</Table.Th>
-                <Table.Th>発行日</Table.Th>
-              </Table.Tr>
-            </Table.Thead>
-            <Table.Tbody>
-              {filtered.map((r) => (
-                <Table.Tr key={r.id} style={{ cursor: 'pointer' }}>
-                  <Table.Td>
-                    <DocNumber>{r.invoiceNumber}</DocNumber>
-                  </Table.Td>
-                  <Table.Td>{r.customerName}</Table.Td>
-                  <Table.Td>
-                    <Text size="sm">{period(r)}</Text>
-                  </Table.Td>
-                  <Table.Td>
-                    <Box>
-                      <MoneyText value={r.totalAmount} />
-                    </Box>
-                  </Table.Td>
-                  <Table.Td>
-                    <StatusBadge entity="Invoice" status={r.status} />
-                  </Table.Td>
-                  <Table.Td>
-                    <Text size="sm">{formatDate(r.issuedAt)}</Text>
-                  </Table.Td>
-                </Table.Tr>
-              ))}
-            </Table.Tbody>
-          </Table>
-        )}
-      </Paper>
-    </Stack>
+      <DataTable
+        data={filtered}
+        columns={columns}
+        getRowId={(r) => r.id}
+        onRowClick={() => { /* navigate to detail */ }}
+        defaultSort={{ key: 'invoiceNumber', dir: 'desc' }}
+        selectable
+        bulkActions={[
+          { label: 'PDF一括出力', icon: <IconFileTypePdf size={16} />, color: 'blue' },
+          { label: '弥生CSV一括エクスポート', icon: <IconFileExport size={16} />, color: 'blue' },
+        ]}
+        rowActions={(r) => [
+          { label: 'PDF', icon: <IconFileTypePdf size={14} /> },
+          ...(r.status === 'DRAFT' ? [{ label: '発行', icon: <IconSend size={14} />, color: 'blue' }] : []),
+          ...(r.status === 'ISSUED' ? [{ label: '送付', icon: <IconSend size={14} />, color: 'blue' }] : []),
+          ...(r.status === 'SENT' ? [{ label: '支払済にする', icon: <IconCircleCheck size={14} />, color: 'green' }] : []),
+          { label: '弥生CSVエクスポート', icon: <IconFileExport size={14} /> },
+        ]}
+        emptyIcon={<IconFileInvoice size={24} />}
+        emptyMessage="請求書がありません"
+      />
+    </ListShell>
   );
 }

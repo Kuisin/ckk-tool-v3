@@ -1,30 +1,39 @@
+'use client';
+
+import { useState } from 'react';
 import {
   Badge,
   Button,
-  Divider,
   Group,
-  Menu,
   Paper,
-  SimpleGrid,
   Stack,
   Table,
   Tabs,
   Text,
-  Timeline,
 } from '@mantine/core';
 import {
-  IconDotsVertical,
+  IconCheck,
   IconDownload,
-  IconEdit,
+  IconUpload,
+  IconX,
 } from '@tabler/icons-react';
 import {
   DocNumber,
   FieldValue,
   formatDateTime,
-  PageHeader,
 } from '../../lib/ui';
 import { StatusBadge } from '../../lib/status';
+import {
+  AuditTimeline,
+  DetailShell,
+  ResourceActions,
+  SummaryGrid,
+  type AuditEntry,
+} from '../../lib/shells';
 import { useIsMobile } from '../../lib/viewport-context';
+import { CancelDesignRequestModal } from './_modals/cancel';
+import { CompleteDesignRequestModal } from './_modals/complete';
+import { UploadDesignModal } from './_modals/upload-design';
 
 const TRIGGER_LABEL: Record<string, string> = {
   QUOTE: '見積時',
@@ -48,7 +57,7 @@ const MOCK_FILES = [
   { id: '2', version: 1, isLatest: false, filename: 'design-PRD-2601-0001-v1.pdf', createdBy: '中村 花子', createdAt: '2026-06-03 11:05' },
 ];
 
-const MOCK_AUDIT_LOG = [
+const MOCK_AUDIT: AuditEntry[] = [
   { id: 1, action: 'UPDATE', user: '中村', at: '2026-06-05 15:20', detail: '設計図 v2 をアップロード' },
   { id: 2, action: 'CREATE', user: '中村', at: '2026-06-03 11:00', detail: '設計依頼書を作成' },
 ];
@@ -56,62 +65,38 @@ const MOCK_AUDIT_LOG = [
 export default function DesignRequestDetailPage() {
   const isMobile = useIsMobile();
   const d = MOCK;
+  const [cancelOpen, setCancelOpen] = useState(false);
+  const [completeOpen, setCompleteOpen] = useState(false);
+  const [uploadOpen, setUploadOpen] = useState(false);
 
-  const actions = isMobile ? (
-    <Menu shadow="sm" position="bottom-end">
-      <Menu.Target>
-        <Button variant="default" px="xs" size="sm">
-          <IconDotsVertical size={16} />
-        </Button>
-      </Menu.Target>
-      <Menu.Dropdown>
-        <Menu.Item leftSection={<IconEdit size={14} />}>編集</Menu.Item>
-        <Menu.Divider />
-        <Menu.Item color="red">キャンセル</Menu.Item>
-      </Menu.Dropdown>
-    </Menu>
-  ) : (
-    <Group gap="xs" style={{ flexShrink: 0 }}>
-      <Button variant="default" leftSection={<IconEdit size={14} />}>編集</Button>
-      <Menu shadow="sm">
-        <Menu.Target>
-          <Button variant="default" px="xs">
-            <IconDotsVertical size={16} />
-          </Button>
-        </Menu.Target>
-        <Menu.Dropdown>
-          <Menu.Item color="red">キャンセル</Menu.Item>
-        </Menu.Dropdown>
-      </Menu>
-    </Group>
-  );
+  const nextVersion = Math.max(...MOCK_FILES.map((f) => f.version)) + 1;
 
   return (
-    <Stack gap="md">
-      <PageHeader
-        breadcrumbs={['ホーム', '販売', '設計依頼書', d.requestNumber]}
-        title={d.requestNumber}
-        status={<StatusBadge entity="DesignRequest" status={d.status} />}
-        align="flex-start"
-        actions={actions}
-      />
-
-      <Paper withBorder p="md" radius="md">
-        <SimpleGrid cols={isMobile ? 1 : 3} spacing="md">
-          <FieldValue label="依頼番号" value={<DocNumber>{d.requestNumber}</DocNumber>} />
-          <FieldValue label="トリガー" value={TRIGGER_LABEL[d.trigger]} />
-          <FieldValue label="製品" value={d.productName} />
-          <FieldValue label="見積書" value={<DocNumber c="blue">{d.quoteNumber}</DocNumber>} />
-          <FieldValue label="作成者" value={d.createdBy} />
-          <FieldValue label="説明" value={d.description} />
-        </SimpleGrid>
-        {isMobile && (
-          <Group gap="xl" mt="sm">
-            <Text size="xs" c="dimmed">作成: {formatDateTime(d.createdAt)}</Text>
-            <Text size="xs" c="dimmed">更新: {formatDateTime(d.updatedAt)}</Text>
-          </Group>
-        )}
-      </Paper>
+    <DetailShell
+      breadcrumbs={['ホーム', '販売', '設計依頼書', d.requestNumber]}
+      title={d.requestNumber}
+      status={<StatusBadge entity="DesignRequest" status={d.status} />}
+      createdAt={formatDateTime(d.createdAt)}
+      updatedAt={formatDateTime(d.updatedAt)}
+      actions={
+        <ResourceActions
+          onEdit={() => {}}
+          menuItems={[
+            { label: '設計図をアップロード', icon: <IconUpload size={14} />, onClick: () => setUploadOpen(true) },
+            { label: '完了にする', icon: <IconCheck size={14} />, onClick: () => setCompleteOpen(true) },
+            { label: 'キャンセル', icon: <IconX size={14} />, color: 'red', divider: true, onClick: () => setCancelOpen(true) },
+          ]}
+        />
+      }
+    >
+      <SummaryGrid>
+        <FieldValue label="依頼番号" value={<DocNumber>{d.requestNumber}</DocNumber>} />
+        <FieldValue label="トリガー" value={TRIGGER_LABEL[d.trigger]} />
+        <FieldValue label="製品" value={d.productName} />
+        <FieldValue label="見積書" value={<DocNumber c="blue">{d.quoteNumber}</DocNumber>} />
+        <FieldValue label="作成者" value={d.createdBy} />
+        <FieldValue label="説明" value={d.description} />
+      </SummaryGrid>
 
       <Tabs defaultValue="files">
         <Tabs.List>
@@ -193,30 +178,13 @@ export default function DesignRequestDetailPage() {
         </Tabs.Panel>
 
         <Tabs.Panel value="history" pt="md">
-          <Timeline active={-1} bulletSize={28} lineWidth={2}>
-            {MOCK_AUDIT_LOG.map((log) => (
-              <Timeline.Item
-                key={log.id}
-                bullet={<Text size="xs" fw={700}>{log.user[0]}</Text>}
-                title={log.action}
-              >
-                <Text size="xs" c="dimmed">{log.at} · {log.user}</Text>
-                <Text size="sm" mt={4}>{log.detail}</Text>
-              </Timeline.Item>
-            ))}
-          </Timeline>
+          <AuditTimeline entries={MOCK_AUDIT} />
         </Tabs.Panel>
       </Tabs>
 
-      {!isMobile && (
-        <>
-          <Divider />
-          <Group gap="xl">
-            <Text size="xs" c="dimmed">作成: {formatDateTime(d.createdAt)}</Text>
-            <Text size="xs" c="dimmed">更新: {formatDateTime(d.updatedAt)}</Text>
-          </Group>
-        </>
-      )}
-    </Stack>
+      <UploadDesignModal opened={uploadOpen} onClose={() => setUploadOpen(false)} requestNumber={d.requestNumber} nextVersion={nextVersion} />
+      <CompleteDesignRequestModal opened={completeOpen} onClose={() => setCompleteOpen(false)} requestNumber={d.requestNumber} productName={d.productName} />
+      <CancelDesignRequestModal opened={cancelOpen} onClose={() => setCancelOpen(false)} requestNumber={d.requestNumber} />
+    </DetailShell>
   );
 }

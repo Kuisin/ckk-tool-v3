@@ -1,26 +1,31 @@
 'use client';
 
+import { useState } from 'react';
 import {
-  ActionIcon,
   Alert,
   Button,
   Divider,
   Group,
   Paper,
-  SegmentedControl,
-  Select,
   Stack,
-  Table,
   Text,
-  TextInput,
-  Textarea,
+  ThemeIcon,
   Title,
 } from '@mantine/core';
-import { IconAlertTriangle, IconPlus, IconTrash } from '@tabler/icons-react';
-import { useState } from 'react';
-import { DocNumber, formatDate } from '../../lib/ui';
+import {
+  IconAlertTriangle,
+  IconClipboardCheck,
+  IconListCheck,
+} from '@tabler/icons-react';
+import { DocNumber } from '../../lib/ui';
+import { FormSection } from '../../lib/shells';
 import { StatusBadge } from '../../lib/status';
-import { DEFECT_TYPES } from '../../lib/mock';
+import { CompleteStepModal } from './_modals/complete-step';
+import { RecordDefectModal } from './_modals/record-defect';
+import { RecordInspectionModal, type InspectionItem } from './_modals/record-inspection';
+import { RollbackStepModal } from './_modals/rollback-step';
+import { SessionLockModal } from './_modals/session-lock';
+import { StartStepModal } from './_modals/start-step';
 
 // ── Mock state (toggle these consts to preview different states) ─────────────
 const SESSION_LOCKED = false; // true → 別ユーザーがセッション中
@@ -29,35 +34,27 @@ const STEP = {
   name: '円筒加工検査',
   status: 'IN_PROGRESS' as 'PENDING' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED',
   canStart: true,
+  plannedQuantity: 50,
   templateName: '円筒加工検査表',
 };
 
-interface InspItem {
-  id: string;
-  name: string;
-  tolerance: string;
-}
-
-const INSPECTION_ITEMS: InspItem[] = [
+const INSPECTION_ITEMS: InspectionItem[] = [
   { id: 'i1', name: '外径 φ', tolerance: '19.98 〜 20.00 mm' },
   { id: 'i2', name: '真円度', tolerance: '0 〜 0.005 mm' },
   { id: 'i3', name: '表面粗さ Ra', tolerance: '0 〜 0.40 μm' },
   { id: 'i4', name: '全長', tolerance: '2998 〜 3000 mm' },
 ];
 
-interface DefectEntry {
-  defectTypeId: string | null;
-  description: string;
-}
-
 export default function StepExecutionPage() {
-  // local measured-value / result state
-  const [measured, setMeasured] = useState<Record<string, string>>({});
-  const [results, setResults] = useState<Record<string, string>>({});
-  const [defects, setDefects] = useState<DefectEntry[]>([{ defectTypeId: null, description: '' }]);
+  const [startOpen, setStartOpen] = useState(false);
+  const [completeOpen, setCompleteOpen] = useState(false);
+  const [rollbackOpen, setRollbackOpen] = useState(false);
+  const [inspectionOpen, setInspectionOpen] = useState(false);
+  const [defectOpen, setDefectOpen] = useState(false);
+  const [lockOpen, setLockOpen] = useState(false);
 
-  const setResult = (id: string, v: string) => setResults((p) => ({ ...p, [id]: v }));
-  const setVal = (id: string, v: string) => setMeasured((p) => ({ ...p, [id]: v }));
+  // When session locked, action attempts open the session-lock warning modal.
+  const guarded = (action: () => void) => () => (SESSION_LOCKED ? setLockOpen(true) : action());
 
   return (
     <Stack gap="md" p="md">
@@ -80,138 +77,66 @@ export default function StepExecutionPage() {
         </Stack>
       </Paper>
 
-      {/* ── InspectionRecordForm (design.md §12.5) ──────────────────── */}
+      {/* ── 検査記録 (design.md §12.5) — opens the inspection modal ────── */}
       {STEP.status === 'IN_PROGRESS' && (
-        <Paper withBorder p="lg" radius="md">
-          <Title order={4} mb="md">
-            {STEP.templateName}
-          </Title>
-          <Table verticalSpacing="md" horizontalSpacing="md" withTableBorder>
-            <Table.Thead>
-              <Table.Tr>
-                <Table.Th>検査項目</Table.Th>
-                <Table.Th>許容値</Table.Th>
-                <Table.Th style={{ width: 200 }}>実測値</Table.Th>
-                <Table.Th style={{ width: 220 }}>合否</Table.Th>
-              </Table.Tr>
-            </Table.Thead>
-            <Table.Tbody>
-              {INSPECTION_ITEMS.map((item) => (
-                <Table.Tr key={item.id}>
-                  <Table.Td>
-                    <Text size="md" fw={500}>
-                      {item.name}
-                    </Text>
-                  </Table.Td>
-                  <Table.Td>
-                    <Text size="md" c="dimmed">
-                      {item.tolerance}
-                    </Text>
-                  </Table.Td>
-                  <Table.Td>
-                    <TextInput
-                      size="lg"
-                      placeholder="実測値"
-                      value={measured[item.id] ?? ''}
-                      onChange={(e) => setVal(item.id, e.currentTarget.value)}
-                    />
-                  </Table.Td>
-                  <Table.Td>
-                    <SegmentedControl
-                      size="lg"
-                      fullWidth
-                      color={results[item.id] === 'FAIL' ? 'red' : 'green'}
-                      data={[
-                        { value: 'PASS', label: '合格' },
-                        { value: 'FAIL', label: '不合格' },
-                      ]}
-                      value={results[item.id] ?? ''}
-                      onChange={(v) => setResult(item.id, v)}
-                    />
-                  </Table.Td>
-                </Table.Tr>
-              ))}
-            </Table.Tbody>
-          </Table>
-        </Paper>
+        <FormSection title={STEP.templateName} description="検査表に沿って実測値・合否を記録します">
+          <Group justify="space-between" align="center" wrap="wrap">
+            <Group gap="sm">
+              <ThemeIcon variant="light" color="teal" size="lg" radius="md">
+                <IconListCheck size={20} />
+              </ThemeIcon>
+              <Text size="md">検査項目 {INSPECTION_ITEMS.length} 件</Text>
+            </Group>
+            <Button size="lg" leftSection={<IconClipboardCheck size={18} />} onClick={guarded(() => setInspectionOpen(true))}>
+              検査記録を入力
+            </Button>
+          </Group>
+        </FormSection>
       )}
 
-      {/* ── DefectRecordForm (design.md §12.6) ──────────────────────── */}
-      <Paper withBorder p="lg" radius="md">
-        <Title order={4} mb="md">
-          不良記録（任意）
-        </Title>
-        <Stack gap="md">
-          {defects.map((d, i) => (
-            <Group key={i} gap="sm" align="flex-start" wrap="nowrap">
-              <Select
-                size="lg"
-                placeholder="不良種類"
-                data={DEFECT_TYPES}
-                clearable
-                searchable
-                style={{ width: 220 }}
-                value={d.defectTypeId}
-                onChange={(v) =>
-                  setDefects((p) => p.map((x, idx) => (idx === i ? { ...x, defectTypeId: v } : x)))
-                }
-              />
-              <Textarea
-                size="lg"
-                placeholder={d.defectTypeId ? '詳細を入力してください' : '詳細（不良種類選択時は必須）'}
-                autosize
-                minRows={1}
-                style={{ flex: 1 }}
-                value={d.description}
-                onChange={(e) =>
-                  setDefects((p) =>
-                    p.map((x, idx) => (idx === i ? { ...x, description: e.currentTarget.value } : x)),
-                  )
-                }
-              />
-              <ActionIcon
-                size="xl"
-                variant="subtle"
-                color="red"
-                aria-label="不良記録を削除"
-                disabled={defects.length === 1}
-                onClick={() => setDefects((p) => p.filter((_, idx) => idx !== i))}
-              >
-                <IconTrash size={20} />
-              </ActionIcon>
-            </Group>
-          ))}
-          <Button
-            variant="subtle"
-            size="lg"
-            leftSection={<IconPlus size={18} />}
-            onClick={() => setDefects((p) => [...p, { defectTypeId: null, description: '' }])}
-          >
-            追加
+      {/* ── 不良記録 (design.md §12.6) — opens the defect modal ────────── */}
+      <FormSection title="不良記録（任意）" description="工程中に発生した不良を記録します">
+        <Group justify="space-between" align="center" wrap="wrap">
+          <Group gap="sm">
+            <ThemeIcon variant="light" color="orange" size="lg" radius="md">
+              <IconAlertTriangle size={20} />
+            </ThemeIcon>
+            <Text size="md">不良があれば記録してください</Text>
+          </Group>
+          <Button size="lg" variant="default" leftSection={<IconAlertTriangle size={18} />} onClick={guarded(() => setDefectOpen(true))}>
+            不良記録を追加
           </Button>
-        </Stack>
-      </Paper>
+        </Group>
+      </FormSection>
 
       <Divider />
 
       {/* ── Action buttons ───────────────────────────────────────────── */}
       <Group justify="center" mt="xl" gap="lg">
         {STEP.status === 'PENDING' && STEP.canStart && (
-          <Button size="lg" color="blue" disabled={SESSION_LOCKED}>
+          <Button size="lg" color="blue" onClick={guarded(() => setStartOpen(true))}>
             工程開始
           </Button>
         )}
         {STEP.status === 'IN_PROGRESS' && (
           <>
-            <Button size="lg" color="green" disabled={SESSION_LOCKED}>
+            <Button size="lg" color="green" onClick={guarded(() => setCompleteOpen(true))}>
               工程完了
             </Button>
-            <Button size="lg" color="red" variant="outline" disabled={SESSION_LOCKED}>
+            <Button size="lg" color="red" variant="outline" onClick={guarded(() => setRollbackOpen(true))}>
               キャンセル（巻き戻し）
             </Button>
           </>
         )}
       </Group>
+
+      {/* ── Modals ───────────────────────────────────────────────────── */}
+      <StartStepModal opened={startOpen} onClose={() => setStartOpen(false)} stepName={STEP.name} />
+      <CompleteStepModal opened={completeOpen} onClose={() => setCompleteOpen(false)} stepName={STEP.name} plannedQuantity={STEP.plannedQuantity} />
+      <RollbackStepModal opened={rollbackOpen} onClose={() => setRollbackOpen(false)} stepName={STEP.name} />
+      <RecordInspectionModal opened={inspectionOpen} onClose={() => setInspectionOpen(false)} templateName={STEP.templateName} items={INSPECTION_ITEMS} />
+      <RecordDefectModal opened={defectOpen} onClose={() => setDefectOpen(false)} stepName={STEP.name} />
+      <SessionLockModal opened={lockOpen} onClose={() => setLockOpen(false)} />
     </Stack>
   );
 }

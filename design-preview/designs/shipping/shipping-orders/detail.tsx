@@ -1,33 +1,22 @@
-import {
-  Badge,
-  Button,
-  Divider,
-  Group,
-  Menu,
-  Paper,
-  SimpleGrid,
-  Stack,
-  Table,
-  Tabs,
-  Text,
-  Timeline,
-} from '@mantine/core';
-import {
-  IconDotsVertical,
-  IconEdit,
-  IconFileTypePdf,
-} from '@tabler/icons-react';
-import {
-  DocNumber,
-  FieldValue,
-  formatDate,
-  formatDateTime,
-  PageHeader,
-} from '../../lib/ui';
-import { StatusBadge } from '../../lib/status';
-import { useIsMobile } from '../../lib/viewport-context';
+'use client';
 
-// ── Mock data ────────────────────────────────────────────────────────────────
+import { useState } from 'react';
+import { Badge, Divider, Group, Stack, Table, Tabs, Text } from '@mantine/core';
+import { IconCircleCheck, IconCopy, IconTruckDelivery, IconX } from '@tabler/icons-react';
+import { DocNumber, FieldValue, formatDateTime } from '../../lib/ui';
+import { StatusBadge } from '../../lib/status';
+import {
+  AuditTimeline,
+  DetailShell,
+  ResourceActions,
+  SummaryGrid,
+  type AuditEntry,
+} from '../../lib/shells';
+import { useIsMobile } from '../../lib/viewport-context';
+import { ConfirmShippingOrderModal } from './_modals/confirm';
+import { ShipShippingOrderModal } from './_modals/ship';
+import { CancelShippingOrderModal } from './_modals/cancel';
+
 const SH = {
   shippingOrderNumber: 'SHP-202606-0007',
   status: 'SHIPPED',
@@ -58,7 +47,7 @@ const RELATED = {
   deliveryNote: 'DRN-202606-00012',
 };
 
-const AUDIT = [
+const AUDIT: AuditEntry[] = [
   { id: 1, action: 'UPDATE', user: '鈴木 一郎', at: '2026-06-04 10:30', detail: 'ステータス: CONFIRMED → SHIPPED（在庫台帳を出荷確定更新）' },
   { id: 2, action: 'UPDATE', user: '鈴木 一郎', at: '2026-06-02 14:00', detail: 'ステータス: DRAFT → CONFIRMED' },
   { id: 3, action: 'CREATE', user: '鈴木 一郎', at: '2026-06-02 09:15', detail: '出荷書を作成' },
@@ -66,92 +55,48 @@ const AUDIT = [
 
 export default function ShippingOrderDetailPage() {
   const isMobile = useIsMobile();
-
-  const actions = isMobile ? (
-    <Menu shadow="sm" position="bottom-end">
-      <Menu.Target>
-        <Button variant="default" px="xs" size="sm">
-          <IconDotsVertical size={16} />
-        </Button>
-      </Menu.Target>
-      <Menu.Dropdown>
-        <Menu.Item leftSection={<IconEdit size={14} />}>編集</Menu.Item>
-        <Menu.Item leftSection={<IconFileTypePdf size={14} />}>PDF</Menu.Item>
-        <Menu.Item>コピーして新規作成</Menu.Item>
-        <Menu.Divider />
-        <Menu.Item color="red">キャンセル</Menu.Item>
-      </Menu.Dropdown>
-    </Menu>
-  ) : (
-    <Group gap="xs" style={{ flexShrink: 0 }}>
-      <Button variant="default" leftSection={<IconEdit size={14} />}>
-        編集
-      </Button>
-      <Button variant="default" leftSection={<IconFileTypePdf size={14} />}>
-        PDF
-      </Button>
-      <Menu shadow="sm">
-        <Menu.Target>
-          <Button variant="default" px="xs">
-            <IconDotsVertical size={16} />
-          </Button>
-        </Menu.Target>
-        <Menu.Dropdown>
-          <Menu.Item>コピーして新規作成</Menu.Item>
-          <Menu.Divider />
-          <Menu.Item color="red">キャンセル</Menu.Item>
-        </Menu.Dropdown>
-      </Menu>
-    </Group>
-  );
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [shipOpen, setShipOpen] = useState(false);
+  const [cancelOpen, setCancelOpen] = useState(false);
 
   return (
-    <Stack gap="md">
-      <PageHeader
-        breadcrumbs={['ホーム', '出荷', '出荷書', SH.shippingOrderNumber]}
-        title={`出荷書 ${SH.shippingOrderNumber}`}
-        status={<StatusBadge entity="ShippingOrder" status={SH.status} />}
-        actions={actions}
-        align="flex-start"
-      />
+    <DetailShell
+      breadcrumbs={['ホーム', '出荷', '出荷書', SH.shippingOrderNumber]}
+      title={`出荷書 ${SH.shippingOrderNumber}`}
+      status={<StatusBadge entity="ShippingOrder" status={SH.status} />}
+      createdAt={formatDateTime(SH.createdAt)}
+      updatedAt={formatDateTime(SH.updatedAt)}
+      actions={
+        <ResourceActions
+          onEdit={() => {}}
+          pdf={{ label: 'PDF' }}
+          menuItems={[
+            { label: '確定', icon: <IconCircleCheck size={14} />, onClick: () => setConfirmOpen(true) },
+            { label: '出荷確定', icon: <IconTruckDelivery size={14} />, onClick: () => setShipOpen(true) },
+            { label: 'コピーして新規作成', icon: <IconCopy size={14} /> },
+            { label: 'キャンセル', icon: <IconX size={14} />, color: 'red', divider: true, onClick: () => setCancelOpen(true) },
+          ]}
+        />
+      }
+    >
+      <SummaryGrid>
+        <FieldValue label="出荷書番号" value={<DocNumber>{SH.shippingOrderNumber}</DocNumber>} />
+        <FieldValue label="受注番号" value={<DocNumber>{SH.salesOrderNumber}</DocNumber>} />
+        <FieldValue label="顧客" value={SH.customerName} />
+        <FieldValue
+          label="種別"
+          value={
+            <Badge variant="light" color={SH.type === 'STOCK_STORAGE' ? 'gray' : 'orange'}>
+              {TYPE_LABEL[SH.type]}
+            </Badge>
+          }
+        />
+        <FieldValue label="指示書" value={<DocNumber>指示書 #{SH.workOrderNumber}</DocNumber>} />
+        <FieldValue label="出荷日時" value={formatDateTime(SH.shippedAt)} />
+        <FieldValue label="作成者" value={SH.createdBy} />
+        <FieldValue label="備考" value={SH.notes} />
+      </SummaryGrid>
 
-      {/* Summary card */}
-      <Paper withBorder p="md" radius="md">
-        <SimpleGrid cols={isMobile ? 1 : 3} spacing="md">
-          <FieldValue label="出荷書番号" value={<DocNumber>{SH.shippingOrderNumber}</DocNumber>} />
-          <FieldValue label="受注番号" value={<DocNumber>{SH.salesOrderNumber}</DocNumber>} />
-          <FieldValue label="顧客" value={SH.customerName} />
-          <FieldValue
-            label="種別"
-            value={
-              <Badge variant="light" color={SH.type === 'STOCK_STORAGE' ? 'gray' : 'orange'}>
-                {TYPE_LABEL[SH.type]}
-              </Badge>
-            }
-          />
-          <FieldValue label="指示書" value={<DocNumber>指示書 #{SH.workOrderNumber}</DocNumber>} />
-          <FieldValue label="出荷日時" value={formatDateTime(SH.shippedAt)} />
-          {!isMobile && (
-            <>
-              <FieldValue label="作成者" value={SH.createdBy} />
-              <FieldValue label="作成日時" value={formatDateTime(SH.createdAt)} />
-              <FieldValue label="更新日時" value={formatDateTime(SH.updatedAt)} />
-            </>
-          )}
-        </SimpleGrid>
-        {isMobile && (
-          <Group gap="xl" mt="sm">
-            <Text size="xs" c="dimmed">
-              作成: {formatDateTime(SH.createdAt)}
-            </Text>
-            <Text size="xs" c="dimmed">
-              更新: {formatDateTime(SH.updatedAt)}
-            </Text>
-          </Group>
-        )}
-      </Paper>
-
-      {/* Tabs */}
       <Tabs defaultValue="items">
         <Tabs.List>
           <Tabs.Tab value="items">明細</Tabs.Tab>
@@ -160,7 +105,7 @@ export default function ShippingOrderDetailPage() {
         </Tabs.List>
 
         <Tabs.Panel value="items" pt="md">
-          <Table striped withTableBorder>
+          <Table withTableBorder>
             <Table.Thead>
               <Table.Tr>
                 <Table.Th>製品</Table.Th>
@@ -173,9 +118,7 @@ export default function ShippingOrderDetailPage() {
               {ITEMS.map((it) => (
                 <Table.Tr key={it.id}>
                   <Table.Td>{it.productName}</Table.Td>
-                  <Table.Td>
-                    <DocNumber>{it.lotNumber}</DocNumber>
-                  </Table.Td>
+                  <Table.Td><DocNumber>{it.lotNumber}</DocNumber></Table.Td>
                   <Table.Td ta="right">{it.quantity} 本</Table.Td>
                   {!isMobile && <Table.Td>{it.notes}</Table.Td>}
                 </Table.Tr>
@@ -187,65 +130,30 @@ export default function ShippingOrderDetailPage() {
         <Tabs.Panel value="related" pt="md">
           <Stack gap="sm">
             <Group>
-              <Text size="sm" c="dimmed" w={120}>
-                受注書
-              </Text>
+              <Text size="sm" c="dimmed" w={120}>受注書</Text>
               <DocNumber c="blue">{RELATED.salesOrder}</DocNumber>
             </Group>
             <Divider />
             <Group>
-              <Text size="sm" c="dimmed" w={120}>
-                指示書
-              </Text>
+              <Text size="sm" c="dimmed" w={120}>指示書</Text>
               <DocNumber c="blue">指示書 #{RELATED.workOrder}</DocNumber>
             </Group>
             <Divider />
             <Group>
-              <Text size="sm" c="dimmed" w={120}>
-                納品書
-              </Text>
+              <Text size="sm" c="dimmed" w={120}>納品書</Text>
               <DocNumber c="blue">{RELATED.deliveryNote}</DocNumber>
             </Group>
           </Stack>
         </Tabs.Panel>
 
         <Tabs.Panel value="history" pt="md">
-          <Timeline active={-1} bulletSize={28} lineWidth={2}>
-            {AUDIT.map((log) => (
-              <Timeline.Item
-                key={log.id}
-                bullet={
-                  <Text size="xs" fw={700}>
-                    {log.user[0]}
-                  </Text>
-                }
-                title={log.action}
-              >
-                <Text size="xs" c="dimmed">
-                  {formatDateTime(log.at)} · {log.user}
-                </Text>
-                <Text size="sm" mt={4}>
-                  {log.detail}
-                </Text>
-              </Timeline.Item>
-            ))}
-          </Timeline>
+          <AuditTimeline entries={AUDIT} />
         </Tabs.Panel>
       </Tabs>
 
-      {!isMobile && (
-        <>
-          <Divider />
-          <Group gap="xl">
-            <Text size="xs" c="dimmed">
-              作成: {formatDateTime(SH.createdAt)}（{SH.createdBy}）
-            </Text>
-            <Text size="xs" c="dimmed">
-              更新: {formatDateTime(SH.updatedAt)}
-            </Text>
-          </Group>
-        </>
-      )}
-    </Stack>
+      <ConfirmShippingOrderModal opened={confirmOpen} onClose={() => setConfirmOpen(false)} shippingOrderNumber={SH.shippingOrderNumber} />
+      <ShipShippingOrderModal opened={shipOpen} onClose={() => setShipOpen(false)} shippingOrderNumber={SH.shippingOrderNumber} />
+      <CancelShippingOrderModal opened={cancelOpen} onClose={() => setCancelOpen(false)} shippingOrderNumber={SH.shippingOrderNumber} />
+    </DetailShell>
   );
 }

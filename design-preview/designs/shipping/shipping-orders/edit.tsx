@@ -1,12 +1,11 @@
 'use client';
 
+import { useTransition } from 'react';
 import {
   Alert,
-  Box,
   Button,
   Divider,
   Group,
-  LoadingOverlay,
   NumberInput,
   Paper,
   SegmentedControl,
@@ -17,37 +16,17 @@ import {
   Text,
   Textarea,
   TextInput,
-  Title,
 } from '@mantine/core';
-import { useForm } from '@mantine/form';
 import { DatePickerInput } from '@mantine/dates';
+import { useForm } from '@mantine/form';
 import { notifications } from '@mantine/notifications';
-import {
-  IconCalendar,
-  IconInfoCircle,
-  IconMinus,
-  IconPlus,
-} from '@tabler/icons-react';
-import { useTransition } from 'react';
+import { IconCalendar, IconInfoCircle, IconMinus, IconPlus } from '@tabler/icons-react';
 import { z } from 'zod';
-import type { FormErrors } from '@mantine/form';
-import { PageHeader } from '../../lib/ui';
+import { zodResolver } from '../../lib/form';
 import { StatusBadge } from '../../lib/status';
+import { FormSection, FormShell } from '../../lib/shells';
 import { PRODUCTS } from '../../lib/mock';
 import { useIsMobile } from '../../lib/viewport-context';
-
-function zodResolver<T>(schema: z.ZodType<T>) {
-  return (values: T): FormErrors => {
-    const result = schema.safeParse(values);
-    if (result.success) return {};
-    const errors: FormErrors = {};
-    for (const issue of result.error.issues) {
-      const key = issue.path.join('.');
-      if (key && !errors[key]) errors[key] = issue.message;
-    }
-    return errors;
-  };
-}
 
 const SALES_ORDER_OPTIONS = [
   { value: 'so-001', label: 'ORD-202601-00001-01 — 株式会社ABC製作所' },
@@ -78,6 +57,8 @@ const shippingOrderSchema = z.object({
 
 type ShippingOrderFormValues = z.infer<typeof shippingOrderSchema>;
 
+const EMPTY_ITEM = { productId: '', lotNumber: null, quantity: 1, notes: '' };
+
 export default function ShippingOrderEditPage() {
   const isMobile = useIsMobile();
   const [isPending, startTransition] = useTransition();
@@ -90,9 +71,7 @@ export default function ShippingOrderEditPage() {
       type: 'DISPATCH',
       shippedAt: null,
       notes: '客先指定の梱包仕様にて出荷',
-      items: [
-        { productId: 'PRD-2601-0001', lotNumber: 1042, quantity: 50, notes: '' },
-      ],
+      items: [{ productId: 'PRD-2601-0001', lotNumber: 1042, quantity: 50, notes: '' }],
     },
   });
 
@@ -111,223 +90,124 @@ export default function ShippingOrderEditPage() {
   };
 
   return (
-    <Stack gap="md">
-      <PageHeader
-        breadcrumbs={['ホーム', '出荷', '出荷書', 'SHP-202606-0007', '編集']}
-        title="出荷書 編集"
-        status={<StatusBadge entity="ShippingOrder" status="CONFIRMED" />}
-      />
+    <FormShell
+      breadcrumbs={['ホーム', '出荷', '出荷書', 'SHP-202606-0007', '編集']}
+      title="出荷書 編集"
+      status={<StatusBadge entity="ShippingOrder" status="CONFIRMED" />}
+      isPending={isPending}
+      onSubmit={form.onSubmit(handleSubmit)}
+    >
+      <FormSection title="基本情報">
+        <SimpleGrid cols={isMobile ? 1 : 2} spacing="sm">
+          <Select
+            label="受注書" placeholder="受注書を選択" data={SALES_ORDER_OPTIONS} searchable withAsterisk
+            {...form.getInputProps('salesOrderId')}
+          />
+          <Select
+            label="指示書" placeholder="指示書を選択（任意）" data={WORK_ORDER_OPTIONS} searchable clearable
+            {...form.getInputProps('workOrderId')}
+          />
+          <Stack gap={4}>
+            <Text size="sm" fw={500}>出荷タイプ</Text>
+            <SegmentedControl
+              fullWidth
+              data={[
+                { value: 'DISPATCH', label: '発送' },
+                { value: 'STOCK_STORAGE', label: '在庫保管' },
+              ]}
+              {...form.getInputProps('type')}
+            />
+          </Stack>
+          <DatePickerInput
+            label="出荷日" placeholder="日付を選択" leftSection={<IconCalendar size={14} />}
+            valueFormat="YYYY/MM/DD" clearable {...form.getInputProps('shippedAt')}
+          />
+        </SimpleGrid>
 
-      <Box component="form" onSubmit={form.onSubmit(handleSubmit)} pos="relative">
-        <LoadingOverlay visible={isPending} />
+        {isStorage && (
+          <Alert color="gray" icon={<IconInfoCircle size={16} />} mt="md" variant="light">
+            在庫保管（予備製作分）は請求フロー外です。在庫台帳のみ確定更新され、会計・請求の対象になりません。
+          </Alert>
+        )}
 
-        <Stack gap="md">
-          <Paper withBorder p="md" radius="md">
-            <Title order={4} mb="xs">
-              基本情報
-            </Title>
-            <Divider mb="md" />
-            <SimpleGrid cols={isMobile ? 1 : 2} spacing="sm">
-              <Select
-                label="受注書"
-                placeholder="受注書を選択"
-                data={SALES_ORDER_OPTIONS}
-                searchable
-                withAsterisk
-                {...form.getInputProps('salesOrderId')}
-              />
-              <Select
-                label="指示書"
-                placeholder="指示書を選択（任意）"
-                data={WORK_ORDER_OPTIONS}
-                searchable
-                clearable
-                {...form.getInputProps('workOrderId')}
-              />
-              <Stack gap={4}>
-                <Text size="sm" fw={500}>
-                  出荷タイプ
-                </Text>
-                <SegmentedControl
-                  fullWidth
-                  data={[
-                    { value: 'DISPATCH', label: '発送' },
-                    { value: 'STOCK_STORAGE', label: '在庫保管' },
-                  ]}
-                  {...form.getInputProps('type')}
-                />
-              </Stack>
-              <DatePickerInput
-                label="出荷日"
-                placeholder="日付を選択"
-                leftSection={<IconCalendar size={14} />}
-                valueFormat="YYYY/MM/DD"
-                clearable
-                {...form.getInputProps('shippedAt')}
-              />
-            </SimpleGrid>
+        <Textarea label="備考" placeholder="備考・特記事項" mt="sm" rows={3} {...form.getInputProps('notes')} />
+      </FormSection>
 
-            {isStorage && (
-              <Alert color="gray" icon={<IconInfoCircle size={16} />} mt="md" variant="light">
-                在庫保管（予備製作分）は請求フロー外です。在庫台帳のみ確定更新され、会計・請求の対象になりません。
-              </Alert>
-            )}
+      <FormSection title="出荷明細">
+        {isMobile ? (
+          <Stack gap="sm">
+            {form.values.items.map((item, index) => (
+              <Paper key={index} withBorder p="sm" radius="sm">
+                <Stack gap="xs">
+                  <Select label="製品" placeholder="製品を選択" data={PRODUCTS} searchable withAsterisk
+                    {...form.getInputProps(`items.${index}.productId`)} />
+                  <Group grow gap="xs">
+                    <NumberInput label="ロット番号" placeholder="任意" allowDecimal={false}
+                      {...form.getInputProps(`items.${index}.lotNumber`)} />
+                    <NumberInput label="数量" min={1} withAsterisk suffix=" 本"
+                      {...form.getInputProps(`items.${index}.quantity`)} />
+                  </Group>
+                  <TextInput label="備考" placeholder="備考" {...form.getInputProps(`items.${index}.notes`)} />
+                  {form.values.items.length > 1 && (
+                    <Button variant="subtle" color="red" size="xs" leftSection={<IconMinus size={12} />}
+                      onClick={() => form.removeListItem('items', index)}>
+                      この明細を削除
+                    </Button>
+                  )}
+                </Stack>
+              </Paper>
+            ))}
+          </Stack>
+        ) : (
+          <Table withColumnBorders={false} withTableBorder>
+            <Table.Thead>
+              <Table.Tr>
+                <Table.Th style={{ minWidth: 220 }}>製品</Table.Th>
+                <Table.Th style={{ width: 130 }}>ロット番号</Table.Th>
+                <Table.Th style={{ width: 120 }}>数量</Table.Th>
+                <Table.Th style={{ minWidth: 160 }}>備考</Table.Th>
+                <Table.Th style={{ width: 40 }} />
+              </Table.Tr>
+            </Table.Thead>
+            <Table.Tbody>
+              {form.values.items.map((item, index) => (
+                <Table.Tr key={index}>
+                  <Table.Td>
+                    <Select placeholder="製品を選択" data={PRODUCTS} searchable withAsterisk
+                      {...form.getInputProps(`items.${index}.productId`)} />
+                  </Table.Td>
+                  <Table.Td>
+                    <NumberInput placeholder="任意" allowDecimal={false} {...form.getInputProps(`items.${index}.lotNumber`)} />
+                  </Table.Td>
+                  <Table.Td>
+                    <NumberInput min={1} withAsterisk suffix=" 本" {...form.getInputProps(`items.${index}.quantity`)} />
+                  </Table.Td>
+                  <Table.Td>
+                    <TextInput placeholder="備考" {...form.getInputProps(`items.${index}.notes`)} />
+                  </Table.Td>
+                  <Table.Td>
+                    <Button variant="subtle" color="red" size="xs" px={4} disabled={form.values.items.length === 1}
+                      onClick={() => form.removeListItem('items', index)} aria-label="この行を削除">
+                      <IconMinus size={14} />
+                    </Button>
+                  </Table.Td>
+                </Table.Tr>
+              ))}
+            </Table.Tbody>
+          </Table>
+        )}
 
-            <Textarea label="備考" placeholder="備考・特記事項" mt="sm" rows={3} {...form.getInputProps('notes')} />
-          </Paper>
+        <Button variant="subtle" leftSection={<IconPlus size={14} />} mt="sm" size="sm" fullWidth={isMobile}
+          onClick={() => form.insertListItem('items', { ...EMPTY_ITEM })}>
+          明細を追加
+        </Button>
 
-          <Paper withBorder p="md" radius="md">
-            <Title order={4} mb="xs">
-              出荷明細
-            </Title>
-            <Divider mb="md" />
-
-            {isMobile ? (
-              <Stack gap="sm">
-                {form.values.items.map((item, index) => (
-                  <Paper key={index} withBorder p="sm" radius="sm">
-                    <Stack gap="xs">
-                      <Select
-                        label="製品"
-                        placeholder="製品を選択"
-                        data={PRODUCTS}
-                        searchable
-                        withAsterisk
-                        {...form.getInputProps(`items.${index}.productId`)}
-                      />
-                      <Group grow gap="xs">
-                        <NumberInput
-                          label="ロット番号"
-                          placeholder="任意"
-                          allowDecimal={false}
-                          {...form.getInputProps(`items.${index}.lotNumber`)}
-                        />
-                        <NumberInput
-                          label="数量"
-                          min={1}
-                          withAsterisk
-                          suffix=" 本"
-                          {...form.getInputProps(`items.${index}.quantity`)}
-                        />
-                      </Group>
-                      {form.values.items.length > 1 && (
-                        <Button
-                          variant="subtle"
-                          color="red"
-                          size="xs"
-                          leftSection={<IconMinus size={12} />}
-                          onClick={() => form.removeListItem('items', index)}
-                        >
-                          この明細を削除
-                        </Button>
-                      )}
-                    </Stack>
-                  </Paper>
-                ))}
-              </Stack>
-            ) : (
-              <Table withColumnBorders={false} withTableBorder>
-                <Table.Thead>
-                  <Table.Tr>
-                    <Table.Th style={{ minWidth: 220 }}>製品</Table.Th>
-                    <Table.Th style={{ width: 130 }}>ロット番号</Table.Th>
-                    <Table.Th style={{ width: 120 }}>数量</Table.Th>
-                    <Table.Th style={{ minWidth: 160 }}>備考</Table.Th>
-                    <Table.Th style={{ width: 40 }} />
-                  </Table.Tr>
-                </Table.Thead>
-                <Table.Tbody>
-                  {form.values.items.map((item, index) => (
-                    <Table.Tr key={index}>
-                      <Table.Td>
-                        <Select
-                          placeholder="製品を選択"
-                          data={PRODUCTS}
-                          searchable
-                          withAsterisk
-                          {...form.getInputProps(`items.${index}.productId`)}
-                        />
-                      </Table.Td>
-                      <Table.Td>
-                        <NumberInput
-                          placeholder="任意"
-                          allowDecimal={false}
-                          {...form.getInputProps(`items.${index}.lotNumber`)}
-                        />
-                      </Table.Td>
-                      <Table.Td>
-                        <NumberInput
-                          min={1}
-                          withAsterisk
-                          suffix=" 本"
-                          {...form.getInputProps(`items.${index}.quantity`)}
-                        />
-                      </Table.Td>
-                      <Table.Td>
-                        <TextInput placeholder="備考" {...form.getInputProps(`items.${index}.notes`)} />
-                      </Table.Td>
-                      <Table.Td>
-                        <Button
-                          variant="subtle"
-                          color="red"
-                          size="xs"
-                          px={4}
-                          disabled={form.values.items.length === 1}
-                          onClick={() => form.removeListItem('items', index)}
-                          aria-label="この行を削除"
-                        >
-                          <IconMinus size={14} />
-                        </Button>
-                      </Table.Td>
-                    </Table.Tr>
-                  ))}
-                </Table.Tbody>
-              </Table>
-            )}
-
-            <Button
-              variant="subtle"
-              leftSection={<IconPlus size={14} />}
-              mt="sm"
-              size="sm"
-              fullWidth={isMobile}
-              onClick={() =>
-                form.insertListItem('items', { productId: '', lotNumber: null, quantity: 1, notes: '' })
-              }
-            >
-              明細を追加
-            </Button>
-
-            <Divider mt="sm" />
-            <Group justify="flex-end" mt="sm">
-              <Text size="sm" c="dimmed">
-                合計数量
-              </Text>
-              <Text fw={700} ff="mono" style={{ fontVariantNumeric: 'tabular-nums' }}>
-                {totalQty} 本
-              </Text>
-            </Group>
-          </Paper>
-
-          {isMobile ? (
-            <Stack gap="xs">
-              <Button type="submit" loading={isPending} fullWidth>
-                保存
-              </Button>
-              <Button variant="default" fullWidth>
-                キャンセル
-              </Button>
-            </Stack>
-          ) : (
-            <Group justify="flex-end" mt="md">
-              <Button variant="default">キャンセル</Button>
-              <Button type="submit" loading={isPending}>
-                保存
-              </Button>
-            </Group>
-          )}
-        </Stack>
-      </Box>
-    </Stack>
+        <Divider mt="sm" />
+        <Group justify="flex-end" mt="sm">
+          <Text size="sm" c="dimmed">合計数量</Text>
+          <Text fw={700} ff="mono" style={{ fontVariantNumeric: 'tabular-nums' }}>{totalQty} 本</Text>
+        </Group>
+      </FormSection>
+    </FormShell>
   );
 }

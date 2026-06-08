@@ -1,12 +1,11 @@
 'use client';
 
+import { useTransition } from 'react';
 import {
   Alert,
-  Box,
   Button,
   Divider,
   Group,
-  LoadingOverlay,
   NumberInput,
   Paper,
   Select,
@@ -16,36 +15,17 @@ import {
   Table,
   Text,
   Textarea,
-  Title,
 } from '@mantine/core';
-import { useForm } from '@mantine/form';
 import { DatePickerInput } from '@mantine/dates';
+import { useForm } from '@mantine/form';
 import { notifications } from '@mantine/notifications';
-import {
-  IconCalendar,
-  IconInfoCircle,
-  IconMinus,
-  IconPlus,
-} from '@tabler/icons-react';
-import { useTransition } from 'react';
+import { IconCalendar, IconInfoCircle, IconMinus, IconPlus } from '@tabler/icons-react';
 import { z } from 'zod';
-import type { FormErrors } from '@mantine/form';
-import { PageHeader } from '../../lib/ui';
+import { formatMoney } from '../../lib/ui';
+import { zodResolver } from '../../lib/form';
+import { FormSection, FormShell } from '../../lib/shells';
 import { BRANCHES, CUSTOMERS, END_USERS, PRODUCTS } from '../../lib/mock';
 import { useIsMobile } from '../../lib/viewport-context';
-
-function zodResolver<T>(schema: z.ZodType<T>) {
-  return (values: T): FormErrors => {
-    const result = schema.safeParse(values);
-    if (result.success) return {};
-    const errors: FormErrors = {};
-    for (const issue of result.error.issues) {
-      const key = issue.path.join('.');
-      if (key && !errors[key]) errors[key] = issue.message;
-    }
-    return errors;
-  };
-}
 
 // CONFIRMED/SHIPPED 出荷書 available for 納品書 creation
 const SHIPPING_ORDER_OPTIONS = [
@@ -97,11 +77,7 @@ export default function DeliveryNoteNewPage() {
   });
 
   const isDirect = form.values.deliveryMethod === 'DIRECT_TO_USER';
-  const totalAmount = form.values.items.reduce(
-    (sum, item) => sum + item.quantity * item.unitPrice,
-    0,
-  );
-
+  const totalAmount = form.values.items.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0);
   const branchOptions = form.values.recipientId ? (BRANCHES[form.values.recipientId] ?? []) : [];
 
   const handleSubmit = (values: DeliveryNoteFormValues) => {
@@ -116,259 +92,150 @@ export default function DeliveryNoteNewPage() {
   };
 
   return (
-    <Stack gap="md">
-      <PageHeader breadcrumbs={['ホーム', '出荷', '納品書', '新規作成']} title="納品書 新規作成" />
-
-      <Box component="form" onSubmit={form.onSubmit(handleSubmit)} pos="relative">
-        <LoadingOverlay visible={isPending} />
-
-        <Stack gap="md">
-          {/* ── Section 1: 基本情報 ─────────────────────────────────────── */}
-          <Paper withBorder p="md" radius="md">
-            <Title order={4} mb="xs">
-              基本情報
-            </Title>
-            <Divider mb="md" />
-            <SimpleGrid cols={isMobile ? 1 : 2} spacing="sm">
-              <Select
-                label="出荷書"
-                placeholder="出荷書を選択"
-                data={SHIPPING_ORDER_OPTIONS}
-                searchable
-                withAsterisk
-                {...form.getInputProps('shippingOrderId')}
-              />
-              <Select
-                label="配送方法"
-                data={[
-                  { value: 'NORMAL', label: '通常納品' },
-                  { value: 'DIRECT_TO_USER', label: 'ユーザー直送' },
-                ]}
-                withAsterisk
-                {...form.getInputProps('deliveryMethod')}
-              />
-              <Select
-                label="納品先"
-                placeholder="納品先を選択"
-                data={CUSTOMERS}
-                searchable
-                withAsterisk
-                {...form.getInputProps('recipientId')}
-                onChange={(value) => {
-                  form.setFieldValue('recipientId', value ?? '');
-                  form.setFieldValue('recipientBranchId', null);
-                }}
-              />
-              <Select
-                label="納品先支店"
-                placeholder={form.values.recipientId ? '支店を選択' : '納品先を先に選択'}
-                data={branchOptions}
-                disabled={!form.values.recipientId || branchOptions.length === 0}
-                clearable
-                {...form.getInputProps('recipientBranchId')}
-              />
-              {isDirect && (
-                <Select
-                  label="最終需要家"
-                  placeholder="最終需要家を選択"
-                  data={END_USERS}
-                  searchable
-                  clearable
-                  {...form.getInputProps('endUserId')}
-                />
-              )}
-              <DatePickerInput
-                label="納品日"
-                placeholder="日付を選択"
-                leftSection={<IconCalendar size={14} />}
-                valueFormat="YYYY/MM/DD"
-                clearable
-                {...form.getInputProps('deliveredAt')}
-              />
-            </SimpleGrid>
-
-            <Switch
-              mt="md"
-              label="配送完了書に価格を記載する"
-              description="納品書に単価・金額を表示します"
-              {...form.getInputProps('includePrice', { type: 'checkbox' })}
+    <FormShell
+      breadcrumbs={['ホーム', '出荷', '納品書', '新規作成']}
+      title="納品書 新規作成"
+      isPending={isPending}
+      onSubmit={form.onSubmit(handleSubmit)}
+    >
+      <FormSection title="基本情報">
+        <SimpleGrid cols={isMobile ? 1 : 2} spacing="sm">
+          <Select
+            label="出荷書" placeholder="出荷書を選択" data={SHIPPING_ORDER_OPTIONS} searchable withAsterisk
+            {...form.getInputProps('shippingOrderId')}
+          />
+          <Select
+            label="配送方法"
+            data={[
+              { value: 'NORMAL', label: '通常納品' },
+              { value: 'DIRECT_TO_USER', label: 'ユーザー直送' },
+            ]}
+            withAsterisk
+            {...form.getInputProps('deliveryMethod')}
+          />
+          <Select
+            label="納品先" placeholder="納品先を選択" data={CUSTOMERS} searchable withAsterisk
+            {...form.getInputProps('recipientId')}
+            onChange={(value) => {
+              form.setFieldValue('recipientId', value ?? '');
+              form.setFieldValue('recipientBranchId', null);
+            }}
+          />
+          <Select
+            label="納品先支店"
+            placeholder={form.values.recipientId ? '支店を選択' : '納品先を先に選択'}
+            data={branchOptions}
+            disabled={!form.values.recipientId || branchOptions.length === 0}
+            clearable
+            {...form.getInputProps('recipientBranchId')}
+          />
+          {isDirect && (
+            <Select
+              label="最終需要家" placeholder="最終需要家を選択" data={END_USERS} searchable clearable
+              {...form.getInputProps('endUserId')}
             />
-
-            {isDirect && (
-              <Alert color="violet" icon={<IconInfoCircle size={16} />} mt="md" variant="light">
-                ユーザー直送の場合、最終需要家へ届く配送完了書には価格を記載しません。価格付きの納品書は受注先（顧客）へ別送されます。
-              </Alert>
-            )}
-
-            <Textarea label="備考" placeholder="備考・特記事項" mt="sm" rows={3} {...form.getInputProps('notes')} />
-          </Paper>
-
-          {/* ── Section 2: 明細 ─────────────────────────────────────────── */}
-          <Paper withBorder p="md" radius="md">
-            <Title order={4} mb="xs">
-              納品明細
-            </Title>
-            <Divider mb="md" />
-
-            {isMobile ? (
-              <Stack gap="sm">
-                {form.values.items.map((item, index) => (
-                  <Paper key={index} withBorder p="sm" radius="sm">
-                    <Stack gap="xs">
-                      <Select
-                        label="製品"
-                        placeholder="製品を選択"
-                        data={PRODUCTS}
-                        searchable
-                        withAsterisk
-                        {...form.getInputProps(`items.${index}.productId`)}
-                      />
-                      <Group grow gap="xs">
-                        <NumberInput
-                          label="数量"
-                          min={1}
-                          withAsterisk
-                          suffix=" 本"
-                          {...form.getInputProps(`items.${index}.quantity`)}
-                        />
-                        <NumberInput
-                          label="単価"
-                          prefix="¥"
-                          thousandSeparator=","
-                          decimalScale={2}
-                          min={0}
-                          {...form.getInputProps(`items.${index}.unitPrice`)}
-                        />
-                      </Group>
-                      <Group justify="space-between">
-                        <Text size="xs" c="dimmed">
-                          金額
-                        </Text>
-                        <Text size="sm" fw={600} ff="mono">
-                          ¥{(item.quantity * item.unitPrice).toLocaleString('ja-JP')}
-                        </Text>
-                      </Group>
-                      {form.values.items.length > 1 && (
-                        <Button
-                          variant="subtle"
-                          color="red"
-                          size="xs"
-                          leftSection={<IconMinus size={12} />}
-                          onClick={() => form.removeListItem('items', index)}
-                        >
-                          この明細を削除
-                        </Button>
-                      )}
-                    </Stack>
-                  </Paper>
-                ))}
-              </Stack>
-            ) : (
-              <Table withColumnBorders={false} withTableBorder>
-                <Table.Thead>
-                  <Table.Tr>
-                    <Table.Th style={{ minWidth: 220 }}>製品</Table.Th>
-                    <Table.Th style={{ width: 100 }}>数量</Table.Th>
-                    <Table.Th style={{ width: 130 }}>単価</Table.Th>
-                    <Table.Th style={{ width: 110 }}>金額</Table.Th>
-                    <Table.Th style={{ width: 40 }} />
-                  </Table.Tr>
-                </Table.Thead>
-                <Table.Tbody>
-                  {form.values.items.map((item, index) => (
-                    <Table.Tr key={index}>
-                      <Table.Td>
-                        <Select
-                          placeholder="製品を選択"
-                          data={PRODUCTS}
-                          searchable
-                          withAsterisk
-                          {...form.getInputProps(`items.${index}.productId`)}
-                        />
-                      </Table.Td>
-                      <Table.Td>
-                        <NumberInput
-                          min={1}
-                          withAsterisk
-                          suffix=" 本"
-                          {...form.getInputProps(`items.${index}.quantity`)}
-                        />
-                      </Table.Td>
-                      <Table.Td>
-                        <NumberInput
-                          prefix="¥"
-                          thousandSeparator=","
-                          decimalScale={2}
-                          min={0}
-                          {...form.getInputProps(`items.${index}.unitPrice`)}
-                        />
-                      </Table.Td>
-                      <Table.Td>
-                        <Text size="sm" ta="right" ff="mono">
-                          ¥{(item.quantity * item.unitPrice).toLocaleString('ja-JP')}
-                        </Text>
-                      </Table.Td>
-                      <Table.Td>
-                        <Button
-                          variant="subtle"
-                          color="red"
-                          size="xs"
-                          px={4}
-                          disabled={form.values.items.length === 1}
-                          onClick={() => form.removeListItem('items', index)}
-                          aria-label="この行を削除"
-                        >
-                          <IconMinus size={14} />
-                        </Button>
-                      </Table.Td>
-                    </Table.Tr>
-                  ))}
-                </Table.Tbody>
-              </Table>
-            )}
-
-            <Button
-              variant="subtle"
-              leftSection={<IconPlus size={14} />}
-              mt="sm"
-              size="sm"
-              fullWidth={isMobile}
-              onClick={() => form.insertListItem('items', { ...EMPTY_ITEM })}
-            >
-              明細を追加
-            </Button>
-
-            <Divider mt="sm" />
-            <Group justify="flex-end" mt="sm">
-              <Text size="sm" c="dimmed">
-                合計金額
-              </Text>
-              <Text fw={700}>
-                {new Intl.NumberFormat('ja-JP', { style: 'currency', currency: 'JPY' }).format(totalAmount)}
-              </Text>
-            </Group>
-          </Paper>
-
-          {/* ── Form actions ─────────────────────────────────────────────── */}
-          {isMobile ? (
-            <Stack gap="xs">
-              <Button type="submit" loading={isPending} fullWidth>
-                保存
-              </Button>
-              <Button variant="default" fullWidth>
-                キャンセル
-              </Button>
-            </Stack>
-          ) : (
-            <Group justify="flex-end" mt="md">
-              <Button variant="default">キャンセル</Button>
-              <Button type="submit" loading={isPending}>
-                保存
-              </Button>
-            </Group>
           )}
-        </Stack>
-      </Box>
-    </Stack>
+          <DatePickerInput
+            label="納品日" placeholder="日付を選択" leftSection={<IconCalendar size={14} />}
+            valueFormat="YYYY/MM/DD" clearable {...form.getInputProps('deliveredAt')}
+          />
+        </SimpleGrid>
+
+        <Switch
+          mt="md"
+          label="配送完了書に価格を記載する"
+          description="納品書に単価・金額を表示します"
+          {...form.getInputProps('includePrice', { type: 'checkbox' })}
+        />
+
+        {isDirect && (
+          <Alert color="violet" icon={<IconInfoCircle size={16} />} mt="md" variant="light">
+            ユーザー直送の場合、最終需要家へ届く配送完了書には価格を記載しません。価格付きの納品書は受注先（顧客）へ別送されます。
+          </Alert>
+        )}
+
+        <Textarea label="備考" placeholder="備考・特記事項" mt="sm" rows={3} {...form.getInputProps('notes')} />
+      </FormSection>
+
+      <FormSection title="納品明細">
+        {isMobile ? (
+          <Stack gap="sm">
+            {form.values.items.map((item, index) => (
+              <Paper key={index} withBorder p="sm" radius="sm">
+                <Stack gap="xs">
+                  <Select label="製品" placeholder="製品を選択" data={PRODUCTS} searchable withAsterisk
+                    {...form.getInputProps(`items.${index}.productId`)} />
+                  <Group grow gap="xs">
+                    <NumberInput label="数量" min={1} withAsterisk suffix=" 本"
+                      {...form.getInputProps(`items.${index}.quantity`)} />
+                    <NumberInput label="単価" prefix="¥" thousandSeparator="," decimalScale={2} min={0}
+                      {...form.getInputProps(`items.${index}.unitPrice`)} />
+                  </Group>
+                  <Group justify="space-between">
+                    <Text size="xs" c="dimmed">金額</Text>
+                    <Text size="sm" fw={600} ff="mono">{formatMoney(item.quantity * item.unitPrice)}</Text>
+                  </Group>
+                  {form.values.items.length > 1 && (
+                    <Button variant="subtle" color="red" size="xs" leftSection={<IconMinus size={12} />}
+                      onClick={() => form.removeListItem('items', index)}>
+                      この明細を削除
+                    </Button>
+                  )}
+                </Stack>
+              </Paper>
+            ))}
+          </Stack>
+        ) : (
+          <Table withColumnBorders={false} withTableBorder>
+            <Table.Thead>
+              <Table.Tr>
+                <Table.Th style={{ minWidth: 220 }}>製品</Table.Th>
+                <Table.Th style={{ width: 100 }}>数量</Table.Th>
+                <Table.Th style={{ width: 130 }}>単価</Table.Th>
+                <Table.Th style={{ width: 110 }}>金額</Table.Th>
+                <Table.Th style={{ width: 40 }} />
+              </Table.Tr>
+            </Table.Thead>
+            <Table.Tbody>
+              {form.values.items.map((item, index) => (
+                <Table.Tr key={index}>
+                  <Table.Td>
+                    <Select placeholder="製品を選択" data={PRODUCTS} searchable withAsterisk
+                      {...form.getInputProps(`items.${index}.productId`)} />
+                  </Table.Td>
+                  <Table.Td>
+                    <NumberInput min={1} withAsterisk suffix=" 本" {...form.getInputProps(`items.${index}.quantity`)} />
+                  </Table.Td>
+                  <Table.Td>
+                    <NumberInput prefix="¥" thousandSeparator="," decimalScale={2} min={0}
+                      {...form.getInputProps(`items.${index}.unitPrice`)} />
+                  </Table.Td>
+                  <Table.Td>
+                    <Text size="sm" ta="right" ff="mono">{formatMoney(item.quantity * item.unitPrice)}</Text>
+                  </Table.Td>
+                  <Table.Td>
+                    <Button variant="subtle" color="red" size="xs" px={4} disabled={form.values.items.length === 1}
+                      onClick={() => form.removeListItem('items', index)} aria-label="この行を削除">
+                      <IconMinus size={14} />
+                    </Button>
+                  </Table.Td>
+                </Table.Tr>
+              ))}
+            </Table.Tbody>
+          </Table>
+        )}
+
+        <Button variant="subtle" leftSection={<IconPlus size={14} />} mt="sm" size="sm" fullWidth={isMobile}
+          onClick={() => form.insertListItem('items', { ...EMPTY_ITEM })}>
+          明細を追加
+        </Button>
+
+        <Divider mt="sm" />
+        <Group justify="flex-end" mt="sm">
+          <Text size="sm" c="dimmed">合計金額</Text>
+          <Text fw={700}>{formatMoney(totalAmount)}</Text>
+        </Group>
+      </FormSection>
+    </FormShell>
   );
 }

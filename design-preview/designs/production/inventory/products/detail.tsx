@@ -1,23 +1,20 @@
+'use client';
+
+import { useState } from 'react';
+import { Badge, Group, Table, Tabs, Text } from '@mantine/core';
+import { IconAdjustments, IconBookmark, IconBookmarkOff } from '@tabler/icons-react';
+import { DocNumber, FieldValue, formatDateTime } from '../../../lib/ui';
 import {
-  Badge,
-  Divider,
-  Group,
-  Paper,
-  SimpleGrid,
-  Stack,
-  Table,
-  Tabs,
-  Text,
-  Timeline,
-} from '@mantine/core';
-import {
-  DocNumber,
-  FieldValue,
-  formatDate,
-  formatDateTime,
-  PageHeader,
-} from '../../../lib/ui';
+  AuditTimeline,
+  DetailShell,
+  ResourceActions,
+  SummaryGrid,
+  type AuditEntry,
+} from '../../../lib/shells';
 import { useIsMobile } from '../../../lib/viewport-context';
+import { AdjustProductStockModal } from './_modals/adjust-stock';
+import { ReserveProductModal } from './_modals/reserve';
+import { ReleaseProductReservationModal } from './_modals/release';
 
 // ── Mock data ────────────────────────────────────────────────────────────────
 const INV = {
@@ -78,7 +75,7 @@ const TRANSACTIONS: Transaction[] = [
   { id: 't4', type: 'OUT', quantity: 18, reference: '出荷書 SH-001', at: '2026-05-15 11:00', user: '佐藤 工場長' },
 ];
 
-const AUDIT = [
+const AUDIT: AuditEntry[] = [
   { id: 1, action: 'UPDATE', user: '中村 花子', at: '2026-05-28 14:30', detail: '在庫数: 0 → 50（指示書 #1042 完了）' },
   { id: 2, action: 'UPDATE', user: '田中 太郎', at: '2026-05-20 17:00', detail: '棚卸調整: -2 本' },
   { id: 3, action: 'CREATE', user: '鈴木 一郎', at: '2026-05-21 10:00', detail: '製品在庫レコードを作成' },
@@ -86,70 +83,55 @@ const AUDIT = [
 
 function ReservationBadge({ status }: { status: string }) {
   const def = RESERVATION_STATUS[status] ?? { label: status, color: 'gray' };
-  return (
-    <Badge color={def.color} variant="light">
-      {def.label}
-    </Badge>
-  );
+  return <Badge color={def.color} variant="light">{def.label}</Badge>;
 }
 
 function TransactionBadge({ type }: { type: string }) {
   const def = TRANSACTION_TYPE[type] ?? { label: type, color: 'gray' };
-  return (
-    <Badge color={def.color} variant="light">
-      {def.label}
-    </Badge>
-  );
+  return <Badge color={def.color} variant="light">{def.label}</Badge>;
 }
 
 export default function ProductInventoryDetailPage() {
   const isMobile = useIsMobile();
+  const label = `${INV.productName}（ロット #${INV.lotNumber}）`;
+
+  const [adjustOpen, setAdjustOpen] = useState(false);
+  const [reserveOpen, setReserveOpen] = useState(false);
+  const [releaseOpen, setReleaseOpen] = useState(false);
 
   return (
-    <Stack gap="md">
-      <PageHeader
-        breadcrumbs={['ホーム', '生産', '製品在庫', `ロット #${INV.lotNumber}`]}
-        title={INV.productName}
-        align="flex-start"
-      />
+    <DetailShell
+      breadcrumbs={['ホーム', '生産', '製品在庫', `ロット #${INV.lotNumber}`]}
+      title={INV.productName}
+      createdAt={formatDateTime(INV.createdAt)}
+      updatedAt={formatDateTime(INV.updatedAt)}
+      actions={
+        <ResourceActions
+          menuItems={[
+            { label: '棚卸調整', icon: <IconAdjustments size={14} />, color: 'violet', onClick: () => setAdjustOpen(true) },
+            { label: '引当予約', icon: <IconBookmark size={14} />, onClick: () => setReserveOpen(true) },
+            { label: '予約解除', icon: <IconBookmarkOff size={14} />, color: 'red', divider: true, onClick: () => setReleaseOpen(true) },
+          ]}
+        />
+      }
+    >
+      <SummaryGrid>
+        <FieldValue label="製品" value={INV.productName} />
+        <FieldValue label="ロット番号" value={<DocNumber>#{INV.lotNumber}</DocNumber>} />
+        <FieldValue label="ロケーション" value={INV.location} />
+        <FieldValue label="在庫数" value={`${INV.quantity} 本`} />
+        <FieldValue
+          label="予約数"
+          value={
+            <Group gap="xs">
+              <Text size="sm" fw={500}>{INV.reserved} 本</Text>
+              {INV.reserved > 0 && <Badge color="orange" variant="light">予約中</Badge>}
+            </Group>
+          }
+        />
+        <FieldValue label="引当可能数" value={`${INV.available} 本`} />
+      </SummaryGrid>
 
-      {/* Summary */}
-      <Paper withBorder p="md" radius="md">
-        <SimpleGrid cols={isMobile ? 1 : 3} spacing="md">
-          <FieldValue label="製品" value={INV.productName} />
-          <FieldValue label="ロット番号" value={<DocNumber>#{INV.lotNumber}</DocNumber>} />
-          <FieldValue label="ロケーション" value={INV.location} />
-          <FieldValue label="在庫数" value={`${INV.quantity} 本`} />
-          <FieldValue
-            label="予約数"
-            value={
-              <Group gap="xs">
-                <Text size="sm" fw={500}>
-                  {INV.reserved} 本
-                </Text>
-                {INV.reserved > 0 && (
-                  <Badge color="orange" variant="light">
-                    予約中
-                  </Badge>
-                )}
-              </Group>
-            }
-          />
-          <FieldValue label="引当可能数" value={`${INV.available} 本`} />
-        </SimpleGrid>
-        {isMobile && (
-          <Group gap="xl" mt="sm">
-            <Text size="xs" c="dimmed">
-              作成: {formatDateTime(INV.createdAt)}
-            </Text>
-            <Text size="xs" c="dimmed">
-              更新: {formatDateTime(INV.updatedAt)}
-            </Text>
-          </Group>
-        )}
-      </Paper>
-
-      {/* Tabs */}
       <Tabs defaultValue="reservations">
         <Tabs.List>
           <Tabs.Tab value="reservations">引当履歴</Tabs.Tab>
@@ -157,7 +139,6 @@ export default function ProductInventoryDetailPage() {
           <Tabs.Tab value="history">履歴</Tabs.Tab>
         </Tabs.List>
 
-        {/* 引当履歴 */}
         <Tabs.Panel value="reservations" pt="md">
           <Table striped highlightOnHover withTableBorder>
             <Table.Thead>
@@ -172,30 +153,17 @@ export default function ProductInventoryDetailPage() {
             <Table.Tbody>
               {RESERVATIONS.map((r) => (
                 <Table.Tr key={r.id}>
-                  <Table.Td>
-                    <DocNumber c="blue">{r.salesOrderNumber}</DocNumber>
-                  </Table.Td>
-                  <Table.Td>
-                    <DocNumber>#{r.workOrderNumber}</DocNumber>
-                  </Table.Td>
+                  <Table.Td><DocNumber c="blue">{r.salesOrderNumber}</DocNumber></Table.Td>
+                  <Table.Td><DocNumber>#{r.workOrderNumber}</DocNumber></Table.Td>
                   <Table.Td ta="right">{r.quantity} 本</Table.Td>
-                  <Table.Td>
-                    <ReservationBadge status={r.status} />
-                  </Table.Td>
-                  {!isMobile && (
-                    <Table.Td>
-                      <Text size="sm" c="dimmed">
-                        {formatDateTime(r.at)}
-                      </Text>
-                    </Table.Td>
-                  )}
+                  <Table.Td><ReservationBadge status={r.status} /></Table.Td>
+                  {!isMobile && <Table.Td><Text size="sm" c="dimmed">{formatDateTime(r.at)}</Text></Table.Td>}
                 </Table.Tr>
               ))}
             </Table.Tbody>
           </Table>
         </Tabs.Panel>
 
-        {/* 入出庫履歴 */}
         <Tabs.Panel value="transactions" pt="md">
           <Table striped highlightOnHover withTableBorder>
             <Table.Thead>
@@ -210,24 +178,14 @@ export default function ProductInventoryDetailPage() {
             <Table.Tbody>
               {TRANSACTIONS.map((t) => (
                 <Table.Tr key={t.id}>
-                  <Table.Td>
-                    <TransactionBadge type={t.type} />
-                  </Table.Td>
+                  <Table.Td><TransactionBadge type={t.type} /></Table.Td>
                   <Table.Td ta="right">
                     <Text size="sm" style={{ fontVariantNumeric: 'tabular-nums' }}>
                       {t.quantity > 0 ? `+${t.quantity}` : t.quantity} 本
                     </Text>
                   </Table.Td>
-                  <Table.Td>
-                    <Text size="sm">{t.reference}</Text>
-                  </Table.Td>
-                  {!isMobile && (
-                    <Table.Td>
-                      <Text size="sm" c="dimmed">
-                        {formatDateTime(t.at)}
-                      </Text>
-                    </Table.Td>
-                  )}
+                  <Table.Td><Text size="sm">{t.reference}</Text></Table.Td>
+                  {!isMobile && <Table.Td><Text size="sm" c="dimmed">{formatDateTime(t.at)}</Text></Table.Td>}
                   {!isMobile && <Table.Td>{t.user}</Table.Td>}
                 </Table.Tr>
               ))}
@@ -235,44 +193,14 @@ export default function ProductInventoryDetailPage() {
           </Table>
         </Tabs.Panel>
 
-        {/* 履歴（AuditTimeline） */}
         <Tabs.Panel value="history" pt="md">
-          <Timeline active={-1} bulletSize={28} lineWidth={2}>
-            {AUDIT.map((log) => (
-              <Timeline.Item
-                key={log.id}
-                bullet={
-                  <Text size="xs" fw={700}>
-                    {log.user[0]}
-                  </Text>
-                }
-                title={log.action}
-              >
-                <Text size="xs" c="dimmed">
-                  {formatDateTime(log.at)} · {log.user}
-                </Text>
-                <Text size="sm" mt={4}>
-                  {log.detail}
-                </Text>
-              </Timeline.Item>
-            ))}
-          </Timeline>
+          <AuditTimeline entries={AUDIT} />
         </Tabs.Panel>
       </Tabs>
 
-      {!isMobile && (
-        <>
-          <Divider />
-          <Group gap="xl">
-            <Text size="xs" c="dimmed">
-              作成: {formatDateTime(INV.createdAt)}
-            </Text>
-            <Text size="xs" c="dimmed">
-              更新: {formatDateTime(INV.updatedAt)}
-            </Text>
-          </Group>
-        </>
-      )}
-    </Stack>
+      <AdjustProductStockModal opened={adjustOpen} onClose={() => setAdjustOpen(false)} label={label} unit="本" />
+      <ReserveProductModal opened={reserveOpen} onClose={() => setReserveOpen(false)} label={label} available={INV.available} unit="本" />
+      <ReleaseProductReservationModal opened={releaseOpen} onClose={() => setReleaseOpen(false)} label={label} reserved={INV.reserved} unit="本" />
+    </DetailShell>
   );
 }

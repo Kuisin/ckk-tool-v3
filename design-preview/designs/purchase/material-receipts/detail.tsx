@@ -1,20 +1,17 @@
+'use client';
+
+import { useState } from 'react';
+import { Tabs, Text } from '@mantine/core';
+import { IconTrash } from '@tabler/icons-react';
+import { FieldValue, formatDate, formatDateTime } from '../../lib/ui';
 import {
-  Divider,
-  Group,
-  Paper,
-  SimpleGrid,
-  Stack,
-  Tabs,
-  Text,
-  Timeline,
-} from '@mantine/core';
-import {
-  FieldValue,
-  formatDate,
-  formatDateTime,
-  PageHeader,
-} from '../../lib/ui';
-import { useIsMobile } from '../../lib/viewport-context';
+  AuditTimeline,
+  DetailShell,
+  ResourceActions,
+  SummaryGrid,
+  type AuditEntry,
+} from '../../lib/shells';
+import { DeleteMaterialReceiptModal } from './_modals/delete';
 
 // ── Mock data ────────────────────────────────────────────────────────────────
 const RECEIPT = {
@@ -29,84 +26,51 @@ const RECEIPT = {
   createdAt: '2026-05-28 14:30',
 };
 
-const AUDIT = [
+const AUDIT: AuditEntry[] = [
   { id: 1, action: 'UPDATE', user: '田中 太郎', at: '2026-05-28 14:35', detail: '素材在庫へ入庫（+100 本）' },
   { id: 2, action: 'CREATE', user: '田中 太郎', at: '2026-05-28 14:30', detail: '素材入荷を登録' },
 ];
 
 export default function MaterialReceiptDetailPage() {
-  const isMobile = useIsMobile();
+  const [deleteOpen, setDeleteOpen] = useState(false);
 
   return (
-    <Stack gap="md">
-      <PageHeader
-        breadcrumbs={['ホーム', '購買', '素材入荷', RECEIPT.materialCode]}
-        title={RECEIPT.materialName}
-        align="flex-start"
-      />
+    <DetailShell
+      breadcrumbs={['ホーム', '購買', '素材入荷', RECEIPT.materialCode]}
+      title={RECEIPT.materialName}
+      createdAt={`${formatDateTime(RECEIPT.createdAt)}（${RECEIPT.createdBy}）`}
+      actions={
+        <ResourceActions
+          onEdit={() => {}}
+          menuItems={[
+            { label: '取消', icon: <IconTrash size={14} />, color: 'red', onClick: () => setDeleteOpen(true) },
+          ]}
+        />
+      }
+    >
+      <SummaryGrid>
+        <FieldValue label="素材コード" value={<Text size="sm" ff="mono">{RECEIPT.materialCode}</Text>} />
+        <FieldValue label="素材" value={RECEIPT.materialName} />
+        <FieldValue label="仕入先" value={RECEIPT.supplierName} />
+        <FieldValue label="数量" value={`${RECEIPT.quantity} ${RECEIPT.unit}`} />
+        <FieldValue label="入荷日" value={formatDate(RECEIPT.receivedAt)} />
+        <FieldValue label="備考" value={RECEIPT.notes} />
+      </SummaryGrid>
 
-      {/* Summary */}
-      <Paper withBorder p="md" radius="md">
-        <SimpleGrid cols={isMobile ? 1 : 3} spacing="md">
-          <FieldValue
-            label="素材コード"
-            value={<Text size="sm" ff="mono">{RECEIPT.materialCode}</Text>}
-          />
-          <FieldValue label="素材" value={RECEIPT.materialName} />
-          <FieldValue label="仕入先" value={RECEIPT.supplierName} />
-          <FieldValue label="数量" value={`${RECEIPT.quantity} ${RECEIPT.unit}`} />
-          <FieldValue label="入荷日" value={formatDate(RECEIPT.receivedAt)} />
-          <FieldValue label="備考" value={RECEIPT.notes} />
-        </SimpleGrid>
-        {isMobile && (
-          <Group gap="xl" mt="sm">
-            <Text size="xs" c="dimmed">
-              登録: {formatDateTime(RECEIPT.createdAt)}（{RECEIPT.createdBy}）
-            </Text>
-          </Group>
-        )}
-      </Paper>
-
-      {/* Tabs */}
       <Tabs defaultValue="history">
         <Tabs.List>
           <Tabs.Tab value="history">履歴</Tabs.Tab>
         </Tabs.List>
-
         <Tabs.Panel value="history" pt="md">
-          <Timeline active={-1} bulletSize={28} lineWidth={2}>
-            {AUDIT.map((log) => (
-              <Timeline.Item
-                key={log.id}
-                bullet={
-                  <Text size="xs" fw={700}>
-                    {log.user[0]}
-                  </Text>
-                }
-                title={log.action}
-              >
-                <Text size="xs" c="dimmed">
-                  {formatDateTime(log.at)} · {log.user}
-                </Text>
-                <Text size="sm" mt={4}>
-                  {log.detail}
-                </Text>
-              </Timeline.Item>
-            ))}
-          </Timeline>
+          <AuditTimeline entries={AUDIT} />
         </Tabs.Panel>
       </Tabs>
 
-      {!isMobile && (
-        <>
-          <Divider />
-          <Group gap="xl">
-            <Text size="xs" c="dimmed">
-              登録: {formatDateTime(RECEIPT.createdAt)}（{RECEIPT.createdBy}）
-            </Text>
-          </Group>
-        </>
-      )}
-    </Stack>
+      <DeleteMaterialReceiptModal
+        opened={deleteOpen}
+        onClose={() => setDeleteOpen(false)}
+        label={`${RECEIPT.materialName}（${RECEIPT.quantity} ${RECEIPT.unit}）`}
+      />
+    </DetailShell>
   );
 }

@@ -1,43 +1,24 @@
 'use client';
 
+import { useState, useTransition } from 'react';
 import {
-  Box,
   Button,
-  Divider,
   FileButton,
   Group,
-  LoadingOverlay,
-  Paper,
   Select,
   SimpleGrid,
-  Stack,
   Text,
   Textarea,
-  Title,
 } from '@mantine/core';
 import { useForm } from '@mantine/form';
-import type { FormErrors } from '@mantine/form';
 import { notifications } from '@mantine/notifications';
 import { IconUpload } from '@tabler/icons-react';
-import { useState, useTransition } from 'react';
 import { z } from 'zod';
-import { PageHeader } from '../../lib/ui';
+import { zodResolver } from '../../lib/form';
 import { StatusBadge } from '../../lib/status';
+import { FormSection, FormShell } from '../../lib/shells';
 import { PRODUCTS } from '../../lib/mock';
 import { useIsMobile } from '../../lib/viewport-context';
-
-function zodResolver<T>(schema: z.ZodType<T>) {
-  return (values: T): FormErrors => {
-    const result = schema.safeParse(values);
-    if (result.success) return {};
-    const errors: FormErrors = {};
-    for (const issue of result.error.issues) {
-      const key = issue.path.join('.');
-      if (key && !errors[key]) errors[key] = issue.message;
-    }
-    return errors;
-  };
-}
 
 const schema = z.object({
   trigger: z.enum(['QUOTE', 'SALES_ORDER']),
@@ -89,105 +70,55 @@ export default function DesignRequestEditPage() {
   const isQuote = form.values.trigger === 'QUOTE';
 
   return (
-    <Stack gap="md">
-      <PageHeader
-        breadcrumbs={['ホーム', '販売', '設計依頼書', '編集']}
-        title="設計依頼書 編集"
-        status={<StatusBadge entity="DesignRequest" status="IN_PROGRESS" />}
-      />
-
-      <Box component="form" onSubmit={form.onSubmit(handleSubmit)} pos="relative">
-        <LoadingOverlay visible={isPending} />
-
-        <Stack gap="md">
-          <Paper withBorder p="md" radius="md">
-            <Title order={4} mb="xs">基本情報</Title>
-            <Divider mb="md" />
-            <SimpleGrid cols={isMobile ? 1 : 2} spacing="sm">
-              <Select
-                label="トリガー"
-                data={[
-                  { value: 'QUOTE', label: '見積時' },
-                  { value: 'SALES_ORDER', label: '受注時' },
-                ]}
-                withAsterisk
-                {...form.getInputProps('trigger')}
-                onChange={(value) => {
-                  form.setFieldValue('trigger', (value ?? 'QUOTE') as FormValues['trigger']);
-                  form.setFieldValue('quoteId', null);
-                  form.setFieldValue('salesOrderId', null);
-                }}
-              />
-              {isQuote ? (
-                <Select
-                  label="見積書"
-                  placeholder="関連する見積書を選択"
-                  data={QUOTE_OPTIONS}
-                  searchable
-                  clearable
-                  {...form.getInputProps('quoteId')}
-                />
-              ) : (
-                <Select
-                  label="受注書"
-                  placeholder="関連する受注書を選択"
-                  data={SALES_ORDER_OPTIONS}
-                  searchable
-                  clearable
-                  {...form.getInputProps('salesOrderId')}
-                />
-              )}
-              <Select
-                label="製品"
-                placeholder="製品を選択"
-                data={PRODUCTS}
-                searchable
-                clearable
-                {...form.getInputProps('productId')}
-              />
-            </SimpleGrid>
-            <Textarea
-              label="説明"
-              placeholder="設計内容・要望の説明"
-              mt="sm"
-              rows={4}
-              {...form.getInputProps('description')}
-            />
-          </Paper>
-
-          <Paper withBorder p="md" radius="md">
-            <Title order={4} mb="xs">設計図</Title>
-            <Divider mb="md" />
-            <Group align="center" gap="sm">
-              <FileButton onChange={setDesignFile} accept="application/pdf,image/*,.dwg,.dxf">
-                {(props) => (
-                  <Button variant="default" leftSection={<IconUpload size={16} />} {...props}>
-                    新しいバージョンをアップロード
-                  </Button>
-                )}
-              </FileButton>
-              <Text size="sm" c={designFile ? undefined : 'dimmed'}>
-                {designFile ? designFile.name : 'design-PRD-2601-0001-v2.pdf（最新）'}
-              </Text>
-            </Group>
-            <Text size="xs" c="dimmed" mt="xs">
-              アップロードすると version が加算され、新しい版が is_latest になります。
-            </Text>
-          </Paper>
-
-          {isMobile ? (
-            <Stack gap="xs">
-              <Button type="submit" loading={isPending} fullWidth>保存</Button>
-              <Button variant="default" fullWidth>キャンセル</Button>
-            </Stack>
+    <FormShell
+      breadcrumbs={['ホーム', '販売', '設計依頼書', '編集']}
+      title="設計依頼書 編集"
+      status={<StatusBadge entity="DesignRequest" status="IN_PROGRESS" />}
+      isPending={isPending}
+      onSubmit={form.onSubmit(handleSubmit)}
+    >
+      <FormSection title="基本情報">
+        <SimpleGrid cols={isMobile ? 1 : 2} spacing="sm">
+          <Select label="トリガー" data={[
+            { value: 'QUOTE', label: '見積時' },
+            { value: 'SALES_ORDER', label: '受注時' },
+          ]} withAsterisk
+            {...form.getInputProps('trigger')}
+            onChange={(value) => {
+              form.setFieldValue('trigger', (value ?? 'QUOTE') as FormValues['trigger']);
+              form.setFieldValue('quoteId', null);
+              form.setFieldValue('salesOrderId', null);
+            }} />
+          {isQuote ? (
+            <Select label="見積書" placeholder="関連する見積書を選択" data={QUOTE_OPTIONS} searchable clearable
+              {...form.getInputProps('quoteId')} />
           ) : (
-            <Group justify="flex-end" mt="md">
-              <Button variant="default">キャンセル</Button>
-              <Button type="submit" loading={isPending}>保存</Button>
-            </Group>
+            <Select label="受注書" placeholder="関連する受注書を選択" data={SALES_ORDER_OPTIONS} searchable clearable
+              {...form.getInputProps('salesOrderId')} />
           )}
-        </Stack>
-      </Box>
-    </Stack>
+          <Select label="製品" placeholder="製品を選択" data={PRODUCTS} searchable clearable
+            {...form.getInputProps('productId')} />
+        </SimpleGrid>
+        <Textarea label="説明" placeholder="設計内容・要望の説明" mt="sm" rows={4} {...form.getInputProps('description')} />
+      </FormSection>
+
+      <FormSection title="設計図">
+        <Group align="center" gap="sm">
+          <FileButton onChange={setDesignFile} accept="application/pdf,image/*,.dwg,.dxf">
+            {(props) => (
+              <Button variant="default" leftSection={<IconUpload size={16} />} {...props}>
+                新しいバージョンをアップロード
+              </Button>
+            )}
+          </FileButton>
+          <Text size="sm" c={designFile ? undefined : 'dimmed'}>
+            {designFile ? designFile.name : 'design-PRD-2601-0001-v2.pdf（最新）'}
+          </Text>
+        </Group>
+        <Text size="xs" c="dimmed" mt="xs">
+          アップロードすると version が加算され、新しい版が is_latest になります。
+        </Text>
+      </FormSection>
+    </FormShell>
   );
 }

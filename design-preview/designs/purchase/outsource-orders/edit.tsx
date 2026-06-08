@@ -1,42 +1,17 @@
 'use client';
 
-import {
-  Box,
-  Breadcrumbs,
-  Button,
-  Divider,
-  Group,
-  LoadingOverlay,
-  Paper,
-  Select,
-  SimpleGrid,
-  Stack,
-  Text,
-  Textarea,
-  Title,
-} from '@mantine/core';
+import { useTransition } from 'react';
+import { Select, SimpleGrid, Textarea } from '@mantine/core';
 import { DatePickerInput } from '@mantine/dates';
-import { useForm, type FormErrors } from '@mantine/form';
+import { useForm } from '@mantine/form';
 import { notifications } from '@mantine/notifications';
 import { IconCalendar } from '@tabler/icons-react';
-import { useTransition } from 'react';
 import { z } from 'zod';
+import { zodResolver } from '../../lib/form';
+import { FormSection, FormShell } from '../../lib/shells';
 import { StatusBadge } from '../../lib/status';
 import { SUPPLIERS } from '../../lib/mock';
 import { useIsMobile } from '../../lib/viewport-context';
-
-function zodResolver<T>(schema: z.ZodType<T>) {
-  return (values: T): FormErrors => {
-    const result = schema.safeParse(values);
-    if (result.success) return {};
-    const errors: FormErrors = {};
-    for (const issue of result.error.issues) {
-      const key = issue.path.join('.');
-      if (key && !errors[key]) errors[key] = issue.message;
-    }
-    return errors;
-  };
-}
 
 const WORK_ORDERS = [
   { value: 'wo-1042', label: '指示書 #1042 — 精密軸 PRD-2601-0001' },
@@ -83,11 +58,7 @@ export default function OutsourceOrderEditPage() {
     startTransition(async () => {
       try {
         console.log('Submitting:', values);
-        notifications.show({
-          title: '保存しました',
-          message: '外注依頼を更新しました',
-          color: 'green',
-        });
+        notifications.show({ title: '保存しました', message: '外注依頼を更新しました', color: 'green' });
       } catch {
         notifications.show({ title: 'エラー', message: '保存に失敗しました', color: 'red' });
       }
@@ -95,112 +66,33 @@ export default function OutsourceOrderEditPage() {
   };
 
   return (
-    <Stack gap="md">
-      {/* Page header */}
-      <Group justify="space-between" align="flex-end">
-        <Stack gap={2}>
-          {!isMobile && (
-            <Breadcrumbs>
-              <Text size="sm" c="dimmed">ホーム</Text>
-              <Text size="sm" c="dimmed">購買</Text>
-              <Text size="sm" c="dimmed">外注依頼</Text>
-              <Text size="sm">編集</Text>
-            </Breadcrumbs>
-          )}
-          <Group gap="sm" align="center">
-            <Title order={isMobile ? 3 : 2}>外注依頼 編集</Title>
-            <StatusBadge entity="Step" status="IN_PROGRESS" />
-          </Group>
-        </Stack>
-      </Group>
-
-      <Box component="form" onSubmit={form.onSubmit(handleSubmit)} pos="relative">
-        <LoadingOverlay visible={isPending} />
-
-        <Stack gap="md">
-          <Paper withBorder p="md" radius="md">
-            <Title order={4} mb="xs">依頼情報</Title>
-            <Divider mb="md" />
-
-            <SimpleGrid cols={isMobile ? 1 : 2} spacing="sm">
-              <Select
-                label="指示書"
-                placeholder="指示書を選択"
-                data={WORK_ORDERS}
-                searchable
-                withAsterisk
-                {...form.getInputProps('workOrderId')}
-              />
-              <Select
-                label="工程"
-                placeholder="工程を選択"
-                data={OUTSOURCE_STEPS}
-                withAsterisk
-                {...form.getInputProps('stepId')}
-              />
-              <Select
-                label="外注先"
-                placeholder="外注先を選択"
-                data={SUPPLIERS}
-                searchable
-                withAsterisk
-                {...form.getInputProps('supplierId')}
-              />
-              <DatePickerInput
-                label="依頼日"
-                placeholder="日付を選択"
-                leftSection={<IconCalendar size={14} />}
-                valueFormat="YYYY/MM/DD"
-                clearable
-                {...form.getInputProps('requestedAt')}
-              />
-              <DatePickerInput
-                label="入荷予定日"
-                placeholder="日付を選択"
-                leftSection={<IconCalendar size={14} />}
-                valueFormat="YYYY/MM/DD"
-                clearable
-                {...form.getInputProps('expectedAt')}
-              />
-              <DatePickerInput
-                label="入荷日"
-                placeholder="入荷時に記録"
-                leftSection={<IconCalendar size={14} />}
-                valueFormat="YYYY/MM/DD"
-                clearable
-                {...form.getInputProps('receivedAt')}
-              />
-            </SimpleGrid>
-
-            <Textarea
-              label="備考"
-              placeholder="加工仕様・注意事項など"
-              mt="sm"
-              rows={3}
-              {...form.getInputProps('notes')}
-            />
-          </Paper>
-
-          {/* Form actions */}
-          {isMobile ? (
-            <Stack gap="xs">
-              <Button type="submit" loading={isPending} fullWidth>
-                保存
-              </Button>
-              <Button variant="default" fullWidth>
-                キャンセル
-              </Button>
-            </Stack>
-          ) : (
-            <Group justify="flex-end" mt="md">
-              <Button variant="default">キャンセル</Button>
-              <Button type="submit" loading={isPending}>
-                保存
-              </Button>
-            </Group>
-          )}
-        </Stack>
-      </Box>
-    </Stack>
+    <FormShell
+      breadcrumbs={['ホーム', '購買', '外注依頼', '編集']}
+      title="外注依頼 編集"
+      status={<StatusBadge entity="Step" status="IN_PROGRESS" />}
+      isPending={isPending}
+      onSubmit={form.onSubmit(handleSubmit)}
+    >
+      <FormSection title="依頼情報">
+        <SimpleGrid cols={isMobile ? 1 : 2} spacing="sm">
+          <Select label="指示書" placeholder="指示書を選択" data={WORK_ORDERS} searchable withAsterisk {...form.getInputProps('workOrderId')} />
+          <Select label="工程" placeholder="工程を選択" data={OUTSOURCE_STEPS} withAsterisk {...form.getInputProps('stepId')} />
+          <Select label="外注先" placeholder="外注先を選択" data={SUPPLIERS} searchable withAsterisk {...form.getInputProps('supplierId')} />
+          <DatePickerInput
+            label="依頼日" placeholder="日付を選択" leftSection={<IconCalendar size={14} />}
+            valueFormat="YYYY/MM/DD" clearable {...form.getInputProps('requestedAt')}
+          />
+          <DatePickerInput
+            label="入荷予定日" placeholder="日付を選択" leftSection={<IconCalendar size={14} />}
+            valueFormat="YYYY/MM/DD" clearable {...form.getInputProps('expectedAt')}
+          />
+          <DatePickerInput
+            label="入荷日" placeholder="入荷時に記録" leftSection={<IconCalendar size={14} />}
+            valueFormat="YYYY/MM/DD" clearable {...form.getInputProps('receivedAt')}
+          />
+        </SimpleGrid>
+        <Textarea label="備考" placeholder="加工仕様・注意事項など" mt="sm" rows={3} {...form.getInputProps('notes')} />
+      </FormSection>
+    </FormShell>
   );
 }

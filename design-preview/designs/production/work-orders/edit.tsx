@@ -1,14 +1,13 @@
 'use client';
 
+import { useTransition } from 'react';
 import {
   ActionIcon,
   Alert,
   Badge,
   Box,
   Button,
-  Divider,
   Group,
-  LoadingOverlay,
   MultiSelect,
   NumberInput,
   Paper,
@@ -18,7 +17,6 @@ import {
   Stack,
   Switch,
   Text,
-  Title,
 } from '@mantine/core';
 import { useForm } from '@mantine/form';
 import { notifications } from '@mantine/notifications';
@@ -29,26 +27,12 @@ import {
   IconPlus,
   IconTrash,
 } from '@tabler/icons-react';
-import { useTransition } from 'react';
 import { z } from 'zod';
-import type { FormErrors } from '@mantine/form';
-import { PageHeader } from '../../lib/ui';
+import { zodResolver } from '../../lib/form';
+import { FormSection, FormShell } from '../../lib/shells';
 import { StatusBadge } from '../../lib/status';
 import { MATERIALS, PROCESS_STEPS, SUPPLIERS } from '../../lib/mock';
 import { useIsMobile } from '../../lib/viewport-context';
-
-function zodResolver<T>(schema: z.ZodType<T>) {
-  return (values: T): FormErrors => {
-    const result = schema.safeParse(values);
-    if (result.success) return {};
-    const errors: FormErrors = {};
-    for (const issue of result.error.issues) {
-      const key = issue.path.join('.');
-      if (key && !errors[key]) errors[key] = issue.message;
-    }
-    return errors;
-  };
-}
 
 const SALES_ORDER_OPTIONS = [
   { value: 'so-001', label: 'ORD-202601-00001-01 — 株式会社ABC製作所 / 精密軸' },
@@ -141,211 +125,123 @@ export default function WorkOrderEditPage() {
   };
 
   return (
-    <Stack gap="md">
-      <PageHeader
-        breadcrumbs={['ホーム', '生産', '指示書', '#1042', '編集']}
-        title="指示書 #1042 編集"
-        status={<StatusBadge entity="WorkOrder" status="DRAFT" />}
-      />
+    <FormShell
+      breadcrumbs={['ホーム', '生産', '指示書', '#1042', '編集']}
+      title="指示書 #1042 編集"
+      status={<StatusBadge entity="WorkOrder" status="DRAFT" />}
+      isPending={isPending}
+      onSubmit={form.onSubmit(handleSubmit)}
+    >
+      <FormSection title="基本情報">
+        <SimpleGrid cols={isMobile ? 1 : 2} spacing="sm">
+          <Select
+            label="受注書" placeholder="受注書を選択" data={SALES_ORDER_OPTIONS}
+            searchable withAsterisk {...form.getInputProps('salesOrderId')}
+          />
+          <Select label="種別" data={TYPE_OPTIONS} withAsterisk {...form.getInputProps('type')} />
+          <NumberInput label="計画本数" min={1} withAsterisk suffix=" 本" {...form.getInputProps('plannedQuantity')} />
+          <Select label="素材" placeholder="素材を選択" data={MATERIALS} searchable clearable {...form.getInputProps('materialId')} />
+        </SimpleGrid>
+      </FormSection>
 
-      <Box component="form" onSubmit={form.onSubmit(handleSubmit)} pos="relative">
-        <LoadingOverlay visible={isPending} />
+      <FormSection title="検査表テンプレート">
+        <MultiSelect
+          label="検査表"
+          placeholder="検査表を選択"
+          description="工程ワークフローの検査工程に紐付ける検査表（複数可）"
+          data={INSPECTION_TEMPLATE_OPTIONS}
+          searchable
+          clearable
+          {...form.getInputProps('inspectionTemplateIds')}
+        />
+      </FormSection>
 
-        <Stack gap="md">
-          <Paper withBorder p="md" radius="md">
-            <Title order={4} mb="xs">
-              基本情報
-            </Title>
-            <Divider mb="md" />
-            <SimpleGrid cols={isMobile ? 1 : 2} spacing="sm">
-              <Select
-                label="受注書"
-                placeholder="受注書を選択"
-                data={SALES_ORDER_OPTIONS}
-                searchable
-                withAsterisk
-                {...form.getInputProps('salesOrderId')}
-              />
-              <Select label="種別" data={TYPE_OPTIONS} withAsterisk {...form.getInputProps('type')} />
-              <NumberInput
-                label="計画本数"
-                min={1}
-                withAsterisk
-                suffix=" 本"
-                {...form.getInputProps('plannedQuantity')}
-              />
-              <Select
-                label="素材"
-                placeholder="素材を選択"
-                data={MATERIALS}
-                searchable
-                clearable
-                {...form.getInputProps('materialId')}
-              />
-            </SimpleGrid>
-          </Paper>
+      {/* ── 工程ワークフロー builder — bespoke, kept intact ─────────────── */}
+      <FormSection title="工程ワークフロー">
+        <Group justify="flex-end" mb="md">
+          <Badge variant="light" color="violet">{form.values.steps.length} 工程</Badge>
+        </Group>
 
-          <Paper withBorder p="md" radius="md">
-            <Title order={4} mb="xs">
-              検査表テンプレート
-            </Title>
-            <Divider mb="md" />
-            <MultiSelect
-              label="検査表"
-              placeholder="検査表を選択"
-              description="工程ワークフローの検査工程に紐付ける検査表（複数可）"
-              data={INSPECTION_TEMPLATE_OPTIONS}
-              searchable
-              clearable
-              {...form.getInputProps('inspectionTemplateIds')}
-            />
-          </Paper>
+        <Alert color="blue" icon={<IconInfoCircle size={16} />} mb="md" title="工程依存チェック">
+          円筒加工には<b>円筒加工検査・円筒加工検査承認</b>が必要です（使用依存）。各工程は前工程の完了後に開始可能（実行依存）。
+        </Alert>
 
-          <Paper withBorder p="md" radius="md">
-            <Group justify="space-between" mb="xs">
-              <Title order={4}>工程ワークフロー</Title>
-              <Badge variant="light" color="violet">
-                {form.values.steps.length} 工程
-              </Badge>
-            </Group>
-            <Divider mb="md" />
+        {typeof form.errors.steps === 'string' && (
+          <Text size="xs" c="red" mb="sm">{form.errors.steps}</Text>
+        )}
 
-            <Alert color="blue" icon={<IconInfoCircle size={16} />} mb="md" title="工程依存チェック">
-              円筒加工には<b>円筒加工検査・円筒加工検査承認</b>が必要です（使用依存）。各工程は前工程の完了後に開始可能（実行依存）。
-            </Alert>
+        <Stack gap="sm">
+          {form.values.steps.map((step, index) => (
+            <Paper key={index} withBorder p="sm" radius="sm">
+              <Group gap="xs" align="flex-start" wrap={isMobile ? 'wrap' : 'nowrap'}>
+                <Stack gap={2} pt={isMobile ? 0 : 22}>
+                  <ActionIcon variant="subtle" size="sm" aria-label="上へ移動" disabled={index === 0} onClick={() => moveStep(index, -1)}>
+                    <IconArrowUp size={14} />
+                  </ActionIcon>
+                  <ActionIcon variant="subtle" size="sm" aria-label="下へ移動" disabled={index === form.values.steps.length - 1} onClick={() => moveStep(index, 1)}>
+                    <IconArrowDown size={14} />
+                  </ActionIcon>
+                </Stack>
 
-            {typeof form.errors.steps === 'string' && (
-              <Text size="xs" c="red" mb="sm">
-                {form.errors.steps}
-              </Text>
-            )}
+                <Box style={{ flex: 1, minWidth: isMobile ? '100%' : 200 }}>
+                  <Select
+                    label={index === 0 && !isMobile ? '工程' : undefined}
+                    placeholder="工程を選択" data={PROCESS_STEPS} searchable withAsterisk
+                    {...form.getInputProps(`steps.${index}.processStepId`)}
+                  />
+                </Box>
 
-            <Stack gap="sm">
-              {form.values.steps.map((step, index) => (
-                <Paper key={index} withBorder p="sm" radius="sm">
-                  <Group gap="xs" align="flex-start" wrap={isMobile ? 'wrap' : 'nowrap'}>
-                    <Stack gap={2} pt={isMobile ? 0 : 22}>
-                      <ActionIcon
-                        variant="subtle"
-                        size="sm"
-                        aria-label="上へ移動"
-                        disabled={index === 0}
-                        onClick={() => moveStep(index, -1)}
-                      >
-                        <IconArrowUp size={14} />
-                      </ActionIcon>
-                      <ActionIcon
-                        variant="subtle"
-                        size="sm"
-                        aria-label="下へ移動"
-                        disabled={index === form.values.steps.length - 1}
-                        onClick={() => moveStep(index, 1)}
-                      >
-                        <IconArrowDown size={14} />
-                      </ActionIcon>
-                    </Stack>
+                <Box style={{ width: isMobile ? '100%' : 160 }}>
+                  <Text size="xs" c="dimmed">実施場所</Text>
+                  <SegmentedControl
+                    fullWidth size="xs"
+                    data={[
+                      { value: 'INTERNAL', label: '社内' },
+                      { value: 'OUTSOURCE', label: '外注' },
+                    ]}
+                    value={step.location}
+                    onChange={(v) => {
+                      form.setFieldValue(`steps.${index}.location`, v as StepRow['location']);
+                      if (v === 'INTERNAL') form.setFieldValue(`steps.${index}.supplierId`, null);
+                    }}
+                  />
+                </Box>
 
-                    <Box style={{ flex: 1, minWidth: isMobile ? '100%' : 200 }}>
-                      <Select
-                        label={index === 0 && !isMobile ? '工程' : undefined}
-                        placeholder="工程を選択"
-                        data={PROCESS_STEPS}
-                        searchable
-                        withAsterisk
-                        {...form.getInputProps(`steps.${index}.processStepId`)}
-                      />
-                    </Box>
+                {step.location === 'OUTSOURCE' && (
+                  <Box style={{ width: isMobile ? '100%' : 180 }}>
+                    <Select
+                      label={index === 0 && !isMobile ? '外注先' : undefined}
+                      placeholder="外注先を選択" data={SUPPLIERS} searchable
+                      {...form.getInputProps(`steps.${index}.supplierId`)}
+                    />
+                  </Box>
+                )}
 
-                    <Box style={{ width: isMobile ? '100%' : 160 }}>
-                      <Text size="xs" c="dimmed">
-                        実施場所
-                      </Text>
-                      <SegmentedControl
-                        fullWidth
-                        size="xs"
-                        data={[
-                          { value: 'INTERNAL', label: '社内' },
-                          { value: 'OUTSOURCE', label: '外注' },
-                        ]}
-                        value={step.location}
-                        onChange={(v) => {
-                          form.setFieldValue(`steps.${index}.location`, v as StepRow['location']);
-                          if (v === 'INTERNAL') form.setFieldValue(`steps.${index}.supplierId`, null);
-                        }}
-                      />
-                    </Box>
+                <Stack gap={2} align="center" pt={isMobile ? 0 : 18}>
+                  <Text size="xs" c="dimmed">同期可</Text>
+                  <Switch
+                    checked={step.syncCapable}
+                    onChange={(e) => form.setFieldValue(`steps.${index}.syncCapable`, e.currentTarget.checked)}
+                    aria-label="同期工程"
+                  />
+                </Stack>
 
-                    {step.location === 'OUTSOURCE' && (
-                      <Box style={{ width: isMobile ? '100%' : 180 }}>
-                        <Select
-                          label={index === 0 && !isMobile ? '外注先' : undefined}
-                          placeholder="外注先を選択"
-                          data={SUPPLIERS}
-                          searchable
-                          {...form.getInputProps(`steps.${index}.supplierId`)}
-                        />
-                      </Box>
-                    )}
-
-                    <Stack gap={2} align="center" pt={isMobile ? 0 : 18}>
-                      <Text size="xs" c="dimmed">
-                        同期可
-                      </Text>
-                      <Switch
-                        checked={step.syncCapable}
-                        onChange={(e) =>
-                          form.setFieldValue(`steps.${index}.syncCapable`, e.currentTarget.checked)
-                        }
-                        aria-label="同期工程"
-                      />
-                    </Stack>
-
-                    <ActionIcon
-                      variant="subtle"
-                      color="red"
-                      size="lg"
-                      mt={isMobile ? 0 : 18}
-                      aria-label="工程を削除"
-                      disabled={form.values.steps.length === 1}
-                      onClick={() => form.removeListItem('steps', index)}
-                    >
-                      <IconTrash size={16} />
-                    </ActionIcon>
-                  </Group>
-                </Paper>
-              ))}
-            </Stack>
-
-            <Button
-              variant="subtle"
-              leftSection={<IconPlus size={14} />}
-              mt="sm"
-              fullWidth={isMobile}
-              onClick={addStep}
-            >
-              工程を追加
-            </Button>
-          </Paper>
-
-          {isMobile ? (
-            <Stack gap="xs">
-              <Button type="submit" loading={isPending} fullWidth>
-                保存
-              </Button>
-              <Button variant="default" fullWidth>
-                キャンセル
-              </Button>
-            </Stack>
-          ) : (
-            <Group justify="flex-end" mt="md">
-              <Button variant="default">キャンセル</Button>
-              <Button type="submit" loading={isPending}>
-                保存
-              </Button>
-            </Group>
-          )}
+                <ActionIcon
+                  variant="subtle" color="red" size="lg" mt={isMobile ? 0 : 18} aria-label="工程を削除"
+                  disabled={form.values.steps.length === 1}
+                  onClick={() => form.removeListItem('steps', index)}
+                >
+                  <IconTrash size={16} />
+                </ActionIcon>
+              </Group>
+            </Paper>
+          ))}
         </Stack>
-      </Box>
-    </Stack>
+
+        <Button variant="subtle" leftSection={<IconPlus size={14} />} mt="sm" fullWidth={isMobile} onClick={addStep}>
+          工程を追加
+        </Button>
+      </FormSection>
+    </FormShell>
   );
 }
