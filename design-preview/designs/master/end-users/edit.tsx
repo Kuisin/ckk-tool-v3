@@ -1,7 +1,6 @@
 'use client';
 
-import { Stack } from '@mantine/core';
-import { ActiveBadge, PageHeader } from '../../lib/ui';
+import { ActiveBadge } from '../../lib/ui';
 import { EndUserFormBody } from './new';
 
 // ── Prefilled mock values (日本重工業株式会社 / BP-00101) ────────────────────
@@ -27,13 +26,11 @@ const PREFILLED = {
 
 export default function EndUserEditPage() {
   return (
-    <Stack gap="md">
-      <PageHeader
-        breadcrumbs={['ホーム', 'マスタ', '最終需要家', '日本重工業株式会社', '編集']}
-        title="最終需要家 編集"
-        status={<ActiveBadge active={PREFILLED.isActive} />}
-      />
-      <EndUserFormBody initialValues={PREFILLED} />
-    </Stack>
+    <EndUserFormBody
+      breadcrumbs={['ホーム', 'マスタ', '最終需要家', '日本重工業株式会社', '編集']}
+      title="最終需要家 編集"
+      status={<ActiveBadge active={PREFILLED.isActive} />}
+      initialValues={PREFILLED}
+    />
   );
 }

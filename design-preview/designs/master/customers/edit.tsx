@@ -1,7 +1,6 @@
 'use client';
 
-import { Stack } from '@mantine/core';
-import { ActiveBadge, PageHeader } from '../../lib/ui';
+import { ActiveBadge } from '../../lib/ui';
 import { CustomerFormBody } from './new';
 
 // ── Prefilled mock values (株式会社ABC製作所 / BP-00001) ─────────────────────
@@ -34,13 +33,11 @@ const PREFILLED = {
 
 export default function CustomerEditPage() {
   return (
-    <Stack gap="md">
-      <PageHeader
-        breadcrumbs={['ホーム', 'マスタ', '顧客', '株式会社ABC製作所', '編集']}
-        title="顧客 編集"
-        status={<ActiveBadge active={PREFILLED.isActive} />}
-      />
-      <CustomerFormBody initialValues={PREFILLED} />
-    </Stack>
+    <CustomerFormBody
+      breadcrumbs={['ホーム', 'マスタ', '顧客', '株式会社ABC製作所', '編集']}
+      title="顧客 編集"
+      status={<ActiveBadge active={PREFILLED.isActive} />}
+      initialValues={PREFILLED}
+    />
   );
 }

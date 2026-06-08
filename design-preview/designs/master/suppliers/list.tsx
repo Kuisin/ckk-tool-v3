@@ -1,28 +1,28 @@
 'use client';
 
-import {
-  Badge,
-  Button,
-  Group,
-  Paper,
-  Select,
-  Stack,
-  Table,
-  Text,
-  TextInput,
-} from '@mantine/core';
-import { IconBuildingFactory2, IconSearch } from '@tabler/icons-react';
 import { useState } from 'react';
+import { Badge, Select, Text, TextInput } from '@mantine/core';
+import {
+  IconBuildingFactory2,
+  IconCopy,
+  IconCircleCheck,
+  IconCircleMinus,
+  IconEdit,
+  IconSearch,
+  IconTrash,
+} from '@tabler/icons-react';
 import {
   ActiveBadge,
   DocNumber,
-  EmptyState,
   localized,
   NewButton,
-  PageHeader,
   type LocalizedText,
 } from '../../lib/ui';
+import { DataTable, type Column } from '../../lib/data-table';
+import { ListShell } from '../../lib/shells';
 import { useIsMobile } from '../../lib/viewport-context';
+import { DeleteSupplierModal } from './_modals/delete';
+import { ToggleSupplierActiveModal } from './_modals/toggle-active';
 
 // ── Mock data (business_partners + bp_vendor_attrs, VENDOR role) ─────────────
 type VendorType = 'SUPPLIER' | 'OUTSOURCE';
@@ -98,69 +98,21 @@ function leadTimeText(days: number | null): string {
   return days == null ? '—' : `${days} 日`;
 }
 
-// ── Mobile card list ─────────────────────────────────────────────────────────
-function MobileCardList({ records }: { records: SupplierRow[] }) {
-  if (records.length === 0) {
-    return <EmptyState icon={<IconBuildingFactory2 size={24} />} message="外注企業がありません" />;
-  }
-  return (
-    <Stack gap="xs">
-      {records.map((r) => (
-        <Paper key={r.id} p="sm" withBorder radius="sm" style={{ cursor: 'pointer' }}>
-          <Group justify="space-between" wrap="nowrap" align="flex-start">
-            <Stack gap={3} style={{ minWidth: 0 }}>
-              <DocNumber c="dimmed">{r.bpCode}</DocNumber>
-              <Text size="sm" fw={600} truncate>{localized(r.name)}</Text>
-              <Text size="xs" c="dimmed">標準リードタイム: {leadTimeText(r.leadTimeDays)}</Text>
-            </Stack>
-            <Stack gap={4} align="flex-end" style={{ flexShrink: 0 }}>
-              <VendorTypeBadge type={r.vendorType} />
-              <ActiveBadge active={r.isActive} />
-            </Stack>
-          </Group>
-        </Paper>
-      ))}
-    </Stack>
-  );
-}
-
-// ── Desktop table ────────────────────────────────────────────────────────────
-function DesktopTable({ records }: { records: SupplierRow[] }) {
-  if (records.length === 0) {
-    return <EmptyState icon={<IconBuildingFactory2 size={24} />} message="外注企業がありません" />;
-  }
-  return (
-    <Table striped highlightOnHover withTableBorder>
-      <Table.Thead>
-        <Table.Tr>
-          <Table.Th style={{ width: 120 }}>BPコード</Table.Th>
-          <Table.Th>名称</Table.Th>
-          <Table.Th style={{ width: 100 }}>外注種別</Table.Th>
-          <Table.Th style={{ width: 150 }} ta="right">標準リードタイム</Table.Th>
-          <Table.Th style={{ width: 90 }}>状態</Table.Th>
-        </Table.Tr>
-      </Table.Thead>
-      <Table.Tbody>
-        {records.map((r) => (
-          <Table.Tr key={r.id} style={{ cursor: 'pointer' }}>
-            <Table.Td><DocNumber>{r.bpCode}</DocNumber></Table.Td>
-            <Table.Td><Text size="sm">{localized(r.name)}</Text></Table.Td>
-            <Table.Td><VendorTypeBadge type={r.vendorType} /></Table.Td>
-            <Table.Td ta="right"><Text size="sm">{leadTimeText(r.leadTimeDays)}</Text></Table.Td>
-            <Table.Td><ActiveBadge active={r.isActive} /></Table.Td>
-          </Table.Tr>
-        ))}
-      </Table.Tbody>
-    </Table>
-  );
-}
-
-// ── Main component ───────────────────────────────────────────────────────────
 export default function SuppliersListPage() {
   const isMobile = useIsMobile();
   const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<string | null>(null);
+
+  // Modal state — controlled per design.md §16.2.
+  const [deleteTarget, setDeleteTarget] = useState<SupplierRow[] | null>(null);
+  const [toggleTarget, setToggleTarget] = useState<{ rows: SupplierRow[]; activate: boolean } | null>(null);
+
+  const reset = () => {
+    setSearch('');
+    setTypeFilter(null);
+    setStatusFilter(null);
+  };
 
   const filtered = MOCK_RECORDS.filter((r) => {
     const matchesSearch =
@@ -171,82 +123,125 @@ export default function SuppliersListPage() {
     return matchesSearch && matchesType && matchesStatus;
   });
 
-  const reset = () => {
-    setSearch('');
-    setTypeFilter(null);
-    setStatusFilter(null);
-  };
+  const columns: Column<SupplierRow>[] = [
+    {
+      key: 'bpCode',
+      header: 'BPコード',
+      sortable: true,
+      width: 120,
+      render: (r) => <DocNumber>{r.bpCode}</DocNumber>,
+    },
+    {
+      key: 'name',
+      header: '名称',
+      sortable: true,
+      sortValue: (r) => localized(r.name),
+      render: (r) => <Text size="sm">{localized(r.name)}</Text>,
+    },
+    {
+      key: 'vendorType',
+      header: '外注種別',
+      sortable: true,
+      hideable: true,
+      width: 110,
+      sortValue: (r) => VENDOR_TYPE_LABEL[r.vendorType],
+      render: (r) => <VendorTypeBadge type={r.vendorType} />,
+    },
+    {
+      key: 'leadTimeDays',
+      header: '標準リードタイム',
+      sortable: true,
+      hideable: true,
+      width: 150,
+      align: 'right',
+      sortValue: (r) => r.leadTimeDays ?? -1,
+      render: (r) => <Text size="sm">{leadTimeText(r.leadTimeDays)}</Text>,
+    },
+    {
+      key: 'isActive',
+      header: '状態',
+      sortable: true,
+      width: 90,
+      sortValue: (r) => (r.isActive ? 1 : 0),
+      render: (r) => <ActiveBadge active={r.isActive} />,
+    },
+  ];
 
   return (
-    <Stack gap="md">
-      <PageHeader
-        breadcrumbs={['ホーム', 'マスタ', '外注企業']}
-        title="外注企業"
-        actions={<NewButton />}
+    <ListShell
+      breadcrumbs={['ホーム', 'マスタ', '外注企業']}
+      title="外注企業"
+      action={<NewButton />}
+      onReset={reset}
+      search={
+        <TextInput
+          placeholder="BPコード・名称で検索"
+          leftSection={<IconSearch size={14} />}
+          value={search}
+          onChange={(e) => setSearch(e.currentTarget.value)}
+        />
+      }
+      filters={
+        <>
+          <Select
+            placeholder="外注種別"
+            data={VENDOR_TYPE_OPTIONS}
+            value={typeFilter}
+            onChange={setTypeFilter}
+            clearable
+            w={isMobile ? undefined : 160}
+            style={isMobile ? { flex: 1 } : undefined}
+          />
+          <Select
+            placeholder="状態"
+            data={STATUS_OPTIONS}
+            value={statusFilter}
+            onChange={setStatusFilter}
+            clearable
+            w={isMobile ? undefined : 160}
+            style={isMobile ? { flex: 1 } : undefined}
+          />
+        </>
+      }
+    >
+      <DataTable
+        data={filtered}
+        columns={columns}
+        getRowId={(r) => r.id}
+        onRowClick={() => { /* navigate to detail */ }}
+        defaultSort={{ key: 'bpCode', dir: 'asc' }}
+        selectable
+        bulkActions={[
+          { label: '一括有効化', icon: <IconCircleCheck size={16} />, color: 'green', onAction: (rows) => setToggleTarget({ rows, activate: true }) },
+          { label: '一括無効化', icon: <IconCircleMinus size={16} />, color: 'gray', onAction: (rows) => setToggleTarget({ rows, activate: false }) },
+          { label: '一括削除', icon: <IconTrash size={16} />, color: 'red', onAction: (rows) => setDeleteTarget(rows) },
+        ]}
+        rowActions={(row) => [
+          { label: '編集', icon: <IconEdit size={14} /> },
+          { label: '複製', icon: <IconCopy size={14} /> },
+          {
+            label: row.isActive ? '無効化' : '有効化',
+            icon: row.isActive ? <IconCircleMinus size={14} /> : <IconCircleCheck size={14} />,
+            onAction: () => setToggleTarget({ rows: [row], activate: !row.isActive }),
+          },
+          { label: '削除', icon: <IconTrash size={14} />, color: 'red', onAction: () => setDeleteTarget([row]) },
+        ]}
+        emptyIcon={<IconBuildingFactory2 size={24} />}
+        emptyMessage="外注企業がありません"
+        emptyAction={<NewButton />}
       />
 
-      <Paper withBorder p="sm">
-        {isMobile ? (
-          <Stack gap="xs" mb="sm">
-            <TextInput
-              placeholder="BPコード・名称で検索"
-              leftSection={<IconSearch size={14} />}
-              value={search}
-              onChange={(e) => setSearch(e.currentTarget.value)}
-            />
-            <Group gap="xs">
-              <Select
-                placeholder="外注種別"
-                data={VENDOR_TYPE_OPTIONS}
-                value={typeFilter}
-                onChange={setTypeFilter}
-                clearable
-                style={{ flex: 1 }}
-              />
-              <Select
-                placeholder="状態"
-                data={STATUS_OPTIONS}
-                value={statusFilter}
-                onChange={setStatusFilter}
-                clearable
-                style={{ flex: 1 }}
-              />
-              <Button variant="subtle" size="sm" onClick={reset}>リセット</Button>
-            </Group>
-          </Stack>
-        ) : (
-          <Group mb="sm" align="flex-end">
-            <TextInput
-              placeholder="BPコード・名称で検索"
-              leftSection={<IconSearch size={14} />}
-              value={search}
-              onChange={(e) => setSearch(e.currentTarget.value)}
-              style={{ flex: 1 }}
-            />
-            <Select
-              placeholder="外注種別"
-              data={VENDOR_TYPE_OPTIONS}
-              value={typeFilter}
-              onChange={setTypeFilter}
-              clearable
-              w={160}
-            />
-            <Select
-              placeholder="状態"
-              data={STATUS_OPTIONS}
-              value={statusFilter}
-              onChange={setStatusFilter}
-              clearable
-              w={160}
-            />
-            <Button variant="subtle" onClick={reset}>リセット</Button>
-          </Group>
-        )}
-
-        {isMobile
-          ? <MobileCardList records={filtered} />
-          : <DesktopTable records={filtered} />}
-      </Paper>
-    </Stack>
+      <DeleteSupplierModal
+        opened={deleteTarget !== null}
+        onClose={() => setDeleteTarget(null)}
+        names={(deleteTarget ?? []).map((r) => localized(r.name))}
+      />
+      <ToggleSupplierActiveModal
+        opened={toggleTarget !== null}
+        onClose={() => setToggleTarget(null)}
+        activate={toggleTarget?.activate ?? true}
+        names={(toggleTarget?.rows ?? []).map((r) => localized(r.name))}
+      />
+    </ListShell>
   );
 }

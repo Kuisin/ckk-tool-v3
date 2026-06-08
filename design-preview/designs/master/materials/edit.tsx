@@ -1,41 +1,15 @@
 'use client';
 
-import {
-  Box,
-  Button,
-  Divider,
-  Group,
-  LoadingOverlay,
-  Paper,
-  Select,
-  SimpleGrid,
-  Stack,
-  Switch,
-  Textarea,
-  TextInput,
-  Title,
-} from '@mantine/core';
+import { useTransition } from 'react';
+import { Select, SimpleGrid, Switch, Textarea, TextInput } from '@mantine/core';
 import { useForm } from '@mantine/form';
 import { notifications } from '@mantine/notifications';
-import type { FormErrors } from '@mantine/form';
-import { useTransition } from 'react';
 import { z } from 'zod';
-import { ActiveBadge, PageHeader } from '../../lib/ui';
+import { ActiveBadge } from '../../lib/ui';
+import { zodResolver } from '../../lib/form';
+import { FormSection, FormShell, LocalizedTextInput } from '../../lib/shells';
 import { MATERIAL_TYPES, UNITS } from '../../lib/mock';
 import { useIsMobile } from '../../lib/viewport-context';
-
-function zodResolver<T>(schema: z.ZodType<T>) {
-  return (values: T): FormErrors => {
-    const result = schema.safeParse(values);
-    if (result.success) return {};
-    const errors: FormErrors = {};
-    for (const issue of result.error.issues) {
-      const key = issue.path.join('.');
-      if (key && !errors[key]) errors[key] = issue.message;
-    }
-    return errors;
-  };
-}
 
 const FORM_OPTIONS = [
   { value: 'POLISHED', label: '研磨' },
@@ -92,85 +66,37 @@ export default function MaterialEditPage() {
   };
 
   return (
-    <Stack gap="md">
-      <PageHeader
-        breadcrumbs={['ホーム', 'マスタ', '素材', form.values.code, '編集']}
-        title="素材 編集"
-        status={<ActiveBadge active={form.values.isActive} />}
-      />
-
-      <Box component="form" onSubmit={form.onSubmit(handleSubmit)} pos="relative">
-        <LoadingOverlay visible={isPending} />
-
-        <Stack gap="md">
-          <Paper withBorder p="md" radius="md">
-            <Title order={4} mb="xs">基本情報</Title>
-            <Divider mb="md" />
-            <SimpleGrid cols={isMobile ? 1 : 2} spacing="sm">
-              <TextInput
-                label="素材コード"
-                description="形式: [材種]-[A-C][0-9]{3}-[0-9]{3}"
-                withAsterisk
-                {...form.getInputProps('code')}
-              />
-              <Select
-                label="材種"
-                data={MATERIAL_TYPES}
-                searchable
-                withAsterisk
-                {...form.getInputProps('materialTypeId')}
-              />
-              <TextInput
-                label="名称（日本語）"
-                withAsterisk
-                {...form.getInputProps('nameJa')}
-              />
-              <TextInput
-                label="名称（英語）"
-                withAsterisk
-                {...form.getInputProps('nameEn')}
-              />
-              <Select
-                label="単位"
-                data={UNITS}
-                withAsterisk
-                {...form.getInputProps('unit')}
-              />
-              <Select
-                label="形態"
-                data={FORM_OPTIONS}
-                withAsterisk
-                {...form.getInputProps('form')}
-              />
-            </SimpleGrid>
-
-            <Switch
-              label="有効"
-              mt="md"
-              {...form.getInputProps('isActive', { type: 'checkbox' })}
-            />
-
-            <Textarea
-              label="備考"
-              mt="sm"
-              rows={3}
-              {...form.getInputProps('notes')}
-            />
-          </Paper>
-
-          {isMobile ? (
-            <Stack gap="xs">
-              <Button type="submit" loading={isPending} fullWidth>保存</Button>
-              <Button variant="default" fullWidth>キャンセル</Button>
-            </Stack>
-          ) : (
-            <Group justify="flex-end" mt="md">
-              <Button variant="default">キャンセル</Button>
-              <Button type="submit" loading={isPending}>保存</Button>
-            </Group>
-          )}
-        </Stack>
-      </Box>
-    </Stack>
+    <FormShell
+      breadcrumbs={['ホーム', 'マスタ', '素材', form.values.code, '編集']}
+      title="素材 編集"
+      status={<ActiveBadge active={form.values.isActive} />}
+      isPending={isPending}
+      onSubmit={form.onSubmit(handleSubmit)}
+    >
+      <FormSection title="基本情報">
+        <SimpleGrid cols={isMobile ? 1 : 2} spacing="sm" mb="sm">
+          <TextInput
+            label="素材コード"
+            description="形式: [材種]-[A-C][0-9]{3}-[0-9]{3}"
+            withAsterisk
+            {...form.getInputProps('code')}
+          />
+          <Select
+            label="材種" data={MATERIAL_TYPES} searchable withAsterisk
+            {...form.getInputProps('materialTypeId')}
+          />
+          <Select label="単位" data={UNITS} withAsterisk {...form.getInputProps('unit')} />
+          <Select label="形態" data={FORM_OPTIONS} withAsterisk {...form.getInputProps('form')} />
+        </SimpleGrid>
+        <LocalizedTextInput
+          label="名称"
+          required
+          jaProps={form.getInputProps('nameJa')}
+          enProps={form.getInputProps('nameEn')}
+        />
+        <Switch label="有効" mt="md" {...form.getInputProps('isActive', { type: 'checkbox' })} />
+        <Textarea label="備考" mt="sm" rows={3} {...form.getInputProps('notes')} />
+      </FormSection>
+    </FormShell>
   );
 }

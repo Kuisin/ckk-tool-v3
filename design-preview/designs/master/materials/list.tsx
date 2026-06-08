@@ -1,28 +1,30 @@
 'use client';
 
-import {
-  Button,
-  Group,
-  Paper,
-  Select,
-  Stack,
-  Table,
-  Text,
-  TextInput,
-} from '@mantine/core';
-import { IconBolt, IconSearch } from '@tabler/icons-react';
 import { useState } from 'react';
+import { Group, Paper, Select, Stack, Text, TextInput } from '@mantine/core';
+import {
+  IconBolt,
+  IconCheck,
+  IconCircleMinus,
+  IconCopy,
+  IconEdit,
+  IconSearch,
+  IconTrash,
+} from '@tabler/icons-react';
 import {
   ActiveBadge,
   DocNumber,
-  EmptyState,
   localized,
   NewButton,
-  PageHeader,
   type LocalizedText,
 } from '../../lib/ui';
+import { DataTable, type Column } from '../../lib/data-table';
+import { ListShell } from '../../lib/shells';
 import { MATERIAL_TYPES } from '../../lib/mock';
 import { useIsMobile } from '../../lib/viewport-context';
+import { DeleteMaterialModal } from './_modals/delete';
+import { DuplicateMaterialModal } from './_modals/duplicate';
+import { ToggleMaterialActiveModal } from './_modals/toggle-active';
 
 // ── Material form labels (MATERIAL_FORM enum) ────────────────────────────────
 const FORM_LABEL: Record<string, string> = {
@@ -63,13 +65,15 @@ export default function MaterialListPage() {
   const [formFilter, setFormFilter] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<string | null>(null);
 
+  const [deleteRow, setDeleteRow] = useState<MaterialRow | null>(null);
+  const [duplicateRow, setDuplicateRow] = useState<MaterialRow | null>(null);
+  const [toggleRow, setToggleRow] = useState<MaterialRow | null>(null);
+
   const filtered = MOCK_RECORDS.filter((r) => {
-    const matchesSearch =
-      !search || r.id.includes(search) || localized(r.name).includes(search);
+    const matchesSearch = !search || r.id.includes(search) || localized(r.name).includes(search);
     const matchesType = !typeFilter || r.materialTypeId === typeFilter;
     const matchesForm = !formFilter || r.form === formFilter;
-    const matchesStatus =
-      !statusFilter || (statusFilter === 'active' ? r.isActive : !r.isActive);
+    const matchesStatus = !statusFilter || (statusFilter === 'active' ? r.isActive : !r.isActive);
     return matchesSearch && matchesType && matchesForm && matchesStatus;
   });
 
@@ -80,143 +84,106 @@ export default function MaterialListPage() {
     setStatusFilter(null);
   };
 
+  const columns: Column<MaterialRow>[] = [
+    { key: 'id', header: '素材コード', sortable: true, width: 180, render: (r) => <DocNumber>{r.id}</DocNumber> },
+    { key: 'materialTypeId', header: '材種', sortable: true, hideable: true, width: 120, render: (r) => <DocNumber c="dimmed">{r.materialTypeId}</DocNumber> },
+    { key: 'name', header: '名称', sortable: true, sortValue: (r) => localized(r.name), render: (r) => localized(r.name) },
+    { key: 'form', header: '形態', sortable: true, hideable: true, width: 90, sortValue: (r) => FORM_LABEL[r.form], render: (r) => FORM_LABEL[r.form] },
+    { key: 'unit', header: '単位', sortable: true, hideable: true, width: 80, render: (r) => r.unit },
+    { key: 'isActive', header: '状態', sortable: true, width: 90, sortValue: (r) => (r.isActive ? 1 : 0), render: (r) => <ActiveBadge active={r.isActive} /> },
+  ];
+
   return (
-    <Stack gap="md">
-      <PageHeader
-        breadcrumbs={['ホーム', 'マスタ', '素材']}
-        title="素材"
-        actions={<NewButton />}
+    <ListShell
+      breadcrumbs={['ホーム', 'マスタ', '素材']}
+      title="素材"
+      action={<NewButton />}
+      onReset={reset}
+      search={
+        <TextInput
+          placeholder="素材コード・名称で検索"
+          leftSection={<IconSearch size={14} />}
+          value={search}
+          onChange={(e) => setSearch(e.currentTarget.value)}
+        />
+      }
+      filters={
+        <>
+          <Select
+            placeholder="材種" data={MATERIAL_TYPES} value={typeFilter} onChange={setTypeFilter}
+            searchable clearable w={isMobile ? undefined : 180} style={isMobile ? { flex: 1 } : undefined}
+          />
+          <Select
+            placeholder="形態" data={FORM_OPTIONS} value={formFilter} onChange={setFormFilter}
+            clearable w={isMobile ? undefined : 130} style={isMobile ? { flex: 1 } : undefined}
+          />
+          <Select
+            placeholder="状態" data={STATUS_OPTIONS} value={statusFilter} onChange={setStatusFilter}
+            clearable w={isMobile ? undefined : 120} style={isMobile ? { flex: 1 } : undefined}
+          />
+        </>
+      }
+    >
+      <DataTable
+        data={filtered}
+        columns={columns}
+        getRowId={(r) => r.id}
+        onRowClick={() => { /* navigate to detail */ }}
+        defaultSort={{ key: 'id', dir: 'asc' }}
+        selectable
+        bulkActions={[
+          { label: '一括有効化', icon: <IconCheck size={16} />, color: 'green' },
+          { label: '一括無効化', icon: <IconCircleMinus size={16} />, color: 'orange' },
+          { label: '一括削除', icon: <IconTrash size={16} />, color: 'red' },
+        ]}
+        rowActions={(row) => [
+          { label: '編集', icon: <IconEdit size={14} /> },
+          { label: '複製', icon: <IconCopy size={14} />, onAction: (r) => setDuplicateRow(r) },
+          { label: row.isActive ? '無効化' : '有効化', icon: <IconCircleMinus size={14} />, onAction: (r) => setToggleRow(r) },
+          { label: '削除', icon: <IconTrash size={14} />, color: 'red', onAction: (r) => setDeleteRow(r) },
+        ]}
+        renderCard={(r) => (
+          <Paper p="sm" withBorder radius="sm">
+            <Group justify="space-between" wrap="nowrap" align="flex-start">
+              <Stack gap={3} style={{ minWidth: 0 }}>
+                <DocNumber c="dimmed">{r.id}</DocNumber>
+                <Text size="sm" fw={600} truncate>{localized(r.name)}</Text>
+                <Group gap="md" mt={2}>
+                  <Text size="xs" c="dimmed">{FORM_LABEL[r.form]}</Text>
+                  <Text size="xs" c="dimmed">{r.unit}</Text>
+                </Group>
+              </Stack>
+              <ActiveBadge active={r.isActive} />
+            </Group>
+          </Paper>
+        )}
+        emptyIcon={<IconBolt size={24} />}
+        emptyMessage="素材がありません"
+        emptyAction={<NewButton />}
       />
 
-      <Paper withBorder p="sm">
-        {isMobile ? (
-          <Stack gap="xs" mb="sm">
-            <TextInput
-              placeholder="素材コード・名称で検索"
-              leftSection={<IconSearch size={14} />}
-              value={search}
-              onChange={(e) => setSearch(e.currentTarget.value)}
-            />
-            <Group gap="xs">
-              <Select
-                placeholder="材種"
-                data={MATERIAL_TYPES}
-                value={typeFilter}
-                onChange={setTypeFilter}
-                searchable
-                clearable
-                style={{ flex: 1 }}
-              />
-              <Select
-                placeholder="形態"
-                data={FORM_OPTIONS}
-                value={formFilter}
-                onChange={setFormFilter}
-                clearable
-                style={{ flex: 1 }}
-              />
-            </Group>
-            <Group gap="xs">
-              <Select
-                placeholder="状態"
-                data={STATUS_OPTIONS}
-                value={statusFilter}
-                onChange={setStatusFilter}
-                clearable
-                style={{ flex: 1 }}
-              />
-              <Button variant="subtle" size="sm" onClick={reset}>
-                リセット
-              </Button>
-            </Group>
-          </Stack>
-        ) : (
-          <Group mb="sm" align="flex-end">
-            <TextInput
-              placeholder="素材コード・名称で検索"
-              leftSection={<IconSearch size={14} />}
-              value={search}
-              onChange={(e) => setSearch(e.currentTarget.value)}
-              style={{ flex: 1 }}
-            />
-            <Select
-              placeholder="材種"
-              data={MATERIAL_TYPES}
-              value={typeFilter}
-              onChange={setTypeFilter}
-              searchable
-              clearable
-              w={180}
-            />
-            <Select
-              placeholder="形態"
-              data={FORM_OPTIONS}
-              value={formFilter}
-              onChange={setFormFilter}
-              clearable
-              w={130}
-            />
-            <Select
-              placeholder="状態"
-              data={STATUS_OPTIONS}
-              value={statusFilter}
-              onChange={setStatusFilter}
-              clearable
-              w={120}
-            />
-            <Button variant="subtle" onClick={reset}>
-              リセット
-            </Button>
-          </Group>
-        )}
-
-        {filtered.length === 0 ? (
-          <EmptyState icon={<IconBolt size={24} />} message="素材がありません" />
-        ) : isMobile ? (
-          <Stack gap="xs">
-            {filtered.map((r) => (
-              <Paper key={r.id} p="sm" withBorder radius="sm" style={{ cursor: 'pointer' }}>
-                <Group justify="space-between" wrap="nowrap" align="flex-start">
-                  <Stack gap={3} style={{ minWidth: 0 }}>
-                    <DocNumber c="dimmed">{r.id}</DocNumber>
-                    <Text size="sm" fw={600} truncate>{localized(r.name)}</Text>
-                    <Group gap="md" mt={2}>
-                      <Text size="xs" c="dimmed">{FORM_LABEL[r.form]}</Text>
-                      <Text size="xs" c="dimmed">{r.unit}</Text>
-                    </Group>
-                  </Stack>
-                  <ActiveBadge active={r.isActive} />
-                </Group>
-              </Paper>
-            ))}
-          </Stack>
-        ) : (
-          <Table>
-            <Table.Thead>
-              <Table.Tr>
-                <Table.Th>素材コード</Table.Th>
-                <Table.Th>材種</Table.Th>
-                <Table.Th>名称</Table.Th>
-                <Table.Th>形態</Table.Th>
-                <Table.Th>単位</Table.Th>
-                <Table.Th>状態</Table.Th>
-              </Table.Tr>
-            </Table.Thead>
-            <Table.Tbody>
-              {filtered.map((r) => (
-                <Table.Tr key={r.id} style={{ cursor: 'pointer' }}>
-                  <Table.Td><DocNumber>{r.id}</DocNumber></Table.Td>
-                  <Table.Td><DocNumber c="dimmed">{r.materialTypeId}</DocNumber></Table.Td>
-                  <Table.Td>{localized(r.name)}</Table.Td>
-                  <Table.Td>{FORM_LABEL[r.form]}</Table.Td>
-                  <Table.Td>{r.unit}</Table.Td>
-                  <Table.Td><ActiveBadge active={r.isActive} /></Table.Td>
-                </Table.Tr>
-              ))}
-            </Table.Tbody>
-          </Table>
-        )}
-      </Paper>
-    </Stack>
+      <DeleteMaterialModal
+        opened={!!deleteRow}
+        onClose={() => setDeleteRow(null)}
+        code={deleteRow?.id ?? ''}
+        name={deleteRow ? localized(deleteRow.name) : undefined}
+      />
+      <DuplicateMaterialModal
+        opened={!!duplicateRow}
+        onClose={() => setDuplicateRow(null)}
+        sourceCode={duplicateRow?.id ?? ''}
+        sourceName={duplicateRow ? localized(duplicateRow.name) : undefined}
+        sourceTypeId={duplicateRow?.materialTypeId}
+        sourceForm={duplicateRow?.form}
+        sourceUnit={duplicateRow?.unit}
+      />
+      <ToggleMaterialActiveModal
+        opened={!!toggleRow}
+        onClose={() => setToggleRow(null)}
+        code={toggleRow?.id ?? ''}
+        name={toggleRow ? localized(toggleRow.name) : undefined}
+        isActive={toggleRow?.isActive ?? true}
+      />
+    </ListShell>
   );
 }

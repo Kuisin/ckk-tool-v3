@@ -1,28 +1,34 @@
+'use client';
+
+import { useState } from 'react';
 import {
   Badge,
   Button,
-  Divider,
   Group,
-  Menu,
-  Paper,
-  SimpleGrid,
-  Stack,
   Table,
   Tabs,
   Text,
-  Timeline,
 } from '@mantine/core';
-import { IconDotsVertical, IconEdit } from '@tabler/icons-react';
+import { IconCircleMinus, IconPlus, IconTrash } from '@tabler/icons-react';
 import {
   ActiveBadge,
   DocNumber,
   FieldValue,
-  formatDateTime,
   localized,
-  PageHeader,
+  formatDateTime,
   type LocalizedText,
 } from '../../lib/ui';
+import {
+  AuditTimeline,
+  DetailShell,
+  ResourceActions,
+  SummaryGrid,
+  type AuditEntry,
+} from '../../lib/shells';
 import { useIsMobile } from '../../lib/viewport-context';
+import { AddDependencyModal } from './_modals/add-dependency';
+import { DeleteProcessStepModal } from './_modals/delete';
+import { ToggleProcessStepActiveModal } from './_modals/toggle-active';
 
 // ── Mock data (process_step_catalog: 円筒加工) ───────────────────────────────
 type ProcessCategory =
@@ -58,7 +64,7 @@ const EXEC_DEPENDENCIES = [
   { id: 'e2', step: { ja: '切断', en: 'Cutting' }, relation: 'OR' },
 ];
 
-const AUDIT_LOG = [
+const AUDIT_LOG: AuditEntry[] = [
   { id: 1, action: 'UPDATE', user: '佐藤 工場長', at: '2026-05-12 10:30', detail: '使用依存に「円筒加工検査承認」を追加' },
   { id: 2, action: 'UPDATE', user: '伊藤 係長', at: '2026-01-20 13:45', detail: '実行依存: 「センタレス OR 切断」に変更' },
   { id: 3, action: 'CREATE', user: '鈴木 一郎', at: '2025-10-01 09:00', detail: '工程を登録' },
@@ -108,84 +114,69 @@ export default function ProcessStepDetailPage() {
   const isMobile = useIsMobile();
   const s = STEP;
 
-  return (
-    <Stack gap="md">
-      <PageHeader
-        breadcrumbs={['ホーム', 'マスタ', '工程マスタ', s.code]}
-        title={localized(s.name)}
-        align="flex-start"
-        status={<Badge variant="light" color={CATEGORY_COLOR[s.category]}>{CATEGORY_LABEL[s.category]}</Badge>}
-        actions={
-          isMobile ? (
-            <Menu shadow="sm" position="bottom-end">
-              <Menu.Target>
-                <Button variant="default" px="xs" size="sm">
-                  <IconDotsVertical size={16} />
-                </Button>
-              </Menu.Target>
-              <Menu.Dropdown>
-                <Menu.Item leftSection={<IconEdit size={14} />}>編集</Menu.Item>
-                <Menu.Divider />
-                <Menu.Item color="red">無効化</Menu.Item>
-              </Menu.Dropdown>
-            </Menu>
-          ) : (
-            <Group gap="xs" style={{ flexShrink: 0 }}>
-              <Button variant="default" leftSection={<IconEdit size={14} />}>編集</Button>
-              <Menu shadow="sm">
-                <Menu.Target>
-                  <Button variant="default" px="xs">
-                    <IconDotsVertical size={16} />
-                  </Button>
-                </Menu.Target>
-                <Menu.Dropdown>
-                  <Menu.Item color="red">無効化</Menu.Item>
-                </Menu.Dropdown>
-              </Menu>
-            </Group>
-          )
-        }
-      />
+  const [addDep, setAddDep] = useState<'use' | 'exec' | null>(null);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [toggleOpen, setToggleOpen] = useState(false);
 
+  return (
+    <DetailShell
+      breadcrumbs={['ホーム', 'マスタ', '工程マスタ', s.code]}
+      title={localized(s.name)}
+      status={<Badge variant="light" color={CATEGORY_COLOR[s.category]}>{CATEGORY_LABEL[s.category]}</Badge>}
+      createdAt={formatDateTime(s.createdAt)}
+      updatedAt={formatDateTime(s.updatedAt)}
+      actions={
+        <ResourceActions
+          onEdit={() => {}}
+          menuItems={[
+            {
+              label: s.isActive ? '無効化' : '有効化',
+              icon: <IconCircleMinus size={14} />,
+              color: s.isActive ? 'red' : undefined,
+              onClick: () => setToggleOpen(true),
+            },
+            {
+              label: '削除',
+              icon: <IconTrash size={14} />,
+              color: 'red',
+              divider: true,
+              onClick: () => setDeleteOpen(true),
+            },
+          ]}
+        />
+      }
+    >
       {/* ── Summary card with flag badges ─────────────────────────────── */}
-      <Paper withBorder p="md" radius="md">
-        <SimpleGrid cols={isMobile ? 1 : 3} spacing="md">
-          <FieldValue label="コード" value={<DocNumber>{s.code}</DocNumber>} />
-          <FieldValue label="カテゴリ" value={<Badge variant="light" color={CATEGORY_COLOR[s.category]}>{CATEGORY_LABEL[s.category]}</Badge>} />
-          <FieldValue
-            label="実施場所"
-            value={
-              <Badge variant="outline" color={s.executionLocation === 'INTERNAL_OR_OUTSOURCE' ? 'orange' : 'gray'}>
-                {EXECUTION_LABEL[s.executionLocation]}
+      <SummaryGrid>
+        <FieldValue label="コード" value={<DocNumber>{s.code}</DocNumber>} />
+        <FieldValue label="カテゴリ" value={<Badge variant="light" color={CATEGORY_COLOR[s.category]}>{CATEGORY_LABEL[s.category]}</Badge>} />
+        <FieldValue
+          label="実施場所"
+          value={
+            <Badge variant="outline" color={s.executionLocation === 'INTERNAL_OR_OUTSOURCE' ? 'orange' : 'gray'}>
+              {EXECUTION_LABEL[s.executionLocation]}
+            </Badge>
+          }
+        />
+        <FieldValue label="表示順" value={s.sortOrder} />
+        <FieldValue label="承認必要役職" value={s.approvalMinRank} />
+        <FieldValue label="状態" value={<ActiveBadge active={s.isActive} />} />
+        <FieldValue
+          label="フラグ"
+          value={
+            <Group gap={6}>
+              <FlagBadge on={s.isSyncCapable} label="同期" />
+              <Badge size="sm" variant="light" color={s.isInspection ? 'blue' : 'gray'}>
+                {s.isInspection ? '検査工程' : '検査なし'}
               </Badge>
-            }
-          />
-          <FieldValue label="表示順" value={s.sortOrder} />
-          <FieldValue label="承認必要役職" value={s.approvalMinRank} />
-          <FieldValue label="状態" value={<ActiveBadge active={s.isActive} />} />
-          <FieldValue
-            label="フラグ"
-            value={
-              <Group gap={6}>
-                <FlagBadge on={s.isSyncCapable} label="同期" />
-                <Badge size="sm" variant="light" color={s.isInspection ? 'blue' : 'gray'}>
-                  {s.isInspection ? '検査工程' : '検査なし'}
-                </Badge>
-                <Badge size="sm" variant="light" color={s.isApprovalStep ? 'teal' : 'gray'}>
-                  {s.isApprovalStep ? '承認工程' : '承認なし'}
-                </Badge>
-              </Group>
-            }
-          />
-          <FieldValue label="備考" value={s.notes} />
-        </SimpleGrid>
-        {isMobile && (
-          <Group gap="xl" mt="sm">
-            <Text size="xs" c="dimmed">作成: {formatDateTime(s.createdAt)}</Text>
-            <Text size="xs" c="dimmed">更新: {formatDateTime(s.updatedAt)}</Text>
-          </Group>
-        )}
-      </Paper>
+              <Badge size="sm" variant="light" color={s.isApprovalStep ? 'teal' : 'gray'}>
+                {s.isApprovalStep ? '承認工程' : '承認なし'}
+              </Badge>
+            </Group>
+          }
+        />
+        <FieldValue label="備考" value={s.notes} />
+      </SummaryGrid>
 
       {/* ── Tabs: 使用依存 / 実行依存 / 履歴 ───────────────────────────── */}
       <Tabs defaultValue="use">
@@ -197,7 +188,12 @@ export default function ProcessStepDetailPage() {
 
         {/* 使用依存 = ワークフローに含めてよい条件 */}
         <Tabs.Panel value="use" pt="md">
-          <Text size="xs" c="dimmed" mb="sm">ワークフローに含めてよい条件</Text>
+          <Group justify="space-between" mb="sm">
+            <Text size="xs" c="dimmed">ワークフローに含めてよい条件</Text>
+            <Button variant="subtle" size="xs" leftSection={<IconPlus size={14} />} onClick={() => setAddDep('use')}>
+              依存追加
+            </Button>
+          </Group>
           {USE_DEPENDENCIES.length === 0 ? (
             <Text size="sm" c="dimmed">使用依存はありません。</Text>
           ) : (
@@ -228,7 +224,12 @@ export default function ProcessStepDetailPage() {
 
         {/* 実行依存 = この工程を開始してよい条件（前工程完了） */}
         <Tabs.Panel value="exec" pt="md">
-          <Text size="xs" c="dimmed" mb="sm">この工程を開始してよい条件（前工程完了）</Text>
+          <Group justify="space-between" mb="sm">
+            <Text size="xs" c="dimmed">この工程を開始してよい条件（前工程完了）</Text>
+            <Button variant="subtle" size="xs" leftSection={<IconPlus size={14} />} onClick={() => setAddDep('exec')}>
+              依存追加
+            </Button>
+          </Group>
           {EXEC_DEPENDENCIES.length === 0 ? (
             <Text size="sm" c="dimmed">実行依存はありません。</Text>
           ) : (
@@ -253,31 +254,26 @@ export default function ProcessStepDetailPage() {
 
         {/* 履歴: AuditTimeline */}
         <Tabs.Panel value="history" pt="md">
-          <Timeline active={-1} bulletSize={28} lineWidth={2}>
-            {AUDIT_LOG.map((log) => (
-              <Timeline.Item
-                key={log.id}
-                bullet={<Text size="xs" fw={700}>{log.user[0]}</Text>}
-                title={log.action}
-              >
-                <Text size="xs" c="dimmed">{formatDateTime(log.at)} · {log.user}</Text>
-                <Text size="sm" mt={4}>{log.detail}</Text>
-              </Timeline.Item>
-            ))}
-          </Timeline>
+          <AuditTimeline entries={AUDIT_LOG} />
         </Tabs.Panel>
       </Tabs>
 
-      {/* ── Footer timestamps ─────────────────────────────────────────── */}
-      {!isMobile && (
-        <>
-          <Divider />
-          <Group gap="xl">
-            <Text size="xs" c="dimmed">作成: {formatDateTime(s.createdAt)}</Text>
-            <Text size="xs" c="dimmed">更新: {formatDateTime(s.updatedAt)}</Text>
-          </Group>
-        </>
-      )}
-    </Stack>
+      <AddDependencyModal
+        opened={addDep !== null}
+        onClose={() => setAddDep(null)}
+        defaultKind={addDep ?? 'use'}
+      />
+      <DeleteProcessStepModal
+        opened={deleteOpen}
+        onClose={() => setDeleteOpen(false)}
+        names={[localized(s.name)]}
+      />
+      <ToggleProcessStepActiveModal
+        opened={toggleOpen}
+        onClose={() => setToggleOpen(false)}
+        activate={!s.isActive}
+        names={[localized(s.name)]}
+      />
+    </DetailShell>
   );
 }

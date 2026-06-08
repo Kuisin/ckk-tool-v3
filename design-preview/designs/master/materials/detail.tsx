@@ -1,29 +1,27 @@
-import {
-  Badge,
-  Button,
-  Divider,
-  Group,
-  Menu,
-  Paper,
-  SimpleGrid,
-  Stack,
-  Table,
-  Tabs,
-  Text,
-  Timeline,
-  Tooltip,
-} from '@mantine/core';
-import { IconDotsVertical, IconEdit } from '@tabler/icons-react';
+'use client';
+
+import { useState } from 'react';
+import { Badge, Group, Stack, Table, Tabs, Text, Tooltip } from '@mantine/core';
+import { IconCircleMinus, IconCopy, IconTrash } from '@tabler/icons-react';
 import {
   ActiveBadge,
   DocNumber,
   FieldValue,
   formatDateTime,
   localized,
-  PageHeader,
   type LocalizedText,
 } from '../../lib/ui';
+import {
+  AuditTimeline,
+  DetailShell,
+  ResourceActions,
+  SummaryGrid,
+  type AuditEntry,
+} from '../../lib/shells';
 import { useIsMobile } from '../../lib/viewport-context';
+import { DeleteMaterialModal } from './_modals/delete';
+import { DuplicateMaterialModal } from './_modals/duplicate';
+import { ToggleMaterialActiveModal } from './_modals/toggle-active';
 
 const FORM_LABEL: Record<string, string> = {
   POLISHED: '研磨',
@@ -42,7 +40,6 @@ const MOCK = {
   unit: '本',
   isActive: true,
   notes: '快削ステンレス。研磨済み丸棒。',
-  // inventory
   available: 120,
   reserved: 30,
   createdBy: '田中 太郎',
@@ -55,67 +52,52 @@ const USED_PRODUCTS: { id: string; name: LocalizedText }[] = [
   { id: 'PRD-2603-0012', name: { ja: '特殊加工品', en: 'Custom part' } },
 ];
 
-const AUDIT_LOG = [
-  { id: 1, action: 'UPDATE', user: '田中 太郎', at: '2026-05-10 08:45', detail: '備考を更新' },
-  { id: 2, action: 'CREATE', user: '田中 太郎', at: '2025-09-03 11:20', detail: '素材を作成' },
+const AUDIT_LOG: AuditEntry[] = [
+  { id: 1, action: 'UPDATE', user: '田中 太郎', at: '2026/05/10 08:45', detail: '備考を更新' },
+  { id: 2, action: 'CREATE', user: '田中 太郎', at: '2025/09/03 11:20', detail: '素材を作成' },
 ];
 
 export default function MaterialDetailPage() {
   const isMobile = useIsMobile();
   const m = MOCK;
 
-  const actions = isMobile ? (
-    <Menu shadow="sm" position="bottom-end">
-      <Menu.Target>
-        <Button variant="default" px="xs" size="sm">
-          <IconDotsVertical size={16} />
-        </Button>
-      </Menu.Target>
-      <Menu.Dropdown>
-        <Menu.Item leftSection={<IconEdit size={14} />}>編集</Menu.Item>
-        <Menu.Divider />
-        <Menu.Item color="red">無効化</Menu.Item>
-      </Menu.Dropdown>
-    </Menu>
-  ) : (
-    <Group gap="xs" style={{ flexShrink: 0 }}>
-      <Button variant="default" leftSection={<IconEdit size={14} />}>編集</Button>
-      <Menu shadow="sm">
-        <Menu.Target>
-          <Button variant="default" px="xs">
-            <IconDotsVertical size={16} />
-          </Button>
-        </Menu.Target>
-        <Menu.Dropdown>
-          <Menu.Item color="red">無効化</Menu.Item>
-        </Menu.Dropdown>
-      </Menu>
-    </Group>
-  );
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [duplicateOpen, setDuplicateOpen] = useState(false);
+  const [toggleOpen, setToggleOpen] = useState(false);
 
   return (
-    <Stack gap="md">
-      <PageHeader
-        breadcrumbs={['ホーム', 'マスタ', '素材', m.id]}
-        title={localized(m.name)}
-        status={<ActiveBadge active={m.isActive} />}
-        actions={actions}
-        align="flex-start"
-      />
-
-      <Paper withBorder p="md" radius="md">
-        <SimpleGrid cols={isMobile ? 1 : 3} spacing="md">
-          <FieldValue label="素材コード" value={<DocNumber>{m.id}</DocNumber>} />
-          <FieldValue
-            label="材種"
-            value={<DocNumber c="blue">{m.materialTypeId}（{m.materialTypeName}）</DocNumber>}
-          />
-          <FieldValue label="形態" value={FORM_LABEL[m.form]} />
-          <FieldValue label="名称（日本語）" value={m.name.ja} />
-          <FieldValue label="名称（英語）" value={m.name.en} />
-          <FieldValue label="単位" value={m.unit} />
-        </SimpleGrid>
-      </Paper>
+    <DetailShell
+      breadcrumbs={['ホーム', 'マスタ', '素材', m.id]}
+      title={localized(m.name)}
+      status={<ActiveBadge active={m.isActive} />}
+      createdAt={`${formatDateTime(m.createdAt)}（${m.createdBy}）`}
+      updatedAt={formatDateTime(m.updatedAt)}
+      actions={
+        <ResourceActions
+          onEdit={() => {}}
+          menuItems={[
+            { label: '複製', icon: <IconCopy size={14} />, onClick: () => setDuplicateOpen(true) },
+            {
+              label: m.isActive ? '無効化' : '有効化',
+              icon: <IconCircleMinus size={14} />,
+              onClick: () => setToggleOpen(true),
+            },
+            { label: '削除', icon: <IconTrash size={14} />, color: 'red', divider: true, onClick: () => setDeleteOpen(true) },
+          ]}
+        />
+      }
+    >
+      <SummaryGrid>
+        <FieldValue label="素材コード" value={<DocNumber>{m.id}</DocNumber>} />
+        <FieldValue
+          label="材種"
+          value={<DocNumber c="blue">{m.materialTypeId}（{m.materialTypeName}）</DocNumber>}
+        />
+        <FieldValue label="形態" value={FORM_LABEL[m.form]} />
+        <FieldValue label="名称（日本語）" value={m.name.ja} />
+        <FieldValue label="名称（英語）" value={m.name.en} />
+        <FieldValue label="単位" value={m.unit} />
+      </SummaryGrid>
 
       <Tabs defaultValue="overview">
         <Tabs.List>
@@ -165,30 +147,32 @@ export default function MaterialDetailPage() {
         </Tabs.Panel>
 
         <Tabs.Panel value="history" pt="md">
-          <Timeline active={-1} bulletSize={28} lineWidth={2}>
-            {AUDIT_LOG.map((log) => (
-              <Timeline.Item
-                key={log.id}
-                bullet={<Text size="xs" fw={700}>{log.user[0]}</Text>}
-                title={log.action}
-              >
-                <Text size="xs" c="dimmed">{formatDateTime(log.at)} · {log.user}</Text>
-                <Text size="sm" mt={4}>{log.detail}</Text>
-              </Timeline.Item>
-            ))}
-          </Timeline>
+          <AuditTimeline entries={AUDIT_LOG} />
         </Tabs.Panel>
       </Tabs>
 
-      {!isMobile && (
-        <>
-          <Divider />
-          <Group gap="xl">
-            <Text size="xs" c="dimmed">作成: {formatDateTime(m.createdAt)}（{m.createdBy}）</Text>
-            <Text size="xs" c="dimmed">更新: {formatDateTime(m.updatedAt)}</Text>
-          </Group>
-        </>
-      )}
-    </Stack>
+      <DeleteMaterialModal
+        opened={deleteOpen}
+        onClose={() => setDeleteOpen(false)}
+        code={m.id}
+        name={localized(m.name)}
+      />
+      <DuplicateMaterialModal
+        opened={duplicateOpen}
+        onClose={() => setDuplicateOpen(false)}
+        sourceCode={m.id}
+        sourceName={localized(m.name)}
+        sourceTypeId={m.materialTypeId}
+        sourceForm={m.form}
+        sourceUnit={m.unit}
+      />
+      <ToggleMaterialActiveModal
+        opened={toggleOpen}
+        onClose={() => setToggleOpen(false)}
+        code={m.id}
+        name={localized(m.name)}
+        isActive={m.isActive}
+      />
+    </DetailShell>
   );
 }

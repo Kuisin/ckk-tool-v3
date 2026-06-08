@@ -1,41 +1,19 @@
 'use client';
 
+import { useTransition } from 'react';
 import {
-  Box,
-  Button,
-  Divider,
-  Group,
-  LoadingOverlay,
   MultiSelect,
-  Paper,
   Select,
   SimpleGrid,
-  Stack,
   Switch,
-  TextInput,
-  Title,
 } from '@mantine/core';
 import { useForm } from '@mantine/form';
 import { notifications } from '@mantine/notifications';
-import type { FormErrors } from '@mantine/form';
-import { useTransition } from 'react';
 import { z } from 'zod';
-import { PageHeader } from '../../lib/ui';
+import { zodResolver } from '../../lib/form';
+import { FormSection, FormShell, LocalizedTextInput } from '../../lib/shells';
 import { USER_OPTIONS } from '../../lib/mock';
 import { useIsMobile } from '../../lib/viewport-context';
-
-function zodResolver<T>(schema: z.ZodType<T>) {
-  return (values: T): FormErrors => {
-    const result = schema.safeParse(values);
-    if (result.success) return {};
-    const errors: FormErrors = {};
-    for (const issue of result.error.issues) {
-      const key = issue.path.join('.');
-      if (key && !errors[key]) errors[key] = issue.message;
-    }
-    return errors;
-  };
-}
 
 const TYPE_OPTIONS = [
   { value: 'FIRST', label: '第一承認' },
@@ -80,76 +58,36 @@ export default function ApprovalGroupNewPage() {
   };
 
   return (
-    <Stack gap="md">
-      <PageHeader
-        breadcrumbs={['ホーム', 'マスタ', '承認グループ', '新規作成']}
-        title="承認グループ 新規作成"
-      />
+    <FormShell
+      breadcrumbs={['ホーム', 'マスタ', '承認グループ', '新規作成']}
+      title="承認グループ 新規作成"
+      isPending={isPending}
+      onSubmit={form.onSubmit(handleSubmit)}
+    >
+      <FormSection title="グループ情報">
+        <SimpleGrid cols={isMobile ? 1 : 2} spacing="sm">
+          <Select label="種別" placeholder="種別を選択" data={TYPE_OPTIONS} withAsterisk {...form.getInputProps('type')} />
+          <Switch label="有効" mt={isMobile ? 0 : 'xl'} {...form.getInputProps('isActive', { type: 'checkbox' })} />
+        </SimpleGrid>
+        <LocalizedTextInput
+          label="名称"
+          required
+          jaProps={form.getInputProps('nameJa')}
+          enProps={form.getInputProps('nameEn')}
+        />
+      </FormSection>
 
-      <Box component="form" onSubmit={form.onSubmit(handleSubmit)} pos="relative">
-        <LoadingOverlay visible={isPending} />
-
-        <Stack gap="md">
-          {/* ── Section 1: グループ情報 ─────────────────────────────────── */}
-          <Paper withBorder p="md" radius="md">
-            <Title order={4} mb="xs">グループ情報</Title>
-            <Divider mb="md" />
-            <SimpleGrid cols={isMobile ? 1 : 2} spacing="sm">
-              <Select
-                label="種別"
-                placeholder="種別を選択"
-                data={TYPE_OPTIONS}
-                withAsterisk
-                {...form.getInputProps('type')}
-              />
-              <Switch
-                label="有効"
-                mt={isMobile ? 0 : 'xl'}
-                {...form.getInputProps('isActive', { type: 'checkbox' })}
-              />
-              <TextInput
-                label="名称（日本語）"
-                placeholder="生産判断グループ"
-                withAsterisk
-                {...form.getInputProps('nameJa')}
-              />
-              <TextInput
-                label="名称（英語）"
-                placeholder="Production Decision Group"
-                withAsterisk
-                {...form.getInputProps('nameEn')}
-              />
-            </SimpleGrid>
-          </Paper>
-
-          {/* ── Section 2: メンバー ─────────────────────────────────────── */}
-          <Paper withBorder p="md" radius="md">
-            <Title order={4} mb="xs">メンバー</Title>
-            <Divider mb="md" />
-            <MultiSelect
-              label="承認者"
-              placeholder="承認者を選択"
-              data={USER_OPTIONS}
-              searchable
-              clearable
-              withAsterisk
-              {...form.getInputProps('memberIds')}
-            />
-          </Paper>
-
-          {isMobile ? (
-            <Stack gap="xs">
-              <Button type="submit" loading={isPending} fullWidth>保存</Button>
-              <Button variant="default" fullWidth>キャンセル</Button>
-            </Stack>
-          ) : (
-            <Group justify="flex-end" mt="md">
-              <Button variant="default">キャンセル</Button>
-              <Button type="submit" loading={isPending}>保存</Button>
-            </Group>
-          )}
-        </Stack>
-      </Box>
-    </Stack>
+      <FormSection title="メンバー">
+        <MultiSelect
+          label="承認者"
+          placeholder="承認者を選択"
+          data={USER_OPTIONS}
+          searchable
+          clearable
+          withAsterisk
+          {...form.getInputProps('memberIds')}
+        />
+      </FormSection>
+    </FormShell>
   );
 }

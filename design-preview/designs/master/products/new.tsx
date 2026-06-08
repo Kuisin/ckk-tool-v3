@@ -1,11 +1,9 @@
 'use client';
 
+import { useTransition } from 'react';
 import {
-  Box,
   Button,
-  Divider,
   Group,
-  LoadingOverlay,
   Paper,
   Select,
   SimpleGrid,
@@ -15,35 +13,15 @@ import {
   Textarea,
   TextInput,
   ThemeIcon,
-  Title,
 } from '@mantine/core';
 import { useForm } from '@mantine/form';
 import { notifications } from '@mantine/notifications';
-import type { FormErrors } from '@mantine/form';
-import {
-  IconMinus,
-  IconPlus,
-  IconRuler2,
-  IconUpload,
-} from '@tabler/icons-react';
-import { useTransition } from 'react';
+import { IconMinus, IconPlus, IconRuler2, IconUpload } from '@tabler/icons-react';
 import { z } from 'zod';
-import { PageHeader } from '../../lib/ui';
+import { zodResolver } from '../../lib/form';
+import { FormSection, FormShell, LocalizedTextInput } from '../../lib/shells';
 import { MATERIALS, UNITS } from '../../lib/mock';
 import { useIsMobile } from '../../lib/viewport-context';
-
-function zodResolver<T>(schema: z.ZodType<T>) {
-  return (values: T): FormErrors => {
-    const result = schema.safeParse(values);
-    if (result.success) return {};
-    const errors: FormErrors = {};
-    for (const issue of result.error.issues) {
-      const key = issue.path.join('.');
-      if (key && !errors[key]) errors[key] = issue.message;
-    }
-    return errors;
-  };
-}
 
 const productSchema = z.object({
   code: z.string().optional(),
@@ -89,154 +67,82 @@ export default function ProductNewPage() {
   };
 
   return (
-    <Stack gap="md">
-      <PageHeader
-        breadcrumbs={['ホーム', 'マスタ', '製品', '新規作成']}
-        title="製品 新規作成"
-      />
-
-      <Box component="form" onSubmit={form.onSubmit(handleSubmit)} pos="relative">
-        <LoadingOverlay visible={isPending} />
-
-        <Stack gap="md">
-          {/* ── Section 1: 基本情報 ───────────────────────────────────── */}
-          <Paper withBorder p="md" radius="md">
-            <Title order={4} mb="xs">基本情報</Title>
-            <Divider mb="md" />
-            <SimpleGrid cols={isMobile ? 1 : 2} spacing="sm">
-              <TextInput
-                label="製品コード"
-                placeholder="保存時に自動採番"
-                description="形式: PRD-YYYYMM-NNNN（自動採番）"
-                disabled
-                {...form.getInputProps('code')}
-              />
-              <Select
-                label="素材"
-                placeholder="素材を選択"
-                data={MATERIALS}
-                searchable
-                clearable
-                {...form.getInputProps('materialId')}
-              />
-              <TextInput
-                label="名称（日本語）"
-                placeholder="精密軸"
-                withAsterisk
-                {...form.getInputProps('nameJa')}
-              />
-              <TextInput
-                label="名称（英語）"
-                placeholder="Precision shaft"
-                withAsterisk
-                {...form.getInputProps('nameEn')}
-              />
-              <Select
-                label="単位"
-                data={UNITS}
-                withAsterisk
-                {...form.getInputProps('unit')}
-              />
-              <Switch
-                label="有効"
-                mt={isMobile ? 0 : 'xl'}
-                {...form.getInputProps('isActive', { type: 'checkbox' })}
-              />
-            </SimpleGrid>
-
-            <Textarea
-              label="備考"
-              placeholder="備考・特記事項"
-              mt="sm"
-              rows={3}
-              {...form.getInputProps('notes')}
-            />
-          </Paper>
-
-          {/* ── Section 2: 仕様（spec JSON）─────────────────────────────── */}
-          <Paper withBorder p="md" radius="md">
-            <Title order={4} mb="xs">仕様</Title>
-            <Text size="xs" c="dimmed" mb="xs">
-              項目名と値の組み合わせで自由に記述できます（spec JSON）。
-            </Text>
-            <Divider mb="md" />
-
-            <Stack gap="xs">
-              {form.values.spec.map((_, index) => (
-                <Group key={index} gap="xs" wrap="nowrap" align="flex-start">
-                  <TextInput
-                    placeholder="項目名（例: 外径）"
-                    style={{ flex: 1 }}
-                    {...form.getInputProps(`spec.${index}.key`)}
-                  />
-                  <TextInput
-                    placeholder="値（例: φ20 ±0.01）"
-                    style={{ flex: 1 }}
-                    {...form.getInputProps(`spec.${index}.value`)}
-                  />
-                  <Button
-                    variant="subtle"
-                    color="red"
-                    px={6}
-                    disabled={form.values.spec.length === 1}
-                    onClick={() => form.removeListItem('spec', index)}
-                    aria-label="この項目を削除"
-                  >
-                    <IconMinus size={14} />
-                  </Button>
-                </Group>
-              ))}
-            </Stack>
-
-            <Button
-              variant="subtle"
-              leftSection={<IconPlus size={14} />}
-              mt="sm"
-              size="sm"
-              fullWidth={isMobile}
-              onClick={() => form.insertListItem('spec', { key: '', value: '' })}
-            >
-              仕様項目を追加
-            </Button>
-          </Paper>
-
-          {/* ── Section 3: 設計図 ─────────────────────────────────────── */}
-          <Paper withBorder p="md" radius="md">
-            <Title order={4} mb="xs">設計図</Title>
-            <Divider mb="md" />
-            <Paper
-              withBorder
-              radius="md"
-              p="lg"
-              style={{ borderStyle: 'dashed', cursor: 'pointer' }}
-            >
-              <Stack align="center" gap="xs">
-                <ThemeIcon variant="light" color="gray" size="xl" radius="md">
-                  <IconUpload size={24} />
-                </ThemeIcon>
-                <Text size="sm" c="dimmed">設計図ファイルをドラッグまたはクリックしてアップロード</Text>
-                <Group gap={6} c="dimmed">
-                  <IconRuler2 size={14} />
-                  <Text size="xs" c="dimmed">PDF / DWG / 画像（最新版が design_file として登録）</Text>
-                </Group>
-              </Stack>
-            </Paper>
-          </Paper>
-
-          {/* ── Form actions ──────────────────────────────────────────── */}
-          {isMobile ? (
-            <Stack gap="xs">
-              <Button type="submit" loading={isPending} fullWidth>保存</Button>
-              <Button variant="default" fullWidth>キャンセル</Button>
-            </Stack>
-          ) : (
-            <Group justify="flex-end" mt="md">
-              <Button variant="default">キャンセル</Button>
-              <Button type="submit" loading={isPending}>保存</Button>
-            </Group>
-          )}
+    <FormShell
+      breadcrumbs={['ホーム', 'マスタ', '製品', '新規作成']}
+      title="製品 新規作成"
+      isPending={isPending}
+      onSubmit={form.onSubmit(handleSubmit)}
+    >
+      <FormSection title="基本情報">
+        <SimpleGrid cols={isMobile ? 1 : 2} spacing="sm">
+          <TextInput
+            label="製品コード"
+            placeholder="保存時に自動採番"
+            description="形式: PRD-YYYYMM-NNNN（自動採番）"
+            disabled
+            {...form.getInputProps('code')}
+          />
+          <Select
+            label="素材" placeholder="素材を選択" data={MATERIALS} searchable clearable
+            {...form.getInputProps('materialId')}
+          />
+          <Select label="単位" data={UNITS} withAsterisk {...form.getInputProps('unit')} />
+          <Switch label="有効" mt={isMobile ? 0 : 'xl'} {...form.getInputProps('isActive', { type: 'checkbox' })} />
+        </SimpleGrid>
+        <Stack gap="sm" mt="sm">
+          <LocalizedTextInput
+            label="名称"
+            required
+            jaProps={form.getInputProps('nameJa')}
+            enProps={form.getInputProps('nameEn')}
+          />
         </Stack>
-      </Box>
-    </Stack>
+        <Textarea label="備考" placeholder="備考・特記事項" mt="sm" rows={3} {...form.getInputProps('notes')} />
+      </FormSection>
+
+      <FormSection title="仕様" description="項目名と値の組み合わせで自由に記述できます（spec JSON）。">
+        <Stack gap="xs">
+          {form.values.spec.map((_, index) => (
+            <Group key={index} gap="xs" wrap="nowrap" align="flex-start">
+              <TextInput
+                placeholder="項目名（例: 外径）" style={{ flex: 1 }}
+                {...form.getInputProps(`spec.${index}.key`)}
+              />
+              <TextInput
+                placeholder="値（例: φ20 ±0.01）" style={{ flex: 1 }}
+                {...form.getInputProps(`spec.${index}.value`)}
+              />
+              <Button
+                variant="subtle" color="red" px={6} disabled={form.values.spec.length === 1}
+                onClick={() => form.removeListItem('spec', index)} aria-label="この項目を削除"
+              >
+                <IconMinus size={14} />
+              </Button>
+            </Group>
+          ))}
+        </Stack>
+        <Button
+          variant="subtle" leftSection={<IconPlus size={14} />} mt="sm" size="sm" fullWidth={isMobile}
+          onClick={() => form.insertListItem('spec', { key: '', value: '' })}
+        >
+          仕様項目を追加
+        </Button>
+      </FormSection>
+
+      <FormSection title="設計図">
+        <Paper withBorder radius="md" p="lg" style={{ borderStyle: 'dashed', cursor: 'pointer' }}>
+          <Stack align="center" gap="xs">
+            <ThemeIcon variant="light" color="gray" size="xl" radius="md">
+              <IconUpload size={24} />
+            </ThemeIcon>
+            <Text size="sm" c="dimmed">設計図ファイルをドラッグまたはクリックしてアップロード</Text>
+            <Group gap={6} c="dimmed">
+              <IconRuler2 size={14} />
+              <Text size="xs" c="dimmed">PDF / DWG / 画像（最新版が design_file として登録）</Text>
+            </Group>
+          </Stack>
+        </Paper>
+      </FormSection>
+    </FormShell>
   );
 }

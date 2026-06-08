@@ -1,27 +1,26 @@
-import {
-  Button,
-  Divider,
-  Group,
-  Menu,
-  Paper,
-  SimpleGrid,
-  Stack,
-  Table,
-  Tabs,
-  Text,
-  Timeline,
-} from '@mantine/core';
-import { IconDotsVertical, IconEdit } from '@tabler/icons-react';
+'use client';
+
+import { useState } from 'react';
+import { Stack, Table, Tabs, Text } from '@mantine/core';
+import { IconCircleMinus, IconTrash } from '@tabler/icons-react';
 import {
   ActiveBadge,
   DocNumber,
   FieldValue,
   formatDateTime,
   localized,
-  PageHeader,
   type LocalizedText,
 } from '../../lib/ui';
+import {
+  AuditTimeline,
+  DetailShell,
+  ResourceActions,
+  SummaryGrid,
+  type AuditEntry,
+} from '../../lib/shells';
 import { useIsMobile } from '../../lib/viewport-context';
+import { DeleteMaterialTypeModal } from './_modals/delete';
+import { ToggleMaterialTypeActiveModal } from './_modals/toggle-active';
 
 // ── Mock data ───────────────────────────────────────────────────────────────
 const MOCK = {
@@ -49,61 +48,44 @@ const RELATED_MATERIALS: {
   { id: 'A01A0001-B001-003', name: { ja: 'SUS303 φ16×4000', en: '' }, form: '定尺', unit: '本', isActive: false },
 ];
 
-const AUDIT_LOG = [
-  { id: 1, action: 'UPDATE', user: '田中 太郎', at: '2026-05-12 10:30', detail: '名称を更新' },
-  { id: 2, action: 'CREATE', user: '田中 太郎', at: '2025-09-01 09:00', detail: '材種を作成' },
+const AUDIT_LOG: AuditEntry[] = [
+  { id: 1, action: 'UPDATE', user: '田中 太郎', at: '2026/05/12 10:30', detail: '名称を更新' },
+  { id: 2, action: 'CREATE', user: '田中 太郎', at: '2025/09/01 09:00', detail: '材種を作成' },
 ];
 
 export default function MaterialTypeDetailPage() {
   const isMobile = useIsMobile();
   const m = MOCK;
 
-  const actions = isMobile ? (
-    <Menu shadow="sm" position="bottom-end">
-      <Menu.Target>
-        <Button variant="default" px="xs" size="sm">
-          <IconDotsVertical size={16} />
-        </Button>
-      </Menu.Target>
-      <Menu.Dropdown>
-        <Menu.Item leftSection={<IconEdit size={14} />}>編集</Menu.Item>
-        <Menu.Divider />
-        <Menu.Item color="red">無効化</Menu.Item>
-      </Menu.Dropdown>
-    </Menu>
-  ) : (
-    <Group gap="xs" style={{ flexShrink: 0 }}>
-      <Button variant="default" leftSection={<IconEdit size={14} />}>編集</Button>
-      <Menu shadow="sm">
-        <Menu.Target>
-          <Button variant="default" px="xs">
-            <IconDotsVertical size={16} />
-          </Button>
-        </Menu.Target>
-        <Menu.Dropdown>
-          <Menu.Item color="red">無効化</Menu.Item>
-        </Menu.Dropdown>
-      </Menu>
-    </Group>
-  );
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [toggleOpen, setToggleOpen] = useState(false);
 
   return (
-    <Stack gap="md">
-      <PageHeader
-        breadcrumbs={['ホーム', 'マスタ', '材種', m.id]}
-        title={localized(m.name)}
-        status={<ActiveBadge active={m.isActive} />}
-        actions={actions}
-        align="flex-start"
-      />
-
-      <Paper withBorder p="md" radius="md">
-        <SimpleGrid cols={isMobile ? 1 : 3} spacing="md">
-          <FieldValue label="材種コード" value={<DocNumber>{m.id}</DocNumber>} />
-          <FieldValue label="名称（日本語）" value={m.name.ja} />
-          <FieldValue label="名称（英語）" value={m.name.en} />
-        </SimpleGrid>
-      </Paper>
+    <DetailShell
+      breadcrumbs={['ホーム', 'マスタ', '材種', m.id]}
+      title={localized(m.name)}
+      status={<ActiveBadge active={m.isActive} />}
+      createdAt={`${formatDateTime(m.createdAt)}（${m.createdBy}）`}
+      updatedAt={formatDateTime(m.updatedAt)}
+      actions={
+        <ResourceActions
+          onEdit={() => {}}
+          menuItems={[
+            {
+              label: m.isActive ? '無効化' : '有効化',
+              icon: <IconCircleMinus size={14} />,
+              onClick: () => setToggleOpen(true),
+            },
+            { label: '削除', icon: <IconTrash size={14} />, color: 'red', divider: true, onClick: () => setDeleteOpen(true) },
+          ]}
+        />
+      }
+    >
+      <SummaryGrid>
+        <FieldValue label="材種コード" value={<DocNumber>{m.id}</DocNumber>} />
+        <FieldValue label="名称（日本語）" value={m.name.ja} />
+        <FieldValue label="名称（英語）" value={m.name.en} />
+      </SummaryGrid>
 
       <Tabs defaultValue="overview">
         <Tabs.List>
@@ -148,30 +130,23 @@ export default function MaterialTypeDetailPage() {
         </Tabs.Panel>
 
         <Tabs.Panel value="history" pt="md">
-          <Timeline active={-1} bulletSize={28} lineWidth={2}>
-            {AUDIT_LOG.map((log) => (
-              <Timeline.Item
-                key={log.id}
-                bullet={<Text size="xs" fw={700}>{log.user[0]}</Text>}
-                title={log.action}
-              >
-                <Text size="xs" c="dimmed">{formatDateTime(log.at)} · {log.user}</Text>
-                <Text size="sm" mt={4}>{log.detail}</Text>
-              </Timeline.Item>
-            ))}
-          </Timeline>
+          <AuditTimeline entries={AUDIT_LOG} />
         </Tabs.Panel>
       </Tabs>
 
-      {!isMobile && (
-        <>
-          <Divider />
-          <Group gap="xl">
-            <Text size="xs" c="dimmed">作成: {formatDateTime(m.createdAt)}（{m.createdBy}）</Text>
-            <Text size="xs" c="dimmed">更新: {formatDateTime(m.updatedAt)}</Text>
-          </Group>
-        </>
-      )}
-    </Stack>
+      <DeleteMaterialTypeModal
+        opened={deleteOpen}
+        onClose={() => setDeleteOpen(false)}
+        code={m.id}
+        name={localized(m.name)}
+      />
+      <ToggleMaterialTypeActiveModal
+        opened={toggleOpen}
+        onClose={() => setToggleOpen(false)}
+        code={m.id}
+        name={localized(m.name)}
+        isActive={m.isActive}
+      />
+    </DetailShell>
   );
 }

@@ -1,29 +1,28 @@
 'use client';
 
-import {
-  Button,
-  Group,
-  Paper,
-  Select,
-  Stack,
-  Table,
-  Text,
-  TextInput,
-} from '@mantine/core';
-import { IconAlertTriangle, IconSearch } from '@tabler/icons-react';
 import { useState } from 'react';
+import { Select, TextInput } from '@mantine/core';
+import {
+  IconAlertTriangle,
+  IconCheck,
+  IconEdit,
+  IconSearch,
+  IconTrash,
+  IconX,
+} from '@tabler/icons-react';
 import {
   ActiveBadge,
   DocNumber,
-  EmptyState,
   localized,
   NewButton,
-  PageHeader,
   type LocalizedText,
 } from '../../lib/ui';
+import { DataTable, type Column } from '../../lib/data-table';
+import { ListShell } from '../../lib/shells';
 import { useIsMobile } from '../../lib/viewport-context';
+import { DeleteDefectTypeModal } from './_modals/delete';
+import { ToggleActiveDefectTypeModal } from './_modals/toggle-active';
 
-// ── Mock data ───────────────────────────────────────────────────────────────
 interface DefectTypeRow {
   id: number;
   code: string;
@@ -50,6 +49,9 @@ export default function DefectTypeListPage() {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<string | null>(null);
 
+  const [deleteTarget, setDeleteTarget] = useState<DefectTypeRow | null>(null);
+  const [toggleTarget, setToggleTarget] = useState<DefectTypeRow | null>(null);
+
   const filtered = MOCK_RECORDS.filter((r) => {
     const matchesSearch =
       !search || r.code.includes(search) || localized(r.name).includes(search);
@@ -63,97 +65,66 @@ export default function DefectTypeListPage() {
     setStatusFilter(null);
   };
 
+  const columns: Column<DefectTypeRow>[] = [
+    { key: 'code', header: 'コード', sortable: true, width: 160, render: (r) => <DocNumber>{r.code}</DocNumber> },
+    { key: 'name', header: '名称', sortable: true, sortValue: (r) => localized(r.name), render: (r) => localized(r.name) },
+    { key: 'sortOrder', header: '表示順', sortable: true, hideable: true, align: 'right', width: 90, sortValue: (r) => r.sortOrder, render: (r) => r.sortOrder },
+    { key: 'isActive', header: '状態', sortable: true, width: 100, sortValue: (r) => (r.isActive ? 1 : 0), render: (r) => <ActiveBadge active={r.isActive} /> },
+  ];
+
   return (
-    <Stack gap="md">
-      <PageHeader
-        breadcrumbs={['ホーム', 'マスタ', '不良種類']}
-        title="不良種類"
-        actions={<NewButton />}
+    <ListShell
+      breadcrumbs={['ホーム', 'マスタ', '不良種類']}
+      title="不良種類"
+      action={<NewButton />}
+      onReset={reset}
+      search={
+        <TextInput
+          placeholder="コード・名称で検索"
+          leftSection={<IconSearch size={14} />}
+          value={search}
+          onChange={(e) => setSearch(e.currentTarget.value)}
+        />
+      }
+      filters={
+        <Select
+          placeholder="状態" data={STATUS_OPTIONS} value={statusFilter} onChange={setStatusFilter}
+          clearable w={isMobile ? undefined : 160} style={isMobile ? { flex: 1 } : undefined}
+        />
+      }
+    >
+      <DataTable
+        data={filtered}
+        columns={columns}
+        getRowId={(r) => String(r.id)}
+        defaultSort={{ key: 'sortOrder', dir: 'asc' }}
+        selectable
+        bulkActions={[
+          { label: '一括有効化', icon: <IconCheck size={16} />, color: 'green' },
+          { label: '一括無効化', icon: <IconX size={16} />, color: 'gray' },
+          { label: '一括削除', icon: <IconTrash size={16} />, color: 'red' },
+        ]}
+        rowActions={(r) => [
+          { label: '編集', icon: <IconEdit size={14} /> },
+          { label: r.isActive ? '無効化' : '有効化', icon: r.isActive ? <IconX size={14} /> : <IconCheck size={14} />, onAction: (row) => setToggleTarget(row) },
+          { label: '削除', icon: <IconTrash size={14} />, color: 'red', onAction: (row) => setDeleteTarget(row) },
+        ]}
+        emptyIcon={<IconAlertTriangle size={24} />}
+        emptyMessage="不良種類がありません"
+        emptyAction={<NewButton />}
       />
 
-      <Paper withBorder p="sm">
-        {isMobile ? (
-          <Stack gap="xs" mb="sm">
-            <TextInput
-              placeholder="コード・名称で検索"
-              leftSection={<IconSearch size={14} />}
-              value={search}
-              onChange={(e) => setSearch(e.currentTarget.value)}
-            />
-            <Group gap="xs">
-              <Select
-                placeholder="状態"
-                data={STATUS_OPTIONS}
-                value={statusFilter}
-                onChange={setStatusFilter}
-                clearable
-                style={{ flex: 1 }}
-              />
-              <Button variant="subtle" size="sm" onClick={reset}>
-                リセット
-              </Button>
-            </Group>
-          </Stack>
-        ) : (
-          <Group mb="sm" align="flex-end">
-            <TextInput
-              placeholder="コード・名称で検索"
-              leftSection={<IconSearch size={14} />}
-              value={search}
-              onChange={(e) => setSearch(e.currentTarget.value)}
-              style={{ flex: 1 }}
-            />
-            <Select
-              placeholder="状態"
-              data={STATUS_OPTIONS}
-              value={statusFilter}
-              onChange={setStatusFilter}
-              clearable
-              w={160}
-            />
-            <Button variant="subtle" onClick={reset}>
-              リセット
-            </Button>
-          </Group>
-        )}
-
-        {filtered.length === 0 ? (
-          <EmptyState icon={<IconAlertTriangle size={24} />} message="不良種類がありません" />
-        ) : isMobile ? (
-          <Stack gap="xs">
-            {filtered.map((r) => (
-              <Paper key={r.id} p="sm" withBorder radius="sm" style={{ cursor: 'pointer' }}>
-                <Group justify="space-between" wrap="nowrap" align="flex-start">
-                  <Stack gap={3} style={{ minWidth: 0 }}>
-                    <DocNumber c="dimmed">{r.code}</DocNumber>
-                    <Text size="sm" fw={600} truncate>{localized(r.name)}</Text>
-                  </Stack>
-                  <ActiveBadge active={r.isActive} />
-                </Group>
-              </Paper>
-            ))}
-          </Stack>
-        ) : (
-          <Table>
-            <Table.Thead>
-              <Table.Tr>
-                <Table.Th>コード</Table.Th>
-                <Table.Th>名称</Table.Th>
-                <Table.Th>状態</Table.Th>
-              </Table.Tr>
-            </Table.Thead>
-            <Table.Tbody>
-              {filtered.map((r) => (
-                <Table.Tr key={r.id} style={{ cursor: 'pointer' }}>
-                  <Table.Td><DocNumber>{r.code}</DocNumber></Table.Td>
-                  <Table.Td>{localized(r.name)}</Table.Td>
-                  <Table.Td><ActiveBadge active={r.isActive} /></Table.Td>
-                </Table.Tr>
-              ))}
-            </Table.Tbody>
-          </Table>
-        )}
-      </Paper>
-    </Stack>
+      <DeleteDefectTypeModal
+        opened={!!deleteTarget}
+        onClose={() => setDeleteTarget(null)}
+        name={deleteTarget ? localized(deleteTarget.name) : ''}
+      />
+      <ToggleActiveDefectTypeModal
+        opened={!!toggleTarget}
+        onClose={() => setToggleTarget(null)}
+        name={toggleTarget ? localized(toggleTarget.name) : ''}
+        isActive={toggleTarget?.isActive ?? true}
+      />
+    </ListShell>
   );
 }

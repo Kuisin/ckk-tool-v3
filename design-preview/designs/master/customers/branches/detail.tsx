@@ -1,20 +1,16 @@
+'use client';
+
+import { useState } from 'react';
 import {
   Anchor,
   Badge,
   Button,
-  Divider,
   Group,
-  Menu,
-  Paper,
-  SimpleGrid,
-  Stack,
   Table,
   Tabs,
   Text,
-  Timeline,
-  Title,
 } from '@mantine/core';
-import { IconDotsVertical, IconEdit } from '@tabler/icons-react';
+import { IconTrash, IconUserPlus } from '@tabler/icons-react';
 import {
   ActiveBadge,
   DocNumber,
@@ -22,7 +18,16 @@ import {
   formatDateTime,
   localized,
 } from '../../../lib/ui';
+import {
+  AuditTimeline,
+  DetailShell,
+  ResourceActions,
+  SummaryGrid,
+  type AuditEntry,
+} from '../../../lib/shells';
 import { useIsMobile } from '../../../lib/viewport-context';
+import { DeleteBranchModal } from './_modals/delete';
+import { AddContactModal } from '../_modals/add-contact';
 
 // ── Mock data (business_partners, branch via parent_id) ──────────────────────
 const MOCK_BRANCH = {
@@ -46,73 +51,46 @@ const MOCK_CONTACTS = [
   { id: 'ct1', name: '高橋 健', department: '購買部', title: '課長', email: 'takahashi@abc-mfg.co.jp', phone: '03-1234-5680', isPrimary: true },
 ];
 
-const MOCK_AUDIT_LOG = [
+const MOCK_AUDIT: AuditEntry[] = [
   { id: 1, action: 'UPDATE', user: '鈴木', at: '2026-04-10 13:05', detail: '電話番号を更新' },
   { id: 2, action: 'CREATE', user: '鈴木', at: '2025-08-01 09:20', detail: '支店を登録' },
 ];
 
-// ── Main component ───────────────────────────────────────────────────────────
 export default function BranchDetailPage() {
   const isMobile = useIsMobile();
   const b = MOCK_BRANCH;
 
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [contactOpen, setContactOpen] = useState(false);
+
   return (
-    <Stack gap="md">
-      {/* ── Page header ─────────────────────────────────────────────────── */}
-      <Group justify="space-between" align="flex-start" wrap="nowrap">
-        <Stack gap={4} style={{ minWidth: 0 }}>
-          {!isMobile && (
-            <Group gap={6}>
-              <Text size="sm" c="dimmed">マスタ</Text>
-              <Text size="sm" c="dimmed">/</Text>
-              <Text size="sm" c="dimmed">顧客</Text>
-              <Text size="sm" c="dimmed">/</Text>
-              <Anchor size="sm">{b.parent.name}</Anchor>
-              <Text size="sm" c="dimmed">/</Text>
-              <Text size="sm">{localized(b.name)}</Text>
-            </Group>
-          )}
-          <Group gap="sm" align="center" wrap="nowrap">
-            <Title order={isMobile ? 3 : 2} style={{ whiteSpace: 'nowrap' }}>{localized(b.name)}</Title>
-            <ActiveBadge active={b.isActive} />
-          </Group>
-          <Group gap="xs">
-            <DocNumber c="dimmed">{b.bpCode}</DocNumber>
-            <Text size="xs" c="dimmed">·</Text>
-            <Text size="xs" c="dimmed">親法人:</Text>
-            <Anchor size="xs">{b.parent.name}（{b.parent.bpCode}）</Anchor>
-          </Group>
-        </Stack>
+    <DetailShell
+      breadcrumbs={['ホーム', 'マスタ', '顧客', b.parent.name, '支店', localized(b.name)]}
+      title={localized(b.name)}
+      status={<ActiveBadge active={b.isActive} />}
+      createdAt={`${formatDateTime(b.createdAt)}（${b.createdBy}）`}
+      updatedAt={formatDateTime(b.updatedAt)}
+      actions={
+        <ResourceActions
+          onEdit={() => {}}
+          menuItems={[
+            { label: '担当者を追加', icon: <IconUserPlus size={14} />, onClick: () => setContactOpen(true) },
+            { label: '削除', icon: <IconTrash size={14} />, color: 'red', divider: true, onClick: () => setDeleteOpen(true) },
+          ]}
+        />
+      }
+    >
+      <SummaryGrid>
+        <FieldValue label="BPコード" value={<DocNumber>{b.bpCode}</DocNumber>} />
+        <FieldValue label="親法人（顧客）" value={<Anchor size="sm">{b.parent.name}（{b.parent.bpCode}）</Anchor>} />
+        <FieldValue label="読み仮名" value={b.nameKana} />
+        <FieldValue label="郵便番号" value={b.postalCode} />
+        <FieldValue label="住所" value={localized(b.address)} />
+        <FieldValue label="電話" value={b.phone} />
+        <FieldValue label="FAX" value={b.fax} />
+        <FieldValue label="メール" value={b.email} />
+      </SummaryGrid>
 
-        {isMobile ? (
-          <Menu shadow="sm" position="bottom-end">
-            <Menu.Target>
-              <Button variant="default" px="xs" size="sm"><IconDotsVertical size={16} /></Button>
-            </Menu.Target>
-            <Menu.Dropdown>
-              <Menu.Item leftSection={<IconEdit size={14} />}>編集</Menu.Item>
-            </Menu.Dropdown>
-          </Menu>
-        ) : (
-          <Group gap="xs" style={{ flexShrink: 0 }}>
-            <Button variant="default" leftSection={<IconEdit size={14} />}>編集</Button>
-          </Group>
-        )}
-      </Group>
-
-      {/* ── Summary card ─────────────────────────────────────────────────── */}
-      <Paper withBorder p="md" radius="md">
-        <SimpleGrid cols={isMobile ? 1 : 3} spacing="md">
-          <FieldValue label="読み仮名" value={b.nameKana} />
-          <FieldValue label="郵便番号" value={b.postalCode} />
-          <FieldValue label="住所" value={localized(b.address)} />
-          <FieldValue label="電話" value={b.phone} />
-          <FieldValue label="FAX" value={b.fax} />
-          <FieldValue label="メール" value={b.email} />
-        </SimpleGrid>
-      </Paper>
-
-      {/* ── Tabs ─────────────────────────────────────────────────────────── */}
       <Tabs defaultValue="contacts">
         <Tabs.List>
           <Tabs.Tab value="contacts">担当者</Tabs.Tab>
@@ -120,6 +98,9 @@ export default function BranchDetailPage() {
         </Tabs.List>
 
         <Tabs.Panel value="contacts" pt="md">
+          <Group justify="flex-end" mb="sm">
+            <Button variant="default" size="sm" leftSection={<IconUserPlus size={14} />} onClick={() => setContactOpen(true)}>担当者を追加</Button>
+          </Group>
           <Table striped highlightOnHover withTableBorder>
             <Table.Thead>
               <Table.Tr>
@@ -148,27 +129,12 @@ export default function BranchDetailPage() {
         </Tabs.Panel>
 
         <Tabs.Panel value="audit" pt="md">
-          <Timeline active={-1} bulletSize={28} lineWidth={2}>
-            {MOCK_AUDIT_LOG.map((log) => (
-              <Timeline.Item key={log.id} bullet={<Text size="xs" fw={700}>{log.user[0]}</Text>} title={log.action}>
-                <Text size="xs" c="dimmed">{formatDateTime(log.at)} · {log.user}</Text>
-                <Text size="sm" mt={4}>{log.detail}</Text>
-              </Timeline.Item>
-            ))}
-          </Timeline>
+          <AuditTimeline entries={MOCK_AUDIT} />
         </Tabs.Panel>
       </Tabs>
 
-      {/* ── Footer timestamps ─────────────────────────────────────────────── */}
-      {!isMobile && (
-        <>
-          <Divider />
-          <Group gap="xl">
-            <Text size="xs" c="dimmed">作成: {formatDateTime(b.createdAt)}（{b.createdBy}）</Text>
-            <Text size="xs" c="dimmed">更新: {formatDateTime(b.updatedAt)}</Text>
-          </Group>
-        </>
-      )}
-    </Stack>
+      <DeleteBranchModal opened={deleteOpen} onClose={() => setDeleteOpen(false)} branchName={localized(b.name)} />
+      <AddContactModal opened={contactOpen} onClose={() => setContactOpen(false)} />
+    </DetailShell>
   );
 }

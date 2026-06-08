@@ -1,23 +1,24 @@
+'use client';
+
+import { useState } from 'react';
 import {
   Anchor,
   Badge,
   Button,
-  Divider,
   Group,
-  Menu,
   Paper,
   SimpleGrid,
   Stack,
   Table,
   Tabs,
   Text,
-  Timeline,
   Title,
 } from '@mantine/core';
 import {
-  IconDotsVertical,
-  IconEdit,
+  IconCircleMinus,
   IconPlus,
+  IconTrash,
+  IconUserPlus,
 } from '@tabler/icons-react';
 import {
   ActiveBadge,
@@ -29,7 +30,19 @@ import {
   MoneyText,
 } from '../../lib/ui';
 import { StatusBadge } from '../../lib/status';
+import {
+  AuditTimeline,
+  DetailShell,
+  ResourceActions,
+  SummaryGrid,
+  type AuditEntry,
+} from '../../lib/shells';
 import { useIsMobile } from '../../lib/viewport-context';
+import { ToggleActiveModal } from './_modals/toggle-active';
+import { DeleteCustomerModal } from './_modals/delete';
+import { AddContactModal } from './_modals/add-contact';
+import { AddBranchModal } from './branches/_modals/add-branch';
+import { DeleteBranchModal } from './branches/_modals/delete';
 
 // ── Mock data (business_partners + bp_customer_attrs, CUSTOMER role) ─────────
 const MOCK_CUSTOMER = {
@@ -47,7 +60,6 @@ const MOCK_CUSTOMER = {
   website: 'https://abc-mfg.co.jp',
   taxNumber: '1234567890123',
   isActive: true,
-  // bp_customer_attrs
   customerCode: 'C-0001',
   billingName: '—（自社）',
   closingDay: 31,
@@ -73,86 +85,63 @@ const MOCK_BRANCHES = [
 ];
 
 const MOCK_HISTORY = [
-  { id: 'h1', type: 'quote', number: 'QOT-202605-00012', label: '見積書', amount: 320000, date: '2026-05-20', status: { entity: 'Quote' as const, value: 'ISSUED' } },
-  { id: 'h2', type: 'order', number: 'ORD-202604-00008', label: '注文受諾書', amount: 450000, date: '2026-04-12', status: { entity: 'OrderAcceptance' as const, value: 'CONFIRMED' } },
-  { id: 'h3', type: 'quote', number: 'QOT-202603-00005', label: '見積書', amount: 180000, date: '2026-03-08', status: { entity: 'Quote' as const, value: 'ACCEPTED' } },
+  { id: 'h1', number: 'QOT-202605-00012', label: '見積書', amount: 320000, date: '2026-05-20', status: { entity: 'Quote' as const, value: 'ISSUED' } },
+  { id: 'h2', number: 'ORD-202604-00008', label: '注文受諾書', amount: 450000, date: '2026-04-12', status: { entity: 'OrderAcceptance' as const, value: 'CONFIRMED' } },
+  { id: 'h3', number: 'QOT-202603-00005', label: '見積書', amount: 180000, date: '2026-03-08', status: { entity: 'Quote' as const, value: 'ACCEPTED' } },
 ];
 
-const MOCK_AUDIT_LOG = [
+const MOCK_AUDIT: AuditEntry[] = [
   { id: 1, action: 'UPDATE', user: '鈴木', at: '2026-05-28 14:30', detail: '与信限度額: ¥3,000,000 → ¥5,000,000' },
   { id: 2, action: 'UPDATE', user: '山田', at: '2026-01-15 10:00', detail: '支払サイト: 45日 → 30日' },
   { id: 3, action: 'CREATE', user: '鈴木', at: '2025-08-01 09:15', detail: '顧客を登録' },
 ];
 
-// ── Main component ───────────────────────────────────────────────────────────
 export default function CustomerDetailPage() {
   const isMobile = useIsMobile();
   const c = MOCK_CUSTOMER;
 
+  const [toggleOpen, setToggleOpen] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [contactOpen, setContactOpen] = useState(false);
+  const [branchOpen, setBranchOpen] = useState(false);
+  const [deleteBranch, setDeleteBranch] = useState<string | null>(null);
+
   return (
-    <Stack gap="md">
-      {/* ── Page header ─────────────────────────────────────────────────── */}
-      <Group justify="space-between" align="flex-start" wrap="nowrap">
-        <Stack gap={4} style={{ minWidth: 0 }}>
-          {!isMobile && (
-            <Group gap={6}>
-              <Text size="sm" c="dimmed">ホーム</Text>
-              <Text size="sm" c="dimmed">/</Text>
-              <Text size="sm" c="dimmed">マスタ</Text>
-              <Text size="sm" c="dimmed">/</Text>
-              <Text size="sm" c="dimmed">顧客</Text>
-              <Text size="sm" c="dimmed">/</Text>
-              <Text size="sm">{localized(c.name)}</Text>
-            </Group>
-          )}
-          <Group gap="sm" align="center" wrap="nowrap">
-            <Title order={isMobile ? 3 : 2} style={{ whiteSpace: 'nowrap' }}>{localized(c.name)}</Title>
-            <ActiveBadge active={c.isActive} />
-          </Group>
-          <DocNumber c="dimmed">{c.bpCode}</DocNumber>
-        </Stack>
+    <DetailShell
+      breadcrumbs={['ホーム', 'マスタ', '顧客', localized(c.name)]}
+      title={localized(c.name)}
+      status={<ActiveBadge active={c.isActive} />}
+      createdAt={`${formatDateTime(c.createdAt)}（${c.createdBy}）`}
+      updatedAt={formatDateTime(c.updatedAt)}
+      actions={
+        <ResourceActions
+          onEdit={() => {}}
+          menuItems={[
+            { label: '支店を追加', icon: <IconPlus size={14} />, onClick: () => setBranchOpen(true) },
+            { label: '担当者を追加', icon: <IconUserPlus size={14} />, onClick: () => setContactOpen(true) },
+            {
+              label: c.isActive ? '無効化' : '有効化',
+              icon: <IconCircleMinus size={14} />,
+              onClick: () => setToggleOpen(true),
+            },
+            { label: '削除', icon: <IconTrash size={14} />, color: 'red', divider: true, onClick: () => setDeleteOpen(true) },
+          ]}
+        />
+      }
+    >
+      <SummaryGrid>
+        <FieldValue label="BPコード" value={<DocNumber>{c.bpCode}</DocNumber>} />
+        <FieldValue label="読み仮名" value={c.nameKana} />
+        <FieldValue label="略称" value={localized(c.shortName)} />
+        <FieldValue label="国コード" value={c.countryCode} />
+        <FieldValue label="郵便番号" value={c.postalCode} />
+        <FieldValue label="住所" value={localized(c.address)} />
+        <FieldValue label="電話" value={c.phone} />
+        <FieldValue label="FAX" value={c.fax} />
+        <FieldValue label="メール" value={c.email} />
+        <FieldValue label="法人番号" value={c.taxNumber} />
+      </SummaryGrid>
 
-        {isMobile ? (
-          <Menu shadow="sm" position="bottom-end">
-            <Menu.Target>
-              <Button variant="default" px="xs" size="sm"><IconDotsVertical size={16} /></Button>
-            </Menu.Target>
-            <Menu.Dropdown>
-              <Menu.Item leftSection={<IconEdit size={14} />}>編集</Menu.Item>
-              <Menu.Item leftSection={<IconPlus size={14} />}>支店を追加</Menu.Item>
-            </Menu.Dropdown>
-          </Menu>
-        ) : (
-          <Group gap="xs" style={{ flexShrink: 0 }}>
-            <Button variant="default" leftSection={<IconEdit size={14} />}>編集</Button>
-            <Menu shadow="sm">
-              <Menu.Target>
-                <Button variant="default" px="xs"><IconDotsVertical size={16} /></Button>
-              </Menu.Target>
-              <Menu.Dropdown>
-                <Menu.Item leftSection={<IconPlus size={14} />}>支店を追加</Menu.Item>
-              </Menu.Dropdown>
-            </Menu>
-          </Group>
-        )}
-      </Group>
-
-      {/* ── Summary card ─────────────────────────────────────────────────── */}
-      <Paper withBorder p="md" radius="md">
-        <SimpleGrid cols={isMobile ? 1 : 3} spacing="md">
-          <FieldValue label="読み仮名" value={c.nameKana} />
-          <FieldValue label="略称" value={localized(c.shortName)} />
-          <FieldValue label="国コード" value={c.countryCode} />
-          <FieldValue label="郵便番号" value={c.postalCode} />
-          <FieldValue label="住所" value={localized(c.address)} />
-          <FieldValue label="電話" value={c.phone} />
-          <FieldValue label="FAX" value={c.fax} />
-          <FieldValue label="メール" value={c.email} />
-          <FieldValue label="法人番号" value={c.taxNumber} />
-        </SimpleGrid>
-      </Paper>
-
-      {/* ── Tabs ─────────────────────────────────────────────────────────── */}
       <Tabs defaultValue="overview">
         <Tabs.List>
           <Tabs.Tab value="overview">概要</Tabs.Tab>
@@ -180,7 +169,12 @@ export default function CustomerDetailPage() {
             </Paper>
 
             <Paper withBorder p="md" radius="md">
-              <Title order={5} mb="sm">担当者</Title>
+              <Group justify="space-between" mb="sm">
+                <Title order={5}>担当者</Title>
+                <Button variant="default" size="xs" leftSection={<IconUserPlus size={14} />} onClick={() => setContactOpen(true)}>
+                  担当者を追加
+                </Button>
+              </Group>
               <Table>
                 <Table.Thead>
                   <Table.Tr>
@@ -213,7 +207,7 @@ export default function CustomerDetailPage() {
         {/* 支店一覧 */}
         <Tabs.Panel value="branches" pt="md">
           <Group justify="flex-end" mb="sm">
-            <Button variant="default" size="sm" leftSection={<IconPlus size={14} />}>支店を追加</Button>
+            <Button variant="default" size="sm" leftSection={<IconPlus size={14} />} onClick={() => setBranchOpen(true)}>支店を追加</Button>
           </Group>
           <Table striped highlightOnHover withTableBorder>
             <Table.Thead>
@@ -221,6 +215,7 @@ export default function CustomerDetailPage() {
                 <Table.Th>名称</Table.Th>
                 <Table.Th>電話</Table.Th>
                 <Table.Th>担当者</Table.Th>
+                <Table.Th style={{ width: 60 }} />
               </Table.Tr>
             </Table.Thead>
             <Table.Tbody>
@@ -229,6 +224,15 @@ export default function CustomerDetailPage() {
                   <Table.Td><Anchor size="sm">{localized(b.name)}</Anchor></Table.Td>
                   <Table.Td><Text size="sm">{b.phone}</Text></Table.Td>
                   <Table.Td><Text size="sm">{b.contact}</Text></Table.Td>
+                  <Table.Td onClick={(e) => e.stopPropagation()}>
+                    <Button
+                      variant="subtle" color="red" size="xs" px={6}
+                      aria-label="支店を削除"
+                      onClick={() => setDeleteBranch(localized(b.name))}
+                    >
+                      <IconTrash size={14} />
+                    </Button>
+                  </Table.Td>
                 </Table.Tr>
               ))}
             </Table.Tbody>
@@ -263,27 +267,15 @@ export default function CustomerDetailPage() {
 
         {/* 履歴: AuditTimeline */}
         <Tabs.Panel value="audit" pt="md">
-          <Timeline active={-1} bulletSize={28} lineWidth={2}>
-            {MOCK_AUDIT_LOG.map((log) => (
-              <Timeline.Item key={log.id} bullet={<Text size="xs" fw={700}>{log.user[0]}</Text>} title={log.action}>
-                <Text size="xs" c="dimmed">{formatDateTime(log.at)} · {log.user}</Text>
-                <Text size="sm" mt={4}>{log.detail}</Text>
-              </Timeline.Item>
-            ))}
-          </Timeline>
+          <AuditTimeline entries={MOCK_AUDIT} />
         </Tabs.Panel>
       </Tabs>
 
-      {/* ── Footer timestamps ─────────────────────────────────────────────── */}
-      {!isMobile && (
-        <>
-          <Divider />
-          <Group gap="xl">
-            <Text size="xs" c="dimmed">作成: {formatDateTime(c.createdAt)}（{c.createdBy}）</Text>
-            <Text size="xs" c="dimmed">更新: {formatDateTime(c.updatedAt)}</Text>
-          </Group>
-        </>
-      )}
-    </Stack>
+      <ToggleActiveModal opened={toggleOpen} onClose={() => setToggleOpen(false)} next={!c.isActive} customerName={localized(c.name)} />
+      <DeleteCustomerModal opened={deleteOpen} onClose={() => setDeleteOpen(false)} customerName={localized(c.name)} />
+      <AddContactModal opened={contactOpen} onClose={() => setContactOpen(false)} />
+      <AddBranchModal opened={branchOpen} onClose={() => setBranchOpen(false)} parentName={localized(c.name)} />
+      <DeleteBranchModal opened={!!deleteBranch} onClose={() => setDeleteBranch(null)} branchName={deleteBranch ?? undefined} />
+    </DetailShell>
   );
 }

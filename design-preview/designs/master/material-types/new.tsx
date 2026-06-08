@@ -1,39 +1,13 @@
 'use client';
 
-import {
-  Box,
-  Button,
-  Divider,
-  Group,
-  LoadingOverlay,
-  Paper,
-  SimpleGrid,
-  Stack,
-  Switch,
-  Textarea,
-  TextInput,
-  Title,
-} from '@mantine/core';
+import { useTransition } from 'react';
+import { SimpleGrid, Switch, Textarea, TextInput } from '@mantine/core';
 import { useForm } from '@mantine/form';
 import { notifications } from '@mantine/notifications';
-import type { FormErrors } from '@mantine/form';
-import { useTransition } from 'react';
 import { z } from 'zod';
-import { PageHeader } from '../../lib/ui';
+import { zodResolver } from '../../lib/form';
+import { FormSection, FormShell, LocalizedTextInput } from '../../lib/shells';
 import { useIsMobile } from '../../lib/viewport-context';
-
-function zodResolver<T>(schema: z.ZodType<T>) {
-  return (values: T): FormErrors => {
-    const result = schema.safeParse(values);
-    if (result.success) return {};
-    const errors: FormErrors = {};
-    for (const issue of result.error.issues) {
-      const key = issue.path.join('.');
-      if (key && !errors[key]) errors[key] = issue.message;
-    }
-    return errors;
-  };
-}
 
 const materialTypeSchema = z.object({
   code: z
@@ -76,79 +50,38 @@ export default function MaterialTypeNewPage() {
   };
 
   return (
-    <Stack gap="md">
-      <PageHeader
-        breadcrumbs={['ホーム', 'マスタ', '材種', '新規作成']}
-        title="材種 新規作成"
-      />
+    <FormShell
+      breadcrumbs={['ホーム', 'マスタ', '材種', '新規作成']}
+      title="材種 新規作成"
+      isPending={isPending}
+      onSubmit={form.onSubmit(handleSubmit)}
+    >
+      <FormSection title="基本情報">
+        <SimpleGrid cols={isMobile ? 1 : 2} spacing="sm" mb="sm">
+          <TextInput
+            label="材種コード"
+            placeholder="A01A0001"
+            description="形式: [A-Z][0-9]{2}[A-Z][0-9]{4}"
+            withAsterisk
+            {...form.getInputProps('code')}
+          />
+          <Switch label="有効" mt={isMobile ? 0 : 'xl'} {...form.getInputProps('isActive', { type: 'checkbox' })} />
+        </SimpleGrid>
+        <LocalizedTextInput
+          label="名称"
+          required
+          placeholder="SUS303"
+          jaProps={form.getInputProps('nameJa')}
+          enProps={form.getInputProps('nameEn')}
+        />
+      </FormSection>
 
-      <Box component="form" onSubmit={form.onSubmit(handleSubmit)} pos="relative">
-        <LoadingOverlay visible={isPending} />
-
-        <Stack gap="md">
-          <Paper withBorder p="md" radius="md">
-            <Title order={4} mb="xs">基本情報</Title>
-            <Divider mb="md" />
-            <SimpleGrid cols={isMobile ? 1 : 2} spacing="sm">
-              <TextInput
-                label="材種コード"
-                placeholder="A01A0001"
-                description="形式: [A-Z][0-9]{2}[A-Z][0-9]{4}"
-                withAsterisk
-                {...form.getInputProps('code')}
-              />
-              <Switch
-                label="有効"
-                mt={isMobile ? 0 : 'xl'}
-                {...form.getInputProps('isActive', { type: 'checkbox' })}
-              />
-              <TextInput
-                label="名称（日本語）"
-                placeholder="SUS303"
-                withAsterisk
-                {...form.getInputProps('nameJa')}
-              />
-              <TextInput
-                label="名称（英語）"
-                placeholder="SUS303"
-                withAsterisk
-                {...form.getInputProps('nameEn')}
-              />
-            </SimpleGrid>
-          </Paper>
-
-          <Paper withBorder p="md" radius="md">
-            <Title order={4} mb="xs">説明</Title>
-            <Divider mb="md" />
-            <SimpleGrid cols={isMobile ? 1 : 2} spacing="sm">
-              <Textarea
-                label="説明（日本語）"
-                placeholder="材種の説明"
-                rows={3}
-                {...form.getInputProps('descriptionJa')}
-              />
-              <Textarea
-                label="説明（英語）"
-                placeholder="Description"
-                rows={3}
-                {...form.getInputProps('descriptionEn')}
-              />
-            </SimpleGrid>
-          </Paper>
-
-          {isMobile ? (
-            <Stack gap="xs">
-              <Button type="submit" loading={isPending} fullWidth>保存</Button>
-              <Button variant="default" fullWidth>キャンセル</Button>
-            </Stack>
-          ) : (
-            <Group justify="flex-end" mt="md">
-              <Button variant="default">キャンセル</Button>
-              <Button type="submit" loading={isPending}>保存</Button>
-            </Group>
-          )}
-        </Stack>
-      </Box>
-    </Stack>
+      <FormSection title="説明">
+        <SimpleGrid cols={isMobile ? 1 : 2} spacing="sm">
+          <Textarea label="説明（日本語）" placeholder="材種の説明" rows={3} {...form.getInputProps('descriptionJa')} />
+          <Textarea label="説明（English）" placeholder="Description" rows={3} {...form.getInputProps('descriptionEn')} />
+        </SimpleGrid>
+      </FormSection>
+    </FormShell>
   );
 }

@@ -1,19 +1,19 @@
+'use client';
+
+import { useState } from 'react';
 import {
   Badge,
   Button,
-  Divider,
   Group,
-  Menu,
   Paper,
   SimpleGrid,
   Stack,
   Table,
   Tabs,
   Text,
-  Timeline,
   Title,
 } from '@mantine/core';
-import { IconDotsVertical, IconEdit } from '@tabler/icons-react';
+import { IconCircleMinus, IconTrash, IconUserPlus } from '@tabler/icons-react';
 import {
   ActiveBadge,
   DocNumber,
@@ -23,7 +23,17 @@ import {
   localized,
 } from '../../lib/ui';
 import { StatusBadge } from '../../lib/status';
+import {
+  AuditTimeline,
+  DetailShell,
+  ResourceActions,
+  SummaryGrid,
+  type AuditEntry,
+} from '../../lib/shells';
 import { useIsMobile } from '../../lib/viewport-context';
+import { ToggleActiveModal } from './_modals/toggle-active';
+import { DeleteEndUserModal } from './_modals/delete';
+import { AddContactModal } from './_modals/add-contact';
 
 // ── Mock data (business_partners + bp_end_user_attrs, END_USER role) ─────────
 const MOCK_END_USER = {
@@ -59,71 +69,54 @@ const MOCK_DELIVERIES = [
   { id: 'd3', number: 'DRN-202603-00009', via: '株式会社ABC製作所', method: 'ユーザー直送', date: '2026-03-05', status: { entity: 'DeliveryNote' as const, value: 'ISSUED' } },
 ];
 
-const MOCK_AUDIT_LOG = [
+const MOCK_AUDIT: AuditEntry[] = [
   { id: 1, action: 'UPDATE', user: '鈴木', at: '2026-05-15 11:00', detail: '業種を更新: 機械 → 産業機械' },
   { id: 2, action: 'CREATE', user: '鈴木', at: '2025-09-10 10:30', detail: '最終需要家を登録' },
 ];
 
-// ── Main component ───────────────────────────────────────────────────────────
 export default function EndUserDetailPage() {
   const isMobile = useIsMobile();
   const e = MOCK_END_USER;
 
+  const [toggleOpen, setToggleOpen] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [contactOpen, setContactOpen] = useState(false);
+
   return (
-    <Stack gap="md">
-      {/* ── Page header ─────────────────────────────────────────────────── */}
-      <Group justify="space-between" align="flex-start" wrap="nowrap">
-        <Stack gap={4} style={{ minWidth: 0 }}>
-          {!isMobile && (
-            <Group gap={6}>
-              <Text size="sm" c="dimmed">ホーム</Text>
-              <Text size="sm" c="dimmed">/</Text>
-              <Text size="sm" c="dimmed">マスタ</Text>
-              <Text size="sm" c="dimmed">/</Text>
-              <Text size="sm" c="dimmed">最終需要家</Text>
-              <Text size="sm" c="dimmed">/</Text>
-              <Text size="sm">{localized(e.name)}</Text>
-            </Group>
-          )}
-          <Group gap="sm" align="center" wrap="nowrap">
-            <Title order={isMobile ? 3 : 2} style={{ whiteSpace: 'nowrap' }}>{localized(e.name)}</Title>
-            <ActiveBadge active={e.isActive} />
-          </Group>
-          <DocNumber c="dimmed">{e.bpCode}</DocNumber>
-        </Stack>
+    <DetailShell
+      breadcrumbs={['ホーム', 'マスタ', '最終需要家', localized(e.name)]}
+      title={localized(e.name)}
+      status={<ActiveBadge active={e.isActive} />}
+      createdAt={`${formatDateTime(e.createdAt)}（${e.createdBy}）`}
+      updatedAt={formatDateTime(e.updatedAt)}
+      actions={
+        <ResourceActions
+          onEdit={() => {}}
+          menuItems={[
+            { label: '担当者を追加', icon: <IconUserPlus size={14} />, onClick: () => setContactOpen(true) },
+            {
+              label: e.isActive ? '無効化' : '有効化',
+              icon: <IconCircleMinus size={14} />,
+              onClick: () => setToggleOpen(true),
+            },
+            { label: '削除', icon: <IconTrash size={14} />, color: 'red', divider: true, onClick: () => setDeleteOpen(true) },
+          ]}
+        />
+      }
+    >
+      <SummaryGrid>
+        <FieldValue label="BPコード" value={<DocNumber>{e.bpCode}</DocNumber>} />
+        <FieldValue label="読み仮名" value={e.nameKana} />
+        <FieldValue label="略称" value={localized(e.shortName)} />
+        <FieldValue label="業種" value={e.industry} />
+        <FieldValue label="国コード" value={e.countryCode} />
+        <FieldValue label="郵便番号" value={e.postalCode} />
+        <FieldValue label="住所" value={localized(e.address)} />
+        <FieldValue label="電話" value={e.phone} />
+        <FieldValue label="FAX" value={e.fax} />
+        <FieldValue label="メール" value={e.email} />
+      </SummaryGrid>
 
-        {isMobile ? (
-          <Menu shadow="sm" position="bottom-end">
-            <Menu.Target>
-              <Button variant="default" px="xs" size="sm"><IconDotsVertical size={16} /></Button>
-            </Menu.Target>
-            <Menu.Dropdown>
-              <Menu.Item leftSection={<IconEdit size={14} />}>編集</Menu.Item>
-            </Menu.Dropdown>
-          </Menu>
-        ) : (
-          <Group gap="xs" style={{ flexShrink: 0 }}>
-            <Button variant="default" leftSection={<IconEdit size={14} />}>編集</Button>
-          </Group>
-        )}
-      </Group>
-
-      {/* ── Summary card ─────────────────────────────────────────────────── */}
-      <Paper withBorder p="md" radius="md">
-        <SimpleGrid cols={isMobile ? 1 : 3} spacing="md">
-          <FieldValue label="読み仮名" value={e.nameKana} />
-          <FieldValue label="略称" value={localized(e.shortName)} />
-          <FieldValue label="業種" value={e.industry} />
-          <FieldValue label="国コード" value={e.countryCode} />
-          <FieldValue label="郵便番号" value={e.postalCode} />
-          <FieldValue label="住所" value={localized(e.address)} />
-          <FieldValue label="電話" value={e.phone} />
-          <FieldValue label="FAX" value={e.fax} />
-          <FieldValue label="メール" value={e.email} />
-        </SimpleGrid>
-      </Paper>
-
-      {/* ── Tabs ─────────────────────────────────────────────────────────── */}
       <Tabs defaultValue="overview">
         <Tabs.List>
           <Tabs.Tab value="overview">概要</Tabs.Tab>
@@ -145,7 +138,12 @@ export default function EndUserDetailPage() {
             </Paper>
 
             <Paper withBorder p="md" radius="md">
-              <Title order={5} mb="sm">担当者</Title>
+              <Group justify="space-between" mb="sm">
+                <Title order={5}>担当者</Title>
+                <Button variant="default" size="xs" leftSection={<IconUserPlus size={14} />} onClick={() => setContactOpen(true)}>
+                  担当者を追加
+                </Button>
+              </Group>
               <Table>
                 <Table.Thead>
                   <Table.Tr>
@@ -206,27 +204,13 @@ export default function EndUserDetailPage() {
 
         {/* 履歴: AuditTimeline */}
         <Tabs.Panel value="audit" pt="md">
-          <Timeline active={-1} bulletSize={28} lineWidth={2}>
-            {MOCK_AUDIT_LOG.map((log) => (
-              <Timeline.Item key={log.id} bullet={<Text size="xs" fw={700}>{log.user[0]}</Text>} title={log.action}>
-                <Text size="xs" c="dimmed">{formatDateTime(log.at)} · {log.user}</Text>
-                <Text size="sm" mt={4}>{log.detail}</Text>
-              </Timeline.Item>
-            ))}
-          </Timeline>
+          <AuditTimeline entries={MOCK_AUDIT} />
         </Tabs.Panel>
       </Tabs>
 
-      {/* ── Footer timestamps ─────────────────────────────────────────────── */}
-      {!isMobile && (
-        <>
-          <Divider />
-          <Group gap="xl">
-            <Text size="xs" c="dimmed">作成: {formatDateTime(e.createdAt)}（{e.createdBy}）</Text>
-            <Text size="xs" c="dimmed">更新: {formatDateTime(e.updatedAt)}</Text>
-          </Group>
-        </>
-      )}
-    </Stack>
+      <ToggleActiveModal opened={toggleOpen} onClose={() => setToggleOpen(false)} next={!e.isActive} endUserName={localized(e.name)} />
+      <DeleteEndUserModal opened={deleteOpen} onClose={() => setDeleteOpen(false)} endUserName={localized(e.name)} />
+      <AddContactModal opened={contactOpen} onClose={() => setContactOpen(false)} />
+    </DetailShell>
   );
 }

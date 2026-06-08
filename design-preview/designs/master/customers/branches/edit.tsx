@@ -1,7 +1,6 @@
 'use client';
 
-import { Stack } from '@mantine/core';
-import { ActiveBadge, PageHeader } from '../../../lib/ui';
+import { ActiveBadge } from '../../../lib/ui';
 import { BranchFormBody } from './new';
 
 // ── Prefilled mock values (東京本社 under 株式会社ABC製作所) ─────────────────
@@ -21,13 +20,11 @@ const PREFILLED = {
 
 export default function BranchEditPage() {
   return (
-    <Stack gap="md">
-      <PageHeader
-        breadcrumbs={['ホーム', 'マスタ', '顧客', '株式会社ABC製作所', '支店', '東京本社', '編集']}
-        title="支店 編集"
-        status={<ActiveBadge active={PREFILLED.isActive} />}
-      />
-      <BranchFormBody initialValues={PREFILLED} />
-    </Stack>
+    <BranchFormBody
+      breadcrumbs={['ホーム', 'マスタ', '顧客', '株式会社ABC製作所', '支店', '東京本社', '編集']}
+      title="支店 編集"
+      status={<ActiveBadge active={PREFILLED.isActive} />}
+      initialValues={PREFILLED}
+    />
   );
 }

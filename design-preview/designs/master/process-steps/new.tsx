@@ -1,12 +1,10 @@
 'use client';
 
+import { useTransition } from 'react';
 import {
   Alert,
-  Box,
   Button,
-  Divider,
   Group,
-  LoadingOverlay,
   NumberInput,
   Paper,
   Select,
@@ -17,29 +15,16 @@ import {
   Text,
   Textarea,
   TextInput,
-  Title,
 } from '@mantine/core';
 import { useForm, type FormErrors, type UseFormReturnType } from '@mantine/form';
 import { notifications } from '@mantine/notifications';
 import { IconInfoCircle, IconMinus, IconPlus } from '@tabler/icons-react';
-import { useTransition } from 'react';
 import { z } from 'zod';
 import { PROCESS_STEPS } from '../../lib/mock';
-import { PageHeader } from '../../lib/ui';
+import { zodResolver } from '../../lib/form';
+import { FormSection, FormShell, LocalizedTextInput } from '../../lib/shells';
+import { ActiveBadge } from '../../lib/ui';
 import { useIsMobile } from '../../lib/viewport-context';
-
-function zodResolver<T>(schema: z.ZodType<T>) {
-  return (values: T): FormErrors => {
-    const result = schema.safeParse(values);
-    if (result.success) return {};
-    const errors: FormErrors = {};
-    for (const issue of result.error.issues) {
-      const key = issue.path.join('.');
-      if (key && !errors[key]) errors[key] = issue.message;
-    }
-    return errors;
-  };
-}
 
 // ── Zod schema ───────────────────────────────────────────────────────────────
 const useDependencySchema = z.object({
@@ -144,142 +129,66 @@ export function ProcessStepForm({
   };
 
   return (
-    <Stack gap="md">
-      <PageHeader
-        breadcrumbs={['ホーム', 'マスタ', '工程マスタ', mode === 'new' ? '新規作成' : '編集']}
-        title={mode === 'new' ? '工程マスタ 新規作成' : '工程マスタ 編集'}
-      />
+    <FormShell
+      breadcrumbs={['ホーム', 'マスタ', '工程マスタ', mode === 'new' ? '新規作成' : '編集']}
+      title={mode === 'new' ? '工程マスタ 新規作成' : '工程マスタ 編集'}
+      status={mode === 'edit' ? <ActiveBadge active={form.values.isActive} /> : undefined}
+      isPending={isPending}
+      onSubmit={form.onSubmit(handleSubmit)}
+    >
+      {/* ── Section 1: 基本情報 ─────────────────────────────────────── */}
+      <FormSection title="基本情報">
+        <SimpleGrid cols={isMobile ? 1 : 2} spacing="sm">
+          <TextInput label="コード" placeholder="CYLINDER_MACHINING" withAsterisk {...form.getInputProps('code')} />
+          <NumberInput label="表示順" min={0} {...form.getInputProps('sortOrder')} />
+        </SimpleGrid>
+        <LocalizedTextInput
+          label="名称"
+          required
+          placeholder="円筒加工"
+          jaProps={form.getInputProps('nameJa')}
+          enProps={form.getInputProps('nameEn')}
+        />
+        <SimpleGrid cols={isMobile ? 1 : 2} spacing="sm" mt="sm">
+          <Select label="カテゴリ" placeholder="カテゴリを選択" data={CATEGORY_OPTIONS} withAsterisk {...form.getInputProps('category')} />
+          <Select label="実施場所" placeholder="実施場所を選択" data={EXECUTION_OPTIONS} withAsterisk {...form.getInputProps('executionLocation')} />
+          <TextInput
+            label="承認必要役職"
+            placeholder="係長以上"
+            description="検査承認工程の場合に指定"
+            {...form.getInputProps('approvalMinRank')}
+          />
+        </SimpleGrid>
 
-      <Box component="form" onSubmit={form.onSubmit(handleSubmit)} pos="relative">
-        <LoadingOverlay visible={isPending} />
+        <Group gap="xl" mt="md">
+          <Switch label="同期可" description="他工程と同時実施・記録" {...form.getInputProps('isSyncCapable', { type: 'checkbox' })} />
+          <Switch label="検査工程" {...form.getInputProps('isInspection', { type: 'checkbox' })} />
+          <Switch label="検査承認工程" {...form.getInputProps('isApprovalStep', { type: 'checkbox' })} />
+          <Switch label="有効" {...form.getInputProps('isActive', { type: 'checkbox' })} />
+        </Group>
 
-        <Stack gap="md">
-          {/* ── Section 1: 基本情報 ─────────────────────────────────────── */}
-          <Paper withBorder p="md" radius="md">
-            <Title order={4} mb="xs">基本情報</Title>
-            <Divider mb="md" />
-            <SimpleGrid cols={isMobile ? 1 : 2} spacing="sm">
-              <TextInput
-                label="コード"
-                placeholder="CYLINDER_MACHINING"
-                withAsterisk
-                {...form.getInputProps('code')}
-              />
-              <NumberInput
-                label="表示順"
-                min={0}
-                {...form.getInputProps('sortOrder')}
-              />
-              <TextInput
-                label="名称（日本語）"
-                placeholder="円筒加工"
-                withAsterisk
-                {...form.getInputProps('nameJa')}
-              />
-              <TextInput
-                label="名称（英語）"
-                placeholder="Cylinder Machining"
-                {...form.getInputProps('nameEn')}
-              />
-              <Select
-                label="カテゴリ"
-                placeholder="カテゴリを選択"
-                data={CATEGORY_OPTIONS}
-                withAsterisk
-                {...form.getInputProps('category')}
-              />
-              <Select
-                label="実施場所"
-                placeholder="実施場所を選択"
-                data={EXECUTION_OPTIONS}
-                withAsterisk
-                {...form.getInputProps('executionLocation')}
-              />
-              <TextInput
-                label="承認必要役職"
-                placeholder="係長以上"
-                description="検査承認工程の場合に指定"
-                {...form.getInputProps('approvalMinRank')}
-              />
-            </SimpleGrid>
+        <Textarea label="備考" placeholder="備考・特記事項" mt="md" rows={2} {...form.getInputProps('notes')} />
+      </FormSection>
 
-            <Group gap="xl" mt="md">
-              <Switch
-                label="同期可"
-                description="他工程と同時実施・記録"
-                {...form.getInputProps('isSyncCapable', { type: 'checkbox' })}
-              />
-              <Switch
-                label="検査工程"
-                {...form.getInputProps('isInspection', { type: 'checkbox' })}
-              />
-              <Switch
-                label="検査承認工程"
-                {...form.getInputProps('isApprovalStep', { type: 'checkbox' })}
-              />
-              <Switch
-                label="有効"
-                {...form.getInputProps('isActive', { type: 'checkbox' })}
-              />
-            </Group>
+      {/* ── Dependency hint ─────────────────────────────────────────── */}
+      <Alert variant="light" color="blue" icon={<IconInfoCircle size={16} />}>
+        <Text size="sm">
+          <Text span fw={600}>使用依存</Text>＝ワークフローに含めてよい条件（例: 円筒加工は円筒加工検査・検査承認を含むこと）。
+          <br />
+          <Text span fw={600}>実行依存</Text>＝この工程を開始してよい条件（前工程の完了）。
+        </Text>
+      </Alert>
 
-            <Textarea
-              label="備考"
-              placeholder="備考・特記事項"
-              mt="md"
-              rows={2}
-              {...form.getInputProps('notes')}
-            />
-          </Paper>
+      {/* ── Section 2: 使用依存 ─────────────────────────────────────── */}
+      <FormSection title="使用依存">
+        <DependencyEditor form={form} field="useDependencies" withNegation isMobile={isMobile} />
+      </FormSection>
 
-          {/* ── Dependency hint ─────────────────────────────────────────── */}
-          <Alert variant="light" color="blue" icon={<IconInfoCircle size={16} />}>
-            <Text size="sm">
-              <Text span fw={600}>使用依存</Text>＝ワークフローに含めてよい条件（例: 円筒加工は円筒加工検査・検査承認を含むこと）。
-              <br />
-              <Text span fw={600}>実行依存</Text>＝この工程を開始してよい条件（前工程の完了）。
-            </Text>
-          </Alert>
-
-          {/* ── Section 2: 使用依存 ─────────────────────────────────────── */}
-          <Paper withBorder p="md" radius="md">
-            <Title order={4} mb="xs">使用依存</Title>
-            <Divider mb="md" />
-            <DependencyEditor
-              form={form}
-              field="useDependencies"
-              withNegation
-              isMobile={isMobile}
-            />
-          </Paper>
-
-          {/* ── Section 3: 実行依存 ─────────────────────────────────────── */}
-          <Paper withBorder p="md" radius="md">
-            <Title order={4} mb="xs">実行依存</Title>
-            <Divider mb="md" />
-            <DependencyEditor
-              form={form}
-              field="execDependencies"
-              withNegation={false}
-              isMobile={isMobile}
-            />
-          </Paper>
-
-          {/* ── Form actions ─────────────────────────────────────────────── */}
-          {isMobile ? (
-            <Stack gap="xs">
-              <Button type="submit" loading={isPending} fullWidth>保存</Button>
-              <Button variant="default" fullWidth>キャンセル</Button>
-            </Stack>
-          ) : (
-            <Group justify="flex-end" mt="md">
-              <Button variant="default">キャンセル</Button>
-              <Button type="submit" loading={isPending}>保存</Button>
-            </Group>
-          )}
-        </Stack>
-      </Box>
-    </Stack>
+      {/* ── Section 3: 実行依存 ─────────────────────────────────────── */}
+      <FormSection title="実行依存">
+        <DependencyEditor form={form} field="execDependencies" withNegation={false} isMobile={isMobile} />
+      </FormSection>
+    </FormShell>
   );
 }
 

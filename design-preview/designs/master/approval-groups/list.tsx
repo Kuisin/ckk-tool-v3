@@ -1,27 +1,25 @@
 'use client';
 
-import {
-  Badge,
-  Button,
-  Group,
-  Paper,
-  Select,
-  Stack,
-  Table,
-  Text,
-  TextInput,
-} from '@mantine/core';
-import { IconSearch, IconUsersGroup } from '@tabler/icons-react';
 import { useState } from 'react';
+import { Badge, Select, TextInput } from '@mantine/core';
+import {
+  IconCheck,
+  IconEdit,
+  IconSearch,
+  IconTrash,
+  IconUsersGroup,
+  IconX,
+} from '@tabler/icons-react';
 import {
   ActiveBadge,
-  EmptyState,
   localized,
   NewButton,
-  PageHeader,
   type LocalizedText,
 } from '../../lib/ui';
+import { DataTable, type Column } from '../../lib/data-table';
+import { ListShell } from '../../lib/shells';
 import { useIsMobile } from '../../lib/viewport-context';
+import { DeleteApprovalGroupModal } from './_modals/delete';
 
 // ── Approval group type (APPROVAL_GROUP_TYPE) ────────────────────────────────
 type ApprovalGroupType = 'FIRST' | 'SECOND' | 'WORKFLOW_CHANGE';
@@ -34,7 +32,6 @@ const TYPE_CONFIG: Record<ApprovalGroupType, { label: string; color: string }> =
 
 const TYPE_OPTIONS = Object.entries(TYPE_CONFIG).map(([value, c]) => ({ value, label: c.label }));
 
-// ── Mock data ───────────────────────────────────────────────────────────────
 interface ApprovalGroupRow {
   id: number;
   name: LocalizedText;
@@ -66,6 +63,8 @@ export default function ApprovalGroupListPage() {
   const [typeFilter, setTypeFilter] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<string | null>(null);
 
+  const [deleteTarget, setDeleteTarget] = useState<ApprovalGroupRow | null>(null);
+
   const filtered = MOCK_RECORDS.filter((r) => {
     const matchesSearch = !search || localized(r.name).includes(search);
     const matchesType = !typeFilter || r.type === typeFilter;
@@ -80,118 +79,66 @@ export default function ApprovalGroupListPage() {
     setStatusFilter(null);
   };
 
+  const columns: Column<ApprovalGroupRow>[] = [
+    { key: 'name', header: '名称', sortable: true, sortValue: (r) => localized(r.name), render: (r) => localized(r.name) },
+    { key: 'type', header: '種別', sortable: true, width: 140, sortValue: (r) => TYPE_CONFIG[r.type].label, render: (r) => <TypeBadge type={r.type} /> },
+    { key: 'memberCount', header: 'メンバー数', sortable: true, hideable: true, align: 'right', width: 110, sortValue: (r) => r.memberCount, render: (r) => `${r.memberCount} 名` },
+    { key: 'isActive', header: '状態', sortable: true, width: 100, sortValue: (r) => (r.isActive ? 1 : 0), render: (r) => <ActiveBadge active={r.isActive} /> },
+  ];
+
   return (
-    <Stack gap="md">
-      <PageHeader
-        breadcrumbs={['ホーム', 'マスタ', '承認グループ']}
-        title="承認グループ"
-        actions={<NewButton />}
+    <ListShell
+      breadcrumbs={['ホーム', 'マスタ', '承認グループ']}
+      title="承認グループ"
+      action={<NewButton />}
+      onReset={reset}
+      search={
+        <TextInput
+          placeholder="名称で検索"
+          leftSection={<IconSearch size={14} />}
+          value={search}
+          onChange={(e) => setSearch(e.currentTarget.value)}
+        />
+      }
+      filters={
+        <>
+          <Select
+            placeholder="種別" data={TYPE_OPTIONS} value={typeFilter} onChange={setTypeFilter}
+            clearable w={isMobile ? undefined : 160} style={isMobile ? { flex: 1 } : undefined}
+          />
+          <Select
+            placeholder="状態" data={STATUS_OPTIONS} value={statusFilter} onChange={setStatusFilter}
+            clearable w={isMobile ? undefined : 160} style={isMobile ? { flex: 1 } : undefined}
+          />
+        </>
+      }
+    >
+      <DataTable
+        data={filtered}
+        columns={columns}
+        getRowId={(r) => String(r.id)}
+        onRowClick={() => { /* navigate to detail */ }}
+        defaultSort={{ key: 'name', dir: 'asc' }}
+        selectable
+        bulkActions={[
+          { label: '一括有効化', icon: <IconCheck size={16} />, color: 'green' },
+          { label: '一括無効化', icon: <IconX size={16} />, color: 'gray' },
+          { label: '一括削除', icon: <IconTrash size={16} />, color: 'red' },
+        ]}
+        rowActions={() => [
+          { label: '編集', icon: <IconEdit size={14} /> },
+          { label: '削除', icon: <IconTrash size={14} />, color: 'red', onAction: (row) => setDeleteTarget(row) },
+        ]}
+        emptyIcon={<IconUsersGroup size={24} />}
+        emptyMessage="承認グループがありません"
+        emptyAction={<NewButton />}
       />
 
-      <Paper withBorder p="sm">
-        {isMobile ? (
-          <Stack gap="xs" mb="sm">
-            <TextInput
-              placeholder="名称で検索"
-              leftSection={<IconSearch size={14} />}
-              value={search}
-              onChange={(e) => setSearch(e.currentTarget.value)}
-            />
-            <Group gap="xs">
-              <Select
-                placeholder="種別"
-                data={TYPE_OPTIONS}
-                value={typeFilter}
-                onChange={setTypeFilter}
-                clearable
-                style={{ flex: 1 }}
-              />
-              <Select
-                placeholder="状態"
-                data={STATUS_OPTIONS}
-                value={statusFilter}
-                onChange={setStatusFilter}
-                clearable
-                style={{ flex: 1 }}
-              />
-            </Group>
-            <Button variant="subtle" size="sm" onClick={reset}>
-              リセット
-            </Button>
-          </Stack>
-        ) : (
-          <Group mb="sm" align="flex-end">
-            <TextInput
-              placeholder="名称で検索"
-              leftSection={<IconSearch size={14} />}
-              value={search}
-              onChange={(e) => setSearch(e.currentTarget.value)}
-              style={{ flex: 1 }}
-            />
-            <Select
-              placeholder="種別"
-              data={TYPE_OPTIONS}
-              value={typeFilter}
-              onChange={setTypeFilter}
-              clearable
-              w={160}
-            />
-            <Select
-              placeholder="状態"
-              data={STATUS_OPTIONS}
-              value={statusFilter}
-              onChange={setStatusFilter}
-              clearable
-              w={160}
-            />
-            <Button variant="subtle" onClick={reset}>
-              リセット
-            </Button>
-          </Group>
-        )}
-
-        {filtered.length === 0 ? (
-          <EmptyState icon={<IconUsersGroup size={24} />} message="承認グループがありません" />
-        ) : isMobile ? (
-          <Stack gap="xs">
-            {filtered.map((r) => (
-              <Paper key={r.id} p="sm" withBorder radius="sm" style={{ cursor: 'pointer' }}>
-                <Group justify="space-between" wrap="nowrap" align="flex-start">
-                  <Stack gap={3} style={{ minWidth: 0 }}>
-                    <Text size="sm" fw={600} truncate>{localized(r.name)}</Text>
-                    <Group gap="xs">
-                      <TypeBadge type={r.type} />
-                      <Text size="xs" c="dimmed">メンバー {r.memberCount} 名</Text>
-                    </Group>
-                  </Stack>
-                  <ActiveBadge active={r.isActive} />
-                </Group>
-              </Paper>
-            ))}
-          </Stack>
-        ) : (
-          <Table>
-            <Table.Thead>
-              <Table.Tr>
-                <Table.Th>名称</Table.Th>
-                <Table.Th>種別</Table.Th>
-                <Table.Th>メンバー数</Table.Th>
-                <Table.Th>状態</Table.Th>
-              </Table.Tr>
-            </Table.Thead>
-            <Table.Tbody>
-              {filtered.map((r) => (
-                <Table.Tr key={r.id} style={{ cursor: 'pointer' }}>
-                  <Table.Td>{localized(r.name)}</Table.Td>
-                  <Table.Td><TypeBadge type={r.type} /></Table.Td>
-                  <Table.Td style={{ fontVariantNumeric: 'tabular-nums' }}>{r.memberCount} 名</Table.Td>
-                  <Table.Td><ActiveBadge active={r.isActive} /></Table.Td>
-                </Table.Tr>
-              ))}
-            </Table.Tbody>
-          </Table>
-        )}
-      </Paper>
-    </Stack>
+      <DeleteApprovalGroupModal
+        opened={!!deleteTarget}
+        onClose={() => setDeleteTarget(null)}
+        name={deleteTarget ? localized(deleteTarget.name) : ''}
+      />
+    </ListShell>
   );
 }

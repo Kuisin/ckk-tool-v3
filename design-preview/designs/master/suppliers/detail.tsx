@@ -1,20 +1,23 @@
+'use client';
+
+import { useState } from 'react';
 import {
+  ActionIcon,
   Badge,
   Button,
-  Divider,
   Group,
-  Menu,
   Paper,
   SimpleGrid,
   Stack,
   Table,
   Tabs,
   Text,
-  Timeline,
 } from '@mantine/core';
 import {
-  IconDotsVertical,
-  IconEdit,
+  IconCircleMinus,
+  IconPlus,
+  IconTrash,
+  IconUserPlus,
 } from '@tabler/icons-react';
 import {
   ActiveBadge,
@@ -23,10 +26,19 @@ import {
   formatDate,
   formatDateTime,
   localized,
-  PageHeader,
   type LocalizedText,
 } from '../../lib/ui';
+import {
+  AuditTimeline,
+  DetailShell,
+  ResourceActions,
+  SummaryGrid,
+  type AuditEntry,
+} from '../../lib/shells';
 import { useIsMobile } from '../../lib/viewport-context';
+import { AddContactModal } from './_modals/add-contact';
+import { DeleteContactModal } from './_modals/delete-contact';
+import { ToggleSupplierActiveModal } from './_modals/toggle-active';
 
 // ── Mock data (business_partners + bp_vendor_attrs, BP-00021) ────────────────
 const SUPPLIER = {
@@ -69,7 +81,7 @@ const OUTSOURCE_HISTORY = [
   { id: 'o3', process: 'センタレス', requestedAt: '2026-03-02', expectedAt: '2026-03-09', receivedAt: '2026-03-08', status: 'RECEIVED' },
 ];
 
-const AUDIT_LOG = [
+const AUDIT_LOG: AuditEntry[] = [
   { id: 1, action: 'UPDATE', user: '佐藤 工場長', at: '2026-05-28 14:30', detail: '標準リードタイム: 5日 → 7日' },
   { id: 2, action: 'UPDATE', user: '鈴木 一郎', at: '2026-02-14 11:05', detail: '振込先口座を更新' },
   { id: 3, action: 'CREATE', user: '鈴木 一郎', at: '2025-11-04 09:15', detail: '外注企業を登録' },
@@ -102,68 +114,46 @@ export default function SupplierDetailPage() {
   const isMobile = useIsMobile();
   const s = SUPPLIER;
 
-  return (
-    <Stack gap="md">
-      <PageHeader
-        breadcrumbs={['ホーム', 'マスタ', '外注企業', s.bpCode]}
-        title={localized(s.name)}
-        align="flex-start"
-        status={<VendorTypeBadge type={s.vendorType} />}
-        actions={
-          isMobile ? (
-            <Menu shadow="sm" position="bottom-end">
-              <Menu.Target>
-                <Button variant="default" px="xs" size="sm">
-                  <IconDotsVertical size={16} />
-                </Button>
-              </Menu.Target>
-              <Menu.Dropdown>
-                <Menu.Item leftSection={<IconEdit size={14} />}>編集</Menu.Item>
-                <Menu.Divider />
-                <Menu.Item color="red">無効化</Menu.Item>
-              </Menu.Dropdown>
-            </Menu>
-          ) : (
-            <Group gap="xs" style={{ flexShrink: 0 }}>
-              <Button variant="default" leftSection={<IconEdit size={14} />}>編集</Button>
-              <Menu shadow="sm">
-                <Menu.Target>
-                  <Button variant="default" px="xs">
-                    <IconDotsVertical size={16} />
-                  </Button>
-                </Menu.Target>
-                <Menu.Dropdown>
-                  <Menu.Item color="red">無効化</Menu.Item>
-                </Menu.Dropdown>
-              </Menu>
-            </Group>
-          )
-        }
-      />
+  const [addContactOpen, setAddContactOpen] = useState(false);
+  const [deleteContact, setDeleteContact] = useState<string | null>(null);
+  const [toggleOpen, setToggleOpen] = useState(false);
 
+  return (
+    <DetailShell
+      breadcrumbs={['ホーム', 'マスタ', '外注企業', s.bpCode]}
+      title={localized(s.name)}
+      status={<VendorTypeBadge type={s.vendorType} />}
+      createdAt={formatDateTime(s.createdAt)}
+      updatedAt={formatDateTime(s.updatedAt)}
+      actions={
+        <ResourceActions
+          onEdit={() => {}}
+          menuItems={[
+            {
+              label: s.isActive ? '無効化' : '有効化',
+              icon: <IconCircleMinus size={14} />,
+              color: s.isActive ? 'red' : undefined,
+              onClick: () => setToggleOpen(true),
+            },
+          ]}
+        />
+      }
+    >
       {/* ── Summary card ──────────────────────────────────────────────── */}
-      <Paper withBorder p="md" radius="md">
-        <SimpleGrid cols={isMobile ? 1 : 3} spacing="md">
-          <FieldValue label="BPコード" value={<DocNumber>{s.bpCode}</DocNumber>} />
-          <FieldValue label="外注種別" value={<VendorTypeBadge type={s.vendorType} />} />
-          <FieldValue label="状態" value={<ActiveBadge active={s.isActive} />} />
-          <FieldValue label="読み仮名" value={s.nameKana} />
-          <FieldValue label="略称" value={s.shortName} />
-          <FieldValue label="仕入先コード" value={s.vendorCode} />
-          <FieldValue label="電話" value={s.phone} />
-          <FieldValue label="FAX" value={s.fax} />
-          <FieldValue label="メール" value={s.email} />
-          <FieldValue label="郵便番号" value={s.postalCode} />
-          <FieldValue label="住所" value={s.address} />
-          <FieldValue label="標準リードタイム" value={`${s.leadTimeDays} 日`} />
-        </SimpleGrid>
-        {isMobile && (
-          <Group gap="xl" mt="sm">
-            <Text size="xs" c="dimmed">作成: {formatDateTime(s.createdAt)}</Text>
-            <Text size="xs" c="dimmed">更新: {formatDateTime(s.updatedAt)}</Text>
-          </Group>
-        )}
-      </Paper>
+      <SummaryGrid>
+        <FieldValue label="BPコード" value={<DocNumber>{s.bpCode}</DocNumber>} />
+        <FieldValue label="外注種別" value={<VendorTypeBadge type={s.vendorType} />} />
+        <FieldValue label="状態" value={<ActiveBadge active={s.isActive} />} />
+        <FieldValue label="読み仮名" value={s.nameKana} />
+        <FieldValue label="略称" value={s.shortName} />
+        <FieldValue label="仕入先コード" value={s.vendorCode} />
+        <FieldValue label="電話" value={s.phone} />
+        <FieldValue label="FAX" value={s.fax} />
+        <FieldValue label="メール" value={s.email} />
+        <FieldValue label="郵便番号" value={s.postalCode} />
+        <FieldValue label="住所" value={s.address} />
+        <FieldValue label="標準リードタイム" value={`${s.leadTimeDays} 日`} />
+      </SummaryGrid>
 
       {/* ── Tabs ─────────────────────────────────────────────────────── */}
       <Tabs defaultValue="overview">
@@ -196,7 +186,17 @@ export default function SupplierDetailPage() {
             </Paper>
 
             <Paper withBorder p="md" radius="md">
-              <Text fw={600} size="sm" mb="sm">担当者</Text>
+              <Group justify="space-between" mb="sm">
+                <Text fw={600} size="sm">担当者</Text>
+                <Button
+                  variant="subtle"
+                  size="xs"
+                  leftSection={<IconUserPlus size={14} />}
+                  onClick={() => setAddContactOpen(true)}
+                >
+                  担当者追加
+                </Button>
+              </Group>
               {isMobile ? (
                 <Stack gap="xs">
                   {CONTACTS.map((c) => (
@@ -211,6 +211,9 @@ export default function SupplierDetailPage() {
                           <Text size="xs" c="dimmed">{c.phone}</Text>
                           <Text size="xs" c="dimmed">{c.email}</Text>
                         </Stack>
+                        <ActionIcon variant="subtle" color="red" aria-label="担当者を削除" onClick={() => setDeleteContact(c.name)}>
+                          <IconTrash size={16} />
+                        </ActionIcon>
                       </Group>
                     </Paper>
                   ))}
@@ -224,6 +227,7 @@ export default function SupplierDetailPage() {
                       <Table.Th>電話</Table.Th>
                       <Table.Th>メール</Table.Th>
                       <Table.Th style={{ width: 90 }}>主担当</Table.Th>
+                      <Table.Th style={{ width: 48 }} />
                     </Table.Tr>
                   </Table.Thead>
                   <Table.Tbody>
@@ -234,10 +238,20 @@ export default function SupplierDetailPage() {
                         <Table.Td><Text size="sm">{c.phone}</Text></Table.Td>
                         <Table.Td><Text size="sm">{c.email}</Text></Table.Td>
                         <Table.Td>{c.isPrimary && <Badge size="xs" color="blue" variant="light">主担当</Badge>}</Table.Td>
+                        <Table.Td>
+                          <ActionIcon variant="subtle" color="red" aria-label="担当者を削除" onClick={() => setDeleteContact(c.name)}>
+                            <IconTrash size={16} />
+                          </ActionIcon>
+                        </Table.Td>
                       </Table.Tr>
                     ))}
                   </Table.Tbody>
                 </Table>
+              )}
+              {CONTACTS.length === 0 && (
+                <Button variant="subtle" leftSection={<IconPlus size={14} />} size="sm" onClick={() => setAddContactOpen(true)}>
+                  担当者を追加
+                </Button>
               )}
             </Paper>
           </Stack>
@@ -292,31 +306,22 @@ export default function SupplierDetailPage() {
 
         {/* 履歴: AuditTimeline */}
         <Tabs.Panel value="history" pt="md">
-          <Timeline active={-1} bulletSize={28} lineWidth={2}>
-            {AUDIT_LOG.map((log) => (
-              <Timeline.Item
-                key={log.id}
-                bullet={<Text size="xs" fw={700}>{log.user[0]}</Text>}
-                title={log.action}
-              >
-                <Text size="xs" c="dimmed">{formatDateTime(log.at)} · {log.user}</Text>
-                <Text size="sm" mt={4}>{log.detail}</Text>
-              </Timeline.Item>
-            ))}
-          </Timeline>
+          <AuditTimeline entries={AUDIT_LOG} />
         </Tabs.Panel>
       </Tabs>
 
-      {/* ── Footer timestamps ─────────────────────────────────────────── */}
-      {!isMobile && (
-        <>
-          <Divider />
-          <Group gap="xl">
-            <Text size="xs" c="dimmed">作成: {formatDateTime(s.createdAt)}</Text>
-            <Text size="xs" c="dimmed">更新: {formatDateTime(s.updatedAt)}</Text>
-          </Group>
-        </>
-      )}
-    </Stack>
+      <AddContactModal opened={addContactOpen} onClose={() => setAddContactOpen(false)} />
+      <DeleteContactModal
+        opened={deleteContact !== null}
+        onClose={() => setDeleteContact(null)}
+        name={deleteContact ?? ''}
+      />
+      <ToggleSupplierActiveModal
+        opened={toggleOpen}
+        onClose={() => setToggleOpen(false)}
+        activate={!s.isActive}
+        names={[localized(s.name)]}
+      />
+    </DetailShell>
   );
 }

@@ -1,28 +1,28 @@
 'use client';
 
-import {
-  Badge,
-  Button,
-  Group,
-  Paper,
-  Select,
-  Stack,
-  Table,
-  Text,
-  TextInput,
-} from '@mantine/core';
-import { IconGitBranch, IconSearch } from '@tabler/icons-react';
 import { useState } from 'react';
+import { Badge, Group, Paper, Select, Stack, Text, TextInput } from '@mantine/core';
+import {
+  IconCircleCheck,
+  IconCircleMinus,
+  IconCopy,
+  IconEdit,
+  IconGitBranch,
+  IconSearch,
+  IconTrash,
+} from '@tabler/icons-react';
 import {
   ActiveBadge,
   DocNumber,
-  EmptyState,
   localized,
   NewButton,
-  PageHeader,
   type LocalizedText,
 } from '../../lib/ui';
+import { DataTable, type Column } from '../../lib/data-table';
+import { ListShell } from '../../lib/shells';
 import { useIsMobile } from '../../lib/viewport-context';
+import { DeleteProcessStepModal } from './_modals/delete';
+import { ToggleProcessStepActiveModal } from './_modals/toggle-active';
 
 // ── Mock data (process_step_catalog) ─────────────────────────────────────────
 type ProcessCategory =
@@ -100,6 +100,14 @@ function CategoryBadge({ category }: { category: ProcessCategory }) {
   );
 }
 
+function ExecutionBadge({ location }: { location: ProcessExecution }) {
+  return (
+    <Badge variant="outline" size="sm" color={location === 'INTERNAL_OR_OUTSOURCE' ? 'orange' : 'gray'}>
+      {EXECUTION_LABEL[location]}
+    </Badge>
+  );
+}
+
 /** Small green/gray flag badge for 同期可 / 検査 / 承認 columns. */
 function FlagBadge({ on, label }: { on: boolean; label: string }) {
   return (
@@ -109,84 +117,14 @@ function FlagBadge({ on, label }: { on: boolean; label: string }) {
   );
 }
 
-// ── Mobile card list ─────────────────────────────────────────────────────────
-function MobileCardList({ records }: { records: ProcessStepRow[] }) {
-  if (records.length === 0) {
-    return <EmptyState icon={<IconGitBranch size={24} />} message="工程がありません" />;
-  }
-  return (
-    <Stack gap="xs">
-      {records.map((r) => (
-        <Paper key={r.id} p="sm" withBorder radius="sm" style={{ cursor: 'pointer' }}>
-          <Group justify="space-between" wrap="nowrap" align="flex-start">
-            <Stack gap={3} style={{ minWidth: 0 }}>
-              <DocNumber c="dimmed">{r.code}</DocNumber>
-              <Text size="sm" fw={600} truncate>{localized(r.name)}</Text>
-              <Group gap={4} mt={2}>
-                <CategoryBadge category={r.category} />
-                <Badge size="xs" variant="outline" color={r.executionLocation === 'INTERNAL_OR_OUTSOURCE' ? 'orange' : 'gray'}>
-                  {EXECUTION_LABEL[r.executionLocation]}
-                </Badge>
-              </Group>
-              <Group gap={4} mt={2}>
-                {r.isSyncCapable && <FlagBadge on label="同期可" />}
-                {r.isInspection && <Badge size="xs" variant="light" color="blue">検査</Badge>}
-                {r.isApprovalStep && <Badge size="xs" variant="light" color="teal">承認</Badge>}
-              </Group>
-            </Stack>
-            <ActiveBadge active={r.isActive} />
-          </Group>
-        </Paper>
-      ))}
-    </Stack>
-  );
-}
-
-// ── Desktop table ────────────────────────────────────────────────────────────
-function DesktopTable({ records }: { records: ProcessStepRow[] }) {
-  if (records.length === 0) {
-    return <EmptyState icon={<IconGitBranch size={24} />} message="工程がありません" />;
-  }
-  return (
-    <Table striped highlightOnHover withTableBorder>
-      <Table.Thead>
-        <Table.Tr>
-          <Table.Th style={{ width: 220 }}>コード</Table.Th>
-          <Table.Th>名称</Table.Th>
-          <Table.Th style={{ width: 110 }}>カテゴリ</Table.Th>
-          <Table.Th style={{ width: 110 }}>実施場所</Table.Th>
-          <Table.Th style={{ width: 80 }} ta="center">同期可</Table.Th>
-          <Table.Th style={{ width: 70 }} ta="center">検査</Table.Th>
-          <Table.Th style={{ width: 70 }} ta="center">承認</Table.Th>
-        </Table.Tr>
-      </Table.Thead>
-      <Table.Tbody>
-        {records.map((r) => (
-          <Table.Tr key={r.id} style={{ cursor: 'pointer' }}>
-            <Table.Td><DocNumber>{r.code}</DocNumber></Table.Td>
-            <Table.Td><Text size="sm">{localized(r.name)}</Text></Table.Td>
-            <Table.Td><CategoryBadge category={r.category} /></Table.Td>
-            <Table.Td>
-              <Badge variant="outline" size="sm" color={r.executionLocation === 'INTERNAL_OR_OUTSOURCE' ? 'orange' : 'gray'}>
-                {EXECUTION_LABEL[r.executionLocation]}
-              </Badge>
-            </Table.Td>
-            <Table.Td ta="center"><FlagBadge on={r.isSyncCapable} label="可" /></Table.Td>
-            <Table.Td ta="center"><FlagBadge on={r.isInspection} label="✓" /></Table.Td>
-            <Table.Td ta="center"><FlagBadge on={r.isApprovalStep} label="✓" /></Table.Td>
-          </Table.Tr>
-        ))}
-      </Table.Tbody>
-    </Table>
-  );
-}
-
-// ── Main component ───────────────────────────────────────────────────────────
 export default function ProcessStepsListPage() {
   const isMobile = useIsMobile();
   const [search, setSearch] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<string | null>(null);
+
+  const [deleteTarget, setDeleteTarget] = useState<ProcessStepRow[] | null>(null);
+  const [toggleTarget, setToggleTarget] = useState<{ rows: ProcessStepRow[]; activate: boolean } | null>(null);
 
   const filtered = MOCK_RECORDS.filter((r) => {
     const matchesSearch =
@@ -203,76 +141,175 @@ export default function ProcessStepsListPage() {
     setStatusFilter(null);
   };
 
+  const columns: Column<ProcessStepRow>[] = [
+    {
+      key: 'code',
+      header: 'コード',
+      sortable: true,
+      width: 220,
+      render: (r) => <DocNumber>{r.code}</DocNumber>,
+    },
+    {
+      key: 'name',
+      header: '名称',
+      sortable: true,
+      sortValue: (r) => localized(r.name),
+      render: (r) => <Text size="sm">{localized(r.name)}</Text>,
+    },
+    {
+      key: 'category',
+      header: 'カテゴリ',
+      sortable: true,
+      width: 110,
+      sortValue: (r) => CATEGORY_LABEL[r.category],
+      render: (r) => <CategoryBadge category={r.category} />,
+    },
+    {
+      key: 'executionLocation',
+      header: '実施場所',
+      sortable: true,
+      hideable: true,
+      width: 110,
+      sortValue: (r) => EXECUTION_LABEL[r.executionLocation],
+      render: (r) => <ExecutionBadge location={r.executionLocation} />,
+    },
+    {
+      key: 'isSyncCapable',
+      header: '同期可',
+      align: 'center',
+      hideable: true,
+      width: 80,
+      sortable: true,
+      sortValue: (r) => (r.isSyncCapable ? 1 : 0),
+      render: (r) => <FlagBadge on={r.isSyncCapable} label="可" />,
+    },
+    {
+      key: 'isInspection',
+      header: '検査',
+      align: 'center',
+      hideable: true,
+      width: 70,
+      sortable: true,
+      sortValue: (r) => (r.isInspection ? 1 : 0),
+      render: (r) => <FlagBadge on={r.isInspection} label="✓" />,
+    },
+    {
+      key: 'isApprovalStep',
+      header: '承認',
+      align: 'center',
+      hideable: true,
+      width: 70,
+      sortable: true,
+      sortValue: (r) => (r.isApprovalStep ? 1 : 0),
+      render: (r) => <FlagBadge on={r.isApprovalStep} label="✓" />,
+    },
+    {
+      key: 'isActive',
+      header: '状態',
+      sortable: true,
+      width: 90,
+      sortValue: (r) => (r.isActive ? 1 : 0),
+      render: (r) => <ActiveBadge active={r.isActive} />,
+    },
+  ];
+
+  const renderCard = (r: ProcessStepRow) => (
+    <Paper p="sm" withBorder radius="sm">
+    <Group justify="space-between" wrap="nowrap" align="flex-start">
+      <Stack gap={3} style={{ minWidth: 0 }}>
+        <DocNumber c="dimmed">{r.code}</DocNumber>
+        <Text size="sm" fw={600} truncate>{localized(r.name)}</Text>
+        <Group gap={4} mt={2}>
+          <CategoryBadge category={r.category} />
+          <ExecutionBadge location={r.executionLocation} />
+        </Group>
+        <Group gap={4} mt={2}>
+          {r.isSyncCapable && <Badge size="xs" variant="light" color="green">同期可</Badge>}
+          {r.isInspection && <Badge size="xs" variant="light" color="blue">検査</Badge>}
+          {r.isApprovalStep && <Badge size="xs" variant="light" color="teal">承認</Badge>}
+        </Group>
+      </Stack>
+      <ActiveBadge active={r.isActive} />
+    </Group>
+    </Paper>
+  );
+
   return (
-    <Stack gap="md">
-      <PageHeader
-        breadcrumbs={['ホーム', 'マスタ', '工程マスタ']}
-        title="工程マスタ"
-        actions={<NewButton />}
+    <ListShell
+      breadcrumbs={['ホーム', 'マスタ', '工程マスタ']}
+      title="工程マスタ"
+      action={<NewButton />}
+      onReset={reset}
+      search={
+        <TextInput
+          placeholder="コード・名称で検索"
+          leftSection={<IconSearch size={14} />}
+          value={search}
+          onChange={(e) => setSearch(e.currentTarget.value)}
+        />
+      }
+      filters={
+        <>
+          <Select
+            placeholder="カテゴリ"
+            data={CATEGORY_OPTIONS}
+            value={categoryFilter}
+            onChange={setCategoryFilter}
+            clearable
+            w={isMobile ? undefined : 160}
+            style={isMobile ? { flex: 1 } : undefined}
+          />
+          <Select
+            placeholder="状態"
+            data={STATUS_OPTIONS}
+            value={statusFilter}
+            onChange={setStatusFilter}
+            clearable
+            w={isMobile ? undefined : 160}
+            style={isMobile ? { flex: 1 } : undefined}
+          />
+        </>
+      }
+    >
+      <DataTable
+        data={filtered}
+        columns={columns}
+        getRowId={(r) => String(r.id)}
+        onRowClick={() => { /* navigate to detail */ }}
+        defaultSort={{ key: 'code', dir: 'asc' }}
+        renderCard={renderCard}
+        selectable
+        bulkActions={[
+          { label: '一括有効化', icon: <IconCircleCheck size={16} />, color: 'green', onAction: (rows) => setToggleTarget({ rows, activate: true }) },
+          { label: '一括無効化', icon: <IconCircleMinus size={16} />, color: 'gray', onAction: (rows) => setToggleTarget({ rows, activate: false }) },
+          { label: '一括削除', icon: <IconTrash size={16} />, color: 'red', onAction: (rows) => setDeleteTarget(rows) },
+        ]}
+        rowActions={(row) => [
+          { label: '編集', icon: <IconEdit size={14} /> },
+          { label: '複製', icon: <IconCopy size={14} /> },
+          {
+            label: row.isActive ? '無効化' : '有効化',
+            icon: row.isActive ? <IconCircleMinus size={14} /> : <IconCircleCheck size={14} />,
+            onAction: () => setToggleTarget({ rows: [row], activate: !row.isActive }),
+          },
+          { label: '削除', icon: <IconTrash size={14} />, color: 'red', onAction: () => setDeleteTarget([row]) },
+        ]}
+        emptyIcon={<IconGitBranch size={24} />}
+        emptyMessage="工程がありません"
+        emptyAction={<NewButton />}
       />
 
-      <Paper withBorder p="sm">
-        {isMobile ? (
-          <Stack gap="xs" mb="sm">
-            <TextInput
-              placeholder="コード・名称で検索"
-              leftSection={<IconSearch size={14} />}
-              value={search}
-              onChange={(e) => setSearch(e.currentTarget.value)}
-            />
-            <Group gap="xs">
-              <Select
-                placeholder="カテゴリ"
-                data={CATEGORY_OPTIONS}
-                value={categoryFilter}
-                onChange={setCategoryFilter}
-                clearable
-                style={{ flex: 1 }}
-              />
-              <Select
-                placeholder="状態"
-                data={STATUS_OPTIONS}
-                value={statusFilter}
-                onChange={setStatusFilter}
-                clearable
-                style={{ flex: 1 }}
-              />
-              <Button variant="subtle" size="sm" onClick={reset}>リセット</Button>
-            </Group>
-          </Stack>
-        ) : (
-          <Group mb="sm" align="flex-end">
-            <TextInput
-              placeholder="コード・名称で検索"
-              leftSection={<IconSearch size={14} />}
-              value={search}
-              onChange={(e) => setSearch(e.currentTarget.value)}
-              style={{ flex: 1 }}
-            />
-            <Select
-              placeholder="カテゴリ"
-              data={CATEGORY_OPTIONS}
-              value={categoryFilter}
-              onChange={setCategoryFilter}
-              clearable
-              w={160}
-            />
-            <Select
-              placeholder="状態"
-              data={STATUS_OPTIONS}
-              value={statusFilter}
-              onChange={setStatusFilter}
-              clearable
-              w={160}
-            />
-            <Button variant="subtle" onClick={reset}>リセット</Button>
-          </Group>
-        )}
-
-        {isMobile
-          ? <MobileCardList records={filtered} />
-          : <DesktopTable records={filtered} />}
-      </Paper>
-    </Stack>
+      <DeleteProcessStepModal
+        opened={deleteTarget !== null}
+        onClose={() => setDeleteTarget(null)}
+        names={(deleteTarget ?? []).map((r) => localized(r.name))}
+      />
+      <ToggleProcessStepActiveModal
+        opened={toggleTarget !== null}
+        onClose={() => setToggleTarget(null)}
+        activate={toggleTarget?.activate ?? true}
+        names={(toggleTarget?.rows ?? []).map((r) => localized(r.name))}
+      />
+    </ListShell>
   );
 }

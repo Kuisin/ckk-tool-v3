@@ -1,24 +1,23 @@
+'use client';
+
+import { useState } from 'react';
 import {
   Anchor,
   Badge,
-  Button,
-  Divider,
   Group,
-  Menu,
-  Paper,
-  SimpleGrid,
   Stack,
   Table,
   Tabs,
   Text,
   ThemeIcon,
-  Timeline,
   Tooltip,
 } from '@mantine/core';
 import {
-  IconDotsVertical,
-  IconEdit,
+  IconCopy,
+  IconCircleMinus,
   IconFileTypePdf,
+  IconRuler2,
+  IconTrash,
 } from '@tabler/icons-react';
 import {
   ActiveBadge,
@@ -26,11 +25,21 @@ import {
   FieldValue,
   formatDateTime,
   localized,
-  PageHeader,
   type LocalizedText,
 } from '../../lib/ui';
 import { StatusBadge } from '../../lib/status';
+import {
+  AuditTimeline,
+  DetailShell,
+  ResourceActions,
+  SummaryGrid,
+  type AuditEntry,
+} from '../../lib/shells';
 import { useIsMobile } from '../../lib/viewport-context';
+import { DeleteProductModal } from './_modals/delete';
+import { DuplicateProductModal } from './_modals/duplicate';
+import { ReplaceDesignModal } from './_modals/replace-design';
+import { ToggleProductActiveModal } from './_modals/toggle-active';
 
 // ── Mock data ───────────────────────────────────────────────────────────────
 const MOCK = {
@@ -56,94 +65,73 @@ const MOCK = {
   updatedAt: '2026-05-22 09:05',
 };
 
-const RELATED_ORDERS: {
-  id: string;
-  customer: string;
-  quantity: number;
-  status: string;
-}[] = [
+const RELATED_ORDERS: { id: string; customer: string; quantity: number; status: string }[] = [
   { id: 'ORD-202601-00001-01', customer: '株式会社ABC製作所', quantity: 50, status: 'IN_PRODUCTION' },
   { id: 'ORD-202605-00012-02', customer: '東邦精密株式会社', quantity: 30, status: 'CONFIRMED' },
 ];
 
-const AUDIT_LOG = [
-  { id: 1, action: 'UPDATE', user: '田中 太郎', at: '2026-05-22 09:05', detail: '仕様（表面粗さ）を更新' },
-  { id: 2, action: 'UPDATE', user: '鈴木 一郎', at: '2026-03-10 15:20', detail: '設計図 v3 を登録' },
-  { id: 3, action: 'CREATE', user: '田中 太郎', at: '2026-01-15 13:40', detail: '製品を作成' },
+const AUDIT_LOG: AuditEntry[] = [
+  { id: 1, action: 'UPDATE', user: '田中 太郎', at: '2026/05/22 09:05', detail: '仕様（表面粗さ）を更新' },
+  { id: 2, action: 'UPDATE', user: '鈴木 一郎', at: '2026/03/10 15:20', detail: '設計図 v3 を登録' },
+  { id: 3, action: 'CREATE', user: '田中 太郎', at: '2026/01/15 13:40', detail: '製品を作成' },
 ];
 
 export default function ProductDetailPage() {
   const isMobile = useIsMobile();
   const p = MOCK;
 
-  const actions = isMobile ? (
-    <Menu shadow="sm" position="bottom-end">
-      <Menu.Target>
-        <Button variant="default" px="xs" size="sm">
-          <IconDotsVertical size={16} />
-        </Button>
-      </Menu.Target>
-      <Menu.Dropdown>
-        <Menu.Item leftSection={<IconEdit size={14} />}>編集</Menu.Item>
-        <Menu.Item leftSection={<IconFileTypePdf size={14} />}>設計図を開く</Menu.Item>
-        <Menu.Divider />
-        <Menu.Item color="red">無効化</Menu.Item>
-      </Menu.Dropdown>
-    </Menu>
-  ) : (
-    <Group gap="xs" style={{ flexShrink: 0 }}>
-      <Button variant="default" leftSection={<IconEdit size={14} />}>編集</Button>
-      <Button variant="default" leftSection={<IconFileTypePdf size={14} />}>設計図</Button>
-      <Menu shadow="sm">
-        <Menu.Target>
-          <Button variant="default" px="xs">
-            <IconDotsVertical size={16} />
-          </Button>
-        </Menu.Target>
-        <Menu.Dropdown>
-          <Menu.Item color="red">無効化</Menu.Item>
-        </Menu.Dropdown>
-      </Menu>
-    </Group>
-  );
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [duplicateOpen, setDuplicateOpen] = useState(false);
+  const [toggleOpen, setToggleOpen] = useState(false);
+  const [replaceOpen, setReplaceOpen] = useState(false);
 
   return (
-    <Stack gap="md">
-      <PageHeader
-        breadcrumbs={['ホーム', 'マスタ', '製品', p.id]}
-        title={localized(p.name)}
-        status={<ActiveBadge active={p.isActive} />}
-        actions={actions}
-        align="flex-start"
-      />
+    <DetailShell
+      breadcrumbs={['ホーム', 'マスタ', '製品', p.id]}
+      title={localized(p.name)}
+      status={<ActiveBadge active={p.isActive} />}
+      createdAt={`${formatDateTime(p.createdAt)}（${p.createdBy}）`}
+      updatedAt={formatDateTime(p.updatedAt)}
+      actions={
+        <ResourceActions
+          onEdit={() => {}}
+          pdf={{ label: '設計図', onClick: () => {} }}
+          menuItems={[
+            { label: '設計図を差し替え', icon: <IconRuler2 size={14} />, onClick: () => setReplaceOpen(true) },
+            { label: '複製', icon: <IconCopy size={14} />, onClick: () => setDuplicateOpen(true) },
+            {
+              label: p.isActive ? '無効化' : '有効化',
+              icon: <IconCircleMinus size={14} />,
+              onClick: () => setToggleOpen(true),
+            },
+            { label: '削除', icon: <IconTrash size={14} />, color: 'red', divider: true, onClick: () => setDeleteOpen(true) },
+          ]}
+        />
+      }
+    >
+      <SummaryGrid>
+        <FieldValue label="製品コード" value={<DocNumber>{p.id}</DocNumber>} />
+        <FieldValue label="名称（日本語）" value={p.name.ja} />
+        <FieldValue label="名称（英語）" value={p.name.en} />
+        <FieldValue
+          label="素材"
+          value={<DocNumber c="blue">{p.materialId}（{p.materialName}）</DocNumber>}
+        />
+        <FieldValue label="単位" value={p.unit} />
+        <FieldValue
+          label="設計図"
+          value={
+            <Group gap={6} wrap="nowrap">
+              <ThemeIcon variant="light" color="red" size="sm" radius="sm">
+                <IconFileTypePdf size={14} />
+              </ThemeIcon>
+              <Anchor size="sm">{p.designFile.name}</Anchor>
+              <Badge size="xs" variant="light" color="gray">v{p.designFile.version}</Badge>
+            </Group>
+          }
+        />
+      </SummaryGrid>
 
-      {/* ── Summary ──────────────────────────────────────────────────── */}
-      <Paper withBorder p="md" radius="md">
-        <SimpleGrid cols={isMobile ? 1 : 3} spacing="md">
-          <FieldValue label="製品コード" value={<DocNumber>{p.id}</DocNumber>} />
-          <FieldValue label="名称（日本語）" value={p.name.ja} />
-          <FieldValue label="名称（英語）" value={p.name.en} />
-          <FieldValue
-            label="素材"
-            value={<DocNumber c="blue">{p.materialId}（{p.materialName}）</DocNumber>}
-          />
-          <FieldValue label="単位" value={p.unit} />
-          <FieldValue
-            label="設計図"
-            value={
-              <Group gap={6} wrap="nowrap">
-                <ThemeIcon variant="light" color="red" size="sm" radius="sm">
-                  <IconFileTypePdf size={14} />
-                </ThemeIcon>
-                <Anchor size="sm">{p.designFile.name}</Anchor>
-                <Badge size="xs" variant="light" color="gray">v{p.designFile.version}</Badge>
-              </Group>
-            }
-          />
-        </SimpleGrid>
-      </Paper>
-
-      {/* ── Tabs ─────────────────────────────────────────────────────── */}
       <Tabs defaultValue="overview">
         <Tabs.List>
           <Tabs.Tab value="overview">概要</Tabs.Tab>
@@ -171,7 +159,7 @@ export default function ProductDetailPage() {
           </Stack>
         </Tabs.Panel>
 
-        {/* 関連: 受注 + 在庫 */}
+        {/* 関連: 在庫 + 受注 */}
         <Tabs.Panel value="related" pt="md">
           <Stack gap="lg">
             <Stack gap="xs">
@@ -214,31 +202,37 @@ export default function ProductDetailPage() {
 
         {/* 履歴: AuditTimeline */}
         <Tabs.Panel value="history" pt="md">
-          <Timeline active={-1} bulletSize={28} lineWidth={2}>
-            {AUDIT_LOG.map((log) => (
-              <Timeline.Item
-                key={log.id}
-                bullet={<Text size="xs" fw={700}>{log.user[0]}</Text>}
-                title={log.action}
-              >
-                <Text size="xs" c="dimmed">{formatDateTime(log.at)} · {log.user}</Text>
-                <Text size="sm" mt={4}>{log.detail}</Text>
-              </Timeline.Item>
-            ))}
-          </Timeline>
+          <AuditTimeline entries={AUDIT_LOG} />
         </Tabs.Panel>
       </Tabs>
 
-      {/* ── Footer timestamps ─────────────────────────────────────────── */}
-      {!isMobile && (
-        <>
-          <Divider />
-          <Group gap="xl">
-            <Text size="xs" c="dimmed">作成: {formatDateTime(p.createdAt)}（{p.createdBy}）</Text>
-            <Text size="xs" c="dimmed">更新: {formatDateTime(p.updatedAt)}</Text>
-          </Group>
-        </>
-      )}
-    </Stack>
+      <DeleteProductModal
+        opened={deleteOpen}
+        onClose={() => setDeleteOpen(false)}
+        productCode={p.id}
+        productName={localized(p.name)}
+      />
+      <DuplicateProductModal
+        opened={duplicateOpen}
+        onClose={() => setDuplicateOpen(false)}
+        productCode={p.id}
+        sourceName={localized(p.name)}
+        sourceUnit={p.unit}
+      />
+      <ToggleProductActiveModal
+        opened={toggleOpen}
+        onClose={() => setToggleOpen(false)}
+        productCode={p.id}
+        productName={localized(p.name)}
+        isActive={p.isActive}
+      />
+      <ReplaceDesignModal
+        opened={replaceOpen}
+        onClose={() => setReplaceOpen(false)}
+        productCode={p.id}
+        currentFileName={p.designFile.name}
+        currentVersion={p.designFile.version}
+      />
+    </DetailShell>
   );
 }
