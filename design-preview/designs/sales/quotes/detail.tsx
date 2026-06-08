@@ -30,8 +30,8 @@ const MOCK = {
 };
 
 const MOCK_ITEMS = [
-  { id: '1', productName: '精密軸 PRD-2601-0001', orderType: 'PRODUCTION', quantity: 50, unitPrice: 5000, amount: 250000, deliveryDate: '2026-07-10' },
-  { id: '2', productName: 'ロッド PRD-2602-0008', orderType: 'TEST', quantity: 5, unitPrice: 6200, amount: 31000, deliveryDate: null },
+  { id: '1', productName: '精密軸 PRD-2601-0001', orderType: 'PRODUCTION', quantity: 50, unitPrice: 5000, discountAmount: 10000, amount: 240000, deliveryDate: '2026-07-10' },
+  { id: '2', productName: 'ロッド PRD-2602-0008', orderType: 'TEST', quantity: 5, unitPrice: 6200, discountAmount: 0, amount: 31000, deliveryDate: null },
 ];
 
 const MOCK_AUDIT: AuditEntry[] = [
@@ -92,6 +92,7 @@ export default function QuoteDetailPage() {
                 <Table.Th>注文種別</Table.Th>
                 <Table.Th ta="right">数量</Table.Th>
                 <Table.Th ta="right">単価</Table.Th>
+                <Table.Th ta="right">値引き</Table.Th>
                 <Table.Th ta="right">金額</Table.Th>
                 {!isMobile && <Table.Th>納期</Table.Th>}
               </Table.Tr>
@@ -103,6 +104,7 @@ export default function QuoteDetailPage() {
                   <Table.Td>{ORDER_TYPE_LABEL[i.orderType]}</Table.Td>
                   <Table.Td ta="right">{i.quantity} 本</Table.Td>
                   <Table.Td><MoneyText value={i.unitPrice} /></Table.Td>
+                  <Table.Td>{i.discountAmount > 0 ? <MoneyText value={-i.discountAmount} /> : <Text size="sm" ta="right" c="dimmed">—</Text>}</Table.Td>
                   <Table.Td><MoneyText value={i.amount} /></Table.Td>
                   {!isMobile && <Table.Td>{i.deliveryDate ? formatDate(i.deliveryDate) : '—'}</Table.Td>}
                 </Table.Tr>
@@ -110,7 +112,7 @@ export default function QuoteDetailPage() {
             </Table.Tbody>
             <Table.Tfoot>
               <Table.Tr>
-                <Table.Td colSpan={4} ta="right"><Text size="sm" c="dimmed" fw={500}>合計金額</Text></Table.Td>
+                <Table.Td colSpan={5} ta="right"><Text size="sm" c="dimmed" fw={500}>合計金額</Text></Table.Td>
                 <Table.Td><MoneyText value={totalAmount} /></Table.Td>
                 {!isMobile && <Table.Td />}
               </Table.Tr>

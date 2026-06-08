@@ -2,6 +2,7 @@
 
 import { useTransition } from 'react';
 import {
+  Alert,
   Button,
   Divider,
   Group,
@@ -17,7 +18,7 @@ import {
 import { DatePickerInput } from '@mantine/dates';
 import { useForm } from '@mantine/form';
 import { notifications } from '@mantine/notifications';
-import { IconCalendar, IconMinus, IconPlus } from '@tabler/icons-react';
+import { IconCalendar, IconInfoCircle, IconMinus, IconPlus } from '@tabler/icons-react';
 import { z } from 'zod';
 import { formatMoney } from '../../lib/ui';
 import { zodResolver } from '../../lib/form';
@@ -30,8 +31,13 @@ const quoteItemSchema = z.object({
   orderType: z.enum(['PRODUCTION', 'TEST', 'SAMPLE', 'OTHER']),
   quantity: z.number().int().min(1, '1以上を入力してください'),
   unitPrice: z.number().min(0),
+  // カスタム値引き（任意）— 価格表から自動生成した金額に対して必要時のみ適用
+  discountAmount: z.number().min(0),
   deliveryDate: z.date().nullable(),
   notes: z.string().optional(),
+}).refine((v) => v.unitPrice * v.quantity - v.discountAmount >= 0, {
+  message: '値引き額が金額を超えています',
+  path: ['discountAmount'],
 });
 
 const quoteSchema = z.object({
@@ -51,7 +57,11 @@ const PRICE_HINT: Record<string, number> = {
   'PRD-2603-0012': 9500,
 };
 
-const EMPTY_ITEM = { productId: '', orderType: 'PRODUCTION' as const, quantity: 1, unitPrice: 0, deliveryDate: null, notes: '' };
+const EMPTY_ITEM = { productId: '', orderType: 'PRODUCTION' as const, quantity: 1, unitPrice: 0, discountAmount: 0, deliveryDate: null, notes: '' };
+
+// 明細金額 = 単価 × 本数 − 値引き額（lib/pricing.ts 相当）
+const lineNet = (item: { quantity: number; unitPrice: number; discountAmount: number }) =>
+  Math.max(0, item.quantity * item.unitPrice - item.discountAmount);
 
 export default function QuoteNewPage() {
   const isMobile = useIsMobile();
@@ -68,7 +78,7 @@ export default function QuoteNewPage() {
     },
   });
 
-  const totalAmount = form.values.items.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0);
+  const totalAmount = form.values.items.reduce((sum, item) => sum + lineNet(item), 0);
 
   const handleSubmit = (values: QuoteFormValues) => {
     startTransition(async () => {
@@ -124,7 +134,10 @@ export default function QuoteNewPage() {
         <Textarea label="備考" placeholder="備考・特記事項" mt="sm" rows={3} {...form.getInputProps('notes')} />
       </FormSection>
 
-      <FormSection title="明細">
+      <FormSection title="明細" description="価格表から自動生成されます。単価は自動入力、必要に応じて値引きを入力してください。">
+        <Alert variant="light" color="blue" icon={<IconInfoCircle size={16} />} mb="md">
+          顧客・製品・注文種別・本数から価格表を解決し、単価・金額を自動算出します。値引きは必要時のみ入力してください。
+        </Alert>
         {isMobile ? (
           <Stack gap="sm">
             {form.values.items.map((item, index) => (
@@ -140,9 +153,11 @@ export default function QuoteNewPage() {
                     <NumberInput label="単価" description="価格表から自動入力" prefix="¥" thousandSeparator="," decimalScale={2} min={0}
                       {...form.getInputProps(`items.${index}.unitPrice`)} />
                   </Group>
+                  <NumberInput label="値引き" description="必要時のみ" prefix="¥" thousandSeparator="," decimalScale={2} min={0}
+                    {...form.getInputProps(`items.${index}.discountAmount`)} />
                   <Group justify="space-between">
                     <Text size="xs" c="dimmed">金額</Text>
-                    <Text size="sm" fw={600} ff="mono">{formatMoney(item.quantity * item.unitPrice)}</Text>
+                    <Text size="sm" fw={600} ff="mono">{formatMoney(lineNet(item))}</Text>
                   </Group>
                   <DatePickerInput label="納期" placeholder="日付を選択" valueFormat="YYYY/MM/DD" clearable
                     {...form.getInputProps(`items.${index}.deliveryDate`)} />
@@ -160,12 +175,13 @@ export default function QuoteNewPage() {
           <Table withColumnBorders={false} withTableBorder>
             <Table.Thead>
               <Table.Tr>
-                <Table.Th style={{ minWidth: 200 }}>製品</Table.Th>
-                <Table.Th style={{ width: 120 }}>種別</Table.Th>
-                <Table.Th style={{ width: 80 }}>数量</Table.Th>
-                <Table.Th style={{ width: 130 }}>単価</Table.Th>
+                <Table.Th style={{ minWidth: 180 }}>製品</Table.Th>
+                <Table.Th style={{ width: 110 }}>種別</Table.Th>
+                <Table.Th style={{ width: 72 }}>数量</Table.Th>
+                <Table.Th style={{ width: 120 }}>単価</Table.Th>
+                <Table.Th style={{ width: 120 }}>値引き</Table.Th>
                 <Table.Th style={{ width: 100 }}>金額</Table.Th>
-                <Table.Th style={{ width: 130 }}>納期</Table.Th>
+                <Table.Th style={{ width: 120 }}>納期</Table.Th>
                 <Table.Th style={{ width: 40 }} />
               </Table.Tr>
             </Table.Thead>
@@ -180,7 +196,8 @@ export default function QuoteNewPage() {
                   <Table.Td><Select data={ORDER_TYPE_OPTIONS} {...form.getInputProps(`items.${index}.orderType`)} /></Table.Td>
                   <Table.Td><NumberInput min={1} withAsterisk {...form.getInputProps(`items.${index}.quantity`)} /></Table.Td>
                   <Table.Td><NumberInput prefix="¥" thousandSeparator="," decimalScale={2} min={0} {...form.getInputProps(`items.${index}.unitPrice`)} /></Table.Td>
-                  <Table.Td><Text size="sm" ta="right" ff="mono">{formatMoney(item.quantity * item.unitPrice)}</Text></Table.Td>
+                  <Table.Td><NumberInput prefix="¥" thousandSeparator="," decimalScale={2} min={0} placeholder="0" {...form.getInputProps(`items.${index}.discountAmount`)} /></Table.Td>
+                  <Table.Td><Text size="sm" ta="right" ff="mono">{formatMoney(lineNet(item))}</Text></Table.Td>
                   <Table.Td><DatePickerInput placeholder="納期" valueFormat="YYYY/MM/DD" clearable {...form.getInputProps(`items.${index}.deliveryDate`)} /></Table.Td>
                   <Table.Td>
                     <Button variant="subtle" color="red" size="xs" px={4} disabled={form.values.items.length === 1}

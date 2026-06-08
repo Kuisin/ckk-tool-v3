@@ -212,6 +212,7 @@ src/
 │   ├── journal.ts                                  # 仕訳エンジン（弥生連携用）
 │   ├── csv-export.ts                               # 弥生会計 Next CSV 生成
 │   ├── inventory.ts                                # 在庫引当・予約ロジック
+│   ├── pricing.ts                                  # 価格表解決・見積自動生成・値引き計算
 │   ├── numbering.ts                                # 採番ロジック（QOT/ORD/DRN/INV）
 │   ├── workflow.ts                                 # 製造ワークフロー依存解決・実行可否判定
 │   └── notifications.ts                            # 通知（SSE / メール / Nextcloud）

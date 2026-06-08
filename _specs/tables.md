@@ -213,8 +213,10 @@ Table quote_items {
   product_id      varchar [not null, ref: > products.id]
   order_type      ORDER_TYPE [not null]
   quantity        int [not null]
-  unit_price      numeric(12,2) [not null]
-  amount          numeric(12,2) [not null]
+  unit_price      numeric(12,2) [not null]      // 価格表から自動解決
+  price_list_id   uuid [ref: > price_lists.id]  // 自動生成元（手動入力時は null）
+  discount_amount numeric(12,2) [not null, default: 0]  // カスタム値引き額（任意）
+  amount          numeric(12,2) [not null]      // unit_price * quantity - discount_amount
   delivery_date   date
   notes           text
   sort_order      int [not null, default: 0]
