@@ -48,6 +48,8 @@ Display modes (all inside the mock browser iframe):
 
 **Isolated launcher grid** — preview `layout/comp_AppLauncher.tsx` to see the grid at production popover width (544px).
 
+**Hidden files** — files/folders whose name starts with `_` (e.g. `_modals/`, `_AppHeader.tsx`) are helper files and are hidden from the file tree by default. Toggle the **`_ files`** switch in the toolbar to show them (persisted via the `?hidden=1` query param).
+
 ### PDF Templates
 
 For previewing HTML+CSS document templates (quote, invoice, work order, etc.) that are sent to Gotenberg.

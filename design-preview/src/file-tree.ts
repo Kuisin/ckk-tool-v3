@@ -7,8 +7,16 @@ export interface FileTreeNode {
 
 const DESIGNS_PREFIX = '../designs/';
 
+export interface BuildFileTreeOptions {
+  prefix?: string;
+  ext?: string;
+  /** Include files/folders whose name starts with `_` (e.g. `_modals/`, `_AppHeader`). Default: false. */
+  includeUnderscore?: boolean;
+}
+
 /** Convert glob paths into a nested folder tree. */
-export function buildFileTree(modulePaths: string[], prefix = DESIGNS_PREFIX, ext = 'tsx'): FileTreeNode[] {
+export function buildFileTree(modulePaths: string[], options: BuildFileTreeOptions = {}): FileTreeNode[] {
+  const { prefix = DESIGNS_PREFIX, ext = 'tsx', includeUnderscore = false } = options;
   const root: FileTreeNode[] = [];
   const extRe = new RegExp(`\\.${ext}$`);
 
@@ -16,8 +24,8 @@ export function buildFileTree(modulePaths: string[], prefix = DESIGNS_PREFIX, ex
     const relative = modulePath.replace(prefix, '').replace(extRe, '');
     const segments = relative.split('/');
 
-    // Skip if any segment starts with underscore
-    if (segments.some((seg) => seg.startsWith('_'))) {
+    // Skip underscore-prefixed segments unless explicitly included (hidden by default).
+    if (!includeUnderscore && segments.some((seg) => seg.startsWith('_'))) {
       continue;
     }
 

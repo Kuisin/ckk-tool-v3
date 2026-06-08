@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import {
   Stack,
   Box,
@@ -6,7 +6,9 @@ import {
   Title,
   ActionIcon,
   Center,
+  Switch,
   Text,
+  Tooltip,
   ScrollArea,
   SegmentedControl,
   useMantineColorScheme,
@@ -20,8 +22,6 @@ import { PdfTemplatePreview } from './PdfTemplatePreview';
 import { useSearchParam } from './use-search-param';
 import { designPaths, isComponentFile } from './design-modules';
 import type { FrameMode } from './build-frame-url';
-
-const fileTree = buildFileTree(designPaths);
 
 function designPathToUrl(modulePath: string): string {
   const relative = modulePath.replace('../designs/', '').replace(/\.tsx$/, '');
@@ -46,6 +46,14 @@ export default function App() {
 
   const [viewportParam, setViewport] = useSearchParam('viewport', 'desktop');
   const viewport = (viewportParam === 'mobile' ? 'mobile' : 'desktop') as Viewport;
+
+  // Hidden files (names starting with `_`, e.g. _modals/) are off by default.
+  const [hiddenParam, setHiddenParam] = useSearchParam('hidden', '0');
+  const showHidden = hiddenParam === '1';
+  const fileTree = useMemo(
+    () => buildFileTree(designPaths, { includeUnderscore: showHidden }),
+    [showHidden],
+  );
 
   const [key, setKey] = useState(0);
 
@@ -77,6 +85,16 @@ export default function App() {
             )}
           </Group>
           <Group gap="xs">
+            {mode === 'ui' && (
+              <Tooltip label="`_` で始まる隠しファイル（_modals 等）を表示" withinPortal>
+                <Switch
+                  size="xs"
+                  label="_ files"
+                  checked={showHidden}
+                  onChange={(e) => setHiddenParam(e.currentTarget.checked ? '1' : '0')}
+                />
+              </Tooltip>
+            )}
             {mode === 'ui' && (
               <ActionIcon
                 variant="default"

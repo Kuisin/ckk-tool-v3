@@ -37,7 +37,7 @@ const templatePaths = Object.keys(templateModules).sort((a, b) =>
   ),
 );
 
-const fileTree = buildFileTree(templatePaths, PDF_PREFIX, 'html');
+const fileTree = buildFileTree(templatePaths, { prefix: PDF_PREFIX, ext: 'html' });
 
 /** Map template path → data path, e.g. ../pdf-templates/quote.html → ../pdf-templates/data/quote.json */
 function templateDataPath(templatePath: string): string | null {
