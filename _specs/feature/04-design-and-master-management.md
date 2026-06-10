@@ -117,3 +117,17 @@
 |------|------|
 | `/master/defect-types` | 不良種類一覧 |
 | `/master/defect-types/new` | 新規作成 |
+
+### 組織マスタ（多拠点）
+
+| パス | 内容 |
+|------|------|
+| `/master/org-units` | 組織ツリー + 一覧 |
+| `/master/org-units/new` | 組織ノード新規作成 |
+| `/master/org-units/[id]` | 詳細（所属ユーザー・下位組織タブ） |
+| `/master/org-units/[id]/edit` | 編集 |
+
+- 階層: `REGION > COUNTRY > FACTORY > DEPARTMENT > TEAM`（`org_units`）
+- `FACTORY` ノードは `timezone`（IANA）・`default_currency`（ISO 4217）・`accounting_system` が必須
+- ユーザー所属は `user_org_assignments`（主所属 1 件 + 兼務複数可）— AD 同期で部門情報を自動割当、手動補正可
+- RBAC スコープ（REGION/COUNTRY/FACTORY/DEPARTMENT/TEAM）の解決基盤。詳細は `05-cross-cutting-and-appendix.md` 参照

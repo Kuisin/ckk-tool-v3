@@ -46,7 +46,9 @@ pnpm prisma db push                  # dev-only
 
 ## Key Patterns
 
-**RBAC** — Always query the `user_permissions` view (not the raw relation tables). It aggregates roles → permissions per user and returns only the highest `SCOPE` per `(user_id, action, permission_code)`.
+**RBAC** — Always query the `user_permissions` view (not the raw relation tables). It aggregates roles → permissions per user and returns only the highest `SCOPE` per `(user_id, action, permission_code)`. Scopes (`REGION/COUNTRY/FACTORY/DEPARTMENT/TEAM`) resolve against the `org_units` hierarchy via `user_org_assignments`; business documents carry an `org_unit_id` (originating factory) used for visibility filtering.
+
+**Multi-nation** — All DB timestamps are `timestamptz` (UTC); render in user/site timezone via `@date-fns/tz`. One currency per document (inherited quote → invoice, never changed mid-flow); resolve prices only from matching-currency `price_lists` rows. Tax rates come from `tax_rates` (country × tax_type × valid_from) and are snapshotted on the invoice, as is the JPY exchange rate (`exchange_rates`).
 
 **Auth** — Auth.js v5, DB session + short JWT. Identity sourced from Samba AD via LDAP/OAuth.
 
@@ -62,7 +64,7 @@ pnpm prisma db push                  # dev-only
 
 **i18n** — UI strings via `next-intl` + `messages/` JSON. DB multilingual fields are `{ ja: '', en: '' }` JSON objects — always write both locales.
 
-**Accounting** — `lib/csv-export.ts` produces 弥生会計 Next CSV. Journal logic is isolated in `lib/journal.ts`.
+**Accounting** — Adapter-based export: `lib/journal.ts` generates common journal entries; the site's `org_units.accounting_system` adapter formats them (JP sites: 弥生会計 Next CSV via `lib/csv-export.ts`; other countries: generic journal CSV). Double-export guarded by `invoices.accounting_exported_at`.
 
 **Data fetching** — React Server Components for server state; Zustand for client-only state.
 

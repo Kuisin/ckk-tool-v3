@@ -294,6 +294,7 @@ Operation codes provide keyboard-shortcut navigation. Format: `{CAT}{MODE}{IDX}`
 | マスタ | 8 | 検査表テンプレート | MS08 | MS18 | MS28 |
 | マスタ | 9 | 不良種類 | MS09 | MS19 | MS29 |
 | マスタ | A | 承認グループ | MS0A | MS1A | MS2A |
+| マスタ | B | 組織 | MS0B | MS1B | MS2B |
 
 `OperationCodeJump` component (`src/components/layout/OperationCodeJump.tsx`) renders as a compact TextInput in the header center. Pressing Enter or clicking a result navigates to that screen.
 
@@ -368,6 +369,7 @@ Stack (gap="xl", p="md", maw={1200})
 | 検査表テンプレート | `IconListCheck` |
 | 不良種類 | `IconAlertTriangle` |
 | 承認グループ | `IconUsersGroup` |
+| 組織 | `IconSitemap` |
 
 ---
 
@@ -664,8 +666,9 @@ return <>{value?.[locale] ?? value?.ja ?? '—'}</>
 `src/components/ui/MoneyText.tsx`
 
 ```tsx
-// props: value: number | null, currency?: string
-new Intl.NumberFormat('ja-JP', { style: 'currency', currency: currency ?? 'JPY' }).format(value)
+// props: value: number | null, currency: string  // 通貨はドキュメントから必ず渡す（JPY ハードコード禁止）
+const { locale } = useLocale()
+new Intl.NumberFormat(locale === 'ja' ? 'ja-JP' : 'en-US', { style: 'currency', currency }).format(value)
 ```
 
 ---
@@ -891,6 +894,14 @@ Items sub-table has inline add/edit (no separate page).
 
 **Detail tabs**: グループ情報 / メンバー / 代理設定
 
+### 13.6 Org Units (組織)
+
+**List**: tree view (REGION > COUNTRY > FACTORY > DEPARTMENT > TEAM) with type badge per node.
+
+**List columns**: コード / 名称 / 種別 / 国 / タイムゾーン / 通貨 / 状態
+
+**Detail tabs**: 概要 / 所属ユーザー（`user_org_assignments`）/ 下位組織
+
 ---
 
 ## 14. DataTable Column Conventions
@@ -936,6 +947,7 @@ Row click navigates to detail page.
 | InspectionTemplate | コード / 名称 / 関連工程 / 状態 |
 | DefectType | コード / 名称 / 状態 |
 | ApprovalGroup | 名称 / 種別 / メンバー数 / 状態 |
+| OrgUnit | コード / 名称 / 種別 / 国 / タイムゾーン / 通貨 / 状態 |
 
 ---
 
@@ -1067,11 +1079,11 @@ Do **not** use synonyms — e.g. never write "注文書" where "注文受諾書"
 |------|--------|---------|
 | Date | `yyyy/MM/dd` | `2026/06/04` |
 | Timestamp | `yyyy/MM/dd HH:mm` | `2026/06/04 14:30` |
-| Currency (JPY) | `Intl.NumberFormat('ja-JP', { style: 'currency', currency: 'JPY' })` | `¥250,000` |
+| Currency | `Intl.NumberFormat(uiLocale, { style: 'currency', currency: doc.currency })` — always the **document's** currency, never hardcode JPY | `¥250,000` / `US$1,200.00` |
 | Quantity | integer + unit (e.g. `50 本`) | `50 本` |
 | Relative time (notifications) | `X分前`, `X時間前`, `昨日` | `5分前` |
 
-Use `date-fns` v4 for date formatting. Import only what is needed (tree-shakeable).
+Use `date-fns` v4 for date formatting (+ `@date-fns/tz` for timezone conversion — DB values are UTC; render in the user's timezone, falling back to their primary site's timezone). Import only what is needed (tree-shakeable).
 
 ### 17.4 Multilingual DB Fields
 

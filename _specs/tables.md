@@ -1,4 +1,10 @@
 ## Tables (Database)
+
+> **Conventions（全テーブル共通）**
+> - すべての `timestamp` 列は `timestamptz`（UTC 保存）。表示はユーザー／拠点タイムゾーンで変換する。
+> - `date` 列（締日・納期・有効日等）は起票拠点（`org_unit`）のローカル日付として解釈する。
+> - 金額列は通貨コード（ISO 4217）とセットで保持する。1 ドキュメント 1 通貨（明細はヘッダ通貨を継承）。
+
 ### Auth
 ```
 Table users {
@@ -8,6 +14,8 @@ Table users {
   username        varchar  // AD[uid]
   display_name    varchar  // AD[lastNamePhonetic], AD[firstNamePhonetic] - AD[lastName] AD[lastName]
   email           varchar  // AD[email]
+  locale          varchar [not null, default: 'ja']   // UI ロケール（ja / en）
+  timezone        varchar                              // IANA tz（null = 主所属拠点の tz）
   is_active       boolean
   last_login_at   timestamp
   created_at      timestamp
@@ -30,7 +38,7 @@ Table roles {
 
 Table user_role_relation {
   user_id         uuid      [not null]
-  role_id         numeric   [not null]
+  role_id         int       [not null, ref: > roles.id]
 
   is_active       boolean
   assigned_at     timestamp
@@ -50,7 +58,7 @@ Table permissions {
 }
 
 Table role_permission_relation {
-  role_id         numeric
+  role_id         int [not null, ref: > roles.id]
   permission_code varchar
   action          ACTION
   scope           SCOPE
@@ -94,6 +102,94 @@ View user_permissions {
 
   indexes {
     (user_id, action, permission_code) [pk]
+  }
+}
+```
+
+### Organization
+```
+// ===========================
+// 組織構造（多拠点・多国対応）
+// RBAC SCOPE（REGION / COUNTRY / FACTORY / DEPARTMENT / TEAM）は
+// この階層 × ユーザー所属（user_org_assignments）で解決する。
+// 業務ドキュメントは org_unit_id（起票拠点 = FACTORY ノード）を必ず保持する。
+// ===========================
+
+Table org_units {
+  id              serial [pk]
+  type            ORG_UNIT_TYPE [not null]
+  parent_id       int [ref: > org_units.id]      // 階層: REGION > COUNTRY > FACTORY > DEPARTMENT > TEAM
+  code            varchar [unique, not null]      // 例: APAC, JP, JP-HQ-FCT1, JP-HQ-FCT1-MFG
+  name            json [not null]                 // { ja: '', en: '' }
+  country_code    varchar(2)                      // ISO 3166-1 alpha-2（COUNTRY 以下で必須）
+  timezone        varchar                         // IANA tz（FACTORY で必須。例: Asia/Tokyo）
+  default_currency varchar(3)                     // ISO 4217（FACTORY で必須。例: JPY）
+  accounting_system varchar                       // FACTORY/COUNTRY の会計アダプタ（例: YAYOI_NEXT）
+  is_active       boolean [not null, default: true]
+  notes           text
+  created_at      timestamp
+  updated_at      timestamp
+}
+
+Enum ORG_UNIT_TYPE {
+  REGION          // 地域（APAC, EMEA, AMER ...）
+  COUNTRY         // 国
+  FACTORY         // 工場・拠点（業務ドキュメントの起票単位）
+  DEPARTMENT      // 部門
+  TEAM            // チーム
+}
+
+// ユーザー所属。主所属はちょうど 1 件（is_primary = true）、兼務は複数可。
+// SCOPE 解決: ユーザーの所属ノードから親を辿り、permission の SCOPE 階層と照合する。
+Table user_org_assignments {
+  id              uuid [pk]
+  user_id         uuid [not null, ref: > users.id]
+  org_unit_id     int [not null, ref: > org_units.id]
+  is_primary      boolean [not null, default: false]
+  assigned_at     timestamp
+  deactivated_at  timestamp
+
+  indexes {
+    (user_id, org_unit_id) [unique]
+  }
+}
+```
+
+### Finance Master
+```
+// ===========================
+// 為替・税率（多通貨・多国対応）
+// ===========================
+
+// 為替レート: 基準通貨（グループ機能通貨 = JPY）に対する各通貨のレート。
+// 請求書発行時にレートをスナップショットし invoices.exchange_rate に保持する。
+Table exchange_rates {
+  id              uuid [pk]
+  base_currency   varchar(3) [not null, default: 'JPY']
+  quote_currency  varchar(3) [not null]
+  rate            numeric(18,8) [not null]    // 1 quote_currency = rate × base_currency
+  valid_from      date [not null]
+  source          varchar                     // MANUAL / 取得元 API 名
+  created_by      uuid [ref: > users.id]
+  created_at      timestamp
+
+  indexes {
+    (base_currency, quote_currency, valid_from) [unique]
+  }
+}
+
+// 税率: 国 × 税区分 × 適用開始日。請求書発行日時点の税率を解決する。
+Table tax_rates {
+  id              serial [pk]
+  country_code    varchar(2) [not null]       // 課税国（原則 = 起票拠点の国）
+  tax_type        TAX_TYPE [not null]
+  rate            numeric(6,4) [not null]     // 0.1000 = 10%
+  valid_from      date [not null]
+  valid_until     date                        // null = 無期限
+  notes           text
+
+  indexes {
+    (country_code, tax_type, valid_from) [unique]
   }
 }
 ```
@@ -188,8 +284,10 @@ Enum ORDER_TYPE {
 Table quotes {
   id              uuid [pk]
   quote_number    varchar [unique, not null]
+  org_unit_id     int [not null, ref: > org_units.id]   // 起票拠点（FACTORY）
   customer_bp_id  uuid [not null, ref: > business_partners.id]
   customer_branch_bp_id uuid [ref: > business_partners.id]
+  currency        varchar(3) [not null, default: 'JPY'] // 1 見積 1 通貨（明細はこれを継承）
   status          QUOTE_STATUS [not null, default: 'DRAFT']
   valid_until     date
   notes           text
@@ -229,11 +327,13 @@ Table quote_items {
 Table order_acceptances {
   id              uuid [pk]
   order_number    varchar [unique, not null]
+  org_unit_id     int [not null, ref: > org_units.id]   // 起票拠点（FACTORY）
   quote_id        uuid [ref: > quotes.id]
   customer_bp_id  uuid [not null, ref: > business_partners.id]
   customer_branch_bp_id uuid [ref: > business_partners.id]
   customer_order_ref varchar               // 顧客注文書番号（FAX受取）
   status          ORDER_ACCEPTANCE_STATUS [not null, default: 'PENDING']
+  currency        varchar(3) [not null, default: 'JPY'] // 見積から継承
   total_amount    numeric(12,2)            // 受注書から自動計算
   order_doc_file_id uuid [ref: > files.id] // 受領した注文書 PDF
   notes           text
@@ -255,11 +355,13 @@ Enum ORDER_ACCEPTANCE_STATUS {
 Table sales_orders {
   id              uuid [pk]
   sales_order_number varchar [unique, not null]
+  org_unit_id     int [not null, ref: > org_units.id]   // 起票拠点（FACTORY）
   order_acceptance_id uuid [not null, ref: > order_acceptances.id]
   product_id      varchar [not null, ref: > products.id]
   lot_number      int [unique]             // 通し連番（指示書と共用）
   order_type      ORDER_TYPE [not null]
   quantity        int [not null]
+  currency        varchar(3) [not null, default: 'JPY'] // 注文受諾書から継承
   unit_price      numeric(12,2) [not null]
   amount          numeric(12,2) [not null]
   delivery_date   date
@@ -288,6 +390,7 @@ Enum SALES_ORDER_STATUS {
 Table work_orders {
   id              uuid [pk]
   work_order_number int [unique, not null]  // 通し連番
+  org_unit_id     int [not null, ref: > org_units.id]   // 製造拠点（FACTORY）
   sales_order_id  uuid [not null, ref: > sales_orders.id]
   type            WORK_ORDER_TYPE [not null]
   planned_quantity int [not null]
@@ -588,22 +691,24 @@ Table defect_records {
 
 Table product_inventory {
   id              uuid [pk]
+  org_unit_id     int [not null, ref: > org_units.id]   // 保管拠点（FACTORY）
   product_id      varchar [not null, ref: > products.id]
   lot_number      int [ref: > work_orders.work_order_number]
   quantity        int [not null, default: 0]
   reserved_quantity int [not null, default: 0]
-  location        varchar
+  location        varchar                                // 拠点内ロケーション
   notes           text
   updated_at      timestamp
 }
 
 Table material_inventory {
   id              uuid [pk]
+  org_unit_id     int [not null, ref: > org_units.id]   // 保管拠点（FACTORY）
   material_id     varchar [not null, ref: > materials.id]
   quantity        numeric(12,3) [not null, default: 0]
   reserved_quantity numeric(12,3) [not null, default: 0]
   unit            varchar [not null]
-  location        varchar
+  location        varchar                                // 拠点内ロケーション
   notes           text
   updated_at      timestamp
 }
@@ -657,6 +762,7 @@ Enum TRANSACTION_TYPE {
 // 素材入荷（購買・外部調達）
 Table material_receipts {
   id              uuid [pk]
+  org_unit_id     int [not null, ref: > org_units.id]   // 受入拠点（FACTORY）
   material_id     varchar [not null, ref: > materials.id]
   supplier_bp_id  uuid [ref: > business_partners.id]
   quantity        numeric(12,3) [not null]
@@ -673,6 +779,7 @@ Table material_receipts {
 
 Table shipping_orders {
   id              uuid [pk]
+  org_unit_id     int [not null, ref: > org_units.id]   // 出荷拠点（FACTORY）
   sales_order_id  uuid [not null, ref: > sales_orders.id]
   work_order_id   uuid [ref: > work_orders.id]
   type            SHIPPING_TYPE [not null]
@@ -709,7 +816,9 @@ Table shipping_order_items {
 Table delivery_notes {
   id              uuid [pk]
   delivery_number varchar [unique, not null]
+  org_unit_id     int [not null, ref: > org_units.id]   // 出荷拠点（FACTORY）
   shipping_order_id uuid [not null, ref: > shipping_orders.id]
+  currency        varchar(3) [not null, default: 'JPY'] // 受注書から継承（明細単価・金額の通貨）
   delivery_method DELIVERY_METHOD [not null]
   recipient_bp_id uuid [not null, ref: > business_partners.id]
   recipient_branch_bp_id uuid [ref: > business_partners.id]
@@ -754,19 +863,24 @@ Table delivery_note_items {
 Table invoices {
   id              uuid [pk]
   invoice_number  varchar [unique, not null]
+  org_unit_id     int [not null, ref: > org_units.id]   // 請求元拠点（FACTORY）
   customer_bp_id  uuid [not null, ref: > business_partners.id]
   customer_branch_bp_id uuid [ref: > business_partners.id]
   billing_period_from date [not null]
   billing_period_to   date [not null]
+  currency        varchar(3) [not null, default: 'JPY'] // 請求通貨（対象受注書と同一であること）
   subtotal        numeric(12,2) [not null]
+  tax_rate        numeric(6,4) [not null]               // 発行時に tax_rates から解決・スナップショット
   tax_amount      numeric(12,2) [not null]
   total_amount    numeric(12,2) [not null]
+  exchange_rate   numeric(18,8)                         // 発行日時点の対 JPY レート（currency = JPY なら 1）
+  base_total_amount numeric(12,2)                       // JPY 換算額（会計連携・連結用）
   status          INVOICE_STATUS [not null, default: 'DRAFT']
   issued_at       timestamp
   due_date        date
   sent_at         timestamp
   pdf_file_id     uuid [ref: > files.id]
-  yayoi_exported_at timestamp
+  accounting_exported_at timestamp                      // 会計アダプタ（JP: 弥生会計 Next）エクスポート済み
   notes           text
   created_by      uuid [ref: > users.id]
   created_at      timestamp
@@ -794,9 +908,11 @@ Table invoice_items {
 
 Table billing_closings {
   id              uuid [pk]
+  org_unit_id     int [not null, ref: > org_units.id]   // 締め処理拠点（FACTORY。締日は拠点 tz 基準）
   customer_bp_id  uuid [not null, ref: > business_partners.id]
   closing_date    date [not null]
   status          CLOSING_STATUS [not null, default: 'PENDING']
+  currency        varchar(3) [not null, default: 'JPY']
   total_amount    numeric(12,2)
   processed_at    timestamp
   processed_by    uuid [ref: > users.id]
@@ -807,7 +923,7 @@ Table billing_closings {
 Enum CLOSING_STATUS {
   PENDING
   PROCESSED
-  EXPORTED        // 弥生会計エクスポート済み
+  EXPORTED        // 会計システムへエクスポート済み（JP 拠点: 弥生会計 Next）
 }
 
 // ===========================
@@ -940,6 +1056,7 @@ Table bp_customer_attrs {
   payment_terms_days  int                               // 支払サイト（日数）
   payment_day         smallint                          // 支払日
   credit_limit        numeric(15,2)
+  currency            varchar(3)      [not null, default: 'JPY']  // 取引通貨（見積・請求のデフォルト）
   tax_type            TAX_TYPE        [default: 'TAXABLE']
   invoice_method      INVOICE_METHOD  [default: 'EMAIL']
   is_consignment      boolean         [default: false]  // 委託先フラグ
@@ -953,6 +1070,7 @@ Table bp_vendor_attrs {
   bp_id                 uuid            [pk, ref: - business_partners.id]
   vendor_code           varchar         [unique]
   vendor_type           VENDOR_TYPE     [not null]
+  currency              varchar(3)      [not null, default: 'JPY']  // 支払通貨
   closing_day           smallint
   payment_terms_days    int
   payment_day           smallint
@@ -1021,6 +1139,11 @@ Table files {
 //   DRN-YYYYMM-NNNNN（納品書）
 //   INV-YYYYMM-NNNNN（請求書）
 //   指示書・ロット番号: 通し連番 (int)
+//
+// 多拠点ポリシー（確定）:
+//   シーケンスは全拠点共通のグローバル採番（単一 DB・SELECT ... FOR UPDATE で行ロック）。
+//   番号から拠点は判別しない — 拠点はドキュメントの org_unit_id で管理する。
+//   YYYYMM は起票拠点タイムゾーンの年月。
 Table numbering_sequences {
   key             varchar [pk]            // QUOTE, ORDER_ACCEPT, DELIVERY, INVOICE
   prefix          varchar [not null]      // QOT, ORD, DRN, INV

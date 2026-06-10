@@ -92,8 +92,15 @@ GUI:            Dockge
 System i18n:    next-intl + JSON files（messages/）
 User Data i18n: DB json field {ja, en}
 
+# Multi-Nation
+Timezone:       DB は timestamptz（UTC）固定。表示変換は @date-fns/tz（TZDate）
+                拠点 tz は org_units.timezone（IANA）、ユーザー tz は users.timezone
+Currency:       ISO 4217。1 ドキュメント 1 通貨。為替は exchange_rates（対 JPY スナップショット）
+Tax:            tax_rates（国 × 税区分 × 適用開始日）
+Org:            org_units（REGION > COUNTRY > FACTORY > DEPARTMENT > TEAM）= RBAC SCOPE 解決基盤
+
 # Other
-Date/Time:      date-fns v4（tree-shakeable）
+Date/Time:      date-fns v4 + @date-fns/tz（tree-shakeable）
 HTTP Client:    Ky
 File Storage:   SeaweedFS（Apache 2.0）
 Doc Intake:     imapflow（IMAP） + BullMQ（ファイル監視）
@@ -105,7 +112,8 @@ Search Engine:  PGroonga
 Docs:           Markdown + Git管理
 
 # Data Integration
-Accounting:     弥生会計 Next（CSV export）
+Accounting:     アダプタ方式（lib/journal.ts 共通仕訳 → 拠点別アダプタ）
+                JP 拠点: 弥生会計 Next（CSV export）/ 他国拠点: 汎用仕訳 CSV
 HR:             Samba AD sync（BullMQ repeatable job）
 ```
 

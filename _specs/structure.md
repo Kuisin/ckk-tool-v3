@@ -151,8 +151,14 @@ src/
 │   │       ├── defect-types/                       # 不良種類
 │   │       │   ├── page.tsx
 │   │       │   └── new/page.tsx
-│   │       └── approval-groups/                    # 承認グループ・代理設定
-│   │           ├── page.tsx
+│   │       ├── approval-groups/                    # 承認グループ・代理設定
+│   │       │   ├── page.tsx
+│   │       │   ├── new/page.tsx
+│   │       │   └── [id]/
+│   │       │       ├── page.tsx
+│   │       │       └── edit/page.tsx
+│   │       └── org-units/                          # 組織（地域・国・拠点・部門・チーム）
+│   │           ├── page.tsx                        # ツリー表示 + 一覧
 │   │           ├── new/page.tsx
 │   │           └── [id]/
 │   │               ├── page.tsx
@@ -170,7 +176,7 @@ src/
 │   │   │   ├── work-orders/[id]/route.ts           # 製造進捗
 │   │   │   └── approvals/route.ts                  # 承認通知
 │   │   └── export/
-│   │       └── yayoi/route.ts                      # 弥生会計 CSV エクスポート
+│   │       └── yayoi/route.ts                      # 会計 CSV エクスポート（拠点アダプタ解決。JP = 弥生会計 Next）
 │   │
 │   ├── (auth)/
 │   │   └── login/page.tsx
@@ -209,8 +215,10 @@ src/
 ├── lib/
 │   ├── db.ts                                       # Prisma client
 │   ├── auth.ts                                     # Auth.js v5 設定
-│   ├── journal.ts                                  # 仕訳エンジン（弥生連携用）
-│   ├── csv-export.ts                               # 弥生会計 Next CSV 生成
+│   ├── journal.ts                                  # 仕訳エンジン（会計アダプタ共通）
+│   ├── csv-export.ts                               # 会計 CSV 生成（JP: 弥生会計 Next / 他国: 汎用仕訳）
+│   ├── org.ts                                      # org_units 階層・RBAC スコープ解決
+│   ├── currency.ts                                 # 通貨・為替レート解決（exchange_rates）・税率解決（tax_rates）
 │   ├── inventory.ts                                # 在庫引当・予約ロジック
 │   ├── pricing.ts                                  # 価格表解決・見積自動生成・値引き計算
 │   ├── numbering.ts                                # 採番ロジック（QOT/ORD/DRN/INV）

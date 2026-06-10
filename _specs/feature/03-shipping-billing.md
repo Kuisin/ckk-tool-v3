@@ -58,16 +58,20 @@
 
 ### 主要機能
 
-- 締日処理: 月次バッチで対象発送レコードを集計
+- 締日処理: 月次バッチで対象発送レコードを集計（顧客の締日 × 拠点タイムゾーン基準）
 - 請求書採番: `INV-YYYYMM-NNNNN`（`lib/numbering.ts`）
 - 請求書 PDF 生成: `app/api/pdf/invoice/route.ts` → Gotenberg
-- 弥生会計 Next CSV エクスポート: `app/api/export/yayoi/route.ts` → `lib/csv-export.ts`
-- 仕訳生成: `lib/journal.ts`（弥生連携用）
+- 税率解決: 発行日時点の `tax_rates`（請求元拠点の国 × 顧客 `tax_type`）を適用し `invoices.tax_rate` にスナップショット
+- 為替スナップショット: 外貨請求時は発行日時点の対 JPY レートを `invoices.exchange_rate` / `base_total_amount` に記録
+- 会計エクスポート（アダプタ方式）: `app/api/export/yayoi/route.ts` → `lib/csv-export.ts`（JP 拠点 = 弥生会計 Next CSV。他国拠点は汎用仕訳 CSV）
+- 仕訳生成: `lib/journal.ts`（アダプタ共通の仕訳エンジン）
 - 請求書ステータス: `DRAFT → ISSUED → SENT → PAID`
 - 締日処理ステータス: `PENDING → PROCESSED → EXPORTED`
 
 ### 業務ルール
 
 - 締日処理トリガ: §8 の発送記録
-- 弥生会計連携: 締日処理完了後に CSV エクスポート
-- エクスポート済みフラグ: `yayoi_exported_at` で管理（二重エクスポート防止）
+- 請求書は顧客 × 通貨ごとに作成（1 請求書 1 通貨。対象受注書の通貨と一致すること）
+- 会計連携: 締日処理完了後に拠点の会計アダプタへエクスポート
+- エクスポート済みフラグ: `accounting_exported_at` で管理（二重エクスポート防止）
+- 外貨請求の為替レート未登録時は発行をブロック（レート登録後に再発行）
