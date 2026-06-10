@@ -49,7 +49,7 @@ export default function SalesOrderEditPage() {
     validate: zodResolver(salesOrderSchema),
     initialValues: {
       orderAcceptanceId: 'oa-001',
-      productId: 'PRD-2601-0001',
+      productId: 'PRD-202601-0001',
       lotNumber: 1042,
       orderType: 'PRODUCTION',
       quantity: 50,

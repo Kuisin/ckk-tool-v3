@@ -40,7 +40,7 @@ export function IssueDeliveryNoteModal({
         </Text>
         <DatePickerInput
           label="納品予定日"
-          placeholder="日付を選択してください"
+          placeholder="日付を選択"
           leftSection={<IconCalendar size={14} />}
           valueFormat="YYYY/MM/DD"
           clearable

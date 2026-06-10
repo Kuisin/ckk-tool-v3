@@ -63,7 +63,7 @@ export function PriceDiffModal({
       ) : (
         <Textarea
           label="差し戻し理由"
-          placeholder="差し戻しの理由を入力してください"
+          placeholder="差し戻しの理由を入力"
           rows={3}
           value={reason}
           onChange={(e) => setReason(e.currentTarget.value)}

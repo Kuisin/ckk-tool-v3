@@ -48,8 +48,8 @@ const MOCK = {
 };
 
 const USED_PRODUCTS: { id: string; name: LocalizedText }[] = [
-  { id: 'PRD-2601-0001', name: { ja: '精密軸', en: 'Precision shaft' } },
-  { id: 'PRD-2603-0012', name: { ja: '特殊加工品', en: 'Custom part' } },
+  { id: 'PRD-202601-0001', name: { ja: '精密軸', en: 'Precision shaft' } },
+  { id: 'PRD-202603-0012', name: { ja: '特殊加工品', en: 'Custom part' } },
 ];
 
 const AUDIT_LOG: AuditEntry[] = [

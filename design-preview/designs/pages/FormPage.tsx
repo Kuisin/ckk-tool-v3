@@ -292,6 +292,7 @@ export default function QuoteNewPage() {
                       <Table.Td>
                         <Select
                           placeholder="製品を選択"
+                          aria-label="製品"
                           data={MOCK_PRODUCTS}
                           searchable
                           withAsterisk
@@ -300,12 +301,14 @@ export default function QuoteNewPage() {
                       </Table.Td>
                       <Table.Td>
                         <Select
+                          aria-label="注文種別"
                           data={ORDER_TYPE_OPTIONS}
                           {...form.getInputProps(`items.${index}.orderType`)}
                         />
                       </Table.Td>
                       <Table.Td>
                         <NumberInput
+                          aria-label="数量"
                           min={1}
                           withAsterisk
                           {...form.getInputProps(`items.${index}.quantity`)}
@@ -313,6 +316,7 @@ export default function QuoteNewPage() {
                       </Table.Td>
                       <Table.Td>
                         <NumberInput
+                          aria-label="単価"
                           prefix="¥"
                           thousandSeparator=","
                           decimalScale={2}
@@ -328,6 +332,7 @@ export default function QuoteNewPage() {
                       <Table.Td>
                         <DatePickerInput
                           placeholder="納期"
+                          aria-label="納期"
                           valueFormat="YYYY/MM/DD"
                           clearable
                           {...form.getInputProps(`items.${index}.deliveryDate`)}

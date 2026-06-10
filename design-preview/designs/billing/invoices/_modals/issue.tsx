@@ -35,7 +35,7 @@ export function IssueInvoiceModal({
         </Text>
         <DatePickerInput
           label="支払期限"
-          placeholder="日付を選択してください"
+          placeholder="日付を選択"
           leftSection={<IconCalendar size={14} />}
           valueFormat="YYYY/MM/DD"
           clearable

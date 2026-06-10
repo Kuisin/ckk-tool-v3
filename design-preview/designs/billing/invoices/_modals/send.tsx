@@ -43,7 +43,7 @@ export function SendInvoiceModal({
         <Text size="sm">請求書「{invoiceNumber}」を送付済にします。</Text>
         <Select
           label="送付方法"
-          placeholder="送付方法を選択してください"
+          placeholder="送付方法を選択"
           data={SEND_METHOD_OPTIONS}
           withAsterisk
           value={method}

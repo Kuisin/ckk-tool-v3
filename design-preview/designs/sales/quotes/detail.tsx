@@ -30,8 +30,8 @@ const MOCK = {
 };
 
 const MOCK_ITEMS = [
-  { id: '1', productName: '精密軸 PRD-2601-0001', orderType: 'PRODUCTION', quantity: 50, unitPrice: 5000, discountAmount: 10000, amount: 240000, deliveryDate: '2026-07-10' },
-  { id: '2', productName: 'ロッド PRD-2602-0008', orderType: 'TEST', quantity: 5, unitPrice: 6200, discountAmount: 0, amount: 31000, deliveryDate: null },
+  { id: '1', productName: '精密軸 PRD-202601-0001', orderType: 'PRODUCTION', quantity: 50, unitPrice: 5000, discountAmount: 10000, amount: 240000, deliveryDate: '2026-07-10' },
+  { id: '2', productName: 'ロッド PRD-202602-0008', orderType: 'TEST', quantity: 5, unitPrice: 6200, discountAmount: 0, amount: 31000, deliveryDate: null },
 ];
 
 const MOCK_AUDIT: AuditEntry[] = [

@@ -66,22 +66,22 @@ const MOCK_WORK_ORDER = {
   customerName: '株式会社ABC',
   productName: '精密軸 PRD-202601-0001',
   createdBy: '鈴木 一郎',
-  createdAt: '2026-05-20 09:15',
-  updatedAt: '2026-05-28 14:30',
+  createdAt: '2026/05/20 09:15',
+  updatedAt: '2026/05/28 14:30',
 };
 
 const MOCK_STEPS = [
-  { id: 's1', name: '材料準備', status: 'COMPLETED' as StepStatus, location: 'INTERNAL', completedAt: '2026-05-21 10:00', completedBy: '田中' },
-  { id: 's2', name: '円筒加工', status: 'COMPLETED' as StepStatus, location: 'INTERNAL', completedAt: '2026-05-24 16:00', completedBy: '中村' },
-  { id: 's3', name: 'センタレス研磨', status: 'IN_PROGRESS' as StepStatus, location: 'OUTSOURCE', supplier: '外注研磨（株）', startedAt: '2026-05-25', expectedAt: '2026-06-02' },
+  { id: 's1', name: '材料準備', status: 'COMPLETED' as StepStatus, location: 'INTERNAL', completedAt: '2026/05/21 10:00', completedBy: '田中' },
+  { id: 's2', name: '円筒加工', status: 'COMPLETED' as StepStatus, location: 'INTERNAL', completedAt: '2026/05/24 16:00', completedBy: '中村' },
+  { id: 's3', name: 'センタレス研磨', status: 'IN_PROGRESS' as StepStatus, location: 'OUTSOURCE', supplier: '外注研磨（株）', startedAt: '2026/05/25', expectedAt: '2026/06/02' },
   { id: 's4', name: '検査', status: 'PENDING' as StepStatus, location: 'INTERNAL' },
   { id: 's5', name: '検査承認', status: 'PENDING' as StepStatus, location: 'INTERNAL' },
 ];
 
 const MOCK_AUDIT_LOG = [
-  { id: 1, action: 'UPDATE', user: '鈴木', at: '2026-05-28 14:30', detail: 'ステータス: IN_PROGRESS' },
-  { id: 2, action: 'UPDATE', user: '山田', at: '2026-05-22 09:00', detail: '第一承認: 承認' },
-  { id: 3, action: 'CREATE', user: '鈴木', at: '2026-05-20 09:15', detail: '指示書を作成' },
+  { id: 1, action: 'UPDATE', user: '鈴木', at: '2026/05/28 14:30', detail: 'ステータス: IN_PROGRESS' },
+  { id: 2, action: 'UPDATE', user: '山田', at: '2026/05/22 09:00', detail: '第一承認: 承認' },
+  { id: 3, action: 'CREATE', user: '鈴木', at: '2026/05/20 09:15', detail: '指示書を作成' },
 ];
 
 // ── Step status icon ─────────────────────────────────────────────────────────
@@ -129,9 +129,9 @@ export default function WorkOrderDetailPage() {
 
         {/* Action buttons — collapsed into Menu on mobile */}
         {isMobile ? (
-          <Menu shadow="sm" position="bottom-end">
+          <Menu shadow="sm" position="bottom-end" withinPortal>
             <Menu.Target>
-              <Button variant="default" px="xs" size="sm">
+              <Button variant="default" px="xs" size="sm" aria-label="その他の操作">
                 <IconDotsVertical size={16} />
               </Button>
             </Menu.Target>
@@ -147,9 +147,9 @@ export default function WorkOrderDetailPage() {
           <Group gap="xs" style={{ flexShrink: 0 }}>
             <Button variant="default" leftSection={<IconEdit size={14} />}>編集</Button>
             <Button variant="default" leftSection={<IconFileTypePdf size={14} />}>PDF</Button>
-            <Menu shadow="sm">
+            <Menu shadow="sm" withinPortal>
               <Menu.Target>
-                <Button variant="default" px="xs">
+                <Button variant="default" px="xs" aria-label="その他の操作">
                   <IconDotsVertical size={16} />
                 </Button>
               </Menu.Target>

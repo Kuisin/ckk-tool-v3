@@ -49,7 +49,7 @@ export default function ProductEditPage() {
   const form = useForm<FormValues>({
     validate: zodResolver(productSchema),
     initialValues: {
-      code: 'PRD-2601-0001',
+      code: 'PRD-202601-0001',
       nameJa: '精密軸',
       nameEn: 'Precision shaft',
       materialId: 'A01A0001-A001-001',

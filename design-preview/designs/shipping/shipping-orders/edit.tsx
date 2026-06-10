@@ -71,7 +71,7 @@ export default function ShippingOrderEditPage() {
       type: 'DISPATCH',
       shippedAt: null,
       notes: '客先指定の梱包仕様にて出荷',
-      items: [{ productId: 'PRD-2601-0001', lotNumber: 1042, quantity: 50, notes: '' }],
+      items: [{ productId: 'PRD-202601-0001', lotNumber: 1042, quantity: 50, notes: '' }],
     },
   });
 

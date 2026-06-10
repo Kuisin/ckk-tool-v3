@@ -43,7 +43,7 @@ import { ToggleProductActiveModal } from './_modals/toggle-active';
 
 // ── Mock data ───────────────────────────────────────────────────────────────
 const MOCK = {
-  id: 'PRD-2601-0001',
+  id: 'PRD-202601-0001',
   name: { ja: '精密軸', en: 'Precision shaft' } as LocalizedText,
   materialId: 'A01A0001-A001-001',
   materialName: 'SUS303 φ20×3000',

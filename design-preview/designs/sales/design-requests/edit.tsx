@@ -51,7 +51,7 @@ export default function DesignRequestEditPage() {
       trigger: 'QUOTE',
       quoteId: 'q1',
       salesOrderId: null,
-      productId: 'PRD-2601-0001',
+      productId: 'PRD-202601-0001',
       description: '先端形状をφ12に変更。図面差し替え。',
     },
   });
@@ -112,7 +112,7 @@ export default function DesignRequestEditPage() {
             )}
           </FileButton>
           <Text size="sm" c={designFile ? undefined : 'dimmed'}>
-            {designFile ? designFile.name : 'design-PRD-2601-0001-v2.pdf（最新）'}
+            {designFile ? designFile.name : 'design-PRD-202601-0001-v2.pdf（最新）'}
           </Text>
         </Group>
         <Text size="xs" c="dimmed" mt="xs">

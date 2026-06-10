@@ -138,6 +138,7 @@ export function AppLauncher({ onNavigate }: AppLauncherProps) {
           onClick={onNavigate}
           className={classes.homeLink}
           px="xs"
+          aria-label="ホームへ移動"
         >
           <IconHome size={24} stroke={1.5} />
         </UnstyledButton>

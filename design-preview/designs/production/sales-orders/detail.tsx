@@ -49,7 +49,7 @@ const SO = {
   isLocked: true, // 承認依頼中のロック
   customerName: '株式会社ABC製作所',
   branchName: '東京本社',
-  productName: '精密軸 PRD-2601-0001',
+  productName: '精密軸 PRD-202601-0001',
   lotNumber: 1042,
   orderType: 'PRODUCTION',
   quantity: 50,

@@ -36,7 +36,7 @@ export default function PriceListEditPage() {
     validate: zodResolver(priceListSchema),
     initialValues: {
       customerId: 'bp-001',
-      productId: 'PRD-2601-0001',
+      productId: 'PRD-202601-0001',
       orderType: 'PRODUCTION',
       minQuantity: 1,
       maxQuantity: 99,

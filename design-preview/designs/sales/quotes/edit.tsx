@@ -69,8 +69,8 @@ export default function QuoteEditPage() {
       validUntil: new Date('2026-07-15'),
       notes: '納期厳守でお願いします。',
       items: [
-        { productId: 'PRD-2601-0001', orderType: 'PRODUCTION', quantity: 50, unitPrice: 5000, discountAmount: 10000, deliveryDate: new Date('2026-07-10'), notes: '' },
-        { productId: 'PRD-2602-0008', orderType: 'TEST', quantity: 5, unitPrice: 6200, discountAmount: 0, deliveryDate: null, notes: '' },
+        { productId: 'PRD-202601-0001', orderType: 'PRODUCTION', quantity: 50, unitPrice: 5000, discountAmount: 10000, deliveryDate: new Date('2026-07-10'), notes: '' },
+        { productId: 'PRD-202602-0008', orderType: 'TEST', quantity: 5, unitPrice: 6200, discountAmount: 0, deliveryDate: null, notes: '' },
       ],
     },
   });

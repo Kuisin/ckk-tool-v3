@@ -14,9 +14,9 @@ import { SUPPLIERS } from '../../lib/mock';
 import { useIsMobile } from '../../lib/viewport-context';
 
 const WORK_ORDERS = [
-  { value: 'wo-1042', label: '指示書 #1042 — 精密軸 PRD-2601-0001' },
-  { value: 'wo-1051', label: '指示書 #1051 — 特殊加工品 PRD-2603-0012' },
-  { value: 'wo-1029', label: '指示書 #1029 — ロッド PRD-2602-0008' },
+  { value: 'wo-1042', label: '指示書 #1042 — 精密軸 PRD-202601-0001' },
+  { value: 'wo-1051', label: '指示書 #1051 — 特殊加工品 PRD-202603-0012' },
+  { value: 'wo-1029', label: '指示書 #1029 — ロッド PRD-202602-0008' },
 ];
 
 const OUTSOURCE_STEPS = [

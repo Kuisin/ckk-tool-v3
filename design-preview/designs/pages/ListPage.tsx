@@ -92,6 +92,10 @@ function StatusBadge({ status }: { status: SalesOrderStatus }) {
   return <Badge color={config.color}>{config.label}</Badge>;
 }
 
+function formatDate(iso: string) {
+  return iso.replace(/-/g, '/');
+}
+
 function MoneyText({ value }: { value: number }) {
   return (
     <Text size="sm" ta="right">
@@ -119,7 +123,7 @@ function DesktopTable({ records }: { records: SalesOrderRow[] }) {
 
   return (
     <Stack gap={0}>
-      <Group px="sm" py="xs" style={{ borderBottom: '1px solid var(--mantine-color-gray-3)' }}>
+      <Group px="sm" py="xs" style={{ borderBottom: '1px solid var(--mantine-color-default-border)' }}>
         <Text size="xs" c="dimmed" w={170}>受注番号</Text>
         <Text size="xs" c="dimmed" style={{ flex: 1 }}>顧客</Text>
         <Text size="xs" c="dimmed" style={{ flex: 2 }}>製品</Text>
@@ -133,14 +137,14 @@ function DesktopTable({ records }: { records: SalesOrderRow[] }) {
           key={r.id}
           px="sm"
           py="xs"
-          style={{ borderBottom: '1px solid var(--mantine-color-gray-2)' }}
+          style={{ borderBottom: '1px solid var(--mantine-color-default-border)' }}
         >
           <Text size="sm" ff="mono" w={170}>{r.salesOrderNumber}</Text>
           <Text size="sm" style={{ flex: 1 }}>{r.customerName}</Text>
           <Text size="sm" style={{ flex: 2 }}>{r.productName}</Text>
           <Text size="sm" w={60} ta="right">{r.quantity}</Text>
           <Box w={100}><MoneyText value={r.amount} /></Box>
-          <Text size="sm" w={90}>{r.deliveryDate}</Text>
+          <Text size="sm" w={90}>{formatDate(r.deliveryDate)}</Text>
           <Box w={80}><StatusBadge status={r.status} /></Box>
         </Group>
       ))}
@@ -193,7 +197,7 @@ function MobileCardList({ records }: { records: SalesOrderRow[] }) {
             {/* Right side: status + date */}
             <Stack gap={4} align="flex-end" style={{ flexShrink: 0 }}>
               <StatusBadge status={r.status} />
-              <Text size="xs" c="dimmed">{r.deliveryDate}</Text>
+              <Text size="xs" c="dimmed">{formatDate(r.deliveryDate)}</Text>
             </Stack>
           </Group>
         </Paper>
@@ -262,6 +266,7 @@ export default function SalesOrdersListPage() {
                 ]}
                 value={statusFilter}
                 onChange={setStatusFilter}
+                searchable
                 clearable
                 style={{ flex: 1 }}
               />
@@ -295,6 +300,7 @@ export default function SalesOrdersListPage() {
               ]}
               value={statusFilter}
               onChange={setStatusFilter}
+              searchable
               clearable
               w={160}
             />

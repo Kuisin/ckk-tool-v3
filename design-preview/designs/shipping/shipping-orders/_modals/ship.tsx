@@ -39,7 +39,7 @@ export function ShipShippingOrderModal({
         </Text>
         <DatePickerInput
           label="出荷日"
-          placeholder="日付を選択してください"
+          placeholder="日付を選択"
           leftSection={<IconCalendar size={14} />}
           valueFormat="YYYY/MM/DD"
           withAsterisk

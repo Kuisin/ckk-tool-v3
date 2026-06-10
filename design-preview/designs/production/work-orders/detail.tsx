@@ -51,7 +51,7 @@ const WO = {
   material: 'A01A0001-A001-001（SUS303 φ20×3000・研磨）',
   salesOrderNumber: 'ORD-202601-00001-01',
   customerName: '株式会社ABC製作所',
-  productName: '精密軸 PRD-2601-0001',
+  productName: '精密軸 PRD-202601-0001',
   createdBy: '鈴木 一郎',
   createdAt: '2026-05-20 09:15',
   updatedAt: '2026-05-28 14:30',
@@ -198,7 +198,6 @@ export default function WorkOrderDetailPage() {
                   <Badge variant="outline" size="xs" color={step.location === 'OUTSOURCE' ? 'orange' : 'gray'}>
                     {step.location === 'OUTSOURCE' ? '外注' : '社内'}
                   </Badge>
-                  <StatusBadge entity="Step" status={step.status} size="xs" variant="light" />
                 </Group>
                 <Group gap="sm" wrap="nowrap" style={{ flexShrink: 0 }}>
                   {!isMobile && step.location === 'OUTSOURCE' && step.supplier && (

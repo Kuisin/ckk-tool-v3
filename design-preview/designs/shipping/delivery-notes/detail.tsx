@@ -38,8 +38,8 @@ const METHOD_LABEL: Record<string, string> = {
 };
 
 const ITEMS = [
-  { id: '1', productName: '精密軸 PRD-2601-0001', quantity: 50, unitPrice: 5000, amount: 250000 },
-  { id: '2', productName: '精密軸 PRD-2601-0001', quantity: 20, unitPrice: 5000, amount: 100000 },
+  { id: '1', productName: '精密軸 PRD-202601-0001', quantity: 50, unitPrice: 5000, amount: 250000 },
+  { id: '2', productName: '精密軸 PRD-202601-0001', quantity: 20, unitPrice: 5000, amount: 100000 },
 ];
 
 const totalAmount = ITEMS.reduce((s, it) => s + it.amount, 0);

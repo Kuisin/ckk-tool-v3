@@ -52,9 +52,9 @@ type QuoteFormValues = z.infer<typeof quoteSchema>;
 
 // Auto-fill hint: nominal price-list unit price per product (editable override).
 const PRICE_HINT: Record<string, number> = {
-  'PRD-2601-0001': 5000,
-  'PRD-2602-0008': 6200,
-  'PRD-2603-0012': 9500,
+  'PRD-202601-0001': 5000,
+  'PRD-202602-0008': 6200,
+  'PRD-202603-0012': 9500,
 };
 
 const EMPTY_ITEM = { productId: '', orderType: 'PRODUCTION' as const, quantity: 1, unitPrice: 0, discountAmount: 0, deliveryDate: null, notes: '' };

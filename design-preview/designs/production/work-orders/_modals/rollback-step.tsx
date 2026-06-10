@@ -52,7 +52,7 @@ export function RollbackStepModal({
       <Alert color="red" variant="light" icon={<IconAlertTriangle size={16} />}>
         この工程を未着手に戻します。入力済みの検査記録は破棄されます。この操作は取り消せません。
       </Alert>
-      <Textarea label="巻き戻し理由" placeholder="理由を入力してください" rows={3} withAsterisk {...form.getInputProps('reason')} />
+      <Textarea label="巻き戻し理由" placeholder="理由を入力" rows={3} withAsterisk {...form.getInputProps('reason')} />
     </FormModal>
   );
 }

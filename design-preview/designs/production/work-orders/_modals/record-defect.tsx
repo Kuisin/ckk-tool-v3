@@ -52,7 +52,7 @@ export function RecordDefectModal({
       size="md"
     >
       <Select label="不良種類" placeholder="不良種類を選択" data={DEFECT_TYPES} searchable withAsterisk {...form.getInputProps('defectTypeId')} />
-      <Textarea label="詳細" placeholder="不良の詳細を入力してください" rows={4} withAsterisk {...form.getInputProps('description')} />
+      <Textarea label="詳細" placeholder="不良の詳細を入力" rows={4} withAsterisk {...form.getInputProps('description')} />
     </FormModal>
   );
 }

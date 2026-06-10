@@ -37,8 +37,8 @@ const TYPE_LABEL: Record<string, string> = {
 };
 
 const ITEMS = [
-  { id: '1', productName: '精密軸 PRD-2601-0001', lotNumber: 1042, quantity: 50, notes: '—' },
-  { id: '2', productName: '精密軸 PRD-2601-0001', lotNumber: 1045, quantity: 20, notes: '予備' },
+  { id: '1', productName: '精密軸 PRD-202601-0001', lotNumber: 1042, quantity: 50, notes: '—' },
+  { id: '2', productName: '精密軸 PRD-202601-0001', lotNumber: 1045, quantity: 20, notes: '予備' },
 ];
 
 const RELATED = {

@@ -82,6 +82,7 @@ export function ConfirmModal({
   confirmColor = 'red',
   loading,
   warning,
+  onConfirm,
 }: ModalBaseProps & {
   title: ReactNode;
   message: ReactNode;
@@ -89,13 +90,18 @@ export function ConfirmModal({
   confirmColor?: string;
   loading?: boolean;
   warning?: ReactNode;
+  /** Action to run on confirm. The modal closes afterwards (preview default: close only). */
+  onConfirm?: () => void;
 }) {
   return (
     <ModalShell
       opened={opened}
       onClose={onClose}
       title={title}
-      onConfirm={onClose}
+      onConfirm={() => {
+        onConfirm?.();
+        onClose();
+      }}
       confirmLabel={confirmLabel}
       confirmColor={confirmColor}
       cancelLabel="戻る"
