@@ -13,30 +13,30 @@ import App from './App';
 
 // Inject Noto Sans JP using a base-URL-aware path so it works on GitHub Pages.
 // Use STATIC faces (not the variable TTF, whose wght axis defaults to 100 and renders
-// heavy/uneven in Chromium). Three faces keep weights legible:
-//   400 → Regular   (body)
-//   500–600 → Medium  (field values, titles, card headings — the bulk of "semibold" UI;
-//                      mapped to Medium so they read thinner instead of slamming to Bold)
-//   700 → Bold       (reserved for true emphasis: totals, strong labels)
+// heavy/uneven in Chromium). Every CSS weight is mapped ONE STEP LIGHTER than its name so
+// the whole app reads thinner (thinner stroke = less visual width):
+//   CSS 400 (body)        → Light  (300)
+//   CSS 500–600 (semibold)→ Regular(400)
+//   CSS 700 (bold)        → Medium (500)
 // font-smoothing keeps text crisp on macOS.
 const _fontBase = `${import.meta.env.BASE_URL}design-assets/fonts`;
 const _fontStyle = document.createElement('style');
 _fontStyle.textContent = `
   @font-face {
     font-family: 'Noto Sans JP';
-    src: url('${_fontBase}/NotoSansJP-Regular.ttf') format('truetype');
+    src: url('${_fontBase}/NotoSansJP-Light.ttf') format('truetype');
     font-weight: 400;
     font-display: swap;
   }
   @font-face {
     font-family: 'Noto Sans JP';
-    src: url('${_fontBase}/NotoSansJP-Medium.ttf') format('truetype');
+    src: url('${_fontBase}/NotoSansJP-Regular.ttf') format('truetype');
     font-weight: 500 600;
     font-display: swap;
   }
   @font-face {
     font-family: 'Noto Sans JP';
-    src: url('${_fontBase}/NotoSansJP-Bold.ttf') format('truetype');
+    src: url('${_fontBase}/NotoSansJP-Medium.ttf') format('truetype');
     font-weight: 700;
     font-display: swap;
   }
