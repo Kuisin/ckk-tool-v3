@@ -34,7 +34,13 @@ src/
 │   │   │           └── edit/page.tsx
 │   │   │
 │   │   ├── purchase/                               # 購買（素材仕入・外注管理）
-│   │   │   ├── material-receipts/                  # 素材入荷・受入
+│   │   │   ├── purchase-orders/                    # 素材発注書（承認フロー：依頼→承認→発注→入荷）
+│   │   │   │   ├── page.tsx
+│   │   │   │   ├── new/page.tsx
+│   │   │   │   └── [id]/
+│   │   │   │       ├── page.tsx                    # 詳細（承認状況・明細・入荷状況）
+│   │   │   │       └── edit/page.tsx
+│   │   │   ├── material-receipts/                  # 素材入荷・受入（発注 or 直接調達）
 │   │   │   │   ├── page.tsx
 │   │   │   │   ├── new/page.tsx
 │   │   │   │   └── [id]/page.tsx
@@ -56,11 +62,11 @@ src/
 │   │   │   │   ├── page.tsx
 │   │   │   │   ├── new/page.tsx
 │   │   │   │   └── [id]/
-│   │   │   │       ├── page.tsx                    # 詳細（工程ワークフロー表示）
+│   │   │   │       ├── page.tsx                    # 詳細（工程ワークフロー DAG・分岐合流表示）
 │   │   │   │       ├── edit/page.tsx
 │   │   │   │       └── steps/
 │   │   │   │           └── [stepId]/
-│   │   │   │               └── page.tsx            # 工程実行画面（現場操作）
+│   │   │   │               └── page.tsx            # 工程実行画面（現場操作・数量/不良入力）
 │   │   │   ├── approvals/                          # 承認管理（§6）
 │   │   │   │   ├── page.tsx                        # 承認待ち一覧
 │   │   │   │   └── [id]/page.tsx
@@ -95,6 +101,12 @@ src/
 │   │   │       └── [id]/page.tsx
 │   │   │
 │   │   └── master/                                 # マスタ管理
+│   │       ├── factories/                          # 工場（製造・在庫・出荷の拠点）
+│   │       │   ├── page.tsx
+│   │       │   ├── new/page.tsx
+│   │       │   └── [id]/
+│   │       │       ├── page.tsx
+│   │       │       └── edit/page.tsx
 │   │       ├── customers/                          # 顧客（企業 2階層）
 │   │       │   ├── page.tsx
 │   │       │   ├── new/page.tsx
@@ -162,6 +174,7 @@ src/
 │   │   ├── pdf/                                    # Gotenberg PDF生成
 │   │   │   ├── quote/route.ts                      # 見積書
 │   │   │   ├── sales-order/route.ts                # 受注書
+│   │   │   ├── purchase-order/route.ts             # 素材発注書
 │   │   │   ├── work-order/route.ts                 # 指示書
 │   │   │   ├── shipping-order/route.ts             # 出荷書
 │   │   │   ├── delivery-note/route.ts              # 納品書
@@ -196,14 +209,21 @@ src/
 │   │   └── OrderAcceptanceForm.tsx
 │   ├── production/
 │   │   ├── WorkOrderStepsPanel.tsx
-│   │   ├── StepCard.tsx
+│   │   ├── WorkflowGraph.tsx                       # 工程 DAG（分岐・合流）表示
+│   │   ├── StepCard.tsx                            # 工程カード（数量・不良内訳バッジ含む）
+│   │   ├── StepQuantityForm.tsx                    # 受入/良品/不良(半製品・廃棄・手直し)入力
 │   │   ├── ApprovalStatusPanel.tsx
 │   │   ├── InspectionRecordForm.tsx
 │   │   ├── DefectRecordForm.tsx
 │   │   ├── InventoryBadge.tsx
 │   │   └── AuditTimeline.tsx
+│   ├── purchase/
+│   │   ├── PurchaseOrderForm.tsx                   # 素材発注書フォーム（@mantine/form）
+│   │   ├── PurchaseOrderItemsTable.tsx             # 発注明細（素材×工場×数量×単価）
+│   │   └── PurchaseApprovalPanel.tsx               # 承認状況・承認/差し戻し操作
 │   └── master/
 │       ├── CustomerSelect.tsx
+│       ├── FactorySelect.tsx                       # 工場選択
 │       └── [entity]Table.tsx                       # per master entity
 │
 ├── lib/
@@ -213,8 +233,9 @@ src/
 │   ├── csv-export.ts                               # 弥生会計 Next CSV 生成
 │   ├── inventory.ts                                # 在庫引当・予約ロジック
 │   ├── pricing.ts                                  # 価格表解決・見積自動生成・値引き計算
-│   ├── numbering.ts                                # 採番ロジック（QOT/ORD/DRN/INV）
-│   ├── workflow.ts                                 # 製造ワークフロー依存解決・実行可否判定
+│   ├── numbering.ts                                # 採番ロジック（QOT/ORD/DRN/INV/PO）
+│   ├── purchasing.ts                               # 素材発注 承認フロー・在庫予約連携
+│   ├── workflow.ts                                 # 製造ワークフロー依存解決・実行可否・DAG分岐合流/数量伝播
 │   └── notifications.ts                            # 通知（SSE / メール / Nextcloud）
 │
 └── types/

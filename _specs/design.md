@@ -275,6 +275,7 @@ Operation codes provide keyboard-shortcut navigation. Format: `{CAT}{MODE}{IDX}`
 | 販売 | 4 | 設計依頼書 | SA04 | SA14 | SA24 |
 | 購買 | 1 | 素材入荷 | PU01 | PU11 | PU21 |
 | 購買 | 2 | 外注依頼 | PU02 | PU12 | PU22 |
+| 購買 | 3 | 素材発注書 | PU03 | PU13 | PU23 |
 | 生産 | 1 | 受注書 | PD01 | PD11 | PD21 |
 | 生産 | 2 | 指示書 | PD02 | PD12 | PD22 |
 | 生産 | 3 | 承認管理 | PD03 | PD13 | PD23 |
@@ -294,6 +295,7 @@ Operation codes provide keyboard-shortcut navigation. Format: `{CAT}{MODE}{IDX}`
 | マスタ | 8 | 検査表テンプレート | MS08 | MS18 | MS28 |
 | マスタ | 9 | 不良種類 | MS09 | MS19 | MS29 |
 | マスタ | A | 承認グループ | MS0A | MS1A | MS2A |
+| マスタ | B | 工場 | MS0B | MS1B | MS2B |
 
 `OperationCodeJump` component (`src/components/layout/OperationCodeJump.tsx`) renders as a compact TextInput in the header center. Pressing Enter or clicking a result navigates to that screen.
 
@@ -349,6 +351,7 @@ Stack (gap="xl", p="md", maw={1200})
 | 設計依頼書 | `IconRuler2` |
 | 素材入荷 | `IconPackageImport` |
 | 外注依頼 | `IconTruckDelivery` |
+| 素材発注書 | `IconShoppingCart` |
 | 受注書 | `IconClipboardList` |
 | 指示書 | `IconSettings2` |
 | 承認管理 | `IconShieldCheck` |
@@ -368,6 +371,7 @@ Stack (gap="xl", p="md", maw={1200})
 | 検査表テンプレート | `IconListCheck` |
 | 不良種類 | `IconAlertTriangle` |
 | 承認グループ | `IconUsersGroup` |
+| 工場 | `IconBuildingWarehouse` |
 
 ---
 
@@ -554,6 +558,12 @@ Stack (gap="md")
 | Invoice | ISSUED | blue | 発行済 |
 | Invoice | SENT | violet | 送付済 |
 | Invoice | PAID | green | 支払済 |
+| MaterialPurchaseOrder | DRAFT | gray | 下書き |
+| MaterialPurchaseOrder | REQUESTED | yellow | 承認依頼中 |
+| MaterialPurchaseOrder | APPROVED | blue | 承認済 |
+| MaterialPurchaseOrder | ORDERED | violet | 発注済 |
+| MaterialPurchaseOrder | COMPLETED | green | 入荷完了 |
+| MaterialPurchaseOrder | CANCELLED | red | キャンセル |
 | InspectionRecord | PENDING | gray | 未実施 |
 | InspectionRecord | PASS | green | 合格 |
 | InspectionRecord | FAIL | red | 不合格 |
@@ -714,6 +724,9 @@ Paper (withBorder, p="md", radius="md")
 ├── Group justify="space-between" mb="sm"
 │   ├── Title order={5} "工程ワークフロー"
 │   └── [desktop, if APPROVED or IN_PROGRESS] Button variant="subtle" size="xs" "変更承認依頼"
+├── [if has step links (分岐/合流)] WorkflowGraph — DAG view of steps + routed quantities
+│   `src/components/production/WorkflowGraph.tsx` — nodes = work_order_steps,
+│   edges = work_order_step_links (source→target, routed_quantity label)
 ├── Stack gap="xs"
 │   └── [per work_order_step] StepCard (see below)
 └── [mobile] Button variant="subtle" size="xs" fullWidth mt="sm" "変更承認依頼"
@@ -738,9 +751,18 @@ Paper (withBorder, p="sm", radius="sm")
 ├── [if OUTSOURCE] Group gap="xl" mt="xs" pl={28}
 │   ├── Text size="xs" c="dimmed" "依頼: {outsource_requested_at}"
 │   └── Text size="xs" c="dimmed" "入荷予定: {outsource_expected_at}"
-└── [if COMPLETED] Group gap="xl" mt="xs" pl={28}
-    └── Text size="xs" c="dimmed" "完了: {completed_at}（{completed_by}）"
+├── [if COMPLETED] Group gap="xl" mt="xs" pl={28}
+│   └── Text size="xs" c="dimmed" "完了: {completed_at}（{completed_by}）"
+└── [if has quantities] Group gap="sm" mt="xs" pl={28} wrap="wrap"
+    ├── Text size="xs" — "受入 {input_quantity}"
+    ├── Text size="xs" c="green" — "良品 {output_success_quantity}"
+    ├── [if output_defect_semi_finished] Badge size="xs" color="orange" variant="light" — "半製品 {n}"
+    ├── [if output_defect_scrap]         Badge size="xs" color="red"    variant="light" — "廃棄 {n}"
+    └── [if output_defect_rework]        Badge size="xs" color="yellow" variant="light" — "手直し {n}"
 ```
+
+When the step is a split/merge node, `WorkOrderStepsPanel` renders `WorkflowGraph` (see §12.2)
+above the card list to show the branch/merge edges (`work_order_step_links`) and routed quantities.
 
 ### 12.3 WorkOrderStepExecutionPage
 
@@ -757,6 +779,7 @@ Stack (gap="md", p="md")
 │   │   └── StatusBadge (step status)
 │   └── [if session_locked_by != current user] Alert color="red" fullWidth
 │       "別のユーザーがセッション中です"
+├── [if IN_PROGRESS] StepQuantityForm (see below)
 ├── [if IN_PROGRESS] InspectionRecordForm (see 12.5)
 ├── DefectRecordForm (see 12.6)
 └── Group (justify="center", mt="xl")
@@ -764,6 +787,21 @@ Stack (gap="md", p="md")
     ├── [if IN_PROGRESS] Button size="lg" color="green" — 工程完了
     └── [if IN_PROGRESS] Button size="lg" color="red" variant="outline"
         "キャンセル（巻き戻し）" → ConfirmModal
+```
+
+**StepQuantityForm** (`src/components/production/StepQuantityForm.tsx`) — tablet-first, `size="lg"`.
+Records item flow & defect disposition for the step; persisted to `work_order_steps`.
+
+```
+Paper (withBorder, p="lg")
+├── Title order={4} "数量・不良"
+├── NumberInput "受入数 (input_quantity)" — 既定: 前工程の output_success_quantity
+├── NumberInput "良品数 (output_success_quantity)" — 次工程へ渡る
+└── Group grow — 不良内訳
+    ├── NumberInput "半製品 (output_defect_semi_finished)"  // 在庫へ
+    ├── NumberInput "廃棄 (output_defect_scrap)"
+    └── NumberInput "手直し (output_defect_rework)"          // 分岐で追加工程へ
+// バリデーション: output_success + 不良合計 = input_quantity（不一致時はインライン警告）
 ```
 
 ### 12.4 ApprovalStatusPanel
@@ -891,6 +929,13 @@ Items sub-table has inline add/edit (no separate page).
 
 **Detail tabs**: グループ情報 / メンバー / 代理設定
 
+### 13.6 Factories (工場)
+
+**List columns**: コード / 名称（ja） / 国 / 状態 / 更新日
+
+**Detail**: summary grid (連絡先・住所); related tabs for 在庫サマリ（工場別）/ 実行中工程.
+Category color `gray` (マスタ), icon `IconBuildingWarehouse`.
+
 ---
 
 ## 14. DataTable Column Conventions
@@ -924,13 +969,15 @@ Row click navigates to detail page.
 | Invoice | 請求番号 / 顧客 / 請求期間 / 合計金額 / 状態 / 発行日 |
 | BillingClosing | 顧客 / 締日 / 合計金額 / 状態 / 処理日 |
 | DesignRequest | 依頼番号 / トリガー / 製品 / 状態 / 更新日 |
-| MaterialReceipt | 素材 / 仕入先 / 数量 / 入荷日 |
+| MaterialPurchaseOrder | 発注番号 / 仕入先 / 入荷先工場 / 合計金額 / 状態 / 発注日 |
+| MaterialReceipt | 素材 / 仕入先 / 入荷工場 / 数量 / 入荷日 |
 | OutsourceOrder | 外注先 / 工程 / 依頼日 / 入荷予定日 / 入荷日 / 状態 |
 | Customer | BPコード / 名称 / 支店数 / 状態 / 更新日 |
 | EndUser | BPコード / 名称 / 業種 / 状態 |
+| Factory | コード / 名称 / 国 / 状態 / 更新日 |
 | Product | 製品コード / 名称 / 素材 / 単位 / 状態 |
-| MaterialType | 材種コード / 名称 / 状態 |
-| Material | 素材コード / 材種 / 名称 / 形態 / 単位 / 状態 |
+| MaterialType | 材種コード / メーカー / 形状 / 名称 / 状態 |
+| Material | 素材コード / 材種 / 直径 / 全長 / 黒皮研磨 / 状態 |
 | Supplier | BPコード / 名称 / 外注種別 / 標準リードタイム / 状態 |
 | ProcessStep | コード / 名称 / カテゴリ / 実施場所 / 同期可 / 検査 / 承認 |
 | InspectionTemplate | コード / 名称 / 関連工程 / 状態 |
