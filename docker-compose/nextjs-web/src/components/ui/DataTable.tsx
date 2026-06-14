@@ -292,13 +292,24 @@ export function DataTable<T>({
                 {i > 0 && <Divider />}
                 <Group align="flex-start" gap="sm" py="sm" wrap="nowrap">
                   {selectable && (
-                    <Checkbox
-                      aria-label="行を選択"
-                      checked={selected.has(id)}
-                      mt={2}
-                      onChange={() => toggleOne(id)}
-                      size="xs"
-                    />
+                    // Centered within one title line so it sits inline with the
+                    // first line (e.g. the company name), not the row top.
+                    <Box
+                      onClick={(e) => e.stopPropagation()}
+                      style={{
+                        alignItems: "center",
+                        display: "flex",
+                        fontSize: "var(--mantine-font-size-sm)",
+                        height: "calc(var(--mantine-font-size-sm) * 1.55)",
+                      }}
+                    >
+                      <Checkbox
+                        aria-label="行を選択"
+                        checked={selected.has(id)}
+                        onChange={() => toggleOne(id)}
+                        size="xs"
+                      />
+                    </Box>
                   )}
                   <Box
                     className={
