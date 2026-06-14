@@ -36,7 +36,7 @@ import {
   ORDER_TYPE_OPTIONS,
   PRODUCTS,
 } from "@/lib/mock";
-import { getPriceEntry } from "./mock";
+import { getPriceEntry, requiresEndDate } from "./mock";
 
 const tierSchema = z.object({
   minQuantity: z.number().int().min(1, "1以上"),
@@ -44,16 +44,26 @@ const tierSchema = z.object({
   unitPrice: z.number().min(0),
 });
 
-const schema = z.object({
-  customerId: z.string().min(1, "顧客を選択してください"),
-  productId: z.string().min(1, "製品を選択してください"),
-  orderType: z.enum(["PRODUCTION", "TEST", "SAMPLE", "OTHER"]),
-  currency: z.string().min(1),
-  validFrom: z.string().min(1, "有効開始日を選択してください"),
-  validUntil: z.string().nullable(),
-  isActive: z.boolean(),
-  tiers: z.array(tierSchema).min(1, "段階を1件以上追加してください"),
-});
+const schema = z
+  .object({
+    customerId: z.string().min(1, "顧客を選択してください"),
+    productId: z.string().min(1, "製品を選択してください"),
+    orderType: z.enum(["PRODUCTION", "TEST", "SAMPLE", "OTHER"]),
+    currency: z.string().min(1),
+    validFrom: z.string().min(1, "有効開始日を選択してください"),
+    validUntil: z.string().nullable(),
+    isActive: z.boolean(),
+    tiers: z.array(tierSchema).min(1, "段階を1件以上追加してください"),
+  })
+  .superRefine((val, ctx) => {
+    if (requiresEndDate(val.orderType) && !val.validUntil) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["validUntil"],
+        message: "テスト・サンプルは有効終了日が必須です",
+      });
+    }
+  });
 
 type TypeFormValues = z.infer<typeof schema>;
 type TierForm = TypeFormValues["tiers"][number];
@@ -235,11 +245,21 @@ export function PriceListTypeForm({
             {...form.getInputProps("validFrom")}
           />
           <DatePickerInput
-            clearable
+            clearable={!requiresEndDate(form.values.orderType)}
+            description={
+              requiresEndDate(form.values.orderType)
+                ? "テスト・サンプルは終了日が必須"
+                : undefined
+            }
             label="有効終了日"
             leftSection={<IconCalendar size={14} />}
-            placeholder="空欄で無期限"
+            placeholder={
+              requiresEndDate(form.values.orderType)
+                ? "日付を選択"
+                : "空欄で無期限"
+            }
             valueFormat="YYYY/MM/DD"
+            withAsterisk={requiresEndDate(form.values.orderType)}
             {...form.getInputProps("validUntil")}
           />
           <Switch

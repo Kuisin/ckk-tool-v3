@@ -20,7 +20,7 @@ import {
   ORDER_TYPE_OPTIONS,
   PRODUCTS,
 } from "@/lib/mock";
-import type { PriceListEntry } from "./mock";
+import { type PriceListEntry, requiresEndDate } from "./mock";
 
 export function CopyPriceListModal({
   opened,
@@ -57,9 +57,15 @@ export function CopyPriceListModal({
       onClose={handleClose}
       onSubmit={(e) => {
         e.preventDefault();
-        if (!(customerId && productId && orderType && validFrom)) {
+        const needsEnd = !!orderType && requiresEndDate(orderType);
+        if (
+          !(customerId && productId && orderType && validFrom) ||
+          (needsEnd && !validUntil)
+        ) {
           setError(
-            "コピー先の顧客・製品・注文種別・有効開始日を入力してください",
+            needsEnd
+              ? "コピー先の顧客・製品・注文種別・有効期間（開始・終了）を入力してください"
+              : "コピー先の顧客・製品・注文種別・有効開始日を入力してください",
           );
           return;
         }
@@ -124,13 +130,28 @@ export function CopyPriceListModal({
         withAsterisk
       />
       <DatePickerInput
-        clearable
+        clearable={!(orderType && requiresEndDate(orderType))}
+        description={
+          orderType && requiresEndDate(orderType)
+            ? "テスト・サンプルは終了日が必須"
+            : undefined
+        }
+        error={
+          error && orderType && requiresEndDate(orderType) && !validUntil
+            ? "有効終了日を選択してください"
+            : undefined
+        }
         label="有効終了日"
         leftSection={<IconCalendar size={14} />}
         onChange={setValidUntil}
-        placeholder="空欄で無期限"
+        placeholder={
+          orderType && requiresEndDate(orderType)
+            ? "日付を選択"
+            : "空欄で無期限"
+        }
         value={validUntil}
         valueFormat="YYYY/MM/DD"
+        withAsterisk={!!orderType && requiresEndDate(orderType)}
       />
     </FormModal>
   );

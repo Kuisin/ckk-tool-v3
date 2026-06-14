@@ -17,7 +17,12 @@ import { FieldValue } from "@/components/ui/FieldValue";
 import { MoneyText } from "@/components/ui/MoneyText";
 import { FormModal, type ModalBaseProps } from "@/components/ui/modals";
 import { ORDER_TYPE_LABEL } from "@/lib/mock";
-import { type PriceListEntry, quantityRange, validPeriod } from "./mock";
+import {
+  type PriceListEntry,
+  quantityRange,
+  requiresEndDate,
+  validPeriod,
+} from "./mock";
 
 export function DuplicatePriceListModal({
   opened,
@@ -49,8 +54,13 @@ export function DuplicatePriceListModal({
       onClose={handleClose}
       onSubmit={(e) => {
         e.preventDefault();
+        const needsEnd = !!source && requiresEndDate(source.orderType);
         if (!validFrom) {
           setError("有効開始日を選択してください");
+          return;
+        }
+        if (needsEnd && !validUntil) {
+          setError("テスト・サンプルは有効終了日が必須です");
           return;
         }
         // TODO(server-action): clone source (identity + tiers + currency) into a
@@ -118,13 +128,28 @@ export function DuplicatePriceListModal({
         withAsterisk
       />
       <DatePickerInput
-        clearable
+        clearable={!(source && requiresEndDate(source.orderType))}
+        description={
+          source && requiresEndDate(source.orderType)
+            ? "テスト・サンプルは終了日が必須"
+            : undefined
+        }
+        error={
+          error && source && requiresEndDate(source.orderType) && !validUntil
+            ? "有効終了日を選択してください"
+            : undefined
+        }
         label="新しい有効終了日"
         leftSection={<IconCalendar size={14} />}
         onChange={setValidUntil}
-        placeholder="空欄で無期限"
+        placeholder={
+          source && requiresEndDate(source.orderType)
+            ? "日付を選択"
+            : "空欄で無期限"
+        }
         value={validUntil}
         valueFormat="YYYY/MM/DD"
+        withAsterisk={!!source && requiresEndDate(source.orderType)}
       />
     </FormModal>
   );

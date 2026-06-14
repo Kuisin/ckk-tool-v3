@@ -39,6 +39,16 @@ export interface PriceListEntry {
   updatedAt: string;
 }
 
+/**
+ * 注文種別 that must have a 有効終了日 (no 無期限) — テスト・サンプルは一時価格な
+ * ので終了日を必須にする。本番・その他は無期限可。
+ */
+export const END_DATE_REQUIRED_TYPES = ["TEST", "SAMPLE"];
+
+export function requiresEndDate(orderType: string): boolean {
+  return END_DATE_REQUIRED_TYPES.includes(orderType);
+}
+
 /** URL-safe entry key — `{customerId}__{productId}__{orderType}`. */
 export function entryKey(
   customerId: string,
@@ -77,7 +87,7 @@ export const MOCK_PRICE_ENTRIES: PriceListEntry[] = [
     orderType: "SAMPLE",
     currency: "JPY",
     validFrom: "2026-01-01",
-    validUntil: null,
+    validUntil: "2026-12-31",
     isActive: true,
     tiers: [{ id: "ti-3", minQuantity: 1, maxQuantity: null, unitPrice: 0 }],
     createdBy: "鈴木 一郎",
@@ -109,7 +119,7 @@ export const MOCK_PRICE_ENTRIES: PriceListEntry[] = [
     orderType: "TEST",
     currency: "JPY",
     validFrom: "2026-05-01",
-    validUntil: null,
+    validUntil: "2026-07-31",
     isActive: false,
     tiers: [{ id: "ti-5", minQuantity: 1, maxQuantity: 10, unitPrice: 9500 }],
     createdBy: "中村 花子",
