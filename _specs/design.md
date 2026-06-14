@@ -390,7 +390,7 @@ Stack (gap="md")
 │   │   ├── [desktop only] Breadcrumbs
 │   │   │   └── Text size="sm" per segment
 │   │   └── Title order={isMobile ? 3 : 2}
-│   └── Button leftSection=<IconPlus> size={isMobile ? "sm" : "md"}
+│   └── Button leftSection=<IconPlus> size="sm"
 │       text: isMobile ? "新規" : "新規作成"
 ├── Paper (shadow="xs", p="sm")
 │   ├── [mobile filter bar] Stack gap="xs" mb="sm"
@@ -889,7 +889,7 @@ Group align="flex-end"
 ├── Select (product_id, searchable)
 ├── Select (order_type)
 ├── NumberInput (quantity)
-├── NumberInput (unit_price) — auto-filled from price_lists, editable override
+├── NumberInput (unit_price) — auto-filled from price_list_tiers (resolved by 顧客×製品×注文種別×数量), editable override
 └── Text ff="mono" — computed amount (= quantity × unit_price)
 ```
 
