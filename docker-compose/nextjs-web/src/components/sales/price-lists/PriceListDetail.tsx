@@ -9,7 +9,7 @@
  * a server fetch.
  */
 
-import { Badge, Button, Group, Table, Tabs, Tooltip } from "@mantine/core";
+import { Badge, Group, Table, Tabs, Tooltip } from "@mantine/core";
 import {
   IconCopy,
   IconCopyPlus,
@@ -19,6 +19,7 @@ import {
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { ActiveBadge } from "@/components/ui/ActiveBadge";
+import { SecondaryButton } from "@/components/ui/buttons";
 import { FieldValue } from "@/components/ui/FieldValue";
 import { MoneyText } from "@/components/ui/MoneyText";
 import {
@@ -149,18 +150,16 @@ export function PriceListDetail({ id }: { id: string }) {
             ) : (
               <span />
             )}
-            <Button
+            <SecondaryButton
               leftSection={<IconPlus size={16} />}
               onClick={() =>
                 router.push(
                   `${BASE_PATH}/new?customer=${entry.customerId}&product=${entry.productId}`,
                 )
               }
-              size="sm"
-              variant="default"
             >
               注文種別を追加
-            </Button>
+            </SecondaryButton>
           </Group>
 
           <Table.ScrollContainer minWidth={360}>

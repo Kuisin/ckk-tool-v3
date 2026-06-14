@@ -696,6 +696,41 @@ new Intl.NumberFormat('ja-JP', { style: 'currency', currency: currency ?? 'JPY' 
 
 **Button loading state** — always use `loading={isPending}` from `useTransition`. Never disable the button without loading state; users need feedback.
 
+### 11.1 Button components (global design system)
+
+Never use a raw Mantine `<Button>` in feature code. Use the named components in
+`src/components/ui/buttons.tsx`, which encode the variants above so every button
+stays consistent. Size is `sm` everywhere (theme default) — do not pass `size`.
+
+**Role buttons** — semantic wrappers over the §11 variants:
+
+| Component | Variant | Use |
+|-----------|---------|-----|
+| `PrimaryButton` | `filled` | primary CTA |
+| `SecondaryButton` | `default` | secondary action |
+| `GhostButton` | `subtle` | tertiary / ghost (e.g. リセット) |
+| `DangerButton` | `filled` red | destructive CTA |
+
+**Action buttons** — recurring actions with label + icon + role baked in (label
+overridable via children):
+
+| Component | Built on | Default label / icon |
+|-----------|----------|----------------------|
+| `SaveButton` | Primary | 保存 / `IconDeviceFloppy` (`type="submit"`) |
+| `CancelButton` | Secondary | キャンセル |
+| `CreateButton` | Primary | 新規作成 / `IconPlus` |
+| `EditButton` | Secondary | 編集 / `IconEdit` |
+| `CopyButton` | Secondary | 複製 / `IconCopy` |
+| `DeleteButton` | Danger | 削除 / `IconTrash` |
+| `ApproveButton` | Primary green | 承認 / `IconCheck` |
+| `RejectButton` | `outline` red | 差し戻し / `IconArrowBackUp` |
+| `PdfButton` (`PdfButton.tsx`) | Secondary | PDF / `IconFileTypePdf` (external link) |
+
+All accept any Mantine Button prop (`loading`, `disabled`, `fullWidth`, `onClick`,
+`leftSection` override …) plus `href` (renders a Next.js `<Link>`) and `external`
+(new-tab `<a>`). The shared shells (`shells.tsx`, `modals.tsx`) and `NewButton`
+are built on these, so most screens get the design for free.
+
 **Form field error state** — errors appear below the input as `Text size="xs" c="red"`. Mantine `@mantine/form` with `zodResolver` handles this automatically.
 
 ---

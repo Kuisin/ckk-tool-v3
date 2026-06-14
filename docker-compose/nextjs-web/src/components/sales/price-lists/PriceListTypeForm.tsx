@@ -13,7 +13,6 @@
 
 import {
   ActionIcon,
-  Button,
   NumberInput,
   Select,
   SimpleGrid,
@@ -27,6 +26,7 @@ import { IconCalendar, IconPlus, IconTrash } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
 import { useTransition } from "react";
 import { z } from "zod";
+import { GhostButton } from "@/components/ui/buttons";
 import { FieldValue } from "@/components/ui/FieldValue";
 import { FormSection, FormShell } from "@/components/ui/shells";
 import { zodResolver } from "@/lib/form";
@@ -303,15 +303,14 @@ export function PriceListTypeForm({
             ))}
           </Table.Tbody>
         </Table>
-        <Button
+        <GhostButton
           leftSection={<IconPlus size={16} />}
           mt="sm"
           onClick={() => form.insertListItem("tiers", emptyTier())}
           size="xs"
-          variant="subtle"
         >
           段階を追加
-        </Button>
+        </GhostButton>
       </FormSection>
     </FormShell>
   );
