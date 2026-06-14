@@ -381,7 +381,7 @@ All pages live inside `src/app/(dashboard)/`. Each page uses server components b
 
 ### 8.1 List Page
 
-Used for every index route (`page.tsx`). Responsive: filter bar stacks on mobile, rows become cards on mobile.
+Used for every index route (`page.tsx`). Responsive: filter bar stacks on mobile; on mobile the table becomes a divider-separated row list (no per-row cards).
 
 ```
 Stack (gap="md")
@@ -402,7 +402,8 @@ Stack (gap="md")
 │   │   ├── TextInput (flex=1, search)
 │   │   ├── Select[] (w={160}, clearable)
 │   │   └── Button variant="subtle" — リセット
-│   ├── [mobile] MobileCardList — Stack gap="xs" of Paper cards
+│   ├── [mobile] DataTable row list — Stack gap={0}, rows split by <Divider>
+│   │       each row: Group [Checkbox (left of title, when selectable)] + content
 │   └── [desktop] DataTable (mantine-datatable) or DesktopTable
 │       columns: defined per section in §14
 │       totalRecords / page / onPageChange (URL search params)
@@ -412,20 +413,25 @@ Stack (gap="md")
     └── Button variant="subtle" size="sm"
 ```
 
-**Mobile card pattern** — each record renders as:
+**Mobile row pattern** — rows are divider-separated (no card chrome). When
+selectable, the checkbox sits to the left of the row title. Each record renders as:
 ```
-Paper (p="sm", withBorder, radius="sm", cursor="pointer")
-└── Group (justify="space-between", wrap="nowrap", align="flex-start")
-    ├── Stack gap={3} style={{ minWidth: 0 }}
-    │   ├── Text size="xs" ff="mono" c="dimmed" — document number
-    │   ├── Text size="sm" fw={600} truncate — primary field (customer, etc.)
-    │   ├── Text size="xs" c="dimmed" truncate — secondary field
-    │   └── Group gap="md" mt={2}
-    │       ├── Text size="xs" c="dimmed" — quantity
-    │       └── Text size="xs" fw={500} — amount
-    └── Stack gap={4} align="flex-end" flexShrink=0
-        ├── StatusBadge
-        └── Text size="xs" c="dimmed" — date
+Box
+├── [if not first] Divider
+└── Group (gap="sm", py="sm", wrap="nowrap", align="flex-start")
+    ├── [selectable] Checkbox size="xs" mt={2}   ← left of the title
+    └── Box (flex-1, min-w-0, cursor="pointer")
+        └── Group (justify="space-between", wrap="nowrap", align="flex-start")
+            ├── Stack gap={3} style={{ minWidth: 0 }}
+            │   ├── Text size="xs" ff="mono" c="dimmed" — document number
+            │   ├── Text size="sm" fw={600} truncate — primary field (customer, etc.)
+            │   ├── Text size="xs" c="dimmed" truncate — secondary field
+            │   └── Group gap="md" mt={2}
+            │       ├── Text size="xs" c="dimmed" — quantity
+            │       └── Text size="xs" fw={500} — amount
+            └── Stack gap={4} align="flex-end" flexShrink=0
+                ├── StatusBadge
+                └── Text size="xs" c="dimmed" — date
 ```
 
 Pagination and filters use URL search params — `'use client'` wrapper component holding filter bar + table/card-list.

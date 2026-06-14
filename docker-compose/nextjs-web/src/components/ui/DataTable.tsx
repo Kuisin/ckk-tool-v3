@@ -20,10 +20,10 @@ import {
   Box,
   Center,
   Checkbox,
+  Divider,
   Group,
   Menu,
   Pagination,
-  Paper,
   ScrollArea,
   Select,
   Stack,
@@ -279,40 +279,46 @@ export function DataTable<T>({
     </Group>
   );
 
-  // ── Mobile card list ────────────────────────────────────────────────────────
+  // ── Mobile list (divider-separated rows, no per-row card) ───────────────────
   if (isMobile) {
     return (
       <Stack gap="xs">
         {toolbar}
-        {pageRows.map((row) => {
-          const id = getRowId(row);
-          return (
-            <Box key={id} pos="relative">
-              {selectable && (
-                <Checkbox
-                  aria-label="行を選択"
-                  checked={selected.has(id)}
-                  className="z-[2]"
-                  onChange={() => toggleOne(id)}
-                  pos="absolute"
-                  right={10}
-                  size="xs"
-                  top={10}
-                />
-              )}
-              <Box
-                className={onRowClick ? "cursor-pointer" : undefined}
-                onClick={() => onRowClick?.(row)}
-              >
-                {renderCard ? (
-                  renderCard(row)
-                ) : (
-                  <DefaultCard columns={visibleColumns} row={row} />
-                )}
+        <Stack gap={0}>
+          {pageRows.map((row, i) => {
+            const id = getRowId(row);
+            return (
+              <Box key={id}>
+                {i > 0 && <Divider />}
+                <Group align="flex-start" gap="sm" py="sm" wrap="nowrap">
+                  {selectable && (
+                    <Checkbox
+                      aria-label="行を選択"
+                      checked={selected.has(id)}
+                      mt={2}
+                      onChange={() => toggleOne(id)}
+                      size="xs"
+                    />
+                  )}
+                  <Box
+                    className={
+                      onRowClick
+                        ? "min-w-0 flex-1 cursor-pointer"
+                        : "min-w-0 flex-1"
+                    }
+                    onClick={() => onRowClick?.(row)}
+                  >
+                    {renderCard ? (
+                      renderCard(row)
+                    ) : (
+                      <DefaultCard columns={visibleColumns} row={row} />
+                    )}
+                  </Box>
+                </Group>
               </Box>
-            </Box>
-          );
-        })}
+            );
+          })}
+        </Stack>
         <PaginationBar
           count={pageRows.length}
           isMobile
@@ -539,28 +545,26 @@ function PaginationBar({
   );
 }
 
-// ── Generic fallback mobile card ───────────────────────────────────────────────
+// ── Generic fallback mobile row (no card chrome; rows are divider-separated) ────
 function DefaultCard<T>({ columns, row }: { columns: Column<T>[]; row: T }) {
   const [first, ...rest] = columns;
   return (
-    <Paper p="sm" radius="sm" withBorder>
-      <Stack gap={4}>
-        {first && (
-          <Text fw={600} size="sm">
-            {first.render(row)}
-          </Text>
-        )}
-        <Group gap="md" wrap="wrap">
-          {rest.slice(0, 4).map((c) => (
-            <Group gap={4} key={c.key}>
-              <Text c="dimmed" size="xs">
-                {c.header}:
-              </Text>
-              <Text size="xs">{c.render(row)}</Text>
-            </Group>
-          ))}
-        </Group>
-      </Stack>
-    </Paper>
+    <Stack gap={4}>
+      {first && (
+        <Text fw={600} size="sm">
+          {first.render(row)}
+        </Text>
+      )}
+      <Group gap="md" wrap="wrap">
+        {rest.slice(0, 4).map((c) => (
+          <Group gap={4} key={c.key}>
+            <Text c="dimmed" size="xs">
+              {c.header}:
+            </Text>
+            <Text size="xs">{c.render(row)}</Text>
+          </Group>
+        ))}
+      </Group>
+    </Stack>
   );
 }

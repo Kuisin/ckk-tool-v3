@@ -8,15 +8,7 @@
  * server data + URL-param filters later.
  */
 
-import {
-  Badge,
-  Group,
-  Paper,
-  Select,
-  Stack,
-  Text,
-  TextInput,
-} from "@mantine/core";
+import { Badge, Group, Select, Stack, Text, TextInput } from "@mantine/core";
 import {
   IconCopy,
   IconCopyPlus,
@@ -225,32 +217,30 @@ export function PriceListTable() {
         renderCard={(e) => {
           const s = entrySummary(e);
           return (
-            <Paper p="sm" radius="sm" withBorder>
-              <Group align="flex-start" justify="space-between" wrap="nowrap">
-                <Stack className="min-w-0" gap={3}>
-                  <Text fw={600} size="sm" truncate>
-                    {e.customerName}
+            <Group align="flex-start" justify="space-between" wrap="nowrap">
+              <Stack className="min-w-0" gap={3}>
+                <Text fw={600} size="sm" truncate>
+                  {e.customerName}
+                </Text>
+                <Text c="dimmed" size="xs" truncate>
+                  {e.productName}
+                </Text>
+                <Group gap="xs">
+                  <Badge color="gray" size="xs" variant="light">
+                    {ORDER_TYPE_LABEL[e.orderType]}
+                  </Badge>
+                  <Text c="dimmed" size="xs">
+                    {s.tierCount}段階
                   </Text>
-                  <Text c="dimmed" size="xs" truncate>
-                    {e.productName}
-                  </Text>
-                  <Group gap="xs">
-                    <Badge color="gray" size="xs" variant="light">
-                      {ORDER_TYPE_LABEL[e.orderType]}
-                    </Badge>
-                    <Text c="dimmed" size="xs">
-                      {s.tierCount}段階
-                    </Text>
-                  </Group>
-                </Stack>
-                <Stack align="flex-end" className="shrink-0" gap={4}>
-                  <Text className="tabular-nums" ff="mono" size="sm">
-                    {priceRangeLabel(s.minPrice, s.maxPrice)}
-                  </Text>
-                  <ActiveBadge active={e.isActive} />
-                </Stack>
-              </Group>
-            </Paper>
+                </Group>
+              </Stack>
+              <Stack align="flex-end" className="shrink-0" gap={4}>
+                <Text className="tabular-nums" ff="mono" size="sm">
+                  {priceRangeLabel(s.minPrice, s.maxPrice)}
+                </Text>
+                <ActiveBadge active={e.isActive} />
+              </Stack>
+            </Group>
           );
         }}
         rowActions={(e) => [
