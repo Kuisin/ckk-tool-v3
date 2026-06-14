@@ -193,6 +193,11 @@ body {
     margin-top: auto;
   }
 
+  /* Breathing room between an input's description and the input box. */
+  .mantine-InputWrapper-description {
+    margin-bottom: 6px;
+  }
+
   /* Compact audit history timeline — tighter row spacing than Mantine default. */
   .audit-timeline-item:not(:first-of-type) {
     margin-top: 20px;
