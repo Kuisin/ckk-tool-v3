@@ -127,13 +127,9 @@ export function calcTrialPricing(input: TrialInput): TrialResult {
     material = (input.cylinderMaterialPrice ?? 0) + cyl * cylRate;
     if (cyl === 0) warnings.push("円筒加工費が範囲外です（最大径/全長を確認）");
   } else {
-    // 丸棒/OH: 100mm単価 ÷ 100mmから採れる本数 (+ センタレス if 黒皮)
-    const piecesPerBasis = Math.max(
-      1,
-      Math.floor(MATERIAL_BASIS_LENGTH_MM / (len + 1)),
-    );
+    // 丸棒/OH: 材料原価 = 参照単価(¥/100mm) × (全長 ÷ 100mm) (+ センタレス if 黒皮)
     const perPieceMaterial = roundUp(
-      input.materialBarPrice / piecesPerBasis,
+      input.materialBarPrice * (len / MATERIAL_BASIS_LENGTH_MM),
       0,
     );
     let centerless = 0;
