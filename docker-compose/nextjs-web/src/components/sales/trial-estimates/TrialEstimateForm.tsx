@@ -336,7 +336,19 @@ export function TrialEstimateForm() {
                           ? "カスタム単価"
                           : `参照: ${basisLabel}（直近${settings.materialPriceLookbackMonths}ヶ月）`
                     }
-                    label="参照単価（¥/100mm）"
+                    label={
+                      <Group gap={6} wrap="nowrap">
+                        <span>参照単価（¥/100mm）</span>
+                        <Badge
+                          color={overridden ? "orange" : "blue"}
+                          variant="light"
+                        >
+                          {overridden
+                            ? "カスタム"
+                            : `参照価格 ${referenceDate ? formatDate(referenceDate) : "—"}`}
+                        </Badge>
+                      </Group>
+                    }
                     min={0}
                     onChange={(v) => {
                       setReferencePrice(num(v));
@@ -350,12 +362,13 @@ export function TrialEstimateForm() {
                 )}
               </SimpleGrid>
               {!isCylinder && (
-                <Group gap="sm" mt="xs">
-                  <Badge color={overridden ? "orange" : "blue"} variant="light">
-                    {overridden
-                      ? "カスタム"
-                      : `参照価格 ${referenceDate ? formatDate(referenceDate) : "—"}`}
-                  </Badge>
+                <Group gap="sm" mt="xs" wrap="nowrap" justify="space-between">
+                  <Switch
+                    checked={isBlackSkin}
+                    label="黒皮材（センタレス加算）"
+                    onChange={(e) => setIsBlackSkin(e.currentTarget.checked)}
+                    size="sm"
+                  />
                   {customMode ? (
                     <Text
                       c="dimmed"
@@ -370,12 +383,6 @@ export function TrialEstimateForm() {
                       単価を編集
                     </EditButton>
                   )}
-                  <Switch
-                    checked={isBlackSkin}
-                    label="黒皮材（センタレス加算）"
-                    onChange={(e) => setIsBlackSkin(e.currentTarget.checked)}
-                    size="sm"
-                  />
                 </Group>
               )}
               {isCylinder && (
