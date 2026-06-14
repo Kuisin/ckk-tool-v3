@@ -6,8 +6,13 @@
  */
 
 import { Badge, Group, Paper, Stack, Table, Tabs, Text } from "@mantine/core";
-import { IconCalculator, IconChartLine } from "@tabler/icons-react";
+import {
+  IconCalculator,
+  IconChartLine,
+  IconCurrencyYen,
+} from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
+import { useState } from "react";
 import { FieldValue } from "@/components/ui/FieldValue";
 import { MoneyText } from "@/components/ui/MoneyText";
 import {
@@ -18,6 +23,7 @@ import {
 import { formatDateTime } from "@/lib/format";
 import { getPriceHistory } from "@/lib/material-pricing";
 import { calcTrialPricing, TOOL_TYPE_OPTIONS } from "@/lib/trial-pricing";
+import { ConvertToPriceListModal } from "./ConvertToPriceListModal";
 import { MaterialPriceChart } from "./MaterialPriceChart";
 import { getTrialEstimate, MOCK_TRIAL_ESTIMATES } from "./mock";
 
@@ -41,12 +47,18 @@ export function TrialEstimateDetail({ id }: { id: string }) {
   const record = getTrialEstimate(id) ?? MOCK_TRIAL_ESTIMATES[0];
   const result = calcTrialPricing(record.input);
   const history = getPriceHistory(record.materialId);
+  const [convertOpen, setConvertOpen] = useState(false);
 
   return (
     <DetailShell
       actions={
         <ResourceActions
           menuItems={[
+            {
+              label: "価格表へ変換",
+              icon: <IconCurrencyYen size={14} />,
+              onClick: () => setConvertOpen(true),
+            },
             {
               label: "複製して新規",
               onClick: () => router.push(`${BASE_PATH}/new`),
@@ -161,6 +173,12 @@ export function TrialEstimateDetail({ id }: { id: string }) {
           </Paper>
         </Tabs.Panel>
       </Tabs>
+
+      <ConvertToPriceListModal
+        estimate={record}
+        onClose={() => setConvertOpen(false)}
+        opened={convertOpen}
+      />
     </DetailShell>
   );
 }

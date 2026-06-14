@@ -13,6 +13,7 @@
 
 import {
   ActionIcon,
+  Alert,
   NumberInput,
   Select,
   SimpleGrid,
@@ -22,7 +23,12 @@ import {
 import { DatePickerInput } from "@mantine/dates";
 import { useForm } from "@mantine/form";
 import { notifications } from "@mantine/notifications";
-import { IconCalendar, IconPlus, IconTrash } from "@tabler/icons-react";
+import {
+  IconAlertTriangle,
+  IconCalendar,
+  IconPlus,
+  IconTrash,
+} from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
 import { useTransition } from "react";
 import { z } from "zod";
@@ -36,7 +42,11 @@ import {
   ORDER_TYPE_OPTIONS,
   PRODUCTS,
 } from "@/lib/mock";
-import { getPriceEntry, requiresEndDate } from "./mock";
+import {
+  findEntriesByCustomerProduct,
+  getPriceEntry,
+  requiresEndDate,
+} from "./mock";
 
 const tierSchema = z.object({
   minQuantity: z.number().int().min(1, "1以上"),
@@ -232,6 +242,29 @@ export function PriceListTypeForm({
             />
           )}
         </SimpleGrid>
+        {(() => {
+          const existing = findEntriesByCustomerProduct(
+            form.values.customerId,
+            form.values.productId,
+          );
+          if (existing.length === 0) return null;
+          const dup = existing.some(
+            (e) => e.orderType === form.values.orderType,
+          );
+          return (
+            <Alert
+              color={dup ? "red" : "orange"}
+              icon={<IconAlertTriangle size={16} />}
+              mt="sm"
+              variant="light"
+            >
+              同一顧客・製品の価格表が既に {existing.length} 件あります（
+              {existing.map((e) => ORDER_TYPE_LABEL[e.orderType]).join("・")}
+              ）。
+              {dup && " 選択中の注文種別は既に存在します。"}
+            </Alert>
+          );
+        })()}
       </FormSection>
 
       <FormSection title="有効期間">

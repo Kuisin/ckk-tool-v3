@@ -150,6 +150,18 @@ export function siblingOrderTypes(
     .map((e) => e.orderType);
 }
 
+/** Existing price-list entries for a (顧客, 製品) — used to warn on duplicates. */
+export function findEntriesByCustomerProduct(
+  customerId: string | null | undefined,
+  productId: string | null | undefined,
+  entries = MOCK_PRICE_ENTRIES,
+): PriceListEntry[] {
+  if (!(customerId && productId)) return [];
+  return entries.filter(
+    (e) => e.customerId === customerId && e.productId === productId,
+  );
+}
+
 /** List-row / summary aggregates derived from an entry's tiers. */
 export interface EntrySummary {
   tierCount: number;

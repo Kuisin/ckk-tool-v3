@@ -664,12 +664,18 @@ function ResultsPanel({
                           hideControls
                           min={0}
                           onChange={(v) => onMarkupChange(l.lotIndex, v)}
-                          placeholder={`自動 ${l.autoRate}`}
+                          placeholder={`${l.autoRate}`}
                           size="xs"
                           step={0.01}
-                          styles={{ input: { textAlign: "right" } }}
+                          styles={{
+                            input: {
+                              textAlign: "right",
+                              maxWidth: "92px",
+                              marginLeft: "auto",
+                            },
+                          }}
                           value={markups[l.lotIndex] ?? ""}
-                          w={92}
+                          w="full"
                         />
                       </Table.Td>
                       <Table.Td ta="right">
