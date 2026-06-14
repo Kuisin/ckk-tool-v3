@@ -13,7 +13,7 @@
 export interface MaterialPricePoint {
   /** ISO date of the purchase (PO ordered/received). */
   date: string;
-  /** 仕入単価 (¥ / m, 1m基準) — material_purchase_order_items.unit_price. */
+  /** 仕入単価 (¥ / 100mm, 100mm基準) — material_purchase_order_items.unit_price. */
   unitPrice: number;
   supplier: string;
   /** 発注番号 (reference). */

@@ -42,7 +42,21 @@ export function TrialEstimateTable() {
   });
 
   const columns: Column<TrialEstimateRecord>[] = [
-    { key: "name", header: "名称", sortable: true, render: (r) => r.name },
+    {
+      key: "name",
+      header: "名称",
+      sortable: true,
+      render: (r) => (
+        <Group gap="xs" wrap="nowrap">
+          <Text size="sm">{r.name}</Text>
+          {r.isCustomPrice && (
+            <Badge color="orange" size="xs" variant="light">
+              カスタム
+            </Badge>
+          )}
+        </Group>
+      ),
+    },
     {
       key: "customer",
       header: "顧客",
@@ -140,9 +154,16 @@ export function TrialEstimateTable() {
               <Text c="dimmed" size="xs" truncate>
                 {r.customerName ?? "—"}
               </Text>
-              <Badge color="gray" size="xs" variant="light">
-                {toolLabel(r.input.toolType)}
-              </Badge>
+              <Group gap="xs">
+                <Badge color="gray" size="xs" variant="light">
+                  {toolLabel(r.input.toolType)}
+                </Badge>
+                {r.isCustomPrice && (
+                  <Badge color="orange" size="xs" variant="light">
+                    カスタム
+                  </Badge>
+                )}
+              </Group>
             </Stack>
             <Stack align="flex-end" className="shrink-0" gap={4}>
               <Text fw={700} size="sm">

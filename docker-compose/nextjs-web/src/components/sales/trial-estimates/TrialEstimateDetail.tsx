@@ -5,7 +5,7 @@
  * summary + recomputed results + the material price-history graph.
  */
 
-import { Badge, Paper, Stack, Table, Tabs, Text } from "@mantine/core";
+import { Badge, Group, Paper, Stack, Table, Tabs, Text } from "@mantine/core";
 import { IconCalculator, IconChartLine } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
 import { FieldValue } from "@/components/ui/FieldValue";
@@ -57,9 +57,16 @@ export function TrialEstimateDetail({ id }: { id: string }) {
       breadcrumbs={["販売", { label: "試算", href: BASE_PATH }, "詳細"]}
       createdAt={formatDateTime(record.createdAt)}
       status={
-        <Badge color="gray" variant="light">
-          {toolLabel(record.input.toolType)}
-        </Badge>
+        <Group gap="xs">
+          <Badge color="gray" variant="light">
+            {toolLabel(record.input.toolType)}
+          </Badge>
+          {record.isCustomPrice && (
+            <Badge color="orange" variant="light">
+              カスタム
+            </Badge>
+          )}
+        </Group>
       }
       title={record.name}
       updatedAt={formatDateTime(record.updatedAt)}
@@ -71,7 +78,7 @@ export function TrialEstimateDetail({ id }: { id: string }) {
         <FieldValue label="最大径" value={`${record.input.maxDiameter} mm`} />
         <FieldValue label="全長" value={`${record.input.totalLength} mm`} />
         <FieldValue
-          label="参照単価（¥/m）"
+          label="参照単価（¥/100mm）"
           value={
             record.input.toolType === "CYLINDER" ? (
               "—（円筒：手入力）"

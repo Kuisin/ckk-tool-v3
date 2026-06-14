@@ -19,6 +19,8 @@ export interface TrialEstimateRecord {
   input: TrialInput;
   /** Date of the purchase point used as the reference price. */
   referenceDate: string;
+  /** True when the material price was set manually (not from the policy). */
+  isCustomPrice: boolean;
   createdBy: string;
   createdAt: string;
   updatedAt: string;
@@ -33,6 +35,7 @@ export const MOCK_TRIAL_ESTIMATES: TrialEstimateRecord[] = [
     materialId: "A01A0001-A001-001",
     materialLabel: "A01A0001-A001-001 — SUS303 φ20×3000（研磨）",
     referenceDate: "2026-05-27",
+    isCustomPrice: false,
     input: {
       toolType: "ROUND_BAR",
       maxDiameter: 3,
@@ -67,6 +70,7 @@ export const MOCK_TRIAL_ESTIMATES: TrialEstimateRecord[] = [
     materialId: "B01A0007-A002-001",
     materialLabel: "B01A0007-A002-001 — S45C φ16×4000（研磨）",
     referenceDate: "2026-04-21",
+    isCustomPrice: true,
     input: {
       toolType: "CYLINDER",
       maxDiameter: 7,

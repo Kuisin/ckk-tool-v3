@@ -34,8 +34,13 @@ import {
 } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
-import { SaveButton, SecondaryButton } from "@/components/ui/buttons";
+import {
+  EditButton,
+  SaveButton,
+  SecondaryButton,
+} from "@/components/ui/buttons";
 import { MoneyText } from "@/components/ui/MoneyText";
+import { openConfirm } from "@/components/ui/modals";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { FormSection } from "@/components/ui/shells";
 import { formatDate } from "@/lib/format";
@@ -120,7 +125,10 @@ export function TrialEstimateForm() {
     initialRef.unitPrice,
   );
   const [referenceDate, setReferenceDate] = useState<string>(initialRef.date);
+  // overridden = the estimate uses a custom (non-policy) material price.
   const [overridden, setOverridden] = useState(false);
+  // customMode = the price field is unlocked for manual editing.
+  const [customMode, setCustomMode] = useState(false);
 
   const history = getPriceHistory(materialId);
   const policyRef = useMemo(
@@ -144,12 +152,28 @@ export function TrialEstimateForm() {
     setReferencePrice(ref.unitPrice);
     setReferenceDate(ref.date);
     setOverridden(false);
+    setCustomMode(false);
   };
 
   const resetToPolicy = () => {
     setReferencePrice(policyRef.unitPrice);
     setReferenceDate(policyRef.date);
     setOverridden(false);
+    setCustomMode(false);
+  };
+
+  // Prompt before unlocking the price for a custom value.
+  const promptCustomPrice = () => {
+    openConfirm({
+      title: "材料単価のカスタム設定",
+      message:
+        "この素材の単価を手動で設定しますか？カスタム単価を使った試算は「カスタム」として記録されます。",
+      confirmLabel: "カスタム設定する",
+      onConfirm: () => {
+        setCustomMode(true);
+        setOverridden(true);
+      },
+    });
   };
 
   const basisLabel =
@@ -188,7 +212,9 @@ export function TrialEstimateForm() {
     // TODO(server-action): persist this 試算 (trial_estimates + items).
     notifications.show({
       title: "保存しました",
-      message: "試算を保存しました",
+      message: overridden
+        ? "試算を保存しました（カスタム単価）"
+        : "試算を保存しました",
       color: "green",
     });
     router.push(BASE_PATH);
@@ -208,6 +234,13 @@ export function TrialEstimateForm() {
           </Group>
         }
         breadcrumbs={["販売", { label: "試算", href: BASE_PATH }, "新規"]}
+        status={
+          overridden ? (
+            <Badge color="orange" variant="light">
+              カスタム
+            </Badge>
+          ) : undefined
+        }
         title="見積試算"
       />
 
@@ -281,17 +314,20 @@ export function TrialEstimateForm() {
                 ) : (
                   <NumberInput
                     description={
-                      overridden
-                        ? "手動で変更済み"
-                        : `参照: ${basisLabel}（直近${settings.materialPriceLookbackMonths}ヶ月）`
+                      customMode
+                        ? "カスタム単価（手動）"
+                        : overridden
+                          ? "カスタム単価"
+                          : `参照: ${basisLabel}（直近${settings.materialPriceLookbackMonths}ヶ月）`
                     }
-                    label="参照単価（¥/m）"
+                    label="参照単価（¥/100mm）"
                     min={0}
                     onChange={(v) => {
                       setReferencePrice(num(v));
                       setOverridden(true);
                     }}
                     prefix="¥"
+                    readOnly={!customMode}
                     thousandSeparator=","
                     value={referencePrice}
                   />
@@ -301,10 +337,10 @@ export function TrialEstimateForm() {
                 <Group gap="sm" mt="xs">
                   <Badge color={overridden ? "orange" : "blue"} variant="light">
                     {overridden
-                      ? "参照価格: 手動"
+                      ? "カスタム"
                       : `参照価格 ${referenceDate ? formatDate(referenceDate) : "—"}`}
                   </Badge>
-                  {overridden && (
+                  {customMode ? (
                     <Text
                       c="dimmed"
                       className="cursor-pointer"
@@ -313,6 +349,10 @@ export function TrialEstimateForm() {
                     >
                       ポリシー値に戻す
                     </Text>
+                  ) : (
+                    <EditButton onClick={promptCustomPrice} size="compact-xs">
+                      単価を編集
+                    </EditButton>
                   )}
                   <Switch
                     checked={isBlackSkin}

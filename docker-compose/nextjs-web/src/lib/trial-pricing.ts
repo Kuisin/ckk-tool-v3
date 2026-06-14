@@ -43,7 +43,7 @@ export interface TrialInput {
   toolType: ToolType;
   maxDiameter: number; // 最大径 (mm)
   totalLength: number; // 全長 (mm)
-  /** 仕入実績の参照単価 (¥/m, 1m基準) — ROUND_BAR/OH 用 (purchase history より). */
+  /** 仕入実績の参照単価 (¥/100mm, 100mm基準) — ROUND_BAR/OH 用 (purchase history より). */
   materialBarPrice: number;
   /** 黒皮材か (true でセンタレス費を加算). */
   isBlackSkin: boolean;
@@ -127,13 +127,13 @@ export function calcTrialPricing(input: TrialInput): TrialResult {
     material = (input.cylinderMaterialPrice ?? 0) + cyl * cylRate;
     if (cyl === 0) warnings.push("円筒加工費が範囲外です（最大径/全長を確認）");
   } else {
-    // 丸棒/OH: 1m単価 ÷ 1mから採れる本数 (+ センタレス if 黒皮)
-    const piecesPerMeter = Math.max(
+    // 丸棒/OH: 100mm単価 ÷ 100mmから採れる本数 (+ センタレス if 黒皮)
+    const piecesPerBasis = Math.max(
       1,
       Math.floor(MATERIAL_BASIS_LENGTH_MM / (len + 1)),
     );
     const perPieceMaterial = roundUp(
-      input.materialBarPrice / piecesPerMeter,
+      input.materialBarPrice / piecesPerBasis,
       0,
     );
     let centerless = 0;
@@ -143,7 +143,7 @@ export function calcTrialPricing(input: TrialInput): TrialResult {
     }
     material = perPieceMaterial + centerless;
     if (input.materialBarPrice <= 0)
-      warnings.push("素材の仕入実績がありません（1m単価を入力）");
+      warnings.push("素材の仕入実績がありません（100mm単価を入力）");
   }
 
   // ── 段加工費 ──────────────────────────────────────────────────────────────
