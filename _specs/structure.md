@@ -26,12 +26,16 @@ src/
 │   │   │   │   └── [id]/
 │   │   │   │       ├── page.tsx
 │   │   │   │       └── edit/page.tsx
-│   │   │   └── design-requests/                    # 設計依頼書（§10）
+│   │   │   ├── design-requests/                    # 設計依頼書（§10）
+│   │   │   │   ├── page.tsx
+│   │   │   │   ├── new/page.tsx
+│   │   │   │   └── [id]/
+│   │   │   │       ├── page.tsx
+│   │   │   │       └── edit/page.tsx
+│   │   │   └── trial-estimates/                    # 試算（見積試算・仕入実績連動）
 │   │   │       ├── page.tsx
 │   │   │       ├── new/page.tsx
-│   │   │       └── [id]/
-│   │   │           ├── page.tsx
-│   │   │           └── edit/page.tsx
+│   │   │       └── [id]/page.tsx
 │   │   │
 │   │   ├── purchase/                               # 購買（素材仕入・外注管理）
 │   │   │   ├── purchase-orders/                    # 素材発注書（承認フロー：依頼→承認→発注→入荷）

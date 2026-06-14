@@ -1,26 +1,196 @@
+/*
+ * globals.css — the single stylesheet for this app.
+ *
+ * This is the ONE place for hand-written CSS. Anything that needs real CSS
+ * logic — pseudo-classes (:hover), media queries (prefers-reduced-motion),
+ * Mantine dark-mode conditionals, transitions — lives in §3 below as a named
+ * component class. Components reference it by class name (e.g. "app-card").
+ *
+ * Rule of thumb:
+ *   • Trivial one-off styling  → Tailwind utility in JSX (`className="mt-4"`)
+ *   • Dynamic, data-driven value → inline `style={{ width: col.width }}`
+ *   • CSS *logic* (hover/transition/dark/media/complex selector) → §3 here
+ *
+ * Sections:
+ *   §1  Tailwind + Mantine integration (layer order, dark variant)
+ *   §2  Base / element styles
+ *   §3  Component classes (the vanilla CSS)
+ */
+
+/* ─────────────────────────────────────────────────────────────────────────
+ * §1  Tailwind + Mantine integration
+ *
+ * @layer precedence (later = higher priority). Declared before any Mantine
+ * stylesheet loads so the order is locked regardless of bundle order:
+ *
+ *   theme       Tailwind design tokens (--color-*, …)
+ *   base        Tailwind preflight reset
+ *   mantine     Mantine component styles  ← overrides preflight, looks correct
+ *   components   our classes in §3 + Tailwind @layer components
+ *   utilities   Tailwind utilities         ← `className="mt-4"` overrides Mantine
+ *
+ * So: Mantine renders correctly, our component classes override Mantine, and
+ * Tailwind utilities still win on top of everything.
+ * ───────────────────────────────────────────────────────────────────────── */
+@layer theme, base, mantine, components, utilities;
+
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+/*
+ * Drive Tailwind's `dark:` variant from Mantine's color scheme instead of the
+ * OS `prefers-color-scheme`, so `dark:` utilities and the `[data-mantine-color-scheme]`
+ * selectors in §3 stay in sync (one toggle). Mantine sets the attribute on <html>.
+ */
+@custom-variant dark (&:where([data-mantine-color-scheme="dark"], [data-mantine-color-scheme="dark"] *));
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
+/* ─────────────────────────────────────────────────────────────────────────
+ * §2  Base
+ * ───────────────────────────────────────────────────────────────────────── */
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--mantine-font-family, "Noto Sans JP", system-ui, sans-serif);
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+ * §3  Component classes — vanilla CSS for anything needing CSS logic.
+ *
+ * Values reference Mantine CSS variables so radius/shadow/colors track the
+ * theme. Dark mode uses Mantine's `[data-mantine-color-scheme="dark"]` (same
+ * attribute the `dark:` variant above targets).
+ * ───────────────────────────────────────────────────────────────────────── */
+@layer components {
+  /* App launcher / home dashboard card — lift + shadow on hover. */
+  .app-card {
+    display: block;
+    color: inherit;
+    text-decoration: none;
+    border-radius: var(--mantine-radius-md);
+    transition:
+      transform 120ms ease,
+      box-shadow 120ms ease;
+  }
+  .app-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--mantine-shadow-sm);
+  }
+
+  /* Compact list row (launcher search results) — subtle hover background. */
+  .search-row {
+    width: 100%;
+    color: inherit;
+    text-decoration: none;
+    border-radius: var(--mantine-radius-sm);
+    transition: background-color 120ms ease;
+  }
+  .search-row:hover {
+    background-color: var(--mantine-color-gray-0);
+  }
+  [data-mantine-color-scheme="dark"] .search-row:hover {
+    background-color: var(--mantine-color-dark-6);
+  }
+  /* Keyboard-highlighted result (Arrow Up/Down) — stronger than :hover. */
+  .search-row[data-active] {
+    background-color: var(--mantine-color-gray-1);
+  }
+  [data-mantine-color-scheme="dark"] .search-row[data-active] {
+    background-color: var(--mantine-color-dark-5);
+  }
+
+  /* Launcher home-shortcut button — flex-centered, rounded, no decoration. */
+  .home-link {
+    display: flex;
+    align-items: center;
+    flex-shrink: 0;
+    color: inherit;
+    text-decoration: none;
+    border-radius: var(--mantine-radius-sm);
+  }
+
+  /* Header app-launcher popover — full width on mobile. */
+  .app-launcher-dropdown {
+    width: 544px;
+  }
+  @media (max-width: 767px) {
+    .app-launcher-dropdown {
+      width: min(100vw - 2rem, 100%);
+      max-width: min(100vw - 2rem, 100%);
+    }
+  }
+
+  /* App launcher card — tighter padding / icon on mobile. */
+  .launcher-app-card {
+    padding: var(--mantine-spacing-sm);
+  }
+  @media (min-width: 768px) {
+    .launcher-app-card {
+      padding: var(--mantine-spacing-md);
+    }
+  }
+  .launcher-app-card .mantine-ThemeIcon-root {
+    --ti-size: var(--ti-size-lg);
+  }
+  @media (min-width: 768px) {
+    .launcher-app-card .mantine-ThemeIcon-root {
+      --ti-size: var(--ti-size-xl);
+    }
+  }
+
+  /* Header app-launcher trigger — rounded hit area with hover background. */
+  .launcher-trigger {
+    flex-shrink: 0;
+    border-radius: var(--mantine-radius-sm);
+    transition: background-color 120ms ease;
+  }
+  .launcher-trigger:hover {
+    background-color: var(--mantine-color-gray-0);
+  }
+  [data-mantine-color-scheme="dark"] .launcher-trigger:hover {
+    background-color: var(--mantine-color-dark-6);
+  }
+
+  /* AppShell main content area — inner shadow + off-white surface. */
+  .app-shell-main {
+    background-color: var(--mantine-color-gray-0);
+    box-shadow: 0 0 5px 0 rgba(0, 0, 0, 0.15);
+  }
+  [data-mantine-color-scheme="dark"] .app-shell-main {
+    background-color: var(--mantine-color-dark-8);
+    box-shadow: 0 0 5px 0 rgba(0, 0, 0, 0.5);
+  }
+
+  /* Notification row — base = read; [data-unread] adds the blue accent. */
+  .notification-item {
+    cursor: pointer;
+    border-bottom: 1px solid var(--mantine-color-default-border);
+    background-color: var(--mantine-color-gray-0);
+  }
+  [data-mantine-color-scheme="dark"] .notification-item {
+    background-color: var(--mantine-color-dark-7);
+  }
+  .notification-item[data-unread] {
+    border-left: 3px solid var(--mantine-color-blue-5);
+    background-color: var(--mantine-color-blue-0);
+  }
+  [data-mantine-color-scheme="dark"] .notification-item[data-unread] {
+    background-color: var(--mantine-color-dark-5);
+  }
+
+  /* Compact audit history timeline — tighter row spacing than Mantine default. */
+  .audit-timeline-item:not(:first-of-type) {
+    margin-top: 20px;
+  }
+  .audit-timeline-item:not(:last-of-type)::before {
+    bottom: -20px;
+  }
+
+  /* Honor reduced-motion for every hover-animated component above. */
+  @media (prefers-reduced-motion: reduce) {
+    .app-card,
+    .search-row,
+    .launcher-trigger {
+      transition: none;
+    }
+    .app-card:hover {
+      transform: none;
+    }
+  }
 }

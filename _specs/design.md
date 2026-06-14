@@ -273,6 +273,7 @@ Operation codes provide keyboard-shortcut navigation. Format: `{CAT}{MODE}{IDX}`
 | 販売 | 2 | 見積書 | SA02 | SA12 | SA22 |
 | 販売 | 3 | 注文受諾書 | SA03 | SA13 | SA23 |
 | 販売 | 4 | 設計依頼書 | SA04 | SA14 | SA24 |
+| 販売 | 5 | 試算 | SA05 | SA15 | SA25 |
 | 購買 | 1 | 素材入荷 | PU01 | PU11 | PU21 |
 | 購買 | 2 | 外注依頼 | PU02 | PU12 | PU22 |
 | 購買 | 3 | 素材発注書 | PU03 | PU13 | PU23 |
@@ -349,6 +350,7 @@ Stack (gap="xl", p="md", maw={1200})
 | 見積書 | `IconFileText` |
 | 注文受諾書 | `IconClipboardCheck` |
 | 設計依頼書 | `IconRuler2` |
+| 試算 | `IconCalculator` |
 | 素材入荷 | `IconPackageImport` |
 | 外注依頼 | `IconTruckDelivery` |
 | 素材発注書 | `IconShoppingCart` |

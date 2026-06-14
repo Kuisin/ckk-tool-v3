@@ -10,9 +10,19 @@
     "format": "biome format --write"
   },
   "dependencies": {
+    "@mantine/core": "^9.3.1",
+    "@mantine/dates": "^9.3.1",
+    "@mantine/form": "^9.3.1",
+    "@mantine/hooks": "^9.3.1",
+    "@mantine/modals": "^9.3.1",
+    "@mantine/notifications": "^9.3.1",
+    "@tabler/icons-react": "^3.44.0",
+    "date-fns": "^4.4.0",
+    "dayjs": "^1.11.21",
     "next": "16.2.9",
     "react": "19.2.4",
-    "react-dom": "19.2.4"
+    "react-dom": "19.2.4",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "@biomejs/biome": "2.2.0",

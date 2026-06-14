@@ -15,7 +15,7 @@
  *        SaveButton CancelButton EditButton DeleteButton CreateButton
  *        CopyButton ApproveButton RejectButton  (PdfButton lives in PdfButton.tsx)
  *
- * Size is `sm` everywhere via the theme default (design.md §2) — don't pass size.
+ * Size is `compact-md` with sm text via CSS vars — override via `size` only when needed.
  * All buttons accept `href` to render as a Next.js <Link>; pass `external` for a
  * new-tab <a>. Every other Mantine Button prop (loading, disabled, fullWidth,
  * onClick, leftSection override …) passes straight through.
@@ -45,6 +45,16 @@ export type AppButtonProps = ButtonProps & {
   children?: ReactNode;
 };
 
+/** Slim buttons: compact-md height/padding with sm text (Mantine has no `textSize` prop). */
+const baseButtonDefaults = {
+  size: "compact-md",
+  styles: {
+    root: {
+      fontSize: "var(--mantine-font-size-xs)",
+    },
+  },
+} satisfies Partial<ButtonProps>;
+
 /** Internal: resolves `href`/`external` to the right polymorphic Button. */
 function BaseButton({ href, external, children, ...props }: AppButtonProps) {
   if (href && external) {
@@ -54,6 +64,7 @@ function BaseButton({ href, external, children, ...props }: AppButtonProps) {
         href={href}
         rel="noopener noreferrer"
         target="_blank"
+        {...baseButtonDefaults}
         {...props}
       >
         {children}
@@ -62,12 +73,16 @@ function BaseButton({ href, external, children, ...props }: AppButtonProps) {
   }
   if (href) {
     return (
-      <Button component={Link} href={href} {...props}>
+      <Button component={Link} href={href} {...baseButtonDefaults} {...props}>
         {children}
       </Button>
     );
   }
-  return <Button {...props}>{children}</Button>;
+  return (
+    <Button {...baseButtonDefaults} {...props}>
+      {children}
+    </Button>
+  );
 }
 
 // ── Role buttons ─────────────────────────────────────────────────────────────

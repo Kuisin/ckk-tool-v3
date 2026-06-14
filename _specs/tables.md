@@ -284,15 +284,15 @@ Table products {
 // 価格表（§1）
 // ===========================
 
-// 顧客 + 製品 + 注文種別 + 本数 → 単価。有効日で管理。
-Table price_lists {
+// 価格表エントリ: 顧客 + 製品 + 注文種別 = 1 エントリ。
+// 有効期間（valid_from/valid_until）・通貨・状態をエントリ単位で管理する。
+// 顧客・製品・注文種別はエントリの識別キーで、作成後は変更不可。
+// 数量段階（本数 → 単価）は price_list_tiers に分離（全段階で有効期間を共有）。
+Table price_list_entries {
   id              uuid [pk]
   customer_bp_id  uuid [not null, ref: > business_partners.id]
   product_id      varchar [not null, ref: > products.id]
   order_type      ORDER_TYPE [not null]
-  min_quantity    int [not null, default: 1]
-  max_quantity    int                          // null = 上限なし
-  unit_price      numeric(12,2) [not null]
   currency        varchar [not null, default: 'JPY']
   valid_from      date [not null]
   valid_until     date                         // null = 無期限
@@ -300,6 +300,24 @@ Table price_lists {
   created_by      uuid [ref: > users.id]
   created_at      timestamp
   updated_at      timestamp
+
+  indexes {
+    (customer_bp_id, product_id, order_type) [unique]  // 識別キー（作成後不変）
+  }
+}
+
+// 数量段階: 本数範囲 → 単価。親エントリの有効期間・通貨を共有する。
+Table price_list_tiers {
+  id                  uuid [pk]
+  price_list_entry_id uuid [not null, ref: > price_list_entries.id]
+  min_quantity        int [not null, default: 1]
+  max_quantity        int                          // null = 上限なし
+  unit_price          numeric(12,2) [not null]
+  sort_order          int [not null, default: 0]
+
+  indexes {
+    (price_list_entry_id, min_quantity)
+  }
 }
 
 Enum ORDER_TYPE {
@@ -342,7 +360,7 @@ Table quote_items {
   order_type      ORDER_TYPE [not null]
   quantity        int [not null]
   unit_price      numeric(12,2) [not null]      // 価格表から自動解決
-  price_list_id   uuid [ref: > price_lists.id]  // 自動生成元（手動入力時は null）
+  price_list_tier_id uuid [ref: > price_list_tiers.id]  // 自動生成元の段階（手動入力時は null）
   discount_amount numeric(12,2) [not null, default: 0]  // カスタム値引き額（任意）
   amount          numeric(12,2) [not null]      // unit_price * quantity - discount_amount
   delivery_date   date
@@ -1074,6 +1092,62 @@ Table design_files {
   notes           text
   created_by      uuid [ref: > users.id]
   created_at      timestamp
+}
+
+// ===========================
+// 見積試算（SA05）
+// ===========================
+//
+// 工具種（丸棒/円筒/OH付）別の見積試算。原価チェーン（材料原価+段加工+首下+加工
+// 単価+コート+ラップ+LD+検査）→ ロット別に掛け率・補正値を適用して見積単価を算出。
+// 材料原価は素材マスタの静的価格ではなく、仕入実績（material_purchase_order_items）
+// の参照価格を使う。参照価格の算出方法（最高/最新/平均・参照月数）は system_settings。
+// 参照テーブル（センタレス/段加工/首下/円筒/コート/掛け率/割引）は採番表 Excel 由来で
+// trial_pricing_* マスタ（または import）へ移行する。
+
+Enum TRIAL_TOOL_TYPE {
+  ROUND_BAR       // 丸棒
+  CYLINDER        // 円筒
+  OH              // OH付
+}
+
+Table trial_estimates {
+  id              uuid [pk]
+  name            varchar [not null]
+  tool_type       TRIAL_TOOL_TYPE [not null]
+  customer_bp_id  uuid [ref: > business_partners.id]
+  material_id     varchar [ref: > materials.id]
+  // 参照価格（仕入実績由来）。reference_date = 採用した仕入実績日。
+  reference_unit_price numeric(12,2)
+  reference_date  date
+  reference_overridden boolean [not null, default: false]  // 手動上書き
+  // 入力スナップショット（最大径/全長/段加工/コート/LD/加工条件 等）
+  input           json [not null]
+  // 算出結果（ロット別 最低単価・掛け率・見積単価 + 原価内訳）
+  result          json
+  created_by      uuid [ref: > users.id]
+  created_at      timestamp
+  updated_at      timestamp
+}
+
+// 試算のロット段階（任意正規化。input/result JSON にも保持）
+Table trial_estimate_lots {
+  id              uuid [pk]
+  trial_estimate_id uuid [not null, ref: > trial_estimates.id]
+  quantity        int [not null]
+  minimum_price   numeric(12,2)
+  discount_rate   numeric(6,3)
+  estimate_unit_price numeric(12,2)
+  sort_order      int [not null, default: 0]
+}
+
+// 試算の価格ポリシー（材料参照価格の算出方法）。feature_flags と同様の単純設定。
+Table system_settings {
+  key             varchar [pk]    // trial_pricing.material_price_basis / .lookback_months
+  value           json [not null]
+  description     text
+  updated_by      uuid [ref: > users.id]
+  updated_at      timestamp
 }
 ```
 
