@@ -620,8 +620,11 @@ export function lotDiscountRate(qty: number): number {
 export const CORRECTION_FACTOR = 1.25;
 /** LDチャージ ¥/10min (改定履歴: LD 10min=7500). */
 export const LD_CHARGE_PER_10MIN = 7500;
-/** 素材バーの有効採尺長 (mm) — 丸棒: 本数 = floor(USABLE_BAR_LENGTH/(全長+1)). */
-export const USABLE_BAR_LENGTH = 313;
+/**
+ * 材料原価の基準長 (mm) — 1m基準。参照単価は ¥/m で扱い、
+ * 1mから採れる本数 = floor(MATERIAL_BASIS_LENGTH_MM/(全長+1)) で割って1本原価を出す。
+ */
+export const MATERIAL_BASIS_LENGTH_MM = 1000;
 /** コート代の最終係数 (Excel: ...×1.5, ROUNDUP -1). */
 export const COATING_FACTOR = 1.5;
 

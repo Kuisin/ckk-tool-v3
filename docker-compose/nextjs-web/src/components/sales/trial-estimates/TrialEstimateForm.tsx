@@ -285,7 +285,7 @@ export function TrialEstimateForm() {
                         ? "手動で変更済み"
                         : `参照: ${basisLabel}（直近${settings.materialPriceLookbackMonths}ヶ月）`
                     }
-                    label="参照バー単価（¥/本）"
+                    label="参照単価（¥/m）"
                     min={0}
                     onChange={(v) => {
                       setReferencePrice(num(v));
