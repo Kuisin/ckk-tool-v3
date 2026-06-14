@@ -10,7 +10,8 @@
  *  - per-row actions (trailing menu)
  *  - column visibility toggle (compact density is always on)
  *  - sticky header, row click → detail
- *  - responsive: desktop table ↔ mobile card list (via `renderCard`)
+ *  - responsive: desktop table ↔ mobile divider-row list (with a select-all
+ *    header row when selectable); per-row content via `renderCard`
  *
  * One component drives all ~25 list screens so table behaviour stays consistent.
  */
@@ -279,11 +280,55 @@ export function DataTable<T>({
     </Group>
   );
 
-  // ── Mobile list (divider-separated rows, no per-row card) ───────────────────
+  // ── Mobile list (header row + divider-separated rows, no per-row card) ───────
   if (isMobile) {
     return (
-      <Stack gap="xs">
-        {toolbar}
+      <Stack gap={0}>
+        {selectable && (
+          <>
+            <Group gap="sm" justify="space-between" py="xs" wrap="nowrap">
+              <Group gap="sm" wrap="nowrap">
+                <Checkbox
+                  aria-label="すべて選択"
+                  checked={allOnPageSelected}
+                  indeterminate={someOnPageSelected && !allOnPageSelected}
+                  onChange={toggleAll}
+                  size="xs"
+                />
+                <Text c="dimmed" fw={600} size="xs">
+                  {selected.size > 0
+                    ? `${selected.size}件選択中`
+                    : "すべて選択"}
+                </Text>
+              </Group>
+              {selected.size > 0 && (
+                <Group gap="xs" wrap="nowrap">
+                  {bulkActions.map((a) => (
+                    <Tooltip key={a.label} label={a.label} withinPortal>
+                      <ActionIcon
+                        aria-label={a.label}
+                        color={a.color ?? "blue"}
+                        onClick={() => a.onAction?.(selectedRows)}
+                        variant="light"
+                      >
+                        {a.icon ?? <IconAdjustmentsHorizontal size={16} />}
+                      </ActionIcon>
+                    </Tooltip>
+                  ))}
+                  <Text
+                    c="dimmed"
+                    className="cursor-pointer"
+                    onClick={() => setSelected(new Set())}
+                    size="xs"
+                  >
+                    選択解除
+                  </Text>
+                </Group>
+              )}
+            </Group>
+            <Divider />
+          </>
+        )}
         <Stack gap={0}>
           {pageRows.map((row, i) => {
             const id = getRowId(row);
