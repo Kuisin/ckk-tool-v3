@@ -1,0 +1,1473 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider        = "prisma-client"
+  output          = "../generated/prisma"
+  previewFeatures = ["fullTextSearchPostgres", "views"]
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// auth related models
+// User model: Stores authenticated users
+// - Image is populated from dev-users.json on each login
+// - Email and name are stored in Employee table, not here
+// - Updated automatically when user authenticates via LDAP or dev authentication
+model User {
+  id        String    @id @default(cuid())
+  username  String    @unique
+  image     String? // Populated from dev-users.json
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  sessions  Session[]
+
+  @@map("auth_users")
+}
+
+// Session model: Stores active user sessions in database (migrated from Redis)
+// - Token is cryptographically secure (generated with crypto.randomBytes)
+// - Sessions are automatically cleaned up when expired
+// - TTL is configurable via SESSION_TTL environment variable (default: 8 hours)
+// - IP address and user agent are tracked for security/audit purposes
+model Session {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  expiresAt DateTime @map("expires_at")
+  token     String   @unique // Cryptographically secure session token
+  ipAddress String?  @map("ip_address") // Optional IP tracking
+  userAgent String?  @map("user_agent") // Optional user agent tracking
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([token])
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("auth_sessions")
+}
+
+enum Zone {
+  JPN
+  CHN
+  SEA
+  EUR
+}
+
+// app related models
+enum OrderStatus {
+  DRAFT
+  PENDING
+  ORDERED
+  COMPLETED
+  CANCELLED
+  ARCHIVED
+}
+
+enum Currency {
+  JPY
+  USD
+  EUR
+  CNY
+  THB
+}
+
+enum ShippingInstructionType {
+  USER_DIRECT // ユーザー直送
+  NORMAL_DELIVERY // 通常配送
+  STOCK // 在庫
+}
+
+enum ShippingInstructionStatus {
+  PLANNED // 計画済み
+  IN_PROGRESS // 配送中
+  COMPLETED // 完了
+}
+
+enum PurchaseStatus {
+  DRAFT // Initial creation, editable
+  REQUESTED // Submitted for approval
+  APPROVED // Approved, ready to order
+  ORDERED // Order placed with supplier (adds to plannedQuantity)
+  COMPLETED // Delivered, stock increased (moves from plannedQuantity to availableQuantity)
+  CANCELLED // Cancelled at any stage
+}
+
+model OrderReceipt {
+  id               Int      @id @default(autoincrement())
+  code             String   @unique
+  customerId       Int      @map("customer_id")
+  receivedAt       DateTime @map("received_at") @db.Timestamptz
+  employeeUsername String   @map("employee_username")
+  orderDate        DateTime @map("order_date") @db.Timestamptz
+  deliveryDate     DateTime @map("delivery_date") @db.Timestamptz
+  totalAmount      Decimal? @default(0) @map("total_amount") // 注文受取書合計（受注書合計と一致しない場合あり）
+  notes            String?  @db.Text
+  externalDocRef   String?  @map("external_doc_ref") // e.g. 注文書 FAX/PDF identifier
+  isDeleted        Boolean  @default(false) @map("is_deleted")
+  createdAt        DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt        DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  customer Customer @relation(fields: [customerId], references: [id])
+  employee Employee @relation(fields: [employeeUsername], references: [username])
+  orders   Order[]
+
+  @@index([customerId])
+  @@index([receivedAt])
+  @@index([totalAmount])
+  @@map("app_order_receipts")
+}
+
+model Order {
+  id              Int         @id @default(autoincrement())
+  code            String      @unique
+  status          OrderStatus @default(DRAFT)
+  zone            Zone        @default(JPN)
+  orderReceiptId  Int         @map("order_receipt_id")
+  productId       Int         @map("product_id")
+  orderedQuantity Int         @default(0) @map("ordered_quantity") // 受注数量
+  totalQuantity   Int         @default(0) @map("total_quantity") // 総数量（>= ordered、余剰在庫含む場合あり）
+  currency        Currency    @default(JPY)
+  unitPrice       Decimal?    @default(0) @map("unit_price") // 単価（totalAmount と一致しない場合あり）
+  totalAmount     Decimal     @default(0) @map("total_amount") // 受注書行の合計金額
+  notes           String?
+
+  // Status management
+  statusChangedAt DateTime? @map("status_changed_at") @db.Timestamptz
+
+  // Cancellation
+  cancelledAt        DateTime? @map("cancelled_at") @db.Timestamptz
+  cancelledBy        String?   @map("cancelled_by")
+  cancellationReason String?   @map("cancellation_reason") @db.Text
+
+  // Archival
+  archivedAt DateTime? @map("archived_at") @db.Timestamptz
+  archivedBy String?   @map("archived_by")
+
+  // Completion
+  completedAt DateTime? @map("completed_at") @db.Timestamptz
+
+  // Optional end user (customer_id). Purchaser is from OrderReceipt.customerId.
+  endUserId Int? @map("end_user_id")
+
+  isDeleted Boolean @default(false) @map("is_deleted")
+
+  orderReceipt OrderReceipt @relation(fields: [orderReceiptId], references: [id], onDelete: Restrict)
+  product      Product      @relation(fields: [productId], references: [id])
+  endUser      Customer?    @relation("OrderEndUser", fields: [endUserId], references: [id], onDelete: SetNull)
+
+  // processPlans           ProcessPlan[]
+  // processRecords         ProcessRecord[]
+  manufacturingWorkflows ManufacturingWorkflow[]
+  stockReservations      StockReservation[]
+  shippingInstructions   ShippingInstruction[]
+
+  @@index([orderReceiptId])
+  @@index([orderReceiptId, totalAmount])
+  @@index([endUserId])
+  @@index([status])
+  @@map("app_orders")
+}
+
+model ManufacturingWorkflow {
+  id              Int      @id @default(autoincrement())
+  orderId         Int      @map("order_id")
+  name            String?
+  displayOrder    Int      @default(0) @map("display_order")
+  plannedQuantity Int?     @map("planned_quantity") // Plan quantity for this workflow; sum over all workflows = order.totalQuantity
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt       DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  order Order         @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  plans ProcessPlan[]
+
+  // Split/merge DAG links
+  outgoingLinks WorkflowLink[] @relation("OutgoingLinks")
+  incomingLinks WorkflowLink[] @relation("IncomingLinks")
+
+  @@index([orderId])
+  @@map("app_manufacturing_workflows")
+}
+
+// Links between workflows for split/merge DAG.
+// Each link routes a quantity of items from a source workflow to a target workflow.
+model WorkflowLink {
+  id               Int @id @default(autoincrement())
+  sourceWorkflowId Int @map("source_workflow_id")
+  targetWorkflowId Int @map("target_workflow_id")
+
+  // Which plan in the source workflow the split occurs after.
+  // If null, link is from the end (last plan) of the source workflow.
+  splitAfterPlanId Int? @map("split_after_plan_id")
+
+  // How many items flow through this link
+  routedQuantity Int @default(0) @map("routed_quantity")
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  sourceWorkflow ManufacturingWorkflow @relation("OutgoingLinks", fields: [sourceWorkflowId], references: [id], onDelete: Cascade)
+  targetWorkflow ManufacturingWorkflow @relation("IncomingLinks", fields: [targetWorkflowId], references: [id], onDelete: Cascade)
+  splitAfterPlan ProcessPlan?          @relation("SplitLinks", fields: [splitAfterPlanId], references: [id], onDelete: SetNull)
+
+  @@unique([sourceWorkflowId, targetWorkflowId])
+  @@index([sourceWorkflowId])
+  @@index([targetWorkflowId])
+  @@map("app_workflow_links")
+}
+
+model Product {
+  id            Int     @id @default(autoincrement())
+  code          String
+  version       Int
+  name          String? // 製品名
+  description   String? @db.Text // 説明 (line breaks)
+  isParent      Boolean @default(false) @map("is_parent")
+  inheritedFrom Int?    @map("inherited_from")
+
+  materialId Int      @map("material_id")
+  material   Material @relation(fields: [materialId], references: [id])
+
+  shape                   String? // 製品形状
+  classification          String? // 製品分類
+  materialNominalDiameter Int?    @map("material_nominal_diameter") // 素材呼び径 (0.1 mm)
+  materialLength          Int?    @map("material_length") // 素材全長 (0.1 mm)
+  bladeCount              Int?    @map("blade_count") // 刃数
+  coatingType             String? @map("coating_type") // コーティングの種類
+  specMemo                String? @map("spec_memo") @db.Text // 製品仕様メモ (rich text)
+
+  threeDFilePath String? @map("3d_file_path")
+
+  isDeleted Boolean @default(false) @map("is_deleted")
+
+  inheritedFromProduct Product?  @relation("ProductInheritance", fields: [inheritedFrom], references: [id])
+  inheritedByProducts  Product[] @relation("ProductInheritance")
+
+  orders             Order[]
+  machinePrograms    MachineProgram[]
+  inspectionPrograms InspectionProgram[]
+  priceLists         PriceList[]
+
+  @@unique([code, version], name: "code_version")
+  @@map("app_products")
+}
+
+model Material {
+  id          Int     @id @default(autoincrement())
+  code        String  @unique
+  description String?
+  notes       String?
+
+  // Codes from material-grade (used in 材種コード): A,B,C,D / 1,2,3 / A,B,0 / 1,2,...
+  mfrCode      String? @map("mfr_code") // Manufacturer key A,B,C,D
+  mfrGradeCode Int?    @map("mfr_grade_code") // Grade number 1,2,3
+  shapeCode    String? @map("shape_code") // Shape key A,B,0
+  typeCode     Int?    @map("type_code") // Type number 1,2,... or from API for shape 0 (autoincrement)
+
+  isDeleted Boolean @default(false) @map("is_deleted")
+
+  products           Product[]
+  stocks             Stock[]
+  stockReservations  StockReservation[]
+  stockPurchaseItems StockPurchaseItem[]
+  stockTransactions  StockTransaction[]
+
+  @@unique([mfrCode, mfrGradeCode, shapeCode, typeCode], name: "material_grade_code")
+  @@map("app_materials")
+}
+
+enum StockReservationStatus {
+  RESERVED
+  LOCKED
+  COMPLETED
+  CANCELLED
+}
+
+enum StockTransactionType {
+  CUT
+  USE
+  DAMAGED
+  DISCARD
+  DEFECTIVE
+  STOCK_TAKE
+  OVERRIDE
+  MOVE
+  PURCHASE
+}
+
+model StockPurchase {
+  id                  Int      @id @default(autoincrement())
+  supplierId          Int      @map("supplier_id")
+  purchaseDate        DateTime @map("purchase_date") @db.Timestamptz
+  invoiceNumber       String?  @map("invoice_number")
+  purchaseOrderNumber String?  @map("purchase_order_number")
+  employeeUsername    String   @map("employee_username") // Employee responsible for this purchase (required for permission checks)
+
+  totalAmount Decimal  @default(0) @map("total_amount")
+  currency    Currency @default(JPY)
+
+  notes String? @db.Text
+
+  status             PurchaseStatus @default(DRAFT)
+  statusChangedAt    DateTime?      @map("status_changed_at") @db.Timestamptz
+  requestedAt        DateTime?      @map("requested_at") @db.Timestamptz
+  requestedBy        String?        @map("requested_by")
+  approvedAt         DateTime?      @map("approved_at") @db.Timestamptz
+  approvedBy         String?        @map("approved_by")
+  orderedAt          DateTime?      @map("ordered_at") @db.Timestamptz
+  orderedBy          String?        @map("ordered_by")
+  completedAt        DateTime?      @map("completed_at") @db.Timestamptz
+  completedBy        String?        @map("completed_by")
+  cancelledAt        DateTime?      @map("cancelled_at") @db.Timestamptz
+  cancelledBy        String?        @map("cancelled_by")
+  cancellationReason String?        @map("cancellation_reason") @db.Text
+  history            Json? // Array of { type: string, user: string, timestamp: string, action?: string, notes?: string }
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  supplier          Supplier                @relation(fields: [supplierId], references: [id])
+  employee          Employee                @relation(fields: [employeeUsername], references: [username], onDelete: Restrict)
+  purchaseItems     StockPurchaseItem[]
+  stockReservations StockReservation[]
+  approvers         StockPurchaseApprover[]
+
+  @@index([supplierId])
+  @@index([purchaseDate])
+  @@index([status])
+  @@index([employeeUsername])
+  @@map("app_stock_purchases")
+}
+
+model StockPurchaseItem {
+  id                 Int      @id @default(autoincrement())
+  stockPurchaseId    Int      @map("stock_purchase_id")
+  materialId         Int      @map("material_id")
+  factoryId          Int      @map("factory_id")
+  diameter           Decimal // 直径 (actual diameter, used in 素材コード)
+  nominalDiameter    Decimal? @map("nominal_diameter") // 呼び径 (nominal/call diameter, for display)
+  length             Decimal
+  polished           Boolean  @default(false)
+  customType         String   @default("-") @map("custom_type") // Custom type for stock classification (required for unique constraint)
+  quantity           Int // Number of pieces
+  pricePerPiece      Decimal  @map("price_per_piece")
+  pricePerUnit       Decimal? @map("price_per_unit") // Price per 1000mm
+  currency           Currency @default(JPY)
+  stockTransactionId Int?     @unique @map("stock_transaction_id") // Link to StockTransaction when stock is increased
+  createdAt          DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt          DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  stockPurchase    StockPurchase     @relation(fields: [stockPurchaseId], references: [id], onDelete: Cascade)
+  material         Material          @relation(fields: [materialId], references: [id])
+  factory          Factory           @relation(fields: [factoryId], references: [id], onDelete: Restrict)
+  stockTransaction StockTransaction? @relation(fields: [stockTransactionId], references: [id], onDelete: SetNull)
+
+  @@index([stockPurchaseId])
+  @@index([materialId, diameter, length, polished, customType])
+  @@index([factoryId])
+  @@index([stockTransactionId])
+  @@map("app_stock_purchase_items")
+}
+
+model StockPurchaseApprover {
+  id               Int      @id @default(autoincrement())
+  stockPurchaseId  Int      @map("stock_purchase_id")
+  groupId          Int?     @map("group_id")
+  employeeUsername String?  @map("employee_username")
+  createdAt        DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  stockPurchase StockPurchase @relation(fields: [stockPurchaseId], references: [id], onDelete: Cascade)
+  group         Group?        @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  employee      Employee?     @relation(fields: [employeeUsername], references: [username], onDelete: Cascade)
+
+  @@unique([stockPurchaseId, groupId, employeeUsername])
+  @@index([stockPurchaseId])
+  @@index([groupId])
+  @@index([employeeUsername])
+  @@map("app_stock_purchase_approvers")
+}
+
+model Stock {
+  id                Int      @id @default(autoincrement())
+  materialId        Int      @map("material_id")
+  diameter          Decimal // 直径 (actual diameter, used in 素材コード)
+  nominalDiameter   Decimal? @map("nominal_diameter") // 呼び径 (nominal/call diameter, for display)
+  length            Decimal
+  polished          Boolean  @default(false)
+  customType        String   @default("-") @map("custom_type") // Custom type for stock classification (required for unique constraint)
+  factoryId         Int      @map("factory_id")
+  availableQuantity Int      @default(0) @map("available_quantity") // Number of pieces
+  createdAt         DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt         DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  material Material @relation(fields: [materialId], references: [id], onDelete: Cascade)
+  factory  Factory  @relation(fields: [factoryId], references: [id], onDelete: Restrict)
+
+  @@unique([materialId, diameter, length, polished, customType, factoryId])
+  @@index([materialId, diameter, length, polished, customType, factoryId])
+  @@index([factoryId])
+  @@map("app_stocks")
+}
+
+model StockReservation {
+  id              Int                    @id @default(autoincrement())
+  materialId      Int                    @map("material_id")
+  diameter        Decimal
+  length          Decimal
+  polished        Boolean                @default(false)
+  customType      String                 @default("-") @map("custom_type") // Custom type for stock classification (required for index)
+  factoryId       Int?                   @map("factory_id")
+  direction       Boolean                @default(false) // true = increase, false = decrease
+  quantity        Int // Number of pieces
+  // Outgoing reservation: links to an Order (stock is planned to be consumed)
+  orderId         Int?                   @map("order_id")
+  // Incoming reservation: links to a StockPurchase (stock is planned to arrive)
+  stockPurchaseId Int?                   @map("stock_purchase_id")
+  status          StockReservationStatus @default(RESERVED)
+  reservedAt      DateTime               @default(now()) @map("reserved_at") @db.Timestamptz
+  lockedAt        DateTime?              @map("locked_at") @db.Timestamptz
+  completedAt     DateTime?              @map("completed_at") @db.Timestamptz
+  cancelledAt     DateTime?              @map("cancelled_at") @db.Timestamptz
+  notes           String?                @db.Text
+  createdAt       DateTime               @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt       DateTime               @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  material      Material           @relation(fields: [materialId], references: [id], onDelete: Cascade)
+  factory       Factory?           @relation(fields: [factoryId], references: [id], onDelete: SetNull)
+  order         Order?             @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  stockPurchase StockPurchase?     @relation(fields: [stockPurchaseId], references: [id], onDelete: Cascade)
+  transactions  StockTransaction[]
+
+  @@index([materialId, diameter, length, polished, customType, factoryId, status])
+  @@index([factoryId])
+  @@index([orderId, status])
+  @@index([stockPurchaseId, status])
+  @@map("app_stock_reservations")
+}
+
+model StockTransaction {
+  id                  Int                  @id @default(autoincrement())
+  materialId          Int                  @map("material_id")
+  diameter            Decimal
+  length              Decimal
+  polished            Boolean              @default(false)
+  customType          String               @default("-") @map("custom_type") // Custom type for stock classification (required for index)
+  factoryId           Int?                 @map("factory_id") // Factory for this transaction
+  usageLocation       String?              @map("usage_location") // detail location
+  linkedTransactionId Int?                 @map("linked_transaction_id") // Link to related transaction. REQUIRED for MOVE and CUT transactions (both transactions must be linked)
+  transactionType     StockTransactionType @map("transaction_type")
+  direction           Boolean              @default(false) // true = increase, false = decrease
+  quantity            Int? // Transaction quantity (null for STOCK_TAKE and OVERRIDE)
+  quantityBefore      Int                  @map("quantity_before") // Stock quantity before transaction (always recorded)
+  quantityAfter       Int                  @map("quantity_after") // Stock quantity after transaction (always recorded)
+  orderId             Int?                 @map("order_id")
+  reservationId       Int?                 @map("reservation_id")
+  employeeUsername    String?              @map("employee_username")
+  notes               String?              @db.Text
+  createdAt           DateTime             @default(now()) @map("created_at") @db.Timestamptz
+
+  material           Material           @relation(fields: [materialId], references: [id], onDelete: Cascade)
+  factory            Factory?           @relation(fields: [factoryId], references: [id], onDelete: SetNull)
+  linkedTransaction  StockTransaction?  @relation("LinkedTransactions", fields: [linkedTransactionId], references: [id], onDelete: SetNull)
+  linkedTransactions StockTransaction[] @relation("LinkedTransactions")
+  reservation        StockReservation?  @relation(fields: [reservationId], references: [id], onDelete: SetNull)
+  employee           Employee?          @relation(fields: [employeeUsername], references: [username])
+  purchaseItem       StockPurchaseItem? @relation
+
+  // Business Rule: MOVE and CUT transactions MUST have linkedTransactionId set
+  // - MOVE: Creates two transactions (source decrease, target increase), both must be linked
+  // - CUT: Creates two transactions (source decrease, target increase), both must be linked
+  // This is enforced at the application level since Prisma doesn't support conditional constraints
+  // The API validates that both transactions have linkedTransactionId before completing
+
+  @@index([materialId, diameter, length, polished, customType, transactionType])
+  @@index([transactionType, createdAt])
+  @@index([reservationId])
+  @@index([factoryId])
+  @@index([linkedTransactionId])
+  @@map("app_stock_transactions")
+}
+
+enum ProcessPlanStatus {
+  DRAFT // Planning phase
+  READY // Can start work
+  COMPLETED // All work done
+  CANCELLED // Process cancelled
+}
+
+enum ProcessRecordType {
+  IN_PROGRESS // Currently working
+  COMPLETED // Session finished
+  CANCELLED // Session cancelled
+}
+
+// Special role: initial (exactly one per workflow) or final (none or 出荷前検査).
+enum ProcessTemplateSpecialKind {
+  NONE // Regular step
+  INITIAL // Initial process; exactly one assignable per workflow (素材出し, 半製品出し, 素材受渡し, 製品受渡し)
+  FINAL // Final process; none or 出荷前検査
+}
+
+// Workflow step kind (1.6 start/end, 1.7 delivery). Valid start: first 4; end: SHIPMENT; PRE_SHIPMENT_INSPECTION is skippable.
+enum ProcessTemplateStepKind {
+  MATERIAL_FROM_STOCK // 素材出し（在庫から）
+  SEMI_FROM_STOCK // 半製品出し（在庫から）
+  MATERIAL_HANDOVER // 素材受渡し（受注元から）
+  PRODUCT_HANDOVER // 製品受渡し（受注元から）
+  PROCESSING // Generic processing
+  PRE_SHIPMENT_INSPECTION // 出荷前検査 (skippable)
+  SHIPMENT // 出荷 (final step)
+  INTER_FACTORY_DELIVERY // 工場間受け渡し (auto-inserted between different factories)
+}
+
+model ProcessTemplate {
+  id                 Int     @id @default(autoincrement())
+  name               Json // { ja: string, en: string }
+  description        Json? // { ja: string, en: string }
+  displayOrder       Int     @default(0) @map("display_order")
+  onStartLogicKey    String? @map("on_start_logic_key")
+  onCompleteLogicKey String? @map("on_complete_logic_key")
+  customViewLogicKey String? @map("custom_view_logic_key")
+  hideButton         Boolean @default(false) @map("hide_button")
+
+  // Workflow structure (1.6): step kind and whether 出荷前検査 is skippable for this template
+  stepKind              ProcessTemplateStepKind    @default(PROCESSING) @map("step_kind")
+  isSkippableInspection Boolean                    @default(false) @map("is_skippable_inspection")
+  // Initial step (exactly one per workflow) or final step (none or 出荷前検査)
+  specialKind           ProcessTemplateSpecialKind @default(NONE) @map("is_special")
+
+  // required_exist: template IDs that must be present in the workflow when this template is used (使用依存)
+  requiredExistTemplateIds  Int[] @default([]) @map("required_exist_template_ids")
+  // required_before: (1) Plan: those templates must exist in the workflow and be ordered before this step. (2) Execution: when present in the workflow, they must be completed before this step can start (実行依存)
+  requiredBeforeTemplateIds Int[] @default([]) @map("required_before_template_ids")
+  // Warning shown when requirements are not fulfilled. { ja: string, en: string }
+  requirementsWarning       Json? @map("requirements_warning")
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  // Relations
+  plans ProcessPlan[]
+  // records ProcessRecord[]
+
+  @@index([displayOrder])
+  @@index([stepKind])
+  @@index([specialKind])
+  @@map("app_process_templates")
+}
+
+model ProcessPlan {
+  id         Int  @id @default(autoincrement())
+  // orderId     Int  @map("order_id")
+  workflowId Int? @map("workflow_id") // which manufacturing workflow this step belongs to
+  templateId Int  @map("template_id")
+  sequence   Int  @default(0)
+  factoryId  Int? @map("factory_id")
+
+  // For INTER_FACTORY_DELIVERY steps only (1.7): from/to factory
+  fromFactoryId Int? @map("from_factory_id")
+  toFactoryId   Int? @map("to_factory_id")
+
+  // Planning details
+  plannedAt      DateTime? @map("planned_at") @db.Timestamptz
+  assignedTo     String?   @map("assigned_to")
+  estimatedHours Float?    @map("estimated_hours")
+  notes          String?   @db.Text
+
+  // 出荷前検査 skip: when template is PRE_SHIPMENT_INSPECTION, true = skip this step (1.6)
+  skipInspection Boolean @default(false) @map("skip_inspection")
+
+  // Simplified status (no IN_PROGRESS, no PAUSED)
+  status          ProcessPlanStatus @default(DRAFT)
+  statusChangedAt DateTime?         @map("status_changed_at") @db.Timestamptz
+
+  // Completion
+  markedComplete   Boolean   @default(false) @map("marked_complete")
+  markedCompleteAt DateTime? @map("marked_complete_at") @db.Timestamptz
+  markedCompleteBy String?   @map("marked_complete_by")
+
+  // Item counts: input from previous step, success passed to next, defect handling
+  // First step: inputQuantity can be set from order.totalQuantity or manually
+  // Next steps: input = previous step's outputSuccessQuantity (computed or copied)
+  inputQuantity            Int? @map("input_quantity") // Count received from previous step
+  outputSuccessQuantity    Int? @map("output_success_quantity") // Success items passed to next step
+  outputDefectSemiFinished Int? @map("output_defect_semi_finished") // 半製品 stock
+  outputDefectScrap        Int? @map("output_defect_scrap") // Thrown away
+  outputDefectRework       Int? @map("output_defect_rework") // Split / additional step to complete
+
+  // Cancellation
+  cancelledAt        DateTime? @map("cancelled_at") @db.Timestamptz
+  cancelledBy        String?   @map("cancelled_by")
+  cancellationReason String?   @map("cancellation_reason") @db.Text
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  // Relations
+  // order        Order              @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  workflow         ManufacturingWorkflow? @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+  template         ProcessTemplate        @relation(fields: [templateId], references: [id])
+  factory          Factory?               @relation(fields: [factoryId], references: [id], onDelete: SetNull)
+  fromFactory      Factory?               @relation("ProcessPlanFromFactory", fields: [fromFactoryId], references: [id], onDelete: SetNull)
+  toFactory        Factory?               @relation("ProcessPlanToFactory", fields: [toFactoryId], references: [id], onDelete: SetNull)
+  assignedEmployee Employee?              @relation("ProcessPlanAssigned", fields: [assignedTo], references: [username])
+  records          ProcessRecord[]
+  splitLinks       WorkflowLink[]         @relation("SplitLinks") // DAG links that split after this plan
+
+  // Multiple plans per (orderId, templateId) allowed for INTER_FACTORY_DELIVERY (1.7)
+  @@index([templateId])
+  // @@index([orderId])
+  @@index([workflowId])
+  @@index([status])
+  @@index([factoryId])
+  @@map("app_process_plans")
+}
+
+model ProcessRecord {
+  id     Int @id @default(autoincrement())
+  planId Int @map("plan_id")
+  // templateId Int @map("template_id")
+  // orderId    Int @map("order_id")
+
+  // Record type and time tracking
+  // Note: endAt can be filled while type is IN_PROGRESS (paused state)
+  // - Active session: type = IN_PROGRESS, endAt = NULL
+  // - Paused session: type = IN_PROGRESS, endAt = filled
+  // - Completed session: type = COMPLETED, endAt = filled
+  type    ProcessRecordType @default(IN_PROGRESS)
+  startAt DateTime          @map("start_at") @db.Timestamptz
+  endAt   DateTime?         @map("end_at") @db.Timestamptz
+
+  // Session details
+  achievedBy         String  @map("achieved_by")
+  notes              String? @db.Text
+  logicResult        Json?   @map("logic_result")
+  cancellationReason String? @map("cancellation_reason") @db.Text
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  // Relations
+  plan             ProcessPlan @relation(fields: [planId], references: [id], onDelete: Cascade)
+  // template         ProcessTemplate @relation(fields: [templateId], references: [id])
+  // orderRelation    Order           @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  achievedEmployee Employee    @relation("ProcessRecordAchieved", fields: [achievedBy], references: [username])
+
+  @@index([planId])
+  // @@index([orderId])
+  @@index([type])
+  @@map("app_process_records")
+}
+
+model Factory {
+  id            Int      @id @default(autoincrement())
+  code          String   @unique
+  name          String
+  namePho       String?  @map("name_pho")
+  postalCode    String?  @map("postal_code")
+  phone         String?
+  email         String?
+  address       String?
+  contactPerson String?  @map("contact_person")
+  notes         String?
+  isActive      Boolean  @default(true) @map("is_active")
+  zone          Zone     @default(JPN)
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt     DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  isDeleted Boolean @default(false) @map("is_deleted")
+
+  employees                Employee[]
+  processPlans             ProcessPlan[]
+  processPlansFrom         ProcessPlan[]         @relation("ProcessPlanFromFactory")
+  processPlansTo           ProcessPlan[]         @relation("ProcessPlanToFactory")
+  stocks                   Stock[]
+  stockTransactions        StockTransaction[]
+  stockReservations        StockReservation[]
+  stockPurchaseItems       StockPurchaseItem[]
+  shippingInstructionsFrom ShippingInstruction[] @relation("ShippingInstructionFromFactory")
+  shippingInstructionsTo   ShippingInstruction[] @relation("ShippingInstructionToFactory")
+  machines                 Machine[]
+
+  @@index([code])
+  @@index([name])
+  @@index([isActive])
+  @@map("app_factories")
+}
+
+// 設備: machines in a factory
+model Machine {
+  id           Int     @id @default(autoincrement())
+  manufacturer String? // メーカー
+  type         String? // 種類
+  modelNumber  String? @map("model_number") // 型番
+  factoryId    Int     @map("factory_id")
+  location     String? // location within factory
+
+  isDeleted Boolean  @default(false) @map("is_deleted")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  factory            Factory                    @relation(fields: [factoryId], references: [id], onDelete: Restrict)
+  machinePrograms    MachineProgramMachine[]
+  inspectionPrograms InspectionProgramMachine[]
+
+  @@index([factoryId])
+  @@map("app_machines")
+}
+
+// 加工プログラム: machine program linked to product
+model MachineProgram {
+  id        Int @id @default(autoincrement())
+  productId Int @map("product_id")
+
+  processingLocation   String? @map("processing_location") // 加工場所
+  executionTimeMinutes Int?    @map("execution_time_minutes") // 実行時間
+  programFilePath      String? @map("program_file_path") // プログラム filepath
+
+  isDeleted Boolean  @default(false) @map("is_deleted")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  product       Product                      @relation(fields: [productId], references: [id], onDelete: Cascade)
+  stepTemplates MachineProgramStepTemplate[]
+  machines      MachineProgramMachine[]
+
+  @@index([productId])
+  @@map("app_machine_programs")
+}
+
+// ステップIDテンプレート (multiple) for machine program
+model MachineProgramStepTemplate {
+  id               Int    @id @default(autoincrement())
+  machineProgramId Int    @map("machine_program_id")
+  value            String // step ID template string
+  sortOrder        Int?   @map("sort_order")
+
+  machineProgram MachineProgram @relation(fields: [machineProgramId], references: [id], onDelete: Cascade)
+
+  @@index([machineProgramId])
+  @@map("app_machine_program_step_templates")
+}
+
+// M:N 使用可能設備 for machine program
+model MachineProgramMachine {
+  machineProgramId Int @map("machine_program_id")
+  machineId        Int @map("machine_id")
+
+  machineProgram MachineProgram @relation(fields: [machineProgramId], references: [id], onDelete: Cascade)
+  machine        Machine        @relation(fields: [machineId], references: [id], onDelete: Cascade)
+
+  @@id([machineProgramId, machineId])
+  @@map("app_machine_program_machines")
+}
+
+// 検査プログラム: inspection program linked to product
+model InspectionProgram {
+  id        Int @id @default(autoincrement())
+  productId Int @map("product_id")
+
+  executionTimeMinutes Int?    @map("execution_time_minutes") // 実行時間
+  programFilePath      String? @map("program_file_path") // プログラム filepath
+
+  isDeleted Boolean  @default(false) @map("is_deleted")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  product       Product                         @relation(fields: [productId], references: [id], onDelete: Cascade)
+  stepTemplates InspectionProgramStepTemplate[]
+  machines      InspectionProgramMachine[]
+
+  @@index([productId])
+  @@map("app_inspection_programs")
+}
+
+// ステップIDテンプレート (multiple) for inspection program
+model InspectionProgramStepTemplate {
+  id                  Int    @id @default(autoincrement())
+  inspectionProgramId Int    @map("inspection_program_id")
+  value               String
+  sortOrder           Int?   @map("sort_order")
+
+  inspectionProgram InspectionProgram @relation(fields: [inspectionProgramId], references: [id], onDelete: Cascade)
+
+  @@index([inspectionProgramId])
+  @@map("app_inspection_program_step_templates")
+}
+
+// M:N 使用可能設備 for inspection program
+model InspectionProgramMachine {
+  inspectionProgramId Int @map("inspection_program_id")
+  machineId           Int @map("machine_id")
+
+  inspectionProgram InspectionProgram @relation(fields: [inspectionProgramId], references: [id], onDelete: Cascade)
+  machine           Machine           @relation(fields: [machineId], references: [id], onDelete: Cascade)
+
+  @@id([inspectionProgramId, machineId])
+  @@map("app_inspection_program_machines")
+}
+
+// Company: groups customers (branches). Each customer is one branch.
+model Company {
+  id        Int      @id @default(autoincrement())
+  code      String   @unique
+  name      String
+  namePho   String?  @map("name_pho")
+  notes     String?  @db.Text
+  isActive  Boolean  @default(true) @map("is_active")
+  zone      Zone     @default(JPN)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+  isDeleted Boolean  @default(false) @map("is_deleted")
+
+  customers Customer[]
+
+  @@index([code])
+  @@index([name])
+  @@index([isActive])
+  @@map("app_companies")
+}
+
+model Customer {
+  id                    Int      @id @default(autoincrement())
+  code                  String   @unique
+  companyId             Int?     @map("company_id") // optional: group branches by company
+  branchName            String?  @map("branch_name") // branch name; customer is per-branch
+  name                  String // display name (e.g. company + branch or branch only)
+  namePho               String?  @map("name_pho")
+  postalCode            String?  @map("postal_code")
+  phone                 String?
+  email                 String?
+  address               String?
+  contactPerson         String?  @map("contact_person")
+  notes                 String?
+  isActive              Boolean  @default(true) @map("is_active")
+  zone                  Zone     @default(JPN)
+  canBePurchaseCustomer Boolean  @default(true) @map("can_be_purchase_customer")
+  canBeEndUser          Boolean  @default(false) @map("can_be_end_user")
+  createdAt             DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt             DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  isDeleted Boolean @default(false) @map("is_deleted")
+
+  company         Company?       @relation(fields: [companyId], references: [id], onDelete: SetNull)
+  orderReceipts   OrderReceipt[]
+  ordersAsEndUser Order[]        @relation("OrderEndUser")
+  addresses       Address[]
+  priceLists      PriceList[]
+
+  @@index([code])
+  @@index([companyId])
+  @@index([name])
+  @@index([isActive])
+  @@map("app_customers")
+}
+
+// Price list per customer and item (invoice / 見積書); tiers define unit price by quantity range
+model PriceList {
+  id         Int       @id @default(autoincrement())
+  customerId Int       @map("customer_id")
+  productId  Int       @map("product_id")
+  currency   Currency  @default(JPY)
+  validFrom  DateTime? @map("valid_from") @db.Timestamptz // date from which this price list is effective
+  isDeleted  Boolean   @default(false) @map("is_deleted")
+  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt  DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  customer Customer        @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  product  Product         @relation(fields: [productId], references: [id], onDelete: Restrict)
+  tiers    PriceListTier[]
+
+  @@unique([customerId, productId], name: "price_list_customer_product")
+  @@index([customerId])
+  @@index([productId])
+  @@index([isDeleted])
+  @@index([validFrom])
+  @@map("app_price_lists")
+}
+
+model PriceListTier {
+  id          Int      @id @default(autoincrement())
+  priceListId Int      @map("price_list_id")
+  minQuantity Int      @map("min_quantity") // inclusive
+  maxQuantity Int?     @map("max_quantity") // inclusive; null = no upper bound (e.g. 50-)
+  unitPrice   Decimal  @map("unit_price") @db.Decimal(12, 2)
+  currency    Currency @default(JPY)
+
+  priceList PriceList @relation(fields: [priceListId], references: [id], onDelete: Cascade)
+
+  @@index([priceListId])
+  @@map("app_price_list_tiers")
+}
+
+// Delivery addresses grouped by customer (purchaser or end user)
+model Address {
+  id           Int      @id @default(autoincrement())
+  customerId   Int      @map("customer_id")
+  label        String? // e.g. "本社", "工場A"
+  postalCode   String?  @map("postal_code")
+  prefecture   String?
+  addressLine1 String?  @map("address_line1")
+  addressLine2 String?  @map("address_line2")
+  phone        String?
+  isDefault    Boolean  @default(false) @map("is_default")
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt    DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  customer                      Customer              @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  shippingInstructionsTo        ShippingInstruction[] @relation("ShippingInstructionToAddress")
+  shippingInstructionsInvoiceTo ShippingInstruction[] @relation("ShippingInstructionInvoiceToAddress")
+
+  @@index([customerId])
+  @@map("app_addresses")
+}
+
+// Delivery 指示書: multiple per 受注.
+// 在庫 (STOCK): from factory → to factory.
+// 通常配送 (NORMAL_DELIVERY): from factory → to address.
+// 直送 (USER_DIRECT): from factory → to address (end user). 納品書送付先 = invoiceToAddressId. 配送伝票 only with item to end user.
+model ShippingInstruction {
+  id                 Int                       @id @default(autoincrement())
+  orderId            Int                       @map("order_id")
+  type               ShippingInstructionType
+  status             ShippingInstructionStatus @default(PLANNED) @map("status")
+  plannedQuantity    Int?                      @map("planned_quantity")
+  resultQuantity     Int?                      @map("result_quantity")
+  fromFactoryId      Int?                      @map("from_factory_id") // 出発: 工場
+  toFactoryId        Int?                      @map("to_factory_id") // 在庫: 宛先工場
+  toAddressId        Int?                      @map("to_address_id") // 通常配送・直送: 宛先住所（直送はエンドユーザー宛）
+  invoiceToAddressId Int?                      @map("invoice_to_address_id") // 直送のみ: 納品書送付先
+  notes              String?                   @db.Text
+  createdAt          DateTime                  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt          DateTime                  @updatedAt @map("updated_at") @db.Timestamptz
+
+  order            Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  fromFactory      Factory? @relation("ShippingInstructionFromFactory", fields: [fromFactoryId], references: [id], onDelete: SetNull)
+  toFactory        Factory? @relation("ShippingInstructionToFactory", fields: [toFactoryId], references: [id], onDelete: SetNull)
+  toAddress        Address? @relation("ShippingInstructionToAddress", fields: [toAddressId], references: [id], onDelete: SetNull)
+  invoiceToAddress Address? @relation("ShippingInstructionInvoiceToAddress", fields: [invoiceToAddressId], references: [id], onDelete: SetNull)
+
+  @@index([orderId])
+  @@index([fromFactoryId])
+  @@index([toFactoryId])
+  @@index([toAddressId])
+  @@index([invoiceToAddressId])
+  @@map("app_shipping_instructions")
+}
+
+model Supplier {
+  id            Int      @id @default(autoincrement())
+  code          String   @unique
+  name          String
+  namePho       String?  @map("name_pho")
+  postalCode    String?  @map("postal_code")
+  phone         String?
+  email         String?
+  address       String?
+  contactPerson String?  @map("contact_person")
+  notes         String?
+  isActive      Boolean  @default(true) @map("is_active")
+  zone          Zone     @default(JPN)
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt     DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  isDeleted Boolean @default(false) @map("is_deleted")
+
+  stockPurchases StockPurchase[]
+
+  @@index([code])
+  @@index([name])
+  @@index([isActive])
+  @@map("app_suppliers")
+}
+
+// log related models
+enum LogCategory {
+  AUTH
+  SYSTEM
+  SECURITY
+  CARD
+  AUDIT
+  ERROR
+}
+
+enum LogLevel {
+  DEBUG
+  INFO
+  WARN
+  ERROR
+}
+
+model Log {
+  id               Int         @id @default(autoincrement())
+  level            LogLevel    @default(INFO)
+  employeeUsername String?     @map("employee_username")
+  category         LogCategory
+  type             String
+  action           String
+  data             Json?
+  zone             Zone        @default(JPN)
+  timestamp        DateTime    @default(now()) @db.Timestamptz
+  Employee         Employee?   @relation(fields: [employeeUsername], references: [username], onDelete: Cascade)
+
+  @@index([employeeUsername])
+  @@index([timestamp])
+  @@map("logs")
+}
+
+model Employee {
+  username             String   @id
+  employeeCode         Int?      @unique @map("employee_code")
+  displayName          String   @map("display_name")
+  email                String?
+  department           String?
+  title                String?
+  manager              String?
+  avatarImage          String?  @map("avatar_image")
+  factoryId            Int?     @map("factory_id")
+  isEnabled            Boolean  @default(true) @map("is_enabled")
+  maxQrCodes           Int      @default(1) @map("max_qr_codes")
+  maxConcurrentDevices Int      @default(3) @map("max_concurrent_devices")
+  lastSyncedAt         DateTime @default(now()) @updatedAt @map("last_synced_at") @db.Timestamptz
+
+  isActive     Boolean   @default(false) @map("is_active")
+  lastActiveAt DateTime? @map("last_active_at") @db.Timestamptz
+
+  // Relations
+  factory                Factory?                  @relation(fields: [factoryId], references: [id], onDelete: SetNull)
+  assignedCards          AccessCard[]
+  groupMemberships       EmployeeGroupMembership[]
+  settings               EmployeeSetting?
+  logs                   Log[]
+  orderReceipts          OrderReceipt[]
+  assignedProcessPlans   ProcessPlan[]             @relation("ProcessPlanAssigned")
+  achievedProcessRecords ProcessRecord[]           @relation("ProcessRecordAchieved")
+  stockTransactions      StockTransaction[]
+  zones                  EmployeeZone[]
+  purchaseApprovals      StockPurchaseApprover[]
+  // purchaseItems     StockPurchaseItem[]
+  purchases              StockPurchase[]
+  hrRecords              HRRecord[]
+
+  // Indexes for optimizing employee_permissions_view queries
+  @@index([isEnabled])
+  @@index([factoryId])
+  @@index([username, isEnabled], name: "idx_employees_username_is_enabled")
+  @@map("employees")
+}
+
+model Guest {
+  username             String   @id
+  displayName          String   @map("display_name")
+  email                String?
+  department           String?
+  title                String?
+  manager              String?
+  isEnabled            Boolean  @default(true) @map("is_enabled")
+  maxQrCodes           Int      @default(1) @map("max_qr_codes")
+  maxConcurrentDevices Int      @default(3) @map("max_concurrent_devices")
+  zone                 Zone     @default(JPN)
+  lastSyncedAt         DateTime @default(now()) @updatedAt @map("last_synced_at") @db.Timestamptz
+
+  // Relations
+  assignedCards AccessCard[]
+  settings      GuestSetting?
+
+  @@map("guests")
+}
+
+model EmployeeSetting {
+  id               Int      @id @default(autoincrement())
+  employeeUsername String   @unique @map("employee_username")
+  kioskApp         Json?    @map("kiosk_app") // Stores original groupings with starred apps
+  userApp          Json?    @map("user_app") // General settings JSON
+  createdAt        DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt        DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  // Relations
+  employee Employee @relation(fields: [employeeUsername], references: [username], onDelete: Cascade)
+
+  @@map("settings_employees")
+}
+
+model GuestSetting {
+  id            Int      @id @default(autoincrement())
+  guestUsername String   @unique @map("guest_username")
+  kioskApp      Json?    @map("kiosk_app") // Stores original groupings with starred apps
+  userApp       Json?    @map("user_app") // General settings JSON
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt     DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  // Relations
+  guest Guest @relation(fields: [guestUsername], references: [username], onDelete: Cascade)
+
+  @@map("settings_guests")
+}
+
+enum GroupSource {
+  AD // Synced from Active Directory
+  APP // Created in application
+}
+
+model Group {
+  id           Int         @id @default(autoincrement())
+  name         String      @unique // Group identifier (e.g., "Domain Users", "app_managers")
+  displayName  String?     @map("display_name") // Friendly display name
+  description  String?
+  source       GroupSource @default(APP)
+  adGroupDn    String?     @map("ad_group_dn") // AD Distinguished Name (for AD groups only)
+  isEnabled    Boolean     @default(true) @map("is_enabled")
+  zone         Zone        @default(JPN)
+  lastSyncedAt DateTime?   @map("last_synced_at") @db.Timestamptz // Last AD sync time (for AD groups)
+  createdAt    DateTime    @default(now()) @map("created_at") @db.Timestamptz
+  createdBy    String?     @map("created_by")
+  updatedAt    DateTime    @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+  updatedBy    String?     @map("updated_by")
+
+  // Relations
+  memberships       EmployeeGroupMembership[]
+  permissions       GroupPermission[]
+  notificationsSent NotificationRecipient[]
+  purchaseApprovals StockPurchaseApprover[]
+
+  @@map("groups")
+}
+
+model EmployeeGroupMembership {
+  id               Int         @id @default(autoincrement())
+  employeeUsername String      @map("employee_username")
+  groupId          Int         @map("group_id")
+  source           GroupSource @default(APP) // How the membership was created
+  addedAt          DateTime    @default(now()) @map("added_at") @db.Timestamptz
+  addedBy          String?     @map("added_by") // null for AD sync
+  expiresAt        DateTime?   @map("expires_at") @db.Timestamptz // Optional expiration for temporary memberships
+
+  // Relations
+  employee Employee @relation(fields: [employeeUsername], references: [username], onDelete: Cascade)
+  group    Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  @@unique([employeeUsername, groupId])
+  @@index([groupId])
+  @@map("employee_group_memberships")
+}
+
+// bug report related models
+model BugReport {
+  id        Int      @id @default(autoincrement())
+  subject   String   @db.VarChar(255)
+  message   String   @db.Text
+  username  String?  @db.VarChar(255)
+  userAgent String?  @db.Text
+  url       String?  @db.Text
+  status    String   @default("pending") @db.VarChar(50) // 'pending', 'resolved', 'closed'
+  zone      Zone     @default(JPN)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@index([username])
+  @@index([status])
+  @@index([createdAt])
+  @@map("bug_reports")
+}
+
+// notification related models
+model Notification {
+  id        Int      @id @default(autoincrement())
+  title     String?  @db.VarChar(255)
+  message   String
+  type      String?  @db.VarChar(50) // 'info', 'warning', 'success', 'error'
+  link      String?  @db.VarChar(255)
+  zone      Zone     @default(JPN)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  createdBy String?  @map("created_by")
+
+  recipients NotificationRecipient[]
+  userStatus UserNotificationStatus[]
+
+  @@index([createdAt])
+  @@map("notifications")
+}
+
+model NotificationRecipient {
+  id             Int      @id @default(autoincrement())
+  notificationId Int      @map("notification_id")
+  recipientType  String   @map("recipient_type") @db.VarChar(20) // 'user' or 'group'
+  username       String?
+  groupId        Int?     @map("group_id")
+  zone           Zone     @default(JPN)
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  notification Notification @relation(fields: [notificationId], references: [id], onDelete: Cascade)
+  group        Group?       @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  @@unique([notificationId, recipientType, username, groupId])
+  @@index([recipientType, username])
+  @@index([recipientType, groupId])
+  @@index([notificationId])
+  @@map("notification_recipients")
+}
+
+model UserNotificationStatus {
+  id             Int       @id @default(autoincrement())
+  notificationId Int       @map("notification_id")
+  username       String
+  isRead         Boolean   @default(false) @map("is_read")
+  readAt         DateTime? @map("read_at") @db.Timestamptz
+  zone           Zone      @default(JPN)
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz
+
+  notification Notification @relation(fields: [notificationId], references: [id], onDelete: Cascade)
+
+  @@unique([notificationId, username])
+  @@index([username, isRead])
+  @@index([notificationId])
+  @@map("user_notification_status")
+}
+
+enum CardStatus {
+  UNASSIGNED
+  ASSIGNED
+  REVOKED
+  SUSPENDED
+  EXPIRED
+}
+
+model AccessCard {
+  cardId            String     @id @map("card_id") // ****-****-****-****
+  employeeUsername  String?    @map("employee_username")
+  guestUsername     String?    @map("guest_username")
+  status            CardStatus @default(UNASSIGNED)
+  pinHash           String?    @map("pin_hash")
+  pinSalt           String?    @map("pin_salt")
+  pinCreatedAt      DateTime?  @map("pin_created_at") @db.Timestamptz
+  pinLastVerified   DateTime?  @map("pin_last_verified") @db.Timestamptz
+  pinFailedAttempts Int        @default(0) @map("pin_failed_attempts")
+  pinLockedUntil    DateTime?  @map("pin_locked_until") @db.Timestamptz
+  assignedDate      DateTime?  @map("assigned_date") @db.Timestamptz
+  assignedBy        String?    @map("assigned_by")
+  revokedDate       DateTime?  @map("revoked_date") @db.Timestamptz
+  revokedBy         String?    @map("revoked_by")
+  lastUsed          DateTime?  @map("last_used") @db.Timestamptz
+  useCount          Int        @default(0) @map("use_count")
+  zone              Zone       @default(JPN)
+  createdAt         DateTime   @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt         DateTime   @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  // Relations
+  employee   Employee?    @relation(fields: [employeeUsername], references: [username])
+  guest      Guest?       @relation(fields: [guestUsername], references: [username])
+  pinHistory PinHistory[]
+
+  @@map("access_cards")
+}
+
+model PinHistory {
+  id        Int      @id @default(autoincrement())
+  cardId    String   @map("card_id")
+  pinHash   String   @map("pin_hash")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  createdBy String   @map("created_by") // "user" or "admin"
+
+  // Relations
+  card AccessCard @relation(fields: [cardId], references: [cardId])
+
+  @@map("pin_history")
+}
+
+enum PermissionAction {
+  CREATE
+  READ
+  UPDATE
+  DELETE
+  MANAGE
+  FORCE
+  ACCESS
+  PRINT
+  EXPORT
+  REQUEST
+  APPROVE
+  ORDER
+  LOCK
+  COMPLETE
+  CANCEL
+  CUT
+}
+
+enum PermissionScope {
+  ALL
+  OWN
+  DEPARTMENT
+  TEAM
+  GROUP
+  ZONE
+  NONE
+  CUSTOM
+}
+
+enum AccessType {
+  KIOSK
+  WEB
+  BOTH
+}
+
+model Permission {
+  id          Int              @id @default(autoincrement())
+  code        String           @unique // [action]:[resource]#[scope]
+  category    Json? // { ja: string, en: string }
+  name        Json // { ja: string, en: string }
+  description Json? // { ja: string, en: string }
+  action      PermissionAction @default(READ)
+  resource    String           @default("*") // * for all resources
+  scope       PermissionScope  @default(ALL)
+  accessType  AccessType       @default(BOTH) @map("access_type")
+  requiresMFA Boolean          @default(false) @map("requires_mfa")
+  isActive    Boolean          @default(true) @map("is_active")
+  createdAt   DateTime         @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt   DateTime         @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  // Relations
+  groupPermissions GroupPermission[]
+
+  @@map("permissions")
+}
+
+model GroupPermission {
+  id           Int      @id @default(autoincrement())
+  groupId      Int      @map("group_id")
+  permissionId Int      @map("permission_id")
+  grantedBy    String   @map("granted_by")
+  zone         Zone     @default(JPN)
+  grantedAt    DateTime @default(now()) @map("granted_at") @db.Timestamptz
+  isEnabled    Boolean  @default(true) @map("is_enabled")
+
+  // Relations
+  group      Group      @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@unique([groupId, permissionId])
+  @@map("group_permissions")
+}
+
+model EmployeeZone {
+  id               Int      @id @default(autoincrement())
+  employeeUsername String   @map("employee_username")
+  zone             Zone
+  assignedAt       DateTime @default(now()) @map("assigned_at") @db.Timestamptz
+  assignedBy       String?  @map("assigned_by")
+
+  // Relations
+  employee Employee @relation(fields: [employeeUsername], references: [username], onDelete: Cascade)
+
+  @@unique([employeeUsername, zone])
+  @@index([employeeUsername])
+  @@index([zone])
+  @@map("employee_zones")
+}
+
+// Database view for fast permission lookups
+// One record per employee with aggregated group_ids, permission_codes, zones arrays, and employee details
+// See: https://www.prisma.io/docs/orm/prisma-schema/data-model/views
+view EmployeePermissionsView {
+  username        String   @unique
+  isEnabled       Boolean  @map("is_enabled")
+  displayName     String   @map("display_name")
+  department      String?
+  title           String?
+  zones           String[] @db.Text
+  groupIds        Int[]    @map("group_ids") @db.Integer
+  permissionCodes String[] @map("permission_codes") @db.Text
+
+  @@map("employee_permissions_view")
+}
+
+// Stock management views
+// See: https://www.prisma.io/docs/orm/prisma-schema/data-model/views
+view StockSummaryView {
+  factoryId        Int     @map("factory_id")
+  materialId       Int     @map("material_id")
+  diameter         Decimal // 直径 (actual diameter, used in 素材コード)
+  length           Decimal
+  polished         Boolean
+  customType       String? @map("custom_type") // Optional custom type for stock classification
+  currentQuantity  Int     @map("current_quantity") // Current available stock quantity
+  reservedQuantity Int     @map("reserved_quantity") // Quantity reserved for outgoing (orders)
+  plannedQuantity  Int     @map("planned_quantity") // Quantity planned for incoming (purchases)
+  estimateQuantity Int     @map("estimate_quantity") // Estimated available quantity after planned changes (current + planned - reserved)
+
+  @@map("app_stock_summary_view")
+}
+
+view StockPurchaseSummaryView {
+  supplierId     Int      @map("supplier_id")
+  purchaseDate   DateTime @map("purchase_date") @db.Timestamptz
+  totalPurchases Int      @map("total_purchases")
+  averagePrice   Decimal  @map("average_price")
+  purchaseCounts Int      @map("purchase_counts")
+
+  @@map("app_stock_purchase_summary_view")
+}
+
+view MaterialLatestPriceView {
+  materialId          Int      @map("material_id")
+  diameter            Decimal
+  length              Decimal
+  polished            Boolean
+  customType          String?  @map("custom_type") // Optional custom type for stock classification
+  latestPricePerPiece Decimal  @map("latest_price_per_piece")
+  latestPricePerUnit  Decimal? @map("latest_price_per_unit")
+  latestPurchaseDate  DateTime @map("latest_purchase_date") @db.Timestamptz
+  latestPurchaseId    Int      @map("latest_purchase_id")
+  latestSupplierId    Int      @map("latest_supplier_id")
+  currency            String
+
+  @@map("app_material_latest_price_view")
+}
+
+model HRRecord {
+  id               Int      @id @default(autoincrement())
+  employeeUsername String   @map("employee_username")
+  zone             Zone
+  createdAt        DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  date            DateTime @db.Timestamptz
+  wtNormal        Int      @map("wt_normal")
+  wtOvertime      Int      @map("wt_overtime")
+  wtOvertimeNight Int      @map("wt_overtime_night")
+  wtNight         Int      @map("wt_night")
+  wtLeaveLate     Int      @map("wt_leave_late")
+  pto             Int
+
+  planStart DateTime? @map("plan_start") @db.Timestamptz
+  planEnd   DateTime? @map("plan_end") @db.Timestamptz
+
+  recordStart DateTime[] @map("record_starts") @db.Timestamptz
+  recordEnd   DateTime[] @map("record_ends") @db.Timestamptz
+
+  restStart DateTime[] @map("rest_starts") @db.Timestamptz
+  restEnd   DateTime[] @map("rest_ends") @db.Timestamptz
+
+  employee Employee @relation(fields: [employeeUsername], references: [username], onDelete: Cascade)
+
+  @@index([employeeUsername, zone, date])
+  @@map("hr_records")
+}
+
+view HRSummaryView {
+  employeeUsername String   @map("employee_username")
+  zone             Zone
+  month            DateTime @db.Timestamptz
+
+  wtNormal        Int @map("wt_normal")
+  wtOvertime      Int @map("wt_overtime")
+  wtOvertimeNight Int @map("wt_overtime_night")
+  wtNight         Int @map("wt_night")
+  wtLeaveLate     Int @map("wt_leave_late")
+  pto             Int @map("pto")
+
+  @@map("hr_summary_view")
+}

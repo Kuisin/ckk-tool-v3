@@ -1,0 +1,22 @@
+{
+  // Format on save with Biome (matches biome.json — line width, quotes, indent…).
+  "editor.formatOnSave": true,
+  "editor.defaultFormatter": "biomejs.biome",
+
+  // On save, apply all of Biome's *safe* source actions coherently: organize
+  // imports + sort JSX props (useSortedAttributes) + safe lint quickfixes.
+  // className sorting (useSortedClasses) is an *unsafe* fix and is NOT applied on
+  // save — enforce it via `pnpm lint` / pre-commit or `biome check --write --unsafe`.
+  "editor.codeActionsOnSave": {
+    "source.fixAll.biome": "explicit"
+  },
+
+  // Make Biome the formatter for every language it owns (overrides Prettier etc.).
+  "[javascript]": { "editor.defaultFormatter": "biomejs.biome" },
+  "[javascriptreact]": { "editor.defaultFormatter": "biomejs.biome" },
+  "[typescript]": { "editor.defaultFormatter": "biomejs.biome" },
+  "[typescriptreact]": { "editor.defaultFormatter": "biomejs.biome" },
+  "[json]": { "editor.defaultFormatter": "biomejs.biome" },
+  "[jsonc]": { "editor.defaultFormatter": "biomejs.biome" },
+  "[css]": { "editor.defaultFormatter": "biomejs.biome" }
+}

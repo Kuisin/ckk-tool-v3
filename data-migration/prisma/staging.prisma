@@ -1,0 +1,158 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:../staging.sqlite"
+}
+
+model claim_billing {
+  id               Int     @id @default(autoincrement())
+  source_rowid     Int?
+  entry_date       String?
+  mgmt_no          String?
+  billed_to        String?
+  product_name     String?
+  defect_qty       Float?
+  film_type        String?
+  claim_unit_price Float?
+  defect_reason    String?
+  delivery_note_no String?
+  slip_no          String?
+  billed_date      String?
+  billing_status   String?
+  billing_total    Float?
+  tax              Float?
+  entered_by       String?
+  factory          String?
+}
+
+model customers {
+  id     Int      @id @default(autoincrement())
+  name   String?  @unique(map: "sqlite_autoindex_customers_1")
+  orders orders[]
+}
+
+model material_purchase_orders {
+  id                 Int     @id @default(autoincrement())
+  source_rowid       Int?
+  po_no              String?
+  supplier           String?
+  ship_to            String?
+  orderer            String?
+  dept               String?
+  order_date         String?
+  due_date           String?
+  received_date      String?
+  material_type_code String?
+  material_type_name String?
+  dimension          String?
+  qty                Float?
+  unit_price         Float?
+  amount             Float?
+  drawing_no         String?
+  line_seq           Int?
+}
+
+model materials {
+  id            Int      @id @default(autoincrement())
+  material      String?
+  material_type String?
+  orders        orders[]
+
+  @@unique([material, material_type], map: "sqlite_autoindex_materials_1")
+}
+
+model order_deliveries {
+  id             Int     @id @default(autoincrement())
+  order_id       Int?
+  seq            Int?
+  delivered_date String?
+  qty            Float?
+  orders         orders? @relation(fields: [order_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model order_delivery_links {
+  id              Int     @id @default(autoincrement())
+  order_id        Int?
+  delivery_source String?
+  delivery_ref    String?
+  delivery_date   String?
+  tier            String?
+  basis           String?
+  score           Float?
+  orders          orders? @relation(fields: [order_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model order_process_status {
+  id       Int     @id @default(autoincrement())
+  order_id Int?
+  process  String?
+  status   String?
+  orders   orders? @relation(fields: [order_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model orders {
+  id                   Int                    @id @default(autoincrement())
+  mgmt_no              String?
+  slip_code            String?
+  received_date        String?
+  ship_due             String?
+  customer_id          Int?
+  ship_to              String?
+  end_user             String?
+  work_factory         String?
+  product_id           Int?
+  material_id          Int?
+  order_ref            String?
+  category             String?
+  qty                  Int?
+  unit_price           Float?
+  sales_amount         Float?
+  coating              String?
+  coating_type         String?
+  outsource_to         String?
+  length_l             String?
+  input_by             String?
+  closing_group        String?
+  remarks              String?
+  source_rowid         Int?
+  order_deliveries     order_deliveries[]
+  order_delivery_links order_delivery_links[]
+  order_process_status order_process_status[]
+  materials            materials?             @relation(fields: [material_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  products             products?              @relation(fields: [product_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  customers            customers?             @relation(fields: [customer_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([customer_id], map: "ix_orders_cust")
+  @@index([slip_code], map: "ix_orders_slip")
+}
+
+model products {
+  id          Int      @id @default(autoincrement())
+  model_shape String?
+  shape       String?
+  blade_count String?
+  orders      orders[]
+
+  @@unique([model_shape, shape, blade_count], map: "sqlite_autoindex_products_1")
+}
+
+model yamaguchi_orders {
+  id            Int     @id @default(autoincrement())
+  source_rowid  Int?
+  slip_code     String?
+  customer      String?
+  office        String?
+  order_ref     String?
+  model_shape   String?
+  delivery_no   String?
+  delivery_date String?
+  ship_due      String?
+  qty_in        String?
+  total_amount  Float?
+  tax           Float?
+  grand_total   Float?
+  issued_date   String?
+}

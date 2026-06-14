@@ -1,0 +1,39 @@
+{
+  "name": "@kai-lab/shared-prisma",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Shared Prisma schema and client for KAI Lab applications",
+  "main": "./index.ts",
+  "types": "./index.ts",
+  "exports": {
+    ".": {
+      "types": "./index.ts",
+      "default": "./index.ts"
+    }
+  },
+  "scripts": {
+    "generate": "prisma generate --schema=./schema.prisma && node scripts/copy-generated.js",
+    "generate:only": "prisma generate --schema=./schema.prisma",
+    "copy": "node scripts/copy-generated.js",
+    "migrate:dev": "prisma migrate dev --config ./prisma.config.ts",
+    "migrate:deploy": "prisma migrate deploy --config ./prisma.config.ts",
+    "migrate:status": "prisma migrate status --config ./prisma.config.ts",
+    "migrate:run": "bash scripts/run-migrations.sh",
+    "studio": "prisma studio --config ./prisma.config.ts --port 5555 --browser none",
+    "studio:watch": "node scripts/watch-and-regenerate.js",
+    "seed": "bash scripts/run-seed.sh"
+  },
+  "dependencies": {
+    "@prisma/client": "^7.2.0",
+    "@prisma/adapter-pg": "^7.2.0",
+    "pg": "^8.16.3"
+  },
+  "devDependencies": {
+    "@types/node": "^20",
+    "@types/pg": "^8.16.0",
+    "dotenv": "^17.2.3",
+    "dotenv-cli": "^7.4.2",
+    "prisma": "^7.2.0",
+    "tsx": "^4.21.0"
+  }
+}

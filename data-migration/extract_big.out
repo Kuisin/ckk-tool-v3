@@ -1,0 +1,6 @@
+[big] ERR_rc139 tbl=0   rows=0       46s  X受注管理システム新1.fp7
+[big] OK     tbl=1   rows=52378   12s  入力照合システム.fp7
+[big] ERR_rc139 tbl=0   rows=0       101s  受注管理システム新1.fp7
+[big] OK     tbl=1   rows=16223   5s  見積書1.fp7
+[big] OK     tbl=1   rows=818     1s  閉じた分/受注管理システム新21.fp7
+=== big wave done ===
