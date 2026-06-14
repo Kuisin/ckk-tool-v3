@@ -175,9 +175,22 @@ body {
   }
 
   /* Form fields: in a grid row where fields differ in label/description height,
-     bottom-align cells so the input boxes line up horizontally. */
+     keep labels at the top but push the input box to the bottom so the input
+     boxes line up horizontally (the gap above a short field's input grows). */
   .form-section .mantine-SimpleGrid-root {
-    align-items: end;
+    align-items: stretch;
+  }
+  .form-section
+    .mantine-SimpleGrid-root
+    > *:has(> .mantine-Input-wrapper) {
+    display: flex;
+    flex-direction: column;
+  }
+  .form-section
+    .mantine-SimpleGrid-root
+    > *:has(> .mantine-Input-wrapper)
+    > .mantine-Input-wrapper {
+    margin-top: auto;
   }
 
   /* Compact audit history timeline — tighter row spacing than Mantine default. */

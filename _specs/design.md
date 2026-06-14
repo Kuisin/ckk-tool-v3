@@ -1049,10 +1049,11 @@ Row click navigates to detail page.
 
 **Validation timing** — `validateInputOnChange: false` (default). Validate on submit; show inline errors per field after first submit attempt.
 
-**Grid field alignment** — fields inside a `FormSection` use bottom-aligned grid
-cells (`.form-section .mantine-SimpleGrid-root { align-items: end }` in
-globals.css). So when fields in the same row differ in label/description height,
-the input boxes still line up horizontally (the taller label grows upward).
+**Grid field alignment** — fields inside a `FormSection` keep their **label at the
+top** but push the **input box to the bottom** of the (stretched) grid cell
+(`.form-section` rules in globals.css: `margin-top: auto` on `.mantine-Input-wrapper`).
+So when fields in the same row differ in label/description height, the input boxes
+line up horizontally — the gap above a shorter field's input simply grows.
 
 **Line item tables (desktop)** — `<Table withTableBorder withColumnBorders={false}>` with form inputs inline in cells.
 
