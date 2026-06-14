@@ -282,8 +282,7 @@ export function PriceListTable() {
       <DuplicatePriceListModal
         onClose={() => setDuplicateTarget(null)}
         opened={duplicateTarget !== null}
-        productName={duplicateTarget?.productName ?? ""}
-        unitPrice={duplicateTarget ? entrySummary(duplicateTarget).minPrice : 0}
+        source={duplicateTarget}
       />
       <CopyPriceListModal
         onClose={() => setCopyTarget(null)}

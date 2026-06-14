@@ -203,8 +203,7 @@ export function PriceListDetail({ id }: { id: string }) {
       <DuplicatePriceListModal
         onClose={() => setDuplicateOpen(false)}
         opened={duplicateOpen}
-        productName={entry.productName}
-        unitPrice={summary.minPrice}
+        source={entry}
       />
       <CopyPriceListModal
         onClose={() => setCopyOpen(false)}
