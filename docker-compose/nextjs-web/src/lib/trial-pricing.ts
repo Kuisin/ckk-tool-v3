@@ -71,8 +71,11 @@ export interface TrialInput {
   spareShapeCount: number; // 予備形状本数
   // ロット (1–3 tiers)
   lotQuantities: number[];
-  /** 掛け率の手動指定。null/undefined のときはロット別の自動掛け率を使う。 */
-  customMarkup?: number | null;
+  /**
+   * ロット別の掛け率の手動指定（lotQuantities と同じ index）。
+   * null/undefined の要素はロット別の自動掛け率を使う。
+   */
+  lotMarkups?: (number | null)[];
 }
 
 export interface CostBreakdown {
@@ -87,10 +90,13 @@ export interface CostBreakdown {
 }
 
 export interface LotResult {
+  /** index into TrialInput.lotQuantities (for per-lot markup editing). */
+  lotIndex: number;
   quantity: number;
   perPiece: number; // 1本単価 (形状出し ÷ lot)
   minimumPrice: number; // 最低単価
-  discountRate: number; // 掛け率
+  autoRate: number; // ロット別の自動掛け率
+  discountRate: number; // 適用掛け率 (override があればそれ)
   estimateUnitPrice: number; // 見積単価 (×補正値, ROUNDUP -1)
 }
 
@@ -217,8 +223,9 @@ export function calcTrialPricing(
 
   // ── ロットごとの価格 ──────────────────────────────────────────────────────
   const lots: LotResult[] = input.lotQuantities
-    .filter((q) => q >= 1)
-    .map((quantity) => {
+    .map((quantity, lotIndex) => ({ quantity, lotIndex }))
+    .filter((x) => x.quantity >= 1)
+    .map(({ quantity, lotIndex }) => {
       const perPiece = shapeOutPrice / quantity;
       // 最低単価 = 材料+段加工+首下+加工単価+コート+ラップ+LD+1本単価+検査
       const minimumPrice =
@@ -231,18 +238,20 @@ export function calcTrialPricing(
         ld +
         perPiece +
         inspection;
+      const autoRate = lotDiscountRate(quantity);
+      const override = input.lotMarkups?.[lotIndex];
       const discountRate =
-        input.customMarkup != null && input.customMarkup > 0
-          ? input.customMarkup
-          : lotDiscountRate(quantity);
+        override != null && override > 0 ? override : autoRate;
       const estimateUnitPrice = roundUp(
         minimumPrice * discountRate * correction,
         -1,
       );
       return {
+        lotIndex,
         quantity,
         perPiece,
         minimumPrice,
+        autoRate,
         discountRate,
         estimateUnitPrice,
       };

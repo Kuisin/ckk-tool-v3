@@ -111,11 +111,14 @@ export function TrialEstimateForm() {
   const [lot1, setLot1] = useState<number | string>(20);
   const [lot2, setLot2] = useState<number | string>(50);
   const [lot3, setLot3] = useState<number | string>(100);
-  // 掛け率: 自動（ロット別割引）/ 手動（設定の既定値を初期値に）
-  const [markupCustom, setMarkupCustom] = useState(false);
-  const [markupRate, setMarkupRate] = useState<number | string>(
-    settings.defaultMarkupRate,
-  );
+  // 掛け率: 空 = ロット別の自動掛け率。値を入れた行はその掛け率で上書き。
+  const [lotMarkups, setLotMarkups] = useState<(number | string)[]>([
+    "",
+    "",
+    "",
+  ]);
+  const setLotMarkup = (i: number, v: number | string) =>
+    setLotMarkups((prev) => prev.map((x, idx) => (idx === i ? v : x)));
 
   // ── reference price (from purchase history / policy / chart override) ──────
   const initialRef = useMemo(
@@ -211,7 +214,7 @@ export function TrialEstimateForm() {
     machiningRatePer10min: num(machiningRate),
     spareShapeCount: num(spareShapeCount),
     lotQuantities: [num(lot1), num(lot2), num(lot3)],
-    customMarkup: markupCustom ? num(markupRate) : null,
+    lotMarkups: lotMarkups.map((v) => (v === "" ? null : num(v))),
   };
   const result = calcTrialPricing(input, {
     correctionFactor: settings.correctionFactor,
@@ -504,36 +507,11 @@ export function TrialEstimateForm() {
               </SimpleGrid>
             </FormSection>
 
-            <FormSection title="掛け率">
-              <Group align="flex-end" gap="sm">
-                <Switch
-                  checked={markupCustom}
-                  label="掛け率を手動入力"
-                  onChange={(e) => setMarkupCustom(e.currentTarget.checked)}
-                  size="sm"
-                />
-                {markupCustom ? (
-                  <NumberInput
-                    decimalScale={2}
-                    description="全ロットに適用"
-                    label="掛け率"
-                    min={0}
-                    onChange={setMarkupRate}
-                    step={0.01}
-                    value={markupRate}
-                    w={160}
-                  />
-                ) : (
-                  <Text c="dimmed" size="xs">
-                    自動（ロット数に応じた割引率）。既定値は設定で変更できます。
-                  </Text>
-                )}
-              </Group>
-            </FormSection>
-
             <ResultsPanel
               breakdown={result.breakdown}
               lots={result.lots}
+              markups={lotMarkups}
+              onMarkupChange={setLotMarkup}
               warnings={result.warnings}
             />
 
@@ -589,10 +567,15 @@ function ResultsPanel({
   breakdown,
   lots,
   warnings,
+  markups,
+  onMarkupChange,
 }: {
   breakdown: CostBreakdown;
   lots: LotResult[];
   warnings: string[];
+  /** per-lot 掛け率 override (by lotIndex; "" = auto). */
+  markups: (number | string)[];
+  onMarkupChange: (lotIndex: number, value: number | string) => void;
 }) {
   const rows: { label: string; value: number }[] = [
     { label: "材料原価", value: breakdown.material },
@@ -669,12 +652,26 @@ function ResultsPanel({
                   </Table.Tr>
                 ) : (
                   lots.map((l) => (
-                    <Table.Tr key={l.quantity}>
+                    <Table.Tr key={l.lotIndex}>
                       <Table.Td>{l.quantity}本</Table.Td>
                       <Table.Td ta="right">
                         <MoneyText value={Math.round(l.minimumPrice)} />
                       </Table.Td>
-                      <Table.Td ta="right">×{l.discountRate}</Table.Td>
+                      <Table.Td>
+                        <NumberInput
+                          aria-label={`${l.quantity}本 の掛け率`}
+                          decimalScale={2}
+                          hideControls
+                          min={0}
+                          onChange={(v) => onMarkupChange(l.lotIndex, v)}
+                          placeholder={`自動 ${l.autoRate}`}
+                          size="xs"
+                          step={0.01}
+                          styles={{ input: { textAlign: "right" } }}
+                          value={markups[l.lotIndex] ?? ""}
+                          w={92}
+                        />
+                      </Table.Td>
                       <Table.Td ta="right">
                         <Text fw={700} size="sm">
                           <MoneyText value={l.estimateUnitPrice} />

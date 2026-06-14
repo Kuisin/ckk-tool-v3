@@ -24,8 +24,6 @@ export interface TrialPricingSettings {
   correctionFactor: number;
   /** LDチャージ (¥/10分). */
   ldChargePer10min: number;
-  /** 掛け率の既定値（手動指定時の初期値; 自動はロット別割引）. */
-  defaultMarkupRate: number;
 }
 
 export const DEFAULT_TRIAL_PRICING_SETTINGS: TrialPricingSettings = {
@@ -35,7 +33,6 @@ export const DEFAULT_TRIAL_PRICING_SETTINGS: TrialPricingSettings = {
   spareShapeCount: 3,
   correctionFactor: 1.25,
   ldChargePer10min: 7500,
-  defaultMarkupRate: 1.0,
 };
 
 export const MATERIAL_PRICE_BASIS_OPTIONS: {

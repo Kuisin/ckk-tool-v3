@@ -50,8 +50,7 @@ export function TrialPricingSettingsForm() {
     | "machiningRatePer10min"
     | "spareShapeCount"
     | "correctionFactor"
-    | "ldChargePer10min"
-    | "defaultMarkupRate";
+    | "ldChargePer10min";
   const setNum = (key: NumericKey, v: number | string) =>
     setSettings((s) => ({
       ...s,
@@ -158,15 +157,6 @@ export function TrialPricingSettingsForm() {
               prefix="¥"
               thousandSeparator=","
               value={settings.ldChargePer10min}
-            />
-            <NumberInput
-              decimalScale={2}
-              description="手動指定時の初期値（自動はロット別割引）"
-              label="掛け率 既定値"
-              min={0}
-              onChange={(v) => setNum("defaultMarkupRate", v)}
-              step={0.01}
-              value={settings.defaultMarkupRate}
             />
           </SimpleGrid>
         </FormSection>
