@@ -43,6 +43,7 @@ import {
   PRODUCTS,
 } from "@/lib/mock";
 import {
+  entryKey,
   findEntriesByCustomerProduct,
   getPriceEntry,
   requiresEndDate,
@@ -168,9 +169,12 @@ export function PriceListTypeForm({
           mode === "edit" ? "価格表を更新しました" : "価格表を作成しました",
         color: "green",
       });
-      router.push(
-        mode === "edit" && entryId ? `${BASE_PATH}/${entryId}` : BASE_PATH,
-      );
+      // 作成・更新後は対象エントリの詳細（ビュー）ページへ。
+      const targetId =
+        mode === "edit" && entryId
+          ? entryId
+          : entryKey(values.customerId, values.productId, values.orderType);
+      router.push(`${BASE_PATH}/${targetId}`);
     });
   };
 

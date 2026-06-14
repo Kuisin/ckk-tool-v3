@@ -25,6 +25,7 @@ import {
 } from "@/lib/mock";
 import { calcTrialPricing } from "@/lib/trial-pricing";
 import {
+  entryKey,
   findEntriesByCustomerProduct,
   requiresEndDate,
 } from "../price-lists/mock";
@@ -83,7 +84,10 @@ export function ConvertToPriceListModal({
           color: "green",
         });
         handleClose();
-        router.push("/sales/price-lists");
+        // 作成した価格表の詳細（ビュー）ページへ。
+        router.push(
+          `/sales/price-lists/${entryKey(customerId, productId, orderType)}`,
+        );
       }}
       opened={opened}
       size="lg"

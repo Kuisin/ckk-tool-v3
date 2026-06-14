@@ -12,6 +12,7 @@ import { Alert, Select, Text } from "@mantine/core";
 import { DatePickerInput } from "@mantine/dates";
 import { notifications } from "@mantine/notifications";
 import { IconCalendar, IconInfoCircle } from "@tabler/icons-react";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { FormModal, type ModalBaseProps } from "@/components/ui/modals";
 import {
@@ -20,13 +21,14 @@ import {
   ORDER_TYPE_OPTIONS,
   PRODUCTS,
 } from "@/lib/mock";
-import { type PriceListEntry, requiresEndDate } from "./mock";
+import { entryKey, type PriceListEntry, requiresEndDate } from "./mock";
 
 export function CopyPriceListModal({
   opened,
   onClose,
   source,
 }: ModalBaseProps & { source: PriceListEntry | null }) {
+  const router = useRouter();
   const [customerId, setCustomerId] = useState<string | null>(null);
   const [productId, setProductId] = useState<string | null>(null);
   const [orderType, setOrderType] = useState<string | null>(
@@ -76,7 +78,9 @@ export function CopyPriceListModal({
           message: "価格表を別の顧客・製品にコピーしました",
           color: "green",
         });
+        const targetId = entryKey(customerId, productId, orderType);
         handleClose();
+        router.push(`/sales/price-lists/${targetId}`);
       }}
       opened={opened}
       size="md"

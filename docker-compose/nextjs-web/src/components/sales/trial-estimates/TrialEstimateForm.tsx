@@ -68,6 +68,7 @@ import {
   MATERIAL_PRICE_BASIS_OPTIONS,
 } from "@/lib/trial-pricing-settings";
 import { MaterialPriceChart } from "./MaterialPriceChart";
+import { MOCK_TRIAL_ESTIMATES } from "./mock";
 
 const BASE_PATH = "/sales/trial-estimates";
 const toData = (o: readonly { value: string; label: string }[]) =>
@@ -222,7 +223,8 @@ export function TrialEstimateForm() {
   });
 
   const save = () => {
-    // TODO(server-action): persist this 試算 (trial_estimates + items).
+    // TODO(server-action): persist and use the returned id below.
+    const newId = MOCK_TRIAL_ESTIMATES[0]?.id ?? "te-0001";
     notifications.show({
       title: "保存しました",
       message: overridden
@@ -230,7 +232,8 @@ export function TrialEstimateForm() {
         : "試算を保存しました",
       color: "green",
     });
-    router.push(BASE_PATH);
+    // 作成後は詳細（ビュー）ページへ。
+    router.push(`${BASE_PATH}/${newId}`);
   };
 
   const isCylinder = toolType === "CYLINDER";

@@ -485,6 +485,12 @@ Stack (gap="md")
 
 Used for `new/page.tsx` and `[id]/edit/page.tsx`.
 
+**After submit** — navigate to the record's **detail (view) page**, not back to the
+list, for both create and edit (`router.push(\`{BASE_PATH}/{id}\`)`). On create use
+the id returned by the Server Action (demo: a deterministic key, e.g. the price-list
+`entryKey`). Modals that create a record (copy / duplicate / convert) follow the same
+rule.
+
 ```
 Stack (gap="md")
 ├── Group (justify="space-between", align="flex-end")

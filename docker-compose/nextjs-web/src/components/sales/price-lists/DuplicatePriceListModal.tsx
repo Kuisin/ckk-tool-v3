@@ -12,6 +12,7 @@ import { Alert, Table, Text } from "@mantine/core";
 import { DatePickerInput } from "@mantine/dates";
 import { notifications } from "@mantine/notifications";
 import { IconCalendar, IconInfoCircle } from "@tabler/icons-react";
+import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { FieldValue } from "@/components/ui/FieldValue";
 import { MoneyText } from "@/components/ui/MoneyText";
@@ -29,6 +30,7 @@ export function DuplicatePriceListModal({
   onClose,
   source,
 }: ModalBaseProps & { source: PriceListEntry | null }) {
+  const router = useRouter();
   const [validFrom, setValidFrom] = useState<string | null>(null);
   const [validUntil, setValidUntil] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -70,7 +72,9 @@ export function DuplicatePriceListModal({
           message: "同じ内容で新しい有効期間の価格表を作成しました",
           color: "green",
         });
+        const targetId = source?.entryId;
         handleClose();
+        if (targetId) router.push(`/sales/price-lists/${targetId}`);
       }}
       opened={opened}
       size="md"
