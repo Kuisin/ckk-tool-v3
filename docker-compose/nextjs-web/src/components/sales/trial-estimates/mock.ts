@@ -40,7 +40,7 @@ export const MOCK_TRIAL_ESTIMATES: TrialEstimateRecord[] = [
       toolType: "ROUND_BAR",
       maxDiameter: 3,
       totalLength: 38,
-      materialBarPrice: 16980,
+      materialBarPrice: 5660,
       isBlackSkin: false,
       stepLength: 9,
       stepType: "FINISH",

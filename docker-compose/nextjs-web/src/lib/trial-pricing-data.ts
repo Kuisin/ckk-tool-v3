@@ -621,10 +621,10 @@ export const CORRECTION_FACTOR = 1.25;
 /** LDチャージ ¥/10min (改定履歴: LD 10min=7500). */
 export const LD_CHARGE_PER_10MIN = 7500;
 /**
- * 材料原価の基準長 (mm) — 100mm基準（システム共通の基本単位）。参照単価は
- * ¥/100mm で扱い、材料原価 = 参照単価 × (全長 ÷ MATERIAL_BASIS_LENGTH_MM)。
+ * 材料原価の基準長 (mm) — 1000mm基準（システム共通の基本単位）。参照単価は
+ * ¥/1000mm で扱い、材料原価 = 参照単価 × (全長 ÷ MATERIAL_BASIS_LENGTH_MM)。
  */
-export const MATERIAL_BASIS_LENGTH_MM = 100;
+export const MATERIAL_BASIS_LENGTH_MM = 1000;
 /** コート代の最終係数 (Excel: ...×1.5, ROUNDUP -1). */
 export const COATING_FACTOR = 1.5;
 

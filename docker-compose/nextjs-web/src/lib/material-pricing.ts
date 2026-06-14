@@ -13,7 +13,7 @@
 export interface MaterialPricePoint {
   /** ISO date of the purchase (PO ordered/received). */
   date: string;
-  /** 仕入単価 (¥ / 100mm, 100mm基準) — material_purchase_order_items.unit_price. */
+  /** 仕入単価 (¥ / 1000mm, 1000mm基準) — material_purchase_order_items.unit_price. */
   unitPrice: number;
   supplier: string;
   /** 発注番号 (reference). */
@@ -22,32 +22,32 @@ export interface MaterialPricePoint {
 
 /**
  * Purchase-price history per material id (ascending by date).
- * unitPrice is ¥/100mm (normalized from the PO line; see unit note above).
+ * unitPrice is ¥/1000mm (normalized from the PO line; see unit note above).
  */
 export const MATERIAL_PURCHASE_HISTORY: Record<string, MaterialPricePoint[]> = {
-  // GU20F研磨 φ3 (Excel 丸棒見積 の例。310円/330mm研磨 ≒ 94円/100mm)
+  // GU20F研磨 φ3 (Excel 丸棒見積 の例。310円/330mm研磨 ≒ 939円/1000mm)
   "GU20F-B003-033": [
     {
       date: "2025-08-01",
-      unitPrice: 88,
+      unitPrice: 880,
       supplier: "アクシス",
       poNumber: "PO-202508-00041",
     },
     {
       date: "2025-11-12",
-      unitPrice: 90,
+      unitPrice: 900,
       supplier: "アクシス",
       poNumber: "PO-202511-00052",
     },
     {
       date: "2026-02-20",
-      unitPrice: 92,
+      unitPrice: 920,
       supplier: "アクシス",
       poNumber: "PO-202602-00033",
     },
     {
       date: "2026-05-15",
-      unitPrice: 94,
+      unitPrice: 940,
       supplier: "アクシス",
       poNumber: "PO-202605-00027",
     },
@@ -55,31 +55,31 @@ export const MATERIAL_PURCHASE_HISTORY: Record<string, MaterialPricePoint[]> = {
   "A01A0001-A001-001": [
     {
       date: "2025-07-10",
-      unitPrice: 493,
+      unitPrice: 4930,
       supplier: "アクシス",
       poNumber: "PO-202507-00012",
     },
     {
       date: "2025-09-22",
-      unitPrice: 507,
+      unitPrice: 5070,
       supplier: "アクシス",
       poNumber: "PO-202509-00031",
     },
     {
       date: "2025-12-05",
-      unitPrice: 521,
+      unitPrice: 5210,
       supplier: "アクシス",
       poNumber: "PO-202512-00008",
     },
     {
       date: "2026-03-18",
-      unitPrice: 542,
+      unitPrice: 5420,
       supplier: "アクシス",
       poNumber: "PO-202603-00020",
     },
     {
       date: "2026-05-27",
-      unitPrice: 566,
+      unitPrice: 5660,
       supplier: "アクシス",
       poNumber: "PO-202605-00014",
     },
@@ -87,25 +87,25 @@ export const MATERIAL_PURCHASE_HISTORY: Record<string, MaterialPricePoint[]> = {
   "A02B0014-B001-002": [
     {
       date: "2025-08-02",
-      unitPrice: 368,
+      unitPrice: 3680,
       supplier: "AFC",
       poNumber: "PO-202508-00005",
     },
     {
       date: "2025-11-14",
-      unitPrice: 382,
+      unitPrice: 3820,
       supplier: "AFC",
       poNumber: "PO-202511-00019",
     },
     {
       date: "2026-02-09",
-      unitPrice: 395,
+      unitPrice: 3950,
       supplier: "AFC",
       poNumber: "PO-202602-00011",
     },
     {
       date: "2026-05-03",
-      unitPrice: 410,
+      unitPrice: 4100,
       supplier: "AFC",
       poNumber: "PO-202605-00007",
     },
@@ -113,25 +113,25 @@ export const MATERIAL_PURCHASE_HISTORY: Record<string, MaterialPricePoint[]> = {
   "B01A0007-A002-001": [
     {
       date: "2025-06-20",
-      unitPrice: 153,
+      unitPrice: 1530,
       supplier: "GESAC",
       poNumber: "PO-202506-00009",
     },
     {
       date: "2025-10-08",
-      unitPrice: 151,
+      unitPrice: 1510,
       supplier: "GESAC",
       poNumber: "PO-202510-00022",
     },
     {
       date: "2026-01-30",
-      unitPrice: 158,
+      unitPrice: 1580,
       supplier: "GESAC",
       poNumber: "PO-202601-00016",
     },
     {
       date: "2026-04-21",
-      unitPrice: 162,
+      unitPrice: 1620,
       supplier: "GESAC",
       poNumber: "PO-202604-00013",
     },

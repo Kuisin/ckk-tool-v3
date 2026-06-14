@@ -43,7 +43,7 @@ export interface TrialInput {
   toolType: ToolType;
   maxDiameter: number; // 最大径 (mm)
   totalLength: number; // 全長 (mm)
-  /** 仕入実績の参照単価 (¥/100mm, 100mm基準) — ROUND_BAR/OH 用 (purchase history より). */
+  /** 仕入実績の参照単価 (¥/1000mm, 1000mm基準) — ROUND_BAR/OH 用 (purchase history より). */
   materialBarPrice: number;
   /** 黒皮材か (true でセンタレス費を加算). */
   isBlackSkin: boolean;
@@ -146,7 +146,7 @@ export function calcTrialPricing(
     material = (input.cylinderMaterialPrice ?? 0) + cyl * cylRate;
     if (cyl === 0) warnings.push("円筒加工費が範囲外です（最大径/全長を確認）");
   } else {
-    // 丸棒/OH: 材料原価 = 参照単価(¥/100mm) × (全長 ÷ 100mm) (+ センタレス if 黒皮)
+    // 丸棒/OH: 材料原価 = 参照単価(¥/1000mm) × (全長 ÷ 1000mm) (+ センタレス if 黒皮)
     const perPieceMaterial = roundUp(
       input.materialBarPrice * (len / MATERIAL_BASIS_LENGTH_MM),
       0,
@@ -158,7 +158,7 @@ export function calcTrialPricing(
     }
     material = perPieceMaterial + centerless;
     if (input.materialBarPrice <= 0)
-      warnings.push("素材の仕入実績がありません（100mm単価を入力）");
+      warnings.push("素材の仕入実績がありません（1000mm単価を入力）");
   }
 
   // ── 段加工費 ──────────────────────────────────────────────────────────────

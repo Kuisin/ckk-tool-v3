@@ -338,7 +338,7 @@ export function TrialEstimateForm() {
                     }
                     label={
                       <Group gap={6} wrap="nowrap">
-                        <span>参照単価（¥/100mm）</span>
+                        <span>参照単価（¥/1000mm）</span>
                         <Badge
                           color={overridden ? "orange" : "blue"}
                           variant="light"
@@ -362,7 +362,7 @@ export function TrialEstimateForm() {
                 )}
               </SimpleGrid>
               {!isCylinder && (
-                <Group gap="sm" mt="xs" wrap="nowrap" justify="space-between">
+                <Group gap="sm" justify="space-between" mt="xs" wrap="nowrap">
                   <Switch
                     checked={isBlackSkin}
                     label="黒皮材（センタレス加算）"

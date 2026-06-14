@@ -90,7 +90,7 @@ export function TrialEstimateDetail({ id }: { id: string }) {
         <FieldValue label="最大径" value={`${record.input.maxDiameter} mm`} />
         <FieldValue label="全長" value={`${record.input.totalLength} mm`} />
         <FieldValue
-          label="参照単価（¥/100mm）"
+          label="参照単価（¥/1000mm）"
           value={
             record.input.toolType === "CYLINDER" ? (
               "—（円筒：手入力）"
