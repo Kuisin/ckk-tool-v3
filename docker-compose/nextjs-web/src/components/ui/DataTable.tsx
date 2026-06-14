@@ -331,9 +331,11 @@ export function DataTable<T>({
     );
   }
 
-  // ── Desktop table (always compact density) ──────────────────────────────────
+  // ── Desktop table (compact body rows, non-compact header) ───────────────────
   const rowPy = 2;
   const cellPad = { paddingTop: rowPy, paddingBottom: rowPy };
+  // Header keeps the old (non-compact) padding for readability.
+  const headerPad = { paddingTop: 4, paddingBottom: 4 };
 
   return (
     <Stack gap="xs">
@@ -348,7 +350,7 @@ export function DataTable<T>({
           <Table.Thead>
             <Table.Tr>
               {selectable && (
-                <Table.Th className="w-10">
+                <Table.Th className="w-10" style={headerPad}>
                   <Checkbox
                     aria-label="すべて選択"
                     checked={allOnPageSelected}
@@ -368,6 +370,7 @@ export function DataTable<T>({
                       width: c.width,
                       textAlign: c.align,
                       cursor: c.sortable ? "pointer" : undefined,
+                      ...headerPad,
                     }}
                   >
                     <Group
@@ -392,7 +395,7 @@ export function DataTable<T>({
                   </Table.Th>
                 );
               })}
-              {rowActions && <Table.Th className="w-12" />}
+              {rowActions && <Table.Th className="w-12" style={headerPad} />}
             </Table.Tr>
           </Table.Thead>
           <Table.Tbody>
