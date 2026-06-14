@@ -8,7 +8,7 @@
  *  - pagination (page size selector + range label)
  *  - row selection (checkbox + select-all/indeterminate) → bulk action bar
  *  - per-row actions (trailing menu)
- *  - column visibility toggle + density toggle
+ *  - column visibility toggle (compact density is always on)
  *  - sticky header, row click → detail
  *  - responsive: desktop table ↔ mobile card list (via `renderCard`)
  *
@@ -118,9 +118,18 @@ export function DataTable<T>({
   const [pageSize, setPageSize] = useState(initialPageSize);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [hidden, setHidden] = useState<Set<string>>(new Set());
-  const [compact, setCompact] = useState(false);
 
   const visibleColumns = columns.filter((c) => !hidden.has(c.key));
+  const hideableColumns = columns.filter((c) => c.hideable);
+
+  const toggleHidden = (key: string) => {
+    setHidden((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  };
 
   // ── Sorting ────────────────────────────────────────────────────────────────
   const sorted = useMemo(() => {
@@ -235,64 +244,36 @@ export function DataTable<T>({
           </Group>
         )}
       </Box>
-      {!isMobile && (
+      {!isMobile && hideableColumns.length > 0 && (
         <Group gap={4} wrap="nowrap">
-          <Tooltip label={compact ? "標準表示" : "コンパクト表示"} withinPortal>
-            <ActionIcon
-              aria-label="表示密度"
-              color="gray"
-              onClick={() => setCompact((v) => !v)}
-              variant="subtle"
-            >
-              <IconAdjustmentsHorizontal size={16} />
-            </ActionIcon>
-          </Tooltip>
-          {columns.some((c) => c.hideable) && (
-            <Menu
-              closeOnItemClick={false}
-              position="bottom-end"
-              shadow="md"
-              withinPortal
-            >
-              <Menu.Target>
-                <Tooltip label="列の表示" withinPortal>
-                  <ActionIcon
-                    aria-label="列の表示"
-                    color="gray"
-                    variant="subtle"
-                  >
-                    <IconColumns3 size={16} />
-                  </ActionIcon>
-                </Tooltip>
-              </Menu.Target>
-              <Menu.Dropdown>
-                <Menu.Label>表示する列</Menu.Label>
-                {columns
-                  .filter((c) => c.hideable)
-                  .map((c) => (
-                    <Menu.Item
-                      key={c.key}
-                      onClick={() => {
-                        setHidden((prev) => {
-                          const next = new Set(prev);
-                          next.has(c.key)
-                            ? next.delete(c.key)
-                            : next.add(c.key);
-                          return next;
-                        });
-                      }}
-                    >
-                      <Checkbox
-                        checked={!hidden.has(c.key)}
-                        label={typeof c.header === "string" ? c.header : c.key}
-                        readOnly
-                        size="xs"
-                      />
-                    </Menu.Item>
-                  ))}
-              </Menu.Dropdown>
-            </Menu>
-          )}
+          <Menu
+            closeOnItemClick={false}
+            position="bottom-end"
+            shadow="md"
+            withinPortal
+          >
+            <Menu.Target>
+              <Tooltip label="列の表示" withinPortal>
+                <ActionIcon aria-label="列の表示" color="gray" variant="subtle">
+                  <IconColumns3 size={16} />
+                </ActionIcon>
+              </Tooltip>
+            </Menu.Target>
+            <Menu.Dropdown>
+              <Menu.Label>表示する列</Menu.Label>
+              <Stack gap="xs" px="sm" py={4}>
+                {hideableColumns.map((c) => (
+                  <Checkbox
+                    checked={!hidden.has(c.key)}
+                    key={c.key}
+                    label={typeof c.header === "string" ? c.header : c.key}
+                    onChange={() => toggleHidden(c.key)}
+                    size="xs"
+                  />
+                ))}
+              </Stack>
+            </Menu.Dropdown>
+          </Menu>
         </Group>
       )}
     </Group>
@@ -350,8 +331,8 @@ export function DataTable<T>({
     );
   }
 
-  // ── Desktop table ─────────────────────────────────────────────────────────--
-  const rowPy = compact ? 2 : 4;
+  // ── Desktop table (always compact density) ──────────────────────────────────
+  const rowPy = 2;
   const cellPad = { paddingTop: rowPy, paddingBottom: rowPy };
 
   return (
