@@ -15,7 +15,7 @@ export function MoneyText({
   ta?: "left" | "right";
 }) {
   return (
-    <Text className="tabular-nums" ff="mono" size="sm" ta={ta}>
+    <Text className="tabular-nums" ff="mono" size="sm" span ta={ta}>
       {formatMoney(value, currency)}
     </Text>
   );
