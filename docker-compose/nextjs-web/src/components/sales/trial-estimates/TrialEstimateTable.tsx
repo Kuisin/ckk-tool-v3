@@ -5,9 +5,10 @@
  */
 
 import { Badge, Group, Select, Stack, Text, TextInput } from "@mantine/core";
-import { IconCalculator, IconSearch } from "@tabler/icons-react";
+import { IconCalculator, IconSearch, IconSettings } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { SecondaryButton } from "@/components/ui/buttons";
 import { type Column, DataTable } from "@/components/ui/DataTable";
 import { MoneyText } from "@/components/ui/MoneyText";
 import { NewButton } from "@/components/ui/NewButton";
@@ -110,7 +111,17 @@ export function TrialEstimateTable() {
 
   return (
     <ListShell
-      action={<NewButton href={`${BASE_PATH}/new`} />}
+      action={
+        <Group gap="xs">
+          <SecondaryButton
+            href="/settings"
+            leftSection={<IconSettings size={16} />}
+          >
+            設定
+          </SecondaryButton>
+          <NewButton href={`${BASE_PATH}/new`} />
+        </Group>
+      }
       breadcrumbs={["販売", "試算"]}
       filters={
         <Select

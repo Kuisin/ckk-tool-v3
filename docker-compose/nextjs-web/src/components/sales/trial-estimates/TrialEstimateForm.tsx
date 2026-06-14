@@ -105,11 +105,17 @@ export function TrialEstimateForm() {
   const [ldOuterDiameter, setLdOuterDiameter] = useState<number | string>(3);
   const [ldBladeLength, setLdBladeLength] = useState<number | string>(10);
   const [machiningMinutes, setMachiningMinutes] = useState<number | string>(6);
-  const [machiningRate, setMachiningRate] = useState<number | string>(2000);
-  const [spareShapeCount, setSpareShapeCount] = useState<number | string>(3);
+  // 加工単価・予備形状本数はシステム設定（グローバル）の既定値を使用。
+  const machiningRate = settings.machiningRatePer10min;
+  const spareShapeCount = settings.spareShapeCount;
   const [lot1, setLot1] = useState<number | string>(20);
   const [lot2, setLot2] = useState<number | string>(50);
   const [lot3, setLot3] = useState<number | string>(100);
+  // 掛け率: 自動（ロット別割引）/ 手動（設定の既定値を初期値に）
+  const [markupCustom, setMarkupCustom] = useState(false);
+  const [markupRate, setMarkupRate] = useState<number | string>(
+    settings.defaultMarkupRate,
+  );
 
   // ── reference price (from purchase history / policy / chart override) ──────
   const initialRef = useMemo(
@@ -205,8 +211,12 @@ export function TrialEstimateForm() {
     machiningRatePer10min: num(machiningRate),
     spareShapeCount: num(spareShapeCount),
     lotQuantities: [num(lot1), num(lot2), num(lot3)],
+    customMarkup: markupCustom ? num(markupRate) : null,
   };
-  const result = calcTrialPricing(input);
+  const result = calcTrialPricing(input, {
+    correctionFactor: settings.correctionFactor,
+    ldChargePer10min: settings.ldChargePer10min,
+  });
 
   const save = () => {
     // TODO(server-action): persist this 試算 (trial_estimates + items).
@@ -406,21 +416,12 @@ export function TrialEstimateForm() {
                   onChange={setMachiningMinutes}
                   value={machiningMinutes}
                 />
-                <NumberInput
-                  label="加工単価 (¥/10分)"
-                  min={0}
-                  onChange={setMachiningRate}
-                  prefix="¥"
-                  thousandSeparator=","
-                  value={machiningRate}
-                />
-                <NumberInput
-                  label="予備形状本数"
-                  min={1}
-                  onChange={setSpareShapeCount}
-                  value={spareShapeCount}
-                />
               </SimpleGrid>
+              <Text c="dimmed" mt="xs" size="xs">
+                加工単価（¥{Number(machiningRate).toLocaleString()}
+                /10分）・予備形状本数（
+                {spareShapeCount}本）は設定の既定値を使用します。
+              </Text>
             </FormSection>
 
             <FormSection title="コート・処理">
@@ -501,6 +502,33 @@ export function TrialEstimateForm() {
                   value={lot3}
                 />
               </SimpleGrid>
+            </FormSection>
+
+            <FormSection title="掛け率">
+              <Group align="flex-end" gap="sm">
+                <Switch
+                  checked={markupCustom}
+                  label="掛け率を手動入力"
+                  onChange={(e) => setMarkupCustom(e.currentTarget.checked)}
+                  size="sm"
+                />
+                {markupCustom ? (
+                  <NumberInput
+                    decimalScale={2}
+                    description="全ロットに適用"
+                    label="掛け率"
+                    min={0}
+                    onChange={setMarkupRate}
+                    step={0.01}
+                    value={markupRate}
+                    w={160}
+                  />
+                ) : (
+                  <Text c="dimmed" size="xs">
+                    自動（ロット数に応じた割引率）。既定値は設定で変更できます。
+                  </Text>
+                )}
+              </Group>
             </FormSection>
 
             <ResultsPanel

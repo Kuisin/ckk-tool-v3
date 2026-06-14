@@ -71,6 +71,8 @@ export interface TrialInput {
   spareShapeCount: number; // 予備形状本数
   // ロット (1–3 tiers)
   lotQuantities: number[];
+  /** 掛け率の手動指定。null/undefined のときはロット別の自動掛け率を使う。 */
+  customMarkup?: number | null;
 }
 
 export interface CostBreakdown {
@@ -110,10 +112,21 @@ const optAmount = (
 const optRate = (opts: readonly { value: string; rate: number }[], v: string) =>
   opts.find((o) => o.value === v)?.rate ?? 0;
 
-export function calcTrialPricing(input: TrialInput): TrialResult {
+/** Global constants overridable from system settings (else Excel defaults). */
+export interface TrialPricingOptions {
+  correctionFactor?: number;
+  ldChargePer10min?: number;
+}
+
+export function calcTrialPricing(
+  input: TrialInput,
+  opts: TrialPricingOptions = {},
+): TrialResult {
   const warnings: string[] = [];
   const dia = input.maxDiameter;
   const len = input.totalLength;
+  const correction = opts.correctionFactor ?? CORRECTION_FACTOR;
+  const ldCharge = opts.ldChargePer10min ?? LD_CHARGE_PER_10MIN;
 
   // ── 材料原価 ──────────────────────────────────────────────────────────────
   let material = 0;
@@ -182,7 +195,7 @@ export function calcTrialPricing(input: TrialInput): TrialResult {
       input.ldOuterDiameter,
       input.ldBladeLength,
     );
-    ld = (LD_CHARGE_PER_10MIN / 10) * mins;
+    ld = (ldCharge / 10) * mins;
   }
 
   // ── 検査成績書 ────────────────────────────────────────────────────────────
@@ -218,9 +231,12 @@ export function calcTrialPricing(input: TrialInput): TrialResult {
         ld +
         perPiece +
         inspection;
-      const discountRate = lotDiscountRate(quantity);
+      const discountRate =
+        input.customMarkup != null && input.customMarkup > 0
+          ? input.customMarkup
+          : lotDiscountRate(quantity);
       const estimateUnitPrice = roundUp(
-        minimumPrice * discountRate * CORRECTION_FACTOR,
+        minimumPrice * discountRate * correction,
         -1,
       );
       return {
