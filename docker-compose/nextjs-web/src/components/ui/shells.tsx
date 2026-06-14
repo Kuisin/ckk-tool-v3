@@ -303,7 +303,7 @@ export function FormSection({
   children: ReactNode;
 }) {
   return (
-    <Paper p="md" radius="md" withBorder>
+    <Paper className="form-section" p="md" radius="md" withBorder>
       <Title mb={description ? 2 : "xs"} order={4}>
         {title}
       </Title>
