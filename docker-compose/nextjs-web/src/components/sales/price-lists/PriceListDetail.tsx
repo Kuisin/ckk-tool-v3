@@ -10,7 +10,12 @@
  */
 
 import { Badge, Button, Group, Table, Tabs, Tooltip } from "@mantine/core";
-import { IconCopy, IconPlus, IconTrash } from "@tabler/icons-react";
+import {
+  IconCopy,
+  IconCopyPlus,
+  IconPlus,
+  IconTrash,
+} from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { ActiveBadge } from "@/components/ui/ActiveBadge";
@@ -25,6 +30,7 @@ import {
 } from "@/components/ui/shells";
 import { formatDateTime } from "@/lib/format";
 import { ORDER_TYPE_LABEL } from "@/lib/mock";
+import { CopyPriceListModal } from "./CopyPriceListModal";
 import { DeletePriceListModal } from "./DeletePriceListModal";
 import { DuplicatePriceListModal } from "./DuplicatePriceListModal";
 import {
@@ -65,6 +71,7 @@ export function PriceListDetail({ id }: { id: string }) {
 
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [duplicateOpen, setDuplicateOpen] = useState(false);
+  const [copyOpen, setCopyOpen] = useState(false);
 
   return (
     <DetailShell
@@ -75,6 +82,11 @@ export function PriceListDetail({ id }: { id: string }) {
               label: "有効期間を変えて複製",
               icon: <IconCopy size={14} />,
               onClick: () => setDuplicateOpen(true),
+            },
+            {
+              label: "別の顧客・製品へコピー",
+              icon: <IconCopyPlus size={14} />,
+              onClick: () => setCopyOpen(true),
             },
             {
               label: "削除",
@@ -194,6 +206,11 @@ export function PriceListDetail({ id }: { id: string }) {
         opened={duplicateOpen}
         productName={entry.productName}
         unitPrice={summary.minPrice}
+      />
+      <CopyPriceListModal
+        onClose={() => setCopyOpen(false)}
+        opened={copyOpen}
+        source={entry}
       />
     </DetailShell>
   );

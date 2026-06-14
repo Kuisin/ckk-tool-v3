@@ -19,6 +19,7 @@ import {
 } from "@mantine/core";
 import {
   IconCopy,
+  IconCopyPlus,
   IconCurrencyYen,
   IconSearch,
   IconToggleRight,
@@ -37,6 +38,7 @@ import {
   ORDER_TYPE_OPTIONS,
   PRODUCTS,
 } from "@/lib/mock";
+import { CopyPriceListModal } from "./CopyPriceListModal";
 import { DeletePriceListModal } from "./DeletePriceListModal";
 import { DuplicatePriceListModal } from "./DuplicatePriceListModal";
 import {
@@ -63,6 +65,7 @@ export function PriceListTable() {
   const [duplicateTarget, setDuplicateTarget] = useState<PriceListEntry | null>(
     null,
   );
+  const [copyTarget, setCopyTarget] = useState<PriceListEntry | null>(null);
 
   const reset = () => {
     setSearch("");
@@ -257,6 +260,11 @@ export function PriceListTable() {
             onAction: () => setDuplicateTarget(e),
           },
           {
+            label: "別の顧客・製品へコピー",
+            icon: <IconCopyPlus size={14} />,
+            onAction: () => setCopyTarget(e),
+          },
+          {
             label: "削除",
             icon: <IconTrash size={14} />,
             color: "red",
@@ -276,6 +284,11 @@ export function PriceListTable() {
         opened={duplicateTarget !== null}
         productName={duplicateTarget?.productName ?? ""}
         unitPrice={duplicateTarget ? entrySummary(duplicateTarget).minPrice : 0}
+      />
+      <CopyPriceListModal
+        onClose={() => setCopyTarget(null)}
+        opened={copyTarget !== null}
+        source={copyTarget}
       />
     </ListShell>
   );
