@@ -40,6 +40,9 @@ services:
       - OLLAMA_BASE_URL=http://ollama:11434
       # Default chat model (must be pulled into the ollama volume).
       - DEFAULT_MODELS=qwen3:32b
+      # Background tasks (search-query generation, titles, tags) use a small,
+      # non-thinking model — qwen3's <think> output otherwise breaks query parsing.
+      - TASK_MODEL=qwen2.5:7b
       # Web search (internet access) via the local SearXNG instance — no API keys.
       - ENABLE_WEB_SEARCH=true
       - WEB_SEARCH_ENGINE=searxng
