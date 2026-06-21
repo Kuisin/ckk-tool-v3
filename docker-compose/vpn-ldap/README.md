@@ -36,20 +36,42 @@ The container forces `auth-user-pass` to `vpn/auth.txt`, waits for `tun0`, then
 `socat`-forwards `:389` to `LDAP_HOST:389` over the tunnel (pushed VPN routes make
 the AD server reachable). It exits/restarts if the VPN drops.
 
-## Open WebUI LDAP config
+## Shared LDAP credentials (`ldap.env`)
 
-Set on the `open-webui` service (in the `ai-stack` stack), pointing at this
-forwarder, then sign in with AD credentials on the login page:
+The AD connection + bind credentials live once in **`ldap.env`** (gitignored;
+`ldap.env.example` is the template). Any app reuses them via `env_file` so there's
+a single place to rotate the bind password:
 
 ```yaml
-- ENABLE_LDAP=true
-- LDAP_SERVER_LABEL=CKK AD
-- LDAP_SERVER_HOST=vpn-ldap
-- LDAP_SERVER_PORT=389
-- LDAP_APP_DN=<bind/service account DN>
-- LDAP_APP_PASSWORD=<bind password>
-- LDAP_SEARCH_BASE=<e.g. DC=ckk,DC=local>
-- LDAP_ATTRIBUTE_FOR_USERNAME=sAMAccountName   # AD; use uid for OpenLDAP
-- LDAP_ATTRIBUTE_FOR_MAIL=mail
-- LDAP_USE_TLS=false   # traffic is already encrypted inside the VPN tunnel
+# in another stack's compose, for an LDAP-aware service:
+services:
+  some-app:
+    env_file:
+      - ../vpn-ldap/ldap.env     # LDAP_SERVER_HOST, LDAP_APP_DN, LDAP_APP_PASSWORD, ...
+    environment:
+      - ENABLE_LDAP=true         # the on/off toggle stays per app
+    networks:
+      - ldap                     # see below
 ```
+
+Open WebUI is wired exactly this way (`ai-stack` stack). Var names match Open
+WebUI; apps using different names (Grafana, the Next.js app) can map these values
+in their own compose. Sign in with an AD username (`sAMAccountName`) on the app's
+login page; TLS is off because traffic is already encrypted inside the VPN tunnel.
+
+## Secured access (network segmentation)
+
+`vpn-ldap` lives on its **own** network (`vpn-ldap_default`), not the shared
+`ai-stack` network. Only apps that explicitly attach to it can reach `:389`/AD:
+
+```yaml
+# consumer stack:
+networks:
+  ldap:
+    external: true
+    name: vpn-ldap_default
+```
+
+So `ollama`, `searxng`, `po-extract`, `cloudflared`, etc. cannot reach the AD
+forwarder — only `open-webui` (and any future opt-in app) can. To grant a new app
+access, attach it to the `vpn-ldap_default` network the same way.
