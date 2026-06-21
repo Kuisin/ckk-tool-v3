@@ -6,7 +6,7 @@
 #   dev.kai-lab.net    -> http://web:3000        (nextjs-web stack)
 #   dockge.kai-lab.net -> http://dockge:5001     (dockge stack)
 #   chat.kai-lab.net   -> http://open-webui:8080 (ai-stack — Open WebUI GUI)
-#   ollama.kai-lab.net -> http://ollama:11434    (ai-stack — LLM API; protect with Access)
+# Ollama (:11434) is NOT published — Open WebUI reaches it internally over ai-stack.
 #
 # Deployed on docker-mac-pro at ~/stacks/cloudflared (Dockge-managed).
 # Token lives in .env (gitignored).
@@ -22,7 +22,7 @@ services:
     networks:
       - web        # nextjs-web `web:3000`
       - dockge     # dockge `dockge:5001`
-      - ai-stack   # ai-stack `open-webui:8080`, `ollama:11434`
+      - ai-stack   # ai-stack `open-webui:8080` (ollama reached internally by open-webui)
 
 # Attach to each target stack's compose network so the tunnel can resolve them.
 networks:
