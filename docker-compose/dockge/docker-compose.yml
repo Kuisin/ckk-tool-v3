@@ -1,0 +1,23 @@
+# Dockge — self-hosted Docker Compose stack manager (GUI).
+#
+# Deployed on host `docker-mac-pro` (kaiseisawada@192.168.50.15) under ~/dockge.
+# Web UI on port 5001. See README.md for setup / deploy notes.
+#
+# IMPORTANT: Dockge runs `docker compose` against the host via the mounted
+# socket, so the stacks directory MUST be mounted at the *same path* inside the
+# container as on the host. That shared path is `DOCKGE_STACKS_DIR` (see .env).
+
+services:
+  dockge:
+    image: louislam/dockge:1
+    container_name: dockge
+    restart: unless-stopped
+    ports:
+      - "5001:5001"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./data:/app/data
+      # Host path == container path (required by Dockge).
+      - ${DOCKGE_STACKS_DIR:-/opt/stacks}:${DOCKGE_STACKS_DIR:-/opt/stacks}
+    environment:
+      - DOCKGE_STACKS_DIR=${DOCKGE_STACKS_DIR:-/opt/stacks}

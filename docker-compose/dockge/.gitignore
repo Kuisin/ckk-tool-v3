@@ -1,0 +1,3 @@
+# Local deploy state — not version controlled.
+.env
+/data/
