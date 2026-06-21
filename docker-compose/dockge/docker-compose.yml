@@ -21,3 +21,6 @@ services:
       - ${DOCKGE_STACKS_DIR:-/opt/stacks}:${DOCKGE_STACKS_DIR:-/opt/stacks}
     environment:
       - DOCKGE_STACKS_DIR=${DOCKGE_STACKS_DIR:-/opt/stacks}
+      # Interactive web terminal (host shell in the UI). Off upstream by default;
+      # enabling grants anyone with UI access a root-capable shell on the host.
+      - DOCKGE_ENABLE_CONSOLE=${DOCKGE_ENABLE_CONSOLE:-false}
