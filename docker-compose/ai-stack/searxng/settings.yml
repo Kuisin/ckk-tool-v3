@@ -1,0 +1,15 @@
+# SearXNG config for Open WebUI web search. Merges over upstream defaults.
+# Reached internally by open-webui at http://searxng:8080 (no public port).
+use_default_settings: true
+
+server:
+  # Random per-instance signing key — generated on deploy (see README).
+  # Never commit a real key; this placeholder is replaced on the host.
+  secret_key: "CHANGE_ME_ON_DEPLOY"
+  limiter: false        # internal-only instance; don't rate-limit Open WebUI
+  image_proxy: true
+
+search:
+  formats:
+    - html
+    - json              # required: Open WebUI reads JSON results

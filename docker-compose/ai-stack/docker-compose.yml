@@ -35,14 +35,34 @@ services:
     restart: unless-stopped
     depends_on:
       - ollama
+      - searxng
     environment:
       - OLLAMA_BASE_URL=http://ollama:11434
       # Default chat model (must be pulled into the ollama volume).
       - DEFAULT_MODELS=qwen3:32b
+      # Web search (internet access) via the local SearXNG instance — no API keys.
+      - ENABLE_WEB_SEARCH=true
+      - WEB_SEARCH_ENGINE=searxng
+      - SEARXNG_QUERY_URL=http://searxng:8080/search?q=<query>
+      - WEB_SEARCH_RESULT_COUNT=5
+      - WEB_SEARCH_CONCURRENT_REQUESTS=10
+      # Fetch & read page contents (URLs pasted in chat / search results).
+      - ENABLE_WEB_LOADER=true
     volumes:
       - open-webui:/app/backend/data
     ports:
       - "3000:8080"
+
+  # Private metasearch engine providing Open WebUI's web search (no API keys).
+  searxng:
+    image: searxng/searxng:latest
+    container_name: searxng
+    restart: unless-stopped
+    volumes:
+      - ./searxng:/etc/searxng
+    environment:
+      - SEARXNG_BASE_URL=http://searxng:8080/
+    # No published port — reached internally by open-webui at http://searxng:8080.
 
   # Document → JSON extraction API. Renders PDF pages to images and asks the
   # vision model (MODEL) to fill a caller-supplied JSON Schema. Source: ./extractor.

@@ -12,10 +12,30 @@ deployment so the setup can be recreated from scratch.
 |--------------|-----------------------------------------|-----------|---------|
 | `ollama`     | `xxdoman/ollama-amd-rocm71-vl:latest`   | `11434`   | LLM/VLM runtime (Ollama API), AMD ROCm 7.1 GPU build |
 | `open-webui` | `ghcr.io/open-webui/open-webui:main`    | `3000`    | Chat GUI, talks to `ollama` over the compose network |
+| `searxng`    | `searxng/searxng:latest`                | —         | Private metasearch — powers Open WebUI's web search (no API keys) |
 | `po-extract` | built from [`./extractor`](./extractor) | `8000`    | FastAPI document → JSON endpoint (PDF data extraction) |
 
-All three are one Compose project (`ai-stack`). Internal DNS uses the service
-names (`http://ollama:11434`), so only `ollama` needs to be reachable by the others.
+One Compose project (`ai-stack`); services reach each other by name over the
+internal network (`http://ollama:11434`, `http://searxng:8080`).
+
+## Web search (internet access)
+
+Open WebUI's **Web Search** is enabled and pointed at the local `searxng`
+(`ENABLE_WEB_SEARCH=true`, `WEB_SEARCH_ENGINE=searxng`,
+`SEARXNG_QUERY_URL=http://searxng:8080/search?q=<query>`). No external API keys —
+SearXNG aggregates public engines and returns JSON results that Open WebUI feeds to
+the model. In a chat, toggle **Web Search** on (the globe/＋ menu) to let the model
+search the internet; `ENABLE_WEB_LOADER` also lets it read pasted URLs.
+
+`searxng/settings.yml` enables the JSON format (required) and disables the rate
+limiter for internal use. Its `secret_key` is a placeholder in git and is replaced
+with a random value on deploy:
+
+```bash
+# on the host, generate a per-instance key (idempotent — only if still the placeholder):
+sed -i "s/CHANGE_ME_ON_DEPLOY/$(openssl rand -hex 32)/" ~/stacks/ai-stack/searxng/settings.yml
+docker compose up -d searxng open-webui
+```
 
 ## Models
 
