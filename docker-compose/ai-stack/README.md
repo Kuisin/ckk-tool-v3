@@ -23,11 +23,18 @@ The extractor defaults to a **vision** model (`MODEL=qwen2.5vl`) because it feed
 rendered page images. Pull the models into the `ollama` volume after first start:
 
 ```bash
+docker compose exec ollama ollama pull qwen3:32b   # primary chat model (Open WebUI default)
 docker compose exec ollama ollama pull qwen2.5vl   # vision — used by po-extract
-docker compose exec ollama ollama pull qwen2.5:7b  # text — general chat in Open WebUI
+docker compose exec ollama ollama pull qwen2.5:7b  # small/fast text fallback
 ```
 
-Currently installed on the host: `qwen2.5vl:latest`, `qwen2.5:7b`.
+`open-webui` sets `DEFAULT_MODELS=qwen3:32b`, so it must be pulled for the default
+to resolve. Currently installed on the host: `qwen3:32b`, `qwen2.5vl:latest`,
+`qwen2.5:7b`.
+
+The host has **2× AMD gfx906 (Vega 20) GPUs, 32 GB VRAM each (64 GB total)**, so a
+32B model (~20 GB Q4) runs comfortably on a single GPU; 70B-class models fit when
+split across both. Ollama auto-detects and uses both ROCm devices.
 
 ## GPU notes (AMD ROCm)
 

@@ -37,6 +37,8 @@ services:
       - ollama
     environment:
       - OLLAMA_BASE_URL=http://ollama:11434
+      # Default chat model (must be pulled into the ollama volume).
+      - DEFAULT_MODELS=qwen3:32b
     volumes:
       - open-webui:/app/backend/data
     ports:
