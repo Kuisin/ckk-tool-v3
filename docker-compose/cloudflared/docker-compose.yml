@@ -1,9 +1,10 @@
-# Cloudflare Tunnel connector — public access to https://dev.kai-lab.net.
+# Cloudflare Tunnel connector — public access via Cloudflare.
 #
-# Remotely-managed (token) tunnel. The public hostname -> service mapping
-# (dev.kai-lab.net -> http://web:3000) is configured in the Cloudflare Zero Trust
-# dashboard. This connector reaches the app over the nextjs-web compose network,
-# so no public port or router port-forwarding is needed.
+# Remotely-managed (token) tunnel. Public hostname -> service mappings are
+# configured in the Cloudflare Zero Trust dashboard; this connector just needs
+# network reachability to each target. No public ports / port-forwarding.
+#   dev.kai-lab.net    -> http://web:3000     (nextjs-web stack)
+#   dockge.kai-lab.net -> http://dockge:5001  (dockge stack)
 #
 # Deployed on docker-mac-pro at ~/stacks/cloudflared (Dockge-managed).
 # Token lives in .env (gitignored).
@@ -17,10 +18,14 @@ services:
     environment:
       - TUNNEL_TOKEN=${CLOUDFLARE_TUNNEL_TOKEN:-}
     networks:
-      - web        # reach the nextjs-web `web` service (dashboard routes to web:3000)
+      - web        # nextjs-web `web:3000`
+      - dockge     # dockge `dockge:5001`
 
-# Attach to the nextjs-web compose network so the tunnel can reach http://web:3000.
+# Attach to each target stack's compose network so the tunnel can resolve them.
 networks:
   web:
     external: true
     name: nextjs-web_default
+  dockge:
+    external: true
+    name: dockge_default

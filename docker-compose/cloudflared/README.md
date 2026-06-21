@@ -13,11 +13,17 @@ the public-hostname routing lives in the Cloudflare **Zero Trust** dashboard:
 
 ```
 Networks > Tunnels > docker-linux > Public Hostname
-  dev.kai-lab.net  →  HTTP  →  web:3000
+  dev.kai-lab.net     →  HTTP  →  web:3000
+  dockge.kai-lab.net  →  HTTP  →  dockge:5001
 ```
 
-The connector reaches `web:3000` over the external `nextjs-web_default` network
-(declared here as network `web`), so the `nextjs-web` stack must be up first.
+The connector joins each target stack's network (`nextjs-web_default` as `web`,
+`dockge_default` as `dockge`) to resolve those service names, so those stacks must
+be up first.
+
+> **Security:** Dockge is a full Docker-management UI (with the host console
+> enabled = a root shell). Do **not** expose `dockge.kai-lab.net` without putting a
+> Cloudflare **Access** policy (email/SSO auth) in front of it.
 
 ## Setup / recreate
 
