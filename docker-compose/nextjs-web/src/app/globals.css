@@ -195,7 +195,7 @@ body {
 
   /* Breathing room between an input's description and the input box. */
   .mantine-InputWrapper-description {
-    margin-bottom: 6px;
+    margin-bottom: 4px;
   }
 
   /* Compact audit history timeline — tighter row spacing than Mantine default. */
