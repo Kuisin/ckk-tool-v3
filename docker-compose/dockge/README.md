@@ -42,16 +42,16 @@ Dockge's database/settings (not in git).
 
 ## Bringing existing stacks under Dockge
 
-Dockge only manages stacks that live inside `DOCKGE_STACKS_DIR`. The `ai-stack`
-(ollama + open-webui + po-extract) currently runs from `~/ai-stack`. To manage it
-from the UI, move it into the stacks dir (it keeps the same project name, so do it
-while stopped):
+Dockge only manages stacks that live inside `DOCKGE_STACKS_DIR`. The
+[`ai-stack`](../ai-stack) (ollama + open-webui + po-extract) has been migrated
+into the stacks dir at `~/stacks/ai-stack` and is managed from the UI. The move
+preserved the project name (`ai-stack`), so the named volumes — and thus the
+pulled models and Open WebUI data — carried over unchanged:
 
 ```bash
-cd ~/ai-stack && docker compose down
+cd ~/ai-stack && docker compose down          # keeps named volumes
 mv ~/ai-stack "$DOCKGE_STACKS_DIR/ai-stack"
 cd "$DOCKGE_STACKS_DIR/ai-stack" && docker compose up -d
 ```
 
-It will then appear in Dockge. (Skipped by default to avoid restarting the GPU
-LLM containers.)
+Any new stack should likewise be created/placed under `DOCKGE_STACKS_DIR`.

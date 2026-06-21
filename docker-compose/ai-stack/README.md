@@ -1,8 +1,10 @@
 # ai-stack — local LLM + Open WebUI + PDF extractor
 
 Self-hosted AI stack for the CKK system. Runs on the **`docker-mac-pro`** host
-(`kaiseisawada@192.168.50.15`, mDNS `docker-macpro.local`) under `~/ai-stack`.
-This directory mirrors the live deployment so the setup can be recreated from scratch.
+(`kaiseisawada@192.168.50.15`, mDNS `docker-macpro.local`) under
+`~/stacks/ai-stack` — inside the [Dockge](../dockge) stacks dir, so it's managed
+from the Dockge UI (<http://192.168.50.15:5001>). This directory mirrors the live
+deployment so the setup can be recreated from scratch.
 
 ## Services
 
@@ -38,8 +40,8 @@ run on CPU (slower).
 ## Recreate the stack
 
 ```bash
-# copy this directory to the host (or git pull there), then:
-cd ~/ai-stack
+# copy this directory into the Dockge stacks dir on the host (or git pull there):
+cd ~/stacks/ai-stack
 docker compose up -d --build      # build po-extract + start all three
 docker compose ps
 docker compose exec ollama ollama pull qwen2.5vl
