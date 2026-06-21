@@ -41,6 +41,7 @@ services:
       - web         # nextjs-web `web:3000`        (dev.kai-lab.net)
       - ai-stack    # open-webui `open-webui:8080` (chat.kai-lab.net)
       - monitoring  # grafana `grafana:3000`       (monitor.kai-lab.net)
+      - dockge      # dockge `dockge:5001`         (dockge.kai-lab.net)
     # Reload daily so renewed certs from acme.sh are applied without a restart.
     command: ["sh", "-c", "(while :; do sleep 86400; nginx -s reload 2>/dev/null || true; done &) ; exec nginx -g 'daemon off;'"]
 
@@ -55,3 +56,6 @@ networks:
   monitoring:
     external: true
     name: monitoring_monitoring
+  dockge:
+    external: true
+    name: dockge_default
