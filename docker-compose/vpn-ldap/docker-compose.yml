@@ -1,0 +1,34 @@
+# OpenVPN client + LDAP TCP forwarder.
+#
+# Connects to the CKK VPN (ckkhda.heinelt.info) and exposes the LDAP server to the
+# ai-stack network at `vpn-ldap:389`, so Open WebUI can authenticate against AD
+# without the rest of the stack touching the VPN.
+#
+# Deployed on docker-mac-pro at ~/stacks/vpn-ldap (Dockge-managed).
+# Secrets live in ./vpn (config.ovpn + auth.txt) and .env — both gitignored.
+
+services:
+  vpn-ldap:
+    build: .
+    image: vpn-ldap
+    container_name: vpn-ldap
+    restart: unless-stopped
+    cap_add:
+      - NET_ADMIN
+    devices:
+      - /dev/net/tun
+    environment:
+      - VPN_USERNAME=${VPN_USERNAME:?set VPN_USERNAME in .env}
+      - VPN_PASSWORD=${VPN_PASSWORD:?set VPN_PASSWORD in .env}
+      - LDAP_HOST=${LDAP_HOST:?set LDAP_HOST in .env}   # LDAP/AD server as seen via the VPN
+      - LDAP_PORT=${LDAP_PORT:-389}
+      - LISTEN_PORT=389
+    volumes:
+      - ./vpn:/vpn:ro      # config.ovpn (CA + tls-auth); credentials come from .env
+    networks:
+      - ai-stack           # so open-webui can reach vpn-ldap:389
+
+networks:
+  ai-stack:
+    external: true
+    name: ai-stack_default
