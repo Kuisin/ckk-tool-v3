@@ -1,0 +1,5 @@
+# Never commit secrets / TLS material / acme state.
+.env
+certs/*
+!certs/.gitkeep
+acme/
