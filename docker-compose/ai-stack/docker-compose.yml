@@ -26,6 +26,10 @@ services:
       - ollama:/models
     environment:
       - OLLAMA_MODELS=/models
+      # Default context window. 4096 is too small for a thinking model + injected
+      # web-search context (the context gets truncated before the answer). 16k fits
+      # comfortably in the 32GB GPUs.
+      - OLLAMA_CONTEXT_LENGTH=16384
     ports:
       - "11434:11434"
 
