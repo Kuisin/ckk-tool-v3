@@ -13,17 +13,24 @@ the public-hostname routing lives in the Cloudflare **Zero Trust** dashboard:
 
 ```
 Networks > Tunnels > docker-linux > Public Hostname
-  dev.kai-lab.net     →  HTTP  →  web:3000
-  dockge.kai-lab.net  →  HTTP  →  dockge:5001
+  dev.kai-lab.net     →  HTTP  →  web:3000          (nextjs-web)
+  dockge.kai-lab.net  →  HTTP  →  dockge:5001       (dockge)
+  chat.kai-lab.net    →  HTTP  →  open-webui:8080   (ai-stack — Open WebUI GUI)
+  ollama.kai-lab.net  →  HTTP  →  ollama:11434      (ai-stack — LLM API, optional)
 ```
 
 The connector joins each target stack's network (`nextjs-web_default` as `web`,
-`dockge_default` as `dockge`) to resolve those service names, so those stacks must
-be up first.
+`dockge_default` as `dockge`, `ai-stack_default` as `ai-stack`) to resolve those
+service names, so those stacks must be up first.
 
-> **Security:** Dockge is a full Docker-management UI (with the host console
-> enabled = a root shell). Do **not** expose `dockge.kai-lab.net` without putting a
-> Cloudflare **Access** policy (email/SSO auth) in front of it.
+> **Security — protect these with Cloudflare Access:**
+> - `dockge.kai-lab.net` — full Docker-management UI with the host console enabled
+>   (a root shell). Never expose without an Access policy (email/SSO).
+> - `ollama.kai-lab.net` — the raw LLM API has **no auth**; anyone could use your
+>   GPU/models. Gate with Access. For programmatic API use, use an Access
+>   **service token** (header auth) rather than the interactive email policy.
+> - `chat.kai-lab.net` — Open WebUI has its own login (first signup = admin), but
+>   adding Access in front is still recommended.
 
 ## Setup / recreate
 

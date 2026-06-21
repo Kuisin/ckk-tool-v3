@@ -3,8 +3,10 @@
 # Remotely-managed (token) tunnel. Public hostname -> service mappings are
 # configured in the Cloudflare Zero Trust dashboard; this connector just needs
 # network reachability to each target. No public ports / port-forwarding.
-#   dev.kai-lab.net    -> http://web:3000     (nextjs-web stack)
-#   dockge.kai-lab.net -> http://dockge:5001  (dockge stack)
+#   dev.kai-lab.net    -> http://web:3000        (nextjs-web stack)
+#   dockge.kai-lab.net -> http://dockge:5001     (dockge stack)
+#   chat.kai-lab.net   -> http://open-webui:8080 (ai-stack — Open WebUI GUI)
+#   ollama.kai-lab.net -> http://ollama:11434    (ai-stack — LLM API; protect with Access)
 #
 # Deployed on docker-mac-pro at ~/stacks/cloudflared (Dockge-managed).
 # Token lives in .env (gitignored).
@@ -20,6 +22,7 @@ services:
     networks:
       - web        # nextjs-web `web:3000`
       - dockge     # dockge `dockge:5001`
+      - ai-stack   # ai-stack `open-webui:8080`, `ollama:11434`
 
 # Attach to each target stack's compose network so the tunnel can resolve them.
 networks:
@@ -29,3 +32,6 @@ networks:
   dockge:
     external: true
     name: dockge_default
+  ai-stack:
+    external: true
+    name: ai-stack_default
