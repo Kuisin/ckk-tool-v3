@@ -36,36 +36,23 @@ and orchestrated by `docker-compose.yml`. Runs on `docker-mac-pro` under the Doc
 stacks dir (`~/stacks/nextjs-web`).
 
 - `web` — host **`:3001`** → container `:3000` (LAN access; `:3000` is open-webui).
-- `cloudflared` — Cloudflare Tunnel connector (profile `cloudflare`) publishing
-  **https://dev.kai-lab.net**.
 
 pnpm is pinned via `package.json#packageManager` (`pnpm@10.18.0`) so corepack
 honors `ignoredBuiltDependencies` (pnpm 11 hard-fails on the ignored `sharp` build).
 
 ```bash
-cp .env.example .env            # set NEXT_PUBLIC_APP_VERSION (+ tunnel token, below)
+cp .env.example .env            # set NEXT_PUBLIC_APP_VERSION
 docker compose up -d --build web
 curl -I http://localhost:3001/
 ```
 
-### Public access via Cloudflare Tunnel — `dev.kai-lab.net`
+### Access beyond the LAN
 
-Uses a **remotely-managed connector** (token). No router port-forwarding; the
-tunnel reaches the app over the internal compose network at `http://web:3000`.
+This stack only publishes the app on the LAN (`:3001`) and creates the
+`nextjs-web_default` network. The fronting stacks attach to that network and reach
+the app at `http://web:3000`:
 
-One-time setup in the Cloudflare **Zero Trust** dashboard (zone `kai-lab.net`):
+- **`cloudflared` stack** — public access at **https://dev.kai-lab.net** (Cloudflare Tunnel).
+- **`nginx-proxy` stack** — LAN TLS for `dev.kai-lab.net` (split-horizon).
 
-1. **Networks → Tunnels → Create a tunnel → Cloudflared**, name it `docker-mac-pro`.
-2. Copy the connector **token** (the long string after `--token` in the shown
-   `cloudflared ... run <TOKEN>` command) into `.env` as `CLOUDFLARE_TUNNEL_TOKEN`.
-3. **Public Hostname → Add**: subdomain `dev`, domain `kai-lab.net`, service
-   `HTTP` → `web:3000`. (The DNS CNAME is created automatically.)
-
-Then start the connector:
-
-```bash
-docker compose --profile cloudflare up -d
-docker logs nextjs-cloudflared --tail 20   # expect "Registered tunnel connection"
-```
-
-`.env` (and the token) are gitignored; only `.env.example` is committed.
+Start them after this stack is up.

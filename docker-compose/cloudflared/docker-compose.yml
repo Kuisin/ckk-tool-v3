@@ -1,0 +1,26 @@
+# Cloudflare Tunnel connector — public access to https://dev.kai-lab.net.
+#
+# Remotely-managed (token) tunnel. The public hostname -> service mapping
+# (dev.kai-lab.net -> http://web:3000) is configured in the Cloudflare Zero Trust
+# dashboard. This connector reaches the app over the nextjs-web compose network,
+# so no public port or router port-forwarding is needed.
+#
+# Deployed on docker-mac-pro at ~/stacks/cloudflared (Dockge-managed).
+# Token lives in .env (gitignored).
+
+services:
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    container_name: cloudflared
+    restart: unless-stopped
+    command: tunnel --no-autoupdate run
+    environment:
+      - TUNNEL_TOKEN=${CLOUDFLARE_TUNNEL_TOKEN:-}
+    networks:
+      - web        # reach the nextjs-web `web` service (dashboard routes to web:3000)
+
+# Attach to the nextjs-web compose network so the tunnel can reach http://web:3000.
+networks:
+  web:
+    external: true
+    name: nextjs-web_default
