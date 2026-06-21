@@ -1,0 +1,84 @@
+# Hardware monitoring — Prometheus + exporters + Grafana (techstack #7).
+#
+# Deployed on docker-mac-pro at ~/stacks/monitoring (Dockge-managed).
+#   grafana       host :3002  — dashboards & alerts (also public via cloudflared)
+#   prometheus    internal    — metrics store, scrapes the exporters below
+#   node-exporter internal    — host CPU / RAM / disk / net / temps
+#   cadvisor      internal    — per-container CPU / mem (ollama, open-webui, ...)
+#   gpu-exporter  internal    — AMD GPU util / VRAM / temp / power (amdgpu sysfs)
+#
+# Grafana is provisioned with the Prometheus datasource + an "AMD GPU & System"
+# dashboard. Public hostname (monitor.kai-lab.net) is added on the cloudflared stack.
+
+services:
+  prometheus:
+    image: prom/prometheus:v3.1.0
+    container_name: prometheus
+    restart: unless-stopped
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.retention.time=30d'
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    networks: [monitoring]
+
+  node-exporter:
+    image: prom/node-exporter:v1.8.2
+    container_name: node-exporter
+    restart: unless-stopped
+    pid: host
+    command:
+      - '--path.rootfs=/host'
+    volumes:
+      - /:/host:ro,rslave
+    networks: [monitoring]
+
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:v0.49.1
+    container_name: cadvisor
+    restart: unless-stopped
+    privileged: true
+    devices:
+      - /dev/kmsg
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+      - /dev/disk/:/dev/disk:ro
+    networks: [monitoring]
+
+  gpu-exporter:
+    build: ./gpu-exporter
+    image: amdgpu-sysfs-exporter
+    container_name: gpu-exporter
+    restart: unless-stopped
+    volumes:
+      - /sys:/sys:ro
+    networks: [monitoring]
+
+  grafana:
+    image: grafana/grafana:11.6.0
+    container_name: grafana
+    restart: unless-stopped
+    depends_on:
+      - prometheus
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=${GF_ADMIN_PASSWORD:-admin}
+      - GF_SERVER_ROOT_URL=${GF_ROOT_URL:-http://localhost:3002}
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafana-data:/var/lib/grafana
+    ports:
+      - "3002:3000"
+    networks: [monitoring]
+
+volumes:
+  prometheus-data:
+  grafana-data:
+
+networks:
+  monitoring:
