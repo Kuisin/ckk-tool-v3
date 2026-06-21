@@ -53,7 +53,12 @@ services:
       - SEARXNG_QUERY_URL=http://searxng:8080/search?q=<query>
       - WEB_SEARCH_RESULT_COUNT=5
       - WEB_SEARCH_CONCURRENT_REQUESTS=10
-      # Fetch & read page contents (URLs pasted in chat / search results).
+      # Inject search results straight into the prompt instead of the RAG
+      # embed→retrieve path (which the model was ignoring). Snippets only keeps
+      # the injected context compact so it can't be truncated.
+      - BYPASS_WEB_SEARCH_EMBEDDING_AND_RETRIEVAL=true
+      - BYPASS_WEB_SEARCH_WEB_LOADER=true
+      # Fetch & read page contents for URLs pasted directly in chat.
       - ENABLE_WEB_LOADER=true
     volumes:
       - open-webui:/app/backend/data
