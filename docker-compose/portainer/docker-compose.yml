@@ -1,0 +1,32 @@
+# Portainer CE — Docker management UI (replaces Dockge).
+#
+# Deployed on docker-mac-pro at ~/stacks/portainer.
+# Serves plain HTTP on :5001 and joins the kept `dockge_default` network with the
+# alias `dockge`, so the existing cloudflared tunnel + nginx routes
+# (dock.kai-lab.net -> http://dockge:5001) keep working unchanged.
+
+services:
+  portainer:
+    image: portainer/portainer-ce:2.39.3
+    container_name: portainer
+    restart: unless-stopped
+    # Serve HTTP on 5001 (reverse-proxied / tunnelled); HTTPS stays on 9443 unused.
+    command: --http-enabled --bind :5001
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - portainer-data:/data
+    ports:
+      - "5001:5001"          # LAN access (same URL Dockge used)
+    networks:
+      dockge:
+        aliases:
+          - dockge           # so http://dockge:5001 resolves here
+
+volumes:
+  portainer-data:
+
+# Reuse the kept network so tunnel/nginx external refs to dockge_default stay valid.
+networks:
+  dockge:
+    external: true
+    name: dockge_default
