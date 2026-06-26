@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>CKK メール管理</title>
+  <title>adminTools — メール管理</title>
   <style>
     :root { font-family: 'Noto Sans JP', system-ui, sans-serif; }
     body { margin: 0; background: #f5f6f8; color: #1f2937; }
@@ -31,8 +31,16 @@
   </style>
 </head>
 <body>
-  <header><h1>CKK メール管理</h1><span class="muted" style="color:#cbd5e1">Sakura / ckk-tool.co.jp</span></header>
+  <header>
+    <h1>adminTools</h1>
+    <span class="muted" style="color:#cbd5e1">ツール: メール管理 · ckk-tool.co.jp</span>
+  </header>
   <main>
+    {% if request.query_params.get('imported') is not none %}
+    <div class="card" style="border-color:#a7f3d0;background:#ecfdf5">
+      Excel を取り込みました：新規 {{ request.query_params.get('imported') }} 件 / 更新 {{ request.query_params.get('updated') }} 件。
+    </div>
+    {% endif %}
 
     <div class="card">
       <h2>同期 (DB → さくらコントロールパネル)</h2>
@@ -46,6 +54,15 @@
         <span id="syncstate"></span>
       </div>
       <div id="synclog"></div>
+    </div>
+
+    <div class="card">
+      <h2>Excel から取り込み</h2>
+      <p class="muted">email-list xlsx をアップロードして DB に取り込みます（username をキーに新規追加・更新。active→有効, displayname→備考）。</p>
+      <form method="post" action="/import" enctype="multipart/form-data" style="display:flex;gap:10px;align-items:center">
+        <input type="file" name="file" accept=".xlsx" required>
+        <button class="btn-sub" type="submit">取り込み</button>
+      </form>
     </div>
 
     <div class="card">

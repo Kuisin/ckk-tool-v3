@@ -1,4 +1,4 @@
-# mailadmin — mail-account management WebUI + DB → Sakura sync
+# admintools — mail-account management WebUI + DB → Sakura sync
 
 Self-hosted WebUI to manage the `ckk-tool.co.jp` mail accounts in a **database**,
 then **sync** them to the **Sakura** control panel (`secure.sakura.ad.jp`) with
@@ -7,10 +7,10 @@ headless Playwright. Replaces the previous Excel-driven scripts in
 (`_automation/bpo_sakura`) — those scripts are vendored under `app/sakura/` and
 reused, now driven by the DB instead of `email-list.xlsx`.
 
-Deployed on `docker-mac-pro` at `~/stacks/mailadmin`.
+Deployed on `docker-mac-pro` at `~/stacks/admintools`.
 
 - **WebUI/LAN:** <http://192.168.50.15:8090>
-- **`mailadmin-db`:** internal Postgres storing `mail_accounts`.
+- **`admintools-db`:** internal Postgres storing `mail_accounts`.
 
 ## What it does
 
@@ -22,7 +22,7 @@ Deployed on `docker-mac-pro` at `~/stacks/mailadmin`.
      (except `postmaster`),
    - creates mail **aliases** for accounts where the email's local part differs
      from the username, removing aliases not on the list.
-   Live progress streams to the UI; full detail is in `docker logs mailadmin`.
+   Live progress streams to the UI; full detail is in `docker logs admintools`.
 
 Only **active** accounts are pushed. Deactivating (un-checking 有効) removes the
 user/alias on the next sync.
