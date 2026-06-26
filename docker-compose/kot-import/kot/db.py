@@ -43,6 +43,41 @@ def _check_table(conn, table: str) -> None:
             raise SystemExit(f"Table '{table}' does not exist. Run Prisma migrations first.")
 
 
+def _record_roster(conn, rows: list[dict[str, str]]) -> int:
+    """Upsert every (employee_code, name) seen in the CSV into kot_employees.
+
+    Captures the full KOT roster (even people not yet mapped in `employees`) so
+    the name-matcher has a durable source to seed the code->username map from.
+    """
+    roster: dict[int, str] = {}
+    for row in rows:
+        code_raw = row.get("従業員コード", "").strip()
+        name = row.get("名前", "").strip()
+        if not code_raw or not name:
+            continue
+        try:
+            roster[int(code_raw)] = name
+        except ValueError:
+            continue
+    if not roster:
+        return 0
+    with conn.cursor() as cur:
+        cur.execute(
+            "CREATE TABLE IF NOT EXISTS kot_employees ("
+            "employee_code integer PRIMARY KEY, name text NOT NULL, "
+            "last_seen_at timestamptz NOT NULL DEFAULT now())"
+        )
+        for code, name in roster.items():
+            cur.execute(
+                "INSERT INTO kot_employees (employee_code, name) VALUES (%s, %s) "
+                "ON CONFLICT (employee_code) DO UPDATE SET name = EXCLUDED.name, "
+                "last_seen_at = now()",
+                (code, name),
+            )
+    conn.commit()
+    return len(roster)
+
+
 def _load_employee_map(conn) -> dict[int, str]:
     """Return {employee_code: username} from the employees table."""
     _check_table(conn, "employees")
@@ -195,6 +230,8 @@ def write_to_db(csv_path: Path) -> int:
     conn = get_connection()
     try:
         _check_table(conn, TABLE)
+        seen = _record_roster(conn, rows)
+        print(f"Recorded {seen} employees in kot_employees roster.")
         emp_map = _load_employee_map(conn)
         print(f"Loaded {len(emp_map)} employees from DB.")
 

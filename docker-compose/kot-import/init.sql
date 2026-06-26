@@ -7,6 +7,14 @@ CREATE TABLE IF NOT EXISTS employees (
     username      text NOT NULL
 );
 
+-- Roster seen in KOT exports (employee_code + name as KOT reports it).
+-- Filled by the loader on every run; used by the name-matcher to seed `employees`.
+CREATE TABLE IF NOT EXISTS kot_employees (
+    employee_code integer PRIMARY KEY,
+    name          text NOT NULL,
+    last_seen_at  timestamptz NOT NULL DEFAULT now()
+);
+
 -- Daily attendance records loaded from KOT CSV.
 CREATE TABLE IF NOT EXISTS hr_records (
     id                bigserial PRIMARY KEY,

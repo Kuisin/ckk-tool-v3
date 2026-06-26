@@ -107,11 +107,24 @@ def _dismiss_welcome(page) -> None:
     print(f"Welcome page ready. URL: {page.url}")
 
 
+def _kill_overlays(page) -> None:
+    """Remove the techtouch / tutorial overlays that intercept pointer events."""
+    try:
+        page.evaluate(
+            "() => { ['#techtouch-player-snippet','[id^=techtouch]','[class*=techtouch]',"
+            "'.introjs-overlay','.introjs-helperLayer','.ui-widget-overlay']"
+            ".forEach(s => document.querySelectorAll(s).forEach(e => e.remove())); }"
+        )
+    except Exception:
+        pass
+
+
 def _go_to_export_type(page) -> None:
     print("Going to export type selection...")
     link = page.locator(f"#{EXPORT_TYPE_LINK_ID}")
     link.wait_for(state="visible", timeout=15000)
-    link.click()
+    _kill_overlays(page)
+    link.click(force=True)
     page.wait_for_load_state("networkidle", timeout=15000)
     time.sleep(1.5)
     print("Export type page loaded.")
@@ -121,7 +134,8 @@ def _go_to_daily_export(page) -> None:
     print("Opening daily data export form...")
     btn = page.locator(f"button#{DAILY_EXPORT_BUTTON_ID}")
     btn.wait_for(state="visible", timeout=10000)
-    btn.click()
+    _kill_overlays(page)
+    btn.click(force=True)
     page.wait_for_load_state("networkidle", timeout=15000)
     time.sleep(1.5)
     print("Daily export form loaded.")
@@ -131,7 +145,8 @@ def _fill_date_range_and_export(page, start: date, end: date) -> Path:
     print("Switching to date range (日付指定)...")
     date_btn = page.locator(f"#{DATE_RANGE_BUTTON_ID}")
     date_btn.wait_for(state="visible", timeout=10000)
-    date_btn.click()
+    _kill_overlays(page)
+    date_btn.click(force=True)
     page.wait_for_load_state("networkidle", timeout=15000)
     time.sleep(1.5)
 
@@ -167,7 +182,8 @@ def _fill_date_range_and_export(page, start: date, end: date) -> Path:
         time.sleep(0.5)
 
     print(f"Exporting CSV ({start_str}–{end_str})...")
-    page.locator("#button_01").click()
+    _kill_overlays(page)
+    page.locator("#button_01").click(force=True)
     page.wait_for_load_state("networkidle", timeout=30000)
     time.sleep(3)
 
@@ -220,6 +236,15 @@ def run(
         print("Launching browser (visible)...")
         browser = p.chromium.launch(headless=headless)
         context = browser.new_context(accept_downloads=True)
+        # Permanently hide the techtouch onboarding overlay (it re-injects and
+        # intercepts pointer events, blocking the export navigation clicks).
+        context.add_init_script(
+            "(() => { const css='#techtouch-player-snippet,[id^=techtouch],"
+            "[class*=techtouch]{display:none!important;pointer-events:none!important;}';"
+            "const add=()=>{const s=document.createElement('style');s.textContent=css;"
+            "(document.head||document.documentElement).appendChild(s);};"
+            "if(document.head)add();else document.addEventListener('DOMContentLoaded',add);})()"
+        )
         page = context.new_page()
 
         try:
