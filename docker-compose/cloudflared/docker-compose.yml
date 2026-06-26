@@ -3,10 +3,11 @@
 # Remotely-managed (token) tunnel. Public hostname -> service mappings are
 # configured in the Cloudflare Zero Trust dashboard; this connector just needs
 # network reachability to each target. No public ports / port-forwarding.
-#   dev.kai-lab.net     -> http://web:3000        (nextjs-web stack)
-#   dockge.kai-lab.net  -> http://dockge:5001     (dockge stack)
-#   chat.kai-lab.net    -> http://open-webui:8080 (ai-stack — Open WebUI GUI)
-#   monitor.kai-lab.net -> http://grafana:3000    (monitoring stack — Grafana)
+#   dev.kai-lab.net      -> http://web:3000        (nextjs-web stack)
+#   dock.kai-lab.net     -> http://dockge:5001     (portainer, via kept dockge alias)
+#   chat.kai-lab.net     -> http://open-webui:8080 (ai-stack — Open WebUI GUI)
+#   monitor.kai-lab.net  -> http://grafana:3000    (monitoring stack — Grafana)
+#   metabase.kai-lab.net -> http://metabase:3000   (metabase stack — BI)
 # Ollama (:11434) is NOT published — Open WebUI reaches it internally over ai-stack.
 #
 # Deployed on docker-mac-pro at ~/stacks/cloudflared (Dockge-managed).
@@ -25,6 +26,7 @@ services:
       - dockge      # dockge `dockge:5001`
       - ai-stack    # ai-stack `open-webui:8080` (ollama reached internally by open-webui)
       - monitoring  # monitoring `grafana:3000`
+      - metabase    # metabase `metabase:3000`
 
 # Attach to each target stack's compose network so the tunnel can resolve them.
 networks:
@@ -40,3 +42,6 @@ networks:
   monitoring:
     external: true
     name: monitoring_monitoring
+  metabase:
+    external: true
+    name: metabase_default
