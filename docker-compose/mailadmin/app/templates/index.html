@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>CKK メール管理</title>
+  <style>
+    :root { font-family: 'Noto Sans JP', system-ui, sans-serif; }
+    body { margin: 0; background: #f5f6f8; color: #1f2937; }
+    header { background: #1e3a8a; color: #fff; padding: 14px 24px; display: flex; align-items: center; gap: 16px; }
+    header h1 { font-size: 18px; margin: 0; }
+    main { max-width: 1100px; margin: 24px auto; padding: 0 16px; }
+    .card { background: #fff; border: 1px solid #e5e7eb; border-radius: 8px; padding: 16px; margin-bottom: 20px; }
+    h2 { font-size: 15px; margin: 0 0 12px; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid #eee; }
+    th { color: #6b7280; font-weight: 600; }
+    input[type=text], input[type=email], input[type=number] { width: 100%; padding: 5px 7px; border: 1px solid #d1d5db; border-radius: 4px; font-size: 13px; box-sizing: border-box; }
+    input[type=number] { width: 64px; }
+    button { padding: 6px 12px; border: 0; border-radius: 5px; font-size: 13px; cursor: pointer; }
+    .btn-primary { background: #2563eb; color: #fff; }
+    .btn-sub { background: #e5e7eb; color: #111; }
+    .btn-danger { background: #fee2e2; color: #b91c1c; }
+    .btn-sync { background: #059669; color: #fff; padding: 8px 18px; }
+    .grid { display: grid; grid-template-columns: repeat(5, 1fr) auto; gap: 8px; align-items: end; }
+    label { font-size: 12px; color: #6b7280; display: block; margin-bottom: 3px; }
+    .muted { color: #6b7280; font-size: 12px; }
+    #synclog { background: #0b1020; color: #cbd5e1; font-family: ui-monospace, monospace; font-size: 12px; padding: 12px; border-radius: 6px; height: 220px; overflow-y: auto; white-space: pre-wrap; }
+    .dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 6px; }
+    .on { background: #10b981; } .off { background: #9ca3af; }
+  </style>
+</head>
+<body>
+  <header><h1>CKK メール管理</h1><span class="muted" style="color:#cbd5e1">Sakura / ckk-tool.co.jp</span></header>
+  <main>
+
+    <div class="card">
+      <h2>同期 (DB → さくらコントロールパネル)</h2>
+      <p class="muted">DB の有効なアカウントをさくらサーバーに反映します（ユーザー作成・パスワード更新・不要ユーザー削除・エイリアス同期）。</p>
+      <form method="post" action="/sync" onsubmit="setTimeout(poll, 1000)">
+        <button class="btn-sync" type="submit" {% if sync.running %}disabled{% endif %}>
+          {% if sync.running %}同期中…{% else %}今すぐ同期{% endif %}
+        </button>
+      </form>
+      <div style="margin:10px 0" class="muted">
+        <span id="syncstate"></span>
+      </div>
+      <div id="synclog"></div>
+    </div>
+
+    <div class="card">
+      <h2>アカウント追加</h2>
+      <form method="post" action="/accounts" class="grid">
+        <div><label>ユーザー名</label><input type="text" name="username" required></div>
+        <div><label>パスワード</label><input type="text" name="password" required></div>
+        <div><label>メールアドレス</label><input type="email" name="email" required></div>
+        <div><label>容量(GB)</label><input type="number" name="quota_gb" value="5" min="1"></div>
+        <div><label>有効</label><input type="checkbox" name="is_active" value="true" checked></div>
+        <div><button class="btn-primary" type="submit">追加</button></div>
+      </form>
+    </div>
+
+    <div class="card">
+      <h2>アカウント一覧 ({{ accounts|length }})</h2>
+      <table>
+        <thead><tr><th>ユーザー名</th><th>パスワード</th><th>メール</th><th>GB</th><th>有効</th><th></th></tr></thead>
+        <tbody>
+        {% for a in accounts %}
+          <tr>
+            <form method="post" action="/accounts/{{ a.id }}/update">
+              <td style="font-weight:600">{{ a.username }}</td>
+              <td><input type="text" name="password" value="{{ a.password }}"></td>
+              <td><input type="email" name="email" value="{{ a.email }}"></td>
+              <td><input type="number" name="quota_gb" value="{{ a.quota_gb }}" min="1"></td>
+              <td><input type="checkbox" name="is_active" value="true" {% if a.is_active %}checked{% endif %}></td>
+              <td style="white-space:nowrap">
+                <button class="btn-sub" type="submit">保存</button>
+                <button class="btn-danger" type="submit" formaction="/accounts/{{ a.id }}/delete"
+                        onclick="return confirm('{{ a.username }} を削除しますか？')">削除</button>
+              </td>
+            </form>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </main>
+
+  <script>
+    async function poll() {
+      try {
+        const r = await fetch('/sync/status'); const s = await r.json();
+        const log = document.getElementById('synclog');
+        log.textContent = (s.log || []).join('\n'); log.scrollTop = log.scrollHeight;
+        const st = document.getElementById('syncstate');
+        const cls = s.running ? 'on' : 'off';
+        const label = s.running ? '同期中…' : (s.finished ? ('最終: ' + s.finished + (s.ok === false ? ' (失敗)' : ' (完了)')) : '未実行');
+        st.innerHTML = '<span class="dot ' + cls + '"></span>' + label;
+        if (s.running) setTimeout(poll, 2000);
+        else if (s.finished) setTimeout(() => location.reload(), 1500);
+      } catch (e) { setTimeout(poll, 3000); }
+    }
+    poll();
+  </script>
+</body>
+</html>

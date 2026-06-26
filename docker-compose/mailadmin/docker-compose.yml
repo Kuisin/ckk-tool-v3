@@ -1,0 +1,42 @@
+# mailadmin — WebUI + DB to manage Sakura/onamae mail accounts, synced to the
+# Sakura control panel via headless Playwright (replaces the Excel-driven scripts).
+#
+# Deployed on docker-mac-pro at ~/stacks/mailadmin.
+#   mailadmin     host :8090 -> :8000  (WebUI + API)
+#   mailadmin-db  internal Postgres (account store)
+
+services:
+  mailadmin-db:
+    image: postgres:17-alpine
+    container_name: mailadmin-db
+    restart: unless-stopped
+    environment:
+      - POSTGRES_DB=mailadmin
+      - POSTGRES_USER=mailadmin
+      - POSTGRES_PASSWORD=${DB_PASSWORD:?set DB_PASSWORD in .env}
+    volumes:
+      - mailadmin-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U mailadmin"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  mailadmin:
+    build: .
+    image: ckk-mailadmin
+    container_name: mailadmin
+    restart: unless-stopped
+    depends_on:
+      mailadmin-db:
+        condition: service_healthy
+    environment:
+      - DATABASE_URL=postgresql+psycopg://mailadmin:${DB_PASSWORD:?set DB_PASSWORD in .env}@mailadmin-db:5432/mailadmin
+      # Sakura RS control-panel login — needed only for the sync action.
+      - SAKURA_ID=${SAKURA_ID:-}
+      - SAKURA_PW=${SAKURA_PW:-}
+    ports:
+      - "8090:8000"
+
+volumes:
+  mailadmin-db-data:
