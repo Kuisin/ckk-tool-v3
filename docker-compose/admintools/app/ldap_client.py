@@ -1,7 +1,8 @@
-"""Read AD/LDAP users via the vpn-ldap forwarder, to source User mailboxes."""
+"""Read AD/LDAP users via the vpn-ldap forwarder (to validate User mailboxes)."""
 import os
 
 from ldap3 import ALL, SUBTREE, Connection, Server
+from ldap3.utils.conv import escape_filter_chars
 
 # Reuse the shared vpn-ldap/ldap.env names.
 HOST = os.environ.get("LDAP_SERVER_HOST", "vpn-ldap")
@@ -11,6 +12,25 @@ BIND_DN = os.environ.get("LDAP_APP_DN", "")
 BIND_PW = os.environ.get("LDAP_APP_PASSWORD", "")
 
 UF_ACCOUNTDISABLE = 0x0002
+
+
+def find_user(username: str) -> dict | None:
+    """Look up a single AD user by sAMAccountName. Returns dict or None."""
+    if not BIND_DN or not BIND_PW:
+        raise RuntimeError("LDAP_APP_DN / LDAP_APP_PASSWORD not configured")
+    server = Server(HOST, port=PORT, get_info=ALL, connect_timeout=10)
+    conn = Connection(server, user=BIND_DN, password=BIND_PW, auto_bind=True, receive_timeout=15)
+    try:
+        flt = f"(&(objectClass=user)(objectCategory=person)(sAMAccountName={escape_filter_chars(username)}))"
+        conn.search(BASE, flt, search_scope=SUBTREE, attributes=["sAMAccountName", "displayName", "mail"])
+        if not conn.entries:
+            return None
+        e = conn.entries[0]
+        return {"username": str(e.sAMAccountName),
+                "display_name": str(e.displayName) if e.displayName else "",
+                "mail": str(e.mail) if e.mail else ""}
+    finally:
+        conn.unbind()
 
 
 def list_users() -> list[dict]:

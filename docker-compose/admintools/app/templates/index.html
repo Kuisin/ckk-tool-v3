@@ -9,22 +9,21 @@
     body { margin: 0; background: #f5f6f8; color: #1f2937; }
     header { background: #1e3a8a; color: #fff; padding: 14px 24px; display: flex; align-items: baseline; gap: 16px; }
     header h1 { font-size: 18px; margin: 0; }
-    main { max-width: 1120px; margin: 24px auto; padding: 0 16px; }
+    main { max-width: 1040px; margin: 24px auto; padding: 0 16px; }
     .card { background: #fff; border: 1px solid #e5e7eb; border-radius: 8px; padding: 16px; margin-bottom: 20px; }
-    h2 { font-size: 15px; margin: 0 0 12px; }
+    h2 { font-size: 15px; margin: 0 0 12px; } h3 { margin: 0 0 14px; }
     table { width: 100%; border-collapse: collapse; font-size: 13px; }
-    th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid #eee; vertical-align: middle; }
+    th, td { text-align: left; padding: 8px; border-bottom: 1px solid #eee; vertical-align: middle; }
     th { color: #6b7280; font-weight: 600; }
-    input[type=text], input[type=email], input[type=number] { width: 100%; padding: 5px 7px; border: 1px solid #d1d5db; border-radius: 4px; font-size: 13px; box-sizing: border-box; }
-    input[type=number] { width: 60px; }
+    input[type=text], input[type=email], input[type=number] { padding: 6px 8px; border: 1px solid #d1d5db; border-radius: 4px; font-size: 13px; box-sizing: border-box; width: 100%; }
     button { padding: 6px 12px; border: 0; border-radius: 5px; font-size: 13px; cursor: pointer; }
     .btn-primary { background: #2563eb; color: #fff; } .btn-sub { background: #e5e7eb; color: #111; }
     .btn-danger { background: #fee2e2; color: #b91c1c; } .btn-sync { background: #059669; color: #fff; padding: 8px 18px; }
-    .btn-ldap { background: #7c3aed; color: #fff; padding: 8px 16px; }
-    .grid { display: grid; grid-template-columns: 1fr 1fr 1.4fr 80px 60px auto; gap: 8px; align-items: end; }
-    label { font-size: 12px; color: #6b7280; display: block; margin-bottom: 3px; }
+    .addrow { display: flex; gap: 10px; align-items: end; flex-wrap: wrap; }
+    .addrow > div { display: flex; flex-direction: column; }
+    label { font-size: 12px; color: #6b7280; margin-bottom: 3px; }
     .muted { color: #6b7280; font-size: 12px; }
-    #synclog { background: #0b1020; color: #cbd5e1; font-family: ui-monospace, monospace; font-size: 12px; padding: 12px; border-radius: 6px; height: 200px; overflow-y: auto; white-space: pre-wrap; }
+    #synclog { background: #0b1020; color: #cbd5e1; font-family: ui-monospace, monospace; font-size: 12px; padding: 12px; border-radius: 6px; height: 190px; overflow-y: auto; white-space: pre-wrap; }
     .dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 6px; } .on { background: #10b981; } .off { background: #9ca3af; }
     .tabs { display: flex; gap: 6px; margin-bottom: 16px; }
     .tab { padding: 9px 18px; background: #e5e7eb; border-radius: 8px 8px 0 0; cursor: pointer; font-size: 14px; font-weight: 600; color: #374151; }
@@ -32,30 +31,41 @@
     .pane { display: none; } .pane.active { display: block; }
     .badge { font-size: 11px; background: #ede9fe; color: #6d28d9; padding: 1px 7px; border-radius: 10px; }
     .ok { background: #ecfdf5; border-color: #a7f3d0; } .err { background: #fef2f2; border-color: #fecaca; }
+    .modal-bg { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.4); align-items: center; justify-content: center; z-index: 50; }
+    .modal { background: #fff; border-radius: 10px; padding: 22px; width: 420px; max-width: 92vw; }
+    .modal label { display: block; margin: 10px 0 4px; }
+    .modal .actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 18px; }
   </style>
 </head>
 <body>
   <header><h1>adminTools</h1><span class="muted" style="color:#cbd5e1">ツール: メール管理 · {{ domain }}</span></header>
 
+  {% macro alias_fields(prefix) %}
+    <label style="display:inline-flex;align-items:center;gap:6px;font-size:13px;color:#111">
+      <input type="checkbox" name="use_alias" value="true" onchange="toggleAlias(this)"> カスタムエイリアスを使う
+    </label>
+    <input type="email" name="alias" placeholder="old-address@{{ domain }}" style="display:none;margin-top:6px">
+  {% endmacro %}
+
   {% macro table(rows) %}
   <table>
-    <thead><tr><th>ユーザー名</th><th>パスワード</th><th>メール</th><th>GB</th><th>有効</th><th></th></tr></thead>
+    <thead><tr><th>ユーザー名</th><th>メール</th><th>容量</th><th>状態</th><th></th></tr></thead>
     <tbody>
     {% for a in rows %}
       <tr>
-        <form method="post" action="/accounts/{{ a.id }}/update">
-          <td style="font-weight:600;white-space:nowrap">{{ a.username }}
-            {% if a.email.split('@')[0] != a.username %}<span class="badge">alias</span>{% endif %}</td>
-          <td><input type="text" name="password" value="{{ a.password }}"></td>
-          <td><input type="email" name="email" value="{{ a.email }}"></td>
-          <td><input type="number" name="quota_gb" value="{{ a.quota_gb }}" min="1"></td>
-          <td><input type="checkbox" name="is_active" value="true" {% if a.is_active %}checked{% endif %}></td>
-          <td style="white-space:nowrap">
-            <button class="btn-sub" type="submit">保存</button>
-            <button class="btn-danger" type="submit" formaction="/accounts/{{ a.id }}/delete"
-                    onclick="return confirm('{{ a.username }} を削除しますか？')">削除</button>
-          </td>
-        </form>
+        <td style="font-weight:600;white-space:nowrap">{{ a.username }}
+          {% if a.email.split('@')[0] != a.username %}<span class="badge">alias</span>{% endif %}</td>
+        <td>{{ a.email }}</td>
+        <td>{{ a.quota_gb }} GB</td>
+        <td>{{ '有効' if a.is_active else '無効' }}</td>
+        <td style="white-space:nowrap;text-align:right">
+          <button class="btn-sub" onclick='openEdit(this)'
+            data-id="{{ a.id }}" data-username="{{ a.username }}" data-password="{{ a.password }}"
+            data-email="{{ a.email }}" data-quota="{{ a.quota_gb }}"
+            data-active="{{ 'true' if a.is_active else 'false' }}" data-notes="{{ a.notes }}">編集</button>
+          <form method="post" action="/accounts/{{ a.id }}/delete" style="display:inline"
+                onsubmit="return confirm('{{ a.username }} を削除しますか？')"><button class="btn-danger">削除</button></form>
+        </td>
       </tr>
     {% endfor %}
     </tbody>
@@ -64,13 +74,12 @@
 
   <main>
     {% set q = request.query_params %}
-    {% if q.get('imported') is not none %}<div class="card ok">Excel 取り込み：新規 {{ q.get('imported') }} / 更新 {{ q.get('updated') }} 件。</div>{% endif %}
-    {% if q.get('ldap_created') is not none %}<div class="card ok">LDAP 取り込み：新規 {{ q.get('ldap_created') }} / 更新 {{ q.get('ldap_updated') }} 件。</div>{% endif %}
-    {% if q.get('ldap_error') %}<div class="card err">LDAP エラー：{{ q.get('ldap_error') }}</div>{% endif %}
+    {% if q.get('imported') is not none %}<div class="card ok">Excel：新規 {{ q.get('imported') }} / 更新 {{ q.get('updated') }} / 削除 {{ q.get('removed') }} 件。</div>{% endif %}
+    {% if q.get('err') %}<div class="card err">{{ q.get('err') }}</div>{% endif %}
 
     <div class="card">
       <h2>同期 (DB → さくらコントロールパネル)</h2>
-      <p class="muted">有効なアカウントを反映。<b>username@{{ domain }}</b> はユーザー追加時に自動作成されるため、エイリアスは「メールが username と異なる場合」のみ作成します。</p>
+      <p class="muted"><b>username@{{ domain }}</b> はユーザー追加時に自動作成。カスタムエイリアスを設定した場合のみエイリアスを作成します。</p>
       <form method="post" action="/sync" onsubmit="setTimeout(poll,1000)">
         <button class="btn-sync" type="submit" {% if sync.running %}disabled{% endif %}>{% if sync.running %}同期中…{% else %}今すぐ同期{% endif %}</button>
       </form>
@@ -86,12 +95,12 @@
     <div class="pane" id="pane-shared">
       <div class="card">
         <h2>共有メール 追加</h2>
-        <form method="post" action="/accounts" class="grid">
+        <form method="post" action="/accounts" class="addrow">
           <input type="hidden" name="kind" value="shared">
           <div><label>ユーザー名</label><input type="text" name="username" required></div>
           <div><label>パスワード(空欄=自動)</label><input type="text" name="password"></div>
-          <div><label>メール(空欄=username@{{ domain }})</label><input type="email" name="email"></div>
-          <div><label>GB</label><input type="number" name="quota_gb" value="5" min="1"></div>
+          <div style="min-width:240px"><label>エイリアス</label>{{ alias_fields('s') }}</div>
+          <div><label>GB</label><input type="number" name="quota_gb" value="5" min="1" style="width:64px"></div>
           <div><label>有効</label><input type="checkbox" name="is_active" value="true" checked></div>
           <div><button class="btn-primary" type="submit">追加</button></div>
         </form>
@@ -101,18 +110,14 @@
 
     <div class="pane" id="pane-user">
       <div class="card">
-        <h2>ユーザーメール — LDAP 取り込み</h2>
-        <p class="muted">AD のユーザー(sAMAccountName)を取り込み、<b>username@{{ domain }}</b> を既定メールとして作成します。旧アドレスが必要なユーザーはメール欄を変更するとエイリアスが作成されます。</p>
-        <form method="post" action="/ldap/import"><button class="btn-ldap" type="submit">LDAP から取り込み</button></form>
-      </div>
-      <div class="card">
-        <h2>ユーザーメール 追加（手動）</h2>
-        <form method="post" action="/accounts" class="grid">
+        <h2>ユーザーメール 追加</h2>
+        <p class="muted">ユーザー名は AD に存在する必要があります（作成時に検証）。既定メール: <b>username@{{ domain }}</b>。</p>
+        <form method="post" action="/accounts" class="addrow">
           <input type="hidden" name="kind" value="user">
           <div><label>ユーザー名(LDAP)</label><input type="text" name="username" required></div>
           <div><label>パスワード(空欄=自動)</label><input type="text" name="password"></div>
-          <div><label>メール(空欄=username@{{ domain }})</label><input type="email" name="email"></div>
-          <div><label>GB</label><input type="number" name="quota_gb" value="5" min="1"></div>
+          <div style="min-width:240px"><label>エイリアス(旧アドレス等)</label>{{ alias_fields('u') }}</div>
+          <div><label>GB</label><input type="number" name="quota_gb" value="5" min="1" style="width:64px"></div>
           <div><label>有効</label><input type="checkbox" name="is_active" value="true" checked></div>
           <div><button class="btn-primary" type="submit">追加</button></div>
         </form>
@@ -121,14 +126,54 @@
     </div>
   </main>
 
+  <!-- edit modal -->
+  <div class="modal-bg" id="modal">
+    <div class="modal">
+      <h3 id="m-title"></h3>
+      <form method="post" id="m-form">
+        <label>パスワード</label><input type="text" name="password" id="m-pw">
+        <label style="display:inline-flex;align-items:center;gap:6px"><input type="checkbox" name="use_alias" value="true" id="m-usealias" onchange="toggleAlias(this)"> カスタムエイリアスを使う</label>
+        <input type="email" name="alias" id="m-alias" placeholder="old-address@{{ domain }}" style="display:none;margin-top:6px">
+        <label>容量 (GB)</label><input type="number" name="quota_gb" id="m-quota" min="1">
+        <label style="display:inline-flex;align-items:center;gap:6px"><input type="checkbox" name="is_active" value="true" id="m-active"> 有効</label>
+        <label>備考</label><input type="text" name="notes" id="m-notes">
+        <div class="actions">
+          <button type="button" class="btn-sub" onclick="closeEdit()">キャンセル</button>
+          <button type="submit" class="btn-primary">保存</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <script>
+    function toggleAlias(cb) {
+      const box = cb.closest('form').querySelector('[name=alias]');
+      box.style.display = cb.checked ? '' : 'none';
+      box.disabled = !cb.checked;
+    }
+    function openEdit(b) {
+      const d = b.dataset;
+      const f = document.getElementById('m-form'); f.action = '/accounts/' + d.id + '/update';
+      document.getElementById('m-title').textContent = d.username;
+      document.getElementById('m-pw').value = d.password;
+      document.getElementById('m-quota').value = d.quota;
+      document.getElementById('m-active').checked = d.active === 'true';
+      document.getElementById('m-notes').value = d.notes || '';
+      const isAlias = (d.email || '').split('@')[0] !== d.username;
+      const ua = document.getElementById('m-usealias'); ua.checked = isAlias;
+      document.getElementById('m-alias').value = isAlias ? d.email : '';
+      toggleAlias(ua);
+      document.getElementById('modal').style.display = 'flex';
+    }
+    function closeEdit() { document.getElementById('modal').style.display = 'none'; }
+    document.getElementById('modal').addEventListener('click', e => { if (e.target.id === 'modal') closeEdit(); });
+
     function showTab(name) {
       document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.pane === name));
       document.querySelectorAll('.pane').forEach(p => p.classList.toggle('active', p.id === 'pane-' + name));
     }
     document.querySelectorAll('.tab').forEach(t => t.addEventListener('click', () => showTab(t.dataset.pane)));
-    const params = new URLSearchParams(location.search);
-    showTab((location.hash === '#user' || params.has('ldap_created') || params.has('ldap_error')) ? 'user' : 'shared');
+    showTab(location.hash === '#user' ? 'user' : 'shared');
 
     async function poll() {
       try {

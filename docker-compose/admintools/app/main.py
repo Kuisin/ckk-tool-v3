@@ -109,23 +109,35 @@ def _parse_accounts_xlsx(data: bytes) -> list[dict]:
 
 
 @app.post("/import")
-def import_accounts(file: UploadFile = File(...)):
+def import_accounts(file: UploadFile = File(...), replace: bool = Form(False)):
     accounts = _parse_accounts_xlsx(file.file.read())
-    inserted = updated = 0
+    # Categorize kind by AD membership (username in AD -> user, else shared).
+    try:
+        ad = {u["username"].lower() for u in ldap_client.list_users()}
+    except Exception:  # noqa: BLE001
+        ad = None
+    usernames = {a["username"] for a in accounts}
+    inserted = updated = removed = 0
     with SessionLocal() as s:
         for a in accounts:
+            kind = "user" if (ad is not None and a["username"].lower() in ad) else "shared"
             existing = s.query(MailAccount).filter_by(username=a["username"]).first()
             if existing:
                 if a["password"]:
                     existing.password = a["password"]
-                existing.email, existing.is_active, existing.notes = a["email"], a["is_active"], a["notes"]
+                existing.email, existing.is_active, existing.notes, existing.kind = (
+                    a["email"], a["is_active"], a["notes"], kind)
                 updated += 1
             else:
-                s.add(MailAccount(username=a["username"], password=a["password"], email=a["email"],
-                                  quota_gb=5, is_active=a["is_active"], notes=a["notes"]))
+                s.add(MailAccount(username=a["username"], password=a["password"] or _gen_password(),
+                                  email=a["email"], quota_gb=5, is_active=a["is_active"],
+                                  kind=kind, notes=a["notes"]))
                 inserted += 1
+        if replace:
+            removed = s.query(MailAccount).filter(MailAccount.username.notin_(usernames)).delete(
+                synchronize_session=False)
         s.commit()
-    return RedirectResponse(f"/?imported={inserted}&updated={updated}", status_code=303)
+    return RedirectResponse(f"/?imported={inserted}&updated={updated}&removed={removed}", status_code=303)
 
 
 @app.on_event("startup")
@@ -151,77 +163,60 @@ def index(request: Request):
     })
 
 
+def _alias_email(username: str, use_alias: bool, alias: str) -> str:
+    """Email is the custom alias when enabled+provided, else <username>@domain."""
+    return alias.strip() if (use_alias and alias.strip()) else f"{username}@{DEFAULT_DOMAIN}"
+
+
 @app.post("/accounts")
 def create_account(
     username: str = Form(...),
     password: str = Form(""),
-    email: str = Form(""),
     quota_gb: int = Form(5),
     is_active: bool = Form(False),
     kind: str = Form("shared"),
+    use_alias: bool = Form(False),
+    alias: str = Form(""),
     notes: str = Form(""),
 ):
     username = username.strip()
-    email = email.strip() or f"{username}@{DEFAULT_DOMAIN}"
     kind = kind if kind in ("user", "shared") else "shared"
+    # Private (user) emails must map to a real AD account.
+    if kind == "user":
+        try:
+            if not ldap_client.find_user(username):
+                return RedirectResponse(f"/?err=AD に {username} が見つかりません#user", status_code=303)
+        except Exception as e:  # noqa: BLE001
+            return RedirectResponse(f"/?err=LDAP エラー: {str(e)[:80]}#user", status_code=303)
     with SessionLocal() as s:
         if s.query(MailAccount).filter_by(username=username).first():
-            raise HTTPException(400, "username already exists")
+            return RedirectResponse(f"/?err={username} は既に存在します", status_code=303)
         s.add(MailAccount(username=username, password=password or _gen_password(),
-                          email=email, quota_gb=quota_gb, is_active=is_active,
-                          kind=kind, notes=notes))
+                          email=_alias_email(username, use_alias, alias), quota_gb=quota_gb,
+                          is_active=is_active, kind=kind, notes=notes))
         s.commit()
     return RedirectResponse("/#user" if kind == "user" else "/", status_code=303)
-
-
-@app.post("/ldap/import")
-def ldap_import():
-    """Pull AD users (sAMAccountName) and upsert them as 'user' mailboxes,
-    defaulting email to <username>@DEFAULT_DOMAIN. Sakura auto-creates that
-    mailbox on sync; an alias is only made if a row's email differs."""
-    try:
-        users = ldap_client.list_users()
-    except Exception as e:  # noqa: BLE001
-        return RedirectResponse(f"/?ldap_error={str(e)[:140]}#user", status_code=303)
-    created = updated = 0
-    with SessionLocal() as s:
-        for u in users:
-            if u["disabled"]:
-                continue
-            a = s.query(MailAccount).filter_by(username=u["username"]).first()
-            if a:
-                a.kind = "user"
-                if not a.email:
-                    a.email = f"{u['username']}@{DEFAULT_DOMAIN}"
-                if not a.notes and u["display_name"]:
-                    a.notes = u["display_name"]
-                updated += 1
-            else:
-                s.add(MailAccount(username=u["username"], password=_gen_password(),
-                                  email=f"{u['username']}@{DEFAULT_DOMAIN}", quota_gb=5,
-                                  is_active=True, kind="user", notes=u["display_name"]))
-                created += 1
-        s.commit()
-    return RedirectResponse(f"/?ldap_created={created}&ldap_updated={updated}#user", status_code=303)
 
 
 @app.post("/accounts/{account_id}/update")
 def update_account(
     account_id: int,
     password: str = Form(...),
-    email: str = Form(...),
     quota_gb: int = Form(5),
     is_active: bool = Form(False),
+    use_alias: bool = Form(False),
+    alias: str = Form(""),
     notes: str = Form(""),
 ):
     with SessionLocal() as s:
         a = s.get(MailAccount, account_id)
         if not a:
             raise HTTPException(404)
-        a.password, a.email, a.quota_gb, a.is_active, a.notes = (
-            password, email.strip(), quota_gb, is_active, notes)
+        a.password, a.quota_gb, a.is_active, a.notes = password, quota_gb, is_active, notes
+        a.email = _alias_email(a.username, use_alias, alias)
+        kind = a.kind
         s.commit()
-    return RedirectResponse("/", status_code=303)
+    return RedirectResponse("/#user" if kind == "user" else "/", status_code=303)
 
 
 @app.post("/accounts/{account_id}/delete")
