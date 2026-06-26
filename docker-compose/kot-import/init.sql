@@ -1,0 +1,32 @@
+-- Schema for the King of Time importer (matches db.py's INSERT).
+-- Normally Prisma-managed in the main app; recreated here for the standalone import.
+
+-- employee_code (KOT) -> username (AD). Must be populated for rows to match.
+CREATE TABLE IF NOT EXISTS employees (
+    employee_code integer PRIMARY KEY,
+    username      text NOT NULL
+);
+
+-- Daily attendance records loaded from KOT CSV.
+CREATE TABLE IF NOT EXISTS hr_records (
+    id                bigserial PRIMARY KEY,
+    employee_username text NOT NULL,
+    zone              text NOT NULL,
+    date              date NOT NULL,
+    wt_normal         integer,
+    wt_overtime       integer,
+    wt_overtime_night integer,
+    wt_night          integer,
+    wt_leave_late     integer,
+    pto               integer,
+    plan_start        timestamp,
+    plan_end          timestamp,
+    record_starts     timestamp[],
+    record_ends       timestamp[],
+    rest_starts       timestamp[],
+    rest_ends         timestamp[]
+);
+
+-- db.py deletes the date range (per zone) before inserting; index helps that.
+CREATE INDEX IF NOT EXISTS idx_hr_records_zone_date ON hr_records (zone, date);
+CREATE UNIQUE INDEX IF NOT EXISTS uq_hr_records ON hr_records (employee_username, zone, date);

@@ -1,0 +1,4 @@
+# Secrets / downloaded data.
+.env
+kot/downloads/
+kot/__pycache__/

@@ -1,0 +1,44 @@
+# King of Time auto-importer — headless Playwright export -> Postgres (hr_records).
+# Replicates kuisin/ckk-tool-compose _automation/bpo_kot, run on a schedule.
+#
+# Deployed on docker-mac-pro at ~/stacks/kot-import.
+#   kot-import  scheduler: every KOT_INTERVAL_SECONDS, login to King of Time,
+#               download the last N days CSV, upsert into hr_records.
+#   kot-db      Postgres (hr_records + employees).
+
+services:
+  kot-db:
+    image: postgres:17-alpine
+    container_name: kot-db
+    restart: unless-stopped
+    environment:
+      - POSTGRES_DB=kot
+      - POSTGRES_USER=kot
+      - POSTGRES_PASSWORD=${DB_PASSWORD:?set DB_PASSWORD in .env}
+    volumes:
+      - kot-db-data:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U kot"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  kot-import:
+    build: .
+    image: ckk-kot-import
+    container_name: kot-import
+    restart: unless-stopped
+    depends_on:
+      kot-db:
+        condition: service_healthy
+    environment:
+      # King of Time admin login (https://s2.ta.kingoftime.jp/admin).
+      - KOT_ID=${KOT_ID:-}
+      - KOT_PW=${KOT_PW:-}
+      - DATABASE_URL=postgresql://kot:${DB_PASSWORD:?set DB_PASSWORD in .env}@kot-db:5432/kot
+      - KOT_INTERVAL_SECONDS=${KOT_INTERVAL_SECONDS:-21600}
+      - KOT_DAYS=${KOT_DAYS:-7}
+
+volumes:
+  kot-db-data:
