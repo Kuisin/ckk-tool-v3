@@ -38,6 +38,9 @@
     .ac { display: none; position: absolute; z-index: 60; background: #fff; border: 1px solid #d1d5db; border-radius: 4px; max-height: 240px; overflow-y: auto; width: 280px; box-shadow: 0 6px 18px rgba(0,0,0,.12); }
     .ac div { padding: 6px 10px; cursor: pointer; font-size: 13px; } .ac div:hover { background: #eef2ff; }
     .mem-row { display: flex; justify-content: space-between; align-items: center; padding: 6px 0; border-bottom: 1px solid #eee; }
+    .toolbar { display: flex; gap: 8px; align-items: center; margin-bottom: 12px; flex-wrap: wrap; }
+    .toolbar .tsearch { width: 260px; } .toolbar select { width: auto; }
+    th.sortable { cursor: pointer; user-select: none; } th.sortable:hover { color: #1e3a8a; }
   </style>
 </head>
 <body>
@@ -50,12 +53,31 @@
     <input type="email" name="alias" placeholder="old-address@{{ domain }}" style="display:none;margin-top:6px">
   {% endmacro %}
 
-  {% macro table(rows, counts) %}
-  <table>
-    <thead><tr><th>種別</th><th>ユーザー名</th><th>メール</th><th>容量</th><th>状態</th><th></th></tr></thead>
+  {% macro table(rows, counts, tid) %}
+  <div class="toolbar">
+    <input type="text" class="tsearch" placeholder="検索 (ユーザー名 / メール / 備考)" oninput="applyTable('{{ tid }}')">
+    <select class="tfilter-type" onchange="applyTable('{{ tid }}')">
+      <option value="">種別: すべて</option>
+      <option value="app">app</option><option value="grp">grp</option><option value="other">other</option><option value="user">user</option>
+    </select>
+    <select class="tfilter-status" onchange="applyTable('{{ tid }}')">
+      <option value="">状態: すべて</option><option value="1">有効</option><option value="0">無効</option>
+    </select>
+    <span class="muted" id="{{ tid }}-count"></span>
+  </div>
+  <table id="{{ tid }}">
+    <thead><tr>
+      <th class="sortable" onclick="sortTable('{{ tid }}',0)">種別 ⇅</th>
+      <th class="sortable" onclick="sortTable('{{ tid }}',1)">ユーザー名 ⇅</th>
+      <th class="sortable" onclick="sortTable('{{ tid }}',2)">メール ⇅</th>
+      <th class="sortable" onclick="sortTable('{{ tid }}',3)">容量 ⇅</th>
+      <th class="sortable" onclick="sortTable('{{ tid }}',4)">状態 ⇅</th>
+      <th></th>
+    </tr></thead>
     <tbody>
     {% for a in rows %}
-      <tr>
+      <tr data-type="{{ a.type }}" data-status="{{ '1' if a.is_active else '0' }}"
+          data-search="{{ (a.username ~ ' ' ~ a.email ~ ' ' ~ a.notes)|lower }}">
         <td><span class="badge" style="background:#e0e7ff;color:#3730a3">{{ a.type }}</span></td>
         <td style="font-weight:600;white-space:nowrap">{{ a.username }}
           {% if a.email.split('@')[0] != a.username %}<span class="badge">alias</span>{% endif %}</td>
@@ -117,7 +139,7 @@
           <div><button class="btn-primary" type="submit">追加</button></div>
         </form>
       </div>
-      <div class="card">{{ table(shared, member_counts) }}</div>
+      <div class="card">{{ table(shared, member_counts, 'tbl-shared') }}</div>
     </div>
 
     <div class="pane" id="pane-user">
@@ -147,7 +169,7 @@
           <div><button class="btn-primary" type="submit">追加</button></div>
         </form>
       </div>
-      <div class="card">{{ table(user, member_counts) }}</div>
+      <div class="card">{{ table(user, member_counts, 'tbl-user') }}</div>
     </div>
   </main>
 
@@ -211,6 +233,32 @@
       const t = document.querySelector('#pane-shared select[name=type]').value;
       const n = document.getElementById('s-name').value.trim();
       document.getElementById('s-preview').value = n ? (t + '-' + n) : '';
+    }
+
+    // --- table search / filter / sort (client-side) ---
+    function applyTable(tid) {
+      const card = document.getElementById(tid).closest('.card');
+      const q = card.querySelector('.tsearch').value.trim().toLowerCase();
+      const ft = card.querySelector('.tfilter-type').value;
+      const fs = card.querySelector('.tfilter-status').value;
+      let shown = 0;
+      document.querySelectorAll('#' + tid + ' tbody tr').forEach(tr => {
+        const ok = (!ft || tr.dataset.type === ft) && (fs === '' || tr.dataset.status === fs)
+          && (!q || (tr.dataset.search || '').includes(q));
+        tr.style.display = ok ? '' : 'none';
+        if (ok) shown++;
+      });
+      const c = document.getElementById(tid + '-count'); if (c) c.textContent = shown + ' 件';
+    }
+    function sortTable(tid, col) {
+      const tbody = document.querySelector('#' + tid + ' tbody');
+      const asc = !(tbody.dataset.col === String(col) && tbody.dataset.dir === 'asc');
+      tbody.dataset.col = col; tbody.dataset.dir = asc ? 'asc' : 'desc';
+      Array.from(tbody.querySelectorAll('tr')).sort((a, b) => {
+        let x = a.children[col].textContent.trim(), y = b.children[col].textContent.trim();
+        if (col === 3) { x = parseInt(x) || 0; y = parseInt(y) || 0; return asc ? x - y : y - x; }
+        return asc ? x.localeCompare(y, 'ja') : y.localeCompare(x, 'ja');
+      }).forEach(r => tbody.appendChild(r));
     }
 
     // --- LDAP user autocomplete (reusable for User-add and group members) ---
