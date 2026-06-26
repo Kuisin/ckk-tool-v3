@@ -61,6 +61,11 @@ services:
       - BYPASS_WEB_SEARCH_WEB_LOADER=true
       # Fetch & read page contents for URLs pasted directly in chat.
       - ENABLE_WEB_LOADER=true
+      # RAG embeddings via Ollama bge-m3 (multilingual, GPU) instead of the
+      # bundled all-MiniLM. Used for uploaded-document / knowledge retrieval.
+      - RAG_EMBEDDING_ENGINE=ollama
+      - RAG_EMBEDDING_MODEL=bge-m3
+      - RAG_OLLAMA_BASE_URL=http://ollama:11434
       # AD/LDAP login via the vpn-ldap forwarder. All LDAP connection + bind config
       # comes from the shared ../vpn-ldap/ldap.env (env_file); just toggle it on here.
       - ENABLE_LDAP=true
