@@ -40,6 +40,21 @@ services:
       - MB_DB_PASS=${MB_DB_PASS:?set MB_DB_PASS in .env}
       # Encrypts saved data-source credentials at rest in the app DB.
       - MB_ENCRYPTION_SECRET_KEY=${MB_ENCRYPTION_SECRET_KEY:?set MB_ENCRYPTION_SECRET_KEY in .env}
+      # AD/LDAP auth via the vpn-ldap forwarder. Bind creds mirror vpn-ldap/ldap.env.
+      - MB_LDAP_ENABLED=true
+      - MB_LDAP_HOST=vpn-ldap
+      - MB_LDAP_PORT=389
+      - MB_LDAP_SECURITY=none
+      - MB_LDAP_BIND_DN=${LDAP_APP_DN:?set LDAP_APP_DN in .env}
+      - MB_LDAP_PASSWORD=${LDAP_APP_PASSWORD:?set LDAP_APP_PASSWORD in .env}
+      - MB_LDAP_USER_BASE=DC=ckk-tools,DC=loc
+      - "MB_LDAP_USER_FILTER=(&(objectClass=user)(|(sAMAccountName={login})(mail={login})(userPrincipalName={login})))"
+      - MB_LDAP_ATTRIBUTE_EMAIL=mail
+      - MB_LDAP_ATTRIBUTE_FIRSTNAME=givenName
+      - MB_LDAP_ATTRIBUTE_LASTNAME=sn
+    networks:
+      - default     # metabase-db
+      - ldap        # vpn-ldap_default — reach vpn-ldap:389
     ports:
       - "3003:3000"
     healthcheck:
@@ -51,3 +66,9 @@ services:
 
 volumes:
   metabase-db-data:
+
+networks:
+  # Segmented LDAP network owned by the vpn-ldap stack (AD over the VPN).
+  ldap:
+    external: true
+    name: vpn-ldap_default
