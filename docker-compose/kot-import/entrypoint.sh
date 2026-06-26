@@ -11,7 +11,7 @@ fi
 while true; do
   echo "[kot-import] ===== run $(date -u +%FT%TZ) ====="
   if [ -n "${KOT_ID:-}" ] && [ -n "${KOT_PW:-}" ]; then
-    python export_daily_csv.py --headless ${KOT_DAYS:+--days "$KOT_DAYS"} || echo "[kot-import] run failed"
+    python runner.py || echo "[kot-import] run failed"
   fi
   echo "[kot-import] sleeping ${INTERVAL}s"
   sleep "$INTERVAL"

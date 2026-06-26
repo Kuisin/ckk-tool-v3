@@ -30,3 +30,16 @@ CREATE TABLE IF NOT EXISTS hr_records (
 -- db.py deletes the date range (per zone) before inserting; index helps that.
 CREATE INDEX IF NOT EXISTS idx_hr_records_zone_date ON hr_records (zone, date);
 CREATE UNIQUE INDEX IF NOT EXISTS uq_hr_records ON hr_records (employee_username, zone, date);
+
+-- One row per import run (shown in adminTools).
+CREATE TABLE IF NOT EXISTS import_runs (
+    id          bigserial PRIMARY KEY,
+    finished_at timestamptz NOT NULL DEFAULT now(),
+    start_date  date,
+    end_date    date,
+    days        integer,
+    rows        integer,
+    status      text,
+    message     text
+);
+CREATE INDEX IF NOT EXISTS idx_import_runs_finished ON import_runs (finished_at DESC);

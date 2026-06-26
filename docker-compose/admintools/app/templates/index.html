@@ -119,6 +119,7 @@
     <div class="tabs">
       <div class="tab" data-pane="shared">共有メール ({{ shared|length }})</div>
       <div class="tab" data-pane="user">ユーザーメール ({{ user|length }})</div>
+      <div class="tab" data-pane="imports">勤怠インポート</div>
     </div>
 
     <div class="pane" id="pane-shared">
@@ -170,6 +171,14 @@
         </form>
       </div>
       <div class="card">{{ table(user, member_counts, 'tbl-user') }}</div>
+    </div>
+
+    <div class="pane" id="pane-imports">
+      <div class="card">
+        <h2>King of Time インポートログ</h2>
+        <p class="muted">kot-import コンテナの実行履歴（最新50件）。<button class="btn-sub" type="button" onclick="loadImports()">更新</button></p>
+        <div id="imports-body"><div class="muted">読み込み中…</div></div>
+      </div>
     </div>
   </main>
 
@@ -335,6 +344,20 @@
     function showTab(name) {
       document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.pane === name));
       document.querySelectorAll('.pane').forEach(p => p.classList.toggle('active', p.id === 'pane-' + name));
+      if (name === 'imports') loadImports();
+    }
+    async function loadImports() {
+      const body = document.getElementById('imports-body');
+      try {
+        const d = await (await fetch('/imports')).json();
+        if (!d.enabled) { body.innerHTML = '<div class="muted">kot-import 未接続（KOT_DB_URL 未設定）。</div>'; return; }
+        if (d.error) { body.innerHTML = '<div class="err card">エラー: ' + d.error + '</div>'; return; }
+        const runs = d.runs || [];
+        if (!runs.length) { body.innerHTML = '<div class="muted">まだ実行履歴がありません。</div>'; return; }
+        body.innerHTML = '<table><thead><tr><th>完了日時</th><th>期間</th><th>日数</th><th>件数</th><th>状態</th><th>メッセージ</th></tr></thead><tbody>'
+          + runs.map(r => `<tr><td style="white-space:nowrap">${r.finished_at}</td><td style="white-space:nowrap">${r.start_date}〜${r.end_date}</td><td>${r.days}</td><td>${r.rows}</td><td>${r.status === 'ok' ? '✅' : '❌'} ${r.status}</td><td style="color:#6b7280">${(r.message || '').slice(0, 100)}</td></tr>`).join('')
+          + '</tbody></table>';
+      } catch (e) { body.innerHTML = '<div class="muted">読み込みに失敗しました。</div>'; }
     }
     document.querySelectorAll('.tab').forEach(t => t.addEventListener('click', () => showTab(t.dataset.pane)));
     showTab(location.hash === '#user' ? 'user' : 'shared');

@@ -39,12 +39,15 @@ services:
       - ADMINTOOLS_API_KEY=${ADMINTOOLS_API_KEY:-}
       # Default mail domain for user emails (<ldap-username>@DEFAULT_DOMAIN).
       - DEFAULT_DOMAIN=${DEFAULT_DOMAIN:-ckk-tool.co.jp}
+      # Read-only connection to the kot-import DB to show its import log. Empty = off.
+      - KOT_DB_URL=${KOT_DB_URL:-}
     env_file:
       # Shared LDAP/AD bind creds (LDAP_SERVER_HOST=vpn-ldap, LDAP_APP_DN, ...).
       - ../vpn-ldap/ldap.env
     networks:
       - default     # admintools-db
       - ldap        # vpn-ldap_default — read AD users for User emails
+      - kot         # kot-import_default — read import_runs (KOT import log)
     ports:
       - "8090:8000"
 
@@ -55,3 +58,6 @@ networks:
   ldap:
     external: true
     name: vpn-ldap_default
+  kot:
+    external: true
+    name: kot-import_default

@@ -354,6 +354,25 @@ def sync_status():
     return JSONResponse(sync.get_state())
 
 
+@app.get("/imports")
+def imports_log():
+    """Recent King of Time import runs (read from the kot-import DB)."""
+    url = os.environ.get("KOT_DB_URL", "")
+    if not url:
+        return {"enabled": False, "runs": []}
+    try:
+        import psycopg
+        with psycopg.connect(url, connect_timeout=5) as c, c.cursor() as cur:
+            cur.execute("SELECT finished_at, start_date, end_date, days, rows, status, message "
+                        "FROM import_runs ORDER BY finished_at DESC LIMIT 50")
+            rows = cur.fetchall()
+        return {"enabled": True, "runs": [
+            {"finished_at": str(r[0]), "start_date": str(r[1]), "end_date": str(r[2]),
+             "days": r[3], "rows": r[4], "status": r[5], "message": r[6]} for r in rows]}
+    except Exception as e:  # noqa: BLE001
+        return {"enabled": True, "error": str(e)[:160], "runs": []}
+
+
 # ---------------------------------------------------------------------------
 # External read/write API (JSON, X-API-Key auth). For other systems to manage
 # mail accounts programmatically. Passwords are accepted on write, never returned.
