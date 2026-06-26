@@ -1,5 +1,7 @@
 import io
 import os
+import secrets
+import string
 
 import openpyxl
 from fastapi import Depends, FastAPI, File, Form, Header, HTTPException, Request, UploadFile
@@ -7,8 +9,12 @@ from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
 
-from . import sync
-from .db import MailAccount, SessionLocal, init_db
+from . import ldap_client, sync
+from .db import DEFAULT_DOMAIN, MailAccount, SessionLocal, init_db
+
+
+def _gen_password() -> str:
+    return "".join(secrets.choice(string.ascii_letters + string.digits) for _ in range(14)) + "Aa9!"
 
 API_KEY = os.environ.get("ADMINTOOLS_API_KEY", "")
 
@@ -23,10 +29,11 @@ def require_api_key(x_api_key: str = Header(default="")):
 
 class AccountIn(BaseModel):
     username: str
-    email: str
+    email: str = ""
     password: str = ""
     quota_gb: int = 5
     is_active: bool = True
+    kind: str = "shared"
     notes: str = ""
 
 
@@ -35,12 +42,13 @@ class AccountPatch(BaseModel):
     password: str | None = None
     quota_gb: int | None = None
     is_active: bool | None = None
+    kind: str | None = None
     notes: str | None = None
 
 
 def _account_out(a: MailAccount) -> dict:
     """Public representation — never exposes the password."""
-    return {"id": a.id, "username": a.username, "email": a.email,
+    return {"id": a.id, "username": a.username, "email": a.email, "kind": a.kind,
             "quota_gb": a.quota_gb, "is_active": a.is_active, "notes": a.notes}
 
 
@@ -134,27 +142,67 @@ def healthz():
 def index(request: Request):
     with SessionLocal() as s:
         accounts = s.query(MailAccount).order_by(MailAccount.username).all()
-    return templates.TemplateResponse(
-        "index.html", {"request": request, "accounts": accounts, "sync": sync.get_state()}
-    )
+    return templates.TemplateResponse("index.html", {
+        "request": request,
+        "shared": [a for a in accounts if a.kind != "user"],
+        "user": [a for a in accounts if a.kind == "user"],
+        "sync": sync.get_state(),
+        "domain": DEFAULT_DOMAIN,
+    })
 
 
 @app.post("/accounts")
 def create_account(
     username: str = Form(...),
-    password: str = Form(...),
-    email: str = Form(...),
+    password: str = Form(""),
+    email: str = Form(""),
     quota_gb: int = Form(5),
     is_active: bool = Form(False),
+    kind: str = Form("shared"),
     notes: str = Form(""),
 ):
+    username = username.strip()
+    email = email.strip() or f"{username}@{DEFAULT_DOMAIN}"
+    kind = kind if kind in ("user", "shared") else "shared"
     with SessionLocal() as s:
-        if s.query(MailAccount).filter_by(username=username.strip()).first():
+        if s.query(MailAccount).filter_by(username=username).first():
             raise HTTPException(400, "username already exists")
-        s.add(MailAccount(username=username.strip(), password=password, email=email.strip(),
-                          quota_gb=quota_gb, is_active=is_active, notes=notes))
+        s.add(MailAccount(username=username, password=password or _gen_password(),
+                          email=email, quota_gb=quota_gb, is_active=is_active,
+                          kind=kind, notes=notes))
         s.commit()
-    return RedirectResponse("/", status_code=303)
+    return RedirectResponse("/#user" if kind == "user" else "/", status_code=303)
+
+
+@app.post("/ldap/import")
+def ldap_import():
+    """Pull AD users (sAMAccountName) and upsert them as 'user' mailboxes,
+    defaulting email to <username>@DEFAULT_DOMAIN. Sakura auto-creates that
+    mailbox on sync; an alias is only made if a row's email differs."""
+    try:
+        users = ldap_client.list_users()
+    except Exception as e:  # noqa: BLE001
+        return RedirectResponse(f"/?ldap_error={str(e)[:140]}#user", status_code=303)
+    created = updated = 0
+    with SessionLocal() as s:
+        for u in users:
+            if u["disabled"]:
+                continue
+            a = s.query(MailAccount).filter_by(username=u["username"]).first()
+            if a:
+                a.kind = "user"
+                if not a.email:
+                    a.email = f"{u['username']}@{DEFAULT_DOMAIN}"
+                if not a.notes and u["display_name"]:
+                    a.notes = u["display_name"]
+                updated += 1
+            else:
+                s.add(MailAccount(username=u["username"], password=_gen_password(),
+                                  email=f"{u['username']}@{DEFAULT_DOMAIN}", quota_gb=5,
+                                  is_active=True, kind="user", notes=u["display_name"]))
+                created += 1
+        s.commit()
+    return RedirectResponse(f"/?ldap_created={created}&ldap_updated={updated}#user", status_code=303)
 
 
 @app.post("/accounts/{account_id}/update")
@@ -221,15 +269,24 @@ def api_get(username: str):
 
 @app.post("/api/v1/accounts", status_code=201, dependencies=[Depends(require_api_key)])
 def api_create(body: AccountIn):
+    username = body.username.strip()
+    email = body.email.strip() or f"{username}@{DEFAULT_DOMAIN}"
+    kind = body.kind if body.kind in ("user", "shared") else "shared"
     with SessionLocal() as s:
-        if s.query(MailAccount).filter_by(username=body.username).first():
+        if s.query(MailAccount).filter_by(username=username).first():
             raise HTTPException(409, "username already exists")
-        a = MailAccount(username=body.username.strip(), password=body.password,
-                        email=body.email.strip(), quota_gb=body.quota_gb,
-                        is_active=body.is_active, notes=body.notes)
+        a = MailAccount(username=username, password=body.password or _gen_password(),
+                        email=email, quota_gb=body.quota_gb, is_active=body.is_active,
+                        kind=kind, notes=body.notes)
         s.add(a)
         s.commit()
         return _account_out(a)
+
+
+@app.get("/api/v1/ldap/users", dependencies=[Depends(require_api_key)])
+def api_ldap_users():
+    """AD users (sAMAccountName) available to provision as User mailboxes."""
+    return ldap_client.list_users()
 
 
 @app.patch("/api/v1/accounts/{username}", dependencies=[Depends(require_api_key)])

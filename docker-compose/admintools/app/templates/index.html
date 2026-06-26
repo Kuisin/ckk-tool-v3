@@ -7,114 +7,138 @@
   <style>
     :root { font-family: 'Noto Sans JP', system-ui, sans-serif; }
     body { margin: 0; background: #f5f6f8; color: #1f2937; }
-    header { background: #1e3a8a; color: #fff; padding: 14px 24px; display: flex; align-items: center; gap: 16px; }
+    header { background: #1e3a8a; color: #fff; padding: 14px 24px; display: flex; align-items: baseline; gap: 16px; }
     header h1 { font-size: 18px; margin: 0; }
-    main { max-width: 1100px; margin: 24px auto; padding: 0 16px; }
+    main { max-width: 1120px; margin: 24px auto; padding: 0 16px; }
     .card { background: #fff; border: 1px solid #e5e7eb; border-radius: 8px; padding: 16px; margin-bottom: 20px; }
     h2 { font-size: 15px; margin: 0 0 12px; }
     table { width: 100%; border-collapse: collapse; font-size: 13px; }
-    th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid #eee; }
+    th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid #eee; vertical-align: middle; }
     th { color: #6b7280; font-weight: 600; }
     input[type=text], input[type=email], input[type=number] { width: 100%; padding: 5px 7px; border: 1px solid #d1d5db; border-radius: 4px; font-size: 13px; box-sizing: border-box; }
-    input[type=number] { width: 64px; }
+    input[type=number] { width: 60px; }
     button { padding: 6px 12px; border: 0; border-radius: 5px; font-size: 13px; cursor: pointer; }
-    .btn-primary { background: #2563eb; color: #fff; }
-    .btn-sub { background: #e5e7eb; color: #111; }
-    .btn-danger { background: #fee2e2; color: #b91c1c; }
-    .btn-sync { background: #059669; color: #fff; padding: 8px 18px; }
-    .grid { display: grid; grid-template-columns: repeat(5, 1fr) auto; gap: 8px; align-items: end; }
+    .btn-primary { background: #2563eb; color: #fff; } .btn-sub { background: #e5e7eb; color: #111; }
+    .btn-danger { background: #fee2e2; color: #b91c1c; } .btn-sync { background: #059669; color: #fff; padding: 8px 18px; }
+    .btn-ldap { background: #7c3aed; color: #fff; padding: 8px 16px; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr 1.4fr 80px 60px auto; gap: 8px; align-items: end; }
     label { font-size: 12px; color: #6b7280; display: block; margin-bottom: 3px; }
     .muted { color: #6b7280; font-size: 12px; }
-    #synclog { background: #0b1020; color: #cbd5e1; font-family: ui-monospace, monospace; font-size: 12px; padding: 12px; border-radius: 6px; height: 220px; overflow-y: auto; white-space: pre-wrap; }
-    .dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 6px; }
-    .on { background: #10b981; } .off { background: #9ca3af; }
+    #synclog { background: #0b1020; color: #cbd5e1; font-family: ui-monospace, monospace; font-size: 12px; padding: 12px; border-radius: 6px; height: 200px; overflow-y: auto; white-space: pre-wrap; }
+    .dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 6px; } .on { background: #10b981; } .off { background: #9ca3af; }
+    .tabs { display: flex; gap: 6px; margin-bottom: 16px; }
+    .tab { padding: 9px 18px; background: #e5e7eb; border-radius: 8px 8px 0 0; cursor: pointer; font-size: 14px; font-weight: 600; color: #374151; }
+    .tab.active { background: #fff; color: #1e3a8a; }
+    .pane { display: none; } .pane.active { display: block; }
+    .badge { font-size: 11px; background: #ede9fe; color: #6d28d9; padding: 1px 7px; border-radius: 10px; }
+    .ok { background: #ecfdf5; border-color: #a7f3d0; } .err { background: #fef2f2; border-color: #fecaca; }
   </style>
 </head>
 <body>
-  <header>
-    <h1>adminTools</h1>
-    <span class="muted" style="color:#cbd5e1">ツール: メール管理 · ckk-tool.co.jp</span>
-  </header>
+  <header><h1>adminTools</h1><span class="muted" style="color:#cbd5e1">ツール: メール管理 · {{ domain }}</span></header>
+
+  {% macro table(rows) %}
+  <table>
+    <thead><tr><th>ユーザー名</th><th>パスワード</th><th>メール</th><th>GB</th><th>有効</th><th></th></tr></thead>
+    <tbody>
+    {% for a in rows %}
+      <tr>
+        <form method="post" action="/accounts/{{ a.id }}/update">
+          <td style="font-weight:600;white-space:nowrap">{{ a.username }}
+            {% if a.email.split('@')[0] != a.username %}<span class="badge">alias</span>{% endif %}</td>
+          <td><input type="text" name="password" value="{{ a.password }}"></td>
+          <td><input type="email" name="email" value="{{ a.email }}"></td>
+          <td><input type="number" name="quota_gb" value="{{ a.quota_gb }}" min="1"></td>
+          <td><input type="checkbox" name="is_active" value="true" {% if a.is_active %}checked{% endif %}></td>
+          <td style="white-space:nowrap">
+            <button class="btn-sub" type="submit">保存</button>
+            <button class="btn-danger" type="submit" formaction="/accounts/{{ a.id }}/delete"
+                    onclick="return confirm('{{ a.username }} を削除しますか？')">削除</button>
+          </td>
+        </form>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% endmacro %}
+
   <main>
-    {% if request.query_params.get('imported') is not none %}
-    <div class="card" style="border-color:#a7f3d0;background:#ecfdf5">
-      Excel を取り込みました：新規 {{ request.query_params.get('imported') }} 件 / 更新 {{ request.query_params.get('updated') }} 件。
-    </div>
-    {% endif %}
+    {% set q = request.query_params %}
+    {% if q.get('imported') is not none %}<div class="card ok">Excel 取り込み：新規 {{ q.get('imported') }} / 更新 {{ q.get('updated') }} 件。</div>{% endif %}
+    {% if q.get('ldap_created') is not none %}<div class="card ok">LDAP 取り込み：新規 {{ q.get('ldap_created') }} / 更新 {{ q.get('ldap_updated') }} 件。</div>{% endif %}
+    {% if q.get('ldap_error') %}<div class="card err">LDAP エラー：{{ q.get('ldap_error') }}</div>{% endif %}
 
     <div class="card">
       <h2>同期 (DB → さくらコントロールパネル)</h2>
-      <p class="muted">DB の有効なアカウントをさくらサーバーに反映します（ユーザー作成・パスワード更新・不要ユーザー削除・エイリアス同期）。</p>
-      <form method="post" action="/sync" onsubmit="setTimeout(poll, 1000)">
-        <button class="btn-sync" type="submit" {% if sync.running %}disabled{% endif %}>
-          {% if sync.running %}同期中…{% else %}今すぐ同期{% endif %}
-        </button>
+      <p class="muted">有効なアカウントを反映。<b>username@{{ domain }}</b> はユーザー追加時に自動作成されるため、エイリアスは「メールが username と異なる場合」のみ作成します。</p>
+      <form method="post" action="/sync" onsubmit="setTimeout(poll,1000)">
+        <button class="btn-sync" type="submit" {% if sync.running %}disabled{% endif %}>{% if sync.running %}同期中…{% else %}今すぐ同期{% endif %}</button>
       </form>
-      <div style="margin:10px 0" class="muted">
-        <span id="syncstate"></span>
-      </div>
+      <div style="margin:10px 0" class="muted"><span id="syncstate"></span></div>
       <div id="synclog"></div>
     </div>
 
-    <div class="card">
-      <h2>Excel から取り込み</h2>
-      <p class="muted">email-list xlsx をアップロードして DB に取り込みます（username をキーに新規追加・更新。active→有効, displayname→備考）。</p>
-      <form method="post" action="/import" enctype="multipart/form-data" style="display:flex;gap:10px;align-items:center">
-        <input type="file" name="file" accept=".xlsx" required>
-        <button class="btn-sub" type="submit">取り込み</button>
-      </form>
+    <div class="tabs">
+      <div class="tab" data-pane="shared">共有メール ({{ shared|length }})</div>
+      <div class="tab" data-pane="user">ユーザーメール ({{ user|length }})</div>
     </div>
 
-    <div class="card">
-      <h2>アカウント追加</h2>
-      <form method="post" action="/accounts" class="grid">
-        <div><label>ユーザー名</label><input type="text" name="username" required></div>
-        <div><label>パスワード</label><input type="text" name="password" required></div>
-        <div><label>メールアドレス</label><input type="email" name="email" required></div>
-        <div><label>容量(GB)</label><input type="number" name="quota_gb" value="5" min="1"></div>
-        <div><label>有効</label><input type="checkbox" name="is_active" value="true" checked></div>
-        <div><button class="btn-primary" type="submit">追加</button></div>
-      </form>
+    <div class="pane" id="pane-shared">
+      <div class="card">
+        <h2>共有メール 追加</h2>
+        <form method="post" action="/accounts" class="grid">
+          <input type="hidden" name="kind" value="shared">
+          <div><label>ユーザー名</label><input type="text" name="username" required></div>
+          <div><label>パスワード(空欄=自動)</label><input type="text" name="password"></div>
+          <div><label>メール(空欄=username@{{ domain }})</label><input type="email" name="email"></div>
+          <div><label>GB</label><input type="number" name="quota_gb" value="5" min="1"></div>
+          <div><label>有効</label><input type="checkbox" name="is_active" value="true" checked></div>
+          <div><button class="btn-primary" type="submit">追加</button></div>
+        </form>
+      </div>
+      <div class="card">{{ table(shared) }}</div>
     </div>
 
-    <div class="card">
-      <h2>アカウント一覧 ({{ accounts|length }})</h2>
-      <table>
-        <thead><tr><th>ユーザー名</th><th>パスワード</th><th>メール</th><th>GB</th><th>有効</th><th></th></tr></thead>
-        <tbody>
-        {% for a in accounts %}
-          <tr>
-            <form method="post" action="/accounts/{{ a.id }}/update">
-              <td style="font-weight:600">{{ a.username }}</td>
-              <td><input type="text" name="password" value="{{ a.password }}"></td>
-              <td><input type="email" name="email" value="{{ a.email }}"></td>
-              <td><input type="number" name="quota_gb" value="{{ a.quota_gb }}" min="1"></td>
-              <td><input type="checkbox" name="is_active" value="true" {% if a.is_active %}checked{% endif %}></td>
-              <td style="white-space:nowrap">
-                <button class="btn-sub" type="submit">保存</button>
-                <button class="btn-danger" type="submit" formaction="/accounts/{{ a.id }}/delete"
-                        onclick="return confirm('{{ a.username }} を削除しますか？')">削除</button>
-              </td>
-            </form>
-          </tr>
-        {% endfor %}
-        </tbody>
-      </table>
+    <div class="pane" id="pane-user">
+      <div class="card">
+        <h2>ユーザーメール — LDAP 取り込み</h2>
+        <p class="muted">AD のユーザー(sAMAccountName)を取り込み、<b>username@{{ domain }}</b> を既定メールとして作成します。旧アドレスが必要なユーザーはメール欄を変更するとエイリアスが作成されます。</p>
+        <form method="post" action="/ldap/import"><button class="btn-ldap" type="submit">LDAP から取り込み</button></form>
+      </div>
+      <div class="card">
+        <h2>ユーザーメール 追加（手動）</h2>
+        <form method="post" action="/accounts" class="grid">
+          <input type="hidden" name="kind" value="user">
+          <div><label>ユーザー名(LDAP)</label><input type="text" name="username" required></div>
+          <div><label>パスワード(空欄=自動)</label><input type="text" name="password"></div>
+          <div><label>メール(空欄=username@{{ domain }})</label><input type="email" name="email"></div>
+          <div><label>GB</label><input type="number" name="quota_gb" value="5" min="1"></div>
+          <div><label>有効</label><input type="checkbox" name="is_active" value="true" checked></div>
+          <div><button class="btn-primary" type="submit">追加</button></div>
+        </form>
+      </div>
+      <div class="card">{{ table(user) }}</div>
     </div>
   </main>
 
   <script>
+    function showTab(name) {
+      document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.pane === name));
+      document.querySelectorAll('.pane').forEach(p => p.classList.toggle('active', p.id === 'pane-' + name));
+    }
+    document.querySelectorAll('.tab').forEach(t => t.addEventListener('click', () => showTab(t.dataset.pane)));
+    const params = new URLSearchParams(location.search);
+    showTab((location.hash === '#user' || params.has('ldap_created') || params.has('ldap_error')) ? 'user' : 'shared');
+
     async function poll() {
       try {
-        const r = await fetch('/sync/status'); const s = await r.json();
+        const s = await (await fetch('/sync/status')).json();
         const log = document.getElementById('synclog');
         log.textContent = (s.log || []).join('\n'); log.scrollTop = log.scrollHeight;
-        const st = document.getElementById('syncstate');
         const cls = s.running ? 'on' : 'off';
         const label = s.running ? '同期中…' : (s.finished ? ('最終: ' + s.finished + (s.ok === false ? ' (失敗)' : ' (完了)')) : '未実行');
-        st.innerHTML = '<span class="dot ' + cls + '"></span>' + label;
+        document.getElementById('syncstate').innerHTML = '<span class="dot ' + cls + '"></span>' + label;
         if (s.running) setTimeout(poll, 2000);
-        else if (s.finished) setTimeout(() => location.reload(), 1500);
       } catch (e) { setTimeout(poll, 3000); }
     }
     poll();

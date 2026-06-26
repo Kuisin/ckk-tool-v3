@@ -6,3 +6,4 @@ psycopg[binary]==3.2.3
 jinja2==3.1.4
 python-multipart==0.0.20
 openpyxl==3.1.5
+ldap3==2.9.1
