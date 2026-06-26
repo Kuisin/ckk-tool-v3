@@ -69,6 +69,12 @@ services:
       # AD/LDAP login via the vpn-ldap forwarder. All LDAP connection + bind config
       # comes from the shared ../vpn-ldap/ldap.env (env_file); just toggle it on here.
       - ENABLE_LDAP=true
+      # Metabase "chat with the labor data" tool (tools/metabase_labor.py). The tool
+      # queries the read-only labor data source through Metabase's API. Secrets live
+      # in .env (gitignored): METABASE_URL / METABASE_DB_ID / METABASE_API_KEY.
+      - METABASE_URL=${METABASE_URL:-}
+      - METABASE_DB_ID=${METABASE_DB_ID:-2}
+      - METABASE_API_KEY=${METABASE_API_KEY:-}
     env_file:
       - ../vpn-ldap/ldap.env
     volumes:
