@@ -34,6 +34,8 @@ class MailAccount(Base):
     quota_gb: Mapped[int] = mapped_column(Integer, default=5)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     kind: Mapped[str] = mapped_column(String(16), default="shared", index=True)
+    # Shared subtype: 'app' | 'grp' | 'other'  (users -> 'user'). ID = <type>-<name>.
+    type: Mapped[str] = mapped_column(String(16), default="other")
     notes: Mapped[str] = mapped_column(Text, default="")
     created_at: Mapped["DateTime"] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped["DateTime"] = mapped_column(
@@ -48,3 +50,15 @@ def init_db() -> None:
         conn.execute(text(
             "ALTER TABLE mail_accounts ADD COLUMN IF NOT EXISTS kind VARCHAR(16) NOT NULL DEFAULT 'shared'"
         ))
+        conn.execute(text(
+            "ALTER TABLE mail_accounts ADD COLUMN IF NOT EXISTS type VARCHAR(16) NOT NULL DEFAULT 'other'"
+        ))
+        # Categorize existing rows by username prefix (once).
+        conn.execute(text("""
+            UPDATE mail_accounts SET type = CASE
+                WHEN kind = 'user' THEN 'user'
+                WHEN username LIKE 'app-%' THEN 'app'
+                WHEN username LIKE 'grp-%' THEN 'grp'
+                ELSE 'other' END
+            WHERE type = 'other' OR type = ''
+        """))

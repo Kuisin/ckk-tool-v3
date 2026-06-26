@@ -15,7 +15,7 @@
     table { width: 100%; border-collapse: collapse; font-size: 13px; }
     th, td { text-align: left; padding: 8px; border-bottom: 1px solid #eee; vertical-align: middle; }
     th { color: #6b7280; font-weight: 600; }
-    input[type=text], input[type=email], input[type=number] { padding: 6px 8px; border: 1px solid #d1d5db; border-radius: 4px; font-size: 13px; box-sizing: border-box; width: 100%; }
+    input[type=text], input[type=email], input[type=number], select { padding: 6px 8px; border: 1px solid #d1d5db; border-radius: 4px; font-size: 13px; box-sizing: border-box; width: 100%; }
     button { padding: 6px 12px; border: 0; border-radius: 5px; font-size: 13px; cursor: pointer; }
     .btn-primary { background: #2563eb; color: #fff; } .btn-sub { background: #e5e7eb; color: #111; }
     .btn-danger { background: #fee2e2; color: #b91c1c; } .btn-sync { background: #059669; color: #fff; padding: 8px 18px; }
@@ -49,10 +49,11 @@
 
   {% macro table(rows) %}
   <table>
-    <thead><tr><th>ユーザー名</th><th>メール</th><th>容量</th><th>状態</th><th></th></tr></thead>
+    <thead><tr><th>種別</th><th>ユーザー名</th><th>メール</th><th>容量</th><th>状態</th><th></th></tr></thead>
     <tbody>
     {% for a in rows %}
       <tr>
+        <td><span class="badge" style="background:#e0e7ff;color:#3730a3">{{ a.type }}</span></td>
         <td style="font-weight:600;white-space:nowrap">{{ a.username }}
           {% if a.email.split('@')[0] != a.username %}<span class="badge">alias</span>{% endif %}</td>
         <td>{{ a.email }}</td>
@@ -97,10 +98,15 @@
         <h2>共有メール 追加</h2>
         <form method="post" action="/accounts" class="addrow">
           <input type="hidden" name="kind" value="shared">
-          <div><label>ユーザー名</label><input type="text" name="username" required></div>
+          <div><label>種別</label>
+            <select name="type" onchange="updPreview()">
+              <option value="app">app</option><option value="grp">grp</option><option value="other" selected>other</option>
+            </select></div>
+          <div><label>名前</label><input type="text" name="name" id="s-name" oninput="updPreview()" required></div>
+          <div><label>ID (自動生成)</label><input type="text" id="s-preview" readonly style="background:#f3f4f6;width:150px"></div>
           <div><label>パスワード(空欄=自動)</label><input type="text" name="password"></div>
-          <div style="min-width:240px"><label>エイリアス</label>{{ alias_fields('s') }}</div>
-          <div><label>GB</label><input type="number" name="quota_gb" value="5" min="1" style="width:64px"></div>
+          <div style="min-width:220px"><label>エイリアス</label>{{ alias_fields('s') }}</div>
+          <div><label>GB</label><input type="number" name="quota_gb" value="5" min="1" style="width:60px"></div>
           <div><label>有効</label><input type="checkbox" name="is_active" value="true" checked></div>
           <div><button class="btn-primary" type="submit">追加</button></div>
         </form>
@@ -166,6 +172,11 @@
       document.getElementById('modal').style.display = 'flex';
     }
     function closeEdit() { document.getElementById('modal').style.display = 'none'; }
+    function updPreview() {
+      const t = document.querySelector('#pane-shared select[name=type]').value;
+      const n = document.getElementById('s-name').value.trim();
+      document.getElementById('s-preview').value = n ? (t + '-' + n) : '';
+    }
     document.getElementById('modal').addEventListener('click', e => { if (e.target.id === 'modal') closeEdit(); });
 
     function showTab(name) {

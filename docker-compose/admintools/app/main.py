@@ -49,7 +49,15 @@ class AccountPatch(BaseModel):
 def _account_out(a: MailAccount) -> dict:
     """Public representation — never exposes the password."""
     return {"id": a.id, "username": a.username, "email": a.email, "kind": a.kind,
-            "quota_gb": a.quota_gb, "is_active": a.is_active, "notes": a.notes}
+            "type": a.type, "quota_gb": a.quota_gb, "is_active": a.is_active, "notes": a.notes}
+
+
+def _shared_type(username: str) -> str:
+    if username.startswith("app-"):
+        return "app"
+    if username.startswith("grp-"):
+        return "grp"
+    return "other"
 
 
 app = FastAPI(title="adminTools")
@@ -121,17 +129,18 @@ def import_accounts(file: UploadFile = File(...), replace: bool = Form(False)):
     with SessionLocal() as s:
         for a in accounts:
             kind = "user" if (ad is not None and a["username"].lower() in ad) else "shared"
+            atype = "user" if kind == "user" else _shared_type(a["username"])
             existing = s.query(MailAccount).filter_by(username=a["username"]).first()
             if existing:
                 if a["password"]:
                     existing.password = a["password"]
-                existing.email, existing.is_active, existing.notes, existing.kind = (
-                    a["email"], a["is_active"], a["notes"], kind)
+                existing.email, existing.is_active, existing.notes, existing.kind, existing.type = (
+                    a["email"], a["is_active"], a["notes"], kind, atype)
                 updated += 1
             else:
                 s.add(MailAccount(username=a["username"], password=a["password"] or _gen_password(),
                                   email=a["email"], quota_gb=5, is_active=a["is_active"],
-                                  kind=kind, notes=a["notes"]))
+                                  kind=kind, type=atype, notes=a["notes"]))
                 inserted += 1
         if replace:
             removed = s.query(MailAccount).filter(MailAccount.username.notin_(usernames)).delete(
@@ -170,7 +179,9 @@ def _alias_email(username: str, use_alias: bool, alias: str) -> str:
 
 @app.post("/accounts")
 def create_account(
-    username: str = Form(...),
+    username: str = Form(""),
+    name: str = Form(""),
+    type: str = Form("other"),
     password: str = Form(""),
     quota_gb: int = Form(5),
     is_active: bool = Form(False),
@@ -179,10 +190,18 @@ def create_account(
     alias: str = Form(""),
     notes: str = Form(""),
 ):
-    username = username.strip()
     kind = kind if kind in ("user", "shared") else "shared"
-    # Private (user) emails must map to a real AD account.
-    if kind == "user":
+    if kind == "shared":
+        # Shared ID is generated from type + name:  <type>-<name>.
+        type = type if type in ("app", "grp", "other") else "other"
+        name = name.strip()
+        if not name:
+            return RedirectResponse("/?err=名前を入力してください", status_code=303)
+        username = f"{type}-{name}"
+    else:
+        username = username.strip()
+        type = "user"
+        # Private (user) emails must map to a real AD account.
         try:
             if not ldap_client.find_user(username):
                 return RedirectResponse(f"/?err=AD に {username} が見つかりません#user", status_code=303)
@@ -193,7 +212,7 @@ def create_account(
             return RedirectResponse(f"/?err={username} は既に存在します", status_code=303)
         s.add(MailAccount(username=username, password=password or _gen_password(),
                           email=_alias_email(username, use_alias, alias), quota_gb=quota_gb,
-                          is_active=is_active, kind=kind, notes=notes))
+                          is_active=is_active, kind=kind, type=type, notes=notes))
         s.commit()
     return RedirectResponse("/#user" if kind == "user" else "/", status_code=303)
 
