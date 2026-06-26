@@ -2,7 +2,9 @@
 
 One internal SMTP relay so any app can send mail **from `notification@ckk-tool.co.jp`**
 without its own mail credentials. Apps connect to `mailrelay:587` (no auth, internal
-network only); the relay forwards to an authenticated upstream and DKIM-signs.
+network only); the relay authenticates to the domain's own mail host
+(**onamae.com / `ak115.secure.ne.jp`**) and hands off — onamae applies the domain's
+SPF/DKIM, so delivery is reputable (no self-hosted-IP / PTR problem).
 
 Deployed on `docker-mac-pro` at `~/stacks/mailrelay`. Postfix (`boky/postfix`).
 
@@ -21,26 +23,20 @@ Per-app examples (set after the relay is live):
 - **Metabase:** Admin → Settings → Email → host `mailrelay`, port `587`, no auth, from `notification@ckk-tool.co.jp`.
 - **Open WebUI / Grafana / Next.js app:** the usual `SMTP_HOST=mailrelay`, `SMTP_PORT=587` env.
 
-## Upstream (delivery)
+## Upstream (delivery via onamae.com)
 
-Cloudflare manages DNS but does **not** send outbound mail. The relay must hand off
-to a real sender via `RELAYHOST` in `.env` — a transactional provider (SendGrid,
-Mailgun, SES, Brevo, …) or a mailbox for the domain (Google Workspace / M365). See
-`.env.example`.
-
-## DNS to add in Cloudflare (for deliverability)
-
-- **SPF** (`TXT` on `ckk-tool.co.jp`): authorize the upstream, e.g.
-  `v=spf1 include:<provider-spf> ~all` (provider gives the include).
-- **DKIM** (`TXT`): if the provider signs, add their key; if `DKIM_AUTOGENERATE=true`,
-  publish this relay's generated public key (printed in the container logs / the
-  `mailrelay-dkim` volume) as `mail._domainkey` (selector `mail`).
-- **DMARC** (`TXT` on `_dmarc.ckk-tool.co.jp`): `v=DMARC1; p=quarantine; rua=mailto:notification@ckk-tool.co.jp`.
+The relay forwards to `ak115.secure.ne.jp:587` (STARTTLS submission), authenticated
+as the `notification@ckk-tool.co.jp` mailbox (`.env`). Because the final hop is the
+domain's own mail host, the existing SPF/DKIM records (already at onamae) cover it —
+**no extra Cloudflare DNS or relay-side DKIM needed**. The mailbox must exist (create
+it in the onamae control panel if needed).
 
 ## Setup
 
 ```bash
-cp .env.example .env     # fill RELAYHOST + creds
+cp .env.example .env     # RELAYHOST + USERNAME pre-filled; add RELAYHOST_PASSWORD
 docker compose up -d
-docker compose logs mailrelay   # grab the DKIM public key if auto-generated
+# test send:
+docker exec mailrelay sh -c 'echo "test" | sendmail -f notification@ckk-tool.co.jp you@example.com'
+docker logs mailrelay --tail 20   # look for "status=sent ... relay=ak115.secure.ne.jp"
 ```

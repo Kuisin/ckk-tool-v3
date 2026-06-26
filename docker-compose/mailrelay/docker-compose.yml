@@ -1,10 +1,11 @@
 # Shared outbound SMTP relay — one place for apps to send mail from
 # notification@ckk-tool.co.jp. Apps connect (no per-app credentials) to
-# `mailrelay:587` on the mailrelay network; the relay forwards to an authenticated
-# upstream (RELAYHOST) and DKIM-signs. Not exposed to the LAN/internet.
+# `mailrelay:587` on the mailrelay network; the relay forwards to the domain's own
+# mail host (onamae.com / ak115.secure.ne.jp), which applies SPF/DKIM on
+# authenticated send. Not exposed to the LAN/internet.
 #
 # Deployed on docker-mac-pro at ~/stacks/mailrelay.
-# Upstream credentials live in .env (gitignored). See README for DNS (SPF/DKIM/DMARC).
+# Upstream mailbox credentials live in .env (gitignored).
 
 services:
   mailrelay:
@@ -15,13 +16,12 @@ services:
     environment:
       - ALLOWED_SENDER_DOMAINS=ckk-tool.co.jp
       - POSTFIX_myhostname=mail.ckk-tool.co.jp
-      # Upstream authenticated SMTP (provider or mailbox). e.g. [smtp.provider.com]:587
+      # onamae.com submission server (ckk-tool.co.jp's mail host) + mailbox creds.
       - RELAYHOST=${RELAYHOST:?set RELAYHOST in .env}
       - RELAYHOST_USERNAME=${RELAYHOST_USERNAME:-}
       - RELAYHOST_PASSWORD=${RELAYHOST_PASSWORD:-}
-      # DKIM: auto-generate a key on first start (publish the public part in DNS).
-      # Omit if your upstream provider does its own DKIM signing.
-      - DKIM_AUTOGENERATE=${DKIM_AUTOGENERATE:-true}
+      # onamae signs DKIM for the domain on send, so the relay does not.
+      - DKIM_AUTOGENERATE=${DKIM_AUTOGENERATE:-false}
     volumes:
       - mailrelay-dkim:/etc/opendkim/keys
     # No published ports — internal only. Apps reach it as mailrelay:587.
