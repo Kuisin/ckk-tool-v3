@@ -1,6 +1,8 @@
 import os
 
-from sqlalchemy import Boolean, DateTime, Integer, String, Text, create_engine, func, text
+from sqlalchemy import (
+    Boolean, DateTime, Integer, String, Text, UniqueConstraint, create_engine, func, text,
+)
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, sessionmaker
 
 engine = create_engine(os.environ["DATABASE_URL"], pool_pre_ping=True)
@@ -41,6 +43,18 @@ class MailAccount(Base):
     updated_at: Mapped["DateTime"] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )
+
+
+class GroupMember(Base):
+    """Members assigned to a grp-* group email (LDAP usernames). Display/management
+    only — not synced to Sakura."""
+
+    __tablename__ = "group_members"
+    __table_args__ = (UniqueConstraint("group_id", "username", name="uq_group_member"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    group_id: Mapped[int] = mapped_column(Integer, index=True)
+    username: Mapped[str] = mapped_column(String(64))
 
 
 def init_db() -> None:

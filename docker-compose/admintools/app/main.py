@@ -9,9 +9,10 @@ from fastapi import Depends, FastAPI, File, Form, Header, HTTPException, Request
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
+from sqlalchemy import func
 
 from . import ldap_client, sync
-from .db import DEFAULT_DOMAIN, MailAccount, SessionLocal, init_db
+from .db import DEFAULT_DOMAIN, GroupMember, MailAccount, SessionLocal, init_db
 
 
 def _gen_password() -> str:
@@ -225,13 +226,45 @@ def ldap_import_group(group_dn: str = Form(...)):
 def index(request: Request):
     with SessionLocal() as s:
         accounts = s.query(MailAccount).order_by(MailAccount.username).all()
+        counts = dict(s.query(GroupMember.group_id, func.count()).group_by(GroupMember.group_id).all())
     return templates.TemplateResponse("index.html", {
         "request": request,
         "shared": [a for a in accounts if a.kind != "user"],
         "user": [a for a in accounts if a.kind == "user"],
+        "member_counts": counts,
         "sync": sync.get_state(),
         "domain": DEFAULT_DOMAIN,
     })
+
+
+@app.get("/groups/{gid}/members")
+def group_members_list(gid: int):
+    with SessionLocal() as s:
+        rows = s.query(GroupMember).filter_by(group_id=gid).order_by(GroupMember.username).all()
+        return {"members": [m.username for m in rows]}
+
+
+@app.post("/groups/{gid}/members")
+def group_member_add(gid: int, username: str = Form(...)):
+    username = username.strip()
+    with SessionLocal() as s:
+        g = s.get(MailAccount, gid)
+        if not g or g.type != "grp":
+            raise HTTPException(400, "not a group")
+        if username and not s.query(GroupMember).filter_by(group_id=gid, username=username).first():
+            s.add(GroupMember(group_id=gid, username=username))
+            s.commit()
+        rows = s.query(GroupMember).filter_by(group_id=gid).order_by(GroupMember.username).all()
+        return {"members": [m.username for m in rows]}
+
+
+@app.post("/groups/{gid}/members/remove")
+def group_member_remove(gid: int, username: str = Form(...)):
+    with SessionLocal() as s:
+        s.query(GroupMember).filter_by(group_id=gid, username=username.strip()).delete()
+        s.commit()
+        rows = s.query(GroupMember).filter_by(group_id=gid).order_by(GroupMember.username).all()
+        return {"members": [m.username for m in rows]}
 
 
 def _alias_email(username: str, use_alias: bool, alias: str) -> str:

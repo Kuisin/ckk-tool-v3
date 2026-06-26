@@ -35,8 +35,9 @@
     .modal { background: #fff; border-radius: 10px; padding: 22px; width: 420px; max-width: 92vw; }
     .modal label { display: block; margin: 10px 0 4px; }
     .modal .actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 18px; }
-    #ac-list { display: none; position: absolute; z-index: 30; background: #fff; border: 1px solid #d1d5db; border-radius: 4px; max-height: 240px; overflow-y: auto; width: 280px; box-shadow: 0 6px 18px rgba(0,0,0,.12); }
-    #ac-list div { padding: 6px 10px; cursor: pointer; font-size: 13px; } #ac-list div:hover { background: #eef2ff; }
+    .ac { display: none; position: absolute; z-index: 60; background: #fff; border: 1px solid #d1d5db; border-radius: 4px; max-height: 240px; overflow-y: auto; width: 280px; box-shadow: 0 6px 18px rgba(0,0,0,.12); }
+    .ac div { padding: 6px 10px; cursor: pointer; font-size: 13px; } .ac div:hover { background: #eef2ff; }
+    .mem-row { display: flex; justify-content: space-between; align-items: center; padding: 6px 0; border-bottom: 1px solid #eee; }
   </style>
 </head>
 <body>
@@ -49,7 +50,7 @@
     <input type="email" name="alias" placeholder="old-address@{{ domain }}" style="display:none;margin-top:6px">
   {% endmacro %}
 
-  {% macro table(rows) %}
+  {% macro table(rows, counts) %}
   <table>
     <thead><tr><th>種別</th><th>ユーザー名</th><th>メール</th><th>容量</th><th>状態</th><th></th></tr></thead>
     <tbody>
@@ -62,10 +63,13 @@
         <td>{{ a.quota_gb }} GB</td>
         <td>{{ '有効' if a.is_active else '無効' }}</td>
         <td style="white-space:nowrap;text-align:right">
-          <button class="btn-sub" onclick='openEdit(this)'
+          {% if a.type == 'grp' %}<button class="btn-sub" type="button" onclick="openMembers({{ a.id }}, '{{ a.username }}')">メンバー ({{ counts.get(a.id, 0) }})</button>{% endif %}
+          <button class="btn-sub" type="button" onclick='openEdit(this)'
             data-id="{{ a.id }}" data-username="{{ a.username }}" data-password="{{ a.password }}"
             data-email="{{ a.email }}" data-quota="{{ a.quota_gb }}"
-            data-active="{{ 'true' if a.is_active else 'false' }}" data-notes="{{ a.notes }}">編集</button>
+            data-active="{{ 'true' if a.is_active else 'false' }}" data-notes="{{ a.notes }}"
+            data-created="{{ a.created_at.strftime('%Y-%m-%d %H:%M') if a.created_at else '' }}"
+            data-updated="{{ a.updated_at.strftime('%Y-%m-%d %H:%M') if a.updated_at else '' }}">編集</button>
           <form method="post" action="/accounts/{{ a.id }}/delete" style="display:inline"
                 onsubmit="return confirm('{{ a.username }} を削除しますか？')"><button class="btn-danger">削除</button></form>
         </td>
@@ -113,7 +117,7 @@
           <div><button class="btn-primary" type="submit">追加</button></div>
         </form>
       </div>
-      <div class="card">{{ table(shared) }}</div>
+      <div class="card">{{ table(shared, member_counts) }}</div>
     </div>
 
     <div class="pane" id="pane-user">
@@ -133,9 +137,8 @@
         <form method="post" action="/accounts" class="addrow">
           <input type="hidden" name="kind" value="user">
           <div style="position:relative"><label>ユーザー名 (AD検索)</label>
-            <input type="text" name="username" id="u-username" autocomplete="off" placeholder="名前/IDで検索"
-                   oninput="acSearch(this.value)" onfocus="loadLdap()" onblur="setTimeout(()=>acHide(),150)" required style="width:200px">
-            <div id="ac-list"></div>
+            <input type="text" name="username" id="u-username" autocomplete="off" placeholder="名前/IDで検索" required style="width:200px">
+            <div class="ac" id="ac-list"></div>
           </div>
           <div><label>パスワード(空欄=自動)</label><input type="text" name="password"></div>
           <div style="min-width:240px"><label>エイリアス(旧アドレス等)</label>{{ alias_fields('u') }}</div>
@@ -144,7 +147,7 @@
           <div><button class="btn-primary" type="submit">追加</button></div>
         </form>
       </div>
-      <div class="card">{{ table(user) }}</div>
+      <div class="card">{{ table(user, member_counts) }}</div>
     </div>
   </main>
 
@@ -159,11 +162,26 @@
         <label>容量 (GB)</label><input type="number" name="quota_gb" id="m-quota" min="1">
         <label style="display:inline-flex;align-items:center;gap:6px"><input type="checkbox" name="is_active" value="true" id="m-active"> 有効</label>
         <label>備考</label><input type="text" name="notes" id="m-notes">
+        <div class="muted" id="m-times" style="margin-top:12px"></div>
         <div class="actions">
           <button type="button" class="btn-sub" onclick="closeEdit()">キャンセル</button>
           <button type="submit" class="btn-primary">保存</button>
         </div>
       </form>
+    </div>
+  </div>
+
+  <!-- members modal -->
+  <div class="modal-bg" id="mem-modal">
+    <div class="modal">
+      <h3 id="mem-title"></h3>
+      <p class="muted">このグループに割り当てる AD ユーザー（表示のみ・同期なし）。</p>
+      <div style="position:relative;margin-bottom:12px">
+        <input type="text" id="mem-input" autocomplete="off" placeholder="AD ユーザーを検索して追加">
+        <div class="ac" id="mem-ac"></div>
+      </div>
+      <div id="mem-list" style="max-height:280px;overflow-y:auto"></div>
+      <div class="actions"><button type="button" class="btn-sub" onclick="closeMembers()">閉じる</button></div>
     </div>
   </div>
 
@@ -185,6 +203,7 @@
       const ua = document.getElementById('m-usealias'); ua.checked = isAlias;
       document.getElementById('m-alias').value = isAlias ? d.email : '';
       toggleAlias(ua);
+      document.getElementById('m-times').textContent = '作成: ' + (d.created || '-') + ' ／ 更新: ' + (d.updated || '-');
       document.getElementById('modal').style.display = 'flex';
     }
     function closeEdit() { document.getElementById('modal').style.display = 'none'; }
@@ -194,25 +213,60 @@
       document.getElementById('s-preview').value = n ? (t + '-' + n) : '';
     }
 
-    // --- LDAP username autocomplete (User tab) ---
+    // --- LDAP user autocomplete (reusable for User-add and group members) ---
     let ldapUsers = null;
     async function loadLdap() {
-      if (ldapUsers !== null) return;
+      if (ldapUsers !== null) return ldapUsers;
       try { const d = await (await fetch('/ldap/users')).json(); ldapUsers = d.users || []; }
       catch (e) { ldapUsers = []; }
+      return ldapUsers;
     }
-    function acHide() { document.getElementById('ac-list').style.display = 'none'; }
-    function acSearch(q) {
-      const box = document.getElementById('ac-list');
-      q = (q || '').trim().toLowerCase();
-      if (!ldapUsers || !q) { box.style.display = 'none'; return; }
-      const hits = ldapUsers.filter(u =>
-        u.username.toLowerCase().includes(q) || (u.display_name || '').toLowerCase().includes(q)).slice(0, 12);
-      box.innerHTML = hits.map(u =>
-        `<div onmousedown="pickUser('${u.username}')"><b>${u.username}</b> <span style="color:#6b7280">${u.display_name || ''}</span>${u.disabled ? ' <span style="color:#b91c1c">(無効)</span>' : ''}</div>`).join('');
-      box.style.display = hits.length ? 'block' : 'none';
+    function dispName(u) { const x = (ldapUsers || []).find(z => z.username === u); return x ? x.display_name : ''; }
+    function setupAc(input, list, onPick) {
+      input.addEventListener('focus', loadLdap);
+      input.addEventListener('blur', () => setTimeout(() => { list.style.display = 'none'; }, 150));
+      input.addEventListener('input', () => {
+        const q = input.value.trim().toLowerCase();
+        if (!ldapUsers || !q) { list.style.display = 'none'; return; }
+        const hits = ldapUsers.filter(u =>
+          u.username.toLowerCase().includes(q) || (u.display_name || '').toLowerCase().includes(q)).slice(0, 12);
+        list.innerHTML = hits.map(u =>
+          `<div data-u="${u.username}"><b>${u.username}</b> <span style="color:#6b7280">${u.display_name || ''}</span>${u.disabled ? ' <span style="color:#b91c1c">(無効)</span>' : ''}</div>`).join('');
+        list.style.display = hits.length ? 'block' : 'none';
+        list.querySelectorAll('div').forEach(dv => dv.onmousedown = e => { e.preventDefault(); onPick(dv.dataset.u); });
+      });
     }
-    function pickUser(u) { document.getElementById('u-username').value = u; acHide(); }
+    setupAc(document.getElementById('u-username'), document.getElementById('ac-list'),
+      u => { document.getElementById('u-username').value = u; document.getElementById('ac-list').style.display = 'none'; });
+
+    // --- group members (display/manage only) ---
+    let memGid = null;
+    async function openMembers(gid, name) {
+      memGid = gid;
+      document.getElementById('mem-title').textContent = 'メンバー: ' + name;
+      await loadLdap();
+      await refreshMembers();
+      document.getElementById('mem-modal').style.display = 'flex';
+    }
+    function renderMembers(members) {
+      document.getElementById('mem-list').innerHTML = members.length ? members.map(u =>
+        `<div class="mem-row"><span><b>${u}</b> <span style="color:#6b7280">${dispName(u)}</span></span><button type="button" class="btn-danger" onclick="removeMember('${u}')">削除</button></div>`).join('')
+        : '<div class="muted">メンバーなし</div>';
+    }
+    async function refreshMembers() {
+      const d = await (await fetch('/groups/' + memGid + '/members')).json();
+      renderMembers(d.members || []);
+    }
+    async function postMember(path, u) {
+      const f = new FormData(); f.append('username', u);
+      const d = await (await fetch(path, { method: 'POST', body: f })).json();
+      renderMembers(d.members || []);
+    }
+    function addMember(u) { document.getElementById('mem-input').value = ''; postMember('/groups/' + memGid + '/members', u); }
+    function removeMember(u) { postMember('/groups/' + memGid + '/members/remove', u); }
+    function closeMembers() { document.getElementById('mem-modal').style.display = 'none'; location.reload(); }
+    setupAc(document.getElementById('mem-input'), document.getElementById('mem-ac'), u => addMember(u));
+    document.getElementById('mem-modal').addEventListener('click', e => { if (e.target.id === 'mem-modal') closeMembers(); });
 
     // --- AD group bulk import ---
     let groupsLoaded = false;
