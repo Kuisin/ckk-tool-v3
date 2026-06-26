@@ -118,6 +118,16 @@
 
     <div class="pane" id="pane-user">
       <div class="card">
+        <h2>グループから一括取り込み（オンボーディング）</h2>
+        <p class="muted">AD グループのメンバーをユーザーメールとして取り込みます。既定 <b>username@{{ domain }}</b>、AD のメールが異なればエイリアスに、表示名を備考に設定します。</p>
+        <form method="post" action="/ldap/import_group" style="display:flex;gap:10px;align-items:center">
+          <select name="group_dn" id="grp-select" onfocus="loadGroups()" style="min-width:340px;width:auto" required>
+            <option value="">グループを選択…</option>
+          </select>
+          <button class="btn-primary" type="submit">取り込み</button>
+        </form>
+      </div>
+      <div class="card">
         <h2>ユーザーメール 追加</h2>
         <p class="muted">ユーザー名は AD に存在する必要があります（作成時に検証）。既定メール: <b>username@{{ domain }}</b>。</p>
         <form method="post" action="/accounts" class="addrow">
@@ -203,6 +213,21 @@
       box.style.display = hits.length ? 'block' : 'none';
     }
     function pickUser(u) { document.getElementById('u-username').value = u; acHide(); }
+
+    // --- AD group bulk import ---
+    let groupsLoaded = false;
+    async function loadGroups() {
+      if (groupsLoaded) return; groupsLoaded = true;
+      const sel = document.getElementById('grp-select');
+      try {
+        const d = await (await fetch('/ldap/groups')).json();
+        (d.groups || []).forEach(g => {
+          const o = document.createElement('option');
+          o.value = g.dn; o.textContent = g.cn + ' (' + g.count + ')';
+          sel.appendChild(o);
+        });
+      } catch (e) { /* ignore */ }
+    }
     document.getElementById('modal').addEventListener('click', e => { if (e.target.id === 'modal') closeEdit(); });
 
     function showTab(name) {

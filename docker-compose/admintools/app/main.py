@@ -179,6 +179,48 @@ def ldap_users_json():
         return JSONResponse({"error": str(e)[:140], "users": []})
 
 
+@app.get("/ldap/groups")
+def ldap_groups_json():
+    """AD groups for the bulk-import picker (cached 5 min)."""
+    if _ldap_cache["groups"] is None or time.time() - _ldap_cache["ts"] > 300:
+        try:
+            _ldap_cache["groups"] = ldap_client.list_groups()
+        except Exception as e:  # noqa: BLE001
+            return JSONResponse({"error": str(e)[:140], "groups": []})
+    return {"groups": _ldap_cache["groups"]}
+
+
+@app.post("/ldap/import_group")
+def ldap_import_group(group_dn: str = Form(...)):
+    """Onboard a whole AD group: upsert each enabled member as a User mailbox,
+    populating fields from AD (display name -> notes; AD mail -> alias if it
+    differs from <username>@domain)."""
+    try:
+        members = ldap_client.group_members(group_dn)
+    except Exception as e:  # noqa: BLE001
+        return RedirectResponse(f"/?err=LDAP エラー: {str(e)[:80]}#user", status_code=303)
+    created = updated = 0
+    with SessionLocal() as s:
+        for u in members:
+            if u["disabled"]:
+                continue
+            mail = (u["mail"] or "").strip()
+            email = mail if (mail and mail.split("@")[0] != u["username"]) else f"{u['username']}@{DEFAULT_DOMAIN}"
+            a = s.query(MailAccount).filter_by(username=u["username"]).first()
+            if a:
+                a.kind, a.type = "user", "user"
+                if not a.notes and u["display_name"]:
+                    a.notes = u["display_name"]
+                updated += 1
+            else:
+                s.add(MailAccount(username=u["username"], password=_gen_password(), email=email,
+                                  quota_gb=5, is_active=True, kind="user", type="user",
+                                  notes=u["display_name"]))
+                created += 1
+        s.commit()
+    return RedirectResponse(f"/?imported={created}&updated={updated}&removed=0#user", status_code=303)
+
+
 @app.get("/", response_class=HTMLResponse)
 def index(request: Request):
     with SessionLocal() as s:
