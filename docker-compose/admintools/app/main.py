@@ -2,6 +2,7 @@ import io
 import os
 import secrets
 import string
+import time
 
 import openpyxl
 from fastapi import Depends, FastAPI, File, Form, Header, HTTPException, Request, UploadFile
@@ -157,6 +158,25 @@ def _startup() -> None:
 @app.get("/healthz")
 def healthz():
     return {"status": "ok"}
+
+
+_ldap_cache: dict = {"users": None, "ts": 0.0, "groups": None}
+
+
+def _ldap_users_cached() -> list[dict]:
+    if _ldap_cache["users"] is None or time.time() - _ldap_cache["ts"] > 300:
+        _ldap_cache["users"] = ldap_client.list_users()
+        _ldap_cache["ts"] = time.time()
+    return _ldap_cache["users"]
+
+
+@app.get("/ldap/users")
+def ldap_users_json():
+    """AD users for the searchable username picker (cached 5 min)."""
+    try:
+        return {"users": _ldap_users_cached()}
+    except Exception as e:  # noqa: BLE001
+        return JSONResponse({"error": str(e)[:140], "users": []})
 
 
 @app.get("/", response_class=HTMLResponse)
