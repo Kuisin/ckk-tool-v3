@@ -86,13 +86,28 @@ class Tools:
         return SCHEMA_DOC
 
     def query_labor_data(self, sql: str) -> str:
-        """Run a read-only PostgreSQL SELECT against the labor database (King of
-        Time attendance) and return the result rows.
+        """Run a read-only PostgreSQL SELECT against the King of Time labor
+        database and return the rows. Use the EXACT table/column names below.
 
-        :param sql: A single read-only SELECT or WITH...SELECT statement. No
-            semicolons, no INSERT/UPDATE/DELETE/DDL. See get_labor_schema() for the
-            available tables/columns (prefer the v_labor view).
-        :return: The result as a markdown table, or an error message.
+        Schema (PostgreSQL; prefer the view `v_labor`):
+          v_labor(date, username, employee_name, employee_code,
+                  work_minutes, work_hours, overtime_minutes, overtime_hours,
+                  overtime_night_minutes, night_allowance_minutes,
+                  leave_late_minutes, pto_minutes, pto_hours, clock_in_count,
+                  plan_start, plan_end)
+          -- one row per employee per day. *_minutes are minutes, *_hours are hours.
+          -- Label people by employee_name (Japanese full name).
+        Examples:
+          -- top 3 by total worked hours
+          SELECT employee_name, ROUND(SUM(work_minutes)/60.0,1) AS hours
+          FROM v_labor GROUP BY employee_name ORDER BY hours DESC LIMIT 3
+          -- latest day's overtime
+          SELECT employee_name, overtime_hours FROM v_labor
+          WHERE date=(SELECT MAX(date) FROM v_labor) AND overtime_minutes>0
+
+        :param sql: a single read-only SELECT or WITH...SELECT statement. No
+            semicolons, no INSERT/UPDATE/DELETE/DDL.
+        :return: the result rows as a markdown table, or an error message.
         """
         v = self.valves
         if not v.api_key:
