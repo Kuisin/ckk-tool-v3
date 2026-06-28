@@ -336,6 +336,7 @@ def update_account(
     use_alias: bool = Form(False),
     alias: str = Form(""),
     notes: str = Form(""),
+    extra_aliases: str = Form(""),
 ):
     with SessionLocal() as s:
         a = s.get(MailAccount, account_id)
@@ -343,6 +344,10 @@ def update_account(
             raise HTTPException(404)
         a.password, a.quota_gb, a.is_active, a.notes = password, quota_gb, is_active, notes
         a.email = _alias_email(a.username, use_alias, alias)
+        # Additional alias addresses (one per line); normalize to newline-separated.
+        a.extra_aliases = "\n".join(
+            e.strip() for e in extra_aliases.replace(",", "\n").splitlines() if e.strip()
+        )
         kind = a.kind
         s.commit()
     return RedirectResponse("/email#user" if kind == "user" else "/email", status_code=303)

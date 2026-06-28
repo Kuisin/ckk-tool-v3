@@ -102,6 +102,7 @@
             data-id="{{ a.id }}" data-username="{{ a.username }}" data-password="{{ a.password }}"
             data-email="{{ a.email }}" data-quota="{{ a.quota_gb }}"
             data-active="{{ 'true' if a.is_active else 'false' }}" data-notes="{{ a.notes }}"
+            data-extra-aliases="{{ a.extra_aliases }}"
             data-created="{{ a.created_at.strftime('%Y-%m-%d %H:%M') if a.created_at else '' }}"
             data-updated="{{ a.updated_at.strftime('%Y-%m-%d %H:%M') if a.updated_at else '' }}">編集</button>
           <form method="post" action="/accounts/{{ a.id }}/delete" style="display:inline"
@@ -227,6 +228,8 @@
         <label>容量 (GB)</label><input type="number" name="quota_gb" id="m-quota" min="1">
         <label style="display:inline-flex;align-items:center;gap:6px"><input type="checkbox" name="is_active" value="true" id="m-active"> 有効</label>
         <label>備考</label><input type="text" name="notes" id="m-notes">
+        <label>追加エイリアス（1行に1メール・同じグループに複数アドレス）</label>
+        <textarea name="extra_aliases" id="m-extra" rows="3" placeholder="another@{{ domain }}&#10;info2@{{ domain }}" style="width:100%;box-sizing:border-box;padding:6px 8px;border:1px solid #d1d5db;border-radius:4px;font-size:13px;font-family:inherit"></textarea>
         <div class="muted" id="m-times" style="margin-top:12px"></div>
         <div class="actions">
           <button type="button" class="btn-sub" onclick="closeEdit()">キャンセル</button>
@@ -347,6 +350,7 @@
       document.getElementById('m-quota').value = d.quota;
       document.getElementById('m-active').checked = d.active === 'true';
       document.getElementById('m-notes').value = d.notes || '';
+      document.getElementById('m-extra').value = (d.extraAliases || '').replace(/,\s*/g, '\n');
       const isAlias = (d.email || '').split('@')[0] !== d.username;
       const ua = document.getElementById('m-usealias'); ua.checked = isAlias;
       document.getElementById('m-alias').value = isAlias ? d.email : '';

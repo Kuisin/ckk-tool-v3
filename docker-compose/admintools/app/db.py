@@ -39,6 +39,9 @@ class MailAccount(Base):
     # Shared subtype: 'app' | 'grp' | 'other'  (users -> 'user'). ID = <type>-<name>.
     type: Mapped[str] = mapped_column(String(16), default="other")
     notes: Mapped[str] = mapped_column(Text, default="")
+    # Additional alias emails for this mailbox (newline/comma-separated). Lets one
+    # group/mailbox be reached at multiple addresses (besides the primary `email`).
+    extra_aliases: Mapped[str] = mapped_column(Text, default="")
     created_at: Mapped["DateTime"] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped["DateTime"] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
@@ -66,6 +69,9 @@ def init_db() -> None:
         ))
         conn.execute(text(
             "ALTER TABLE mail_accounts ADD COLUMN IF NOT EXISTS type VARCHAR(16) NOT NULL DEFAULT 'other'"
+        ))
+        conn.execute(text(
+            "ALTER TABLE mail_accounts ADD COLUMN IF NOT EXISTS extra_aliases TEXT NOT NULL DEFAULT ''"
         ))
         # Categorize existing rows by username prefix (once).
         conn.execute(text("""

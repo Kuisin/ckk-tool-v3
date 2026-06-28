@@ -3,6 +3,7 @@ reusing the vendored adduser/create_email logic (driven by DB instead of Excel).
 from __future__ import annotations
 
 import os
+import re
 import sys
 import threading
 import time
@@ -68,9 +69,18 @@ def _load_from_db():
     users, aliases = [], []
     for a in accts:
         users.append(adduser.UserRow(username=a.username, password=a.password, email=a.email))
-        local, _, domain = (a.email or "").partition("@")
-        if local and domain and local != a.username:
-            aliases.append(create_email.AliasRow(username=a.username, local_part=local, domain=domain))
+        seen: set[str] = set()
+
+        def _add_alias(addr: str):
+            local, _, domain = (addr or "").strip().partition("@")
+            key = f"{local}@{domain}"
+            if local and domain and local != a.username and key not in seen:
+                aliases.append(create_email.AliasRow(username=a.username, local_part=local, domain=domain))
+                seen.add(key)
+
+        _add_alias(a.email)                                  # primary email
+        for extra in re.split(r"[,\s]+", a.extra_aliases or ""):  # extra aliases
+            _add_alias(extra)
     return users, aliases
 
 
