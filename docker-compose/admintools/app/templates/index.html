@@ -286,9 +286,39 @@
         h += `<details><summary>一覧を表示</summary><div style="max-height:150px;overflow:auto;font-size:12px;margin-top:6px">${d.users.map(u => esc(u.mailbox)).join('<br>') || '—'}</div></details>`;
         h += `<p style="margin-top:12px"><b>② エイリアス作成: ${d.alias_count} 件</b> <span class="muted">ユーザー名 ≠ メールアドレスの場合</span></p>`;
         h += `<details><summary>一覧を表示</summary><div style="max-height:150px;overflow:auto;font-size:12px;margin-top:6px">${d.aliases.map(a => esc(a.alias) + ' → ' + esc(a.to)).join('<br>') || '—'}</div></details>`;
+        if (d.env_ok) {
+          h += `<hr style="margin:14px 0;border:none;border-top:1px solid #eee">`;
+          h += `<button type="button" class="btn-sub" id="check-btn" onclick="checkSakura(true)">🔍 Sakura と照合して変更計画を表示（約1分）</button>`;
+          h += `<div id="check-result" style="margin-top:10px"></div>`;
+        }
         body.innerHTML = h;
         document.getElementById('sync-confirm').disabled = !d.env_ok;
       } catch (e) { body.innerHTML = '<div class="err card">プレビューの取得に失敗しました。</div>'; }
+    }
+    async function checkSakura(refresh) {
+      const btn = document.getElementById('check-btn');
+      const res = document.getElementById('check-result');
+      if (btn) { btn.disabled = true; btn.textContent = 'Sakura を確認中…（約1分）'; }
+      res.innerHTML = '<div class="muted">Sakura にログインし現在のメールボックス／エイリアスを読み取り中…</div>';
+      try {
+        const d = await (await fetch('/sync/check' + (refresh ? '?refresh=true' : ''))).json();
+        if (d.error) { res.innerHTML = '<div class="err card">' + d.error + '</div>'; return; }
+        const esc = s => (s || '').replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
+        const block = (title, o) => {
+          let x = `<p style="margin:10px 0 4px"><b>${title}</b> — <span style="color:#15803d">新規 ${o.create.length}</span> ／ 既存 ${o.exists.length}` +
+            (o.delete.length ? ` ／ <span style="color:#b91c1c">削除対象 ${o.delete.length}</span>` : ' ／ 削除 0') + `</p>`;
+          if (o.create.length) x += `<details><summary>新規作成 (${o.create.length})</summary><div style="max-height:120px;overflow:auto;font-size:12px">${o.create.map(esc).join('<br>')}</div></details>`;
+          if (o.delete.length) x += `<details open><summary style="color:#b91c1c">削除対象 (${o.delete.length})</summary><div style="max-height:120px;overflow:auto;font-size:12px;color:#b91c1c">${o.delete.map(esc).join('<br>')}</div></details>`;
+          return x;
+        };
+        let h = `<div class="card" style="background:#f8fafc"><p class="muted">Sakura 現況との照合（${esc(d.checked_at)}）</p>`;
+        h += block('メールボックス', d.mailbox) + block('エイリアス', d.alias);
+        const delTotal = d.mailbox.delete.length + d.alias.delete.length;
+        if (delTotal) h += `<p style="color:#b91c1c;font-size:12px;margin-top:8px">⚠ 「削除」を有効にして実行すると、上記 ${delTotal} 件が Sakura から削除されます（通常はオフのまま）。</p>`;
+        h += `</div>`;
+        res.innerHTML = h;
+      } catch (e) { res.innerHTML = '<div class="err card">照合に失敗しました。</div>'; }
+      finally { if (btn) { btn.disabled = false; btn.textContent = '🔄 再照合'; } }
     }
     document.getElementById('sync-modal').addEventListener('click', e => { if (e.target.id === 'sync-modal') document.getElementById('sync-modal').style.display = 'none'; });
 
