@@ -143,7 +143,11 @@
     <div class="app-view" id="app-email"{% if active_app == 'email' %} style="display:block"{% endif %}>
       <div class="crumb" style="display:flex;justify-content:space-between;align-items:center">
         <span><a href="/">← アプリ一覧</a> ／ メール管理</span>
-        <a href="/export/xlsx" class="btn-sub" style="text-decoration:none">📥 Excel出力</a>
+        <span style="display:flex;gap:8px">
+          <a href="/export/xlsx" class="btn-sub" style="text-decoration:none">📥 Excel出力</a>
+          <a href="/export/xlsx?passwords=true" class="btn-danger" style="text-decoration:none"
+             onclick="return confirm('パスワードを含む Excel を出力します。取り扱いに十分注意してください。続行しますか？')">📥 PW付き</a>
+        </span>
       </div>
 
       {% if q.get('imported') is not none %}<div class="card ok">Excel：新規 {{ q.get('imported') }} / 更新 {{ q.get('updated') }} / 削除 {{ q.get('removed') }} 件。</div>{% endif %}

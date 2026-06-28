@@ -408,27 +408,35 @@ def _account_aliases(a: MailAccount) -> list[str]:
 
 
 @app.get("/export/xlsx")
-def export_xlsx():
+def export_xlsx(passwords: bool = False):
     """Download an Excel workbook: sheet 1 = user mailboxes (LDAP username, email,
-    aliases); sheet 2 = group emails with assigned members (comma-joined)."""
+    aliases); sheet 2 = group emails with assigned members (comma-joined).
+    passwords=true adds a パスワード column (mailbox password; aliases have none)."""
     wb = openpyxl.Workbook()
+    pw_hdr = ["パスワード"] if passwords else []
     with SessionLocal() as s:
         # Sheet 1 — user emails
         ws = wb.active
         ws.title = "ユーザーメール"
-        ws.append(["LDAPユーザー名", "メールアドレス", "エイリアス", "表示名", "状態"])
+        ws.append(["LDAPユーザー名", "メールアドレス", "エイリアス"] + pw_hdr + ["表示名", "状態"])
         for a in s.query(MailAccount).filter(MailAccount.kind == "user").order_by(MailAccount.username).all():
-            ws.append([a.username, f"{a.username}@{DEFAULT_DOMAIN}", ", ".join(_account_aliases(a)),
-                       a.notes or "", "有効" if a.is_active else "無効"])
+            row = [a.username, f"{a.username}@{DEFAULT_DOMAIN}", ", ".join(_account_aliases(a))]
+            if passwords:
+                row.append(a.password or "")
+            row += [a.notes or "", "有効" if a.is_active else "無効"]
+            ws.append(row)
 
         # Sheet 2 — group emails + assigned members (comma-joined)
         wg = wb.create_sheet("グループメール")
-        wg.append(["グループ", "受信箱", "エイリアス", "メンバー（カンマ区切り）", "種別", "状態"])
+        wg.append(["グループ", "受信箱", "エイリアス", "メンバー（カンマ区切り）"] + pw_hdr + ["種別", "状態"])
         for a in s.query(MailAccount).filter(MailAccount.kind != "user").order_by(MailAccount.username).all():
             members = [m.username for m in s.query(GroupMember).filter_by(group_id=a.id)
                        .order_by(GroupMember.username).all()]
-            wg.append([a.username, f"{a.username}@{DEFAULT_DOMAIN}", ", ".join(_account_aliases(a)),
-                       ", ".join(members), a.type, "有効" if a.is_active else "無効"])
+            row = [a.username, f"{a.username}@{DEFAULT_DOMAIN}", ", ".join(_account_aliases(a)), ", ".join(members)]
+            if passwords:
+                row.append(a.password or "")
+            row += [a.type, "有効" if a.is_active else "無効"]
+            wg.append(row)
 
     for sheet in wb.worksheets:                       # widen columns a bit
         for col in sheet.columns:
@@ -438,10 +446,11 @@ def export_xlsx():
     buf = io.BytesIO()
     wb.save(buf)
     buf.seek(0)
+    fname = "email-list-with-passwords.xlsx" if passwords else "email-list.xlsx"
     return StreamingResponse(
         buf,
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        headers={"Content-Disposition": "attachment; filename=email-list.xlsx"},
+        headers={"Content-Disposition": f"attachment; filename={fname}"},
     )
 
 
