@@ -3,8 +3,10 @@ reusing the vendored adduser/create_email logic (driven by DB instead of Excel).
 from __future__ import annotations
 
 import os
+import sys
 import threading
 import time
+from contextlib import contextmanager
 
 from playwright.sync_api import sync_playwright
 
@@ -144,6 +146,44 @@ def check_live(refresh: bool = False, max_age: float = 300.0) -> dict:
     return result
 
 
+class _LogStream:
+    """Pipe the Sakura helpers' per-item prints into the UI sync log, line by line,
+    while still echoing to the real stdout (container logs)."""
+
+    def __init__(self, real):
+        self._real = real
+        self._buf = ""
+
+    def write(self, s):
+        try:
+            self._real.write(s)
+        except Exception:  # noqa: BLE001
+            pass
+        self._buf += s
+        while "\n" in self._buf:
+            line, self._buf = self._buf.split("\n", 1)
+            line = line.strip()
+            if line:
+                with _lock:
+                    _state["log"].append(f"{time.strftime('%H:%M:%S')}    {line}")
+
+    def flush(self):
+        try:
+            self._real.flush()
+        except Exception:  # noqa: BLE001
+            pass
+
+
+@contextmanager
+def _capture_to_log():
+    old = sys.stdout
+    sys.stdout = _LogStream(old)
+    try:
+        yield
+    finally:
+        sys.stdout = old
+
+
 def _run(headless: bool, remove_not_on_list: bool) -> None:
     sid = os.environ.get("SAKURA_ID", "").strip()
     spw = os.environ.get("SAKURA_PW", "").strip()
@@ -151,28 +191,43 @@ def _run(headless: bool, remove_not_on_list: bool) -> None:
         _log("ERROR: SAKURA_ID / SAKURA_PW not set in .env — cannot sync.")
         return
     users, aliases = _load_from_db()
-    _log(f"Loaded {len(users)} active account(s), {len(aliases)} alias(es) from DB.")
+    steps = 4 if remove_not_on_list else 3
+    _log("===== 同期開始 =====")
+    _log(f"DB: 有効ユーザー {len(users)}件 / エイリアス {len(aliases)}件")
+    if remove_not_on_list:
+        _log("⚠ 削除モード ON: DB に無いメールボックス／エイリアスを削除します。")
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=headless)
-        ctx = browser.new_context(locale="ja-JP", viewport={"width": 1280, "height": 900})
-        page = ctx.new_page()
-        _log("Logging in to Sakura control panel...")
+        page = browser.new_context(locale="ja-JP", viewport={"width": 1280, "height": 900}).new_page()
+
+        _log(f"[1/{steps}] Sakura にログイン中…")
         _auto_login(page, sid, spw)
-        _log(f"Logged in (now at {page.url}).")
+        _log(f"[1/{steps}] ✓ ログイン成功")
 
         page.goto(adduser.USER_LIST_URL, wait_until="load", timeout=60000)
+        n = 1
         if remove_not_on_list:
-            _log("Removing users not in the DB...")
-            adduser.remove_users_not_on_list_on_page(page, {u.username for u in users})
-        _log("Adding / updating users...")
-        adduser.add_users_on_page(page, users, update_existing_password=True)
+            n += 1
+            _log(f"[{n}/{steps}] DB に無いユーザーを削除中…")
+            with _capture_to_log():
+                adduser.remove_users_not_on_list_on_page(page, {u.username for u in users})
+            _log(f"[{n}/{steps}] ✓ 削除処理 完了")
 
-        _log("Syncing mail aliases...")
+        n += 1
+        _log(f"[{n}/{steps}] ユーザーを作成・更新中…（{len(users)}件）")
+        with _capture_to_log():
+            adduser.add_users_on_page(page, users, update_existing_password=True)
+        _log(f"[{n}/{steps}] ✓ ユーザー処理 完了")
+
+        n += 1
+        _log(f"[{n}/{steps}] エイリアスを作成中…（{len(aliases)}件）")
         page.goto(create_email.MAIL_ALIAS_LIST_URL, wait_until="load", timeout=60000)
-        create_email.add_aliases_on_page(page, aliases, remove_not_on_list=remove_not_on_list)
+        with _capture_to_log():
+            create_email.add_aliases_on_page(page, aliases, remove_not_on_list=remove_not_on_list)
+        _log(f"[{n}/{steps}] ✓ エイリアス処理 完了")
 
         browser.close()
-    _log("Sync complete.")
+    _log("===== 同期完了 =====")
 
 
 def start_sync(headless: bool = True, remove_not_on_list: bool = True) -> bool:
