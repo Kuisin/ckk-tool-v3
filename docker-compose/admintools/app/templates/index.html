@@ -56,7 +56,7 @@
   </style>
 </head>
 <body>
-  <header><h1 onclick="showApp('home')">adminTools</h1><span class="muted" style="color:#cbd5e1">{{ domain }}</span></header>
+  <header><h1 onclick="location.href='/'">adminTools</h1><span class="muted" style="color:#cbd5e1">{{ domain }}</span></header>
 
   {% macro alias_fields(prefix) %}
     <label style="display:inline-flex;align-items:center;gap:6px;font-size:13px;color:#111">
@@ -117,25 +117,25 @@
     {% set q = request.query_params %}
 
     <!-- ===== App launcher (home) ===== -->
-    <div id="app-list">
+    <div id="app-list"{% if active_app != 'home' %} style="display:none"{% endif %}>
       <h2 style="font-size:16px;margin:6px 0 16px">アプリ</h2>
       <div class="app-grid">
-        <div class="app-card" onclick="showApp('email')">
+        <a class="app-card" href="/email" style="text-decoration:none;color:inherit;display:block">
           <div class="ico">📧</div>
           <div class="name">メール管理</div>
           <div class="desc">共有メール・ユーザーメール（{{ (shared|length) + (user|length) }} 件）</div>
-        </div>
-        <div class="app-card" onclick="showApp('kot')">
+        </a>
+        <a class="app-card" href="/kot" style="text-decoration:none;color:inherit;display:block">
           <div class="ico">⏱️</div>
           <div class="name">勤怠インポートログ</div>
           <div class="desc">King of Time インポート履歴</div>
-        </div>
+        </a>
       </div>
     </div>
 
     <!-- ===== Email app ===== -->
-    <div class="app-view" id="app-email">
-      <div class="crumb"><a onclick="showApp('home')">← アプリ一覧</a> ／ メール管理</div>
+    <div class="app-view" id="app-email"{% if active_app == 'email' %} style="display:block"{% endif %}>
+      <div class="crumb"><a href="/">← アプリ一覧</a> ／ メール管理</div>
 
       {% if q.get('imported') is not none %}<div class="card ok">Excel：新規 {{ q.get('imported') }} / 更新 {{ q.get('updated') }} / 削除 {{ q.get('removed') }} 件。</div>{% endif %}
       {% if q.get('err') %}<div class="card err">{{ q.get('err') }}</div>{% endif %}
@@ -208,8 +208,8 @@
     </div>
 
     <!-- ===== KOT import log app ===== -->
-    <div class="app-view" id="app-kot">
-      <div class="crumb"><a onclick="showApp('home')">← アプリ一覧</a> ／ 勤怠インポートログ</div>
+    <div class="app-view" id="app-kot"{% if active_app == 'kot' %} style="display:block"{% endif %}>
+      <div class="crumb"><a href="/">← アプリ一覧</a> ／ 勤怠インポートログ</div>
       <div class="card">
         <h2>King of Time インポートログ</h2>
         <p class="muted">kot-import コンテナの実行履歴（最新50件）。<button class="btn-sub" type="button" onclick="loadImports()">更新</button></p>
@@ -384,16 +384,7 @@
     }
     document.querySelectorAll('#app-email .tab').forEach(t => t.addEventListener('click', () => showTab(t.dataset.pane)));
 
-    // --- app launcher ---
-    let importsLoaded = false;
-    function showApp(name) {
-      document.getElementById('app-list').style.display = name === 'home' ? '' : 'none';
-      document.querySelectorAll('.app-view').forEach(v => v.style.display = 'none');
-      if (name === 'email') { document.getElementById('app-email').style.display = ''; }
-      if (name === 'kot') { document.getElementById('app-kot').style.display = ''; if (!importsLoaded) { importsLoaded = true; loadImports(); } }
-      history.replaceState(null, '', name === 'home' ? location.pathname : '#' + name);
-      window.scrollTo(0, 0);
-    }
+    // --- KOT import log loader ---
     async function loadImports() {
       const body = document.getElementById('imports-body');
       try {
@@ -408,15 +399,9 @@
       } catch (e) { body.innerHTML = '<div class="muted">読み込みに失敗しました。</div>'; }
     }
 
-    // initial view: open an app from the hash / flash, else show the launcher
-    showTab('shared');
-    (function () {
-      const h = (location.hash || '').replace('#', '');
-      const hasFlash = {{ 'true' if (q.get('imported') is not none or q.get('err')) else 'false' }};
-      if (h === 'kot') showApp('kot');
-      else if (h === 'email' || h === 'user' || h === 'shared' || hasFlash) { showApp('email'); if (h === 'user') showTab('user'); }
-      else showApp('home');
-    })();
+    // initial state is server-rendered from the URL path (active_app)
+    showTab(location.hash === '#user' ? 'user' : 'shared');
+    if ("{{ active_app }}" === 'kot') loadImports();
 
     async function poll() {
       try {

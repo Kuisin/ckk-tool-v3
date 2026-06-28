@@ -148,7 +148,7 @@ def import_accounts(file: UploadFile = File(...), replace: bool = Form(False)):
             removed = s.query(MailAccount).filter(MailAccount.username.notin_(usernames)).delete(
                 synchronize_session=False)
         s.commit()
-    return RedirectResponse(f"/?imported={inserted}&updated={updated}&removed={removed}", status_code=303)
+    return RedirectResponse(f"/email?imported={inserted}&updated={updated}&removed={removed}", status_code=303)
 
 
 @app.on_event("startup")
@@ -199,7 +199,7 @@ def ldap_import_group(group_dn: str = Form(...)):
     try:
         members = ldap_client.group_members(group_dn)
     except Exception as e:  # noqa: BLE001
-        return RedirectResponse(f"/?err=LDAP エラー: {str(e)[:80]}#user", status_code=303)
+        return RedirectResponse(f"/email?err=LDAP エラー: {str(e)[:80]}#user", status_code=303)
     created = updated = 0
     with SessionLocal() as s:
         for u in members:
@@ -219,22 +219,37 @@ def ldap_import_group(group_dn: str = Form(...)):
                                   notes=u["display_name"]))
                 created += 1
         s.commit()
-    return RedirectResponse(f"/?imported={created}&updated={updated}&removed=0#user", status_code=303)
+    return RedirectResponse(f"/email?imported={created}&updated={updated}&removed=0#user", status_code=303)
 
 
-@app.get("/", response_class=HTMLResponse)
-def index(request: Request):
+def _render_index(request: Request, active_app: str):
     with SessionLocal() as s:
         accounts = s.query(MailAccount).order_by(MailAccount.username).all()
         counts = dict(s.query(GroupMember.group_id, func.count()).group_by(GroupMember.group_id).all())
     return templates.TemplateResponse("index.html", {
         "request": request,
+        "active_app": active_app,           # 'home' | 'email' | 'kot' — drives which view shows
         "shared": [a for a in accounts if a.kind != "user"],
         "user": [a for a in accounts if a.kind == "user"],
         "member_counts": counts,
         "sync": sync.get_state(),
         "domain": DEFAULT_DOMAIN,
     })
+
+
+@app.get("/", response_class=HTMLResponse)
+def index(request: Request):
+    return _render_index(request, "home")
+
+
+@app.get("/email", response_class=HTMLResponse)
+def app_email(request: Request):
+    return _render_index(request, "email")
+
+
+@app.get("/kot", response_class=HTMLResponse)
+def app_kot(request: Request):
+    return _render_index(request, "kot")
 
 
 @app.get("/groups/{gid}/members")
@@ -291,7 +306,7 @@ def create_account(
         type = type if type in ("app", "grp", "other") else "other"
         name = name.strip()
         if not name:
-            return RedirectResponse("/?err=名前を入力してください", status_code=303)
+            return RedirectResponse("/email?err=名前を入力してください", status_code=303)
         username = f"{type}-{name}"
     else:
         username = username.strip()
@@ -299,17 +314,17 @@ def create_account(
         # Private (user) emails must map to a real AD account.
         try:
             if not ldap_client.find_user(username):
-                return RedirectResponse(f"/?err=AD に {username} が見つかりません#user", status_code=303)
+                return RedirectResponse(f"/email?err=AD に {username} が見つかりません#user", status_code=303)
         except Exception as e:  # noqa: BLE001
-            return RedirectResponse(f"/?err=LDAP エラー: {str(e)[:80]}#user", status_code=303)
+            return RedirectResponse(f"/email?err=LDAP エラー: {str(e)[:80]}#user", status_code=303)
     with SessionLocal() as s:
         if s.query(MailAccount).filter_by(username=username).first():
-            return RedirectResponse(f"/?err={username} は既に存在します", status_code=303)
+            return RedirectResponse(f"/email?err={username} は既に存在します", status_code=303)
         s.add(MailAccount(username=username, password=password or _gen_password(),
                           email=_alias_email(username, use_alias, alias), quota_gb=quota_gb,
                           is_active=is_active, kind=kind, type=type, notes=notes))
         s.commit()
-    return RedirectResponse("/#user" if kind == "user" else "/", status_code=303)
+    return RedirectResponse("/email#user" if kind == "user" else "/email", status_code=303)
 
 
 @app.post("/accounts/{account_id}/update")
@@ -330,7 +345,7 @@ def update_account(
         a.email = _alias_email(a.username, use_alias, alias)
         kind = a.kind
         s.commit()
-    return RedirectResponse("/#user" if kind == "user" else "/", status_code=303)
+    return RedirectResponse("/email#user" if kind == "user" else "/email", status_code=303)
 
 
 @app.post("/accounts/{account_id}/delete")
@@ -340,13 +355,13 @@ def delete_account(account_id: int):
         if a:
             s.delete(a)
             s.commit()
-    return RedirectResponse("/", status_code=303)
+    return RedirectResponse("/email", status_code=303)
 
 
 @app.post("/sync")
 def trigger_sync():
     sync.start_sync()
-    return RedirectResponse("/", status_code=303)
+    return RedirectResponse("/email", status_code=303)
 
 
 @app.get("/sync/status")
