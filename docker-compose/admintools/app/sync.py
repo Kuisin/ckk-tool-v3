@@ -146,6 +146,38 @@ def check_live(refresh: bool = False, max_age: float = 300.0) -> dict:
     return result
 
 
+_check_state = {"running": False, "result": None, "error": None, "ts": 0.0}
+
+
+def start_check(refresh: bool = True) -> bool:
+    """Run check_live in the background so the UI can poll instead of holding a
+    ~45s request open (which proxies/browsers cut off). Returns False if already
+    running."""
+    with _check_lock:
+        if _check_state["running"]:
+            return False
+        _check_state.update(running=True, error=None)
+
+    def runner():
+        try:
+            r = check_live(refresh=refresh)
+            upd = ({"running": False, "result": None, "error": r["error"], "ts": time.time()}
+                   if r.get("error") else
+                   {"running": False, "result": r, "error": None, "ts": time.time()})
+        except Exception as e:  # noqa: BLE001
+            upd = {"running": False, "result": None, "error": str(e)[:200], "ts": time.time()}
+        with _check_lock:
+            _check_state.update(upd)
+
+    threading.Thread(target=runner, daemon=True).start()
+    return True
+
+
+def get_check_state() -> dict:
+    with _check_lock:
+        return dict(_check_state)
+
+
 class _LogStream:
     """Pipe the Sakura helpers' per-item prints into the UI sync log, line by line,
     while still echoing to the real stdout (container logs)."""

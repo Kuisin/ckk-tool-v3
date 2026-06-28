@@ -364,6 +364,21 @@ def sync_preview():
     return JSONResponse(sync.preview())
 
 
+@app.post("/sync/check")
+def sync_check_start():
+    """Start a background live Sakura check (read-only). It logs in + reads the
+    panel (~45s), so the UI starts it then polls /sync/check/status — avoiding a
+    long-lived request that proxies/browsers would cut off."""
+    started = sync.start_check(refresh=True)
+    return JSONResponse({"started": started, **sync.get_check_state()})
+
+
+@app.get("/sync/check/status")
+def sync_check_status():
+    """Poll the background Sakura check: {running, result, error}."""
+    return JSONResponse(sync.get_check_state())
+
+
 @app.post("/sync")
 def trigger_sync(remove: bool = Form(False)):
     # remove deletes Sakura mailboxes not in the DB — OFF unless explicitly opted in.
