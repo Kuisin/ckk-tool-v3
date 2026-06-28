@@ -34,12 +34,13 @@ services:
       # always headroom on each card for other GPU workloads. 34GB - 4GB = 30GB
       # usable per GPU, which still fits the 24GB qwen3:32b. Bytes: 4 * 1024^3.
       - OLLAMA_GPU_OVERHEAD=4294967296
-      # Concurrency: 4 parallel request slots per model so small models serve
-      # several users at once. Each slot is one KV-cache copy (slot KV = context).
-      # Verified both fit on GPU: qwen2.5:7b -> 12GB (1 card), qwen3:32b -> 38GB
-      # (flash-attention, spread across both cards) — neither offloads to CPU, and
-      # the 4GB/card OLLAMA_GPU_OVERHEAD reserve above is still honored.
-      - OLLAMA_NUM_PARALLEL=4
+      # Concurrency: 2 parallel request slots per model (global — Ollama has no
+      # per-model setting). Chosen so the large model stays on ONE GPU: measured
+      # qwen3:32b @2 slots = 28.9GB, all 65 layers on a single card, 13.4 tok/s
+      # (same speed as 1 slot), leaving the entire 2nd GPU free for the 7b/14b
+      # models most users run. @4 the 32b grows to 38GB and spans both cards.
+      # Each slot is one KV-cache copy (slot KV = context).
+      - OLLAMA_NUM_PARALLEL=2
     ports:
       - "11434:11434"
 
