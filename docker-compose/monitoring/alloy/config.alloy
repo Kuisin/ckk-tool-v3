@@ -16,6 +16,11 @@ discovery.relabel "docker" {
     regex         = "/(.*)"
     target_label  = "container"
   }
+  // docker compose project -> stack="<stack>"
+  rule {
+    source_labels = ["__meta_docker_container_label_com_docker_compose_project"]
+    target_label  = "stack"
+  }
   // stdout / stderr
   rule {
     source_labels = ["__meta_docker_container_log_stream"]
