@@ -65,11 +65,31 @@ def get_labor_schema() -> str:
 
 @mcp.tool()
 def query_labor_data(sql: str) -> str:
-    """Run a read-only PostgreSQL SELECT against the King of Time labor database
-    and return the rows as a markdown table.
+    """Run a read-only PostgreSQL SELECT against the King of Time labor (勤怠)
+    database and return rows as a markdown table. Use the EXACT names below.
+
+    Schema (PostgreSQL; prefer the view v_labor):
+      v_labor(date, username, employee_name, employee_code,
+              work_minutes, work_hours, overtime_minutes, overtime_hours,
+              overtime_night_minutes, night_allowance_minutes, leave_late_minutes,
+              pto_minutes, pto_hours, clock_in_count, plan_start, plan_end)
+      -- one row per employee per day. *_minutes are minutes, *_hours are hours.
+      -- Label people by employee_name. The date column is named `date`.
+      -- There is NO employee_id / first_name / last_name / work_date / hours_worked.
+    Examples:
+      -- most-worked employee last week
+      SELECT employee_name, ROUND(SUM(work_minutes)/60.0,1) AS hours
+      FROM v_labor
+      WHERE date >= date_trunc('week', CURRENT_DATE) - INTERVAL '7 day'
+        AND date <  date_trunc('week', CURRENT_DATE)
+      GROUP BY employee_name ORDER BY hours DESC LIMIT 1
+      -- monthly total hours by employee
+      SELECT employee_name, ROUND(SUM(work_minutes)/60.0,1) AS hours
+      FROM v_labor WHERE date >= '2026-06-01' AND date < '2026-07-01'
+      GROUP BY employee_name ORDER BY hours DESC
 
     sql: a single read-only SELECT or WITH...SELECT statement (no ';', no
-    INSERT/UPDATE/DELETE/DDL). Prefer the v_labor view; see get_labor_schema.
+    INSERT/UPDATE/DELETE/DDL).
     """
     statement = (sql or "").strip().rstrip(";").strip()
     if not statement:
