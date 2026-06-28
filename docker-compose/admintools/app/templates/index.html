@@ -97,7 +97,7 @@
         <td>{{ a.quota_gb }} GB</td>
         <td>{{ '有効' if a.is_active else '無効' }}</td>
         <td style="white-space:nowrap;text-align:right">
-          {% if a.type == 'grp' %}<button class="btn-sub" type="button" onclick="openMembers({{ a.id }}, '{{ a.username }}')">メンバー ({{ counts.get(a.id, 0) }})</button>{% endif %}
+          {% if a.type != 'user' %}<button class="btn-sub" type="button" onclick="openMembers({{ a.id }}, '{{ a.username }}')">メンバー ({{ counts.get(a.id, 0) }})</button>{% endif %}
           <button class="btn-sub" type="button" onclick='openEdit(this)'
             data-id="{{ a.id }}" data-username="{{ a.username }}" data-password="{{ a.password }}"
             data-email="{{ a.email }}" data-quota="{{ a.quota_gb }}"
