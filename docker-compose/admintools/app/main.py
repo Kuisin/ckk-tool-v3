@@ -6,7 +6,7 @@ import time
 
 import openpyxl
 from fastapi import Depends, FastAPI, File, Form, Header, HTTPException, Request, UploadFile
-from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, StreamingResponse
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
 from sqlalchemy import func
@@ -389,6 +389,60 @@ def sync_check_start():
 def sync_check_status():
     """Poll the background Sakura check: {running, result, error}."""
     return JSONResponse(sync.get_check_state())
+
+
+def _account_aliases(a: MailAccount) -> list[str]:
+    """All alias addresses for an account: the primary email (if it differs from
+    <username>@domain) plus extra_aliases."""
+    out = []
+    local = (a.email or "").split("@")[0]
+    if local and local != a.username:
+        out.append(a.email)
+    out += [x.strip() for x in (a.extra_aliases or "").replace(",", "\n").splitlines() if x.strip()]
+    # de-dup, preserve order
+    seen, uniq = set(), []
+    for e in out:
+        if e not in seen:
+            seen.add(e); uniq.append(e)
+    return uniq
+
+
+@app.get("/export/xlsx")
+def export_xlsx():
+    """Download an Excel workbook: sheet 1 = user mailboxes (LDAP username, email,
+    aliases); sheet 2 = group emails with assigned members (comma-joined)."""
+    wb = openpyxl.Workbook()
+    with SessionLocal() as s:
+        # Sheet 1 — user emails
+        ws = wb.active
+        ws.title = "ユーザーメール"
+        ws.append(["LDAPユーザー名", "メールアドレス", "エイリアス", "表示名", "状態"])
+        for a in s.query(MailAccount).filter(MailAccount.kind == "user").order_by(MailAccount.username).all():
+            ws.append([a.username, f"{a.username}@{DEFAULT_DOMAIN}", ", ".join(_account_aliases(a)),
+                       a.notes or "", "有効" if a.is_active else "無効"])
+
+        # Sheet 2 — group emails + assigned members (comma-joined)
+        wg = wb.create_sheet("グループメール")
+        wg.append(["グループ", "受信箱", "エイリアス", "メンバー（カンマ区切り）", "種別", "状態"])
+        for a in s.query(MailAccount).filter(MailAccount.kind != "user").order_by(MailAccount.username).all():
+            members = [m.username for m in s.query(GroupMember).filter_by(group_id=a.id)
+                       .order_by(GroupMember.username).all()]
+            wg.append([a.username, f"{a.username}@{DEFAULT_DOMAIN}", ", ".join(_account_aliases(a)),
+                       ", ".join(members), a.type, "有効" if a.is_active else "無効"])
+
+    for sheet in wb.worksheets:                       # widen columns a bit
+        for col in sheet.columns:
+            width = max((len(str(c.value)) for c in col if c.value), default=10)
+            sheet.column_dimensions[col[0].column_letter].width = min(max(width + 2, 12), 60)
+
+    buf = io.BytesIO()
+    wb.save(buf)
+    buf.seek(0)
+    return StreamingResponse(
+        buf,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": "attachment; filename=email-list.xlsx"},
+    )
 
 
 @app.post("/sync")
