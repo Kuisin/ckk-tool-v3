@@ -30,6 +30,10 @@ services:
       # web-search context (the context gets truncated before the answer). 16k fits
       # comfortably in the 32GB GPUs.
       - OLLAMA_CONTEXT_LENGTH=16384
+      # Reserve 4GB of VRAM PER GPU that Ollama will not allocate into, so there is
+      # always headroom on each card for other GPU workloads. 34GB - 4GB = 30GB
+      # usable per GPU, which still fits the 24GB qwen3:32b. Bytes: 4 * 1024^3.
+      - OLLAMA_GPU_OVERHEAD=4294967296
     ports:
       - "11434:11434"
 
