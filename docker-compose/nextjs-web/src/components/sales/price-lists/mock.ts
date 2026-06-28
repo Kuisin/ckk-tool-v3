@@ -71,8 +71,10 @@ export const MOCK_PRICE_ENTRIES: PriceListEntry[] = [
     validUntil: null,
     isActive: true,
     tiers: [
-      { id: "ti-1", minQuantity: 1, maxQuantity: 99, unitPrice: 5000 },
-      { id: "ti-2", minQuantity: 100, maxQuantity: null, unitPrice: 4500 },
+      { id: "ti-1", minQuantity: 1, maxQuantity: 9, unitPrice: 8000 },
+      { id: "ti-2", minQuantity: 10, maxQuantity: 29, unitPrice: 7000 },
+      { id: "ti-3a", minQuantity: 30, maxQuantity: 99, unitPrice: 6500 },
+      { id: "ti-2b", minQuantity: 100, maxQuantity: null, unitPrice: 6000 },
     ],
     createdBy: "鈴木 一郎",
     createdAt: "2025-12-20 09:15",
