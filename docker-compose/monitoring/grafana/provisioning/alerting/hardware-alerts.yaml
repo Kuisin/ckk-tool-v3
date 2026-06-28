@@ -94,3 +94,90 @@ groups:
               refId: C
               conditions:
                 - evaluator: { type: gt, params: [90] }
+
+      - uid: cpu_high
+        title: Host CPU usage high (>90%)
+        condition: C
+        for: 10m
+        noDataState: OK
+        execErrState: Error
+        labels:
+          severity: warning
+        annotations:
+          summary: Host CPU usage on docker-mac-pro has been above 90% for 10m.
+        data:
+          - refId: A
+            relativeTimeRange: { from: 600, to: 0 }
+            datasourceUid: prometheus
+            model:
+              datasource: { type: prometheus, uid: prometheus }
+              expr: 100 - (avg(rate(node_cpu_seconds_total{mode="idle"}[5m])) * 100)
+              instant: true
+              refId: A
+          - refId: C
+            relativeTimeRange: { from: 600, to: 0 }
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: A
+              refId: C
+              conditions:
+                - evaluator: { type: gt, params: [90] }
+
+      - uid: disk_low
+        title: Disk space low (<10% free)
+        condition: C
+        for: 5m
+        noDataState: OK
+        execErrState: Error
+        labels:
+          severity: critical
+        annotations:
+          summary: A filesystem on docker-mac-pro has less than 10% free space.
+        data:
+          - refId: A
+            relativeTimeRange: { from: 600, to: 0 }
+            datasourceUid: prometheus
+            model:
+              datasource: { type: prometheus, uid: prometheus }
+              expr: min(node_filesystem_avail_bytes{fstype!~"tmpfs|overlay|squashfs|ramfs|fuse.*"} / node_filesystem_size_bytes) * 100
+              instant: true
+              refId: A
+          - refId: C
+            relativeTimeRange: { from: 600, to: 0 }
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: A
+              refId: C
+              conditions:
+                - evaluator: { type: lt, params: [10] }
+
+      - uid: sensor_temp_high
+        title: Host sensor temperature high (>90C)
+        condition: C
+        for: 5m
+        noDataState: OK
+        execErrState: Error
+        labels:
+          severity: critical
+        annotations:
+          summary: A hardware sensor on docker-mac-pro is above 90C.
+        data:
+          - refId: A
+            relativeTimeRange: { from: 600, to: 0 }
+            datasourceUid: prometheus
+            model:
+              datasource: { type: prometheus, uid: prometheus }
+              expr: max(node_hwmon_temp_celsius)
+              instant: true
+              refId: A
+          - refId: C
+            relativeTimeRange: { from: 600, to: 0 }
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: A
+              refId: C
+              conditions:
+                - evaluator: { type: gt, params: [90] }
