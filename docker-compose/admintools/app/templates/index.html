@@ -3,12 +3,12 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>adminTools — メール管理</title>
+  <title>adminTools</title>
   <style>
     :root { font-family: 'Noto Sans JP', system-ui, sans-serif; }
     body { margin: 0; background: #f5f6f8; color: #1f2937; }
     header { background: #1e3a8a; color: #fff; padding: 14px 24px; display: flex; align-items: baseline; gap: 16px; }
-    header h1 { font-size: 18px; margin: 0; }
+    header h1 { font-size: 18px; margin: 0; cursor: pointer; }
     main { max-width: 1040px; margin: 24px auto; padding: 0 16px; }
     .card { background: #fff; border: 1px solid #e5e7eb; border-radius: 8px; padding: 16px; margin-bottom: 20px; }
     h2 { font-size: 15px; margin: 0 0 12px; } h3 { margin: 0 0 14px; }
@@ -41,10 +41,22 @@
     .toolbar { display: flex; gap: 8px; align-items: center; margin-bottom: 12px; flex-wrap: wrap; }
     .toolbar .tsearch { width: 260px; } .toolbar select { width: auto; }
     th.sortable { cursor: pointer; user-select: none; } th.sortable:hover { color: #1e3a8a; }
+    /* app launcher */
+    .app-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 16px; }
+    .app-card { background: #fff; border: 1px solid #e5e7eb; border-radius: 12px; padding: 26px 18px; cursor: pointer; text-align: center; transition: box-shadow .12s ease, transform .12s ease; }
+    .app-card:hover { box-shadow: 0 8px 20px rgba(0,0,0,.10); transform: translateY(-2px); }
+    .app-card .ico { font-size: 36px; line-height: 1; }
+    .app-card .name { font-weight: 700; font-size: 15px; margin-top: 12px; color: #1e3a8a; }
+    .app-card .desc { color: #6b7280; font-size: 12px; margin-top: 5px; }
+    .app-view { display: none; }
+    .crumb { font-size: 13px; color: #6b7280; margin-bottom: 14px; }
+    .crumb a { color: #2563eb; cursor: pointer; text-decoration: none; }
+    .crumb a:hover { text-decoration: underline; }
+    @media (prefers-reduced-motion: reduce) { .app-card { transition: none; } }
   </style>
 </head>
 <body>
-  <header><h1>adminTools</h1><span class="muted" style="color:#cbd5e1">ツール: メール管理 · {{ domain }}</span></header>
+  <header><h1 onclick="showApp('home')">adminTools</h1><span class="muted" style="color:#cbd5e1">{{ domain }}</span></header>
 
   {% macro alias_fields(prefix) %}
     <label style="display:inline-flex;align-items:center;gap:6px;font-size:13px;color:#111">
@@ -103,77 +115,101 @@
 
   <main>
     {% set q = request.query_params %}
-    {% if q.get('imported') is not none %}<div class="card ok">Excel：新規 {{ q.get('imported') }} / 更新 {{ q.get('updated') }} / 削除 {{ q.get('removed') }} 件。</div>{% endif %}
-    {% if q.get('err') %}<div class="card err">{{ q.get('err') }}</div>{% endif %}
 
-    <div class="card">
-      <h2>同期 (DB → さくらコントロールパネル)</h2>
-      <p class="muted"><b>username@{{ domain }}</b> はユーザー追加時に自動作成。カスタムエイリアスを設定した場合のみエイリアスを作成します。</p>
-      <form method="post" action="/sync" onsubmit="setTimeout(poll,1000)">
-        <button class="btn-sync" type="submit" {% if sync.running %}disabled{% endif %}>{% if sync.running %}同期中…{% else %}今すぐ同期{% endif %}</button>
-      </form>
-      <div style="margin:10px 0" class="muted"><span id="syncstate"></span></div>
-      <div id="synclog"></div>
-    </div>
-
-    <div class="tabs">
-      <div class="tab" data-pane="shared">共有メール ({{ shared|length }})</div>
-      <div class="tab" data-pane="user">ユーザーメール ({{ user|length }})</div>
-      <div class="tab" data-pane="imports">勤怠インポート</div>
-    </div>
-
-    <div class="pane" id="pane-shared">
-      <div class="card">
-        <h2>共有メール 追加</h2>
-        <form method="post" action="/accounts" class="addrow">
-          <input type="hidden" name="kind" value="shared">
-          <div><label>種別</label>
-            <select name="type" onchange="updPreview()">
-              <option value="app">app</option><option value="grp">grp</option><option value="other" selected>other</option>
-            </select></div>
-          <div><label>名前</label><input type="text" name="name" id="s-name" oninput="updPreview()" required></div>
-          <div><label>ID (自動生成)</label><input type="text" id="s-preview" readonly style="background:#f3f4f6;width:150px"></div>
-          <div><label>パスワード(空欄=自動)</label><input type="text" name="password"></div>
-          <div style="min-width:220px"><label>エイリアス</label>{{ alias_fields('s') }}</div>
-          <div><label>GB</label><input type="number" name="quota_gb" value="5" min="1" style="width:60px"></div>
-          <div><label>有効</label><input type="checkbox" name="is_active" value="true" checked></div>
-          <div><button class="btn-primary" type="submit">追加</button></div>
-        </form>
+    <!-- ===== App launcher (home) ===== -->
+    <div id="app-list">
+      <h2 style="font-size:16px;margin:6px 0 16px">アプリ</h2>
+      <div class="app-grid">
+        <div class="app-card" onclick="showApp('email')">
+          <div class="ico">📧</div>
+          <div class="name">メール管理</div>
+          <div class="desc">共有メール・ユーザーメール（{{ (shared|length) + (user|length) }} 件）</div>
+        </div>
+        <div class="app-card" onclick="showApp('kot')">
+          <div class="ico">⏱️</div>
+          <div class="name">勤怠インポートログ</div>
+          <div class="desc">King of Time インポート履歴</div>
+        </div>
       </div>
-      <div class="card">{{ table(shared, member_counts, 'tbl-shared') }}</div>
     </div>
 
-    <div class="pane" id="pane-user">
+    <!-- ===== Email app ===== -->
+    <div class="app-view" id="app-email">
+      <div class="crumb"><a onclick="showApp('home')">← アプリ一覧</a> ／ メール管理</div>
+
+      {% if q.get('imported') is not none %}<div class="card ok">Excel：新規 {{ q.get('imported') }} / 更新 {{ q.get('updated') }} / 削除 {{ q.get('removed') }} 件。</div>{% endif %}
+      {% if q.get('err') %}<div class="card err">{{ q.get('err') }}</div>{% endif %}
+
       <div class="card">
-        <h2>グループから一括取り込み（オンボーディング）</h2>
-        <p class="muted">AD グループのメンバーをユーザーメールとして取り込みます。既定 <b>username@{{ domain }}</b>、AD のメールが異なればエイリアスに、表示名を備考に設定します。</p>
-        <form method="post" action="/ldap/import_group" style="display:flex;gap:10px;align-items:center">
-          <select name="group_dn" id="grp-select" onfocus="loadGroups()" style="min-width:340px;width:auto" required>
-            <option value="">グループを選択…</option>
-          </select>
-          <button class="btn-primary" type="submit">取り込み</button>
+        <h2>同期 (DB → さくらコントロールパネル)</h2>
+        <p class="muted"><b>username@{{ domain }}</b> はユーザー追加時に自動作成。カスタムエイリアスを設定した場合のみエイリアスを作成します。</p>
+        <form method="post" action="/sync" onsubmit="setTimeout(poll,1000)">
+          <button class="btn-sync" type="submit" {% if sync.running %}disabled{% endif %}>{% if sync.running %}同期中…{% else %}今すぐ同期{% endif %}</button>
         </form>
+        <div style="margin:10px 0" class="muted"><span id="syncstate"></span></div>
+        <div id="synclog"></div>
       </div>
-      <div class="card">
-        <h2>ユーザーメール 追加</h2>
-        <p class="muted">ユーザー名は AD に存在する必要があります（作成時に検証）。既定メール: <b>username@{{ domain }}</b>。</p>
-        <form method="post" action="/accounts" class="addrow">
-          <input type="hidden" name="kind" value="user">
-          <div style="position:relative"><label>ユーザー名 (AD検索)</label>
-            <input type="text" name="username" id="u-username" autocomplete="off" placeholder="名前/IDで検索" required style="width:200px">
-            <div class="ac" id="ac-list"></div>
-          </div>
-          <div><label>パスワード(空欄=自動)</label><input type="text" name="password"></div>
-          <div style="min-width:240px"><label>エイリアス(旧アドレス等)</label>{{ alias_fields('u') }}</div>
-          <div><label>GB</label><input type="number" name="quota_gb" value="5" min="1" style="width:64px"></div>
-          <div><label>有効</label><input type="checkbox" name="is_active" value="true" checked></div>
-          <div><button class="btn-primary" type="submit">追加</button></div>
-        </form>
+
+      <div class="tabs">
+        <div class="tab" data-pane="shared">共有メール ({{ shared|length }})</div>
+        <div class="tab" data-pane="user">ユーザーメール ({{ user|length }})</div>
       </div>
-      <div class="card">{{ table(user, member_counts, 'tbl-user') }}</div>
+
+      <div class="pane" id="pane-shared">
+        <div class="card">
+          <h2>共有メール 追加</h2>
+          <form method="post" action="/accounts" class="addrow">
+            <input type="hidden" name="kind" value="shared">
+            <div><label>種別</label>
+              <select name="type" onchange="updPreview()">
+                <option value="app">app</option><option value="grp">grp</option><option value="other" selected>other</option>
+              </select></div>
+            <div><label>名前</label><input type="text" name="name" id="s-name" oninput="updPreview()" required></div>
+            <div><label>ID (自動生成)</label><input type="text" id="s-preview" readonly style="background:#f3f4f6;width:150px"></div>
+            <div><label>パスワード(空欄=自動)</label><input type="text" name="password"></div>
+            <div style="min-width:220px"><label>エイリアス</label>{{ alias_fields('s') }}</div>
+            <div><label>GB</label><input type="number" name="quota_gb" value="5" min="1" style="width:60px"></div>
+            <div><label>有効</label><input type="checkbox" name="is_active" value="true" checked></div>
+            <div><button class="btn-primary" type="submit">追加</button></div>
+          </form>
+        </div>
+        <div class="card">{{ table(shared, member_counts, 'tbl-shared') }}</div>
+      </div>
+
+      <div class="pane" id="pane-user">
+        <div class="card">
+          <h2>グループから一括取り込み（オンボーディング）</h2>
+          <p class="muted">AD グループのメンバーをユーザーメールとして取り込みます。既定 <b>username@{{ domain }}</b>、AD のメールが異なればエイリアスに、表示名を備考に設定します。</p>
+          <form method="post" action="/ldap/import_group" style="display:flex;gap:10px;align-items:center">
+            <select name="group_dn" id="grp-select" onfocus="loadGroups()" style="min-width:340px;width:auto" required>
+              <option value="">グループを選択…</option>
+            </select>
+            <button class="btn-primary" type="submit">取り込み</button>
+          </form>
+        </div>
+        <div class="card">
+          <h2>ユーザーメール 追加</h2>
+          <p class="muted">ユーザー名は AD に存在する必要があります（作成時に検証）。既定メール: <b>username@{{ domain }}</b>。</p>
+          <form method="post" action="/accounts" class="addrow">
+            <input type="hidden" name="kind" value="user">
+            <div style="position:relative"><label>ユーザー名 (AD検索)</label>
+              <input type="text" name="username" id="u-username" autocomplete="off" placeholder="名前/IDで検索" required style="width:200px">
+              <div class="ac" id="ac-list"></div>
+            </div>
+            <div><label>パスワード(空欄=自動)</label><input type="text" name="password"></div>
+            <div style="min-width:240px"><label>エイリアス(旧アドレス等)</label>{{ alias_fields('u') }}</div>
+            <div><label>GB</label><input type="number" name="quota_gb" value="5" min="1" style="width:64px"></div>
+            <div><label>有効</label><input type="checkbox" name="is_active" value="true" checked></div>
+            <div><button class="btn-primary" type="submit">追加</button></div>
+          </form>
+        </div>
+        <div class="card">{{ table(user, member_counts, 'tbl-user') }}</div>
+      </div>
     </div>
 
-    <div class="pane" id="pane-imports">
+    <!-- ===== KOT import log app ===== -->
+    <div class="app-view" id="app-kot">
+      <div class="crumb"><a onclick="showApp('home')">← アプリ一覧</a> ／ 勤怠インポートログ</div>
       <div class="card">
         <h2>King of Time インポートログ</h2>
         <p class="muted">kot-import コンテナの実行履歴（最新50件）。<button class="btn-sub" type="button" onclick="loadImports()">更新</button></p>
@@ -341,10 +377,22 @@
     }
     document.getElementById('modal').addEventListener('click', e => { if (e.target.id === 'modal') closeEdit(); });
 
+    // --- email sub-tabs ---
     function showTab(name) {
-      document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.pane === name));
-      document.querySelectorAll('.pane').forEach(p => p.classList.toggle('active', p.id === 'pane-' + name));
-      if (name === 'imports') loadImports();
+      document.querySelectorAll('#app-email .tab').forEach(t => t.classList.toggle('active', t.dataset.pane === name));
+      document.querySelectorAll('#app-email .pane').forEach(p => p.classList.toggle('active', p.id === 'pane-' + name));
+    }
+    document.querySelectorAll('#app-email .tab').forEach(t => t.addEventListener('click', () => showTab(t.dataset.pane)));
+
+    // --- app launcher ---
+    let importsLoaded = false;
+    function showApp(name) {
+      document.getElementById('app-list').style.display = name === 'home' ? '' : 'none';
+      document.querySelectorAll('.app-view').forEach(v => v.style.display = 'none');
+      if (name === 'email') { document.getElementById('app-email').style.display = ''; }
+      if (name === 'kot') { document.getElementById('app-kot').style.display = ''; if (!importsLoaded) { importsLoaded = true; loadImports(); } }
+      history.replaceState(null, '', name === 'home' ? location.pathname : '#' + name);
+      window.scrollTo(0, 0);
     }
     async function loadImports() {
       const body = document.getElementById('imports-body');
@@ -359,8 +407,16 @@
           + '</tbody></table>';
       } catch (e) { body.innerHTML = '<div class="muted">読み込みに失敗しました。</div>'; }
     }
-    document.querySelectorAll('.tab').forEach(t => t.addEventListener('click', () => showTab(t.dataset.pane)));
-    showTab(location.hash === '#user' ? 'user' : 'shared');
+
+    // initial view: open an app from the hash / flash, else show the launcher
+    showTab('shared');
+    (function () {
+      const h = (location.hash || '').replace('#', '');
+      const hasFlash = {{ 'true' if (q.get('imported') is not none or q.get('err')) else 'false' }};
+      if (h === 'kot') showApp('kot');
+      else if (h === 'email' || h === 'user' || h === 'shared' || hasFlash) { showApp('email'); if (h === 'user') showTab('user'); }
+      else showApp('home');
+    })();
 
     async function poll() {
       try {
