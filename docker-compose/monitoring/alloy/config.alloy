@@ -1,0 +1,43 @@
+// Grafana Alloy — collect the logs of EVERY Docker container via the Docker
+// socket and ship them to Loki, labelled by container name. New containers are
+// auto-discovered on the refresh interval.
+
+discovery.docker "all" {
+  host             = "unix:///var/run/docker.sock"
+  refresh_interval = "15s"
+}
+
+discovery.relabel "docker" {
+  targets = discovery.docker.all.targets
+
+  // /container-name -> container="container-name"
+  rule {
+    source_labels = ["__meta_docker_container_name"]
+    regex         = "/(.*)"
+    target_label  = "container"
+  }
+  // stdout / stderr
+  rule {
+    source_labels = ["__meta_docker_container_log_stream"]
+    target_label  = "stream"
+  }
+  // container image (handy for filtering)
+  rule {
+    source_labels = ["__meta_docker_container_image"]
+    target_label  = "image"
+  }
+}
+
+loki.source.docker "all" {
+  host             = "unix:///var/run/docker.sock"
+  targets          = discovery.relabel.docker.output
+  refresh_interval = "15s"
+  labels           = { job = "docker" }
+  forward_to       = [loki.write.default.receiver]
+}
+
+loki.write "default" {
+  endpoint {
+    url = "http://loki:3100/loki/api/v1/push"
+  }
+}
