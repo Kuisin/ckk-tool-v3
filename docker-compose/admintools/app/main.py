@@ -358,9 +358,16 @@ def delete_account(account_id: int):
     return RedirectResponse("/email", status_code=303)
 
 
+@app.get("/sync/preview")
+def sync_preview():
+    """The check state shown before syncing: planned user + alias creates."""
+    return JSONResponse(sync.preview())
+
+
 @app.post("/sync")
-def trigger_sync():
-    sync.start_sync()
+def trigger_sync(remove: bool = Form(False)):
+    # remove deletes Sakura mailboxes not in the DB — OFF unless explicitly opted in.
+    sync.start_sync(remove_not_on_list=remove)
     return RedirectResponse("/email", status_code=303)
 
 

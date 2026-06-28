@@ -8,7 +8,7 @@ import time
 
 from playwright.sync_api import sync_playwright
 
-from .db import MailAccount, SessionLocal
+from .db import DEFAULT_DOMAIN, MailAccount, SessionLocal
 from .sakura import adduser, create_email
 
 LOGIN_URL = "https://secure.sakura.ad.jp/rs/cp/"
@@ -52,6 +52,26 @@ def _load_from_db():
         if local and domain and local != a.username:
             aliases.append(create_email.AliasRow(username=a.username, local_part=local, domain=domain))
     return users, aliases
+
+
+def preview() -> dict:
+    """Plan a sync from the DB alone (no Sakura login) — the 'check state' shown
+    before syncing. Each active account becomes a mailbox (username@domain); when
+    the account's email differs from username@domain it ALSO gets an alias (the
+    friendly address routed to the mailbox)."""
+    sid = os.environ.get("SAKURA_ID", "").strip()
+    spw = os.environ.get("SAKURA_PW", "").strip()
+    users, aliases = _load_from_db()
+    return {
+        "env_ok": bool(sid and spw),
+        "domain": DEFAULT_DOMAIN,
+        "user_count": len(users),
+        "alias_count": len(aliases),
+        # step 1: create/update the user mailbox
+        "users": [{"username": u.username, "mailbox": f"{u.username}@{DEFAULT_DOMAIN}"} for u in users],
+        # step 2: create the alias when username != email local part
+        "aliases": [{"alias": f"{a.local_part}@{a.domain}", "to": f"{a.username}@{a.domain}"} for a in aliases],
+    }
 
 
 def _run(headless: bool, remove_not_on_list: bool) -> None:

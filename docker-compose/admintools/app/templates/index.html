@@ -142,10 +142,8 @@
 
       <div class="card">
         <h2>同期 (DB → さくらコントロールパネル)</h2>
-        <p class="muted"><b>username@{{ domain }}</b> はユーザー追加時に自動作成。カスタムエイリアスを設定した場合のみエイリアスを作成します。</p>
-        <form method="post" action="/sync" onsubmit="setTimeout(poll,1000)">
-          <button class="btn-sync" type="submit" {% if sync.running %}disabled{% endif %}>{% if sync.running %}同期中…{% else %}今すぐ同期{% endif %}</button>
-        </form>
+        <p class="muted"><b>username@{{ domain }}</b> をメールボックスとして作成。ユーザー名とメールアドレスが異なる場合はエイリアスも作成します（2段階）。実行前に内容を確認できます。</p>
+        <button class="btn-sync" type="button" onclick="openSyncPreview()" {% if sync.running %}disabled{% endif %}>{% if sync.running %}同期中…{% else %}同期内容を確認{% endif %}</button>
         <div style="margin:10px 0" class="muted"><span id="syncstate"></span></div>
         <div id="synclog"></div>
       </div>
@@ -252,7 +250,48 @@
     </div>
   </div>
 
+  <!-- sync check/preview modal -->
+  <div class="modal-bg" id="sync-modal">
+    <div class="modal" style="width:580px;max-width:94vw">
+      <h3>同期内容の確認</h3>
+      <div id="sync-preview-body"><div class="muted">読み込み中…</div></div>
+      <form method="post" action="/sync" id="sync-form"
+            onsubmit="document.getElementById('sync-modal').style.display='none'; setTimeout(poll,1000)">
+        <label style="display:flex;align-items:center;gap:8px;margin:14px 0 4px;color:#b91c1c;font-size:13px">
+          <input type="checkbox" name="remove" value="true" id="sync-remove">
+          リストにない Sakura のメールボックスを削除する（危険・取り消し不可）
+        </label>
+        <p class="muted" style="margin:0 0 6px">通常はオフのまま。DB に無いメールボックスを Sakura から削除します。</p>
+        <div class="actions">
+          <button type="button" class="btn-sub" onclick="document.getElementById('sync-modal').style.display='none'">キャンセル</button>
+          <button type="submit" class="btn-sync" id="sync-confirm">同期を実行</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <script>
+    async function openSyncPreview() {
+      const modal = document.getElementById('sync-modal');
+      const body = document.getElementById('sync-preview-body');
+      document.getElementById('sync-remove').checked = false;
+      body.innerHTML = '<div class="muted">読み込み中…</div>';
+      modal.style.display = 'flex';
+      try {
+        const d = await (await fetch('/sync/preview')).json();
+        const esc = s => (s || '').replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
+        let h = '';
+        if (!d.env_ok) h += '<div class="card err">SAKURA_ID / SAKURA_PW が未設定です。<code>.env</code> を設定し adminTools を再作成してください。同期できません。</div>';
+        h += `<p><b>① ユーザー作成 / 更新: ${d.user_count} 件</b> <span class="muted">メールボックス <code>username@${esc(d.domain)}</code></span></p>`;
+        h += `<details><summary>一覧を表示</summary><div style="max-height:150px;overflow:auto;font-size:12px;margin-top:6px">${d.users.map(u => esc(u.mailbox)).join('<br>') || '—'}</div></details>`;
+        h += `<p style="margin-top:12px"><b>② エイリアス作成: ${d.alias_count} 件</b> <span class="muted">ユーザー名 ≠ メールアドレスの場合</span></p>`;
+        h += `<details><summary>一覧を表示</summary><div style="max-height:150px;overflow:auto;font-size:12px;margin-top:6px">${d.aliases.map(a => esc(a.alias) + ' → ' + esc(a.to)).join('<br>') || '—'}</div></details>`;
+        body.innerHTML = h;
+        document.getElementById('sync-confirm').disabled = !d.env_ok;
+      } catch (e) { body.innerHTML = '<div class="err card">プレビューの取得に失敗しました。</div>'; }
+    }
+    document.getElementById('sync-modal').addEventListener('click', e => { if (e.target.id === 'sync-modal') document.getElementById('sync-modal').style.display = 'none'; });
+
     function toggleAlias(cb) {
       const box = cb.closest('form').querySelector('[name=alias]');
       box.style.display = cb.checked ? '' : 'none';
