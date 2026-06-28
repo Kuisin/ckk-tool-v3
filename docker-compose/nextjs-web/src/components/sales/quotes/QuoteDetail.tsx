@@ -10,7 +10,7 @@
  */
 
 import { Badge, Table, Tabs, Text } from "@mantine/core";
-import { IconCopy } from "@tabler/icons-react";
+import { IconCopy, IconDownload } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
 import { FieldValue } from "@/components/ui/FieldValue";
 import { MoneyText } from "@/components/ui/MoneyText";
@@ -56,8 +56,19 @@ export function QuoteDetail({ id }: { id: string }) {
         <ResourceActions
           menuItems={[
             {
+              label: "PDFをダウンロード",
+              icon: <IconDownload size={14} />,
+              onClick: () =>
+                window.open(
+                  `/api/pdf/quote?id=${encodeURIComponent(quote.id)}&download=1`,
+                  "_blank",
+                  "noopener,noreferrer",
+                ),
+            },
+            {
               label: "複製",
               icon: <IconCopy size={14} />,
+              divider: true,
               onClick: () => router.push(`${BASE_PATH}/new?from=${quote.id}`),
             },
           ]}

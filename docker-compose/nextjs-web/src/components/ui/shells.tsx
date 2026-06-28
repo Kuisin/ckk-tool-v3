@@ -102,7 +102,17 @@ export function ResourceActions({
         ? [{ label: editLabel, icon: <IconEdit size={14} />, onClick: onEdit }]
         : []),
       ...(pdf
-        ? [{ label: pdf.label ?? "PDF", icon: <IconFileTypePdf size={14} /> }]
+        ? [
+            {
+              label: pdf.label ?? "PDF",
+              icon: <IconFileTypePdf size={14} />,
+              // Mobile has no inline button — open the PDF href in a new tab,
+              // or fall back to the provided onClick.
+              onClick: pdf.href
+                ? () => window.open(pdf.href, "_blank", "noopener,noreferrer")
+                : pdf.onClick,
+            },
+          ]
         : []),
       ...menuItems,
     ];

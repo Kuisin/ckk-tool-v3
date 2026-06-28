@@ -20,8 +20,11 @@ services:
       - NODE_ENV=production
       # PDF generation (見積書 etc.) → Gotenberg over the stack network.
       - GOTENBERG_URL=http://gotenberg:3000
+      # Generated-PDF storage (view/download) → SeaweedFS filer.
+      - SEAWEED_FILER_URL=http://seaweedfs:8888
     depends_on:
       - gotenberg
+      - seaweedfs
     ports:
       - "3001:3000"
     healthcheck:
@@ -46,3 +49,23 @@ services:
       timeout: 5s
       retries: 5
       start_period: 10s
+
+  # File storage for generated documents (PDFs). SeaweedFS S3/Filer; the app
+  # writes/reads via the Filer HTTP API at http://seaweedfs:8888. Data persists
+  # in the seaweed-data volume. Internal only (not published to the host).
+  seaweedfs:
+    image: chrislusf/seaweedfs:latest
+    container_name: nextjs-seaweedfs
+    restart: unless-stopped
+    command: "server -dir=/data -filer -s3 -volume.max=0 -master.volumeSizeLimitMB=1024"
+    volumes:
+      - seaweed-data:/data
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8888/"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
+volumes:
+  seaweed-data:

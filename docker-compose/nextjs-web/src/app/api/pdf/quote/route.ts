@@ -1,8 +1,9 @@
 /**
- * GET /api/pdf/quote?id=<quoteId> — 見積書 PDF (design-preview `quote.html`).
+ * GET /api/pdf/quote?id=<quoteId>[&download=1] — 見積書 PDF.
  *
- * Loads the quote (mock for now), maps it to the template data shape, renders
- * the price-table line items, and streams the Gotenberg-generated PDF back.
+ * Serves the stored PDF from SeaweedFS if present; otherwise renders it via
+ * Gotenberg (design-preview `quote.html`), stores it, then streams it back.
+ * `download=1` forces an attachment; default is inline (in-browser view).
  * Replace `getQuote` with a server/Prisma fetch later.
  */
 
@@ -13,6 +14,7 @@ import {
 } from "@/components/sales/quotes/mock";
 import { formatDate } from "@/lib/format";
 import { renderPdf } from "@/lib/pdf";
+import { getObject, putObject } from "@/lib/storage";
 
 // Reads request query params → always rendered at request time.
 export const dynamic = "force-dynamic";
@@ -27,8 +29,19 @@ const ISSUER = {
   invoice_reg: "T1234567890123",
 };
 
+/** Build the response headers for serving a quote PDF (inline vs attachment). */
+function pdfHeaders(quoteNumber: string, download: boolean): HeadersInit {
+  const disp = download ? "attachment" : "inline";
+  return {
+    "content-type": "application/pdf",
+    "content-disposition": `${disp}; filename="${quoteNumber}.pdf"`,
+  };
+}
+
 export async function GET(request: Request): Promise<Response> {
-  const id = new URL(request.url).searchParams.get("id");
+  const url = new URL(request.url);
+  const id = url.searchParams.get("id");
+  const download = url.searchParams.get("download") === "1";
   if (!id) {
     return new Response('Missing "id" query parameter', { status: 400 });
   }
@@ -36,6 +49,17 @@ export async function GET(request: Request): Promise<Response> {
   const quote = getQuote(id);
   if (!quote) {
     return new Response(`Quote not found: ${id}`, { status: 404 });
+  }
+
+  const storageKey = `pdfs/quotes/${quote.quoteNumber}.pdf`;
+
+  // Serve the stored copy if it exists (SeaweedFS), else generate + store.
+  const cached = await getObject(storageKey);
+  if (cached) {
+    return new Response(cached, {
+      status: 200,
+      headers: pdfHeaders(quote.quoteNumber, download),
+    });
   }
 
   const totals = quoteTotals(quote);
@@ -79,11 +103,13 @@ export async function GET(request: Request): Promise<Response> {
     return new Response("PDF generation failed", { status: 502 });
   }
 
+  // Persist to SeaweedFS for later view/download (best-effort; non-blocking on failure).
+  if (!(await putObject(storageKey, pdf, "application/pdf"))) {
+    console.warn(`[pdf/quote] storage write failed for ${storageKey}`);
+  }
+
   return new Response(pdf, {
     status: 200,
-    headers: {
-      "content-type": "application/pdf",
-      "content-disposition": `inline; filename="${quote.quoteNumber}.pdf"`,
-    },
+    headers: pdfHeaders(quote.quoteNumber, download),
   });
 }
