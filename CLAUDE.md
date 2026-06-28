@@ -72,3 +72,25 @@ pnpm prisma db push                  # dev-only
 **File storage** — SeaweedFS via S3 API. All uploaded/generated files stored as `files` table rows (`storage_key`, `filename`, `mime_type`).
 
 **Design** — Mantine v9 with `primaryColor: 'blue'`, `defaultRadius: 'sm'`, global `size: 'sm'` defaults. Page patterns: list → `DataTable` + filter bar in `Paper`; detail → summary grid + `Tabs`; form → `Paper` sections + `@mantine/form` with `zodResolver` + Server Actions. See `_specs/design.md` for full component specs and status-badge color map.
+
+## Deployment & Remote Server
+
+**Server** — `192.168.50.15` (hostname `docker-mac-pro`; despite the name it runs Linux — Ubuntu noble / t2 kernel). Access: `ssh 192.168.50.15` (key-based, user `kaiseisawada`). All services run as Docker Compose stacks orchestrated by **Dockge**, one dir per stack under `~/stacks/` on the server: `nextjs-web`, `metabase`, `ai-stack`, `monitoring`, `vpn-ldap`, `kot-import`, `admintools`, `nginx-proxy`, `cloudflared`, `portainer`.
+
+**Source ↔ server** — Each `~/stacks/<stack>` mirrors `docker-compose/<stack>` in this repo, but the **server copies are not git repos** and there is no deploy script/CI. Deploy = rsync the source up, then rebuild. The server's `.env` holds secrets and lives **only on the server** — never overwrite or delete it (always `--exclude '.env'`).
+
+**Deploy a stack** (example: `nextjs-web`):
+
+```bash
+# from repo: docker-compose/nextjs-web/
+rsync -a --exclude node_modules --exclude .next --exclude .git \
+  --exclude .env --exclude .vscode --exclude '*.tsbuildinfo' --exclude .DS_Store \
+  ./ 192.168.50.15:'~/stacks/nextjs-web/'
+ssh 192.168.50.15 'cd ~/stacks/nextjs-web && docker compose up -d --build'
+```
+
+Dry-run the rsync first (`rsync -avn …`) to confirm the file set. The Dockerfile builds Next.js `output: "standalone"`; PDF templates under `src/pdf-templates/` reach the runtime image via `outputFileTracingIncludes` in `next.config.ts` (file tracing can't follow `fs.readFile` paths). `pnpm install --frozen-lockfile` runs in-build, so never let the lockfile drift.
+
+**nextjs-web topology** — host `:3001` → container `:3000` (3000 is taken by open-webui). Public access `https://dev.kai-lab.net` via the `cloudflared` stack; LAN TLS via `nginx-proxy`; both reach the app over the auto-created `nextjs-web_default` network at `http://web:3000`. PDF generation uses the in-stack `gotenberg` service at `http://gotenberg:3000` (`GOTENBERG_URL`).
+
+**Manage / verify** — `docker ps`, `docker compose logs -f <svc>`, `docker compose restart <svc>`, `docker compose up -d --build` (rebuild after source change). Health/smoke-test from inside the network, e.g. `docker exec nextjs-web node -e 'fetch("http://127.0.0.1:3000/...")...'`. Postgres-backed stacks (`metabase-db`, `ckk-legacy-db`, `kot-db`, `admintools-db`) are siblings — back up with `docker exec <db> pg_dump` and restore with `pg_restore`/`psql` before mutating live data.
