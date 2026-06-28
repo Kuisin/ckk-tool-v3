@@ -111,6 +111,25 @@ services:
     ports:
       - "8000:8000"
 
+  # Metabase MCP server (read-only labor data) exposed to Open WebUI as an
+  # OpenAPI tool server via mcpo. Replaces the hand-rolled metabase_labor tool.
+  # open-webui reaches it on the shared default network at http://metabase-mcp:8000.
+  metabase-mcp:
+    build: ./metabase-mcp
+    image: ckk-metabase-mcp
+    container_name: metabase-mcp
+    restart: unless-stopped
+    environment:
+      - METABASE_URL=${METABASE_URL:-http://192.168.50.15:3003}
+      - METABASE_DB_ID=${METABASE_DB_ID:-2}
+      - METABASE_API_KEY=${METABASE_API_KEY:-}
+      # Protects the mcpo OpenAPI endpoints; Open WebUI sends it as the bearer token.
+      - MCPO_API_KEY=${MCPO_API_KEY:-}
+    ports:
+      - "8011:8000"
+    networks:
+      - default     # ai-stack_default — reachable by open-webui
+
 volumes:
   ollama:
   open-webui:
