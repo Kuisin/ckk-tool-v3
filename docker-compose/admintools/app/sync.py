@@ -28,8 +28,13 @@ def _log(msg: str) -> None:
     print(msg, flush=True)
 
 
+class LoginError(RuntimeError):
+    pass
+
+
 def _auto_login(page, sid: str, spw: str) -> None:
-    """Log in to the Sakura RS control panel (domain/email + password, no 2FA)."""
+    """Log in to the Sakura RS control panel (domain/email + password, no 2FA).
+    Raises LoginError if authentication fails (so callers fail fast, not hang)."""
     page.goto(LOGIN_URL, wait_until="domcontentloaded", timeout=60000)
     time.sleep(2)
     di = page.get_by_label("ドメイン名、またはレンタルサーバーのメールアドレス")
@@ -37,8 +42,21 @@ def _auto_login(page, sid: str, spw: str) -> None:
     di.fill(sid)
     page.get_by_label("パスワード", exact=True).fill(spw)
     page.get_by_role("button", name="ログイン").click()
-    page.wait_for_load_state("networkidle", timeout=30000)
+    try:
+        page.wait_for_load_state("networkidle", timeout=30000)
+    except Exception:  # noqa: BLE001
+        pass
     time.sleep(2)
+    # Verify success: a failed login keeps the form + shows 認証に失敗しました.
+    body = ""
+    try:
+        body = page.inner_text("body")
+    except Exception:  # noqa: BLE001
+        pass
+    if "認証に失敗" in body or "ログインできません" in body or "正しくありません" in body:
+        raise LoginError("Sakura ログイン認証に失敗しました — SAKURA_ID / SAKURA_PW を確認してください。")
+    if page.get_by_label("パスワード", exact=True).count() and page.get_by_role("button", name="ログイン").count():
+        raise LoginError("Sakura ログインに失敗しました（ログイン画面のままです）— 認証情報を確認してください。")
 
 
 def _load_from_db():
@@ -72,6 +90,58 @@ def preview() -> dict:
         # step 2: create the alias when username != email local part
         "aliases": [{"alias": f"{a.local_part}@{a.domain}", "to": f"{a.username}@{a.domain}"} for a in aliases],
     }
+
+
+_check_lock = threading.Lock()
+_check_cache: dict = {"ts": 0.0, "result": None}
+
+
+def check_live(refresh: bool = False, max_age: float = 300.0) -> dict:
+    """Read-only: log into Sakura, read current mailboxes + aliases, and diff them
+    against the DB plan. Returns the real change plan (create / exists / delete).
+    No add/remove is performed. Cached for max_age seconds."""
+    with _check_lock:
+        c = _check_cache
+        if not refresh and c["result"] and time.time() - c["ts"] < max_age:
+            return c["result"]
+    sid = os.environ.get("SAKURA_ID", "").strip()
+    spw = os.environ.get("SAKURA_PW", "").strip()
+    if not sid or not spw:
+        return {"env_ok": False, "error": "SAKURA_ID / SAKURA_PW not set"}
+    if _state["running"]:
+        return {"env_ok": True, "error": "同期の実行中です。完了後に再試行してください。"}
+
+    users, aliases = _load_from_db()
+    keep_users = {u.username for u in users}
+    keep_aliases = {f"{a.local_part}@{a.domain}" for a in aliases}
+
+    with sync_playwright() as p:
+        browser = p.chromium.launch(headless=True)
+        page = browser.new_context(locale="ja-JP", viewport={"width": 1280, "height": 900}).new_page()
+        _auto_login(page, sid, spw)
+        page.goto(adduser.USER_LIST_URL, wait_until="load", timeout=60000)
+        cur_users = adduser._collect_existing_usernames_from_all_pages(page, adduser.USER_LIST_URL)
+        page.goto(create_email.MAIL_ALIAS_LIST_URL, wait_until="load", timeout=60000)
+        cur_aliases = create_email._collect_existing_aliases(page, create_email.MAIL_ALIAS_LIST_URL)
+        browser.close()
+
+    result = {
+        "env_ok": True,
+        "checked_at": time.strftime("%Y-%m-%d %H:%M:%S"),
+        "mailbox": {
+            "create": sorted(keep_users - cur_users),
+            "exists": sorted(keep_users & cur_users),
+            "delete": sorted(cur_users - keep_users - {"postmaster"}),
+        },
+        "alias": {
+            "create": sorted(keep_aliases - cur_aliases),
+            "exists": sorted(keep_aliases & cur_aliases),
+            "delete": sorted(cur_aliases - keep_aliases),
+        },
+    }
+    with _check_lock:
+        _check_cache.update(ts=time.time(), result=result)
+    return result
 
 
 def _run(headless: bool, remove_not_on_list: bool) -> None:
