@@ -89,17 +89,22 @@
     <tbody>
     {% for a in rows %}
       <tr data-type="{{ a.type }}" data-status="{{ '1' if a.is_active else '0' }}"
-          data-search="{{ (a.username ~ ' ' ~ a.email ~ ' ' ~ a.notes)|lower }}">
+          data-search="{{ (a.username ~ ' ' ~ a.email ~ ' ' ~ a.extra_aliases ~ ' ' ~ a.notes)|lower }}">
         <td><span class="badge" style="background:#e0e7ff;color:#3730a3">{{ a.type }}</span></td>
-        <td style="font-weight:600;white-space:nowrap">{{ a.username }}
-          {% if a.email.split('@')[0] != a.username %}<span class="badge">alias</span>{% endif %}</td>
-        <td>{{ a.email }}</td>
+        <td style="font-weight:600;white-space:nowrap">{{ a.username }}</td>
+        <td>
+          {% if a.type != 'user' %}
+            {% set aliases = a.extra_aliases.split('\n') | map('trim') | select | list %}
+            {% if aliases %}{% for al in aliases %}<div>{{ al }}</div>{% endfor %}{% else %}<span class="muted">エイリアス未設定</span>{% endif %}
+            <div class="muted" style="font-size:11px">受信箱: {{ a.username }}@{{ domain }}</div>
+          {% else %}{{ a.email }}{% endif %}
+        </td>
         <td>{{ a.quota_gb }} GB</td>
         <td>{{ '有効' if a.is_active else '無効' }}</td>
         <td style="white-space:nowrap;text-align:right">
           {% if a.type != 'user' %}<button class="btn-sub" type="button" onclick="openMembers({{ a.id }}, '{{ a.username }}')">メンバー ({{ counts.get(a.id, 0) }})</button>{% endif %}
           <button class="btn-sub" type="button" onclick='openEdit(this)'
-            data-id="{{ a.id }}" data-username="{{ a.username }}" data-password="{{ a.password }}"
+            data-id="{{ a.id }}" data-username="{{ a.username }}" data-password="{{ a.password }}" data-type="{{ a.type }}"
             data-email="{{ a.email }}" data-quota="{{ a.quota_gb }}"
             data-active="{{ 'true' if a.is_active else 'false' }}" data-notes="{{ a.notes }}"
             data-extra-aliases="{{ a.extra_aliases }}"
@@ -166,7 +171,7 @@
             <div><label>名前</label><input type="text" name="name" id="s-name" oninput="updPreview()" required></div>
             <div><label>ID (自動生成)</label><input type="text" id="s-preview" readonly style="background:#f3f4f6;width:150px"></div>
             <div><label>パスワード(空欄=自動)</label><input type="text" name="password"></div>
-            <div style="min-width:220px"><label>エイリアス</label>{{ alias_fields('s') }}</div>
+            <div style="align-self:center;max-width:200px"><span class="muted">メールボックスは <b>名前@{{ domain }}</b>。エイリアス（別アドレス）は作成後に「編集 → 追加エイリアス」で設定します。</span></div>
             <div><label>GB</label><input type="number" name="quota_gb" value="5" min="1" style="width:60px"></div>
             <div><label>有効</label><input type="checkbox" name="is_active" value="true" checked></div>
             <div><button class="btn-primary" type="submit">追加</button></div>
@@ -222,14 +227,18 @@
     <div class="modal">
       <h3 id="m-title"></h3>
       <form method="post" id="m-form">
-        <label>パスワード</label><input type="text" name="password" id="m-pw">
-        <label style="display:inline-flex;align-items:center;gap:6px"><input type="checkbox" name="use_alias" value="true" id="m-usealias" onchange="toggleAlias(this)"> カスタムエイリアスを使う</label>
-        <input type="email" name="alias" id="m-alias" placeholder="old-address@{{ domain }}" style="display:none;margin-top:6px">
+        <label id="m-pw-label">パスワード</label><input type="text" name="password" id="m-pw">
+        <div id="m-userAliasRow">
+          <label style="display:inline-flex;align-items:center;gap:6px"><input type="checkbox" name="use_alias" value="true" id="m-usealias" onchange="toggleAlias(this)"> カスタムエイリアスを使う（旧アドレス）</label>
+          <input type="email" name="alias" id="m-alias" placeholder="old-address@{{ domain }}" style="display:none;margin-top:6px">
+        </div>
         <label>容量 (GB)</label><input type="number" name="quota_gb" id="m-quota" min="1">
         <label style="display:inline-flex;align-items:center;gap:6px"><input type="checkbox" name="is_active" value="true" id="m-active"> 有効</label>
         <label>備考</label><input type="text" name="notes" id="m-notes">
-        <label>追加エイリアス（1行に1メール・同じグループに複数アドレス）</label>
-        <textarea name="extra_aliases" id="m-extra" rows="3" placeholder="another@{{ domain }}&#10;info2@{{ domain }}" style="width:100%;box-sizing:border-box;padding:6px 8px;border:1px solid #d1d5db;border-radius:4px;font-size:13px;font-family:inherit"></textarea>
+        <div id="m-aliasRow">
+          <label id="m-extra-label">エイリアス（1行に1メール・複数可。このグループの受信アドレス）</label>
+          <textarea name="extra_aliases" id="m-extra" rows="3" placeholder="contact@{{ domain }}&#10;info@{{ domain }}" style="width:100%;box-sizing:border-box;padding:6px 8px;border:1px solid #d1d5db;border-radius:4px;font-size:13px;font-family:inherit"></textarea>
+        </div>
         <div class="muted" id="m-times" style="margin-top:12px"></div>
         <div class="actions">
           <button type="button" class="btn-sub" onclick="closeEdit()">キャンセル</button>
@@ -351,9 +360,14 @@
       document.getElementById('m-active').checked = d.active === 'true';
       document.getElementById('m-notes').value = d.notes || '';
       document.getElementById('m-extra').value = (d.extraAliases || '').replace(/,\s*/g, '\n');
+      const isUser = (d.type === 'user');
+      // Group: only the alias list (mailbox is always <name>@domain). User: keep the single old-address alias.
+      document.getElementById('m-userAliasRow').style.display = isUser ? '' : 'none';
+      document.getElementById('m-aliasRow').style.display = isUser ? 'none' : '';
+      document.getElementById('m-title').textContent = d.username + (isUser ? '' : '（グループ・受信箱 ' + d.username + '@{{ domain }}）');
       const isAlias = (d.email || '').split('@')[0] !== d.username;
-      const ua = document.getElementById('m-usealias'); ua.checked = isAlias;
-      document.getElementById('m-alias').value = isAlias ? d.email : '';
+      const ua = document.getElementById('m-usealias'); ua.checked = isAlias && isUser;
+      document.getElementById('m-alias').value = (isAlias && isUser) ? d.email : '';
       toggleAlias(ua);
       document.getElementById('m-times').textContent = '作成: ' + (d.created || '-') + ' ／ 更新: ' + (d.updated || '-');
       document.getElementById('modal').style.display = 'flex';

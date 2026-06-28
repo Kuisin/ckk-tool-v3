@@ -320,8 +320,11 @@ def create_account(
     with SessionLocal() as s:
         if s.query(MailAccount).filter_by(username=username).first():
             return RedirectResponse(f"/email?err={username} は既に存在します", status_code=303)
+        # Group/shared mailbox defaults to <groupname>@domain; alias addresses are
+        # set separately (編集 → 追加エイリアス). Users keep the alias-on-create flow.
+        email = f"{username}@{DEFAULT_DOMAIN}" if kind == "shared" else _alias_email(username, use_alias, alias)
         s.add(MailAccount(username=username, password=password or _gen_password(),
-                          email=_alias_email(username, use_alias, alias), quota_gb=quota_gb,
+                          email=email, quota_gb=quota_gb,
                           is_active=is_active, kind=kind, type=type, notes=notes))
         s.commit()
     return RedirectResponse("/email#user" if kind == "user" else "/email", status_code=303)
@@ -343,8 +346,10 @@ def update_account(
         if not a:
             raise HTTPException(404)
         a.password, a.quota_gb, a.is_active, a.notes = password, quota_gb, is_active, notes
-        a.email = _alias_email(a.username, use_alias, alias)
-        # Additional alias addresses (one per line); normalize to newline-separated.
+        # Group/shared mailbox is always <name>@domain; all its addresses are aliases.
+        # Users keep the single-custom-alias (old address) behaviour.
+        a.email = f"{a.username}@{DEFAULT_DOMAIN}" if a.kind == "shared" else _alias_email(a.username, use_alias, alias)
+        # Alias addresses (one per line); normalize to newline-separated.
         a.extra_aliases = "\n".join(
             e.strip() for e in extra_aliases.replace(",", "\n").splitlines() if e.strip()
         )
