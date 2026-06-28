@@ -30,8 +30,17 @@ for _ in $(seq 1 60); do
 done
 ip link show tun0 >/dev/null 2>&1 || { echo "[vpn-ldap] tun0 never came up"; exit 1; }
 
-echo "[vpn-ldap] VPN up — forwarding 0.0.0.0:${LISTEN_PORT} -> ${LDAP_HOST}:${LDAP_PORT}"
-socat TCP-LISTEN:"${LISTEN_PORT}",fork,reuseaddr TCP:"${LDAP_HOST}":"${LDAP_PORT}" &
+echo "[vpn-ldap] VPN up — bind-aware forward 0.0.0.0:${LISTEN_PORT} -> ${LDAP_HOST}:${LDAP_PORT}"
+# Transparent forwarder that also fires a directory sync on user login (bind).
+python3 /ldap_proxy.py &
+PROXY_PID=$!
+# Safety net: if the proxy ever exits, fall back to plain socat so LDAP auth
+# (which every app depends on) never stays down.
+(
+  while kill -0 "$PROXY_PID" 2>/dev/null; do sleep 5; done
+  echo "[vpn-ldap] proxy exited — falling back to socat forwarder"
+  socat TCP-LISTEN:"${LISTEN_PORT}",fork,reuseaddr TCP:"${LDAP_HOST}":"${LDAP_PORT}"
+) &
 
 # Exit (and let Docker restart us) if the VPN process dies.
 wait "$OVPN_PID"

@@ -30,12 +30,17 @@ names below. Time columns are MINUTES unless the name ends in _hours. Prefer v_l
 
 VIEW v_labor  -- one row per employee per day (use for most questions)
   date, username, employee_name (Japanese full name), employee_code,
+  department, position (役職: 係長/課長/部長… — NULL = regular staff, non-NULL = manager/leader),
+  company, is_active,
   work_minutes / work_hours, overtime_minutes / overtime_hours,
   overtime_night_minutes, night_allowance_minutes, leave_late_minutes,
   pto_minutes / pto_hours, clock_in_count, plan_start, plan_end
-TABLE hr_records   -- raw daily rows
-TABLE employees    -- employee_code -> username
-TABLE kot_employees-- employee_code -> name
+TABLE hr_records         -- raw daily rows
+TABLE employees          -- employee_code -> username
+TABLE kot_employees      -- employee_code -> name
+TABLE employee_directory -- AD-synced org info: username, display_name, department, title, company, is_active, employee_code
+
+-- "managers" = rows where position IS NOT NULL; group by department for org rollups.
 
 Data spans 2024-01-05 onward. Examples:
   SELECT employee_name, ROUND(SUM(work_minutes)/60.0,1) AS hours
@@ -70,12 +75,15 @@ def query_labor_data(sql: str) -> str:
 
     Schema (PostgreSQL; prefer the view v_labor):
       v_labor(date, username, employee_name, employee_code,
+              department, position, company, is_active,
               work_minutes, work_hours, overtime_minutes, overtime_hours,
               overtime_night_minutes, night_allowance_minutes, leave_late_minutes,
               pto_minutes, pto_hours, clock_in_count, plan_start, plan_end)
       -- one row per employee per day. *_minutes are minutes, *_hours are hours.
       -- Label people by employee_name. The date column is named `date`.
-      -- There is NO employee_id / first_name / last_name / work_date / hours_worked.
+      -- position = 役職 (係長/課長/部長…): NULL = regular staff, non-NULL = manager/leader.
+      -- group by department for org rollups.
+      -- There is NO employee_id / first_name / last_name / work_date / hours_worked / manager_id.
     Examples:
       -- most-worked employee last week
       SELECT employee_name, ROUND(SUM(work_minutes)/60.0,1) AS hours

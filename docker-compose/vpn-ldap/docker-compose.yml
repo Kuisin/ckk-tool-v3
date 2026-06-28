@@ -25,7 +25,38 @@ services:
       - LDAP_HOST=${LDAP_HOST:?set LDAP_HOST in .env}   # LDAP/AD server as seen via the VPN
       - LDAP_PORT=${LDAP_PORT:-389}
       - LISTEN_PORT=389
+      # On a user login (bind that is not the service account) the forwarder POSTs
+      # here so ldap-sync refreshes that user. LDAP_APP_DN (to skip) comes from ldap.env.
+      - SYNC_TRIGGER_URL=http://ldap-sync:8088/sync
+    env_file:
+      - ./ldap.env         # provides LDAP_APP_DN for the bind-aware forwarder
     volumes:
       - ./vpn:/vpn:ro      # config.ovpn (CA + tls-auth); credentials come from .env
-    # No explicit networks → joins this stack's default network (vpn-ldap_default).
-    # Apps that need LDAP attach to that network as an external network.
+    networks:
+      - default            # vpn-ldap_default (apps + ldap-sync attach here)
+
+  # AD/LDAP -> PostgreSQL employee directory sync. Periodic full sync + an HTTP
+  # trigger (POST /sync, /sync/<user>) the forwarder calls on login. Writes the
+  # shared `employee_directory` table (read by Metabase / v_labor / future apps).
+  ldap-sync:
+    build: ./sync
+    image: ckk-ldap-sync
+    container_name: ldap-sync
+    restart: unless-stopped
+    depends_on:
+      - vpn-ldap
+    environment:
+      # kot-db (shared DB Metabase reads). Set in .env (gitignored).
+      - DATABASE_URL=${LDAP_SYNC_DB_URL:?set LDAP_SYNC_DB_URL in .env}
+      - LDAP_SYNC_INTERVAL_SECONDS=${LDAP_SYNC_INTERVAL_SECONDS:-21600}
+    env_file:
+      - ./ldap.env       # LDAP_SERVER_HOST / LDAP_APP_DN / LDAP_APP_PASSWORD / base
+    networks:
+      - default          # reach vpn-ldap:389
+      - kot              # reach kot-db (kot-import_default)
+
+networks:
+  default:
+  kot:
+    external: true
+    name: kot-import_default
