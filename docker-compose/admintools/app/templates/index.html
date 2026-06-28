@@ -269,7 +269,12 @@
       <div id="sync-preview-body"><div class="muted">読み込み中…</div></div>
       <form method="post" action="/sync" id="sync-form"
             onsubmit="document.getElementById('sync-modal').style.display='none'; setTimeout(poll,1000)">
-        <label style="display:flex;align-items:center;gap:8px;margin:14px 0 4px;color:#b91c1c;font-size:13px">
+        <label style="display:flex;align-items:center;gap:8px;margin:12px 0 2px;font-size:13px">
+          <input type="checkbox" name="sync_all_passwords" value="true">
+          全ユーザーのパスワードを Sakura に同期（低速・通常は不要）
+        </label>
+        <p class="muted" style="margin:0 0 8px">変更したパスワードは毎回自動で同期されます。これは全件の強制同期です。</p>
+        <label style="display:flex;align-items:center;gap:8px;margin:8px 0 4px;color:#b91c1c;font-size:13px">
           <input type="checkbox" name="remove" value="true" id="sync-remove">
           リストにない Sakura のメールボックスを削除する（危険・取り消し不可）
         </label>

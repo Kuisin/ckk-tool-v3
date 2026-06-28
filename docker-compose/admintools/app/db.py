@@ -42,6 +42,9 @@ class MailAccount(Base):
     # Additional alias emails for this mailbox (newline/comma-separated). Lets one
     # group/mailbox be reached at multiple addresses (besides the primary `email`).
     extra_aliases: Mapped[str] = mapped_column(Text, default="")
+    # Set when the password is changed in adminTools; the sync pushes it to Sakura
+    # then clears it. Avoids re-pushing every password on every sync.
+    password_dirty: Mapped[bool] = mapped_column(Boolean, default=False)
     created_at: Mapped["DateTime"] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped["DateTime"] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
@@ -72,6 +75,9 @@ def init_db() -> None:
         ))
         conn.execute(text(
             "ALTER TABLE mail_accounts ADD COLUMN IF NOT EXISTS extra_aliases TEXT NOT NULL DEFAULT ''"
+        ))
+        conn.execute(text(
+            "ALTER TABLE mail_accounts ADD COLUMN IF NOT EXISTS password_dirty BOOLEAN NOT NULL DEFAULT FALSE"
         ))
         # Categorize existing rows by username prefix (once).
         conn.execute(text("""

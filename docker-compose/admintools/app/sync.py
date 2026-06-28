@@ -226,14 +226,57 @@ def _capture_to_log():
         sys.stdout = old
 
 
-def _run(headless: bool, remove_not_on_list: bool) -> None:
+def _dirty_usernames() -> set:
+    with SessionLocal() as s:
+        return {u for (u,) in s.query(MailAccount.username).filter(
+            MailAccount.is_active.is_(True), MailAccount.password_dirty.is_(True)).all()}
+
+
+def _clear_dirty(username: str) -> None:
+    try:
+        with SessionLocal() as s:
+            a = s.query(MailAccount).filter_by(username=username).first()
+            if a:
+                a.password_dirty = False
+                s.commit()
+    except Exception:  # noqa: BLE001
+        pass
+
+
+def _sync_passwords(page, users, dirty: set, force_all: bool) -> int:
+    """Push the DB password to Sakura for changed accounts (or all if force_all).
+    Each per-user update is isolated so one failure can't stall the rest."""
+    targets = [u for u in users if (force_all or u.username in dirty) and u.password]
+    if not targets:
+        print("パスワード変更なし — スキップ")
+        return 0
+    page.goto(adduser.USER_LIST_URL, wait_until="load", timeout=60000)
+    adduser._wait_for_list_ready(page)
+    adduser._set_user_list_page_size(page, adduser.LIST_PAGE_SIZE)
+    time.sleep(0.5)
+    updated = 0
+    for i, user in enumerate(targets, 1):
+        print(f"[{i}/{len(targets)}] パスワード更新: {user.username}")
+        try:
+            ok = adduser._update_existing_user_password_via_settings(page, user)
+        except Exception as e:  # noqa: BLE001
+            print(f"  失敗: {user.username}: {str(e)[:60]}")
+            ok = False
+        if ok:
+            updated += 1
+            _clear_dirty(user.username)
+    return updated
+
+
+def _run(headless: bool, remove_not_on_list: bool, sync_all_passwords: bool = False) -> None:
     sid = os.environ.get("SAKURA_ID", "").strip()
     spw = os.environ.get("SAKURA_PW", "").strip()
     if not sid or not spw:
         _log("ERROR: SAKURA_ID / SAKURA_PW not set in .env — cannot sync.")
         return
     users, aliases = _load_from_db()
-    steps = 4 if remove_not_on_list else 3
+    dirty = _dirty_usernames()
+    steps = 5 if remove_not_on_list else 4
     _log("===== 同期開始 =====")
     _log(f"DB: 有効ユーザー {len(users)}件 / エイリアス {len(aliases)}件")
     if remove_not_on_list:
@@ -256,10 +299,20 @@ def _run(headless: bool, remove_not_on_list: bool) -> None:
             _log(f"[{n}/{steps}] ✓ 削除処理 完了")
 
         n += 1
-        _log(f"[{n}/{steps}] ユーザーを作成・更新中…（{len(users)}件）")
+        _log(f"[{n}/{steps}] メールボックスを作成中…（{len(users)}件・既存は変更しません）")
         with _capture_to_log():
-            adduser.add_users_on_page(page, users, update_existing_password=True)
-        _log(f"[{n}/{steps}] ✓ ユーザー処理 完了")
+            # update_existing_password=False: only CREATE missing mailboxes; never
+            # touch an existing mailbox's password (that would reset users' real
+            # passwords and is very slow). New accounts still get their DB password.
+            adduser.add_users_on_page(page, users, update_existing_password=False)
+        _log(f"[{n}/{steps}] ✓ メールボックス処理 完了")
+
+        n += 1
+        pw_n = len(users) if sync_all_passwords else len(dirty)
+        _log(f"[{n}/{steps}] パスワードを同期中…（{pw_n}件・{'全件' if sync_all_passwords else '変更分のみ'}）")
+        with _capture_to_log():
+            upd = _sync_passwords(page, users, dirty, sync_all_passwords)
+        _log(f"[{n}/{steps}] ✓ パスワード {upd}件 更新")
 
         n += 1
         _log(f"[{n}/{steps}] エイリアスを作成中…（{len(aliases)}件）")
@@ -272,7 +325,8 @@ def _run(headless: bool, remove_not_on_list: bool) -> None:
     _log("===== 同期完了 =====")
 
 
-def start_sync(headless: bool = True, remove_not_on_list: bool = True) -> bool:
+def start_sync(headless: bool = True, remove_not_on_list: bool = True,
+               sync_all_passwords: bool = False) -> bool:
     with _lock:
         if _state["running"]:
             return False
@@ -282,7 +336,7 @@ def start_sync(headless: bool = True, remove_not_on_list: bool = True) -> bool:
     def runner():
         ok = True
         try:
-            _run(headless, remove_not_on_list)
+            _run(headless, remove_not_on_list, sync_all_passwords)
         except Exception as e:  # noqa: BLE001
             ok = False
             _log(f"SYNC FAILED: {e}")

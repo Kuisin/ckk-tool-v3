@@ -345,6 +345,8 @@ def update_account(
         a = s.get(MailAccount, account_id)
         if not a:
             raise HTTPException(404)
+        if password and password != a.password:
+            a.password_dirty = True  # changed in adminTools -> push to Sakura on next sync
         a.password, a.quota_gb, a.is_active, a.notes = password, quota_gb, is_active, notes
         # Group/shared mailbox is always <name>@domain; all its addresses are aliases.
         # Users keep the single-custom-alias (old address) behaviour.
@@ -390,9 +392,10 @@ def sync_check_status():
 
 
 @app.post("/sync")
-def trigger_sync(remove: bool = Form(False)):
+def trigger_sync(remove: bool = Form(False), sync_all_passwords: bool = Form(False)):
     # remove deletes Sakura mailboxes not in the DB — OFF unless explicitly opted in.
-    sync.start_sync(remove_not_on_list=remove)
+    # sync_all_passwords pushes every password (slow); otherwise only changed ones.
+    sync.start_sync(remove_not_on_list=remove, sync_all_passwords=sync_all_passwords)
     return RedirectResponse("/email", status_code=303)
 
 
