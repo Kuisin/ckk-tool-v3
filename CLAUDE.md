@@ -57,6 +57,8 @@ pnpm prisma db push                  # dev-only
 
 **Jobs** — BullMQ backed by Valkey. AD → PostgreSQL employee sync runs as a repeatable job. Monthly billing closing also runs as a BullMQ job.
 
+**Doc intake / OCR** — Customer order PDFs (incl. scans) are imported via email (imapflow), a watched folder, or upload, then extracted to structured JSON by the **self-hosted** `po-extract` API in the `ai-stack` (no external API/keys): `POST /extract` (multipart: `file` PDF/image + `schema` JSON Schema string + optional `prompt`) → JSON; `GET /healthz`. It renders PDF pages at 300 DPI and fills the schema with the **qwen2.5vl** vision model on Ollama. Powers the AI-first 受注請書 intake (scan image + auto-filled form → user confirms; on extraction failure, the user enters every field from scratch).
+
 **Search** — PGroonga extension on PostgreSQL (not a separate service).
 
 **Logging** — App logs via pino → Loki. Row-level audit via `audit_logs` (before_data / after_data JSON). System events (login, PDF generation, CSV export) in `system_logs`. Nginx access logs → Loki via Alloy. Alerts in Grafana.
@@ -91,6 +93,8 @@ ssh 192.168.50.15 'cd ~/stacks/nextjs-web && docker compose up -d --build'
 
 Dry-run the rsync first (`rsync -avn …`) to confirm the file set. The Dockerfile builds Next.js `output: "standalone"`; PDF templates under `src/pdf-templates/` reach the runtime image via `outputFileTracingIncludes` in `next.config.ts` (file tracing can't follow `fs.readFile` paths). `pnpm install --frozen-lockfile` runs in-build, so never let the lockfile drift.
 
-**nextjs-web topology** — host `:3001` → container `:3000` (3000 is taken by open-webui). Public access `https://dev.kai-lab.net` via the `cloudflared` stack; LAN TLS via `nginx-proxy`; both reach the app over the auto-created `nextjs-web_default` network at `http://web:3000`. PDF generation uses the in-stack `gotenberg` service at `http://gotenberg:3000` (`GOTENBERG_URL`).
+**nextjs-web topology** — host `:3001` → container `:3000` (3000 is taken by open-webui). Public access `https://dev.kai-lab.net` via the `cloudflared` stack; LAN TLS via `nginx-proxy`; both reach the app over the auto-created `nextjs-web_default` network at `http://web:3000`. PDF generation uses the in-stack `gotenberg` service at `http://gotenberg:3000` (`GOTENBERG_URL`); generated PDFs persist in the in-stack `seaweedfs` filer (`SEAWEED_FILER_URL=http://seaweedfs:8888`).
+
+**Cross-stack services** — the `ai-stack` runs `ollama` (`:11434`, local models) and `po-extract` (`:8000`, the document→JSON extractor, model `qwen2.5vl`); `metabase` (`:3003`, OSS, postgres app DB) holds the BI dashboards. To let `nextjs-web` call `po-extract`, attach it to the `ai-stack` network (external, like `metabase` joins `ldap`/`kot`) and use `http://po-extract:8000` — it is **not** reachable cross-stack by default.
 
 **Manage / verify** — `docker ps`, `docker compose logs -f <svc>`, `docker compose restart <svc>`, `docker compose up -d --build` (rebuild after source change). Health/smoke-test from inside the network, e.g. `docker exec nextjs-web node -e 'fetch("http://127.0.0.1:3000/...")...'`. Postgres-backed stacks (`metabase-db`, `ckk-legacy-db`, `kot-db`, `admintools-db`) are siblings — back up with `docker exec <db> pg_dump` and restore with `pg_restore`/`psql` before mutating live data.

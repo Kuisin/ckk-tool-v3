@@ -96,7 +96,9 @@ Date/Time:      date-fns v4（tree-shakeable）
 HTTP Client:    Ky
 File Storage:   SeaweedFS（Apache 2.0）
 Doc Intake:     imapflow（IMAP） + BullMQ（ファイル監視）
-OCR/Extraction: Gemini 2.5 Flash
+OCR/Extraction: ローカルLLM（self-hosted）— ai-stack の po-extract API
+                （FastAPI /extract: PDF/画像 + JSON Schema → 構造化JSON）。
+                Vision モデル qwen2.5vl を Ollama で実行。外部API・キー不要。
 Notification:   nodemailer + Nextcloud API + SSE
 Job Runner:     BullMQ
 Cache:          Valkey
