@@ -57,7 +57,12 @@ pnpm prisma db push                  # dev-only
 
 **Jobs** — BullMQ backed by Valkey. AD → PostgreSQL employee sync runs as a repeatable job. Monthly billing closing also runs as a BullMQ job.
 
-**Doc intake / OCR** — Customer order PDFs (incl. scans) are imported via email (imapflow), a watched folder, or upload, then extracted to structured JSON by the **self-hosted** `po-extract` API in the `ai-stack` (no external API/keys): `POST /extract` (multipart: `file` PDF/image + `schema` JSON Schema string + optional `prompt`) → JSON; `GET /healthz`. It renders PDF pages at 300 DPI and fills the schema with the **qwen2.5vl** vision model on Ollama. Powers the AI-first 受注請書 intake (scan image + auto-filled form → user confirms; on extraction failure, the user enters every field from scratch).
+**Doc intake / OCR** — Customer order PDFs (incl. scans) are imported via email (imapflow), a watched folder, or upload, then extracted to structured JSON by the **self-hosted** `po-extract` API in the `ai-stack` (no external API/keys; `qwen2.5vl` vision model on Ollama, PDF pages rendered at 300 DPI). Endpoints:
+- `POST /extract/<doc_type>` (multipart: `file` + optional `prompt`) — uses a **built-in schema** per type. Types: `order-request` (受注請書 intake — the primary one), `quote`, `invoice`, `delivery-note`, `purchase-order`. Each schema matches the v3 data model.
+- `POST /extract` — same, but the caller supplies its own `schema` (JSON Schema string) for ad-hoc shapes.
+- `GET /healthz` (status + model + types), `GET /schemas` (the built-in schemas).
+
+Powers the AI-first 受注請書 intake (scan image + auto-filled form → user confirms; on extraction failure, the user enters every field from scratch). Source: `docker-compose/ai-stack/extractor/app.py`.
 
 **Search** — PGroonga extension on PostgreSQL (not a separate service).
 

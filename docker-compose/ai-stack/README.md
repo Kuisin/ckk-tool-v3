@@ -80,17 +80,28 @@ separately if the Open WebUI accounts/history matter.
 
 ## PDF extraction endpoint
 
-`po-extract` exposes `POST /extract` (multipart): a `file` (PDF or image), a
-`schema` field (a JSON Schema string describing the desired output), and an
-optional `prompt` override. It renders up to `MAX_PAGES` (5) PDF pages at 300 DPI,
-sends them to the vision model with `format=<schema>`, and returns parsed JSON.
-`GET /healthz` reports status and the active model.
+`po-extract` renders up to `MAX_PAGES` (5) PDF pages at 300 DPI and asks the
+vision model to fill a JSON Schema (`format=<schema>`), returning parsed JSON.
+
+**Typed methods (built-in schemas)** — `POST /extract/<doc_type>` (multipart:
+`file` + optional `prompt`). No schema needed; each type's schema matches the v3
+data model. Types: `order-request` (受注請書 intake — primary), `quote`,
+`invoice`, `delivery-note`, `purchase-order`.
+
+```bash
+curl -s -X POST http://192.168.50.15:8000/extract/order-request -F file=@order.pdf
+```
+
+**Ad-hoc** — `POST /extract` with a caller-supplied `schema` (JSON Schema string):
 
 ```bash
 curl -s http://192.168.50.15:8000/extract \
-  -F file=@order.pdf \
-  -F 'schema={"type":"object","properties":{"po_number":{"type":["string","null"]},"total":{"type":["number","null"]}}}'
+  -F file=@doc.pdf \
+  -F 'schema={"type":"object","properties":{"po_number":{"type":["string","null"]}}}'
 ```
+
+`GET /healthz` reports status + model + available `document_types`; `GET /schemas`
+returns the built-in schemas.
 
 From the Next.js app, point at `http://<docker-mac-pro>:8000` (or the `ollama`
 host directly at `:11434` for plain chat/completions).
