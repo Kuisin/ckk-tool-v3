@@ -3,3 +3,7 @@ uvicorn[standard]==0.34.0
 python-multipart==0.0.20
 httpx==0.28.1
 PyMuPDF==1.25.1
+# OCR: PaddleOCR's PP-OCR models on ONNXRuntime (RapidOCR). PaddlePaddle's native
+# inference SIGSEGVs on this host; RapidOCR runs the same models, stable in Docker.
+rapidocr-onnxruntime==1.3.24
+onnxruntime==1.19.2
