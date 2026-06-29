@@ -22,9 +22,14 @@ services:
       - GOTENBERG_URL=http://gotenberg:3000
       # Generated-PDF storage (view/download) → SeaweedFS filer.
       - SEAWEED_FILER_URL=http://seaweedfs:8888
+      # Document extraction (受注請書 AI取込) → po-extract on the ai-stack network.
+      - PO_EXTRACT_URL=http://po-extract:8000
     depends_on:
       - gotenberg
       - seaweedfs
+    networks:
+      - default
+      - aistack
     ports:
       - "3001:3000"
     healthcheck:
@@ -69,3 +74,11 @@ services:
 
 volumes:
   seaweed-data:
+
+networks:
+  # Stack-local network (web ↔ gotenberg ↔ seaweedfs).
+  default:
+  # ai-stack network — lets `web` reach the po-extract document extractor.
+  aistack:
+    external: true
+    name: ai-stack_default

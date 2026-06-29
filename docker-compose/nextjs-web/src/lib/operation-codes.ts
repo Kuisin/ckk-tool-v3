@@ -113,7 +113,7 @@ export const OPERATION_CODES: OperationCodeEntry[] = [
   // ─── 販売 (SA) ───────────────────────────────────────────────────────────
   ...makeResource("販売", "SA", "1", "価格表", "/sales/price-lists"),
   ...makeResource("販売", "SA", "2", "見積書", "/sales/quotes"),
-  ...makeResource("販売", "SA", "3", "注文受諾書", "/sales/order-acceptances"),
+  ...makeResource("販売", "SA", "3", "受注請書", "/sales/order-acceptances"),
   ...makeResource("販売", "SA", "4", "設計依頼書", "/sales/design-requests"),
   ...makeResource("販売", "SA", "5", "試算", "/sales/trial-estimates"),
 

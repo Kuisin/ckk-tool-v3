@@ -8,8 +8,8 @@ export default async function SalesOrderAcceptancesEditPage({
   const { id } = await params;
   return (
     <PlaceholderPage
-      breadcrumbs={["販売", "注文受諾書", id]}
-      title="注文受諾書 編集"
+      breadcrumbs={["販売", "受注請書", id]}
+      title="受注請書 編集"
     />
   );
 }

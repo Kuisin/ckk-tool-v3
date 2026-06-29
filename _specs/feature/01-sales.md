@@ -43,20 +43,20 @@
 
 ### 機能概要
 
-顧客注文書受領から注文受諾書作成、価格差異照合。
+顧客注文書受領から受注請書作成、価格差異照合。
 
 ### 画面
 
 | パス | 内容 |
 |------|------|
-| `/sales/order-acceptances` | 注文受諾書一覧（ステータス・顧客フィルタ） |
-| `/sales/order-acceptances/new` | 注文受諾書新規作成 |
-| `/sales/order-acceptances/[id]` | 注文受諾書詳細（注文書 PDF 表示含む） |
-| `/sales/order-acceptances/[id]/edit` | 注文受諾書編集 |
+| `/sales/order-acceptances` | 受注請書一覧（ステータス・顧客フィルタ） |
+| `/sales/order-acceptances/new` | 受注請書新規作成 |
+| `/sales/order-acceptances/[id]` | 受注請書詳細（注文書 PDF 表示含む） |
+| `/sales/order-acceptances/[id]/edit` | 受注請書編集 |
 
 ### 主要機能
 
-- 注文受諾書採番: `ORD-YYYYMM-NNNNN`
+- 受注請書採番: `ORD-YYYYMM-NNNNN`
 - 注文書 PDF アップロード・添付（SeaweedFS）
 - 合計金額の自動計算: 受注書の製品・本数・単価から自動集計（手動編集不可）
 - 価格差異自動照合: 注文価格と見積価格の比較、差異時は担当者へ通知（SSE / メール）
@@ -91,7 +91,7 @@
 
 ### 主要機能
 
-- 受注書採番: `ORD-YYYYMM-NNNNN-NN`（注文受諾書コード + 連番）
+- 受注書採番: `ORD-YYYYMM-NNNNN-NN`（受注請書コード + 連番）
 - 受注書 PDF 生成: `app/api/pdf/sales-order/route.ts`
 - ロット番号割当: 通し連番（指示書番号と共用）
 - 指示書ワークフロービルダー: 工程マスタから工程を選択し順序・同期設定

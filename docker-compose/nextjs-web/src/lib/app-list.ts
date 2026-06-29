@@ -59,7 +59,7 @@ export const appList: AppEntry[] = [
   },
   {
     key: "order-acceptances",
-    label: "注文受諾書",
+    label: "受注請書",
     operationCode: "SA03",
     href: "/sales/order-acceptances",
     icon: "IconClipboardCheck",

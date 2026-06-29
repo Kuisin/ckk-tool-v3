@@ -369,7 +369,7 @@ Table quote_items {
 }
 
 // ===========================
-// 注文受諾書（§2）ORD-YYYYMM-NNNNN
+// 受注請書（§2）ORD-YYYYMM-NNNNN
 // ===========================
 
 Table order_acceptances {

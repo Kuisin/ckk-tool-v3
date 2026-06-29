@@ -271,7 +271,7 @@ Operation codes provide keyboard-shortcut navigation. Format: `{CAT}{MODE}{IDX}`
 | 共通 | — | ダッシュボード | CM00 | — | — |
 | 販売 | 1 | 価格表 | SA01 | SA11 | SA21 |
 | 販売 | 2 | 見積書 | SA02 | SA12 | SA22 |
-| 販売 | 3 | 注文受諾書 | SA03 | SA13 | SA23 |
+| 販売 | 3 | 受注請書 | SA03 | SA13 | SA23 |
 | 販売 | 4 | 設計依頼書 | SA04 | SA14 | SA24 |
 | 販売 | 5 | 試算 | SA05 | SA15 | SA25 |
 | 購買 | 1 | 素材入荷 | PU01 | PU11 | PU21 |
@@ -348,7 +348,7 @@ Stack (gap="xl", p="md", maw={1200})
 |-----|------|
 | 価格表 | `IconCurrencyYen` |
 | 見積書 | `IconFileText` |
-| 注文受諾書 | `IconClipboardCheck` |
+| 受注請書 | `IconClipboardCheck` |
 | 設計依頼書 | `IconRuler2` |
 | 試算 | `IconCalculator` |
 | 素材入荷 | `IconPackageImport` |
@@ -1126,7 +1126,7 @@ Use these exact terms consistently across all UI strings, error messages, and no
 | Concept | Japanese term | Abbreviation/code |
 |---------|---------------|-------------------|
 | 見積書 | 見積書 | QOT |
-| 注文受諾書 | 注文受諾書 | ORD |
+| 受注請書 | 受注請書 | ORD |
 | 受注書 | 受注書 | ORD-...-NN |
 | 指示書 | 指示書 | — (serial int) |
 | 出荷書 | 出荷書 | — |
@@ -1153,7 +1153,7 @@ Use these exact terms consistently across all UI strings, error messages, and no
 | キャンセル | キャンセル | CANCELLED |
 | 差し戻し | 差し戻し | REJECTED |
 
-Do **not** use synonyms — e.g. never write "注文書" where "注文受諾書" is meant.
+Do **not** use synonyms — e.g. never write "注文書" where "受注請書" is meant.
 
 ### 17.2 敬語 / Tone
 
