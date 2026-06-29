@@ -57,7 +57,7 @@ pnpm prisma db push                  # dev-only
 
 **Jobs** — BullMQ backed by Valkey. AD → PostgreSQL employee sync runs as a repeatable job. Monthly billing closing also runs as a BullMQ job.
 
-**Doc intake / OCR** — Customer order PDFs (incl. scans) are imported via email (imapflow), a watched folder, or upload, then extracted to structured JSON by the **self-hosted** `po-extract` API in the `ai-stack` (no external API/keys; `qwen2.5vl` vision model on Ollama, PDF pages rendered at 300 DPI). Endpoints:
+**Doc intake / OCR** — Customer order PDFs (incl. scans) are imported via email (imapflow), a watched folder, or upload, then extracted to structured JSON by the **self-hosted** `po-extract` API in the `ai-stack` (no external API/keys). It runs a **3-stage hybrid pipeline** for accuracy: (1) an **OCR** text layer from PaddleOCR's PP-OCR models on **ONNXRuntime** (RapidOCR — PaddlePaddle's native inference SIGSEGVs on this Xeon host, so the same models run via ONNX), (2) a **vision-model** transcription (`qwen2.5vl`), then (3) an **LLM** that cross-checks both readings and emits the schema JSON (+ non-destructive numeric reconciliation). Both model stages default to one resident model so the GPU never swaps mid-request (~48s/doc). Endpoints:
 - `POST /extract/<doc_type>` (multipart: `file` + optional `prompt`) — uses a **built-in schema** per type. Types: `order-request` (受注請書 intake — the primary one), `quote`, `invoice`, `delivery-note`, `purchase-order`. Each schema matches the v3 data model.
 - `POST /extract` — same, but the caller supplies its own `schema` (JSON Schema string) for ad-hoc shapes.
 - `GET /healthz` (status + model + types), `GET /schemas` (the built-in schemas).

@@ -97,8 +97,9 @@ HTTP Client:    Ky
 File Storage:   SeaweedFS（Apache 2.0）
 Doc Intake:     imapflow（IMAP） + BullMQ（ファイル監視）
 OCR/Extraction: ローカルLLM（self-hosted）— ai-stack の po-extract API
-                （FastAPI /extract: PDF/画像 + JSON Schema → 構造化JSON）。
-                Vision モデル qwen2.5vl を Ollama で実行。外部API・キー不要。
+                （FastAPI /extract: PDF/画像 → 構造化JSON）。3段ハイブリッド:
+                ①OCR（PP-OCRモデルをONNXRuntime=RapidOCRで実行）+ ②Vision
+                転写（qwen2.5vl）→ ③LLMがJSON生成。外部API・キー不要。
 Notification:   nodemailer + Nextcloud API + SSE
 Job Runner:     BullMQ
 Cache:          Valkey

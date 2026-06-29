@@ -184,7 +184,7 @@ export function OrderRequestIntake({ manual = false }: { manual?: boolean }) {
               <Loader />
               <Text fw={600}>AIが読み取り中…</Text>
               <Text c="dimmed" size="sm">
-                ローカルLLM（qwen2.5vl）で解析しています（約30秒）
+                OCR + Vision + LLM で解析しています（約1分）
               </Text>
             </Stack>
           </Center>

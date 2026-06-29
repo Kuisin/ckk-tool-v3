@@ -80,8 +80,17 @@ separately if the Open WebUI accounts/history matter.
 
 ## PDF extraction endpoint
 
-`po-extract` renders up to `MAX_PAGES` (5) PDF pages at 300 DPI and asks the
-vision model to fill a JSON Schema (`format=<schema>`), returning parsed JSON.
+`po-extract` runs a **3-stage hybrid pipeline** (raises accuracy on noisy scans):
+1. **OCR** text layer — PaddleOCR's PP-OCR models on **ONNXRuntime** (`rapidocr-onnxruntime`).
+   PaddlePaddle's native inference SIGSEGVs on this Xeon host (reproducible across
+   2.5.2/2.6.2, protobuf-pinned, single-opencv, OpenMP env), so the same models run via ONNX.
+2. **Vision** transcription of the page image — `qwen2.5vl` on Ollama.
+3. **LLM** structuring — cross-checks the OCR + vision readings and fills the JSON
+   Schema (`format=<schema>`), plus non-destructive numeric reconciliation.
+
+Both model stages default to one resident model (`STRUCT_MODEL` = `MODEL`) so the GPU
+never swaps mid-request (~48s/doc). Env: `MODEL`, `STRUCT_MODEL`, `OCR_ENABLED`,
+`RENDER_DPI` (200), `MAX_PAGES` (5), `OLLAMA_KEEP_ALIVE`.
 
 **Typed methods (built-in schemas)** — `POST /extract/<doc_type>` (multipart:
 `file` + optional `prompt`). No schema needed; each type's schema matches the v3
