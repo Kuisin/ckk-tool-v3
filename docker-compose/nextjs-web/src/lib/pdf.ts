@@ -12,7 +12,7 @@
  * pre-formats numbers/dates and supplies trusted, internal data).
  */
 
-import { readFile } from "node:fs/promises";
+import { readdir, readFile } from "node:fs/promises";
 import path from "node:path";
 
 const TEMPLATES_DIR = path.join(process.cwd(), "src", "pdf-templates");
@@ -90,6 +90,12 @@ export async function renderPdf(
   );
   // Upload base.css so `<link rel="stylesheet" href="base.css">` resolves.
   form.append("files", new Blob([css], { type: "text/css" }), "base.css");
+  // Upload SVG assets (e.g. the CKK logo) so `<img src="logo.svg">` resolves.
+  for (const asset of await readdir(TEMPLATES_DIR)) {
+    if (!asset.toLowerCase().endsWith(".svg")) continue;
+    const svg = await readFile(path.join(TEMPLATES_DIR, asset), "utf8");
+    form.append("files", new Blob([svg], { type: "image/svg+xml" }), asset);
+  }
   // A4 (210mm × 297mm); Gotenberg otherwise defaults to US Letter.
   form.append("paperWidth", "210mm");
   form.append("paperHeight", "297mm");

@@ -39,6 +39,18 @@ body {
   gap: 16pt;
 }
 
+/* Brand block: CKK logo + document title, grouped at the header's top-left. */
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 14pt;
+}
+
+.brand-logo {
+  height: 46pt;
+  width: auto;
+}
+
 .doc-title {
   font-size: 22pt;
   font-weight: bold;
