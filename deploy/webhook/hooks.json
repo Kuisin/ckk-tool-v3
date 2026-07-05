@@ -1,0 +1,20 @@
+[
+  {
+    "id": "deploy-nextjs-web",
+    "execute-command": "/opt/ckk/deploy/deploy.sh",
+    "command-working-directory": "/opt/ckk/deploy",
+    "pass-arguments-to-command": [
+      { "source": "payload", "name": "ref" },
+      { "source": "payload", "name": "sha" }
+    ],
+    "response-message": "deploy accepted",
+    "include-command-output-in-response": false,
+    "trigger-rule": {
+      "match": {
+        "type": "payload-hmac-sha256",
+        "secret": "REPLACE_WITH_DEPLOY_WEBHOOK_SECRET",
+        "parameter": { "source": "header", "name": "X-Hub-Signature-256" }
+      }
+    }
+  }
+]

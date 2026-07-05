@@ -1,0 +1,44 @@
+name: Deploy nextjs-web
+
+# Fires on every commit to main. Sends an HMAC-signed webhook to the Linux
+# server, which pulls, builds, and restarts the nextjs-web compose service.
+# Server-side receiver + deploy script live in deploy/webhook/ (see deploy/README.md).
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# One deploy at a time; a newer commit supersedes an in-flight trigger.
+concurrency:
+  group: deploy-nextjs
+  cancel-in-progress: true
+
+jobs:
+  trigger:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger deploy webhook
+        env:
+          URL: ${{ secrets.DEPLOY_WEBHOOK_URL }}
+          SECRET: ${{ secrets.DEPLOY_WEBHOOK_SECRET }}
+        run: |
+          set -euo pipefail
+          if [ -z "${URL:-}" ] || [ -z "${SECRET:-}" ]; then
+            echo "::error::DEPLOY_WEBHOOK_URL and DEPLOY_WEBHOOK_SECRET repo secrets must be set."
+            exit 1
+          fi
+          payload=$(jq -nc \
+            --arg ref "$GITHUB_REF" \
+            --arg sha "$GITHUB_SHA" \
+            --arg actor "$GITHUB_ACTOR" \
+            '{ref:$ref, sha:$sha, actor:$actor}')
+          sig="sha256=$(printf '%s' "$payload" \
+            | openssl dgst -sha256 -hmac "$SECRET" -hex \
+            | sed 's/^.*= //')"
+          echo "Triggering deploy for $GITHUB_SHA"
+          curl -fsS --max-time 30 --retry 3 --retry-delay 5 -X POST "$URL" \
+            -H 'Content-Type: application/json' \
+            -H "X-Hub-Signature-256: $sig" \
+            --data "$payload"
+          echo "Webhook accepted."
