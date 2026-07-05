@@ -41,8 +41,6 @@ services:
       # models most users run. @4 the 32b grows to 38GB and spans both cards.
       # Each slot is one KV-cache copy (slot KV = context).
       - OLLAMA_NUM_PARALLEL=2
-    ports:
-      - "11434:11434"
 
   open-webui:
     image: ghcr.io/open-webui/open-webui:main
@@ -90,8 +88,6 @@ services:
       - ../vpn-ldap/ldap.env
     volumes:
       - open-webui:/app/backend/data
-    ports:
-      - "3000:8080"
     networks:
       - default     # ai-stack_default (ollama, searxng)
       - ldap        # vpn-ldap_default — reach vpn-ldap:389 (segmented)
@@ -119,8 +115,6 @@ services:
     environment:
       - OLLAMA_URL=http://ollama:11434
       - MODEL=qwen2.5vl
-    ports:
-      - "8000:8000"
 
   # Metabase MCP server (read-only labor data) exposed to Open WebUI as an
   # OpenAPI tool server via mcpo. Replaces the hand-rolled metabase_labor tool.
@@ -136,8 +130,6 @@ services:
       - METABASE_API_KEY=${METABASE_API_KEY:-}
       # Protects the mcpo OpenAPI endpoints; Open WebUI sends it as the bearer token.
       - MCPO_API_KEY=${MCPO_API_KEY:-}
-    ports:
-      - "8011:8000"
     networks:
       - default     # ai-stack_default — reachable by open-webui
 

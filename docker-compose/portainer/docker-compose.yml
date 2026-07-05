@@ -15,8 +15,6 @@ services:
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - portainer-data:/data
-    ports:
-      - "5001:5001"          # LAN access (same URL Dockge used)
     networks:
       dockge:
         aliases:
