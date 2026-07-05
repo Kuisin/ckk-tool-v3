@@ -12,13 +12,20 @@ LAN port `192.168.50.15:15432`, in-cluster host `shared-db:5432`).
 | `kot` | hr_records, employees, kot_employees, kot_match_review, import_runs, `v_labor` view | kot-import, admintools (role `kot`) |
 | `directory` | employee_directory, ldap_sync_log | vpn-ldap ldap-sync (role `ldap_sync`) |
 | `admintools` | mail_accounts, group_members | admintools (role `admintools`) |
-| `auth` `master` `bp` `sales` `production` `inventory` `shipping` `billing` `design` `sys` `log` | ckk-tool-v3 business tables (_specs/tables.md), incl. `auth.user_permissions` view | nextjs-web (role `app`) |
+| `auth` `master` `bp` `sales` `sys` | ckk-tool-v3 business tables (_specs/tables.md §1 sales MVP: 試算 → 価格表 → 見積書 + master-data deps), incl. `auth.user_permissions` view | nextjs-web (role `app`) |
 | `public` | pass-through compat views only (`sql/metabase-compat.sql`) | — (Metabase reads via `kot_ro`) |
+
+The v3 business scope is deliberately **minimal** (migration
+`trim_to_sales_core`): only 試算 (`sales.estimates` + `estimate_tiers`), 価格表
+(`sales.price_list_entries` + `price_list_tiers`), 見積書 (`sales.quotes` +
+`quote_items`) and their dependencies (`master.*`, `bp.*` customer side,
+`sys.files` / `numbering_sequences`, `auth.*`). Downstream domains
+(production / inventory / shipping / billing / design / log, 受注請書以降) are
+re-added table-by-table when their feature lands.
 
 Cross-schema FKs are real (e.g. `sales.quotes → bp.business_partners`,
 `kot.hr_records → kot.employees`). Deliberately **no** FK from `kot.employees`
-to `directory.employee_directory` (2 legacy usernames absent from AD) and none
-on the polymorphic `inventory.inventory_*.inventory_id` / `log.*.user_id`.
+to `directory.employee_directory` (2 legacy usernames absent from AD).
 
 ## Editing models (the only supported workflow)
 
