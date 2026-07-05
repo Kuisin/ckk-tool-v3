@@ -1,21 +1,25 @@
 // Prisma client singleton (shared DB `ckk`, role `app`).
 // Schema source of truth: <repo>/shared-db/prisma/schema — synced here via
 // `pnpm db:sync-schema`, client generated with `pnpm db:generate`.
-import { PrismaPg } from '@prisma/adapter-pg'
-import { PrismaClient } from '../../generated/client/client'
+import { PrismaPg } from "@prisma/adapter-pg";
+import { PrismaClient } from "../../generated/client/client";
 
-const globalForPrisma = globalThis as unknown as { prisma?: PrismaClient }
+// Re-export the generated namespace (enums, Prisma.DbNull, input types) so
+// feature code never needs the ../../generated relative path.
+export { Prisma } from "../../generated/client/client";
+
+const globalForPrisma = globalThis as unknown as { prisma?: PrismaClient };
 
 function createClient() {
-  const connectionString = process.env.DATABASE_URL
+  const connectionString = process.env.DATABASE_URL;
   if (!connectionString) {
-    throw new Error('DATABASE_URL is not set')
+    throw new Error("DATABASE_URL is not set");
   }
-  return new PrismaClient({ adapter: new PrismaPg({ connectionString }) })
+  return new PrismaClient({ adapter: new PrismaPg({ connectionString }) });
 }
 
-export const prisma = globalForPrisma.prisma ?? createClient()
+export const prisma = globalForPrisma.prisma ?? createClient();
 
-if (process.env.NODE_ENV !== 'production') {
-  globalForPrisma.prisma = prisma
+if (process.env.NODE_ENV !== "production") {
+  globalForPrisma.prisma = prisma;
 }
