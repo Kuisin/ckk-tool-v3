@@ -50,7 +50,7 @@ import {
   PRODUCTS,
 } from "@/lib/mock";
 import { calcTrialPricing } from "@/lib/trial-pricing";
-import { getTrialEstimate } from "../trial-estimates/mock";
+import { getTrialEstimate } from "../trial-estimates/fixtures";
 import {
   entryKey,
   findEntriesByCustomerProduct,

@@ -6,6 +6,8 @@
  *
  * Flow (試算 → 価格表 → 見積書): DRAFT は「確定」で CONFIRMED になり、
  * 「価格表に登録」で数量区分ごとの価格表になる（REGISTERED でロック）。
+ * Backed by sales.estimates via the server page; status transitions persist
+ * through Server Actions.
  */
 
 import {
@@ -26,34 +28,35 @@ import {
   IconCheck,
   IconCopy,
   IconCurrencyYen,
+  IconHistory,
   IconInfoCircle,
   IconLink,
 } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useState, useTransition } from "react";
+import { confirmTrialEstimate } from "@/app/(dashboard)/sales/trial-estimates/actions";
 import { DocNumber } from "@/components/ui/DocNumber";
+import { EmptyState } from "@/components/ui/EmptyState";
 import { FieldValue } from "@/components/ui/FieldValue";
 import { MoneyText } from "@/components/ui/MoneyText";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import {
-  type AuditEntry,
-  AuditTimeline,
   DetailShell,
   ResourceActions,
   SummaryGrid,
 } from "@/components/ui/shells";
 import { formatDateTime } from "@/lib/format";
 import { getPriceHistory } from "@/lib/material-pricing";
+import type { Option } from "@/lib/mock";
 import { ORDER_TYPE_LABEL } from "@/lib/mock";
 import { calcTrialPricing, TOOL_TYPE_OPTIONS } from "@/lib/trial-pricing";
-import { MOCK_PRICE_ENTRIES } from "../price-lists/mock";
 import { ConvertToPriceListModal } from "./ConvertToPriceListModal";
 import { MaterialPriceChart } from "./MaterialPriceChart";
-import {
-  type EstimateStatus,
-  getTrialEstimate,
-  MOCK_TRIAL_ESTIMATES,
-} from "./mock";
+import type {
+  ExistingEntryRef,
+  LinkedPriceEntry,
+  TrialEstimateRecord,
+} from "./types";
 
 const BASE_PATH = "/sales/trial-estimates";
 const toolLabel = (v: string) =>
@@ -70,44 +73,43 @@ const BREAKDOWN_ROWS = [
   ["検査成績書", "inspection"],
 ] as const;
 
-// TODO(server): fetch audit_logs for this 試算.
-const MOCK_AUDIT: AuditEntry[] = [
-  {
-    id: 1,
-    action: "UPDATE",
-    user: "鈴木",
-    at: "2026/05/29 09:40",
-    detail: "ステータス: 確定 → 価格表登録済",
-  },
-  {
-    id: 2,
-    action: "CREATE",
-    user: "鈴木",
-    at: "2026/05/28 10:15",
-    detail: "試算を作成",
-  },
-];
-
-export function TrialEstimateDetail({ id }: { id: string }) {
+export function TrialEstimateDetail({
+  record,
+  linkedEntries,
+  customerOptions,
+  productOptions,
+  existingEntries,
+}: {
+  record: TrialEstimateRecord;
+  linkedEntries: LinkedPriceEntry[];
+  customerOptions: Option[];
+  productOptions: Option[];
+  existingEntries: ExistingEntryRef[];
+}) {
   const router = useRouter();
-  const record = getTrialEstimate(id) ?? MOCK_TRIAL_ESTIMATES[0];
   const result = calcTrialPricing(record.input);
   const history = getPriceHistory(record.materialId);
   const [convertOpen, setConvertOpen] = useState(false);
-  // TODO(server-action): status transitions persist server-side.
-  const [status, setStatus] = useState<EstimateStatus>(record.status);
-
-  // この試算から登録された価格表（REGISTERED のとき）。
-  const linkedEntries = MOCK_PRICE_ENTRIES.filter(
-    (e) => e.estimateId === record.id,
-  );
+  const [, startTransition] = useTransition();
+  const status = record.status;
 
   const confirm = () => {
-    setStatus("CONFIRMED");
-    notifications.show({
-      title: "確定しました",
-      message: "「価格表に登録」で数量区分ごとの価格表を作成できます",
-      color: "green",
+    startTransition(async () => {
+      const res = await confirmTrialEstimate(record.estimateNumber);
+      if (res.ok) {
+        notifications.show({
+          title: "確定しました",
+          message: "「価格表に登録」で数量区分ごとの価格表を作成できます",
+          color: "green",
+        });
+        router.refresh();
+      } else {
+        notifications.show({
+          title: "エラー",
+          message: res.error,
+          color: "red",
+        });
+      }
     });
   };
 
@@ -137,7 +139,7 @@ export function TrialEstimateDetail({ id }: { id: string }) {
             {
               label: "複製して再試算",
               icon: <IconCopy size={14} />,
-              onClick: () => router.push(`${BASE_PATH}/new`),
+              onClick: () => router.push(`${BASE_PATH}/new?from=${record.id}`),
             },
           ]}
         />
@@ -290,7 +292,7 @@ export function TrialEstimateDetail({ id }: { id: string }) {
                       size="sm"
                     >
                       {e.customerName} × {e.productName}（
-                      {ORDER_TYPE_LABEL[e.orderType]}・{e.tiers.length}段階）
+                      {ORDER_TYPE_LABEL[e.orderType]}・{e.tierCount}段階）
                     </Anchor>
                   ))}
                 </Stack>
@@ -312,15 +314,21 @@ export function TrialEstimateDetail({ id }: { id: string }) {
         </Tabs.Panel>
 
         <Tabs.Panel pt="md" value="audit">
-          <AuditTimeline entries={MOCK_AUDIT} />
+          <EmptyState
+            icon={<IconHistory size={24} />}
+            message="変更履歴はまだ記録されていません"
+          />
         </Tabs.Panel>
       </Tabs>
 
       <ConvertToPriceListModal
+        customerOptions={customerOptions}
         estimate={record}
+        existingEntries={existingEntries}
         onClose={() => setConvertOpen(false)}
-        onRegistered={() => setStatus("REGISTERED")}
+        onRegistered={() => router.refresh()}
         opened={convertOpen}
+        productOptions={productOptions}
       />
     </DetailShell>
   );

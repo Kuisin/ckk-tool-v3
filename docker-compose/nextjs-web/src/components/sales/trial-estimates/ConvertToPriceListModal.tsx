@@ -8,6 +8,9 @@
  * 側で設定する。The user picks the 製品 / 注文種別 / 有効期間; the modal always
  * warns if a price list for the same 顧客・製品 already exists. Registering
  * locks the 試算 (価格表登録済) — re-price via 複製して再試算.
+ *
+ * Persists via registerPriceListFromEstimate (entry + default tier + REGISTERED
+ * flip in one transaction).
  */
 
 import { Alert, Checkbox, NumberInput, Select, Text } from "@mantine/core";
@@ -19,7 +22,8 @@ import {
   IconInfoCircle,
 } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useTransition } from "react";
+import { registerPriceListFromEstimate } from "@/app/(dashboard)/sales/trial-estimates/actions";
 import { FieldValue } from "@/components/ui/FieldValue";
 import { HelpLabel } from "@/components/ui/HelpLabel";
 import {
@@ -28,31 +32,31 @@ import {
   openConfirm,
 } from "@/components/ui/modals";
 import { formatMoney } from "@/lib/format";
-import {
-  CUSTOMERS,
-  ORDER_TYPE_LABEL,
-  ORDER_TYPE_OPTIONS,
-  PRODUCTS,
-} from "@/lib/mock";
+import type { Option } from "@/lib/mock";
+import { ORDER_TYPE_LABEL, ORDER_TYPE_OPTIONS } from "@/lib/mock";
 import { calcTrialPricing } from "@/lib/trial-pricing";
-import {
-  entryKey,
-  findEntriesByCustomerProduct,
-  requiresEndDate,
-} from "../price-lists/mock";
-import type { TrialEstimateRecord } from "./mock";
+import { requiresEndDate } from "../price-lists/mock";
+import type { ExistingEntryRef, TrialEstimateRecord } from "./types";
 
 export function ConvertToPriceListModal({
   opened,
   onClose,
   estimate,
+  customerOptions,
+  productOptions,
+  existingEntries,
   onRegistered,
 }: ModalBaseProps & {
   estimate: TrialEstimateRecord | null;
-  /** Called after登録 — the caller flips the 試算 to REGISTERED. */
+  customerOptions: Option[];
+  productOptions: Option[];
+  /** All current (顧客, 製品, 注文種別) identities — duplicate warnings. */
+  existingEntries: ExistingEntryRef[];
+  /** Called after登録 — the caller refreshes the 試算 view. */
   onRegistered?: () => void;
 }) {
   const router = useRouter();
+  const [isPending, startTransition] = useTransition();
   const [customerId, setCustomerId] = useState<string | null>(
     estimate?.customerId ?? null,
   );
@@ -102,7 +106,9 @@ export function ConvertToPriceListModal({
   };
 
   const needsEnd = requiresEndDate(orderType);
-  const existing = findEntriesByCustomerProduct(customerId, productId);
+  const existing = existingEntries.filter(
+    (e) => e.customerBpId === customerId && e.productId === productId,
+  );
   const dup = existing.some((e) => e.orderType === orderType);
 
   const handleClose = () => {
@@ -116,9 +122,11 @@ export function ConvertToPriceListModal({
 
   return (
     <FormModal
+      loading={isPending}
       onClose={handleClose}
       onSubmit={(e) => {
         e.preventDefault();
+        if (!estimate) return;
         if (
           !(customerId && productId && validFrom) ||
           (needsEnd && !validUntil)
@@ -130,20 +138,34 @@ export function ConvertToPriceListModal({
           );
           return;
         }
-        // TODO(server-action): create the price_list entry — 基準単価
-        // (baseUnitPrice) + 既定 tier (1本〜 ×1.00) — link estimate_id and
-        // flip the 試算 to REGISTERED.
-        notifications.show({
-          title: "価格表に登録しました",
-          message: "試算は「価格表登録済」となりました",
-          color: "green",
+        startTransition(async () => {
+          const result = await registerPriceListFromEstimate({
+            estimateNumber: estimate.estimateNumber,
+            customerBpId: customerId,
+            productId,
+            orderType: orderType as "PRODUCTION" | "TEST" | "SAMPLE" | "OTHER",
+            baseUnitPrice,
+            validFrom,
+            validUntil,
+          });
+          if (result.ok) {
+            notifications.show({
+              title: "価格表に登録しました",
+              message: "試算は「価格表登録済」となりました",
+              color: "green",
+            });
+            onRegistered?.();
+            handleClose();
+            // 作成した価格表の詳細（ビュー）ページへ。
+            router.push(`/sales/price-lists/${result.data.entryId}`);
+          } else {
+            notifications.show({
+              title: "エラー",
+              message: result.error,
+              color: "red",
+            });
+          }
         });
-        onRegistered?.();
-        handleClose();
-        // 作成した価格表の詳細（ビュー）ページへ。
-        router.push(
-          `/sales/price-lists/${entryKey(customerId, productId, orderType)}`,
-        );
       }}
       opened={opened}
       size="lg"
@@ -157,7 +179,7 @@ export function ConvertToPriceListModal({
         </Text>
       )}
       <Select
-        data={CUSTOMERS}
+        data={customerOptions}
         error={error && !customerId ? "顧客を選択してください" : undefined}
         label="顧客"
         onChange={setCustomerId}
@@ -167,7 +189,7 @@ export function ConvertToPriceListModal({
         withAsterisk
       />
       <Select
-        data={PRODUCTS}
+        data={productOptions}
         error={error && !productId ? "製品を選択してください" : undefined}
         label="製品"
         onChange={setProductId}

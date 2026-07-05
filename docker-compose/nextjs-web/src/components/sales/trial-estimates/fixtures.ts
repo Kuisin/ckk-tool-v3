@@ -1,41 +1,11 @@
 /**
- * mock.ts — saved 試算 (見積試算) demo records + helpers.
+ * fixtures.ts — 試算 demo records (test fixtures).
  *
- * A record snapshots the full calc input plus the chosen material + reference
- * price, so the detail page can recompute deterministically via
- * `calcTrialPricing`. MIGRATION NOTE: replace with `trial_estimates` (+items).
+ * Formerly the screen mock; the SA05 screens now read sales.estimates via
+ * Prisma. Kept ONLY as deterministic fixtures for the pricing unit tests.
  */
 
-import type { TrialInput } from "@/lib/trial-pricing";
-
-/**
- * 試算 lifecycle — DRAFT: 編集可 / CONFIRMED: 計算確定・価格表登録可 /
- * REGISTERED: 価格表登録済（ロック — 複製して再試算）.
- */
-export type EstimateStatus = "DRAFT" | "CONFIRMED" | "REGISTERED";
-
-export interface TrialEstimateRecord {
-  id: string;
-  /** 試算番号 EST-YYYYMM-NNNNN（採番は server-action で）. */
-  estimateNumber: string;
-  name: string;
-  status: EstimateStatus;
-  customerId: string | null;
-  customerName: string | null;
-  materialId: string;
-  materialLabel: string;
-  /** Full calc input snapshot (materialBarPrice = chosen reference price). */
-  input: TrialInput;
-  /** Date of the purchase point used as the reference price. */
-  referenceDate: string;
-  /** True when the material price was set manually (not from the policy). */
-  isCustomPrice: boolean;
-  /** 価格表登録日時（REGISTERED のみ）. */
-  registeredAt: string | null;
-  createdBy: string;
-  createdAt: string;
-  updatedAt: string;
-}
+import type { TrialEstimateRecord } from "./types";
 
 export const MOCK_TRIAL_ESTIMATES: TrialEstimateRecord[] = [
   {
