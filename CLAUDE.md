@@ -82,6 +82,8 @@ Powers the AI-first 受注請書 intake (scan image + auto-filled form → user 
 
 ## Deployment & Remote Server
 
+**Branch → environment (deploy to dev first, always)** — All work lands on `dev` and is **deployed to `dev.kai-lab.net` first** for verification. Promotion to production is by **PR `dev` → `main`**; `main` deploys to a **versioned host under `*.ckk.kai-lab.net`** (e.g. `v0-1-0.ckk.kai-lab.net`, from `package.json#version`). Never deploy straight to `main`/production — verify on `dev.kai-lab.net`, then open the PR. `nextjs-web` deployment is being migrated to **Coolify** (git-push auto-deploy per branch: `dev`→`dev.kai-lab.net`, `main`→`*.ckk.kai-lab.net`); the other stacks still use the rsync + rebuild flow below.
+
 **Server** — `192.168.50.15` (hostname `docker-mac-pro`; despite the name it runs Linux — Ubuntu noble / t2 kernel). Access: `ssh 192.168.50.15` (key-based, user `kaiseisawada`). All services run as Docker Compose stacks orchestrated by **Dockge**, one dir per stack under `~/stacks/` on the server: `nextjs-web`, `metabase`, `ai-stack`, `monitoring`, `vpn-ldap`, `kot-import`, `admintools`, `nginx-proxy`, `cloudflared`, `portainer`.
 
 **Source ↔ server** — Each `~/stacks/<stack>` mirrors `docker-compose/<stack>` in this repo, but the **server copies are not git repos** and there is no deploy script/CI. Deploy = rsync the source up, then rebuild. The server's `.env` holds secrets and lives **only on the server** — never overwrite or delete it (always `--exclude '.env'`).
