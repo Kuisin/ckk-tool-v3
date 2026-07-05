@@ -35,6 +35,7 @@ function toFormValues(d: OrderRequest) {
   return {
     customer_name: s(d.customer_name),
     customer_branch: s(d.customer_branch),
+    customer_contact: s(d.customer_contact),
     customer_order_ref: s(d.customer_order_ref),
     order_date: s(d.order_date),
     desired_delivery_date: s(d.desired_delivery_date),
@@ -42,14 +43,19 @@ function toFormValues(d: OrderRequest) {
     payment_terms: s(d.payment_terms),
     items: items.map((it) => ({
       product_name: s(it.product_name),
+      product_code: s(it.product_code),
+      version: s(it.version),
+      customization: s(it.customization),
       order_type: s(it.order_type),
       quantity: n(it.quantity),
       unit: s(it.unit),
       unit_price: n(it.unit_price),
       amount: n(it.amount),
       delivery_date: s(it.delivery_date),
+      ship_to: s(it.ship_to),
     })),
     subtotal: n(d.subtotal),
+    tax_rate: n(d.tax_rate),
     tax_amount: n(d.tax_amount),
     total_amount: n(d.total_amount),
     notes: s(d.notes),
@@ -57,6 +63,42 @@ function toFormValues(d: OrderRequest) {
 }
 
 export type OrderRequestFormValues = ReturnType<typeof toFormValues>;
+
+const backS = (v: string): string | null => (v.trim() === "" ? null : v.trim());
+const backN = (v: number | ""): number | null => (v === "" ? null : v);
+
+/** Form values → OrderRequest (empty strings / "" numbers back to null). */
+export function fromFormValues(v: OrderRequestFormValues): OrderRequest {
+  return {
+    customer_name: backS(v.customer_name),
+    customer_branch: backS(v.customer_branch),
+    customer_contact: backS(v.customer_contact),
+    customer_order_ref: backS(v.customer_order_ref),
+    order_date: backS(v.order_date),
+    desired_delivery_date: backS(v.desired_delivery_date),
+    delivery_location: backS(v.delivery_location),
+    payment_terms: backS(v.payment_terms),
+    items: v.items.map((it) => ({
+      product_name: backS(it.product_name),
+      product_code: backS(it.product_code),
+      version: backS(it.version),
+      customization: backS(it.customization),
+      order_type: backS(it.order_type),
+      quantity: backN(it.quantity),
+      unit: backS(it.unit),
+      unit_price: backN(it.unit_price),
+      amount: backN(it.amount),
+      delivery_date: backS(it.delivery_date),
+      ship_to: backS(it.ship_to),
+      notes: null,
+    })),
+    subtotal: backN(v.subtotal),
+    tax_rate: backN(v.tax_rate),
+    tax_amount: backN(v.tax_amount),
+    total_amount: backN(v.total_amount),
+    notes: backS(v.notes),
+  };
+}
 
 export function OrderRequestForm({
   initial,
@@ -85,12 +127,16 @@ export function OrderRequestForm({
             {...form.getInputProps("customer_branch")}
           />
           <TextInput
+            label="先方担当者"
+            {...form.getInputProps("customer_contact")}
+          />
+          <TextInput
             label="顧客注文書番号"
             {...form.getInputProps("customer_order_ref")}
           />
           <TextInput
             label="注文日"
-            placeholder="例: 2026/02/16"
+            placeholder="例: 2026-02-16"
             {...form.getInputProps("order_date")}
           />
           <TextInput
@@ -109,17 +155,21 @@ export function OrderRequestForm({
       </FormSection>
 
       <FormSection title="明細">
-        <Table.ScrollContainer minWidth={680}>
+        <Table.ScrollContainer minWidth={1180}>
           <Table withTableBorder>
             <Table.Thead>
               <Table.Tr>
                 <Table.Th>品名</Table.Th>
+                <Table.Th w={120}>品番</Table.Th>
+                <Table.Th w={80}>版数</Table.Th>
+                <Table.Th w={140}>カスタム</Table.Th>
                 <Table.Th w={120}>注文種別</Table.Th>
                 <Table.Th w={90}>数量</Table.Th>
                 <Table.Th w={70}>単位</Table.Th>
                 <Table.Th w={120}>単価</Table.Th>
                 <Table.Th w={130}>金額</Table.Th>
                 <Table.Th w={120}>納期</Table.Th>
+                <Table.Th w={140}>届け先</Table.Th>
                 <Table.Th w={44} />
               </Table.Tr>
             </Table.Thead>
@@ -129,6 +179,20 @@ export function OrderRequestForm({
                   <Table.Td>
                     <TextInput
                       {...form.getInputProps(`items.${i}.product_name`)}
+                    />
+                  </Table.Td>
+                  <Table.Td>
+                    <TextInput
+                      {...form.getInputProps(`items.${i}.product_code`)}
+                    />
+                  </Table.Td>
+                  <Table.Td>
+                    <TextInput {...form.getInputProps(`items.${i}.version`)} />
+                  </Table.Td>
+                  <Table.Td>
+                    <TextInput
+                      placeholder="追加加工等"
+                      {...form.getInputProps(`items.${i}.customization`)}
                     />
                   </Table.Td>
                   <Table.Td>
@@ -166,6 +230,12 @@ export function OrderRequestForm({
                     />
                   </Table.Td>
                   <Table.Td>
+                    <TextInput
+                      placeholder="直送先"
+                      {...form.getInputProps(`items.${i}.ship_to`)}
+                    />
+                  </Table.Td>
+                  <Table.Td>
                     <ActionIcon
                       aria-label="明細を削除"
                       color="red"
@@ -190,12 +260,17 @@ export function OrderRequestForm({
           明細を追加
         </GhostButton>
 
-        <SimpleGrid cols={{ base: 1, sm: 3 }} mt="md" spacing="sm">
+        <SimpleGrid cols={{ base: 1, sm: 4 }} mt="md" spacing="sm">
           <NumberInput
             label="小計"
             prefix="¥"
             thousandSeparator=","
             {...form.getInputProps("subtotal")}
+          />
+          <NumberInput
+            label="税率"
+            suffix="%"
+            {...form.getInputProps("tax_rate")}
           />
           <NumberInput
             label="消費税"
@@ -230,11 +305,15 @@ export function OrderRequestForm({
 function emptyToForm() {
   return {
     product_name: "",
+    product_code: "",
+    version: "",
+    customization: "",
     order_type: "",
     quantity: "" as number | "",
     unit: "",
     unit_price: "" as number | "",
     amount: "" as number | "",
     delivery_date: "",
+    ship_to: "",
   };
 }

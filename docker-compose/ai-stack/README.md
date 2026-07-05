@@ -97,6 +97,16 @@ never swaps mid-request (~48s/doc). Env: `MODEL`, `STRUCT_MODEL`, `OCR_ENABLED`,
 data model. Types: `order-request` (受注請書 intake — primary), `quote`,
 `invoice`, `delivery-note`, `purchase-order`.
 
+Output guarantees: every schema key is always present (`required` +
+`additionalProperties: false` in the grammar-constrained format); enum fields
+are constrained (e.g. item `order_type` ∈ PRODUCTION/TEST/SAMPLE/OTHER);
+full-width ASCII is normalized to half-width; date-like fields come back as ISO
+`YYYY-MM-DD` (2026年2月16日 and 令和/平成/昭和 era dates are converted); money
+fields are reconciled non-destructively (amount = qty × unit price, tax from
+total − subtotal or `tax_rate`). `order-request` items also carry `version`,
+`customization` and `ship_to` so the app can group 指示書 per product & version
+/ customization / delivery date / ship-to.
+
 ```bash
 curl -s -X POST http://192.168.50.15:8000/extract/order-request -F file=@order.pdf
 ```
