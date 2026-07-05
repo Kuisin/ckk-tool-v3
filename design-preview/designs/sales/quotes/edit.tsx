@@ -126,7 +126,7 @@ export default function QuoteEditPage() {
 
       <FormSection title="明細" description="価格表から自動生成されます。単価は自動入力、必要に応じて値引きを入力してください。">
         <Alert variant="light" color="blue" icon={<IconInfoCircle size={16} />} mb="md">
-          顧客・製品・注文種別・本数から価格表を解決し、単価・金額を自動算出します。値引きは必要時のみ入力してください。
+          顧客・製品・注文種別・本数から価格表（試算で確定した単価）を解決し、単価・金額を自動算出します。値引きは必要時のみ入力してください。該当する価格表がない場合は試算（SA05）から登録してください。
         </Alert>
         {isMobile ? (
           <Stack gap="sm">

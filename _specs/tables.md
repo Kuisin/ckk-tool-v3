@@ -281,6 +281,53 @@ Table products {
 ### Logic
 ```
 // ===========================
+// 試算（§1）EST-YYYYMM-NNNNN
+// ===========================
+
+// 原価計算 → 数量区分別単価。確定後に価格表として登録する（フロー起点）。
+Table estimates {
+  id              uuid [pk]
+  estimate_number varchar [unique, not null]
+  customer_bp_id  uuid [not null, ref: > business_partners.id]
+  product_id      varchar [not null, ref: > products.id]
+  order_type      ORDER_TYPE [not null]
+  material_id     varchar [ref: > materials.id]
+  material_unit_cost numeric(12,2) [not null, default: 0]  // 材料費（/本）
+  machining_minutes  numeric(8,2) [not null, default: 0]   // 加工時間（分/本）
+  machining_rate     numeric(12,2) [not null, default: 0]  // 加工レート（¥/時）
+  outsource_cost     numeric(12,2) [not null, default: 0]  // 外注費（/本）
+  setup_cost         numeric(12,2) [not null, default: 0]  // 段取り費（固定・ロット按分）
+  margin_rate        numeric(5,2) [not null, default: 30]  // 利益率（%）
+  currency        varchar [not null, default: 'JPY']
+  status          ESTIMATE_STATUS [not null, default: 'DRAFT']
+  registered_at   timestamp                    // 価格表登録日時
+  notes           text
+  created_by      uuid [ref: > users.id]
+  created_at      timestamp
+  updated_at      timestamp
+}
+
+Enum ESTIMATE_STATUS {
+  DRAFT           // 下書き
+  CONFIRMED       // 確定（計算確定・登録可能）
+  REGISTERED      // 価格表登録済
+}
+
+// 数量区分ごとの計算結果 = 価格表候補行
+// 原価/本 = 材料費 + 加工時間/60×レート + 外注費 + 段取り費/min_quantity
+// 単価   = 原価 ÷ (1 − 利益率)（10円単位切り上げ、手動調整可）
+Table estimate_tiers {
+  id              uuid [pk]
+  estimate_id     uuid [not null, ref: > estimates.id]
+  min_quantity    int [not null]
+  max_quantity    int                          // null = 上限なし
+  unit_cost       numeric(12,2) [not null]     // 原価/本（自動計算）
+  unit_price      numeric(12,2) [not null]     // 単価（自動計算 → 手動調整可）
+  price_list_id   uuid [ref: > price_lists.id] // 価格表登録後に紐付け
+  sort_order      int [not null, default: 0]
+}
+
+// ===========================
 // 価格表（§1）
 // ===========================
 
@@ -296,6 +343,7 @@ Table price_list_entries {
   currency        varchar [not null, default: 'JPY']
   valid_from      date [not null]
   valid_until     date                         // null = 無期限
+  estimate_id     uuid [ref: > estimates.id]   // 試算元（手動登録時は null）
   is_active       boolean [default: true]
   created_by      uuid [ref: > users.id]
   created_at      timestamp
@@ -1313,6 +1361,7 @@ Table files {
 // ===========================
 
 // 採番フォーマット:
+//   EST-YYYYMM-NNNNN（試算）
 //   QOT-YYYYMM-NNNNN（見積書）
 //   ORD-YYYYMM-NNNNN（注文受取書）
 //   ORD-YYYYMM-NNNNN-NN（受注書）
@@ -1320,8 +1369,8 @@ Table files {
 //   INV-YYYYMM-NNNNN（請求書）
 //   指示書・ロット番号: 通し連番 (int)
 Table numbering_sequences {
-  key             varchar [pk]            // QUOTE, ORDER_ACCEPT, DELIVERY, INVOICE
-  prefix          varchar [not null]      // QOT, ORD, DRN, INV
+  key             varchar [pk]            // ESTIMATE, QUOTE, ORDER_ACCEPT, DELIVERY, INVOICE
+  prefix          varchar [not null]      // EST, QOT, ORD, DRN, INV
   last_year_month varchar                 // YYYYMM（月次リセット用）
   last_sequence   int [not null, default: 0]
   updated_at      timestamp
