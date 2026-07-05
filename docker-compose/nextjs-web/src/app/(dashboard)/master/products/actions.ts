@@ -4,7 +4,7 @@
  * Server Actions — 製品マスタ (MS03).
  *
  * 製品コードは PRD-YYYYMM-NNNN の自動採番（lib/numbering.ts →
- * sys.numbering_sequences）。spec はキー/値ペアの自由構造 JSON。
+ * app.numbering_sequences）。spec はキー/値ペアの自由構造 JSON。
  */
 
 import { revalidatePath } from "next/cache";
