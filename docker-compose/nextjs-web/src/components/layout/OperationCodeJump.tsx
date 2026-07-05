@@ -48,10 +48,15 @@ export function OperationCodeJump({
 
   const options = searchOperationCodes(value);
 
-  useHotkeys([["mod+/", () => {
-    if (inputRef.current?.offsetParent === null) return;
-    inputRef.current?.focus();
-  }]]);
+  useHotkeys([
+    [
+      "mod+/",
+      () => {
+        if (inputRef.current?.offsetParent === null) return;
+        inputRef.current?.focus();
+      },
+    ],
+  ]);
 
   function jump(raw: string) {
     const entry = navigateByOperationCode(raw, {
@@ -134,7 +139,11 @@ export function OperationCodeJump({
       <Combobox.Dropdown
         hidden={options.length === 0}
         mah={compact ? { base: "min(280px, 50dvh)", md: undefined } : undefined}
-        miw={compact ? { base: "min(240px, calc(100vw - 2rem))", md: undefined } : undefined}
+        miw={
+          compact
+            ? { base: "min(240px, calc(100vw - 2rem))", md: undefined }
+            : undefined
+        }
       >
         <Combobox.Options>
           {options.map((entry) => (

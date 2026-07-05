@@ -2,8 +2,8 @@
 #
 # The Next.js app itself is built and run by Coolify (git-push deploy from
 # github.com/Kuisin/ckk-tool-v3, base dir docker-compose/nextjs-web):
-#   branch dev  -> app published on host :3004 -> https://dev.kai-lab.net
-#   branch main -> app published on host :3005 -> https://v{X-Y-Z}.ckk.kai-lab.net
+#   branch dev  -> app published on host :3004 -> https://ckk-dev.kai-lab.net
+#   branch main -> app published on host :3005 -> https://ckk.kai-lab.net
 # Coolify apps run on the external `coolify` network; they reach gotenberg /
 # seaweedfs here (both attached to `coolify`), shared-db and po-extract on
 # their own stacks (also attached to `coolify`).

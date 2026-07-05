@@ -250,7 +250,12 @@ export function AppLauncher({ onNavigate }: AppLauncherProps) {
                           key={app.key}
                           onClick={onNavigate}
                         >
-                          <Paper className="launcher-app-card" h="100%" radius="md" withBorder>
+                          <Paper
+                            className="launcher-app-card"
+                            h="100%"
+                            radius="md"
+                            withBorder
+                          >
                             <Stack align="center" gap="sm">
                               <ThemeIcon
                                 color={cat.color}

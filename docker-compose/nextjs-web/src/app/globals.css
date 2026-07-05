@@ -180,9 +180,7 @@ body {
   .form-section .mantine-SimpleGrid-root {
     align-items: stretch;
   }
-  .form-section
-    .mantine-SimpleGrid-root
-    > *:has(> .mantine-Input-wrapper) {
+  .form-section .mantine-SimpleGrid-root > *:has(> .mantine-Input-wrapper) {
     display: flex;
     flex-direction: column;
   }

@@ -1,22 +1,33 @@
 "use client";
 
 /**
- * ConvertToPriceListModal — 試算 → 価格表 変換.
+ * ConvertToPriceListModal — 試算 → 価格表 登録（CONFIRMED → REGISTERED）.
  *
- * Creates a new 価格表 entry from a saved 試算: the lot tiers become 数量範囲 →
- * 単価 (= 見積単価, which already reflects any custom 掛け率). The user picks the
- * 製品 / 注文種別 / 有効期間; the modal always warns if a price list for the same
- * 顧客・製品 already exists.
+ * 価格表は必ず試算から作成する。試算の見積単価が 基準単価 になり、そのまま使う
+ * か手動で上書きできる。数量ごとの価格（×倍率）と値引きルールは登録後に価格表
+ * 側で設定する。The user picks the 製品 / 注文種別 / 有効期間; the modal always
+ * warns if a price list for the same 顧客・製品 already exists. Registering
+ * locks the 試算 (価格表登録済) — re-price via 複製して再試算.
  */
 
-import { Alert, Select, Table, Text } from "@mantine/core";
+import { Alert, Checkbox, NumberInput, Select, Text } from "@mantine/core";
 import { DatePickerInput } from "@mantine/dates";
 import { notifications } from "@mantine/notifications";
-import { IconAlertTriangle, IconCalendar } from "@tabler/icons-react";
+import {
+  IconAlertTriangle,
+  IconCalendar,
+  IconInfoCircle,
+} from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
-import { MoneyText } from "@/components/ui/MoneyText";
-import { FormModal, type ModalBaseProps } from "@/components/ui/modals";
+import { useEffect, useState } from "react";
+import { FieldValue } from "@/components/ui/FieldValue";
+import { HelpLabel } from "@/components/ui/HelpLabel";
+import {
+  FormModal,
+  type ModalBaseProps,
+  openConfirm,
+} from "@/components/ui/modals";
+import { formatMoney } from "@/lib/format";
 import {
   CUSTOMERS,
   ORDER_TYPE_LABEL,
@@ -35,7 +46,12 @@ export function ConvertToPriceListModal({
   opened,
   onClose,
   estimate,
-}: ModalBaseProps & { estimate: TrialEstimateRecord | null }) {
+  onRegistered,
+}: ModalBaseProps & {
+  estimate: TrialEstimateRecord | null;
+  /** Called after登録 — the caller flips the 試算 to REGISTERED. */
+  onRegistered?: () => void;
+}) {
   const router = useRouter();
   const [customerId, setCustomerId] = useState<string | null>(
     estimate?.customerId ?? null,
@@ -46,8 +62,45 @@ export function ConvertToPriceListModal({
   const [validUntil, setValidUntil] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  // Tiers from the estimate's lot results (見積単価 includes custom 掛け率).
-  const lots = estimate ? calcTrialPricing(estimate.input).lots : [];
+  // 試算の見積単価（基準）— 既定はこの値をそのまま使う。カスタム単価は
+  // 明示的なチェック（確認ポップアップ付き）でのみ有効化できる。
+  const estimatePrice = estimate
+    ? (calcTrialPricing(estimate.input).lots[0]?.estimateUnitPrice ?? 0)
+    : 0;
+  const [customPrice, setCustomPrice] = useState(false);
+  const [baseUnitPrice, setBaseUnitPrice] = useState<number>(estimatePrice);
+
+  // Re-seed when the modal opens for a (new) estimate.
+  useEffect(() => {
+    if (opened) {
+      setCustomerId(estimate?.customerId ?? null);
+      setCustomPrice(false);
+      setBaseUnitPrice(estimatePrice);
+    }
+  }, [opened, estimate, estimatePrice]);
+
+  /** カスタム単価の ON/OFF — どちらの向きも確認ポップアップを挟む。 */
+  const toggleCustomPrice = (next: boolean) => {
+    if (next) {
+      openConfirm({
+        title: "カスタム単価の使用",
+        message: `試算の見積単価（${formatMoney(estimatePrice)}）を使わず、基準単価を手動で設定します。よろしいですか？`,
+        confirmLabel: "カスタム設定する",
+        onConfirm: () => setCustomPrice(true),
+      });
+    } else {
+      openConfirm({
+        title: "試算値に戻す",
+        message: `手動で設定した基準単価を破棄し、試算の見積単価（${formatMoney(estimatePrice)}）に戻します。`,
+        confirmLabel: "試算値に戻す",
+        onConfirm: () => {
+          setCustomPrice(false);
+          setBaseUnitPrice(estimatePrice);
+        },
+      });
+    }
+  };
+
   const needsEnd = requiresEndDate(orderType);
   const existing = findEntriesByCustomerProduct(customerId, productId);
   const dup = existing.some((e) => e.orderType === orderType);
@@ -77,12 +130,15 @@ export function ConvertToPriceListModal({
           );
           return;
         }
-        // TODO(server-action): create a price_list_entry + tiers from the lots.
+        // TODO(server-action): create the price_list entry — 基準単価
+        // (baseUnitPrice) + 既定 tier (1本〜 ×1.00) — link estimate_id and
+        // flip the 試算 to REGISTERED.
         notifications.show({
-          title: "価格表を作成しました",
-          message: "試算から新しい価格表を作成しました",
+          title: "価格表に登録しました",
+          message: "試算は「価格表登録済」となりました",
           color: "green",
         });
+        onRegistered?.();
         handleClose();
         // 作成した価格表の詳細（ビュー）ページへ。
         router.push(
@@ -91,9 +147,15 @@ export function ConvertToPriceListModal({
       }}
       opened={opened}
       size="lg"
-      submitLabel="価格表を作成"
-      title="試算から価格表を作成"
+      submitLabel="価格表に登録"
+      title="価格表に登録"
     >
+      {estimate && (
+        <Text size="sm">
+          試算「{estimate.estimateNumber}
+          」の見積単価を基準単価として価格表に登録します。数量ごとの価格（×倍率）と値引きルールは登録後に価格表で設定できます。
+        </Text>
+      )}
       <Select
         data={CUSTOMERS}
         error={error && !customerId ? "顧客を選択してください" : undefined}
@@ -152,7 +214,12 @@ export function ConvertToPriceListModal({
             ? "有効終了日を選択してください"
             : undefined
         }
-        label="有効終了日"
+        label={
+          <HelpLabel
+            help="空欄で無期限。テスト・サンプルは一時価格のため終了日が必須です。"
+            label="有効終了日"
+          />
+        }
         leftSection={<IconCalendar size={14} />}
         onChange={setValidUntil}
         placeholder={needsEnd ? "日付を選択" : "空欄で無期限"}
@@ -161,29 +228,42 @@ export function ConvertToPriceListModal({
         withAsterisk={needsEnd}
       />
 
-      <div>
-        <Text c="dimmed" mb={4} size="xs">
-          価格段階（試算のロットより）
-        </Text>
-        <Table withTableBorder>
-          <Table.Thead>
-            <Table.Tr>
-              <Table.Th>数量範囲</Table.Th>
-              <Table.Th ta="right">単価</Table.Th>
-            </Table.Tr>
-          </Table.Thead>
-          <Table.Tbody>
-            {lots.map((l) => (
-              <Table.Tr key={l.lotIndex}>
-                <Table.Td>{l.quantity}本〜</Table.Td>
-                <Table.Td ta="right">
-                  <MoneyText value={l.estimateUnitPrice} />
-                </Table.Td>
-              </Table.Tr>
-            ))}
-          </Table.Tbody>
-        </Table>
-      </div>
+      <FieldValue label="見積単価（試算）" value={formatMoney(estimatePrice)} />
+      <Checkbox
+        checked={customPrice}
+        label={
+          <HelpLabel
+            help="既定では試算の見積単価をそのまま基準単価に使います。手動で別の単価を設定する場合のみチェックしてください（確認あり）。"
+            label="カスタム単価を使用（試算値を上書き）"
+          />
+        }
+        onChange={(e) => toggleCustomPrice(e.currentTarget.checked)}
+      />
+      <NumberInput
+        description={
+          customPrice
+            ? `手動設定（試算値: ${formatMoney(estimatePrice)}）`
+            : "試算値をそのまま使用"
+        }
+        disabled={!customPrice}
+        label={
+          <HelpLabel
+            help="価格表の基準になる単価。既定は試算の見積単価。各数量帯の単価 = 基準単価 × 倍率。"
+            label="基準単価"
+          />
+        }
+        min={0}
+        onChange={(v) => setBaseUnitPrice(typeof v === "number" ? v : 0)}
+        prefix="¥"
+        thousandSeparator=","
+        value={baseUnitPrice}
+        withAsterisk
+      />
+
+      <Alert color="blue" icon={<IconInfoCircle size={16} />} variant="light">
+        登録すると試算は「価格表登録済」となり編集できなくなります。単価を見直す場合は複製して再試算してください。数量倍率（×1.01
+        など）は登録後に価格表の編集で設定します。
+      </Alert>
     </FormModal>
   );
 }
