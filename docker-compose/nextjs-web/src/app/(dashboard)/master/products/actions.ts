@@ -125,14 +125,13 @@ export async function deleteProducts(ids: string[]): Promise<ActionResult> {
   try {
     // Guard: refuse when sales documents still reference one of the products.
     const where = { productId: { in: ids } };
-    const [estimates, priceListEntries, quoteItems] = await Promise.all([
-      prisma.estimate.count({ where }),
+    const [priceListEntries, quoteItems] = await Promise.all([
       prisma.priceListEntry.count({ where }),
       prisma.quoteItem.count({ where }),
     ]);
-    if (estimates + priceListEntries + quoteItems > 0) {
+    if (priceListEntries + quoteItems > 0) {
       return actionError(
-        "この製品を参照するデータ（試算・価格表・見積書）が存在するため削除できません。無効化を検討してください。",
+        "この製品を参照するデータ（価格表・見積書）が存在するため削除できません。無効化を検討してください。",
       );
     }
     await prisma.product.deleteMany({ where: { id: { in: ids } } });

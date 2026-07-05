@@ -1,11 +1,46 @@
--- Demo seed for the master-data screens (材種 / 素材 / 製品) — the tables the
--- nextjs-web master pages read via Prisma. Idempotent (ON CONFLICT DO NOTHING);
--- safe to re-run. Apply with:
+-- Demo seed for the master-data screens (材種 / 素材 / 製品) and the BP
+-- customers used by the sales flow (試算 / 価格表 / 見積書). Idempotent
+-- (ON CONFLICT DO NOTHING); safe to re-run. Apply with:
 --   cd shared-db && pnpm seed:demo        (DATABASE_URL from .env)
 --
 -- Demo products use a past month (PRD-202606-*) so they can never collide
 -- with PRD auto-numbering, which starts fresh each month via
--- sys.numbering_sequences.
+-- sys.numbering_sequences. BP rows use fixed UUIDs so re-runs stay idempotent
+-- and cross-references remain stable.
+
+-- ── 顧客 (bp.business_partners + roles + attrs) ──────────────────────
+INSERT INTO "bp"."business_partners"
+  ("id", "bp_code", "name", "name_kana", "short_name", "parent_id", "country_code", "is_active", "created_at", "updated_at") VALUES
+  ('11111111-1111-4111-8111-111111111111', 'BP-00001',
+   '{"ja":"株式会社ABC製作所","en":"ABC Manufacturing Co., Ltd."}', 'エービーシーセイサクショ', 'ABC製作所',
+   NULL, 'JP', true, now(), now()),
+  ('11111111-1111-4111-8111-111111111112', 'BP-00001-01',
+   '{"ja":"株式会社ABC製作所 東京本社","en":"ABC Manufacturing Tokyo HQ"}', 'エービーシーセイサクショトウキョウホンシャ', '東京本社',
+   '11111111-1111-4111-8111-111111111111', 'JP', true, now(), now()),
+  ('22222222-2222-4222-8222-222222222222', 'BP-00002',
+   '{"ja":"合同会社XYZ工業","en":"XYZ Industries LLC"}', 'エックスワイゼットコウギョウ', 'XYZ工業',
+   NULL, 'JP', true, now(), now()),
+  ('33333333-3333-4333-8333-333333333333', 'BP-00003',
+   '{"ja":"株式会社DEFエンジニアリング","en":"DEF Engineering Inc."}', 'ディーイーエフエンジニアリング', 'DEF',
+   NULL, 'JP', true, now(), now())
+ON CONFLICT ("id") DO NOTHING;
+
+INSERT INTO "bp"."bp_role_assignments" ("id", "bp_id", "role", "is_active", "assigned_at") VALUES
+  ('aaaaaaa1-0000-4000-8000-000000000001', '11111111-1111-4111-8111-111111111111', 'CUSTOMER', true, now()),
+  ('aaaaaaa1-0000-4000-8000-000000000002', '22222222-2222-4222-8222-222222222222', 'CUSTOMER', true, now()),
+  ('aaaaaaa1-0000-4000-8000-000000000003', '33333333-3333-4333-8333-333333333333', 'CUSTOMER', true, now())
+ON CONFLICT ("bp_id", "role") DO NOTHING;
+
+INSERT INTO "bp"."bp_customer_attrs" ("bp_id", "customer_code", "closing_day", "payment_terms_days", "payment_day", "tax_type", "invoice_method") VALUES
+  ('11111111-1111-4111-8111-111111111111', 'C-001', 31, 30, 31, 'TAXABLE', 'EMAIL'),
+  ('22222222-2222-4222-8222-222222222222', 'C-002', 20, 60, 10, 'TAXABLE', 'FAX'),
+  ('33333333-3333-4333-8333-333333333333', 'C-003', 31, 30, 31, 'TAXABLE', 'EMAIL')
+ON CONFLICT ("bp_id") DO NOTHING;
+
+INSERT INTO "bp"."bp_contacts" ("id", "bp_id", "name", "department", "email", "is_primary", "is_active", "created_at", "updated_at") VALUES
+  ('bbbbbbb1-0000-4000-8000-000000000001', '11111111-1111-4111-8111-111111111111',
+   '佐藤 健一', '購買部', 'sato@abc-mfg.example.co.jp', true, true, now(), now())
+ON CONFLICT ("id") DO NOTHING;
 
 -- ── 材種 (master.material_types) ─────────────────────────────────────
 INSERT INTO "master"."material_types" ("id", "name", "description", "is_active", "created_at", "updated_at") VALUES
