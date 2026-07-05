@@ -19,7 +19,10 @@ rsync + `docker compose up -d --build` flow.
 - Apps run on the external `coolify` docker network; `shared-db`, `po-extract`,
   `gotenberg`, `seaweedfs` are attached to it so the app resolves them by name.
 - The host is managed over SSH as `kaiseisawada` (non-root, docker group) with the
-  key `/data/coolify/ssh/keys/id.kaiseisawada@host.docker.internal`.
+  key Coolify stores under `/data/coolify/ssh/keys/` (`ssh_key@…`, imported into its
+  DB at seed time). Non-root management requires **passwordless sudo** for that
+  user: `/etc/sudoers.d/kaiseisawada-coolify` with
+  `kaiseisawada ALL=(ALL) NOPASSWD: ALL` (mode 440).
 
 ## First-time bootstrap
 

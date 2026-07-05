@@ -34,7 +34,7 @@ fi
 
 api GET "/deploy?uuid=$UUID" | jq -r '.deployments[0].message // .message // "queued"'
 while :; do
-  S=$(api GET "/deployments/applications/$UUID" | jq -r '.[0].status // "unknown"')
+  S=$(api GET "/deployments/applications/$UUID" | jq -r '.deployments[0].status // "unknown"')
   printf '\r%s: %-12s' "$APP_NAME" "$S"
   case "$S" in finished) echo; break ;; failed|cancelled) echo; exit 1 ;; esac
   sleep 10

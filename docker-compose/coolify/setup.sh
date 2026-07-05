@@ -34,7 +34,19 @@ MAIN_PORT=3005
 
 step() { printf '\n\033[1;34m== %s\033[0m\n' "$*"; }
 
-step "0/9 Root password policy check (min 8, mixed case, number, symbol)"
+step "0/9 Preflight"
+# Coolify manages this host over SSH as kaiseisawada (non-root) and needs
+# passwordless sudo (validation and helper commands run `sudo ...`):
+#   echo 'kaiseisawada ALL=(ALL) NOPASSWD: ALL' | sudo tee /etc/sudoers.d/kaiseisawada-coolify
+#   sudo chmod 440 /etc/sudoers.d/kaiseisawada-coolify
+if ! sudo -n true 2>/dev/null; then
+  echo "!! passwordless sudo is not configured for $USER — run the two commands"
+  echo "   in the comment above (once, with your password), then re-run this script."
+  exit 1
+fi
+echo "passwordless sudo ok"
+
+step "0b/9 Root password policy check (min 8, mixed case, number, symbol)"
 # RootUserSeeder validates the password; regenerate server-side if it would fail.
 CURRENT_PW=$(grep '^ROOT_USER_PASSWORD=' /data/coolify/source/.env | cut -d= -f2-)
 if ! printf '%s' "$CURRENT_PW" | grep -q '[^A-Za-z0-9]' || [ "${#CURRENT_PW}" -lt 8 ]; then
@@ -49,7 +61,12 @@ fi
 
 step "1/9 Authorize Coolify host-management SSH key"
 mkdir -p ~/.ssh && touch ~/.ssh/authorized_keys && chmod 600 ~/.ssh/authorized_keys
-grep -qxF "$(cat "$KEY_PUB")" ~/.ssh/authorized_keys || cat "$KEY_PUB" >> ~/.ssh/authorized_keys
+# Coolify imports the seeded private key into its DB and rewrites the keys dir
+# with its own naming (ssh_key@<id>), so derive the pubkey from Coolify's own
+# key store inside the container.
+PUB=$(docker exec coolify sh -c 'for f in /var/www/html/storage/app/ssh/keys/ssh_key@*; do case "$f" in *.lock) ;; *) ssh-keygen -y -f "$f" && break ;; esac; done')
+[ -n "$PUB" ] || { echo "!! could not derive Coolify public key"; exit 1; }
+grep -qxF "$PUB" ~/.ssh/authorized_keys || printf '%s\n' "$PUB" >> ~/.ssh/authorized_keys
 echo "authorized"
 
 step "2/9 Attach shared services to the coolify network"
@@ -65,9 +82,11 @@ step "4/9 Enable API, disable self-registration"
 docker exec coolify php artisan tinker --execute='$s = App\Models\InstanceSettings::get(); $s->is_api_enabled = true; $s->is_registration_enabled = false; $s->save(); echo "api enabled";'
 
 step "5/9 API token"
-if [ ! -s "$TOKEN_FILE" ]; then
-  docker exec coolify php artisan tinker --execute='$u = App\Models\User::find(0); echo $u->createToken("ckk-automation", ["root"])->plainTextToken;' | tail -1 > "$TOKEN_FILE"
+if ! grep -qE '^[0-9]+\|[A-Za-z0-9]{20,}$' "$TOKEN_FILE" 2>/dev/null; then
+  # createToken reads the team from the session; set it explicitly (tinker has none).
+  docker exec coolify php artisan tinker --execute='session(["currentTeam" => App\Models\Team::find(0)]); $u = App\Models\User::find(0); echo $u->createToken("ckk-automation", ["root"])->plainTextToken;' | grep -E '^[0-9]+\|[A-Za-z0-9]{20,}$' | tail -1 > "$TOKEN_FILE"
   chmod 600 "$TOKEN_FILE"
+  grep -qE '^[0-9]+\|' "$TOKEN_FILE" || { echo "!! token creation failed"; exit 1; }
 fi
 TOKEN=$(cat "$TOKEN_FILE")
 api() { local method=$1 path=$2; shift 2; curl -sf -X "$method" -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" -H "Accept: application/json" "$API$path" "$@"; }
@@ -76,7 +95,16 @@ api GET /version >/dev/null && echo "API ok"
 step "6/9 Server + project"
 SERVER_UUID=$(api GET /servers | jq -r '.[0].uuid')
 echo "server: $SERVER_UUID"
-api GET "/servers/$SERVER_UUID/validate" >/dev/null 2>&1 || true
+server_ok() { api GET "/servers/$SERVER_UUID" | jq -e '.settings.is_reachable == true and .settings.is_usable == true' >/dev/null; }
+if ! server_ok; then
+  api GET "/servers/$SERVER_UUID/validate" >/dev/null 2>&1 || true
+  started=$(date +%s)
+  until server_ok; do
+    [ $(( $(date +%s) - started )) -gt 180 ] && { echo "!! server validation timed out"; api GET "/servers/$SERVER_UUID" | jq '.settings | {is_reachable, is_usable}'; exit 1; }
+    sleep 5
+  done
+fi
+echo "server validated (reachable + usable)"
 PROJECT_UUID=$(api GET /projects | jq -r '.[] | select(.name == "ckk") | .uuid' | head -1)
 if [ -z "$PROJECT_UUID" ]; then
   PROJECT_UUID=$(api POST /projects -d '{"name":"ckk","description":"CKK business management system"}' | jq -r '.uuid')
@@ -136,13 +164,13 @@ deploy_and_wait() { # uuid label port
   api GET "/deploy?uuid=$uuid" >/dev/null || api POST "/deploy?uuid=$uuid" >/dev/null || true
   started=$(date +%s)
   while :; do
-    status=$(api GET "/deployments/applications/$uuid" | jq -r '.[0].status // "unknown"')
+    status=$(api GET "/deployments/applications/$uuid" | jq -r '.deployments[0].status // "unknown"')
     printf '\r%s deployment: %-12s (%ss elapsed)' "$label" "$status" "$(( $(date +%s) - started ))"
     case "$status" in
       finished) echo; break ;;
       failed|cancelled)
         echo; echo "!! $label deployment $status — last log lines:"
-        api GET "/deployments/applications/$uuid" | jq -r '.[0].logs' | tail -30 || true
+        api GET "/deployments/applications/$uuid" | jq -r '.deployments[0].logs' | jq -r '.[] | select(.hidden != true) | .output' 2>/dev/null | tail -30 || true
         return 1 ;;
     esac
     [ $(( $(date +%s) - started )) -gt 2400 ] && { echo; echo "!! timeout"; return 1; }
