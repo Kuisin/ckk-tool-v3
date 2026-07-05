@@ -10,7 +10,7 @@
  * locks the 試算 (価格表登録済) — re-price via 複製して再試算.
  */
 
-import { Alert, NumberInput, Select, Text } from "@mantine/core";
+import { Alert, Checkbox, NumberInput, Select, Text } from "@mantine/core";
 import { DatePickerInput } from "@mantine/dates";
 import { notifications } from "@mantine/notifications";
 import {
@@ -22,7 +22,11 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { FieldValue } from "@/components/ui/FieldValue";
 import { HelpLabel } from "@/components/ui/HelpLabel";
-import { FormModal, type ModalBaseProps } from "@/components/ui/modals";
+import {
+  FormModal,
+  type ModalBaseProps,
+  openConfirm,
+} from "@/components/ui/modals";
 import { formatMoney } from "@/lib/format";
 import {
   CUSTOMERS,
@@ -58,19 +62,44 @@ export function ConvertToPriceListModal({
   const [validUntil, setValidUntil] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  // 試算の見積単価（基準）— そのまま使うか、下の基準単価で手動上書きする。
+  // 試算の見積単価（基準）— 既定はこの値をそのまま使う。カスタム単価は
+  // 明示的なチェック（確認ポップアップ付き）でのみ有効化できる。
   const estimatePrice = estimate
     ? (calcTrialPricing(estimate.input).lots[0]?.estimateUnitPrice ?? 0)
     : 0;
+  const [customPrice, setCustomPrice] = useState(false);
   const [baseUnitPrice, setBaseUnitPrice] = useState<number>(estimatePrice);
 
   // Re-seed when the modal opens for a (new) estimate.
   useEffect(() => {
     if (opened) {
       setCustomerId(estimate?.customerId ?? null);
+      setCustomPrice(false);
       setBaseUnitPrice(estimatePrice);
     }
   }, [opened, estimate, estimatePrice]);
+
+  /** カスタム単価の ON/OFF — どちらの向きも確認ポップアップを挟む。 */
+  const toggleCustomPrice = (next: boolean) => {
+    if (next) {
+      openConfirm({
+        title: "カスタム単価の使用",
+        message: `試算の見積単価（${formatMoney(estimatePrice)}）を使わず、基準単価を手動で設定します。よろしいですか？`,
+        confirmLabel: "カスタム設定する",
+        onConfirm: () => setCustomPrice(true),
+      });
+    } else {
+      openConfirm({
+        title: "試算値に戻す",
+        message: `手動で設定した基準単価を破棄し、試算の見積単価（${formatMoney(estimatePrice)}）に戻します。`,
+        confirmLabel: "試算値に戻す",
+        onConfirm: () => {
+          setCustomPrice(false);
+          setBaseUnitPrice(estimatePrice);
+        },
+      });
+    }
+  };
 
   const needsEnd = requiresEndDate(orderType);
   const existing = findEntriesByCustomerProduct(customerId, productId);
@@ -200,15 +229,26 @@ export function ConvertToPriceListModal({
       />
 
       <FieldValue label="見積単価（試算）" value={formatMoney(estimatePrice)} />
-      <NumberInput
-        description={
-          baseUnitPrice === estimatePrice
-            ? "試算値をそのまま使用"
-            : `手動上書き（試算値: ${formatMoney(estimatePrice)}）`
-        }
+      <Checkbox
+        checked={customPrice}
         label={
           <HelpLabel
-            help="価格表の基準になる単価。試算の見積単価が初期値で、必要なら手動で上書きできます。各数量帯の単価 = 基準単価 × 倍率。"
+            help="既定では試算の見積単価をそのまま基準単価に使います。手動で別の単価を設定する場合のみチェックしてください（確認あり）。"
+            label="カスタム単価を使用（試算値を上書き）"
+          />
+        }
+        onChange={(e) => toggleCustomPrice(e.currentTarget.checked)}
+      />
+      <NumberInput
+        description={
+          customPrice
+            ? `手動設定（試算値: ${formatMoney(estimatePrice)}）`
+            : "試算値をそのまま使用"
+        }
+        disabled={!customPrice}
+        label={
+          <HelpLabel
+            help="価格表の基準になる単価。既定は試算の見積単価。各数量帯の単価 = 基準単価 × 倍率。"
             label="基準単価"
           />
         }

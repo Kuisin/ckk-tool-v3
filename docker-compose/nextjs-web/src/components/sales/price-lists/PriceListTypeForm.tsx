@@ -15,6 +15,8 @@
 import {
   ActionIcon,
   Alert,
+  Checkbox,
+  Group,
   NumberInput,
   Select,
   SimpleGrid,
@@ -32,19 +34,23 @@ import {
   IconTrash,
 } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
-import { useTransition } from "react";
+import { useState, useTransition } from "react";
 import { z } from "zod";
 import { GhostButton } from "@/components/ui/buttons";
 import { FieldValue } from "@/components/ui/FieldValue";
 import { HelpLabel } from "@/components/ui/HelpLabel";
+import { openConfirm } from "@/components/ui/modals";
 import { FormSection, FormShell } from "@/components/ui/shells";
 import { zodResolver } from "@/lib/form";
+import { formatMoney } from "@/lib/format";
 import {
   CUSTOMERS,
   ORDER_TYPE_LABEL,
   ORDER_TYPE_OPTIONS,
   PRODUCTS,
 } from "@/lib/mock";
+import { calcTrialPricing } from "@/lib/trial-pricing";
+import { getTrialEstimate } from "../trial-estimates/mock";
 import {
   entryKey,
   findEntriesByCustomerProduct,
@@ -170,7 +176,70 @@ export function PriceListTypeForm({
     }),
   });
 
-  const handleSubmit = (values: TypeFormValues) => {
+  // ── 基準単価は試算から取得する（バイパスは明示チェック + 確認のみ）────────
+  const entry = mode === "edit" && entryId ? getPriceEntry(entryId) : undefined;
+  const estimateRecord = entry?.estimateId
+    ? getTrialEstimate(entry.estimateId)
+    : undefined;
+  /** 試算の見積単価（試算元がない旧データ・種別追加は null）. */
+  const estimateBase = estimateRecord
+    ? (calcTrialPricing(estimateRecord.input).lots[0]?.estimateUnitPrice ??
+      null)
+    : null;
+  // 試算元がない場合は手動入力しかできない（チェック固定）。
+  const [customBase, setCustomBase] = useState(
+    () => estimateBase == null || form.values.baseUnitPrice !== estimateBase,
+  );
+
+  /** カスタム基準単価の ON/OFF — どちらの向きも確認ポップアップを挟む。 */
+  const toggleCustomBase = (next: boolean) => {
+    if (estimateBase == null) return; // 試算元なし: 常に手動
+    if (next) {
+      openConfirm({
+        title: "カスタム基準単価の使用",
+        message: `試算の見積単価（${formatMoney(estimateBase)}）を使わず、基準単価を手動で設定します。よろしいですか？`,
+        confirmLabel: "カスタム設定する",
+        onConfirm: () => setCustomBase(true),
+      });
+    } else {
+      openConfirm({
+        title: "試算値に戻す",
+        message: `手動で設定した基準単価を破棄し、試算の見積単価（${formatMoney(estimateBase)}）に戻します。`,
+        confirmLabel: "試算値に戻す",
+        onConfirm: () => {
+          setCustomBase(false);
+          form.setFieldValue("baseUnitPrice", estimateBase);
+        },
+      });
+    }
+  };
+
+  /** 数量帯ごとのカスタム単価 ON/OFF — 確認ポップアップを挟む。 */
+  const toggleTierOverride = (ri: number, next: boolean, autoPrice: number) => {
+    if (next) {
+      openConfirm({
+        title: "カスタム単価の使用",
+        message: `この数量帯の自動計算単価（${formatMoney(autoPrice)} = 基準単価 × 倍率）を使わず、手動で単価を設定します。`,
+        confirmLabel: "カスタム設定する",
+        onConfirm: () =>
+          form.setFieldValue(`tiers.${ri}.priceOverride`, autoPrice),
+      });
+    } else {
+      openConfirm({
+        title: "自動計算に戻す",
+        message: `手動で設定した単価を破棄し、自動計算値（${formatMoney(autoPrice)}）に戻します。`,
+        confirmLabel: "自動計算に戻す",
+        onConfirm: () => form.setFieldValue(`tiers.${ri}.priceOverride`, null),
+      });
+    }
+  };
+
+  const handleSubmit = (raw: TypeFormValues) => {
+    // カスタム未使用時は必ず試算値を採用する（バイパスは明示チェックのみ）。
+    const values =
+      !customBase && estimateBase != null
+        ? { ...raw, baseUnitPrice: estimateBase }
+        : raw;
     startTransition(() => {
       // TODO(server-action): persist this (顧客, 製品, 注文種別) entry + tiers.
       console.log("submit price-type", values);
@@ -283,23 +352,55 @@ export function PriceListTypeForm({
       </FormSection>
 
       <FormSection
-        description="試算の見積単価から登録された基準です。手動で上書きできます。各段階の単価 = 基準単価 × 倍率。"
+        description="基準単価は試算の見積単価から取得します。手動上書きは明示的にカスタムを有効化した場合のみ（確認あり）。各段階の単価 = 基準単価 × 倍率。"
         title="基準単価"
       >
-        <NumberInput
-          label={
-            <HelpLabel
-              help="試算の見積単価から登録された基準。手動で上書きできます。各数量帯の単価 = 基準単価 × 倍率。"
-              label="基準単価"
-            />
-          }
-          maw={260}
-          min={0}
-          prefix="¥"
-          thousandSeparator=","
-          withAsterisk
-          {...form.getInputProps("baseUnitPrice")}
-        />
+        <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="sm">
+          <FieldValue
+            label="見積単価（試算）"
+            value={
+              estimateBase != null
+                ? formatMoney(estimateBase)
+                : "—（試算元なし）"
+            }
+          />
+          <Checkbox
+            checked={customBase}
+            description={
+              estimateBase == null ? "試算元がないため手動設定のみ" : undefined
+            }
+            disabled={estimateBase == null}
+            label={
+              <HelpLabel
+                help="既定では試算の見積単価をそのまま使います。手動で別の基準単価を設定する場合のみチェックしてください（確認あり）。"
+                label="カスタム単価を使用"
+              />
+            }
+            mt={{ base: 0, sm: 26 }}
+            onChange={(e) => toggleCustomBase(e.currentTarget.checked)}
+          />
+          <NumberInput
+            description={
+              customBase
+                ? estimateBase != null
+                  ? `手動設定（試算値: ${formatMoney(estimateBase)}）`
+                  : "手動設定"
+                : "試算値をそのまま使用"
+            }
+            disabled={!customBase}
+            label={
+              <HelpLabel
+                help="価格表の基準になる単価。既定は試算の見積単価。各数量帯の単価 = 基準単価 × 倍率。"
+                label="基準単価"
+              />
+            }
+            min={0}
+            prefix="¥"
+            thousandSeparator=","
+            withAsterisk
+            {...form.getInputProps("baseUnitPrice")}
+          />
+        </SimpleGrid>
       </FormSection>
 
       <FormSection title="有効期間">
@@ -339,7 +440,7 @@ export function PriceListTypeForm({
       </FormSection>
 
       <FormSection
-        description="数量範囲ごとの倍率（×1.01 など）。単価 = 基準単価 × 倍率。必要な行だけ単価を手動上書きできます。すべて同じ有効期間が適用されます。"
+        description="数量範囲ごとの倍率（×1.01 など）。単価 = 基準単価 × 倍率（試算由来）。カスタム単価はチェックで明示的に有効化した行のみ（確認あり）。すべて同じ有効期間が適用されます。"
         title="数量スケール（倍率）"
       >
         <Table withTableBorder>
@@ -353,10 +454,16 @@ export function PriceListTypeForm({
                   label="倍率"
                 />
               </Table.Th>
+              <Table.Th ta="right">
+                <HelpLabel
+                  help="基準単価（試算由来）× 倍率 の自動計算値。"
+                  label="自動計算単価"
+                />
+              </Table.Th>
               <Table.Th>
                 <HelpLabel
-                  help="倍率による自動計算を使わず、この数量帯だけ固定単価にする場合に入力。空欄で自動計算。"
-                  label="単価（上書き）"
+                  help="チェックすると自動計算を使わず、この数量帯だけ手動の固定単価にできます（確認あり）。"
+                  label="カスタム単価"
                 />
               </Table.Th>
               <Table.Th ta="right">採用単価</Table.Th>
@@ -368,6 +475,7 @@ export function PriceListTypeForm({
               const autoPrice = Math.round(
                 form.values.baseUnitPrice * tier.multiplier,
               );
+              const isCustom = tier.priceOverride != null;
               const effective = tier.priceOverride ?? autoPrice;
               return (
                 <Table.Tr key={form.key(`tiers.${ri}`)}>
@@ -393,26 +501,63 @@ export function PriceListTypeForm({
                       {...form.getInputProps(`tiers.${ri}.multiplier`)}
                     />
                   </Table.Td>
+                  <Table.Td ta="right">
+                    <Text
+                      c={isCustom ? "dimmed" : undefined}
+                      className="tabular-nums"
+                      ff="mono"
+                      size="sm"
+                      td={isCustom ? "line-through" : undefined}
+                    >
+                      ¥{autoPrice.toLocaleString("ja-JP")}
+                    </Text>
+                  </Table.Td>
                   <Table.Td>
-                    <NumberInput
-                      min={0}
-                      placeholder={`自動: ¥${autoPrice.toLocaleString("ja-JP")}`}
-                      prefix="¥"
-                      thousandSeparator=","
-                      {...form.getInputProps(`tiers.${ri}.priceOverride`)}
-                      onChange={(v) =>
-                        form.setFieldValue(
-                          `tiers.${ri}.priceOverride`,
-                          typeof v === "number" ? v : null,
-                        )
-                      }
-                      value={tier.priceOverride ?? ""}
-                    />
+                    <Group gap="xs" wrap="nowrap">
+                      <Checkbox
+                        aria-label="カスタム単価を使用"
+                        checked={isCustom}
+                        onChange={(e) =>
+                          toggleTierOverride(
+                            ri,
+                            e.currentTarget.checked,
+                            autoPrice,
+                          )
+                        }
+                      />
+                      <NumberInput
+                        disabled={!isCustom}
+                        min={0}
+                        placeholder={isCustom ? undefined : "自動計算"}
+                        prefix="¥"
+                        thousandSeparator=","
+                        {...form.getInputProps(`tiers.${ri}.priceOverride`)}
+                        onChange={(v) =>
+                          form.setFieldValue(
+                            `tiers.${ri}.priceOverride`,
+                            typeof v === "number" ? v : null,
+                          )
+                        }
+                        value={tier.priceOverride ?? ""}
+                      />
+                    </Group>
                   </Table.Td>
                   <Table.Td ta="right">
-                    <Text className="tabular-nums" ff="mono" fw={600} size="sm">
-                      ¥{effective.toLocaleString("ja-JP")}
-                    </Text>
+                    <Group gap={6} justify="flex-end" wrap="nowrap">
+                      {isCustom && (
+                        <Text c="orange" size="xs">
+                          手動
+                        </Text>
+                      )}
+                      <Text
+                        className="tabular-nums"
+                        ff="mono"
+                        fw={600}
+                        size="sm"
+                      >
+                        ¥{effective.toLocaleString("ja-JP")}
+                      </Text>
+                    </Group>
                   </Table.Td>
                   <Table.Td>
                     <ActionIcon
