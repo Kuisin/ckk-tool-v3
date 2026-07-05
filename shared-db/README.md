@@ -49,6 +49,38 @@ Never hand-edit tables in the DB, never run DDL from the Python apps, and never
 run `prisma migrate` from nextjs-web (its `prisma/schema` is a synced copy for
 client generation only).
 
+## Backup / restore
+
+`./scripts/backup.sh` (DATABASE_URL from `.env`) writes to `backups/`
+(gitignored):
+- `ckk-<ts>.dump` — full custom-format dump (DDL + data + views), for disaster
+  recovery: `pg_restore -d <url> --clean --create ckk-<ts>.dump`.
+- `ckk-<ts>.data.sql` — plain-SQL INSERTs of all app schemas, for re-seeding a
+  freshly migrated DB.
+
+## Reset / re-baseline (clean initial migration)
+
+The migration history was re-baselined on 2026-07-05 into a single clean
+`*_init` migration (the pre-trim history was squashed). A DB created with the
+old history has a stale `_prisma_migrations` table, so `migrate deploy` will
+refuse — reset it like this (server: `docker exec -it shared-db psql -U postgres`):
+
+```bash
+cd shared-db
+./scripts/backup.sh                     # 1. backup (see above)
+psql "$ADMIN_URL" -c 'DROP DATABASE ckk;' -c 'CREATE DATABASE ckk;'   # 2. reset
+pnpm migrate:deploy                     # 3. clean init → all schemas + views
+psql "$ADMIN_URL" -d ckk -f sql/grants.sql   # 4. roles/grants (idempotent)
+pg_restore -d "$DATABASE_URL" --data-only --disable-triggers \
+  -n kot -n directory -n admintools -n auth -n master -n bp -n sales -n sys \
+  backups/ckk-<ts>.dump                 # 5. restore data
+psql "$ADMIN_URL" -d ckk -f sql/metabase-compat.sql  # 6. public compat views
+```
+
+The init migration guards `CREATE EXTENSION pgroonga` in a `DO` block so it
+also applies on dev hosts without pgroonga (production's
+`groonga/pgroonga` image always has it).
+
 ## Roles / connections
 
 Created by `docker-compose/shared-db/init/01-roles.sh` (passwords in the
