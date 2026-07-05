@@ -38,7 +38,7 @@ const REQUEST = {
   requestedBy: '鈴木 一郎',
   requestedAt: '2026-05-29 10:00',
   customerName: '合同会社XYZ工業',
-  productName: 'ロッド PRD-2602-0008',
+  productName: 'ロッド PRD-202602-0008',
   type: 'MANUFACTURE',
   plannedQuantity: 30,
   material: 'A02B0014-B001-002（SKD11 φ32×2500・定尺）',

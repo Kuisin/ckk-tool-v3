@@ -51,8 +51,8 @@ const INV = {
 };
 
 const ITEMS = [
-  { id: '1', shippingOrderNumber: 'SHP-202605-0018', deliveryNumber: 'DRN-202605-00007', description: { ja: '精密軸 PRD-2601-0001（5月出荷分）', en: 'Precision Shaft (May)' }, quantity: 200, unitPrice: 5000, amount: 1000000 },
-  { id: '2', shippingOrderNumber: 'SHP-202605-0019', deliveryNumber: 'DRN-202605-00008', description: { ja: 'ロッド PRD-2602-0008（5月出荷分）', en: 'Rod (May)' }, quantity: 70, unitPrice: 5000, amount: 350000 },
+  { id: '1', shippingOrderNumber: 'SHP-202605-0018', deliveryNumber: 'DRN-202605-00007', description: { ja: '精密軸 PRD-202601-0001（5月出荷分）', en: 'Precision Shaft (May)' }, quantity: 200, unitPrice: 5000, amount: 1000000 },
+  { id: '2', shippingOrderNumber: 'SHP-202605-0019', deliveryNumber: 'DRN-202605-00008', description: { ja: 'ロッド PRD-202602-0008（5月出荷分）', en: 'Rod (May)' }, quantity: 70, unitPrice: 5000, amount: 350000 },
 ];
 
 const AUDIT: AuditEntry[] = [

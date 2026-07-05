@@ -1,0 +1,77 @@
+# Nginx reverse proxy / TLS terminator (techstack #8) + acme.sh for Let's Encrypt.
+#
+# Fronts the app for LOCAL access: terminates HTTPS for dev.kai-lab.net on the
+# LAN and proxies to the nextjs-web `web` service over its compose network.
+# Pair with a LAN DNS override (dev.kai-lab.net -> 192.168.50.15) so internal
+# clients reach this proxy directly instead of hairpinning out via Cloudflare.
+#
+# - acme : issues/renews a Let's Encrypt cert via Cloudflare DNS-01 (no inbound
+#          ports), installing it into the shared ./certs volume; daemon mode
+#          re-checks renewals daily.
+# - nginx: serves ./certs and self-reloads daily so renewed certs apply without
+#          a manual restart.
+#
+# Deployed on docker-mac-pro at ~/stacks/nginx-proxy (Dockge-managed).
+# ./certs, ./acme and .env are gitignored — see README for issuance steps.
+
+services:
+  acme:
+    image: neilpang/acme.sh:latest
+    container_name: nginx-acme
+    restart: unless-stopped
+    command: daemon
+    environment:
+      # Cloudflare API token, scope Zone:DNS:Edit for kai-lab.net.
+      - CF_Token=${CLOUDFLARE_DNS_API_TOKEN:-}
+    volumes:
+      - ./acme:/acme.sh      # acme.sh account + renewal state
+      - ./certs:/certs        # installed cert/key (shared with nginx)
+
+  nginx:
+    image: nginx:1.28
+    container_name: nginx-proxy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./conf.d:/etc/nginx/conf.d:ro
+      - ./certs:/etc/nginx/certs:ro
+    networks:
+      - web         # nextjs-web `web:3000`         (dev.kai-lab.net)
+      - ai-stack    # open-webui `open-webui:8080`  (chat.kai-lab.net)
+      - monitoring  # grafana `grafana:3000`        (monitor.kai-lab.net)
+      - dockge      # dockge `dockge:5001`          (dock.kai-lab.net)
+      - metabase    # metabase `metabase:3000`      (bi.ckk-tool.co.jp — staged)
+      - shareddb    # prisma-studio `:5555`         (db.ckk-tool.co.jp — staged)
+      - admintools  # admintools `admintools:8000`  (admin.ckk-tool.co.jp — staged)
+      - coolify     # coolify `coolify:8080` + realtime :6001/:6002 (deploy.ckk-tool.co.jp)
+    # Reload daily so renewed certs from acme.sh are applied without a restart.
+    command: ["sh", "-c", "(while :; do sleep 86400; nginx -s reload 2>/dev/null || true; done &) ; exec nginx -g 'daemon off;'"]
+
+# Attach to each app's compose network so proxy_pass resolves the service names.
+networks:
+  web:
+    external: true
+    name: nextjs-web_default
+  ai-stack:
+    external: true
+    name: ai-stack_default
+  monitoring:
+    external: true
+    name: monitoring_monitoring
+  dockge:
+    external: true
+    name: dockge_default
+  metabase:
+    external: true
+    name: metabase_default
+  shareddb:
+    external: true
+    name: shared-db
+  admintools:
+    external: true
+    name: admintools_default
+  coolify:
+    external: true
+    name: coolify

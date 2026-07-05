@@ -72,7 +72,7 @@ export default function DeliveryNoteEditPage() {
       includePrice: true,
       deliveredAt: new Date('2026-06-05'),
       notes: '',
-      items: [{ productId: 'PRD-2601-0001', quantity: 50, unitPrice: 5000, notes: '' }],
+      items: [{ productId: 'PRD-202601-0001', quantity: 50, unitPrice: 5000, notes: '' }],
     },
   });
 

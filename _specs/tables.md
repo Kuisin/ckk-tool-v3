@@ -101,37 +101,165 @@ View user_permissions {
 ### Master Data
 ```
 // ===========================
-// 素材・製品
+// 拠点（工場）
 // ===========================
 
-// 材種: [A-Z][0-9]{2}[A-Z][0-9]{4} 例: A01A0001
-Table material_types {
-  id              varchar [pk]            // 材種コード
-  name            json [not null]         // { ja: '', en: '' }
-  description     json
-  is_active       boolean [default: true]
-  created_at      timestamp
-  updated_at      timestamp
-}
-
-// 素材: [材種コード]-[A-C][0-9]{3}-[0-9]{3} 例: A01A0001-A001-001
-Table materials {
-  id              varchar [pk]            // 素材コード
-  material_type_id varchar [not null, ref: > material_types.id]
-  name            json [not null]         // { ja: '', en: '' }
-  unit            varchar [not null]      // 本, kg, m など
-  material_form   MATERIAL_FORM [not null]
+// 工場（製造・在庫・出荷の拠点）。SCOPE.FACTORY の実体。
+Table factories {
+  id              uuid [pk]
+  code            varchar [unique, not null]   // 工場コード
+  name            json [not null]              // { ja: '', en: '' }
+  name_kana       varchar
+  country_code    varchar(2)                   // ISO 3166-1 alpha-2
+  postal_code     varchar
+  address         json                         // { ja: '', en: '' }
+  phone           varchar
+  email           varchar
+  contact_person  varchar
   is_active       boolean [default: true]
   notes           text
   created_at      timestamp
   updated_at      timestamp
 }
 
-Enum MATERIAL_FORM {
-  POLISHED        // 研磨
-  STANDARD_LENGTH // 定尺
-  SEMI_FINISHED   // 半製品（外部調達）
-  OTHER
+// ===========================
+// 素材・製品
+// ===========================
+//
+// 材種コード（メーカー＋メーカー材種＋形状＋種類）:
+//   [A-Z][0-9]{2}[ABC-Z][0-9]{4}  例: B01B0001
+//   id = manufacturer_code + grade_code + shape_code + kind_code
+//
+// 素材コード（材種コード＋黒皮・研磨＋直径＋全長＋カスタム）:
+//   [材種コード]-[A-C][0-9]{3}-[0-9]{3}  例: B01B0001-A083-330
+//   id = material_type_id + '-' + surface_finish_code + diameter_code + '-' + length_variant_code
+//   diameter_code = TEXT(diameter_mm * 10, '000')   例: 8.3 → 083（採番表 ver1.2 準拠）
+//   length_variant_code = TEXT(length_mm, '000')      例: 330 → 330
+//
+// 採番表 ver1.2 のフィールド定義・マスタ値を参照。コード形式は上記 MD 規則を使用。
+
+// ─── 材種コード構成要素 ─────────────────────────
+
+// メーカー: 1文字目 [A-Z]（採番表: アクシス=A, AFC=B, GESAC=C, Ceratizit=D）
+Table material_manufacturers {
+  code            char(1) [pk]
+  name            json [not null]         // { ja: '', en: '' }
+  is_active       boolean [default: true]
+  created_at      timestamp
+  updated_at      timestamp
+}
+
+// メーカー材種: 2–3文字目 [0-9]{2}（メーカー内で一意。例: AFC 内 01=K10UF, 02=K40UF）
+Table material_manufacturer_grades {
+  manufacturer_code char(1) [not null, ref: > material_manufacturers.code]
+  code            char(2) [not null]      // [0-9]{2}
+  name            json [not null]         // { ja: 'K40UF', en: '' }
+  is_active       boolean [default: true]
+  created_at      timestamp
+  updated_at      timestamp
+
+  indexes {
+    (manufacturer_code, code) [pk]
+  }
+}
+
+// 形状: 4文字目 [ABC-Z]（採番表: A=通常, B=OH, C=円筒）
+Table material_shapes {
+  code            char(1) [pk]            // [ABC-Z]
+  name            json [not null]         // { ja: 'OH', en: '' }
+  is_active       boolean [default: true]
+  created_at      timestamp
+  updated_at      timestamp
+}
+
+Table material_types {
+  id              varchar [pk]            // 材種コード
+  manufacturer_code char(1) [not null, ref: > material_manufacturers.code]
+  grade_code      char(2) [not null]
+  shape_code      char(1) [not null, ref: > material_shapes.code]
+  kind_code       char(4) [not null]      // 種類 [0-9]{4}（メーカー×材種×形状内連番）
+  name            json [not null]         // { ja: '', en: '' }
+  description     json
+  is_active       boolean [default: true]
+  created_at      timestamp
+  updated_at      timestamp
+
+  indexes {
+    (manufacturer_code, grade_code, shape_code, kind_code) [unique]
+  }
+}
+
+Ref: material_types.(manufacturer_code, grade_code) > material_manufacturer_grades.(manufacturer_code, code)
+
+// ─── 素材コード構成要素 ─────────────────────────
+
+// 黒皮・研磨: 素材コード中間部 1文字目 [A-C]（採番表: A=黒皮, B=研磨, C=研磨済黒皮）
+Table material_surface_finishes {
+  code            char(1) [pk]            // A | B | C
+  name            json [not null]         // { ja: '黒皮', en: '' }
+  is_active       boolean [default: true]
+  created_at      timestamp
+  updated_at      timestamp
+}
+
+// 直径: 素材コード中間部 [0-9]{3}（採番表: TEXT(直径mm * 10, '000')）
+Table material_diameters {
+  code            char(3) [pk]            // [0-9]{3}
+  diameter_mm     numeric(8,3) [not null]
+  display_name    json                    // { ja: 'φ8.3', en: 'φ8.3' }
+  is_active       boolean [default: true]
+  created_at      timestamp
+  updated_at      timestamp
+}
+
+// 全長＋カスタム: 素材コード末尾 [0-9]{3}（採番表: TEXT(全長mm, '000')。カスタムは custom_label）
+Table material_length_variants {
+  code            char(3) [pk]            // [0-9]{3}
+  length_mm       numeric(10,3) [not null]
+  custom_label    varchar                 // カスタム識別（任意）
+  display_name    json                    // { ja: '330mm', en: '330mm' }
+  notes           text
+  is_active       boolean [default: true]
+  created_at      timestamp
+  updated_at      timestamp
+}
+
+// 種類（形状別）: 採番表の OH/通常/円筒 種類表。素材コードには含めず FK で保持
+// 例: OH 形状 B5=CH, B3=2V30 / 通常 A0=通常
+Table material_kinds {
+  shape_code      char(1) [not null, ref: > material_shapes.code]
+  code            char(2) [not null]      // 採番表: A0, B0–B9 等
+  name            json [not null]         // { ja: 'CH', en: '' }
+  is_active       boolean [default: true]
+  created_at      timestamp
+  updated_at      timestamp
+
+  indexes {
+    (shape_code, code) [pk]
+  }
+}
+
+Table materials {
+  id              varchar [pk]            // 素材コード
+  material_type_id varchar [not null, ref: > material_types.id]
+  surface_finish_code char(1) [not null, ref: > material_surface_finishes.code]
+  diameter_code   char(3) [not null, ref: > material_diameters.code]
+  length_variant_code char(3) [not null, ref: > material_length_variants.code]
+  kind_code       char(2) [not null]      // 形状別種類（material_type.shape_code に対応する material_kinds）
+  diameter_mm     numeric(8,3) [not null] // 実径 (mm)
+  length_mm       numeric(10,3) [not null] // 全長 (mm)
+  manufacturer_model varchar              // メーカ型式 例: 103.70.083
+  nominal_diameter_mm numeric(8,3)        // 呼び径 (mm)
+  name            json [not null]         // { ja: '', en: '' }
+  unit            varchar [not null]      // 本, kg, m など
+  is_active       boolean [default: true]
+  notes           text                    // 備考
+  created_at      timestamp
+  updated_at      timestamp
+
+  indexes {
+    (material_type_id, surface_finish_code, diameter_code, length_variant_code) [unique]
+  }
 }
 
 // 製品コード: PRD-YYYYMM-NNNN
@@ -203,15 +331,15 @@ Table estimate_tiers {
 // 価格表（§1）
 // ===========================
 
-// 顧客 + 製品 + 注文種別 + 本数 → 単価。有効日で管理。
-Table price_lists {
+// 価格表エントリ: 顧客 + 製品 + 注文種別 = 1 エントリ。
+// 有効期間（valid_from/valid_until）・通貨・状態をエントリ単位で管理する。
+// 顧客・製品・注文種別はエントリの識別キーで、作成後は変更不可。
+// 数量段階（本数 → 単価）は price_list_tiers に分離（全段階で有効期間を共有）。
+Table price_list_entries {
   id              uuid [pk]
   customer_bp_id  uuid [not null, ref: > business_partners.id]
   product_id      varchar [not null, ref: > products.id]
   order_type      ORDER_TYPE [not null]
-  min_quantity    int [not null, default: 1]
-  max_quantity    int                          // null = 上限なし
-  unit_price      numeric(12,2) [not null]
   currency        varchar [not null, default: 'JPY']
   valid_from      date [not null]
   valid_until     date                         // null = 無期限
@@ -220,6 +348,24 @@ Table price_lists {
   created_by      uuid [ref: > users.id]
   created_at      timestamp
   updated_at      timestamp
+
+  indexes {
+    (customer_bp_id, product_id, order_type) [unique]  // 識別キー（作成後不変）
+  }
+}
+
+// 数量段階: 本数範囲 → 単価。親エントリの有効期間・通貨を共有する。
+Table price_list_tiers {
+  id                  uuid [pk]
+  price_list_entry_id uuid [not null, ref: > price_list_entries.id]
+  min_quantity        int [not null, default: 1]
+  max_quantity        int                          // null = 上限なし
+  unit_price          numeric(12,2) [not null]
+  sort_order          int [not null, default: 0]
+
+  indexes {
+    (price_list_entry_id, min_quantity)
+  }
 }
 
 Enum ORDER_TYPE {
@@ -262,7 +408,7 @@ Table quote_items {
   order_type      ORDER_TYPE [not null]
   quantity        int [not null]
   unit_price      numeric(12,2) [not null]      // 価格表から自動解決
-  price_list_id   uuid [ref: > price_lists.id]  // 自動生成元（手動入力時は null）
+  price_list_tier_id uuid [ref: > price_list_tiers.id]  // 自動生成元の段階（手動入力時は null）
   discount_amount numeric(12,2) [not null, default: 0]  // カスタム値引き額（任意）
   amount          numeric(12,2) [not null]      // unit_price * quantity - discount_amount
   delivery_date   date
@@ -271,7 +417,7 @@ Table quote_items {
 }
 
 // ===========================
-// 注文受諾書（§2）ORD-YYYYMM-NNNNN
+// 受注請書（§2）ORD-YYYYMM-NNNNN
 // ===========================
 
 Table order_acceptances {
@@ -455,11 +601,18 @@ Table work_order_steps {
   process_step_id int [not null, ref: > process_step_catalog.id]
   sort_order      int [not null]           // テンプレート順（参考。実行は依存解決で決定）
   execution_location STEP_EXECUTION [not null]
+  factory_id      uuid [ref: > factories.id]          // 社内実行時の工場
   supplier_bp_id  uuid [ref: > business_partners.id]  // 外注時
   outsource_requested_at date
   outsource_expected_at  date
   outsource_received_at  date
   status          STEP_STATUS [not null, default: 'PENDING']
+  // 工程間の数量受け渡し・不良振り分け
+  input_quantity            int   // 前工程からの受入数
+  output_success_quantity   int   // 次工程へ渡す良品数
+  output_defect_semi_finished int // 半製品在庫へ
+  output_defect_scrap       int   // 廃棄
+  output_defect_rework      int   // 手直し・追加工程へ
   session_locked_by uuid [ref: > users.id]       // セッションロック（同時実行防止）
   session_locked_at timestamp
   started_at      timestamp
@@ -482,6 +635,22 @@ Enum STEP_STATUS {
   IN_PROGRESS
   COMPLETED
   CANCELLED
+}
+
+// 工程ステップの分岐・合流（DAG）。あるステップ完了後に数量を別ステップ系列へ流す。
+// 受注内のロット分割・合流（不良の手直し分岐、半製品の再投入など）に対応。
+Table work_order_step_links {
+  id              uuid [pk]
+  work_order_id   uuid [not null, ref: > work_orders.id]
+  source_step_id  uuid [not null, ref: > work_order_steps.id]  // 分岐元（完了後に分岐）
+  target_step_id  uuid [not null, ref: > work_order_steps.id]  // 合流先
+  routed_quantity int [not null, default: 0]                   // この経路を流れる数量
+  notes           text
+  created_at      timestamp
+
+  indexes {
+    (source_step_id, target_step_id) [unique]
+  }
 }
 
 // ===========================
@@ -637,6 +806,7 @@ Table defect_records {
 Table product_inventory {
   id              uuid [pk]
   product_id      varchar [not null, ref: > products.id]
+  factory_id      uuid [ref: > factories.id]   // 保管工場
   lot_number      int [ref: > work_orders.work_order_number]
   quantity        int [not null, default: 0]
   reserved_quantity int [not null, default: 0]
@@ -648,6 +818,7 @@ Table product_inventory {
 Table material_inventory {
   id              uuid [pk]
   material_id     varchar [not null, ref: > materials.id]
+  factory_id      uuid [ref: > factories.id]   // 保管工場
   quantity        numeric(12,3) [not null, default: 0]
   reserved_quantity numeric(12,3) [not null, default: 0]
   unit            varchar [not null]
@@ -702,11 +873,81 @@ Enum TRANSACTION_TYPE {
   ADJUST          // 棚卸調整
 }
 
-// 素材入荷（購買・外部調達）
+// ===========================
+// 素材発注（購買・承認フロー）
+// ===========================
+
+Enum PURCHASE_STATUS {
+  DRAFT           // 作成中（編集可）
+  REQUESTED       // 承認依頼中
+  APPROVED        // 承認済（発注可）
+  ORDERED         // 発注済（入荷予定として在庫予約）
+  COMPLETED       // 入荷完了（在庫増）
+  CANCELLED
+}
+
+// 素材発注書。承認フロー（依頼→承認→発注→入荷）。
+Table material_purchase_orders {
+  id              uuid [pk]
+  po_number       varchar [unique, not null]
+  supplier_bp_id  uuid [not null, ref: > business_partners.id]
+  status          PURCHASE_STATUS [not null, default: 'DRAFT']
+  total_amount    numeric(12,2) [not null, default: 0]
+  currency        varchar [not null, default: 'JPY']
+  purchase_date   date
+  requested_at    timestamp
+  requested_by    uuid [ref: > users.id]
+  approved_at     timestamp
+  approved_by     uuid [ref: > users.id]
+  ordered_at      timestamp
+  ordered_by      uuid [ref: > users.id]
+  completed_at    timestamp
+  completed_by    uuid [ref: > users.id]
+  cancelled_at    timestamp
+  cancelled_by    uuid [ref: > users.id]
+  cancel_reason   text
+  history         json                     // 状態遷移履歴 [{ action, user, at, notes }]
+  notes           text
+  created_by      uuid [ref: > users.id]
+  created_at      timestamp
+  updated_at      timestamp
+}
+
+Table material_purchase_order_items {
+  id              uuid [pk]
+  purchase_order_id uuid [not null, ref: > material_purchase_orders.id]
+  material_id     varchar [not null, ref: > materials.id]
+  factory_id      uuid [ref: > factories.id]   // 入荷先工場
+  quantity        numeric(12,3) [not null]
+  unit            varchar [not null]
+  unit_price      numeric(12,2) [not null]
+  amount          numeric(12,2) [not null]
+  currency        varchar [not null, default: 'JPY']
+  expected_at     date
+  notes           text
+  sort_order      int [not null, default: 0]
+}
+
+// 発注承認者（承認グループ or 個人）
+Table material_purchase_approvers {
+  id              uuid [pk]
+  purchase_order_id uuid [not null, ref: > material_purchase_orders.id]
+  approval_group_id int [ref: > approval_groups.id]
+  approver_user_id  uuid [ref: > users.id]
+  created_at      timestamp
+
+  indexes {
+    (purchase_order_id, approval_group_id, approver_user_id) [unique]
+  }
+}
+
+// 素材入荷（発注の入荷 or 外部調達の直接入荷）
 Table material_receipts {
   id              uuid [pk]
   material_id     varchar [not null, ref: > materials.id]
   supplier_bp_id  uuid [ref: > business_partners.id]
+  purchase_order_item_id uuid [ref: > material_purchase_order_items.id]  // 発注明細との紐付け（任意）
+  factory_id      uuid [ref: > factories.id]   // 入荷先工場
   quantity        numeric(12,3) [not null]
   unit            varchar [not null]
   received_at     date [not null]
@@ -723,6 +964,7 @@ Table shipping_orders {
   id              uuid [pk]
   sales_order_id  uuid [not null, ref: > sales_orders.id]
   work_order_id   uuid [ref: > work_orders.id]
+  from_factory_id uuid [ref: > factories.id]   // 出荷元工場
   type            SHIPPING_TYPE [not null]
   status          SHIPPING_STATUS [not null, default: 'DRAFT']
   shipped_at      timestamp
@@ -898,6 +1140,62 @@ Table design_files {
   notes           text
   created_by      uuid [ref: > users.id]
   created_at      timestamp
+}
+
+// ===========================
+// 見積試算（SA05）
+// ===========================
+//
+// 工具種（丸棒/円筒/OH付）別の見積試算。原価チェーン（材料原価+段加工+首下+加工
+// 単価+コート+ラップ+LD+検査）→ ロット別に掛け率・補正値を適用して見積単価を算出。
+// 材料原価は素材マスタの静的価格ではなく、仕入実績（material_purchase_order_items）
+// の参照価格を使う。参照価格の算出方法（最高/最新/平均・参照月数）は system_settings。
+// 参照テーブル（センタレス/段加工/首下/円筒/コート/掛け率/割引）は採番表 Excel 由来で
+// trial_pricing_* マスタ（または import）へ移行する。
+
+Enum TRIAL_TOOL_TYPE {
+  ROUND_BAR       // 丸棒
+  CYLINDER        // 円筒
+  OH              // OH付
+}
+
+Table trial_estimates {
+  id              uuid [pk]
+  name            varchar [not null]
+  tool_type       TRIAL_TOOL_TYPE [not null]
+  customer_bp_id  uuid [ref: > business_partners.id]
+  material_id     varchar [ref: > materials.id]
+  // 参照価格（仕入実績由来）。reference_date = 採用した仕入実績日。
+  reference_unit_price numeric(12,2)
+  reference_date  date
+  reference_overridden boolean [not null, default: false]  // 手動上書き
+  // 入力スナップショット（最大径/全長/段加工/コート/LD/加工条件 等）
+  input           json [not null]
+  // 算出結果（ロット別 最低単価・掛け率・見積単価 + 原価内訳）
+  result          json
+  created_by      uuid [ref: > users.id]
+  created_at      timestamp
+  updated_at      timestamp
+}
+
+// 試算のロット段階（任意正規化。input/result JSON にも保持）
+Table trial_estimate_lots {
+  id              uuid [pk]
+  trial_estimate_id uuid [not null, ref: > trial_estimates.id]
+  quantity        int [not null]
+  minimum_price   numeric(12,2)
+  discount_rate   numeric(6,3)
+  estimate_unit_price numeric(12,2)
+  sort_order      int [not null, default: 0]
+}
+
+// 試算の価格ポリシー（材料参照価格の算出方法）。feature_flags と同様の単純設定。
+Table system_settings {
+  key             varchar [pk]    // trial_pricing.material_price_basis / .lookback_months
+  value           json [not null]
+  description     text
+  updated_by      uuid [ref: > users.id]
+  updated_at      timestamp
 }
 ```
 

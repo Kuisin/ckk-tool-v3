@@ -1,0 +1,48 @@
+// ファイル・採番・フィーチャーフラグ (_specs/tables.md §Other).
+
+// SeaweedFS オブジェクト
+model File {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  storageKey String   @map("storage_key")
+  filename   String
+  mimeType   String   @map("mime_type")
+  sizeBytes  BigInt?  @map("size_bytes")
+  uploadedBy String?  @map("uploaded_by") @db.Uuid
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  uploadedByUser User? @relation("FileUploadedBy", fields: [uploadedBy], references: [id])
+
+  quotesPdf           Quote[]           @relation("QuotePdf")
+  orderAcceptanceDocs OrderAcceptance[] @relation("OrderAcceptanceDoc")
+  deliveryNotesPdf    DeliveryNote[]    @relation("DeliveryNotePdf")
+  invoicesPdf         Invoice[]         @relation("InvoicePdf")
+  designFiles         DesignFile[]      @relation("DesignFileFile")
+
+  @@map("files")
+  @@schema("sys")
+}
+
+// 採番管理（QOT/ORD/DRN/INV — 月次リセット）
+model NumberingSequence {
+  key           String   @id
+  prefix        String
+  lastYearMonth String?  @map("last_year_month")
+  lastSequence  Int      @default(0) @map("last_sequence")
+  updatedAt     DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@map("numbering_sequences")
+  @@schema("sys")
+}
+
+model FeatureFlag {
+  key         String   @id
+  isEnabled   Boolean  @default(false) @map("is_enabled")
+  description String?
+  updatedBy   String?  @map("updated_by") @db.Uuid
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  updatedByUser User? @relation("FeatureFlagUpdatedBy", fields: [updatedBy], references: [id])
+
+  @@map("feature_flags")
+  @@schema("sys")
+}

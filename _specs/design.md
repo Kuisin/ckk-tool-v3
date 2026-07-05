@@ -271,11 +271,12 @@ Operation codes provide keyboard-shortcut navigation. Format: `{CAT}{MODE}{IDX}`
 | 共通 | — | ダッシュボード | CM00 | — | — |
 | 販売 | 1 | 価格表 | SA01 | SA11 | SA21 |
 | 販売 | 2 | 見積書 | SA02 | SA12 | SA22 |
-| 販売 | 3 | 注文受諾書 | SA03 | SA13 | SA23 |
+| 販売 | 3 | 受注請書 | SA03 | SA13 | SA23 |
 | 販売 | 4 | 設計依頼書 | SA04 | SA14 | SA24 |
 | 販売 | 5 | 試算 | SA05 | SA15 | SA25 |
 | 購買 | 1 | 素材入荷 | PU01 | PU11 | PU21 |
 | 購買 | 2 | 外注依頼 | PU02 | PU12 | PU22 |
+| 購買 | 3 | 素材発注書 | PU03 | PU13 | PU23 |
 | 生産 | 1 | 受注書 | PD01 | PD11 | PD21 |
 | 生産 | 2 | 指示書 | PD02 | PD12 | PD22 |
 | 生産 | 3 | 承認管理 | PD03 | PD13 | PD23 |
@@ -295,6 +296,7 @@ Operation codes provide keyboard-shortcut navigation. Format: `{CAT}{MODE}{IDX}`
 | マスタ | 8 | 検査表テンプレート | MS08 | MS18 | MS28 |
 | マスタ | 9 | 不良種類 | MS09 | MS19 | MS29 |
 | マスタ | A | 承認グループ | MS0A | MS1A | MS2A |
+| マスタ | B | 工場 | MS0B | MS1B | MS2B |
 
 `OperationCodeJump` component (`src/components/layout/OperationCodeJump.tsx`) renders as a compact TextInput in the header center. Pressing Enter or clicking a result navigates to that screen.
 
@@ -347,10 +349,12 @@ Stack (gap="xl", p="md", maw={1200})
 | 試算 | `IconCalculator` |
 | 価格表 | `IconCurrencyYen` |
 | 見積書 | `IconFileText` |
-| 注文受諾書 | `IconClipboardCheck` |
+| 受注請書 | `IconClipboardCheck` |
 | 設計依頼書 | `IconRuler2` |
+| 試算 | `IconCalculator` |
 | 素材入荷 | `IconPackageImport` |
 | 外注依頼 | `IconTruckDelivery` |
+| 素材発注書 | `IconShoppingCart` |
 | 受注書 | `IconClipboardList` |
 | 指示書 | `IconSettings2` |
 | 承認管理 | `IconShieldCheck` |
@@ -370,6 +374,7 @@ Stack (gap="xl", p="md", maw={1200})
 | 検査表テンプレート | `IconListCheck` |
 | 不良種類 | `IconAlertTriangle` |
 | 承認グループ | `IconUsersGroup` |
+| 工場 | `IconBuildingWarehouse` |
 
 ---
 
@@ -379,7 +384,7 @@ All pages live inside `src/app/(dashboard)/`. Each page uses server components b
 
 ### 8.1 List Page
 
-Used for every index route (`page.tsx`). Responsive: filter bar stacks on mobile, rows become cards on mobile.
+Used for every index route (`page.tsx`). Responsive: filter bar stacks on mobile; on mobile the table becomes a divider-separated row list (no per-row cards).
 
 ```
 Stack (gap="md")
@@ -388,7 +393,7 @@ Stack (gap="md")
 │   │   ├── [desktop only] Breadcrumbs
 │   │   │   └── Text size="sm" per segment
 │   │   └── Title order={isMobile ? 3 : 2}
-│   └── Button leftSection=<IconPlus> size={isMobile ? "sm" : "md"}
+│   └── Button leftSection=<IconPlus> size="sm"
 │       text: isMobile ? "新規" : "新規作成"
 ├── Paper (shadow="xs", p="sm")
 │   ├── [mobile filter bar] Stack gap="xs" mb="sm"
@@ -400,7 +405,8 @@ Stack (gap="md")
 │   │   ├── TextInput (flex=1, search)
 │   │   ├── Select[] (w={160}, clearable)
 │   │   └── Button variant="subtle" — リセット
-│   ├── [mobile] MobileCardList — Stack gap="xs" of Paper cards
+│   ├── [mobile] DataTable row list — Stack gap={0}, rows split by <Divider>
+│   │       each row: Group [Checkbox (left of title, when selectable)] + content
 │   └── [desktop] DataTable (mantine-datatable) or DesktopTable
 │       columns: defined per section in §14
 │       totalRecords / page / onPageChange (URL search params)
@@ -410,20 +416,25 @@ Stack (gap="md")
     └── Button variant="subtle" size="sm"
 ```
 
-**Mobile card pattern** — each record renders as:
+**Mobile row pattern** — rows are divider-separated (no card chrome). When
+selectable, the checkbox sits to the left of the row title. Each record renders as:
 ```
-Paper (p="sm", withBorder, radius="sm", cursor="pointer")
-└── Group (justify="space-between", wrap="nowrap", align="flex-start")
-    ├── Stack gap={3} style={{ minWidth: 0 }}
-    │   ├── Text size="xs" ff="mono" c="dimmed" — document number
-    │   ├── Text size="sm" fw={600} truncate — primary field (customer, etc.)
-    │   ├── Text size="xs" c="dimmed" truncate — secondary field
-    │   └── Group gap="md" mt={2}
-    │       ├── Text size="xs" c="dimmed" — quantity
-    │       └── Text size="xs" fw={500} — amount
-    └── Stack gap={4} align="flex-end" flexShrink=0
-        ├── StatusBadge
-        └── Text size="xs" c="dimmed" — date
+Box
+├── [if not first] Divider
+└── Group (gap="sm", py="sm", wrap="nowrap", align="flex-start")
+    ├── [selectable] Checkbox size="xs" mt={2}   ← left of the title
+    └── Box (flex-1, min-w-0, cursor="pointer")
+        └── Group (justify="space-between", wrap="nowrap", align="flex-start")
+            ├── Stack gap={3} style={{ minWidth: 0 }}
+            │   ├── Text size="xs" ff="mono" c="dimmed" — document number
+            │   ├── Text size="sm" fw={600} truncate — primary field (customer, etc.)
+            │   ├── Text size="xs" c="dimmed" truncate — secondary field
+            │   └── Group gap="md" mt={2}
+            │       ├── Text size="xs" c="dimmed" — quantity
+            │       └── Text size="xs" fw={500} — amount
+            └── Stack gap={4} align="flex-end" flexShrink=0
+                ├── StatusBadge
+                └── Text size="xs" c="dimmed" — date
 ```
 
 Pagination and filters use URL search params — `'use client'` wrapper component holding filter bar + table/card-list.
@@ -474,6 +485,12 @@ Stack (gap="md")
 ### 8.3 Form Page (New / Edit)
 
 Used for `new/page.tsx` and `[id]/edit/page.tsx`.
+
+**After submit** — navigate to the record's **detail (view) page**, not back to the
+list, for both create and edit (`router.push(\`{BASE_PATH}/{id}\`)`). On create use
+the id returned by the Server Action (demo: a deterministic key, e.g. the price-list
+`entryKey`). Modals that create a record (copy / duplicate / convert) follow the same
+rule.
 
 ```
 Stack (gap="md")
@@ -559,6 +576,12 @@ Stack (gap="md")
 | Invoice | ISSUED | blue | 発行済 |
 | Invoice | SENT | violet | 送付済 |
 | Invoice | PAID | green | 支払済 |
+| MaterialPurchaseOrder | DRAFT | gray | 下書き |
+| MaterialPurchaseOrder | REQUESTED | yellow | 承認依頼中 |
+| MaterialPurchaseOrder | APPROVED | blue | 承認済 |
+| MaterialPurchaseOrder | ORDERED | violet | 発注済 |
+| MaterialPurchaseOrder | COMPLETED | green | 入荷完了 |
+| MaterialPurchaseOrder | CANCELLED | red | キャンセル |
 | InspectionRecord | PENDING | gray | 未実施 |
 | InspectionRecord | PASS | green | 合格 |
 | InspectionRecord | FAIL | red | 不合格 |
@@ -691,6 +714,41 @@ new Intl.NumberFormat('ja-JP', { style: 'currency', currency: currency ?? 'JPY' 
 
 **Button loading state** — always use `loading={isPending}` from `useTransition`. Never disable the button without loading state; users need feedback.
 
+### 11.1 Button components (global design system)
+
+Never use a raw Mantine `<Button>` in feature code. Use the named components in
+`src/components/ui/buttons.tsx`, which encode the variants above so every button
+stays consistent. Size is `sm` everywhere (theme default) — do not pass `size`.
+
+**Role buttons** — semantic wrappers over the §11 variants:
+
+| Component | Variant | Use |
+|-----------|---------|-----|
+| `PrimaryButton` | `filled` | primary CTA |
+| `SecondaryButton` | `default` | secondary action |
+| `GhostButton` | `subtle` | tertiary / ghost (e.g. リセット) |
+| `DangerButton` | `filled` red | destructive CTA |
+
+**Action buttons** — recurring actions with label + icon + role baked in (label
+overridable via children):
+
+| Component | Built on | Default label / icon |
+|-----------|----------|----------------------|
+| `SaveButton` | Primary | 保存 / `IconDeviceFloppy` (`type="submit"`) |
+| `CancelButton` | Secondary | キャンセル |
+| `CreateButton` | Primary | 新規作成 / `IconPlus` |
+| `EditButton` | Secondary | 編集 / `IconEdit` |
+| `CopyButton` | Secondary | 複製 / `IconCopy` |
+| `DeleteButton` | Danger | 削除 / `IconTrash` |
+| `ApproveButton` | Primary green | 承認 / `IconCheck` |
+| `RejectButton` | `outline` red | 差し戻し / `IconArrowBackUp` |
+| `PdfButton` (`PdfButton.tsx`) | Secondary | PDF / `IconFileTypePdf` (external link) |
+
+All accept any Mantine Button prop (`loading`, `disabled`, `fullWidth`, `onClick`,
+`leftSection` override …) plus `href` (renders a Next.js `<Link>`) and `external`
+(new-tab `<a>`). The shared shells (`shells.tsx`, `modals.tsx`) and `NewButton`
+are built on these, so most screens get the design for free.
+
 **Form field error state** — errors appear below the input as `Text size="xs" c="red"`. Mantine `@mantine/form` with `zodResolver` handles this automatically.
 
 ---
@@ -719,6 +777,9 @@ Paper (withBorder, p="md", radius="md")
 ├── Group justify="space-between" mb="sm"
 │   ├── Title order={5} "工程ワークフロー"
 │   └── [desktop, if APPROVED or IN_PROGRESS] Button variant="subtle" size="xs" "変更承認依頼"
+├── [if has step links (分岐/合流)] WorkflowGraph — DAG view of steps + routed quantities
+│   `src/components/production/WorkflowGraph.tsx` — nodes = work_order_steps,
+│   edges = work_order_step_links (source→target, routed_quantity label)
 ├── Stack gap="xs"
 │   └── [per work_order_step] StepCard (see below)
 └── [mobile] Button variant="subtle" size="xs" fullWidth mt="sm" "変更承認依頼"
@@ -743,9 +804,18 @@ Paper (withBorder, p="sm", radius="sm")
 ├── [if OUTSOURCE] Group gap="xl" mt="xs" pl={28}
 │   ├── Text size="xs" c="dimmed" "依頼: {outsource_requested_at}"
 │   └── Text size="xs" c="dimmed" "入荷予定: {outsource_expected_at}"
-└── [if COMPLETED] Group gap="xl" mt="xs" pl={28}
-    └── Text size="xs" c="dimmed" "完了: {completed_at}（{completed_by}）"
+├── [if COMPLETED] Group gap="xl" mt="xs" pl={28}
+│   └── Text size="xs" c="dimmed" "完了: {completed_at}（{completed_by}）"
+└── [if has quantities] Group gap="sm" mt="xs" pl={28} wrap="wrap"
+    ├── Text size="xs" — "受入 {input_quantity}"
+    ├── Text size="xs" c="green" — "良品 {output_success_quantity}"
+    ├── [if output_defect_semi_finished] Badge size="xs" color="orange" variant="light" — "半製品 {n}"
+    ├── [if output_defect_scrap]         Badge size="xs" color="red"    variant="light" — "廃棄 {n}"
+    └── [if output_defect_rework]        Badge size="xs" color="yellow" variant="light" — "手直し {n}"
 ```
+
+When the step is a split/merge node, `WorkOrderStepsPanel` renders `WorkflowGraph` (see §12.2)
+above the card list to show the branch/merge edges (`work_order_step_links`) and routed quantities.
 
 ### 12.3 WorkOrderStepExecutionPage
 
@@ -762,6 +832,7 @@ Stack (gap="md", p="md")
 │   │   └── StatusBadge (step status)
 │   └── [if session_locked_by != current user] Alert color="red" fullWidth
 │       "別のユーザーがセッション中です"
+├── [if IN_PROGRESS] StepQuantityForm (see below)
 ├── [if IN_PROGRESS] InspectionRecordForm (see 12.5)
 ├── DefectRecordForm (see 12.6)
 └── Group (justify="center", mt="xl")
@@ -769,6 +840,21 @@ Stack (gap="md", p="md")
     ├── [if IN_PROGRESS] Button size="lg" color="green" — 工程完了
     └── [if IN_PROGRESS] Button size="lg" color="red" variant="outline"
         "キャンセル（巻き戻し）" → ConfirmModal
+```
+
+**StepQuantityForm** (`src/components/production/StepQuantityForm.tsx`) — tablet-first, `size="lg"`.
+Records item flow & defect disposition for the step; persisted to `work_order_steps`.
+
+```
+Paper (withBorder, p="lg")
+├── Title order={4} "数量・不良"
+├── NumberInput "受入数 (input_quantity)" — 既定: 前工程の output_success_quantity
+├── NumberInput "良品数 (output_success_quantity)" — 次工程へ渡る
+└── Group grow — 不良内訳
+    ├── NumberInput "半製品 (output_defect_semi_finished)"  // 在庫へ
+    ├── NumberInput "廃棄 (output_defect_scrap)"
+    └── NumberInput "手直し (output_defect_rework)"          // 分岐で追加工程へ
+// バリデーション: output_success + 不良合計 = input_quantity（不一致時はインライン警告）
 ```
 
 ### 12.4 ApprovalStatusPanel
@@ -856,7 +942,7 @@ Group align="flex-end"
 ├── Select (product_id, searchable)
 ├── Select (order_type)
 ├── NumberInput (quantity)
-├── NumberInput (unit_price) — auto-filled from price_lists, editable override
+├── NumberInput (unit_price) — auto-filled from price_list_tiers (resolved by 顧客×製品×注文種別×数量), editable override
 └── Text ff="mono" — computed amount (= quantity × unit_price)
 ```
 
@@ -896,6 +982,13 @@ Items sub-table has inline add/edit (no separate page).
 
 **Detail tabs**: グループ情報 / メンバー / 代理設定
 
+### 13.6 Factories (工場)
+
+**List columns**: コード / 名称（ja） / 国 / 状態 / 更新日
+
+**Detail**: summary grid (連絡先・住所); related tabs for 在庫サマリ（工場別）/ 実行中工程.
+Category color `gray` (マスタ), icon `IconBuildingWarehouse`.
+
 ---
 
 ## 14. DataTable Column Conventions
@@ -930,13 +1023,15 @@ Row click navigates to detail page.
 | Invoice | 請求番号 / 顧客 / 請求期間 / 合計金額 / 状態 / 発行日 |
 | BillingClosing | 顧客 / 締日 / 合計金額 / 状態 / 処理日 |
 | DesignRequest | 依頼番号 / トリガー / 製品 / 状態 / 更新日 |
-| MaterialReceipt | 素材 / 仕入先 / 数量 / 入荷日 |
+| MaterialPurchaseOrder | 発注番号 / 仕入先 / 入荷先工場 / 合計金額 / 状態 / 発注日 |
+| MaterialReceipt | 素材 / 仕入先 / 入荷工場 / 数量 / 入荷日 |
 | OutsourceOrder | 外注先 / 工程 / 依頼日 / 入荷予定日 / 入荷日 / 状態 |
 | Customer | BPコード / 名称 / 支店数 / 状態 / 更新日 |
 | EndUser | BPコード / 名称 / 業種 / 状態 |
+| Factory | コード / 名称 / 国 / 状態 / 更新日 |
 | Product | 製品コード / 名称 / 素材 / 単位 / 状態 |
-| MaterialType | 材種コード / 名称 / 状態 |
-| Material | 素材コード / 材種 / 名称 / 形態 / 単位 / 状態 |
+| MaterialType | 材種コード / メーカー / 形状 / 名称 / 状態 |
+| Material | 素材コード / 材種 / 直径 / 全長 / 黒皮研磨 / 状態 |
 | Supplier | BPコード / 名称 / 外注種別 / 標準リードタイム / 状態 |
 | ProcessStep | コード / 名称 / カテゴリ / 実施場所 / 同期可 / 検査 / 承認 |
 | InspectionTemplate | コード / 名称 / 関連工程 / 状態 |
@@ -958,6 +1053,12 @@ Row click navigates to detail page.
 - `clearable` on all optional Select and DatePickerInput fields.
 
 **Validation timing** — `validateInputOnChange: false` (default). Validate on submit; show inline errors per field after first submit attempt.
+
+**Grid field alignment** — fields inside a `FormSection` keep their **label at the
+top** but push the **input box to the bottom** of the (stretched) grid cell
+(`.form-section` rules in globals.css: `margin-top: auto` on `.mantine-Input-wrapper`).
+So when fields in the same row differ in label/description height, the input boxes
+line up horizontally — the gap above a shorter field's input simply grows.
 
 **Line item tables (desktop)** — `<Table withTableBorder withColumnBorders={false}>` with form inputs inline in cells.
 
@@ -1032,7 +1133,7 @@ Use these exact terms consistently across all UI strings, error messages, and no
 | 試算 | 試算 | EST |
 | 価格表 | 価格表 | price_list |
 | 見積書 | 見積書 | QOT |
-| 注文受諾書 | 注文受諾書 | ORD |
+| 受注請書 | 受注請書 | ORD |
 | 受注書 | 受注書 | ORD-...-NN |
 | 指示書 | 指示書 | — (serial int) |
 | 出荷書 | 出荷書 | — |
@@ -1059,7 +1160,7 @@ Use these exact terms consistently across all UI strings, error messages, and no
 | キャンセル | キャンセル | CANCELLED |
 | 差し戻し | 差し戻し | REJECTED |
 
-Do **not** use synonyms — e.g. never write "注文書" where "注文受諾書" is meant.
+Do **not** use synonyms — e.g. never write "注文書" where "受注請書" is meant.
 
 ### 17.2 敬語 / Tone
 

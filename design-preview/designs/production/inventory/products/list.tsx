@@ -66,10 +66,10 @@ interface ProductInventoryRow {
 }
 
 const MOCK_RECORDS: ProductInventoryRow[] = [
-  { id: '1', productName: '精密軸 PRD-2601-0001', lotNumber: 1042, quantity: 50, reserved: 20, location: 'A-12-3', updatedAt: '2026-05-28' },
-  { id: '2', productName: 'ロッド PRD-2602-0008', lotNumber: 1038, quantity: 12, reserved: 0, location: 'A-08-1', updatedAt: '2026-05-25' },
-  { id: '3', productName: '特殊加工品 PRD-2603-0012', lotNumber: 1051, quantity: 8, reserved: 8, location: 'B-02-4', updatedAt: '2026-06-01' },
-  { id: '4', productName: '精密軸 PRD-2601-0001', lotNumber: 1029, quantity: 120, reserved: 40, location: 'A-12-1', updatedAt: '2026-05-12' },
+  { id: '1', productName: '精密軸 PRD-202601-0001', lotNumber: 1042, quantity: 50, reserved: 20, location: 'A-12-3', updatedAt: '2026-05-28' },
+  { id: '2', productName: 'ロッド PRD-202602-0008', lotNumber: 1038, quantity: 12, reserved: 0, location: 'A-08-1', updatedAt: '2026-05-25' },
+  { id: '3', productName: '特殊加工品 PRD-202603-0012', lotNumber: 1051, quantity: 8, reserved: 8, location: 'B-02-4', updatedAt: '2026-06-01' },
+  { id: '4', productName: '精密軸 PRD-202601-0001', lotNumber: 1029, quantity: 120, reserved: 40, location: 'A-12-1', updatedAt: '2026-05-12' },
 ];
 
 export default function ProductInventoryListPage() {

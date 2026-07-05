@@ -1,0 +1,43 @@
+{
+  "name": "nextjs-web",
+  "version": "0.1.0",
+  "private": true,
+  "packageManager": "pnpm@10.18.0",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "biome check",
+    "format": "biome format --write",
+    "db:sync-schema": "rm -rf prisma/schema && cp -R ../../shared-db/prisma/schema prisma/schema",
+    "db:generate": "prisma generate"
+  },
+  "dependencies": {
+    "@mantine/core": "^9.3.1",
+    "@mantine/dates": "^9.3.1",
+    "@mantine/form": "^9.3.1",
+    "@mantine/hooks": "^9.3.1",
+    "@mantine/modals": "^9.3.1",
+    "@mantine/notifications": "^9.3.1",
+    "@tabler/icons-react": "^3.44.0",
+    "date-fns": "^4.4.0",
+    "dayjs": "^1.11.21",
+    "next": "16.2.9",
+    "react": "19.2.4",
+    "react-dom": "19.2.4",
+    "zod": "^4.4.3",
+    "@prisma/client": "7.8.0",
+    "@prisma/adapter-pg": "7.8.0"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "2.2.0",
+    "@tailwindcss/postcss": "^4",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "babel-plugin-react-compiler": "1.0.0",
+    "tailwindcss": "^4",
+    "typescript": "^5",
+    "prisma": "7.8.0"
+  }
+}

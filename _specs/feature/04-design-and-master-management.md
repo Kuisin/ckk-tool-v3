@@ -33,6 +33,20 @@
 
 ## マスタ管理
 
+### 工場マスタ
+
+| パス | 内容 |
+|------|------|
+| `/master/factories` | 工場一覧 |
+| `/master/factories/new` | 工場新規作成 |
+| `/master/factories/[id]` | 工場詳細 |
+| `/master/factories/[id]/edit` | 工場編集 |
+
+- 工場（`factories`）は製造・在庫・出荷の拠点。`SCOPE.FACTORY` の実体
+- `name` は `{ ja: '', en: '' }` JSON、`code` で一意
+- 在庫（`product_inventory` / `material_inventory`）・工程実行（`work_order_steps.factory_id`）・
+  出荷元（`shipping_orders.from_factory_id`）・入荷先（`material_receipts.factory_id`）から参照
+
 ### 顧客マスタ
 
 | パス | 内容 |
@@ -85,8 +99,10 @@
 | `/master/materials/[id]` | 素材詳細 |
 | `/master/materials/[id]/edit` | 素材編集 |
 
-- 材種コード: `[A-Z][0-9]{2}[A-Z][0-9]{4}`（例: `A01A0001`）
-- 素材コード: `[材種コード]-[A-C][0-9]{3}-[0-9]{3}`（例: `A01A0001-A001-001`）
+- 材種コード: `[A-Z][0-9]{2}[ABC-Z][0-9]{4}`（例: `B01B0001`）= メーカー＋メーカー材種＋形状＋種類
+  （構成マスタ: `material_manufacturers` / `material_manufacturer_grades` / `material_shapes` / `material_kinds`）
+- 素材コード: `[材種コード]-[A-C][0-9]{3}-[0-9]{3}`（例: `B01B0001-A083-330`）= 材種＋黒皮研磨＋直径＋全長
+  （構成マスタ: `material_surface_finishes` / `material_diameters` / `material_length_variants`。採番表 ver1.2 準拠）
 
 ### 外注企業マスタ（仕入先）
 

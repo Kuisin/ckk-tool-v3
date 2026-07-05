@@ -1,0 +1,13 @@
+{
+  "name": "ckk-data-migration",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Browse migrated CKK FileMaker data with Prisma Studio",
+  "scripts": {
+    "studio": "prisma studio --schema prisma/mapped.prisma --port 5555",
+    "studio:mapped": "prisma studio --schema prisma/mapped.prisma --port 5555",
+    "studio:staging": "prisma studio --schema prisma/staging.prisma --port 5556",
+    "pull:mapped": "prisma db pull --schema prisma/mapped.prisma",
+    "pull:staging": "prisma db pull --schema prisma/staging.prisma"
+  }
+}

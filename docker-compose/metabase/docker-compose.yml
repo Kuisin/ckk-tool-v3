@@ -1,0 +1,79 @@
+# Metabase — BI / analytics dashboards.
+#
+# Deployed on docker-mac-pro at ~/stacks/metabase. Uses a dedicated Postgres for
+# its application metadata (recommended over the embedded H2). Connect data sources
+# (the app DB, etc.) from the Metabase UI after first-run setup.
+#
+#   metabase     host :3003 -> container :3000  (UI)
+#   metabase-db  internal Postgres (app metadata)
+
+services:
+  metabase-db:
+    image: postgres:17-alpine
+    container_name: metabase-db
+    restart: unless-stopped
+    environment:
+      - POSTGRES_DB=metabase
+      - POSTGRES_USER=metabase
+      - POSTGRES_PASSWORD=${MB_DB_PASS:?set MB_DB_PASS in .env}
+    volumes:
+      - metabase-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U metabase"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  metabase:
+    image: metabase/metabase:v0.62.3.3
+    container_name: metabase
+    restart: unless-stopped
+    depends_on:
+      metabase-db:
+        condition: service_healthy
+    environment:
+      - MB_DB_TYPE=postgres
+      - MB_DB_HOST=metabase-db
+      - MB_DB_PORT=5432
+      - MB_DB_DBNAME=metabase
+      - MB_DB_USER=metabase
+      - MB_DB_PASS=${MB_DB_PASS:?set MB_DB_PASS in .env}
+      # Encrypts saved data-source credentials at rest in the app DB.
+      - MB_ENCRYPTION_SECRET_KEY=${MB_ENCRYPTION_SECRET_KEY:?set MB_ENCRYPTION_SECRET_KEY in .env}
+      # AD/LDAP auth via the vpn-ldap forwarder. Bind creds mirror vpn-ldap/ldap.env.
+      - MB_LDAP_ENABLED=true
+      - MB_LDAP_HOST=vpn-ldap
+      - MB_LDAP_PORT=389
+      - MB_LDAP_SECURITY=none
+      - MB_LDAP_BIND_DN=${LDAP_APP_DN:?set LDAP_APP_DN in .env}
+      - MB_LDAP_PASSWORD=${LDAP_APP_PASSWORD:?set LDAP_APP_PASSWORD in .env}
+      - MB_LDAP_USER_BASE=DC=ckk-tools,DC=loc
+      - "MB_LDAP_USER_FILTER=(&(objectClass=user)(|(sAMAccountName={login})(mail={login})(userPrincipalName={login})))"
+      - MB_LDAP_ATTRIBUTE_EMAIL=mail
+      - MB_LDAP_ATTRIBUTE_FIRSTNAME=givenName
+      - MB_LDAP_ATTRIBUTE_LASTNAME=sn
+    networks:
+      - default     # metabase-db
+      - ldap        # vpn-ldap_default — reach vpn-ldap:389
+      - shareddb    # shared-db — read labor data (kot / directory schemas, kot_ro role)
+    ports:
+      - "3003:3000"
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 120s
+
+volumes:
+  metabase-db-data:
+
+networks:
+  # Segmented LDAP network owned by the vpn-ldap stack (AD over the VPN).
+  ldap:
+    external: true
+    name: vpn-ldap_default
+  # shared-db stack's network — labor/attendance data (kot / directory schemas).
+  shareddb:
+    external: true
+    name: shared-db

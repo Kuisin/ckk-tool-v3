@@ -1,0 +1,121 @@
+# Container alert rules (provisioned). cAdvisor can't resolve container names on
+# this host (overlay2 layer lookup fails), so resource alerts use aggregates;
+# per-container health is driven by Loki logs (which DO carry container/stack).
+apiVersion: 1
+groups:
+  - orgId: 1
+    name: Containers
+    folder: Containers
+    interval: 1m
+    rules:
+      - uid: container_oom
+        title: Container OOM-killed
+        condition: C
+        for: 0m
+        noDataState: OK
+        execErrState: OK
+        labels:
+          severity: critical
+        annotations:
+          summary: A container was OOM-killed in the last 10 minutes (out of memory).
+        data:
+          - refId: A
+            relativeTimeRange: { from: 600, to: 0 }
+            datasourceUid: prometheus
+            model:
+              datasource: { type: prometheus, uid: prometheus }
+              expr: sum(increase(container_oom_events_total[10m]))
+              instant: true
+              refId: A
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: A
+              refId: C
+              conditions:
+                - evaluator: { type: gt, params: [0] }
+
+      - uid: container_restart_loop
+        title: Container restarting repeatedly
+        condition: C
+        for: 5m
+        noDataState: OK
+        execErrState: OK
+        labels:
+          severity: warning
+        annotations:
+          summary: A container has restarted more than 3 times in 15 minutes (crash loop).
+        data:
+          - refId: A
+            relativeTimeRange: { from: 900, to: 0 }
+            datasourceUid: prometheus
+            model:
+              datasource: { type: prometheus, uid: prometheus }
+              expr: max(changes(container_start_time_seconds{id=~".*docker-.*"}[15m]))
+              instant: true
+              refId: A
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: A
+              refId: C
+              conditions:
+                - evaluator: { type: gt, params: [3] }
+
+      - uid: scrape_target_down
+        title: Monitoring target down
+        condition: C
+        for: 5m
+        noDataState: OK
+        execErrState: Error
+        labels:
+          severity: warning
+        annotations:
+          summary: A Prometheus scrape target (node-exporter / cadvisor / gpu-exporter) is down.
+        data:
+          - refId: A
+            relativeTimeRange: { from: 300, to: 0 }
+            datasourceUid: prometheus
+            model:
+              datasource: { type: prometheus, uid: prometheus }
+              expr: min(up)
+              instant: true
+              refId: A
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: A
+              refId: C
+              conditions:
+                - evaluator: { type: lt, params: [1] }
+
+      - uid: stack_errors_high
+        title: Stack error rate high (logs)
+        condition: C
+        for: 5m
+        noDataState: OK
+        execErrState: OK
+        labels:
+          severity: warning
+        annotations:
+          summary: A stack logged more than 25 error lines in 5 minutes.
+        data:
+          - refId: A
+            relativeTimeRange: { from: 300, to: 0 }
+            datasourceUid: loki
+            model:
+              datasource: { type: loki, uid: loki }
+              expr: 'sum by (stack) (count_over_time({stack=~".+"} |~ `(level=error|"level":"error"|ERROR|Traceback|panic:|FATAL|OOMKilled|Exception)` [5m]))'
+              queryType: instant
+              refId: A
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: A
+              refId: C
+              conditions:
+                - evaluator: { type: gt, params: [25] }

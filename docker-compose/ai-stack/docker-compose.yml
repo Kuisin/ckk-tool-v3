@@ -1,0 +1,150 @@
+# AI stack — Ollama (LLM/VLM) + Open WebUI + PDF→JSON extractor.
+#
+# Deployed on host `docker-mac-pro` (kaiseisawada@192.168.50.15) under ~/ai-stack.
+# This file is the source of truth; copy the directory to the host and run
+# `docker compose up -d` to recreate the stack. See README.md for full notes.
+#
+# Services / published ports:
+#   ollama      11434  — model runtime (OpenAI/Ollama API)
+#   open-webui   3000  — chat GUI (container 8080)
+#   po-extract   8000  — FastAPI document→JSON endpoint (see ./extractor)
+
+services:
+  # Ollama built for AMD GPUs (ROCm 7.1) with vision-language support.
+  # The /dev/kfd + /dev/dri device passthrough and cgroup rule are required
+  # for ROCm GPU acceleration; drop them to fall back to CPU on other hosts.
+  ollama:
+    image: xxdoman/ollama-amd-rocm71-vl:latest
+    container_name: ollama
+    restart: unless-stopped
+    devices:
+      - /dev/kfd
+    device_cgroup_rules:
+      - 'c 226:* rmw'
+    volumes:
+      - /dev/dri:/dev/dri
+      - ollama:/models
+    environment:
+      - OLLAMA_MODELS=/models
+      # Default context window. 4096 is too small for a thinking model + injected
+      # web-search context (the context gets truncated before the answer). 16k fits
+      # comfortably in the 32GB GPUs.
+      - OLLAMA_CONTEXT_LENGTH=16384
+      # Reserve 4GB of VRAM PER GPU that Ollama will not allocate into, so there is
+      # always headroom on each card for other GPU workloads. 34GB - 4GB = 30GB
+      # usable per GPU, which still fits the 24GB qwen3:32b. Bytes: 4 * 1024^3.
+      - OLLAMA_GPU_OVERHEAD=4294967296
+      # Concurrency: 2 parallel request slots per model (global — Ollama has no
+      # per-model setting). Chosen so the large model stays on ONE GPU: measured
+      # qwen3:32b @2 slots = 28.9GB, all 65 layers on a single card, 13.4 tok/s
+      # (same speed as 1 slot), leaving the entire 2nd GPU free for the 7b/14b
+      # models most users run. @4 the 32b grows to 38GB and spans both cards.
+      # Each slot is one KV-cache copy (slot KV = context).
+      - OLLAMA_NUM_PARALLEL=2
+
+  open-webui:
+    image: ghcr.io/open-webui/open-webui:main
+    container_name: open-webui
+    restart: unless-stopped
+    depends_on:
+      - ollama
+      - searxng
+    environment:
+      - OLLAMA_BASE_URL=http://ollama:11434
+      # Default chat model: small, fast, non-thinking (qwen3:32b stays selectable
+      # for max quality). Must be pulled into the ollama volume.
+      - DEFAULT_MODELS=qwen2.5:7b
+      # Background tasks (search-query generation, titles, tags) use the same
+      # small, non-thinking model — qwen3's <think> output breaks query parsing.
+      - TASK_MODEL=qwen2.5:7b
+      # Web search (internet access) via the local SearXNG instance — no API keys.
+      - ENABLE_WEB_SEARCH=true
+      - WEB_SEARCH_ENGINE=searxng
+      - SEARXNG_QUERY_URL=http://searxng:8080/search?q=<query>
+      - WEB_SEARCH_RESULT_COUNT=5
+      - WEB_SEARCH_CONCURRENT_REQUESTS=10
+      # Inject search results straight into the prompt instead of the RAG
+      # embed→retrieve path (which the model was ignoring). Snippets only keeps
+      # the injected context compact so it can't be truncated.
+      - BYPASS_WEB_SEARCH_EMBEDDING_AND_RETRIEVAL=true
+      - BYPASS_WEB_SEARCH_WEB_LOADER=true
+      # Fetch & read page contents for URLs pasted directly in chat.
+      - ENABLE_WEB_LOADER=true
+      # RAG embeddings via Ollama bge-m3 (multilingual, GPU) instead of the
+      # bundled all-MiniLM. Used for uploaded-document / knowledge retrieval.
+      - RAG_EMBEDDING_ENGINE=ollama
+      - RAG_EMBEDDING_MODEL=bge-m3
+      - RAG_OLLAMA_BASE_URL=http://ollama:11434
+      # AD/LDAP login via the vpn-ldap forwarder. All LDAP connection + bind config
+      # comes from the shared ../vpn-ldap/ldap.env (env_file); just toggle it on here.
+      - ENABLE_LDAP=true
+      # Metabase "chat with the labor data" tool (tools/metabase_labor.py). The tool
+      # queries the read-only labor data source through Metabase's API. Secrets live
+      # in .env (gitignored): METABASE_URL / METABASE_DB_ID / METABASE_API_KEY.
+      - METABASE_URL=${METABASE_URL:-}
+      - METABASE_DB_ID=${METABASE_DB_ID:-2}
+      - METABASE_API_KEY=${METABASE_API_KEY:-}
+    env_file:
+      - ../vpn-ldap/ldap.env
+    volumes:
+      - open-webui:/app/backend/data
+    networks:
+      - default     # ai-stack_default (ollama, searxng)
+      - ldap        # vpn-ldap_default — reach vpn-ldap:389 (segmented)
+
+  # Private metasearch engine providing Open WebUI's web search (no API keys).
+  searxng:
+    image: searxng/searxng:latest
+    container_name: searxng
+    restart: unless-stopped
+    volumes:
+      - ./searxng:/etc/searxng
+    environment:
+      - SEARXNG_BASE_URL=http://searxng:8080/
+    # No published port — reached internally by open-webui at http://searxng:8080.
+
+  # Document → JSON extraction API. Renders PDF pages to images and asks the
+  # vision model (MODEL) to fill a caller-supplied JSON Schema. Source: ./extractor.
+  po-extract:
+    build: ./extractor
+    image: ai-stack-po-extract
+    container_name: po-extract
+    restart: unless-stopped
+    depends_on:
+      - ollama
+    environment:
+      - OLLAMA_URL=http://ollama:11434
+      - MODEL=qwen2.5vl
+    networks:
+      - default     # ai-stack_default (ollama)
+      - coolify     # Coolify-deployed nextjs-web apps → http://po-extract:8000
+
+  # Metabase MCP server (read-only labor data) exposed to Open WebUI as an
+  # OpenAPI tool server via mcpo. Replaces the hand-rolled metabase_labor tool.
+  # open-webui reaches it on the shared default network at http://metabase-mcp:8000.
+  metabase-mcp:
+    build: ./metabase-mcp
+    image: ckk-metabase-mcp
+    container_name: metabase-mcp
+    restart: unless-stopped
+    environment:
+      - METABASE_URL=${METABASE_URL:-http://192.168.50.15:3003}
+      - METABASE_DB_ID=${METABASE_DB_ID:-2}
+      - METABASE_API_KEY=${METABASE_API_KEY:-}
+      # Protects the mcpo OpenAPI endpoints; Open WebUI sends it as the bearer token.
+      - MCPO_API_KEY=${MCPO_API_KEY:-}
+    networks:
+      - default     # ai-stack_default — reachable by open-webui
+
+volumes:
+  ollama:
+  open-webui:
+
+networks:
+  # Segmented LDAP network owned by the vpn-ldap stack; only open-webui joins it.
+  ldap:
+    external: true
+    name: vpn-ldap_default
+  # Coolify apps' network — po-extract serves the nextjs-web 受注請書 intake there.
+  coolify:
+    external: true

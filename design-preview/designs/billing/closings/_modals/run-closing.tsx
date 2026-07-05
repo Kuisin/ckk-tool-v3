@@ -34,7 +34,7 @@ export function RunClosingModal({ opened, onClose }: ModalBaseProps) {
       <Stack gap="md">
         <Select
           label="顧客"
-          placeholder="顧客を選択してください"
+          placeholder="顧客を選択"
           data={CUSTOMERS}
           searchable
           withAsterisk
@@ -43,7 +43,7 @@ export function RunClosingModal({ opened, onClose }: ModalBaseProps) {
         />
         <DatePickerInput
           label="締日"
-          placeholder="日付を選択してください"
+          placeholder="日付を選択"
           leftSection={<IconCalendar size={14} />}
           valueFormat="YYYY/MM/DD"
           withAsterisk

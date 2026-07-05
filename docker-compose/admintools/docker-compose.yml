@@ -1,0 +1,43 @@
+# adminTools — WebUI + DB to manage Sakura/onamae mail accounts, synced to the
+# Sakura control panel via headless Playwright (replaces the Excel-driven scripts).
+#
+# Deployed on docker-mac-pro at ~/stacks/admintools.
+#   admintools     host :8090 -> :8000  (WebUI + API)
+#
+# Data lives in the shared-db stack (db `ckk`, schema `admintools`; role
+# `admintools` has search_path=admintools). KOT_DB_URL uses role `kot`
+# (search_path=kot,directory) for the import-log view and employee matching.
+# DDL is owned by Prisma — see repo shared-db/.
+
+services:
+  admintools:
+    build: .
+    image: ckk-admintools
+    container_name: admintools
+    restart: unless-stopped
+    environment:
+      - DATABASE_URL=postgresql+psycopg://admintools:${DB_PASSWORD:?set DB_PASSWORD in .env}@shared-db:5432/ckk
+      # Sakura RS control-panel login — needed only for the sync action.
+      - SAKURA_ID=${SAKURA_ID:-}
+      - SAKURA_PW=${SAKURA_PW:-}
+      # API key for the external read/write JSON API (X-API-Key). Empty = API off.
+      - ADMINTOOLS_API_KEY=${ADMINTOOLS_API_KEY:-}
+      # Default mail domain for user emails (<ldap-username>@DEFAULT_DOMAIN).
+      - DEFAULT_DOMAIN=${DEFAULT_DOMAIN:-ckk-tool.co.jp}
+      # Connection to the KOT schema to show its import log. Empty = off.
+      - KOT_DB_URL=${KOT_DB_URL:-}
+    env_file:
+      # Shared LDAP/AD bind creds (LDAP_SERVER_HOST=vpn-ldap, LDAP_APP_DN, ...).
+      - ../vpn-ldap/ldap.env
+    networks:
+      - default
+      - ldap        # vpn-ldap_default — read AD users for User emails
+      - shareddb    # shared-db — admintools schema + KOT import log
+
+networks:
+  ldap:
+    external: true
+    name: vpn-ldap_default
+  shareddb:
+    external: true
+    name: shared-db

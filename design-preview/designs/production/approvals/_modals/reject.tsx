@@ -53,7 +53,7 @@ export function RejectModal({
       <Alert color="red" variant="light" icon={<IconAlertTriangle size={16} />}>
         差し戻すと依頼者に通知され、指示書は承認前の状態に戻ります。
       </Alert>
-      <Textarea label="差し戻し理由" placeholder="理由を入力してください" rows={4} withAsterisk {...form.getInputProps('reason')} />
+      <Textarea label="差し戻し理由" placeholder="理由を入力" rows={4} withAsterisk {...form.getInputProps('reason')} />
     </FormModal>
   );
 }

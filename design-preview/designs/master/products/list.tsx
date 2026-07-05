@@ -36,9 +36,9 @@ interface ProductRow {
 }
 
 const MOCK_RECORDS: ProductRow[] = [
-  { id: 'PRD-2601-0001', name: { ja: '精密軸', en: 'Precision shaft' }, materialId: 'A01A0001-A001-001', unit: '本', isActive: true },
-  { id: 'PRD-2602-0008', name: { ja: 'ロッド', en: 'Rod' }, materialId: 'A02B0014-B001-002', unit: '本', isActive: true },
-  { id: 'PRD-2603-0012', name: { ja: '特殊加工品', en: 'Custom machined part' }, materialId: 'B01A0007-A002-001', unit: '本', isActive: true },
+  { id: 'PRD-202601-0001', name: { ja: '精密軸', en: 'Precision shaft' }, materialId: 'A01A0001-A001-001', unit: '本', isActive: true },
+  { id: 'PRD-202602-0008', name: { ja: 'ロッド', en: 'Rod' }, materialId: 'A02B0014-B001-002', unit: '本', isActive: true },
+  { id: 'PRD-202603-0012', name: { ja: '特殊加工品', en: 'Custom machined part' }, materialId: 'B01A0007-A002-001', unit: '本', isActive: true },
   { id: 'PRD-2511-0044', name: { ja: '旧型スリーブ', en: 'Legacy sleeve' }, materialId: 'A01A0001-A001-001', unit: '個', isActive: false },
 ];
 

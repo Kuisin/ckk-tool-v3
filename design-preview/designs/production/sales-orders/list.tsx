@@ -30,11 +30,11 @@ interface SalesOrderRow {
 }
 
 const MOCK_RECORDS: SalesOrderRow[] = [
-  { id: '1', salesOrderNumber: 'ORD-202601-00001-01', customerName: '株式会社ABC製作所', productName: '精密軸 PRD-2601-0001', quantity: 50, amount: 250000, deliveryDate: '2026-06-15', status: 'IN_PRODUCTION' },
-  { id: '2', salesOrderNumber: 'ORD-202601-00002-01', customerName: '合同会社XYZ工業', productName: 'ロッド PRD-2602-0008', quantity: 30, amount: 180000, deliveryDate: '2026-06-20', status: 'CONFIRMED' },
-  { id: '3', salesOrderNumber: 'ORD-202601-00003-01', customerName: '株式会社DEFエンジニアリング', productName: '特殊加工品 PRD-2603-0012', quantity: 10, amount: 95000, deliveryDate: '2026-07-01', status: 'DRAFT' },
-  { id: '4', salesOrderNumber: 'ORD-202512-00018-02', customerName: '東邦精密株式会社', productName: '精密軸 PRD-2601-0001', quantity: 120, amount: 600000, deliveryDate: '2026-05-30', status: 'PARTIAL_SHIPPED' },
-  { id: '5', salesOrderNumber: 'ORD-202512-00012-01', customerName: '株式会社ABC製作所', productName: 'ロッド PRD-2602-0008', quantity: 40, amount: 240000, deliveryDate: '2026-05-12', status: 'SHIPPED' },
+  { id: '1', salesOrderNumber: 'ORD-202601-00001-01', customerName: '株式会社ABC製作所', productName: '精密軸 PRD-202601-0001', quantity: 50, amount: 250000, deliveryDate: '2026-06-15', status: 'IN_PRODUCTION' },
+  { id: '2', salesOrderNumber: 'ORD-202601-00002-01', customerName: '合同会社XYZ工業', productName: 'ロッド PRD-202602-0008', quantity: 30, amount: 180000, deliveryDate: '2026-06-20', status: 'CONFIRMED' },
+  { id: '3', salesOrderNumber: 'ORD-202601-00003-01', customerName: '株式会社DEFエンジニアリング', productName: '特殊加工品 PRD-202603-0012', quantity: 10, amount: 95000, deliveryDate: '2026-07-01', status: 'DRAFT' },
+  { id: '4', salesOrderNumber: 'ORD-202512-00018-02', customerName: '東邦精密株式会社', productName: '精密軸 PRD-202601-0001', quantity: 120, amount: 600000, deliveryDate: '2026-05-30', status: 'PARTIAL_SHIPPED' },
+  { id: '5', salesOrderNumber: 'ORD-202512-00012-01', customerName: '株式会社ABC製作所', productName: 'ロッド PRD-202602-0008', quantity: 40, amount: 240000, deliveryDate: '2026-05-12', status: 'SHIPPED' },
 ];
 
 export default function SalesOrdersListPage() {

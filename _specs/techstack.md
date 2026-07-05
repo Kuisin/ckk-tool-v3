@@ -16,7 +16,6 @@
 | 6  | alloy       | grafana/alloy:1.8             | Log collector (Nginx/Docker)  | 12345           |
 | 7  | grafana     | grafana/grafana:11.6          | Dashboard / Alerting          | 3002            |
 | 8  | nginx       | nginx:1.28                    | Reverse proxy / TLS           | 80, 443         |
-| 9  | gitea       | gitea/gitea:1.23              | Git repository                | 3003            |
 | 10 | dockge      | louislam/dockge:1             | Docker GUI                    | 5001            |
 | 11 | seaweedfs   | chrislusf/seaweedfs:latest    | File storage (S3 API)         | 8333, 9333      |
 
@@ -83,10 +82,12 @@ Env Mgmt:       .env + Docker Secrets
 Feature Flag:   simple DB flag table
 
 Container:      Docker Compose
-Git:            Gitea
+Git:            Github
 Runtime:        Node standalone (Next build output)
 Reverse Proxy:  Nginx
 GUI:            Dockge
+Deploy:         Coolify（nextjs-webのみ; dev/mainブランチ別ビルド＋ロールバック）
+                他スタックは rsync + docker compose up -d --build
 
 # i18n
 System i18n:    next-intl + JSON files（messages/）
@@ -97,7 +98,10 @@ Date/Time:      date-fns v4（tree-shakeable）
 HTTP Client:    Ky
 File Storage:   SeaweedFS（Apache 2.0）
 Doc Intake:     imapflow（IMAP） + BullMQ（ファイル監視）
-OCR/Extraction: Gemini 2.5 Flash
+OCR/Extraction: ローカルLLM（self-hosted）— ai-stack の po-extract API
+                （FastAPI /extract: PDF/画像 → 構造化JSON）。3段ハイブリッド:
+                ①OCR（PP-OCRモデルをONNXRuntime=RapidOCRで実行）+ ②Vision
+                転写（qwen2.5vl）→ ③LLMがJSON生成。外部API・キー不要。
 Notification:   nodemailer + Nextcloud API + SSE
 Job Runner:     BullMQ
 Cache:          Valkey

@@ -1,0 +1,78 @@
+// King of Time attendance (was standalone `kot` DB, public schema).
+// Writers: kot-import (role kot), admintools match_employees (role kot).
+// No FK to directory.employee_directory: `employees` keeps legacy usernames
+// that no longer exist in AD (2 rows), and the LDAP sync owns that table.
+
+model Employee {
+  employeeCode Int    @id @map("employee_code")
+  username     String @unique
+
+  hrRecords HrRecord[]
+
+  @@map("employees")
+  @@schema("kot")
+}
+
+model KotEmployee {
+  employeeCode Int      @id @map("employee_code")
+  name         String
+  lastSeenAt   DateTime @default(now()) @map("last_seen_at") @db.Timestamptz(6)
+
+  matchReview KotMatchReview?
+
+  @@map("kot_employees")
+  @@schema("kot")
+}
+
+model KotMatchReview {
+  employeeCode Int      @id @map("employee_code")
+  kotName      String   @map("kot_name")
+  status       String
+  candidates   Json     @default("[]")
+  updatedAt    DateTime @default(now()) @map("updated_at") @db.Timestamptz(6)
+
+  kotEmployee KotEmployee @relation(fields: [employeeCode], references: [employeeCode])
+
+  @@map("kot_match_review")
+  @@schema("kot")
+}
+
+model HrRecord {
+  id               BigInt     @id @default(autoincrement())
+  employeeUsername String     @map("employee_username")
+  zone             String
+  date             DateTime   @db.Date
+  wtNormal         Int?       @map("wt_normal")
+  wtOvertime       Int?       @map("wt_overtime")
+  wtOvertimeNight  Int?       @map("wt_overtime_night")
+  wtNight          Int?       @map("wt_night")
+  wtLeaveLate      Int?       @map("wt_leave_late")
+  pto              Int?
+  planStart        DateTime?  @map("plan_start") @db.Timestamp(6)
+  planEnd          DateTime?  @map("plan_end") @db.Timestamp(6)
+  recordStarts     DateTime[] @map("record_starts") @db.Timestamp(6)
+  recordEnds       DateTime[] @map("record_ends") @db.Timestamp(6)
+  restStarts       DateTime[] @map("rest_starts") @db.Timestamp(6)
+  restEnds         DateTime[] @map("rest_ends") @db.Timestamp(6)
+
+  employee Employee @relation(fields: [employeeUsername], references: [username])
+
+  @@unique([employeeUsername, zone, date], map: "uq_hr_records")
+  @@index([zone, date], map: "idx_hr_records_zone_date")
+  @@map("hr_records")
+  @@schema("kot")
+}
+
+model ImportRun {
+  id         BigInt    @id @default(autoincrement())
+  finishedAt DateTime  @default(now()) @map("finished_at") @db.Timestamptz(6)
+  startDate  DateTime? @map("start_date") @db.Date
+  endDate    DateTime? @map("end_date") @db.Date
+  days       Int?
+  rows       Int?
+  status     String?
+  message    String?
+
+  @@map("import_runs")
+  @@schema("kot")
+}

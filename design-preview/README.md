@@ -10,6 +10,33 @@ pnpm install
 pnpm dev          # → http://localhost:5173
 ```
 
+### PDF rendering
+
+HTML preview in the A4 iframe works with `pnpm dev` alone. **Save PDF** also needs a running Gotenberg instance (the Vite dev server proxies `POST /api/pdf` → Gotenberg).
+
+```bash
+# Terminal 1 — Gotenberg (listens on localhost:3100)
+docker run --rm -p 3100:3000 gotenberg/gotenberg:8.17
+
+# Terminal 2 — design-preview
+cd design-preview
+pnpm dev
+```
+
+Open PDF mode directly:
+
+```text
+http://localhost:5173/?mode=pdf
+```
+
+Or start at the default UI gallery and switch the toolbar to **PDF Templates**.
+
+Override the Gotenberg URL if it is not on port 3100:
+
+```bash
+GOTENBERG_URL=http://localhost:3000 pnpm dev
+```
+
 ## Architecture (UI designs)
 
 UI designs render inside a **mock browser** (chrome + URL bar) in the shell app (`index.html`). The page content is an **iframe** (`frame.html`) — a separate document so portals, `position: fixed`, and viewport width behave like a real browser tab.
@@ -52,15 +79,14 @@ Display modes (all inside the mock browser iframe):
 
 ### PDF Templates
 
-For previewing HTML+CSS document templates (quote, invoice, work order, etc.) that are sent to Gotenberg.
+For previewing HTML+CSS document templates (quote, invoice, work order, etc.) that are sent to Gotenberg. See [PDF rendering](#pdf-rendering) above for the Gotenberg + `pnpm dev` setup.
 
 1. Create or copy an HTML template into `pdf-templates/`.
-2. Switch to **PDF Templates** in the toolbar toggle.
+2. Open `?mode=pdf` or switch to **PDF Templates** in the toolbar toggle.
 3. Select a template — it renders in an A4 iframe.
 4. Click **Save PDF** to generate a PDF via the local `/api/pdf` endpoint (→ Gotenberg) and download it.
-   Requires a running Gotenberg instance (default: `http://localhost:3100`, override with `GOTENBERG_URL`).
 
-See [`pdf-templates/README.md`](./pdf-templates/README.md) for details.
+See [`pdf-templates/README.md`](./pdf-templates/README.md) for template conventions.
 
 ## Stack
 

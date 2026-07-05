@@ -65,9 +65,9 @@ export const MATERIALS: Option[] = [
 ];
 
 export const PRODUCTS: Option[] = [
-  { value: 'PRD-2601-0001', label: '精密軸 PRD-2601-0001' },
-  { value: 'PRD-2602-0008', label: 'ロッド PRD-2602-0008' },
-  { value: 'PRD-2603-0012', label: '特殊加工品 PRD-2603-0012' },
+  { value: 'PRD-202601-0001', label: '精密軸 PRD-202601-0001' },
+  { value: 'PRD-202602-0008', label: 'ロッド PRD-202602-0008' },
+  { value: 'PRD-202603-0012', label: '特殊加工品 PRD-202603-0012' },
 ];
 
 // ── Order types (design.md / tables.md ORDER_TYPE) ───────────────────────────

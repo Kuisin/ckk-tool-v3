@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Badge, Select, Text, TextInput } from '@mantine/core';
+import { Badge, Group, Paper, Select, Stack, Text, TextInput } from '@mantine/core';
 import {
   IconBuildingFactory2,
   IconCopy,
@@ -167,6 +167,22 @@ export default function SuppliersListPage() {
     },
   ];
 
+  const renderCard = (r: SupplierRow) => (
+    <Paper p="sm" withBorder radius="sm">
+      <Group justify="space-between" wrap="nowrap" align="flex-start">
+        <Stack gap={3} style={{ minWidth: 0 }}>
+          <DocNumber c="dimmed">{r.bpCode}</DocNumber>
+          <Text size="sm" fw={600} truncate>{localized(r.name)}</Text>
+          <Text size="xs" c="dimmed">標準リードタイム {leadTimeText(r.leadTimeDays)}</Text>
+        </Stack>
+        <Stack gap={4} align="flex-end" style={{ flexShrink: 0 }}>
+          <VendorTypeBadge type={r.vendorType} />
+          <ActiveBadge active={r.isActive} />
+        </Stack>
+      </Group>
+    </Paper>
+  );
+
   return (
     <ListShell
       breadcrumbs={['ホーム', 'マスタ', '外注企業']}
@@ -209,6 +225,7 @@ export default function SuppliersListPage() {
         columns={columns}
         getRowId={(r) => r.id}
         onRowClick={() => { /* navigate to detail */ }}
+        renderCard={renderCard}
         defaultSort={{ key: 'bpCode', dir: 'asc' }}
         selectable
         bulkActions={[

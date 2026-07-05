@@ -1,0 +1,2 @@
+X受注管理システム新1.fp7 | CREATE TABLE "受注管理システム"
+受注管理システム新1.fp7 | CREATE TABLE "受注管理システム"

@@ -1,0 +1,107 @@
+{
+  "annotations": { "list": [] },
+  "editable": true,
+  "graphTooltip": 1,
+  "id": null,
+  "uid": "stack-logs",
+  "title": "Stack Logs & Errors",
+  "tags": ["logs", "docker", "errors"],
+  "schemaVersion": 39,
+  "version": 2,
+  "refresh": "30s",
+  "time": { "from": "now-6h", "to": "now" },
+  "templating": {
+    "list": [
+      {
+        "name": "stack",
+        "label": "Stack",
+        "type": "query",
+        "datasource": { "type": "loki", "uid": "loki" },
+        "definition": "label_values(stack)",
+        "query": { "label": "stack", "stream": "", "type": 1 },
+        "refresh": 2,
+        "sort": 1,
+        "includeAll": false,
+        "multi": false
+      },
+      {
+        "name": "search",
+        "label": "Search (regex)",
+        "type": "textbox",
+        "current": { "text": "", "value": "" }
+      }
+    ]
+  },
+  "panels": [
+    {
+      "type": "stat", "title": "エラー率 ($stack, 期間内)",
+      "datasource": { "type": "loki", "uid": "loki" },
+      "gridPos": { "h": 4, "w": 8, "x": 0, "y": 0 },
+      "fieldConfig": { "defaults": { "color": { "mode": "thresholds" }, "thresholds": { "steps": [ { "color": "green", "value": null }, { "color": "yellow", "value": 1 }, { "color": "orange", "value": 5 }, { "color": "red", "value": 15 } ] }, "unit": "percent", "decimals": 2, "min": 0 } },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "graphMode": "area" },
+      "targets": [ { "refId": "A", "datasource": { "type": "loki", "uid": "loki" }, "expr": "sum(count_over_time({stack=~\"$stack\"} |~ \"(?i)(error|exception|traceback|fatal|panic|critical|failed|level=error)\" [$__range])) / sum(count_over_time({stack=~\"$stack\"} [$__range])) * 100" } ]
+    },
+    {
+      "type": "stat", "title": "エラー件数 ($stack, 期間内)",
+      "datasource": { "type": "loki", "uid": "loki" },
+      "gridPos": { "h": 4, "w": 8, "x": 8, "y": 0 },
+      "fieldConfig": { "defaults": { "color": { "mode": "thresholds" }, "thresholds": { "steps": [ { "color": "green", "value": null }, { "color": "orange", "value": 1 }, { "color": "red", "value": 50 } ] }, "unit": "short" } },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "graphMode": "area" },
+      "targets": [ { "refId": "A", "datasource": { "type": "loki", "uid": "loki" }, "expr": "sum(count_over_time({stack=~\"$stack\"} |~ \"(?i)(error|exception|traceback|fatal|panic|critical|failed|level=error)\" [$__range]))" } ]
+    },
+    {
+      "type": "stat", "title": "総ログ件数 ($stack, 期間内)",
+      "datasource": { "type": "loki", "uid": "loki" },
+      "gridPos": { "h": 4, "w": 8, "x": 16, "y": 0 },
+      "fieldConfig": { "defaults": { "color": { "mode": "fixed", "fixedColor": "blue" }, "unit": "short" } },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "value", "graphMode": "area" },
+      "targets": [ { "refId": "A", "datasource": { "type": "loki", "uid": "loki" }, "expr": "sum(count_over_time({stack=~\"$stack\"} [$__range]))" } ]
+    },
+    {
+      "type": "timeseries", "title": "エラー率 % by stack（全スタック）",
+      "datasource": { "type": "loki", "uid": "loki" },
+      "gridPos": { "h": 7, "w": 12, "x": 0, "y": 4 },
+      "fieldConfig": { "defaults": { "custom": { "drawStyle": "line", "lineWidth": 1, "fillOpacity": 10, "showPoints": "never" }, "unit": "percent", "decimals": 2, "min": 0 } },
+      "options": { "legend": { "displayMode": "table", "placement": "right", "calcs": ["mean", "max"] }, "tooltip": { "mode": "multi", "sort": "desc" } },
+      "targets": [ { "refId": "A", "datasource": { "type": "loki", "uid": "loki" }, "expr": "sum by (stack) (count_over_time({stack=~\".+\"} |~ \"(?i)(error|exception|traceback|fatal|panic|critical|failed|level=error)\" [5m])) / sum by (stack) (count_over_time({stack=~\".+\"} [5m])) * 100", "legendFormat": "{{stack}}" } ]
+    },
+    {
+      "type": "timeseries", "title": "エラー件数 by stack（全スタック・/min）",
+      "datasource": { "type": "loki", "uid": "loki" },
+      "gridPos": { "h": 7, "w": 12, "x": 12, "y": 4 },
+      "fieldConfig": { "defaults": { "custom": { "drawStyle": "bars", "lineWidth": 1, "fillOpacity": 50, "stacking": { "mode": "normal", "group": "A" }, "showPoints": "never" }, "unit": "short", "color": { "mode": "palette-classic" } } },
+      "options": { "legend": { "displayMode": "table", "placement": "right", "calcs": ["sum"] }, "tooltip": { "mode": "multi", "sort": "desc" } },
+      "targets": [ { "refId": "A", "datasource": { "type": "loki", "uid": "loki" }, "expr": "sum by (stack) (count_over_time({stack=~\".+\"} |~ \"(?i)(error|exception|traceback|fatal|panic|critical|failed|level=error)\" [1m]))", "legendFormat": "{{stack}}" } ]
+    },
+    {
+      "type": "timeseries", "title": "エラー率 % by container（$stack）",
+      "datasource": { "type": "loki", "uid": "loki" },
+      "gridPos": { "h": 7, "w": 12, "x": 0, "y": 11 },
+      "fieldConfig": { "defaults": { "custom": { "drawStyle": "line", "lineWidth": 1, "fillOpacity": 10, "showPoints": "never" }, "unit": "percent", "decimals": 2, "min": 0 } },
+      "options": { "legend": { "displayMode": "table", "placement": "right", "calcs": ["mean", "max"] }, "tooltip": { "mode": "multi", "sort": "desc" } },
+      "targets": [ { "refId": "A", "datasource": { "type": "loki", "uid": "loki" }, "expr": "sum by (container) (count_over_time({stack=~\"$stack\"} |~ \"(?i)(error|exception|traceback|fatal|panic|critical|failed|level=error)\" [5m])) / sum by (container) (count_over_time({stack=~\"$stack\"} [5m])) * 100", "legendFormat": "{{container}}" } ]
+    },
+    {
+      "type": "timeseries", "title": "エラー件数 by container（$stack・/min）",
+      "datasource": { "type": "loki", "uid": "loki" },
+      "gridPos": { "h": 7, "w": 12, "x": 12, "y": 11 },
+      "fieldConfig": { "defaults": { "custom": { "drawStyle": "bars", "lineWidth": 1, "fillOpacity": 60, "stacking": { "mode": "normal", "group": "A" }, "showPoints": "never" }, "unit": "short", "color": { "mode": "palette-classic" } } },
+      "options": { "legend": { "displayMode": "table", "placement": "right", "calcs": ["sum"] }, "tooltip": { "mode": "multi", "sort": "desc" } },
+      "targets": [ { "refId": "A", "datasource": { "type": "loki", "uid": "loki" }, "expr": "sum by (container) (count_over_time({stack=~\"$stack\"} |~ \"(?i)(error|exception|traceback|fatal|panic|critical|failed|level=error)\" [1m]))", "legendFormat": "{{container}}" } ]
+    },
+    {
+      "type": "logs", "title": "エラーログ（$stack）",
+      "datasource": { "type": "loki", "uid": "loki" },
+      "gridPos": { "h": 11, "w": 24, "x": 0, "y": 18 },
+      "options": { "showTime": true, "showLabels": true, "wrapLogMessage": true, "enableLogDetails": true, "dedupStrategy": "none", "sortOrder": "Descending" },
+      "targets": [ { "refId": "A", "datasource": { "type": "loki", "uid": "loki" }, "expr": "{stack=~\"$stack\"} |~ \"(?i)(error|exception|traceback|fatal|panic|critical|failed|level=error)\"" } ]
+    },
+    {
+      "type": "logs", "title": "全ログ（$stack・Search 適用）",
+      "datasource": { "type": "loki", "uid": "loki" },
+      "gridPos": { "h": 12, "w": 24, "x": 0, "y": 29 },
+      "options": { "showTime": true, "showLabels": false, "wrapLogMessage": true, "enableLogDetails": true, "dedupStrategy": "none", "sortOrder": "Descending" },
+      "targets": [ { "refId": "A", "datasource": { "type": "loki", "uid": "loki" }, "expr": "{stack=~\"$stack\"} |~ \"(?i)$search\"" } ]
+    }
+  ]
+}

@@ -1,0 +1,7 @@
+# Generated Prisma Client
+generated/
+
+# Environment files
+.env
+.env.local
+

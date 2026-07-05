@@ -1,0 +1,62 @@
+# OpenVPN client + LDAP TCP forwarder.
+#
+# Connects to the CKK VPN (ckkhda.heinelt.info) and exposes the LDAP server at
+# `vpn-ldap:389` on this stack's OWN network (vpn-ldap_default). Only apps that
+# explicitly join that network (e.g. open-webui) can reach AD — the rest of the
+# stack never touches the VPN/LDAP.
+#
+# Shared AD credentials live in ldap.env (single source, reused by apps via
+# env_file). Deployed on docker-mac-pro at ~/stacks/vpn-ldap (Dockge-managed).
+# Secrets (vpn/, .env, ldap.env) are gitignored.
+
+services:
+  vpn-ldap:
+    build: .
+    image: vpn-ldap
+    container_name: vpn-ldap
+    restart: unless-stopped
+    cap_add:
+      - NET_ADMIN
+    devices:
+      - /dev/net/tun
+    environment:
+      - VPN_USERNAME=${VPN_USERNAME:?set VPN_USERNAME in .env}
+      - VPN_PASSWORD=${VPN_PASSWORD:?set VPN_PASSWORD in .env}
+      - LDAP_HOST=${LDAP_HOST:?set LDAP_HOST in .env}   # LDAP/AD server as seen via the VPN
+      - LDAP_PORT=${LDAP_PORT:-389}
+      - LISTEN_PORT=389
+      # On a user login (bind that is not the service account) the forwarder POSTs
+      # here so ldap-sync refreshes that user. LDAP_APP_DN (to skip) comes from ldap.env.
+      - SYNC_TRIGGER_URL=http://ldap-sync:8088/sync
+    env_file:
+      - ./ldap.env         # provides LDAP_APP_DN for the bind-aware forwarder
+    volumes:
+      - ./vpn:/vpn:ro      # config.ovpn (CA + tls-auth); credentials come from .env
+    networks:
+      - default            # vpn-ldap_default (apps + ldap-sync attach here)
+
+  # AD/LDAP -> PostgreSQL employee directory sync. Periodic full sync + an HTTP
+  # trigger (POST /sync, /sync/<user>) the forwarder calls on login. Writes the
+  # shared `employee_directory` table (read by Metabase / v_labor / future apps).
+  ldap-sync:
+    build: ./sync
+    image: ckk-ldap-sync
+    container_name: ldap-sync
+    restart: unless-stopped
+    depends_on:
+      - vpn-ldap
+    environment:
+      # shared-db, db ckk (role ldap_sync, search_path=directory,kot). Set in .env (gitignored).
+      - DATABASE_URL=${LDAP_SYNC_DB_URL:?set LDAP_SYNC_DB_URL in .env}
+      - LDAP_SYNC_INTERVAL_SECONDS=${LDAP_SYNC_INTERVAL_SECONDS:-21600}
+    env_file:
+      - ./ldap.env       # LDAP_SERVER_HOST / LDAP_APP_DN / LDAP_APP_PASSWORD / base
+    networks:
+      - default          # reach vpn-ldap:389
+      - shareddb         # reach shared-db (directory.employee_directory / kot.employees)
+
+networks:
+  default:
+  shareddb:
+    external: true
+    name: shared-db

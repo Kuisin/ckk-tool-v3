@@ -40,9 +40,9 @@ interface DesignRequestRow {
 }
 
 const MOCK_RECORDS: DesignRequestRow[] = [
-  { id: '1', requestNumber: 'DSR-202606-0001', trigger: 'QUOTE', productName: '精密軸 PRD-2601-0001', status: 'IN_PROGRESS', updatedAt: '2026-06-05' },
-  { id: '2', requestNumber: 'DSR-202606-0002', trigger: 'SALES_ORDER', productName: 'ロッド PRD-2602-0008', status: 'PENDING', updatedAt: '2026-06-06' },
-  { id: '3', requestNumber: 'DSR-202605-0014', trigger: 'QUOTE', productName: '特殊加工品 PRD-2603-0012', status: 'COMPLETED', updatedAt: '2026-05-28' },
+  { id: '1', requestNumber: 'DSR-202606-0001', trigger: 'QUOTE', productName: '精密軸 PRD-202601-0001', status: 'IN_PROGRESS', updatedAt: '2026-06-05' },
+  { id: '2', requestNumber: 'DSR-202606-0002', trigger: 'SALES_ORDER', productName: 'ロッド PRD-202602-0008', status: 'PENDING', updatedAt: '2026-06-06' },
+  { id: '3', requestNumber: 'DSR-202605-0014', trigger: 'QUOTE', productName: '特殊加工品 PRD-202603-0012', status: 'COMPLETED', updatedAt: '2026-05-28' },
 ];
 
 export default function DesignRequestListPage() {

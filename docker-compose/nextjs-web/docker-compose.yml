@@ -1,0 +1,94 @@
+# CKK nextjs-web stack — shared infra + traffic relays.
+#
+# The Next.js app itself is built and run by Coolify (git-push deploy from
+# github.com/Kuisin/ckk-tool-v3, base dir docker-compose/nextjs-web):
+#   branch dev  -> app published on host :3004 -> https://dev.kai-lab.net
+#   branch main -> app published on host :3005 -> https://v{X-Y-Z}.ckk.kai-lab.net
+# Coolify apps run on the external `coolify` network; they reach gotenberg /
+# seaweedfs here (both attached to `coolify`), shared-db and po-extract on
+# their own stacks (also attached to `coolify`).
+#
+# This stack keeps:
+#   gotenberg   HTML->PDF rendering            (reached at http://gotenberg:3000)
+#   seaweedfs   generated-document storage     (reached at http://seaweedfs:8888)
+#   web         relay: nextjs-web_default :3000 -> host :3004 (dev app)
+#   web-main    relay: nextjs-web_default :3000 -> host :3005 (main app)
+#
+# The relays exist so cloudflared and nginx-proxy keep resolving the stable
+# names `web` / `web-main` on nextjs-web_default regardless of Coolify's
+# per-deploy container names — no Cloudflare dashboard or vhost changes on
+# redeploys or rollbacks.
+
+services:
+  # Stable ingress name for the dev app (cloudflared/nginx target web:3000).
+  web:
+    image: alpine/socat:1.8.0.0
+    container_name: web-relay-dev
+    restart: unless-stopped
+    command: tcp-listen:3000,fork,reuseaddr tcp:host.docker.internal:3004
+    extra_hosts:
+      - host.docker.internal:host-gateway
+    networks:
+      - default
+
+  # Stable ingress name for the production (main) app.
+  web-main:
+    image: alpine/socat:1.8.0.0
+    container_name: web-relay-main
+    restart: unless-stopped
+    command: tcp-listen:3000,fork,reuseaddr tcp:host.docker.internal:3005
+    extra_hosts:
+      - host.docker.internal:host-gateway
+    networks:
+      - default
+
+  # HTML → PDF rendering (Chromium). Internal only; reached at http://gotenberg:3000.
+  gotenberg:
+    image: gotenberg/gotenberg:8.17
+    container_name: nextjs-gotenberg
+    restart: unless-stopped
+    command:
+      - gotenberg
+      - --chromium-disable-javascript=true
+      - --chromium-allow-list=file:///tmp/.*
+    networks:
+      - default
+      - coolify
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://127.0.0.1:3000/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  # File storage for generated documents (PDFs). SeaweedFS S3/Filer; the app
+  # writes/reads via the Filer HTTP API at http://seaweedfs:8888. Data persists
+  # in the seaweed-data volume. Internal only (not published to the host).
+  seaweedfs:
+    image: chrislusf/seaweedfs:latest
+    container_name: nextjs-seaweedfs
+    restart: unless-stopped
+    command: "server -dir=/data -filer -s3 -volume.max=0 -master.volumeSizeLimitMB=1024"
+    volumes:
+      - seaweed-data:/data
+    networks:
+      - default
+      - coolify
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8888/"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
+volumes:
+  seaweed-data:
+
+networks:
+  # Stack-local network — cloudflared / nginx-proxy attach here and reach the
+  # relays at web:3000 / web-main:3000.
+  default:
+  # Coolify apps' network — gotenberg + seaweedfs are resolvable there by
+  # service name for the Coolify-deployed Next.js containers.
+  coolify:
+    external: true

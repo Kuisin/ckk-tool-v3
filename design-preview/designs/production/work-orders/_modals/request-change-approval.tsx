@@ -56,7 +56,7 @@ export function RequestChangeApprovalModal({
       <Select label="承認グループ" data={GROUP_OPTIONS} withAsterisk {...form.getInputProps('group')} />
       <Textarea
         label="変更理由"
-        placeholder="工程ワークフローの変更理由を入力してください"
+        placeholder="工程ワークフローの変更理由を入力"
         rows={4}
         withAsterisk
         {...form.getInputProps('reason')}

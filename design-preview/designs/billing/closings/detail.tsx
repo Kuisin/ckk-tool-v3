@@ -35,8 +35,8 @@ const CL = {
 
 // 対象出荷（発送レコード — 在庫保管分は対象外）
 const SHIPMENTS = [
-  { id: '1', shippingOrderNumber: 'SHP-202605-0018', deliveryNumber: 'DRN-202605-00007', productName: '精密軸 PRD-2601-0001', quantity: 200, amount: 1000000 },
-  { id: '2', shippingOrderNumber: 'SHP-202605-0019', deliveryNumber: 'DRN-202605-00008', productName: 'ロッド PRD-2602-0008', quantity: 70, amount: 350000 },
+  { id: '1', shippingOrderNumber: 'SHP-202605-0018', deliveryNumber: 'DRN-202605-00007', productName: '精密軸 PRD-202601-0001', quantity: 200, amount: 1000000 },
+  { id: '2', shippingOrderNumber: 'SHP-202605-0019', deliveryNumber: 'DRN-202605-00008', productName: 'ロッド PRD-202602-0008', quantity: 70, amount: 350000 },
 ];
 
 const shipmentTotal = SHIPMENTS.reduce((s, it) => s + it.amount, 0);

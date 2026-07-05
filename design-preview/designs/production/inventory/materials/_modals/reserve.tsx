@@ -14,8 +14,8 @@ import { FormModal, type ModalBaseProps } from '../../../../lib/modals';
 import { zodResolver } from '../../../../lib/form';
 
 const WORK_ORDERS = [
-  { value: 'wo-1042', label: '指示書 #1042 — 精密軸 PRD-2601-0001' },
-  { value: 'wo-1051', label: '指示書 #1051 — 特殊加工品 PRD-2603-0012' },
+  { value: 'wo-1042', label: '指示書 #1042 — 精密軸 PRD-202601-0001' },
+  { value: 'wo-1051', label: '指示書 #1051 — 特殊加工品 PRD-202603-0012' },
 ];
 
 export function ReserveMaterialModal({

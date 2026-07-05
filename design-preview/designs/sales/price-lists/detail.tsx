@@ -26,7 +26,7 @@ import { CreateQuoteModal } from './_modals/create-quote';
 
 const MOCK = {
   customerName: '株式会社ABC製作所',
-  productName: '精密軸 PRD-2601-0001',
+  productName: '精密軸 PRD-202601-0001',
   orderType: 'PRODUCTION',
   minQuantity: 1,
   maxQuantity: 99,

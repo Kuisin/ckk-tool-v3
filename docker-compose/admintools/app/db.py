@@ -1,0 +1,90 @@
+import os
+
+from sqlalchemy import (
+    Boolean, DateTime, Integer, String, Text, UniqueConstraint, create_engine, func, text,
+)
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, sessionmaker
+
+engine = create_engine(os.environ["DATABASE_URL"], pool_pre_ping=True)
+SessionLocal = sessionmaker(bind=engine, expire_on_commit=False)
+
+# Default mail domain — user emails default to <ldap-username>@DEFAULT_DOMAIN.
+DEFAULT_DOMAIN = os.environ.get("DEFAULT_DOMAIN", "ckk-tool.co.jp")
+
+
+class Base(DeclarativeBase):
+    pass
+
+
+class MailAccount(Base):
+    """A mailbox on the Sakura server.
+
+    Sakura auto-creates the primary mailbox <username>@<domain> when the user is
+    added, so we never create an alias equal to that. An alias is only created
+    when `email`'s local part differs from `username` (e.g. an old address).
+
+    kind = 'user'   : tied to an LDAP/AD account; username == sAMAccountName.
+    kind = 'shared' : standalone / role account (info@, app-*, ...).
+    """
+
+    __tablename__ = "mail_accounts"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    username: Mapped[str] = mapped_column(String(64), unique=True, index=True)
+    password: Mapped[str] = mapped_column(String(255))
+    email: Mapped[str] = mapped_column(String(255))
+    quota_gb: Mapped[int] = mapped_column(Integer, default=5)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    kind: Mapped[str] = mapped_column(String(16), default="shared", index=True)
+    # Shared subtype: 'app' | 'grp' | 'other'  (users -> 'user'). ID = <type>-<name>.
+    type: Mapped[str] = mapped_column(String(16), default="other")
+    notes: Mapped[str] = mapped_column(Text, default="")
+    # Additional alias emails for this mailbox (newline/comma-separated). Lets one
+    # group/mailbox be reached at multiple addresses (besides the primary `email`).
+    extra_aliases: Mapped[str] = mapped_column(Text, default="")
+    # Set when the password is changed in adminTools; the sync pushes it to Sakura
+    # then clears it. Avoids re-pushing every password on every sync.
+    password_dirty: Mapped[bool] = mapped_column(Boolean, default=False)
+    created_at: Mapped["DateTime"] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped["DateTime"] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+
+
+class GroupMember(Base):
+    """Members assigned to a grp-* group email (LDAP usernames). Display/management
+    only — not synced to Sakura."""
+
+    __tablename__ = "group_members"
+    __table_args__ = (UniqueConstraint("group_id", "username", name="uq_group_member"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    group_id: Mapped[int] = mapped_column(Integer, index=True)
+    username: Mapped[str] = mapped_column(String(64))
+
+
+def init_db() -> None:
+    Base.metadata.create_all(engine)
+    # Lightweight migration for existing deployments.
+    with engine.begin() as conn:
+        conn.execute(text(
+            "ALTER TABLE mail_accounts ADD COLUMN IF NOT EXISTS kind VARCHAR(16) NOT NULL DEFAULT 'shared'"
+        ))
+        conn.execute(text(
+            "ALTER TABLE mail_accounts ADD COLUMN IF NOT EXISTS type VARCHAR(16) NOT NULL DEFAULT 'other'"
+        ))
+        conn.execute(text(
+            "ALTER TABLE mail_accounts ADD COLUMN IF NOT EXISTS extra_aliases TEXT NOT NULL DEFAULT ''"
+        ))
+        conn.execute(text(
+            "ALTER TABLE mail_accounts ADD COLUMN IF NOT EXISTS password_dirty BOOLEAN NOT NULL DEFAULT FALSE"
+        ))
+        # Categorize existing rows by username prefix (once).
+        conn.execute(text("""
+            UPDATE mail_accounts SET type = CASE
+                WHEN kind = 'user' THEN 'user'
+                WHEN username LIKE 'app-%' THEN 'app'
+                WHEN username LIKE 'grp-%' THEN 'grp'
+                ELSE 'other' END
+            WHERE type = 'other' OR type = ''
+        """))

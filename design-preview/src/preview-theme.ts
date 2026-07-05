@@ -15,6 +15,9 @@ export const previewTheme = createTheme({
   primaryColor: 'blue',
   defaultRadius: 'sm',
   fontFamily: "'Noto Sans JP', system-ui, -apple-system, sans-serif",
+  // Soften headings: Mantine defaults Title to 700. Pin to 600, which (per the
+  // one-step-lighter mapping in main.tsx) renders Regular, keeping titles thin.
+  headings: { fontWeight: '600' },
   components: {
     Button: Button.extend({ defaultProps: { size: 'sm' } }),
     TextInput: TextInput.extend({ defaultProps: { size: 'sm' } }),

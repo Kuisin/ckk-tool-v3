@@ -175,6 +175,8 @@ export function AppHeader() {
             position="bottom-end"
             shadow="md"
             withinPortal
+            // [Custom] trapFocus — keyboard navigation stays inside the panel (design.md §18.3)
+            trapFocus
           >
             <Popover.Target>
               <ActionIcon
@@ -202,7 +204,9 @@ export function AppHeader() {
               {/* [Custom] Header row with title + "mark all read" action */}
               <Group px="xs" py="5px" justify="space-between">
                 <Title order={6}>通知</Title>
-                <Text size="xs" c="blue" style={{ cursor: 'pointer' }}>
+                {/* [Custom] real <button> so it is keyboard-focusable (design.md §18.3) */}
+                <Text size="xs" c="blue" component="button" type="button"
+                  style={{ cursor: 'pointer', background: 'none', border: 'none', padding: 0 }}>
                   すべて既読
                 </Text>
               </Group>

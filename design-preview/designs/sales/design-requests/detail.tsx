@@ -44,7 +44,7 @@ const MOCK = {
   requestNumber: 'DSR-202606-0001',
   status: 'IN_PROGRESS',
   trigger: 'QUOTE',
-  productName: '精密軸 PRD-2601-0001',
+  productName: '精密軸 PRD-202601-0001',
   quoteNumber: 'QOT-202606-00001',
   description: '先端形状をφ12に変更。図面差し替え。',
   createdBy: '中村 花子',
@@ -53,8 +53,8 @@ const MOCK = {
 };
 
 const MOCK_FILES = [
-  { id: '1', version: 2, isLatest: true, filename: 'design-PRD-2601-0001-v2.pdf', createdBy: '中村 花子', createdAt: '2026-06-05 15:20' },
-  { id: '2', version: 1, isLatest: false, filename: 'design-PRD-2601-0001-v1.pdf', createdBy: '中村 花子', createdAt: '2026-06-03 11:05' },
+  { id: '1', version: 2, isLatest: true, filename: 'design-PRD-202601-0001-v2.pdf', createdBy: '中村 花子', createdAt: '2026-06-05 15:20' },
+  { id: '2', version: 1, isLatest: false, filename: 'design-PRD-202601-0001-v1.pdf', createdBy: '中村 花子', createdAt: '2026-06-03 11:05' },
 ];
 
 const MOCK_AUDIT: AuditEntry[] = [

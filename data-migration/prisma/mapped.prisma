@@ -1,0 +1,230 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:../mapped.sqlite"
+}
+
+model bp_role_assignments {
+  id                String            @id
+  bp_id             String
+  role              String
+  is_active         Int?              @default(1)
+  assigned_at       String?
+  deactivated_at    String?
+  legacy_data       String?
+  business_partners business_partners @relation(fields: [bp_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@unique([bp_id, role], map: "sqlite_autoindex_bp_role_assignments_2")
+}
+
+model business_partners {
+  id                       String                     @id
+  bp_code                  String?                    @unique(map: "sqlite_autoindex_business_partners_2")
+  name                     String
+  name_kana                String?
+  short_name               String?
+  parent_id                String?
+  country_code             String?
+  postal_code              String?
+  address                  String?
+  phone                    String?
+  fax                      String?
+  email                    String?
+  website                  String?
+  tax_number               String?
+  is_active                Int?                       @default(1)
+  notes                    String?
+  created_by               String?
+  created_at               String?
+  updated_at               String?
+  legacy_data              String?
+  bp_role_assignments      bp_role_assignments[]
+  material_purchase_orders material_purchase_orders[]
+  order_acceptances        order_acceptances[]
+  sales_orders             sales_orders[]
+}
+
+model factories {
+  id                            String                          @id
+  code                          String                          @unique(map: "sqlite_autoindex_factories_2")
+  name                          String
+  name_kana                     String?
+  country_code                  String?
+  postal_code                   String?
+  address                       String?
+  phone                         String?
+  email                         String?
+  contact_person                String?
+  is_active                     Int?                            @default(1)
+  notes                         String?
+  created_at                    String?
+  updated_at                    String?
+  legacy_data                   String?
+  material_purchase_order_items material_purchase_order_items[]
+}
+
+model material_purchase_approvers {
+  id                       String                   @id
+  purchase_order_id        String
+  approval_group_id        Int?
+  approver_user_id         String?
+  created_at               String?
+  material_purchase_orders material_purchase_orders @relation(fields: [purchase_order_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@unique([purchase_order_id, approval_group_id, approver_user_id], map: "sqlite_autoindex_material_purchase_approvers_2")
+}
+
+model material_purchase_order_items {
+  id                       String                   @id
+  purchase_order_id        String
+  material_id              String?
+  factory_id               String?
+  quantity                 Float?
+  unit                     String?
+  unit_price               Float?
+  amount                   Float?
+  currency                 String?                  @default("JPY")
+  expected_at              String?
+  notes                    String?
+  sort_order               Int?                     @default(0)
+  legacy_data              String?
+  factories                factories?               @relation(fields: [factory_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  materials                materials?               @relation(fields: [material_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  material_purchase_orders material_purchase_orders @relation(fields: [purchase_order_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([purchase_order_id], map: "ix_mpoi_po")
+}
+
+model material_purchase_orders {
+  id                            String                          @id
+  po_number                     String                          @unique(map: "sqlite_autoindex_material_purchase_orders_2")
+  supplier_bp_id                String?
+  status                        String                          @default("COMPLETED")
+  total_amount                  Float?                          @default(0)
+  currency                      String?                         @default("JPY")
+  purchase_date                 String?
+  requested_at                  String?
+  requested_by                  String?
+  approved_at                   String?
+  approved_by                   String?
+  ordered_at                    String?
+  ordered_by                    String?
+  completed_at                  String?
+  completed_by                  String?
+  cancelled_at                  String?
+  cancelled_by                  String?
+  cancel_reason                 String?
+  history                       String?
+  notes                         String?
+  created_by                    String?
+  created_at                    String?
+  updated_at                    String?
+  legacy_data                   String?
+  material_purchase_approvers   material_purchase_approvers[]
+  material_purchase_order_items material_purchase_order_items[]
+  business_partners             business_partners?              @relation(fields: [supplier_bp_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model material_types {
+  id                String      @id
+  manufacturer_code String?
+  grade_code        String?
+  shape_code        String?
+  kind_code         String?
+  name              String
+  description       String?
+  is_active         Int?        @default(1)
+  created_at        String?
+  updated_at        String?
+  legacy_data       String?
+  materials         materials[]
+}
+
+model materials {
+  id                            String                          @id
+  material_type_id              String?
+  surface_finish_code           String?
+  diameter_code                 String?
+  length_variant_code           String?
+  kind_code                     String?
+  diameter_mm                   Float?
+  length_mm                     Float?
+  manufacturer_model            String?
+  nominal_diameter_mm           Float?
+  name                          String
+  unit                          String?
+  is_active                     Int?                            @default(1)
+  notes                         String?
+  created_at                    String?
+  updated_at                    String?
+  legacy_data                   String?
+  material_purchase_order_items material_purchase_order_items[]
+  material_types                material_types?                 @relation(fields: [material_type_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  products                      products[]
+}
+
+model order_acceptances {
+  id                    String             @id
+  order_number          String             @unique(map: "sqlite_autoindex_order_acceptances_2")
+  quote_id              String?
+  customer_bp_id        String?
+  customer_branch_bp_id String?
+  customer_order_ref    String?
+  status                String             @default("CONFIRMED")
+  total_amount          Float?
+  order_doc_file_id     String?
+  notes                 String?
+  created_by            String?
+  created_at            String?
+  updated_at            String?
+  legacy_data           String?
+  business_partners     business_partners? @relation(fields: [customer_bp_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  sales_orders          sales_orders[]
+
+  @@index([customer_bp_id], map: "ix_oa_cust")
+}
+
+model products {
+  id             String         @id
+  name           String
+  material_id    String?
+  unit           String         @default("本")
+  spec           String?
+  design_file_id String?
+  is_active      Int?           @default(1)
+  notes          String?
+  created_at     String?
+  updated_at     String?
+  legacy_data    String?
+  materials      materials?     @relation(fields: [material_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  sales_orders   sales_orders[]
+}
+
+model sales_orders {
+  id                  String             @id
+  sales_order_number  String             @unique(map: "sqlite_autoindex_sales_orders_2")
+  order_acceptance_id String
+  product_id          String?
+  lot_number          Int?
+  order_type          String?
+  quantity            Int?
+  unit_price          Float?
+  amount              Float?
+  delivery_date       String?
+  status              String             @default("SHIPPED")
+  end_user_bp_id      String?
+  is_locked           Int                @default(0)
+  notes               String?
+  created_by          String?
+  created_at          String?
+  updated_at          String?
+  legacy_data         String?
+  business_partners   business_partners? @relation(fields: [end_user_bp_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  products            products?          @relation(fields: [product_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  order_acceptances   order_acceptances  @relation(fields: [order_acceptance_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([order_acceptance_id], map: "ix_so_oa")
+}

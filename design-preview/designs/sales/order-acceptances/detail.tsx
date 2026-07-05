@@ -58,7 +58,7 @@ const MOCK = {
 };
 
 const MOCK_ITEMS = [
-  { id: '1', productName: 'ロッド PRD-2602-0008', orderType: 'PRODUCTION', quantity: 30, unitPrice: 6200, amount: 186000 },
+  { id: '1', productName: 'ロッド PRD-202602-0008', orderType: 'PRODUCTION', quantity: 30, unitPrice: 6200, amount: 186000 },
 ];
 
 const MOCK_AUDIT: AuditEntry[] = [

@@ -1,0 +1,497 @@
+// 生産 — 受注書・指示書・工程・承認・検査 (_specs/tables.md §3〜§7).
+
+enum SalesOrderStatus {
+  DRAFT
+  CONFIRMED
+  IN_PRODUCTION
+  PARTIAL_SHIPPED
+  SHIPPED
+  CANCELLED
+
+  @@map("SALES_ORDER_STATUS")
+  @@schema("production")
+}
+
+enum WorkOrderType {
+  FROM_STOCK
+  MANUFACTURE
+
+  @@map("WORK_ORDER_TYPE")
+  @@schema("production")
+}
+
+enum WorkOrderStatus {
+  DRAFT
+  PENDING_APPROVAL
+  APPROVED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+
+  @@map("WORK_ORDER_STATUS")
+  @@schema("production")
+}
+
+enum WorkOrderApprovalStatus {
+  NONE
+  PENDING_1ST
+  APPROVED_1ST
+  PENDING_2ND
+  APPROVED
+  REJECTED
+
+  @@map("WORK_ORDER_APPROVAL_STATUS")
+  @@schema("production")
+}
+
+enum ProcessCategory {
+  MATERIAL_PREP
+  MACHINING
+  COATING
+  INSPECTION
+  APPROVAL
+  SHIPPING
+
+  @@map("PROCESS_CATEGORY")
+  @@schema("production")
+}
+
+enum ProcessExecution {
+  INTERNAL
+  INTERNAL_OR_OUTSOURCE
+
+  @@map("PROCESS_EXECUTION")
+  @@schema("production")
+}
+
+enum DependencyRelation {
+  AND
+  OR
+
+  @@map("DEPENDENCY_RELATION")
+  @@schema("production")
+}
+
+enum StepExecution {
+  INTERNAL
+  OUTSOURCE
+
+  @@map("STEP_EXECUTION")
+  @@schema("production")
+}
+
+enum StepStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+
+  @@map("STEP_STATUS")
+  @@schema("production")
+}
+
+enum ApprovalGroupType {
+  FIRST
+  SECOND
+  WORKFLOW_CHANGE
+
+  @@map("APPROVAL_GROUP_TYPE")
+  @@schema("production")
+}
+
+enum ApprovalStep {
+  FIRST
+  SECOND
+
+  @@map("APPROVAL_STEP")
+  @@schema("production")
+}
+
+enum ApprovalRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+
+  @@map("APPROVAL_REQUEST_STATUS")
+  @@schema("production")
+}
+
+enum ApprovalAction {
+  APPROVED
+  REJECTED
+
+  @@map("APPROVAL_ACTION")
+  @@schema("production")
+}
+
+enum InspectionStatus {
+  PENDING
+  PASS
+  FAIL
+  APPROVED
+
+  @@map("INSPECTION_STATUS")
+  @@schema("production")
+}
+
+// 受注書 ORD-YYYYMM-NNNNN-NN
+model SalesOrder {
+  id                String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  salesOrderNumber  String           @unique @map("sales_order_number")
+  orderAcceptanceId String           @map("order_acceptance_id") @db.Uuid
+  productId         String           @map("product_id")
+  lotNumber         Int?             @unique @map("lot_number")
+  orderType         OrderType        @map("order_type")
+  quantity          Int
+  unitPrice         Decimal          @map("unit_price") @db.Decimal(12, 2)
+  amount            Decimal          @db.Decimal(12, 2)
+  deliveryDate      DateTime?        @map("delivery_date") @db.Date
+  status            SalesOrderStatus @default(DRAFT)
+  endUserBpId       String?          @map("end_user_bp_id") @db.Uuid
+  isLocked          Boolean          @default(false) @map("is_locked")
+  notes             String?
+  createdBy         String?          @map("created_by") @db.Uuid
+  createdAt         DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt         DateTime         @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  orderAcceptance OrderAcceptance  @relation(fields: [orderAcceptanceId], references: [id])
+  product         Product          @relation(fields: [productId], references: [id])
+  endUserBp       BusinessPartner? @relation("SalesOrderEndUser", fields: [endUserBpId], references: [id])
+  createdByUser   User?            @relation("SalesOrderCreatedBy", fields: [createdBy], references: [id])
+
+  workOrders     WorkOrder[]
+  shippingOrders ShippingOrder[]
+  reservations   InventoryReservation[]
+  designRequests DesignRequest[]
+
+  @@map("sales_orders")
+  @@schema("production")
+}
+
+// 指示書 — 通し連番
+model WorkOrder {
+  id                String                  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  workOrderNumber   Int                     @unique @map("work_order_number")
+  salesOrderId      String                  @map("sales_order_id") @db.Uuid
+  type              WorkOrderType
+  plannedQuantity   Int                     @map("planned_quantity")
+  materialId        String?                 @map("material_id")
+  status            WorkOrderStatus         @default(DRAFT)
+  approvalStatus    WorkOrderApprovalStatus @default(NONE) @map("approval_status")
+  sourceWorkOrderId String?                 @map("source_work_order_id") @db.Uuid
+  approvedAt        DateTime?               @map("approved_at") @db.Timestamptz(6)
+  startedAt         DateTime?               @map("started_at") @db.Timestamptz(6)
+  completedAt       DateTime?               @map("completed_at") @db.Timestamptz(6)
+  notes             String?
+  createdBy         String?                 @map("created_by") @db.Uuid
+  createdAt         DateTime                @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt         DateTime                @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  salesOrder      SalesOrder @relation(fields: [salesOrderId], references: [id])
+  material        Material?  @relation(fields: [materialId], references: [id])
+  sourceWorkOrder WorkOrder? @relation("WorkOrderCopySource", fields: [sourceWorkOrderId], references: [id])
+  copies          WorkOrder[] @relation("WorkOrderCopySource")
+  createdByUser   User?      @relation("WorkOrderCreatedBy", fields: [createdBy], references: [id])
+
+  steps                WorkOrderStep[]
+  inspectionTemplates  WorkOrderInspectionTemplate[]
+  approvalRequests     ApprovalRequest[]
+  shippingOrders       ShippingOrder[]
+  reservations         InventoryReservation[]
+  productInventoryLots ProductInventory[]            @relation("ProductInventoryLot")
+
+  @@map("work_orders")
+  @@schema("production")
+}
+
+// 指示書に紐付く検査表テンプレート（複数可）
+model WorkOrderInspectionTemplate {
+  workOrderId          String @map("work_order_id") @db.Uuid
+  inspectionTemplateId String @map("inspection_template_id") @db.Uuid
+
+  workOrder          WorkOrder          @relation(fields: [workOrderId], references: [id])
+  inspectionTemplate InspectionTemplate @relation(fields: [inspectionTemplateId], references: [id])
+
+  @@id([workOrderId, inspectionTemplateId])
+  @@map("work_order_inspection_templates")
+  @@schema("production")
+}
+
+// 工程マスタ（カタログ）
+model ProcessStepCatalog {
+  id                Int              @id @default(autoincrement())
+  code              String           @unique
+  name              Json
+  category          ProcessCategory
+  executionLocation ProcessExecution @map("execution_location")
+  isSyncCapable     Boolean          @default(false) @map("is_sync_capable")
+  isInspection      Boolean          @default(false) @map("is_inspection")
+  isApprovalStep    Boolean          @default(false) @map("is_approval_step")
+  approvalMinRank   String?          @map("approval_min_rank")
+  sortOrder         Int              @default(0) @map("sort_order")
+  isActive          Boolean          @default(true) @map("is_active")
+  notes             String?
+
+  useDependencies  ProcessStepUseDependency[]  @relation("UseDepStep")
+  useDependents    ProcessStepUseDependency[]  @relation("UseDepDependsOn")
+  execDependencies ProcessStepExecDependency[] @relation("ExecDepStep")
+  execDependents   ProcessStepExecDependency[] @relation("ExecDepDependsOn")
+  workOrderSteps   WorkOrderStep[]
+  inspectionTemplates InspectionTemplate[]
+
+  @@map("process_step_catalog")
+  @@schema("production")
+}
+
+// 工程使用依存（ワークフローに含めてよい条件）
+model ProcessStepUseDependency {
+  stepId          Int                @map("step_id")
+  dependsOnStepId Int                @map("depends_on_step_id")
+  relation        DependencyRelation @default(AND)
+  isNegation      Boolean            @default(false) @map("is_negation")
+  notes           String?
+
+  step          ProcessStepCatalog @relation("UseDepStep", fields: [stepId], references: [id])
+  dependsOnStep ProcessStepCatalog @relation("UseDepDependsOn", fields: [dependsOnStepId], references: [id])
+
+  @@id([stepId, dependsOnStepId])
+  @@map("process_step_use_dependencies")
+  @@schema("production")
+}
+
+// 工程実行依存（この工程を開始してよい条件 = 前工程完了）
+model ProcessStepExecDependency {
+  stepId          Int                @map("step_id")
+  dependsOnStepId Int                @map("depends_on_step_id")
+  relation        DependencyRelation @default(AND)
+  notes           String?
+
+  step          ProcessStepCatalog @relation("ExecDepStep", fields: [stepId], references: [id])
+  dependsOnStep ProcessStepCatalog @relation("ExecDepDependsOn", fields: [dependsOnStepId], references: [id])
+
+  @@id([stepId, dependsOnStepId])
+  @@map("process_step_exec_dependencies")
+  @@schema("production")
+}
+
+// 指示書工程ステップ
+model WorkOrderStep {
+  id                   String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  workOrderId          String        @map("work_order_id") @db.Uuid
+  processStepId        Int           @map("process_step_id")
+  sortOrder            Int           @map("sort_order")
+  executionLocation    StepExecution @map("execution_location")
+  supplierBpId         String?       @map("supplier_bp_id") @db.Uuid
+  outsourceRequestedAt DateTime?     @map("outsource_requested_at") @db.Date
+  outsourceExpectedAt  DateTime?     @map("outsource_expected_at") @db.Date
+  outsourceReceivedAt  DateTime?     @map("outsource_received_at") @db.Date
+  status               StepStatus    @default(PENDING)
+  sessionLockedBy      String?       @map("session_locked_by") @db.Uuid
+  sessionLockedAt      DateTime?     @map("session_locked_at") @db.Timestamptz(6)
+  startedAt            DateTime?     @map("started_at") @db.Timestamptz(6)
+  startedBy            String?       @map("started_by") @db.Uuid
+  completedAt          DateTime?     @map("completed_at") @db.Timestamptz(6)
+  completedBy          String?       @map("completed_by") @db.Uuid
+  cancelledAt          DateTime?     @map("cancelled_at") @db.Timestamptz(6)
+  cancelledBy          String?       @map("cancelled_by") @db.Uuid
+  cancelReason         String?       @map("cancel_reason")
+  notes                String?
+
+  workOrder           WorkOrder          @relation(fields: [workOrderId], references: [id])
+  processStep         ProcessStepCatalog @relation(fields: [processStepId], references: [id])
+  supplierBp          BusinessPartner?   @relation("StepSupplier", fields: [supplierBpId], references: [id])
+  sessionLockedByUser User?              @relation("StepSessionLockedBy", fields: [sessionLockedBy], references: [id])
+  startedByUser       User?              @relation("StepStartedBy", fields: [startedBy], references: [id])
+  completedByUser     User?              @relation("StepCompletedBy", fields: [completedBy], references: [id])
+  cancelledByUser     User?              @relation("StepCancelledBy", fields: [cancelledBy], references: [id])
+
+  inspectionRecords InspectionRecord[]
+  defectRecords     DefectRecord[]
+
+  @@map("work_order_steps")
+  @@schema("production")
+}
+
+// 承認
+model ApprovalGroup {
+  id       Int               @id @default(autoincrement())
+  type     ApprovalGroupType
+  name     Json
+  isActive Boolean           @default(true) @map("is_active")
+
+  members   ApprovalGroupMember[]
+  delegates ApprovalDelegate[]
+
+  @@map("approval_groups")
+  @@schema("production")
+}
+
+model ApprovalGroupMember {
+  groupId  Int     @map("group_id")
+  userId   String  @map("user_id") @db.Uuid
+  isActive Boolean @default(true) @map("is_active")
+
+  group ApprovalGroup @relation(fields: [groupId], references: [id])
+  user  User          @relation("ApprovalGroupMemberUser", fields: [userId], references: [id])
+
+  @@id([groupId, userId])
+  @@map("approval_group_members")
+  @@schema("production")
+}
+
+// 期間限定代理設定
+model ApprovalDelegate {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  groupId     Int      @map("group_id")
+  delegatorId String   @map("delegator_id") @db.Uuid
+  delegateId  String   @map("delegate_id") @db.Uuid
+  validFrom   DateTime @map("valid_from") @db.Timestamptz(6)
+  validUntil  DateTime @map("valid_until") @db.Timestamptz(6)
+  reason      String?
+  createdBy   String?  @map("created_by") @db.Uuid
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  group         ApprovalGroup @relation(fields: [groupId], references: [id])
+  delegator     User          @relation("DelegateDelegator", fields: [delegatorId], references: [id])
+  delegate      User          @relation("DelegateDelegate", fields: [delegateId], references: [id])
+  createdByUser User?         @relation("DelegateCreatedBy", fields: [createdBy], references: [id])
+
+  @@map("approval_delegates")
+  @@schema("production")
+}
+
+model ApprovalRequest {
+  id          String                @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  workOrderId String                @map("work_order_id") @db.Uuid
+  step        ApprovalStep
+  status      ApprovalRequestStatus @default(PENDING)
+  requestedBy String?               @map("requested_by") @db.Uuid
+  requestedAt DateTime              @default(now()) @map("requested_at") @db.Timestamptz(6)
+  notes       String?
+
+  workOrder       WorkOrder        @relation(fields: [workOrderId], references: [id])
+  requestedByUser User?            @relation("ApprovalRequestedBy", fields: [requestedBy], references: [id])
+  records         ApprovalRecord[]
+
+  @@map("approval_requests")
+  @@schema("production")
+}
+
+model ApprovalRecord {
+  id                String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  approvalRequestId String         @map("approval_request_id") @db.Uuid
+  approverId        String         @map("approver_id") @db.Uuid
+  delegateForId     String?        @map("delegate_for_id") @db.Uuid
+  action            ApprovalAction
+  comment           String?
+  actedAt           DateTime       @map("acted_at") @db.Timestamptz(6)
+
+  approvalRequest ApprovalRequest @relation(fields: [approvalRequestId], references: [id])
+  approver        User            @relation("ApprovalRecordApprover", fields: [approverId], references: [id])
+  delegateFor     User?           @relation("ApprovalRecordDelegateFor", fields: [delegateForId], references: [id])
+
+  @@map("approval_records")
+  @@schema("production")
+}
+
+// 検査表
+model InspectionTemplate {
+  id                   String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  code                 String   @unique
+  name                 Json
+  relatedProcessStepId Int?     @map("related_process_step_id")
+  isActive             Boolean  @default(true) @map("is_active")
+  createdAt            DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt            DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  relatedProcessStep ProcessStepCatalog?           @relation(fields: [relatedProcessStepId], references: [id])
+  items              InspectionTemplateItem[]
+  workOrderLinks     WorkOrderInspectionTemplate[]
+  records            InspectionRecord[]
+
+  @@map("inspection_templates")
+  @@schema("production")
+}
+
+model InspectionTemplateItem {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  templateId   String   @map("template_id") @db.Uuid
+  itemName     Json     @map("item_name")
+  unit         String?
+  toleranceMin Decimal? @map("tolerance_min") @db.Decimal
+  toleranceMax Decimal? @map("tolerance_max") @db.Decimal
+  isRequired   Boolean  @default(true) @map("is_required")
+  sortOrder    Int      @default(0) @map("sort_order")
+
+  template    InspectionTemplate     @relation(fields: [templateId], references: [id])
+  recordItems InspectionRecordItem[]
+
+  @@map("inspection_template_items")
+  @@schema("production")
+}
+
+model InspectionRecord {
+  id              String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  workOrderStepId String           @map("work_order_step_id") @db.Uuid
+  templateId      String           @map("template_id") @db.Uuid
+  status          InspectionStatus @default(PENDING)
+  recordedBy      String?          @map("recorded_by") @db.Uuid
+  approvedBy      String?          @map("approved_by") @db.Uuid
+  recordedAt      DateTime?        @map("recorded_at") @db.Timestamptz(6)
+  approvedAt      DateTime?        @map("approved_at") @db.Timestamptz(6)
+  notes           String?
+
+  workOrderStep  WorkOrderStep      @relation(fields: [workOrderStepId], references: [id])
+  template       InspectionTemplate @relation(fields: [templateId], references: [id])
+  recordedByUser User?              @relation("InspectionRecordedBy", fields: [recordedBy], references: [id])
+  approvedByUser User?              @relation("InspectionApprovedBy", fields: [approvedBy], references: [id])
+  items          InspectionRecordItem[]
+
+  @@map("inspection_records")
+  @@schema("production")
+}
+
+model InspectionRecordItem {
+  id                 String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  inspectionRecordId String  @map("inspection_record_id") @db.Uuid
+  templateItemId     String  @map("template_item_id") @db.Uuid
+  measuredValue      String? @map("measured_value")
+  isPass             Boolean? @map("is_pass")
+  notes              String?
+
+  inspectionRecord InspectionRecord       @relation(fields: [inspectionRecordId], references: [id])
+  templateItem     InspectionTemplateItem @relation(fields: [templateItemId], references: [id])
+
+  @@map("inspection_record_items")
+  @@schema("production")
+}
+
+// 不良記録
+model DefectType {
+  id        Int     @id @default(autoincrement())
+  code      String  @unique
+  name      Json
+  isActive  Boolean @default(true) @map("is_active")
+  sortOrder Int     @default(0) @map("sort_order")
+
+  records DefectRecord[]
+
+  @@map("defect_types")
+  @@schema("production")
+}
+
+model DefectRecord {
+  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  workOrderStepId String   @map("work_order_step_id") @db.Uuid
+  defectTypeId    Int      @map("defect_type_id")
+  description     String
+  recordedBy      String?  @map("recorded_by") @db.Uuid
+  recordedAt      DateTime @map("recorded_at") @db.Timestamptz(6)
+
+  workOrderStep  WorkOrderStep @relation(fields: [workOrderStepId], references: [id])
+  defectType     DefectType    @relation(fields: [defectTypeId], references: [id])
+  recordedByUser User?         @relation("DefectRecordedBy", fields: [recordedBy], references: [id])
+
+  @@map("defect_records")
+  @@schema("production")
+}

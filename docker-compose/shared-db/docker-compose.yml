@@ -1,0 +1,58 @@
+# CKK shared database — single PostgreSQL instance for all business data.
+#
+# One database (`ckk`), one schema per domain:
+#   kot / directory / admintools          — existing apps (KOT importer, LDAP sync, admintools)
+#   auth / master / bp / sales / production / inventory / shipping / billing / design / sys / log
+#                                         — ckk-tool-v3 business tables
+#
+# DDL is owned by Prisma (repo: shared-db/). Never hand-edit tables here;
+# edit shared-db/prisma/schema/*.prisma and run `pnpm migrate:dev`.
+#
+# App roles (created by init/01-roles.sh, grants in shared-db/sql/grants.sql):
+#   kot        — kot-import + admintools match_employees   (search_path: kot, directory)
+#   ldap_sync  — vpn-ldap directory sync                   (search_path: directory, kot)
+#   admintools — admintools app                            (search_path: admintools)
+#   app        — nextjs-web (Prisma Client)
+#   kot_ro     — read-only reporting (Metabase)
+#   studio_ro  — read-only, all schemas (Prisma Studio browser)
+#
+# Other stacks reach this DB over the external `shared-db` network at
+# shared-db:5432. Host port 15432 is published for migrations from the LAN.
+
+services:
+  db:
+    image: groonga/pgroonga:4.0.6-alpine-17
+    container_name: shared-db
+    restart: unless-stopped
+    environment:
+      - POSTGRES_DB=ckk
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+      - KOT_DB_PASSWORD=${KOT_DB_PASSWORD:?set KOT_DB_PASSWORD in .env}
+      - LDAP_SYNC_DB_PASSWORD=${LDAP_SYNC_DB_PASSWORD:?set LDAP_SYNC_DB_PASSWORD in .env}
+      - ADMINTOOLS_DB_PASSWORD=${ADMINTOOLS_DB_PASSWORD:?set ADMINTOOLS_DB_PASSWORD in .env}
+      - APP_DB_PASSWORD=${APP_DB_PASSWORD:?set APP_DB_PASSWORD in .env}
+      - KOT_RO_DB_PASSWORD=${KOT_RO_DB_PASSWORD:?set KOT_RO_DB_PASSWORD in .env}
+      - STUDIO_RO_DB_PASSWORD=${STUDIO_RO_DB_PASSWORD:?set STUDIO_RO_DB_PASSWORD in .env}
+    volumes:
+      - shared-db-data:/var/lib/postgresql/data
+      - ./init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d ckk"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    networks:
+      - default     # shared-db network (kot-import, admintools, metabase, …)
+      - coolify     # Coolify-deployed nextjs-web apps → shared-db:5432
+
+volumes:
+  shared-db-data:
+
+networks:
+  default:
+    name: shared-db
+  # Coolify apps' network — the nextjs-web containers resolve `shared-db` there.
+  coolify:
+    external: true

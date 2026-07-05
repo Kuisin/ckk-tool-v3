@@ -25,7 +25,7 @@ const ORDER = {
   supplierName: '外注研磨株式会社',
   stepName: 'センタレス',
   workOrderNumber: 1042,
-  productName: '精密軸 PRD-2601-0001',
+  productName: '精密軸 PRD-202601-0001',
   status: 'IN_PROGRESS',
   requestedAt: '2026-05-26',
   expectedAt: '2026-06-02',

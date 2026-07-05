@@ -1,0 +1,30 @@
+# Shared outbound SMTP relay — one place for apps to send mail from
+# notification@ckk-tool.co.jp. Apps connect (no per-app credentials) to
+# `mailrelay:587` on the mailrelay network; the relay forwards to the domain's own
+# mail host (onamae.com / ak115.secure.ne.jp), which applies SPF/DKIM on
+# authenticated send. Not exposed to the LAN/internet.
+#
+# Deployed on docker-mac-pro at ~/stacks/mailrelay.
+# Upstream mailbox credentials live in .env (gitignored).
+
+services:
+  mailrelay:
+    image: boky/postfix:v4.4.1
+    container_name: mailrelay
+    restart: unless-stopped
+    hostname: mail.ckk-tool.co.jp
+    environment:
+      - ALLOWED_SENDER_DOMAINS=ckk-tool.co.jp
+      - POSTFIX_myhostname=mail.ckk-tool.co.jp
+      # onamae.com submission server (ckk-tool.co.jp's mail host) + mailbox creds.
+      - RELAYHOST=${RELAYHOST:?set RELAYHOST in .env}
+      - RELAYHOST_USERNAME=${RELAYHOST_USERNAME:-}
+      - RELAYHOST_PASSWORD=${RELAYHOST_PASSWORD:-}
+      # onamae signs DKIM for the domain on send, so the relay does not.
+      - DKIM_AUTOGENERATE=${DKIM_AUTOGENERATE:-false}
+    volumes:
+      - mailrelay-dkim:/etc/opendkim/keys
+    # No published ports — internal only. Apps reach it as mailrelay:587.
+
+volumes:
+  mailrelay-dkim:

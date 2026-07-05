@@ -18,7 +18,7 @@ import { ReleaseProductReservationModal } from './_modals/release';
 
 // ── Mock data ────────────────────────────────────────────────────────────────
 const INV = {
-  productName: '精密軸 PRD-2601-0001',
+  productName: '精密軸 PRD-202601-0001',
   lotNumber: 1042,
   quantity: 50,
   reserved: 20,

@@ -1,0 +1,33 @@
+// Samba AD employee directory (LDAP sync target).
+// Writer: vpn-ldap ldap-sync service (role ldap_sync).
+// Readers: v_labor view, Metabase, admintools, future apps.
+
+model EmployeeDirectory {
+  username     String   @id
+  displayName  String?  @map("display_name")
+  email        String?
+  department   String?
+  title        String?
+  company      String?
+  office       String?
+  manager      String?
+  isActive     Boolean? @map("is_active")
+  employeeCode Int?     @map("employee_code")
+  lastSyncedAt DateTime @default(now()) @map("last_synced_at") @db.Timestamptz(6)
+
+  @@map("employee_directory")
+  @@schema("directory")
+}
+
+model LdapSyncLog {
+  id         BigInt   @id @default(autoincrement())
+  finishedAt DateTime @default(now()) @map("finished_at") @db.Timestamptz(6)
+  kind       String?
+  status     String?
+  total      Int?
+  message    String?
+
+  @@index([finishedAt(sort: Desc)], map: "idx_ldap_sync_log_finished")
+  @@map("ldap_sync_log")
+  @@schema("directory")
+}
