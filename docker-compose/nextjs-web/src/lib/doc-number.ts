@@ -24,7 +24,8 @@ export function formatDocNumber(prefix: DocPrefix, key: DocKey): string {
   return `${prefix}-${key.yearMonth}-${String(key.seq).padStart(digits, "0")}`;
 }
 
-export const formatEstimateNumber = (key: DocKey) => formatDocNumber("EST", key);
+export const formatEstimateNumber = (key: DocKey) =>
+  formatDocNumber("EST", key);
 export const formatQuoteNumber = (key: DocKey) => formatDocNumber("QOT", key);
 
 /**

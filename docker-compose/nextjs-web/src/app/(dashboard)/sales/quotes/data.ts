@@ -155,7 +155,8 @@ export async function fetchBranchesByCustomer(): Promise<
   const map: Record<string, { value: string; label: string }[]> = {};
   for (const r of rows) {
     if (!r.parentId) continue;
-    (map[r.parentId] ??= []).push({
+    map[r.parentId] ??= [];
+    map[r.parentId].push({
       value: r.id,
       label: localized(r.name as LocalizedText | null),
     });
