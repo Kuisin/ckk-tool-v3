@@ -58,7 +58,6 @@ model Product {
   updatedAt  DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   material         Material?        @relation(fields: [materialId], references: [id])
-  estimates        Estimate[]
   priceListEntries PriceListEntry[]
   quoteItems       QuoteItem[]
 

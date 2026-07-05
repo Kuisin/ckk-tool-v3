@@ -56,7 +56,8 @@ export default async function MasterProductsDetailPage({
     createdAt: r.createdAt.toISOString(),
     updatedAt: r.updatedAt.toISOString(),
     priceListEntries: r.priceListEntries.map((e) => ({
-      id: e.id,
+      // Composite entry key — mirrors the price-list URL id format.
+      id: `${e.customerBpId}__${e.productId}__${e.orderType}`,
       customerName: localized(e.customerBp.name as LocalizedText | null),
       orderType: e.orderType,
       validFrom: e.validFrom.toISOString(),

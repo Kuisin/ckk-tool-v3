@@ -28,8 +28,8 @@ export function IssueQuoteModal({
   quoteId: string;
   quoteNumber: string;
   defaultValidUntil: string | null;
-  /** Called with the saved-PDF meta once 発行 (+ PDF 生成) completes. */
-  onIssued: (pdf: PdfFileMeta) => void;
+  /** Called with the saved-PDF meta + 有効期限 once 発行 (+ PDF 生成) completes. */
+  onIssued: (pdf: PdfFileMeta, validUntil: string | null) => void;
 }) {
   const [validUntil, setValidUntil] = useState<string | null>(
     defaultValidUntil,
@@ -70,7 +70,7 @@ export function IssueQuoteModal({
     } finally {
       setLoading(false);
     }
-    onIssued(meta);
+    onIssued(meta, validUntil);
     onClose();
   };
 

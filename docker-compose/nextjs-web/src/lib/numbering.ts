@@ -17,9 +17,16 @@ const SEQUENCES = {
 
 export type NumberingKey = keyof typeof SEQUENCES;
 
-/** Next number for `key`, e.g. `PRD-202607-0012`. Resets monthly. */
-export async function nextDocumentNumber(key: NumberingKey): Promise<string> {
-  const { prefix, digits } = SEQUENCES[key];
+/**
+ * Allocate the next (yearMonth, seq) pair for `key`. Documents with combined
+ * keys (試算/見積書) store these two columns and DERIVE the display number
+ * (lib/doc-number.ts); `nextDocumentNumber` keeps the formatted-string API for
+ * single-column ids (製品コード).
+ */
+export async function allocateDocumentKey(
+  key: NumberingKey,
+): Promise<{ yearMonth: string; seq: number }> {
+  const { prefix } = SEQUENCES[key];
   const now = new Date();
   const yearMonth = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, "0")}`;
 
@@ -39,5 +46,12 @@ export async function nextDocumentNumber(key: NumberingKey): Promise<string> {
   `;
   const seq = rows[0]?.last_sequence;
   if (!seq) throw new Error(`numbering failed for ${key}`);
+  return { yearMonth, seq };
+}
+
+/** Next single-column document id, e.g. `PRD-202607-0012`. Resets monthly. */
+export async function nextDocumentNumber(key: NumberingKey): Promise<string> {
+  const { prefix, digits } = SEQUENCES[key];
+  const { yearMonth, seq } = await allocateDocumentKey(key);
   return `${prefix}-${yearMonth}-${String(seq).padStart(digits, "0")}`;
 }

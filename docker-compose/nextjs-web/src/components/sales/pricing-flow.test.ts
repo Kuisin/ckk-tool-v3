@@ -17,7 +17,7 @@ import {
   unitDiscountOf,
 } from "@/components/sales/price-lists/mock";
 import { resolveUnitPrice } from "@/components/sales/quotes/mock";
-import { getTrialEstimate } from "@/components/sales/trial-estimates/mock";
+import { getTrialEstimate } from "@/components/sales/trial-estimates/fixtures";
 import { calcTrialPricing } from "@/lib/trial-pricing";
 
 describe("試算 → 価格表 → 見積書 (constructed entry)", () => {

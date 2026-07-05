@@ -25,7 +25,7 @@ import {
   quantityRange,
   tierUnitPrice,
   unitDiscountOf,
-} from "./mock";
+} from "./model";
 
 export function CreateQuoteModal({
   opened,
