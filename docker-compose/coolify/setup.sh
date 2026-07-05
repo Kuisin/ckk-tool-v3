@@ -144,6 +144,12 @@ create_app() { # name branch host_port
   else
     echo "exists  $name: $uuid"
   fi
+  # envs/bulk appends rather than upserts — only seed envs once (empty set).
+  if [ "$(api GET "/applications/$uuid/envs" | jq 'length')" != "0" ]; then
+    echo "envs already present for $name — skipping (manage in Coolify UI)"
+    eval "${4}=$uuid"
+    return 0
+  fi
   api PATCH "/applications/$uuid/envs/bulk" -d "{\"data\": [
     {\"key\": \"NODE_ENV\",               \"value\": \"production\"},
     {\"key\": \"DATABASE_URL\",           \"value\": \"$DATABASE_URL\"},
