@@ -15,7 +15,7 @@ enum OrderType {
   OTHER
 
   @@map("ORDER_TYPE")
-  @@schema("sales")
+  @@schema("app")
 }
 
 enum TrialToolType {
@@ -24,7 +24,7 @@ enum TrialToolType {
   OH
 
   @@map("TRIAL_TOOL_TYPE")
-  @@schema("sales")
+  @@schema("app")
 }
 
 enum EstimateStatus {
@@ -33,7 +33,7 @@ enum EstimateStatus {
   REGISTERED
 
   @@map("ESTIMATE_STATUS")
-  @@schema("sales")
+  @@schema("app")
 }
 
 enum QuoteStatus {
@@ -44,7 +44,7 @@ enum QuoteStatus {
   EXPIRED
 
   @@map("QUOTE_STATUS")
-  @@schema("sales")
+  @@schema("app")
 }
 
 enum PriceDiscountType {
@@ -52,7 +52,7 @@ enum PriceDiscountType {
   AMOUNT
 
   @@map("PRICE_DISCOUNT_TYPE")
-  @@schema("sales")
+  @@schema("app")
 }
 
 // 試算 (SA05 見積試算) — 計算入力のスナップショット + 参照価格。
@@ -88,7 +88,7 @@ model Estimate {
 
   @@id([yearMonth, seq])
   @@map("estimates")
-  @@schema("sales")
+  @@schema("app")
 }
 
 // 価格表エントリ — 自然複合キー (顧客, 製品, 注文種別)。作成後不変。
@@ -118,7 +118,7 @@ model PriceListEntry {
 
   @@id([customerBpId, productId, orderType])
   @@map("price_list_entries")
-  @@schema("sales")
+  @@schema("app")
 }
 
 // 数量段階: 数量範囲 → 倍率。単価 = round(基準単価 × 倍率)、
@@ -140,7 +140,7 @@ model PriceListTier {
 
   @@index([customerBpId, productId, orderType, minQuantity])
   @@map("price_list_tiers")
-  @@schema("sales")
+  @@schema("app")
 }
 
 // 値引きルール — 期間 × 数量条件 → 値引き（entry ごとの専用リスト）。
@@ -165,7 +165,7 @@ model PriceListDiscount {
 
   @@index([customerBpId, productId, orderType])
   @@map("price_list_discounts")
-  @@schema("sales")
+  @@schema("app")
 }
 
 // 見積書 — 文書番号 QOT-{year_month}-{seq:5桁} はキーから導出。
@@ -192,7 +192,7 @@ model Quote {
 
   @@id([yearMonth, seq])
   @@map("quotes")
-  @@schema("sales")
+  @@schema("app")
 }
 
 model QuoteItem {
@@ -218,5 +218,5 @@ model QuoteItem {
   priceListTier PriceListTier? @relation(fields: [priceListTierId], references: [id])
 
   @@map("quote_items")
-  @@schema("sales")
+  @@schema("app")
 }

@@ -8,7 +8,7 @@ enum UserGroup {
   GUEST
 
   @@map("USER_GROUP")
-  @@schema("auth")
+  @@schema("app")
 }
 
 enum Action {
@@ -21,7 +21,7 @@ enum Action {
   ADMIN
 
   @@map("ACTION")
-  @@schema("auth")
+  @@schema("app")
 }
 
 enum Scope {
@@ -35,7 +35,7 @@ enum Scope {
   OWN
 
   @@map("SCOPE")
-  @@schema("auth")
+  @@schema("app")
 }
 
 model User {
@@ -58,8 +58,12 @@ model User {
   quotesCreated           Quote[]            @relation("QuoteCreatedBy")
   filesUploaded           File[]             @relation("FileUploadedBy")
 
+  // Employees link to the shared directory by AD objectGUID (stable across
+  // username/attribute changes). Null for SYSTEM / GUEST users.
+  employee EmployeeDirectory? @relation("UserEmployee", fields: [employeeId], references: [ldapGuid])
+
   @@map("users")
-  @@schema("auth")
+  @@schema("app")
 }
 
 model Role {
@@ -73,7 +77,7 @@ model Role {
   permissions     RolePermissionRelation[]
 
   @@map("roles")
-  @@schema("auth")
+  @@schema("app")
 }
 
 model UserRoleRelation {
@@ -90,7 +94,7 @@ model UserRoleRelation {
 
   @@id([userId, roleId])
   @@map("user_role_relation")
-  @@schema("auth")
+  @@schema("app")
 }
 
 model Permission {
@@ -101,7 +105,7 @@ model Permission {
   rolePermissions RolePermissionRelation[]
 
   @@map("permissions")
-  @@schema("auth")
+  @@schema("app")
 }
 
 model RolePermissionRelation {
@@ -116,5 +120,5 @@ model RolePermissionRelation {
 
   @@id([roleId, action, permissionCode])
   @@map("role_permission_relation")
-  @@schema("auth")
+  @@schema("app")
 }

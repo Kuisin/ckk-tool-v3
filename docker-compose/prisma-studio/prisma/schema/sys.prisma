@@ -15,7 +15,7 @@ model File {
   quotesPdf Quote[] @relation("QuotePdf")
 
   @@map("files")
-  @@schema("sys")
+  @@schema("app")
 }
 
 // 採番管理（EST/QOT — 月次リセット）
@@ -27,5 +27,5 @@ model NumberingSequence {
   updatedAt     DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   @@map("numbering_sequences")
-  @@schema("sys")
+  @@schema("app")
 }

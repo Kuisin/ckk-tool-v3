@@ -10,21 +10,24 @@ LAN port `192.168.50.15:15432`, in-cluster host `shared-db:5432`).
 | Schema | Contents | Writer |
 |---|---|---|
 | `kot` | hr_records, employees, kot_employees, kot_match_review, import_runs, `v_labor` view | kot-import, admintools (role `kot`) |
-| `directory` | employee_directory, ldap_sync_log | vpn-ldap ldap-sync (role `ldap_sync`) |
+| `directory` | employee_directory (+ `ldap_guid`: the immutable AD objectGUID apps FK to), ldap_sync_log | vpn-ldap ldap-sync (role `ldap_sync`) |
 | `admintools` | mail_accounts, group_members | admintools (role `admintools`) |
-| `auth` `master` `bp` `sales` `sys` | ckk-tool-v3 business tables (_specs/tables.md §1 sales MVP: 試算 → 価格表 → 見積書 + master-data deps), incl. `auth.user_permissions` view | nextjs-web (role `app`) |
+| `app` | ALL ckk-tool-v3 business tables in ONE schema — RBAC (users/roles/permissions), master data, business partners, sales (試算 → 価格表 → 見積書) — incl. the `app.user_permissions` view | nextjs-web (role `app`) |
 | `public` | pass-through compat views only (`sql/metabase-compat.sql`) | — (Metabase reads via `kot_ro`) |
 
-The v3 business scope is deliberately **minimal** (migration
-`trim_to_sales_core`): only 試算 (`sales.estimates` + `estimate_tiers`), 価格表
-(`sales.price_list_entries` + `price_list_tiers`), 見積書 (`sales.quotes` +
-`quote_items`) and their dependencies (`master.*`, `bp.*` customer side,
-`sys.files` / `numbering_sequences`, `auth.*`). Downstream domains
-(production / inventory / shipping / billing / design / log, 受注請書以降) are
-re-added table-by-table when their feature lands.
+The v3 web app owns a **single** `app` schema (Prisma-managed). Its scope is
+deliberately **minimal**: 試算 (`app.estimates` + `estimate_tiers`), 価格表
+(`app.price_list_entries` + `price_list_tiers` + `price_list_discounts`), 見積書
+(`app.quotes` + `quote_items`), their master-data deps (`app.material_types` /
+`materials` / `products`), business partners (`app.business_partners` + attrs),
+`app.files` / `numbering_sequences`, and RBAC (`app.users` / `roles` /
+`permissions`). Downstream domains (production / inventory / shipping / billing /
+design / log, 受注請書以降) are added table-by-table when their feature lands.
 
-Cross-schema FKs are real (e.g. `sales.quotes → bp.business_partners`,
-`kot.hr_records → kot.employees`). Deliberately **no** FK from `kot.employees`
+Cross-schema FKs are real — notably `app.users.employee_id → directory.employee_directory.ldap_guid`
+(the app's identity link to the shared, AD-synced employee directory, keyed by
+the immutable objectGUID so AD renames never orphan the reference). Deliberately
+**no** FK from `kot.employees`
 to `directory.employee_directory` (2 legacy usernames absent from AD).
 
 ## Editing models (the only supported workflow)
