@@ -77,7 +77,7 @@ run() {
   elif [ ! -d "$BACKUP_ROOT/hourly/$stamp" ]; then
     # Newest full: our layout keeps only fulls in daily/ (monthly/ mirrors them).
     local anchor
-    anchor=$(ls -d "$BACKUP_ROOT/daily"/*/ 2>/dev/null | sort | tail -n 1)
+    anchor=$(ls -d "$BACKUP_ROOT/daily"/*/ 2>/dev/null | sort | tail -n 1 || true)
     anchor="${anchor%/}"
     if [ -n "$anchor" ] && [ -f "$anchor/backup_manifest" ]; then
       log "taking INCREMENTAL backup -> hourly/$stamp (anchor: daily/$(basename "$anchor"))"
@@ -123,7 +123,7 @@ prune() {
   # daily: drop dirs older than the cutoff, but never the newest full nor any
   # full still referenced by a surviving hourly's anchor file.
   local newest anchors
-  newest=$(ls -d "$BACKUP_ROOT/daily"/*/ 2>/dev/null | sort | tail -n 1)
+  newest=$(ls -d "$BACKUP_ROOT/daily"/*/ 2>/dev/null | sort | tail -n 1 || true)
   newest=$(basename "${newest%/}" 2>/dev/null || true)
   anchors=$(cat "$BACKUP_ROOT/hourly"/*/anchor 2>/dev/null | sort -u || true)
   for d in "$BACKUP_ROOT/daily"/*/; do
@@ -141,7 +141,7 @@ prune() {
 
   # monthly: keep the newest MONTHLY_KEEP by name.
   local total=0 drop
-  total=$(ls -d "$BACKUP_ROOT/monthly"/*/ 2>/dev/null | wc -l)
+  total=$(ls -d "$BACKUP_ROOT/monthly"/*/ 2>/dev/null | wc -l || true)
   drop=$((total - MONTHLY_KEEP))
   if [ "$drop" -gt 0 ]; then
     ls -d "$BACKUP_ROOT/monthly"/*/ | sort | while IFS= read -r d; do
