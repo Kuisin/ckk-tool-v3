@@ -1,0 +1,61 @@
+# nextjs-web CI — lint & build on every PR.
+#
+#   PR → dev  : Biome lint + production build (baseline gate)
+#   PR → main : strict — frozen-lockfile install, Biome with warnings-as-errors,
+#               tsc --noEmit, production build (promotion gate; main auto-deploys
+#               via the Coolify webhook on merge)
+#
+# No unit/E2E suite exists in nextjs-web yet — add Vitest/Playwright jobs here
+# when they land (see _specs/techstack.md).
+
+name: nextjs-web CI
+
+on:
+  pull_request:
+    branches: [dev, main]
+
+concurrency:
+  group: nextjs-web-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    working-directory: docker-compose/nextjs-web
+
+jobs:
+  lint-build:
+    name: Lint & build (base ${{ github.base_ref }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      # Reads the pinned pnpm version from package.json "packageManager".
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: docker-compose/nextjs-web/pnpm-lock.yaml
+
+      - name: Install (frozen lockfile)
+        run: pnpm install --frozen-lockfile
+
+      - name: Sync Prisma schema (shared-db) + generate client
+        run: pnpm db:sync-schema && pnpm db:generate
+
+      - name: Lint (Biome)
+        run: pnpm lint
+
+      # ── strict gates: promotion PRs into main only ──────────────────────
+      - name: Lint strict — warnings as errors (main)
+        if: github.base_ref == 'main'
+        run: pnpm exec biome check --error-on-warnings
+
+      - name: Typecheck (main)
+        if: github.base_ref == 'main'
+        run: pnpm exec tsc --noEmit
+
+      - name: Build (production)
+        run: pnpm build

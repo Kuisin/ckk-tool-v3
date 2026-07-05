@@ -6,12 +6,13 @@
 //
 // Migrations are owned by shared-db (pnpm migrate:dev there) — do not run
 // `prisma migrate` from this package.
-import { defineConfig } from 'prisma/config'
+import { defineConfig } from "prisma/config";
 
 export default defineConfig({
-  schema: 'prisma/schema',
+  schema: "prisma/schema",
   datasource: {
     // Only used by CLI introspection; the app passes a driver adapter at runtime.
-    url: process.env.DATABASE_URL ?? 'postgresql://app:unused@shared-db:5432/ckk',
+    url:
+      process.env.DATABASE_URL ?? "postgresql://app:unused@shared-db:5432/ckk",
   },
-})
+});

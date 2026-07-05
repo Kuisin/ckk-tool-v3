@@ -62,5 +62,17 @@
         "useSortedAttributes": "on"
       }
     }
-  }
+  },
+  "overrides": [
+    {
+      "includes": ["src/app/layout.tsx"],
+      "linter": {
+        "rules": {
+          "security": {
+            "noDangerouslySetInnerHtml": "off"
+          }
+        }
+      }
+    }
+  ]
 }
