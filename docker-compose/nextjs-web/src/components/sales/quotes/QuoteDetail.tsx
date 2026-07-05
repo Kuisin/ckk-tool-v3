@@ -201,14 +201,21 @@ export function QuoteDetail({ id }: { id: string }) {
                       </Table.Td>
                       <Table.Td ta="right">
                         {it.discountAmount > 0 ? (
-                          <Text
-                            c="red"
-                            className="tabular-nums"
-                            ff="mono"
-                            size="sm"
-                          >
-                            -<MoneyText value={it.discountAmount} />
-                          </Text>
+                          <>
+                            <Text
+                              c="red"
+                              className="tabular-nums"
+                              ff="mono"
+                              size="sm"
+                            >
+                              -<MoneyText value={it.discountAmount} />
+                            </Text>
+                            {it.discountLabel && (
+                              <Text c="dimmed" size="xs">
+                                {it.discountLabel}
+                              </Text>
+                            )}
+                          </>
                         ) : (
                           <Text c="dimmed" size="sm">
                             —
@@ -226,7 +233,7 @@ export function QuoteDetail({ id }: { id: string }) {
                           </Text>
                         ) : (
                           <Text c="orange" size="xs">
-                            手動入力
+                            価格表なし
                           </Text>
                         )}
                       </Table.Td>

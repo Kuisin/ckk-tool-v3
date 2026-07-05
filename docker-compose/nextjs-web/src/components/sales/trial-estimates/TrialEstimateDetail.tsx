@@ -205,32 +205,42 @@ export function TrialEstimateDetail({ id }: { id: string }) {
           <Stack gap="md">
             <div>
               <Text c="dimmed" mb={4} size="xs">
-                ロット別 見積単価
+                基準単価（数量スケールは価格表の倍率で設定）
               </Text>
               <Table>
-                <Table.Thead>
-                  <Table.Tr>
-                    <Table.Th>ロット</Table.Th>
-                    <Table.Th ta="right">最低単価</Table.Th>
-                    <Table.Th ta="right">掛け率</Table.Th>
-                    <Table.Th ta="right">見積単価</Table.Th>
-                  </Table.Tr>
-                </Table.Thead>
                 <Table.Tbody>
-                  {result.lots.map((l) => (
-                    <Table.Tr key={l.quantity}>
-                      <Table.Td>{l.quantity}本</Table.Td>
-                      <Table.Td ta="right">
-                        <MoneyText value={Math.round(l.minimumPrice)} />
-                      </Table.Td>
-                      <Table.Td ta="right">×{l.discountRate}</Table.Td>
-                      <Table.Td ta="right">
-                        <Text fw={700} size="sm">
-                          <MoneyText value={l.estimateUnitPrice} />
-                        </Text>
-                      </Table.Td>
-                    </Table.Tr>
-                  ))}
+                  {result.lots[0] && (
+                    <>
+                      <Table.Tr>
+                        <Table.Td>基準数量</Table.Td>
+                        <Table.Td ta="right">
+                          {result.lots[0].quantity}本
+                        </Table.Td>
+                      </Table.Tr>
+                      <Table.Tr>
+                        <Table.Td>最低単価</Table.Td>
+                        <Table.Td ta="right">
+                          <MoneyText
+                            value={Math.round(result.lots[0].minimumPrice)}
+                          />
+                        </Table.Td>
+                      </Table.Tr>
+                      <Table.Tr>
+                        <Table.Td>
+                          <Text fw={600} size="sm">
+                            見積単価（基準）
+                          </Text>
+                        </Table.Td>
+                        <Table.Td ta="right">
+                          <Text fw={700} size="sm">
+                            <MoneyText
+                              value={result.lots[0].estimateUnitPrice}
+                            />
+                          </Text>
+                        </Table.Td>
+                      </Table.Tr>
+                    </>
+                  )}
                 </Table.Tbody>
               </Table>
             </div>

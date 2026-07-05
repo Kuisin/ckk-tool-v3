@@ -3,21 +3,29 @@
 /**
  * CreateQuoteModal — 価格表 → 見積書 作成.
  *
- * Drafts a 見積書 from a price-list entry: 顧客・製品・注文種別・単価 are
- * inherited from the entry (単価 is resolved from the 数量 tier); the user only
- * sets 数量 / 値引き / 納期. Submitting opens the 見積書 form pre-filled so the
- * draft can be reviewed and saved.
+ * 見積書は印刷用ドキュメント — 価格は価格表からのみ解決する。単価（基準単価 ×
+ * 数量倍率）と値引き（値引きルール）は数量から自動計算され、手入力はない。
+ * ユーザーが決めるのは 数量 / 納期 のみ。Submitting opens the 見積書 form
+ * pre-filled so the draft can be reviewed and saved.
  */
 
-import { Alert, Group, NumberInput, Text } from "@mantine/core";
+import { Alert, Group, NumberInput, Stack, Text } from "@mantine/core";
 import { DatePickerInput } from "@mantine/dates";
 import { IconAlertTriangle, IconCalendar } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { FieldValue } from "@/components/ui/FieldValue";
+import { HelpLabel } from "@/components/ui/HelpLabel";
 import { FormModal, type ModalBaseProps } from "@/components/ui/modals";
 import { formatMoney } from "@/lib/format";
-import { type PriceListEntry, quantityRange } from "./mock";
+import {
+  discountValueLabel,
+  findApplicableDiscount,
+  type PriceListEntry,
+  quantityRange,
+  tierUnitPrice,
+  unitDiscountOf,
+} from "./mock";
 
 export function CreateQuoteModal({
   opened,
@@ -28,32 +36,35 @@ export function CreateQuoteModal({
   const [quantity, setQuantity] = useState<number>(
     source?.tiers[0]?.minQuantity ?? 1,
   );
-  const [discount, setDiscount] = useState<number>(0);
   const [deliveryDate, setDeliveryDate] = useState<string | null>(null);
 
   // Re-seed the defaults each time the modal opens for a (new) entry.
   useEffect(() => {
     if (opened && source) {
       setQuantity(source.tiers[0]?.minQuantity ?? 1);
-      setDiscount(0);
       setDeliveryDate(null);
     }
   }, [opened, source]);
 
   if (!source) return null;
 
-  // 数量に対応する価格表 tier（単価は価格表から自動解決）。
+  // 数量 → 価格表 tier（基準単価 × 倍率）+ 値引きルールの自動適用。
   const tier = source.tiers.find(
     (t) =>
       quantity >= t.minQuantity &&
       (t.maxQuantity == null || quantity <= t.maxQuantity),
   );
-  const unitPrice = tier?.unitPrice ?? 0;
-  const amount = Math.max(0, quantity * unitPrice - discount);
+  const unitPrice = tier ? tierUnitPrice(source, tier) : 0;
+  const discount = tier
+    ? findApplicableDiscount(source, quantity, unitPrice)
+    : null;
+  const discountAmount = discount
+    ? unitDiscountOf(discount, unitPrice) * quantity
+    : 0;
+  const amount = Math.max(0, quantity * unitPrice - discountAmount);
 
   const handleClose = () => {
     setQuantity(source.tiers[0]?.minQuantity ?? 1);
-    setDiscount(0);
     setDeliveryDate(null);
     onClose();
   };
@@ -70,7 +81,6 @@ export function CreateQuoteModal({
           product: source.productId,
           orderType: source.orderType,
           quantity: String(quantity),
-          discount: String(discount),
         });
         if (deliveryDate) params.set("delivery", deliveryDate);
         handleClose();
@@ -83,11 +93,16 @@ export function CreateQuoteModal({
     >
       <Text size="sm">
         {source.customerName} × {source.productName}{" "}
-        の価格表から見積書を作成します。単価は価格表から自動解決されます。
+        の価格表から見積書を作成します。単価・値引きは価格表から自動計算されます。
       </Text>
 
       <NumberInput
-        label="数量"
+        label={
+          <HelpLabel
+            help="見積する本数。数量帯（倍率）と値引きルールの適用判定に使われます。"
+            label="数量"
+          />
+        }
         min={1}
         onChange={(v) => setQuantity(typeof v === "number" ? v : 1)}
         suffix=" 本"
@@ -96,32 +111,32 @@ export function CreateQuoteModal({
       />
 
       {tier ? (
-        <FieldValue
-          label="単価（価格表）"
-          value={`${formatMoney(unitPrice)}（${quantityRange(
-            tier.minQuantity,
-            tier.maxQuantity,
-          )}）`}
-        />
+        <Stack gap="xs">
+          <FieldValue
+            label="単価（価格表）"
+            value={`${formatMoney(unitPrice)}（${quantityRange(
+              tier.minQuantity,
+              tier.maxQuantity,
+            )} ×${tier.multiplier.toFixed(2)}）`}
+          />
+          <FieldValue
+            label="値引き（自動適用）"
+            value={
+              discount
+                ? `-${formatMoney(discountAmount)}（${discount.label} ${discountValueLabel(discount)}）`
+                : "—"
+            }
+          />
+        </Stack>
       ) : (
         <Alert
           color="orange"
           icon={<IconAlertTriangle size={16} />}
           variant="light"
         >
-          この数量に該当する価格段階がありません。数量を見直すか、見積書側で単価を手動入力してください。
+          この数量に該当する価格段階がありません。数量を見直すか、価格表の数量スケールを追加してください。
         </Alert>
       )}
-
-      <NumberInput
-        description="必要時のみ"
-        label="値引き"
-        min={0}
-        onChange={(v) => setDiscount(typeof v === "number" ? v : 0)}
-        prefix="¥"
-        thousandSeparator=","
-        value={discount}
-      />
 
       <DatePickerInput
         clearable

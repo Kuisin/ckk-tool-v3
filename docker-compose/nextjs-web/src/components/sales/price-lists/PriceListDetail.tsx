@@ -3,13 +3,15 @@
 /**
  * PriceListDetail — 価格表 詳細 (design.md §8.2).
  *
- * One (顧客, 製品, 注文種別) entry: its 有効期間 + 状態 and a read-only table of
- * quantity tiers. 注文種別ごとにページを分ける。`id` is the entry key; falls back
- * to the first entry so the layout always renders. Replace the mock lookup with
- * a server fetch.
+ * One (顧客, 製品, 注文種別) entry: its 有効期間 + 状態, a read-only table of
+ * quantity tiers, and the dedicated 値引きルール list (期間 × 数量 → 値引き —
+ * 見積書作成時に自動適用される). 注文種別ごとにページを分ける。`id` is the
+ * entry key; falls back to the first entry so the layout always renders.
+ * Replace the mock lookup with a server fetch.
  */
 
 import {
+  ActionIcon,
   Anchor,
   Badge,
   Group,
@@ -19,9 +21,11 @@ import {
   Text,
   Tooltip,
 } from "@mantine/core";
+import { notifications } from "@mantine/notifications";
 import {
   IconCopy,
   IconCopyPlus,
+  IconEdit,
   IconFileText,
   IconPlus,
   IconTrash,
@@ -33,6 +37,7 @@ import { SecondaryButton } from "@/components/ui/buttons";
 import { DocNumber } from "@/components/ui/DocNumber";
 import { FieldValue } from "@/components/ui/FieldValue";
 import { MoneyText } from "@/components/ui/MoneyText";
+import { openConfirm } from "@/components/ui/modals";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import {
   type AuditEntry,
@@ -47,14 +52,19 @@ import { MOCK_QUOTES } from "../quotes/mock";
 import { CopyPriceListModal } from "./CopyPriceListModal";
 import { CreateQuoteModal } from "./CreateQuoteModal";
 import { DeletePriceListModal } from "./DeletePriceListModal";
+import { DiscountRuleModal } from "./DiscountRuleModal";
 import { DuplicatePriceListModal } from "./DuplicatePriceListModal";
 import {
+  discountValueLabel,
   entrySummary,
   getPriceEntry,
   MOCK_PRICE_ENTRIES,
+  multiplierLabel,
+  type PriceDiscount,
   priceRangeLabel,
   quantityRange,
   siblingOrderTypes,
+  tierUnitPrice,
   validPeriod,
 } from "./mock";
 
@@ -88,6 +98,36 @@ export function PriceListDetail({ id }: { id: string }) {
   const [duplicateOpen, setDuplicateOpen] = useState(false);
   const [copyOpen, setCopyOpen] = useState(false);
   const [quoteOpen, setQuoteOpen] = useState(false);
+
+  // 値引きルール（専用リスト）— add/edit/delete はローカル state でデモ。
+  // TODO(server-action): persist to price_list_discounts.
+  const [discounts, setDiscounts] = useState<PriceDiscount[]>(entry.discounts);
+  const [discountModalOpen, setDiscountModalOpen] = useState(false);
+  const [discountEditTarget, setDiscountEditTarget] =
+    useState<PriceDiscount | null>(null);
+
+  const saveDiscount = (rule: PriceDiscount) => {
+    setDiscounts((prev) =>
+      prev.some((d) => d.id === rule.id)
+        ? prev.map((d) => (d.id === rule.id ? rule : d))
+        : [...prev, rule],
+    );
+    notifications.show({
+      title: "保存しました",
+      message: `値引きルール「${rule.label}」を保存しました`,
+      color: "green",
+    });
+  };
+
+  const removeDiscount = (rule: PriceDiscount) => {
+    openConfirm({
+      title: "値引きルールの削除",
+      message: `「${rule.label}」を削除します。この操作は取り消せません。`,
+      confirmLabel: "削除",
+      onConfirm: () =>
+        setDiscounts((prev) => prev.filter((d) => d.id !== rule.id)),
+    });
+  };
 
   // この価格表（の tier）から作成された見積書。
   const tierIds = new Set(entry.tiers.map((t) => t.id));
@@ -155,6 +195,10 @@ export function PriceListDetail({ id }: { id: string }) {
           label="有効期間"
           value={validPeriod(entry.validFrom, entry.validUntil)}
         />
+        <FieldValue
+          label="基準単価"
+          value={<MoneyText ta="left" value={entry.baseUnitPrice} />}
+        />
         <FieldValue label="段階数" value={`${summary.tierCount}段階`} />
         <FieldValue
           label="単価範囲"
@@ -183,6 +227,7 @@ export function PriceListDetail({ id }: { id: string }) {
       <Tabs defaultValue="prices">
         <Tabs.List>
           <Tabs.Tab value="prices">価格設定</Tabs.Tab>
+          <Tabs.Tab value="discounts">値引き設定</Tabs.Tab>
           <Tabs.Tab value="related">関連</Tabs.Tab>
           <Tabs.Tab value="history">履歴</Tabs.Tab>
         </Tabs.List>
@@ -214,11 +259,16 @@ export function PriceListDetail({ id }: { id: string }) {
             </SecondaryButton>
           </Group>
 
-          <Table.ScrollContainer minWidth={360}>
+          <Text c="dimmed" mb="xs" size="xs">
+            単価 = 基準単価 <MoneyText value={entry.baseUnitPrice} /> ×
+            倍率（行ごとに手動上書き可・編集は「編集」から）
+          </Text>
+          <Table.ScrollContainer minWidth={480}>
             <Table>
               <Table.Thead>
                 <Table.Tr>
                   <Table.Th>数量範囲</Table.Th>
+                  <Table.Th ta="right">倍率</Table.Th>
                   <Table.Th ta="right">単価</Table.Th>
                 </Table.Tr>
               </Table.Thead>
@@ -229,16 +279,115 @@ export function PriceListDetail({ id }: { id: string }) {
                       {quantityRange(tier.minQuantity, tier.maxQuantity)}
                     </Table.Td>
                     <Table.Td ta="right">
-                      <MoneyText
-                        currency={entry.currency}
-                        value={tier.unitPrice}
-                      />
+                      <Text className="tabular-nums" ff="mono" size="sm">
+                        {multiplierLabel(tier)}
+                      </Text>
+                    </Table.Td>
+                    <Table.Td ta="right">
+                      <Group gap="xs" justify="flex-end" wrap="nowrap">
+                        {tier.priceOverride != null && (
+                          <Badge color="orange" size="xs" variant="light">
+                            手動
+                          </Badge>
+                        )}
+                        <MoneyText
+                          currency={entry.currency}
+                          value={tierUnitPrice(entry, tier)}
+                        />
+                      </Group>
                     </Table.Td>
                   </Table.Tr>
                 ))}
               </Table.Tbody>
             </Table>
           </Table.ScrollContainer>
+        </Tabs.Panel>
+
+        <Tabs.Panel pt="md" value="discounts">
+          <Group justify="space-between" mb="sm">
+            <Text c="dimmed" size="xs">
+              期間・数量条件を満たすルールが見積書作成時に自動適用されます（複数該当時は値引き額が最大のもの）。
+            </Text>
+            <SecondaryButton
+              leftSection={<IconPlus size={16} />}
+              onClick={() => {
+                setDiscountEditTarget(null);
+                setDiscountModalOpen(true);
+              }}
+            >
+              値引きルールを追加
+            </SecondaryButton>
+          </Group>
+
+          {discounts.length > 0 ? (
+            <Table.ScrollContainer minWidth={720}>
+              <Table>
+                <Table.Thead>
+                  <Table.Tr>
+                    <Table.Th>名称</Table.Th>
+                    <Table.Th ta="right">値引き</Table.Th>
+                    <Table.Th>数量条件</Table.Th>
+                    <Table.Th>有効期間</Table.Th>
+                    <Table.Th>状態</Table.Th>
+                    <Table.Th w={88} />
+                  </Table.Tr>
+                </Table.Thead>
+                <Table.Tbody>
+                  {discounts.map((d) => (
+                    <Table.Tr key={d.id}>
+                      <Table.Td>
+                        <Text fw={500} size="sm">
+                          {d.label}
+                        </Text>
+                      </Table.Td>
+                      <Table.Td ta="right">
+                        <Text className="tabular-nums" ff="mono" size="sm">
+                          {discountValueLabel(d)}
+                        </Text>
+                      </Table.Td>
+                      <Table.Td>
+                        {quantityRange(d.minQuantity, d.maxQuantity)}
+                      </Table.Td>
+                      <Table.Td>
+                        <Text c="dimmed" className="tabular-nums" size="xs">
+                          {validPeriod(d.validFrom, d.validUntil)}
+                        </Text>
+                      </Table.Td>
+                      <Table.Td>
+                        <ActiveBadge active={d.isActive} />
+                      </Table.Td>
+                      <Table.Td>
+                        <Group gap={4} justify="flex-end" wrap="nowrap">
+                          <ActionIcon
+                            aria-label="値引きルールを編集"
+                            onClick={() => {
+                              setDiscountEditTarget(d);
+                              setDiscountModalOpen(true);
+                            }}
+                            variant="subtle"
+                          >
+                            <IconEdit size={16} />
+                          </ActionIcon>
+                          <ActionIcon
+                            aria-label="値引きルールを削除"
+                            color="red"
+                            onClick={() => removeDiscount(d)}
+                            variant="subtle"
+                          >
+                            <IconTrash size={16} />
+                          </ActionIcon>
+                        </Group>
+                      </Table.Td>
+                    </Table.Tr>
+                  ))}
+                </Table.Tbody>
+              </Table>
+            </Table.ScrollContainer>
+          ) : (
+            <Text c="dimmed" size="sm">
+              値引きルールがありません。「値引きルールを追加」から期間・数量条件つきの値引きを登録できます。
+            </Text>
+          )}
         </Tabs.Panel>
 
         <Tabs.Panel pt="md" value="related">
@@ -342,6 +491,12 @@ export function PriceListDetail({ id }: { id: string }) {
         onClose={() => setQuoteOpen(false)}
         opened={quoteOpen}
         source={entry}
+      />
+      <DiscountRuleModal
+        initial={discountEditTarget}
+        onClose={() => setDiscountModalOpen(false)}
+        onSave={saveDiscount}
+        opened={discountModalOpen}
       />
     </DetailShell>
   );

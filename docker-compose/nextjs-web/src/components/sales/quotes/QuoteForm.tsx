@@ -46,14 +46,17 @@ const itemSchema = z
     productName: z.string(),
     orderType: z.string().min(1),
     quantity: z.number().int().min(1, "1以上"),
+    // 単価・値引きは価格表から自動解決される（手入力なし）。
     unitPrice: z.number().min(0),
     priceTierId: z.string().nullable(),
     discountAmount: z.number().min(0),
+    discountLabel: z.string().nullable(),
     deliveryDate: z.string().nullable(),
   })
-  .refine((it) => it.unitPrice * it.quantity - it.discountAmount >= 0, {
-    message: "値引き額が金額を超えています",
-    path: ["discountAmount"],
+  // 見積書は価格表からのみ価格を解決する — 未解決の行は保存できない。
+  .refine((it) => it.priceTierId != null, {
+    message: "該当する価格表がありません（試算から価格表を登録してください）",
+    path: ["productId"],
   });
 
 const schema = z.object({
@@ -78,6 +81,7 @@ const emptyItem = (): ItemForm => ({
   unitPrice: 0,
   priceTierId: null,
   discountAmount: 0,
+  discountLabel: null,
   deliveryDate: null,
 });
 
@@ -87,7 +91,6 @@ export interface QuotePrefill {
   productId?: string;
   orderType?: string;
   quantity?: number;
-  discountAmount?: number;
   deliveryDate?: string | null;
 }
 
@@ -109,7 +112,7 @@ function buildInitial(
     items: [emptyItem()],
   };
   if (prefill?.customerId && prefill.productId) {
-    // 価格表から起動 — 単価は価格表 tier から解決して1行目に流し込む。
+    // 価格表から起動 — 単価・値引きを価格表から解決して1行目に流し込む。
     const orderType = prefill.orderType ?? "PRODUCTION";
     const quantity = prefill.quantity ?? 1;
     const resolved = resolveUnitPrice(
@@ -129,7 +132,8 @@ function buildInitial(
         quantity,
         unitPrice: resolved?.unitPrice ?? 0,
         priceTierId: resolved?.tierId ?? null,
-        discountAmount: prefill.discountAmount ?? 0,
+        discountAmount: resolved?.discountAmount ?? 0,
+        discountLabel: resolved?.discountLabel ?? null,
         deliveryDate: prefill.deliveryDate ?? null,
       },
     ];
@@ -152,6 +156,7 @@ function toFormValues(q: Quote): QuoteFormValues {
       unitPrice: it.unitPrice,
       priceTierId: it.priceTierId,
       discountAmount: it.discountAmount,
+      discountLabel: it.discountLabel,
       deliveryDate: it.deliveryDate,
     })),
   };
@@ -176,7 +181,7 @@ export function QuoteForm({
 
   const branches = BRANCHES[form.values.customerId] ?? [];
 
-  /** Changing 顧客 → re-resolve every line's 単価 against the new customer's 価格表. */
+  /** Changing 顧客 → re-resolve every line's 単価・値引き against the new customer's 価格表. */
   const onCustomerChange = (customerId: string) => {
     form.setFieldValue("customerId", customerId);
     form.setFieldValue("customerBranchId", null);
@@ -195,6 +200,8 @@ export function QuoteForm({
           ...it,
           unitPrice: r?.unitPrice ?? 0,
           priceTierId: r?.tierId ?? null,
+          discountAmount: r?.discountAmount ?? 0,
+          discountLabel: r?.discountLabel ?? null,
         };
       }),
     );
@@ -281,7 +288,7 @@ export function QuoteForm({
       </FormSection>
 
       <FormSection
-        description="製品・注文種別・数量を選ぶと、顧客の価格表から単価が自動入力されます（手動上書き可）。値引きは必要時のみ入力してください。"
+        description="単価（基準単価 × 数量倍率）と値引き（値引きルール）は顧客の価格表から自動計算されます。手入力はありません — 価格を変える場合は価格表側で設定してください。"
         title="明細"
       >
         <Stack gap="md">
@@ -317,6 +324,10 @@ export function QuoteForm({
                       form.setFieldValue(
                         `items.${ri}.discountAmount`,
                         next.discountAmount,
+                      );
+                      form.setFieldValue(
+                        `items.${ri}.discountLabel`,
+                        next.discountLabel,
                       );
                     }}
                     value={item}

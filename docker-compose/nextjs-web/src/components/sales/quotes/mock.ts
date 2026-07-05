@@ -3,42 +3,55 @@
  *
  * Model (per _specs/tables.md `quotes` / `quote_items`):
  *   Quote = (顧客, 支店?, 状態, 有効期限) + a list of items.
- *     └ Item = (製品, 注文種別, 数量) → 単価 is resolved from the 価格表
- *               (price_list_tiers) for that (顧客 × 製品 × 注文種別 × 数量),
- *               then 金額 = 単価 × 数量 − 値引き.
+ *     └ Item = (製品, 注文種別, 数量) → 単価 AND 値引き are resolved from the
+ *               価格表 (tiers + 値引きルール) for that (顧客 × 製品 × 注文種別 ×
+ *               数量 × 日付), then 金額 = 単価 × 数量 − 値引き.
  *
- * The defining feature (see 見積書-1.pdf): one product quoted across several
- * 数量 tiers, each row carrying the 価格表 unit price for that quantity band.
- * `resolveUnitPrice` is the link — it reads MOCK_PRICE_ENTRIES tiers so a quote
- * literally displays 価格表 data. Swap arrays/helpers for Prisma later.
+ * 見積書 is a print document — it never carries manual prices; everything is
+ * derived from 価格表 data. `resolveUnitPrice` is the link — it reads
+ * MOCK_PRICE_ENTRIES tiers + discounts so a quote literally displays 価格表
+ * data. Swap arrays/helpers for Prisma later.
  */
 
 import {
+  discountValueLabel,
   entryKey,
+  findApplicableDiscount,
   getPriceEntry,
   MOCK_PRICE_ENTRIES,
   type PriceTier,
+  tierUnitPrice,
+  unitDiscountOf,
 } from "@/components/sales/price-lists/mock";
 import type { PdfFileMeta } from "@/components/ui/PdfAttachmentPanel";
 import { formatMoney } from "@/lib/format";
 import { ORDER_TYPE_LABEL } from "@/lib/mock";
 
-/** A resolved 単価 + the 価格表 tier it came from (null = manual override). */
+/**
+ * A resolved 価格表 price: base 単価 (tier) + auto-applied 値引きルール.
+ * `discountAmount` is the LINE total (1本あたり値引き × 数量).
+ */
 export interface ResolvedPrice {
   unitPrice: number;
   tierId: string | null;
   tierLabel: string | null;
+  discountAmount: number;
+  discountId: string | null;
+  /** e.g. "夏季キャンペーン（5%）" — null when no rule applies. */
+  discountLabel: string | null;
 }
 
 /**
- * Resolve the 価格表 単価 for (顧客 × 製品 × 注文種別 × 数量).
- * Returns the matching tier's unit price, or null when no entry/tier matches.
+ * Resolve 単価 + 値引き from the 価格表 for (顧客 × 製品 × 注文種別 × 数量).
+ * The discount rule list is evaluated against `date` (default: today).
+ * Returns null when no entry/tier matches — the line cannot be quoted.
  */
 export function resolveUnitPrice(
   customerId: string,
   productId: string,
   orderType: string,
   quantity: number,
+  date: Date = new Date(),
 ): ResolvedPrice | null {
   const entry = getPriceEntry(entryKey(customerId, productId, orderType));
   if (!entry) return null;
@@ -48,10 +61,20 @@ export function resolveUnitPrice(
       (t.maxQuantity == null || quantity <= t.maxQuantity),
   );
   if (!tier) return null;
+  // 単価 = 基準単価 × 数量倍率（tier の手動上書きがあればそれ）。
+  const unitPrice = tierUnitPrice(entry, tier);
+  const discount = findApplicableDiscount(entry, quantity, unitPrice, date);
   return {
-    unitPrice: tier.unitPrice,
+    unitPrice,
     tierId: tier.id,
     tierLabel: tierLabel(tier),
+    discountAmount: discount
+      ? unitDiscountOf(discount, unitPrice) * quantity
+      : 0,
+    discountId: discount?.id ?? null,
+    discountLabel: discount
+      ? `${discount.label}（${discountValueLabel(discount)}）`
+      : null,
   };
 }
 
@@ -62,7 +85,7 @@ export function tierLabel(t: PriceTier): string {
     : `${t.minQuantity}〜${t.maxQuantity}本`;
 }
 
-/** One quote line — 価格表 から解決された単価で構成。 */
+/** One quote line — 単価・値引きとも価格表から自動解決（手入力なし）。 */
 export interface QuoteItem {
   id: string;
   productId: string;
@@ -70,9 +93,12 @@ export interface QuoteItem {
   orderType: string;
   quantity: number;
   unitPrice: number;
-  /** 自動解決元の price_list_tier（手動入力時は null）。 */
+  /** 自動解決元の price_list_tier（価格表なしの旧データのみ null）。 */
   priceTierId: string | null;
+  /** 値引きルールから自動計算された明細値引き額。 */
   discountAmount: number;
+  /** 適用された値引きルール名（なければ null）。 */
+  discountLabel: string | null;
   /** unit_price × quantity − discount_amount. */
   amount: number;
   deliveryDate: string | null;
@@ -108,8 +134,8 @@ export interface Quote {
 }
 
 /**
- * Build a quote item, resolving 単価 from the 価格表 unless overridden.
- * `unitPriceOverride` mirrors a manual 単価 entry (priceTierId stays null).
+ * Build a quote item — 単価・値引きとも 価格表 (tiers + 値引きルール) から
+ * 自動解決する。手動の価格・値引き入力は存在しない（見積書は印刷用）。
  */
 function buildItem(
   id: string,
@@ -120,14 +146,12 @@ function buildItem(
   quantity: number,
   opts: {
     deliveryDate?: string | null;
-    discountAmount?: number;
     notes?: string | null;
-    unitPriceOverride?: number;
   } = {},
 ): QuoteItem {
   const resolved = resolveUnitPrice(customerId, productId, orderType, quantity);
-  const unitPrice = opts.unitPriceOverride ?? resolved?.unitPrice ?? 0;
-  const discountAmount = opts.discountAmount ?? 0;
+  const unitPrice = resolved?.unitPrice ?? 0;
+  const discountAmount = resolved?.discountAmount ?? 0;
   return {
     id,
     productId,
@@ -135,10 +159,10 @@ function buildItem(
     orderType,
     quantity,
     unitPrice,
-    priceTierId:
-      opts.unitPriceOverride != null ? null : (resolved?.tierId ?? null),
+    priceTierId: resolved?.tierId ?? null,
     discountAmount,
-    amount: unitPrice * quantity - discountAmount,
+    discountLabel: resolved?.discountLabel ?? null,
+    amount: Math.max(0, unitPrice * quantity - discountAmount),
     deliveryDate: opts.deliveryDate ?? null,
     notes: opts.notes ?? null,
   };
@@ -258,8 +282,7 @@ const SINGLE_QUOTE: Quote = {
       80,
       {
         deliveryDate: "2026-05-20",
-        discountAmount: 5000,
-        notes: "数量増による値引き",
+        // 80本 ≥ 50本 → 値引きルール「数量増値引き」が自動適用される。
       },
     ),
   ],
@@ -313,7 +336,7 @@ export function findPriceTierRef(
       return {
         entryId: entry.entryId,
         estimateNumber: entry.estimateNumber,
-        label: `${tierLabel(tier)} ${formatMoney(tier.unitPrice)}`,
+        label: `${tierLabel(tier)} ${formatMoney(tierUnitPrice(entry, tier))}`,
       };
     }
   }

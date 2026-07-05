@@ -14,7 +14,6 @@ export default async function SalesQuotesNewPage({
     product?: string;
     orderType?: string;
     quantity?: string;
-    discount?: string;
     delivery?: string;
   }>;
 }) {
@@ -25,7 +24,6 @@ export default async function SalesQuotesNewPage({
         productId: sp.product,
         orderType: sp.orderType,
         quantity: sp.quantity ? Number(sp.quantity) : undefined,
-        discountAmount: sp.discount ? Number(sp.discount) : undefined,
         deliveryDate: sp.delivery ?? null,
       }
     : undefined;

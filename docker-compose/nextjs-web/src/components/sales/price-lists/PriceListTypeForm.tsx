@@ -1,12 +1,13 @@
 "use client";
 
 /**
- * PriceListTypeForm — 価格表 新規作成 / 編集 (per 注文種別, design.md §8.3).
+ * PriceListTypeForm — 価格表 編集 / 種別追加 (per 注文種別, design.md §8.3).
  *
- * One page edits ONE (顧客, 製品, 注文種別) entry: its 有効期間 + 状態 and a table
- * of quantity tiers (数量範囲 → 単価). The (顧客, 製品, 注文種別) keys are the
- * identity of the entry and are LOCKED after creation — only the period and
- * tiers are editable. Each type is edited on its own page.
+ * One page edits ONE (顧客, 製品, 注文種別) entry: 基準単価（試算の見積単価、
+ * 手動上書き可）+ 有効期間 + 状態 + quantity tiers（数量範囲 → ×倍率。単価 =
+ * 基準単価 × 倍率、行ごとに手動上書き可）. The (顧客, 製品, 注文種別) keys are
+ * the identity of the entry and are LOCKED after creation — only 基準単価 /
+ * period / tiers are editable. 新規の価格表は試算の「価格表に登録」から作成する。
  *
  * TODO(server-action): replace the console.log submit with a Server Action.
  */
@@ -19,6 +20,7 @@ import {
   SimpleGrid,
   Switch,
   Table,
+  Text,
 } from "@mantine/core";
 import { DatePickerInput } from "@mantine/dates";
 import { useForm } from "@mantine/form";
@@ -34,6 +36,7 @@ import { useTransition } from "react";
 import { z } from "zod";
 import { GhostButton } from "@/components/ui/buttons";
 import { FieldValue } from "@/components/ui/FieldValue";
+import { HelpLabel } from "@/components/ui/HelpLabel";
 import { FormSection, FormShell } from "@/components/ui/shells";
 import { zodResolver } from "@/lib/form";
 import {
@@ -52,7 +55,10 @@ import {
 const tierSchema = z.object({
   minQuantity: z.number().int().min(1, "1以上"),
   maxQuantity: z.number().int().nullable(),
-  unitPrice: z.number().min(0),
+  /** 数量倍率（×1.01 など）. */
+  multiplier: z.number().min(0.01, "0より大きい倍率"),
+  /** 手動上書き単価（null = 基準単価 × 倍率）. */
+  priceOverride: z.number().min(0).nullable(),
 });
 
 const schema = z
@@ -61,6 +67,7 @@ const schema = z
     productId: z.string().min(1, "製品を選択してください"),
     orderType: z.enum(["PRODUCTION", "TEST", "SAMPLE", "OTHER"]),
     currency: z.string().min(1),
+    baseUnitPrice: z.number().min(0),
     validFrom: z.string().min(1, "有効開始日を選択してください"),
     validUntil: z.string().nullable(),
     isActive: z.boolean(),
@@ -84,7 +91,8 @@ const BASE_PATH = "/sales/price-lists";
 const emptyTier = (): TierForm => ({
   minQuantity: 1,
   maxQuantity: null,
-  unitPrice: 0,
+  multiplier: 1,
+  priceOverride: null,
 });
 
 const labelOf = (options: { value: string; label: string }[], value: string) =>
@@ -104,13 +112,15 @@ function buildInitial(args: {
         productId: entry.productId,
         orderType: entry.orderType as TypeFormValues["orderType"],
         currency: entry.currency,
+        baseUnitPrice: entry.baseUnitPrice,
         validFrom: entry.validFrom,
         validUntil: entry.validUntil,
         isActive: entry.isActive,
         tiers: entry.tiers.map((t) => ({
           minQuantity: t.minQuantity,
           maxQuantity: t.maxQuantity,
-          unitPrice: t.unitPrice,
+          multiplier: t.multiplier,
+          priceOverride: t.priceOverride,
         })),
       };
     }
@@ -120,6 +130,7 @@ function buildInitial(args: {
     productId: args.lockedProductId ?? "",
     orderType: "PRODUCTION",
     currency: "JPY",
+    baseUnitPrice: 0,
     validFrom: "",
     validUntil: null,
     isActive: true,
@@ -271,6 +282,26 @@ export function PriceListTypeForm({
         })()}
       </FormSection>
 
+      <FormSection
+        description="試算の見積単価から登録された基準です。手動で上書きできます。各段階の単価 = 基準単価 × 倍率。"
+        title="基準単価"
+      >
+        <NumberInput
+          label={
+            <HelpLabel
+              help="試算の見積単価から登録された基準。手動で上書きできます。各数量帯の単価 = 基準単価 × 倍率。"
+              label="基準単価"
+            />
+          }
+          maw={260}
+          min={0}
+          prefix="¥"
+          thousandSeparator=","
+          withAsterisk
+          {...form.getInputProps("baseUnitPrice")}
+        />
+      </FormSection>
+
       <FormSection title="有効期間">
         <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="sm">
           <DatePickerInput
@@ -308,56 +339,95 @@ export function PriceListTypeForm({
       </FormSection>
 
       <FormSection
-        description="数量範囲ごとの単価。すべて同じ有効期間が適用されます。"
-        title="数量・単価（段階）"
+        description="数量範囲ごとの倍率（×1.01 など）。単価 = 基準単価 × 倍率。必要な行だけ単価を手動上書きできます。すべて同じ有効期間が適用されます。"
+        title="数量スケール（倍率）"
       >
         <Table withTableBorder>
           <Table.Thead>
             <Table.Tr>
               <Table.Th>最小数量</Table.Th>
               <Table.Th>最大数量</Table.Th>
-              <Table.Th>単価</Table.Th>
+              <Table.Th>
+                <HelpLabel
+                  help="数量帯ごとの掛け率（例 ×1.05 = 基準単価の5%増し）。単価 = 基準単価 × 倍率。"
+                  label="倍率"
+                />
+              </Table.Th>
+              <Table.Th>
+                <HelpLabel
+                  help="倍率による自動計算を使わず、この数量帯だけ固定単価にする場合に入力。空欄で自動計算。"
+                  label="単価（上書き）"
+                />
+              </Table.Th>
+              <Table.Th ta="right">採用単価</Table.Th>
               <Table.Th w={48} />
             </Table.Tr>
           </Table.Thead>
           <Table.Tbody>
-            {form.values.tiers.map((_tier, ri) => (
-              <Table.Tr key={form.key(`tiers.${ri}`)}>
-                <Table.Td>
-                  <NumberInput
-                    min={1}
-                    {...form.getInputProps(`tiers.${ri}.minQuantity`)}
-                  />
-                </Table.Td>
-                <Table.Td>
-                  <NumberInput
-                    min={1}
-                    placeholder="上限なし"
-                    {...form.getInputProps(`tiers.${ri}.maxQuantity`)}
-                  />
-                </Table.Td>
-                <Table.Td>
-                  <NumberInput
-                    decimalScale={2}
-                    min={0}
-                    prefix="¥"
-                    thousandSeparator=","
-                    {...form.getInputProps(`tiers.${ri}.unitPrice`)}
-                  />
-                </Table.Td>
-                <Table.Td>
-                  <ActionIcon
-                    aria-label="段階を削除"
-                    color="red"
-                    disabled={form.values.tiers.length <= 1}
-                    onClick={() => form.removeListItem("tiers", ri)}
-                    variant="subtle"
-                  >
-                    <IconTrash size={16} />
-                  </ActionIcon>
-                </Table.Td>
-              </Table.Tr>
-            ))}
+            {form.values.tiers.map((tier, ri) => {
+              const autoPrice = Math.round(
+                form.values.baseUnitPrice * tier.multiplier,
+              );
+              const effective = tier.priceOverride ?? autoPrice;
+              return (
+                <Table.Tr key={form.key(`tiers.${ri}`)}>
+                  <Table.Td>
+                    <NumberInput
+                      min={1}
+                      {...form.getInputProps(`tiers.${ri}.minQuantity`)}
+                    />
+                  </Table.Td>
+                  <Table.Td>
+                    <NumberInput
+                      min={1}
+                      placeholder="上限なし"
+                      {...form.getInputProps(`tiers.${ri}.maxQuantity`)}
+                    />
+                  </Table.Td>
+                  <Table.Td>
+                    <NumberInput
+                      decimalScale={2}
+                      min={0.01}
+                      prefix="×"
+                      step={0.01}
+                      {...form.getInputProps(`tiers.${ri}.multiplier`)}
+                    />
+                  </Table.Td>
+                  <Table.Td>
+                    <NumberInput
+                      min={0}
+                      placeholder={`自動: ¥${autoPrice.toLocaleString("ja-JP")}`}
+                      prefix="¥"
+                      thousandSeparator=","
+                      {...form.getInputProps(`tiers.${ri}.priceOverride`)}
+                      onChange={(v) =>
+                        form.setFieldValue(
+                          `tiers.${ri}.priceOverride`,
+                          typeof v === "number" ? v : null,
+                        )
+                      }
+                      value={tier.priceOverride ?? ""}
+                    />
+                  </Table.Td>
+                  <Table.Td ta="right">
+                    <Text className="tabular-nums" ff="mono" fw={600} size="sm">
+                      ¥{effective.toLocaleString("ja-JP")}
+                    </Text>
+                  </Table.Td>
+                  <Table.Td>
+                    <ActionIcon
+                      aria-label="段階を削除"
+                      color="red"
+                      disabled={form.values.tiers.length <= 1}
+                      onClick={() => form.removeListItem("tiers", ri)}
+                      variant="subtle"
+                    >
+                      <IconTrash size={16} />
+                    </ActionIcon>
+                  </Table.Td>
+                </Table.Tr>
+              );
+            })}
           </Table.Tbody>
         </Table>
         <GhostButton
