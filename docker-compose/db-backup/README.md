@@ -7,8 +7,8 @@ full. RPO ≤ 1 hour.
 
 | Tier | When | What | Kept |
 |------|------|------|------|
-| `daily/YYYY-MM-DD/` | first tick of each day (00:xx) | full `pg_basebackup` | 7 days (`DAILY_KEEP_DAYS`) |
-| `hourly/YYYY-MM-DDTHH/` | every other hour | incremental vs the newest daily full | 24 h (`HOURLY_KEEP_HOURS`) |
+| `daily/YYYY-MM-DD/` | first tick of each day (00:xx) | full `pg_basebackup` | 14 days (`DAILY_KEEP_DAYS`) |
+| `hourly/YYYY-MM-DDTHH/` | every other hour | incremental vs the newest daily full | 72 h (`HOURLY_KEEP_HOURS`) |
 | `monthly/YYYY-MM/` | month's first daily | hardlink promote (`cp -al`, ~0 extra disk) | 12 (`MONTHLY_KEEP`) |
 
 One loop container (`entrypoint.sh`) ticks at the top of every hour and runs
@@ -41,7 +41,7 @@ ssh 192.168.50.15 'docker logs -f db-backup'    # watch the first tick
 BACKUP_DB_PASSWORD=<same value as in shared-db's .env>
 # optional overrides:
 # BACKUP_DIR=/data/db-backups   TZ=Asia/Tokyo
-# HOURLY_KEEP_HOURS=24  DAILY_KEEP_DAYS=7  MONTHLY_KEEP=12
+# HOURLY_KEEP_HOURS=72  DAILY_KEEP_DAYS=14  MONTHLY_KEEP=12
 ```
 
 ## One-time migration of the live shared-db (do this before first deploy)
