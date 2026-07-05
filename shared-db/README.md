@@ -49,6 +49,13 @@ Never hand-edit tables in the DB, never run DDL from the Python apps, and never
 run `prisma migrate` from nextjs-web (its `prisma/schema` is a synced copy for
 client generation only).
 
+## Demo data
+
+`pnpm seed:demo` applies `sql/demo-seed.sql` — idempotent demo rows for the
+master screens (材種 / 素材 / 製品). Demo product codes use past months
+(`PRD-202606-*`) so they never collide with the app's monthly `PRD`
+auto-numbering (`sys.numbering_sequences`).
+
 ## Backup / restore
 
 `./scripts/backup.sh` (DATABASE_URL from `.env`) writes to `backups/`
