@@ -1,18 +1,23 @@
 "use client";
 
 /**
- * ConvertToPriceListModal — 試算 → 価格表 変換.
+ * ConvertToPriceListModal — 試算 → 価格表 登録（CONFIRMED → REGISTERED）.
  *
- * Creates a new 価格表 entry from a saved 試算: the lot tiers become 数量範囲 →
+ * Registers a CONFIRMED 試算 as a 価格表 entry: the lot tiers become 数量範囲 →
  * 単価 (= 見積単価, which already reflects any custom 掛け率). The user picks the
  * 製品 / 注文種別 / 有効期間; the modal always warns if a price list for the same
- * 顧客・製品 already exists.
+ * 顧客・製品 already exists. Registering locks the 試算 (価格表登録済) — re-price
+ * via 複製して再試算.
  */
 
 import { Alert, Select, Table, Text } from "@mantine/core";
 import { DatePickerInput } from "@mantine/dates";
 import { notifications } from "@mantine/notifications";
-import { IconAlertTriangle, IconCalendar } from "@tabler/icons-react";
+import {
+  IconAlertTriangle,
+  IconCalendar,
+  IconInfoCircle,
+} from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { MoneyText } from "@/components/ui/MoneyText";
@@ -35,7 +40,12 @@ export function ConvertToPriceListModal({
   opened,
   onClose,
   estimate,
-}: ModalBaseProps & { estimate: TrialEstimateRecord | null }) {
+  onRegistered,
+}: ModalBaseProps & {
+  estimate: TrialEstimateRecord | null;
+  /** Called after登録 — the caller flips the 試算 to REGISTERED. */
+  onRegistered?: () => void;
+}) {
   const router = useRouter();
   const [customerId, setCustomerId] = useState<string | null>(
     estimate?.customerId ?? null,
@@ -77,12 +87,14 @@ export function ConvertToPriceListModal({
           );
           return;
         }
-        // TODO(server-action): create a price_list_entry + tiers from the lots.
+        // TODO(server-action): create a price_list_entry + tiers from the lots,
+        // link estimate_id and flip the 試算 to REGISTERED.
         notifications.show({
-          title: "価格表を作成しました",
-          message: "試算から新しい価格表を作成しました",
+          title: "価格表に登録しました",
+          message: "試算は「価格表登録済」となりました",
           color: "green",
         });
+        onRegistered?.();
         handleClose();
         // 作成した価格表の詳細（ビュー）ページへ。
         router.push(
@@ -91,9 +103,18 @@ export function ConvertToPriceListModal({
       }}
       opened={opened}
       size="lg"
-      submitLabel="価格表を作成"
-      title="試算から価格表を作成"
+      submitLabel="価格表に登録"
+      title="価格表に登録"
     >
+      {estimate && (
+        <Text size="sm">
+          試算「{estimate.estimateNumber}」の数量区分別単価を
+          {estimate.customerName
+            ? `、${estimate.customerName} × 製品`
+            : "価格表"}
+          の価格表として登録します。
+        </Text>
+      )}
       <Select
         data={CUSTOMERS}
         error={error && !customerId ? "顧客を選択してください" : undefined}
@@ -160,6 +181,10 @@ export function ConvertToPriceListModal({
         valueFormat="YYYY/MM/DD"
         withAsterisk={needsEnd}
       />
+
+      <Alert color="blue" icon={<IconInfoCircle size={16} />} variant="light">
+        登録すると試算は「価格表登録済」となり編集できなくなります。単価を見直す場合は複製して再試算してください。
+      </Alert>
 
       <div>
         <Text c="dimmed" mb={4} size="xs">

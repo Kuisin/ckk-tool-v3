@@ -34,6 +34,9 @@ export interface PriceListEntry {
   validUntil: string | null;
   isActive: boolean;
   tiers: PriceTier[];
+  /** 試算元 trial-estimate id/番号（手動登録時は null）— price_lists.estimate_id. */
+  estimateId: string | null;
+  estimateNumber: string | null;
   createdBy: string;
   createdAt: string;
   updatedAt: string;
@@ -76,6 +79,8 @@ export const MOCK_PRICE_ENTRIES: PriceListEntry[] = [
       { id: "ti-3a", minQuantity: 30, maxQuantity: 99, unitPrice: 6500 },
       { id: "ti-2b", minQuantity: 100, maxQuantity: null, unitPrice: 6000 },
     ],
+    estimateId: "te-0001",
+    estimateNumber: "EST-202605-00031",
     createdBy: "鈴木 一郎",
     createdAt: "2025-12-20 09:15",
     updatedAt: "2026-01-05 14:30",
@@ -92,6 +97,8 @@ export const MOCK_PRICE_ENTRIES: PriceListEntry[] = [
     validUntil: "2026-12-31",
     isActive: true,
     tiers: [{ id: "ti-3", minQuantity: 1, maxQuantity: null, unitPrice: 0 }],
+    estimateId: null,
+    estimateNumber: null,
     createdBy: "鈴木 一郎",
     createdAt: "2025-12-20 09:15",
     updatedAt: "2026-01-05 14:30",
@@ -108,6 +115,8 @@ export const MOCK_PRICE_ENTRIES: PriceListEntry[] = [
     validUntil: "2026-09-30",
     isActive: true,
     tiers: [{ id: "ti-4", minQuantity: 1, maxQuantity: null, unitPrice: 6200 }],
+    estimateId: null,
+    estimateNumber: null,
     createdBy: "田中 太郎",
     createdAt: "2026-03-15 10:00",
     updatedAt: "2026-03-15 10:00",
@@ -124,6 +133,8 @@ export const MOCK_PRICE_ENTRIES: PriceListEntry[] = [
     validUntil: "2026-07-31",
     isActive: false,
     tiers: [{ id: "ti-5", minQuantity: 1, maxQuantity: 10, unitPrice: 9500 }],
+    estimateId: null,
+    estimateNumber: null,
     createdBy: "中村 花子",
     createdAt: "2026-04-28 16:45",
     updatedAt: "2026-04-30 11:20",

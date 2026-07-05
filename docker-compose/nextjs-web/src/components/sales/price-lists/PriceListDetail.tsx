@@ -9,10 +9,20 @@
  * a server fetch.
  */
 
-import { Badge, Group, Table, Tabs, Tooltip } from "@mantine/core";
+import {
+  Anchor,
+  Badge,
+  Group,
+  Stack,
+  Table,
+  Tabs,
+  Text,
+  Tooltip,
+} from "@mantine/core";
 import {
   IconCopy,
   IconCopyPlus,
+  IconFileText,
   IconPlus,
   IconTrash,
 } from "@tabler/icons-react";
@@ -20,8 +30,10 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { ActiveBadge } from "@/components/ui/ActiveBadge";
 import { SecondaryButton } from "@/components/ui/buttons";
+import { DocNumber } from "@/components/ui/DocNumber";
 import { FieldValue } from "@/components/ui/FieldValue";
 import { MoneyText } from "@/components/ui/MoneyText";
+import { StatusBadge } from "@/components/ui/StatusBadge";
 import {
   type AuditEntry,
   AuditTimeline,
@@ -29,9 +41,11 @@ import {
   ResourceActions,
   SummaryGrid,
 } from "@/components/ui/shells";
-import { formatDateTime } from "@/lib/format";
+import { formatDate, formatDateTime } from "@/lib/format";
 import { ORDER_TYPE_LABEL } from "@/lib/mock";
+import { MOCK_QUOTES } from "../quotes/mock";
 import { CopyPriceListModal } from "./CopyPriceListModal";
+import { CreateQuoteModal } from "./CreateQuoteModal";
 import { DeletePriceListModal } from "./DeletePriceListModal";
 import { DuplicatePriceListModal } from "./DuplicatePriceListModal";
 import {
@@ -73,12 +87,32 @@ export function PriceListDetail({ id }: { id: string }) {
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [duplicateOpen, setDuplicateOpen] = useState(false);
   const [copyOpen, setCopyOpen] = useState(false);
+  const [quoteOpen, setQuoteOpen] = useState(false);
+
+  // この価格表（の tier）から作成された見積書。
+  const tierIds = new Set(entry.tiers.map((t) => t.id));
+  const relatedQuotes = MOCK_QUOTES.map((q) => {
+    const items = q.items.filter(
+      (it) => it.priceTierId && tierIds.has(it.priceTierId),
+    );
+    return {
+      quote: q,
+      quantity: items.reduce((sum, it) => sum + it.quantity, 0),
+      amount: items.reduce((sum, it) => sum + it.amount, 0),
+      matched: items.length,
+    };
+  }).filter((x) => x.matched > 0);
 
   return (
     <DetailShell
       actions={
         <ResourceActions
           menuItems={[
+            {
+              label: "見積書を作成",
+              icon: <IconFileText size={14} />,
+              onClick: () => setQuoteOpen(true),
+            },
             {
               label: "有効期間を変えて複製",
               icon: <IconCopy size={14} />,
@@ -126,12 +160,30 @@ export function PriceListDetail({ id }: { id: string }) {
           label="単価範囲"
           value={priceRangeLabel(summary.minPrice, summary.maxPrice)}
         />
+        <FieldValue
+          label="試算元"
+          value={
+            entry.estimateId ? (
+              <Anchor
+                onClick={() =>
+                  router.push(`/sales/trial-estimates/${entry.estimateId}`)
+                }
+                size="sm"
+              >
+                <DocNumber c="blue">{entry.estimateNumber}</DocNumber>
+              </Anchor>
+            ) : (
+              "手動登録"
+            )
+          }
+        />
         <FieldValue label="作成者" value={entry.createdBy} />
       </SummaryGrid>
 
       <Tabs defaultValue="prices">
         <Tabs.List>
           <Tabs.Tab value="prices">価格設定</Tabs.Tab>
+          <Tabs.Tab value="related">関連</Tabs.Tab>
           <Tabs.Tab value="history">履歴</Tabs.Tab>
         </Tabs.List>
 
@@ -189,6 +241,82 @@ export function PriceListDetail({ id }: { id: string }) {
           </Table.ScrollContainer>
         </Tabs.Panel>
 
+        <Tabs.Panel pt="md" value="related">
+          <Stack gap="md">
+            <div>
+              <Text c="dimmed" mb={4} size="xs">
+                試算元
+              </Text>
+              {entry.estimateId ? (
+                <Anchor
+                  onClick={() =>
+                    router.push(`/sales/trial-estimates/${entry.estimateId}`)
+                  }
+                  size="sm"
+                >
+                  <DocNumber c="blue">{entry.estimateNumber}</DocNumber>
+                </Anchor>
+              ) : (
+                <Text c="dimmed" size="sm">
+                  手動登録
+                </Text>
+              )}
+            </div>
+
+            <div>
+              <Text c="dimmed" mb={4} size="xs">
+                この価格表から作成した見積書
+              </Text>
+              {relatedQuotes.length > 0 ? (
+                <Table.ScrollContainer minWidth={520}>
+                  <Table>
+                    <Table.Thead>
+                      <Table.Tr>
+                        <Table.Th>見積番号</Table.Th>
+                        <Table.Th ta="right">数量</Table.Th>
+                        <Table.Th ta="right">金額</Table.Th>
+                        <Table.Th>状態</Table.Th>
+                        <Table.Th>作成日</Table.Th>
+                      </Table.Tr>
+                    </Table.Thead>
+                    <Table.Tbody>
+                      {relatedQuotes.map(({ quote, quantity, amount }) => (
+                        <Table.Tr
+                          key={quote.id}
+                          onClick={() =>
+                            router.push(`/sales/quotes/${quote.id}`)
+                          }
+                          style={{ cursor: "pointer" }}
+                        >
+                          <Table.Td>
+                            <DocNumber c="blue">{quote.quoteNumber}</DocNumber>
+                          </Table.Td>
+                          <Table.Td ta="right">{quantity} 本</Table.Td>
+                          <Table.Td ta="right">
+                            <MoneyText value={amount} />
+                          </Table.Td>
+                          <Table.Td>
+                            <StatusBadge entity="Quote" status={quote.status} />
+                          </Table.Td>
+                          <Table.Td>
+                            <Text c="dimmed" className="tabular-nums" size="xs">
+                              {formatDate(quote.createdAt)}
+                            </Text>
+                          </Table.Td>
+                        </Table.Tr>
+                      ))}
+                    </Table.Tbody>
+                  </Table>
+                </Table.ScrollContainer>
+              ) : (
+                <Text c="dimmed" size="sm">
+                  —（「見積書を作成」でこの価格表から見積書を作成できます）
+                </Text>
+              )}
+            </div>
+          </Stack>
+        </Tabs.Panel>
+
         <Tabs.Panel pt="md" value="history">
           <AuditTimeline entries={MOCK_AUDIT} />
         </Tabs.Panel>
@@ -208,6 +336,11 @@ export function PriceListDetail({ id }: { id: string }) {
       <CopyPriceListModal
         onClose={() => setCopyOpen(false)}
         opened={copyOpen}
+        source={entry}
+      />
+      <CreateQuoteModal
+        onClose={() => setQuoteOpen(false)}
+        opened={quoteOpen}
         source={entry}
       />
     </DetailShell>

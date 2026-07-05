@@ -5,7 +5,8 @@
  *
  * One quote line: choosing 製品 / 注文種別 / 数量 auto-fills 単価 from the 価格表
  * (price_list_tiers) for the row's 顧客. The 単価 stays editable — a manual edit
- * marks the line as 手動 (priceTierId = null). 金額 = 単価 × 数量.
+ * marks the line as 手動 (priceTierId = null). 値引き is optional (custom
+ * discount). 金額 = 単価 × 数量 − 値引き.
  */
 
 import { Group, NumberInput, Select, Stack, Text } from "@mantine/core";
@@ -22,6 +23,8 @@ export interface ResolverValue {
   quantity: number;
   unitPrice: number;
   priceTierId: string | null;
+  /** カスタム値引き額（任意）. */
+  discountAmount: number;
 }
 
 const productName = (id: string) =>
@@ -56,7 +59,10 @@ export function ProductPriceResolverInput({
     return next;
   };
 
-  const amount = value.unitPrice * value.quantity;
+  const amount = Math.max(
+    0,
+    value.unitPrice * value.quantity - value.discountAmount,
+  );
 
   return (
     <Group align="flex-end" gap="sm" wrap={isMobile ? "wrap" : "nowrap"}>
@@ -102,6 +108,22 @@ export function ProductPriceResolverInput({
         prefix="¥"
         thousandSeparator=","
         value={value.unitPrice}
+      />
+      <NumberInput
+        description="必要時のみ"
+        flex={isMobile ? 1 : 1}
+        label="値引き"
+        min={0}
+        onChange={(v) =>
+          onChange({
+            ...value,
+            discountAmount: typeof v === "number" ? v : 0,
+          })
+        }
+        placeholder="0"
+        prefix="¥"
+        thousandSeparator=","
+        value={value.discountAmount || ""}
       />
       <Stack
         align={isMobile ? "flex-start" : "flex-end"}

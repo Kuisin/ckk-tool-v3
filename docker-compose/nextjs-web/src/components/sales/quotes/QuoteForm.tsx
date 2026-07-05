@@ -37,18 +37,24 @@ import { StatusBadge, statusOptions } from "@/components/ui/StatusBadge";
 import { FormSection, FormShell } from "@/components/ui/shells";
 import { zodResolver } from "@/lib/form";
 import { formatMoney } from "@/lib/format";
-import { BRANCHES, CUSTOMERS } from "@/lib/mock";
+import { BRANCHES, CUSTOMERS, PRODUCTS } from "@/lib/mock";
 import { getQuote, type Quote, resolveUnitPrice, TAX_RATE } from "./mock";
 
-const itemSchema = z.object({
-  productId: z.string().min(1, "製品を選択してください"),
-  productName: z.string(),
-  orderType: z.string().min(1),
-  quantity: z.number().int().min(1, "1以上"),
-  unitPrice: z.number().min(0),
-  priceTierId: z.string().nullable(),
-  deliveryDate: z.string().nullable(),
-});
+const itemSchema = z
+  .object({
+    productId: z.string().min(1, "製品を選択してください"),
+    productName: z.string(),
+    orderType: z.string().min(1),
+    quantity: z.number().int().min(1, "1以上"),
+    unitPrice: z.number().min(0),
+    priceTierId: z.string().nullable(),
+    discountAmount: z.number().min(0),
+    deliveryDate: z.string().nullable(),
+  })
+  .refine((it) => it.unitPrice * it.quantity - it.discountAmount >= 0, {
+    message: "値引き額が金額を超えています",
+    path: ["discountAmount"],
+  });
 
 const schema = z.object({
   customerId: z.string().min(1, "顧客を選択してください"),
@@ -71,25 +77,64 @@ const emptyItem = (): ItemForm => ({
   quantity: 1,
   unitPrice: 0,
   priceTierId: null,
+  discountAmount: 0,
   deliveryDate: null,
 });
+
+/** 価格表「見積書を作成」からの事前入力（quotes/new?customer=…&product=…）. */
+export interface QuotePrefill {
+  customerId?: string;
+  productId?: string;
+  orderType?: string;
+  quantity?: number;
+  discountAmount?: number;
+  deliveryDate?: string | null;
+}
 
 function buildInitial(
   mode: "create" | "edit",
   quoteId?: string,
+  prefill?: QuotePrefill,
 ): QuoteFormValues {
   if (mode === "edit" && quoteId) {
     const q = getQuote(quoteId);
     if (q) return toFormValues(q);
   }
-  return {
-    customerId: "",
+  const base: QuoteFormValues = {
+    customerId: prefill?.customerId ?? "",
     customerBranchId: null,
     status: "DRAFT",
     validUntil: null,
     notes: "",
     items: [emptyItem()],
   };
+  if (prefill?.customerId && prefill.productId) {
+    // 価格表から起動 — 単価は価格表 tier から解決して1行目に流し込む。
+    const orderType = prefill.orderType ?? "PRODUCTION";
+    const quantity = prefill.quantity ?? 1;
+    const resolved = resolveUnitPrice(
+      prefill.customerId,
+      prefill.productId,
+      orderType,
+      quantity,
+    );
+    base.items = [
+      {
+        ...emptyItem(),
+        productId: prefill.productId,
+        productName:
+          PRODUCTS.find((p) => p.value === prefill.productId)?.label ??
+          prefill.productId,
+        orderType,
+        quantity,
+        unitPrice: resolved?.unitPrice ?? 0,
+        priceTierId: resolved?.tierId ?? null,
+        discountAmount: prefill.discountAmount ?? 0,
+        deliveryDate: prefill.deliveryDate ?? null,
+      },
+    ];
+  }
+  return base;
 }
 
 function toFormValues(q: Quote): QuoteFormValues {
@@ -106,6 +151,7 @@ function toFormValues(q: Quote): QuoteFormValues {
       quantity: it.quantity,
       unitPrice: it.unitPrice,
       priceTierId: it.priceTierId,
+      discountAmount: it.discountAmount,
       deliveryDate: it.deliveryDate,
     })),
   };
@@ -114,16 +160,18 @@ function toFormValues(q: Quote): QuoteFormValues {
 export function QuoteForm({
   mode,
   quoteId,
+  prefill,
 }: {
   mode: "create" | "edit";
   quoteId?: string;
+  prefill?: QuotePrefill;
 }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
 
   const form = useForm<QuoteFormValues>({
     validate: zodResolver(schema),
-    initialValues: buildInitial(mode, quoteId),
+    initialValues: buildInitial(mode, quoteId, prefill),
   });
 
   const branches = BRANCHES[form.values.customerId] ?? [];
@@ -153,7 +201,8 @@ export function QuoteForm({
   };
 
   const subtotal = form.values.items.reduce(
-    (sum, it) => sum + it.unitPrice * it.quantity,
+    (sum, it) =>
+      sum + Math.max(0, it.unitPrice * it.quantity - it.discountAmount),
     0,
   );
   const tax = Math.round(subtotal * TAX_RATE);
@@ -232,7 +281,7 @@ export function QuoteForm({
       </FormSection>
 
       <FormSection
-        description="製品・注文種別・数量を選ぶと、顧客の価格表から単価が自動入力されます（手動上書き可）。"
+        description="製品・注文種別・数量を選ぶと、顧客の価格表から単価が自動入力されます（手動上書き可）。値引きは必要時のみ入力してください。"
         title="明細"
       >
         <Stack gap="md">
@@ -264,6 +313,10 @@ export function QuoteForm({
                       form.setFieldValue(
                         `items.${ri}.priceTierId`,
                         next.priceTierId,
+                      );
+                      form.setFieldValue(
+                        `items.${ri}.discountAmount`,
+                        next.discountAmount,
                       );
                     }}
                     value={item}

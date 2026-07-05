@@ -16,8 +16,11 @@
 import {
   entryKey,
   getPriceEntry,
+  MOCK_PRICE_ENTRIES,
   type PriceTier,
 } from "@/components/sales/price-lists/mock";
+import type { PdfFileMeta } from "@/components/ui/PdfAttachmentPanel";
+import { formatMoney } from "@/lib/format";
 import { ORDER_TYPE_LABEL } from "@/lib/mock";
 
 /** A resolved 単価 + the 価格表 tier it came from (null = manual override). */
@@ -94,6 +97,11 @@ export interface Quote {
   validUntil: string | null;
   notes: string | null;
   items: QuoteItem[];
+  /**
+   * 発行時に保存された PDF（quotes.pdf_file_id → files）。DRAFT の間は null。
+   * 実データは /api/pdf/quote が SeaweedFS に保存・配信する。
+   */
+  pdfFile: PdfFileMeta | null;
   createdBy: string;
   createdAt: string;
   updatedAt: string;
@@ -208,6 +216,12 @@ const TIERED_QUOTE: Quote = {
       },
     ),
   ],
+  pdfFile: {
+    filename: "QOT-202602-00012.pdf",
+    sizeBytes: 182_400,
+    generatedAt: "2026-02-16 10:05",
+    generatedBy: "鈴木 一郎",
+  },
   createdBy: "鈴木 一郎",
   createdAt: "2026-02-16 09:30",
   updatedAt: "2026-02-16 10:05",
@@ -249,6 +263,7 @@ const SINGLE_QUOTE: Quote = {
       },
     ),
   ],
+  pdfFile: null,
   createdBy: "田中 太郎",
   createdAt: "2026-03-02 13:40",
   updatedAt: "2026-03-02 13:40",
@@ -278,4 +293,39 @@ export function quoteTotals(q: Quote): QuoteTotals {
 /** 注文種別ラベル（本番 / テスト …）。 */
 export function orderTypeLabel(orderType: string): string {
   return ORDER_TYPE_LABEL[orderType] ?? orderType;
+}
+
+/** A stored priceTierId → its 価格表 entry + tier (適用価格表 display). */
+export interface PriceTierRef {
+  entryId: string;
+  estimateNumber: string | null;
+  /** e.g. "1〜9本 ¥8,000" */
+  label: string;
+}
+
+export function findPriceTierRef(
+  priceTierId: string | null,
+): PriceTierRef | null {
+  if (!priceTierId) return null;
+  for (const entry of MOCK_PRICE_ENTRIES) {
+    const tier = entry.tiers.find((t) => t.id === priceTierId);
+    if (tier) {
+      return {
+        entryId: entry.entryId,
+        estimateNumber: entry.estimateNumber,
+        label: `${tierLabel(tier)} ${formatMoney(tier.unitPrice)}`,
+      };
+    }
+  }
+  return null;
+}
+
+/** 価格表 entries referenced by a quote's items (関連 tab). */
+export function priceEntriesForQuote(q: Quote) {
+  const entryIds = new Set(
+    q.items
+      .map((it) => findPriceTierRef(it.priceTierId)?.entryId)
+      .filter((id): id is string => !!id),
+  );
+  return MOCK_PRICE_ENTRIES.filter((e) => entryIds.has(e.entryId));
 }
