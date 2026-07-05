@@ -110,20 +110,22 @@ if [ -z "$PROJECT_UUID" ]; then
   PROJECT_UUID=$(api POST /projects -d '{"name":"ckk","description":"CKK business management system"}' | jq -r '.uuid')
 fi
 echo "project: $PROJECT_UUID"
+# Environments: dev app lives in `development`, main in `production` (default).
+api POST "/projects/$PROJECT_UUID/environments" -d '{"name":"development"}' >/dev/null 2>&1 || true
 
 # App env vars come from the existing stack .env (APP_DB_PASSWORD, NEXT_PUBLIC_APP_VERSION)
 set -a; . ~/stacks/nextjs-web/.env; set +a
 DATABASE_URL="postgresql://app:${APP_DB_PASSWORD}@shared-db:5432/ckk"
 
-create_app() { # name branch host_port
-  local name=$1 branch=$2 port=$3 uuid secret
+create_app() { # name branch host_port env_name result_var
+  local name=$1 branch=$2 port=$3 env_name=$4 uuid secret
   uuid=$(api GET /applications | jq -r ".[] | select(.name == \"$name\") | .uuid" | head -1)
   if [ -z "$uuid" ]; then
     secret=$(openssl rand -hex 20)
     uuid=$(api POST /applications/public -d "{
       \"project_uuid\": \"$PROJECT_UUID\",
       \"server_uuid\": \"$SERVER_UUID\",
-      \"environment_name\": \"production\",
+      \"environment_name\": \"$env_name\",
       \"name\": \"$name\",
       \"description\": \"CKK nextjs-web ($branch)\",
       \"git_repository\": \"$GIT_REPO\",
@@ -147,7 +149,7 @@ create_app() { # name branch host_port
   # envs/bulk appends rather than upserts — only seed envs once (empty set).
   if [ "$(api GET "/applications/$uuid/envs" | jq 'length')" != "0" ]; then
     echo "envs already present for $name — skipping (manage in Coolify UI)"
-    eval "${4}=$uuid"
+    eval "${5}=$uuid"
     return 0
   fi
   api PATCH "/applications/$uuid/envs/bulk" -d "{\"data\": [
@@ -158,12 +160,12 @@ create_app() { # name branch host_port
     {\"key\": \"PO_EXTRACT_URL\",         \"value\": \"http://po-extract:8000\"},
     {\"key\": \"NEXT_PUBLIC_APP_VERSION\",\"value\": \"${NEXT_PUBLIC_APP_VERSION:-0.1.0}\"}
   ]}" >/dev/null && echo "envs set for $name"
-  eval "${4}=$uuid"
+  eval "${5}=$uuid"
 }
 
 step "7/9 Applications"
-create_app nextjs-web-dev  dev  "$DEV_PORT"  DEV_UUID
-create_app nextjs-web-main main "$MAIN_PORT" MAIN_UUID
+create_app nextjs-web-dev  dev  "$DEV_PORT"  development DEV_UUID
+create_app nextjs-web-main main "$MAIN_PORT" production  MAIN_UUID
 
 deploy_and_wait() { # uuid label port
   local uuid=$1 label=$2 port=$3 status started

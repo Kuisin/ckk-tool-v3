@@ -6,10 +6,12 @@ rsync + `docker compose up -d --build` flow.
 
 ## Topology
 
-| App | Branch | Host port | Public host | Ingress path |
-|-----|--------|-----------|-------------|--------------|
-| `nextjs-web-dev` | `dev` | `:3004` | `ckk-dev.kai-lab.net` (legacy alias: `dev.kai-lab.net`) | cloudflared/nginx → `web:3000` relay → `:3004` |
-| `nextjs-web-main` | `main` | `:3005` | `ckk.kai-lab.net` | cloudflared/nginx → `web-main:3000` relay → `:3005` |
+Project `ckk` — dev app in the `development` environment, main in `production`:
+
+| App | Env | Branch | Host port | Public host | Ingress path |
+|-----|-----|--------|-----------|-------------|--------------|
+| `nextjs-web-dev` | development | `dev` | `:3004` | `ckk-dev.kai-lab.net` (legacy alias: `dev.kai-lab.net`) | cloudflared/nginx → `web:3000` relay → `:3004` |
+| `nextjs-web-main` | production | `main` | `:3005` | `ckk.kai-lab.net` | cloudflared/nginx → `web-main:3000` relay → `:3005` |
 
 - Coolify UI/API: `https://deploy.ckk-tool.co.jp` (LAN via nginx-proxy; public via
   cloudflared once the tunnel hostnames are added — put a Cloudflare Access policy
