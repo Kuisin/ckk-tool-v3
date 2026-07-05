@@ -30,8 +30,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # Reads the pinned pnpm version from package.json "packageManager".
+      # Reads the pinned pnpm version from the app's "packageManager" field.
+      # (working-directory does not apply to `uses:` steps — point at the file.)
       - uses: pnpm/action-setup@v4
+        with:
+          package_json_file: docker-compose/nextjs-web/package.json
 
       - uses: actions/setup-node@v4
         with:
