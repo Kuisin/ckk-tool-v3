@@ -86,6 +86,8 @@ Git:            Github
 Runtime:        Node standalone (Next build output)
 Reverse Proxy:  Nginx
 GUI:            Dockge
+Deploy:         Coolify（nextjs-webのみ; dev/mainブランチ別ビルド＋ロールバック）
+                他スタックは rsync + docker compose up -d --build
 
 # i18n
 System i18n:    next-intl + JSON files（messages/）

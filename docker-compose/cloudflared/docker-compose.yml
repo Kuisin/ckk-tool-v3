@@ -3,7 +3,13 @@
 # Remotely-managed (token) tunnel. Public hostname -> service mappings are
 # configured in the Cloudflare Zero Trust dashboard; this connector just needs
 # network reachability to each target. No public ports / port-forwarding.
-#   dev.kai-lab.net      -> http://web:3000        (nextjs-web stack)
+#   dev.kai-lab.net      -> http://web:3000        (nextjs-web stack — socat relay
+#                                                   to the Coolify dev app :3004)
+#   *.ckk.kai-lab.net    -> http://web-main:3000   (relay to Coolify main app :3005;
+#                                                   add per-version host at release)
+#   coolify.kai-lab.net  -> http://coolify:8080    (optional: enables GitHub push
+#                                                   auto-deploy webhooks; requires
+#                                                   joining the `coolify` network)
 #   dock.kai-lab.net     -> http://dockge:5001     (portainer, via kept dockge alias)
 #   chat.kai-lab.net     -> http://open-webui:8080 (ai-stack — Open WebUI GUI)
 #   monitor.kai-lab.net  -> http://grafana:3000    (monitoring stack — Grafana)

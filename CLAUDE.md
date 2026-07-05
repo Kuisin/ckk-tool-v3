@@ -82,28 +82,41 @@ Powers the AI-first 受注請書 intake (scan image + auto-filled form → user 
 
 ## Deployment & Remote Server
 
-**Branch → environment (deploy to dev first, always)** — All work lands on `dev` and is **deployed to `dev.kai-lab.net` first** for verification. Promotion to production is by **PR `dev` → `main`**; `main` deploys to a **versioned host under `*.ckk.kai-lab.net`** (e.g. `v0-1-0.ckk.kai-lab.net`, from `package.json#version`). Never deploy straight to `main`/production — verify on `dev.kai-lab.net`, then open the PR. `nextjs-web` deployment is being migrated to **Coolify** (git-push auto-deploy per branch: `dev`→`dev.kai-lab.net`, `main`→`*.ckk.kai-lab.net`); the other stacks still use the rsync + rebuild flow below.
+**Branch → environment (deploy to dev first, always)** — All work lands on `dev` and is **deployed to `dev.kai-lab.net` first** for verification. Promotion to production is by **PR `dev` → `main`**; `main` deploys to a **versioned host under `*.ckk.kai-lab.net`** (e.g. `v0-1-0.ckk.kai-lab.net`, from `package.json#version`). Never deploy straight to `main`/production — verify on `dev.kai-lab.net`, then open the PR.
 
-**Server** — `192.168.50.15` (hostname `docker-mac-pro`; despite the name it runs Linux — Ubuntu noble / t2 kernel). Access: `ssh 192.168.50.15` (key-based, user `kaiseisawada`). All services run as Docker Compose stacks orchestrated by **Dockge**, one dir per stack under `~/stacks/` on the server: `nextjs-web`, `metabase`, `ai-stack`, `monitoring`, `vpn-ldap`, `kot-import`, `admintools`, `nginx-proxy`, `cloudflared`, `portainer`.
+**nextjs-web deploys via Coolify** (all other stacks use the rsync + rebuild flow below). Coolify (`~/stacks/coolify`, UI/API `http://192.168.50.15:8000`) builds the app from GitHub per branch — see `docker-compose/coolify/README.md` for full topology, bootstrap, and webhook setup:
+
+| App | Branch | Host port | Public host |
+|-----|--------|-----------|-------------|
+| `nextjs-web-dev` | `dev` | `:3004` | `dev.kai-lab.net` |
+| `nextjs-web-main` | `main` | `:3005` | `v{X-Y-Z}.ckk.kai-lab.net` |
+
+- Deploy: `docker-compose/coolify/deploy.sh dev` (or `main`) after pushing; GitHub push auto-deploy activates once Coolify is exposed via the tunnel (see README).
+- **Rollback (main)**: Coolify UI → nextjs-web-main → Deployments → redeploy a previous build, or `deploy.sh main <git-sha>`. Deployment images are kept, so rollback is fast.
+- Ingress is decoupled from deploys: cloudflared/nginx target the stable socat relays `web:3000` (→ `:3004`) and `web-main:3000` (→ `:3005`) in the `nextjs-web` stack, so routing never changes on redeploys/rollbacks.
+- Coolify apps run on the external `coolify` docker network; `shared-db`, `po-extract`, `gotenberg`, `seaweedfs` are attached to it so `DATABASE_URL`/`GOTENBERG_URL`/`SEAWEED_FILER_URL`/`PO_EXTRACT_URL` resolve by container name. App env vars are managed in Coolify (not compose).
+- Both apps currently share the one business DB (`shared-db`/`ckk`); split a prod DB before real production traffic.
+
+**Server** — `192.168.50.15` (hostname `docker-mac-pro`; despite the name it runs Linux — Ubuntu noble / t2 kernel). Access: `ssh 192.168.50.15` (key-based, user `kaiseisawada`). All services run as Docker Compose stacks orchestrated by **Dockge**, one dir per stack under `~/stacks/` on the server: `nextjs-web`, `coolify`, `shared-db`, `prisma-studio`, `metabase`, `ai-stack`, `monitoring`, `vpn-ldap`, `kot-import`, `admintools`, `nginx-proxy`, `cloudflared`, `portainer`.
 
 **Source ↔ server** — Each `~/stacks/<stack>` mirrors `docker-compose/<stack>` in this repo, but the **server copies are not git repos** and there is no deploy script/CI. Deploy = rsync the source up, then rebuild. The server's `.env` holds secrets and lives **only on the server** — never overwrite or delete it (always `--exclude '.env'`).
 
 **Secrets (never commit)** — The **Cloudflare DNS API token** (acme.sh DNS-01 for `nginx-proxy`; `Zone:DNS:Edit` on `kai-lab.net` + `ckk-tool.co.jp`) has its operational copy in the server's `~/stacks/nginx-proxy/.env` (`CLOUDFLARE_DNS_API_TOKEN`). A local backup lives in this Mac's login Keychain — retrieve with `security find-generic-password -s ckk-cloudflare-dns-api-token -w`. If it is ever exposed, rotate it in Cloudflare and update both places.
 
-**Deploy a stack** (example: `nextjs-web`):
+**Deploy a non-Coolify stack** (example: `ai-stack`):
 
 ```bash
-# from repo: docker-compose/nextjs-web/
+# from repo: docker-compose/ai-stack/
 rsync -a --exclude node_modules --exclude .next --exclude .git \
   --exclude .env --exclude .vscode --exclude '*.tsbuildinfo' --exclude .DS_Store \
-  ./ 192.168.50.15:'~/stacks/nextjs-web/'
-ssh 192.168.50.15 'cd ~/stacks/nextjs-web && docker compose up -d --build'
+  ./ 192.168.50.15:'~/stacks/ai-stack/'
+ssh 192.168.50.15 'cd ~/stacks/ai-stack && docker compose up -d --build'
 ```
 
-Dry-run the rsync first (`rsync -avn …`) to confirm the file set. The Dockerfile builds Next.js `output: "standalone"`; PDF templates under `src/pdf-templates/` reach the runtime image via `outputFileTracingIncludes` in `next.config.ts` (file tracing can't follow `fs.readFile` paths). `pnpm install --frozen-lockfile` runs in-build, so never let the lockfile drift.
+Dry-run the rsync first (`rsync -avn …`) to confirm the file set. The nextjs-web Dockerfile builds Next.js `output: "standalone"`; PDF templates under `src/pdf-templates/` reach the runtime image via `outputFileTracingIncludes` in `next.config.ts` (file tracing can't follow `fs.readFile` paths). `pnpm install --frozen-lockfile` runs in-build, so never let the lockfile drift.
 
-**nextjs-web topology** — host `:3001` → container `:3000` (3000 is taken by open-webui). Public access `https://dev.kai-lab.net` via the `cloudflared` stack; LAN TLS via `nginx-proxy`; both reach the app over the auto-created `nextjs-web_default` network at `http://web:3000`. PDF generation uses the in-stack `gotenberg` service at `http://gotenberg:3000` (`GOTENBERG_URL`); generated PDFs persist in the in-stack `seaweedfs` filer (`SEAWEED_FILER_URL=http://seaweedfs:8888`).
+**nextjs-web topology** — the app containers are Coolify-managed (dev `:3004`, main `:3005`, container `:3000`; host `:3000` is taken by open-webui). Public access `https://dev.kai-lab.net` via the `cloudflared` stack; LAN TLS via `nginx-proxy`; both reach the app over the `nextjs-web_default` network at `http://web:3000` / `http://web-main:3000` (socat relays in the `nextjs-web` stack, which also keeps `gotenberg` and `seaweedfs`). PDF generation uses `http://gotenberg:3000` (`GOTENBERG_URL`); generated PDFs persist in the `seaweedfs` filer (`SEAWEED_FILER_URL=http://seaweedfs:8888`).
 
-**Cross-stack services** — the `ai-stack` runs `ollama` (`:11434`, local models) and `po-extract` (`:8000`, the document→JSON extractor, model `qwen2.5vl`); `metabase` (`:3003`, OSS, postgres app DB) holds the BI dashboards. To let `nextjs-web` call `po-extract`, attach it to the `ai-stack` network (external, like `metabase` joins `ldap`/`kot`) and use `http://po-extract:8000` — it is **not** reachable cross-stack by default.
+**Cross-stack services** — the `ai-stack` runs `ollama` (`:11434`, local models) and `po-extract` (`:8000`, the document→JSON extractor, model `qwen2.5vl`); `metabase` (`:3003`, OSS, postgres app DB) holds the BI dashboards. Cross-stack reachability is by attaching a service to the other stack's external network — the Coolify-built nextjs-web reaches `shared-db`, `po-extract`, `gotenberg`, `seaweedfs` because those are attached to the `coolify` network; nothing is reachable cross-stack by default.
 
-**Manage / verify** — `docker ps`, `docker compose logs -f <svc>`, `docker compose restart <svc>`, `docker compose up -d --build` (rebuild after source change). Health/smoke-test from inside the network, e.g. `docker exec nextjs-web node -e 'fetch("http://127.0.0.1:3000/...")...'`. Postgres-backed stacks (`metabase-db`, `ckk-legacy-db`, `kot-db`, `admintools-db`) are siblings — back up with `docker exec <db> pg_dump` and restore with `pg_restore`/`psql` before mutating live data.
+**Manage / verify** — `docker ps`, `docker compose logs -f <svc>`, `docker compose restart <svc>`, `docker compose up -d --build` (rebuild after source change). Health/smoke-test from inside the network, e.g. `docker run --rm --network nextjs-web_default curlimages/curl -sf http://web:3000/`. Postgres-backed stacks (`shared-db`, `metabase-db`, `ckk-legacy-db`) are siblings — back up with `docker exec <db> pg_dump` and restore with `pg_restore`/`psql` before mutating live data.

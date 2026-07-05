@@ -13,11 +13,17 @@ the public-hostname routing lives in the Cloudflare **Zero Trust** dashboard:
 
 ```
 Networks > Tunnels > docker-linux > Public Hostname
-  dev.kai-lab.net      →  HTTP  →  web:3000          (nextjs-web)
+  dev.kai-lab.net      →  HTTP  →  web:3000          (nextjs-web — relay to Coolify dev app :3004)
+  v{X-Y-Z}.ckk.kai-lab.net → HTTP → web-main:3000    (relay to Coolify main app :3005; add at release)
   dockge.kai-lab.net   →  HTTP  →  dockge:5001       (dockge)
   chat.kai-lab.net     →  HTTP  →  open-webui:8080   (ai-stack — Open WebUI GUI)
   monitor.kai-lab.net  →  HTTP  →  grafana:3000      (monitoring — Grafana)
+  coolify.kai-lab.net  →  HTTP  →  coolify:8080      (optional — GitHub webhook auto-deploy;
+                                                      join the `coolify` network + protect with Access)
 ```
+
+`web` / `web-main` are stable socat relays in the `nextjs-web` stack, so Coolify
+redeploys and rollbacks never require touching this dashboard config.
 
 The connector joins each target stack's network (`nextjs-web_default` as `web`,
 `dockge_default` as `dockge`, `ai-stack_default` as `ai-stack`,
