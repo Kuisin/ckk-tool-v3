@@ -62,6 +62,7 @@ export interface BpBaseDetail {
   email: string;
   website: string;
   taxNumber: string;
+  matchNames: string[];
   isActive: boolean;
   notes: string;
   createdAt: string;
@@ -82,6 +83,7 @@ type BpRowLike = {
   email: string | null;
   website: string | null;
   taxNumber: string | null;
+  matchNames: string[];
   isActive: boolean;
   notes: string | null;
   createdAt: Date;
@@ -107,6 +109,7 @@ export function mapBpBase(r: BpRowLike): BpBaseDetail {
     email: r.email ?? "",
     website: r.website ?? "",
     taxNumber: r.taxNumber ?? "",
+    matchNames: r.matchNames,
     isActive: r.isActive,
     notes: r.notes ?? "",
     createdAt: r.createdAt.toISOString(),

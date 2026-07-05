@@ -12,6 +12,7 @@ import {
   SimpleGrid,
   Stack,
   Switch,
+  TagsInput,
   Textarea,
   TextInput,
 } from "@mantine/core";
@@ -39,6 +40,7 @@ export const bpBaseFormSchema = z.object({
     .or(z.literal("")),
   website: z.string(),
   taxNumber: z.string(),
+  matchNames: z.array(z.string()),
   isActive: z.boolean(),
   notes: z.string(),
 });
@@ -60,6 +62,7 @@ export function bpBaseInitialValues(d?: BpBaseDetail): BpBaseFormValues {
     email: d?.email ?? "",
     website: d?.website ?? "",
     taxNumber: d?.taxNumber ?? "",
+    matchNames: d?.matchNames ?? [],
     isActive: d?.isActive ?? true,
     notes: d?.notes ?? "",
   };
@@ -123,6 +126,14 @@ export function BpBaseFields<T extends BpBaseFormValues>({
             {...form.getInputProps("isActive", { type: "checkbox" })}
           />
         </SimpleGrid>
+        <TagsInput
+          description="AI 抽出（注文書の読み取り）がこの取引先へ社名を解決するための照合リスト。表記ゆれ（㈱/株式会社・全角半角・旧社名など）を Enter 区切りで登録"
+          label="AI照合名"
+          mt="sm"
+          placeholder="社名の表記ゆれを入力して Enter"
+          splitChars={[",", "、"]}
+          {...form.getInputProps("matchNames")}
+        />
       </FormSection>
 
       <FormSection title="住所・連絡先">

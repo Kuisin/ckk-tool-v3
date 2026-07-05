@@ -26,6 +26,7 @@ export const bpBaseInput = z.object({
     .optional(),
   website: z.string().optional(),
   taxNumber: z.string().optional(),
+  matchNames: z.array(z.string()),
   isActive: z.boolean(),
   notes: z.string().optional(),
 });
@@ -46,6 +47,7 @@ export function bpBaseData(v: BpBaseInput) {
     email: v.email?.trim() || null,
     website: v.website?.trim() || null,
     taxNumber: v.taxNumber?.trim() || null,
+    matchNames: [...new Set(v.matchNames.map((n) => n.trim()).filter(Boolean))],
     isActive: v.isActive,
     notes: v.notes?.trim() || null,
   };
