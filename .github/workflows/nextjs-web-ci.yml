@@ -1,12 +1,12 @@
-# nextjs-web CI — lint & build on every PR.
+# nextjs-web CI — lint, test & build on every PR.
 #
-#   PR → dev  : Biome lint + production build (baseline gate)
+#   PR → dev  : Biome lint + Vitest unit tests + production build (baseline gate)
 #   PR → main : strict — frozen-lockfile install, Biome with warnings-as-errors,
-#               tsc --noEmit, production build (promotion gate; main auto-deploys
-#               via the Coolify webhook on merge)
+#               tsc --noEmit, Vitest, production build (promotion gate; main
+#               auto-deploys via the Coolify webhook on merge)
 #
-# No unit/E2E suite exists in nextjs-web yet — add Vitest/Playwright jobs here
-# when they land (see _specs/techstack.md).
+# E2E (Playwright) not set up yet — add a job here when it lands
+# (see _specs/techstack.md).
 
 name: nextjs-web CI
 
@@ -47,6 +47,9 @@ jobs:
 
       - name: Lint (Biome)
         run: pnpm lint
+
+      - name: Unit tests (Vitest)
+        run: pnpm test
 
       # ── strict gates: promotion PRs into main only ──────────────────────
       - name: Lint strict — warnings as errors (main)
