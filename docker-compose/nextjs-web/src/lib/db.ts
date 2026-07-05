@@ -4,6 +4,10 @@
 import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "../../generated/client/client";
 
+// Re-export the generated namespace (enums, Prisma.DbNull, input types) so
+// feature code never needs the ../../generated relative path.
+export { Prisma } from "../../generated/client/client";
+
 const globalForPrisma = globalThis as unknown as { prisma?: PrismaClient };
 
 function createClient() {
