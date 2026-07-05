@@ -15,9 +15,18 @@
 #   app        — nextjs-web (Prisma Client)
 #   kot_ro     — read-only reporting (Metabase)
 #   studio_ro  — read-only, all schemas (Prisma Studio browser)
+#   backup     — REPLICATION-only role for the db-backup stack (pg_basebackup)
 #
 # Other stacks reach this DB over the external `shared-db` network at
 # shared-db:5432. Host port 15432 is published for migrations from the LAN.
+#
+# Backups: the db-backup stack (docker-compose/db-backup/) takes PG17
+# incremental base backups over the replication protocol. That needs
+# `summarize_wal=on` (command below) and a pg_hba entry for the backup role
+# (conf/pg_hba.conf). NOTE: applying the command/volume change recreates the
+# container (a few seconds of DB downtime) — deploy at a quiet moment. On the
+# existing cluster the backup role must be created manually once (init scripts
+# only run on fresh clusters) — see docker-compose/db-backup/README.md.
 
 services:
   db:
@@ -34,9 +43,20 @@ services:
       - APP_DB_PASSWORD=${APP_DB_PASSWORD:?set APP_DB_PASSWORD in .env}
       - KOT_RO_DB_PASSWORD=${KOT_RO_DB_PASSWORD:?set KOT_RO_DB_PASSWORD in .env}
       - STUDIO_RO_DB_PASSWORD=${STUDIO_RO_DB_PASSWORD:?set STUDIO_RO_DB_PASSWORD in .env}
+      - BACKUP_DB_PASSWORD=${BACKUP_DB_PASSWORD:?set BACKUP_DB_PASSWORD in .env}
+    # summarize_wal=on is required for PG17 incremental backups (db-backup stack).
+    # hba_file points at the repo-managed pg_hba.conf (adds a replication entry
+    # for the backup role — the image default only allows replication locally).
+    command:
+      - postgres
+      - -c
+      - summarize_wal=on
+      - -c
+      - hba_file=/etc/postgresql/pg_hba.conf
     volumes:
       - shared-db-data:/var/lib/postgresql/data
       - ./init:/docker-entrypoint-initdb.d:ro
+      - ./conf/pg_hba.conf:/etc/postgresql/pg_hba.conf:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres -d ckk"]
       interval: 15s
