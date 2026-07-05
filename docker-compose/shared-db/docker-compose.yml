@@ -43,6 +43,9 @@ services:
       timeout: 5s
       retries: 5
       start_period: 15s
+    networks:
+      - default     # shared-db network (kot-import, admintools, metabase, …)
+      - coolify     # Coolify-deployed nextjs-web apps → shared-db:5432
 
 volumes:
   shared-db-data:
@@ -50,3 +53,6 @@ volumes:
 networks:
   default:
     name: shared-db
+  # Coolify apps' network — the nextjs-web containers resolve `shared-db` there.
+  coolify:
+    external: true

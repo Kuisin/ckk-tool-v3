@@ -1,46 +1,46 @@
-# CKK Next.js web app (BFF + UI + API).
+# CKK nextjs-web stack — shared infra + traffic relays.
 #
-# Deployed on `docker-mac-pro` under the Dockge stacks dir (~/stacks/nextjs-web).
-#   web   host :3001 -> container :3000  (3000 is used by open-webui)
+# The Next.js app itself is built and run by Coolify (git-push deploy from
+# github.com/Kuisin/ckk-tool-v3, base dir docker-compose/nextjs-web):
+#   branch dev  -> app published on host :3004 -> https://dev.kai-lab.net
+#   branch main -> app published on host :3005 -> https://v{X-Y-Z}.ckk.kai-lab.net
+# Coolify apps run on the external `coolify` network; they reach gotenberg /
+# seaweedfs here (both attached to `coolify`), shared-db and po-extract on
+# their own stacks (also attached to `coolify`).
 #
-# Public access (https://dev.kai-lab.net) is handled by the separate `cloudflared`
-# stack, and LAN TLS by the `nginx-proxy` stack — both reach this app over the
-# auto-created `nextjs-web_default` network at http://web:3000.
+# This stack keeps:
+#   gotenberg   HTML->PDF rendering            (reached at http://gotenberg:3000)
+#   seaweedfs   generated-document storage     (reached at http://seaweedfs:8888)
+#   web         relay: nextjs-web_default :3000 -> host :3004 (dev app)
+#   web-main    relay: nextjs-web_default :3000 -> host :3005 (main app)
+#
+# The relays exist so cloudflared and nginx-proxy keep resolving the stable
+# names `web` / `web-main` on nextjs-web_default regardless of Coolify's
+# per-deploy container names — no Cloudflare dashboard or vhost changes on
+# redeploys or rollbacks.
 
 services:
+  # Stable ingress name for the dev app (cloudflared/nginx target web:3000).
   web:
-    build:
-      context: .
-      args:
-        NEXT_PUBLIC_APP_VERSION: ${NEXT_PUBLIC_APP_VERSION:-0.1.0}
-    image: nextjs-web
-    container_name: nextjs-web
+    image: alpine/socat:1.8.0.0
+    container_name: web-relay-dev
     restart: unless-stopped
-    environment:
-      - NODE_ENV=production
-      # Shared business DB (shared-db stack, db ckk, role app) via Prisma Client.
-      - DATABASE_URL=postgresql://app:${APP_DB_PASSWORD:?set APP_DB_PASSWORD in .env}@shared-db:5432/ckk
-      # PDF generation (見積書 etc.) → Gotenberg over the stack network.
-      - GOTENBERG_URL=http://gotenberg:3000
-      # Generated-PDF storage (view/download) → SeaweedFS filer.
-      - SEAWEED_FILER_URL=http://seaweedfs:8888
-      # Document extraction (受注請書 AI取込) → po-extract on the ai-stack network.
-      - PO_EXTRACT_URL=http://po-extract:8000
-    depends_on:
-      - gotenberg
-      - seaweedfs
+    command: tcp-listen:3000,fork,reuseaddr tcp:host.docker.internal:3004
+    extra_hosts:
+      - host.docker.internal:host-gateway
     networks:
       - default
-      - aistack
-      - shareddb
-    ports:
-      - "3001:3000"
-    healthcheck:
-      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
-      interval: 30s
-      timeout: 5s
-      retries: 5
-      start_period: 20s
+
+  # Stable ingress name for the production (main) app.
+  web-main:
+    image: alpine/socat:1.8.0.0
+    container_name: web-relay-main
+    restart: unless-stopped
+    command: tcp-listen:3000,fork,reuseaddr tcp:host.docker.internal:3005
+    extra_hosts:
+      - host.docker.internal:host-gateway
+    networks:
+      - default
 
   # HTML → PDF rendering (Chromium). Internal only; reached at http://gotenberg:3000.
   gotenberg:
@@ -51,6 +51,9 @@ services:
       - gotenberg
       - --chromium-disable-javascript=true
       - --chromium-allow-list=file:///tmp/.*
+    networks:
+      - default
+      - coolify
     healthcheck:
       test: ["CMD", "curl", "-f", "http://127.0.0.1:3000/health"]
       interval: 30s
@@ -68,6 +71,9 @@ services:
     command: "server -dir=/data -filer -s3 -volume.max=0 -master.volumeSizeLimitMB=1024"
     volumes:
       - seaweed-data:/data
+    networks:
+      - default
+      - coolify
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8888/"]
       interval: 30s
@@ -79,13 +85,10 @@ volumes:
   seaweed-data:
 
 networks:
-  # Stack-local network (web ↔ gotenberg ↔ seaweedfs).
+  # Stack-local network — cloudflared / nginx-proxy attach here and reach the
+  # relays at web:3000 / web-main:3000.
   default:
-  # ai-stack network — lets `web` reach the po-extract document extractor.
-  aistack:
+  # Coolify apps' network — gotenberg + seaweedfs are resolvable there by
+  # service name for the Coolify-deployed Next.js containers.
+  coolify:
     external: true
-    name: ai-stack_default
-  # shared-db stack network — the shared business DB (db ckk).
-  shareddb:
-    external: true
-    name: shared-db

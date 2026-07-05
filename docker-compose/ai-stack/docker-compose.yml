@@ -115,6 +115,9 @@ services:
     environment:
       - OLLAMA_URL=http://ollama:11434
       - MODEL=qwen2.5vl
+    networks:
+      - default     # ai-stack_default (ollama)
+      - coolify     # Coolify-deployed nextjs-web apps → http://po-extract:8000
 
   # Metabase MCP server (read-only labor data) exposed to Open WebUI as an
   # OpenAPI tool server via mcpo. Replaces the hand-rolled metabase_labor tool.
@@ -142,3 +145,6 @@ networks:
   ldap:
     external: true
     name: vpn-ldap_default
+  # Coolify apps' network — po-extract serves the nextjs-web 受注請書 intake there.
+  coolify:
+    external: true
