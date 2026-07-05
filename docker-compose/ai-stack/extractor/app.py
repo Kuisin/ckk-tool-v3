@@ -1,4 +1,5 @@
-import base64, io, json, os
+import base64, io, json, os, re
+from datetime import date
 import fitz  # PyMuPDF
 import httpx
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException
@@ -27,7 +28,11 @@ STRUCT_PROMPT = (
     "for structure.\n"
     "- Numbers must be plain: no currency symbols or thousands separators "
     "(e.g. 609350, not ¥609,350). Quantities are integers.\n"
-    "- Keep dates as printed.\n"
+    "- Dates: output ISO YYYY-MM-DD when a full date is printed — convert Japanese "
+    "forms (2026年2月16日 → 2026-02-16) and era dates (令和8年2月16日 → 2026-02-16). "
+    "If the printed date is partial, keep it as printed.\n"
+    "- Enum fields: pick one of the allowed values only when the document clearly "
+    "states it; otherwise null.\n"
     "- Use only information present in the document. Set absent/unreadable fields to "
     "null. Never invent values.\n"
     "- Respond with JSON only."
@@ -46,23 +51,38 @@ def _nullable(t):
 
 STR, NUM, INT = _nullable("string"), _nullable("number"), _nullable("integer")
 
+def ENUM(*values):
+    return {"type": ["string", "null"], "enum": [*values, None]}
+
+# Every key is required (nullable) and extras are rejected, so the grammar-
+# constrained output always has the exact shape the caller's types expect.
 def OBJ(**props):
-    return {"type": "object", "properties": props}
+    return {
+        "type": "object",
+        "properties": props,
+        "required": list(props),
+        "additionalProperties": False,
+    }
 
 def ARR(item):
     return {"type": "array", "items": item}
 
+# tables.md ORDER_TYPE
+ORDER_TYPE = ENUM("PRODUCTION", "TEST", "SAMPLE", "OTHER")
+
 SCHEMAS = {
     "order-request": OBJ(
-        customer_name=STR, customer_branch=STR, customer_order_ref=STR,
+        customer_name=STR, customer_branch=STR, customer_contact=STR,
+        customer_order_ref=STR,
         order_date=STR, desired_delivery_date=STR, delivery_location=STR,
         payment_terms=STR,
         items=ARR(OBJ(
-            product_name=STR, product_code=STR, order_type=STR,
+            product_name=STR, product_code=STR, version=STR,
+            customization=STR, order_type=ORDER_TYPE,
             quantity=INT, unit=STR, unit_price=NUM, amount=NUM,
-            delivery_date=STR, notes=STR,
+            delivery_date=STR, ship_to=STR, notes=STR,
         )),
-        subtotal=NUM, tax_amount=NUM, total_amount=NUM, notes=STR,
+        subtotal=NUM, tax_rate=NUM, tax_amount=NUM, total_amount=NUM, notes=STR,
     ),
     "quote": OBJ(
         issuer_name=STR, customer_name=STR, quote_number=STR,
@@ -93,7 +113,17 @@ SCHEMAS = {
 PROMPTS = {
     "order-request": (
         "This is a customer purchase order (注文書). Extract the ordering customer, "
-        "their order reference number, and every ordered line item."
+        "their order reference number, and every ordered line item.\n"
+        "- customer_contact is the customer's contact person (担当/担当者), if printed.\n"
+        "- order_type per item: PRODUCTION (本番/量産), TEST (テスト/試作), "
+        "SAMPLE (サンプル/無償), OTHER (その他); null when not stated.\n"
+        "- version per item: drawing/revision number (版数, Rev, 図番改訂), if printed.\n"
+        "- customization per item: special/custom work requested for that line "
+        "(追加加工, 特記仕様, カスタム内容), verbatim.\n"
+        "- ship_to per item: line-specific delivery destination (直送先, 届け先) when "
+        "it differs per line; leave null if the document only has one delivery "
+        "location (use delivery_location for that).\n"
+        "- tax_rate is the consumption-tax percentage as a number (e.g. 10 for 10%)."
     ),
     "quote": "This is a price quotation (見積書).",
     "invoice": "This is an invoice (請求書).",
@@ -181,6 +211,45 @@ def _vision_transcribe(images: list[str]) -> str:
     except Exception:
         return ""
 
+# ── Text normalization (non-destructive) ─────────────────────────────────
+# Full-width ASCII (１２３ＡＢ－／) → half-width; kana/kanji untouched.
+_FW = {i: i - 0xFEE0 for i in range(0xFF01, 0xFF5F)}
+_FW[0x3000] = 0x20  # ideographic space
+
+_DATE_KEY = re.compile(r"(^date$|_date$|_from$|_to$|^valid_until$)")
+_DATE_YMD = re.compile(r"^(\d{4})\s*[年/.\-]\s*(\d{1,2})\s*[月/.\-]\s*(\d{1,2})\s*日?$")
+_DATE_ERA = re.compile(r"^(令和|平成|昭和|R|H|S)\s*(\d{1,2})\s*[年/.\-]\s*(\d{1,2})\s*[月/.\-]\s*(\d{1,2})\s*日?$")
+_ERA_BASE = {"令和": 2018, "R": 2018, "平成": 1988, "H": 1988, "昭和": 1925, "S": 1925}
+
+def _norm_date(s: str) -> str:
+    m = _DATE_YMD.match(s)
+    if m:
+        y, mo, d = (int(g) for g in m.groups())
+    else:
+        m = _DATE_ERA.match(s)
+        if not m:
+            return s
+        y = _ERA_BASE[m.group(1)] + int(m.group(2))
+        mo, d = int(m.group(3)), int(m.group(4))
+    try:
+        return date(y, mo, d).isoformat()
+    except ValueError:
+        return s
+
+def _normalize(obj, key=None):
+    if isinstance(obj, dict):
+        return {k: _normalize(v, k) for k, v in obj.items()}
+    if isinstance(obj, list):
+        return [_normalize(v, key) for v in obj]
+    if isinstance(obj, str):
+        s = obj.translate(_FW).strip()
+        if not s:
+            return None
+        if key and _DATE_KEY.search(key):
+            s = _norm_date(s)
+        return s
+    return obj
+
 # ── Numeric reconciliation (non-destructive) ─────────────────────────────
 def _num(v):
     return v if isinstance(v, (int, float)) and not isinstance(v, bool) else None
@@ -202,6 +271,12 @@ def _reconcile(obj):
         if obj.get("subtotal") is None and amounts:
             obj["subtotal"] = sum(amounts)
     sub, tax, tot = _num(obj.get("subtotal")), _num(obj.get("tax_amount")), _num(obj.get("total_amount"))
+    rate = _num(obj.get("tax_rate"))
+    if tax is None and sub is not None:
+        if tot is not None and tot >= sub:
+            tax = obj["tax_amount"] = round(tot - sub, 2)
+        elif rate is not None:
+            tax = obj["tax_amount"] = round(sub * rate / 100, 2)
     if tot is None and sub is not None:
         obj["total_amount"] = sub + (tax or 0)
     return obj
@@ -225,7 +300,7 @@ def _pipeline(file: UploadFile, fmt: dict, hint: str):
     content += "\n\n=== (B) Vision transcription ===\n" + (vision_text or "(none)")
     out = _ollama(STRUCT_MODEL, content, None, fmt)
     try:
-        return _reconcile(json.loads(out))
+        return _reconcile(_normalize(json.loads(out)))
     except json.JSONDecodeError:
         raise HTTPException(502, "structuring model did not return valid JSON")
 

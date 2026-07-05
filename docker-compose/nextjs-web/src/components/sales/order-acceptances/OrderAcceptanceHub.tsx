@@ -56,7 +56,7 @@ export function OrderAcceptanceHub() {
       <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
         <ActionCard
           color="blue"
-          desc="お客様の注文書PDF・スキャンを取り込み、AIが内容を自動入力します。内容を確認するだけ。"
+          desc="お客様の注文書PDF・スキャンを取り込み、AIが内容を自動入力します。内容を確認して受諾まで完了。"
           href={`${BASE_PATH}/intake`}
           icon={<IconRobot size={26} />}
           title="PDFから取込（AI）"

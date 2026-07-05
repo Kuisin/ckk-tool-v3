@@ -1,12 +1,13 @@
 "use client";
 
 /**
- * OrderRequestIntake — AI-first 受注請書 取込 (design: §2 注文受付).
+ * OrderRequestIntake — AI-first 受注請書 取込〜受諾 (design: §2 注文受付).
  *
  * Flow: upload PDF/scan → POST /api/extract/order-request (po-extract, qwen2.5vl)
- * → show the scanned image (left) + the auto-filled form (right); the user only
- * confirms the content. On extraction failure, the same form is shown blank with
- * an error notice so the user enters every field from scratch. No DB persistence.
+ * → scanned image (left) + auto-filled editable form (right) → the user corrects
+ * and proceeds to the acceptance step (read-only 請書 preview + explicit 受諾)
+ * → done. On extraction failure, the same form is shown blank with an error
+ * notice so the user enters every field from scratch. No DB persistence.
  */
 
 import {
@@ -19,10 +20,12 @@ import {
   SimpleGrid,
   Stack,
   Text,
+  ThemeIcon,
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import {
   IconAlertTriangle,
+  IconCircleCheck,
   IconFileTypePdf,
   IconRobot,
   IconUpload,
@@ -35,22 +38,32 @@ import {
 } from "@/components/ui/buttons";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { useIsMobile } from "@/hooks/useViewport";
-import { OrderRequestForm } from "./OrderRequestForm";
-import { emptyOrderRequest, type OrderRequest } from "./types";
+import { OrderRequestAcceptPanel } from "./OrderRequestAcceptPanel";
+import { fromFormValues, OrderRequestForm } from "./OrderRequestForm";
+import { emptyOrderRequest, groupWorkOrders, type OrderRequest } from "./types";
 
 const BASE_PATH = "/sales/order-acceptances";
-type Step = "upload" | "extracting" | "review" | "manual";
+type Step =
+  | "upload"
+  | "extracting"
+  | "review"
+  | "manual"
+  | "accept"
+  | "accepted";
 
 export function OrderRequestIntake({ manual = false }: { manual?: boolean }) {
   const isMobile = useIsMobile();
   const inputRef = useRef<HTMLInputElement>(null);
 
   const [step, setStep] = useState<Step>(manual ? "manual" : "upload");
+  // Which edit step to return to from the acceptance step ("戻って修正").
+  const [editStep, setEditStep] = useState<"review" | "manual">(
+    manual ? "manual" : "review",
+  );
   const [file, setFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [data, setData] = useState<OrderRequest>(emptyOrderRequest());
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
-  const [confirmed, setConfirmed] = useState(false);
 
   // Object URL for the in-browser preview; revoked on change/unmount.
   useEffect(() => {
@@ -87,23 +100,33 @@ export function OrderRequestIntake({ manual = false }: { manual?: boolean }) {
         throw new Error(json?.error ?? `HTTP ${res.status}`);
       }
       setData(json as OrderRequest);
+      setEditStep("review");
       setStep("review");
     } catch (err) {
       // AI failure → manual full entry, with the scan still shown for reference.
       setData(emptyOrderRequest());
       setErrorMsg(err instanceof Error ? err.message : "AI読取に失敗しました");
+      setEditStep("manual");
       setStep("manual");
     }
   }
 
-  const onConfirm = () => {
-    // DB persistence is out of scope — confirm-only (no save).
-    setConfirmed(true);
+  const onAccept = () => {
+    // DB persistence is out of scope — the acceptance is UI/UX only.
     notifications.show({
-      title: "内容を確認しました",
-      message: "受注請書の内容を確認しました（DB保存は未実装）",
+      title: "受諾しました",
+      message: "受注請書を受諾しました（DB保存は未実装）",
       color: "green",
     });
+    setStep("accepted");
+  };
+
+  const resetAll = () => {
+    setFile(null);
+    setData(emptyOrderRequest());
+    setErrorMsg(null);
+    setEditStep("review");
+    setStep("upload");
   };
 
   // ── Upload step ───────────────────────────────────────────────────────────
@@ -193,7 +216,51 @@ export function OrderRequestIntake({ manual = false }: { manual?: boolean }) {
     );
   }
 
-  // ── Review / manual step — preview (left) + form (right) ────────────────────
+  // ── Accepted step — success screen ──────────────────────────────────────────
+  if (step === "accepted") {
+    return (
+      <Stack gap="md">
+        <PageHeader
+          breadcrumbs={["販売", { label: "受注請書", href: BASE_PATH }, "取込"]}
+          title="受注請書 受諾完了"
+        />
+        <Paper p="xl" radius="md" shadow="xs">
+          <Center p="xl">
+            <Stack align="center" gap="sm">
+              <ThemeIcon color="green" radius="xl" size={64} variant="light">
+                <IconCircleCheck size={40} />
+              </ThemeIcon>
+              <Text fw={600} size="lg">
+                受注請書を受諾しました
+              </Text>
+              <Text c="dimmed" size="sm" ta="center">
+                {data.customer_name ?? "顧客未設定"} ／ 受注書 1 件・指示書{" "}
+                {groupWorkOrders(data).length} 件
+                {data.total_amount != null &&
+                  ` ／ 合計 ¥${data.total_amount.toLocaleString()}`}
+              </Text>
+              <Text c="dimmed" size="xs">
+                ※ 本フローは UI/UX のみの実装です（DB 保存は行われません）
+              </Text>
+              <Group mt="md">
+                <SecondaryButton href={BASE_PATH}>
+                  受注請書トップへ
+                </SecondaryButton>
+                <PrimaryButton
+                  leftSection={<IconUpload size={16} />}
+                  onClick={resetAll}
+                >
+                  続けて取込
+                </PrimaryButton>
+              </Group>
+            </Stack>
+          </Center>
+        </Paper>
+      </Stack>
+    );
+  }
+
+  // ── Review / manual / accept — preview (left) + form or 請書 (right) ────────
   const preview = previewUrl ? (
     <Paper
       p="xs"
@@ -231,13 +298,15 @@ export function OrderRequestIntake({ manual = false }: { manual?: boolean }) {
       <PageHeader
         breadcrumbs={["販売", { label: "受注請書", href: BASE_PATH }, "取込"]}
         title={
-          step === "review"
-            ? "受注請書 取込（AI読取結果の確認）"
-            : "受注請書 入力"
+          step === "accept"
+            ? "受注請書 受諾"
+            : step === "review"
+              ? "受注請書 取込（AI読取結果の確認）"
+              : "受注請書 入力"
         }
       />
 
-      {errorMsg && (
+      {step !== "accept" && errorMsg && (
         <Alert
           color="red"
           icon={<IconAlertTriangle size={16} />}
@@ -249,28 +318,34 @@ export function OrderRequestIntake({ manual = false }: { manual?: boolean }) {
       )}
       {step === "review" && !errorMsg && (
         <Alert color="blue" icon={<IconRobot size={16} />} variant="light">
-          AIが読み取った内容です。誤りがないかご確認ください。
-        </Alert>
-      )}
-      {confirmed && (
-        <Alert color="green" variant="light">
-          内容を確認しました。
+          AIが読み取った内容です。修正のうえ「確認して受諾へ進む」を押してください。
         </Alert>
       )}
 
       <SimpleGrid cols={{ base: 1, md: 2 }} spacing="md">
         {preview}
-        <Box>
-          <OrderRequestForm
-            confirmLabel={step === "review" ? "内容を確認" : "確認"}
-            initial={data}
-            key={step}
-            onConfirm={onConfirm}
+        {step === "accept" ? (
+          <OrderRequestAcceptPanel
+            data={data}
+            onAccept={onAccept}
+            onBack={() => setStep(editStep)}
           />
-          <Group mt="sm">
-            <SecondaryButton href={BASE_PATH}>一覧へ戻る</SecondaryButton>
-          </Group>
-        </Box>
+        ) : (
+          <Box>
+            <OrderRequestForm
+              confirmLabel="確認して受諾へ進む"
+              initial={data}
+              key={step}
+              onConfirm={(values) => {
+                setData(fromFormValues(values));
+                setStep("accept");
+              }}
+            />
+            <Group mt="sm">
+              <SecondaryButton href={BASE_PATH}>一覧へ戻る</SecondaryButton>
+            </Group>
+          </Box>
+        )}
       </SimpleGrid>
     </Stack>
   );

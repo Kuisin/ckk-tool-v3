@@ -1,11 +1,11 @@
 'use client';
 
 import { useTransition } from 'react';
-import { NumberInput, Select, SimpleGrid, Switch } from '@mantine/core';
+import { Alert, NumberInput, Select, SimpleGrid, Switch } from '@mantine/core';
 import { DatePickerInput } from '@mantine/dates';
 import { useForm } from '@mantine/form';
 import { notifications } from '@mantine/notifications';
-import { IconCalendar } from '@tabler/icons-react';
+import { IconCalendar, IconInfoCircle } from '@tabler/icons-react';
 import { z } from 'zod';
 import { zodResolver } from '../../lib/form';
 import { FormSection, FormShell } from '../../lib/shells';
@@ -65,6 +65,10 @@ export default function PriceListNewPage() {
       isPending={isPending}
       onSubmit={form.onSubmit(handleSubmit)}
     >
+      <Alert variant="light" color="blue" icon={<IconInfoCircle size={16} />}>
+        通常、価格表は試算（SA05）を確定して「価格表に登録」から作成します。この画面は既存価格の手動登録・例外登録用です。
+      </Alert>
+
       <FormSection title="基本情報">
         <SimpleGrid cols={isMobile ? 1 : 2} spacing="sm">
           <Select label="顧客" placeholder="顧客を選択" data={CUSTOMERS} searchable withAsterisk

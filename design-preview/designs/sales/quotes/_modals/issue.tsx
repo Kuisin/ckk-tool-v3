@@ -30,7 +30,7 @@ export function IssueQuoteModal({
       size="sm"
     >
       <Text size="sm">
-        見積書「{quoteNumber}」を発行します。発行と同時に PDF が生成されます。
+        見積書「{quoteNumber}」を発行します。発行と同時に PDF が生成・保存され、詳細画面の PDF タブで閲覧できます。
       </Text>
       <DatePickerInput
         label="有効期限"

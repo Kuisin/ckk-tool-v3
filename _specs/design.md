@@ -346,6 +346,7 @@ Stack (gap="xl", p="md", maw={1200})
 
 | App | Icon |
 |-----|------|
+| 試算 | `IconCalculator` |
 | 価格表 | `IconCurrencyYen` |
 | 見積書 | `IconFileText` |
 | 受注請書 | `IconClipboardCheck` |
@@ -532,6 +533,9 @@ Stack (gap="md")
 
 | Entity | Status | Color | Japanese label |
 |--------|--------|-------|----------------|
+| Estimate | DRAFT | gray | 下書き |
+| Estimate | CONFIRMED | blue | 確定 |
+| Estimate | REGISTERED | green | 価格表登録済 |
 | Quote | DRAFT | gray | 下書き |
 | Quote | ISSUED | blue | 発行済 |
 | Quote | ACCEPTED | green | 受諾済 |
@@ -1008,7 +1012,8 @@ Row click navigates to detail page.
 
 | Entity | Columns |
 |--------|---------|
-| PriceList | 顧客 / 製品 / 注文種別 / 数量範囲 / 単価 / 有効期間 / 状態 |
+| Estimate | 試算番号 / 顧客 / 製品 / 注文種別 / 単価範囲 / 状態 / 更新日 |
+| PriceList | 顧客 / 製品 / 注文種別 / 数量範囲 / 単価 / 有効期間 / 試算元 / 状態 |
 | Quote | 見積番号 / 顧客 / 有効期限 / 状態 / 更新日 |
 | OrderAcceptance | 注文番号 / 顧客 / 顧客注文書番号 / 合計金額 / 状態 / 更新日 |
 | SalesOrder | 受注番号 / 顧客 / 製品 / 数量 / 金額 / 納期 / 状態 |
@@ -1125,6 +1130,8 @@ Use these exact terms consistently across all UI strings, error messages, and no
 
 | Concept | Japanese term | Abbreviation/code |
 |---------|---------------|-------------------|
+| 試算 | 試算 | EST |
+| 価格表 | 価格表 | price_list |
 | 見積書 | 見積書 | QOT |
 | 受注請書 | 受注請書 | ORD |
 | 受注書 | 受注書 | ORD-...-NN |

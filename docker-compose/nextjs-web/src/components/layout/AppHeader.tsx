@@ -30,6 +30,7 @@ import {
 } from "@mantine/core";
 import {
   IconBell,
+  IconFolder,
   IconLogout,
   IconSettings,
   IconUser,
@@ -321,6 +322,14 @@ export function AppHeader() {
                 py={{ base: "sm", md: "xs" }}
               >
                 設定
+              </Menu.Item>
+              <Menu.Item
+                component={Link}
+                href="/admin/files"
+                leftSection={<IconFolder size={14} />}
+                py={{ base: "sm", md: "xs" }}
+              >
+                ファイル管理
               </Menu.Item>
               <Divider my="5px" />
               <Menu.Item
