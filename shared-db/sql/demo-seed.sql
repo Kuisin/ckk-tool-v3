@@ -42,6 +42,54 @@ INSERT INTO "bp"."bp_contacts" ("id", "bp_id", "name", "department", "email", "i
    '佐藤 健一', '購買部', 'sato@abc-mfg.example.co.jp', true, true, now(), now())
 ON CONFLICT ("id") DO NOTHING;
 
+-- ── 需要家 (END_USER role + bp_end_user_attrs) ───────────────────────
+INSERT INTO "bp"."business_partners"
+  ("id", "bp_code", "name", "name_kana", "short_name", "country_code", "is_active", "created_at", "updated_at") VALUES
+  ('44444444-4444-4444-8444-444444444444', 'BP-00101',
+   '{"ja":"日本重工業株式会社","en":"Nihon Heavy Industries Co., Ltd."}', 'ニホンジュウコウギョウ', '日本重工', 'JP', true, now(), now()),
+  ('55555555-5555-4555-8555-555555555555', 'BP-00102',
+   '{"ja":"関西自動車部品株式会社","en":"Kansai Auto Parts Co., Ltd."}', 'カンサイジドウシャブヒン', '関西自部品', 'JP', true, now(), now())
+ON CONFLICT ("id") DO NOTHING;
+
+INSERT INTO "bp"."bp_role_assignments" ("id", "bp_id", "role", "is_active", "assigned_at") VALUES
+  ('aaaaaaa2-0000-4000-8000-000000000001', '44444444-4444-4444-8444-444444444444', 'END_USER', true, now()),
+  ('aaaaaaa2-0000-4000-8000-000000000002', '55555555-5555-4555-8555-555555555555', 'END_USER', true, now())
+ON CONFLICT ("bp_id", "role") DO NOTHING;
+
+INSERT INTO "bp"."bp_end_user_attrs" ("bp_id", "industry") VALUES
+  ('44444444-4444-4444-8444-444444444444', '産業機械'),
+  ('55555555-5555-4555-8555-555555555555', '自動車部品')
+ON CONFLICT ("bp_id") DO NOTHING;
+
+-- ── 外注企業 (VENDOR role + bp_vendor_attrs) ─────────────────────────
+INSERT INTO "bp"."business_partners"
+  ("id", "bp_code", "name", "name_kana", "short_name", "country_code", "is_active", "created_at", "updated_at") VALUES
+  ('66666666-6666-4666-8666-666666666666', 'BP-00201',
+   '{"ja":"中部研磨工業株式会社","en":"Chubu Grinding Industries Co., Ltd."}', 'チュウブケンマコウギョウ', '中部研磨', 'JP', true, now(), now()),
+  ('77777777-7777-4777-8777-777777777777', 'BP-00202',
+   '{"ja":"コーティングテック株式会社","en":"Coating Tech Co., Ltd."}', 'コーティングテック', 'Cテック', 'JP', true, now(), now()),
+  ('88888888-8888-4888-8888-888888888888', 'BP-00203',
+   '{"ja":"東京特殊鋼材株式会社","en":"Tokyo Special Steel Co., Ltd."}', 'トウキョウトクシュコウザイ', '東京特鋼', 'JP', true, now(), now())
+ON CONFLICT ("id") DO NOTHING;
+
+INSERT INTO "bp"."bp_role_assignments" ("id", "bp_id", "role", "is_active", "assigned_at") VALUES
+  ('aaaaaaa3-0000-4000-8000-000000000001', '66666666-6666-4666-8666-666666666666', 'VENDOR', true, now()),
+  ('aaaaaaa3-0000-4000-8000-000000000002', '77777777-7777-4777-8777-777777777777', 'VENDOR', true, now()),
+  ('aaaaaaa3-0000-4000-8000-000000000003', '88888888-8888-4888-8888-888888888888', 'VENDOR', true, now())
+ON CONFLICT ("bp_id", "role") DO NOTHING;
+
+INSERT INTO "bp"."bp_vendor_attrs"
+  ("bp_id", "vendor_code", "vendor_type", "closing_day", "payment_terms_days", "payment_day", "lead_time_days") VALUES
+  ('66666666-6666-4666-8666-666666666666', 'V-001', 'OUTSOURCE', 31, 30, 31, 5),
+  ('77777777-7777-4777-8777-777777777777', 'V-002', 'OUTSOURCE', 20, 30, 10, 7),
+  ('88888888-8888-4888-8888-888888888888', 'V-003', 'SUPPLIER', 31, 60, 31, NULL)
+ON CONFLICT ("bp_id") DO NOTHING;
+
+-- BP コード採番 (BP-NNNNN, global serial) — seed 済みコードを追い越す位置から。
+INSERT INTO "sys"."numbering_sequences" ("key", "prefix", "last_year_month", "last_sequence", "updated_at")
+  VALUES ('BP', 'BP', NULL, 300, now())
+ON CONFLICT ("key") DO NOTHING;
+
 -- ── 材種 (master.material_types) ─────────────────────────────────────
 INSERT INTO "master"."material_types" ("id", "name", "description", "is_active", "created_at", "updated_at") VALUES
   ('A01A0001', '{"ja":"SUS303","en":"SUS303"}',
