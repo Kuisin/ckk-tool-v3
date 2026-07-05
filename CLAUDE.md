@@ -82,7 +82,7 @@ Powers the AI-first 受注請書 intake (scan image + auto-filled form → user 
 
 ## Deployment & Remote Server
 
-**Branch → environment (deploy to dev first, always)** — All work lands on `dev` and is **deployed to `dev.kai-lab.net` first** for verification. Promotion to production is by **PR `dev` → `main`**; `main` deploys to a **versioned host under `*.ckk.kai-lab.net`** (e.g. `v0-1-0.ckk.kai-lab.net`, from `package.json#version`). Never deploy straight to `main`/production — verify on `dev.kai-lab.net`, then open the PR.
+**Branch → environment (deploy to dev first, always)** — All work lands on `dev` and is **deployed to `dev.kai-lab.net` first** for verification. **Feature-branch PRs always target `dev` — never open a PR against `main`.** Promotion to production is by **PR `dev` → `main`**; `main` deploys to a **versioned host under `*.ckk.kai-lab.net`** (e.g. `v0-1-0.ckk.kai-lab.net`, from `package.json#version`). Never deploy straight to `main`/production — verify on `dev.kai-lab.net`, then open the PR.
 
 **nextjs-web deploys via Coolify** (all other stacks use the rsync + rebuild flow below). Coolify (`~/stacks/coolify`, UI/API `http://192.168.50.15:8000`) builds the app from GitHub per branch — see `docker-compose/coolify/README.md` for full topology, bootstrap, and webhook setup:
 
