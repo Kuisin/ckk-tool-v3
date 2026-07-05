@@ -45,6 +45,16 @@ export interface AppEntry {
 
 export const appList: AppEntry[] = [
   // ─── 販売 ──────────────────────────────────────────────────────────────────
+  // 業務フロー順に表示: 試算 → 価格表 → 見積書 → 注文受諾書 → 設計依頼書
+  {
+    key: 'estimates',
+    label: '試算',
+    operationCode: 'SA05',
+    href: '/sales/estimates',
+    icon: 'IconCalculator',
+    category: '販売',
+    requiredPermission: 'estimate',
+  },
   {
     key: 'price-lists',
     label: '価格表',

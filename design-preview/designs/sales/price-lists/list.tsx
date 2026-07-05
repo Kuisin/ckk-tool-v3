@@ -6,12 +6,14 @@ import {
   IconCopy,
   IconCurrencyYen,
   IconEdit,
+  IconFileText,
   IconSearch,
   IconToggleRight,
   IconTrash,
 } from '@tabler/icons-react';
 import {
   ActiveBadge,
+  DocNumber,
   formatDate,
   MoneyText,
   NewButton,
@@ -37,14 +39,15 @@ interface PriceListRow {
   unitPrice: number;
   validFrom: string;
   validUntil: string | null;
+  estimateNumber: string | null; // 試算元（手動登録時は null）
   isActive: boolean;
 }
 
 const MOCK_RECORDS: PriceListRow[] = [
-  { id: '1', customerName: '株式会社ABC製作所', productName: '精密軸 PRD-2601-0001', orderType: 'PRODUCTION', minQuantity: 1, maxQuantity: 99, unitPrice: 5000, validFrom: '2026-01-01', validUntil: null, isActive: true },
-  { id: '2', customerName: '株式会社ABC製作所', productName: '精密軸 PRD-2601-0001', orderType: 'PRODUCTION', minQuantity: 100, maxQuantity: null, unitPrice: 4500, validFrom: '2026-01-01', validUntil: null, isActive: true },
-  { id: '3', customerName: '合同会社XYZ工業', productName: 'ロッド PRD-2602-0008', orderType: 'PRODUCTION', minQuantity: 1, maxQuantity: null, unitPrice: 6200, validFrom: '2026-04-01', validUntil: '2026-09-30', isActive: true },
-  { id: '4', customerName: '株式会社DEFエンジニアリング', productName: '特殊加工品 PRD-2603-0012', orderType: 'TEST', minQuantity: 1, maxQuantity: 10, unitPrice: 9500, validFrom: '2026-05-01', validUntil: null, isActive: false },
+  { id: '1', customerName: '株式会社ABC製作所', productName: '精密軸 PRD-2601-0001', orderType: 'PRODUCTION', minQuantity: 1, maxQuantity: 99, unitPrice: 5000, validFrom: '2026-01-01', validUntil: null, estimateNumber: 'EST-202606-00012', isActive: true },
+  { id: '2', customerName: '株式会社ABC製作所', productName: '精密軸 PRD-2601-0001', orderType: 'PRODUCTION', minQuantity: 100, maxQuantity: null, unitPrice: 4500, validFrom: '2026-01-01', validUntil: null, estimateNumber: 'EST-202606-00012', isActive: true },
+  { id: '3', customerName: '合同会社XYZ工業', productName: 'ロッド PRD-2602-0008', orderType: 'PRODUCTION', minQuantity: 1, maxQuantity: null, unitPrice: 6200, validFrom: '2026-04-01', validUntil: '2026-09-30', estimateNumber: null, isActive: true },
+  { id: '4', customerName: '株式会社DEFエンジニアリング', productName: '特殊加工品 PRD-2603-0012', orderType: 'TEST', minQuantity: 1, maxQuantity: 10, unitPrice: 9500, validFrom: '2026-05-01', validUntil: null, estimateNumber: 'EST-202606-00018', isActive: false },
 ];
 
 function quantityRange(min: number, max: number | null): string {
@@ -85,6 +88,7 @@ export default function PriceListListPage() {
     { key: 'quantity', header: '数量範囲', hideable: true, width: 120, sortValue: (r) => r.minQuantity, render: (r) => quantityRange(r.minQuantity, r.maxQuantity) },
     { key: 'unitPrice', header: '単価', sortable: true, align: 'right', width: 120, sortValue: (r) => r.unitPrice, render: (r) => <MoneyText value={r.unitPrice} /> },
     { key: 'validPeriod', header: '有効期間', hideable: true, sortValue: (r) => r.validFrom, render: (r) => <Text size="sm">{validPeriod(r.validFrom, r.validUntil)}</Text> },
+    { key: 'estimateNumber', header: '試算元', hideable: true, width: 170, sortValue: (r) => r.estimateNumber ?? '', render: (r) => (r.estimateNumber ? <DocNumber c="blue">{r.estimateNumber}</DocNumber> : <Text size="sm" c="dimmed">手動</Text>) },
     { key: 'isActive', header: '状態', sortable: true, width: 90, sortValue: (r) => (r.isActive ? 1 : 0), render: (r) => <ActiveBadge active={r.isActive} /> },
   ];
 
@@ -135,6 +139,7 @@ export default function PriceListListPage() {
           { label: '一括削除', icon: <IconTrash size={16} />, color: 'red' },
         ]}
         rowActions={() => [
+          { label: '見積書を作成', icon: <IconFileText size={14} /> },
           { label: '編集', icon: <IconEdit size={14} /> },
           { label: '有効期間を変えて複製', icon: <IconCopy size={14} /> },
           { label: '削除', icon: <IconTrash size={14} />, color: 'red' },
@@ -152,6 +157,9 @@ export default function PriceListListPage() {
                   {ORDER_TYPE_LABEL[r.orderType]} · {quantityRange(r.minQuantity, r.maxQuantity)}
                 </Text>
                 <Text size="xs" c="dimmed">{validPeriod(r.validFrom, r.validUntil)}</Text>
+                {r.estimateNumber && (
+                  <Text size="xs" ff="mono" c="blue">{r.estimateNumber}</Text>
+                )}
               </Stack>
               <Stack gap={4} align="flex-end" style={{ flexShrink: 0 }}>
                 <MoneyText value={r.unitPrice} />

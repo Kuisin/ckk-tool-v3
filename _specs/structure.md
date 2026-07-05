@@ -7,7 +7,13 @@ src/
 │   │   ├── layout.tsx
 │   │   ├── page.tsx                                # ダッシュボード
 │   │   │
-│   │   ├── sales/                                  # 販売（§1 価格・見積 / §2 注文受付 / §10 設計依頼）
+│   │   ├── sales/                                  # 販売（§1 試算・価格・見積 / §2 注文受付 / §10 設計依頼）
+│   │   │   ├── estimates/                          # 試算（原価計算 → 価格表登録）
+│   │   │   │   ├── page.tsx
+│   │   │   │   ├── new/page.tsx
+│   │   │   │   └── [id]/
+│   │   │   │       ├── page.tsx
+│   │   │   │       └── edit/page.tsx
 │   │   │   ├── price-lists/                        # 価格表
 │   │   │   │   ├── page.tsx
 │   │   │   │   ├── new/page.tsx
@@ -212,8 +218,8 @@ src/
 │   ├── journal.ts                                  # 仕訳エンジン（弥生連携用）
 │   ├── csv-export.ts                               # 弥生会計 Next CSV 生成
 │   ├── inventory.ts                                # 在庫引当・予約ロジック
-│   ├── pricing.ts                                  # 価格表解決・見積自動生成・値引き計算
-│   ├── numbering.ts                                # 採番ロジック（QOT/ORD/DRN/INV）
+│   ├── pricing.ts                                  # 試算原価計算・価格表解決・見積自動生成・値引き計算
+│   ├── numbering.ts                                # 採番ロジック（EST/QOT/ORD/DRN/INV）
 │   ├── workflow.ts                                 # 製造ワークフロー依存解決・実行可否判定
 │   └── notifications.ts                            # 通知（SSE / メール / Nextcloud）
 │
