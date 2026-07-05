@@ -7,7 +7,8 @@
 #   dock.kai-lab.net     -> http://dockge:5001     (portainer, via kept dockge alias)
 #   chat.kai-lab.net     -> http://open-webui:8080 (ai-stack — Open WebUI GUI)
 #   monitor.kai-lab.net  -> http://grafana:3000    (monitoring stack — Grafana)
-#   metabase.kai-lab.net -> http://metabase:3000   (metabase stack — BI)
+#   bi.ckk-tool.co.jp    -> http://metabase:3000   (metabase stack — BI)
+#   db.ckk-tool.co.jp    -> http://prisma-studio:5555 (prisma-studio — DB browser)
 #   admin.ckk-tool.co.jp -> http://admintools:8000  (admintools — admin portal)
 # Ollama (:11434) is NOT published — Open WebUI reaches it internally over ai-stack.
 #
@@ -29,6 +30,7 @@ services:
       - monitoring  # monitoring `grafana:3000`
       - metabase    # metabase `metabase:3000`
       - admintools   # admintools `admintools:8000`
+      - shareddb    # prisma-studio `prisma-studio:5555`
 
 # Attach to each target stack's compose network so the tunnel can resolve them.
 networks:
@@ -50,3 +52,6 @@ networks:
   admintools:
     external: true
     name: admintools_default
+  shareddb:
+    external: true
+    name: shared-db

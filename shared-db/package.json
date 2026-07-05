@@ -1,0 +1,21 @@
+{
+  "name": "ckk-shared-db",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Single source of truth for the CKK shared database (Prisma multi-schema)",
+  "scripts": {
+    "validate": "prisma validate",
+    "generate": "prisma generate",
+    "migrate:dev": "prisma migrate dev",
+    "migrate:deploy": "prisma migrate deploy",
+    "studio": "prisma studio"
+  },
+  "devDependencies": {
+    "dotenv": "^17.4.2",
+    "prisma": "7.8.0"
+  },
+  "dependencies": {
+    "@prisma/adapter-pg": "7.8.0",
+    "@prisma/client": "7.8.0"
+  }
+}

@@ -46,17 +46,17 @@ services:
     depends_on:
       - vpn-ldap
     environment:
-      # kot-db (shared DB Metabase reads). Set in .env (gitignored).
+      # shared-db, db ckk (role ldap_sync, search_path=directory,kot). Set in .env (gitignored).
       - DATABASE_URL=${LDAP_SYNC_DB_URL:?set LDAP_SYNC_DB_URL in .env}
       - LDAP_SYNC_INTERVAL_SECONDS=${LDAP_SYNC_INTERVAL_SECONDS:-21600}
     env_file:
       - ./ldap.env       # LDAP_SERVER_HOST / LDAP_APP_DN / LDAP_APP_PASSWORD / base
     networks:
       - default          # reach vpn-ldap:389
-      - kot              # reach kot-db (kot-import_default)
+      - shareddb         # reach shared-db (directory.employee_directory / kot.employees)
 
 networks:
   default:
-  kot:
+  shareddb:
     external: true
-    name: kot-import_default
+    name: shared-db

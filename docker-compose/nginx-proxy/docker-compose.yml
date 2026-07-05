@@ -38,10 +38,13 @@ services:
       - ./conf.d:/etc/nginx/conf.d:ro
       - ./certs:/etc/nginx/certs:ro
     networks:
-      - web         # nextjs-web `web:3000`        (dev.kai-lab.net)
-      - ai-stack    # open-webui `open-webui:8080` (chat.kai-lab.net)
-      - monitoring  # grafana `grafana:3000`       (monitor.kai-lab.net)
-      - dockge      # dockge `dockge:5001`         (dockge.kai-lab.net)
+      - web         # nextjs-web `web:3000`         (dev.kai-lab.net)
+      - ai-stack    # open-webui `open-webui:8080`  (chat.kai-lab.net)
+      - monitoring  # grafana `grafana:3000`        (monitor.kai-lab.net)
+      - dockge      # dockge `dockge:5001`          (dock.kai-lab.net)
+      - metabase    # metabase `metabase:3000`      (bi.ckk-tool.co.jp — staged)
+      - shareddb    # prisma-studio `:5555`         (db.ckk-tool.co.jp — staged)
+      - admintools  # admintools `admintools:8000`  (admin.ckk-tool.co.jp — staged)
     # Reload daily so renewed certs from acme.sh are applied without a restart.
     command: ["sh", "-c", "(while :; do sleep 86400; nginx -s reload 2>/dev/null || true; done &) ; exec nginx -g 'daemon off;'"]
 
@@ -59,3 +62,12 @@ networks:
   dockge:
     external: true
     name: dockge_default
+  metabase:
+    external: true
+    name: metabase_default
+  shareddb:
+    external: true
+    name: shared-db
+  admintools:
+    external: true
+    name: admintools_default

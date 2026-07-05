@@ -18,6 +18,8 @@ services:
     restart: unless-stopped
     environment:
       - NODE_ENV=production
+      # Shared business DB (shared-db stack, db ckk, role app) via Prisma Client.
+      - DATABASE_URL=postgresql://app:${APP_DB_PASSWORD:?set APP_DB_PASSWORD in .env}@shared-db:5432/ckk
       # PDF generation (見積書 etc.) → Gotenberg over the stack network.
       - GOTENBERG_URL=http://gotenberg:3000
       # Generated-PDF storage (view/download) → SeaweedFS filer.
@@ -30,6 +32,7 @@ services:
     networks:
       - default
       - aistack
+      - shareddb
     ports:
       - "3001:3000"
     healthcheck:
@@ -82,3 +85,7 @@ networks:
   aistack:
     external: true
     name: ai-stack_default
+  # shared-db stack network — the shared business DB (db ckk).
+  shareddb:
+    external: true
+    name: shared-db

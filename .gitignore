@@ -1,0 +1,5 @@
+# Claude Code local worktrees — never commit (each is a full working copy).
+.claude/worktrees/
+
+# macOS
+.DS_Store

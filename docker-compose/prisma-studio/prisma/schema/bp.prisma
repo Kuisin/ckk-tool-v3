@@ -1,0 +1,177 @@
+// 外部関係者マスタ — Business Partner (_specs/tables.md §Business Partner Master).
+// 1 法人エンティティ + 複数ロール割当（S/4HANA BP モデル準拠）。
+
+enum BpRole {
+  CUSTOMER
+  VENDOR
+  END_USER
+
+  @@map("BP_ROLE")
+  @@schema("bp")
+}
+
+enum VendorType {
+  SUPPLIER
+  OUTSOURCE
+
+  @@map("VENDOR_TYPE")
+  @@schema("bp")
+}
+
+enum TaxType {
+  TAXABLE
+  EXEMPT
+  REDUCED
+
+  @@map("TAX_TYPE")
+  @@schema("bp")
+}
+
+enum InvoiceMethod {
+  EMAIL
+  FAX
+  POST
+  PORTAL
+
+  @@map("INVOICE_METHOD")
+  @@schema("bp")
+}
+
+model BusinessPartner {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  bpCode      String?  @unique @map("bp_code")
+  name        Json
+  nameKana    String?  @map("name_kana")
+  shortName   String?  @map("short_name")
+  parentId    String?  @map("parent_id") @db.Uuid
+  countryCode String?  @map("country_code") @db.VarChar(2)
+  postalCode  String?  @map("postal_code")
+  address     Json?
+  phone       String?
+  fax         String?
+  email       String?
+  website     String?
+  taxNumber   String?  @map("tax_number")
+  isActive    Boolean  @default(true) @map("is_active")
+  notes       String?
+  createdBy   String?  @map("created_by") @db.Uuid
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  parent        BusinessPartner?  @relation("BpParent", fields: [parentId], references: [id])
+  branches      BusinessPartner[] @relation("BpParent")
+  createdByUser User?             @relation("BpCreatedBy", fields: [createdBy], references: [id])
+
+  roleAssignments BpRoleAssignment[]
+  customerAttrs   BpCustomerAttrs?   @relation("CustomerAttrsBp")
+  billingTargetOf BpCustomerAttrs[]  @relation("CustomerAttrsBilling")
+  vendorAttrs     BpVendorAttrs?
+  endUserAttrs    BpEndUserAttrs?
+  contacts        BpContact[]
+
+  priceLists                 PriceList[]         @relation("PriceListCustomer")
+  quotesAsCustomer           Quote[]             @relation("QuoteCustomer")
+  quotesAsBranch             Quote[]             @relation("QuoteCustomerBranch")
+  orderAcceptancesAsCustomer OrderAcceptance[]   @relation("OrderAcceptanceCustomer")
+  orderAcceptancesAsBranch   OrderAcceptance[]   @relation("OrderAcceptanceCustomerBranch")
+  salesOrdersAsEndUser       SalesOrder[]        @relation("SalesOrderEndUser")
+  stepsAsSupplier            WorkOrderStep[]     @relation("StepSupplier")
+  materialReceiptsAsSupplier MaterialReceipt[]   @relation("MaterialReceiptSupplier")
+  deliveryNotesAsRecipient   DeliveryNote[]      @relation("DeliveryNoteRecipient")
+  deliveryNotesAsBranch      DeliveryNote[]      @relation("DeliveryNoteRecipientBranch")
+  deliveryNotesAsEndUser     DeliveryNote[]      @relation("DeliveryNoteEndUser")
+  invoicesAsCustomer         Invoice[]           @relation("InvoiceCustomer")
+  invoicesAsBranch           Invoice[]           @relation("InvoiceCustomerBranch")
+  billingClosings            BillingClosing[]    @relation("ClosingCustomer")
+
+  @@index([parentId])
+  @@map("business_partners")
+  @@schema("bp")
+}
+
+model BpRoleAssignment {
+  id            String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  bpId          String    @map("bp_id") @db.Uuid
+  role          BpRole
+  isActive      Boolean   @default(true) @map("is_active")
+  assignedAt    DateTime  @default(now()) @map("assigned_at") @db.Timestamptz(6)
+  deactivatedAt DateTime? @map("deactivated_at") @db.Timestamptz(6)
+
+  bp BusinessPartner @relation(fields: [bpId], references: [id])
+
+  @@unique([bpId, role])
+  @@map("bp_role_assignments")
+  @@schema("bp")
+}
+
+model BpCustomerAttrs {
+  bpId             String        @id @map("bp_id") @db.Uuid
+  customerCode     String?       @unique @map("customer_code")
+  billingBpId      String?       @map("billing_bp_id") @db.Uuid
+  closingDay       Int?          @map("closing_day") @db.SmallInt
+  paymentTermsDays Int?          @map("payment_terms_days")
+  paymentDay       Int?          @map("payment_day") @db.SmallInt
+  creditLimit      Decimal?      @map("credit_limit") @db.Decimal(15, 2)
+  taxType          TaxType       @default(TAXABLE) @map("tax_type")
+  invoiceMethod    InvoiceMethod @default(EMAIL) @map("invoice_method")
+  isConsignment    Boolean       @default(false) @map("is_consignment")
+  notes            String?
+
+  bp        BusinessPartner  @relation("CustomerAttrsBp", fields: [bpId], references: [id])
+  billingBp BusinessPartner? @relation("CustomerAttrsBilling", fields: [billingBpId], references: [id])
+
+  @@map("bp_customer_attrs")
+  @@schema("bp")
+}
+
+model BpVendorAttrs {
+  bpId              String     @id @map("bp_id") @db.Uuid
+  vendorCode        String?    @unique @map("vendor_code")
+  vendorType        VendorType @map("vendor_type")
+  closingDay        Int?       @map("closing_day") @db.SmallInt
+  paymentTermsDays  Int?       @map("payment_terms_days")
+  paymentDay        Int?       @map("payment_day") @db.SmallInt
+  bankName          String?    @map("bank_name")
+  bankBranch        String?    @map("bank_branch")
+  bankAccountType   String?    @map("bank_account_type")
+  bankAccountNumber String?    @map("bank_account_number")
+  leadTimeDays      Int?       @map("lead_time_days")
+  notes             String?
+
+  bp BusinessPartner @relation(fields: [bpId], references: [id])
+
+  @@map("bp_vendor_attrs")
+  @@schema("bp")
+}
+
+model BpEndUserAttrs {
+  bpId     String  @id @map("bp_id") @db.Uuid
+  industry String?
+  notes    String?
+
+  bp BusinessPartner @relation(fields: [bpId], references: [id])
+
+  @@map("bp_end_user_attrs")
+  @@schema("bp")
+}
+
+model BpContact {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  bpId       String   @map("bp_id") @db.Uuid
+  name       String
+  nameKana   String?  @map("name_kana")
+  department String?
+  title      String?
+  email      String?
+  phone      String?
+  isPrimary  Boolean  @default(false) @map("is_primary")
+  isActive   Boolean  @default(true) @map("is_active")
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt  DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  bp BusinessPartner @relation(fields: [bpId], references: [id])
+
+  @@index([bpId])
+  @@map("bp_contacts")
+  @@schema("bp")
+}

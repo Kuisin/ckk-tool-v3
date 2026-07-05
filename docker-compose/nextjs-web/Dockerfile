@@ -25,6 +25,8 @@ COPY . .
 ENV NEXT_TELEMETRY_DISABLED=1
 ARG NEXT_PUBLIC_APP_VERSION=0.1.0
 ENV NEXT_PUBLIC_APP_VERSION=$NEXT_PUBLIC_APP_VERSION
+# Prisma Client from the synced shared-db schema (prisma/schema).
+RUN pnpm exec prisma generate
 RUN pnpm build
 
 # --- runtime ----------------------------------------------------------------

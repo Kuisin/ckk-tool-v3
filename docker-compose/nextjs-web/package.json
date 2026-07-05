@@ -8,7 +8,9 @@
     "build": "next build",
     "start": "next start",
     "lint": "biome check",
-    "format": "biome format --write"
+    "format": "biome format --write",
+    "db:sync-schema": "rm -rf prisma/schema && cp -R ../../shared-db/prisma/schema prisma/schema",
+    "db:generate": "prisma generate"
   },
   "dependencies": {
     "@mantine/core": "^9.3.1",
@@ -23,7 +25,9 @@
     "next": "16.2.9",
     "react": "19.2.4",
     "react-dom": "19.2.4",
-    "zod": "^4.4.3"
+    "zod": "^4.4.3",
+    "@prisma/client": "7.8.0",
+    "@prisma/adapter-pg": "7.8.0"
   },
   "devDependencies": {
     "@biomejs/biome": "2.2.0",
@@ -33,6 +37,7 @@
     "@types/react-dom": "^19",
     "babel-plugin-react-compiler": "1.0.0",
     "tailwindcss": "^4",
-    "typescript": "^5"
+    "typescript": "^5",
+    "prisma": "7.8.0"
   }
 }

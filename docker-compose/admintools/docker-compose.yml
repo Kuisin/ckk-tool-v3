@@ -3,35 +3,20 @@
 #
 # Deployed on docker-mac-pro at ~/stacks/admintools.
 #   admintools     host :8090 -> :8000  (WebUI + API)
-#   admintools-db  internal Postgres (account store)
+#
+# Data lives in the shared-db stack (db `ckk`, schema `admintools`; role
+# `admintools` has search_path=admintools). KOT_DB_URL uses role `kot`
+# (search_path=kot,directory) for the import-log view and employee matching.
+# DDL is owned by Prisma — see repo shared-db/.
 
 services:
-  admintools-db:
-    image: postgres:17-alpine
-    container_name: admintools-db
-    restart: unless-stopped
-    environment:
-      - POSTGRES_DB=admintools
-      - POSTGRES_USER=admintools
-      - POSTGRES_PASSWORD=${DB_PASSWORD:?set DB_PASSWORD in .env}
-    volumes:
-      - admintools-db-data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U admintools"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
   admintools:
     build: .
     image: ckk-admintools
     container_name: admintools
     restart: unless-stopped
-    depends_on:
-      admintools-db:
-        condition: service_healthy
     environment:
-      - DATABASE_URL=postgresql+psycopg://admintools:${DB_PASSWORD:?set DB_PASSWORD in .env}@admintools-db:5432/admintools
+      - DATABASE_URL=postgresql+psycopg://admintools:${DB_PASSWORD:?set DB_PASSWORD in .env}@shared-db:5432/ckk
       # Sakura RS control-panel login — needed only for the sync action.
       - SAKURA_ID=${SAKURA_ID:-}
       - SAKURA_PW=${SAKURA_PW:-}
@@ -39,25 +24,20 @@ services:
       - ADMINTOOLS_API_KEY=${ADMINTOOLS_API_KEY:-}
       # Default mail domain for user emails (<ldap-username>@DEFAULT_DOMAIN).
       - DEFAULT_DOMAIN=${DEFAULT_DOMAIN:-ckk-tool.co.jp}
-      # Read-only connection to the kot-import DB to show its import log. Empty = off.
+      # Connection to the KOT schema to show its import log. Empty = off.
       - KOT_DB_URL=${KOT_DB_URL:-}
     env_file:
       # Shared LDAP/AD bind creds (LDAP_SERVER_HOST=vpn-ldap, LDAP_APP_DN, ...).
       - ../vpn-ldap/ldap.env
     networks:
-      - default     # admintools-db
+      - default
       - ldap        # vpn-ldap_default — read AD users for User emails
-      - kot         # kot-import_default — read import_runs (KOT import log)
-    ports:
-      - "8090:8000"
-
-volumes:
-  admintools-db-data:
+      - shareddb    # shared-db — admintools schema + KOT import log
 
 networks:
   ldap:
     external: true
     name: vpn-ldap_default
-  kot:
+  shareddb:
     external: true
-    name: kot-import_default
+    name: shared-db

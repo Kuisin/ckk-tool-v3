@@ -1,0 +1,122 @@
+// 在庫 (_specs/tables.md §4・§5・§7).
+// inventory_reservations / inventory_transactions の inventory_id は
+// PRODUCT/MATERIAL のポリモーフィック参照のため FK なし（意図的）。
+
+enum InventoryType {
+  PRODUCT
+  MATERIAL
+
+  @@map("INVENTORY_TYPE")
+  @@schema("inventory")
+}
+
+enum ReservationStatus {
+  RESERVED
+  CONFIRMED
+  RELEASED
+
+  @@map("RESERVATION_STATUS")
+  @@schema("inventory")
+}
+
+enum TransactionType {
+  IN
+  OUT
+  RESERVE
+  RELEASE
+  ADJUST
+
+  @@map("TRANSACTION_TYPE")
+  @@schema("inventory")
+}
+
+model ProductInventory {
+  id               String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  productId        String   @map("product_id")
+  lotNumber        Int?     @map("lot_number")
+  quantity         Int      @default(0)
+  reservedQuantity Int      @default(0) @map("reserved_quantity")
+  location         String?
+  notes            String?
+  updatedAt        DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  product Product    @relation(fields: [productId], references: [id])
+  lot     WorkOrder? @relation("ProductInventoryLot", fields: [lotNumber], references: [workOrderNumber])
+
+  @@map("product_inventory")
+  @@schema("inventory")
+}
+
+model MaterialInventory {
+  id               String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  materialId       String   @map("material_id")
+  quantity         Decimal  @default(0) @db.Decimal(12, 3)
+  reservedQuantity Decimal  @default(0) @map("reserved_quantity") @db.Decimal(12, 3)
+  unit             String
+  location         String?
+  notes            String?
+  updatedAt        DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  material Material @relation(fields: [materialId], references: [id])
+
+  @@map("material_inventory")
+  @@schema("inventory")
+}
+
+// 在庫引当・予約（全工程完了まで予約状態を維持）
+model InventoryReservation {
+  id            String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  inventoryType InventoryType     @map("inventory_type")
+  inventoryId   String            @map("inventory_id") @db.Uuid
+  salesOrderId  String?           @map("sales_order_id") @db.Uuid
+  workOrderId   String?           @map("work_order_id") @db.Uuid
+  quantity      Decimal           @db.Decimal(12, 3)
+  status        ReservationStatus @default(RESERVED)
+  reservedAt    DateTime?         @map("reserved_at") @db.Timestamptz(6)
+  confirmedAt   DateTime?         @map("confirmed_at") @db.Timestamptz(6)
+  releasedAt    DateTime?         @map("released_at") @db.Timestamptz(6)
+
+  salesOrder SalesOrder? @relation(fields: [salesOrderId], references: [id])
+  workOrder  WorkOrder?  @relation(fields: [workOrderId], references: [id])
+
+  @@map("inventory_reservations")
+  @@schema("inventory")
+}
+
+model InventoryTransaction {
+  id              String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  inventoryType   InventoryType   @map("inventory_type")
+  inventoryId     String          @map("inventory_id") @db.Uuid
+  transactionType TransactionType @map("transaction_type")
+  quantity        Decimal         @db.Decimal(12, 3)
+  referenceType   String?         @map("reference_type")
+  referenceId     String?         @map("reference_id") @db.Uuid
+  notes           String?
+  createdBy       String?         @map("created_by") @db.Uuid
+  createdAt       DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  createdByUser User? @relation("InventoryTxCreatedBy", fields: [createdBy], references: [id])
+
+  @@map("inventory_transactions")
+  @@schema("inventory")
+}
+
+// 素材入荷（購買・外部調達）
+model MaterialReceipt {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  materialId   String   @map("material_id")
+  supplierBpId String?  @map("supplier_bp_id") @db.Uuid
+  quantity     Decimal  @db.Decimal(12, 3)
+  unit         String
+  receivedAt   DateTime @map("received_at") @db.Date
+  notes        String?
+  createdBy    String?  @map("created_by") @db.Uuid
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  material      Material         @relation(fields: [materialId], references: [id])
+  supplierBp    BusinessPartner? @relation("MaterialReceiptSupplier", fields: [supplierBpId], references: [id])
+  createdByUser User?            @relation("MaterialReceiptCreatedBy", fields: [createdBy], references: [id])
+
+  @@map("material_receipts")
+  @@schema("inventory")
+}

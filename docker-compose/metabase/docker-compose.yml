@@ -55,7 +55,7 @@ services:
     networks:
       - default     # metabase-db
       - ldap        # vpn-ldap_default — reach vpn-ldap:389
-      - kot         # kot-import_default — read labor data from kot-db
+      - shareddb    # shared-db — read labor data (kot / directory schemas, kot_ro role)
     ports:
       - "3003:3000"
     healthcheck:
@@ -73,7 +73,7 @@ networks:
   ldap:
     external: true
     name: vpn-ldap_default
-  # kot-import stack's network — exposes kot-db (labor/attendance data).
-  kot:
+  # shared-db stack's network — labor/attendance data (kot / directory schemas).
+  shareddb:
     external: true
-    name: kot-import_default
+    name: shared-db

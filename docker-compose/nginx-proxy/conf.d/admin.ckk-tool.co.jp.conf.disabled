@@ -1,0 +1,46 @@
+# admin.ckk-tool.co.jp -> admintools (admintools:8000), LAN TLS termination.
+# Mirrors the Cloudflare Tunnel route admin.ckk-tool.co.jp -> admintools:8000.
+#
+# STAGED / DISABLED (`.conf.disabled` is not loaded by nginx) because this host is
+# a DIFFERENT zone than the others: the acme.sh CF_Token is scoped to kai-lab.net,
+# so it cannot issue this cert yet, and nginx will not start if the referenced
+# cert is missing. To enable:
+#   1. Give CLOUDFLARE_DNS_API_TOKEN Zone:DNS:Edit on ckk-tool.co.jp (or install a
+#      cert manually into ./certs/admin.ckk-tool.co.jp.{crt,key}).
+#   2. docker exec nginx-acme --issue --dns dns_cf -d admin.ckk-tool.co.jp --server letsencrypt
+#      docker exec nginx-acme --install-cert -d admin.ckk-tool.co.jp \
+#        --key-file /certs/admin.ckk-tool.co.jp.key --fullchain-file /certs/admin.ckk-tool.co.jp.crt
+#   3. mv this file to admin.ckk-tool.co.jp.conf and: docker exec nginx-proxy nginx -s reload
+#   4. Add a LAN DNS override admin.ckk-tool.co.jp -> 192.168.50.15.
+
+server {
+    listen 80;
+    listen [::]:80;
+    server_name admin.ckk-tool.co.jp;
+    return 301 https://$host$request_uri;
+}
+
+server {
+    listen 443 ssl;
+    listen [::]:443 ssl;
+    http2 on;
+    server_name admin.ckk-tool.co.jp;
+
+    ssl_certificate     /etc/nginx/certs/admin.ckk-tool.co.jp.crt;
+    ssl_certificate_key /etc/nginx/certs/admin.ckk-tool.co.jp.key;
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_session_cache shared:SSL:10m;
+
+    client_max_body_size 50m;
+
+    location / {
+        proxy_pass http://admintools:8000;
+        proxy_http_version 1.1;
+        proxy_set_header Host              $host;
+        proxy_set_header X-Real-IP         $remote_addr;
+        proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header Upgrade           $http_upgrade;
+        proxy_set_header Connection        "upgrade";
+    }
+}

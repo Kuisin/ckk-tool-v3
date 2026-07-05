@@ -1,0 +1,64 @@
+// 設計依頼 (_specs/tables.md §10).
+
+enum DesignTrigger {
+  QUOTE
+  SALES_ORDER
+
+  @@map("DESIGN_TRIGGER")
+  @@schema("design")
+}
+
+enum DesignStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+
+  @@map("DESIGN_STATUS")
+  @@schema("design")
+}
+
+model DesignRequest {
+  id            String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  requestNumber String        @unique @map("request_number")
+  trigger       DesignTrigger
+  quoteId       String?       @map("quote_id") @db.Uuid
+  salesOrderId  String?       @map("sales_order_id") @db.Uuid
+  productId     String?       @map("product_id")
+  description   String?
+  status        DesignStatus  @default(PENDING)
+  completedAt   DateTime?     @map("completed_at") @db.Timestamptz(6)
+  createdBy     String?       @map("created_by") @db.Uuid
+  createdAt     DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime      @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  quote         Quote?      @relation(fields: [quoteId], references: [id])
+  salesOrder    SalesOrder? @relation(fields: [salesOrderId], references: [id])
+  product       Product?    @relation(fields: [productId], references: [id])
+  createdByUser User?       @relation("DesignRequestCreatedBy", fields: [createdBy], references: [id])
+  files         DesignFile[]
+
+  @@map("design_requests")
+  @@schema("design")
+}
+
+model DesignFile {
+  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  designRequestId String?  @map("design_request_id") @db.Uuid
+  productId       String?  @map("product_id")
+  fileId          String   @map("file_id") @db.Uuid
+  version         Int      @default(1)
+  isLatest        Boolean  @default(true) @map("is_latest")
+  notes           String?
+  createdBy       String?  @map("created_by") @db.Uuid
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  designRequest DesignRequest? @relation(fields: [designRequestId], references: [id])
+  product       Product?       @relation("DesignFileProduct", fields: [productId], references: [id])
+  file          File           @relation("DesignFileFile", fields: [fileId], references: [id])
+  createdByUser User?          @relation("DesignFileCreatedBy", fields: [createdBy], references: [id])
+
+  productsUsing Product[] @relation("ProductDesignFile")
+
+  @@map("design_files")
+  @@schema("design")
+}

@@ -1,0 +1,38 @@
+# Prisma Studio — web DB browser for the shared CKK database.
+#
+# Public URL: https://db.kai-lab.net  (via the cloudflared tunnel; the hostname
+# -> http://prisma-studio:5555 mapping is added in the Cloudflare Zero Trust
+# dashboard, like the other kai-lab.net services).
+#
+# Connects as studio_ro — SELECT on every schema, so it can browse all tables
+# but cannot modify data (edits fail at the DB). Deployed on docker-mac-pro at
+# ~/stacks/prisma-studio.
+#
+# The schema under prisma/schema is a synced copy of shared-db/prisma/schema —
+# refresh it with `pnpm db:sync-schema` in shared-db when models change, then
+# rebuild this image.
+
+services:
+  prisma-studio:
+    build: .
+    image: ckk-prisma-studio
+    container_name: prisma-studio
+    restart: unless-stopped
+    environment:
+      # Read-only role on the shared DB (studio_ro). Password in .env (gitignored).
+      - DATABASE_URL=postgresql://studio_ro:${STUDIO_RO_DB_PASSWORD:?set STUDIO_RO_DB_PASSWORD in .env}@shared-db:5432/ckk
+    networks:
+      - shareddb
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:5555/').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+# Joins the shared-db stack network so it can reach shared-db:5432, and so the
+# cloudflared tunnel (which attaches to this network) can reach prisma-studio:5555.
+networks:
+  shareddb:
+    external: true
+    name: shared-db
