@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import os
 import re
+import uuid
 
 import psycopg2
 from ldap3 import ALL, SUBTREE, Connection, Server
@@ -46,6 +47,11 @@ CREATE TABLE IF NOT EXISTS employee_directory (
     employee_code integer,
     last_synced_at timestamptz NOT NULL DEFAULT now()
 );
+-- ldap_guid: immutable AD objectGUID. The STABLE identity apps FK to, so a
+-- username/attribute change updates the same row instead of orphaning refs.
+ALTER TABLE employee_directory ADD COLUMN IF NOT EXISTS ldap_guid uuid;
+CREATE UNIQUE INDEX IF NOT EXISTS employee_directory_ldap_guid_key
+    ON employee_directory (ldap_guid);
 CREATE TABLE IF NOT EXISTS ldap_sync_log (
     id          bigserial PRIMARY KEY,
     finished_at timestamptz NOT NULL DEFAULT now(),
@@ -57,7 +63,35 @@ CREATE TABLE IF NOT EXISTS ldap_sync_log (
 CREATE INDEX IF NOT EXISTS idx_ldap_sync_log_finished ON ldap_sync_log (finished_at DESC);
 """
 
+# Legacy rows predate ldap_guid — backfill by username first so the guid-keyed
+# upsert matches them instead of inserting a duplicate.
+BACKFILL = """
+UPDATE employee_directory SET ldap_guid = %(ldap_guid)s
+WHERE username = %(username)s AND ldap_guid IS DISTINCT FROM %(ldap_guid)s
+"""
+
+# Conflict on ldap_guid (the stable key), NOT username: an AD rename updates the
+# same row in place — username is just another mutable attribute now.
 UPSERT = """
+INSERT INTO employee_directory
+    (username, ldap_guid, display_name, email, department, title, company, office,
+     manager, is_active, employee_code, last_synced_at)
+VALUES
+    (%(username)s, %(ldap_guid)s, %(display_name)s, %(email)s, %(department)s,
+     %(title)s, %(company)s, %(office)s, %(manager)s, %(is_active)s,
+     %(employee_code)s, now())
+ON CONFLICT (ldap_guid) DO UPDATE SET
+    username = EXCLUDED.username,
+    display_name = EXCLUDED.display_name, email = EXCLUDED.email,
+    department = EXCLUDED.department, title = EXCLUDED.title,
+    company = EXCLUDED.company, office = EXCLUDED.office, manager = EXCLUDED.manager,
+    is_active = EXCLUDED.is_active,
+    employee_code = COALESCE(EXCLUDED.employee_code, employee_directory.employee_code),
+    last_synced_at = now()
+"""
+
+# Fallback for the (unexpected) case where AD returns no objectGUID.
+UPSERT_NO_GUID = """
 INSERT INTO employee_directory
     (username, display_name, email, department, title, company, office, manager,
      is_active, employee_code, last_synced_at)
@@ -81,6 +115,23 @@ def _val(entry, attr):
     return None
 
 
+def _guid(e) -> str | None:
+    """AD objectGUID → canonical UUID string (mixed-endian, as AD tools show)."""
+    try:
+        raw = e.objectGUID.raw_values[0]
+        if isinstance(raw, (bytes, bytearray)) and len(raw) == 16:
+            return str(uuid.UUID(bytes_le=bytes(raw)))
+    except Exception:  # noqa: BLE001
+        pass
+    v = _val(e, "objectGUID")
+    if v:
+        try:
+            return str(uuid.UUID(v.strip("{}")))
+        except Exception:  # noqa: BLE001
+            return None
+    return None
+
+
 def _row(e) -> dict:
     uac = 0
     try:
@@ -91,6 +142,7 @@ def _row(e) -> dict:
     m = _PX_RE.search(desc)
     return {
         "username": str(e.sAMAccountName),
+        "ldap_guid": _guid(e),
         "display_name": _val(e, "displayName"),
         "email": _val(e, "mail"),
         "department": _val(e, "department"),
@@ -103,8 +155,9 @@ def _row(e) -> dict:
     }
 
 
-_ATTRS = ["sAMAccountName", "displayName", "mail", "department", "title", "company",
-          "physicalDeliveryOfficeName", "manager", "description", "userAccountControl"]
+_ATTRS = ["sAMAccountName", "objectGUID", "displayName", "mail", "department", "title",
+          "company", "physicalDeliveryOfficeName", "manager", "description",
+          "userAccountControl"]
 
 
 def _connect_ldap() -> Connection:
@@ -130,7 +183,12 @@ def _write(rows: list[dict], kind: str) -> int:
             cur.execute(DDL)
         with conn, conn.cursor() as cur:
             for r in rows:
-                cur.execute(UPSERT, r)
+                if r["ldap_guid"]:
+                    # Backfill legacy username-keyed rows, then upsert on the guid.
+                    cur.execute(BACKFILL, r)
+                    cur.execute(UPSERT, r)
+                else:
+                    cur.execute(UPSERT_NO_GUID, r)
             # Refresh the KOT code->username map from the authoritative PX codes.
             for r in rows:
                 if r["employee_code"] is not None:
