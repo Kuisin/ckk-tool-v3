@@ -55,3 +55,28 @@ export async function nextDocumentNumber(key: NumberingKey): Promise<string> {
   const { yearMonth, seq } = await allocateDocumentKey(key);
   return `${prefix}-${yearMonth}-${String(seq).padStart(digits, "0")}`;
 }
+
+// ── Global serials (no monthly reset) ────────────────────────────────────────
+
+const SERIALS = {
+  BP: { prefix: "BP", digits: 5 },
+} as const;
+
+export type SerialKey = keyof typeof SERIALS;
+
+/** Next global serial code, e.g. `BP-00012`. Never resets. */
+export async function nextSerialCode(key: SerialKey): Promise<string> {
+  const { prefix, digits } = SERIALS[key];
+  const rows = await prisma.$queryRaw<{ last_sequence: number }[]>`
+    INSERT INTO "sys"."numbering_sequences"
+      ("key", "prefix", "last_year_month", "last_sequence", "updated_at")
+    VALUES (${key}, ${prefix}, NULL, 1, now())
+    ON CONFLICT ("key") DO UPDATE SET
+      "last_sequence" = "numbering_sequences"."last_sequence" + 1,
+      "updated_at" = now()
+    RETURNING "last_sequence"
+  `;
+  const seq = rows[0]?.last_sequence;
+  if (!seq) throw new Error(`numbering failed for ${key}`);
+  return `${prefix}-${String(seq).padStart(digits, "0")}`;
+}

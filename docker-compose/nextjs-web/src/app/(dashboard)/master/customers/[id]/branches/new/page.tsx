@@ -1,15 +1,23 @@
-import { PlaceholderPage } from "@/components/ui/PlaceholderPage";
+import { notFound } from "next/navigation";
+import { BranchForm } from "@/components/master/customers/BranchForm";
+import { fetchCustomerDetail } from "../../../../_shared/bp-data";
 
+export const dynamic = "force-dynamic";
+
+/** 支店 新規作成（顧客配下）. */
 export default async function CustomerBranchNewPage({
   params,
 }: {
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
+  const parent = await fetchCustomerDetail(id);
+  if (!parent) notFound();
   return (
-    <PlaceholderPage
-      breadcrumbs={["マスタ", "顧客", id, "支店", "新規作成"]}
-      title="支店 新規作成"
+    <BranchForm
+      parentBpCode={parent.bpCode}
+      parentId={parent.id}
+      parentName={parent.nameJa}
     />
   );
 }

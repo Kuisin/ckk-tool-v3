@@ -1,11 +1,10 @@
-import { PlaceholderPage } from "@/components/ui/PlaceholderPage";
+import { CustomerTable } from "@/components/master/customers/CustomerTable";
+import { fetchCustomers } from "../_shared/bp-data";
 
-export default function MasterCustomersPage() {
-  return (
-    <PlaceholderPage
-      breadcrumbs={["マスタ", "顧客"]}
-      operationCode="MS01"
-      title="顧客"
-    />
-  );
+export const dynamic = "force-dynamic";
+
+/** 顧客 一覧 (MS01). */
+export default async function MasterCustomersPage() {
+  const rows = await fetchCustomers();
+  return <CustomerTable rows={rows} />;
 }

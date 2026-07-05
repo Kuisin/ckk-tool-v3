@@ -1,8 +1,7 @@
 // 外部関係者マスタ — Business Partner (_specs/tables.md §Business Partner Master).
 // 1 法人エンティティ + 複数ロール割当（S/4HANA BP モデル準拠）。
-// 現段階は販売 MVP（試算・価格表・見積書）の顧客マスタが対象 —
-// 仕入先/需要家の固有属性テーブル (bp_vendor_attrs / bp_end_user_attrs) は
-// 購買・生産機能の実装時に追加する。
+// 顧客 (CUSTOMER)・仕入先/外注先 (VENDOR)・需要家 (END_USER) を統合管理し、
+// ロール固有属性は bp_customer_attrs / bp_vendor_attrs / bp_end_user_attrs。
 
 enum BpRole {
   CUSTOMER
@@ -10,6 +9,14 @@ enum BpRole {
   END_USER
 
   @@map("BP_ROLE")
+  @@schema("bp")
+}
+
+enum VendorType {
+  SUPPLIER
+  OUTSOURCE
+
+  @@map("VENDOR_TYPE")
   @@schema("bp")
 }
 
@@ -60,6 +67,8 @@ model BusinessPartner {
   roleAssignments BpRoleAssignment[]
   customerAttrs   BpCustomerAttrs?   @relation("CustomerAttrsBp")
   billingTargetOf BpCustomerAttrs[]  @relation("CustomerAttrsBilling")
+  vendorAttrs     BpVendorAttrs?
+  endUserAttrs    BpEndUserAttrs?
   contacts        BpContact[]
 
   estimates        Estimate[]       @relation("EstimateCustomer")
@@ -104,6 +113,37 @@ model BpCustomerAttrs {
   billingBp BusinessPartner? @relation("CustomerAttrsBilling", fields: [billingBpId], references: [id])
 
   @@map("bp_customer_attrs")
+  @@schema("bp")
+}
+
+model BpVendorAttrs {
+  bpId              String     @id @map("bp_id") @db.Uuid
+  vendorCode        String?    @unique @map("vendor_code")
+  vendorType        VendorType @map("vendor_type")
+  closingDay        Int?       @map("closing_day") @db.SmallInt
+  paymentTermsDays  Int?       @map("payment_terms_days")
+  paymentDay        Int?       @map("payment_day") @db.SmallInt
+  bankName          String?    @map("bank_name")
+  bankBranch        String?    @map("bank_branch")
+  bankAccountType   String?    @map("bank_account_type")
+  bankAccountNumber String?    @map("bank_account_number")
+  leadTimeDays      Int?       @map("lead_time_days")
+  notes             String?
+
+  bp BusinessPartner @relation(fields: [bpId], references: [id])
+
+  @@map("bp_vendor_attrs")
+  @@schema("bp")
+}
+
+model BpEndUserAttrs {
+  bpId     String  @id @map("bp_id") @db.Uuid
+  industry String?
+  notes    String?
+
+  bp BusinessPartner @relation(fields: [bpId], references: [id])
+
+  @@map("bp_end_user_attrs")
   @@schema("bp")
 }
 
