@@ -4,7 +4,7 @@
  * BpBaseSummary.tsx — BP 詳細画面の法人基本情報グリッド（共通）。
  */
 
-import { Anchor } from "@mantine/core";
+import { Anchor, Badge, Group } from "@mantine/core";
 import type { BpBaseDetail } from "@/app/(dashboard)/master/_shared/bp-data";
 import { DocNumber } from "@/components/ui/DocNumber";
 import { FieldValue } from "@/components/ui/FieldValue";
@@ -65,6 +65,22 @@ export function BpBaseSummary({
         }
       />
       <FieldValue label="法人番号" value={record.taxNumber || "—"} />
+      <FieldValue
+        label="AI照合名"
+        value={
+          record.matchNames.length > 0 ? (
+            <Group gap={4} wrap="wrap">
+              {record.matchNames.map((n) => (
+                <Badge color="gray" key={n} size="sm" variant="light">
+                  {n}
+                </Badge>
+              ))}
+            </Group>
+          ) : (
+            "—"
+          )
+        }
+      />
       {extra}
     </SummaryGrid>
   );

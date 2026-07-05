@@ -1,5 +1,5 @@
 /**
- * numbering.ts — document numbering on sys.numbering_sequences
+ * numbering.ts — document numbering on app.numbering_sequences
  * (_specs/tables.md §採番管理). Server-only.
  *
  * Formats: PRD-YYYYMM-NNNN (製品) / EST-, QOT- ... -NNNNN with monthly reset.
@@ -31,7 +31,7 @@ export async function allocateDocumentKey(
   const yearMonth = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, "0")}`;
 
   const rows = await prisma.$queryRaw<{ last_sequence: number }[]>`
-    INSERT INTO "sys"."numbering_sequences"
+    INSERT INTO "app"."numbering_sequences"
       ("key", "prefix", "last_year_month", "last_sequence", "updated_at")
     VALUES (${key}, ${prefix}, ${yearMonth}, 1, now())
     ON CONFLICT ("key") DO UPDATE SET
@@ -68,7 +68,7 @@ export type SerialKey = keyof typeof SERIALS;
 export async function nextSerialCode(key: SerialKey): Promise<string> {
   const { prefix, digits } = SERIALS[key];
   const rows = await prisma.$queryRaw<{ last_sequence: number }[]>`
-    INSERT INTO "sys"."numbering_sequences"
+    INSERT INTO "app"."numbering_sequences"
       ("key", "prefix", "last_year_month", "last_sequence", "updated_at")
     VALUES (${key}, ${prefix}, NULL, 1, now())
     ON CONFLICT ("key") DO UPDATE SET

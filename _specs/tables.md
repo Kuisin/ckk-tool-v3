@@ -1250,6 +1250,7 @@ Table business_partners {
   email           varchar
   website         varchar
   tax_number      varchar                       // 法人番号等
+  match_names     "text[]"    [default: '{}']   // AI抽出の社名照合リスト（表記ゆれ・旧社名）
   is_active       boolean     [default: true]
   notes           text
   created_by      uuid

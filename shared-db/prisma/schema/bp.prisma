@@ -54,6 +54,9 @@ model BusinessPartner {
   email       String?
   website     String?
   taxNumber   String?  @map("tax_number")
+  // AI 抽出（po-extract）が読み取った社名をこの BP に解決するための照合名リスト。
+  // 表記ゆれ（全角/半角・㈱/株式会社・旧名など）をすべて登録する。
+  matchNames  String[] @default([]) @map("match_names")
   isActive    Boolean  @default(true) @map("is_active")
   notes       String?
   createdBy   String?  @map("created_by") @db.Uuid
