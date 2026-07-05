@@ -12,7 +12,7 @@ ALTER ROLE kot        IN DATABASE ckk SET search_path = kot, directory;
 ALTER ROLE ldap_sync  IN DATABASE ckk SET search_path = directory, kot;
 ALTER ROLE admintools IN DATABASE ckk SET search_path = admintools;
 ALTER ROLE kot_ro     IN DATABASE ckk SET search_path = kot, directory;
-ALTER ROLE studio_ro  IN DATABASE ckk SET search_path = auth, master, bp, sales, sys, kot, directory, admintools;
+ALTER ROLE studio_ro  IN DATABASE ckk SET search_path = app, kot, directory, admintools;
 
 -- ── kot: KOT importer + admintools match_employees ───────────────────
 -- CREATE on schema kot: the apps run legacy `CREATE TABLE IF NOT EXISTS`
@@ -60,11 +60,11 @@ ALTER SEQUENCE admintools.group_members_id_seq OWNER TO admintools;
 
 -- ── app: nextjs-web (Prisma Client) — full rw on v3 schemas,
 --        read-only on labor data ─────────────────────────────────────
-GRANT USAGE ON SCHEMA auth, master, bp, sales, sys TO app;
-GRANT ALL ON ALL TABLES    IN SCHEMA auth, master, bp, sales, sys TO app;
-GRANT ALL ON ALL SEQUENCES IN SCHEMA auth, master, bp, sales, sys TO app;
-ALTER DEFAULT PRIVILEGES IN SCHEMA auth, master, bp, sales, sys GRANT ALL ON TABLES TO app;
-ALTER DEFAULT PRIVILEGES IN SCHEMA auth, master, bp, sales, sys GRANT ALL ON SEQUENCES TO app;
+GRANT USAGE ON SCHEMA app TO app;
+GRANT ALL ON ALL TABLES    IN SCHEMA app TO app;
+GRANT ALL ON ALL SEQUENCES IN SCHEMA app TO app;
+ALTER DEFAULT PRIVILEGES IN SCHEMA app GRANT ALL ON TABLES TO app;
+ALTER DEFAULT PRIVILEGES IN SCHEMA app GRANT ALL ON SEQUENCES TO app;
 GRANT USAGE ON SCHEMA kot, directory TO app;
 GRANT SELECT ON ALL TABLES IN SCHEMA kot, directory TO app;
 ALTER DEFAULT PRIVILEGES IN SCHEMA kot GRANT SELECT ON TABLES TO app;
@@ -82,8 +82,8 @@ ALTER DEFAULT PRIVILEGES IN SCHEMA directory GRANT SELECT ON TABLES TO kot_ro;
 -- future Prisma-created tables in the v3 schemas are covered automatically.
 -- The app-owned schemas (admintools, directory) get FOR ROLE default privs
 -- so tables those apps add later are also visible.
-GRANT USAGE ON SCHEMA kot, directory, admintools, auth, master, bp, sales, sys TO studio_ro;
-GRANT SELECT ON ALL TABLES IN SCHEMA kot, directory, admintools, auth, master, bp, sales, sys TO studio_ro;
-ALTER DEFAULT PRIVILEGES IN SCHEMA auth, master, bp, sales, sys, kot, directory GRANT SELECT ON TABLES TO studio_ro;
+GRANT USAGE ON SCHEMA app, kot, directory, admintools TO studio_ro;
+GRANT SELECT ON ALL TABLES IN SCHEMA app, kot, directory, admintools TO studio_ro;
+ALTER DEFAULT PRIVILEGES IN SCHEMA app, kot, directory GRANT SELECT ON TABLES TO studio_ro;
 ALTER DEFAULT PRIVILEGES FOR ROLE admintools IN SCHEMA admintools GRANT SELECT ON TABLES TO studio_ro;
 ALTER DEFAULT PRIVILEGES FOR ROLE ldap_sync IN SCHEMA directory GRANT SELECT ON TABLES TO studio_ro;

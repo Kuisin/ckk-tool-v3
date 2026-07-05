@@ -7,7 +7,7 @@ enum MaterialForm {
   OTHER
 
   @@map("MATERIAL_FORM")
-  @@schema("master")
+  @@schema("app")
 }
 
 // 材種: [A-Z][0-9]{2}[A-Z][0-9]{4} 例: A01A0001
@@ -22,7 +22,7 @@ model MaterialType {
   materials Material[]
 
   @@map("material_types")
-  @@schema("master")
+  @@schema("app")
 }
 
 // 素材: [材種コード]-[A-C][0-9]{3}-[0-9]{3} 例: A01A0001-A001-001
@@ -42,7 +42,7 @@ model Material {
   estimates    Estimate[]
 
   @@map("materials")
-  @@schema("master")
+  @@schema("app")
 }
 
 // 製品コード: PRD-YYYYMM-NNNN
@@ -62,5 +62,5 @@ model Product {
   quoteItems       QuoteItem[]
 
   @@map("products")
-  @@schema("master")
+  @@schema("app")
 }

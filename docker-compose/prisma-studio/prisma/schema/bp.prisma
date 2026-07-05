@@ -9,7 +9,7 @@ enum BpRole {
   END_USER
 
   @@map("BP_ROLE")
-  @@schema("bp")
+  @@schema("app")
 }
 
 enum VendorType {
@@ -17,7 +17,7 @@ enum VendorType {
   OUTSOURCE
 
   @@map("VENDOR_TYPE")
-  @@schema("bp")
+  @@schema("app")
 }
 
 enum TaxType {
@@ -26,7 +26,7 @@ enum TaxType {
   REDUCED
 
   @@map("TAX_TYPE")
-  @@schema("bp")
+  @@schema("app")
 }
 
 enum InvoiceMethod {
@@ -36,7 +36,7 @@ enum InvoiceMethod {
   PORTAL
 
   @@map("INVOICE_METHOD")
-  @@schema("bp")
+  @@schema("app")
 }
 
 model BusinessPartner {
@@ -78,7 +78,7 @@ model BusinessPartner {
 
   @@index([parentId])
   @@map("business_partners")
-  @@schema("bp")
+  @@schema("app")
 }
 
 model BpRoleAssignment {
@@ -93,7 +93,7 @@ model BpRoleAssignment {
 
   @@unique([bpId, role])
   @@map("bp_role_assignments")
-  @@schema("bp")
+  @@schema("app")
 }
 
 model BpCustomerAttrs {
@@ -113,7 +113,7 @@ model BpCustomerAttrs {
   billingBp BusinessPartner? @relation("CustomerAttrsBilling", fields: [billingBpId], references: [id])
 
   @@map("bp_customer_attrs")
-  @@schema("bp")
+  @@schema("app")
 }
 
 model BpVendorAttrs {
@@ -133,7 +133,7 @@ model BpVendorAttrs {
   bp BusinessPartner @relation(fields: [bpId], references: [id])
 
   @@map("bp_vendor_attrs")
-  @@schema("bp")
+  @@schema("app")
 }
 
 model BpEndUserAttrs {
@@ -144,7 +144,7 @@ model BpEndUserAttrs {
   bp BusinessPartner @relation(fields: [bpId], references: [id])
 
   @@map("bp_end_user_attrs")
-  @@schema("bp")
+  @@schema("app")
 }
 
 model BpContact {
@@ -165,5 +165,5 @@ model BpContact {
 
   @@index([bpId])
   @@map("bp_contacts")
-  @@schema("bp")
+  @@schema("app")
 }
