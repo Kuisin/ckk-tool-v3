@@ -5,9 +5,9 @@
  *
  * 顧客 + 有効期限 + 状態, then a line-item section where each row is a
  * ProductPriceResolverInput (§12.9) that auto-fills 単価 from the 価格表 for the
- * chosen 顧客×製品×注文種別×数量. Changing 顧客 re-resolves every line.
- *
- * TODO(server-action): replace the console.log submit with a Server Action.
+ * chosen 顧客×製品×注文種別×数量. Changing 顧客 re-resolves every line
+ * against the server-fetched 価格表 entries; the Server Action re-resolves
+ * once more at save time (the client values are display-only).
  */
 
 import {
@@ -29,6 +29,10 @@ import { useRouter } from "next/navigation";
 import { useTransition } from "react";
 import { z } from "zod";
 import {
+  createQuote,
+  updateQuote,
+} from "@/app/(dashboard)/sales/quotes/actions";
+import {
   ProductPriceResolverInput,
   type ResolverValue,
 } from "@/components/sales/ProductPriceResolverInput";
@@ -37,18 +41,28 @@ import { StatusBadge, statusOptions } from "@/components/ui/StatusBadge";
 import { FormSection, FormShell } from "@/components/ui/shells";
 import { zodResolver } from "@/lib/form";
 import { formatMoney } from "@/lib/format";
-import { BRANCHES, CUSTOMERS } from "@/lib/mock";
-import { getQuote, type Quote, resolveUnitPrice, TAX_RATE } from "./mock";
+import type { Option } from "@/lib/mock";
+import type { PriceListEntry } from "../price-lists/model";
+import { type Quote, resolveUnitPriceFromEntries, TAX_RATE } from "./model";
 
-const itemSchema = z.object({
-  productId: z.string().min(1, "製品を選択してください"),
-  productName: z.string(),
-  orderType: z.string().min(1),
-  quantity: z.number().int().min(1, "1以上"),
-  unitPrice: z.number().min(0),
-  priceTierId: z.string().nullable(),
-  deliveryDate: z.string().nullable(),
-});
+const itemSchema = z
+  .object({
+    productId: z.string().min(1, "製品を選択してください"),
+    productName: z.string(),
+    orderType: z.string().min(1),
+    quantity: z.number().int().min(1, "1以上"),
+    // 単価・値引きは価格表から自動解決される（手入力なし）。
+    unitPrice: z.number().min(0),
+    priceTierId: z.string().nullable(),
+    discountAmount: z.number().min(0),
+    discountLabel: z.string().nullable(),
+    deliveryDate: z.string().nullable(),
+  })
+  // 見積書は価格表からのみ価格を解決する — 未解決の行は保存できない。
+  .refine((it) => it.priceTierId != null, {
+    message: "該当する価格表がありません（試算から価格表を登録してください）",
+    path: ["productId"],
+  });
 
 const schema = z.object({
   customerId: z.string().min(1, "顧客を選択してください"),
@@ -71,25 +85,64 @@ const emptyItem = (): ItemForm => ({
   quantity: 1,
   unitPrice: 0,
   priceTierId: null,
+  discountAmount: 0,
+  discountLabel: null,
   deliveryDate: null,
 });
 
+/** 価格表「見積書を作成」からの事前入力（quotes/new?customer=…&product=…）. */
+export interface QuotePrefill {
+  customerId?: string;
+  productId?: string;
+  orderType?: string;
+  quantity?: number;
+  deliveryDate?: string | null;
+}
+
 function buildInitial(
-  mode: "create" | "edit",
-  quoteId?: string,
+  quote: Quote | null | undefined,
+  prefill: QuotePrefill | undefined,
+  entries: PriceListEntry[],
+  productOptions: Option[],
 ): QuoteFormValues {
-  if (mode === "edit" && quoteId) {
-    const q = getQuote(quoteId);
-    if (q) return toFormValues(q);
-  }
-  return {
-    customerId: "",
+  if (quote) return toFormValues(quote);
+  const base: QuoteFormValues = {
+    customerId: prefill?.customerId ?? "",
     customerBranchId: null,
     status: "DRAFT",
     validUntil: null,
     notes: "",
     items: [emptyItem()],
   };
+  if (prefill?.customerId && prefill.productId) {
+    // 価格表から起動 — 単価・値引きを価格表から解決して1行目に流し込む。
+    const orderType = prefill.orderType ?? "PRODUCTION";
+    const quantity = prefill.quantity ?? 1;
+    const resolved = resolveUnitPriceFromEntries(
+      entries,
+      prefill.customerId,
+      prefill.productId,
+      orderType,
+      quantity,
+    );
+    base.items = [
+      {
+        ...emptyItem(),
+        productId: prefill.productId,
+        productName:
+          productOptions.find((p) => p.value === prefill.productId)?.label ??
+          prefill.productId,
+        orderType,
+        quantity,
+        unitPrice: resolved?.unitPrice ?? 0,
+        priceTierId: resolved?.tierId ?? null,
+        discountAmount: resolved?.discountAmount ?? 0,
+        discountLabel: resolved?.discountLabel ?? null,
+        deliveryDate: prefill.deliveryDate ?? null,
+      },
+    ];
+  }
+  return base;
 }
 
 function toFormValues(q: Quote): QuoteFormValues {
@@ -106,6 +159,8 @@ function toFormValues(q: Quote): QuoteFormValues {
       quantity: it.quantity,
       unitPrice: it.unitPrice,
       priceTierId: it.priceTierId,
+      discountAmount: it.discountAmount,
+      discountLabel: it.discountLabel,
       deliveryDate: it.deliveryDate,
     })),
   };
@@ -113,22 +168,36 @@ function toFormValues(q: Quote): QuoteFormValues {
 
 export function QuoteForm({
   mode,
-  quoteId,
+  quote,
+  prefill,
+  customerOptions,
+  branchesByCustomer,
+  productOptions,
+  entries,
 }: {
   mode: "create" | "edit";
-  quoteId?: string;
+  /** Edit / 複製: the source quote (server-fetched view-model). */
+  quote?: Quote | null;
+  prefill?: QuotePrefill;
+  customerOptions: Option[];
+  /** 顧客 BP id → 支店 options. */
+  branchesByCustomer: Record<string, Option[]>;
+  productOptions: Option[];
+  /** 全顧客の価格表エントリ — 行のライブ解決に使用。 */
+  entries: PriceListEntry[];
 }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
+  const quoteId = mode === "edit" ? quote?.id : undefined;
 
   const form = useForm<QuoteFormValues>({
     validate: zodResolver(schema),
-    initialValues: buildInitial(mode, quoteId),
+    initialValues: buildInitial(quote, prefill, entries, productOptions),
   });
 
-  const branches = BRANCHES[form.values.customerId] ?? [];
+  const branches = branchesByCustomer[form.values.customerId] ?? [];
 
-  /** Changing 顧客 → re-resolve every line's 単価 against the new customer's 価格表. */
+  /** Changing 顧客 → re-resolve every line's 単価・値引き against the new customer's 価格表. */
   const onCustomerChange = (customerId: string) => {
     form.setFieldValue("customerId", customerId);
     form.setFieldValue("customerBranchId", null);
@@ -136,7 +205,8 @@ export function QuoteForm({
       "items",
       form.values.items.map((it) => {
         const r = it.productId
-          ? resolveUnitPrice(
+          ? resolveUnitPriceFromEntries(
+              entries,
               customerId,
               it.productId,
               it.orderType,
@@ -147,32 +217,57 @@ export function QuoteForm({
           ...it,
           unitPrice: r?.unitPrice ?? 0,
           priceTierId: r?.tierId ?? null,
+          discountAmount: r?.discountAmount ?? 0,
+          discountLabel: r?.discountLabel ?? null,
         };
       }),
     );
   };
 
   const subtotal = form.values.items.reduce(
-    (sum, it) => sum + it.unitPrice * it.quantity,
+    (sum, it) =>
+      sum + Math.max(0, it.unitPrice * it.quantity - it.discountAmount),
     0,
   );
   const tax = Math.round(subtotal * TAX_RATE);
   const grandTotal = subtotal + tax;
 
   const handleSubmit = (values: QuoteFormValues) => {
-    startTransition(() => {
-      // TODO(server-action): persist quote + items (採番 QOT-YYYYMM-NNNNN on create).
-      console.log("submit quote", values);
-      notifications.show({
-        title: "保存しました",
-        message:
-          mode === "edit" ? "見積書を更新しました" : "見積書を作成しました",
-        color: "green",
-      });
-      // 作成・更新後は詳細（ビュー）ページへ。create は既存デモ ID にフォールバック。
-      const targetId =
-        mode === "edit" && quoteId ? quoteId : "QOT-202602-00012";
-      router.push(`${BASE_PATH}/${targetId}`);
+    const payload = {
+      customerBpId: values.customerId,
+      customerBranchBpId: values.customerBranchId,
+      status: values.status,
+      validUntil: values.validUntil,
+      notes: values.notes,
+      items: values.items.map((it) => ({
+        productId: it.productId,
+        orderType: it.orderType as "PRODUCTION" | "TEST" | "SAMPLE" | "OTHER",
+        quantity: it.quantity,
+        deliveryDate: it.deliveryDate,
+        notes: null,
+      })),
+    };
+    startTransition(async () => {
+      const result =
+        mode === "edit" && quoteId
+          ? await updateQuote(quoteId, payload)
+          : await createQuote(payload);
+      if (result.ok) {
+        notifications.show({
+          title: "保存しました",
+          message:
+            mode === "edit" ? "見積書を更新しました" : "見積書を作成しました",
+          color: "green",
+        });
+        // 作成・更新後は詳細（ビュー）ページへ。
+        router.push(`${BASE_PATH}/${result.data.number}`);
+      } else {
+        notifications.show({
+          title: "エラー",
+          message: result.error,
+          color: "red",
+        });
+      }
     });
   };
 
@@ -198,7 +293,7 @@ export function QuoteForm({
       <FormSection title="基本情報">
         <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
           <Select
-            data={CUSTOMERS}
+            data={customerOptions}
             error={form.errors.customerId}
             label="顧客"
             onChange={(v) => onCustomerChange(v ?? "")}
@@ -232,7 +327,7 @@ export function QuoteForm({
       </FormSection>
 
       <FormSection
-        description="製品・注文種別・数量を選ぶと、顧客の価格表から単価が自動入力されます（手動上書き可）。"
+        description="単価（基準単価 × 数量倍率）と値引き（値引きルール）は顧客の価格表から自動計算されます。手入力はありません — 価格を変える場合は価格表側で設定してください。"
         title="明細"
       >
         <Stack gap="md">
@@ -243,6 +338,7 @@ export function QuoteForm({
                 <Box flex={1}>
                   <ProductPriceResolverInput
                     customerId={form.values.customerId}
+                    entries={entries}
                     onChange={(next: ResolverValue) => {
                       form.setFieldValue(
                         `items.${ri}.productId`,
@@ -265,7 +361,16 @@ export function QuoteForm({
                         `items.${ri}.priceTierId`,
                         next.priceTierId,
                       );
+                      form.setFieldValue(
+                        `items.${ri}.discountAmount`,
+                        next.discountAmount,
+                      );
+                      form.setFieldValue(
+                        `items.${ri}.discountLabel`,
+                        next.discountLabel,
+                      );
                     }}
+                    productOptions={productOptions}
                     value={item}
                   />
                 </Box>

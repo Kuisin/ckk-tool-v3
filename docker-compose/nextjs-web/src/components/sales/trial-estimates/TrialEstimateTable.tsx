@@ -5,18 +5,28 @@
  */
 
 import { Badge, Group, Select, Stack, Text, TextInput } from "@mantine/core";
-import { IconCalculator, IconSearch, IconSettings } from "@tabler/icons-react";
+import {
+  IconCalculator,
+  IconCopy,
+  IconCurrencyYen,
+  IconSearch,
+  IconSettings,
+} from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { SecondaryButton } from "@/components/ui/buttons";
 import { type Column, DataTable } from "@/components/ui/DataTable";
+import { DocNumber } from "@/components/ui/DocNumber";
 import { MoneyText } from "@/components/ui/MoneyText";
 import { NewButton } from "@/components/ui/NewButton";
+import { StatusBadge, statusOptions } from "@/components/ui/StatusBadge";
 import { ListShell } from "@/components/ui/shells";
 import { useIsMobile } from "@/hooks/useViewport";
 import { formatDateTime } from "@/lib/format";
+import type { Option } from "@/lib/mock";
 import { calcTrialPricing, TOOL_TYPE_OPTIONS } from "@/lib/trial-pricing";
-import { MOCK_TRIAL_ESTIMATES, type TrialEstimateRecord } from "./mock";
+import { ConvertToPriceListModal } from "./ConvertToPriceListModal";
+import type { ExistingEntryRef, TrialEstimateRecord } from "./types";
 
 const BASE_PATH = "/sales/trial-estimates";
 
@@ -27,22 +37,46 @@ const toolLabel = (v: string) =>
 const headlinePrice = (r: TrialEstimateRecord) =>
   calcTrialPricing(r.input).lots[0]?.estimateUnitPrice ?? 0;
 
-export function TrialEstimateTable() {
+export function TrialEstimateTable({
+  rows,
+  customerOptions,
+  productOptions,
+  existingEntries,
+}: {
+  rows: TrialEstimateRecord[];
+  customerOptions: Option[];
+  productOptions: Option[];
+  existingEntries: ExistingEntryRef[];
+}) {
   const router = useRouter();
   const isMobile = useIsMobile();
   const [search, setSearch] = useState("");
   const [toolType, setToolType] = useState<string | null>(null);
+  const [status, setStatus] = useState<string | null>(null);
+  // 価格表に登録 modal target (null = closed).
+  const [registerTarget, setRegisterTarget] =
+    useState<TrialEstimateRecord | null>(null);
 
-  const filtered = MOCK_TRIAL_ESTIMATES.filter((r) => {
+  const filtered = rows.filter((r) => {
     const matchesSearch =
       !search ||
       r.name.includes(search) ||
+      r.estimateNumber.includes(search) ||
       (r.customerName ?? "").includes(search);
     const matchesTool = !toolType || r.input.toolType === toolType;
-    return matchesSearch && matchesTool;
+    const matchesStatus = !status || r.status === status;
+    return matchesSearch && matchesTool && matchesStatus;
   });
 
   const columns: Column<TrialEstimateRecord>[] = [
+    {
+      key: "estimateNumber",
+      header: "試算番号",
+      width: 170,
+      sortable: true,
+      sortValue: (r) => r.estimateNumber,
+      render: (r) => <DocNumber>{r.estimateNumber}</DocNumber>,
+    },
     {
       key: "name",
       header: "名称",
@@ -97,6 +131,13 @@ export function TrialEstimateTable() {
       ),
     },
     {
+      key: "status",
+      header: "状態",
+      width: 130,
+      sortValue: (r) => r.status,
+      render: (r) => <StatusBadge entity="Estimate" status={r.status} />,
+    },
+    {
       key: "updatedAt",
       header: "更新日",
       width: 150,
@@ -124,24 +165,40 @@ export function TrialEstimateTable() {
       }
       breadcrumbs={["販売", "試算"]}
       filters={
-        <Select
-          clearable
-          data={TOOL_TYPE_OPTIONS.map((o) => ({
-            value: o.value,
-            label: o.label,
-          }))}
-          flex={isMobile ? 1 : undefined}
-          onChange={setToolType}
-          placeholder="工具種"
-          value={toolType}
-          w={isMobile ? undefined : 140}
-        />
+        <>
+          <Select
+            clearable
+            data={statusOptions("Estimate")}
+            flex={isMobile ? 1 : undefined}
+            onChange={setStatus}
+            placeholder="状態"
+            value={status}
+            w={isMobile ? undefined : 150}
+          />
+          <Select
+            clearable
+            data={TOOL_TYPE_OPTIONS.map((o) => ({
+              value: o.value,
+              label: o.label,
+            }))}
+            flex={isMobile ? 1 : undefined}
+            onChange={setToolType}
+            placeholder="工具種"
+            value={toolType}
+            w={isMobile ? undefined : 140}
+          />
+        </>
       }
+      onReset={() => {
+        setSearch("");
+        setToolType(null);
+        setStatus(null);
+      }}
       search={
         <TextInput
           leftSection={<IconSearch size={14} />}
           onChange={(e) => setSearch(e.currentTarget.value)}
-          placeholder="名称・顧客で検索"
+          placeholder="試算番号・名称・顧客で検索"
           value={search}
         />
       }
@@ -159,6 +216,9 @@ export function TrialEstimateTable() {
         renderCard={(r) => (
           <Group align="flex-start" justify="space-between" wrap="nowrap">
             <Stack className="min-w-0" gap={3}>
+              <Text c="dimmed" ff="mono" size="xs">
+                {r.estimateNumber}
+              </Text>
               <Text fw={600} size="sm" truncate>
                 {r.name}
               </Text>
@@ -177,6 +237,7 @@ export function TrialEstimateTable() {
               </Group>
             </Stack>
             <Stack align="flex-end" className="shrink-0" gap={4}>
+              <StatusBadge entity="Estimate" size="xs" status={r.status} />
               <Text fw={700} size="sm">
                 <MoneyText value={headlinePrice(r)} />
               </Text>
@@ -186,6 +247,32 @@ export function TrialEstimateTable() {
             </Stack>
           </Group>
         )}
+        rowActions={(r) => [
+          ...(r.status === "CONFIRMED"
+            ? [
+                {
+                  label: "価格表に登録",
+                  icon: <IconCurrencyYen size={14} />,
+                  onAction: () => setRegisterTarget(r),
+                },
+              ]
+            : []),
+          {
+            label: "複製して再試算",
+            icon: <IconCopy size={14} />,
+            onAction: (row) => router.push(`${BASE_PATH}/new?from=${row.id}`),
+          },
+        ]}
+      />
+
+      <ConvertToPriceListModal
+        customerOptions={customerOptions}
+        estimate={registerTarget}
+        existingEntries={existingEntries}
+        onClose={() => setRegisterTarget(null)}
+        onRegistered={() => router.refresh()}
+        opened={registerTarget !== null}
+        productOptions={productOptions}
       />
     </ListShell>
   );

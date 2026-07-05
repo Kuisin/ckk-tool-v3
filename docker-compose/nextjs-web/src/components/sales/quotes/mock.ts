@@ -1,107 +1,56 @@
 /**
- * mock.ts — 見積書 (quote) demo data + price-list resolution.
+ * mock.ts — 見積書 demo quotes (test fixtures).
  *
- * Model (per _specs/tables.md `quotes` / `quote_items`):
- *   Quote = (顧客, 支店?, 状態, 有効期限) + a list of items.
- *     └ Item = (製品, 注文種別, 数量) → 単価 is resolved from the 価格表
- *               (price_list_tiers) for that (顧客 × 製品 × 注文種別 × 数量),
- *               then 金額 = 単価 × 数量 − 値引き.
- *
- * The defining feature (see 見積書-1.pdf): one product quoted across several
- * 数量 tiers, each row carrying the 価格表 unit price for that quantity band.
- * `resolveUnitPrice` is the link — it reads MOCK_PRICE_ENTRIES tiers so a quote
- * literally displays 価格表 data. Swap arrays/helpers for Prisma later.
+ * Formerly the screen mock; the quote screens now read sales.quotes via
+ * Prisma (see app/sales/quotes/data.ts and ./model.ts for the shared
+ * types/helpers). Kept ONLY as deterministic fixtures for the pricing unit
+ * tests — the mock-bound `resolveUnitPrice` resolves against the 価格表
+ * fixtures (../price-lists/mock).
  */
 
+import { MOCK_PRICE_ENTRIES } from "../price-lists/mock";
 import {
-  entryKey,
-  getPriceEntry,
-  type PriceTier,
-} from "@/components/sales/price-lists/mock";
-import { ORDER_TYPE_LABEL } from "@/lib/mock";
+  findPriceTierRefIn,
+  type PriceTierRef,
+  priceEntriesForQuoteIn,
+  type Quote,
+  type QuoteItem,
+  type ResolvedPrice,
+  resolveUnitPriceFromEntries,
+} from "./model";
 
-/** A resolved 単価 + the 価格表 tier it came from (null = manual override). */
-export interface ResolvedPrice {
-  unitPrice: number;
-  tierId: string | null;
-  tierLabel: string | null;
-}
+export * from "./model";
 
-/**
- * Resolve the 価格表 単価 for (顧客 × 製品 × 注文種別 × 数量).
- * Returns the matching tier's unit price, or null when no entry/tier matches.
- */
+/** Fixture-bound resolver — 価格表 fixtures + (顧客 × 製品 × 種別 × 数量). */
 export function resolveUnitPrice(
   customerId: string,
   productId: string,
   orderType: string,
   quantity: number,
+  date: Date = new Date(),
 ): ResolvedPrice | null {
-  const entry = getPriceEntry(entryKey(customerId, productId, orderType));
-  if (!entry) return null;
-  const tier = entry.tiers.find(
-    (t) =>
-      quantity >= t.minQuantity &&
-      (t.maxQuantity == null || quantity <= t.maxQuantity),
+  return resolveUnitPriceFromEntries(
+    MOCK_PRICE_ENTRIES,
+    customerId,
+    productId,
+    orderType,
+    quantity,
+    date,
   );
-  if (!tier) return null;
-  return {
-    unitPrice: tier.unitPrice,
-    tierId: tier.id,
-    tierLabel: tierLabel(tier),
-  };
 }
 
-/** "1〜9本" / "100本〜" for a tier (mirrors price-list quantityRange). */
-export function tierLabel(t: PriceTier): string {
-  return t.maxQuantity == null
-    ? `${t.minQuantity}本〜`
-    : `${t.minQuantity}〜${t.maxQuantity}本`;
+export function findPriceTierRef(
+  priceTierId: string | null,
+): PriceTierRef | null {
+  return findPriceTierRefIn(MOCK_PRICE_ENTRIES, priceTierId);
 }
 
-/** One quote line — 価格表 から解決された単価で構成。 */
-export interface QuoteItem {
-  id: string;
-  productId: string;
-  productName: string;
-  orderType: string;
-  quantity: number;
-  unitPrice: number;
-  /** 自動解決元の price_list_tier（手動入力時は null）。 */
-  priceTierId: string | null;
-  discountAmount: number;
-  /** unit_price × quantity − discount_amount. */
-  amount: number;
-  deliveryDate: string | null;
-  notes: string | null;
-}
-
-export type QuoteStatus =
-  | "DRAFT"
-  | "ISSUED"
-  | "ACCEPTED"
-  | "REJECTED"
-  | "EXPIRED";
-
-export interface Quote {
-  id: string;
-  quoteNumber: string;
-  customerId: string;
-  customerName: string;
-  customerBranchId: string | null;
-  customerBranchName: string | null;
-  status: QuoteStatus;
-  validUntil: string | null;
-  notes: string | null;
-  items: QuoteItem[];
-  createdBy: string;
-  createdAt: string;
-  updatedAt: string;
+export function priceEntriesForQuote(q: Quote) {
+  return priceEntriesForQuoteIn(MOCK_PRICE_ENTRIES, q);
 }
 
 /**
- * Build a quote item, resolving 単価 from the 価格表 unless overridden.
- * `unitPriceOverride` mirrors a manual 単価 entry (priceTierId stays null).
+ * Build a quote item — 単価・値引きとも 価格表 fixtures から自動解決する。
  */
 function buildItem(
   id: string,
@@ -112,14 +61,12 @@ function buildItem(
   quantity: number,
   opts: {
     deliveryDate?: string | null;
-    discountAmount?: number;
     notes?: string | null;
-    unitPriceOverride?: number;
   } = {},
 ): QuoteItem {
   const resolved = resolveUnitPrice(customerId, productId, orderType, quantity);
-  const unitPrice = opts.unitPriceOverride ?? resolved?.unitPrice ?? 0;
-  const discountAmount = opts.discountAmount ?? 0;
+  const unitPrice = resolved?.unitPrice ?? 0;
+  const discountAmount = resolved?.discountAmount ?? 0;
   return {
     id,
     productId,
@@ -127,10 +74,10 @@ function buildItem(
     orderType,
     quantity,
     unitPrice,
-    priceTierId:
-      opts.unitPriceOverride != null ? null : (resolved?.tierId ?? null),
+    priceTierId: resolved?.tierId ?? null,
     discountAmount,
-    amount: unitPrice * quantity - discountAmount,
+    discountLabel: resolved?.discountLabel ?? null,
+    amount: Math.max(0, unitPrice * quantity - discountAmount),
     deliveryDate: opts.deliveryDate ?? null,
     notes: opts.notes ?? null,
   };
@@ -208,6 +155,12 @@ const TIERED_QUOTE: Quote = {
       },
     ),
   ],
+  pdfFile: {
+    filename: "QOT-202602-00012.pdf",
+    sizeBytes: 182_400,
+    generatedAt: "2026-02-16 10:05",
+    generatedBy: "鈴木 一郎",
+  },
   createdBy: "鈴木 一郎",
   createdAt: "2026-02-16 09:30",
   updatedAt: "2026-02-16 10:05",
@@ -244,11 +197,11 @@ const SINGLE_QUOTE: Quote = {
       80,
       {
         deliveryDate: "2026-05-20",
-        discountAmount: 5000,
-        notes: "数量増による値引き",
+        // 80本 ≥ 50本 → 値引きルール「数量増値引き」が自動適用される。
       },
     ),
   ],
+  pdfFile: null,
   createdBy: "田中 太郎",
   createdAt: "2026-03-02 13:40",
   updatedAt: "2026-03-02 13:40",
@@ -258,24 +211,4 @@ export const MOCK_QUOTES: Quote[] = [TIERED_QUOTE, SINGLE_QUOTE];
 
 export function getQuote(id: string, quotes = MOCK_QUOTES): Quote | undefined {
   return quotes.find((q) => q.id === id);
-}
-
-/** 小計 / 消費税(10%) / 合計(税込) — design-preview quote.html の totals に対応。 */
-export interface QuoteTotals {
-  subtotal: number;
-  tax: number;
-  grandTotal: number;
-}
-
-export const TAX_RATE = 0.1;
-
-export function quoteTotals(q: Quote): QuoteTotals {
-  const subtotal = q.items.reduce((sum, it) => sum + it.amount, 0);
-  const tax = Math.round(subtotal * TAX_RATE);
-  return { subtotal, tax, grandTotal: subtotal + tax };
-}
-
-/** 注文種別ラベル（本番 / テスト …）。 */
-export function orderTypeLabel(orderType: string): string {
-  return ORDER_TYPE_LABEL[orderType] ?? orderType;
 }

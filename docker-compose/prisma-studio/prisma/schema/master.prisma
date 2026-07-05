@@ -37,11 +37,9 @@ model Material {
   createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt      DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  materialType      MaterialType        @relation(fields: [materialTypeId], references: [id])
-  products          Product[]
-  workOrders        WorkOrder[]
-  materialInventory MaterialInventory[]
-  materialReceipts  MaterialReceipt[]
+  materialType MaterialType @relation(fields: [materialTypeId], references: [id])
+  products     Product[]
+  estimates    Estimate[]
 
   @@map("materials")
   @@schema("master")
@@ -49,27 +47,19 @@ model Material {
 
 // 製品コード: PRD-YYYYMM-NNNN
 model Product {
-  id           String   @id
-  name         Json
-  materialId   String?  @map("material_id")
-  unit         String   @default("本")
-  spec         Json?
-  designFileId String?  @map("design_file_id") @db.Uuid
-  isActive     Boolean  @default(true) @map("is_active")
-  notes        String?
-  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt    DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  id         String   @id
+  name       Json
+  materialId String?  @map("material_id")
+  unit       String   @default("本")
+  spec       Json?
+  isActive   Boolean  @default(true) @map("is_active")
+  notes      String?
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt  DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  material          Material?           @relation(fields: [materialId], references: [id])
-  designFile        DesignFile?         @relation("ProductDesignFile", fields: [designFileId], references: [id])
-  priceLists        PriceList[]
-  quoteItems        QuoteItem[]
-  salesOrders       SalesOrder[]
-  productInventory  ProductInventory[]
-  shippingItems     ShippingOrderItem[]
-  deliveryNoteItems DeliveryNoteItem[]
-  designRequests    DesignRequest[]
-  designFiles       DesignFile[]        @relation("DesignFileProduct")
+  material         Material?        @relation(fields: [materialId], references: [id])
+  priceListEntries PriceListEntry[]
+  quoteItems       QuoteItem[]
 
   @@map("products")
   @@schema("master")

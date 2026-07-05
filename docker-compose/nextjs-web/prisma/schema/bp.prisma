@@ -1,5 +1,7 @@
 // 外部関係者マスタ — Business Partner (_specs/tables.md §Business Partner Master).
 // 1 法人エンティティ + 複数ロール割当（S/4HANA BP モデル準拠）。
+// 顧客 (CUSTOMER)・仕入先/外注先 (VENDOR)・需要家 (END_USER) を統合管理し、
+// ロール固有属性は bp_customer_attrs / bp_vendor_attrs / bp_end_user_attrs。
 
 enum BpRole {
   CUSTOMER
@@ -69,20 +71,10 @@ model BusinessPartner {
   endUserAttrs    BpEndUserAttrs?
   contacts        BpContact[]
 
-  priceLists                 PriceList[]         @relation("PriceListCustomer")
-  quotesAsCustomer           Quote[]             @relation("QuoteCustomer")
-  quotesAsBranch             Quote[]             @relation("QuoteCustomerBranch")
-  orderAcceptancesAsCustomer OrderAcceptance[]   @relation("OrderAcceptanceCustomer")
-  orderAcceptancesAsBranch   OrderAcceptance[]   @relation("OrderAcceptanceCustomerBranch")
-  salesOrdersAsEndUser       SalesOrder[]        @relation("SalesOrderEndUser")
-  stepsAsSupplier            WorkOrderStep[]     @relation("StepSupplier")
-  materialReceiptsAsSupplier MaterialReceipt[]   @relation("MaterialReceiptSupplier")
-  deliveryNotesAsRecipient   DeliveryNote[]      @relation("DeliveryNoteRecipient")
-  deliveryNotesAsBranch      DeliveryNote[]      @relation("DeliveryNoteRecipientBranch")
-  deliveryNotesAsEndUser     DeliveryNote[]      @relation("DeliveryNoteEndUser")
-  invoicesAsCustomer         Invoice[]           @relation("InvoiceCustomer")
-  invoicesAsBranch           Invoice[]           @relation("InvoiceCustomerBranch")
-  billingClosings            BillingClosing[]    @relation("ClosingCustomer")
+  estimates        Estimate[]       @relation("EstimateCustomer")
+  priceListEntries PriceListEntry[] @relation("PriceListEntryCustomer")
+  quotesAsCustomer Quote[]          @relation("QuoteCustomer")
+  quotesAsBranch   Quote[]          @relation("QuoteCustomerBranch")
 
   @@index([parentId])
   @@map("business_partners")

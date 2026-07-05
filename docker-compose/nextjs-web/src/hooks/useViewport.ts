@@ -18,9 +18,15 @@ export const MOBILE_QUERY = "(max-width: 767px)";
 export const TABLET_QUERY = "(max-width: 1023px)";
 
 export function useIsMobile(): boolean {
-  return useMediaQuery(MOBILE_QUERY, false, { getInitialValueInEffect: true }) ?? false;
+  return (
+    useMediaQuery(MOBILE_QUERY, false, { getInitialValueInEffect: true }) ??
+    false
+  );
 }
 
 export function useIsTablet(): boolean {
-  return useMediaQuery(TABLET_QUERY, false, { getInitialValueInEffect: true }) ?? false;
+  return (
+    useMediaQuery(TABLET_QUERY, false, { getInitialValueInEffect: true }) ??
+    false
+  );
 }

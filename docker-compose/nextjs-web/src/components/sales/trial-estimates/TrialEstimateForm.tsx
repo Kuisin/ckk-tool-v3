@@ -33,19 +33,21 @@ import {
   IconChartLine,
 } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useMemo, useState, useTransition } from "react";
+import { createTrialEstimate } from "@/app/(dashboard)/sales/trial-estimates/actions";
 import {
   EditButton,
   SaveButton,
   SecondaryButton,
 } from "@/components/ui/buttons";
+import { HelpLabel } from "@/components/ui/HelpLabel";
 import { MoneyText } from "@/components/ui/MoneyText";
 import { openConfirm } from "@/components/ui/modals";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { FormSection } from "@/components/ui/shells";
 import { formatDate } from "@/lib/format";
 import { getPriceHistory, getReferencePrice } from "@/lib/material-pricing";
-import { CUSTOMERS, MATERIALS } from "@/lib/mock";
+import type { Option } from "@/lib/mock";
 import {
   type CostBreakdown,
   calcTrialPricing,
@@ -68,7 +70,7 @@ import {
   MATERIAL_PRICE_BASIS_OPTIONS,
 } from "@/lib/trial-pricing-settings";
 import { MaterialPriceChart } from "./MaterialPriceChart";
-import { MOCK_TRIAL_ESTIMATES } from "./mock";
+import type { TrialEstimateRecord } from "./types";
 
 const BASE_PATH = "/sales/trial-estimates";
 const toData = (o: readonly { value: string; label: string }[]) =>
@@ -76,67 +78,98 @@ const toData = (o: readonly { value: string; label: string }[]) =>
 const num = (v: number | string) =>
   typeof v === "number" ? v : Number(v) || 0;
 
-const DEFAULT_MATERIAL = MATERIALS[0].value;
-
-export function TrialEstimateForm() {
+export function TrialEstimateForm({
+  customerOptions,
+  materialOptions,
+  /** 複製元（?from= で開いたとき）— 全入力を引き継いだ新規 DRAFT を作る。 */
+  source,
+}: {
+  customerOptions: Option[];
+  materialOptions: Option[];
+  source?: TrialEstimateRecord | null;
+}) {
   const router = useRouter();
   const [settings] = useState(loadTrialPricingSettings);
+  const [isPending, startTransition] = useTransition();
+
+  const defaultMaterial = materialOptions[0]?.value ?? "";
+  const src = source?.input;
 
   // ── inputs ──────────────────────────────────────────────────────────────
-  const [toolType, setToolType] = useState<ToolType>("ROUND_BAR");
-  const [name, setName] = useState("");
-  const [customerId, setCustomerId] = useState<string | null>(null);
-  const [materialId, setMaterialId] = useState<string>(DEFAULT_MATERIAL);
-  const [isBlackSkin, setIsBlackSkin] = useState(false);
-  const [maxDiameter, setMaxDiameter] = useState<number | string>(3);
-  const [totalLength, setTotalLength] = useState<number | string>(38);
+  const [toolType, setToolType] = useState<ToolType>(
+    src?.toolType ?? "ROUND_BAR",
+  );
+  const [name, setName] = useState(source ? `${source.name}（再試算）` : "");
+  const [customerId, setCustomerId] = useState<string | null>(
+    source?.customerId ?? null,
+  );
+  const [materialId, setMaterialId] = useState<string>(
+    source?.materialId ?? defaultMaterial,
+  );
+  const [isBlackSkin, setIsBlackSkin] = useState(src?.isBlackSkin ?? false);
+  const [maxDiameter, setMaxDiameter] = useState<number | string>(
+    src?.maxDiameter ?? 3,
+  );
+  const [totalLength, setTotalLength] = useState<number | string>(
+    src?.totalLength ?? 38,
+  );
   const [cylinderMaterialPrice, setCylinderMaterialPrice] = useState<
     number | string
-  >(13086);
-  const [cylinderType, setCylinderType] = useState<string>("NORMAL");
-  const [stepLength, setStepLength] = useState<number | string>(9);
-  const [stepType, setStepType] = useState<string>("FINISH");
-  const [neckLength, setNeckLength] = useState<number | string>(0);
-  const [neckType, setNeckType] = useState<string>("NONE");
-  const [coating, setCoating] = useState<string>("CX400");
-  const [lapType, setLapType] = useState<string>("NONE");
-  const [inspection, setInspection] = useState<string>("NONE");
-  const [ldEnabled, setLdEnabled] = useState(false);
-  const [ldLocation, setLdLocation] = useState<string>("TIP");
-  const [ldOuterDiameter, setLdOuterDiameter] = useState<number | string>(3);
-  const [ldBladeLength, setLdBladeLength] = useState<number | string>(10);
-  const [machiningMinutes, setMachiningMinutes] = useState<number | string>(6);
+  >(src?.cylinderMaterialPrice ?? 13086);
+  const [cylinderType, setCylinderType] = useState<string>(
+    src?.cylinderType ?? "NORMAL",
+  );
+  const [stepLength, setStepLength] = useState<number | string>(
+    src?.stepLength ?? 9,
+  );
+  const [stepType, setStepType] = useState<string>(src?.stepType ?? "FINISH");
+  const [neckLength, setNeckLength] = useState<number | string>(
+    src?.neckLength ?? 0,
+  );
+  const [neckType, setNeckType] = useState<string>(src?.neckType ?? "NONE");
+  const [coating, setCoating] = useState<string>(src?.coating ?? "CX400");
+  const [lapType, setLapType] = useState<string>(src?.lapType ?? "NONE");
+  const [inspection, setInspection] = useState<string>(
+    src?.inspection ?? "NONE",
+  );
+  const [ldEnabled, setLdEnabled] = useState(src?.ldEnabled ?? false);
+  const [ldLocation, setLdLocation] = useState<string>(
+    src?.ldLocation ?? "TIP",
+  );
+  const [ldOuterDiameter, setLdOuterDiameter] = useState<number | string>(
+    src?.ldOuterDiameter ?? 3,
+  );
+  const [ldBladeLength, setLdBladeLength] = useState<number | string>(
+    src?.ldBladeLength ?? 10,
+  );
+  const [machiningMinutes, setMachiningMinutes] = useState<number | string>(
+    src?.machiningMinutes ?? 6,
+  );
   // 加工単価・予備形状本数はシステム設定（グローバル）の既定値を使用。
   const machiningRate = settings.machiningRatePer10min;
   const spareShapeCount = settings.spareShapeCount;
-  const [lot1, setLot1] = useState<number | string>(20);
-  const [lot2, setLot2] = useState<number | string>(50);
-  const [lot3, setLot3] = useState<number | string>(100);
-  // 掛け率: 空 = ロット別の自動掛け率。値を入れた行はその掛け率で上書き。
-  const [lotMarkups, setLotMarkups] = useState<(number | string)[]>([
-    "",
-    "",
-    "",
-  ]);
-  const setLotMarkup = (i: number, v: number | string) =>
-    setLotMarkups((prev) => prev.map((x, idx) => (idx === i ? v : x)));
+  // 基準数量 — 形状出し（段取り分）の按分にのみ使用。数量スケール（×倍率）は
+  // 価格表側で管理するため、試算はこの1点の基準単価だけを算出する。
+  const [baseQuantity, setBaseQuantity] = useState<number | string>(100);
 
   // ── reference price (from purchase history / policy / chart override) ──────
   const initialRef = useMemo(
     () =>
       getReferencePrice(
-        DEFAULT_MATERIAL,
+        source?.materialId ?? defaultMaterial,
         settings.materialPriceBasis,
         settings.materialPriceLookbackMonths,
       ),
-    [settings],
+    [source, defaultMaterial, settings],
   );
   const [referencePrice, setReferencePrice] = useState<number>(
-    initialRef.unitPrice,
+    src ? src.materialBarPrice : initialRef.unitPrice,
   );
-  const [referenceDate, setReferenceDate] = useState<string>(initialRef.date);
+  const [referenceDate, setReferenceDate] = useState<string>(
+    source?.referenceDate || initialRef.date,
+  );
   // overridden = the estimate uses a custom (non-policy) material price.
-  const [overridden, setOverridden] = useState(false);
+  const [overridden, setOverridden] = useState(source?.isCustomPrice ?? false);
   // customMode = the price field is unlocked for manual editing.
   const [customMode, setCustomMode] = useState(false);
 
@@ -152,7 +185,7 @@ export function TrialEstimateForm() {
   );
 
   const onMaterialChange = (value: string | null) => {
-    const id = value ?? DEFAULT_MATERIAL;
+    const id = value ?? defaultMaterial;
     setMaterialId(id);
     const ref = getReferencePrice(
       id,
@@ -214,8 +247,8 @@ export function TrialEstimateForm() {
     machiningMinutes: num(machiningMinutes),
     machiningRatePer10min: num(machiningRate),
     spareShapeCount: num(spareShapeCount),
-    lotQuantities: [num(lot1), num(lot2), num(lot3)],
-    lotMarkups: lotMarkups.map((v) => (v === "" ? null : num(v))),
+    lotQuantities: [num(baseQuantity), 0, 0],
+    lotMarkups: [1], // 掛け率は使わない（数量スケールは価格表の倍率で管理）
   };
   const result = calcTrialPricing(input, {
     correctionFactor: settings.correctionFactor,
@@ -223,17 +256,43 @@ export function TrialEstimateForm() {
   });
 
   const save = () => {
-    // TODO(server-action): persist and use the returned id below.
-    const newId = MOCK_TRIAL_ESTIMATES[0]?.id ?? "te-0001";
-    notifications.show({
-      title: "保存しました",
-      message: overridden
-        ? "試算を保存しました（カスタム単価）"
-        : "試算を保存しました",
-      color: "green",
+    if (!name.trim()) {
+      notifications.show({
+        title: "エラー",
+        message: "試算名を入力してください",
+        color: "red",
+      });
+      return;
+    }
+    startTransition(async () => {
+      const res = await createTrialEstimate({
+        name: name.trim(),
+        customerBpId: customerId,
+        materialId,
+        input,
+        referenceUnitPrice:
+          toolType === "CYLINDER" ? null : num(referencePrice),
+        referenceDate: referenceDate || null,
+        referenceOverridden: overridden,
+      });
+      if (res.ok) {
+        notifications.show({
+          title: "保存しました",
+          message: overridden
+            ? "試算を保存しました（カスタム単価）"
+            : "試算を保存しました",
+          color: "green",
+        });
+        // 作成後は詳細（ビュー）ページへ。
+        router.push(`${BASE_PATH}/${res.data.number}`);
+      } else {
+        notifications.show({
+          title: "エラー",
+          message: res.error,
+          color: "red",
+        });
+      }
     });
-    // 作成後は詳細（ビュー）ページへ。
-    router.push(`${BASE_PATH}/${newId}`);
   };
 
   const isCylinder = toolType === "CYLINDER";
@@ -246,7 +305,9 @@ export function TrialEstimateForm() {
             <SecondaryButton onClick={() => router.push(BASE_PATH)}>
               一覧へ
             </SecondaryButton>
-            <SaveButton onClick={save}>保存</SaveButton>
+            <SaveButton loading={isPending} onClick={save}>
+              保存
+            </SaveButton>
           </Group>
         }
         breadcrumbs={["販売", { label: "試算", href: BASE_PATH }, "新規"]}
@@ -283,7 +344,7 @@ export function TrialEstimateForm() {
                 <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="sm">
                   <Select
                     clearable
-                    data={CUSTOMERS}
+                    data={customerOptions}
                     label="見積り先"
                     onChange={setCustomerId}
                     placeholder="顧客"
@@ -291,13 +352,23 @@ export function TrialEstimateForm() {
                     value={customerId}
                   />
                   <NumberInput
-                    label="最大径 (mm)"
+                    label={
+                      <HelpLabel
+                        help="工具の最大外径。加工費マトリクスの参照キーになります。"
+                        label="最大径 (mm)"
+                      />
+                    }
                     min={0}
                     onChange={setMaxDiameter}
                     value={maxDiameter}
                   />
                   <NumberInput
-                    label="全長 (mm)"
+                    label={
+                      <HelpLabel
+                        help="工具全長。材料原価 = 参照単価 × (全長 ÷ 1000mm)。"
+                        label="全長 (mm)"
+                      />
+                    }
                     min={0}
                     onChange={setTotalLength}
                     value={totalLength}
@@ -312,7 +383,7 @@ export function TrialEstimateForm() {
             >
               <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
                 <Select
-                  data={MATERIALS}
+                  data={materialOptions}
                   label="材種・素材"
                   onChange={onMaterialChange}
                   searchable
@@ -338,7 +409,10 @@ export function TrialEstimateForm() {
                     }
                     label={
                       <Group gap={6} wrap="nowrap">
-                        <span>参照単価（¥/1000mm）</span>
+                        <HelpLabel
+                          help="素材の仕入実績単価（¥/1000mm）。既定はポリシー（直近Nヶ月の最高値など）で自動選択され、「単価を編集」で手動上書きできます。"
+                          label="参照単価（¥/1000mm）"
+                        />
                         <Badge
                           color={overridden ? "orange" : "blue"}
                           variant="light"
@@ -424,7 +498,12 @@ export function TrialEstimateForm() {
                   value={neckType}
                 />
                 <NumberInput
-                  label="加工時間 (分)"
+                  label={
+                    <HelpLabel
+                      help="1本あたりの機械加工時間。加工単価 = 加工時間 × 加工レート（/10分）。"
+                      label="加工時間 (分)"
+                    />
+                  }
                   min={0}
                   onChange={setMachiningMinutes}
                   value={machiningMinutes}
@@ -494,34 +573,28 @@ export function TrialEstimateForm() {
               )}
             </FormSection>
 
-            <FormSection title="ロット数（最大3段階）">
-              <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="sm">
-                <NumberInput
-                  label="ロット①"
-                  min={0}
-                  onChange={setLot1}
-                  value={lot1}
-                />
-                <NumberInput
-                  label="ロット②"
-                  min={0}
-                  onChange={setLot2}
-                  value={lot2}
-                />
-                <NumberInput
-                  label="ロット③"
-                  min={0}
-                  onChange={setLot3}
-                  value={lot3}
-                />
-              </SimpleGrid>
+            <FormSection
+              description="形状出し（予備形状分）の按分にのみ使用します。数量ごとの価格スケール（×倍率）は価格表側で設定します。"
+              title="基準数量"
+            >
+              <NumberInput
+                label={
+                  <HelpLabel
+                    help="形状出し（予備形状分）を按分する数量。数量ごとの価格スケールは掛けず、価格表の倍率（×1.01 など）で設定します。"
+                    label="基準数量（本）"
+                  />
+                }
+                min={1}
+                onChange={setBaseQuantity}
+                value={baseQuantity}
+                w={220}
+              />
             </FormSection>
 
             <ResultsPanel
               breakdown={result.breakdown}
-              lots={result.lots}
-              markups={lotMarkups}
-              onMarkupChange={setLotMarkup}
+              correctionFactor={settings.correctionFactor}
+              lot={result.lots[0] ?? null}
               warnings={result.warnings}
             />
 
@@ -546,7 +619,7 @@ export function TrialEstimateForm() {
                   {settings.materialPriceLookbackMonths}ヶ月
                 </Badge>
                 <Text c="dimmed" size="xs">
-                  {MATERIALS.find((m) => m.value === materialId)?.label}
+                  {materialOptions.find((m) => m.value === materialId)?.label}
                 </Text>
               </Group>
               <MaterialPriceChart
@@ -573,19 +646,19 @@ export function TrialEstimateForm() {
 }
 
 // ── Results ──────────────────────────────────────────────────────────────────
+// 数量スケール（ロット別掛け率）は廃止 — 試算は基準単価1点のみを算出する。
+// 数量ごとの価格（×倍率）は価格表側で設定・上書きする。
 function ResultsPanel({
   breakdown,
-  lots,
+  lot,
+  correctionFactor,
   warnings,
-  markups,
-  onMarkupChange,
 }: {
   breakdown: CostBreakdown;
-  lots: LotResult[];
+  /** 基準数量での計算結果（単一）. */
+  lot: LotResult | null;
+  correctionFactor: number;
   warnings: string[];
-  /** per-lot 掛け率 override (by lotIndex; "" = auto). */
-  markups: (number | string)[];
-  onMarkupChange: (lotIndex: number, value: number | string) => void;
 }) {
   const rows: { label: string; value: number }[] = [
     { label: "材料原価", value: breakdown.material },
@@ -640,64 +713,44 @@ function ResultsPanel({
 
           <div>
             <Text c="dimmed" mb={4} size="xs">
-              ロット別 見積単価
+              基準単価（数量スケールは価格表の倍率で設定）
             </Text>
-            <Table>
-              <Table.Thead>
-                <Table.Tr>
-                  <Table.Th>ロット</Table.Th>
-                  <Table.Th ta="right">最低単価</Table.Th>
-                  <Table.Th ta="right">掛け率</Table.Th>
-                  <Table.Th ta="right">見積単価</Table.Th>
-                </Table.Tr>
-              </Table.Thead>
-              <Table.Tbody>
-                {lots.length === 0 ? (
+            {lot ? (
+              <Table>
+                <Table.Tbody>
                   <Table.Tr>
-                    <Table.Td colSpan={4}>
-                      <Text c="dimmed" size="xs">
-                        ロット数を入力してください
+                    <Table.Td>最低単価</Table.Td>
+                    <Table.Td ta="right">
+                      <MoneyText value={Math.round(lot.minimumPrice)} />
+                    </Table.Td>
+                  </Table.Tr>
+                  <Table.Tr>
+                    <Table.Td>補正値</Table.Td>
+                    <Table.Td ta="right">
+                      <Text className="tabular-nums" ff="mono" size="sm">
+                        ×{correctionFactor}
                       </Text>
                     </Table.Td>
                   </Table.Tr>
-                ) : (
-                  lots.map((l) => (
-                    <Table.Tr key={l.lotIndex}>
-                      <Table.Td>{l.quantity}本</Table.Td>
-                      <Table.Td ta="right">
-                        <MoneyText value={Math.round(l.minimumPrice)} />
-                      </Table.Td>
-                      <Table.Td>
-                        <NumberInput
-                          aria-label={`${l.quantity}本 の掛け率`}
-                          decimalScale={2}
-                          hideControls
-                          min={0}
-                          onChange={(v) => onMarkupChange(l.lotIndex, v)}
-                          placeholder={`${l.autoRate}`}
-                          size="xs"
-                          step={0.01}
-                          styles={{
-                            input: {
-                              textAlign: "right",
-                              maxWidth: "92px",
-                              marginLeft: "auto",
-                            },
-                          }}
-                          value={markups[l.lotIndex] ?? ""}
-                          w="full"
-                        />
-                      </Table.Td>
-                      <Table.Td ta="right">
-                        <Text fw={700} size="sm">
-                          <MoneyText value={l.estimateUnitPrice} />
-                        </Text>
-                      </Table.Td>
-                    </Table.Tr>
-                  ))
-                )}
-              </Table.Tbody>
-            </Table>
+                  <Table.Tr>
+                    <Table.Td>
+                      <Text fw={600} size="sm">
+                        見積単価（基準）
+                      </Text>
+                    </Table.Td>
+                    <Table.Td ta="right">
+                      <Text fw={700} size="sm">
+                        <MoneyText value={lot.estimateUnitPrice} />
+                      </Text>
+                    </Table.Td>
+                  </Table.Tr>
+                </Table.Tbody>
+              </Table>
+            ) : (
+              <Text c="dimmed" size="xs">
+                基準数量を入力してください
+              </Text>
+            )}
           </div>
         </SimpleGrid>
       </Stack>

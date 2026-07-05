@@ -3,18 +3,43 @@
 /**
  * TrialEstimateDetail — 試算 詳細 (SA52). Read-only view of a saved 試算:
  * summary + recomputed results + the material price-history graph.
+ *
+ * Flow (試算 → 価格表 → 見積書): DRAFT は「確定」で CONFIRMED になり、
+ * 「価格表に登録」で数量区分ごとの価格表になる（REGISTERED でロック）。
+ * Backed by sales.estimates via the server page; status transitions persist
+ * through Server Actions.
  */
 
-import { Badge, Group, Paper, Stack, Table, Tabs, Text } from "@mantine/core";
+import {
+  Alert,
+  Anchor,
+  Badge,
+  Group,
+  Paper,
+  Stack,
+  Table,
+  Tabs,
+  Text,
+} from "@mantine/core";
+import { notifications } from "@mantine/notifications";
 import {
   IconCalculator,
   IconChartLine,
+  IconCheck,
+  IconCopy,
   IconCurrencyYen,
+  IconHistory,
+  IconInfoCircle,
+  IconLink,
 } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useState, useTransition } from "react";
+import { confirmTrialEstimate } from "@/app/(dashboard)/sales/trial-estimates/actions";
+import { DocNumber } from "@/components/ui/DocNumber";
+import { EmptyState } from "@/components/ui/EmptyState";
 import { FieldValue } from "@/components/ui/FieldValue";
 import { MoneyText } from "@/components/ui/MoneyText";
+import { StatusBadge } from "@/components/ui/StatusBadge";
 import {
   DetailShell,
   ResourceActions,
@@ -22,10 +47,16 @@ import {
 } from "@/components/ui/shells";
 import { formatDateTime } from "@/lib/format";
 import { getPriceHistory } from "@/lib/material-pricing";
+import type { Option } from "@/lib/mock";
+import { ORDER_TYPE_LABEL } from "@/lib/mock";
 import { calcTrialPricing, TOOL_TYPE_OPTIONS } from "@/lib/trial-pricing";
 import { ConvertToPriceListModal } from "./ConvertToPriceListModal";
 import { MaterialPriceChart } from "./MaterialPriceChart";
-import { getTrialEstimate, MOCK_TRIAL_ESTIMATES } from "./mock";
+import type {
+  ExistingEntryRef,
+  LinkedPriceEntry,
+  TrialEstimateRecord,
+} from "./types";
 
 const BASE_PATH = "/sales/trial-estimates";
 const toolLabel = (v: string) =>
@@ -42,26 +73,73 @@ const BREAKDOWN_ROWS = [
   ["検査成績書", "inspection"],
 ] as const;
 
-export function TrialEstimateDetail({ id }: { id: string }) {
+export function TrialEstimateDetail({
+  record,
+  linkedEntries,
+  customerOptions,
+  productOptions,
+  existingEntries,
+}: {
+  record: TrialEstimateRecord;
+  linkedEntries: LinkedPriceEntry[];
+  customerOptions: Option[];
+  productOptions: Option[];
+  existingEntries: ExistingEntryRef[];
+}) {
   const router = useRouter();
-  const record = getTrialEstimate(id) ?? MOCK_TRIAL_ESTIMATES[0];
   const result = calcTrialPricing(record.input);
   const history = getPriceHistory(record.materialId);
   const [convertOpen, setConvertOpen] = useState(false);
+  const [, startTransition] = useTransition();
+  const status = record.status;
+
+  const confirm = () => {
+    startTransition(async () => {
+      const res = await confirmTrialEstimate(record.estimateNumber);
+      if (res.ok) {
+        notifications.show({
+          title: "確定しました",
+          message: "「価格表に登録」で数量区分ごとの価格表を作成できます",
+          color: "green",
+        });
+        router.refresh();
+      } else {
+        notifications.show({
+          title: "エラー",
+          message: res.error,
+          color: "red",
+        });
+      }
+    });
+  };
 
   return (
     <DetailShell
       actions={
         <ResourceActions
           menuItems={[
+            ...(status === "DRAFT"
+              ? [
+                  {
+                    label: "確定",
+                    icon: <IconCheck size={14} />,
+                    onClick: confirm,
+                  },
+                ]
+              : []),
+            ...(status === "CONFIRMED"
+              ? [
+                  {
+                    label: "価格表に登録",
+                    icon: <IconCurrencyYen size={14} />,
+                    onClick: () => setConvertOpen(true),
+                  },
+                ]
+              : []),
             {
-              label: "価格表へ変換",
-              icon: <IconCurrencyYen size={14} />,
-              onClick: () => setConvertOpen(true),
-            },
-            {
-              label: "複製して新規",
-              onClick: () => router.push(`${BASE_PATH}/new`),
+              label: "複製して再試算",
+              icon: <IconCopy size={14} />,
+              onClick: () => router.push(`${BASE_PATH}/new?from=${record.id}`),
             },
           ]}
         />
@@ -70,6 +148,7 @@ export function TrialEstimateDetail({ id }: { id: string }) {
       createdAt={formatDateTime(record.createdAt)}
       status={
         <Group gap="xs">
+          <StatusBadge entity="Estimate" status={status} />
           <Badge color="gray" variant="light">
             {toolLabel(record.input.toolType)}
           </Badge>
@@ -83,7 +162,16 @@ export function TrialEstimateDetail({ id }: { id: string }) {
       title={record.name}
       updatedAt={formatDateTime(record.updatedAt)}
     >
+      {status === "REGISTERED" && (
+        <Alert color="blue" icon={<IconInfoCircle size={16} />} variant="light">
+          この試算は価格表登録済のため編集できません。単価を見直す場合は複製して再試算してください。
+        </Alert>
+      )}
       <SummaryGrid>
+        <FieldValue
+          label="試算番号"
+          value={<DocNumber>{record.estimateNumber}</DocNumber>}
+        />
         <FieldValue label="見積り先" value={record.customerName ?? "—"} />
         <FieldValue label="工具種" value={toolLabel(record.input.toolType)} />
         <FieldValue label="素材" value={record.materialLabel} />
@@ -109,38 +197,52 @@ export function TrialEstimateDetail({ id }: { id: string }) {
           <Tabs.Tab leftSection={<IconChartLine size={14} />} value="history">
             素材価格推移
           </Tabs.Tab>
+          <Tabs.Tab leftSection={<IconLink size={14} />} value="related">
+            関連
+          </Tabs.Tab>
+          <Tabs.Tab value="audit">履歴</Tabs.Tab>
         </Tabs.List>
 
         <Tabs.Panel pt="md" value="result">
           <Stack gap="md">
             <div>
               <Text c="dimmed" mb={4} size="xs">
-                ロット別 見積単価
+                基準単価（数量スケールは価格表の倍率で設定）
               </Text>
               <Table>
-                <Table.Thead>
-                  <Table.Tr>
-                    <Table.Th>ロット</Table.Th>
-                    <Table.Th ta="right">最低単価</Table.Th>
-                    <Table.Th ta="right">掛け率</Table.Th>
-                    <Table.Th ta="right">見積単価</Table.Th>
-                  </Table.Tr>
-                </Table.Thead>
                 <Table.Tbody>
-                  {result.lots.map((l) => (
-                    <Table.Tr key={l.quantity}>
-                      <Table.Td>{l.quantity}本</Table.Td>
-                      <Table.Td ta="right">
-                        <MoneyText value={Math.round(l.minimumPrice)} />
-                      </Table.Td>
-                      <Table.Td ta="right">×{l.discountRate}</Table.Td>
-                      <Table.Td ta="right">
-                        <Text fw={700} size="sm">
-                          <MoneyText value={l.estimateUnitPrice} />
-                        </Text>
-                      </Table.Td>
-                    </Table.Tr>
-                  ))}
+                  {result.lots[0] && (
+                    <>
+                      <Table.Tr>
+                        <Table.Td>基準数量</Table.Td>
+                        <Table.Td ta="right">
+                          {result.lots[0].quantity}本
+                        </Table.Td>
+                      </Table.Tr>
+                      <Table.Tr>
+                        <Table.Td>最低単価</Table.Td>
+                        <Table.Td ta="right">
+                          <MoneyText
+                            value={Math.round(result.lots[0].minimumPrice)}
+                          />
+                        </Table.Td>
+                      </Table.Tr>
+                      <Table.Tr>
+                        <Table.Td>
+                          <Text fw={600} size="sm">
+                            見積単価（基準）
+                          </Text>
+                        </Table.Td>
+                        <Table.Td ta="right">
+                          <Text fw={700} size="sm">
+                            <MoneyText
+                              value={result.lots[0].estimateUnitPrice}
+                            />
+                          </Text>
+                        </Table.Td>
+                      </Table.Tr>
+                    </>
+                  )}
                 </Table.Tbody>
               </Table>
             </div>
@@ -172,12 +274,61 @@ export function TrialEstimateDetail({ id }: { id: string }) {
             />
           </Paper>
         </Tabs.Panel>
+
+        <Tabs.Panel pt="md" value="related">
+          <Stack gap="md">
+            <div>
+              <Text c="dimmed" mb={4} size="xs">
+                価格表
+              </Text>
+              {linkedEntries.length > 0 ? (
+                <Stack gap={4}>
+                  {linkedEntries.map((e) => (
+                    <Anchor
+                      key={e.entryId}
+                      onClick={() =>
+                        router.push(`/sales/price-lists/${e.entryId}`)
+                      }
+                      size="sm"
+                    >
+                      {e.customerName} × {e.productName}（
+                      {ORDER_TYPE_LABEL[e.orderType]}・{e.tierCount}段階）
+                    </Anchor>
+                  ))}
+                </Stack>
+              ) : (
+                <Text c="dimmed" size="sm">
+                  未登録 — 「価格表に登録」で数量区分ごとの価格表行を作成します
+                </Text>
+              )}
+            </div>
+            <div>
+              <Text c="dimmed" mb={4} size="xs">
+                見積書
+              </Text>
+              <Text c="dimmed" size="sm">
+                —（価格表登録後に価格表から作成できます）
+              </Text>
+            </div>
+          </Stack>
+        </Tabs.Panel>
+
+        <Tabs.Panel pt="md" value="audit">
+          <EmptyState
+            icon={<IconHistory size={24} />}
+            message="変更履歴はまだ記録されていません"
+          />
+        </Tabs.Panel>
       </Tabs>
 
       <ConvertToPriceListModal
+        customerOptions={customerOptions}
         estimate={record}
+        existingEntries={existingEntries}
         onClose={() => setConvertOpen(false)}
+        onRegistered={() => router.refresh()}
         opened={convertOpen}
+        productOptions={productOptions}
       />
     </DetailShell>
   );

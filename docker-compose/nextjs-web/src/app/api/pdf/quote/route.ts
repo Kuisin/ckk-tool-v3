@@ -1,17 +1,16 @@
 /**
- * GET /api/pdf/quote?id=<quoteId>[&download=1] — 見積書 PDF.
+ * GET /api/pdf/quote?id=<quoteId>[&download=1][&force=1] — 見積書 PDF.
  *
  * Serves the stored PDF from SeaweedFS if present; otherwise renders it via
  * Gotenberg (design-preview `quote.html`), stores it, then streams it back.
  * `download=1` forces an attachment; default is inline (in-browser view).
- * Replace `getQuote` with a server/Prisma fetch later.
+ * `force=1` skips the stored copy and regenerates (PDF タブの「再生成」).
+ * Quote data comes from sales.quotes via Prisma (id = QOT-YYYYMM-NNNNN).
  */
 
-import {
-  getQuote,
-  orderTypeLabel,
-  quoteTotals,
-} from "@/components/sales/quotes/mock";
+import { fetchQuote } from "@/app/(dashboard)/sales/quotes/data";
+import { orderTypeLabel, quoteTotals } from "@/components/sales/quotes/model";
+import { parseDocKey } from "@/lib/doc-number";
 import { formatDate } from "@/lib/format";
 import { renderPdf } from "@/lib/pdf";
 import { getObject, putObject } from "@/lib/storage";
@@ -42,11 +41,13 @@ export async function GET(request: Request): Promise<Response> {
   const url = new URL(request.url);
   const id = url.searchParams.get("id");
   const download = url.searchParams.get("download") === "1";
+  const force = url.searchParams.get("force") === "1";
   if (!id) {
     return new Response('Missing "id" query parameter', { status: 400 });
   }
 
-  const quote = getQuote(id);
+  const key = parseDocKey(id, "QOT");
+  const quote = key ? await fetchQuote(key) : null;
   if (!quote) {
     return new Response(`Quote not found: ${id}`, { status: 404 });
   }
@@ -54,12 +55,15 @@ export async function GET(request: Request): Promise<Response> {
   const storageKey = `pdfs/quotes/${quote.quoteNumber}.pdf`;
 
   // Serve the stored copy if it exists (SeaweedFS), else generate + store.
-  const cached = await getObject(storageKey);
-  if (cached) {
-    return new Response(cached, {
-      status: 200,
-      headers: pdfHeaders(quote.quoteNumber, download),
-    });
+  // `force=1` regenerates and overwrites the stored copy.
+  if (!force) {
+    const cached = await getObject(storageKey);
+    if (cached) {
+      return new Response(cached, {
+        status: 200,
+        headers: pdfHeaders(quote.quoteNumber, download),
+      });
+    }
   }
 
   const totals = quoteTotals(quote);

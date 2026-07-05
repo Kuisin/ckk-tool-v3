@@ -9,6 +9,8 @@
     "start": "next start",
     "lint": "biome check",
     "format": "biome format --write",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "db:sync-schema": "rm -rf prisma/schema && cp -R ../../shared-db/prisma/schema prisma/schema",
     "db:generate": "prisma generate"
   },
@@ -19,15 +21,15 @@
     "@mantine/hooks": "^9.3.1",
     "@mantine/modals": "^9.3.1",
     "@mantine/notifications": "^9.3.1",
+    "@prisma/adapter-pg": "7.8.0",
+    "@prisma/client": "7.8.0",
     "@tabler/icons-react": "^3.44.0",
     "date-fns": "^4.4.0",
     "dayjs": "^1.11.21",
     "next": "16.2.9",
     "react": "19.2.4",
     "react-dom": "19.2.4",
-    "zod": "^4.4.3",
-    "@prisma/client": "7.8.0",
-    "@prisma/adapter-pg": "7.8.0"
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "@biomejs/biome": "2.2.0",
@@ -36,8 +38,9 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "babel-plugin-react-compiler": "1.0.0",
+    "prisma": "7.8.0",
     "tailwindcss": "^4",
     "typescript": "^5",
-    "prisma": "7.8.0"
+    "vitest": "4.1.9"
   }
 }

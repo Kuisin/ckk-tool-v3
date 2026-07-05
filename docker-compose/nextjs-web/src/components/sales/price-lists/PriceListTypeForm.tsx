@@ -1,24 +1,27 @@
 "use client";
 
 /**
- * PriceListTypeForm — 価格表 新規作成 / 編集 (per 注文種別, design.md §8.3).
+ * PriceListTypeForm — 価格表 編集 / 種別追加 (per 注文種別, design.md §8.3).
  *
- * One page edits ONE (顧客, 製品, 注文種別) entry: its 有効期間 + 状態 and a table
- * of quantity tiers (数量範囲 → 単価). The (顧客, 製品, 注文種別) keys are the
- * identity of the entry and are LOCKED after creation — only the period and
- * tiers are editable. Each type is edited on its own page.
- *
- * TODO(server-action): replace the console.log submit with a Server Action.
+ * One page edits ONE (顧客, 製品, 注文種別) entry: 基準単価（試算の見積単価、
+ * 手動上書き可）+ 有効期間 + 状態 + quantity tiers（数量範囲 → ×倍率。単価 =
+ * 基準単価 × 倍率、行ごとに手動上書き可）. The (顧客, 製品, 注文種別) keys are
+ * the identity of the entry and are LOCKED after creation — only 基準単価 /
+ * period / tiers are editable. 新規の価格表は試算の「価格表に登録」から作成する。
+ * Persists via updatePriceEntry / createPriceEntry (Server Actions).
  */
 
 import {
   ActionIcon,
   Alert,
+  Checkbox,
+  Group,
   NumberInput,
   Select,
   SimpleGrid,
   Switch,
   Table,
+  Text,
 } from "@mantine/core";
 import { DatePickerInput } from "@mantine/dates";
 import { useForm } from "@mantine/form";
@@ -30,29 +33,35 @@ import {
   IconTrash,
 } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
-import { useTransition } from "react";
+import { useState, useTransition } from "react";
 import { z } from "zod";
+import {
+  createPriceEntry,
+  updatePriceEntry,
+} from "@/app/(dashboard)/sales/price-lists/actions";
 import { GhostButton } from "@/components/ui/buttons";
 import { FieldValue } from "@/components/ui/FieldValue";
+import { HelpLabel } from "@/components/ui/HelpLabel";
+import { openConfirm } from "@/components/ui/modals";
 import { FormSection, FormShell } from "@/components/ui/shells";
 import { zodResolver } from "@/lib/form";
+import { formatMoney } from "@/lib/format";
+import type { Option } from "@/lib/mock";
+import { ORDER_TYPE_LABEL, ORDER_TYPE_OPTIONS } from "@/lib/mock";
 import {
-  CUSTOMERS,
-  ORDER_TYPE_LABEL,
-  ORDER_TYPE_OPTIONS,
-  PRODUCTS,
-} from "@/lib/mock";
-import {
-  entryKey,
-  findEntriesByCustomerProduct,
-  getPriceEntry,
+  type EntryIdentity,
+  type EntryOrderType,
+  type PriceListEntry,
   requiresEndDate,
-} from "./mock";
+} from "./model";
 
 const tierSchema = z.object({
   minQuantity: z.number().int().min(1, "1以上"),
   maxQuantity: z.number().int().nullable(),
-  unitPrice: z.number().min(0),
+  /** 数量倍率（×1.01 など）. */
+  multiplier: z.number().min(0.01, "0より大きい倍率"),
+  /** 手動上書き単価（null = 基準単価 × 倍率）. */
+  priceOverride: z.number().min(0).nullable(),
 });
 
 const schema = z
@@ -61,6 +70,7 @@ const schema = z
     productId: z.string().min(1, "製品を選択してください"),
     orderType: z.enum(["PRODUCTION", "TEST", "SAMPLE", "OTHER"]),
     currency: z.string().min(1),
+    baseUnitPrice: z.number().min(0),
     validFrom: z.string().min(1, "有効開始日を選択してください"),
     validUntil: z.string().nullable(),
     isActive: z.boolean(),
@@ -84,42 +94,43 @@ const BASE_PATH = "/sales/price-lists";
 const emptyTier = (): TierForm => ({
   minQuantity: 1,
   maxQuantity: null,
-  unitPrice: 0,
+  multiplier: 1,
+  priceOverride: null,
 });
 
 const labelOf = (options: { value: string; label: string }[], value: string) =>
   options.find((o) => o.value === value)?.label ?? (value || "—");
 
 function buildInitial(args: {
-  mode: "create" | "edit";
-  entryId?: string;
+  entry?: PriceListEntry | null;
   lockedCustomerId?: string;
   lockedProductId?: string;
 }): TypeFormValues {
-  if (args.mode === "edit" && args.entryId) {
-    const entry = getPriceEntry(args.entryId);
-    if (entry) {
-      return {
-        customerId: entry.customerId,
-        productId: entry.productId,
-        orderType: entry.orderType as TypeFormValues["orderType"],
-        currency: entry.currency,
-        validFrom: entry.validFrom,
-        validUntil: entry.validUntil,
-        isActive: entry.isActive,
-        tiers: entry.tiers.map((t) => ({
-          minQuantity: t.minQuantity,
-          maxQuantity: t.maxQuantity,
-          unitPrice: t.unitPrice,
-        })),
-      };
-    }
+  const entry = args.entry;
+  if (entry) {
+    return {
+      customerId: entry.customerId,
+      productId: entry.productId,
+      orderType: entry.orderType as TypeFormValues["orderType"],
+      currency: entry.currency,
+      baseUnitPrice: entry.baseUnitPrice,
+      validFrom: entry.validFrom,
+      validUntil: entry.validUntil,
+      isActive: entry.isActive,
+      tiers: entry.tiers.map((t) => ({
+        minQuantity: t.minQuantity,
+        maxQuantity: t.maxQuantity,
+        multiplier: t.multiplier,
+        priceOverride: t.priceOverride,
+      })),
+    };
   }
   return {
     customerId: args.lockedCustomerId ?? "",
     productId: args.lockedProductId ?? "",
     orderType: "PRODUCTION",
     currency: "JPY",
+    baseUnitPrice: 0,
     validFrom: "",
     validUntil: null,
     isActive: true,
@@ -129,19 +140,30 @@ function buildInitial(args: {
 
 export function PriceListTypeForm({
   mode,
-  entryId,
+  entry,
   lockedCustomerId,
   lockedProductId,
+  estimateBase,
+  customerOptions,
+  productOptions,
+  existingEntries,
 }: {
   mode: "create" | "edit";
-  /** Edit: the (顧客, 製品, 注文種別) entry key. */
-  entryId?: string;
+  /** Edit: the entry (server-fetched view-model). */
+  entry?: PriceListEntry | null;
   /** Create (種別を追加): lock 顧客/製品 to the existing 顧客×製品. */
   lockedCustomerId?: string;
   lockedProductId?: string;
+  /** 試算の見積単価（試算元がない種別追加・手動エントリは null）. */
+  estimateBase: number | null;
+  customerOptions: Option[];
+  productOptions: Option[];
+  /** All current (顧客, 製品, 注文種別) identities — duplicate warnings. */
+  existingEntries: EntryIdentity[];
 }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
+  const entryId = entry?.entryId;
 
   // 顧客/製品 are locked when editing or adding a type to an existing group.
   const lockCustomerProduct =
@@ -152,29 +174,100 @@ export function PriceListTypeForm({
   const form = useForm<TypeFormValues>({
     validate: zodResolver(schema),
     initialValues: buildInitial({
-      mode,
-      entryId,
+      entry,
       lockedCustomerId,
       lockedProductId,
     }),
   });
 
-  const handleSubmit = (values: TypeFormValues) => {
-    startTransition(() => {
-      // TODO(server-action): persist this (顧客, 製品, 注文種別) entry + tiers.
-      console.log("submit price-type", values);
-      notifications.show({
-        title: "保存しました",
-        message:
-          mode === "edit" ? "価格表を更新しました" : "価格表を作成しました",
-        color: "green",
+  // ── 基準単価は試算から取得する（バイパスは明示チェック + 確認のみ）────────
+  // 試算元がない場合は手動入力しかできない（チェック固定）。
+  const [customBase, setCustomBase] = useState(
+    () => estimateBase == null || form.values.baseUnitPrice !== estimateBase,
+  );
+
+  /** カスタム基準単価の ON/OFF — どちらの向きも確認ポップアップを挟む。 */
+  const toggleCustomBase = (next: boolean) => {
+    if (estimateBase == null) return; // 試算元なし: 常に手動
+    if (next) {
+      openConfirm({
+        title: "カスタム基準単価の使用",
+        message: `試算の見積単価（${formatMoney(estimateBase)}）を使わず、基準単価を手動で設定します。よろしいですか？`,
+        confirmLabel: "カスタム設定する",
+        onConfirm: () => setCustomBase(true),
       });
-      // 作成・更新後は対象エントリの詳細（ビュー）ページへ。
-      const targetId =
-        mode === "edit" && entryId
-          ? entryId
-          : entryKey(values.customerId, values.productId, values.orderType);
-      router.push(`${BASE_PATH}/${targetId}`);
+    } else {
+      openConfirm({
+        title: "試算値に戻す",
+        message: `手動で設定した基準単価を破棄し、試算の見積単価（${formatMoney(estimateBase)}）に戻します。`,
+        confirmLabel: "試算値に戻す",
+        onConfirm: () => {
+          setCustomBase(false);
+          form.setFieldValue("baseUnitPrice", estimateBase);
+        },
+      });
+    }
+  };
+
+  /** 数量帯ごとのカスタム単価 ON/OFF — 確認ポップアップを挟む。 */
+  const toggleTierOverride = (ri: number, next: boolean, autoPrice: number) => {
+    if (next) {
+      openConfirm({
+        title: "カスタム単価の使用",
+        message: `この数量帯の自動計算単価（${formatMoney(autoPrice)} = 基準単価 × 倍率）を使わず、手動で単価を設定します。`,
+        confirmLabel: "カスタム設定する",
+        onConfirm: () =>
+          form.setFieldValue(`tiers.${ri}.priceOverride`, autoPrice),
+      });
+    } else {
+      openConfirm({
+        title: "自動計算に戻す",
+        message: `手動で設定した単価を破棄し、自動計算値（${formatMoney(autoPrice)}）に戻します。`,
+        confirmLabel: "自動計算に戻す",
+        onConfirm: () => form.setFieldValue(`tiers.${ri}.priceOverride`, null),
+      });
+    }
+  };
+
+  const handleSubmit = (raw: TypeFormValues) => {
+    // カスタム未使用時は必ず試算値を採用する（バイパスは明示チェックのみ）。
+    const values =
+      !customBase && estimateBase != null
+        ? { ...raw, baseUnitPrice: estimateBase }
+        : raw;
+    const payload = {
+      key: {
+        customerBpId: values.customerId,
+        productId: values.productId,
+        orderType: values.orderType as EntryOrderType,
+      },
+      baseUnitPrice: values.baseUnitPrice,
+      validFrom: values.validFrom,
+      validUntil: values.validUntil,
+      isActive: values.isActive,
+      tiers: values.tiers,
+    };
+    startTransition(async () => {
+      const result =
+        mode === "edit"
+          ? await updatePriceEntry(payload)
+          : await createPriceEntry(payload);
+      if (result.ok) {
+        notifications.show({
+          title: "保存しました",
+          message:
+            mode === "edit" ? "価格表を更新しました" : "価格表を作成しました",
+          color: "green",
+        });
+        // 作成・更新後は対象エントリの詳細（ビュー）ページへ。
+        router.push(`${BASE_PATH}/${result.data.entryId}`);
+      } else {
+        notifications.show({
+          title: "エラー",
+          message: result.error,
+          color: "red",
+        });
+      }
     });
   };
 
@@ -205,11 +298,11 @@ export function PriceListTypeForm({
           {lockCustomerProduct ? (
             <FieldValue
               label="顧客"
-              value={labelOf(CUSTOMERS, form.values.customerId)}
+              value={labelOf(customerOptions, form.values.customerId)}
             />
           ) : (
             <Select
-              data={CUSTOMERS}
+              data={customerOptions}
               label="顧客"
               placeholder="顧客を選択"
               searchable
@@ -220,11 +313,11 @@ export function PriceListTypeForm({
           {lockCustomerProduct ? (
             <FieldValue
               label="製品"
-              value={labelOf(PRODUCTS, form.values.productId)}
+              value={labelOf(productOptions, form.values.productId)}
             />
           ) : (
             <Select
-              data={PRODUCTS}
+              data={productOptions}
               label="製品"
               placeholder="製品を選択"
               searchable
@@ -247,10 +340,14 @@ export function PriceListTypeForm({
           )}
         </SimpleGrid>
         {(() => {
-          const existing = findEntriesByCustomerProduct(
-            form.values.customerId,
-            form.values.productId,
-          );
+          const existing =
+            mode === "edit"
+              ? []
+              : existingEntries.filter(
+                  (e) =>
+                    e.customerBpId === form.values.customerId &&
+                    e.productId === form.values.productId,
+                );
           if (existing.length === 0) return null;
           const dup = existing.some(
             (e) => e.orderType === form.values.orderType,
@@ -269,6 +366,58 @@ export function PriceListTypeForm({
             </Alert>
           );
         })()}
+      </FormSection>
+
+      <FormSection
+        description="基準単価は試算の見積単価から取得します。手動上書きは明示的にカスタムを有効化した場合のみ（確認あり）。各段階の単価 = 基準単価 × 倍率。"
+        title="基準単価"
+      >
+        <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="sm">
+          <FieldValue
+            label="見積単価（試算）"
+            value={
+              estimateBase != null
+                ? formatMoney(estimateBase)
+                : "—（試算元なし）"
+            }
+          />
+          <Checkbox
+            checked={customBase}
+            description={
+              estimateBase == null ? "試算元がないため手動設定のみ" : undefined
+            }
+            disabled={estimateBase == null}
+            label={
+              <HelpLabel
+                help="既定では試算の見積単価をそのまま使います。手動で別の基準単価を設定する場合のみチェックしてください（確認あり）。"
+                label="カスタム単価を使用"
+              />
+            }
+            mt={{ base: 0, sm: 26 }}
+            onChange={(e) => toggleCustomBase(e.currentTarget.checked)}
+          />
+          <NumberInput
+            description={
+              customBase
+                ? estimateBase != null
+                  ? `手動設定（試算値: ${formatMoney(estimateBase)}）`
+                  : "手動設定"
+                : "試算値をそのまま使用"
+            }
+            disabled={!customBase}
+            label={
+              <HelpLabel
+                help="価格表の基準になる単価。既定は試算の見積単価。各数量帯の単価 = 基準単価 × 倍率。"
+                label="基準単価"
+              />
+            }
+            min={0}
+            prefix="¥"
+            thousandSeparator=","
+            withAsterisk
+            {...form.getInputProps("baseUnitPrice")}
+          />
+        </SimpleGrid>
       </FormSection>
 
       <FormSection title="有効期間">
@@ -308,56 +457,139 @@ export function PriceListTypeForm({
       </FormSection>
 
       <FormSection
-        description="数量範囲ごとの単価。すべて同じ有効期間が適用されます。"
-        title="数量・単価（段階）"
+        description="数量範囲ごとの倍率（×1.01 など）。単価 = 基準単価 × 倍率（試算由来）。カスタム単価はチェックで明示的に有効化した行のみ（確認あり）。すべて同じ有効期間が適用されます。"
+        title="数量スケール（倍率）"
       >
         <Table withTableBorder>
           <Table.Thead>
             <Table.Tr>
               <Table.Th>最小数量</Table.Th>
               <Table.Th>最大数量</Table.Th>
-              <Table.Th>単価</Table.Th>
+              <Table.Th>
+                <HelpLabel
+                  help="数量帯ごとの掛け率（例 ×1.05 = 基準単価の5%増し）。単価 = 基準単価 × 倍率。"
+                  label="倍率"
+                />
+              </Table.Th>
+              <Table.Th ta="right">
+                <HelpLabel
+                  help="基準単価（試算由来）× 倍率 の自動計算値。"
+                  label="自動計算単価"
+                />
+              </Table.Th>
+              <Table.Th>
+                <HelpLabel
+                  help="チェックすると自動計算を使わず、この数量帯だけ手動の固定単価にできます（確認あり）。"
+                  label="カスタム単価"
+                />
+              </Table.Th>
+              <Table.Th ta="right">採用単価</Table.Th>
               <Table.Th w={48} />
             </Table.Tr>
           </Table.Thead>
           <Table.Tbody>
-            {form.values.tiers.map((_tier, ri) => (
-              <Table.Tr key={form.key(`tiers.${ri}`)}>
-                <Table.Td>
-                  <NumberInput
-                    min={1}
-                    {...form.getInputProps(`tiers.${ri}.minQuantity`)}
-                  />
-                </Table.Td>
-                <Table.Td>
-                  <NumberInput
-                    min={1}
-                    placeholder="上限なし"
-                    {...form.getInputProps(`tiers.${ri}.maxQuantity`)}
-                  />
-                </Table.Td>
-                <Table.Td>
-                  <NumberInput
-                    decimalScale={2}
-                    min={0}
-                    prefix="¥"
-                    thousandSeparator=","
-                    {...form.getInputProps(`tiers.${ri}.unitPrice`)}
-                  />
-                </Table.Td>
-                <Table.Td>
-                  <ActionIcon
-                    aria-label="段階を削除"
-                    color="red"
-                    disabled={form.values.tiers.length <= 1}
-                    onClick={() => form.removeListItem("tiers", ri)}
-                    variant="subtle"
-                  >
-                    <IconTrash size={16} />
-                  </ActionIcon>
-                </Table.Td>
-              </Table.Tr>
-            ))}
+            {form.values.tiers.map((tier, ri) => {
+              const autoPrice = Math.round(
+                form.values.baseUnitPrice * tier.multiplier,
+              );
+              const isCustom = tier.priceOverride != null;
+              const effective = tier.priceOverride ?? autoPrice;
+              return (
+                <Table.Tr key={form.key(`tiers.${ri}`)}>
+                  <Table.Td>
+                    <NumberInput
+                      min={1}
+                      {...form.getInputProps(`tiers.${ri}.minQuantity`)}
+                    />
+                  </Table.Td>
+                  <Table.Td>
+                    <NumberInput
+                      min={1}
+                      placeholder="上限なし"
+                      {...form.getInputProps(`tiers.${ri}.maxQuantity`)}
+                    />
+                  </Table.Td>
+                  <Table.Td>
+                    <NumberInput
+                      decimalScale={2}
+                      min={0.01}
+                      prefix="×"
+                      step={0.01}
+                      {...form.getInputProps(`tiers.${ri}.multiplier`)}
+                    />
+                  </Table.Td>
+                  <Table.Td ta="right">
+                    <Text
+                      c={isCustom ? "dimmed" : undefined}
+                      className="tabular-nums"
+                      ff="mono"
+                      size="sm"
+                      td={isCustom ? "line-through" : undefined}
+                    >
+                      ¥{autoPrice.toLocaleString("ja-JP")}
+                    </Text>
+                  </Table.Td>
+                  <Table.Td>
+                    <Group gap="xs" wrap="nowrap">
+                      <Checkbox
+                        aria-label="カスタム単価を使用"
+                        checked={isCustom}
+                        onChange={(e) =>
+                          toggleTierOverride(
+                            ri,
+                            e.currentTarget.checked,
+                            autoPrice,
+                          )
+                        }
+                      />
+                      <NumberInput
+                        disabled={!isCustom}
+                        min={0}
+                        placeholder={isCustom ? undefined : "自動計算"}
+                        prefix="¥"
+                        thousandSeparator=","
+                        {...form.getInputProps(`tiers.${ri}.priceOverride`)}
+                        onChange={(v) =>
+                          form.setFieldValue(
+                            `tiers.${ri}.priceOverride`,
+                            typeof v === "number" ? v : null,
+                          )
+                        }
+                        value={tier.priceOverride ?? ""}
+                      />
+                    </Group>
+                  </Table.Td>
+                  <Table.Td ta="right">
+                    <Group gap={6} justify="flex-end" wrap="nowrap">
+                      {isCustom && (
+                        <Text c="orange" size="xs">
+                          手動
+                        </Text>
+                      )}
+                      <Text
+                        className="tabular-nums"
+                        ff="mono"
+                        fw={600}
+                        size="sm"
+                      >
+                        ¥{effective.toLocaleString("ja-JP")}
+                      </Text>
+                    </Group>
+                  </Table.Td>
+                  <Table.Td>
+                    <ActionIcon
+                      aria-label="段階を削除"
+                      color="red"
+                      disabled={form.values.tiers.length <= 1}
+                      onClick={() => form.removeListItem("tiers", ri)}
+                      variant="subtle"
+                    >
+                      <IconTrash size={16} />
+                    </ActionIcon>
+                  </Table.Td>
+                </Table.Tr>
+              );
+            })}
           </Table.Tbody>
         </Table>
         <GhostButton

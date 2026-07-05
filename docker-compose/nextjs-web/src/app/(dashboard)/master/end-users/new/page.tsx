@@ -1,10 +1,8 @@
-import { PlaceholderPage } from "@/components/ui/PlaceholderPage";
+import { EndUserForm } from "@/components/master/end-users/EndUserForm";
 
+export const dynamic = "force-dynamic";
+
+/** 最終需要家 新規作成 (MS12). */
 export default function MasterEndUsersNewPage() {
-  return (
-    <PlaceholderPage
-      breadcrumbs={["マスタ", "最終需要家", "新規作成"]}
-      title="最終需要家 新規作成"
-    />
-  );
+  return <EndUserForm />;
 }

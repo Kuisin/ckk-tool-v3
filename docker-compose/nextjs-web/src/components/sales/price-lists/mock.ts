@@ -1,62 +1,16 @@
 /**
- * mock.ts — Price-list demo data + display helpers.
+ * mock.ts — 価格表 demo entries (test fixtures).
  *
- * Model (per _specs/tables.md `price_list_entries`):
- *   Entry = (顧客, 製品, 注文種別) — the identity key (unique, immutable).
- *           Owns the 有効期間 (validFrom/validUntil) + 通貨 + 状態.
- *     └ Tier = (数量範囲 → 単価)   ← all tiers of an entry share its period.
- *
- * The entry is the editable unit and the list row: one (顧客, 製品, 注文種別) per
- * row / per page. 本番・テスト など注文種別ごとにページ・行を分ける。
- * Swap arrays/helpers for Prisma later — components depend only on these shapes.
+ * Formerly the screen mock; the 価格表 screens now read
+ * sales.price_list_entries via Prisma (see app/sales/price-lists/data.ts and
+ * ./model.ts for the shared types/helpers). Kept ONLY as deterministic
+ * fixtures for the pricing unit tests (and the quotes mock until that screen
+ * is wired).
  */
 
-import { formatDate, formatMoney } from "@/lib/format";
+import { entryKey, type PriceListEntry } from "./model";
 
-/** One quantity tier: 数量範囲 → 単価. */
-export interface PriceTier {
-  id: string;
-  minQuantity: number;
-  maxQuantity: number | null;
-  unitPrice: number;
-}
-
-/** A (顧客, 製品, 注文種別) price entry — owns the period shared by its tiers. */
-export interface PriceListEntry {
-  entryId: string;
-  customerId: string;
-  customerName: string;
-  productId: string;
-  productName: string;
-  orderType: string;
-  currency: string;
-  validFrom: string;
-  validUntil: string | null;
-  isActive: boolean;
-  tiers: PriceTier[];
-  createdBy: string;
-  createdAt: string;
-  updatedAt: string;
-}
-
-/**
- * 注文種別 that must have a 有効終了日 (no 無期限) — テスト・サンプルは一時価格な
- * ので終了日を必須にする。本番・その他は無期限可。
- */
-export const END_DATE_REQUIRED_TYPES = ["TEST", "SAMPLE"];
-
-export function requiresEndDate(orderType: string): boolean {
-  return END_DATE_REQUIRED_TYPES.includes(orderType);
-}
-
-/** URL-safe entry key — `{customerId}__{productId}__{orderType}`. */
-export function entryKey(
-  customerId: string,
-  productId: string,
-  orderType: string,
-): string {
-  return `${customerId}__${productId}__${orderType}`;
-}
+export * from "./model";
 
 export const MOCK_PRICE_ENTRIES: PriceListEntry[] = [
   {
@@ -67,15 +21,67 @@ export const MOCK_PRICE_ENTRIES: PriceListEntry[] = [
     productName: "精密軸 PRD-202601-0001",
     orderType: "PRODUCTION",
     currency: "JPY",
+    baseUnitPrice: 6000, // 試算 EST-202605-00031 の見積単価
     validFrom: "2026-01-01",
     validUntil: null,
     isActive: true,
     tiers: [
-      { id: "ti-1", minQuantity: 1, maxQuantity: 9, unitPrice: 8000 },
-      { id: "ti-2", minQuantity: 10, maxQuantity: 29, unitPrice: 7000 },
-      { id: "ti-3a", minQuantity: 30, maxQuantity: 99, unitPrice: 6500 },
-      { id: "ti-2b", minQuantity: 100, maxQuantity: null, unitPrice: 6000 },
+      // 単価 = 基準単価 × 倍率（priceOverride で行ごとに手動上書き可）。
+      {
+        id: "ti-1",
+        minQuantity: 1,
+        maxQuantity: 9,
+        multiplier: 1.35,
+        priceOverride: 8000, // 手動上書き（×1.35 → ¥8,100 を丸め）
+      },
+      {
+        id: "ti-2",
+        minQuantity: 10,
+        maxQuantity: 29,
+        multiplier: 1.15,
+        priceOverride: null, // → ¥6,900
+      },
+      {
+        id: "ti-3a",
+        minQuantity: 30,
+        maxQuantity: 99,
+        multiplier: 1.05,
+        priceOverride: null, // → ¥6,300
+      },
+      {
+        id: "ti-2b",
+        minQuantity: 100,
+        maxQuantity: null,
+        multiplier: 1,
+        priceOverride: null, // → ¥6,000（基準どおり）
+      },
     ],
+    discounts: [
+      {
+        id: "pd-1",
+        label: "夏季キャンペーン",
+        discountType: "RATE",
+        value: 5,
+        minQuantity: 100,
+        maxQuantity: null,
+        validFrom: "2026-06-01",
+        validUntil: "2026-08-31",
+        isActive: true,
+      },
+      {
+        id: "pd-2",
+        label: "初回導入割",
+        discountType: "AMOUNT",
+        value: 300,
+        minQuantity: 10,
+        maxQuantity: 99,
+        validFrom: "2026-01-01",
+        validUntil: "2026-03-31",
+        isActive: false,
+      },
+    ],
+    estimateId: "te-0001",
+    estimateNumber: "EST-202605-00031",
     createdBy: "鈴木 一郎",
     createdAt: "2025-12-20 09:15",
     updatedAt: "2026-01-05 14:30",
@@ -88,10 +94,22 @@ export const MOCK_PRICE_ENTRIES: PriceListEntry[] = [
     productName: "精密軸 PRD-202601-0001",
     orderType: "SAMPLE",
     currency: "JPY",
+    baseUnitPrice: 0, // サンプルは金額0
     validFrom: "2026-01-01",
     validUntil: "2026-12-31",
     isActive: true,
-    tiers: [{ id: "ti-3", minQuantity: 1, maxQuantity: null, unitPrice: 0 }],
+    tiers: [
+      {
+        id: "ti-3",
+        minQuantity: 1,
+        maxQuantity: null,
+        multiplier: 1,
+        priceOverride: null,
+      },
+    ],
+    discounts: [],
+    estimateId: "te-0001",
+    estimateNumber: "EST-202605-00031",
     createdBy: "鈴木 一郎",
     createdAt: "2025-12-20 09:15",
     updatedAt: "2026-01-05 14:30",
@@ -104,10 +122,34 @@ export const MOCK_PRICE_ENTRIES: PriceListEntry[] = [
     productName: "ロッド PRD-202602-0008",
     orderType: "PRODUCTION",
     currency: "JPY",
+    baseUnitPrice: 6200,
     validFrom: "2026-04-01",
     validUntil: "2026-09-30",
     isActive: true,
-    tiers: [{ id: "ti-4", minQuantity: 1, maxQuantity: null, unitPrice: 6200 }],
+    tiers: [
+      {
+        id: "ti-4",
+        minQuantity: 1,
+        maxQuantity: null,
+        multiplier: 1,
+        priceOverride: null,
+      },
+    ],
+    discounts: [
+      {
+        id: "pd-3",
+        label: "数量増値引き",
+        discountType: "AMOUNT",
+        value: 100,
+        minQuantity: 50,
+        maxQuantity: null,
+        validFrom: "2026-04-01",
+        validUntil: "2026-09-30",
+        isActive: true,
+      },
+    ],
+    estimateId: null,
+    estimateNumber: null,
     createdBy: "田中 太郎",
     createdAt: "2026-03-15 10:00",
     updatedAt: "2026-03-15 10:00",
@@ -120,10 +162,22 @@ export const MOCK_PRICE_ENTRIES: PriceListEntry[] = [
     productName: "特殊加工品 PRD-202603-0012",
     orderType: "TEST",
     currency: "JPY",
+    baseUnitPrice: 9500,
     validFrom: "2026-05-01",
     validUntil: "2026-07-31",
     isActive: false,
-    tiers: [{ id: "ti-5", minQuantity: 1, maxQuantity: 10, unitPrice: 9500 }],
+    tiers: [
+      {
+        id: "ti-5",
+        minQuantity: 1,
+        maxQuantity: 10,
+        multiplier: 1,
+        priceOverride: null,
+      },
+    ],
+    discounts: [],
+    estimateId: null,
+    estimateNumber: null,
     createdBy: "中村 花子",
     createdAt: "2026-04-28 16:45",
     updatedAt: "2026-04-30 11:20",
@@ -162,37 +216,4 @@ export function findEntriesByCustomerProduct(
   return entries.filter(
     (e) => e.customerId === customerId && e.productId === productId,
   );
-}
-
-/** List-row / summary aggregates derived from an entry's tiers. */
-export interface EntrySummary {
-  tierCount: number;
-  minPrice: number;
-  maxPrice: number;
-}
-
-export function entrySummary(e: PriceListEntry): EntrySummary {
-  const prices = e.tiers.map((t) => t.unitPrice);
-  return {
-    tierCount: e.tiers.length,
-    minPrice: prices.length ? Math.min(...prices) : 0,
-    maxPrice: prices.length ? Math.max(...prices) : 0,
-  };
-}
-
-/** "1〜99本" / "100本〜" (no upper bound). */
-export function quantityRange(min: number, max: number | null): string {
-  return max == null ? `${min}本〜` : `${min}〜${max}本`;
-}
-
-/** "¥4,500〜¥5,000" (single value when min === max). */
-export function priceRangeLabel(min: number, max: number): string {
-  return min === max
-    ? formatMoney(min)
-    : `${formatMoney(min)}〜${formatMoney(max)}`;
-}
-
-/** "2026/01/01 〜 無期限" */
-export function validPeriod(from: string, until: string | null): string {
-  return `${formatDate(from)} 〜 ${until ? formatDate(until) : "無期限"}`;
 }
