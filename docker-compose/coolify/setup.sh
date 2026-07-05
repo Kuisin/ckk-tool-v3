@@ -196,7 +196,7 @@ fi
 docker compose up -d --remove-orphans
 sleep 3
 docker run --rm --network nextjs-web_default curlimages/curl:8.10.1 -sf -o /dev/null http://web:3000/ \
-  && echo "relay web:3000 -> :$DEV_PORT OK (dev.kai-lab.net unchanged)" \
+  && echo "relay web:3000 -> :$DEV_PORT OK (ckk-dev.kai-lab.net unchanged)" \
   || echo "!! relay check failed — inspect: docker logs web-relay-dev"
 
 step "9/9 Deploy main (prod pipeline validation)"
@@ -210,7 +210,7 @@ API token:       $TOKEN_FILE
 Webhook secrets: $WEBHOOK_FILE (for GitHub push auto-deploy once Coolify is
                  publicly reachable, e.g. coolify.kai-lab.net via cloudflared)
 Apps:            nextjs-web-dev  :$DEV_PORT  <- web relay (dev.kai-lab.net)
-                 nextjs-web-main :$MAIN_PORT <- web-main relay (v*.ckk.kai-lab.net)
+                 nextjs-web-main :$MAIN_PORT <- web-main relay (ckk.kai-lab.net)
 Rollback (main): Coolify UI -> nextjs-web-main -> Deployments -> pick a previous
                  successful build -> Redeploy (images are kept per deployment).
 EOF

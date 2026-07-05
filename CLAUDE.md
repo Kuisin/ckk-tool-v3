@@ -82,14 +82,14 @@ Powers the AI-first 受注請書 intake (scan image + auto-filled form → user 
 
 ## Deployment & Remote Server
 
-**Branch → environment (deploy to dev first, always)** — All work lands on `dev` and is **deployed to `dev.kai-lab.net` first** for verification. Promotion to production is by **PR `dev` → `main`**; `main` deploys to a **versioned host under `*.ckk.kai-lab.net`** (e.g. `v0-1-0.ckk.kai-lab.net`, from `package.json#version`). Never deploy straight to `main`/production — verify on `dev.kai-lab.net`, then open the PR.
+**Branch → environment (deploy to dev first, always)** — All work lands on `dev` and is **deployed to `ckk-dev.kai-lab.net` first** for verification. Promotion to production is by **PR `dev` → `main`**; `main` deploys to **`ckk.kai-lab.net`**. Never deploy straight to `main`/production — verify on `ckk-dev.kai-lab.net`, then open the PR.
 
-**nextjs-web deploys via Coolify** (all other stacks use the rsync + rebuild flow below). Coolify (`~/stacks/coolify`, UI/API `http://192.168.50.15:8000`) builds the app from GitHub per branch — see `docker-compose/coolify/README.md` for full topology, bootstrap, and webhook setup:
+**nextjs-web deploys via Coolify** (all other stacks use the rsync + rebuild flow below). Coolify (`~/stacks/coolify`, dashboard `https://deploy.ckk-tool.co.jp`, LAN fallback `http://192.168.50.15:8000`) builds the app from GitHub per branch — see `docker-compose/coolify/README.md` for full topology, bootstrap, and webhook setup:
 
 | App | Branch | Host port | Public host |
 |-----|--------|-----------|-------------|
-| `nextjs-web-dev` | `dev` | `:3004` | `dev.kai-lab.net` |
-| `nextjs-web-main` | `main` | `:3005` | `v{X-Y-Z}.ckk.kai-lab.net` |
+| `nextjs-web-dev` | `dev` | `:3004` | `ckk-dev.kai-lab.net` (legacy alias: `dev.kai-lab.net`) |
+| `nextjs-web-main` | `main` | `:3005` | `ckk.kai-lab.net` |
 
 - Deploy: `docker-compose/coolify/deploy.sh dev` (or `main`) after pushing; GitHub push auto-deploy activates once Coolify is exposed via the tunnel (see README).
 - **Rollback (main)**: Coolify UI → nextjs-web-main → Deployments → redeploy a previous build, or `deploy.sh main <git-sha>`. Deployment images are kept, so rollback is fast.
@@ -115,7 +115,7 @@ ssh 192.168.50.15 'cd ~/stacks/ai-stack && docker compose up -d --build'
 
 Dry-run the rsync first (`rsync -avn …`) to confirm the file set. The nextjs-web Dockerfile builds Next.js `output: "standalone"`; PDF templates under `src/pdf-templates/` reach the runtime image via `outputFileTracingIncludes` in `next.config.ts` (file tracing can't follow `fs.readFile` paths). `pnpm install --frozen-lockfile` runs in-build, so never let the lockfile drift.
 
-**nextjs-web topology** — the app containers are Coolify-managed (dev `:3004`, main `:3005`, container `:3000`; host `:3000` is taken by open-webui). Public access `https://dev.kai-lab.net` via the `cloudflared` stack; LAN TLS via `nginx-proxy`; both reach the app over the `nextjs-web_default` network at `http://web:3000` / `http://web-main:3000` (socat relays in the `nextjs-web` stack, which also keeps `gotenberg` and `seaweedfs`). PDF generation uses `http://gotenberg:3000` (`GOTENBERG_URL`); generated PDFs persist in the `seaweedfs` filer (`SEAWEED_FILER_URL=http://seaweedfs:8888`).
+**nextjs-web topology** — the app containers are Coolify-managed (dev `:3004`, main `:3005`, container `:3000`; host `:3000` is taken by open-webui). Public access `https://ckk-dev.kai-lab.net` (dev) / `https://ckk.kai-lab.net` (main) via the `cloudflared` stack; LAN TLS via `nginx-proxy` (same hostnames, shared `ckk.kai-lab.net` SAN cert); both reach the apps over the `nextjs-web_default` network at `http://web:3000` (dev) / `http://web-main:3000` (main) — socat relays in the `nextjs-web` stack, which also keeps `gotenberg` and `seaweedfs`. PDF generation uses `http://gotenberg:3000` (`GOTENBERG_URL`); generated PDFs persist in the `seaweedfs` filer (`SEAWEED_FILER_URL=http://seaweedfs:8888`).
 
 **Cross-stack services** — the `ai-stack` runs `ollama` (`:11434`, local models) and `po-extract` (`:8000`, the document→JSON extractor, model `qwen2.5vl`); `metabase` (`:3003`, OSS, postgres app DB) holds the BI dashboards. Cross-stack reachability is by attaching a service to the other stack's external network — the Coolify-built nextjs-web reaches `shared-db`, `po-extract`, `gotenberg`, `seaweedfs` because those are attached to the `coolify` network; nothing is reachable cross-stack by default.
 
