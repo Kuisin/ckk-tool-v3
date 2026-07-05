@@ -1,1 +1,5 @@
 node_modules/
+
+# Derived FileMaker extraction artifacts (regenerate via tools/fmptools)
+extracted/
+*.sqlite
