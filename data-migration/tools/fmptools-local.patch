@@ -1,0 +1,284 @@
+diff --git a/src/bin/fmp2sqlite.c b/src/bin/fmp2sqlite.c
+index 4187867..580ebc8 100644
+--- a/src/bin/fmp2sqlite.c
++++ b/src/bin/fmp2sqlite.c
+@@ -141,31 +141,54 @@ int main(int argc, char *argv[]) {
+             fprintf(stderr, "Error code: %d\n", error);
+             return 1;
+         }
+-        size_t create_query_len = create_query_length(table, columns);
+-        size_t insert_query_len = insert_query_length(table, columns);
++        /* Slack for sanitized/dedup-suffixed column names ("__dup<j>", "col<idx>"). */
++        size_t create_query_len = create_query_length(table, columns) + columns->count * 32 + 64;
++        size_t insert_query_len = insert_query_length(table, columns) + columns->count * 32 + 64;
+         create_query = realloc(create_query, create_query_len);
+         insert_query = realloc(insert_query, insert_query_len);
+ 
++        /* Remember emitted names to dedupe (SQLite forbids duplicate column names). */
++        char **emitted = calloc(columns->count, sizeof(char *));
++
+         char *p = create_query;
+         char *q = insert_query;
+-        p += snprintf(p, create_query_len, "CREATE TABLE \"%s\" (", table->utf8_name);
++        p += snprintf(p, create_query_len, "CREATE TABLE IF NOT EXISTS \"%s\" (", table->utf8_name);
+         q += snprintf(q, insert_query_len, "INSERT INTO \"%s\" (", table->utf8_name);
+         for (int j=0; j<columns->count; j++) {
+             fmp_column_t *column = &columns->columns[j];
+             char *colname = strdup(column->utf8_name);
+             size_t colname_len = strlen(colname);
+             for (int k=0; k<colname_len; k++) {
+-                if (colname[k] == ' ')
++                /* Neutralize characters that break a quoted identifier. */
++                if (colname[k] == ' ' || colname[k] == '"' || (unsigned char)colname[k] < 0x20)
+                     colname[k] = '_';
+             }
++            if (colname[0] == '\0') {
++                free(colname);
++                colname = malloc(32);
++                snprintf(colname, 32, "col%d", column->index);
++            }
++            /* Dedupe against earlier columns by appending a suffix. */
++            for (int k=0; k<j; k++) {
++                if (emitted[k] && strcmp(emitted[k], colname) == 0) {
++                    char *uniq = malloc(strlen(colname) + 24);
++                    sprintf(uniq, "%s__dup%d", colname, j);
++                    free(colname);
++                    colname = uniq;
++                    k = -1; /* re-check from the start against the new name */
++                }
++            }
++            emitted[j] = colname;
+             p += snprintf(p, create_query_len - (p - create_query), "\"%s\" TEXT", colname);
+             q += snprintf(q, insert_query_len - (q - insert_query), "\"%s\"", colname);
+             if (j < columns->count - 1) {
+                 p += snprintf(p, create_query_len - (p - create_query), ", ");
+                 q += snprintf(q, insert_query_len - (q - insert_query), ", ");
+             }
+-            free(colname);
+         }
++        for (int j=0; j<columns->count; j++)
++            free(emitted[j]);
++        free(emitted);
+         p += snprintf(p, create_query_len - (p - create_query), ");");
+         q += snprintf(q, insert_query_len - (q - insert_query), ") VALUES (");
+         for (int j=0; j<columns->count; j++) {
+@@ -179,17 +202,18 @@ int main(int argc, char *argv[]) {
+         fprintf(stderr, "CREATE TABLE \"%s\"\n", table->utf8_name);
+         rc = sqlite3_exec(db, create_query, NULL, NULL, &zErrMsg);
+         if (rc != SQLITE_OK) {
+-            fprintf(stderr, "Error creating SQL table: %s\n", zErrMsg);
+-            fprintf(stderr, "Statement was: %s\n", create_query);
+-            return 1;
++            fprintf(stderr, "Skipping table (create failed): %s\n", zErrMsg);
++            sqlite3_free(zErrMsg); zErrMsg = NULL;
++            fmp_free_columns(columns);
++            continue;
+         }
+ 
+         sqlite3_stmt *stmt = NULL;
+         rc = sqlite3_prepare_v2(db, insert_query, -1, &stmt, NULL);
+         if (rc != SQLITE_OK) {
+-            fprintf(stderr, "Error preparing SQL statement: %d\n", rc);
+-            fprintf(stderr, "Statement was: %s\n", insert_query);
+-            return 1;
++            fprintf(stderr, "Skipping table (prepare failed): %d\n", rc);
++            fmp_free_columns(columns);
++            continue;
+         }
+ 
+         fmp_sqlite_ctx_t ctx = { .db = db, .table_name = table->utf8_name, .insert_stmt = stmt };
+diff --git a/src/fmp.c b/src/fmp.c
+index 91d3358..6891f8d 100644
+--- a/src/fmp.c
++++ b/src/fmp.c
+@@ -259,12 +259,14 @@ fmp_error_t process_blocks(fmp_file_t *file,
+         retval = process_block(file, block);
+         blocks_visited[next_block-1] = 1;
+         if (retval != FMP_OK) {
+-            /*
+-            fprintf(stderr, "ERROR processing block, reporting partial results...\n");
+-            block->this_id = next_block;
+-            if (!handle_block || handle_block(block, user_ctx))
+-                process_chunk_chain(file, block->chunk, handle_chunk, user_ctx);
+-                */
++            /* Best-effort recovery: an unrecognized chunk code (often inside a
++             * container/blob block) shouldn't discard the whole file. Skip this
++             * block and keep walking the chain, preserving partial results. */
++            if (retval == FMP_ERROR_UNRECOGNIZED_CODE) {
++                retval = FMP_OK;
++                next_block = block->next_id;
++                continue;
++            }
+             break;
+         }
+         block->this_id = next_block;
+diff --git a/src/list_columns.c b/src/list_columns.c
+index 2eef63b..6422c83 100644
+--- a/src/list_columns.c
++++ b/src/list_columns.c
+@@ -33,6 +33,28 @@ typedef struct fmp_list_columns_ctx_s {
+     fmp_column_array_t *array;
+ } fmp_list_columns_ctx_t;
+ 
++/* Ensure a column slot exists for this index, with a synthesized fallback name.
++ * Used for the per-column metadata entry (ref_simple==2), which is present for
++ * every column even when the real name is not a decodable string (e.g. number
++ * and calculation fields). A real name, when found, overrides via handle_column. */
++static void ensure_column(size_t column_index, fmp_list_columns_ctx_t *ctx) {
++    fmp_column_array_t *array = ctx->array;
++    if (column_index == 0)
++        return;
++    if (column_index > array->count) {
++        size_t old_num_columns = array->count;
++        array->count = column_index;
++        array->columns = realloc(array->columns, array->count * sizeof(fmp_column_t));
++        memset(&array->columns[old_num_columns], 0, (column_index - old_num_columns) * sizeof(fmp_column_t));
++    }
++    fmp_column_t *current_column = array->columns + column_index - 1;
++    if (current_column->index == 0) {
++        snprintf(current_column->utf8_name, sizeof(current_column->utf8_name),
++                "col%zu", column_index);
++        current_column->index = column_index;
++    }
++}
++
+ static chunk_status_t handle_column(size_t column_index, fmp_data_t *name, fmp_list_columns_ctx_t *ctx) {
+     fmp_column_array_t *array = ctx->array;
+     if (column_index > array->count) {
+@@ -86,12 +108,23 @@ static chunk_status_t handle_chunk_list_columns_v7(fmp_chunk_t *chunk, fmp_list_
+     if (chunk->type != FMP_CHUNK_FIELD_REF_SIMPLE)
+         return CHUNK_NEXT;
+ 
+-    if (table_path_match_start2(chunk, 3, 3, 5)) {
+-        fmp_data_t *column_path = chunk->path[chunk->path_level-1];
+-        size_t column_index = path_value(chunk, column_path);
+-        if (chunk->ref_simple == 16) {
+-            handle_column(column_index, &chunk->data, ctx);
+-        }
++    /* CKK / FileMaker 7 layout. Every column has a metadata entry at
++     *   [tid].[3].[5].[col]  ref_simple == 2   -> register the column index
++     * and the (string) name nested one level deeper at
++     *   [tid].[3].[5].[col].[16]  ref_simple == 1  -> set the real name.
++     * The integer placeholders some fields carry at ref_simple==1 are <=4 bytes,
++     * so a length guard keeps the synthesized "colN" fallback for those. */
++    if (table_path_match_start2(chunk, 3, 3, 5) && chunk->ref_simple == 2) {
++        size_t column_index = path_value(chunk, chunk->path[chunk->path_level-1]);
++        ensure_column(column_index, ctx);
++        return CHUNK_NEXT;
++    }
++    if (chunk->path_level >= 5 &&
++            path_is(chunk, chunk->path[1], 3) && path_is(chunk, chunk->path[2], 5) &&
++            path_is(chunk, chunk->path[4], 16) && chunk->ref_simple == 1 &&
++            chunk->data.len > 4) {
++        size_t column_index = path_value(chunk, chunk->path[3]);
++        handle_column(column_index, &chunk->data, ctx);
+     }
+     return CHUNK_NEXT;
+ }
+diff --git a/src/list_tables.c b/src/list_tables.c
+index 21315ae..1c208bd 100644
+--- a/src/list_tables.c
++++ b/src/list_tables.c
+@@ -41,10 +41,15 @@ static chunk_status_t handle_chunk_list_tables_v7(fmp_chunk_t *chunk, void *ctxp
+     if (chunk->type != FMP_CHUNK_FIELD_REF_SIMPLE)
+         return CHUNK_NEXT;
+ 
+-    if (path_is(chunk, chunk->path[0], 3) && path_is(chunk, chunk->path[1], 16) &&
+-            path_is(chunk, chunk->path[2], 5) && path_value(chunk, chunk->path[3]) >= 128) {
+-        fmp_data_t *table_path = chunk->path[chunk->path_level-1];
+-        size_t table_index = path_value(chunk, table_path) - 128;
++    /* CKK / FileMaker 7 (converted from FM5/6) layout: the table-catalog entry
++     * nests the name one level deeper than stock fmptools expects --
++     *   [3].[16].[5].[tid>=128].[16]  with ref_simple == 1  =>  table name
++     * (stock fmptools looks for ref_simple == 16 directly under [tid]). */
++    if (chunk->path_level >= 5 &&
++            path_is(chunk, chunk->path[0], 3) && path_is(chunk, chunk->path[1], 16) &&
++            path_is(chunk, chunk->path[2], 5) && path_value(chunk, chunk->path[3]) >= 128 &&
++            path_is(chunk, chunk->path[4], 16) && chunk->ref_simple == 1) {
++        size_t table_index = path_value(chunk, chunk->path[3]) - 128;
+         fmp_table_array_t *array = ctx->array;
+         if (table_index > array->count) {
+             size_t old_count = array->count;
+@@ -53,12 +58,10 @@ static chunk_status_t handle_chunk_list_tables_v7(fmp_chunk_t *chunk, void *ctxp
+             memset(&array->tables[old_count], 0, (table_index - old_count) * sizeof(fmp_table_t));
+         }
+         fmp_table_t *current_table = array->tables + table_index - 1;
+-        if (chunk->ref_simple == 16) {
+-            convert(ctx->file->converter, ctx->file->xor_mask,
+-                    current_table->utf8_name, sizeof(current_table->utf8_name),
+-                    chunk->data.bytes, chunk->data.len);
+-            current_table->index = table_index;
+-        }
++        convert(ctx->file->converter, ctx->file->xor_mask,
++                current_table->utf8_name, sizeof(current_table->utf8_name),
++                chunk->data.bytes, chunk->data.len);
++        current_table->index = table_index;
+     }
+     return CHUNK_NEXT;
+ }
+diff --git a/src/read_values.c b/src/read_values.c
+index 017c6a0..d22a12b 100644
+--- a/src/read_values.c
++++ b/src/read_values.c
+@@ -160,15 +160,36 @@ static chunk_status_t handle_chunk_read_values_v7(fmp_chunk_t *chunk, fmp_read_v
+     if (chunk->type != FMP_CHUNK_FIELD_REF_SIMPLE && chunk->type != FMP_CHUNK_DATA_SEGMENT)
+         return CHUNK_NEXT;
+ 
+-    if (table_path_match_start2(chunk, 3, 3, 5)) {
+-        fmp_data_t *column_path = chunk->path[chunk->path_level-1];
+-        size_t column_index = path_value(chunk, column_path);
++    /* CKK / FileMaker 7 layout: register every column from its metadata entry
++     *   [tid].[3].[5].[col]  ref_simple == 2
++     * (zero-init new slots so column->index, used for SQLite bind positions, is
++     * reliable), then set the real name from
++     *   [tid].[3].[5].[col].[16]  ref_simple == 1  (length-guarded, see list_columns.c). */
++    if (table_path_match_start2(chunk, 3, 3, 5) && chunk->ref_simple == 2) {
++        size_t column_index = path_value(chunk, chunk->path[chunk->path_level-1]);
+         if (column_index > ctx->num_columns) {
++            size_t old = ctx->num_columns;
+             ctx->num_columns = column_index;
+             ctx->columns = realloc(ctx->columns, ctx->num_columns * sizeof(fmp_column_t));
++            memset(&ctx->columns[old], 0, (column_index - old) * sizeof(fmp_column_t));
+         }
+-        fmp_column_t *current_column = ctx->columns + column_index - 1;
+-        if (chunk->ref_simple == 16) {
++        if (column_index > 0) {
++            fmp_column_t *current_column = ctx->columns + column_index - 1;
++            if (current_column->index == 0) {
++                snprintf(current_column->utf8_name, sizeof(current_column->utf8_name),
++                        "col%zu", column_index);
++                current_column->index = column_index;
++            }
++        }
++        return CHUNK_NEXT;
++    }
++    if (chunk->path_level >= 5 &&
++            path_is(chunk, chunk->path[1], 3) && path_is(chunk, chunk->path[2], 5) &&
++            path_is(chunk, chunk->path[4], 16) && chunk->ref_simple == 1 &&
++            chunk->data.len > 4) {
++        size_t column_index = path_value(chunk, chunk->path[3]);
++        if (column_index > 0 && column_index <= ctx->num_columns) {
++            fmp_column_t *current_column = ctx->columns + column_index - 1;
+             convert(ctx->file->converter, ctx->file->xor_mask,
+                     current_column->utf8_name, sizeof(current_column->utf8_name),
+                     chunk->data.bytes, chunk->data.len);
+diff --git a/src/scsu.c b/src/scsu.c
+index fefee8e..275457e 100644
+--- a/src/scsu.c
++++ b/src/scsu.c
+@@ -141,7 +141,14 @@ size_t convert_scsu_to_utf8(
+                 } else { errno = EINVAL; break; }
+             }
+         } else if (shift) {
+-            u = static_window_offsets[shift - SQ0] + c;
++            /* SQn quotes one character from window n: the static window when the
++             * byte is 0x00-0x7F, the dynamic window when 0x80-0xFF (SCSU spec).
++             * Stock fmptools always used the static window, mangling e.g. the
++             * katakana ン/レ (SQ6 + 0xD3/0xCC) into ⇓/⇌ in the 0x2100 block. */
++            if (c < 0x80)
++                u = static_window_offsets[shift - SQ0] + c;
++            else
++                u = dynamic_window_offsets[shift - SQ0] + (c - 0x80);
+             shift = 0;
+         } else if (c == SCU) {
+             unicode = 1;
