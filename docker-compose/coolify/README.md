@@ -11,7 +11,9 @@ rsync + `docker compose up -d --build` flow.
 | `nextjs-web-dev` | `dev` | `:3004` | `dev.kai-lab.net` | cloudflared/nginx → `web:3000` relay → `:3004` |
 | `nextjs-web-main` | `main` | `:3005` | `v{X-Y-Z}.ckk.kai-lab.net` | cloudflared/nginx → `web-main:3000` relay → `:3005` |
 
-- Coolify UI/API: `http://192.168.50.15:8000` (LAN). Root login lives in
+- Coolify UI/API: `https://deploy.ckk-tool.co.jp` (LAN via nginx-proxy; public via
+  cloudflared once the tunnel hostnames are added — put a Cloudflare Access policy
+  in front). Direct LAN fallback: `http://192.168.50.15:8000`. Root login lives in
   `/data/coolify/source/.env` (server-only). API token: `/data/coolify/source/.api-token`.
 - Coolify's Traefik proxy is **not** used (nginx-proxy owns 80/443); apps publish
   plain host ports and the `web`/`web-main` socat relays in the `nextjs-web` stack
@@ -43,13 +45,23 @@ Idempotent — safe to re-run. See the step list in `setup.sh`.
   image is kept, so rollback is image-swap fast (no rebuild). CLI equivalent:
   `./deploy.sh main <git-sha>`.
 
-## GitHub push auto-deploy (optional, needs public URL)
+## Dashboard at deploy.ckk-tool.co.jp
 
-Coolify must be reachable by GitHub. Add a Cloudflare tunnel public hostname
-`coolify.kai-lab.net` → `http://coolify:8080` (attach the tunnel to the `coolify`
-network in `../cloudflared/docker-compose.yml`), then add a repo webhook:
+- **LAN**: nginx-proxy vhost `deploy.ckk-tool.co.jp` (wildcard cert
+  `_.ckk-tool.co.jp.{crt,key}`) proxies `/` → `coolify:8080`, `/app/` →
+  `coolify-realtime:6001` (websocket), `/terminal/ws` → `coolify-realtime:6002`.
+  Needs the LAN DNS override `deploy.ckk-tool.co.jp → 192.168.50.15`.
+- **Public**: Cloudflare Zero Trust public hostnames (see `../cloudflared/README.md`):
+  `deploy.ckk-tool.co.jp` → `http://coolify:8080` and path rule `/app/*` →
+  `http://coolify-realtime:6001`. **Add a Cloudflare Access policy** — this UI has
+  full deploy rights over the server.
 
-- Payload URL: `https://coolify.kai-lab.net/webhooks/source/github/events/manual`
+## GitHub push auto-deploy (optional, needs the public hostname above)
+
+Once `deploy.ckk-tool.co.jp` is publicly reachable, add a repo webhook:
+
+- Payload URL: `https://deploy.ckk-tool.co.jp/webhooks/source/github/events/manual`
+  (Access policy must bypass/service-auth this path, or GitHub can't reach it)
 - Content type: `application/json`
 - Secret: per-app value from `/data/coolify/source/.webhook-secrets`
 - Events: `push`

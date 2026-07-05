@@ -18,8 +18,8 @@ Networks > Tunnels > docker-linux > Public Hostname
   dockge.kai-lab.net   →  HTTP  →  dockge:5001       (dockge)
   chat.kai-lab.net     →  HTTP  →  open-webui:8080   (ai-stack — Open WebUI GUI)
   monitor.kai-lab.net  →  HTTP  →  grafana:3000      (monitoring — Grafana)
-  coolify.kai-lab.net  →  HTTP  →  coolify:8080      (optional — GitHub webhook auto-deploy;
-                                                      join the `coolify` network + protect with Access)
+  deploy.ckk-tool.co.jp        →  HTTP  →  coolify:8080           (Coolify dashboard — protect with Access!)
+  deploy.ckk-tool.co.jp /app/* →  HTTP  →  coolify-realtime:6001  (realtime websocket, same hostname path rule)
 ```
 
 `web` / `web-main` are stable socat relays in the `nextjs-web` stack, so Coolify

@@ -29,8 +29,8 @@ server {
     http2 on;
     server_name db.ckk-tool.co.jp;
 
-    ssl_certificate     /etc/nginx/certs/db.ckk-tool.co.jp.crt;
-    ssl_certificate_key /etc/nginx/certs/db.ckk-tool.co.jp.key;
+    ssl_certificate     /etc/nginx/certs/_.ckk-tool.co.jp.crt;
+    ssl_certificate_key /etc/nginx/certs/_.ckk-tool.co.jp.key;
     ssl_protocols TLSv1.2 TLSv1.3;
     ssl_session_cache shared:SSL:10m;
 

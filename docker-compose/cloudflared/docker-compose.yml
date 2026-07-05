@@ -7,9 +7,11 @@
 #                                                   to the Coolify dev app :3004)
 #   *.ckk.kai-lab.net    -> http://web-main:3000   (relay to Coolify main app :3005;
 #                                                   add per-version host at release)
-#   coolify.kai-lab.net  -> http://coolify:8080    (optional: enables GitHub push
-#                                                   auto-deploy webhooks; requires
-#                                                   joining the `coolify` network)
+#   deploy.ckk-tool.co.jp        -> http://coolify:8080          (Coolify dashboard;
+#   deploy.ckk-tool.co.jp/app/*  -> http://coolify-realtime:6001  realtime websocket.
+#                                   Protect with Cloudflare Access — full deploy
+#                                   rights. Also enables GitHub push auto-deploy
+#                                   webhooks at /webhooks/source/github/events/manual)
 #   dock.kai-lab.net     -> http://dockge:5001     (portainer, via kept dockge alias)
 #   chat.kai-lab.net     -> http://open-webui:8080 (ai-stack — Open WebUI GUI)
 #   monitor.kai-lab.net  -> http://grafana:3000    (monitoring stack — Grafana)
@@ -37,6 +39,7 @@ services:
       - metabase    # metabase `metabase:3000`
       - admintools   # admintools `admintools:8000`
       - shareddb    # prisma-studio `prisma-studio:5555`
+      - coolify     # coolify `coolify:8080` + `coolify-realtime:6001` (deploy.ckk-tool.co.jp)
 
 # Attach to each target stack's compose network so the tunnel can resolve them.
 networks:
@@ -61,3 +64,6 @@ networks:
   shareddb:
     external: true
     name: shared-db
+  coolify:
+    external: true
+    name: coolify
