@@ -20,6 +20,11 @@ type StatusMap = Record<string, StatusDef>;
 
 /** Per-entity status → { color, label } maps. Keys match DB enum values. */
 export const STATUS_MAPS = {
+  Estimate: {
+    DRAFT:      { label: '下書き',       color: 'gray' },
+    CONFIRMED:  { label: '確定',         color: 'blue' },
+    REGISTERED: { label: '価格表登録済', color: 'green' },
+  },
   Quote: {
     DRAFT:    { label: '下書き', color: 'gray' },
     ISSUED:   { label: '発行済', color: 'blue' },

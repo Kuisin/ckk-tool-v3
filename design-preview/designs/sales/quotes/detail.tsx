@@ -12,6 +12,7 @@ import {
   SummaryGrid,
   type AuditEntry,
 } from '../../lib/shells';
+import { PdfAttachmentPanel, type PdfFileMeta } from '../../lib/pdf-panel';
 import { ORDER_TYPE_LABEL } from '../../lib/mock';
 import { useIsMobile } from '../../lib/viewport-context';
 import { CancelQuoteModal } from './_modals/cancel';
@@ -29,14 +30,23 @@ const MOCK = {
   notes: '納期厳守でお願いします。',
 };
 
+// 発行時に保存された PDF（quotes.pdf_file_id → files）。DRAFT の間は null。
+const MOCK_PDF: PdfFileMeta | null = {
+  filename: 'QOT-202606-00001.pdf',
+  sizeBytes: 182_400,
+  generatedAt: '2026-06-05 14:30',
+  generatedBy: '鈴木 一郎',
+};
+
+// 明細は価格表（試算から登録した単価）から自動生成（priceListRef = 適用価格表）
 const MOCK_ITEMS = [
-  { id: '1', productName: '精密軸 PRD-2601-0001', orderType: 'PRODUCTION', quantity: 50, unitPrice: 5000, discountAmount: 10000, amount: 240000, deliveryDate: '2026-07-10' },
-  { id: '2', productName: 'ロッド PRD-2602-0008', orderType: 'TEST', quantity: 5, unitPrice: 6200, discountAmount: 0, amount: 31000, deliveryDate: null },
+  { id: '1', productName: '精密軸 PRD-2601-0001', orderType: 'PRODUCTION', quantity: 50, unitPrice: 5000, discountAmount: 10000, amount: 240000, deliveryDate: '2026-07-10', priceListRef: '1〜99本 ¥5,000' },
+  { id: '2', productName: 'ロッド PRD-2602-0008', orderType: 'TEST', quantity: 5, unitPrice: 6200, discountAmount: 0, amount: 31000, deliveryDate: null, priceListRef: null },
 ];
 
 const MOCK_AUDIT: AuditEntry[] = [
-  { id: 1, action: 'UPDATE', user: '鈴木', at: '2026-06-05 14:30', detail: 'ステータス: DRAFT → ISSUED' },
-  { id: 2, action: 'CREATE', user: '鈴木', at: '2026-06-03 09:15', detail: '見積書を作成' },
+  { id: 1, action: 'UPDATE', user: '鈴木', at: '2026-06-05 14:30', detail: 'ステータス: DRAFT → ISSUED（PDF 生成・保存）' },
+  { id: 2, action: 'CREATE', user: '鈴木', at: '2026-06-03 09:15', detail: '価格表から見積書を作成' },
 ];
 
 const totalAmount = MOCK_ITEMS.reduce((s, i) => s + i.amount, 0);
@@ -80,6 +90,7 @@ export default function QuoteDetailPage() {
       <Tabs defaultValue="items">
         <Tabs.List>
           <Tabs.Tab value="items">明細</Tabs.Tab>
+          <Tabs.Tab value="pdf">PDF</Tabs.Tab>
           <Tabs.Tab value="related">関連</Tabs.Tab>
           <Tabs.Tab value="history">履歴</Tabs.Tab>
         </Tabs.List>
@@ -95,6 +106,7 @@ export default function QuoteDetailPage() {
                 <Table.Th ta="right">値引き</Table.Th>
                 <Table.Th ta="right">金額</Table.Th>
                 {!isMobile && <Table.Th>納期</Table.Th>}
+                {!isMobile && <Table.Th>適用価格表</Table.Th>}
               </Table.Tr>
             </Table.Thead>
             <Table.Tbody>
@@ -107,6 +119,13 @@ export default function QuoteDetailPage() {
                   <Table.Td>{i.discountAmount > 0 ? <MoneyText value={-i.discountAmount} /> : <Text size="sm" ta="right" c="dimmed">—</Text>}</Table.Td>
                   <Table.Td><MoneyText value={i.amount} /></Table.Td>
                   {!isMobile && <Table.Td>{i.deliveryDate ? formatDate(i.deliveryDate) : '—'}</Table.Td>}
+                  {!isMobile && (
+                    <Table.Td>
+                      {i.priceListRef
+                        ? <Text size="xs" c="dimmed" ff="mono">{i.priceListRef}</Text>
+                        : <Text size="xs" c="orange">手動入力</Text>}
+                    </Table.Td>
+                  )}
                 </Table.Tr>
               ))}
             </Table.Tbody>
@@ -114,14 +133,32 @@ export default function QuoteDetailPage() {
               <Table.Tr>
                 <Table.Td colSpan={5} ta="right"><Text size="sm" c="dimmed" fw={500}>合計金額</Text></Table.Td>
                 <Table.Td><MoneyText value={totalAmount} /></Table.Td>
-                {!isMobile && <Table.Td />}
+                {!isMobile && <Table.Td colSpan={2} />}
               </Table.Tr>
             </Table.Tfoot>
           </Table>
         </Tabs.Panel>
 
+        {/* 発行時に保存された PDF（quotes.pdf_file_id）をインライン閲覧 */}
+        <Tabs.Panel value="pdf" pt="md">
+          <PdfAttachmentPanel
+            file={MOCK_PDF}
+            previewSrc="/pdf-templates/quote.html"
+            emptyMessage="PDF は未生成です。発行すると PDF が生成・保存されます。"
+            onRegenerate={() => {}}
+          />
+        </Tabs.Panel>
+
         <Tabs.Panel value="related" pt="md">
           <Stack gap="xs">
+            <Group>
+              <Text size="sm" c="dimmed" w={120}>試算</Text>
+              <DocNumber c="blue">EST-202606-00012</DocNumber>
+            </Group>
+            <Group>
+              <Text size="sm" c="dimmed" w={120}>価格表</Text>
+              <Text size="sm">株式会社ABC製作所 × 精密軸 PRD-2601-0001（1〜99本 ¥5,000）</Text>
+            </Group>
             <Group>
               <Text size="sm" c="dimmed" w={120}>注文受諾書</Text>
               <DocNumber c="blue">ORD-202606-00001</DocNumber>
