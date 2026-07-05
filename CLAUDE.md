@@ -97,6 +97,17 @@ Powers the AI-first 受注請書 intake (scan image + auto-filled form → user 
 - Coolify apps run on the external `coolify` docker network; `shared-db`, `po-extract`, `gotenberg`, `seaweedfs` are attached to it so `DATABASE_URL`/`GOTENBERG_URL`/`SEAWEED_FILER_URL`/`PO_EXTRACT_URL` resolve by container name. App env vars are managed in Coolify (not compose).
 - Both apps currently share the one business DB (`shared-db`/`ckk`); split a prod DB before real production traffic.
 
+**Database migrations (shared-db)** — Schema source of truth is `shared-db/prisma/schema/` (one `.prisma` per PG schema); migrations are owned by `shared-db` and NEVER run from nextjs-web. Authoring flow (from `shared-db/`): edit schema → `pnpm validate` → `pnpm migrate:dev -- --name <change>` → `pnpm generate` → sync consumer copies (`cd docker-compose/nextjs-web && pnpm db:sync-schema && pnpm db:generate`; same for `docker-compose/prisma-studio`). **Applying to the dev DB** after a merge to `dev` (all idempotent, from a LAN machine with the repo + `shared-db/.env` — the DB listens only on `192.168.50.15:15432`):
+
+```bash
+cd shared-db
+pnpm migrate:deploy                                              # 1. pending migrations
+sh -c '. ./.env; psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f sql/grants.sql'  # 2. re-grant (needed whenever tables/roles were added)
+pnpm seed:demo                                                   # 3. demo data (idempotent upserts)
+```
+
+Skipping `grants.sql` after adding tables makes the app 500 on those tables (role `app` has no rights). **From a cloud Claude session** (sandbox has no LAN route — no SSH, no 192.168.50.x): run the same steps through Claude Code Remote in the Mac bridge environment (`kaisei-mac-studio:ckk-tool-v3`) — `create_trigger` with `create_new_session_on_fire: true` + that `environment_id`, then `fire_trigger`; have the session post its result as a PR comment and subscribe to the PR to receive it.
+
 **Server** — `192.168.50.15` (hostname `docker-mac-pro`; despite the name it runs Linux — Ubuntu noble / t2 kernel). Access: `ssh 192.168.50.15` (key-based, user `kaiseisawada`). All services run as Docker Compose stacks orchestrated by **Dockge**, one dir per stack under `~/stacks/` on the server: `nextjs-web`, `coolify`, `shared-db`, `prisma-studio`, `metabase`, `ai-stack`, `monitoring`, `vpn-ldap`, `kot-import`, `admintools`, `nginx-proxy`, `cloudflared`, `portainer`.
 
 **Source ↔ server** — Each `~/stacks/<stack>` mirrors `docker-compose/<stack>` in this repo, but the **server copies are not git repos** and there is no deploy script/CI. Deploy = rsync the source up, then rebuild. The server's `.env` holds secrets and lives **only on the server** — never overwrite or delete it (always `--exclude '.env'`).
