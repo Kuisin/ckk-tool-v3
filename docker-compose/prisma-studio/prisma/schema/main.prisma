@@ -1,8 +1,13 @@
 // CKK shared database — single source of truth.
 // One PostgreSQL database, one schema per domain:
 //   kot / directory / admintools  — existing operational apps (Python, psycopg)
-//   auth / master / bp / sales / production / inventory / shipping / billing /
-//   design / sys / log            — ckk-tool-v3 business tables (_specs/tables.md)
+//   auth / master / bp / sales / sys — ckk-tool-v3 business tables
+//
+// Scope: trimmed to the sales MVP (試算 → 価格表 → 見積書) plus its master-data
+// dependencies (_specs/tables.md §1). Downstream domains (受注請書以降 —
+// production / inventory / shipping / billing / design / log) are added back
+// table-by-table when their feature lands, to keep tables and migrations
+// minimal.
 //
 // Prisma owns DDL (migrations). Python apps connect with psycopg and rely on
 // per-role search_path; the Next.js app uses the generated Prisma Client.
@@ -14,5 +19,5 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  schemas  = ["kot", "directory", "admintools", "auth", "master", "bp", "sales", "production", "inventory", "shipping", "billing", "design", "sys", "log"]
+  schemas  = ["kot", "directory", "admintools", "auth", "master", "bp", "sales", "sys"]
 }

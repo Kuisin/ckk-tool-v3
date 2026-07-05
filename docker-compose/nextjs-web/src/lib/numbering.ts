@@ -1,0 +1,43 @@
+/**
+ * numbering.ts — document numbering on sys.numbering_sequences
+ * (_specs/tables.md §採番管理). Server-only.
+ *
+ * Formats: PRD-YYYYMM-NNNN (製品) / EST-, QOT- ... -NNNNN with monthly reset.
+ * The increment is a single atomic INSERT ... ON CONFLICT statement, so
+ * concurrent callers never receive the same number.
+ */
+
+import { prisma } from "./db";
+
+const SEQUENCES = {
+  PRODUCT: { prefix: "PRD", digits: 4 },
+  ESTIMATE: { prefix: "EST", digits: 5 },
+  QUOTE: { prefix: "QOT", digits: 5 },
+} as const;
+
+export type NumberingKey = keyof typeof SEQUENCES;
+
+/** Next number for `key`, e.g. `PRD-202607-0012`. Resets monthly. */
+export async function nextDocumentNumber(key: NumberingKey): Promise<string> {
+  const { prefix, digits } = SEQUENCES[key];
+  const now = new Date();
+  const yearMonth = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, "0")}`;
+
+  const rows = await prisma.$queryRaw<{ last_sequence: number }[]>`
+    INSERT INTO "sys"."numbering_sequences"
+      ("key", "prefix", "last_year_month", "last_sequence", "updated_at")
+    VALUES (${key}, ${prefix}, ${yearMonth}, 1, now())
+    ON CONFLICT ("key") DO UPDATE SET
+      "last_sequence" = CASE
+        WHEN "numbering_sequences"."last_year_month" = ${yearMonth}
+          THEN "numbering_sequences"."last_sequence" + 1
+        ELSE 1
+      END,
+      "last_year_month" = ${yearMonth},
+      "updated_at" = now()
+    RETURNING "last_sequence"
+  `;
+  const seq = rows[0]?.last_sequence;
+  if (!seq) throw new Error(`numbering failed for ${key}`);
+  return `${prefix}-${yearMonth}-${String(seq).padStart(digits, "0")}`;
+}

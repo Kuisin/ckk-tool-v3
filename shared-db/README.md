@@ -12,13 +12,20 @@ LAN port `192.168.50.15:15432`, in-cluster host `shared-db:5432`).
 | `kot` | hr_records, employees, kot_employees, kot_match_review, import_runs, `v_labor` view | kot-import, admintools (role `kot`) |
 | `directory` | employee_directory, ldap_sync_log | vpn-ldap ldap-sync (role `ldap_sync`) |
 | `admintools` | mail_accounts, group_members | admintools (role `admintools`) |
-| `auth` `master` `bp` `sales` `production` `inventory` `shipping` `billing` `design` `sys` `log` | ckk-tool-v3 business tables (_specs/tables.md), incl. `auth.user_permissions` view | nextjs-web (role `app`) |
+| `auth` `master` `bp` `sales` `sys` | ckk-tool-v3 business tables (_specs/tables.md §1 sales MVP: 試算 → 価格表 → 見積書 + master-data deps), incl. `auth.user_permissions` view | nextjs-web (role `app`) |
 | `public` | pass-through compat views only (`sql/metabase-compat.sql`) | — (Metabase reads via `kot_ro`) |
+
+The v3 business scope is deliberately **minimal** (migration
+`trim_to_sales_core`): only 試算 (`sales.estimates` + `estimate_tiers`), 価格表
+(`sales.price_list_entries` + `price_list_tiers`), 見積書 (`sales.quotes` +
+`quote_items`) and their dependencies (`master.*`, `bp.*` customer side,
+`sys.files` / `numbering_sequences`, `auth.*`). Downstream domains
+(production / inventory / shipping / billing / design / log, 受注請書以降) are
+re-added table-by-table when their feature lands.
 
 Cross-schema FKs are real (e.g. `sales.quotes → bp.business_partners`,
 `kot.hr_records → kot.employees`). Deliberately **no** FK from `kot.employees`
-to `directory.employee_directory` (2 legacy usernames absent from AD) and none
-on the polymorphic `inventory.inventory_*.inventory_id` / `log.*.user_id`.
+to `directory.employee_directory` (2 legacy usernames absent from AD).
 
 ## Editing models (the only supported workflow)
 
@@ -41,6 +48,45 @@ browser). Refresh both when models change.
 Never hand-edit tables in the DB, never run DDL from the Python apps, and never
 run `prisma migrate` from nextjs-web (its `prisma/schema` is a synced copy for
 client generation only).
+
+## Demo data
+
+`pnpm seed:demo` applies `sql/demo-seed.sql` — idempotent demo rows for the
+master screens (材種 / 素材 / 製品). Demo product codes use past months
+(`PRD-202606-*`) so they never collide with the app's monthly `PRD`
+auto-numbering (`sys.numbering_sequences`).
+
+## Backup / restore
+
+`./scripts/backup.sh` (DATABASE_URL from `.env`) writes to `backups/`
+(gitignored):
+- `ckk-<ts>.dump` — full custom-format dump (DDL + data + views), for disaster
+  recovery: `pg_restore -d <url> --clean --create ckk-<ts>.dump`.
+- `ckk-<ts>.data.sql` — plain-SQL INSERTs of all app schemas, for re-seeding a
+  freshly migrated DB.
+
+## Reset / re-baseline (clean initial migration)
+
+The migration history was re-baselined on 2026-07-05 into a single clean
+`*_init` migration (the pre-trim history was squashed). A DB created with the
+old history has a stale `_prisma_migrations` table, so `migrate deploy` will
+refuse — reset it like this (server: `docker exec -it shared-db psql -U postgres`):
+
+```bash
+cd shared-db
+./scripts/backup.sh                     # 1. backup (see above)
+psql "$ADMIN_URL" -c 'DROP DATABASE ckk;' -c 'CREATE DATABASE ckk;'   # 2. reset
+pnpm migrate:deploy                     # 3. clean init → all schemas + views
+psql "$ADMIN_URL" -d ckk -f sql/grants.sql   # 4. roles/grants (idempotent)
+pg_restore -d "$DATABASE_URL" --data-only --disable-triggers \
+  -n kot -n directory -n admintools -n auth -n master -n bp -n sales -n sys \
+  backups/ckk-<ts>.dump                 # 5. restore data
+psql "$ADMIN_URL" -d ckk -f sql/metabase-compat.sql  # 6. public compat views
+```
+
+The init migration guards `CREATE EXTENSION pgroonga` in a `DO` block so it
+also applies on dev hosts without pgroonga (production's
+`groonga/pgroonga` image always has it).
 
 ## Roles / connections
 
