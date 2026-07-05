@@ -15,3 +15,9 @@ export const MATERIAL_FORM_LABEL: Record<string, string> = {
 export const MATERIAL_FORM_OPTIONS = Object.entries(MATERIAL_FORM_LABEL).map(
   ([value, label]) => ({ value, label }),
 );
+
+/** 単位 — free-text DB column, but the UI offers a fixed choice set. */
+export const UNIT_OPTIONS = ["本", "個", "kg", "m", "セット"].map((u) => ({
+  value: u,
+  label: u,
+}));
