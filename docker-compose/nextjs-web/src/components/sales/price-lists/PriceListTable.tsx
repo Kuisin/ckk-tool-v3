@@ -10,6 +10,7 @@
  */
 
 import { Badge, Group, Select, Stack, Text, TextInput } from "@mantine/core";
+import { notifications } from "@mantine/notifications";
 import {
   IconCalculator,
   IconCopy,
@@ -22,7 +23,6 @@ import {
 } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
-import { notifications } from "@mantine/notifications";
 import {
   deletePriceEntries,
   setPriceEntriesActive,

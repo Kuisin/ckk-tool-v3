@@ -184,7 +184,6 @@ export const MOCK_PRICE_ENTRIES: PriceListEntry[] = [
   },
 ];
 
-
 export function getPriceEntry(
   entryId: string,
   entries = MOCK_PRICE_ENTRIES,

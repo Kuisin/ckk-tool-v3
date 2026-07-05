@@ -14,8 +14,10 @@ import { Group, NumberInput, Select, Stack, Text } from "@mantine/core";
 import { HelpLabel } from "@/components/ui/HelpLabel";
 import { useIsMobile } from "@/hooks/useViewport";
 import { formatMoney } from "@/lib/format";
-import { ORDER_TYPE_OPTIONS, PRODUCTS } from "@/lib/mock";
-import { resolveUnitPrice } from "./quotes/mock";
+import type { Option } from "@/lib/mock";
+import { ORDER_TYPE_OPTIONS } from "@/lib/mock";
+import type { PriceListEntry } from "./price-lists/model";
+import { resolveUnitPriceFromEntries } from "./quotes/model";
 
 /** The slice of a quote line this control owns — 価格は全て自動解決値. */
 export interface ResolverValue {
@@ -31,19 +33,24 @@ export interface ResolverValue {
   discountLabel: string | null;
 }
 
-const productName = (id: string) =>
-  PRODUCTS.find((p) => p.value === id)?.label ?? id;
-
 export function ProductPriceResolverInput({
   customerId,
+  entries,
+  productOptions,
   value,
   onChange,
 }: {
   customerId: string;
+  /** 顧客の価格表エントリ（サーバー取得）— ライブ解決に使用。 */
+  entries: PriceListEntry[];
+  productOptions: Option[];
   value: ResolverValue;
   onChange: (next: ResolverValue) => void;
 }) {
   const isMobile = useIsMobile();
+
+  const productName = (id: string) =>
+    productOptions.find((p) => p.value === id)?.label ?? id;
 
   /** Re-resolve 単価・値引き from the 価格表 when 製品/種別/数量 changes. */
   const reresolve = (patch: Partial<ResolverValue>): ResolverValue => {
@@ -51,7 +58,8 @@ export function ProductPriceResolverInput({
     next.productName = productName(next.productId);
     const resolved =
       customerId && next.productId
-        ? resolveUnitPrice(
+        ? resolveUnitPriceFromEntries(
+            entries,
             customerId,
             next.productId,
             next.orderType,
@@ -74,7 +82,7 @@ export function ProductPriceResolverInput({
   return (
     <Group align="flex-end" gap="sm" wrap={isMobile ? "wrap" : "nowrap"}>
       <Select
-        data={PRODUCTS}
+        data={productOptions}
         flex={isMobile ? "1 1 100%" : 2}
         label="製品"
         onChange={(v) => onChange(reresolve({ productId: v ?? "" }))}

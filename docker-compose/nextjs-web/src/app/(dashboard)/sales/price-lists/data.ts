@@ -20,9 +20,7 @@ const ENTRY_INCLUDE = {
   discounts: { orderBy: { createdAt: "asc" as const } },
 };
 
-type EntryRow = NonNullable<
-  Awaited<ReturnType<typeof findEntryRow>>
->;
+type EntryRow = NonNullable<Awaited<ReturnType<typeof findEntryRow>>>;
 
 export interface EntryKeyParts {
   customerBpId: string;
@@ -48,7 +46,10 @@ const iso = (d: Date) => d.toISOString().slice(0, 10);
 export function mapEntry(r: EntryRow): PriceListEntry {
   const estimateNumber =
     r.estimateYearMonth && r.estimateSeq != null
-      ? formatEstimateNumber({ yearMonth: r.estimateYearMonth, seq: r.estimateSeq })
+      ? formatEstimateNumber({
+          yearMonth: r.estimateYearMonth,
+          seq: r.estimateSeq,
+        })
       : null;
   return {
     entryId: priceEntryKey(r.customerBpId, r.productId, r.orderType),

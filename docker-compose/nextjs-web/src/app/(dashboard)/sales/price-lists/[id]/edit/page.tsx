@@ -39,7 +39,9 @@ export default async function PriceListEditPage({
     : null;
   if (estKey) {
     const estimate = await prisma.estimate.findUnique({
-      where: { yearMonth_seq: { yearMonth: estKey.yearMonth, seq: estKey.seq } },
+      where: {
+        yearMonth_seq: { yearMonth: estKey.yearMonth, seq: estKey.seq },
+      },
     });
     if (estimate) {
       estimateBase =

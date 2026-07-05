@@ -33,19 +33,19 @@ import {
 } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
-import type { RelatedQuoteRow } from "@/app/(dashboard)/sales/price-lists/data";
 import {
   deleteDiscountRule,
   saveDiscountRule,
 } from "@/app/(dashboard)/sales/price-lists/actions";
+import type { RelatedQuoteRow } from "@/app/(dashboard)/sales/price-lists/data";
 import { ActiveBadge } from "@/components/ui/ActiveBadge";
 import { SecondaryButton } from "@/components/ui/buttons";
 import { DocNumber } from "@/components/ui/DocNumber";
+import { EmptyState } from "@/components/ui/EmptyState";
 import { FieldValue } from "@/components/ui/FieldValue";
 import { MoneyText } from "@/components/ui/MoneyText";
 import { openConfirm } from "@/components/ui/modals";
 import { StatusBadge } from "@/components/ui/StatusBadge";
-import { EmptyState } from "@/components/ui/EmptyState";
 import {
   DetailShell,
   ResourceActions,
