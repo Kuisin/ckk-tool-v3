@@ -3,17 +3,27 @@
 /**
  * QuoteDetail — 見積書 詳細 (design.md §8.2).
  *
- * Summary grid + 明細 tab whose rows are 価格表 tier-resolved lines (one product
- * across several 数量 bands), plus 履歴. The PDF action points at the Gotenberg
- * route handler. `id` falls back to the first quote so the layout always renders.
+ * Summary grid + tabs: 明細 (価格表 tier-resolved lines + 値引き + 適用価格表) /
+ * PDF (発行時に保存された PDF のメタ + インライン A4 プレビュー) / 関連 (試算・
+ * 価格表 back-links) / 履歴. 発行 (DRAFT → ISSUED) generates the PDF via the
+ * Gotenberg route and stores it in SeaweedFS; the PDF tab streams that stored
+ * copy. `id` falls back to the first quote so the layout always renders.
  * Replace the mock lookup with a server fetch.
  */
 
-import { Badge, Table, Tabs, Text } from "@mantine/core";
-import { IconCopy, IconDownload } from "@tabler/icons-react";
+import { Anchor, Badge, Stack, Table, Tabs, Text } from "@mantine/core";
+import { notifications } from "@mantine/notifications";
+import { IconCopy, IconDownload, IconSend } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
+import { useState } from "react";
+import { PrimaryButton } from "@/components/ui/buttons";
+import { DocNumber } from "@/components/ui/DocNumber";
 import { FieldValue } from "@/components/ui/FieldValue";
 import { MoneyText } from "@/components/ui/MoneyText";
+import {
+  PdfAttachmentPanel,
+  type PdfFileMeta,
+} from "@/components/ui/PdfAttachmentPanel";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import {
   type AuditEntry,
@@ -23,7 +33,17 @@ import {
   SummaryGrid,
 } from "@/components/ui/shells";
 import { formatDate, formatDateTime } from "@/lib/format";
-import { getQuote, MOCK_QUOTES, orderTypeLabel, quoteTotals } from "./mock";
+import { ORDER_TYPE_LABEL } from "@/lib/mock";
+import { IssueQuoteModal } from "./IssueQuoteModal";
+import {
+  findPriceTierRef,
+  getQuote,
+  MOCK_QUOTES,
+  orderTypeLabel,
+  priceEntriesForQuote,
+  type QuoteStatus,
+  quoteTotals,
+} from "./mock";
 
 const BASE_PATH = "/sales/quotes";
 
@@ -34,14 +54,14 @@ const MOCK_AUDIT: AuditEntry[] = [
     action: "UPDATE",
     user: "鈴木",
     at: "2026/02/16 10:05",
-    detail: "ステータス: 下書き → 発行済",
+    detail: "ステータス: 下書き → 発行済（PDF 生成・保存）",
   },
   {
     id: 2,
     action: "CREATE",
     user: "鈴木",
     at: "2026/02/16 09:30",
-    detail: "見積書を作成（価格表より自動解決）",
+    detail: "価格表から見積書を作成（単価自動解決）",
   },
 ];
 
@@ -50,17 +70,59 @@ export function QuoteDetail({ id }: { id: string }) {
   const quote = getQuote(id) ?? MOCK_QUOTES[0];
   const totals = quoteTotals(quote);
 
+  // TODO(server-action): status / pdf_file_id persist server-side.
+  const [status, setStatus] = useState<QuoteStatus>(quote.status);
+  const [pdfFile, setPdfFile] = useState<PdfFileMeta | null>(quote.pdfFile);
+  const [issueOpen, setIssueOpen] = useState(false);
+  // Bumped on 再生成 so the preview iframe reloads the regenerated PDF.
+  const [pdfNonce, setPdfNonce] = useState(0);
+
+  const pdfUrl = (extra = "") =>
+    `/api/pdf/quote?id=${encodeURIComponent(quote.id)}${extra}`;
+
+  const relatedEntries = priceEntriesForQuote(quote);
+
+  const regenerate = async () => {
+    try {
+      const res = await fetch(pdfUrl("&force=1"));
+      if (!res.ok) throw new Error(`PDF route ${res.status}`);
+      const blob = await res.blob();
+      setPdfFile((prev) => (prev ? { ...prev, sizeBytes: blob.size } : prev));
+      setPdfNonce((n) => n + 1);
+      notifications.show({
+        title: "再生成しました",
+        message: "PDF を再生成・保存しました",
+        color: "green",
+      });
+    } catch {
+      notifications.show({
+        title: "エラー",
+        message: "PDF の再生成に失敗しました",
+        color: "red",
+      });
+    }
+  };
+
   return (
     <DetailShell
       actions={
         <ResourceActions
           menuItems={[
+            ...(status === "DRAFT"
+              ? [
+                  {
+                    label: "発行",
+                    icon: <IconSend size={14} />,
+                    onClick: () => setIssueOpen(true),
+                  },
+                ]
+              : []),
             {
               label: "PDFをダウンロード",
               icon: <IconDownload size={14} />,
               onClick: () =>
                 window.open(
-                  `/api/pdf/quote?id=${encodeURIComponent(quote.id)}&download=1`,
+                  pdfUrl("&download=1"),
                   "_blank",
                   "noopener,noreferrer",
                 ),
@@ -73,12 +135,12 @@ export function QuoteDetail({ id }: { id: string }) {
             },
           ]}
           onEdit={() => router.push(`${BASE_PATH}/${quote.id}/edit`)}
-          pdf={{ href: `/api/pdf/quote?id=${encodeURIComponent(quote.id)}` }}
+          pdf={{ href: pdfUrl() }}
         />
       }
       breadcrumbs={["販売", { label: "見積書", href: BASE_PATH }, "詳細"]}
       createdAt={formatDateTime(quote.createdAt)}
-      status={<StatusBadge entity="Quote" status={quote.status} />}
+      status={<StatusBadge entity="Quote" status={status} />}
       title={quote.quoteNumber}
       updatedAt={formatDateTime(quote.updatedAt)}
     >
@@ -97,11 +159,13 @@ export function QuoteDetail({ id }: { id: string }) {
       <Tabs defaultValue="items">
         <Tabs.List>
           <Tabs.Tab value="items">明細</Tabs.Tab>
+          <Tabs.Tab value="pdf">PDF</Tabs.Tab>
+          <Tabs.Tab value="related">関連</Tabs.Tab>
           <Tabs.Tab value="history">履歴</Tabs.Tab>
         </Tabs.List>
 
         <Tabs.Panel pt="md" value="items">
-          <Table.ScrollContainer minWidth={680}>
+          <Table.ScrollContainer minWidth={860}>
             <Table>
               <Table.Thead>
                 <Table.Tr>
@@ -109,43 +173,77 @@ export function QuoteDetail({ id }: { id: string }) {
                   <Table.Th>注文種別</Table.Th>
                   <Table.Th ta="right">数量</Table.Th>
                   <Table.Th ta="right">単価</Table.Th>
+                  <Table.Th ta="right">値引き</Table.Th>
                   <Table.Th ta="right">金額</Table.Th>
                   <Table.Th>納期</Table.Th>
+                  <Table.Th>適用価格表</Table.Th>
                 </Table.Tr>
               </Table.Thead>
               <Table.Tbody>
-                {quote.items.map((it) => (
-                  <Table.Tr key={it.id}>
-                    <Table.Td>
-                      <Text size="sm">{it.productName}</Text>
-                      <Text c="dimmed" ff="mono" size="xs">
-                        {it.productId}
-                      </Text>
-                    </Table.Td>
-                    <Table.Td>
-                      <Badge color="gray" variant="light">
-                        {orderTypeLabel(it.orderType)}
-                      </Badge>
-                    </Table.Td>
-                    <Table.Td ta="right">{it.quantity}</Table.Td>
-                    <Table.Td ta="right">
-                      <MoneyText value={it.unitPrice} />
-                      {it.priceTierId ? null : (
-                        <Text c="orange" size="xs">
-                          手動
+                {quote.items.map((it) => {
+                  const tierRef = findPriceTierRef(it.priceTierId);
+                  return (
+                    <Table.Tr key={it.id}>
+                      <Table.Td>
+                        <Text size="sm">{it.productName}</Text>
+                        <Text c="dimmed" ff="mono" size="xs">
+                          {it.productId}
                         </Text>
-                      )}
-                    </Table.Td>
-                    <Table.Td ta="right">
-                      <MoneyText value={it.amount} />
-                    </Table.Td>
-                    <Table.Td>{formatDate(it.deliveryDate)}</Table.Td>
-                  </Table.Tr>
-                ))}
+                      </Table.Td>
+                      <Table.Td>
+                        <Badge color="gray" variant="light">
+                          {orderTypeLabel(it.orderType)}
+                        </Badge>
+                      </Table.Td>
+                      <Table.Td ta="right">{it.quantity}</Table.Td>
+                      <Table.Td ta="right">
+                        <MoneyText value={it.unitPrice} />
+                      </Table.Td>
+                      <Table.Td ta="right">
+                        {it.discountAmount > 0 ? (
+                          <>
+                            <Text
+                              c="red"
+                              className="tabular-nums"
+                              ff="mono"
+                              size="sm"
+                            >
+                              -<MoneyText value={it.discountAmount} />
+                            </Text>
+                            {it.discountLabel && (
+                              <Text c="dimmed" size="xs">
+                                {it.discountLabel}
+                              </Text>
+                            )}
+                          </>
+                        ) : (
+                          <Text c="dimmed" size="sm">
+                            —
+                          </Text>
+                        )}
+                      </Table.Td>
+                      <Table.Td ta="right">
+                        <MoneyText value={it.amount} />
+                      </Table.Td>
+                      <Table.Td>{formatDate(it.deliveryDate)}</Table.Td>
+                      <Table.Td>
+                        {tierRef ? (
+                          <Text className="tabular-nums" ff="mono" size="xs">
+                            {tierRef.label}
+                          </Text>
+                        ) : (
+                          <Text c="orange" size="xs">
+                            価格表なし
+                          </Text>
+                        )}
+                      </Table.Td>
+                    </Table.Tr>
+                  );
+                })}
               </Table.Tbody>
               <Table.Tfoot>
                 <Table.Tr>
-                  <Table.Td colSpan={4} ta="right">
+                  <Table.Td colSpan={5} ta="right">
                     <Text c="dimmed" size="sm">
                       小計
                     </Text>
@@ -153,10 +251,10 @@ export function QuoteDetail({ id }: { id: string }) {
                   <Table.Td ta="right">
                     <MoneyText value={totals.subtotal} />
                   </Table.Td>
-                  <Table.Td />
+                  <Table.Td colSpan={2} />
                 </Table.Tr>
                 <Table.Tr>
-                  <Table.Td colSpan={4} ta="right">
+                  <Table.Td colSpan={5} ta="right">
                     <Text c="dimmed" size="sm">
                       消費税（10%）
                     </Text>
@@ -164,10 +262,10 @@ export function QuoteDetail({ id }: { id: string }) {
                   <Table.Td ta="right">
                     <MoneyText value={totals.tax} />
                   </Table.Td>
-                  <Table.Td />
+                  <Table.Td colSpan={2} />
                 </Table.Tr>
                 <Table.Tr>
-                  <Table.Td colSpan={4} ta="right">
+                  <Table.Td colSpan={5} ta="right">
                     <Text fw={700} size="sm">
                       合計（税込）
                     </Text>
@@ -175,17 +273,122 @@ export function QuoteDetail({ id }: { id: string }) {
                   <Table.Td ta="right">
                     <MoneyText value={totals.grandTotal} />
                   </Table.Td>
-                  <Table.Td />
+                  <Table.Td colSpan={2} />
                 </Table.Tr>
               </Table.Tfoot>
             </Table>
           </Table.ScrollContainer>
         </Tabs.Panel>
 
+        <Tabs.Panel pt="md" value="pdf">
+          <PdfAttachmentPanel
+            emptyAction={
+              status === "DRAFT" ? (
+                <PrimaryButton
+                  leftSection={<IconSend size={14} />}
+                  onClick={() => setIssueOpen(true)}
+                >
+                  発行
+                </PrimaryButton>
+              ) : undefined
+            }
+            emptyMessage="PDF は未生成です。発行すると PDF が生成・保存されます。"
+            file={pdfFile}
+            onDownload={() =>
+              window.open(
+                pdfUrl("&download=1"),
+                "_blank",
+                "noopener,noreferrer",
+              )
+            }
+            onRegenerate={regenerate}
+            previewSrc={pdfUrl(`&v=${pdfNonce}`)}
+          />
+        </Tabs.Panel>
+
+        <Tabs.Panel pt="md" value="related">
+          <Stack gap="md">
+            <div>
+              <Text c="dimmed" mb={4} size="xs">
+                適用価格表
+              </Text>
+              {relatedEntries.length > 0 ? (
+                <Stack gap={4}>
+                  {relatedEntries.map((e) => (
+                    <Anchor
+                      key={e.entryId}
+                      onClick={() =>
+                        router.push(`/sales/price-lists/${e.entryId}`)
+                      }
+                      size="sm"
+                    >
+                      {e.customerName} × {e.productName}（
+                      {ORDER_TYPE_LABEL[e.orderType]}・{e.tiers.length}段階）
+                    </Anchor>
+                  ))}
+                </Stack>
+              ) : (
+                <Text c="dimmed" size="sm">
+                  —（全明細が手動入力です）
+                </Text>
+              )}
+            </div>
+
+            <div>
+              <Text c="dimmed" mb={4} size="xs">
+                試算元
+              </Text>
+              {relatedEntries.some((e) => e.estimateId) ? (
+                <Stack gap={4}>
+                  {relatedEntries
+                    .filter((e) => e.estimateId)
+                    .map((e) => (
+                      <Anchor
+                        key={e.estimateId}
+                        onClick={() =>
+                          router.push(`/sales/trial-estimates/${e.estimateId}`)
+                        }
+                        size="sm"
+                      >
+                        <DocNumber c="blue">{e.estimateNumber}</DocNumber>
+                      </Anchor>
+                    ))}
+                </Stack>
+              ) : (
+                <Text c="dimmed" size="sm">
+                  —（手動登録の価格表です）
+                </Text>
+              )}
+            </div>
+
+            <div>
+              <Text c="dimmed" mb={4} size="xs">
+                注文受諾書
+              </Text>
+              <Text c="dimmed" size="sm">
+                —（受諾後に作成されます）
+              </Text>
+            </div>
+          </Stack>
+        </Tabs.Panel>
+
         <Tabs.Panel pt="md" value="history">
           <AuditTimeline entries={MOCK_AUDIT} />
         </Tabs.Panel>
       </Tabs>
+
+      <IssueQuoteModal
+        defaultValidUntil={quote.validUntil}
+        onClose={() => setIssueOpen(false)}
+        onIssued={(meta) => {
+          setStatus("ISSUED");
+          setPdfFile(meta);
+          setPdfNonce((n) => n + 1);
+        }}
+        opened={issueOpen}
+        quoteId={quote.id}
+        quoteNumber={quote.quoteNumber}
+      />
     </DetailShell>
   );
 }

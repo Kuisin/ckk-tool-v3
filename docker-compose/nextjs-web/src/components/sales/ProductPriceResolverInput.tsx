@@ -1,20 +1,23 @@
 "use client";
 
 /**
- * ProductPriceResolverInput — 製品×注文種別×数量 → 価格表単価の自動解決 (design.md §12.9).
+ * ProductPriceResolverInput — 製品×注文種別×数量 → 価格表からの完全自動解決
+ * (design.md §12.9).
  *
- * One quote line: choosing 製品 / 注文種別 / 数量 auto-fills 単価 from the 価格表
- * (price_list_tiers) for the row's 顧客. The 単価 stays editable — a manual edit
- * marks the line as 手動 (priceTierId = null). 金額 = 単価 × 数量.
+ * 見積書は印刷用ドキュメント — 価格は価格表からのみ解決する。製品 / 注文種別 /
+ * 数量 を選ぶと、単価（基準単価 × 数量倍率）と値引き（値引きルール）が自動計算
+ * される。手動の単価・値引き入力はない。該当する価格表がない行は見積できない
+ * （試算 → 価格表登録が必要）。金額 = 単価 × 数量 − 値引き。
  */
 
 import { Group, NumberInput, Select, Stack, Text } from "@mantine/core";
+import { HelpLabel } from "@/components/ui/HelpLabel";
 import { useIsMobile } from "@/hooks/useViewport";
 import { formatMoney } from "@/lib/format";
 import { ORDER_TYPE_OPTIONS, PRODUCTS } from "@/lib/mock";
 import { resolveUnitPrice } from "./quotes/mock";
 
-/** The editable slice of a quote line this control owns. */
+/** The slice of a quote line this control owns — 価格は全て自動解決値. */
 export interface ResolverValue {
   productId: string;
   productName: string;
@@ -22,6 +25,10 @@ export interface ResolverValue {
   quantity: number;
   unitPrice: number;
   priceTierId: string | null;
+  /** 値引きルールから自動計算された明細値引き額. */
+  discountAmount: number;
+  /** 適用された値引きルール名（なければ null）. */
+  discountLabel: string | null;
 }
 
 const productName = (id: string) =>
@@ -38,7 +45,7 @@ export function ProductPriceResolverInput({
 }) {
   const isMobile = useIsMobile();
 
-  /** Re-resolve 単価 from the 価格表 when a key field (製品/種別/数量) changes. */
+  /** Re-resolve 単価・値引き from the 価格表 when 製品/種別/数量 changes. */
   const reresolve = (patch: Partial<ResolverValue>): ResolverValue => {
     const next = { ...value, ...patch };
     next.productName = productName(next.productId);
@@ -53,10 +60,16 @@ export function ProductPriceResolverInput({
         : null;
     next.unitPrice = resolved?.unitPrice ?? 0;
     next.priceTierId = resolved?.tierId ?? null;
+    next.discountAmount = resolved?.discountAmount ?? 0;
+    next.discountLabel = resolved?.discountLabel ?? null;
     return next;
   };
 
-  const amount = value.unitPrice * value.quantity;
+  const amount = Math.max(
+    0,
+    value.unitPrice * value.quantity - value.discountAmount,
+  );
+  const unresolved = Boolean(value.productId) && value.priceTierId == null;
 
   return (
     <Group align="flex-end" gap="sm" wrap={isMobile ? "wrap" : "nowrap"}>
@@ -86,23 +99,61 @@ export function ProductPriceResolverInput({
         }
         value={value.quantity}
       />
-      <NumberInput
-        decimalScale={2}
-        description={value.priceTierId ? "価格表" : "手動"}
-        flex={isMobile ? 1 : 1.2}
-        label="単価"
-        min={0}
-        onChange={(v) =>
-          onChange({
-            ...value,
-            unitPrice: typeof v === "number" ? v : 0,
-            priceTierId: null, // 手動上書き
-          })
-        }
-        prefix="¥"
-        thousandSeparator=","
-        value={value.unitPrice}
-      />
+      <Stack
+        align={isMobile ? "flex-start" : "flex-end"}
+        flex={isMobile ? 1 : 1.1}
+        gap={2}
+      >
+        <Text c="dimmed" size="xs">
+          <HelpLabel
+            help="顧客×製品×注文種別×数量の価格表から自動解決（基準単価 × 数量倍率、行の手動上書きがあればそれ）。"
+            label="単価（価格表）"
+          />
+        </Text>
+        {unresolved ? (
+          <Text c="orange" fw={600} size="xs">
+            価格表なし
+          </Text>
+        ) : (
+          <Text className="tabular-nums" ff="mono" size="sm">
+            {formatMoney(value.unitPrice)}
+          </Text>
+        )}
+      </Stack>
+      <Stack
+        align={isMobile ? "flex-start" : "flex-end"}
+        flex={isMobile ? 1 : 1.1}
+        gap={2}
+      >
+        <Text c="dimmed" size="xs">
+          <HelpLabel
+            help="価格表の値引きルール（期間・数量条件）から自動適用。複数該当時は値引き額が最大のルール。"
+            label="値引き（自動）"
+          />
+        </Text>
+        {value.discountAmount > 0 ? (
+          <div>
+            <Text
+              c="red"
+              className="tabular-nums"
+              ff="mono"
+              size="sm"
+              ta="right"
+            >
+              -{formatMoney(value.discountAmount)}
+            </Text>
+            {value.discountLabel && (
+              <Text c="dimmed" size="xs" ta="right">
+                {value.discountLabel}
+              </Text>
+            )}
+          </div>
+        ) : (
+          <Text c="dimmed" size="sm">
+            —
+          </Text>
+        )}
+      </Stack>
       <Stack
         align={isMobile ? "flex-start" : "flex-end"}
         flex={isMobile ? "1 1 100%" : 1.2}

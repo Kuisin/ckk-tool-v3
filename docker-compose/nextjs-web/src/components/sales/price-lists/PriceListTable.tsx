@@ -10,9 +10,11 @@
 
 import { Badge, Group, Select, Stack, Text, TextInput } from "@mantine/core";
 import {
+  IconCalculator,
   IconCopy,
   IconCopyPlus,
   IconCurrencyYen,
+  IconFileText,
   IconSearch,
   IconToggleRight,
   IconTrash,
@@ -20,8 +22,9 @@ import {
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { ActiveBadge } from "@/components/ui/ActiveBadge";
+import { SecondaryButton } from "@/components/ui/buttons";
 import { type Column, DataTable } from "@/components/ui/DataTable";
-import { NewButton } from "@/components/ui/NewButton";
+import { DocNumber } from "@/components/ui/DocNumber";
 import { ListShell } from "@/components/ui/shells";
 import { useIsMobile } from "@/hooks/useViewport";
 import {
@@ -31,6 +34,7 @@ import {
   PRODUCTS,
 } from "@/lib/mock";
 import { CopyPriceListModal } from "./CopyPriceListModal";
+import { CreateQuoteModal } from "./CreateQuoteModal";
 import { DeletePriceListModal } from "./DeletePriceListModal";
 import { DuplicatePriceListModal } from "./DuplicatePriceListModal";
 import {
@@ -58,6 +62,7 @@ export function PriceListTable() {
     null,
   );
   const [copyTarget, setCopyTarget] = useState<PriceListEntry | null>(null);
+  const [quoteTarget, setQuoteTarget] = useState<PriceListEntry | null>(null);
 
   const reset = () => {
     setSearch("");
@@ -124,6 +129,40 @@ export function PriceListTable() {
       },
     },
     {
+      key: "discounts",
+      header: "値引き",
+      hideable: true,
+      width: 90,
+      sortValue: (e) => e.discounts.filter((d) => d.isActive).length,
+      render: (e) => {
+        const active = e.discounts.filter((d) => d.isActive).length;
+        return active > 0 ? (
+          <Badge color="pink" size="xs" variant="light">
+            {active}件
+          </Badge>
+        ) : (
+          <Text c="dimmed" size="xs">
+            —
+          </Text>
+        );
+      },
+    },
+    {
+      key: "estimateNumber",
+      header: "試算元",
+      hideable: true,
+      width: 160,
+      sortValue: (e) => e.estimateNumber ?? "",
+      render: (e) =>
+        e.estimateId ? (
+          <DocNumber c="blue">{e.estimateNumber}</DocNumber>
+        ) : (
+          <Text c="dimmed" size="xs">
+            手動
+          </Text>
+        ),
+    },
+    {
       key: "validPeriod",
       header: "有効期間",
       hideable: true,
@@ -146,7 +185,15 @@ export function PriceListTable() {
 
   return (
     <ListShell
-      action={<NewButton href={`${BASE_PATH}/new`} />}
+      action={
+        // 価格表は試算の「価格表に登録」からのみ作成する。
+        <SecondaryButton
+          href="/sales/trial-estimates"
+          leftSection={<IconCalculator size={16} />}
+        >
+          試算から作成
+        </SecondaryButton>
+      }
       breadcrumbs={["販売", "価格表"]}
       filters={
         <>
@@ -209,9 +256,16 @@ export function PriceListTable() {
         columns={columns}
         data={filtered}
         defaultSort={{ key: "customerName", dir: "asc" }}
-        emptyAction={<NewButton href={`${BASE_PATH}/new`} />}
+        emptyAction={
+          <SecondaryButton
+            href="/sales/trial-estimates"
+            leftSection={<IconCalculator size={16} />}
+          >
+            試算から作成
+          </SecondaryButton>
+        }
         emptyIcon={<IconCurrencyYen size={24} />}
-        emptyMessage="価格表がありません"
+        emptyMessage="価格表がありません — 試算の「価格表に登録」から作成します"
         getRowId={(e) => e.entryId}
         onRowClick={(e) => router.push(`${BASE_PATH}/${e.entryId}`)}
         renderCard={(e) => {
@@ -244,6 +298,11 @@ export function PriceListTable() {
           );
         }}
         rowActions={(e) => [
+          {
+            label: "見積書を作成",
+            icon: <IconFileText size={14} />,
+            onAction: () => setQuoteTarget(e),
+          },
           {
             label: "有効期間を変えて複製",
             icon: <IconCopy size={14} />,
@@ -278,6 +337,11 @@ export function PriceListTable() {
         onClose={() => setCopyTarget(null)}
         opened={copyTarget !== null}
         source={copyTarget}
+      />
+      <CreateQuoteModal
+        onClose={() => setQuoteTarget(null)}
+        opened={quoteTarget !== null}
+        source={quoteTarget}
       />
     </ListShell>
   );

@@ -22,6 +22,7 @@ import {
   type PriceListEntry,
   quantityRange,
   requiresEndDate,
+  tierUnitPrice,
   validPeriod,
 } from "./mock";
 
@@ -114,7 +115,10 @@ export function DuplicatePriceListModal({
                 {quantityRange(tier.minQuantity, tier.maxQuantity)}
               </Table.Td>
               <Table.Td ta="right">
-                <MoneyText currency={source.currency} value={tier.unitPrice} />
+                <MoneyText
+                  currency={source.currency}
+                  value={tierUnitPrice(source, tier)}
+                />
               </Table.Td>
             </Table.Tr>
           ))}
