@@ -30,7 +30,9 @@ export default function RootLayout({
   return (
     <html lang="ja" {...mantineHtmlProps} className={notoSansJp.variable}>
       <head>
-        {/* Server-rendered script — ColorSchemeScript is "use client" and triggers React 19 warnings. */}
+        {/* Server-rendered script — ColorSchemeScript is "use client" and triggers React 19 warnings.
+            noDangerouslySetInnerHtml is disabled for this file in biome.json:
+            the content is a static in-repo constant (Mantine color-scheme bootstrap), no user input. */}
         <script
           dangerouslySetInnerHTML={{ __html: MANTINE_COLOR_SCHEME_SCRIPT }}
         />
