@@ -1,4 +1,17 @@
+import { notFound } from "next/navigation";
 import { PriceListTypeForm } from "@/components/sales/price-lists/PriceListTypeForm";
+import { prisma } from "@/lib/db";
+import { parseDocKey } from "@/lib/doc-number";
+import { calcTrialPricing, type TrialInput } from "@/lib/trial-pricing";
+import {
+  fetchCustomerOptions,
+  fetchExistingEntryRefs,
+  fetchProductOptions,
+} from "../../../trial-estimates/data";
+import { resolveEntryKey } from "../../actions";
+import { fetchPriceEntry } from "../../data";
+
+export const dynamic = "force-dynamic";
 
 /** 価格表 編集 (SA21 → edit). `id` is the (顧客, 製品, 注文種別) entry key. */
 export default async function PriceListEditPage({
@@ -7,5 +20,42 @@ export default async function PriceListEditPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  return <PriceListTypeForm entryId={id} mode="edit" />;
+  const key = await resolveEntryKey(decodeURIComponent(id));
+  if (!key) notFound();
+
+  const [entry, customerOptions, productOptions, existingEntries] =
+    await Promise.all([
+      fetchPriceEntry(key),
+      fetchCustomerOptions(),
+      fetchProductOptions(),
+      fetchExistingEntryRefs(),
+    ]);
+  if (!entry) notFound();
+
+  // 試算元の見積単価（基準単価のロック値）— 試算リンクがあるときだけ。
+  let estimateBase: number | null = null;
+  const estKey = entry.estimateNumber
+    ? parseDocKey(entry.estimateNumber, "EST")
+    : null;
+  if (estKey) {
+    const estimate = await prisma.estimate.findUnique({
+      where: { yearMonth_seq: { yearMonth: estKey.yearMonth, seq: estKey.seq } },
+    });
+    if (estimate) {
+      estimateBase =
+        calcTrialPricing(estimate.input as unknown as TrialInput).lots[0]
+          ?.estimateUnitPrice ?? null;
+    }
+  }
+
+  return (
+    <PriceListTypeForm
+      customerOptions={customerOptions}
+      entry={entry}
+      estimateBase={estimateBase}
+      existingEntries={existingEntries}
+      mode="edit"
+      productOptions={productOptions}
+    />
+  );
 }

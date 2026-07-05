@@ -2,6 +2,13 @@ import { IconCalculator } from "@tabler/icons-react";
 import { PriceListTypeForm } from "@/components/sales/price-lists/PriceListTypeForm";
 import { SecondaryButton } from "@/components/ui/buttons";
 import { EmptyState } from "@/components/ui/EmptyState";
+import {
+  fetchCustomerOptions,
+  fetchExistingEntryRefs,
+  fetchProductOptions,
+} from "../../trial-estimates/data";
+
+export const dynamic = "force-dynamic";
 
 /**
  * 価格表 新規作成 (SA11).
@@ -31,11 +38,21 @@ export default async function PriceListNewPage({
     );
   }
 
+  const [customerOptions, productOptions, existingEntries] = await Promise.all([
+    fetchCustomerOptions(),
+    fetchProductOptions(),
+    fetchExistingEntryRefs(),
+  ]);
+
   return (
     <PriceListTypeForm
+      customerOptions={customerOptions}
+      estimateBase={null}
+      existingEntries={existingEntries}
       lockedCustomerId={customer}
       lockedProductId={product}
       mode="create"
+      productOptions={productOptions}
     />
   );
 }
