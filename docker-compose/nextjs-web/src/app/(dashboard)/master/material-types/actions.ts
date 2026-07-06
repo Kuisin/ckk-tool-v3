@@ -42,14 +42,14 @@ const materialTypeCreateInput = materialTypeInput.extend({
 export type MaterialTypeInput = z.infer<typeof materialTypeInput>;
 export type MaterialTypeCreateInput = z.infer<typeof materialTypeCreateInput>;
 
-function revalidate(id?: string) {
+function revalidate(id?: number) {
   revalidatePath(BASE_PATH);
-  if (id) revalidatePath(`${BASE_PATH}/${id}`);
+  if (id != null) revalidatePath(`${BASE_PATH}/${id}`);
 }
 
 export async function createMaterialType(
   input: MaterialTypeCreateInput,
-): Promise<ActionResult<{ id: string }>> {
+): Promise<ActionResult<{ id: number; code: string }>> {
   const parsed = materialTypeCreateInput.safeParse(input);
   if (!parsed.success) {
     return actionError(parsed.error.issues[0]?.message ?? "入力が不正です");
@@ -78,7 +78,7 @@ export async function createMaterialType(
     // 種類 = メーカー×材種×形状内の 4桁連番。numbering_sequences は使わず
     // MAX+1 をトランザクション内で採番し、複合 unique 衝突（P2002）時のみ
     // リトライする（外部インポートと自己修復的に共存できる）。
-    let created: { id: string } | null = null;
+    let created: { id: number; code: string } | null = null;
     let lastError: unknown = null;
     for (let attempt = 0; attempt < 3 && !created; attempt++) {
       try {
@@ -93,27 +93,29 @@ export async function createMaterialType(
           });
           const next = (Number(max._max.kindCode) || 0) + 1;
           const kindCode = formatKindSerial(next);
-          const id = composeMaterialTypeCode(
+          const code = composeMaterialTypeCode(
             v.manufacturerCode,
             v.gradeCode,
             v.shapeCode,
             kindCode,
           );
-          return tx.materialType.create({
-            data: {
-              id,
-              manufacturerCode: v.manufacturerCode,
-              gradeCode: v.gradeCode,
-              shapeCode: v.shapeCode,
-              kindCode,
-              name: localizedInput(v.nameJa, v.nameEn),
-              description:
-                localizedInputOrNull(v.descriptionJa, v.descriptionEn) ??
-                undefined,
-              isActive: v.isActive,
-            },
-            select: { id: true },
-          });
+          return tx.materialType
+            .create({
+              data: {
+                code,
+                manufacturerCode: v.manufacturerCode,
+                gradeCode: v.gradeCode,
+                shapeCode: v.shapeCode,
+                kindCode,
+                name: localizedInput(v.nameJa, v.nameEn),
+                description:
+                  localizedInputOrNull(v.descriptionJa, v.descriptionEn) ??
+                  undefined,
+                isActive: v.isActive,
+              },
+              select: { id: true, code: true },
+            })
+            .then((r) => ({ id: r.id, code: r.code ?? "" }));
         });
       } catch (e) {
         lastError = e;
@@ -132,8 +134,9 @@ export async function createMaterialType(
     await recordAudit({
       action: "CREATE",
       tableName: "material_types",
-      recordId: created.id,
+      recordId: String(created.id),
       after: {
+        code: created.code,
         manufacturerCode: v.manufacturerCode,
         gradeCode: v.gradeCode,
         shapeCode: v.shapeCode,
@@ -143,16 +146,16 @@ export async function createMaterialType(
       },
     });
     revalidate(created.id);
-    return actionOk({ id: created.id });
+    return actionOk({ id: created.id, code: created.code ?? "" });
   } catch (e) {
     return actionError(prismaErrorMessage(e, "材種の作成に失敗しました"));
   }
 }
 
 export async function updateMaterialType(
-  id: string,
+  id: number,
   input: MaterialTypeInput,
-): Promise<ActionResult<{ id: string }>> {
+): Promise<ActionResult<{ id: number }>> {
   const parsed = materialTypeInput.safeParse(input);
   if (!parsed.success) {
     return actionError(parsed.error.issues[0]?.message ?? "入力が不正です");
@@ -176,7 +179,7 @@ export async function updateMaterialType(
     await recordAudit({
       action: "UPDATE",
       tableName: "material_types",
-      recordId: id,
+      recordId: String(id),
       before: prior ? { isActive: prior.isActive } : undefined,
       after: {
         nameJa: v.nameJa,
@@ -192,7 +195,7 @@ export async function updateMaterialType(
 }
 
 export async function setMaterialTypesActive(
-  ids: string[],
+  ids: number[],
   isActive: boolean,
 ): Promise<ActionResult> {
   if (ids.length === 0) return actionError("対象が選択されていません");
@@ -205,7 +208,7 @@ export async function setMaterialTypesActive(
       await recordAudit({
         action: "UPDATE",
         tableName: "material_types",
-        recordId: id,
+        recordId: String(id),
         after: { isActive },
       });
     }
@@ -218,7 +221,7 @@ export async function setMaterialTypesActive(
 }
 
 export async function deleteMaterialTypes(
-  ids: string[],
+  ids: number[],
 ): Promise<ActionResult> {
   if (ids.length === 0) return actionError("対象が選択されていません");
   try {
@@ -236,7 +239,7 @@ export async function deleteMaterialTypes(
       await recordAudit({
         action: "DELETE",
         tableName: "material_types",
-        recordId: id,
+        recordId: String(id),
       });
     }
     revalidate();

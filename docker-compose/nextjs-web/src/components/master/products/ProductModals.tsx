@@ -26,7 +26,8 @@ import { UNIT_OPTIONS } from "@/lib/enum-labels";
 import type { Option } from "@/lib/mock";
 
 export interface ProductModalTarget {
-  id: string;
+  id: number;
+  code: string | null;
   name: string;
   isActive: boolean;
   materialId: string | null;
@@ -34,7 +35,8 @@ export interface ProductModalTarget {
 }
 
 function label(t: ProductModalTarget) {
-  return t.name !== "—" ? `${t.name}（${t.id}）` : t.id;
+  const code = t.code ?? "未採番";
+  return t.name !== "—" ? `${t.name}（${code}）` : code;
 }
 
 export function DeleteProductModal({
@@ -150,7 +152,7 @@ export function DuplicateProductModal({
   const [nameEn, setNameEn] = useState("");
   const [materialId, setMaterialId] = useState<string | null>(null);
   const [unit, setUnit] = useState<string | null>(null);
-  const [seededFrom, setSeededFrom] = useState<string | null>(null);
+  const [seededFrom, setSeededFrom] = useState<number | null>(null);
 
   // Seed the fields from the copy source each time a new source opens.
   if (opened && source && seededFrom !== source.id) {
@@ -177,7 +179,7 @@ export function DuplicateProductModal({
       if (result.ok) {
         notifications.show({
           title: "複製しました",
-          message: `製品「${result.data.id}」を作成しました`,
+          message: `製品「${result.data.code}」を作成しました`,
           color: "green",
         });
         setSeededFrom(null);

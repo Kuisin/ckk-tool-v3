@@ -26,7 +26,11 @@ const orderTypeSchema = z.enum(["PRODUCTION", "TEST", "SAMPLE", "OTHER"]);
 
 const keySchema = z.object({
   customerBpId: z.string().min(1),
-  productId: z.string().min(1),
+  // UI からは文字列（Select 値）で届く — DB は内部 id（int）
+  productId: z
+    .union([z.string(), z.number()])
+    .transform((v) => Number(v))
+    .pipe(z.number().int().min(1)),
   orderType: orderTypeSchema,
 });
 
@@ -42,7 +46,10 @@ const periodSchema = z.object({
   validUntil: z.string().nullable(),
 });
 
-type EntryKeyInput = z.infer<typeof keySchema>;
+/** クライアントから受け取る形（productId は文字列でも可）。 */
+type EntryKeyPayload = z.input<typeof keySchema>;
+/** パース後の内部形（productId は int）。 */
+type EntryKeyInput = z.output<typeof keySchema>;
 
 function whereKey(key: EntryKeyInput) {
   return {
@@ -84,7 +91,7 @@ const updateInput = z.object({
   tiers: z.array(tierSchema).min(1, "段階を1件以上追加してください"),
 });
 
-export type PriceEntryUpdateInput = z.infer<typeof updateInput>;
+export type PriceEntryUpdateInput = z.input<typeof updateInput>;
 
 export async function updatePriceEntry(
   payload: PriceEntryUpdateInput,
@@ -171,7 +178,7 @@ const createInput = z.object({
   /** コピー元の試算リンクは引き継がない（手動エントリとして作成）。 */
 });
 
-export type PriceEntryCreateInput = z.infer<typeof createInput>;
+export type PriceEntryCreateInput = z.input<typeof createInput>;
 
 export async function createPriceEntry(
   payload: PriceEntryCreateInput,
@@ -235,13 +242,15 @@ export async function createPriceEntry(
 
 /** 別の顧客・製品へコピー — source の基準単価・通貨・tiers を新キーへ複製。 */
 export async function copyPriceEntry(payload: {
-  sourceKey: EntryKeyInput;
-  targetKey: EntryKeyInput;
+  sourceKey: EntryKeyPayload;
+  targetKey: EntryKeyPayload;
   validFrom: string;
   validUntil: string | null;
 }): Promise<ActionResult<{ entryId: string }>> {
+  const sourceKey = keySchema.safeParse(payload.sourceKey);
+  if (!sourceKey.success) return actionError("コピー元のキーが不正です");
   const source = await prisma.priceListEntry.findUnique({
-    where: whereKey(payload.sourceKey),
+    where: whereKey(sourceKey.data),
     include: { tiers: true },
   });
   if (!source) return actionError("コピー元の価格表が見つかりません");
@@ -264,7 +273,7 @@ export async function copyPriceEntry(payload: {
 
 /** 有効期間の変更（複合キーでは同一キーの複製は不可 — 期間を付け替える）。 */
 export async function changePriceEntryPeriod(payload: {
-  key: EntryKeyInput;
+  key: EntryKeyPayload;
   validFrom: string;
   validUntil: string | null;
 }): Promise<ActionResult> {
@@ -272,9 +281,12 @@ export async function changePriceEntryPeriod(payload: {
   if (!period.success) {
     return actionError(period.error.issues[0]?.message ?? "入力が不正です");
   }
+  const keyParsed = keySchema.safeParse(payload.key);
+  if (!keyParsed.success) return actionError("キーが不正です");
+  const key = keyParsed.data;
   try {
     await prisma.priceListEntry.update({
-      where: whereKey(payload.key),
+      where: whereKey(key),
       data: {
         validFrom: new Date(payload.validFrom),
         validUntil: payload.validUntil ? new Date(payload.validUntil) : null,
@@ -283,14 +295,10 @@ export async function changePriceEntryPeriod(payload: {
     await recordAudit({
       action: "UPDATE",
       tableName: "price_list_entries",
-      recordId: priceEntryKey(
-        payload.key.customerBpId,
-        payload.key.productId,
-        payload.key.orderType,
-      ),
+      recordId: priceEntryKey(key.customerBpId, key.productId, key.orderType),
       after: { validFrom: payload.validFrom, validUntil: payload.validUntil },
     });
-    revalidate(payload.key);
+    revalidate(key);
     return actionOk();
   } catch (e) {
     return actionError(prismaErrorMessage(e, "有効期間の変更に失敗しました"));
@@ -300,10 +308,13 @@ export async function changePriceEntryPeriod(payload: {
 // ── 状態・削除（一覧の一括操作にも使用） ─────────────────────────────────────
 
 export async function setPriceEntriesActive(
-  keys: EntryKeyInput[],
+  rawKeys: EntryKeyPayload[],
   isActive: boolean,
 ): Promise<ActionResult> {
-  if (keys.length === 0) return actionError("対象が選択されていません");
+  if (rawKeys.length === 0) return actionError("対象が選択されていません");
+  const parsedKeys = z.array(keySchema).safeParse(rawKeys);
+  if (!parsedKeys.success) return actionError("キーが不正です");
+  const keys = parsedKeys.data;
   try {
     await prisma.$transaction(
       keys.map((key) =>
@@ -330,9 +341,12 @@ export async function setPriceEntriesActive(
 }
 
 export async function deletePriceEntries(
-  keys: EntryKeyInput[],
+  rawKeys: EntryKeyPayload[],
 ): Promise<ActionResult> {
-  if (keys.length === 0) return actionError("対象が選択されていません");
+  if (rawKeys.length === 0) return actionError("対象が選択されていません");
+  const parsedKeys = z.array(keySchema).safeParse(rawKeys);
+  if (!parsedKeys.success) return actionError("キーが不正です");
+  const keys = parsedKeys.data;
   try {
     await prisma.$transaction(
       keys.flatMap((key) => [
@@ -370,7 +384,7 @@ const discountInput = z.object({
   isActive: z.boolean(),
 });
 
-export type DiscountRuleInput = z.infer<typeof discountInput>;
+export type DiscountRuleInput = z.input<typeof discountInput>;
 
 export async function saveDiscountRule(
   payload: DiscountRuleInput,
@@ -421,9 +435,12 @@ export async function saveDiscountRule(
 }
 
 export async function deleteDiscountRule(
-  key: EntryKeyInput,
+  rawKey: EntryKeyPayload,
   id: string,
 ): Promise<ActionResult> {
+  const keyParsed = keySchema.safeParse(rawKey);
+  if (!keyParsed.success) return actionError("キーが不正です");
+  const key = keyParsed.data;
   try {
     await prisma.priceListDiscount.delete({ where: { id } });
     await recordAudit({

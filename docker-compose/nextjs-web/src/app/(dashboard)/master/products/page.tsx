@@ -3,6 +3,7 @@ import {
   ProductTable,
 } from "@/components/master/products/ProductTable";
 import { prisma } from "@/lib/db";
+import { formatProductNumber } from "@/lib/doc-number";
 import { type LocalizedText, localized } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
@@ -13,21 +14,26 @@ export default async function MasterProductsPage() {
     prisma.product.findMany({ orderBy: { id: "asc" } }),
     prisma.material.findMany({
       where: { isActive: true },
-      orderBy: { id: "asc" },
+      orderBy: { code: "asc" },
     }),
   ]);
 
+  const materialCodeById = new Map(materials.map((m) => [m.id, m.code]));
   const rows: ProductRow[] = records.map((r) => ({
     id: r.id,
+    code: formatProductNumber(r.yearMonth, r.seq),
     name: localized(r.name as LocalizedText | null),
-    materialId: r.materialId,
+    materialId:
+      r.materialId != null
+        ? (materialCodeById.get(r.materialId) ?? String(r.materialId))
+        : null,
     unit: r.unit,
     isActive: r.isActive,
   }));
 
   const materialOptions = materials.map((m) => ({
-    value: m.id,
-    label: `${m.id}（${localized(m.name as LocalizedText | null)}）`,
+    value: String(m.id),
+    label: `${m.code}（${localized(m.name as LocalizedText | null)}）`,
   }));
 
   return <ProductTable materialOptions={materialOptions} rows={rows} />;

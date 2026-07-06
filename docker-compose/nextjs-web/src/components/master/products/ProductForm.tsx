@@ -55,7 +55,8 @@ const productSchema = z.object({
 type FormValues = z.infer<typeof productSchema>;
 
 export interface ProductFormInitial {
-  id: string;
+  id: number;
+  code: string | null;
   nameJa: string;
   nameEn: string;
   materialId: string | null;
@@ -125,7 +126,11 @@ export function ProductForm({
       }
       onSubmit={form.onSubmit(handleSubmit)}
       status={isEdit ? <ActiveBadge active={initial.isActive} /> : undefined}
-      title={isEdit ? `製品 編集 — ${initial.id}` : "製品 新規作成"}
+      title={
+        isEdit
+          ? `製品 編集 — ${initial.code ?? initial.nameJa}`
+          : "製品 新規作成"
+      }
     >
       <FormSection title="基本情報">
         <SimpleGrid cols={isMobile ? 1 : 2} spacing="sm">

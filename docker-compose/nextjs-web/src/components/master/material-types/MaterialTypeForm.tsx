@@ -65,7 +65,9 @@ export interface GradeOption extends Option {
 }
 
 export interface MaterialTypeFormInitial {
-  id: string;
+  id: number;
+  /** 材種コード（未変換は null）。 */
+  code: string | null;
   /** 変換済のときのみ — コード構成の表示用ラベル。 */
   composition?: {
     manufacturerLabel: string;
@@ -132,7 +134,7 @@ export function MaterialTypeForm({
           title: "保存しました",
           message: isEdit
             ? "材種を更新しました"
-            : `材種 ${result.data.id} を作成しました`,
+            : `材種 ${"code" in result.data ? result.data.code : ""} を作成しました`,
           color: "green",
         });
         router.push(`${BASE_PATH}/${result.data.id}`);
@@ -159,7 +161,11 @@ export function MaterialTypeForm({
       }
       onSubmit={form.onSubmit(handleSubmit)}
       status={isEdit ? <ActiveBadge active={initial.isActive} /> : undefined}
-      title={isEdit ? `材種 編集 — ${initial.id}` : "材種 新規作成"}
+      title={
+        isEdit
+          ? `材種 編集 — ${initial.code ?? initial.nameJa}`
+          : "材種 新規作成"
+      }
     >
       {isEdit ? (
         <FormSection

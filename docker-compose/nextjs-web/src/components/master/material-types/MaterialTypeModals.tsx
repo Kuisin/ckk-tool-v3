@@ -17,13 +17,13 @@ import {
 import { ConfirmModal, type ModalBaseProps } from "@/components/ui/modals";
 
 export interface MaterialTypeModalTarget {
-  id: string;
+  id: number;
   name: string;
   isActive: boolean;
 }
 
 function label(t: MaterialTypeModalTarget) {
-  return t.name !== "—" ? `${t.name}（${t.id}）` : t.id;
+  return t.name !== "—" ? t.name : `#${t.id}`;
 }
 
 export function DeleteMaterialTypeModal({

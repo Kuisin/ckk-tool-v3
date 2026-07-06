@@ -4,10 +4,12 @@
  * option-search.ts — SearchSelect 用のサーバーサイド検索アクション。
  *
  * 大きいマスタ（製品 4.3万件など）を全件クライアントへ送らず、クエリごとに
- * 上位 LIMIT 件だけ返す。空クエリは先頭 LIMIT 件（コード順）。
+ * 上位 LIMIT 件だけ返す。空クエリは先頭 LIMIT 件。
+ * 値は内部 id（連番）の文字列、ラベルは表示コード + 名称。
  */
 
 import { prisma } from "@/lib/db";
+import { formatProductNumber } from "@/lib/doc-number";
 import { type LocalizedText, localized } from "@/lib/format";
 
 const LIMIT = 20;
@@ -27,7 +29,18 @@ export interface F4SearchRow {
 
 const s = (v: unknown): string => (typeof v === "string" ? v.trim() : "");
 
-/** 製品 — id または名称(ja) の部分一致。 */
+function productLabel(p: {
+  id: number;
+  name: unknown;
+  yearMonth: string | null;
+  seq: number | null;
+}): string {
+  const code = formatProductNumber(p.yearMonth, p.seq);
+  const name = localized(p.name as LocalizedText | null);
+  return code ? `${name} ${code}` : name;
+}
+
+/** 製品 — 名称(ja) の部分一致（コードは未採番のレガシーが大半のため名称主体）。 */
 export async function searchProductOptions(
   query: string,
 ): Promise<SearchOption[]> {
@@ -35,22 +48,12 @@ export async function searchProductOptions(
   const rows = await prisma.product.findMany({
     where: {
       isActive: true,
-      ...(q
-        ? {
-            OR: [
-              { id: { contains: q, mode: "insensitive" } },
-              { name: { path: ["ja"], string_contains: q } },
-            ],
-          }
-        : {}),
+      ...(q ? { name: { path: ["ja"], string_contains: q } } : {}),
     },
     orderBy: { id: "asc" },
     take: LIMIT,
   });
-  return rows.map((p) => ({
-    value: p.id,
-    label: `${localized(p.name as LocalizedText | null)} ${p.id}`,
-  }));
+  return rows.map((p) => ({ value: String(p.id), label: productLabel(p) }));
 }
 
 /** 顧客（トップレベル CUSTOMER ロール）— BPコード / 名称 / AI照合名。 */
@@ -90,26 +93,26 @@ export async function searchStructuredMaterialTypeOptions(
   const rows = await prisma.materialType.findMany({
     where: {
       isActive: true,
-      manufacturerCode: { not: null },
+      code: { not: null },
       ...(q
         ? {
             OR: [
-              { id: { contains: q, mode: "insensitive" } },
+              { code: { contains: q, mode: "insensitive" } },
               { name: { path: ["ja"], string_contains: q } },
             ],
           }
         : {}),
     },
-    orderBy: { id: "asc" },
+    orderBy: { code: "asc" },
     take: LIMIT,
   });
   return rows.map((r) => ({
-    value: r.id,
-    label: `${r.id} — ${localized(r.name as LocalizedText | null)}`,
+    value: String(r.id),
+    label: `${r.code} — ${localized(r.name as LocalizedText | null)}`,
   }));
 }
 
-/** 材種 — id または名称(ja)。 */
+/** 材種 — code または名称(ja)。 */
 export async function searchMaterialTypeOptions(
   query: string,
 ): Promise<SearchOption[]> {
@@ -120,7 +123,7 @@ export async function searchMaterialTypeOptions(
       ...(q
         ? {
             OR: [
-              { id: { contains: q, mode: "insensitive" } },
+              { code: { contains: q, mode: "insensitive" } },
               { name: { path: ["ja"], string_contains: q } },
             ],
           }
@@ -130,38 +133,42 @@ export async function searchMaterialTypeOptions(
     take: LIMIT,
   });
   return rows.map((r) => ({
-    value: r.id,
+    value: String(r.id),
     label: localized(r.name as LocalizedText | null),
   }));
 }
 
 // ── F4 詳細検索（フィルタ + 結果テーブル、最大 F4_LIMIT 件） ────────────────
 
-/** 製品 F4 — コード / 名称 / 素材コード。columns: 製品コード/名称/素材/単位。 */
+/** 製品 F4 — 名称 / 素材コード。columns: 製品コード/名称/素材/単位。 */
 export async function f4SearchProducts(
   filters: Record<string, string>,
 ): Promise<F4SearchRow[]> {
-  const code = s(filters.code);
   const name = s(filters.name);
   const material = s(filters.material);
   const rows = await prisma.product.findMany({
     where: {
       isActive: true,
-      ...(code ? { id: { contains: code, mode: "insensitive" } } : {}),
       ...(name ? { name: { path: ["ja"], string_contains: name } } : {}),
       ...(material
-        ? { materialId: { contains: material, mode: "insensitive" } }
+        ? { material: { code: { contains: material, mode: "insensitive" } } }
         : {}),
     },
+    include: { material: true },
     orderBy: { id: "asc" },
     take: F4_LIMIT,
   });
   return rows.map((p) => {
     const nameJa = localized(p.name as LocalizedText | null);
     return {
-      value: p.id,
-      label: `${nameJa} ${p.id}`,
-      cells: [p.id, nameJa, p.materialId ?? "—", p.unit],
+      value: String(p.id),
+      label: productLabel(p),
+      cells: [
+        formatProductNumber(p.yearMonth, p.seq) ?? "未採番",
+        nameJa,
+        p.material?.code ?? "—",
+        p.unit,
+      ],
     };
   });
 }
@@ -215,22 +222,24 @@ export async function f4SearchStructuredMaterialTypes(
   const rows = await prisma.materialType.findMany({
     where: {
       isActive: true,
-      manufacturerCode: manufacturerCode ? manufacturerCode : { not: null },
+      code: code
+        ? { not: null, contains: code, mode: "insensitive" }
+        : { not: null },
+      ...(manufacturerCode ? { manufacturerCode } : {}),
       ...(shapeCode ? { shapeCode } : {}),
-      ...(code ? { id: { contains: code, mode: "insensitive" } } : {}),
       ...(name ? { name: { path: ["ja"], string_contains: name } } : {}),
     },
     include: { manufacturer: true, shape: true },
-    orderBy: { id: "asc" },
+    orderBy: { code: "asc" },
     take: F4_LIMIT,
   });
   return rows.map((r) => {
     const nameJa = localized(r.name as LocalizedText | null);
     return {
-      value: r.id,
-      label: `${r.id} — ${nameJa}`,
+      value: String(r.id),
+      label: `${r.code} — ${nameJa}`,
       cells: [
-        r.id,
+        r.code ?? "—",
         r.manufacturer
           ? localized(r.manufacturer.name as LocalizedText | null)
           : "—",

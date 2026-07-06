@@ -11,7 +11,9 @@ export default async function MasterMaterialTypesEditPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
-  const { id } = await params;
+  const { id: idParam } = await params;
+  const id = Number(idParam);
+  if (!Number.isInteger(id)) notFound();
   const r = await prisma.materialType.findUnique({
     where: { id },
     include: { manufacturer: true, grade: true, shape: true },
@@ -25,6 +27,7 @@ export default async function MasterMaterialTypesEditPage({
     <MaterialTypeForm
       initial={{
         id: r.id,
+        code: r.code,
         composition:
           r.manufacturerCode && r.kindCode
             ? {

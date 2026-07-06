@@ -11,7 +11,9 @@ export default async function MasterMaterialsEditPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
-  const { id } = await params;
+  const { id: idParam } = await params;
+  const id = Number(idParam);
+  if (!Number.isInteger(id)) notFound();
   const r = await prisma.material.findUnique({
     where: { id },
     include: { materialType: true, surfaceFinish: true },
@@ -25,8 +27,8 @@ export default async function MasterMaterialsEditPage({
       finishOptions={[]}
       initial={{
         id: r.id,
-        materialTypeId: r.materialTypeId,
-        materialTypeLabel: `${r.materialTypeId} — ${localized(
+        code: r.code,
+        materialTypeLabel: `${r.materialType.code ?? "未変換"} — ${localized(
           r.materialType.name as LocalizedText | null,
         )}`,
         surfaceFinishLabel: localized(

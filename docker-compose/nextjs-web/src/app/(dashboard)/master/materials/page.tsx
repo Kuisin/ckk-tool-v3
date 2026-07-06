@@ -11,12 +11,13 @@ export const dynamic = "force-dynamic";
 export default async function MasterMaterialsPage() {
   const records = await prisma.material.findMany({
     include: { materialType: true, surfaceFinish: true },
-    orderBy: { id: "asc" },
+    orderBy: { code: "asc" },
   });
 
   const rows: MaterialRow[] = records.map((r) => ({
     id: r.id,
-    materialTypeId: r.materialTypeId,
+    code: r.code,
+    materialTypeCode: r.materialType.code ?? "",
     materialTypeName: localized(r.materialType.name as LocalizedText | null),
     name: localized(r.name as LocalizedText | null),
     diameterMm: Number(r.diameterMm),

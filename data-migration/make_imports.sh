@@ -32,6 +32,12 @@ TMP=$(mktemp -d)
 mv "$TMP/material_types_import.sql" "$TMP/020_material_types.sql"
 mv "$TMP/products_import.sql" "$TMP/030_products.sql"
 
+# 025: レガシー材種の構造化（入力は生成直後の 020 — mapped.sqlite 不要なので
+# `python3 export_material_structuring.py` 単体でコミット済み 020 からも再生成可）
+gzip -9 -n -c "$TMP/020_material_types.sql" > "$TMP/020_material_types.sql.gz"
+"$PY" export_material_structuring.py "$TMP/020_material_types.sql.gz" "$TMP/025_material_structuring.sql"
+rm "$TMP/020_material_types.sql.gz"
+
 for f in "$TMP"/*.sql; do
   gzip -9 -n -c "$f" > "imports/$(basename "$f").gz"
 done

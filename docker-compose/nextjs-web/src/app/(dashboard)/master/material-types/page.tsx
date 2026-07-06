@@ -17,8 +17,9 @@ export default async function MasterMaterialTypesPage() {
 
   const rows: MaterialTypeRow[] = records.map((r) => ({
     id: r.id,
+    code: r.code,
     name: localized(r.name as LocalizedText | null),
-    structured: r.manufacturerCode != null,
+    structured: r.code != null,
     manufacturerName: r.manufacturer
       ? localized(r.manufacturer.name as LocalizedText | null)
       : "",

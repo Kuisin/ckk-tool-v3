@@ -82,9 +82,10 @@ const materialSchema = (isEdit: boolean) =>
 type FormValues = z.infer<ReturnType<typeof materialSchema>>;
 
 export interface MaterialFormInitial {
-  id: string;
+  id: number;
+  /** 素材コード（表示・不変）。 */
+  code: string;
   // 識別（表示のみ）
-  materialTypeId: string;
   materialTypeLabel: string;
   surfaceFinishLabel: string;
   diameterMm: number;
@@ -118,16 +119,17 @@ export function MaterialForm({
   const [isPending, startTransition] = useTransition();
   const isEdit = !!initial;
 
-  // 選択中の材種の形状・名称・種類一覧（サーバーから取得）
+  // 選択中の材種のコード・形状・名称・種類一覧（サーバーから取得）
   const [kindOptions, setKindOptions] = useState<Option[]>([]);
   const [typeNameJa, setTypeNameJa] = useState("");
+  const [typeCode, setTypeCode] = useState("");
   // 自動プレフィルした名称を追跡 — ユーザーが触っていなければ追従更新する
   const lastAutoName = useRef("");
 
   const form = useForm<FormValues>({
     validate: zodResolver(materialSchema(isEdit)),
     initialValues: {
-      materialTypeId: initial?.materialTypeId ?? "",
+      materialTypeId: "",
       surfaceFinishCode: "",
       diameterMm: initial?.diameterMm ?? 3,
       lengthMm: initial?.lengthMm ?? 330,
@@ -165,9 +167,10 @@ export function MaterialForm({
     form.setFieldValue("kindCode", "");
     setKindOptions([]);
     setTypeNameJa("");
+    setTypeCode("");
     if (!value) return;
     startTransition(async () => {
-      const res = await fetchStructuredMaterialType(value);
+      const res = await fetchStructuredMaterialType(Number(value));
       if (!res.ok) {
         notifications.show({
           title: "エラー",
@@ -178,6 +181,7 @@ export function MaterialForm({
       }
       setKindOptions(res.data.kindOptions);
       setTypeNameJa(res.data.nameJa);
+      setTypeCode(res.data.code);
       // 通常形状（A）の既定種類 A0 があれば選択
       const a0 = res.data.kindOptions.find((k) => k.value === "A0");
       if (res.data.kindOptions.length === 1) {
@@ -190,15 +194,14 @@ export function MaterialForm({
 
   // ── コードプレビュー ─────────────────────────────────────────────
   const preview = (() => {
-    if (isEdit) return initial.id;
-    const { materialTypeId, surfaceFinishCode, diameterMm, lengthMm } =
-      form.values;
+    if (isEdit) return initial.code;
+    const { surfaceFinishCode, diameterMm, lengthMm } = form.values;
     const d = Number(diameterMm);
     const l = Number(lengthMm);
     try {
-      if (!materialTypeId || !surfaceFinishCode || !d || !l) throw new Error();
+      if (!typeCode || !surfaceFinishCode || !d || !l) throw new Error();
       return composeMaterialCode(
-        materialTypeId,
+        typeCode,
         surfaceFinishCode,
         diameterCodeFromMm(d),
         lengthCodeFromMm(l),
@@ -207,7 +210,7 @@ export function MaterialForm({
       const dc = d >= 0.1 && d <= 99.9 ? diameterCodeFromMm(d) : "###";
       const fc = surfaceFinishCode || "#";
       const lc = l >= 1 && l <= 999 ? lengthCodeFromMm(l) : "###";
-      return `${materialTypeId || "????????"}-${fc}${dc}-${lc}`;
+      return `${typeCode || "????????"}-${fc}${dc}-${lc}`;
     }
   })();
 
@@ -227,7 +230,7 @@ export function MaterialForm({
         ? await updateMaterial(initial.id, editable)
         : await createMaterial({
             ...editable,
-            materialTypeId: values.materialTypeId,
+            materialTypeId: Number(values.materialTypeId),
             surfaceFinishCode: values.surfaceFinishCode,
             diameterMm: Number(values.diameterMm),
             lengthMm: Number(values.lengthMm),
@@ -263,7 +266,7 @@ export function MaterialForm({
       }
       onSubmit={form.onSubmit(handleSubmit)}
       status={isEdit ? <ActiveBadge active={initial.isActive} /> : undefined}
-      title={isEdit ? `素材 編集 — ${initial.id}` : "素材 新規作成"}
+      title={isEdit ? `素材 編集 — ${initial.code}` : "素材 新規作成"}
     >
       <FormSection
         description={
@@ -296,7 +299,7 @@ export function MaterialForm({
               label="全長 (mm)"
               value={String(initial.lengthMm)}
             />
-            <TextInput disabled label="素材コード" value={initial.id} />
+            <TextInput disabled label="素材コード" value={initial.code} />
           </SimpleGrid>
         ) : (
           <>

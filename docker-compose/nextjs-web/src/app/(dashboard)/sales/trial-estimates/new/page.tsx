@@ -29,11 +29,13 @@ export default async function TrialEstimateNewPage({
     ]);
 
   // 初期素材（複製元 or 先頭の素材）の仕入実績＋ポリシー参照価格。
-  const initialMaterialId =
-    source?.materialId || (materialOptions[0]?.value ?? "");
-  const history = initialMaterialId
-    ? await fetchPriceHistory(initialMaterialId)
-    : [];
+  const initialMaterialId = Number(
+    source?.materialId || (materialOptions[0]?.value ?? ""),
+  );
+  const history =
+    Number.isInteger(initialMaterialId) && initialMaterialId > 0
+      ? await fetchPriceHistory(initialMaterialId)
+      : [];
   const initialPricing = {
     history,
     reference: computeReferencePrice(

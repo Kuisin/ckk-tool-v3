@@ -54,7 +54,7 @@ export default async function TrialEstimateDetailPage({
   if (!record) notFound();
 
   const priceHistory = record.materialId
-    ? await fetchPriceHistory(record.materialId)
+    ? await fetchPriceHistory(Number(record.materialId))
     : [];
 
   const linkedEntries: LinkedPriceEntry[] = linked.map((e) => ({

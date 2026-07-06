@@ -14,6 +14,7 @@ export interface DocKey {
 const DOC_FORMATS = {
   EST: { digits: 5 },
   QOT: { digits: 5 },
+  PRD: { digits: 4 },
 } as const;
 
 export type DocPrefix = keyof typeof DOC_FORMATS;
@@ -27,6 +28,18 @@ export function formatDocNumber(prefix: DocPrefix, key: DocKey): string {
 export const formatEstimateNumber = (key: DocKey) =>
   formatDocNumber("EST", key);
 export const formatQuoteNumber = (key: DocKey) => formatDocNumber("QOT", key);
+
+/**
+ * 製品コード PRD-YYYYMM-NNNN — (year_month, seq) から導出。
+ * レガシー取込の製品はコード未採番（yearMonth/seq が null）→ null を返す。
+ */
+export function formatProductNumber(
+  yearMonth: string | null,
+  seq: number | null,
+): string | null {
+  if (!yearMonth || seq == null) return null;
+  return formatDocNumber("PRD", { yearMonth, seq });
+}
 
 /**
  * "EST-202607-00001" (or a bare "202607-00001") → { yearMonth, seq }.
@@ -44,7 +57,7 @@ export function parseDocKey(id: string, prefix?: DocPrefix): DocKey | null {
 /** URL-safe entry key for 価格表 — `{customerId}__{productId}__{orderType}`. */
 export function priceEntryKey(
   customerBpId: string,
-  productId: string,
+  productId: number,
   orderType: string,
 ): string {
   return `${customerBpId}__${productId}__${orderType}`;
@@ -53,9 +66,11 @@ export function priceEntryKey(
 /** Parse a price-list entry key back into its parts (null if malformed). */
 export function parsePriceEntryKey(
   key: string,
-): { customerBpId: string; productId: string; orderType: string } | null {
+): { customerBpId: string; productId: number; orderType: string } | null {
   const parts = key.split("__");
   if (parts.length !== 3 || parts.some((p) => !p)) return null;
-  const [customerBpId, productId, orderType] = parts;
+  const [customerBpId, productIdRaw, orderType] = parts;
+  const productId = Number(productIdRaw);
+  if (!Number.isInteger(productId) || productId < 1) return null;
   return { customerBpId, productId, orderType };
 }

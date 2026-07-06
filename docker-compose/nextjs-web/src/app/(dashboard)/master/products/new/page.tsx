@@ -8,12 +8,12 @@ export const dynamic = "force-dynamic";
 export default async function MasterProductsNewPage() {
   const materials = await prisma.material.findMany({
     where: { isActive: true },
-    orderBy: { id: "asc" },
+    orderBy: { code: "asc" },
   });
 
   const materialOptions = materials.map((m) => ({
-    value: m.id,
-    label: `${m.id}（${localized(m.name as LocalizedText | null)}）`,
+    value: String(m.id),
+    label: `${m.code}（${localized(m.name as LocalizedText | null)}）`,
   }));
 
   return <ProductForm materialOptions={materialOptions} />;

@@ -8,7 +8,11 @@
 
 import type { PriceListEntry } from "@/components/sales/price-lists/model";
 import { prisma } from "@/lib/db";
-import { formatEstimateNumber, priceEntryKey } from "@/lib/doc-number";
+import {
+  formatEstimateNumber,
+  formatProductNumber,
+  priceEntryKey,
+} from "@/lib/doc-number";
 import { type LocalizedText, localized } from "@/lib/format";
 
 const ENTRY_INCLUDE = {
@@ -24,7 +28,7 @@ type EntryRow = NonNullable<Awaited<ReturnType<typeof findEntryRow>>>;
 
 export interface EntryKeyParts {
   customerBpId: string;
-  productId: string;
+  productId: number;
   orderType: "PRODUCTION" | "TEST" | "SAMPLE" | "OTHER";
 }
 
@@ -55,8 +59,12 @@ export function mapEntry(r: EntryRow): PriceListEntry {
     entryId: priceEntryKey(r.customerBpId, r.productId, r.orderType),
     customerId: r.customerBpId,
     customerName: localized(r.customerBp.name as LocalizedText | null),
-    productId: r.productId,
-    productName: `${localized(r.product.name as LocalizedText | null)} ${r.productId}`,
+    productId: String(r.productId),
+    productName: (() => {
+      const code = formatProductNumber(r.product.yearMonth, r.product.seq);
+      const nm = localized(r.product.name as LocalizedText | null);
+      return code ? `${nm} ${code}` : nm;
+    })(),
     orderType: r.orderType,
     currency: r.currency,
     baseUnitPrice: Number(r.baseUnitPrice),

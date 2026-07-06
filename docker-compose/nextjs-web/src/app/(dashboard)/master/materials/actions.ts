@@ -3,10 +3,11 @@
 /**
  * Server Actions — 素材マスタ (MS05).
  *
- * 素材コードは手入力ではなく構成（材種 × 黒皮研磨 × 径 × 全長）から組み立てる
- * (採番表 ver1.2 / _specs/tables.md)。径・全長の構成行（material_diameters /
- * material_length_variants）は無ければ自動登録する。種類（kind）は親材種の
- * 形状に属するものだけ許可。材種はレガシー未変換（uuid id）を親にできない。
+ * 内部 id は連番、素材コード（表示・変更不可）は構成（材種 × 黒皮研磨 × 径 ×
+ * 全長）から自動で組み立てる (採番表 ver1.2 / _specs/tables.md)。径・全長の
+ * 構成行（material_diameters / material_length_variants）は無ければ自動登録。
+ * 種類（kind）は親材種の形状に属するものだけ許可。材種はレガシー未変換
+ * （code なし）を親にできない。
  */
 
 import { revalidatePath } from "next/cache";
@@ -17,7 +18,6 @@ import { type LocalizedText, localized } from "@/lib/format";
 import {
   composeMaterialCode,
   diameterCodeFromMm,
-  isStructuredMaterialTypeId,
   lengthCodeFromMm,
 } from "@/lib/material-code";
 import {
@@ -42,7 +42,7 @@ const materialUpdateInput = z.object({
 });
 
 const materialCreateInput = materialUpdateInput.extend({
-  materialTypeId: z.string().min(1, "材種を選択してください"),
+  materialTypeId: z.number().int().min(1, "材種を選択してください"),
   surfaceFinishCode: z.string().length(1, "黒皮・研磨を選択してください"),
   diameterMm: z
     .number()
@@ -58,27 +58,29 @@ const materialCreateInput = materialUpdateInput.extend({
 export type MaterialUpdateInput = z.infer<typeof materialUpdateInput>;
 export type MaterialCreateInput = z.infer<typeof materialCreateInput>;
 
-function revalidate(id?: string) {
+function revalidate(id?: number) {
   revalidatePath(BASE_PATH);
-  if (id) revalidatePath(`${BASE_PATH}/${id}`);
+  if (id != null) revalidatePath(`${BASE_PATH}/${id}`);
 }
 
 export interface StructuredTypeInfo {
+  /** 材種コード（構成コード） — 素材コードのプレビュー組立に使う。 */
+  code: string;
   shapeCode: string;
   nameJa: string;
   kindOptions: { value: string; label: string }[];
 }
 
-/** 素材ビルダー用 — 選択した材種の形状と、その形状の種類一覧。 */
+/** 素材ビルダー用 — 選択した材種のコード・形状と、その形状の種類一覧。 */
 export async function fetchStructuredMaterialType(
-  materialTypeId: string,
+  materialTypeId: number,
 ): Promise<ActionResult<StructuredTypeInfo>> {
   try {
     const t = await prisma.materialType.findUnique({
       where: { id: materialTypeId },
     });
     if (!t) return actionError("材種が見つかりません");
-    if (!t.manufacturerCode || !t.shapeCode) {
+    if (!t.code || !t.shapeCode) {
       return actionError(
         "未変換（レガシー）の材種では素材コードを構成できません",
       );
@@ -88,6 +90,7 @@ export async function fetchStructuredMaterialType(
       orderBy: { code: "asc" },
     });
     return actionOk({
+      code: t.code,
       shapeCode: t.shapeCode,
       nameJa: localized(t.name as LocalizedText | null),
       kindOptions: kinds.map((k) => ({
@@ -102,17 +105,12 @@ export async function fetchStructuredMaterialType(
 
 export async function createMaterial(
   input: MaterialCreateInput,
-): Promise<ActionResult<{ id: string }>> {
+): Promise<ActionResult<{ id: number; code: string }>> {
   const parsed = materialCreateInput.safeParse(input);
   if (!parsed.success) {
     return actionError(parsed.error.issues[0]?.message ?? "入力が不正です");
   }
   const v = parsed.data;
-  if (!isStructuredMaterialTypeId(v.materialTypeId)) {
-    return actionError(
-      "未変換（レガシー）の材種では素材を作成できません。変換済の材種を選択してください。",
-    );
-  }
   try {
     const [type, finish] = await Promise.all([
       prisma.materialType.findUnique({ where: { id: v.materialTypeId } }),
@@ -120,8 +118,10 @@ export async function createMaterial(
         where: { code: v.surfaceFinishCode },
       }),
     ]);
-    if (!type || !type.shapeCode) {
-      return actionError("材種が見つからないか、コード構成がありません");
+    if (!type || !type.code || !type.shapeCode) {
+      return actionError(
+        "未変換（レガシー）の材種では素材を作成できません。変換済の材種を選択してください。",
+      );
     }
     if (!finish || !finish.isActive) {
       return actionError("黒皮・研磨の区分が不正です");
@@ -137,14 +137,14 @@ export async function createMaterial(
 
     const diameterCode = diameterCodeFromMm(v.diameterMm);
     const lengthCode = lengthCodeFromMm(v.lengthMm);
-    const id = composeMaterialCode(
-      v.materialTypeId,
+    const code = composeMaterialCode(
+      type.code,
       v.surfaceFinishCode,
       diameterCode,
       lengthCode,
     );
 
-    await prisma.$transaction(async (tx) => {
+    const created = await prisma.$transaction(async (tx) => {
       // 径・全長の構成行は reuse-or-create（管理画面は閲覧・無効化・カスタム名用）。
       await tx.materialDiameter.upsert({
         where: { code: diameterCode },
@@ -167,9 +167,9 @@ export async function createMaterial(
         },
         update: {},
       });
-      await tx.material.create({
+      return tx.material.create({
         data: {
-          id,
+          code,
           materialTypeId: v.materialTypeId,
           surfaceFinishCode: v.surfaceFinishCode,
           diameterCode,
@@ -184,13 +184,15 @@ export async function createMaterial(
           isActive: v.isActive,
           notes: v.notes?.trim() || null,
         },
+        select: { id: true, code: true },
       });
     });
     await recordAudit({
       action: "CREATE",
       tableName: "materials",
-      recordId: id,
+      recordId: String(created.id),
       after: {
+        code,
         materialTypeId: v.materialTypeId,
         surfaceFinishCode: v.surfaceFinishCode,
         diameterMm: v.diameterMm,
@@ -201,8 +203,8 @@ export async function createMaterial(
         isActive: v.isActive,
       },
     });
-    revalidate(id);
-    return actionOk({ id });
+    revalidate(created.id);
+    return actionOk({ id: created.id, code: created.code });
   } catch (e) {
     const code =
       typeof e === "object" && e !== null && "code" in e
@@ -218,9 +220,9 @@ export async function createMaterial(
 }
 
 export async function updateMaterial(
-  id: string,
+  id: number,
   input: MaterialUpdateInput,
-): Promise<ActionResult<{ id: string }>> {
+): Promise<ActionResult<{ id: number }>> {
   const parsed = materialUpdateInput.safeParse(input);
   if (!parsed.success) {
     return actionError(parsed.error.issues[0]?.message ?? "入力が不正です");
@@ -251,7 +253,7 @@ export async function updateMaterial(
     await recordAudit({
       action: "UPDATE",
       tableName: "materials",
-      recordId: id,
+      recordId: String(id),
       before: prior
         ? {
             unit: prior.unit,
@@ -280,7 +282,7 @@ export async function updateMaterial(
 }
 
 export async function setMaterialsActive(
-  ids: string[],
+  ids: number[],
   isActive: boolean,
 ): Promise<ActionResult> {
   if (ids.length === 0) return actionError("対象が選択されていません");
@@ -293,7 +295,7 @@ export async function setMaterialsActive(
       await recordAudit({
         action: "UPDATE",
         tableName: "materials",
-        recordId: id,
+        recordId: String(id),
         after: { isActive },
       });
     }
@@ -305,7 +307,7 @@ export async function setMaterialsActive(
   }
 }
 
-export async function deleteMaterials(ids: string[]): Promise<ActionResult> {
+export async function deleteMaterials(ids: number[]): Promise<ActionResult> {
   if (ids.length === 0) return actionError("対象が選択されていません");
   try {
     // Guard: refuse when a product still references one of the materials.
@@ -323,7 +325,7 @@ export async function deleteMaterials(ids: string[]): Promise<ActionResult> {
       await recordAudit({
         action: "DELETE",
         tableName: "materials",
-        recordId: id,
+        recordId: String(id),
       });
     }
     revalidate();

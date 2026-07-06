@@ -11,7 +11,8 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { recordAudit } from "@/lib/audit";
 import { Prisma, prisma } from "@/lib/db";
-import { nextDocumentNumber } from "@/lib/numbering";
+import { formatProductNumber } from "@/lib/doc-number";
+import { allocateDocumentKey } from "@/lib/numbering";
 import {
   type ActionResult,
   actionError,
@@ -25,6 +26,7 @@ const BASE_PATH = "/master/products";
 const productInput = z.object({
   nameJa: z.string().min(1, "名称（日本語）を入力してください"),
   nameEn: z.string().optional(),
+  /** 素材の内部 id（文字列 — UI の Select 値）。空/null = 未設定。 */
   materialId: z.string().nullable(),
   unit: z.string().min(1, "単位を選択してください"),
   isActive: z.boolean(),
@@ -34,9 +36,15 @@ const productInput = z.object({
 
 export type ProductInput = z.infer<typeof productInput>;
 
-function revalidate(id?: string) {
+function revalidate(id?: number) {
   revalidatePath(BASE_PATH);
-  if (id) revalidatePath(`${BASE_PATH}/${id}`);
+  if (id != null) revalidatePath(`${BASE_PATH}/${id}`);
+}
+
+function materialIdNum(v: string | null): number | null {
+  if (!v) return null;
+  const n = Number(v);
+  return Number.isInteger(n) && n > 0 ? n : null;
 }
 
 /** Key/value rows → spec JSON object (empty keys dropped, null if none). */
@@ -49,48 +57,52 @@ function specJson(rows: { key: string; value: string }[]) {
 
 export async function createProduct(
   input: ProductInput,
-): Promise<ActionResult<{ id: string }>> {
+): Promise<ActionResult<{ id: number; code: string }>> {
   const parsed = productInput.safeParse(input);
   if (!parsed.success) {
     return actionError(parsed.error.issues[0]?.message ?? "入力が不正です");
   }
   const v = parsed.data;
   try {
-    const id = await nextDocumentNumber("PRODUCT");
+    const { yearMonth, seq } = await allocateDocumentKey("PRODUCT");
     const created = await prisma.product.create({
       data: {
-        id,
+        yearMonth,
+        seq,
         name: localizedInput(v.nameJa, v.nameEn),
-        materialId: v.materialId,
+        materialId: materialIdNum(v.materialId),
         unit: v.unit,
         spec: specJson(v.spec) ?? undefined,
         isActive: v.isActive,
         notes: v.notes?.trim() || null,
       },
+      select: { id: true },
     });
+    const code = formatProductNumber(yearMonth, seq) ?? "";
     await recordAudit({
       action: "CREATE",
       tableName: "products",
-      recordId: created.id,
+      recordId: String(created.id),
       after: {
+        code,
         nameJa: v.nameJa,
-        materialId: v.materialId,
+        materialId: materialIdNum(v.materialId),
         unit: v.unit,
         isActive: v.isActive,
         notes: v.notes?.trim() || null,
       },
     });
     revalidate(created.id);
-    return actionOk({ id: created.id });
+    return actionOk({ id: created.id, code });
   } catch (e) {
     return actionError(prismaErrorMessage(e, "製品の作成に失敗しました"));
   }
 }
 
 export async function updateProduct(
-  id: string,
+  id: number,
   input: ProductInput,
-): Promise<ActionResult<{ id: string }>> {
+): Promise<ActionResult<{ id: number }>> {
   const parsed = productInput.safeParse(input);
   if (!parsed.success) {
     return actionError(parsed.error.issues[0]?.message ?? "入力が不正です");
@@ -110,7 +122,7 @@ export async function updateProduct(
       where: { id },
       data: {
         name: localizedInput(v.nameJa, v.nameEn),
-        materialId: v.materialId,
+        materialId: materialIdNum(v.materialId),
         unit: v.unit,
         spec: specJson(v.spec) ?? Prisma.DbNull,
         isActive: v.isActive,
@@ -120,7 +132,7 @@ export async function updateProduct(
     await recordAudit({
       action: "UPDATE",
       tableName: "products",
-      recordId: id,
+      recordId: String(id),
       before: prior
         ? {
             materialId: prior.materialId,
@@ -131,7 +143,7 @@ export async function updateProduct(
         : undefined,
       after: {
         nameJa: v.nameJa,
-        materialId: v.materialId,
+        materialId: materialIdNum(v.materialId),
         unit: v.unit,
         isActive: v.isActive,
         notes: v.notes?.trim() || null,
@@ -145,7 +157,7 @@ export async function updateProduct(
 }
 
 export async function setProductsActive(
-  ids: string[],
+  ids: number[],
   isActive: boolean,
 ): Promise<ActionResult> {
   if (ids.length === 0) return actionError("対象が選択されていません");
@@ -158,7 +170,7 @@ export async function setProductsActive(
       await recordAudit({
         action: "UPDATE",
         tableName: "products",
-        recordId: id,
+        recordId: String(id),
         after: { isActive },
       });
     }
@@ -170,7 +182,7 @@ export async function setProductsActive(
   }
 }
 
-export async function deleteProducts(ids: string[]): Promise<ActionResult> {
+export async function deleteProducts(ids: number[]): Promise<ActionResult> {
   if (ids.length === 0) return actionError("対象が選択されていません");
   try {
     // Guard: refuse when sales documents still reference one of the products.
@@ -189,7 +201,7 @@ export async function deleteProducts(ids: string[]): Promise<ActionResult> {
       await recordAudit({
         action: "DELETE",
         tableName: "products",
-        recordId: id,
+        recordId: String(id),
       });
     }
     revalidate();

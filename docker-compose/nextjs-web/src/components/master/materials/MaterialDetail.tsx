@@ -30,8 +30,10 @@ import {
 const BASE_PATH = "/master/materials";
 
 export interface MaterialDetailData {
-  id: string;
-  materialTypeId: string;
+  id: number;
+  code: string;
+  materialTypeId: number;
+  materialTypeCode: string;
   materialTypeName: string;
   surfaceFinish: string;
   diameterMm: number;
@@ -46,7 +48,7 @@ export interface MaterialDetailData {
   notes: string;
   createdAt: string;
   updatedAt: string;
-  products: { id: string; name: string }[];
+  products: { id: number; code: string | null; name: string }[];
 }
 
 export function MaterialDetail({
@@ -63,6 +65,7 @@ export function MaterialDetail({
 
   const target = {
     id: record.id,
+    code: record.code,
     name: record.nameJa,
     isActive: record.isActive,
   };
@@ -88,7 +91,7 @@ export function MaterialDetail({
           onEdit={() => router.push(`${BASE_PATH}/${record.id}/edit`)}
         />
       }
-      breadcrumbs={["マスタ", { label: "素材", href: BASE_PATH }, record.id]}
+      breadcrumbs={["マスタ", { label: "素材", href: BASE_PATH }, record.code]}
       createdAt={formatDateTime(record.createdAt)}
       status={<ActiveBadge active={record.isActive} />}
       title={record.nameJa}
@@ -97,13 +100,13 @@ export function MaterialDetail({
       <SummaryGrid>
         <FieldValue
           label="素材コード"
-          value={<DocNumber>{record.id}</DocNumber>}
+          value={<DocNumber>{record.code}</DocNumber>}
         />
         <FieldValue
           label="材種"
           value={
             <DocNumber c="blue">
-              {record.materialTypeId}
+              {record.materialTypeCode}
               {record.materialTypeName ? `（${record.materialTypeName}）` : ""}
             </DocNumber>
           }
@@ -171,7 +174,7 @@ export function MaterialDetail({
                         onClick={() => router.push(`/master/products/${p.id}`)}
                       >
                         <Table.Td>
-                          <DocNumber c="blue">{p.id}</DocNumber>
+                          <DocNumber c="blue">{p.code ?? "未採番"}</DocNumber>
                         </Table.Td>
                         <Table.Td>{p.name}</Table.Td>
                       </Table.Tr>

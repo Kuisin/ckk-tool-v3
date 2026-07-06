@@ -46,9 +46,12 @@ export async function fetchMaterialPricing(
   materialId: string,
 ): Promise<ActionResult<MaterialPricing>> {
   try {
+    const idNum = Number(materialId);
     const [settings, history] = await Promise.all([
       getTrialPricingSettings(),
-      materialId ? fetchPriceHistory(materialId) : Promise.resolve([]),
+      Number.isInteger(idNum) && idNum > 0
+        ? fetchPriceHistory(idNum)
+        : Promise.resolve([]),
     ]);
     return actionOk({
       history,
@@ -115,7 +118,7 @@ export async function createTrialEstimate(
         toolType: v.input.toolType,
         status: "DRAFT",
         customerBpId: v.customerBpId,
-        materialId: v.materialId,
+        materialId: Number(v.materialId),
         referenceUnitPrice: v.referenceUnitPrice,
         referenceDate: v.referenceDate ? new Date(v.referenceDate) : null,
         referenceOverridden: v.referenceOverridden,
@@ -208,7 +211,7 @@ export async function registerPriceListFromEstimate(
       prisma.priceListEntry.create({
         data: {
           customerBpId: v.customerBpId,
-          productId: v.productId,
+          productId: Number(v.productId),
           orderType: v.orderType,
           baseUnitPrice: v.baseUnitPrice,
           validFrom: new Date(v.validFrom),
@@ -233,7 +236,11 @@ export async function registerPriceListFromEstimate(
         data: { status: "REGISTERED", registeredAt: new Date() },
       }),
     ]);
-    const entryId = priceEntryKey(v.customerBpId, v.productId, v.orderType);
+    const entryId = priceEntryKey(
+      v.customerBpId,
+      Number(v.productId),
+      v.orderType,
+    );
     await recordAudit({
       action: "UPDATE",
       tableName: "estimates",

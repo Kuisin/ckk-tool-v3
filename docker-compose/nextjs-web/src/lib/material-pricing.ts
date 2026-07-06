@@ -20,7 +20,7 @@ import type { TrialPricingSettings } from "./trial-pricing-settings";
 
 /** 仕入実績（日付昇順）。ORDERED/COMPLETED の発注明細のみ。 */
 export async function fetchPriceHistory(
-  materialId: string,
+  materialId: number,
 ): Promise<MaterialPricePoint[]> {
   const items = await prisma.materialPurchaseOrderItem.findMany({
     where: {
@@ -47,7 +47,7 @@ export async function fetchPriceHistory(
 
 /** 参照価格 — 仕入実績 × 価格ポリシー（system_settings）。 */
 export async function getReferencePrice(
-  materialId: string,
+  materialId: number,
   settings: Pick<
     TrialPricingSettings,
     "materialPriceBasis" | "materialPriceLookbackMonths"

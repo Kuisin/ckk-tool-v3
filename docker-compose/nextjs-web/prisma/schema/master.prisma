@@ -123,9 +123,12 @@ model MaterialLengthVariant {
 
 // ─── 材種 ───────────────────────────────────────────────────────────
 
-// 構成コードが NULL の行はレガシー未変換プレースホルダ（id は uuid5）。
+// 内部 id は連番、表示コード（材種コード）は code。構成コードが NULL の行は
+// レガシー未変換プレースホルダ（code も NULL、legacy_key に取込元 uuid5）。
 model MaterialType {
-  id               String   @id
+  id               Int      @id @default(autoincrement())
+  code             String?  @unique
+  legacyKey        String?  @unique @map("legacy_key")
   manufacturerCode String?  @map("manufacturer_code") @db.Char(1)
   gradeCode        String?  @map("grade_code") @db.Char(2)
   shapeCode        String?  @map("shape_code") @db.Char(1)
@@ -149,9 +152,11 @@ model MaterialType {
 
 // ─── 素材 ───────────────────────────────────────────────────────────
 
+// 内部 id は連番、表示コード（素材コード）は code（構成から自動組立・不変）。
 model Material {
-  id                String   @id
-  materialTypeId    String   @map("material_type_id")
+  id                Int      @id @default(autoincrement())
+  code              String   @unique
+  materialTypeId    Int      @map("material_type_id")
   surfaceFinishCode String   @map("surface_finish_code") @db.Char(1)
   diameterCode      String   @map("diameter_code") @db.Char(3)
   lengthVariantCode String   @map("length_variant_code") @db.Char(3)
@@ -184,11 +189,16 @@ model Material {
   @@schema("app")
 }
 
-// 製品コード: PRD-YYYYMM-NNNN
+// 内部 id は連番。製品コード PRD-YYYYMM-NNNN は (year_month, seq) から導出
+// （estimates と同型の複合キー）。レガシー取込行は未採番（year_month/seq NULL、
+// legacy_key に取込元 uuid5）。
 model Product {
-  id         String   @id
+  id         Int     @id @default(autoincrement())
+  yearMonth  String? @map("year_month") @db.Char(6)
+  seq        Int?
+  legacyKey  String? @unique @map("legacy_key")
   name       Json
-  materialId String?  @map("material_id")
+  materialId Int?    @map("material_id")
   unit       String   @default("本")
   spec       Json?
   isActive   Boolean  @default(true) @map("is_active")
@@ -200,6 +210,7 @@ model Product {
   priceListEntries PriceListEntry[]
   quoteItems       QuoteItem[]
 
+  @@unique([yearMonth, seq])
   @@map("products")
   @@schema("app")
 }

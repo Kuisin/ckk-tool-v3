@@ -11,10 +11,12 @@ cd shared-db && pnpm import:legacy     # imports/*.sql.gz を番号順に適用
 | file | contents |
 |---|---|
 | `010_bp.sql.gz` | 取引先 459 社（BP-01001〜、match_names=全表記ゆれ、ロール、SUPPLIER attrs、BP 採番カウンタ前進） |
-| `020_material_types.sql.gz` | 材種プレースホルダ ~3,555（レガシー材種フリーテキスト、採番表コード未変換） |
-| `030_products.sql.gz` | 製品 ~43,444（型番形状/形状/刃数、spec JSON、material_id null） |
+| `020_material_types.sql.gz` | 材種プレースホルダ ~3,555（レガシー材種フリーテキスト。id は SERIAL、legacy_key=uuid5 が冪等キー、code は NULL） |
+| `025_material_structuring.sql.gz` | レガシー材種の構造化: 仮メーカー Z + グレード ~79 + 構造化材種 ~104 + 素材 ~525。変換済みプレースホルダは is_active=false（description に変換先コード） |
+| `030_products.sql.gz` | 製品 ~43,444（型番形状/形状/刃数、spec JSON、material_id null、コード未採番 — legacy_key=uuid5 が冪等キー） |
 
 すべて `INSERT … ON CONFLICT DO UPDATE/NOTHING` — 再適用しても安全。
 
 再生成（mapped.sqlite を持つマシンで）: `../make_imports.sh`
+025 だけの再生成（コミット済み 020 から、どのマシンでも）: `python3 ../export_material_structuring.py`
 mapped.sqlite の再構築手順: `../MIGRATION_REPORT.md`
