@@ -8,7 +8,7 @@
     "generate": "prisma generate",
     "migrate:dev": "prisma migrate dev",
     "migrate:deploy": "prisma migrate deploy",
-    "seed:demo": "sh -c '. ./.env 2>/dev/null || true; psql \"$DATABASE_URL\" -v ON_ERROR_STOP=1 -f sql/demo-seed.sql'",
+    "import:legacy": "sh -c '. ./.env 2>/dev/null || true; for f in ../data-migration/imports/*.sql.gz; do echo \"== $f\"; gunzip -c \"$f\" | psql \"$DATABASE_URL\" -v ON_ERROR_STOP=1 -q; done'",
     "studio": "prisma studio"
   },
   "devDependencies": {

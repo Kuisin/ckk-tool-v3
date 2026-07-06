@@ -103,8 +103,10 @@ Powers the AI-first 受注請書 intake (scan image + auto-filled form → user 
 cd shared-db
 pnpm migrate:deploy                                              # 1. pending migrations
 sh -c '. ./.env; psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f sql/grants.sql'  # 2. re-grant (needed whenever tables/roles were added)
-pnpm seed:demo                                                   # 3. demo data (idempotent upserts)
+pnpm import:legacy                                               # 3. legacy data (BP/材種/製品) — ALWAYS after a reset/re-provision
 ```
+
+Step 3 applies the committed `data-migration/imports/*.sql.gz` (idempotent upserts generated from the FileMaker migration). There is no demo seed — master/BP data comes from this import. Regenerate artifacts with `data-migration/make_imports.sh` (needs `mapped.sqlite`).
 
 Skipping `grants.sql` after adding tables makes the app 500 on those tables (role `app` has no rights). **From a cloud Claude session** (sandbox has no LAN route — no SSH, no 192.168.50.x): run the same steps through Claude Code Remote in the Mac bridge environment (`kaisei-mac-studio:ckk-tool-v3`) — `create_trigger` with `create_new_session_on_fire: true` + that `environment_id`, then `fire_trigger`; have the session post its result as a PR comment and subscribe to the PR to receive it.
 
