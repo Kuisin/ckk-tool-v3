@@ -3,8 +3,8 @@
 /**
  * MaterialTable.tsx — 素材 一覧 (MS05, design.md §8.1 / §14).
  *
- * Ported from design-preview (designs/master/materials/list.tsx) and backed
- * by server data (master.materials via Prisma).
+ * 列: 素材コード / 材種 / 直径 / 全長 / 黒皮研磨 / 状態。
+ * 材種フィルタは表示中の素材が使う材種から導出する（全 3,555 材種を送らない）。
  */
 
 import { Group, Paper, Select, Stack, Text, TextInput } from "@mantine/core";
@@ -13,13 +13,12 @@ import {
   IconBolt,
   IconCheck,
   IconCircleMinus,
-  IconCopy,
   IconEdit,
   IconSearch,
   IconTrash,
 } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useMemo, useState, useTransition } from "react";
 import {
   deleteMaterials,
   setMaterialsActive,
@@ -31,11 +30,8 @@ import { openConfirm } from "@/components/ui/modals";
 import { NewButton } from "@/components/ui/NewButton";
 import { ListShell } from "@/components/ui/shells";
 import { useIsMobile } from "@/hooks/useViewport";
-import { MATERIAL_FORM_LABEL, MATERIAL_FORM_OPTIONS } from "@/lib/enum-labels";
-import type { Option } from "@/lib/mock";
 import {
   DeleteMaterialModal,
-  DuplicateMaterialModal,
   type MaterialModalTarget,
   ToggleMaterialActiveModal,
 } from "./MaterialModals";
@@ -45,8 +41,11 @@ const BASE_PATH = "/master/materials";
 export interface MaterialRow {
   id: string;
   materialTypeId: string;
+  materialTypeName: string;
   name: string;
-  form: string;
+  diameterMm: number;
+  lengthMm: number;
+  surfaceFinish: string;
   unit: string;
   isActive: boolean;
 }
@@ -56,32 +55,42 @@ const STATUS_OPTIONS = [
   { value: "inactive", label: "無効" },
 ];
 
-export function MaterialTable({
-  rows,
-  typeOptions,
-}: {
-  rows: MaterialRow[];
-  typeOptions: Option[];
-}) {
+export function MaterialTable({ rows }: { rows: MaterialRow[] }) {
   const router = useRouter();
   const isMobile = useIsMobile();
   const [, startTransition] = useTransition();
 
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState<string | null>(null);
-  const [formFilter, setFormFilter] = useState<string | null>(null);
+  const [finishFilter, setFinishFilter] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<string | null>(null);
 
   const [deleteRow, setDeleteRow] = useState<MaterialModalTarget | null>(null);
-  const [duplicateRow, setDuplicateRow] = useState<MaterialModalTarget | null>(
-    null,
-  );
   const [toggleRow, setToggleRow] = useState<MaterialModalTarget | null>(null);
+
+  // フィルタ選択肢は表示データから導出（材種・黒皮研磨とも件数は小さい）
+  const typeOptions = useMemo(() => {
+    const seen = new Map<string, string>();
+    for (const r of rows) {
+      if (!seen.has(r.materialTypeId)) {
+        seen.set(
+          r.materialTypeId,
+          `${r.materialTypeId}（${r.materialTypeName}）`,
+        );
+      }
+    }
+    return [...seen.entries()].map(([value, label]) => ({ value, label }));
+  }, [rows]);
+  const finishOptions = useMemo(() => {
+    const seen = new Set<string>();
+    for (const r of rows) seen.add(r.surfaceFinish);
+    return [...seen].map((v) => ({ value: v, label: v }));
+  }, [rows]);
 
   const reset = () => {
     setSearch("");
     setTypeFilter(null);
-    setFormFilter(null);
+    setFinishFilter(null);
     setStatusFilter(null);
   };
 
@@ -89,10 +98,10 @@ export function MaterialTable({
     const matchesSearch =
       !search || r.id.includes(search) || r.name.includes(search);
     const matchesType = !typeFilter || r.materialTypeId === typeFilter;
-    const matchesForm = !formFilter || r.form === formFilter;
+    const matchesFinish = !finishFilter || r.surfaceFinish === finishFilter;
     const matchesStatus =
       !statusFilter || (statusFilter === "active" ? r.isActive : !r.isActive);
-    return matchesSearch && matchesType && matchesForm && matchesStatus;
+    return matchesSearch && matchesType && matchesFinish && matchesStatus;
   });
 
   const bulkSetActive = (targets: MaterialRow[], isActive: boolean) => {
@@ -150,7 +159,7 @@ export function MaterialTable({
       key: "id",
       header: "素材コード",
       sortable: true,
-      width: 180,
+      width: 200,
       render: (r) => <DocNumber>{r.id}</DocNumber>,
     },
     {
@@ -158,7 +167,7 @@ export function MaterialTable({
       header: "材種",
       sortable: true,
       hideable: true,
-      width: 120,
+      width: 140,
       render: (r) => <DocNumber c="dimmed">{r.materialTypeId}</DocNumber>,
     },
     {
@@ -169,21 +178,30 @@ export function MaterialTable({
       render: (r) => r.name,
     },
     {
-      key: "form",
-      header: "形態",
+      key: "diameterMm",
+      header: "直径",
       sortable: true,
       hideable: true,
       width: 90,
-      sortValue: (r) => MATERIAL_FORM_LABEL[r.form] ?? r.form,
-      render: (r) => MATERIAL_FORM_LABEL[r.form] ?? r.form,
+      sortValue: (r) => r.diameterMm,
+      render: (r) => `φ${r.diameterMm}`,
     },
     {
-      key: "unit",
-      header: "単位",
+      key: "lengthMm",
+      header: "全長",
       sortable: true,
       hideable: true,
-      width: 80,
-      render: (r) => r.unit,
+      width: 90,
+      sortValue: (r) => r.lengthMm,
+      render: (r) => `${r.lengthMm}mm`,
+    },
+    {
+      key: "surfaceFinish",
+      header: "黒皮研磨",
+      sortable: true,
+      hideable: true,
+      width: 110,
+      render: (r) => r.surfaceFinish,
     },
     {
       key: "isActive",
@@ -209,15 +227,15 @@ export function MaterialTable({
             searchable
             style={isMobile ? { flex: 1 } : undefined}
             value={typeFilter}
-            w={isMobile ? undefined : 180}
+            w={isMobile ? undefined : 200}
           />
           <Select
             clearable
-            data={MATERIAL_FORM_OPTIONS}
-            onChange={setFormFilter}
-            placeholder="形態"
+            data={finishOptions}
+            onChange={setFinishFilter}
+            placeholder="黒皮研磨"
             style={isMobile ? { flex: 1 } : undefined}
-            value={formFilter}
+            value={finishFilter}
             w={isMobile ? undefined : 130}
           />
           <Select
@@ -281,10 +299,10 @@ export function MaterialTable({
                 </Text>
                 <Group gap="md" mt={2}>
                   <Text c="dimmed" size="xs">
-                    {MATERIAL_FORM_LABEL[r.form] ?? r.form}
+                    φ{r.diameterMm}×{r.lengthMm}mm
                   </Text>
                   <Text c="dimmed" size="xs">
-                    {r.unit}
+                    {r.surfaceFinish}
                   </Text>
                 </Group>
               </Stack>
@@ -297,11 +315,6 @@ export function MaterialTable({
             label: "編集",
             icon: <IconEdit size={14} />,
             onAction: (r) => router.push(`${BASE_PATH}/${r.id}/edit`),
-          },
-          {
-            label: "複製",
-            icon: <IconCopy size={14} />,
-            onAction: (r) => setDuplicateRow(r),
           },
           {
             label: row.isActive ? "無効化" : "有効化",
@@ -323,12 +336,6 @@ export function MaterialTable({
         onDone={() => router.refresh()}
         opened={!!deleteRow}
         target={deleteRow}
-      />
-      <DuplicateMaterialModal
-        onClose={() => setDuplicateRow(null)}
-        opened={!!duplicateRow}
-        source={duplicateRow}
-        typeOptions={typeOptions}
       />
       <ToggleMaterialActiveModal
         onClose={() => setToggleRow(null)}

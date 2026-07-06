@@ -5,41 +5,45 @@ import { type LocalizedText, localized } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
 
-/** 素材 編集 (MS25 edit). */
+/** 素材 編集 (MS25 edit) — コード構成はロック、属性のみ編集可. */
 export default async function MasterMaterialsEditPage({
   params,
 }: {
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const [r, types] = await Promise.all([
-    prisma.material.findUnique({ where: { id } }),
-    prisma.materialType.findMany({
-      where: { isActive: true },
-      orderBy: { id: "asc" },
-    }),
-  ]);
+  const r = await prisma.material.findUnique({
+    where: { id },
+    include: { materialType: true, surfaceFinish: true },
+  });
   if (!r) notFound();
 
   const name = r.name as LocalizedText | null;
-  const typeOptions = types.map((t) => ({
-    value: t.id,
-    label: `${t.id}（${localized(t.name as LocalizedText | null)}）`,
-  }));
 
   return (
     <MaterialForm
+      finishOptions={[]}
       initial={{
         id: r.id,
         materialTypeId: r.materialTypeId,
+        materialTypeLabel: `${r.materialTypeId} — ${localized(
+          r.materialType.name as LocalizedText | null,
+        )}`,
+        surfaceFinishLabel: localized(
+          r.surfaceFinish.name as LocalizedText | null,
+        ),
+        diameterMm: Number(r.diameterMm),
+        lengthMm: Number(r.lengthMm),
+        kindLabel: r.kindCode,
         nameJa: name?.ja ?? "",
         nameEn: name?.en ?? "",
         unit: r.unit,
-        form: r.materialForm,
+        manufacturerModel: r.manufacturerModel ?? "",
+        nominalDiameterMm:
+          r.nominalDiameterMm != null ? Number(r.nominalDiameterMm) : null,
         isActive: r.isActive,
         notes: r.notes ?? "",
       }}
-      typeOptions={typeOptions}
     />
   );
 }

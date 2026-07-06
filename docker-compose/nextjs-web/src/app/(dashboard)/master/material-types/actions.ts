@@ -12,6 +12,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { recordAudit } from "@/lib/audit";
 import { Prisma, prisma } from "@/lib/db";
+import { composeMaterialTypeCode, formatKindSerial } from "@/lib/material-code";
 import {
   type ActionResult,
   actionError,
@@ -31,13 +32,11 @@ const materialTypeInput = z.object({
   isActive: z.boolean(),
 });
 
+// 新規は構成コードから組み立て、種類（4桁連番）は自動採番する。
 const materialTypeCreateInput = materialTypeInput.extend({
-  code: z
-    .string()
-    .regex(
-      /^[A-Z][0-9]{2}[A-Z][0-9]{4}$/,
-      "形式は [A-Z][0-9]{2}[A-Z][0-9]{4} で入力してください",
-    ),
+  manufacturerCode: z.string().regex(/^[A-Z]$/, "メーカーを選択してください"),
+  gradeCode: z.string().regex(/^[0-9]{2}$/, "メーカー材種を選択してください"),
+  shapeCode: z.string().regex(/^[A-Z]$/, "形状を選択してください"),
 });
 
 export type MaterialTypeInput = z.infer<typeof materialTypeInput>;
@@ -57,20 +56,87 @@ export async function createMaterialType(
   }
   const v = parsed.data;
   try {
-    const created = await prisma.materialType.create({
-      data: {
-        id: v.code,
-        name: localizedInput(v.nameJa, v.nameEn),
-        description:
-          localizedInputOrNull(v.descriptionJa, v.descriptionEn) ?? undefined,
-        isActive: v.isActive,
-      },
-    });
+    const [grade, shape] = await Promise.all([
+      prisma.materialManufacturerGrade.findUnique({
+        where: {
+          manufacturerCode_code: {
+            manufacturerCode: v.manufacturerCode,
+            code: v.gradeCode,
+          },
+        },
+        include: { manufacturer: true },
+      }),
+      prisma.materialShape.findUnique({ where: { code: v.shapeCode } }),
+    ]);
+    if (!grade || !grade.isActive || !grade.manufacturer.isActive) {
+      return actionError("メーカー材種がこのメーカーに存在しません");
+    }
+    if (!shape || !shape.isActive) {
+      return actionError("形状が不正です");
+    }
+
+    // 種類 = メーカー×材種×形状内の 4桁連番。numbering_sequences は使わず
+    // MAX+1 をトランザクション内で採番し、複合 unique 衝突（P2002）時のみ
+    // リトライする（外部インポートと自己修復的に共存できる）。
+    let created: { id: string } | null = null;
+    let lastError: unknown = null;
+    for (let attempt = 0; attempt < 3 && !created; attempt++) {
+      try {
+        created = await prisma.$transaction(async (tx) => {
+          const max = await tx.materialType.aggregate({
+            where: {
+              manufacturerCode: v.manufacturerCode,
+              gradeCode: v.gradeCode,
+              shapeCode: v.shapeCode,
+            },
+            _max: { kindCode: true },
+          });
+          const next = (Number(max._max.kindCode) || 0) + 1;
+          const kindCode = formatKindSerial(next);
+          const id = composeMaterialTypeCode(
+            v.manufacturerCode,
+            v.gradeCode,
+            v.shapeCode,
+            kindCode,
+          );
+          return tx.materialType.create({
+            data: {
+              id,
+              manufacturerCode: v.manufacturerCode,
+              gradeCode: v.gradeCode,
+              shapeCode: v.shapeCode,
+              kindCode,
+              name: localizedInput(v.nameJa, v.nameEn),
+              description:
+                localizedInputOrNull(v.descriptionJa, v.descriptionEn) ??
+                undefined,
+              isActive: v.isActive,
+            },
+            select: { id: true },
+          });
+        });
+      } catch (e) {
+        lastError = e;
+        const code =
+          typeof e === "object" && e !== null && "code" in e
+            ? String((e as { code: unknown }).code)
+            : undefined;
+        if (code !== "P2002") throw e;
+      }
+    }
+    if (!created) {
+      return actionError(
+        prismaErrorMessage(lastError, "採番が競合しました。再度お試しください"),
+      );
+    }
     await recordAudit({
       action: "CREATE",
       tableName: "material_types",
       recordId: created.id,
       after: {
+        manufacturerCode: v.manufacturerCode,
+        gradeCode: v.gradeCode,
+        shapeCode: v.shapeCode,
         nameJa: v.nameJa,
         descriptionJa: v.descriptionJa?.trim() || null,
         isActive: v.isActive,

@@ -9,27 +9,22 @@ export const dynamic = "force-dynamic";
 
 /** 素材 一覧 (MS05). */
 export default async function MasterMaterialsPage() {
-  const [records, types] = await Promise.all([
-    prisma.material.findMany({ orderBy: { id: "asc" } }),
-    prisma.materialType.findMany({
-      where: { isActive: true },
-      orderBy: { id: "asc" },
-    }),
-  ]);
+  const records = await prisma.material.findMany({
+    include: { materialType: true, surfaceFinish: true },
+    orderBy: { id: "asc" },
+  });
 
   const rows: MaterialRow[] = records.map((r) => ({
     id: r.id,
     materialTypeId: r.materialTypeId,
+    materialTypeName: localized(r.materialType.name as LocalizedText | null),
     name: localized(r.name as LocalizedText | null),
-    form: r.materialForm,
+    diameterMm: Number(r.diameterMm),
+    lengthMm: Number(r.lengthMm),
+    surfaceFinish: localized(r.surfaceFinish.name as LocalizedText | null),
     unit: r.unit,
     isActive: r.isActive,
   }));
 
-  const typeOptions = types.map((t) => ({
-    value: t.id,
-    label: `${t.id}（${localized(t.name as LocalizedText | null)}）`,
-  }));
-
-  return <MaterialTable rows={rows} typeOptions={typeOptions} />;
+  return <MaterialTable rows={rows} />;
 }
