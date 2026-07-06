@@ -72,7 +72,7 @@ async function resolveItems(v: QuoteInput) {
       );
     }
     return {
-      productId: it.productId,
+      productId: Number(it.productId),
       orderType: it.orderType,
       quantity: it.quantity,
       unitPrice: r.unitPrice,

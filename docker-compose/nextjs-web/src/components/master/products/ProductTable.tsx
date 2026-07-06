@@ -7,7 +7,15 @@
  * server data (master.products via Prisma).
  */
 
-import { Group, Paper, Select, Stack, Text, TextInput } from "@mantine/core";
+import {
+  Badge,
+  Group,
+  Paper,
+  Select,
+  Stack,
+  Text,
+  TextInput,
+} from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import {
   IconCheck,
@@ -42,7 +50,9 @@ import {
 const BASE_PATH = "/master/products";
 
 export interface ProductRow {
-  id: string;
+  id: number;
+  /** 製品コード PRD-…（レガシー取込は未採番 = null）。 */
+  code: string | null;
   name: string;
   materialId: string | null;
   unit: string;
@@ -83,7 +93,7 @@ export function ProductTable({
 
   const filtered = rows.filter((r) => {
     const matchesSearch =
-      !search || r.id.includes(search) || r.name.includes(search);
+      !search || (r.code ?? "").includes(search) || r.name.includes(search);
     const matchesMaterial = !materialFilter || r.materialId === materialFilter;
     const matchesStatus =
       !statusFilter || (statusFilter === "active" ? r.isActive : !r.isActive);
@@ -142,11 +152,19 @@ export function ProductTable({
 
   const columns: Column<ProductRow>[] = [
     {
-      key: "id",
+      key: "code",
       header: "製品コード",
       sortable: true,
       width: 160,
-      render: (r) => <DocNumber>{r.id}</DocNumber>,
+      sortValue: (r) => r.code ?? "",
+      render: (r) =>
+        r.code ? (
+          <DocNumber>{r.code}</DocNumber>
+        ) : (
+          <Badge color="gray" size="xs" variant="light">
+            未採番
+          </Badge>
+        ),
     },
     {
       key: "name",
@@ -241,17 +259,17 @@ export function ProductTable({
         ]}
         columns={columns}
         data={filtered}
-        defaultSort={{ key: "id", dir: "asc" }}
+        defaultSort={{ key: "code", dir: "asc" }}
         emptyAction={<NewButton href={`${BASE_PATH}/new`} />}
         emptyIcon={<IconCylinder size={24} />}
         emptyMessage="製品がありません"
-        getRowId={(r) => r.id}
+        getRowId={(r) => String(r.id)}
         onRowClick={(r) => router.push(`${BASE_PATH}/${r.id}`)}
         renderCard={(r) => (
           <Paper p="sm" radius="sm" withBorder>
             <Group align="flex-start" justify="space-between" wrap="nowrap">
               <Stack gap={3} style={{ minWidth: 0 }}>
-                <DocNumber c="dimmed">{r.id}</DocNumber>
+                <DocNumber c="dimmed">{r.code ?? "未採番"}</DocNumber>
                 <Text fw={600} size="sm" truncate>
                   {r.name}
                 </Text>

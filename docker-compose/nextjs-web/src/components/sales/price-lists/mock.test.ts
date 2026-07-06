@@ -29,10 +29,10 @@ import {
 /** Minimal entry factory for isolated rule tests. */
 function makeEntry(over: Partial<PriceListEntry> = {}): PriceListEntry {
   return {
-    entryId: entryKey("bp-x", "PRD-X", "PRODUCTION"),
+    entryId: entryKey("bp-x", 9001, "PRODUCTION"),
     customerId: "bp-x",
     customerName: "テスト顧客",
-    productId: "PRD-X",
+    productId: "9001",
     productName: "テスト製品",
     orderType: "PRODUCTION",
     currency: "JPY",
@@ -135,9 +135,7 @@ describe("unitDiscountOf — 率(%) / 金額(¥/本)", () => {
 describe("findApplicableDiscount — 数量・期間・有効の判定", () => {
   // entry1 mock: 夏季キャンペーン RATE5% 100本〜 2026-06-01..08-31 (active),
   //              初回導入割 AMOUNT300 10〜99本 2026-01-01..03-31 (inactive)
-  const entry = getPriceEntry(
-    entryKey("bp-001", "PRD-202601-0001", "PRODUCTION"),
-  );
+  const entry = getPriceEntry(entryKey("bp-001", 1001, "PRODUCTION"));
   if (!entry) throw new Error("mock entry missing");
 
   it("applies a rule when quantity and date match", () => {
@@ -191,9 +189,7 @@ describe("findApplicableDiscount — 数量・期間・有効の判定", () => {
 
 describe("entry summary & labels", () => {
   it("entrySummary derives min/max from effective tier prices", () => {
-    const entry = getPriceEntry(
-      entryKey("bp-001", "PRD-202601-0001", "PRODUCTION"),
-    );
+    const entry = getPriceEntry(entryKey("bp-001", 1001, "PRODUCTION"));
     if (!entry) throw new Error("mock entry missing");
     // tiers: override 8000 / ×1.15→6900 / ×1.05→6300 / ×1.00→6000
     expect(entrySummary(entry)).toEqual({
@@ -229,15 +225,11 @@ describe("entry summary & labels", () => {
   });
 
   it("siblingOrderTypes / findEntriesByCustomerProduct", () => {
-    const entry = getPriceEntry(
-      entryKey("bp-001", "PRD-202601-0001", "PRODUCTION"),
-    );
+    const entry = getPriceEntry(entryKey("bp-001", 1001, "PRODUCTION"));
     if (!entry) throw new Error("mock entry missing");
     expect(siblingOrderTypes(entry)).toEqual(["SAMPLE"]);
-    expect(
-      findEntriesByCustomerProduct("bp-001", "PRD-202601-0001"),
-    ).toHaveLength(2);
-    expect(findEntriesByCustomerProduct(null, "PRD-202601-0001")).toEqual([]);
+    expect(findEntriesByCustomerProduct("bp-001", "1001")).toHaveLength(2);
+    expect(findEntriesByCustomerProduct(null, "1001")).toEqual([]);
   });
 
   it("every mock entry has at least one tier", () => {

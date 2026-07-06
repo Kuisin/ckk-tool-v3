@@ -13,7 +13,7 @@ import type {
   TrialEstimateRecord,
 } from "@/components/sales/trial-estimates/types";
 import { prisma } from "@/lib/db";
-import { formatEstimateNumber } from "@/lib/doc-number";
+import { formatEstimateNumber, formatProductNumber } from "@/lib/doc-number";
 import { type LocalizedText, localized } from "@/lib/format";
 import type { Option } from "@/lib/mock";
 import type { TrialInput } from "@/lib/trial-pricing";
@@ -29,8 +29,11 @@ function fetchEstimateRowByKey(yearMonth: string, seq: number) {
   });
 }
 
-export function materialOptionLabel(m: { id: string; name: unknown }): string {
-  return `${m.id} — ${localized(m.name as LocalizedText | null)}`;
+export function materialOptionLabel(m: {
+  code: string;
+  name: unknown;
+}): string {
+  return `${m.code} — ${localized(m.name as LocalizedText | null)}`;
 }
 
 export function mapEstimate(r: EstimateRow): TrialEstimateRecord {
@@ -44,7 +47,7 @@ export function mapEstimate(r: EstimateRow): TrialEstimateRecord {
     customerName: r.customerBp
       ? localized(r.customerBp.name as LocalizedText | null)
       : null,
-    materialId: r.materialId ?? "",
+    materialId: r.materialId != null ? String(r.materialId) : "",
     materialLabel: r.material ? materialOptionLabel(r.material) : "—",
     input: r.input as unknown as TrialInput,
     referenceDate: r.referenceDate?.toISOString().slice(0, 10) ?? "",
@@ -92,31 +95,44 @@ export async function fetchCustomerOptions(): Promise<Option[]> {
 export async function fetchMaterialOptions(): Promise<Option[]> {
   const rows = await prisma.material.findMany({
     where: { isActive: true },
-    orderBy: { id: "asc" },
+    orderBy: { code: "asc" },
   });
-  return rows.map((m) => ({ value: m.id, label: materialOptionLabel(m) }));
+  return rows.map((m) => ({
+    value: String(m.id),
+    label: materialOptionLabel(m),
+  }));
 }
 
-/** 製品 options — active products (名称 + コード). */
+/** 製品 options — active products (名称 + コード、レガシーは名称のみ). */
 export async function fetchProductOptions(): Promise<Option[]> {
   const rows = await prisma.product.findMany({
     where: { isActive: true },
     orderBy: { id: "asc" },
   });
   return rows.map((p) => ({
-    value: p.id,
-    label: `${localized(p.name as LocalizedText | null)} ${p.id}`,
+    value: String(p.id),
+    label: productOptionLabel(p),
   }));
+}
+
+function productOptionLabel(p: {
+  id: number;
+  name: unknown;
+  yearMonth: string | null;
+  seq: number | null;
+}): string {
+  const code = formatProductNumber(p.yearMonth, p.seq);
+  const name = localized(p.name as LocalizedText | null);
+  return code ? `${name} ${code}` : name;
 }
 
 /** 単一製品の option（ロック表示・編集初期値用 — 全件を送らない）. */
 export async function fetchProductOption(id: string): Promise<Option | null> {
-  const p = await prisma.product.findUnique({ where: { id } });
+  const idNum = Number(id);
+  if (!Number.isInteger(idNum)) return null;
+  const p = await prisma.product.findUnique({ where: { id: idNum } });
   if (!p) return null;
-  return {
-    value: p.id,
-    label: `${localized(p.name as LocalizedText | null)} ${p.id}`,
-  };
+  return { value: String(p.id), label: productOptionLabel(p) };
 }
 
 /** 単一顧客の option（ロック表示用）. */
@@ -131,5 +147,5 @@ export async function fetchExistingEntryRefs(): Promise<ExistingEntryRef[]> {
   const rows = await prisma.priceListEntry.findMany({
     select: { customerBpId: true, productId: true, orderType: true },
   });
-  return rows;
+  return rows.map((r) => ({ ...r, productId: String(r.productId) }));
 }

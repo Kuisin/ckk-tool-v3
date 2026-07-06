@@ -35,7 +35,8 @@ import {
 const BASE_PATH = "/master/products";
 
 export interface ProductDetailData {
-  id: string;
+  id: number;
+  code: string | null;
   nameJa: string;
   nameEn: string;
   materialId: string | null;
@@ -81,6 +82,7 @@ export function ProductDetail({
 
   const target = {
     id: record.id,
+    code: record.code,
     name: record.nameJa,
     isActive: record.isActive,
     materialId: record.materialId,
@@ -113,7 +115,11 @@ export function ProductDetail({
           onEdit={() => router.push(`${BASE_PATH}/${record.id}/edit`)}
         />
       }
-      breadcrumbs={["マスタ", { label: "製品", href: BASE_PATH }, record.id]}
+      breadcrumbs={[
+        "マスタ",
+        { label: "製品", href: BASE_PATH },
+        record.code ?? record.nameJa,
+      ]}
       createdAt={formatDateTime(record.createdAt)}
       status={<ActiveBadge active={record.isActive} />}
       title={record.nameJa}
@@ -122,7 +128,7 @@ export function ProductDetail({
       <SummaryGrid>
         <FieldValue
           label="製品コード"
-          value={<DocNumber>{record.id}</DocNumber>}
+          value={<DocNumber>{record.code ?? "未採番"}</DocNumber>}
         />
         <FieldValue label="名称（日本語）" value={record.nameJa} />
         <FieldValue label="名称（英語）" value={record.nameEn || "—"} />

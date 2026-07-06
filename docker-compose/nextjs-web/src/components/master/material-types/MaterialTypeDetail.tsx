@@ -32,7 +32,9 @@ import {
 const BASE_PATH = "/master/material-types";
 
 export interface MaterialTypeDetailData {
-  id: string;
+  id: number;
+  /** 材種コード（未変換は null）。 */
+  code: string | null;
   /** 変換済（コード構成あり）のときのみ。null = レガシー未変換。 */
   composition: {
     manufacturerLabel: string;
@@ -48,7 +50,8 @@ export interface MaterialTypeDetailData {
   createdAt: string;
   updatedAt: string;
   materials: {
-    id: string;
+    id: number;
+    code: string;
     name: string;
     size: string;
     unit: string;
@@ -96,7 +99,11 @@ export function MaterialTypeDetail({
           onEdit={() => router.push(`${BASE_PATH}/${record.id}/edit`)}
         />
       }
-      breadcrumbs={["マスタ", { label: "材種", href: BASE_PATH }, record.id]}
+      breadcrumbs={[
+        "マスタ",
+        { label: "材種", href: BASE_PATH },
+        record.code ?? record.nameJa,
+      ]}
       createdAt={formatDateTime(record.createdAt)}
       status={<ActiveBadge active={record.isActive} />}
       title={record.nameJa}
@@ -106,13 +113,12 @@ export function MaterialTypeDetail({
         <FieldValue
           label="材種コード"
           value={
-            record.composition ? (
-              <DocNumber>{record.id}</DocNumber>
+            record.code ? (
+              <DocNumber>{record.code}</DocNumber>
             ) : (
               <Group gap={6} wrap="nowrap">
-                <DocNumber c="dimmed">{record.id}</DocNumber>
                 <Badge color="gray" size="xs" variant="light">
-                  未変換
+                  未変換（レガシー）
                 </Badge>
               </Group>
             )
@@ -187,7 +193,7 @@ export function MaterialTypeDetail({
                       onClick={() => router.push(`/master/materials/${r.id}`)}
                     >
                       <Table.Td>
-                        <DocNumber c="blue">{r.id}</DocNumber>
+                        <DocNumber c="blue">{r.code}</DocNumber>
                       </Table.Td>
                       <Table.Td>{r.name}</Table.Td>
                       {!isMobile && <Table.Td>{r.size}</Table.Td>}

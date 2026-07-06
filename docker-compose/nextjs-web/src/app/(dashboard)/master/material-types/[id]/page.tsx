@@ -15,7 +15,9 @@ export default async function MasterMaterialTypesDetailPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
-  const { id } = await params;
+  const { id: idParam } = await params;
+  const id = Number(idParam);
+  if (!Number.isInteger(id)) notFound();
   const [r, auditEntries] = await Promise.all([
     prisma.materialType.findUnique({
       where: { id },
@@ -23,10 +25,10 @@ export default async function MasterMaterialTypesDetailPage({
         manufacturer: true,
         grade: true,
         shape: true,
-        materials: { orderBy: { id: "asc" } },
+        materials: { orderBy: { code: "asc" } },
       },
     }),
-    fetchAuditEntries("material_types", id),
+    fetchAuditEntries("material_types", String(id)),
   ]);
   if (!r) notFound();
 
@@ -35,6 +37,7 @@ export default async function MasterMaterialTypesDetailPage({
 
   const record: MaterialTypeDetailData = {
     id: r.id,
+    code: r.code,
     composition:
       r.manufacturerCode && r.kindCode
         ? {
@@ -59,6 +62,7 @@ export default async function MasterMaterialTypesDetailPage({
     updatedAt: r.updatedAt.toISOString(),
     materials: r.materials.map((m) => ({
       id: m.id,
+      code: m.code,
       name: localized(m.name as LocalizedText | null),
       size: `φ${Number(m.diameterMm)}×${Number(m.lengthMm)}mm`,
       unit: m.unit,

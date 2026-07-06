@@ -14,10 +14,10 @@ export * from "./model";
 
 export const MOCK_PRICE_ENTRIES: PriceListEntry[] = [
   {
-    entryId: entryKey("bp-001", "PRD-202601-0001", "PRODUCTION"),
+    entryId: entryKey("bp-001", 1001, "PRODUCTION"),
     customerId: "bp-001",
     customerName: "株式会社ABC製作所",
-    productId: "PRD-202601-0001",
+    productId: "1001",
     productName: "精密軸 PRD-202601-0001",
     orderType: "PRODUCTION",
     currency: "JPY",
@@ -87,10 +87,10 @@ export const MOCK_PRICE_ENTRIES: PriceListEntry[] = [
     updatedAt: "2026-01-05 14:30",
   },
   {
-    entryId: entryKey("bp-001", "PRD-202601-0001", "SAMPLE"),
+    entryId: entryKey("bp-001", 1001, "SAMPLE"),
     customerId: "bp-001",
     customerName: "株式会社ABC製作所",
-    productId: "PRD-202601-0001",
+    productId: "1001",
     productName: "精密軸 PRD-202601-0001",
     orderType: "SAMPLE",
     currency: "JPY",
@@ -115,10 +115,10 @@ export const MOCK_PRICE_ENTRIES: PriceListEntry[] = [
     updatedAt: "2026-01-05 14:30",
   },
   {
-    entryId: entryKey("bp-002", "PRD-202602-0008", "PRODUCTION"),
+    entryId: entryKey("bp-002", 2008, "PRODUCTION"),
     customerId: "bp-002",
     customerName: "合同会社XYZ工業",
-    productId: "PRD-202602-0008",
+    productId: "2008",
     productName: "ロッド PRD-202602-0008",
     orderType: "PRODUCTION",
     currency: "JPY",
@@ -155,10 +155,10 @@ export const MOCK_PRICE_ENTRIES: PriceListEntry[] = [
     updatedAt: "2026-03-15 10:00",
   },
   {
-    entryId: entryKey("bp-003", "PRD-202603-0012", "TEST"),
+    entryId: entryKey("bp-003", 3012, "TEST"),
     customerId: "bp-003",
     customerName: "株式会社DEFエンジニアリング",
-    productId: "PRD-202603-0012",
+    productId: "3012",
     productName: "特殊加工品 PRD-202603-0012",
     orderType: "TEST",
     currency: "JPY",

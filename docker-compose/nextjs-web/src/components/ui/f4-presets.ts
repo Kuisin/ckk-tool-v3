@@ -15,9 +15,9 @@ import type { F4Config } from "./F4SearchModal";
 
 export const PRODUCT_F4: F4Config = {
   title: "製品の詳細検索",
-  description: "製品コード・名称・使用素材で絞り込んで選択します。",
+  description:
+    "名称・使用素材で絞り込んで選択します（レガシー製品はコード未採番）。",
   filters: [
-    { key: "code", label: "製品コード", placeholder: "例: PRD-" },
     { key: "name", label: "名称" },
     { key: "material", label: "素材コード" },
   ],

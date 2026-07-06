@@ -5,6 +5,7 @@ import {
 } from "@/components/master/materials/MaterialDetail";
 import { fetchAuditEntries } from "@/lib/audit";
 import { prisma } from "@/lib/db";
+import { formatProductNumber } from "@/lib/doc-number";
 import { type LocalizedText, localized } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
@@ -15,7 +16,9 @@ export default async function MasterMaterialsDetailPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
-  const { id } = await params;
+  const { id: idParam } = await params;
+  const id = Number(idParam);
+  if (!Number.isInteger(id)) notFound();
   const [r, auditEntries] = await Promise.all([
     prisma.material.findUnique({
       where: { id },
@@ -25,7 +28,7 @@ export default async function MasterMaterialsDetailPage({
         products: { orderBy: { id: "asc" } },
       },
     }),
-    fetchAuditEntries("materials", id),
+    fetchAuditEntries("materials", String(id)),
   ]);
   if (!r) notFound();
 
@@ -33,7 +36,9 @@ export default async function MasterMaterialsDetailPage({
 
   const record: MaterialDetailData = {
     id: r.id,
+    code: r.code,
     materialTypeId: r.materialTypeId,
+    materialTypeCode: r.materialType.code ?? "",
     materialTypeName: localized(r.materialType.name as LocalizedText | null),
     surfaceFinish: localized(r.surfaceFinish.name as LocalizedText | null),
     diameterMm: Number(r.diameterMm),
@@ -51,6 +56,7 @@ export default async function MasterMaterialsDetailPage({
     updatedAt: r.updatedAt.toISOString(),
     products: r.products.map((p) => ({
       id: p.id,
+      code: formatProductNumber(p.yearMonth, p.seq),
       name: localized(p.name as LocalizedText | null),
     })),
   };

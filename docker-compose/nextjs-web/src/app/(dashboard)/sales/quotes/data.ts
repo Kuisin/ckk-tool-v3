@@ -8,7 +8,11 @@
 import type { PriceListEntry } from "@/components/sales/price-lists/model";
 import type { Quote } from "@/components/sales/quotes/model";
 import { prisma } from "@/lib/db";
-import { type DocKey, formatQuoteNumber } from "@/lib/doc-number";
+import {
+  type DocKey,
+  formatProductNumber,
+  formatQuoteNumber,
+} from "@/lib/doc-number";
 import { type LocalizedText, localized } from "@/lib/format";
 import { mapEntry } from "../price-lists/data";
 
@@ -47,8 +51,12 @@ export function mapQuote(r: QuoteRow): Quote {
     notes: r.notes,
     items: r.items.map((it) => ({
       id: it.id,
-      productId: it.productId,
-      productName: `${localized(it.product.name as LocalizedText | null)} ${it.productId}`,
+      productId: String(it.productId),
+      productName: (() => {
+        const code = formatProductNumber(it.product.yearMonth, it.product.seq);
+        const nm = localized(it.product.name as LocalizedText | null);
+        return code ? `${nm} ${code}` : nm;
+      })(),
       orderType: it.orderType,
       quantity: it.quantity,
       unitPrice: Number(it.unitPrice),

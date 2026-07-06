@@ -39,8 +39,9 @@ import {
 const BASE_PATH = "/master/materials";
 
 export interface MaterialRow {
-  id: string;
-  materialTypeId: string;
+  id: number;
+  code: string;
+  materialTypeCode: string;
   materialTypeName: string;
   name: string;
   diameterMm: number;
@@ -72,10 +73,10 @@ export function MaterialTable({ rows }: { rows: MaterialRow[] }) {
   const typeOptions = useMemo(() => {
     const seen = new Map<string, string>();
     for (const r of rows) {
-      if (!seen.has(r.materialTypeId)) {
+      if (!seen.has(r.materialTypeCode)) {
         seen.set(
-          r.materialTypeId,
-          `${r.materialTypeId}（${r.materialTypeName}）`,
+          r.materialTypeCode,
+          `${r.materialTypeCode}（${r.materialTypeName}）`,
         );
       }
     }
@@ -96,8 +97,8 @@ export function MaterialTable({ rows }: { rows: MaterialRow[] }) {
 
   const filtered = rows.filter((r) => {
     const matchesSearch =
-      !search || r.id.includes(search) || r.name.includes(search);
-    const matchesType = !typeFilter || r.materialTypeId === typeFilter;
+      !search || r.code.includes(search) || r.name.includes(search);
+    const matchesType = !typeFilter || r.materialTypeCode === typeFilter;
     const matchesFinish = !finishFilter || r.surfaceFinish === finishFilter;
     const matchesStatus =
       !statusFilter || (statusFilter === "active" ? r.isActive : !r.isActive);
@@ -156,19 +157,20 @@ export function MaterialTable({ rows }: { rows: MaterialRow[] }) {
 
   const columns: Column<MaterialRow>[] = [
     {
-      key: "id",
+      key: "code",
       header: "素材コード",
       sortable: true,
       width: 200,
-      render: (r) => <DocNumber>{r.id}</DocNumber>,
+      sortValue: (r) => r.code,
+      render: (r) => <DocNumber>{r.code}</DocNumber>,
     },
     {
-      key: "materialTypeId",
+      key: "materialTypeCode",
       header: "材種",
       sortable: true,
       hideable: true,
       width: 140,
-      render: (r) => <DocNumber c="dimmed">{r.materialTypeId}</DocNumber>,
+      render: (r) => <DocNumber c="dimmed">{r.materialTypeCode}</DocNumber>,
     },
     {
       key: "name",
@@ -283,17 +285,17 @@ export function MaterialTable({ rows }: { rows: MaterialRow[] }) {
         ]}
         columns={columns}
         data={filtered}
-        defaultSort={{ key: "id", dir: "asc" }}
+        defaultSort={{ key: "code", dir: "asc" }}
         emptyAction={<NewButton href={`${BASE_PATH}/new`} />}
         emptyIcon={<IconBolt size={24} />}
         emptyMessage="素材がありません"
-        getRowId={(r) => r.id}
+        getRowId={(r) => String(r.id)}
         onRowClick={(r) => router.push(`${BASE_PATH}/${r.id}`)}
         renderCard={(r) => (
           <Paper p="sm" radius="sm" withBorder>
             <Group align="flex-start" justify="space-between" wrap="nowrap">
               <Stack gap={3} style={{ minWidth: 0 }}>
-                <DocNumber c="dimmed">{r.id}</DocNumber>
+                <DocNumber c="dimmed">{r.code}</DocNumber>
                 <Text fw={600} size="sm" truncate>
                   {r.name}
                 </Text>

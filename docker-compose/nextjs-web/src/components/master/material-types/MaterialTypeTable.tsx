@@ -49,7 +49,9 @@ import {
 const BASE_PATH = "/master/material-types";
 
 export interface MaterialTypeRow {
-  id: string;
+  id: number;
+  /** 材種コード（変換済のみ、未変換は null）。 */
+  code: string | null;
   name: string;
   /** 変換済（コード構成あり）か — 未変換はレガシー取込プレースホルダ。 */
   structured: boolean;
@@ -93,7 +95,7 @@ export function MaterialTypeTable({ rows }: { rows: MaterialTypeRow[] }) {
 
   const filtered = rows.filter((r) => {
     const matchesSearch =
-      !search || r.id.includes(search) || r.name.includes(search);
+      !search || (r.code ?? "").includes(search) || r.name.includes(search);
     const matchesStatus =
       !statusFilter || (statusFilter === "active" ? r.isActive : !r.isActive);
     const matchesStructured =
@@ -154,20 +156,18 @@ export function MaterialTypeTable({ rows }: { rows: MaterialTypeRow[] }) {
 
   const columns: Column<MaterialTypeRow>[] = [
     {
-      key: "id",
+      key: "code",
       header: "材種コード",
       sortable: true,
       width: 160,
+      sortValue: (r) => r.code ?? "",
       render: (r) =>
-        r.structured ? (
-          <DocNumber>{r.id}</DocNumber>
+        r.code ? (
+          <DocNumber>{r.code}</DocNumber>
         ) : (
-          <Group gap={6} wrap="nowrap">
-            <DocNumber c="dimmed">{r.id.slice(0, 8)}…</DocNumber>
-            <Badge color="gray" size="xs" variant="light">
-              未変換
-            </Badge>
-          </Group>
+          <Badge color="gray" size="xs" variant="light">
+            未変換
+          </Badge>
         ),
     },
     {
@@ -271,17 +271,17 @@ export function MaterialTypeTable({ rows }: { rows: MaterialTypeRow[] }) {
         ]}
         columns={columns}
         data={filtered}
-        defaultSort={{ key: "id", dir: "asc" }}
+        defaultSort={{ key: "code", dir: "asc" }}
         emptyAction={<NewButton href={`${BASE_PATH}/new`} />}
         emptyIcon={<IconAtom size={24} />}
         emptyMessage="材種がありません"
-        getRowId={(r) => r.id}
+        getRowId={(r) => String(r.id)}
         onRowClick={(r) => router.push(`${BASE_PATH}/${r.id}`)}
         renderCard={(r) => (
           <Paper p="sm" radius="sm" withBorder>
             <Group align="flex-start" justify="space-between" wrap="nowrap">
               <Stack gap={3} style={{ minWidth: 0 }}>
-                <DocNumber c="dimmed">{r.id}</DocNumber>
+                <DocNumber c="dimmed">{r.code ?? "未変換"}</DocNumber>
                 <Text fw={600} size="sm" truncate>
                   {r.name}
                 </Text>

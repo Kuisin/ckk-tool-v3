@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { ProductForm } from "@/components/master/products/ProductForm";
 import { prisma } from "@/lib/db";
+import { formatProductNumber } from "@/lib/doc-number";
 import { type LocalizedText, localized } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
@@ -11,12 +12,14 @@ export default async function MasterProductsEditPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
-  const { id } = await params;
+  const { id: idParam } = await params;
+  const id = Number(idParam);
+  if (!Number.isInteger(id)) notFound();
   const [r, materials] = await Promise.all([
     prisma.product.findUnique({ where: { id } }),
     prisma.material.findMany({
       where: { isActive: true },
-      orderBy: { id: "asc" },
+      orderBy: { code: "asc" },
     }),
   ]);
   if (!r) notFound();
@@ -30,17 +33,18 @@ export default async function MasterProductsEditPage({
       : [];
 
   const materialOptions = materials.map((m) => ({
-    value: m.id,
-    label: `${m.id}（${localized(m.name as LocalizedText | null)}）`,
+    value: String(m.id),
+    label: `${m.code}（${localized(m.name as LocalizedText | null)}）`,
   }));
 
   return (
     <ProductForm
       initial={{
         id: r.id,
+        code: formatProductNumber(r.yearMonth, r.seq),
         nameJa: name?.ja ?? "",
         nameEn: name?.en ?? "",
-        materialId: r.materialId,
+        materialId: r.materialId != null ? String(r.materialId) : null,
         unit: r.unit,
         isActive: r.isActive,
         notes: r.notes ?? "",

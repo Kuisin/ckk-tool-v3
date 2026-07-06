@@ -5,6 +5,7 @@ import {
 } from "@/components/master/products/ProductDetail";
 import { fetchAuditEntries } from "@/lib/audit";
 import { prisma } from "@/lib/db";
+import { formatProductNumber } from "@/lib/doc-number";
 import { type LocalizedText, localized } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
@@ -15,7 +16,9 @@ export default async function MasterProductsDetailPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
-  const { id } = await params;
+  const { id: idParam } = await params;
+  const id = Number(idParam);
+  if (!Number.isInteger(id)) notFound();
   const [r, materials, auditEntries] = await Promise.all([
     prisma.product.findUnique({
       where: { id },
@@ -29,9 +32,9 @@ export default async function MasterProductsDetailPage({
     }),
     prisma.material.findMany({
       where: { isActive: true },
-      orderBy: { id: "asc" },
+      orderBy: { code: "asc" },
     }),
-    fetchAuditEntries("products", id),
+    fetchAuditEntries("products", String(id)),
   ]);
   if (!r) notFound();
 
@@ -45,9 +48,10 @@ export default async function MasterProductsDetailPage({
 
   const record: ProductDetailData = {
     id: r.id,
+    code: formatProductNumber(r.yearMonth, r.seq),
     nameJa: name?.ja ?? "",
     nameEn: name?.en ?? "",
-    materialId: r.materialId,
+    materialId: r.materialId != null ? String(r.materialId) : null,
     materialName: r.material
       ? localized(r.material.name as LocalizedText | null)
       : "",
@@ -69,8 +73,8 @@ export default async function MasterProductsDetailPage({
   };
 
   const materialOptions = materials.map((m) => ({
-    value: m.id,
-    label: `${m.id}（${localized(m.name as LocalizedText | null)}）`,
+    value: String(m.id),
+    label: `${m.code}（${localized(m.name as LocalizedText | null)}）`,
   }));
 
   return (

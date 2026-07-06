@@ -102,7 +102,7 @@ const TIERED_QUOTE: Quote = {
     buildItem(
       "qi-1",
       "bp-001",
-      "PRD-202601-0001",
+      "1001",
       "精密軸 PRD-202601-0001",
       "PRODUCTION",
       2,
@@ -113,7 +113,7 @@ const TIERED_QUOTE: Quote = {
     buildItem(
       "qi-2",
       "bp-001",
-      "PRD-202601-0001",
+      "1001",
       "精密軸 PRD-202601-0001",
       "PRODUCTION",
       10,
@@ -124,7 +124,7 @@ const TIERED_QUOTE: Quote = {
     buildItem(
       "qi-3",
       "bp-001",
-      "PRD-202601-0001",
+      "1001",
       "精密軸 PRD-202601-0001",
       "PRODUCTION",
       30,
@@ -135,7 +135,7 @@ const TIERED_QUOTE: Quote = {
     buildItem(
       "qi-4",
       "bp-001",
-      "PRD-202601-0001",
+      "1001",
       "精密軸 PRD-202601-0001",
       "PRODUCTION",
       50,
@@ -146,7 +146,7 @@ const TIERED_QUOTE: Quote = {
     buildItem(
       "qi-5",
       "bp-001",
-      "PRD-202601-0001",
+      "1001",
       "精密軸 PRD-202601-0001",
       "PRODUCTION",
       100,
@@ -180,7 +180,7 @@ const SINGLE_QUOTE: Quote = {
     buildItem(
       "qj-1",
       "bp-002",
-      "PRD-202602-0008",
+      "2008",
       "ロッド PRD-202602-0008",
       "PRODUCTION",
       20,
@@ -191,7 +191,7 @@ const SINGLE_QUOTE: Quote = {
     buildItem(
       "qj-2",
       "bp-002",
-      "PRD-202602-0008",
+      "2008",
       "ロッド PRD-202602-0008",
       "PRODUCTION",
       80,
