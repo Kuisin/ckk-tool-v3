@@ -46,7 +46,7 @@ import {
   SummaryGrid,
 } from "@/components/ui/shells";
 import { formatDateTime } from "@/lib/format";
-import { getPriceHistory } from "@/lib/material-pricing";
+import type { MaterialPricePoint } from "@/lib/material-pricing-core";
 import type { Option } from "@/lib/mock";
 import { ORDER_TYPE_LABEL } from "@/lib/mock";
 import { calcTrialPricing, TOOL_TYPE_OPTIONS } from "@/lib/trial-pricing";
@@ -80,6 +80,7 @@ export function TrialEstimateDetail({
   productOptions,
   existingEntries,
   auditEntries,
+  priceHistory,
 }: {
   record: TrialEstimateRecord;
   linkedEntries: LinkedPriceEntry[];
@@ -88,10 +89,12 @@ export function TrialEstimateDetail({
   existingEntries: ExistingEntryRef[];
   /** 操作履歴（audit_logs 由来、履歴タブ）。 */
   auditEntries: AuditEntry[];
+  /** この素材の仕入実績（サーバー取得、価格推移タブ）。 */
+  priceHistory: MaterialPricePoint[];
 }) {
   const router = useRouter();
   const result = calcTrialPricing(record.input);
-  const history = getPriceHistory(record.materialId);
+  const history = priceHistory;
   const [convertOpen, setConvertOpen] = useState(false);
   const [, startTransition] = useTransition();
   const status = record.status;

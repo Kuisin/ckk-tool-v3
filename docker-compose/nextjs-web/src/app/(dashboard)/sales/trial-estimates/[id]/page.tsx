@@ -9,6 +9,7 @@ import {
   priceEntryKey,
 } from "@/lib/doc-number";
 import { type LocalizedText, localized } from "@/lib/format";
+import { fetchPriceHistory } from "@/lib/material-pricing";
 import {
   fetchCustomerOptions,
   fetchExistingEntryRefs,
@@ -52,6 +53,10 @@ export default async function TrialEstimateDetailPage({
   ]);
   if (!record) notFound();
 
+  const priceHistory = record.materialId
+    ? await fetchPriceHistory(record.materialId)
+    : [];
+
   const linkedEntries: LinkedPriceEntry[] = linked.map((e) => ({
     entryId: priceEntryKey(e.customerBpId, e.productId, e.orderType),
     customerName: localized(e.customerBp.name as LocalizedText | null),
@@ -66,6 +71,7 @@ export default async function TrialEstimateDetailPage({
       customerOptions={customerOptions}
       existingEntries={existingEntries}
       linkedEntries={linkedEntries}
+      priceHistory={priceHistory}
       productOptions={productOptions}
       record={record}
     />

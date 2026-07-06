@@ -33,8 +33,12 @@ import {
   IconChartLine,
 } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
-import { useMemo, useState, useTransition } from "react";
-import { createTrialEstimate } from "@/app/(dashboard)/sales/trial-estimates/actions";
+import { useState, useTransition } from "react";
+import {
+  createTrialEstimate,
+  fetchMaterialPricing,
+  type MaterialPricing,
+} from "@/app/(dashboard)/sales/trial-estimates/actions";
 import {
   EditButton,
   SaveButton,
@@ -46,7 +50,6 @@ import { openConfirm } from "@/components/ui/modals";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { FormSection } from "@/components/ui/shells";
 import { formatDate } from "@/lib/format";
-import { getPriceHistory, getReferencePrice } from "@/lib/material-pricing";
 import type { Option } from "@/lib/mock";
 import {
   type CostBreakdown,
@@ -66,8 +69,8 @@ import {
   STEP_TYPE_OPTIONS,
 } from "@/lib/trial-pricing-data";
 import {
-  loadTrialPricingSettings,
   MATERIAL_PRICE_BASIS_OPTIONS,
+  type TrialPricingSettings,
 } from "@/lib/trial-pricing-settings";
 import { MaterialPriceChart } from "./MaterialPriceChart";
 import type { TrialEstimateRecord } from "./types";
@@ -81,16 +84,22 @@ const num = (v: number | string) =>
 export function TrialEstimateForm({
   customerOptions,
   materialOptions,
+  settings,
+  initialPricing,
   /** 複製元（?from= で開いたとき）— 全入力を引き継いだ新規 DRAFT を作る。 */
   source,
 }: {
   customerOptions: Option[];
   materialOptions: Option[];
+  /** システム設定（app.system_settings, サーバー取得）. */
+  settings: TrialPricingSettings;
+  /** 初期素材の仕入実績＋ポリシー参照価格（サーバー取得）. */
+  initialPricing: MaterialPricing;
   source?: TrialEstimateRecord | null;
 }) {
   const router = useRouter();
-  const [settings] = useState(loadTrialPricingSettings);
   const [isPending, startTransition] = useTransition();
+  const [isPricingLoading, startPricingTransition] = useTransition();
 
   const defaultMaterial = materialOptions[0]?.value ?? "";
   const src = source?.input;
@@ -153,49 +162,41 @@ export function TrialEstimateForm({
   const [baseQuantity, setBaseQuantity] = useState<number | string>(100);
 
   // ── reference price (from purchase history / policy / chart override) ──────
-  const initialRef = useMemo(
-    () =>
-      getReferencePrice(
-        source?.materialId ?? defaultMaterial,
-        settings.materialPriceBasis,
-        settings.materialPriceLookbackMonths,
-      ),
-    [source, defaultMaterial, settings],
-  );
+  // 現在の素材の仕入実績＋ポリシー参照価格。素材変更時にサーバーから再取得する。
+  const [pricing, setPricing] = useState<MaterialPricing>(initialPricing);
+  const history = pricing.history;
+  const policyRef = pricing.reference;
+
   const [referencePrice, setReferencePrice] = useState<number>(
-    src ? src.materialBarPrice : initialRef.unitPrice,
+    src ? src.materialBarPrice : initialPricing.reference.unitPrice,
   );
   const [referenceDate, setReferenceDate] = useState<string>(
-    source?.referenceDate || initialRef.date,
+    source?.referenceDate || initialPricing.reference.date,
   );
   // overridden = the estimate uses a custom (non-policy) material price.
   const [overridden, setOverridden] = useState(source?.isCustomPrice ?? false);
   // customMode = the price field is unlocked for manual editing.
   const [customMode, setCustomMode] = useState(false);
 
-  const history = getPriceHistory(materialId);
-  const policyRef = useMemo(
-    () =>
-      getReferencePrice(
-        materialId,
-        settings.materialPriceBasis,
-        settings.materialPriceLookbackMonths,
-      ),
-    [materialId, settings],
-  );
-
   const onMaterialChange = (value: string | null) => {
     const id = value ?? defaultMaterial;
     setMaterialId(id);
-    const ref = getReferencePrice(
-      id,
-      settings.materialPriceBasis,
-      settings.materialPriceLookbackMonths,
-    );
-    setReferencePrice(ref.unitPrice);
-    setReferenceDate(ref.date);
-    setOverridden(false);
-    setCustomMode(false);
+    startPricingTransition(async () => {
+      const res = await fetchMaterialPricing(id);
+      if (!res.ok) {
+        notifications.show({
+          title: "エラー",
+          message: res.error,
+          color: "red",
+        });
+        return;
+      }
+      setPricing(res.data);
+      setReferencePrice(res.data.reference.unitPrice);
+      setReferenceDate(res.data.reference.date);
+      setOverridden(false);
+      setCustomMode(false);
+    });
   };
 
   const resetToPolicy = () => {
@@ -384,6 +385,7 @@ export function TrialEstimateForm({
               <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
                 <Select
                   data={materialOptions}
+                  disabled={isPricingLoading}
                   label="材種・素材"
                   onChange={onMaterialChange}
                   searchable

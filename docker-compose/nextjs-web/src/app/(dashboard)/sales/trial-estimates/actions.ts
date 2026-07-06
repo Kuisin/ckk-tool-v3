@@ -18,6 +18,12 @@ import {
   parseDocKey,
   priceEntryKey,
 } from "@/lib/doc-number";
+import { fetchPriceHistory } from "@/lib/material-pricing";
+import {
+  computeReferencePrice,
+  type MaterialPricePoint,
+  type ReferencePriceResult,
+} from "@/lib/material-pricing-core";
 import { allocateDocumentKey } from "@/lib/numbering";
 import {
   type ActionResult,
@@ -25,9 +31,37 @@ import {
   actionOk,
   prismaErrorMessage,
 } from "@/lib/server-action";
+import { getTrialPricingSettings } from "@/lib/system-settings";
 import type { TrialInput } from "@/lib/trial-pricing";
 
 const BASE_PATH = "/sales/trial-estimates";
+
+export interface MaterialPricing {
+  history: MaterialPricePoint[];
+  reference: ReferencePriceResult;
+}
+
+/** 素材変更時の仕入実績＋ポリシー参照価格（試算フォーム用）。 */
+export async function fetchMaterialPricing(
+  materialId: string,
+): Promise<ActionResult<MaterialPricing>> {
+  try {
+    const [settings, history] = await Promise.all([
+      getTrialPricingSettings(),
+      materialId ? fetchPriceHistory(materialId) : Promise.resolve([]),
+    ]);
+    return actionOk({
+      history,
+      reference: computeReferencePrice(
+        history,
+        settings.materialPriceBasis,
+        settings.materialPriceLookbackMonths,
+      ),
+    });
+  } catch (e) {
+    return actionError(prismaErrorMessage(e, "仕入実績の取得に失敗しました"));
+  }
+}
 
 const trialInputSchema = z.looseObject({
   toolType: z.enum(["ROUND_BAR", "CYLINDER", "OH"]),
