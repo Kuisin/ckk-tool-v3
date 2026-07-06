@@ -10,6 +10,7 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
+import { recordAudit } from "@/lib/audit";
 import { type Prisma, prisma } from "@/lib/db";
 import {
   type DocKey,
@@ -88,6 +89,18 @@ export async function createTrialEstimate(
       },
     });
     const number = formatEstimateNumber({ yearMonth, seq });
+    await recordAudit({
+      action: "CREATE",
+      tableName: "estimates",
+      recordId: number,
+      after: {
+        name: v.name,
+        toolType: v.input.toolType,
+        materialId: v.materialId,
+        customerBpId: v.customerBpId,
+        status: "DRAFT",
+      },
+    });
     revalidate(number);
     return actionOk({ number });
   } catch (e) {
@@ -108,6 +121,13 @@ export async function confirmTrialEstimate(
     if (updated.count === 0) {
       return actionError("下書きの試算のみ確定できます");
     }
+    await recordAudit({
+      action: "UPDATE",
+      tableName: "estimates",
+      recordId: number,
+      before: { status: "DRAFT" },
+      after: { status: "CONFIRMED" },
+    });
     revalidate(number);
     return actionOk();
   } catch (e) {
@@ -180,6 +200,24 @@ export async function registerPriceListFromEstimate(
       }),
     ]);
     const entryId = priceEntryKey(v.customerBpId, v.productId, v.orderType);
+    await recordAudit({
+      action: "UPDATE",
+      tableName: "estimates",
+      recordId: v.estimateNumber,
+      before: { status: "CONFIRMED" },
+      after: { status: "REGISTERED", priceListEntry: entryId },
+    });
+    await recordAudit({
+      action: "CREATE",
+      tableName: "price_list_entries",
+      recordId: entryId,
+      after: {
+        baseUnitPrice: v.baseUnitPrice,
+        validFrom: v.validFrom,
+        validUntil: v.validUntil,
+        source: `試算 ${v.estimateNumber}`,
+      },
+    });
     revalidate(v.estimateNumber);
     revalidatePath("/sales/price-lists");
     revalidatePath(`/sales/price-lists/${entryId}`);

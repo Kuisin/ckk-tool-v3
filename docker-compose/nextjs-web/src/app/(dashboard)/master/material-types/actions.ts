@@ -10,6 +10,7 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
+import { recordAudit } from "@/lib/audit";
 import { Prisma, prisma } from "@/lib/db";
 import {
   type ActionResult,
@@ -65,6 +66,16 @@ export async function createMaterialType(
         isActive: v.isActive,
       },
     });
+    await recordAudit({
+      action: "CREATE",
+      tableName: "material_types",
+      recordId: created.id,
+      after: {
+        nameJa: v.nameJa,
+        descriptionJa: v.descriptionJa?.trim() || null,
+        isActive: v.isActive,
+      },
+    });
     revalidate(created.id);
     return actionOk({ id: created.id });
   } catch (e) {
@@ -82,6 +93,10 @@ export async function updateMaterialType(
   }
   const v = parsed.data;
   try {
+    const prior = await prisma.materialType.findUnique({
+      where: { id },
+      select: { isActive: true },
+    });
     await prisma.materialType.update({
       where: { id },
       data: {
@@ -89,6 +104,17 @@ export async function updateMaterialType(
         description:
           localizedInputOrNull(v.descriptionJa, v.descriptionEn) ??
           Prisma.DbNull,
+        isActive: v.isActive,
+      },
+    });
+    await recordAudit({
+      action: "UPDATE",
+      tableName: "material_types",
+      recordId: id,
+      before: prior ? { isActive: prior.isActive } : undefined,
+      after: {
+        nameJa: v.nameJa,
+        descriptionJa: v.descriptionJa?.trim() || null,
         isActive: v.isActive,
       },
     });
@@ -109,6 +135,14 @@ export async function setMaterialTypesActive(
       where: { id: { in: ids } },
       data: { isActive },
     });
+    for (const id of ids) {
+      await recordAudit({
+        action: "UPDATE",
+        tableName: "material_types",
+        recordId: id,
+        after: { isActive },
+      });
+    }
     revalidate();
     for (const id of ids) revalidatePath(`${BASE_PATH}/${id}`);
     return actionOk();
@@ -132,6 +166,13 @@ export async function deleteMaterialTypes(
       );
     }
     await prisma.materialType.deleteMany({ where: { id: { in: ids } } });
+    for (const id of ids) {
+      await recordAudit({
+        action: "DELETE",
+        tableName: "material_types",
+        recordId: id,
+      });
+    }
     revalidate();
     return actionOk();
   } catch (e) {

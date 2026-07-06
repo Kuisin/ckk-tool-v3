@@ -101,6 +101,7 @@ export function ProductPriceResolverInput({
         label="注文種別"
         onChange={(v) => onChange(reresolve({ orderType: v ?? "PRODUCTION" }))}
         value={value.orderType}
+        withAsterisk
       />
       <NumberInput
         flex={isMobile ? 1 : 1}
@@ -110,6 +111,7 @@ export function ProductPriceResolverInput({
           onChange(reresolve({ quantity: typeof v === "number" ? v : 0 }))
         }
         value={value.quantity}
+        withAsterisk
       />
       <Stack
         align={isMobile ? "flex-start" : "flex-end"}

@@ -9,19 +9,15 @@
  */
 
 import { Stack, Table, Tabs, Text } from "@mantine/core";
-import {
-  IconCircleMinus,
-  IconCopy,
-  IconHistory,
-  IconTrash,
-} from "@tabler/icons-react";
+import { IconCircleMinus, IconCopy, IconTrash } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { ActiveBadge } from "@/components/ui/ActiveBadge";
 import { DocNumber } from "@/components/ui/DocNumber";
-import { EmptyState } from "@/components/ui/EmptyState";
 import { FieldValue } from "@/components/ui/FieldValue";
+import { HistoryPanel } from "@/components/ui/HistoryPanel";
 import {
+  type AuditEntry,
   DetailShell,
   ResourceActions,
   SummaryGrid,
@@ -55,9 +51,11 @@ export interface MaterialDetailData {
 export function MaterialDetail({
   record,
   typeOptions,
+  auditEntries,
 }: {
   record: MaterialDetailData;
   typeOptions: Option[];
+  auditEntries: AuditEntry[];
 }) {
   const router = useRouter();
 
@@ -179,10 +177,7 @@ export function MaterialDetail({
         </Tabs.Panel>
 
         <Tabs.Panel pt="md" value="history">
-          <EmptyState
-            icon={<IconHistory size={24} />}
-            message="変更履歴はまだ記録されていません"
-          />
+          <HistoryPanel entries={auditEntries} />
         </Tabs.Panel>
       </Tabs>
 

@@ -3,6 +3,7 @@ import {
   MaterialTypeDetail,
   type MaterialTypeDetailData,
 } from "@/components/master/material-types/MaterialTypeDetail";
+import { fetchAuditEntries } from "@/lib/audit";
 import { prisma } from "@/lib/db";
 import { MATERIAL_FORM_LABEL } from "@/lib/enum-labels";
 import { type LocalizedText, localized } from "@/lib/format";
@@ -16,10 +17,13 @@ export default async function MasterMaterialTypesDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const r = await prisma.materialType.findUnique({
-    where: { id },
-    include: { materials: { orderBy: { id: "asc" } } },
-  });
+  const [r, auditEntries] = await Promise.all([
+    prisma.materialType.findUnique({
+      where: { id },
+      include: { materials: { orderBy: { id: "asc" } } },
+    }),
+    fetchAuditEntries("material_types", id),
+  ]);
   if (!r) notFound();
 
   const name = r.name as LocalizedText | null;
@@ -43,5 +47,5 @@ export default async function MasterMaterialTypesDetailPage({
     })),
   };
 
-  return <MaterialTypeDetail record={record} />;
+  return <MaterialTypeDetail auditEntries={auditEntries} record={record} />;
 }

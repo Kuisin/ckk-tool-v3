@@ -8,6 +8,7 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
+import { recordAudit } from "@/lib/audit";
 import { prisma } from "@/lib/db";
 import { nextSerialCode } from "@/lib/numbering";
 import {
@@ -49,6 +50,12 @@ export async function createEndUser(
         endUserAttrs: { create: { industry: v.industry?.trim() || null } },
       },
     });
+    await recordAudit({
+      action: "CREATE",
+      tableName: "business_partners",
+      recordId: created.id,
+      after: { nameJa: v.nameJa, role: "END_USER", isActive: v.isActive },
+    });
     revalidate(created.id);
     return actionOk({ id: created.id });
   } catch (e) {
@@ -67,6 +74,10 @@ export async function updateEndUser(
   const v = parsed.data;
   try {
     const industry = v.industry?.trim() || null;
+    const prior = await prisma.businessPartner.findUnique({
+      where: { id },
+      select: { name: true, isActive: true },
+    });
     await prisma.businessPartner.update({
       where: { id },
       data: {
@@ -75,6 +86,18 @@ export async function updateEndUser(
           upsert: { create: { industry }, update: { industry } },
         },
       },
+    });
+    await recordAudit({
+      action: "UPDATE",
+      tableName: "business_partners",
+      recordId: id,
+      before: prior
+        ? {
+            nameJa: (prior.name as { ja?: string } | null)?.ja ?? null,
+            isActive: prior.isActive,
+          }
+        : undefined,
+      after: { nameJa: v.nameJa, isActive: v.isActive },
     });
     revalidate(id);
     return actionOk({ id });

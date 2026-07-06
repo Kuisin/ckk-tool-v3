@@ -7,7 +7,7 @@
  */
 
 import { Badge, Group, Stack, Tabs, Text } from "@mantine/core";
-import { IconCircleMinus, IconHistory, IconTrash } from "@tabler/icons-react";
+import { IconCircleMinus, IconTrash } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import type { SupplierDetail as SupplierDetailData } from "@/app/(dashboard)/master/_shared/bp-data";
@@ -17,15 +17,25 @@ import {
   ToggleBpActiveModal,
 } from "@/components/master/bp/BpModals";
 import { ActiveBadge } from "@/components/ui/ActiveBadge";
-import { EmptyState } from "@/components/ui/EmptyState";
 import { FieldValue } from "@/components/ui/FieldValue";
-import { DetailShell, ResourceActions } from "@/components/ui/shells";
+import { HistoryPanel } from "@/components/ui/HistoryPanel";
+import {
+  type AuditEntry,
+  DetailShell,
+  ResourceActions,
+} from "@/components/ui/shells";
 import { VENDOR_TYPE_LABEL } from "@/lib/enum-labels";
 import { formatDateTime } from "@/lib/format";
 
 const BASE_PATH = "/master/suppliers";
 
-export function SupplierDetail({ record }: { record: SupplierDetailData }) {
+export function SupplierDetail({
+  record,
+  auditEntries,
+}: {
+  record: SupplierDetailData;
+  auditEntries: AuditEntry[];
+}) {
   const router = useRouter();
 
   const [deleteOpen, setDeleteOpen] = useState(false);
@@ -145,10 +155,7 @@ export function SupplierDetail({ record }: { record: SupplierDetailData }) {
         </Tabs.Panel>
 
         <Tabs.Panel pt="md" value="audit">
-          <EmptyState
-            icon={<IconHistory size={24} />}
-            message="変更履歴はまだ記録されていません"
-          />
+          <HistoryPanel entries={auditEntries} />
         </Tabs.Panel>
       </Tabs>
 

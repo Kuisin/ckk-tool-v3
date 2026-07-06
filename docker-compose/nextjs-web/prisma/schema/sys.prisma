@@ -29,3 +29,26 @@ model NumberingSequence {
   @@map("numbering_sequences")
   @@schema("app")
 }
+
+// 監査ログ（業務操作履歴）。各レコードの CREATE/UPDATE/DELETE を before/after
+// JSON 付きで記録し、詳細画面の「履歴」タブと管理者向け操作履歴一覧で表示する。
+// record_id は業務識別子（文書番号 QOT-… / EST-…、価格表エントリキー、
+// マスタの文字列 id）を格納する TEXT — 文書テーブルが複合キーのため uuid ではない。
+// user_id は認証実装後に実ユーザーへ解決する弱参照（現状は null 可）。
+model AuditLog {
+  id         BigInt   @id @default(autoincrement())
+  userId     String?  @map("user_id") @db.Uuid
+  action     String // CREATE / UPDATE / DELETE
+  tableName  String   @map("table_name") // quotes / estimates / price_list_entries / products …
+  recordId   String?  @map("record_id") // 業務識別子（文書番号・エントリキー・id）
+  beforeData Json?    @map("before_data")
+  afterData  Json?    @map("after_data")
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  user User? @relation("AuditLogUser", fields: [userId], references: [id])
+
+  @@index([tableName, recordId])
+  @@index([createdAt])
+  @@map("audit_logs")
+  @@schema("app")
+}

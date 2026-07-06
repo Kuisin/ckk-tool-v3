@@ -57,6 +57,7 @@ model User {
   priceListEntriesCreated PriceListEntry[]   @relation("PriceListEntryCreatedBy")
   quotesCreated           Quote[]            @relation("QuoteCreatedBy")
   filesUploaded           File[]             @relation("FileUploadedBy")
+  auditLogs               AuditLog[]         @relation("AuditLogUser")
 
   // Employees link to the shared directory by AD objectGUID (stable across
   // username/attribute changes). Null for SYSTEM / GUEST users.

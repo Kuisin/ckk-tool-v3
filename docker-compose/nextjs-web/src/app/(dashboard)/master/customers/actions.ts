@@ -10,6 +10,7 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
+import { recordAudit } from "@/lib/audit";
 import { prisma } from "@/lib/db";
 import { nextSerialCode } from "@/lib/numbering";
 import {
@@ -65,6 +66,12 @@ export async function createCustomer(
         customerAttrs: { create: customerAttrsData(v.attrs) },
       },
     });
+    await recordAudit({
+      action: "CREATE",
+      tableName: "business_partners",
+      recordId: created.id,
+      after: { nameJa: v.nameJa, role: "CUSTOMER", isActive: v.isActive },
+    });
     revalidate(created.id);
     return actionOk({ id: created.id });
   } catch (e) {
@@ -83,6 +90,10 @@ export async function updateCustomer(
   const v = parsed.data;
   try {
     const attrs = customerAttrsData(v.attrs);
+    const prior = await prisma.businessPartner.findUnique({
+      where: { id },
+      select: { name: true, isActive: true },
+    });
     await prisma.businessPartner.update({
       where: { id },
       data: {
@@ -91,6 +102,18 @@ export async function updateCustomer(
           upsert: { create: attrs, update: attrs },
         },
       },
+    });
+    await recordAudit({
+      action: "UPDATE",
+      tableName: "business_partners",
+      recordId: id,
+      before: prior
+        ? {
+            nameJa: (prior.name as { ja?: string } | null)?.ja ?? null,
+            isActive: prior.isActive,
+          }
+        : undefined,
+      after: { nameJa: v.nameJa, isActive: v.isActive },
     });
     revalidate(id);
     return actionOk({ id });
@@ -143,6 +166,12 @@ export async function createBranch(
           : {}),
       },
     });
+    await recordAudit({
+      action: "CREATE",
+      tableName: "business_partners",
+      recordId: created.id,
+      after: { nameJa: v.nameJa, parentId, isActive: v.isActive },
+    });
     revalidate(parentId, created.id);
     return actionOk({ id: created.id });
   } catch (e) {
@@ -170,6 +199,16 @@ export async function updateBranch(
     await prisma.businessPartner.update({
       where: { id: branchId },
       data: bpBaseData(v),
+    });
+    await recordAudit({
+      action: "UPDATE",
+      tableName: "business_partners",
+      recordId: branchId,
+      before: {
+        nameJa: (branch.name as { ja?: string } | null)?.ja ?? null,
+        isActive: branch.isActive,
+      },
+      after: { nameJa: v.nameJa, isActive: v.isActive },
     });
     revalidate(parentId, branchId);
     return actionOk({ id: branchId });
@@ -204,6 +243,12 @@ export async function deleteBranch(
       prisma.bpRoleAssignment.deleteMany({ where: { bpId: branchId } }),
       prisma.businessPartner.delete({ where: { id: branchId } }),
     ]);
+    await recordAudit({
+      action: "DELETE",
+      tableName: "business_partners",
+      recordId: branchId,
+      before: { nameJa: (branch.name as { ja?: string } | null)?.ja ?? null },
+    });
     revalidate(parentId);
     return actionOk();
   } catch (e) {

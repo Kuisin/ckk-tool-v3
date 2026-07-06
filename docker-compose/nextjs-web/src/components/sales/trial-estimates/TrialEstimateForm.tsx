@@ -598,12 +598,13 @@ export function TrialEstimateForm({
               warnings={result.warnings}
             />
 
-            <FormSection title="試算名">
+            <FormSection required title="試算名">
               <TextInput
                 maw={480}
                 onChange={(e) => setName(e.currentTarget.value)}
                 placeholder="例: 精密軸 φ3×38 BAL ｱﾙｸﾛｰﾅ"
                 value={name}
+                withAsterisk
               />
             </FormSection>
           </Stack>

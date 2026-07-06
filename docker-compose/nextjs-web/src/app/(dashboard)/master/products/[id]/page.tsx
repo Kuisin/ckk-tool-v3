@@ -3,6 +3,7 @@ import {
   ProductDetail,
   type ProductDetailData,
 } from "@/components/master/products/ProductDetail";
+import { fetchAuditEntries } from "@/lib/audit";
 import { prisma } from "@/lib/db";
 import { type LocalizedText, localized } from "@/lib/format";
 
@@ -15,7 +16,7 @@ export default async function MasterProductsDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const [r, materials] = await Promise.all([
+  const [r, materials, auditEntries] = await Promise.all([
     prisma.product.findUnique({
       where: { id },
       include: {
@@ -30,6 +31,7 @@ export default async function MasterProductsDetailPage({
       where: { isActive: true },
       orderBy: { id: "asc" },
     }),
+    fetchAuditEntries("products", id),
   ]);
   if (!r) notFound();
 
@@ -71,5 +73,11 @@ export default async function MasterProductsDetailPage({
     label: `${m.id}（${localized(m.name as LocalizedText | null)}）`,
   }));
 
-  return <ProductDetail materialOptions={materialOptions} record={record} />;
+  return (
+    <ProductDetail
+      auditEntries={auditEntries}
+      materialOptions={materialOptions}
+      record={record}
+    />
+  );
 }

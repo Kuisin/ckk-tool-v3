@@ -1,8 +1,13 @@
 import { notFound } from "next/navigation";
 import { TrialEstimateDetail } from "@/components/sales/trial-estimates/TrialEstimateDetail";
 import type { LinkedPriceEntry } from "@/components/sales/trial-estimates/types";
+import { fetchAuditEntries } from "@/lib/audit";
 import { prisma } from "@/lib/db";
-import { parseDocKey, priceEntryKey } from "@/lib/doc-number";
+import {
+  formatEstimateNumber,
+  parseDocKey,
+  priceEntryKey,
+} from "@/lib/doc-number";
 import { type LocalizedText, localized } from "@/lib/format";
 import {
   fetchCustomerOptions,
@@ -23,21 +28,28 @@ export default async function TrialEstimateDetailPage({
   const key = parseDocKey(id, "EST");
   if (!key) notFound();
 
-  const [record, customerOptions, productOptions, existingEntries, linked] =
-    await Promise.all([
-      fetchTrialEstimate(key.yearMonth, key.seq),
-      fetchCustomerOptions(),
-      fetchProductOptions(),
-      fetchExistingEntryRefs(),
-      prisma.priceListEntry.findMany({
-        where: { estimateYearMonth: key.yearMonth, estimateSeq: key.seq },
-        include: {
-          customerBp: true,
-          product: true,
-          _count: { select: { tiers: true } },
-        },
-      }),
-    ]);
+  const [
+    record,
+    customerOptions,
+    productOptions,
+    existingEntries,
+    linked,
+    auditEntries,
+  ] = await Promise.all([
+    fetchTrialEstimate(key.yearMonth, key.seq),
+    fetchCustomerOptions(),
+    fetchProductOptions(),
+    fetchExistingEntryRefs(),
+    prisma.priceListEntry.findMany({
+      where: { estimateYearMonth: key.yearMonth, estimateSeq: key.seq },
+      include: {
+        customerBp: true,
+        product: true,
+        _count: { select: { tiers: true } },
+      },
+    }),
+    fetchAuditEntries("estimates", formatEstimateNumber(key)),
+  ]);
   if (!record) notFound();
 
   const linkedEntries: LinkedPriceEntry[] = linked.map((e) => ({
@@ -50,6 +62,7 @@ export default async function TrialEstimateDetailPage({
 
   return (
     <TrialEstimateDetail
+      auditEntries={auditEntries}
       customerOptions={customerOptions}
       existingEntries={existingEntries}
       linkedEntries={linkedEntries}

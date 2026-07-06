@@ -1,6 +1,8 @@
 import { notFound } from "next/navigation";
 import { PriceListDetail } from "@/components/sales/price-lists/PriceListDetail";
+import { fetchAuditEntries } from "@/lib/audit";
 import { prisma } from "@/lib/db";
+import { priceEntryKey } from "@/lib/doc-number";
 import {
   fetchCustomerOptions,
   fetchProductOptions,
@@ -20,25 +22,36 @@ export default async function PriceListDetailPage({
   const key = await resolveEntryKey(decodeURIComponent(id));
   if (!key) notFound();
 
-  const [entry, relatedQuotes, siblingRows, customerOptions, productOptions] =
-    await Promise.all([
-      fetchPriceEntry(key),
-      fetchRelatedQuotes(key),
-      prisma.priceListEntry.findMany({
-        where: {
-          customerBpId: key.customerBpId,
-          productId: key.productId,
-          NOT: { orderType: key.orderType },
-        },
-        select: { orderType: true },
-      }),
-      fetchCustomerOptions(),
-      fetchProductOptions(),
-    ]);
+  const [
+    entry,
+    relatedQuotes,
+    siblingRows,
+    customerOptions,
+    productOptions,
+    auditEntries,
+  ] = await Promise.all([
+    fetchPriceEntry(key),
+    fetchRelatedQuotes(key),
+    prisma.priceListEntry.findMany({
+      where: {
+        customerBpId: key.customerBpId,
+        productId: key.productId,
+        NOT: { orderType: key.orderType },
+      },
+      select: { orderType: true },
+    }),
+    fetchCustomerOptions(),
+    fetchProductOptions(),
+    fetchAuditEntries(
+      "price_list_entries",
+      priceEntryKey(key.customerBpId, key.productId, key.orderType),
+    ),
+  ]);
   if (!entry) notFound();
 
   return (
     <PriceListDetail
+      auditEntries={auditEntries}
       customerOptions={customerOptions}
       entry={entry}
       productOptions={productOptions}

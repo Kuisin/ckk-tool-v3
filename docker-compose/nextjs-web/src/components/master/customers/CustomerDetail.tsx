@@ -20,7 +20,6 @@ import {
   IconBuildingStore,
   IconCircleMinus,
   IconFileText,
-  IconHistory,
   IconPlus,
   IconTrash,
 } from "@tabler/icons-react";
@@ -38,15 +37,26 @@ import { GhostButton } from "@/components/ui/buttons";
 import { DocNumber } from "@/components/ui/DocNumber";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { FieldValue } from "@/components/ui/FieldValue";
+import { HistoryPanel } from "@/components/ui/HistoryPanel";
 import { StatusBadge } from "@/components/ui/StatusBadge";
-import { DetailShell, ResourceActions } from "@/components/ui/shells";
+import {
+  type AuditEntry,
+  DetailShell,
+  ResourceActions,
+} from "@/components/ui/shells";
 import { useIsMobile } from "@/hooks/useViewport";
 import { INVOICE_METHOD_LABEL, TAX_TYPE_LABEL } from "@/lib/enum-labels";
 import { formatDate, formatDateTime, formatMoney } from "@/lib/format";
 
 const BASE_PATH = "/master/customers";
 
-export function CustomerDetail({ record }: { record: CustomerDetailData }) {
+export function CustomerDetail({
+  record,
+  auditEntries,
+}: {
+  record: CustomerDetailData;
+  auditEntries: AuditEntry[];
+}) {
   const router = useRouter();
   const isMobile = useIsMobile();
 
@@ -263,10 +273,7 @@ export function CustomerDetail({ record }: { record: CustomerDetailData }) {
         </Tabs.Panel>
 
         <Tabs.Panel pt="md" value="audit">
-          <EmptyState
-            icon={<IconHistory size={24} />}
-            message="変更履歴はまだ記録されていません"
-          />
+          <HistoryPanel entries={auditEntries} />
         </Tabs.Panel>
       </Tabs>
 

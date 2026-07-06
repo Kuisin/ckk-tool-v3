@@ -6,6 +6,7 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
+import { recordAudit } from "@/lib/audit";
 import { prisma } from "@/lib/db";
 import {
   type ActionResult,
@@ -66,6 +67,19 @@ export async function createMaterial(
         notes: v.notes?.trim() || null,
       },
     });
+    await recordAudit({
+      action: "CREATE",
+      tableName: "materials",
+      recordId: created.id,
+      after: {
+        materialTypeId: v.materialTypeId,
+        nameJa: v.nameJa,
+        unit: v.unit,
+        form: v.form,
+        isActive: v.isActive,
+        notes: v.notes?.trim() || null,
+      },
+    });
     revalidate(created.id);
     return actionOk({ id: created.id });
   } catch (e) {
@@ -83,6 +97,16 @@ export async function updateMaterial(
   }
   const v = parsed.data;
   try {
+    const prior = await prisma.material.findUnique({
+      where: { id },
+      select: {
+        materialTypeId: true,
+        unit: true,
+        materialForm: true,
+        isActive: true,
+        notes: true,
+      },
+    });
     await prisma.material.update({
       where: { id },
       data: {
@@ -90,6 +114,28 @@ export async function updateMaterial(
         name: localizedInput(v.nameJa, v.nameEn),
         unit: v.unit,
         materialForm: v.form,
+        isActive: v.isActive,
+        notes: v.notes?.trim() || null,
+      },
+    });
+    await recordAudit({
+      action: "UPDATE",
+      tableName: "materials",
+      recordId: id,
+      before: prior
+        ? {
+            materialTypeId: prior.materialTypeId,
+            unit: prior.unit,
+            form: prior.materialForm,
+            isActive: prior.isActive,
+            notes: prior.notes,
+          }
+        : undefined,
+      after: {
+        materialTypeId: v.materialTypeId,
+        nameJa: v.nameJa,
+        unit: v.unit,
+        form: v.form,
         isActive: v.isActive,
         notes: v.notes?.trim() || null,
       },
@@ -111,6 +157,14 @@ export async function setMaterialsActive(
       where: { id: { in: ids } },
       data: { isActive },
     });
+    for (const id of ids) {
+      await recordAudit({
+        action: "UPDATE",
+        tableName: "materials",
+        recordId: id,
+        after: { isActive },
+      });
+    }
     revalidate();
     for (const id of ids) revalidatePath(`${BASE_PATH}/${id}`);
     return actionOk();
@@ -133,6 +187,13 @@ export async function deleteMaterials(ids: string[]): Promise<ActionResult> {
       );
     }
     await prisma.material.deleteMany({ where: { id: { in: ids } } });
+    for (const id of ids) {
+      await recordAudit({
+        action: "DELETE",
+        tableName: "materials",
+        recordId: id,
+      });
+    }
     revalidate();
     return actionOk();
   } catch (e) {

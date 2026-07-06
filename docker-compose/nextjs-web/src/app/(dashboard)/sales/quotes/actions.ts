@@ -11,6 +11,7 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { resolveUnitPriceFromEntries } from "@/components/sales/quotes/model";
+import { recordAudit } from "@/lib/audit";
 import { prisma } from "@/lib/db";
 import { formatQuoteNumber, parseDocKey } from "@/lib/doc-number";
 import { allocateDocumentKey } from "@/lib/numbering";
@@ -111,6 +112,18 @@ export async function createQuote(
       },
     });
     const number = formatQuoteNumber({ yearMonth, seq });
+    await recordAudit({
+      action: "CREATE",
+      tableName: "quotes",
+      recordId: number,
+      after: {
+        customerBpId: v.customerBpId,
+        status: v.status,
+        validUntil: v.validUntil,
+        notes: v.notes.trim() || null,
+        itemCount: v.items.length,
+      },
+    });
     revalidate(number);
     return actionOk({ number });
   } catch (e) {
@@ -134,6 +147,15 @@ export async function updateQuote(
   const v = parsed.data;
   try {
     const items = await resolveItems(v);
+    const prior = await prisma.quote.findUnique({
+      where: { yearMonth_seq: { yearMonth: key.yearMonth, seq: key.seq } },
+      select: {
+        customerBpId: true,
+        status: true,
+        validUntil: true,
+        notes: true,
+      },
+    });
     await prisma.$transaction([
       prisma.quoteItem.deleteMany({
         where: { quoteYearMonth: key.yearMonth, quoteSeq: key.seq },
@@ -150,6 +172,27 @@ export async function updateQuote(
         },
       }),
     ]);
+    await recordAudit({
+      action: "UPDATE",
+      tableName: "quotes",
+      recordId: number,
+      before: prior
+        ? {
+            customerBpId: prior.customerBpId,
+            status: prior.status,
+            validUntil: prior.validUntil
+              ? prior.validUntil.toISOString().slice(0, 10)
+              : null,
+            notes: prior.notes,
+          }
+        : undefined,
+      after: {
+        customerBpId: v.customerBpId,
+        status: v.status,
+        validUntil: v.validUntil,
+        notes: v.notes.trim() || null,
+      },
+    });
     revalidate(number);
     return actionOk({ number });
   } catch (e) {
@@ -178,6 +221,13 @@ export async function issueQuote(
     if (updated.count === 0) {
       return actionError("下書きの見積書のみ発行できます");
     }
+    await recordAudit({
+      action: "UPDATE",
+      tableName: "quotes",
+      recordId: number,
+      before: { status: "DRAFT" },
+      after: { status: "ISSUED", validUntil },
+    });
     revalidate(number);
     return actionOk();
   } catch (e) {
