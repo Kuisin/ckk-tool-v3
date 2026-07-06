@@ -301,6 +301,15 @@ export const appList: AppEntry[] = [
     category: "マスタ",
     requiredPermission: "master",
   },
+  {
+    key: "master-material-numbering",
+    label: "採番構成",
+    operationCode: "MS0C",
+    href: "/master/material-numbering",
+    icon: "IconHash",
+    category: "マスタ",
+    requiredPermission: "master",
+  },
 ];
 
 /**
