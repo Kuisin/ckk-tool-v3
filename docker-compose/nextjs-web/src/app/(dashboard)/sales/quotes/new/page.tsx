@@ -1,9 +1,6 @@
 import { QuoteForm } from "@/components/sales/quotes/QuoteForm";
 import { parseDocKey } from "@/lib/doc-number";
-import {
-  fetchCustomerOptions,
-  fetchProductOptions,
-} from "../../trial-estimates/data";
+import { fetchCustomerOptions } from "../../trial-estimates/data";
 import {
   fetchBranchesByCustomer,
   fetchEntriesForCustomer,
@@ -34,10 +31,9 @@ export default async function SalesQuotesNewPage({
   const sp = await searchParams;
   const fromKey = sp.from ? parseDocKey(sp.from, "QOT") : null;
 
-  const [customerOptions, productOptions, branchesByCustomer, entries, source] =
+  const [customerOptions, branchesByCustomer, entries, source] =
     await Promise.all([
       fetchCustomerOptions(),
-      fetchProductOptions(),
       fetchBranchesByCustomer(),
       fetchEntriesForCustomer(),
       fromKey ? fetchQuote(fromKey) : null,
@@ -63,7 +59,6 @@ export default async function SalesQuotesNewPage({
       entries={entries}
       mode="create"
       prefill={prefill}
-      productOptions={productOptions}
       quote={duplicated}
     />
   );

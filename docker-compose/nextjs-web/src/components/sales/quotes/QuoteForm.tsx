@@ -103,7 +103,6 @@ function buildInitial(
   quote: Quote | null | undefined,
   prefill: QuotePrefill | undefined,
   entries: PriceListEntry[],
-  productOptions: Option[],
 ): QuoteFormValues {
   if (quote) return toFormValues(quote);
   const base: QuoteFormValues = {
@@ -130,7 +129,7 @@ function buildInitial(
         ...emptyItem(),
         productId: prefill.productId,
         productName:
-          productOptions.find((p) => p.value === prefill.productId)?.label ??
+          entries.find((e) => e.productId === prefill.productId)?.productName ??
           prefill.productId,
         orderType,
         quantity,
@@ -172,7 +171,6 @@ export function QuoteForm({
   prefill,
   customerOptions,
   branchesByCustomer,
-  productOptions,
   entries,
 }: {
   mode: "create" | "edit";
@@ -182,7 +180,6 @@ export function QuoteForm({
   customerOptions: Option[];
   /** 顧客 BP id → 支店 options. */
   branchesByCustomer: Record<string, Option[]>;
-  productOptions: Option[];
   /** 全顧客の価格表エントリ — 行のライブ解決に使用。 */
   entries: PriceListEntry[];
 }) {
@@ -192,7 +189,7 @@ export function QuoteForm({
 
   const form = useForm<QuoteFormValues>({
     validate: zodResolver(schema),
-    initialValues: buildInitial(quote, prefill, entries, productOptions),
+    initialValues: buildInitial(quote, prefill, entries),
   });
 
   const branches = branchesByCustomer[form.values.customerId] ?? [];
@@ -370,7 +367,6 @@ export function QuoteForm({
                         next.discountLabel,
                       );
                     }}
-                    productOptions={productOptions}
                     value={item}
                   />
                 </Box>
