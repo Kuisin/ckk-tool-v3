@@ -3,11 +3,7 @@ import { PriceListTypeForm } from "@/components/sales/price-lists/PriceListTypeF
 import { prisma } from "@/lib/db";
 import { parseDocKey } from "@/lib/doc-number";
 import { calcTrialPricing, type TrialInput } from "@/lib/trial-pricing";
-import {
-  fetchCustomerOptions,
-  fetchExistingEntryRefs,
-  fetchProductOptions,
-} from "../../../trial-estimates/data";
+import { fetchExistingEntryRefs } from "../../../trial-estimates/data";
 import { resolveEntryKey } from "../../actions";
 import { fetchPriceEntry } from "../../data";
 
@@ -23,13 +19,10 @@ export default async function PriceListEditPage({
   const key = await resolveEntryKey(decodeURIComponent(id));
   if (!key) notFound();
 
-  const [entry, customerOptions, productOptions, existingEntries] =
-    await Promise.all([
-      fetchPriceEntry(key),
-      fetchCustomerOptions(),
-      fetchProductOptions(),
-      fetchExistingEntryRefs(),
-    ]);
+  const [entry, existingEntries] = await Promise.all([
+    fetchPriceEntry(key),
+    fetchExistingEntryRefs(),
+  ]);
   if (!entry) notFound();
 
   // 試算元の見積単価（基準単価のロック値）— 試算リンクがあるときだけ。
@@ -52,12 +45,12 @@ export default async function PriceListEditPage({
 
   return (
     <PriceListTypeForm
-      customerOptions={customerOptions}
+      customerOption={{ value: entry.customerId, label: entry.customerName }}
       entry={entry}
       estimateBase={estimateBase}
       existingEntries={existingEntries}
       mode="edit"
-      productOptions={productOptions}
+      productOption={{ value: entry.productId, label: entry.productName }}
     />
   );
 }

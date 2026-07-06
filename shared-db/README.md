@@ -52,12 +52,18 @@ Never hand-edit tables in the DB, never run DDL from the Python apps, and never
 run `prisma migrate` from nextjs-web (its `prisma/schema` is a synced copy for
 client generation only).
 
-## Demo data
+## Legacy data import（DB リセット後は必ず実行）
 
-`pnpm seed:demo` applies `sql/demo-seed.sql` — idempotent demo rows for the
-master screens (材種 / 素材 / 製品). Demo product codes use past months
-(`PRD-202606-*`) so they never collide with the app's monthly `PRD`
-auto-numbering (`sys.numbering_sequences`).
+`pnpm import:legacy` applies `../data-migration/imports/*.sql.gz` in order —
+the committed, idempotent upserts generated from the FileMaker migration
+(`mapped.sqlite`): 取引先 459 (BP-01001.. incl. `match_names`), 材種
+placeholders ~3,555, 製品 ~43,444. **Run it after every DB reset /
+re-provision** (right after `migrate:deploy` + `grants.sql`) — the app's
+master screens are empty without it. Regenerate the artifacts with
+`../data-migration/make_imports.sh` (needs `mapped.sqlite`).
+
+There is no demo/mock seed anymore — all master and BP data comes from the
+legacy import or the app itself.
 
 ## Backup / restore
 
@@ -81,10 +87,11 @@ cd shared-db
 psql "$ADMIN_URL" -c 'DROP DATABASE ckk;' -c 'CREATE DATABASE ckk;'   # 2. reset
 pnpm migrate:deploy                     # 3. clean init → all schemas + views
 psql "$ADMIN_URL" -d ckk -f sql/grants.sql   # 4. roles/grants (idempotent)
+pnpm import:legacy                      # 5. legacy data (BP/材種/製品) — always
 pg_restore -d "$DATABASE_URL" --data-only --disable-triggers \
-  -n kot -n directory -n admintools -n auth -n master -n bp -n sales -n sys \
-  backups/ckk-<ts>.dump                 # 5. restore data
-psql "$ADMIN_URL" -d ckk -f sql/metabase-compat.sql  # 6. public compat views
+  -n kot -n directory -n admintools -n app \
+  backups/ckk-<ts>.dump                 # 6. restore app-entered + other-app data
+psql "$ADMIN_URL" -d ckk -f sql/metabase-compat.sql  # 7. public compat views
 ```
 
 The init migration guards `CREATE EXTENSION pgroonga` in a `DO` block so it

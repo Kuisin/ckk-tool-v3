@@ -36,6 +36,10 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { z } from "zod";
 import {
+  searchCustomerOptions,
+  searchProductOptions,
+} from "@/app/(dashboard)/_shared/option-search";
+import {
   createPriceEntry,
   updatePriceEntry,
 } from "@/app/(dashboard)/sales/price-lists/actions";
@@ -43,6 +47,7 @@ import { GhostButton } from "@/components/ui/buttons";
 import { FieldValue } from "@/components/ui/FieldValue";
 import { HelpLabel } from "@/components/ui/HelpLabel";
 import { openConfirm } from "@/components/ui/modals";
+import { SearchSelect } from "@/components/ui/SearchSelect";
 import { FormSection, FormShell } from "@/components/ui/shells";
 import { zodResolver } from "@/lib/form";
 import { formatMoney } from "@/lib/format";
@@ -98,9 +103,6 @@ const emptyTier = (): TierForm => ({
   priceOverride: null,
 });
 
-const labelOf = (options: { value: string; label: string }[], value: string) =>
-  options.find((o) => o.value === value)?.label ?? (value || "—");
-
 function buildInitial(args: {
   entry?: PriceListEntry | null;
   lockedCustomerId?: string;
@@ -144,8 +146,8 @@ export function PriceListTypeForm({
   lockedCustomerId,
   lockedProductId,
   estimateBase,
-  customerOptions,
-  productOptions,
+  customerOption,
+  productOption,
   existingEntries,
 }: {
   mode: "create" | "edit";
@@ -156,8 +158,9 @@ export function PriceListTypeForm({
   lockedProductId?: string;
   /** 試算の見積単価（試算元がない種別追加・手動エントリは null）. */
   estimateBase: number | null;
-  customerOptions: Option[];
-  productOptions: Option[];
+  /** ロック時の表示ラベル（未ロック時は SearchSelect が検索する）. */
+  customerOption?: Option | null;
+  productOption?: Option | null;
   /** All current (顧客, 製品, 注文種別) identities — duplicate warnings. */
   existingEntries: EntryIdentity[];
 }) {
@@ -298,31 +301,37 @@ export function PriceListTypeForm({
           {lockCustomerProduct ? (
             <FieldValue
               label="顧客"
-              value={labelOf(customerOptions, form.values.customerId)}
+              value={customerOption?.label ?? (form.values.customerId || "—")}
             />
           ) : (
-            <Select
-              data={customerOptions}
+            <SearchSelect
+              error={form.errors.customerId}
+              initialOption={customerOption}
               label="顧客"
-              placeholder="顧客を選択"
-              searchable
+              onChange={(v) => form.setFieldValue("customerId", v ?? "")}
+              onSearch={searchCustomerOptions}
+              placeholder="顧客を検索"
+              storageKey="customer"
+              value={form.values.customerId || null}
               withAsterisk
-              {...form.getInputProps("customerId")}
             />
           )}
           {lockCustomerProduct ? (
             <FieldValue
               label="製品"
-              value={labelOf(productOptions, form.values.productId)}
+              value={productOption?.label ?? (form.values.productId || "—")}
             />
           ) : (
-            <Select
-              data={productOptions}
+            <SearchSelect
+              error={form.errors.productId}
+              initialOption={productOption}
               label="製品"
-              placeholder="製品を選択"
-              searchable
+              onChange={(v) => form.setFieldValue("productId", v ?? "")}
+              onSearch={searchProductOptions}
+              placeholder="製品を検索"
+              storageKey="product"
+              value={form.values.productId || null}
               withAsterisk
-              {...form.getInputProps("productId")}
             />
           )}
           {lockType ? (

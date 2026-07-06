@@ -3,9 +3,9 @@ import { PriceListTypeForm } from "@/components/sales/price-lists/PriceListTypeF
 import { SecondaryButton } from "@/components/ui/buttons";
 import { EmptyState } from "@/components/ui/EmptyState";
 import {
-  fetchCustomerOptions,
+  fetchCustomerOption,
   fetchExistingEntryRefs,
-  fetchProductOptions,
+  fetchProductOption,
 } from "../../trial-estimates/data";
 
 export const dynamic = "force-dynamic";
@@ -38,21 +38,21 @@ export default async function PriceListNewPage({
     );
   }
 
-  const [customerOptions, productOptions, existingEntries] = await Promise.all([
-    fetchCustomerOptions(),
-    fetchProductOptions(),
+  const [customerOption, productOption, existingEntries] = await Promise.all([
+    fetchCustomerOption(customer),
+    fetchProductOption(product),
     fetchExistingEntryRefs(),
   ]);
 
   return (
     <PriceListTypeForm
-      customerOptions={customerOptions}
+      customerOption={customerOption}
       estimateBase={null}
       existingEntries={existingEntries}
       lockedCustomerId={customer}
       lockedProductId={product}
       mode="create"
-      productOptions={productOptions}
+      productOption={productOption}
     />
   );
 }

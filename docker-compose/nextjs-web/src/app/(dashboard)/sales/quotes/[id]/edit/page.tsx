@@ -1,10 +1,7 @@
 import { notFound } from "next/navigation";
 import { QuoteForm } from "@/components/sales/quotes/QuoteForm";
 import { parseDocKey } from "@/lib/doc-number";
-import {
-  fetchCustomerOptions,
-  fetchProductOptions,
-} from "../../../trial-estimates/data";
+import { fetchCustomerOptions } from "../../../trial-estimates/data";
 import {
   fetchBranchesByCustomer,
   fetchEntriesForCustomer,
@@ -23,11 +20,10 @@ export default async function SalesQuotesEditPage({
   const key = parseDocKey(id, "QOT");
   if (!key) notFound();
 
-  const [quote, customerOptions, productOptions, branchesByCustomer, entries] =
+  const [quote, customerOptions, branchesByCustomer, entries] =
     await Promise.all([
       fetchQuote(key),
       fetchCustomerOptions(),
-      fetchProductOptions(),
       fetchBranchesByCustomer(),
       fetchEntriesForCustomer(),
     ]);
@@ -39,7 +35,6 @@ export default async function SalesQuotesEditPage({
       customerOptions={customerOptions}
       entries={entries}
       mode="edit"
-      productOptions={productOptions}
       quote={quote}
     />
   );

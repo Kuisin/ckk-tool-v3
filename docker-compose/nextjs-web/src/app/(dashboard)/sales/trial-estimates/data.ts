@@ -115,6 +115,23 @@ export async function fetchProductOptions(): Promise<Option[]> {
   }));
 }
 
+/** 単一製品の option（ロック表示・編集初期値用 — 全件を送らない）. */
+export async function fetchProductOption(id: string): Promise<Option | null> {
+  const p = await prisma.product.findUnique({ where: { id } });
+  if (!p) return null;
+  return {
+    value: p.id,
+    label: `${localized(p.name as LocalizedText | null)} ${p.id}`,
+  };
+}
+
+/** 単一顧客の option（ロック表示用）. */
+export async function fetchCustomerOption(id: string): Promise<Option | null> {
+  const r = await prisma.businessPartner.findUnique({ where: { id } });
+  if (!r) return null;
+  return { value: r.id, label: localized(r.name as LocalizedText | null) };
+}
+
 /** All current price-entry identities — duplicate warnings on 登録. */
 export async function fetchExistingEntryRefs(): Promise<ExistingEntryRef[]> {
   const rows = await prisma.priceListEntry.findMany({
