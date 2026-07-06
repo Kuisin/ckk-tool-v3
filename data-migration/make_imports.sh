@@ -12,12 +12,23 @@ set -eu
 cd "$(dirname "$0")"
 SRC="${1:-mapped.sqlite}"
 
+# The exporters use PEP 604 unions (str | None) — need Python >= 3.10.
+PY="${PYTHON:-}"
+if [ -z "$PY" ]; then
+  for c in python3.12 python3.11 python3.10 python3; do
+    if command -v "$c" >/dev/null 2>&1 && "$c" -c 'import sys; sys.exit(0 if sys.version_info >= (3,10) else 1)'; then
+      PY="$c"; break
+    fi
+  done
+fi
+[ -n "$PY" ] || { echo "no Python >= 3.10 found (set PYTHON=...)" >&2; exit 1; }
+
 [ -f "$SRC" ] || { echo "mapped.sqlite not found: $SRC" >&2; exit 1; }
 mkdir -p imports
 TMP=$(mktemp -d)
 
-python3 export_bp_import.py "$SRC" "$TMP/010_bp.sql"
-python3 export_master_import.py "$SRC" "$TMP"
+"$PY" export_bp_import.py "$SRC" "$TMP/010_bp.sql"
+"$PY" export_master_import.py "$SRC" "$TMP"
 mv "$TMP/material_types_import.sql" "$TMP/020_material_types.sql"
 mv "$TMP/products_import.sql" "$TMP/030_products.sql"
 
