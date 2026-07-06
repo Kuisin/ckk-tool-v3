@@ -79,6 +79,9 @@ model BusinessPartner {
   quotesAsCustomer Quote[]          @relation("QuoteCustomer")
   quotesAsBranch   Quote[]          @relation("QuoteCustomerBranch")
 
+  purchaseOrdersAsSupplier MaterialPurchaseOrder[] @relation("PoSupplier")
+  receiptsAsSupplier       MaterialReceipt[]       @relation("ReceiptSupplier")
+
   @@index([parentId])
   @@map("business_partners")
   @@schema("app")

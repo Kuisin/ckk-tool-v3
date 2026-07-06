@@ -18,6 +18,21 @@ model File {
   @@schema("app")
 }
 
+// システム設定（試算の価格ポリシーなど。feature_flags 同様の単純 KV）
+// キー例: trial_pricing.material_price_basis / trial_pricing.lookback_months
+model SystemSetting {
+  key         String   @id
+  value       Json
+  description String?
+  updatedBy   String?  @map("updated_by") @db.Uuid
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  updatedByUser User? @relation("SystemSettingUpdatedBy", fields: [updatedBy], references: [id])
+
+  @@map("system_settings")
+  @@schema("app")
+}
+
 // 採番管理（EST/QOT — 月次リセット）
 model NumberingSequence {
   key           String   @id
