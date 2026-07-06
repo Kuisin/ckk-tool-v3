@@ -45,6 +45,7 @@ import {
 } from "@/app/(dashboard)/sales/price-lists/actions";
 import { GhostButton } from "@/components/ui/buttons";
 import { FieldValue } from "@/components/ui/FieldValue";
+import { CUSTOMER_F4, PRODUCT_F4 } from "@/components/ui/f4-presets";
 import { HelpLabel } from "@/components/ui/HelpLabel";
 import { openConfirm } from "@/components/ui/modals";
 import { SearchSelect } from "@/components/ui/SearchSelect";
@@ -306,6 +307,7 @@ export function PriceListTypeForm({
           ) : (
             <SearchSelect
               error={form.errors.customerId}
+              f4={CUSTOMER_F4}
               initialOption={customerOption}
               label="顧客"
               onChange={(v) => form.setFieldValue("customerId", v ?? "")}
@@ -324,6 +326,7 @@ export function PriceListTypeForm({
           ) : (
             <SearchSelect
               error={form.errors.productId}
+              f4={PRODUCT_F4}
               initialOption={productOption}
               label="製品"
               onChange={(v) => form.setFieldValue("productId", v ?? "")}
