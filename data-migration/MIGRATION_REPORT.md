@@ -98,14 +98,21 @@ app-shaped) and needs no change — it still reflects the legacy structure 1:1. 
 `build_mapped.py` tracks `_specs/tables.md`; it was rewritten for the new material
 decomposition, the order_acceptance/sales_order split, and the `legacy_data` columns.
 
-### Material model mismatch (why structured codes are null)
+### Material model mismatch → bulk structuring (2026-07)
 
 The updated spec models 材種/素材 as a strict numbering system
 (`material_manufacturers`→`grades`→`shapes`→`kinds`, `surface_finishes`/`diameters`/
 `length_variants`, e.g. `B01B0001` / `B01B0001-A083-330`). Legacy `材種` is free text
-(`TSC-HEM4L2.5`, effectively a tool model) and `材種`/`素材` cannot be decoded to those
-codes without a conversion table. They are therefore preserved verbatim in `legacy_data`
-for future decoding, with structured columns left null.
+combining grade + finish + dimensions.
+
+`export_material_structuring.py`（→ `imports/025_material_structuring.sql.gz`）が
+コミット済み 020 アーティファクトからレガシー材種を一括構造化する:
+仮メーカー **Z=未分類**（メーカー帰属は資料なし — 既知の K10UF/K40UF のみ AFC=B）、
+グレード ~79 種、(グレード×形状) の構造化材種 ~104、`グレード [黒皮|研磨] φD×L` に
+完全一致する行から素材 ~525。複雑形状（複数径 OH/段付き/円筒）と不規則テキストは
+材種のみ or 未変換のまま。変換済みプレースホルダは is_active=false で残る
+（legacy_key=uuid5、description に変換先コード）。マスタの内部 id は SERIAL に
+再キーされ、表示コードは code / (year_month, seq) 由来（products はコード未採番）。
 
 ### Business-partner deduplication (`build_mapped.py`, `bp_canon`)
 
