@@ -65,7 +65,7 @@ model Estimate {
   toolType            TrialToolType  @map("tool_type")
   status              EstimateStatus @default(DRAFT)
   customerBpId        String?        @map("customer_bp_id") @db.Uuid
-  materialId          String?        @map("material_id")
+  materialId          Int?           @map("material_id")
   // 参照価格（仕入実績由来）。reference_overridden = 手動上書き。
   referenceUnitPrice  Decimal?       @map("reference_unit_price") @db.Decimal(12, 2)
   referenceDate       DateTime?      @map("reference_date") @db.Date
@@ -95,7 +95,7 @@ model Estimate {
 // 基準単価 = 試算の見積単価（手動上書き可）。tier 単価は基準単価×倍率。
 model PriceListEntry {
   customerBpId String    @map("customer_bp_id") @db.Uuid
-  productId    String    @map("product_id")
+  productId    Int       @map("product_id")
   orderType    OrderType @map("order_type")
 
   currency          String    @default("JPY")
@@ -126,7 +126,7 @@ model PriceListEntry {
 model PriceListTier {
   id            String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   customerBpId  String    @map("customer_bp_id") @db.Uuid
-  productId     String    @map("product_id")
+  productId     Int       @map("product_id")
   orderType     OrderType @map("order_type")
   minQuantity   Int       @default(1) @map("min_quantity")
   maxQuantity   Int?      @map("max_quantity")
@@ -149,7 +149,7 @@ model PriceListTier {
 model PriceListDiscount {
   id           String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   customerBpId String            @map("customer_bp_id") @db.Uuid
-  productId    String            @map("product_id")
+  productId    Int               @map("product_id")
   orderType    OrderType         @map("order_type")
   label        String
   discountType PriceDiscountType @map("discount_type")
@@ -199,7 +199,7 @@ model QuoteItem {
   id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   quoteYearMonth String    @map("quote_year_month") @db.Char(6)
   quoteSeq       Int       @map("quote_seq")
-  productId      String    @map("product_id")
+  productId      Int       @map("product_id")
   orderType      OrderType @map("order_type")
   quantity       Int
   unitPrice      Decimal   @map("unit_price") @db.Decimal(12, 2)
