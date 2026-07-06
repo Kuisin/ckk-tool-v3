@@ -3,13 +3,12 @@
 /**
  * MaterialDetail.tsx — 素材 詳細 (MS25, design.md §8.2).
  *
- * Ported from design-preview (designs/master/materials/detail.tsx) and backed
- * by server data. 関連タブ: 在庫サマリ + この素材を使う製品。
- * 履歴タブは audit_logs 導入後に接続する（現状は空表示）。
+ * コード構成（材種×黒皮研磨×径×全長×種類）のサマリ + 関連（使用製品）+
+ * 履歴（audit_logs）。構成は作成後不変なので表示のみ。
  */
 
 import { Stack, Table, Tabs, Text } from "@mantine/core";
-import { IconCircleMinus, IconCopy, IconTrash } from "@tabler/icons-react";
+import { IconCircleMinus, IconTrash } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { ActiveBadge } from "@/components/ui/ActiveBadge";
@@ -22,12 +21,9 @@ import {
   ResourceActions,
   SummaryGrid,
 } from "@/components/ui/shells";
-import { MATERIAL_FORM_LABEL } from "@/lib/enum-labels";
 import { formatDateTime } from "@/lib/format";
-import type { Option } from "@/lib/mock";
 import {
   DeleteMaterialModal,
-  DuplicateMaterialModal,
   ToggleMaterialActiveModal,
 } from "./MaterialModals";
 
@@ -37,9 +33,14 @@ export interface MaterialDetailData {
   id: string;
   materialTypeId: string;
   materialTypeName: string;
+  surfaceFinish: string;
+  diameterMm: number;
+  lengthMm: number;
+  kindCode: string;
+  nominalDiameterMm: number | null;
+  manufacturerModel: string;
   nameJa: string;
   nameEn: string;
-  form: string;
   unit: string;
   isActive: boolean;
   notes: string;
@@ -50,26 +51,20 @@ export interface MaterialDetailData {
 
 export function MaterialDetail({
   record,
-  typeOptions,
   auditEntries,
 }: {
   record: MaterialDetailData;
-  typeOptions: Option[];
   auditEntries: AuditEntry[];
 }) {
   const router = useRouter();
 
   const [deleteOpen, setDeleteOpen] = useState(false);
-  const [duplicateOpen, setDuplicateOpen] = useState(false);
   const [toggleOpen, setToggleOpen] = useState(false);
 
   const target = {
     id: record.id,
     name: record.nameJa,
     isActive: record.isActive,
-    materialTypeId: record.materialTypeId,
-    form: record.form,
-    unit: record.unit,
   };
 
   return (
@@ -77,11 +72,6 @@ export function MaterialDetail({
       actions={
         <ResourceActions
           menuItems={[
-            {
-              label: "複製",
-              icon: <IconCopy size={14} />,
-              onClick: () => setDuplicateOpen(true),
-            },
             {
               label: record.isActive ? "無効化" : "有効化",
               icon: <IconCircleMinus size={14} />,
@@ -118,12 +108,25 @@ export function MaterialDetail({
             </DocNumber>
           }
         />
+        <FieldValue label="黒皮・研磨" value={record.surfaceFinish} />
+        <FieldValue label="直径" value={`φ${record.diameterMm} mm`} />
+        <FieldValue label="全長" value={`${record.lengthMm} mm`} />
         <FieldValue
-          label="形態"
-          value={MATERIAL_FORM_LABEL[record.form] ?? record.form}
+          label="種類"
+          value={<DocNumber>{record.kindCode}</DocNumber>}
         />
-        <FieldValue label="名称（日本語）" value={record.nameJa} />
-        <FieldValue label="名称（英語）" value={record.nameEn || "—"} />
+        <FieldValue
+          label="呼び径"
+          value={
+            record.nominalDiameterMm != null
+              ? `φ${record.nominalDiameterMm} mm`
+              : "—"
+          }
+        />
+        <FieldValue
+          label="メーカ型式"
+          value={record.manufacturerModel || "—"}
+        />
         <FieldValue label="単位" value={record.unit} />
       </SummaryGrid>
 
@@ -135,7 +138,11 @@ export function MaterialDetail({
         </Tabs.List>
 
         <Tabs.Panel pt="md" value="overview">
-          <FieldValue label="備考" value={record.notes || "—"} />
+          <Stack gap="sm">
+            <FieldValue label="名称（日本語）" value={record.nameJa} />
+            <FieldValue label="名称（英語）" value={record.nameEn || "—"} />
+            <FieldValue label="備考" value={record.notes || "—"} />
+          </Stack>
         </Tabs.Panel>
 
         <Tabs.Panel pt="md" value="related">
@@ -186,12 +193,6 @@ export function MaterialDetail({
         onDone={() => router.push(BASE_PATH)}
         opened={deleteOpen}
         target={target}
-      />
-      <DuplicateMaterialModal
-        onClose={() => setDuplicateOpen(false)}
-        opened={duplicateOpen}
-        source={target}
-        typeOptions={typeOptions}
       />
       <ToggleMaterialActiveModal
         onClose={() => setToggleOpen(false)}

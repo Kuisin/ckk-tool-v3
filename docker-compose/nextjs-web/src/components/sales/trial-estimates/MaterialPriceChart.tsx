@@ -10,7 +10,7 @@
 
 import { Badge, Box, Group, Stack, Text } from "@mantine/core";
 import { formatDate, formatMoney } from "@/lib/format";
-import type { MaterialPricePoint } from "@/lib/material-pricing";
+import type { MaterialPricePoint } from "@/lib/material-pricing-core";
 
 const W = 640;
 const H = 220;

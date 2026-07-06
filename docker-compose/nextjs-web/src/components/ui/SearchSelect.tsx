@@ -19,9 +19,17 @@
  *   />
  */
 
-import { Loader, Select, type SelectProps } from "@mantine/core";
+import {
+  ActionIcon,
+  Loader,
+  Select,
+  type SelectProps,
+  Tooltip,
+} from "@mantine/core";
+import { IconZoomScan } from "@tabler/icons-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { pushRecent, type RecentOption, readRecents } from "@/lib/recents";
+import { type F4Config, F4SearchModal } from "./F4SearchModal";
 
 const DEBOUNCE_MS = 250;
 
@@ -40,6 +48,8 @@ export interface SearchSelectProps
   storageKey: string;
   /** 編集フォームで既存値のラベルを出すための option。 */
   initialOption?: RecentOption | null;
+  /** SAP F4 風の詳細検索ポップアップ（フィルタ + 結果テーブル）。 */
+  f4?: F4Config;
 }
 
 export function SearchSelect({
@@ -48,6 +58,7 @@ export function SearchSelect({
   onSearch,
   storageKey,
   initialOption,
+  f4,
   ...selectProps
 }: SearchSelectProps) {
   const [search, setSearch] = useState("");
@@ -60,6 +71,7 @@ export function SearchSelect({
   );
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const seq = useRef(0);
+  const [f4Open, setF4Open] = useState(false);
 
   // localStorage は client でしか読めない — SSR ミスマッチ回避のため effect で
   useEffect(() => {
@@ -111,30 +123,59 @@ export function SearchSelect({
     return groups;
   }, [search, results, recents, selected]);
 
+  const pick = (picked: RecentOption) => {
+    onChange(picked.value, picked);
+    setSelected(picked);
+    setRecents(pushRecent(storageKey, picked));
+  };
+
   return (
-    <Select
-      clearable
-      data={data}
-      // サーバーが絞り込むのでクライアント側フィルタは無効化
-      filter={({ options }) => options}
-      nothingFoundMessage={loading ? "検索中…" : "該当なし"}
-      onChange={(v, option) => {
-        if (v && option) {
-          const picked = { value: v, label: option.label };
-          onChange(v, picked);
-          setSelected(picked);
-          setRecents(pushRecent(storageKey, picked));
-        } else {
-          onChange(null);
-          setSelected(null);
+    <>
+      <Select
+        clearable
+        data={data}
+        // サーバーが絞り込むのでクライアント側フィルタは無効化
+        filter={({ options }) => options}
+        leftSection={
+          f4 ? (
+            <Tooltip label="詳細検索（フィルタ）" withArrow>
+              <ActionIcon
+                aria-label="詳細検索"
+                color="gray"
+                onClick={() => setF4Open(true)}
+                size="sm"
+                variant="subtle"
+              >
+                <IconZoomScan size={16} />
+              </ActionIcon>
+            </Tooltip>
+          ) : undefined
         }
-      }}
-      onSearchChange={setSearch}
-      rightSection={loading ? <Loader size={14} /> : undefined}
-      searchable
-      searchValue={search}
-      value={value}
-      {...selectProps}
-    />
+        leftSectionPointerEvents={f4 ? "auto" : undefined}
+        nothingFoundMessage={loading ? "検索中…" : "該当なし"}
+        onChange={(v, option) => {
+          if (v && option) {
+            pick({ value: v, label: option.label });
+          } else {
+            onChange(null);
+            setSelected(null);
+          }
+        }}
+        onSearchChange={setSearch}
+        rightSection={loading ? <Loader size={14} /> : undefined}
+        searchable
+        searchValue={search}
+        value={value}
+        {...selectProps}
+      />
+      {f4 && (
+        <F4SearchModal
+          config={f4}
+          onClose={() => setF4Open(false)}
+          onPick={(row) => pick({ value: row.value, label: row.label })}
+          opened={f4Open}
+        />
+      )}
+    </>
   );
 }

@@ -4,8 +4,8 @@
  * TrialPricingSettingsForm — system settings for 見積試算 の材料参照価格ポリシー.
  *
  * Controls how the default material price is derived from purchase history
- * (basis + lookback window) used by the 試算 calculator. Demo persistence is
- * localStorage; see lib/trial-pricing-settings.ts migration note.
+ * (basis + lookback window) used by the 試算 calculator. Persisted to
+ * app.system_settings via Server Action; the page passes the current values.
  */
 
 import {
@@ -19,29 +19,42 @@ import {
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import { IconInfoCircle } from "@tabler/icons-react";
-import { useState } from "react";
+import { useState, useTransition } from "react";
+import { updateTrialPricingSettings } from "@/app/(dashboard)/settings/actions";
 import { SaveButton } from "@/components/ui/buttons";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { FormSection } from "@/components/ui/shells";
 import {
   DEFAULT_TRIAL_PRICING_SETTINGS,
-  loadTrialPricingSettings,
   MATERIAL_PRICE_BASIS_OPTIONS,
-  saveTrialPricingSettings,
   type TrialPricingSettings,
 } from "@/lib/trial-pricing-settings";
 
-export function TrialPricingSettingsForm() {
-  const [settings, setSettings] = useState<TrialPricingSettings>(
-    loadTrialPricingSettings,
-  );
+export function TrialPricingSettingsForm({
+  initial,
+}: {
+  /** 現在の設定（app.system_settings, サーバー取得）. */
+  initial: TrialPricingSettings;
+}) {
+  const [settings, setSettings] = useState<TrialPricingSettings>(initial);
+  const [isPending, startTransition] = useTransition();
 
   const save = () => {
-    saveTrialPricingSettings(settings);
-    notifications.show({
-      title: "保存しました",
-      message: "試算の価格ポリシーを更新しました",
-      color: "green",
+    startTransition(async () => {
+      const res = await updateTrialPricingSettings(settings);
+      if (res.ok) {
+        notifications.show({
+          title: "保存しました",
+          message: "試算の価格ポリシーを更新しました",
+          color: "green",
+        });
+      } else {
+        notifications.show({
+          title: "エラー",
+          message: res.error,
+          color: "red",
+        });
+      }
     });
   };
 
@@ -63,7 +76,11 @@ export function TrialPricingSettingsForm() {
   return (
     <Stack gap="md">
       <PageHeader
-        actions={<SaveButton onClick={save}>保存</SaveButton>}
+        actions={
+          <SaveButton loading={isPending} onClick={save}>
+            保存
+          </SaveButton>
+        }
         breadcrumbs={["設定", "試算 価格ポリシー"]}
         title="システム設定"
       />

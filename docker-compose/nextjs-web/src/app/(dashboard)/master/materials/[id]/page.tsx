@@ -16,17 +16,14 @@ export default async function MasterMaterialsDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const [r, types, auditEntries] = await Promise.all([
+  const [r, auditEntries] = await Promise.all([
     prisma.material.findUnique({
       where: { id },
       include: {
         materialType: true,
+        surfaceFinish: true,
         products: { orderBy: { id: "asc" } },
       },
-    }),
-    prisma.materialType.findMany({
-      where: { isActive: true },
-      orderBy: { id: "asc" },
     }),
     fetchAuditEntries("materials", id),
   ]);
@@ -38,9 +35,15 @@ export default async function MasterMaterialsDetailPage({
     id: r.id,
     materialTypeId: r.materialTypeId,
     materialTypeName: localized(r.materialType.name as LocalizedText | null),
+    surfaceFinish: localized(r.surfaceFinish.name as LocalizedText | null),
+    diameterMm: Number(r.diameterMm),
+    lengthMm: Number(r.lengthMm),
+    kindCode: r.kindCode,
+    nominalDiameterMm:
+      r.nominalDiameterMm != null ? Number(r.nominalDiameterMm) : null,
+    manufacturerModel: r.manufacturerModel ?? "",
     nameJa: name?.ja ?? "",
     nameEn: name?.en ?? "",
-    form: r.materialForm,
     unit: r.unit,
     isActive: r.isActive,
     notes: r.notes ?? "",
@@ -52,16 +55,5 @@ export default async function MasterMaterialsDetailPage({
     })),
   };
 
-  const typeOptions = types.map((t) => ({
-    value: t.id,
-    label: `${t.id}（${localized(t.name as LocalizedText | null)}）`,
-  }));
-
-  return (
-    <MaterialDetail
-      auditEntries={auditEntries}
-      record={record}
-      typeOptions={typeOptions}
-    />
-  );
+  return <MaterialDetail auditEntries={auditEntries} record={record} />;
 }

@@ -175,6 +175,17 @@ export const OPERATION_CODES: OperationCodeEntry[] = [
     "/master/approval-groups",
   ),
   ...makeResource("マスタ", "MS", "B", "工場", "/master/factories"),
+  // 採番構成は単一管理画面（タブ + モーダル）— list コードのみ
+  {
+    code: "MS0C",
+    label: "採番構成",
+    href: "/master/material-numbering",
+    category: "マスタ",
+    kind: "list",
+    categoryCode: "MS",
+    mode: "0",
+    index: "C",
+  },
 ];
 
 const CODE_LOOKUP = new Map(

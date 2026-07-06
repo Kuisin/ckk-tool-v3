@@ -297,6 +297,7 @@ Operation codes provide keyboard-shortcut navigation. Format: `{CAT}{MODE}{IDX}`
 | マスタ | 9 | 不良種類 | MS09 | MS19 | MS29 |
 | マスタ | A | 承認グループ | MS0A | MS1A | MS2A |
 | マスタ | B | 工場 | MS0B | MS1B | MS2B |
+| マスタ | C | 採番構成 | MS0C | — | — |
 
 `OperationCodeJump` component (`src/components/layout/OperationCodeJump.tsx`) renders as a compact TextInput in the header center. Pressing Enter or clicking a result navigates to that screen.
 

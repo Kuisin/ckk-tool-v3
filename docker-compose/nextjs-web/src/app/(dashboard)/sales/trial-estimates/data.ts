@@ -14,7 +14,6 @@ import type {
 } from "@/components/sales/trial-estimates/types";
 import { prisma } from "@/lib/db";
 import { formatEstimateNumber } from "@/lib/doc-number";
-import { MATERIAL_FORM_LABEL } from "@/lib/enum-labels";
 import { type LocalizedText, localized } from "@/lib/format";
 import type { Option } from "@/lib/mock";
 import type { TrialInput } from "@/lib/trial-pricing";
@@ -30,13 +29,8 @@ function fetchEstimateRowByKey(yearMonth: string, seq: number) {
   });
 }
 
-export function materialOptionLabel(m: {
-  id: string;
-  name: unknown;
-  materialForm: string;
-}): string {
-  const form = MATERIAL_FORM_LABEL[m.materialForm] ?? m.materialForm;
-  return `${m.id} — ${localized(m.name as LocalizedText | null)}（${form}）`;
+export function materialOptionLabel(m: { id: string; name: unknown }): string {
+  return `${m.id} — ${localized(m.name as LocalizedText | null)}`;
 }
 
 export function mapEstimate(r: EstimateRow): TrialEstimateRecord {

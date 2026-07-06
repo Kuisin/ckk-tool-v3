@@ -8,7 +8,15 @@
  * client-side — the master tables are small.
  */
 
-import { Group, Paper, Select, Stack, Text, TextInput } from "@mantine/core";
+import {
+  Badge,
+  Group,
+  Paper,
+  Select,
+  Stack,
+  Text,
+  TextInput,
+} from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import {
   IconAtom,
@@ -43,6 +51,10 @@ const BASE_PATH = "/master/material-types";
 export interface MaterialTypeRow {
   id: string;
   name: string;
+  /** 変換済（コード構成あり）か — 未変換はレガシー取込プレースホルダ。 */
+  structured: boolean;
+  manufacturerName: string;
+  shapeName: string;
   isActive: boolean;
   updatedAt: string;
 }
@@ -52,6 +64,11 @@ const STATUS_OPTIONS = [
   { value: "inactive", label: "無効" },
 ];
 
+const STRUCTURED_OPTIONS = [
+  { value: "structured", label: "変換済" },
+  { value: "legacy", label: "未変換" },
+];
+
 export function MaterialTypeTable({ rows }: { rows: MaterialTypeRow[] }) {
   const router = useRouter();
   const isMobile = useIsMobile();
@@ -59,6 +76,7 @@ export function MaterialTypeTable({ rows }: { rows: MaterialTypeRow[] }) {
 
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string | null>(null);
+  const [structuredFilter, setStructuredFilter] = useState<string | null>(null);
 
   const [deleteRow, setDeleteRow] = useState<MaterialTypeModalTarget | null>(
     null,
@@ -70,6 +88,7 @@ export function MaterialTypeTable({ rows }: { rows: MaterialTypeRow[] }) {
   const reset = () => {
     setSearch("");
     setStatusFilter(null);
+    setStructuredFilter(null);
   };
 
   const filtered = rows.filter((r) => {
@@ -77,7 +96,10 @@ export function MaterialTypeTable({ rows }: { rows: MaterialTypeRow[] }) {
       !search || r.id.includes(search) || r.name.includes(search);
     const matchesStatus =
       !statusFilter || (statusFilter === "active" ? r.isActive : !r.isActive);
-    return matchesSearch && matchesStatus;
+    const matchesStructured =
+      !structuredFilter ||
+      (structuredFilter === "structured" ? r.structured : !r.structured);
+    return matchesSearch && matchesStatus && matchesStructured;
   });
 
   const bulkSetActive = (targets: MaterialTypeRow[], isActive: boolean) => {
@@ -135,8 +157,18 @@ export function MaterialTypeTable({ rows }: { rows: MaterialTypeRow[] }) {
       key: "id",
       header: "材種コード",
       sortable: true,
-      width: 140,
-      render: (r) => <DocNumber>{r.id}</DocNumber>,
+      width: 160,
+      render: (r) =>
+        r.structured ? (
+          <DocNumber>{r.id}</DocNumber>
+        ) : (
+          <Group gap={6} wrap="nowrap">
+            <DocNumber c="dimmed">{r.id.slice(0, 8)}…</DocNumber>
+            <Badge color="gray" size="xs" variant="light">
+              未変換
+            </Badge>
+          </Group>
+        ),
     },
     {
       key: "name",
@@ -144,6 +176,22 @@ export function MaterialTypeTable({ rows }: { rows: MaterialTypeRow[] }) {
       sortable: true,
       sortValue: (r) => r.name,
       render: (r) => r.name,
+    },
+    {
+      key: "manufacturerName",
+      header: "メーカー",
+      sortable: true,
+      hideable: true,
+      width: 120,
+      render: (r) => r.manufacturerName || "—",
+    },
+    {
+      key: "shapeName",
+      header: "形状",
+      sortable: true,
+      hideable: true,
+      width: 90,
+      render: (r) => r.shapeName || "—",
     },
     {
       key: "isActive",
@@ -168,15 +216,26 @@ export function MaterialTypeTable({ rows }: { rows: MaterialTypeRow[] }) {
       action={<NewButton href={`${BASE_PATH}/new`} />}
       breadcrumbs={["マスタ", "材種"]}
       filters={
-        <Select
-          clearable
-          data={STATUS_OPTIONS}
-          onChange={setStatusFilter}
-          placeholder="状態"
-          style={isMobile ? { flex: 1 } : undefined}
-          value={statusFilter}
-          w={isMobile ? undefined : 160}
-        />
+        <>
+          <Select
+            clearable
+            data={STRUCTURED_OPTIONS}
+            onChange={setStructuredFilter}
+            placeholder="変換状態"
+            style={isMobile ? { flex: 1 } : undefined}
+            value={structuredFilter}
+            w={isMobile ? undefined : 140}
+          />
+          <Select
+            clearable
+            data={STATUS_OPTIONS}
+            onChange={setStatusFilter}
+            placeholder="状態"
+            style={isMobile ? { flex: 1 } : undefined}
+            value={statusFilter}
+            w={isMobile ? undefined : 160}
+          />
+        </>
       }
       onReset={reset}
       search={

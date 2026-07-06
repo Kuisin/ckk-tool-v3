@@ -8,7 +8,7 @@
  * 履歴タブは audit_logs 導入後に接続する（現状は空表示）。
  */
 
-import { Stack, Table, Tabs, Text } from "@mantine/core";
+import { Badge, Group, Stack, Table, Tabs, Text } from "@mantine/core";
 import { IconCircleMinus, IconTrash } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -33,6 +33,13 @@ const BASE_PATH = "/master/material-types";
 
 export interface MaterialTypeDetailData {
   id: string;
+  /** 変換済（コード構成あり）のときのみ。null = レガシー未変換。 */
+  composition: {
+    manufacturerLabel: string;
+    gradeLabel: string;
+    shapeLabel: string;
+    kindCode: string;
+  } | null;
   nameJa: string;
   nameEn: string;
   descriptionJa: string;
@@ -43,7 +50,7 @@ export interface MaterialTypeDetailData {
   materials: {
     id: string;
     name: string;
-    form: string;
+    size: string;
     unit: string;
     isActive: boolean;
   }[];
@@ -98,10 +105,38 @@ export function MaterialTypeDetail({
       <SummaryGrid>
         <FieldValue
           label="材種コード"
-          value={<DocNumber>{record.id}</DocNumber>}
+          value={
+            record.composition ? (
+              <DocNumber>{record.id}</DocNumber>
+            ) : (
+              <Group gap={6} wrap="nowrap">
+                <DocNumber c="dimmed">{record.id}</DocNumber>
+                <Badge color="gray" size="xs" variant="light">
+                  未変換
+                </Badge>
+              </Group>
+            )
+          }
         />
         <FieldValue label="名称（日本語）" value={record.nameJa} />
         <FieldValue label="名称（英語）" value={record.nameEn || "—"} />
+        {record.composition && (
+          <>
+            <FieldValue
+              label="メーカー"
+              value={record.composition.manufacturerLabel}
+            />
+            <FieldValue
+              label="メーカー材種"
+              value={record.composition.gradeLabel}
+            />
+            <FieldValue label="形状" value={record.composition.shapeLabel} />
+            <FieldValue
+              label="種類（自動採番）"
+              value={<DocNumber>{record.composition.kindCode}</DocNumber>}
+            />
+          </>
+        )}
       </SummaryGrid>
 
       <Tabs defaultValue="overview">
@@ -139,7 +174,7 @@ export function MaterialTypeDetail({
                   <Table.Tr>
                     <Table.Th>素材コード</Table.Th>
                     <Table.Th>名称</Table.Th>
-                    {!isMobile && <Table.Th>形態</Table.Th>}
+                    {!isMobile && <Table.Th>寸法</Table.Th>}
                     {!isMobile && <Table.Th>単位</Table.Th>}
                     <Table.Th>状態</Table.Th>
                   </Table.Tr>
@@ -155,7 +190,7 @@ export function MaterialTypeDetail({
                         <DocNumber c="blue">{r.id}</DocNumber>
                       </Table.Td>
                       <Table.Td>{r.name}</Table.Td>
-                      {!isMobile && <Table.Td>{r.form}</Table.Td>}
+                      {!isMobile && <Table.Td>{r.size}</Table.Td>}
                       {!isMobile && <Table.Td>{r.unit}</Table.Td>}
                       <Table.Td>
                         <ActiveBadge active={r.isActive} />

@@ -58,6 +58,15 @@ model User {
   quotesCreated           Quote[]            @relation("QuoteCreatedBy")
   filesUploaded           File[]             @relation("FileUploadedBy")
   auditLogs               AuditLog[]         @relation("AuditLogUser")
+  systemSettingsUpdated   SystemSetting[]    @relation("SystemSettingUpdatedBy")
+
+  posRequested MaterialPurchaseOrder[] @relation("PoRequestedBy")
+  posApproved  MaterialPurchaseOrder[] @relation("PoApprovedBy")
+  posOrdered   MaterialPurchaseOrder[] @relation("PoOrderedBy")
+  posCompleted MaterialPurchaseOrder[] @relation("PoCompletedBy")
+  posCancelled MaterialPurchaseOrder[] @relation("PoCancelledBy")
+  posCreated   MaterialPurchaseOrder[] @relation("PoCreatedBy")
+  receiptsCreated MaterialReceipt[]    @relation("ReceiptCreatedBy")
 
   // Employees link to the shared directory by AD objectGUID (stable across
   // username/attribute changes). Null for SYSTEM / GUEST users.
