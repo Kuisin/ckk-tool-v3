@@ -38,11 +38,13 @@ BEGIN
   v_entry_key := v_customer || '__' || v_product || '__PRODUCTION';
 
   -- 試算（EST-202607-00001）
+  -- input は完全な TrialInput（lib/trial-pricing.ts）でなければ calcTrialPricing が
+  -- lotQuantities.map 等で落ちる。フォーム既定値と同じ完全なスナップショットを入れる。
   INSERT INTO app.estimates
     (year_month, seq, name, tool_type, status, customer_bp_id, input, created_by, created_at, updated_at)
   VALUES
     (v_ym, v_seq, 'デモ試算 φ3×38', 'ROUND_BAR', 'CONFIRMED', v_customer,
-     '{"toolType":"ROUND_BAR","maxDiameter":3,"totalLength":38,"materialBarPrice":1200,"machiningMinutes":4}'::jsonb,
+     '{"toolType":"ROUND_BAR","maxDiameter":3,"totalLength":38,"materialBarPrice":1200,"isBlackSkin":false,"cylinderMaterialPrice":0,"cylinderType":"NORMAL","stepLength":0,"stepType":"FINISH","neckLength":0,"neckType":"NONE","coating":"CX400","lapType":"NONE","inspection":"NONE","ldEnabled":false,"ldLocation":"TIP","ldOuterDiameter":3,"ldBladeLength":10,"machiningMinutes":6,"machiningRatePer10min":300,"spareShapeCount":0,"lotQuantities":[100,0,0],"lotMarkups":[1]}'::jsonb,
      v_sys, now(), now())
   ON CONFLICT (year_month, seq) DO NOTHING;
 
