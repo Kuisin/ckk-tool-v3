@@ -28,7 +28,6 @@ import {
   IconCheck,
   IconCopy,
   IconCurrencyYen,
-  IconHistory,
   IconInfoCircle,
   IconLink,
 } from "@tabler/icons-react";
@@ -36,11 +35,12 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { confirmTrialEstimate } from "@/app/(dashboard)/sales/trial-estimates/actions";
 import { DocNumber } from "@/components/ui/DocNumber";
-import { EmptyState } from "@/components/ui/EmptyState";
 import { FieldValue } from "@/components/ui/FieldValue";
+import { HistoryPanel } from "@/components/ui/HistoryPanel";
 import { MoneyText } from "@/components/ui/MoneyText";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import {
+  type AuditEntry,
   DetailShell,
   ResourceActions,
   SummaryGrid,
@@ -79,12 +79,15 @@ export function TrialEstimateDetail({
   customerOptions,
   productOptions,
   existingEntries,
+  auditEntries,
 }: {
   record: TrialEstimateRecord;
   linkedEntries: LinkedPriceEntry[];
   customerOptions: Option[];
   productOptions: Option[];
   existingEntries: ExistingEntryRef[];
+  /** 操作履歴（audit_logs 由来、履歴タブ）。 */
+  auditEntries: AuditEntry[];
 }) {
   const router = useRouter();
   const result = calcTrialPricing(record.input);
@@ -314,10 +317,7 @@ export function TrialEstimateDetail({
         </Tabs.Panel>
 
         <Tabs.Panel pt="md" value="audit">
-          <EmptyState
-            icon={<IconHistory size={24} />}
-            message="変更履歴はまだ記録されていません"
-          />
+          <HistoryPanel entries={auditEntries} />
         </Tabs.Panel>
       </Tabs>
 

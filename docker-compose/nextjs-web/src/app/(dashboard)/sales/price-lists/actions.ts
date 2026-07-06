@@ -10,6 +10,7 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
+import { recordAudit } from "@/lib/audit";
 import { prisma } from "@/lib/db";
 import { parsePriceEntryKey, priceEntryKey } from "@/lib/doc-number";
 import {
@@ -93,7 +94,21 @@ export async function updatePriceEntry(
     return actionError(parsed.error.issues[0]?.message ?? "入力が不正です");
   }
   const v = parsed.data;
+  const entryId = priceEntryKey(
+    v.key.customerBpId,
+    v.key.productId,
+    v.key.orderType,
+  );
   try {
+    const prior = await prisma.priceListEntry.findUnique({
+      where: whereKey(v.key),
+      select: {
+        baseUnitPrice: true,
+        validFrom: true,
+        validUntil: true,
+        isActive: true,
+      },
+    });
     await prisma.$transaction([
       // Replace the tier set (quote_items keep history via ON DELETE SET NULL).
       prisma.priceListTier.deleteMany({ where: { ...v.key } }),
@@ -116,14 +131,29 @@ export async function updatePriceEntry(
         },
       }),
     ]);
-    revalidate(v.key);
-    return actionOk({
-      entryId: priceEntryKey(
-        v.key.customerBpId,
-        v.key.productId,
-        v.key.orderType,
-      ),
+    await recordAudit({
+      action: "UPDATE",
+      tableName: "price_list_entries",
+      recordId: entryId,
+      before: prior
+        ? {
+            baseUnitPrice: Number(prior.baseUnitPrice),
+            validFrom: prior.validFrom.toISOString().slice(0, 10),
+            validUntil: prior.validUntil
+              ? prior.validUntil.toISOString().slice(0, 10)
+              : null,
+            isActive: prior.isActive,
+          }
+        : undefined,
+      after: {
+        baseUnitPrice: v.baseUnitPrice,
+        validFrom: v.validFrom,
+        validUntil: v.validUntil,
+        isActive: v.isActive,
+      },
     });
+    revalidate(v.key);
+    return actionOk({ entryId });
   } catch (e) {
     return actionError(prismaErrorMessage(e, "価格表の更新に失敗しました"));
   }
@@ -151,6 +181,11 @@ export async function createPriceEntry(
     return actionError(parsed.error.issues[0]?.message ?? "入力が不正です");
   }
   const v = parsed.data;
+  const entryId = priceEntryKey(
+    v.key.customerBpId,
+    v.key.productId,
+    v.key.orderType,
+  );
   try {
     await prisma.priceListEntry.create({
       data: {
@@ -170,14 +205,20 @@ export async function createPriceEntry(
         },
       },
     });
-    revalidate(v.key);
-    return actionOk({
-      entryId: priceEntryKey(
-        v.key.customerBpId,
-        v.key.productId,
-        v.key.orderType,
-      ),
+    await recordAudit({
+      action: "CREATE",
+      tableName: "price_list_entries",
+      recordId: entryId,
+      after: {
+        baseUnitPrice: v.baseUnitPrice,
+        validFrom: v.validFrom,
+        validUntil: v.validUntil,
+        isActive: v.isActive,
+        tierCount: v.tiers.length,
+      },
     });
+    revalidate(v.key);
+    return actionOk({ entryId });
   } catch (e) {
     const code =
       typeof e === "object" && e !== null && "code" in e
@@ -239,6 +280,16 @@ export async function changePriceEntryPeriod(payload: {
         validUntil: payload.validUntil ? new Date(payload.validUntil) : null,
       },
     });
+    await recordAudit({
+      action: "UPDATE",
+      tableName: "price_list_entries",
+      recordId: priceEntryKey(
+        payload.key.customerBpId,
+        payload.key.productId,
+        payload.key.orderType,
+      ),
+      after: { validFrom: payload.validFrom, validUntil: payload.validUntil },
+    });
     revalidate(payload.key);
     return actionOk();
   } catch (e) {
@@ -263,7 +314,15 @@ export async function setPriceEntriesActive(
       ),
     );
     revalidate();
-    for (const key of keys) revalidate(key);
+    for (const key of keys) {
+      revalidate(key);
+      await recordAudit({
+        action: "UPDATE",
+        tableName: "price_list_entries",
+        recordId: priceEntryKey(key.customerBpId, key.productId, key.orderType),
+        after: { isActive },
+      });
+    }
     return actionOk();
   } catch (e) {
     return actionError(prismaErrorMessage(e, "状態の更新に失敗しました"));
@@ -283,6 +342,13 @@ export async function deletePriceEntries(
       ]),
     );
     revalidate();
+    for (const key of keys) {
+      await recordAudit({
+        action: "DELETE",
+        tableName: "price_list_entries",
+        recordId: priceEntryKey(key.customerBpId, key.productId, key.orderType),
+      });
+    }
     return actionOk();
   } catch (e) {
     return actionError(prismaErrorMessage(e, "価格表の削除に失敗しました"));
@@ -330,6 +396,21 @@ export async function saveDiscountRule(
     } else {
       await prisma.priceListDiscount.create({ data: { ...v.key, ...data } });
     }
+    await recordAudit({
+      action: "UPDATE",
+      tableName: "price_list_entries",
+      recordId: priceEntryKey(
+        v.key.customerBpId,
+        v.key.productId,
+        v.key.orderType,
+      ),
+      after: {
+        discountRule: v.label,
+        discountType: v.discountType,
+        value: v.value,
+        isActive: v.isActive,
+      },
+    });
     revalidate(v.key);
     return actionOk();
   } catch (e) {
@@ -345,6 +426,12 @@ export async function deleteDiscountRule(
 ): Promise<ActionResult> {
   try {
     await prisma.priceListDiscount.delete({ where: { id } });
+    await recordAudit({
+      action: "UPDATE",
+      tableName: "price_list_entries",
+      recordId: priceEntryKey(key.customerBpId, key.productId, key.orderType),
+      after: { discountRuleDeleted: true },
+    });
     revalidate(key);
     return actionOk();
   } catch (e) {

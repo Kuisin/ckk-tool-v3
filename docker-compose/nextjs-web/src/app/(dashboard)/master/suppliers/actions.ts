@@ -9,6 +9,7 @@
 
 import { revalidatePath } from "next/cache";
 import type { z } from "zod";
+import { recordAudit } from "@/lib/audit";
 import { prisma } from "@/lib/db";
 import { nextSerialCode } from "@/lib/numbering";
 import {
@@ -55,6 +56,12 @@ export async function createSupplier(
         vendorAttrs: { create: vendorAttrsData(v.attrs) },
       },
     });
+    await recordAudit({
+      action: "CREATE",
+      tableName: "business_partners",
+      recordId: created.id,
+      after: { nameJa: v.nameJa, role: "VENDOR", isActive: v.isActive },
+    });
     revalidate(created.id);
     return actionOk({ id: created.id });
   } catch (e) {
@@ -73,6 +80,10 @@ export async function updateSupplier(
   const v = parsed.data;
   try {
     const attrs = vendorAttrsData(v.attrs);
+    const prior = await prisma.businessPartner.findUnique({
+      where: { id },
+      select: { name: true, isActive: true },
+    });
     await prisma.businessPartner.update({
       where: { id },
       data: {
@@ -81,6 +92,18 @@ export async function updateSupplier(
           upsert: { create: attrs, update: attrs },
         },
       },
+    });
+    await recordAudit({
+      action: "UPDATE",
+      tableName: "business_partners",
+      recordId: id,
+      before: prior
+        ? {
+            nameJa: (prior.name as { ja?: string } | null)?.ja ?? null,
+            isActive: prior.isActive,
+          }
+        : undefined,
+      after: { nameJa: v.nameJa, isActive: v.isActive },
     });
     revalidate(id);
     return actionOk({ id });

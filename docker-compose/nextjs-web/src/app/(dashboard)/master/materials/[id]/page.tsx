@@ -3,6 +3,7 @@ import {
   MaterialDetail,
   type MaterialDetailData,
 } from "@/components/master/materials/MaterialDetail";
+import { fetchAuditEntries } from "@/lib/audit";
 import { prisma } from "@/lib/db";
 import { type LocalizedText, localized } from "@/lib/format";
 
@@ -15,7 +16,7 @@ export default async function MasterMaterialsDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const [r, types] = await Promise.all([
+  const [r, types, auditEntries] = await Promise.all([
     prisma.material.findUnique({
       where: { id },
       include: {
@@ -27,6 +28,7 @@ export default async function MasterMaterialsDetailPage({
       where: { isActive: true },
       orderBy: { id: "asc" },
     }),
+    fetchAuditEntries("materials", id),
   ]);
   if (!r) notFound();
 
@@ -55,5 +57,11 @@ export default async function MasterMaterialsDetailPage({
     label: `${t.id}（${localized(t.name as LocalizedText | null)}）`,
   }));
 
-  return <MaterialDetail record={record} typeOptions={typeOptions} />;
+  return (
+    <MaterialDetail
+      auditEntries={auditEntries}
+      record={record}
+      typeOptions={typeOptions}
+    />
+  );
 }

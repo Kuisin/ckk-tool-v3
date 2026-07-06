@@ -13,19 +13,14 @@
 
 import { Anchor, Badge, Stack, Table, Tabs, Text } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
-import {
-  IconCopy,
-  IconDownload,
-  IconHistory,
-  IconSend,
-} from "@tabler/icons-react";
+import { IconCopy, IconDownload, IconSend } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { issueQuote } from "@/app/(dashboard)/sales/quotes/actions";
 import { PrimaryButton } from "@/components/ui/buttons";
 import { DocNumber } from "@/components/ui/DocNumber";
-import { EmptyState } from "@/components/ui/EmptyState";
 import { FieldValue } from "@/components/ui/FieldValue";
+import { HistoryPanel } from "@/components/ui/HistoryPanel";
 import { MoneyText } from "@/components/ui/MoneyText";
 import {
   PdfAttachmentPanel,
@@ -33,6 +28,7 @@ import {
 } from "@/components/ui/PdfAttachmentPanel";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import {
+  type AuditEntry,
   DetailShell,
   ResourceActions,
   SummaryGrid,
@@ -53,10 +49,13 @@ const BASE_PATH = "/sales/quotes";
 export function QuoteDetail({
   quote,
   relatedEntries,
+  auditEntries,
 }: {
   quote: Quote;
   /** この見積の明細 tier が属する価格表エントリ（関連タブ・適用価格表）。 */
   relatedEntries: PriceListEntry[];
+  /** 操作履歴（audit_logs 由来、履歴タブ）。 */
+  auditEntries: AuditEntry[];
 }) {
   const router = useRouter();
   const totals = quoteTotals(quote);
@@ -364,10 +363,7 @@ export function QuoteDetail({
         </Tabs.Panel>
 
         <Tabs.Panel pt="md" value="history">
-          <EmptyState
-            icon={<IconHistory size={24} />}
-            message="変更履歴はまだ記録されていません"
-          />
+          <HistoryPanel entries={auditEntries} />
         </Tabs.Panel>
       </Tabs>
 

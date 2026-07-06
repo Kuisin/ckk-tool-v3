@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { CustomerDetail } from "@/components/master/customers/CustomerDetail";
+import { fetchAuditEntries } from "@/lib/audit";
 import { fetchCustomerDetail } from "../../_shared/bp-data";
 
 export const dynamic = "force-dynamic";
@@ -13,5 +14,6 @@ export default async function MasterCustomersDetailPage({
   const { id } = await params;
   const record = await fetchCustomerDetail(id);
   if (!record) notFound();
-  return <CustomerDetail record={record} />;
+  const auditEntries = await fetchAuditEntries("business_partners", id);
+  return <CustomerDetail auditEntries={auditEntries} record={record} />;
 }

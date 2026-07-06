@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { SupplierDetail } from "@/components/master/suppliers/SupplierDetail";
+import { fetchAuditEntries } from "@/lib/audit";
 import { fetchSupplierDetail } from "../../_shared/bp-data";
 
 export const dynamic = "force-dynamic";
@@ -13,5 +14,6 @@ export default async function MasterSuppliersDetailPage({
   const { id } = await params;
   const record = await fetchSupplierDetail(id);
   if (!record) notFound();
-  return <SupplierDetail record={record} />;
+  const auditEntries = await fetchAuditEntries("business_partners", id);
+  return <SupplierDetail auditEntries={auditEntries} record={record} />;
 }

@@ -27,7 +27,6 @@ import {
   IconCopyPlus,
   IconEdit,
   IconFileText,
-  IconHistory,
   IconPlus,
   IconTrash,
 } from "@tabler/icons-react";
@@ -41,12 +40,13 @@ import type { RelatedQuoteRow } from "@/app/(dashboard)/sales/price-lists/data";
 import { ActiveBadge } from "@/components/ui/ActiveBadge";
 import { SecondaryButton } from "@/components/ui/buttons";
 import { DocNumber } from "@/components/ui/DocNumber";
-import { EmptyState } from "@/components/ui/EmptyState";
 import { FieldValue } from "@/components/ui/FieldValue";
+import { HistoryPanel } from "@/components/ui/HistoryPanel";
 import { MoneyText } from "@/components/ui/MoneyText";
 import { openConfirm } from "@/components/ui/modals";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import {
+  type AuditEntry,
   DetailShell,
   ResourceActions,
   SummaryGrid,
@@ -80,6 +80,7 @@ export function PriceListDetail({
   relatedQuotes,
   customerOptions,
   productOptions,
+  auditEntries,
 }: {
   entry: PriceListEntry;
   /** 同一 (顧客, 製品) の他の注文種別。 */
@@ -87,6 +88,8 @@ export function PriceListDetail({
   relatedQuotes: RelatedQuoteRow[];
   customerOptions: Option[];
   productOptions: Option[];
+  /** 操作履歴（audit_logs 由来、履歴タブ）。 */
+  auditEntries: AuditEntry[];
 }) {
   const router = useRouter();
   const [, startTransition] = useTransition();
@@ -483,10 +486,7 @@ export function PriceListDetail({
         </Tabs.Panel>
 
         <Tabs.Panel pt="md" value="history">
-          <EmptyState
-            icon={<IconHistory size={24} />}
-            message="変更履歴はまだ記録されていません"
-          />
+          <HistoryPanel entries={auditEntries} />
         </Tabs.Panel>
       </Tabs>
 

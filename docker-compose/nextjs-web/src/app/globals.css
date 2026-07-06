@@ -196,6 +196,15 @@ body {
     margin-bottom: 4px;
   }
 
+  /* Required-field marker: guarantee the `*` is always red, independent of any
+     future theme change. Mantine's `withAsterisk` renders this span (default is
+     already the error red); pinning it makes the contract explicit and also
+     covers the manual `*` from <HelpLabel required /> / <FormSection required />. */
+  .mantine-InputWrapper-required,
+  .required-asterisk {
+    color: var(--mantine-color-error);
+  }
+
   /* Compact audit history timeline — tighter row spacing than Mantine default. */
   .audit-timeline-item:not(:first-of-type) {
     margin-top: 20px;

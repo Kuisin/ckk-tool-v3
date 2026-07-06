@@ -9,6 +9,7 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
+import { recordAudit } from "@/lib/audit";
 import { Prisma, prisma } from "@/lib/db";
 import { nextDocumentNumber } from "@/lib/numbering";
 import {
@@ -67,6 +68,18 @@ export async function createProduct(
         notes: v.notes?.trim() || null,
       },
     });
+    await recordAudit({
+      action: "CREATE",
+      tableName: "products",
+      recordId: created.id,
+      after: {
+        nameJa: v.nameJa,
+        materialId: v.materialId,
+        unit: v.unit,
+        isActive: v.isActive,
+        notes: v.notes?.trim() || null,
+      },
+    });
     revalidate(created.id);
     return actionOk({ id: created.id });
   } catch (e) {
@@ -84,6 +97,15 @@ export async function updateProduct(
   }
   const v = parsed.data;
   try {
+    const prior = await prisma.product.findUnique({
+      where: { id },
+      select: {
+        materialId: true,
+        unit: true,
+        isActive: true,
+        notes: true,
+      },
+    });
     await prisma.product.update({
       where: { id },
       data: {
@@ -91,6 +113,26 @@ export async function updateProduct(
         materialId: v.materialId,
         unit: v.unit,
         spec: specJson(v.spec) ?? Prisma.DbNull,
+        isActive: v.isActive,
+        notes: v.notes?.trim() || null,
+      },
+    });
+    await recordAudit({
+      action: "UPDATE",
+      tableName: "products",
+      recordId: id,
+      before: prior
+        ? {
+            materialId: prior.materialId,
+            unit: prior.unit,
+            isActive: prior.isActive,
+            notes: prior.notes,
+          }
+        : undefined,
+      after: {
+        nameJa: v.nameJa,
+        materialId: v.materialId,
+        unit: v.unit,
         isActive: v.isActive,
         notes: v.notes?.trim() || null,
       },
@@ -112,6 +154,14 @@ export async function setProductsActive(
       where: { id: { in: ids } },
       data: { isActive },
     });
+    for (const id of ids) {
+      await recordAudit({
+        action: "UPDATE",
+        tableName: "products",
+        recordId: id,
+        after: { isActive },
+      });
+    }
     revalidate();
     for (const id of ids) revalidatePath(`${BASE_PATH}/${id}`);
     return actionOk();
@@ -135,6 +185,13 @@ export async function deleteProducts(ids: string[]): Promise<ActionResult> {
       );
     }
     await prisma.product.deleteMany({ where: { id: { in: ids } } });
+    for (const id of ids) {
+      await recordAudit({
+        action: "DELETE",
+        tableName: "products",
+        recordId: id,
+      });
+    }
     revalidate();
     return actionOk();
   } catch (e) {

@@ -9,6 +9,7 @@
  */
 
 import { revalidatePath } from "next/cache";
+import { recordAudit } from "@/lib/audit";
 import { prisma } from "@/lib/db";
 import {
   type ActionResult,
@@ -31,10 +32,24 @@ export async function setBpsActive(
 ): Promise<ActionResult> {
   if (ids.length === 0) return actionError("対象が選択されていません");
   try {
+    const priors = await prisma.businessPartner.findMany({
+      where: { id: { in: ids } },
+      select: { id: true, isActive: true },
+    });
     await prisma.businessPartner.updateMany({
       where: { id: { in: ids } },
       data: { isActive },
     });
+    const priorMap = new Map(priors.map((p) => [p.id, p.isActive]));
+    for (const id of ids) {
+      await recordAudit({
+        action: "UPDATE",
+        tableName: "business_partners",
+        recordId: id,
+        before: { isActive: priorMap.get(id) },
+        after: { isActive },
+      });
+    }
     revalidateBp(ids);
     return actionOk();
   } catch (e) {
@@ -71,6 +86,10 @@ export async function deleteBps(ids: string[]): Promise<ActionResult> {
         "支店が存在するため削除できません。先に支店を削除してください。",
       );
     }
+    const targets = await prisma.businessPartner.findMany({
+      where: { id: { in: ids } },
+      select: { id: true, name: true },
+    });
     await prisma.$transaction([
       prisma.bpContact.deleteMany({ where: { bpId: { in: ids } } }),
       prisma.bpRoleAssignment.deleteMany({ where: { bpId: { in: ids } } }),
@@ -79,6 +98,14 @@ export async function deleteBps(ids: string[]): Promise<ActionResult> {
       prisma.bpEndUserAttrs.deleteMany({ where: { bpId: { in: ids } } }),
       prisma.businessPartner.deleteMany({ where: { id: { in: ids } } }),
     ]);
+    for (const t of targets) {
+      await recordAudit({
+        action: "DELETE",
+        tableName: "business_partners",
+        recordId: t.id,
+        before: { nameJa: (t.name as { ja?: string } | null)?.ja ?? null },
+      });
+    }
     revalidateBp(ids);
     return actionOk();
   } catch (e) {

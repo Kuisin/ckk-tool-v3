@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { QuoteDetail } from "@/components/sales/quotes/QuoteDetail";
-import { parseDocKey } from "@/lib/doc-number";
+import { fetchAuditEntries } from "@/lib/audit";
+import { formatQuoteNumber, parseDocKey } from "@/lib/doc-number";
 import { fetchEntriesForQuote, fetchQuote } from "../data";
 
 export const dynamic = "force-dynamic";
@@ -15,11 +16,18 @@ export default async function SalesQuotesDetailPage({
   const key = parseDocKey(id, "QOT");
   if (!key) notFound();
 
-  const [quote, relatedEntries] = await Promise.all([
+  const [quote, relatedEntries, auditEntries] = await Promise.all([
     fetchQuote(key),
     fetchEntriesForQuote(key),
+    fetchAuditEntries("quotes", formatQuoteNumber(key)),
   ]);
   if (!quote) notFound();
 
-  return <QuoteDetail quote={quote} relatedEntries={relatedEntries} />;
+  return (
+    <QuoteDetail
+      auditEntries={auditEntries}
+      quote={quote}
+      relatedEntries={relatedEntries}
+    />
+  );
 }
