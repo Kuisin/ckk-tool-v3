@@ -12,6 +12,16 @@ import { fetchPriceEntry, fetchRelatedQuotes } from "../data";
 
 export const dynamic = "force-dynamic";
 
+/** 未認証スクレイパ向けの汎用 OG（種別+番号のみ、業務データなし）。 */
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  const { id } = await params;
+  return { title: `価格表 ${decodeURIComponent(id)} | CKK 業務管理システム` };
+}
+
 /** 価格表 詳細 (SA21). `id` は価格表番号 PRC-YYYYMM-NNNNN. */
 export default async function PriceListDetailPage({
   params,

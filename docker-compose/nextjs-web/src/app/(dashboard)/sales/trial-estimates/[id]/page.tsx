@@ -20,6 +20,16 @@ import {
 
 export const dynamic = "force-dynamic";
 
+/** 未認証スクレイパ向けの汎用 OG（種別+番号のみ、業務データなし）。 */
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  const { id } = await params;
+  return { title: `試算 ${decodeURIComponent(id)} | CKK 業務管理システム` };
+}
+
 /** 試算 詳細 (SA52). URL id = 導出文書番号 EST-YYYYMM-NNNNN. */
 export default async function TrialEstimateDetailPage({
   params,
