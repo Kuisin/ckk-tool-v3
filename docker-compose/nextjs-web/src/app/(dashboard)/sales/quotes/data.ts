@@ -104,18 +104,20 @@ export async function fetchEntriesForQuote(
         some: { quoteYearMonth: key.yearMonth, quoteSeq: key.seq },
       },
     },
-    select: { customerBpId: true, productId: true, orderType: true },
+    select: { entryYearMonth: true, entrySeq: true },
   });
   const seen = new Set<string>();
   const keys = tiers.filter((t) => {
-    const k = `${t.customerBpId}__${t.productId}__${t.orderType}`;
+    const k = `${t.entryYearMonth}-${t.entrySeq}`;
     if (seen.has(k)) return false;
     seen.add(k);
     return true;
   });
   if (keys.length === 0) return [];
   const rows = await prisma.priceListEntry.findMany({
-    where: { OR: keys },
+    where: {
+      OR: keys.map((t) => ({ yearMonth: t.entryYearMonth, seq: t.entrySeq })),
+    },
     include: {
       customerBp: true,
       product: true,

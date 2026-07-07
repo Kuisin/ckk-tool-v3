@@ -5,7 +5,8 @@
  *
  * sales.estimates は複合キー (year_month, seq) — EST-YYYYMM-NNNNN は
  * lib/doc-number.ts で導出する。「価格表に登録」は price_list_entries
- * (自然複合キー) + 既定 tier を作成し、試算を REGISTERED にロックする。
+ * ((year_month, seq) 採番 = PRC-番号) + 既定 tier を作成し、試算を
+ * REGISTERED にロックする。
  */
 
 import { revalidatePath } from "next/cache";
@@ -15,8 +16,8 @@ import { type Prisma, prisma } from "@/lib/db";
 import {
   type DocKey,
   formatEstimateNumber,
+  formatPriceListNumber,
   parseDocKey,
-  priceEntryKey,
 } from "@/lib/doc-number";
 import { fetchPriceHistory } from "@/lib/material-pricing";
 import {
@@ -207,9 +208,12 @@ export async function registerPriceListFromEstimate(
     if (estimate.status !== "CONFIRMED") {
       return actionError("確定済みの試算のみ価格表に登録できます");
     }
+    const entryKey = await allocateDocumentKey("PRICE_LIST");
     await prisma.$transaction([
       prisma.priceListEntry.create({
         data: {
+          yearMonth: entryKey.yearMonth,
+          seq: entryKey.seq,
           customerBpId: v.customerBpId,
           productId: Number(v.productId),
           orderType: v.orderType,
@@ -236,11 +240,7 @@ export async function registerPriceListFromEstimate(
         data: { status: "REGISTERED", registeredAt: new Date() },
       }),
     ]);
-    const entryId = priceEntryKey(
-      v.customerBpId,
-      Number(v.productId),
-      v.orderType,
-    );
+    const entryId = formatPriceListNumber(entryKey);
     await recordAudit({
       action: "UPDATE",
       tableName: "estimates",

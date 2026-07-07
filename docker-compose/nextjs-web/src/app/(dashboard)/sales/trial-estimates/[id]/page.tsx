@@ -5,8 +5,9 @@ import { fetchAuditEntries } from "@/lib/audit";
 import { prisma } from "@/lib/db";
 import {
   formatEstimateNumber,
+  formatPriceListNumber,
+  formatProductNumber,
   parseDocKey,
-  priceEntryKey,
 } from "@/lib/doc-number";
 import { type LocalizedText, localized } from "@/lib/format";
 import { fetchPriceHistory } from "@/lib/material-pricing";
@@ -57,13 +58,17 @@ export default async function TrialEstimateDetailPage({
     ? await fetchPriceHistory(Number(record.materialId))
     : [];
 
-  const linkedEntries: LinkedPriceEntry[] = linked.map((e) => ({
-    entryId: priceEntryKey(e.customerBpId, e.productId, e.orderType),
-    customerName: localized(e.customerBp.name as LocalizedText | null),
-    productName: `${localized(e.product.name as LocalizedText | null)} ${e.productId}`,
-    orderType: e.orderType,
-    tierCount: e._count.tiers,
-  }));
+  const linkedEntries: LinkedPriceEntry[] = linked.map((e) => {
+    const code = formatProductNumber(e.product.yearMonth, e.product.seq);
+    const nm = localized(e.product.name as LocalizedText | null);
+    return {
+      entryId: formatPriceListNumber({ yearMonth: e.yearMonth, seq: e.seq }),
+      customerName: localized(e.customerBp.name as LocalizedText | null),
+      productName: code ? `${nm} ${code}` : nm,
+      orderType: e.orderType,
+      tierCount: e._count.tiers,
+    };
+  });
 
   return (
     <TrialEstimateDetail

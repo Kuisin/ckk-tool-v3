@@ -5,7 +5,7 @@ import {
 } from "@/components/master/products/ProductDetail";
 import { fetchAuditEntries } from "@/lib/audit";
 import { prisma } from "@/lib/db";
-import { formatProductNumber } from "@/lib/doc-number";
+import { formatPriceListNumber, formatProductNumber } from "@/lib/doc-number";
 import { type LocalizedText, localized } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
@@ -62,8 +62,8 @@ export default async function MasterProductsDetailPage({
     createdAt: r.createdAt.toISOString(),
     updatedAt: r.updatedAt.toISOString(),
     priceListEntries: r.priceListEntries.map((e) => ({
-      // Composite entry key — mirrors the price-list URL id format.
-      id: `${e.customerBpId}__${e.productId}__${e.orderType}`,
+      // 価格表番号 PRC-… — mirrors the price-list URL id format.
+      id: formatPriceListNumber({ yearMonth: e.yearMonth, seq: e.seq }),
       customerName: localized(e.customerBp.name as LocalizedText | null),
       orderType: e.orderType,
       validFrom: e.validFrom.toISOString(),

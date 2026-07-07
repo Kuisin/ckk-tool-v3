@@ -13,6 +13,7 @@ const SEQUENCES = {
   PRODUCT: { prefix: "PRD", digits: 4 },
   ESTIMATE: { prefix: "EST", digits: 5 },
   QUOTE: { prefix: "QOT", digits: 5 },
+  PRICE_LIST: { prefix: "PRC", digits: 5 },
 } as const;
 
 export type NumberingKey = keyof typeof SEQUENCES;

@@ -61,7 +61,6 @@ import { DiscountRuleModal } from "./DiscountRuleModal";
 import { DuplicatePriceListModal } from "./DuplicatePriceListModal";
 import {
   discountValueLabel,
-  entryKeyParts,
   entrySummary,
   multiplierLabel,
   type PriceDiscount,
@@ -109,7 +108,7 @@ export function PriceListDetail({
   const saveDiscount = (rule: PriceDiscount) => {
     startTransition(async () => {
       const result = await saveDiscountRule({
-        key: entryKeyParts(entry),
+        entryNumber: entry.entryId,
         id: rule.id || null,
         label: rule.label,
         discountType: rule.discountType,
@@ -144,10 +143,7 @@ export function PriceListDetail({
       confirmLabel: "削除",
       onConfirm: () => {
         startTransition(async () => {
-          const result = await deleteDiscountRule(
-            entryKeyParts(entry),
-            rule.id,
-          );
+          const result = await deleteDiscountRule(entry.entryId, rule.id);
           if (result.ok) {
             router.refresh();
           } else {

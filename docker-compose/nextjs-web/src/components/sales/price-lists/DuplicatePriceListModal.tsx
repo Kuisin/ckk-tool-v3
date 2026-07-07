@@ -20,7 +20,6 @@ import { MoneyText } from "@/components/ui/MoneyText";
 import { FormModal, type ModalBaseProps } from "@/components/ui/modals";
 import { ORDER_TYPE_LABEL } from "@/lib/mock";
 import {
-  entryKeyParts,
   type PriceListEntry,
   quantityRange,
   requiresEndDate,
@@ -76,7 +75,7 @@ export function DuplicatePriceListModal({
         }
         startTransition(async () => {
           const result = await changePriceEntryPeriod({
-            key: entryKeyParts(source),
+            entryNumber: source.entryId,
             validFrom,
             validUntil,
           });

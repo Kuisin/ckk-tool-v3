@@ -20,7 +20,6 @@ import type { Option } from "@/lib/mock";
 import { ORDER_TYPE_LABEL, ORDER_TYPE_OPTIONS } from "@/lib/mock";
 import {
   type EntryOrderType,
-  entryKeyParts,
   type PriceListEntry,
   requiresEndDate,
 } from "./model";
@@ -84,8 +83,8 @@ export function CopyPriceListModal({
         }
         startTransition(async () => {
           const result = await copyPriceEntry({
-            sourceKey: entryKeyParts(source),
-            targetKey: {
+            sourceEntryNumber: source.entryId,
+            targetIdentity: {
               customerBpId: customerId,
               productId,
               orderType: orderType as EntryOrderType,

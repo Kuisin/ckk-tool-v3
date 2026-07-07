@@ -10,7 +10,7 @@ import { notifications } from "@mantine/notifications";
 import { useTransition } from "react";
 import { deletePriceEntries } from "@/app/(dashboard)/sales/price-lists/actions";
 import { ConfirmModal, type ModalBaseProps } from "@/components/ui/modals";
-import { entryKeyParts, type PriceListEntry } from "./model";
+import type { PriceListEntry } from "./model";
 
 export function DeletePriceListModal({
   opened,
@@ -35,7 +35,7 @@ export function DeletePriceListModal({
       onConfirm={() => {
         if (!target) return;
         startTransition(async () => {
-          const result = await deletePriceEntries([entryKeyParts(target)]);
+          const result = await deletePriceEntries([target.entryId]);
           if (result.ok) {
             notifications.show({
               title: "削除しました",
