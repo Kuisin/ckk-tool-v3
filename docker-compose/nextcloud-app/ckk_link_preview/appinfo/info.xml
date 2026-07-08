@@ -1,0 +1,23 @@
+<?xml version="1.0"?>
+<info xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+      xsi:noNamespaceSchemaLocation="https://apps.nextcloud.com/schema/apps/info.xsd">
+    <id>ckk_link_preview</id>
+    <name>CKK Link Preview</name>
+    <summary>CKK 業務管理システムの URL に権限連動プレビューを表示</summary>
+    <description><![CDATA[
+Talk / Text に貼られた ckk.kai-lab.net / ckk-dev.kai-lab.net の URL を、
+CKK 業務管理システムの /api/preview/resolve に照会してプレビュー表示します。
+閲覧ユーザー（Samba AD で CKK 側と同一 ID）に READ 権限がある場合のみ
+顧客名・金額などの業務データ入りリッチプレビューを返し、権限がない場合は
+文書種別と番号のみの汎用プレビューになります。
+    ]]></description>
+    <version>1.0.0</version>
+    <licence>agpl</licence>
+    <author>CKK</author>
+    <namespace>CkkLinkPreview</namespace>
+    <category>integration</category>
+    <bugs>https://github.com/Kuisin/ckk-tool-v3/issues</bugs>
+    <dependencies>
+        <nextcloud min-version="28" max-version="31"/>
+    </dependencies>
+</info>

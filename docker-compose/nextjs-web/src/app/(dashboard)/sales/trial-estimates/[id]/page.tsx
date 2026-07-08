@@ -5,8 +5,9 @@ import { fetchAuditEntries } from "@/lib/audit";
 import { prisma } from "@/lib/db";
 import {
   formatEstimateNumber,
+  formatPriceListNumber,
+  formatProductNumber,
   parseDocKey,
-  priceEntryKey,
 } from "@/lib/doc-number";
 import { type LocalizedText, localized } from "@/lib/format";
 import { fetchPriceHistory } from "@/lib/material-pricing";
@@ -18,6 +19,16 @@ import {
 } from "../data";
 
 export const dynamic = "force-dynamic";
+
+/** 未認証スクレイパ向けの汎用 OG（種別+番号のみ、業務データなし）。 */
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  const { id } = await params;
+  return { title: `試算 ${decodeURIComponent(id)} | CKK 業務管理システム` };
+}
 
 /** 試算 詳細 (SA52). URL id = 導出文書番号 EST-YYYYMM-NNNNN. */
 export default async function TrialEstimateDetailPage({
@@ -57,13 +68,17 @@ export default async function TrialEstimateDetailPage({
     ? await fetchPriceHistory(Number(record.materialId))
     : [];
 
-  const linkedEntries: LinkedPriceEntry[] = linked.map((e) => ({
-    entryId: priceEntryKey(e.customerBpId, e.productId, e.orderType),
-    customerName: localized(e.customerBp.name as LocalizedText | null),
-    productName: `${localized(e.product.name as LocalizedText | null)} ${e.productId}`,
-    orderType: e.orderType,
-    tierCount: e._count.tiers,
-  }));
+  const linkedEntries: LinkedPriceEntry[] = linked.map((e) => {
+    const code = formatProductNumber(e.product.yearMonth, e.product.seq);
+    const nm = localized(e.product.name as LocalizedText | null);
+    return {
+      entryId: formatPriceListNumber({ yearMonth: e.yearMonth, seq: e.seq }),
+      customerName: localized(e.customerBp.name as LocalizedText | null),
+      productName: code ? `${nm} ${code}` : nm,
+      orderType: e.orderType,
+      tierCount: e._count.tiers,
+    };
+  });
 
   return (
     <TrialEstimateDetail

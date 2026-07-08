@@ -1,8 +1,9 @@
 /**
  * model.ts — 価格表 view-model types + pure display/pricing helpers.
  *
- * Model (per sales.price_list_entries — natural composite key):
- *   Entry = (顧客, 製品, 注文種別) — the identity key (unique, immutable).
+ * Model (per sales.price_list_entries — combined key (year_month, seq)):
+ *   Entry — 表示番号 PRC-YYYYMM-NNNNN はキーから導出（URL id と同一）。
+ *           (顧客, 製品, 注文種別) は作成後不変の識別（unique）.
  *           Owns 基準単価 (試算の見積単価、手動上書き可) + 有効期間 + 通貨 + 状態.
  *     └ Tier     = 数量範囲 → 倍率 (×1.01 など)。単価 = 基準単価 × 倍率、
  *                  行ごとに手動上書き (priceOverride) 可。
@@ -14,7 +15,6 @@
  * everything here is pure and client-safe.
  */
 
-import { priceEntryKey } from "@/lib/doc-number";
 import { formatDate, formatMoney } from "@/lib/format";
 
 /**
@@ -52,8 +52,9 @@ export interface PriceDiscount {
   isActive: boolean;
 }
 
-/** A (顧客, 製品, 注文種別) price entry — owns the period shared by its tiers. */
+/** A price entry — owns the period shared by its tiers. */
 export interface PriceListEntry {
+  /** 価格表番号 PRC-YYYYMM-NNNNN（URL id と同一）。 */
   entryId: string;
   customerId: string;
   customerName: string;
@@ -90,29 +91,13 @@ export function requiresEndDate(orderType: string): boolean {
   return END_DATE_REQUIRED_TYPES.includes(orderType);
 }
 
-/** URL-safe entry key — `{customerId}__{productId}__{orderType}`. */
-export const entryKey = priceEntryKey;
-
 export type EntryOrderType = "PRODUCTION" | "TEST" | "SAMPLE" | "OTHER";
 
-/** Bare entry identity — duplicate warnings / bulk-action payloads. */
+/** Bare entry identity（顧客×製品×種別）— duplicate warnings 用。 */
 export interface EntryIdentity {
   customerBpId: string;
   productId: string;
   orderType: string;
-}
-
-/** Entry → its composite key parts (Server Action payload shape). */
-export function entryKeyParts(e: PriceListEntry): {
-  customerBpId: string;
-  productId: string;
-  orderType: EntryOrderType;
-} {
-  return {
-    customerBpId: e.customerId,
-    productId: e.productId,
-    orderType: e.orderType as EntryOrderType,
-  };
 }
 
 /**

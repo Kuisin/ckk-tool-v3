@@ -81,8 +81,8 @@ export function DiscountRuleModal({
           setError("数量上限は下限以上を入力してください");
           return;
         }
-        // TODO(server-action): persist the rule.
-        onSave({ id: initial?.id ?? `pd-${Date.now()}`, ...draft });
+        // id は編集時のみ（新規は空 → saveDiscountRule が create する）。
+        onSave({ id: initial?.id ?? "", ...draft });
         onClose();
       }}
       opened={opened}

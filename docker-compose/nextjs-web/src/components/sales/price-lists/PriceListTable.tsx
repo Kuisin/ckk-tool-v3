@@ -41,7 +41,6 @@ import { CreateQuoteModal } from "./CreateQuoteModal";
 import { DeletePriceListModal } from "./DeletePriceListModal";
 import { DuplicatePriceListModal } from "./DuplicatePriceListModal";
 import {
-  entryKeyParts,
   entrySummary,
   type PriceListEntry,
   priceRangeLabel,
@@ -79,7 +78,7 @@ export function PriceListTable({
   const bulkSetActive = (rows: PriceListEntry[], isActive: boolean) => {
     startTransition(async () => {
       const result = await setPriceEntriesActive(
-        rows.map(entryKeyParts),
+        rows.map((r) => r.entryId),
         isActive,
       );
       if (result.ok) {
@@ -106,7 +105,7 @@ export function PriceListTable({
       confirmLabel: "削除する",
       onConfirm: () => {
         startTransition(async () => {
-          const result = await deletePriceEntries(rows.map(entryKeyParts));
+          const result = await deletePriceEntries(rows.map((r) => r.entryId));
           if (result.ok) {
             notifications.show({
               title: "削除しました",

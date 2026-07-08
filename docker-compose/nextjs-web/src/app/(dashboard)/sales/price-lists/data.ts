@@ -1,17 +1,19 @@
 /**
  * data.ts — server-side fetch/mapping for the 価格表 pages.
  *
- * sales.price_list_entries is keyed by the natural composite
- * (customer_bp_id, product_id, order_type) — the URL id is the derived
- * entry key `{customer}__{product}__{orderType}` (lib/doc-number).
+ * sales.price_list_entries is keyed (year_month, seq) — the URL id is the
+ * derived 価格表番号 PRC-YYYYMM-NNNNN (lib/doc-number). 自然キー
+ * (customer_bp_id, product_id, order_type) は UNIQUE の識別用。
  */
 
 import type { PriceListEntry } from "@/components/sales/price-lists/model";
 import { prisma } from "@/lib/db";
 import {
+  type DocKey,
   formatEstimateNumber,
+  formatPriceListNumber,
   formatProductNumber,
-  priceEntryKey,
+  formatQuoteNumber,
 } from "@/lib/doc-number";
 import { type LocalizedText, localized } from "@/lib/format";
 
@@ -26,21 +28,9 @@ const ENTRY_INCLUDE = {
 
 type EntryRow = NonNullable<Awaited<ReturnType<typeof findEntryRow>>>;
 
-export interface EntryKeyParts {
-  customerBpId: string;
-  productId: number;
-  orderType: "PRODUCTION" | "TEST" | "SAMPLE" | "OTHER";
-}
-
-function findEntryRow(key: EntryKeyParts) {
+function findEntryRow(key: DocKey) {
   return prisma.priceListEntry.findUnique({
-    where: {
-      customerBpId_productId_orderType: {
-        customerBpId: key.customerBpId,
-        productId: key.productId,
-        orderType: key.orderType,
-      },
-    },
+    where: { yearMonth_seq: { yearMonth: key.yearMonth, seq: key.seq } },
     include: ENTRY_INCLUDE,
   });
 }
@@ -56,7 +46,7 @@ export function mapEntry(r: EntryRow): PriceListEntry {
         })
       : null;
   return {
-    entryId: priceEntryKey(r.customerBpId, r.productId, r.orderType),
+    entryId: formatPriceListNumber({ yearMonth: r.yearMonth, seq: r.seq }),
     customerId: r.customerBpId,
     customerName: localized(r.customerBp.name as LocalizedText | null),
     productId: String(r.productId),
@@ -100,13 +90,13 @@ export function mapEntry(r: EntryRow): PriceListEntry {
 export async function fetchPriceEntries(): Promise<PriceListEntry[]> {
   const rows = await prisma.priceListEntry.findMany({
     include: ENTRY_INCLUDE,
-    orderBy: [{ customerBpId: "asc" }, { productId: "asc" }],
+    orderBy: [{ yearMonth: "desc" }, { seq: "desc" }],
   });
   return rows.map(mapEntry);
 }
 
 export async function fetchPriceEntry(
-  key: EntryKeyParts,
+  key: DocKey,
 ): Promise<PriceListEntry | null> {
   const row = await findEntryRow(key);
   return row ? mapEntry(row) : null;
@@ -122,15 +112,20 @@ export interface RelatedQuoteRow {
 }
 
 export async function fetchRelatedQuotes(
-  key: EntryKeyParts,
+  key: DocKey,
 ): Promise<RelatedQuoteRow[]> {
   const items = await prisma.quoteItem.findMany({
-    where: { priceListTier: { ...key } },
+    where: {
+      priceListTier: { entryYearMonth: key.yearMonth, entrySeq: key.seq },
+    },
     include: { quote: true },
   });
   const byQuote = new Map<string, RelatedQuoteRow>();
   for (const it of items) {
-    const number = `QOT-${it.quoteYearMonth}-${String(it.quoteSeq).padStart(5, "0")}`;
+    const number = formatQuoteNumber({
+      yearMonth: it.quoteYearMonth,
+      seq: it.quoteSeq,
+    });
     const agg = byQuote.get(number) ?? {
       quoteNumber: number,
       quantity: 0,

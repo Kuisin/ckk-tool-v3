@@ -239,12 +239,7 @@ export function PriceListTypeForm({
       !customBase && estimateBase != null
         ? { ...raw, baseUnitPrice: estimateBase }
         : raw;
-    const payload = {
-      key: {
-        customerBpId: values.customerId,
-        productId: values.productId,
-        orderType: values.orderType as EntryOrderType,
-      },
+    const common = {
       baseUnitPrice: values.baseUnitPrice,
       validFrom: values.validFrom,
       validUntil: values.validUntil,
@@ -253,9 +248,16 @@ export function PriceListTypeForm({
     };
     startTransition(async () => {
       const result =
-        mode === "edit"
-          ? await updatePriceEntry(payload)
-          : await createPriceEntry(payload);
+        mode === "edit" && entryId
+          ? await updatePriceEntry({ entryNumber: entryId, ...common })
+          : await createPriceEntry({
+              identity: {
+                customerBpId: values.customerId,
+                productId: values.productId,
+                orderType: values.orderType as EntryOrderType,
+              },
+              ...common,
+            });
       if (result.ok) {
         notifications.show({
           title: "保存しました",

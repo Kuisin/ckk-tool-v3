@@ -10,7 +10,6 @@
 
 import { describe, expect, it } from "vitest";
 import {
-  entryKey,
   findApplicableDiscount,
   type PriceListEntry,
   tierUnitPrice,
@@ -28,7 +27,7 @@ describe("試算 → 価格表 → 見積書 (constructed entry)", () => {
 
   // ── 2. 価格表に登録 (基準単価 = 試算値, ×倍率 tiers + 値引きルール) ───────
   const entry: PriceListEntry = {
-    entryId: entryKey("bp-002", 9002, "PRODUCTION"),
+    entryId: "PRC-202607-00098",
     customerId: "bp-002",
     customerName: "合同会社XYZ工業",
     productId: "9002",

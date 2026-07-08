@@ -152,7 +152,7 @@ describe("価格表 back-references", () => {
 
   it("findPriceTierRef resolves a stored tier id to its entry + label", () => {
     const ref = findPriceTierRef("ti-2");
-    expect(ref?.entryId).toBe("bp-001__1001__PRODUCTION");
+    expect(ref?.entryId).toBe("PRC-202601-00001");
     expect(ref?.estimateNumber).toBe("EST-202605-00031");
     expect(ref?.label).toBe(`10〜29本 ${formatMoney(6900)}`);
     expect(findPriceTierRef("nope")).toBe(null);

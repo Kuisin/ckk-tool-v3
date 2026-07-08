@@ -4,19 +4,18 @@ import { prisma } from "@/lib/db";
 import { parseDocKey } from "@/lib/doc-number";
 import { calcTrialPricing, type TrialInput } from "@/lib/trial-pricing";
 import { fetchExistingEntryRefs } from "../../../trial-estimates/data";
-import { resolveEntryKey } from "../../actions";
 import { fetchPriceEntry } from "../../data";
 
 export const dynamic = "force-dynamic";
 
-/** 価格表 編集 (SA21 → edit). `id` is the (顧客, 製品, 注文種別) entry key. */
+/** 価格表 編集 (SA21 → edit). `id` は価格表番号 PRC-YYYYMM-NNNNN. */
 export default async function PriceListEditPage({
   params,
 }: {
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const key = await resolveEntryKey(decodeURIComponent(id));
+  const key = parseDocKey(decodeURIComponent(id), "PRC");
   if (!key) notFound();
 
   const [entry, existingEntries] = await Promise.all([

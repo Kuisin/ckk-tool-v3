@@ -8,13 +8,13 @@
  * is wired).
  */
 
-import { entryKey, type PriceListEntry } from "./model";
+import type { PriceListEntry } from "./model";
 
 export * from "./model";
 
 export const MOCK_PRICE_ENTRIES: PriceListEntry[] = [
   {
-    entryId: entryKey("bp-001", 1001, "PRODUCTION"),
+    entryId: "PRC-202601-00001",
     customerId: "bp-001",
     customerName: "株式会社ABC製作所",
     productId: "1001",
@@ -87,7 +87,7 @@ export const MOCK_PRICE_ENTRIES: PriceListEntry[] = [
     updatedAt: "2026-01-05 14:30",
   },
   {
-    entryId: entryKey("bp-001", 1001, "SAMPLE"),
+    entryId: "PRC-202601-00002",
     customerId: "bp-001",
     customerName: "株式会社ABC製作所",
     productId: "1001",
@@ -115,7 +115,7 @@ export const MOCK_PRICE_ENTRIES: PriceListEntry[] = [
     updatedAt: "2026-01-05 14:30",
   },
   {
-    entryId: entryKey("bp-002", 2008, "PRODUCTION"),
+    entryId: "PRC-202602-00003",
     customerId: "bp-002",
     customerName: "合同会社XYZ工業",
     productId: "2008",
@@ -155,7 +155,7 @@ export const MOCK_PRICE_ENTRIES: PriceListEntry[] = [
     updatedAt: "2026-03-15 10:00",
   },
   {
-    entryId: entryKey("bp-003", 3012, "TEST"),
+    entryId: "PRC-202603-00004",
     customerId: "bp-003",
     customerName: "株式会社DEFエンジニアリング",
     productId: "3012",
