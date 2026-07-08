@@ -65,6 +65,24 @@ WHERE NOT EXISTS (
   WHERE a.table_name = 'products' AND a.record_id = p.id::text AND a.action = 'SEED'
 );
 
+-- 価格表エントリ（price_list_entries）
+-- record_id は詳細画面が使う価格表番号 PRC-YYYYMM-NNNNN（lib/doc-number の
+-- formatPriceListNumber = 'PRC-'||year_month||'-'||lpad(seq,5) と一致させる）。
+-- PR #70 で (year_month, seq) 複合キーへ再キーされ、旧デモ監査行の record_id
+-- （customer__product__order_type）とはもう一致しないため、ここで補完する。
+INSERT INTO app.audit_logs (user_id, action, table_name, record_id, after_data, created_at)
+SELECT '00000000-0000-0000-0000-000000000000', 'SEED', 'price_list_entries',
+       'PRC-' || e.year_month || '-' || lpad(e.seq::text, 5, '0'),
+       jsonb_build_object('note', '初期データとして登録', 'base_unit_price', e.base_unit_price),
+       e.created_at
+FROM app.price_list_entries e
+WHERE NOT EXISTS (
+  SELECT 1 FROM app.audit_logs a
+  WHERE a.table_name = 'price_list_entries'
+    AND a.record_id = 'PRC-' || e.year_month || '-' || lpad(e.seq::text, 5, '0')
+    AND a.action = 'SEED'
+);
+
 -- サマリのシステムイベント（操作履歴一覧の区切り・件数記録）
 INSERT INTO app.audit_logs (user_id, action, table_name, record_id, after_data)
 SELECT '00000000-0000-0000-0000-000000000000', 'SEED', 'system', 'legacy-import',
