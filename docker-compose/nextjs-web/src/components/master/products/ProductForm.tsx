@@ -11,6 +11,7 @@
 
 import {
   Group,
+  NumberInput,
   Select,
   SimpleGrid,
   Stack,
@@ -24,12 +25,14 @@ import { IconMinus, IconPlus } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
 import { useTransition } from "react";
 import { z } from "zod";
+import { searchStructuredMaterialTypeOptions } from "@/app/(dashboard)/_shared/option-search";
 import {
   createProduct,
   updateProduct,
 } from "@/app/(dashboard)/master/products/actions";
 import { ActiveBadge } from "@/components/ui/ActiveBadge";
 import { GhostButton } from "@/components/ui/buttons";
+import { SearchSelect } from "@/components/ui/SearchSelect";
 import {
   FormSection,
   FormShell,
@@ -38,19 +41,55 @@ import {
 import { useIsMobile } from "@/hooks/useViewport";
 import { UNIT_OPTIONS } from "@/lib/enum-labels";
 import { zodResolver } from "@/lib/form";
-import type { Option } from "@/lib/mock";
+import { diameterCodeFromMm, lengthCodeFromMm } from "@/lib/material-code";
 
 const BASE_PATH = "/master/products";
 
-const productSchema = z.object({
-  nameJa: z.string().min(1, "名称（日本語）を入力してください"),
-  nameEn: z.string(),
-  materialId: z.string().nullable(),
-  unit: z.string().min(1, "単位を選択してください"),
-  isActive: z.boolean(),
-  notes: z.string(),
-  spec: z.array(z.object({ key: z.string(), value: z.string() })),
-});
+// 直径/全長の許容範囲（素材ビルダーと同じ）。
+const DIAMETER_MIN = 0.1;
+const DIAMETER_MAX = 99.9;
+const LENGTH_MIN = 1;
+const LENGTH_MAX = 999;
+
+const productSchema = z
+  .object({
+    nameJa: z.string().min(1, "名称（日本語）を入力してください"),
+    nameEn: z.string(),
+    // 製品が要求する素材 = 材種 + 直径 + 全長（特定素材には紐付けない）。
+    materialTypeId: z.string().nullable(),
+    materialTypeLabel: z.string(),
+    diameterMm: z.number().nullable(),
+    lengthMm: z.number().nullable(),
+    unit: z.string().min(1, "単位を選択してください"),
+    isActive: z.boolean(),
+    notes: z.string(),
+    spec: z.array(z.object({ key: z.string(), value: z.string() })),
+  })
+  .superRefine((v, ctx) => {
+    if (!v.materialTypeId) return;
+    if (
+      v.diameterMm == null ||
+      v.diameterMm < DIAMETER_MIN ||
+      v.diameterMm > DIAMETER_MAX
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["diameterMm"],
+        message: `直径は ${DIAMETER_MIN}〜${DIAMETER_MAX}mm で入力してください`,
+      });
+    }
+    if (
+      v.lengthMm == null ||
+      v.lengthMm < LENGTH_MIN ||
+      v.lengthMm > LENGTH_MAX
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["lengthMm"],
+        message: `全長は ${LENGTH_MIN}〜${LENGTH_MAX}mm で入力してください`,
+      });
+    }
+  });
 
 type FormValues = z.infer<typeof productSchema>;
 
@@ -59,20 +98,17 @@ export interface ProductFormInitial {
   code: string | null;
   nameJa: string;
   nameEn: string;
-  materialId: string | null;
+  materialTypeId: string | null;
+  materialTypeLabel: string;
+  diameterMm: number | null;
+  lengthMm: number | null;
   unit: string;
   isActive: boolean;
   notes: string;
   spec: { key: string; value: string }[];
 }
 
-export function ProductForm({
-  initial,
-  materialOptions,
-}: {
-  initial?: ProductFormInitial;
-  materialOptions: Option[];
-}) {
+export function ProductForm({ initial }: { initial?: ProductFormInitial }) {
   const router = useRouter();
   const isMobile = useIsMobile();
   const [isPending, startTransition] = useTransition();
@@ -83,7 +119,10 @@ export function ProductForm({
     initialValues: {
       nameJa: initial?.nameJa ?? "",
       nameEn: initial?.nameEn ?? "",
-      materialId: initial?.materialId ?? null,
+      materialTypeId: initial?.materialTypeId ?? null,
+      materialTypeLabel: initial?.materialTypeLabel ?? "",
+      diameterMm: initial?.diameterMm ?? null,
+      lengthMm: initial?.lengthMm ?? null,
       unit: initial?.unit ?? "本",
       isActive: initial?.isActive ?? true,
       notes: initial?.notes ?? "",
@@ -142,23 +181,10 @@ export function ProductForm({
             value={initial?.id ?? ""}
           />
           <Select
-            clearable
-            data={materialOptions}
-            label="素材"
-            placeholder="素材を選択"
-            searchable
-            {...form.getInputProps("materialId")}
-          />
-          <Select
             data={UNIT_OPTIONS}
             label="単位"
             withAsterisk
             {...form.getInputProps("unit")}
-          />
-          <Switch
-            label="有効"
-            mt={isMobile ? 0 : "xl"}
-            {...form.getInputProps("isActive", { type: "checkbox" })}
           />
         </SimpleGrid>
         <Stack gap="sm" mt="sm">
@@ -168,6 +194,10 @@ export function ProductForm({
             label="名称"
             required
           />
+          <Switch
+            label="有効"
+            {...form.getInputProps("isActive", { type: "checkbox" })}
+          />
         </Stack>
         <Textarea
           label="備考"
@@ -176,6 +206,68 @@ export function ProductForm({
           rows={3}
           {...form.getInputProps("notes")}
         />
+      </FormSection>
+
+      <FormSection
+        description="製品が要求する素材を「材種 + 直径 + 全長」で指定します。同一材種・直径の素材を全長に合わせて切断して使用します（特定の素材コードには紐付けません）。"
+        title="素材仕様"
+      >
+        <SearchSelect
+          description="変換済（コード構成あり）の材種のみ選択できます"
+          label="材種"
+          onChange={(value, option) => {
+            form.setFieldValue("materialTypeId", value);
+            form.setFieldValue("materialTypeLabel", option?.label ?? "");
+          }}
+          onSearch={searchStructuredMaterialTypeOptions}
+          placeholder="材種コード・名称で検索"
+          storageKey="product-material-type"
+          value={form.values.materialTypeId}
+        />
+        <SimpleGrid cols={isMobile ? 1 : 2} mt="sm" spacing="sm">
+          <NumberInput
+            decimalScale={1}
+            description={`コード: ${
+              form.values.diameterMm != null &&
+              form.values.diameterMm >= DIAMETER_MIN &&
+              form.values.diameterMm <= DIAMETER_MAX
+                ? diameterCodeFromMm(form.values.diameterMm)
+                : "—"
+            }（径×10）`}
+            error={form.errors.diameterMm}
+            label="直径 (mm)"
+            max={DIAMETER_MAX}
+            min={DIAMETER_MIN}
+            onChange={(val) =>
+              form.setFieldValue(
+                "diameterMm",
+                val === "" || val == null ? null : Number(val),
+              )
+            }
+            step={0.1}
+            value={form.values.diameterMm ?? ""}
+          />
+          <NumberInput
+            description={`コード: ${
+              form.values.lengthMm != null &&
+              form.values.lengthMm >= LENGTH_MIN &&
+              form.values.lengthMm <= LENGTH_MAX
+                ? lengthCodeFromMm(form.values.lengthMm)
+                : "—"
+            }`}
+            error={form.errors.lengthMm}
+            label="全長 (mm)"
+            max={LENGTH_MAX}
+            min={LENGTH_MIN}
+            onChange={(val) =>
+              form.setFieldValue(
+                "lengthMm",
+                val === "" || val == null ? null : Number(val),
+              )
+            }
+            value={form.values.lengthMm ?? ""}
+          />
+        </SimpleGrid>
       </FormSection>
 
       <FormSection

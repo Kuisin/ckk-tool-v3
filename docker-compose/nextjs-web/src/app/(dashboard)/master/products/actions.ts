@@ -23,16 +23,49 @@ import {
 
 const BASE_PATH = "/master/products";
 
-const productInput = z.object({
-  nameJa: z.string().min(1, "名称（日本語）を入力してください"),
-  nameEn: z.string().optional(),
-  /** 素材の内部 id（文字列 — UI の Select 値）。空/null = 未設定。 */
-  materialId: z.string().nullable(),
-  unit: z.string().min(1, "単位を選択してください"),
-  isActive: z.boolean(),
-  notes: z.string().optional(),
-  spec: z.array(z.object({ key: z.string(), value: z.string() })),
-});
+// 直径/全長の許容範囲（素材ビルダー material-code と同じ）。
+const DIAMETER_MIN = 0.1;
+const DIAMETER_MAX = 99.9;
+const LENGTH_MIN = 1;
+const LENGTH_MAX = 999;
+
+const productInput = z
+  .object({
+    nameJa: z.string().min(1, "名称（日本語）を入力してください"),
+    nameEn: z.string().optional(),
+    /**
+     * 製品が要求する素材の指定 = 材種 + 直径 + 全長。特定 materials 行には
+     * 紐付けない（同一材種・直径の複数素材が cut-to-length で充当可能）。
+     * materialTypeId は材種の内部 id（文字列 — UI の値）。空/null = 未設定。
+     */
+    materialTypeId: z.string().nullable(),
+    diameterMm: z.number().nullable(),
+    lengthMm: z.number().nullable(),
+    unit: z.string().min(1, "単位を選択してください"),
+    isActive: z.boolean(),
+    notes: z.string().optional(),
+    spec: z.array(z.object({ key: z.string(), value: z.string() })),
+  })
+  .superRefine((v, ctx) => {
+    // 材種を指定したら直径・全長も必須（範囲チェック込み）。
+    if (!v.materialTypeId) return;
+    const d = v.diameterMm;
+    if (d == null || d < DIAMETER_MIN || d > DIAMETER_MAX) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["diameterMm"],
+        message: `直径は ${DIAMETER_MIN}〜${DIAMETER_MAX}mm で入力してください`,
+      });
+    }
+    const l = v.lengthMm;
+    if (l == null || l < LENGTH_MIN || l > LENGTH_MAX) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["lengthMm"],
+        message: `全長は ${LENGTH_MIN}〜${LENGTH_MAX}mm で入力してください`,
+      });
+    }
+  });
 
 export type ProductInput = z.infer<typeof productInput>;
 
@@ -41,10 +74,20 @@ function revalidate(id?: number) {
   if (id != null) revalidatePath(`${BASE_PATH}/${id}`);
 }
 
-function materialIdNum(v: string | null): number | null {
+function intIdNum(v: string | null): number | null {
   if (!v) return null;
   const n = Number(v);
   return Number.isInteger(n) && n > 0 ? n : null;
+}
+
+/** 材種を外したら直径/全長も無効化して保存する（トリオで揃える）。 */
+function materialSpec(v: ProductInput) {
+  const materialTypeId = intIdNum(v.materialTypeId);
+  return {
+    materialTypeId,
+    diameterMm: materialTypeId != null ? v.diameterMm : null,
+    lengthMm: materialTypeId != null ? v.lengthMm : null,
+  };
 }
 
 /** Key/value rows → spec JSON object (empty keys dropped, null if none). */
@@ -65,12 +108,15 @@ export async function createProduct(
   const v = parsed.data;
   try {
     const { yearMonth, seq } = await allocateDocumentKey("PRODUCT");
+    const spec = materialSpec(v);
     const created = await prisma.product.create({
       data: {
         yearMonth,
         seq,
         name: localizedInput(v.nameJa, v.nameEn),
-        materialId: materialIdNum(v.materialId),
+        materialTypeId: spec.materialTypeId,
+        diameterMm: spec.diameterMm,
+        lengthMm: spec.lengthMm,
         unit: v.unit,
         spec: specJson(v.spec) ?? undefined,
         isActive: v.isActive,
@@ -86,7 +132,9 @@ export async function createProduct(
       after: {
         code,
         nameJa: v.nameJa,
-        materialId: materialIdNum(v.materialId),
+        materialTypeId: spec.materialTypeId,
+        diameterMm: spec.diameterMm,
+        lengthMm: spec.lengthMm,
         unit: v.unit,
         isActive: v.isActive,
         notes: v.notes?.trim() || null,
@@ -112,17 +160,22 @@ export async function updateProduct(
     const prior = await prisma.product.findUnique({
       where: { id },
       select: {
-        materialId: true,
+        materialTypeId: true,
+        diameterMm: true,
+        lengthMm: true,
         unit: true,
         isActive: true,
         notes: true,
       },
     });
+    const spec = materialSpec(v);
     await prisma.product.update({
       where: { id },
       data: {
         name: localizedInput(v.nameJa, v.nameEn),
-        materialId: materialIdNum(v.materialId),
+        materialTypeId: spec.materialTypeId,
+        diameterMm: spec.diameterMm,
+        lengthMm: spec.lengthMm,
         unit: v.unit,
         spec: specJson(v.spec) ?? Prisma.DbNull,
         isActive: v.isActive,
@@ -135,7 +188,9 @@ export async function updateProduct(
       recordId: String(id),
       before: prior
         ? {
-            materialId: prior.materialId,
+            materialTypeId: prior.materialTypeId,
+            diameterMm: prior.diameterMm ? Number(prior.diameterMm) : null,
+            lengthMm: prior.lengthMm ? Number(prior.lengthMm) : null,
             unit: prior.unit,
             isActive: prior.isActive,
             notes: prior.notes,
@@ -143,7 +198,9 @@ export async function updateProduct(
         : undefined,
       after: {
         nameJa: v.nameJa,
-        materialId: materialIdNum(v.materialId),
+        materialTypeId: spec.materialTypeId,
+        diameterMm: spec.diameterMm,
+        lengthMm: spec.lengthMm,
         unit: v.unit,
         isActive: v.isActive,
         notes: v.notes?.trim() || null,

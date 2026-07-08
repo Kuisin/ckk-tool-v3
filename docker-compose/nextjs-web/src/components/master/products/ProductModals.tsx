@@ -23,14 +23,17 @@ import {
   type ModalBaseProps,
 } from "@/components/ui/modals";
 import { UNIT_OPTIONS } from "@/lib/enum-labels";
-import type { Option } from "@/lib/mock";
 
 export interface ProductModalTarget {
   id: number;
   code: string | null;
   name: string;
   isActive: boolean;
-  materialId: string | null;
+  /** 素材仕様（材種 + 直径 + 全長）。複製時にそのまま引き継ぐ。 */
+  materialTypeId: string | null;
+  materialTypeLabel: string;
+  diameterMm: number | null;
+  lengthMm: number | null;
   unit: string;
 }
 
@@ -140,17 +143,14 @@ export function DuplicateProductModal({
   opened,
   onClose,
   source,
-  materialOptions,
 }: ModalBaseProps & {
   source: ProductModalTarget | null;
-  materialOptions: Option[];
 }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
 
   const [nameJa, setNameJa] = useState("");
   const [nameEn, setNameEn] = useState("");
-  const [materialId, setMaterialId] = useState<string | null>(null);
   const [unit, setUnit] = useState<string | null>(null);
   const [seededFrom, setSeededFrom] = useState<number | null>(null);
 
@@ -159,9 +159,12 @@ export function DuplicateProductModal({
     setSeededFrom(source.id);
     setNameJa(source.name !== "—" ? `${source.name}（コピー）` : "");
     setNameEn("");
-    setMaterialId(source.materialId);
     setUnit(source.unit);
   }
+
+  const materialSpecText = source?.materialTypeId
+    ? `${source.materialTypeLabel || "材種"} ／ φ${source.diameterMm ?? "—"} × ${source.lengthMm ?? "—"}mm`
+    : "—";
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -170,7 +173,9 @@ export function DuplicateProductModal({
       const result = await createProduct({
         nameJa,
         nameEn,
-        materialId,
+        materialTypeId: source?.materialTypeId ?? null,
+        diameterMm: source?.diameterMm ?? null,
+        lengthMm: source?.lengthMm ?? null,
         unit,
         isActive: true,
         notes: "",
@@ -222,13 +227,12 @@ export function DuplicateProductModal({
           onChange={(e) => setNameEn(e.currentTarget.value)}
           value={nameEn}
         />
-        <Select
-          clearable
-          data={materialOptions}
-          label="素材"
-          onChange={setMaterialId}
-          searchable
-          value={materialId}
+        <TextInput
+          description="複製元の材種・直径・全長を引き継ぎます（作成後に編集できます）"
+          disabled
+          label="素材仕様"
+          readOnly
+          value={materialSpecText}
         />
         <Select
           data={UNIT_OPTIONS}

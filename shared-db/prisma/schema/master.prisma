@@ -143,7 +143,8 @@ model MaterialType {
   grade        MaterialManufacturerGrade? @relation(fields: [manufacturerCode, gradeCode], references: [manufacturerCode, code])
   shape        MaterialShape?             @relation(fields: [shapeCode], references: [code])
 
-  materials Material[]
+  materials      Material[]
+  productsByType Product[] @relation("ProductMaterialType")
 
   @@unique([manufacturerCode, gradeCode, shapeCode, kindCode])
   @@map("material_types")
@@ -198,6 +199,12 @@ model Product {
   seq        Int?
   legacyKey  String? @unique @map("legacy_key")
   name       Json
+  // 製品が要求する素材を「材種 + 直径 + 全長」で指定する（cut-to-length のため
+  // 同一材種・直径の複数素材が充当可能で、特定 materials 行には紐付けない）。
+  materialTypeId Int?     @map("material_type_id")
+  diameterMm     Decimal? @map("diameter_mm") @db.Decimal(8, 3)
+  lengthMm       Decimal? @map("length_mm") @db.Decimal(10, 3)
+  // 旧: 特定素材への参照。廃止予定（main 昇格後に別マイグレーションで DROP）。
   materialId Int?    @map("material_id")
   unit       String   @default("本")
   spec       Json?
@@ -206,11 +213,13 @@ model Product {
   createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt  DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
+  materialType     MaterialType?    @relation("ProductMaterialType", fields: [materialTypeId], references: [id])
   material         Material?        @relation(fields: [materialId], references: [id])
   priceListEntries PriceListEntry[]
   quoteItems       QuoteItem[]
 
   @@unique([yearMonth, seq])
+  @@index([materialTypeId])
   @@map("products")
   @@schema("app")
 }

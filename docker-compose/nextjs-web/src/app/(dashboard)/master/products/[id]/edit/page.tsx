@@ -15,13 +15,10 @@ export default async function MasterProductsEditPage({
   const { id: idParam } = await params;
   const id = Number(idParam);
   if (!Number.isInteger(id)) notFound();
-  const [r, materials] = await Promise.all([
-    prisma.product.findUnique({ where: { id } }),
-    prisma.material.findMany({
-      where: { isActive: true },
-      orderBy: { code: "asc" },
-    }),
-  ]);
+  const r = await prisma.product.findUnique({
+    where: { id },
+    include: { materialType: { select: { code: true, name: true } } },
+  });
   if (!r) notFound();
 
   const name = r.name as LocalizedText | null;
@@ -32,10 +29,9 @@ export default async function MasterProductsEditPage({
         )
       : [];
 
-  const materialOptions = materials.map((m) => ({
-    value: String(m.id),
-    label: `${m.code}（${localized(m.name as LocalizedText | null)}）`,
-  }));
+  const materialTypeLabel = r.materialType
+    ? `${r.materialType.code ?? ""} — ${localized(r.materialType.name as LocalizedText | null)}`
+    : "";
 
   return (
     <ProductForm
@@ -44,13 +40,16 @@ export default async function MasterProductsEditPage({
         code: formatProductNumber(r.yearMonth, r.seq),
         nameJa: name?.ja ?? "",
         nameEn: name?.en ?? "",
-        materialId: r.materialId != null ? String(r.materialId) : null,
+        materialTypeId:
+          r.materialTypeId != null ? String(r.materialTypeId) : null,
+        materialTypeLabel,
+        diameterMm: r.diameterMm != null ? Number(r.diameterMm) : null,
+        lengthMm: r.lengthMm != null ? Number(r.lengthMm) : null,
         unit: r.unit,
         isActive: r.isActive,
         notes: r.notes ?? "",
         spec,
       }}
-      materialOptions={materialOptions}
     />
   );
 }

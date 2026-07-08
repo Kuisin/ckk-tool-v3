@@ -10,31 +10,30 @@ export const dynamic = "force-dynamic";
 
 /** 製品 一覧 (MS03). */
 export default async function MasterProductsPage() {
-  const [records, materials] = await Promise.all([
-    prisma.product.findMany({ orderBy: { id: "asc" } }),
-    prisma.material.findMany({
-      where: { isActive: true },
-      orderBy: { code: "asc" },
-    }),
-  ]);
+  const records = await prisma.product.findMany({
+    orderBy: { id: "asc" },
+    include: { materialType: { select: { code: true, name: true } } },
+  });
 
-  const materialCodeById = new Map(materials.map((m) => [m.id, m.code]));
-  const rows: ProductRow[] = records.map((r) => ({
-    id: r.id,
-    code: formatProductNumber(r.yearMonth, r.seq),
-    name: localized(r.name as LocalizedText | null),
-    materialId:
-      r.materialId != null
-        ? (materialCodeById.get(r.materialId) ?? String(r.materialId))
-        : null,
-    unit: r.unit,
-    isActive: r.isActive,
-  }));
+  const rows: ProductRow[] = records.map((r) => {
+    const mtName = r.materialType
+      ? localized(r.materialType.name as LocalizedText | null)
+      : "";
+    return {
+      id: r.id,
+      code: formatProductNumber(r.yearMonth, r.seq),
+      name: localized(r.name as LocalizedText | null),
+      materialTypeId:
+        r.materialTypeId != null ? String(r.materialTypeId) : null,
+      materialTypeLabel: r.materialType
+        ? `${r.materialType.code ?? ""}${mtName ? ` — ${mtName}` : ""}`
+        : "",
+      diameterMm: r.diameterMm != null ? Number(r.diameterMm) : null,
+      lengthMm: r.lengthMm != null ? Number(r.lengthMm) : null,
+      unit: r.unit,
+      isActive: r.isActive,
+    };
+  });
 
-  const materialOptions = materials.map((m) => ({
-    value: String(m.id),
-    label: `${m.code}（${localized(m.name as LocalizedText | null)}）`,
-  }));
-
-  return <ProductTable materialOptions={materialOptions} rows={rows} />;
+  return <ProductTable rows={rows} />;
 }

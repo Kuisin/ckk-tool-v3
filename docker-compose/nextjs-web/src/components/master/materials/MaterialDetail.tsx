@@ -7,7 +7,7 @@
  * 履歴（audit_logs）。構成は作成後不変なので表示のみ。
  */
 
-import { Stack, Table, Tabs, Text } from "@mantine/core";
+import { Stack, Tabs, Text } from "@mantine/core";
 import { IconCircleMinus, IconTrash } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -48,7 +48,6 @@ export interface MaterialDetailData {
   notes: string;
   createdAt: string;
   updatedAt: string;
-  products: { id: number; code: string | null; name: string }[];
 }
 
 export function MaterialDetail({
@@ -149,40 +148,14 @@ export function MaterialDetail({
         </Tabs.Panel>
 
         <Tabs.Panel pt="md" value="related">
-          <Stack gap="lg">
-            <Stack gap="xs">
-              <Text fw={600} size="sm">
-                使用製品
-              </Text>
-              {record.products.length === 0 ? (
-                <Text c="dimmed" size="sm">
-                  この素材を使用する製品はありません
-                </Text>
-              ) : (
-                <Table highlightOnHover striped withTableBorder>
-                  <Table.Thead>
-                    <Table.Tr>
-                      <Table.Th>製品コード</Table.Th>
-                      <Table.Th>名称</Table.Th>
-                    </Table.Tr>
-                  </Table.Thead>
-                  <Table.Tbody>
-                    {record.products.map((p) => (
-                      <Table.Tr
-                        className="cursor-pointer"
-                        key={p.id}
-                        onClick={() => router.push(`/master/products/${p.id}`)}
-                      >
-                        <Table.Td>
-                          <DocNumber c="blue">{p.code ?? "未採番"}</DocNumber>
-                        </Table.Td>
-                        <Table.Td>{p.name}</Table.Td>
-                      </Table.Tr>
-                    ))}
-                  </Table.Tbody>
-                </Table>
-              )}
-            </Stack>
+          <Stack gap="xs">
+            <Text fw={600} size="sm">
+              使用製品
+            </Text>
+            <Text c="dimmed" size="sm">
+              製品は「材種 + 直径 + 全長」で素材を指定するため、特定の素材には
+              直接紐付きません。この素材は在庫管理で使用します。
+            </Text>
           </Stack>
         </Tabs.Panel>
 

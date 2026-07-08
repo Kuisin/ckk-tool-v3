@@ -19,20 +19,16 @@ export default async function MasterProductsDetailPage({
   const { id: idParam } = await params;
   const id = Number(idParam);
   if (!Number.isInteger(id)) notFound();
-  const [r, materials, auditEntries] = await Promise.all([
+  const [r, auditEntries] = await Promise.all([
     prisma.product.findUnique({
       where: { id },
       include: {
-        material: true,
+        materialType: { select: { code: true, name: true } },
         priceListEntries: {
           include: { customerBp: true },
           orderBy: { createdAt: "desc" },
         },
       },
-    }),
-    prisma.material.findMany({
-      where: { isActive: true },
-      orderBy: { code: "asc" },
     }),
     fetchAuditEntries("products", String(id)),
   ]);
@@ -51,10 +47,13 @@ export default async function MasterProductsDetailPage({
     code: formatProductNumber(r.yearMonth, r.seq),
     nameJa: name?.ja ?? "",
     nameEn: name?.en ?? "",
-    materialId: r.materialId != null ? String(r.materialId) : null,
-    materialName: r.material
-      ? localized(r.material.name as LocalizedText | null)
+    materialTypeId: r.materialTypeId != null ? String(r.materialTypeId) : null,
+    materialTypeCode: r.materialType?.code ?? null,
+    materialTypeName: r.materialType
+      ? localized(r.materialType.name as LocalizedText | null)
       : "",
+    diameterMm: r.diameterMm != null ? Number(r.diameterMm) : null,
+    lengthMm: r.lengthMm != null ? Number(r.lengthMm) : null,
     unit: r.unit,
     isActive: r.isActive,
     notes: r.notes ?? "",
@@ -72,16 +71,5 @@ export default async function MasterProductsDetailPage({
     })),
   };
 
-  const materialOptions = materials.map((m) => ({
-    value: String(m.id),
-    label: `${m.code}（${localized(m.name as LocalizedText | null)}）`,
-  }));
-
-  return (
-    <ProductDetail
-      auditEntries={auditEntries}
-      materialOptions={materialOptions}
-      record={record}
-    />
-  );
+  return <ProductDetail auditEntries={auditEntries} record={record} />;
 }
