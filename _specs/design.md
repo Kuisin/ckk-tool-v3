@@ -963,7 +963,7 @@ All master data entities follow the standard list + detail + form pattern (§8).
 
 ### 13.2 Products
 
-**List columns**: 製品コード / 名称 / 素材 / 単位 / 状態
+**List columns**: 製品コード / 名称 / 材種（+ φ直径×全長） / 単位 / 状態
 
 **Detail**: `spec` JSON rendered as key-value table; design file link.
 
@@ -1030,7 +1030,7 @@ Row click navigates to detail page.
 | Customer | BPコード / 名称 / 支店数 / 状態 / 更新日 |
 | EndUser | BPコード / 名称 / 業種 / 状態 |
 | Factory | コード / 名称 / 国 / 状態 / 更新日 |
-| Product | 製品コード / 名称 / 素材 / 単位 / 状態 |
+| Product | 製品コード / 名称 / 材種（+ φ直径×全長） / 単位 / 状態 |
 | MaterialType | 材種コード / メーカー / 形状 / 名称 / 状態 |
 | Material | 素材コード / 材種 / 直径 / 全長 / 黒皮研磨 / 状態 |
 | Supplier | BPコード / 名称 / 外注種別 / 標準リードタイム / 状態 |

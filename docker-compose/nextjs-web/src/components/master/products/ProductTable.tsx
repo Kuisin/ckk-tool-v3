@@ -39,7 +39,6 @@ import { openConfirm } from "@/components/ui/modals";
 import { NewButton } from "@/components/ui/NewButton";
 import { ListShell } from "@/components/ui/shells";
 import { useIsMobile } from "@/hooks/useViewport";
-import type { Option } from "@/lib/mock";
 import {
   DeleteProductModal,
   DuplicateProductModal,
@@ -54,9 +53,28 @@ export interface ProductRow {
   /** 製品コード PRD-…（レガシー取込は未採番 = null）。 */
   code: string | null;
   name: string;
-  materialId: string | null;
+  /** 素材仕様 = 材種 + 直径 + 全長（特定素材には紐付けない）。 */
+  materialTypeId: string | null;
+  materialTypeLabel: string;
+  diameterMm: number | null;
+  lengthMm: number | null;
   unit: string;
   isActive: boolean;
+}
+
+/** 材種 + 径×長 の一行表示。未設定は "—"。 */
+function materialSpecLabel(r: {
+  materialTypeId: string | null;
+  materialTypeLabel: string;
+  diameterMm: number | null;
+  lengthMm: number | null;
+}): string {
+  if (!r.materialTypeId) return "—";
+  const size =
+    r.diameterMm != null || r.lengthMm != null
+      ? ` φ${r.diameterMm ?? "—"}×${r.lengthMm ?? "—"}`
+      : "";
+  return `${r.materialTypeLabel}${size}`;
 }
 
 const STATUS_OPTIONS = [
@@ -64,19 +82,12 @@ const STATUS_OPTIONS = [
   { value: "inactive", label: "無効" },
 ];
 
-export function ProductTable({
-  rows,
-  materialOptions,
-}: {
-  rows: ProductRow[];
-  materialOptions: Option[];
-}) {
+export function ProductTable({ rows }: { rows: ProductRow[] }) {
   const router = useRouter();
   const isMobile = useIsMobile();
   const [, startTransition] = useTransition();
 
   const [search, setSearch] = useState("");
-  const [materialFilter, setMaterialFilter] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<string | null>(null);
 
   const [deleteRow, setDeleteRow] = useState<ProductModalTarget | null>(null);
@@ -87,17 +98,18 @@ export function ProductTable({
 
   const reset = () => {
     setSearch("");
-    setMaterialFilter(null);
     setStatusFilter(null);
   };
 
   const filtered = rows.filter((r) => {
     const matchesSearch =
-      !search || (r.code ?? "").includes(search) || r.name.includes(search);
-    const matchesMaterial = !materialFilter || r.materialId === materialFilter;
+      !search ||
+      (r.code ?? "").includes(search) ||
+      r.name.includes(search) ||
+      r.materialTypeLabel.includes(search);
     const matchesStatus =
       !statusFilter || (statusFilter === "active" ? r.isActive : !r.isActive);
-    return matchesSearch && matchesMaterial && matchesStatus;
+    return matchesSearch && matchesStatus;
   });
 
   const bulkSetActive = (targets: ProductRow[], isActive: boolean) => {
@@ -174,12 +186,13 @@ export function ProductTable({
       render: (r) => r.name,
     },
     {
-      key: "materialId",
-      header: "素材",
+      key: "materialType",
+      header: "材種",
       sortable: true,
       hideable: true,
+      sortValue: (r) => r.materialTypeLabel,
       render: (r) =>
-        r.materialId ? <DocNumber c="dimmed">{r.materialId}</DocNumber> : "—",
+        r.materialTypeId ? <Text size="sm">{materialSpecLabel(r)}</Text> : "—",
     },
     {
       key: "unit",
@@ -204,33 +217,21 @@ export function ProductTable({
       action={<NewButton href={`${BASE_PATH}/new`} />}
       breadcrumbs={["マスタ", "製品"]}
       filters={
-        <>
-          <Select
-            clearable
-            data={materialOptions}
-            onChange={setMaterialFilter}
-            placeholder="素材"
-            searchable
-            style={isMobile ? { flex: 1 } : undefined}
-            value={materialFilter}
-            w={isMobile ? undefined : 220}
-          />
-          <Select
-            clearable
-            data={STATUS_OPTIONS}
-            onChange={setStatusFilter}
-            placeholder="状態"
-            value={statusFilter}
-            w={isMobile ? 110 : 120}
-          />
-        </>
+        <Select
+          clearable
+          data={STATUS_OPTIONS}
+          onChange={setStatusFilter}
+          placeholder="状態"
+          value={statusFilter}
+          w={isMobile ? 110 : 120}
+        />
       }
       onReset={reset}
       search={
         <TextInput
           leftSection={<IconSearch size={14} />}
           onChange={(e) => setSearch(e.currentTarget.value)}
-          placeholder="製品コード・名称で検索"
+          placeholder="製品コード・名称・材種で検索"
           value={search}
         />
       }
@@ -274,8 +275,10 @@ export function ProductTable({
                   {r.name}
                 </Text>
                 <Group gap="md" mt={2}>
-                  {r.materialId && (
-                    <DocNumber c="dimmed">{r.materialId}</DocNumber>
+                  {r.materialTypeId && (
+                    <Text c="dimmed" size="xs" truncate>
+                      {materialSpecLabel(r)}
+                    </Text>
                   )}
                   <Text c="dimmed" size="xs">
                     {r.unit}
@@ -319,7 +322,6 @@ export function ProductTable({
         target={deleteRow}
       />
       <DuplicateProductModal
-        materialOptions={materialOptions}
         onClose={() => setDuplicateRow(null)}
         opened={!!duplicateRow}
         source={duplicateRow}

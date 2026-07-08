@@ -25,7 +25,6 @@ import {
 } from "@/components/ui/shells";
 import { useIsMobile } from "@/hooks/useViewport";
 import { formatDate, formatDateTime } from "@/lib/format";
-import type { Option } from "@/lib/mock";
 import {
   DeleteProductModal,
   DuplicateProductModal,
@@ -39,8 +38,12 @@ export interface ProductDetailData {
   code: string | null;
   nameJa: string;
   nameEn: string;
-  materialId: string | null;
-  materialName: string;
+  /** 素材仕様 = 材種 + 直径 + 全長（特定素材には紐付けない）。 */
+  materialTypeId: string | null;
+  materialTypeCode: string | null;
+  materialTypeName: string;
+  diameterMm: number | null;
+  lengthMm: number | null;
   unit: string;
   isActive: boolean;
   notes: string;
@@ -66,11 +69,9 @@ const ORDER_TYPE_LABEL: Record<string, string> = {
 
 export function ProductDetail({
   record,
-  materialOptions,
   auditEntries,
 }: {
   record: ProductDetailData;
-  materialOptions: Option[];
   auditEntries: AuditEntry[];
 }) {
   const router = useRouter();
@@ -80,12 +81,19 @@ export function ProductDetail({
   const [duplicateOpen, setDuplicateOpen] = useState(false);
   const [toggleOpen, setToggleOpen] = useState(false);
 
+  const materialTypeLabel = record.materialTypeId
+    ? `${record.materialTypeCode ?? ""}${record.materialTypeName ? ` — ${record.materialTypeName}` : ""}`
+    : "";
+
   const target = {
     id: record.id,
     code: record.code,
     name: record.nameJa,
     isActive: record.isActive,
-    materialId: record.materialId,
+    materialTypeId: record.materialTypeId,
+    materialTypeLabel,
+    diameterMm: record.diameterMm,
+    lengthMm: record.lengthMm,
     unit: record.unit,
   };
 
@@ -133,17 +141,22 @@ export function ProductDetail({
         <FieldValue label="名称（日本語）" value={record.nameJa} />
         <FieldValue label="名称（英語）" value={record.nameEn || "—"} />
         <FieldValue
-          label="素材"
+          label="材種"
           value={
-            record.materialId ? (
-              <DocNumber c="blue">
-                {record.materialId}
-                {record.materialName ? `（${record.materialName}）` : ""}
-              </DocNumber>
+            record.materialTypeId ? (
+              <DocNumber c="blue">{materialTypeLabel}</DocNumber>
             ) : (
               "—"
             )
           }
+        />
+        <FieldValue
+          label="直径"
+          value={record.diameterMm != null ? `φ${record.diameterMm} mm` : "—"}
+        />
+        <FieldValue
+          label="全長"
+          value={record.lengthMm != null ? `${record.lengthMm} mm` : "—"}
         />
         <FieldValue label="単位" value={record.unit} />
       </SummaryGrid>
@@ -243,7 +256,6 @@ export function ProductDetail({
         target={target}
       />
       <DuplicateProductModal
-        materialOptions={materialOptions}
         onClose={() => setDuplicateOpen(false)}
         opened={duplicateOpen}
         source={target}

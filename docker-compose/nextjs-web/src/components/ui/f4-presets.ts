@@ -16,12 +16,12 @@ import type { F4Config } from "./F4SearchModal";
 export const PRODUCT_F4: F4Config = {
   title: "製品の詳細検索",
   description:
-    "名称・使用素材で絞り込んで選択します（レガシー製品はコード未採番）。",
+    "名称・材種で絞り込んで選択します（レガシー製品はコード未採番）。",
   filters: [
     { key: "name", label: "名称" },
-    { key: "material", label: "素材コード" },
+    { key: "materialType", label: "材種コード" },
   ],
-  columns: ["製品コード", "名称", "素材", "単位"],
+  columns: ["製品コード", "名称", "材種", "単位"],
   onSearch: f4SearchProducts,
 };
 

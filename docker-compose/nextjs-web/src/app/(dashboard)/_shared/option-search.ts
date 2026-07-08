@@ -145,16 +145,20 @@ export async function f4SearchProducts(
   filters: Record<string, string>,
 ): Promise<F4SearchRow[]> {
   const name = s(filters.name);
-  const material = s(filters.material);
+  const materialType = s(filters.materialType);
   const rows = await prisma.product.findMany({
     where: {
       isActive: true,
       ...(name ? { name: { path: ["ja"], string_contains: name } } : {}),
-      ...(material
-        ? { material: { code: { contains: material, mode: "insensitive" } } }
+      ...(materialType
+        ? {
+            materialType: {
+              code: { contains: materialType, mode: "insensitive" },
+            },
+          }
         : {}),
     },
-    include: { material: true },
+    include: { materialType: true },
     orderBy: { id: "asc" },
     take: F4_LIMIT,
   });
@@ -166,7 +170,7 @@ export async function f4SearchProducts(
       cells: [
         formatProductNumber(p.yearMonth, p.seq) ?? "未採番",
         nameJa,
-        p.material?.code ?? "—",
+        p.materialType?.code ?? "—",
         p.unit,
       ],
     };

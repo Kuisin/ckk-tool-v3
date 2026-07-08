@@ -266,7 +266,12 @@ Table materials {
 Table products {
   id              varchar [pk]            // 製品コード
   name            json [not null]         // { ja: '', en: '' }
-  material_id     varchar [ref: > materials.id]
+  // 素材は「材種 + 直径 + 全長」で指定する。特定の materials 行には紐付けない
+  // （同一材種・直径の複数素材が cut-to-length で充当可能。素材マスタは在庫管理用に存置）。
+  material_type_id int [ref: > material_types.id]
+  diameter_mm     numeric(8,3)            // 直径 (mm)
+  length_mm       numeric(10,3)           // 全長 (mm)
+  material_id     varchar [ref: > materials.id]  // 廃止予定（旧: 特定素材参照。現在は未使用）
   unit            varchar [not null, default: '本']
   spec            json                    // 仕様（フリー構造）
   design_file_id  uuid [ref: > design_files.id]

@@ -5,7 +5,6 @@ import {
 } from "@/components/master/materials/MaterialDetail";
 import { fetchAuditEntries } from "@/lib/audit";
 import { prisma } from "@/lib/db";
-import { formatProductNumber } from "@/lib/doc-number";
 import { type LocalizedText, localized } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
@@ -25,7 +24,6 @@ export default async function MasterMaterialsDetailPage({
       include: {
         materialType: true,
         surfaceFinish: true,
-        products: { orderBy: { id: "asc" } },
       },
     }),
     fetchAuditEntries("materials", String(id)),
@@ -54,11 +52,6 @@ export default async function MasterMaterialsDetailPage({
     notes: r.notes ?? "",
     createdAt: r.createdAt.toISOString(),
     updatedAt: r.updatedAt.toISOString(),
-    products: r.products.map((p) => ({
-      id: p.id,
-      code: formatProductNumber(p.yearMonth, p.seq),
-      name: localized(p.name as LocalizedText | null),
-    })),
   };
 
   return <MaterialDetail auditEntries={auditEntries} record={record} />;
