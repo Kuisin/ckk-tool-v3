@@ -97,14 +97,19 @@ Powers the AI-first 受注請書 intake (scan image + auto-filled form → user 
 - Coolify apps run on the external `coolify` docker network; `shared-db`, `po-extract`, `gotenberg`, `seaweedfs` are attached to it so `DATABASE_URL`/`GOTENBERG_URL`/`SEAWEED_FILER_URL`/`PO_EXTRACT_URL` resolve by container name. App env vars are managed in Coolify (not compose).
 - Both apps currently share the one business DB (`shared-db`/`ckk`); split a prod DB before real production traffic.
 
-**Database migrations (shared-db)** — Schema source of truth is `shared-db/prisma/schema/` (one `.prisma` per PG schema); migrations are owned by `shared-db` and NEVER run from nextjs-web. Authoring flow (from `shared-db/`): edit schema → `pnpm validate` → `pnpm migrate:dev -- --name <change>` → `pnpm generate` → sync consumer copies (`cd docker-compose/nextjs-web && pnpm db:sync-schema && pnpm db:generate`; same for `docker-compose/prisma-studio`). **Applying to the dev DB** after a merge to `dev` (all idempotent, from a LAN machine with the repo + `shared-db/.env` — the DB listens only on `192.168.50.15:15432`):
+**Database migrations (shared-db)** — Schema source of truth is `shared-db/prisma/schema/` (one `.prisma` per PG schema); migrations are owned by `shared-db` and NEVER run from nextjs-web. Authoring flow (from `shared-db/`): edit schema → `pnpm validate` → `pnpm migrate:dev -- --name <change>` → `pnpm generate` → sync consumer copies (`cd docker-compose/nextjs-web && pnpm db:sync-schema && pnpm db:generate`; same for `docker-compose/prisma-studio`).
+
+**Applying to the dev DB** after a merge to `dev` (all idempotent). Note: the dev DB has **no published host port** — it is only reachable inside Docker on the server, so a workstation cannot hit `192.168.50.15:15432` directly. From **this Mac** (has `ssh 192.168.50.15` + the repo + `shared-db/.env`), use the `:remote` scripts — they open an SSH tunnel to the `shared-db` container (`scripts/remote-db.sh`) and run the same command against it:
 
 ```bash
 cd shared-db
-pnpm migrate:deploy                                              # 1. pending migrations
-sh -c '. ./.env; psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f sql/grants.sql'  # 2. re-grant (needed whenever tables/roles were added)
-pnpm import:legacy                                               # 3. legacy data (BP/材種/製品) — ALWAYS after a reset/re-provision
+pnpm migrate:status:remote     # inspect pending migrations first
+pnpm migrate:deploy:remote     # 1. apply pending migrations (real prisma migrate deploy)
+pnpm grants:remote             # 2. re-grant (needed whenever tables/roles were added)
+pnpm import:legacy:remote      # 3. legacy data (BP/材種/製品) — ALWAYS after a reset/re-provision
 ```
+
+`scripts/remote-db.sh <cmd>` is the general form (tunnel + DATABASE_URL rewrite, e.g. `pnpm remote psql "$DATABASE_URL" -c '\\dt app.*'`). Overrides: `DB_SSH_HOST`, `DB_CONTAINER`, `DB_TUNNEL_PORT`. If the host port is ever republished on the LAN, the plain `pnpm migrate:deploy` / `sh -c '. ./.env; psql "$DATABASE_URL" …'` forms work again from a LAN machine.
 
 Step 3 applies the committed `data-migration/imports/*.sql.gz` (idempotent upserts generated from the FileMaker migration). There is no demo seed — master/BP data comes from this import. Regenerate artifacts with `data-migration/make_imports.sh` (needs `mapped.sqlite`).
 
