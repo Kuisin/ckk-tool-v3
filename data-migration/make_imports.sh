@@ -42,4 +42,9 @@ for f in "$TMP"/*.sql; do
   gzip -9 -n -c "$f" > "imports/$(basename "$f").gz"
 done
 rm -rf "$TMP"
+
+# 999: 監査ログ backfill — 生きているマスタから SEED 行を生成する静的 SQL
+# （mapped.sqlite 不要）。import:legacy が 010–030 の後に適用する。
+gzip -9 -n -c audit_backfill.sql > imports/999_audit_backfill.sql.gz
+
 ls -la imports/
