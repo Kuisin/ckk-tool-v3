@@ -25,6 +25,7 @@ import {
   useComputedColorScheme,
 } from "@mantine/core";
 import Link from "next/link";
+import { useDisabledApps } from "@/components/layout/AppFlags";
 import { useIsMobile } from "@/hooks/useViewport";
 import { getAppsByCategory } from "@/lib/app-list";
 import { CATEGORY_SECTION_ICONS, resolveAppIcon } from "@/lib/icons";
@@ -56,7 +57,14 @@ export function HomeApps({
   user = MOCK_USER,
   isLoading = false,
 }: HomeAppsProps) {
-  const categories = getAppsByCategory();
+  const disabledApps = useDisabledApps();
+  // 環境別フラグで無効化されたアプリはカードを出さない（空カテゴリも消す）。
+  const categories = getAppsByCategory()
+    .map((c) => ({
+      ...c,
+      apps: c.apps.filter((a) => !disabledApps.has(a.key)),
+    }))
+    .filter((c) => c.apps.length > 0);
   const colorScheme = useComputedColorScheme("light", {
     getInitialValueInEffect: false,
   });
