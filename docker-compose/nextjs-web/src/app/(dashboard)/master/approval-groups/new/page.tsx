@@ -1,10 +1,8 @@
-import { PlaceholderPage } from "@/components/ui/PlaceholderPage";
+import { ApprovalGroupForm } from "@/components/master/approval-groups/ApprovalGroupForm";
 
+export const dynamic = "force-dynamic";
+
+/** 承認グループ 新規作成 (MS1A). */
 export default function MasterApprovalGroupsNewPage() {
-  return (
-    <PlaceholderPage
-      breadcrumbs={["マスタ", "承認グループ", "新規作成"]}
-      title="承認グループ 新規作成"
-    />
-  );
+  return <ApprovalGroupForm />;
 }

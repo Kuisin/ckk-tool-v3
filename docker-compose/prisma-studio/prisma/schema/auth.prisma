@@ -60,6 +60,7 @@ model User {
   auditLogs               AuditLog[]         @relation("AuditLogUser")
   systemSettingsUpdated   SystemSetting[]    @relation("SystemSettingUpdatedBy")
   featureFlagsUpdated     FeatureFlag[]      @relation("FeatureFlagUpdatedBy")
+  approvalGroupMembers    ApprovalGroupMember[] @relation("ApprovalGroupMemberUser")
 
   posRequested MaterialPurchaseOrder[] @relation("PoRequestedBy")
   posApproved  MaterialPurchaseOrder[] @relation("PoApprovedBy")

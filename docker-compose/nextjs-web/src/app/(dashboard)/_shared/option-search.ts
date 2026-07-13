@@ -253,3 +253,55 @@ export async function f4SearchStructuredMaterialTypes(
     };
   });
 }
+
+/** 工程マスタ検索（依存編集・ワークフロービルダー用）。value = 内部 id。 */
+export async function searchProcessStepOptions(
+  query: string,
+): Promise<SearchOption[]> {
+  const q = query.trim();
+  const rows = await prisma.processStepCatalog.findMany({
+    where: {
+      isActive: true,
+      ...(q
+        ? {
+            OR: [
+              { code: { contains: q, mode: "insensitive" } },
+              { name: { path: ["ja"], string_contains: q } },
+            ],
+          }
+        : {}),
+    },
+    orderBy: { sortOrder: "asc" },
+    take: LIMIT,
+  });
+  return rows.map((r) => ({
+    value: String(r.id),
+    label: `${localized(r.name as LocalizedText | null)}（${r.code}）`,
+  }));
+}
+
+/** ユーザー検索（承認グループのメンバー選択用）。value = uuid。 */
+export async function searchUserOptions(
+  query: string,
+): Promise<SearchOption[]> {
+  const q = query.trim();
+  const rows = await prisma.user.findMany({
+    where: {
+      isActive: true,
+      ...(q
+        ? {
+            OR: [
+              { displayName: { contains: q, mode: "insensitive" } },
+              { username: { contains: q, mode: "insensitive" } },
+            ],
+          }
+        : {}),
+    },
+    orderBy: { username: "asc" },
+    take: LIMIT,
+  });
+  return rows.map((r) => ({
+    value: r.id,
+    label: `${r.displayName}（${r.username}）`,
+  }));
+}
