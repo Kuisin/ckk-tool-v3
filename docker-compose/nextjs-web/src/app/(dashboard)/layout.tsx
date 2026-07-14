@@ -6,6 +6,10 @@ import {
 import { DashboardShell } from "@/components/layout/AppShell";
 import { getDisabledAppKeys } from "@/lib/app-flags";
 
+// feature_flags はリクエスト毎に読む（静的プリレンダだとビルド時の値で固まり、
+// アプリ ON/OFF・DEV リボンが反映されない）。ダッシュボード配下は全て動的。
+export const dynamic = "force-dynamic";
+
 export default async function DashboardLayout({
   children,
 }: {
