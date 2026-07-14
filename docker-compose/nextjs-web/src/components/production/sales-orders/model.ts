@@ -59,6 +59,8 @@ export interface SalesOrder {
   status: SalesOrderStatus;
   /** 承認依頼中ロック — true の間は編集不可。 */
   isLocked: boolean;
+  /** §4 在庫照合で引当済み（RESERVED）の合計数量。 */
+  reservedStockQuantity: number;
   notes: string | null;
   workOrders: SalesOrderWorkOrderRef[];
   createdAt: string;

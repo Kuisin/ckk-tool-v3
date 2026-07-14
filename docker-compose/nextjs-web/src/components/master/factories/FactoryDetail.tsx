@@ -3,21 +3,31 @@
 /**
  * FactoryDetail.tsx — 工場 詳細 (MS2B, design.md §8.2 / §13.6).
  *
- * サマリーグリッドに連絡先・住所を表示する。関連タブ（在庫サマリ（工場別）・
- * 実行中工程）は在庫/製造機能の導入時に接続する（現状は EmptyState）。
+ * サマリーグリッドに連絡先・住所を表示する。関連タブは工場別の在庫サマリ
+ * （製品在庫・素材在庫の件数 + 直近更新 10 行、在庫詳細へリンク）を表示する。
  */
 
-import { Stack, Tabs } from "@mantine/core";
 import {
-  IconBuildingWarehouse,
+  Anchor,
+  Badge,
+  Group,
+  Stack,
+  Table,
+  Tabs,
+  Text,
+  Title,
+} from "@mantine/core";
+import {
+  IconBoxSeam,
   IconCircleMinus,
+  IconStack2,
   IconTrash,
 } from "@tabler/icons-react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { ActiveBadge } from "@/components/ui/ActiveBadge";
 import { DocNumber } from "@/components/ui/DocNumber";
-import { EmptyState } from "@/components/ui/EmptyState";
 import { FieldValue } from "@/components/ui/FieldValue";
 import { HistoryPanel } from "@/components/ui/HistoryPanel";
 import {
@@ -27,7 +37,7 @@ import {
   SummaryGrid,
 } from "@/components/ui/shells";
 import { COUNTRY_LABEL } from "@/lib/enum-labels";
-import { formatDateTime } from "@/lib/format";
+import { formatDate, formatDateTime } from "@/lib/format";
 import { DeleteFactoryModal, ToggleFactoryActiveModal } from "./FactoryModals";
 
 const BASE_PATH = "/master/factories";
@@ -51,12 +61,45 @@ export interface FactoryDetailData {
   updatedAt: string;
 }
 
+/** 関連タブ: 工場の製品在庫 1 行（直近更新分の抜粋）。 */
+export interface FactoryProductInventoryRef {
+  id: string;
+  productName: string;
+  productCode: string | null;
+  lotNumber: number | null;
+  quantity: number;
+  reservedQuantity: number;
+  isSemiFinished: boolean;
+  updatedAt: string;
+}
+
+/** 関連タブ: 工場の素材在庫 1 行（直近更新分の抜粋、Decimal → Number 済み）。 */
+export interface FactoryMaterialInventoryRef {
+  id: string;
+  materialCode: string;
+  materialName: string;
+  quantity: number;
+  reservedQuantity: number;
+  unit: string;
+  updatedAt: string;
+}
+
+/** 関連タブ: 工場別在庫サマリ。 */
+export interface FactoryInventorySummary {
+  productCount: number;
+  materialCount: number;
+  products: FactoryProductInventoryRef[];
+  materials: FactoryMaterialInventoryRef[];
+}
+
 export function FactoryDetail({
   record,
   auditEntries,
+  inventory,
 }: {
   record: FactoryDetailData;
   auditEntries: AuditEntry[];
+  inventory: FactoryInventorySummary;
 }) {
   const router = useRouter();
 
@@ -135,10 +178,169 @@ export function FactoryDetail({
         </Tabs.Panel>
 
         <Tabs.Panel pt="md" value="related">
-          <EmptyState
-            icon={<IconBuildingWarehouse size={24} />}
-            message="在庫サマリ・実行中工程は在庫/製造機能の導入後に表示します"
-          />
+          <Stack gap="lg">
+            {/* 製品在庫（工場別サマリ — 直近更新 10 行） */}
+            <Stack gap="xs">
+              <Group justify="space-between">
+                <Group gap="xs">
+                  <IconBoxSeam size={16} />
+                  <Title order={5}>
+                    製品在庫（{inventory.productCount} 件）
+                  </Title>
+                </Group>
+                <Anchor
+                  component={Link}
+                  href="/production/inventory/products"
+                  size="sm"
+                >
+                  製品在庫一覧へ
+                </Anchor>
+              </Group>
+              {inventory.products.length === 0 ? (
+                <Text c="dimmed" size="sm">
+                  この工場の製品在庫はありません
+                </Text>
+              ) : (
+                <Table.ScrollContainer minWidth={560}>
+                  <Table highlightOnHover>
+                    <Table.Thead>
+                      <Table.Tr>
+                        <Table.Th>製品</Table.Th>
+                        <Table.Th ta="right" w={90}>
+                          ロット
+                        </Table.Th>
+                        <Table.Th ta="right" w={90}>
+                          在庫数
+                        </Table.Th>
+                        <Table.Th ta="right" w={90}>
+                          予約数
+                        </Table.Th>
+                        <Table.Th w={90}>区分</Table.Th>
+                        <Table.Th w={110}>更新日</Table.Th>
+                      </Table.Tr>
+                    </Table.Thead>
+                    <Table.Tbody>
+                      {inventory.products.map((p) => (
+                        <Table.Tr
+                          key={p.id}
+                          onClick={() =>
+                            router.push(
+                              `/production/inventory/products/${p.id}`,
+                            )
+                          }
+                          style={{ cursor: "pointer" }}
+                        >
+                          <Table.Td>
+                            <Text size="sm">{p.productName}</Text>
+                            {p.productCode && (
+                              <Text c="dimmed" ff="mono" size="xs">
+                                {p.productCode}
+                              </Text>
+                            )}
+                          </Table.Td>
+                          <Table.Td className="tabular-nums" ta="right">
+                            {p.lotNumber ?? "—"}
+                          </Table.Td>
+                          <Table.Td className="tabular-nums" ta="right">
+                            {p.quantity.toLocaleString("ja-JP")}
+                          </Table.Td>
+                          <Table.Td className="tabular-nums" ta="right">
+                            {p.reservedQuantity.toLocaleString("ja-JP")}
+                          </Table.Td>
+                          <Table.Td>
+                            {p.isSemiFinished ? (
+                              <Badge color="orange" variant="light">
+                                半製品
+                              </Badge>
+                            ) : (
+                              <Badge color="gray" variant="light">
+                                完成品
+                              </Badge>
+                            )}
+                          </Table.Td>
+                          <Table.Td className="tabular-nums">
+                            {formatDate(p.updatedAt)}
+                          </Table.Td>
+                        </Table.Tr>
+                      ))}
+                    </Table.Tbody>
+                  </Table>
+                </Table.ScrollContainer>
+              )}
+            </Stack>
+
+            {/* 素材在庫（工場別サマリ — 直近更新 10 行） */}
+            <Stack gap="xs">
+              <Group justify="space-between">
+                <Group gap="xs">
+                  <IconStack2 size={16} />
+                  <Title order={5}>
+                    素材在庫（{inventory.materialCount} 件）
+                  </Title>
+                </Group>
+                <Anchor
+                  component={Link}
+                  href="/production/inventory/materials"
+                  size="sm"
+                >
+                  素材在庫一覧へ
+                </Anchor>
+              </Group>
+              {inventory.materials.length === 0 ? (
+                <Text c="dimmed" size="sm">
+                  この工場の素材在庫はありません
+                </Text>
+              ) : (
+                <Table.ScrollContainer minWidth={560}>
+                  <Table highlightOnHover>
+                    <Table.Thead>
+                      <Table.Tr>
+                        <Table.Th>素材</Table.Th>
+                        <Table.Th ta="right" w={110}>
+                          在庫数
+                        </Table.Th>
+                        <Table.Th ta="right" w={90}>
+                          予約数
+                        </Table.Th>
+                        <Table.Th w={110}>更新日</Table.Th>
+                      </Table.Tr>
+                    </Table.Thead>
+                    <Table.Tbody>
+                      {inventory.materials.map((m) => (
+                        <Table.Tr
+                          key={m.id}
+                          onClick={() =>
+                            router.push(
+                              `/production/inventory/materials/${m.id}`,
+                            )
+                          }
+                          style={{ cursor: "pointer" }}
+                        >
+                          <Table.Td>
+                            <Text ff="mono" size="sm">
+                              {m.materialCode}
+                            </Text>
+                            <Text c="dimmed" size="xs">
+                              {m.materialName}
+                            </Text>
+                          </Table.Td>
+                          <Table.Td className="tabular-nums" ta="right">
+                            {m.quantity.toLocaleString("ja-JP")} {m.unit}
+                          </Table.Td>
+                          <Table.Td className="tabular-nums" ta="right">
+                            {m.reservedQuantity.toLocaleString("ja-JP")}
+                          </Table.Td>
+                          <Table.Td className="tabular-nums">
+                            {formatDate(m.updatedAt)}
+                          </Table.Td>
+                        </Table.Tr>
+                      ))}
+                    </Table.Tbody>
+                  </Table>
+                </Table.ScrollContainer>
+              )}
+            </Stack>
+          </Stack>
         </Tabs.Panel>
 
         <Tabs.Panel pt="md" value="history">

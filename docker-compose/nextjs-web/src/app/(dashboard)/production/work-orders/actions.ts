@@ -16,6 +16,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { describeIssue } from "@/components/production/work-orders/model";
 import { appendHistory, type HistoryEntry, isApprover } from "@/lib/approvals";
+import { type MaterialAtp, materialAtp } from "@/lib/atp";
 import { getCurrentActorId, recordAudit } from "@/lib/audit";
 import { prisma } from "@/lib/db";
 import { nextSerialNumber } from "@/lib/numbering";
@@ -643,4 +644,20 @@ export async function getSalesOrderInfo(
 ): Promise<SalesOrderRef | null> {
   if (!salesOrderId) return null;
   return fetchSalesOrderRef(salesOrderId);
+}
+
+/**
+ * 使用素材選択時の ATP 取得（§5 素材判断 — lib/atp materialAtp のラッパ）。
+ * ビルダーの充足/不足インライン警告用。警告のみで保存はブロックしない。
+ */
+export async function getMaterialAtp(
+  materialId: number,
+): Promise<MaterialAtp | null> {
+  if (!Number.isInteger(materialId) || materialId <= 0) return null;
+  try {
+    return await materialAtp(materialId);
+  } catch (e) {
+    console.error("getMaterialAtp failed", e);
+    return null;
+  }
 }

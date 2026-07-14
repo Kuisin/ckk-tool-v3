@@ -1,7 +1,7 @@
 // 素材発注・入荷 (_specs/tables.md §素材発注). 購買は素材 (materials) 単位で管理する。
 // PU01/PU03 の画面は後続タスク — 本ファイルはテーブル + 試算参照価格の
 // データ源（仕入実績 = material_purchase_order_items）として先行導入。
-// factory_id (入荷先工場) は 工場マスタ (MS0B) 導入時に追加する。 // TODO
+// factory_id (入荷先工場) は inventory 導入時に追加済み（ATP の工場別集計に使用）。
 // material_purchase_approvers は承認フロー導入時に追加する。 // TODO
 
 enum PurchaseStatus {
@@ -69,11 +69,13 @@ model MaterialPurchaseOrderItem {
   amount          Decimal   @db.Decimal(12, 2)
   currency        String    @default("JPY")
   expectedAt      DateTime? @map("expected_at") @db.Date
+  factoryId       Int?      @map("factory_id") // 入荷先工場
   notes           String?
   sortOrder       Int       @default(0) @map("sort_order")
 
   purchaseOrder MaterialPurchaseOrder @relation(fields: [purchaseOrderId], references: [id])
   material      Material              @relation(fields: [materialId], references: [id])
+  factory       Factory?              @relation("PoItemFactory", fields: [factoryId], references: [id])
   receipts      MaterialReceipt[]
 
   @@index([purchaseOrderId])
@@ -91,11 +93,13 @@ model MaterialReceipt {
   quantity            Decimal  @db.Decimal(12, 3)
   unit                String
   receivedAt          DateTime @map("received_at") @db.Date
+  factoryId           Int?     @map("factory_id") // 入荷先工場
   notes               String?
   createdBy           String?  @map("created_by") @db.Uuid
   createdAt           DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
   material          Material                   @relation(fields: [materialId], references: [id])
+  factory           Factory?                   @relation("ReceiptFactory", fields: [factoryId], references: [id])
   supplierBp        BusinessPartner?           @relation("ReceiptSupplier", fields: [supplierBpId], references: [id])
   purchaseOrderItem MaterialPurchaseOrderItem? @relation(fields: [purchaseOrderItemId], references: [id])
   createdByUser     User?                      @relation("ReceiptCreatedBy", fields: [createdBy], references: [id])

@@ -26,6 +26,10 @@ model Factory {
 
   workOrderSteps WorkOrderStep[]
   shippingOrders ShippingOrder[]
+  poItems        MaterialPurchaseOrderItem[] @relation("PoItemFactory")
+  receipts       MaterialReceipt[]           @relation("ReceiptFactory")
+  productInventory  ProductInventory[]
+  materialInventory MaterialInventory[]
 
   @@map("factories")
   @@schema("app")

@@ -249,13 +249,15 @@ export async function completeStepExecution(
     },
   });
 
-  // 全工程完了 → 指示書完了（在庫計上は PR 5 で接続）
+  // 全工程完了 → 指示書完了 + 在庫計上（完成品ロット入庫・半製品入庫・予約確定）
   const { ctx } = await fetchWorkflowCtx(stepRow.workOrderId);
   if (isWorkOrderComplete(ctx)) {
     await prisma.workOrder.update({
       where: { id: stepRow.workOrderId },
       data: { status: "COMPLETED", completedAt: new Date() },
     });
+    const { onWorkOrderCompleted } = await import("./inventory");
+    await onWorkOrderCompleted(stepRow.workOrderId);
   }
   await recordAudit({
     action: "UPDATE",

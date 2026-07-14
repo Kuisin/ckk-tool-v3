@@ -16,6 +16,7 @@ import {
   Anchor,
   Badge,
   Group,
+  Modal,
   Stack,
   Table,
   Tabs,
@@ -24,9 +25,11 @@ import {
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import {
+  IconAlertTriangle,
   IconCheck,
   IconClipboardList,
   IconLock,
+  IconPackageImport,
   IconX,
 } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
@@ -34,6 +37,7 @@ import { useState, useTransition } from "react";
 import {
   cancelSalesOrder,
   confirmSalesOrder,
+  runStockCheck,
 } from "@/app/(dashboard)/production/sales-orders/actions";
 import { EditButton, SecondaryButton } from "@/components/ui/buttons";
 import { DocNumber } from "@/components/ui/DocNumber";
@@ -51,6 +55,8 @@ import {
 } from "@/components/ui/shells";
 import { ORDER_TYPE_LABEL, WORK_ORDER_TYPE_LABEL } from "@/lib/enum-labels";
 import { formatDate, formatDateTime } from "@/lib/format";
+// type-only import — lib/inventory は server-only（型はバンドルされない）。
+import type { StockCheckResult } from "@/lib/inventory";
 import { isCancellable, isEditable, type SalesOrder } from "./model";
 
 const BASE_PATH = "/production/sales-orders";
@@ -67,9 +73,30 @@ export function SalesOrderDetail({
   const [isPending, startTransition] = useTransition();
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [cancelOpen, setCancelOpen] = useState(false);
+  const [isChecking, startStockCheck] = useTransition();
+  const [stockResult, setStockResult] = useState<StockCheckResult | null>(null);
 
   const editable = isEditable(order);
   const lockedDraft = order.status === "DRAFT" && order.isLocked;
+  // 在庫照合（§4）は下書き・確定のみ（製造中以降は指示書側で管理）。
+  const canStockCheck =
+    order.status === "DRAFT" || order.status === "CONFIRMED";
+
+  const runStock = () => {
+    startStockCheck(async () => {
+      const result = await runStockCheck(order.uuid);
+      if (result.ok) {
+        setStockResult(result.data);
+        router.refresh();
+      } else {
+        notifications.show({
+          title: "エラー",
+          message: result.error,
+          color: "red",
+        });
+      }
+    });
+  };
 
   const runConfirm = () => {
     startTransition(async () => {
@@ -115,6 +142,16 @@ export function SalesOrderDetail({
     <DetailShell
       actions={
         <Group gap="xs" wrap="nowrap">
+          {/* §4 在庫照合 — 在庫レコード確認 + 利用可能分の引当予約。 */}
+          {canStockCheck && (
+            <SecondaryButton
+              leftSection={<IconPackageImport size={14} />}
+              loading={isChecking}
+              onClick={runStock}
+            >
+              在庫照合
+            </SecondaryButton>
+          )}
           {/* 編集は DRAFT のみ — ロック中は無効化して理由を tooltip 表示。 */}
           {lockedDraft && (
             <Tooltip label="承認依頼中のためロックされています" withArrow>
@@ -244,6 +281,25 @@ export function SalesOrderDetail({
           }
         />
         <FieldValue label="最終需要家" value={order.endUserName ?? "—"} />
+        <FieldValue
+          label="引当済み在庫"
+          value={
+            order.reservedStockQuantity > 0 ? (
+              <Group gap="xs" wrap="nowrap">
+                <Text className="tabular-nums" size="sm" span>
+                  {order.reservedStockQuantity} / {order.quantity} 本
+                </Text>
+                <Badge color="orange" variant="light">
+                  予約中
+                </Badge>
+              </Group>
+            ) : (
+              <Text c="dimmed" size="sm" span>
+                未引当（在庫照合で引当）
+              </Text>
+            )
+          }
+        />
       </SummaryGrid>
 
       <Tabs defaultValue="overview">
@@ -337,6 +393,97 @@ export function SalesOrderDetail({
           <HistoryPanel entries={auditEntries} />
         </Tabs.Panel>
       </Tabs>
+
+      {/* 在庫照合の結果（引当 / 不足） */}
+      <Modal
+        onClose={() => setStockResult(null)}
+        opened={stockResult != null}
+        title="在庫照合結果"
+        withinPortal
+      >
+        {stockResult && (
+          <Stack gap="sm">
+            {!stockResult.hasRecord && (
+              <Alert
+                color="yellow"
+                icon={<IconAlertTriangle size={16} />}
+                variant="light"
+              >
+                この製品の在庫レコードがありません（照合①）。
+              </Alert>
+            )}
+            <Group gap="xl">
+              <FieldValue
+                label="引当"
+                value={
+                  <Text
+                    c={stockResult.reservedNow > 0 ? "green" : undefined}
+                    className="tabular-nums"
+                    fw={600}
+                    size="sm"
+                    span
+                  >
+                    {stockResult.reservedNow} 本
+                  </Text>
+                }
+              />
+              <FieldValue
+                label="不足"
+                value={
+                  <Text
+                    c={stockResult.shortage > 0 ? "red" : "dimmed"}
+                    className="tabular-nums"
+                    fw={600}
+                    size="sm"
+                    span
+                  >
+                    {stockResult.shortage} 本
+                  </Text>
+                }
+              />
+              <FieldValue
+                label="照合時の利用可能数"
+                value={
+                  <Text className="tabular-nums" size="sm" span>
+                    {stockResult.available} 本
+                  </Text>
+                }
+              />
+            </Group>
+            {stockResult.shortage > 0 ? (
+              <Alert
+                color="orange"
+                icon={<IconAlertTriangle size={16} />}
+                title="在庫不足"
+                variant="light"
+              >
+                <Stack gap="xs">
+                  <Text size="sm">
+                    不足分 {stockResult.shortage}{" "}
+                    本は製造分の指示書を作成してください。
+                  </Text>
+                  <Group>
+                    <SecondaryButton
+                      href={`/production/work-orders/new?salesOrder=${order.uuid}`}
+                      leftSection={<IconClipboardList size={14} />}
+                    >
+                      指示書を作成
+                    </SecondaryButton>
+                  </Group>
+                </Stack>
+              </Alert>
+            ) : (
+              <Alert
+                color="green"
+                icon={<IconCheck size={16} />}
+                variant="light"
+              >
+                受注数量をすべて在庫から引当できました。
+              </Alert>
+            )}
+          </Stack>
+        )}
+      </Modal>
 
       <ConfirmModal
         confirmColor="blue"
