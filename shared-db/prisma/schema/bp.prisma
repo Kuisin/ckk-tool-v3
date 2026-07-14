@@ -91,6 +91,10 @@ model BusinessPartner {
   deliveryNotesAsBranch    DeliveryNote[] @relation("DeliveryNoteRecipientBranch")
   deliveryNotesAsEndUser   DeliveryNote[] @relation("DeliveryNoteEndUser")
 
+  invoicesAsCustomer Invoice[]        @relation("InvoiceCustomer")
+  invoicesAsBranch   Invoice[]        @relation("InvoiceCustomerBranch")
+  billingClosings    BillingClosing[] @relation("ClosingCustomer")
+
   @@index([parentId])
   @@map("business_partners")
   @@schema("app")

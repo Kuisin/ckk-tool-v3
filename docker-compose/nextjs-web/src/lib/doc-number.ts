@@ -18,6 +18,7 @@ const DOC_FORMATS = {
   PRD: { digits: 4 },
   SHP: { digits: 5 },
   DRN: { digits: 5 },
+  INV: { digits: 5 },
 } as const;
 
 export type DocPrefix = keyof typeof DOC_FORMATS;

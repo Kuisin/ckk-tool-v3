@@ -1,11 +1,10 @@
-import { PlaceholderPage } from "@/components/ui/PlaceholderPage";
+import { ClosingTable } from "@/components/billing/closings/ClosingTable";
+import { fetchClosings } from "./data";
 
-export default function BillingClosingsPage() {
-  return (
-    <PlaceholderPage
-      breadcrumbs={["請求", "締日処理"]}
-      operationCode="BL02"
-      title="締日処理"
-    />
-  );
+export const dynamic = "force-dynamic";
+
+/** 締日処理 一覧 (BL02). */
+export default async function BillingClosingsPage() {
+  const rows = await fetchClosings();
+  return <ClosingTable rows={rows} />;
 }
