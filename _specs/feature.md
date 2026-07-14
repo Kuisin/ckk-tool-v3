@@ -22,7 +22,7 @@
 
 ## 詳細セクション
 
-- `_specs/feature/01-sales.md` — §1 価格・見積、§2 注文受付・価格差異、§3 受注書・指示書
+- `_specs/feature/01-sales.md` — §1 価格・見積、§2 注文受付・価格差異、§3 注文請書・指示書
 - `_specs/feature/02-production.md` — §4 製品在庫照合、§5 素材判断・素材在庫、§6 生産判断・部門承認、§7 製造ワークフロー実行
 - `_specs/feature/03-shipping-billing.md` — §8 出荷・納品、§9 会計・請求
 - `_specs/feature/04-design-and-master-management.md` — §10 設計依頼、マスタ管理

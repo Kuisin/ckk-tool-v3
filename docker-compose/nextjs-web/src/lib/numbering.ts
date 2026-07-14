@@ -14,7 +14,9 @@ const SEQUENCES = {
   ESTIMATE: { prefix: "EST", digits: 5 },
   QUOTE: { prefix: "QOT", digits: 5 },
   PRICE_LIST: { prefix: "PRC", digits: 5 },
-  ORDER: { prefix: "ORD", digits: 5 }, // 受注書ベース（枝番は行側で 1..N）
+  ORDER: { prefix: "ORD", digits: 5 }, // 注文請書ベース（枝番は行側で 1..N）
+  SHIPPING: { prefix: "SHP", digits: 5 }, // 出荷書
+  DELIVERY: { prefix: "DRN", digits: 5 }, // 納品書
 } as const;
 
 export type NumberingKey = keyof typeof SEQUENCES;

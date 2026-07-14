@@ -306,7 +306,7 @@ export async function searchUserOptions(
   }));
 }
 
-/** 受注書検索（指示書ビルダー用）。value = uuid、label = 番号 + 製品 + 数量。 */
+/** 注文請書検索（指示書ビルダー用）。value = uuid、label = 番号 + 製品 + 数量。 */
 export async function searchSalesOrderOptions(
   query: string,
 ): Promise<SearchOption[]> {

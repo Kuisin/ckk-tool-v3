@@ -1,11 +1,10 @@
-import { PlaceholderPage } from "@/components/ui/PlaceholderPage";
+import { ShippingOrderTable } from "@/components/shipping/shipping-orders/ShippingOrderTable";
+import { fetchShippingOrders } from "./data";
 
-export default function ShippingShippingOrdersPage() {
-  return (
-    <PlaceholderPage
-      breadcrumbs={["出荷", "出荷書"]}
-      operationCode="SH01"
-      title="出荷書"
-    />
-  );
+export const dynamic = "force-dynamic";
+
+/** 出荷書 一覧 (SH01). */
+export default async function ShippingShippingOrdersPage() {
+  const rows = await fetchShippingOrders();
+  return <ShippingOrderTable rows={rows} />;
 }

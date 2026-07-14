@@ -117,7 +117,7 @@ export const appList: AppEntry[] = [
   // ─── 生産 ──────────────────────────────────────────────────────────────────
   {
     key: "sales-orders",
-    label: "受注書",
+    label: "注文請書",
     operationCode: "PD01",
     href: "/production/sales-orders",
     icon: "IconClipboardList",

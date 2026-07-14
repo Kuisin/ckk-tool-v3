@@ -62,7 +62,7 @@ src/
 │   │   │           └── edit/page.tsx
 │   │   │
 │   │   ├── production/                             # 生産（§3〜§7）
-│   │   │   ├── sales-orders/                       # 受注書（§3）
+│   │   │   ├── sales-orders/                       # 注文請書（§3）
 │   │   │   │   ├── page.tsx
 │   │   │   │   ├── new/page.tsx
 │   │   │   │   └── [id]/
@@ -183,7 +183,7 @@ src/
 │   ├── api/
 │   │   ├── pdf/                                    # Gotenberg PDF生成
 │   │   │   ├── quote/route.ts                      # 見積書
-│   │   │   ├── sales-order/route.ts                # 受注書
+│   │   │   ├── sales-order/route.ts                # 注文請書
 │   │   │   ├── purchase-order/route.ts             # 素材発注書
 │   │   │   ├── work-order/route.ts                 # 指示書
 │   │   │   ├── shipping-order/route.ts             # 出荷書

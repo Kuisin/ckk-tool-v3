@@ -106,7 +106,7 @@ export interface WorkOrderView {
   materialId: number | null;
   materialCode: string | null;
   materialName: string | null;
-  /** ロット番号 = 指示書番号（受注書側の lot_number）。 */
+  /** ロット番号 = 指示書番号（注文請書側の lot_number）。 */
   lotNumber: number | null;
   sourceWorkOrderNumber: number | null;
   copies: WorkOrderCopyRef[];

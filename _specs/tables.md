@@ -433,7 +433,7 @@ Table order_acceptances {
   customer_branch_bp_id uuid [ref: > business_partners.id]
   customer_order_ref varchar               // 顧客注文書番号（FAX受取）
   status          ORDER_ACCEPTANCE_STATUS [not null, default: 'PENDING']
-  total_amount    numeric(12,2)            // 受注書から自動計算
+  total_amount    numeric(12,2)            // 注文請書から自動計算
   order_doc_file_id uuid [ref: > files.id] // 受領した注文書 PDF
   notes           text
   created_by      uuid [ref: > users.id]
@@ -448,7 +448,7 @@ Enum ORDER_ACCEPTANCE_STATUS {
 }
 
 // ===========================
-// 受注書（§3）ORD-YYYYMM-NNNNN-NN
+// 注文請書（§3）ORD-YYYYMM-NNNNN-NN
 // ===========================
 
 Table sales_orders {
@@ -1370,7 +1370,7 @@ Table files {
 //   EST-YYYYMM-NNNNN（試算）
 //   QOT-YYYYMM-NNNNN（見積書）
 //   ORD-YYYYMM-NNNNN（注文受取書）
-//   ORD-YYYYMM-NNNNN-NN（受注書）
+//   ORD-YYYYMM-NNNNN-NN（注文請書）
 //   DRN-YYYYMM-NNNNN（納品書）
 //   INV-YYYYMM-NNNNN（請求書）
 //   指示書・ロット番号: 通し連番 (int)

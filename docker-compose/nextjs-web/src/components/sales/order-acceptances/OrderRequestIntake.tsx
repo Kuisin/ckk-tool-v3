@@ -234,7 +234,7 @@ export function OrderRequestIntake({ manual = false }: { manual?: boolean }) {
                 受注請書を受諾しました
               </Text>
               <Text c="dimmed" size="sm" ta="center">
-                {data.customer_name ?? "顧客未設定"} ／ 受注書 1 件・指示書{" "}
+                {data.customer_name ?? "顧客未設定"} ／ 注文請書 1 件・指示書{" "}
                 {groupWorkOrders(data).length} 件
                 {data.total_amount != null &&
                   ` ／ 合計 ¥${data.total_amount.toLocaleString()}`}

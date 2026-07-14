@@ -277,7 +277,7 @@ Operation codes provide keyboard-shortcut navigation. Format: `{CAT}{MODE}{IDX}`
 | 購買 | 1 | 素材入荷 | PU01 | PU11 | PU21 |
 | 購買 | 2 | 外注依頼 | PU02 | PU12 | PU22 |
 | 購買 | 3 | 素材発注書 | PU03 | PU13 | PU23 |
-| 生産 | 1 | 受注書 | PD01 | PD11 | PD21 |
+| 生産 | 1 | 注文請書 | PD01 | PD11 | PD21 |
 | 生産 | 2 | 指示書 | PD02 | PD12 | PD22 |
 | 生産 | 3 | 承認管理 | PD03 | PD13 | PD23 |
 | 生産 | 4 | 製品在庫 | PD04 | PD14 | PD24 |
@@ -356,7 +356,7 @@ Stack (gap="xl", p="md", maw={1200})
 | 素材入荷 | `IconPackageImport` |
 | 外注依頼 | `IconTruckDelivery` |
 | 素材発注書 | `IconShoppingCart` |
-| 受注書 | `IconClipboardList` |
+| 注文請書 | `IconClipboardList` |
 | 指示書 | `IconSettings2` |
 | 承認管理 | `IconShieldCheck` |
 | 製品在庫 | `IconBoxSeam` |
@@ -1017,9 +1017,9 @@ Row click navigates to detail page.
 | PriceList | 顧客 / 製品 / 注文種別 / 数量範囲 / 単価 / 有効期間 / 試算元 / 状態 |
 | Quote | 見積番号 / 顧客 / 有効期限 / 状態 / 更新日 |
 | OrderAcceptance | 注文番号 / 顧客 / 顧客注文書番号 / 合計金額 / 状態 / 更新日 |
-| SalesOrder | 受注番号 / 顧客 / 製品 / 数量 / 金額 / 納期 / 状態 |
-| WorkOrder | 指示書番号 / 受注番号 / 種別 / 予定数量 / 承認状態 / 状態 / 更新日 |
-| ShippingOrder | 出荷書番号 / 受注番号 / 種別 / 状態 / 出荷日 |
+| SalesOrder | 注文請書番号 / 顧客 / 製品 / 数量 / 金額 / 納期 / 状態 |
+| WorkOrder | 指示書番号 / 注文請書番号 / 種別 / 予定数量 / 承認状態 / 状態 / 更新日 |
+| ShippingOrder | 出荷書番号 / 注文請書番号 / 種別 / 状態 / 出荷日 |
 | DeliveryNote | 納品番号 / 出荷書番号 / 納品先 / 方法 / 状態 / 納品日 |
 | Invoice | 請求番号 / 顧客 / 請求期間 / 合計金額 / 状態 / 発行日 |
 | BillingClosing | 顧客 / 締日 / 合計金額 / 状態 / 処理日 |
@@ -1089,7 +1089,7 @@ Do **not** use toast for:
 ### 16.2 Confirmation Modal
 
 Use `modals.openConfirmModal()` (see §10.4) for:
-- Cancelling a document (受注書、指示書 etc.)
+- Cancelling a document (注文請書、指示書 etc.)
 - Deleting a master record
 - Rolling back a manufacturing step
 
@@ -1135,7 +1135,7 @@ Use these exact terms consistently across all UI strings, error messages, and no
 | 価格表 | 価格表 | price_list |
 | 見積書 | 見積書 | QOT |
 | 受注請書 | 受注請書 | ORD |
-| 受注書 | 受注書 | ORD-...-NN |
+| 注文請書 | 注文請書 | ORD-...-NN |
 | 指示書 | 指示書 | — (serial int) |
 | 出荷書 | 出荷書 | — |
 | 納品書 | 納品書 | DRN |

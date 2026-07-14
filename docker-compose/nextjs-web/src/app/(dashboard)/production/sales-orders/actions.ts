@@ -1,13 +1,13 @@
 "use server";
 
 /**
- * Server Actions — 受注書 (app.sales_orders, PD01).
+ * Server Actions — 注文請書 (app.sales_orders, PD01).
  *
- * 受注書は「一括作成」— 1回の作成で allocateDocumentKey("ORDER") を1度だけ
+ * 注文請書は「一括作成」— 1回の作成で allocateDocumentKey("ORDER") を1度だけ
  * 呼び、明細行ごとに branch = 1..N の行を $transaction で作る。表示番号
  * ORD-YYYYMM-NNNNN-NN は導出（保存しない）。
  *
- * 単価は価格表（顧客×製品×注文種別×数量）から自動解決できるが、受注書は
+ * 単価は価格表（顧客×製品×注文種別×数量）から自動解決できるが、注文請書は
  * 顧客注文書と突き合わせる文書のため手動上書きも許す（見積書と異なる）。
  * 編集・確定は「下書きかつ未ロック（isLocked=false）」の行のみ。
  */
@@ -166,7 +166,7 @@ export async function createSalesOrders(
     revalidate();
     return actionOk({ number: numbers[0], numbers });
   } catch (e) {
-    return actionError(prismaErrorMessage(e, "受注書の作成に失敗しました"));
+    return actionError(prismaErrorMessage(e, "注文請書の作成に失敗しました"));
   }
 }
 
@@ -176,7 +176,7 @@ export async function updateSalesOrder(
   payload: SalesOrderUpdateInput,
 ): Promise<ActionResult<{ number: string }>> {
   const key = parseSalesOrderKey(number);
-  if (!key) return actionError("受注番号が不正です");
+  if (!key) return actionError("注文請書番号が不正です");
   const parsed = updateInput.safeParse(payload);
   if (!parsed.success) {
     return actionError(parsed.error.issues[0]?.message ?? "入力が不正です");
@@ -210,7 +210,9 @@ export async function updateSalesOrder(
       },
     });
     if (updated.count === 0) {
-      return actionError("下書きかつロックされていない受注書のみ編集できます");
+      return actionError(
+        "下書きかつロックされていない注文請書のみ編集できます",
+      );
     }
     await recordAudit({
       action: "UPDATE",
@@ -241,21 +243,21 @@ export async function updateSalesOrder(
     revalidate(number);
     return actionOk({ number });
   } catch (e) {
-    return actionError(prismaErrorMessage(e, "受注書の更新に失敗しました"));
+    return actionError(prismaErrorMessage(e, "注文請書の更新に失敗しました"));
   }
 }
 
 /** 確定 (DRAFT → CONFIRMED)。ロック中（承認依頼中）は不可。 */
 export async function confirmSalesOrder(number: string): Promise<ActionResult> {
   const key = parseSalesOrderKey(number);
-  if (!key) return actionError("受注番号が不正です");
+  if (!key) return actionError("注文請書番号が不正です");
   try {
     const updated = await prisma.salesOrder.updateMany({
       where: { ...key, status: "DRAFT", isLocked: false },
       data: { status: "CONFIRMED" },
     });
     if (updated.count === 0) {
-      return actionError("下書きの受注書のみ確定できます");
+      return actionError("下書きの注文請書のみ確定できます");
     }
     await recordAudit({
       action: "UPDATE",
@@ -274,7 +276,7 @@ export async function confirmSalesOrder(number: string): Promise<ActionResult> {
 /** キャンセル — 出荷済（SHIPPED）以降・キャンセル済は不可。 */
 export async function cancelSalesOrder(number: string): Promise<ActionResult> {
   const key = parseSalesOrderKey(number);
-  if (!key) return actionError("受注番号が不正です");
+  if (!key) return actionError("注文請書番号が不正です");
   try {
     const prior = await prisma.salesOrder.findUnique({
       where: { yearMonth_seq_branch: key },
@@ -290,7 +292,9 @@ export async function cancelSalesOrder(number: string): Promise<ActionResult> {
       data: { status: "CANCELLED" },
     });
     if (updated.count === 0) {
-      return actionError("出荷済・キャンセル済の受注書はキャンセルできません");
+      return actionError(
+        "出荷済・キャンセル済の注文請書はキャンセルできません",
+      );
     }
     await recordAudit({
       action: "UPDATE",

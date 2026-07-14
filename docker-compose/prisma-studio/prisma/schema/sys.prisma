@@ -12,7 +12,8 @@ model File {
 
   uploadedByUser User? @relation("FileUploadedBy", fields: [uploadedBy], references: [id])
 
-  quotesPdf Quote[] @relation("QuotePdf")
+  quotesPdf        Quote[]        @relation("QuotePdf")
+  deliveryNotesPdf DeliveryNote[] @relation("DeliveryNotePdf")
 
   @@map("files")
   @@schema("app")

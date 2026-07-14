@@ -1,11 +1,10 @@
-import { PlaceholderPage } from "@/components/ui/PlaceholderPage";
+import { DeliveryNoteTable } from "@/components/shipping/delivery-notes/DeliveryNoteTable";
+import { fetchDeliveryNotes } from "./data";
 
-export default function ShippingDeliveryNotesPage() {
-  return (
-    <PlaceholderPage
-      breadcrumbs={["出荷", "納品書"]}
-      operationCode="SH02"
-      title="納品書"
-    />
-  );
+export const dynamic = "force-dynamic";
+
+/** 納品書 一覧 (SH02). */
+export default async function ShippingDeliveryNotesPage() {
+  const rows = await fetchDeliveryNotes();
+  return <DeliveryNoteTable rows={rows} />;
 }

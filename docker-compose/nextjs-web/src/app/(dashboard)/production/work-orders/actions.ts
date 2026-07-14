@@ -7,7 +7,7 @@
  *   ブロッカー（AND 不足・排他違反）があれば保存を拒否する。工程の並びは
  *   defaultOrder（カタログ既定順）で採番する。
  * - 採番: nextSerialNumber("WORK_ORDER") — 指示書番号 = ロット番号（通し連番）。
- *   受注書の lot_number が未採番なら同番号を書き込む。
+ *   注文請書の lot_number が未採番なら同番号を書き込む。
  * - 承認: approval_status + 遷移列 + history Json（MaterialPurchaseOrder と
  *   同型の row-workflow）。承認可否は approval_group_members で判定。
  */
@@ -56,7 +56,7 @@ const stepInput = z.object({
 });
 
 const workOrderInput = z.object({
-  salesOrderId: z.string().min(1, "受注書を選択してください"),
+  salesOrderId: z.string().min(1, "注文請書を選択してください"),
   type: z.enum(["FROM_STOCK", "MANUFACTURE"]),
   plannedQuantity: z.number().int().min(1, "予定数量は1以上"),
   materialId: z.number().int().positive().nullable(),
@@ -176,7 +176,7 @@ export async function createWorkOrder(
           },
         },
       });
-      // ロット番号 = 指示書番号。受注書が未採番なら同番号を採用する。
+      // ロット番号 = 指示書番号。注文請書が未採番なら同番号を採用する。
       const so = await tx.salesOrder.findUnique({
         where: { id: v.salesOrderId },
         select: { lotNumber: true },
@@ -293,14 +293,15 @@ export async function updateWorkOrder(
 }
 
 /**
- * コピー作成 — 工程・検査表を引き継いだ DRAFT を対象受注書に作る。
+ * コピー作成 — 工程・検査表を引き継いだ DRAFT を対象注文請書に作る。
  * source_work_order_id にコピー元を記録する（バージョン警告用）。
  */
 export async function copyWorkOrder(
   sourceWorkOrderNumber: number,
   targetSalesOrderId: string,
 ): Promise<ActionResult<{ workOrderNumber: number }>> {
-  if (!targetSalesOrderId) return actionError("対象の受注書を選択してください");
+  if (!targetSalesOrderId)
+    return actionError("対象の注文請書を選択してください");
   try {
     const source = await prisma.workOrder.findUnique({
       where: { workOrderNumber: sourceWorkOrderNumber },
@@ -377,7 +378,7 @@ export async function copyWorkOrder(
   }
 }
 
-/** キャンセル — DRAFT / PENDING_APPROVAL のみ。受注書ロックも解除する。 */
+/** キャンセル — DRAFT / PENDING_APPROVAL のみ。注文請書ロックも解除する。 */
 export async function cancelWorkOrder(
   workOrderNumber: number,
 ): Promise<ActionResult> {
@@ -422,7 +423,7 @@ export async function cancelWorkOrder(
 
 // ── 承認フロー (§6 簡易版) ───────────────────────────────────────────────────
 
-/** 承認依頼 — DRAFT → PENDING_APPROVAL / PENDING_1ST。受注書をロックする。 */
+/** 承認依頼 — DRAFT → PENDING_APPROVAL / PENDING_1ST。注文請書をロックする。 */
 export async function requestApproval(
   workOrderNumber: number,
 ): Promise<ActionResult> {
@@ -516,7 +517,7 @@ export async function approveFirst(
 
 /**
  * 第二承認 — PENDING_2ND → APPROVED（指示書 status も APPROVED）。
- * 受注書のロックを解除し、DRAFT/CONFIRMED の受注書は IN_PRODUCTION へ進める。
+ * 注文請書のロックを解除し、DRAFT/CONFIRMED の注文請書は IN_PRODUCTION へ進める。
  */
 export async function approveSecond(
   workOrderNumber: number,
@@ -636,7 +637,7 @@ export async function rejectWorkOrder(
 
 // ── ビルダー補助 ─────────────────────────────────────────────────────────────
 
-/** 受注書選択時の情報取得（製品・数量表示 + 予定数量の既定値）。 */
+/** 注文請書選択時の情報取得（製品・数量表示 + 予定数量の既定値）。 */
 export async function getSalesOrderInfo(
   salesOrderId: string,
 ): Promise<SalesOrderRef | null> {

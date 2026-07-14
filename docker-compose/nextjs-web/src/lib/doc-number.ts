@@ -60,7 +60,7 @@ export function parseDocKey(id: string, prefix?: DocPrefix): DocKey | null {
   return { yearMonth: m[2], seq };
 }
 
-// ─── 受注書番号（3 パート: ORD-YYYYMM-NNNNN-NN） ────────────────────────────
+// ─── 注文請書番号（3 パート: ORD-YYYYMM-NNNNN-NN） ────────────────────────────
 
 export interface SalesOrderKey {
   yearMonth: string;

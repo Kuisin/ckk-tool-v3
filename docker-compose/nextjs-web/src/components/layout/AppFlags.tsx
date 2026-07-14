@@ -14,24 +14,48 @@ import { createContext, type ReactNode, useContext, useMemo } from "react";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { appList } from "@/lib/app-list";
 
-const AppFlagsContext = createContext<ReadonlySet<string>>(new Set());
+interface AppFlagsValue {
+  disabled: ReadonlySet<string>;
+  /** main（本番）で無効 = 未リリースのアプリ（dev では DEV リボン表示）。 */
+  unreleased: ReadonlySet<string>;
+}
+
+const AppFlagsContext = createContext<AppFlagsValue>({
+  disabled: new Set(),
+  unreleased: new Set(),
+});
 
 export function AppFlagsProvider({
   disabledKeys,
+  unreleasedKeys = [],
   children,
 }: {
   disabledKeys: string[];
+  unreleasedKeys?: string[];
   children: ReactNode;
 }) {
-  const set = useMemo(() => new Set(disabledKeys), [disabledKeys]);
+  const value = useMemo(
+    () => ({
+      disabled: new Set(disabledKeys),
+      unreleased: new Set(unreleasedKeys),
+    }),
+    [disabledKeys, unreleasedKeys],
+  );
   return (
-    <AppFlagsContext.Provider value={set}>{children}</AppFlagsContext.Provider>
+    <AppFlagsContext.Provider value={value}>
+      {children}
+    </AppFlagsContext.Provider>
   );
 }
 
 /** 現環境で無効化されたアプリ key の Set。 */
 export function useDisabledApps(): ReadonlySet<string> {
-  return useContext(AppFlagsContext);
+  return useContext(AppFlagsContext).disabled;
+}
+
+/** 未リリース（main で無効）のアプリ key の Set — DEV リボン用。 */
+export function useUnreleasedApps(): ReadonlySet<string> {
+  return useContext(AppFlagsContext).unreleased;
 }
 
 /** pathname がどのアプリ（appList entry）に属するか。属さなければ null。 */

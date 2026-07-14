@@ -57,8 +57,10 @@ export const AUDIT_TABLE_LABELS: Record<string, string> = {
   inspection_templates: "検査表テンプレート",
   defect_types: "不良種類",
   approval_groups: "承認グループ",
-  sales_orders: "受注書",
+  sales_orders: "注文請書",
   work_orders: "指示書",
+  shipping_orders: "出荷書",
+  delivery_notes: "納品書",
   system: "システム",
 };
 
