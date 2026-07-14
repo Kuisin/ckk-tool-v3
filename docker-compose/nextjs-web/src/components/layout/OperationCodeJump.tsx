@@ -21,6 +21,7 @@ import { notifications } from "@mantine/notifications";
 import { IconArrowRight } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
+import { appKeyForPath, useDisabledApps } from "@/components/layout/AppFlags";
 import {
   formatOperationCodeDisplay,
   navigateByOperationCode,
@@ -46,7 +47,12 @@ export function OperationCodeJump({
     onDropdownClose: () => combobox.resetSelectedOption(),
   });
 
-  const options = searchOperationCodes(value);
+  const disabledApps = useDisabledApps();
+  // 環境別フラグで無効化されたアプリの画面は候補から除外する。
+  const options = searchOperationCodes(value).filter((e) => {
+    const key = appKeyForPath(e.href);
+    return !key || !disabledApps.has(key);
+  });
 
   useHotkeys([
     [

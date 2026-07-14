@@ -59,6 +59,7 @@ model User {
   filesUploaded           File[]             @relation("FileUploadedBy")
   auditLogs               AuditLog[]         @relation("AuditLogUser")
   systemSettingsUpdated   SystemSetting[]    @relation("SystemSettingUpdatedBy")
+  featureFlagsUpdated     FeatureFlag[]      @relation("FeatureFlagUpdatedBy")
 
   posRequested MaterialPurchaseOrder[] @relation("PoRequestedBy")
   posApproved  MaterialPurchaseOrder[] @relation("PoApprovedBy")

@@ -45,6 +45,22 @@ model NumberingSequence {
   @@schema("app")
 }
 
+// フィーチャーフラグ（_specs/tables.md §Other）。アプリの環境別 ON/OFF に使用:
+// key = `app:<appKey>:<env>`（env = dev | main）。行が無ければ有効（デフォルト
+// ON — 既存挙動を変えない）。dev/main は同一 DB を共有するため env をキーに含める。
+model FeatureFlag {
+  key         String   @id
+  isEnabled   Boolean  @default(false) @map("is_enabled")
+  description String?
+  updatedBy   String?  @map("updated_by") @db.Uuid
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  updatedByUser User? @relation("FeatureFlagUpdatedBy", fields: [updatedBy], references: [id])
+
+  @@map("feature_flags")
+  @@schema("app")
+}
+
 // 監査ログ（業務操作履歴）。各レコードの CREATE/UPDATE/DELETE を before/after
 // JSON 付きで記録し、詳細画面の「履歴」タブと管理者向け操作履歴一覧で表示する。
 // record_id は業務識別子（文書番号 QOT-… / EST-…、価格表エントリキー、
