@@ -111,6 +111,7 @@ model SalesOrder {
 
   workOrders     WorkOrder[]
   shippingOrders ShippingOrder[]
+  reservations   InventoryReservation[]
 
   @@unique([yearMonth, seq, branch])
   @@index([customerBpId])
@@ -164,6 +165,7 @@ model WorkOrder {
   stepLinks           WorkOrderStepLink[]
   inspectionTemplates WorkOrderInspectionTemplate[]
   shippingOrders      ShippingOrder[]
+  reservations        InventoryReservation[]
 
   @@index([salesOrderId])
   @@index([status])

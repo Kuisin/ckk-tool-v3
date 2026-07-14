@@ -185,6 +185,7 @@ model Material {
   purchaseOrderItems MaterialPurchaseOrderItem[]
   receipts           MaterialReceipt[]
   workOrders         WorkOrder[]
+  inventory          MaterialInventory[]
 
   @@unique([materialTypeId, surfaceFinishCode, diameterCode, lengthVariantCode])
   @@map("materials")
@@ -221,6 +222,7 @@ model Product {
   salesOrders      SalesOrder[]
   shippingOrderItems ShippingOrderItem[]
   deliveryNoteItems  DeliveryNoteItem[]
+  inventory          ProductInventory[]
 
   @@unique([yearMonth, seq])
   @@index([materialTypeId])

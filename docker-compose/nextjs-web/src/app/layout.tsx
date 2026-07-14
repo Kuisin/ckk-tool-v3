@@ -6,7 +6,7 @@ import "@mantine/dates/styles.layer.css";
 import "@mantine/notifications/styles.layer.css";
 
 import { mantineHtmlProps } from "@mantine/core";
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Noto_Sans_JP } from "next/font/google";
 import { MANTINE_COLOR_SCHEME_SCRIPT } from "@/lib/mantine-color-scheme-script";
 import { Providers } from "./providers";
@@ -20,6 +20,15 @@ const notoSansJp = Noto_Sans_JP({
 export const metadata: Metadata = {
   title: "CKK 業務管理システム",
   description: "製造業務管理システム — 販売・購買・生産・出荷・請求・マスタ",
+};
+
+// モバイル PWA: input フォーカス時の自動ズームを抑止（iOS は font-size <16px の
+// 入力にフォーカスすると拡大する）。maximum-scale=1 で抑止しつつ、iOS 10+ は
+// ピンチズーム自体は引き続き可能（アクセシビリティを損なわない）。
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
 };
 
 export default function RootLayout({

@@ -35,7 +35,7 @@ import {
   IconWand,
 } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
-import { useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import { z } from "zod";
 import {
   searchMaterialOptions,
@@ -43,6 +43,7 @@ import {
 } from "@/app/(dashboard)/_shared/option-search";
 import {
   createWorkOrder,
+  getMaterialAtp,
   getSalesOrderInfo,
   updateWorkOrder,
   type WorkOrderInput,
@@ -52,11 +53,14 @@ import { SecondaryButton } from "@/components/ui/buttons";
 import { SearchSelect } from "@/components/ui/SearchSelect";
 import { FormSection, FormShell } from "@/components/ui/shells";
 import { useIsMobile } from "@/hooks/useViewport";
+// type-only import — lib/atp は server-only（型はバンドルされない）。
+import type { MaterialAtp } from "@/lib/atp";
 import {
   PROCESS_CATEGORY_LABEL,
   WORK_ORDER_TYPE_OPTIONS,
 } from "@/lib/enum-labels";
 import { zodResolver } from "@/lib/form";
+import { formatDate } from "@/lib/format";
 import type { CatalogStep, UseDep } from "@/lib/workflow-core";
 import {
   defaultOrder,
@@ -196,6 +200,26 @@ export function WorkflowBuilder({
     [catalogSteps],
   );
   const selected = form.values.selectedStepIds;
+
+  // ── 素材 ATP（§5 充足チェック — 警告のみ、保存はブロックしない） ─────────────
+  const [materialAtpInfo, setMaterialAtpInfo] = useState<MaterialAtp | null>(
+    null,
+  );
+  const materialIdValue =
+    form.values.type === "MANUFACTURE" ? form.values.materialId : null;
+  useEffect(() => {
+    if (!materialIdValue) {
+      setMaterialAtpInfo(null);
+      return;
+    }
+    let cancelled = false;
+    getMaterialAtp(Number(materialIdValue)).then((atp) => {
+      if (!cancelled) setMaterialAtpInfo(atp);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [materialIdValue]);
 
   // ── ライブ構成検証 ─────────────────────────────────────────────────────────
   const issues = useMemo(
@@ -412,6 +436,14 @@ export function WorkflowBuilder({
             {...form.getInputProps("inspectionTemplateIds")}
           />
         </SimpleGrid>
+        {/* 素材 ATP 警告（充足=緑 / 不足+入荷予定あり=黄 / 不足+入荷予定なし=赤）。
+            警告のみ — 保存はブロックしない（§5 素材判断は指示書承認側で行う）。 */}
+        {materialIdValue && materialAtpInfo && (
+          <MaterialAtpAlert
+            atp={materialAtpInfo}
+            plannedQuantity={form.values.plannedQuantity}
+          />
+        )}
       </FormSection>
 
       <FormSection
@@ -616,5 +648,66 @@ export function WorkflowBuilder({
         {...form.getInputProps("notes")}
       />
     </FormShell>
+  );
+}
+
+/**
+ * 素材 ATP インライン警告 — 現在利用可能数と予定数量の比較。
+ * 緑: 充足 / 黄: 不足だが入荷予定あり（次回入荷日を表示）/ 赤: 不足・入荷予定なし。
+ */
+function MaterialAtpAlert({
+  atp,
+  plannedQuantity,
+}: {
+  atp: MaterialAtp;
+  plannedQuantity: number;
+}) {
+  const planned = Number.isFinite(plannedQuantity) ? plannedQuantity : 0;
+  const shortage = planned - atp.availableNow;
+
+  if (shortage <= 0) {
+    return (
+      <Alert
+        color="green"
+        icon={<IconInfoCircle size={16} />}
+        mt="sm"
+        p="xs"
+        variant="light"
+      >
+        素材在庫は充足しています（現在利用可能{" "}
+        {atp.availableNow.toLocaleString("ja-JP")} / 予定数量{" "}
+        {planned.toLocaleString("ja-JP")}）
+      </Alert>
+    );
+  }
+  if (atp.nextReceiptDate) {
+    return (
+      <Alert
+        color="yellow"
+        icon={<IconAlertTriangle size={16} />}
+        mt="sm"
+        p="xs"
+        variant="light"
+      >
+        素材在庫が {shortage.toLocaleString("ja-JP")} 不足しています
+        （現在利用可能 {atp.availableNow.toLocaleString("ja-JP")} / 予定数量{" "}
+        {planned.toLocaleString("ja-JP")}）— 次回入荷予定:{" "}
+        {formatDate(atp.nextReceiptDate)}
+      </Alert>
+    );
+  }
+  return (
+    <Alert
+      color="red"
+      icon={<IconAlertTriangle size={16} />}
+      mt="sm"
+      p="xs"
+      variant="light"
+    >
+      素材在庫が {shortage.toLocaleString("ja-JP")} 不足しています
+      （現在利用可能 {atp.availableNow.toLocaleString("ja-JP")} / 予定数量{" "}
+      {planned.toLocaleString("ja-JP")}）—
+      入荷予定がありません。素材発注を検討してください
+    </Alert>
   );
 }

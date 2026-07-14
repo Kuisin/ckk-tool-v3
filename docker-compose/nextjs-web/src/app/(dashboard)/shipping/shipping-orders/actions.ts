@@ -365,6 +365,10 @@ export async function shipShippingOrder(number: string): Promise<ActionResult> {
       }
     });
 
+    // 在庫反映: DISPATCH は出庫 + 予約解除、STOCK_STORAGE は保管入庫（PR 5）。
+    const { onShippingShipped } = await import("@/lib/inventory");
+    await onShippingShipped(key);
+
     await recordAudit({
       action: "UPDATE",
       tableName: "shipping_orders",

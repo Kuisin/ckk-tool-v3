@@ -27,6 +27,11 @@ const SALES_ORDER_INCLUDE = {
   workOrders: {
     orderBy: { workOrderNumber: "asc" as const },
   },
+  // §4 在庫照合の引当済みサマリ用（予約中のみ — 確定/解除は数えない）。
+  reservations: {
+    where: { status: "RESERVED" as const },
+    select: { quantity: true },
+  },
 };
 
 type SalesOrderRow = NonNullable<Awaited<ReturnType<typeof findRow>>>;
@@ -89,6 +94,11 @@ function mapSalesOrder(r: SalesOrderRow): SalesOrder {
     lotNumber: r.lotNumber,
     status: r.status as SalesOrderStatus,
     isLocked: r.isLocked,
+    // 引当済み数 = この注文請書の予約中（RESERVED）予約の合計。
+    reservedStockQuantity: r.reservations.reduce(
+      (sum, rv) => sum + Number(rv.quantity),
+      0,
+    ),
     notes: r.notes,
     workOrders: r.workOrders.map((w) => ({
       workOrderNumber: w.workOrderNumber,

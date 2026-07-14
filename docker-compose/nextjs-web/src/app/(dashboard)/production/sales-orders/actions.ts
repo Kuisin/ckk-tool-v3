@@ -18,6 +18,7 @@ import { resolveUnitPriceFromEntries } from "@/components/sales/quotes/model";
 import { recordAudit } from "@/lib/audit";
 import { prisma } from "@/lib/db";
 import { formatSalesOrderNumber, parseSalesOrderKey } from "@/lib/doc-number";
+import { reserveProductStock, type StockCheckResult } from "@/lib/inventory";
 import { allocateDocumentKey } from "@/lib/numbering";
 import {
   type ActionResult,
@@ -270,6 +271,35 @@ export async function confirmSalesOrder(number: string): Promise<ActionResult> {
     return actionOk();
   } catch (e) {
     return actionError(prismaErrorMessage(e, "確定に失敗しました"));
+  }
+}
+
+/**
+ * §4 在庫照合 + 引当予約 — lib/inventory reserveProductStock のラッパ。
+ * 二段照合（レコード有無 → 利用可能数）を行い、可能な分を RESERVE する。
+ * 不足分は指示書（MANUFACTURE）作成の材料 — 呼び出し側の UI で誘導する。
+ * 下書き・確定の注文請書のみ実行可（製造中以降は指示書側で管理）。
+ */
+export async function runStockCheck(
+  salesOrderId: string,
+): Promise<ActionResult<StockCheckResult>> {
+  if (!salesOrderId) return actionError("注文請書が不正です");
+  try {
+    const so = await prisma.salesOrder.findUnique({
+      where: { id: salesOrderId },
+      select: { status: true, yearMonth: true, seq: true, branch: true },
+    });
+    if (!so) return actionError("対象の注文請書が見つかりません");
+    if (so.status !== "DRAFT" && so.status !== "CONFIRMED") {
+      return actionError("下書き・確定の注文請書のみ在庫照合できます");
+    }
+    const result = await reserveProductStock(salesOrderId);
+    revalidate(formatSalesOrderNumber(so));
+    // 在庫台帳（予約数）が動くため在庫ページも再検証する。
+    revalidatePath("/production/inventory/products");
+    return actionOk(result);
+  } catch (e) {
+    return actionError(prismaErrorMessage(e, "在庫照合に失敗しました"));
   }
 }
 
