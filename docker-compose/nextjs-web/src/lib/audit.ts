@@ -66,6 +66,7 @@ export const AUDIT_TABLE_LABELS: Record<string, string> = {
   invoices: "請求書",
   billing_closings: "締日処理",
   design_requests: "設計依頼書",
+  approval_requests: "承認依頼",
   system: "システム",
 };
 

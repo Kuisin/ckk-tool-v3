@@ -5,6 +5,7 @@
  * 承認履歴は history Json（{action,user,at,notes}）を displayName 解決して返す。
  */
 
+import type { ApprovalTrailView } from "@/components/production/ApprovalStatusPanel";
 import type {
   InspectionRecordView,
   InspectionTemplateView,
@@ -15,7 +16,7 @@ import type {
   WorkOrderRow,
   WorkOrderView,
 } from "@/components/production/work-orders/model";
-import type { HistoryEntry } from "@/lib/approvals";
+import { fetchApprovalTrail, type HistoryEntry } from "@/lib/approvals";
 import { getCurrentActorId } from "@/lib/audit";
 import { prisma } from "@/lib/db";
 import { formatSalesOrderNumber } from "@/lib/doc-number";
@@ -78,14 +79,14 @@ export async function fetchWorkOrders(): Promise<WorkOrderRow[]> {
   return rows.map(mapRow);
 }
 
-/** 承認待ち一覧 (PD03) — PENDING_1ST / PENDING_2ND のみ。 */
-export async function fetchPendingApprovals(): Promise<WorkOrderRow[]> {
-  const rows = await prisma.workOrder.findMany({
-    where: { approvalStatus: { in: ["PENDING_1ST", "PENDING_2ND"] } },
-    include: { salesOrder: { include: { product: true } } },
-    orderBy: [{ requested1stAt: "asc" }, { workOrderNumber: "asc" }],
-  });
-  return rows.map(mapRow);
+/**
+ * 指示書の承認記録（approval_requests / approval_records — 承認者名解決済み、
+ * client-safe）。ApprovalStatusPanel の trail へ渡す。
+ */
+export async function fetchWorkOrderApprovalTrail(
+  workOrderNumber: number,
+): Promise<ApprovalTrailView[]> {
+  return fetchApprovalTrail("work_orders", String(workOrderNumber));
 }
 
 /** 指示書 詳細 view model。id = work_order_number。 */

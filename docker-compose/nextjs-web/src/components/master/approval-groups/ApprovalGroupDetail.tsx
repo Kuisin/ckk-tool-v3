@@ -5,7 +5,7 @@
  *
  * サマリ（名称・種別・状態）+ タブ: グループ情報 / メンバー / 代理設定 / 履歴。
  * メンバーはタブ内でインライン追加・削除・有効/無効切替する。
- * 代理設定は承認フロー本実装時に対応（EmptyState 表示）。
+ * 代理設定（approval_delegates — 期間限定代理）はタブ内で追加・削除する。
  */
 
 import {
@@ -41,10 +41,14 @@ import {
   ResourceActions,
   SummaryGrid,
 } from "@/components/ui/shells";
+import { formatDate } from "@/lib/format";
 import {
+  AddApprovalDelegateModal,
   AddApprovalGroupMemberModal,
+  type ApprovalDelegateTarget,
   type ApprovalGroupMemberTarget,
   DeleteApprovalGroupModal,
+  RemoveApprovalDelegateModal,
   RemoveApprovalGroupMemberModal,
   ToggleApprovalGroupActiveModal,
 } from "./ApprovalGroupModals";
@@ -59,6 +63,18 @@ export interface ApprovalGroupMemberRow {
   isActive: boolean;
 }
 
+/** 期間限定代理（approval_delegates）の 1 行。 */
+export interface ApprovalGroupDelegateRow {
+  id: string;
+  delegatorId: string;
+  delegatorName: string;
+  delegateId: string;
+  delegateName: string;
+  validFrom: string; // ISO
+  validUntil: string; // ISO
+  reason: string | null;
+}
+
 export interface ApprovalGroupDetailData {
   id: number;
   type: string;
@@ -66,6 +82,7 @@ export interface ApprovalGroupDetailData {
   nameEn: string;
   isActive: boolean;
   members: ApprovalGroupMemberRow[];
+  delegates: ApprovalGroupDelegateRow[];
 }
 
 export function ApprovalGroupDetail({
@@ -83,6 +100,9 @@ export function ApprovalGroupDetail({
   const [addMemberOpen, setAddMemberOpen] = useState(false);
   const [removeMember, setRemoveMember] =
     useState<ApprovalGroupMemberTarget | null>(null);
+  const [addDelegateOpen, setAddDelegateOpen] = useState(false);
+  const [removeDelegate, setRemoveDelegate] =
+    useState<ApprovalDelegateTarget | null>(null);
 
   const target = {
     id: record.id,
@@ -262,10 +282,81 @@ export function ApprovalGroupDetail({
         </Tabs.Panel>
 
         <Tabs.Panel pt="md" value="delegates">
-          <EmptyState
-            icon={<IconUserShield size={24} />}
-            message="代理設定は承認フロー本実装時に対応します"
-          />
+          <Stack gap="sm">
+            <Group justify="flex-end">
+              <GhostButton
+                leftSection={<IconPlus size={14} />}
+                onClick={() => setAddDelegateOpen(true)}
+              >
+                代理設定を追加
+              </GhostButton>
+            </Group>
+            {record.delegates.length === 0 ? (
+              <EmptyState
+                icon={<IconUserShield size={24} />}
+                message="代理設定がありません"
+              />
+            ) : (
+              <ScrollArea>
+                <Table striped withTableBorder>
+                  <Table.Thead>
+                    <Table.Tr>
+                      <Table.Th>代理人</Table.Th>
+                      <Table.Th>原承認者</Table.Th>
+                      <Table.Th w={220}>期間</Table.Th>
+                      <Table.Th>理由</Table.Th>
+                      <Table.Th w={60} />
+                    </Table.Tr>
+                  </Table.Thead>
+                  <Table.Tbody>
+                    {record.delegates.map((d) => (
+                      <Table.Tr key={d.id}>
+                        <Table.Td>
+                          <Text fw={500} size="sm">
+                            {d.delegateName}
+                          </Text>
+                        </Table.Td>
+                        <Table.Td>
+                          <Text size="sm">{d.delegatorName}</Text>
+                        </Table.Td>
+                        <Table.Td>
+                          <Text className="tabular-nums" size="sm">
+                            {formatDate(d.validFrom)}〜
+                            {formatDate(d.validUntil)}
+                          </Text>
+                        </Table.Td>
+                        <Table.Td>
+                          <Text c="dimmed" size="xs">
+                            {d.reason ?? "—"}
+                          </Text>
+                        </Table.Td>
+                        <Table.Td>
+                          <Group gap={4} justify="flex-end" wrap="nowrap">
+                            <Tooltip label="削除" withinPortal>
+                              <ActionIcon
+                                aria-label="代理設定を削除"
+                                color="red"
+                                onClick={() =>
+                                  setRemoveDelegate({
+                                    id: d.id,
+                                    delegatorName: d.delegatorName,
+                                    delegateName: d.delegateName,
+                                  })
+                                }
+                                variant="subtle"
+                              >
+                                <IconTrash size={14} />
+                              </ActionIcon>
+                            </Tooltip>
+                          </Group>
+                        </Table.Td>
+                      </Table.Tr>
+                    ))}
+                  </Table.Tbody>
+                </Table>
+              </ScrollArea>
+            )}
+          </Stack>
         </Tabs.Panel>
 
         <Tabs.Panel pt="md" value="history">
@@ -297,6 +388,25 @@ export function ApprovalGroupDetail({
         onClose={() => setRemoveMember(null)}
         onDone={() => router.refresh()}
         opened={!!removeMember}
+      />
+      <AddApprovalDelegateModal
+        groupId={record.id}
+        memberOptions={record.members
+          .filter((m) => m.isActive)
+          .map((m) => ({
+            value: m.userId,
+            label: `${m.displayName}（${m.username}）`,
+          }))}
+        onClose={() => setAddDelegateOpen(false)}
+        onDone={() => router.refresh()}
+        opened={addDelegateOpen}
+      />
+      <RemoveApprovalDelegateModal
+        delegate={removeDelegate}
+        groupId={record.id}
+        onClose={() => setRemoveDelegate(null)}
+        onDone={() => router.refresh()}
+        opened={!!removeDelegate}
       />
     </DetailShell>
   );

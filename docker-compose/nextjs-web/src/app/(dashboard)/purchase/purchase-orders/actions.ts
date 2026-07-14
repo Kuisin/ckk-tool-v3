@@ -7,7 +7,9 @@
  * - 金額はサーバー側で計算（amount = quantity × unitPrice、totalAmount = Σamount）。
  * - 承認フロー DRAFT→REQUESTED→APPROVED→ORDERED→COMPLETED（+CANCELLED）は
  *   指示書の承認と同型の row-workflow: 遷移列（at/by）+ history Json + audit。
- *   承認可否は isApprover("FIRST")（第一承認グループ）で判定する。
+ *   加えて承認依頼・記録を approval_requests / approval_records へ正規化する
+ *   （§6 本実装 — PD03 横断表示・代理対応）。承認可否は actOnApprovalRequest
+ *   内で判定（第一承認グループの本人メンバー or 有効期間内の代理）。
  * - ORDERED になった明細は lib/atp.ts が「入荷予定」として自動的に読む
  *   （追加の連携処理は不要）。
  * - COMPLETED 時は明細ごとに MaterialReceipt を全量入荷で作成し、
@@ -16,7 +18,12 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { appendHistory, type HistoryEntry, isApprover } from "@/lib/approvals";
+import {
+  actOnApprovalRequest,
+  appendHistory,
+  createApprovalRequest,
+  type HistoryEntry,
+} from "@/lib/approvals";
 import { getCurrentActorId, recordAudit } from "@/lib/audit";
 import { prisma } from "@/lib/db";
 import { onMaterialReceipt } from "@/lib/inventory";
@@ -30,9 +37,12 @@ import {
 
 const BASE_PATH = "/purchase/purchase-orders";
 const RECEIPTS_PATH = "/purchase/material-receipts";
+const APPROVALS_PATH = "/production/approvals";
 
 function revalidate(poNumber?: string) {
   revalidatePath(BASE_PATH);
+  // 承認依頼は承認管理 (PD03) にも横断表示される。
+  revalidatePath(APPROVALS_PATH);
   if (poNumber) {
     revalidatePath(`${BASE_PATH}/${poNumber}`);
     revalidatePath(`${BASE_PATH}/${poNumber}/edit`);
@@ -241,6 +251,12 @@ export async function requestPurchaseApproval(
         ),
       },
     });
+    // 正規化された承認依頼行（PD03 横断表示・承認記録の紐付け先）。
+    await createApprovalRequest({
+      targetType: "material_purchase_orders",
+      targetId: poNumber,
+      step: "FIRST",
+    });
     await recordAudit({
       action: "UPDATE",
       tableName: "material_purchase_orders",
@@ -260,9 +276,6 @@ export async function approvePurchaseOrder(
   poNumber: string,
 ): Promise<ActionResult> {
   try {
-    if (!(await isApprover("FIRST"))) {
-      return actionError("承認の権限がありません");
-    }
     const prior = await prisma.materialPurchaseOrder.findUnique({
       where: { poNumber },
     });
@@ -270,6 +283,15 @@ export async function approvePurchaseOrder(
     if (prior.status !== "REQUESTED") {
       return actionError("承認依頼中の素材発注書ではありません");
     }
+    // 承認権限（本人 or 代理）を検証しつつ承認記録を書き、依頼を確定する。
+    const acted = await actOnApprovalRequest({
+      targetType: "material_purchase_orders",
+      targetId: poNumber,
+      step: "FIRST",
+      groupType: "FIRST",
+      action: "APPROVED",
+    });
+    if (!acted.ok) return actionError(acted.error ?? "承認の権限がありません");
     const actor = await getCurrentActorId();
     await prisma.materialPurchaseOrder.update({
       where: { id: prior.id },
@@ -304,15 +326,24 @@ export async function rejectPurchaseOrder(
   const trimmed = reason.trim();
   if (!trimmed) return actionError("差し戻し理由を入力してください");
   try {
-    if (!(await isApprover("FIRST"))) {
-      return actionError("差し戻しの権限がありません");
-    }
     const prior = await prisma.materialPurchaseOrder.findUnique({
       where: { poNumber },
     });
     if (!prior) return actionError("対象の素材発注書が見つかりません");
     if (prior.status !== "REQUESTED") {
       return actionError("承認依頼中の素材発注書ではありません");
+    }
+    // 差し戻しを承認記録として書き、依頼を確定する（権限検証込み）。
+    const acted = await actOnApprovalRequest({
+      targetType: "material_purchase_orders",
+      targetId: poNumber,
+      step: "FIRST",
+      groupType: "FIRST",
+      action: "REJECTED",
+      comment: trimmed,
+    });
+    if (!acted.ok) {
+      return actionError(acted.error ?? "差し戻しの権限がありません");
     }
     const actor = await getCurrentActorId();
     await prisma.materialPurchaseOrder.update({
@@ -491,18 +522,29 @@ export async function cancelPurchaseOrder(
       return actionError("発注前の素材発注書のみキャンセルできます");
     }
     const actor = await getCurrentActorId();
-    await prisma.materialPurchaseOrder.update({
-      where: { id: prior.id },
-      data: {
-        status: "CANCELLED",
-        cancelledAt: new Date(),
-        cancelledBy: actor,
-        cancelReason: trimmed,
-        history: toHistoryJson(
-          appendHistory(prior.history, entry("CANCEL", actor, trimmed)),
-        ),
-      },
-    });
+    await prisma.$transaction([
+      prisma.materialPurchaseOrder.update({
+        where: { id: prior.id },
+        data: {
+          status: "CANCELLED",
+          cancelledAt: new Date(),
+          cancelledBy: actor,
+          cancelReason: trimmed,
+          history: toHistoryJson(
+            appendHistory(prior.history, entry("CANCEL", actor, trimmed)),
+          ),
+        },
+      }),
+      // 承認依頼中のキャンセル: 未処理の承認依頼行を取り下げる（記録なしの
+      // PENDING 行のみ — PD03 の横断一覧に残さない）。
+      prisma.approvalRequest.deleteMany({
+        where: {
+          targetType: "material_purchase_orders",
+          targetId: poNumber,
+          status: "PENDING",
+        },
+      }),
+    ]);
     await recordAudit({
       action: "UPDATE",
       tableName: "material_purchase_orders",

@@ -9,13 +9,20 @@
  * - 採番: nextSerialNumber("WORK_ORDER") — 指示書番号 = ロット番号（通し連番）。
  *   注文請書の lot_number が未採番なら同番号を書き込む。
  * - 承認: approval_status + 遷移列 + history Json（MaterialPurchaseOrder と
- *   同型の row-workflow）。承認可否は approval_group_members で判定。
+ *   同型の row-workflow）を維持しつつ、承認依頼・記録を approval_requests /
+ *   approval_records へ正規化する（§6 本実装 — PD03 横断表示・代理対応）。
+ *   承認可否は actOnApprovalRequest 内で判定（本人メンバー or 有効期間内の代理）。
  */
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { describeIssue } from "@/components/production/work-orders/model";
-import { appendHistory, type HistoryEntry, isApprover } from "@/lib/approvals";
+import {
+  actOnApprovalRequest,
+  appendHistory,
+  createApprovalRequest,
+  type HistoryEntry,
+} from "@/lib/approvals";
 import { type MaterialAtp, materialAtp } from "@/lib/atp";
 import { getCurrentActorId, recordAudit } from "@/lib/audit";
 import { prisma } from "@/lib/db";
@@ -407,6 +414,15 @@ export async function cancelWorkOrder(
         where: { id: prior.salesOrderId },
         data: { isLocked: false },
       }),
+      // 承認待ち中のキャンセル: 未処理の承認依頼行を取り下げる（記録なしの
+      // PENDING 行のみ — PD03 の横断一覧に残さない）。
+      prisma.approvalRequest.deleteMany({
+        where: {
+          targetType: "work_orders",
+          targetId: String(workOrderNumber),
+          status: "PENDING",
+        },
+      }),
     ]);
     await recordAudit({
       action: "UPDATE",
@@ -459,6 +475,12 @@ export async function requestApproval(
         data: { isLocked: true },
       }),
     ]);
+    // 正規化された承認依頼行（PD03 横断表示・承認記録の紐付け先）。
+    await createApprovalRequest({
+      targetType: "work_orders",
+      targetId: String(workOrderNumber),
+      step: "FIRST",
+    });
     await recordAudit({
       action: "UPDATE",
       tableName: "work_orders",
@@ -478,15 +500,23 @@ export async function approveFirst(
   workOrderNumber: number,
 ): Promise<ActionResult> {
   try {
-    if (!(await isApprover("FIRST"))) {
-      return actionError("第一承認の権限がありません");
-    }
     const prior = await prisma.workOrder.findUnique({
       where: { workOrderNumber },
     });
     if (!prior) return actionError("対象の指示書が見つかりません");
     if (prior.approvalStatus !== "PENDING_1ST") {
       return actionError("第一承認待ちの指示書ではありません");
+    }
+    // 承認権限（本人 or 代理）を検証しつつ承認記録を書き、依頼を確定する。
+    const acted = await actOnApprovalRequest({
+      targetType: "work_orders",
+      targetId: String(workOrderNumber),
+      step: "FIRST",
+      groupType: "FIRST",
+      action: "APPROVED",
+    });
+    if (!acted.ok) {
+      return actionError(acted.error ?? "第一承認の権限がありません");
     }
     const actor = await getCurrentActorId();
     const now = new Date();
@@ -501,6 +531,12 @@ export async function approveFirst(
           appendHistory(prior.history, entry("APPROVE_1ST", actor)),
         ),
       },
+    });
+    // 続けて第二承認の依頼行を作成する。
+    await createApprovalRequest({
+      targetType: "work_orders",
+      targetId: String(workOrderNumber),
+      step: "SECOND",
     });
     await recordAudit({
       action: "UPDATE",
@@ -524,9 +560,6 @@ export async function approveSecond(
   workOrderNumber: number,
 ): Promise<ActionResult> {
   try {
-    if (!(await isApprover("SECOND"))) {
-      return actionError("第二承認の権限がありません");
-    }
     const prior = await prisma.workOrder.findUnique({
       where: { workOrderNumber },
       include: { salesOrder: { select: { status: true } } },
@@ -534,6 +567,17 @@ export async function approveSecond(
     if (!prior) return actionError("対象の指示書が見つかりません");
     if (prior.approvalStatus !== "PENDING_2ND") {
       return actionError("第二承認待ちの指示書ではありません");
+    }
+    // 承認権限（本人 or 代理）を検証しつつ承認記録を書き、依頼を確定する。
+    const acted = await actOnApprovalRequest({
+      targetType: "work_orders",
+      targetId: String(workOrderNumber),
+      step: "SECOND",
+      groupType: "SECOND",
+      action: "APPROVED",
+    });
+    if (!acted.ok) {
+      return actionError(acted.error ?? "第二承認の権限がありません");
     }
     const actor = await getCurrentActorId();
     const now = new Date();
@@ -593,10 +637,20 @@ export async function rejectWorkOrder(
     ) {
       return actionError("承認待ちの指示書ではありません");
     }
-    const requiredGroup =
+    // 現在承認待ちの段（FIRST / SECOND）に対して差し戻しを記録する。
+    // 権限（本人 or 代理）の検証は actOnApprovalRequest が行う。
+    const pendingStep =
       prior.approvalStatus === "PENDING_1ST" ? "FIRST" : "SECOND";
-    if (!(await isApprover(requiredGroup))) {
-      return actionError("差し戻しの権限がありません");
+    const acted = await actOnApprovalRequest({
+      targetType: "work_orders",
+      targetId: String(workOrderNumber),
+      step: pendingStep,
+      groupType: pendingStep,
+      action: "REJECTED",
+      comment: trimmed,
+    });
+    if (!acted.ok) {
+      return actionError(acted.error ?? "差し戻しの権限がありません");
     }
     const actor = await getCurrentActorId();
     await prisma.$transaction([
