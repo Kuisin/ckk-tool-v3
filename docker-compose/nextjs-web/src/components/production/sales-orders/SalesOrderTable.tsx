@@ -121,7 +121,7 @@ export function SalesOrderTable({ rows }: { rows: SalesOrder[] }) {
   return (
     <ListShell
       action={<NewButton href={`${BASE_PATH}/new`} />}
-      breadcrumbs={["生産", "注文請書"]}
+      breadcrumbs={["販売", "注文請書"]}
       filters={
         <>
           <Select

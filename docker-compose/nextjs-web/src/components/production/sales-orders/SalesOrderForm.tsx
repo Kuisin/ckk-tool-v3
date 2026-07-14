@@ -282,7 +282,7 @@ export function SalesOrderForm({
   return (
     <FormShell
       breadcrumbs={[
-        "生産",
+        "販売",
         { label: "注文請書", href: BASE_PATH },
         mode === "edit" ? "編集" : "新規作成",
       ]}

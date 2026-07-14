@@ -191,7 +191,7 @@ export function SalesOrderDetail({
           />
         </Group>
       }
-      breadcrumbs={["生産", { label: "注文請書", href: BASE_PATH }, "詳細"]}
+      breadcrumbs={["販売", { label: "注文請書", href: BASE_PATH }, "詳細"]}
       createdAt={formatDateTime(order.createdAt)}
       status={<StatusBadge entity="SalesOrder" status={order.status} />}
       title={order.orderNumber}
