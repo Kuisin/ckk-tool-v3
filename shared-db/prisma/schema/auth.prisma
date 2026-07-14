@@ -66,6 +66,8 @@ model User {
   shippingOrdersCreated   ShippingOrder[]       @relation("ShippingOrderCreatedBy")
   deliveryNotesCreated    DeliveryNote[]        @relation("DeliveryNoteCreatedBy")
   invoicesCreated         Invoice[]             @relation("InvoiceCreatedBy")
+  designRequestsCreated   DesignRequest[]       @relation("DesignRequestCreatedBy")
+  designFilesCreated      DesignFile[]          @relation("DesignFileCreatedBy")
 
   posRequested MaterialPurchaseOrder[] @relation("PoRequestedBy")
   posApproved  MaterialPurchaseOrder[] @relation("PoApprovedBy")

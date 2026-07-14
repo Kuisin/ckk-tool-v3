@@ -1,0 +1,71 @@
+// 設計依頼 (_specs/tables.md §10): 設計依頼書 / 設計ファイル。
+//
+// トリガ: 見積時（§1 並行）or 受注時（§3 並行）。番号 DSG-YYYYMM-NNNNN は
+// numbering_sequences（DESIGN）で採番し request_number に保存する。
+
+enum DesignTrigger {
+  QUOTE // 見積時
+  SALES_ORDER // 受注時
+
+  @@map("DESIGN_TRIGGER")
+  @@schema("app")
+}
+
+enum DesignStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+
+  @@map("DESIGN_STATUS")
+  @@schema("app")
+}
+
+model DesignRequest {
+  id            String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  requestNumber String        @unique @map("request_number") // DSG-YYYYMM-NNNNN
+  trigger       DesignTrigger
+  // 見積時: 見積書（複合キー）/ 受注時: 注文請書
+  quoteYearMonth String? @map("quote_year_month") @db.Char(6)
+  quoteSeq       Int?    @map("quote_seq")
+  salesOrderId   String? @map("sales_order_id") @db.Uuid
+  productId      Int?    @map("product_id")
+  description    String?
+  status         DesignStatus @default(PENDING)
+  completedAt    DateTime?    @map("completed_at") @db.Timestamptz(6)
+  createdBy      String?      @map("created_by") @db.Uuid
+  createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  quote         Quote?      @relation(fields: [quoteYearMonth, quoteSeq], references: [yearMonth, seq])
+  salesOrder    SalesOrder? @relation(fields: [salesOrderId], references: [id])
+  product       Product?    @relation(fields: [productId], references: [id])
+  createdByUser User?       @relation("DesignRequestCreatedBy", fields: [createdBy], references: [id])
+
+  files DesignFile[]
+
+  @@index([status])
+  @@map("design_requests")
+  @@schema("app")
+}
+
+// 設計ファイル（バージョン管理。実体は files → SeaweedFS）
+model DesignFile {
+  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  designRequestId String?  @map("design_request_id") @db.Uuid
+  productId       Int?     @map("product_id")
+  fileId          String   @map("file_id") @db.Uuid
+  version         Int      @default(1)
+  isLatest        Boolean  @default(true) @map("is_latest")
+  notes           String?
+  createdBy       String?  @map("created_by") @db.Uuid
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  designRequest DesignRequest? @relation(fields: [designRequestId], references: [id])
+  product       Product?       @relation(fields: [productId], references: [id])
+  file          File           @relation("DesignFileFile", fields: [fileId], references: [id])
+  createdByUser User?          @relation("DesignFileCreatedBy", fields: [createdBy], references: [id])
+
+  @@index([designRequestId])
+  @@map("design_files")
+  @@schema("app")
+}

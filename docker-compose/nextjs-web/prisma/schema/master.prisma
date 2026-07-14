@@ -223,6 +223,8 @@ model Product {
   shippingOrderItems ShippingOrderItem[]
   deliveryNoteItems  DeliveryNoteItem[]
   inventory          ProductInventory[]
+  designRequests     DesignRequest[]
+  designFiles        DesignFile[]
 
   @@unique([yearMonth, seq])
   @@index([materialTypeId])

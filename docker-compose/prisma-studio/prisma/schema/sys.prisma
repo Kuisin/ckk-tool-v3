@@ -15,6 +15,7 @@ model File {
   quotesPdf        Quote[]        @relation("QuotePdf")
   deliveryNotesPdf DeliveryNote[] @relation("DeliveryNotePdf")
   invoicesPdf      Invoice[]      @relation("InvoicePdf")
+  designFiles      DesignFile[]   @relation("DesignFileFile")
 
   @@map("files")
   @@schema("app")

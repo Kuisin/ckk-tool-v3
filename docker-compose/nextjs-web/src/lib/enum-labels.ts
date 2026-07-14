@@ -161,3 +161,13 @@ export const PURCHASE_STATUS_LABEL: Record<string, string> = {
 export const PURCHASE_STATUS_OPTIONS = Object.entries(
   PURCHASE_STATUS_LABEL,
 ).map(([value, label]) => ({ value, label }));
+
+/** app.DESIGN_TRIGGER（設計依頼のトリガ） */
+export const DESIGN_TRIGGER_LABEL: Record<string, string> = {
+  QUOTE: "見積時",
+  SALES_ORDER: "受注時",
+};
+
+export const DESIGN_TRIGGER_OPTIONS = Object.entries(
+  DESIGN_TRIGGER_LABEL,
+).map(([value, label]) => ({ value, label }));
