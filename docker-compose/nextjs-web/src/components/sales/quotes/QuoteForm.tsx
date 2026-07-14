@@ -5,9 +5,9 @@
  *
  * 顧客 + 有効期限 + 状態, then a line-item section where each row is a
  * ProductPriceResolverInput (§12.9) that auto-fills 単価 from the 価格表 for the
- * chosen 顧客×製品×注文種別×数量. Changing 顧客 re-resolves every line.
- *
- * TODO(server-action): replace the console.log submit with a Server Action.
+ * chosen 顧客×製品×注文種別×数量. Changing 顧客 re-resolves every line
+ * against the server-fetched 価格表 entries; the Server Action re-resolves
+ * once more at save time (the client values are display-only).
  */
 
 import {
@@ -29,6 +29,10 @@ import { useRouter } from "next/navigation";
 import { useTransition } from "react";
 import { z } from "zod";
 import {
+  createQuote,
+  updateQuote,
+} from "@/app/(dashboard)/sales/quotes/actions";
+import {
   ProductPriceResolverInput,
   type ResolverValue,
 } from "@/components/sales/ProductPriceResolverInput";
@@ -37,8 +41,9 @@ import { StatusBadge, statusOptions } from "@/components/ui/StatusBadge";
 import { FormSection, FormShell } from "@/components/ui/shells";
 import { zodResolver } from "@/lib/form";
 import { formatMoney } from "@/lib/format";
-import { BRANCHES, CUSTOMERS, PRODUCTS } from "@/lib/mock";
-import { getQuote, type Quote, resolveUnitPrice, TAX_RATE } from "./mock";
+import type { Option } from "@/lib/mock";
+import type { PriceListEntry } from "../price-lists/model";
+import { type Quote, resolveUnitPriceFromEntries, TAX_RATE } from "./model";
 
 const itemSchema = z
   .object({
@@ -95,14 +100,11 @@ export interface QuotePrefill {
 }
 
 function buildInitial(
-  mode: "create" | "edit",
-  quoteId?: string,
-  prefill?: QuotePrefill,
+  quote: Quote | null | undefined,
+  prefill: QuotePrefill | undefined,
+  entries: PriceListEntry[],
 ): QuoteFormValues {
-  if (mode === "edit" && quoteId) {
-    const q = getQuote(quoteId);
-    if (q) return toFormValues(q);
-  }
+  if (quote) return toFormValues(quote);
   const base: QuoteFormValues = {
     customerId: prefill?.customerId ?? "",
     customerBranchId: null,
@@ -115,7 +117,8 @@ function buildInitial(
     // 価格表から起動 — 単価・値引きを価格表から解決して1行目に流し込む。
     const orderType = prefill.orderType ?? "PRODUCTION";
     const quantity = prefill.quantity ?? 1;
-    const resolved = resolveUnitPrice(
+    const resolved = resolveUnitPriceFromEntries(
+      entries,
       prefill.customerId,
       prefill.productId,
       orderType,
@@ -126,7 +129,7 @@ function buildInitial(
         ...emptyItem(),
         productId: prefill.productId,
         productName:
-          PRODUCTS.find((p) => p.value === prefill.productId)?.label ??
+          entries.find((e) => e.productId === prefill.productId)?.productName ??
           prefill.productId,
         orderType,
         quantity,
@@ -164,22 +167,32 @@ function toFormValues(q: Quote): QuoteFormValues {
 
 export function QuoteForm({
   mode,
-  quoteId,
+  quote,
   prefill,
+  customerOptions,
+  branchesByCustomer,
+  entries,
 }: {
   mode: "create" | "edit";
-  quoteId?: string;
+  /** Edit / 複製: the source quote (server-fetched view-model). */
+  quote?: Quote | null;
   prefill?: QuotePrefill;
+  customerOptions: Option[];
+  /** 顧客 BP id → 支店 options. */
+  branchesByCustomer: Record<string, Option[]>;
+  /** 全顧客の価格表エントリ — 行のライブ解決に使用。 */
+  entries: PriceListEntry[];
 }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
+  const quoteId = mode === "edit" ? quote?.id : undefined;
 
   const form = useForm<QuoteFormValues>({
     validate: zodResolver(schema),
-    initialValues: buildInitial(mode, quoteId, prefill),
+    initialValues: buildInitial(quote, prefill, entries),
   });
 
-  const branches = BRANCHES[form.values.customerId] ?? [];
+  const branches = branchesByCustomer[form.values.customerId] ?? [];
 
   /** Changing 顧客 → re-resolve every line's 単価・値引き against the new customer's 価格表. */
   const onCustomerChange = (customerId: string) => {
@@ -189,7 +202,8 @@ export function QuoteForm({
       "items",
       form.values.items.map((it) => {
         const r = it.productId
-          ? resolveUnitPrice(
+          ? resolveUnitPriceFromEntries(
+              entries,
               customerId,
               it.productId,
               it.orderType,
@@ -216,19 +230,41 @@ export function QuoteForm({
   const grandTotal = subtotal + tax;
 
   const handleSubmit = (values: QuoteFormValues) => {
-    startTransition(() => {
-      // TODO(server-action): persist quote + items (採番 QOT-YYYYMM-NNNNN on create).
-      console.log("submit quote", values);
-      notifications.show({
-        title: "保存しました",
-        message:
-          mode === "edit" ? "見積書を更新しました" : "見積書を作成しました",
-        color: "green",
-      });
-      // 作成・更新後は詳細（ビュー）ページへ。create は既存デモ ID にフォールバック。
-      const targetId =
-        mode === "edit" && quoteId ? quoteId : "QOT-202602-00012";
-      router.push(`${BASE_PATH}/${targetId}`);
+    const payload = {
+      customerBpId: values.customerId,
+      customerBranchBpId: values.customerBranchId,
+      status: values.status,
+      validUntil: values.validUntil,
+      notes: values.notes,
+      items: values.items.map((it) => ({
+        productId: it.productId,
+        orderType: it.orderType as "PRODUCTION" | "TEST" | "SAMPLE" | "OTHER",
+        quantity: it.quantity,
+        deliveryDate: it.deliveryDate,
+        notes: null,
+      })),
+    };
+    startTransition(async () => {
+      const result =
+        mode === "edit" && quoteId
+          ? await updateQuote(quoteId, payload)
+          : await createQuote(payload);
+      if (result.ok) {
+        notifications.show({
+          title: "保存しました",
+          message:
+            mode === "edit" ? "見積書を更新しました" : "見積書を作成しました",
+          color: "green",
+        });
+        // 作成・更新後は詳細（ビュー）ページへ。
+        router.push(`${BASE_PATH}/${result.data.number}`);
+      } else {
+        notifications.show({
+          title: "エラー",
+          message: result.error,
+          color: "red",
+        });
+      }
     });
   };
 
@@ -254,7 +290,7 @@ export function QuoteForm({
       <FormSection title="基本情報">
         <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
           <Select
-            data={CUSTOMERS}
+            data={customerOptions}
             error={form.errors.customerId}
             label="顧客"
             onChange={(v) => onCustomerChange(v ?? "")}
@@ -299,6 +335,7 @@ export function QuoteForm({
                 <Box flex={1}>
                   <ProductPriceResolverInput
                     customerId={form.values.customerId}
+                    entries={entries}
                     onChange={(next: ResolverValue) => {
                       form.setFieldValue(
                         `items.${ri}.productId`,

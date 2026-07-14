@@ -1,10 +1,8 @@
-import { PlaceholderPage } from "@/components/ui/PlaceholderPage";
+import { FactoryForm } from "@/components/master/factories/FactoryForm";
 
+export const dynamic = "force-dynamic";
+
+/** 工場 新規作成 (MS1B). */
 export default function MasterFactoriesNewPage() {
-  return (
-    <PlaceholderPage
-      breadcrumbs={["マスタ", "工場", "新規作成"]}
-      title="工場 新規作成"
-    />
-  );
+  return <FactoryForm />;
 }

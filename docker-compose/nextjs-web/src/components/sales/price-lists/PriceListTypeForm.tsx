@@ -8,8 +8,7 @@
  * 基準単価 × 倍率、行ごとに手動上書き可）. The (顧客, 製品, 注文種別) keys are
  * the identity of the entry and are LOCKED after creation — only 基準単価 /
  * period / tiers are editable. 新規の価格表は試算の「価格表に登録」から作成する。
- *
- * TODO(server-action): replace the console.log submit with a Server Action.
+ * Persists via updatePriceEntry / createPriceEntry (Server Actions).
  */
 
 import {
@@ -36,27 +35,31 @@ import {
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { z } from "zod";
+import {
+  searchCustomerOptions,
+  searchProductOptions,
+} from "@/app/(dashboard)/_shared/option-search";
+import {
+  createPriceEntry,
+  updatePriceEntry,
+} from "@/app/(dashboard)/sales/price-lists/actions";
 import { GhostButton } from "@/components/ui/buttons";
 import { FieldValue } from "@/components/ui/FieldValue";
+import { CUSTOMER_F4, PRODUCT_F4 } from "@/components/ui/f4-presets";
 import { HelpLabel } from "@/components/ui/HelpLabel";
 import { openConfirm } from "@/components/ui/modals";
+import { SearchSelect } from "@/components/ui/SearchSelect";
 import { FormSection, FormShell } from "@/components/ui/shells";
 import { zodResolver } from "@/lib/form";
 import { formatMoney } from "@/lib/format";
+import type { Option } from "@/lib/mock";
+import { ORDER_TYPE_LABEL, ORDER_TYPE_OPTIONS } from "@/lib/mock";
 import {
-  CUSTOMERS,
-  ORDER_TYPE_LABEL,
-  ORDER_TYPE_OPTIONS,
-  PRODUCTS,
-} from "@/lib/mock";
-import { calcTrialPricing } from "@/lib/trial-pricing";
-import { getTrialEstimate } from "../trial-estimates/mock";
-import {
-  entryKey,
-  findEntriesByCustomerProduct,
-  getPriceEntry,
+  type EntryIdentity,
+  type EntryOrderType,
+  type PriceListEntry,
   requiresEndDate,
-} from "./mock";
+} from "./model";
 
 const tierSchema = z.object({
   minQuantity: z.number().int().min(1, "1以上"),
@@ -101,35 +104,29 @@ const emptyTier = (): TierForm => ({
   priceOverride: null,
 });
 
-const labelOf = (options: { value: string; label: string }[], value: string) =>
-  options.find((o) => o.value === value)?.label ?? (value || "—");
-
 function buildInitial(args: {
-  mode: "create" | "edit";
-  entryId?: string;
+  entry?: PriceListEntry | null;
   lockedCustomerId?: string;
   lockedProductId?: string;
 }): TypeFormValues {
-  if (args.mode === "edit" && args.entryId) {
-    const entry = getPriceEntry(args.entryId);
-    if (entry) {
-      return {
-        customerId: entry.customerId,
-        productId: entry.productId,
-        orderType: entry.orderType as TypeFormValues["orderType"],
-        currency: entry.currency,
-        baseUnitPrice: entry.baseUnitPrice,
-        validFrom: entry.validFrom,
-        validUntil: entry.validUntil,
-        isActive: entry.isActive,
-        tiers: entry.tiers.map((t) => ({
-          minQuantity: t.minQuantity,
-          maxQuantity: t.maxQuantity,
-          multiplier: t.multiplier,
-          priceOverride: t.priceOverride,
-        })),
-      };
-    }
+  const entry = args.entry;
+  if (entry) {
+    return {
+      customerId: entry.customerId,
+      productId: entry.productId,
+      orderType: entry.orderType as TypeFormValues["orderType"],
+      currency: entry.currency,
+      baseUnitPrice: entry.baseUnitPrice,
+      validFrom: entry.validFrom,
+      validUntil: entry.validUntil,
+      isActive: entry.isActive,
+      tiers: entry.tiers.map((t) => ({
+        minQuantity: t.minQuantity,
+        maxQuantity: t.maxQuantity,
+        multiplier: t.multiplier,
+        priceOverride: t.priceOverride,
+      })),
+    };
   }
   return {
     customerId: args.lockedCustomerId ?? "",
@@ -146,19 +143,31 @@ function buildInitial(args: {
 
 export function PriceListTypeForm({
   mode,
-  entryId,
+  entry,
   lockedCustomerId,
   lockedProductId,
+  estimateBase,
+  customerOption,
+  productOption,
+  existingEntries,
 }: {
   mode: "create" | "edit";
-  /** Edit: the (顧客, 製品, 注文種別) entry key. */
-  entryId?: string;
+  /** Edit: the entry (server-fetched view-model). */
+  entry?: PriceListEntry | null;
   /** Create (種別を追加): lock 顧客/製品 to the existing 顧客×製品. */
   lockedCustomerId?: string;
   lockedProductId?: string;
+  /** 試算の見積単価（試算元がない種別追加・手動エントリは null）. */
+  estimateBase: number | null;
+  /** ロック時の表示ラベル（未ロック時は SearchSelect が検索する）. */
+  customerOption?: Option | null;
+  productOption?: Option | null;
+  /** All current (顧客, 製品, 注文種別) identities — duplicate warnings. */
+  existingEntries: EntryIdentity[];
 }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
+  const entryId = entry?.entryId;
 
   // 顧客/製品 are locked when editing or adding a type to an existing group.
   const lockCustomerProduct =
@@ -169,23 +178,13 @@ export function PriceListTypeForm({
   const form = useForm<TypeFormValues>({
     validate: zodResolver(schema),
     initialValues: buildInitial({
-      mode,
-      entryId,
+      entry,
       lockedCustomerId,
       lockedProductId,
     }),
   });
 
   // ── 基準単価は試算から取得する（バイパスは明示チェック + 確認のみ）────────
-  const entry = mode === "edit" && entryId ? getPriceEntry(entryId) : undefined;
-  const estimateRecord = entry?.estimateId
-    ? getTrialEstimate(entry.estimateId)
-    : undefined;
-  /** 試算の見積単価（試算元がない旧データ・種別追加は null）. */
-  const estimateBase = estimateRecord
-    ? (calcTrialPricing(estimateRecord.input).lots[0]?.estimateUnitPrice ??
-      null)
-    : null;
   // 試算元がない場合は手動入力しかできない（チェック固定）。
   const [customBase, setCustomBase] = useState(
     () => estimateBase == null || form.values.baseUnitPrice !== estimateBase,
@@ -240,21 +239,41 @@ export function PriceListTypeForm({
       !customBase && estimateBase != null
         ? { ...raw, baseUnitPrice: estimateBase }
         : raw;
-    startTransition(() => {
-      // TODO(server-action): persist this (顧客, 製品, 注文種別) entry + tiers.
-      console.log("submit price-type", values);
-      notifications.show({
-        title: "保存しました",
-        message:
-          mode === "edit" ? "価格表を更新しました" : "価格表を作成しました",
-        color: "green",
-      });
-      // 作成・更新後は対象エントリの詳細（ビュー）ページへ。
-      const targetId =
+    const common = {
+      baseUnitPrice: values.baseUnitPrice,
+      validFrom: values.validFrom,
+      validUntil: values.validUntil,
+      isActive: values.isActive,
+      tiers: values.tiers,
+    };
+    startTransition(async () => {
+      const result =
         mode === "edit" && entryId
-          ? entryId
-          : entryKey(values.customerId, values.productId, values.orderType);
-      router.push(`${BASE_PATH}/${targetId}`);
+          ? await updatePriceEntry({ entryNumber: entryId, ...common })
+          : await createPriceEntry({
+              identity: {
+                customerBpId: values.customerId,
+                productId: values.productId,
+                orderType: values.orderType as EntryOrderType,
+              },
+              ...common,
+            });
+      if (result.ok) {
+        notifications.show({
+          title: "保存しました",
+          message:
+            mode === "edit" ? "価格表を更新しました" : "価格表を作成しました",
+          color: "green",
+        });
+        // 作成・更新後は対象エントリの詳細（ビュー）ページへ。
+        router.push(`${BASE_PATH}/${result.data.entryId}`);
+      } else {
+        notifications.show({
+          title: "エラー",
+          message: result.error,
+          color: "red",
+        });
+      }
     });
   };
 
@@ -285,31 +304,39 @@ export function PriceListTypeForm({
           {lockCustomerProduct ? (
             <FieldValue
               label="顧客"
-              value={labelOf(CUSTOMERS, form.values.customerId)}
+              value={customerOption?.label ?? (form.values.customerId || "—")}
             />
           ) : (
-            <Select
-              data={CUSTOMERS}
+            <SearchSelect
+              error={form.errors.customerId}
+              f4={CUSTOMER_F4}
+              initialOption={customerOption}
               label="顧客"
-              placeholder="顧客を選択"
-              searchable
+              onChange={(v) => form.setFieldValue("customerId", v ?? "")}
+              onSearch={searchCustomerOptions}
+              placeholder="顧客を検索"
+              storageKey="customer"
+              value={form.values.customerId || null}
               withAsterisk
-              {...form.getInputProps("customerId")}
             />
           )}
           {lockCustomerProduct ? (
             <FieldValue
               label="製品"
-              value={labelOf(PRODUCTS, form.values.productId)}
+              value={productOption?.label ?? (form.values.productId || "—")}
             />
           ) : (
-            <Select
-              data={PRODUCTS}
+            <SearchSelect
+              error={form.errors.productId}
+              f4={PRODUCT_F4}
+              initialOption={productOption}
               label="製品"
-              placeholder="製品を選択"
-              searchable
+              onChange={(v) => form.setFieldValue("productId", v ?? "")}
+              onSearch={searchProductOptions}
+              placeholder="製品を検索"
+              storageKey="product"
+              value={form.values.productId || null}
               withAsterisk
-              {...form.getInputProps("productId")}
             />
           )}
           {lockType ? (
@@ -327,10 +354,14 @@ export function PriceListTypeForm({
           )}
         </SimpleGrid>
         {(() => {
-          const existing = findEntriesByCustomerProduct(
-            form.values.customerId,
-            form.values.productId,
-          );
+          const existing =
+            mode === "edit"
+              ? []
+              : existingEntries.filter(
+                  (e) =>
+                    e.customerBpId === form.values.customerId &&
+                    e.productId === form.values.productId,
+                );
           if (existing.length === 0) return null;
           const dup = existing.some(
             (e) => e.orderType === form.values.orderType,

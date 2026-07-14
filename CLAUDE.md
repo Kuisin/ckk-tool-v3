@@ -82,7 +82,7 @@ Powers the AI-first 受注請書 intake (scan image + auto-filled form → user 
 
 ## Deployment & Remote Server
 
-**Branch → environment (deploy to dev first, always)** — All work lands on `dev` and is **deployed to `ckk-dev.kai-lab.net` first** for verification. Promotion to production is by **PR `dev` → `main`**; `main` deploys to **`ckk.kai-lab.net`**. Never deploy straight to `main`/production — verify on `ckk-dev.kai-lab.net`, then open the PR.
+**Branch → environment (deploy to dev first, always)** — All work lands on `dev` and is **deployed to `ckk-dev.kai-lab.net` first** for verification. **Feature-branch PRs always target `dev` — never open a PR against `main`.** Promotion to production is by **PR `dev` → `main`**; `main` deploys to **`ckk.kai-lab.net`**. Never deploy straight to `main`/production — verify on `ckk-dev.kai-lab.net`, then open the PR.
 
 **nextjs-web deploys via Coolify** (all other stacks use the rsync + rebuild flow below). Coolify (`~/stacks/coolify`, dashboard `https://deploy.ckk-tool.co.jp`, LAN fallback `http://192.168.50.15:8000`) builds the app from GitHub per branch — see `docker-compose/coolify/README.md` for full topology, bootstrap, and webhook setup:
 
@@ -96,6 +96,24 @@ Powers the AI-first 受注請書 intake (scan image + auto-filled form → user 
 - Ingress is decoupled from deploys: cloudflared/nginx target the stable socat relays `web:3000` (→ `:3004`) and `web-main:3000` (→ `:3005`) in the `nextjs-web` stack, so routing never changes on redeploys/rollbacks.
 - Coolify apps run on the external `coolify` docker network; `shared-db`, `po-extract`, `gotenberg`, `seaweedfs` are attached to it so `DATABASE_URL`/`GOTENBERG_URL`/`SEAWEED_FILER_URL`/`PO_EXTRACT_URL` resolve by container name. App env vars are managed in Coolify (not compose).
 - Both apps currently share the one business DB (`shared-db`/`ckk`); split a prod DB before real production traffic.
+
+**Database migrations (shared-db)** — Schema source of truth is `shared-db/prisma/schema/` (one `.prisma` per PG schema); migrations are owned by `shared-db` and NEVER run from nextjs-web. Authoring flow (from `shared-db/`): edit schema → `pnpm validate` → `pnpm migrate:dev -- --name <change>` → `pnpm generate` → sync consumer copies (`cd docker-compose/nextjs-web && pnpm db:sync-schema && pnpm db:generate`; same for `docker-compose/prisma-studio`).
+
+**Applying to the dev DB** after a merge to `dev` (all idempotent). Note: the dev DB has **no published host port** — it is only reachable inside Docker on the server, so a workstation cannot hit `192.168.50.15:15432` directly. From **this Mac** (has `ssh 192.168.50.15` + the repo + `shared-db/.env`), use the `:remote` scripts — they open an SSH tunnel to the `shared-db` container (`scripts/remote-db.sh`) and run the same command against it:
+
+```bash
+cd shared-db
+pnpm migrate:status:remote     # inspect pending migrations first
+pnpm migrate:deploy:remote     # 1. apply pending migrations (real prisma migrate deploy)
+pnpm grants:remote             # 2. re-grant (needed whenever tables/roles were added)
+pnpm import:legacy:remote      # 3. legacy data (BP/材種/製品) — ALWAYS after a reset/re-provision
+```
+
+`scripts/remote-db.sh <cmd>` is the general form (tunnel + DATABASE_URL rewrite, e.g. `pnpm remote psql "$DATABASE_URL" -c '\\dt app.*'`). Overrides: `DB_SSH_HOST`, `DB_CONTAINER`, `DB_TUNNEL_PORT`. If the host port is ever republished on the LAN, the plain `pnpm migrate:deploy` / `sh -c '. ./.env; psql "$DATABASE_URL" …'` forms work again from a LAN machine.
+
+Step 3 applies the committed `data-migration/imports/*.sql.gz` (idempotent upserts generated from the FileMaker migration). There is no demo seed — master/BP data comes from this import. Regenerate artifacts with `data-migration/make_imports.sh` (needs `mapped.sqlite`).
+
+Skipping `grants.sql` after adding tables makes the app 500 on those tables (role `app` has no rights). **From a cloud Claude session** (sandbox has no LAN route — no SSH, no 192.168.50.x): run the same steps through Claude Code Remote in the Mac bridge environment (`kaisei-mac-studio:ckk-tool-v3`) — `create_trigger` with `create_new_session_on_fire: true` + that `environment_id`, then `fire_trigger`; have the session post its result as a PR comment and subscribe to the PR to receive it.
 
 **Server** — `192.168.50.15` (hostname `docker-mac-pro`; despite the name it runs Linux — Ubuntu noble / t2 kernel). Access: `ssh 192.168.50.15` (key-based, user `kaiseisawada`). All services run as Docker Compose stacks orchestrated by **Dockge**, one dir per stack under `~/stacks/` on the server: `nextjs-web`, `coolify`, `shared-db`, `prisma-studio`, `metabase`, `ai-stack`, `monitoring`, `vpn-ldap`, `kot-import`, `admintools`, `nginx-proxy`, `cloudflared`, `portainer`.
 
@@ -120,3 +138,5 @@ Dry-run the rsync first (`rsync -avn …`) to confirm the file set. The nextjs-w
 **Cross-stack services** — the `ai-stack` runs `ollama` (`:11434`, local models) and `po-extract` (`:8000`, the document→JSON extractor, model `qwen2.5vl`); `metabase` (`:3003`, OSS, postgres app DB) holds the BI dashboards. Cross-stack reachability is by attaching a service to the other stack's external network — the Coolify-built nextjs-web reaches `shared-db`, `po-extract`, `gotenberg`, `seaweedfs` because those are attached to the `coolify` network; nothing is reachable cross-stack by default.
 
 **Manage / verify** — `docker ps`, `docker compose logs -f <svc>`, `docker compose restart <svc>`, `docker compose up -d --build` (rebuild after source change). Health/smoke-test from inside the network, e.g. `docker run --rm --network nextjs-web_default curlimages/curl -sf http://web:3000/`. Postgres-backed stacks (`shared-db`, `metabase-db`, `ckk-legacy-db`) are siblings — back up with `docker exec <db> pg_dump` and restore with `pg_restore`/`psql` before mutating live data.
+
+**Backups** — `shared-db` is continuously backed up by the `db-backup` stack (PG17 incremental base backups; hourly kept 72h, daily kept 14 days, monthly kept 12, under `/data/db-backups` on the server). Restore runbook, monitoring, and the one-time live-cluster setup: `docker-compose/db-backup/README.md`. `pg_dump` remains the ad-hoc pre-mutation tool and the only method for `metabase-db`/`ckk-legacy-db`.

@@ -8,7 +8,7 @@ enum UserGroup {
   GUEST
 
   @@map("USER_GROUP")
-  @@schema("auth")
+  @@schema("app")
 }
 
 enum Action {
@@ -21,7 +21,7 @@ enum Action {
   ADMIN
 
   @@map("ACTION")
-  @@schema("auth")
+  @@schema("app")
 }
 
 enum Scope {
@@ -35,7 +35,7 @@ enum Scope {
   OWN
 
   @@map("SCOPE")
-  @@schema("auth")
+  @@schema("app")
 }
 
 model User {
@@ -50,41 +50,36 @@ model User {
   createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt   DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  roleAssignments          UserRoleRelation[]     @relation("UserRoles")
-  rolesAssigned            UserRoleRelation[]     @relation("UserRolesAssignedBy")
-  businessPartnersCreated  BusinessPartner[]      @relation("BpCreatedBy")
-  priceListsCreated        PriceList[]            @relation("PriceListCreatedBy")
-  quotesCreated            Quote[]                @relation("QuoteCreatedBy")
-  orderAcceptancesCreated  OrderAcceptance[]      @relation("OrderAcceptanceCreatedBy")
-  salesOrdersCreated       SalesOrder[]           @relation("SalesOrderCreatedBy")
-  workOrdersCreated        WorkOrder[]            @relation("WorkOrderCreatedBy")
-  stepsSessionLocked       WorkOrderStep[]        @relation("StepSessionLockedBy")
-  stepsStarted             WorkOrderStep[]        @relation("StepStartedBy")
-  stepsCompleted           WorkOrderStep[]        @relation("StepCompletedBy")
-  stepsCancelled           WorkOrderStep[]        @relation("StepCancelledBy")
-  approvalGroupMemberships ApprovalGroupMember[]  @relation("ApprovalGroupMemberUser")
-  delegationsGiven         ApprovalDelegate[]     @relation("DelegateDelegator")
-  delegationsReceived      ApprovalDelegate[]     @relation("DelegateDelegate")
-  approvalDelegatesCreated ApprovalDelegate[]     @relation("DelegateCreatedBy")
-  approvalRequestsMade     ApprovalRequest[]      @relation("ApprovalRequestedBy")
-  approvalRecords          ApprovalRecord[]       @relation("ApprovalRecordApprover")
-  approvalRecordsDelegated ApprovalRecord[]       @relation("ApprovalRecordDelegateFor")
-  inspectionsRecorded      InspectionRecord[]     @relation("InspectionRecordedBy")
-  inspectionsApproved      InspectionRecord[]     @relation("InspectionApprovedBy")
-  defectsRecorded          DefectRecord[]         @relation("DefectRecordedBy")
-  inventoryTxCreated       InventoryTransaction[] @relation("InventoryTxCreatedBy")
-  materialReceiptsCreated  MaterialReceipt[]      @relation("MaterialReceiptCreatedBy")
-  shippingOrdersCreated    ShippingOrder[]        @relation("ShippingOrderCreatedBy")
-  deliveryNotesCreated     DeliveryNote[]         @relation("DeliveryNoteCreatedBy")
-  invoicesCreated          Invoice[]              @relation("InvoiceCreatedBy")
-  billingClosingsProcessed BillingClosing[]       @relation("ClosingProcessedBy")
-  designRequestsCreated    DesignRequest[]        @relation("DesignRequestCreatedBy")
-  designFilesCreated       DesignFile[]           @relation("DesignFileCreatedBy")
-  filesUploaded            File[]                 @relation("FileUploadedBy")
-  featureFlagsUpdated      FeatureFlag[]          @relation("FeatureFlagUpdatedBy")
+  roleAssignments         UserRoleRelation[] @relation("UserRoles")
+  rolesAssigned           UserRoleRelation[] @relation("UserRolesAssignedBy")
+  businessPartnersCreated BusinessPartner[]  @relation("BpCreatedBy")
+  estimatesCreated        Estimate[]         @relation("EstimateCreatedBy")
+  priceListEntriesCreated PriceListEntry[]   @relation("PriceListEntryCreatedBy")
+  quotesCreated           Quote[]            @relation("QuoteCreatedBy")
+  filesUploaded           File[]             @relation("FileUploadedBy")
+  auditLogs               AuditLog[]         @relation("AuditLogUser")
+  systemSettingsUpdated   SystemSetting[]    @relation("SystemSettingUpdatedBy")
+  featureFlagsUpdated     FeatureFlag[]      @relation("FeatureFlagUpdatedBy")
+  approvalGroupMembers    ApprovalGroupMember[] @relation("ApprovalGroupMemberUser")
+  salesOrdersCreated      SalesOrder[]          @relation("SalesOrderCreatedBy")
+  workOrdersCreated       WorkOrder[]           @relation("WorkOrderCreatedBy")
+  shippingOrdersCreated   ShippingOrder[]       @relation("ShippingOrderCreatedBy")
+  deliveryNotesCreated    DeliveryNote[]        @relation("DeliveryNoteCreatedBy")
+
+  posRequested MaterialPurchaseOrder[] @relation("PoRequestedBy")
+  posApproved  MaterialPurchaseOrder[] @relation("PoApprovedBy")
+  posOrdered   MaterialPurchaseOrder[] @relation("PoOrderedBy")
+  posCompleted MaterialPurchaseOrder[] @relation("PoCompletedBy")
+  posCancelled MaterialPurchaseOrder[] @relation("PoCancelledBy")
+  posCreated   MaterialPurchaseOrder[] @relation("PoCreatedBy")
+  receiptsCreated MaterialReceipt[]    @relation("ReceiptCreatedBy")
+
+  // Employees link to the shared directory by AD objectGUID (stable across
+  // username/attribute changes). Null for SYSTEM / GUEST users.
+  employee EmployeeDirectory? @relation("UserEmployee", fields: [employeeId], references: [ldapGuid])
 
   @@map("users")
-  @@schema("auth")
+  @@schema("app")
 }
 
 model Role {
@@ -98,7 +93,7 @@ model Role {
   permissions     RolePermissionRelation[]
 
   @@map("roles")
-  @@schema("auth")
+  @@schema("app")
 }
 
 model UserRoleRelation {
@@ -115,7 +110,7 @@ model UserRoleRelation {
 
   @@id([userId, roleId])
   @@map("user_role_relation")
-  @@schema("auth")
+  @@schema("app")
 }
 
 model Permission {
@@ -126,7 +121,7 @@ model Permission {
   rolePermissions RolePermissionRelation[]
 
   @@map("permissions")
-  @@schema("auth")
+  @@schema("app")
 }
 
 model RolePermissionRelation {
@@ -141,5 +136,5 @@ model RolePermissionRelation {
 
   @@id([roleId, action, permissionCode])
   @@map("role_permission_relation")
-  @@schema("auth")
+  @@schema("app")
 }

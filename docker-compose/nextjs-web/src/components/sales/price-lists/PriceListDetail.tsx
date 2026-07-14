@@ -5,9 +5,9 @@
  *
  * One (顧客, 製品, 注文種別) entry: its 有効期間 + 状態, a read-only table of
  * quantity tiers, and the dedicated 値引きルール list (期間 × 数量 → 値引き —
- * 見積書作成時に自動適用される). 注文種別ごとにページを分ける。`id` is the
- * entry key; falls back to the first entry so the layout always renders.
- * Replace the mock lookup with a server fetch.
+ * 見積書作成時に自動適用される). 注文種別ごとにページを分ける。Backed by
+ * sales.price_list_entries via the server page; 値引きルールの追加・編集・削除
+ * は Server Actions で永続化する。
  */
 
 import {
@@ -31,24 +31,29 @@ import {
   IconTrash,
 } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useState, useTransition } from "react";
+import {
+  deleteDiscountRule,
+  saveDiscountRule,
+} from "@/app/(dashboard)/sales/price-lists/actions";
+import type { RelatedQuoteRow } from "@/app/(dashboard)/sales/price-lists/data";
 import { ActiveBadge } from "@/components/ui/ActiveBadge";
 import { SecondaryButton } from "@/components/ui/buttons";
 import { DocNumber } from "@/components/ui/DocNumber";
 import { FieldValue } from "@/components/ui/FieldValue";
+import { HistoryPanel } from "@/components/ui/HistoryPanel";
 import { MoneyText } from "@/components/ui/MoneyText";
 import { openConfirm } from "@/components/ui/modals";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import {
   type AuditEntry,
-  AuditTimeline,
   DetailShell,
   ResourceActions,
   SummaryGrid,
 } from "@/components/ui/shells";
 import { formatDate, formatDateTime } from "@/lib/format";
+import type { Option } from "@/lib/mock";
 import { ORDER_TYPE_LABEL } from "@/lib/mock";
-import { MOCK_QUOTES } from "../quotes/mock";
 import { CopyPriceListModal } from "./CopyPriceListModal";
 import { CreateQuoteModal } from "./CreateQuoteModal";
 import { DeletePriceListModal } from "./DeletePriceListModal";
@@ -57,65 +62,77 @@ import { DuplicatePriceListModal } from "./DuplicatePriceListModal";
 import {
   discountValueLabel,
   entrySummary,
-  getPriceEntry,
-  MOCK_PRICE_ENTRIES,
   multiplierLabel,
   type PriceDiscount,
+  type PriceListEntry,
   priceRangeLabel,
   quantityRange,
-  siblingOrderTypes,
   tierUnitPrice,
   validPeriod,
-} from "./mock";
+} from "./model";
 
 const BASE_PATH = "/sales/price-lists";
 
-// TODO(server): fetch audit_logs for this (顧客, 製品, 注文種別) entry.
-const MOCK_AUDIT: AuditEntry[] = [
-  {
-    id: 1,
-    action: "UPDATE",
-    user: "鈴木",
-    at: "2026/01/05 14:30",
-    detail: "100本〜 の単価: ¥5,200 → ¥5,000",
-  },
-  {
-    id: 2,
-    action: "CREATE",
-    user: "鈴木",
-    at: "2025/12/20 09:15",
-    detail: "価格表を作成",
-  },
-];
-
-export function PriceListDetail({ id }: { id: string }) {
+export function PriceListDetail({
+  entry,
+  siblings,
+  relatedQuotes,
+  customerOptions,
+  productOptions,
+  auditEntries,
+}: {
+  entry: PriceListEntry;
+  /** 同一 (顧客, 製品) の他の注文種別。 */
+  siblings: string[];
+  relatedQuotes: RelatedQuoteRow[];
+  customerOptions: Option[];
+  productOptions: Option[];
+  /** 操作履歴（audit_logs 由来、履歴タブ）。 */
+  auditEntries: AuditEntry[];
+}) {
   const router = useRouter();
-  const entry = getPriceEntry(id) ?? MOCK_PRICE_ENTRIES[0];
+  const [, startTransition] = useTransition();
   const summary = entrySummary(entry);
-  const siblings = siblingOrderTypes(entry);
 
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [duplicateOpen, setDuplicateOpen] = useState(false);
   const [copyOpen, setCopyOpen] = useState(false);
   const [quoteOpen, setQuoteOpen] = useState(false);
 
-  // 値引きルール（専用リスト）— add/edit/delete はローカル state でデモ。
-  // TODO(server-action): persist to price_list_discounts.
-  const [discounts, setDiscounts] = useState<PriceDiscount[]>(entry.discounts);
+  // 値引きルール（専用リスト）— Server Action で永続化。
+  const discounts = entry.discounts;
   const [discountModalOpen, setDiscountModalOpen] = useState(false);
   const [discountEditTarget, setDiscountEditTarget] =
     useState<PriceDiscount | null>(null);
 
   const saveDiscount = (rule: PriceDiscount) => {
-    setDiscounts((prev) =>
-      prev.some((d) => d.id === rule.id)
-        ? prev.map((d) => (d.id === rule.id ? rule : d))
-        : [...prev, rule],
-    );
-    notifications.show({
-      title: "保存しました",
-      message: `値引きルール「${rule.label}」を保存しました`,
-      color: "green",
+    startTransition(async () => {
+      const result = await saveDiscountRule({
+        entryNumber: entry.entryId,
+        id: rule.id || null,
+        label: rule.label,
+        discountType: rule.discountType,
+        value: rule.value,
+        minQuantity: rule.minQuantity,
+        maxQuantity: rule.maxQuantity,
+        validFrom: rule.validFrom,
+        validUntil: rule.validUntil,
+        isActive: rule.isActive,
+      });
+      if (result.ok) {
+        notifications.show({
+          title: "保存しました",
+          message: `値引きルール「${rule.label}」を保存しました`,
+          color: "green",
+        });
+        router.refresh();
+      } else {
+        notifications.show({
+          title: "エラー",
+          message: result.error,
+          color: "red",
+        });
+      }
     });
   };
 
@@ -124,24 +141,22 @@ export function PriceListDetail({ id }: { id: string }) {
       title: "値引きルールの削除",
       message: `「${rule.label}」を削除します。この操作は取り消せません。`,
       confirmLabel: "削除",
-      onConfirm: () =>
-        setDiscounts((prev) => prev.filter((d) => d.id !== rule.id)),
+      onConfirm: () => {
+        startTransition(async () => {
+          const result = await deleteDiscountRule(entry.entryId, rule.id);
+          if (result.ok) {
+            router.refresh();
+          } else {
+            notifications.show({
+              title: "エラー",
+              message: result.error,
+              color: "red",
+            });
+          }
+        });
+      },
     });
   };
-
-  // この価格表（の tier）から作成された見積書。
-  const tierIds = new Set(entry.tiers.map((t) => t.id));
-  const relatedQuotes = MOCK_QUOTES.map((q) => {
-    const items = q.items.filter(
-      (it) => it.priceTierId && tierIds.has(it.priceTierId),
-    );
-    return {
-      quote: q,
-      quantity: items.reduce((sum, it) => sum + it.quantity, 0),
-      amount: items.reduce((sum, it) => sum + it.amount, 0),
-      matched: items.length,
-    };
-  }).filter((x) => x.matched > 0);
 
   return (
     <DetailShell
@@ -154,7 +169,7 @@ export function PriceListDetail({ id }: { id: string }) {
               onClick: () => setQuoteOpen(true),
             },
             {
-              label: "有効期間を変えて複製",
+              label: "有効期間を変更",
               icon: <IconCopy size={14} />,
               onClick: () => setDuplicateOpen(true),
             },
@@ -429,27 +444,27 @@ export function PriceListDetail({ id }: { id: string }) {
                       </Table.Tr>
                     </Table.Thead>
                     <Table.Tbody>
-                      {relatedQuotes.map(({ quote, quantity, amount }) => (
+                      {relatedQuotes.map((q) => (
                         <Table.Tr
-                          key={quote.id}
+                          key={q.quoteNumber}
                           onClick={() =>
-                            router.push(`/sales/quotes/${quote.id}`)
+                            router.push(`/sales/quotes/${q.quoteNumber}`)
                           }
                           style={{ cursor: "pointer" }}
                         >
                           <Table.Td>
-                            <DocNumber c="blue">{quote.quoteNumber}</DocNumber>
+                            <DocNumber c="blue">{q.quoteNumber}</DocNumber>
                           </Table.Td>
-                          <Table.Td ta="right">{quantity} 本</Table.Td>
+                          <Table.Td ta="right">{q.quantity} 本</Table.Td>
                           <Table.Td ta="right">
-                            <MoneyText value={amount} />
+                            <MoneyText value={q.amount} />
                           </Table.Td>
                           <Table.Td>
-                            <StatusBadge entity="Quote" status={quote.status} />
+                            <StatusBadge entity="Quote" status={q.status} />
                           </Table.Td>
                           <Table.Td>
                             <Text c="dimmed" className="tabular-nums" size="xs">
-                              {formatDate(quote.createdAt)}
+                              {formatDate(q.createdAt)}
                             </Text>
                           </Table.Td>
                         </Table.Tr>
@@ -467,24 +482,27 @@ export function PriceListDetail({ id }: { id: string }) {
         </Tabs.Panel>
 
         <Tabs.Panel pt="md" value="history">
-          <AuditTimeline entries={MOCK_AUDIT} />
+          <HistoryPanel entries={auditEntries} />
         </Tabs.Panel>
       </Tabs>
 
       <DeletePriceListModal
         onClose={() => setDeleteOpen(false)}
-        onConfirm={() => router.push(BASE_PATH)}
+        onDone={() => router.push(BASE_PATH)}
         opened={deleteOpen}
-        productName={entry.productName}
+        target={entry}
       />
       <DuplicatePriceListModal
         onClose={() => setDuplicateOpen(false)}
+        onDone={() => router.refresh()}
         opened={duplicateOpen}
         source={entry}
       />
       <CopyPriceListModal
+        customerOptions={customerOptions}
         onClose={() => setCopyOpen(false)}
         opened={copyOpen}
+        productOptions={productOptions}
         source={entry}
       />
       <CreateQuoteModal

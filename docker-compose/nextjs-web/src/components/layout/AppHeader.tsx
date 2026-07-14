@@ -31,6 +31,7 @@ import {
 import {
   IconBell,
   IconFolder,
+  IconHistory,
   IconLogout,
   IconSettings,
   IconUser,
@@ -330,6 +331,14 @@ export function AppHeader() {
                 py={{ base: "sm", md: "xs" }}
               >
                 ファイル管理
+              </Menu.Item>
+              <Menu.Item
+                component={Link}
+                href="/admin/activity"
+                leftSection={<IconHistory size={14} />}
+                py={{ base: "sm", md: "xs" }}
+              >
+                操作履歴
               </Menu.Item>
               <Divider my="5px" />
               <Menu.Item

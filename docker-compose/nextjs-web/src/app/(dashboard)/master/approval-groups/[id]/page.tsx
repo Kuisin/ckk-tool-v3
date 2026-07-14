@@ -1,15 +1,54 @@
-import { PlaceholderPage } from "@/components/ui/PlaceholderPage";
+import { notFound } from "next/navigation";
+import {
+  ApprovalGroupDetail,
+  type ApprovalGroupDetailData,
+} from "@/components/master/approval-groups/ApprovalGroupDetail";
+import { fetchAuditEntries } from "@/lib/audit";
+import { prisma } from "@/lib/db";
+import type { LocalizedText } from "@/lib/format";
 
+export const dynamic = "force-dynamic";
+
+/** 承認グループ 詳細 (MS2A). */
 export default async function MasterApprovalGroupsDetailPage({
   params,
 }: {
   params: Promise<{ id: string }>;
 }) {
-  const { id } = await params;
-  return (
-    <PlaceholderPage
-      breadcrumbs={["マスタ", "承認グループ", id]}
-      title="承認グループ 詳細"
-    />
-  );
+  const { id: idParam } = await params;
+  const id = Number(idParam);
+  if (!Number.isInteger(id)) notFound();
+  const [r, auditEntries] = await Promise.all([
+    prisma.approvalGroup.findUnique({
+      where: { id },
+      include: {
+        members: {
+          include: {
+            user: { select: { displayName: true, username: true } },
+          },
+          orderBy: { user: { username: "asc" } },
+        },
+      },
+    }),
+    fetchAuditEntries("approval_groups", String(id)),
+  ]);
+  if (!r) notFound();
+
+  const name = r.name as LocalizedText | null;
+
+  const record: ApprovalGroupDetailData = {
+    id: r.id,
+    type: r.type,
+    nameJa: name?.ja ?? "",
+    nameEn: name?.en ?? "",
+    isActive: r.isActive,
+    members: r.members.map((m) => ({
+      userId: m.userId,
+      displayName: m.user.displayName,
+      username: m.user.username,
+      isActive: m.isActive,
+    })),
+  };
+
+  return <ApprovalGroupDetail auditEntries={auditEntries} record={record} />;
 }

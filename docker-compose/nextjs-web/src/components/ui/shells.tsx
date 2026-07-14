@@ -306,16 +306,24 @@ export function FormShell({
 export function FormSection({
   title,
   description,
+  required,
   children,
 }: {
   title: string;
   description?: string;
+  /** 必須セクション。タイトル直後に赤い * を表示する。 */
+  required?: boolean;
   children: ReactNode;
 }) {
   return (
     <Paper className="form-section" p="md" radius="md" withBorder>
       <Title mb={description ? 2 : "xs"} order={4}>
         {title}
+        {required && (
+          <span aria-hidden className="required-asterisk">
+            {" *"}
+          </span>
+        )}
       </Title>
       {description && (
         <Text c="dimmed" mb="xs" size="xs">

@@ -266,7 +266,12 @@ Table materials {
 Table products {
   id              varchar [pk]            // 製品コード
   name            json [not null]         // { ja: '', en: '' }
-  material_id     varchar [ref: > materials.id]
+  // 素材は「材種 + 直径 + 全長」で指定する。特定の materials 行には紐付けない
+  // （同一材種・直径の複数素材が cut-to-length で充当可能。素材マスタは在庫管理用に存置）。
+  material_type_id int [ref: > material_types.id]
+  diameter_mm     numeric(8,3)            // 直径 (mm)
+  length_mm       numeric(10,3)           // 全長 (mm)
+  material_id     varchar [ref: > materials.id]  // 廃止予定（旧: 特定素材参照。現在は未使用）
   unit            varchar [not null, default: '本']
   spec            json                    // 仕様（フリー構造）
   design_file_id  uuid [ref: > design_files.id]
@@ -428,7 +433,7 @@ Table order_acceptances {
   customer_branch_bp_id uuid [ref: > business_partners.id]
   customer_order_ref varchar               // 顧客注文書番号（FAX受取）
   status          ORDER_ACCEPTANCE_STATUS [not null, default: 'PENDING']
-  total_amount    numeric(12,2)            // 受注書から自動計算
+  total_amount    numeric(12,2)            // 注文請書から自動計算
   order_doc_file_id uuid [ref: > files.id] // 受領した注文書 PDF
   notes           text
   created_by      uuid [ref: > users.id]
@@ -443,7 +448,7 @@ Enum ORDER_ACCEPTANCE_STATUS {
 }
 
 // ===========================
-// 受注書（§3）ORD-YYYYMM-NNNNN-NN
+// 注文請書（§3）ORD-YYYYMM-NNNNN-NN
 // ===========================
 
 Table sales_orders {
@@ -1250,6 +1255,7 @@ Table business_partners {
   email           varchar
   website         varchar
   tax_number      varchar                       // 法人番号等
+  match_names     "text[]"    [default: '{}']   // AI抽出の社名照合リスト（表記ゆれ・旧社名）
   is_active       boolean     [default: true]
   notes           text
   created_by      uuid
@@ -1364,7 +1370,7 @@ Table files {
 //   EST-YYYYMM-NNNNN（試算）
 //   QOT-YYYYMM-NNNNN（見積書）
 //   ORD-YYYYMM-NNNNN（注文受取書）
-//   ORD-YYYYMM-NNNNN-NN（受注書）
+//   ORD-YYYYMM-NNNNN-NN（注文請書）
 //   DRN-YYYYMM-NNNNN（納品書）
 //   INV-YYYYMM-NNNNN（請求書）
 //   指示書・ロット番号: 通し連番 (int)

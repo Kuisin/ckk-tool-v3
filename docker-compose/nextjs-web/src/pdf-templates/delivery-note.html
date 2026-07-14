@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <title>納品書</title>
+  <link rel="stylesheet" href="base.css" />
+</head>
+<body>
+
+  <div class="header">
+    <div class="brand">
+      <img class="brand-logo" src="logo.svg" alt="シー・ケィ・ケー株式会社" />
+      <div class="doc-title">納品書</div>
+    </div>
+    <div class="issuer">
+      <strong>{{issuer.name}}</strong><br>
+      {{issuer.address}}<br>
+      {{issuer.tel}}<br>
+      登録番号: {{issuer.invoice_reg}}
+    </div>
+  </div>
+
+  <div class="meta-row">
+    <div class="recipient-block">
+      <div class="recipient-name">{{recipient.name}}　<span class="onchu">御中</span></div>
+      <div class="recipient-meta">
+        {{recipient.meta}}
+      </div>
+    </div>
+    <div class="doc-info">
+      <table>
+        <tr><td>納品書番号</td><td>{{doc.number}}</td></tr>
+        <tr><td>発行日</td><td>{{doc.issued_date}}</td></tr>
+        <tr><td>出荷書番号</td><td>{{doc.shipping_number}}</td></tr>
+        <tr><td>納品方法</td><td>{{doc.method}}</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <div class="strip">
+    下記の通り納品いたします。ご査収のほどよろしくお願いいたします。
+  </div>
+
+  <table class="items-table">
+    <thead>
+      <tr>
+        <th style="width: 45%">製品</th>
+        <th class="right">数量</th>
+        <!-- price_head: 価格記載あり（include_price）のときのみ 単価/金額 列 -->
+        {{price_head}}
+        <th>備考</th>
+      </tr>
+    </thead>
+    <tbody>
+      {{#each items}}
+      <tr>
+        <td>{{name}}<br><span class="sub">{{code}}</span></td>
+        <td class="right">{{quantity}}</td>
+        {{price_cells}}
+        <td>{{notes}}</td>
+      </tr>
+      {{/each}}
+    </tbody>
+  </table>
+
+  <!-- totals: 価格記載ありのときのみ合計ブロックを描画する -->
+  {{totals_block}}
+
+  <div>
+    <div class="notes-label">備考</div>
+    <div class="notes">{{notes}}</div>
+  </div>
+
+  <div class="footer">
+    {{doc.number}} 　 1 / 1
+  </div>
+
+</body>
+</html>

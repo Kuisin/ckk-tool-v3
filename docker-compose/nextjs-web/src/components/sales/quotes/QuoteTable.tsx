@@ -4,8 +4,8 @@
  * QuoteTable — 見積書 一覧 (design.md §8.1 / §14).
  *
  * Columns: 見積番号 / 顧客 / 有効期限 / 状態 / 更新日 (+ 合計金額, hideable).
- * Row click → the quote's detail page. Replace MOCK_QUOTES with server data +
- * URL-param filters later.
+ * Row click → the quote's detail page. Rows come from sales.quotes via the
+ * server page.
  */
 
 import { Group, Select, Stack, Text, TextInput } from "@mantine/core";
@@ -19,12 +19,18 @@ import { StatusBadge, statusOptions } from "@/components/ui/StatusBadge";
 import { ListShell } from "@/components/ui/shells";
 import { useIsMobile } from "@/hooks/useViewport";
 import { formatDate, formatDateTime } from "@/lib/format";
-import { CUSTOMERS } from "@/lib/mock";
-import { MOCK_QUOTES, type Quote, quoteTotals } from "./mock";
+import type { Option } from "@/lib/mock";
+import { type Quote, quoteTotals } from "./model";
 
 const BASE_PATH = "/sales/quotes";
 
-export function QuoteTable() {
+export function QuoteTable({
+  rows,
+  customerOptions,
+}: {
+  rows: Quote[];
+  customerOptions: Option[];
+}) {
   const router = useRouter();
   const isMobile = useIsMobile();
 
@@ -38,12 +44,12 @@ export function QuoteTable() {
     setStatus(null);
   };
 
-  const filtered = MOCK_QUOTES.filter((q) => {
+  const filtered = rows.filter((q) => {
     const matchesSearch =
       !search ||
       q.quoteNumber.includes(search) ||
       q.customerName.includes(search);
-    const matchesCustomer = !customer || q.customerName === customer;
+    const matchesCustomer = !customer || q.customerId === customer;
     const matchesStatus = !status || q.status === status;
     return matchesSearch && matchesCustomer && matchesStatus;
   });
@@ -114,7 +120,7 @@ export function QuoteTable() {
         <>
           <Select
             clearable
-            data={CUSTOMERS.map((c) => ({ value: c.label, label: c.label }))}
+            data={customerOptions}
             flex={isMobile ? 1 : undefined}
             onChange={setCustomer}
             placeholder="顧客"

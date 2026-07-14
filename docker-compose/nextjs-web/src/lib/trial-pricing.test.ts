@@ -6,7 +6,7 @@
  */
 
 import { describe, expect, it } from "vitest";
-import { MOCK_TRIAL_ESTIMATES } from "@/components/sales/trial-estimates/mock";
+import { MOCK_TRIAL_ESTIMATES } from "@/components/sales/trial-estimates/fixtures";
 import { calcTrialPricing } from "./trial-pricing";
 import { CORRECTION_FACTOR } from "./trial-pricing-data";
 

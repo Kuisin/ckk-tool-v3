@@ -1,0 +1,37 @@
+# CKK db-backup — scheduled PG17 incremental base backups of shared-db.
+#
+# One loop container ticks at the top of every hour (kot-import style):
+#   daily/YYYY-MM-DD/      full pg_basebackup      — kept DAILY_KEEP_DAYS (14)
+#   hourly/YYYY-MM-DDTHH/  incremental (vs newest full) — kept HOURLY_KEEP_HOURS (72)
+#   monthly/YYYY-MM/       hardlink promote of the month's first daily full
+#                                                  — kept MONTHLY_KEEP (12)
+#
+# Backups land on the host at ${BACKUP_DIR:-/data/db-backups} (create it once:
+# `sudo mkdir -p /data/db-backups && sudo chown 70:70 /data/db-backups`).
+# Restore runbook + one-time shared-db migration steps: see README.md.
+
+services:
+  db-backup:
+    build: .
+    image: ckk-db-backup
+    container_name: db-backup
+    restart: unless-stopped
+    user: "70:70" # postgres uid/gid in the alpine image; matches BACKUP_DIR chown
+    environment:
+      - PGHOST=shared-db
+      - PGUSER=backup
+      - PGPASSWORD=${BACKUP_DB_PASSWORD:?set BACKUP_DB_PASSWORD in .env}
+      - TZ=${TZ:-Asia/Tokyo} # daily/monthly boundaries in local time
+      - BACKUP_ROOT=/backups
+      - HOURLY_KEEP_HOURS=${HOURLY_KEEP_HOURS:-72}
+      - DAILY_KEEP_DAYS=${DAILY_KEEP_DAYS:-14}
+      - MONTHLY_KEEP=${MONTHLY_KEEP:-12}
+    volumes:
+      - ${BACKUP_DIR:-/data/db-backups}:/backups
+    networks:
+      - shareddb
+
+networks:
+  shareddb:
+    external: true
+    name: shared-db

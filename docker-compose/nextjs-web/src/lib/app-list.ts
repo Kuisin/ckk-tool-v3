@@ -58,10 +58,13 @@ export const appList: AppEntry[] = [
     requiredPermission: "quote",
   },
   {
+    // 注文請書（旧 PD01）と内容が重複するため SA03 に一本化。実体は
+    // /production/sales-orders の管理画面（§2 intake は order-acceptances
+    // ルートに残置、実装時に接続）。
     key: "order-acceptances",
     label: "受注請書",
     operationCode: "SA03",
-    href: "/sales/order-acceptances",
+    href: "/production/sales-orders",
     icon: "IconClipboardCheck",
     category: "販売",
     requiredPermission: "order_acceptance",
@@ -115,15 +118,6 @@ export const appList: AppEntry[] = [
   },
 
   // ─── 生産 ──────────────────────────────────────────────────────────────────
-  {
-    key: "sales-orders",
-    label: "受注書",
-    operationCode: "PD01",
-    href: "/production/sales-orders",
-    icon: "IconClipboardList",
-    category: "生産",
-    requiredPermission: "sales_order",
-  },
   {
     key: "work-orders",
     label: "指示書",
@@ -298,6 +292,15 @@ export const appList: AppEntry[] = [
     operationCode: "MS0B",
     href: "/master/factories",
     icon: "IconBuildingWarehouse",
+    category: "マスタ",
+    requiredPermission: "master",
+  },
+  {
+    key: "master-material-numbering",
+    label: "採番構成",
+    operationCode: "MS0C",
+    href: "/master/material-numbering",
+    icon: "IconHash",
     category: "マスタ",
     requiredPermission: "master",
   },

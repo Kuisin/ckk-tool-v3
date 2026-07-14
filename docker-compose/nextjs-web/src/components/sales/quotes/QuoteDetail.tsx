@@ -7,8 +7,8 @@
  * PDF (発行時に保存された PDF のメタ + インライン A4 プレビュー) / 関連 (試算・
  * 価格表 back-links) / 履歴. 発行 (DRAFT → ISSUED) generates the PDF via the
  * Gotenberg route and stores it in SeaweedFS; the PDF tab streams that stored
- * copy. `id` falls back to the first quote so the layout always renders.
- * Replace the mock lookup with a server fetch.
+ * copy. Backed by sales.quotes via the server page; 発行 persists through the
+ * issueQuote Server Action.
  */
 
 import { Anchor, Badge, Stack, Table, Tabs, Text } from "@mantine/core";
@@ -16,9 +16,11 @@ import { notifications } from "@mantine/notifications";
 import { IconCopy, IconDownload, IconSend } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { issueQuote } from "@/app/(dashboard)/sales/quotes/actions";
 import { PrimaryButton } from "@/components/ui/buttons";
 import { DocNumber } from "@/components/ui/DocNumber";
 import { FieldValue } from "@/components/ui/FieldValue";
+import { HistoryPanel } from "@/components/ui/HistoryPanel";
 import { MoneyText } from "@/components/ui/MoneyText";
 import {
   PdfAttachmentPanel,
@@ -27,51 +29,38 @@ import {
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import {
   type AuditEntry,
-  AuditTimeline,
   DetailShell,
   ResourceActions,
   SummaryGrid,
 } from "@/components/ui/shells";
 import { formatDate, formatDateTime } from "@/lib/format";
 import { ORDER_TYPE_LABEL } from "@/lib/mock";
+import type { PriceListEntry } from "../price-lists/model";
 import { IssueQuoteModal } from "./IssueQuoteModal";
 import {
-  findPriceTierRef,
-  getQuote,
-  MOCK_QUOTES,
+  findPriceTierRefIn,
   orderTypeLabel,
-  priceEntriesForQuote,
-  type QuoteStatus,
+  type Quote,
   quoteTotals,
-} from "./mock";
+} from "./model";
 
 const BASE_PATH = "/sales/quotes";
 
-// TODO(server): fetch audit_logs for this quote.
-const MOCK_AUDIT: AuditEntry[] = [
-  {
-    id: 1,
-    action: "UPDATE",
-    user: "鈴木",
-    at: "2026/02/16 10:05",
-    detail: "ステータス: 下書き → 発行済（PDF 生成・保存）",
-  },
-  {
-    id: 2,
-    action: "CREATE",
-    user: "鈴木",
-    at: "2026/02/16 09:30",
-    detail: "価格表から見積書を作成（単価自動解決）",
-  },
-];
-
-export function QuoteDetail({ id }: { id: string }) {
+export function QuoteDetail({
+  quote,
+  relatedEntries,
+  auditEntries,
+}: {
+  quote: Quote;
+  /** この見積の明細 tier が属する価格表エントリ（関連タブ・適用価格表）。 */
+  relatedEntries: PriceListEntry[];
+  /** 操作履歴（audit_logs 由来、履歴タブ）。 */
+  auditEntries: AuditEntry[];
+}) {
   const router = useRouter();
-  const quote = getQuote(id) ?? MOCK_QUOTES[0];
   const totals = quoteTotals(quote);
 
-  // TODO(server-action): status / pdf_file_id persist server-side.
-  const [status, setStatus] = useState<QuoteStatus>(quote.status);
+  const status = quote.status;
   const [pdfFile, setPdfFile] = useState<PdfFileMeta | null>(quote.pdfFile);
   const [issueOpen, setIssueOpen] = useState(false);
   // Bumped on 再生成 so the preview iframe reloads the regenerated PDF.
@@ -79,8 +68,6 @@ export function QuoteDetail({ id }: { id: string }) {
 
   const pdfUrl = (extra = "") =>
     `/api/pdf/quote?id=${encodeURIComponent(quote.id)}${extra}`;
-
-  const relatedEntries = priceEntriesForQuote(quote);
 
   const regenerate = async () => {
     try {
@@ -181,7 +168,10 @@ export function QuoteDetail({ id }: { id: string }) {
               </Table.Thead>
               <Table.Tbody>
                 {quote.items.map((it) => {
-                  const tierRef = findPriceTierRef(it.priceTierId);
+                  const tierRef = findPriceTierRefIn(
+                    relatedEntries,
+                    it.priceTierId,
+                  );
                   return (
                     <Table.Tr key={it.id}>
                       <Table.Td>
@@ -373,17 +363,26 @@ export function QuoteDetail({ id }: { id: string }) {
         </Tabs.Panel>
 
         <Tabs.Panel pt="md" value="history">
-          <AuditTimeline entries={MOCK_AUDIT} />
+          <HistoryPanel entries={auditEntries} />
         </Tabs.Panel>
       </Tabs>
 
       <IssueQuoteModal
         defaultValidUntil={quote.validUntil}
         onClose={() => setIssueOpen(false)}
-        onIssued={(meta) => {
-          setStatus("ISSUED");
-          setPdfFile(meta);
-          setPdfNonce((n) => n + 1);
+        onIssued={async (meta, validUntil) => {
+          const result = await issueQuote(quote.quoteNumber, validUntil);
+          if (result.ok) {
+            setPdfFile(meta);
+            setPdfNonce((n) => n + 1);
+            router.refresh();
+          } else {
+            notifications.show({
+              title: "エラー",
+              message: result.error,
+              color: "red",
+            });
+          }
         }}
         opened={issueOpen}
         quoteId={quote.id}

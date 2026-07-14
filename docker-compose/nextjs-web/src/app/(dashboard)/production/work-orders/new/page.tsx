@@ -1,10 +1,43 @@
-import { PlaceholderPage } from "@/components/ui/PlaceholderPage";
+import { WorkflowBuilder } from "@/components/production/work-orders/WorkflowBuilder";
+import { loadCatalog } from "@/lib/workflow";
+import {
+  fetchFactoryOptions,
+  fetchInspectionTemplateOptions,
+  fetchSalesOrderRef,
+  fetchSupplierOptions,
+} from "../data";
 
-export default function ProductionWorkOrdersNewPage() {
+export const dynamic = "force-dynamic";
+
+/**
+ * 指示書 新規作成 (PD12).
+ *
+ * `?salesOrder={uuid}` で注文請書をプリセレクトできる（注文請書詳細からの起動用）。
+ */
+export default async function ProductionWorkOrdersNewPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ salesOrder?: string }>;
+}) {
+  const sp = await searchParams;
+  const [catalog, factoryOptions, templateOptions, supplierOptions, soRef] =
+    await Promise.all([
+      loadCatalog(),
+      fetchFactoryOptions(),
+      fetchInspectionTemplateOptions(),
+      fetchSupplierOptions(),
+      sp.salesOrder ? fetchSalesOrderRef(sp.salesOrder) : null,
+    ]);
+
   return (
-    <PlaceholderPage
-      breadcrumbs={["生産", "指示書", "新規作成"]}
-      title="指示書 新規作成"
+    <WorkflowBuilder
+      catalogSteps={catalog.steps}
+      factoryOptions={factoryOptions}
+      initialSalesOrder={soRef}
+      mode="create"
+      supplierOptions={supplierOptions}
+      templateOptions={templateOptions}
+      useDeps={catalog.useDeps}
     />
   );
 }

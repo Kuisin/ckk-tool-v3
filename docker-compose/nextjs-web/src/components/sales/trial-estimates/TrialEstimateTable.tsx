@@ -23,9 +23,10 @@ import { StatusBadge, statusOptions } from "@/components/ui/StatusBadge";
 import { ListShell } from "@/components/ui/shells";
 import { useIsMobile } from "@/hooks/useViewport";
 import { formatDateTime } from "@/lib/format";
+import type { Option } from "@/lib/mock";
 import { calcTrialPricing, TOOL_TYPE_OPTIONS } from "@/lib/trial-pricing";
 import { ConvertToPriceListModal } from "./ConvertToPriceListModal";
-import { MOCK_TRIAL_ESTIMATES, type TrialEstimateRecord } from "./mock";
+import type { ExistingEntryRef, TrialEstimateRecord } from "./types";
 
 const BASE_PATH = "/sales/trial-estimates";
 
@@ -36,7 +37,17 @@ const toolLabel = (v: string) =>
 const headlinePrice = (r: TrialEstimateRecord) =>
   calcTrialPricing(r.input).lots[0]?.estimateUnitPrice ?? 0;
 
-export function TrialEstimateTable() {
+export function TrialEstimateTable({
+  rows,
+  customerOptions,
+  productOptions,
+  existingEntries,
+}: {
+  rows: TrialEstimateRecord[];
+  customerOptions: Option[];
+  productOptions: Option[];
+  existingEntries: ExistingEntryRef[];
+}) {
   const router = useRouter();
   const isMobile = useIsMobile();
   const [search, setSearch] = useState("");
@@ -46,7 +57,7 @@ export function TrialEstimateTable() {
   const [registerTarget, setRegisterTarget] =
     useState<TrialEstimateRecord | null>(null);
 
-  const filtered = MOCK_TRIAL_ESTIMATES.filter((r) => {
+  const filtered = rows.filter((r) => {
     const matchesSearch =
       !search ||
       r.name.includes(search) ||
@@ -249,15 +260,19 @@ export function TrialEstimateTable() {
           {
             label: "複製して再試算",
             icon: <IconCopy size={14} />,
-            onAction: () => router.push(`${BASE_PATH}/new`),
+            onAction: (row) => router.push(`${BASE_PATH}/new?from=${row.id}`),
           },
         ]}
       />
 
       <ConvertToPriceListModal
+        customerOptions={customerOptions}
         estimate={registerTarget}
+        existingEntries={existingEntries}
         onClose={() => setRegisterTarget(null)}
+        onRegistered={() => router.refresh()}
         opened={registerTarget !== null}
+        productOptions={productOptions}
       />
     </ListShell>
   );

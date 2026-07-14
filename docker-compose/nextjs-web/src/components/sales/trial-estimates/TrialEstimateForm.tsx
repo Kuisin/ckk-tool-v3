@@ -33,7 +33,12 @@ import {
   IconChartLine,
 } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useState, useTransition } from "react";
+import {
+  createTrialEstimate,
+  fetchMaterialPricing,
+  type MaterialPricing,
+} from "@/app/(dashboard)/sales/trial-estimates/actions";
 import {
   EditButton,
   SaveButton,
@@ -45,8 +50,7 @@ import { openConfirm } from "@/components/ui/modals";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { FormSection } from "@/components/ui/shells";
 import { formatDate } from "@/lib/format";
-import { getPriceHistory, getReferencePrice } from "@/lib/material-pricing";
-import { CUSTOMERS, MATERIALS } from "@/lib/mock";
+import type { Option } from "@/lib/mock";
 import {
   type CostBreakdown,
   calcTrialPricing,
@@ -65,11 +69,11 @@ import {
   STEP_TYPE_OPTIONS,
 } from "@/lib/trial-pricing-data";
 import {
-  loadTrialPricingSettings,
   MATERIAL_PRICE_BASIS_OPTIONS,
+  type TrialPricingSettings,
 } from "@/lib/trial-pricing-settings";
 import { MaterialPriceChart } from "./MaterialPriceChart";
-import { MOCK_TRIAL_ESTIMATES } from "./mock";
+import type { TrialEstimateRecord } from "./types";
 
 const BASE_PATH = "/sales/trial-estimates";
 const toData = (o: readonly { value: string; label: string }[]) =>
@@ -77,36 +81,79 @@ const toData = (o: readonly { value: string; label: string }[]) =>
 const num = (v: number | string) =>
   typeof v === "number" ? v : Number(v) || 0;
 
-const DEFAULT_MATERIAL = MATERIALS[0].value;
-
-export function TrialEstimateForm() {
+export function TrialEstimateForm({
+  customerOptions,
+  materialOptions,
+  settings,
+  initialPricing,
+  /** 複製元（?from= で開いたとき）— 全入力を引き継いだ新規 DRAFT を作る。 */
+  source,
+}: {
+  customerOptions: Option[];
+  materialOptions: Option[];
+  /** システム設定（app.system_settings, サーバー取得）. */
+  settings: TrialPricingSettings;
+  /** 初期素材の仕入実績＋ポリシー参照価格（サーバー取得）. */
+  initialPricing: MaterialPricing;
+  source?: TrialEstimateRecord | null;
+}) {
   const router = useRouter();
-  const [settings] = useState(loadTrialPricingSettings);
+  const [isPending, startTransition] = useTransition();
+  const [isPricingLoading, startPricingTransition] = useTransition();
+
+  const defaultMaterial = materialOptions[0]?.value ?? "";
+  const src = source?.input;
 
   // ── inputs ──────────────────────────────────────────────────────────────
-  const [toolType, setToolType] = useState<ToolType>("ROUND_BAR");
-  const [name, setName] = useState("");
-  const [customerId, setCustomerId] = useState<string | null>(null);
-  const [materialId, setMaterialId] = useState<string>(DEFAULT_MATERIAL);
-  const [isBlackSkin, setIsBlackSkin] = useState(false);
-  const [maxDiameter, setMaxDiameter] = useState<number | string>(3);
-  const [totalLength, setTotalLength] = useState<number | string>(38);
+  const [toolType, setToolType] = useState<ToolType>(
+    src?.toolType ?? "ROUND_BAR",
+  );
+  const [name, setName] = useState(source ? `${source.name}（再試算）` : "");
+  const [customerId, setCustomerId] = useState<string | null>(
+    source?.customerId ?? null,
+  );
+  const [materialId, setMaterialId] = useState<string>(
+    source?.materialId ?? defaultMaterial,
+  );
+  const [isBlackSkin, setIsBlackSkin] = useState(src?.isBlackSkin ?? false);
+  const [maxDiameter, setMaxDiameter] = useState<number | string>(
+    src?.maxDiameter ?? 3,
+  );
+  const [totalLength, setTotalLength] = useState<number | string>(
+    src?.totalLength ?? 38,
+  );
   const [cylinderMaterialPrice, setCylinderMaterialPrice] = useState<
     number | string
-  >(13086);
-  const [cylinderType, setCylinderType] = useState<string>("NORMAL");
-  const [stepLength, setStepLength] = useState<number | string>(9);
-  const [stepType, setStepType] = useState<string>("FINISH");
-  const [neckLength, setNeckLength] = useState<number | string>(0);
-  const [neckType, setNeckType] = useState<string>("NONE");
-  const [coating, setCoating] = useState<string>("CX400");
-  const [lapType, setLapType] = useState<string>("NONE");
-  const [inspection, setInspection] = useState<string>("NONE");
-  const [ldEnabled, setLdEnabled] = useState(false);
-  const [ldLocation, setLdLocation] = useState<string>("TIP");
-  const [ldOuterDiameter, setLdOuterDiameter] = useState<number | string>(3);
-  const [ldBladeLength, setLdBladeLength] = useState<number | string>(10);
-  const [machiningMinutes, setMachiningMinutes] = useState<number | string>(6);
+  >(src?.cylinderMaterialPrice ?? 13086);
+  const [cylinderType, setCylinderType] = useState<string>(
+    src?.cylinderType ?? "NORMAL",
+  );
+  const [stepLength, setStepLength] = useState<number | string>(
+    src?.stepLength ?? 9,
+  );
+  const [stepType, setStepType] = useState<string>(src?.stepType ?? "FINISH");
+  const [neckLength, setNeckLength] = useState<number | string>(
+    src?.neckLength ?? 0,
+  );
+  const [neckType, setNeckType] = useState<string>(src?.neckType ?? "NONE");
+  const [coating, setCoating] = useState<string>(src?.coating ?? "CX400");
+  const [lapType, setLapType] = useState<string>(src?.lapType ?? "NONE");
+  const [inspection, setInspection] = useState<string>(
+    src?.inspection ?? "NONE",
+  );
+  const [ldEnabled, setLdEnabled] = useState(src?.ldEnabled ?? false);
+  const [ldLocation, setLdLocation] = useState<string>(
+    src?.ldLocation ?? "TIP",
+  );
+  const [ldOuterDiameter, setLdOuterDiameter] = useState<number | string>(
+    src?.ldOuterDiameter ?? 3,
+  );
+  const [ldBladeLength, setLdBladeLength] = useState<number | string>(
+    src?.ldBladeLength ?? 10,
+  );
+  const [machiningMinutes, setMachiningMinutes] = useState<number | string>(
+    src?.machiningMinutes ?? 6,
+  );
   // 加工単価・予備形状本数はシステム設定（グローバル）の既定値を使用。
   const machiningRate = settings.machiningRatePer10min;
   const spareShapeCount = settings.spareShapeCount;
@@ -115,47 +162,41 @@ export function TrialEstimateForm() {
   const [baseQuantity, setBaseQuantity] = useState<number | string>(100);
 
   // ── reference price (from purchase history / policy / chart override) ──────
-  const initialRef = useMemo(
-    () =>
-      getReferencePrice(
-        DEFAULT_MATERIAL,
-        settings.materialPriceBasis,
-        settings.materialPriceLookbackMonths,
-      ),
-    [settings],
-  );
+  // 現在の素材の仕入実績＋ポリシー参照価格。素材変更時にサーバーから再取得する。
+  const [pricing, setPricing] = useState<MaterialPricing>(initialPricing);
+  const history = pricing.history;
+  const policyRef = pricing.reference;
+
   const [referencePrice, setReferencePrice] = useState<number>(
-    initialRef.unitPrice,
+    src ? src.materialBarPrice : initialPricing.reference.unitPrice,
   );
-  const [referenceDate, setReferenceDate] = useState<string>(initialRef.date);
+  const [referenceDate, setReferenceDate] = useState<string>(
+    source?.referenceDate || initialPricing.reference.date,
+  );
   // overridden = the estimate uses a custom (non-policy) material price.
-  const [overridden, setOverridden] = useState(false);
+  const [overridden, setOverridden] = useState(source?.isCustomPrice ?? false);
   // customMode = the price field is unlocked for manual editing.
   const [customMode, setCustomMode] = useState(false);
 
-  const history = getPriceHistory(materialId);
-  const policyRef = useMemo(
-    () =>
-      getReferencePrice(
-        materialId,
-        settings.materialPriceBasis,
-        settings.materialPriceLookbackMonths,
-      ),
-    [materialId, settings],
-  );
-
   const onMaterialChange = (value: string | null) => {
-    const id = value ?? DEFAULT_MATERIAL;
+    const id = value ?? defaultMaterial;
     setMaterialId(id);
-    const ref = getReferencePrice(
-      id,
-      settings.materialPriceBasis,
-      settings.materialPriceLookbackMonths,
-    );
-    setReferencePrice(ref.unitPrice);
-    setReferenceDate(ref.date);
-    setOverridden(false);
-    setCustomMode(false);
+    startPricingTransition(async () => {
+      const res = await fetchMaterialPricing(id);
+      if (!res.ok) {
+        notifications.show({
+          title: "エラー",
+          message: res.error,
+          color: "red",
+        });
+        return;
+      }
+      setPricing(res.data);
+      setReferencePrice(res.data.reference.unitPrice);
+      setReferenceDate(res.data.reference.date);
+      setOverridden(false);
+      setCustomMode(false);
+    });
   };
 
   const resetToPolicy = () => {
@@ -216,17 +257,43 @@ export function TrialEstimateForm() {
   });
 
   const save = () => {
-    // TODO(server-action): persist and use the returned id below.
-    const newId = MOCK_TRIAL_ESTIMATES[0]?.id ?? "te-0001";
-    notifications.show({
-      title: "保存しました",
-      message: overridden
-        ? "試算を保存しました（カスタム単価）"
-        : "試算を保存しました",
-      color: "green",
+    if (!name.trim()) {
+      notifications.show({
+        title: "エラー",
+        message: "試算名を入力してください",
+        color: "red",
+      });
+      return;
+    }
+    startTransition(async () => {
+      const res = await createTrialEstimate({
+        name: name.trim(),
+        customerBpId: customerId,
+        materialId,
+        input,
+        referenceUnitPrice:
+          toolType === "CYLINDER" ? null : num(referencePrice),
+        referenceDate: referenceDate || null,
+        referenceOverridden: overridden,
+      });
+      if (res.ok) {
+        notifications.show({
+          title: "保存しました",
+          message: overridden
+            ? "試算を保存しました（カスタム単価）"
+            : "試算を保存しました",
+          color: "green",
+        });
+        // 作成後は詳細（ビュー）ページへ。
+        router.push(`${BASE_PATH}/${res.data.number}`);
+      } else {
+        notifications.show({
+          title: "エラー",
+          message: res.error,
+          color: "red",
+        });
+      }
     });
-    // 作成後は詳細（ビュー）ページへ。
-    router.push(`${BASE_PATH}/${newId}`);
   };
 
   const isCylinder = toolType === "CYLINDER";
@@ -239,7 +306,9 @@ export function TrialEstimateForm() {
             <SecondaryButton onClick={() => router.push(BASE_PATH)}>
               一覧へ
             </SecondaryButton>
-            <SaveButton onClick={save}>保存</SaveButton>
+            <SaveButton loading={isPending} onClick={save}>
+              保存
+            </SaveButton>
           </Group>
         }
         breadcrumbs={["販売", { label: "試算", href: BASE_PATH }, "新規"]}
@@ -276,7 +345,7 @@ export function TrialEstimateForm() {
                 <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="sm">
                   <Select
                     clearable
-                    data={CUSTOMERS}
+                    data={customerOptions}
                     label="見積り先"
                     onChange={setCustomerId}
                     placeholder="顧客"
@@ -315,7 +384,8 @@ export function TrialEstimateForm() {
             >
               <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
                 <Select
-                  data={MATERIALS}
+                  data={materialOptions}
+                  disabled={isPricingLoading}
                   label="材種・素材"
                   onChange={onMaterialChange}
                   searchable
@@ -530,12 +600,13 @@ export function TrialEstimateForm() {
               warnings={result.warnings}
             />
 
-            <FormSection title="試算名">
+            <FormSection required title="試算名">
               <TextInput
                 maw={480}
                 onChange={(e) => setName(e.currentTarget.value)}
                 placeholder="例: 精密軸 φ3×38 BAL ｱﾙｸﾛｰﾅ"
                 value={name}
+                withAsterisk
               />
             </FormSection>
           </Stack>
@@ -551,7 +622,7 @@ export function TrialEstimateForm() {
                   {settings.materialPriceLookbackMonths}ヶ月
                 </Badge>
                 <Text c="dimmed" size="xs">
-                  {MATERIALS.find((m) => m.value === materialId)?.label}
+                  {materialOptions.find((m) => m.value === materialId)?.label}
                 </Text>
               </Group>
               <MaterialPriceChart

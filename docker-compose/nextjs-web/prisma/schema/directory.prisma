@@ -1,9 +1,16 @@
 // Samba AD employee directory (LDAP sync target).
 // Writer: vpn-ldap ldap-sync service (role ldap_sync).
-// Readers: v_labor view, Metabase, admintools, future apps.
+// Readers: v_labor view, Metabase, admintools, the web app (app.users FK).
+//
+// `ldap_guid` is the immutable AD objectGUID — the STABLE identity that
+// survives username/attribute changes. app.users.employee_id FKs to it so a
+// rename in AD updates this row in place and never orphans the app reference.
+// This schema is owned by ldap_sync; Prisma does NOT create the table — the
+// init migration only ADDs the `ldap_guid` column + unique index to it.
 
 model EmployeeDirectory {
   username     String   @id
+  ldapGuid     String?  @unique @map("ldap_guid") @db.Uuid
   displayName  String?  @map("display_name")
   email        String?
   department   String?
@@ -14,6 +21,8 @@ model EmployeeDirectory {
   isActive     Boolean? @map("is_active")
   employeeCode Int?     @map("employee_code")
   lastSyncedAt DateTime @default(now()) @map("last_synced_at") @db.Timestamptz(6)
+
+  users User[] @relation("UserEmployee")
 
   @@map("employee_directory")
   @@schema("directory")

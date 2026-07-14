@@ -11,11 +11,15 @@
  */
 
 import { Group, NumberInput, Select, Stack, Text } from "@mantine/core";
+import { searchProductOptions } from "@/app/(dashboard)/_shared/option-search";
+import { PRODUCT_F4 } from "@/components/ui/f4-presets";
 import { HelpLabel } from "@/components/ui/HelpLabel";
+import { SearchSelect } from "@/components/ui/SearchSelect";
 import { useIsMobile } from "@/hooks/useViewport";
 import { formatMoney } from "@/lib/format";
-import { ORDER_TYPE_OPTIONS, PRODUCTS } from "@/lib/mock";
-import { resolveUnitPrice } from "./quotes/mock";
+import { ORDER_TYPE_OPTIONS } from "@/lib/mock";
+import type { PriceListEntry } from "./price-lists/model";
+import { resolveUnitPriceFromEntries } from "./quotes/model";
 
 /** The slice of a quote line this control owns — 価格は全て自動解決値. */
 export interface ResolverValue {
@@ -31,15 +35,15 @@ export interface ResolverValue {
   discountLabel: string | null;
 }
 
-const productName = (id: string) =>
-  PRODUCTS.find((p) => p.value === id)?.label ?? id;
-
 export function ProductPriceResolverInput({
   customerId,
+  entries,
   value,
   onChange,
 }: {
   customerId: string;
+  /** 顧客の価格表エントリ（サーバー取得）— ライブ解決に使用。 */
+  entries: PriceListEntry[];
   value: ResolverValue;
   onChange: (next: ResolverValue) => void;
 }) {
@@ -48,10 +52,10 @@ export function ProductPriceResolverInput({
   /** Re-resolve 単価・値引き from the 価格表 when 製品/種別/数量 changes. */
   const reresolve = (patch: Partial<ResolverValue>): ResolverValue => {
     const next = { ...value, ...patch };
-    next.productName = productName(next.productId);
     const resolved =
       customerId && next.productId
-        ? resolveUnitPrice(
+        ? resolveUnitPriceFromEntries(
+            entries,
             customerId,
             next.productId,
             next.orderType,
@@ -73,13 +77,23 @@ export function ProductPriceResolverInput({
 
   return (
     <Group align="flex-end" gap="sm" wrap={isMobile ? "wrap" : "nowrap"}>
-      <Select
-        data={PRODUCTS}
+      <SearchSelect
+        f4={PRODUCT_F4}
         flex={isMobile ? "1 1 100%" : 2}
+        initialOption={
+          value.productId
+            ? { value: value.productId, label: value.productName }
+            : null
+        }
         label="製品"
-        onChange={(v) => onChange(reresolve({ productId: v ?? "" }))}
-        placeholder="製品を選択"
-        searchable
+        onChange={(v, opt) =>
+          onChange(
+            reresolve({ productId: v ?? "", productName: opt?.label ?? "" }),
+          )
+        }
+        onSearch={searchProductOptions}
+        placeholder="製品を検索"
+        storageKey="product"
         value={value.productId || null}
         withAsterisk
       />
@@ -89,6 +103,7 @@ export function ProductPriceResolverInput({
         label="注文種別"
         onChange={(v) => onChange(reresolve({ orderType: v ?? "PRODUCTION" }))}
         value={value.orderType}
+        withAsterisk
       />
       <NumberInput
         flex={isMobile ? 1 : 1}
@@ -98,6 +113,7 @@ export function ProductPriceResolverInput({
           onChange(reresolve({ quantity: typeof v === "number" ? v : 0 }))
         }
         value={value.quantity}
+        withAsterisk
       />
       <Stack
         align={isMobile ? "flex-start" : "flex-end"}

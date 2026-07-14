@@ -1,0 +1,218 @@
+// 製造マスタ (_specs/tables.md §Master/§Logic 該当分):
+// 工場 / 工程カタログ + 使用・実行依存 / 検査表テンプレート / 不良種類 /
+// 承認グループ。実データ（指示書・工程ステップ等）は production.prisma（後続）。
+//
+// id 方針: マスタは Int autoincrement（MaterialType/Material の再キー後の慣例）。
+// 依存・メンバーは複合 PK の純ジョイン。@@map は _specs/tables.md の表名に一致
+// させ、audit_logs のラベル解決と揃える。
+
+// ─── 工場（製造・在庫・出荷の拠点。SCOPE.FACTORY の実体） ────────────────────
+
+model Factory {
+  id            Int      @id @default(autoincrement())
+  code          String   @unique
+  name          Json
+  nameKana      String?  @map("name_kana")
+  countryCode   String?  @map("country_code") @db.VarChar(2)
+  postalCode    String?  @map("postal_code")
+  address       Json?
+  phone         String?
+  email         String?
+  contactPerson String?  @map("contact_person")
+  isActive      Boolean  @default(true) @map("is_active")
+  notes         String?
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  workOrderSteps WorkOrderStep[]
+  shippingOrders ShippingOrder[]
+  poItems        MaterialPurchaseOrderItem[] @relation("PoItemFactory")
+  receipts       MaterialReceipt[]           @relation("ReceiptFactory")
+  productInventory  ProductInventory[]
+  materialInventory MaterialInventory[]
+
+  @@map("factories")
+  @@schema("app")
+}
+
+// ─── 工程マスタ（カタログ） ──────────────────────────────────────────────────
+
+enum ProcessCategory {
+  MATERIAL_PREP // 材料準備
+  MACHINING // 加工
+  COATING // コーティング
+  INSPECTION // 検査
+  APPROVAL // 検査承認
+  SHIPPING // 出荷
+
+  @@map("PROCESS_CATEGORY")
+  @@schema("app")
+}
+
+enum ProcessExecution {
+  INTERNAL // 社内のみ
+  INTERNAL_OR_OUTSOURCE // 社内・外注
+
+  @@map("PROCESS_EXECUTION")
+  @@schema("app")
+}
+
+enum DependencyRelation {
+  AND
+  OR
+
+  @@map("DEPENDENCY_RELATION")
+  @@schema("app")
+}
+
+// CKK 実工程カタログ（_docs/manufacturing_details.md）。テンプレート定義であり、
+// 実行順は指示書側の依存解決で決まる（sort_order は既定順の参考）。
+model ProcessStepCatalog {
+  id                Int              @id @default(autoincrement())
+  code              String           @unique // e.g. CYLINDER_MACHINING
+  name              Json // { ja: '円筒加工', en: '' }
+  category          ProcessCategory
+  executionLocation ProcessExecution @map("execution_location")
+  isSyncCapable     Boolean          @default(false) @map("is_sync_capable") // 他工程と同時実施・記録可
+  isInspection      Boolean          @default(false) @map("is_inspection") // 検査工程
+  isApprovalStep    Boolean          @default(false) @map("is_approval_step") // 検査承認工程
+  approvalMinRank   String?          @map("approval_min_rank") // 係長以上等
+  sortOrder         Int              @default(0) @map("sort_order")
+  isActive          Boolean          @default(true) @map("is_active")
+  notes             String?
+
+  useDependencies    ProcessStepUseDependency[]  @relation("UseDepStep")
+  usedBy             ProcessStepUseDependency[]  @relation("UseDepTarget")
+  execDependencies   ProcessStepExecDependency[] @relation("ExecDepStep")
+  execRequiredBy     ProcessStepExecDependency[] @relation("ExecDepTarget")
+  inspectionTemplates InspectionTemplate[]
+  workOrderSteps      WorkOrderStep[]
+
+  @@map("process_step_catalog")
+  @@schema("app")
+}
+
+// 使用依存: この工程をワークフローに含めてよい条件（他工程の「存在」）。
+// OR エッジ群は 1 グループとして「いずれか存在」。is_negation = 排他（!）。
+// 素材属性由来の条件（研磨・定尺等）はエッジで表現せず、対象工程が
+// ワークフローに無ければ空真（vacuously satisfied）として扱う。
+model ProcessStepUseDependency {
+  stepId          Int                @map("step_id")
+  dependsOnStepId Int                @map("depends_on_step_id")
+  relation        DependencyRelation @default(AND)
+  isNegation      Boolean            @default(false) @map("is_negation")
+  notes           String?
+
+  step      ProcessStepCatalog @relation("UseDepStep", fields: [stepId], references: [id])
+  dependsOn ProcessStepCatalog @relation("UseDepTarget", fields: [dependsOnStepId], references: [id])
+
+  @@id([stepId, dependsOnStepId])
+  @@map("process_step_use_dependencies")
+  @@schema("app")
+}
+
+// 実行依存: この工程を開始してよい条件（指定工程の「完了」）。
+// ワークフローに存在しない依存先は空真（素材属性条件の代替と §7 の動的順序）。
+model ProcessStepExecDependency {
+  stepId          Int                @map("step_id")
+  dependsOnStepId Int                @map("depends_on_step_id")
+  relation        DependencyRelation @default(AND)
+  notes           String?
+
+  step      ProcessStepCatalog @relation("ExecDepStep", fields: [stepId], references: [id])
+  dependsOn ProcessStepCatalog @relation("ExecDepTarget", fields: [dependsOnStepId], references: [id])
+
+  @@id([stepId, dependsOnStepId])
+  @@map("process_step_exec_dependencies")
+  @@schema("app")
+}
+
+// ─── 検査表テンプレート ──────────────────────────────────────────────────────
+
+model InspectionTemplate {
+  id                    Int      @id @default(autoincrement())
+  code                  String   @unique
+  name                  Json
+  relatedProcessStepId  Int?     @map("related_process_step_id")
+  isActive              Boolean  @default(true) @map("is_active")
+  createdAt             DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt             DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  relatedProcessStep ProcessStepCatalog?      @relation(fields: [relatedProcessStepId], references: [id])
+  items              InspectionTemplateItem[]
+  workOrderTemplates WorkOrderInspectionTemplate[]
+  inspectionRecords  InspectionRecord[]            @relation("InspectionRecordTemplate")
+
+  @@map("inspection_templates")
+  @@schema("app")
+}
+
+model InspectionTemplateItem {
+  id           Int      @id @default(autoincrement())
+  templateId   Int      @map("template_id")
+  itemName     Json     @map("item_name")
+  unit         String?
+  toleranceMin Decimal? @map("tolerance_min") @db.Decimal(12, 4)
+  toleranceMax Decimal? @map("tolerance_max") @db.Decimal(12, 4)
+  isRequired   Boolean  @default(true) @map("is_required")
+  sortOrder    Int      @default(0) @map("sort_order")
+
+  template InspectionTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+
+  recordItems InspectionRecordItem[] @relation("InspectionRecordItemTemplate")
+
+  @@index([templateId, sortOrder])
+  @@map("inspection_template_items")
+  @@schema("app")
+}
+
+// ─── 不良種類 ────────────────────────────────────────────────────────────────
+
+model DefectType {
+  id        Int     @id @default(autoincrement())
+  code      String  @unique
+  name      Json
+  isActive  Boolean @default(true) @map("is_active")
+  sortOrder Int     @default(0) @map("sort_order")
+
+  defectRecords DefectRecord[] @relation("DefectRecordType")
+
+  @@map("defect_types")
+  @@schema("app")
+}
+
+// ─── 承認グループ ────────────────────────────────────────────────────────────
+
+enum ApprovalGroupType {
+  FIRST // 第一承認（生産判断：工場長・部長クラス）
+  SECOND // 第二承認（部門承認：部長クラス）
+  WORKFLOW_CHANGE // 製造ワークフロー変更承認
+
+  @@map("APPROVAL_GROUP_TYPE")
+  @@schema("app")
+}
+
+model ApprovalGroup {
+  id       Int               @id @default(autoincrement())
+  type     ApprovalGroupType
+  name     Json
+  isActive Boolean           @default(true) @map("is_active")
+
+  members ApprovalGroupMember[]
+
+  @@map("approval_groups")
+  @@schema("app")
+}
+
+model ApprovalGroupMember {
+  groupId  Int     @map("group_id")
+  userId   String  @map("user_id") @db.Uuid
+  isActive Boolean @default(true) @map("is_active")
+
+  group ApprovalGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  user  User          @relation("ApprovalGroupMemberUser", fields: [userId], references: [id])
+
+  @@id([groupId, userId])
+  @@map("approval_group_members")
+  @@schema("app")
+}

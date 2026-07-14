@@ -10,15 +10,25 @@ LAN port `192.168.50.15:15432`, in-cluster host `shared-db:5432`).
 | Schema | Contents | Writer |
 |---|---|---|
 | `kot` | hr_records, employees, kot_employees, kot_match_review, import_runs, `v_labor` view | kot-import, admintools (role `kot`) |
-| `directory` | employee_directory, ldap_sync_log | vpn-ldap ldap-sync (role `ldap_sync`) |
+| `directory` | employee_directory (+ `ldap_guid`: the immutable AD objectGUID apps FK to), ldap_sync_log | vpn-ldap ldap-sync (role `ldap_sync`) |
 | `admintools` | mail_accounts, group_members | admintools (role `admintools`) |
-| `auth` `master` `bp` `sales` `production` `inventory` `shipping` `billing` `design` `sys` `log` | ckk-tool-v3 business tables (_specs/tables.md), incl. `auth.user_permissions` view | nextjs-web (role `app`) |
+| `app` | ALL ckk-tool-v3 business tables in ONE schema — RBAC (users/roles/permissions), master data, business partners, sales (試算 → 価格表 → 見積書) — incl. the `app.user_permissions` view | nextjs-web (role `app`) |
 | `public` | pass-through compat views only (`sql/metabase-compat.sql`) | — (Metabase reads via `kot_ro`) |
 
-Cross-schema FKs are real (e.g. `sales.quotes → bp.business_partners`,
-`kot.hr_records → kot.employees`). Deliberately **no** FK from `kot.employees`
-to `directory.employee_directory` (2 legacy usernames absent from AD) and none
-on the polymorphic `inventory.inventory_*.inventory_id` / `log.*.user_id`.
+The v3 web app owns a **single** `app` schema (Prisma-managed). Its scope is
+deliberately **minimal**: 試算 (`app.estimates` + `estimate_tiers`), 価格表
+(`app.price_list_entries` + `price_list_tiers` + `price_list_discounts`), 見積書
+(`app.quotes` + `quote_items`), their master-data deps (`app.material_types` /
+`materials` / `products`), business partners (`app.business_partners` + attrs),
+`app.files` / `numbering_sequences`, and RBAC (`app.users` / `roles` /
+`permissions`). Downstream domains (production / inventory / shipping / billing /
+design / log, 受注請書以降) are added table-by-table when their feature lands.
+
+Cross-schema FKs are real — notably `app.users.employee_id → directory.employee_directory.ldap_guid`
+(the app's identity link to the shared, AD-synced employee directory, keyed by
+the immutable objectGUID so AD renames never orphan the reference). Deliberately
+**no** FK from `kot.employees`
+to `directory.employee_directory` (2 legacy usernames absent from AD).
 
 ## Editing models (the only supported workflow)
 
@@ -41,6 +51,52 @@ browser). Refresh both when models change.
 Never hand-edit tables in the DB, never run DDL from the Python apps, and never
 run `prisma migrate` from nextjs-web (its `prisma/schema` is a synced copy for
 client generation only).
+
+## Legacy data import（DB リセット後は必ず実行）
+
+`pnpm import:legacy` applies `../data-migration/imports/*.sql.gz` in order —
+the committed, idempotent upserts generated from the FileMaker migration
+(`mapped.sqlite`): 取引先 459 (BP-01001.. incl. `match_names`), 材種
+placeholders ~3,555, 製品 ~43,444. **Run it after every DB reset /
+re-provision** (right after `migrate:deploy` + `grants.sql`) — the app's
+master screens are empty without it. Regenerate the artifacts with
+`../data-migration/make_imports.sh` (needs `mapped.sqlite`).
+
+There is no demo/mock seed anymore — all master and BP data comes from the
+legacy import or the app itself.
+
+## Backup / restore
+
+`./scripts/backup.sh` (DATABASE_URL from `.env`) writes to `backups/`
+(gitignored):
+- `ckk-<ts>.dump` — full custom-format dump (DDL + data + views), for disaster
+  recovery: `pg_restore -d <url> --clean --create ckk-<ts>.dump`.
+- `ckk-<ts>.data.sql` — plain-SQL INSERTs of all app schemas, for re-seeding a
+  freshly migrated DB.
+
+## Reset / re-baseline (clean initial migration)
+
+The migration history was re-baselined on 2026-07-05 into a single clean
+`*_init` migration (the pre-trim history was squashed). A DB created with the
+old history has a stale `_prisma_migrations` table, so `migrate deploy` will
+refuse — reset it like this (server: `docker exec -it shared-db psql -U postgres`):
+
+```bash
+cd shared-db
+./scripts/backup.sh                     # 1. backup (see above)
+psql "$ADMIN_URL" -c 'DROP DATABASE ckk;' -c 'CREATE DATABASE ckk;'   # 2. reset
+pnpm migrate:deploy                     # 3. clean init → all schemas + views
+psql "$ADMIN_URL" -d ckk -f sql/grants.sql   # 4. roles/grants (idempotent)
+pnpm import:legacy                      # 5. legacy data (BP/材種/製品) — always
+pg_restore -d "$DATABASE_URL" --data-only --disable-triggers \
+  -n kot -n directory -n admintools -n app \
+  backups/ckk-<ts>.dump                 # 6. restore app-entered + other-app data
+psql "$ADMIN_URL" -d ckk -f sql/metabase-compat.sql  # 7. public compat views
+```
+
+The init migration guards `CREATE EXTENSION pgroonga` in a `DO` block so it
+also applies on dev hosts without pgroonga (production's
+`groonga/pgroonga` image always has it).
 
 ## Roles / connections
 

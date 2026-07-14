@@ -10,14 +10,13 @@
 
 import { describe, expect, it } from "vitest";
 import {
-  entryKey,
   findApplicableDiscount,
   type PriceListEntry,
   tierUnitPrice,
   unitDiscountOf,
 } from "@/components/sales/price-lists/mock";
 import { resolveUnitPrice } from "@/components/sales/quotes/mock";
-import { getTrialEstimate } from "@/components/sales/trial-estimates/mock";
+import { getTrialEstimate } from "@/components/sales/trial-estimates/fixtures";
 import { calcTrialPricing } from "@/lib/trial-pricing";
 
 describe("試算 → 価格表 → 見積書 (constructed entry)", () => {
@@ -28,10 +27,10 @@ describe("試算 → 価格表 → 見積書 (constructed entry)", () => {
 
   // ── 2. 価格表に登録 (基準単価 = 試算値, ×倍率 tiers + 値引きルール) ───────
   const entry: PriceListEntry = {
-    entryId: entryKey("bp-002", "PRD-TEST", "PRODUCTION"),
+    entryId: "PRC-202607-00098",
     customerId: "bp-002",
     customerName: "合同会社XYZ工業",
-    productId: "PRD-TEST",
+    productId: "9002",
     productName: "テスト製品",
     orderType: "PRODUCTION",
     currency: "JPY",
@@ -116,7 +115,7 @@ describe("試算 → 価格表 → 見積書 (registered mock data end-to-end)",
     // entry3: base 6200 ×1.00 + 数量増値引き ¥100/本 (50本〜, 2026-04-01..09-30)
     const r = resolveUnitPrice(
       "bp-002",
-      "PRD-202602-0008",
+      "2008",
       "PRODUCTION",
       80,
       new Date("2026-05-20"),
@@ -134,7 +133,7 @@ describe("試算 → 価格表 → 見積書 (registered mock data end-to-end)",
     expect(estimate?.status).toBe("REGISTERED");
     const r = resolveUnitPrice(
       "bp-001",
-      "PRD-202601-0001",
+      "1001",
       "PRODUCTION",
       100,
       new Date("2026-05-01"),

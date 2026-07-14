@@ -15,10 +15,13 @@ import type { ReactNode } from "react";
 export function HelpLabel({
   label,
   help,
+  required,
 }: {
   label: ReactNode;
   /** ホバー（フォーカス・タッチ）時に表示する説明文. */
   help: string;
+  /** 必須項目。ラベル直後に赤い * を表示する（? アイコンより前）。 */
+  required?: boolean;
 }) {
   return (
     <Text
@@ -27,6 +30,11 @@ export function HelpLabel({
       style={{ display: "inline-flex", alignItems: "center", gap: 4 }}
     >
       {label}
+      {required && (
+        <span aria-hidden className="required-asterisk">
+          {" *"}
+        </span>
+      )}
       <Tooltip
         events={{ hover: true, focus: true, touch: true }}
         label={help}

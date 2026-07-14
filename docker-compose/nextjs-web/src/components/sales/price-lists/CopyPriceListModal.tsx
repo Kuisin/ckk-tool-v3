@@ -3,9 +3,9 @@
 /**
  * CopyPriceListModal — 「別の顧客・製品へコピー」 (design.md §10.4).
  *
- * Copies a (顧客, 製品, 注文種別) entry's 段階 (数量範囲 → 単価) to a different
- * target 顧客 / 製品 / 注文種別 with a fresh 有効期間. Unlike 「有効期間を変えて
- * 複製」 (same identity, new period), this re-targets the price sheet.
+ * Copies a (顧客, 製品, 注文種別) entry's 基準単価 + 段階 (数量範囲 → 倍率) to a
+ * different target 顧客 / 製品 / 注文種別 with a fresh 有効期間 (Server Action).
+ * Unlike 「有効期間を変更」 (same identity), this re-targets the price sheet.
  */
 
 import { Alert, Select, Text } from "@mantine/core";
@@ -13,22 +13,30 @@ import { DatePickerInput } from "@mantine/dates";
 import { notifications } from "@mantine/notifications";
 import { IconCalendar, IconInfoCircle } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useState, useTransition } from "react";
+import { copyPriceEntry } from "@/app/(dashboard)/sales/price-lists/actions";
 import { FormModal, type ModalBaseProps } from "@/components/ui/modals";
+import type { Option } from "@/lib/mock";
+import { ORDER_TYPE_LABEL, ORDER_TYPE_OPTIONS } from "@/lib/mock";
 import {
-  CUSTOMERS,
-  ORDER_TYPE_LABEL,
-  ORDER_TYPE_OPTIONS,
-  PRODUCTS,
-} from "@/lib/mock";
-import { entryKey, type PriceListEntry, requiresEndDate } from "./mock";
+  type EntryOrderType,
+  type PriceListEntry,
+  requiresEndDate,
+} from "./model";
 
 export function CopyPriceListModal({
   opened,
   onClose,
   source,
-}: ModalBaseProps & { source: PriceListEntry | null }) {
+  customerOptions,
+  productOptions,
+}: ModalBaseProps & {
+  source: PriceListEntry | null;
+  customerOptions: Option[];
+  productOptions: Option[];
+}) {
   const router = useRouter();
+  const [isPending, startTransition] = useTransition();
   const [customerId, setCustomerId] = useState<string | null>(null);
   const [productId, setProductId] = useState<string | null>(null);
   const [orderType, setOrderType] = useState<string | null>(
@@ -56,9 +64,11 @@ export function CopyPriceListModal({
 
   return (
     <FormModal
+      loading={isPending}
       onClose={handleClose}
       onSubmit={(e) => {
         e.preventDefault();
+        if (!source) return;
         const needsEnd = !!orderType && requiresEndDate(orderType);
         if (
           !(customerId && productId && orderType && validFrom) ||
@@ -71,16 +81,33 @@ export function CopyPriceListModal({
           );
           return;
         }
-        // TODO(server-action): create a new entry at the target identity,
-        // copying source.tiers + currency.
-        notifications.show({
-          title: "コピーしました",
-          message: "価格表を別の顧客・製品にコピーしました",
-          color: "green",
+        startTransition(async () => {
+          const result = await copyPriceEntry({
+            sourceEntryNumber: source.entryId,
+            targetIdentity: {
+              customerBpId: customerId,
+              productId,
+              orderType: orderType as EntryOrderType,
+            },
+            validFrom,
+            validUntil,
+          });
+          if (result.ok) {
+            notifications.show({
+              title: "コピーしました",
+              message: "価格表を別の顧客・製品にコピーしました",
+              color: "green",
+            });
+            handleClose();
+            router.push(`/sales/price-lists/${result.data.entryId}`);
+          } else {
+            notifications.show({
+              title: "エラー",
+              message: result.error,
+              color: "red",
+            });
+          }
         });
-        const targetId = entryKey(customerId, productId, orderType);
-        handleClose();
-        router.push(`/sales/price-lists/${targetId}`);
       }}
       opened={opened}
       size="md"
@@ -97,7 +124,7 @@ export function CopyPriceListModal({
       </Alert>
 
       <Select
-        data={CUSTOMERS}
+        data={customerOptions}
         error={error && !customerId ? "顧客を選択してください" : undefined}
         label="コピー先 顧客"
         onChange={setCustomerId}
@@ -107,7 +134,7 @@ export function CopyPriceListModal({
         withAsterisk
       />
       <Select
-        data={PRODUCTS}
+        data={productOptions}
         error={error && !productId ? "製品を選択してください" : undefined}
         label="コピー先 製品"
         onChange={setProductId}

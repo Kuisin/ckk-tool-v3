@@ -1,11 +1,10 @@
-import { PlaceholderPage } from "@/components/ui/PlaceholderPage";
+import { SupplierTable } from "@/components/master/suppliers/SupplierTable";
+import { fetchSuppliers } from "../_shared/bp-data";
 
-export default function MasterSuppliersPage() {
-  return (
-    <PlaceholderPage
-      breadcrumbs={["マスタ", "外注企業"]}
-      operationCode="MS06"
-      title="外注企業"
-    />
-  );
+export const dynamic = "force-dynamic";
+
+/** 外注企業 一覧 (MS06). */
+export default async function MasterSuppliersPage() {
+  const rows = await fetchSuppliers();
+  return <SupplierTable rows={rows} />;
 }

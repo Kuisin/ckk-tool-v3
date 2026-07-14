@@ -1,11 +1,10 @@
-import { PlaceholderPage } from "@/components/ui/PlaceholderPage";
+import { SalesOrderTable } from "@/components/production/sales-orders/SalesOrderTable";
+import { fetchSalesOrders } from "./data";
 
-export default function ProductionSalesOrdersPage() {
-  return (
-    <PlaceholderPage
-      breadcrumbs={["生産", "受注書"]}
-      operationCode="PD01"
-      title="受注書"
-    />
-  );
+export const dynamic = "force-dynamic";
+
+/** 注文請書 一覧 (PD01). */
+export default async function ProductionSalesOrdersPage() {
+  const rows = await fetchSalesOrders();
+  return <SalesOrderTable rows={rows} />;
 }

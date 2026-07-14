@@ -24,6 +24,7 @@ import { IconHome, IconSearch } from "@tabler/icons-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { appKeyForPath, useDisabledApps } from "@/components/layout/AppFlags";
 import {
   type AppCategory,
   appList,
@@ -50,7 +51,14 @@ export function AppLauncher({ onNavigate }: AppLauncherProps) {
   // Index of the keyboard-highlighted search result (Arrow Up/Down).
   const [activeIndex, setActiveIndex] = useState(0);
   const itemRefs = useRef<(HTMLButtonElement | null)[]>([]);
-  const categories = getAppsByCategory();
+  const disabledApps = useDisabledApps();
+  // 環境別フラグで無効化されたアプリは一覧から除外（空カテゴリも消す）。
+  const categories = getAppsByCategory()
+    .map((c) => ({
+      ...c,
+      apps: c.apps.filter((a) => !disabledApps.has(a.key)),
+    }))
+    .filter((c) => c.apps.length > 0);
 
   function jumpToCode(code: string) {
     navigateByOperationCode(code, {
@@ -65,17 +73,26 @@ export function AppLauncher({ onNavigate }: AppLauncherProps) {
     const q = search.trim();
     if (!q) return null;
 
-    const codeMatch = resolveOperationCode(q);
-    if (codeMatch) return [codeMatch];
+    // 無効化アプリの画面は検索結果からも除外する。
+    const isEnabled = (href: string) => {
+      const key = appKeyForPath(href);
+      return !key || !disabledApps.has(key);
+    };
 
-    const codeResults = searchOperationCodes(q, 12);
+    const codeMatch = resolveOperationCode(q);
+    if (codeMatch) return isEnabled(codeMatch.href) ? [codeMatch] : [];
+
+    const codeResults = searchOperationCodes(q, 12).filter((e) =>
+      isEnabled(e.href),
+    );
     const cleaned = sanitizeOperationCodeInput(q);
     if (cleaned && codeResults.length > 0) return codeResults;
 
     const labelResults = appList.filter(
       (app) =>
-        app.label.toLowerCase().includes(q.toLowerCase()) ||
-        app.operationCode.toUpperCase().startsWith(cleaned),
+        !disabledApps.has(app.key) &&
+        (app.label.toLowerCase().includes(q.toLowerCase()) ||
+          app.operationCode.toUpperCase().startsWith(cleaned)),
     );
 
     if (labelResults.length > 0) {
@@ -86,7 +103,7 @@ export function AppLauncher({ onNavigate }: AppLauncherProps) {
     }
 
     return codeResults;
-  }, [search]);
+  }, [search, disabledApps]);
 
   // Keep the highlighted result scrolled into view as it moves.
   useEffect(() => {

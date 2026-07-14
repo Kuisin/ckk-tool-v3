@@ -18,7 +18,7 @@ import {
 } from "./mock";
 
 const CUSTOMER = "bp-001";
-const PRODUCT = "PRD-202601-0001";
+const PRODUCT = "1001";
 const MAY = new Date("2026-05-01"); // no discount rule active
 const JULY = new Date("2026-07-01"); // 夏季キャンペーン (5%, 100本〜) active
 
@@ -71,9 +71,7 @@ describe("resolveUnitPrice — 顧客×製品×注文種別×数量×日付 → 
 
   it("returns null when quantity is outside every tier", () => {
     // bp-003 TEST entry has a single 1〜10本 tier
-    expect(resolveUnitPrice("bp-003", "PRD-202603-0012", "TEST", 11, MAY)).toBe(
-      null,
-    );
+    expect(resolveUnitPrice("bp-003", "3012", "TEST", 11, MAY)).toBe(null);
   });
 
   it("SAMPLE entries resolve to 金額0", () => {
@@ -154,7 +152,7 @@ describe("価格表 back-references", () => {
 
   it("findPriceTierRef resolves a stored tier id to its entry + label", () => {
     const ref = findPriceTierRef("ti-2");
-    expect(ref?.entryId).toBe("bp-001__PRD-202601-0001__PRODUCTION");
+    expect(ref?.entryId).toBe("PRC-202601-00001");
     expect(ref?.estimateNumber).toBe("EST-202605-00031");
     expect(ref?.label).toBe(`10〜29本 ${formatMoney(6900)}`);
     expect(findPriceTierRef("nope")).toBe(null);

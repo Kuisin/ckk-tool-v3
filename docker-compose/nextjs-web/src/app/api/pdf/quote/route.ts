@@ -5,14 +5,12 @@
  * Gotenberg (design-preview `quote.html`), stores it, then streams it back.
  * `download=1` forces an attachment; default is inline (in-browser view).
  * `force=1` skips the stored copy and regenerates (PDF タブの「再生成」).
- * Replace `getQuote` with a server/Prisma fetch later.
+ * Quote data comes from sales.quotes via Prisma (id = QOT-YYYYMM-NNNNN).
  */
 
-import {
-  getQuote,
-  orderTypeLabel,
-  quoteTotals,
-} from "@/components/sales/quotes/mock";
+import { fetchQuote } from "@/app/(dashboard)/sales/quotes/data";
+import { orderTypeLabel, quoteTotals } from "@/components/sales/quotes/model";
+import { parseDocKey } from "@/lib/doc-number";
 import { formatDate } from "@/lib/format";
 import { renderPdf } from "@/lib/pdf";
 import { getObject, putObject } from "@/lib/storage";
@@ -48,7 +46,8 @@ export async function GET(request: Request): Promise<Response> {
     return new Response('Missing "id" query parameter', { status: 400 });
   }
 
-  const quote = getQuote(id);
+  const key = parseDocKey(id, "QOT");
+  const quote = key ? await fetchQuote(key) : null;
   if (!quote) {
     return new Response(`Quote not found: ${id}`, { status: 404 });
   }

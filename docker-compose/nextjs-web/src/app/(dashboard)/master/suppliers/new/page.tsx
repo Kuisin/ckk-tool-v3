@@ -1,10 +1,8 @@
-import { PlaceholderPage } from "@/components/ui/PlaceholderPage";
+import { SupplierForm } from "@/components/master/suppliers/SupplierForm";
 
+export const dynamic = "force-dynamic";
+
+/** 外注企業 新規作成 (MS16). */
 export default function MasterSuppliersNewPage() {
-  return (
-    <PlaceholderPage
-      breadcrumbs={["マスタ", "外注企業", "新規作成"]}
-      title="外注企業 新規作成"
-    />
-  );
+  return <SupplierForm />;
 }

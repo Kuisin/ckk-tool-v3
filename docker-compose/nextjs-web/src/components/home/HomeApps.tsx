@@ -25,6 +25,10 @@ import {
   useComputedColorScheme,
 } from "@mantine/core";
 import Link from "next/link";
+import {
+  useDisabledApps,
+  useUnreleasedApps,
+} from "@/components/layout/AppFlags";
 import { useIsMobile } from "@/hooks/useViewport";
 import { getAppsByCategory } from "@/lib/app-list";
 import { CATEGORY_SECTION_ICONS, resolveAppIcon } from "@/lib/icons";
@@ -56,7 +60,15 @@ export function HomeApps({
   user = MOCK_USER,
   isLoading = false,
 }: HomeAppsProps) {
-  const categories = getAppsByCategory();
+  const disabledApps = useDisabledApps();
+  const unreleasedApps = useUnreleasedApps();
+  // 環境別フラグで無効化されたアプリはカードを出さない（空カテゴリも消す）。
+  const categories = getAppsByCategory()
+    .map((c) => ({
+      ...c,
+      apps: c.apps.filter((a) => !disabledApps.has(a.key)),
+    }))
+    .filter((c) => c.apps.length > 0);
   const colorScheme = useComputedColorScheme("light", {
     getInitialValueInEffect: false,
   });
@@ -134,7 +146,26 @@ export function HomeApps({
                     href={app.href}
                     key={app.key}
                   >
-                    <Paper h="100%" p="md" radius="md" withBorder>
+                    <Paper
+                      h="100%"
+                      p="md"
+                      pos="relative"
+                      radius="md"
+                      withBorder
+                    >
+                      {unreleasedApps.has(app.key) && (
+                        <Badge
+                          color="orange"
+                          pos="absolute"
+                          right={6}
+                          size="xs"
+                          style={{ pointerEvents: "none" }}
+                          top={6}
+                          variant="filled"
+                        >
+                          DEV
+                        </Badge>
+                      )}
                       <Stack align="center" gap="sm">
                         <ThemeIcon
                           color={cat.color}

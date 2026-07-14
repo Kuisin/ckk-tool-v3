@@ -1,11 +1,10 @@
-import { PlaceholderPage } from "@/components/ui/PlaceholderPage";
+import { WorkOrderTable } from "@/components/production/work-orders/WorkOrderTable";
+import { fetchWorkOrders } from "./data";
 
-export default function ProductionWorkOrdersPage() {
-  return (
-    <PlaceholderPage
-      breadcrumbs={["生産", "指示書"]}
-      operationCode="PD02"
-      title="指示書"
-    />
-  );
+export const dynamic = "force-dynamic";
+
+/** 指示書 一覧 (PD02). */
+export default async function ProductionWorkOrdersPage() {
+  const rows = await fetchWorkOrders();
+  return <WorkOrderTable rows={rows} />;
 }
