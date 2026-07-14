@@ -2,15 +2,20 @@
 
 /**
  * ApprovalGroupModals.tsx — 承認グループの削除 / 有効・無効切替と、
- * メンバーの追加・削除ポップアップ (MS0A, design.md §13.5)。
+ * メンバー・期間限定代理の追加・削除ポップアップ (MS0A, design.md §13.5)。
  */
 
+import { Select, Stack, Text, Textarea } from "@mantine/core";
+import { DatePickerInput } from "@mantine/dates";
 import { notifications } from "@mantine/notifications";
+import { IconCalendar } from "@tabler/icons-react";
 import { useState, useTransition } from "react";
 import { searchUserOptions } from "@/app/(dashboard)/_shared/option-search";
 import {
+  addDelegate,
   addGroupMember,
   deleteApprovalGroups,
+  removeDelegate,
   removeGroupMember,
   setApprovalGroupsActive,
 } from "@/app/(dashboard)/master/approval-groups/actions";
@@ -203,6 +208,210 @@ export function AddApprovalGroupMemberModal({
         withAsterisk
       />
     </ModalShell>
+  );
+}
+
+// ── 期間限定代理 ─────────────────────────────────────────────────────────────
+
+/** 代理設定の追加 — 原承認者（グループの有効メンバー）× 代理人 × 期間。 */
+export function AddApprovalDelegateModal({
+  opened,
+  onClose,
+  groupId,
+  memberOptions,
+  onDone,
+}: ModalBaseProps & {
+  groupId: number;
+  /** 原承認者の選択肢 = グループの有効メンバー（サーバーから渡す）。 */
+  memberOptions: { value: string; label: string }[];
+  onDone?: () => void;
+}) {
+  const [isPending, startTransition] = useTransition();
+  const [delegatorId, setDelegatorId] = useState<string | null>(null);
+  const [delegateId, setDelegateId] = useState<string | null>(null);
+  const [delegateLabel, setDelegateLabel] = useState("");
+  const [validFrom, setValidFrom] = useState<string | null>(null);
+  const [validUntil, setValidUntil] = useState<string | null>(null);
+  const [reason, setReason] = useState("");
+  const [error, setError] = useState<string | null>(null);
+
+  const closeAndReset = () => {
+    setDelegatorId(null);
+    setDelegateId(null);
+    setDelegateLabel("");
+    setValidFrom(null);
+    setValidUntil(null);
+    setReason("");
+    setError(null);
+    onClose();
+  };
+
+  const validate = (): string | null => {
+    if (!delegatorId) return "原承認者を選択してください";
+    if (!delegateId) return "代理人を選択してください";
+    if (delegatorId === delegateId) {
+      return "原承認者と代理人は別のユーザーを選択してください";
+    }
+    if (!validFrom) return "開始日を選択してください";
+    if (!validUntil) return "終了日を選択してください";
+    if (validFrom > validUntil) {
+      return "終了日は開始日以降の日付を選択してください";
+    }
+    return null;
+  };
+
+  return (
+    <ModalShell
+      confirmLabel="追加"
+      loading={isPending}
+      onClose={closeAndReset}
+      onConfirm={() => {
+        const message = validate();
+        if (message) {
+          setError(message);
+          return;
+        }
+        setError(null);
+        startTransition(async () => {
+          const result = await addDelegate(groupId, {
+            // validate() 通過済み — 非 null が確定している
+            delegatorId: delegatorId ?? "",
+            delegateId: delegateId ?? "",
+            validFrom: validFrom ?? "",
+            validUntil: validUntil ?? "",
+            reason,
+          });
+          if (result.ok) {
+            notifications.show({
+              title: "追加しました",
+              message: `代理人「${delegateLabel}」の代理設定を追加しました`,
+              color: "green",
+            });
+            closeAndReset();
+            onDone?.();
+          } else {
+            notifications.show({
+              title: "エラー",
+              message: result.error,
+              color: "red",
+            });
+          }
+        });
+      }}
+      opened={opened}
+      size="md"
+      title="代理設定の追加"
+    >
+      <Stack gap="sm">
+        <Select
+          data={memberOptions}
+          label="原承認者"
+          onChange={setDelegatorId}
+          placeholder="グループの有効メンバーから選択"
+          searchable
+          value={delegatorId}
+          withAsterisk
+        />
+        <SearchSelect
+          label="代理人"
+          onChange={(value, option) => {
+            setDelegateId(value);
+            setDelegateLabel(option?.label ?? "");
+          }}
+          onSearch={searchUserOptions}
+          placeholder="氏名・ユーザー名で検索"
+          storageKey="approval-delegate"
+          value={delegateId}
+          withAsterisk
+        />
+        <DatePickerInput
+          label="期間（開始日）"
+          leftSection={<IconCalendar size={14} />}
+          onChange={setValidFrom}
+          placeholder="日付を選択"
+          value={validFrom}
+          valueFormat="YYYY/MM/DD"
+          withAsterisk
+        />
+        <DatePickerInput
+          label="期間（終了日）"
+          leftSection={<IconCalendar size={14} />}
+          onChange={setValidUntil}
+          placeholder="日付を選択"
+          value={validUntil}
+          valueFormat="YYYY/MM/DD"
+          withAsterisk
+        />
+        <Textarea
+          autosize
+          label="理由"
+          minRows={2}
+          onChange={(e) => setReason(e.currentTarget.value)}
+          placeholder="出張・休暇など（任意）"
+          value={reason}
+        />
+        {error && (
+          <Text c="red" size="xs">
+            {error}
+          </Text>
+        )}
+      </Stack>
+    </ModalShell>
+  );
+}
+
+export interface ApprovalDelegateTarget {
+  id: string;
+  delegatorName: string;
+  delegateName: string;
+}
+
+/** 代理設定の削除確認。 */
+export function RemoveApprovalDelegateModal({
+  opened,
+  onClose,
+  groupId,
+  delegate,
+  onDone,
+}: ModalBaseProps & {
+  groupId: number;
+  delegate: ApprovalDelegateTarget | null;
+  onDone?: () => void;
+}) {
+  const [isPending, startTransition] = useTransition();
+  return (
+    <ConfirmModal
+      confirmLabel="削除する"
+      loading={isPending}
+      message={
+        delegate
+          ? `代理設定（原承認者「${delegate.delegatorName}」→ 代理人「${delegate.delegateName}」）を削除します。代理人はこのグループの承認を行えなくなります。`
+          : ""
+      }
+      onClose={onClose}
+      onConfirm={() => {
+        if (!delegate) return;
+        startTransition(async () => {
+          const result = await removeDelegate(groupId, delegate.id);
+          if (result.ok) {
+            notifications.show({
+              title: "削除しました",
+              message: `代理人「${delegate.delegateName}」の代理設定を削除しました`,
+              color: "green",
+            });
+            onDone?.();
+          } else {
+            notifications.show({
+              title: "エラー",
+              message: result.error,
+              color: "red",
+            });
+          }
+        });
+      }}
+      opened={opened}
+      title="代理設定の削除"
+    />
   );
 }
 

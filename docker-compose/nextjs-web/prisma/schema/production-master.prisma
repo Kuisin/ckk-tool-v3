@@ -198,7 +198,8 @@ model ApprovalGroup {
   name     Json
   isActive Boolean           @default(true) @map("is_active")
 
-  members ApprovalGroupMember[]
+  members   ApprovalGroupMember[]
+  delegates ApprovalDelegate[]
 
   @@map("approval_groups")
   @@schema("app")
@@ -214,5 +215,95 @@ model ApprovalGroupMember {
 
   @@id([groupId, userId])
   @@map("approval_group_members")
+  @@schema("app")
+}
+
+// ─── 承認フロー本実装（§6: 依頼・記録・代理） ───────────────────────────────
+//
+// 対象は多態（target_type = @@map 名 / target_id = 業務キー — audit と同じ規約:
+// 指示書 = work_order_number 文字列、発注書 = PO-…、受注請書 = ORD-…）。
+
+enum ApprovalStep {
+  FIRST
+  SECOND
+
+  @@map("APPROVAL_STEP")
+  @@schema("app")
+}
+
+enum ApprovalRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+
+  @@map("APPROVAL_REQUEST_STATUS")
+  @@schema("app")
+}
+
+enum ApprovalAction {
+  APPROVED
+  REJECTED
+
+  @@map("APPROVAL_ACTION")
+  @@schema("app")
+}
+
+model ApprovalRequest {
+  id          String                @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  targetType  String                @map("target_type") // work_orders / material_purchase_orders / order_acceptances
+  targetId    String                @map("target_id") // 業務キー
+  step        ApprovalStep
+  status      ApprovalRequestStatus @default(PENDING)
+  requestedBy String?               @map("requested_by") @db.Uuid
+  requestedAt DateTime              @default(now()) @map("requested_at") @db.Timestamptz(6)
+  notes       String?
+
+  requestedByUser User? @relation("ApprovalRequestedBy", fields: [requestedBy], references: [id])
+  records         ApprovalRecord[]
+
+  @@index([targetType, targetId])
+  @@index([status])
+  @@map("approval_requests")
+  @@schema("app")
+}
+
+model ApprovalRecord {
+  id                String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  approvalRequestId String         @map("approval_request_id") @db.Uuid
+  approverId        String         @map("approver_id") @db.Uuid
+  delegateForId     String?        @map("delegate_for_id") @db.Uuid // 代理の場合の原承認者
+  action            ApprovalAction
+  comment           String?
+  actedAt           DateTime       @default(now()) @map("acted_at") @db.Timestamptz(6)
+
+  request     ApprovalRequest @relation(fields: [approvalRequestId], references: [id], onDelete: Cascade)
+  approver    User            @relation("ApprovalRecordApprover", fields: [approverId], references: [id])
+  delegateFor User?           @relation("ApprovalRecordDelegateFor", fields: [delegateForId], references: [id])
+
+  @@index([approvalRequestId])
+  @@map("approval_records")
+  @@schema("app")
+}
+
+// 期間限定代理（delegator のグループ権限を delegate が行使できる）
+model ApprovalDelegate {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  groupId     Int      @map("group_id")
+  delegatorId String   @map("delegator_id") @db.Uuid
+  delegateId  String   @map("delegate_id") @db.Uuid
+  validFrom   DateTime @map("valid_from") @db.Timestamptz(6)
+  validUntil  DateTime @map("valid_until") @db.Timestamptz(6)
+  reason      String?
+  createdBy   String?  @map("created_by") @db.Uuid
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  group         ApprovalGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  delegator     User          @relation("DelegateDelegator", fields: [delegatorId], references: [id])
+  delegate      User          @relation("DelegateDelegate", fields: [delegateId], references: [id])
+  createdByUser User?         @relation("DelegateCreatedBy", fields: [createdBy], references: [id])
+
+  @@index([groupId, validFrom, validUntil])
+  @@index([delegateId])
+  @@map("approval_delegates")
   @@schema("app")
 }

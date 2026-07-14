@@ -28,6 +28,13 @@ export default async function MasterApprovalGroupsDetailPage({
           },
           orderBy: { user: { username: "asc" } },
         },
+        delegates: {
+          include: {
+            delegator: { select: { displayName: true } },
+            delegate: { select: { displayName: true } },
+          },
+          orderBy: { validFrom: "desc" },
+        },
       },
     }),
     fetchAuditEntries("approval_groups", String(id)),
@@ -47,6 +54,16 @@ export default async function MasterApprovalGroupsDetailPage({
       displayName: m.user.displayName,
       username: m.user.username,
       isActive: m.isActive,
+    })),
+    delegates: r.delegates.map((d) => ({
+      id: d.id,
+      delegatorId: d.delegatorId,
+      delegatorName: d.delegator.displayName,
+      delegateId: d.delegateId,
+      delegateName: d.delegate.displayName,
+      validFrom: d.validFrom.toISOString(),
+      validUntil: d.validUntil.toISOString(),
+      reason: d.reason,
     })),
   };
 
