@@ -14,6 +14,7 @@ const SEQUENCES = {
   ESTIMATE: { prefix: "EST", digits: 5 },
   QUOTE: { prefix: "QOT", digits: 5 },
   PRICE_LIST: { prefix: "PRC", digits: 5 },
+  ORDER: { prefix: "ORD", digits: 5 }, // 受注書ベース（枝番は行側で 1..N）
 } as const;
 
 export type NumberingKey = keyof typeof SEQUENCES;
@@ -61,13 +62,14 @@ export async function nextDocumentNumber(key: NumberingKey): Promise<string> {
 
 const SERIALS = {
   BP: { prefix: "BP", digits: 5 },
+  WORK_ORDER: { prefix: "WO", digits: 5 }, // 指示書番号 = ロット番号（生 int で使用）
 } as const;
 
 export type SerialKey = keyof typeof SERIALS;
 
-/** Next global serial code, e.g. `BP-00012`. Never resets. */
-export async function nextSerialCode(key: SerialKey): Promise<string> {
-  const { prefix, digits } = SERIALS[key];
+/** Next raw global serial (no reset). 指示書番号・ロット番号はこの生 int。 */
+export async function nextSerialNumber(key: SerialKey): Promise<number> {
+  const { prefix } = SERIALS[key];
   const rows = await prisma.$queryRaw<{ last_sequence: number }[]>`
     INSERT INTO "app"."numbering_sequences"
       ("key", "prefix", "last_year_month", "last_sequence", "updated_at")
@@ -79,5 +81,12 @@ export async function nextSerialCode(key: SerialKey): Promise<string> {
   `;
   const seq = rows[0]?.last_sequence;
   if (!seq) throw new Error(`numbering failed for ${key}`);
+  return seq;
+}
+
+/** Next global serial code, e.g. `BP-00012`. Never resets. */
+export async function nextSerialCode(key: SerialKey): Promise<string> {
+  const { prefix, digits } = SERIALS[key];
+  const seq = await nextSerialNumber(key);
   return `${prefix}-${String(seq).padStart(digits, "0")}`;
 }

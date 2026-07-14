@@ -305,3 +305,58 @@ export async function searchUserOptions(
     label: `${r.displayName}（${r.username}）`,
   }));
 }
+
+/** 受注書検索（指示書ビルダー用）。value = uuid、label = 番号 + 製品 + 数量。 */
+export async function searchSalesOrderOptions(
+  query: string,
+): Promise<SearchOption[]> {
+  const q = query.trim();
+  const rows = await prisma.salesOrder.findMany({
+    where: {
+      status: { in: ["DRAFT", "CONFIRMED", "IN_PRODUCTION"] },
+      ...(q
+        ? {
+            OR: [
+              { customerOrderRef: { contains: q, mode: "insensitive" } },
+              { product: { name: { path: ["ja"], string_contains: q } } },
+              { customerBp: { name: { path: ["ja"], string_contains: q } } },
+            ],
+          }
+        : {}),
+    },
+    include: { product: true, customerBp: true },
+    orderBy: [{ yearMonth: "desc" }, { seq: "desc" }, { branch: "asc" }],
+    take: LIMIT,
+  });
+  const { formatSalesOrderNumber } = await import("@/lib/doc-number");
+  return rows.map((r) => ({
+    value: r.id,
+    label: `${formatSalesOrderNumber(r)} ${localized(r.product.name as LocalizedText | null)}（${r.quantity}）`,
+  }));
+}
+
+/** 素材検索（指示書の使用素材）。value = 内部 id、label = コード + 名称。 */
+export async function searchMaterialOptions(
+  query: string,
+): Promise<SearchOption[]> {
+  const q = query.trim();
+  const rows = await prisma.material.findMany({
+    where: {
+      isActive: true,
+      ...(q
+        ? {
+            OR: [
+              { code: { contains: q, mode: "insensitive" } },
+              { name: { path: ["ja"], string_contains: q } },
+            ],
+          }
+        : {}),
+    },
+    orderBy: { code: "asc" },
+    take: LIMIT,
+  });
+  return rows.map((r) => ({
+    value: String(r.id),
+    label: `${r.code}（${localized(r.name as LocalizedText | null)}）`,
+  }));
+}

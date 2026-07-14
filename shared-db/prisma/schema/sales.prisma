@@ -193,6 +193,7 @@ model Quote {
   pdfFile          File?            @relation("QuotePdf", fields: [pdfFileId], references: [id])
   createdByUser    User?            @relation("QuoteCreatedBy", fields: [createdBy], references: [id])
   items            QuoteItem[]
+  salesOrders      SalesOrder[]
 
   @@id([yearMonth, seq])
   @@map("quotes")

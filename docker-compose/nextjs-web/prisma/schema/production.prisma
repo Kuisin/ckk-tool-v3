@@ -1,0 +1,253 @@
+// 生産 (_specs/tables.md §Logic §3〜§7): 受注書 / 指示書 / 工程ステップ / 分岐合流。
+//
+// キー方針:
+//   - sales_orders: uuid PK + (year_month, seq, branch) unique。表示番号
+//     ORD-YYYYMM-NNNNN-NN はキーから導出（保存しない）。order_acceptances は
+//     未実装のため受注書が起点として自立する（顧客・注文書番号を自ら保持）。
+//     order_acceptances 導入時は (year_month, seq) を親の PK として採用すれば
+//     データ移行なしで接続できる。
+//   - work_orders: uuid PK + work_order_number（通し連番 int, unique）。
+//     ロット番号 = 指示書番号（共用, numbering_sequences の SERIAL）。
+//   - 承認は approval_status + 遷移列 + history Json（MaterialPurchaseOrder と
+//     同型の row-workflow。§6 本実装時に approval_requests/records へ拡張）。
+
+enum SalesOrderStatus {
+  DRAFT
+  CONFIRMED
+  IN_PRODUCTION
+  PARTIAL_SHIPPED
+  SHIPPED
+  CANCELLED
+
+  @@map("SALES_ORDER_STATUS")
+  @@schema("app")
+}
+
+enum WorkOrderType {
+  FROM_STOCK // 在庫分（§4 → §8 直行）
+  MANUFACTURE // 製造分（§5→§6→§7）
+
+  @@map("WORK_ORDER_TYPE")
+  @@schema("app")
+}
+
+enum WorkOrderStatus {
+  DRAFT
+  PENDING_APPROVAL
+  APPROVED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+
+  @@map("WORK_ORDER_STATUS")
+  @@schema("app")
+}
+
+enum WorkOrderApprovalStatus {
+  NONE
+  PENDING_1ST
+  APPROVED_1ST
+  PENDING_2ND
+  APPROVED
+  REJECTED
+
+  @@map("WORK_ORDER_APPROVAL_STATUS")
+  @@schema("app")
+}
+
+enum StepExecution {
+  INTERNAL
+  OUTSOURCE
+
+  @@map("STEP_EXECUTION")
+  @@schema("app")
+}
+
+enum StepStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+
+  @@map("STEP_STATUS")
+  @@schema("app")
+}
+
+// 受注書（§3）— 製品ごとに 1 行。ORD-YYYYMM-NNNNN-NN（NN = branch）。
+model SalesOrder {
+  id        String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  yearMonth String @map("year_month") @db.Char(6)
+  seq       Int
+  branch    Int    @default(1)
+
+  customerBpId         String  @map("customer_bp_id") @db.Uuid
+  customerBranchBpId   String? @map("customer_branch_bp_id") @db.Uuid
+  endUserBpId          String? @map("end_user_bp_id") @db.Uuid
+  customerOrderRef     String? @map("customer_order_ref") // 顧客注文書番号
+  // 見積書からの展開元（任意）
+  quoteYearMonth       String? @map("quote_year_month") @db.Char(6)
+  quoteSeq             Int?    @map("quote_seq")
+
+  productId    Int              @map("product_id")
+  lotNumber    Int?             @unique @map("lot_number") // 通し連番（指示書番号と共用）
+  orderType    OrderType        @map("order_type")
+  quantity     Int
+  unitPrice    Decimal          @map("unit_price") @db.Decimal(12, 2)
+  amount       Decimal          @db.Decimal(12, 2)
+  deliveryDate DateTime?        @map("delivery_date") @db.Date
+  status       SalesOrderStatus @default(DRAFT)
+  isLocked     Boolean          @default(false) @map("is_locked") // 承認依頼中ロック
+  notes        String?
+  createdBy    String?          @map("created_by") @db.Uuid
+  createdAt    DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime         @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  customerBp       BusinessPartner  @relation("SalesOrderCustomer", fields: [customerBpId], references: [id])
+  customerBranchBp BusinessPartner? @relation("SalesOrderCustomerBranch", fields: [customerBranchBpId], references: [id])
+  endUserBp        BusinessPartner? @relation("SalesOrderEndUser", fields: [endUserBpId], references: [id])
+  product          Product          @relation(fields: [productId], references: [id])
+  quote            Quote?           @relation(fields: [quoteYearMonth, quoteSeq], references: [yearMonth, seq])
+  createdByUser    User?            @relation("SalesOrderCreatedBy", fields: [createdBy], references: [id])
+
+  workOrders WorkOrder[]
+
+  @@unique([yearMonth, seq, branch])
+  @@index([customerBpId])
+  @@index([status])
+  @@map("sales_orders")
+  @@schema("app")
+}
+
+// 指示書（§3〜§7）— 通し連番。ロット番号と共用。
+model WorkOrder {
+  id              String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  workOrderNumber Int     @unique @map("work_order_number")
+  salesOrderId    String  @map("sales_order_id") @db.Uuid
+  type            WorkOrderType
+  plannedQuantity Int     @map("planned_quantity")
+  materialId      Int?    @map("material_id")
+
+  status         WorkOrderStatus         @default(DRAFT)
+  approvalStatus WorkOrderApprovalStatus @default(NONE) @map("approval_status")
+
+  // コピー元（バージョン警告用）
+  sourceWorkOrderId String? @map("source_work_order_id") @db.Uuid
+
+  // 承認遷移（MaterialPurchaseOrder と同型の row-workflow）
+  requested1stAt DateTime? @map("requested_1st_at") @db.Timestamptz(6)
+  requested1stBy String?   @map("requested_1st_by") @db.Uuid
+  approved1stAt  DateTime? @map("approved_1st_at") @db.Timestamptz(6)
+  approved1stBy  String?   @map("approved_1st_by") @db.Uuid
+  approved2ndAt  DateTime? @map("approved_2nd_at") @db.Timestamptz(6)
+  approved2ndBy  String?   @map("approved_2nd_by") @db.Uuid
+  rejectedAt     DateTime? @map("rejected_at") @db.Timestamptz(6)
+  rejectedBy     String?   @map("rejected_by") @db.Uuid
+  rejectReason   String?   @map("reject_reason")
+  history        Json? // 状態遷移履歴 [{ action, user, at, notes }]
+
+  approvedAt  DateTime? @map("approved_at") @db.Timestamptz(6)
+  startedAt   DateTime? @map("started_at") @db.Timestamptz(6)
+  completedAt DateTime? @map("completed_at") @db.Timestamptz(6)
+  notes       String?
+  createdBy   String?   @map("created_by") @db.Uuid
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  salesOrder      SalesOrder @relation(fields: [salesOrderId], references: [id])
+  material        Material?  @relation(fields: [materialId], references: [id])
+  sourceWorkOrder WorkOrder? @relation("WorkOrderCopySource", fields: [sourceWorkOrderId], references: [id])
+  copies          WorkOrder[] @relation("WorkOrderCopySource")
+  createdByUser   User?      @relation("WorkOrderCreatedBy", fields: [createdBy], references: [id])
+
+  steps               WorkOrderStep[]
+  stepLinks           WorkOrderStepLink[]
+  inspectionTemplates WorkOrderInspectionTemplate[]
+
+  @@index([salesOrderId])
+  @@index([status])
+  @@index([approvalStatus])
+  @@map("work_orders")
+  @@schema("app")
+}
+
+// 指示書に紐付く検査表テンプレート（複数可）
+model WorkOrderInspectionTemplate {
+  workOrderId          String @map("work_order_id") @db.Uuid
+  inspectionTemplateId Int    @map("inspection_template_id")
+
+  workOrder          WorkOrder          @relation(fields: [workOrderId], references: [id], onDelete: Cascade)
+  inspectionTemplate InspectionTemplate @relation(fields: [inspectionTemplateId], references: [id])
+
+  @@id([workOrderId, inspectionTemplateId])
+  @@map("work_order_inspection_templates")
+  @@schema("app")
+}
+
+// 指示書工程ステップ（§7）。数量伝播・不良振り分け・外注管理・セッションロック。
+model WorkOrderStep {
+  id            String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  workOrderId   String        @map("work_order_id") @db.Uuid
+  processStepId Int           @map("process_step_id")
+  sortOrder     Int           @map("sort_order") // テンプレート順（参考。実行は依存解決）
+  executionLocation StepExecution @map("execution_location")
+  factoryId     Int?          @map("factory_id") // 社内実行時の工場
+  supplierBpId  String?       @map("supplier_bp_id") @db.Uuid // 外注時
+
+  outsourceRequestedAt DateTime? @map("outsource_requested_at") @db.Date
+  outsourceExpectedAt  DateTime? @map("outsource_expected_at") @db.Date
+  outsourceReceivedAt  DateTime? @map("outsource_received_at") @db.Date
+
+  status StepStatus @default(PENDING)
+
+  // 工程間の数量受け渡し・不良振り分け（§7 数量整合: success+不良 = input）
+  inputQuantity            Int? @map("input_quantity")
+  outputSuccessQuantity    Int? @map("output_success_quantity")
+  outputDefectSemiFinished Int? @map("output_defect_semi_finished") // 半製品在庫へ
+  outputDefectScrap        Int? @map("output_defect_scrap") // 廃棄
+  outputDefectRework       Int? @map("output_defect_rework") // 手直し分岐へ
+
+  sessionLockedBy String?   @map("session_locked_by") @db.Uuid
+  sessionLockedAt DateTime? @map("session_locked_at") @db.Timestamptz(6)
+
+  startedAt    DateTime? @map("started_at") @db.Timestamptz(6)
+  startedBy    String?   @map("started_by") @db.Uuid
+  completedAt  DateTime? @map("completed_at") @db.Timestamptz(6)
+  completedBy  String?   @map("completed_by") @db.Uuid
+  cancelledAt  DateTime? @map("cancelled_at") @db.Timestamptz(6)
+  cancelledBy  String?   @map("cancelled_by") @db.Uuid
+  cancelReason String?   @map("cancel_reason")
+  notes        String?
+
+  workOrder   WorkOrder          @relation(fields: [workOrderId], references: [id], onDelete: Cascade)
+  processStep ProcessStepCatalog @relation(fields: [processStepId], references: [id])
+  factory     Factory?           @relation(fields: [factoryId], references: [id])
+  supplierBp  BusinessPartner?   @relation("StepSupplier", fields: [supplierBpId], references: [id])
+
+  outgoingLinks WorkOrderStepLink[] @relation("LinkSource")
+  incomingLinks WorkOrderStepLink[] @relation("LinkTarget")
+
+  @@index([workOrderId, sortOrder])
+  @@index([status])
+  @@map("work_order_steps")
+  @@schema("app")
+}
+
+// 工程ステップの分岐・合流（指示書内 DAG, §7）。手直し分岐・半製品再投入・
+// ロット分割合流を routed_quantity 付きのエッジで表す。
+model WorkOrderStepLink {
+  id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  workOrderId    String   @map("work_order_id") @db.Uuid
+  sourceStepId   String   @map("source_step_id") @db.Uuid
+  targetStepId   String   @map("target_step_id") @db.Uuid
+  routedQuantity Int      @default(0) @map("routed_quantity")
+  notes          String?
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  workOrder  WorkOrder     @relation(fields: [workOrderId], references: [id], onDelete: Cascade)
+  sourceStep WorkOrderStep @relation("LinkSource", fields: [sourceStepId], references: [id], onDelete: Cascade)
+  targetStep WorkOrderStep @relation("LinkTarget", fields: [targetStepId], references: [id], onDelete: Cascade)
+
+  @@unique([sourceStepId, targetStepId])
+  @@map("work_order_step_links")
+  @@schema("app")
+}

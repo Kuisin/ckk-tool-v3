@@ -184,6 +184,7 @@ model Material {
   estimates          Estimate[]
   purchaseOrderItems MaterialPurchaseOrderItem[]
   receipts           MaterialReceipt[]
+  workOrders         WorkOrder[]
 
   @@unique([materialTypeId, surfaceFinishCode, diameterCode, lengthVariantCode])
   @@map("materials")
@@ -217,6 +218,7 @@ model Product {
   material         Material?        @relation(fields: [materialId], references: [id])
   priceListEntries PriceListEntry[]
   quoteItems       QuoteItem[]
+  salesOrders      SalesOrder[]
 
   @@unique([yearMonth, seq])
   @@index([materialTypeId])
