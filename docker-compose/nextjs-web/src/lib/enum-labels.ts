@@ -147,3 +147,27 @@ export const DELIVERY_METHOD_LABEL: Record<string, string> = {
 export const DELIVERY_METHOD_OPTIONS = Object.entries(
   DELIVERY_METHOD_LABEL,
 ).map(([value, label]) => ({ value, label }));
+
+/** app.PURCHASE_STATUS（素材発注書） */
+export const PURCHASE_STATUS_LABEL: Record<string, string> = {
+  DRAFT: "作成中",
+  REQUESTED: "承認依頼中",
+  APPROVED: "承認済",
+  ORDERED: "発注済",
+  COMPLETED: "入荷完了",
+  CANCELLED: "キャンセル",
+};
+
+export const PURCHASE_STATUS_OPTIONS = Object.entries(
+  PURCHASE_STATUS_LABEL,
+).map(([value, label]) => ({ value, label }));
+
+/** app.DESIGN_TRIGGER（設計依頼のトリガ） */
+export const DESIGN_TRIGGER_LABEL: Record<string, string> = {
+  QUOTE: "見積時",
+  SALES_ORDER: "受注時",
+};
+
+export const DESIGN_TRIGGER_OPTIONS = Object.entries(DESIGN_TRIGGER_LABEL).map(
+  ([value, label]) => ({ value, label }),
+);

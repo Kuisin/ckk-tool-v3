@@ -180,7 +180,6 @@ model Material {
   diameter      MaterialDiameter      @relation(fields: [diameterCode], references: [code])
   lengthVariant MaterialLengthVariant @relation(fields: [lengthVariantCode], references: [code])
 
-  products           Product[]
   estimates          Estimate[]
   purchaseOrderItems MaterialPurchaseOrderItem[]
   receipts           MaterialReceipt[]
@@ -206,8 +205,6 @@ model Product {
   materialTypeId Int?     @map("material_type_id")
   diameterMm     Decimal? @map("diameter_mm") @db.Decimal(8, 3)
   lengthMm       Decimal? @map("length_mm") @db.Decimal(10, 3)
-  // 旧: 特定素材への参照。廃止予定（main 昇格後に別マイグレーションで DROP）。
-  materialId Int?    @map("material_id")
   unit       String   @default("本")
   spec       Json?
   isActive   Boolean  @default(true) @map("is_active")
@@ -216,13 +213,14 @@ model Product {
   updatedAt  DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   materialType     MaterialType?    @relation("ProductMaterialType", fields: [materialTypeId], references: [id])
-  material         Material?        @relation(fields: [materialId], references: [id])
   priceListEntries PriceListEntry[]
   quoteItems       QuoteItem[]
   salesOrders      SalesOrder[]
   shippingOrderItems ShippingOrderItem[]
   deliveryNoteItems  DeliveryNoteItem[]
   inventory          ProductInventory[]
+  designRequests     DesignRequest[]
+  designFiles        DesignFile[]
 
   @@unique([yearMonth, seq])
   @@index([materialTypeId])

@@ -1,11 +1,10 @@
-import { PlaceholderPage } from "@/components/ui/PlaceholderPage";
+import { PurchaseOrderTable } from "@/components/purchase/purchase-orders/PurchaseOrderTable";
+import { fetchPurchaseOrders } from "./data";
 
-export default function PurchasePurchaseOrdersPage() {
-  return (
-    <PlaceholderPage
-      breadcrumbs={["購買", "素材発注書"]}
-      operationCode="PU03"
-      title="素材発注書"
-    />
-  );
+export const dynamic = "force-dynamic";
+
+/** 素材発注書 一覧 (PU03). */
+export default async function PurchasePurchaseOrdersPage() {
+  const rows = await fetchPurchaseOrders();
+  return <PurchaseOrderTable rows={rows} />;
 }

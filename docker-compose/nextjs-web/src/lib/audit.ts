@@ -61,6 +61,11 @@ export const AUDIT_TABLE_LABELS: Record<string, string> = {
   work_orders: "指示書",
   shipping_orders: "出荷書",
   delivery_notes: "納品書",
+  material_purchase_orders: "素材発注書",
+  material_receipts: "素材入荷",
+  invoices: "請求書",
+  billing_closings: "締日処理",
+  design_requests: "設計依頼書",
   system: "システム",
 };
 
