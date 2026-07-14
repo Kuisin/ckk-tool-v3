@@ -68,6 +68,7 @@ model User {
   invoicesCreated         Invoice[]             @relation("InvoiceCreatedBy")
   designRequestsCreated   DesignRequest[]       @relation("DesignRequestCreatedBy")
   designFilesCreated      DesignFile[]          @relation("DesignFileCreatedBy")
+  attachmentsUploaded     DocumentAttachment[]  @relation("AttachmentUploadedBy")
 
   posRequested MaterialPurchaseOrder[] @relation("PoRequestedBy")
   posApproved  MaterialPurchaseOrder[] @relation("PoApprovedBy")

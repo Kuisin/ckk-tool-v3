@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { MaterialReceiptDetail } from "@/components/purchase/material-receipts/MaterialReceiptDetail";
+import { listAttachments } from "@/lib/attachments";
 import { fetchMaterialReceipt } from "../data";
 
 export const dynamic = "force-dynamic";
@@ -16,8 +17,12 @@ export default async function PurchaseMaterialReceiptsDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const receipt = await fetchMaterialReceipt(decodeURIComponent(id));
+  const receiptId = decodeURIComponent(id);
+  const [receipt, attachments] = await Promise.all([
+    fetchMaterialReceipt(receiptId),
+    listAttachments("material_receipts", receiptId),
+  ]);
   if (!receipt) notFound();
 
-  return <MaterialReceiptDetail receipt={receipt} />;
+  return <MaterialReceiptDetail attachments={attachments} receipt={receipt} />;
 }

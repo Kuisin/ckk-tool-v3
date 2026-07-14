@@ -103,3 +103,12 @@ export function isCancellable(o: Pick<PurchaseOrderView, "status">) {
     o.status === "DRAFT" || o.status === "REQUESTED" || o.status === "APPROVED"
   );
 }
+
+/** 証憑を添付可能か — 承認後（APPROVED / ORDERED / COMPLETED）のみ。 */
+export function canAttachEvidence(o: Pick<PurchaseOrderView, "status">) {
+  return (
+    o.status === "APPROVED" ||
+    o.status === "ORDERED" ||
+    o.status === "COMPLETED"
+  );
+}
