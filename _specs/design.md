@@ -277,7 +277,6 @@ Operation codes provide keyboard-shortcut navigation. Format: `{CAT}{MODE}{IDX}`
 | 購買 | 1 | 素材入荷 | PU01 | PU11 | PU21 |
 | 購買 | 2 | 外注依頼 | PU02 | PU12 | PU22 |
 | 購買 | 3 | 素材発注書 | PU03 | PU13 | PU23 |
-| 生産 | 1 | 注文請書 | PD01 | PD11 | PD21 |
 | 生産 | 2 | 指示書 | PD02 | PD12 | PD22 |
 | 生産 | 3 | 承認管理 | PD03 | PD13 | PD23 |
 | 生産 | 4 | 製品在庫 | PD04 | PD14 | PD24 |
@@ -356,7 +355,6 @@ Stack (gap="xl", p="md", maw={1200})
 | 素材入荷 | `IconPackageImport` |
 | 外注依頼 | `IconTruckDelivery` |
 | 素材発注書 | `IconShoppingCart` |
-| 注文請書 | `IconClipboardList` |
 | 指示書 | `IconSettings2` |
 | 承認管理 | `IconShieldCheck` |
 | 製品在庫 | `IconBoxSeam` |
