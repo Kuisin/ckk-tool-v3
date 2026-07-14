@@ -1,8 +1,8 @@
 /**
- * model.ts — 受注書 (PD01) view-model types + pure helpers.
+ * model.ts — 注文請書 (PD01) view-model types + pure helpers.
  *
  * Model (app.sales_orders — 複合キー (year_month, seq, branch)):
- *   受注書は「一括作成」— 1回の作成で (yearMonth, seq) を1つ採番し、明細行ごとに
+ *   注文請書は「一括作成」— 1回の作成で (yearMonth, seq) を1つ採番し、明細行ごとに
  *   branch = 1..N の行を作る。表示番号 ORD-YYYYMM-NNNNN-NN はキーから導出
  *   （保存しない）。URL id も導出番号を使う。
  *
@@ -65,7 +65,7 @@ export interface SalesOrder {
   updatedAt: string;
 }
 
-/** 編集可能か — 下書きかつロックされていない受注書のみ。 */
+/** 編集可能か — 下書きかつロックされていない注文請書のみ。 */
 export function isEditable(o: Pick<SalesOrder, "status" | "isLocked">) {
   return o.status === "DRAFT" && !o.isLocked;
 }

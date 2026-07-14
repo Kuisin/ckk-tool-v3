@@ -54,7 +54,7 @@ export const emptyOrderItem = (): OrderRequestItem => ({
 });
 
 /**
- * One accepted 受注請書 = one 受注書 (sales order) + N 指示書 (work orders).
+ * One accepted 受注請書 = one 注文請書 (sales order) + N 指示書 (work orders).
  * Work orders group the line items by product & version, customization,
  * delivery date, and ship-to address.
  */

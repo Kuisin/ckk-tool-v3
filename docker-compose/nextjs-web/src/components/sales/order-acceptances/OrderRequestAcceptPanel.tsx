@@ -4,7 +4,7 @@
  * OrderRequestAcceptPanel — final acceptance step of the 受注請書 flow.
  *
  * Shows the confirmed content read-only (as it would appear on the issued
- * 請書), previews the documents the acceptance would create — one 受注書
+ * 請書), previews the documents the acceptance would create — one 注文請書
  * (sales order) plus 指示書 (work orders) grouped by product & version /
  * customization / delivery date / ship-to — flags total mismatches, and asks
  * for the explicit 受諾 action via a modal. UI/UX only — no DB persistence.
@@ -199,7 +199,7 @@ export function OrderRequestAcceptPanel({
           受諾時に作成される伝票（プレビュー）
         </Title>
         <Text c="dimmed" mb="md" size="xs">
-          受注書 1 件と、製品・版数 / カスタム / 納期 /
+          注文請書 1 件と、製品・版数 / カスタム / 納期 /
           届け先ごとにまとめた指示書 {workOrders.length} 件が作成されます。
         </Text>
 
@@ -207,7 +207,7 @@ export function OrderRequestAcceptPanel({
           <Group gap="sm" wrap="nowrap">
             <IconClipboardList size={18} />
             <Text fw={600} size="sm">
-              受注書
+              注文請書
             </Text>
             <Badge color="blue" variant="light">
               1 件
@@ -293,7 +293,7 @@ export function OrderRequestAcceptPanel({
         title="受注請書の受諾"
       >
         <Text size="sm">
-          この内容で注文を受諾し、受注書 1 件・指示書 {workOrders.length}{" "}
+          この内容で注文を受諾し、注文請書 1 件・指示書 {workOrders.length}{" "}
           件を作成します。よろしいですか？
         </Text>
         <Text c="dimmed" size="xs">

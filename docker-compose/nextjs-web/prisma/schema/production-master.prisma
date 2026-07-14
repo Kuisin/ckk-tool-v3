@@ -25,6 +25,7 @@ model Factory {
   updatedAt     DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   workOrderSteps WorkOrderStep[]
+  shippingOrders ShippingOrder[]
 
   @@map("factories")
   @@schema("app")

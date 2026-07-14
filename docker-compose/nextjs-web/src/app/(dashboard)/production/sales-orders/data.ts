@@ -1,5 +1,5 @@
 /**
- * data.ts — 受注書 (PD01) ページのサーバーサイド取得・マッピング。
+ * data.ts — 注文請書 (PD01) ページのサーバーサイド取得・マッピング。
  *
  * app.sales_orders は (year_month, seq, branch) の複合キー — 表示番号
  * ORD-YYYYMM-NNNNN-NN は導出（保存しない）で、URL id を兼ねる。

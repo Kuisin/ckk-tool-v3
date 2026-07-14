@@ -12,7 +12,7 @@ export const dynamic = "force-dynamic";
 /**
  * 指示書 新規作成 (PD12).
  *
- * `?salesOrder={uuid}` で受注書をプリセレクトできる（受注書詳細からの起動用）。
+ * `?salesOrder={uuid}` で注文請書をプリセレクトできる（注文請書詳細からの起動用）。
  */
 export default async function ProductionWorkOrdersNewPage({
   searchParams,

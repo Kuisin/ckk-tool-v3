@@ -1,9 +1,9 @@
 "use client";
 
 /**
- * SalesOrderTable — 受注書 一覧 (PD01, design.md §8.1 / §14).
+ * SalesOrderTable — 注文請書 一覧 (PD01, design.md §8.1 / §14).
  *
- * Columns: 受注番号 / 顧客 / 製品 / 数量 / 金額 / 納期 / 状態。
+ * Columns: 注文請書番号 / 顧客 / 製品 / 数量 / 金額 / 納期 / 状態。
  * フィルタ: 検索（番号・顧客・製品）+ 状態 + 注文種別。行クリック → 詳細。
  */
 
@@ -51,7 +51,7 @@ export function SalesOrderTable({ rows }: { rows: SalesOrder[] }) {
   const columns: Column<SalesOrder>[] = [
     {
       key: "orderNumber",
-      header: "受注番号",
+      header: "注文請書番号",
       sortable: true,
       render: (o) => (
         <Text ff="mono" size="sm">
@@ -121,7 +121,7 @@ export function SalesOrderTable({ rows }: { rows: SalesOrder[] }) {
   return (
     <ListShell
       action={<NewButton href={`${BASE_PATH}/new`} />}
-      breadcrumbs={["生産", "受注書"]}
+      breadcrumbs={["生産", "注文請書"]}
       filters={
         <>
           <Select
@@ -149,11 +149,11 @@ export function SalesOrderTable({ rows }: { rows: SalesOrder[] }) {
         <TextInput
           leftSection={<IconSearch size={14} />}
           onChange={(e) => setSearch(e.currentTarget.value)}
-          placeholder="受注番号・顧客・製品で検索"
+          placeholder="注文請書番号・顧客・製品で検索"
           value={search}
         />
       }
-      title="受注書"
+      title="注文請書"
     >
       <DataTable
         columns={columns}
@@ -161,7 +161,7 @@ export function SalesOrderTable({ rows }: { rows: SalesOrder[] }) {
         defaultSort={{ key: "orderNumber", dir: "desc" }}
         emptyAction={<NewButton href={`${BASE_PATH}/new`} />}
         emptyIcon={<IconClipboardList size={24} />}
-        emptyMessage="受注書がありません"
+        emptyMessage="注文請書がありません"
         getRowId={(o) => o.id}
         onRowClick={(o) => router.push(`${BASE_PATH}/${o.id}`)}
         renderCard={(o) => (

@@ -1,12 +1,12 @@
 "use client";
 
 /**
- * SalesOrderForm — 受注書 新規作成（一括作成）/ 編集 (PD01, design.md §8.3).
+ * SalesOrderForm — 注文請書 新規作成（一括作成）/ 編集 (PD01, design.md §8.3).
  *
  * 新規: ヘッダ（顧客 SearchSelect / 支店 / 顧客注文書番号 / 既定納期）+
  * 明細 1..N 行（製品 SearchSelect / 注文種別 / 数量 / 単価 / 行納期 / 備考）。
  * 単価は 顧客×製品×注文種別×数量 が揃うと価格表からサーバー解決
- * （actions.resolvePriceForLine）で自動入力される — 受注書は顧客注文書との
+ * （actions.resolvePriceForLine）で自動入力される — 注文請書は顧客注文書との
  * 突き合わせ文書のため手動上書きも可（見積書と異なる）。
  * 保存は createSalesOrders が採番1回 + branch 1..N の行を一括作成し、
  * 先頭行の詳細ページへ遷移する。
@@ -132,7 +132,7 @@ export function SalesOrderForm({
   branchesByCustomer,
 }: {
   mode: "create" | "edit";
-  /** 編集時: 対象受注書（サーバー取得の view-model）。 */
+  /** 編集時: 対象注文請書（サーバー取得の view-model）。 */
   order?: SalesOrder | null;
   /** 顧客 BP id → 支店 options（quotes と同じ親子 BP 参照）。 */
   branchesByCustomer: Record<string, Option[]>;
@@ -263,8 +263,8 @@ export function SalesOrderForm({
           title: "保存しました",
           message:
             mode === "edit"
-              ? "受注書を更新しました"
-              : `受注書を作成しました（${form.values.lines.length}件）`,
+              ? "注文請書を更新しました"
+              : `注文請書を作成しました（${form.values.lines.length}件）`,
           color: "green",
         });
         // 作成後は先頭行（-01）の詳細ページへ。
@@ -283,7 +283,7 @@ export function SalesOrderForm({
     <FormShell
       breadcrumbs={[
         "生産",
-        { label: "受注書", href: BASE_PATH },
+        { label: "注文請書", href: BASE_PATH },
         mode === "edit" ? "編集" : "新規作成",
       ]}
       isPending={isPending}
@@ -297,7 +297,7 @@ export function SalesOrderForm({
         ) : undefined
       }
       title={
-        mode === "edit" ? `受注書 編集 ${orderId ?? ""}` : "受注書 新規作成"
+        mode === "edit" ? `注文請書 編集 ${orderId ?? ""}` : "注文請書 新規作成"
       }
     >
       <FormSection title="基本情報">
@@ -352,7 +352,7 @@ export function SalesOrderForm({
       </FormSection>
 
       <FormSection
-        description="単価は 顧客×製品×注文種別×数量 が揃うと価格表から自動入力されます（手動上書き可）。保存時に明細ごとに受注番号 ORD-…-NN が採番されます。"
+        description="単価は 顧客×製品×注文種別×数量 が揃うと価格表から自動入力されます（手動上書き可）。保存時に明細ごとに注文請書番号 ORD-…-NN が採番されます。"
         title="明細"
       >
         <Group justify="flex-end" mb="xs">

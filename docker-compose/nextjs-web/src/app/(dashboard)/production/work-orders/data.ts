@@ -447,7 +447,7 @@ export async function fetchSupplierOptions(): Promise<Option[]> {
   }));
 }
 
-// ── 受注書参照（?salesOrder= プリセレクト・ビルダーの選択情報） ────────────────
+// ── 注文請書参照（?salesOrder= プリセレクト・ビルダーの選択情報） ────────────────
 
 export interface SalesOrderRef {
   id: string;

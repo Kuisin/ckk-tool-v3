@@ -63,6 +63,8 @@ model User {
   approvalGroupMembers    ApprovalGroupMember[] @relation("ApprovalGroupMemberUser")
   salesOrdersCreated      SalesOrder[]          @relation("SalesOrderCreatedBy")
   workOrdersCreated       WorkOrder[]           @relation("WorkOrderCreatedBy")
+  shippingOrdersCreated   ShippingOrder[]       @relation("ShippingOrderCreatedBy")
+  deliveryNotesCreated    DeliveryNote[]        @relation("DeliveryNoteCreatedBy")
 
   posRequested MaterialPurchaseOrder[] @relation("PoRequestedBy")
   posApproved  MaterialPurchaseOrder[] @relation("PoApprovedBy")

@@ -12,9 +12,16 @@ export default async function DashboardLayout({
   children: ReactNode;
 }) {
   // アプリの環境別 ON/OFF（feature_flags）。行が無ければ有効・失敗時は全表示。
-  const disabledKeys = await getDisabledAppKeys();
+  // main 無効 = 未リリース（dev のホームカードに DEV リボンを出す）。
+  const [disabledKeys, unreleasedKeys] = await Promise.all([
+    getDisabledAppKeys(),
+    getDisabledAppKeys("main"),
+  ]);
   return (
-    <AppFlagsProvider disabledKeys={disabledKeys}>
+    <AppFlagsProvider
+      disabledKeys={disabledKeys}
+      unreleasedKeys={unreleasedKeys}
+    >
       <DashboardShell>
         <AppAvailabilityGuard>{children}</AppAvailabilityGuard>
       </DashboardShell>

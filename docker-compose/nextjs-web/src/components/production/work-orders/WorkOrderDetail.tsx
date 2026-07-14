@@ -8,7 +8,7 @@
  * 承認画面 — タイトル「承認」で ApprovalStatusPanel を最上部に出し、
  * 編集系アクションは出さない。
  *
- * アクション: 編集（DRAFT のみ）/ コピー（対象受注書を選ぶモーダル。コピー元に
+ * アクション: 編集（DRAFT のみ）/ コピー（対象注文請書を選ぶモーダル。コピー元に
  * 新しい版があれば警告）/ キャンセル（DRAFT・承認待ちのみ）。
  */
 
@@ -139,7 +139,7 @@ export function WorkOrderDetail({
   const summary = (
     <SummaryGrid>
       <FieldValue
-        label="受注番号"
+        label="注文請書番号"
         value={
           <Anchor
             component={Link}
@@ -301,7 +301,7 @@ export function WorkOrderDetail({
           <Stack gap="md">
             <div>
               <Text c="dimmed" mb={4} size="xs">
-                受注書
+                注文請書
               </Text>
               <Anchor
                 component={Link}
@@ -384,10 +384,10 @@ export function WorkOrderDetail({
               value: wo.salesOrderId,
               label: `${wo.salesOrderNumber} ${wo.productName}（${wo.salesOrderQuantity}）`,
             }}
-            label="対象受注書"
+            label="対象注文請書"
             onChange={setCopyTargetSoId}
             onSearch={searchSalesOrderOptions}
-            placeholder="受注番号・製品・顧客で検索"
+            placeholder="注文請書番号・製品・顧客で検索"
             storageKey="sales-order"
             value={copyTargetSoId}
             withAsterisk

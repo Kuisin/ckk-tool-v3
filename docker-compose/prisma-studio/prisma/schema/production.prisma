@@ -109,7 +109,8 @@ model SalesOrder {
   quote            Quote?           @relation(fields: [quoteYearMonth, quoteSeq], references: [yearMonth, seq])
   createdByUser    User?            @relation("SalesOrderCreatedBy", fields: [createdBy], references: [id])
 
-  workOrders WorkOrder[]
+  workOrders     WorkOrder[]
+  shippingOrders ShippingOrder[]
 
   @@unique([yearMonth, seq, branch])
   @@index([customerBpId])
@@ -162,6 +163,7 @@ model WorkOrder {
   steps               WorkOrderStep[]
   stepLinks           WorkOrderStepLink[]
   inspectionTemplates WorkOrderInspectionTemplate[]
+  shippingOrders      ShippingOrder[]
 
   @@index([salesOrderId])
   @@index([status])

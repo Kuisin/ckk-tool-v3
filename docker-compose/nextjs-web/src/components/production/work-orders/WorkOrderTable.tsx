@@ -3,7 +3,7 @@
 /**
  * WorkOrderTable — 指示書 一覧 (PD02) / 承認待ち一覧 (PD03) (design.md §8.1/§14).
  *
- * variant="workOrders": 指示書番号 / 受注番号 / 製品 / 種別 / 予定数量 /
+ * variant="workOrders": 指示書番号 / 注文請書番号 / 製品 / 種別 / 予定数量 /
  *   承認状態（NONE は非表示）/ 状態 / 更新日。行クリック → 指示書詳細。
  * variant="approvals": 承認状態が PENDING の行のみ（server 側で絞り込み済み）。
  *   状態・更新日の代わりに依頼日。行クリック → 承認詳細。
@@ -93,7 +93,7 @@ export function WorkOrderTable({
     },
     {
       key: "salesOrderNumber",
-      header: "受注番号",
+      header: "注文請書番号",
       sortable: true,
       width: 190,
       render: (r) => (
@@ -217,7 +217,7 @@ export function WorkOrderTable({
         <TextInput
           leftSection={<IconSearch size={14} />}
           onChange={(e) => setSearch(e.currentTarget.value)}
-          placeholder="指示書番号・受注番号・製品で検索"
+          placeholder="指示書番号・注文請書番号・製品で検索"
           value={search}
         />
       }

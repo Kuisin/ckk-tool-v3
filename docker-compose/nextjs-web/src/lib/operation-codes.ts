@@ -124,7 +124,7 @@ export const OPERATION_CODES: OperationCodeEntry[] = [
 
   // ─── 生産 (PD) ───────────────────────────────────────────────────────────
   // PD22 詳細（ID無し→検索）が旧 PD20 工程実行 のエントリポイントを兼ねる
-  ...makeResource("生産", "PD", "1", "受注書", "/production/sales-orders"),
+  ...makeResource("生産", "PD", "1", "注文請書", "/production/sales-orders"),
   ...makeResource("生産", "PD", "2", "指示書", "/production/work-orders"),
   ...makeResource("生産", "PD", "3", "承認管理", "/production/approvals"),
   ...makeResource(

@@ -219,6 +219,8 @@ model Product {
   priceListEntries PriceListEntry[]
   quoteItems       QuoteItem[]
   salesOrders      SalesOrder[]
+  shippingOrderItems ShippingOrderItem[]
+  deliveryNoteItems  DeliveryNoteItem[]
 
   @@unique([yearMonth, seq])
   @@index([materialTypeId])

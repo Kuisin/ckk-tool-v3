@@ -3,7 +3,7 @@ import { fetchSalesOrders } from "./data";
 
 export const dynamic = "force-dynamic";
 
-/** 受注書 一覧 (PD01). */
+/** 注文請書 一覧 (PD01). */
 export default async function ProductionSalesOrdersPage() {
   const rows = await fetchSalesOrders();
   return <SalesOrderTable rows={rows} />;

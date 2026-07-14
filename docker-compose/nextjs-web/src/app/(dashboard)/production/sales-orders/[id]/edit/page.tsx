@@ -8,7 +8,7 @@ import { fetchSalesOrder } from "../../data";
 export const dynamic = "force-dynamic";
 
 /**
- * 受注書 編集 (PD21 → edit)。
+ * 注文請書 編集 (PD21 → edit)。
  *
  * 編集できるのは「下書きかつ未ロック」のみ — それ以外は詳細へリダイレクト
  * （サーバーアクション側でも同じガードを行う）。

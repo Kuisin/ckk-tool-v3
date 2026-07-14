@@ -87,6 +87,10 @@ model BusinessPartner {
   salesOrdersAsEndUser  SalesOrder[]    @relation("SalesOrderEndUser")
   stepsAsSupplier       WorkOrderStep[] @relation("StepSupplier")
 
+  deliveryNotesAsRecipient DeliveryNote[] @relation("DeliveryNoteRecipient")
+  deliveryNotesAsBranch    DeliveryNote[] @relation("DeliveryNoteRecipientBranch")
+  deliveryNotesAsEndUser   DeliveryNote[] @relation("DeliveryNoteEndUser")
+
   @@index([parentId])
   @@map("business_partners")
   @@schema("app")

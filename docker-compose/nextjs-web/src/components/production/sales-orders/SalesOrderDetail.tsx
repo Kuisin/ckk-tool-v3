@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * SalesOrderDetail — 受注書 詳細 (PD21, design.md §8.2).
+ * SalesOrderDetail — 注文請書 詳細 (PD21, design.md §8.2).
  *
  * SummaryGrid（番号 / 顧客(+支店) / 顧客注文書番号 / 製品 / 注文種別 / 数量 /
  * 単価 / 金額 / 納期 / ロット番号 / 見積元）+ ロック中 Alert +
@@ -77,7 +77,7 @@ export function SalesOrderDetail({
       if (result.ok) {
         notifications.show({
           title: "確定しました",
-          message: `受注書 ${order.orderNumber} を確定しました`,
+          message: `注文請書 ${order.orderNumber} を確定しました`,
           color: "green",
         });
         router.refresh();
@@ -97,7 +97,7 @@ export function SalesOrderDetail({
       if (result.ok) {
         notifications.show({
           title: "キャンセルしました",
-          message: `受注書 ${order.orderNumber} をキャンセルしました`,
+          message: `注文請書 ${order.orderNumber} をキャンセルしました`,
           color: "green",
         });
         router.refresh();
@@ -154,7 +154,7 @@ export function SalesOrderDetail({
           />
         </Group>
       }
-      breadcrumbs={["生産", { label: "受注書", href: BASE_PATH }, "詳細"]}
+      breadcrumbs={["生産", { label: "注文請書", href: BASE_PATH }, "詳細"]}
       createdAt={formatDateTime(order.createdAt)}
       status={<StatusBadge entity="SalesOrder" status={order.status} />}
       title={order.orderNumber}
@@ -167,13 +167,13 @@ export function SalesOrderDetail({
           title="承認依頼中ロック"
           variant="light"
         >
-          この受注書は承認依頼中のためロックされています。承認が完了するまで編集できません。
+          この注文請書は承認依頼中のためロックされています。承認が完了するまで編集できません。
         </Alert>
       )}
 
       <SummaryGrid>
         <FieldValue
-          label="受注番号"
+          label="注文請書番号"
           value={<DocNumber>{order.orderNumber}</DocNumber>}
         />
         <FieldValue
@@ -280,7 +280,7 @@ export function SalesOrderDetail({
                 </SecondaryButton>
               }
               icon={<IconClipboardList size={24} />}
-              message="この受注書の指示書はまだありません"
+              message="この注文請書の指示書はまだありません"
             />
           ) : (
             <Table.ScrollContainer minWidth={640}>
@@ -342,7 +342,7 @@ export function SalesOrderDetail({
         confirmColor="blue"
         confirmLabel="確定"
         loading={isPending}
-        message={`受注書 ${order.orderNumber} を確定します。確定後は編集できません。`}
+        message={`注文請書 ${order.orderNumber} を確定します。確定後は編集できません。`}
         onClose={() => setConfirmOpen(false)}
         onConfirm={runConfirm}
         opened={confirmOpen}
@@ -351,7 +351,7 @@ export function SalesOrderDetail({
       <ConfirmModal
         confirmLabel="キャンセルする"
         loading={isPending}
-        message={`受注書 ${order.orderNumber} をキャンセルします。この操作は取り消せません。`}
+        message={`注文請書 ${order.orderNumber} をキャンセルします。この操作は取り消せません。`}
         onClose={() => setCancelOpen(false)}
         onConfirm={runCancel}
         opened={cancelOpen}

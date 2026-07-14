@@ -3,7 +3,7 @@
 /**
  * WorkflowBuilder — 指示書 新規作成 / 編集 (PD12 / PD22, design.md §8.3)。
  *
- * 受注書・種別・予定数量・使用素材・検査表の基本情報と、工程カタログからの
+ * 注文請書・種別・予定数量・使用素材・検査表の基本情報と、工程カタログからの
  * STEP PICKER（カテゴリ別チェックリスト）で構成する。選択のたびに
  * validateComposition で構成検証し、ブロッカー（AND 不足・排他）は赤 Alert +
  * 保存不可、OR グループ全不在は黄 Alert（素材条件で充足の可能性）。
@@ -81,7 +81,7 @@ interface StepLocation {
 }
 
 const schema = z.object({
-  salesOrderId: z.string().min(1, "受注書を選択してください"),
+  salesOrderId: z.string().min(1, "注文請書を選択してください"),
   type: z.enum(["FROM_STOCK", "MANUFACTURE"]),
   plannedQuantity: z.number().int().min(1, "予定数量は1以上"),
   materialId: z.string().nullable(),
@@ -346,10 +346,10 @@ export function WorkflowBuilder({
               initialOption={
                 soInfo ? { value: soInfo.id, label: soInfo.label } : null
               }
-              label="受注書"
+              label="注文請書"
               onChange={onSalesOrderChange}
               onSearch={searchSalesOrderOptions}
-              placeholder="受注番号・製品・顧客で検索"
+              placeholder="注文請書番号・製品・顧客で検索"
               storageKey="sales-order"
               value={form.values.salesOrderId || null}
               withAsterisk
