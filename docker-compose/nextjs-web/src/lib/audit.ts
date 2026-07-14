@@ -52,6 +52,11 @@ export const AUDIT_TABLE_LABELS: Record<string, string> = {
   material_types: "材種",
   business_partners: "取引先",
   feature_flags: "アプリ管理",
+  factories: "工場",
+  process_step_catalog: "工程マスタ",
+  inspection_templates: "検査表テンプレート",
+  defect_types: "不良種類",
+  approval_groups: "承認グループ",
   system: "システム",
 };
 

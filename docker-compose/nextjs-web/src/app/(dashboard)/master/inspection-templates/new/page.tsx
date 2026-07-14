@@ -1,10 +1,8 @@
-import { PlaceholderPage } from "@/components/ui/PlaceholderPage";
+import { InspectionTemplateForm } from "@/components/master/inspection-templates/InspectionTemplateForm";
 
+export const dynamic = "force-dynamic";
+
+/** 検査表テンプレート 新規作成 (MS18). */
 export default function MasterInspectionTemplatesNewPage() {
-  return (
-    <PlaceholderPage
-      breadcrumbs={["マスタ", "検査表テンプレート", "新規作成"]}
-      title="検査表テンプレート 新規作成"
-    />
-  );
+  return <InspectionTemplateForm />;
 }

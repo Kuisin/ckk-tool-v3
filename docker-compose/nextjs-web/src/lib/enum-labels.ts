@@ -60,3 +60,48 @@ export const BANK_ACCOUNT_TYPE_OPTIONS = ["普通", "当座"].map((v) => ({
   value: v,
   label: v,
 }));
+
+/** app.PROCESS_CATEGORY（工程カタログ） */
+export const PROCESS_CATEGORY_LABEL: Record<string, string> = {
+  MATERIAL_PREP: "材料準備",
+  MACHINING: "加工",
+  COATING: "コーティング",
+  INSPECTION: "検査",
+  APPROVAL: "検査承認",
+  SHIPPING: "出荷",
+};
+
+export const PROCESS_CATEGORY_OPTIONS = Object.entries(
+  PROCESS_CATEGORY_LABEL,
+).map(([value, label]) => ({ value, label }));
+
+/** app.PROCESS_EXECUTION（工程の実施場所） */
+export const PROCESS_EXECUTION_LABEL: Record<string, string> = {
+  INTERNAL: "社内のみ",
+  INTERNAL_OR_OUTSOURCE: "社内・外注",
+};
+
+export const PROCESS_EXECUTION_OPTIONS = Object.entries(
+  PROCESS_EXECUTION_LABEL,
+).map(([value, label]) => ({ value, label }));
+
+/** app.DEPENDENCY_RELATION（工程依存の結合） */
+export const DEPENDENCY_RELATION_LABEL: Record<string, string> = {
+  AND: "AND（すべて）",
+  OR: "OR（いずれか）",
+};
+
+export const DEPENDENCY_RELATION_OPTIONS = Object.entries(
+  DEPENDENCY_RELATION_LABEL,
+).map(([value, label]) => ({ value, label }));
+
+/** app.APPROVAL_GROUP_TYPE（承認グループ種別） */
+export const APPROVAL_GROUP_TYPE_LABEL: Record<string, string> = {
+  FIRST: "第一承認",
+  SECOND: "第二承認",
+  WORKFLOW_CHANGE: "ワークフロー変更承認",
+};
+
+export const APPROVAL_GROUP_TYPE_OPTIONS = Object.entries(
+  APPROVAL_GROUP_TYPE_LABEL,
+).map(([value, label]) => ({ value, label }));
