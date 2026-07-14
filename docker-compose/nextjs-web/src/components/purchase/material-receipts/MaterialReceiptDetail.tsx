@@ -3,13 +3,17 @@
 /**
  * MaterialReceiptDetail — 素材入荷 詳細 (PU21)。
  *
- * SummaryGrid のみのシンプルな詳細。発注入荷なら関連する素材発注書への
- * リンクを表示する（直接調達はバッジ表示）。入荷は在庫入庫済みの確定記録
- * のため編集・削除アクションは持たない。
+ * SummaryGrid + 証憑パネル。発注入荷なら関連する素材発注書へのリンクを
+ * 表示する（直接調達はバッジ表示）。入荷は在庫入庫済みの確定記録のため
+ * 編集・削除アクションは持たないが、証憑（納品書控え等）は常時添付できる。
  */
 
-import { Anchor, Badge, Text } from "@mantine/core";
+import { Anchor, Badge, Paper, Text } from "@mantine/core";
 import Link from "next/link";
+import {
+  AttachmentsPanel,
+  type AttachmentView,
+} from "@/components/ui/AttachmentsPanel";
 import { DocNumber } from "@/components/ui/DocNumber";
 import { FieldValue } from "@/components/ui/FieldValue";
 import { StatusBadge } from "@/components/ui/StatusBadge";
@@ -22,8 +26,11 @@ const PO_PATH = "/purchase/purchase-orders";
 
 export function MaterialReceiptDetail({
   receipt,
+  attachments,
 }: {
   receipt: MaterialReceiptView;
+  /** 証憑（document_attachments 由来）。 */
+  attachments: AttachmentView[];
 }) {
   const r = receipt;
   return (
@@ -85,6 +92,18 @@ export function MaterialReceiptDetail({
         />
         <FieldValue label="備考" value={r.notes ?? "—"} />
       </SummaryGrid>
+
+      {/* 証憑（納品書控え・検収書等） — 常時添付可 */}
+      <Paper p="md" radius="md" withBorder>
+        <AttachmentsPanel
+          attachments={attachments}
+          canDelete
+          canUpload
+          ownerId={r.id}
+          ownerType="material_receipts"
+          title="証憑"
+        />
+      </Paper>
     </DetailShell>
   );
 }
