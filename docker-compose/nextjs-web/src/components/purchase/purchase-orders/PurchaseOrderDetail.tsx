@@ -46,6 +46,11 @@ import {
   requestPurchaseApproval,
 } from "@/app/(dashboard)/purchase/purchase-orders/actions";
 import {
+  ApprovalTrailList,
+  type ApprovalTrailView,
+  countTrailRecords,
+} from "@/components/production/ApprovalStatusPanel";
+import {
   AttachmentsPanel,
   type AttachmentView,
 } from "@/components/ui/AttachmentsPanel";
@@ -101,14 +106,17 @@ export function PurchaseOrderDetail({
   auditEntries,
   canApprove,
   attachments,
+  approvalTrail = [],
 }: {
   purchaseOrder: PurchaseOrderView;
   /** 操作履歴（audit_logs 由来、履歴タブ）。 */
   auditEntries: AuditEntry[];
-  /** 第一承認グループのメンバーか（承認 / 差し戻しのゲート）。 */
+  /** 第一承認グループのメンバー（or 代理）か（承認 / 差し戻しのゲート）。 */
   canApprove: boolean;
   /** 証憑（document_attachments 由来、証憑タブ）。 */
   attachments: AttachmentView[];
+  /** 正規化された承認記録（approval_records — 代理承認マーカー付き）。 */
+  approvalTrail?: ApprovalTrailView[];
 }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -301,6 +309,14 @@ export function PurchaseOrderDetail({
             </ApproveButton>
           )}
         </Group>
+
+        {/* 承認記録 — approval_records 由来（代理は「（代理: 原承認者）」付き） */}
+        {countTrailRecords(approvalTrail) > 0 && (
+          <>
+            <Divider my="md" />
+            <ApprovalTrailList trail={approvalTrail} />
+          </>
+        )}
 
         {records.length > 0 && (
           <>

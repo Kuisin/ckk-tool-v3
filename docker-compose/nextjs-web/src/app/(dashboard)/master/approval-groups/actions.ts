@@ -4,14 +4,15 @@
  * Server Actions — 承認グループ (MS0A).
  *
  * グループ本体の CRUD と、メンバー（approval_group_members）の追加・削除・
- * 有効/無効切替（design.md §13.5 — メンバーはグループ詳細のタブで管理）。
- * 種別（type）はグループの識別であり作成後変更不可。メンバー操作の監査は
- * グループ行（recordId = String(groupId)）に記録する。
+ * 有効/無効切替（design.md §13.5 — メンバーはグループ詳細のタブで管理）、
+ * および期間限定代理（approval_delegates）の追加・削除。
+ * 種別（type）はグループの識別であり作成後変更不可。メンバー・代理操作の
+ * 監査はグループ行（recordId = String(groupId)）に記録する。
  */
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { recordAudit } from "@/lib/audit";
+import { getCurrentActorId, recordAudit } from "@/lib/audit";
 import { prisma } from "@/lib/db";
 import { type LocalizedText, localized } from "@/lib/format";
 import {
@@ -231,6 +232,103 @@ export async function removeGroupMember(
     return actionOk();
   } catch (e) {
     return actionError(prismaErrorMessage(e, "メンバーの削除に失敗しました"));
+  }
+}
+
+// ── 期間限定代理（グループ詳細の代理設定タブから操作） ───────────────────────
+
+const delegateInput = z
+  .object({
+    delegatorId: z.string().min(1, "原承認者を選択してください"),
+    delegateId: z.string().min(1, "代理人を選択してください"),
+    validFrom: z.string().min(1, "開始日を選択してください"),
+    validUntil: z.string().min(1, "終了日を選択してください"),
+    reason: z.string().optional(),
+  })
+  .refine((v) => v.delegatorId !== v.delegateId, {
+    message: "原承認者と代理人は別のユーザーを選択してください",
+  })
+  .refine((v) => v.validFrom <= v.validUntil, {
+    message: "終了日は開始日以降の日付を選択してください",
+  });
+
+export type ApprovalDelegateInput = z.infer<typeof delegateInput>;
+
+/**
+ * 代理設定の追加。原承認者はグループの有効メンバーであること。
+ * 期間は日付単位（開始日 00:00 〜 終了日 23:59:59.999、サーバーローカル時刻）。
+ */
+export async function addDelegate(
+  groupId: number,
+  input: ApprovalDelegateInput,
+): Promise<ActionResult> {
+  const parsed = delegateInput.safeParse(input);
+  if (!parsed.success) {
+    return actionError(parsed.error.issues[0]?.message ?? "入力が不正です");
+  }
+  const v = parsed.data;
+  try {
+    const member = await prisma.approvalGroupMember.findUnique({
+      where: { groupId_userId: { groupId, userId: v.delegatorId } },
+      select: { isActive: true },
+    });
+    if (!member?.isActive) {
+      return actionError("原承認者はこのグループの有効なメンバーのみ選べます");
+    }
+    const actor = await getCurrentActorId();
+    await prisma.approvalDelegate.create({
+      data: {
+        groupId,
+        delegatorId: v.delegatorId,
+        delegateId: v.delegateId,
+        validFrom: new Date(`${v.validFrom}T00:00:00`),
+        validUntil: new Date(`${v.validUntil}T23:59:59.999`),
+        reason: v.reason?.trim() || null,
+        createdBy: actor,
+      },
+    });
+    await recordAudit({
+      action: "UPDATE",
+      tableName: "approval_groups",
+      recordId: String(groupId),
+      after: {
+        note: `代理設定を追加（原承認者「${await memberLabel(v.delegatorId)}」→ 代理人「${await memberLabel(v.delegateId)}」、期間 ${v.validFrom}〜${v.validUntil}）`,
+      },
+    });
+    revalidate(groupId);
+    return actionOk();
+  } catch (e) {
+    return actionError(prismaErrorMessage(e, "代理設定の追加に失敗しました"));
+  }
+}
+
+/** 代理設定の削除（行の物理削除）。 */
+export async function removeDelegate(
+  groupId: number,
+  delegateRowId: string,
+): Promise<ActionResult> {
+  try {
+    const prior = await prisma.approvalDelegate.findFirst({
+      where: { id: delegateRowId, groupId },
+      include: {
+        delegator: { select: { displayName: true } },
+        delegate: { select: { displayName: true } },
+      },
+    });
+    if (!prior) return actionError("対象の代理設定が見つかりません");
+    await prisma.approvalDelegate.delete({ where: { id: prior.id } });
+    await recordAudit({
+      action: "UPDATE",
+      tableName: "approval_groups",
+      recordId: String(groupId),
+      after: {
+        note: `代理設定を削除（原承認者「${prior.delegator.displayName}」→ 代理人「${prior.delegate.displayName}」）`,
+      },
+    });
+    revalidate(groupId);
+    return actionOk();
+  } catch (e) {
+    return actionError(prismaErrorMessage(e, "代理設定の削除に失敗しました"));
   }
 }
 

@@ -6,7 +6,9 @@
  * Stepper（第一承認 → 第二承認）+ 状態別アクション:
  *   DRAFT: 承認依頼 / PENDING_1ST: 第一承認・差し戻し（FIRST グループ）/
  *   PENDING_2ND: 第二承認・差し戻し（SECOND グループ）。
- * REJECTED は差し戻し理由の Alert。承認記録は history Json から表示する。
+ * REJECTED は差し戻し理由の Alert。操作履歴は history Json から表示し、
+ * 正規化された承認記録（approval_records — 代理承認は「（代理: 原承認者）」
+ * 付き）は trail prop（fetchApprovalTrail の結果）から表示する。
  */
 
 import {
@@ -44,6 +46,96 @@ import {
   type WorkOrderHistoryView,
 } from "./work-orders/model";
 
+// ── 承認記録（approval_requests / approval_records — client-safe view） ──────
+
+/** 承認記録 1 件（lib/approvals fetchApprovalTrail の records と同形）。 */
+export interface ApprovalTrailRecordView {
+  approver: string;
+  /** 代理承認の場合の原承認者名。 */
+  delegateFor: string | null;
+  action: string; // APPROVED | REJECTED
+  comment: string | null;
+  actedAt: string;
+}
+
+/** 承認依頼 1 件（step 単位）+ 記録。 */
+export interface ApprovalTrailView {
+  step: "FIRST" | "SECOND";
+  status: string; // PENDING | APPROVED | REJECTED
+  requestedAt: string;
+  records: ApprovalTrailRecordView[];
+}
+
+const TRAIL_STEP_LABEL: Record<string, string> = {
+  FIRST: "第一承認",
+  SECOND: "第二承認",
+};
+
+const TRAIL_ACTION_LABEL: Record<string, string> = {
+  APPROVED: "承認",
+  REJECTED: "差し戻し",
+};
+
+/** trail 内の総記録数（表示要否の判定用）。 */
+export function countTrailRecords(trail: ApprovalTrailView[]): number {
+  return trail.reduce((n, t) => n + t.records.length, 0);
+}
+
+/**
+ * 承認記録リスト — 段バッジ + 承認/差し戻しバッジ + 承認者
+ * （代理は「（代理: 原承認者）」）+ コメント + 日時。新しい順。
+ * 指示書 (ApprovalStatusPanel) と素材発注書 (PurchaseOrderDetail) で共用する。
+ */
+export function ApprovalTrailList({ trail }: { trail: ApprovalTrailView[] }) {
+  const records = trail
+    .flatMap((req) =>
+      req.records.map((rec, i) => ({
+        key: `${req.step}-${rec.actedAt}-${i}`,
+        step: req.step,
+        ...rec,
+      })),
+    )
+    .sort((a, b) => (a.actedAt < b.actedAt ? 1 : -1));
+  if (records.length === 0) return null;
+  return (
+    <Stack gap="xs">
+      <Text c="dimmed" fw={600} size="xs">
+        承認記録
+      </Text>
+      {records.map((r) => (
+        <Group gap="sm" key={r.key} wrap="nowrap">
+          <Badge color="gray" size="sm" variant="outline">
+            {TRAIL_STEP_LABEL[r.step] ?? r.step}
+          </Badge>
+          <Badge
+            color={r.action === "APPROVED" ? "green" : "red"}
+            size="sm"
+            variant="light"
+          >
+            {TRAIL_ACTION_LABEL[r.action] ?? r.action}
+          </Badge>
+          <Text size="xs">
+            {r.approver}
+            {r.delegateFor && (
+              <Text c="dimmed" component="span" size="xs">
+                （代理: {r.delegateFor}）
+              </Text>
+            )}
+          </Text>
+          <Text c="dimmed" className="tabular-nums" size="xs">
+            {formatDateTime(r.actedAt)}
+          </Text>
+          {r.comment && (
+            <Text c="dimmed" size="xs" truncate>
+              {r.comment}
+            </Text>
+          )}
+        </Group>
+      ))}
+    </Stack>
+  );
+}
+
 /** approvalStatus → Stepper の active index。 */
 function stepperActive(approvalStatus: string): number {
   switch (approvalStatus) {
@@ -67,6 +159,7 @@ export function ApprovalStatusPanel({
   history,
   canApproveFirst,
   canApproveSecond,
+  trail = [],
 }: {
   workOrderNumber: number;
   status: string;
@@ -75,6 +168,8 @@ export function ApprovalStatusPanel({
   history: WorkOrderHistoryView[];
   canApproveFirst: boolean;
   canApproveSecond: boolean;
+  /** 正規化された承認記録（fetchApprovalTrail の結果）。 */
+  trail?: ApprovalTrailView[];
 }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -179,6 +274,13 @@ export function ApprovalStatusPanel({
           </Text>
         )}
       </Group>
+
+      {countTrailRecords(trail) > 0 && (
+        <>
+          <Divider my="md" />
+          <ApprovalTrailList trail={trail} />
+        </>
+      )}
 
       {records.length > 0 && (
         <>

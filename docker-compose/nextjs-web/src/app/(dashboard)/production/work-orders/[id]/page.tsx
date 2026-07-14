@@ -2,7 +2,11 @@ import { notFound } from "next/navigation";
 import { WorkOrderDetail } from "@/components/production/work-orders/WorkOrderDetail";
 import { isApprover } from "@/lib/approvals";
 import { fetchAuditEntries } from "@/lib/audit";
-import { fetchCatalogStepOptions, fetchWorkOrder } from "../data";
+import {
+  fetchCatalogStepOptions,
+  fetchWorkOrder,
+  fetchWorkOrderApprovalTrail,
+} from "../data";
 
 export const dynamic = "force-dynamic";
 
@@ -32,17 +36,20 @@ export default async function ProductionWorkOrdersDetailPage({
     canApproveFirst,
     canApproveSecond,
     catalogOptions,
+    approvalTrail,
   ] = await Promise.all([
     fetchWorkOrder(workOrderNumber),
     fetchAuditEntries("work_orders", String(workOrderNumber)),
     isApprover("FIRST"),
     isApprover("SECOND"),
     fetchCatalogStepOptions(),
+    fetchWorkOrderApprovalTrail(workOrderNumber),
   ]);
   if (!workOrder) notFound();
 
   return (
     <WorkOrderDetail
+      approvalTrail={approvalTrail}
       auditEntries={auditEntries}
       canApproveFirst={canApproveFirst}
       canApproveSecond={canApproveSecond}

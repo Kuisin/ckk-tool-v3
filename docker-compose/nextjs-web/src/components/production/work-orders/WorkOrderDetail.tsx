@@ -23,7 +23,10 @@ import {
   cancelWorkOrder,
   copyWorkOrder,
 } from "@/app/(dashboard)/production/work-orders/actions";
-import { ApprovalStatusPanel } from "@/components/production/ApprovalStatusPanel";
+import {
+  ApprovalStatusPanel,
+  type ApprovalTrailView,
+} from "@/components/production/ApprovalStatusPanel";
 import { WorkOrderStepsPanel } from "@/components/production/WorkOrderStepsPanel";
 import { DocNumber } from "@/components/ui/DocNumber";
 import { FieldValue } from "@/components/ui/FieldValue";
@@ -49,6 +52,7 @@ export function WorkOrderDetail({
   auditEntries,
   canApproveFirst,
   canApproveSecond,
+  approvalTrail = [],
   catalogOptions = [],
   variant = "default",
 }: {
@@ -56,6 +60,8 @@ export function WorkOrderDetail({
   auditEntries: AuditEntry[];
   canApproveFirst: boolean;
   canApproveSecond: boolean;
+  /** 正規化された承認記録（approval_records — 代理承認マーカー付き）。 */
+  approvalTrail?: ApprovalTrailView[];
   /** 分岐追加モーダル用の工程カタログ options（詳細画面のみ）。 */
   catalogOptions?: { value: string; label: string }[];
   /** "approval" = 承認管理 (PD03) からの承認画面。 */
@@ -132,6 +138,7 @@ export function WorkOrderDetail({
       history={wo.history}
       rejectReason={wo.rejectReason}
       status={wo.status}
+      trail={approvalTrail}
       workOrderNumber={wo.workOrderNumber}
     />
   );
