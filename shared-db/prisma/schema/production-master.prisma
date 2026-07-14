@@ -24,6 +24,8 @@ model Factory {
   createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt     DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
+  workOrderSteps WorkOrderStep[]
+
   @@map("factories")
   @@schema("app")
 }
@@ -79,6 +81,7 @@ model ProcessStepCatalog {
   execDependencies   ProcessStepExecDependency[] @relation("ExecDepStep")
   execRequiredBy     ProcessStepExecDependency[] @relation("ExecDepTarget")
   inspectionTemplates InspectionTemplate[]
+  workOrderSteps      WorkOrderStep[]
 
   @@map("process_step_catalog")
   @@schema("app")
@@ -132,6 +135,7 @@ model InspectionTemplate {
 
   relatedProcessStep ProcessStepCatalog?      @relation(fields: [relatedProcessStepId], references: [id])
   items              InspectionTemplateItem[]
+  workOrderTemplates WorkOrderInspectionTemplate[]
 
   @@map("inspection_templates")
   @@schema("app")

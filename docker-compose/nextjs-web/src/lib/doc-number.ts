@@ -16,6 +16,8 @@ const DOC_FORMATS = {
   QOT: { digits: 5 },
   PRC: { digits: 5 },
   PRD: { digits: 4 },
+  SHP: { digits: 5 },
+  DRN: { digits: 5 },
 } as const;
 
 export type DocPrefix = keyof typeof DOC_FORMATS;
@@ -56,4 +58,30 @@ export function parseDocKey(id: string, prefix?: DocPrefix): DocKey | null {
   const seq = Number(m[3]);
   if (!Number.isInteger(seq) || seq < 1) return null;
   return { yearMonth: m[2], seq };
+}
+
+// ─── 受注書番号（3 パート: ORD-YYYYMM-NNNNN-NN） ────────────────────────────
+
+export interface SalesOrderKey {
+  yearMonth: string;
+  seq: number;
+  branch: number;
+}
+
+/** (yearMonth, seq, branch) → "ORD-202607-00001-01"。URL id にも使用。 */
+export function formatSalesOrderNumber(key: SalesOrderKey): string {
+  return `ORD-${key.yearMonth}-${String(key.seq).padStart(5, "0")}-${String(key.branch).padStart(2, "0")}`;
+}
+
+const SALES_ORDER_RE = /^(?:ORD-)?(\d{6})-(\d{1,6})-(\d{1,2})$/i;
+
+/** "ORD-202607-00001-01"（prefix 省略可）→ キー。不一致は null。 */
+export function parseSalesOrderKey(id: string): SalesOrderKey | null {
+  const m = SALES_ORDER_RE.exec(id.trim());
+  if (!m) return null;
+  const seq = Number(m[2]);
+  const branch = Number(m[3]);
+  if (!Number.isInteger(seq) || seq < 1) return null;
+  if (!Number.isInteger(branch) || branch < 1) return null;
+  return { yearMonth: m[1], seq, branch };
 }

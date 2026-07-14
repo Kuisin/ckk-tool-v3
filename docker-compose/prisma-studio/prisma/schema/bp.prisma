@@ -82,6 +82,11 @@ model BusinessPartner {
   purchaseOrdersAsSupplier MaterialPurchaseOrder[] @relation("PoSupplier")
   receiptsAsSupplier       MaterialReceipt[]       @relation("ReceiptSupplier")
 
+  salesOrdersAsCustomer SalesOrder[]    @relation("SalesOrderCustomer")
+  salesOrdersAsBranch   SalesOrder[]    @relation("SalesOrderCustomerBranch")
+  salesOrdersAsEndUser  SalesOrder[]    @relation("SalesOrderEndUser")
+  stepsAsSupplier       WorkOrderStep[] @relation("StepSupplier")
+
   @@index([parentId])
   @@map("business_partners")
   @@schema("app")

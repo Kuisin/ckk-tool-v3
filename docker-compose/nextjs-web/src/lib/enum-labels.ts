@@ -105,3 +105,25 @@ export const APPROVAL_GROUP_TYPE_LABEL: Record<string, string> = {
 export const APPROVAL_GROUP_TYPE_OPTIONS = Object.entries(
   APPROVAL_GROUP_TYPE_LABEL,
 ).map(([value, label]) => ({ value, label }));
+
+/** app.WORK_ORDER_TYPE（指示書種別） */
+export const WORK_ORDER_TYPE_LABEL: Record<string, string> = {
+  FROM_STOCK: "在庫分",
+  MANUFACTURE: "製造分",
+};
+
+export const WORK_ORDER_TYPE_OPTIONS = Object.entries(
+  WORK_ORDER_TYPE_LABEL,
+).map(([value, label]) => ({ value, label }));
+
+/** sales.ORDER_TYPE（注文種別）— 既存画面は各所ローカル定義。共通化用。 */
+export const ORDER_TYPE_LABEL: Record<string, string> = {
+  PRODUCTION: "本番",
+  TEST: "テスト",
+  SAMPLE: "サンプル",
+  OTHER: "その他",
+};
+
+export const ORDER_TYPE_OPTIONS = Object.entries(ORDER_TYPE_LABEL).map(
+  ([value, label]) => ({ value, label }),
+);
