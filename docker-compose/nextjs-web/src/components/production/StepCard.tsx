@@ -1,11 +1,30 @@
+"use client";
+
 /**
- * StepCard — 工程ステップカード (_specs/design.md §12.2)。表示専用（PR 3 で
- * 実行系を追加）。状態アイコン + 工程名 + 社内/外注バッジ + 実施先 +
- * 外注日程 / 完了情報 / 数量・不良内訳。
+ * StepCard — 工程ステップカード (_specs/design.md §12.2)。
+ * 状態アイコン + 工程名 + 社内/外注バッジ + 実施先 + 外注日程 / 完了情報 /
+ * 数量・不良内訳。指示書が承認済み/進行中のときは工程実行画面への
+ * 開始/実行ボタンと、完了工程には「分岐追加」メニューを出す。
  */
 
-import { Badge, Group, Paper, Text, ThemeIcon } from "@mantine/core";
-import { IconCheck, IconClock, IconLoader, IconX } from "@tabler/icons-react";
+import {
+  ActionIcon,
+  Badge,
+  Group,
+  Menu,
+  Paper,
+  Text,
+  ThemeIcon,
+} from "@mantine/core";
+import {
+  IconArrowsSplit,
+  IconCheck,
+  IconClock,
+  IconDotsVertical,
+  IconLoader,
+  IconX,
+} from "@tabler/icons-react";
+import { PrimaryButton, SecondaryButton } from "@/components/ui/buttons";
 import { formatDate, formatDateTime } from "@/lib/format";
 import type { WorkOrderStepView } from "./work-orders/model";
 
@@ -16,11 +35,39 @@ const STATUS_ICON: Record<string, { color: string; icon: React.ReactNode }> = {
   CANCELLED: { color: "red", icon: <IconX size={14} /> },
 };
 
-export function StepCard({ step }: { step: WorkOrderStepView }) {
+export function StepCard({
+  step,
+  executeHref,
+  onAddBranch,
+}: {
+  step: WorkOrderStepView;
+  /** 工程実行画面への deep link（指示書が承認済み/進行中のときのみ）。 */
+  executeHref?: string;
+  /** 分岐追加（COMPLETED の工程のみ）。 */
+  onAddBranch?: () => void;
+}) {
   const icon = STATUS_ICON[step.status] ?? STATUS_ICON.PENDING;
   const isOutsource = step.executionLocation === "OUTSOURCE";
   const locationName = isOutsource ? step.supplierName : step.factoryName;
   const hasQuantities = step.inputQuantity != null;
+
+  // 状態別の実行ボタン（PENDING=開始 / IN_PROGRESS=実行 / COMPLETED=詳細）
+  let executeButton: React.ReactNode = null;
+  if (executeHref && step.status !== "CANCELLED") {
+    if (step.status === "PENDING") {
+      executeButton = step.canStart ? (
+        <PrimaryButton href={executeHref}>開始</PrimaryButton>
+      ) : (
+        <SecondaryButton href={executeHref}>開始</SecondaryButton>
+      );
+    } else if (step.status === "IN_PROGRESS") {
+      executeButton = <PrimaryButton href={executeHref}>実行</PrimaryButton>;
+    } else {
+      executeButton = (
+        <SecondaryButton href={executeHref}>詳細</SecondaryButton>
+      );
+    }
+  }
 
   return (
     <Paper p="sm" radius="sm" withBorder>
@@ -50,11 +97,35 @@ export function StepCard({ step }: { step: WorkOrderStepView }) {
             </Badge>
           )}
         </Group>
-        {locationName && (
-          <Text c="dimmed" size="xs" truncate>
-            {locationName}
-          </Text>
-        )}
+        <Group gap="xs" wrap="nowrap">
+          {locationName && (
+            <Text c="dimmed" size="xs" truncate>
+              {locationName}
+            </Text>
+          )}
+          {executeButton}
+          {onAddBranch && (
+            <Menu position="bottom-end" shadow="sm" withinPortal>
+              <Menu.Target>
+                <ActionIcon
+                  aria-label="工程メニュー"
+                  color="gray"
+                  variant="subtle"
+                >
+                  <IconDotsVertical size={16} />
+                </ActionIcon>
+              </Menu.Target>
+              <Menu.Dropdown>
+                <Menu.Item
+                  leftSection={<IconArrowsSplit size={14} />}
+                  onClick={onAddBranch}
+                >
+                  分岐追加
+                </Menu.Item>
+              </Menu.Dropdown>
+            </Menu>
+          )}
+        </Group>
       </Group>
 
       {isOutsource && (

@@ -122,3 +122,322 @@ describe("defaultOrder", () => {
     expect(defaultOrder([9, 7, 1, 8], catalog)).toEqual([1, 7, 8, 9]);
   });
 });
+
+// ─── 実行側（開始可否・数量伝播・DAG・レイアウト・WIP・完了判定） ────────────
+
+import {
+  canStartStep,
+  computeWipByStep,
+  downstreamStepIds,
+  type ExecDep,
+  expectedInput,
+  isWorkOrderComplete,
+  layoutWorkflowGraph,
+  type StepLinkState,
+  type StepState,
+  validateDagShape,
+  validateQuantities,
+  validateRouting,
+  type WorkflowCtx,
+} from "./workflow-core";
+
+const step = (
+  id: string,
+  processStepId: number,
+  sortOrder: number,
+  status: StepState["status"] = "PENDING",
+  q: Partial<StepState> = {},
+): StepState => ({
+  id,
+  processStepId,
+  status,
+  sortOrder,
+  inputQuantity: null,
+  outputSuccess: null,
+  defectSemiFinished: null,
+  defectScrap: null,
+  defectRework: null,
+  sessionLockedBy: null,
+  ...q,
+});
+
+const edep = (
+  stepId: number,
+  dependsOnStepId: number,
+  relation: "AND" | "OR" = "AND",
+): ExecDep => ({ stepId, dependsOnStepId, relation });
+
+describe("canStartStep", () => {
+  // カタログ: 100 素材出し → 200 切断（AND 100）→ 300 検査（AND 200）
+  const execDeps = [edep(200, 100), edep(300, 200)];
+
+  it("AND 依存が完了していれば開始可", () => {
+    const ctx: WorkflowCtx = {
+      plannedQuantity: 10,
+      steps: [step("a", 100, 10, "COMPLETED"), step("b", 200, 20)],
+      links: [],
+      execDeps,
+    };
+    expect(canStartStep("b", ctx).ok).toBe(true);
+  });
+
+  it("AND 依存が未完了なら不可", () => {
+    const ctx: WorkflowCtx = {
+      plannedQuantity: 10,
+      steps: [step("a", 100, 10, "IN_PROGRESS"), step("b", 200, 20)],
+      links: [],
+      execDeps,
+    };
+    expect(canStartStep("b", ctx).ok).toBe(false);
+  });
+
+  it("依存先がワークフローに不在なら空真（素材属性・省略工程）", () => {
+    const ctx: WorkflowCtx = {
+      plannedQuantity: 10,
+      steps: [step("b", 200, 20)], // 100 不在
+      links: [],
+      execDeps,
+    };
+    expect(canStartStep("b", ctx).ok).toBe(true);
+  });
+
+  it("OR 依存はいずれか完了で可", () => {
+    const orDeps = [edep(400, 100, "OR"), edep(400, 200, "OR")];
+    const ctx: WorkflowCtx = {
+      plannedQuantity: 10,
+      steps: [
+        step("a", 100, 10, "COMPLETED"),
+        step("b", 200, 20, "PENDING"),
+        step("c", 400, 30),
+      ],
+      links: [],
+      execDeps: orDeps,
+    };
+    expect(canStartStep("c", ctx).ok).toBe(true);
+  });
+
+  it("他者セッションロック中は不可・本人は可", () => {
+    const ctx: WorkflowCtx = {
+      plannedQuantity: 10,
+      steps: [step("b", 200, 20, "PENDING", { sessionLockedBy: "user-x" })],
+      links: [],
+      execDeps: [],
+    };
+    expect(canStartStep("b", ctx, "user-y").ok).toBe(false);
+    expect(canStartStep("b", ctx, "user-x").ok).toBe(true);
+  });
+
+  it("分岐元が未完了なら合流先は開始不可", () => {
+    const ctx: WorkflowCtx = {
+      plannedQuantity: 10,
+      steps: [step("src", 100, 10, "IN_PROGRESS"), step("dst", 200, 20)],
+      links: [{ sourceStepId: "src", targetStepId: "dst", routedQuantity: 5 }],
+      execDeps: [],
+    };
+    expect(canStartStep("dst", ctx).ok).toBe(false);
+  });
+});
+
+describe("expectedInput", () => {
+  it("先頭工程は予定数量", () => {
+    const ctx: WorkflowCtx = {
+      plannedQuantity: 100,
+      steps: [step("a", 100, 10)],
+      links: [],
+      execDeps: [],
+    };
+    expect(expectedInput("a", ctx)).toBe(100);
+  });
+
+  it("直列は前工程の良品数を継ぐ（CANCELLED はスキップ）", () => {
+    const ctx: WorkflowCtx = {
+      plannedQuantity: 100,
+      steps: [
+        step("a", 100, 10, "COMPLETED", {
+          inputQuantity: 100,
+          outputSuccess: 90,
+        }),
+        step("x", 150, 15, "CANCELLED"),
+        step("b", 200, 20),
+      ],
+      links: [],
+      execDeps: [],
+    };
+    expect(expectedInput("b", ctx)).toBe(90);
+  });
+
+  it("流入エッジがあれば Σrouted", () => {
+    const ctx: WorkflowCtx = {
+      plannedQuantity: 100,
+      steps: [
+        step("a", 100, 10, "COMPLETED"),
+        step("b", 200, 20),
+        step("m", 300, 30),
+      ],
+      links: [
+        { sourceStepId: "a", targetStepId: "m", routedQuantity: 8 },
+        { sourceStepId: "b", targetStepId: "m", routedQuantity: 2 },
+      ],
+      execDeps: [],
+    };
+    expect(expectedInput("m", ctx)).toBe(10);
+  });
+});
+
+describe("validateQuantities / validateRouting", () => {
+  it("保存則: 良品+不良 = 受入", () => {
+    expect(
+      validateQuantities({
+        inputQuantity: 10,
+        outputSuccess: 7,
+        defectSemiFinished: 1,
+        defectScrap: 1,
+        defectRework: 1,
+      }),
+    ).toEqual([]);
+    expect(
+      validateQuantities({
+        inputQuantity: 10,
+        outputSuccess: 7,
+        defectSemiFinished: 1,
+        defectScrap: 1,
+        defectRework: 0,
+      })[0].kind,
+    ).toBe("CONSERVATION");
+  });
+
+  it("負数は NEGATIVE", () => {
+    const issues = validateQuantities({
+      inputQuantity: 5,
+      outputSuccess: -1,
+      defectSemiFinished: 0,
+      defectScrap: 6,
+      defectRework: 0,
+    });
+    expect(issues.some((i) => i.kind === "NEGATIVE")).toBe(true);
+  });
+
+  it("ルーティング: Σrouted = 良品 + 手直し", () => {
+    const out: StepLinkState[] = [
+      { sourceStepId: "a", targetStepId: "b", routedQuantity: 8 },
+      { sourceStepId: "a", targetStepId: "r", routedQuantity: 2 },
+    ];
+    expect(validateRouting({ outputSuccess: 8, defectRework: 2 }, out)).toEqual(
+      [],
+    );
+    expect(
+      validateRouting({ outputSuccess: 8, defectRework: 1 }, out)[0].kind,
+    ).toBe("ROUTING");
+  });
+});
+
+describe("validateDagShape", () => {
+  const ids = [{ id: "a" }, { id: "b" }, { id: "c" }];
+  it("正常な分岐合流は OK", () => {
+    expect(
+      validateDagShape(ids, [
+        { sourceStepId: "a", targetStepId: "b", routedQuantity: 1 },
+        { sourceStepId: "b", targetStepId: "c", routedQuantity: 1 },
+        { sourceStepId: "a", targetStepId: "c", routedQuantity: 1 },
+      ]),
+    ).toEqual([]);
+  });
+  it("閉路は拒否", () => {
+    const errs = validateDagShape(ids, [
+      { sourceStepId: "a", targetStepId: "b", routedQuantity: 1 },
+      { sourceStepId: "b", targetStepId: "a", routedQuantity: 1 },
+    ]);
+    expect(errs.some((e) => e.includes("循環"))).toBe(true);
+  });
+  it("自己ループは拒否", () => {
+    expect(
+      validateDagShape(ids, [
+        { sourceStepId: "a", targetStepId: "a", routedQuantity: 1 },
+      ]).length,
+    ).toBeGreaterThan(0);
+  });
+});
+
+describe("layoutWorkflowGraph", () => {
+  it("エッジに沿って layer が単調増加", () => {
+    const steps = [step("a", 1, 10), step("b", 2, 20), step("r", 3, 15)];
+    const links: StepLinkState[] = [
+      { sourceStepId: "a", targetStepId: "r", routedQuantity: 2 },
+      { sourceStepId: "r", targetStepId: "b", routedQuantity: 2 },
+    ];
+    const { nodes } = layoutWorkflowGraph(steps, links);
+    const layer = new Map(nodes.map((n) => [n.id, n.layer]));
+    expect(layer.get("r")).toBeGreaterThan(layer.get("a") ?? 99);
+    expect(layer.get("b")).toBeGreaterThan(layer.get("r") ?? 99);
+  });
+});
+
+describe("computeWipByStep / isWorkOrderComplete", () => {
+  it("手直し分岐の一巡: IN_PROGRESS の受入 + 開始可能 PENDING の想定受入", () => {
+    // a 完了(10 → 良品8, 手直し2) → b（8 流入）, rework（2 流入）
+    const ctx: WorkflowCtx = {
+      plannedQuantity: 10,
+      steps: [
+        step("a", 100, 10, "COMPLETED", {
+          inputQuantity: 10,
+          outputSuccess: 8,
+          defectRework: 2,
+          defectSemiFinished: 0,
+          defectScrap: 0,
+        }),
+        step("rework", 150, 15),
+        step("b", 200, 20, "IN_PROGRESS", { inputQuantity: 8 }),
+      ],
+      links: [
+        { sourceStepId: "a", targetStepId: "rework", routedQuantity: 2 },
+        { sourceStepId: "a", targetStepId: "b", routedQuantity: 8 },
+      ],
+      execDeps: [],
+    };
+    const wip = computeWipByStep(ctx);
+    expect(wip.find((w) => w.stepId === "b")?.wip).toBe(8);
+    expect(wip.find((w) => w.stepId === "rework")?.wip).toBe(2);
+    expect(isWorkOrderComplete(ctx)).toBe(false);
+  });
+
+  it("全完了（CANCELLED 除外）で完了", () => {
+    const ctx: WorkflowCtx = {
+      plannedQuantity: 10,
+      steps: [
+        step("a", 100, 10, "COMPLETED"),
+        step("x", 150, 15, "CANCELLED"),
+        step("b", 200, 20, "COMPLETED"),
+      ],
+      links: [],
+      execDeps: [],
+    };
+    expect(isWorkOrderComplete(ctx)).toBe(true);
+  });
+});
+
+describe("downstreamStepIds", () => {
+  // s1(10) → s2(20) → [branch(40) 経由の合流] → s3(30)
+  const steps = [
+    step("s1", 100, 10, "COMPLETED"),
+    step("s2", 200, 20, "COMPLETED"),
+    step("s3", 300, 30, "COMPLETED"),
+    step("br", 400, 40, "COMPLETED"),
+  ];
+  const links: StepLinkState[] = [
+    { sourceStepId: "s2", targetStepId: "br", routedQuantity: 2 },
+    { sourceStepId: "br", targetStepId: "s3", routedQuantity: 2 },
+  ];
+  const ctx: WorkflowCtx = { plannedQuantity: 10, steps, links, execDeps: [] };
+
+  it("合流先（小さい sortOrder でも）は分岐工程の下流", () => {
+    expect(downstreamStepIds("br", ctx)).toEqual(["s3"]);
+  });
+
+  it("末端（合流先）の下流は空 → 巻き戻し可", () => {
+    expect(downstreamStepIds("s3", ctx)).toEqual([]);
+  });
+
+  it("先頭の下流は全工程", () => {
+    expect(downstreamStepIds("s1", ctx).sort()).toEqual(["br", "s2", "s3"]);
+  });
+});
