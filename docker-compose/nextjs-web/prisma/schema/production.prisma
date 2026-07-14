@@ -226,6 +226,9 @@ model WorkOrderStep {
   outgoingLinks WorkOrderStepLink[] @relation("LinkSource")
   incomingLinks WorkOrderStepLink[] @relation("LinkTarget")
 
+  inspectionRecords InspectionRecord[]
+  defectRecords     DefectRecord[]
+
   @@index([workOrderId, sortOrder])
   @@index([status])
   @@map("work_order_steps")
@@ -249,5 +252,70 @@ model WorkOrderStepLink {
 
   @@unique([sourceStepId, targetStepId])
   @@map("work_order_step_links")
+  @@schema("app")
+}
+
+// ─── 検査記録・不良記録（§7, PR 3） ─────────────────────────────────────────
+
+enum InspectionStatus {
+  PENDING
+  PASS
+  FAIL
+  APPROVED
+
+  @@map("INSPECTION_STATUS")
+  @@schema("app")
+}
+
+model InspectionRecord {
+  id              String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  workOrderStepId String           @map("work_order_step_id") @db.Uuid
+  templateId      Int              @map("template_id")
+  status          InspectionStatus @default(PENDING)
+  recordedBy      String?          @map("recorded_by") @db.Uuid
+  approvedBy      String?          @map("approved_by") @db.Uuid
+  recordedAt      DateTime?        @map("recorded_at") @db.Timestamptz(6)
+  approvedAt      DateTime?        @map("approved_at") @db.Timestamptz(6)
+  notes           String?
+
+  step     WorkOrderStep      @relation(fields: [workOrderStepId], references: [id], onDelete: Cascade)
+  template InspectionTemplate @relation("InspectionRecordTemplate", fields: [templateId], references: [id])
+  items    InspectionRecordItem[]
+
+  @@index([workOrderStepId])
+  @@map("inspection_records")
+  @@schema("app")
+}
+
+model InspectionRecordItem {
+  id                 String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  inspectionRecordId String  @map("inspection_record_id") @db.Uuid
+  templateItemId     Int     @map("template_item_id")
+  measuredValue      String? @map("measured_value")
+  isPass             Boolean? @map("is_pass")
+  notes              String?
+
+  record       InspectionRecord       @relation(fields: [inspectionRecordId], references: [id], onDelete: Cascade)
+  templateItem InspectionTemplateItem @relation("InspectionRecordItemTemplate", fields: [templateItemId], references: [id])
+
+  @@index([inspectionRecordId])
+  @@map("inspection_record_items")
+  @@schema("app")
+}
+
+// 不良記録（各工程ステップで任意記録）
+model DefectRecord {
+  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  workOrderStepId String   @map("work_order_step_id") @db.Uuid
+  defectTypeId    Int      @map("defect_type_id")
+  description     String
+  recordedBy      String?  @map("recorded_by") @db.Uuid
+  recordedAt      DateTime @default(now()) @map("recorded_at") @db.Timestamptz(6)
+
+  step       WorkOrderStep @relation(fields: [workOrderStepId], references: [id], onDelete: Cascade)
+  defectType DefectType    @relation("DefectRecordType", fields: [defectTypeId], references: [id])
+
+  @@index([workOrderStepId])
+  @@map("defect_records")
   @@schema("app")
 }

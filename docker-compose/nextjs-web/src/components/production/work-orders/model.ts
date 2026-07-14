@@ -38,6 +38,13 @@ export interface WorkOrderRow {
 
 // ── 詳細 ─────────────────────────────────────────────────────────────────────
 
+/** 工程ステップ間の分岐・合流エッジ（work_order_step_links）。 */
+export interface StepLinkView {
+  sourceStepId: string;
+  targetStepId: string;
+  routedQuantity: number;
+}
+
 export interface WorkOrderStepView {
   id: string;
   processStepId: number;
@@ -65,6 +72,8 @@ export interface WorkOrderStepView {
   outsourceExpectedAt: string | null;
   completedAt: string | null;
   completedByName: string | null;
+  /** サーバーで canStartStep により算出（PENDING で依存充足なら true）。 */
+  canStart: boolean;
 }
 
 /** history Json の 1 エントリ（表示用 — user は displayName 解決済み）。 */
@@ -103,6 +112,7 @@ export interface WorkOrderView {
   copies: WorkOrderCopyRef[];
   inspectionTemplates: { id: number; code: string; name: string }[];
   steps: WorkOrderStepView[];
+  stepLinks: StepLinkView[];
   rejectReason: string | null;
   history: WorkOrderHistoryView[];
   createdAt: string;

@@ -49,12 +49,15 @@ export function WorkOrderDetail({
   auditEntries,
   canApproveFirst,
   canApproveSecond,
+  catalogOptions = [],
   variant = "default",
 }: {
   workOrder: WorkOrderView;
   auditEntries: AuditEntry[];
   canApproveFirst: boolean;
   canApproveSecond: boolean;
+  /** 分岐追加モーダル用の工程カタログ options（詳細画面のみ）。 */
+  catalogOptions?: { value: string; label: string }[];
   /** "approval" = 承認管理 (PD03) からの承認画面。 */
   variant?: "default" | "approval";
 }) {
@@ -274,7 +277,13 @@ export function WorkOrderDetail({
 
         <Tabs.Panel pt="md" value="overview">
           <Stack gap="md">
-            <WorkOrderStepsPanel steps={wo.steps} />
+            <WorkOrderStepsPanel
+              catalogOptions={catalogOptions}
+              stepLinks={wo.stepLinks}
+              steps={wo.steps}
+              workOrderNumber={wo.workOrderNumber}
+              workOrderStatus={wo.status}
+            />
             {wo.notes && (
               <div>
                 <Text c="dimmed" mb={4} size="xs">

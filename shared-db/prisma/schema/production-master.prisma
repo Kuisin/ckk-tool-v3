@@ -136,6 +136,7 @@ model InspectionTemplate {
   relatedProcessStep ProcessStepCatalog?      @relation(fields: [relatedProcessStepId], references: [id])
   items              InspectionTemplateItem[]
   workOrderTemplates WorkOrderInspectionTemplate[]
+  inspectionRecords  InspectionRecord[]            @relation("InspectionRecordTemplate")
 
   @@map("inspection_templates")
   @@schema("app")
@@ -153,6 +154,8 @@ model InspectionTemplateItem {
 
   template InspectionTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
 
+  recordItems InspectionRecordItem[] @relation("InspectionRecordItemTemplate")
+
   @@index([templateId, sortOrder])
   @@map("inspection_template_items")
   @@schema("app")
@@ -166,6 +169,8 @@ model DefectType {
   name      Json
   isActive  Boolean @default(true) @map("is_active")
   sortOrder Int     @default(0) @map("sort_order")
+
+  defectRecords DefectRecord[] @relation("DefectRecordType")
 
   @@map("defect_types")
   @@schema("app")

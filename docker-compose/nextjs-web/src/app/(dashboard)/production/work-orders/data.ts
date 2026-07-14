@@ -6,13 +6,22 @@
  */
 
 import type {
+  InspectionRecordView,
+  InspectionTemplateView,
+  StepDefectRecordView,
+  StepExecutionData,
+} from "@/components/production/step-execution/model";
+import type {
   WorkOrderRow,
   WorkOrderView,
 } from "@/components/production/work-orders/model";
 import type { HistoryEntry } from "@/lib/approvals";
+import { getCurrentActorId } from "@/lib/audit";
 import { prisma } from "@/lib/db";
 import { formatSalesOrderNumber } from "@/lib/doc-number";
 import { type LocalizedText, localized } from "@/lib/format";
+import { fetchWorkflowCtx, loadCatalog } from "@/lib/workflow";
+import { canStartStep, expectedInput } from "@/lib/workflow-core";
 
 const WO_INCLUDE = {
   salesOrder: { include: { customerBp: true, product: true } },
@@ -26,6 +35,7 @@ const WO_INCLUDE = {
     include: { processStep: true, factory: true, supplierBp: true },
     orderBy: { sortOrder: "asc" as const },
   },
+  stepLinks: true,
   inspectionTemplates: { include: { inspectionTemplate: true } },
 };
 
@@ -87,6 +97,12 @@ export async function fetchWorkOrder(
     include: WO_INCLUDE,
   });
   if (!r) return null;
+
+  // 工程ごとの開始可否（実行依存 + 分岐流入 + ロック）をサーバーで算出
+  const [{ ctx }, actorId] = await Promise.all([
+    fetchWorkflowCtx(r.id),
+    getCurrentActorId(),
+  ]);
 
   // history Json + 工程 completedBy の uuid → displayName 解決
   const historyRaw: HistoryEntry[] = Array.isArray(r.history)
@@ -166,6 +182,12 @@ export async function fetchWorkOrder(
       outsourceExpectedAt: iso(s.outsourceExpectedAt),
       completedAt: iso(s.completedAt),
       completedByName: s.completedBy ? nameOf(s.completedBy) : null,
+      canStart: canStartStep(s.id, ctx, actorId).ok,
+    })),
+    stepLinks: r.stepLinks.map((l) => ({
+      sourceStepId: l.sourceStepId,
+      targetStepId: l.targetStepId,
+      routedQuantity: l.routedQuantity,
     })),
     rejectReason: r.rejectReason,
     history: historyRaw.map((h) => ({
@@ -179,11 +201,207 @@ export async function fetchWorkOrder(
   };
 }
 
+// ── 工程実行 (§7 / design.md §12.3) ─────────────────────────────────────────
+
+const dateOnly = (d: Date | null | undefined) =>
+  d ? d.toISOString().slice(0, 10) : null;
+
+/** 工程実行ページの view model。指示書に属さない stepId は null。 */
+export async function fetchStepExecution(
+  workOrderNumber: number,
+  stepId: string,
+): Promise<StepExecutionData | null> {
+  const wo = await prisma.workOrder.findUnique({
+    where: { workOrderNumber },
+    select: { id: true, status: true, plannedQuantity: true },
+  });
+  if (!wo) return null;
+
+  const step = await prisma.workOrderStep.findFirst({
+    where: { id: stepId, workOrderId: wo.id },
+    include: {
+      processStep: true,
+      factory: true,
+      supplierBp: true,
+      inspectionRecords: {
+        include: {
+          template: true,
+          items: { include: { templateItem: true } },
+        },
+        orderBy: { recordedAt: "desc" },
+      },
+      defectRecords: {
+        include: { defectType: true },
+        orderBy: { recordedAt: "desc" },
+      },
+    },
+  });
+  if (!step) return null;
+
+  const [{ ctx }, actorId, templateLinks, defectTypes] = await Promise.all([
+    fetchWorkflowCtx(wo.id),
+    getCurrentActorId(),
+    prisma.workOrderInspectionTemplate.findMany({
+      where: { workOrderId: wo.id },
+      include: {
+        inspectionTemplate: {
+          include: { items: { orderBy: { sortOrder: "asc" } } },
+        },
+      },
+    }),
+    prisma.defectType.findMany({
+      where: { isActive: true },
+      orderBy: [{ sortOrder: "asc" }, { id: "asc" }],
+    }),
+  ]);
+
+  // 承認工程は指示書全体の検査記録を承認対象として表示する
+  const woRecordsRaw = step.processStep.isApprovalStep
+    ? await prisma.inspectionRecord.findMany({
+        where: { step: { workOrderId: wo.id } },
+        include: {
+          template: true,
+          step: { include: { processStep: true } },
+          items: { include: { templateItem: true } },
+        },
+        orderBy: { recordedAt: "desc" },
+      })
+    : [];
+
+  // user uuid → displayName 解決
+  const userIds = new Set<string>();
+  for (const id of [step.sessionLockedBy, step.startedBy, step.completedBy]) {
+    if (id) userIds.add(id);
+  }
+  for (const rec of [...step.inspectionRecords, ...woRecordsRaw]) {
+    if (rec.recordedBy) userIds.add(rec.recordedBy);
+    if (rec.approvedBy) userIds.add(rec.approvedBy);
+  }
+  for (const d of step.defectRecords) {
+    if (d.recordedBy) userIds.add(d.recordedBy);
+  }
+  const users = userIds.size
+    ? await prisma.user.findMany({
+        where: { id: { in: [...userIds] } },
+        select: { id: true, displayName: true },
+      })
+    : [];
+  const nameOf = (id: string | null | undefined) =>
+    id ? (users.find((u) => u.id === id)?.displayName ?? "システム") : null;
+
+  type RecordRaw = (typeof step.inspectionRecords)[number];
+  const mapRecord = (
+    rec: RecordRaw,
+    stepName: string | null,
+  ): InspectionRecordView => ({
+    id: rec.id,
+    templateId: rec.templateId,
+    templateName: localized(rec.template.name as LocalizedText | null),
+    stepName,
+    status: rec.status,
+    recordedAt: iso(rec.recordedAt),
+    recordedByName: nameOf(rec.recordedBy),
+    approvedAt: iso(rec.approvedAt),
+    approvedByName: nameOf(rec.approvedBy),
+    items: rec.items.map((it) => ({
+      templateItemId: it.templateItemId,
+      itemName: localized(it.templateItem.itemName as LocalizedText | null),
+      measuredValue: it.measuredValue,
+      isPass: it.isPass,
+    })),
+  });
+
+  const templates: InspectionTemplateView[] = templateLinks.map((t) => ({
+    id: t.inspectionTemplate.id,
+    code: t.inspectionTemplate.code,
+    name: localized(t.inspectionTemplate.name as LocalizedText | null),
+    items: t.inspectionTemplate.items.map((it) => ({
+      id: it.id,
+      name: localized(it.itemName as LocalizedText | null),
+      unit: it.unit,
+      // Decimal → Number（境界で変換）
+      toleranceMin: it.toleranceMin == null ? null : Number(it.toleranceMin),
+      toleranceMax: it.toleranceMax == null ? null : Number(it.toleranceMax),
+      isRequired: it.isRequired,
+    })),
+  }));
+
+  const defectRecords: StepDefectRecordView[] = step.defectRecords.map((d) => ({
+    id: d.id,
+    defectTypeName: localized(d.defectType.name as LocalizedText | null),
+    description: d.description,
+    recordedAt: d.recordedAt.toISOString(),
+    recordedByName: nameOf(d.recordedBy),
+  }));
+
+  return {
+    actorId,
+    workOrderNumber,
+    workOrderStatus: wo.status,
+    plannedQuantity: wo.plannedQuantity,
+    step: {
+      id: step.id,
+      processStepId: step.processStepId,
+      code: step.processStep.code,
+      name: localized(step.processStep.name as LocalizedText | null),
+      category: step.processStep.category,
+      isInspection: step.processStep.isInspection,
+      isApprovalStep: step.processStep.isApprovalStep,
+      sortOrder: step.sortOrder,
+      executionLocation: step.executionLocation,
+      factoryName: step.factory
+        ? localized(step.factory.name as LocalizedText | null)
+        : null,
+      supplierName: step.supplierBp
+        ? localized(step.supplierBp.name as LocalizedText | null)
+        : null,
+      status: step.status,
+      inputQuantity: step.inputQuantity,
+      outputSuccessQuantity: step.outputSuccessQuantity,
+      outputDefectSemiFinished: step.outputDefectSemiFinished,
+      outputDefectScrap: step.outputDefectScrap,
+      outputDefectRework: step.outputDefectRework,
+      sessionLockedBy: step.sessionLockedBy,
+      sessionLockedByName: nameOf(step.sessionLockedBy),
+      startedAt: iso(step.startedAt),
+      startedByName: nameOf(step.startedBy),
+      completedAt: iso(step.completedAt),
+      completedByName: nameOf(step.completedBy),
+      cancelReason: step.cancelReason,
+      notes: step.notes,
+      outsourceRequestedAt: dateOnly(step.outsourceRequestedAt),
+      outsourceExpectedAt: dateOnly(step.outsourceExpectedAt),
+      outsourceReceivedAt: dateOnly(step.outsourceReceivedAt),
+    },
+    canStart: canStartStep(step.id, ctx, actorId),
+    expectedInputQuantity: expectedInput(step.id, ctx),
+    templates,
+    stepRecords: step.inspectionRecords.map((r) => mapRecord(r, null)),
+    workOrderRecords: woRecordsRaw.map((r) =>
+      mapRecord(r, localized(r.step.processStep.name as LocalizedText | null)),
+    ),
+    defectRecords,
+    defectTypeOptions: defectTypes.map((d) => ({
+      value: String(d.id),
+      label: `${d.code} ${localized(d.name as LocalizedText | null)}`,
+    })),
+  };
+}
+
 // ── ビルダー用 options ───────────────────────────────────────────────────────
 
 export interface Option {
   value: string;
   label: string;
+}
+
+/** 工程カタログ（有効のみ）— 分岐追加モーダルの MultiSelect。value = String(id)。 */
+export async function fetchCatalogStepOptions(): Promise<Option[]> {
+  const catalog = await loadCatalog();
+  return catalog.steps.map((s) => ({
+    value: String(s.id),
+    label: `${s.code} ${s.nameJa}`,
+  }));
 }
 
 /** 工場（有効のみ）— 社内工程の実施工場 Select。value = String(内部 id)。 */
