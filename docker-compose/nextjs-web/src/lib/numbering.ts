@@ -17,6 +17,7 @@ const SEQUENCES = {
   ORDER: { prefix: "ORD", digits: 5 }, // 注文請書ベース（枝番は行側で 1..N）
   SHIPPING: { prefix: "SHP", digits: 5 }, // 出荷書
   DELIVERY: { prefix: "DRN", digits: 5 }, // 納品書
+  PURCHASE: { prefix: "PO", digits: 5 }, // 素材発注書（po_number に文字列保存）
 } as const;
 
 export type NumberingKey = keyof typeof SEQUENCES;
