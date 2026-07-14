@@ -16,6 +16,7 @@ model File {
   deliveryNotesPdf DeliveryNote[] @relation("DeliveryNotePdf")
   invoicesPdf      Invoice[]      @relation("InvoicePdf")
   designFiles      DesignFile[]   @relation("DesignFileFile")
+  attachments      DocumentAttachment[] @relation("AttachmentFile")
 
   @@map("files")
   @@schema("app")
@@ -84,5 +85,26 @@ model AuditLog {
   @@index([tableName, recordId])
   @@index([createdAt])
   @@map("audit_logs")
+  @@schema("app")
+}
+
+// 文書添付（証憑等）。owner は多態参照（owner_type = @@map 名 / owner_id =
+// 各画面の業務キー文字列 — audit_logs の record_id と同じ規約）。
+// 実体は files（SeaweedFS）。用途: 発注書の承認後証憑・素材入荷の納品書控え・
+// 受注請書の取込元ファイルなど。
+model DocumentAttachment {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  ownerType  String   @map("owner_type") // material_purchase_orders / material_receipts / order_acceptances …
+  ownerId    String   @map("owner_id") // 業務キー（PO-… / uuid / ORD-…）
+  fileId     String   @map("file_id") @db.Uuid
+  label      String? // 表示名・区分（注文書控え 等）
+  uploadedBy String?  @map("uploaded_by") @db.Uuid
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  file           File  @relation("AttachmentFile", fields: [fileId], references: [id])
+  uploadedByUser User? @relation("AttachmentUploadedBy", fields: [uploadedBy], references: [id])
+
+  @@index([ownerType, ownerId])
+  @@map("document_attachments")
   @@schema("app")
 }

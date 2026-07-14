@@ -46,6 +46,10 @@ import {
   requestPurchaseApproval,
 } from "@/app/(dashboard)/purchase/purchase-orders/actions";
 import {
+  AttachmentsPanel,
+  type AttachmentView,
+} from "@/components/ui/AttachmentsPanel";
+import {
   ApproveButton,
   PrimaryButton,
   RejectButton,
@@ -65,6 +69,7 @@ import {
 import { formatDate, formatDateTime } from "@/lib/format";
 import type { ActionResult } from "@/lib/server-action";
 import {
+  canAttachEvidence,
   isCancellable,
   isEditable,
   PURCHASE_HISTORY_ACTION_LABEL,
@@ -95,12 +100,15 @@ export function PurchaseOrderDetail({
   purchaseOrder,
   auditEntries,
   canApprove,
+  attachments,
 }: {
   purchaseOrder: PurchaseOrderView;
   /** 操作履歴（audit_logs 由来、履歴タブ）。 */
   auditEntries: AuditEntry[];
   /** 第一承認グループのメンバーか（承認 / 差し戻しのゲート）。 */
   canApprove: boolean;
+  /** 証憑（document_attachments 由来、証憑タブ）。 */
+  attachments: AttachmentView[];
 }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -322,6 +330,7 @@ export function PurchaseOrderDetail({
       <Tabs defaultValue="items">
         <Tabs.List>
           <Tabs.Tab value="items">明細（{po.items.length}）</Tabs.Tab>
+          <Tabs.Tab value="attachments">証憑（{attachments.length}）</Tabs.Tab>
           <Tabs.Tab value="overview">概要</Tabs.Tab>
           <Tabs.Tab value="history">履歴</Tabs.Tab>
         </Tabs.List>
@@ -379,6 +388,25 @@ export function PurchaseOrderDetail({
               合計金額 <MoneyText value={po.totalAmount} />
             </Text>
           </Group>
+        </Tabs.Panel>
+
+        {/* 証憑 — 注文書控え・納品書控え等。添付は承認後（APPROVED 以降）のみ */}
+        <Tabs.Panel pt="md" value="attachments">
+          <Stack gap="sm">
+            {!canAttachEvidence(po) && (
+              <Text c="dimmed" size="xs">
+                証憑の添付は承認後（承認済・発注済・入荷完了）に可能になります
+              </Text>
+            )}
+            <AttachmentsPanel
+              attachments={attachments}
+              canDelete={canAttachEvidence(po)}
+              canUpload={canAttachEvidence(po)}
+              ownerId={po.poNumber}
+              ownerType="material_purchase_orders"
+              title="証憑"
+            />
+          </Stack>
         </Tabs.Panel>
 
         <Tabs.Panel pt="md" value="overview">

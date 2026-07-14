@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { PurchaseOrderDetail } from "@/components/purchase/purchase-orders/PurchaseOrderDetail";
 import { isApprover } from "@/lib/approvals";
+import { listAttachments } from "@/lib/attachments";
 import { fetchAuditEntries } from "@/lib/audit";
 import { fetchPurchaseOrder } from "../data";
 
@@ -27,15 +28,18 @@ export default async function PurchasePurchaseOrdersDetailPage({
   const { id } = await params;
   const poNumber = decodeURIComponent(id);
 
-  const [purchaseOrder, auditEntries, canApprove] = await Promise.all([
-    fetchPurchaseOrder(poNumber),
-    fetchAuditEntries("material_purchase_orders", poNumber),
-    isApprover("FIRST"),
-  ]);
+  const [purchaseOrder, auditEntries, canApprove, attachments] =
+    await Promise.all([
+      fetchPurchaseOrder(poNumber),
+      fetchAuditEntries("material_purchase_orders", poNumber),
+      isApprover("FIRST"),
+      listAttachments("material_purchase_orders", poNumber),
+    ]);
   if (!purchaseOrder) notFound();
 
   return (
     <PurchaseOrderDetail
+      attachments={attachments}
       auditEntries={auditEntries}
       canApprove={canApprove}
       purchaseOrder={purchaseOrder}
