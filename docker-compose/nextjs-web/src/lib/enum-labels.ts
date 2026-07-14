@@ -168,6 +168,6 @@ export const DESIGN_TRIGGER_LABEL: Record<string, string> = {
   SALES_ORDER: "受注時",
 };
 
-export const DESIGN_TRIGGER_OPTIONS = Object.entries(
-  DESIGN_TRIGGER_LABEL,
-).map(([value, label]) => ({ value, label }));
+export const DESIGN_TRIGGER_OPTIONS = Object.entries(DESIGN_TRIGGER_LABEL).map(
+  ([value, label]) => ({ value, label }),
+);

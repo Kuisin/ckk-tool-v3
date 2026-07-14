@@ -310,16 +310,8 @@ export async function setMaterialsActive(
 export async function deleteMaterials(ids: number[]): Promise<ActionResult> {
   if (ids.length === 0) return actionError("対象が選択されていません");
   try {
-    // Guard: refuse when a product still references one of the materials.
-    // (Other referencing tables surface as P2003 via prismaErrorMessage.)
-    const products = await prisma.product.count({
-      where: { materialId: { in: ids } },
-    });
-    if (products > 0) {
-      return actionError(
-        "この素材を使用する製品が存在するため削除できません。無効化を検討してください。",
-      );
-    }
+    // 参照ガード: 製品は材種参照へ移行済み（products.material_id は廃止）。
+    // 指示書・発注明細・入荷・在庫などの実参照は P2003 → prismaErrorMessage。
     await prisma.material.deleteMany({ where: { id: { in: ids } } });
     for (const id of ids) {
       await recordAudit({
