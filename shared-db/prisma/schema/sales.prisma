@@ -194,6 +194,7 @@ model Quote {
   createdByUser    User?            @relation("QuoteCreatedBy", fields: [createdBy], references: [id])
   items            QuoteItem[]
   salesOrders      SalesOrder[]
+  designRequests   DesignRequest[]
 
   @@id([yearMonth, seq])
   @@map("quotes")

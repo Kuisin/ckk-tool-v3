@@ -112,6 +112,7 @@ model SalesOrder {
   workOrders     WorkOrder[]
   shippingOrders ShippingOrder[]
   reservations   InventoryReservation[]
+  designRequests DesignRequest[]
 
   @@unique([yearMonth, seq, branch])
   @@index([customerBpId])
