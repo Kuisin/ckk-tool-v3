@@ -332,6 +332,8 @@ export function AppHeader({ user }: { user?: HeaderUser | null }) {
               </Menu.Label>
               <Divider mb="5px" />
               <Menu.Item
+                component={Link}
+                href="/profile"
                 leftSection={<IconUser size={14} />}
                 py={{ base: "sm", md: "xs" }}
               >
