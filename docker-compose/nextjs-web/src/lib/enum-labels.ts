@@ -171,3 +171,17 @@ export const DESIGN_TRIGGER_LABEL: Record<string, string> = {
 export const DESIGN_TRIGGER_OPTIONS = Object.entries(DESIGN_TRIGGER_LABEL).map(
   ([value, label]) => ({ value, label }),
 );
+
+/** app.notifications.type（通知種別） */
+export const NOTIFICATION_TYPE_LABEL: Record<string, string> = {
+  APPROVAL_REQUEST: "承認依頼",
+  APPROVAL_RESULT: "承認結果",
+  INTAKE: "取込",
+  PURCHASE: "購買",
+  SHARE: "共有",
+  SYSTEM: "システム",
+};
+
+export const NOTIFICATION_TYPE_OPTIONS = Object.entries(
+  NOTIFICATION_TYPE_LABEL,
+).map(([value, label]) => ({ value, label }));
