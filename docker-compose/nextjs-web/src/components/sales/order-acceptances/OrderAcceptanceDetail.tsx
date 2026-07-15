@@ -86,6 +86,7 @@ import {
   ResourceActions,
   SummaryGrid,
 } from "@/components/ui/shells";
+import { useTabParam } from "@/hooks/useUrlState";
 import { ORDER_TYPE_LABEL } from "@/lib/enum-labels";
 import { formatDate, formatDateTime } from "@/lib/format";
 import type { ActionResult } from "@/lib/server-action";
@@ -139,6 +140,8 @@ export function OrderAcceptanceDetail({
   canApprove: boolean;
 }) {
   const router = useRouter();
+  // アクティブタブを ?tab= に保持（URL 共有でタブまで再現）
+  const [tab, setTab] = useTabParam("attachments");
   const [isPending, startTransition] = useTransition();
   const [rejectOpen, setRejectOpen] = useState(false);
   const [rejectReason, setRejectReason] = useState("");
@@ -513,7 +516,7 @@ export function OrderAcceptanceDetail({
         )}
       </Paper>
 
-      <Tabs defaultValue="attachments">
+      <Tabs onChange={setTab} value={tab}>
         <Tabs.List>
           <Tabs.Tab value="attachments">添付（{attachments.length}）</Tabs.Tab>
           <Tabs.Tab value="history">履歴</Tabs.Tab>

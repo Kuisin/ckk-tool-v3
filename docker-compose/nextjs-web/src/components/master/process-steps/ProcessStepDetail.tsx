@@ -21,6 +21,7 @@ import {
   ResourceActions,
   SummaryGrid,
 } from "@/components/ui/shells";
+import { useTabParam } from "@/hooks/useUrlState";
 import { useIsMobile } from "@/hooks/useViewport";
 import {
   DEPENDENCY_RELATION_LABEL,
@@ -150,6 +151,8 @@ export function ProcessStepDetail({
   updatedAt?: string;
 }) {
   const router = useRouter();
+  // アクティブタブを ?tab= に保持（URL 共有でタブまで再現）
+  const [tab, setTab] = useTabParam("overview");
 
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [toggleOpen, setToggleOpen] = useState(false);
@@ -251,7 +254,7 @@ export function ProcessStepDetail({
         <FieldValue label="表示順" value={record.sortOrder} />
       </SummaryGrid>
 
-      <Tabs defaultValue="overview">
+      <Tabs onChange={setTab} value={tab}>
         <Tabs.List>
           <Tabs.Tab value="overview">概要</Tabs.Tab>
           <Tabs.Tab value="dependencies">依存関係</Tabs.Tab>

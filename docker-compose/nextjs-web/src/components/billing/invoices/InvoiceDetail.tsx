@@ -48,6 +48,7 @@ import {
   ResourceActions,
   SummaryGrid,
 } from "@/components/ui/shells";
+import { useTabParam } from "@/hooks/useUrlState";
 import { formatDate, formatDateTime } from "@/lib/format";
 import type { ActionResult } from "@/lib/server-action";
 import { canIssue, canMarkPaid, canMarkSent, type Invoice } from "./model";
@@ -63,6 +64,8 @@ export function InvoiceDetail({
   auditEntries: AuditEntry[];
 }) {
   const router = useRouter();
+  // アクティブタブを ?tab= に保持（URL 共有でタブまで再現）
+  const [tab, setTab] = useTabParam("overview");
   const [isPending, startTransition] = useTransition();
   const [issueOpen, setIssueOpen] = useState(false);
   const [sentOpen, setSentOpen] = useState(false);
@@ -289,7 +292,7 @@ export function InvoiceDetail({
         </Table.ScrollContainer>
       </Paper>
 
-      <Tabs defaultValue="overview">
+      <Tabs onChange={setTab} value={tab}>
         <Tabs.List>
           <Tabs.Tab value="overview">概要</Tabs.Tab>
           <Tabs.Tab value="history">履歴</Tabs.Tab>

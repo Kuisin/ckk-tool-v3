@@ -37,6 +37,7 @@ import { DocNumber } from "@/components/ui/DocNumber";
 import { openConfirm } from "@/components/ui/modals";
 import { NewButton } from "@/components/ui/NewButton";
 import { ListShell } from "@/components/ui/shells";
+import { useUrlSelectState, useUrlStringState } from "@/hooks/useUrlState";
 import { useIsMobile } from "@/hooks/useViewport";
 import {
   PROCESS_CATEGORY_LABEL,
@@ -105,9 +106,10 @@ export function ProcessStepTable({ rows }: { rows: ProcessStepRow[] }) {
   const isMobile = useIsMobile();
   const [, startTransition] = useTransition();
 
-  const [search, setSearch] = useState("");
-  const [categoryFilter, setCategoryFilter] = useState<string | null>(null);
-  const [statusFilter, setStatusFilter] = useState<string | null>(null);
+  // 検索・フィルタは URL search params に保持（design.md §8.1 / ページ共有）
+  const [search, setSearch] = useUrlStringState("q");
+  const [categoryFilter, setCategoryFilter] = useUrlSelectState("category");
+  const [statusFilter, setStatusFilter] = useUrlSelectState("status");
 
   const [deleteRow, setDeleteRow] = useState<ProcessStepModalTarget | null>(
     null,
@@ -117,7 +119,7 @@ export function ProcessStepTable({ rows }: { rows: ProcessStepRow[] }) {
   );
 
   const reset = () => {
-    setSearch("");
+    setSearch(null);
     setCategoryFilter(null);
     setStatusFilter(null);
   };
@@ -409,6 +411,7 @@ export function ProcessStepTable({ rows }: { rows: ProcessStepRow[] }) {
           },
         ]}
         selectable
+        urlState
       />
 
       <DeleteProcessStepModal

@@ -29,6 +29,7 @@ import { DocNumber } from "@/components/ui/DocNumber";
 import { openConfirm } from "@/components/ui/modals";
 import { NewButton } from "@/components/ui/NewButton";
 import { ListShell } from "@/components/ui/shells";
+import { useUrlSelectState, useUrlStringState } from "@/hooks/useUrlState";
 import { useIsMobile } from "@/hooks/useViewport";
 import {
   type DefectTypeModalTarget,
@@ -60,8 +61,9 @@ export function DefectTypeTable({ rows }: { rows: DefectTypeRow[] }) {
   const isMobile = useIsMobile();
   const [, startTransition] = useTransition();
 
-  const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState<string | null>(null);
+  // 検索・フィルタは URL search params に保持（design.md §8.1 / ページ共有）
+  const [search, setSearch] = useUrlStringState("q");
+  const [statusFilter, setStatusFilter] = useUrlSelectState("status");
 
   const [editRow, setEditRow] = useState<DefectTypeModalTarget | null>(null);
   const [deleteRow, setDeleteRow] = useState<DefectTypeModalTarget | null>(
@@ -72,7 +74,7 @@ export function DefectTypeTable({ rows }: { rows: DefectTypeRow[] }) {
   );
 
   const reset = () => {
-    setSearch("");
+    setSearch(null);
     setStatusFilter(null);
   };
 
@@ -263,6 +265,7 @@ export function DefectTypeTable({ rows }: { rows: DefectTypeRow[] }) {
           },
         ]}
         selectable
+        urlState
       />
 
       <EditDefectTypeModal

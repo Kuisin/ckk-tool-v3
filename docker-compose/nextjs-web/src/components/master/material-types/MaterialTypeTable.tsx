@@ -38,6 +38,7 @@ import { DocNumber } from "@/components/ui/DocNumber";
 import { openConfirm } from "@/components/ui/modals";
 import { NewButton } from "@/components/ui/NewButton";
 import { ListShell } from "@/components/ui/shells";
+import { useUrlSelectState, useUrlStringState } from "@/hooks/useUrlState";
 import { useIsMobile } from "@/hooks/useViewport";
 import { formatDate } from "@/lib/format";
 import {
@@ -76,9 +77,11 @@ export function MaterialTypeTable({ rows }: { rows: MaterialTypeRow[] }) {
   const isMobile = useIsMobile();
   const [, startTransition] = useTransition();
 
-  const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState<string | null>(null);
-  const [structuredFilter, setStructuredFilter] = useState<string | null>(null);
+  // 検索・フィルタは URL search params に保持（design.md §8.1 / ページ共有）
+  const [search, setSearch] = useUrlStringState("q");
+  const [statusFilter, setStatusFilter] = useUrlSelectState("status");
+  const [structuredFilter, setStructuredFilter] =
+    useUrlSelectState("structured");
 
   const [deleteRow, setDeleteRow] = useState<MaterialTypeModalTarget | null>(
     null,
@@ -88,7 +91,7 @@ export function MaterialTypeTable({ rows }: { rows: MaterialTypeRow[] }) {
   );
 
   const reset = () => {
-    setSearch("");
+    setSearch(null);
     setStatusFilter(null);
     setStructuredFilter(null);
   };
@@ -312,6 +315,7 @@ export function MaterialTypeTable({ rows }: { rows: MaterialTypeRow[] }) {
           },
         ]}
         selectable
+        urlState
       />
 
       <DeleteMaterialTypeModal

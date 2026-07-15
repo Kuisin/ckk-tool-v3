@@ -11,10 +11,11 @@
 import { Group, Select, Stack, Text, TextInput } from "@mantine/core";
 import { IconSearch, IconStack2 } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { InventoryBadge } from "@/components/production/InventoryBadge";
 import { type Column, DataTable } from "@/components/ui/DataTable";
 import { ListShell } from "@/components/ui/shells";
+import { useUrlSelectState, useUrlStringState } from "@/hooks/useUrlState";
 import { useIsMobile } from "@/hooks/useViewport";
 import { formatDate } from "@/lib/format";
 import type { MaterialInventoryRow } from "./model";
@@ -29,11 +30,12 @@ export function MaterialInventoryTable({
   const router = useRouter();
   const isMobile = useIsMobile();
 
-  const [search, setSearch] = useState("");
-  const [factory, setFactory] = useState<string | null>(null);
+  // 検索・フィルタは URL search params に保持（design.md §8.1 / ページ共有）
+  const [search, setSearch] = useUrlStringState("q");
+  const [factory, setFactory] = useUrlSelectState("factory");
 
   const reset = () => {
-    setSearch("");
+    setSearch(null);
     setFactory(null);
   };
 
@@ -207,6 +209,7 @@ export function MaterialInventoryTable({
             </Stack>
           </Group>
         )}
+        urlState
       />
     </ListShell>
   );

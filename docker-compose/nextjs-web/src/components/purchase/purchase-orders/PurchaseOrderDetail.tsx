@@ -71,6 +71,7 @@ import {
   ResourceActions,
   SummaryGrid,
 } from "@/components/ui/shells";
+import { useTabParam } from "@/hooks/useUrlState";
 import { formatDate, formatDateTime } from "@/lib/format";
 import type { ActionResult } from "@/lib/server-action";
 import {
@@ -119,6 +120,8 @@ export function PurchaseOrderDetail({
   approvalTrail?: ApprovalTrailView[];
 }) {
   const router = useRouter();
+  // アクティブタブを ?tab= に保持（URL 共有でタブまで再現）
+  const [tab, setTab] = useTabParam("items");
   const [isPending, startTransition] = useTransition();
   const [rejectOpen, setRejectOpen] = useState(false);
   const [rejectReason, setRejectReason] = useState("");
@@ -343,7 +346,7 @@ export function PurchaseOrderDetail({
         )}
       </Paper>
 
-      <Tabs defaultValue="items">
+      <Tabs onChange={setTab} value={tab}>
         <Tabs.List>
           <Tabs.Tab value="items">明細（{po.items.length}）</Tabs.Tab>
           <Tabs.Tab value="attachments">証憑（{attachments.length}）</Tabs.Tab>

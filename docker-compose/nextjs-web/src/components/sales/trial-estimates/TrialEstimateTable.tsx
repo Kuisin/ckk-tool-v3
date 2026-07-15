@@ -21,6 +21,7 @@ import { MoneyText } from "@/components/ui/MoneyText";
 import { NewButton } from "@/components/ui/NewButton";
 import { StatusBadge, statusOptions } from "@/components/ui/StatusBadge";
 import { ListShell } from "@/components/ui/shells";
+import { useUrlSelectState, useUrlStringState } from "@/hooks/useUrlState";
 import { useIsMobile } from "@/hooks/useViewport";
 import { formatDateTime } from "@/lib/format";
 import type { Option } from "@/lib/mock";
@@ -50,9 +51,10 @@ export function TrialEstimateTable({
 }) {
   const router = useRouter();
   const isMobile = useIsMobile();
-  const [search, setSearch] = useState("");
-  const [toolType, setToolType] = useState<string | null>(null);
-  const [status, setStatus] = useState<string | null>(null);
+  // 検索・フィルタは URL search params に保持（design.md §8.1 / ページ共有）
+  const [search, setSearch] = useUrlStringState("q");
+  const [toolType, setToolType] = useUrlSelectState("toolType");
+  const [status, setStatus] = useUrlSelectState("status");
   // 価格表に登録 modal target (null = closed).
   const [registerTarget, setRegisterTarget] =
     useState<TrialEstimateRecord | null>(null);
@@ -190,7 +192,7 @@ export function TrialEstimateTable({
         </>
       }
       onReset={() => {
-        setSearch("");
+        setSearch(null);
         setToolType(null);
         setStatus(null);
       }}
@@ -263,6 +265,7 @@ export function TrialEstimateTable({
             onAction: (row) => router.push(`${BASE_PATH}/new?from=${row.id}`),
           },
         ]}
+        urlState
       />
 
       <ConvertToPriceListModal

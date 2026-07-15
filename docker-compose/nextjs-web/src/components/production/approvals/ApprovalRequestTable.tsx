@@ -12,10 +12,10 @@
 import { Badge, Group, Select, Stack, Text, TextInput } from "@mantine/core";
 import { IconSearch, IconShieldCheck } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
 import type { ApprovalRequestRow } from "@/app/(dashboard)/production/approvals/data";
 import { type Column, DataTable } from "@/components/ui/DataTable";
 import { ListShell } from "@/components/ui/shells";
+import { useUrlSelectState, useUrlStringState } from "@/hooks/useUrlState";
 import { useIsMobile } from "@/hooks/useViewport";
 import { formatDateTime } from "@/lib/format";
 
@@ -91,12 +91,13 @@ export function ApprovalRequestTable({ rows }: { rows: ApprovalRequestRow[] }) {
   const router = useRouter();
   const isMobile = useIsMobile();
 
-  const [search, setSearch] = useState("");
-  const [targetType, setTargetType] = useState<string | null>(null);
-  const [step, setStep] = useState<string | null>(null);
+  // 検索・フィルタは URL search params に保持（design.md §8.1 / ページ共有）
+  const [search, setSearch] = useUrlStringState("q");
+  const [targetType, setTargetType] = useUrlSelectState("targetType");
+  const [step, setStep] = useUrlSelectState("step");
 
   const reset = () => {
-    setSearch("");
+    setSearch(null);
     setTargetType(null);
     setStep(null);
   };
@@ -254,6 +255,7 @@ export function ApprovalRequestTable({ rows }: { rows: ApprovalRequestRow[] }) {
             </Stack>
           </Group>
         )}
+        urlState
       />
     </ListShell>
   );

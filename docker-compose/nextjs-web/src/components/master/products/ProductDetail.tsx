@@ -23,6 +23,7 @@ import {
   ResourceActions,
   SummaryGrid,
 } from "@/components/ui/shells";
+import { useTabParam } from "@/hooks/useUrlState";
 import { useIsMobile } from "@/hooks/useViewport";
 import { formatDate, formatDateTime } from "@/lib/format";
 import {
@@ -76,6 +77,8 @@ export function ProductDetail({
 }) {
   const router = useRouter();
   const isMobile = useIsMobile();
+  // アクティブタブを ?tab= に保持（URL 共有でタブまで再現）
+  const [tab, setTab] = useTabParam("overview");
 
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [duplicateOpen, setDuplicateOpen] = useState(false);
@@ -161,7 +164,7 @@ export function ProductDetail({
         <FieldValue label="単位" value={record.unit} />
       </SummaryGrid>
 
-      <Tabs defaultValue="overview">
+      <Tabs onChange={setTab} value={tab}>
         <Tabs.List>
           <Tabs.Tab value="overview">概要</Tabs.Tab>
           <Tabs.Tab value="related">関連</Tabs.Tab>

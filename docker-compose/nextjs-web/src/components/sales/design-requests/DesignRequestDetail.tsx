@@ -40,6 +40,7 @@ import {
   ResourceActions,
   SummaryGrid,
 } from "@/components/ui/shells";
+import { useTabParam } from "@/hooks/useUrlState";
 import { DESIGN_TRIGGER_LABEL } from "@/lib/enum-labels";
 import { formatDateTime } from "@/lib/format";
 import type { ActionResult } from "@/lib/server-action";
@@ -56,6 +57,8 @@ export function DesignRequestDetail({
   auditEntries: AuditEntry[];
 }) {
   const router = useRouter();
+  // アクティブタブを ?tab= に保持（URL 共有でタブまで再現）
+  const [tab, setTab] = useTabParam("overview");
   const [isPending, startTransition] = useTransition();
   const [completeOpen, setCompleteOpen] = useState(false);
   const [reopenOpen, setReopenOpen] = useState(false);
@@ -206,7 +209,7 @@ export function DesignRequestDetail({
         />
       </SummaryGrid>
 
-      <Tabs defaultValue="overview">
+      <Tabs onChange={setTab} value={tab}>
         <Tabs.List>
           <Tabs.Tab value="overview">概要</Tabs.Tab>
           <Tabs.Tab value="files">ファイル（{request.files.length}）</Tabs.Tab>

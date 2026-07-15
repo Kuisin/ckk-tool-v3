@@ -38,6 +38,7 @@ import { DocNumber } from "@/components/ui/DocNumber";
 import { openConfirm } from "@/components/ui/modals";
 import { NewButton } from "@/components/ui/NewButton";
 import { ListShell } from "@/components/ui/shells";
+import { useUrlSelectState, useUrlStringState } from "@/hooks/useUrlState";
 import { useIsMobile } from "@/hooks/useViewport";
 import {
   DeleteProductModal,
@@ -87,8 +88,9 @@ export function ProductTable({ rows }: { rows: ProductRow[] }) {
   const isMobile = useIsMobile();
   const [, startTransition] = useTransition();
 
-  const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState<string | null>(null);
+  // 検索・フィルタは URL search params に保持（design.md §8.1 / ページ共有）
+  const [search, setSearch] = useUrlStringState("q");
+  const [statusFilter, setStatusFilter] = useUrlSelectState("status");
 
   const [deleteRow, setDeleteRow] = useState<ProductModalTarget | null>(null);
   const [duplicateRow, setDuplicateRow] = useState<ProductModalTarget | null>(
@@ -97,7 +99,7 @@ export function ProductTable({ rows }: { rows: ProductRow[] }) {
   const [toggleRow, setToggleRow] = useState<ProductModalTarget | null>(null);
 
   const reset = () => {
-    setSearch("");
+    setSearch(null);
     setStatusFilter(null);
   };
 
@@ -313,6 +315,7 @@ export function ProductTable({ rows }: { rows: ProductRow[] }) {
           },
         ]}
         selectable
+        urlState
       />
 
       <DeleteProductModal
