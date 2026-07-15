@@ -29,6 +29,7 @@ import { DocNumber } from "@/components/ui/DocNumber";
 import { openConfirm } from "@/components/ui/modals";
 import { NewButton } from "@/components/ui/NewButton";
 import { ListShell } from "@/components/ui/shells";
+import { useUrlSelectState, useUrlStringState } from "@/hooks/useUrlState";
 import { useIsMobile } from "@/hooks/useViewport";
 import {
   DeleteInspectionTemplateModal,
@@ -61,8 +62,9 @@ export function InspectionTemplateTable({
   const isMobile = useIsMobile();
   const [, startTransition] = useTransition();
 
-  const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState<string | null>(null);
+  // 検索・フィルタは URL search params に保持（design.md §8.1 / ページ共有）
+  const [search, setSearch] = useUrlStringState("q");
+  const [statusFilter, setStatusFilter] = useUrlSelectState("status");
 
   const [deleteRow, setDeleteRow] =
     useState<InspectionTemplateModalTarget | null>(null);
@@ -70,7 +72,7 @@ export function InspectionTemplateTable({
     useState<InspectionTemplateModalTarget | null>(null);
 
   const reset = () => {
-    setSearch("");
+    setSearch(null);
     setStatusFilter(null);
   };
 
@@ -280,6 +282,7 @@ export function InspectionTemplateTable({
           },
         ]}
         selectable
+        urlState
       />
 
       <DeleteInspectionTemplateModal

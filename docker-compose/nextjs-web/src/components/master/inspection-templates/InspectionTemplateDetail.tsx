@@ -39,6 +39,7 @@ import {
   ResourceActions,
   SummaryGrid,
 } from "@/components/ui/shells";
+import { useTabParam } from "@/hooks/useUrlState";
 import { formatDateTime } from "@/lib/format";
 import {
   DeleteInspectionTemplateItemModal,
@@ -81,6 +82,8 @@ export function InspectionTemplateDetail({
   auditEntries: AuditEntry[];
 }) {
   const router = useRouter();
+  // アクティブタブを ?tab= に保持（URL 共有でタブまで再現）
+  const [tab, setTab] = useTabParam("info");
 
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [toggleOpen, setToggleOpen] = useState(false);
@@ -149,7 +152,7 @@ export function InspectionTemplateDetail({
         />
       </SummaryGrid>
 
-      <Tabs defaultValue="info">
+      <Tabs onChange={setTab} value={tab}>
         <Tabs.List>
           <Tabs.Tab value="info">テンプレート情報</Tabs.Tab>
           <Tabs.Tab value="items">検査項目</Tabs.Tab>

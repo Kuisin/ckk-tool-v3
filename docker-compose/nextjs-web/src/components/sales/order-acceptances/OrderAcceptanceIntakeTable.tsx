@@ -37,6 +37,7 @@ import { type Column, DataTable } from "@/components/ui/DataTable";
 import { NewButton } from "@/components/ui/NewButton";
 import { StatusBadge, statusOptions } from "@/components/ui/StatusBadge";
 import { ListShell } from "@/components/ui/shells";
+import { useUrlSelectState, useUrlStringState } from "@/hooks/useUrlState";
 import { useIsMobile } from "@/hooks/useViewport";
 import { formatDateTime } from "@/lib/format";
 import { INTAKE_SOURCE_BADGE, type OrderAcceptanceListRow } from "./model";
@@ -63,8 +64,9 @@ export function OrderAcceptanceIntakeTable({
   const router = useRouter();
   const isMobile = useIsMobile();
 
-  const [search, setSearch] = useState("");
-  const [status, setStatus] = useState<string | null>(null);
+  // 検索・フィルタは URL search params に保持（design.md §8.1 / ページ共有）
+  const [search, setSearch] = useUrlStringState("q");
+  const [status, setStatus] = useUrlSelectState("status");
   const [uploading, setUploading] = useState(false);
 
   // 取込中（抽出待ち）の行がある間は 30 秒ごとに自動更新（進捗の可視化）。
@@ -78,7 +80,7 @@ export function OrderAcceptanceIntakeTable({
   }, [hasImporting, router]);
 
   const reset = () => {
-    setSearch("");
+    setSearch(null);
     setStatus(null);
   };
 
@@ -377,6 +379,7 @@ export function OrderAcceptanceIntakeTable({
               </Group>
             );
           }}
+          urlState
         />
       </Stack>
     </ListShell>

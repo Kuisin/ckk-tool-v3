@@ -24,6 +24,7 @@ import {
   DetailShell,
   ResourceActions,
 } from "@/components/ui/shells";
+import { useTabParam } from "@/hooks/useUrlState";
 import { VENDOR_TYPE_LABEL } from "@/lib/enum-labels";
 import { formatDateTime } from "@/lib/format";
 
@@ -37,6 +38,8 @@ export function SupplierDetail({
   auditEntries: AuditEntry[];
 }) {
   const router = useRouter();
+  // アクティブタブを ?tab= に保持（URL 共有でタブまで再現）
+  const [tab, setTab] = useTabParam("overview");
 
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [toggleOpen, setToggleOpen] = useState(false);
@@ -93,7 +96,7 @@ export function SupplierDetail({
     >
       <BpBaseSummary record={record} />
 
-      <Tabs defaultValue="overview">
+      <Tabs onChange={setTab} value={tab}>
         <Tabs.List>
           <Tabs.Tab value="overview">概要</Tabs.Tab>
           <Tabs.Tab value="audit">履歴</Tabs.Tab>

@@ -41,6 +41,7 @@ import {
   ResourceActions,
   SummaryGrid,
 } from "@/components/ui/shells";
+import { useTabParam } from "@/hooks/useUrlState";
 import { formatDate } from "@/lib/format";
 import {
   AddApprovalDelegateModal,
@@ -94,6 +95,8 @@ export function ApprovalGroupDetail({
 }) {
   const router = useRouter();
   const [, startTransition] = useTransition();
+  // アクティブタブを ?tab= に保持（URL 共有でタブまで再現）
+  const [tab, setTab] = useTabParam("info");
 
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [toggleOpen, setToggleOpen] = useState(false);
@@ -182,7 +185,7 @@ export function ApprovalGroupDetail({
         />
       </SummaryGrid>
 
-      <Tabs defaultValue="info">
+      <Tabs onChange={setTab} value={tab}>
         <Tabs.List>
           <Tabs.Tab value="info">グループ情報</Tabs.Tab>
           <Tabs.Tab value="members">メンバー</Tabs.Tab>

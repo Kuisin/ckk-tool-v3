@@ -40,6 +40,7 @@ import {
   ResourceActions,
   SummaryGrid,
 } from "@/components/ui/shells";
+import { useTabParam } from "@/hooks/useUrlState";
 import { WORK_ORDER_TYPE_LABEL } from "@/lib/enum-labels";
 import { formatDateTime } from "@/lib/format";
 import type { WorkOrderView } from "./model";
@@ -68,6 +69,8 @@ export function WorkOrderDetail({
   variant?: "default" | "approval";
 }) {
   const router = useRouter();
+  // アクティブタブを ?tab= に保持（URL 共有でタブまで再現）
+  const [tab, setTab] = useTabParam("overview");
   const [isPending, startTransition] = useTransition();
   const [copyOpen, setCopyOpen] = useState(false);
   const [copyTargetSoId, setCopyTargetSoId] = useState<string | null>(
@@ -275,7 +278,7 @@ export function WorkOrderDetail({
         </>
       )}
 
-      <Tabs defaultValue="overview">
+      <Tabs onChange={setTab} value={tab}>
         <Tabs.List>
           <Tabs.Tab value="overview">概要</Tabs.Tab>
           <Tabs.Tab value="related">関連</Tabs.Tab>

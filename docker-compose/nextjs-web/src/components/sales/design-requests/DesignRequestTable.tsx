@@ -10,11 +10,11 @@
 import { Badge, Group, Select, Stack, Text, TextInput } from "@mantine/core";
 import { IconRuler2, IconSearch } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
 import { type Column, DataTable } from "@/components/ui/DataTable";
 import { NewButton } from "@/components/ui/NewButton";
 import { StatusBadge, statusOptions } from "@/components/ui/StatusBadge";
 import { ListShell } from "@/components/ui/shells";
+import { useUrlSelectState, useUrlStringState } from "@/hooks/useUrlState";
 import { useIsMobile } from "@/hooks/useViewport";
 import {
   DESIGN_TRIGGER_LABEL,
@@ -37,12 +37,13 @@ export function DesignRequestTable({ rows }: { rows: DesignRequest[] }) {
   const router = useRouter();
   const isMobile = useIsMobile();
 
-  const [search, setSearch] = useState("");
-  const [trigger, setTrigger] = useState<string | null>(null);
-  const [status, setStatus] = useState<string | null>(null);
+  // 検索・フィルタは URL search params に保持（design.md §8.1 / ページ共有）
+  const [search, setSearch] = useUrlStringState("q");
+  const [trigger, setTrigger] = useUrlSelectState("trigger");
+  const [status, setStatus] = useUrlSelectState("status");
 
   const reset = () => {
-    setSearch("");
+    setSearch(null);
     setTrigger(null);
     setStatus(null);
   };
@@ -182,6 +183,7 @@ export function DesignRequestTable({ rows }: { rows: DesignRequest[] }) {
             </Stack>
           </Group>
         )}
+        urlState
       />
     </ListShell>
   );

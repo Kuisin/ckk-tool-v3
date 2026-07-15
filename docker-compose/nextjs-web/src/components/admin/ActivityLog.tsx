@@ -9,17 +9,19 @@
 
 import { Group, Select, Text, TextInput } from "@mantine/core";
 import { IconHistory, IconSearch } from "@tabler/icons-react";
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { type Column, DataTable } from "@/components/ui/DataTable";
 import { ListShell } from "@/components/ui/shells";
+import { useUrlSelectState, useUrlStringState } from "@/hooks/useUrlState";
 import { useIsMobile } from "@/hooks/useViewport";
 import type { ActivityEntry } from "@/lib/audit";
 
 export function ActivityLog({ entries }: { entries: ActivityEntry[] }) {
   const isMobile = useIsMobile();
-  const [search, setSearch] = useState("");
-  const [action, setAction] = useState<string | null>(null);
-  const [table, setTable] = useState<string | null>(null);
+  // 検索・フィルタは URL search params に保持（design.md §8.1 / ページ共有）
+  const [search, setSearch] = useUrlStringState("q");
+  const [action, setAction] = useUrlSelectState("action");
+  const [table, setTable] = useUrlSelectState("table");
 
   const actionOptions = useMemo(
     () =>
@@ -38,7 +40,7 @@ export function ActivityLog({ entries }: { entries: ActivityEntry[] }) {
   );
 
   const reset = () => {
-    setSearch("");
+    setSearch(null);
     setAction(null);
     setTable(null);
   };
@@ -178,6 +180,7 @@ export function ActivityLog({ entries }: { entries: ActivityEntry[] }) {
             </div>
           </Group>
         )}
+        urlState
       />
     </ListShell>
   );

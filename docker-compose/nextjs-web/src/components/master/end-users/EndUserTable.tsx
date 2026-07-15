@@ -34,6 +34,7 @@ import { DocNumber } from "@/components/ui/DocNumber";
 import { openConfirm } from "@/components/ui/modals";
 import { NewButton } from "@/components/ui/NewButton";
 import { ListShell } from "@/components/ui/shells";
+import { useUrlSelectState, useUrlStringState } from "@/hooks/useUrlState";
 import { useIsMobile } from "@/hooks/useViewport";
 
 const BASE_PATH = "/master/end-users";
@@ -48,14 +49,15 @@ export function EndUserTable({ rows }: { rows: EndUserRow[] }) {
   const isMobile = useIsMobile();
   const [, startTransition] = useTransition();
 
-  const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState<string | null>(null);
+  // 検索・フィルタは URL search params に保持（design.md §8.1 / ページ共有）
+  const [search, setSearch] = useUrlStringState("q");
+  const [statusFilter, setStatusFilter] = useUrlSelectState("status");
 
   const [deleteRow, setDeleteRow] = useState<BpModalTarget | null>(null);
   const [toggleRow, setToggleRow] = useState<BpModalTarget | null>(null);
 
   const reset = () => {
-    setSearch("");
+    setSearch(null);
     setStatusFilter(null);
   };
 
@@ -241,6 +243,7 @@ export function EndUserTable({ rows }: { rows: EndUserRow[] }) {
           },
         ]}
         selectable
+        urlState
       />
 
       <DeleteBpModal

@@ -51,6 +51,7 @@ import {
   ResourceActions,
   SummaryGrid,
 } from "@/components/ui/shells";
+import { useTabParam } from "@/hooks/useUrlState";
 import { formatDate, formatDateTime } from "@/lib/format";
 import type { Option } from "@/lib/mock";
 import { ORDER_TYPE_LABEL } from "@/lib/mock";
@@ -92,6 +93,8 @@ export function PriceListDetail({
 }) {
   const router = useRouter();
   const [, startTransition] = useTransition();
+  // アクティブタブを ?tab= に保持（URL 共有でタブまで再現）
+  const [tab, setTab] = useTabParam("prices");
   const summary = entrySummary(entry);
 
   const [deleteOpen, setDeleteOpen] = useState(false);
@@ -239,7 +242,7 @@ export function PriceListDetail({
         <FieldValue label="作成者" value={entry.createdBy} />
       </SummaryGrid>
 
-      <Tabs defaultValue="prices">
+      <Tabs onChange={setTab} value={tab}>
         <Tabs.List>
           <Tabs.Tab value="prices">価格設定</Tabs.Tab>
           <Tabs.Tab value="discounts">値引き設定</Tabs.Tab>

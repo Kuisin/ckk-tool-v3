@@ -45,6 +45,7 @@ import {
   ResourceActions,
   SummaryGrid,
 } from "@/components/ui/shells";
+import { useTabParam } from "@/hooks/useUrlState";
 import { formatDateTime } from "@/lib/format";
 import type { MaterialPricePoint } from "@/lib/material-pricing-core";
 import type { Option } from "@/lib/mock";
@@ -93,6 +94,8 @@ export function TrialEstimateDetail({
   priceHistory: MaterialPricePoint[];
 }) {
   const router = useRouter();
+  // アクティブタブを ?tab= に保持（URL 共有でタブまで再現）
+  const [tab, setTab] = useTabParam("result");
   const result = calcTrialPricing(record.input);
   const history = priceHistory;
   const [convertOpen, setConvertOpen] = useState(false);
@@ -195,7 +198,7 @@ export function TrialEstimateDetail({
         />
       </SummaryGrid>
 
-      <Tabs defaultValue="result">
+      <Tabs onChange={setTab} value={tab}>
         <Tabs.List>
           <Tabs.Tab leftSection={<IconCalculator size={14} />} value="result">
             試算結果

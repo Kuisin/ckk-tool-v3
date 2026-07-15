@@ -13,6 +13,7 @@ import { InventoryBadge } from "@/components/production/InventoryBadge";
 import { DocNumber } from "@/components/ui/DocNumber";
 import { FieldValue } from "@/components/ui/FieldValue";
 import { DetailShell, SummaryGrid } from "@/components/ui/shells";
+import { useTabParam } from "@/hooks/useUrlState";
 import { formatDate, formatDateTime } from "@/lib/format";
 import { InventoryTransactionsTable } from "../InventoryTransactionsTable";
 import type { MaterialInventoryDetailData } from "./model";
@@ -27,6 +28,8 @@ export function MaterialInventoryDetail({
 }: {
   record: MaterialInventoryDetailData;
 }) {
+  // アクティブタブを ?tab= に保持（URL 共有でタブまで再現）
+  const [tab, setTab] = useTabParam("atp");
   return (
     <DetailShell
       breadcrumbs={["生産", { label: "素材在庫", href: BASE_PATH }, "詳細"]}
@@ -84,7 +87,7 @@ export function MaterialInventoryDetail({
         <FieldValue label="備考" value={record.notes || "—"} />
       </SummaryGrid>
 
-      <Tabs defaultValue="atp">
+      <Tabs onChange={setTab} value={tab}>
         <Tabs.List>
           <Tabs.Tab value="atp">ATP タイムライン</Tabs.Tab>
           <Tabs.Tab value="transactions">

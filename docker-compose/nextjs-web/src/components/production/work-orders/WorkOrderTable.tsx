@@ -16,11 +16,11 @@ import {
   IconShieldCheck,
 } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
 import { type Column, DataTable } from "@/components/ui/DataTable";
 import { NewButton } from "@/components/ui/NewButton";
 import { StatusBadge, statusOptions } from "@/components/ui/StatusBadge";
 import { ListShell } from "@/components/ui/shells";
+import { useUrlSelectState, useUrlStringState } from "@/hooks/useUrlState";
 import { useIsMobile } from "@/hooks/useViewport";
 import {
   WORK_ORDER_TYPE_LABEL,
@@ -56,12 +56,13 @@ export function WorkOrderTable({
   const isApprovals = variant === "approvals";
   const basePath = isApprovals ? APPROVALS_PATH : WORK_ORDERS_PATH;
 
-  const [search, setSearch] = useState("");
-  const [type, setType] = useState<string | null>(null);
-  const [status, setStatus] = useState<string | null>(null);
+  // 検索・フィルタは URL search params に保持（design.md §8.1 / ページ共有）
+  const [search, setSearch] = useUrlStringState("q");
+  const [type, setType] = useUrlSelectState("type");
+  const [status, setStatus] = useUrlSelectState("status");
 
   const reset = () => {
-    setSearch("");
+    setSearch(null);
     setType(null);
     setStatus(null);
   };
@@ -289,6 +290,7 @@ export function WorkOrderTable({
             </Stack>
           </Group>
         )}
+        urlState
       />
     </ListShell>
   );

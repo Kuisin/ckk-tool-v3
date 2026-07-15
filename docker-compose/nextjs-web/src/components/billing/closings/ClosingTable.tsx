@@ -24,6 +24,7 @@ import { MoneyText } from "@/components/ui/MoneyText";
 import { ModalShell } from "@/components/ui/modals";
 import { StatusBadge, statusOptions } from "@/components/ui/StatusBadge";
 import { ListShell } from "@/components/ui/shells";
+import { useUrlSelectState, useUrlStringState } from "@/hooks/useUrlState";
 import { useIsMobile } from "@/hooks/useViewport";
 import { formatDate } from "@/lib/format";
 import type { BillingClosing } from "./model";
@@ -55,8 +56,10 @@ function RunClosingModal({
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const now = new Date();
-  const [year, setYear] = useState(String(now.getFullYear()));
-  const [month, setMonth] = useState(
+  // 対象月は URL に保持（既定 = 当年・当月のときはパラメータ省略）
+  const [year, setYear] = useUrlStringState("year", String(now.getFullYear()));
+  const [month, setMonth] = useUrlStringState(
+    "month",
     String(now.getMonth() + 1).padStart(2, "0"),
   );
 
@@ -119,12 +122,13 @@ export function ClosingTable({ rows }: { rows: BillingClosing[] }) {
   const router = useRouter();
   const isMobile = useIsMobile();
 
-  const [search, setSearch] = useState("");
-  const [status, setStatus] = useState<string | null>(null);
+  // 検索・フィルタは URL search params に保持（design.md §8.1 / ページ共有）
+  const [search, setSearch] = useUrlStringState("q");
+  const [status, setStatus] = useUrlSelectState("status");
   const [runOpen, setRunOpen] = useState(false);
 
   const reset = () => {
-    setSearch("");
+    setSearch(null);
     setStatus(null);
   };
 
@@ -244,6 +248,7 @@ export function ClosingTable({ rows }: { rows: BillingClosing[] }) {
             </Stack>
           </Group>
         )}
+        urlState
       />
 
       <RunClosingModal onClose={() => setRunOpen(false)} opened={runOpen} />

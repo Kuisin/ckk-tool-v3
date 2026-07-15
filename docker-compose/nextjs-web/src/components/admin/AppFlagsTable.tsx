@@ -17,6 +17,7 @@ import { useState, useTransition } from "react";
 import { setAppEnabled } from "@/app/(dashboard)/admin/apps/actions";
 import { type Column, DataTable } from "@/components/ui/DataTable";
 import { ListShell } from "@/components/ui/shells";
+import { useUrlSelectState, useUrlStringState } from "@/hooks/useUrlState";
 import { useIsMobile } from "@/hooks/useViewport";
 import type { AppEnv, AppFlagRow } from "@/lib/app-flags";
 import { CATEGORY_COLORS } from "@/lib/app-list";
@@ -26,8 +27,9 @@ export function AppFlagsTable({ rows }: { rows: AppFlagRow[] }) {
   const isMobile = useIsMobile();
   const [, startTransition] = useTransition();
 
-  const [search, setSearch] = useState("");
-  const [category, setCategory] = useState<string | null>(null);
+  // 検索・フィルタは URL search params に保持（design.md §8.1 / ページ共有）
+  const [search, setSearch] = useUrlStringState("q");
+  const [category, setCategory] = useUrlSelectState("category");
   // 楽観更新: key = `${appKey}:${env}` → 切替後の値。
   const [pending, setPending] = useState<Record<string, boolean>>({});
 
@@ -36,7 +38,7 @@ export function AppFlagsTable({ rows }: { rows: AppFlagRow[] }) {
   );
 
   const reset = () => {
-    setSearch("");
+    setSearch(null);
     setCategory(null);
   };
 
@@ -166,6 +168,7 @@ export function AppFlagsTable({ rows }: { rows: AppFlagRow[] }) {
         emptyIcon={<IconApps size={24} />}
         emptyMessage="アプリがありません"
         getRowId={(r) => r.key}
+        urlState
       />
     </ListShell>
   );
