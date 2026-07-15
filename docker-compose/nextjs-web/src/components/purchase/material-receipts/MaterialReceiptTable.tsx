@@ -20,10 +20,10 @@ import {
 import { IconPackageImport, IconSearch } from "@tabler/icons-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
 import { type Column, DataTable } from "@/components/ui/DataTable";
 import { NewButton } from "@/components/ui/NewButton";
 import { ListShell } from "@/components/ui/shells";
+import { useUrlSelectState, useUrlStringState } from "@/hooks/useUrlState";
 import { useIsMobile } from "@/hooks/useViewport";
 import { formatDate } from "@/lib/format";
 import type { MaterialReceiptView } from "./model";
@@ -44,11 +44,12 @@ export function MaterialReceiptTable({
   const router = useRouter();
   const isMobile = useIsMobile();
 
-  const [search, setSearch] = useState("");
-  const [source, setSource] = useState<string | null>(null);
+  // 検索・フィルタは URL search params に保持（design.md §8.1 / ページ共有）
+  const [search, setSearch] = useUrlStringState("q");
+  const [source, setSource] = useUrlSelectState("source");
 
   const reset = () => {
-    setSearch("");
+    setSearch(null);
     setSource(null);
   };
 
@@ -213,6 +214,7 @@ export function MaterialReceiptTable({
             </Stack>
           </Group>
         )}
+        urlState
       />
     </ListShell>
   );

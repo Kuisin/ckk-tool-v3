@@ -33,6 +33,7 @@ import { type Column, DataTable } from "@/components/ui/DataTable";
 import { DocNumber } from "@/components/ui/DocNumber";
 import { openConfirm } from "@/components/ui/modals";
 import { ListShell } from "@/components/ui/shells";
+import { useUrlSelectState, useUrlStringState } from "@/hooks/useUrlState";
 import { useIsMobile } from "@/hooks/useViewport";
 import type { Option } from "@/lib/mock";
 import { ORDER_TYPE_LABEL, ORDER_TYPE_OPTIONS } from "@/lib/mock";
@@ -62,10 +63,11 @@ export function PriceListTable({
   const isMobile = useIsMobile();
 
   const [, startTransition] = useTransition();
-  const [search, setSearch] = useState("");
-  const [customer, setCustomer] = useState<string | null>(null);
-  const [product, setProduct] = useState<string | null>(null);
-  const [orderType, setOrderType] = useState<string | null>(null);
+  // 検索・フィルタは URL search params に保持（design.md §8.1 / ページ共有）
+  const [search, setSearch] = useUrlStringState("q");
+  const [customer, setCustomer] = useUrlSelectState("customer");
+  const [product, setProduct] = useUrlSelectState("product");
+  const [orderType, setOrderType] = useUrlSelectState("orderType");
 
   // Modal targets (null = closed).
   const [deleteTarget, setDeleteTarget] = useState<PriceListEntry | null>(null);
@@ -126,7 +128,7 @@ export function PriceListTable({
   };
 
   const reset = () => {
-    setSearch("");
+    setSearch(null);
     setCustomer(null);
     setProduct(null);
     setOrderType(null);
@@ -389,6 +391,7 @@ export function PriceListTable({
           },
         ]}
         selectable
+        urlState
       />
 
       <DeletePriceListModal

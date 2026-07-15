@@ -36,6 +36,7 @@ import { type Column, DataTable } from "@/components/ui/DataTable";
 import { openConfirm } from "@/components/ui/modals";
 import { NewButton } from "@/components/ui/NewButton";
 import { ListShell } from "@/components/ui/shells";
+import { useUrlSelectState, useUrlStringState } from "@/hooks/useUrlState";
 import { useIsMobile } from "@/hooks/useViewport";
 import {
   APPROVAL_GROUP_TYPE_LABEL,
@@ -82,9 +83,10 @@ export function ApprovalGroupTable({ rows }: { rows: ApprovalGroupRow[] }) {
   const isMobile = useIsMobile();
   const [, startTransition] = useTransition();
 
-  const [search, setSearch] = useState("");
-  const [typeFilter, setTypeFilter] = useState<string | null>(null);
-  const [statusFilter, setStatusFilter] = useState<string | null>(null);
+  // 検索・フィルタは URL search params に保持（design.md §8.1 / ページ共有）
+  const [search, setSearch] = useUrlStringState("q");
+  const [typeFilter, setTypeFilter] = useUrlSelectState("type");
+  const [statusFilter, setStatusFilter] = useUrlSelectState("status");
 
   const [deleteRow, setDeleteRow] = useState<ApprovalGroupModalTarget | null>(
     null,
@@ -94,7 +96,7 @@ export function ApprovalGroupTable({ rows }: { rows: ApprovalGroupRow[] }) {
   );
 
   const reset = () => {
-    setSearch("");
+    setSearch(null);
     setTypeFilter(null);
     setStatusFilter(null);
   };
@@ -296,6 +298,7 @@ export function ApprovalGroupTable({ rows }: { rows: ApprovalGroupRow[] }) {
           },
         ]}
         selectable
+        urlState
       />
 
       <DeleteApprovalGroupModal

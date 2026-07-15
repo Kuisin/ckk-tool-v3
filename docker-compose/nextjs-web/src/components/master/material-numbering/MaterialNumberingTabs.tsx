@@ -15,6 +15,7 @@ import type { ComponentTableKind } from "@/app/(dashboard)/master/material-numbe
 import { PrimaryButton } from "@/components/ui/buttons";
 import { DocNumber } from "@/components/ui/DocNumber";
 import { PageHeader } from "@/components/ui/PageHeader";
+import { useTabParam } from "@/hooks/useUrlState";
 import type { Option } from "@/lib/mock";
 import { AddComponentModal } from "./AddComponentModal";
 import { type ComponentRow, ComponentTable } from "./ComponentTable";
@@ -65,7 +66,11 @@ export function MaterialNumberingTabs({
 }: {
   data: MaterialNumberingData;
 }) {
-  const [active, setActive] = useState<ComponentTableKind>("manufacturer");
+  // アクティブタブを ?tab= に保持（URL 共有でタブまで再現）
+  const [tabParam, setTab] = useTabParam("manufacturer");
+  const active: ComponentTableKind = TABS.some((t) => t.value === tabParam)
+    ? (tabParam as ComponentTableKind)
+    : "manufacturer";
   const [addOpen, setAddOpen] = useState(false);
 
   // 追加モーダルの親 options（grade → 有効メーカー / kind → 有効形状）
@@ -100,10 +105,7 @@ export function MaterialNumberingTabs({
         </Text>
       </Alert>
 
-      <Tabs
-        onChange={(v) => setActive((v as ComponentTableKind) ?? "manufacturer")}
-        value={active}
-      >
+      <Tabs onChange={setTab} value={active}>
         <Tabs.List>
           {TABS.map((t) => (
             <Tabs.Tab key={t.value} value={t.value}>

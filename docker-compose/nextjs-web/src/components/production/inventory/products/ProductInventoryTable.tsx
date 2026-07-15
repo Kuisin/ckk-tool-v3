@@ -25,11 +25,12 @@ import {
 import { IconBoxSeam, IconProgress, IconSearch } from "@tabler/icons-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { InventoryBadge } from "@/components/production/InventoryBadge";
 import { type Column, DataTable } from "@/components/ui/DataTable";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { ListShell } from "@/components/ui/shells";
+import { useUrlSelectState, useUrlStringState } from "@/hooks/useUrlState";
 import { useIsMobile } from "@/hooks/useViewport";
 import { formatDate } from "@/lib/format";
 import type { ProductInventoryRow, WipRow } from "./model";
@@ -51,13 +52,15 @@ export function ProductInventoryTable({
   const router = useRouter();
   const isMobile = useIsMobile();
 
-  const [view, setView] = useState<"stock" | "wip">("stock");
-  const [search, setSearch] = useState("");
-  const [factory, setFactory] = useState<string | null>(null);
-  const [kind, setKind] = useState<string | null>(null);
+  // 表示モード・検索・フィルタは URL search params に保持（design.md §8.1 /
+  // ページ共有）。既定の「製品在庫」ビューはパラメータ省略で URL を短く保つ。
+  const [view, setView] = useUrlStringState("view", "stock");
+  const [search, setSearch] = useUrlStringState("q");
+  const [factory, setFactory] = useUrlSelectState("factory");
+  const [kind, setKind] = useUrlSelectState("kind");
 
   const reset = () => {
-    setSearch("");
+    setSearch(null);
     setFactory(null);
     setKind(null);
   };
@@ -247,7 +250,7 @@ export function ProductInventoryTable({
             { value: "stock", label: "製品在庫" },
             { value: "wip", label: "仕掛品" },
           ]}
-          onChange={(v) => setView(v as "stock" | "wip")}
+          onChange={setView}
           value={view}
           w={isMobile ? "100%" : 240}
         />
@@ -298,6 +301,7 @@ export function ProductInventoryTable({
                 </Stack>
               </Group>
             )}
+            urlState
           />
         ) : (
           <WipList rows={filteredWip} />

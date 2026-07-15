@@ -14,10 +14,11 @@ import { Anchor, Group, Select, Stack, Text, TextInput } from "@mantine/core";
 import { IconSearch, IconTruckDelivery } from "@tabler/icons-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { type Column, DataTable } from "@/components/ui/DataTable";
 import { StatusBadge, statusOptions } from "@/components/ui/StatusBadge";
 import { ListShell } from "@/components/ui/shells";
+import { useUrlSelectState, useUrlStringState } from "@/hooks/useUrlState";
 import { useIsMobile } from "@/hooks/useViewport";
 import { formatDate } from "@/lib/format";
 import type { OutsourceStepRow } from "./model";
@@ -28,12 +29,13 @@ export function OutsourceTable({ rows }: { rows: OutsourceStepRow[] }) {
   const router = useRouter();
   const isMobile = useIsMobile();
 
-  const [search, setSearch] = useState("");
-  const [supplier, setSupplier] = useState<string | null>(null);
-  const [status, setStatus] = useState<string | null>(null);
+  // 検索・フィルタは URL search params に保持（design.md §8.1 / ページ共有）
+  const [search, setSearch] = useUrlStringState("q");
+  const [supplier, setSupplier] = useUrlSelectState("supplier");
+  const [status, setStatus] = useUrlSelectState("status");
 
   const reset = () => {
-    setSearch("");
+    setSearch(null);
     setSupplier(null);
     setStatus(null);
   };
@@ -218,6 +220,7 @@ export function OutsourceTable({ rows }: { rows: OutsourceStepRow[] }) {
             </Stack>
           </Group>
         )}
+        urlState
       />
     </ListShell>
   );

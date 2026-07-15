@@ -53,6 +53,7 @@ import {
   ResourceActions,
   SummaryGrid,
 } from "@/components/ui/shells";
+import { useTabParam } from "@/hooks/useUrlState";
 import { ORDER_TYPE_LABEL, WORK_ORDER_TYPE_LABEL } from "@/lib/enum-labels";
 import { formatDate, formatDateTime } from "@/lib/format";
 // type-only import — lib/inventory は server-only（型はバンドルされない）。
@@ -70,6 +71,8 @@ export function SalesOrderDetail({
   auditEntries: AuditEntry[];
 }) {
   const router = useRouter();
+  // アクティブタブを ?tab= に保持（URL 共有でタブまで再現）
+  const [tab, setTab] = useTabParam("overview");
   const [isPending, startTransition] = useTransition();
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [cancelOpen, setCancelOpen] = useState(false);
@@ -302,7 +305,7 @@ export function SalesOrderDetail({
         />
       </SummaryGrid>
 
-      <Tabs defaultValue="overview">
+      <Tabs onChange={setTab} value={tab}>
         <Tabs.List>
           <Tabs.Tab value="overview">概要</Tabs.Tab>
           <Tabs.Tab value="work-orders">

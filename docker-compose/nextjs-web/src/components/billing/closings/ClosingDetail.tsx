@@ -38,6 +38,7 @@ import {
   DetailShell,
   SummaryGrid,
 } from "@/components/ui/shells";
+import { useTabParam } from "@/hooks/useUrlState";
 import { formatDate, formatDateTime } from "@/lib/format";
 import { type BillingClosingDetail, isProcessable } from "./model";
 
@@ -53,6 +54,8 @@ export function ClosingDetail({
   auditEntries: AuditEntry[];
 }) {
   const router = useRouter();
+  // アクティブタブを ?tab= に保持（URL 共有でタブまで再現）
+  const [tab, setTab] = useTabParam("overview");
   const [isPending, startTransition] = useTransition();
   const [processOpen, setProcessOpen] = useState(false);
 
@@ -202,7 +205,7 @@ export function ClosingDetail({
         )}
       </Paper>
 
-      <Tabs defaultValue="overview">
+      <Tabs onChange={setTab} value={tab}>
         <Tabs.List>
           <Tabs.Tab value="overview">概要</Tabs.Tab>
           <Tabs.Tab value="history">履歴</Tabs.Tab>

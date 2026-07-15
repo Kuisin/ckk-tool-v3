@@ -33,6 +33,7 @@ import {
   ResourceActions,
   SummaryGrid,
 } from "@/components/ui/shells";
+import { useTabParam } from "@/hooks/useUrlState";
 import { formatDate, formatDateTime } from "@/lib/format";
 import { ORDER_TYPE_LABEL } from "@/lib/mock";
 import type { PriceListEntry } from "../price-lists/model";
@@ -58,6 +59,8 @@ export function QuoteDetail({
   auditEntries: AuditEntry[];
 }) {
   const router = useRouter();
+  // アクティブタブを ?tab= に保持（URL 共有でタブまで再現）
+  const [tab, setTab] = useTabParam("items");
   const totals = quoteTotals(quote);
 
   const status = quote.status;
@@ -143,7 +146,7 @@ export function QuoteDetail({
         />
       </SummaryGrid>
 
-      <Tabs defaultValue="items">
+      <Tabs onChange={setTab} value={tab}>
         <Tabs.List>
           <Tabs.Tab value="items">明細</Tabs.Tab>
           <Tabs.Tab value="pdf">PDF</Tabs.Tab>

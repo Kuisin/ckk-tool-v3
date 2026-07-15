@@ -22,6 +22,7 @@ import {
   ResourceActions,
   SummaryGrid,
 } from "@/components/ui/shells";
+import { useTabParam } from "@/hooks/useUrlState";
 import { useIsMobile } from "@/hooks/useViewport";
 import { formatDateTime } from "@/lib/format";
 import {
@@ -68,6 +69,8 @@ export function MaterialTypeDetail({
 }) {
   const router = useRouter();
   const isMobile = useIsMobile();
+  // アクティブタブを ?tab= に保持（URL 共有でタブまで再現）
+  const [tab, setTab] = useTabParam("overview");
 
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [toggleOpen, setToggleOpen] = useState(false);
@@ -145,7 +148,7 @@ export function MaterialTypeDetail({
         )}
       </SummaryGrid>
 
-      <Tabs defaultValue="overview">
+      <Tabs onChange={setTab} value={tab}>
         <Tabs.List>
           <Tabs.Tab value="overview">概要</Tabs.Tab>
           <Tabs.Tab value="related">関連</Tabs.Tab>

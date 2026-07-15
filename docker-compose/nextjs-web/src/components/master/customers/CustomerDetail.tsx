@@ -44,6 +44,7 @@ import {
   DetailShell,
   ResourceActions,
 } from "@/components/ui/shells";
+import { useTabParam } from "@/hooks/useUrlState";
 import { useIsMobile } from "@/hooks/useViewport";
 import { INVOICE_METHOD_LABEL, TAX_TYPE_LABEL } from "@/lib/enum-labels";
 import { formatDate, formatDateTime, formatMoney } from "@/lib/format";
@@ -59,6 +60,8 @@ export function CustomerDetail({
 }) {
   const router = useRouter();
   const isMobile = useIsMobile();
+  // アクティブタブを ?tab= に保持（URL 共有でタブまで再現）
+  const [tab, setTab] = useTabParam("overview");
 
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [toggleOpen, setToggleOpen] = useState(false);
@@ -104,7 +107,7 @@ export function CustomerDetail({
     >
       <BpBaseSummary record={record} />
 
-      <Tabs defaultValue="overview">
+      <Tabs onChange={setTab} value={tab}>
         <Tabs.List>
           <Tabs.Tab value="overview">概要</Tabs.Tab>
           <Tabs.Tab value="branches">支店一覧</Tabs.Tab>

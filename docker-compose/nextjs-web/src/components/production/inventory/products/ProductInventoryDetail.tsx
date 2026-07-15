@@ -15,6 +15,7 @@ import { DocNumber } from "@/components/ui/DocNumber";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { FieldValue } from "@/components/ui/FieldValue";
 import { DetailShell, SummaryGrid } from "@/components/ui/shells";
+import { useTabParam } from "@/hooks/useUrlState";
 import { formatDateTime } from "@/lib/format";
 import { InventoryTransactionsTable } from "../InventoryTransactionsTable";
 import {
@@ -30,6 +31,8 @@ export function ProductInventoryDetail({
 }: {
   record: ProductInventoryDetailData;
 }) {
+  // アクティブタブを ?tab= に保持（URL 共有でタブまで再現）
+  const [tab, setTab] = useTabParam("reservations");
   return (
     <DetailShell
       breadcrumbs={["生産", { label: "製品在庫", href: BASE_PATH }, "詳細"]}
@@ -118,7 +121,7 @@ export function ProductInventoryDetail({
         )}
       </SummaryGrid>
 
-      <Tabs defaultValue="reservations">
+      <Tabs onChange={setTab} value={tab}>
         <Tabs.List>
           <Tabs.Tab value="reservations">
             予約（{record.reservations.length}）
