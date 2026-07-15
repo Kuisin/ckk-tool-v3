@@ -5,6 +5,7 @@ import {
   AppFlagsProvider,
 } from "@/components/layout/AppFlags";
 import { DashboardShell } from "@/components/layout/AppShell";
+import { PwaRegister } from "@/components/layout/PwaRegister";
 import { currentAppEnv, getDisabledAppKeys } from "@/lib/app-flags";
 
 // feature_flags はリクエスト毎に読む（静的プリレンダだとビルド時の値で固まり、
@@ -40,6 +41,7 @@ export default async function DashboardLayout({
       disabledKeys={disabledKeys}
       unreleasedKeys={unreleasedKeys}
     >
+      <PwaRegister />
       <DashboardShell user={headerUser}>
         <AppAvailabilityGuard>{children}</AppAvailabilityGuard>
       </DashboardShell>

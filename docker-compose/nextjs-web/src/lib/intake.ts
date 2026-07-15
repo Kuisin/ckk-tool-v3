@@ -19,6 +19,7 @@ import { getCurrentActorId, recordAudit } from "./audit";
 import { prisma } from "./db";
 import { formatDocNumber } from "./doc-number";
 import { type NormalizedExtraction, normalizeExtraction } from "./intake-core";
+import { notifyGroup } from "./notifications";
 import { allocateDocumentKey } from "./numbering";
 import { putObject } from "./storage";
 
@@ -204,6 +205,13 @@ export async function runExtraction(key: {
         note: `自動抽出完了（明細 ${items.length} 件・顧客${customerBpId ? "一致" : "未特定"}）`,
       },
     });
+    // 取込結果を第一承認グループ（受注確認の担当者）へ通知 — ベストエフォート
+    void notifyGroup("FIRST", {
+      type: "INTAKE",
+      title: `受注請書 ${number} を自動取込しました`,
+      message: `明細 ${items.length} 件・顧客${customerBpId ? "一致" : "未特定"} — 内容を確認してください`,
+      linkPath: "/sales/order-acceptances",
+    }).catch((err) => console.error("[intake] 取込通知に失敗:", err));
     return { ...key, number, status: "DRAFT" };
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);
@@ -217,6 +225,12 @@ export async function runExtraction(key: {
       recordId: number,
       after: { note: `自動抽出失敗: ${message}` },
     });
+    void notifyGroup("FIRST", {
+      type: "INTAKE",
+      title: `受注請書 ${number} の自動抽出に失敗しました`,
+      message: message.slice(0, 200),
+      linkPath: "/sales/order-acceptances",
+    }).catch((err) => console.error("[intake] 取込通知に失敗:", err));
     return { ...key, number, status: "IMPORT", error: message };
   }
 }

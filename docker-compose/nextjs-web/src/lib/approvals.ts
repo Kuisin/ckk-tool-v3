@@ -9,6 +9,7 @@
 import type { ApprovalGroupType } from "../../generated/client/client";
 import { getCurrentActorId } from "./audit";
 import { prisma } from "./db";
+import { notify, notifyGroup } from "./notifications";
 
 /**
  * actor が type の承認権限を持つか（本人メンバー or 有効期間内の代理）。
@@ -84,6 +85,17 @@ export type ApprovalTargetType =
 
 export type ApprovalStepKind = "FIRST" | "SECOND";
 
+const TARGET_LABELS: Record<ApprovalTargetType, string> = {
+  work_orders: "指示書",
+  material_purchase_orders: "素材発注書",
+  order_acceptances: "受注請書",
+};
+
+const STEP_LABELS: Record<ApprovalStepKind, string> = {
+  FIRST: "第一承認",
+  SECOND: "第二承認",
+};
+
 /** 承認依頼を作成（同一対象・同一段の PENDING 重複は再利用）。 */
 export async function createApprovalRequest(input: {
   targetType: ApprovalTargetType;
@@ -112,6 +124,17 @@ export async function createApprovalRequest(input: {
     },
     select: { id: true },
   });
+  // 承認グループ（本人 + 期間内代理）へ通知 — 失敗しても依頼は成立させる
+  try {
+    await notifyGroup(input.step === "FIRST" ? "FIRST" : "SECOND", {
+      type: "APPROVAL_REQUEST",
+      title: `${TARGET_LABELS[input.targetType]} ${input.targetId} の${STEP_LABELS[input.step]}依頼`,
+      message: input.notes ?? undefined,
+      linkPath: "/production/approvals",
+    });
+  } catch (e) {
+    console.error("[approvals] 承認依頼通知に失敗:", e);
+  }
   return row.id;
 }
 
@@ -139,7 +162,7 @@ export async function actOnApprovalRequest(input: {
       step: input.step,
       status: "PENDING",
     },
-    select: { id: true },
+    select: { id: true, requestedBy: true },
   });
   // 依頼行が無い旧データは作ってから確定（後方互換）
   const requestId =
@@ -165,6 +188,22 @@ export async function actOnApprovalRequest(input: {
       data: { status: input.action },
     }),
   ]);
+  // 依頼者へ結果を通知（自己承認は通知しない）
+  if (request?.requestedBy && request.requestedBy !== actor) {
+    try {
+      await notify({
+        userIds: [request.requestedBy],
+        type: "APPROVAL_RESULT",
+        title: `${TARGET_LABELS[input.targetType]} ${input.targetId} が${
+          input.action === "APPROVED" ? "承認されました" : "差し戻されました"
+        }（${STEP_LABELS[input.step]}）`,
+        message: input.comment ?? undefined,
+        linkPath: "/production/approvals",
+      });
+    } catch (e) {
+      console.error("[approvals] 承認結果通知に失敗:", e);
+    }
+  }
   return { ok: true };
 }
 
