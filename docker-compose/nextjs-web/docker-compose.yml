@@ -68,7 +68,10 @@ services:
     image: chrislusf/seaweedfs:latest
     container_name: nextjs-seaweedfs
     restart: unless-stopped
-    command: "server -dir=/data -filer -s3 -volume.max=0 -master.volumeSizeLimitMB=1024"
+    # -ip.bind=0.0.0.0: 既定では最初のネットワーク（nextjs-web_default）の IP に
+    # しかバインドせず、coolify ネット側（Coolify ビルドのアプリ）から接続拒否に
+    # なるため全インターフェースで待ち受ける。
+    command: "server -ip.bind=0.0.0.0 -dir=/data -filer -s3 -volume.max=0 -master.volumeSizeLimitMB=1024"
     volumes:
       - seaweed-data:/data
     networks:

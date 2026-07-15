@@ -46,7 +46,10 @@ async function ingestFile(input: {
   const actor = await getCurrentActorId();
   const safeName = input.filename.replace(/[^\w.\-()（）　-鿿]/g, "_");
   const key = `intake/${randomUUID()}-${safeName}`;
-  await putObject(key, input.bytes, input.contentType);
+  const stored = await putObject(key, input.bytes, input.contentType);
+  if (!stored) {
+    throw new Error("ストレージ（SeaweedFS）への保存に失敗しました");
+  }
 
   const { yearMonth, seq } = await allocateDocumentKey("ORDER");
   const fileRow = await prisma.file.create({
