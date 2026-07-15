@@ -25,6 +25,7 @@ import {
   Stack,
   Text,
   Title,
+  Tooltip,
   UnstyledButton,
   useComputedColorScheme,
 } from "@mantine/core";
@@ -34,6 +35,7 @@ import {
   IconHistory,
   IconLogout,
   IconSettings,
+  IconShare2,
   IconUser,
 } from "@tabler/icons-react";
 import Link from "next/link";
@@ -44,6 +46,7 @@ import { relativeTime, useNotifications } from "@/hooks/useNotifications";
 import { AppLauncher } from "./AppLauncher";
 import { markAllReadAction, markReadAction } from "./notification-actions";
 import { OperationCodeJump } from "./OperationCodeJump";
+import { SharePageModal } from "./SharePageModal";
 
 const NOTIFICATION_POPUP_WIDTH = 280;
 const PROFILE_MENU_WIDTH = 180;
@@ -77,6 +80,7 @@ export function AppHeader({ user }: { user?: HeaderUser | null }) {
     : MOCK_USER;
   const [launcherOpen, setLauncherOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false);
   const launcherCloseTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
     null,
   );
@@ -208,6 +212,22 @@ export function AppHeader({ user }: { user?: HeaderUser | null }) {
               onNavigate={() => setLauncherOpen(false)}
             />
           </Box>
+          {/* ページ共有（_demo-system 参照 — 現在の URL を通知として送る） */}
+          <Tooltip label="ページを共有" withinPortal>
+            <ActionIcon
+              aria-label="ページを共有"
+              color="gray"
+              onClick={() => setShareOpen(true)}
+              size="lg"
+              variant="subtle"
+            >
+              <IconShare2 size={20} />
+            </ActionIcon>
+          </Tooltip>
+          <SharePageModal
+            onClose={() => setShareOpen(false)}
+            opened={shareOpen}
+          />
           <Popover
             onDismiss={() => setNotifOpen(false)}
             opened={notifOpen}
