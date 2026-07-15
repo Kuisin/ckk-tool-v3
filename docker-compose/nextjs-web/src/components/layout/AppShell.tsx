@@ -10,12 +10,18 @@
 import { AppShell } from "@mantine/core";
 import type { ReactNode } from "react";
 import { AppFooter } from "./AppFooter";
-import { AppHeader } from "./AppHeader";
+import { AppHeader, type HeaderUser } from "./AppHeader";
 
-export function DashboardShell({ children }: { children: ReactNode }) {
+export function DashboardShell({
+  children,
+  user,
+}: {
+  children: ReactNode;
+  user?: HeaderUser | null;
+}) {
   return (
     <AppShell footer={{ height: 40 }} header={{ height: 60 }} padding="md">
-      <AppHeader />
+      <AppHeader user={user} />
 
       {/*
        * Subtle inner shadow + off-white background on the main area

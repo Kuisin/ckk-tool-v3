@@ -37,6 +37,7 @@ import {
   IconUser,
 } from "@tabler/icons-react";
 import Link from "next/link";
+import { signOut } from "next-auth/react";
 import { useRef, useState } from "react";
 import { AppLauncher } from "./AppLauncher";
 import { OperationCodeJump } from "./OperationCodeJump";
@@ -81,7 +82,20 @@ const MOCK_USER = {
   department: "製造部",
 };
 
-export function AppHeader() {
+export interface HeaderUser {
+  displayName: string;
+  username: string;
+  initials: string;
+}
+
+export function AppHeader({ user }: { user?: HeaderUser | null }) {
+  const sessionUser = user
+    ? {
+        displayName: user.displayName,
+        initials: user.initials,
+        department: user.username,
+      }
+    : MOCK_USER;
   const [launcherOpen, setLauncherOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
   const launcherCloseTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
@@ -290,21 +304,21 @@ export function AppHeader() {
                 radius="xl"
                 size="sm"
               >
-                {MOCK_USER.initials}
+                {sessionUser.initials}
               </Avatar>
             </Menu.Target>
             <Menu.Dropdown px="xs">
               <Menu.Label px="0" py="xs">
                 <Group align="center" gap="sm" wrap="nowrap">
                   <Avatar aria-hidden color="blue" radius="xl" size="md">
-                    {MOCK_USER.initials}
+                    {sessionUser.initials}
                   </Avatar>
                   <Stack gap={0}>
                     <Text fw={600} size="sm">
-                      {MOCK_USER.displayName}
+                      {sessionUser.displayName}
                     </Text>
                     <Text c="dimmed" size="xs">
-                      {MOCK_USER.department}
+                      {sessionUser.department}
                     </Text>
                   </Stack>
                 </Group>
@@ -344,6 +358,7 @@ export function AppHeader() {
               <Menu.Item
                 color="red"
                 leftSection={<IconLogout size={14} />}
+                onClick={() => signOut({ callbackUrl: "/login" })}
                 py={{ base: "sm", md: "xs" }}
               >
                 ログアウト
