@@ -45,6 +45,8 @@ model User {
   username    String    @unique
   displayName String    @map("display_name")
   email       String?
+  // credentials ログイン用（scrypt: salt:hash hex）。SSO ユーザーは null。
+  passwordHash String?  @map("password_hash")
   isActive    Boolean   @default(true) @map("is_active")
   lastLoginAt DateTime? @map("last_login_at") @db.Timestamptz(6)
   createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)

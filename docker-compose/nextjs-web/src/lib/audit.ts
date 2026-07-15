@@ -97,6 +97,14 @@ const FIELD_LABELS: Record<string, string> = {
  * ここだけを参照するので、認証実装時の変更点は 1 箇所で済む。
  */
 export async function getCurrentActorId(): Promise<string | null> {
+  try {
+    const { auth } = await import("@/auth");
+    const session = await auth();
+    const id = (session?.user as { id?: string } | undefined)?.id;
+    if (id) return id;
+  } catch {
+    // リクエスト外（instrumentation ポーラー・ビルド時）はセッションなし
+  }
   return SYSTEM_USER_ID;
 }
 
