@@ -94,6 +94,8 @@ model BusinessPartner {
   invoicesAsCustomer Invoice[]        @relation("InvoiceCustomer")
   invoicesAsBranch   Invoice[]        @relation("InvoiceCustomerBranch")
   billingClosings    BillingClosing[] @relation("ClosingCustomer")
+  acceptancesAsCustomer OrderAcceptance[] @relation("AcceptanceCustomer")
+  acceptancesAsBranch   OrderAcceptance[] @relation("AcceptanceCustomerBranch")
 
   @@index([parentId])
   @@map("business_partners")

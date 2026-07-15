@@ -221,6 +221,7 @@ model Product {
   inventory          ProductInventory[]
   designRequests     DesignRequest[]
   designFiles        DesignFile[]
+  acceptanceItems    OrderAcceptanceItem[]
 
   @@unique([yearMonth, seq])
   @@index([materialTypeId])

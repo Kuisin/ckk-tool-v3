@@ -75,6 +75,7 @@ model User {
   delegationsGiven        ApprovalDelegate[]    @relation("DelegateDelegator")
   delegationsReceived     ApprovalDelegate[]    @relation("DelegateDelegate")
   delegationsCreated      ApprovalDelegate[]    @relation("DelegateCreatedBy")
+  acceptancesCreated      OrderAcceptance[]     @relation("AcceptanceCreatedBy")
 
   posRequested MaterialPurchaseOrder[] @relation("PoRequestedBy")
   posApproved  MaterialPurchaseOrder[] @relation("PoApprovedBy")
