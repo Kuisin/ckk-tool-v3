@@ -30,6 +30,13 @@ for _ in $(seq 1 60); do
 done
 ip link show tun0 >/dev/null 2>&1 || { echo "[vpn-ldap] tun0 never came up"; exit 1; }
 
+# Optional: bridge Authentik (SSO IdP, VPN 内) onto docker networks.
+# アプリコンテナは coolify ネットワークの alias auth.ckk-tools.loc 経由で到達。
+if [ -n "${AUTHENTIK_HOST:-}" ]; then
+  echo "[vpn-ldap] authentik bridge 0.0.0.0:${AUTHENTIK_LISTEN_PORT:-9000} -> ${AUTHENTIK_HOST}:${AUTHENTIK_PORT:-9000}"
+  socat TCP-LISTEN:"${AUTHENTIK_LISTEN_PORT:-9000}",fork,reuseaddr TCP:"${AUTHENTIK_HOST}":"${AUTHENTIK_PORT:-9000}" &
+fi
+
 echo "[vpn-ldap] VPN up — bind-aware forward 0.0.0.0:${LISTEN_PORT} -> ${LDAP_HOST}:${LDAP_PORT}"
 # Transparent forwarder that also fires a directory sync on user login (bind).
 python3 /ldap_proxy.py &

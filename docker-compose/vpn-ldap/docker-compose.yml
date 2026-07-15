@@ -28,12 +28,20 @@ services:
       # On a user login (bind that is not the service account) the forwarder POSTs
       # here so ldap-sync refreshes that user. LDAP_APP_DN (to skip) comes from ldap.env.
       - SYNC_TRIGGER_URL=http://ldap-sync:8088/sync
+      # Authentik SSO bridge（任意）: VPN 内の IdP を coolify ネットへ中継
+      - AUTHENTIK_HOST=${AUTHENTIK_HOST:-}
+      - AUTHENTIK_PORT=${AUTHENTIK_PORT:-9000}
     env_file:
       - ./ldap.env         # provides LDAP_APP_DN for the bind-aware forwarder
     volumes:
       - ./vpn:/vpn:ro      # config.ovpn (CA + tls-auth); credentials come from .env
     networks:
-      - default            # vpn-ldap_default (apps + ldap-sync attach here)
+      default: {}          # vpn-ldap_default (apps + ldap-sync attach here)
+      # Coolify ビルドの nextjs-web からブラウザと同一の issuer ホスト名で
+      # 到達できるよう alias を張る（SSO の OIDC discovery/token 用）
+      coolify:
+        aliases:
+          - auth.ckk-tools.loc
 
   # AD/LDAP -> PostgreSQL employee directory sync. Periodic full sync + an HTTP
   # trigger (POST /sync, /sync/<user>) the forwarder calls on login. Writes the
@@ -60,3 +68,6 @@ networks:
   shareddb:
     external: true
     name: shared-db
+  coolify:
+    external: true
+    name: coolify
