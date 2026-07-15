@@ -1,10 +1,6 @@
-import { PlaceholderPage } from "@/components/ui/PlaceholderPage";
+import { OrderAcceptanceCreateForm } from "@/components/sales/order-acceptances/OrderAcceptanceCreateForm";
 
+/** 受注請書 手入力作成 (SA13). AI 取込を使わない MANUAL ルート。 */
 export default function SalesOrderAcceptancesNewPage() {
-  return (
-    <PlaceholderPage
-      breadcrumbs={["販売", "受注請書", "新規作成"]}
-      title="受注請書 新規作成"
-    />
-  );
+  return <OrderAcceptanceCreateForm />;
 }
