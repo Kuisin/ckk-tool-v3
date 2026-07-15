@@ -298,6 +298,18 @@ export function AppHeader({ user }: { user?: HeaderUser | null }) {
                   ))}
                 </Stack>
               </ScrollArea>
+              <Divider />
+              <UnstyledButton
+                className="block w-full"
+                component={Link}
+                href="/notifications"
+                onClick={() => setNotifOpen(false)}
+                py="6px"
+              >
+                <Text c="blue" size="xs" ta="center">
+                  すべて表示
+                </Text>
+              </UnstyledButton>
             </Popover.Dropdown>
           </Popover>
 
