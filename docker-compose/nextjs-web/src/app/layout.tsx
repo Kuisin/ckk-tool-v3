@@ -20,6 +20,14 @@ const notoSansJp = Noto_Sans_JP({
 export const metadata: Metadata = {
   title: "CKK 業務管理システム",
   description: "製造業務管理システム — 販売・購買・生産・出荷・請求・マスタ",
+  // PWA: manifest は app/manifest.ts が /manifest.webmanifest として配信。
+  // iOS はホーム画面追加（スタンドアロン）で Web Push が有効になる（16.4+）。
+  icons: { apple: "/icons/apple-touch-icon.png" },
+  appleWebApp: {
+    capable: true,
+    title: "CKK",
+    statusBarStyle: "default",
+  },
 };
 
 // モバイル PWA: input フォーカス時の自動ズームを抑止（iOS は font-size <16px の
