@@ -1,0 +1,89 @@
+// 受注請書 intake (_specs §2): 監視フォルダ / 優先アップロードから自動取込。
+//
+// キー: (year_month, seq) — ORDER シーケンスを注文請書（sales_orders）と共有。
+// 表示番号 ORD-YYYYMM-NNNNN。伝票展開（COMPLETED）で同じ (year_month, seq) の
+// sales_orders 枝番 1..N を生成する（§2: 受注請書 1 → 受注書 1+枝番 + 指示書 N）。
+// ライフサイクル: IMPORT（取込・抽出中/失敗）→ DRAFT（抽出済・編集可）→
+// REQUESTED（承認依頼）→ APPROVED → COMPLETED（伝票展開済）→ ARCHIVED。
+
+enum IntakeSource {
+  FOLDER // 監視フォルダ
+  UPLOAD // 画面からの優先取込
+  MANUAL // 手入力
+
+  @@map("INTAKE_SOURCE")
+  @@schema("app")
+}
+
+enum OrderAcceptanceStatus {
+  IMPORT
+  DRAFT
+  REQUESTED
+  APPROVED
+  COMPLETED
+  ARCHIVED
+
+  @@map("ORDER_ACCEPTANCE_STATUS")
+  @@schema("app")
+}
+
+model OrderAcceptance {
+  yearMonth String @map("year_month") @db.Char(6)
+  seq       Int
+
+  status OrderAcceptanceStatus @default(IMPORT)
+  source IntakeSource          @default(MANUAL)
+
+  // 取込元ファイル（files/SeaweedFS。添付一覧は document_attachments 側）
+  sourceFileId String? @map("source_file_id") @db.Uuid
+  // 抽出結果の生 JSON（po-extract /extract/order-request）
+  extracted    Json?
+  extractError String? @map("extract_error")
+
+  customerBpId       String? @map("customer_bp_id") @db.Uuid
+  customerBranchBpId String? @map("customer_branch_bp_id") @db.Uuid
+  customerOrderRef   String? @map("customer_order_ref") // 顧客注文書番号
+  orderDate          DateTime? @map("order_date") @db.Date
+
+  notes       String?
+  completedAt DateTime? @map("completed_at") @db.Timestamptz(6)
+  archivedAt  DateTime? @map("archived_at") @db.Timestamptz(6)
+  createdBy   String?   @map("created_by") @db.Uuid
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  sourceFile       File?            @relation("AcceptanceSourceFile", fields: [sourceFileId], references: [id])
+  customerBp       BusinessPartner? @relation("AcceptanceCustomer", fields: [customerBpId], references: [id])
+  customerBranchBp BusinessPartner? @relation("AcceptanceCustomerBranch", fields: [customerBranchBpId], references: [id])
+  createdByUser    User?            @relation("AcceptanceCreatedBy", fields: [createdBy], references: [id])
+
+  items OrderAcceptanceItem[]
+
+  @@id([yearMonth, seq])
+  @@index([status])
+  @@map("order_acceptances")
+  @@schema("app")
+}
+
+model OrderAcceptanceItem {
+  id                  String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  acceptanceYearMonth String @map("acceptance_year_month") @db.Char(6)
+  acceptanceSeq       Int    @map("acceptance_seq")
+
+  // 抽出直後は productText のみ。製品マスタ突合後に productId を持つ。
+  productId   Int?      @map("product_id")
+  productText String?   @map("product_text") // 抽出された品名（生）
+  orderType   OrderType @default(PRODUCTION) @map("order_type")
+  quantity    Int
+  unitPrice   Decimal?  @map("unit_price") @db.Decimal(12, 2)
+  deliveryDate DateTime? @map("delivery_date") @db.Date
+  notes       String?
+  sortOrder   Int       @default(0) @map("sort_order")
+
+  acceptance OrderAcceptance @relation(fields: [acceptanceYearMonth, acceptanceSeq], references: [yearMonth, seq], onDelete: Cascade)
+  product    Product?        @relation(fields: [productId], references: [id])
+
+  @@index([acceptanceYearMonth, acceptanceSeq])
+  @@map("order_acceptance_items")
+  @@schema("app")
+}

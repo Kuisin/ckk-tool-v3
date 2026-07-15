@@ -19,6 +19,7 @@ const DOC_FORMATS = {
   SHP: { digits: 5 },
   DRN: { digits: 5 },
   INV: { digits: 5 },
+  ORD: { digits: 5 }, // 受注請書（注文請書の枝番なし基底番号）
 } as const;
 
 export type DocPrefix = keyof typeof DOC_FORMATS;

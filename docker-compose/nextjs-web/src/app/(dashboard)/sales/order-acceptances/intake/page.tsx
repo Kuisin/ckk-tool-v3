@@ -1,11 +1,6 @@
-import { OrderRequestIntake } from "@/components/sales/order-acceptances/OrderRequestIntake";
+import { redirect } from "next/navigation";
 
-/** 受注請書 取込（AI / 手動）. `?manual=1` starts with a blank form. */
-export default async function SalesOrderAcceptanceIntakePage({
-  searchParams,
-}: {
-  searchParams: Promise<{ manual?: string }>;
-}) {
-  const { manual } = await searchParams;
-  return <OrderRequestIntake manual={manual === "1"} />;
+/** 旧 intake デモルート — 取込状況一覧（SA03 本体）へ統合済み。 */
+export default function SalesOrderAcceptanceIntakePage() {
+  redirect("/sales/order-acceptances");
 }

@@ -17,6 +17,7 @@ model File {
   invoicesPdf      Invoice[]      @relation("InvoicePdf")
   designFiles      DesignFile[]   @relation("DesignFileFile")
   attachments      DocumentAttachment[] @relation("AttachmentFile")
+  acceptanceSources OrderAcceptance[]   @relation("AcceptanceSourceFile")
 
   @@map("files")
   @@schema("app")

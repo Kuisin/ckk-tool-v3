@@ -58,13 +58,13 @@ export const appList: AppEntry[] = [
     requiredPermission: "quote",
   },
   {
-    // 注文請書（旧 PD01）と内容が重複するため SA03 に一本化。実体は
-    // /production/sales-orders の管理画面（§2 intake は order-acceptances
-    // ルートに残置、実装時に接続）。
+    // 受注請書 intake（§2）— 監視フォルダ / 優先取込の取込状況一覧が本体。
+    // 展開後の注文請書管理（旧 PD01）は /production/sales-orders
+    // （取込一覧のヘッダーからリンク）。
     key: "order-acceptances",
     label: "受注請書",
     operationCode: "SA03",
-    href: "/production/sales-orders",
+    href: "/sales/order-acceptances",
     icon: "IconClipboardCheck",
     category: "販売",
     requiredPermission: "order_acceptance",
