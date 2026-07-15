@@ -87,6 +87,10 @@ model User {
   posCreated   MaterialPurchaseOrder[] @relation("PoCreatedBy")
   receiptsCreated MaterialReceipt[]    @relation("ReceiptCreatedBy")
 
+  notifications       Notification[]           @relation("NotificationUser")
+  pushSubscriptions   PushSubscription[]       @relation("PushSubscriptionUser")
+  notificationSetting UserNotificationSetting? @relation("UserNotificationSettingUser")
+
   // Employees link to the shared directory by AD objectGUID (stable across
   // username/attribute changes). Null for SYSTEM / GUEST users.
   employee EmployeeDirectory? @relation("UserEmployee", fields: [employeeId], references: [ldapGuid])

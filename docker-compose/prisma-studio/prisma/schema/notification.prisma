@@ -1,0 +1,56 @@
+// 通知（横断機能 — _specs/feature/05-cross-cutting-and-appendix.md）。
+//
+// 配信チャネルは 3 系統: (1) アプリ内（notifications 行 → ヘッダーベル）、
+// (2) メール（nodemailer / さくら SMTP — 送信自体は app 側 lib/notifications.ts）、
+// (3) Web Push（push_subscriptions の VAPID 購読へ配信）。
+// ユーザー別の ON/OFF は user_notification_settings（行が無ければ全チャネル有効）。
+
+// アプリ内通知（1 行 = 1 ユーザー宛 1 件）
+model Notification {
+  id        String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId    String    @map("user_id") @db.Uuid
+  type      String // APPROVAL_REQUEST / APPROVAL_RESULT / INTAKE / SYSTEM …
+  title     String
+  message   String?
+  linkPath  String?   @map("link_path") // アプリ内パス（/production/approvals など）
+  isRead    Boolean   @default(false) @map("is_read")
+  readAt    DateTime? @map("read_at") @db.Timestamptz(6)
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  user User @relation("NotificationUser", fields: [userId], references: [id])
+
+  @@index([userId, isRead, createdAt(sort: Desc)])
+  @@map("notifications")
+  @@schema("app")
+}
+
+// Web Push 購読（1 行 = 1 ブラウザ/デバイス）。endpoint はプッシュサービスが
+// 発行する一意 URL。404/410 応答で自動削除する。
+model PushSubscription {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  endpoint  String   @unique
+  p256dh    String
+  auth      String
+  userAgent String?  @map("user_agent")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  user User @relation("PushSubscriptionUser", fields: [userId], references: [id])
+
+  @@index([userId])
+  @@map("push_subscriptions")
+  @@schema("app")
+}
+
+// ユーザー別チャネル設定（行が無ければ既定 = 全チャネル有効）
+model UserNotificationSetting {
+  userId       String   @id @map("user_id") @db.Uuid
+  emailEnabled Boolean  @default(true) @map("email_enabled")
+  pushEnabled  Boolean  @default(true) @map("push_enabled")
+  updatedAt    DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  user User @relation("UserNotificationSettingUser", fields: [userId], references: [id])
+
+  @@map("user_notification_settings")
+  @@schema("app")
+}

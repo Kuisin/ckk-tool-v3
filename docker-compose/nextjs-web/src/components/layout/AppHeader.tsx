@@ -7,8 +7,8 @@
  *   CENTER : OperationCodeJump (compact, desktop)
  *   RIGHT  : notification bell Popover + user Menu
  *
- * Notifications / user are mock data for now —
- * TODO(auth): source from Auth.js session; TODO(sse): /api/sse/approvals.
+ * Notifications are live (app.notifications → /api/notifications polling via
+ * hooks/useNotifications). TODO(sse): swap the hook's polling for SSE.
  */
 
 import {
@@ -37,9 +37,12 @@ import {
   IconUser,
 } from "@tabler/icons-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { signOut } from "next-auth/react";
 import { useRef, useState } from "react";
+import { relativeTime, useNotifications } from "@/hooks/useNotifications";
 import { AppLauncher } from "./AppLauncher";
+import { markAllReadAction, markReadAction } from "./notification-actions";
 import { OperationCodeJump } from "./OperationCodeJump";
 
 const NOTIFICATION_POPUP_WIDTH = 280;
@@ -51,30 +54,6 @@ function canHoverOpen(): boolean {
     window.matchMedia("(hover: hover) and (pointer: fine)").matches
   );
 }
-
-const MOCK_NOTIFICATIONS = [
-  {
-    id: 1,
-    title: "承認リクエスト",
-    message: "指示書 #1042 の第一承認が必要です",
-    time: "5分前",
-    isRead: false,
-  },
-  {
-    id: 2,
-    title: "工程完了",
-    message: "指示書 #1038 の円筒加工が完了しました",
-    time: "1時間前",
-    isRead: false,
-  },
-  {
-    id: 3,
-    title: "承認完了",
-    message: "指示書 #1035 が承認されました",
-    time: "昨日",
-    isRead: true,
-  },
-];
 
 const MOCK_USER = {
   displayName: "山田 太郎",
@@ -105,8 +84,27 @@ export function AppHeader({ user }: { user?: HeaderUser | null }) {
     getInitialValueInEffect: false,
   });
   const isDark = colorScheme === "dark";
+  const router = useRouter();
 
-  const unreadCount = MOCK_NOTIFICATIONS.filter((n) => !n.isRead).length;
+  const { unreadCount, items: notifications, refresh } = useNotifications();
+
+  async function handleNotificationClick(notif: {
+    id: string;
+    isRead: boolean;
+    linkPath: string | null;
+  }) {
+    setNotifOpen(false);
+    if (notif.linkPath) router.push(notif.linkPath);
+    if (!notif.isRead) {
+      await markReadAction(notif.id);
+      void refresh();
+    }
+  }
+
+  async function handleMarkAllRead() {
+    await markAllReadAction();
+    void refresh();
+  }
 
   function openLauncher() {
     if (launcherCloseTimeoutRef.current) {
@@ -249,6 +247,7 @@ export function AppHeader({ user }: { user?: HeaderUser | null }) {
                   c="blue"
                   className="cursor-pointer border-0 bg-transparent p-0"
                   component="button"
+                  onClick={handleMarkAllRead}
                   size="xs"
                   type="button"
                 >
@@ -258,11 +257,17 @@ export function AppHeader({ user }: { user?: HeaderUser | null }) {
               <Divider />
               <ScrollArea mah={{ base: "min(360px, 50dvh)", md: 360 }}>
                 <Stack gap={0}>
-                  {MOCK_NOTIFICATIONS.map((notif) => (
-                    <Box
-                      className="notification-item"
+                  {notifications.length === 0 && (
+                    <Text c="dimmed" px="sm" py="md" size="xs" ta="center">
+                      通知はありません
+                    </Text>
+                  )}
+                  {notifications.map((notif) => (
+                    <UnstyledButton
+                      className="notification-item block w-full text-left"
                       data-unread={notif.isRead ? undefined : true}
                       key={notif.id}
+                      onClick={() => handleNotificationClick(notif)}
                       px="sm"
                       py={{ base: "sm", md: "xs" }}
                     >
@@ -275,19 +280,21 @@ export function AppHeader({ user }: { user?: HeaderUser | null }) {
                           <Text fw={notif.isRead ? 400 : 600} size="sm">
                             {notif.title}
                           </Text>
-                          <Text c="dimmed" size="xs">
-                            {notif.message}
-                          </Text>
+                          {notif.message && (
+                            <Text c="dimmed" size="xs">
+                              {notif.message}
+                            </Text>
+                          )}
                         </Stack>
                         <Text
                           c="dimmed"
                           className="whitespace-nowrap"
                           size="xs"
                         >
-                          {notif.time}
+                          {relativeTime(notif.createdAt)}
                         </Text>
                       </Group>
-                    </Box>
+                    </UnstyledButton>
                   ))}
                 </Stack>
               </ScrollArea>
@@ -337,6 +344,14 @@ export function AppHeader({ user }: { user?: HeaderUser | null }) {
                 py={{ base: "sm", md: "xs" }}
               >
                 設定
+              </Menu.Item>
+              <Menu.Item
+                component={Link}
+                href="/settings/notifications"
+                leftSection={<IconBell size={14} />}
+                py={{ base: "sm", md: "xs" }}
+              >
+                通知設定
               </Menu.Item>
               <Menu.Item
                 component={Link}
