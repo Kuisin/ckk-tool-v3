@@ -43,6 +43,7 @@ import {
   IconInbox,
 } from "@tabler/icons-react";
 import { type ReactNode, useMemo, useState } from "react";
+import { useUrlTableState } from "@/hooks/useUrlState";
 import { useIsMobile } from "@/hooks/useViewport";
 
 export type SortDir = "asc" | "desc";
@@ -87,6 +88,12 @@ export interface DataTableProps<T> {
   rowActions?: (row: T) => RowAction<T>[];
   pageSize?: number;
   defaultSort?: { key: string; dir: SortDir };
+  /**
+   * ページ・ページサイズ・ソートを URL search params（page/size/sort）に保持
+   * する（design.md §8.1 / ページ共有）。画面に 1 つの主テーブルだけ有効化する
+   * こと — 詳細タブ内のサブテーブルでは使わない（パラメータが衝突する）。
+   */
+  urlState?: boolean;
   stickyHeader?: boolean;
   emptyIcon?: ReactNode;
   emptyMessage?: string;
@@ -106,17 +113,37 @@ export function DataTable<T>({
   rowActions,
   pageSize: initialPageSize = 10,
   defaultSort,
+  urlState = false,
   stickyHeader = true,
   emptyIcon,
   emptyMessage = "データがありません",
   emptyAction,
 }: DataTableProps<T>) {
   const isMobile = useIsMobile();
-  const [sort, setSort] = useState<{ key: string; dir: SortDir } | null>(
-    defaultSort ?? null,
-  );
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(initialPageSize);
+  // URL 同期モード（urlState=true）はページ・サイズ・ソートを search params に
+  // 保持し、ローカル state を使わない。フック自体は無条件に呼ぶ（React の規則）。
+  const urlTable = useUrlTableState();
+  const [localSort, setLocalSort] = useState<{
+    key: string;
+    dir: SortDir;
+  } | null>(defaultSort ?? null);
+  const [localPage, setLocalPage] = useState(1);
+  const [localPageSize, setLocalPageSize] = useState(initialPageSize);
+  const sort = urlState ? (urlTable.sort ?? defaultSort ?? null) : localSort;
+  const page = urlState ? urlTable.page : localPage;
+  const pageSize = urlState
+    ? (urlTable.pageSize ?? initialPageSize)
+    : localPageSize;
+  const setSort = urlState ? urlTable.setSort : setLocalSort;
+  const setPage = urlState ? urlTable.setPage : setLocalPage;
+  const setPageSize = (v: number) => {
+    if (urlState) {
+      urlTable.setPageSize(v); // page も同時にリセット
+    } else {
+      setLocalPageSize(v);
+      setLocalPage(1);
+    }
+  };
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [hidden, setHidden] = useState<Set<string>>(new Set());
 
@@ -187,11 +214,14 @@ export function DataTable<T>({
   };
 
   const toggleSort = (key: string) => {
-    setSort((prev) => {
-      if (!prev || prev.key !== key) return { key, dir: "asc" };
-      if (prev.dir === "asc") return { key, dir: "desc" };
-      return null; // third click clears
-    });
+    // 値渡し（URL 同期モードの setSort は updater 関数を受けない）
+    const next =
+      !sort || sort.key !== key
+        ? ({ key, dir: "asc" } as const)
+        : sort.dir === "asc"
+          ? ({ key, dir: "desc" } as const)
+          : null; // third click clears
+    setSort(next);
   };
 
   // ── Empty state ──────────────────────────────────────────────────────────--
