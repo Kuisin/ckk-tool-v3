@@ -171,6 +171,46 @@ export async function fetchNotifications(
   };
 }
 
+/** 通知一覧ページ用: フィルタ + ページング付き全件照会。 */
+export async function fetchNotificationsPage(
+  userId: string,
+  opts: {
+    page: number; // 1-origin
+    pageSize: number;
+    unreadOnly?: boolean;
+    type?: string | null;
+  },
+): Promise<{ total: number; unreadCount: number; items: NotificationItem[] }> {
+  const where = {
+    userId,
+    ...(opts.unreadOnly ? { isRead: false } : {}),
+    ...(opts.type ? { type: opts.type } : {}),
+  };
+  const [total, unreadCount, rows] = await Promise.all([
+    prisma.notification.count({ where }),
+    prisma.notification.count({ where: { userId, isRead: false } }),
+    prisma.notification.findMany({
+      where,
+      orderBy: { createdAt: "desc" },
+      skip: (opts.page - 1) * opts.pageSize,
+      take: opts.pageSize,
+    }),
+  ]);
+  return {
+    total,
+    unreadCount,
+    items: rows.map((r) => ({
+      id: r.id,
+      type: r.type,
+      title: r.title,
+      message: r.message,
+      linkPath: r.linkPath,
+      isRead: r.isRead,
+      createdAt: r.createdAt.toISOString(),
+    })),
+  };
+}
+
 /** 1 件既読化（本人の行のみ）。 */
 export async function markNotificationRead(
   userId: string,
