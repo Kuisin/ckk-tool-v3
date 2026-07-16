@@ -23,12 +23,14 @@ const TARGET_TYPE_LABEL: Record<string, string> = {
   work_orders: "指示書",
   material_purchase_orders: "素材発注書",
   order_acceptances: "受注請書",
+  purchase_requests: "購買依頼",
 };
 
 const TARGET_TYPE_COLOR: Record<string, string> = {
   work_orders: "violet",
   material_purchase_orders: "teal",
   order_acceptances: "blue",
+  purchase_requests: "cyan",
 };
 
 const STEP_LABEL: Record<string, string> = {
@@ -58,6 +60,8 @@ function targetHref(row: ApprovalRequestRow): string | null {
       return `/production/work-orders/${row.targetId}`;
     case "material_purchase_orders":
       return `/purchase/purchase-orders/${encodeURIComponent(row.targetId)}`;
+    case "purchase_requests":
+      return `/purchase/purchase-requests/${encodeURIComponent(row.targetId)}`;
     default:
       return null; // order_acceptances — 承認画面未実装
   }

@@ -1,17 +1,17 @@
 /**
- * data.ts — 素材発注書 (PU03) のサーバーサイド取得・マッピング。
+ * data.ts — 購買依頼 (PU04) のサーバーサイド取得・マッピング。
  *
- * URL id = po_number（PO-YYYYMM-NNNNN、文字列保存）。
+ * URL id = request_number（PRQ-YYYYMM-NNNNN、文字列保存）。
  * Prisma Decimal はここで Number() へ変換してからクライアントへ渡す。
  * history Json（{action,user,at,notes}）は displayName 解決して返す。
- * 仕入先 / 工場 options は work-orders の data.ts を再利用する。
+ * 仕入先（変換モーダル）/ 工場 options は work-orders の data.ts を再利用する。
  */
 
 import type {
-  PurchaseOrderRow,
-  PurchaseOrderView,
-  PurchaseStatus,
-} from "@/components/purchase/purchase-orders/model";
+  PurchaseRequestRow,
+  PurchaseRequestStatus,
+  PurchaseRequestView,
+} from "@/components/purchase/purchase-requests/model";
 import type { HistoryEntry } from "@/lib/approvals";
 import { prisma } from "@/lib/db";
 import { type LocalizedText, localized } from "@/lib/format";
@@ -22,46 +22,53 @@ export {
   type Option,
 } from "../../production/work-orders/data";
 
-const PO_INCLUDE = {
-  supplierBp: true,
-  sourceRequest: { select: { requestNumber: true } },
-  items: {
-    include: { material: true, factory: true },
-    orderBy: { sortOrder: "asc" as const },
-  },
-};
-
 const iso = (d: Date | null | undefined) => d?.toISOString() ?? null;
 const dateOnly = (d: Date | null | undefined) =>
   d ? d.toISOString().slice(0, 10) : null;
 
-/** 一覧 (PU03) — 新しい発注番号から順に。 */
-export async function fetchPurchaseOrders(): Promise<PurchaseOrderRow[]> {
-  const rows = await prisma.materialPurchaseOrder.findMany({
+/** 一覧 (PU04) — 新しい依頼番号から順に。 */
+export async function fetchPurchaseRequests(): Promise<PurchaseRequestRow[]> {
+  const rows = await prisma.purchaseRequest.findMany({
     include: {
-      supplierBp: true,
-      _count: { select: { items: true } },
+      createdByUser: { select: { displayName: true } },
+      items: {
+        include: { material: { select: { code: true } } },
+        orderBy: { sortOrder: "asc" },
+      },
     },
-    orderBy: { poNumber: "desc" },
+    orderBy: { requestNumber: "desc" },
   });
-  return rows.map((r) => ({
-    poNumber: r.poNumber,
-    supplierName: localized(r.supplierBp.name as LocalizedText | null),
-    itemCount: r._count.items,
-    totalAmount: Number(r.totalAmount),
-    status: r.status,
-    purchaseDate: dateOnly(r.purchaseDate),
-    updatedAt: r.updatedAt.toISOString(),
-  }));
+  return rows.map((r) => {
+    const desired = r.items
+      .map((it) => dateOnly(it.desiredAt))
+      .filter((d): d is string => d != null)
+      .sort();
+    return {
+      requestNumber: r.requestNumber,
+      requesterName: r.createdByUser?.displayName ?? "システム",
+      primaryMaterial: r.items[0]?.material.code ?? null,
+      itemCount: r.items.length,
+      status: r.status,
+      desiredAt: desired[0] ?? null,
+      updatedAt: r.updatedAt.toISOString(),
+    };
+  });
 }
 
-/** 詳細 (PU23) view model。id = po_number。未存在は null。 */
-export async function fetchPurchaseOrder(
-  poNumber: string,
-): Promise<PurchaseOrderView | null> {
-  const r = await prisma.materialPurchaseOrder.findUnique({
-    where: { poNumber },
-    include: PO_INCLUDE,
+/** 詳細 (PU24) view model。id = request_number。未存在は null。 */
+export async function fetchPurchaseRequest(
+  requestNumber: string,
+): Promise<PurchaseRequestView | null> {
+  const r = await prisma.purchaseRequest.findUnique({
+    where: { requestNumber },
+    include: {
+      createdByUser: { select: { displayName: true } },
+      purchaseOrder: { select: { poNumber: true } },
+      items: {
+        include: { material: true, factory: true },
+        orderBy: { sortOrder: "asc" },
+      },
+    },
   });
   if (!r) return null;
 
@@ -82,20 +89,16 @@ export async function fetchPurchaseOrder(
 
   return {
     id: r.id,
-    poNumber: r.poNumber,
-    supplierBpId: r.supplierBpId,
-    supplierName: localized(r.supplierBp.name as LocalizedText | null),
-    sourceRequestNumber: r.sourceRequest?.requestNumber ?? null,
-    status: r.status as PurchaseStatus,
-    totalAmount: Number(r.totalAmount),
-    currency: r.currency,
-    purchaseDate: dateOnly(r.purchaseDate),
+    requestNumber: r.requestNumber,
+    status: r.status as PurchaseRequestStatus,
+    purpose: r.purpose,
+    requesterName: r.createdByUser?.displayName ?? "システム",
     requestedAt: iso(r.requestedAt),
     approvedAt: iso(r.approvedAt),
     orderedAt: iso(r.orderedAt),
-    completedAt: iso(r.completedAt),
     cancelledAt: iso(r.cancelledAt),
     cancelReason: r.cancelReason,
+    purchaseOrderNumber: r.purchaseOrder?.poNumber ?? null,
     notes: r.notes,
     items: r.items.map((it) => ({
       id: it.id,
@@ -108,9 +111,7 @@ export async function fetchPurchaseOrder(
         : null,
       quantity: Number(it.quantity),
       unit: it.unit,
-      unitPrice: Number(it.unitPrice),
-      amount: Number(it.amount),
-      expectedAt: dateOnly(it.expectedAt),
+      desiredAt: dateOnly(it.desiredAt),
       notes: it.notes,
       sortOrder: it.sortOrder,
     })),

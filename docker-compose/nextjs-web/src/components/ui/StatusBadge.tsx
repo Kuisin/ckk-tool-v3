@@ -54,6 +54,15 @@ export const STATUS_MAPS = {
     COMPLETED: { label: "入荷完了", color: "green" },
     CANCELLED: { label: "キャンセル", color: "red" },
   },
+  /** 購買依頼 (app.purchase_requests — 発注書の前段, PU04)。 */
+  PurchaseRequest: {
+    DRAFT: { label: "下書き", color: "gray" },
+    REQUESTED: { label: "承認依頼中", color: "yellow" },
+    APPROVED: { label: "承認済", color: "blue" },
+    REJECTED: { label: "差し戻し", color: "red" },
+    ORDERED: { label: "発注済", color: "violet" },
+    CANCELLED: { label: "キャンセル", color: "red" },
+  },
   SalesOrder: {
     DRAFT: { label: "下書き", color: "gray" },
     CONFIRMED: { label: "確定", color: "blue" },

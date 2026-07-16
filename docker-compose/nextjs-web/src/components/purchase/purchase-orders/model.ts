@@ -63,6 +63,8 @@ export interface PurchaseOrderView {
   poNumber: string;
   supplierBpId: string;
   supplierName: string;
+  /** 変換元の購買依頼番号（PU04 から作成された場合のみ）。 */
+  sourceRequestNumber: string | null;
   status: PurchaseStatus;
   totalAmount: number;
   currency: string;
