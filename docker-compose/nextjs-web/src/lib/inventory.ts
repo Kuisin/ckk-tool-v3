@@ -236,11 +236,62 @@ export async function onWorkOrderCompleted(workOrderId: string): Promise<void> {
         notes: `指示書 #${wo.workOrderNumber} 半製品入庫`,
       });
     }
+    // 素材予約の消費（監査 P2-1）: この WO の MATERIAL 予約を RELEASE +
+    // OUT（実消費）。台帳が実態より少ない場合は OUT をスキップして警告
+    // （完了を止めない — 素材台帳は運用中に追いつく）。
+    const materialReservations = await tx.inventoryReservation.findMany({
+      where: {
+        workOrderId: wo.id,
+        inventoryType: "MATERIAL",
+        status: "RESERVED",
+      },
+    });
+    for (const r of materialReservations) {
+      await applyTransaction(tx, {
+        inventoryType: "MATERIAL",
+        inventoryId: r.inventoryId,
+        transactionType: "RELEASE",
+        quantity: Number(r.quantity),
+        referenceType: "work_order",
+        referenceId: wo.id,
+        notes: `指示書 #${wo.workOrderNumber} 完了による素材予約解除`,
+      });
+      // PG は tx 内エラー後の継続が不可のため、残量を事前確認してから OUT。
+      // 台帳が実態より少なければ残量分だけ消費（不足分は警告のみ — 完了を
+      // 止めない。素材台帳は運用で追いつく）。
+      const inv = await tx.materialInventory.findUnique({
+        where: { id: r.inventoryId },
+        select: { quantity: true },
+      });
+      const consume = Math.min(Number(inv?.quantity ?? 0), Number(r.quantity));
+      if (consume > 0) {
+        await applyTransaction(tx, {
+          inventoryType: "MATERIAL",
+          inventoryId: r.inventoryId,
+          transactionType: "OUT",
+          quantity: consume,
+          referenceType: "work_order",
+          referenceId: wo.id,
+          notes: `指示書 #${wo.workOrderNumber} 素材消費`,
+        });
+      }
+      if (consume < Number(r.quantity)) {
+        console.warn(
+          `[inventory] 素材消費を一部スキップ（台帳残不足 ${consume}/${Number(r.quantity)}）: WO #${wo.workOrderNumber}`,
+        );
+      }
+      await tx.inventoryReservation.update({
+        where: { id: r.id },
+        data: { status: "RELEASED", releasedAt: new Date() },
+      });
+    }
+
     // 予約 → 確定（§7: 全工程完了時）。予約は salesOrderId で作られる
     // （workOrderId は付かない）ため両方で照合 — 監査 P1-2 の修正。
     await tx.inventoryReservation.updateMany({
       where: {
         OR: [{ workOrderId: wo.id }, { salesOrderId: wo.salesOrderId }],
+        inventoryType: "PRODUCT",
         status: "RESERVED",
       },
       data: { status: "CONFIRMED", confirmedAt: new Date() },

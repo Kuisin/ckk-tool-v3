@@ -440,12 +440,151 @@ export async function orderPurchaseOrder(
  * 素材在庫へ入庫する。明細単位の分納（部分入荷）はスコープ外 — 分納が必要な
  * 場合は素材入荷 (PU01) の直接登録で補う。
  */
+/** 分納入荷の 1 行分の入力。 */
+export interface PoReceiptLine {
+  itemId: string;
+  quantity: number;
+}
+
+/**
+ * 分納入荷（監査 P2-5）: 明細別の数量を入荷し、累計が発注数量に達したら
+ * PO を COMPLETED に。過入荷（累計 > 発注数量）は拒否。
+ */
+export async function receivePurchaseOrderItems(
+  poNumber: string,
+  lines: PoReceiptLine[],
+): Promise<ActionResult<{ completed: boolean }>> {
+  const authz = await checkPermission("purchase_order", "UPDATE");
+  if (!authz.ok) return actionError(authz.error);
+  if (lines.length === 0 || lines.some((l) => !(l.quantity > 0))) {
+    return actionError("入荷数量は 1 以上で入力してください");
+  }
+  try {
+    const prior = await prisma.materialPurchaseOrder.findUnique({
+      where: { poNumber },
+      include: { items: { orderBy: { sortOrder: "asc" } } },
+    });
+    if (!prior) return actionError("対象の素材発注書が見つかりません");
+    if (prior.status !== "ORDERED") {
+      return actionError("発注済の素材発注書のみ入荷できます");
+    }
+    const actor = await getCurrentActorId();
+    const now = new Date();
+    const receivedAt = new Date(now.toISOString().slice(0, 10));
+
+    const result = await prisma.$transaction(async (tx) => {
+      const ids: string[] = [];
+      for (const line of lines) {
+        const it = prior.items.find((i) => i.id === line.itemId);
+        if (!it) throw new Error("GUARD:明細が見つかりません");
+        // 累計入荷 ≦ 発注数量（過入荷ガード）を条件付き更新で原子的に担保
+        const claimed = await tx.materialPurchaseOrderItem.updateMany({
+          where: {
+            id: it.id,
+            receivedQuantity: { lte: Number(it.quantity) - line.quantity },
+          },
+          data: { receivedQuantity: { increment: line.quantity } },
+        });
+        if (claimed.count !== 1) {
+          throw new Error(
+            `GUARD:明細（${it.id.slice(0, 8)}）の入荷数量が発注数量を超えます`,
+          );
+        }
+        const receipt = await tx.materialReceipt.create({
+          data: {
+            materialId: it.materialId,
+            supplierBpId: prior.supplierBpId,
+            purchaseOrderItemId: it.id,
+            factoryId: it.factoryId,
+            quantity: line.quantity,
+            unit: it.unit,
+            receivedAt,
+            notes: `素材発注書 ${poNumber} の入荷（分納）`,
+            createdBy: actor,
+          },
+          select: { id: true },
+        });
+        ids.push(receipt.id);
+      }
+      // 全明細が発注数量に達したら COMPLETED
+      const remaining = await tx.materialPurchaseOrderItem.count({
+        where: {
+          purchaseOrderId: prior.id,
+          receivedQuantity: {
+            lt: tx.materialPurchaseOrderItem.fields.quantity,
+          },
+        },
+      });
+      let completed = false;
+      if (remaining === 0) {
+        await tx.materialPurchaseOrder.update({
+          where: { id: prior.id },
+          data: {
+            status: "COMPLETED",
+            completedAt: now,
+            completedBy: actor,
+            history: toHistoryJson(
+              appendHistory(prior.history, entry("COMPLETE", actor)),
+            ),
+          },
+        });
+        completed = true;
+      }
+      return { ids, completed };
+    });
+
+    for (const id of result.ids) {
+      await onMaterialReceipt(id);
+      await recordAudit({
+        action: "CREATE",
+        tableName: "material_receipts",
+        recordId: id,
+        after: { poNumber, source: "purchase_order_receive" },
+      });
+    }
+    if (result.completed) {
+      await recordAudit({
+        action: "UPDATE",
+        tableName: "material_purchase_orders",
+        recordId: poNumber,
+        before: { status: "ORDERED" },
+        after: { status: "COMPLETED" },
+      });
+      // 入荷完了のハンドオフ通知（依頼者・作成者へ・best-effort — P2-6）
+      try {
+        const { notify } = await import("@/lib/notifications");
+        const recipients = [prior.requestedBy, prior.createdBy].filter(
+          (u): u is string => Boolean(u),
+        );
+        await notify({
+          userIds: recipients,
+          type: "PURCHASE",
+          title: `素材発注書 ${poNumber} の入荷が完了しました`,
+          linkPath: `/purchase/purchase-orders/${encodeURIComponent(poNumber)}`,
+        });
+      } catch (err) {
+        console.error("[purchase] 入荷完了通知に失敗:", err);
+      }
+    }
+    revalidate(poNumber);
+    revalidatePath(RECEIPTS_PATH);
+    revalidatePath("/production/inventory/materials");
+    return actionOk({ completed: result.completed });
+  } catch (e) {
+    if (e instanceof Error && e.message.startsWith("GUARD:")) {
+      return actionError(e.message.slice("GUARD:".length));
+    }
+    return actionError(prismaErrorMessage(e, "入荷処理に失敗しました"));
+  }
+}
+
 export async function completePurchaseOrder(
   poNumber: string,
 ): Promise<ActionResult> {
   const authz = await checkPermission("purchase_order", "UPDATE");
   if (!authz.ok) return actionError(authz.error);
   try {
+    // 残数量の一括入荷 = 分納ロジックへ委譲（監査 P2-5）
     const prior = await prisma.materialPurchaseOrder.findUnique({
       where: { poNumber },
       include: { items: { orderBy: { sortOrder: "asc" } } },
@@ -454,67 +593,17 @@ export async function completePurchaseOrder(
     if (prior.status !== "ORDERED") {
       return actionError("発注済の素材発注書のみ入荷完了にできます");
     }
-    const actor = await getCurrentActorId();
-    const now = new Date();
-    // 入荷日は日付のみ（@db.Date）。
-    const receivedAt = new Date(now.toISOString().slice(0, 10));
-
-    // PO の完了 + 入荷レコード作成を同一 tx で行い、在庫入庫
-    // （onMaterialReceipt は内部で自前の tx を張る）は commit 後に流す。
-    const receiptIds = await prisma.$transaction(async (tx) => {
-      await tx.materialPurchaseOrder.update({
-        where: { id: prior.id },
-        data: {
-          status: "COMPLETED",
-          completedAt: now,
-          completedBy: actor,
-          history: toHistoryJson(
-            appendHistory(prior.history, entry("COMPLETE", actor)),
-          ),
-        },
-      });
-      const ids: string[] = [];
-      for (const it of prior.items) {
-        const receipt = await tx.materialReceipt.create({
-          data: {
-            materialId: it.materialId,
-            supplierBpId: prior.supplierBpId,
-            purchaseOrderItemId: it.id,
-            factoryId: it.factoryId,
-            quantity: it.quantity,
-            unit: it.unit,
-            receivedAt,
-            notes: `素材発注書 ${poNumber} の入荷`,
-            createdBy: actor,
-          },
-          select: { id: true },
-        });
-        ids.push(receipt.id);
-      }
-      return ids;
-    });
-
-    // 素材在庫への入庫（入荷工場別）。
-    for (const id of receiptIds) {
-      await onMaterialReceipt(id);
-      await recordAudit({
-        action: "CREATE",
-        tableName: "material_receipts",
-        recordId: id,
-        after: { poNumber, source: "purchase_order_complete" },
-      });
+    const lines = prior.items
+      .map((it) => ({
+        itemId: it.id,
+        quantity: Number(it.quantity) - Number(it.receivedQuantity),
+      }))
+      .filter((l) => l.quantity > 0);
+    if (lines.length === 0) {
+      return actionError("未入荷の明細がありません");
     }
-
-    await recordAudit({
-      action: "UPDATE",
-      tableName: "material_purchase_orders",
-      recordId: poNumber,
-      before: { status: "ORDERED" },
-      after: { status: "COMPLETED", receiptCount: receiptIds.length },
-    });
-    revalidate(poNumber);
-    revalidatePath(RECEIPTS_PATH);
-    revalidatePath("/production/inventory/materials");
+    const res = await receivePurchaseOrderItems(poNumber, lines);
+    if (!res.ok) return res;
     return actionOk();
   } catch (e) {
     return actionError(prismaErrorMessage(e, "入荷完了に失敗しました"));
