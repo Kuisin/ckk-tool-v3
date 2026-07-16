@@ -12,6 +12,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { resolveUnitPriceFromEntries } from "@/components/sales/quotes/model";
 import { recordAudit } from "@/lib/audit";
+import { checkPermission } from "@/lib/authz";
 import { prisma } from "@/lib/db";
 import { formatQuoteNumber, parseDocKey } from "@/lib/doc-number";
 import { allocateDocumentKey } from "@/lib/numbering";
@@ -95,6 +96,8 @@ export async function createQuote(
   if (!parsed.success) {
     return actionError(parsed.error.issues[0]?.message ?? "入力が不正です");
   }
+  const authz = await checkPermission("quote", "CREATE");
+  if (!authz.ok) return actionError(authz.error);
   const v = parsed.data;
   try {
     const items = await resolveItems(v);
@@ -144,6 +147,8 @@ export async function updateQuote(
   if (!parsed.success) {
     return actionError(parsed.error.issues[0]?.message ?? "入力が不正です");
   }
+  const authz = await checkPermission("quote", "UPDATE");
+  if (!authz.ok) return actionError(authz.error);
   const v = parsed.data;
   try {
     const items = await resolveItems(v);
@@ -210,6 +215,8 @@ export async function issueQuote(
 ): Promise<ActionResult> {
   const key = parseDocKey(number, "QOT");
   if (!key) return actionError("見積番号が不正です");
+  const authz = await checkPermission("quote", "UPDATE");
+  if (!authz.ok) return actionError(authz.error);
   try {
     const updated = await prisma.quote.updateMany({
       where: { yearMonth: key.yearMonth, seq: key.seq, status: "DRAFT" },

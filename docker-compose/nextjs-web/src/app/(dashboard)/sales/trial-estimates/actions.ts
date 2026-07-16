@@ -12,6 +12,7 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { recordAudit } from "@/lib/audit";
+import { checkPermission } from "@/lib/authz";
 import { type Prisma, prisma } from "@/lib/db";
 import {
   type DocKey,
@@ -108,6 +109,8 @@ export async function createTrialEstimate(
   if (!parsed.success) {
     return actionError(parsed.error.issues[0]?.message ?? "入力が不正です");
   }
+  const authz = await checkPermission("price_list", "CREATE");
+  if (!authz.ok) return actionError(authz.error);
   const v = parsed.data;
   try {
     const { yearMonth, seq } = await allocateDocumentKey("ESTIMATE");
@@ -151,6 +154,8 @@ export async function confirmTrialEstimate(
 ): Promise<ActionResult> {
   const key = keyOf(number);
   if (!key) return actionError("試算番号が不正です");
+  const authz = await checkPermission("price_list", "UPDATE");
+  if (!authz.ok) return actionError(authz.error);
   try {
     const updated = await prisma.estimate.updateMany({
       where: { yearMonth: key.yearMonth, seq: key.seq, status: "DRAFT" },
@@ -200,6 +205,8 @@ export async function registerPriceListFromEstimate(
   const v = parsed.data;
   const key = keyOf(v.estimateNumber);
   if (!key) return actionError("試算番号が不正です");
+  const authz = await checkPermission("price_list", "CREATE");
+  if (!authz.ok) return actionError(authz.error);
   try {
     const estimate = await prisma.estimate.findUnique({
       where: { yearMonth_seq: { yearMonth: key.yearMonth, seq: key.seq } },

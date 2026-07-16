@@ -7,6 +7,7 @@
  * 行・オブジェクトのどちらかが無ければ 404。
  */
 
+import { requirePermissionResponse } from "@/lib/authz";
 import { prisma } from "@/lib/db";
 import { contentTypeForKey, getObject } from "@/lib/storage";
 
@@ -18,6 +19,9 @@ export async function GET(
   _request: Request,
   { params }: Params,
 ): Promise<Response> {
+  // 取込元ファイルの閲覧 — GET なので CREATE ではなく READ でゲート（判断メモ）。
+  const denied = await requirePermissionResponse("order_acceptance", "READ");
+  if (denied) return denied;
   const { yearMonth, seq } = await params;
   const seqNum = Number(seq);
   if (!/^\d{6}$/.test(yearMonth) || !Number.isInteger(seqNum) || seqNum < 1) {

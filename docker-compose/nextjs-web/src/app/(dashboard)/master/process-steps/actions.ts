@@ -13,6 +13,7 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { recordAudit } from "@/lib/audit";
+import { checkPermission } from "@/lib/authz";
 import { prisma } from "@/lib/db";
 import {
   type ActionResult,
@@ -135,6 +136,8 @@ function approvalMinRankValue(v: ProcessStepUpdateInput): string | null {
 export async function createProcessStep(
   input: ProcessStepCreateInput,
 ): Promise<ActionResult<{ id: number; code: string }>> {
+  const authz = await checkPermission("master", "CREATE");
+  if (!authz.ok) return actionError(authz.error);
   const parsed = processStepCreateInput.safeParse(input);
   if (!parsed.success) {
     return actionError(parsed.error.issues[0]?.message ?? "入力が不正です");
@@ -221,6 +224,8 @@ export async function updateProcessStep(
   id: number,
   input: ProcessStepUpdateInput,
 ): Promise<ActionResult<{ id: number }>> {
+  const authz = await checkPermission("master", "UPDATE");
+  if (!authz.ok) return actionError(authz.error);
   const parsed = processStepUpdateInput.safeParse(input);
   if (!parsed.success) {
     return actionError(parsed.error.issues[0]?.message ?? "入力が不正です");
@@ -331,6 +336,8 @@ export async function setProcessStepsActive(
   ids: number[],
   isActive: boolean,
 ): Promise<ActionResult> {
+  const authz = await checkPermission("master", "UPDATE");
+  if (!authz.ok) return actionError(authz.error);
   if (ids.length === 0) return actionError("対象が選択されていません");
   try {
     await prisma.processStepCatalog.updateMany({
@@ -354,6 +361,8 @@ export async function setProcessStepsActive(
 }
 
 export async function deleteProcessSteps(ids: number[]): Promise<ActionResult> {
+  const authz = await checkPermission("master", "DELETE");
+  if (!authz.ok) return actionError(authz.error);
   if (ids.length === 0) return actionError("対象が選択されていません");
   try {
     // Guard: 削除対象「以外」の工程がこの工程を依存先にしている場合は拒否。

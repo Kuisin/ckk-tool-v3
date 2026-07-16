@@ -7,10 +7,10 @@
  *   POST   /api/admin/files            → upload (multipart: file[, prefix])
  *   DELETE /api/admin/files?key=<key>  → delete one object
  *
- * NOTE: access is not yet gated to admins — wire this to the RBAC check once
- * auth lands (see _specs RBAC / user_permissions).
+ * アクセスは RBAC（system:ADMIN）でゲート — 監査 P0-2 対応。
  */
 
+import { requirePermissionResponse } from "@/lib/authz";
 import {
   deleteObject,
   listObjects,
@@ -28,6 +28,8 @@ function safeKey(key: string): string | null {
 }
 
 export async function GET(request: Request): Promise<Response> {
+  const denied = await requirePermissionResponse("system", "ADMIN");
+  if (denied) return denied;
   const prefix = new URL(request.url).searchParams.get("prefix") ?? "";
   const clean = safeKey(prefix.endsWith("/") ? prefix : `${prefix}/`) ?? "";
   const [files, ok] = await Promise.all([
@@ -38,6 +40,8 @@ export async function GET(request: Request): Promise<Response> {
 }
 
 export async function POST(request: Request): Promise<Response> {
+  const denied = await requirePermissionResponse("system", "ADMIN");
+  if (denied) return denied;
   const form = await request.formData();
   const file = form.get("file");
   if (!(file instanceof File)) {
@@ -68,6 +72,8 @@ export async function POST(request: Request): Promise<Response> {
 }
 
 export async function DELETE(request: Request): Promise<Response> {
+  const denied = await requirePermissionResponse("system", "ADMIN");
+  if (denied) return denied;
   const raw = new URL(request.url).searchParams.get("key");
   const key = raw ? safeKey(raw) : null;
   if (!key) {

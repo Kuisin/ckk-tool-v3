@@ -10,6 +10,7 @@
 
 import { revalidatePath } from "next/cache";
 import { NextResponse } from "next/server";
+import { requirePermissionResponse } from "@/lib/authz";
 import { ingestAndExtract } from "@/lib/intake";
 
 export const dynamic = "force-dynamic";
@@ -32,7 +33,9 @@ function badRequest(error: string): NextResponse {
   return NextResponse.json({ ok: false, error }, { status: 400 });
 }
 
-export async function POST(request: Request): Promise<NextResponse> {
+export async function POST(request: Request): Promise<Response> {
+  const denied = await requirePermissionResponse("order_acceptance", "CREATE");
+  if (denied) return denied;
   let form: FormData;
   try {
     form = await request.formData();

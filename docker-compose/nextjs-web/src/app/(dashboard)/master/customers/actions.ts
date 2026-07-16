@@ -11,6 +11,7 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { recordAudit } from "@/lib/audit";
+import { checkPermission } from "@/lib/authz";
 import { prisma } from "@/lib/db";
 import { nextSerialCode } from "@/lib/numbering";
 import {
@@ -51,6 +52,8 @@ function revalidate(id?: string, branchId?: string) {
 export async function createCustomer(
   input: CustomerInput,
 ): Promise<ActionResult<{ id: string }>> {
+  const authz = await checkPermission("master", "CREATE");
+  if (!authz.ok) return actionError(authz.error);
   const parsed = customerInput.safeParse(input);
   if (!parsed.success) {
     return actionError(parsed.error.issues[0]?.message ?? "入力が不正です");
@@ -83,6 +86,8 @@ export async function updateCustomer(
   id: string,
   input: CustomerInput,
 ): Promise<ActionResult<{ id: string }>> {
+  const authz = await checkPermission("master", "UPDATE");
+  if (!authz.ok) return actionError(authz.error);
   const parsed = customerInput.safeParse(input);
   if (!parsed.success) {
     return actionError(parsed.error.issues[0]?.message ?? "入力が不正です");
@@ -140,6 +145,8 @@ export async function createBranch(
   parentId: string,
   input: BranchInput,
 ): Promise<ActionResult<{ id: string }>> {
+  const authz = await checkPermission("master", "CREATE");
+  if (!authz.ok) return actionError(authz.error);
   const parsed = branchInput.safeParse(input);
   if (!parsed.success) {
     return actionError(parsed.error.issues[0]?.message ?? "入力が不正です");
@@ -184,6 +191,8 @@ export async function updateBranch(
   branchId: string,
   input: BranchInput,
 ): Promise<ActionResult<{ id: string }>> {
+  const authz = await checkPermission("master", "UPDATE");
+  if (!authz.ok) return actionError(authz.error);
   const parsed = branchInput.safeParse(input);
   if (!parsed.success) {
     return actionError(parsed.error.issues[0]?.message ?? "入力が不正です");
@@ -221,6 +230,8 @@ export async function deleteBranch(
   parentId: string,
   branchId: string,
 ): Promise<ActionResult> {
+  const authz = await checkPermission("master", "DELETE");
+  if (!authz.ok) return actionError(authz.error);
   try {
     const branch = await prisma.businessPartner.findUnique({
       where: { id: branchId },

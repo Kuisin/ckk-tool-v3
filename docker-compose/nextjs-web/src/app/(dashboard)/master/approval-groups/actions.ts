@@ -13,6 +13,7 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { getCurrentActorId, recordAudit } from "@/lib/audit";
+import { checkPermission } from "@/lib/authz";
 import { prisma } from "@/lib/db";
 import { type LocalizedText, localized } from "@/lib/format";
 import {
@@ -56,6 +57,8 @@ function prismaErrorCode(e: unknown): string | undefined {
 export async function createApprovalGroup(
   input: ApprovalGroupCreateInput,
 ): Promise<ActionResult<{ id: number }>> {
+  const authz = await checkPermission("master", "CREATE");
+  if (!authz.ok) return actionError(authz.error);
   const parsed = groupCreateInput.safeParse(input);
   if (!parsed.success) {
     return actionError(parsed.error.issues[0]?.message ?? "入力が不正です");
@@ -89,6 +92,8 @@ export async function updateApprovalGroup(
   id: number,
   input: ApprovalGroupUpdateInput,
 ): Promise<ActionResult<{ id: number }>> {
+  const authz = await checkPermission("master", "UPDATE");
+  if (!authz.ok) return actionError(authz.error);
   const parsed = groupUpdateInput.safeParse(input);
   if (!parsed.success) {
     return actionError(parsed.error.issues[0]?.message ?? "入力が不正です");
@@ -131,6 +136,8 @@ export async function setApprovalGroupsActive(
   ids: number[],
   isActive: boolean,
 ): Promise<ActionResult> {
+  const authz = await checkPermission("master", "UPDATE");
+  if (!authz.ok) return actionError(authz.error);
   if (ids.length === 0) return actionError("対象が選択されていません");
   try {
     await prisma.approvalGroup.updateMany({
@@ -156,6 +163,8 @@ export async function setApprovalGroupsActive(
 export async function deleteApprovalGroups(
   ids: number[],
 ): Promise<ActionResult> {
+  const authz = await checkPermission("master", "DELETE");
+  if (!authz.ok) return actionError(authz.error);
   if (ids.length === 0) return actionError("対象が選択されていません");
   try {
     // メンバーは onDelete: Cascade で一括削除。将来 承認依頼・代理設定が
@@ -192,6 +201,9 @@ export async function addGroupMember(
   groupId: number,
   userId: string,
 ): Promise<ActionResult> {
+  // メンバー・代理の増減はグループ本体の編集扱い（監査も UPDATE で記録）。
+  const authz = await checkPermission("master", "UPDATE");
+  if (!authz.ok) return actionError(authz.error);
   if (!userId) return actionError("ユーザーを選択してください");
   try {
     await prisma.approvalGroupMember.create({
@@ -218,6 +230,9 @@ export async function removeGroupMember(
   groupId: number,
   userId: string,
 ): Promise<ActionResult> {
+  // メンバー・代理の増減はグループ本体の編集扱い（監査も UPDATE で記録）。
+  const authz = await checkPermission("master", "UPDATE");
+  if (!authz.ok) return actionError(authz.error);
   try {
     await prisma.approvalGroupMember.delete({
       where: { groupId_userId: { groupId, userId } },
@@ -262,6 +277,8 @@ export async function addDelegate(
   groupId: number,
   input: ApprovalDelegateInput,
 ): Promise<ActionResult> {
+  const authz = await checkPermission("master", "UPDATE");
+  if (!authz.ok) return actionError(authz.error);
   const parsed = delegateInput.safeParse(input);
   if (!parsed.success) {
     return actionError(parsed.error.issues[0]?.message ?? "入力が不正です");
@@ -307,6 +324,8 @@ export async function removeDelegate(
   groupId: number,
   delegateRowId: string,
 ): Promise<ActionResult> {
+  const authz = await checkPermission("master", "UPDATE");
+  if (!authz.ok) return actionError(authz.error);
   try {
     const prior = await prisma.approvalDelegate.findFirst({
       where: { id: delegateRowId, groupId },
@@ -337,6 +356,8 @@ export async function setGroupMemberActive(
   userId: string,
   isActive: boolean,
 ): Promise<ActionResult> {
+  const authz = await checkPermission("master", "UPDATE");
+  if (!authz.ok) return actionError(authz.error);
   try {
     await prisma.approvalGroupMember.update({
       where: { groupId_userId: { groupId, userId } },

@@ -25,6 +25,7 @@ import {
   type HistoryEntry,
 } from "@/lib/approvals";
 import { getCurrentActorId, recordAudit } from "@/lib/audit";
+import { checkPermission } from "@/lib/authz";
 import { prisma } from "@/lib/db";
 import { onMaterialReceipt } from "@/lib/inventory";
 import { nextDocumentNumber } from "@/lib/numbering";
@@ -113,6 +114,8 @@ function buildItemCreates(items: PurchaseOrderInput["items"]) {
 export async function createPurchaseOrder(
   payload: PurchaseOrderInput,
 ): Promise<ActionResult<{ poNumber: string }>> {
+  const authz = await checkPermission("purchase_order", "CREATE");
+  if (!authz.ok) return actionError(authz.error);
   const parsed = purchaseOrderInput.safeParse(payload);
   if (!parsed.success) {
     return actionError(parsed.error.issues[0]?.message ?? "入力が不正です");
@@ -164,6 +167,8 @@ export async function updatePurchaseOrder(
   poNumber: string,
   payload: PurchaseOrderInput,
 ): Promise<ActionResult<{ poNumber: string }>> {
+  const authz = await checkPermission("purchase_order", "UPDATE");
+  if (!authz.ok) return actionError(authz.error);
   const parsed = purchaseOrderInput.safeParse(payload);
   if (!parsed.success) {
     return actionError(parsed.error.issues[0]?.message ?? "入力が不正です");
@@ -231,6 +236,8 @@ export async function updatePurchaseOrder(
 export async function requestPurchaseApproval(
   poNumber: string,
 ): Promise<ActionResult> {
+  const authz = await checkPermission("purchase_order", "UPDATE");
+  if (!authz.ok) return actionError(authz.error);
   try {
     const prior = await prisma.materialPurchaseOrder.findUnique({
       where: { poNumber },
@@ -275,6 +282,10 @@ export async function requestPurchaseApproval(
 export async function approvePurchaseOrder(
   poNumber: string,
 ): Promise<ActionResult> {
+  // 権限コード上の APPROVE に加え、承認グループ所属（本人 or 代理）は
+  // 引き続き actOnApprovalRequest 内で検証する。
+  const authz = await checkPermission("purchase_order", "APPROVE");
+  if (!authz.ok) return actionError(authz.error);
   try {
     const prior = await prisma.materialPurchaseOrder.findUnique({
       where: { poNumber },
@@ -323,6 +334,10 @@ export async function rejectPurchaseOrder(
   poNumber: string,
   reason: string,
 ): Promise<ActionResult> {
+  // 権限コード上の APPROVE に加え、承認グループ所属（本人 or 代理）は
+  // 引き続き actOnApprovalRequest 内で検証する。
+  const authz = await checkPermission("purchase_order", "APPROVE");
+  if (!authz.ok) return actionError(authz.error);
   const trimmed = reason.trim();
   if (!trimmed) return actionError("差し戻し理由を入力してください");
   try {
@@ -378,6 +393,8 @@ export async function rejectPurchaseOrder(
 export async function orderPurchaseOrder(
   poNumber: string,
 ): Promise<ActionResult> {
+  const authz = await checkPermission("purchase_order", "UPDATE");
+  if (!authz.ok) return actionError(authz.error);
   try {
     const prior = await prisma.materialPurchaseOrder.findUnique({
       where: { poNumber },
@@ -426,6 +443,8 @@ export async function orderPurchaseOrder(
 export async function completePurchaseOrder(
   poNumber: string,
 ): Promise<ActionResult> {
+  const authz = await checkPermission("purchase_order", "UPDATE");
+  if (!authz.ok) return actionError(authz.error);
   try {
     const prior = await prisma.materialPurchaseOrder.findUnique({
       where: { poNumber },
@@ -507,6 +526,8 @@ export async function cancelPurchaseOrder(
   poNumber: string,
   reason: string,
 ): Promise<ActionResult> {
+  const authz = await checkPermission("purchase_order", "UPDATE");
+  if (!authz.ok) return actionError(authz.error);
   const trimmed = reason.trim();
   if (!trimmed) return actionError("キャンセル理由を入力してください");
   try {

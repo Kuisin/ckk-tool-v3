@@ -12,6 +12,7 @@
  */
 
 import { fetchInvoice } from "@/app/(dashboard)/billing/invoices/data";
+import { requirePermissionResponse } from "@/lib/authz";
 import { parseDocKey } from "@/lib/doc-number";
 import { formatDate } from "@/lib/format";
 import { renderPdf } from "@/lib/pdf";
@@ -40,6 +41,8 @@ function pdfHeaders(invoiceNumber: string, download: boolean): HeadersInit {
 }
 
 export async function GET(request: Request): Promise<Response> {
+  const denied = await requirePermissionResponse("invoice", "READ");
+  if (denied) return denied;
   const url = new URL(request.url);
   const id = url.searchParams.get("id");
   const download = url.searchParams.get("download") === "1";

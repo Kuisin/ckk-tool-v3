@@ -9,6 +9,7 @@
 
 import { fetchInvoice } from "@/app/(dashboard)/billing/invoices/data";
 import { recordAudit } from "@/lib/audit";
+import { requirePermissionResponse } from "@/lib/authz";
 import { buildYayoiCsv } from "@/lib/csv-export";
 import { prisma } from "@/lib/db";
 import { parseDocKey } from "@/lib/doc-number";
@@ -17,6 +18,8 @@ import { parseDocKey } from "@/lib/doc-number";
 export const dynamic = "force-dynamic";
 
 export async function GET(request: Request): Promise<Response> {
+  const denied = await requirePermissionResponse("billing_closing", "EXPORT");
+  if (denied) return denied;
   const url = new URL(request.url);
   const id = url.searchParams.get("invoice");
   if (!id) {

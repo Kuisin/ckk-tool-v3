@@ -19,6 +19,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { actOnApprovalRequest, createApprovalRequest } from "@/lib/approvals";
 import { getCurrentActorId, recordAudit } from "@/lib/audit";
+import { checkPermission } from "@/lib/authz";
 import { prisma } from "@/lib/db";
 import {
   type DocKey,
@@ -105,6 +106,8 @@ function buildItemCreates(items: OrderAcceptanceDraftInput["items"]) {
 export async function retryExtraction(number: string): Promise<ActionResult> {
   const key = keyOf(number);
   if (!key) return actionError("受注請書番号が不正です");
+  const authz = await checkPermission("order_acceptance", "UPDATE");
+  if (!authz.ok) return actionError(authz.error);
   try {
     const prior = await prisma.orderAcceptance.findUnique({
       where: { yearMonth_seq: key },
@@ -138,6 +141,8 @@ export async function saveDraft(
   if (!parsed.success) {
     return actionError(parsed.error.issues[0]?.message ?? "入力が不正です");
   }
+  const authz = await checkPermission("order_acceptance", "UPDATE");
+  if (!authz.ok) return actionError(authz.error);
   const v = parsed.data;
   try {
     const prior = await prisma.orderAcceptance.findUnique({
@@ -201,6 +206,8 @@ export async function saveDraft(
 export async function submitForApproval(number: string): Promise<ActionResult> {
   const key = keyOf(number);
   if (!key) return actionError("受注請書番号が不正です");
+  const authz = await checkPermission("order_acceptance", "UPDATE");
+  if (!authz.ok) return actionError(authz.error);
   try {
     const prior = await prisma.orderAcceptance.findUnique({
       where: { yearMonth_seq: key },
@@ -248,6 +255,8 @@ export async function submitForApproval(number: string): Promise<ActionResult> {
 export async function approveAcceptance(number: string): Promise<ActionResult> {
   const key = keyOf(number);
   if (!key) return actionError("受注請書番号が不正です");
+  const authz = await checkPermission("order_acceptance", "APPROVE");
+  if (!authz.ok) return actionError(authz.error);
   try {
     const prior = await prisma.orderAcceptance.findUnique({
       where: { yearMonth_seq: key },
@@ -292,6 +301,8 @@ export async function rejectAcceptance(
   if (!key) return actionError("受注請書番号が不正です");
   const trimmed = reason.trim();
   if (!trimmed) return actionError("差し戻し理由を入力してください");
+  const authz = await checkPermission("order_acceptance", "APPROVE");
+  if (!authz.ok) return actionError(authz.error);
   try {
     const prior = await prisma.orderAcceptance.findUnique({
       where: { yearMonth_seq: key },
@@ -342,6 +353,8 @@ export async function deployToSalesOrders(
 ): Promise<ActionResult<{ numbers: string[] }>> {
   const key = keyOf(number);
   if (!key) return actionError("受注請書番号が不正です");
+  const authz = await checkPermission("order_acceptance", "CREATE");
+  if (!authz.ok) return actionError(authz.error);
   try {
     const prior = await prisma.orderAcceptance.findUnique({
       where: { yearMonth_seq: key },
@@ -442,6 +455,8 @@ export async function deployToSalesOrders(
 export async function archiveAcceptance(number: string): Promise<ActionResult> {
   const key = keyOf(number);
   if (!key) return actionError("受注請書番号が不正です");
+  const authz = await checkPermission("order_acceptance", "UPDATE");
+  if (!authz.ok) return actionError(authz.error);
   try {
     const updated = await prisma.orderAcceptance.updateMany({
       where: { ...key, status: "COMPLETED" },
@@ -474,6 +489,8 @@ export async function createManualAcceptance(
   if (!parsed.success) {
     return actionError(parsed.error.issues[0]?.message ?? "入力が不正です");
   }
+  const authz = await checkPermission("order_acceptance", "CREATE");
+  if (!authz.ok) return actionError(authz.error);
   const v = parsed.data;
   try {
     const actor = await getCurrentActorId();

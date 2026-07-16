@@ -11,6 +11,7 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { recordAudit } from "@/lib/audit";
+import { checkPermission } from "@/lib/authz";
 import { Prisma, prisma } from "@/lib/db";
 import { composeMaterialTypeCode, formatKindSerial } from "@/lib/material-code";
 import {
@@ -50,6 +51,8 @@ function revalidate(id?: number) {
 export async function createMaterialType(
   input: MaterialTypeCreateInput,
 ): Promise<ActionResult<{ id: number; code: string }>> {
+  const authz = await checkPermission("master", "CREATE");
+  if (!authz.ok) return actionError(authz.error);
   const parsed = materialTypeCreateInput.safeParse(input);
   if (!parsed.success) {
     return actionError(parsed.error.issues[0]?.message ?? "入力が不正です");
@@ -156,6 +159,8 @@ export async function updateMaterialType(
   id: number,
   input: MaterialTypeInput,
 ): Promise<ActionResult<{ id: number }>> {
+  const authz = await checkPermission("master", "UPDATE");
+  if (!authz.ok) return actionError(authz.error);
   const parsed = materialTypeInput.safeParse(input);
   if (!parsed.success) {
     return actionError(parsed.error.issues[0]?.message ?? "入力が不正です");
@@ -198,6 +203,8 @@ export async function setMaterialTypesActive(
   ids: number[],
   isActive: boolean,
 ): Promise<ActionResult> {
+  const authz = await checkPermission("master", "UPDATE");
+  if (!authz.ok) return actionError(authz.error);
   if (ids.length === 0) return actionError("対象が選択されていません");
   try {
     await prisma.materialType.updateMany({
@@ -223,6 +230,8 @@ export async function setMaterialTypesActive(
 export async function deleteMaterialTypes(
   ids: number[],
 ): Promise<ActionResult> {
+  const authz = await checkPermission("master", "DELETE");
+  if (!authz.ok) return actionError(authz.error);
   if (ids.length === 0) return actionError("対象が選択されていません");
   try {
     // Guard: refuse when any material still references one of the types.

@@ -25,6 +25,7 @@ import {
 } from "@/lib/approvals";
 import { type MaterialAtp, materialAtp } from "@/lib/atp";
 import { getCurrentActorId, recordAudit } from "@/lib/audit";
+import { checkPermission } from "@/lib/authz";
 import { prisma } from "@/lib/db";
 import { nextSerialNumber } from "@/lib/numbering";
 import {
@@ -151,6 +152,8 @@ async function buildSteps(
 export async function createWorkOrder(
   payload: WorkOrderInput,
 ): Promise<ActionResult<{ workOrderNumber: number }>> {
+  const authz = await checkPermission("work_order", "CREATE");
+  if (!authz.ok) return actionError(authz.error);
   const parsed = workOrderInput.safeParse(payload);
   if (!parsed.success) {
     return actionError(parsed.error.issues[0]?.message ?? "入力が不正です");
@@ -221,6 +224,8 @@ export async function updateWorkOrder(
   workOrderNumber: number,
   payload: WorkOrderInput,
 ): Promise<ActionResult<{ workOrderNumber: number }>> {
+  const authz = await checkPermission("work_order", "UPDATE");
+  if (!authz.ok) return actionError(authz.error);
   const parsed = workOrderInput.safeParse(payload);
   if (!parsed.success) {
     return actionError(parsed.error.issues[0]?.message ?? "入力が不正です");
@@ -308,6 +313,8 @@ export async function copyWorkOrder(
   sourceWorkOrderNumber: number,
   targetSalesOrderId: string,
 ): Promise<ActionResult<{ workOrderNumber: number }>> {
+  const authz = await checkPermission("work_order", "CREATE");
+  if (!authz.ok) return actionError(authz.error);
   if (!targetSalesOrderId)
     return actionError("対象の注文請書を選択してください");
   try {
@@ -390,6 +397,8 @@ export async function copyWorkOrder(
 export async function cancelWorkOrder(
   workOrderNumber: number,
 ): Promise<ActionResult> {
+  const authz = await checkPermission("work_order", "UPDATE");
+  if (!authz.ok) return actionError(authz.error);
   try {
     const prior = await prisma.workOrder.findUnique({
       where: { workOrderNumber },
@@ -444,6 +453,9 @@ export async function cancelWorkOrder(
 export async function requestApproval(
   workOrderNumber: number,
 ): Promise<ActionResult> {
+  // 依頼者は起票側の操作 — "approve" ではなく "work_order":UPDATE（判断メモ）。
+  const authz = await checkPermission("work_order", "UPDATE");
+  if (!authz.ok) return actionError(authz.error);
   try {
     const prior = await prisma.workOrder.findUnique({
       where: { workOrderNumber },
@@ -499,6 +511,10 @@ export async function requestApproval(
 export async function approveFirst(
   workOrderNumber: number,
 ): Promise<ActionResult> {
+  // 権限チェックは追加ゲート — 実体の承認可否（本人/代理）は
+  // actOnApprovalRequest のグループ所属判定が引き続き行う。
+  const authz = await checkPermission("approve", "APPROVE");
+  if (!authz.ok) return actionError(authz.error);
   try {
     const prior = await prisma.workOrder.findUnique({
       where: { workOrderNumber },
@@ -559,6 +575,8 @@ export async function approveFirst(
 export async function approveSecond(
   workOrderNumber: number,
 ): Promise<ActionResult> {
+  const authz = await checkPermission("approve", "APPROVE");
+  if (!authz.ok) return actionError(authz.error);
   try {
     const prior = await prisma.workOrder.findUnique({
       where: { workOrderNumber },
@@ -624,6 +642,8 @@ export async function rejectWorkOrder(
   workOrderNumber: number,
   reason: string,
 ): Promise<ActionResult> {
+  const authz = await checkPermission("approve", "APPROVE");
+  if (!authz.ok) return actionError(authz.error);
   const trimmed = reason.trim();
   if (!trimmed) return actionError("差し戻し理由を入力してください");
   try {

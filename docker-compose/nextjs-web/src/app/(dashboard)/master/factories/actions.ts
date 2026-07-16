@@ -10,6 +10,7 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { recordAudit } from "@/lib/audit";
+import { checkPermission } from "@/lib/authz";
 import { Prisma, prisma } from "@/lib/db";
 import {
   type ActionResult,
@@ -84,6 +85,8 @@ function auditSnapshot(v: FactoryInput) {
 export async function createFactory(
   input: FactoryInput,
 ): Promise<ActionResult<{ id: number }>> {
+  const authz = await checkPermission("master", "CREATE");
+  if (!authz.ok) return actionError(authz.error);
   const parsed = factoryInput.safeParse(input);
   if (!parsed.success) {
     return actionError(parsed.error.issues[0]?.message ?? "入力が不正です");
@@ -111,6 +114,8 @@ export async function updateFactory(
   id: number,
   input: FactoryInput,
 ): Promise<ActionResult<{ id: number }>> {
+  const authz = await checkPermission("master", "UPDATE");
+  if (!authz.ok) return actionError(authz.error);
   const parsed = factoryInput.safeParse(input);
   if (!parsed.success) {
     return actionError(parsed.error.issues[0]?.message ?? "入力が不正です");
@@ -149,6 +154,8 @@ export async function setFactoriesActive(
   ids: number[],
   isActive: boolean,
 ): Promise<ActionResult> {
+  const authz = await checkPermission("master", "UPDATE");
+  if (!authz.ok) return actionError(authz.error);
   if (ids.length === 0) return actionError("対象が選択されていません");
   try {
     await prisma.factory.updateMany({
@@ -172,6 +179,8 @@ export async function setFactoriesActive(
 }
 
 export async function deleteFactories(ids: number[]): Promise<ActionResult> {
+  const authz = await checkPermission("master", "DELETE");
+  if (!authz.ok) return actionError(authz.error);
   if (ids.length === 0) return actionError("対象が選択されていません");
   try {
     // Guard: 現時点で工場を参照するテーブルは未実装（在庫・工程ステップは後続）。
