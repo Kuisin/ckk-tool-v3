@@ -373,6 +373,8 @@ export async function fetchStepExecution(
       outsourceRequestedAt: dateOnly(step.outsourceRequestedAt),
       outsourceExpectedAt: dateOnly(step.outsourceExpectedAt),
       outsourceReceivedAt: dateOnly(step.outsourceReceivedAt),
+      outsourceCost:
+        step.outsourceCost != null ? Number(step.outsourceCost) : null,
     },
     canStart: canStartStep(step.id, ctx, actorId),
     expectedInputQuantity: expectedInput(step.id, ctx),

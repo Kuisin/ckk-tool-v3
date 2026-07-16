@@ -72,6 +72,8 @@ model MaterialPurchaseOrderItem {
   amount          Decimal   @db.Decimal(12, 2)
   currency        String    @default("JPY")
   expectedAt      DateTime? @map("expected_at") @db.Date
+  // 分納対応（監査 P2-5）: 累計入荷数。Σ received >= quantity で入荷完了
+  receivedQuantity Decimal  @default(0) @map("received_quantity") @db.Decimal(12, 3)
   factoryId       Int?      @map("factory_id") // 入荷先工場
   notes           String?
   sortOrder       Int       @default(0) @map("sort_order")

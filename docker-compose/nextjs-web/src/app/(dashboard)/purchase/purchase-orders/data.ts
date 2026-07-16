@@ -107,6 +107,7 @@ export async function fetchPurchaseOrder(
         ? `${it.factory.code} ${localized(it.factory.name as LocalizedText | null)}`
         : null,
       quantity: Number(it.quantity),
+      receivedQuantity: Number(it.receivedQuantity),
       unit: it.unit,
       unitPrice: Number(it.unitPrice),
       amount: Number(it.amount),

@@ -43,6 +43,9 @@ model OrderAcceptance {
   customerBpId       String? @map("customer_bp_id") @db.Uuid
   customerBranchBpId String? @map("customer_branch_bp_id") @db.Uuid
   customerOrderRef   String? @map("customer_order_ref") // 顧客注文書番号
+  // 見積 → 受注のトレーサビリティ（監査 P2-2。QOT の複合キー参照）
+  quoteYearMonth     String? @map("quote_year_month") @db.Char(6)
+  quoteSeq           Int?    @map("quote_seq")
   orderDate          DateTime? @map("order_date") @db.Date
 
   notes       String?

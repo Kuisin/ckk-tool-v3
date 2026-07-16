@@ -34,6 +34,7 @@ export function OrderAcceptanceCreateForm() {
   const [customerId, setCustomerId] = useState<string | null>(null);
   const [customerError, setCustomerError] = useState<string | null>(null);
   const [customerOrderRef, setCustomerOrderRef] = useState("");
+  const [quoteNumber, setQuoteNumber] = useState("");
   const [orderDate, setOrderDate] = useState<string | null>(null);
   const [notes, setNotes] = useState("");
   const [items, setItems] = useState<ItemRowForm[]>([newItemRow()]);
@@ -48,6 +49,7 @@ export function OrderAcceptanceCreateForm() {
       const result = await createManualAcceptance({
         customerBpId: customerId,
         customerOrderRef: customerOrderRef || null,
+        quoteNumber: quoteNumber || null,
         orderDate,
         notes: notes || null,
         items: toItemPayload(items),
@@ -106,6 +108,12 @@ export function OrderAcceptanceCreateForm() {
             onChange={(e) => setCustomerOrderRef(e.currentTarget.value)}
             placeholder="注文書の番号"
             value={customerOrderRef}
+          />
+          <TextInput
+            label="見積書番号（任意）"
+            onChange={(e) => setQuoteNumber(e.currentTarget.value)}
+            placeholder="QOT-YYYYMM-NNNNN"
+            value={quoteNumber}
           />
           <DatePickerInput
             clearable

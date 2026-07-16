@@ -369,6 +369,8 @@ const outsourceDatesInput = z.object({
   requestedAt: z.string().nullable(), // YYYY-MM-DD
   expectedAt: z.string().nullable(),
   receivedAt: z.string().nullable(),
+  // 外注コスト（円・任意 — 監査 P2-6）
+  outsourceCost: z.number().nonnegative().nullable().optional(),
 });
 
 export type OutsourceDatesInput = z.infer<typeof outsourceDatesInput>;
@@ -389,20 +391,44 @@ export async function saveOutsourceDates(
       return { ok: false, errors: ["外注工程ではありません"] };
     }
     const toDate = (s: string | null) => (s ? new Date(s) : null);
+    const wasReceived = step.outsourceReceivedAt != null;
     await prisma.workOrderStep.update({
       where: { id: v.stepId },
       data: {
         outsourceRequestedAt: toDate(v.requestedAt),
         outsourceExpectedAt: toDate(v.expectedAt),
         outsourceReceivedAt: toDate(v.receivedAt),
+        ...(v.outsourceCost !== undefined
+          ? { outsourceCost: v.outsourceCost }
+          : {}),
       },
     });
+    // 外注入荷のハンドオフ通知（null → 入荷日設定の遷移時のみ・best-effort）
+    if (!wasReceived && v.receivedAt) {
+      try {
+        const wo = await prisma.workOrder.findUnique({
+          where: { workOrderNumber: v.workOrderNumber },
+          select: { id: true, createdBy: true },
+        });
+        if (wo?.createdBy) {
+          const { notify } = await import("@/lib/notifications");
+          await notify({
+            userIds: [wo.createdBy],
+            type: "SYSTEM",
+            title: `指示書 #${v.workOrderNumber} の外注工程が入荷しました`,
+            linkPath: `/production/work-orders/${wo.id}`,
+          });
+        }
+      } catch (e) {
+        console.error("[outsource] 入荷通知に失敗:", e);
+      }
+    }
     await recordAudit({
       action: "UPDATE",
       tableName: "work_orders",
       recordId: String(v.workOrderNumber),
       after: {
-        note: `外注日程を更新（依頼 ${v.requestedAt ?? "—"} / 入荷予定 ${v.expectedAt ?? "—"} / 入荷 ${v.receivedAt ?? "—"}）`,
+        note: `外注日程を更新（依頼 ${v.requestedAt ?? "—"} / 入荷予定 ${v.expectedAt ?? "—"} / 入荷 ${v.receivedAt ?? "—"}${v.outsourceCost != null ? ` / 外注費 ¥${v.outsourceCost.toLocaleString()}` : ""}）`,
       },
     });
     revalidate(v.workOrderNumber, v.stepId);

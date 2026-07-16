@@ -457,20 +457,33 @@ export function SalesOrderDetail({
               <Alert
                 color="orange"
                 icon={<IconAlertTriangle size={16} />}
-                title="在庫不足"
+                title={
+                  stockResult.reservedNow > 0
+                    ? "在庫分＋製造分の分割（§4）"
+                    : "在庫不足"
+                }
                 variant="light"
               >
                 <Stack gap="xs">
                   <Text size="sm">
-                    不足分 {stockResult.shortage}{" "}
-                    本は製造分の指示書を作成してください。
+                    {stockResult.reservedNow > 0
+                      ? `在庫 ${stockResult.reservedNow} 本を引当済み。在庫分と不足 ${stockResult.shortage} 本の製造分に分割して指示書を作成してください。`
+                      : `不足分 ${stockResult.shortage} 本は製造分の指示書を作成してください。`}
                   </Text>
                   <Group>
+                    {stockResult.reservedNow > 0 && (
+                      <SecondaryButton
+                        href={`/production/work-orders/new?salesOrder=${order.uuid}&type=FROM_STOCK&qty=${stockResult.reservedNow}`}
+                        leftSection={<IconClipboardList size={14} />}
+                      >
+                        在庫分の指示書（{stockResult.reservedNow} 本）
+                      </SecondaryButton>
+                    )}
                     <SecondaryButton
-                      href={`/production/work-orders/new?salesOrder=${order.uuid}`}
+                      href={`/production/work-orders/new?salesOrder=${order.uuid}&type=MANUFACTURE&qty=${stockResult.shortage}`}
                       leftSection={<IconClipboardList size={14} />}
                     >
-                      指示書を作成
+                      製造分の指示書（{stockResult.shortage} 本）
                     </SecondaryButton>
                   </Group>
                 </Stack>
@@ -481,7 +494,21 @@ export function SalesOrderDetail({
                 icon={<IconCheck size={16} />}
                 variant="light"
               >
-                受注数量をすべて在庫から引当できました。
+                <Stack gap="xs">
+                  <Text size="sm">
+                    受注数量をすべて在庫から引当できました。
+                  </Text>
+                  {stockResult.reservedNow > 0 && (
+                    <Group>
+                      <SecondaryButton
+                        href={`/production/work-orders/new?salesOrder=${order.uuid}&type=FROM_STOCK&qty=${stockResult.reservedNow}`}
+                        leftSection={<IconClipboardList size={14} />}
+                      >
+                        在庫分の指示書（{stockResult.reservedNow} 本）
+                      </SecondaryButton>
+                    </Group>
+                  )}
+                </Stack>
               </Alert>
             )}
           </Stack>

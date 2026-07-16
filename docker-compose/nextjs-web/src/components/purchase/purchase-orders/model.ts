@@ -40,6 +40,8 @@ export interface PurchaseOrderItemView {
   factoryId: string | null;
   factoryName: string | null;
   quantity: number;
+  /** 累計入荷数（分納 — 監査 P2-5）。 */
+  receivedQuantity: number;
   unit: string;
   unitPrice: number;
   amount: number;

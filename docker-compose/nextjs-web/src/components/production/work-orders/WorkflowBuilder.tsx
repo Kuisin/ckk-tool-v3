@@ -147,12 +147,17 @@ export function WorkflowBuilder({
   factoryOptions,
   templateOptions,
   supplierOptions,
+  initialType = null,
+  initialQuantity = null,
 }: {
   mode: "create" | "edit";
   /** 編集時の既存指示書（view model）。 */
   workOrder?: WorkOrderView | null;
   /** `?salesOrder=` プリセレクト（create 時）。 */
   initialSalesOrder?: SalesOrderRef | null;
+  /** §4 分割ガイドからの起動: 種別・数量のプリセット（create 時）。 */
+  initialType?: "FROM_STOCK" | "MANUFACTURE" | null;
+  initialQuantity?: number | null;
   catalogSteps: CatalogStep[];
   useDeps: UseDep[];
   factoryOptions: Option[];
@@ -171,9 +176,10 @@ export function WorkflowBuilder({
       ...(mode === "create" && initialSalesOrder
         ? {
             salesOrderId: initialSalesOrder.id,
-            plannedQuantity: initialSalesOrder.quantity,
+            plannedQuantity: initialQuantity ?? initialSalesOrder.quantity,
           }
         : {}),
+      ...(mode === "create" && initialType ? { type: initialType } : {}),
     },
   });
 

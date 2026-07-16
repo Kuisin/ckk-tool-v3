@@ -7,6 +7,17 @@
 
 export async function register() {
   if (process.env.NEXT_RUNTIME !== "nodejs") return;
+
+  // 締日処理の日次オートラン（CLOSING_AUTORUN=1 のとき JST 06 時台に 1 回）
+  const { maybeRunDailyClosing } = await import("./lib/closing");
+  const closingTimer = setInterval(
+    () => {
+      maybeRunDailyClosing().catch((e) => console.error("[closing] tick", e));
+    },
+    10 * 60_000, // 10 分間隔で時刻判定（実行は 1 日 1 回）
+  );
+  process.on("SIGTERM", () => clearInterval(closingTimer));
+
   if (!process.env.INTAKE_DIR) return;
 
   const { scanIntakeFolder } = await import("./lib/intake");

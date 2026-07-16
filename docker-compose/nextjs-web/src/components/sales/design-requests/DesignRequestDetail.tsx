@@ -27,6 +27,10 @@ import {
   reopenDesign,
   startDesign,
 } from "@/app/(dashboard)/sales/design-requests/actions";
+import {
+  AttachmentsPanel,
+  type AttachmentView,
+} from "@/components/ui/AttachmentsPanel";
 import { PrimaryButton } from "@/components/ui/buttons";
 import { DocNumber } from "@/components/ui/DocNumber";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -51,10 +55,13 @@ const BASE_PATH = "/sales/design-requests";
 export function DesignRequestDetail({
   request,
   auditEntries,
+  attachments,
 }: {
   request: DesignRequest;
   /** 操作履歴（audit_logs 由来、履歴タブ）。 */
   auditEntries: AuditEntry[];
+  /** 設計ファイル添付（design_requests ownerType）。 */
+  attachments: AttachmentView[];
 }) {
   const router = useRouter();
   // アクティブタブを ?tab= に保持（URL 共有でタブまで再現）
@@ -229,59 +236,69 @@ export function DesignRequestDetail({
           </Stack>
         </Tabs.Panel>
 
-        {/* 設計ファイル — バージョン一覧のみ（アップロード UI は準備中）。 */}
+        {/* 設計ファイル — 添付（作業ファイル）+ 完了時に版管理へ登録される。 */}
         <Tabs.Panel pt="md" value="files">
-          {request.files.length === 0 ? (
-            <EmptyState
-              icon={<IconFile size={24} />}
-              message="設計ファイルのアップロードは準備中です"
+          <Stack gap="md">
+            <AttachmentsPanel
+              attachments={attachments}
+              canDelete={request.status !== "COMPLETED"}
+              canUpload={request.status !== "COMPLETED"}
+              ownerId={request.requestNumber}
+              ownerType="design_requests"
+              title="設計ファイル（完了時に最新版として登録されます）"
             />
-          ) : (
-            <Table.ScrollContainer minWidth={640}>
-              <Table highlightOnHover>
-                <Table.Thead>
-                  <Table.Tr>
-                    <Table.Th ta="right" w={90}>
-                      バージョン
-                    </Table.Th>
-                    <Table.Th>ファイル名</Table.Th>
-                    <Table.Th>備考</Table.Th>
-                    <Table.Th w={150}>登録日時</Table.Th>
-                  </Table.Tr>
-                </Table.Thead>
-                <Table.Tbody>
-                  {request.files.map((f) => (
-                    <Table.Tr key={f.id}>
-                      <Table.Td className="tabular-nums" ta="right">
-                        <Group gap="xs" justify="flex-end" wrap="nowrap">
-                          v{f.version}
-                          {f.isLatest && (
-                            <Badge color="green" variant="light">
-                              最新
-                            </Badge>
-                          )}
-                        </Group>
-                      </Table.Td>
-                      <Table.Td>
-                        <Text size="sm">{f.filename}</Text>
-                        <Text c="dimmed" size="xs">
-                          {f.mimeType}
-                        </Text>
-                      </Table.Td>
-                      <Table.Td>
-                        <Text c={f.notes ? undefined : "dimmed"} size="sm">
-                          {f.notes || "—"}
-                        </Text>
-                      </Table.Td>
-                      <Table.Td className="tabular-nums">
-                        {formatDateTime(f.createdAt)}
-                      </Table.Td>
+            {request.files.length === 0 ? (
+              <EmptyState
+                icon={<IconFile size={24} />}
+                message="登録済みバージョンはありません"
+              />
+            ) : (
+              <Table.ScrollContainer minWidth={640}>
+                <Table highlightOnHover>
+                  <Table.Thead>
+                    <Table.Tr>
+                      <Table.Th ta="right" w={90}>
+                        バージョン
+                      </Table.Th>
+                      <Table.Th>ファイル名</Table.Th>
+                      <Table.Th>備考</Table.Th>
+                      <Table.Th w={150}>登録日時</Table.Th>
                     </Table.Tr>
-                  ))}
-                </Table.Tbody>
-              </Table>
-            </Table.ScrollContainer>
-          )}
+                  </Table.Thead>
+                  <Table.Tbody>
+                    {request.files.map((f) => (
+                      <Table.Tr key={f.id}>
+                        <Table.Td className="tabular-nums" ta="right">
+                          <Group gap="xs" justify="flex-end" wrap="nowrap">
+                            v{f.version}
+                            {f.isLatest && (
+                              <Badge color="green" variant="light">
+                                最新
+                              </Badge>
+                            )}
+                          </Group>
+                        </Table.Td>
+                        <Table.Td>
+                          <Text size="sm">{f.filename}</Text>
+                          <Text c="dimmed" size="xs">
+                            {f.mimeType}
+                          </Text>
+                        </Table.Td>
+                        <Table.Td>
+                          <Text c={f.notes ? undefined : "dimmed"} size="sm">
+                            {f.notes || "—"}
+                          </Text>
+                        </Table.Td>
+                        <Table.Td className="tabular-nums">
+                          {formatDateTime(f.createdAt)}
+                        </Table.Td>
+                      </Table.Tr>
+                    ))}
+                  </Table.Tbody>
+                </Table>
+              </Table.ScrollContainer>
+            )}
+          </Stack>
         </Tabs.Panel>
 
         <Tabs.Panel pt="md" value="history">

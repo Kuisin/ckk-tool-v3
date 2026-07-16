@@ -45,6 +45,8 @@ import { formatDateTime } from "@/lib/format";
 
 /** 一覧 1 行の view model（server 側 listAttachments が生成）。 */
 export interface AttachmentView {
+  /** files テーブルの id（design_files 連携用）。 */
+  fileId: string;
   id: string;
   filename: string;
   /** 表示区分（注文書控え 等）。 */
