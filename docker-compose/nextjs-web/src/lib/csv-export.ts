@@ -18,6 +18,7 @@ export const YAYOI_CSV_BOM = "﻿";
 /** 仕訳の勘定科目（最小構成の固定値）。 */
 export const YAYOI_DEBIT_ACCOUNT = "売掛金";
 export const YAYOI_CREDIT_ACCOUNT = "売上高";
+export const YAYOI_TAX_ACCOUNT = "仮受消費税";
 
 /** buildYayoiCsv の入力 — 請求書から必要最小限のフィールドのみ。 */
 export interface YayoiInvoiceInput {
@@ -29,6 +30,12 @@ export interface YayoiInvoiceInput {
   date: string | Date;
   /** 税込総額（円）。 */
   totalAmount: number;
+  /**
+   * 消費税額（円）。指定時は 売上高（税抜）と 仮受消費税 の 2 行に分けて
+   * 仕訳する（監査 P0-5 — 非課税/軽減税率の顧客でも正しい仕訳になる）。
+   * 省略時は従来通り税込 1 行。
+   */
+  taxAmount?: number;
 }
 
 /** CSV フィールドのエスケープ — カンマ・引用符・改行を含む場合はダブルクォート。 */
@@ -52,6 +59,7 @@ function yayoiDate(date: string | Date): string {
  */
 export function buildYayoiCsv(invoice: YayoiInvoiceInput): string {
   const amount = Math.round(invoice.totalAmount);
+  const tax = Math.round(invoice.taxAmount ?? 0);
   const header = [
     "日付",
     "借方勘定科目",
@@ -60,14 +68,37 @@ export function buildYayoiCsv(invoice: YayoiInvoiceInput): string {
     "貸方金額",
     "摘要",
   ];
-  const row = [
-    yayoiDate(invoice.date),
-    YAYOI_DEBIT_ACCOUNT,
-    amount,
-    YAYOI_CREDIT_ACCOUNT,
-    amount,
-    `${invoice.invoiceNumber} ${invoice.customerName}`,
-  ];
-  const lines = [header, row].map((cols) => cols.map(csvField).join(","));
+  const memo = `${invoice.invoiceNumber} ${invoice.customerName}`;
+  const date = yayoiDate(invoice.date);
+  const rows: (string | number)[][] = [];
+  if (tax > 0) {
+    // 売上（税抜）と仮受消費税に分離 — 借方は合計で売掛金
+    rows.push([
+      date,
+      YAYOI_DEBIT_ACCOUNT,
+      amount - tax,
+      YAYOI_CREDIT_ACCOUNT,
+      amount - tax,
+      memo,
+    ]);
+    rows.push([
+      date,
+      YAYOI_DEBIT_ACCOUNT,
+      tax,
+      YAYOI_TAX_ACCOUNT,
+      tax,
+      `${memo} 消費税`,
+    ]);
+  } else {
+    rows.push([
+      date,
+      YAYOI_DEBIT_ACCOUNT,
+      amount,
+      YAYOI_CREDIT_ACCOUNT,
+      amount,
+      memo,
+    ]);
+  }
+  const lines = [header, ...rows].map((cols) => cols.map(csvField).join(","));
   return `${YAYOI_CSV_BOM}${lines.join("\r\n")}\r\n`;
 }

@@ -41,6 +41,26 @@ describe("buildYayoiCsv", () => {
     expect(row).toContain(",売掛金,1235,売上高,1235,");
   });
 
+  it("taxAmount 指定時は 売上高（税抜）+ 仮受消費税 の 2 行に分離する", () => {
+    const csv = buildYayoiCsv({
+      ...base,
+      totalAmount: 275000,
+      taxAmount: 25000,
+    });
+    const lines = csv.slice(YAYOI_CSV_BOM.length).trimEnd().split("\r\n");
+    expect(lines).toHaveLength(3); // header + 2 行
+    expect(lines[1]).toContain(",売掛金,250000,売上高,250000,");
+    expect(lines[2]).toContain(",売掛金,25000,仮受消費税,25000,");
+    expect(lines[2]).toContain("消費税");
+  });
+
+  it("taxAmount = 0（非課税顧客）は従来通り 1 行", () => {
+    const csv = buildYayoiCsv({ ...base, totalAmount: 250000, taxAmount: 0 });
+    const lines = csv.slice(YAYOI_CSV_BOM.length).trimEnd().split("\r\n");
+    expect(lines).toHaveLength(2);
+    expect(lines[1]).toContain(",売掛金,250000,売上高,250000,");
+  });
+
   it("カンマ・引用符を含むフィールドをダブルクォートでエスケープする", () => {
     const csv = buildYayoiCsv({
       ...base,
