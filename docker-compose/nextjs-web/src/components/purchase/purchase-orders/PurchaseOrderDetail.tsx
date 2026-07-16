@@ -395,6 +395,18 @@ export function PurchaseOrderDetail({
                     <Table.Td>{it.factoryName ?? "—"}</Table.Td>
                     <Table.Td className="tabular-nums" ta="right">
                       {it.quantity} {it.unit}
+                      {po.status === "ORDERED" || po.status === "COMPLETED" ? (
+                        <Text
+                          c={
+                            it.receivedQuantity >= it.quantity
+                              ? "green"
+                              : "dimmed"
+                          }
+                          size="xs"
+                        >
+                          入荷済 {it.receivedQuantity}
+                        </Text>
+                      ) : null}
                     </Table.Td>
                     <Table.Td ta="right">
                       <MoneyText value={it.unitPrice} />

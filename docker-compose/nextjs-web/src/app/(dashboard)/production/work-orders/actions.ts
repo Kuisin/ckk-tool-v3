@@ -623,6 +623,49 @@ export async function approveSecond(
         },
       }),
     ]);
+    // 素材予約（監査 P2-1）: 製造分の承認確定で素材需要を RESERVE — ATP に
+    // 製造コミットが反映される。予約超過（reserved > on-hand）は仕様
+    // （発注判断のシグナル）。best-effort — 承認は既に確定済み。
+    if (prior.type === "MANUFACTURE" && prior.materialId != null) {
+      try {
+        const { ensureMaterialInventory, applyTransaction } = await import(
+          "@/lib/inventory"
+        );
+        const material = await prisma.material.findUnique({
+          where: { id: prior.materialId },
+          select: { unit: true },
+        });
+        await prisma.$transaction(async (tx) => {
+          const invId = await ensureMaterialInventory(tx, {
+            materialId: prior.materialId as number,
+            factoryId: null,
+            unit: material?.unit ?? "本",
+          });
+          await applyTransaction(tx, {
+            inventoryType: "MATERIAL",
+            inventoryId: invId,
+            transactionType: "RESERVE",
+            quantity: prior.plannedQuantity,
+            referenceType: "work_order",
+            referenceId: prior.id,
+            notes: `指示書 #${workOrderNumber} 承認による素材予約`,
+          });
+          await tx.inventoryReservation.create({
+            data: {
+              inventoryType: "MATERIAL",
+              inventoryId: invId,
+              workOrderId: prior.id,
+              salesOrderId: prior.salesOrderId,
+              quantity: prior.plannedQuantity,
+              status: "RESERVED",
+              reservedAt: new Date(),
+            },
+          });
+        });
+      } catch (err) {
+        console.error("[work-order] 素材予約に失敗:", err);
+      }
+    }
     await recordAudit({
       action: "UPDATE",
       tableName: "work_orders",

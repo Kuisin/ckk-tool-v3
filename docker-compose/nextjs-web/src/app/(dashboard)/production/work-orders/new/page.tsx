@@ -17,7 +17,7 @@ export const dynamic = "force-dynamic";
 export default async function ProductionWorkOrdersNewPage({
   searchParams,
 }: {
-  searchParams: Promise<{ salesOrder?: string }>;
+  searchParams: Promise<{ salesOrder?: string; type?: string; qty?: string }>;
 }) {
   const sp = await searchParams;
   const [catalog, factoryOptions, templateOptions, supplierOptions, soRef] =
@@ -29,11 +29,17 @@ export default async function ProductionWorkOrdersNewPage({
       sp.salesOrder ? fetchSalesOrderRef(sp.salesOrder) : null,
     ]);
 
+  const initialType =
+    sp.type === "FROM_STOCK" || sp.type === "MANUFACTURE" ? sp.type : null;
+  const initialQty = Number(sp.qty) > 0 ? Number(sp.qty) : null;
+
   return (
     <WorkflowBuilder
       catalogSteps={catalog.steps}
       factoryOptions={factoryOptions}
+      initialQuantity={initialQty}
       initialSalesOrder={soRef}
+      initialType={initialType}
       mode="create"
       supplierOptions={supplierOptions}
       templateOptions={templateOptions}
