@@ -10,6 +10,7 @@
 import { revalidatePath } from "next/cache";
 import type { z } from "zod";
 import { recordAudit } from "@/lib/audit";
+import { checkPermission } from "@/lib/authz";
 import { prisma } from "@/lib/db";
 import { nextSerialCode } from "@/lib/numbering";
 import {
@@ -41,6 +42,8 @@ function revalidate(id?: string) {
 export async function createSupplier(
   input: SupplierInput,
 ): Promise<ActionResult<{ id: string }>> {
+  const authz = await checkPermission("master", "CREATE");
+  if (!authz.ok) return actionError(authz.error);
   const parsed = supplierInput.safeParse(input);
   if (!parsed.success) {
     return actionError(parsed.error.issues[0]?.message ?? "入力が不正です");
@@ -73,6 +76,8 @@ export async function updateSupplier(
   id: string,
   input: SupplierInput,
 ): Promise<ActionResult<{ id: string }>> {
+  const authz = await checkPermission("master", "UPDATE");
+  if (!authz.ok) return actionError(authz.error);
   const parsed = supplierInput.safeParse(input);
   if (!parsed.success) {
     return actionError(parsed.error.issues[0]?.message ?? "入力が不正です");

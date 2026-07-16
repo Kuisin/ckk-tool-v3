@@ -10,6 +10,7 @@
 
 import { revalidatePath } from "next/cache";
 import { recordAudit } from "@/lib/audit";
+import { checkPermission } from "@/lib/authz";
 import { prisma } from "@/lib/db";
 import {
   type ActionResult,
@@ -30,6 +31,8 @@ export async function setBpsActive(
   ids: string[],
   isActive: boolean,
 ): Promise<ActionResult> {
+  const authz = await checkPermission("master", "UPDATE");
+  if (!authz.ok) return actionError(authz.error);
   if (ids.length === 0) return actionError("対象が選択されていません");
   try {
     const priors = await prisma.businessPartner.findMany({
@@ -58,6 +61,8 @@ export async function setBpsActive(
 }
 
 export async function deleteBps(ids: string[]): Promise<ActionResult> {
+  const authz = await checkPermission("master", "DELETE");
+  if (!authz.ok) return actionError(authz.error);
   if (ids.length === 0) return actionError("対象が選択されていません");
   try {
     // Guard: sales documents referencing one of the BPs (as 顧客 or 支店).
@@ -117,6 +122,8 @@ export async function addContact(
   bpId: string,
   input: ContactInput,
 ): Promise<ActionResult<{ id: string }>> {
+  const authz = await checkPermission("master", "UPDATE");
+  if (!authz.ok) return actionError(authz.error);
   const parsed = contactInput.safeParse(input);
   if (!parsed.success) {
     return actionError(parsed.error.issues[0]?.message ?? "入力が不正です");
@@ -154,6 +161,8 @@ export async function deleteContact(
   bpId: string,
   contactId: string,
 ): Promise<ActionResult> {
+  const authz = await checkPermission("master", "UPDATE");
+  if (!authz.ok) return actionError(authz.error);
   try {
     await prisma.bpContact.delete({ where: { id: contactId } });
     revalidateBp([bpId]);

@@ -6,6 +6,7 @@
  * an attachment, otherwise the file is served inline (e.g. PDFs open in-browser).
  */
 
+import { requirePermissionResponse } from "@/lib/authz";
 import { contentTypeForKey, getObject } from "@/lib/storage";
 
 export const dynamic = "force-dynamic";
@@ -17,6 +18,8 @@ function safeKey(key: string): string | null {
 }
 
 export async function GET(request: Request): Promise<Response> {
+  const denied = await requirePermissionResponse("system", "ADMIN");
+  if (denied) return denied;
   const url = new URL(request.url);
   const raw = url.searchParams.get("key");
   const download = url.searchParams.get("download") === "1";

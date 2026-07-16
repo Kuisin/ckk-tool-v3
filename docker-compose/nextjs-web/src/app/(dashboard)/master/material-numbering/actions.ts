@@ -11,6 +11,7 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { recordAudit } from "@/lib/audit";
+import { checkPermission } from "@/lib/authz";
 import { prisma } from "@/lib/db";
 import { diameterCodeFromMm, lengthCodeFromMm } from "@/lib/material-code";
 import {
@@ -52,6 +53,8 @@ const manufacturerInput = z.object({
 export async function createManufacturer(
   input: z.infer<typeof manufacturerInput>,
 ): Promise<ActionResult> {
+  const authz = await checkPermission("master", "CREATE");
+  if (!authz.ok) return actionError(authz.error);
   const p = manufacturerInput.safeParse(input);
   if (!p.success)
     return actionError(p.error.issues[0]?.message ?? "入力が不正です");
@@ -80,6 +83,8 @@ const gradeInput = z.object({
 export async function createGrade(
   input: z.infer<typeof gradeInput>,
 ): Promise<ActionResult> {
+  const authz = await checkPermission("master", "CREATE");
+  if (!authz.ok) return actionError(authz.error);
   const p = gradeInput.safeParse(input);
   if (!p.success)
     return actionError(p.error.issues[0]?.message ?? "入力が不正です");
@@ -110,6 +115,8 @@ const shapeInput = z.object({
 export async function createShape(
   input: z.infer<typeof shapeInput>,
 ): Promise<ActionResult> {
+  const authz = await checkPermission("master", "CREATE");
+  if (!authz.ok) return actionError(authz.error);
   const p = shapeInput.safeParse(input);
   if (!p.success)
     return actionError(p.error.issues[0]?.message ?? "入力が不正です");
@@ -136,6 +143,8 @@ const kindInput = z.object({
 export async function createKind(
   input: z.infer<typeof kindInput>,
 ): Promise<ActionResult> {
+  const authz = await checkPermission("master", "CREATE");
+  if (!authz.ok) return actionError(authz.error);
   const p = kindInput.safeParse(input);
   if (!p.success)
     return actionError(p.error.issues[0]?.message ?? "入力が不正です");
@@ -164,6 +173,8 @@ const finishInput = z.object({
 export async function createSurfaceFinish(
   input: z.infer<typeof finishInput>,
 ): Promise<ActionResult> {
+  const authz = await checkPermission("master", "CREATE");
+  if (!authz.ok) return actionError(authz.error);
   const p = finishInput.safeParse(input);
   if (!p.success)
     return actionError(p.error.issues[0]?.message ?? "入力が不正です");
@@ -193,6 +204,8 @@ const diameterInput = z.object({
 export async function createDiameter(
   input: z.infer<typeof diameterInput>,
 ): Promise<ActionResult> {
+  const authz = await checkPermission("master", "CREATE");
+  if (!authz.ok) return actionError(authz.error);
   const p = diameterInput.safeParse(input);
   if (!p.success)
     return actionError(p.error.issues[0]?.message ?? "入力が不正です");
@@ -226,6 +239,8 @@ const lengthInput = z.object({
 export async function createLengthVariant(
   input: z.infer<typeof lengthInput>,
 ): Promise<ActionResult> {
+  const authz = await checkPermission("master", "CREATE");
+  if (!authz.ok) return actionError(authz.error);
   const p = lengthInput.safeParse(input);
   if (!p.success)
     return actionError(p.error.issues[0]?.message ?? "入力が不正です");
@@ -290,6 +305,8 @@ const AUDIT_TABLE: Record<ComponentTableKind, string> = {
 export async function setComponentActive(
   input: z.infer<typeof setActiveInput>,
 ): Promise<ActionResult> {
+  const authz = await checkPermission("master", "UPDATE");
+  if (!authz.ok) return actionError(authz.error);
   const p = setActiveInput.safeParse(input);
   if (!p.success)
     return actionError(p.error.issues[0]?.message ?? "入力が不正です");

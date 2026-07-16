@@ -15,6 +15,7 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { recordAudit } from "@/lib/audit";
+import { checkPermission } from "@/lib/authz";
 import { prisma } from "@/lib/db";
 import {
   formatDocNumber,
@@ -135,6 +136,8 @@ export async function fetchShippingSourceInfo(
 export async function createShippingOrder(
   payload: ShippingOrderCreateInput,
 ): Promise<ActionResult<{ number: string }>> {
+  const authz = await checkPermission("shipping_order", "CREATE");
+  if (!authz.ok) return actionError(authz.error);
   const parsed = createInput.safeParse(payload);
   if (!parsed.success) {
     return actionError(parsed.error.issues[0]?.message ?? "入力が不正です");
@@ -187,6 +190,8 @@ export async function updateShippingOrder(
   number: string,
   payload: ShippingOrderUpdateInput,
 ): Promise<ActionResult<{ number: string }>> {
+  const authz = await checkPermission("shipping_order", "UPDATE");
+  if (!authz.ok) return actionError(authz.error);
   const key = parseDocKey(number, "SHP");
   if (!key) return actionError("出荷書番号が不正です");
   const parsed = updateInput.safeParse(payload);
@@ -270,6 +275,8 @@ export async function updateShippingOrder(
 export async function confirmShippingOrder(
   number: string,
 ): Promise<ActionResult> {
+  const authz = await checkPermission("shipping_order", "UPDATE");
+  if (!authz.ok) return actionError(authz.error);
   const key = parseDocKey(number, "SHP");
   if (!key) return actionError("出荷書番号が不正です");
   try {
@@ -302,6 +309,8 @@ export async function confirmShippingOrder(
  * SHIPPED。STOCK_STORAGE（在庫保管）は注文請書ステータスを変更しない。
  */
 export async function shipShippingOrder(number: string): Promise<ActionResult> {
+  const authz = await checkPermission("shipping_order", "UPDATE");
+  if (!authz.ok) return actionError(authz.error);
   const key = parseDocKey(number, "SHP");
   if (!key) return actionError("出荷書番号が不正です");
   try {
@@ -402,6 +411,8 @@ export async function shipShippingOrder(number: string): Promise<ActionResult> {
 export async function deleteShippingOrder(
   number: string,
 ): Promise<ActionResult> {
+  const authz = await checkPermission("shipping_order", "DELETE");
+  if (!authz.ok) return actionError(authz.error);
   const key = parseDocKey(number, "SHP");
   if (!key) return actionError("出荷書番号が不正です");
   try {

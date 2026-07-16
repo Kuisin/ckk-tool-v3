@@ -22,6 +22,7 @@ import {
   parseYearMonth,
 } from "@/components/billing/closings/model";
 import { getCurrentActorId, recordAudit } from "@/lib/audit";
+import { checkPermission } from "@/lib/authz";
 import { prisma } from "@/lib/db";
 import { formatDocNumber } from "@/lib/doc-number";
 import { type LocalizedText, localized } from "@/lib/format";
@@ -61,6 +62,8 @@ export async function runClosing(
 ): Promise<ActionResult<RunClosingResult>> {
   const ym = parseYearMonth(yearMonth);
   if (!ym) return actionError("対象月の形式が不正です（YYYYMM）");
+  const authz = await checkPermission("billing_closing", "UPDATE");
+  if (!authz.ok) return actionError(authz.error);
   try {
     const candidates = await collectClosingCandidates(ym.year, ym.month);
     if (candidates.length === 0) {
@@ -145,6 +148,8 @@ export async function runClosing(
 export async function processClosing(
   id: string,
 ): Promise<ActionResult<{ invoiceNumber: string }>> {
+  const authz = await checkPermission("billing_closing", "UPDATE");
+  if (!authz.ok) return actionError(authz.error);
   try {
     const closing = await prisma.billingClosing.findUnique({
       where: { id },

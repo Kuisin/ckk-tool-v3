@@ -14,6 +14,7 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { recordAudit } from "@/lib/audit";
+import { checkPermission } from "@/lib/authz";
 import { prisma } from "@/lib/db";
 import { parseDocKey } from "@/lib/doc-number";
 import { nextDocumentNumber } from "@/lib/numbering";
@@ -78,6 +79,8 @@ export async function createDesignRequest(
   const salesOrderId =
     v.trigger === "SALES_ORDER" ? trimOrNull(v.salesOrderId) : null;
 
+  const authz = await checkPermission("design_request", "CREATE");
+  if (!authz.ok) return actionError(authz.error);
   try {
     const requestNumber = await nextDocumentNumber("DESIGN");
     await prisma.designRequest.create({
@@ -121,6 +124,8 @@ export async function updateDesignRequest(
   if (!parsed.success) {
     return actionError(parsed.error.issues[0]?.message ?? "入力が不正です");
   }
+  const authz = await checkPermission("design_request", "UPDATE");
+  if (!authz.ok) return actionError(authz.error);
   const v = parsed.data;
   try {
     const prior = await prisma.designRequest.findUnique({
@@ -162,6 +167,8 @@ export async function updateDesignRequest(
 
 /** 着手 (PENDING → IN_PROGRESS)。 */
 export async function startDesign(number: string): Promise<ActionResult> {
+  const authz = await checkPermission("design_request", "UPDATE");
+  if (!authz.ok) return actionError(authz.error);
   try {
     const updated = await prisma.designRequest.updateMany({
       where: { requestNumber: number, status: "PENDING" },
@@ -186,6 +193,8 @@ export async function startDesign(number: string): Promise<ActionResult> {
 
 /** 完了 (IN_PROGRESS → COMPLETED)。completedAt を記録する。 */
 export async function completeDesign(number: string): Promise<ActionResult> {
+  const authz = await checkPermission("design_request", "UPDATE");
+  if (!authz.ok) return actionError(authz.error);
   try {
     const updated = await prisma.designRequest.updateMany({
       where: { requestNumber: number, status: "IN_PROGRESS" },
@@ -210,6 +219,8 @@ export async function completeDesign(number: string): Promise<ActionResult> {
 
 /** 差し戻し (COMPLETED → IN_PROGRESS)。completedAt をクリアする。 */
 export async function reopenDesign(number: string): Promise<ActionResult> {
+  const authz = await checkPermission("design_request", "UPDATE");
+  if (!authz.ok) return actionError(authz.error);
   try {
     const updated = await prisma.designRequest.updateMany({
       where: { requestNumber: number, status: "COMPLETED" },

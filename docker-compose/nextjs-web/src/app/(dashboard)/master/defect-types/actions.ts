@@ -10,6 +10,7 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { recordAudit } from "@/lib/audit";
+import { checkPermission } from "@/lib/authz";
 import { prisma } from "@/lib/db";
 import {
   type ActionResult,
@@ -38,6 +39,8 @@ function revalidate() {
 export async function createDefectType(
   input: DefectTypeInput,
 ): Promise<ActionResult<{ id: number }>> {
+  const authz = await checkPermission("master", "CREATE");
+  if (!authz.ok) return actionError(authz.error);
   const parsed = defectTypeInput.safeParse(input);
   if (!parsed.success) {
     return actionError(parsed.error.issues[0]?.message ?? "入力が不正です");
@@ -75,6 +78,8 @@ export async function updateDefectType(
   id: number,
   input: DefectTypeInput,
 ): Promise<ActionResult<{ id: number }>> {
+  const authz = await checkPermission("master", "UPDATE");
+  if (!authz.ok) return actionError(authz.error);
   const parsed = defectTypeInput.safeParse(input);
   if (!parsed.success) {
     return actionError(parsed.error.issues[0]?.message ?? "入力が不正です");
@@ -112,6 +117,8 @@ export async function setDefectTypesActive(
   ids: number[],
   isActive: boolean,
 ): Promise<ActionResult> {
+  const authz = await checkPermission("master", "UPDATE");
+  if (!authz.ok) return actionError(authz.error);
   if (ids.length === 0) return actionError("対象が選択されていません");
   try {
     await prisma.defectType.updateMany({
@@ -134,6 +141,8 @@ export async function setDefectTypesActive(
 }
 
 export async function deleteDefectTypes(ids: number[]): Promise<ActionResult> {
+  const authz = await checkPermission("master", "DELETE");
+  if (!authz.ok) return actionError(authz.error);
   if (ids.length === 0) return actionError("対象が選択されていません");
   try {
     // Guard: 不良記録（defect_records）は未実装。参照テーブルが増えたら

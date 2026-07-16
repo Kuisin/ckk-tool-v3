@@ -10,6 +10,7 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { recordAudit } from "@/lib/audit";
+import { checkPermission } from "@/lib/authz";
 import {
   type ActionResult,
   actionError,
@@ -34,6 +35,8 @@ const settingsInput = z.object({
 export async function updateTrialPricingSettings(
   payload: TrialPricingSettings,
 ): Promise<ActionResult> {
+  const authz = await checkPermission("system", "UPDATE");
+  if (!authz.ok) return actionError(authz.error);
   const parsed = settingsInput.safeParse(payload);
   if (!parsed.success) {
     return actionError(parsed.error.issues[0]?.message ?? "入力が不正です");

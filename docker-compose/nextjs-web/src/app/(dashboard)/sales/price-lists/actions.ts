@@ -12,6 +12,7 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { recordAudit } from "@/lib/audit";
+import { checkPermission } from "@/lib/authz";
 import { prisma } from "@/lib/db";
 import {
   type DocKey,
@@ -109,6 +110,8 @@ export async function updatePriceEntry(
   const v = parsed.data;
   const key = keyOf(v.entryNumber);
   if (!key) return actionError("価格表番号が不正です");
+  const authz = await checkPermission("price_list", "UPDATE");
+  if (!authz.ok) return actionError(authz.error);
   try {
     const prior = await prisma.priceListEntry.findUnique({
       where: whereKey(key),
@@ -190,6 +193,8 @@ export async function createPriceEntry(
   if (!parsed.success) {
     return actionError(parsed.error.issues[0]?.message ?? "入力が不正です");
   }
+  const authz = await checkPermission("price_list", "CREATE");
+  if (!authz.ok) return actionError(authz.error);
   const v = parsed.data;
   try {
     const key = await allocateDocumentKey("PRICE_LIST");
@@ -252,6 +257,8 @@ export async function copyPriceEntry(payload: {
   validFrom: string;
   validUntil: string | null;
 }): Promise<ActionResult<{ entryId: string }>> {
+  const authz = await checkPermission("price_list", "CREATE");
+  if (!authz.ok) return actionError(authz.error);
   const sourceKey = keyOf(payload.sourceEntryNumber);
   if (!sourceKey) return actionError("コピー元の価格表番号が不正です");
   const source = await prisma.priceListEntry.findUnique({
@@ -288,6 +295,8 @@ export async function changePriceEntryPeriod(payload: {
   }
   const key = keyOf(payload.entryNumber);
   if (!key) return actionError("価格表番号が不正です");
+  const authz = await checkPermission("price_list", "UPDATE");
+  if (!authz.ok) return actionError(authz.error);
   try {
     await prisma.priceListEntry.update({
       where: whereKey(key),
@@ -318,6 +327,8 @@ export async function setPriceEntriesActive(
   if (entryNumbers.length === 0) return actionError("対象が選択されていません");
   const keys = parseNumbers(entryNumbers);
   if (!keys) return actionError("価格表番号が不正です");
+  const authz = await checkPermission("price_list", "UPDATE");
+  if (!authz.ok) return actionError(authz.error);
   try {
     await prisma.$transaction(
       keys.map((key) =>
@@ -349,6 +360,8 @@ export async function deletePriceEntries(
   if (entryNumbers.length === 0) return actionError("対象が選択されていません");
   const keys = parseNumbers(entryNumbers);
   if (!keys) return actionError("価格表番号が不正です");
+  const authz = await checkPermission("price_list", "DELETE");
+  if (!authz.ok) return actionError(authz.error);
   try {
     await prisma.$transaction(
       keys.flatMap((key) => [
@@ -398,6 +411,8 @@ export async function saveDiscountRule(
   const v = parsed.data;
   const key = keyOf(v.entryNumber);
   if (!key) return actionError("価格表番号が不正です");
+  const authz = await checkPermission("price_list", "UPDATE");
+  if (!authz.ok) return actionError(authz.error);
   const data = {
     label: v.label,
     discountType: v.discountType,
@@ -442,6 +457,8 @@ export async function deleteDiscountRule(
 ): Promise<ActionResult> {
   const key = keyOf(entryNumber);
   if (!key) return actionError("価格表番号が不正です");
+  const authz = await checkPermission("price_list", "DELETE");
+  if (!authz.ok) return actionError(authz.error);
   try {
     await prisma.priceListDiscount.delete({ where: { id } });
     await recordAudit({
