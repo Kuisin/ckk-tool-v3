@@ -121,6 +121,8 @@ export const OPERATION_CODES: OperationCodeEntry[] = [
   ...makeResource("購買", "PU", "1", "素材入荷", "/purchase/material-receipts"),
   ...makeResource("購買", "PU", "2", "外注依頼", "/purchase/outsource-orders"),
   ...makeResource("購買", "PU", "3", "素材発注書", "/purchase/purchase-orders"),
+  // 発注書の前段（業務フロー上は PU03 より先）— コードは追加順で PU04
+  ...makeResource("購買", "PU", "4", "購買依頼", "/purchase/purchase-requests"),
 
   // ─── 生産 (PD) ───────────────────────────────────────────────────────────
   // PD22 詳細（ID無し→検索）が旧 PD20 工程実行 のエントリポイントを兼ねる

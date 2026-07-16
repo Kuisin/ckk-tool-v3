@@ -87,6 +87,12 @@ model User {
   posCreated   MaterialPurchaseOrder[] @relation("PoCreatedBy")
   receiptsCreated MaterialReceipt[]    @relation("ReceiptCreatedBy")
 
+  prqsRequested PurchaseRequest[] @relation("PrqRequestedBy")
+  prqsApproved  PurchaseRequest[] @relation("PrqApprovedBy")
+  prqsOrdered   PurchaseRequest[] @relation("PrqOrderedBy")
+  prqsCancelled PurchaseRequest[] @relation("PrqCancelledBy")
+  prqsCreated   PurchaseRequest[] @relation("PrqCreatedBy")
+
   notifications       Notification[]           @relation("NotificationUser")
   pushSubscriptions   PushSubscription[]       @relation("PushSubscriptionUser")
   notificationSetting UserNotificationSetting? @relation("UserNotificationSettingUser")

@@ -1,24 +1,26 @@
 "use client";
 
 /**
- * PurchaseOrderDetail — 素材発注書 詳細 (PU23, design.md §8.2)。
+ * PurchaseRequestDetail — 購買依頼 詳細 (PU24, design.md §8.2)。
  *
- * SummaryGrid + 承認/遷移パネル（線形 Stepper 依頼→承認→発注→入荷完了 +
+ * SummaryGrid + 承認/変換パネル（線形 Stepper 依頼→承認→発注書へ変換 +
  * 状態別アクション）+ Tabs（明細 / 概要 / 履歴）。
  *
  * 状態別アクション:
- *   DRAFT: 承認依頼 + 編集 / キャンセル
- *   REQUESTED: 承認（isApprover("FIRST") ゲート）/ 差し戻し（理由必須 → DRAFT）
- *   APPROVED: 発注（→ ORDERED — 明細が素材 ATP の入荷予定に反映）/ キャンセル
- *   ORDERED: 入荷完了（明細ごとに全量入荷の MaterialReceipt を作成し在庫入庫）
+ *   DRAFT / REJECTED: 承認依頼 + 編集 / キャンセル
+ *   REQUESTED: 承認（isApprover("FIRST") ゲート）/ 差し戻し（理由必須 → REJECTED）
+ *   APPROVED: 発注書へ変換（仕入先を指定 → 発注書 DRAFT を生成）/ キャンセル
+ *   ORDERED: 変換先の発注書へのリンク表示
  */
 
 import {
   Alert,
+  Anchor,
   Badge,
   Divider,
   Group,
   Paper,
+  Select,
   Stack,
   Stepper,
   Table,
@@ -30,31 +32,26 @@ import {
 import { notifications } from "@mantine/notifications";
 import {
   IconAlertTriangle,
-  IconPackageImport,
+  IconArrowBackUp,
   IconSend,
-  IconTruck,
+  IconShoppingCart,
   IconX,
 } from "@tabler/icons-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import {
-  approvePurchaseOrder,
-  cancelPurchaseOrder,
-  completePurchaseOrder,
-  orderPurchaseOrder,
-  rejectPurchaseOrder,
-  requestPurchaseApproval,
-} from "@/app/(dashboard)/purchase/purchase-orders/actions";
+  approvePurchaseRequest,
+  cancelPurchaseRequest,
+  convertToPurchaseOrder,
+  rejectPurchaseRequest,
+  requestPurchaseRequestApproval,
+} from "@/app/(dashboard)/purchase/purchase-requests/actions";
 import {
   ApprovalTrailList,
   type ApprovalTrailView,
   countTrailRecords,
 } from "@/components/production/ApprovalStatusPanel";
-import {
-  AttachmentsPanel,
-  type AttachmentView,
-} from "@/components/ui/AttachmentsPanel";
 import {
   ApproveButton,
   PrimaryButton,
@@ -63,7 +60,6 @@ import {
 import { DocNumber } from "@/components/ui/DocNumber";
 import { FieldValue } from "@/components/ui/FieldValue";
 import { HistoryPanel } from "@/components/ui/HistoryPanel";
-import { MoneyText } from "@/components/ui/MoneyText";
 import { ModalShell } from "@/components/ui/modals";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import {
@@ -76,19 +72,26 @@ import { useTabParam } from "@/hooks/useUrlState";
 import { formatDate, formatDateTime } from "@/lib/format";
 import type { ActionResult } from "@/lib/server-action";
 import {
-  canAttachEvidence,
+  canRequestApproval,
   isCancellable,
   isEditable,
-  PURCHASE_HISTORY_ACTION_LABEL,
-  type PurchaseOrderView,
+  PURCHASE_REQUEST_HISTORY_ACTION_LABEL,
+  type PurchaseRequestView,
 } from "./model";
 
-const BASE_PATH = "/purchase/purchase-orders";
+const BASE_PATH = "/purchase/purchase-requests";
+const PO_PATH = "/purchase/purchase-orders";
 
-/** status → Stepper の active index（依頼 / 承認 / 発注 / 入荷完了）。 */
+interface Option {
+  value: string;
+  label: string;
+}
+
+/** status → Stepper の active index（依頼 / 承認 / 発注書へ変換）。 */
 function stepperActive(status: string): number {
   switch (status) {
     case "DRAFT":
+    case "REJECTED":
       return 0;
     case "REQUESTED":
       return 1;
@@ -96,27 +99,25 @@ function stepperActive(status: string): number {
       return 2;
     case "ORDERED":
       return 3;
-    case "COMPLETED":
-      return 4;
     default:
       return -1; // CANCELLED
   }
 }
 
-export function PurchaseOrderDetail({
-  purchaseOrder,
+export function PurchaseRequestDetail({
+  purchaseRequest,
   auditEntries,
   canApprove,
-  attachments,
+  supplierOptions,
   approvalTrail = [],
 }: {
-  purchaseOrder: PurchaseOrderView;
+  purchaseRequest: PurchaseRequestView;
   /** 操作履歴（audit_logs 由来、履歴タブ）。 */
   auditEntries: AuditEntry[];
   /** 第一承認グループのメンバー（or 代理）か（承認 / 差し戻しのゲート）。 */
   canApprove: boolean;
-  /** 証憑（document_attachments 由来、証憑タブ）。 */
-  attachments: AttachmentView[];
+  /** 仕入先（VENDOR ロールの有効 BP）— 変換モーダルの Select。value = uuid。 */
+  supplierOptions: Option[];
   /** 正規化された承認記録（approval_records — 代理承認マーカー付き）。 */
   approvalTrail?: ApprovalTrailView[];
 }) {
@@ -128,10 +129,10 @@ export function PurchaseOrderDetail({
   const [rejectReason, setRejectReason] = useState("");
   const [cancelOpen, setCancelOpen] = useState(false);
   const [cancelReason, setCancelReason] = useState("");
-  const [orderOpen, setOrderOpen] = useState(false);
-  const [completeOpen, setCompleteOpen] = useState(false);
+  const [convertOpen, setConvertOpen] = useState(false);
+  const [convertSupplier, setConvertSupplier] = useState<string | null>(null);
 
-  const po = purchaseOrder;
+  const rq = purchaseRequest;
 
   const run = (action: () => Promise<ActionResult>, done: string) => {
     startTransition(async () => {
@@ -139,15 +140,14 @@ export function PurchaseOrderDetail({
       if (result.ok) {
         notifications.show({
           title: done,
-          message: `素材発注書 ${po.poNumber}`,
+          message: `購買依頼 ${rq.requestNumber}`,
           color: "green",
         });
         setRejectOpen(false);
         setRejectReason("");
         setCancelOpen(false);
         setCancelReason("");
-        setOrderOpen(false);
-        setCompleteOpen(false);
+        setConvertOpen(false);
         router.refresh();
       } else {
         notifications.show({
@@ -159,15 +159,50 @@ export function PurchaseOrderDetail({
     });
   };
 
+  const handleConvert = () => {
+    if (!convertSupplier) {
+      notifications.show({
+        title: "エラー",
+        message: "仕入先を選択してください",
+        color: "red",
+      });
+      return;
+    }
+    const supplierBpId = convertSupplier;
+    startTransition(async () => {
+      const result = await convertToPurchaseOrder(
+        rq.requestNumber,
+        supplierBpId,
+      );
+      if (result.ok) {
+        notifications.show({
+          title: "発注書へ変換しました",
+          message: `素材発注書 ${result.data.poNumber} を作成しました`,
+          color: "green",
+        });
+        setConvertOpen(false);
+        router.push(`${PO_PATH}/${result.data.poNumber}`);
+      } else {
+        notifications.show({
+          title: "エラー",
+          message: result.error,
+          color: "red",
+        });
+      }
+    });
+  };
+
   // 遷移履歴は新しい順で表示
-  const records = [...po.history].reverse();
+  const records = [...rq.history].reverse();
+  // 差し戻し中の表示用: 最新の REJECT エントリの理由
+  const lastReject = records.find((h) => h.action === "REJECT");
 
   return (
     <DetailShell
       actions={
         <ResourceActions
           menuItems={
-            isCancellable(po)
+            isCancellable(rq)
               ? [
                   {
                     label: "キャンセル",
@@ -179,89 +214,98 @@ export function PurchaseOrderDetail({
               : []
           }
           onEdit={
-            isEditable(po)
-              ? () => router.push(`${BASE_PATH}/${po.poNumber}/edit`)
+            isEditable(rq)
+              ? () => router.push(`${BASE_PATH}/${rq.requestNumber}/edit`)
               : undefined
           }
         />
       }
-      breadcrumbs={["購買", { label: "素材発注書", href: BASE_PATH }, "詳細"]}
-      createdAt={formatDateTime(po.createdAt)}
-      status={<StatusBadge entity="MaterialPurchaseOrder" status={po.status} />}
-      title={po.poNumber}
-      updatedAt={formatDateTime(po.updatedAt)}
+      breadcrumbs={["購買", { label: "購買依頼", href: BASE_PATH }, "詳細"]}
+      createdAt={formatDateTime(rq.createdAt)}
+      status={<StatusBadge entity="PurchaseRequest" status={rq.status} />}
+      title={rq.requestNumber}
+      updatedAt={formatDateTime(rq.updatedAt)}
     >
       <SummaryGrid>
         <FieldValue
-          label="発注番号"
-          value={<DocNumber>{po.poNumber}</DocNumber>}
+          label="依頼番号"
+          value={<DocNumber>{rq.requestNumber}</DocNumber>}
         />
-        <FieldValue label="仕入先" value={po.supplierName} />
-        <FieldValue label="発注日" value={formatDate(po.purchaseDate)} />
-        <FieldValue
-          label="合計金額"
-          value={<MoneyText ta="left" value={po.totalAmount} />}
-        />
+        <FieldValue label="依頼者" value={rq.requesterName} />
         <FieldValue
           label="明細数"
           value={
             <Text className="tabular-nums" size="sm" span>
-              {po.items.length} 件
+              {rq.items.length} 件
             </Text>
           }
         />
+        <FieldValue label="依頼理由" value={rq.purpose ?? "—"} />
         <FieldValue
-          label="入荷完了日"
-          value={po.completedAt ? formatDateTime(po.completedAt) : "—"}
+          label="依頼日時"
+          value={rq.requestedAt ? formatDateTime(rq.requestedAt) : "—"}
         />
-        {po.sourceRequestNumber && (
+        <FieldValue
+          label="承認日時"
+          value={rq.approvedAt ? formatDateTime(rq.approvedAt) : "—"}
+        />
+        {rq.purchaseOrderNumber && (
           <FieldValue
-            label="変換元（購買依頼）"
+            label="変換先発注書"
             value={
-              <Link
-                href={`/purchase/purchase-requests/${encodeURIComponent(po.sourceRequestNumber)}`}
+              <Anchor
+                component={Link}
+                href={`${PO_PATH}/${rq.purchaseOrderNumber}`}
+                size="sm"
               >
-                <DocNumber>{po.sourceRequestNumber}</DocNumber>
-              </Link>
+                <DocNumber>{rq.purchaseOrderNumber}</DocNumber>
+              </Anchor>
             }
           />
         )}
       </SummaryGrid>
 
-      {/* 承認 / 遷移パネル — 指示書の ApprovalStatusPanel と同型（線形 4 段階） */}
+      {/* 承認 / 変換パネル — 素材発注書の承認パネルと同型（線形 3 段階） */}
       <Paper p="md" radius="md" withBorder>
         <Title mb="md" order={5}>
-          承認・発注状況
+          承認・変換状況
         </Title>
 
-        <Stepper active={stepperActive(po.status)} size="sm">
+        <Stepper active={stepperActive(rq.status)} size="sm">
           <Stepper.Step
-            description={po.requestedAt ? formatDate(po.requestedAt) : "作成中"}
+            description={rq.requestedAt ? formatDate(rq.requestedAt) : "作成中"}
             label="依頼"
-            loading={po.status === "DRAFT"}
+            loading={rq.status === "DRAFT" || rq.status === "REJECTED"}
           />
           <Stepper.Step
             description={
-              po.approvedAt ? formatDate(po.approvedAt) : "第一承認グループ"
+              rq.approvedAt ? formatDate(rq.approvedAt) : "第一承認グループ"
             }
             label="承認"
-            loading={po.status === "REQUESTED"}
-          />
-          <Stepper.Step
-            description={po.orderedAt ? formatDate(po.orderedAt) : "入荷予定へ"}
-            label="発注"
-            loading={po.status === "APPROVED"}
+            loading={rq.status === "REQUESTED"}
           />
           <Stepper.Step
             description={
-              po.completedAt ? formatDate(po.completedAt) : "在庫入庫"
+              rq.orderedAt ? formatDate(rq.orderedAt) : "仕入先を指定"
             }
-            label="入荷完了"
-            loading={po.status === "ORDERED"}
+            label="発注書へ変換"
+            loading={rq.status === "APPROVED"}
           />
         </Stepper>
 
-        {po.status === "CANCELLED" && (
+        {rq.status === "REJECTED" && (
+          <Alert
+            color="orange"
+            icon={<IconArrowBackUp size={16} />}
+            mt="md"
+            title="差し戻されました"
+            variant="light"
+          >
+            {lastReject?.notes ?? "—"}（編集して再度承認依頼できます）
+          </Alert>
+        )}
+
+        {rq.status === "CANCELLED" && (
           <Alert
             color="red"
             icon={<IconAlertTriangle size={16} />}
@@ -269,18 +313,18 @@ export function PurchaseOrderDetail({
             title="キャンセル済"
             variant="light"
           >
-            {po.cancelReason ?? "—"}
+            {rq.cancelReason ?? "—"}
           </Alert>
         )}
 
         <Group gap="xs" mt="md">
-          {po.status === "DRAFT" && (
+          {canRequestApproval(rq) && (
             <PrimaryButton
               leftSection={<IconSend size={14} />}
               loading={isPending}
               onClick={() =>
                 run(
-                  () => requestPurchaseApproval(po.poNumber),
+                  () => requestPurchaseRequestApproval(rq.requestNumber),
                   "承認依頼しました",
                 )
               }
@@ -288,13 +332,16 @@ export function PurchaseOrderDetail({
               承認依頼
             </PrimaryButton>
           )}
-          {po.status === "REQUESTED" &&
+          {rq.status === "REQUESTED" &&
             (canApprove ? (
               <>
                 <ApproveButton
                   loading={isPending}
                   onClick={() =>
-                    run(() => approvePurchaseOrder(po.poNumber), "承認しました")
+                    run(
+                      () => approvePurchaseRequest(rq.requestNumber),
+                      "承認しました",
+                    )
                   }
                 >
                   承認
@@ -306,23 +353,26 @@ export function PurchaseOrderDetail({
                 第一承認グループのメンバーのみ承認・差し戻しできます
               </Text>
             ))}
-          {po.status === "APPROVED" && (
+          {rq.status === "APPROVED" && (
             <PrimaryButton
-              leftSection={<IconTruck size={14} />}
+              leftSection={<IconShoppingCart size={14} />}
               loading={isPending}
-              onClick={() => setOrderOpen(true)}
+              onClick={() => setConvertOpen(true)}
             >
-              発注
+              発注書へ変換
             </PrimaryButton>
           )}
-          {po.status === "ORDERED" && (
-            <ApproveButton
-              leftSection={<IconPackageImport size={14} />}
-              loading={isPending}
-              onClick={() => setCompleteOpen(true)}
+          {rq.status === "ORDERED" && rq.purchaseOrderNumber && (
+            <Anchor
+              component={Link}
+              href={`${PO_PATH}/${rq.purchaseOrderNumber}`}
+              size="sm"
             >
-              入荷完了
-            </ApproveButton>
+              <Group gap={4} wrap="nowrap">
+                <IconShoppingCart size={14} />
+                <span>素材発注書 {rq.purchaseOrderNumber} を確認する</span>
+              </Group>
+            </Anchor>
           )}
         </Group>
 
@@ -341,7 +391,8 @@ export function PurchaseOrderDetail({
               {records.map((h, i) => (
                 <Group gap="sm" key={`${h.at}-${h.action}-${i}`} wrap="nowrap">
                   <Badge color="gray" size="sm" variant="light">
-                    {PURCHASE_HISTORY_ACTION_LABEL[h.action] ?? h.action}
+                    {PURCHASE_REQUEST_HISTORY_ACTION_LABEL[h.action] ??
+                      h.action}
                   </Badge>
                   <Text size="xs">{h.user}</Text>
                   <Text c="dimmed" className="tabular-nums" size="xs">
@@ -361,28 +412,25 @@ export function PurchaseOrderDetail({
 
       <Tabs onChange={setTab} value={tab}>
         <Tabs.List>
-          <Tabs.Tab value="items">明細（{po.items.length}）</Tabs.Tab>
-          <Tabs.Tab value="attachments">証憑（{attachments.length}）</Tabs.Tab>
+          <Tabs.Tab value="items">明細（{rq.items.length}）</Tabs.Tab>
           <Tabs.Tab value="overview">概要</Tabs.Tab>
           <Tabs.Tab value="history">履歴</Tabs.Tab>
         </Tabs.List>
 
         <Tabs.Panel pt="md" value="items">
-          <Table.ScrollContainer minWidth={760}>
+          <Table.ScrollContainer minWidth={680}>
             <Table highlightOnHover striped>
               <Table.Thead>
                 <Table.Tr>
                   <Table.Th>素材</Table.Th>
                   <Table.Th>入荷先工場</Table.Th>
                   <Table.Th ta="right">数量</Table.Th>
-                  <Table.Th ta="right">単価</Table.Th>
-                  <Table.Th ta="right">金額</Table.Th>
-                  <Table.Th>入荷予定日</Table.Th>
+                  <Table.Th>希望納期</Table.Th>
                   <Table.Th>備考</Table.Th>
                 </Table.Tr>
               </Table.Thead>
               <Table.Tbody>
-                {po.items.map((it) => (
+                {rq.items.map((it) => (
                   <Table.Tr key={it.id}>
                     <Table.Td>
                       <Text ff="mono" size="sm">
@@ -396,14 +444,8 @@ export function PurchaseOrderDetail({
                     <Table.Td className="tabular-nums" ta="right">
                       {it.quantity} {it.unit}
                     </Table.Td>
-                    <Table.Td ta="right">
-                      <MoneyText value={it.unitPrice} />
-                    </Table.Td>
-                    <Table.Td ta="right">
-                      <MoneyText value={it.amount} />
-                    </Table.Td>
                     <Table.Td className="tabular-nums">
-                      {formatDate(it.expectedAt)}
+                      {formatDate(it.desiredAt)}
                     </Table.Td>
                     <Table.Td>
                       <Text c="dimmed" size="xs">
@@ -415,40 +457,24 @@ export function PurchaseOrderDetail({
               </Table.Tbody>
             </Table>
           </Table.ScrollContainer>
-          <Group justify="flex-end" mt="sm">
-            <Text fw={700}>
-              合計金額 <MoneyText value={po.totalAmount} />
-            </Text>
-          </Group>
-        </Tabs.Panel>
-
-        {/* 証憑 — 注文書控え・納品書控え等。添付は承認後（APPROVED 以降）のみ */}
-        <Tabs.Panel pt="md" value="attachments">
-          <Stack gap="sm">
-            {!canAttachEvidence(po) && (
-              <Text c="dimmed" size="xs">
-                証憑の添付は承認後（承認済・発注済・入荷完了）に可能になります
-              </Text>
-            )}
-            <AttachmentsPanel
-              attachments={attachments}
-              canDelete={canAttachEvidence(po)}
-              canUpload={canAttachEvidence(po)}
-              ownerId={po.poNumber}
-              ownerType="material_purchase_orders"
-              title="証憑"
-            />
-          </Stack>
         </Tabs.Panel>
 
         <Tabs.Panel pt="md" value="overview">
           <Stack gap="md">
             <div>
               <Text c="dimmed" mb={4} size="xs">
+                依頼理由
+              </Text>
+              <Text size="sm" style={{ whiteSpace: "pre-wrap" }}>
+                {rq.purpose || "—"}
+              </Text>
+            </div>
+            <div>
+              <Text c="dimmed" mb={4} size="xs">
                 備考
               </Text>
               <Text size="sm" style={{ whiteSpace: "pre-wrap" }}>
-                {po.notes || "—"}
+                {rq.notes || "—"}
               </Text>
             </div>
           </Stack>
@@ -459,7 +485,7 @@ export function PurchaseOrderDetail({
         </Tabs.Panel>
       </Tabs>
 
-      {/* 差し戻し（理由必須 → DRAFT へ戻す） */}
+      {/* 差し戻し（理由必須 → REJECTED — 編集して再依頼可能） */}
       <ModalShell
         confirmColor="red"
         confirmLabel="差し戻す"
@@ -475,7 +501,7 @@ export function PurchaseOrderDetail({
             return;
           }
           run(
-            () => rejectPurchaseOrder(po.poNumber, rejectReason),
+            () => rejectPurchaseRequest(rq.requestNumber, rejectReason),
             "差し戻しました",
           );
         }}
@@ -494,7 +520,7 @@ export function PurchaseOrderDetail({
         />
       </ModalShell>
 
-      {/* キャンセル（発注前のみ・理由必須） */}
+      {/* キャンセル（変換前のみ・理由必須） */}
       <ModalShell
         confirmColor="red"
         confirmLabel="キャンセルする"
@@ -510,7 +536,7 @@ export function PurchaseOrderDetail({
             return;
           }
           run(
-            () => cancelPurchaseOrder(po.poNumber, cancelReason),
+            () => cancelPurchaseRequest(rq.requestNumber, cancelReason),
             "キャンセルしました",
           );
         }}
@@ -519,7 +545,7 @@ export function PurchaseOrderDetail({
         title="キャンセルの確認"
       >
         <Text size="sm">
-          素材発注書 {po.poNumber}{" "}
+          購買依頼 {rq.requestNumber}{" "}
           をキャンセルします。この操作は取り消せません。
         </Text>
         <Textarea
@@ -533,42 +559,30 @@ export function PurchaseOrderDetail({
         />
       </ModalShell>
 
-      {/* 発注の確認 */}
+      {/* 発注書へ変換（仕入先必須 — 依頼は仕入先を持たない） */}
       <ModalShell
-        confirmLabel="発注する"
+        confirmLabel="変換する"
         loading={isPending}
-        onClose={() => setOrderOpen(false)}
-        onConfirm={() =>
-          run(() => orderPurchaseOrder(po.poNumber), "発注しました")
-        }
-        opened={orderOpen}
+        onClose={() => setConvertOpen(false)}
+        onConfirm={handleConvert}
+        opened={convertOpen}
         size="sm"
-        title="発注の確認"
+        title="発注書へ変換の確認"
       >
-        <Text size="sm">
-          素材発注書 {po.poNumber}{" "}
-          を発注済にします。明細は素材在庫の入荷予定（ATP）に反映されます。
+        <Text mb="sm" size="sm">
+          購買依頼 {rq.requestNumber} の明細 {rq.items.length}{" "}
+          件から素材発注書（下書き）を作成します。単価は発注書側で入力してください。
         </Text>
-      </ModalShell>
-
-      {/* 入荷完了の確認（全量入荷） */}
-      <ModalShell
-        confirmLabel="入荷完了にする"
-        loading={isPending}
-        onClose={() => setCompleteOpen(false)}
-        onConfirm={() =>
-          run(() => completePurchaseOrder(po.poNumber), "入荷完了にしました")
-        }
-        opened={completeOpen}
-        size="sm"
-        title="入荷完了の確認"
-      >
-        <Text size="sm">
-          明細 {po.items.length}{" "}
-          件を全量入荷として素材入荷を登録し、入荷先工場の素材在庫へ入庫します。
-          分納（部分入荷）が必要な場合は素材入荷 (PU01)
-          から直接登録してください。
-        </Text>
+        <Select
+          clearable
+          data={supplierOptions}
+          label="仕入先"
+          onChange={setConvertSupplier}
+          placeholder="仕入先を選択"
+          searchable
+          value={convertSupplier}
+          withAsterisk
+        />
       </ModalShell>
     </DetailShell>
   );
