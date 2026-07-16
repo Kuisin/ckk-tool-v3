@@ -21,6 +21,7 @@ const OWNER_PERMISSION: Record<string, string> = {
   material_receipts: "material_receipt",
   order_acceptances: "order_acceptance",
   work_orders: "work_order",
+  design_requests: "design_request",
 };
 
 async function gate(

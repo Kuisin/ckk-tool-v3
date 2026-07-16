@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { DesignRequestDetail } from "@/components/sales/design-requests/DesignRequestDetail";
+import { listAttachments } from "@/lib/attachments";
 import { fetchAuditEntries } from "@/lib/audit";
 import { fetchDesignRequest } from "../data";
 
@@ -26,11 +27,18 @@ export default async function SalesDesignRequestsDetailPage({
   const { id } = await params;
   const requestNumber = decodeURIComponent(id);
 
-  const [request, auditEntries] = await Promise.all([
+  const [request, auditEntries, attachments] = await Promise.all([
     fetchDesignRequest(requestNumber),
     fetchAuditEntries("design_requests", requestNumber),
+    listAttachments("design_requests", requestNumber),
   ]);
   if (!request) notFound();
 
-  return <DesignRequestDetail auditEntries={auditEntries} request={request} />;
+  return (
+    <DesignRequestDetail
+      attachments={attachments}
+      auditEntries={auditEntries}
+      request={request}
+    />
+  );
 }
