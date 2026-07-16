@@ -34,6 +34,7 @@ import {
   actionOk,
   prismaErrorMessage,
 } from "@/lib/server-action";
+import { checkAcceptancePrices, priceDiffSummary } from "./price-check";
 
 const BASE_PATH = "/sales/order-acceptances";
 const SALES_ORDERS_PATH = "/production/sales-orders";
@@ -202,8 +203,17 @@ export async function saveDraft(
 
 // ── 承認フロー ───────────────────────────────────────────────────────────────
 
-/** 承認依頼 — DRAFT → REQUESTED（顧客特定 + 明細 1 件以上が必要）。 */
-export async function submitForApproval(number: string): Promise<ActionResult> {
+/**
+ * 承認依頼 — DRAFT → REQUESTED（顧客特定 + 明細 1 件以上が必要）。
+ *
+ * §2 価格照合（監査 P0-8）: 明細単価を価格表と突合し、差異がある場合は
+ * `acknowledgePriceDiff: true`（UI の確認モーダル経由）なしには依頼できない。
+ * 確認済みで依頼したときは監査ログに差異内容を残す。
+ */
+export async function submitForApproval(
+  number: string,
+  acknowledgePriceDiff = false,
+): Promise<ActionResult> {
   const key = keyOf(number);
   if (!key) return actionError("受注請書番号が不正です");
   const authz = await checkPermission("order_acceptance", "UPDATE");
@@ -227,6 +237,14 @@ export async function submitForApproval(number: string): Promise<ActionResult> {
     if (prior._count.items < 1) {
       return actionError("明細が1件もありません。明細を追加してください");
     }
+    // 価格照合はサーバー側で必ず再計算する（クライアント表示値は信用しない）。
+    const priceCheck = await checkAcceptancePrices(key);
+    const diffLines = priceDiffSummary(priceCheck);
+    if (priceCheck.diffCount > 0 && !acknowledgePriceDiff) {
+      return actionError(
+        `価格差異があります: ${diffLines.join(" / ")}（差異を確認のうえ再実行）`,
+      );
+    }
     await prisma.orderAcceptance.update({
       where: { yearMonth_seq: key },
       data: { status: "REQUESTED" },
@@ -242,7 +260,15 @@ export async function submitForApproval(number: string): Promise<ActionResult> {
       tableName: "order_acceptances",
       recordId: number,
       before: { status: "DRAFT" },
-      after: { status: "REQUESTED" },
+      after: {
+        status: "REQUESTED",
+        ...(priceCheck.diffCount > 0
+          ? {
+              note: `価格差異 ${priceCheck.diffCount} 件を承認者確認前提で依頼`,
+              priceDiffs: diffLines,
+            }
+          : {}),
+      },
     });
     revalidate(number);
     return actionOk();
