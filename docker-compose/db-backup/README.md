@@ -181,3 +181,76 @@ docker exec offsite-backup rclone sync /backups "$OFFSITE_REMOTE" --dry-run --st
 **注意**: 保持世代はソース側で管理（sync はミラー）。バックアップには業務
 文書・個人情報が含まれるため、リモート側のアクセス権は最小化すること。
 機密性を上げたい場合は rclone crypt リモートを挟む（README 追補可）。
+
+## 論理バックアップ（logical-dump サービス）
+
+物理 `pg_basebackup`（上記）はクラスタ全体の低レベル DR 用。それとは別に、
+`logical-dump` が毎日 02:30 に **`pg_dump -Fc`（カスタム形式）** の自己完結
+スナップショットを取る。これは復元ツール（下記 restore-agent）が稼働中の DB へ
+`pg_restore --clean` でワンクリック復元できる単位。
+
+- `/data/db-backups/logical/daily/<YYYY-MM-DD>.dump` — 既定 14 日（`LOGICAL_KEEP_DAYS`）
+- `/data/db-backups/logical/monthly/<YYYY-MM>.dump` — 月初分を昇格、12 世代
+- `/data/db-backups/logical/manual/*.dump` — 手動配置分も復元候補に出る
+
+`LOGICAL_DB_URL`（= restore-agent の `RESTORE_DB_URL` と同じスーパーユーザ DSN）
+未設定なら待機のみ（安全に無効）。
+
+## 復元ツール（restore-agent サービス + admintools UI）
+
+**操作者向け UI は admintools の「バックアップ / 復元」アプリ**（web-facing）。
+そこから **restore-agent**（この db-backup スタック内の非公開サービス）を
+トークン付きで呼び、実際の復元を実行する。危険な破壊操作を web アプリに直接
+持たせない設計 — **Docker ソケットを持つのは restore-agent だけ**。
+
+できること（各対象は任意に組合せ可）:
+- **DB 復元** — 論理 dump（logical/ または pre-restore/）を `pg_restore --clean --if-exists`
+  で `ckk` に戻す（他接続を `pg_terminate_backend` してから実行 → 一時ダウンタイム）。
+- **ストレージ復元** — SeaweedFS tar を、`nextjs-seaweedfs` を停止 → ボリューム
+  入替 → 起動、で戻す。
+- **アプリ版数復元** — Coolify API で `nextjs-web-main` を復元ポイントの git commit へ
+  ピン＋再デプロイ（DB・ストレージ復元の**後**に実行）。
+
+**安全機構**:
+- 復元の**直前に at-point フルバックアップ**（DB dump + Seaweed tar）を
+  `pre-restore/<日時>/` へ自動取得。**緊急時のみ** UI のチェックでスキップ可。
+- 確認フレーズ `RESTORE` 必須、一度に1操作のみ、
+  全操作を `/data/db-backups/restore-log.jsonl` に追記（DB 復元でも消えない）。
+
+**サーバ `.env`（コミット禁止）**:
+
+```ini
+# restore-agent
+RESTORE_AGENT_TOKEN=<openssl rand -hex 24>          # admintools と共有
+RESTORE_DB_URL=postgresql://postgres:<pw>@shared-db:5432/ckk   # 空 = DB 復元無効
+LOGICAL_DB_URL=postgresql://postgres:<pw>@shared-db:5432/ckk   # = RESTORE_DB_URL
+# アプリ版数復元（任意）
+COOLIFY_API_URL=http://coolify:8000/api/v1
+COOLIFY_API_TOKEN=<Coolify API token>               # サーバの /data/coolify/source/.api-token と同じ
+COOLIFY_APP_NAME=nextjs-web-main
+# 既定で足りるもの: SEAWEED_CONTAINER=nextjs-seaweedfs  SEAWEED_VOLUME=nextjs-web_seaweed-data
+```
+
+admintools 側 `~/stacks/admintools/.env` にも同じトークンを:
+
+```ini
+RESTORE_AGENT_URL=http://restore-agent:9000
+RESTORE_AGENT_TOKEN=<上と同じ値>
+```
+
+**前提**: restore-agent は `shared-db` 網（shared-db 到達）と `coolify` 網
+（Coolify API 到達）に接続する。両外部ネットワークは既存。admintools は
+`shared-db` 網で restore-agent に到達する。
+
+**動作確認（非破壊）**:
+
+```sh
+# エージェント疎通（トークン設定状況）
+docker exec restore-agent sh -c 'wget -qO- http://127.0.0.1:9000/healthz'
+# 手動スナップショット（pre-restore/ に at-point フル）— UI の①ボタンと同じ
+curl -s -X POST http://restore-agent:9000/snapshot -H "Authorization: Bearer $RESTORE_AGENT_TOKEN" \
+  -H 'Content-Type: application/json' -d '{"reason":"smoke","actor":"ops"}'
+```
+
+実復元はダウンタイムを伴う破壊操作。UI からの実行前に、まず①手動
+スナップショットでバックアップ経路が通ることを確認すること。

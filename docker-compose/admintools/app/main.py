@@ -11,7 +11,7 @@ from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
 from sqlalchemy import func
 
-from . import ldap_client, sync
+from . import ldap_client, restore_client, sync
 from .db import DEFAULT_DOMAIN, GroupMember, MailAccount, SessionLocal, init_db
 
 
@@ -250,6 +250,62 @@ def app_email(request: Request):
 @app.get("/kot", response_class=HTMLResponse)
 def app_kot(request: Request):
     return _render_index(request, "kot")
+
+
+# ---------------------------------------------------------------------------
+# バックアップ / 復元 — restore-agent (db-backup スタック) のプロキシ UI。
+# 破壊的操作のため: 復元前に at-point フルバックアップを自動取得（緊急時のみ
+# スキップ可）、確認フレーズ必須、restore-agent 側で監査ログ(jsonl)へ記録。
+# ---------------------------------------------------------------------------
+@app.get("/backup", response_class=HTMLResponse)
+def app_backup(request: Request):
+    return templates.TemplateResponse("backup.html", {
+        "request": request,
+        "domain": DEFAULT_DOMAIN,
+        "health": restore_client.health(),
+        "enabled": restore_client.enabled(),
+    })
+
+
+@app.get("/backup/list")
+def backup_list():
+    """Aggregate everything the page needs in one round-trip."""
+    return JSONResponse({
+        "health": restore_client.health(),
+        "backups": restore_client.list_backups(),
+        "app_versions": restore_client.list_app_versions(),
+        "status": restore_client.status(),
+    })
+
+
+@app.get("/backup/status")
+def backup_status():
+    return JSONResponse(restore_client.status())
+
+
+@app.post("/backup/snapshot")
+def backup_snapshot(reason: str = Form("manual"), actor: str = Form("admin")):
+    return JSONResponse(restore_client.snapshot(reason=reason.strip() or "manual",
+                                                actor=actor.strip() or "admin"))
+
+
+@app.post("/backup/restore")
+def backup_restore(
+    db_source: str = Form(""),
+    storage_source: str = Form(""),
+    app_version: str = Form(""),
+    skip_snapshot: bool = Form(False),
+    actor: str = Form("admin"),
+    confirm: str = Form(""),
+):
+    return JSONResponse(restore_client.restore(
+        db_source=db_source.strip(),
+        storage_source=storage_source.strip(),
+        app_version=app_version.strip(),
+        skip_snapshot=skip_snapshot,
+        actor=actor.strip() or "admin",
+        confirm=confirm.strip(),
+    ))
 
 
 @app.get("/groups/{gid}/members")

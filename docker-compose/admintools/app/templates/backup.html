@@ -1,0 +1,239 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>バックアップ / 復元 — adminTools</title>
+  <style>
+    :root { font-family: 'Noto Sans JP', system-ui, sans-serif; }
+    body { margin: 0; background: #f5f6f8; color: #1f2937; }
+    header { background: #1e3a8a; color: #fff; padding: 14px 24px; display: flex; align-items: baseline; gap: 16px; }
+    header h1 { font-size: 18px; margin: 0; cursor: pointer; }
+    main { max-width: 1040px; margin: 24px auto; padding: 0 16px; }
+    .card { background: #fff; border: 1px solid #e5e7eb; border-radius: 8px; padding: 16px; margin-bottom: 20px; }
+    h2 { font-size: 15px; margin: 0 0 12px; } h3 { margin: 0 0 10px; font-size: 14px; }
+    button { padding: 7px 14px; border: 0; border-radius: 5px; font-size: 13px; cursor: pointer; }
+    .btn-primary { background: #2563eb; color: #fff; } .btn-sub { background: #e5e7eb; color: #111; }
+    .btn-danger { background: #dc2626; color: #fff; } .btn-danger:disabled { background: #fca5a5; cursor: not-allowed; }
+    input[type=text] { padding: 6px 8px; border: 1px solid #d1d5db; border-radius: 4px; font-size: 13px; box-sizing: border-box; }
+    label { font-size: 13px; }
+    .muted { color: #6b7280; font-size: 12px; }
+    .mono { font-family: ui-monospace, monospace; font-size: 12px; }
+    .ok { background: #ecfdf5; border-color: #a7f3d0; } .err { background: #fef2f2; border-color: #fecaca; }
+    .warn { background: #fffbeb; border: 1px solid #fde68a; color: #92400e; border-radius: 6px; padding: 10px 12px; font-size: 13px; }
+    .crumb { font-size: 13px; color: #6b7280; margin-bottom: 14px; }
+    .crumb a { color: #2563eb; text-decoration: none; } .crumb a:hover { text-decoration: underline; }
+    .opt { display: flex; gap: 10px; align-items: flex-start; padding: 7px 8px; border-radius: 6px; border: 1px solid transparent; }
+    .opt:hover { background: #f8fafc; } .opt input { margin-top: 3px; }
+    .opt .meta { font-size: 12px; color: #6b7280; }
+    .list { max-height: 240px; overflow-y: auto; border: 1px solid #eee; border-radius: 6px; padding: 4px; }
+    .pill { font-size: 11px; padding: 1px 8px; border-radius: 10px; }
+    .pill.on { background: #ecfdf5; color: #047857; } .pill.off { background: #f3f4f6; color: #6b7280; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    @media (max-width: 760px) { .grid { grid-template-columns: 1fr; } }
+    #log { background: #0b1020; color: #cbd5e1; font-family: ui-monospace, monospace; font-size: 12px; padding: 12px; border-radius: 6px; min-height: 60px; white-space: pre-wrap; }
+    .danger-box { border: 2px solid #fecaca; background: #fff5f5; border-radius: 8px; padding: 16px; }
+    @media (max-width: 640px) {
+      main { margin: 14px auto; padding: 0 10px; }
+      header { padding: 12px 16px; } header h1 { font-size: 16px; }
+      .card, .danger-box { padding: 12px; }
+      .grid { grid-template-columns: 1fr; }
+      button { padding: 9px 14px; } /* ≥44px touch target */
+      /* the restore action row: stack the actor / confirm / button controls */
+      .danger-box input[type=text] { width: 100% !important; }
+      .danger-box > div[style*="flex"] { flex-direction: column; align-items: stretch !important; }
+      .danger-box > div[style*="flex"] > div { width: 100%; }
+      #restore-btn { width: 100%; }
+    }
+  </style>
+</head>
+<body>
+  <header><h1 onclick="location.href='/'">adminTools</h1><span class="muted" style="color:#cbd5e1">{{ domain }}</span></header>
+  <main>
+    <div class="crumb"><a href="/">← アプリ一覧</a> ／ バックアップ / 復元</div>
+
+    {% if not enabled %}
+      <div class="card err">
+        <b>復元エージェント未設定</b>
+        <p class="muted">この機能を有効化するには db-backup スタックの <span class="mono">restore-agent</span> を起動し、
+        admintools の <span class="mono">.env</span> に <span class="mono">RESTORE_AGENT_URL</span> /
+        <span class="mono">RESTORE_AGENT_TOKEN</span> を設定してください（README 参照）。</p>
+      </div>
+    {% endif %}
+
+    <div class="card">
+      <h2>状態</h2>
+      <div id="health" class="muted">読み込み中…</div>
+    </div>
+
+    <div class="card">
+      <h2>① 手動スナップショット（at-point フルバックアップ）</h2>
+      <p class="muted">現時点の DB（pg_dump）と SeaweedFS（tar）を <span class="mono">pre-restore/&lt;日時&gt;/</span> に保存します。復元とは独立して、いつでも実行できます。</p>
+      <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap">
+        <input type="text" id="snap-reason" placeholder="理由 / メモ（任意）" style="width:280px">
+        <button class="btn-sub" id="snap-btn" onclick="doSnapshot()">📸 スナップショットを取得</button>
+      </div>
+    </div>
+
+    <div class="card danger-box">
+      <h2 style="color:#b91c1c">② 復元</h2>
+      <p class="muted">復元する対象を選びます。DB とストレージは<b>その場で上書き</b>され、進行中の全アプリに影響します（ダウンタイム発生）。</p>
+
+      <div class="grid">
+        <div>
+          <h3>DB（<span class="mono">ckk</span>）を復元</h3>
+          <div class="list" id="db-list"><span class="muted">…</span></div>
+        </div>
+        <div>
+          <h3>ストレージ（SeaweedFS）を復元</h3>
+          <div class="list" id="storage-list"><span class="muted">…</span></div>
+        </div>
+      </div>
+
+      <div style="margin-top:16px">
+        <h3>アプリ版数（Coolify）を復元ポイントへ戻す</h3>
+        <div class="list" id="app-list-versions" style="max-height:200px"><span class="muted">…</span></div>
+      </div>
+
+      <div class="warn" style="margin-top:16px" id="bypass-wrap">
+        <label><input type="checkbox" id="skip-snap"> <b>緊急時</b>: 復元直前の at-point フルバックアップをスキップする</label>
+        <div class="muted" style="margin-top:4px">通常は OFF のまま。スキップすると復元前の状態に戻せなくなります。</div>
+      </div>
+
+      <div style="margin-top:16px; display:flex; gap:10px; align-items:center; flex-wrap:wrap">
+        <div><label class="muted">実行者</label><br><input type="text" id="actor" placeholder="氏名 / ID" style="width:180px"></div>
+        <div><label class="muted">確認フレーズ <span class="mono">RESTORE</span> を入力</label><br><input type="text" id="confirm" placeholder="RESTORE" style="width:180px"></div>
+        <div style="align-self:flex-end"><button class="btn-danger" id="restore-btn" onclick="doRestore()">⚠ 復元を実行</button></div>
+      </div>
+      <div id="selection" class="muted" style="margin-top:10px"></div>
+    </div>
+
+    <div class="card">
+      <h2>実行状況</h2>
+      <div id="log">idle</div>
+    </div>
+  </main>
+
+  <script>
+    const $ = (id) => document.getElementById(id);
+    let POLL = null;
+
+    function esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+    function human(n) { if (n == null) return ''; const u=['B','KB','MB','GB','TB']; let i=0,x=n; while(x>=1024&&i<u.length-1){x/=1024;i++;} return x.toFixed(x<10&&i>0?1:0)+u[i]; }
+
+    async function load() {
+      const r = await fetch('/backup/list').then(x => x.json()).catch(e => ({error:String(e)}));
+      renderHealth(r.health || {});
+      renderBackups(r.backups || {});
+      renderAppVersions(r.app_versions || {});
+      renderStatus(r.status || {});
+    }
+
+    function renderHealth(h) {
+      if (h.error) { $('health').innerHTML = `<span class="pill off">エージェント応答なし</span> <span class="mono">${esc(h.error)}</span>`; return; }
+      const pill = (ok, on, off) => `<span class="pill ${ok?'on':'off'}">${ok?on:off}</span>`;
+      $('health').innerHTML =
+        pill(h.status === 'ok', 'エージェント接続 OK', 'エージェント不明') + ' ' +
+        pill(!!h.db_restore_enabled, 'DB 復元 有効', 'DB 復元 無効（RESTORE_DB_URL 未設定）') + ' ' +
+        pill(!!h.app_rollback_enabled, 'アプリ版数復元 有効', 'アプリ版数復元 無効（Coolify 未設定）');
+    }
+
+    function optRow(name, value, label, meta) {
+      return `<label class="opt"><input type="radio" name="${name}" value="${esc(value)}" onchange="updateSel()">
+        <span><div class="mono">${esc(label)}</div><div class="meta">${esc(meta)}</div></span></label>`;
+    }
+
+    function renderBackups(b) {
+      const snaps = b.snapshots || [];
+      // DB sources: logical dumps + snapshot db.dump
+      let db = `<label class="opt"><input type="radio" name="db" value="" checked onchange="updateSel()"><span>復元しない</span></label>`;
+      (b.db || []).forEach(x => db += optRow('db', x.id, x.id, `${x.mtime} ・ ${human(x.size)}`));
+      snaps.filter(s => s.db).forEach(s => db += optRow('db', s.db, s.db, `スナップショット ${s.created_at}`));
+      $('db-list').innerHTML = db;
+
+      let st = `<label class="opt"><input type="radio" name="storage" value="" checked onchange="updateSel()"><span>復元しない</span></label>`;
+      (b.storage || []).forEach(x => st += optRow('storage', x.id, x.id, `${x.mtime} ・ ${human(x.size)}`));
+      snaps.filter(s => s.storage).forEach(s => st += optRow('storage', s.storage, s.storage, `スナップショット ${s.created_at}`));
+      $('storage-list').innerHTML = st;
+
+      if (b.db_restore_enabled === false) {
+        $('db-list').innerHTML = `<div class="muted">DB 復元は無効です（RESTORE_DB_URL 未設定）。</div>`;
+      }
+    }
+
+    function renderAppVersions(a) {
+      if (!a.enabled) { $('app-list-versions').innerHTML = `<div class="muted">Coolify 未設定のためアプリ版数の復元は無効です。</div>`; return; }
+      if (a.error) { $('app-list-versions').innerHTML = `<div class="muted">取得失敗: ${esc(a.error)}</div>`; return; }
+      let h = `<label class="opt"><input type="radio" name="app" value="" checked onchange="updateSel()"><span>変更しない</span></label>`;
+      (a.versions || []).forEach(v => h += optRow('app', v.sha, v.sha.slice(0,12) + '  ' + (v.message||''), `${v.at||''} ・ ${v.status||''}`));
+      $('app-list-versions').innerHTML = h || `<div class="muted">デプロイ履歴なし</div>`;
+    }
+
+    function sel(name) { const el = document.querySelector(`input[name="${name}"]:checked`); return el ? el.value : ''; }
+
+    function updateSel() {
+      const parts = [];
+      if (sel('db')) parts.push('DB ← ' + sel('db'));
+      if (sel('storage')) parts.push('ストレージ ← ' + sel('storage'));
+      if (sel('app')) parts.push('アプリ ← ' + sel('app').slice(0,12));
+      $('selection').innerHTML = parts.length ? '選択: ' + parts.map(esc).join(' / ') : '対象が選択されていません。';
+    }
+
+    function renderStatus(s) {
+      if (!s || s.error) { return; }
+      const running = !!s.running;
+      $('restore-btn').disabled = running;
+      $('snap-btn').disabled = running;
+      let line = running ? `▶ 実行中: ${esc(s.phase)}` : 'idle';
+      if (!running && s.error) line = `✖ 失敗: ${esc(s.error)}`;
+      else if (!running && s.result && s.result.ok) line = `✔ 完了${s.result.snapshot_id ? '（事前SS: ' + esc(s.result.snapshot_id) + '）' : ''}`;
+      $('log').textContent = line + (s.started_at ? `\n開始: ${s.started_at}` : '') + (s.finished_at ? `\n終了: ${s.finished_at}` : '');
+      if (running && !POLL) POLL = setInterval(pollStatus, 2500);
+      if (!running && POLL) { clearInterval(POLL); POLL = null; load(); }
+    }
+
+    async function pollStatus() {
+      const s = await fetch('/backup/status').then(x => x.json()).catch(() => null);
+      if (s) renderStatus(s);
+    }
+
+    async function doSnapshot() {
+      $('snap-btn').disabled = true;
+      const fd = new FormData();
+      fd.append('reason', $('snap-reason').value || 'manual');
+      fd.append('actor', $('actor').value || 'admin');
+      const r = await fetch('/backup/snapshot', { method: 'POST', body: fd }).then(x => x.json());
+      if (r.error) { alert('失敗: ' + r.error); $('snap-btn').disabled = false; return; }
+      $('log').textContent = '▶ スナップショット開始…';
+      if (!POLL) POLL = setInterval(pollStatus, 2500);
+    }
+
+    async function doRestore() {
+      const db = sel('db'), storage = sel('storage'), app = sel('app');
+      if (!db && !storage && !app) { alert('復元対象を1つ以上選択してください。'); return; }
+      if ($('confirm').value.trim() !== 'RESTORE') { alert('確認フレーズ RESTORE を入力してください。'); return; }
+      const skip = $('skip-snap').checked;
+      let msg = '以下を復元します。よろしいですか？\n\n';
+      if (db) msg += `・DB ← ${db}\n`;
+      if (storage) msg += `・ストレージ ← ${storage}\n`;
+      if (app) msg += `・アプリ ← ${app.slice(0,12)}\n`;
+      msg += skip ? '\n⚠ 事前バックアップをスキップします（元に戻せません）。' : '\n先に at-point フルバックアップを自動取得します。';
+      if (!confirm(msg)) return;
+
+      $('restore-btn').disabled = true;
+      const fd = new FormData();
+      fd.append('db_source', db); fd.append('storage_source', storage); fd.append('app_version', app);
+      fd.append('skip_snapshot', skip ? 'true' : 'false');
+      fd.append('actor', $('actor').value || 'admin');
+      fd.append('confirm', $('confirm').value.trim());
+      const r = await fetch('/backup/restore', { method: 'POST', body: fd }).then(x => x.json());
+      if (r.error) { alert('開始できませんでした: ' + r.error); $('restore-btn').disabled = false; return; }
+      $('log').textContent = '▶ 復元を開始しました…';
+      if (!POLL) POLL = setInterval(pollStatus, 2500);
+    }
+
+    load();
+    setInterval(() => { if (!POLL) load(); }, 15000);
+  </script>
+</body>
+</html>
