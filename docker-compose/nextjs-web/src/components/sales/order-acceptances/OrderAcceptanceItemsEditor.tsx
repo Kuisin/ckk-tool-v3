@@ -35,9 +35,24 @@ import type { OrderAcceptanceItemView } from "./model";
 const ORDER_TYPES = ["PRODUCTION", "TEST", "SAMPLE", "OTHER"] as const;
 type OrderType = (typeof ORDER_TYPES)[number];
 
+/**
+ * 保存済み明細行の価格照合結果（クライアント向け最小形 —
+ * app/(dashboard)/sales/order-acceptances/price-check.ts 由来）。
+ */
+export interface ItemPriceCheck {
+  /** 価格表から解決した期待単価（未解決は null）。 */
+  expected: number | null;
+  /** 入力単価が価格表と不一致。 */
+  diff: boolean;
+  /** 製品突合済みだが価格表エントリなし。 */
+  unpriced: boolean;
+}
+
 /** エディタ 1 行のフォーム値。 */
 export interface ItemRowForm {
   rowId: string;
+  /** 保存済み行の order_acceptance_items.id（未保存の追加行は null）。 */
+  itemId: string | null;
   productId: string | null;
   /** SearchSelect の初期表示用ラベル（突合済みのとき）。 */
   productLabel: string | null;
@@ -54,6 +69,7 @@ const newRowId = () => `item-${++rowSeq}-${Date.now()}`;
 
 export const newItemRow = (): ItemRowForm => ({
   rowId: newRowId(),
+  itemId: null,
   productId: null,
   productLabel: null,
   productText: "",
@@ -68,6 +84,7 @@ export const newItemRow = (): ItemRowForm => ({
 export function toItemRows(items: OrderAcceptanceItemView[]): ItemRowForm[] {
   return items.map((it) => ({
     rowId: newRowId(),
+    itemId: it.id,
     productId: it.productId,
     productLabel: it.productLabel,
     productText: it.productText ?? "",
@@ -99,9 +116,12 @@ export function toItemPayload(
 export function OrderAcceptanceItemsEditor({
   items,
   onChange,
+  lineChecks,
 }: {
   items: ItemRowForm[];
   onChange: (items: ItemRowForm[]) => void;
+  /** 保存済み行の価格照合結果（itemId → 結果）。保存内容に対する照合。 */
+  lineChecks?: Record<string, ItemPriceCheck>;
 }) {
   const patch = (ri: number, p: Partial<ItemRowForm>) => {
     onChange(items.map((r, i) => (i === ri ? { ...r, ...p } : r)));
@@ -109,131 +129,149 @@ export function OrderAcceptanceItemsEditor({
 
   return (
     <Box>
-      {items.map((row, ri) => (
-        <Box key={row.rowId}>
-          {ri > 0 && <Divider my="md" />}
-          <Group gap="xs" mb={4}>
-            <Text c="dimmed" className="tabular-nums" size="xs">
-              明細 {ri + 1}
-            </Text>
-            {!row.productId && (
-              <Badge color="orange" size="xs" variant="light">
-                製品未特定
-              </Badge>
-            )}
-          </Group>
-          <Group align="flex-end" gap="sm" wrap="nowrap">
-            <Box flex={1}>
-              <Group align="flex-end" gap="sm" grow preventGrowOverflow={false}>
-                <SearchSelect
-                  f4={PRODUCT_F4}
-                  initialOption={
-                    row.productId
-                      ? {
-                          value: row.productId,
-                          label: row.productLabel ?? row.productText,
-                        }
-                      : null
-                  }
-                  label="製品"
-                  onChange={(v, opt) =>
-                    patch(ri, {
-                      productId: v,
-                      productLabel: opt?.label ?? null,
-                    })
-                  }
-                  onSearch={searchProductOptions}
-                  placeholder="製品マスタと突合"
-                  storageKey="product"
-                  value={row.productId}
-                />
-                <TextInput
-                  label="品名（抽出テキスト）"
-                  onChange={(e) =>
-                    patch(ri, { productText: e.currentTarget.value })
-                  }
-                  placeholder="注文書の品名"
-                  value={row.productText}
-                />
-                <Select
-                  data={ORDER_TYPE_OPTIONS}
-                  label="種別"
-                  maw={130}
-                  onChange={(v) =>
-                    patch(ri, { orderType: (v ?? "PRODUCTION") as OrderType })
-                  }
-                  value={row.orderType}
-                  withAsterisk
-                />
-                <NumberInput
-                  label="数量"
-                  maw={100}
-                  min={1}
-                  onChange={(v) =>
-                    patch(ri, { quantity: typeof v === "number" ? v : 0 })
-                  }
-                  value={row.quantity}
-                  withAsterisk
-                />
-                <NumberInput
-                  decimalScale={2}
-                  label="単価"
-                  maw={150}
-                  min={0}
-                  onChange={(v) =>
-                    patch(ri, { unitPrice: typeof v === "number" ? v : null })
-                  }
-                  placeholder="未入力可"
-                  prefix="¥"
-                  thousandSeparator=","
-                  value={row.unitPrice ?? ""}
-                />
-              </Group>
-            </Box>
-            <ActionIcon
-              aria-label="明細を削除"
-              color="red"
-              disabled={items.length <= 1}
-              mb={4}
-              onClick={() => onChange(items.filter((_, i) => i !== ri))}
-              variant="subtle"
-            >
-              <IconTrash size={16} />
-            </ActionIcon>
-          </Group>
-          <Group align="flex-end" gap="sm" mt="xs">
-            <DatePickerInput
-              clearable
-              label="納期"
-              leftSection={<IconCalendar size={14} />}
-              maw={200}
-              onChange={(v) => patch(ri, { deliveryDate: v })}
-              placeholder="日付を選択"
-              value={row.deliveryDate}
-              valueFormat="YYYY/MM/DD"
-            />
-            <TextInput
-              flex={1}
-              label="備考"
-              onChange={(e) => patch(ri, { notes: e.currentTarget.value })}
-              placeholder="行の備考（任意）"
-              value={row.notes}
-            />
-            <Text
-              className="tabular-nums"
-              ff="mono"
-              fw={600}
-              mb={8}
-              size="sm"
-              w={130}
-            >
-              {row.unitPrice != null
-                ? formatMoney(row.unitPrice * row.quantity)
-                : "—"}
-            </Text>
-          </Group>
-        </Box>
-      ))}
+      {items.map((row, ri) => {
+        const check = row.itemId ? lineChecks?.[row.itemId] : undefined;
+        return (
+          <Box key={row.rowId}>
+            {ri > 0 && <Divider my="md" />}
+            <Group gap="xs" mb={4}>
+              <Text c="dimmed" className="tabular-nums" size="xs">
+                明細 {ri + 1}
+              </Text>
+              {!row.productId && (
+                <Badge color="orange" size="xs" variant="light">
+                  製品未特定
+                </Badge>
+              )}
+              {check?.diff && (
+                <Badge color="orange" size="xs" variant="light">
+                  価格差異（価格表 {formatMoney(check.expected)}）
+                </Badge>
+              )}
+              {check?.unpriced && (
+                <Badge color="gray" size="xs" variant="light">
+                  価格表なし
+                </Badge>
+              )}
+            </Group>
+            <Group align="flex-end" gap="sm" wrap="nowrap">
+              <Box flex={1}>
+                <Group
+                  align="flex-end"
+                  gap="sm"
+                  grow
+                  preventGrowOverflow={false}
+                >
+                  <SearchSelect
+                    f4={PRODUCT_F4}
+                    initialOption={
+                      row.productId
+                        ? {
+                            value: row.productId,
+                            label: row.productLabel ?? row.productText,
+                          }
+                        : null
+                    }
+                    label="製品"
+                    onChange={(v, opt) =>
+                      patch(ri, {
+                        productId: v,
+                        productLabel: opt?.label ?? null,
+                      })
+                    }
+                    onSearch={searchProductOptions}
+                    placeholder="製品マスタと突合"
+                    storageKey="product"
+                    value={row.productId}
+                  />
+                  <TextInput
+                    label="品名（抽出テキスト）"
+                    onChange={(e) =>
+                      patch(ri, { productText: e.currentTarget.value })
+                    }
+                    placeholder="注文書の品名"
+                    value={row.productText}
+                  />
+                  <Select
+                    data={ORDER_TYPE_OPTIONS}
+                    label="種別"
+                    maw={130}
+                    onChange={(v) =>
+                      patch(ri, { orderType: (v ?? "PRODUCTION") as OrderType })
+                    }
+                    value={row.orderType}
+                    withAsterisk
+                  />
+                  <NumberInput
+                    label="数量"
+                    maw={100}
+                    min={1}
+                    onChange={(v) =>
+                      patch(ri, { quantity: typeof v === "number" ? v : 0 })
+                    }
+                    value={row.quantity}
+                    withAsterisk
+                  />
+                  <NumberInput
+                    decimalScale={2}
+                    label="単価"
+                    maw={150}
+                    min={0}
+                    onChange={(v) =>
+                      patch(ri, { unitPrice: typeof v === "number" ? v : null })
+                    }
+                    placeholder="未入力可"
+                    prefix="¥"
+                    thousandSeparator=","
+                    value={row.unitPrice ?? ""}
+                  />
+                </Group>
+              </Box>
+              <ActionIcon
+                aria-label="明細を削除"
+                color="red"
+                disabled={items.length <= 1}
+                mb={4}
+                onClick={() => onChange(items.filter((_, i) => i !== ri))}
+                variant="subtle"
+              >
+                <IconTrash size={16} />
+              </ActionIcon>
+            </Group>
+            <Group align="flex-end" gap="sm" mt="xs">
+              <DatePickerInput
+                clearable
+                label="納期"
+                leftSection={<IconCalendar size={14} />}
+                maw={200}
+                onChange={(v) => patch(ri, { deliveryDate: v })}
+                placeholder="日付を選択"
+                value={row.deliveryDate}
+                valueFormat="YYYY/MM/DD"
+              />
+              <TextInput
+                flex={1}
+                label="備考"
+                onChange={(e) => patch(ri, { notes: e.currentTarget.value })}
+                placeholder="行の備考（任意）"
+                value={row.notes}
+              />
+              <Text
+                className="tabular-nums"
+                ff="mono"
+                fw={600}
+                mb={8}
+                size="sm"
+                w={130}
+              >
+                {row.unitPrice != null
+                  ? formatMoney(row.unitPrice * row.quantity)
+                  : "—"}
+              </Text>
+            </Group>
+          </Box>
+        );
+      })}
 
       <GhostButton
         leftSection={<IconPlus size={16} />}

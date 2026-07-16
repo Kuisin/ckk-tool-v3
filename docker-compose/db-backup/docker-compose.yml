@@ -31,6 +31,27 @@ services:
     networks:
       - shareddb
 
+  # SeaweedFS（受注書スキャン原本・証憑・生成 PDF）の日次 tar スナップショット。
+  # nextjs-web スタックの seaweed-data ボリュームを read-only でマウントする。
+  seaweed-backup:
+    image: alpine:3.20
+    container_name: seaweed-backup
+    restart: unless-stopped
+    environment:
+      - TZ=${TZ:-Asia/Tokyo}
+      - SEAWEED_KEEP_DAYS=${SEAWEED_KEEP_DAYS:-14}
+      - SEAWEED_MONTHLY_KEEP=${SEAWEED_MONTHLY_KEEP:-12}
+    entrypoint: ["/bin/sh", "/seaweed-backup.sh"]
+    volumes:
+      - ./seaweed-backup.sh:/seaweed-backup.sh:ro
+      - seaweed-data:/seaweed-data:ro
+      - ${BACKUP_DIR:-/data/db-backups}:/backups
+
+volumes:
+  seaweed-data:
+    external: true
+    name: nextjs-web_seaweed-data
+
 networks:
   shareddb:
     external: true

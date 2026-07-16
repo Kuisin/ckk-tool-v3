@@ -274,6 +274,22 @@ export async function scanIntakeFolder(): Promise<void> {
     await mkdir(failedDir, { recursive: true });
 
     const entries = await readdir(dir);
+
+    // 孤児 .processing の回収（監査 P1-7: 抽出中にコンテナが差し替わると
+    // クレームされたまま永久に放置される）。10 分より古いものは元の名前に
+    // 戻して再スキャン対象にする（取込自体は冪等 — 番号は再採番になる）。
+    const ORPHAN_MS = 10 * 60_000;
+    for (const name of entries) {
+      if (!name.endsWith(".processing")) continue;
+      const full = path.join(dir, name);
+      const info = await stat(full).catch(() => null);
+      if (!info?.isFile()) continue;
+      if (Date.now() - info.mtimeMs < ORPHAN_MS) continue;
+      const original = full.slice(0, -".processing".length);
+      await rename(full, original).catch(() => {});
+      console.warn(`[intake] 孤児 .processing を回収: ${name}`);
+    }
+
     for (const name of entries) {
       const ext = path.extname(name).toLowerCase();
       if (!ALLOWED_EXT.has(ext)) continue;

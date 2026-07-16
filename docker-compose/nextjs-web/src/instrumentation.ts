@@ -17,7 +17,13 @@ export async function register() {
   );
   // 起動直後に 1 回、その後は定期実行（scan 側に再入ガードあり）
   scanIntakeFolder().catch((e) => console.error("[intake] initial scan", e));
-  setInterval(() => {
+  const timer = setInterval(() => {
     scanIntakeFolder().catch((e) => console.error("[intake] scan", e));
   }, interval);
+  // ローリングデプロイ時の graceful shutdown — 新規スキャンを止める
+  // （処理中の 1 件は .processing のまま残り、次コンテナの孤児回収が拾う）
+  process.on("SIGTERM", () => {
+    clearInterval(timer);
+    console.log("[intake] watcher stopped (SIGTERM)");
+  });
 }

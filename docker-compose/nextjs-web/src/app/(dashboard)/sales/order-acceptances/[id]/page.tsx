@@ -5,6 +5,7 @@ import { listAttachments } from "@/lib/attachments";
 import { fetchAuditEntries } from "@/lib/audit";
 import { formatDocNumber, parseDocKey } from "@/lib/doc-number";
 import { fetchOrderAcceptance } from "../data";
+import { checkAcceptancePrices } from "../price-check";
 
 export const dynamic = "force-dynamic";
 
@@ -41,6 +42,14 @@ export default async function SalesOrderAcceptancesDetailPage({
     ]);
   if (!acceptance) notFound();
 
+  // §2 価格照合（P0-8）— 保存済み明細と価格表の差異。展開済み・アーカイブ
+  // 済みは照合対象外（当時の価格表と現在の価格表のドリフトで誤警告するため）。
+  const priceCheck = ["DRAFT", "REQUESTED", "APPROVED"].includes(
+    acceptance.status,
+  )
+    ? await checkAcceptancePrices(key)
+    : { lines: [], diffCount: 0 };
+
   return (
     <OrderAcceptanceDetail
       acceptance={acceptance}
@@ -48,6 +57,7 @@ export default async function SalesOrderAcceptancesDetailPage({
       attachments={attachments}
       auditEntries={auditEntries}
       canApprove={canApprove}
+      priceCheck={priceCheck}
     />
   );
 }

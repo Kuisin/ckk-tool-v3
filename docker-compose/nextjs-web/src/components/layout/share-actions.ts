@@ -11,7 +11,7 @@
 import { auth } from "@/auth";
 import { SYSTEM_USER_ID } from "@/lib/audit";
 import { prisma } from "@/lib/db";
-import { notify } from "@/lib/notifications";
+import { notify, sanitizeLinkPath } from "@/lib/notifications";
 import { type ActionResult, actionError, actionOk } from "@/lib/server-action";
 
 export interface SharePageInput {
@@ -32,8 +32,10 @@ export async function sharePageAction(
   const su = session?.user as { id?: string; name?: string | null } | undefined;
   if (!su?.id) return actionError("ログインが必要です");
 
-  // アプリ内パスのみ許可（外部 URL・プロトコル相対は拒否）
-  if (!input.path.startsWith("/") || input.path.startsWith("//")) {
+  // アプリ内パスのみ許可（外部 URL・プロトコル相対・バックスラッシュ等は
+  // sanitizeLinkPath で正規化検証 — 監査 P1-6）
+  const safePath = sanitizeLinkPath(input.path);
+  if (!safePath) {
     return actionError("共有できるのはアプリ内のページだけです");
   }
   if (
@@ -75,7 +77,7 @@ export async function sharePageAction(
     type: "SHARE",
     title: `${su.name ?? "ユーザー"} さんが「${label}」を共有しました`,
     message: input.comment?.trim() || undefined,
-    linkPath: input.path,
+    linkPath: safePath,
   });
   return actionOk({ recipientCount: recipientIds.size });
 }

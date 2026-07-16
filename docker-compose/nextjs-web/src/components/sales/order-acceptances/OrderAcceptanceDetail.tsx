@@ -32,6 +32,7 @@ import {
   Title,
 } from "@mantine/core";
 import { DatePickerInput } from "@mantine/dates";
+import { modals } from "@mantine/modals";
 import { notifications } from "@mantine/notifications";
 import {
   IconAlertTriangle,
@@ -55,6 +56,10 @@ import {
   saveDraft,
   submitForApproval,
 } from "@/app/(dashboard)/sales/order-acceptances/actions";
+import type {
+  AcceptancePriceCheck,
+  AcceptancePriceCheckLine,
+} from "@/app/(dashboard)/sales/order-acceptances/price-check";
 import {
   ApprovalTrailList,
   type ApprovalTrailView,
@@ -88,7 +93,7 @@ import {
 } from "@/components/ui/shells";
 import { useTabParam } from "@/hooks/useUrlState";
 import { ORDER_TYPE_LABEL } from "@/lib/enum-labels";
-import { formatDate, formatDateTime } from "@/lib/format";
+import { formatDate, formatDateTime, formatMoney } from "@/lib/format";
 import type { ActionResult } from "@/lib/server-action";
 import {
   INTAKE_SOURCE_BADGE,
@@ -122,12 +127,15 @@ function stepperActive(status: string): number {
   }
 }
 
+const EMPTY_PRICE_CHECK: AcceptancePriceCheck = { lines: [], diffCount: 0 };
+
 export function OrderAcceptanceDetail({
   acceptance,
   auditEntries,
   attachments,
   approvalTrail = [],
   canApprove,
+  priceCheck = EMPTY_PRICE_CHECK,
 }: {
   acceptance: OrderAcceptanceView;
   /** 操作履歴（audit_logs 由来、履歴タブ）。 */
@@ -138,6 +146,8 @@ export function OrderAcceptanceDetail({
   approvalTrail?: ApprovalTrailView[];
   /** 第一承認グループのメンバー（or 代理）か。 */
   canApprove: boolean;
+  /** §2 価格照合結果（保存済み明細 × 価格表 — サーバー側で計算）。 */
+  priceCheck?: AcceptancePriceCheck;
 }) {
   const router = useRouter();
   // アクティブタブを ?tab= に保持（URL 共有でタブまで再現）
@@ -151,6 +161,12 @@ export function OrderAcceptanceDetail({
   const a = acceptance;
   const sourceDef = INTAKE_SOURCE_BADGE[a.source];
   const fileUrl = a.sourceFilename ? sourceFileUrl(a) : null;
+
+  // §2 価格照合（P0-8）— 差異行と明細 id → 照合結果の索引。
+  const diffLines = priceCheck.lines.filter((l) => l.diff);
+  const checkByItemId = new Map<string, AcceptancePriceCheckLine>(
+    priceCheck.lines.map((l) => [l.itemId, l]),
+  );
 
   const run = (action: () => Promise<ActionResult>, done: string) => {
     startTransition(async () => {
@@ -195,6 +211,37 @@ export function OrderAcceptanceDetail({
           color: "red",
         });
       }
+    });
+  };
+
+  /**
+   * 承認依頼 — 価格差異があるときは確認モーダル（design.md §10.4）を挟み、
+   * acknowledgePriceDiff: true で再実行する（サーバー側でも再照合される）。
+   */
+  const requestApproval = () => {
+    if (diffLines.length === 0) {
+      run(() => submitForApproval(a.number), "承認依頼しました");
+      return;
+    }
+    modals.openConfirmModal({
+      title: "価格差異の確認",
+      children: (
+        <Stack gap="xs">
+          <Text size="sm">
+            以下の明細は単価が価格表と一致しません。差異を確認のうえ承認依頼しますか？
+          </Text>
+          {diffLines.map((l) => (
+            <Text key={l.itemId} size="sm">
+              行{l.row}: {formatMoney(l.actual)} ≠ 価格表{" "}
+              {formatMoney(l.expected)}
+            </Text>
+          ))}
+        </Stack>
+      ),
+      labels: { confirm: "差異を確認して依頼", cancel: "戻る" },
+      confirmProps: { color: "orange" },
+      onConfirm: () =>
+        run(() => submitForApproval(a.number, true), "承認依頼しました"),
     });
   };
 
@@ -256,8 +303,34 @@ export function OrderAcceptanceDetail({
           </Alert>
         ))}
 
+      {/* §2 価格差異サマリ（design.md §16.3 — ページ滞在中は常時表示） */}
+      {priceCheck.diffCount > 0 && (
+        <Alert
+          color="orange"
+          icon={<IconAlertTriangle size={16} />}
+          title={`価格差異 ${priceCheck.diffCount} 件`}
+          variant="light"
+        >
+          <Stack gap={4}>
+            <Text size="sm">
+              明細の単価が価格表と一致しません。承認依頼には差異の確認が必要です。
+            </Text>
+            {diffLines.map((l) => (
+              <Text key={l.itemId} size="sm">
+                行{l.row}: {formatMoney(l.actual)} ≠ 価格表{" "}
+                {formatMoney(l.expected)}
+              </Text>
+            ))}
+          </Stack>
+        </Alert>
+      )}
+
       {a.status === "DRAFT" ? (
-        <DraftEditor acceptance={a} fileUrl={fileUrl} />
+        <DraftEditor
+          acceptance={a}
+          fileUrl={fileUrl}
+          lineChecks={checkByItemId}
+        />
       ) : (
         <>
           <SummaryGrid>
@@ -340,52 +413,67 @@ export function OrderAcceptanceDetail({
                   </Table.Tr>
                 </Table.Thead>
                 <Table.Tbody>
-                  {a.items.map((it) => (
-                    <Table.Tr key={it.id}>
-                      <Table.Td>
-                        {it.productLabel ?? (
-                          <Badge color="orange" size="sm" variant="light">
-                            製品未特定
-                          </Badge>
-                        )}
-                      </Table.Td>
-                      <Table.Td>
-                        <Text c="dimmed" size="sm">
-                          {it.productText ?? "—"}
-                        </Text>
-                      </Table.Td>
-                      <Table.Td>
-                        {ORDER_TYPE_LABEL[it.orderType] ?? it.orderType}
-                      </Table.Td>
-                      <Table.Td className="tabular-nums" ta="right">
-                        {it.quantity}
-                      </Table.Td>
-                      <Table.Td ta="right">
-                        {it.unitPrice != null ? (
-                          <MoneyText value={it.unitPrice} />
-                        ) : (
+                  {a.items.map((it) => {
+                    const lc = checkByItemId.get(it.id);
+                    return (
+                      <Table.Tr key={it.id}>
+                        <Table.Td>
+                          {it.productLabel ?? (
+                            <Badge color="orange" size="sm" variant="light">
+                              製品未特定
+                            </Badge>
+                          )}
+                        </Table.Td>
+                        <Table.Td>
                           <Text c="dimmed" size="sm">
-                            未入力
+                            {it.productText ?? "—"}
                           </Text>
-                        )}
-                      </Table.Td>
-                      <Table.Td ta="right">
-                        {it.unitPrice != null ? (
-                          <MoneyText value={it.unitPrice * it.quantity} />
-                        ) : (
-                          "—"
-                        )}
-                      </Table.Td>
-                      <Table.Td className="tabular-nums">
-                        {formatDate(it.deliveryDate)}
-                      </Table.Td>
-                      <Table.Td>
-                        <Text c="dimmed" size="xs">
-                          {it.notes ?? "—"}
-                        </Text>
-                      </Table.Td>
-                    </Table.Tr>
-                  ))}
+                        </Table.Td>
+                        <Table.Td>
+                          {ORDER_TYPE_LABEL[it.orderType] ?? it.orderType}
+                        </Table.Td>
+                        <Table.Td className="tabular-nums" ta="right">
+                          {it.quantity}
+                        </Table.Td>
+                        <Table.Td ta="right">
+                          <Stack align="flex-end" gap={2}>
+                            {it.unitPrice != null ? (
+                              <MoneyText value={it.unitPrice} />
+                            ) : (
+                              <Text c="dimmed" size="sm">
+                                未入力
+                              </Text>
+                            )}
+                            {lc?.diff && (
+                              <Badge color="orange" size="xs" variant="light">
+                                価格差異（価格表 {formatMoney(lc.expected)}）
+                              </Badge>
+                            )}
+                            {lc?.unpriced && (
+                              <Badge color="gray" size="xs" variant="light">
+                                価格表なし
+                              </Badge>
+                            )}
+                          </Stack>
+                        </Table.Td>
+                        <Table.Td ta="right">
+                          {it.unitPrice != null ? (
+                            <MoneyText value={it.unitPrice * it.quantity} />
+                          ) : (
+                            "—"
+                          )}
+                        </Table.Td>
+                        <Table.Td className="tabular-nums">
+                          {formatDate(it.deliveryDate)}
+                        </Table.Td>
+                        <Table.Td>
+                          <Text c="dimmed" size="xs">
+                            {it.notes ?? "—"}
+                          </Text>
+                        </Table.Td>
+                      </Table.Tr>
+                    );
+                  })}
                 </Table.Tbody>
               </Table>
             </Table.ScrollContainer>
@@ -430,9 +518,7 @@ export function OrderAcceptanceDetail({
               <PrimaryButton
                 leftSection={<IconSend size={14} />}
                 loading={isPending}
-                onClick={() =>
-                  run(() => submitForApproval(a.number), "承認依頼しました")
-                }
+                onClick={requestApproval}
               >
                 承認依頼
               </PrimaryButton>
@@ -613,9 +699,12 @@ export function OrderAcceptanceDetail({
 function DraftEditor({
   acceptance,
   fileUrl,
+  lineChecks,
 }: {
   acceptance: OrderAcceptanceView;
   fileUrl: string | null;
+  /** 保存済み明細 id → 価格照合結果（行バッジ表示用）。 */
+  lineChecks: Map<string, AcceptancePriceCheckLine>;
 }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -731,7 +820,11 @@ function DraftEditor({
         description="製品が未特定の行は製品マスタと突合してください（伝票展開には全行の製品特定 + 単価が必要）。"
         title="明細"
       >
-        <OrderAcceptanceItemsEditor items={items} onChange={setItems} />
+        <OrderAcceptanceItemsEditor
+          items={items}
+          lineChecks={Object.fromEntries(lineChecks)}
+          onChange={setItems}
+        />
       </FormSection>
 
       <Group justify="flex-end">

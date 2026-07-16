@@ -31,12 +31,26 @@ export type NumberingKey = keyof typeof SEQUENCES;
  * (lib/doc-number.ts); `nextDocumentNumber` keeps the formatted-string API for
  * single-column ids (製品コード).
  */
+/**
+ * JST の YYYYMM（監査 P1-5: コンテナ TZ=UTC だと JST 0:00〜8:59 の伝票が
+ * 前月番号になるため、明示的に Asia/Tokyo で導出する）。
+ */
+export function currentYearMonthJst(): string {
+  const parts = new Intl.DateTimeFormat("ja-JP", {
+    timeZone: "Asia/Tokyo",
+    year: "numeric",
+    month: "2-digit",
+  }).formatToParts(new Date());
+  const year = parts.find((p) => p.type === "year")?.value ?? "";
+  const month = parts.find((p) => p.type === "month")?.value ?? "";
+  return `${year}${month}`;
+}
+
 export async function allocateDocumentKey(
   key: NumberingKey,
 ): Promise<{ yearMonth: string; seq: number }> {
   const { prefix } = SEQUENCES[key];
-  const now = new Date();
-  const yearMonth = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, "0")}`;
+  const yearMonth = currentYearMonthJst();
 
   const rows = await prisma.$queryRaw<{ last_sequence: number }[]>`
     INSERT INTO "app"."numbering_sequences"
