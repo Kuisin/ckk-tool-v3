@@ -75,77 +75,14 @@ export async function runClosing(
   const authz = await checkPermission("billing_closing", "UPDATE");
   if (!authz.ok) return actionError(authz.error);
   try {
-    const candidates = await collectClosingCandidates(ym.year, ym.month);
-    if (candidates.length === 0) {
+    // バッチコアは lib/closing.ts（日次オートランと共通 — 監査 P2-4）
+    const { runClosingBatch } = await import("@/lib/closing");
+    const result = await runClosingBatch(ym.year, ym.month);
+    if (result.created + result.updated + result.skipped === 0) {
       return actionError("対象月に未請求の出荷がありません");
     }
-
-    let created = 0;
-    let updated = 0;
-    let skipped = 0;
-    for (const c of candidates) {
-      const existing = await prisma.billingClosing.findUnique({
-        where: {
-          customerBpId_closingDate: {
-            customerBpId: c.customerBpId,
-            closingDate: c.closingDate,
-          },
-        },
-      });
-      if (existing && existing.status !== "PENDING") {
-        // 既に請求書を生成済み — 上書きしない。
-        skipped += 1;
-        continue;
-      }
-      if (existing) {
-        await prisma.billingClosing.update({
-          where: { id: existing.id },
-          data: { totalAmount: c.totalAmount },
-        });
-        await recordAudit({
-          action: "UPDATE",
-          tableName: "billing_closings",
-          recordId: existing.id,
-          before: {
-            totalAmount:
-              existing.totalAmount != null
-                ? Number(existing.totalAmount)
-                : null,
-          },
-          after: {
-            totalAmount: c.totalAmount,
-            shipmentNumbers: c.shipmentNumbers,
-          },
-        });
-        updated += 1;
-      } else {
-        const row = await prisma.billingClosing.create({
-          data: {
-            customerBpId: c.customerBpId,
-            closingDate: c.closingDate,
-            status: "PENDING",
-            totalAmount: c.totalAmount,
-          },
-        });
-        await recordAudit({
-          action: "CREATE",
-          tableName: "billing_closings",
-          recordId: row.id,
-          after: {
-            customerBpId: c.customerBpId,
-            customerName: c.customerName,
-            closingDate: c.closingDate.toISOString(),
-            status: "PENDING",
-            totalAmount: c.totalAmount,
-            shipmentNumbers: c.shipmentNumbers,
-          },
-        });
-        created += 1;
-      }
-    }
-
     revalidatePath(BASE_PATH);
-    return actionOk({ created, updated, skipped });
+    return actionOk(result);
   } catch (e) {
     return actionError(prismaErrorMessage(e, "締日処理の実行に失敗しました"));
   }
