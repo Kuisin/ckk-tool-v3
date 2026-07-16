@@ -33,6 +33,18 @@
     @media (max-width: 760px) { .grid { grid-template-columns: 1fr; } }
     #log { background: #0b1020; color: #cbd5e1; font-family: ui-monospace, monospace; font-size: 12px; padding: 12px; border-radius: 6px; min-height: 60px; white-space: pre-wrap; }
     .danger-box { border: 2px solid #fecaca; background: #fff5f5; border-radius: 8px; padding: 16px; }
+    @media (max-width: 640px) {
+      main { margin: 14px auto; padding: 0 10px; }
+      header { padding: 12px 16px; } header h1 { font-size: 16px; }
+      .card, .danger-box { padding: 12px; }
+      .grid { grid-template-columns: 1fr; }
+      button { padding: 9px 14px; } /* ≥44px touch target */
+      /* the restore action row: stack the actor / confirm / button controls */
+      .danger-box input[type=text] { width: 100% !important; }
+      .danger-box > div[style*="flex"] { flex-direction: column; align-items: stretch !important; }
+      .danger-box > div[style*="flex"] > div { width: 100%; }
+      #restore-btn { width: 100%; }
+    }
   </style>
 </head>
 <body>

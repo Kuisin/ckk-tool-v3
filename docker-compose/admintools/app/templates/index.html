@@ -53,6 +53,32 @@
     .crumb a { color: #2563eb; cursor: pointer; text-decoration: none; }
     .crumb a:hover { text-decoration: underline; }
     @media (prefers-reduced-motion: reduce) { .app-card { transition: none; } }
+    /* dense tables scroll horizontally instead of breaking the layout on narrow screens */
+    .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    .table-wrap table { min-width: 560px; }
+    #imports-body { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    /* ---- mobile ---- */
+    @media (max-width: 640px) {
+      main { margin: 14px auto; padding: 0 10px; }
+      header { padding: 12px 16px; }
+      header h1 { font-size: 16px; }
+      .card { padding: 12px; margin-bottom: 14px; }
+      button { padding: 9px 14px; } /* ≥44px touch target */
+      .app-grid { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; }
+      .app-card { padding: 20px 12px; }
+      /* stack add/edit form fields full-width (overrides inline pixel widths) */
+      .addrow { gap: 8px; }
+      .addrow > div { width: 100% !important; min-width: 0 !important; max-width: none !important; }
+      .addrow input, .addrow select, .addrow textarea { width: 100% !important; }
+      .ac { width: 100% !important; }
+      /* toolbars + pickers */
+      .toolbar { gap: 6px; } .toolbar .tsearch { width: 100%; } .toolbar select { flex: 1; }
+      form[action="/ldap/import_group"] { flex-wrap: wrap; }
+      #grp-select { width: 100% !important; min-width: 0 !important; }
+      .tabs { gap: 4px; } .tab { padding: 8px 12px; font-size: 13px; }
+      .modal { width: 92vw; padding: 18px; }
+      #synclog { height: 150px; }
+    }
   </style>
 </head>
 <body>
@@ -77,6 +103,7 @@
     </select>
     <span class="muted" id="{{ tid }}-count"></span>
   </div>
+  <div class="table-wrap">
   <table id="{{ tid }}">
     <thead><tr>
       <th class="sortable" onclick="sortTable('{{ tid }}',0)">種別 ⇅</th>
@@ -117,6 +144,7 @@
     {% endfor %}
     </tbody>
   </table>
+  </div>
   {% endmacro %}
 
   <main>
