@@ -36,15 +36,29 @@ user/alias on the next sync.
    有効化: `.env` に `RESTORE_AGENT_URL` / `RESTORE_AGENT_TOKEN`（restore-agent と
    同じトークン）。詳細・エージェント側の設定は `docker-compose/db-backup/README.md`。
 
-## Setup
+## Deploy (Coolify-managed, internal-only)
 
-```bash
-cp .env.example .env       # DB_PASSWORD, and SAKURA_ID / SAKURA_PW for sync
-docker compose up -d --build
-```
+admintools is a **Coolify application** (git-push deploy + rollback), like
+`nextjs-web`. It builds from this repo (`build_pack: dockerfile`,
+`base_directory: /docker-compose/admintools`, branch `dev`) and publishes host
+**`:8090`** on the server. It has **no public FQDN** (`fqdn` cleared) — reachable
+only on the LAN / via Cloudflare Access, matching its lack of built-in auth.
 
-Add accounts in the UI, then click **今すぐ同期**. (Migrate the old
-`email-list.xlsx` by entering the rows, or ask to add an import endpoint.)
+- **Deploy / rollback:** `docker-compose/coolify/deploy.sh admintools [<git-sha>]`
+  (push auto-deploys too, once the Coolify webhook is active).
+- **Env vars are managed in Coolify** (Application → Environment Variables), not
+  in a `.env`/`env_file`. Required keys: `DATABASE_URL`
+  (`postgresql+psycopg://admintools:<pw>@shared-db:5432/ckk`), `ADMINTOOLS_API_KEY`,
+  `SAKURA_ID`, `SAKURA_PW`, `DEFAULT_DOMAIN`, `KOT_DB_URL`, the `LDAP_*` set (same
+  values as `vpn-ldap/ldap.env`), and `RESTORE_AGENT_URL` /
+  `RESTORE_AGENT_TOKEN` (for the 復元 tool; token must match the db-backup
+  `restore-agent`). Reachability to `shared-db`, `vpn-ldap`, `restore-agent`,
+  `gotenberg`, `seaweedfs` is by container name over the **`coolify`** network
+  (those services are attached to it).
 
-> **Security:** this stores mailbox passwords and holds the Sakura control-panel
-> login. Keep it LAN-only / behind Cloudflare Access; do not expose openly.
+The `docker-compose.yml` here is retained for reference / local runs; the live
+deploy no longer uses it. Add accounts in the UI, then click **今すぐ同期**.
+
+> **Security:** this stores mailbox passwords, holds the Sakura control-panel
+> login, and includes the DB/storage **restore** tool. Keep it LAN-only / behind
+> Cloudflare Access; never assign a public FQDN or expose it openly.
