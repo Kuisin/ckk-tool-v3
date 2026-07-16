@@ -22,6 +22,26 @@ export type NotificationType =
   | "SHARE" // ページ共有（layout/share-actions）
   | "SYSTEM";
 
+/**
+ * アプリ内パスの検証（監査 P1-6: `/\\evil.com` や二重エンコードの
+ * オープンリダイレクトを遮断）。正規化して pathname+search が元と一致する
+ * 相対パスのみ許可。不正はプレーンな "/" に落とす。
+ */
+export function sanitizeLinkPath(path: string | undefined): string | undefined {
+  if (!path) return undefined;
+  if (!path.startsWith("/") || path.includes("\\")) return undefined;
+  try {
+    const u = new URL(path, "http://x");
+    if (u.origin !== "http://x") return undefined;
+    const normalized = u.pathname + u.search;
+    // バックスラッシュ・プロトコル相対（//）を弾く
+    if (u.pathname.startsWith("//")) return undefined;
+    return normalized;
+  } catch {
+    return undefined;
+  }
+}
+
 export interface NotifyInput {
   userIds: string[];
   type: NotificationType;
@@ -41,18 +61,19 @@ export async function notify(input: NotifyInput): Promise<void> {
   );
   if (userIds.length === 0) return;
 
+  const linkPath = sanitizeLinkPath(input.linkPath);
   await prisma.notification.createMany({
     data: userIds.map((userId) => ({
       userId,
       type: input.type,
       title: input.title,
       message: input.message,
-      linkPath: input.linkPath,
+      linkPath,
     })),
   });
 
   // 外部チャネルは fire-and-forget（standalone Node ランタイム前提）
-  void dispatchExternal(userIds, input).catch((e) =>
+  void dispatchExternal(userIds, { ...input, linkPath }).catch((e) =>
     console.error("[notify] 外部チャネル配信エラー:", e),
   );
 }
@@ -61,6 +82,9 @@ async function dispatchExternal(
   userIds: string[],
   input: NotifyInput,
 ): Promise<void> {
+  // dev/main が DB を共有しているため、検証環境からの実ユーザーへの
+  // メール・プッシュを止めるキルスイッチ（監査 P1-4）。アプリ内通知は残る。
+  if (process.env.NOTIFY_EXTERNAL_DISABLED === "1") return;
   const users = await prisma.user.findMany({
     where: { id: { in: userIds }, isActive: true },
     select: {

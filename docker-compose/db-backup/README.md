@@ -130,3 +130,16 @@ cd ~/stacks/shared-db   && docker compose up -d          # verify, then restart 
 ```
 
 Run steps 1–4 as a **quarterly restore drill** against a scratch directory.
+
+## SeaweedFS バックアップ（seaweed-backup サービス）
+
+業務文書（受注書スキャン原本・証憑・生成 PDF）を持つ SeaweedFS の
+`nextjs-web_seaweed-data` ボリュームを毎日 03:00（TZ）に tar スナップショット:
+
+- `/data/db-backups/seaweedfs/daily/YYYY-MM-DD.tar.gz` — 既定 14 日保持
+- `/data/db-backups/seaweedfs/monthly/YYYY-MM.tar.gz` — 月初分を昇格、12 世代
+
+**復元**: `docker compose -f ~/stacks/nextjs-web/docker-compose.yml stop seaweedfs` →
+ボリュームの中身を退避 → `docker run --rm -v nextjs-web_seaweed-data:/data -v /data/db-backups/seaweedfs/daily:/b alpine sh -c 'rm -rf /data/* && tar -xzf /b/<DATE>.tar.gz -C /data'` →
+seaweedfs を起動。DB の `files.storage_key` と整合する時点の DB バックアップと
+セットで戻すこと。
