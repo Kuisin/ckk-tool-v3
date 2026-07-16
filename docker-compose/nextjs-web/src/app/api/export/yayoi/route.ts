@@ -38,6 +38,7 @@ export async function GET(request: Request): Promise<Response> {
     // 仕訳日付 = 発行日。未発行（DRAFT）は作成日で出力する。
     date: invoice.issuedAt ?? invoice.createdAt,
     totalAmount: invoice.totalAmount,
+    taxAmount: invoice.taxAmount,
   });
 
   // エクスポート日時を刻む（best-effort — 失敗してもダウンロードは返す）。
