@@ -44,6 +44,7 @@ import {
   IconSend,
   IconTransform,
 } from "@tabler/icons-react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { searchCustomerOptions } from "@/app/(dashboard)/_shared/option-search";
@@ -377,6 +378,22 @@ export function OrderAcceptanceDetail({
               }
             />
             <FieldValue label="顧客注文書番号" value={a.customerOrderRef} />
+            <FieldValue
+              label="見積書"
+              value={
+                a.quoteNumber ? (
+                  <Anchor
+                    component={Link}
+                    href={`/sales/quotes/${encodeURIComponent(a.quoteNumber)}`}
+                    size="sm"
+                  >
+                    <DocNumber>{a.quoteNumber}</DocNumber>
+                  </Anchor>
+                ) : (
+                  "—"
+                )
+              }
+            />
             <FieldValue label="注文日" value={formatDate(a.orderDate)} />
             <FieldValue
               label="明細数"
@@ -715,6 +732,7 @@ function DraftEditor({
   const [customerOrderRef, setCustomerOrderRef] = useState(
     a.customerOrderRef ?? "",
   );
+  const [quoteNumber, setQuoteNumber] = useState(a.quoteNumber ?? "");
   const [orderDate, setOrderDate] = useState<string | null>(a.orderDate);
   const [notes, setNotes] = useState(a.notes ?? "");
   const [items, setItems] = useState<ItemRowForm[]>(() =>
@@ -726,6 +744,7 @@ function DraftEditor({
       const result = await saveDraft(a.number, {
         customerBpId: customerId,
         customerOrderRef: customerOrderRef || null,
+        quoteNumber: quoteNumber || null,
         orderDate,
         notes: notes || null,
         items: toItemPayload(items),
@@ -796,6 +815,12 @@ function DraftEditor({
               onChange={(e) => setCustomerOrderRef(e.currentTarget.value)}
               placeholder="注文書の番号"
               value={customerOrderRef}
+            />
+            <TextInput
+              label="見積書番号（任意）"
+              onChange={(e) => setQuoteNumber(e.currentTarget.value)}
+              placeholder="QOT-YYYYMM-NNNNN"
+              value={quoteNumber}
             />
             <DatePickerInput
               clearable

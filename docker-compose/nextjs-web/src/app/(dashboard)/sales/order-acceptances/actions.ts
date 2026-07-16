@@ -74,6 +74,8 @@ const itemInput = z.object({
 const draftInput = z.object({
   customerBpId: z.string().nullable(),
   customerOrderRef: z.string().nullable(),
+  // 参照する見積書番号 QOT-YYYYMM-NNNNN（任意 — P2-2 トレーサビリティ）
+  quoteNumber: z.string().nullable().optional(),
   orderDate: z.string().nullable(),
   notes: z.string().nullable(),
   items: z.array(itemInput),
@@ -86,6 +88,16 @@ const manualInput = draftInput.extend({
 
 export type OrderAcceptanceDraftInput = z.infer<typeof draftInput>;
 export type OrderAcceptanceManualInput = z.infer<typeof manualInput>;
+
+/** 見積書番号（QOT-…）→ 複合キー。空・不正は null。 */
+function quoteKeyOf(quoteNumber: string | null | undefined) {
+  const trimmed = quoteNumber?.trim();
+  if (!trimmed) return { quoteYearMonth: null, quoteSeq: null };
+  const k = parseDocKey(trimmed, "QOT");
+  return k
+    ? { quoteYearMonth: k.yearMonth, quoteSeq: k.seq }
+    : { quoteYearMonth: null, quoteSeq: null };
+}
 
 /** 明細入力 → create データ。 */
 function buildItemCreates(items: OrderAcceptanceDraftInput["items"]) {
@@ -170,6 +182,7 @@ export async function saveDraft(
         data: {
           customerBpId: trimOrNull(v.customerBpId),
           customerOrderRef: trimOrNull(v.customerOrderRef),
+          ...quoteKeyOf(v.quoteNumber),
           orderDate: v.orderDate ? new Date(v.orderDate) : null,
           notes: trimOrNull(v.notes),
           items: { create: creates },
@@ -434,8 +447,22 @@ export async function deployToSalesOrders(
             amount: it.quantity * Number(it.unitPrice),
             deliveryDate: it.deliveryDate,
             status: "CONFIRMED",
+            // 見積 → 受注 → 注文請書のトレーサビリティ（監査 P2-2）
+            quoteYearMonth: prior.quoteYearMonth,
+            quoteSeq: prior.quoteSeq,
             notes: it.notes,
           },
+        });
+      }
+      // 参照元の見積書を受諾済みへ（ISSUED のときのみ、原子的に）
+      if (prior.quoteYearMonth && prior.quoteSeq != null) {
+        await tx.quote.updateMany({
+          where: {
+            yearMonth: prior.quoteYearMonth,
+            seq: prior.quoteSeq,
+            status: "ISSUED",
+          },
+          data: { status: "ACCEPTED" },
         });
       }
     });
@@ -530,6 +557,7 @@ export async function createManualAcceptance(
         source: "MANUAL",
         customerBpId: v.customerBpId,
         customerOrderRef: trimOrNull(v.customerOrderRef),
+        ...quoteKeyOf(v.quoteNumber),
         orderDate: v.orderDate ? new Date(v.orderDate) : null,
         notes: trimOrNull(v.notes),
         createdBy: actor,
