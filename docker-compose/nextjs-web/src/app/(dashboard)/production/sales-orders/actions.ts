@@ -19,7 +19,11 @@ import { recordAudit } from "@/lib/audit";
 import { checkPermission } from "@/lib/authz";
 import { prisma } from "@/lib/db";
 import { formatSalesOrderNumber, parseSalesOrderKey } from "@/lib/doc-number";
-import { reserveProductStock, type StockCheckResult } from "@/lib/inventory";
+import {
+  releaseSalesOrderReservations,
+  reserveProductStock,
+  type StockCheckResult,
+} from "@/lib/inventory";
 import { allocateDocumentKey } from "@/lib/numbering";
 import {
   type ActionResult,
@@ -325,16 +329,60 @@ export async function cancelSalesOrder(number: string): Promise<ActionResult> {
       where: { yearMonth_seq_branch: key },
       select: { status: true },
     });
-    const updated = await prisma.salesOrder.updateMany({
-      where: {
-        ...key,
-        status: {
-          in: ["DRAFT", "CONFIRMED", "IN_PRODUCTION", "PARTIAL_SHIPPED"],
+    // キャンセルの伝播（監査 P1-1）: 予約の全量解放 + 未着手の子指示書を
+    // 連鎖キャンセル — 予約リーク・孤児 WO を残さない。単一 tx。
+    const result = await prisma.$transaction(async (tx) => {
+      const updated = await tx.salesOrder.updateMany({
+        where: {
+          ...key,
+          status: {
+            in: ["DRAFT", "CONFIRMED", "IN_PRODUCTION", "PARTIAL_SHIPPED"],
+          },
         },
-      },
-      data: { status: "CANCELLED" },
+        data: { status: "CANCELLED" },
+      });
+      if (updated.count === 0) return { cancelled: false as const };
+      const so = await tx.salesOrder.findUniqueOrThrow({
+        where: { yearMonth_seq_branch: key },
+        select: { id: true },
+      });
+      const released = await releaseSalesOrderReservations(
+        tx,
+        so.id,
+        `注文請書 ${number} キャンセルによる予約解放`,
+      );
+      // 未完了の子指示書を連鎖キャンセル（完了済みは在庫計上済みのため対象外）
+      const childWos = await tx.workOrder.findMany({
+        where: {
+          salesOrderId: so.id,
+          status: { notIn: ["COMPLETED", "CANCELLED"] },
+        },
+        select: { id: true, workOrderNumber: true },
+      });
+      for (const wo of childWos) {
+        await tx.workOrder.update({
+          where: { id: wo.id },
+          data: { status: "CANCELLED" },
+        });
+        await tx.workOrderStep.updateMany({
+          where: {
+            workOrderId: wo.id,
+            status: { in: ["PENDING", "IN_PROGRESS"] },
+          },
+          data: {
+            status: "CANCELLED",
+            cancelledAt: new Date(),
+            cancelReason: `注文請書 ${number} キャンセルに伴う連鎖キャンセル`,
+          },
+        });
+      }
+      return {
+        cancelled: true as const,
+        released,
+        cancelledWos: childWos.map((w) => w.workOrderNumber),
+      };
     });
-    if (updated.count === 0) {
+    if (!result.cancelled) {
       return actionError(
         "出荷済・キャンセル済の注文請書はキャンセルできません",
       );
@@ -344,7 +392,10 @@ export async function cancelSalesOrder(number: string): Promise<ActionResult> {
       tableName: "sales_orders",
       recordId: number,
       before: { status: prior?.status ?? null },
-      after: { status: "CANCELLED" },
+      after: {
+        status: "CANCELLED",
+        note: `予約解放 ${result.released} 件 / 連鎖キャンセル指示書 ${result.cancelledWos.length} 件${result.cancelledWos.length ? `（#${result.cancelledWos.join(", #")}）` : ""}`,
+      },
     });
     revalidate(number);
     return actionOk();

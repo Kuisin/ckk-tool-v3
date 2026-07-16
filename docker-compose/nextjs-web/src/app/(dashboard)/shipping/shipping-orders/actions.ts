@@ -360,6 +360,12 @@ export async function shipShippingOrder(number: string): Promise<ActionResult> {
         },
       });
       const shipped = agg._sum.quantity ?? 0;
+      // 累計出荷が受注数量を超える出荷を禁止（監査 P0-4 過出荷ガード）
+      if (shipped > so.quantity) {
+        throw new Error(
+          `GUARD:受注数量 ${so.quantity} を超える出荷になります（累計 ${shipped}）`,
+        );
+      }
       const next = shipped >= so.quantity ? "SHIPPED" : "PARTIAL_SHIPPED";
       if (next !== so.status) {
         await tx.salesOrder.update({
@@ -372,11 +378,12 @@ export async function shipShippingOrder(number: string): Promise<ActionResult> {
           after: next,
         };
       }
-    });
 
-    // 在庫反映: DISPATCH は出庫 + 予約解除、STOCK_STORAGE は保管入庫（PR 5）。
-    const { onShippingShipped } = await import("@/lib/inventory");
-    await onShippingShipped(key);
+      // 在庫反映（同一 tx）: DISPATCH は出庫 + 予約按分解除、STOCK_STORAGE は
+      // 保管入庫。在庫不足・台帳欠落はここで throw され全体がロールバック。
+      const { onShippingShippedTx } = await import("@/lib/inventory");
+      await onShippingShippedTx(tx, key);
+    });
 
     await recordAudit({
       action: "UPDATE",
@@ -402,6 +409,13 @@ export async function shipShippingOrder(number: string): Promise<ActionResult> {
   } catch (e) {
     if (e instanceof Error && e.message.startsWith("GUARD:")) {
       return actionError(e.message.slice("GUARD:".length));
+    }
+    // 在庫ガード（lib/inventory）の業務エラーはそのまま表示する
+    if (
+      e instanceof Error &&
+      (e.message.startsWith("在庫が不足") || e.message.includes("在庫台帳"))
+    ) {
+      return actionError(e.message);
     }
     return actionError(prismaErrorMessage(e, "出荷処理に失敗しました"));
   }
