@@ -33,11 +33,7 @@ import {
   actionOk,
   prismaErrorMessage,
 } from "@/lib/server-action";
-import {
-  collectClosingCandidates,
-  fetchBillableShipmentsForClosing,
-  shipmentAmount,
-} from "./data";
+import { fetchBillableShipmentsForClosing, shipmentAmount } from "./data";
 
 const BASE_PATH = "/billing/closings";
 const INVOICES_PATH = "/billing/invoices";
