@@ -31,6 +31,56 @@ services:
     networks:
       - shareddb
 
+  # 日次の論理バックアップ（pg_dump カスタム形式）。restore-agent がワンクリック
+  # 復元できる自己完結スナップショット（物理 basebackup とは別レイヤ）。
+  # LOGICAL_DB_URL 未設定なら待機のみ（安全に無効）。
+  logical-dump:
+    build: . # db-backup と同じ pg17 クライアント入りイメージ（同一コンテキスト → キャッシュ共有）
+    image: ckk-db-backup
+    container_name: logical-dump
+    restart: unless-stopped
+    user: "70:70"
+    environment:
+      - TZ=${TZ:-Asia/Tokyo}
+      - LOGICAL_DB_URL=${LOGICAL_DB_URL:-} # = restore-agent の RESTORE_DB_URL（スーパーユーザ DSN）
+      - LOGICAL_KEEP_DAYS=${LOGICAL_KEEP_DAYS:-14}
+      - LOGICAL_MONTHLY_KEEP=${LOGICAL_MONTHLY_KEEP:-12}
+    entrypoint: ["/bin/bash", "/logical-dump.sh"]
+    volumes:
+      - ./logical-dump.sh:/logical-dump.sh:ro
+      - ${BACKUP_DIR:-/data/db-backups}:/backups
+    networks:
+      - shareddb
+
+  # 復元エグゼキュータ。admintools UI から token 付きで呼ばれ、DB（pg_restore）と
+  # SeaweedFS ボリュームの復元を実行する。docker.sock を持つのはこの非公開サービス
+  # のみ（web-facing の admintools はソケットに触れない）。RESTORE_AGENT_TOKEN 未設定
+  # なら全操作 401、RESTORE_DB_URL 未設定なら DB 復元のみ無効。
+  restore-agent:
+    build: ./restore-agent
+    image: ckk-restore-agent
+    container_name: restore-agent
+    restart: unless-stopped
+    environment:
+      - TZ=${TZ:-Asia/Tokyo}
+      - BACKUP_DIR=/backups
+      - BACKUP_HOST_DIR=${BACKUP_DIR:-/data/db-backups} # ワンショット bind mount 用のホストパス
+      - RESTORE_AGENT_TOKEN=${RESTORE_AGENT_TOKEN:-}
+      - RESTORE_DB_URL=${RESTORE_DB_URL:-} # ckk へのスーパーユーザ DSN（空 = DB 復元無効）
+      - SEAWEED_CONTAINER=${SEAWEED_CONTAINER:-nextjs-seaweedfs}
+      - SEAWEED_VOLUME=${SEAWEED_VOLUME:-nextjs-web_seaweed-data}
+      - SHARED_DB_NETWORK=${SHARED_DB_NETWORK:-shared-db}
+      # Coolify — 復元ポイントの git commit へアプリを戻す（空 = アプリ復元無効）
+      - COOLIFY_API_URL=${COOLIFY_API_URL:-} # 例: http://coolify:8000/api/v1
+      - COOLIFY_API_TOKEN=${COOLIFY_API_TOKEN:-}
+      - COOLIFY_APP_NAME=${COOLIFY_APP_NAME:-nextjs-web-main}
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ${BACKUP_DIR:-/data/db-backups}:/backups
+    networks:
+      - shareddb
+      - coolify # Coolify API（coolify:8000）到達用
+
   # SeaweedFS（受注書スキャン原本・証憑・生成 PDF）の日次 tar スナップショット。
   # nextjs-web スタックの seaweed-data ボリュームを read-only でマウントする。
   seaweed-backup:
@@ -80,3 +130,6 @@ networks:
   shareddb:
     external: true
     name: shared-db
+  coolify:
+    external: true
+    name: coolify

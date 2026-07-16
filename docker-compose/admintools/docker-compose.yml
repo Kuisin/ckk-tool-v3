@@ -26,6 +26,10 @@ services:
       - DEFAULT_DOMAIN=${DEFAULT_DOMAIN:-ckk-tool.co.jp}
       # Connection to the KOT schema to show its import log. Empty = off.
       - KOT_DB_URL=${KOT_DB_URL:-}
+      # バックアップ / 復元 UI → restore-agent（db-backup スタック, shared-db 網）。
+      # トークン未設定なら機能は無効表示。restore-agent の RESTORE_AGENT_TOKEN と一致させる。
+      - RESTORE_AGENT_URL=${RESTORE_AGENT_URL:-http://restore-agent:9000}
+      - RESTORE_AGENT_TOKEN=${RESTORE_AGENT_TOKEN:-}
     env_file:
       # Shared LDAP/AD bind creds (LDAP_SERVER_HOST=vpn-ldap, LDAP_APP_DN, ...).
       - ../vpn-ldap/ldap.env
