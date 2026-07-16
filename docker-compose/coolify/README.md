@@ -12,6 +12,14 @@ Project `ckk` — dev app in the `development` environment, main in `production`
 |-----|-----|--------|-----------|-------------|--------------|
 | `nextjs-web-dev` | development | `dev` | `:3004` | `ckk-dev.kai-lab.net` (legacy alias: `dev.kai-lab.net`) | cloudflared/nginx → `web:3000` relay → `:3004` |
 | `nextjs-web-main` | production | `main` | `:3005` | `ckk.kai-lab.net` | cloudflared/nginx → `web-main:3000` relay → `:3005` |
+| `admintools` | production | `dev` | `:8090` | — (internal, no FQDN) | LAN only / Cloudflare Access |
+
+`admintools` (mail-account mgmt + DB/storage **restore** tool) is Coolify-built
+(`dockerfile`, base dir `/docker-compose/admintools`) but **has no public
+hostname** — it has no built-in auth, so it stays LAN-only. Its env (DB / LDAP /
+Sakura / restore-agent) is set in Coolify, and it reaches `shared-db`,
+`vpn-ldap`, `restore-agent` by name on the `coolify` network. Deploy/rollback:
+`./deploy.sh admintools [<sha>]`.
 
 - Coolify UI/API: `https://deploy.ckk-tool.co.jp` (LAN via nginx-proxy; public via
   cloudflared once the tunnel hostnames are added — put a Cloudflare Access policy
