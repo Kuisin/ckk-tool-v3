@@ -201,6 +201,8 @@ model WorkOrderStep {
   outsourceRequestedAt DateTime? @map("outsource_requested_at") @db.Date
   outsourceExpectedAt  DateTime? @map("outsource_expected_at") @db.Date
   outsourceReceivedAt  DateTime? @map("outsource_received_at") @db.Date
+  // 外注コスト（監査 P2-6 — 円。試算実績・原価分析の入力）
+  outsourceCost        Decimal?  @map("outsource_cost") @db.Decimal(12, 2)
 
   status StepStatus @default(PENDING)
 

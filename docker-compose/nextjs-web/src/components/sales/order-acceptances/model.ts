@@ -68,6 +68,7 @@ export interface OrderAcceptanceView {
   customerName: string | null;
   customerBranchName: string | null;
   customerOrderRef: string | null;
+  quoteNumber: string | null;
   orderDate: string | null; // yyyy-mm-dd
   notes: string | null;
   items: OrderAcceptanceItemView[];

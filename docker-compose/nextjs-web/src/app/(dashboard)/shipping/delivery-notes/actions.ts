@@ -111,6 +111,45 @@ export async function searchEndUserOptions(
 }
 
 /** 作成 — 採番1回 + ヘッダ・明細を一括作成。作成後は詳細ページへ。 */
+/**
+ * 納品書明細の出荷書整合検証（監査 P2-7）: 出荷書に存在する製品のみ・
+ * 製品別 Σ数量 ≦ 出荷数量。違反行は製品名入りのエラー文字列を返す。
+ */
+async function validateItemsAgainstShipment(
+  shpKey: { yearMonth: string; seq: number },
+  items: { productId: string | number; quantity: number }[],
+): Promise<string | null> {
+  const shipItems = await prisma.shippingOrderItem.findMany({
+    where: {
+      shippingOrderYearMonth: shpKey.yearMonth,
+      shippingOrderSeq: shpKey.seq,
+    },
+    select: { productId: true, quantity: true },
+  });
+  const shippedByProduct = new Map<number, number>();
+  for (const it of shipItems) {
+    shippedByProduct.set(
+      it.productId,
+      (shippedByProduct.get(it.productId) ?? 0) + it.quantity,
+    );
+  }
+  const requested = new Map<number, number>();
+  for (const it of items) {
+    const pid = Number(it.productId);
+    requested.set(pid, (requested.get(pid) ?? 0) + it.quantity);
+  }
+  for (const [productId, qty] of requested) {
+    const shipped = shippedByProduct.get(productId);
+    if (shipped == null) {
+      return `製品 ${productId} は出荷書に含まれていません`;
+    }
+    if (qty > shipped) {
+      return `製品 ${productId} の数量 ${qty} が出荷数量 ${shipped} を超えています`;
+    }
+  }
+  return null;
+}
+
 export async function createDeliveryNote(
   payload: DeliveryNoteCreateInput,
 ): Promise<ActionResult<{ number: string }>> {
@@ -136,6 +175,8 @@ export async function createDeliveryNote(
     if (shp.status !== "CONFIRMED" && shp.status !== "SHIPPED") {
       return actionError("確定済み・出荷済みの出荷書のみ納品書を作成できます");
     }
+    const itemsError = await validateItemsAgainstShipment(shpKey, v.items);
+    if (itemsError) return actionError(itemsError);
 
     const { yearMonth, seq } = await allocateDocumentKey("DELIVERY");
     await prisma.deliveryNote.create({
@@ -206,12 +247,24 @@ export async function updateDeliveryNote(
         endUserBpId: true,
         includePrice: true,
         notes: true,
+        shippingOrderYearMonth: true,
+        shippingOrderSeq: true,
         items: {
           orderBy: { sortOrder: "asc" },
           select: { productId: true, quantity: true, notes: true },
         },
       },
     });
+    if (prior?.shippingOrderYearMonth && prior.shippingOrderSeq != null) {
+      const itemsError = await validateItemsAgainstShipment(
+        {
+          yearMonth: prior.shippingOrderYearMonth,
+          seq: prior.shippingOrderSeq,
+        },
+        v.items,
+      );
+      if (itemsError) return actionError(itemsError);
+    }
     await prisma.$transaction(async (tx) => {
       // status を where に含めた updateMany で原子的にガードする。
       const updated = await tx.deliveryNote.updateMany({

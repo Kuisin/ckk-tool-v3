@@ -115,6 +115,13 @@ export async function fetchOrderAcceptance(
       ? localized(r.customerBranchBp.name as LocalizedText | null)
       : null,
     customerOrderRef: r.customerOrderRef,
+    quoteNumber:
+      r.quoteYearMonth && r.quoteSeq != null
+        ? formatDocNumber("QOT", {
+            yearMonth: r.quoteYearMonth,
+            seq: r.quoteSeq,
+          })
+        : null,
     orderDate: r.orderDate?.toISOString().slice(0, 10) ?? null,
     notes: r.notes,
     items,
