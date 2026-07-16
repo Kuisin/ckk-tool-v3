@@ -392,6 +392,24 @@ export async function shipShippingOrder(number: string): Promise<ActionResult> {
       before: { status: "CONFIRMED" },
       after: { status: "SHIPPED" },
     });
+    // 出荷完了のハンドオフ通知（受注担当へ・best-effort — 監査 P2-6）
+    try {
+      const soRow = await prisma.salesOrder.findUnique({
+        where: { id: row.salesOrderId },
+        select: { createdBy: true },
+      });
+      if (soRow?.createdBy) {
+        const { notify } = await import("@/lib/notifications");
+        await notify({
+          userIds: [soRow.createdBy],
+          type: "SYSTEM",
+          title: `出荷書 ${number} を出荷しました`,
+          linkPath: `/shipping/shipping-orders/${encodeURIComponent(number)}`,
+        });
+      }
+    } catch (err) {
+      console.error("[shipping] 出荷通知に失敗:", err);
+    }
     if (soAudit) {
       const { number: soNumber, before, after } = soAudit;
       await recordAudit({

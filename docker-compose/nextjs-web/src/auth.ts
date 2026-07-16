@@ -19,6 +19,30 @@ const authentikEnabled =
   !!process.env.AUTH_AUTHENTIK_ID &&
   !!process.env.AUTH_AUTHENTIK_SECRET;
 
+// 簡易ログインレート制限（監査 P2-9）: ユーザー名毎に 15 分で失敗 5 回まで。
+// インメモリ（プロセス毎）— 単一コンテナ運用では十分。成功でリセット。
+const loginFailures = new Map<string, { count: number; resetAt: number }>();
+const LOGIN_MAX_FAILURES = 5;
+const LOGIN_WINDOW_MS = 15 * 60_000;
+
+function loginRateLimited(username: string): boolean {
+  const rec = loginFailures.get(username);
+  if (!rec || Date.now() > rec.resetAt) return false;
+  return rec.count >= LOGIN_MAX_FAILURES;
+}
+
+function recordLoginFailure(username: string): void {
+  const rec = loginFailures.get(username);
+  if (!rec || Date.now() > rec.resetAt) {
+    loginFailures.set(username, {
+      count: 1,
+      resetAt: Date.now() + LOGIN_WINDOW_MS,
+    });
+  } else {
+    rec.count += 1;
+  }
+}
+
 export const { handlers, auth, signIn, signOut } = NextAuth({
   ...authConfig,
   providers: [
@@ -36,9 +60,20 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         const password =
           typeof credentials?.password === "string" ? credentials.password : "";
         if (!username || !password) return null;
+        if (loginRateLimited(username)) {
+          console.warn(`[auth] レート制限: ${username}`);
+          return null;
+        }
         const user = await prisma.user.findUnique({ where: { username } });
-        if (!user?.isActive || !user.passwordHash) return null;
-        if (!verifyPassword(password, user.passwordHash)) return null;
+        if (!user?.isActive || !user.passwordHash) {
+          recordLoginFailure(username);
+          return null;
+        }
+        if (!verifyPassword(password, user.passwordHash)) {
+          recordLoginFailure(username);
+          return null;
+        }
+        loginFailures.delete(username);
         await prisma.user.update({
           where: { id: user.id },
           data: { lastLoginAt: new Date() },

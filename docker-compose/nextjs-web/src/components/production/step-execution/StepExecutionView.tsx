@@ -16,6 +16,7 @@ import {
   Button,
   Group,
   List,
+  NumberInput,
   Paper,
   SimpleGrid,
   Stack,
@@ -76,6 +77,9 @@ export function StepExecutionView({ data }: { data: StepExecutionData }) {
   );
   const [receivedAt, setReceivedAt] = useState<string | null>(
     step.outsourceReceivedAt,
+  );
+  const [outsourceCost, setOutsourceCost] = useState<number | "">(
+    step.outsourceCost ?? "",
   );
 
   const isOutsource = step.executionLocation === "OUTSOURCE";
@@ -149,6 +153,7 @@ export function StepExecutionView({ data }: { data: StepExecutionData }) {
         requestedAt,
         expectedAt,
         receivedAt,
+        outsourceCost: outsourceCost === "" ? null : outsourceCost,
       });
       notifyResult(
         result,
@@ -360,6 +365,19 @@ export function StepExecutionView({ data }: { data: StepExecutionData }) {
                 size="lg"
                 value={receivedAt}
                 valueFormat="YYYY/MM/DD"
+              />
+              <NumberInput
+                allowNegative={false}
+                disabled={!canOperate}
+                label="外注費"
+                min={0}
+                onChange={(v) =>
+                  setOutsourceCost(typeof v === "number" ? v : "")
+                }
+                prefix="¥"
+                size="lg"
+                thousandSeparator=","
+                value={outsourceCost}
               />
             </SimpleGrid>
             {canOperate && (

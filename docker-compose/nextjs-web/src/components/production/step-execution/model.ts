@@ -92,6 +92,7 @@ export interface StepExecutionStepView {
   outsourceRequestedAt: string | null; // YYYY-MM-DD
   outsourceExpectedAt: string | null;
   outsourceReceivedAt: string | null;
+  outsourceCost: number | null;
 }
 
 export interface StepExecutionData {
