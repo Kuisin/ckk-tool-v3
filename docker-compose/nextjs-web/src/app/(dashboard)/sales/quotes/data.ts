@@ -16,6 +16,10 @@ import {
 import { type LocalizedText, localized } from "@/lib/format";
 import { mapEntry } from "../price-lists/data";
 
+// 一覧クエリの取得上限（監査 P2-8 — 全件フェッチのデータ増加対策）。
+// DataTable はクライアントページングのため、最新分のみで実用上十分。
+const LIST_FETCH_CAP = 1000;
+
 const QUOTE_INCLUDE = {
   customerBp: true,
   customerBranchBp: true,
@@ -83,6 +87,7 @@ export function mapQuote(r: QuoteRow): Quote {
 
 export async function fetchQuotes(): Promise<Quote[]> {
   const rows = await prisma.quote.findMany({
+    take: LIST_FETCH_CAP,
     include: QUOTE_INCLUDE,
     orderBy: [{ yearMonth: "desc" }, { seq: "desc" }],
   });

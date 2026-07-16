@@ -24,6 +24,10 @@ import { type LocalizedText, localized } from "@/lib/format";
 import { fetchWorkflowCtx, loadCatalog } from "@/lib/workflow";
 import { canStartStep, expectedInput } from "@/lib/workflow-core";
 
+// 一覧クエリの取得上限（監査 P2-8 — 全件フェッチのデータ増加対策）。
+// DataTable はクライアントページングのため、最新分のみで実用上十分。
+const LIST_FETCH_CAP = 1000;
+
 const WO_INCLUDE = {
   salesOrder: { include: { customerBp: true, product: true } },
   material: true,
@@ -73,6 +77,7 @@ function mapRow(r: {
 /** 指示書一覧 (PD02)。 */
 export async function fetchWorkOrders(): Promise<WorkOrderRow[]> {
   const rows = await prisma.workOrder.findMany({
+    take: LIST_FETCH_CAP,
     include: { salesOrder: { include: { product: true } } },
     orderBy: { workOrderNumber: "desc" },
   });
