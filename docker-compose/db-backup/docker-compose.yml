@@ -47,6 +47,30 @@ services:
       - seaweed-data:/seaweed-data:ro
       - ${BACKUP_DIR:-/data/db-backups}:/backups
 
+  # オフサイト同期（rclone）— /data/db-backups をクラウドへ日次ミラー。
+  # OFFSITE_REMOTE 未設定時は待機のみ（安全に無効）。設定は README 参照。
+  offsite-backup:
+    image: rclone/rclone:1.68
+    container_name: offsite-backup
+    restart: unless-stopped
+    entrypoint: ["/bin/sh", "/offsite-sync.sh"]
+    environment:
+      - TZ=${TZ:-Asia/Tokyo}
+      - OFFSITE_REMOTE=${OFFSITE_REMOTE:-}
+      # rclone リモートは RCLONE_CONFIG_* 環境変数で定義（.env に置く）
+      - RCLONE_CONFIG_SAKURA_TYPE=${RCLONE_CONFIG_SAKURA_TYPE:-}
+      - RCLONE_CONFIG_SAKURA_HOST=${RCLONE_CONFIG_SAKURA_HOST:-}
+      - RCLONE_CONFIG_SAKURA_USER=${RCLONE_CONFIG_SAKURA_USER:-}
+      - RCLONE_CONFIG_SAKURA_PASS=${RCLONE_CONFIG_SAKURA_PASS:-}
+      - RCLONE_CONFIG_R2_TYPE=${RCLONE_CONFIG_R2_TYPE:-}
+      - RCLONE_CONFIG_R2_PROVIDER=${RCLONE_CONFIG_R2_PROVIDER:-}
+      - RCLONE_CONFIG_R2_ACCESS_KEY_ID=${RCLONE_CONFIG_R2_ACCESS_KEY_ID:-}
+      - RCLONE_CONFIG_R2_SECRET_ACCESS_KEY=${RCLONE_CONFIG_R2_SECRET_ACCESS_KEY:-}
+      - RCLONE_CONFIG_R2_ENDPOINT=${RCLONE_CONFIG_R2_ENDPOINT:-}
+    volumes:
+      - ./offsite-sync.sh:/offsite-sync.sh:ro
+      - ${BACKUP_DIR:-/data/db-backups}:/backups:ro
+
 volumes:
   seaweed-data:
     external: true

@@ -143,3 +143,41 @@ Run steps 1–4 as a **quarterly restore drill** against a scratch directory.
 ボリュームの中身を退避 → `docker run --rm -v nextjs-web_seaweed-data:/data -v /data/db-backups/seaweedfs/daily:/b alpine sh -c 'rm -rf /data/* && tar -xzf /b/<DATE>.tar.gz -C /data'` →
 seaweedfs を起動。DB の `files.storage_key` と整合する時点の DB バックアップと
 セットで戻すこと。
+
+## オフサイト（クラウド）同期 — offsite-backup サービス
+
+`/data/db-backups` 全体（PG 増分 + SeaweedFS tar）を **毎日 04:30 に rclone で
+クラウドへミラー**する。ホスト障害・盗難・災害からの保全（3-2-1 の「1」）。
+
+**有効化**（サーバーの `~/stacks/db-backup/.env` に追記 — コミット禁止）:
+
+```ini
+# 例 A: さくらのレンタルサーバー（SFTP — 契約済みストレージを流用）
+OFFSITE_REMOTE=sakura:ckk-backups
+RCLONE_CONFIG_SAKURA_TYPE=sftp
+RCLONE_CONFIG_SAKURA_HOST=ckk-tool.sakura.ne.jp
+RCLONE_CONFIG_SAKURA_USER=<さくらアカウント>
+RCLONE_CONFIG_SAKURA_PASS=<rclone obscure したパスワード>   # docker run --rm rclone/rclone obscure '<平文>'
+
+# 例 B: Cloudflare R2（S3 互換 — 10GB まで無料、Cloudflare 契約に同居）
+OFFSITE_REMOTE=r2:ckk-backups
+RCLONE_CONFIG_R2_TYPE=s3
+RCLONE_CONFIG_R2_PROVIDER=Cloudflare
+RCLONE_CONFIG_R2_ACCESS_KEY_ID=<key>
+RCLONE_CONFIG_R2_SECRET_ACCESS_KEY=<secret>
+RCLONE_CONFIG_R2_ENDPOINT=https://<account_id>.r2.cloudflarestorage.com
+```
+
+適用: `docker compose up -d offsite-backup`。`OFFSITE_REMOTE` 未設定なら安全に
+待機する（何も送らない）。初回は手動同期で検証を推奨:
+
+```sh
+docker exec offsite-backup rclone sync /backups "$OFFSITE_REMOTE" --dry-run --stats-one-line
+```
+
+**復元**: `rclone copy <remote>:ckk-backups /data/db-backups` で取り戻し、
+上記の PG / SeaweedFS 復元手順に接続する。
+
+**注意**: 保持世代はソース側で管理（sync はミラー）。バックアップには業務
+文書・個人情報が含まれるため、リモート側のアクセス権は最小化すること。
+機密性を上げたい場合は rclone crypt リモートを挟む（README 追補可）。
