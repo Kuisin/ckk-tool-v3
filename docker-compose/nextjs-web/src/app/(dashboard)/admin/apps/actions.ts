@@ -13,6 +13,7 @@ import { z } from "zod";
 import { APP_ENVS, type AppEnv, appFlagKey } from "@/lib/app-flags";
 import { appList } from "@/lib/app-list";
 import { getCurrentActorId, recordAudit } from "@/lib/audit";
+import { checkPermission } from "@/lib/authz";
 import { prisma } from "@/lib/db";
 import {
   type ActionResult,
@@ -32,6 +33,8 @@ export async function setAppEnabled(raw: {
   env: AppEnv;
   enabled: boolean;
 }): Promise<ActionResult> {
+  const authz = await checkPermission("system", "UPDATE");
+  if (!authz.ok) return actionError(authz.error);
   const parsed = input.safeParse(raw);
   if (!parsed.success) return actionError("入力が不正です");
   const { appKey, env, enabled } = parsed.data;

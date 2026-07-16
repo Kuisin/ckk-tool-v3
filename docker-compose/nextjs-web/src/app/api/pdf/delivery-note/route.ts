@@ -14,6 +14,7 @@
  */
 
 import { fetchDeliveryNote } from "@/app/(dashboard)/shipping/delivery-notes/data";
+import { requirePermissionResponse } from "@/lib/authz";
 import { parseDocKey } from "@/lib/doc-number";
 import { DELIVERY_METHOD_LABEL } from "@/lib/enum-labels";
 import { formatDate } from "@/lib/format";
@@ -43,6 +44,8 @@ function pdfHeaders(deliveryNumber: string, download: boolean): HeadersInit {
 }
 
 export async function GET(request: Request): Promise<Response> {
+  const denied = await requirePermissionResponse("delivery_note", "READ");
+  if (denied) return denied;
   const url = new URL(request.url);
   const id = url.searchParams.get("id");
   const download = url.searchParams.get("download") === "1";

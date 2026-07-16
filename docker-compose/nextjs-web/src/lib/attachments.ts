@@ -127,15 +127,17 @@ export async function fetchAttachmentFile(id: string): Promise<{
   storageKey: string;
   filename: string;
   mimeType: string;
+  ownerType: string;
 } | null> {
   try {
     const row = await prisma.documentAttachment.findUnique({
       where: { id },
       select: {
+        ownerType: true,
         file: { select: { storageKey: true, filename: true, mimeType: true } },
       },
     });
-    return row?.file ?? null;
+    return row?.file ? { ...row.file, ownerType: row.ownerType } : null;
   } catch {
     // 不正な uuid 等 — 404 扱い。
     return null;

@@ -16,6 +16,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { resolveUnitPriceFromEntries } from "@/components/sales/quotes/model";
 import { recordAudit } from "@/lib/audit";
+import { checkPermission } from "@/lib/authz";
 import { prisma } from "@/lib/db";
 import { formatSalesOrderNumber, parseSalesOrderKey } from "@/lib/doc-number";
 import { reserveProductStock, type StockCheckResult } from "@/lib/inventory";
@@ -106,6 +107,8 @@ export async function resolvePriceForLine(
 export async function createSalesOrders(
   payload: SalesOrderCreateInput,
 ): Promise<ActionResult<{ number: string; numbers: string[] }>> {
+  const authz = await checkPermission("work_order", "CREATE");
+  if (!authz.ok) return actionError(authz.error);
   const parsed = createInput.safeParse(payload);
   if (!parsed.success) {
     return actionError(parsed.error.issues[0]?.message ?? "入力が不正です");
@@ -176,6 +179,8 @@ export async function updateSalesOrder(
   number: string,
   payload: SalesOrderUpdateInput,
 ): Promise<ActionResult<{ number: string }>> {
+  const authz = await checkPermission("work_order", "UPDATE");
+  if (!authz.ok) return actionError(authz.error);
   const key = parseSalesOrderKey(number);
   if (!key) return actionError("注文請書番号が不正です");
   const parsed = updateInput.safeParse(payload);
@@ -250,6 +255,8 @@ export async function updateSalesOrder(
 
 /** 確定 (DRAFT → CONFIRMED)。ロック中（承認依頼中）は不可。 */
 export async function confirmSalesOrder(number: string): Promise<ActionResult> {
+  const authz = await checkPermission("work_order", "UPDATE");
+  if (!authz.ok) return actionError(authz.error);
   const key = parseSalesOrderKey(number);
   if (!key) return actionError("注文請書番号が不正です");
   try {
@@ -283,6 +290,10 @@ export async function confirmSalesOrder(number: string): Promise<ActionResult> {
 export async function runStockCheck(
   salesOrderId: string,
 ): Promise<ActionResult<StockCheckResult>> {
+  // 在庫予約（RESERVE）を発生させるが、注文請書フローの操作なので
+  // "inventory" ではなく "work_order" で判定する（判断メモ）。
+  const authz = await checkPermission("work_order", "UPDATE");
+  if (!authz.ok) return actionError(authz.error);
   if (!salesOrderId) return actionError("注文請書が不正です");
   try {
     const so = await prisma.salesOrder.findUnique({
@@ -305,6 +316,8 @@ export async function runStockCheck(
 
 /** キャンセル — 出荷済（SHIPPED）以降・キャンセル済は不可。 */
 export async function cancelSalesOrder(number: string): Promise<ActionResult> {
+  const authz = await checkPermission("work_order", "UPDATE");
+  if (!authz.ok) return actionError(authz.error);
   const key = parseSalesOrderKey(number);
   if (!key) return actionError("注文請書番号が不正です");
   try {

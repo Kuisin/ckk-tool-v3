@@ -13,6 +13,7 @@
 
 import { revalidatePath } from "next/cache";
 import { recordAudit } from "@/lib/audit";
+import { checkPermission } from "@/lib/authz";
 import { prisma } from "@/lib/db";
 import { parseDocKey } from "@/lib/doc-number";
 import {
@@ -33,6 +34,8 @@ function revalidate(number: string) {
 export async function issueInvoice(number: string): Promise<ActionResult> {
   const key = parseDocKey(number, "INV");
   if (!key) return actionError("請求番号が不正です");
+  const authz = await checkPermission("invoice", "UPDATE");
+  if (!authz.ok) return actionError(authz.error);
   try {
     const updated = await prisma.invoice.updateMany({
       where: { ...key, status: "DRAFT" },
@@ -59,6 +62,8 @@ export async function issueInvoice(number: string): Promise<ActionResult> {
 export async function markSent(number: string): Promise<ActionResult> {
   const key = parseDocKey(number, "INV");
   if (!key) return actionError("請求番号が不正です");
+  const authz = await checkPermission("invoice", "UPDATE");
+  if (!authz.ok) return actionError(authz.error);
   try {
     const updated = await prisma.invoice.updateMany({
       where: { ...key, status: "ISSUED" },
@@ -85,6 +90,8 @@ export async function markSent(number: string): Promise<ActionResult> {
 export async function markPaid(number: string): Promise<ActionResult> {
   const key = parseDocKey(number, "INV");
   if (!key) return actionError("請求番号が不正です");
+  const authz = await checkPermission("invoice", "UPDATE");
+  if (!authz.ok) return actionError(authz.error);
   try {
     const updated = await prisma.invoice.updateMany({
       where: { ...key, status: "SENT" },

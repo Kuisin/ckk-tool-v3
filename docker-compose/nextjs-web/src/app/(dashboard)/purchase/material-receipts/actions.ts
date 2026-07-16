@@ -12,6 +12,7 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { getCurrentActorId, recordAudit } from "@/lib/audit";
+import { checkPermission } from "@/lib/authz";
 import { prisma } from "@/lib/db";
 import { onMaterialReceipt } from "@/lib/inventory";
 import {
@@ -39,6 +40,8 @@ export type MaterialReceiptInput = z.infer<typeof receiptInput>;
 export async function createMaterialReceipt(
   payload: MaterialReceiptInput,
 ): Promise<ActionResult<{ id: string }>> {
+  const authz = await checkPermission("material_receipt", "CREATE");
+  if (!authz.ok) return actionError(authz.error);
   const parsed = receiptInput.safeParse(payload);
   if (!parsed.success) {
     return actionError(parsed.error.issues[0]?.message ?? "入力が不正です");

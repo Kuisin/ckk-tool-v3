@@ -15,6 +15,7 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { recordAudit } from "@/lib/audit";
+import { checkPermission } from "@/lib/authz";
 import { prisma } from "@/lib/db";
 import { formatDocNumber, parseDocKey } from "@/lib/doc-number";
 import { type LocalizedText, localized } from "@/lib/format";
@@ -113,6 +114,8 @@ export async function searchEndUserOptions(
 export async function createDeliveryNote(
   payload: DeliveryNoteCreateInput,
 ): Promise<ActionResult<{ number: string }>> {
+  const authz = await checkPermission("delivery_note", "CREATE");
+  if (!authz.ok) return actionError(authz.error);
   const parsed = createInput.safeParse(payload);
   if (!parsed.success) {
     return actionError(parsed.error.issues[0]?.message ?? "入力が不正です");
@@ -183,6 +186,8 @@ export async function updateDeliveryNote(
   number: string,
   payload: DeliveryNoteUpdateInput,
 ): Promise<ActionResult<{ number: string }>> {
+  const authz = await checkPermission("delivery_note", "UPDATE");
+  if (!authz.ok) return actionError(authz.error);
   const key = parseDocKey(number, "DRN");
   if (!key) return actionError("納品番号が不正です");
   const parsed = baseInput.safeParse(payload);
@@ -263,6 +268,8 @@ export async function updateDeliveryNote(
 
 /** 発行 (DRAFT → ISSUED)。 */
 export async function issueDeliveryNote(number: string): Promise<ActionResult> {
+  const authz = await checkPermission("delivery_note", "UPDATE");
+  if (!authz.ok) return actionError(authz.error);
   const key = parseDocKey(number, "DRN");
   if (!key) return actionError("納品番号が不正です");
   try {
@@ -289,6 +296,8 @@ export async function issueDeliveryNote(number: string): Promise<ActionResult> {
 
 /** 納品済み (ISSUED → DELIVERED + deliveredAt=now)。 */
 export async function markDelivered(number: string): Promise<ActionResult> {
+  const authz = await checkPermission("delivery_note", "UPDATE");
+  if (!authz.ok) return actionError(authz.error);
   const key = parseDocKey(number, "DRN");
   if (!key) return actionError("納品番号が不正です");
   try {

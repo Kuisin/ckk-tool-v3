@@ -12,6 +12,7 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { getCurrentActorId, recordAudit } from "@/lib/audit";
+import { checkPermission, type PermissionAction } from "@/lib/authz";
 import { prisma } from "@/lib/db";
 import {
   abortStepExecution,
@@ -38,6 +39,14 @@ function failed(e: unknown, fallback: string): StepActionResult {
   return { ok: false, errors: [fallback] };
 }
 
+/** RBAC ゲート — 拒否時は StepActionResult 形のエラー、許可時は null。 */
+async function deniedStepPermission(
+  action: PermissionAction,
+): Promise<StepActionResult | null> {
+  const authz = await checkPermission("work_order", action);
+  return authz.ok ? null : { ok: false, errors: [authz.error] };
+}
+
 /** 工程が指示書に属することの検証（URL 直叩き対策）。 */
 async function findStep(workOrderNumber: number, stepId: string) {
   return prisma.workOrderStep.findFirst({
@@ -53,6 +62,8 @@ export async function startStep(
   workOrderNumber: number,
   stepId: string,
 ): Promise<StepActionResult> {
+  const denied = await deniedStepPermission("UPDATE");
+  if (denied) return denied;
   try {
     const step = await findStep(workOrderNumber, stepId);
     if (!step) return { ok: false, errors: ["工程が見つかりません"] };
@@ -78,6 +89,8 @@ export async function completeStep(
   stepId: string,
   quantities: z.infer<typeof quantitiesInput>,
 ): Promise<StepActionResult> {
+  const denied = await deniedStepPermission("UPDATE");
+  if (denied) return denied;
   const parsed = quantitiesInput.safeParse(quantities);
   if (!parsed.success) return { ok: false, errors: ["数量の入力が不正です"] };
   try {
@@ -97,6 +110,8 @@ export async function abortStep(
   stepId: string,
   reason: string,
 ): Promise<StepActionResult> {
+  const denied = await deniedStepPermission("UPDATE");
+  if (denied) return denied;
   if (!reason.trim()) {
     return { ok: false, errors: ["中断理由を入力してください"] };
   }
@@ -117,6 +132,8 @@ export async function rollbackStep(
   stepId: string,
   reason: string,
 ): Promise<StepActionResult> {
+  const denied = await deniedStepPermission("UPDATE");
+  if (denied) return denied;
   try {
     const step = await findStep(workOrderNumber, stepId);
     if (!step) return { ok: false, errors: ["工程が見つかりません"] };
@@ -149,6 +166,9 @@ export type AddBranchInput = z.infer<typeof addBranchInput>;
 export async function addBranch(
   payload: AddBranchInput,
 ): Promise<StepActionResult> {
+  // 既存指示書のワークフロー変更 — CREATE ではなく UPDATE（判断メモ）。
+  const denied = await deniedStepPermission("UPDATE");
+  if (denied) return denied;
   const parsed = addBranchInput.safeParse(payload);
   if (!parsed.success) {
     return {
@@ -200,6 +220,8 @@ export type InspectionInput = z.infer<typeof inspectionInput>;
 export async function saveInspectionRecord(
   payload: InspectionInput,
 ): Promise<StepActionResult> {
+  const denied = await deniedStepPermission("UPDATE");
+  if (denied) return denied;
   const parsed = inspectionInput.safeParse(payload);
   if (!parsed.success) {
     return {
@@ -253,6 +275,10 @@ export async function approveInspectionRecord(
   stepId: string,
   recordId: string,
 ): Promise<StepActionResult> {
+  // 検査承認 — approve* の規約に従い ACTION=APPROVE（コードは工程実行の
+  // 文脈なので "work_order" のまま。承認グループとは別系統 — 判断メモ）。
+  const denied = await deniedStepPermission("APPROVE");
+  if (denied) return denied;
   try {
     const record = await prisma.inspectionRecord.findFirst({
       where: { id: recordId, step: { workOrder: { workOrderNumber } } },
@@ -300,6 +326,8 @@ export type DefectsInput = z.infer<typeof defectsInput>;
 export async function saveDefectRecords(
   payload: DefectsInput,
 ): Promise<StepActionResult> {
+  const denied = await deniedStepPermission("UPDATE");
+  if (denied) return denied;
   const parsed = defectsInput.safeParse(payload);
   if (!parsed.success) {
     return {
@@ -349,6 +377,8 @@ export type OutsourceDatesInput = z.infer<typeof outsourceDatesInput>;
 export async function saveOutsourceDates(
   payload: OutsourceDatesInput,
 ): Promise<StepActionResult> {
+  const denied = await deniedStepPermission("UPDATE");
+  if (denied) return denied;
   const parsed = outsourceDatesInput.safeParse(payload);
   if (!parsed.success) return { ok: false, errors: ["入力が不正です"] };
   const v = parsed.data;

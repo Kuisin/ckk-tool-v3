@@ -7,6 +7,8 @@
  * is attached to the `ai-stack` network and reaches it at http://po-extract:8000.
  */
 
+import { requirePermissionResponse } from "@/lib/authz";
+
 // Vision extraction takes ~25-40s; keep this a runtime (uncached) handler.
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
@@ -16,6 +18,9 @@ const PO_EXTRACT_URL = (
 ).replace(/\/$/, "");
 
 export async function POST(request: Request): Promise<Response> {
+  // 受注請書取込の一部として実行される — order_acceptance:CREATE でゲート。
+  const denied = await requirePermissionResponse("order_acceptance", "CREATE");
+  if (denied) return denied;
   const inForm = await request.formData();
   const file = inForm.get("file");
   if (!(file instanceof File)) {

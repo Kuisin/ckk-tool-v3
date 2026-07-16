@@ -10,6 +10,7 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { recordAudit } from "@/lib/audit";
+import { checkPermission } from "@/lib/authz";
 import { Prisma, prisma } from "@/lib/db";
 import { formatProductNumber } from "@/lib/doc-number";
 import { allocateDocumentKey } from "@/lib/numbering";
@@ -101,6 +102,8 @@ function specJson(rows: { key: string; value: string }[]) {
 export async function createProduct(
   input: ProductInput,
 ): Promise<ActionResult<{ id: number; code: string }>> {
+  const authz = await checkPermission("master", "CREATE");
+  if (!authz.ok) return actionError(authz.error);
   const parsed = productInput.safeParse(input);
   if (!parsed.success) {
     return actionError(parsed.error.issues[0]?.message ?? "入力が不正です");
@@ -151,6 +154,8 @@ export async function updateProduct(
   id: number,
   input: ProductInput,
 ): Promise<ActionResult<{ id: number }>> {
+  const authz = await checkPermission("master", "UPDATE");
+  if (!authz.ok) return actionError(authz.error);
   const parsed = productInput.safeParse(input);
   if (!parsed.success) {
     return actionError(parsed.error.issues[0]?.message ?? "入力が不正です");
@@ -217,6 +222,8 @@ export async function setProductsActive(
   ids: number[],
   isActive: boolean,
 ): Promise<ActionResult> {
+  const authz = await checkPermission("master", "UPDATE");
+  if (!authz.ok) return actionError(authz.error);
   if (ids.length === 0) return actionError("対象が選択されていません");
   try {
     await prisma.product.updateMany({
@@ -240,6 +247,8 @@ export async function setProductsActive(
 }
 
 export async function deleteProducts(ids: number[]): Promise<ActionResult> {
+  const authz = await checkPermission("master", "DELETE");
+  if (!authz.ok) return actionError(authz.error);
   if (ids.length === 0) return actionError("対象が選択されていません");
   try {
     // Guard: refuse when sales documents still reference one of the products.

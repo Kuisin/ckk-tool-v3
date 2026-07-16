@@ -11,6 +11,7 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { recordAudit } from "@/lib/audit";
+import { checkPermission } from "@/lib/authz";
 import { prisma } from "@/lib/db";
 import { type LocalizedText, localized } from "@/lib/format";
 import {
@@ -79,6 +80,8 @@ function revalidate(id?: number) {
 export async function createInspectionTemplate(
   input: InspectionTemplateCreateInput,
 ): Promise<ActionResult<{ id: number }>> {
+  const authz = await checkPermission("master", "CREATE");
+  if (!authz.ok) return actionError(authz.error);
   const parsed = templateCreateInput.safeParse(input);
   if (!parsed.success) {
     return actionError(parsed.error.issues[0]?.message ?? "入力が不正です");
@@ -118,6 +121,8 @@ export async function updateInspectionTemplate(
   id: number,
   input: InspectionTemplateUpdateInput,
 ): Promise<ActionResult<{ id: number }>> {
+  const authz = await checkPermission("master", "UPDATE");
+  if (!authz.ok) return actionError(authz.error);
   const parsed = templateUpdateInput.safeParse(input);
   if (!parsed.success) {
     return actionError(parsed.error.issues[0]?.message ?? "入力が不正です");
@@ -166,6 +171,8 @@ export async function setInspectionTemplatesActive(
   ids: number[],
   isActive: boolean,
 ): Promise<ActionResult> {
+  const authz = await checkPermission("master", "UPDATE");
+  if (!authz.ok) return actionError(authz.error);
   if (ids.length === 0) return actionError("対象が選択されていません");
   try {
     await prisma.inspectionTemplate.updateMany({
@@ -191,6 +198,8 @@ export async function setInspectionTemplatesActive(
 export async function deleteInspectionTemplates(
   ids: number[],
 ): Promise<ActionResult> {
+  const authz = await checkPermission("master", "DELETE");
+  if (!authz.ok) return actionError(authz.error);
   if (ids.length === 0) return actionError("対象が選択されていません");
   try {
     // 検査項目は onDelete: Cascade で一括削除。将来 検査記録（inspection_records）
@@ -218,6 +227,9 @@ export async function addTemplateItem(
   templateId: number,
   input: InspectionTemplateItemInput,
 ): Promise<ActionResult<{ id: number }>> {
+  // 検査項目の増減はテンプレート本体の編集扱い（監査も UPDATE で記録）。
+  const authz = await checkPermission("master", "UPDATE");
+  if (!authz.ok) return actionError(authz.error);
   const parsed = templateItemInput.safeParse(input);
   if (!parsed.success) {
     return actionError(parsed.error.issues[0]?.message ?? "入力が不正です");
@@ -253,6 +265,8 @@ export async function updateTemplateItem(
   itemId: number,
   input: InspectionTemplateItemInput,
 ): Promise<ActionResult<{ id: number }>> {
+  const authz = await checkPermission("master", "UPDATE");
+  if (!authz.ok) return actionError(authz.error);
   const parsed = templateItemInput.safeParse(input);
   if (!parsed.success) {
     return actionError(parsed.error.issues[0]?.message ?? "入力が不正です");
@@ -291,6 +305,9 @@ export async function updateTemplateItem(
 export async function deleteTemplateItem(
   itemId: number,
 ): Promise<ActionResult> {
+  // 検査項目の増減はテンプレート本体の編集扱い（監査も UPDATE で記録）。
+  const authz = await checkPermission("master", "UPDATE");
+  if (!authz.ok) return actionError(authz.error);
   try {
     const prior = await prisma.inspectionTemplateItem.findUnique({
       where: { id: itemId },
