@@ -63,26 +63,32 @@ export async function applyTransaction(
         ? -input.quantity
         : 0;
 
-  if (input.inventoryType === "PRODUCT") {
-    await tx.productInventory.update({
-      where: { id: input.inventoryId },
-      data: {
-        ...(deltaQty !== 0 ? { quantity: { increment: deltaQty } } : {}),
-        ...(deltaReserved !== 0
-          ? { reservedQuantity: { increment: deltaReserved } }
-          : {}),
-      },
-    });
-  } else {
-    await tx.materialInventory.update({
-      where: { id: input.inventoryId },
-      data: {
-        ...(deltaQty !== 0 ? { quantity: { increment: deltaQty } } : {}),
-        ...(deltaReserved !== 0
-          ? { reservedQuantity: { increment: deltaReserved } }
-          : {}),
-      },
-    });
+  // 減算（OUT / RELEASE / 負の ADJUST）は残量ガード付き条件更新 —
+  // 同時実行でも負在庫にならない（DB の CHECK 制約より手前で明確に失敗）。
+  const data = {
+    ...(deltaQty !== 0 ? { quantity: { increment: deltaQty } } : {}),
+    ...(deltaReserved !== 0
+      ? { reservedQuantity: { increment: deltaReserved } }
+      : {}),
+  };
+  const guard = {
+    ...(deltaQty < 0 ? { quantity: { gte: -deltaQty } } : {}),
+    ...(deltaReserved < 0 ? { reservedQuantity: { gte: -deltaReserved } } : {}),
+  };
+  const updated =
+    input.inventoryType === "PRODUCT"
+      ? await tx.productInventory.updateMany({
+          where: { id: input.inventoryId, ...guard },
+          data,
+        })
+      : await tx.materialInventory.updateMany({
+          where: { id: input.inventoryId, ...guard },
+          data,
+        });
+  if (updated.count !== 1) {
+    throw new Error(
+      `在庫が不足しています（${input.transactionType} ${input.quantity}）`,
+    );
   }
 }
 
@@ -107,11 +113,28 @@ async function ensureProductInventory(
     select: { id: true },
   });
   if (existing) return existing.id;
-  const row = await tx.productInventory.create({
-    data: { ...data },
-    select: { id: true },
-  });
-  return row.id;
+  try {
+    const row = await tx.productInventory.create({
+      data: { ...data },
+      select: { id: true },
+    });
+    return row.id;
+  } catch (e) {
+    // 同時 ensure の一意制約競合（NULLS NOT DISTINCT index）→ 再取得
+    if ((e as { code?: string }).code === "P2002") {
+      const again = await tx.productInventory.findFirst({
+        where: {
+          productId: data.productId,
+          factoryId: data.factoryId,
+          lotNumber: data.lotNumber,
+          isSemiFinished: data.isSemiFinished,
+        },
+        select: { id: true },
+      });
+      if (again) return again.id;
+    }
+    throw e;
+  }
 }
 
 /** 素材在庫行の取得 or 作成。 */
@@ -124,11 +147,22 @@ export async function ensureMaterialInventory(
     select: { id: true },
   });
   if (existing) return existing.id;
-  const row = await tx.materialInventory.create({
-    data: { ...data },
-    select: { id: true },
-  });
-  return row.id;
+  try {
+    const row = await tx.materialInventory.create({
+      data: { ...data },
+      select: { id: true },
+    });
+    return row.id;
+  } catch (e) {
+    if ((e as { code?: string }).code === "P2002") {
+      const again = await tx.materialInventory.findFirst({
+        where: { materialId: data.materialId, factoryId: data.factoryId },
+        select: { id: true },
+      });
+      if (again) return again.id;
+    }
+    throw e;
+  }
 }
 
 /**
@@ -141,12 +175,20 @@ export async function onWorkOrderCompleted(workOrderId: string): Promise<void> {
     include: {
       salesOrder: true,
       steps: { orderBy: { sortOrder: "asc" } },
+      stepLinks: { select: { sourceStepId: true } },
     },
   });
-  // 完成数 = 最終非キャンセル工程の良品数
-  const active = wo.steps.filter((s) => s.status === "COMPLETED");
-  const last = active[active.length - 1];
-  const finishedQty = last?.outputSuccessQuantity ?? 0;
+  // 完成数 = 終端工程（出力リンクを持たない COMPLETED 工程）の良品数合計。
+  // sortOrder 最大では分岐合流 DAG（合流先が手前に並ぶ場合）で誤るため、
+  // グラフの終端で判定する（監査 #15）。
+  const sourceIds = new Set(wo.stepLinks.map((l) => l.sourceStepId));
+  const terminal = wo.steps.filter(
+    (s) => s.status === "COMPLETED" && !sourceIds.has(s.id),
+  );
+  const finishedQty = terminal.reduce(
+    (sum, s) => sum + (s.outputSuccessQuantity ?? 0),
+    0,
+  );
   // 半製品 = 全工程の半製品バケット合計
   const semiTotal = wo.steps.reduce(
     (sum, s) => sum + (s.outputDefectSemiFinished ?? 0),
@@ -194,9 +236,13 @@ export async function onWorkOrderCompleted(workOrderId: string): Promise<void> {
         notes: `指示書 #${wo.workOrderNumber} 半製品入庫`,
       });
     }
-    // 予約 → 確定（§7: 全工程完了時）
+    // 予約 → 確定（§7: 全工程完了時）。予約は salesOrderId で作られる
+    // （workOrderId は付かない）ため両方で照合 — 監査 P1-2 の修正。
     await tx.inventoryReservation.updateMany({
-      where: { workOrderId: wo.id, status: "RESERVED" },
+      where: {
+        OR: [{ workOrderId: wo.id }, { salesOrderId: wo.salesOrderId }],
+        status: "RESERVED",
+      },
       data: { status: "CONFIRMED", confirmedAt: new Date() },
     });
   });
@@ -210,79 +256,139 @@ export async function onShippingShipped(key: {
   yearMonth: string;
   seq: number;
 }): Promise<void> {
-  const so = await prisma.shippingOrder.findUniqueOrThrow({
+  await prisma.$transaction(async (tx) => {
+    await onShippingShippedTx(tx, key);
+  });
+}
+
+/**
+ * onShippingShipped の tx コア — 出荷アクションの状態遷移と同一
+ * トランザクションで呼べる（在庫不足時に SHIPPED だけ立つ非整合を防ぐ）。
+ */
+export async function onShippingShippedTx(
+  tx: Tx,
+  key: { yearMonth: string; seq: number },
+): Promise<void> {
+  const so = await tx.shippingOrder.findUniqueOrThrow({
     where: { yearMonth_seq: key },
     include: { items: true, salesOrder: true },
   });
   const ref = `SHP-${key.yearMonth}-${String(key.seq).padStart(5, "0")}`;
-
-  await prisma.$transaction(async (tx) => {
-    for (const item of so.items) {
-      if (so.type === "DISPATCH") {
-        // ロット在庫から出庫（行が無ければ調整入庫はせずスキップ — 台帳導入前のロット）
-        const inv = await tx.productInventory.findFirst({
-          where: {
-            productId: item.productId,
-            lotNumber: item.lotNumber,
-            isSemiFinished: false,
-          },
-          select: { id: true },
-        });
-        if (inv) {
-          await applyTransaction(tx, {
-            inventoryType: "PRODUCT",
-            inventoryId: inv.id,
-            transactionType: "OUT",
-            quantity: item.quantity,
-            referenceType: "shipping_order",
-            referenceId: ref,
-            notes: `出荷 ${ref}`,
-          });
-        }
-      } else {
-        // STOCK_STORAGE: 保管工場へ入庫（請求フロー外の予備分）
-        const invId = await ensureProductInventory(tx, {
+  for (const item of so.items) {
+    if (so.type === "DISPATCH") {
+      // ロット在庫から出庫。行が無ければ失敗させる（黙ってスキップすると
+      // 台帳と実出荷が乖離する — 監査 P0-4）。
+      const inv = await tx.productInventory.findFirst({
+        where: {
           productId: item.productId,
-          factoryId: so.fromFactoryId,
           lotNumber: item.lotNumber,
           isSemiFinished: false,
-        });
-        await applyTransaction(tx, {
-          inventoryType: "PRODUCT",
-          inventoryId: invId,
-          transactionType: "IN",
-          quantity: item.quantity,
-          referenceType: "shipping_order",
-          referenceId: ref,
-          notes: `在庫保管 ${ref}`,
-        });
+        },
+        select: { id: true },
+      });
+      if (!inv) {
+        throw new Error(
+          `ロット ${item.lotNumber ?? "-"} の在庫台帳がありません（製品 ${item.productId}）。指示書完了または棚卸調整で入庫してから出荷してください`,
+        );
       }
+      await applyTransaction(tx, {
+        inventoryType: "PRODUCT",
+        inventoryId: inv.id,
+        transactionType: "OUT",
+        quantity: item.quantity,
+        referenceType: "shipping_order",
+        referenceId: ref,
+        notes: `出荷 ${ref}`,
+      });
+    } else {
+      // STOCK_STORAGE: 保管工場へ入庫（請求フロー外の予備分）
+      const invId = await ensureProductInventory(tx, {
+        productId: item.productId,
+        factoryId: so.fromFactoryId,
+        lotNumber: item.lotNumber,
+        isSemiFinished: false,
+      });
+      await applyTransaction(tx, {
+        inventoryType: "PRODUCT",
+        inventoryId: invId,
+        transactionType: "IN",
+        quantity: item.quantity,
+        referenceType: "shipping_order",
+        referenceId: ref,
+        notes: `在庫保管 ${ref}`,
+      });
     }
-    // 出荷で SO の予約を解除（§4 予約 → 出荷 RELEASE）。
-    // ステータス変更だけでなく RELEASE 取引を積んでキャッシュ
-    // reserved_quantity も戻す（台帳とキャッシュの一致を保つ）。
+  }
+  // 出荷で SO の予約を解除（§4 予約 → 出荷 RELEASE）。
+  // 部分出荷では出荷数分だけ按分して解放する（全量解放すると未出荷分の
+  // 引当が他受注に奪われる — 監査 P1-2/P1-7）。RELEASE 取引を積んで
+  // キャッシュ reserved_quantity も戻す。
+  if (so.type === "DISPATCH") {
+    let remainingToRelease = so.items.reduce((sum, i) => sum + i.quantity, 0);
     const reservations = await tx.inventoryReservation.findMany({
       where: {
         salesOrderId: so.salesOrderId,
         status: { in: ["RESERVED", "CONFIRMED"] },
       },
+      orderBy: { reservedAt: "asc" },
     });
     for (const r of reservations) {
+      if (remainingToRelease <= 0) break;
+      const release = Math.min(Number(r.quantity), remainingToRelease);
       await applyTransaction(tx, {
         inventoryType: r.inventoryType,
         inventoryId: r.inventoryId,
         transactionType: "RELEASE",
-        quantity: Number(r.quantity),
+        quantity: release,
         referenceType: "shipping_order",
         referenceId: ref,
         notes: `出荷による予約解除 ${ref}`,
       });
-      await tx.inventoryReservation.update({
-        where: { id: r.id },
-        data: { status: "RELEASED", releasedAt: new Date() },
-      });
+      if (release >= Number(r.quantity)) {
+        await tx.inventoryReservation.update({
+          where: { id: r.id },
+          data: { status: "RELEASED", releasedAt: new Date() },
+        });
+      } else {
+        // 部分解放: 残量を予約に残す
+        await tx.inventoryReservation.update({
+          where: { id: r.id },
+          data: { quantity: { decrement: release } },
+        });
+      }
+      remainingToRelease -= release;
     }
+  }
+}
+
+/**
+ * 受注キャンセル時の予約解放（監査 P1-1）: SO の生きている予約を全量
+ * RELEASE し、reserved_quantity キャッシュも戻す。tx 内で呼ぶ。
+ */
+export async function releaseSalesOrderReservations(
+  tx: Tx,
+  salesOrderId: string,
+  reason: string,
+): Promise<number> {
+  const reservations = await tx.inventoryReservation.findMany({
+    where: { salesOrderId, status: { in: ["RESERVED", "CONFIRMED"] } },
   });
+  for (const r of reservations) {
+    await applyTransaction(tx, {
+      inventoryType: r.inventoryType,
+      inventoryId: r.inventoryId,
+      transactionType: "RELEASE",
+      quantity: Number(r.quantity),
+      referenceType: "sales_order",
+      referenceId: salesOrderId,
+      notes: reason,
+    });
+    await tx.inventoryReservation.update({
+      where: { id: r.id },
+      data: { status: "RELEASED", releasedAt: new Date() },
+    });
+  }
+  return reservations.length;
 }
 
 /** 素材入荷フック: 入荷工場の素材在庫へ入庫。 */
@@ -332,6 +438,12 @@ export async function reserveProductStock(
   });
 
   return prisma.$transaction(async (tx) => {
+    // 対象行をロック（FOR UPDATE）— 同時照合による二重引当を防ぐ（監査 P1-3）。
+    // ロック取得後に読む値が確定値になる。
+    await tx.$queryRaw`
+      SELECT id FROM app.product_inventory
+      WHERE product_id = ${so.productId} AND is_semi_finished = false
+      FOR UPDATE`;
     const rows = await tx.productInventory.findMany({
       where: { productId: so.productId, isSemiFinished: false },
       orderBy: { lotNumber: "asc" },

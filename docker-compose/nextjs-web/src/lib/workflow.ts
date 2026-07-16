@@ -233,8 +233,10 @@ export async function completeStepExecution(
   if (rIssues.length > 0)
     return { ok: false, errors: rIssues.map((i) => i.message) };
 
-  await prisma.workOrderStep.update({
-    where: { id: stepId },
+  // 完了クレームは条件付き更新 — 同時完了はどちらか一方だけ成立し、
+  // 在庫の二重計上を防ぐ（監査 P0-7/#5）。
+  const claimed = await prisma.workOrderStep.updateMany({
+    where: { id: stepId, status: "IN_PROGRESS" },
     data: {
       status: "COMPLETED",
       inputQuantity: quantities.inputQuantity,
@@ -248,16 +250,22 @@ export async function completeStepExecution(
       sessionLockedAt: null,
     },
   });
+  if (claimed.count !== 1) {
+    return { ok: false, errors: ["この工程は既に完了しています"] };
+  }
 
-  // 全工程完了 → 指示書完了 + 在庫計上（完成品ロット入庫・半製品入庫・予約確定）
+  // 全工程完了 → 指示書完了 + 在庫計上（完成品ロット入庫・半製品入庫・予約確定）。
+  // WO の COMPLETED 遷移も条件付き — 勝者 1 リクエストだけが在庫計上する。
   const { ctx } = await fetchWorkflowCtx(stepRow.workOrderId);
   if (isWorkOrderComplete(ctx)) {
-    await prisma.workOrder.update({
-      where: { id: stepRow.workOrderId },
+    const flipped = await prisma.workOrder.updateMany({
+      where: { id: stepRow.workOrderId, status: { not: "COMPLETED" } },
       data: { status: "COMPLETED", completedAt: new Date() },
     });
-    const { onWorkOrderCompleted } = await import("./inventory");
-    await onWorkOrderCompleted(stepRow.workOrderId);
+    if (flipped.count === 1) {
+      const { onWorkOrderCompleted } = await import("./inventory");
+      await onWorkOrderCompleted(stepRow.workOrderId);
+    }
   }
   await recordAudit({
     action: "UPDATE",
@@ -315,6 +323,16 @@ export async function rollbackStepExecution(
     return { ok: false, errors: ["完了済みの工程ではありません"] };
   if (!reason.trim())
     return { ok: false, errors: ["巻き戻し理由を入力してください"] };
+  // 指示書が完了済み = 在庫計上済み。巻き戻すと再完了で二重計上になるため
+  // 禁止（棚卸調整で補正する — 監査 P0-7/#5）。
+  if (stepRow.workOrder.status === "COMPLETED") {
+    return {
+      ok: false,
+      errors: [
+        "指示書が完了済み（在庫計上済み）のため巻き戻せません。数量の補正は在庫の棚卸調整で行ってください",
+      ],
+    };
+  }
 
   // 後続が着手済みなら巻き戻し不可（数量整合を守る）。下流は DAG 到達性で
   // 判定する — 合流先は分岐工程より小さい sortOrder を持ち得る。

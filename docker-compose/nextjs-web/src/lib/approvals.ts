@@ -116,16 +116,34 @@ export async function createApprovalRequest(input: {
     select: { id: true },
   });
   if (existing) return existing.id;
-  const row = await prisma.approvalRequest.create({
-    data: {
-      targetType: input.targetType,
-      targetId: input.targetId,
-      step: input.step,
-      requestedBy: actor,
-      notes: input.notes,
-    },
-    select: { id: true },
-  });
+  let row: { id: string };
+  try {
+    row = await prisma.approvalRequest.create({
+      data: {
+        targetType: input.targetType,
+        targetId: input.targetId,
+        step: input.step,
+        requestedBy: actor,
+        notes: input.notes,
+      },
+      select: { id: true },
+    });
+  } catch (e) {
+    // 同時依頼の一意制約競合（approval_requests_pending_unique）→ 既存を再利用
+    if ((e as { code?: string }).code === "P2002") {
+      const again = await prisma.approvalRequest.findFirst({
+        where: {
+          targetType: input.targetType,
+          targetId: input.targetId,
+          step: input.step,
+          status: "PENDING",
+        },
+        select: { id: true },
+      });
+      if (again) return again.id;
+    }
+    throw e;
+  }
   // 承認グループ（本人 + 期間内代理）へ通知 — 失敗しても依頼は成立させる
   try {
     await notifyGroup(input.step === "FIRST" ? "FIRST" : "SECOND", {
@@ -175,8 +193,15 @@ export async function actOnApprovalRequest(input: {
       step: input.step,
     }));
 
-  await prisma.$transaction([
-    prisma.approvalRecord.create({
+  // PENDING の依頼を条件付きで自分がクレームしてから記録を書く —
+  // 同時 承認/差し戻し はどちらか一方だけが成立する（監査 P0-7）。
+  const claimed = await prisma.$transaction(async (tx) => {
+    const res = await tx.approvalRequest.updateMany({
+      where: { id: requestId, status: "PENDING" },
+      data: { status: input.action },
+    });
+    if (res.count !== 1) return false;
+    await tx.approvalRecord.create({
       data: {
         approvalRequestId: requestId,
         approverId: actor,
@@ -184,12 +209,12 @@ export async function actOnApprovalRequest(input: {
         action: input.action,
         comment: input.comment,
       },
-    }),
-    prisma.approvalRequest.update({
-      where: { id: requestId },
-      data: { status: input.action },
-    }),
-  ]);
+    });
+    return true;
+  });
+  if (!claimed) {
+    return { ok: false, error: "この依頼は既に処理されています" };
+  }
   // 依頼者へ結果を通知（自己承認は通知しない）
   if (request?.requestedBy && request.requestedBy !== actor) {
     try {
