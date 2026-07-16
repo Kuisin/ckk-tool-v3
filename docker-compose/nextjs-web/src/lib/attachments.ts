@@ -109,6 +109,7 @@ export async function listAttachments(
     });
     return rows.map((r) => ({
       id: r.id,
+      fileId: r.fileId,
       filename: r.file.filename,
       label: r.label,
       mimeType: r.file.mimeType,

@@ -196,6 +196,20 @@ export async function completeDesign(number: string): Promise<ActionResult> {
   const authz = await checkPermission("design_request", "UPDATE");
   if (!authz.ok) return actionError(authz.error);
   try {
+    // 完了には設計ファイルの添付が必須（監査 P2-3 — dead-end 解消）
+    const { listAttachments } = await import("@/lib/attachments");
+    const attachments = await listAttachments("design_requests", number);
+    if (attachments.length === 0) {
+      return actionError("設計ファイルを添付してから完了してください");
+    }
+    const latest = attachments[0]; // listAttachments は新しい順
+
+    const request = await prisma.designRequest.findUnique({
+      where: { requestNumber: number },
+      select: { id: true, productId: true },
+    });
+    if (!request) return actionError("対象の設計依頼書が見つかりません");
+
     const updated = await prisma.designRequest.updateMany({
       where: { requestNumber: number, status: "IN_PROGRESS" },
       data: { status: "COMPLETED", completedAt: new Date() },
@@ -203,12 +217,48 @@ export async function completeDesign(number: string): Promise<ActionResult> {
     if (updated.count === 0) {
       return actionError("進行中の設計依頼書のみ完了できます");
     }
+
+    // design_files へバージョン登録し、製品マスタの最新設計を更新
+    const { getCurrentActorId } = await import("@/lib/audit");
+    const actor = await getCurrentActorId();
+    await prisma.$transaction(async (tx) => {
+      const prev = await tx.designFile.aggregate({
+        _max: { version: true },
+        where: { designRequestId: request.id },
+      });
+      const version = (prev._max.version ?? 0) + 1;
+      await tx.designFile.updateMany({
+        where: { designRequestId: request.id, isLatest: true },
+        data: { isLatest: false },
+      });
+      // 製品との紐付けは design_files.product_id + is_latest（製品側の
+      // 最新設計は designFiles(isLatest) で参照する — カラム二重化しない）
+      if (request.productId != null) {
+        await tx.designFile.updateMany({
+          where: { productId: request.productId, isLatest: true },
+          data: { isLatest: false },
+        });
+      }
+      await tx.designFile.create({
+        data: {
+          designRequestId: request.id,
+          productId: request.productId,
+          fileId: latest.fileId,
+          version,
+          isLatest: true,
+          createdBy: actor,
+        },
+      });
+    });
     await recordAudit({
       action: "UPDATE",
       tableName: "design_requests",
       recordId: number,
       before: { status: "IN_PROGRESS" },
-      after: { status: "COMPLETED" },
+      after: {
+        status: "COMPLETED",
+        note: `設計ファイル登録（${latest.filename}）${request.productId != null ? " + 製品の最新設計を更新" : ""}`,
+      },
     });
     revalidate(number);
     return actionOk();

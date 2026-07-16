@@ -16,6 +16,7 @@ const ALLOWED_OWNER_TYPES = new Set([
   "material_purchase_orders",
   "material_receipts",
   "order_acceptances",
+  "design_requests",
 ]);
 
 function badRequest(error: string): NextResponse {
