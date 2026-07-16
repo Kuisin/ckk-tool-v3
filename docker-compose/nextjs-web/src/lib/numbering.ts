@@ -18,6 +18,7 @@ const SEQUENCES = {
   SHIPPING: { prefix: "SHP", digits: 5 }, // 出荷書
   DELIVERY: { prefix: "DRN", digits: 5 }, // 納品書
   PURCHASE: { prefix: "PO", digits: 5 }, // 素材発注書（po_number に文字列保存）
+  PURCHASE_REQUEST: { prefix: "PRQ", digits: 5 }, // 購買依頼（request_number に文字列保存）
   INVOICE: { prefix: "INV", digits: 5 }, // 請求書
   DESIGN: { prefix: "DSG", digits: 5 }, // 設計依頼書（request_number に文字列保存）
 } as const;

@@ -28,6 +28,7 @@ model Factory {
   shippingOrders ShippingOrder[]
   poItems        MaterialPurchaseOrderItem[] @relation("PoItemFactory")
   receipts       MaterialReceipt[]           @relation("ReceiptFactory")
+  prqItems       PurchaseRequestItem[]       @relation("PrqItemFactory")
   productInventory  ProductInventory[]
   materialInventory MaterialInventory[]
 

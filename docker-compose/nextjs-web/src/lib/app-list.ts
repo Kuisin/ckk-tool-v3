@@ -108,6 +108,16 @@ export const appList: AppEntry[] = [
     requiredPermission: "outsource_order",
   },
   {
+    // 業務フロー上、素材発注書の前段（依頼 → 承認 → 発注書へ変換）
+    key: "purchase-requests",
+    label: "購買依頼",
+    operationCode: "PU04",
+    href: "/purchase/purchase-requests",
+    icon: "IconClipboardList",
+    category: "購買",
+    requiredPermission: "purchase_order",
+  },
+  {
     key: "purchase-orders",
     label: "素材発注書",
     operationCode: "PU03",

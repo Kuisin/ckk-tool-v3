@@ -183,6 +183,7 @@ model Material {
   estimates          Estimate[]
   purchaseOrderItems MaterialPurchaseOrderItem[]
   receipts           MaterialReceipt[]
+  purchaseRequestItems PurchaseRequestItem[]
   workOrders         WorkOrder[]
   inventory          MaterialInventory[]
 

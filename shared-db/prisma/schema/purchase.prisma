@@ -53,6 +53,9 @@ model MaterialPurchaseOrder {
 
   items MaterialPurchaseOrderItem[]
 
+  // この発注書を生成した購買依頼（PU04 変換元、1:1）
+  sourceRequest PurchaseRequest? @relation("PrqPurchaseOrder")
+
   @@index([status])
   @@index([supplierBpId])
   @@map("material_purchase_orders")
@@ -106,5 +109,79 @@ model MaterialReceipt {
 
   @@index([materialId, receivedAt])
   @@map("material_receipts")
+  @@schema("app")
+}
+
+// ─── 購買依頼（PU04 — 発注書の前段） ─────────────────────────────────────────
+
+enum PurchaseRequestStatus {
+  DRAFT // 作成中（編集可）
+  REQUESTED // 承認依頼中
+  APPROVED // 承認済（発注書へ変換可）
+  REJECTED // 差し戻し（編集して再依頼可）
+  ORDERED // 発注書へ変換済
+  CANCELLED
+
+  @@map("PURCHASE_REQUEST_STATUS")
+  @@schema("app")
+}
+
+// 購買依頼: PRQ-YYYYMM-NNNNN。誰でも起票 → §6 承認（targetType
+// "purchase_requests"）→ 承認後「発注書へ変換」で material_purchase_orders の
+// DRAFT を生成し purchase_order_id で紐付ける（単価・仕入先は発注側で確定）。
+model PurchaseRequest {
+  id            String                @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  requestNumber String                @unique @map("request_number") // PRQ-YYYYMM-NNNNN
+  status        PurchaseRequestStatus @default(DRAFT)
+  purpose       String? // 依頼理由・用途
+  requestedAt   DateTime?             @map("requested_at") @db.Timestamptz(6)
+  requestedBy   String?               @map("requested_by") @db.Uuid
+  approvedAt    DateTime?             @map("approved_at") @db.Timestamptz(6)
+  approvedBy    String?               @map("approved_by") @db.Uuid
+  orderedAt     DateTime?             @map("ordered_at") @db.Timestamptz(6) // 変換日時
+  orderedBy     String?               @map("ordered_by") @db.Uuid
+  cancelledAt   DateTime?             @map("cancelled_at") @db.Timestamptz(6)
+  cancelledBy   String?               @map("cancelled_by") @db.Uuid
+  cancelReason  String?               @map("cancel_reason")
+  // 状態遷移履歴 [{ action, user, at, notes }]（MaterialPurchaseOrder と同型）
+  history       Json?
+  // 変換で生成した発注書（1:1）
+  purchaseOrderId String?             @unique @map("purchase_order_id") @db.Uuid
+  notes         String?
+  createdBy     String?               @map("created_by") @db.Uuid
+  createdAt     DateTime              @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime              @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  purchaseOrder   MaterialPurchaseOrder? @relation("PrqPurchaseOrder", fields: [purchaseOrderId], references: [id])
+  requestedByUser User?                  @relation("PrqRequestedBy", fields: [requestedBy], references: [id])
+  approvedByUser  User?                  @relation("PrqApprovedBy", fields: [approvedBy], references: [id])
+  orderedByUser   User?                  @relation("PrqOrderedBy", fields: [orderedBy], references: [id])
+  cancelledByUser User?                  @relation("PrqCancelledBy", fields: [cancelledBy], references: [id])
+  createdByUser   User?                  @relation("PrqCreatedBy", fields: [createdBy], references: [id])
+
+  items PurchaseRequestItem[]
+
+  @@index([status])
+  @@map("purchase_requests")
+  @@schema("app")
+}
+
+model PurchaseRequestItem {
+  id         String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  requestId  String    @map("request_id") @db.Uuid
+  materialId Int       @map("material_id")
+  quantity   Decimal   @db.Decimal(12, 3)
+  unit       String
+  desiredAt  DateTime? @map("desired_at") @db.Date // 希望納期
+  factoryId  Int?      @map("factory_id") // 入荷先工場
+  notes      String?
+  sortOrder  Int       @default(0) @map("sort_order")
+
+  request  PurchaseRequest @relation(fields: [requestId], references: [id])
+  material Material        @relation(fields: [materialId], references: [id])
+  factory  Factory?        @relation("PrqItemFactory", fields: [factoryId], references: [id])
+
+  @@index([requestId])
+  @@map("purchase_request_items")
   @@schema("app")
 }

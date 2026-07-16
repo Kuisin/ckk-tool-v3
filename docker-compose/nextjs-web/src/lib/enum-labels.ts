@@ -162,6 +162,20 @@ export const PURCHASE_STATUS_OPTIONS = Object.entries(
   PURCHASE_STATUS_LABEL,
 ).map(([value, label]) => ({ value, label }));
 
+/** app.PURCHASE_REQUEST_STATUS（購買依頼） */
+export const PURCHASE_REQUEST_STATUS_LABEL: Record<string, string> = {
+  DRAFT: "下書き",
+  REQUESTED: "承認依頼中",
+  APPROVED: "承認済",
+  REJECTED: "差し戻し",
+  ORDERED: "発注済",
+  CANCELLED: "キャンセル",
+};
+
+export const PURCHASE_REQUEST_STATUS_OPTIONS = Object.entries(
+  PURCHASE_REQUEST_STATUS_LABEL,
+).map(([value, label]) => ({ value, label }));
+
 /** app.DESIGN_TRIGGER（設計依頼のトリガ） */
 export const DESIGN_TRIGGER_LABEL: Record<string, string> = {
   QUOTE: "見積時",
