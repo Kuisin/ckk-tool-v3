@@ -18,6 +18,9 @@ import { type LocalizedText, localized } from "@/lib/format";
 import type { Option } from "@/lib/mock";
 import type { TrialInput } from "@/lib/trial-pricing";
 
+// 一覧クエリの取得上限（監査 P2-8）。
+const LIST_FETCH_CAP = 1000;
+
 type EstimateRow = NonNullable<
   Awaited<ReturnType<typeof fetchEstimateRowByKey>>
 >;
@@ -61,6 +64,7 @@ export function mapEstimate(r: EstimateRow): TrialEstimateRecord {
 
 export async function fetchTrialEstimates(): Promise<TrialEstimateRecord[]> {
   const rows = await prisma.estimate.findMany({
+    take: LIST_FETCH_CAP,
     include: { customerBp: true, material: true },
     orderBy: { updatedAt: "desc" },
   });
