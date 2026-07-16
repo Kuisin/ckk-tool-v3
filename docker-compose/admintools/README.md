@@ -27,6 +27,15 @@ Deployed on `docker-mac-pro` at `~/stacks/admintools`.
 Only **active** accounts are pushed. Deactivating (un-checking 有効) removes the
 user/alias on the next sync.
 
+3. **バックアップ / 復元**（`/backup`）— shared-db（`ckk`）と SeaweedFS ストレージ、
+   さらに Coolify 上のアプリ版数を、バックアップ時点へ復元する管理ツール。UI は
+   db-backup スタックの `restore-agent`（Docker ソケットを持つ非公開サービス）を
+   トークン付きで呼ぶだけで、この web アプリ自身はソケット・バックアップ実体に
+   触れない。**復元の直前に at-point フルバックアップを自動取得**（緊急時のみ
+   スキップ可）、確認フレーズ必須、監査ログは `restore-log.jsonl` に残る。
+   有効化: `.env` に `RESTORE_AGENT_URL` / `RESTORE_AGENT_TOKEN`（restore-agent と
+   同じトークン）。詳細・エージェント側の設定は `docker-compose/db-backup/README.md`。
+
 ## Setup
 
 ```bash
