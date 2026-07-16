@@ -22,6 +22,10 @@ import {
 } from "@/lib/doc-number";
 import { type LocalizedText, localized } from "@/lib/format";
 
+// 一覧クエリの取得上限（監査 P2-8 — 全件フェッチのデータ増加対策）。
+// DataTable はクライアントページングのため、最新分のみで実用上十分。
+const LIST_FETCH_CAP = 1000;
+
 /** 製品ラベル: 名称 + 製品コード（レガシーはコード未採番 → 名称のみ）。 */
 function productLabel(p: {
   name: unknown;
@@ -38,6 +42,7 @@ export async function fetchOrderAcceptances(): Promise<
   OrderAcceptanceListRow[]
 > {
   const rows = await prisma.orderAcceptance.findMany({
+    take: LIST_FETCH_CAP,
     include: {
       sourceFile: { select: { filename: true } },
       customerBp: { select: { name: true } },

@@ -16,6 +16,10 @@ import type { HistoryEntry } from "@/lib/approvals";
 import { prisma } from "@/lib/db";
 import { type LocalizedText, localized } from "@/lib/format";
 
+// 一覧クエリの取得上限（監査 P2-8 — 全件フェッチのデータ増加対策）。
+// DataTable はクライアントページングのため、最新分のみで実用上十分。
+const LIST_FETCH_CAP = 1000;
+
 export {
   fetchFactoryOptions,
   fetchSupplierOptions,
@@ -38,6 +42,7 @@ const dateOnly = (d: Date | null | undefined) =>
 /** 一覧 (PU03) — 新しい発注番号から順に。 */
 export async function fetchPurchaseOrders(): Promise<PurchaseOrderRow[]> {
   const rows = await prisma.materialPurchaseOrder.findMany({
+    take: LIST_FETCH_CAP,
     include: {
       supplierBp: true,
       _count: { select: { items: true } },

@@ -20,6 +20,10 @@ import {
 } from "@/lib/doc-number";
 import { type LocalizedText, localized } from "@/lib/format";
 
+// 一覧クエリの取得上限（監査 P2-8 — 全件フェッチのデータ増加対策）。
+// DataTable はクライアントページングのため、最新分のみで実用上十分。
+const LIST_FETCH_CAP = 1000;
+
 const SHIPPING_ORDER_INCLUDE = {
   salesOrder: {
     include: {
@@ -114,6 +118,7 @@ function mapShippingOrder(r: ShippingOrderRow): ShippingOrder {
 /** 一覧 — 新しい採番から順に。 */
 export async function fetchShippingOrders(): Promise<ShippingOrder[]> {
   const rows = await prisma.shippingOrder.findMany({
+    take: LIST_FETCH_CAP,
     include: SHIPPING_ORDER_INCLUDE,
     orderBy: [{ yearMonth: "desc" }, { seq: "desc" }],
   });

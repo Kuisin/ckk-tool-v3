@@ -10,6 +10,10 @@ import type { MaterialReceiptView } from "@/components/purchase/material-receipt
 import { prisma } from "@/lib/db";
 import { type LocalizedText, localized } from "@/lib/format";
 
+// 一覧クエリの取得上限（監査 P2-8 — 全件フェッチのデータ増加対策）。
+// DataTable はクライアントページングのため、最新分のみで実用上十分。
+const LIST_FETCH_CAP = 1000;
+
 export {
   fetchFactoryOptions,
   fetchSupplierOptions,
@@ -58,6 +62,7 @@ function mapReceipt(r: ReceiptRow): MaterialReceiptView {
 /** 一覧 (PU01) — 入荷日の新しい順。 */
 export async function fetchMaterialReceipts(): Promise<MaterialReceiptView[]> {
   const rows = await prisma.materialReceipt.findMany({
+    take: LIST_FETCH_CAP,
     include: RECEIPT_INCLUDE,
     orderBy: [{ receivedAt: "desc" }, { createdAt: "desc" }],
   });

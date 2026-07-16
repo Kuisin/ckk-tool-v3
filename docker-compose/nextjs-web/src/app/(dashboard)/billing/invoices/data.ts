@@ -16,6 +16,10 @@ import { prisma } from "@/lib/db";
 import { type DocKey, formatDocNumber } from "@/lib/doc-number";
 import { type LocalizedText, localized } from "@/lib/format";
 
+// 一覧クエリの取得上限（監査 P2-8 — 全件フェッチのデータ増加対策）。
+// DataTable はクライアントページングのため、最新分のみで実用上十分。
+const LIST_FETCH_CAP = 1000;
+
 const INVOICE_INCLUDE = {
   customerBp: true,
   customerBranchBp: true,
@@ -89,6 +93,7 @@ function mapInvoice(r: InvoiceRow): Invoice {
 /** 一覧 — 新しい採番から順に。 */
 export async function fetchInvoices(): Promise<Invoice[]> {
   const rows = await prisma.invoice.findMany({
+    take: LIST_FETCH_CAP,
     include: INVOICE_INCLUDE,
     orderBy: [{ yearMonth: "desc" }, { seq: "desc" }],
   });
