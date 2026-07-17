@@ -326,6 +326,57 @@ def _fmt_mtime(epoch: float) -> str:
     return datetime.fromtimestamp(epoch, timezone.utc).astimezone().strftime("%Y-%m-%d %H:%M")
 
 
+def _dir_entries(globpat: str, kind: str) -> list[dict]:
+    """List backup *directories* (e.g. physical pg_basebackup outputs) newest-first."""
+    out = []
+    for p in sorted(BACKUP_DIR.glob(globpat), reverse=True):
+        if not p.is_dir():
+            continue
+        st = p.stat()
+        out.append({"id": str(p.relative_to(BACKUP_DIR)), "kind": kind, "size": None,
+                    "mtime": _fmt_mtime(st.st_mtime), "mtime_epoch": st.st_mtime})
+    return out
+
+
+def list_all_backups() -> dict:
+    """Every backup artifact under /backups, grouped for a collapsible overview.
+    `restorable` marks groups this tool can restore one-click (logical dumps,
+    storage tars, snapshots); physical basebackups are shown for visibility but
+    are restored via the manual runbook (see db-backup/README)."""
+    snaps = []
+    for d in sorted((BACKUP_DIR / "pre-restore").glob("*"), reverse=True):
+        if not d.is_dir():
+            continue
+        man = d / "manifest.json"
+        meta = json.loads(man.read_text()) if man.is_file() else {}
+        st = d.stat()
+        snaps.append({"id": f"pre-restore/{d.name}", "kind": "snapshot", "size": None,
+                      "mtime": meta.get("created_at", _fmt_mtime(st.st_mtime)),
+                      "mtime_epoch": _iso_epoch(meta.get("created_at")) or st.st_mtime,
+                      "reason": meta.get("reason", "")})
+    groups = [
+        {"key": "logical_daily", "label": "論理 DB — 日次", "restorable": True,
+         "items": _entries("logical/daily/*.dump", "db")},
+        {"key": "logical_monthly", "label": "論理 DB — 月次", "restorable": True,
+         "items": _entries("logical/monthly/*.dump", "db")},
+        {"key": "logical_manual", "label": "論理 DB — 手動", "restorable": True,
+         "items": _entries("logical/manual/*.dump", "db")},
+        {"key": "snapshots", "label": "事前スナップショット（DB＋ストレージ）", "restorable": True,
+         "items": snaps},
+        {"key": "storage_daily", "label": "ストレージ（SeaweedFS）— 日次", "restorable": True,
+         "items": _entries("seaweedfs/daily/*.tar.gz", "storage")},
+        {"key": "storage_monthly", "label": "ストレージ（SeaweedFS）— 月次", "restorable": True,
+         "items": _entries("seaweedfs/monthly/*.tar.gz", "storage")},
+        {"key": "physical_daily", "label": "物理 DB — 日次フル（参照のみ／手動復元）", "restorable": False,
+         "items": _dir_entries("daily/*", "physical")},
+        {"key": "physical_hourly", "label": "物理 DB — 毎時増分（参照のみ／手動復元）", "restorable": False,
+         "items": _dir_entries("hourly/*", "physical")},
+        {"key": "physical_monthly", "label": "物理 DB — 月次（参照のみ／手動復元）", "restorable": False,
+         "items": _dir_entries("monthly/*", "physical")},
+    ]
+    return {"groups": groups, "db_restore_enabled": bool(DB_URL)}
+
+
 def _iso_epoch(s: str | None) -> float | None:
     """Parse an ISO-8601 timestamp (Coolify 'at', snapshot created_at) to epoch."""
     if not s:
@@ -449,6 +500,11 @@ def backups():
 @app.get("/restore-points", dependencies=[Depends(require_token)])
 def restore_points():
     return build_restore_points()
+
+
+@app.get("/all-backups", dependencies=[Depends(require_token)])
+def all_backups():
+    return list_all_backups()
 
 
 @app.get("/app-versions", dependencies=[Depends(require_token)])

@@ -33,6 +33,15 @@
     @media (max-width: 760px) { .grid { grid-template-columns: 1fr; } }
     #log { background: #0b1020; color: #cbd5e1; font-family: ui-monospace, monospace; font-size: 12px; padding: 12px; border-radius: 6px; min-height: 60px; white-space: pre-wrap; }
     .danger-box { border: 2px solid #fecaca; background: #fff5f5; border-radius: 8px; padding: 16px; }
+    .bk-group { border: 1px solid #eee; border-radius: 6px; margin-bottom: 6px; }
+    .bk-group > summary { cursor: pointer; padding: 9px 12px; font-size: 13px; user-select: none; list-style-position: inside; }
+    .bk-group > summary:hover { background: #f8fafc; }
+    .bk-group[open] > summary { border-bottom: 1px solid #eee; }
+    .bk-list { max-height: 260px; overflow-y: auto; }
+    .bk-row { display: flex; align-items: baseline; gap: 12px; padding: 5px 12px; font-size: 12px; border-top: 1px solid #f3f4f6; }
+    .bk-row:first-child { border-top: 0; }
+    .bk-row .bk-id { flex: 1; color: #6b7280; word-break: break-all; }
+    .bk-row .bk-size { color: #374151; min-width: 56px; text-align: right; }
     @media (max-width: 640px) {
       main { margin: 14px auto; padding: 0 10px; }
       header { padding: 12px 16px; } header h1 { font-size: 16px; }
@@ -115,6 +124,12 @@
     </div>
 
     <div class="card">
+      <h2>③ すべてのバックアップ</h2>
+      <p class="muted"><span class="mono">/data/db-backups</span> 配下の全バックアップ。グループ見出しをクリックで開閉。<span style="color:#047857">復元可</span> = このツールでワンクリック復元できる種類。物理 DB は参照のみ（手動復元は README 参照）。</p>
+      <div id="all-backups"><span class="muted">…</span></div>
+    </div>
+
+    <div class="card">
       <h2>実行状況</h2>
       <div id="log">idle</div>
     </div>
@@ -133,7 +148,39 @@
       renderBackups(r.backups || {});
       renderAppVersions(r.app_versions || {});
       renderRestorePoints(r.restore_points || {});
+      renderAllBackups(r.all_backups || {});
       renderStatus(r.status || {});
+    }
+
+    function renderAllBackups(a) {
+      const groups = a.groups || [];
+      if (!groups.length) { $('all-backups').innerHTML = `<div class="muted">エージェント未応答、またはバックアップがありません。</div>`; return; }
+      // preserve the user's expand/collapse choices across the 15s auto-reload
+      const existing = document.querySelectorAll('#all-backups .bk-group');
+      const firstRender = existing.length === 0;
+      const prevOpen = new Set([...existing].filter(e => e.open).map(e => e.dataset.key));
+      let total = 0;
+      const html = groups.map(g => {
+        const items = g.items || [];
+        total += items.length;
+        const newest = items.length ? items[0].mtime : '—';
+        const badge = g.restorable
+          ? '<span class="pill" style="background:#ecfdf5;color:#047857">復元可</span>'
+          : '<span class="pill" style="background:#f3f4f6;color:#6b7280">参照のみ</span>';
+        // first render: open restorable groups with a manageable count; afterwards keep the user's choice
+        const dflt = g.restorable && items.length > 0 && items.length <= 12;
+        const open = (firstRender ? dflt : prevOpen.has(g.key)) ? ' open' : '';
+        const rows = items.length
+          ? items.map(it => `<div class="bk-row"><span class="mono">${esc(it.mtime)}</span>`
+              + `<span class="bk-id mono">${esc(it.id)}</span>`
+              + `<span class="bk-size">${it.size != null ? human(it.size) : ''}</span></div>`).join('')
+          : `<div class="muted" style="padding:6px 8px">なし</div>`;
+        return `<details class="bk-group" data-key="${esc(g.key)}"${open}>
+          <summary>${badge} <b>${esc(g.label)}</b> <span class="muted">（${items.length} 件${items.length ? ' ・ 最新 ' + esc(newest) : ''}）</span></summary>
+          <div class="bk-list">${rows}</div>
+        </details>`;
+      }).join('');
+      $('all-backups').innerHTML = html + `<div class="muted" style="margin-top:8px">合計 ${total} 件</div>`;
     }
 
     let RESTORE_POINTS = [];
