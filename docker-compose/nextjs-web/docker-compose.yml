@@ -42,6 +42,28 @@ services:
     networks:
       - default
 
+  # Stable ingress names for admintools (Coolify apps; per-deploy container names).
+  # cloudflared targets admin-dev:8000 / admin:8000 → host ports 8090 (dev) / 8091 (main).
+  admin-dev:
+    image: alpine/socat:1.8.0.0
+    container_name: admin-relay-dev
+    restart: unless-stopped
+    command: tcp-listen:8000,fork,reuseaddr tcp:host.docker.internal:8090
+    extra_hosts:
+      - host.docker.internal:host-gateway
+    networks:
+      - default
+
+  admin:
+    image: alpine/socat:1.8.0.0
+    container_name: admin-relay-main
+    restart: unless-stopped
+    command: tcp-listen:8000,fork,reuseaddr tcp:host.docker.internal:8091
+    extra_hosts:
+      - host.docker.internal:host-gateway
+    networks:
+      - default
+
   # HTML → PDF rendering (Chromium). Internal only; reached at http://gotenberg:3000.
   gotenberg:
     image: gotenberg/gotenberg:8.17

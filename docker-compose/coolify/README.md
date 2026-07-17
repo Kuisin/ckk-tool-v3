@@ -12,14 +12,19 @@ Project `ckk` — dev app in the `development` environment, main in `production`
 |-----|-----|--------|-----------|-------------|--------------|
 | `nextjs-web-dev` | development | `dev` | `:3004` | `ckk-dev.kai-lab.net` (legacy alias: `dev.kai-lab.net`) | cloudflared/nginx → `web:3000` relay → `:3004` |
 | `nextjs-web-main` | production | `main` | `:3005` | `ckk.kai-lab.net` | cloudflared/nginx → `web-main:3000` relay → `:3005` |
-| `admintools` | production | `dev` | `:8090` | — (internal, no FQDN) | LAN only / Cloudflare Access |
+| `admintools-dev` | production | `dev` | `:8090` | `admin-dev.ckk-tool.co.jp` (Cloudflare **Access**) | tunnel → `admin-dev:8000` relay → `:8090` |
+| `admintools-main` | production | `main` | `:8091` | `admin.ckk-tool.co.jp` (Cloudflare **Access**) | tunnel → `admin:8000` relay → `:8091` |
 
-`admintools` (mail-account mgmt + DB/storage **restore** tool) is Coolify-built
-(`dockerfile`, base dir `/docker-compose/admintools`) but **has no public
-hostname** — it has no built-in auth, so it stays LAN-only. Its env (DB / LDAP /
-Sakura / restore-agent) is set in Coolify, and it reaches `shared-db`,
-`vpn-ldap`, `restore-agent` by name on the `coolify` network. Deploy/rollback:
-`./deploy.sh admintools [<sha>]`.
+`admintools` (mail-account mgmt + DB/storage **restore** tool) mirrors nextjs-web:
+a **dev** app (branch `dev`) and a **prod** app (branch `main`), both Coolify-built
+(`dockerfile`, base dir `/docker-compose/admintools`), auto-deploying from GitHub.
+Env (DB / LDAP / Sakura / restore-agent) is set in Coolify; both reach `shared-db`,
+`vpn-ldap`, `restore-agent` by name on the `coolify` network and share the one
+`admintools` DB schema. **It has no built-in auth**, so both public hostnames are
+gated by **Cloudflare Access** (allow-list) — never remove that. Cloudflared reaches
+each via the `admin-dev` / `admin` socat relays in the `nextjs-web` stack (host
+ports 8090/8091, stable across Coolify's per-deploy container names).
+Deploy/rollback: `./deploy.sh admin-dev [<sha>]` / `./deploy.sh admin-main [<sha>]`.
 
 - Coolify UI/API: `https://deploy.ckk-tool.co.jp` (LAN via nginx-proxy; public via
   cloudflared once the tunnel hostnames are added — put a Cloudflare Access policy

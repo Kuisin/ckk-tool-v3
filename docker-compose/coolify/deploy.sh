@@ -4,20 +4,22 @@
 #   ./deploy.sh dev              deploy latest dev branch (nextjs-web)
 #   ./deploy.sh main             deploy latest main branch (production nextjs-web)
 #   ./deploy.sh main <sha>       redeploy a specific commit (rollback/pin)
-#   ./deploy.sh admintools       deploy admintools (mail mgmt + backup/restore, LAN :8090)
-#   ./deploy.sh admintools <sha> pin/rollback admintools to a commit
+#   ./deploy.sh admin-dev        deploy admintools dev  (admin-dev.ckk-tool.co.jp:8090)
+#   ./deploy.sh admin-main       deploy admintools prod (admin.ckk-tool.co.jp:8091)
+#   ./deploy.sh admin-main <sha> pin/rollback admintools prod to a commit
 #
 # Uses the server-side API token; nothing secret leaves the server.
 
 set -euo pipefail
 
-TARGET=${1:?usage: deploy.sh dev|main|admintools [git-sha]}
+TARGET=${1:?usage: deploy.sh dev|main|admin-dev|admin-main [git-sha]}
 SHA=${2:-}
 case "$TARGET" in
-  dev)        APP_NAME=nextjs-web-dev ;;
-  main)       APP_NAME=nextjs-web-main ;;
-  admintools) APP_NAME=admintools ;;
-  *) echo "unknown target: $TARGET (dev|main|admintools)"; exit 1 ;;
+  dev)                    APP_NAME=nextjs-web-dev ;;
+  main)                   APP_NAME=nextjs-web-main ;;
+  admin-dev|admintools)   APP_NAME=admintools-dev ;;
+  admin-main|admintools-main) APP_NAME=admintools-main ;;
+  *) echo "unknown target: $TARGET (dev|main|admin-dev|admin-main)"; exit 1 ;;
 esac
 
 ssh 192.168.50.15 bash -s -- "$APP_NAME" "$SHA" <<'EOS'

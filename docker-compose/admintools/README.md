@@ -36,16 +36,24 @@ user/alias on the next sync.
    有効化: `.env` に `RESTORE_AGENT_URL` / `RESTORE_AGENT_TOKEN`（restore-agent と
    同じトークン）。詳細・エージェント側の設定は `docker-compose/db-backup/README.md`。
 
-## Deploy (Coolify-managed, internal-only)
+## Deploy (Coolify-managed, dev + prod, behind Cloudflare Access)
 
-admintools is a **Coolify application** (git-push deploy + rollback), like
-`nextjs-web`. It builds from this repo (`build_pack: dockerfile`,
-`base_directory: /docker-compose/admintools`, branch `dev`) and publishes host
-**`:8090`** on the server. It has **no public FQDN** (`fqdn` cleared) — reachable
-only on the LAN / via Cloudflare Access, matching its lack of built-in auth.
+admintools mirrors `nextjs-web`: **two Coolify apps** (git-push auto-deploy +
+rollback), both `build_pack: dockerfile`, `base_directory: /docker-compose/admintools`:
 
-- **Deploy / rollback:** `docker-compose/coolify/deploy.sh admintools [<git-sha>]`
-  (push auto-deploys too, once the Coolify webhook is active).
+| App | Branch | Host | Public (Cloudflare **Access**) |
+|-----|--------|------|-------------------------------|
+| `admintools-dev`  | `dev`  | `:8090` | `admin-dev.ckk-tool.co.jp` |
+| `admintools-main` | `main` | `:8091` | `admin.ckk-tool.co.jp` |
+
+Both share the one `admintools` DB schema. Coolify `fqdn` is cleared (Coolify's
+proxy is unused); public access is via the Cloudflare Tunnel → the `admin-dev` /
+`admin` socat relays in the `nextjs-web` stack → the host ports. **No built-in
+auth** — both hostnames are gated by a **Cloudflare Access** allow-list; never
+remove it.
+
+- **Deploy / rollback:** `docker-compose/coolify/deploy.sh admin-dev [<git-sha>]`
+  (dev) / `... admin-main [<git-sha>]` (prod). Push to the branch auto-deploys.
 - **Env vars are managed in Coolify** (Application → Environment Variables), not
   in a `.env`/`env_file`. Required keys: `DATABASE_URL`
   (`postgresql+psycopg://admintools:<pw>@shared-db:5432/ckk`), `ADMINTOOLS_API_KEY`,
