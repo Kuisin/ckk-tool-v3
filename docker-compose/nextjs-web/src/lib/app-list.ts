@@ -14,7 +14,14 @@
  *   In the real implementation, import each icon by name; listed as string here for reference.
  */
 
-export type AppCategory = "販売" | "購買" | "生産" | "出荷" | "請求" | "マスタ";
+export type AppCategory =
+  | "販売"
+  | "購買"
+  | "生産"
+  | "出荷"
+  | "請求"
+  | "マスタ"
+  | "システム";
 
 export interface AppEntry {
   /** Unique key, also used as i18n dict key */
@@ -314,6 +321,18 @@ export const appList: AppEntry[] = [
     category: "マスタ",
     requiredPermission: "master",
   },
+
+  // ─── システム ──────────────────────────────────────────────────────────────
+  {
+    // システム設定ハブ（アプリ設定・システム管理）。
+    key: "system-settings",
+    label: "システム設定",
+    operationCode: "SY01",
+    href: "/settings",
+    icon: "IconAdjustments",
+    category: "システム",
+    requiredPermission: "system",
+  },
 ];
 
 /**
@@ -327,6 +346,7 @@ export const CATEGORY_COLORS: Record<AppCategory, string> = {
   出荷: "orange",
   請求: "pink",
   マスタ: "gray",
+  システム: "dark",
 };
 
 /**
@@ -344,6 +364,7 @@ export function getAppsByCategory(): Array<{
     "出荷",
     "請求",
     "マスタ",
+    "システム",
   ];
   return order.map((category) => ({
     category,

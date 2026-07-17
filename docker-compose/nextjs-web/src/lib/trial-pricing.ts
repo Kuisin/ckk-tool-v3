@@ -30,6 +30,7 @@ import {
   STEP_MACHINING,
   STEP_TYPE_OPTIONS,
 } from "./trial-pricing-data";
+import { applyCustomScript } from "./trial-pricing-script";
 
 export type ToolType = "ROUND_BAR" | "CYLINDER" | "OH";
 
@@ -122,6 +123,10 @@ const optRate = (opts: readonly { value: string; rate: number }[], v: string) =>
 export interface TrialPricingOptions {
   correctionFactor?: number;
   ldChargePer10min?: number;
+  /** 管理者が設定したカスタム計算 JS（trial_pricing.custom_script）。 */
+  customScript?: string;
+  /** カスタム計算を適用するか（trial_pricing.custom_script_enabled）。 */
+  runCustomScript?: boolean;
 }
 
 export function calcTrialPricing(
@@ -257,5 +262,13 @@ export function calcTrialPricing(
       };
     });
 
-  return { breakdown, shapeOutPrice, lots, warnings };
+  const base: TrialResult = { breakdown, shapeOutPrice, lots, warnings };
+
+  // ── カスタム計算（管理者設定の JS フック）─────────────────────────────────
+  // system 権限者が設定した後処理スクリプトを、確定した result に適用する。
+  // 失敗しても base を返す（applyCustomScript は throw しない）。
+  if (opts.runCustomScript && opts.customScript?.trim()) {
+    return applyCustomScript(opts.customScript, { input, result: base }).result;
+  }
+  return base;
 }

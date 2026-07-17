@@ -2,7 +2,9 @@ import { notFound } from "next/navigation";
 import { PriceListTypeForm } from "@/components/sales/price-lists/PriceListTypeForm";
 import { prisma } from "@/lib/db";
 import { parseDocKey } from "@/lib/doc-number";
+import { getTrialPricingSettings } from "@/lib/system-settings";
 import { calcTrialPricing, type TrialInput } from "@/lib/trial-pricing";
+import { toTrialPricingOptions } from "@/lib/trial-pricing-settings";
 import { fetchExistingEntryRefs } from "../../../trial-estimates/data";
 import { fetchPriceEntry } from "../../data";
 
@@ -36,9 +38,12 @@ export default async function PriceListEditPage({
       },
     });
     if (estimate) {
+      const settings = await getTrialPricingSettings();
       estimateBase =
-        calcTrialPricing(estimate.input as unknown as TrialInput).lots[0]
-          ?.estimateUnitPrice ?? null;
+        calcTrialPricing(
+          estimate.input as unknown as TrialInput,
+          toTrialPricingOptions(settings),
+        ).lots[0]?.estimateUnitPrice ?? null;
     }
   }
 

@@ -11,6 +11,8 @@ import {
 } from "@/lib/doc-number";
 import { type LocalizedText, localized } from "@/lib/format";
 import { fetchPriceHistory } from "@/lib/material-pricing";
+import { getTrialPricingSettings } from "@/lib/system-settings";
+import { toTrialPricingOptions } from "@/lib/trial-pricing-settings";
 import {
   fetchCustomerOptions,
   fetchExistingEntryRefs,
@@ -47,6 +49,7 @@ export default async function TrialEstimateDetailPage({
     existingEntries,
     linked,
     auditEntries,
+    settings,
   ] = await Promise.all([
     fetchTrialEstimate(key.yearMonth, key.seq),
     fetchCustomerOptions(),
@@ -61,6 +64,7 @@ export default async function TrialEstimateDetailPage({
       },
     }),
     fetchAuditEntries("estimates", formatEstimateNumber(key)),
+    getTrialPricingSettings(),
   ]);
   if (!record) notFound();
 
@@ -87,6 +91,7 @@ export default async function TrialEstimateDetailPage({
       existingEntries={existingEntries}
       linkedEntries={linkedEntries}
       priceHistory={priceHistory}
+      pricingOptions={toTrialPricingOptions(settings)}
       productOptions={productOptions}
       record={record}
     />

@@ -25,7 +25,11 @@ import { useUrlSelectState, useUrlStringState } from "@/hooks/useUrlState";
 import { useIsMobile } from "@/hooks/useViewport";
 import { formatDateTime } from "@/lib/format";
 import type { Option } from "@/lib/mock";
-import { calcTrialPricing, TOOL_TYPE_OPTIONS } from "@/lib/trial-pricing";
+import {
+  calcTrialPricing,
+  TOOL_TYPE_OPTIONS,
+  type TrialPricingOptions,
+} from "@/lib/trial-pricing";
 import { ConvertToPriceListModal } from "./ConvertToPriceListModal";
 import type { ExistingEntryRef, TrialEstimateRecord } from "./types";
 
@@ -35,19 +39,22 @@ const toolLabel = (v: string) =>
   TOOL_TYPE_OPTIONS.find((o) => o.value === v)?.label ?? v;
 
 /** Representative 見積単価 = first lot tier. */
-const headlinePrice = (r: TrialEstimateRecord) =>
-  calcTrialPricing(r.input).lots[0]?.estimateUnitPrice ?? 0;
+const headlinePrice = (r: TrialEstimateRecord, opts: TrialPricingOptions) =>
+  calcTrialPricing(r.input, opts).lots[0]?.estimateUnitPrice ?? 0;
 
 export function TrialEstimateTable({
   rows,
   customerOptions,
   productOptions,
   existingEntries,
+  pricingOptions = {},
 }: {
   rows: TrialEstimateRecord[];
   customerOptions: Option[];
   productOptions: Option[];
   existingEntries: ExistingEntryRef[];
+  /** 試算エンジンのオプション（係数・カスタム計算）— 画面間で単価を一致させる。 */
+  pricingOptions?: TrialPricingOptions;
 }) {
   const router = useRouter();
   const isMobile = useIsMobile();
@@ -125,10 +132,10 @@ export function TrialEstimateTable({
       header: "代表見積単価",
       align: "right",
       width: 140,
-      sortValue: (r) => headlinePrice(r),
+      sortValue: (r) => headlinePrice(r, pricingOptions),
       render: (r) => (
         <Text fw={600} size="sm" ta="right">
-          <MoneyText value={headlinePrice(r)} />
+          <MoneyText value={headlinePrice(r, pricingOptions)} />
         </Text>
       ),
     },
@@ -157,7 +164,7 @@ export function TrialEstimateTable({
       action={
         <Group gap="xs">
           <SecondaryButton
-            href="/settings"
+            href="/settings/apps/trial-estimate"
             leftSection={<IconSettings size={16} />}
           >
             設定
@@ -241,7 +248,7 @@ export function TrialEstimateTable({
             <Stack align="flex-end" className="shrink-0" gap={4}>
               <StatusBadge entity="Estimate" size="xs" status={r.status} />
               <Text fw={700} size="sm">
-                <MoneyText value={headlinePrice(r)} />
+                <MoneyText value={headlinePrice(r, pricingOptions)} />
               </Text>
               <Text c="dimmed" size="xs">
                 {formatDateTime(r.updatedAt)}
@@ -275,6 +282,7 @@ export function TrialEstimateTable({
         onClose={() => setRegisterTarget(null)}
         onRegistered={() => router.refresh()}
         opened={registerTarget !== null}
+        pricingOptions={pricingOptions}
         productOptions={productOptions}
       />
     </ListShell>

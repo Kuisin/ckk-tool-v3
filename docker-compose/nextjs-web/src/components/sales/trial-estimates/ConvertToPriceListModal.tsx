@@ -34,7 +34,10 @@ import {
 import { formatMoney } from "@/lib/format";
 import type { Option } from "@/lib/mock";
 import { ORDER_TYPE_LABEL, ORDER_TYPE_OPTIONS } from "@/lib/mock";
-import { calcTrialPricing } from "@/lib/trial-pricing";
+import {
+  calcTrialPricing,
+  type TrialPricingOptions,
+} from "@/lib/trial-pricing";
 import { requiresEndDate } from "../price-lists/mock";
 import type { ExistingEntryRef, TrialEstimateRecord } from "./types";
 
@@ -46,6 +49,7 @@ export function ConvertToPriceListModal({
   productOptions,
   existingEntries,
   onRegistered,
+  pricingOptions = {},
 }: ModalBaseProps & {
   estimate: TrialEstimateRecord | null;
   customerOptions: Option[];
@@ -54,6 +58,8 @@ export function ConvertToPriceListModal({
   existingEntries: ExistingEntryRef[];
   /** Called after登録 — the caller refreshes the 試算 view. */
   onRegistered?: () => void;
+  /** 試算エンジンのオプション（係数・カスタム計算）。 */
+  pricingOptions?: TrialPricingOptions;
 }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -69,7 +75,8 @@ export function ConvertToPriceListModal({
   // 試算の見積単価（基準）— 既定はこの値をそのまま使う。カスタム単価は
   // 明示的なチェック（確認ポップアップ付き）でのみ有効化できる。
   const estimatePrice = estimate
-    ? (calcTrialPricing(estimate.input).lots[0]?.estimateUnitPrice ?? 0)
+    ? (calcTrialPricing(estimate.input, pricingOptions).lots[0]
+        ?.estimateUnitPrice ?? 0)
     : 0;
   const [customPrice, setCustomPrice] = useState(false);
   const [baseUnitPrice, setBaseUnitPrice] = useState<number>(estimatePrice);
