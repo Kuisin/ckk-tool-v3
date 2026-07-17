@@ -21,7 +21,11 @@ import {
   getTrialPricingSettings,
   saveTrialPricingSettings,
 } from "@/lib/system-settings";
+import { checkScriptSyntax } from "@/lib/trial-pricing-script";
 import type { TrialPricingSettings } from "@/lib/trial-pricing-settings";
+
+/** カスタム計算 JS の上限（DoS/誤爆の緩衝。通常の後処理なら十分）。 */
+const CUSTOM_SCRIPT_MAX = 20_000;
 
 const settingsInput = z.object({
   materialPriceBasis: z.enum(["MAX", "LATEST", "AVERAGE"]),
@@ -30,6 +34,11 @@ const settingsInput = z.object({
   spareShapeCount: z.number().int().min(1),
   correctionFactor: z.number().min(0),
   ldChargePer10min: z.number().min(0),
+  customScriptEnabled: z.boolean(),
+  customScript: z
+    .string()
+    .max(CUSTOM_SCRIPT_MAX, "カスタム計算が長すぎます")
+    .default(""),
 });
 
 export async function updateTrialPricingSettings(
@@ -40,6 +49,14 @@ export async function updateTrialPricingSettings(
   const parsed = settingsInput.safeParse(payload);
   if (!parsed.success) {
     return actionError(parsed.error.issues[0]?.message ?? "入力が不正です");
+  }
+  // 有効化するカスタム計算は構文チェックを通す（壊れた JS が全ユーザーの
+  // 試算を止めないよう、保存時に弾く）。
+  if (parsed.data.customScriptEnabled) {
+    const syntaxError = checkScriptSyntax(parsed.data.customScript);
+    if (syntaxError) {
+      return actionError(`カスタム計算の構文エラー: ${syntaxError}`);
+    }
   }
   try {
     const before = await getTrialPricingSettings();

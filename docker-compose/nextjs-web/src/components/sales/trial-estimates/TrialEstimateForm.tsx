@@ -71,6 +71,7 @@ import {
 import {
   MATERIAL_PRICE_BASIS_OPTIONS,
   type TrialPricingSettings,
+  toTrialPricingOptions,
 } from "@/lib/trial-pricing-settings";
 import { MaterialPriceChart } from "./MaterialPriceChart";
 import type { TrialEstimateRecord } from "./types";
@@ -251,10 +252,7 @@ export function TrialEstimateForm({
     lotQuantities: [num(baseQuantity), 0, 0],
     lotMarkups: [1], // 掛け率は使わない（数量スケールは価格表の倍率で管理）
   };
-  const result = calcTrialPricing(input, {
-    correctionFactor: settings.correctionFactor,
-    ldChargePer10min: settings.ldChargePer10min,
-  });
+  const result = calcTrialPricing(input, toTrialPricingOptions(settings));
 
   const save = () => {
     if (!name.trim()) {

@@ -30,6 +30,7 @@ export const OPERATION_CODE_PREFIX = {
   shipping: "SH",
   billing: "BL",
   master: "MS",
+  system: "SY",
 } as const;
 
 /** 画面モード（3文字目） */
@@ -186,6 +187,19 @@ export const OPERATION_CODES: OperationCodeEntry[] = [
     categoryCode: "MS",
     mode: "0",
     index: "C",
+  },
+
+  // ─── システム (SY) ───────────────────────────────────────────────────────
+  // システム設定ハブ（アプリ設定・システム管理）— 単一画面, list コードのみ
+  {
+    code: "SY01",
+    label: "システム設定",
+    href: "/settings",
+    category: "システム",
+    kind: "list",
+    categoryCode: "SY",
+    mode: "0",
+    index: "1",
   },
 ];
 

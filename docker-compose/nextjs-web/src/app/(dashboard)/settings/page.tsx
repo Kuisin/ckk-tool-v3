@@ -1,10 +1,8 @@
-import { TrialPricingSettingsForm } from "@/components/settings/TrialPricingSettingsForm";
-import { getTrialPricingSettings } from "@/lib/system-settings";
+import { SystemSettingsHub } from "@/components/settings/SystemSettingsHub";
 
 export const dynamic = "force-dynamic";
 
-/** システム設定 — 試算 価格ポリシー等（app.system_settings）. */
-export default async function SettingsPage() {
-  const settings = await getTrialPricingSettings();
-  return <TrialPricingSettingsForm initial={settings} />;
+/** システム設定ハブ（SY01）— アプリ設定 + システム管理への入口。 */
+export default function SettingsPage() {
+  return <SystemSettingsHub />;
 }

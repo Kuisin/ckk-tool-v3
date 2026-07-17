@@ -74,6 +74,8 @@ Powers the AI-first 受注請書 intake (scan image + auto-filled form → user 
 
 **Data fetching** — React Server Components for server state; Zustand for client-only state.
 
+**System settings & app config** — The **システム設定** app (op code `SY01`, `/settings`, category システム) is a hub with two sections: **アプリ設定** (per-app configurable logic, registry in `lib/settings-apps.ts`) and **システム管理** (links to `/admin/apps` app on/off, 通知設定, ファイル管理, 操作履歴). All configurable app logic persists to the ONE generic table `app.system_settings` (key→JSON KV) via `lib/app-config.ts` (`readConfigNamespace` / `writeConfigValues`) — no schema change per new setting. First configurable app is **試算** (`/settings/apps/trial-estimate`, typed adapter `lib/system-settings.ts`): material-price policy, default coefficients, and an **admin-authored custom-calculation JavaScript hook** (`lib/trial-pricing-script.ts`) that post-processes `calcTrialPricing` output. The hook is an isomorphic convenience sandbox (browser preview + server render; dangerous globals shadowed, output validated/clamped) — editable only with the `system` permission, and threaded through every `calcTrialPricing` call site via `toTrialPricingOptions(settings)` so prices match across form/list/detail/価格表変換. Env-scoped app on/off flags remain in `feature_flags` (`/admin/apps`).
+
 **Numbering** — `lib/numbering.ts` handles all document numbers with monthly-reset sequences (`numbering_sequences` table). Formats: `QOT-YYYYMM-NNNNN`, `ORD-YYYYMM-NNNNN`, `PO-YYYYMM-NNNNN` (素材発注書), `DRN-YYYYMM-NNNNN`, `INV-YYYYMM-NNNNN`. Work order / lot numbers are global serial integers.
 
 **File storage** — SeaweedFS via S3 API. All uploaded/generated files stored as `files` table rows (`storage_key`, `filename`, `mime_type`).

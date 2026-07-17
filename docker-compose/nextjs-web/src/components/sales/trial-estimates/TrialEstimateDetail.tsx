@@ -50,7 +50,11 @@ import { formatDateTime } from "@/lib/format";
 import type { MaterialPricePoint } from "@/lib/material-pricing-core";
 import type { Option } from "@/lib/mock";
 import { ORDER_TYPE_LABEL } from "@/lib/mock";
-import { calcTrialPricing, TOOL_TYPE_OPTIONS } from "@/lib/trial-pricing";
+import {
+  calcTrialPricing,
+  TOOL_TYPE_OPTIONS,
+  type TrialPricingOptions,
+} from "@/lib/trial-pricing";
 import { ConvertToPriceListModal } from "./ConvertToPriceListModal";
 import { MaterialPriceChart } from "./MaterialPriceChart";
 import type {
@@ -82,6 +86,7 @@ export function TrialEstimateDetail({
   existingEntries,
   auditEntries,
   priceHistory,
+  pricingOptions = {},
 }: {
   record: TrialEstimateRecord;
   linkedEntries: LinkedPriceEntry[];
@@ -92,11 +97,13 @@ export function TrialEstimateDetail({
   auditEntries: AuditEntry[];
   /** この素材の仕入実績（サーバー取得、価格推移タブ）。 */
   priceHistory: MaterialPricePoint[];
+  /** 試算エンジンのオプション（係数・カスタム計算）。 */
+  pricingOptions?: TrialPricingOptions;
 }) {
   const router = useRouter();
   // アクティブタブを ?tab= に保持（URL 共有でタブまで再現）
   const [tab, setTab] = useTabParam("result");
-  const result = calcTrialPricing(record.input);
+  const result = calcTrialPricing(record.input, pricingOptions);
   const history = priceHistory;
   const [convertOpen, setConvertOpen] = useState(false);
   const [, startTransition] = useTransition();
@@ -334,6 +341,7 @@ export function TrialEstimateDetail({
         onClose={() => setConvertOpen(false)}
         onRegistered={() => router.refresh()}
         opened={convertOpen}
+        pricingOptions={pricingOptions}
         productOptions={productOptions}
       />
     </DetailShell>

@@ -7,6 +7,7 @@
  */
 
 import {
+  IconAdjustments,
   IconAlertTriangle,
   IconAtom,
   IconBolt,
@@ -44,6 +45,7 @@ export type AppIcon = ComponentType<{ size?: number; stroke?: number }>;
 
 /** `AppEntry.icon` name → component (design.md §7 icon map). */
 export const ICON_MAP: Record<string, AppIcon> = {
+  IconAdjustments,
   IconCurrencyYen,
   IconCalculator,
   IconFileText,
@@ -83,6 +85,7 @@ export const CATEGORY_SECTION_ICONS: Record<AppCategory, AppIcon> = {
   出荷: IconTruck,
   請求: IconFileInvoice,
   マスタ: IconBuilding,
+  システム: IconAdjustments,
 };
 
 export function resolveAppIcon(name: string): AppIcon {
