@@ -70,6 +70,9 @@ services:
       - SEAWEED_CONTAINER=${SEAWEED_CONTAINER:-nextjs-seaweedfs}
       - SEAWEED_VOLUME=${SEAWEED_VOLUME:-nextjs-web_seaweed-data}
       - SHARED_DB_NETWORK=${SHARED_DB_NETWORK:-shared-db}
+      # 物理復元（全停止）: shared-db を停止しデータボリュームを入れ替える
+      - SHARED_DB_CONTAINER=${SHARED_DB_CONTAINER:-shared-db}
+      - SHARED_DB_VOLUME=${SHARED_DB_VOLUME:-shared-db_shared-db-data}
       # Coolify — 復元ポイントの git commit へアプリを戻す（空 = アプリ復元無効）
       - COOLIFY_API_URL=${COOLIFY_API_URL:-} # 例: http://coolify:8000/api/v1
       - COOLIFY_API_TOKEN=${COOLIFY_API_TOKEN:-}

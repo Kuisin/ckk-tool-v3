@@ -208,8 +208,15 @@ docker exec offsite-backup rclone sync /backups "$OFFSITE_REMOTE" --dry-run --st
 持たせない設計 — **Docker ソケットを持つのは restore-agent だけ**。
 
 できること（各対象は任意に組合せ可）:
-- **DB 復元** — 論理 dump（logical/ または pre-restore/）を `pg_restore --clean --if-exists`
-  で `ckk` に戻す（他接続を `pg_terminate_backend` してから実行 → 一時ダウンタイム）。
+- **DB 復元（論理 / オンライン）** — 論理 dump（logical/ または pre-restore/）を
+  `pg_restore --clean --if-exists` で `ckk` に戻す（他接続を `pg_terminate_backend`
+  してから実行）。**shared-db は止めない**（`ckk` DB のみ・一時的な接続断のみ）。
+- **DB 復元（物理 / 全停止 PITR）** — 物理 basebackup（daily/hourly/monthly）を
+  丸ごと巻き戻す。増分は anchor と `pg_combinebackup` で合成、単独フルはそのまま。
+  **shared-db を停止**し、データボリューム `shared-db_shared-db-data` を入れ替えて
+  起動（roles/grants/全 DB を厳密復元）。**この間 shared-db を使う全スタックが停止**。
+  UI では「物理・全停止」バッジ＋強い確認。物理は restore-agent が `docker` 経由で
+  実行するため RESTORE_DB_URL 不要（ただし事前スナップショットの pg_dump には必要）。
 - **ストレージ復元** — SeaweedFS tar を、`nextjs-seaweedfs` を停止 → ボリューム
   入替 → 起動、で戻す。
 - **アプリ版数復元** — Coolify API で `nextjs-web-main` を復元ポイントの git commit へ
