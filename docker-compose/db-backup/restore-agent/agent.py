@@ -252,6 +252,7 @@ def list_app_versions() -> dict:
             "message": (d.get("commit_message") or d.get("message") or "")[:120],
             "status": d.get("status"),
             "at": d.get("created_at") or d.get("finished_at") or "",
+            "at_epoch": _iso_epoch(d.get("finished_at") or d.get("created_at")),
         } for d in (rows or []) if (d.get("commit") or d.get("git_commit_sha"))]
         return {"enabled": True, "app": COOLIFY_APP_NAME, "uuid": uuid, "versions": versions[:30]}
     except Exception as e:  # noqa: BLE001
@@ -316,12 +317,23 @@ def _entries(globpat: str, kind: str) -> list[dict]:
             continue
         st = p.stat()
         out.append({"id": str(p.relative_to(BACKUP_DIR)), "kind": kind,
-                    "size": st.st_size, "mtime": _fmt_mtime(st.st_mtime)})
+                    "size": st.st_size, "mtime": _fmt_mtime(st.st_mtime),
+                    "mtime_epoch": st.st_mtime})
     return out
 
 
 def _fmt_mtime(epoch: float) -> str:
     return datetime.fromtimestamp(epoch, timezone.utc).astimezone().strftime("%Y-%m-%d %H:%M")
+
+
+def _iso_epoch(s: str | None) -> float | None:
+    """Parse an ISO-8601 timestamp (Coolify 'at', snapshot created_at) to epoch."""
+    if not s:
+        return None
+    try:
+        return datetime.fromisoformat(s.replace("Z", "+00:00")).timestamp()
+    except Exception:  # noqa: BLE001
+        return None
 
 
 def list_backups() -> dict:
@@ -341,6 +353,71 @@ def list_backups() -> dict:
         })
     return {"db": db, "storage": storage, "snapshots": snapshots,
             "db_restore_enabled": bool(DB_URL)}
+
+
+def _nearest_at_or_before(items: list[dict], epoch_key: str, t: float) -> dict | None:
+    """Pick the item whose timestamp is closest to (at or before) t — i.e. the
+    state that was current when the DB backup was taken. Falls back to the
+    earliest item if none precede t."""
+    cand = [x for x in items if x.get(epoch_key) is not None]
+    if not cand:
+        return None
+    before = [x for x in cand if x[epoch_key] <= t]
+    if before:
+        return max(before, key=lambda x: x[epoch_key])
+    return min(cand, key=lambda x: x[epoch_key])
+
+
+def build_restore_points() -> dict:
+    """Correlate DB backups with the storage tar and app version that were current
+    at the same time, so a restore stays internally consistent. The DB backup's
+    timestamp is the anchor; storage + app are auto-selected as the nearest
+    at-or-before that instant. Snapshots (db+storage captured together) are their
+    own consistent points."""
+    b = list_backups()
+    av = list_app_versions()
+    versions = av.get("versions", []) if av.get("enabled") else []
+    storage = b.get("storage", [])
+    SKEW = 26 * 3600  # warn if the matched artifact is >~a day from the DB backup
+
+    def _match(t: float | None) -> dict:
+        st = _nearest_at_or_before(storage, "mtime_epoch", t) if t is not None else None
+        ver = _nearest_at_or_before(versions, "at_epoch", t) if t is not None else None
+        warnings = []
+        if t is not None and st and abs(t - st["mtime_epoch"]) > SKEW:
+            warnings.append(f"ストレージ backup が DB と {round(abs(t - st['mtime_epoch']) / 3600)}h ずれています")
+        if t is not None and not st:
+            warnings.append("一致するストレージ backup がありません")
+        return {
+            "storage": st["id"] if st else None,
+            "storage_time": st["mtime"] if st else None,
+            "app_sha": ver["sha"] if ver else None,
+            "app_message": ver["message"] if ver else None,
+            "app_time": ver["at"] if ver else None,
+            "warnings": warnings,
+        }
+
+    points = []
+    for d in b.get("db", []):
+        t = d.get("mtime_epoch")
+        points.append({"kind": "db", "db": d["id"], "db_time": d.get("mtime"),
+                       "epoch": t, **_match(t)})
+    for s in b.get("snapshots", []):
+        if not s.get("db"):
+            continue
+        t = _iso_epoch(s.get("created_at"))
+        ver = _nearest_at_or_before(versions, "at_epoch", t) if t is not None else None
+        # a snapshot's db + storage were captured together → inherently consistent
+        points.append({
+            "kind": "snapshot", "db": s.get("db"), "db_time": s.get("created_at"),
+            "epoch": t, "storage": s.get("storage"), "storage_time": s.get("created_at"),
+            "app_sha": ver["sha"] if ver else None,
+            "app_message": ver["message"] if ver else None,
+            "app_time": ver["at"] if ver else None, "warnings": [],
+        })
+    points.sort(key=lambda p: p.get("epoch") or 0, reverse=True)
+    return {"points": points, "db_restore_enabled": bool(DB_URL),
+            "app_rollback_enabled": av.get("enabled", False)}
 
 
 # ── request models + routes ─────────────────────────────────────────────────
@@ -367,6 +444,11 @@ def healthz():
 @app.get("/backups", dependencies=[Depends(require_token)])
 def backups():
     return list_backups()
+
+
+@app.get("/restore-points", dependencies=[Depends(require_token)])
+def restore_points():
+    return build_restore_points()
 
 
 @app.get("/app-versions", dependencies=[Depends(require_token)])

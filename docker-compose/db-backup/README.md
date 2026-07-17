@@ -146,8 +146,12 @@ seaweedfs を起動。DB の `files.storage_key` と整合する時点の DB バ
 
 ## オフサイト（クラウド）同期 — offsite-backup サービス
 
-`/data/db-backups` 全体（PG 増分 + SeaweedFS tar）を **毎日 04:30 に rclone で
-クラウドへミラー**する。ホスト障害・盗難・災害からの保全（3-2-1 の「1」）。
+`/data/db-backups` 全体（PG 増分 + 論理 dump + SeaweedFS tar + pre-restore）を
+クラウドへ保全する（ホスト障害・盗難・災害対策 = 3-2-1 の「1」）。**作成即転送**:
+`inotify` で新規バックアップの書き込みを検知し、その都度 `rclone copy` で即リモート
+へ送る（全プロデューサが同じ `/backups` へ書くため 1 つの watcher で網羅）。さらに
+**04時台に 1 日 1 回 `rclone sync`（ミラー）** し、ローカルで prune された世代を
+リモートからも削除して保持を追従する。`OFFSITE_REMOTE` 未設定時は待機のみ。
 
 **有効化**（サーバーの `~/stacks/db-backup/.env` に追記 — コミット禁止）:
 
