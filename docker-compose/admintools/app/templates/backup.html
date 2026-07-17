@@ -77,23 +77,29 @@
 
     <div class="card danger-box">
       <h2 style="color:#b91c1c">② 復元</h2>
-      <p class="muted">復元する対象を選びます。DB とストレージは<b>その場で上書き</b>され、進行中の全アプリに影響します（ダウンタイム発生）。</p>
+      <p class="muted">復元ポイント（<b>DB バージョン</b>）を選ぶと、同時点のストレージとアプリ版数が<b>自動選択</b>され、3 者の整合性が保たれます。DB・ストレージは<b>その場で上書き</b>され、進行中の全アプリに影響します（ダウンタイム発生）。</p>
 
-      <div class="grid">
-        <div>
-          <h3>DB（<span class="mono">ckk</span>）を復元</h3>
-          <div class="list" id="db-list"><span class="muted">…</span></div>
-        </div>
-        <div>
-          <h3>ストレージ（SeaweedFS）を復元</h3>
-          <div class="list" id="storage-list"><span class="muted">…</span></div>
-        </div>
-      </div>
+      <h3>復元ポイント（DB バージョンを選択）</h3>
+      <div class="list" id="rp-list" style="max-height:300px"><span class="muted">…</span></div>
+      <div id="rp-summary" class="muted" style="margin-top:8px"></div>
 
-      <div style="margin-top:16px">
-        <h3>アプリ版数（Coolify）を復元ポイントへ戻す</h3>
-        <div class="list" id="app-list-versions" style="max-height:200px"><span class="muted">…</span></div>
-      </div>
+      <details style="margin-top:14px">
+        <summary style="cursor:pointer;font-size:13px;color:#374151">詳細設定（DB・ストレージ・アプリを個別に上書き）</summary>
+        <div class="grid" style="margin-top:12px">
+          <div>
+            <h3>DB（<span class="mono">ckk</span>）</h3>
+            <div class="list" id="db-list"><span class="muted">…</span></div>
+          </div>
+          <div>
+            <h3>ストレージ（SeaweedFS）</h3>
+            <div class="list" id="storage-list"><span class="muted">…</span></div>
+          </div>
+        </div>
+        <div style="margin-top:12px">
+          <h3>アプリ版数（Coolify）</h3>
+          <div class="list" id="app-list-versions" style="max-height:200px"><span class="muted">…</span></div>
+        </div>
+      </details>
 
       <div class="warn" style="margin-top:16px" id="bypass-wrap">
         <label><input type="checkbox" id="skip-snap"> <b>緊急時</b>: 復元直前の at-point フルバックアップをスキップする</label>
@@ -126,8 +132,11 @@
       renderHealth(r.health || {});
       renderBackups(r.backups || {});
       renderAppVersions(r.app_versions || {});
+      renderRestorePoints(r.restore_points || {});
       renderStatus(r.status || {});
     }
+
+    let RESTORE_POINTS = [];
 
     function renderHealth(h) {
       if (h.error) { $('health').innerHTML = `<span class="pill off">エージェント応答なし</span> <span class="mono">${esc(h.error)}</span>`; return; }
@@ -167,6 +176,56 @@
       let h = `<label class="opt"><input type="radio" name="app" value="" checked onchange="updateSel()"><span>変更しない</span></label>`;
       (a.versions || []).forEach(v => h += optRow('app', v.sha, v.sha.slice(0,12) + '  ' + (v.message||''), `${v.at||''} ・ ${v.status||''}`));
       $('app-list-versions').innerHTML = h || `<div class="muted">デプロイ履歴なし</div>`;
+    }
+
+    function renderRestorePoints(rp) {
+      RESTORE_POINTS = rp.points || [];
+      if (rp.db_restore_enabled === false) { $('rp-list').innerHTML = `<div class="muted">DB 復元は無効です（RESTORE_DB_URL 未設定）。</div>`; return; }
+      if (!RESTORE_POINTS.length) { $('rp-list').innerHTML = `<div class="muted">復元ポイントがありません（日次論理バックアップ待ち／手動スナップショットを取得してください）。</div>`; return; }
+      let h = `<label class="opt"><input type="radio" name="rp" value="-1" checked onchange="applyRestorePoint(-1)"><span>選択しない</span></label>`;
+      RESTORE_POINTS.forEach((p, i) => {
+        const badge = p.kind === 'snapshot'
+          ? '<span class="pill" style="background:#ede9fe;color:#6d28d9">スナップショット</span>'
+          : '<span class="pill" style="background:#e0f2fe;color:#075985">日次</span>';
+        const sub = [];
+        sub.push('ストレージ: ' + (p.storage_time ? esc(p.storage_time) : '—'));
+        sub.push('アプリ: ' + (p.app_sha ? esc(p.app_sha.slice(0,12)) + (p.app_time ? ' ('+esc(p.app_time)+')' : '') : '変更なし'));
+        const warn = (p.warnings || []).length ? `<div style="color:#b45309;font-size:11px">⚠ ${p.warnings.map(esc).join(' / ')}</div>` : '';
+        h += `<label class="opt"><input type="radio" name="rp" value="${i}" onchange="applyRestorePoint(${i})">
+          <span><div>${badge} <b class="mono">${esc(p.db_time || '')}</b></div>
+          <div class="meta">→ ${sub.map(esc).join(' ／ ')}</div>${warn}</span></label>`;
+      });
+      $('rp-list').innerHTML = h;
+    }
+
+    function setRadio(name, value) {
+      const els = document.querySelectorAll(`input[name="${name}"]`);
+      let found = false;
+      els.forEach(e => { if (e.value === (value || '')) { e.checked = true; found = true; } });
+      if (!found) els.forEach(e => { if (e.value === '') e.checked = true; }); // fall back to "復元しない"
+      return found;
+    }
+
+    function applyRestorePoint(i) {
+      if (i < 0 || !RESTORE_POINTS[i]) {
+        $('rp-summary').innerHTML = '';
+        setRadio('db', ''); setRadio('storage', ''); setRadio('app', ''); updateSel();
+        return;
+      }
+      const p = RESTORE_POINTS[i];
+      const okDb = setRadio('db', p.db);
+      const okSt = setRadio('storage', p.storage);
+      const okApp = setRadio('app', p.app_sha);
+      const notes = [];
+      if (!okDb) notes.push('DB backup が一覧に見つかりません');
+      if (p.storage && !okSt) notes.push('一致するストレージ backup が見つからず「復元しない」になりました');
+      if (p.app_sha && !okApp) notes.push('一致するアプリ版数が見つかりません');
+      (p.warnings || []).forEach(w => notes.push(w));
+      $('rp-summary').innerHTML = `<b>この時点へ復元:</b> DB <span class="mono">${esc(p.db_time||'')}</span>`
+        + ` ／ ストレージ <span class="mono">${esc(p.storage_time||'—')}</span>`
+        + ` ／ アプリ <span class="mono">${esc(p.app_sha ? p.app_sha.slice(0,12) : '変更なし')}</span>`
+        + (notes.length ? `<div style="color:#b45309;margin-top:3px">⚠ ${notes.map(esc).join(' / ')}</div>` : '');
+      updateSel();
     }
 
     function sel(name) { const el = document.querySelector(`input[name="${name}"]:checked`); return el ? el.value : ''; }

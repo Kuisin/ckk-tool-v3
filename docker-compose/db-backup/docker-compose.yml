@@ -97,10 +97,12 @@ services:
       - seaweed-data:/seaweed-data:ro
       - ${BACKUP_DIR:-/data/db-backups}:/backups
 
-  # オフサイト同期（rclone）— /data/db-backups をクラウドへ日次ミラー。
-  # OFFSITE_REMOTE 未設定時は待機のみ（安全に無効）。設定は README 参照。
+  # オフサイト同期（rclone + inotify）— バックアップが /data/db-backups に作られた
+  # 瞬間にクラウドへ copy し、04時台に日次 mirror で保持を追従。OFFSITE_REMOTE
+  # 未設定時は待機のみ（安全に無効）。設定は README 参照。
   offsite-backup:
-    image: rclone/rclone:1.68
+    build: ./offsite # rclone/rclone:1.68 + inotify-tools
+    image: ckk-offsite-backup
     container_name: offsite-backup
     restart: unless-stopped
     entrypoint: ["/bin/sh", "/offsite-sync.sh"]

@@ -55,6 +55,10 @@ def list_app_versions() -> dict:
     return _call("GET", "/app-versions", timeout=40)
 
 
+def restore_points() -> dict:
+    return _call("GET", "/restore-points", timeout=45)
+
+
 def status() -> dict:
     return _call("GET", "/status", timeout=10)
 
