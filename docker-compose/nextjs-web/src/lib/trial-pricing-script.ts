@@ -18,24 +18,49 @@
  *
  * Contract (mirrored in the settings editor help):
  *   ctx = {
- *     input,   // TrialInput   (readonly clone)
- *     result,  // TrialResult  (readonly clone, the engine output)
- *     lots,    // result.lots  (readonly convenience alias)
- *     round,   // (n, unit=10) => 切り上げ helper
+ *     input,     // TrialInput   (readonly clone)
+ *     result,    // TrialResult  (readonly clone, the engine output)
+ *     lots,      // result.lots  (readonly convenience alias)
+ *     settings,  // { correctionFactor, ldChargePer10min } (readonly)
+ *     round,     // (n, unit=10) => 切り上げ helper
  *   }
  *   return;                         // → no change
  *   return {
  *     unitPrices?: number[],        // per-lot 見積単価 override (aligned to lots)
  *     warnings?: string[],          // appended to result.warnings
  *   }
+ *
+ * `CURRENT_LOGIC_SCRIPT` reproduces the built-in 見積単価 formula so admins can
+ * start from the real logic and customise it (see the settings editor button).
  */
 
 import type { TrialInput, TrialResult } from "./trial-pricing";
 
+/** Coefficients exposed to the script (mirror of TrialPricingOptions). */
+export interface TrialScriptSettings {
+  correctionFactor: number;
+  ldChargePer10min: number;
+}
+
 export interface TrialScriptContext {
   input: TrialInput;
   result: TrialResult;
+  settings?: TrialScriptSettings;
 }
+
+/**
+ * Editable template that reproduces the current 見積単価 logic 1:1
+ * (見積単価 = 最低単価 × 掛け率 × 補正値、10円単位切り上げ). Inserting it and
+ * saving leaves prices unchanged; edit it to customise the real formula.
+ */
+export const CURRENT_LOGIC_SCRIPT = `// 現在の見積単価ロジック（この内容 = 既定動作）。編集して調整できます。
+// 見積単価 = 最低単価(minimumPrice) × 掛け率(discountRate) × 補正値 を10円単位で切り上げ。
+return {
+  unitPrices: ctx.lots.map((lot) =>
+    ctx.round(lot.minimumPrice * lot.discountRate * ctx.settings.correctionFactor, 10)
+  ),
+};
+`;
 
 export interface CustomScriptOutcome {
   result: TrialResult;
@@ -106,6 +131,9 @@ export function runCustomScript(
     input: clone(ctx.input),
     result: clone(ctx.result),
     lots: clone(ctx.result.lots),
+    settings: clone(
+      ctx.settings ?? { correctionFactor: 1, ldChargePer10min: 0 },
+    ),
     round,
   });
   // Shadowing the globals as params makes bare identifier lookups resolve to the

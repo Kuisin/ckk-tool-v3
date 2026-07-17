@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 import type { TrialInput, TrialResult } from "./trial-pricing";
-import { applyCustomScript, runCustomScript } from "./trial-pricing-script";
+import {
+  applyCustomScript,
+  CURRENT_LOGIC_SCRIPT,
+  runCustomScript,
+} from "./trial-pricing-script";
 
 const input = {
   toolType: "ROUND_BAR",
@@ -133,5 +137,23 @@ describe("applyCustomScript", () => {
     expect(
       runCustomScript("return 1 + 2;", { input, result: makeResult() }),
     ).toBe(3);
+  });
+
+  it("CURRENT_LOGIC_SCRIPT reproduces 最低単価 × 掛け率 × 補正値 (10円切り上げ)", () => {
+    const settings = { correctionFactor: 1.25, ldChargePer10min: 7500 };
+    const base = makeResult();
+    const { result, error } = applyCustomScript(CURRENT_LOGIC_SCRIPT, {
+      input,
+      result: base,
+      settings,
+    });
+    expect(error).toBeUndefined();
+    const expected = base.lots.map(
+      (l) =>
+        Math.ceil(
+          (l.minimumPrice * l.discountRate * settings.correctionFactor) / 10,
+        ) * 10,
+    );
+    expect(result.lots.map((l) => l.estimateUnitPrice)).toEqual(expected);
   });
 });

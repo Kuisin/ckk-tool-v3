@@ -37,7 +37,11 @@ import {
 import { PageHeader } from "@/components/ui/PageHeader";
 import { FormSection } from "@/components/ui/shells";
 import type { TrialInput, TrialResult } from "@/lib/trial-pricing";
-import { applyCustomScript, runCustomScript } from "@/lib/trial-pricing-script";
+import {
+  applyCustomScript,
+  CURRENT_LOGIC_SCRIPT,
+  runCustomScript,
+} from "@/lib/trial-pricing-script";
 import {
   DEFAULT_TRIAL_PRICING_SETTINGS,
   MATERIAL_PRICE_BASIS_OPTIONS,
@@ -81,7 +85,7 @@ const SAMPLE_RESULT: TrialResult = {
       minimumPrice: 508.8,
       autoRate: 1.3,
       discountRate: 1.3,
-      estimateUnitPrice: 670,
+      estimateUnitPrice: 830,
     },
     {
       lotIndex: 2,
@@ -90,7 +94,7 @@ const SAMPLE_RESULT: TrialResult = {
       minimumPrice: 494.4,
       autoRate: 1.2,
       discountRate: 1.2,
-      estimateUnitPrice: 600,
+      estimateUnitPrice: 750,
     },
   ],
   warnings: [],
@@ -145,7 +149,14 @@ export function TrialPricingSettingsForm({
   };
 
   const runTest = () => {
-    const ctx = { input: SAMPLE_INPUT, result: SAMPLE_RESULT };
+    const ctx = {
+      input: SAMPLE_INPUT,
+      result: SAMPLE_RESULT,
+      settings: {
+        correctionFactor: settings.correctionFactor,
+        ldChargePer10min: settings.ldChargePer10min,
+      },
+    };
     let raw = "—";
     try {
       raw = JSON.stringify(runCustomScript(settings.customScript, ctx));
@@ -310,8 +321,10 @@ export function TrialPricingSettingsForm({
                 コードのみを設定してください。返り値の契約:{" "}
                 <Code>{"{ unitPrices?: number[], warnings?: string[] }"}</Code>
                 （<Code>ctx.input</Code> / <Code>ctx.result</Code> /{" "}
-                <Code>ctx.lots</Code> / <Code>ctx.round(n, unit)</Code>{" "}
-                が利用可）。
+                <Code>ctx.lots</Code> / <Code>ctx.settings</Code> /{" "}
+                <Code>ctx.round(n, unit)</Code>{" "}
+                が利用可）。「現在のロジックを挿入」
+                で既定計算式を出発点にできます。
               </Text>
             </Alert>
 
@@ -344,10 +357,20 @@ export function TrialPricingSettingsForm({
               </SecondaryButton>
               <GhostButton
                 onClick={() =>
+                  setSettings((s) => ({
+                    ...s,
+                    customScript: CURRENT_LOGIC_SCRIPT,
+                  }))
+                }
+              >
+                現在のロジックを挿入
+              </GhostButton>
+              <GhostButton
+                onClick={() =>
                   setSettings((s) => ({ ...s, customScript: SCRIPT_TEMPLATE }))
                 }
               >
-                テンプレート挿入
+                例を挿入
               </GhostButton>
             </Group>
 

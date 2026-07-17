@@ -268,7 +268,11 @@ export function calcTrialPricing(
   // system 権限者が設定した後処理スクリプトを、確定した result に適用する。
   // 失敗しても base を返す（applyCustomScript は throw しない）。
   if (opts.runCustomScript && opts.customScript?.trim()) {
-    return applyCustomScript(opts.customScript, { input, result: base }).result;
+    return applyCustomScript(opts.customScript, {
+      input,
+      result: base,
+      settings: { correctionFactor: correction, ldChargePer10min: ldCharge },
+    }).result;
   }
   return base;
 }
