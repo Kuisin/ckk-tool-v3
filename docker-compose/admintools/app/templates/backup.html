@@ -86,27 +86,23 @@
 
     <div class="card danger-box">
       <h2 style="color:#b91c1c">② 復元</h2>
-      <p class="muted">復元ポイント（<b>DB バージョン</b>）を選ぶと、同時点のストレージとアプリ版数が<b>自動選択</b>され、3 者の整合性が保たれます。DB・ストレージは<b>その場で上書き</b>され、進行中の全アプリに影響します（ダウンタイム発生）。</p>
+      <p class="muted">復元する <b>DB バックアップ</b> を選ぶと、同時点のストレージ・アプリ版数を<b>自動選択</b>して整合を保ちます。<span style="color:#047857">論理・スナップショット＝オンライン復元</span> ／ <span style="color:#b91c1c">物理＝全システム停止（shared-db を停止して丸ごと巻き戻し）</span>。</p>
 
-      <h3>復元ポイント（DB バージョンを選択）</h3>
-      <div class="list" id="rp-list" style="max-height:300px"><span class="muted">…</span></div>
+      <h3>復元する DB バックアップ（復元可能なもののみ）</h3>
+      <div class="list" id="rp-list" style="max-height:340px"><span class="muted">…</span></div>
       <div id="rp-summary" class="muted" style="margin-top:8px"></div>
 
       <details style="margin-top:14px">
-        <summary style="cursor:pointer;font-size:13px;color:#374151">詳細設定（DB・ストレージ・アプリを個別に上書き）</summary>
+        <summary style="cursor:pointer;font-size:13px;color:#374151">詳細設定（ストレージ・アプリ版数を個別に上書き）</summary>
         <div class="grid" style="margin-top:12px">
-          <div>
-            <h3>DB（<span class="mono">ckk</span>）</h3>
-            <div class="list" id="db-list"><span class="muted">…</span></div>
-          </div>
           <div>
             <h3>ストレージ（SeaweedFS）</h3>
             <div class="list" id="storage-list"><span class="muted">…</span></div>
           </div>
-        </div>
-        <div style="margin-top:12px">
-          <h3>アプリ版数（Coolify）</h3>
-          <div class="list" id="app-list-versions" style="max-height:200px"><span class="muted">…</span></div>
+          <div>
+            <h3>アプリ版数（Coolify）</h3>
+            <div class="list" id="app-list-versions" style="max-height:200px"><span class="muted">…</span></div>
+          </div>
         </div>
       </details>
 
@@ -184,6 +180,7 @@
     }
 
     let RESTORE_POINTS = [];
+    let SELECTED_RP = -1;
 
     function renderHealth(h) {
       if (h.error) { $('health').innerHTML = `<span class="pill off">エージェント応答なし</span> <span class="mono">${esc(h.error)}</span>`; return; }
@@ -200,21 +197,13 @@
     }
 
     function renderBackups(b) {
+      // DB is chosen from the restore-point list (§②); here we only render the
+      // overridable storage list. Storage sources = tars + snapshot seaweed.tar.gz.
       const snaps = b.snapshots || [];
-      // DB sources: logical dumps + snapshot db.dump
-      let db = `<label class="opt"><input type="radio" name="db" value="" checked onchange="updateSel()"><span>復元しない</span></label>`;
-      (b.db || []).forEach(x => db += optRow('db', x.id, x.id, `${x.mtime} ・ ${human(x.size)}`));
-      snaps.filter(s => s.db).forEach(s => db += optRow('db', s.db, s.db, `スナップショット ${s.created_at}`));
-      $('db-list').innerHTML = db;
-
       let st = `<label class="opt"><input type="radio" name="storage" value="" checked onchange="updateSel()"><span>復元しない</span></label>`;
       (b.storage || []).forEach(x => st += optRow('storage', x.id, x.id, `${x.mtime} ・ ${human(x.size)}`));
       snaps.filter(s => s.storage).forEach(s => st += optRow('storage', s.storage, s.storage, `スナップショット ${s.created_at}`));
       $('storage-list').innerHTML = st;
-
-      if (b.db_restore_enabled === false) {
-        $('db-list').innerHTML = `<div class="muted">DB 復元は無効です（RESTORE_DB_URL 未設定）。</div>`;
-      }
     }
 
     function renderAppVersions(a) {
@@ -229,17 +218,19 @@
       RESTORE_POINTS = rp.points || [];
       if (rp.db_restore_enabled === false) { $('rp-list').innerHTML = `<div class="muted">DB 復元は無効です（RESTORE_DB_URL 未設定）。</div>`; return; }
       if (!RESTORE_POINTS.length) { $('rp-list').innerHTML = `<div class="muted">復元ポイントがありません（日次論理バックアップ待ち／手動スナップショットを取得してください）。</div>`; return; }
+      const kindBadge = (p) => p.db_kind === 'physical'
+        ? '<span class="pill" style="background:#fee2e2;color:#b91c1c">物理・全停止</span>'
+        : (p.db_kind === 'snapshot'
+          ? '<span class="pill" style="background:#ede9fe;color:#6d28d9">スナップショット</span>'
+          : '<span class="pill" style="background:#e0f2fe;color:#075985">論理・オンライン</span>');
       let h = `<label class="opt"><input type="radio" name="rp" value="-1" checked onchange="applyRestorePoint(-1)"><span>選択しない</span></label>`;
       RESTORE_POINTS.forEach((p, i) => {
-        const badge = p.kind === 'snapshot'
-          ? '<span class="pill" style="background:#ede9fe;color:#6d28d9">スナップショット</span>'
-          : '<span class="pill" style="background:#e0f2fe;color:#075985">日次</span>';
         const sub = [];
         sub.push('ストレージ: ' + (p.storage_time ? esc(p.storage_time) : '—'));
         sub.push('アプリ: ' + (p.app_sha ? esc(p.app_sha.slice(0,12)) + (p.app_time ? ' ('+esc(p.app_time)+')' : '') : '変更なし'));
         const warn = (p.warnings || []).length ? `<div style="color:#b45309;font-size:11px">⚠ ${p.warnings.map(esc).join(' / ')}</div>` : '';
         h += `<label class="opt"><input type="radio" name="rp" value="${i}" onchange="applyRestorePoint(${i})">
-          <span><div>${badge} <b class="mono">${esc(p.db_time || '')}</b></div>
+          <span><div>${kindBadge(p)} <b class="mono">${esc(p.db_time || '')}</b> <span class="meta mono">${esc(p.db)}</span></div>
           <div class="meta">→ ${sub.map(esc).join(' ／ ')}</div>${warn}</span></label>`;
       });
       $('rp-list').innerHTML = h;
@@ -253,22 +244,27 @@
       return found;
     }
 
+    // the selected DB backup comes straight from the restore-point list (physical
+    // values aren't in any radio list), storage/app are overridable in <details>.
+    function selectedDb() { return SELECTED_RP >= 0 && RESTORE_POINTS[SELECTED_RP] ? RESTORE_POINTS[SELECTED_RP].db : ''; }
+    function selectedOutage() { return SELECTED_RP >= 0 && RESTORE_POINTS[SELECTED_RP] ? !!RESTORE_POINTS[SELECTED_RP].outage : false; }
+
     function applyRestorePoint(i) {
+      SELECTED_RP = i;
       if (i < 0 || !RESTORE_POINTS[i]) {
         $('rp-summary').innerHTML = '';
-        setRadio('db', ''); setRadio('storage', ''); setRadio('app', ''); updateSel();
+        setRadio('storage', ''); setRadio('app', ''); updateSel();
         return;
       }
       const p = RESTORE_POINTS[i];
-      const okDb = setRadio('db', p.db);
       const okSt = setRadio('storage', p.storage);
       const okApp = setRadio('app', p.app_sha);
       const notes = [];
-      if (!okDb) notes.push('DB backup が一覧に見つかりません');
       if (p.storage && !okSt) notes.push('一致するストレージ backup が見つからず「復元しない」になりました');
       if (p.app_sha && !okApp) notes.push('一致するアプリ版数が見つかりません');
       (p.warnings || []).forEach(w => notes.push(w));
-      $('rp-summary').innerHTML = `<b>この時点へ復元:</b> DB <span class="mono">${esc(p.db_time||'')}</span>`
+      $('rp-summary').innerHTML = `<b>この時点へ復元:</b> ${p.outage ? '<span style="color:#b91c1c">物理（全システム停止）</span> ' : ''}`
+        + `DB <span class="mono">${esc(p.db_time||'')}</span>`
         + ` ／ ストレージ <span class="mono">${esc(p.storage_time||'—')}</span>`
         + ` ／ アプリ <span class="mono">${esc(p.app_sha ? p.app_sha.slice(0,12) : '変更なし')}</span>`
         + (notes.length ? `<div style="color:#b45309;margin-top:3px">⚠ ${notes.map(esc).join(' / ')}</div>` : '');
@@ -279,7 +275,7 @@
 
     function updateSel() {
       const parts = [];
-      if (sel('db')) parts.push('DB ← ' + sel('db'));
+      if (selectedDb()) parts.push('DB ← ' + selectedDb() + (selectedOutage() ? ' [全停止]' : ''));
       if (sel('storage')) parts.push('ストレージ ← ' + sel('storage'));
       if (sel('app')) parts.push('アプリ ← ' + sel('app').slice(0,12));
       $('selection').innerHTML = parts.length ? '選択: ' + parts.map(esc).join(' / ') : '対象が選択されていません。';
@@ -315,14 +311,16 @@
     }
 
     async function doRestore() {
-      const db = sel('db'), storage = sel('storage'), app = sel('app');
+      const db = selectedDb(), storage = sel('storage'), app = sel('app');
+      const outage = selectedOutage();
       if (!db && !storage && !app) { alert('復元対象を1つ以上選択してください。'); return; }
       if ($('confirm').value.trim() !== 'RESTORE') { alert('確認フレーズ RESTORE を入力してください。'); return; }
       const skip = $('skip-snap').checked;
       let msg = '以下を復元します。よろしいですか？\n\n';
-      if (db) msg += `・DB ← ${db}\n`;
+      if (db) msg += `・DB ← ${db}${outage ? '  ⚠物理（全システム停止）' : ''}\n`;
       if (storage) msg += `・ストレージ ← ${storage}\n`;
       if (app) msg += `・アプリ ← ${app.slice(0,12)}\n`;
+      if (outage) msg += '\n⚠ 物理復元は shared-db を停止します。全アプリ（本番含む）が復元完了まで停止します。';
       msg += skip ? '\n⚠ 事前バックアップをスキップします（元に戻せません）。' : '\n先に at-point フルバックアップを自動取得します。';
       if (!confirm(msg)) return;
 
