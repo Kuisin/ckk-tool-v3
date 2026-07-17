@@ -275,6 +275,7 @@ def backup_list():
         "backups": restore_client.list_backups(),
         "app_versions": restore_client.list_app_versions(),
         "restore_points": restore_client.restore_points(),
+        "all_backups": restore_client.all_backups(),
         "status": restore_client.status(),
     })
 
