@@ -93,6 +93,7 @@ export const DOCS_TREE: DocSection[] = [
     ],
   },
   {
+    // 設定（カスタマイズ）画面を持つアプリのみ。現状は 試算計算（SY02）のみ。
     title: {
       ja: "アプリ設定マニュアル",
       en: "App Settings Guides",
@@ -102,25 +103,9 @@ export const DOCS_TREE: DocSection[] = [
       {
         slug: "apps/trial-estimate/settings",
         title: {
-          ja: "試算 — 設定マニュアル",
-          en: "Trial Estimate — Settings Manual",
-          zh: "试算 — 设置手册",
-        },
-      },
-      {
-        slug: "apps/price-list/settings",
-        title: {
-          ja: "価格表 — 設定マニュアル",
-          en: "Price List — Settings Manual",
-          zh: "价格表 — 设置手册",
-        },
-      },
-      {
-        slug: "apps/quote/settings",
-        title: {
-          ja: "見積書 — 設定マニュアル",
-          en: "Quote — Settings Manual",
-          zh: "报价单 — 设置手册",
+          ja: "試算計算 — 設定マニュアル",
+          en: "Trial Calculation — Settings Manual",
+          zh: "试算计算 — 设置手册",
         },
       },
     ],
