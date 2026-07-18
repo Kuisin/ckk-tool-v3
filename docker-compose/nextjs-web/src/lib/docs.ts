@@ -36,7 +36,7 @@ export async function readDoc(
   for (const l of order) {
     try {
       const md = await readFile(path.join(base, `${l}.md`), "utf8");
-      return { page, lang: l, html: renderMarkdown(md) };
+      return { page, lang: l, html: renderMarkdown(md, l) };
     } catch {
       // try next fallback language
     }

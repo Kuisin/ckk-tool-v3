@@ -34,9 +34,9 @@ Every screen has a 4-character code. Remembering them lets you jump from the sea
 
 ## 4. The sales flow (start here)
 
-1. **Compute a unit price in Trial Estimate (SA05)** — enter product, material, dimensions, and the estimate price is derived from cost.
-2. **Confirm and register it into the Price List (SA01)** — "confirm" the estimate, then register it for a customer/product.
-3. **Create a Quote (SA02)** — pick a customer and product, and the unit price fills in from the price list. Export a PDF and send it to the customer.
+1. **Compute a unit price in Trial Estimate (SA05)** — enter product, material, dimensions, and the estimate price is derived from cost. ([Trial Estimate manual](/docs/apps/trial-estimate/user))
+2. **Confirm and register it into the Price List (SA01)** — "confirm" the estimate, then register it for a customer/product. ([Price List manual](/docs/apps/price-list/user))
+3. **Create a Quote (SA02)** — pick a customer and product, and the unit price fills in from the price list. Export a PDF and send it to the customer. ([Quote manual](/docs/apps/quote/user))
 
 Open the "App User Guides" on the left for the details of each app.
 
@@ -44,7 +44,7 @@ Open the "App User Guides" on the left for the details of each app.
 
 - **Can't find a screen** — you may lack the required permission; ask an administrator.
 - **Got a notification** — review it from the bell (top right).
-- **Change your own settings** — use **Settings** in the top-right menu to update your notification email or password (see the User Settings Manual).
+- **Change your own settings** — use **Settings** in the top-right menu to update your notification email or password (see the [User Settings Manual](/docs/user-settings)).
 
 ## Glossary
 

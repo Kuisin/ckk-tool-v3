@@ -1,6 +1,7 @@
 import { Card, Group, SimpleGrid, Stack, Text, Title } from "@mantine/core";
 import { IconArrowRight } from "@tabler/icons-react";
 import { DOCS_TREE, type DocLang, isDocLang } from "@/lib/docs-tree";
+import styles from "./docs.module.css";
 
 export const dynamic = "force-dynamic";
 
@@ -46,6 +47,7 @@ export default async function DocsIndexPage({
           <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
             {section.pages.map((page) => (
               <Card
+                className={styles.card}
                 component="a"
                 href={`/docs/${page.slug}?lang=${lang}`}
                 key={page.slug}

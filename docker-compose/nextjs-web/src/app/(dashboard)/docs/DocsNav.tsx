@@ -15,6 +15,8 @@ import {
   type DocLang,
   isDocLang,
 } from "@/lib/docs-tree";
+import { DocsSearch } from "./DocsSearch";
+import styles from "./docs.module.css";
 
 export function DocsNav({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = usePathname();
@@ -25,6 +27,7 @@ export function DocsNav({ onNavigate }: { onNavigate?: () => void }) {
 
   return (
     <Stack gap="md">
+      <DocsSearch full />
       <Group gap="xs">
         {DOCS_LANGS.map((l) => (
           <Anchor
@@ -49,6 +52,7 @@ export function DocsNav({ onNavigate }: { onNavigate?: () => void }) {
           {section.pages.map((page) => (
             <NavLink
               active={pathname === `/docs/${page.slug}`}
+              className={styles.navItem}
               component={Link}
               href={`/docs/${page.slug}?lang=${lang}`}
               key={page.slug}
