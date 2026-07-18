@@ -34,11 +34,11 @@ export const SETTINGS_APPS: SettingsApp[] = [
     operationCode: "SY02",
   },
   {
-    key: "product-types",
-    label: "製品種別",
+    key: "product-items",
+    label: "製品項目",
     description:
-      "製品種別（テンプレート）— 新規製品作成時に展開する入力項目を種別ごとに定義（文字列/数値/真偽/選択/日付の型で入力を検証）。",
-    href: "/settings/product-types",
+      "製品の入力項目を定義するライブラリ + 製品種別（項目の割り当て）。新規製品作成時に種別を選ぶと項目が型付きで展開され、入力を型で検証。",
+    href: "/settings/product-items",
     icon: "IconCategory",
     operationCode: "SY04",
   },

@@ -143,9 +143,9 @@ export const DOCS_TREE: DocSection[] = [
       {
         slug: "apps/product-type/settings",
         title: {
-          ja: "製品種別 — 設定マニュアル",
-          en: "Product Types — Settings Manual",
-          zh: "产品种别 — 设置手册",
+          ja: "製品項目 — 設定マニュアル",
+          en: "Product Items — Settings Manual",
+          zh: "产品项目 — 设置手册",
         },
       },
     ],

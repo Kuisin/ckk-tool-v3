@@ -11,8 +11,19 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { recordAudit } from "@/lib/audit";
 import { checkPermission } from "@/lib/authz";
-import { getProductTypes, saveProductTypes } from "@/lib/product-settings";
-import { type ProductType, productTypesArraySchema } from "@/lib/product-types";
+import {
+  getProductItemDefs,
+  getProductTypes,
+  saveProductItemDefs,
+  saveProductTypes,
+} from "@/lib/product-settings";
+import {
+  IDENTIFIER,
+  type ProductItemDef,
+  type ProductType,
+  productItemDefsArraySchema,
+  productTypesArraySchema,
+} from "@/lib/product-types";
 import {
   type ActionResult,
   actionError,
@@ -164,24 +175,70 @@ export async function updateCriteria(
 // ── 製品種別（SY04） ──────────────────────────────────────────────────────────
 
 /** 種別 id / 種別内の項目キーの重複を検出。 */
-function validateProductTypes(types: ProductType[]): string | null {
+function validateItemDefs(defs: ProductItemDef[]): string | null {
+  const keys = new Set<string>();
+  for (const d of defs) {
+    if (!IDENTIFIER.test(d.key))
+      return `キーが識別子ではありません: ${d.key || "(空)"}`;
+    if (keys.has(d.key)) return `項目キーが重複しています: ${d.key}`;
+    keys.add(d.key);
+    if (d.type === "select" && (d.options ?? []).length === 0)
+      return `「${d.label.ja}」は選択肢を1つ以上追加してください`;
+  }
+  return null;
+}
+
+function validateTypes(
+  types: ProductType[],
+  defKeys: Set<string>,
+): string | null {
   const ids = new Set<string>();
   for (const t of types) {
     if (ids.has(t.id)) return `種別 id が重複しています: ${t.id}`;
     ids.add(t.id);
-    const keys = new Set<string>();
-    for (const it of t.items) {
-      if (keys.has(it.key))
-        return `「${t.name.ja}」の項目キーが重複しています: ${it.key}`;
-      keys.add(it.key);
-      if (it.type === "select" && (it.options ?? []).length === 0)
-        return `「${t.name.ja}」の「${it.label.ja}」は選択肢を1つ以上追加してください`;
+    const seen = new Set<string>();
+    for (const a of t.assignments) {
+      if (seen.has(a.itemKey))
+        return `「${t.name.ja}」に同じ項目が重複して割り当てられています: ${a.itemKey}`;
+      seen.add(a.itemKey);
+      if (!defKeys.has(a.itemKey))
+        return `「${t.name.ja}」の割り当て項目が存在しません: ${a.itemKey}`;
     }
   }
   return null;
 }
 
-/** 製品種別を保存（SY04 メインページから）。 */
+/** 項目定義（ライブラリ）を保存（製品項目 一覧ページから）。 */
+export async function updateProductItemDefs(
+  defs: ProductItemDef[],
+): Promise<ActionResult> {
+  const authz = await checkPermission("system", "UPDATE");
+  if (!authz.ok) return actionError(authz.error);
+  const parsed = productItemDefsArraySchema.safeParse(defs);
+  if (!parsed.success) {
+    return actionError(parsed.error.issues[0]?.message ?? "項目定義が不正です");
+  }
+  const invalid = validateItemDefs(parsed.data);
+  if (invalid) return actionError(invalid);
+  try {
+    const before = await getProductItemDefs();
+    await saveProductItemDefs(parsed.data);
+    await recordAudit({
+      action: "UPDATE",
+      tableName: "system_settings",
+      recordId: "product_item.definitions",
+      before: { definitions: before },
+      after: { definitions: parsed.data },
+    });
+    revalidatePath("/settings/product-items");
+    revalidatePath("/master/products");
+    return actionOk();
+  } catch (e) {
+    return actionError(prismaErrorMessage(e, "項目定義の保存に失敗しました"));
+  }
+}
+
+/** 製品種別（項目の割り当て）を保存。 */
 export async function updateProductTypes(
   types: ProductType[],
 ): Promise<ActionResult> {
@@ -191,7 +248,8 @@ export async function updateProductTypes(
   if (!parsed.success) {
     return actionError(parsed.error.issues[0]?.message ?? "製品種別が不正です");
   }
-  const invalid = validateProductTypes(parsed.data);
+  const defKeys = new Set((await getProductItemDefs()).map((d) => d.key));
+  const invalid = validateTypes(parsed.data, defKeys);
   if (invalid) return actionError(invalid);
   try {
     const before = await getProductTypes();
@@ -199,11 +257,12 @@ export async function updateProductTypes(
     await recordAudit({
       action: "UPDATE",
       tableName: "system_settings",
-      recordId: "product_type.types",
+      recordId: "product_item.types",
       before: { types: before },
       after: { types: parsed.data },
     });
-    revalidatePath("/settings/product-types");
+    revalidatePath("/settings/product-items");
+    revalidatePath("/settings/product-items/types");
     revalidatePath("/master/products");
     return actionOk();
   } catch (e) {
