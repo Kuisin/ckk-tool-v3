@@ -46,6 +46,18 @@ describe("validateItemValue", () => {
     expect(validateItemValue(s, "a")).toBeNull();
   });
 
+  it("validates strings against a regex pattern", () => {
+    const p = item({ type: "string", pattern: "^[A-Z]{2}-\\d{4}$" });
+    expect(validateItemValue(p, "AB-1234")).toBeNull();
+    expect(validateItemValue(p, "ab-1234")).toMatch(/形式/);
+    // empty is allowed when not required (pattern not applied)
+    expect(validateItemValue(p, "")).toBeNull();
+    // invalid regex is ignored (never throws)
+    expect(
+      validateItemValue(item({ type: "string", pattern: "(" }), "x"),
+    ).toBeNull();
+  });
+
   it("validates dates and booleans", () => {
     expect(validateItemValue(item({ type: "date" }), "not-a-date")).toMatch(
       /日付/,

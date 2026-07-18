@@ -33,7 +33,7 @@ Each field:
 
 ### Field types (formats) and validation
 
-- **Text** — free input; required means non-empty.
+- **Text** — free input; required means non-empty. A regex pattern can restrict the format.
 - **Number** — digits only; also checks the min/max range.
 - **Boolean** — yes/no via a switch.
 - **Select** — pick from the provided options; nothing else allowed.

@@ -184,6 +184,13 @@ function validateItemDefs(defs: ProductItemDef[]): string | null {
     keys.add(d.key);
     if (d.type === "select" && (d.options ?? []).length === 0)
       return `「${d.label.ja}」は選択肢を1つ以上追加してください`;
+    if (d.type === "string" && d.pattern) {
+      try {
+        new RegExp(d.pattern);
+      } catch {
+        return `「${d.label.ja}」の正規表現が不正です`;
+      }
+    }
   }
   return null;
 }
