@@ -14,7 +14,7 @@ import { checkPermission } from "@/lib/authz";
 import { Prisma, prisma } from "@/lib/db";
 import { formatProductNumber } from "@/lib/doc-number";
 import { allocateDocumentKey } from "@/lib/numbering";
-import { getProductTypes } from "@/lib/product-settings";
+import { getResolvedProductTypes } from "@/lib/product-settings";
 import { PRODUCT_TYPE_SPEC_KEY, validateItemValue } from "@/lib/product-types";
 import {
   type ActionResult,
@@ -111,7 +111,7 @@ async function validateProductTypeSpec(
 ): Promise<string | null> {
   const typeId = rows.find((r) => r.key === PRODUCT_TYPE_SPEC_KEY)?.value;
   if (!typeId) return null;
-  const type = (await getProductTypes()).find((t) => t.id === typeId);
+  const type = (await getResolvedProductTypes()).find((t) => t.id === typeId);
   if (!type) return null; // 種別が削除済み等 — 検証は諦めて保存を許可
   const byKey = new Map(rows.map((r) => [r.key, r.value]));
   for (const it of type.items) {

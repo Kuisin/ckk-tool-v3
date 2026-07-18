@@ -46,8 +46,8 @@ import { diameterCodeFromMm, lengthCodeFromMm } from "@/lib/material-code";
 import {
   defaultValuesFor,
   PRODUCT_TYPE_SPEC_KEY,
-  type ProductType,
-  type ProductTypeItem,
+  type ProductItemDef,
+  type ResolvedProductType,
   validateItemValue,
 } from "@/lib/product-types";
 
@@ -115,30 +115,22 @@ export interface ProductFormInitial {
   spec: { key: string; value: string }[];
 }
 
-const typeLabel = (t: ProductType) => t.name.ja || t.name.en || t.id;
+const typeLabel = (t: ResolvedProductType) => t.name.ja || t.name.en || t.id;
 
 export function ProductForm({
   initial,
   productTypes,
 }: {
   initial?: ProductFormInitial;
-  productTypes: ProductType[];
+  productTypes: ResolvedProductType[];
 }) {
   const router = useRouter();
   const isMobile = useIsMobile();
   const [isPending, startTransition] = useTransition();
   const isEdit = !!initial;
 
-  const allTypes = useMemo(
-    () =>
-      [...productTypes]
-        .sort((a, b) => a.order - b.order)
-        .map((t) => ({
-          ...t,
-          items: [...t.items].sort((a, b) => a.order - b.order),
-        })),
-    [productTypes],
-  );
+  // 解決済み種別（アダプタで order 順に整列済み・items は割り当て順）。
+  const allTypes = productTypes;
 
   // 初期 spec を「種別 id / 種別項目値 / その他（自由）」に分解する。
   const { initialTypeId, initialTypeValues, initialFreeform } = useMemo(() => {
@@ -377,7 +369,7 @@ export function ProductForm({
 
       {typeOptions.length > 0 && (
         <FormSection
-          description="種別を選ぶと、その種別が予め定義した入力項目が展開されます（製品種別 SY04 で編集）。"
+          description="種別を選ぶと、その種別が予め定義した入力項目が展開されます（製品項目 SY04 で編集）。"
           title="製品種別"
         >
           <Select
@@ -459,7 +451,7 @@ function ProductTypeItemInput({
   error,
   onChange,
 }: {
-  item: ProductTypeItem;
+  item: ProductItemDef;
   value: string;
   error?: string;
   onChange: (v: string) => void;

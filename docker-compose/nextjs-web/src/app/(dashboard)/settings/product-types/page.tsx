@@ -1,10 +1,6 @@
-import { ProductTypesForm } from "@/components/settings/ProductTypesForm";
-import { getProductTypes } from "@/lib/product-settings";
+import { redirect } from "next/navigation";
 
-export const dynamic = "force-dynamic";
-
-/** 製品種別（SY04）— 種別ごとに新規製品作成時の入力項目を定義。system 権限。 */
-export default async function ProductTypesPage() {
-  const types = await getProductTypes();
-  return <ProductTypesForm initial={types} />;
+/** 旧 SY04 ルート。製品項目（/settings/product-items）へ恒久リダイレクト。 */
+export default function ProductTypesRedirect() {
+  redirect("/settings/product-items");
 }

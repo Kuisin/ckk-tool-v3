@@ -1,13 +1,15 @@
 /**
- * product-types.ts — 製品種別（Product Type）の型・zod・既定値・検証。
+ * product-types.ts — 製品項目（Product Items）の型・zod・既定値・検証。
  *
- * 製品種別 = テンプレート。各種別は「予め決めた入力項目（items）」を持ち、
- * 新規製品作成時に種別を選ぶとその項目が（既定値入りで）フォームに展開される。
- * 項目ごとに型（文字列/数値/真偽/選択/日付）を持ち、入力を型で検証する。
+ * 2 つの概念に分離:
+ *   1. 項目定義（ProductItemDef）… 再利用可能な入力項目の定義（キー・型・選択肢など）。
+ *   2. 製品種別（ProductType）… 項目定義を「割り当て」て作るテンプレート。割り当てごとに
+ *      既定値を上書きできる（with/without default）。
+ * 新規製品作成時に種別を選ぶと、割り当てられた項目が型付きで展開され、入力を型で検証する。
  *
- * client-safe（`server-only` 無し）: フォーム（クライアント）と Server Action /
- * アダプタ（サーバー）の両方から使う。永続化は lib/product-settings.ts が
- * app.system_settings の名前空間 `product_type` に保存する。
+ * client-safe（`server-only` 無し）: フォームと Server Action / アダプタの両方から使う。
+ * 永続化は lib/product-settings.ts が app.system_settings の名前空間 `product_item`
+ * （キー `product_item.definitions` / `product_item.types`）に保存する。
  */
 
 import { z } from "zod";
@@ -35,22 +37,30 @@ export interface ProductFieldOption {
   label: string;
 }
 
-/** 種別が予め持つ入力項目の定義。 */
-export interface ProductTypeItem {
-  /** spec のキー（識別子・種別内で一意）。 */
+/** 再利用可能な入力項目の定義（項目ライブラリの 1 エントリ）。 */
+export interface ProductItemDef {
+  /** spec のキー（識別子・全体で一意）。 */
   key: string;
   label: { ja: string; en: string };
   type: ProductFieldType;
   required: boolean;
-  /** 既定値（文字列表現）。真偽は "true"/"false"、選択は option.value。 */
+  /** 基本の既定値（文字列表現）。種別割り当てで上書き可。 */
   default?: string;
   /** select のみ。 */
   options?: ProductFieldOption[];
   /** number のみ（任意の範囲検証）。 */
   min?: number;
   max?: number;
-  /** 入力補助の説明・プレースホルダ。 */
   placeholder?: string;
+  order: number;
+  enabled: boolean;
+}
+
+/** 製品種別への項目割り当て（項目定義への参照 + 任意の既定値上書き）。 */
+export interface ProductTypeAssignment {
+  itemKey: string;
+  /** この種別での既定値（未指定なら項目定義の default を使う）。 */
+  defaultValue?: string;
   order: number;
 }
 
@@ -60,7 +70,19 @@ export interface ProductType {
   description?: string;
   enabled: boolean;
   order: number;
-  items: ProductTypeItem[];
+  assignments: ProductTypeAssignment[];
+}
+
+/**
+ * 種別に割り当てた項目を、定義と結合して解決した形（フォーム描画用）。
+ * items は ProductItemDef と同形（default は実効値に置換済み）。
+ */
+export interface ResolvedProductType {
+  id: string;
+  name: { ja: string; en: string };
+  description?: string;
+  enabled: boolean;
+  items: ProductItemDef[];
 }
 
 /** product.spec に種別 id を保持する予約キー（通常の spec 行としては見せない）。 */
@@ -70,15 +92,39 @@ export function isReservedSpecKey(key: string): boolean {
   return key === PRODUCT_TYPE_SPEC_KEY;
 }
 
+/** 種別 + 項目定義 → 解決済み種別（割り当て順、実効既定値）。 */
+export function resolveProductType(
+  type: ProductType,
+  defs: ProductItemDef[],
+): ResolvedProductType {
+  const byKey = new Map(defs.map((d) => [d.key, d]));
+  const items: ProductItemDef[] = [];
+  for (const a of [...type.assignments].sort((x, y) => x.order - y.order)) {
+    const def = byKey.get(a.itemKey);
+    if (!def) continue; // 定義が削除された割り当てはスキップ
+    items.push({
+      ...def,
+      default: a.defaultValue ?? def.default ?? "",
+    });
+  }
+  return {
+    id: type.id,
+    name: type.name,
+    description: type.description,
+    enabled: type.enabled,
+    items,
+  };
+}
+
 // ── zod（保存時検証） ─────────────────────────────────────────────────────────
-const IDENTIFIER = /^[A-Za-z_$][A-Za-z0-9_$]*$/;
+export const IDENTIFIER = /^[A-Za-z_$][A-Za-z0-9_$]*$/;
 
 export const productFieldOptionSchema = z.object({
   value: z.string().min(1),
   label: z.string().min(1),
 });
 
-export const productTypeItemSchema = z.object({
+export const productItemDefSchema = z.object({
   key: z
     .string()
     .regex(IDENTIFIER, "キーは英字/アンダースコア始まりの識別子にしてください"),
@@ -94,6 +140,13 @@ export const productTypeItemSchema = z.object({
   max: z.number().optional(),
   placeholder: z.string().optional(),
   order: z.number(),
+  enabled: z.boolean(),
+});
+
+export const productTypeAssignmentSchema = z.object({
+  itemKey: z.string().min(1),
+  defaultValue: z.string().optional(),
+  order: z.number(),
 });
 
 export const productTypeSchema = z.object({
@@ -105,17 +158,24 @@ export const productTypeSchema = z.object({
   description: z.string().optional(),
   enabled: z.boolean(),
   order: z.number(),
-  items: z.array(productTypeItemSchema),
+  assignments: z.array(productTypeAssignmentSchema),
 });
 
+export const productItemDefsArraySchema = z.array(productItemDefSchema);
 export const productTypesArraySchema = z.array(productTypeSchema);
+
+/** 検証対象の最小形（項目定義 or 解決済み項目）。 */
+type ValidatableItem = Pick<
+  ProductItemDef,
+  "key" | "label" | "type" | "required" | "options" | "min" | "max"
+>;
 
 /**
  * 1 項目の入力値（文字列表現）を型で検証。エラーメッセージ or null（OK）を返す。
  * client（フォーム）と server（Server Action）の両方から呼ぶ。
  */
 export function validateItemValue(
-  item: ProductTypeItem,
+  item: ValidatableItem,
   raw: string | null | undefined,
 ): string | null {
   const v = (raw ?? "").trim();
@@ -142,7 +202,6 @@ export function validateItemValue(
       return ok ? null : `${labelJa} は選択肢から選んでください`;
     }
     case "date": {
-      // YYYY-MM-DD もしくは Date で解釈できる文字列
       const t = Date.parse(v);
       return Number.isNaN(t) ? `${labelJa} は日付で入力してください` : null;
     }
@@ -151,14 +210,95 @@ export function validateItemValue(
   }
 }
 
-/** 種別の既定値マップ（key→default 文字列）。未設定は空文字。 */
-export function defaultValuesFor(type: ProductType): Record<string, string> {
+/** 解決済み種別の既定値マップ（key→default 文字列）。 */
+export function defaultValuesFor(
+  type: ResolvedProductType,
+): Record<string, string> {
   const out: Record<string, string> = {};
   for (const it of type.items) out[it.key] = it.default ?? "";
   return out;
 }
 
-// ── 既定の製品種別（編集可能。SY04 未設定時に使用） ─────────────────────────────
+// ── 既定値（編集可能。未設定時に使用） ───────────────────────────────────────
+export const DEFAULT_PRODUCT_ITEM_DEFS: ProductItemDef[] = [
+  {
+    key: "surfaceTreatment",
+    label: { ja: "表面処理", en: "Surface treatment" },
+    type: "select",
+    required: false,
+    default: "none",
+    options: [
+      { value: "none", label: "なし" },
+      { value: "coating", label: "コーティング" },
+      { value: "polishing", label: "研磨" },
+    ],
+    order: 0,
+    enabled: true,
+  },
+  {
+    key: "hardnessHrc",
+    label: { ja: "硬度 (HRC)", en: "Hardness (HRC)" },
+    type: "number",
+    required: false,
+    min: 0,
+    max: 100,
+    placeholder: "例: 60",
+    order: 1,
+    enabled: true,
+  },
+  {
+    key: "tolerance",
+    label: { ja: "公差", en: "Tolerance" },
+    type: "string",
+    required: false,
+    placeholder: "例: ±0.01",
+    order: 2,
+    enabled: true,
+  },
+  {
+    key: "drawingNo",
+    label: { ja: "図番", en: "Drawing No." },
+    type: "string",
+    required: false,
+    order: 3,
+    enabled: true,
+  },
+  {
+    key: "coatingType",
+    label: { ja: "コーティング種類", en: "Coating type" },
+    type: "select",
+    required: true,
+    default: "tin",
+    options: [
+      { value: "tin", label: "TiN" },
+      { value: "ticn", label: "TiCN" },
+      { value: "tialn", label: "TiAlN" },
+      { value: "dlc", label: "DLC" },
+    ],
+    order: 4,
+    enabled: true,
+  },
+  {
+    key: "coatingThicknessUm",
+    label: { ja: "膜厚 (μm)", en: "Thickness (μm)" },
+    type: "number",
+    required: false,
+    min: 0,
+    placeholder: "例: 3",
+    order: 5,
+    enabled: true,
+  },
+  {
+    key: "pretreatment",
+    label: { ja: "前処理あり", en: "Pretreatment" },
+    type: "boolean",
+    required: false,
+    default: "false",
+    order: 6,
+    enabled: true,
+  },
+];
+
 export const DEFAULT_PRODUCT_TYPES: ProductType[] = [
   {
     id: "standard",
@@ -166,45 +306,11 @@ export const DEFAULT_PRODUCT_TYPES: ProductType[] = [
     description: "一般的な製品の標準項目。",
     enabled: true,
     order: 0,
-    items: [
-      {
-        key: "surfaceTreatment",
-        label: { ja: "表面処理", en: "Surface treatment" },
-        type: "select",
-        required: false,
-        default: "none",
-        options: [
-          { value: "none", label: "なし" },
-          { value: "coating", label: "コーティング" },
-          { value: "polishing", label: "研磨" },
-        ],
-        order: 0,
-      },
-      {
-        key: "hardnessHrc",
-        label: { ja: "硬度 (HRC)", en: "Hardness (HRC)" },
-        type: "number",
-        required: false,
-        min: 0,
-        max: 100,
-        placeholder: "例: 60",
-        order: 1,
-      },
-      {
-        key: "tolerance",
-        label: { ja: "公差", en: "Tolerance" },
-        type: "string",
-        required: false,
-        placeholder: "例: ±0.01",
-        order: 2,
-      },
-      {
-        key: "drawingNo",
-        label: { ja: "図番", en: "Drawing No." },
-        type: "string",
-        required: false,
-        order: 3,
-      },
+    assignments: [
+      { itemKey: "surfaceTreatment", order: 0 },
+      { itemKey: "hardnessHrc", order: 1 },
+      { itemKey: "tolerance", order: 2 },
+      { itemKey: "drawingNo", order: 3 },
     ],
   },
   {
@@ -213,38 +319,10 @@ export const DEFAULT_PRODUCT_TYPES: ProductType[] = [
     description: "コーティングを施す製品の項目。",
     enabled: true,
     order: 1,
-    items: [
-      {
-        key: "coatingType",
-        label: { ja: "コーティング種類", en: "Coating type" },
-        type: "select",
-        required: true,
-        default: "tin",
-        options: [
-          { value: "tin", label: "TiN" },
-          { value: "ticn", label: "TiCN" },
-          { value: "tialn", label: "TiAlN" },
-          { value: "dlc", label: "DLC" },
-        ],
-        order: 0,
-      },
-      {
-        key: "coatingThicknessUm",
-        label: { ja: "膜厚 (μm)", en: "Thickness (μm)" },
-        type: "number",
-        required: false,
-        min: 0,
-        placeholder: "例: 3",
-        order: 1,
-      },
-      {
-        key: "pretreatment",
-        label: { ja: "前処理あり", en: "Pretreatment" },
-        type: "boolean",
-        required: false,
-        default: "false",
-        order: 2,
-      },
+    assignments: [
+      { itemKey: "coatingType", order: 0 },
+      { itemKey: "coatingThicknessUm", order: 1 },
+      { itemKey: "pretreatment", order: 2 },
     ],
   },
 ];

@@ -223,11 +223,11 @@ export const OPERATION_CODES: OperationCodeEntry[] = [
     mode: "0",
     index: "3",
   },
-  // 製品種別（テンプレート）— 単一画面, list コードのみ
+  // 製品項目（項目定義 + 製品種別）— 単一入口, list コードのみ
   {
     code: "SY04",
-    label: "製品種別",
-    href: "/settings/product-types",
+    label: "製品項目",
+    href: "/settings/product-items",
     category: "システム",
     kind: "list",
     categoryCode: "SY",
