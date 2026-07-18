@@ -10,10 +10,113 @@
   padding-right: 0.25rem;
 }
 
+/* ── Search trigger (sidebar / mobile bar) ─────────────────────────── */
+.searchTrigger {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.4rem 0.6rem;
+  border-radius: var(--mantine-radius-md);
+  border: 1px solid var(--mantine-color-default-border);
+  background: var(--mantine-color-body);
+  color: var(--mantine-color-dimmed);
+  transition:
+    border-color 140ms ease,
+    box-shadow 140ms ease,
+    background 140ms ease;
+}
+.searchTrigger:hover {
+  border-color: var(--mantine-color-blue-4);
+  background: var(--mantine-color-default-hover);
+  box-shadow: var(--mantine-shadow-xs);
+}
+.searchTrigger:focus-visible {
+  outline: 2px solid var(--mantine-color-blue-5);
+  outline-offset: 1px;
+}
+
+/* ── Search modal ──────────────────────────────────────────────────── */
+.searchModal {
+  overflow: hidden;
+}
+.searchBody {
+  padding: 0;
+}
+.searchResults {
+  max-height: min(60vh, 420px);
+  overflow-y: auto;
+}
+.searchItem {
+  display: block;
+  width: 100%;
+  padding: 0.5rem 0.65rem;
+  border-radius: var(--mantine-radius-sm);
+  transition:
+    background 120ms ease,
+    transform 120ms ease;
+}
+.searchItem[data-active] {
+  background: var(--mantine-color-blue-light);
+  transform: translateX(2px);
+}
+
+/* ── Sidebar nav item hover ────────────────────────────────────────── */
+.navItem {
+  border-radius: var(--mantine-radius-sm);
+  transition:
+    background 120ms ease,
+    transform 120ms ease;
+}
+.navItem:hover {
+  transform: translateX(2px);
+}
+
+/* ── Index cards ───────────────────────────────────────────────────── */
+.card {
+  transition:
+    transform 120ms ease,
+    box-shadow 120ms ease,
+    border-color 120ms ease;
+}
+.card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--mantine-shadow-sm);
+  border-color: var(--mantine-color-blue-4);
+}
+
+@keyframes docFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 .doc {
   line-height: 1.75;
   font-size: var(--mantine-font-size-sm);
   max-width: 46rem;
+  animation: docFadeIn 220ms ease both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .searchTrigger,
+  .searchItem,
+  .navItem,
+  .card,
+  .doc {
+    animation: none;
+    transition: none;
+  }
+  .searchItem[data-active],
+  .navItem:hover,
+  .card:hover {
+    transform: none;
+  }
 }
 .doc > :first-child {
   margin-top: 0;

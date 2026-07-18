@@ -4,7 +4,7 @@ Operation code **SA01**. Manages per-customer product unit prices. Quote prices 
 
 ## What you can do here
 
-A ledger of the **selling price** of each product per customer. Once registered, the unit price fills in automatically when you create a quote.
+A ledger of the **selling price** of each [product](/docs/masters/product/user) per [customer](/docs/masters/customer/user). Once registered, the unit price fills in automatically when you create a quote.
 
 - Prices are usually registered from a **Trial Estimate (SA05)** result (manual entry is also possible).
 - You can set **quantity tiers** (quantity → unit price) so larger quantities are cheaper.

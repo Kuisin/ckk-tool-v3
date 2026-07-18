@@ -15,8 +15,10 @@ const escapeHtml = (s: string): string =>
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;");
 
-/** Inline: `code`, **bold**, *italic*, [text](url). Operates on escaped text. */
-function renderInline(text: string): string {
+/** Inline: `code`, **bold**, *italic*, [text](url). Operates on escaped text.
+ *  When `lang` is given, internal /docs links get `?lang=<lang>` appended so
+ *  cross-links between manuals stay in the current language. */
+function renderInline(text: string, lang?: string): string {
   // Protect inline code from the bold/italic/link rules with a printable token.
   const codeSlots: string[] = [];
   let out = text.replace(/`([^`]+)`/g, (_m, c) => {
@@ -28,8 +30,12 @@ function renderInline(text: string): string {
     .replace(/(^|[^*])\*([^*]+)\*/g, "$1<em>$2</em>")
     // [text](url) — url already escaped; only allow http(s) / relative.
     .replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_m, label, url) => {
-      const safe = /^(https?:|\/)/.test(url) ? url : "#";
+      let safe = /^(https?:|\/)/.test(url) ? url : "#";
       const ext = /^https?:/.test(safe);
+      // Keep the current language when linking to another manual page.
+      if (lang && /^\/docs(\/|$)/.test(safe) && !safe.includes("?")) {
+        safe = `${safe}?lang=${lang}`;
+      }
       return `<a href="${safe}"${ext ? ' target="_blank" rel="noopener noreferrer"' : ""}>${label}</a>`;
     });
   return out.replace(
@@ -38,8 +44,9 @@ function renderInline(text: string): string {
   );
 }
 
-/** Render a Markdown string to an HTML string. */
-export function renderMarkdown(md: string): string {
+/** Render a Markdown string to an HTML string. Pass `lang` to keep internal
+ *  /docs cross-links in the current language. */
+export function renderMarkdown(md: string, lang?: string): string {
   const lines = md.replace(/\r\n?/g, "\n").split("\n");
   const html: string[] = [];
   let i = 0;
@@ -90,7 +97,7 @@ export function renderMarkdown(md: string): string {
       closeList();
       const level = h[1].length;
       html.push(
-        `<h${level}>${renderInline(escapeHtml(h[2].trim()))}</h${level}>`,
+        `<h${level}>${renderInline(escapeHtml(h[2].trim()), lang)}</h${level}>`,
       );
       i++;
       continue;
@@ -104,7 +111,9 @@ export function renderMarkdown(md: string): string {
         buf.push(escapeHtml(lines[i].replace(/^\s*>\s?/, "")));
         i++;
       }
-      html.push(`<blockquote>${renderInline(buf.join(" "))}</blockquote>`);
+      html.push(
+        `<blockquote>${renderInline(buf.join(" "), lang)}</blockquote>`,
+      );
       continue;
     }
 
@@ -116,7 +125,7 @@ export function renderMarkdown(md: string): string {
         html.push("<ol>");
         listType = "ol";
       }
-      html.push(`<li>${renderInline(escapeHtml(ol[1]))}</li>`);
+      html.push(`<li>${renderInline(escapeHtml(ol[1]), lang)}</li>`);
       i++;
       continue;
     }
@@ -129,7 +138,7 @@ export function renderMarkdown(md: string): string {
         html.push("<ul>");
         listType = "ul";
       }
-      html.push(`<li>${renderInline(escapeHtml(ul[1]))}</li>`);
+      html.push(`<li>${renderInline(escapeHtml(ul[1]), lang)}</li>`);
       i++;
       continue;
     }
@@ -150,7 +159,7 @@ export function renderMarkdown(md: string): string {
       buf.push(escapeHtml(lines[i]).trim());
       i++;
     }
-    html.push(`<p>${renderInline(buf.join(" "))}</p>`);
+    html.push(`<p>${renderInline(buf.join(" "), lang)}</p>`);
   }
 
   closeList();
