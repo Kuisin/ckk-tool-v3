@@ -140,11 +140,42 @@ export const RESERVED_KEYS: ReadonlySet<string> = new Set([
   "lapAmount",
   "inspectionAmount",
   "warn",
+  "lookup",
   "CENTERLESS",
   "STEP_MACHINING",
   "NECK_MACHINING",
   "CYLINDER_MACHINING",
 ]);
+
+// ── ルックアップ表（管理者が定義。式内で lookup("<表名>", キー) で参照）─────────
+export interface LookupEntry {
+  key: string;
+  value: number;
+}
+
+export interface LookupTable {
+  id: string;
+  /** 式内での参照名（lookup("<name>", key)）。 */
+  name: string;
+  description?: string;
+  entries: LookupEntry[];
+}
+
+export const lookupEntrySchema = z.object({
+  key: z.string(),
+  value: z.number(),
+});
+
+export const lookupTableSchema = z.object({
+  id: z.string().min(1),
+  name: z.string().min(1, "表名を入力してください"),
+  description: z.string().optional(),
+  entries: z.array(lookupEntrySchema),
+});
+
+export const lookupTablesArraySchema = z.array(lookupTableSchema);
+
+export const DEFAULT_LOOKUP_TABLES: LookupTable[] = [];
 
 /**
  * Seed criteria reproducing the legacy hardcoded chain term-for-term.

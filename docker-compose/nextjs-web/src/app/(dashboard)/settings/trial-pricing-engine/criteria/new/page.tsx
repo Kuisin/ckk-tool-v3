@@ -13,6 +13,7 @@ export default async function CriterionNewPage() {
       criterionId={null}
       customInputs={settings.customInputs}
       ldChargePer10min={settings.ldChargePer10min}
+      lookupTables={settings.lookupTables}
     />
   );
 }
