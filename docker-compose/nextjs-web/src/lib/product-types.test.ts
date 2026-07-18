@@ -1,17 +1,21 @@
 import { describe, expect, it } from "vitest";
 import {
+  DEFAULT_PRODUCT_ITEM_DEFS,
   DEFAULT_PRODUCT_TYPES,
-  type ProductTypeItem,
+  type ProductItemDef,
+  productItemDefsArraySchema,
   productTypesArraySchema,
+  resolveProductType,
   validateItemValue,
 } from "./product-types";
 
-const item = (over: Partial<ProductTypeItem>): ProductTypeItem => ({
+const item = (over: Partial<ProductItemDef>): ProductItemDef => ({
   key: "k",
   label: { ja: "項目", en: "Item" },
   type: "string",
   required: false,
   order: 0,
+  enabled: true,
   ...over,
 });
 
@@ -52,10 +56,61 @@ describe("validateItemValue", () => {
       /真偽/,
     );
   });
+});
 
-  it("default product types pass their own schema", () => {
+describe("resolveProductType", () => {
+  it("joins assignments to definitions in order, applying default override", () => {
+    const defs: ProductItemDef[] = [
+      item({ key: "a", default: "base", order: 0 }),
+      item({ key: "b", order: 1 }),
+    ];
+    const resolved = resolveProductType(
+      {
+        id: "t",
+        name: { ja: "T", en: "" },
+        enabled: true,
+        order: 0,
+        assignments: [
+          { itemKey: "b", order: 0 },
+          { itemKey: "a", defaultValue: "override", order: 1 },
+        ],
+      },
+      defs,
+    );
+    expect(resolved.items.map((i) => i.key)).toEqual(["b", "a"]);
+    expect(resolved.items[1].default).toBe("override"); // assignment wins
+    expect(resolved.items[0].default).toBe(""); // no default anywhere
+  });
+
+  it("skips assignments whose definition was deleted", () => {
+    const resolved = resolveProductType(
+      {
+        id: "t",
+        name: { ja: "T", en: "" },
+        enabled: true,
+        order: 0,
+        assignments: [{ itemKey: "missing", order: 0 }],
+      },
+      [],
+    );
+    expect(resolved.items).toHaveLength(0);
+  });
+});
+
+describe("defaults", () => {
+  it("default defs and types pass their schemas", () => {
+    expect(
+      productItemDefsArraySchema.safeParse(DEFAULT_PRODUCT_ITEM_DEFS).success,
+    ).toBe(true);
     expect(
       productTypesArraySchema.safeParse(DEFAULT_PRODUCT_TYPES).success,
     ).toBe(true);
+  });
+
+  it("every default assignment references a real definition", () => {
+    const keys = new Set(DEFAULT_PRODUCT_ITEM_DEFS.map((d) => d.key));
+    for (const t of DEFAULT_PRODUCT_TYPES) {
+      for (const a of t.assignments) expect(keys.has(a.itemKey)).toBe(true);
+    }
   });
 });
