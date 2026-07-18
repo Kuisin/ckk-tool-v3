@@ -41,7 +41,7 @@ Each field:
 
 ## 2. Product types (templates)
 
-On `/settings/product-items/types` you create product types. The list supports enable/disable, reorder, and delete; edit each on its own page.
+On `/settings/product-types` you create product types. The list supports enable/disable, reorder, and delete; edit each on its own page.
 
 On a type's edit page:
 

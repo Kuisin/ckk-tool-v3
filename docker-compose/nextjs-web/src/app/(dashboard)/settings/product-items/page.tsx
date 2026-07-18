@@ -13,12 +13,12 @@ export default async function ProductItemsPage() {
     <Stack gap="md">
       <PageHeader
         actions={
-          <SecondaryButton href="/settings/product-items/types">
-            製品種別の管理
+          <SecondaryButton href="/settings/product-types">
+            製品種別へ
           </SecondaryButton>
         }
         breadcrumbs={["システム", "製品項目"]}
-        title="製品項目 — 項目定義"
+        title="製品項目"
       />
       <ItemDefsListPanel initial={defs} />
     </Stack>

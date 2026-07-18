@@ -37,10 +37,19 @@ export const SETTINGS_APPS: SettingsApp[] = [
     key: "product-items",
     label: "製品項目",
     description:
-      "製品の入力項目を定義するライブラリ + 製品種別（項目の割り当て）。新規製品作成時に種別を選ぶと項目が型付きで展開され、入力を型で検証。",
+      "製品の入力項目を定義するライブラリ（キー・型・選択肢・正規表現など）。製品種別に割り当てて使います。",
     href: "/settings/product-items",
-    icon: "IconCategory",
+    icon: "IconListDetails",
     operationCode: "SY04",
+  },
+  {
+    key: "product-types",
+    label: "製品種別",
+    description:
+      "項目を割り当てて作る製品テンプレート。新規製品作成時に種別を選ぶと項目が型付きで展開され、入力を型で検証。",
+    href: "/settings/product-types",
+    icon: "IconCategory",
+    operationCode: "SY05",
   },
 ];
 
