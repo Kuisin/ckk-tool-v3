@@ -212,6 +212,17 @@ export const OPERATION_CODES: OperationCodeEntry[] = [
     mode: "0",
     index: "2",
   },
+  // マニュアル（/docs）— 単一画面, list コードのみ
+  {
+    code: "SY03",
+    label: "マニュアル",
+    href: "/docs",
+    category: "システム",
+    kind: "list",
+    categoryCode: "SY",
+    mode: "0",
+    index: "3",
+  },
 ];
 
 const CODE_LOOKUP = new Map(
