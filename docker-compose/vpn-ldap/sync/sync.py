@@ -4,9 +4,12 @@
 Pulls person accounts from AD (via the vpn-ldap forwarder) and upserts them into
 `employee_directory` — a shared table read by Metabase, the labor `v_labor` view,
 and future apps: department, title (役職), company, active status, email,
-employee_code. employee_code comes from AD's `description` field, formatted
-`PX番号: <code> (<username>)`. Also refreshes the KOT `employees` (code→username)
-map from the same authoritative source. Each run is logged to `ldap_sync_log`.
+employee_code, plus extended identity (given_name/sn/cn/upn/dn), contact
+(phone/mobile/fax), raw description, group membership (member_of), and AD
+timestamps (when_created/when_changed/account_expires). employee_code comes from
+AD's `description` field, formatted `PX番号: <code> (<username>)`. Also refreshes
+the KOT `employees` (code→username) map from the same authoritative source. Each
+run is logged to `ldap_sync_log`.
 
 Callable two ways:
   full_sync()            — all users (periodic + POST /sync)
@@ -17,6 +20,7 @@ from __future__ import annotations
 import os
 import re
 import uuid
+from datetime import datetime, timezone
 
 import psycopg2
 from ldap3 import ALL, SUBTREE, Connection, Server
@@ -52,6 +56,20 @@ CREATE TABLE IF NOT EXISTS employee_directory (
 ALTER TABLE employee_directory ADD COLUMN IF NOT EXISTS ldap_guid uuid;
 CREATE UNIQUE INDEX IF NOT EXISTS employee_directory_ldap_guid_key
     ON employee_directory (ldap_guid);
+-- Extended AD person attributes (identity, contact, groups, timestamps).
+ALTER TABLE employee_directory ADD COLUMN IF NOT EXISTS given_name      text;
+ALTER TABLE employee_directory ADD COLUMN IF NOT EXISTS sn              text;
+ALTER TABLE employee_directory ADD COLUMN IF NOT EXISTS cn              text;
+ALTER TABLE employee_directory ADD COLUMN IF NOT EXISTS upn             text;
+ALTER TABLE employee_directory ADD COLUMN IF NOT EXISTS dn              text;
+ALTER TABLE employee_directory ADD COLUMN IF NOT EXISTS phone           text;
+ALTER TABLE employee_directory ADD COLUMN IF NOT EXISTS mobile          text;
+ALTER TABLE employee_directory ADD COLUMN IF NOT EXISTS fax             text;
+ALTER TABLE employee_directory ADD COLUMN IF NOT EXISTS description     text;
+ALTER TABLE employee_directory ADD COLUMN IF NOT EXISTS member_of       text[];
+ALTER TABLE employee_directory ADD COLUMN IF NOT EXISTS when_created    timestamptz;
+ALTER TABLE employee_directory ADD COLUMN IF NOT EXISTS when_changed    timestamptz;
+ALTER TABLE employee_directory ADD COLUMN IF NOT EXISTS account_expires timestamptz;
 CREATE TABLE IF NOT EXISTS ldap_sync_log (
     id          bigserial PRIMARY KEY,
     finished_at timestamptz NOT NULL DEFAULT now(),
@@ -75,11 +93,15 @@ WHERE username = %(username)s AND ldap_guid IS DISTINCT FROM %(ldap_guid)s
 UPSERT = """
 INSERT INTO employee_directory
     (username, ldap_guid, display_name, email, department, title, company, office,
-     manager, is_active, employee_code, last_synced_at)
+     manager, is_active, employee_code, given_name, sn, cn, upn, dn, phone, mobile,
+     fax, description, member_of, when_created, when_changed, account_expires,
+     last_synced_at)
 VALUES
     (%(username)s, %(ldap_guid)s, %(display_name)s, %(email)s, %(department)s,
      %(title)s, %(company)s, %(office)s, %(manager)s, %(is_active)s,
-     %(employee_code)s, now())
+     %(employee_code)s, %(given_name)s, %(sn)s, %(cn)s, %(upn)s, %(dn)s, %(phone)s,
+     %(mobile)s, %(fax)s, %(description)s, %(member_of)s, %(when_created)s,
+     %(when_changed)s, %(account_expires)s, now())
 ON CONFLICT (ldap_guid) DO UPDATE SET
     username = EXCLUDED.username,
     display_name = EXCLUDED.display_name, email = EXCLUDED.email,
@@ -87,6 +109,11 @@ ON CONFLICT (ldap_guid) DO UPDATE SET
     company = EXCLUDED.company, office = EXCLUDED.office, manager = EXCLUDED.manager,
     is_active = EXCLUDED.is_active,
     employee_code = COALESCE(EXCLUDED.employee_code, employee_directory.employee_code),
+    given_name = EXCLUDED.given_name, sn = EXCLUDED.sn, cn = EXCLUDED.cn,
+    upn = EXCLUDED.upn, dn = EXCLUDED.dn, phone = EXCLUDED.phone,
+    mobile = EXCLUDED.mobile, fax = EXCLUDED.fax, description = EXCLUDED.description,
+    member_of = EXCLUDED.member_of, when_created = EXCLUDED.when_created,
+    when_changed = EXCLUDED.when_changed, account_expires = EXCLUDED.account_expires,
     last_synced_at = now()
 """
 
@@ -94,16 +121,26 @@ ON CONFLICT (ldap_guid) DO UPDATE SET
 UPSERT_NO_GUID = """
 INSERT INTO employee_directory
     (username, display_name, email, department, title, company, office, manager,
-     is_active, employee_code, last_synced_at)
+     is_active, employee_code, given_name, sn, cn, upn, dn, phone, mobile, fax,
+     description, member_of, when_created, when_changed, account_expires,
+     last_synced_at)
 VALUES
     (%(username)s, %(display_name)s, %(email)s, %(department)s, %(title)s,
-     %(company)s, %(office)s, %(manager)s, %(is_active)s, %(employee_code)s, now())
+     %(company)s, %(office)s, %(manager)s, %(is_active)s, %(employee_code)s,
+     %(given_name)s, %(sn)s, %(cn)s, %(upn)s, %(dn)s, %(phone)s, %(mobile)s,
+     %(fax)s, %(description)s, %(member_of)s, %(when_created)s, %(when_changed)s,
+     %(account_expires)s, now())
 ON CONFLICT (username) DO UPDATE SET
     display_name = EXCLUDED.display_name, email = EXCLUDED.email,
     department = EXCLUDED.department, title = EXCLUDED.title,
     company = EXCLUDED.company, office = EXCLUDED.office, manager = EXCLUDED.manager,
     is_active = EXCLUDED.is_active,
     employee_code = COALESCE(EXCLUDED.employee_code, employee_directory.employee_code),
+    given_name = EXCLUDED.given_name, sn = EXCLUDED.sn, cn = EXCLUDED.cn,
+    upn = EXCLUDED.upn, dn = EXCLUDED.dn, phone = EXCLUDED.phone,
+    mobile = EXCLUDED.mobile, fax = EXCLUDED.fax, description = EXCLUDED.description,
+    member_of = EXCLUDED.member_of, when_created = EXCLUDED.when_created,
+    when_changed = EXCLUDED.when_changed, account_expires = EXCLUDED.account_expires,
     last_synced_at = now()
 """
 
@@ -113,6 +150,67 @@ def _val(entry, attr):
     if a and a.value:
         return str(a.value).strip() or None
     return None
+
+
+def _multi(entry, attr) -> list[str] | None:
+    """Multi-valued attribute (e.g. memberOf) -> list[str], or None if empty."""
+    try:
+        a = entry[attr]
+    except Exception:  # noqa: BLE001
+        return None
+    if not a:
+        return None
+    vals = [str(v).strip() for v in (a.values or []) if str(v).strip()]
+    return vals or None
+
+
+# AD GeneralizedTime, e.g. "20240131235959.0Z".
+_GENTIME_RE = re.compile(r"^(\d{14})(?:\.\d+)?Z?$")
+# 100-ns intervals between 1601-01-01 (AD epoch) and 1970-01-01 (Unix epoch).
+_FILETIME_EPOCH_DELTA = 116444736000000000
+_FILETIME_NEVER = 0x7FFFFFFFFFFFFFFF
+
+
+def _dt(entry, attr) -> datetime | None:
+    """AD GeneralizedTime -> aware UTC datetime. ldap3 may already parse it."""
+    try:
+        raw = entry[attr].value
+    except Exception:  # noqa: BLE001
+        return None
+    if not raw:
+        return None
+    if isinstance(raw, datetime):
+        return raw if raw.tzinfo else raw.replace(tzinfo=timezone.utc)
+    m = _GENTIME_RE.match(str(raw).strip())
+    if not m:
+        return None
+    try:
+        return datetime.strptime(m.group(1), "%Y%m%d%H%M%S").replace(tzinfo=timezone.utc)
+    except ValueError:
+        return None
+
+
+def _account_expires(entry) -> datetime | None:
+    """AD accountExpires FILETIME -> aware UTC datetime; 0 / max => never (None)."""
+    try:
+        raw = entry["accountExpires"].value
+    except Exception:  # noqa: BLE001
+        return None
+    if raw is None:
+        return None
+    if isinstance(raw, datetime):
+        return raw if raw.tzinfo else raw.replace(tzinfo=timezone.utc)
+    try:
+        ft = int(raw)
+    except (TypeError, ValueError):
+        return None
+    if ft <= 0 or ft >= _FILETIME_NEVER:
+        return None
+    unix_seconds = (ft - _FILETIME_EPOCH_DELTA) / 10_000_000
+    try:
+        return datetime.fromtimestamp(unix_seconds, tz=timezone.utc)
+    except (ValueError, OverflowError, OSError):
+        return None
 
 
 def _guid(e) -> str | None:
@@ -152,12 +250,27 @@ def _row(e) -> dict:
         "manager": _val(e, "manager"),
         "is_active": not bool(uac & UF_ACCOUNTDISABLE),
         "employee_code": int(m.group(1)) if m else None,
+        "given_name": _val(e, "givenName"),
+        "sn": _val(e, "sn"),
+        "cn": _val(e, "cn"),
+        "upn": _val(e, "userPrincipalName"),
+        "dn": _val(e, "distinguishedName") or str(e.entry_dn),
+        "phone": _val(e, "telephoneNumber"),
+        "mobile": _val(e, "mobile"),
+        "fax": _val(e, "facsimileTelephoneNumber"),
+        "description": desc or None,
+        "member_of": _multi(e, "memberOf"),
+        "when_created": _dt(e, "whenCreated"),
+        "when_changed": _dt(e, "whenChanged"),
+        "account_expires": _account_expires(e),
     }
 
 
 _ATTRS = ["sAMAccountName", "objectGUID", "displayName", "mail", "department", "title",
           "company", "physicalDeliveryOfficeName", "manager", "description",
-          "userAccountControl"]
+          "userAccountControl", "givenName", "sn", "cn", "userPrincipalName",
+          "distinguishedName", "telephoneNumber", "mobile", "facsimileTelephoneNumber",
+          "memberOf", "whenCreated", "whenChanged", "accountExpires"]
 
 
 def _connect_ldap() -> Connection:
