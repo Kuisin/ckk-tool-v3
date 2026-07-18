@@ -11,6 +11,7 @@ import {
   IconAlertTriangle,
   IconAtom,
   IconBolt,
+  IconBook2,
   IconBoxSeam,
   IconBuilding,
   IconBuildingFactory2,
@@ -47,6 +48,7 @@ export type AppIcon = ComponentType<{ size?: number; stroke?: number }>;
 /** `AppEntry.icon` name → component (design.md §7 icon map). */
 export const ICON_MAP: Record<string, AppIcon> = {
   IconAdjustments,
+  IconBook2,
   IconCurrencyYen,
   IconCalculator,
   IconFileText,

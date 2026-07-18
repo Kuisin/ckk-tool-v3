@@ -18,7 +18,8 @@ INSERT INTO app.feature_flags (key, is_enabled, description, updated_at) VALUES
   ('app:trial-pricing-engine:main',   true, '試算計算(設定) 本番公開',  now()),
   ('app:master-customers:main',       true, '顧客 本番公開',            now()),
   ('app:master-end-users:main',       true, '最終需要家 本番公開',      now()),
-  ('app:master-approval-groups:main', true, '承認グループ 本番公開',    now())
+  ('app:master-approval-groups:main', true, '承認グループ 本番公開',    now()),
+  ('app:docs:main',                   true, 'マニュアル 本番公開',      now())
 ON CONFLICT (key) DO UPDATE
   SET is_enabled = EXCLUDED.is_enabled, updated_at = now();
 

@@ -343,6 +343,16 @@ export const appList: AppEntry[] = [
     category: "システム",
     requiredPermission: "system",
   },
+  {
+    // マニュアル（/docs）。全ユーザー閲覧可。多言語 md をアプリ内で表示。
+    key: "docs",
+    label: "マニュアル",
+    operationCode: "SY03",
+    href: "/docs",
+    icon: "IconBook2",
+    category: "システム",
+    requiredPermission: null,
+  },
 ];
 
 /**
