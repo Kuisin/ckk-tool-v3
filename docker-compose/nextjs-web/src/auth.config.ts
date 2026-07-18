@@ -1,5 +1,5 @@
 /**
- * auth.config.ts — Auth.js v5 の edge 安全な共通設定（middleware 用）。
+ * auth.config.ts — Auth.js v5 の Proxy 用共通設定。
  * Prisma を触る Credentials の authorize は auth.ts 側にのみ置く。
  */
 
@@ -11,7 +11,7 @@ export const authConfig = {
   session: { strategy: "jwt" },
   providers: [], // providers は auth.ts で合成
   callbacks: {
-    // middleware（authorized）: 未ログインはログインページへ
+    // Proxy（authorized）: 未ログインはログインページへ
     authorized({ auth }) {
       return !!auth?.user;
     },
