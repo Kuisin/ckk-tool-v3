@@ -217,20 +217,38 @@ export function ProductTypeEditForm({
                     style={{ flex: 1 }}
                     value={a.itemKey || null}
                   />
-                  <TextInput
-                    description={
-                      def?.default ? `未入力なら "${def.default}"` : "任意"
-                    }
-                    label="既定値（上書き）"
-                    onChange={(e) =>
-                      patchAssign(i, {
-                        defaultValue: e.currentTarget.value || undefined,
-                      })
-                    }
-                    placeholder={def?.default ?? "（任意）"}
-                    style={{ flex: 1 }}
-                    value={a.defaultValue ?? ""}
-                  />
+                  {def?.type === "select" ? (
+                    <Select
+                      clearable
+                      data={(def.options ?? []).map((o) => ({
+                        value: o.value,
+                        label: o.label,
+                      }))}
+                      description="既定値（上書き・任意）"
+                      label="既定値（上書き）"
+                      onChange={(v) =>
+                        patchAssign(i, { defaultValue: v || undefined })
+                      }
+                      placeholder={def.default ?? "（任意）"}
+                      style={{ flex: 1 }}
+                      value={a.defaultValue ?? null}
+                    />
+                  ) : (
+                    <TextInput
+                      description={
+                        def?.default ? `未入力なら "${def.default}"` : "任意"
+                      }
+                      label="既定値（上書き）"
+                      onChange={(e) =>
+                        patchAssign(i, {
+                          defaultValue: e.currentTarget.value || undefined,
+                        })
+                      }
+                      placeholder={def?.default ?? "（任意）"}
+                      style={{ flex: 1 }}
+                      value={a.defaultValue ?? ""}
+                    />
+                  )}
                   <ActionIcon.Group>
                     <ActionIcon
                       aria-label="上へ"

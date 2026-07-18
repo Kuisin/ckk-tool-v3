@@ -42,9 +42,13 @@ import {
   IconDotsVertical,
   IconInbox,
 } from "@tabler/icons-react";
-import { type ReactNode, useMemo, useState } from "react";
+import { type ReactNode, useMemo, useRef, useState } from "react";
 import { useUrlTableState } from "@/hooks/useUrlState";
 import { useIsMobile } from "@/hooks/useViewport";
+
+/** 幅未指定の列の既定幅（px）。列幅ドラッグ・truncate の基準。 */
+const DEFAULT_COL_WIDTH = 180;
+const MIN_COL_WIDTH = 60;
 
 export type SortDir = "asc" | "desc";
 
@@ -60,6 +64,8 @@ export interface Column<T> {
   sortValue?: (row: T) => string | number;
   /** Can be hidden via the column-visibility menu. */
   hideable?: boolean;
+  /** Set false to opt out of single-line truncation (e.g. wrap-heavy cells). */
+  truncate?: boolean;
 }
 
 export interface BulkAction<T> {
@@ -146,6 +152,43 @@ export function DataTable<T>({
   };
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [hidden, setHidden] = useState<Set<string>>(new Set());
+
+  // ── 列幅（ドラッグでリサイズ）───────────────────────────────────────────────
+  const [colWidths, setColWidths] = useState<Record<string, number>>(() =>
+    Object.fromEntries(
+      columns.map((c) => [
+        c.key,
+        typeof c.width === "number" ? c.width : DEFAULT_COL_WIDTH,
+      ]),
+    ),
+  );
+  const dragRef = useRef<{
+    key: string;
+    startX: number;
+    startW: number;
+  } | null>(null);
+  const startResize = (key: string, e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    dragRef.current = {
+      key,
+      startX: e.clientX,
+      startW: colWidths[key] ?? DEFAULT_COL_WIDTH,
+    };
+    const onMove = (ev: MouseEvent) => {
+      const d = dragRef.current;
+      if (!d) return;
+      const w = Math.max(MIN_COL_WIDTH, d.startW + (ev.clientX - d.startX));
+      setColWidths((s) => ({ ...s, [d.key]: w }));
+    };
+    const onUp = () => {
+      dragRef.current = null;
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup", onUp);
+    };
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", onUp);
+  };
 
   const visibleColumns = columns.filter((c) => !hidden.has(c.key));
   const hideableColumns = columns.filter((c) => c.hideable);
@@ -435,14 +478,16 @@ export function DataTable<T>({
       <ScrollArea>
         <Table
           highlightOnHover={!!onRowClick}
+          layout="fixed"
           stickyHeader={stickyHeader}
           striped
+          style={{ minWidth: "100%", width: "max-content" }}
           verticalSpacing={rowPy}
         >
           <Table.Thead>
             <Table.Tr>
               {selectable && (
-                <Table.Th className="w-10" style={headerPad}>
+                <Table.Th style={{ width: 40, ...headerPad }}>
                   <Checkbox
                     aria-label="すべて選択"
                     checked={allOnPageSelected}
@@ -459,9 +504,10 @@ export function DataTable<T>({
                     key={c.key}
                     onClick={c.sortable ? () => toggleSort(c.key) : undefined}
                     style={{
-                      width: c.width,
+                      width: colWidths[c.key] ?? DEFAULT_COL_WIDTH,
                       textAlign: c.align,
                       cursor: c.sortable ? "pointer" : undefined,
+                      position: "relative",
                       ...headerPad,
                     }}
                   >
@@ -470,7 +516,13 @@ export function DataTable<T>({
                       justify={c.align === "right" ? "flex-end" : "flex-start"}
                       wrap="nowrap"
                     >
-                      <Text c="dimmed" component="span" fw={600} size="xs">
+                      <Text
+                        c="dimmed"
+                        component="span"
+                        fw={600}
+                        size="xs"
+                        truncate
+                      >
                         {c.header}
                       </Text>
                       {c.sortable &&
@@ -484,10 +536,26 @@ export function DataTable<T>({
                           <IconArrowsSort className="opacity-40" size={12} />
                         ))}
                     </Group>
+                    {/* 列幅ドラッグハンドル（右端） */}
+                    <Box
+                      aria-hidden
+                      onClick={(e) => e.stopPropagation()}
+                      onMouseDown={(e) => startResize(c.key, e)}
+                      style={{
+                        position: "absolute",
+                        top: 0,
+                        right: 0,
+                        height: "100%",
+                        width: 8,
+                        cursor: "col-resize",
+                        userSelect: "none",
+                        touchAction: "none",
+                      }}
+                    />
                   </Table.Th>
                 );
               })}
-              {rowActions && <Table.Th className="w-12" style={headerPad} />}
+              {rowActions && <Table.Th style={{ width: 48, ...headerPad }} />}
             </Table.Tr>
           </Table.Thead>
           <Table.Tbody>
@@ -505,7 +573,7 @@ export function DataTable<T>({
                   {selectable && (
                     <Table.Td
                       onClick={(e) => e.stopPropagation()}
-                      style={cellPad}
+                      style={{ width: 40, ...cellPad }}
                     >
                       <Checkbox
                         aria-label="行を選択"
@@ -519,15 +587,32 @@ export function DataTable<T>({
                     <Table.Td
                       key={c.key}
                       onClick={onRowClick ? () => onRowClick(row) : undefined}
-                      style={{ textAlign: c.align, ...cellPad }}
+                      style={{
+                        textAlign: c.align,
+                        maxWidth: colWidths[c.key] ?? DEFAULT_COL_WIDTH,
+                        overflow: "hidden",
+                        ...cellPad,
+                      }}
                     >
-                      {c.render(row)}
+                      {c.truncate === false ? (
+                        c.render(row)
+                      ) : (
+                        <Box
+                          style={{
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
+                            whiteSpace: "nowrap",
+                          }}
+                        >
+                          {c.render(row)}
+                        </Box>
+                      )}
                     </Table.Td>
                   ))}
                   {rowActions && (
                     <Table.Td
                       onClick={(e) => e.stopPropagation()}
-                      style={cellPad}
+                      style={{ width: 48, ...cellPad }}
                     >
                       {actions.length > 0 && (
                         <Menu position="bottom-end" shadow="md" withinPortal>
