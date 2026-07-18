@@ -38,15 +38,13 @@ import {
   type Criterion,
   criterionSchema,
   customInputDefSchema,
+  type LookupTable,
+  lookupTablesArraySchema,
   RESERVED_KEYS,
   TRIAL_TOOL_TYPES,
 } from "@/lib/trial-pricing-criteria";
 import { checkExpressionSyntax } from "@/lib/trial-pricing-engine";
-import { checkScriptSyntax } from "@/lib/trial-pricing-script";
 import type { TrialPricingSettings } from "@/lib/trial-pricing-settings";
-
-/** カスタム計算 JS の上限（DoS/誤爆の緩衝。通常の後処理なら十分）。 */
-const CUSTOM_SCRIPT_MAX = 20_000;
 
 // 計算基準（criteria）は SY02 メインのリスト + 個別編集ページから
 // `updateCriteria` で保存する。スカラー設定は下の settingsInput（criteria を
@@ -59,11 +57,6 @@ const settingsInput = z.object({
   correctionFactor: z.number().min(0),
   ldChargePer10min: z.number().min(0),
   customInputs: z.array(customInputDefSchema),
-  customScriptEnabled: z.boolean(),
-  customScript: z
-    .string()
-    .max(CUSTOM_SCRIPT_MAX, "カスタム計算が長すぎます")
-    .default(""),
 });
 
 const criteriaInput = z.array(criterionSchema);
@@ -117,12 +110,6 @@ export async function updateTrialPricingSettings(
     }
     seenKeys.add(d.key);
   }
-  if (parsed.data.customScriptEnabled) {
-    const syntaxError = checkScriptSyntax(parsed.data.customScript);
-    if (syntaxError) {
-      return actionError(`カスタム計算の構文エラー: ${syntaxError}`);
-    }
-  }
   try {
     const before = await getTrialPricingSettings();
     // criteria は現状 DB 値を維持（criteria の保存は updateCriteria が担当）。
@@ -169,6 +156,50 @@ export async function updateCriteria(
     return actionOk();
   } catch (e) {
     return actionError(prismaErrorMessage(e, "計算基準の保存に失敗しました"));
+  }
+}
+
+/** ルックアップ表を保存（表名の一意性を検証）。 */
+export async function updateLookupTables(
+  tables: LookupTable[],
+): Promise<ActionResult> {
+  const authz = await checkPermission("system", "UPDATE");
+  if (!authz.ok) return actionError(authz.error);
+  const parsed = lookupTablesArraySchema.safeParse(tables);
+  if (!parsed.success) {
+    return actionError(
+      parsed.error.issues[0]?.message ?? "ルックアップ表が不正です",
+    );
+  }
+  const names = new Set<string>();
+  for (const t of parsed.data) {
+    if (names.has(t.name))
+      return actionError(`表名が重複しています: ${t.name}`);
+    names.add(t.name);
+    const keys = new Set<string>();
+    for (const e of t.entries) {
+      if (keys.has(e.key))
+        return actionError(`「${t.name}」のキーが重複しています: ${e.key}`);
+      keys.add(e.key);
+    }
+  }
+  try {
+    const before = await getTrialPricingSettings();
+    await saveTrialPricingSettings({ ...before, lookupTables: parsed.data });
+    await recordAudit({
+      action: "UPDATE",
+      tableName: "system_settings",
+      recordId: "trial_pricing.lookup_tables",
+      before: { lookupTables: before.lookupTables },
+      after: { lookupTables: parsed.data },
+    });
+    revalidatePath("/settings/trial-pricing-engine");
+    revalidatePath("/sales/trial-estimates");
+    return actionOk();
+  } catch (e) {
+    return actionError(
+      prismaErrorMessage(e, "ルックアップ表の保存に失敗しました"),
+    );
   }
 }
 

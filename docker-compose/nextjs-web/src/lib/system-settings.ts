@@ -13,6 +13,7 @@ import { readConfigNamespace, writeConfigValues } from "./app-config";
 import {
   criterionSchema,
   customInputDefSchema,
+  lookupTableSchema,
 } from "./trial-pricing-criteria";
 import {
   DEFAULT_TRIAL_PRICING_SETTINGS,
@@ -30,12 +31,14 @@ const KEY_MAP: Record<keyof TrialPricingSettings, string> = {
   ldChargePer10min: "trial_pricing.ld_charge_per_10min",
   criteria: "trial_pricing.criteria",
   customInputs: "trial_pricing.custom_inputs",
+  lookupTables: "trial_pricing.lookup_tables",
   customScriptEnabled: "trial_pricing.custom_script_enabled",
   customScript: "trial_pricing.custom_script",
 };
 
 const criteriaArraySchema = z.array(criterionSchema);
 const customInputsArraySchema = z.array(customInputDefSchema);
+const lookupTablesArraySchema = z.array(lookupTableSchema);
 
 /** 試算設定 — 未設定キーは既定値で補完。 */
 export async function getTrialPricingSettings(): Promise<TrialPricingSettings> {
@@ -68,6 +71,11 @@ export async function getTrialPricingSettings(): Promise<TrialPricingSettings> {
       case "customInputs": {
         const parsed = customInputsArraySchema.safeParse(v);
         if (parsed.success) out.customInputs = parsed.data;
+        break;
+      }
+      case "lookupTables": {
+        const parsed = lookupTablesArraySchema.safeParse(v);
+        if (parsed.success) out.lookupTables = parsed.data;
         break;
       }
       default:

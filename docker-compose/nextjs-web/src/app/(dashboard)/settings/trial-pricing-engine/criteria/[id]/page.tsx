@@ -21,6 +21,7 @@ export default async function CriterionEditPage({
       criterionId={criterionId}
       customInputs={settings.customInputs}
       ldChargePer10min={settings.ldChargePer10min}
+      lookupTables={settings.lookupTables}
     />
   );
 }
