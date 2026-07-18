@@ -224,6 +224,29 @@ describe("per-tool-type criteria on/off", () => {
     }).lots[0].minimumPrice;
     expect(cylWith - cylDefault).toBeCloseTo(1000, 4);
   });
+
+  it("empty toolTypes applies to no product type", () => {
+    const finalC = DEFAULT_CRITERIA.find(
+      (c) => c.role === "final",
+    ) as Criterion;
+    const criteria: Criterion[] = [
+      ...DEFAULT_CRITERIA.filter((c) => c.role !== "final"),
+      {
+        id: "appliesToNone",
+        name: "適用なし",
+        role: "component",
+        order: 105,
+        enabled: true,
+        expression: "9999",
+        toolTypes: [],
+      },
+      finalC,
+    ];
+    // base is ROUND_BAR; the empty-scoped criterion must never apply.
+    expect(
+      runCriteriaEngine(base, { criteria }).lots[0].minimumPrice,
+    ).toBeCloseTo(runCriteriaEngine(base).lots[0].minimumPrice, 4);
+  });
 });
 
 describe("sandbox + error handling", () => {

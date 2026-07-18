@@ -30,7 +30,11 @@ import { updateCriteria } from "@/app/(dashboard)/settings/actions";
 import { CreateButton, GhostButton } from "@/components/ui/buttons";
 import { openConfirm } from "@/components/ui/modals";
 import { TOOL_TYPE_OPTIONS } from "@/lib/trial-pricing";
-import type { Criterion, CriterionRole } from "@/lib/trial-pricing-criteria";
+import {
+  type Criterion,
+  type CriterionRole,
+  TRIAL_TOOL_TYPES,
+} from "@/lib/trial-pricing-criteria";
 
 const BASE = "/settings/trial-pricing-engine/criteria";
 
@@ -128,11 +132,20 @@ export function CriteriaListPanel({ initial }: { initial: Criterion[] }) {
                 >
                   {ROLE_META[c.role].label}
                 </Badge>
-                <Badge color="teal" size="xs" variant="outline">
-                  {c.toolTypes?.length
-                    ? c.toolTypes.map(toolLabel).join("・")
-                    : "全工具種"}
-                </Badge>
+                {c.toolTypes === undefined ||
+                c.toolTypes.length === TRIAL_TOOL_TYPES.length ? (
+                  <Badge color="teal" size="xs" variant="outline">
+                    全工具種
+                  </Badge>
+                ) : c.toolTypes.length === 0 ? (
+                  <Badge color="red" size="xs" variant="light">
+                    適用なし
+                  </Badge>
+                ) : (
+                  <Badge color="teal" size="xs" variant="outline">
+                    {c.toolTypes.map(toolLabel).join("・")}
+                  </Badge>
+                )}
               </Group>
               <Text
                 c="dimmed"

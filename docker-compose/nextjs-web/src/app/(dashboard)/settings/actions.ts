@@ -74,8 +74,7 @@ function validateCriteria(criteria: Criterion[]): string | null {
   for (const tt of TRIAL_TOOL_TYPES) {
     const finals = enabled.filter(
       (c) =>
-        c.role === "final" &&
-        (!c.toolTypes?.length || c.toolTypes.includes(tt)),
+        c.role === "final" && (c.toolTypes ?? TRIAL_TOOL_TYPES).includes(tt),
     );
     if (finals.length !== 1) {
       return `工具種「${TOOL_TYPE_LABEL[tt] ?? tt}」に有効な『見積単価（final）』基準をちょうど1つにしてください`;
