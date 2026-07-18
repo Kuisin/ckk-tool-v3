@@ -65,6 +65,11 @@ def _shared_type(username: str) -> str:
 app = FastAPI(title="adminTools")
 templates = Jinja2Templates(directory="app/templates")
 
+# 実行環境（Coolify で APP_ENV=dev/main を設定。未設定＝ローカルは dev 扱い）。
+# main 以外はすべて dev とみなし、全テンプレート上部にオレンジの開発環境バーを表示。
+APP_ENV = os.environ.get("APP_ENV", "dev").strip().lower()
+templates.env.globals["is_dev"] = APP_ENV != "main"
+
 
 def _parse_accounts_xlsx(data: bytes) -> list[dict]:
     """Parse mail accounts from an email-list xlsx across all sheets.

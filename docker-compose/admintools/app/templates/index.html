@@ -82,6 +82,7 @@
   </style>
 </head>
 <body>
+  {% if is_dev %}<div style="background:#ea580c;color:#fff;text-align:center;font-size:12px;font-weight:700;letter-spacing:1px;padding:5px 0;">開発環境 — DEV</div>{% endif %}
   <header><h1 onclick="location.href='/'">adminTools</h1><span class="muted" style="color:#cbd5e1">{{ domain }}</span></header>
 
   {% macro alias_fields(prefix) %}
