@@ -18,6 +18,7 @@ import {
   IconBuildingWarehouse,
   IconCalculator,
   IconCalendarDue,
+  IconCategory,
   IconClipboardCheck,
   IconClipboardList,
   IconCurrencyYen,
@@ -79,6 +80,7 @@ export const ICON_MAP: Record<string, AppIcon> = {
   IconMathFunction,
   IconAlertTriangle,
   IconUsersGroup,
+  IconCategory,
 };
 
 /** Representative icon for each category section header. */

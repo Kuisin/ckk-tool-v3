@@ -33,6 +33,15 @@ export const SETTINGS_APPS: SettingsApp[] = [
     icon: "IconMathFunction",
     operationCode: "SY02",
   },
+  {
+    key: "product-types",
+    label: "製品種別",
+    description:
+      "製品種別（テンプレート）— 新規製品作成時に展開する入力項目を種別ごとに定義（文字列/数値/真偽/選択/日付の型で入力を検証）。",
+    href: "/settings/product-types",
+    icon: "IconCategory",
+    operationCode: "SY04",
+  },
 ];
 
 export function findSettingsApp(key: string): SettingsApp | undefined {

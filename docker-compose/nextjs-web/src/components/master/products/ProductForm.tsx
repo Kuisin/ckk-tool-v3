@@ -3,10 +3,11 @@
 /**
  * ProductForm.tsx — 製品 新規作成 / 編集フォーム (MS13 / MS23).
  *
- * Ported from design-preview (designs/master/products/new.tsx, edit.tsx) and
- * wired to the create/update Server Actions. 製品コードは保存時に自動採番
- * （PRD-YYYYMM-NNNN）。spec はキー/値の行エディタで編集する。
- * （設計図アップロードは design_files/ファイル基盤の導入時に追加する。）
+ * 製品コードは保存時に自動採番（PRD-YYYYMM-NNNN）。
+ * 製品種別（SY04）を選ぶと、その種別が予め定義した入力項目が型付き（文字列/数値/
+ * 真偽/選択/日付）で展開され、入力を型で検証する。種別に属さない項目は「その他の仕様」
+ * のキー/値エディタで自由に追加できる。すべて product.spec（JSON）に保存される。
+ * 種別 id は spec の予約キー `_product_type` に保持する（編集時に再展開するため）。
  */
 
 import {
@@ -23,7 +24,7 @@ import { useForm } from "@mantine/form";
 import { notifications } from "@mantine/notifications";
 import { IconMinus, IconPlus } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
-import { useTransition } from "react";
+import { useMemo, useState, useTransition } from "react";
 import { z } from "zod";
 import { searchStructuredMaterialTypeOptions } from "@/app/(dashboard)/_shared/option-search";
 import {
@@ -42,6 +43,13 @@ import { useIsMobile } from "@/hooks/useViewport";
 import { UNIT_OPTIONS } from "@/lib/enum-labels";
 import { zodResolver } from "@/lib/form";
 import { diameterCodeFromMm, lengthCodeFromMm } from "@/lib/material-code";
+import {
+  defaultValuesFor,
+  PRODUCT_TYPE_SPEC_KEY,
+  type ProductType,
+  type ProductTypeItem,
+  validateItemValue,
+} from "@/lib/product-types";
 
 const BASE_PATH = "/master/products";
 
@@ -55,7 +63,6 @@ const productSchema = z
   .object({
     nameJa: z.string().min(1, "名称（日本語）を入力してください"),
     nameEn: z.string(),
-    // 製品が要求する素材 = 材種 + 直径 + 全長（特定素材には紐付けない）。
     materialTypeId: z.string().nullable(),
     materialTypeLabel: z.string(),
     diameterMm: z.number().nullable(),
@@ -108,11 +115,64 @@ export interface ProductFormInitial {
   spec: { key: string; value: string }[];
 }
 
-export function ProductForm({ initial }: { initial?: ProductFormInitial }) {
+const typeLabel = (t: ProductType) => t.name.ja || t.name.en || t.id;
+
+export function ProductForm({
+  initial,
+  productTypes,
+}: {
+  initial?: ProductFormInitial;
+  productTypes: ProductType[];
+}) {
   const router = useRouter();
   const isMobile = useIsMobile();
   const [isPending, startTransition] = useTransition();
   const isEdit = !!initial;
+
+  const allTypes = useMemo(
+    () =>
+      [...productTypes]
+        .sort((a, b) => a.order - b.order)
+        .map((t) => ({
+          ...t,
+          items: [...t.items].sort((a, b) => a.order - b.order),
+        })),
+    [productTypes],
+  );
+
+  // 初期 spec を「種別 id / 種別項目値 / その他（自由）」に分解する。
+  const { initialTypeId, initialTypeValues, initialFreeform } = useMemo(() => {
+    const spec = initial?.spec ?? [];
+    const reserved = spec.find((r) => r.key === PRODUCT_TYPE_SPEC_KEY);
+    const typeId = reserved?.value ?? null;
+    const type = allTypes.find((t) => t.id === typeId) ?? null;
+    const keys = new Set(type?.items.map((i) => i.key) ?? []);
+    const values: Record<string, string> = {};
+    if (type) {
+      for (const it of type.items) {
+        values[it.key] =
+          spec.find((r) => r.key === it.key)?.value ?? it.default ?? "";
+      }
+    }
+    const freeform = spec.filter(
+      (r) => r.key !== PRODUCT_TYPE_SPEC_KEY && !keys.has(r.key),
+    );
+    return {
+      initialTypeId: typeId,
+      initialTypeValues: values,
+      initialFreeform: freeform,
+    };
+  }, [initial, allTypes]);
+
+  const [typeId, setTypeId] = useState<string | null>(initialTypeId);
+  const [typeValues, setTypeValues] =
+    useState<Record<string, string>>(initialTypeValues);
+  const [typeErrors, setTypeErrors] = useState<Record<string, string>>({});
+
+  const selectedType = allTypes.find((t) => t.id === typeId) ?? null;
+  const typeOptions = allTypes
+    .filter((t) => t.enabled || t.id === typeId)
+    .map((t) => ({ value: t.id, label: typeLabel(t) }));
 
   const form = useForm<FormValues>({
     validate: zodResolver(productSchema),
@@ -126,15 +186,60 @@ export function ProductForm({ initial }: { initial?: ProductFormInitial }) {
       unit: initial?.unit ?? "本",
       isActive: initial?.isActive ?? true,
       notes: initial?.notes ?? "",
-      spec: initial?.spec.length ? initial.spec : [{ key: "", value: "" }],
+      spec: initialFreeform.length ? initialFreeform : [{ key: "", value: "" }],
     },
   });
 
+  const onTypeChange = (v: string | null) => {
+    setTypeId(v);
+    setTypeErrors({});
+    const t = allTypes.find((x) => x.id === v) ?? null;
+    setTypeValues(t ? defaultValuesFor(t) : {});
+  };
+
+  const setItemVal = (key: string, val: string) => {
+    setTypeValues((s) => ({ ...s, [key]: val }));
+    setTypeErrors((e) => {
+      if (!e[key]) return e;
+      const { [key]: _drop, ...rest } = e;
+      return rest;
+    });
+  };
+
   const handleSubmit = (values: FormValues) => {
+    // 種別項目を型で検証。
+    if (selectedType) {
+      const errs: Record<string, string> = {};
+      for (const it of selectedType.items) {
+        const msg = validateItemValue(it, typeValues[it.key]);
+        if (msg) errs[it.key] = msg;
+      }
+      if (Object.keys(errs).length > 0) {
+        setTypeErrors(errs);
+        notifications.show({
+          title: "入力エラー",
+          message: "製品種別の項目を確認してください",
+          color: "red",
+        });
+        return;
+      }
+    }
+
+    // spec を合成（自由項目 + 種別項目 + 予約キー）。
+    const mergedSpec: { key: string; value: string }[] = [...values.spec];
+    if (selectedType) {
+      for (const it of selectedType.items) {
+        const val = (typeValues[it.key] ?? "").trim();
+        if (val !== "") mergedSpec.push({ key: it.key, value: val });
+      }
+      mergedSpec.push({ key: PRODUCT_TYPE_SPEC_KEY, value: selectedType.id });
+    }
+
     startTransition(async () => {
+      const payload = { ...values, spec: mergedSpec };
       const result = isEdit
-        ? await updateProduct(initial.id, values)
-        : await createProduct(values);
+        ? await updateProduct(initial.id, payload)
+        : await createProduct(payload);
       if (result.ok) {
         notifications.show({
           title: "保存しました",
@@ -270,9 +375,39 @@ export function ProductForm({ initial }: { initial?: ProductFormInitial }) {
         </SimpleGrid>
       </FormSection>
 
+      {typeOptions.length > 0 && (
+        <FormSection
+          description="種別を選ぶと、その種別が予め定義した入力項目が展開されます（製品種別 SY04 で編集）。"
+          title="製品種別"
+        >
+          <Select
+            clearable
+            data={typeOptions}
+            description={selectedType?.description || "種別を選択（任意）"}
+            label="製品種別"
+            onChange={onTypeChange}
+            placeholder="種別を選択"
+            value={typeId}
+          />
+          {selectedType && selectedType.items.length > 0 && (
+            <SimpleGrid cols={isMobile ? 1 : 2} mt="md" spacing="sm">
+              {selectedType.items.map((it) => (
+                <ProductTypeItemInput
+                  error={typeErrors[it.key]}
+                  item={it}
+                  key={it.key}
+                  onChange={(v) => setItemVal(it.key, v)}
+                  value={typeValues[it.key] ?? ""}
+                />
+              ))}
+            </SimpleGrid>
+          )}
+        </FormSection>
+      )}
+
       <FormSection
-        description="項目名と値の組み合わせで自由に記述できます（spec JSON）。"
-        title="仕様"
+        description="種別に含まれない項目を、項目名と値で自由に追加できます（spec JSON）。"
+        title="その他の仕様"
       >
         {form.values.spec.map((_, index) => (
           <Group
@@ -315,4 +450,80 @@ export function ProductForm({ initial }: { initial?: ProductFormInitial }) {
       </FormSection>
     </FormShell>
   );
+}
+
+/** 種別項目を型に応じた入力で描画する。値は文字列表現で保持する。 */
+function ProductTypeItemInput({
+  item,
+  value,
+  error,
+  onChange,
+}: {
+  item: ProductTypeItem;
+  value: string;
+  error?: string;
+  onChange: (v: string) => void;
+}) {
+  const label = item.label.ja || item.label.en || item.key;
+  const common = {
+    label,
+    withAsterisk: item.required,
+    error,
+  };
+  switch (item.type) {
+    case "number":
+      return (
+        <NumberInput
+          {...common}
+          max={item.max}
+          min={item.min}
+          onChange={(v) => onChange(v === "" || v == null ? "" : String(v))}
+          placeholder={item.placeholder}
+          value={value === "" ? "" : Number(value)}
+        />
+      );
+    case "boolean":
+      return (
+        <Switch
+          checked={value === "true"}
+          description={error}
+          label={label}
+          mt="lg"
+          onChange={(e) => onChange(e.currentTarget.checked ? "true" : "false")}
+        />
+      );
+    case "select":
+      return (
+        <Select
+          {...common}
+          clearable={!item.required}
+          data={(item.options ?? []).map((o) => ({
+            value: o.value,
+            label: o.label,
+          }))}
+          onChange={(v) => onChange(v ?? "")}
+          placeholder={item.placeholder ?? "選択"}
+          value={value || null}
+        />
+      );
+    case "date":
+      return (
+        <TextInput
+          {...common}
+          onChange={(e) => onChange(e.currentTarget.value)}
+          placeholder="YYYY-MM-DD"
+          type="date"
+          value={value}
+        />
+      );
+    default:
+      return (
+        <TextInput
+          {...common}
+          onChange={(e) => onChange(e.currentTarget.value)}
+          placeholder={item.placeholder}
+          value={value}
+        />
+      );
+  }
 }

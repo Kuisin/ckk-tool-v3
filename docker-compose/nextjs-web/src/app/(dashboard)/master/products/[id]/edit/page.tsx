@@ -3,6 +3,7 @@ import { ProductForm } from "@/components/master/products/ProductForm";
 import { prisma } from "@/lib/db";
 import { formatProductNumber } from "@/lib/doc-number";
 import { type LocalizedText, localized } from "@/lib/format";
+import { getProductTypes } from "@/lib/product-settings";
 
 export const dynamic = "force-dynamic";
 
@@ -33,6 +34,8 @@ export default async function MasterProductsEditPage({
     ? `${r.materialType.code ?? ""} — ${localized(r.materialType.name as LocalizedText | null)}`
     : "";
 
+  const productTypes = await getProductTypes();
+
   return (
     <ProductForm
       initial={{
@@ -50,6 +53,7 @@ export default async function MasterProductsEditPage({
         notes: r.notes ?? "",
         spec,
       }}
+      productTypes={productTypes}
     />
   );
 }

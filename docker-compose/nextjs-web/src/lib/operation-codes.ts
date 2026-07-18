@@ -223,6 +223,17 @@ export const OPERATION_CODES: OperationCodeEntry[] = [
     mode: "0",
     index: "3",
   },
+  // 製品種別（テンプレート）— 単一画面, list コードのみ
+  {
+    code: "SY04",
+    label: "製品種別",
+    href: "/settings/product-types",
+    category: "システム",
+    kind: "list",
+    categoryCode: "SY",
+    mode: "0",
+    index: "4",
+  },
 ];
 
 const CODE_LOOKUP = new Map(
