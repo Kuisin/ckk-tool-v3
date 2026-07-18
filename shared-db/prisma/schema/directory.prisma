@@ -20,6 +20,19 @@ model EmployeeDirectory {
   manager      String?
   isActive     Boolean? @map("is_active")
   employeeCode Int?     @map("employee_code")
+  givenName      String?   @map("given_name")
+  sn             String?
+  cn             String?
+  upn            String?
+  dn             String?
+  phone          String?
+  mobile         String?
+  fax            String?
+  description    String?
+  memberOf       String[] @map("member_of")
+  whenCreated    DateTime? @map("when_created") @db.Timestamptz(6)
+  whenChanged    DateTime? @map("when_changed") @db.Timestamptz(6)
+  accountExpires DateTime? @map("account_expires") @db.Timestamptz(6)
   lastSyncedAt DateTime @default(now()) @map("last_synced_at") @db.Timestamptz(6)
 
   users User[] @relation("UserEmployee")
