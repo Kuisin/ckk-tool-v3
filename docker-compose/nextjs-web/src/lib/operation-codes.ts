@@ -201,6 +201,17 @@ export const OPERATION_CODES: OperationCodeEntry[] = [
     mode: "0",
     index: "1",
   },
+  // 試算計算（計算基準・カスタム入力・カスタム計算）— 単一画面, list コードのみ
+  {
+    code: "SY02",
+    label: "試算計算",
+    href: "/settings/trial-pricing-engine",
+    category: "システム",
+    kind: "list",
+    categoryCode: "SY",
+    mode: "0",
+    index: "2",
+  },
 ];
 
 const CODE_LOOKUP = new Map(

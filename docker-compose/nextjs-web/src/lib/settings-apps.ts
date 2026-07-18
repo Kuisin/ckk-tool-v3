@@ -25,13 +25,13 @@ export interface SettingsApp {
 
 export const SETTINGS_APPS: SettingsApp[] = [
   {
-    key: "trial-estimates",
-    label: "試算",
+    key: "trial-pricing-engine",
+    label: "試算計算",
     description:
-      "見積試算の計算ロジック — 材料参照価格ポリシー・既定係数・カスタム計算（JS）。",
-    href: "/settings/apps/trial-estimate",
-    icon: "IconCalculator",
-    operationCode: "SA05",
+      "見積試算の計算ロジック — 計算基準（自由設定）・カスタム入力項目・材料参照価格ポリシー・既定係数・カスタム計算（JS）。",
+    href: "/settings/trial-pricing-engine",
+    icon: "IconMathFunction",
+    operationCode: "SY02",
   },
 ];
 

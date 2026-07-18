@@ -7,7 +7,13 @@
  * deterministically via `calcTrialPricing`.
  */
 
-import type { TrialInput } from "@/lib/trial-pricing";
+import type { TrialInput, TrialResult } from "@/lib/trial-pricing";
+
+/** 保存/確定時に記録した価格スナップショット（estimate.result）。 */
+export type TrialPriceSnapshot = TrialResult & {
+  pricedAt?: string;
+  correctionFactor?: number;
+};
 
 /**
  * 試算 lifecycle — DRAFT: 編集可 / CONFIRMED: 計算確定・価格表登録可 /
@@ -27,6 +33,11 @@ export interface TrialEstimateRecord {
   materialLabel: string;
   /** Full calc input snapshot (materialBarPrice = chosen reference price). */
   input: TrialInput;
+  /**
+   * 保存/確定時に記録した価格（estimate.result）。存在すればこの値を表示し、
+   * 計算基準を後から変更しても過去の試算の価格は不変（「その時点の価格」）。
+   */
+  resultSnapshot: TrialPriceSnapshot | null;
   /** Date of the purchase point used as the reference price. */
   referenceDate: string;
   /** True when the material price was set manually (not from the policy). */

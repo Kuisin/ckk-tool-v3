@@ -9,6 +9,12 @@
 
 import type { MaterialPriceBasis } from "./material-pricing-core";
 import type { TrialPricingOptions } from "./trial-pricing";
+import {
+  type Criterion,
+  type CustomInputDef,
+  DEFAULT_CRITERIA,
+  DEFAULT_CUSTOM_INPUTS,
+} from "./trial-pricing-criteria";
 
 export interface TrialPricingSettings {
   /** 材料参照価格の算出方法 (default MAX = 直近期間の最高単価). */
@@ -24,6 +30,11 @@ export interface TrialPricingSettings {
   correctionFactor: number;
   /** LDチャージ (¥/10分). */
   ldChargePer10min: number;
+  // ── 計算基準（自由設定）＋カスタム入力 ──────────────────────────────────
+  /** 見積単価を構成する計算基準（順序付き。既定 = 従来ロジック）. */
+  criteria: Criterion[];
+  /** 管理者が追加したカスタム入力項目（試算フォームに表示 + 式の変数）. */
+  customInputs: CustomInputDef[];
   // ── カスタム計算（管理者が JS で試算ロジックを拡張）─────────────────────
   /** カスタム計算 JS を適用するか. */
   customScriptEnabled: boolean;
@@ -38,6 +49,8 @@ export const DEFAULT_TRIAL_PRICING_SETTINGS: TrialPricingSettings = {
   spareShapeCount: 3,
   correctionFactor: 1.25,
   ldChargePer10min: 7500,
+  criteria: DEFAULT_CRITERIA,
+  customInputs: DEFAULT_CUSTOM_INPUTS,
   customScriptEnabled: false,
   customScript: "",
 };
@@ -53,6 +66,8 @@ export function toTrialPricingOptions(
   return {
     correctionFactor: settings.correctionFactor,
     ldChargePer10min: settings.ldChargePer10min,
+    criteria: settings.criteria,
+    customInputs: settings.customInputs,
     customScript: settings.customScript,
     runCustomScript: settings.customScriptEnabled,
   };

@@ -11,6 +11,7 @@
  * (`material-pricing.ts`) and is passed in as `materialBarPrice`.
  */
 
+import type { Criterion, CustomInputDef } from "./trial-pricing-criteria";
 import {
   CENTERLESS,
   COATING_FACTOR,
@@ -30,6 +31,7 @@ import {
   STEP_MACHINING,
   STEP_TYPE_OPTIONS,
 } from "./trial-pricing-data";
+import { runCriteriaEngine } from "./trial-pricing-engine";
 import { applyCustomScript } from "./trial-pricing-script";
 
 export type ToolType = "ROUND_BAR" | "CYLINDER" | "OH";
@@ -127,9 +129,40 @@ export interface TrialPricingOptions {
   customScript?: string;
   /** カスタム計算を適用するか（trial_pricing.custom_script_enabled）。 */
   runCustomScript?: boolean;
+  /** 設定された計算基準（未設定は既定の基準セット = 従来ロジック）。 */
+  criteria?: Criterion[];
+  /** 管理者が追加したカスタム入力項目（式の変数として利用可能）。 */
+  customInputs?: CustomInputDef[];
 }
 
+/**
+ * 見積試算のエントリポイント。計算は設定された criteria（既定 = 従来ロジックを
+ * 再現する DEFAULT_CRITERIA）で行い、最後に管理者のカスタム計算 JS を後処理として
+ * 適用する。従来の固定ロジックは `calcTrialPricingLegacy`（パリティテストの
+ * 参照実装）として残す。シグネチャと `TrialResult` は不変。
+ */
 export function calcTrialPricing(
+  input: TrialInput,
+  opts: TrialPricingOptions = {},
+): TrialResult {
+  const base = runCriteriaEngine(input, opts);
+  if (opts.runCustomScript && opts.customScript?.trim()) {
+    const correction = opts.correctionFactor ?? CORRECTION_FACTOR;
+    const ldCharge = opts.ldChargePer10min ?? LD_CHARGE_PER_10MIN;
+    return applyCustomScript(opts.customScript, {
+      input,
+      result: base,
+      settings: { correctionFactor: correction, ldChargePer10min: ldCharge },
+    }).result;
+  }
+  return base;
+}
+
+/**
+ * 従来の固定計算ロジック（Excel 由来）。criteria エンジン導入後は `DEFAULT_CRITERIA`
+ * がこれを再現し、この関数はパリティテストの参照実装として保持する。
+ */
+export function calcTrialPricingLegacy(
   input: TrialInput,
   opts: TrialPricingOptions = {},
 ): TrialResult {

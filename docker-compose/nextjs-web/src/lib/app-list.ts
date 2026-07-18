@@ -333,6 +333,16 @@ export const appList: AppEntry[] = [
     category: "システム",
     requiredPermission: "system",
   },
+  {
+    // 試算カスタマイズ（計算基準・カスタム入力・カスタム計算 JS）。system 権限。
+    key: "trial-pricing-engine",
+    label: "試算計算",
+    operationCode: "SY02",
+    href: "/settings/trial-pricing-engine",
+    icon: "IconMathFunction",
+    category: "システム",
+    requiredPermission: "system",
+  },
 ];
 
 /**
