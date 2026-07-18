@@ -1,78 +1,48 @@
 "use client";
 
 /**
- * TrialPricingEngineForm — 試算計算（SY02）の設定フォーム.
+ * TrialPricingEngineForm — 試算計算（SY02）メインの設定フォーム.
  *
- * 見積単価は「計算基準（criteria）」の合計で決まる（各基準は入力変数を使う JS 式）。
- * 管理者はカスタム入力項目を追加でき、式の変数として使える。従来の固定ロジックは
- * DEFAULT_CRITERIA として再現済み。material policy / 係数 / カスタム計算 JS も同居。
- * Flat な FormSection 群でレンダリング（外側 Paper を持たない = 二重カード解消）。
+ * スカラー設定（材料参照価格ポリシー / 既定値・係数 / カスタム入力 / カスタム計算 JS）
+ * を編集し「保存」で永続化する。計算基準（criteria）は CriteriaListPanel が一覧表示し、
+ * 個別の式編集は /settings/trial-pricing-engine/criteria/[id] のページで行う。
+ * Flat な FormSection 群（外側 Paper を持たない = 二重カード無し）。
  */
 
 import {
   ActionIcon,
   Alert,
-  Badge,
-  Chip,
   Code,
-  Divider,
   Group,
   NumberInput,
   Paper,
-  SegmentedControl,
   Select,
   SimpleGrid,
   Stack,
   Switch,
-  Table,
   Text,
   Textarea,
   TextInput,
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
-import {
-  IconAlertTriangle,
-  IconArrowDown,
-  IconArrowUp,
-  IconInfoCircle,
-  IconPlus,
-  IconTrash,
-} from "@tabler/icons-react";
+import { IconAlertTriangle, IconPlus, IconTrash } from "@tabler/icons-react";
 import { useMemo, useState, useTransition } from "react";
 import { updateTrialPricingSettings } from "@/app/(dashboard)/settings/actions";
-import {
-  GhostButton,
-  SaveButton,
-  SecondaryButton,
-} from "@/components/ui/buttons";
+import { GhostButton, SaveButton } from "@/components/ui/buttons";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { FormSection } from "@/components/ui/shells";
 import {
-  TOOL_TYPE_OPTIONS,
-  type ToolType,
-  type TrialInput,
-} from "@/lib/trial-pricing";
-import {
-  type Criterion,
-  type CriterionRole,
   type CustomInputDef,
   type CustomInputType,
-  DEFAULT_CRITERIA,
   RESERVED_KEYS,
 } from "@/lib/trial-pricing-criteria";
-import { runCriteriaEngine } from "@/lib/trial-pricing-engine";
 import { CURRENT_LOGIC_SCRIPT } from "@/lib/trial-pricing-script";
 import {
   DEFAULT_TRIAL_PRICING_SETTINGS,
   MATERIAL_PRICE_BASIS_OPTIONS,
   type TrialPricingSettings,
 } from "@/lib/trial-pricing-settings";
-
-const ROLE_OPTIONS: { value: CriterionRole; label: string }[] = [
-  { value: "component", label: "加算（合計に足す）" },
-  { value: "intermediate", label: "中間（r.<id> で参照）" },
-  { value: "final", label: "見積単価（最終）" },
-];
+import { CriteriaListPanel } from "./CriteriaListPanel";
 
 const INPUT_TYPE_OPTIONS: { value: CustomInputType; label: string }[] = [
   { value: "number", label: "数値" },
@@ -81,51 +51,6 @@ const INPUT_TYPE_OPTIONS: { value: CustomInputType; label: string }[] = [
   { value: "select", label: "選択" },
 ];
 
-/** テスト実行用サンプル（丸棒・コート・段加工あり・3ロット）。 */
-const SAMPLE_INPUT: TrialInput = {
-  toolType: "ROUND_BAR",
-  maxDiameter: 12,
-  totalLength: 200,
-  materialBarPrice: 1500,
-  isBlackSkin: true,
-  stepLength: 20,
-  stepType: "FINISH",
-  neckLength: 0,
-  neckType: "NONE",
-  coating: "CX200",
-  lapType: "OSG",
-  inspection: "TWO",
-  ldEnabled: false,
-  ldLocation: "TIP",
-  ldOuterDiameter: 0,
-  ldBladeLength: 0,
-  machiningMinutes: 8,
-  machiningRatePer10min: 2000,
-  spareShapeCount: 3,
-  lotQuantities: [10, 50, 100],
-};
-
-interface EngineTestOutput {
-  breakdown: [string, number][];
-  shapeOutPrice: number;
-  lots: { quantity: number; minimumPrice: number; estimateUnitPrice: number }[];
-  warnings: string[];
-}
-
-function newId(): string {
-  return typeof crypto !== "undefined" && crypto.randomUUID
-    ? crypto.randomUUID()
-    : `c_${Date.now()}_${Math.floor(Math.random() * 1e6)}`;
-}
-
-function move<T>(arr: T[], i: number, dir: -1 | 1): T[] {
-  const j = i + dir;
-  if (j < 0 || j >= arr.length) return arr;
-  const copy = arr.slice();
-  [copy[i], copy[j]] = [copy[j], copy[i]];
-  return copy;
-}
-
 export function TrialPricingEngineForm({
   initial,
 }: {
@@ -133,27 +58,21 @@ export function TrialPricingEngineForm({
 }) {
   const [settings, setSettings] = useState<TrialPricingSettings>(initial);
   const [isPending, startTransition] = useTransition();
-  const [test, setTest] = useState<EngineTestOutput | null>(null);
-  const [testToolType, setTestToolType] = useState<ToolType>("ROUND_BAR");
 
   const patch = (p: Partial<TrialPricingSettings>) =>
     setSettings((s) => ({ ...s, ...p }));
 
-  // Custom-input key errors (reserved / duplicate) shown inline.
   const keyErrors = useMemo(() => {
     const errors: Record<number, string> = {};
     const seen = new Map<string, number>();
     settings.customInputs.forEach((d, i) => {
       if (d.key && RESERVED_KEYS.has(d.key)) errors[i] = "予約語です";
-      const prev = seen.get(d.key);
-      if (d.key && prev !== undefined) errors[i] = "キーが重複しています";
+      if (d.key && seen.has(d.key)) errors[i] = "キーが重複しています";
       if (d.key) seen.set(d.key, i);
     });
     return errors;
   }, [settings.customInputs]);
 
-  const setCriteria = (criteria: Criterion[]) =>
-    patch({ criteria: criteria.map((c, i) => ({ ...c, order: i * 10 })) });
   const setCustomInputs = (customInputs: CustomInputDef[]) =>
     patch({ customInputs: customInputs.map((d, i) => ({ ...d, order: i })) });
 
@@ -164,40 +83,11 @@ export function TrialPricingEngineForm({
         res.ok
           ? {
               title: "保存しました",
-              message: "試算の計算ロジックを更新しました",
+              message: "試算の設定を更新しました",
               color: "green",
             }
           : { title: "エラー", message: res.error, color: "red" },
       );
-    });
-  };
-
-  const runTest = () => {
-    const sample: TrialInput =
-      testToolType === "CYLINDER"
-        ? {
-            ...SAMPLE_INPUT,
-            toolType: "CYLINDER",
-            materialBarPrice: 0,
-            cylinderMaterialPrice: 13000,
-            cylinderType: "NORMAL",
-          }
-        : { ...SAMPLE_INPUT, toolType: testToolType };
-    const r = runCriteriaEngine(sample, {
-      correctionFactor: settings.correctionFactor,
-      ldChargePer10min: settings.ldChargePer10min,
-      criteria: settings.criteria,
-      customInputs: settings.customInputs,
-    });
-    setTest({
-      breakdown: Object.entries(r.breakdown),
-      shapeOutPrice: r.shapeOutPrice,
-      lots: r.lots.map((l) => ({
-        quantity: l.quantity,
-        minimumPrice: l.minimumPrice,
-        estimateUnitPrice: l.estimateUnitPrice,
-      })),
-      warnings: r.warnings,
     });
   };
 
@@ -220,6 +110,14 @@ export function TrialPricingEngineForm({
         breadcrumbs={["システム", "試算計算"]}
         title="試算計算 設定"
       />
+
+      {/* ── 計算基準（リスト。編集は個別ページ）───────────────────────────── */}
+      <FormSection
+        description="見積単価を構成する計算基準。並び替え・有効/無効・削除はここで、式の編集は各行の「編集」から。"
+        title="計算基準"
+      >
+        <CriteriaListPanel initial={settings.criteria} />
+      </FormSection>
 
       {/* ── 材料参照価格ポリシー ────────────────────────────────────────── */}
       <FormSection
@@ -432,266 +330,6 @@ export function TrialPricingEngineForm({
           >
             入力項目を追加
           </GhostButton>
-        </Stack>
-      </FormSection>
-
-      {/* ── 計算基準（自由設定）─────────────────────────────────────────── */}
-      <FormSection
-        description="見積単価 = 加算基準の合計 → final 基準で確定。式では入力項目・カスタム入力・quantity・subtotal・r.<id>・round()/lookup 系ヘルパーが使えます。"
-        title="計算基準（自由設定）"
-      >
-        <Stack gap="sm">
-          <Alert
-            color="blue"
-            icon={<IconInfoCircle size={16} />}
-            variant="light"
-          >
-            <Text size="xs">
-              役割: <Code>component</Code>=合計に加算 /{" "}
-              <Code>intermediate</Code>
-              =合計に含めず <Code>r.&lt;id&gt;</Code> で参照 /{" "}
-              <Code>final</Code>
-              =合計(subtotal)を見積単価に変換（1つ）。ID
-              <Code>
-                material/step/neck/machining/coating/lap/ld/inspection
-              </Code>
-              が原価内訳になります。
-            </Text>
-          </Alert>
-
-          {settings.criteria.map((c, i) => (
-            <Paper key={c.id} p="sm" radius="sm" withBorder>
-              <Stack gap="xs">
-                <Group gap="sm" wrap="wrap">
-                  <TextInput
-                    label="ID"
-                    onChange={(e) => {
-                      const next = settings.criteria.slice();
-                      next[i] = { ...c, id: e.currentTarget.value };
-                      setCriteria(next);
-                    }}
-                    value={c.id}
-                    w={150}
-                  />
-                  <TextInput
-                    label="基準名"
-                    onChange={(e) => {
-                      const next = settings.criteria.slice();
-                      next[i] = { ...c, name: e.currentTarget.value };
-                      setCriteria(next);
-                    }}
-                    value={c.name}
-                    w={170}
-                  />
-                  <Select
-                    data={ROLE_OPTIONS}
-                    label="役割"
-                    onChange={(v) => {
-                      const next = settings.criteria.slice();
-                      next[i] = {
-                        ...c,
-                        role: (v as CriterionRole) ?? "component",
-                      };
-                      setCriteria(next);
-                    }}
-                    value={c.role}
-                    w={200}
-                  />
-                  <Switch
-                    checked={c.enabled}
-                    label="有効"
-                    mt={26}
-                    onChange={(e) => {
-                      const next = settings.criteria.slice();
-                      next[i] = { ...c, enabled: e.currentTarget.checked };
-                      setCriteria(next);
-                    }}
-                  />
-                  <Group gap={4} ml="auto" mt={22}>
-                    <ActionIcon
-                      aria-label="上へ"
-                      disabled={i === 0}
-                      onClick={() =>
-                        setCriteria(move(settings.criteria, i, -1))
-                      }
-                      variant="subtle"
-                    >
-                      <IconArrowUp size={16} />
-                    </ActionIcon>
-                    <ActionIcon
-                      aria-label="下へ"
-                      disabled={i === settings.criteria.length - 1}
-                      onClick={() => setCriteria(move(settings.criteria, i, 1))}
-                      variant="subtle"
-                    >
-                      <IconArrowDown size={16} />
-                    </ActionIcon>
-                    <ActionIcon
-                      aria-label="削除"
-                      color="red"
-                      onClick={() =>
-                        setCriteria(settings.criteria.filter((_, k) => k !== i))
-                      }
-                      variant="subtle"
-                    >
-                      <IconTrash size={16} />
-                    </ActionIcon>
-                  </Group>
-                </Group>
-                <Group align="center" gap="xs">
-                  <Text c="dimmed" size="xs">
-                    適用工具種
-                  </Text>
-                  <Chip.Group
-                    multiple
-                    onChange={(v) => {
-                      const next = settings.criteria.slice();
-                      next[i] = {
-                        ...c,
-                        toolTypes: v.length ? (v as ToolType[]) : undefined,
-                      };
-                      setCriteria(next);
-                    }}
-                    value={c.toolTypes ?? []}
-                  >
-                    <Group gap={4}>
-                      {TOOL_TYPE_OPTIONS.map((o) => (
-                        <Chip key={o.value} size="xs" value={o.value}>
-                          {o.label}
-                        </Chip>
-                      ))}
-                    </Group>
-                  </Chip.Group>
-                  {!c.toolTypes?.length && (
-                    <Text c="dimmed" size="xs">
-                      （未選択 = 全工具種）
-                    </Text>
-                  )}
-                </Group>
-                <Textarea
-                  autosize
-                  label="式（数値を返す JS 式）"
-                  maxRows={12}
-                  minRows={2}
-                  onChange={(e) => {
-                    const next = settings.criteria.slice();
-                    next[i] = { ...c, expression: e.currentTarget.value };
-                    setCriteria(next);
-                  }}
-                  spellCheck={false}
-                  styles={{
-                    input: {
-                      fontFamily: "var(--mantine-font-family-monospace)",
-                    },
-                  }}
-                  value={c.expression}
-                />
-              </Stack>
-            </Paper>
-          ))}
-
-          <Group gap="sm">
-            <GhostButton
-              leftSection={<IconPlus size={16} />}
-              onClick={() =>
-                setCriteria([
-                  ...settings.criteria,
-                  {
-                    id: newId().slice(0, 8),
-                    name: "新しい基準",
-                    role: "component",
-                    expression: "0",
-                    order: settings.criteria.length * 10,
-                    enabled: true,
-                  },
-                ])
-              }
-            >
-              基準を追加
-            </GhostButton>
-            <GhostButton
-              onClick={() =>
-                setCriteria(DEFAULT_CRITERIA.map((c) => ({ ...c })))
-              }
-            >
-              既定に戻す
-            </GhostButton>
-            <Group gap="xs" ml="auto">
-              <Text c="dimmed" size="xs">
-                テスト工具種
-              </Text>
-              <SegmentedControl
-                data={TOOL_TYPE_OPTIONS.map((o) => ({
-                  value: o.value,
-                  label: o.label,
-                }))}
-                onChange={(v) => setTestToolType(v as ToolType)}
-                size="xs"
-                value={testToolType}
-              />
-              <SecondaryButton onClick={runTest}>テスト実行</SecondaryButton>
-            </Group>
-          </Group>
-
-          {test && (
-            <Paper
-              bg="var(--mantine-color-default)"
-              p="sm"
-              radius="sm"
-              withBorder
-            >
-              <Stack gap="xs">
-                <Text fw={600} size="sm">
-                  テスト結果（
-                  {TOOL_TYPE_OPTIONS.find((o) => o.value === testToolType)
-                    ?.label ?? testToolType}
-                  ・コート・段加工・3ロット）
-                </Text>
-                {test.warnings.length > 0 && (
-                  <Stack gap={2}>
-                    {test.warnings.map((w) => (
-                      <Text c="orange" key={w} size="xs">
-                        ⚠ {w}
-                      </Text>
-                    ))}
-                  </Stack>
-                )}
-                <Group gap="xs" wrap="wrap">
-                  {test.breakdown.map(([k, v]) => (
-                    <Badge color="gray" key={k} variant="light">
-                      {k}: {v.toLocaleString()}
-                    </Badge>
-                  ))}
-                  <Badge color="blue" variant="light">
-                    形状出し: {test.shapeOutPrice.toLocaleString()}
-                  </Badge>
-                </Group>
-                <Divider />
-                <Table withColumnBorders={false}>
-                  <Table.Thead>
-                    <Table.Tr>
-                      <Table.Th>ロット</Table.Th>
-                      <Table.Th ta="right">最低単価</Table.Th>
-                      <Table.Th ta="right">見積単価</Table.Th>
-                    </Table.Tr>
-                  </Table.Thead>
-                  <Table.Tbody>
-                    {test.lots.map((l) => (
-                      <Table.Tr key={l.quantity}>
-                        <Table.Td>{l.quantity} 本</Table.Td>
-                        <Table.Td className="tabular-nums" ta="right">
-                          ¥{Math.round(l.minimumPrice).toLocaleString()}
-                        </Table.Td>
-                        <Table.Td className="tabular-nums" fw={600} ta="right">
-                          ¥{l.estimateUnitPrice.toLocaleString()}
-                        </Table.Td>
-                      </Table.Tr>
-                    ))}
-                  </Table.Tbody>
-                </Table>
-              </Stack>
-            </Paper>
-          )}
         </Stack>
       </FormSection>
 
