@@ -25,6 +25,7 @@ import {
   criterionSchema,
   customInputDefSchema,
   RESERVED_KEYS,
+  TRIAL_TOOL_TYPES,
 } from "@/lib/trial-pricing-criteria";
 import { checkExpressionSyntax } from "@/lib/trial-pricing-engine";
 import { checkScriptSyntax } from "@/lib/trial-pricing-script";
@@ -65,11 +66,23 @@ export async function updateTrialPricingSettings(
     const err = checkExpressionSyntax(c.expression);
     if (err) return actionError(`計算基準「${c.name}」の構文エラー: ${err}`);
   }
-  const finals = enabledCriteria.filter((c) => c.role === "final");
-  if (finals.length !== 1) {
-    return actionError(
-      "有効な『見積単価（final）』基準をちょうど1つにしてください",
+  // final は工具種ごとに、適用される有効な基準がちょうど1つであること。
+  const toolTypeLabel: Record<string, string> = {
+    ROUND_BAR: "丸棒",
+    CYLINDER: "円筒",
+    OH: "OH付",
+  };
+  for (const tt of TRIAL_TOOL_TYPES) {
+    const finals = enabledCriteria.filter(
+      (c) =>
+        c.role === "final" &&
+        (!c.toolTypes?.length || c.toolTypes.includes(tt)),
     );
+    if (finals.length !== 1) {
+      return actionError(
+        `工具種「${toolTypeLabel[tt] ?? tt}」に有効な『見積単価（final）』基準をちょうど1つにしてください`,
+      );
+    }
   }
   // カスタム入力キー — 予約語衝突・重複を弾く。
   const seenKeys = new Set<string>();

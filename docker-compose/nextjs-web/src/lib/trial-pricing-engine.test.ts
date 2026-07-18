@@ -187,6 +187,45 @@ describe("custom inputs as variables", () => {
   });
 });
 
+describe("per-tool-type criteria on/off", () => {
+  it("a CYLINDER-scoped criterion only affects CYLINDER estimates", () => {
+    const finalC = DEFAULT_CRITERIA.find(
+      (c) => c.role === "final",
+    ) as Criterion;
+    const withCyl: Criterion[] = [
+      ...DEFAULT_CRITERIA.filter((c) => c.role !== "final"),
+      {
+        id: "cylOnly",
+        name: "円筒のみ加算",
+        role: "component",
+        order: 105,
+        enabled: true,
+        expression: "1000",
+        toolTypes: ["CYLINDER"],
+      },
+      finalC,
+    ];
+    const roundInput: TrialInput = { ...base, toolType: "ROUND_BAR" };
+    const cylInput: TrialInput = {
+      ...base,
+      toolType: "CYLINDER",
+      materialBarPrice: 0,
+      cylinderMaterialPrice: 5000,
+      cylinderType: "NORMAL",
+    };
+    // ROUND_BAR: scoped criterion excluded → same as default criteria.
+    expect(
+      runCriteriaEngine(roundInput, { criteria: withCyl }).lots[0].minimumPrice,
+    ).toBeCloseTo(runCriteriaEngine(roundInput).lots[0].minimumPrice, 4);
+    // CYLINDER: scoped criterion applies → +1000 vs default criteria.
+    const cylDefault = runCriteriaEngine(cylInput).lots[0].minimumPrice;
+    const cylWith = runCriteriaEngine(cylInput, {
+      criteria: withCyl,
+    }).lots[0].minimumPrice;
+    expect(cylWith - cylDefault).toBeCloseTo(1000, 4);
+  });
+});
+
 describe("sandbox + error handling", () => {
   it("shadows dangerous globals to undefined", () => {
     const criteria: Criterion[] = [
