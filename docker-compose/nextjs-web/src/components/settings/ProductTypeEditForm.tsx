@@ -39,7 +39,7 @@ import {
   type ProductTypeAssignment,
 } from "@/lib/product-types";
 
-const BASE = "/settings/product-items/types";
+const BASE = "/settings/product-types";
 
 const typeLabel = (v: string) =>
   PRODUCT_FIELD_TYPES.find((o) => o.value === v)?.label ?? v;
@@ -150,7 +150,6 @@ export function ProductTypeEditForm({
       <PageHeader
         breadcrumbs={[
           "システム",
-          { label: "製品項目", href: "/settings/product-items" },
           { label: "製品種別", href: BASE },
           isEdit ? "種別編集" : "種別追加",
         ]}

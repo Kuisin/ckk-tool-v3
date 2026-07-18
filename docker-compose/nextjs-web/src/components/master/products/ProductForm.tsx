@@ -4,10 +4,11 @@
  * ProductForm.tsx — 製品 新規作成 / 編集フォーム (MS13 / MS23).
  *
  * 製品コードは保存時に自動採番（PRD-YYYYMM-NNNN）。
- * 製品種別（SY04）を選ぶと、その種別が予め定義した入力項目が型付き（文字列/数値/
- * 真偽/選択/日付）で展開され、入力を型で検証する。種別に属さない項目は「その他の仕様」
- * のキー/値エディタで自由に追加できる。すべて product.spec（JSON）に保存される。
- * 種別 id は spec の予約キー `_product_type` に保持する（編集時に再展開するため）。
+ * 製品種別（SY05）を選ぶと、その種別が予め定義した入力項目が型付き（文字列/数値/
+ * 真偽/選択/日付）で展開される。種別外の値は「追加項目」で 製品項目（SY04）で定義済みの
+ * 項目のみを選んで追加できる（自由なキーは不可）。値は入力を型で検証し product.spec
+ * （JSON）に保存。種別 id は予約キー `_product_type` に保持（編集時に再展開）。定義外の
+ * 旧 spec キーは編集画面では触らず、そのまま保持する。
  */
 
 import {
@@ -22,7 +23,7 @@ import {
 } from "@mantine/core";
 import { useForm } from "@mantine/form";
 import { notifications } from "@mantine/notifications";
-import { IconMinus, IconPlus } from "@tabler/icons-react";
+import { IconMinus } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
 import { useMemo, useState, useTransition } from "react";
 import { z } from "zod";
@@ -120,9 +121,12 @@ const typeLabel = (t: ResolvedProductType) => t.name.ja || t.name.en || t.id;
 export function ProductForm({
   initial,
   productTypes,
+  itemDefs,
 }: {
   initial?: ProductFormInitial;
   productTypes: ResolvedProductType[];
+  /** 製品項目（SY04）で定義された入力項目ライブラリ。追加項目の候補になる。 */
+  itemDefs: ProductItemDef[];
 }) {
   const router = useRouter();
   const isMobile = useIsMobile();
@@ -131,40 +135,67 @@ export function ProductForm({
 
   // 解決済み種別（アダプタで order 順に整列済み・items は割り当て順）。
   const allTypes = productTypes;
+  const defByKey = useMemo(
+    () => new Map(itemDefs.map((d) => [d.key, d])),
+    [itemDefs],
+  );
 
-  // 初期 spec を「種別 id / 種別項目値 / その他（自由）」に分解する。
-  const { initialTypeId, initialTypeValues, initialFreeform } = useMemo(() => {
-    const spec = initial?.spec ?? [];
-    const reserved = spec.find((r) => r.key === PRODUCT_TYPE_SPEC_KEY);
-    const typeId = reserved?.value ?? null;
-    const type = allTypes.find((t) => t.id === typeId) ?? null;
-    const keys = new Set(type?.items.map((i) => i.key) ?? []);
-    const values: Record<string, string> = {};
-    if (type) {
-      for (const it of type.items) {
-        values[it.key] =
-          spec.find((r) => r.key === it.key)?.value ?? it.default ?? "";
+  // 初期 spec を「種別 id / 種別項目値 / 追加項目（ライブラリ）/ 保持（未知キー）」に分解。
+  const { initialTypeId, initialTypeValues, initialExtra, preservedRows } =
+    useMemo(() => {
+      const spec = initial?.spec ?? [];
+      const reserved = spec.find((r) => r.key === PRODUCT_TYPE_SPEC_KEY);
+      const typeId = reserved?.value ?? null;
+      const type = allTypes.find((t) => t.id === typeId) ?? null;
+      const typeKeys = new Set(type?.items.map((i) => i.key) ?? []);
+      const values: Record<string, string> = {};
+      if (type) {
+        for (const it of type.items) {
+          values[it.key] =
+            spec.find((r) => r.key === it.key)?.value ?? it.default ?? "";
+        }
       }
-    }
-    const freeform = spec.filter(
-      (r) => r.key !== PRODUCT_TYPE_SPEC_KEY && !keys.has(r.key),
-    );
-    return {
-      initialTypeId: typeId,
-      initialTypeValues: values,
-      initialFreeform: freeform,
-    };
-  }, [initial, allTypes]);
+      const extra: Record<string, string> = {};
+      const preserved: { key: string; value: string }[] = [];
+      for (const r of spec) {
+        if (r.key === PRODUCT_TYPE_SPEC_KEY || typeKeys.has(r.key)) continue;
+        if (defByKey.has(r.key))
+          extra[r.key] = r.value; // 定義済み項目 = 追加項目
+        else preserved.push(r); // 定義外の旧キーはそのまま保持
+      }
+      return {
+        initialTypeId: typeId,
+        initialTypeValues: values,
+        initialExtra: extra,
+        preservedRows: preserved,
+      };
+    }, [initial, allTypes, defByKey]);
 
   const [typeId, setTypeId] = useState<string | null>(initialTypeId);
   const [typeValues, setTypeValues] =
     useState<Record<string, string>>(initialTypeValues);
   const [typeErrors, setTypeErrors] = useState<Record<string, string>>({});
+  // 追加項目（ライブラリの項目定義から選ぶ）。
+  const [extraKeys, setExtraKeys] = useState<string[]>(
+    Object.keys(initialExtra),
+  );
+  const [extraValues, setExtraValues] =
+    useState<Record<string, string>>(initialExtra);
+  const [extraErrors, setExtraErrors] = useState<Record<string, string>>({});
 
   const selectedType = allTypes.find((t) => t.id === typeId) ?? null;
   const typeOptions = allTypes
     .filter((t) => t.enabled || t.id === typeId)
     .map((t) => ({ value: t.id, label: typeLabel(t) }));
+
+  const typeItemKeys = new Set(selectedType?.items.map((i) => i.key) ?? []);
+  // 追加候補 = 有効な定義のうち、種別に含まれず未追加のもの。
+  const addableOptions = itemDefs
+    .filter(
+      (d) =>
+        d.enabled && !typeItemKeys.has(d.key) && !extraKeys.includes(d.key),
+    )
+    .map((d) => ({ value: d.key, label: d.label.ja || d.key }));
 
   const form = useForm<FormValues>({
     validate: zodResolver(productSchema),
@@ -178,7 +209,7 @@ export function ProductForm({
       unit: initial?.unit ?? "本",
       isActive: initial?.isActive ?? true,
       notes: initial?.notes ?? "",
-      spec: initialFreeform.length ? initialFreeform : [{ key: "", value: "" }],
+      spec: [],
     },
   });
 
@@ -187,11 +218,38 @@ export function ProductForm({
     setTypeErrors({});
     const t = allTypes.find((x) => x.id === v) ?? null;
     setTypeValues(t ? defaultValuesFor(t) : {});
+    // 種別に含まれる項目は追加項目から外す（重複防止）。
+    const keys = new Set(t?.items.map((i) => i.key) ?? []);
+    setExtraKeys((ks) => ks.filter((k) => !keys.has(k)));
   };
 
   const setItemVal = (key: string, val: string) => {
     setTypeValues((s) => ({ ...s, [key]: val }));
     setTypeErrors((e) => {
+      if (!e[key]) return e;
+      const { [key]: _drop, ...rest } = e;
+      return rest;
+    });
+  };
+
+  const addExtra = (key: string | null) => {
+    if (!key) return;
+    const def = defByKey.get(key);
+    setExtraKeys((ks) => (ks.includes(key) ? ks : [...ks, key]));
+    setExtraValues((s) => ({ ...s, [key]: s[key] ?? def?.default ?? "" }));
+  };
+
+  const removeExtra = (key: string) => {
+    setExtraKeys((ks) => ks.filter((k) => k !== key));
+    setExtraErrors((e) => {
+      const { [key]: _d, ...rest } = e;
+      return rest;
+    });
+  };
+
+  const setExtraVal = (key: string, val: string) => {
+    setExtraValues((s) => ({ ...s, [key]: val }));
+    setExtraErrors((e) => {
       if (!e[key]) return e;
       const { [key]: _drop, ...rest } = e;
       return rest;
@@ -216,15 +274,36 @@ export function ProductForm({
         return;
       }
     }
+    // 追加項目を型で検証。
+    const exErrs: Record<string, string> = {};
+    for (const key of extraKeys) {
+      const def = defByKey.get(key);
+      if (!def) continue;
+      const msg = validateItemValue(def, extraValues[key]);
+      if (msg) exErrs[key] = msg;
+    }
+    if (Object.keys(exErrs).length > 0) {
+      setExtraErrors(exErrs);
+      notifications.show({
+        title: "入力エラー",
+        message: "追加項目を確認してください",
+        color: "red",
+      });
+      return;
+    }
 
-    // spec を合成（自由項目 + 種別項目 + 予約キー）。
-    const mergedSpec: { key: string; value: string }[] = [...values.spec];
+    // spec を合成（種別項目 + 追加項目 + 保持キー + 予約キー）。定義済み項目のみ。
+    const mergedSpec: { key: string; value: string }[] = [...preservedRows];
     if (selectedType) {
       for (const it of selectedType.items) {
         const val = (typeValues[it.key] ?? "").trim();
         if (val !== "") mergedSpec.push({ key: it.key, value: val });
       }
       mergedSpec.push({ key: PRODUCT_TYPE_SPEC_KEY, value: selectedType.id });
+    }
+    for (const key of extraKeys) {
+      const val = (extraValues[key] ?? "").trim();
+      if (val !== "") mergedSpec.push({ key, value: val });
     }
 
     startTransition(async () => {
@@ -397,49 +476,55 @@ export function ProductForm({
         </FormSection>
       )}
 
-      <FormSection
-        description="種別に含まれない項目を、項目名と値で自由に追加できます（spec JSON）。"
-        title="その他の仕様"
-      >
-        {form.values.spec.map((_, index) => (
-          <Group
-            align="flex-start"
-            gap="xs"
-            // biome-ignore lint/suspicious/noArrayIndexKey: rows have no stable id
-            key={index}
-            mb="xs"
-            wrap="nowrap"
-          >
-            <TextInput
-              placeholder="項目名（例: 外径）"
-              style={{ flex: 1 }}
-              {...form.getInputProps(`spec.${index}.key`)}
-            />
-            <TextInput
-              placeholder="値（例: φ20 ±0.01）"
-              style={{ flex: 1 }}
-              {...form.getInputProps(`spec.${index}.value`)}
-            />
-            <GhostButton
-              aria-label="この項目を削除"
-              color="red"
-              disabled={form.values.spec.length === 1}
-              onClick={() => form.removeListItem("spec", index)}
-              px={6}
-            >
-              <IconMinus size={14} />
-            </GhostButton>
-          </Group>
-        ))}
-        <GhostButton
-          fullWidth={isMobile}
-          leftSection={<IconPlus size={14} />}
-          mt="xs"
-          onClick={() => form.insertListItem("spec", { key: "", value: "" })}
+      {(extraKeys.length > 0 || addableOptions.length > 0) && (
+        <FormSection
+          description="製品項目（SY04）で定義された項目のみ追加できます。自由なキーは使えません。"
+          title="追加項目"
         >
-          仕様項目を追加
-        </GhostButton>
-      </FormSection>
+          {extraKeys.length > 0 && (
+            <SimpleGrid cols={isMobile ? 1 : 2} mb="sm" spacing="sm">
+              {extraKeys.map((key) => {
+                const def = defByKey.get(key);
+                if (!def) return null;
+                return (
+                  <Group align="flex-end" gap="xs" key={key} wrap="nowrap">
+                    <div style={{ flex: 1 }}>
+                      <ProductTypeItemInput
+                        error={extraErrors[key]}
+                        item={def}
+                        onChange={(v) => setExtraVal(key, v)}
+                        value={extraValues[key] ?? ""}
+                      />
+                    </div>
+                    <GhostButton
+                      aria-label="この項目を外す"
+                      color="red"
+                      onClick={() => removeExtra(key)}
+                      px={6}
+                    >
+                      <IconMinus size={14} />
+                    </GhostButton>
+                  </Group>
+                );
+              })}
+            </SimpleGrid>
+          )}
+          <Select
+            clearable
+            data={addableOptions}
+            disabled={addableOptions.length === 0}
+            label="項目を追加"
+            onChange={addExtra}
+            placeholder={
+              addableOptions.length === 0
+                ? "追加できる項目がありません"
+                : "項目を選択して追加"
+            }
+            searchable
+            value={null}
+          />
+        </FormSection>
+      )}
     </FormShell>
   );
 }

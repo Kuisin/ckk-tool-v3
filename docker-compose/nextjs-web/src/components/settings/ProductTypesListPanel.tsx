@@ -31,7 +31,7 @@ import { CreateButton, GhostButton } from "@/components/ui/buttons";
 import { openConfirm } from "@/components/ui/modals";
 import type { ProductType } from "@/lib/product-types";
 
-const BASE = "/settings/product-items/types";
+const BASE = "/settings/product-types";
 
 function withOrder(list: ProductType[]): ProductType[] {
   return list.map((t, i) => ({ ...t, order: i }));
