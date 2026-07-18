@@ -151,7 +151,7 @@ export const RESERVED_KEYS: ReadonlySet<string> = new Set([
  * roundUp digit→unit mapping: roundUp(x,0) → round(x,1); roundUp(x,-1) → round(x,10).
  * Component ids equal CostBreakdown keys so the existing result views keep working.
  */
-export const DEFAULT_CRITERIA: Criterion[] = [
+const BASE_CRITERIA: Criterion[] = [
   {
     id: "material",
     name: "材料原価",
@@ -266,6 +266,15 @@ export const DEFAULT_CRITERIA: Criterion[] = [
     expression: `round(subtotal * discountRate * correctionFactor, 10)`,
   },
 ];
+
+/**
+ * 既定は全工具種に適用（toolTypes を明示付与）。工具種は「未選択＝適用なし・
+ * 全選択で全て」の仕様のため、既定は全て選択済みとして提供する。
+ */
+export const DEFAULT_CRITERIA: Criterion[] = BASE_CRITERIA.map((c) => ({
+  ...c,
+  toolTypes: [...TRIAL_TOOL_TYPES],
+}));
 
 export const DEFAULT_CUSTOM_INPUTS: CustomInputDef[] = [];
 

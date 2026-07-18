@@ -30,6 +30,7 @@ import { useState, useTransition } from "react";
 import { updateCriteria } from "@/app/(dashboard)/settings/actions";
 import {
   CancelButton,
+  GhostButton,
   SaveButton,
   SecondaryButton,
 } from "@/components/ui/buttons";
@@ -40,10 +41,11 @@ import {
   type ToolType,
   type TrialInput,
 } from "@/lib/trial-pricing";
-import type {
-  Criterion,
-  CriterionRole,
-  CustomInputDef,
+import {
+  type Criterion,
+  type CriterionRole,
+  type CustomInputDef,
+  TRIAL_TOOL_TYPES,
 } from "@/lib/trial-pricing-criteria";
 import { runCriteriaEngine } from "@/lib/trial-pricing-engine";
 
@@ -104,14 +106,19 @@ export function CriterionEditForm({
   const isNew = !existing;
 
   const [criterion, setCriterion] = useState<Criterion>(
-    existing ?? {
-      id: "",
-      name: "新しい基準",
-      role: "component",
-      expression: "0",
-      order: allCriteria.length * 10,
-      enabled: true,
-    },
+    existing
+      ? // 旧データ（toolTypes 未設定）は全選択として表示（保存で明示化）。
+        { ...existing, toolTypes: existing.toolTypes ?? [...TRIAL_TOOL_TYPES] }
+      : {
+          id: "",
+          name: "新しい基準",
+          role: "component",
+          expression: "0",
+          order: allCriteria.length * 10,
+          enabled: true,
+          // 既定は全工具種を選択済み（未選択 = 適用なし の仕様）。
+          toolTypes: [...TRIAL_TOOL_TYPES],
+        },
   );
   const [testToolType, setTestToolType] = useState<ToolType>("ROUND_BAR");
   const [test, setTest] = useState<TestOutput | null>(null);
@@ -254,9 +261,7 @@ export function CriterionEditForm({
             </Text>
             <Chip.Group
               multiple
-              onChange={(v) =>
-                set({ toolTypes: v.length ? (v as ToolType[]) : undefined })
-              }
+              onChange={(v) => set({ toolTypes: v as ToolType[] })}
               value={criterion.toolTypes ?? []}
             >
               <Group gap={4}>
@@ -267,9 +272,15 @@ export function CriterionEditForm({
                 ))}
               </Group>
             </Chip.Group>
+            <GhostButton
+              onClick={() => set({ toolTypes: [...TRIAL_TOOL_TYPES] })}
+              size="compact-xs"
+            >
+              全選択
+            </GhostButton>
             {!criterion.toolTypes?.length && (
-              <Text c="dimmed" size="xs">
-                （未選択 = 全工具種）
+              <Text c="red" size="xs">
+                ⚠ 未選択 — この基準はどの工具種にも適用されません
               </Text>
             )}
           </Group>
