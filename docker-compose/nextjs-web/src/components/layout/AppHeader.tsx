@@ -51,6 +51,9 @@ import { SharePageModal } from "./SharePageModal";
 const NOTIFICATION_POPUP_WIDTH = 280;
 const PROFILE_MENU_WIDTH = 180;
 
+/** 開発環境バーの高さ（dev のみ表示。ヘッダー最上部に重ねる）。 */
+export const DEV_BAR_HEIGHT = 28;
+
 function canHoverOpen(): boolean {
   return (
     typeof window !== "undefined" &&
@@ -70,7 +73,13 @@ export interface HeaderUser {
   initials: string;
 }
 
-export function AppHeader({ user }: { user?: HeaderUser | null }) {
+export function AppHeader({
+  user,
+  isDev = false,
+}: {
+  user?: HeaderUser | null;
+  isDev?: boolean;
+}) {
   const sessionUser = user
     ? {
         displayName: user.displayName,
@@ -127,8 +136,22 @@ export function AppHeader({ user }: { user?: HeaderUser | null }) {
 
   return (
     <AppShell.Header className="overflow-visible">
+      {/* 開発環境バー（dev のみ）。本番と取り違えないための警告帯。 */}
+      {isDev && (
+        <Box
+          bg="orange.6"
+          c="white"
+          fw={700}
+          fz="xs"
+          h={DEV_BAR_HEIGHT}
+          style={{ lineHeight: `${DEV_BAR_HEIGHT}px`, letterSpacing: 1 }}
+          ta="center"
+        >
+          開発環境 — DEV
+        </Box>
+      )}
       <Group
-        h="100%"
+        h={isDev ? `calc(100% - ${DEV_BAR_HEIGHT}px)` : "100%"}
         justify="space-between"
         px={{ base: "xs", md: "md" }}
         py="xs"
