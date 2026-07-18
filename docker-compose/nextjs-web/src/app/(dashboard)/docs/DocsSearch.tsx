@@ -116,6 +116,14 @@ export function DocsSearch({ full = false }: { full?: boolean }) {
   };
 
   const onKeyDown = (e: React.KeyboardEvent) => {
+    // IME 変換中（日本語/中国語などの確定 Enter）は操作しない。
+    // isComposing = 変換中、keyCode 229 = 変換確定キー（後方互換）。
+    if (
+      (e.nativeEvent as { isComposing?: boolean }).isComposing ||
+      e.keyCode === 229
+    ) {
+      return;
+    }
     if (e.key === "ArrowDown") {
       e.preventDefault();
       setActive((a) => Math.min(a + 1, results.length - 1));
