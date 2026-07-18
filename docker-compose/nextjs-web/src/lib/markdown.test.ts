@@ -31,4 +31,18 @@ describe("renderMarkdown", () => {
     expect(html).toContain("value is 3 mm");
     expect(html).toContain("<code>x</code>");
   });
+
+  it("keeps the current language on internal /docs links", () => {
+    const html = renderMarkdown("see [start](/docs/start)", "en");
+    expect(html).toContain('href="/docs/start?lang=en"');
+    // external links get no lang and stay target=_blank
+    const ext = renderMarkdown("see [site](https://e.com)", "en");
+    expect(ext).toContain('href="https://e.com"');
+    expect(ext).not.toContain("lang=en");
+  });
+
+  it("does not append lang when none is given, or to non-docs paths", () => {
+    expect(renderMarkdown("[a](/docs/start)")).toContain('href="/docs/start"');
+    expect(renderMarkdown("[a](/sales/x)", "ja")).toContain('href="/sales/x"');
+  });
 });

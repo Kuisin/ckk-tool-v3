@@ -83,6 +83,48 @@ export const DOCS_TREE: DocSection[] = [
     ],
   },
   {
+    // 参照マスタの操作マニュアル（本番公開マスタのみ）。
+    title: {
+      ja: "マスタ操作マニュアル",
+      en: "Master Data Guides",
+      zh: "主数据操作手册",
+    },
+    pages: [
+      {
+        slug: "masters/customer/user",
+        title: {
+          ja: "顧客 — 操作マニュアル",
+          en: "Customer — User Manual",
+          zh: "客户 — 操作手册",
+        },
+      },
+      {
+        slug: "masters/product/user",
+        title: {
+          ja: "製品 — 操作マニュアル",
+          en: "Product — User Manual",
+          zh: "产品 — 操作手册",
+        },
+      },
+      {
+        slug: "masters/end-user/user",
+        title: {
+          ja: "最終需要家 — 操作マニュアル",
+          en: "End User — User Manual",
+          zh: "最终用户 — 操作手册",
+        },
+      },
+      {
+        slug: "masters/approval-group/user",
+        title: {
+          ja: "承認グループ — 操作マニュアル",
+          en: "Approval Group — User Manual",
+          zh: "审批组 — 操作手册",
+        },
+      },
+    ],
+  },
+  {
     // 設定（カスタマイズ）画面を持つアプリのみ。現状は 試算計算（SY02）のみ。
     title: {
       ja: "アプリ設定マニュアル",

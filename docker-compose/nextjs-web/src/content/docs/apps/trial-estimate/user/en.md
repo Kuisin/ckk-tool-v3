@@ -4,11 +4,11 @@ Operation code **SA05**. Computes a unit price from cost and is the starting poi
 
 ## What you can do here
 
-Work out "what to sell this product for" automatically from **cost** — material, machining, coating, etc. The resulting price is registered into the price list and used in quotes.
+Work out "what to sell this [product](/docs/masters/product/user) for" automatically from **cost** — material, machining, coating, etc. The resulting price is registered into the price list and used in quotes.
 
 - **Material cost** fills in automatically from the material's purchase history (i.e. what you paid before = the reference price).
 - As you enter dimensions and machining conditions, the **cost breakdown** and **unit price** appear on the right in real time.
-- New here? Pick a customer and material, enter the max diameter and length, and check that numbers appear. See the Glossary in the Start Manual for terms.
+- New here? Pick a [customer](/docs/masters/customer/user) and material, enter the max diameter and length, and check that numbers appear. See the Glossary in the Start Manual for terms.
 
 ## Creating an estimate
 

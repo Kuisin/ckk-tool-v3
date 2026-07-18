@@ -1,10 +1,10 @@
 # Quote — User Manual
 
-Operation code **SA02**. Creates and issues quotes for customers. Unit prices resolve automatically from the price list.
+Operation code **SA02**. Creates and issues quotes for [customers](/docs/masters/customer/user). Unit prices resolve automatically from the price list.
 
 ## What you can do here
 
-Create the **quote** you send to a customer and issue it as a PDF. When you add a product and quantity to a line item, the unit price fills in automatically from the **Price List (SA01)**.
+Create the **quote** you send to a customer and issue it as a PDF. When you add a [product](/docs/masters/product/user) and quantity to a line item, the unit price fills in automatically from the **Price List (SA01)**.
 
 - If a price list is already registered, just pick the product and quantity and the amount is calculated.
 - Discounts and delivery dates can be set per line item.

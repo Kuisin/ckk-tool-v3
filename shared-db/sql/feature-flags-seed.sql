@@ -7,7 +7,7 @@
 -- （行の無いアプリは本番では非表示。dev は従来どおり既定表示）。
 --
 -- 公開セット: 販売フロント（試算・価格表・見積書）＋ 試算計算(設定) ＋
---             参照マスタ（顧客・最終需要家・承認グループ）。
+--             参照マスタ（顧客・最終需要家・製品・承認グループ）。
 
 BEGIN;
 
@@ -18,6 +18,7 @@ INSERT INTO app.feature_flags (key, is_enabled, description, updated_at) VALUES
   ('app:trial-pricing-engine:main',   true, '試算計算(設定) 本番公開',  now()),
   ('app:master-customers:main',       true, '顧客 本番公開',            now()),
   ('app:master-end-users:main',       true, '最終需要家 本番公開',      now()),
+  ('app:master-products:main',        true, '製品 本番公開',            now()),
   ('app:master-approval-groups:main', true, '承認グループ 本番公開',    now()),
   ('app:docs:main',                   true, 'マニュアル 本番公開',      now())
 ON CONFLICT (key) DO UPDATE
