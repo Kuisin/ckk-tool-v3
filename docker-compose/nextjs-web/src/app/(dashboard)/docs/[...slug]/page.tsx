@@ -1,5 +1,5 @@
 import { Alert, Anchor, Group, Paper, Stack } from "@mantine/core";
-import { IconInfoCircle } from "@tabler/icons-react";
+import { IconArrowLeft, IconInfoCircle } from "@tabler/icons-react";
 import { notFound } from "next/navigation";
 import { PageHeader } from "@/components/ui/PageHeader";
 import {
@@ -38,11 +38,23 @@ export default async function DocPage({
   const doc = await readDoc(slug.join("/"), requested);
   if (!doc) notFound();
 
+  const backHref = `/docs?lang=${requested}`;
+
   return (
     <Stack gap="md">
+      {/* モバイルはパンくずが非表示のため、一覧へ戻るリンクを表示。 */}
+      <Anchor c="dimmed" hiddenFrom="sm" href={backHref} size="sm">
+        <Group gap={4} wrap="nowrap">
+          <IconArrowLeft size={16} />
+          {DOCS_LABEL[requested]}
+        </Group>
+      </Anchor>
       <PageHeader
         actions={
           <Group gap="xs">
+            <Anchor c="dimmed" href={backHref} size="sm" visibleFrom="sm">
+              ← {DOCS_LABEL[requested]}
+            </Anchor>
             {DOCS_LANGS.map((l) => (
               <Anchor
                 fw={l === requested ? 700 : 400}
