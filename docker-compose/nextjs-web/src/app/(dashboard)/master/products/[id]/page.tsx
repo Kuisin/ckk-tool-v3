@@ -7,6 +7,8 @@ import { fetchAuditEntries } from "@/lib/audit";
 import { prisma } from "@/lib/db";
 import { formatPriceListNumber, formatProductNumber } from "@/lib/doc-number";
 import { type LocalizedText, localized } from "@/lib/format";
+import { getProductTypes } from "@/lib/product-settings";
+import { PRODUCT_TYPE_SPEC_KEY } from "@/lib/product-types";
 
 export const dynamic = "force-dynamic";
 
@@ -42,6 +44,14 @@ export default async function MasterProductsDetailPage({
         )
       : [];
 
+  // 製品種別（SY04）名を予約キーから解決。
+  const typeId = spec.find((s) => s.key === PRODUCT_TYPE_SPEC_KEY)?.value;
+  const productTypeName = typeId
+    ? ((t) => (t ? t.name.ja || t.name.en : null))(
+        (await getProductTypes()).find((t) => t.id === typeId),
+      )
+    : null;
+
   const record: ProductDetailData = {
     id: r.id,
     code: formatProductNumber(r.yearMonth, r.seq),
@@ -58,6 +68,7 @@ export default async function MasterProductsDetailPage({
     isActive: r.isActive,
     notes: r.notes ?? "",
     spec,
+    productTypeName,
     createdAt: r.createdAt.toISOString(),
     updatedAt: r.updatedAt.toISOString(),
     priceListEntries: r.priceListEntries.map((e) => ({
