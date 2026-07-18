@@ -1,6 +1,5 @@
 import { Alert, Anchor, Group, Paper, Stack } from "@mantine/core";
 import { IconInfoCircle } from "@tabler/icons-react";
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { PageHeader } from "@/components/ui/PageHeader";
 import {
@@ -46,7 +45,6 @@ export default async function DocPage({
           <Group gap="xs">
             {DOCS_LANGS.map((l) => (
               <Anchor
-                component={Link}
                 fw={l === requested ? 700 : 400}
                 href={`/docs/${slug.join("/")}?lang=${l}`}
                 key={l}

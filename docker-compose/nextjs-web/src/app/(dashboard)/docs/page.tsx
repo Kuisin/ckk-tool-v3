@@ -8,7 +8,6 @@ import {
   Title,
 } from "@mantine/core";
 import { IconBook2, IconChevronRight } from "@tabler/icons-react";
-import Link from "next/link";
 import { PageHeader } from "@/components/ui/PageHeader";
 import {
   DOC_LANG_LABEL,
@@ -42,7 +41,6 @@ export default async function DocsIndexPage({
           <Group gap="xs">
             {DOCS_LANGS.map((l) => (
               <Anchor
-                component={Link}
                 fw={l === lang ? 700 : 400}
                 href={`/docs?lang=${l}`}
                 key={l}
@@ -68,7 +66,7 @@ export default async function DocsIndexPage({
           <SimpleGrid cols={{ base: 1, sm: 2, lg: 3 }} spacing="sm">
             {section.pages.map((page) => (
               <Card
-                component={Link}
+                component="a"
                 href={`/docs/${page.slug}?lang=${lang}`}
                 key={page.slug}
                 padding="md"
