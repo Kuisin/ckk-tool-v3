@@ -1,6 +1,6 @@
-# Trial Estimate — Settings Manual
+# Trial Calculation — Settings Manual
 
-Operation code **SY02** (Trial calculation). Administrators configure the estimate's calculation logic here. Requires the **`system` permission**.
+Operation code **SY02** (Trial calculation). A dedicated app where administrators configure the calculation logic of the Trial Estimate app. Requires the **`system` permission**. This is currently the only app with a settings/customize screen — the other sales apps (Price List, Quote) have no dedicated settings screen.
 
 ## Calculation criteria (free setup)
 
