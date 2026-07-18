@@ -75,6 +75,13 @@ export function ItemDefEditForm({
     if (dup) return setError("同じキーの項目が既に存在します");
     if (def.type === "select" && (def.options ?? []).length === 0)
       return setError("選択肢を1つ以上追加してください");
+    if (def.type === "string" && def.pattern) {
+      try {
+        new RegExp(def.pattern);
+      } catch {
+        return setError("正規表現が不正です");
+      }
+    }
     setError(null);
 
     // 定義配列を組み立て（既存は置換、新規は追加）。
@@ -174,6 +181,20 @@ export function ItemDefEditForm({
           mt="sm"
           onChange={(e) => patch({ required: e.currentTarget.checked })}
         />
+
+        {def.type === "string" && (
+          <TextInput
+            description="入力形式を制限する正規表現（例: ^[A-Z]{2}-\d{4}$）。空欄なら制限なし。"
+            error={error?.includes("正規表現") ? error : undefined}
+            label="パターン（正規表現）"
+            mt="sm"
+            onChange={(e) =>
+              patch({ pattern: e.currentTarget.value || undefined })
+            }
+            placeholder="^[A-Z]{2}-\d{4}$"
+            value={def.pattern ?? ""}
+          />
+        )}
 
         {def.type === "number" && (
           <SimpleGrid cols={isMobile ? 1 : 2} mt="sm" spacing="sm">
