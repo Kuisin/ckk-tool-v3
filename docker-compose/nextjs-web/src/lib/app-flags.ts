@@ -3,8 +3,12 @@
  *
  * dev / main は同一 DB を共有するため、フラグは環境をキーに含める:
  *   key = `app:<appKey>:<env>`（env = "dev" | "main"）
- * 行が無ければ有効（デフォルト ON — フラグを立てるまで既存挙動を変えない）。
  * 実行環境は APP_ENV（Coolify で dev / main を設定。未設定＝ローカルは dev）。
+ *
+ * 表示ポリシー（環境で非対称）:
+ *   - dev  : 既定表示（行が無ければ ON）。明示的に is_enabled=false のみ非表示。
+ *   - main : **明示的に is_enabled=true の行がある場合のみ表示**（行が無ければ非表示）。
+ *            本番ランチャーを「公開済みアプリのみ」のクリーンな見た目に保つ。
  *
  * 読み取りはシェル描画に使うため fail-open（DB 障害時は全アプリ表示）。
  */
@@ -27,8 +31,10 @@ export function appFlagKey(appKey: string, env: AppEnv): string {
 }
 
 /**
- * 現在の環境で無効化されているアプリの key 一覧。
- * 行が無い／is_enabled=true のアプリは有効（返さない）。失敗時は空（fail-open）。
+ * 現在の環境で「非表示」にすべきアプリの key 一覧。
+ *   - dev  : is_enabled=false の行があるアプリ。
+ *   - main : 明示的に is_enabled=true の行が無いアプリ（＝未公開はすべて非表示）。
+ * 失敗時は空（fail-open — 障害時は全アプリ表示）。
  */
 export async function getDisabledAppKeys(
   env: AppEnv = currentAppEnv(),
@@ -36,15 +42,21 @@ export async function getDisabledAppKeys(
   try {
     const suffix = `:${env}`;
     const rows = await prisma.featureFlag.findMany({
-      where: {
-        key: { startsWith: "app:", endsWith: suffix },
-        isEnabled: false,
-      },
-      select: { key: true },
+      where: { key: { startsWith: "app:", endsWith: suffix } },
+      select: { key: true, isEnabled: true },
     });
-    return rows
-      .map((r) => r.key.slice("app:".length, -suffix.length))
-      .filter((k) => k.length > 0);
+    const state = new Map(
+      rows
+        .map((r) => [r.key.slice("app:".length, -suffix.length), r.isEnabled])
+        .filter(([k]) => (k as string).length > 0) as [string, boolean][],
+    );
+    const allKeys = appList.map((a) => a.key);
+    if (env === "main") {
+      // 本番: 明示的に有効化されたアプリのみ表示（それ以外は非表示）。
+      return allKeys.filter((k) => state.get(k) !== true);
+    }
+    // dev: 既定表示（明示的に無効のもののみ非表示）。
+    return allKeys.filter((k) => state.get(k) === false);
   } catch (e) {
     console.error("getDisabledAppKeys failed", e);
     return [];
@@ -73,7 +85,11 @@ export async function listAppFlags(): Promise<AppFlagRow[]> {
     operationCode: app.operationCode,
     category: app.category,
     enabled: Object.fromEntries(
-      APP_ENVS.map((env) => [env, byKey.get(appFlagKey(app.key, env)) ?? true]),
+      // dev は行が無ければ有効。main は行が無ければ無効（明示公開のみ表示）。
+      APP_ENVS.map((env) => [
+        env,
+        byKey.get(appFlagKey(app.key, env)) ?? env === "dev",
+      ]),
     ) as Record<AppEnv, boolean>,
   }));
 }
