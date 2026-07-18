@@ -1,31 +1,25 @@
-import {
-  Anchor,
-  Card,
-  Group,
-  SimpleGrid,
-  Stack,
-  Text,
-  Title,
-} from "@mantine/core";
-import { IconBook2, IconChevronRight } from "@tabler/icons-react";
-import { PageHeader } from "@/components/ui/PageHeader";
-import {
-  DOC_LANG_LABEL,
-  DOCS_LANGS,
-  DOCS_TREE,
-  type DocLang,
-  isDocLang,
-} from "@/lib/docs";
+import { Card, Group, SimpleGrid, Stack, Text, Title } from "@mantine/core";
+import { IconArrowRight } from "@tabler/icons-react";
+import { DOCS_TREE, type DocLang, isDocLang } from "@/lib/docs-tree";
 
 export const dynamic = "force-dynamic";
 
-const HOME_TITLE: Record<DocLang, string> = {
-  ja: "マニュアル",
-  en: "Manuals",
-  zh: "手册",
+const HERO: Record<DocLang, { title: string; lead: string }> = {
+  ja: {
+    title: "マニュアル",
+    lead: "CKK 業務管理システムの使い方。左のメニューから項目を選ぶか、下のカードから始めてください。はじめての方は「スタートマニュアル」がおすすめです。",
+  },
+  en: {
+    title: "Manuals",
+    lead: "How to use the CKK Business Management System. Pick a topic from the sidebar, or start from a card below. New here? Start with the Start Manual.",
+  },
+  zh: {
+    title: "手册",
+    lead: "CKK 业务管理系统的使用方法。从左侧菜单选择项目，或从下方卡片开始。初次使用推荐“开始手册”。",
+  },
 };
 
-/** /docs — マニュアル目次（フォルダ構造をそのまま表示）。 */
+/** /docs — マニュアルのトップ（概要 + 各マニュアルへのカード）。 */
 export default async function DocsIndexPage({
   searchParams,
 }: {
@@ -33,37 +27,23 @@ export default async function DocsIndexPage({
 }) {
   const sp = await searchParams;
   const lang: DocLang = isDocLang(sp.lang) ? sp.lang : "ja";
+  const hero = HERO[lang];
 
   return (
     <Stack gap="lg">
-      <PageHeader
-        actions={
-          <Group gap="xs">
-            {DOCS_LANGS.map((l) => (
-              <Anchor
-                fw={l === lang ? 700 : 400}
-                href={`/docs?lang=${l}`}
-                key={l}
-                size="sm"
-              >
-                {DOC_LANG_LABEL[l]}
-              </Anchor>
-            ))}
-          </Group>
-        }
-        breadcrumbs={[HOME_TITLE[lang]]}
-        title={HOME_TITLE[lang]}
-      />
+      <Stack gap={4}>
+        <Title order={2}>{hero.title}</Title>
+        <Text c="dimmed" maw={640} size="sm">
+          {hero.lead}
+        </Text>
+      </Stack>
 
       {DOCS_TREE.map((section) => (
         <Stack gap="xs" key={section.title.en}>
-          <Group gap="xs">
-            <IconBook2 size={16} />
-            <Title c="dimmed" order={5}>
-              {section.title[lang]}
-            </Title>
-          </Group>
-          <SimpleGrid cols={{ base: 1, sm: 2, lg: 3 }} spacing="sm">
+          <Title c="dimmed" order={5}>
+            {section.title[lang]}
+          </Title>
+          <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
             {section.pages.map((page) => (
               <Card
                 component="a"
@@ -74,15 +54,10 @@ export default async function DocsIndexPage({
                 withBorder
               >
                 <Group justify="space-between" wrap="nowrap">
-                  <Stack gap={2} style={{ minWidth: 0 }}>
-                    <Text fw={600} size="sm">
-                      {page.title[lang]}
-                    </Text>
-                    <Text c="dimmed" ff="mono" size="xs" truncate>
-                      /docs/{page.slug}
-                    </Text>
-                  </Stack>
-                  <IconChevronRight size={16} />
+                  <Text fw={600} size="sm">
+                    {page.title[lang]}
+                  </Text>
+                  <IconArrowRight size={16} />
                 </Group>
               </Card>
             ))}
