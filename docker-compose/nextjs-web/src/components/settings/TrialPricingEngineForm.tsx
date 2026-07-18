@@ -13,11 +13,13 @@ import {
   ActionIcon,
   Alert,
   Badge,
+  Chip,
   Code,
   Divider,
   Group,
   NumberInput,
   Paper,
+  SegmentedControl,
   Select,
   SimpleGrid,
   Stack,
@@ -45,7 +47,11 @@ import {
 } from "@/components/ui/buttons";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { FormSection } from "@/components/ui/shells";
-import type { TrialInput } from "@/lib/trial-pricing";
+import {
+  TOOL_TYPE_OPTIONS,
+  type ToolType,
+  type TrialInput,
+} from "@/lib/trial-pricing";
 import {
   type Criterion,
   type CriterionRole,
@@ -128,6 +134,7 @@ export function TrialPricingEngineForm({
   const [settings, setSettings] = useState<TrialPricingSettings>(initial);
   const [isPending, startTransition] = useTransition();
   const [test, setTest] = useState<EngineTestOutput | null>(null);
+  const [testToolType, setTestToolType] = useState<ToolType>("ROUND_BAR");
 
   const patch = (p: Partial<TrialPricingSettings>) =>
     setSettings((s) => ({ ...s, ...p }));
@@ -166,7 +173,17 @@ export function TrialPricingEngineForm({
   };
 
   const runTest = () => {
-    const r = runCriteriaEngine(SAMPLE_INPUT, {
+    const sample: TrialInput =
+      testToolType === "CYLINDER"
+        ? {
+            ...SAMPLE_INPUT,
+            toolType: "CYLINDER",
+            materialBarPrice: 0,
+            cylinderMaterialPrice: 13000,
+            cylinderType: "NORMAL",
+          }
+        : { ...SAMPLE_INPUT, toolType: testToolType };
+    const r = runCriteriaEngine(sample, {
       correctionFactor: settings.correctionFactor,
       ldChargePer10min: settings.ldChargePer10min,
       criteria: settings.criteria,
@@ -521,6 +538,36 @@ export function TrialPricingEngineForm({
                     </ActionIcon>
                   </Group>
                 </Group>
+                <Group align="center" gap="xs">
+                  <Text c="dimmed" size="xs">
+                    適用工具種
+                  </Text>
+                  <Chip.Group
+                    multiple
+                    onChange={(v) => {
+                      const next = settings.criteria.slice();
+                      next[i] = {
+                        ...c,
+                        toolTypes: v.length ? (v as ToolType[]) : undefined,
+                      };
+                      setCriteria(next);
+                    }}
+                    value={c.toolTypes ?? []}
+                  >
+                    <Group gap={4}>
+                      {TOOL_TYPE_OPTIONS.map((o) => (
+                        <Chip key={o.value} size="xs" value={o.value}>
+                          {o.label}
+                        </Chip>
+                      ))}
+                    </Group>
+                  </Chip.Group>
+                  {!c.toolTypes?.length && (
+                    <Text c="dimmed" size="xs">
+                      （未選択 = 全工具種）
+                    </Text>
+                  )}
+                </Group>
                 <Textarea
                   autosize
                   label="式（数値を返す JS 式）"
@@ -569,7 +616,21 @@ export function TrialPricingEngineForm({
             >
               既定に戻す
             </GhostButton>
-            <SecondaryButton onClick={runTest}>テスト実行</SecondaryButton>
+            <Group gap="xs" ml="auto">
+              <Text c="dimmed" size="xs">
+                テスト工具種
+              </Text>
+              <SegmentedControl
+                data={TOOL_TYPE_OPTIONS.map((o) => ({
+                  value: o.value,
+                  label: o.label,
+                }))}
+                onChange={(v) => setTestToolType(v as ToolType)}
+                size="xs"
+                value={testToolType}
+              />
+              <SecondaryButton onClick={runTest}>テスト実行</SecondaryButton>
+            </Group>
           </Group>
 
           {test && (
@@ -581,7 +642,10 @@ export function TrialPricingEngineForm({
             >
               <Stack gap="xs">
                 <Text fw={600} size="sm">
-                  テスト結果（サンプル: 丸棒・コート・段加工・3ロット）
+                  テスト結果（
+                  {TOOL_TYPE_OPTIONS.find((o) => o.value === testToolType)
+                    ?.label ?? testToolType}
+                  ・コート・段加工・3ロット）
                 </Text>
                 {test.warnings.length > 0 && (
                   <Stack gap={2}>

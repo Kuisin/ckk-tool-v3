@@ -13,6 +13,10 @@
  */
 
 import { z } from "zod";
+import type { ToolType } from "./trial-pricing";
+
+/** 工具種（試算の product type）— 基準の適用対象の絞り込みに使う。 */
+export const TRIAL_TOOL_TYPES: ToolType[] = ["ROUND_BAR", "CYLINDER", "OH"];
 
 /**
  * - `component`   … its value is ADDED to the running subtotal (最低単価).
@@ -33,6 +37,8 @@ export interface Criterion {
   expression: string;
   order: number;
   enabled: boolean;
+  /** 適用する工具種（未設定/空 = 全工具種）。指定時はその工具種の試算にのみ効く。 */
+  toolTypes?: ToolType[];
 }
 
 export type CustomInputType = "number" | "boolean" | "text" | "select";
@@ -63,6 +69,7 @@ export const criterionSchema = z.object({
   expression: z.string().max(4000),
   order: z.number(),
   enabled: z.boolean(),
+  toolTypes: z.array(z.enum(["ROUND_BAR", "CYLINDER", "OH"])).optional(),
 });
 
 export const customInputDefSchema = z.object({
