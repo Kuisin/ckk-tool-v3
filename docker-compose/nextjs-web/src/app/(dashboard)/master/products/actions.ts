@@ -14,7 +14,10 @@ import { checkPermission } from "@/lib/authz";
 import { Prisma, prisma } from "@/lib/db";
 import { formatProductNumber } from "@/lib/doc-number";
 import { allocateDocumentKey } from "@/lib/numbering";
-import { getResolvedProductTypes } from "@/lib/product-settings";
+import {
+  getProductItemDefs,
+  getResolvedProductTypes,
+} from "@/lib/product-settings";
 import { PRODUCT_TYPE_SPEC_KEY, validateItemValue } from "@/lib/product-types";
 import {
   type ActionResult,
@@ -109,14 +112,28 @@ function specJson(rows: { key: string; value: string }[]) {
 async function validateProductTypeSpec(
   rows: { key: string; value: string }[],
 ): Promise<string | null> {
-  const typeId = rows.find((r) => r.key === PRODUCT_TYPE_SPEC_KEY)?.value;
-  if (!typeId) return null;
-  const type = (await getResolvedProductTypes()).find((t) => t.id === typeId);
-  if (!type) return null; // 種別が削除済み等 — 検証は諦めて保存を許可
   const byKey = new Map(rows.map((r) => [r.key, r.value]));
-  for (const it of type.items) {
+  const typeId = rows.find((r) => r.key === PRODUCT_TYPE_SPEC_KEY)?.value;
+  const [resolvedTypes, defs] = await Promise.all([
+    getResolvedProductTypes(),
+    getProductItemDefs(),
+  ]);
+  const type = typeId ? resolvedTypes.find((t) => t.id === typeId) : undefined;
+  const typeKeys = new Set(type?.items.map((i) => i.key) ?? []);
+  // 種別項目を検証。
+  for (const it of type?.items ?? []) {
     const msg = validateItemValue(it, byKey.get(it.key));
     if (msg) return msg;
+  }
+  // 追加項目（種別外だが定義済みの項目）も型で検証。
+  const defByKey = new Map(defs.map((d) => [d.key, d]));
+  for (const [key, value] of byKey) {
+    if (key === PRODUCT_TYPE_SPEC_KEY || typeKeys.has(key)) continue;
+    const def = defByKey.get(key);
+    if (def) {
+      const msg = validateItemValue(def, value);
+      if (msg) return msg;
+    }
   }
   return null;
 }
