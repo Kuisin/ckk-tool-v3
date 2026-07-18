@@ -51,6 +51,8 @@ export interface ProductItemDef {
   /** number のみ（任意の範囲検証）。 */
   min?: number;
   max?: number;
+  /** string のみ（正規表現で入力形式を制限）。 */
+  pattern?: string;
   placeholder?: string;
   order: number;
   enabled: boolean;
@@ -138,6 +140,7 @@ export const productItemDefSchema = z.object({
   options: z.array(productFieldOptionSchema).optional(),
   min: z.number().optional(),
   max: z.number().optional(),
+  pattern: z.string().optional(),
   placeholder: z.string().optional(),
   order: z.number(),
   enabled: z.boolean(),
@@ -167,7 +170,7 @@ export const productTypesArraySchema = z.array(productTypeSchema);
 /** 検証対象の最小形（項目定義 or 解決済み項目）。 */
 type ValidatableItem = Pick<
   ProductItemDef,
-  "key" | "label" | "type" | "required" | "options" | "min" | "max"
+  "key" | "label" | "type" | "required" | "options" | "min" | "max" | "pattern"
 >;
 
 /**
@@ -205,8 +208,18 @@ export function validateItemValue(
       const t = Date.parse(v);
       return Number.isNaN(t) ? `${labelJa} は日付で入力してください` : null;
     }
-    default:
-      return null; // string: 非空ならOK
+    default: {
+      // string: 非空ならOK。パターン（正規表現）があれば形式を検証。
+      if (item.pattern) {
+        try {
+          if (!new RegExp(item.pattern).test(v))
+            return `${labelJa} は形式が正しくありません`;
+        } catch {
+          // 不正な正規表現は検証をスキップ（保存側で弾く想定）
+        }
+      }
+      return null;
+    }
   }
 }
 
