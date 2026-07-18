@@ -1,6 +1,22 @@
+/* Sticky sidebar (desktop). Sits inside the scrolling main content area. */
+.sidebar {
+  position: sticky;
+  top: 0.25rem;
+  width: 250px;
+  flex-shrink: 0;
+  align-self: flex-start;
+  max-height: calc(100vh - 90px);
+  overflow-y: auto;
+  padding-right: 0.25rem;
+}
+
 .doc {
-  line-height: 1.7;
+  line-height: 1.75;
   font-size: var(--mantine-font-size-sm);
+  max-width: 46rem;
+}
+.doc > :first-child {
+  margin-top: 0;
 }
 .doc h1 {
   font-size: 1.6rem;

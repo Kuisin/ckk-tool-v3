@@ -1,23 +1,11 @@
-import { Alert, Anchor, Group, Paper, Stack } from "@mantine/core";
-import { IconArrowLeft, IconInfoCircle } from "@tabler/icons-react";
+import { Alert, Paper, Stack, Title } from "@mantine/core";
+import { IconInfoCircle } from "@tabler/icons-react";
 import { notFound } from "next/navigation";
-import { PageHeader } from "@/components/ui/PageHeader";
-import {
-  DOC_LANG_LABEL,
-  DOCS_LANGS,
-  type DocLang,
-  isDocLang,
-  readDoc,
-} from "@/lib/docs";
+import { DOC_LANG_LABEL, type DocLang, isDocLang, readDoc } from "@/lib/docs";
 import styles from "../docs.module.css";
 
 export const dynamic = "force-dynamic";
 
-const DOCS_LABEL: Record<DocLang, string> = {
-  ja: "マニュアル",
-  en: "Manuals",
-  zh: "手册",
-};
 const FALLBACK_NOTE: Record<DocLang, (l: string) => string> = {
   ja: (l) => `この言語の翻訳が未整備のため ${l} 版を表示しています。`,
   en: (l) => `Translation unavailable; showing the ${l} version.`,
@@ -38,41 +26,9 @@ export default async function DocPage({
   const doc = await readDoc(slug.join("/"), requested);
   if (!doc) notFound();
 
-  const backHref = `/docs?lang=${requested}`;
-
   return (
     <Stack gap="md">
-      {/* モバイルはパンくずが非表示のため、一覧へ戻るリンクを表示。 */}
-      <Anchor c="dimmed" hiddenFrom="sm" href={backHref} size="sm">
-        <Group gap={4} wrap="nowrap">
-          <IconArrowLeft size={16} />
-          {DOCS_LABEL[requested]}
-        </Group>
-      </Anchor>
-      <PageHeader
-        actions={
-          <Group gap="xs">
-            <Anchor c="dimmed" href={backHref} size="sm" visibleFrom="sm">
-              ← {DOCS_LABEL[requested]}
-            </Anchor>
-            {DOCS_LANGS.map((l) => (
-              <Anchor
-                fw={l === requested ? 700 : 400}
-                href={`/docs/${slug.join("/")}?lang=${l}`}
-                key={l}
-                size="sm"
-              >
-                {DOC_LANG_LABEL[l]}
-              </Anchor>
-            ))}
-          </Group>
-        }
-        breadcrumbs={[
-          DOCS_LABEL[requested],
-          doc.page.title[requested] ?? doc.page.title.ja,
-        ]}
-        title={doc.page.title[requested] ?? doc.page.title.ja}
-      />
+      <Title order={2}>{doc.page.title[requested] ?? doc.page.title.ja}</Title>
 
       {doc.lang !== requested && (
         <Alert color="blue" icon={<IconInfoCircle size={16} />} variant="light">
