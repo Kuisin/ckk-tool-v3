@@ -39,6 +39,7 @@ import {
   criterionSchema,
   customInputDefSchema,
   type LookupTable,
+  lookupCompositeKey,
   lookupTablesArraySchema,
   RESERVED_KEYS,
   TRIAL_TOOL_TYPES,
@@ -176,11 +177,27 @@ export async function updateLookupTables(
     if (names.has(t.name))
       return actionError(`表名が重複しています: ${t.name}`);
     names.add(t.name);
-    const keys = new Set<string>();
-    for (const e of t.entries) {
-      if (keys.has(e.key))
-        return actionError(`「${t.name}」のキーが重複しています: ${e.key}`);
-      keys.add(e.key);
+    // キー列名の重複を弾く。
+    const colSet = new Set(t.keyColumns);
+    if (colSet.size !== t.keyColumns.length)
+      return actionError(`「${t.name}」のキー列名が重複しています`);
+    // 行のキー数一致・組み合わせ一意・数値型なら数値であることを検証。
+    const combos = new Set<string>();
+    for (const r of t.rows) {
+      if (r.keys.length !== t.keyColumns.length)
+        return actionError(`「${t.name}」の行のキー数が列数と一致しません`);
+      const combo = lookupCompositeKey(r.keys);
+      if (combos.has(combo))
+        return actionError(
+          `「${t.name}」でキーの組み合わせが重複しています: ${r.keys.join(" / ")}`,
+        );
+      combos.add(combo);
+      if (
+        t.valueType === "number" &&
+        r.value.trim() !== "" &&
+        !Number.isFinite(Number(r.value))
+      )
+        return actionError(`「${t.name}」の値が数値ではありません: ${r.value}`);
     }
   }
   try {

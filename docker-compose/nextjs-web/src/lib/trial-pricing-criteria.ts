@@ -147,35 +147,55 @@ export const RESERVED_KEYS: ReadonlySet<string> = new Set([
   "CYLINDER_MACHINING",
 ]);
 
-// ── ルックアップ表（管理者が定義。式内で lookup("<表名>", キー) で参照）─────────
-export interface LookupEntry {
-  key: string;
-  value: number;
+// ── ルックアップ表（管理者が定義。多列キーの組み合わせ → 戻り値）─────────────────
+//
+// 式内では lookup("<表名>", key1, key2, ...) で参照する。keyColumns の順にキー値を
+// 渡すと、その組み合わせに一致する行の value を返す（戻り値は数値 or 文字列）。
+// キー列の組み合わせは表内で一意。該当なしは valueType に応じて 0 / "" を返す。
+export type LookupValueType = "number" | "string";
+
+/** 1 行 = キー列の値（keyColumns 順）+ 戻り値（文字列で保持し valueType で解釈）。 */
+export interface LookupRow {
+  keys: string[];
+  value: string;
 }
 
 export interface LookupTable {
   id: string;
-  /** 式内での参照名（lookup("<name>", key)）。 */
+  /** 式内での参照名（lookup("<name>", ...keys)）。 */
   name: string;
   description?: string;
-  entries: LookupEntry[];
+  /** キー列名（組み合わせが一意）。順序が lookup 引数の順序。 */
+  keyColumns: string[];
+  /** 戻り値の型。 */
+  valueType: LookupValueType;
+  rows: LookupRow[];
 }
 
-export const lookupEntrySchema = z.object({
-  key: z.string(),
-  value: z.number(),
+export const lookupRowSchema = z.object({
+  keys: z.array(z.string()),
+  value: z.string(),
 });
 
 export const lookupTableSchema = z.object({
   id: z.string().min(1),
   name: z.string().min(1, "表名を入力してください"),
   description: z.string().optional(),
-  entries: z.array(lookupEntrySchema),
+  keyColumns: z
+    .array(z.string().min(1))
+    .min(1, "キー列を1つ以上指定してください"),
+  valueType: z.enum(["number", "string"]),
+  rows: z.array(lookupRowSchema),
 });
 
 export const lookupTablesArraySchema = z.array(lookupTableSchema);
 
 export const DEFAULT_LOOKUP_TABLES: LookupTable[] = [];
+
+/** キー配列 → 一意な合成キー文字列（区切りは NUL）。 */
+export function lookupCompositeKey(keys: readonly string[]): string {
+  return JSON.stringify(keys.map((k) => String(k)));
+}
 
 /**
  * Seed criteria reproducing the legacy hardcoded chain term-for-term.
