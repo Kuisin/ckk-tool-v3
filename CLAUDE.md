@@ -123,17 +123,21 @@ Skipping `grants.sql` after adding tables makes the app 500 on those tables (rol
 
 **Secrets (never commit)** — The **Cloudflare DNS API token** (acme.sh DNS-01 for `nginx-proxy`; `Zone:DNS:Edit` on `kai-lab.net` + `ckk-tool.co.jp`) has its operational copy in the server's `~/stacks/nginx-proxy/.env` (`CLOUDFLARE_DNS_API_TOKEN`). A local backup lives in this Mac's login Keychain — retrieve with `security find-generic-password -s ckk-cloudflare-dns-api-token -w`. The **Cloudflare Tunnel API token** (account-scoped, `Cloudflare Tunnel:Edit` — used to manage the tunnel's public-hostname ingress rules via API, e.g. adding `deploy.ckk-tool.co.jp`) lives only in the Keychain: `security find-generic-password -s ckk-cloudflare-tunnel-api-token -w`. Tunnel config API: `PUT /accounts/f3ed926bb74cda704944f32bea936b5e/cfd_tunnel/3c8475a0-8285-4f44-a8d2-b1e0efb50c5b/configurations` (GET first, edit the `ingress` array, PUT back whole). If either token is exposed, rotate it in Cloudflare and update its storage place(s).
 
-**Deploy a non-Coolify stack** (example: `ai-stack`):
+**Deploy a non-Coolify stack** — use `docker-compose/deploy-stack.sh <stack>`. It
+rsyncs `docker-compose/<stack>/` up to `~/stacks/<stack>/` (always excluding the
+server-only `.env`; no `--delete`, so server-only files/certs/data survive) and runs
+`docker compose up -d --build`. This covers **every stack except the Coolify-built
+apps** (the nextjs-web app + admintools, which deploy via `coolify/deploy.sh`).
 
 ```bash
-# from repo: docker-compose/ai-stack/
-rsync -a --exclude node_modules --exclude .next --exclude .git \
-  --exclude .env --exclude .vscode --exclude '*.tsbuildinfo' --exclude .DS_Store \
-  ./ 192.168.50.15:'~/stacks/ai-stack/'
-ssh 192.168.50.15 'cd ~/stacks/ai-stack && docker compose up -d --build'
+cd docker-compose
+./deploy-stack.sh                    # list deployable stacks
+./deploy-stack.sh ai-stack --dry-run # preview the rsync file set (do this first)
+./deploy-stack.sh ai-stack           # rsync + rebuild
+# server host override: DEPLOY_HOST=<ip> ./deploy-stack.sh <stack>
 ```
 
-Dry-run the rsync first (`rsync -avn …`) to confirm the file set. The nextjs-web Dockerfile builds Next.js `output: "standalone"`; PDF templates under `src/pdf-templates/` reach the runtime image via `outputFileTracingIncludes` in `next.config.ts` (file tracing can't follow `fs.readFile` paths). `pnpm install --frozen-lockfile` runs in-build, so never let the lockfile drift.
+Always `--dry-run` first to confirm the file set. The nextjs-web Dockerfile builds Next.js `output: "standalone"`; PDF templates under `src/pdf-templates/` reach the runtime image via `outputFileTracingIncludes` in `next.config.ts` (file tracing can't follow `fs.readFile` paths). `pnpm install --frozen-lockfile` runs in-build, so never let the lockfile drift.
 
 **nextjs-web topology** — the app containers are Coolify-managed (dev `:3004`, main `:3005`, container `:3000`; host `:3000` is taken by open-webui). Public access `https://ckk-dev.kai-lab.net` (dev) / `https://ckk.kai-lab.net` (main) via the `cloudflared` stack; LAN TLS via `nginx-proxy` (same hostnames, shared `ckk.kai-lab.net` SAN cert); both reach the apps over the `nextjs-web_default` network at `http://web:3000` (dev) / `http://web-main:3000` (main) — socat relays in the `nextjs-web` stack, which also keeps `gotenberg` and `seaweedfs`. PDF generation uses `http://gotenberg:3000` (`GOTENBERG_URL`); generated PDFs persist in the `seaweedfs` filer (`SEAWEED_FILER_URL=http://seaweedfs:8888`).
 
