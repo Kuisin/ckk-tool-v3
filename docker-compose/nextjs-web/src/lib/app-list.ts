@@ -354,11 +354,21 @@ export const appList: AppEntry[] = [
     requiredPermission: null,
   },
   {
-    // 製品項目 — 項目定義ライブラリ + 製品種別（項目の割り当て）。system 権限。
+    // 製品項目 — 入力項目の定義ライブラリ。system 権限。
     key: "product-items",
     label: "製品項目",
     operationCode: "SY04",
     href: "/settings/product-items",
+    icon: "IconListDetails",
+    category: "システム",
+    requiredPermission: "system",
+  },
+  {
+    // 製品種別 — 項目を割り当てるテンプレート。system 権限。
+    key: "product-types",
+    label: "製品種別",
+    operationCode: "SY05",
+    href: "/settings/product-types",
     icon: "IconCategory",
     category: "システム",
     requiredPermission: "system",
