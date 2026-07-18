@@ -49,6 +49,9 @@ DB_URL = os.environ.get("RESTORE_DB_URL", "")                     # superuser DS
 SEAWEED_CONTAINER = os.environ.get("SEAWEED_CONTAINER", "nextjs-seaweedfs")
 SEAWEED_VOLUME = os.environ.get("SEAWEED_VOLUME", "nextjs-web_seaweed-data")
 SHARED_DB_NETWORK = os.environ.get("SHARED_DB_NETWORK", "shared-db")
+# Physical restore (whole-cluster): stop shared-db, swap its data volume, start.
+SHARED_DB_CONTAINER = os.environ.get("SHARED_DB_CONTAINER", "shared-db")
+SHARED_DB_VOLUME = os.environ.get("SHARED_DB_VOLUME", "shared-db_shared-db-data")
 PG_IMAGE = os.environ.get("PG_IMAGE", "postgres:17-alpine")
 HELPER_IMAGE = os.environ.get("HELPER_IMAGE", "alpine:3.20")
 LOG_PATH = BACKUP_DIR / "restore-log.jsonl"
@@ -181,6 +184,56 @@ def restore_db(rel: str) -> None:
     )
 
 
+def _is_physical(rel: str) -> bool:
+    """A physical pg_basebackup lives under daily/ hourly/ monthly/ (a directory)."""
+    return rel.split("/", 1)[0] in ("daily", "hourly", "monthly")
+
+
+def restore_physical(rel: str) -> None:
+    """Restore the WHOLE shared-db cluster from a physical basebackup — an
+    exact byte-level rollback (roles/grants/all databases intact). This STOPS
+    shared-db (every stack that uses it goes down for the duration) and replaces
+    its data volume, so it is all-or-nothing. Incrementals are combined with
+    their anchor full via pg_combinebackup; a standalone full is used directly.
+    Postgres replays the streamed WAL to consistency on start."""
+    src = BACKUP_DIR / rel
+    if not src.is_dir():
+        raise FileNotFoundError(f"physical backup not found: {rel}")
+
+    anchor_f = src / "anchor"
+    if anchor_f.is_file():
+        anchor = anchor_f.read_text().strip()  # e.g. "daily/2026-07-15"
+        scratch = f".restore-work/{_stamp()}"
+        (BACKUP_DIR / scratch).mkdir(parents=True, exist_ok=True)
+        STATE["phase"] = "physical restore: pg_combinebackup (full + incremental)"
+        _run_oneshot(
+            PG_IMAGE,
+            ["sh", "-c", f'pg_combinebackup "/backups/{anchor}" "/backups/{rel}" -o "/backups/{scratch}"'],
+            volumes={BACKUP_HOST_DIR: {"bind": "/backups", "mode": "rw"}},
+        )
+        pgdata_host = f"{BACKUP_HOST_DIR}/{scratch}"
+    else:
+        pgdata_host = f"{BACKUP_HOST_DIR}/{rel}"  # standalone full — use as-is
+
+    cli = _client()
+    STATE["phase"] = "physical restore: stopping shared-db (全システム停止)"
+    container = cli.containers.get(SHARED_DB_CONTAINER)
+    container.stop(timeout=60)
+    try:
+        STATE["phase"] = "physical restore: swapping data volume"
+        _run_oneshot(
+            HELPER_IMAGE,
+            ["sh", "-c",
+             "rm -rf /target/* /target/.[!.]* /target/..?* 2>/dev/null; "
+             "cp -a /src/. /target/ && chown -R 70:70 /target && chmod 700 /target"],
+            volumes={SHARED_DB_VOLUME: {"bind": "/target", "mode": "rw"},
+                     pgdata_host: {"bind": "/src", "mode": "ro"}},
+        )
+    finally:
+        STATE["phase"] = "physical restore: starting shared-db"
+        container.start()
+
+
 def restore_storage(rel: str) -> None:
     """Restore the SeaweedFS volume from a tar.gz: stop the container, wipe the
     volume, untar, start it again."""
@@ -252,6 +305,7 @@ def list_app_versions() -> dict:
             "message": (d.get("commit_message") or d.get("message") or "")[:120],
             "status": d.get("status"),
             "at": d.get("created_at") or d.get("finished_at") or "",
+            "at_epoch": _iso_epoch(d.get("finished_at") or d.get("created_at")),
         } for d in (rows or []) if (d.get("commit") or d.get("git_commit_sha"))]
         return {"enabled": True, "app": COOLIFY_APP_NAME, "uuid": uuid, "versions": versions[:30]}
     except Exception as e:  # noqa: BLE001
@@ -280,7 +334,10 @@ def _run_restore(db_source: str | None, storage_source: str | None,
             snap = take_snapshot(reason=f"pre-restore(db={db_source}, storage={storage_source})")
             entry["snapshot_id"] = snap["id"]
         if db_source:
-            restore_db(db_source)
+            if _is_physical(db_source):
+                restore_physical(db_source)  # whole-cluster; stops shared-db
+            else:
+                restore_db(db_source)  # logical, online
         if storage_source:
             restore_storage(storage_source)
         # App redeploy runs LAST so the freshly-deployed app connects to the
@@ -316,12 +373,74 @@ def _entries(globpat: str, kind: str) -> list[dict]:
             continue
         st = p.stat()
         out.append({"id": str(p.relative_to(BACKUP_DIR)), "kind": kind,
-                    "size": st.st_size, "mtime": _fmt_mtime(st.st_mtime)})
+                    "size": st.st_size, "mtime": _fmt_mtime(st.st_mtime),
+                    "mtime_epoch": st.st_mtime})
     return out
 
 
 def _fmt_mtime(epoch: float) -> str:
     return datetime.fromtimestamp(epoch, timezone.utc).astimezone().strftime("%Y-%m-%d %H:%M")
+
+
+def _dir_entries(globpat: str, kind: str) -> list[dict]:
+    """List backup *directories* (e.g. physical pg_basebackup outputs) newest-first."""
+    out = []
+    for p in sorted(BACKUP_DIR.glob(globpat), reverse=True):
+        if not p.is_dir():
+            continue
+        st = p.stat()
+        out.append({"id": str(p.relative_to(BACKUP_DIR)), "kind": kind, "size": None,
+                    "mtime": _fmt_mtime(st.st_mtime), "mtime_epoch": st.st_mtime})
+    return out
+
+
+def list_all_backups() -> dict:
+    """Every backup artifact under /backups, grouped for a collapsible overview.
+    `restorable` marks groups this tool can restore one-click (logical dumps,
+    storage tars, snapshots); physical basebackups are shown for visibility but
+    are restored via the manual runbook (see db-backup/README)."""
+    snaps = []
+    for d in sorted((BACKUP_DIR / "pre-restore").glob("*"), reverse=True):
+        if not d.is_dir():
+            continue
+        man = d / "manifest.json"
+        meta = json.loads(man.read_text()) if man.is_file() else {}
+        st = d.stat()
+        snaps.append({"id": f"pre-restore/{d.name}", "kind": "snapshot", "size": None,
+                      "mtime": meta.get("created_at", _fmt_mtime(st.st_mtime)),
+                      "mtime_epoch": _iso_epoch(meta.get("created_at")) or st.st_mtime,
+                      "reason": meta.get("reason", "")})
+    groups = [
+        {"key": "logical_daily", "label": "論理 DB — 日次", "restorable": True,
+         "items": _entries("logical/daily/*.dump", "db")},
+        {"key": "logical_monthly", "label": "論理 DB — 月次", "restorable": True,
+         "items": _entries("logical/monthly/*.dump", "db")},
+        {"key": "logical_manual", "label": "論理 DB — 手動", "restorable": True,
+         "items": _entries("logical/manual/*.dump", "db")},
+        {"key": "snapshots", "label": "事前スナップショット（DB＋ストレージ）", "restorable": True,
+         "items": snaps},
+        {"key": "storage_daily", "label": "ストレージ（SeaweedFS）— 日次", "restorable": True,
+         "items": _entries("seaweedfs/daily/*.tar.gz", "storage")},
+        {"key": "storage_monthly", "label": "ストレージ（SeaweedFS）— 月次", "restorable": True,
+         "items": _entries("seaweedfs/monthly/*.tar.gz", "storage")},
+        {"key": "physical_daily", "label": "物理 DB — 日次フル（全停止復元）", "restorable": True,
+         "outage": True, "items": _dir_entries("daily/*", "physical")},
+        {"key": "physical_hourly", "label": "物理 DB — 毎時増分（全停止復元）", "restorable": True,
+         "outage": True, "items": _dir_entries("hourly/*", "physical")},
+        {"key": "physical_monthly", "label": "物理 DB — 月次（全停止復元）", "restorable": True,
+         "outage": True, "items": _dir_entries("monthly/*", "physical")},
+    ]
+    return {"groups": groups, "db_restore_enabled": bool(DB_URL)}
+
+
+def _iso_epoch(s: str | None) -> float | None:
+    """Parse an ISO-8601 timestamp (Coolify 'at', snapshot created_at) to epoch."""
+    if not s:
+        return None
+    try:
+        return datetime.fromisoformat(s.replace("Z", "+00:00")).timestamp()
+    except Exception:  # noqa: BLE001
+        return None
 
 
 def list_backups() -> dict:
@@ -341,6 +460,82 @@ def list_backups() -> dict:
         })
     return {"db": db, "storage": storage, "snapshots": snapshots,
             "db_restore_enabled": bool(DB_URL)}
+
+
+def _nearest_at_or_before(items: list[dict], epoch_key: str, t: float) -> dict | None:
+    """Pick the item whose timestamp is closest to (at or before) t — i.e. the
+    state that was current when the DB backup was taken. Falls back to the
+    earliest item if none precede t."""
+    cand = [x for x in items if x.get(epoch_key) is not None]
+    if not cand:
+        return None
+    before = [x for x in cand if x[epoch_key] <= t]
+    if before:
+        return max(before, key=lambda x: x[epoch_key])
+    return min(cand, key=lambda x: x[epoch_key])
+
+
+def build_restore_points() -> dict:
+    """Correlate DB backups with the storage tar and app version that were current
+    at the same time, so a restore stays internally consistent. The DB backup's
+    timestamp is the anchor; storage + app are auto-selected as the nearest
+    at-or-before that instant. Snapshots (db+storage captured together) are their
+    own consistent points."""
+    b = list_backups()
+    av = list_app_versions()
+    versions = av.get("versions", []) if av.get("enabled") else []
+    storage = b.get("storage", [])
+    SKEW = 26 * 3600  # warn if the matched artifact is >~a day from the DB backup
+
+    def _match(t: float | None) -> dict:
+        st = _nearest_at_or_before(storage, "mtime_epoch", t) if t is not None else None
+        ver = _nearest_at_or_before(versions, "at_epoch", t) if t is not None else None
+        warnings = []
+        if t is not None and st and abs(t - st["mtime_epoch"]) > SKEW:
+            warnings.append(f"ストレージ backup が DB と {round(abs(t - st['mtime_epoch']) / 3600)}h ずれています")
+        if t is not None and not st:
+            warnings.append("一致するストレージ backup がありません")
+        return {
+            "storage": st["id"] if st else None,
+            "storage_time": st["mtime"] if st else None,
+            "app_sha": ver["sha"] if ver else None,
+            "app_message": ver["message"] if ver else None,
+            "app_time": ver["at"] if ver else None,
+            "warnings": warnings,
+        }
+
+    points = []
+    # logical dumps — online restore (no downtime), one database (ckk)
+    for d in b.get("db", []):
+        t = d.get("mtime_epoch")
+        points.append({"kind": "db", "db_kind": "logical", "outage": False,
+                       "db": d["id"], "db_time": d.get("mtime"), "epoch": t, **_match(t)})
+    # snapshots — db+storage captured together → inherently consistent (online)
+    for s in b.get("snapshots", []):
+        if not s.get("db"):
+            continue
+        t = _iso_epoch(s.get("created_at"))
+        ver = _nearest_at_or_before(versions, "at_epoch", t) if t is not None else None
+        points.append({
+            "kind": "snapshot", "db_kind": "snapshot", "outage": False,
+            "db": s.get("db"), "db_time": s.get("created_at"),
+            "epoch": t, "storage": s.get("storage"), "storage_time": s.get("created_at"),
+            "app_sha": ver["sha"] if ver else None,
+            "app_message": ver["message"] if ver else None,
+            "app_time": ver["at"] if ver else None, "warnings": [],
+        })
+    # physical basebackups — exact whole-cluster PITR, but STOPS shared-db (全停止)
+    physical = (_dir_entries("daily/*", "physical") + _dir_entries("hourly/*", "physical")
+                + _dir_entries("monthly/*", "physical"))
+    for d in physical:
+        t = d.get("mtime_epoch")
+        m = _match(t)
+        m["warnings"] = ["物理復元は shared-db を停止（全システム停止）します"] + m["warnings"]
+        points.append({"kind": "physical", "db_kind": "physical", "outage": True,
+                       "db": d["id"], "db_time": d.get("mtime"), "epoch": t, **m})
+    points.sort(key=lambda p: p.get("epoch") or 0, reverse=True)
+    return {"points": points, "db_restore_enabled": bool(DB_URL),
+            "app_rollback_enabled": av.get("enabled", False)}
 
 
 # ── request models + routes ─────────────────────────────────────────────────
@@ -367,6 +562,16 @@ def healthz():
 @app.get("/backups", dependencies=[Depends(require_token)])
 def backups():
     return list_backups()
+
+
+@app.get("/restore-points", dependencies=[Depends(require_token)])
+def restore_points():
+    return build_restore_points()
+
+
+@app.get("/all-backups", dependencies=[Depends(require_token)])
+def all_backups():
+    return list_all_backups()
 
 
 @app.get("/app-versions", dependencies=[Depends(require_token)])
@@ -407,8 +612,8 @@ def restore(body: RestoreIn):
         raise HTTPException(400, "confirmation phrase mismatch")
     if not (body.db_source or body.storage_source or body.app_version):
         raise HTTPException(400, "select at least one of db / storage / app version")
-    if body.db_source and not DB_URL:
-        raise HTTPException(400, "DB restore is disabled (RESTORE_DB_URL not set)")
+    if body.db_source and not _is_physical(body.db_source) and not DB_URL:
+        raise HTTPException(400, "logical DB restore is disabled (RESTORE_DB_URL not set)")
     if body.app_version and not _coolify_enabled():
         raise HTTPException(400, "app rollback is disabled (Coolify not configured)")
     with _lock:

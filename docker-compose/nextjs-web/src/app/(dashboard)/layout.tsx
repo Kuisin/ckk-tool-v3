@@ -42,7 +42,7 @@ export default async function DashboardLayout({
       unreleasedKeys={unreleasedKeys}
     >
       <PwaRegister />
-      <DashboardShell user={headerUser}>
+      <DashboardShell isDev={isDevEnv} user={headerUser}>
         <AppAvailabilityGuard>{children}</AppAvailabilityGuard>
       </DashboardShell>
     </AppFlagsProvider>

@@ -33,6 +33,15 @@
     @media (max-width: 760px) { .grid { grid-template-columns: 1fr; } }
     #log { background: #0b1020; color: #cbd5e1; font-family: ui-monospace, monospace; font-size: 12px; padding: 12px; border-radius: 6px; min-height: 60px; white-space: pre-wrap; }
     .danger-box { border: 2px solid #fecaca; background: #fff5f5; border-radius: 8px; padding: 16px; }
+    .bk-group { border: 1px solid #eee; border-radius: 6px; margin-bottom: 6px; }
+    .bk-group > summary { cursor: pointer; padding: 9px 12px; font-size: 13px; user-select: none; list-style-position: inside; }
+    .bk-group > summary:hover { background: #f8fafc; }
+    .bk-group[open] > summary { border-bottom: 1px solid #eee; }
+    .bk-list { max-height: 260px; overflow-y: auto; }
+    .bk-row { display: flex; align-items: baseline; gap: 12px; padding: 5px 12px; font-size: 12px; border-top: 1px solid #f3f4f6; }
+    .bk-row:first-child { border-top: 0; }
+    .bk-row .bk-id { flex: 1; color: #6b7280; word-break: break-all; }
+    .bk-row .bk-size { color: #374151; min-width: 56px; text-align: right; }
     @media (max-width: 640px) {
       main { margin: 14px auto; padding: 0 10px; }
       header { padding: 12px 16px; } header h1 { font-size: 16px; }
@@ -48,6 +57,7 @@
   </style>
 </head>
 <body>
+  {% if is_dev %}<div style="background:#ea580c;color:#fff;text-align:center;font-size:12px;font-weight:700;letter-spacing:1px;padding:5px 0;">開発環境 — DEV</div>{% endif %}
   <header><h1 onclick="location.href='/'">adminTools</h1><span class="muted" style="color:#cbd5e1">{{ domain }}</span></header>
   <main>
     <div class="crumb"><a href="/">← アプリ一覧</a> ／ バックアップ / 復元</div>
@@ -77,23 +87,25 @@
 
     <div class="card danger-box">
       <h2 style="color:#b91c1c">② 復元</h2>
-      <p class="muted">復元する対象を選びます。DB とストレージは<b>その場で上書き</b>され、進行中の全アプリに影響します（ダウンタイム発生）。</p>
+      <p class="muted">復元する <b>DB バックアップ</b> を選ぶと、同時点のストレージ・アプリ版数を<b>自動選択</b>して整合を保ちます。<span style="color:#047857">論理・スナップショット＝オンライン復元</span> ／ <span style="color:#b91c1c">物理＝全システム停止（shared-db を停止して丸ごと巻き戻し）</span>。</p>
 
-      <div class="grid">
-        <div>
-          <h3>DB（<span class="mono">ckk</span>）を復元</h3>
-          <div class="list" id="db-list"><span class="muted">…</span></div>
-        </div>
-        <div>
-          <h3>ストレージ（SeaweedFS）を復元</h3>
-          <div class="list" id="storage-list"><span class="muted">…</span></div>
-        </div>
-      </div>
+      <h3>復元する DB バックアップ（復元可能なもののみ）</h3>
+      <div class="list" id="rp-list" style="max-height:340px"><span class="muted">…</span></div>
+      <div id="rp-summary" class="muted" style="margin-top:8px"></div>
 
-      <div style="margin-top:16px">
-        <h3>アプリ版数（Coolify）を復元ポイントへ戻す</h3>
-        <div class="list" id="app-list-versions" style="max-height:200px"><span class="muted">…</span></div>
-      </div>
+      <details style="margin-top:14px">
+        <summary style="cursor:pointer;font-size:13px;color:#374151">詳細設定（ストレージ・アプリ版数を個別に上書き）</summary>
+        <div class="grid" style="margin-top:12px">
+          <div>
+            <h3>ストレージ（SeaweedFS）</h3>
+            <div class="list" id="storage-list"><span class="muted">…</span></div>
+          </div>
+          <div>
+            <h3>アプリ版数（Coolify）</h3>
+            <div class="list" id="app-list-versions" style="max-height:200px"><span class="muted">…</span></div>
+          </div>
+        </div>
+      </details>
 
       <div class="warn" style="margin-top:16px" id="bypass-wrap">
         <label><input type="checkbox" id="skip-snap"> <b>緊急時</b>: 復元直前の at-point フルバックアップをスキップする</label>
@@ -106,6 +118,12 @@
         <div style="align-self:flex-end"><button class="btn-danger" id="restore-btn" onclick="doRestore()">⚠ 復元を実行</button></div>
       </div>
       <div id="selection" class="muted" style="margin-top:10px"></div>
+    </div>
+
+    <div class="card">
+      <h2>③ すべてのバックアップ</h2>
+      <p class="muted"><span class="mono">/data/db-backups</span> 配下の全バックアップ。グループ見出しをクリックで開閉。<span style="color:#047857">復元可</span> = このツールでワンクリック復元できる種類。物理 DB は参照のみ（手動復元は README 参照）。</p>
+      <div id="all-backups"><span class="muted">…</span></div>
     </div>
 
     <div class="card">
@@ -126,8 +144,44 @@
       renderHealth(r.health || {});
       renderBackups(r.backups || {});
       renderAppVersions(r.app_versions || {});
+      renderRestorePoints(r.restore_points || {});
+      renderAllBackups(r.all_backups || {});
       renderStatus(r.status || {});
     }
+
+    function renderAllBackups(a) {
+      const groups = a.groups || [];
+      if (!groups.length) { $('all-backups').innerHTML = `<div class="muted">エージェント未応答、またはバックアップがありません。</div>`; return; }
+      // preserve the user's expand/collapse choices across the 15s auto-reload
+      const existing = document.querySelectorAll('#all-backups .bk-group');
+      const firstRender = existing.length === 0;
+      const prevOpen = new Set([...existing].filter(e => e.open).map(e => e.dataset.key));
+      let total = 0;
+      const html = groups.map(g => {
+        const items = g.items || [];
+        total += items.length;
+        const newest = items.length ? items[0].mtime : '—';
+        const badge = g.restorable
+          ? '<span class="pill" style="background:#ecfdf5;color:#047857">復元可</span>'
+          : '<span class="pill" style="background:#f3f4f6;color:#6b7280">参照のみ</span>';
+        // first render: open restorable groups with a manageable count; afterwards keep the user's choice
+        const dflt = g.restorable && items.length > 0 && items.length <= 12;
+        const open = (firstRender ? dflt : prevOpen.has(g.key)) ? ' open' : '';
+        const rows = items.length
+          ? items.map(it => `<div class="bk-row"><span class="mono">${esc(it.mtime)}</span>`
+              + `<span class="bk-id mono">${esc(it.id)}</span>`
+              + `<span class="bk-size">${it.size != null ? human(it.size) : ''}</span></div>`).join('')
+          : `<div class="muted" style="padding:6px 8px">なし</div>`;
+        return `<details class="bk-group" data-key="${esc(g.key)}"${open}>
+          <summary>${badge} <b>${esc(g.label)}</b> <span class="muted">（${items.length} 件${items.length ? ' ・ 最新 ' + esc(newest) : ''}）</span></summary>
+          <div class="bk-list">${rows}</div>
+        </details>`;
+      }).join('');
+      $('all-backups').innerHTML = html + `<div class="muted" style="margin-top:8px">合計 ${total} 件</div>`;
+    }
+
+    let RESTORE_POINTS = [];
+    let SELECTED_RP = -1;
 
     function renderHealth(h) {
       if (h.error) { $('health').innerHTML = `<span class="pill off">エージェント応答なし</span> <span class="mono">${esc(h.error)}</span>`; return; }
@@ -144,21 +198,13 @@
     }
 
     function renderBackups(b) {
+      // DB is chosen from the restore-point list (§②); here we only render the
+      // overridable storage list. Storage sources = tars + snapshot seaweed.tar.gz.
       const snaps = b.snapshots || [];
-      // DB sources: logical dumps + snapshot db.dump
-      let db = `<label class="opt"><input type="radio" name="db" value="" checked onchange="updateSel()"><span>復元しない</span></label>`;
-      (b.db || []).forEach(x => db += optRow('db', x.id, x.id, `${x.mtime} ・ ${human(x.size)}`));
-      snaps.filter(s => s.db).forEach(s => db += optRow('db', s.db, s.db, `スナップショット ${s.created_at}`));
-      $('db-list').innerHTML = db;
-
       let st = `<label class="opt"><input type="radio" name="storage" value="" checked onchange="updateSel()"><span>復元しない</span></label>`;
       (b.storage || []).forEach(x => st += optRow('storage', x.id, x.id, `${x.mtime} ・ ${human(x.size)}`));
       snaps.filter(s => s.storage).forEach(s => st += optRow('storage', s.storage, s.storage, `スナップショット ${s.created_at}`));
       $('storage-list').innerHTML = st;
-
-      if (b.db_restore_enabled === false) {
-        $('db-list').innerHTML = `<div class="muted">DB 復元は無効です（RESTORE_DB_URL 未設定）。</div>`;
-      }
     }
 
     function renderAppVersions(a) {
@@ -169,11 +215,68 @@
       $('app-list-versions').innerHTML = h || `<div class="muted">デプロイ履歴なし</div>`;
     }
 
+    function renderRestorePoints(rp) {
+      RESTORE_POINTS = rp.points || [];
+      if (rp.db_restore_enabled === false) { $('rp-list').innerHTML = `<div class="muted">DB 復元は無効です（RESTORE_DB_URL 未設定）。</div>`; return; }
+      if (!RESTORE_POINTS.length) { $('rp-list').innerHTML = `<div class="muted">復元ポイントがありません（日次論理バックアップ待ち／手動スナップショットを取得してください）。</div>`; return; }
+      const kindBadge = (p) => p.db_kind === 'physical'
+        ? '<span class="pill" style="background:#fee2e2;color:#b91c1c">物理・全停止</span>'
+        : (p.db_kind === 'snapshot'
+          ? '<span class="pill" style="background:#ede9fe;color:#6d28d9">スナップショット</span>'
+          : '<span class="pill" style="background:#e0f2fe;color:#075985">論理・オンライン</span>');
+      let h = `<label class="opt"><input type="radio" name="rp" value="-1" checked onchange="applyRestorePoint(-1)"><span>選択しない</span></label>`;
+      RESTORE_POINTS.forEach((p, i) => {
+        const sub = [];
+        sub.push('ストレージ: ' + (p.storage_time ? esc(p.storage_time) : '—'));
+        sub.push('アプリ: ' + (p.app_sha ? esc(p.app_sha.slice(0,12)) + (p.app_time ? ' ('+esc(p.app_time)+')' : '') : '変更なし'));
+        const warn = (p.warnings || []).length ? `<div style="color:#b45309;font-size:11px">⚠ ${p.warnings.map(esc).join(' / ')}</div>` : '';
+        h += `<label class="opt"><input type="radio" name="rp" value="${i}" onchange="applyRestorePoint(${i})">
+          <span><div>${kindBadge(p)} <b class="mono">${esc(p.db_time || '')}</b> <span class="meta mono">${esc(p.db)}</span></div>
+          <div class="meta">→ ${sub.map(esc).join(' ／ ')}</div>${warn}</span></label>`;
+      });
+      $('rp-list').innerHTML = h;
+    }
+
+    function setRadio(name, value) {
+      const els = document.querySelectorAll(`input[name="${name}"]`);
+      let found = false;
+      els.forEach(e => { if (e.value === (value || '')) { e.checked = true; found = true; } });
+      if (!found) els.forEach(e => { if (e.value === '') e.checked = true; }); // fall back to "復元しない"
+      return found;
+    }
+
+    // the selected DB backup comes straight from the restore-point list (physical
+    // values aren't in any radio list), storage/app are overridable in <details>.
+    function selectedDb() { return SELECTED_RP >= 0 && RESTORE_POINTS[SELECTED_RP] ? RESTORE_POINTS[SELECTED_RP].db : ''; }
+    function selectedOutage() { return SELECTED_RP >= 0 && RESTORE_POINTS[SELECTED_RP] ? !!RESTORE_POINTS[SELECTED_RP].outage : false; }
+
+    function applyRestorePoint(i) {
+      SELECTED_RP = i;
+      if (i < 0 || !RESTORE_POINTS[i]) {
+        $('rp-summary').innerHTML = '';
+        setRadio('storage', ''); setRadio('app', ''); updateSel();
+        return;
+      }
+      const p = RESTORE_POINTS[i];
+      const okSt = setRadio('storage', p.storage);
+      const okApp = setRadio('app', p.app_sha);
+      const notes = [];
+      if (p.storage && !okSt) notes.push('一致するストレージ backup が見つからず「復元しない」になりました');
+      if (p.app_sha && !okApp) notes.push('一致するアプリ版数が見つかりません');
+      (p.warnings || []).forEach(w => notes.push(w));
+      $('rp-summary').innerHTML = `<b>この時点へ復元:</b> ${p.outage ? '<span style="color:#b91c1c">物理（全システム停止）</span> ' : ''}`
+        + `DB <span class="mono">${esc(p.db_time||'')}</span>`
+        + ` ／ ストレージ <span class="mono">${esc(p.storage_time||'—')}</span>`
+        + ` ／ アプリ <span class="mono">${esc(p.app_sha ? p.app_sha.slice(0,12) : '変更なし')}</span>`
+        + (notes.length ? `<div style="color:#b45309;margin-top:3px">⚠ ${notes.map(esc).join(' / ')}</div>` : '');
+      updateSel();
+    }
+
     function sel(name) { const el = document.querySelector(`input[name="${name}"]:checked`); return el ? el.value : ''; }
 
     function updateSel() {
       const parts = [];
-      if (sel('db')) parts.push('DB ← ' + sel('db'));
+      if (selectedDb()) parts.push('DB ← ' + selectedDb() + (selectedOutage() ? ' [全停止]' : ''));
       if (sel('storage')) parts.push('ストレージ ← ' + sel('storage'));
       if (sel('app')) parts.push('アプリ ← ' + sel('app').slice(0,12));
       $('selection').innerHTML = parts.length ? '選択: ' + parts.map(esc).join(' / ') : '対象が選択されていません。';
@@ -209,14 +312,16 @@
     }
 
     async function doRestore() {
-      const db = sel('db'), storage = sel('storage'), app = sel('app');
+      const db = selectedDb(), storage = sel('storage'), app = sel('app');
+      const outage = selectedOutage();
       if (!db && !storage && !app) { alert('復元対象を1つ以上選択してください。'); return; }
       if ($('confirm').value.trim() !== 'RESTORE') { alert('確認フレーズ RESTORE を入力してください。'); return; }
       const skip = $('skip-snap').checked;
       let msg = '以下を復元します。よろしいですか？\n\n';
-      if (db) msg += `・DB ← ${db}\n`;
+      if (db) msg += `・DB ← ${db}${outage ? '  ⚠物理（全システム停止）' : ''}\n`;
       if (storage) msg += `・ストレージ ← ${storage}\n`;
       if (app) msg += `・アプリ ← ${app.slice(0,12)}\n`;
+      if (outage) msg += '\n⚠ 物理復元は shared-db を停止します。全アプリ（本番含む）が復元完了まで停止します。';
       msg += skip ? '\n⚠ 事前バックアップをスキップします（元に戻せません）。' : '\n先に at-point フルバックアップを自動取得します。';
       if (!confirm(msg)) return;
 

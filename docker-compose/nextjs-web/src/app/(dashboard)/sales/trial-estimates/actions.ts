@@ -34,7 +34,8 @@ import {
   prismaErrorMessage,
 } from "@/lib/server-action";
 import { getTrialPricingSettings } from "@/lib/system-settings";
-import type { TrialInput } from "@/lib/trial-pricing";
+import { calcTrialPricing, type TrialInput } from "@/lib/trial-pricing";
+import { toTrialPricingOptions } from "@/lib/trial-pricing-settings";
 
 const BASE_PATH = "/sales/trial-estimates";
 
@@ -102,6 +103,23 @@ function keyOf(number: string): DocKey | null {
   return parseDocKey(number, "EST");
 }
 
+/**
+ * 試算価格を「その時点」で記録するためのスナップショット（estimate.result）。
+ * 保存/確定時に現在の設定で計算した結果を固定して保存し、後から計算ロジック
+ * （計算基準）を変更しても過去の試算の価格が変わらないようにする。
+ */
+function buildPriceSnapshot(
+  input: TrialInput,
+  settings: Awaited<ReturnType<typeof getTrialPricingSettings>>,
+): Prisma.InputJsonValue {
+  const result = calcTrialPricing(input, toTrialPricingOptions(settings));
+  return {
+    ...result,
+    pricedAt: new Date().toISOString(),
+    correctionFactor: settings.correctionFactor,
+  } as unknown as Prisma.InputJsonValue;
+}
+
 export async function createTrialEstimate(
   payload: TrialEstimateCreateInput,
 ): Promise<ActionResult<{ number: string }>> {
@@ -113,6 +131,7 @@ export async function createTrialEstimate(
   if (!authz.ok) return actionError(authz.error);
   const v = parsed.data;
   try {
+    const settings = await getTrialPricingSettings();
     const { yearMonth, seq } = await allocateDocumentKey("ESTIMATE");
     await prisma.estimate.create({
       data: {
@@ -127,6 +146,8 @@ export async function createTrialEstimate(
         referenceDate: v.referenceDate ? new Date(v.referenceDate) : null,
         referenceOverridden: v.referenceOverridden,
         input: v.input as Prisma.InputJsonValue,
+        // 作成時点の価格を記録（計算ロジック変更後も過去の価格は不変）。
+        result: buildPriceSnapshot(payload.input, settings),
       },
     });
     const number = formatEstimateNumber({ yearMonth, seq });
@@ -157,13 +178,23 @@ export async function confirmTrialEstimate(
   const authz = await checkPermission("price_list", "UPDATE");
   if (!authz.ok) return actionError(authz.error);
   try {
-    const updated = await prisma.estimate.updateMany({
-      where: { yearMonth: key.yearMonth, seq: key.seq, status: "DRAFT" },
-      data: { status: "CONFIRMED" },
+    const estimate = await prisma.estimate.findUnique({
+      where: { yearMonth_seq: { yearMonth: key.yearMonth, seq: key.seq } },
     });
-    if (updated.count === 0) {
+    if (!estimate) return actionError("試算が見つかりません");
+    if (estimate.status !== "DRAFT") {
       return actionError("下書きの試算のみ確定できます");
     }
+    // 確定時点の価格を再スナップショット（この時点の設定で固定）。
+    const settings = await getTrialPricingSettings();
+    const result = buildPriceSnapshot(
+      estimate.input as unknown as TrialInput,
+      settings,
+    );
+    await prisma.estimate.update({
+      where: { yearMonth_seq: { yearMonth: key.yearMonth, seq: key.seq } },
+      data: { status: "CONFIRMED", result },
+    });
     await recordAudit({
       action: "UPDATE",
       tableName: "estimates",

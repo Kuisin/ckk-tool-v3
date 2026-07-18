@@ -18,7 +18,12 @@
 #   monitor.kai-lab.net  -> http://grafana:3000    (monitoring stack — Grafana)
 #   bi.ckk-tool.co.jp    -> http://metabase:3000   (metabase stack — BI)
 #   db.ckk-tool.co.jp    -> http://prisma-studio:5555 (prisma-studio — DB browser)
-#   admin.ckk-tool.co.jp -> http://admintools:8000  (admintools — admin portal)
+#   admin.ckk-tool.co.jp     -> http://admin:8000      (admintools PROD — Coolify main
+#                                                        branch :8091, via nextjs-web relay;
+#                                                        protect with Cloudflare Access!)
+#   admin-dev.ckk-tool.co.jp -> http://admin-dev:8000  (admintools DEV — Coolify dev
+#                                                        branch :8090, via nextjs-web relay;
+#                                                        protect with Cloudflare Access!)
 # Ollama (:11434) is NOT published — Open WebUI reaches it internally over ai-stack.
 #
 # Deployed on docker-mac-pro at ~/stacks/cloudflared (Dockge-managed).

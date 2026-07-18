@@ -9,6 +9,9 @@ const nextConfig: NextConfig = {
   // file tracing can't see fs.readFile paths, so include them in the bundle.
   outputFileTracingIncludes: {
     "/api/pdf/**": ["src/pdf-templates/**/*"],
+    // /docs reads the manual markdown from src/content/docs at runtime.
+    "/docs/**": ["src/content/docs/**/*"],
+    "/docs": ["src/content/docs/**/*"],
   },
 };
 

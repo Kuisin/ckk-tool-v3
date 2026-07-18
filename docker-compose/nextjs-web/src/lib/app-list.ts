@@ -14,7 +14,14 @@
  *   In the real implementation, import each icon by name; listed as string here for reference.
  */
 
-export type AppCategory = "販売" | "購買" | "生産" | "出荷" | "請求" | "マスタ";
+export type AppCategory =
+  | "販売"
+  | "購買"
+  | "生産"
+  | "出荷"
+  | "請求"
+  | "マスタ"
+  | "システム";
 
 export interface AppEntry {
   /** Unique key, also used as i18n dict key */
@@ -314,6 +321,38 @@ export const appList: AppEntry[] = [
     category: "マスタ",
     requiredPermission: "master",
   },
+
+  // ─── システム ──────────────────────────────────────────────────────────────
+  {
+    // システム設定ハブ（アプリ設定・システム管理）。
+    key: "system-settings",
+    label: "システム設定",
+    operationCode: "SY01",
+    href: "/settings",
+    icon: "IconAdjustments",
+    category: "システム",
+    requiredPermission: "system",
+  },
+  {
+    // 試算カスタマイズ（計算基準・カスタム入力・カスタム計算 JS）。system 権限。
+    key: "trial-pricing-engine",
+    label: "試算計算",
+    operationCode: "SY02",
+    href: "/settings/trial-pricing-engine",
+    icon: "IconMathFunction",
+    category: "システム",
+    requiredPermission: "system",
+  },
+  {
+    // マニュアル（/docs）。全ユーザー閲覧可。多言語 md をアプリ内で表示。
+    key: "docs",
+    label: "マニュアル",
+    operationCode: "SY03",
+    href: "/docs",
+    icon: "IconBook2",
+    category: "システム",
+    requiredPermission: null,
+  },
 ];
 
 /**
@@ -327,6 +366,7 @@ export const CATEGORY_COLORS: Record<AppCategory, string> = {
   出荷: "orange",
   請求: "pink",
   マスタ: "gray",
+  システム: "dark",
 };
 
 /**
@@ -344,6 +384,7 @@ export function getAppsByCategory(): Array<{
     "出荷",
     "請求",
     "マスタ",
+    "システム",
   ];
   return order.map((category) => ({
     category,

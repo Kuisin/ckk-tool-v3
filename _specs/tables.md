@@ -1194,9 +1194,17 @@ Table trial_estimate_lots {
   sort_order      int [not null, default: 0]
 }
 
-// 試算の価格ポリシー（材料参照価格の算出方法）。feature_flags と同様の単純設定。
+// 汎用アプリ設定ストア（1テーブルで任意のコード設定を保持）。key は名前空間
+// 付き `<namespace>.<field>`。アクセスは lib/app-config.ts（generic）+ アプリ別
+// 型付きアダプタ（例: lib/system-settings.ts = 試算）。システム設定アプリ
+// （SY01, /settings → アプリ設定）から編集する。
+// 試算キー: trial_pricing.material_price_basis / .lookback_months /
+//   .machining_rate_per_10min / .spare_shape_count / .correction_factor /
+//   .ld_charge_per_10min / .custom_script_enabled(bool) /
+//   .custom_script(string = 管理者が書く JS。calcTrialPricing の後処理フック。
+//   lib/trial-pricing-script.ts。system 権限のみ編集可)。
 Table system_settings {
-  key             varchar [pk]    // trial_pricing.material_price_basis / .lookback_months
+  key             varchar [pk]    // 例: trial_pricing.custom_script
   value           json [not null]
   description     text
   updated_by      uuid [ref: > users.id]

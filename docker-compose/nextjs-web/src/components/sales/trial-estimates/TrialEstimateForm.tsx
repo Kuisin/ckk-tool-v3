@@ -71,6 +71,7 @@ import {
 import {
   MATERIAL_PRICE_BASIS_OPTIONS,
   type TrialPricingSettings,
+  toTrialPricingOptions,
 } from "@/lib/trial-pricing-settings";
 import { MaterialPriceChart } from "./MaterialPriceChart";
 import type { TrialEstimateRecord } from "./types";
@@ -161,6 +162,21 @@ export function TrialEstimateForm({
   // 価格表側で管理するため、試算はこの1点の基準単価だけを算出する。
   const [baseQuantity, setBaseQuantity] = useState<number | string>(100);
 
+  // ── カスタム入力項目（管理者が試算計算 SY02 で定義）───────────────────────
+  const [customValues, setCustomValues] = useState<
+    Record<string, number | boolean | string>
+  >(() => {
+    const rec = src as unknown as Record<string, unknown> | undefined;
+    const out: Record<string, number | boolean | string> = {};
+    for (const d of settings.customInputs) {
+      const v = rec?.[d.key];
+      out[d.key] = (v as number | boolean | string | undefined) ?? d.default;
+    }
+    return out;
+  });
+  const setCustomValue = (key: string, v: number | boolean | string) =>
+    setCustomValues((s) => ({ ...s, [key]: v }));
+
   // ── reference price (from purchase history / policy / chart override) ──────
   // 現在の素材の仕入実績＋ポリシー参照価格。素材変更時にサーバーから再取得する。
   const [pricing, setPricing] = useState<MaterialPricing>(initialPricing);
@@ -227,6 +243,7 @@ export function TrialEstimateForm({
 
   // ── compute ───────────────────────────────────────────────────────────────
   const input: TrialInput = {
+    ...customValues,
     toolType,
     maxDiameter: num(maxDiameter),
     totalLength: num(totalLength),
@@ -251,10 +268,7 @@ export function TrialEstimateForm({
     lotQuantities: [num(baseQuantity), 0, 0],
     lotMarkups: [1], // 掛け率は使わない（数量スケールは価格表の倍率で管理）
   };
-  const result = calcTrialPricing(input, {
-    correctionFactor: settings.correctionFactor,
-    ldChargePer10min: settings.ldChargePer10min,
-  });
+  const result = calcTrialPricing(input, toTrialPricingOptions(settings));
 
   const save = () => {
     if (!name.trim()) {
@@ -574,6 +588,62 @@ export function TrialEstimateForm({
                 </SimpleGrid>
               )}
             </FormSection>
+
+            {settings.customInputs.length > 0 && (
+              <FormSection
+                description="試算計算（SY02）で定義された追加入力。計算基準の式で変数として使われます。"
+                title="カスタム項目"
+              >
+                <SimpleGrid cols={{ base: 1, sm: 2 }} maw={640} spacing="sm">
+                  {settings.customInputs.map((d) =>
+                    d.type === "number" ? (
+                      <NumberInput
+                        key={d.key}
+                        label={d.label || d.key}
+                        onChange={(v) =>
+                          setCustomValue(d.key, typeof v === "number" ? v : 0)
+                        }
+                        value={
+                          typeof customValues[d.key] === "number"
+                            ? (customValues[d.key] as number)
+                            : 0
+                        }
+                      />
+                    ) : d.type === "boolean" ? (
+                      <Switch
+                        checked={customValues[d.key] === true}
+                        key={d.key}
+                        label={d.label || d.key}
+                        mt={26}
+                        onChange={(e) =>
+                          setCustomValue(d.key, e.currentTarget.checked)
+                        }
+                      />
+                    ) : d.type === "select" ? (
+                      <Select
+                        data={(d.options ?? []).map((o) => ({
+                          value: o.value,
+                          label: o.label,
+                        }))}
+                        key={d.key}
+                        label={d.label || d.key}
+                        onChange={(v) => setCustomValue(d.key, v ?? "")}
+                        value={String(customValues[d.key] ?? "")}
+                      />
+                    ) : (
+                      <TextInput
+                        key={d.key}
+                        label={d.label || d.key}
+                        onChange={(e) =>
+                          setCustomValue(d.key, e.currentTarget.value)
+                        }
+                        value={String(customValues[d.key] ?? "")}
+                      />
+                    ),
+                  )}
+                </SimpleGrid>
+              </FormSection>
+            )}
 
             <FormSection
               description="形状出し（予備形状分）の按分にのみ使用します。数量ごとの価格スケール（×倍率）は価格表側で設定します。"

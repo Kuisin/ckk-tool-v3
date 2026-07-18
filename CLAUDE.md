@@ -74,6 +74,8 @@ Powers the AI-first 受注請書 intake (scan image + auto-filled form → user 
 
 **Data fetching** — React Server Components for server state; Zustand for client-only state.
 
+**System settings & app config** — The **システム設定** app (op code `SY01`, `/settings`, category システム) is a hub with two sections: **アプリ設定** (per-app configurable logic, registry in `lib/settings-apps.ts`) and **システム管理** (links to `/admin/apps` app on/off, 通知設定, ファイル管理, 操作履歴). All configurable app logic persists to the ONE generic table `app.system_settings` (key→JSON KV) via `lib/app-config.ts` (`readConfigNamespace` / `writeConfigValues`) — no schema change per new setting. The **試算計算** app (op code `SY02`, `/settings/trial-pricing-engine`, dedicated システム app, `system` permission; typed adapter `lib/system-settings.ts`) configures 試算 pricing: material-price policy, default coefficients, **admin-defined criteria**, **custom inputs**, and a post-processor JS hook. The SY02 main page **lists** the criteria (reorder/enable/delete/add, persisted immediately via `updateCriteria`); each criterion's fields are edited on its own page (`/settings/trial-pricing-engine/criteria/[id]`, `.../new`). The engine (`lib/trial-pricing-engine.ts`) computes 見積単価 as the sum of an ordered **criteria** list (each criterion scopable per 工具種 via `toolTypes`; empty = all) — each a JS **expression** over the simulation-input variables (+ custom inputs, `quantity`, `subtotal`, `r.<id>`, and curated `round()`/lookup helpers), evaluated per lot in the isomorphic sandbox (`lib/trial-pricing-script.ts` `compileSandboxed`; dangerous globals shadowed). `DEFAULT_CRITERIA` (`lib/trial-pricing-criteria.ts`) reproduce the legacy formula 1:1 (kept as `calcTrialPricingLegacy`, the parity-test oracle); reference matrices stay data in `lib/trial-pricing-data.ts`. `calcTrialPricing(input, opts)` + `TrialResult` are unchanged, so all call sites/views are untouched; the custom-script hook still runs as a post-processor after the engine. Settings thread through every call site via `toTrialPricingOptions(settings)`. **Price at point:** create/confirm snapshot the computed result into `estimate.result`; list/detail render that snapshot (fallback: recompute), so changing criteria never re-prices historical estimates. Old `/settings/apps/trial-estimate` redirects to SY02. Env-scoped app on/off flags remain in `feature_flags` (`/admin/apps`).
+
 **Numbering** — `lib/numbering.ts` handles all document numbers with monthly-reset sequences (`numbering_sequences` table). Formats: `QOT-YYYYMM-NNNNN`, `ORD-YYYYMM-NNNNN`, `PO-YYYYMM-NNNNN` (素材発注書), `DRN-YYYYMM-NNNNN`, `INV-YYYYMM-NNNNN`. Work order / lot numbers are global serial integers.
 
 **File storage** — SeaweedFS via S3 API. All uploaded/generated files stored as `files` table rows (`storage_key`, `filename`, `mime_type`).
@@ -121,17 +123,21 @@ Skipping `grants.sql` after adding tables makes the app 500 on those tables (rol
 
 **Secrets (never commit)** — The **Cloudflare DNS API token** (acme.sh DNS-01 for `nginx-proxy`; `Zone:DNS:Edit` on `kai-lab.net` + `ckk-tool.co.jp`) has its operational copy in the server's `~/stacks/nginx-proxy/.env` (`CLOUDFLARE_DNS_API_TOKEN`). A local backup lives in this Mac's login Keychain — retrieve with `security find-generic-password -s ckk-cloudflare-dns-api-token -w`. The **Cloudflare Tunnel API token** (account-scoped, `Cloudflare Tunnel:Edit` — used to manage the tunnel's public-hostname ingress rules via API, e.g. adding `deploy.ckk-tool.co.jp`) lives only in the Keychain: `security find-generic-password -s ckk-cloudflare-tunnel-api-token -w`. Tunnel config API: `PUT /accounts/f3ed926bb74cda704944f32bea936b5e/cfd_tunnel/3c8475a0-8285-4f44-a8d2-b1e0efb50c5b/configurations` (GET first, edit the `ingress` array, PUT back whole). If either token is exposed, rotate it in Cloudflare and update its storage place(s).
 
-**Deploy a non-Coolify stack** (example: `ai-stack`):
+**Deploy a non-Coolify stack** — use `docker-compose/deploy-stack.sh <stack>`. It
+rsyncs `docker-compose/<stack>/` up to `~/stacks/<stack>/` (always excluding the
+server-only `.env`; no `--delete`, so server-only files/certs/data survive) and runs
+`docker compose up -d --build`. This covers **every stack except the Coolify-built
+apps** (the nextjs-web app + admintools, which deploy via `coolify/deploy.sh`).
 
 ```bash
-# from repo: docker-compose/ai-stack/
-rsync -a --exclude node_modules --exclude .next --exclude .git \
-  --exclude .env --exclude .vscode --exclude '*.tsbuildinfo' --exclude .DS_Store \
-  ./ 192.168.50.15:'~/stacks/ai-stack/'
-ssh 192.168.50.15 'cd ~/stacks/ai-stack && docker compose up -d --build'
+cd docker-compose
+./deploy-stack.sh                    # list deployable stacks
+./deploy-stack.sh ai-stack --dry-run # preview the rsync file set (do this first)
+./deploy-stack.sh ai-stack           # rsync + rebuild
+# server host override: DEPLOY_HOST=<ip> ./deploy-stack.sh <stack>
 ```
 
-Dry-run the rsync first (`rsync -avn …`) to confirm the file set. The nextjs-web Dockerfile builds Next.js `output: "standalone"`; PDF templates under `src/pdf-templates/` reach the runtime image via `outputFileTracingIncludes` in `next.config.ts` (file tracing can't follow `fs.readFile` paths). `pnpm install --frozen-lockfile` runs in-build, so never let the lockfile drift.
+Always `--dry-run` first to confirm the file set. The nextjs-web Dockerfile builds Next.js `output: "standalone"`; PDF templates under `src/pdf-templates/` reach the runtime image via `outputFileTracingIncludes` in `next.config.ts` (file tracing can't follow `fs.readFile` paths). `pnpm install --frozen-lockfile` runs in-build, so never let the lockfile drift.
 
 **nextjs-web topology** — the app containers are Coolify-managed (dev `:3004`, main `:3005`, container `:3000`; host `:3000` is taken by open-webui). Public access `https://ckk-dev.kai-lab.net` (dev) / `https://ckk.kai-lab.net` (main) via the `cloudflared` stack; LAN TLS via `nginx-proxy` (same hostnames, shared `ckk.kai-lab.net` SAN cert); both reach the apps over the `nextjs-web_default` network at `http://web:3000` (dev) / `http://web-main:3000` (main) — socat relays in the `nextjs-web` stack, which also keeps `gotenberg` and `seaweedfs`. PDF generation uses `http://gotenberg:3000` (`GOTENBERG_URL`); generated PDFs persist in the `seaweedfs` filer (`SEAWEED_FILER_URL=http://seaweedfs:8888`).
 

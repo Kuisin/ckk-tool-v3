@@ -11,12 +11,25 @@
 import type {
   ExistingEntryRef,
   TrialEstimateRecord,
+  TrialPriceSnapshot,
 } from "@/components/sales/trial-estimates/types";
 import { prisma } from "@/lib/db";
 import { formatEstimateNumber, formatProductNumber } from "@/lib/doc-number";
 import { type LocalizedText, localized } from "@/lib/format";
 import type { Option } from "@/lib/mock";
 import type { TrialInput } from "@/lib/trial-pricing";
+
+/** estimate.result JSON → 価格スナップショット（lots を持つもののみ採用）。 */
+function toPriceSnapshot(value: unknown): TrialPriceSnapshot | null {
+  if (
+    value &&
+    typeof value === "object" &&
+    Array.isArray((value as { lots?: unknown }).lots)
+  ) {
+    return value as TrialPriceSnapshot;
+  }
+  return null;
+}
 
 // 一覧クエリの取得上限（監査 P2-8）。
 const LIST_FETCH_CAP = 1000;
@@ -53,6 +66,7 @@ export function mapEstimate(r: EstimateRow): TrialEstimateRecord {
     materialId: r.materialId != null ? String(r.materialId) : "",
     materialLabel: r.material ? materialOptionLabel(r.material) : "—",
     input: r.input as unknown as TrialInput,
+    resultSnapshot: toPriceSnapshot(r.result),
     referenceDate: r.referenceDate?.toISOString().slice(0, 10) ?? "",
     isCustomPrice: r.referenceOverridden,
     registeredAt: r.registeredAt?.toISOString() ?? null,

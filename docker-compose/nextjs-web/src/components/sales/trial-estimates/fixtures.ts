@@ -20,6 +20,7 @@ export const MOCK_TRIAL_ESTIMATES: TrialEstimateRecord[] = [
     referenceDate: "2026-05-27",
     isCustomPrice: false,
     registeredAt: "2026-05-29 09:40",
+    resultSnapshot: null,
     input: {
       toolType: "ROUND_BAR",
       maxDiameter: 3,
@@ -59,6 +60,7 @@ export const MOCK_TRIAL_ESTIMATES: TrialEstimateRecord[] = [
     referenceDate: "2026-04-21",
     isCustomPrice: true,
     registeredAt: null,
+    resultSnapshot: null,
     input: {
       toolType: "CYLINDER",
       maxDiameter: 7,
@@ -100,6 +102,7 @@ export const MOCK_TRIAL_ESTIMATES: TrialEstimateRecord[] = [
     referenceDate: "2026-06-02",
     isCustomPrice: false,
     registeredAt: null,
+    resultSnapshot: null,
     input: {
       toolType: "ROUND_BAR",
       maxDiameter: 5,

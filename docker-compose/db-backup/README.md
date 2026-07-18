@@ -146,8 +146,12 @@ seaweedfs を起動。DB の `files.storage_key` と整合する時点の DB バ
 
 ## オフサイト（クラウド）同期 — offsite-backup サービス
 
-`/data/db-backups` 全体（PG 増分 + SeaweedFS tar）を **毎日 04:30 に rclone で
-クラウドへミラー**する。ホスト障害・盗難・災害からの保全（3-2-1 の「1」）。
+`/data/db-backups` 全体（PG 増分 + 論理 dump + SeaweedFS tar + pre-restore）を
+クラウドへ保全する（ホスト障害・盗難・災害対策 = 3-2-1 の「1」）。**作成即転送**:
+`inotify` で新規バックアップの書き込みを検知し、その都度 `rclone copy` で即リモート
+へ送る（全プロデューサが同じ `/backups` へ書くため 1 つの watcher で網羅）。さらに
+**04時台に 1 日 1 回 `rclone sync`（ミラー）** し、ローカルで prune された世代を
+リモートからも削除して保持を追従する。`OFFSITE_REMOTE` 未設定時は待機のみ。
 
 **有効化**（サーバーの `~/stacks/db-backup/.env` に追記 — コミット禁止）:
 
@@ -204,8 +208,15 @@ docker exec offsite-backup rclone sync /backups "$OFFSITE_REMOTE" --dry-run --st
 持たせない設計 — **Docker ソケットを持つのは restore-agent だけ**。
 
 できること（各対象は任意に組合せ可）:
-- **DB 復元** — 論理 dump（logical/ または pre-restore/）を `pg_restore --clean --if-exists`
-  で `ckk` に戻す（他接続を `pg_terminate_backend` してから実行 → 一時ダウンタイム）。
+- **DB 復元（論理 / オンライン）** — 論理 dump（logical/ または pre-restore/）を
+  `pg_restore --clean --if-exists` で `ckk` に戻す（他接続を `pg_terminate_backend`
+  してから実行）。**shared-db は止めない**（`ckk` DB のみ・一時的な接続断のみ）。
+- **DB 復元（物理 / 全停止 PITR）** — 物理 basebackup（daily/hourly/monthly）を
+  丸ごと巻き戻す。増分は anchor と `pg_combinebackup` で合成、単独フルはそのまま。
+  **shared-db を停止**し、データボリューム `shared-db_shared-db-data` を入れ替えて
+  起動（roles/grants/全 DB を厳密復元）。**この間 shared-db を使う全スタックが停止**。
+  UI では「物理・全停止」バッジ＋強い確認。物理は restore-agent が `docker` 経由で
+  実行するため RESTORE_DB_URL 不要（ただし事前スナップショットの pg_dump には必要）。
 - **ストレージ復元** — SeaweedFS tar を、`nextjs-seaweedfs` を停止 → ボリューム
   入替 → 起動、で戻す。
 - **アプリ版数復元** — Coolify API で `nextjs-web-main` を復元ポイントの git commit へ
