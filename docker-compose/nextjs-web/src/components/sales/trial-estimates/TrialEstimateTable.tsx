@@ -38,9 +38,10 @@ const BASE_PATH = "/sales/trial-estimates";
 const toolLabel = (v: string) =>
   TOOL_TYPE_OPTIONS.find((o) => o.value === v)?.label ?? v;
 
-/** Representative 見積単価 = first lot tier. */
+/** Representative 見積単価 = first lot tier. 記録済みスナップショットを優先。 */
 const headlinePrice = (r: TrialEstimateRecord, opts: TrialPricingOptions) =>
-  calcTrialPricing(r.input, opts).lots[0]?.estimateUnitPrice ?? 0;
+  (r.resultSnapshot ?? calcTrialPricing(r.input, opts)).lots[0]
+    ?.estimateUnitPrice ?? 0;
 
 export function TrialEstimateTable({
   rows,

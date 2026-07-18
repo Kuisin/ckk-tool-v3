@@ -26,6 +26,7 @@ import {
   IconGitBranch,
   IconHash,
   IconListCheck,
+  IconMathFunction,
   IconPackageImport,
   IconReceipt,
   IconRuler2,
@@ -73,6 +74,7 @@ export const ICON_MAP: Record<string, AppIcon> = {
   IconGitBranch,
   IconHash,
   IconListCheck,
+  IconMathFunction,
   IconAlertTriangle,
   IconUsersGroup,
 };

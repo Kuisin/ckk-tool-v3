@@ -69,7 +69,7 @@ export interface CustomScriptOutcome {
 }
 
 /** Global identifiers shadowed as `undefined` params inside the snippet. */
-const SHADOWED_GLOBALS = [
+export const SHADOWED_GLOBALS = [
   "globalThis",
   "window",
   "self",
@@ -96,6 +96,26 @@ const SHADOWED_GLOBALS = [
 
 function errMsg(e: unknown): string {
   return e instanceof Error ? e.message : String(e);
+}
+
+/**
+ * Compile a snippet/expression in the shared sandbox: the dangerous globals are
+ * shadowed to `undefined`, then `paramNames` are bound positionally. Returns a
+ * caller that supplies only the `paramNames` values (the undefined shadows are
+ * pre-bound). Reused by the custom-script hook and the criteria engine.
+ * Throws on a syntax error at compile time.
+ */
+export function compileSandboxed(
+  paramNames: readonly string[],
+  body: string,
+): (...args: unknown[]) => unknown {
+  const fn = new Function(
+    ...SHADOWED_GLOBALS,
+    ...paramNames,
+    `"use strict";\n${body}`,
+  );
+  const shadow = SHADOWED_GLOBALS.map(() => undefined);
+  return (...args: unknown[]) => fn(...shadow, ...args);
 }
 
 /** JSON clone — TrialInput/TrialResult are plain data; also strips functions. */
@@ -138,12 +158,7 @@ export function runCustomScript(
   });
   // Shadowing the globals as params makes bare identifier lookups resolve to the
   // (undefined) params rather than the real host objects.
-  const fn = new Function(
-    ...SHADOWED_GLOBALS,
-    "ctx",
-    `"use strict";\n${script}`,
-  );
-  return fn(...SHADOWED_GLOBALS.map(() => undefined), api);
+  return compileSandboxed(["ctx"], script)(api);
 }
 
 /**
@@ -155,8 +170,8 @@ export function checkScriptSyntax(script: string): string | null {
   const trimmed = script?.trim();
   if (!trimmed) return null;
   try {
-    // Constructing the Function parses the body; it is never invoked here.
-    new Function(...SHADOWED_GLOBALS, "ctx", `"use strict";\n${trimmed}`);
+    // Compiling parses the body; it is never invoked here.
+    compileSandboxed(["ctx"], trimmed);
     return null;
   } catch (e) {
     return errMsg(e);

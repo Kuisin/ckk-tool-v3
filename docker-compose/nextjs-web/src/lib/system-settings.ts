@@ -8,7 +8,12 @@ import "server-only";
  * Reads fill unset keys with `DEFAULT_TRIAL_PRICING_SETTINGS`.
  */
 
+import { z } from "zod";
 import { readConfigNamespace, writeConfigValues } from "./app-config";
+import {
+  criterionSchema,
+  customInputDefSchema,
+} from "./trial-pricing-criteria";
 import {
   DEFAULT_TRIAL_PRICING_SETTINGS,
   type TrialPricingSettings,
@@ -23,9 +28,14 @@ const KEY_MAP: Record<keyof TrialPricingSettings, string> = {
   spareShapeCount: "trial_pricing.spare_shape_count",
   correctionFactor: "trial_pricing.correction_factor",
   ldChargePer10min: "trial_pricing.ld_charge_per_10min",
+  criteria: "trial_pricing.criteria",
+  customInputs: "trial_pricing.custom_inputs",
   customScriptEnabled: "trial_pricing.custom_script_enabled",
   customScript: "trial_pricing.custom_script",
 };
+
+const criteriaArraySchema = z.array(criterionSchema);
+const customInputsArraySchema = z.array(customInputDefSchema);
 
 /** 試算設定 — 未設定キーは既定値で補完。 */
 export async function getTrialPricingSettings(): Promise<TrialPricingSettings> {
@@ -49,6 +59,17 @@ export async function getTrialPricingSettings(): Promise<TrialPricingSettings> {
       case "customScriptEnabled":
         if (typeof v === "boolean") out.customScriptEnabled = v;
         break;
+      case "criteria": {
+        const parsed = criteriaArraySchema.safeParse(v);
+        if (parsed.success && parsed.data.length > 0)
+          out.criteria = parsed.data;
+        break;
+      }
+      case "customInputs": {
+        const parsed = customInputsArraySchema.safeParse(v);
+        if (parsed.success) out.customInputs = parsed.data;
+        break;
+      }
       default:
         if (typeof v === "number") out[field] = v;
         break;

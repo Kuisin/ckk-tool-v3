@@ -103,7 +103,10 @@ export function TrialEstimateDetail({
   const router = useRouter();
   // アクティブタブを ?tab= に保持（URL 共有でタブまで再現）
   const [tab, setTab] = useTabParam("result");
-  const result = calcTrialPricing(record.input, pricingOptions);
+  // 保存/確定時に記録した価格（その時点の価格）を優先表示。無ければ現在の
+  // 計算ロジックで再計算する（スナップショット導入前の古い試算向けフォールバック）。
+  const result =
+    record.resultSnapshot ?? calcTrialPricing(record.input, pricingOptions);
   const history = priceHistory;
   const [convertOpen, setConvertOpen] = useState(false);
   const [, startTransition] = useTransition();

@@ -299,6 +299,7 @@ Operation codes provide keyboard-shortcut navigation. Format: `{CAT}{MODE}{IDX}`
 | マスタ | B | 工場 | MS0B | MS1B | MS2B |
 | マスタ | C | 採番構成 | MS0C | — | — |
 | システム | 1 | システム設定 | SY01 | — | — |
+| システム | 2 | 試算計算 | SY02 | — | — |
 
 `OperationCodeJump` component (`src/components/layout/OperationCodeJump.tsx`) renders as a compact TextInput in the header center. Pressing Enter or clicking a result navigates to that screen.
 
@@ -377,6 +378,7 @@ Stack (gap="xl", p="md", maw={1200})
 | 承認グループ | `IconUsersGroup` |
 | 工場 | `IconBuildingWarehouse` |
 | システム設定 | `IconAdjustments` |
+| 試算計算 | `IconMathFunction` |
 
 ---
 

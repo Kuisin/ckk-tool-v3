@@ -1,10 +1,9 @@
-import { TrialPricingSettingsForm } from "@/components/settings/TrialPricingSettingsForm";
-import { getTrialPricingSettings } from "@/lib/system-settings";
+import { redirect } from "next/navigation";
 
-export const dynamic = "force-dynamic";
-
-/** アプリ設定 → 試算（SA05）の計算ロジック設定。 */
-export default async function TrialEstimateSettingsPage() {
-  const settings = await getTrialPricingSettings();
-  return <TrialPricingSettingsForm initial={settings} />;
+/**
+ * 旧 アプリ設定 → 試算 の設定画面。試算計算（SY02, /settings/trial-pricing-engine）
+ * へ移動したため、旧ブックマーク互換のためリダイレクトする。
+ */
+export default function TrialEstimateSettingsRedirect() {
+  redirect("/settings/trial-pricing-engine");
 }
