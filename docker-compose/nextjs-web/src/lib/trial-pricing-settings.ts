@@ -14,6 +14,8 @@ import {
   type CustomInputDef,
   DEFAULT_CRITERIA,
   DEFAULT_CUSTOM_INPUTS,
+  DEFAULT_LOOKUP_TABLES,
+  type LookupTable,
 } from "./trial-pricing-criteria";
 
 export interface TrialPricingSettings {
@@ -35,10 +37,12 @@ export interface TrialPricingSettings {
   criteria: Criterion[];
   /** 管理者が追加したカスタム入力項目（試算フォームに表示 + 式の変数）. */
   customInputs: CustomInputDef[];
-  // ── カスタム計算（管理者が JS で試算ロジックを拡張）─────────────────────
-  /** カスタム計算 JS を適用するか. */
+  /** 管理者が定義したルックアップ表（式内で lookup("<name>", key)）. */
+  lookupTables: LookupTable[];
+  // ── 廃止: カスタム計算 JS（設定 UI 削除・エンジンでも未適用。互換のため残置）──
+  /** @deprecated 未使用. */
   customScriptEnabled: boolean;
-  /** 後処理スクリプト本体（trial-pricing-script.ts の契約）. */
+  /** @deprecated 未使用. */
   customScript: string;
 }
 
@@ -51,6 +55,7 @@ export const DEFAULT_TRIAL_PRICING_SETTINGS: TrialPricingSettings = {
   ldChargePer10min: 7500,
   criteria: DEFAULT_CRITERIA,
   customInputs: DEFAULT_CUSTOM_INPUTS,
+  lookupTables: DEFAULT_LOOKUP_TABLES,
   customScriptEnabled: false,
   customScript: "",
 };
@@ -68,8 +73,8 @@ export function toTrialPricingOptions(
     ldChargePer10min: settings.ldChargePer10min,
     criteria: settings.criteria,
     customInputs: settings.customInputs,
-    customScript: settings.customScript,
-    runCustomScript: settings.customScriptEnabled,
+    lookupTables: settings.lookupTables,
+    // カスタム計算 JS は廃止したため後処理は行わない。
   };
 }
 

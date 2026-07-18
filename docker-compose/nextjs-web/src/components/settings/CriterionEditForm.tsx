@@ -9,7 +9,6 @@
 
 import {
   Alert,
-  Badge,
   Chip,
   Code,
   Divider,
@@ -20,13 +19,12 @@ import {
   Switch,
   Table,
   Text,
-  Textarea,
   TextInput,
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import { IconInfoCircle } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useMemo, useState, useTransition } from "react";
 import { updateCriteria } from "@/app/(dashboard)/settings/actions";
 import {
   CancelButton,
@@ -45,9 +43,58 @@ import {
   type Criterion,
   type CriterionRole,
   type CustomInputDef,
+  type LookupTable,
   TRIAL_TOOL_TYPES,
 } from "@/lib/trial-pricing-criteria";
 import { runCriteriaEngine } from "@/lib/trial-pricing-engine";
+import {
+  CodeExpressionEditor,
+  type VariableGroup,
+} from "./CodeExpressionEditor";
+
+const INPUT_VARS = [
+  "toolType",
+  "maxDiameter",
+  "totalLength",
+  "materialBarPrice",
+  "isBlackSkin",
+  "cylinderMaterialPrice",
+  "cylinderType",
+  "stepLength",
+  "stepType",
+  "neckLength",
+  "neckType",
+  "coating",
+  "lapType",
+  "inspection",
+  "ldEnabled",
+  "ldOuterDiameter",
+  "ldBladeLength",
+  "machiningMinutes",
+  "machiningRatePer10min",
+  "spareShapeCount",
+];
+const STATE_VARS = ["quantity", "subtotal", "discountRate", "autoRate"];
+const COEFF_VARS = [
+  "correctionFactor",
+  "ldChargePer10min",
+  "materialBasisLength",
+  "coatingFactor",
+];
+const HELPER_TOKENS = [
+  "round(",
+  "lookup(",
+  "lookupMatrix(",
+  "coatingRawCost(",
+  "ldMinutes(",
+  "matchDesc(",
+  "lotDiscountRate(",
+  "stepTypeRate(",
+  "neckTypeRate(",
+  "cylinderTypeRate(",
+  "lapAmount(",
+  "inspectionAmount(",
+];
 
 const BASE = "/settings/trial-pricing-engine";
 
@@ -92,6 +139,7 @@ export function CriterionEditForm({
   customInputs,
   correctionFactor,
   ldChargePer10min,
+  lookupTables = [],
 }: {
   allCriteria: Criterion[];
   /** 既存基準の id。null = 新規。 */
@@ -99,6 +147,7 @@ export function CriterionEditForm({
   customInputs: CustomInputDef[];
   correctionFactor: number;
   ldChargePer10min: number;
+  lookupTables?: LookupTable[];
 }) {
   const existing = criterionId
     ? allCriteria.find((c) => c.id === criterionId)
@@ -126,6 +175,39 @@ export function CriterionEditForm({
   const router = useRouter();
 
   const set = (p: Partial<Criterion>) => setCriterion((c) => ({ ...c, ...p }));
+
+  // 式エディタの「利用可能な変数」パレット。
+  const variableGroups: VariableGroup[] = useMemo(() => {
+    const groups: VariableGroup[] = [
+      { group: "入力", items: INPUT_VARS.map((t) => ({ token: t })) },
+      {
+        group: "状態",
+        items: [
+          ...STATE_VARS.map((t) => ({ token: t })),
+          { token: "r.", label: "r.<id>" },
+        ],
+      },
+      { group: "係数", items: COEFF_VARS.map((t) => ({ token: t })) },
+      { group: "関数", items: HELPER_TOKENS.map((t) => ({ token: t })) },
+    ];
+    if (customInputs.length > 0) {
+      groups.push({
+        group: "カスタム入力",
+        items: customInputs
+          .filter((d) => d.key)
+          .map((d) => ({ token: d.key, label: d.label || d.key })),
+      });
+    }
+    if (lookupTables.length > 0) {
+      groups.push({
+        group: "ルックアップ",
+        items: lookupTables
+          .filter((t) => t.name)
+          .map((t) => ({ token: `lookup("${t.name}", )`, label: t.name })),
+      });
+    }
+    return groups;
+  }, [customInputs, lookupTables]);
 
   // この基準を反映した基準リスト全体を組み立てる（保存 / テスト共用）。
   const buildList = (): Criterion[] => {
@@ -215,7 +297,8 @@ export function CriterionEditForm({
         }
         breadcrumbs={[
           "システム",
-          "試算計算",
+          { label: "試算計算", href: BASE },
+          { label: "計算基準", href: `${BASE}/criteria` },
           isNew ? "基準を追加" : "基準を編集",
         ]}
         title={isNew ? "計算基準を追加" : `計算基準を編集: ${criterion.name}`}
@@ -292,16 +375,10 @@ export function CriterionEditForm({
         title="式"
       >
         <Stack gap="sm">
-          <Textarea
-            autosize
-            maxRows={20}
-            minRows={4}
-            onChange={(e) => set({ expression: e.currentTarget.value })}
-            spellCheck={false}
-            styles={{
-              input: { fontFamily: "var(--mantine-font-family-monospace)" },
-            }}
+          <CodeExpressionEditor
+            onChange={(v) => set({ expression: v })}
             value={criterion.expression}
+            variables={variableGroups}
           />
           <Group gap="xs">
             <Text c="dimmed" size="xs">
@@ -360,11 +437,10 @@ export function CriterionEditForm({
             </Alert>
           )}
 
-          <Badge color="gray" variant="light">
-            利用可能な変数: 入力項目 / カスタム入力 / quantity / subtotal /
-            r.&lt;id&gt; / correctionFactor / round(n,unit) / lookupMatrix /
-            coatingRawCost ...
-          </Badge>
+          <Text c="dimmed" size="xs">
+            数値を返す JS 式。ルックアップ表は <Code>lookup("表名", キー)</Code>{" "}
+            で参照します。
+          </Text>
         </Stack>
       </FormSection>
     </Stack>

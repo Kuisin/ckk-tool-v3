@@ -11,7 +11,11 @@
  * (`material-pricing.ts`) and is passed in as `materialBarPrice`.
  */
 
-import type { Criterion, CustomInputDef } from "./trial-pricing-criteria";
+import type {
+  Criterion,
+  CustomInputDef,
+  LookupTable,
+} from "./trial-pricing-criteria";
 import {
   CENTERLESS,
   COATING_FACTOR,
@@ -125,14 +129,16 @@ const optRate = (opts: readonly { value: string; rate: number }[], v: string) =>
 export interface TrialPricingOptions {
   correctionFactor?: number;
   ldChargePer10min?: number;
-  /** 管理者が設定したカスタム計算 JS（trial_pricing.custom_script）。 */
+  /** @deprecated カスタム計算 JS は廃止（設定 UI から削除）。既存データ互換のため残置。 */
   customScript?: string;
-  /** カスタム計算を適用するか（trial_pricing.custom_script_enabled）。 */
+  /** @deprecated カスタム計算は適用しない。 */
   runCustomScript?: boolean;
   /** 設定された計算基準（未設定は既定の基準セット = 従来ロジック）。 */
   criteria?: Criterion[];
   /** 管理者が追加したカスタム入力項目（式の変数として利用可能）。 */
   customInputs?: CustomInputDef[];
+  /** 管理者が定義したルックアップ表（式内で lookup("<name>", key)）。 */
+  lookupTables?: LookupTable[];
 }
 
 /**
