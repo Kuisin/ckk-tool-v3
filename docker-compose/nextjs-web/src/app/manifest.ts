@@ -1,7 +1,7 @@
 import type { MetadataRoute } from "next";
 
 /**
- * PWA マニフェスト（/manifest.webmanifest — middleware の除外パスと一致）。
+ * PWA マニフェスト（/manifest.webmanifest — Proxy の除外パスと一致）。
  * ホーム画面追加でスタンドアロン起動 + Web Push の受け皿になる。
  */
 export default function manifest(): MetadataRoute.Manifest {
