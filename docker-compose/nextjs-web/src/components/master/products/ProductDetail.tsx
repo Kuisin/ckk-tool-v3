@@ -26,6 +26,7 @@ import {
 import { useTabParam } from "@/hooks/useUrlState";
 import { useIsMobile } from "@/hooks/useViewport";
 import { formatDate, formatDateTime } from "@/lib/format";
+import { isReservedSpecKey } from "@/lib/product-types";
 import {
   DeleteProductModal,
   DuplicateProductModal,
@@ -49,6 +50,8 @@ export interface ProductDetailData {
   isActive: boolean;
   notes: string;
   spec: { key: string; value: string }[];
+  /** 製品種別（SY04）名。spec の予約キー `_product_type` から解決。 */
+  productTypeName?: string | null;
   createdAt: string;
   updatedAt: string;
   priceListEntries: {
@@ -173,26 +176,34 @@ export function ProductDetail({
 
         <Tabs.Panel pt="md" value="overview">
           <Stack gap="md">
+            {record.productTypeName && (
+              <FieldValue label="製品種別" value={record.productTypeName} />
+            )}
             <Stack gap="xs">
               <Text fw={600} size="sm">
                 仕様
               </Text>
-              {record.spec.length === 0 ? (
-                <Text c="dimmed" size="sm">
-                  仕様は登録されていません
-                </Text>
-              ) : (
-                <Table striped withTableBorder>
-                  <Table.Tbody>
-                    {record.spec.map((s) => (
-                      <Table.Tr key={s.key}>
-                        <Table.Th w={isMobile ? 120 : 200}>{s.key}</Table.Th>
-                        <Table.Td>{s.value}</Table.Td>
-                      </Table.Tr>
-                    ))}
-                  </Table.Tbody>
-                </Table>
-              )}
+              {(() => {
+                const specRows = record.spec.filter(
+                  (s) => !isReservedSpecKey(s.key),
+                );
+                return specRows.length === 0 ? (
+                  <Text c="dimmed" size="sm">
+                    仕様は登録されていません
+                  </Text>
+                ) : (
+                  <Table striped withTableBorder>
+                    <Table.Tbody>
+                      {specRows.map((s) => (
+                        <Table.Tr key={s.key}>
+                          <Table.Th w={isMobile ? 120 : 200}>{s.key}</Table.Th>
+                          <Table.Td>{s.value}</Table.Td>
+                        </Table.Tr>
+                      ))}
+                    </Table.Tbody>
+                  </Table>
+                );
+              })()}
             </Stack>
             <FieldValue label="備考" value={record.notes || "—"} />
           </Stack>

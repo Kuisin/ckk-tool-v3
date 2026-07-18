@@ -140,6 +140,14 @@ export const DOCS_TREE: DocSection[] = [
           zh: "试算计算 — 设置手册",
         },
       },
+      {
+        slug: "apps/product-type/settings",
+        title: {
+          ja: "製品種別 — 設定マニュアル",
+          en: "Product Types — Settings Manual",
+          zh: "产品种别 — 设置手册",
+        },
+      },
     ],
   },
 ];

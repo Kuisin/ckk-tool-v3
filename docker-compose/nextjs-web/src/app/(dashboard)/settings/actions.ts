@@ -11,6 +11,8 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { recordAudit } from "@/lib/audit";
 import { checkPermission } from "@/lib/authz";
+import { getProductTypes, saveProductTypes } from "@/lib/product-settings";
+import { type ProductType, productTypesArraySchema } from "@/lib/product-types";
 import {
   type ActionResult,
   actionError,
@@ -156,5 +158,55 @@ export async function updateCriteria(
     return actionOk();
   } catch (e) {
     return actionError(prismaErrorMessage(e, "計算基準の保存に失敗しました"));
+  }
+}
+
+// ── 製品種別（SY04） ──────────────────────────────────────────────────────────
+
+/** 種別 id / 種別内の項目キーの重複を検出。 */
+function validateProductTypes(types: ProductType[]): string | null {
+  const ids = new Set<string>();
+  for (const t of types) {
+    if (ids.has(t.id)) return `種別 id が重複しています: ${t.id}`;
+    ids.add(t.id);
+    const keys = new Set<string>();
+    for (const it of t.items) {
+      if (keys.has(it.key))
+        return `「${t.name.ja}」の項目キーが重複しています: ${it.key}`;
+      keys.add(it.key);
+      if (it.type === "select" && (it.options ?? []).length === 0)
+        return `「${t.name.ja}」の「${it.label.ja}」は選択肢を1つ以上追加してください`;
+    }
+  }
+  return null;
+}
+
+/** 製品種別を保存（SY04 メインページから）。 */
+export async function updateProductTypes(
+  types: ProductType[],
+): Promise<ActionResult> {
+  const authz = await checkPermission("system", "UPDATE");
+  if (!authz.ok) return actionError(authz.error);
+  const parsed = productTypesArraySchema.safeParse(types);
+  if (!parsed.success) {
+    return actionError(parsed.error.issues[0]?.message ?? "製品種別が不正です");
+  }
+  const invalid = validateProductTypes(parsed.data);
+  if (invalid) return actionError(invalid);
+  try {
+    const before = await getProductTypes();
+    await saveProductTypes(parsed.data);
+    await recordAudit({
+      action: "UPDATE",
+      tableName: "system_settings",
+      recordId: "product_type.types",
+      before: { types: before },
+      after: { types: parsed.data },
+    });
+    revalidatePath("/settings/product-types");
+    revalidatePath("/master/products");
+    return actionOk();
+  } catch (e) {
+    return actionError(prismaErrorMessage(e, "製品種別の保存に失敗しました"));
   }
 }

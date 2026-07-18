@@ -14,6 +14,8 @@ import { checkPermission } from "@/lib/authz";
 import { Prisma, prisma } from "@/lib/db";
 import { formatProductNumber } from "@/lib/doc-number";
 import { allocateDocumentKey } from "@/lib/numbering";
+import { getProductTypes } from "@/lib/product-settings";
+import { PRODUCT_TYPE_SPEC_KEY, validateItemValue } from "@/lib/product-types";
 import {
   type ActionResult,
   actionError,
@@ -99,6 +101,26 @@ function specJson(rows: { key: string; value: string }[]) {
   return entries.length > 0 ? Object.fromEntries(entries) : null;
 }
 
+/**
+ * 製品種別（SY04）で予め決めた項目の値を型で検証する（サーバー側の最終ガード）。
+ * spec の予約キー `_product_type` から種別を特定し、各項目を検証。問題があれば
+ * エラーメッセージ、無ければ null。
+ */
+async function validateProductTypeSpec(
+  rows: { key: string; value: string }[],
+): Promise<string | null> {
+  const typeId = rows.find((r) => r.key === PRODUCT_TYPE_SPEC_KEY)?.value;
+  if (!typeId) return null;
+  const type = (await getProductTypes()).find((t) => t.id === typeId);
+  if (!type) return null; // 種別が削除済み等 — 検証は諦めて保存を許可
+  const byKey = new Map(rows.map((r) => [r.key, r.value]));
+  for (const it of type.items) {
+    const msg = validateItemValue(it, byKey.get(it.key));
+    if (msg) return msg;
+  }
+  return null;
+}
+
 export async function createProduct(
   input: ProductInput,
 ): Promise<ActionResult<{ id: number; code: string }>> {
@@ -109,6 +131,8 @@ export async function createProduct(
     return actionError(parsed.error.issues[0]?.message ?? "入力が不正です");
   }
   const v = parsed.data;
+  const typeError = await validateProductTypeSpec(v.spec);
+  if (typeError) return actionError(typeError);
   try {
     const { yearMonth, seq } = await allocateDocumentKey("PRODUCT");
     const spec = materialSpec(v);
@@ -161,6 +185,8 @@ export async function updateProduct(
     return actionError(parsed.error.issues[0]?.message ?? "入力が不正です");
   }
   const v = parsed.data;
+  const typeError = await validateProductTypeSpec(v.spec);
+  if (typeError) return actionError(typeError);
   try {
     const prior = await prisma.product.findUnique({
       where: { id },
