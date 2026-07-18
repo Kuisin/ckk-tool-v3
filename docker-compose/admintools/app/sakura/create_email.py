@@ -13,6 +13,7 @@ Control panel: https://secure.sakura.ad.jp/rs/cp/users/mail-alias
 """
 
 import argparse
+import re
 import sys
 import time
 from pathlib import Path
@@ -32,6 +33,18 @@ except ImportError:
 MAIL_ALIAS_LIST_URL = "https://secure.sakura.ad.jp/rs/cp/users/mail-alias"
 MAIL_ALIAS_NEW_URL = "https://secure.sakura.ad.jp/rs/cp/users/mail-alias/new"
 
+_EMAIL_RE = re.compile(r"[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+")
+
+
+def _norm_addr(addr: str) -> str:
+    """Normalize an alias address for comparison: pull out the bare email token and
+    lowercase it. The .col-address cell can carry surrounding text/whitespace, so
+    exact set-membership only works if both sides are normalized the same way."""
+    if not addr:
+        return ""
+    m = _EMAIL_RE.search(addr)
+    return (m.group(0) if m else addr).strip().lower()
+
 
 def _goto_list_page(page, list_url: str) -> None:
     """Navigate to the alias list page (no /new). If current URL has /new, strip it."""
@@ -45,25 +58,53 @@ def _goto_list_page(page, list_url: str) -> None:
 
 
 def _collect_addresses_from_current_page(page) -> set[str]:
-    """Extract existing alias addresses (local@domain) from .entities-body .col-address."""
+    """Extract existing alias addresses (normalized local@domain) from .entities-body .col-address."""
     addresses: set[str] = set()
     try:
         for s in page.locator(".entities-body .col-address").all_text_contents():
-            t = (s or "").strip()
-            if t and "@" in t:
-                addresses.add(t)
+            norm = _norm_addr(s or "")
+            if norm:
+                addresses.add(norm)
     except Exception:
         pass
     return addresses
 
 
 def _wait_for_list_ready(page) -> None:
-    """Wait for list body to be visible after full page load."""
+    """Wait for the alias list to FULLY render, not just for the container to appear.
+
+    The rows inside .entities-body populate asynchronously (client-side XHR) after the
+    container becomes visible, so reading .col-address right after visibility returns a
+    partial/empty set — which made already-existing aliases get re-proposed every run.
+    Wait for network idle, then poll until the rendered row count stops changing."""
     try:
         page.locator(".entities-body").wait_for(state="visible", timeout=15000)
     except Exception:
         pass
-    time.sleep(1)
+    try:
+        page.wait_for_load_state("networkidle", timeout=10000)
+    except Exception:
+        pass
+    cells = page.locator(".entities-body .col-address")
+    prev = -1
+    stable = 0
+    for _ in range(50):  # up to ~10s of settling
+        try:
+            cur = cells.count()
+        except Exception:
+            cur = -1
+        # Only treat a positive, unchanging count as "settled"; leading zeros before the
+        # XHR resolves must not short-circuit the wait (an empty list falls through to the
+        # timeout, which is fine and rare).
+        if cur > 0 and cur == prev:
+            stable += 1
+            if stable >= 3:
+                break
+        else:
+            stable = 0
+            prev = cur
+        time.sleep(0.2)
+    time.sleep(0.3)
 
 
 def _collect_existing_aliases(page, list_url: str) -> set[str]:
@@ -92,8 +133,7 @@ def _remove_aliases_not_on_list_on_page(
     After 削除 click the browser shows a native confirm: "このエイリアス設定を削除しますか？" — we accept it via the dialog listener.
     """
     _goto_list_page(page, list_url)
-    page.locator(".entities-body").wait_for(state="visible", timeout=15000)
-    time.sleep(0.5)
+    _wait_for_list_ready(page)
 
     def accept_dialog(dialog):
         """Accept native confirm (このエイリアス設定を削除しますか？) so alias is deleted."""
@@ -109,8 +149,8 @@ def _remove_aliases_not_on_list_on_page(
             for i in range(n):
                 try:
                     addr_el = items.nth(i).locator(".col-address").first
-                    addr = (addr_el.text_content() or "").strip()
-                    if not addr or "@" not in addr:
+                    addr = _norm_addr(addr_el.text_content() or "")
+                    if not addr:
                         continue
                     if addr in keep_addresses:
                         continue
@@ -267,15 +307,15 @@ def add_aliases_on_page(
 
     if remove_not_on_list:
         # Remove aliases that are not on the list or not active (column E)
-        keep_addresses = {f"{a.local_part}@{a.domain}" for a in aliases}
+        keep_addresses = {_norm_addr(f"{a.local_part}@{a.domain}") for a in aliases}
         print("Removing aliases not on list or not active...")
         _remove_aliases_not_on_list_on_page(page, keep_addresses, url)
         # Re-load existing after removals
         existing_set = _collect_existing_aliases(page, url)
         _goto_list_page(page, url)
 
-    already_exist = [a for a in aliases if f"{a.local_part}@{a.domain}" in existing_set]
-    aliases_to_create = [a for a in aliases if f"{a.local_part}@{a.domain}" not in existing_set]
+    already_exist = [a for a in aliases if _norm_addr(f"{a.local_part}@{a.domain}") in existing_set]
+    aliases_to_create = [a for a in aliases if _norm_addr(f"{a.local_part}@{a.domain}") not in existing_set]
 
     print(f"\nExisting aliases on server: {len(existing_set)}.")
     if already_exist:
@@ -299,13 +339,17 @@ def add_aliases_on_page(
                 time.sleep(0.3)
 
             full_addr = f"{alias.local_part}@{alias.domain}"
-            if full_addr in existing_set:
+            norm_addr = _norm_addr(full_addr)
+            if norm_addr in existing_set:
                 print(f"  Skip: {full_addr} already exists.")
                 continue
+            # Refresh from the live list with the same normalized exact-match used at
+            # collection time (no substring matching — that both re-proposed existing
+            # aliases and could false-skip genuinely-new ones).
             try:
-                existing = page.locator(".entities-body .col-address").all_text_contents()
-                if any(full_addr in (t or "") for t in existing):
-                    existing_set.add(full_addr)
+                page_addrs = _collect_addresses_from_current_page(page)
+                existing_set |= page_addrs
+                if norm_addr in page_addrs:
                     print(f"  Skip: {full_addr} already exists.")
                     continue
             except Exception:
@@ -345,7 +389,7 @@ def add_aliases_on_page(
             dup = page.get_by_text("すでに存在しています")
             try:
                 if dup.is_visible(timeout=2000):
-                    existing_set.add(full_addr)
+                    existing_set.add(norm_addr)
                     print(f"  Skip: alias already exists (duplicate).")
                     page.locator(".page-overlay button:has-text('キャンセル'), .page-overlay-container button:has-text('キャンセル')").first.click()
                     add_link.wait_for(state="visible", timeout=10000)
@@ -356,7 +400,7 @@ def add_aliases_on_page(
 
             # Continue to next as soon as 新規追加 is available (no need to wait for full overlay close)
             add_link.wait_for(state="visible", timeout=20000)
-            existing_set.add(full_addr)
+            existing_set.add(norm_addr)
             time.sleep(0.3)
             print(f"  Created {alias.local_part}@{alias.domain} → {alias.username}")
         except Exception as e:
