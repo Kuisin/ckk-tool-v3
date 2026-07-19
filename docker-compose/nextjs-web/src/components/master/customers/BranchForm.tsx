@@ -92,6 +92,7 @@ export function BranchForm({
         { label: parentName, href: `${BASE_PATH}/${parentId}` },
         isEdit ? "支店 編集" : "支店 新規作成",
       ]}
+      isDirty={form.isDirty()}
       isPending={isPending}
       onCancel={() =>
         router.push(

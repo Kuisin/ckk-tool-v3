@@ -71,6 +71,23 @@ export function OrderAcceptanceCreateForm() {
     });
   };
 
+  // 初期状態（空のスカラー + 既定値の 1 行）から変化していれば未保存とみなす。
+  const isDirty =
+    Boolean(
+      customerId || customerOrderRef || quoteNumber || orderDate || notes,
+    ) ||
+    items.length > 1 ||
+    items.some(
+      (it) =>
+        it.productId ||
+        it.productText ||
+        it.unitPrice != null ||
+        it.deliveryDate ||
+        it.notes ||
+        it.quantity !== 1 ||
+        it.orderType !== "PRODUCTION",
+    );
+
   return (
     <FormShell
       breadcrumbs={[
@@ -78,6 +95,7 @@ export function OrderAcceptanceCreateForm() {
         { label: "受注請書", href: BASE_PATH },
         "手入力で新規",
       ]}
+      isDirty={isDirty}
       isPending={isPending}
       onCancel={() => router.push(BASE_PATH)}
       onSubmit={handleSubmit}

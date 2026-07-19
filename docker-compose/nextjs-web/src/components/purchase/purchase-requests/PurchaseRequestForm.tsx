@@ -172,6 +172,7 @@ export function PurchaseRequestForm({
         { label: "購買依頼", href: BASE_PATH },
         mode === "edit" ? "編集" : "新規作成",
       ]}
+      isDirty={form.isDirty()}
       isPending={isPending}
       onCancel={() =>
         router.push(requestNumber ? `${BASE_PATH}/${requestNumber}` : BASE_PATH)

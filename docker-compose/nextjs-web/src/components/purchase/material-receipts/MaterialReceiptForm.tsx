@@ -202,6 +202,7 @@ export function MaterialReceiptForm({
   return (
     <FormShell
       breadcrumbs={["購買", { label: "素材入荷", href: BASE_PATH }, "新規登録"]}
+      isDirty={form.isDirty()}
       isPending={isPending}
       onCancel={() => router.push(BASE_PATH)}
       onSubmit={form.onSubmit(handleSubmit)}

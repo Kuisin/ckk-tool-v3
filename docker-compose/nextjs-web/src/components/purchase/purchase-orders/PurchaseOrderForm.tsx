@@ -189,6 +189,7 @@ export function PurchaseOrderForm({
         { label: "素材発注書", href: BASE_PATH },
         mode === "edit" ? "編集" : "新規作成",
       ]}
+      isDirty={form.isDirty()}
       isPending={isPending}
       onCancel={() =>
         router.push(poNumber ? `${BASE_PATH}/${poNumber}` : BASE_PATH)

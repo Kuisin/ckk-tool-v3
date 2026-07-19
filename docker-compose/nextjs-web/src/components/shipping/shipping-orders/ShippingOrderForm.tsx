@@ -229,6 +229,7 @@ export function ShippingOrderForm({
         { label: "出荷書", href: BASE_PATH },
         mode === "edit" ? "編集" : "新規作成",
       ]}
+      isDirty={form.isDirty()}
       isPending={isPending}
       onCancel={() =>
         router.push(orderId ? `${BASE_PATH}/${orderId}` : BASE_PATH)
