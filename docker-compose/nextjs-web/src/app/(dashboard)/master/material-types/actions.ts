@@ -257,3 +257,62 @@ export async function deleteMaterialTypes(
     return actionError(prismaErrorMessage(e, "材種の削除に失敗しました"));
   }
 }
+
+// ─── 既定単価マトリクス (material_type_prices) ─────────────────────────────
+// 材種 × 直径 × 黒皮/研磨 → 単価 (¥/1000mm)。試算のフォールバック材料単価。
+
+const priceRowInput = z.object({
+  diameterCode: z.string().regex(/^[0-9]{3}$/, "直径コードが不正です"),
+  surfaceFinishCode: z.string().regex(/^[A-Z]$/, "黒皮/研磨コードが不正です"),
+  unitPrice: z.number().min(0, "単価は 0 以上で入力してください"),
+});
+
+export type MaterialTypePriceRow = z.infer<typeof priceRowInput>;
+
+/**
+ * 材種の既定単価マトリクスを丸ごと置換する（削除 → 一括作成）。
+ * 各行は (直径 × 黒皮/研磨) で一意。unit_price は ¥/1000mm。
+ */
+export async function saveMaterialTypePrices(
+  materialTypeId: number,
+  rows: MaterialTypePriceRow[],
+): Promise<ActionResult> {
+  const authz = await checkPermission("master", "UPDATE");
+  if (!authz.ok) return actionError(authz.error);
+  const parsed = z.array(priceRowInput).safeParse(rows);
+  if (!parsed.success) {
+    return actionError(parsed.error.issues[0]?.message ?? "入力が不正です");
+  }
+  // (直径 × 黒皮/研磨) の重複を弾く。
+  const seen = new Set<string>();
+  for (const r of parsed.data) {
+    const k = `${r.diameterCode}|${r.surfaceFinishCode}`;
+    if (seen.has(k)) {
+      return actionError("同一の直径 × 黒皮/研磨 の行が重複しています");
+    }
+    seen.add(k);
+  }
+  try {
+    await prisma.$transaction([
+      prisma.materialTypePrice.deleteMany({ where: { materialTypeId } }),
+      prisma.materialTypePrice.createMany({
+        data: parsed.data.map((r) => ({
+          materialTypeId,
+          diameterCode: r.diameterCode,
+          surfaceFinishCode: r.surfaceFinishCode,
+          unitPrice: new Prisma.Decimal(r.unitPrice),
+        })),
+      }),
+    ]);
+    await recordAudit({
+      action: "UPDATE",
+      tableName: "material_type_prices",
+      recordId: String(materialTypeId),
+      after: { rows: parsed.data.length },
+    });
+    revalidate(materialTypeId);
+    return actionOk();
+  } catch (e) {
+    return actionError(prismaErrorMessage(e, "既定単価の保存に失敗しました"));
+  }
+}
