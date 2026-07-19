@@ -41,15 +41,35 @@ type EstimateRow = NonNullable<
 function fetchEstimateRowByKey(yearMonth: string, seq: number) {
   return prisma.estimate.findUnique({
     where: { yearMonth_seq: { yearMonth, seq } },
-    include: { customerBp: true, material: true },
+    include: {
+      customerBp: true,
+      materialType: true,
+      diameter: true,
+      surfaceFinish: true,
+    },
   });
 }
 
-export function materialOptionLabel(m: {
-  code: string;
+export function materialTypeOptionLabel(m: {
+  code: string | null;
   name: unknown;
 }): string {
-  return `${m.code} — ${localized(m.name as LocalizedText | null)}`;
+  const name = localized(m.name as LocalizedText | null);
+  return m.code ? `${m.code} — ${name}` : name;
+}
+
+/** 材種 × 直径 × 黒皮/研磨 の表示ラベル（一覧・詳細）。 */
+export function materialTypeLabel(r: {
+  materialType: { code: string | null; name: unknown } | null;
+  diameter: { diameterMm: unknown } | null;
+  surfaceFinish: { name: unknown } | null;
+}): string {
+  if (!r.materialType) return "—";
+  const parts = [materialTypeOptionLabel(r.materialType)];
+  if (r.diameter) parts.push(`φ${Number(r.diameter.diameterMm)}`);
+  if (r.surfaceFinish)
+    parts.push(localized(r.surfaceFinish.name as LocalizedText | null));
+  return parts.join(" / ");
 }
 
 export function mapEstimate(r: EstimateRow): TrialEstimateRecord {
@@ -63,8 +83,10 @@ export function mapEstimate(r: EstimateRow): TrialEstimateRecord {
     customerName: r.customerBp
       ? localized(r.customerBp.name as LocalizedText | null)
       : null,
-    materialId: r.materialId != null ? String(r.materialId) : "",
-    materialLabel: r.material ? materialOptionLabel(r.material) : "—",
+    materialTypeId: r.materialTypeId != null ? String(r.materialTypeId) : "",
+    diameterCode: r.diameterCode ?? "",
+    surfaceFinishCode: r.surfaceFinishCode ?? "",
+    materialLabel: materialTypeLabel(r),
     input: r.input as unknown as TrialInput,
     resultSnapshot: toPriceSnapshot(r.result),
     referenceDate: r.referenceDate?.toISOString().slice(0, 10) ?? "",
@@ -79,7 +101,12 @@ export function mapEstimate(r: EstimateRow): TrialEstimateRecord {
 export async function fetchTrialEstimates(): Promise<TrialEstimateRecord[]> {
   const rows = await prisma.estimate.findMany({
     take: LIST_FETCH_CAP,
-    include: { customerBp: true, material: true },
+    include: {
+      customerBp: true,
+      materialType: true,
+      diameter: true,
+      surfaceFinish: true,
+    },
     orderBy: { updatedAt: "desc" },
   });
   return rows.map(mapEstimate);
@@ -109,15 +136,39 @@ export async function fetchCustomerOptions(): Promise<Option[]> {
   }));
 }
 
-/** 素材 options — active materials, labelled like the 素材マスタ. */
-export async function fetchMaterialOptions(): Promise<Option[]> {
-  const rows = await prisma.material.findMany({
-    where: { isActive: true },
+/** 材種 options — active material-types with a 材種コード. */
+export async function fetchMaterialTypeOptions(): Promise<Option[]> {
+  const rows = await prisma.materialType.findMany({
+    where: { isActive: true, code: { not: null } },
     orderBy: { code: "asc" },
   });
   return rows.map((m) => ({
     value: String(m.id),
-    label: materialOptionLabel(m),
+    label: materialTypeOptionLabel(m),
+  }));
+}
+
+/** 直径 options — masters (φ表示). */
+export async function fetchDiameterOptions(): Promise<Option[]> {
+  const rows = await prisma.materialDiameter.findMany({
+    where: { isActive: true },
+    orderBy: { diameterMm: "asc" },
+  });
+  return rows.map((d) => ({
+    value: d.code,
+    label: `φ${Number(d.diameterMm)}`,
+  }));
+}
+
+/** 黒皮/研磨 options — surface-finish masters. */
+export async function fetchSurfaceFinishOptions(): Promise<Option[]> {
+  const rows = await prisma.materialSurfaceFinish.findMany({
+    where: { isActive: true },
+    orderBy: { code: "asc" },
+  });
+  return rows.map((s) => ({
+    value: s.code,
+    label: localized(s.name as LocalizedText | null),
   }));
 }
 

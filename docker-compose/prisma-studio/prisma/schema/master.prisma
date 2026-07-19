@@ -83,7 +83,9 @@ model MaterialSurfaceFinish {
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  materials Material[]
+  materials  Material[]
+  typePrices MaterialTypePrice[]
+  estimates  Estimate[]
 
   @@map("material_surface_finishes")
   @@schema("app")
@@ -98,7 +100,9 @@ model MaterialDiameter {
   createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  materials Material[]
+  materials  Material[]
+  typePrices MaterialTypePrice[]
+  estimates  Estimate[]
 
   @@map("material_diameters")
   @@schema("app")
@@ -145,9 +149,32 @@ model MaterialType {
 
   materials      Material[]
   productsByType Product[] @relation("ProductMaterialType")
+  prices         MaterialTypePrice[]
+  estimates      Estimate[]
 
   @@unique([manufacturerCode, gradeCode, shapeCode, kindCode])
   @@map("material_types")
+  @@schema("app")
+}
+
+// 材種の既定材料単価マトリクス: (材種 × 直径 × 黒皮/研磨) → 単価 (¥/1000mm 基準)。
+// 全長には依存しない（固定長基準）。仕入実績が無いとき試算のフォールバックに使う。
+model MaterialTypePrice {
+  id                Int      @id @default(autoincrement())
+  materialTypeId    Int      @map("material_type_id")
+  diameterCode      String   @map("diameter_code") @db.Char(3)
+  surfaceFinishCode String   @map("surface_finish_code") @db.Char(1)
+  /** 既定材料単価 (¥/1000mm)。 */
+  unitPrice         Decimal  @map("unit_price") @db.Decimal(12, 2)
+  createdAt         DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt         DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  materialType  MaterialType          @relation(fields: [materialTypeId], references: [id], onDelete: Cascade)
+  diameter      MaterialDiameter      @relation(fields: [diameterCode], references: [code])
+  surfaceFinish MaterialSurfaceFinish @relation(fields: [surfaceFinishCode], references: [code])
+
+  @@unique([materialTypeId, diameterCode, surfaceFinishCode])
+  @@map("material_type_prices")
   @@schema("app")
 }
 
@@ -168,7 +195,6 @@ model Material {
   lengthMm          Decimal  @map("length_mm") @db.Decimal(10, 3)
   manufacturerModel String?  @map("manufacturer_model")
   nominalDiameterMm Decimal? @map("nominal_diameter_mm") @db.Decimal(8, 3)
-  defaultUnitPrice  Decimal? @map("default_unit_price") @db.Decimal(12, 2)
   name              Json
   unit              String
   isActive          Boolean  @default(true) @map("is_active")
@@ -181,7 +207,6 @@ model Material {
   diameter      MaterialDiameter      @relation(fields: [diameterCode], references: [code])
   lengthVariant MaterialLengthVariant @relation(fields: [lengthVariantCode], references: [code])
 
-  estimates          Estimate[]
   purchaseOrderItems MaterialPurchaseOrderItem[]
   receipts           MaterialReceipt[]
   purchaseRequestItems PurchaseRequestItem[]

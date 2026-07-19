@@ -38,7 +38,6 @@ const materialUpdateInput = z.object({
   unit: z.string().min(1, "単位を選択してください"),
   manufacturerModel: z.string().optional(),
   nominalDiameterMm: z.number().min(0).nullable(),
-  defaultUnitPrice: z.number().min(0).nullable(),
   isActive: z.boolean(),
   notes: z.string().optional(),
 });
@@ -183,7 +182,6 @@ export async function createMaterial(
           lengthMm: Math.round(v.lengthMm),
           manufacturerModel: v.manufacturerModel?.trim() || null,
           nominalDiameterMm: v.nominalDiameterMm,
-          defaultUnitPrice: v.defaultUnitPrice,
           name: localizedInput(v.nameJa, v.nameEn),
           unit: v.unit,
           isActive: v.isActive,
@@ -242,7 +240,6 @@ export async function updateMaterial(
         unit: true,
         manufacturerModel: true,
         nominalDiameterMm: true,
-        defaultUnitPrice: true,
         isActive: true,
         notes: true,
       },
@@ -254,7 +251,6 @@ export async function updateMaterial(
         unit: v.unit,
         manufacturerModel: v.manufacturerModel?.trim() || null,
         nominalDiameterMm: v.nominalDiameterMm,
-        defaultUnitPrice: v.defaultUnitPrice,
         isActive: v.isActive,
         notes: v.notes?.trim() || null,
       },
@@ -270,9 +266,6 @@ export async function updateMaterial(
             nominalDiameterMm: prior.nominalDiameterMm
               ? Number(prior.nominalDiameterMm)
               : null,
-            defaultUnitPrice: prior.defaultUnitPrice
-              ? Number(prior.defaultUnitPrice)
-              : null,
             isActive: prior.isActive,
             notes: prior.notes,
           }
@@ -282,7 +275,6 @@ export async function updateMaterial(
         unit: v.unit,
         manufacturerModel: v.manufacturerModel?.trim() || null,
         nominalDiameterMm: v.nominalDiameterMm,
-        defaultUnitPrice: v.defaultUnitPrice,
         isActive: v.isActive,
         notes: v.notes?.trim() || null,
       },

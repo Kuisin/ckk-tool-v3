@@ -21,8 +21,9 @@ import {
   parseDocKey,
 } from "@/lib/doc-number";
 import {
-  fetchMaterialDefaultPrice,
-  fetchPriceHistory,
+  fetchMaterialTypeDefaultPrice,
+  fetchPriceHistoryByType,
+  type MaterialTypeKey,
 } from "@/lib/material-pricing";
 import {
   computeReferencePrice,
@@ -47,21 +48,38 @@ export interface MaterialPricing {
   reference: ReferencePriceResult;
 }
 
-/** 素材変更時の仕入実績＋ポリシー参照価格（試算フォーム用）。 */
-export async function fetchMaterialPricing(
-  materialId: string,
-): Promise<ActionResult<MaterialPricing>> {
+/** 材種構成キー（材種 × 直径 × 黒皮/研磨）を文字列入力から解決。未確定は null。 */
+function toMaterialTypeKey(raw: {
+  materialTypeId: string;
+  diameterCode: string;
+  surfaceFinishCode: string;
+}): MaterialTypeKey | null {
+  const typeId = Number(raw.materialTypeId);
+  if (!Number.isInteger(typeId) || typeId <= 0) return null;
+  if (!raw.diameterCode || !raw.surfaceFinishCode) return null;
+  return {
+    materialTypeId: typeId,
+    diameterCode: raw.diameterCode,
+    surfaceFinishCode: raw.surfaceFinishCode,
+  };
+}
+
+/** 材種・直径・黒皮/研磨 の変更時の仕入実績＋ポリシー参照価格（試算フォーム用）。 */
+export async function fetchMaterialPricing(raw: {
+  materialTypeId: string;
+  diameterCode: string;
+  surfaceFinishCode: string;
+}): Promise<ActionResult<MaterialPricing>> {
   try {
-    const idNum = Number(materialId);
-    const valid = Number.isInteger(idNum) && idNum > 0;
-    const [settings, history, matPrice] = await Promise.all([
+    const key = toMaterialTypeKey(raw);
+    const [settings, history, typeDefault] = await Promise.all([
       getTrialPricingSettings(),
-      valid ? fetchPriceHistory(idNum) : Promise.resolve([]),
-      valid ? fetchMaterialDefaultPrice(idNum) : Promise.resolve(0),
+      key ? fetchPriceHistoryByType(key) : Promise.resolve([]),
+      key ? fetchMaterialTypeDefaultPrice(key) : Promise.resolve(0),
     ]);
-    // フォールバック単価: 素材マスタの既定単価 → 設定のグローバル既定 → 0。
+    // フォールバック単価: 材種既定単価（¥/1000mm）→ 設定のグローバル既定 → 0。
     const defaultPrice =
-      matPrice > 0 ? matPrice : settings.defaultMaterialPrice;
+      typeDefault > 0 ? typeDefault : settings.defaultMaterialPrice;
     return actionOk({
       history,
       reference: computeReferencePrice(
@@ -88,7 +106,9 @@ const trialInputSchema = z.looseObject({
 const createInput = z.object({
   name: z.string().min(1, "試算名を入力してください"),
   customerBpId: z.string().nullable(),
-  materialId: z.string().min(1, "素材を選択してください"),
+  materialTypeId: z.string().nullable(),
+  diameterCode: z.string().nullable(),
+  surfaceFinishCode: z.string().nullable(),
   input: trialInputSchema,
   referenceUnitPrice: z.number().nullable(),
   referenceDate: z.string().nullable(),
@@ -154,7 +174,9 @@ export async function createTrialEstimate(
         toolType: v.input.toolType,
         status: "DRAFT",
         customerBpId: v.customerBpId,
-        materialId: Number(v.materialId),
+        materialTypeId: v.materialTypeId ? Number(v.materialTypeId) : null,
+        diameterCode: v.diameterCode || null,
+        surfaceFinishCode: v.surfaceFinishCode || null,
         referenceUnitPrice: v.referenceUnitPrice,
         referenceDate: v.referenceDate ? new Date(v.referenceDate) : null,
         referenceOverridden: v.referenceOverridden,
@@ -171,7 +193,9 @@ export async function createTrialEstimate(
       after: {
         name: v.name,
         toolType: v.input.toolType,
-        materialId: v.materialId,
+        materialTypeId: v.materialTypeId,
+        diameterCode: v.diameterCode,
+        surfaceFinishCode: v.surfaceFinishCode,
         customerBpId: v.customerBpId,
         status: "DRAFT",
       },

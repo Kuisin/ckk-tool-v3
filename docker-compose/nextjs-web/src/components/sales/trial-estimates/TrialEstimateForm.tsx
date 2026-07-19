@@ -84,17 +84,22 @@ const num = (v: number | string) =>
 
 export function TrialEstimateForm({
   customerOptions,
-  materialOptions,
+  materialTypeOptions,
+  diameterOptions,
+  surfaceFinishOptions,
   settings,
   initialPricing,
   /** 複製元（?from= で開いたとき）— 全入力を引き継いだ新規 DRAFT を作る。 */
   source,
 }: {
   customerOptions: Option[];
-  materialOptions: Option[];
+  /** 材種・直径・黒皮/研磨 の選択肢（材料は 3 要素で指定）. */
+  materialTypeOptions: Option[];
+  diameterOptions: Option[];
+  surfaceFinishOptions: Option[];
   /** システム設定（app.system_settings, サーバー取得）. */
   settings: TrialPricingSettings;
-  /** 初期素材の仕入実績＋ポリシー参照価格（サーバー取得）. */
+  /** 初期材種構成の仕入実績＋ポリシー参照価格（サーバー取得）. */
   initialPricing: MaterialPricing;
   source?: TrialEstimateRecord | null;
 }) {
@@ -102,7 +107,6 @@ export function TrialEstimateForm({
   const [isPending, startTransition] = useTransition();
   const [isPricingLoading, startPricingTransition] = useTransition();
 
-  const defaultMaterial = materialOptions[0]?.value ?? "";
   const src = source?.input;
 
   // ── inputs ──────────────────────────────────────────────────────────────
@@ -113,8 +117,15 @@ export function TrialEstimateForm({
   const [customerId, setCustomerId] = useState<string | null>(
     source?.customerId ?? null,
   );
-  const [materialId, setMaterialId] = useState<string>(
-    source?.materialId ?? defaultMaterial,
+  // 材料 = 材種 × 直径 × 黒皮/研磨（参照価格の解決キー）。
+  const [materialTypeId, setMaterialTypeId] = useState<string>(
+    source?.materialTypeId ?? materialTypeOptions[0]?.value ?? "",
+  );
+  const [diameterCode, setDiameterCode] = useState<string>(
+    source?.diameterCode ?? "",
+  );
+  const [surfaceFinishCode, setSurfaceFinishCode] = useState<string>(
+    source?.surfaceFinishCode ?? "",
   );
   const [isBlackSkin, setIsBlackSkin] = useState(src?.isBlackSkin ?? false);
   const [maxDiameter, setMaxDiameter] = useState<number | string>(
@@ -192,11 +203,22 @@ export function TrialEstimateForm({
   // customMode = the price field is unlocked for manual editing.
   const [customMode, setCustomMode] = useState(false);
 
-  const onMaterialChange = (value: string | null) => {
-    const id = value ?? defaultMaterial;
-    setMaterialId(id);
+  // 材種構成の一部が変わるたびに、3要素が揃っていれば参照価格を再取得する。
+  const refetchPricing = (next: {
+    materialTypeId?: string;
+    diameterCode?: string;
+    surfaceFinishCode?: string;
+  }) => {
+    const key = {
+      materialTypeId: next.materialTypeId ?? materialTypeId,
+      diameterCode: next.diameterCode ?? diameterCode,
+      surfaceFinishCode: next.surfaceFinishCode ?? surfaceFinishCode,
+    };
+    if (!key.materialTypeId || !key.diameterCode || !key.surfaceFinishCode) {
+      return;
+    }
     startPricingTransition(async () => {
-      const res = await fetchMaterialPricing(id);
+      const res = await fetchMaterialPricing(key);
       if (!res.ok) {
         notifications.show({
           title: "エラー",
@@ -281,7 +303,9 @@ export function TrialEstimateForm({
       const res = await createTrialEstimate({
         name: name.trim(),
         customerBpId: customerId,
-        materialId,
+        materialTypeId: materialTypeId || null,
+        diameterCode: diameterCode || null,
+        surfaceFinishCode: surfaceFinishCode || null,
         input,
         referenceUnitPrice:
           toolType === "CYLINDER" ? null : num(referencePrice),
@@ -391,18 +415,49 @@ export function TrialEstimateForm({
             </FormSection>
 
             <FormSection
-              description="材料原価は仕入実績（購買履歴）から算出します。"
+              description="材料は「材種 × 直径 × 黒皮/研磨」で指定します。参照価格は仕入実績、無ければ材種の既定単価（¥/1000mm）から算出します。"
               title="素材"
             >
-              <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
+              <SimpleGrid cols={{ base: 1, sm: 3 }} mb="sm" spacing="sm">
                 <Select
-                  data={materialOptions}
+                  data={materialTypeOptions}
                   disabled={isPricingLoading}
-                  label="材種・素材"
-                  onChange={onMaterialChange}
+                  label="材種"
+                  onChange={(v) => {
+                    const id = v ?? "";
+                    setMaterialTypeId(id);
+                    refetchPricing({ materialTypeId: id });
+                  }}
                   searchable
-                  value={materialId}
+                  value={materialTypeId}
                 />
+                <Select
+                  clearable
+                  data={diameterOptions}
+                  disabled={isPricingLoading}
+                  label="直径"
+                  onChange={(v) => {
+                    const code = v ?? "";
+                    setDiameterCode(code);
+                    refetchPricing({ diameterCode: code });
+                  }}
+                  searchable
+                  value={diameterCode || null}
+                />
+                <Select
+                  clearable
+                  data={surfaceFinishOptions}
+                  disabled={isPricingLoading}
+                  label="黒皮/研磨"
+                  onChange={(v) => {
+                    const code = v ?? "";
+                    setSurfaceFinishCode(code);
+                    refetchPricing({ surfaceFinishCode: code });
+                  }}
+                  value={surfaceFinishCode || null}
+                />
+              </SimpleGrid>
+              <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
                 {isCylinder ? (
                   <NumberInput
                     label="素材価格（手入力 ¥/本）"
@@ -706,7 +761,17 @@ export function TrialEstimateForm({
                   {settings.materialPriceLookbackMonths}ヶ月
                 </Badge>
                 <Text c="dimmed" size="xs">
-                  {materialOptions.find((m) => m.value === materialId)?.label}
+                  {[
+                    materialTypeOptions.find((m) => m.value === materialTypeId)
+                      ?.label,
+                    diameterOptions.find((d) => d.value === diameterCode)
+                      ?.label,
+                    surfaceFinishOptions.find(
+                      (s) => s.value === surfaceFinishCode,
+                    )?.label,
+                  ]
+                    .filter(Boolean)
+                    .join(" / ")}
                 </Text>
               </Group>
               <MaterialPriceChart

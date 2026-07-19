@@ -1,14 +1,17 @@
 import { TrialEstimateForm } from "@/components/sales/trial-estimates/TrialEstimateForm";
 import { parseDocKey } from "@/lib/doc-number";
 import {
-  fetchMaterialDefaultPrice,
-  fetchPriceHistory,
+  fetchMaterialTypeDefaultPrice,
+  fetchPriceHistoryByType,
+  type MaterialTypeKey,
 } from "@/lib/material-pricing";
 import { computeReferencePrice } from "@/lib/material-pricing-core";
 import { getTrialPricingSettings } from "@/lib/system-settings";
 import {
   fetchCustomerOptions,
-  fetchMaterialOptions,
+  fetchDiameterOptions,
+  fetchMaterialTypeOptions,
+  fetchSurfaceFinishOptions,
   fetchTrialEstimate,
 } from "../data";
 
@@ -23,24 +26,39 @@ export default async function TrialEstimateNewPage({
   const { from } = await searchParams;
   const fromKey = from ? parseDocKey(from, "EST") : null;
 
-  const [customerOptions, materialOptions, source, settings] =
-    await Promise.all([
-      fetchCustomerOptions(),
-      fetchMaterialOptions(),
-      fromKey ? fetchTrialEstimate(fromKey.yearMonth, fromKey.seq) : null,
-      getTrialPricingSettings(),
-    ]);
+  const [
+    customerOptions,
+    materialTypeOptions,
+    diameterOptions,
+    surfaceFinishOptions,
+    source,
+    settings,
+  ] = await Promise.all([
+    fetchCustomerOptions(),
+    fetchMaterialTypeOptions(),
+    fetchDiameterOptions(),
+    fetchSurfaceFinishOptions(),
+    fromKey ? fetchTrialEstimate(fromKey.yearMonth, fromKey.seq) : null,
+    getTrialPricingSettings(),
+  ]);
 
-  // 初期素材（複製元 or 先頭の素材）の仕入実績＋ポリシー参照価格。
-  const initialMaterialId = Number(
-    source?.materialId || (materialOptions[0]?.value ?? ""),
-  );
-  const validMat = Number.isInteger(initialMaterialId) && initialMaterialId > 0;
-  const [history, matPrice] = await Promise.all([
-    validMat ? fetchPriceHistory(initialMaterialId) : Promise.resolve([]),
-    validMat
-      ? fetchMaterialDefaultPrice(initialMaterialId)
-      : Promise.resolve(0),
+  // 複製元が材種構成を持つときのみ仕入実績＋既定単価を取得。新規はフォームで
+  // 材種構成が揃った時点でクライアントから再取得する。
+  const typeId = Number(source?.materialTypeId ?? "");
+  const key: MaterialTypeKey | null =
+    Number.isInteger(typeId) &&
+    typeId > 0 &&
+    source?.diameterCode &&
+    source?.surfaceFinishCode
+      ? {
+          materialTypeId: typeId,
+          diameterCode: source.diameterCode,
+          surfaceFinishCode: source.surfaceFinishCode,
+        }
+      : null;
+  const [history, typeDefault] = await Promise.all([
+    key ? fetchPriceHistoryByType(key) : Promise.resolve([]),
+    key ? fetchMaterialTypeDefaultPrice(key) : Promise.resolve(0),
   ]);
   const initialPricing = {
     history,
@@ -49,17 +67,19 @@ export default async function TrialEstimateNewPage({
       settings.materialPriceBasis,
       settings.materialPriceLookbackMonths,
       undefined,
-      matPrice > 0 ? matPrice : settings.defaultMaterialPrice,
+      typeDefault > 0 ? typeDefault : settings.defaultMaterialPrice,
     ),
   };
 
   return (
     <TrialEstimateForm
       customerOptions={customerOptions}
+      diameterOptions={diameterOptions}
       initialPricing={initialPricing}
-      materialOptions={materialOptions}
+      materialTypeOptions={materialTypeOptions}
       settings={settings}
       source={source}
+      surfaceFinishOptions={surfaceFinishOptions}
     />
   );
 }
