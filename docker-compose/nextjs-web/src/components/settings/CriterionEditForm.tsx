@@ -28,10 +28,12 @@ import { useMemo, useState, useTransition } from "react";
 import { updateCriteria } from "@/app/(dashboard)/settings/actions";
 import {
   CancelButton,
+  DeleteButton,
   GhostButton,
   SaveButton,
   SecondaryButton,
 } from "@/components/ui/buttons";
+import { openConfirm } from "@/components/ui/modals";
 import { FormSection } from "@/components/ui/shells";
 import { localized } from "@/lib/format";
 import {
@@ -236,7 +238,7 @@ export function CriterionEditForm({
           message: "計算基準を更新しました",
           color: "green",
         });
-        router.push(BASE);
+        router.push(`${BASE}/criteria`);
         router.refresh();
       } else {
         notifications.show({
@@ -247,6 +249,34 @@ export function CriterionEditForm({
       }
     });
   };
+
+  const remove = () =>
+    openConfirm({
+      title: "計算基準の削除",
+      message: `「${criterion.name}」を削除します。この操作は取り消せません。`,
+      confirmLabel: "削除",
+      onConfirm: () =>
+        startTransition(async () => {
+          const res = await updateCriteria(
+            allCriteria.filter((c) => c.id !== criterion.id),
+          );
+          if (res.ok) {
+            notifications.show({
+              title: "削除しました",
+              message: `「${criterion.name}」を削除しました`,
+              color: "green",
+            });
+            router.push(`${BASE}/criteria`);
+            router.refresh();
+          } else {
+            notifications.show({
+              title: "エラー",
+              message: res.error,
+              color: "red",
+            });
+          }
+        }),
+    });
 
   const runTest = () => {
     const sample: TrialInput =
@@ -419,11 +449,14 @@ export function CriterionEditForm({
         </Stack>
       </FormSection>
 
-      <Group justify="flex-end" mt="xs">
-        <CancelButton onClick={() => router.push(`${BASE}/criteria`)} />
-        <SaveButton loading={isPending} onClick={save}>
-          保存
-        </SaveButton>
+      <Group justify="space-between" mt="xs">
+        {isNew ? <span /> : <DeleteButton onClick={remove} />}
+        <Group gap="sm">
+          <CancelButton onClick={() => router.push(`${BASE}/criteria`)} />
+          <SaveButton loading={isPending} onClick={save}>
+            保存
+          </SaveButton>
+        </Group>
       </Group>
     </Stack>
   );
