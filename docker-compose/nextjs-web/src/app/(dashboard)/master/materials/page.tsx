@@ -24,7 +24,6 @@ export default async function MasterMaterialsPage() {
     lengthMm: Number(r.lengthMm),
     surfaceFinish: localized(r.surfaceFinish.name as LocalizedText | null),
     unit: r.unit,
-    defaultUnitPrice: r.defaultUnitPrice ? Number(r.defaultUnitPrice) : null,
     isActive: r.isActive,
   }));
 

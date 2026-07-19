@@ -29,7 +29,10 @@ export interface TrialEstimateRecord {
   status: EstimateStatus;
   customerId: string | null;
   customerName: string | null;
-  materialId: string;
+  /** 材種 × 直径 × 黒皮/研磨（参照価格の解決キー）. */
+  materialTypeId: string;
+  diameterCode: string;
+  surfaceFinishCode: string;
   materialLabel: string;
   /** Full calc input snapshot (materialBarPrice = chosen reference price). */
   input: TrialInput;

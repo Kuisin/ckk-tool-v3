@@ -191,6 +191,23 @@ Table material_types {
 
 Ref: material_types.(manufacturer_code, grade_code) > material_manufacturer_grades.(manufacturer_code, code)
 
+// 材種の既定材料単価マトリクス: (材種 × 直径 × 黒皮/研磨) → 単価。全長には依存しない
+// 固定長基準で ¥/1000mm。採番表 Excel「素材(通常)」由来（価格 × 1000 / 全長 で正規化）。
+// 仕入実績が無いとき試算（trial_estimates）の材料原価フォールバックに使う。
+Table material_type_prices {
+  id                  serial [pk]
+  material_type_id    int [not null, ref: > material_types.id]
+  diameter_code       char(3) [not null, ref: > material_diameters.code]
+  surface_finish_code char(1) [not null, ref: > material_surface_finishes.code]
+  unit_price          numeric(12,2) [not null]   // 既定材料単価（¥/1000mm）
+  created_at          timestamp
+  updated_at          timestamp
+
+  indexes {
+    (material_type_id, diameter_code, surface_finish_code) [unique]
+  }
+}
+
 // ─── 素材コード構成要素 ─────────────────────────
 
 // 黒皮・研磨: 素材コード中間部 1文字目 [A-C]（採番表: A=黒皮, B=研磨, C=研磨済黒皮）
@@ -1153,10 +1170,12 @@ Table design_files {
 //
 // 工具種（丸棒/円筒/OH付）別の見積試算。原価チェーン（材料原価+段加工+首下+加工
 // 単価+コート+ラップ+LD+検査）→ ロット別に掛け率・補正値を適用して見積単価を算出。
-// 材料原価は素材マスタの静的価格ではなく、仕入実績（material_purchase_order_items）
-// の参照価格を使う。参照価格の算出方法（最高/最新/平均・参照月数）は system_settings。
-// 参照テーブル（センタレス/段加工/首下/円筒/コート/掛け率/割引）は採番表 Excel 由来で
-// trial_pricing_* マスタ（または import）へ移行する。
+// 材料は「材種 × 直径 × 黒皮/研磨」で指定する（特定 materials 行には紐付けない）。
+// 材料原価の参照価格は、当該構成に一致する全素材の仕入実績
+// （material_purchase_order_items）→ 無ければ材種既定単価 material_type_prices
+// （¥/1000mm）の順で解決する。参照価格の算出方法（最高/最新/平均・参照月数）は
+// system_settings。参照テーブル（センタレス/段加工/首下/円筒/コート/掛け率/割引）は
+// 採番表 Excel 由来で trial_pricing_* マスタ（または import）へ移行する。
 
 Enum TRIAL_TOOL_TYPE {
   ROUND_BAR       // 丸棒
@@ -1169,8 +1188,11 @@ Table trial_estimates {
   name            varchar [not null]
   tool_type       TRIAL_TOOL_TYPE [not null]
   customer_bp_id  uuid [ref: > business_partners.id]
-  material_id     varchar [ref: > materials.id]
-  // 参照価格（仕入実績由来）。reference_date = 採用した仕入実績日。
+  // 材料指定 = 材種 × 直径 × 黒皮/研磨（参照価格の解決キー）。
+  material_type_id     int [ref: > material_types.id]
+  diameter_code        char(3) [ref: > material_diameters.code]
+  surface_finish_code  char(1) [ref: > material_surface_finishes.code]
+  // 参照価格（仕入実績 / 材種既定単価 由来, ¥/1000mm）。reference_date = 採用した仕入実績日。
   reference_unit_price numeric(12,2)
   reference_date  date
   reference_overridden boolean [not null, default: false]  // 手動上書き

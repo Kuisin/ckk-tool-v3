@@ -75,7 +75,6 @@ const materialSchema = (isEdit: boolean) =>
     unit: z.string().min(1, "単位を選択してください"),
     manufacturerModel: z.string(),
     nominalDiameterMm: z.union([z.number(), z.literal("")]),
-    defaultUnitPrice: z.union([z.number(), z.literal("")]),
     isActive: z.boolean(),
     notes: z.string(),
   });
@@ -98,7 +97,6 @@ export interface MaterialFormInitial {
   unit: string;
   manufacturerModel: string;
   nominalDiameterMm: number | null;
-  defaultUnitPrice: number | null;
   isActive: boolean;
   notes: string;
 }
@@ -141,7 +139,6 @@ export function MaterialForm({
       unit: initial?.unit ?? "本",
       manufacturerModel: initial?.manufacturerModel ?? "",
       nominalDiameterMm: initial?.nominalDiameterMm ?? "",
-      defaultUnitPrice: initial?.defaultUnitPrice ?? "",
       isActive: initial?.isActive ?? true,
       notes: initial?.notes ?? "",
     },
@@ -226,8 +223,6 @@ export function MaterialForm({
         manufacturerModel: values.manufacturerModel,
         nominalDiameterMm:
           values.nominalDiameterMm === "" ? null : values.nominalDiameterMm,
-        defaultUnitPrice:
-          values.defaultUnitPrice === "" ? null : values.defaultUnitPrice,
         isActive: values.isActive,
         notes: values.notes,
       };
@@ -408,15 +403,6 @@ export function MaterialForm({
             label="呼び径 (mm)"
             min={0}
             {...form.getInputProps("nominalDiameterMm")}
-          />
-          <NumberInput
-            decimalScale={2}
-            description="仕入実績が無いとき試算で使う既定単価"
-            label="既定単価（¥）"
-            min={0}
-            prefix="¥"
-            thousandSeparator=","
-            {...form.getInputProps("defaultUnitPrice")}
           />
         </SimpleGrid>
         <Switch
