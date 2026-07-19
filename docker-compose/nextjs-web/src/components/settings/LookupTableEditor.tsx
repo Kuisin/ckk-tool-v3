@@ -15,7 +15,6 @@ import {
   Group,
   Select,
   Stack,
-  Table,
   Text,
   Textarea,
   TextInput,
@@ -40,6 +39,7 @@ import {
   SaveButton,
   SecondaryButton,
 } from "@/components/ui/buttons";
+import { EditableCellTable } from "@/components/ui/EditableCellTable";
 import { openConfirm } from "@/components/ui/modals";
 import { FormSection, LocalizedTextInput } from "@/components/ui/shells";
 import { useIsMobile } from "@/hooks/useViewport";
@@ -366,90 +366,55 @@ export function LookupTableEditor({
             {table.rows.length} 行
           </Badge>
         </Group>
-        <Table.ScrollContainer minWidth={400}>
-          <Table withColumnBorders>
-            <Table.Thead>
-              <Table.Tr>
-                {table.keyColumns.map((c, ci) => (
-                  // biome-ignore lint/suspicious/noArrayIndexKey: column has no stable id
-                  <Table.Th key={ci} style={{ minWidth: 120 }}>
-                    {c || `キー列${ci + 1}`}
-                  </Table.Th>
-                ))}
-                <Table.Th style={{ minWidth: 120 }}>値</Table.Th>
-                <Table.Th style={{ width: 40 }} />
-              </Table.Tr>
-            </Table.Thead>
-            <Table.Tbody>
-              {table.rows.map((r, ri) => (
-                // biome-ignore lint/suspicious/noArrayIndexKey: row has no stable id
-                <Table.Tr key={ri}>
-                  {table.keyColumns.map((_, ci) => (
-                    // biome-ignore lint/suspicious/noArrayIndexKey: cell has no stable id
-                    <Table.Td key={ci}>
-                      <TextInput
-                        onChange={(e) =>
-                          setRows(
-                            table.rows.map((x, j) =>
-                              j === ri
-                                ? {
-                                    ...x,
-                                    keys: x.keys.map((k, m) =>
-                                      m === ci ? e.currentTarget.value : k,
-                                    ),
-                                  }
-                                : x,
+        <EditableCellTable
+          addLabel="行を追加"
+          columns={[
+            ...table.keyColumns.map((c, ci) => ({
+              header: c || `キー列${ci + 1}`,
+              minWidth: 110,
+            })),
+            { header: "値", minWidth: 110 },
+          ]}
+          minTableWidth={360}
+          onAddRow={addRow}
+          onRemoveRow={(ri) => setRows(table.rows.filter((_, j) => j !== ri))}
+          renderCell={(r, ri, ci) =>
+            ci < table.keyColumns.length ? (
+              <TextInput
+                onChange={(e) =>
+                  setRows(
+                    table.rows.map((x, j) =>
+                      j === ri
+                        ? {
+                            ...x,
+                            keys: x.keys.map((k, m) =>
+                              m === ci ? e.currentTarget.value : k,
                             ),
-                          )
-                        }
-                        size="xs"
-                        value={r.keys[ci] ?? ""}
-                      />
-                    </Table.Td>
-                  ))}
-                  <Table.Td>
-                    <TextInput
-                      onChange={(e) =>
-                        setRows(
-                          table.rows.map((x, j) =>
-                            j === ri
-                              ? { ...x, value: e.currentTarget.value }
-                              : x,
-                          ),
-                        )
-                      }
-                      placeholder={
-                        table.valueType === "number" ? "数値" : "文字列"
-                      }
-                      size="xs"
-                      value={r.value}
-                    />
-                  </Table.Td>
-                  <Table.Td>
-                    <ActionIcon
-                      aria-label="行を削除"
-                      color="red"
-                      onClick={() =>
-                        setRows(table.rows.filter((_, j) => j !== ri))
-                      }
-                      variant="subtle"
-                    >
-                      <IconTrash size={14} />
-                    </ActionIcon>
-                  </Table.Td>
-                </Table.Tr>
-              ))}
-            </Table.Tbody>
-          </Table>
-        </Table.ScrollContainer>
-        <GhostButton
-          leftSection={<IconPlus size={12} />}
-          mt="xs"
-          onClick={addRow}
-          size="compact-xs"
-        >
-          行を追加
-        </GhostButton>
+                          }
+                        : x,
+                    ),
+                  )
+                }
+                size="xs"
+                value={r.keys[ci] ?? ""}
+              />
+            ) : (
+              <TextInput
+                onChange={(e) =>
+                  setRows(
+                    table.rows.map((x, j) =>
+                      j === ri ? { ...x, value: e.currentTarget.value } : x,
+                    ),
+                  )
+                }
+                placeholder={table.valueType === "number" ? "数値" : "文字列"}
+                size="xs"
+                value={r.value}
+              />
+            )
+          }
+          rows={table.rows}
+        />
       </FormSection>
 
       <Group justify={isMobile ? "stretch" : "space-between"}>
