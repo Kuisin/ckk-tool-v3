@@ -168,6 +168,7 @@ model Material {
   lengthMm          Decimal  @map("length_mm") @db.Decimal(10, 3)
   manufacturerModel String?  @map("manufacturer_model")
   nominalDiameterMm Decimal? @map("nominal_diameter_mm") @db.Decimal(8, 3)
+  defaultUnitPrice  Decimal? @map("default_unit_price") @db.Decimal(12, 2)
   name              Json
   unit              String
   isActive          Boolean  @default(true) @map("is_active")

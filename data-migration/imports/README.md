@@ -1,5 +1,12 @@
 # Legacy import artifacts（コミット済み・DB リセット時は必ず適用）
 
+> **2026-07-19 更新**: 材種/材料/製品はマスタを Excel「最新見積書試算」由来へ全面
+> 置換したため、旧 `020_material_types` / `025_material_structuring` / `030_products`
+> は削除。材種・材料（通常）は shared-db マイグレーション
+> `20260719120000_materials_from_excel`（clean reset + 構造化取込 + 既定単価）で投入。
+> OH 素材は追って別マイグレーションで追加予定。`999_audit_backfill` は削除済みマスタを
+> 参照しないよう SELECT ベースで安全。
+
 `mapped.sqlite`（FileMaker 移行の最終形）から生成した **app スキーマ向けの
 冪等 upsert SQL**。DB を初期化・再構築したら、マイグレーション適用後に
 **必ず**これを流す:

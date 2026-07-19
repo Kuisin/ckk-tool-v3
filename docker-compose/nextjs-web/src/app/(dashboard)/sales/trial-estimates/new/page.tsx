@@ -1,6 +1,9 @@
 import { TrialEstimateForm } from "@/components/sales/trial-estimates/TrialEstimateForm";
 import { parseDocKey } from "@/lib/doc-number";
-import { fetchPriceHistory } from "@/lib/material-pricing";
+import {
+  fetchMaterialDefaultPrice,
+  fetchPriceHistory,
+} from "@/lib/material-pricing";
 import { computeReferencePrice } from "@/lib/material-pricing-core";
 import { getTrialPricingSettings } from "@/lib/system-settings";
 import {
@@ -32,10 +35,13 @@ export default async function TrialEstimateNewPage({
   const initialMaterialId = Number(
     source?.materialId || (materialOptions[0]?.value ?? ""),
   );
-  const history =
-    Number.isInteger(initialMaterialId) && initialMaterialId > 0
-      ? await fetchPriceHistory(initialMaterialId)
-      : [];
+  const validMat = Number.isInteger(initialMaterialId) && initialMaterialId > 0;
+  const [history, matPrice] = await Promise.all([
+    validMat ? fetchPriceHistory(initialMaterialId) : Promise.resolve([]),
+    validMat
+      ? fetchMaterialDefaultPrice(initialMaterialId)
+      : Promise.resolve(0),
+  ]);
   const initialPricing = {
     history,
     reference: computeReferencePrice(
@@ -43,7 +49,7 @@ export default async function TrialEstimateNewPage({
       settings.materialPriceBasis,
       settings.materialPriceLookbackMonths,
       undefined,
-      settings.defaultMaterialPrice,
+      matPrice > 0 ? matPrice : settings.defaultMaterialPrice,
     ),
   };
 
