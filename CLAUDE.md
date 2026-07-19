@@ -5,11 +5,15 @@ Always commit per feature and record change.
 
 ## Git workflow (required)
 
-**Never commit straight to `dev` or `main`.** For every change: create a feature
-branch, open a PR against `dev`, then merge that PR. **You may merge PRs into
-`dev`, but NEVER merge to `main`** — production promotion (`dev`→`main`) is the
-user's and is done only by them. So: branch → PR → merge to `dev` = allowed;
-merging to `main` = not allowed (prepare the promotion PR and leave it for the user).
+**Always create a new feature branch _before_ starting any feature or change —
+never begin work on `dev` or `main`.** Branch first (`git checkout -b <name>`
+off up-to-date `dev`), do the work there, and **open a PR against `dev` once the
+work is done**. Never commit straight to `dev` or `main`.
+
+**You may merge PRs into `dev`, but NEVER merge to `main`** — production promotion
+(`dev`→`main`) is the user's and is done only by them. So: branch first → work →
+PR → merge to `dev` = allowed; merging to `main` = not allowed (prepare the
+promotion PR and leave it for the user).
 
 ## Project Overview
 
