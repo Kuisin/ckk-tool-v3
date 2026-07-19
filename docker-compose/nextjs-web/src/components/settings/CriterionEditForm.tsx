@@ -32,7 +32,6 @@ import {
   SaveButton,
   SecondaryButton,
 } from "@/components/ui/buttons";
-import { PageHeader } from "@/components/ui/PageHeader";
 import { FormSection } from "@/components/ui/shells";
 import { localized } from "@/lib/format";
 import {
@@ -280,24 +279,6 @@ export function CriterionEditForm({
 
   return (
     <Stack gap="md">
-      <PageHeader
-        actions={
-          <Group gap="xs">
-            <CancelButton onClick={() => router.push(BASE)} />
-            <SaveButton loading={isPending} onClick={save}>
-              保存
-            </SaveButton>
-          </Group>
-        }
-        breadcrumbs={[
-          "システム",
-          { label: "試算計算", href: BASE },
-          { label: "計算基準", href: `${BASE}/criteria` },
-          isNew ? "基準を追加" : "基準を編集",
-        ]}
-        title={isNew ? "計算基準を追加" : `計算基準を編集: ${criterion.name}`}
-      />
-
       <FormSection title="基準">
         <Stack gap="sm">
           <Group gap="sm" wrap="wrap">
@@ -432,11 +413,18 @@ export function CriterionEditForm({
           )}
 
           <Text c="dimmed" size="xs">
-            数値を返す JS 式。ルックアップ表は <Code>lookup("表名", キー)</Code>{" "}
+            数値を返す JS 式。ルックアップ表は <Code>lookup("ID", キー)</Code>{" "}
             で参照します。
           </Text>
         </Stack>
       </FormSection>
+
+      <Group justify="flex-end" mt="xs">
+        <CancelButton onClick={() => router.push(`${BASE}/criteria`)} />
+        <SaveButton loading={isPending} onClick={save}>
+          保存
+        </SaveButton>
+      </Group>
     </Stack>
   );
 }

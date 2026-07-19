@@ -58,6 +58,16 @@ const PROFILE_MENU_WIDTH = 180;
 /** 開発環境バーの高さ（dev のみ表示。ヘッダー最上部に重ねる）。 */
 export const DEV_BAR_HEIGHT = 28;
 
+// ページを持たない工程カテゴリのパス先頭セグメント（戻る先はホームにする）。
+const CATEGORY_ROOTS = new Set([
+  "sales",
+  "purchase",
+  "production",
+  "shipping",
+  "billing",
+  "master",
+]);
+
 function canHoverOpen(): boolean {
   return (
     typeof window !== "undefined" &&
@@ -111,6 +121,19 @@ export function AppHeader({
     return key ? (appList.find((a) => a.key === key) ?? null) : null;
   })();
   const isHome = pathname === "/";
+
+  // ヘッダーの「戻る」= ブラウザ履歴ではなくページ階層を1段上がる。
+  // 末尾セグメントを外した親パスへ遷移。工程カテゴリ（ページ無し）のみホームへ。
+  const goUpOneLevel = () => {
+    const segs = pathname.split("/").filter(Boolean);
+    const parent = segs.slice(0, -1);
+    const target =
+      parent.length === 0 ||
+      (parent.length === 1 && CATEGORY_ROOTS.has(parent[0]))
+        ? "/"
+        : `/${parent.join("/")}`;
+    guard(() => router.push(target));
+  };
 
   const { unreadCount, items: notifications, refresh } = useNotifications();
 
@@ -175,9 +198,9 @@ export function AppHeader({
           {!isHome && (
             <Tooltip label="戻る" withinPortal>
               <ActionIcon
-                aria-label="前のページに戻る"
+                aria-label="1つ上の階層へ戻る"
                 color="gray"
-                onClick={() => guard(() => router.back())}
+                onClick={goUpOneLevel}
                 size="lg"
                 variant="subtle"
               >

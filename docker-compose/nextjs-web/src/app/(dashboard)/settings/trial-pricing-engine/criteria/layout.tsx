@@ -1,14 +1,15 @@
-import { Stack, Title } from "@mantine/core";
 import type { ReactNode } from "react";
 import { CriteriaListPanel } from "@/components/settings/CriteriaListPanel";
 import { MasterDetailShell } from "@/components/ui/MasterDetailShell";
+import { PageHeader } from "@/components/ui/PageHeader";
 import { getTrialPricingSettings } from "@/lib/system-settings";
 
 export const dynamic = "force-dynamic";
 
-const BASE = "/settings/trial-pricing-engine/criteria";
+const ENGINE = "/settings/trial-pricing-engine";
+const BASE = `${ENGINE}/criteria`;
 
-/** 計算基準: 一覧（左）+ 式編集（右）のスプリットペイン。モバイルは別ページ。 */
+/** 計算基準: 上部ヘッダー + 一覧（左）/式編集（右）のリサイズ可能スプリット。 */
 export default async function CriteriaLayout({
   children,
 }: {
@@ -18,13 +19,18 @@ export default async function CriteriaLayout({
   return (
     <MasterDetailShell
       basePath={BASE}
-      master={
-        <Stack gap="sm">
-          <Title order={5}>計算基準</Title>
-          <CriteriaListPanel initial={settings.criteria} />
-        </Stack>
+      header={
+        <PageHeader
+          breadcrumbs={[
+            "システム",
+            { label: "試算計算", href: ENGINE },
+            "計算基準",
+          ]}
+          title="計算基準"
+        />
       }
-      masterWidth={400}
+      initialMasterWidth={380}
+      master={<CriteriaListPanel initial={settings.criteria} />}
     >
       {children}
     </MasterDetailShell>
