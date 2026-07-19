@@ -20,7 +20,10 @@ import {
   formatPriceListNumber,
   parseDocKey,
 } from "@/lib/doc-number";
-import { fetchPriceHistory } from "@/lib/material-pricing";
+import {
+  fetchMaterialDefaultPrice,
+  fetchPriceHistory,
+} from "@/lib/material-pricing";
 import {
   computeReferencePrice,
   type MaterialPricePoint,
@@ -50,12 +53,15 @@ export async function fetchMaterialPricing(
 ): Promise<ActionResult<MaterialPricing>> {
   try {
     const idNum = Number(materialId);
-    const [settings, history] = await Promise.all([
+    const valid = Number.isInteger(idNum) && idNum > 0;
+    const [settings, history, matPrice] = await Promise.all([
       getTrialPricingSettings(),
-      Number.isInteger(idNum) && idNum > 0
-        ? fetchPriceHistory(idNum)
-        : Promise.resolve([]),
+      valid ? fetchPriceHistory(idNum) : Promise.resolve([]),
+      valid ? fetchMaterialDefaultPrice(idNum) : Promise.resolve(0),
     ]);
+    // フォールバック単価: 素材マスタの既定単価 → 設定のグローバル既定 → 0。
+    const defaultPrice =
+      matPrice > 0 ? matPrice : settings.defaultMaterialPrice;
     return actionOk({
       history,
       reference: computeReferencePrice(
@@ -63,7 +69,7 @@ export async function fetchMaterialPricing(
         settings.materialPriceBasis,
         settings.materialPriceLookbackMonths,
         undefined,
-        settings.defaultMaterialPrice,
+        defaultPrice,
       ),
     });
   } catch (e) {

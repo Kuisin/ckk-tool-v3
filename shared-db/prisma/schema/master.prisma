@@ -168,6 +168,9 @@ model Material {
   lengthMm          Decimal  @map("length_mm") @db.Decimal(10, 3)
   manufacturerModel String?  @map("manufacturer_model")
   nominalDiameterMm Decimal? @map("nominal_diameter_mm") @db.Decimal(8, 3)
+  // 既定材料単価 (¥/1000mm 相当・素材採番表 由来)。仕入実績が無いとき試算の
+  // フォールバックに使う（lib/material-pricing）。NULL = 既定なし。
+  defaultUnitPrice  Decimal? @map("default_unit_price") @db.Decimal(12, 2)
   name              Json
   unit              String
   isActive          Boolean  @default(true) @map("is_active")

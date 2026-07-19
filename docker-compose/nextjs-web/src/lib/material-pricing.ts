@@ -45,6 +45,22 @@ export async function fetchPriceHistory(
     .sort((a, b) => a.date.localeCompare(b.date));
 }
 
+/**
+ * 素材マスタの既定単価（素材採番表由来）。仕入実績が無いときのフォールバック。
+ * materialId は素材コード(string) or 内部 id(number)。未設定は 0。
+ */
+export async function fetchMaterialDefaultPrice(
+  materialId: string | number,
+): Promise<number> {
+  const where =
+    typeof materialId === "number" ? { id: materialId } : { code: materialId };
+  const m = await prisma.material.findUnique({
+    where,
+    select: { defaultUnitPrice: true },
+  });
+  return m?.defaultUnitPrice ? Number(m.defaultUnitPrice) : 0;
+}
+
 /** 参照価格 — 仕入実績 × 価格ポリシー（system_settings）。 */
 export async function getReferencePrice(
   materialId: number,
