@@ -155,9 +155,7 @@ export function TrialEstimateForm({
   const [machiningMinutes, setMachiningMinutes] = useState<number | string>(
     src?.machiningMinutes ?? 6,
   );
-  // 加工単価・予備形状本数はシステム設定（グローバル）の既定値を使用。
-  const machiningRate = settings.machiningRatePer10min;
-  const spareShapeCount = settings.spareShapeCount;
+  // 加工単価・予備形状本数は scope:"global" のカスタム固定係数（customValues）を使用。
   // 基準数量 — 形状出し（段取り分）の按分にのみ使用。数量スケール（×倍率）は
   // 価格表側で管理するため、試算はこの1点の基準単価だけを算出する。
   const [baseQuantity, setBaseQuantity] = useState<number | string>(100);
@@ -263,8 +261,8 @@ export function TrialEstimateForm({
     ldOuterDiameter: num(ldOuterDiameter),
     ldBladeLength: num(ldBladeLength),
     machiningMinutes: num(machiningMinutes),
-    machiningRatePer10min: num(machiningRate),
-    spareShapeCount: num(spareShapeCount),
+    machiningRatePer10min: Number(customValues.machiningRatePer10min ?? 2000),
+    spareShapeCount: Number(customValues.spareShapeCount ?? 3),
     lotQuantities: [num(baseQuantity), 0, 0],
     lotMarkups: [1], // 掛け率は使わない（数量スケールは価格表の倍率で管理）
   };
@@ -526,9 +524,11 @@ export function TrialEstimateForm({
                 />
               </SimpleGrid>
               <Text c="dimmed" mt="xs" size="xs">
-                加工単価（¥{Number(machiningRate).toLocaleString()}
+                加工単価（¥
+                {Number(customValues.machiningRatePer10min ?? 2000).toLocaleString()}
                 /10分）・予備形状本数（
-                {spareShapeCount}本）は設定の既定値を使用します。
+                {Number(customValues.spareShapeCount ?? 3)}
+                本）は試算計算のグローバル固定係数を使用します。
               </Text>
             </FormSection>
 
@@ -589,58 +589,60 @@ export function TrialEstimateForm({
               )}
             </FormSection>
 
-            {settings.customInputs.length > 0 && (
+            {settings.customInputs.some((d) => d.scope !== "global") && (
               <FormSection
                 description="試算計算（SY02）で定義された追加入力。計算基準の式で変数として使われます。"
                 title="カスタム項目"
               >
                 <SimpleGrid cols={{ base: 1, sm: 2 }} maw={640} spacing="sm">
-                  {settings.customInputs.map((d) =>
-                    d.type === "number" ? (
-                      <NumberInput
-                        key={d.key}
-                        label={d.label || d.key}
-                        onChange={(v) =>
-                          setCustomValue(d.key, typeof v === "number" ? v : 0)
-                        }
-                        value={
-                          typeof customValues[d.key] === "number"
-                            ? (customValues[d.key] as number)
-                            : 0
-                        }
-                      />
-                    ) : d.type === "boolean" ? (
-                      <Switch
-                        checked={customValues[d.key] === true}
-                        key={d.key}
-                        label={d.label || d.key}
-                        mt={26}
-                        onChange={(e) =>
-                          setCustomValue(d.key, e.currentTarget.checked)
-                        }
-                      />
-                    ) : d.type === "select" ? (
-                      <Select
-                        data={(d.options ?? []).map((o) => ({
-                          value: o.value,
-                          label: o.label,
-                        }))}
-                        key={d.key}
-                        label={d.label || d.key}
-                        onChange={(v) => setCustomValue(d.key, v ?? "")}
-                        value={String(customValues[d.key] ?? "")}
-                      />
-                    ) : (
-                      <TextInput
-                        key={d.key}
-                        label={d.label || d.key}
-                        onChange={(e) =>
-                          setCustomValue(d.key, e.currentTarget.value)
-                        }
-                        value={String(customValues[d.key] ?? "")}
-                      />
-                    ),
-                  )}
+                  {settings.customInputs
+                    .filter((d) => d.scope !== "global")
+                    .map((d) =>
+                      d.type === "number" ? (
+                        <NumberInput
+                          key={d.key}
+                          label={d.label || d.key}
+                          onChange={(v) =>
+                            setCustomValue(d.key, typeof v === "number" ? v : 0)
+                          }
+                          value={
+                            typeof customValues[d.key] === "number"
+                              ? (customValues[d.key] as number)
+                              : 0
+                          }
+                        />
+                      ) : d.type === "boolean" ? (
+                        <Switch
+                          checked={customValues[d.key] === true}
+                          key={d.key}
+                          label={d.label || d.key}
+                          mt={26}
+                          onChange={(e) =>
+                            setCustomValue(d.key, e.currentTarget.checked)
+                          }
+                        />
+                      ) : d.type === "select" ? (
+                        <Select
+                          data={(d.options ?? []).map((o) => ({
+                            value: o.value,
+                            label: o.label,
+                          }))}
+                          key={d.key}
+                          label={d.label || d.key}
+                          onChange={(v) => setCustomValue(d.key, v ?? "")}
+                          value={String(customValues[d.key] ?? "")}
+                        />
+                      ) : (
+                        <TextInput
+                          key={d.key}
+                          label={d.label || d.key}
+                          onChange={(e) =>
+                            setCustomValue(d.key, e.currentTarget.value)
+                          }
+                          value={String(customValues[d.key] ?? "")}
+                        />
+                      ),
+                    )}
                 </SimpleGrid>
               </FormSection>
             )}
@@ -665,7 +667,7 @@ export function TrialEstimateForm({
 
             <ResultsPanel
               breakdown={result.breakdown}
-              correctionFactor={settings.correctionFactor}
+              correctionFactor={Number(customValues.correctionFactor ?? 1.25)}
               lot={result.lots[0] ?? null}
               warnings={result.warnings}
             />

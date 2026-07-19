@@ -23,16 +23,9 @@ export interface TrialPricingSettings {
   materialPriceBasis: MaterialPriceBasis;
   /** さかのぼる月数 (default 6). */
   materialPriceLookbackMonths: number;
-  // ── 試算 共通の既定値・係数（見積入力に含めない必須値）───────────────────
-  /** 加工単価 (¥/10分) の既定値. */
-  machiningRatePer10min: number;
-  /** 予備形状本数 の既定値. */
-  spareShapeCount: number;
-  /** 2022補正値 (見積単価 = 最低単価 × 掛け率 × 補正値). */
-  correctionFactor: number;
-  /** LDチャージ (¥/10分). */
-  ldChargePer10min: number;
   // ── 計算基準（自由設定）＋カスタム入力 ──────────────────────────────────
+  // 旧「既定値・係数（グローバル）」の 4 値（加工単価/予備形状本数/補正値/LDチャージ）
+  // は customInputs の scope:"global" 固定係数へ移行した。
   /** 見積単価を構成する計算基準（順序付き。既定 = 従来ロジック）. */
   criteria: Criterion[];
   /** 管理者が追加したカスタム入力項目（試算フォームに表示 + 式の変数）. */
@@ -49,10 +42,6 @@ export interface TrialPricingSettings {
 export const DEFAULT_TRIAL_PRICING_SETTINGS: TrialPricingSettings = {
   materialPriceBasis: "MAX",
   materialPriceLookbackMonths: 6,
-  machiningRatePer10min: 2000,
-  spareShapeCount: 3,
-  correctionFactor: 1.25,
-  ldChargePer10min: 7500,
   criteria: DEFAULT_CRITERIA,
   customInputs: DEFAULT_CUSTOM_INPUTS,
   lookupTables: DEFAULT_LOOKUP_TABLES,
@@ -69,8 +58,7 @@ export function toTrialPricingOptions(
   settings: TrialPricingSettings,
 ): TrialPricingOptions {
   return {
-    correctionFactor: settings.correctionFactor,
-    ldChargePer10min: settings.ldChargePer10min,
+    // 補正値・LDチャージ・加工単価・予備形状本数は customInputs(scope:"global") 経由。
     criteria: settings.criteria,
     customInputs: settings.customInputs,
     lookupTables: settings.lookupTables,

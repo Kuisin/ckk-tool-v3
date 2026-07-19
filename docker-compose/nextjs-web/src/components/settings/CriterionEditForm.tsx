@@ -71,16 +71,11 @@ const INPUT_VARS = [
   "ldOuterDiameter",
   "ldBladeLength",
   "machiningMinutes",
-  "machiningRatePer10min",
-  "spareShapeCount",
 ];
 const STATE_VARS = ["quantity", "subtotal", "discountRate", "autoRate"];
-const COEFF_VARS = [
-  "correctionFactor",
-  "ldChargePer10min",
-  "materialBasisLength",
-  "coatingFactor",
-];
+// correctionFactor/ldChargePer10min/machiningRatePer10min/spareShapeCount は
+// scope:"global" のカスタム値へ移行し「カスタム入力」グループに表示される。
+const COEFF_VARS = ["materialBasisLength", "coatingFactor"];
 const HELPER_TOKENS = [
   "round(",
   "lookup(",
@@ -137,16 +132,12 @@ export function CriterionEditForm({
   allCriteria,
   criterionId,
   customInputs,
-  correctionFactor,
-  ldChargePer10min,
   lookupTables = [],
 }: {
   allCriteria: Criterion[];
   /** 既存基準の id。null = 新規。 */
   criterionId: string | null;
   customInputs: CustomInputDef[];
-  correctionFactor: number;
-  ldChargePer10min: number;
   lookupTables?: LookupTable[];
 }) {
   const existing = criterionId
@@ -266,8 +257,7 @@ export function CriterionEditForm({
           }
         : { ...SAMPLE_INPUT, toolType: testToolType };
     const r = runCriteriaEngine(sample, {
-      correctionFactor,
-      ldChargePer10min,
+      // 補正値・LDチャージ等のグローバル係数は customInputs(scope:"global") に含まれる。
       criteria: buildList(),
       customInputs,
     });

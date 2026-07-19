@@ -9,10 +9,8 @@ export default async function CriterionNewPage() {
   return (
     <CriterionEditForm
       allCriteria={settings.criteria}
-      correctionFactor={settings.correctionFactor}
       criterionId={null}
       customInputs={settings.customInputs}
-      ldChargePer10min={settings.ldChargePer10min}
       lookupTables={settings.lookupTables}
     />
   );
