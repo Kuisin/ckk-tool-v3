@@ -28,7 +28,7 @@ import {
   IconUpload,
 } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
-import { useRef, useState, useTransition } from "react";
+import { type ChangeEvent, useRef, useState, useTransition } from "react";
 import {
   deleteLookupTable,
   upsertLookupTable,
@@ -42,9 +42,10 @@ import {
 } from "@/components/ui/buttons";
 import { openConfirm } from "@/components/ui/modals";
 import { PageHeader } from "@/components/ui/PageHeader";
-import { FormSection } from "@/components/ui/shells";
+import { FormSection, LocalizedTextInput } from "@/components/ui/shells";
 import { useIsMobile } from "@/hooks/useViewport";
 import { downloadCsv, parseCsv, toCsv } from "@/lib/csv";
+import { localized } from "@/lib/format";
 import type {
   LookupKeyMatch,
   LookupRow,
@@ -96,6 +97,8 @@ export function LookupTableEditor({
 
   const patch = (p: Partial<LookupTable>) => setTable((t) => ({ ...t, ...p }));
   const setRows = (rows: LookupRow[]) => patch({ rows });
+  const setName = (lang: "ja" | "en", v: string) =>
+    setTable((t) => ({ ...t, name: { ...t.name, [lang]: v } }));
 
   // ── キー列（照合方法つき）───────────────────────────────────────────────────
   const addColumn = () =>
@@ -136,7 +139,7 @@ export function LookupTableEditor({
     const body = table.rows.length
       ? table.rows.map((r) => [...r.keys, r.value])
       : [table.keyColumns.map(() => "")].map((k) => [...k, ""]);
-    downloadCsv(`lookup_${safeName(table.name)}.csv`, toCsv([header, ...body]));
+    downloadCsv(`lookup_${safeName(table.id)}.csv`, toCsv([header, ...body]));
   };
   const onFile = async (file: File) => {
     const rows = parseCsv(await file.text());
@@ -183,7 +186,7 @@ export function LookupTableEditor({
       if (res.ok) {
         notifications.show({
           title: "保存しました",
-          message: `「${table.name}」を更新しました`,
+          message: `「${localized(table.name)}」を更新しました`,
           color: "green",
         });
         router.push(LIST);
@@ -199,7 +202,7 @@ export function LookupTableEditor({
   const remove = () =>
     openConfirm({
       title: "表の削除",
-      message: `「${table.name}」を削除します。この操作は取り消せません。`,
+      message: `「${localized(table.name)}」を削除します。この操作は取り消せません。`,
       confirmLabel: "削除",
       onConfirm: () =>
         startTransition(async () => {
@@ -207,7 +210,7 @@ export function LookupTableEditor({
           if (res.ok) {
             notifications.show({
               title: "削除しました",
-              message: `「${table.name}」を削除しました`,
+              message: `「${localized(table.name)}」を削除しました`,
               color: "green",
             });
             router.push(LIST);
@@ -228,12 +231,16 @@ export function LookupTableEditor({
           "システム",
           { label: "試算計算", href: BASE },
           { label: "ルックアップ表", href: LIST },
-          isNew ? "新規" : table.name || "(無名)",
+          isNew ? "新規" : localized(table.name),
         ]}
-        title={isNew ? "新規ルックアップ表" : table.name || "ルックアップ表"}
+        title={
+          isNew
+            ? "新規ルックアップ表"
+            : localized(table.name) || "ルックアップ表"
+        }
       />
       <Text c="dimmed" size="sm">
-        式内では <Code>lookup("{table.name || "表名"}", キー1, ...)</Code>{" "}
+        式内では <Code>lookup("{table.id || "id"}", キー1, ...)</Code>{" "}
         で参照します。照合方法（完全一致 / ≥ / ≤）で Excel の MATCH/VLOOKUP
         近似照合を再現します。一致なしは「既定値」を返します。
       </Text>
@@ -253,12 +260,17 @@ export function LookupTableEditor({
         <Stack gap="sm">
           <Group align="flex-end" gap="sm" wrap="wrap">
             <TextInput
-              description="式内での参照名"
-              label="表名"
-              onChange={(e) => patch({ name: e.currentTarget.value })}
-              placeholder="coatRate"
-              style={{ flex: 1, minWidth: 200 }}
-              value={table.name}
+              description={
+                isNew
+                  ? '式内 lookup("ID") の参照キー。作成後は変更できません'
+                  : "参照キー（作成後は変更不可）"
+              }
+              disabled={!isNew}
+              label="ID（参照キー）"
+              onChange={(e) => patch({ id: e.currentTarget.value })}
+              placeholder="centerless"
+              style={{ flex: 1, minWidth: 220 }}
+              value={table.id}
               withAsterisk
             />
             <Select
@@ -279,6 +291,21 @@ export function LookupTableEditor({
               w={140}
             />
           </Group>
+          <LocalizedTextInput
+            enProps={{
+              value: table.name.en,
+              onChange: (e: ChangeEvent<HTMLInputElement>) =>
+                setName("en", e.currentTarget.value),
+            }}
+            jaProps={{
+              value: table.name.ja,
+              onChange: (e: ChangeEvent<HTMLInputElement>) =>
+                setName("ja", e.currentTarget.value),
+            }}
+            label="表示名"
+            placeholder="センタレス"
+            required
+          />
           <Textarea
             autosize
             label="説明"

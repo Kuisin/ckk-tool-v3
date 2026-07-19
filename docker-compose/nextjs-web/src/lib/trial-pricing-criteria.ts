@@ -13,6 +13,7 @@
  */
 
 import { z } from "zod";
+import type { LocalizedText } from "./format";
 import type { ToolType } from "./trial-pricing";
 
 /** 工具種（試算の product type）— 基準の適用対象の絞り込みに使う。 */
@@ -178,9 +179,10 @@ export interface LookupRow {
 }
 
 export interface LookupTable {
+  /** 不変の管理 ID。式内での参照キー（lookup("<id>", ...keys)）。作成後は変更不可。 */
   id: string;
-  /** 式内での参照名（lookup("<name>", ...keys)）。 */
-  name: string;
+  /** 表示名（多言語 { ja, en }）。参照には使わず一覧・詳細の表示のみ。 */
+  name: LocalizedText;
   description?: string;
   /** キー列名（組み合わせが一意）。順序が lookup 引数の順序。 */
   keyColumns: string[];
@@ -199,8 +201,8 @@ export const lookupRowSchema = z.object({
 });
 
 export const lookupTableSchema = z.object({
-  id: z.string().min(1),
-  name: z.string().min(1, "表名を入力してください"),
+  id: z.string().min(1, "ID を入力してください"),
+  name: z.object({ ja: z.string(), en: z.string() }),
   description: z.string().optional(),
   keyColumns: z
     .array(z.string().min(1))

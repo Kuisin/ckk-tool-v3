@@ -34,6 +34,7 @@ import {
 } from "@/components/ui/buttons";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { FormSection } from "@/components/ui/shells";
+import { localized } from "@/lib/format";
 import {
   TOOL_TYPE_OPTIONS,
   type ToolType,
@@ -193,8 +194,11 @@ export function CriterionEditForm({
       groups.push({
         group: "ルックアップ",
         items: lookupTables
-          .filter((t) => t.name)
-          .map((t) => ({ token: `lookup("${t.name}", )`, label: t.name })),
+          .filter((t) => t.id)
+          .map((t) => ({
+            token: `lookup("${t.id}", )`,
+            label: `${localized(t.name)}（${t.id}）`,
+          })),
       });
     }
     return groups;

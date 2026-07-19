@@ -24,7 +24,7 @@ import {
   IconPencil,
   IconTrash,
 } from "@tabler/icons-react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { updateCriteria } from "@/app/(dashboard)/settings/actions";
 import { CreateButton, GhostButton } from "@/components/ui/buttons";
@@ -55,6 +55,7 @@ export function CriteriaListPanel({ initial }: { initial: Criterion[] }) {
   const [criteria, setCriteria] = useState<Criterion[]>(initial);
   const [isPending, startTransition] = useTransition();
   const router = useRouter();
+  const pathname = usePathname();
 
   // 楽観的更新 + 永続化。失敗時は元に戻す。
   const persist = (next: Criterion[]) => {
@@ -107,7 +108,13 @@ export function CriteriaListPanel({ initial }: { initial: Criterion[] }) {
           key={c.id}
           p="sm"
           radius="sm"
-          style={{ opacity: c.enabled ? 1 : 0.55 }}
+          style={{
+            opacity: c.enabled ? 1 : 0.55,
+            borderColor:
+              pathname === `${BASE}/${encodeURIComponent(c.id)}`
+                ? "var(--mantine-color-blue-5)"
+                : undefined,
+          }}
           withBorder
         >
           <Group gap="sm" wrap="nowrap">
