@@ -41,7 +41,6 @@ import {
   SecondaryButton,
 } from "@/components/ui/buttons";
 import { openConfirm } from "@/components/ui/modals";
-import { PageHeader } from "@/components/ui/PageHeader";
 import { FormSection, LocalizedTextInput } from "@/components/ui/shells";
 import { useIsMobile } from "@/hooks/useViewport";
 import { downloadCsv, parseCsv, toCsv } from "@/lib/csv";
@@ -226,21 +225,9 @@ export function LookupTableEditor({
 
   return (
     <Stack gap="md">
-      <PageHeader
-        breadcrumbs={[
-          "システム",
-          { label: "試算計算", href: BASE },
-          { label: "ルックアップ表", href: LIST },
-          isNew ? "新規" : localized(table.name),
-        ]}
-        title={
-          isNew
-            ? "新規ルックアップ表"
-            : localized(table.name) || "ルックアップ表"
-        }
-      />
       <Text c="dimmed" size="sm">
-        式内では <Code>lookup("{table.id || "id"}", キー1, ...)</Code>{" "}
+        {isNew ? "新規ルックアップ表。" : ""}式内では{" "}
+        <Code>lookup("{table.id || "id"}", キー1, ...)</Code>{" "}
         で参照します。照合方法（完全一致 / ≥ / ≤）で Excel の MATCH/VLOOKUP
         近似照合を再現します。一致なしは「既定値」を返します。
       </Text>
