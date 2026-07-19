@@ -49,6 +49,8 @@ export interface MaterialRow {
   lengthMm: number;
   surfaceFinish: string;
   unit: string;
+  /** 既定材料単価（素材採番表 由来, ¥）。NULL = 未設定. */
+  defaultUnitPrice: number | null;
   isActive: boolean;
 }
 
@@ -208,6 +210,25 @@ export function MaterialTable({ rows }: { rows: MaterialRow[] }) {
       render: (r) => r.surfaceFinish,
     },
     {
+      key: "defaultUnitPrice",
+      header: "既定単価",
+      sortable: true,
+      hideable: true,
+      align: "right",
+      width: 120,
+      sortValue: (r) => r.defaultUnitPrice ?? -1,
+      render: (r) =>
+        r.defaultUnitPrice == null ? (
+          <Text c="dimmed" size="sm">
+            —
+          </Text>
+        ) : (
+          <Text className="tabular-nums" size="sm">
+            ¥{r.defaultUnitPrice.toLocaleString()}
+          </Text>
+        ),
+    },
+    {
       key: "isActive",
       header: "状態",
       sortable: true,
@@ -308,6 +329,11 @@ export function MaterialTable({ rows }: { rows: MaterialRow[] }) {
                   <Text c="dimmed" size="xs">
                     {r.surfaceFinish}
                   </Text>
+                  {r.defaultUnitPrice != null && (
+                    <Text fw={500} size="xs">
+                      ¥{r.defaultUnitPrice.toLocaleString()}
+                    </Text>
+                  )}
                 </Group>
               </Stack>
               <ActiveBadge active={r.isActive} />

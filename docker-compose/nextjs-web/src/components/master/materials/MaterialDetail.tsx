@@ -42,6 +42,7 @@ export interface MaterialDetailData {
   kindCode: string;
   nominalDiameterMm: number | null;
   manufacturerModel: string;
+  defaultUnitPrice: number | null;
   nameJa: string;
   nameEn: string;
   unit: string;
@@ -131,6 +132,14 @@ export function MaterialDetail({
         <FieldValue
           label="メーカ型式"
           value={record.manufacturerModel || "—"}
+        />
+        <FieldValue
+          label="既定単価"
+          value={
+            record.defaultUnitPrice != null
+              ? `¥${record.defaultUnitPrice.toLocaleString()}`
+              : "—"
+          }
         />
         <FieldValue label="単位" value={record.unit} />
       </SummaryGrid>

@@ -45,6 +45,8 @@ export default async function MasterMaterialsDetailPage({
     nominalDiameterMm:
       r.nominalDiameterMm != null ? Number(r.nominalDiameterMm) : null,
     manufacturerModel: r.manufacturerModel ?? "",
+    defaultUnitPrice:
+      r.defaultUnitPrice != null ? Number(r.defaultUnitPrice) : null,
     nameJa: name?.ja ?? "",
     nameEn: name?.en ?? "",
     unit: r.unit,
