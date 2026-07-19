@@ -71,9 +71,9 @@ export function lookupTableValue(
   return t.valueType === "number" ? Number(row.value) : row.value;
 }
 
-/** Index of DEFAULT_LOOKUP_TABLES by name (built once). */
-const DEFAULT_LOOKUP_BY_NAME = new Map<string, LookupTable>(
-  DEFAULT_LOOKUP_TABLES.map((t) => [t.name, t]),
+/** Index of DEFAULT_LOOKUP_TABLES by id (the immutable reference key). */
+const DEFAULT_LOOKUP_BY_ID = new Map<string, LookupTable>(
+  DEFAULT_LOOKUP_TABLES.map((t) => [t.id, t]),
 );
 
 /** 2D matrix lookup by (diameter, length) using descending approx match. */
@@ -1082,8 +1082,8 @@ export function coatingRawCost(
 ): number {
   if (!coating || coating === "無") return 0;
   // 全 28 コート表（Excel 本社/JFE/JCC/OSG/balzers/オンワード）を lookup 表として
-  // seed 済み。coating:<名称> を径×全長(ge/ge)で参照する。
-  const table = DEFAULT_LOOKUP_BY_NAME.get(`coating:${coating}`);
+  // seed 済み。id = coating:<名称> を径×全長(ge/ge)で参照する。
+  const table = DEFAULT_LOOKUP_BY_ID.get(`coating:${coating}`);
   if (table) return Number(lookupTableValue(table, [diameter, length]));
   // 未登録コート（表なし）は 0（旧デモ推定は廃止）。
   return 0;

@@ -10,9 +10,10 @@
 
 import {
   ActionIcon,
+  Box,
+  Divider,
   Group,
   NumberInput,
-  Paper,
   Select,
   Stack,
   Switch,
@@ -220,7 +221,8 @@ export function CustomInputsForm({
             </Text>
           )}
           {settings.customInputs.map((d, i) => (
-            <Paper key={`ci-${d.order}-${i}`} p="sm" radius="sm" withBorder>
+            <Box key={`ci-${d.order}-${i}`}>
+              {i > 0 && <Divider mb="sm" />}
               <Group align="flex-start" gap="sm" wrap="wrap">
                 <TextInput
                   disabled={d.scope === "global"}
@@ -344,7 +346,7 @@ export function CustomInputsForm({
                   </ActionIcon>
                 )}
               </Group>
-            </Paper>
+            </Box>
           ))}
           <GhostButton
             leftSection={<IconPlus size={16} />}

@@ -1,13 +1,12 @@
 // AUTO-GENERATED from Excel「最新見積書試算」2024年度第4版 via lookups.json.
-// Reference tables converted to admin LookupTable shape (keyMatch: exact|ge|le).
-// Regenerate rather than hand-edit. See _docs / simulation-spec.
+// 参照キーは不変の id。name は表示用 { ja, en }。手編集せず再生成すること。
 
 import type { LookupTable } from "./trial-pricing-criteria";
 
 export const DEFAULT_LOOKUP_TABLES: LookupTable[] = [
   {
     id: "centerless",
-    name: "centerless",
+    name: { ja: "センタレス", en: "Centerless" },
     keyColumns: ["最大径", "全長"],
     keyMatch: ["ge", "ge"],
     valueType: "number",
@@ -97,7 +96,7 @@ export const DEFAULT_LOOKUP_TABLES: LookupTable[] = [
   },
   {
     id: "step_machining",
-    name: "step_machining",
+    name: { ja: "段加工費", en: "Step machining" },
     keyColumns: ["最大径", "段加工長"],
     keyMatch: ["ge", "ge"],
     valueType: "number",
@@ -174,7 +173,7 @@ export const DEFAULT_LOOKUP_TABLES: LookupTable[] = [
   },
   {
     id: "neck_machining",
-    name: "neck_machining",
+    name: { ja: "首下加工費", en: "Neck machining" },
     keyColumns: ["最大径", "首下加工長"],
     keyMatch: ["ge", "ge"],
     valueType: "number",
@@ -304,7 +303,7 @@ export const DEFAULT_LOOKUP_TABLES: LookupTable[] = [
   },
   {
     id: "cylinder_machining",
-    name: "cylinder_machining",
+    name: { ja: "円筒加工費", en: "Cylinder machining" },
     keyColumns: ["最大径", "全長"],
     keyMatch: ["ge", "ge"],
     valueType: "number",
@@ -473,7 +472,7 @@ export const DEFAULT_LOOKUP_TABLES: LookupTable[] = [
   },
   {
     id: "coating:CX200",
-    name: "coating:CX200",
+    name: { ja: "コート CX200", en: "Coating CX200" },
     keyColumns: ["最大径", "全長"],
     keyMatch: ["ge", "ge"],
     valueType: "number",
@@ -531,7 +530,7 @@ export const DEFAULT_LOOKUP_TABLES: LookupTable[] = [
   },
   {
     id: "coating:CX400",
-    name: "coating:CX400",
+    name: { ja: "コート CX400", en: "Coating CX400" },
     keyColumns: ["最大径", "全長"],
     keyMatch: ["ge", "ge"],
     valueType: "number",
@@ -631,7 +630,7 @@ export const DEFAULT_LOOKUP_TABLES: LookupTable[] = [
   },
   {
     id: "coating:CX500",
-    name: "coating:CX500",
+    name: { ja: "コート CX500", en: "Coating CX500" },
     keyColumns: ["最大径", "全長"],
     keyMatch: ["ge", "ge"],
     valueType: "number",
@@ -791,7 +790,7 @@ export const DEFAULT_LOOKUP_TABLES: LookupTable[] = [
   },
   {
     id: "coating:JFE SX-W",
-    name: "coating:JFE SX-W",
+    name: { ja: "コート JFE SX-W", en: "Coating JFE SX-W" },
     keyColumns: ["最大径", "全長"],
     keyMatch: ["ge", "ge"],
     valueType: "number",
@@ -876,7 +875,7 @@ export const DEFAULT_LOOKUP_TABLES: LookupTable[] = [
   },
   {
     id: "coating:JFE SX-3",
-    name: "coating:JFE SX-3",
+    name: { ja: "コート JFE SX-3", en: "Coating JFE SX-3" },
     keyColumns: ["最大径", "全長"],
     keyMatch: ["ge", "ge"],
     valueType: "number",
@@ -961,7 +960,7 @@ export const DEFAULT_LOOKUP_TABLES: LookupTable[] = [
   },
   {
     id: "coating:JFE TiAlN",
-    name: "coating:JFE TiAlN",
+    name: { ja: "コート JFE TiAlN", en: "Coating JFE TiAlN" },
     keyColumns: ["最大径", "全長"],
     keyMatch: ["ge", "ge"],
     valueType: "number",
@@ -1046,7 +1045,7 @@ export const DEFAULT_LOOKUP_TABLES: LookupTable[] = [
   },
   {
     id: "coating:JFE CrN",
-    name: "coating:JFE CrN",
+    name: { ja: "コート JFE CrN", en: "Coating JFE CrN" },
     keyColumns: ["最大径", "全長"],
     keyMatch: ["ge", "ge"],
     valueType: "number",
@@ -1131,7 +1130,7 @@ export const DEFAULT_LOOKUP_TABLES: LookupTable[] = [
   },
   {
     id: "coating:JFE TiN",
-    name: "coating:JFE TiN",
+    name: { ja: "コート JFE TiN", en: "Coating JFE TiN" },
     keyColumns: ["最大径", "全長"],
     keyMatch: ["ge", "ge"],
     valueType: "number",
@@ -1216,7 +1215,7 @@ export const DEFAULT_LOOKUP_TABLES: LookupTable[] = [
   },
   {
     id: "coating:JCC ﾏｰｷｭﾘｰW",
-    name: "coating:JCC ﾏｰｷｭﾘｰW",
+    name: { ja: "コート JCC ﾏｰｷｭﾘｰW", en: "Coating JCC ﾏｰｷｭﾘｰW" },
     keyColumns: ["最大径", "全長"],
     keyMatch: ["ge", "ge"],
     valueType: "number",
@@ -1334,7 +1333,7 @@ export const DEFAULT_LOOKUP_TABLES: LookupTable[] = [
   },
   {
     id: "coating:JCC DLC",
-    name: "coating:JCC DLC",
+    name: { ja: "コート JCC DLC", en: "Coating JCC DLC" },
     keyColumns: ["最大径", "全長"],
     keyMatch: ["ge", "ge"],
     valueType: "number",
@@ -1514,7 +1513,7 @@ export const DEFAULT_LOOKUP_TABLES: LookupTable[] = [
   },
   {
     id: "coating:JCC ﾌﾟﾗｲﾑC",
-    name: "coating:JCC ﾌﾟﾗｲﾑC",
+    name: { ja: "コート JCC ﾌﾟﾗｲﾑC", en: "Coating JCC ﾌﾟﾗｲﾑC" },
     keyColumns: ["最大径", "全長"],
     keyMatch: ["ge", "ge"],
     valueType: "number",
@@ -1689,7 +1688,7 @@ export const DEFAULT_LOOKUP_TABLES: LookupTable[] = [
   },
   {
     id: "coating:JCC TiAlN",
-    name: "coating:JCC TiAlN",
+    name: { ja: "コート JCC TiAlN", en: "Coating JCC TiAlN" },
     keyColumns: ["最大径", "全長"],
     keyMatch: ["ge", "ge"],
     valueType: "number",
@@ -1719,7 +1718,7 @@ export const DEFAULT_LOOKUP_TABLES: LookupTable[] = [
   },
   {
     id: "coating:OSG DLC",
-    name: "coating:OSG DLC",
+    name: { ja: "コート OSG DLC", en: "Coating OSG DLC" },
     keyColumns: ["最大径", "全長"],
     keyMatch: ["ge", "ge"],
     valueType: "number",
@@ -1753,7 +1752,7 @@ export const DEFAULT_LOOKUP_TABLES: LookupTable[] = [
   },
   {
     id: "coating:OSG WXL",
-    name: "coating:OSG WXL",
+    name: { ja: "コート OSG WXL", en: "Coating OSG WXL" },
     keyColumns: ["最大径", "全長"],
     keyMatch: ["ge", "ge"],
     valueType: "number",
@@ -1836,7 +1835,7 @@ export const DEFAULT_LOOKUP_TABLES: LookupTable[] = [
   },
   {
     id: "coating:OSG SXL",
-    name: "coating:OSG SXL",
+    name: { ja: "コート OSG SXL", en: "Coating OSG SXL" },
     keyColumns: ["最大径", "全長"],
     keyMatch: ["ge", "ge"],
     valueType: "number",
@@ -1919,7 +1918,7 @@ export const DEFAULT_LOOKUP_TABLES: LookupTable[] = [
   },
   {
     id: "coating:OSG DUROREY",
-    name: "coating:OSG DUROREY",
+    name: { ja: "コート OSG DUROREY", en: "Coating OSG DUROREY" },
     keyColumns: ["最大径", "全長"],
     keyMatch: ["ge", "ge"],
     valueType: "number",
@@ -2002,7 +2001,7 @@ export const DEFAULT_LOOKUP_TABLES: LookupTable[] = [
   },
   {
     id: "coating:OSG WD1",
-    name: "coating:OSG WD1",
+    name: { ja: "コート OSG WD1", en: "Coating OSG WD1" },
     keyColumns: ["最大径", "全長"],
     keyMatch: ["ge", "ge"],
     valueType: "number",
@@ -2084,7 +2083,7 @@ export const DEFAULT_LOOKUP_TABLES: LookupTable[] = [
   },
   {
     id: "coating:OSG EgiAs",
-    name: "coating:OSG EgiAs",
+    name: { ja: "コート OSG EgiAs", en: "Coating OSG EgiAs" },
     keyColumns: ["最大径", "全長"],
     keyMatch: ["ge", "ge"],
     valueType: "number",
@@ -2166,7 +2165,7 @@ export const DEFAULT_LOOKUP_TABLES: LookupTable[] = [
   },
   {
     id: "coating:OSG IGUSS",
-    name: "coating:OSG IGUSS",
+    name: { ja: "コート OSG IGUSS", en: "Coating OSG IGUSS" },
     keyColumns: ["最大径", "全長"],
     keyMatch: ["ge", "ge"],
     valueType: "number",
@@ -2194,7 +2193,7 @@ export const DEFAULT_LOOKUP_TABLES: LookupTable[] = [
   },
   {
     id: "coating:OSG IchAda",
-    name: "coating:OSG IchAda",
+    name: { ja: "コート OSG IchAda", en: "Coating OSG IchAda" },
     keyColumns: ["最大径", "全長"],
     keyMatch: ["ge", "ge"],
     valueType: "number",
@@ -2268,7 +2267,7 @@ export const DEFAULT_LOOKUP_TABLES: LookupTable[] = [
   },
   {
     id: "coating:OSG FX",
-    name: "coating:OSG FX",
+    name: { ja: "コート OSG FX", en: "Coating OSG FX" },
     keyColumns: ["最大径", "全長"],
     keyMatch: ["ge", "ge"],
     valueType: "number",
@@ -2348,7 +2347,7 @@ export const DEFAULT_LOOKUP_TABLES: LookupTable[] = [
   },
   {
     id: "coating:BAL ALNOVA",
-    name: "coating:BAL ALNOVA",
+    name: { ja: "コート BAL ALNOVA", en: "Coating BAL ALNOVA" },
     keyColumns: ["最大径", "全長"],
     keyMatch: ["ge", "ge"],
     valueType: "number",
@@ -2418,7 +2417,7 @@ export const DEFAULT_LOOKUP_TABLES: LookupTable[] = [
   },
   {
     id: "coating:BAL LATUMA",
-    name: "coating:BAL LATUMA",
+    name: { ja: "コート BAL LATUMA", en: "Coating BAL LATUMA" },
     keyColumns: ["最大径", "全長"],
     keyMatch: ["ge", "ge"],
     valueType: "number",
@@ -2488,7 +2487,7 @@ export const DEFAULT_LOOKUP_TABLES: LookupTable[] = [
   },
   {
     id: "coating:BAL ｱﾙｸﾛｰﾅ",
-    name: "coating:BAL ｱﾙｸﾛｰﾅ",
+    name: { ja: "コート BAL ｱﾙｸﾛｰﾅ", en: "Coating BAL ｱﾙｸﾛｰﾅ" },
     keyColumns: ["最大径", "全長"],
     keyMatch: ["ge", "ge"],
     valueType: "number",
@@ -2558,7 +2557,7 @@ export const DEFAULT_LOOKUP_TABLES: LookupTable[] = [
   },
   {
     id: "coating:BAL HELICA",
-    name: "coating:BAL HELICA",
+    name: { ja: "コート BAL HELICA", en: "Coating BAL HELICA" },
     keyColumns: ["最大径", "全長"],
     keyMatch: ["ge", "ge"],
     valueType: "number",
@@ -2628,7 +2627,7 @@ export const DEFAULT_LOOKUP_TABLES: LookupTable[] = [
   },
   {
     id: "coating:BAL ALDURA",
-    name: "coating:BAL ALDURA",
+    name: { ja: "コート BAL ALDURA", en: "Coating BAL ALDURA" },
     keyColumns: ["最大径", "全長"],
     keyMatch: ["ge", "ge"],
     valueType: "number",
@@ -2698,7 +2697,7 @@ export const DEFAULT_LOOKUP_TABLES: LookupTable[] = [
   },
   {
     id: "coating:BAL PERTURA",
-    name: "coating:BAL PERTURA",
+    name: { ja: "コート BAL PERTURA", en: "Coating BAL PERTURA" },
     keyColumns: ["最大径", "全長"],
     keyMatch: ["ge", "ge"],
     valueType: "number",
@@ -2768,7 +2767,7 @@ export const DEFAULT_LOOKUP_TABLES: LookupTable[] = [
   },
   {
     id: "coating:オンワード OS-T",
-    name: "coating:オンワード OS-T",
+    name: { ja: "コート オンワード OS-T", en: "Coating オンワード OS-T" },
     keyColumns: ["最大径", "全長"],
     keyMatch: ["ge", "ge"],
     valueType: "number",
@@ -2815,7 +2814,7 @@ export const DEFAULT_LOOKUP_TABLES: LookupTable[] = [
   },
   {
     id: "coating:オンワード OS-C",
-    name: "coating:オンワード OS-C",
+    name: { ja: "コート オンワード OS-C", en: "Coating オンワード OS-C" },
     keyColumns: ["最大径", "全長"],
     keyMatch: ["ge", "ge"],
     valueType: "number",
@@ -2862,7 +2861,7 @@ export const DEFAULT_LOOKUP_TABLES: LookupTable[] = [
   },
   {
     id: "coating:オンワード OS-8",
-    name: "coating:オンワード OS-8",
+    name: { ja: "コート オンワード OS-8", en: "Coating オンワード OS-8" },
     keyColumns: ["最大径", "全長"],
     keyMatch: ["ge", "ge"],
     valueType: "number",
@@ -2909,7 +2908,7 @@ export const DEFAULT_LOOKUP_TABLES: LookupTable[] = [
   },
   {
     id: "coating:オンワード OS-Ⅶ",
-    name: "coating:オンワード OS-Ⅶ",
+    name: { ja: "コート オンワード OS-Ⅶ", en: "Coating オンワード OS-Ⅶ" },
     keyColumns: ["最大径", "全長"],
     keyMatch: ["ge", "ge"],
     valueType: "number",
@@ -2956,7 +2955,7 @@ export const DEFAULT_LOOKUP_TABLES: LookupTable[] = [
   },
   {
     id: "rate_step_type",
-    name: "rate_step_type",
+    name: { ja: "段加工種類 掛け率", en: "Step-type rate" },
     keyColumns: ["段加工種類"],
     keyMatch: ["exact"],
     valueType: "number",
@@ -2972,7 +2971,7 @@ export const DEFAULT_LOOKUP_TABLES: LookupTable[] = [
   },
   {
     id: "rate_neck_type",
-    name: "rate_neck_type",
+    name: { ja: "首下種類 掛け率", en: "Neck-type rate" },
     keyColumns: ["首下加工種類"],
     keyMatch: ["exact"],
     valueType: "number",
@@ -2985,7 +2984,7 @@ export const DEFAULT_LOOKUP_TABLES: LookupTable[] = [
   },
   {
     id: "rate_cylinder_type",
-    name: "rate_cylinder_type",
+    name: { ja: "円筒種類 掛け率", en: "Cylinder-type rate" },
     keyColumns: ["円筒種類"],
     keyMatch: ["exact"],
     valueType: "number",
@@ -2997,7 +2996,7 @@ export const DEFAULT_LOOKUP_TABLES: LookupTable[] = [
   },
   {
     id: "amount_lap",
-    name: "amount_lap",
+    name: { ja: "ラップ処理 金額", en: "Lap amount" },
     keyColumns: ["ラップ処理"],
     keyMatch: ["exact"],
     valueType: "number",
@@ -3011,7 +3010,7 @@ export const DEFAULT_LOOKUP_TABLES: LookupTable[] = [
   },
   {
     id: "amount_inspection",
-    name: "amount_inspection",
+    name: { ja: "検査成績書 金額", en: "Inspection amount" },
     keyColumns: ["検査成績書"],
     keyMatch: ["exact"],
     valueType: "number",
@@ -3028,7 +3027,7 @@ export const DEFAULT_LOOKUP_TABLES: LookupTable[] = [
   },
   {
     id: "discount_by_lot",
-    name: "discount_by_lot",
+    name: { ja: "ロット割引率", en: "Lot discount rate" },
     keyColumns: ["ロット数"],
     keyMatch: ["le"],
     valueType: "number",
@@ -3047,7 +3046,7 @@ export const DEFAULT_LOOKUP_TABLES: LookupTable[] = [
   },
   {
     id: "ld_tip",
-    name: "ld_tip",
+    name: { ja: "LD 先端のみ", en: "LD tip" },
     keyColumns: ["LD外径"],
     keyMatch: ["le"],
     valueType: "number",
@@ -3084,7 +3083,7 @@ export const DEFAULT_LOOKUP_TABLES: LookupTable[] = [
   },
   {
     id: "ld_tip_gash",
-    name: "ld_tip_gash",
+    name: { ja: "LD 先端+ギャッシュ", en: "LD tip + gash" },
     keyColumns: ["LD外径"],
     keyMatch: ["le"],
     valueType: "number",
@@ -3121,7 +3120,7 @@ export const DEFAULT_LOOKUP_TABLES: LookupTable[] = [
   },
   {
     id: "ld_tip_outer",
-    name: "ld_tip_outer",
+    name: { ja: "LD 先端+外周", en: "LD tip + outer" },
     keyColumns: ["LD外径", "LD刃長"],
     keyMatch: ["ge", "ge"],
     valueType: "number",

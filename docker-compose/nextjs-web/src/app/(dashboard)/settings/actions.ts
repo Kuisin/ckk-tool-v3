@@ -158,29 +158,30 @@ export async function updateCriteria(
 }
 
 /** ルックアップ表を保存（表名の一意性を検証）。 */
-/** 表名の一意性・キー列名の一意性・行のキー数一致/一意/数値型を検証。 */
+/** ID の一意性・キー列名の一意性・行のキー数一致/一意/数値型を検証。 */
 function validateLookupTables(tables: LookupTable[]): string | null {
-  const names = new Set<string>();
+  const ids = new Set<string>();
   for (const t of tables) {
-    if (names.has(t.name)) return `表名が重複しています: ${t.name}`;
-    names.add(t.name);
+    const label = t.name?.ja || t.id;
+    if (ids.has(t.id)) return `ID が重複しています: ${t.id}`;
+    ids.add(t.id);
     const colSet = new Set(t.keyColumns);
     if (colSet.size !== t.keyColumns.length)
-      return `「${t.name}」のキー列名が重複しています`;
+      return `「${label}」のキー列名が重複しています`;
     const combos = new Set<string>();
     for (const r of t.rows) {
       if (r.keys.length !== t.keyColumns.length)
-        return `「${t.name}」の行のキー数が列数と一致しません`;
+        return `「${label}」の行のキー数が列数と一致しません`;
       const combo = lookupCompositeKey(r.keys);
       if (combos.has(combo))
-        return `「${t.name}」でキーの組み合わせが重複しています: ${r.keys.join(" / ")}`;
+        return `「${label}」でキーの組み合わせが重複しています: ${r.keys.join(" / ")}`;
       combos.add(combo);
       if (
         t.valueType === "number" &&
         r.value.trim() !== "" &&
         !Number.isFinite(Number(r.value))
       )
-        return `「${t.name}」の値が数値ではありません: ${r.value}`;
+        return `「${label}」の値が数値ではありません: ${r.value}`;
     }
   }
   return null;

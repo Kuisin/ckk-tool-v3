@@ -48,8 +48,8 @@ const criteria = (expr: string): Criterion[] => [
 ];
 
 const table: LookupTable = {
-  id: "1",
-  name: "rate",
+  id: "rate",
+  name: { ja: "レート", en: "rate" },
   keyColumns: ["shape", "grade"],
   valueType: "number",
   rows: [
@@ -78,8 +78,8 @@ describe("engine lookup() — multi-column", () => {
 
   it("string table returns a string value (usable in expressions)", () => {
     const strTable: LookupTable = {
-      id: "2",
-      name: "code",
+      id: "code",
+      name: { ja: "コード", en: "code" },
       keyColumns: ["k"],
       valueType: "string",
       rows: [{ keys: ["a"], value: "5" }],
