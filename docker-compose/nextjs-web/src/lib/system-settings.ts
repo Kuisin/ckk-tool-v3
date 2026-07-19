@@ -27,6 +27,7 @@ const NAMESPACE = "trial_pricing";
 const KEY_MAP: Record<keyof TrialPricingSettings, string> = {
   materialPriceBasis: "trial_pricing.material_price_basis",
   materialPriceLookbackMonths: "trial_pricing.lookback_months",
+  defaultMaterialPrice: "trial_pricing.default_material_price",
   criteria: "trial_pricing.criteria",
   customInputs: "trial_pricing.custom_inputs",
   lookupTables: "trial_pricing.lookup_tables",

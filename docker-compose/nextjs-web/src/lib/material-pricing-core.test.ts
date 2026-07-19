@@ -24,6 +24,20 @@ describe("computeReferencePrice", () => {
     const r = computeReferencePrice([], "MAX", 6);
     expect(r.hasHistory).toBe(false);
     expect(r.unitPrice).toBe(0);
+    expect(r.usedDefault).toBe(false);
+  });
+
+  it("empty history + default price → uses default, usedDefault=true", () => {
+    const r = computeReferencePrice([], "MAX", 6, undefined, 4200);
+    expect(r.hasHistory).toBe(false);
+    expect(r.unitPrice).toBe(4200);
+    expect(r.usedDefault).toBe(true);
+  });
+
+  it("with history the default is ignored (usedDefault=false)", () => {
+    const r = computeReferencePrice(HISTORY, "MAX", 6, undefined, 4200);
+    expect(r.usedDefault).toBe(false);
+    expect(r.unitPrice).toBe(5420);
   });
 
   it("MAX picks the highest in the lookback window", () => {

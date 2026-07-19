@@ -42,6 +42,8 @@ export default async function TrialEstimateNewPage({
       history,
       settings.materialPriceBasis,
       settings.materialPriceLookbackMonths,
+      undefined,
+      settings.defaultMaterialPrice,
     ),
   };
 

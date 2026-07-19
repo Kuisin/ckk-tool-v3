@@ -23,6 +23,8 @@ export interface TrialPricingSettings {
   materialPriceBasis: MaterialPriceBasis;
   /** さかのぼる月数 (default 6). */
   materialPriceLookbackMonths: number;
+  /** 仕入実績が無いときに使う既定材料単価 (¥/1000mm)。0 = 既定なし（従来どおり0）. */
+  defaultMaterialPrice: number;
   // ── 計算基準（自由設定）＋カスタム入力 ──────────────────────────────────
   // 旧「既定値・係数（グローバル）」の 4 値（加工単価/予備形状本数/補正値/LDチャージ）
   // は customInputs の scope:"global" 固定係数へ移行した。
@@ -42,6 +44,7 @@ export interface TrialPricingSettings {
 export const DEFAULT_TRIAL_PRICING_SETTINGS: TrialPricingSettings = {
   materialPriceBasis: "MAX",
   materialPriceLookbackMonths: 6,
+  defaultMaterialPrice: 0,
   criteria: DEFAULT_CRITERIA,
   customInputs: DEFAULT_CUSTOM_INPUTS,
   lookupTables: DEFAULT_LOOKUP_TABLES,

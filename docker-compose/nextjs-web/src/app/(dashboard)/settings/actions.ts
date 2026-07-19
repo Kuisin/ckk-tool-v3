@@ -54,6 +54,7 @@ import type { TrialPricingSettings } from "@/lib/trial-pricing-settings";
 const settingsInput = z.object({
   materialPriceBasis: z.enum(["MAX", "LATEST", "AVERAGE"]),
   materialPriceLookbackMonths: z.number().int().min(1).max(36),
+  defaultMaterialPrice: z.number().min(0),
   customInputs: z.array(customInputDefSchema),
 });
 
