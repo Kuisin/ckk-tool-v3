@@ -40,6 +40,7 @@ import {
   customInputDefSchema,
   type LookupTable,
   lookupCompositeKey,
+  lookupTableSchema,
   lookupTablesArraySchema,
   RESERVED_KEYS,
   TRIAL_TOOL_TYPES,
@@ -157,6 +158,59 @@ export async function updateCriteria(
 }
 
 /** ルックアップ表を保存（表名の一意性を検証）。 */
+/** 表名の一意性・キー列名の一意性・行のキー数一致/一意/数値型を検証。 */
+function validateLookupTables(tables: LookupTable[]): string | null {
+  const names = new Set<string>();
+  for (const t of tables) {
+    if (names.has(t.name)) return `表名が重複しています: ${t.name}`;
+    names.add(t.name);
+    const colSet = new Set(t.keyColumns);
+    if (colSet.size !== t.keyColumns.length)
+      return `「${t.name}」のキー列名が重複しています`;
+    const combos = new Set<string>();
+    for (const r of t.rows) {
+      if (r.keys.length !== t.keyColumns.length)
+        return `「${t.name}」の行のキー数が列数と一致しません`;
+      const combo = lookupCompositeKey(r.keys);
+      if (combos.has(combo))
+        return `「${t.name}」でキーの組み合わせが重複しています: ${r.keys.join(" / ")}`;
+      combos.add(combo);
+      if (
+        t.valueType === "number" &&
+        r.value.trim() !== "" &&
+        !Number.isFinite(Number(r.value))
+      )
+        return `「${t.name}」の値が数値ではありません: ${r.value}`;
+    }
+  }
+  return null;
+}
+
+/** ルックアップ表を保存（監査 + 再検証）。呼び出し前に検証済みの配列を渡す。 */
+async function persistLookupTables(
+  next: LookupTable[],
+  before: TrialPricingSettings,
+): Promise<ActionResult> {
+  try {
+    await saveTrialPricingSettings({ ...before, lookupTables: next });
+    await recordAudit({
+      action: "UPDATE",
+      tableName: "system_settings",
+      recordId: "trial_pricing.lookup_tables",
+      before: { lookupTables: before.lookupTables },
+      after: { lookupTables: next },
+    });
+    revalidatePath("/settings/trial-pricing-engine");
+    revalidatePath("/settings/trial-pricing-engine/lookups");
+    revalidatePath("/sales/trial-estimates");
+    return actionOk();
+  } catch (e) {
+    return actionError(
+      prismaErrorMessage(e, "ルックアップ表の保存に失敗しました"),
+    );
+  }
+}
+
 export async function updateLookupTables(
   tables: LookupTable[],
 ): Promise<ActionResult> {
@@ -168,52 +222,44 @@ export async function updateLookupTables(
       parsed.error.issues[0]?.message ?? "ルックアップ表が不正です",
     );
   }
-  const names = new Set<string>();
-  for (const t of parsed.data) {
-    if (names.has(t.name))
-      return actionError(`表名が重複しています: ${t.name}`);
-    names.add(t.name);
-    // キー列名の重複を弾く。
-    const colSet = new Set(t.keyColumns);
-    if (colSet.size !== t.keyColumns.length)
-      return actionError(`「${t.name}」のキー列名が重複しています`);
-    // 行のキー数一致・組み合わせ一意・数値型なら数値であることを検証。
-    const combos = new Set<string>();
-    for (const r of t.rows) {
-      if (r.keys.length !== t.keyColumns.length)
-        return actionError(`「${t.name}」の行のキー数が列数と一致しません`);
-      const combo = lookupCompositeKey(r.keys);
-      if (combos.has(combo))
-        return actionError(
-          `「${t.name}」でキーの組み合わせが重複しています: ${r.keys.join(" / ")}`,
-        );
-      combos.add(combo);
-      if (
-        t.valueType === "number" &&
-        r.value.trim() !== "" &&
-        !Number.isFinite(Number(r.value))
-      )
-        return actionError(`「${t.name}」の値が数値ではありません: ${r.value}`);
-    }
-  }
-  try {
-    const before = await getTrialPricingSettings();
-    await saveTrialPricingSettings({ ...before, lookupTables: parsed.data });
-    await recordAudit({
-      action: "UPDATE",
-      tableName: "system_settings",
-      recordId: "trial_pricing.lookup_tables",
-      before: { lookupTables: before.lookupTables },
-      after: { lookupTables: parsed.data },
-    });
-    revalidatePath("/settings/trial-pricing-engine");
-    revalidatePath("/sales/trial-estimates");
-    return actionOk();
-  } catch (e) {
+  const err = validateLookupTables(parsed.data);
+  if (err) return actionError(err);
+  const before = await getTrialPricingSettings();
+  return persistLookupTables(parsed.data, before);
+}
+
+/** 単一のルックアップ表を追加/更新（id で upsert）。詳細ページの保存から呼ぶ。 */
+export async function upsertLookupTable(
+  table: LookupTable,
+): Promise<ActionResult> {
+  const authz = await checkPermission("system", "UPDATE");
+  if (!authz.ok) return actionError(authz.error);
+  const parsed = lookupTableSchema.safeParse(table);
+  if (!parsed.success) {
     return actionError(
-      prismaErrorMessage(e, "ルックアップ表の保存に失敗しました"),
+      parsed.error.issues[0]?.message ?? "ルックアップ表が不正です",
     );
   }
+  const before = await getTrialPricingSettings();
+  const idx = before.lookupTables.findIndex((t) => t.id === parsed.data.id);
+  const next =
+    idx >= 0
+      ? before.lookupTables.map((t, i) => (i === idx ? parsed.data : t))
+      : [...before.lookupTables, parsed.data];
+  const err = validateLookupTables(next);
+  if (err) return actionError(err);
+  return persistLookupTables(next, before);
+}
+
+/** 単一のルックアップ表を削除（id 指定）。詳細ページから呼ぶ。 */
+export async function deleteLookupTable(id: string): Promise<ActionResult> {
+  const authz = await checkPermission("system", "UPDATE");
+  if (!authz.ok) return actionError(authz.error);
+  const before = await getTrialPricingSettings();
+  const next = before.lookupTables.filter((t) => t.id !== id);
+  if (next.length === before.lookupTables.length)
+    return actionError("対象の表が見つかりません");
+  return persistLookupTables(next, before);
 }
 
 // ── 製品種別（SY04） ──────────────────────────────────────────────────────────
