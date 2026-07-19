@@ -113,10 +113,15 @@ function buildPriceSnapshot(
   settings: Awaited<ReturnType<typeof getTrialPricingSettings>>,
 ): Prisma.InputJsonValue {
   const result = calcTrialPricing(input, toTrialPricingOptions(settings));
+  // 補正値は scope:"global" のカスタム固定係数から取得（記録用）。
+  const correctionFactor = Number(
+    settings.customInputs.find((d) => d.key === "correctionFactor")?.default ??
+      1.25,
+  );
   return {
     ...result,
     pricedAt: new Date().toISOString(),
-    correctionFactor: settings.correctionFactor,
+    correctionFactor,
   } as unknown as Prisma.InputJsonValue;
 }
 

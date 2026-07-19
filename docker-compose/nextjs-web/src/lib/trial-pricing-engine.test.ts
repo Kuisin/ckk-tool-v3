@@ -144,12 +144,70 @@ describe("criteria engine parity with legacy", () => {
   }
 
   it("respects correction/ld overrides identically", () => {
-    const opts = { correctionFactor: 1.4, ldChargePer10min: 9000 };
+    // 補正値・LDチャージは scope:"global" のカスタム値へ移行したため、エンジンへは
+    // customInputs で上書きし、レガシー参照実装へは opts で同値を渡してパリティを見る。
     const input = cases[8].input; // LD case
+    const customInputs: CustomInputDef[] = [
+      {
+        key: "correctionFactor",
+        label: "補正値",
+        type: "number",
+        default: 1.4,
+        order: 1,
+        scope: "global",
+      },
+      {
+        key: "ldChargePer10min",
+        label: "LDチャージ",
+        type: "number",
+        default: 9000,
+        order: 2,
+        scope: "global",
+      },
+    ];
+    const opts = { correctionFactor: 1.4, ldChargePer10min: 9000 };
     expectParity(
-      calcTrialPricing(input, opts),
+      calcTrialPricing(input, { customInputs }),
       calcTrialPricingLegacy(input, opts),
     );
+  });
+});
+
+describe("Excel fidelity — coating factor / lap OSG / full coating set", () => {
+  // CX200[dia12][len200] = 245 (本社 sheet). × factor, ROUNDUP 10円.
+  it("coating factor is ×1.5 for round bar, ×1.3 for cylinder & OH", () => {
+    const round = calcTrialPricing({ ...base, coating: "CX200" });
+    const cyl = calcTrialPricing({
+      ...base,
+      coating: "CX200",
+      toolType: "CYLINDER",
+      materialBarPrice: 0,
+      cylinderMaterialPrice: 5000,
+      cylinderType: "NORMAL",
+    });
+    const oh = calcTrialPricing({ ...base, coating: "CX200", toolType: "OH" });
+    expect(round.breakdown.coating).toBe(370); // ceil(245*1.5,10)
+    expect(cyl.breakdown.coating).toBe(320); // ceil(245*1.3,10)
+    expect(oh.breakdown.coating).toBe(320);
+  });
+
+  it("ラップ(OSG) is a flat 205 (掛け率), not コート/2", () => {
+    const r = calcTrialPricing({ ...base, coating: "CX200", lapType: "OSG" });
+    expect(r.breakdown.lap).toBe(205);
+  });
+
+  it("all coating vendors resolve to real matrices (no demo fallback)", () => {
+    for (const c of [
+      "JFE SX-3",
+      "OSG FX",
+      "JCC DLC",
+      "BAL ALDURA",
+      "オンワード OS-T",
+    ]) {
+      expect(
+        calcTrialPricing({ ...base, coating: c }).breakdown.coating,
+      ).toBeGreaterThan(0);
+    }
   });
 });
 

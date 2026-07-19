@@ -27,18 +27,13 @@ export default async function TrialPricingEnginePage() {
       href: `${BASE}/material-policy`,
     },
     {
-      title: "既定値・係数",
-      summary: `加工 ¥${s.machiningRatePer10min.toLocaleString()}/10分 · 補正 ${s.correctionFactor} · LD ¥${s.ldChargePer10min.toLocaleString()}/10分 · 予備 ${s.spareShapeCount}`,
-      href: `${BASE}/coefficients`,
-    },
-    {
       title: "カスタム入力項目",
-      summary: `${s.customInputs.length} 項目（試算フォームに表示・式の変数）`,
+      summary: `${s.customInputs.length} 項目（見積入力 + グローバル固定係数）`,
       href: `${BASE}/custom-inputs`,
     },
     {
       title: "ルックアップ表",
-      summary: `${s.lookupTables.length} 表（式内で lookup("表名", キー)）`,
+      summary: `${s.lookupTables.length} 表（径×全長マトリクス等・式内で lookup(...)）`,
       href: `${BASE}/lookups`,
     },
   ];
