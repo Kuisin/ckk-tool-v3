@@ -62,6 +62,8 @@ export async function fetchMaterialPricing(
         history,
         settings.materialPriceBasis,
         settings.materialPriceLookbackMonths,
+        undefined,
+        settings.defaultMaterialPrice,
       ),
     });
   } catch (e) {

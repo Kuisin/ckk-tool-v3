@@ -26,6 +26,8 @@ export interface ReferencePriceResult {
   /** Points within the window (used for the basis). */
   windowPoints: MaterialPricePoint[];
   hasHistory: boolean;
+  /** 仕入実績が無く、設定の既定材料単価を採用したか。 */
+  usedDefault: boolean;
 }
 
 export interface LatestMaterialPrice {
@@ -63,15 +65,18 @@ export function computeReferencePrice(
   basis: MaterialPriceBasis = "MAX",
   lookbackMonths = 6,
   anchor?: Date,
+  defaultPrice = 0,
 ): ReferencePriceResult {
   if (points.length === 0) {
+    // 仕入実績なし → 設定の既定材料単価を採用（0 のときは従来どおり 0）。
     return {
-      unitPrice: 0,
+      unitPrice: defaultPrice > 0 ? defaultPrice : 0,
       date: "",
       basis,
       lookbackMonths,
       windowPoints: [],
       hasHistory: false,
+      usedDefault: defaultPrice > 0,
     };
   }
   const anchorDate = anchor ?? new Date(points[points.length - 1].date);
@@ -101,5 +106,6 @@ export function computeReferencePrice(
     lookbackMonths,
     windowPoints,
     hasHistory: true,
+    usedDefault: false,
   };
 }

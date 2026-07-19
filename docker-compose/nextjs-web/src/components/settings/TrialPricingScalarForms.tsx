@@ -164,6 +164,15 @@ export function MaterialPolicyForm({
             }
             value={settings.materialPriceLookbackMonths}
           />
+          <NumberInput
+            description="仕入実績が無い素材の試算で使う既定単価（0 = 既定なし）。試算では「既定価格」と表示されます。"
+            label="既定材料単価（¥/1000mm）"
+            min={0}
+            onChange={(v) => patch({ defaultMaterialPrice: Number(v) || 0 })}
+            prefix="¥"
+            thousandSeparator=","
+            value={settings.defaultMaterialPrice}
+          />
         </Stack>
       </FormSection>
     </SectionShell>

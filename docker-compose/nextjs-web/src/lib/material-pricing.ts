@@ -50,7 +50,9 @@ export async function getReferencePrice(
   materialId: number,
   settings: Pick<
     TrialPricingSettings,
-    "materialPriceBasis" | "materialPriceLookbackMonths"
+    | "materialPriceBasis"
+    | "materialPriceLookbackMonths"
+    | "defaultMaterialPrice"
   >,
 ): Promise<ReferencePriceResult> {
   const history = await fetchPriceHistory(materialId);
@@ -58,5 +60,7 @@ export async function getReferencePrice(
     history,
     settings.materialPriceBasis,
     settings.materialPriceLookbackMonths,
+    undefined,
+    settings.defaultMaterialPrice,
   );
 }

@@ -419,7 +419,9 @@ export function TrialEstimateForm({
                         ? "カスタム単価（手動）"
                         : overridden
                           ? "カスタム単価"
-                          : `参照: ${basisLabel}（直近${settings.materialPriceLookbackMonths}ヶ月）`
+                          : policyRef.usedDefault
+                            ? "仕入実績なし → 設定の既定材料単価を使用"
+                            : `参照: ${basisLabel}（直近${settings.materialPriceLookbackMonths}ヶ月）`
                     }
                     label={
                       <Group gap={6} wrap="nowrap">
@@ -428,12 +430,20 @@ export function TrialEstimateForm({
                           label="参照単価（¥/1000mm）"
                         />
                         <Badge
-                          color={overridden ? "orange" : "blue"}
+                          color={
+                            overridden
+                              ? "orange"
+                              : policyRef.usedDefault
+                                ? "yellow"
+                                : "blue"
+                          }
                           variant="light"
                         >
                           {overridden
                             ? "カスタム"
-                            : `参照価格 ${referenceDate ? formatDate(referenceDate) : "—"}`}
+                            : policyRef.usedDefault
+                              ? "既定価格"
+                              : `参照価格 ${referenceDate ? formatDate(referenceDate) : "—"}`}
                         </Badge>
                       </Group>
                     }
