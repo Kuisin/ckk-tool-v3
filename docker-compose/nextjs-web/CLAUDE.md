@@ -116,6 +116,7 @@ are owned by `shared-db` (see root CLAUDE.md).
 
 ## Deploy
 
-Coolify **auto-deploys** on merge to `dev`/`main` — do not trigger deploys
-manually. **Merge only to `dev`**; production promotion (`dev`→`main`) is the
-user's. See root CLAUDE.md for the full topology.
+**Always branch → PR → merge; never commit straight to `dev`.** You may merge PRs
+into `dev`, but **never merge to `main`** — prepare the `dev`→`main` promotion PR
+and leave the merge to the user. Coolify **auto-deploys** on merge to `dev`/`main`,
+so do not trigger deploys manually. See root CLAUDE.md for the full topology.

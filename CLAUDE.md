@@ -3,6 +3,14 @@
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 Always commit per feature and record change.
 
+## Git workflow (required)
+
+**Never commit straight to `dev` or `main`.** For every change: create a feature
+branch, open a PR against `dev`, then merge that PR. **You may merge PRs into
+`dev`, but NEVER merge to `main`** — production promotion (`dev`→`main`) is the
+user's and is done only by them. So: branch → PR → merge to `dev` = allowed;
+merging to `main` = not allowed (prepare the promotion PR and leave it for the user).
+
 ## Project Overview
 
 Manufacturing Company Business Management System — a Next.js fullstack monolith covering sales, purchasing, production, shipping, billing, and master data. Specs live in `_specs/`; implementation follows those documents.
