@@ -525,7 +525,9 @@ export function TrialEstimateForm({
               </SimpleGrid>
               <Text c="dimmed" mt="xs" size="xs">
                 加工単価（¥
-                {Number(customValues.machiningRatePer10min ?? 2000).toLocaleString()}
+                {Number(
+                  customValues.machiningRatePer10min ?? 2000,
+                ).toLocaleString()}
                 /10分）・予備形状本数（
                 {Number(customValues.spareShapeCount ?? 3)}
                 本）は試算計算のグローバル固定係数を使用します。
