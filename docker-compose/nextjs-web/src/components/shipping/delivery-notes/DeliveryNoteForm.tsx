@@ -305,6 +305,7 @@ export function DeliveryNoteForm({
         { label: "納品書", href: BASE_PATH },
         mode === "edit" ? "編集" : "新規作成",
       ]}
+      isDirty={form.isDirty()}
       isPending={isPending}
       onCancel={() =>
         router.push(noteId ? `${BASE_PATH}/${noteId}` : BASE_PATH)

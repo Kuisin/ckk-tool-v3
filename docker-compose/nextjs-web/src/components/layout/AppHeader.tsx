@@ -31,6 +31,7 @@ import {
 } from "@mantine/core";
 import {
   IconBell,
+  IconChevronLeft,
   IconFolder,
   IconHistory,
   IconLogout,
@@ -39,11 +40,14 @@ import {
   IconUser,
 } from "@tabler/icons-react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { signOut } from "next-auth/react";
 import { useRef, useState } from "react";
 import { relativeTime, useNotifications } from "@/hooks/useNotifications";
+import { appList } from "@/lib/app-list";
+import { appKeyForPath } from "./AppFlags";
 import { AppLauncher } from "./AppLauncher";
+import { useNavigationGuard } from "./NavigationGuard";
 import { markAllReadAction, markReadAction } from "./notification-actions";
 import { OperationCodeJump } from "./OperationCodeJump";
 import { SharePageModal } from "./SharePageModal";
@@ -98,6 +102,15 @@ export function AppHeader({
   });
   const isDark = colorScheme === "dark";
   const router = useRouter();
+  const pathname = usePathname();
+  const { guard } = useNavigationGuard();
+
+  // 開いているアプリ名（ランチャーのトリガーに表示）。ホームや未登録画面では null。
+  const currentApp = (() => {
+    const key = appKeyForPath(pathname);
+    return key ? (appList.find((a) => a.key === key) ?? null) : null;
+  })();
+  const isHome = pathname === "/";
 
   const { unreadCount, items: notifications, refresh } = useNotifications();
 
@@ -157,8 +170,21 @@ export function AppHeader({
         py="xs"
         wrap="nowrap"
       >
-        {/* ── Left: App Launcher (+ code jump on mobile) ─────────────────── */}
+        {/* ── Left: back (非ホーム時) + App Launcher (+ code jump on mobile) ── */}
         <Group className="min-w-0" gap="xs" wrap="nowrap">
+          {!isHome && (
+            <Tooltip label="戻る" withinPortal>
+              <ActionIcon
+                aria-label="前のページに戻る"
+                color="gray"
+                onClick={() => guard(() => router.back())}
+                size="lg"
+                variant="subtle"
+              >
+                <IconChevronLeft size={20} />
+              </ActionIcon>
+            </Tooltip>
+          )}
           <Popover
             classNames={{ dropdown: "app-launcher-dropdown" }}
             onDismiss={() => setLauncherOpen(false)}
@@ -194,14 +220,21 @@ export function AppHeader({
                         : "/design-assets/logo.svg"
                     }
                   />
-                  <Text
-                    className="whitespace-nowrap"
-                    fw={400}
-                    size="lg"
-                    visibleFrom="md"
-                  >
-                    シー・ケィ・ケー株式会社
-                  </Text>
+                  {currentApp ? (
+                    // 開いているアプリ名を表示（モバイルでも表示）。
+                    <Text className="truncate" fw={600} size="md">
+                      {currentApp.label}
+                    </Text>
+                  ) : (
+                    <Text
+                      className="whitespace-nowrap"
+                      fw={400}
+                      size="lg"
+                      visibleFrom="md"
+                    >
+                      シー・ケィ・ケー株式会社
+                    </Text>
+                  )}
                 </Group>
               </UnstyledButton>
             </Popover.Target>

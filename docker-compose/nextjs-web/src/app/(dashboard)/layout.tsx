@@ -5,6 +5,7 @@ import {
   AppFlagsProvider,
 } from "@/components/layout/AppFlags";
 import { DashboardShell } from "@/components/layout/AppShell";
+import { NavigationGuardProvider } from "@/components/layout/NavigationGuard";
 import { PwaRegister } from "@/components/layout/PwaRegister";
 import { currentAppEnv, getDisabledAppKeys } from "@/lib/app-flags";
 
@@ -42,9 +43,11 @@ export default async function DashboardLayout({
       unreleasedKeys={unreleasedKeys}
     >
       <PwaRegister />
-      <DashboardShell isDev={isDevEnv} user={headerUser}>
-        <AppAvailabilityGuard>{children}</AppAvailabilityGuard>
-      </DashboardShell>
+      <NavigationGuardProvider>
+        <DashboardShell isDev={isDevEnv} user={headerUser}>
+          <AppAvailabilityGuard>{children}</AppAvailabilityGuard>
+        </DashboardShell>
+      </NavigationGuardProvider>
     </AppFlagsProvider>
   );
 }

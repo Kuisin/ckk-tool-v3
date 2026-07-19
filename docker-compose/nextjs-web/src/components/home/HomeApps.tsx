@@ -12,6 +12,7 @@ import {
   Avatar,
   Badge,
   Card,
+  CloseButton,
   Divider,
   Group,
   Paper,
@@ -25,12 +26,18 @@ import {
   useComputedColorScheme,
 } from "@mantine/core";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import {
   useDisabledApps,
   useUnreleasedApps,
 } from "@/components/layout/AppFlags";
 import { useIsMobile } from "@/hooks/useViewport";
-import { getAppsByCategory } from "@/lib/app-list";
+import {
+  CATEGORY_COLORS,
+  getAppsByCategory,
+  isAppCategory,
+  WORKPROCESS_PARAM,
+} from "@/lib/app-list";
 import { CATEGORY_SECTION_ICONS, resolveAppIcon } from "@/lib/icons";
 
 export interface HomeUser {
@@ -62,13 +69,19 @@ export function HomeApps({
 }: HomeAppsProps) {
   const disabledApps = useDisabledApps();
   const unreleasedApps = useUnreleasedApps();
+  const searchParams = useSearchParams();
+  // 工程（カテゴリ）絞り込み。パンくずの工程リンクから遷移してくる。
+  const rawWp = searchParams.get(WORKPROCESS_PARAM);
+  const workprocess = rawWp && isAppCategory(rawWp) ? rawWp : null;
   // 環境別フラグで無効化されたアプリはカードを出さない（空カテゴリも消す）。
   const categories = getAppsByCategory()
     .map((c) => ({
       ...c,
       apps: c.apps.filter((a) => !disabledApps.has(a.key)),
     }))
-    .filter((c) => c.apps.length > 0);
+    .filter((c) => c.apps.length > 0)
+    // 工程が指定されていれば、その工程だけに絞り込む。
+    .filter((c) => !workprocess || c.category === workprocess);
   const colorScheme = useComputedColorScheme("light", {
     getInitialValueInEffect: false,
   });
@@ -112,6 +125,24 @@ export function HomeApps({
           />
         </Group>
       </Card>
+
+      {/* ── 工程での絞り込み表示（パンくずの工程リンクから） ──────────────── */}
+      {workprocess && (
+        <Group gap="xs" wrap="nowrap">
+          <Text c="dimmed" size="sm">
+            工程で絞り込み中:
+          </Text>
+          <Badge color={CATEGORY_COLORS[workprocess]} size="lg" variant="light">
+            {workprocess}
+          </Badge>
+          <CloseButton
+            aria-label="絞り込みを解除"
+            component={Link}
+            href="/"
+            size="sm"
+          />
+        </Group>
+      )}
 
       {/* ── App categories ─────────────────────────────────────────────── */}
       {categories.map((cat, catIndex) => {

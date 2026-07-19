@@ -284,6 +284,7 @@ export function PriceListTypeForm({
         { label: "価格表", href: BASE_PATH },
         mode === "edit" ? "編集" : "新規作成",
       ]}
+      isDirty={form.isDirty()}
       isPending={isPending}
       onCancel={() =>
         router.push(entryId ? `${BASE_PATH}/${entryId}` : BASE_PATH)

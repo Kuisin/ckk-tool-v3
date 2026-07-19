@@ -84,6 +84,7 @@ export function DefectTypeForm() {
         { label: "不良種類", href: BASE_PATH },
         "新規作成",
       ]}
+      isDirty={form.isDirty()}
       isPending={isPending}
       onCancel={() => router.push(BASE_PATH)}
       onSubmit={form.onSubmit(handleSubmit)}
