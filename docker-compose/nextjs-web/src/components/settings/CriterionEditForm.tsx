@@ -28,12 +28,14 @@ import { useMemo, useState, useTransition } from "react";
 import { updateCriteria } from "@/app/(dashboard)/settings/actions";
 import {
   CancelButton,
+  DeleteButton,
   GhostButton,
   SaveButton,
   SecondaryButton,
 } from "@/components/ui/buttons";
-import { PageHeader } from "@/components/ui/PageHeader";
+import { openConfirm } from "@/components/ui/modals";
 import { FormSection } from "@/components/ui/shells";
+import { localized } from "@/lib/format";
 import {
   TOOL_TYPE_OPTIONS,
   type ToolType,
@@ -71,16 +73,11 @@ const INPUT_VARS = [
   "ldOuterDiameter",
   "ldBladeLength",
   "machiningMinutes",
-  "machiningRatePer10min",
-  "spareShapeCount",
 ];
 const STATE_VARS = ["quantity", "subtotal", "discountRate", "autoRate"];
-const COEFF_VARS = [
-  "correctionFactor",
-  "ldChargePer10min",
-  "materialBasisLength",
-  "coatingFactor",
-];
+// correctionFactor/ldChargePer10min/machiningRatePer10min/spareShapeCount は
+// scope:"global" のカスタム値へ移行し「カスタム入力」グループに表示される。
+const COEFF_VARS = ["materialBasisLength", "coatingFactor"];
 const HELPER_TOKENS = [
   "round(",
   "lookup(",
@@ -137,16 +134,12 @@ export function CriterionEditForm({
   allCriteria,
   criterionId,
   customInputs,
-  correctionFactor,
-  ldChargePer10min,
   lookupTables = [],
 }: {
   allCriteria: Criterion[];
   /** 既存基準の id。null = 新規。 */
   criterionId: string | null;
   customInputs: CustomInputDef[];
-  correctionFactor: number;
-  ldChargePer10min: number;
   lookupTables?: LookupTable[];
 }) {
   const existing = criterionId
@@ -202,8 +195,11 @@ export function CriterionEditForm({
       groups.push({
         group: "ルックアップ",
         items: lookupTables
-          .filter((t) => t.name)
-          .map((t) => ({ token: `lookup("${t.name}", )`, label: t.name })),
+          .filter((t) => t.id)
+          .map((t) => ({
+            token: `lookup("${t.id}", )`,
+            label: `${localized(t.name)}（${t.id}）`,
+          })),
       });
     }
     return groups;
@@ -242,7 +238,7 @@ export function CriterionEditForm({
           message: "計算基準を更新しました",
           color: "green",
         });
-        router.push(BASE);
+        router.push(`${BASE}/criteria`);
         router.refresh();
       } else {
         notifications.show({
@@ -253,6 +249,34 @@ export function CriterionEditForm({
       }
     });
   };
+
+  const remove = () =>
+    openConfirm({
+      title: "計算基準の削除",
+      message: `「${criterion.name}」を削除します。この操作は取り消せません。`,
+      confirmLabel: "削除",
+      onConfirm: () =>
+        startTransition(async () => {
+          const res = await updateCriteria(
+            allCriteria.filter((c) => c.id !== criterion.id),
+          );
+          if (res.ok) {
+            notifications.show({
+              title: "削除しました",
+              message: `「${criterion.name}」を削除しました`,
+              color: "green",
+            });
+            router.push(`${BASE}/criteria`);
+            router.refresh();
+          } else {
+            notifications.show({
+              title: "エラー",
+              message: res.error,
+              color: "red",
+            });
+          }
+        }),
+    });
 
   const runTest = () => {
     const sample: TrialInput =
@@ -266,8 +290,7 @@ export function CriterionEditForm({
           }
         : { ...SAMPLE_INPUT, toolType: testToolType };
     const r = runCriteriaEngine(sample, {
-      correctionFactor,
-      ldChargePer10min,
+      // 補正値・LDチャージ等のグローバル係数は customInputs(scope:"global") に含まれる。
       criteria: buildList(),
       customInputs,
     });
@@ -286,24 +309,6 @@ export function CriterionEditForm({
 
   return (
     <Stack gap="md">
-      <PageHeader
-        actions={
-          <Group gap="xs">
-            <CancelButton onClick={() => router.push(BASE)} />
-            <SaveButton loading={isPending} onClick={save}>
-              保存
-            </SaveButton>
-          </Group>
-        }
-        breadcrumbs={[
-          "システム",
-          { label: "試算計算", href: BASE },
-          { label: "計算基準", href: `${BASE}/criteria` },
-          isNew ? "基準を追加" : "基準を編集",
-        ]}
-        title={isNew ? "計算基準を追加" : `計算基準を編集: ${criterion.name}`}
-      />
-
       <FormSection title="基準">
         <Stack gap="sm">
           <Group gap="sm" wrap="wrap">
@@ -438,11 +443,21 @@ export function CriterionEditForm({
           )}
 
           <Text c="dimmed" size="xs">
-            数値を返す JS 式。ルックアップ表は <Code>lookup("表名", キー)</Code>{" "}
+            数値を返す JS 式。ルックアップ表は <Code>lookup("ID", キー)</Code>{" "}
             で参照します。
           </Text>
         </Stack>
       </FormSection>
+
+      <Group justify="space-between" mt="xs">
+        {isNew ? <span /> : <DeleteButton onClick={remove} />}
+        <Group gap="sm">
+          <CancelButton onClick={() => router.push(`${BASE}/criteria`)} />
+          <SaveButton loading={isPending} onClick={save}>
+            保存
+          </SaveButton>
+        </Group>
+      </Group>
     </Stack>
   );
 }

@@ -15,6 +15,7 @@ import { IconChevronLeft } from "@tabler/icons-react";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { useIsMobile } from "@/hooks/useViewport";
+import { isAppCategory, workprocessHomeHref } from "@/lib/app-list";
 
 /** A breadcrumb: plain label, or a label that links to `href`. */
 export type Crumb = string | { label: string; href?: string };
@@ -22,7 +23,10 @@ export type Crumb = string | { label: string; href?: string };
 const HOME_CRUMB = { label: "ホーム", href: "/" };
 
 function normalize(c: Crumb): { label: string; href?: string } {
-  return typeof c === "string" ? { label: c } : c;
+  if (typeof c !== "string") return c;
+  // 工程（カテゴリ）名の素のパンくずは、その工程で絞り込んだ Home へリンクする。
+  if (isAppCategory(c)) return { label: c, href: workprocessHomeHref(c) };
+  return { label: c };
 }
 
 export function PageHeader({

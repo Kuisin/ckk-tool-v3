@@ -12,6 +12,9 @@
  * (`MATCH(value, keysDesc, -1)`): pick the smallest key that is ≥ the value.
  */
 
+import type { LookupTable } from "./trial-pricing-criteria";
+import { DEFAULT_LOOKUP_TABLES } from "./trial-pricing-lookups";
+
 // ── Excel descending approximate match (MATCH(...,-1)) ───────────────────────
 /** Smallest key ≥ value; falls back to the smallest key when value exceeds none. */
 export function matchDesc(value: number, keysDesc: number[]): number {
@@ -21,6 +24,57 @@ export function matchDesc(value: number, keysDesc: number[]): number {
   }
   return chosen;
 }
+
+// ── Admin lookup-table resolution (keyMatch: exact | ge | le) ─────────────────
+/** ge: smallest key ≥ value, else smallest key (Excel MATCH(...,-1) / matchDesc). */
+function matchGe(value: number, keys: number[]): number {
+  const ge = keys.filter((k) => k >= value);
+  return ge.length ? Math.min(...ge) : Math.min(...keys);
+}
+/** le: largest key ≤ value, else smallest key (Excel VLOOKUP(...,TRUE)). */
+function matchLe(value: number, keys: number[]): number {
+  const le = keys.filter((k) => k <= value);
+  return le.length ? Math.max(...le) : Math.min(...keys);
+}
+
+/** Table default (parsed per valueType); 0 / "" when unset. */
+export function lookupTableDefault(t: LookupTable): number | string {
+  if (t.default != null && t.default !== "")
+    return t.valueType === "number" ? Number(t.default) : t.default;
+  return t.valueType === "number" ? 0 : "";
+}
+
+/**
+ * Resolve a LookupTable value for the given keys, applying per-column keyMatch
+ * (exact | ge | le). Returns the table `default` on no-match. Reproduces the Excel
+ * MATCH/VLOOKUP approximate lookups for imported matrix tables.
+ */
+export function lookupTableValue(
+  t: LookupTable,
+  keys: (string | number)[],
+): number | string {
+  const modes = t.keyMatch ?? t.keyColumns.map(() => "exact" as const);
+  const resolved = keys.map((q, i) => {
+    const mode = modes[i] ?? "exact";
+    if (mode === "exact") return String(q);
+    const colKeys = [...new Set(t.rows.map((r) => Number(r.keys[i])))];
+    if (!colKeys.length) return String(q);
+    const v = Number(q);
+    return String(mode === "ge" ? matchGe(v, colKeys) : matchLe(v, colKeys));
+  });
+  const row = t.rows.find(
+    (r) =>
+      r.keys.length === resolved.length &&
+      r.keys.every((k, i) => k === resolved[i]),
+  );
+  if (!row) return lookupTableDefault(t);
+  return t.valueType === "number" ? Number(row.value) : row.value;
+}
+
+/** Index of DEFAULT_LOOKUP_TABLES by id (the immutable reference key). */
+const DEFAULT_LOOKUP_BY_ID = new Map<string, LookupTable>(
+  DEFAULT_LOOKUP_TABLES.map((t) => [t.id, t]),
+);
 
 /** 2D matrix lookup by (diameter, length) using descending approx match. */
 export interface Matrix {
@@ -552,11 +606,11 @@ export const CYLINDER_MACHINING: Matrix = {
 
 // ── 掛け率 (Excel: 掛け率) ────────────────────────────────────────────────────
 
-/** ラップ処理 (掛け率!A2:B5). 有(OSG) は コート代/2 → engine 特例. */
+/** ラップ処理 (掛け率!A2:B5). Excel は全て定額（有(OSG)=205）。 */
 export const LAP_OPTIONS = [
   { value: "NONE", label: "無", amount: 0 },
   { value: "INHOUSE", label: "有(社内)", amount: 200 },
-  { value: "OSG", label: "有(OSG)", amount: null }, // = コート代 / 2
+  { value: "OSG", label: "有(OSG)", amount: 205 },
   { value: "OTHER", label: "有(他メーカー)", amount: 100 },
 ] as const;
 
@@ -626,7 +680,11 @@ export const LD_CHARGE_PER_10MIN = 7500;
  */
 export const MATERIAL_BASIS_LENGTH_MM = 1000;
 /** コート代の最終係数 (Excel: ...×1.5, ROUNDUP -1). */
+/** コート倍率: 丸棒 ×1.5, 円筒・OH ×1.3（Excel L7）。 */
 export const COATING_FACTOR = 1.5;
+export function coatingFactorFor(toolType: string): number {
+  return toolType === "ROUND_BAR" ? 1.5 : 1.3;
+}
 
 // ── LD加工時間 (Excel: LD sheet, 簡略版) ──────────────────────────────────────
 // MIGRATION NOTE: full LD tables (先端+ギャッシュ / 先端+外周 の外径×刃長マトリク
@@ -1023,8 +1081,10 @@ export function coatingRawCost(
   length: number,
 ): number {
   if (!coating || coating === "無") return 0;
-  const table = COATING_VENDOR_TABLES[coating];
-  if (table) return lookupMatrix(table, diameter, length) ?? 0;
-  // Simplified fallback (demo) — pending full vendor-table migration.
-  return Math.round((200 + diameter * 18 + length * 1.2) / 5) * 5;
+  // 全 28 コート表（Excel 本社/JFE/JCC/OSG/balzers/オンワード）を lookup 表として
+  // seed 済み。id = coating:<名称> を径×全長(ge/ge)で参照する。
+  const table = DEFAULT_LOOKUP_BY_ID.get(`coating:${coating}`);
+  if (table) return Number(lookupTableValue(table, [diameter, length]));
+  // 未登録コート（表なし）は 0（旧デモ推定は廃止）。
+  return 0;
 }

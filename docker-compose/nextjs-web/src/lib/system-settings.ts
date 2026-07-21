@@ -11,8 +11,10 @@ import "server-only";
 import { z } from "zod";
 import { readConfigNamespace, writeConfigValues } from "./app-config";
 import {
+  type CustomInputDef,
   criterionSchema,
   customInputDefSchema,
+  GLOBAL_CUSTOM_INPUTS,
   lookupTableSchema,
 } from "./trial-pricing-criteria";
 import {
@@ -25,16 +27,26 @@ const NAMESPACE = "trial_pricing";
 const KEY_MAP: Record<keyof TrialPricingSettings, string> = {
   materialPriceBasis: "trial_pricing.material_price_basis",
   materialPriceLookbackMonths: "trial_pricing.lookback_months",
-  machiningRatePer10min: "trial_pricing.machining_rate_per_10min",
-  spareShapeCount: "trial_pricing.spare_shape_count",
-  correctionFactor: "trial_pricing.correction_factor",
-  ldChargePer10min: "trial_pricing.ld_charge_per_10min",
+  defaultMaterialPrice: "trial_pricing.default_material_price",
   criteria: "trial_pricing.criteria",
   customInputs: "trial_pricing.custom_inputs",
   lookupTables: "trial_pricing.lookup_tables",
   customScriptEnabled: "trial_pricing.custom_script_enabled",
   customScript: "trial_pricing.custom_script",
 };
+
+/**
+ * 永続化されたカスタム入力に、scope:"global" の既定固定係数（補正値/LDチャージ/
+ * 加工単価/予備形状本数）を必ず含める。旧データや空配列でも 4 係数を復元し、
+ * 計算式（final/ld/machining/shapeOut）が参照切れにならないようにする。
+ */
+function mergeGlobalCustomInputs(
+  persisted: CustomInputDef[],
+): CustomInputDef[] {
+  const byKey = new Set(persisted.map((d) => d.key));
+  const missing = GLOBAL_CUSTOM_INPUTS.filter((g) => !byKey.has(g.key));
+  return missing.length ? [...missing, ...persisted] : persisted;
+}
 
 const criteriaArraySchema = z.array(criterionSchema);
 const customInputsArraySchema = z.array(customInputDefSchema);
@@ -70,12 +82,15 @@ export async function getTrialPricingSettings(): Promise<TrialPricingSettings> {
       }
       case "customInputs": {
         const parsed = customInputsArraySchema.safeParse(v);
-        if (parsed.success) out.customInputs = parsed.data;
+        if (parsed.success)
+          out.customInputs = mergeGlobalCustomInputs(parsed.data);
         break;
       }
       case "lookupTables": {
         const parsed = lookupTablesArraySchema.safeParse(v);
-        if (parsed.success) out.lookupTables = parsed.data;
+        // 空配列は既定（Excel 由来 39 表）を維持（criteria と同様のガード）。
+        if (parsed.success && parsed.data.length > 0)
+          out.lookupTables = parsed.data;
         break;
       }
       default:

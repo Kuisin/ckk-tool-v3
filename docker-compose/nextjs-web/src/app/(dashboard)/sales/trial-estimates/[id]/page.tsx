@@ -10,7 +10,7 @@ import {
   parseDocKey,
 } from "@/lib/doc-number";
 import { type LocalizedText, localized } from "@/lib/format";
-import { fetchPriceHistory } from "@/lib/material-pricing";
+import { fetchPriceHistoryByType } from "@/lib/material-pricing";
 import { getTrialPricingSettings } from "@/lib/system-settings";
 import { toTrialPricingOptions } from "@/lib/trial-pricing-settings";
 import {
@@ -68,9 +68,18 @@ export default async function TrialEstimateDetailPage({
   ]);
   if (!record) notFound();
 
-  const priceHistory = record.materialId
-    ? await fetchPriceHistory(Number(record.materialId))
-    : [];
+  const typeId = Number(record.materialTypeId);
+  const priceHistory =
+    Number.isInteger(typeId) &&
+    typeId > 0 &&
+    record.diameterCode &&
+    record.surfaceFinishCode
+      ? await fetchPriceHistoryByType({
+          materialTypeId: typeId,
+          diameterCode: record.diameterCode,
+          surfaceFinishCode: record.surfaceFinishCode,
+        })
+      : [];
 
   const linkedEntries: LinkedPriceEntry[] = linked.map((e) => {
     const code = formatProductNumber(e.product.yearMonth, e.product.seq);

@@ -335,6 +335,7 @@ export function ProductForm({
         { label: "製品", href: BASE_PATH },
         isEdit ? "編集" : "新規作成",
       ]}
+      isDirty={form.isDirty()}
       isPending={isPending}
       onCancel={() =>
         router.push(isEdit ? `${BASE_PATH}/${initial.id}` : BASE_PATH)

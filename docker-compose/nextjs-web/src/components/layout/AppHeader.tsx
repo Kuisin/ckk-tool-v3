@@ -31,6 +31,7 @@ import {
 } from "@mantine/core";
 import {
   IconBell,
+  IconChevronLeft,
   IconFolder,
   IconHistory,
   IconLogout,
@@ -39,11 +40,14 @@ import {
   IconUser,
 } from "@tabler/icons-react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { signOut } from "next-auth/react";
 import { useRef, useState } from "react";
 import { relativeTime, useNotifications } from "@/hooks/useNotifications";
+import { appList } from "@/lib/app-list";
+import { appKeyForPath } from "./AppFlags";
 import { AppLauncher } from "./AppLauncher";
+import { useNavigationGuard } from "./NavigationGuard";
 import { markAllReadAction, markReadAction } from "./notification-actions";
 import { OperationCodeJump } from "./OperationCodeJump";
 import { SharePageModal } from "./SharePageModal";
@@ -54,6 +58,16 @@ const PROFILE_MENU_WIDTH = 180;
 /** 開発環境バーの高さ（dev のみ表示。ヘッダー最上部に重ねる）。 */
 export const DEV_BAR_HEIGHT = 28;
 
+// ページを持たない工程カテゴリのパス先頭セグメント（戻る先はホームにする）。
+const CATEGORY_ROOTS = new Set([
+  "sales",
+  "purchase",
+  "production",
+  "shipping",
+  "billing",
+  "master",
+]);
+
 function canHoverOpen(): boolean {
   return (
     typeof window !== "undefined" &&
@@ -61,16 +75,19 @@ function canHoverOpen(): boolean {
   );
 }
 
-const MOCK_USER = {
-  displayName: "山田 太郎",
-  initials: "山田",
-  department: "製造部",
+/** 未ログイン時のフォールバック（デモ ID は出さない）。 */
+const GUEST_USER = {
+  displayName: "ゲスト",
+  initials: "—",
+  department: "",
 };
 
 export interface HeaderUser {
   displayName: string;
   username: string;
   initials: string;
+  department: string | null;
+  title: string | null;
 }
 
 export function AppHeader({
@@ -84,9 +101,10 @@ export function AppHeader({
     ? {
         displayName: user.displayName,
         initials: user.initials,
-        department: user.username,
+        // 所属（無ければ役職 → ユーザー名の順でフォールバック）。
+        department: user.department || user.title || user.username,
       }
-    : MOCK_USER;
+    : GUEST_USER;
   const [launcherOpen, setLauncherOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
@@ -98,6 +116,28 @@ export function AppHeader({
   });
   const isDark = colorScheme === "dark";
   const router = useRouter();
+  const pathname = usePathname();
+  const { guard } = useNavigationGuard();
+
+  // 開いているアプリ名（ランチャーのトリガーに表示）。ホームや未登録画面では null。
+  const currentApp = (() => {
+    const key = appKeyForPath(pathname);
+    return key ? (appList.find((a) => a.key === key) ?? null) : null;
+  })();
+  const isHome = pathname === "/";
+
+  // ヘッダーの「戻る」= ブラウザ履歴ではなくページ階層を1段上がる。
+  // 末尾セグメントを外した親パスへ遷移。工程カテゴリ（ページ無し）のみホームへ。
+  const goUpOneLevel = () => {
+    const segs = pathname.split("/").filter(Boolean);
+    const parent = segs.slice(0, -1);
+    const target =
+      parent.length === 0 ||
+      (parent.length === 1 && CATEGORY_ROOTS.has(parent[0]))
+        ? "/"
+        : `/${parent.join("/")}`;
+    guard(() => router.push(target));
+  };
 
   const { unreadCount, items: notifications, refresh } = useNotifications();
 
@@ -157,8 +197,21 @@ export function AppHeader({
         py="xs"
         wrap="nowrap"
       >
-        {/* ── Left: App Launcher (+ code jump on mobile) ─────────────────── */}
+        {/* ── Left: back (非ホーム時) + App Launcher (+ code jump on mobile) ── */}
         <Group className="min-w-0" gap="xs" wrap="nowrap">
+          {!isHome && (
+            <Tooltip label="戻る" withinPortal>
+              <ActionIcon
+                aria-label="1つ上の階層へ戻る"
+                color="gray"
+                onClick={goUpOneLevel}
+                size="lg"
+                variant="subtle"
+              >
+                <IconChevronLeft size={20} />
+              </ActionIcon>
+            </Tooltip>
+          )}
           <Popover
             classNames={{ dropdown: "app-launcher-dropdown" }}
             onDismiss={() => setLauncherOpen(false)}
@@ -194,14 +247,21 @@ export function AppHeader({
                         : "/design-assets/logo.svg"
                     }
                   />
-                  <Text
-                    className="whitespace-nowrap"
-                    fw={400}
-                    size="lg"
-                    visibleFrom="md"
-                  >
-                    シー・ケィ・ケー株式会社
-                  </Text>
+                  {currentApp ? (
+                    // 開いているアプリ名を表示（モバイルでも表示）。
+                    <Text className="truncate" fw={600} size="md">
+                      {currentApp.label}
+                    </Text>
+                  ) : (
+                    <Text
+                      className="whitespace-nowrap"
+                      fw={400}
+                      size="lg"
+                      visibleFrom="md"
+                    >
+                      シー・ケィ・ケー株式会社
+                    </Text>
+                  )}
                 </Group>
               </UnstyledButton>
             </Popover.Target>

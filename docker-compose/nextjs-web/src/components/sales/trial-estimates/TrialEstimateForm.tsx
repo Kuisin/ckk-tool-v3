@@ -84,17 +84,22 @@ const num = (v: number | string) =>
 
 export function TrialEstimateForm({
   customerOptions,
-  materialOptions,
+  materialTypeOptions,
+  diameterOptions,
+  surfaceFinishOptions,
   settings,
   initialPricing,
   /** 複製元（?from= で開いたとき）— 全入力を引き継いだ新規 DRAFT を作る。 */
   source,
 }: {
   customerOptions: Option[];
-  materialOptions: Option[];
+  /** 材種・直径・黒皮/研磨 の選択肢（材料は 3 要素で指定）. */
+  materialTypeOptions: Option[];
+  diameterOptions: Option[];
+  surfaceFinishOptions: Option[];
   /** システム設定（app.system_settings, サーバー取得）. */
   settings: TrialPricingSettings;
-  /** 初期素材の仕入実績＋ポリシー参照価格（サーバー取得）. */
+  /** 初期材種構成の仕入実績＋ポリシー参照価格（サーバー取得）. */
   initialPricing: MaterialPricing;
   source?: TrialEstimateRecord | null;
 }) {
@@ -102,7 +107,6 @@ export function TrialEstimateForm({
   const [isPending, startTransition] = useTransition();
   const [isPricingLoading, startPricingTransition] = useTransition();
 
-  const defaultMaterial = materialOptions[0]?.value ?? "";
   const src = source?.input;
 
   // ── inputs ──────────────────────────────────────────────────────────────
@@ -113,8 +117,15 @@ export function TrialEstimateForm({
   const [customerId, setCustomerId] = useState<string | null>(
     source?.customerId ?? null,
   );
-  const [materialId, setMaterialId] = useState<string>(
-    source?.materialId ?? defaultMaterial,
+  // 材料 = 材種 × 直径 × 黒皮/研磨（参照価格の解決キー）。
+  const [materialTypeId, setMaterialTypeId] = useState<string>(
+    source?.materialTypeId ?? materialTypeOptions[0]?.value ?? "",
+  );
+  const [diameterCode, setDiameterCode] = useState<string>(
+    source?.diameterCode ?? "",
+  );
+  const [surfaceFinishCode, setSurfaceFinishCode] = useState<string>(
+    source?.surfaceFinishCode ?? "",
   );
   const [isBlackSkin, setIsBlackSkin] = useState(src?.isBlackSkin ?? false);
   const [maxDiameter, setMaxDiameter] = useState<number | string>(
@@ -155,9 +166,7 @@ export function TrialEstimateForm({
   const [machiningMinutes, setMachiningMinutes] = useState<number | string>(
     src?.machiningMinutes ?? 6,
   );
-  // 加工単価・予備形状本数はシステム設定（グローバル）の既定値を使用。
-  const machiningRate = settings.machiningRatePer10min;
-  const spareShapeCount = settings.spareShapeCount;
+  // 加工単価・予備形状本数は scope:"global" のカスタム固定係数（customValues）を使用。
   // 基準数量 — 形状出し（段取り分）の按分にのみ使用。数量スケール（×倍率）は
   // 価格表側で管理するため、試算はこの1点の基準単価だけを算出する。
   const [baseQuantity, setBaseQuantity] = useState<number | string>(100);
@@ -194,11 +203,22 @@ export function TrialEstimateForm({
   // customMode = the price field is unlocked for manual editing.
   const [customMode, setCustomMode] = useState(false);
 
-  const onMaterialChange = (value: string | null) => {
-    const id = value ?? defaultMaterial;
-    setMaterialId(id);
+  // 材種構成の一部が変わるたびに、3要素が揃っていれば参照価格を再取得する。
+  const refetchPricing = (next: {
+    materialTypeId?: string;
+    diameterCode?: string;
+    surfaceFinishCode?: string;
+  }) => {
+    const key = {
+      materialTypeId: next.materialTypeId ?? materialTypeId,
+      diameterCode: next.diameterCode ?? diameterCode,
+      surfaceFinishCode: next.surfaceFinishCode ?? surfaceFinishCode,
+    };
+    if (!key.materialTypeId || !key.diameterCode || !key.surfaceFinishCode) {
+      return;
+    }
     startPricingTransition(async () => {
-      const res = await fetchMaterialPricing(id);
+      const res = await fetchMaterialPricing(key);
       if (!res.ok) {
         notifications.show({
           title: "エラー",
@@ -263,8 +283,8 @@ export function TrialEstimateForm({
     ldOuterDiameter: num(ldOuterDiameter),
     ldBladeLength: num(ldBladeLength),
     machiningMinutes: num(machiningMinutes),
-    machiningRatePer10min: num(machiningRate),
-    spareShapeCount: num(spareShapeCount),
+    machiningRatePer10min: Number(customValues.machiningRatePer10min ?? 2000),
+    spareShapeCount: Number(customValues.spareShapeCount ?? 3),
     lotQuantities: [num(baseQuantity), 0, 0],
     lotMarkups: [1], // 掛け率は使わない（数量スケールは価格表の倍率で管理）
   };
@@ -283,7 +303,9 @@ export function TrialEstimateForm({
       const res = await createTrialEstimate({
         name: name.trim(),
         customerBpId: customerId,
-        materialId,
+        materialTypeId: materialTypeId || null,
+        diameterCode: diameterCode || null,
+        surfaceFinishCode: surfaceFinishCode || null,
         input,
         referenceUnitPrice:
           toolType === "CYLINDER" ? null : num(referencePrice),
@@ -393,18 +415,49 @@ export function TrialEstimateForm({
             </FormSection>
 
             <FormSection
-              description="材料原価は仕入実績（購買履歴）から算出します。"
+              description="材料は「材種 × 直径 × 黒皮/研磨」で指定します。参照価格は仕入実績、無ければ材種の既定単価（¥/1000mm）から算出します。"
               title="素材"
             >
-              <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
+              <SimpleGrid cols={{ base: 1, sm: 3 }} mb="sm" spacing="sm">
                 <Select
-                  data={materialOptions}
+                  data={materialTypeOptions}
                   disabled={isPricingLoading}
-                  label="材種・素材"
-                  onChange={onMaterialChange}
+                  label="材種"
+                  onChange={(v) => {
+                    const id = v ?? "";
+                    setMaterialTypeId(id);
+                    refetchPricing({ materialTypeId: id });
+                  }}
                   searchable
-                  value={materialId}
+                  value={materialTypeId}
                 />
+                <Select
+                  clearable
+                  data={diameterOptions}
+                  disabled={isPricingLoading}
+                  label="直径"
+                  onChange={(v) => {
+                    const code = v ?? "";
+                    setDiameterCode(code);
+                    refetchPricing({ diameterCode: code });
+                  }}
+                  searchable
+                  value={diameterCode || null}
+                />
+                <Select
+                  clearable
+                  data={surfaceFinishOptions}
+                  disabled={isPricingLoading}
+                  label="黒皮/研磨"
+                  onChange={(v) => {
+                    const code = v ?? "";
+                    setSurfaceFinishCode(code);
+                    refetchPricing({ surfaceFinishCode: code });
+                  }}
+                  value={surfaceFinishCode || null}
+                />
+              </SimpleGrid>
+              <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
                 {isCylinder ? (
                   <NumberInput
                     label="素材価格（手入力 ¥/本）"
@@ -421,7 +474,9 @@ export function TrialEstimateForm({
                         ? "カスタム単価（手動）"
                         : overridden
                           ? "カスタム単価"
-                          : `参照: ${basisLabel}（直近${settings.materialPriceLookbackMonths}ヶ月）`
+                          : policyRef.usedDefault
+                            ? "仕入実績なし → 設定の既定材料単価を使用"
+                            : `参照: ${basisLabel}（直近${settings.materialPriceLookbackMonths}ヶ月）`
                     }
                     label={
                       <Group gap={6} wrap="nowrap">
@@ -430,12 +485,20 @@ export function TrialEstimateForm({
                           label="参照単価（¥/1000mm）"
                         />
                         <Badge
-                          color={overridden ? "orange" : "blue"}
+                          color={
+                            overridden
+                              ? "orange"
+                              : policyRef.usedDefault
+                                ? "yellow"
+                                : "blue"
+                          }
                           variant="light"
                         >
                           {overridden
                             ? "カスタム"
-                            : `参照価格 ${referenceDate ? formatDate(referenceDate) : "—"}`}
+                            : policyRef.usedDefault
+                              ? "既定価格"
+                              : `参照価格 ${referenceDate ? formatDate(referenceDate) : "—"}`}
                         </Badge>
                       </Group>
                     }
@@ -526,9 +589,13 @@ export function TrialEstimateForm({
                 />
               </SimpleGrid>
               <Text c="dimmed" mt="xs" size="xs">
-                加工単価（¥{Number(machiningRate).toLocaleString()}
+                加工単価（¥
+                {Number(
+                  customValues.machiningRatePer10min ?? 2000,
+                ).toLocaleString()}
                 /10分）・予備形状本数（
-                {spareShapeCount}本）は設定の既定値を使用します。
+                {Number(customValues.spareShapeCount ?? 3)}
+                本）は試算計算のグローバル固定係数を使用します。
               </Text>
             </FormSection>
 
@@ -589,58 +656,60 @@ export function TrialEstimateForm({
               )}
             </FormSection>
 
-            {settings.customInputs.length > 0 && (
+            {settings.customInputs.some((d) => d.scope !== "global") && (
               <FormSection
                 description="試算計算（SY02）で定義された追加入力。計算基準の式で変数として使われます。"
                 title="カスタム項目"
               >
                 <SimpleGrid cols={{ base: 1, sm: 2 }} maw={640} spacing="sm">
-                  {settings.customInputs.map((d) =>
-                    d.type === "number" ? (
-                      <NumberInput
-                        key={d.key}
-                        label={d.label || d.key}
-                        onChange={(v) =>
-                          setCustomValue(d.key, typeof v === "number" ? v : 0)
-                        }
-                        value={
-                          typeof customValues[d.key] === "number"
-                            ? (customValues[d.key] as number)
-                            : 0
-                        }
-                      />
-                    ) : d.type === "boolean" ? (
-                      <Switch
-                        checked={customValues[d.key] === true}
-                        key={d.key}
-                        label={d.label || d.key}
-                        mt={26}
-                        onChange={(e) =>
-                          setCustomValue(d.key, e.currentTarget.checked)
-                        }
-                      />
-                    ) : d.type === "select" ? (
-                      <Select
-                        data={(d.options ?? []).map((o) => ({
-                          value: o.value,
-                          label: o.label,
-                        }))}
-                        key={d.key}
-                        label={d.label || d.key}
-                        onChange={(v) => setCustomValue(d.key, v ?? "")}
-                        value={String(customValues[d.key] ?? "")}
-                      />
-                    ) : (
-                      <TextInput
-                        key={d.key}
-                        label={d.label || d.key}
-                        onChange={(e) =>
-                          setCustomValue(d.key, e.currentTarget.value)
-                        }
-                        value={String(customValues[d.key] ?? "")}
-                      />
-                    ),
-                  )}
+                  {settings.customInputs
+                    .filter((d) => d.scope !== "global")
+                    .map((d) =>
+                      d.type === "number" ? (
+                        <NumberInput
+                          key={d.key}
+                          label={d.label || d.key}
+                          onChange={(v) =>
+                            setCustomValue(d.key, typeof v === "number" ? v : 0)
+                          }
+                          value={
+                            typeof customValues[d.key] === "number"
+                              ? (customValues[d.key] as number)
+                              : 0
+                          }
+                        />
+                      ) : d.type === "boolean" ? (
+                        <Switch
+                          checked={customValues[d.key] === true}
+                          key={d.key}
+                          label={d.label || d.key}
+                          mt={26}
+                          onChange={(e) =>
+                            setCustomValue(d.key, e.currentTarget.checked)
+                          }
+                        />
+                      ) : d.type === "select" ? (
+                        <Select
+                          data={(d.options ?? []).map((o) => ({
+                            value: o.value,
+                            label: o.label,
+                          }))}
+                          key={d.key}
+                          label={d.label || d.key}
+                          onChange={(v) => setCustomValue(d.key, v ?? "")}
+                          value={String(customValues[d.key] ?? "")}
+                        />
+                      ) : (
+                        <TextInput
+                          key={d.key}
+                          label={d.label || d.key}
+                          onChange={(e) =>
+                            setCustomValue(d.key, e.currentTarget.value)
+                          }
+                          value={String(customValues[d.key] ?? "")}
+                        />
+                      ),
+                    )}
                 </SimpleGrid>
               </FormSection>
             )}
@@ -665,7 +734,7 @@ export function TrialEstimateForm({
 
             <ResultsPanel
               breakdown={result.breakdown}
-              correctionFactor={settings.correctionFactor}
+              correctionFactor={Number(customValues.correctionFactor ?? 1.25)}
               lot={result.lots[0] ?? null}
               warnings={result.warnings}
             />
@@ -692,7 +761,17 @@ export function TrialEstimateForm({
                   {settings.materialPriceLookbackMonths}ヶ月
                 </Badge>
                 <Text c="dimmed" size="xs">
-                  {materialOptions.find((m) => m.value === materialId)?.label}
+                  {[
+                    materialTypeOptions.find((m) => m.value === materialTypeId)
+                      ?.label,
+                    diameterOptions.find((d) => d.value === diameterCode)
+                      ?.label,
+                    surfaceFinishOptions.find(
+                      (s) => s.value === surfaceFinishCode,
+                    )?.label,
+                  ]
+                    .filter(Boolean)
+                    .join(" / ")}
                 </Text>
               </Group>
               <MaterialPriceChart

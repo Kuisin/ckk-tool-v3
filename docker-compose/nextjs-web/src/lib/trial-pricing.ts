@@ -18,10 +18,10 @@ import type {
 } from "./trial-pricing-criteria";
 import {
   CENTERLESS,
-  COATING_FACTOR,
   CORRECTION_FACTOR,
   CYLINDER_MACHINING,
   CYLINDER_TYPE_OPTIONS,
+  coatingFactorFor,
   coatingRawCost,
   INSPECTION_OPTIONS,
   LAP_OPTIONS,
@@ -224,18 +224,18 @@ export function calcTrialPricingLegacy(
   // ── 加工単価 ──────────────────────────────────────────────────────────────
   const machining = (input.machiningRatePer10min / 10) * input.machiningMinutes;
 
-  // ── コート代 (×1.5, ROUNDUP -1) ──────────────────────────────────────────
+  // ── コート代 (丸棒 ×1.5 / 円筒・OH ×1.3, ROUNDUP -1) ───────────────────────
   let coating = 0;
   if (input.coating && input.coating !== "無") {
     coating = roundUp(
-      coatingRawCost(input.coating, dia, len) * COATING_FACTOR,
+      coatingRawCost(input.coating, dia, len) *
+        coatingFactorFor(input.toolType),
       -1,
     );
   }
 
-  // ── ラップ処理 (有(OSG) = コート代/2) ────────────────────────────────────
-  const lapBase = optAmount(LAP_OPTIONS, input.lapType);
-  const lap = input.lapType === "OSG" ? coating / 2 : lapBase;
+  // ── ラップ処理 (掛け率 定額。有(OSG)=205) ─────────────────────────────────
+  const lap = optAmount(LAP_OPTIONS, input.lapType);
 
   // ── LD ────────────────────────────────────────────────────────────────────
   let ld = 0;

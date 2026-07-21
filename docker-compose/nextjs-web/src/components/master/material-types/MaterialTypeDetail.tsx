@@ -25,10 +25,15 @@ import {
 import { useTabParam } from "@/hooks/useUrlState";
 import { useIsMobile } from "@/hooks/useViewport";
 import { formatDateTime } from "@/lib/format";
+import type { Option } from "@/lib/mock";
 import {
   DeleteMaterialTypeModal,
   ToggleMaterialTypeActiveModal,
 } from "./MaterialTypeModals";
+import {
+  MaterialTypePriceGrid,
+  type MaterialTypePriceSeed,
+} from "./MaterialTypePriceGrid";
 
 const BASE_PATH = "/master/material-types";
 
@@ -63,9 +68,16 @@ export interface MaterialTypeDetailData {
 export function MaterialTypeDetail({
   record,
   auditEntries,
+  diameterOptions,
+  surfaceOptions,
+  prices,
 }: {
   record: MaterialTypeDetailData;
   auditEntries: AuditEntry[];
+  /** 既定単価タブ用: 直径・黒皮/研磨 の選択肢 + 保存済み価格. */
+  diameterOptions: Option[];
+  surfaceOptions: Option[];
+  prices: MaterialTypePriceSeed[];
 }) {
   const router = useRouter();
   const isMobile = useIsMobile();
@@ -151,6 +163,7 @@ export function MaterialTypeDetail({
       <Tabs onChange={setTab} value={tab}>
         <Tabs.List>
           <Tabs.Tab value="overview">概要</Tabs.Tab>
+          <Tabs.Tab value="prices">既定単価</Tabs.Tab>
           <Tabs.Tab value="related">関連</Tabs.Tab>
           <Tabs.Tab value="history">履歴</Tabs.Tab>
         </Tabs.List>
@@ -166,6 +179,15 @@ export function MaterialTypeDetail({
               value={record.descriptionEn || "—"}
             />
           </Stack>
+        </Tabs.Panel>
+
+        <Tabs.Panel pt="md" value="prices">
+          <MaterialTypePriceGrid
+            diameterOptions={diameterOptions}
+            initialPrices={prices}
+            materialTypeId={record.id}
+            surfaceOptions={surfaceOptions}
+          />
         </Tabs.Panel>
 
         <Tabs.Panel pt="md" value="related">

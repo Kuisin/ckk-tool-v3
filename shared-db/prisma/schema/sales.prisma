@@ -65,8 +65,12 @@ model Estimate {
   toolType            TrialToolType  @map("tool_type")
   status              EstimateStatus @default(DRAFT)
   customerBpId        String?        @map("customer_bp_id") @db.Uuid
-  materialId          Int?           @map("material_id")
-  // 参照価格（仕入実績由来）。reference_overridden = 手動上書き。
+  // 材料は「材種 × 直径 × 黒皮/研磨」で指定する（特定 materials 行には紐付けない）。
+  // 参照価格は material_type_prices（¥/1000mm）＋ 仕入実績から解決する。
+  materialTypeId      Int?           @map("material_type_id")
+  diameterCode        String?        @map("diameter_code") @db.Char(3)
+  surfaceFinishCode   String?        @map("surface_finish_code") @db.Char(1)
+  // 参照価格（仕入実績 / 材種既定単価 由来, ¥/1000mm）。reference_overridden = 手動上書き。
   referenceUnitPrice  Decimal?       @map("reference_unit_price") @db.Decimal(12, 2)
   referenceDate       DateTime?      @map("reference_date") @db.Date
   referenceOverridden Boolean        @default(false) @map("reference_overridden")
@@ -80,9 +84,11 @@ model Estimate {
   createdAt           DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt           DateTime       @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  customerBp    BusinessPartner? @relation("EstimateCustomer", fields: [customerBpId], references: [id])
-  material      Material?        @relation(fields: [materialId], references: [id])
-  createdByUser User?            @relation("EstimateCreatedBy", fields: [createdBy], references: [id])
+  customerBp    BusinessPartner?       @relation("EstimateCustomer", fields: [customerBpId], references: [id])
+  materialType  MaterialType?          @relation(fields: [materialTypeId], references: [id])
+  diameter      MaterialDiameter?      @relation(fields: [diameterCode], references: [code])
+  surfaceFinish MaterialSurfaceFinish? @relation(fields: [surfaceFinishCode], references: [code])
+  createdByUser User?                  @relation("EstimateCreatedBy", fields: [createdBy], references: [id])
 
   priceListEntries PriceListEntry[]
 

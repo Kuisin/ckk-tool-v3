@@ -38,6 +38,7 @@ import {
   IconFileTypePdf,
 } from "@tabler/icons-react";
 import type { ReactNode } from "react";
+import { useUnsavedChanges } from "@/components/layout/NavigationGuard";
 import { useIsMobile } from "@/hooks/useViewport";
 import {
   CancelButton,
@@ -261,6 +262,7 @@ export function FormShell({
   title,
   status,
   isPending,
+  isDirty = false,
   onSubmit,
   onCancel,
   submitLabel = "保存",
@@ -270,12 +272,16 @@ export function FormShell({
   title: string;
   status?: ReactNode;
   isPending?: boolean;
+  /** 未保存の変更があるか（通常 `form.isDirty()`）。離脱時に確認を出す。 */
+  isDirty?: boolean;
   onSubmit: (e: React.FormEvent<HTMLFormElement>) => void;
   onCancel?: () => void;
   submitLabel?: string;
   children: ReactNode;
 }) {
   const isMobile = useIsMobile();
+  // 送信中は保存処理の遷移を妨げないよう、未保存ガードを解除する。
+  useUnsavedChanges(isDirty && !isPending);
   return (
     <Stack gap="md">
       <PageHeader breadcrumbs={breadcrumbs} status={status} title={title} />

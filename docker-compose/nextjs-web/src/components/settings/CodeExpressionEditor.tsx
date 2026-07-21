@@ -7,9 +7,9 @@
  * のクリック挿入パレットと「整形」ボタン。ハイライト/整形は lib/js-highlight.ts。
  */
 
-import { Box, Group, Text } from "@mantine/core";
-import { IconWand } from "@tabler/icons-react";
-import { useMemo, useRef } from "react";
+import { Box, Group, Text, UnstyledButton } from "@mantine/core";
+import { IconChevronRight, IconWand } from "@tabler/icons-react";
+import { useMemo, useRef, useState } from "react";
 import { GhostButton } from "@/components/ui/buttons";
 import { formatExpression, highlightExpression } from "@/lib/js-highlight";
 
@@ -39,6 +39,8 @@ export function CodeExpressionEditor({
   minRows?: number;
 }) {
   const ref = useRef<HTMLTextAreaElement>(null);
+  // 変数パレットは既定で折りたたむ（式エディタをすっきり見せる）。
+  const [showVars, setShowVars] = useState(false);
 
   // 変数色分け用: パレットのトークンからベース識別子を集める。
   const knownVars = useMemo(() => {
@@ -77,35 +79,54 @@ export function CodeExpressionEditor({
     <Box>
       {variables.length > 0 && (
         <Box mb={6}>
-          <Text c="dimmed" mb={2} size="xs">
-            利用可能な変数（クリックで挿入）
-          </Text>
-          {variables.map((g) => (
-            <Group gap={4} key={g.group} mb={2} wrap="wrap">
-              <Text c="dimmed" size="xs" style={{ minWidth: 64 }}>
-                {g.group}
+          <UnstyledButton
+            onClick={() => setShowVars((o) => !o)}
+            style={{ display: "block", width: "100%" }}
+          >
+            <Group gap={4} mb={2}>
+              <IconChevronRight
+                size={12}
+                style={{
+                  transform: showVars ? "rotate(90deg)" : "none",
+                  transition: "transform 120ms ease",
+                  color: "var(--mantine-color-dimmed)",
+                }}
+              />
+              <Text c="dimmed" size="xs">
+                利用可能な変数（クリックで挿入）
               </Text>
-              {g.items.map((it) => (
-                <button
-                  key={it.token}
-                  onClick={() => insert(it.token)}
-                  style={{
-                    fontFamily: "var(--mantine-font-family-monospace)",
-                    fontSize: 11,
-                    padding: "1px 6px",
-                    borderRadius: 4,
-                    border: "1px solid var(--mantine-color-default-border)",
-                    background: "var(--mantine-color-body)",
-                    color: "var(--mantine-color-teal-7)",
-                    cursor: "pointer",
-                  }}
-                  type="button"
-                >
-                  {it.label ?? it.token}
-                </button>
-              ))}
             </Group>
-          ))}
+          </UnstyledButton>
+          {showVars && (
+            <Box>
+              {variables.map((g) => (
+                <Group gap={4} key={g.group} mb={2} wrap="wrap">
+                  <Text c="dimmed" size="xs" style={{ minWidth: 64 }}>
+                    {g.group}
+                  </Text>
+                  {g.items.map((it) => (
+                    <button
+                      key={it.token}
+                      onClick={() => insert(it.token)}
+                      style={{
+                        fontFamily: "var(--mantine-font-family-monospace)",
+                        fontSize: 11,
+                        padding: "1px 6px",
+                        borderRadius: 4,
+                        border: "1px solid var(--mantine-color-default-border)",
+                        background: "var(--mantine-color-body)",
+                        color: "var(--mantine-color-teal-7)",
+                        cursor: "pointer",
+                      }}
+                      type="button"
+                    >
+                      {it.label ?? it.token}
+                    </button>
+                  ))}
+                </Group>
+              ))}
+            </Box>
+          )}
         </Box>
       )}
 

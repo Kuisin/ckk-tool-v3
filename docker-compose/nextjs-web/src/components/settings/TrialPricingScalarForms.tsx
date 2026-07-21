@@ -10,11 +10,11 @@
 
 import {
   ActionIcon,
+  Box,
+  Divider,
   Group,
   NumberInput,
-  Paper,
   Select,
-  SimpleGrid,
   Stack,
   Switch,
   Text,
@@ -46,6 +46,11 @@ const INPUT_TYPE_OPTIONS: { value: CustomInputType; label: string }[] = [
   { value: "boolean", label: "ON/OFF" },
   { value: "text", label: "文字列" },
   { value: "select", label: "選択" },
+];
+
+const SCOPE_OPTIONS = [
+  { value: "estimate", label: "見積入力（フォームに表示）" },
+  { value: "global", label: "グローバル定数（固定係数）" },
 ];
 
 /** 全設定を保持しつつ、指定セクションだけ編集する共通フック。 */
@@ -159,77 +164,24 @@ export function MaterialPolicyForm({
             }
             value={settings.materialPriceLookbackMonths}
           />
+          <NumberInput
+            description="仕入実績が無い素材の試算で使う既定単価（0 = 既定なし）。試算では「既定価格」と表示されます。"
+            label="既定材料単価（¥/1000mm）"
+            min={0}
+            onChange={(v) => patch({ defaultMaterialPrice: Number(v) || 0 })}
+            prefix="¥"
+            thousandSeparator=","
+            value={settings.defaultMaterialPrice}
+          />
         </Stack>
       </FormSection>
     </SectionShell>
   );
 }
 
-// ── 既定値・係数 ───────────────────────────────────────────────────────────────
-export function CoefficientsForm({
-  initial,
-}: {
-  initial: TrialPricingSettings;
-}) {
-  const isMobile = useIsMobile();
-  const { settings, patch, save, isPending, router } =
-    useSectionSettings(initial);
-  const num = (k: keyof TrialPricingSettings, v: number | string) =>
-    patch({ [k]: Number(v) || 0 } as Partial<TrialPricingSettings>);
-  return (
-    <SectionShell
-      isMobile={isMobile}
-      isPending={isPending}
-      onCancel={() => router.push(BASE)}
-      onSave={() => save()}
-      title="既定値・係数"
-    >
-      <FormSection
-        description="見積入力に含めない必須値。式の変数（machiningRatePer10min 等）や係数として使われます。"
-        title="既定値・係数（グローバル）"
-      >
-        <SimpleGrid cols={{ base: 1, sm: 2 }} maw={640} spacing="sm">
-          <NumberInput
-            description="加工単価の既定値"
-            label="加工単価（¥/10分）"
-            min={0}
-            onChange={(v) => num("machiningRatePer10min", v)}
-            prefix="¥"
-            thousandSeparator=","
-            value={settings.machiningRatePer10min}
-          />
-          <NumberInput
-            description="形状出しの予備本数の既定値"
-            label="予備形状本数"
-            min={1}
-            onChange={(v) => num("spareShapeCount", v)}
-            value={settings.spareShapeCount}
-          />
-          <NumberInput
-            decimalScale={2}
-            description="式変数 correctionFactor"
-            label="補正値"
-            min={0}
-            onChange={(v) => num("correctionFactor", v)}
-            step={0.01}
-            value={settings.correctionFactor}
-          />
-          <NumberInput
-            description="式変数 ldChargePer10min"
-            label="LDチャージ（¥/10分）"
-            min={0}
-            onChange={(v) => num("ldChargePer10min", v)}
-            prefix="¥"
-            thousandSeparator=","
-            value={settings.ldChargePer10min}
-          />
-        </SimpleGrid>
-      </FormSection>
-    </SectionShell>
-  );
-}
-
 // ── カスタム入力項目 ───────────────────────────────────────────────────────────
+// 旧「既定値・係数（グローバル）」は廃止し、その 4 値は scope:"global" の固定係数
+// カスタム入力（下の CustomInputsForm）へ移行した。
 export function CustomInputsForm({
   initial,
 }: {
@@ -243,6 +195,7 @@ export function CustomInputsForm({
     const errors: Record<number, string> = {};
     const seen = new Map<string, number>();
     settings.customInputs.forEach((d, i) => {
+      if (d.scope === "global") return; // 固定係数はキー編集不可・検証対象外
       if (d.key && RESERVED_KEYS.has(d.key)) errors[i] = "予約語です";
       if (d.key && seen.has(d.key)) errors[i] = "キーが重複しています";
       if (d.key) seen.set(d.key, i);
@@ -267,7 +220,7 @@ export function CustomInputsForm({
       title="カスタム入力項目"
     >
       <FormSection
-        description="試算フォームに表示する追加入力。キーが計算基準の式で変数として使えます。"
+        description="計算基準の式で変数として使える項目。スコープ「見積入力」は試算フォームに表示、「グローバル定数」は固定係数（補正値・LDチャージ・加工単価・予備形状本数）で削除・改名不可。"
         title="カスタム入力項目"
       >
         <Stack gap="sm">
@@ -277,9 +230,11 @@ export function CustomInputsForm({
             </Text>
           )}
           {settings.customInputs.map((d, i) => (
-            <Paper key={`ci-${d.order}-${i}`} p="sm" radius="sm" withBorder>
+            <Box key={`ci-${d.order}-${i}`}>
+              {i > 0 && <Divider mb="sm" />}
               <Group align="flex-start" gap="sm" wrap="wrap">
                 <TextInput
+                  disabled={d.scope === "global"}
                   error={keyErrors[i]}
                   label="キー（変数名）"
                   onChange={(e) => {
@@ -303,6 +258,7 @@ export function CustomInputsForm({
                 />
                 <Select
                   data={INPUT_TYPE_OPTIONS}
+                  disabled={d.scope === "global"}
                   label="型"
                   onChange={(v) => {
                     const type = (v as CustomInputType) ?? "number";
@@ -314,6 +270,21 @@ export function CustomInputsForm({
                   }}
                   value={d.type}
                   w={130}
+                />
+                <Select
+                  data={SCOPE_OPTIONS}
+                  disabled={d.scope === "global"}
+                  label="スコープ"
+                  onChange={(v) => {
+                    const next = settings.customInputs.slice();
+                    next[i] = {
+                      ...d,
+                      scope: (v as CustomInputDef["scope"]) ?? "estimate",
+                    };
+                    setInputs(next);
+                  }}
+                  value={d.scope ?? "estimate"}
+                  w={190}
                 />
                 {d.type === "number" ? (
                   <NumberInput
@@ -370,19 +341,21 @@ export function CustomInputsForm({
                     w={200}
                   />
                 )}
-                <ActionIcon
-                  aria-label="削除"
-                  color="red"
-                  mt={26}
-                  onClick={() =>
-                    setInputs(settings.customInputs.filter((_, k) => k !== i))
-                  }
-                  variant="subtle"
-                >
-                  <IconTrash size={16} />
-                </ActionIcon>
+                {d.scope !== "global" && (
+                  <ActionIcon
+                    aria-label="削除"
+                    color="red"
+                    mt={26}
+                    onClick={() =>
+                      setInputs(settings.customInputs.filter((_, k) => k !== i))
+                    }
+                    variant="subtle"
+                  >
+                    <IconTrash size={16} />
+                  </ActionIcon>
+                )}
               </Group>
-            </Paper>
+            </Box>
           ))}
           <GhostButton
             leftSection={<IconPlus size={16} />}

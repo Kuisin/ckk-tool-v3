@@ -375,6 +375,19 @@ export const appList: AppEntry[] = [
   },
 ];
 
+/** Home 絞り込み（工程）で使う URL パラメータのキー。 */
+export const WORKPROCESS_PARAM = "wp";
+
+/** 有効な工程（カテゴリ）名か判定する。パンくず/URL の検証に使う。 */
+export function isAppCategory(value: string): value is AppCategory {
+  return value in CATEGORY_COLORS;
+}
+
+/** 工程（カテゴリ）で Home を絞り込むリンク先。 */
+export function workprocessHomeHref(category: AppCategory): string {
+  return `/?${WORKPROCESS_PARAM}=${encodeURIComponent(category)}`;
+}
+
 /**
  * Category color mapping for ThemeIcon in AppLauncher and HomeApps.
  * [Custom] Each category gets a consistent color across all views.

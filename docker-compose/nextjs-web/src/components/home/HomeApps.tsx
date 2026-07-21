@@ -12,6 +12,7 @@ import {
   Avatar,
   Badge,
   Card,
+  CloseButton,
   Divider,
   Group,
   Paper,
@@ -25,27 +26,42 @@ import {
   useComputedColorScheme,
 } from "@mantine/core";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import {
   useDisabledApps,
   useUnreleasedApps,
 } from "@/components/layout/AppFlags";
 import { useIsMobile } from "@/hooks/useViewport";
-import { getAppsByCategory } from "@/lib/app-list";
+import {
+  CATEGORY_COLORS,
+  getAppsByCategory,
+  isAppCategory,
+  WORKPROCESS_PARAM,
+} from "@/lib/app-list";
 import { CATEGORY_SECTION_ICONS, resolveAppIcon } from "@/lib/icons";
 
 export interface HomeUser {
   displayName: string;
   initials: string;
   username: string;
-  department: string;
+  department: string | null;
+  title: string | null;
+  email: string | null;
+  office: string | null;
+  company: string | null;
   avatarUrl: string | null;
 }
 
-const MOCK_USER: HomeUser = {
-  displayName: "山田 太郎",
-  initials: "山田",
-  username: "yamada.taro",
-  department: "製造部",
+/** 未ログイン時のフォールバック（デモ ID は出さない）。 */
+const GUEST_USER: HomeUser = {
+  displayName: "ゲスト",
+  initials: "—",
+  username: "",
+  department: null,
+  title: null,
+  email: null,
+  office: null,
+  company: null,
   avatarUrl: null,
 };
 
@@ -57,18 +73,24 @@ interface HomeAppsProps {
 }
 
 export function HomeApps({
-  user = MOCK_USER,
+  user = GUEST_USER,
   isLoading = false,
 }: HomeAppsProps) {
   const disabledApps = useDisabledApps();
   const unreleasedApps = useUnreleasedApps();
+  const searchParams = useSearchParams();
+  // 工程（カテゴリ）絞り込み。パンくずの工程リンクから遷移してくる。
+  const rawWp = searchParams.get(WORKPROCESS_PARAM);
+  const workprocess = rawWp && isAppCategory(rawWp) ? rawWp : null;
   // 環境別フラグで無効化されたアプリはカードを出さない（空カテゴリも消す）。
   const categories = getAppsByCategory()
     .map((c) => ({
       ...c,
       apps: c.apps.filter((a) => !disabledApps.has(a.key)),
     }))
-    .filter((c) => c.apps.length > 0);
+    .filter((c) => c.apps.length > 0)
+    // 工程が指定されていれば、その工程だけに絞り込む。
+    .filter((c) => !workprocess || c.category === workprocess);
   const colorScheme = useComputedColorScheme("light", {
     getInitialValueInEffect: false,
   });
@@ -91,12 +113,35 @@ export function HomeApps({
             </Avatar>
             <Stack gap={4}>
               <Title order={3}>{user.displayName}</Title>
-              <Text c="dimmed" size="sm">
-                {user.username}
-              </Text>
-              <Badge color="blue" size="sm" variant="light">
-                {user.department}
-              </Badge>
+              {user.username && (
+                <Text c="dimmed" size="sm">
+                  {user.username}
+                </Text>
+              )}
+              {(user.department || user.title) && (
+                <Group gap="xs">
+                  {user.department && (
+                    <Badge color="blue" size="sm" variant="light">
+                      {user.department}
+                    </Badge>
+                  )}
+                  {user.title && (
+                    <Badge color="gray" size="sm" variant="light">
+                      {user.title}
+                    </Badge>
+                  )}
+                </Group>
+              )}
+              {user.email && (
+                <Text c="dimmed" size="xs">
+                  {user.email}
+                </Text>
+              )}
+              {(user.company || user.office) && (
+                <Text c="dimmed" size="xs">
+                  {[user.company, user.office].filter(Boolean).join(" / ")}
+                </Text>
+              )}
             </Stack>
           </Group>
 
@@ -112,6 +157,24 @@ export function HomeApps({
           />
         </Group>
       </Card>
+
+      {/* ── 工程での絞り込み表示（パンくずの工程リンクから） ──────────────── */}
+      {workprocess && (
+        <Group gap="xs" wrap="nowrap">
+          <Text c="dimmed" size="sm">
+            工程で絞り込み中:
+          </Text>
+          <Badge color={CATEGORY_COLORS[workprocess]} size="lg" variant="light">
+            {workprocess}
+          </Badge>
+          <CloseButton
+            aria-label="絞り込みを解除"
+            component={Link}
+            href="/"
+            size="sm"
+          />
+        </Group>
+      )}
 
       {/* ── App categories ─────────────────────────────────────────────── */}
       {categories.map((cat, catIndex) => {

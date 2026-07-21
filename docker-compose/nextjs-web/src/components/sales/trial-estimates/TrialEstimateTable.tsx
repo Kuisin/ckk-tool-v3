@@ -120,13 +120,9 @@ export function TrialEstimateTable({
     },
     {
       key: "material",
-      header: "素材",
+      header: "材種",
       hideable: true,
-      render: (r) => (
-        <Text ff="mono" size="xs">
-          {r.materialId}
-        </Text>
-      ),
+      render: (r) => <Text size="xs">{r.materialLabel}</Text>,
     },
     {
       key: "price",

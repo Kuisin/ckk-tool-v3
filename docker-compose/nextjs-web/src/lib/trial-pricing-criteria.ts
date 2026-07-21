@@ -13,6 +13,7 @@
  */
 
 import { z } from "zod";
+import type { LocalizedText } from "./format";
 import type { ToolType } from "./trial-pricing";
 
 /** 工具種（試算の product type）— 基準の適用対象の絞り込みに使う。 */
@@ -48,6 +49,14 @@ export interface CustomInputOption {
   label: string;
 }
 
+/**
+ * - `estimate` … editable per estimate (appears in the 試算 form; default is the
+ *                initial value).
+ * - `global`   … fixed global constant; hidden from the estimate form, always uses
+ *                `default`. Edited only in the SY02 custom-values admin list.
+ */
+export type CustomInputScope = "estimate" | "global";
+
 export interface CustomInputDef {
   /** Valid JS identifier, unique, not reserved — becomes a scope variable. */
   key: string;
@@ -57,6 +66,8 @@ export interface CustomInputDef {
   /** select only. */
   options?: CustomInputOption[];
   order: number;
+  /** 既定 = "estimate"。"global" は見積フォームに出さない固定係数。 */
+  scope?: CustomInputScope;
 }
 
 // ── zod (save-time validation) ───────────────────────────────────────────────
@@ -83,6 +94,7 @@ export const customInputDefSchema = z.object({
     .array(z.object({ value: z.string(), label: z.string() }))
     .optional(),
   order: z.number(),
+  scope: z.enum(["estimate", "global"]).optional(),
 });
 
 /**
@@ -111,8 +123,6 @@ export const RESERVED_KEYS: ReadonlySet<string> = new Set([
   "ldOuterDiameter",
   "ldBladeLength",
   "machiningMinutes",
-  "machiningRatePer10min",
-  "spareShapeCount",
   "lotQuantities",
   "lotMarkups",
   // per-lot / running state
@@ -122,9 +132,9 @@ export const RESERVED_KEYS: ReadonlySet<string> = new Set([
   "discountRate",
   "autoRate",
   "lotMarkup",
-  // coefficients
-  "correctionFactor",
-  "ldChargePer10min",
+  // coefficients (materialBasisLength/coatingFactor are engine constants; the four
+  // migrated globals — machiningRatePer10min/spareShapeCount/correctionFactor/
+  // ldChargePer10min — are now custom values, so intentionally NOT reserved here).
   "materialBasisLength",
   "coatingFactor",
   // helpers
@@ -154,6 +164,14 @@ export const RESERVED_KEYS: ReadonlySet<string> = new Set([
 // キー列の組み合わせは表内で一意。該当なしは valueType に応じて 0 / "" を返す。
 export type LookupValueType = "number" | "string";
 
+/**
+ * キー列ごとの照合方法（Excel の MATCH 相当）:
+ * - `exact` … 完全一致（既定）。
+ * - `ge`    … `MATCH(v, keysDesc, -1)`: v 以上で最小のキー（径×長マトリクス）。
+ * - `le`    … `VLOOKUP(v, …, TRUE)`: v 以下で最大のキー（LD 1次元・ロット割引）。
+ */
+export type LookupKeyMatch = "exact" | "ge" | "le";
+
 /** 1 行 = キー列の値（keyColumns 順）+ 戻り値（文字列で保持し valueType で解釈）。 */
 export interface LookupRow {
   keys: string[];
@@ -161,14 +179,19 @@ export interface LookupRow {
 }
 
 export interface LookupTable {
+  /** 不変の管理 ID。式内での参照キー（lookup("<id>", ...keys)）。作成後は変更不可。 */
   id: string;
-  /** 式内での参照名（lookup("<name>", ...keys)）。 */
-  name: string;
+  /** 表示名（多言語 { ja, en }）。参照には使わず一覧・詳細の表示のみ。 */
+  name: LocalizedText;
   description?: string;
   /** キー列名（組み合わせが一意）。順序が lookup 引数の順序。 */
   keyColumns: string[];
+  /** キー列ごとの照合方法（keyColumns と並行、未設定は全て exact）。 */
+  keyMatch?: LookupKeyMatch[];
   /** 戻り値の型。 */
   valueType: LookupValueType;
+  /** 一致なしのとき返す既定値（valueType で解釈。未設定は 0 / ""）。 */
+  default?: string;
   rows: LookupRow[];
 }
 
@@ -178,19 +201,22 @@ export const lookupRowSchema = z.object({
 });
 
 export const lookupTableSchema = z.object({
-  id: z.string().min(1),
-  name: z.string().min(1, "表名を入力してください"),
+  id: z.string().min(1, "ID を入力してください"),
+  name: z.object({ ja: z.string(), en: z.string() }),
   description: z.string().optional(),
   keyColumns: z
     .array(z.string().min(1))
     .min(1, "キー列を1つ以上指定してください"),
+  keyMatch: z.array(z.enum(["exact", "ge", "le"])).optional(),
   valueType: z.enum(["number", "string"]),
+  default: z.string().optional(),
   rows: z.array(lookupRowSchema),
 });
 
 export const lookupTablesArraySchema = z.array(lookupTableSchema);
 
-export const DEFAULT_LOOKUP_TABLES: LookupTable[] = [];
+/** 参照表の既定セット（Excel「最新見積書試算」由来）。lib/trial-pricing-lookups.ts。 */
+export { DEFAULT_LOOKUP_TABLES } from "./trial-pricing-lookups";
 
 /** キー配列 → 一意な合成キー文字列（区切りは NUL）。 */
 export function lookupCompositeKey(keys: readonly string[]): string {
@@ -272,7 +298,7 @@ const BASE_CRITERIA: Criterion[] = [
     role: "component",
     order: 60,
     enabled: true,
-    expression: `lapType === 'OSG' ? r.coating / 2 : lapAmount(lapType)`,
+    expression: `lapAmount(lapType)`,
   },
   {
     id: "ld",
@@ -327,7 +353,49 @@ export const DEFAULT_CRITERIA: Criterion[] = BASE_CRITERIA.map((c) => ({
   toolTypes: [...TRIAL_TOOL_TYPES],
 }));
 
-export const DEFAULT_CUSTOM_INPUTS: CustomInputDef[] = [];
+/**
+ * 既定のカスタム入力。旧「既定値・係数（グローバル）」の 4 値を scope:"global" の
+ * 固定係数として移行（見積フォームには出さず、式内で同名変数として参照）。キー名は
+ * 従来の予約語と同一だが、予約語からは外したので式の互換性を保ちつつ衝突しない。
+ */
+export const DEFAULT_CUSTOM_INPUTS: CustomInputDef[] = [
+  {
+    key: "machiningRatePer10min",
+    label: "加工単価（¥/10分）",
+    type: "number",
+    default: 2000,
+    order: 1,
+    scope: "global",
+  },
+  {
+    key: "spareShapeCount",
+    label: "予備形状本数",
+    type: "number",
+    default: 3,
+    order: 2,
+    scope: "global",
+  },
+  {
+    key: "correctionFactor",
+    label: "補正値（2022補正値）",
+    type: "number",
+    default: 1.25,
+    order: 3,
+    scope: "global",
+  },
+  {
+    key: "ldChargePer10min",
+    label: "LDチャージ（¥/10分）",
+    type: "number",
+    default: 7500,
+    order: 4,
+    scope: "global",
+  },
+];
+
+/** scope:"global" の既定カスタム入力（常に存在させる固定係数）。 */
+export const GLOBAL_CUSTOM_INPUTS: CustomInputDef[] =
+  DEFAULT_CUSTOM_INPUTS.filter((d) => d.scope === "global");
 
 /** Component ids whose values populate the legacy CostBreakdown. */
 export const BREAKDOWN_CRITERION_IDS = [

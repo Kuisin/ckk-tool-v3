@@ -149,6 +149,7 @@ export function DesignRequestForm({
         { label: "設計依頼書", href: BASE_PATH },
         mode === "edit" ? "編集" : "新規作成",
       ]}
+      isDirty={form.isDirty()}
       isPending={isPending}
       onCancel={() =>
         router.push(requestId ? `${BASE_PATH}/${requestId}` : BASE_PATH)
