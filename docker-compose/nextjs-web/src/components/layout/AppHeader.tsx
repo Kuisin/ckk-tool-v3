@@ -75,16 +75,19 @@ function canHoverOpen(): boolean {
   );
 }
 
-const MOCK_USER = {
-  displayName: "山田 太郎",
-  initials: "山田",
-  department: "製造部",
+/** 未ログイン時のフォールバック（デモ ID は出さない）。 */
+const GUEST_USER = {
+  displayName: "ゲスト",
+  initials: "—",
+  department: "",
 };
 
 export interface HeaderUser {
   displayName: string;
   username: string;
   initials: string;
+  department: string | null;
+  title: string | null;
 }
 
 export function AppHeader({
@@ -98,9 +101,10 @@ export function AppHeader({
     ? {
         displayName: user.displayName,
         initials: user.initials,
-        department: user.username,
+        // 所属（無ければ役職 → ユーザー名の順でフォールバック）。
+        department: user.department || user.title || user.username,
       }
-    : MOCK_USER;
+    : GUEST_USER;
   const [launcherOpen, setLauncherOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);

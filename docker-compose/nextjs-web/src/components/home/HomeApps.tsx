@@ -44,15 +44,24 @@ export interface HomeUser {
   displayName: string;
   initials: string;
   username: string;
-  department: string;
+  department: string | null;
+  title: string | null;
+  email: string | null;
+  office: string | null;
+  company: string | null;
   avatarUrl: string | null;
 }
 
-const MOCK_USER: HomeUser = {
-  displayName: "山田 太郎",
-  initials: "山田",
-  username: "yamada.taro",
-  department: "製造部",
+/** 未ログイン時のフォールバック（デモ ID は出さない）。 */
+const GUEST_USER: HomeUser = {
+  displayName: "ゲスト",
+  initials: "—",
+  username: "",
+  department: null,
+  title: null,
+  email: null,
+  office: null,
+  company: null,
   avatarUrl: null,
 };
 
@@ -64,7 +73,7 @@ interface HomeAppsProps {
 }
 
 export function HomeApps({
-  user = MOCK_USER,
+  user = GUEST_USER,
   isLoading = false,
 }: HomeAppsProps) {
   const disabledApps = useDisabledApps();
@@ -104,12 +113,35 @@ export function HomeApps({
             </Avatar>
             <Stack gap={4}>
               <Title order={3}>{user.displayName}</Title>
-              <Text c="dimmed" size="sm">
-                {user.username}
-              </Text>
-              <Badge color="blue" size="sm" variant="light">
-                {user.department}
-              </Badge>
+              {user.username && (
+                <Text c="dimmed" size="sm">
+                  {user.username}
+                </Text>
+              )}
+              {(user.department || user.title) && (
+                <Group gap="xs">
+                  {user.department && (
+                    <Badge color="blue" size="sm" variant="light">
+                      {user.department}
+                    </Badge>
+                  )}
+                  {user.title && (
+                    <Badge color="gray" size="sm" variant="light">
+                      {user.title}
+                    </Badge>
+                  )}
+                </Group>
+              )}
+              {user.email && (
+                <Text c="dimmed" size="xs">
+                  {user.email}
+                </Text>
+              )}
+              {(user.company || user.office) && (
+                <Text c="dimmed" size="xs">
+                  {[user.company, user.office].filter(Boolean).join(" / ")}
+                </Text>
+              )}
             </Stack>
           </Group>
 
