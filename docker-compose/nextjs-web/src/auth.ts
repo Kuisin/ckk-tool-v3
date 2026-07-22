@@ -1,14 +1,14 @@
 /**
- * auth.ts — Auth.js v5 設定（credentials + 任意で Authentik SSO）。
+ * auth.ts — Auth.js v5 設定（credentials セッション基盤）。
  *
  * - Credentials: app.users の username + password_hash（scrypt）。デモ 5 ユーザー
  *   （shared-db/sql/demo-users-seed.sql）用。SSO ユーザーは password_hash null。
- * - Authentik: AUTH_AUTHENTIK_ISSUER / _ID / _SECRET が揃うと有効化。初回ログイン
- *   時に email/username で app.users を照合し、無ければ EMPLOYEE として作成。
+ * - Authentik SSO は自前の OIDC ハンドラ（app/api/oidc/*、lib/oidc.ts）で実装し、
+ *   Auth.js と同形の JWT セッション cookie を発行する（Auth.js の OAuth provider は
+ *   使わない）。AUTH_AUTHENTIK_ISSUER/_ID/_SECRET が揃うとログイン画面で有効化。
  */
 
 import NextAuth from "next-auth";
-import Authentik from "next-auth/providers/authentik";
 import Credentials from "next-auth/providers/credentials";
 import { authConfig } from "./auth.config";
 import { prisma } from "./lib/db";
@@ -88,56 +88,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         };
       },
     }),
-    ...(authentikEnabled ? [Authentik] : []),
   ],
-  callbacks: {
-    ...authConfig.callbacks,
-    // SSO 初回ログイン: app.users を照合・自動作成して内部 id を差し替える
-    async signIn({ user, account, profile }) {
-      if (account?.provider !== "authentik") return true;
-      const username =
-        (profile as { preferred_username?: string } | null)
-          ?.preferred_username ??
-        user.email ??
-        user.name;
-      if (!username) {
-        // Authentik が preferred_username/email/name のいずれも返していない
-        // （scope/property-mapping 未設定など）。何が来たかを必ず記録する。
-        console.error(
-          "[auth][sso] denied: no username claim. profile keys=",
-          Object.keys((profile as object) ?? {}),
-          "email=",
-          user.email,
-          "name=",
-          user.name,
-        );
-        return false;
-      }
-      try {
-        const row = await prisma.user.upsert({
-          where: { username },
-          create: {
-            group: "EMPLOYEE",
-            username,
-            displayName: user.name ?? username,
-            email: user.email,
-            isActive: true,
-          },
-          update: { lastLoginAt: new Date() },
-        });
-        if (!row.isActive) {
-          console.error("[auth][sso] denied: user inactive:", username);
-          return false;
-        }
-        user.id = row.id;
-        (user as { username?: string }).username = row.username;
-        return true;
-      } catch (e) {
-        console.error("[auth][sso] user upsert failed for", username, e);
-        return false;
-      }
-    },
-  },
+  // Authentik SSO は app/api/oidc/* が担当（Auth.js の OAuth provider は不使用）。
+  // credentials のセッション/JWT 基盤（authConfig.callbacks）はそのまま利用する。
 });
 
 export const isSsoEnabled = authentikEnabled;
