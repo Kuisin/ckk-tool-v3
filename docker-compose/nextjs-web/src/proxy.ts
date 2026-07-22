@@ -12,6 +12,6 @@ export default proxy;
 
 export const config = {
   matcher: [
-    "/((?!api/auth|api/oidc|api/preview|login|_next/static|_next/image|favicon\\.ico|design-assets|manifest\\.webmanifest|icons|sw\\.js).*)",
+    "/((?!api/auth|api/preview|login|_next/static|_next/image|favicon\\.ico|design-assets|manifest\\.webmanifest|icons|sw\\.js).*)",
   ],
 };

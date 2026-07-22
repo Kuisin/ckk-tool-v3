@@ -25,6 +25,7 @@ import { IconLogin2 } from "@tabler/icons-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { signIn } from "next-auth/react";
 import { useState } from "react";
+import { ssoSignIn } from "@/app/(auth)/login/actions";
 
 /** Auth.js が /login?error=… で返すコードを日本語に。 */
 const AUTH_ERROR_MESSAGES: Record<string, string> = {
@@ -52,14 +53,6 @@ export function LoginForm({ ssoEnabled }: { ssoEnabled: boolean }) {
       : null,
   );
 
-  // SSO 開始 — 自前 OIDC ハンドラ（/api/oidc/login）へ遷移。Authentik の認可画面へ
-  // リダイレクトされる（社内ネットワーク/VPN 経由で到達）。ローディング表示のまま遷移。
-  const ssoLogin = () => {
-    setSsoLoading(true);
-    setSsoError(null);
-    window.location.href = "/api/oidc/login";
-  };
-
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -78,17 +71,28 @@ export function LoginForm({ ssoEnabled }: { ssoEnabled: boolean }) {
     router.refresh();
   };
 
+  // Auth.js v5 の Server Action パターン: form の action で signIn("authentik") を
+  // サーバー実行 → Authentik へリダイレクト（PKCE/state cookie を確実にセット）。
   const ssoButton = (
-    <Button
-      disabled={!ssoEnabled || ssoLoading}
-      fullWidth
-      leftSection={<IconLogin2 size={16} />}
-      loading={ssoLoading}
-      onClick={ssoLogin}
-      size="md"
+    <form
+      action={ssoSignIn}
+      onSubmit={() => {
+        setSsoLoading(true);
+        setSsoError(null);
+      }}
+      style={{ width: "100%" }}
     >
-      {ssoLoading ? "認証画面へ移動中…" : "SSO でログイン"}
-    </Button>
+      <Button
+        disabled={!ssoEnabled || ssoLoading}
+        fullWidth
+        leftSection={<IconLogin2 size={16} />}
+        loading={ssoLoading}
+        size="md"
+        type="submit"
+      >
+        {ssoLoading ? "認証画面へ移動中…" : "SSO でログイン"}
+      </Button>
+    </form>
   );
 
   return (
