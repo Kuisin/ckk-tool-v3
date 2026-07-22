@@ -1,14 +1,19 @@
 /**
- * auth.ts — Auth.js v5 設定（credentials セッション基盤）。
+ * auth.ts — Auth.js v5 設定（Authentik OIDC + credentials）。
  *
- * - Credentials: app.users の username + password_hash（scrypt）。デモ 5 ユーザー
- *   （shared-db/sql/demo-users-seed.sql）用。SSO ユーザーは password_hash null。
- * - Authentik SSO は自前の OIDC ハンドラ（app/api/oidc/*、lib/oidc.ts）で実装し、
- *   Auth.js と同形の JWT セッション cookie を発行する（Auth.js の OAuth provider は
- *   使わない）。AUTH_AUTHENTIK_ISSUER/_ID/_SECRET が揃うとログイン画面で有効化。
+ * Authentik は公式ドキュメント準拠の標準 provider（next-auth/providers/authentik、
+ * https://authjs.dev/getting-started/providers/authentik）。env は AUTH_AUTHENTIK_ID
+ * / _SECRET / _ISSUER。ISSUER は Authentik の discovery が返す issuer と完全一致
+ * （末尾スラッシュ付き）。サインインは Server Action の signIn("authentik") で開始
+ * （app/(auth)/login/actions.ts）— リダイレクトはサーバー主導で、PKCE/state cookie
+ * が本来の遷移応答で確実にセットされる。
+ *
+ * - Credentials: app.users の username + password_hash（scrypt）。デモ用。
+ * - 初回 SSO ログイン時に profile から app.users を照合・自動作成する（signIn callback）。
  */
 
 import NextAuth from "next-auth";
+import Authentik from "next-auth/providers/authentik";
 import Credentials from "next-auth/providers/credentials";
 import { authConfig } from "./auth.config";
 import { prisma } from "./lib/db";
@@ -88,9 +93,51 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         };
       },
     }),
+    // 公式ドキュメント準拠の標準 Authentik provider（env: AUTH_AUTHENTIK_*）。
+    // issuer は AUTH_AUTHENTIK_ISSUER（末尾スラッシュ付き = discovery issuer と一致）。
+    ...(authentikEnabled ? [Authentik] : []),
   ],
-  // Authentik SSO は app/api/oidc/* が担当（Auth.js の OAuth provider は不使用）。
-  // credentials のセッション/JWT 基盤（authConfig.callbacks）はそのまま利用する。
+  callbacks: {
+    ...authConfig.callbacks,
+    // 初回 SSO ログイン: profile から app.users を照合・自動作成し、内部 id を差し替える。
+    async signIn({ user, account, profile }) {
+      if (account?.provider !== "authentik") return true;
+      const p = profile as {
+        preferred_username?: string;
+        email?: string;
+        name?: string;
+      } | null;
+      const username =
+        p?.preferred_username ?? user.email ?? p?.email ?? user.name;
+      if (!username) {
+        console.error(
+          "[auth][sso] no username claim; profile keys=",
+          Object.keys((profile as object) ?? {}),
+        );
+        return false;
+      }
+      try {
+        const row = await prisma.user.upsert({
+          where: { username },
+          create: {
+            group: "EMPLOYEE",
+            username,
+            displayName: user.name ?? p?.name ?? username,
+            email: user.email ?? p?.email ?? null,
+            isActive: true,
+          },
+          update: { lastLoginAt: new Date() },
+        });
+        if (!row.isActive) return false;
+        user.id = row.id;
+        (user as { username?: string }).username = row.username;
+        return true;
+      } catch (e) {
+        console.error("[auth][sso] user upsert failed:", e);
+        return false;
+      }
+    },
+  },
 });
 
 export const isSsoEnabled = authentikEnabled;
