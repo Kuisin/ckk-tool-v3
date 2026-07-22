@@ -45,6 +45,8 @@ function recordLoginFailure(username: string): void {
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   ...authConfig,
+  // AUTH_DEBUG=true で OAuth フロー（cookie/state/token/profile）を詳細ログ出力。
+  debug: process.env.AUTH_DEBUG === "true",
   providers: [
     Credentials({
       name: "ユーザー名 / パスワード",
@@ -98,22 +100,42 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           ?.preferred_username ??
         user.email ??
         user.name;
-      if (!username) return false;
-      const row = await prisma.user.upsert({
-        where: { username },
-        create: {
-          group: "EMPLOYEE",
-          username,
-          displayName: user.name ?? username,
-          email: user.email,
-          isActive: true,
-        },
-        update: { lastLoginAt: new Date() },
-      });
-      if (!row.isActive) return false;
-      user.id = row.id;
-      (user as { username?: string }).username = row.username;
-      return true;
+      if (!username) {
+        // Authentik が preferred_username/email/name のいずれも返していない
+        // （scope/property-mapping 未設定など）。何が来たかを必ず記録する。
+        console.error(
+          "[auth][sso] denied: no username claim. profile keys=",
+          Object.keys((profile as object) ?? {}),
+          "email=",
+          user.email,
+          "name=",
+          user.name,
+        );
+        return false;
+      }
+      try {
+        const row = await prisma.user.upsert({
+          where: { username },
+          create: {
+            group: "EMPLOYEE",
+            username,
+            displayName: user.name ?? username,
+            email: user.email,
+            isActive: true,
+          },
+          update: { lastLoginAt: new Date() },
+        });
+        if (!row.isActive) {
+          console.error("[auth][sso] denied: user inactive:", username);
+          return false;
+        }
+        user.id = row.id;
+        (user as { username?: string }).username = row.username;
+        return true;
+      } catch (e) {
+        console.error("[auth][sso] user upsert failed for", username, e);
+        return false;
+      }
     },
   },
 });
