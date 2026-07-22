@@ -52,30 +52,12 @@ export function LoginForm({ ssoEnabled }: { ssoEnabled: boolean }) {
       : null,
   );
 
-  // SSO 開始。redirect:false で認可 URL を受け取り、明示的に遷移する。
-  // 途中はローディング表示、失敗はエラー表示（無反応＝「何も起きない」を解消）。
-  const ssoLogin = async () => {
+  // SSO 開始 — 自前 OIDC ハンドラ（/api/oidc/login）へ遷移。Authentik の認可画面へ
+  // リダイレクトされる（社内ネットワーク/VPN 経由で到達）。ローディング表示のまま遷移。
+  const ssoLogin = () => {
     setSsoLoading(true);
     setSsoError(null);
-    try {
-      const res = await signIn("authentik", {
-        callbackUrl: "/",
-        redirect: false,
-      });
-      if (res?.url) {
-        // Authentik の認可画面へ（社内ネットワーク/VPN 経由で到達）。
-        window.location.href = res.url;
-        return; // 遷移するまでローディング維持
-      }
-      setSsoError(
-        "SSO を開始できませんでした。VPN 接続を確認して再度お試しください。",
-      );
-    } catch {
-      setSsoError(
-        "SSO を開始できませんでした。VPN 接続を確認して再度お試しください。",
-      );
-    }
-    setSsoLoading(false);
+    window.location.href = "/api/oidc/login";
   };
 
   const submit = async (e: React.FormEvent) => {
