@@ -38,6 +38,14 @@ interface AuthentikProfile {
 // 通り id_token/JWKS 検証をスキップし、userinfo（http 許可あり）からプロフィールを取得
 // する。discovery/token/userinfo は @auth/core が allowInsecureRequests を渡すため http
 // でも成立。issuer は discovery に使用（末尾スラッシュ付き = discovery issuer と一致）。
+// Authentik OAuth2 エンドポイント（Authentik は常に {origin}/application/o/... 配下）。
+// issuer にはアプリスラッグが含まれるため origin から明示的に組み立てる。OAuth2 経路の
+// userinfo は provider.userinfo.url を参照する（discovery 由来ではない）ため明示必須
+// — 未指定だと "No userinfo endpoint configured" になる。token/userinfo とも http 許可。
+const authentikOAuthBase = process.env.AUTH_AUTHENTIK_ISSUER
+  ? `${new URL(process.env.AUTH_AUTHENTIK_ISSUER).origin}/application/o`
+  : "";
+
 const authentikProvider: OAuthConfig<AuthentikProfile> = {
   id: "authentik",
   name: "Authentik",
@@ -45,7 +53,12 @@ const authentikProvider: OAuthConfig<AuthentikProfile> = {
   issuer: process.env.AUTH_AUTHENTIK_ISSUER,
   clientId: process.env.AUTH_AUTHENTIK_ID,
   clientSecret: process.env.AUTH_AUTHENTIK_SECRET,
-  authorization: { params: { scope: "openid profile email" } },
+  authorization: {
+    url: `${authentikOAuthBase}/authorize/`,
+    params: { scope: "openid profile email" },
+  },
+  token: `${authentikOAuthBase}/token/`,
+  userinfo: `${authentikOAuthBase}/userinfo/`,
   // pkce のみ（Authentik 標準 provider と同じ）。state を含めると @auth/core が
   // 「state value could not be parsed」で失敗する（beta 既知の相性問題）。PKCE で
   // 認可コードとクライアントが束縛されるため CSRF 保護は担保される。
