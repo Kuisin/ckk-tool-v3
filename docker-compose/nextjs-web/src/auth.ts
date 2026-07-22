@@ -46,7 +46,10 @@ const authentikProvider: OAuthConfig<AuthentikProfile> = {
   clientId: process.env.AUTH_AUTHENTIK_ID,
   clientSecret: process.env.AUTH_AUTHENTIK_SECRET,
   authorization: { params: { scope: "openid profile email" } },
-  checks: ["pkce", "state"],
+  // pkce のみ（Authentik 標準 provider と同じ）。state を含めると @auth/core が
+  // 「state value could not be parsed」で失敗する（beta 既知の相性問題）。PKCE で
+  // 認可コードとクライアントが束縛されるため CSRF 保護は担保される。
+  checks: ["pkce"],
   profile(profile) {
     return {
       id: profile.sub,
