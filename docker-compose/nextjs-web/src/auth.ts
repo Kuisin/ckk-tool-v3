@@ -1,19 +1,18 @@
 /**
  * auth.ts — Auth.js v5 設定（Authentik OIDC + credentials）。
  *
- * Authentik は公式ドキュメント準拠の標準 provider（next-auth/providers/authentik、
- * https://authjs.dev/getting-started/providers/authentik）。env は AUTH_AUTHENTIK_ID
- * / _SECRET / _ISSUER。ISSUER は Authentik の discovery が返す issuer と完全一致
- * （末尾スラッシュ付き）。サインインは Server Action の signIn("authentik") で開始
- * （app/(auth)/login/actions.ts）— リダイレクトはサーバー主導で、PKCE/state cookie
- * が本来の遷移応答で確実にセットされる。
+ * Authentik は http（非 https）IdP のため、標準 OIDC provider では id_token 署名検証の
+ * JWKS 取得が http 拒否されコールバックが失敗する。そこで **OAuth2** provider として
+ * 定義し（type:"oauth"・nonce なし）id_token/JWKS 検証を回避、userinfo からプロフィール
+ * を取得する（下記 authentikProvider のコメント参照）。env は AUTH_AUTHENTIK_ID/_SECRET/
+ * _ISSUER。サインインは Server Action signIn("authentik")（app/(auth)/login/actions.ts）。
  *
  * - Credentials: app.users の username + password_hash（scrypt）。デモ用。
  * - 初回 SSO ログイン時に profile から app.users を照合・自動作成する（signIn callback）。
  */
 
 import NextAuth from "next-auth";
-import Authentik from "next-auth/providers/authentik";
+import type { OAuthConfig } from "next-auth/providers";
 import Credentials from "next-auth/providers/credentials";
 import { authConfig } from "./auth.config";
 import { prisma } from "./lib/db";
@@ -23,6 +22,40 @@ const authentikEnabled =
   !!process.env.AUTH_AUTHENTIK_ISSUER &&
   !!process.env.AUTH_AUTHENTIK_ID &&
   !!process.env.AUTH_AUTHENTIK_SECRET;
+
+interface AuthentikProfile {
+  sub: string;
+  preferred_username?: string;
+  email?: string;
+  name?: string;
+}
+
+// Authentik を **OAuth2**（OIDC ではなく）provider として定義する。
+// 理由: IdP が http（https ではない）で、@auth/core は id_token 署名検証時の JWKS 取得
+// にだけ allowInsecureRequests を渡さないため、http の jwks_uri が拒否されコールバック
+// が OAuthCallbackError で失敗する（ログイン画面へ無言でループ）。
+// type:"oauth" + nonce なし にすると processAuthorizationCodeResponse が OAuth2 経路を
+// 通り id_token/JWKS 検証をスキップし、userinfo（http 許可あり）からプロフィールを取得
+// する。discovery/token/userinfo は @auth/core が allowInsecureRequests を渡すため http
+// でも成立。issuer は discovery に使用（末尾スラッシュ付き = discovery issuer と一致）。
+const authentikProvider: OAuthConfig<AuthentikProfile> = {
+  id: "authentik",
+  name: "Authentik",
+  type: "oauth",
+  issuer: process.env.AUTH_AUTHENTIK_ISSUER,
+  clientId: process.env.AUTH_AUTHENTIK_ID,
+  clientSecret: process.env.AUTH_AUTHENTIK_SECRET,
+  authorization: { params: { scope: "openid profile email" } },
+  checks: ["pkce", "state"],
+  profile(profile) {
+    return {
+      id: profile.sub,
+      name: profile.name ?? profile.preferred_username ?? profile.sub,
+      email: profile.email ?? null,
+      username: profile.preferred_username ?? profile.email ?? profile.sub,
+    };
+  },
+};
 
 // 簡易ログインレート制限（監査 P2-9）: ユーザー名毎に 15 分で失敗 5 回まで。
 // インメモリ（プロセス毎）— 単一コンテナ運用では十分。成功でリセット。
@@ -93,9 +126,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         };
       },
     }),
-    // 公式ドキュメント準拠の標準 Authentik provider（env: AUTH_AUTHENTIK_*）。
-    // issuer は AUTH_AUTHENTIK_ISSUER（末尾スラッシュ付き = discovery issuer と一致）。
-    ...(authentikEnabled ? [Authentik] : []),
+    // Authentik（http IdP のため OAuth2 として定義。上記 authentikProvider 参照）。
+    ...(authentikEnabled ? [authentikProvider] : []),
   ],
   callbacks: {
     ...authConfig.callbacks,
