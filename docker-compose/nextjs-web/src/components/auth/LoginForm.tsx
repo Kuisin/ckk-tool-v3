@@ -33,6 +33,34 @@ export function LoginForm({ ssoEnabled }: { ssoEnabled: boolean }) {
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [ssoLoading, setSsoLoading] = useState(false);
+  const [ssoError, setSsoError] = useState<string | null>(null);
+
+  // SSO 開始。redirect:false で認可 URL を受け取り、明示的に遷移する。
+  // 途中はローディング表示、失敗はエラー表示（無反応＝「何も起きない」を解消）。
+  const ssoLogin = async () => {
+    setSsoLoading(true);
+    setSsoError(null);
+    try {
+      const res = await signIn("authentik", {
+        callbackUrl: "/",
+        redirect: false,
+      });
+      if (res?.url) {
+        // Authentik の認可画面へ（社内ネットワーク/VPN 経由で到達）。
+        window.location.href = res.url;
+        return; // 遷移するまでローディング維持
+      }
+      setSsoError(
+        "SSO を開始できませんでした。VPN 接続を確認して再度お試しください。",
+      );
+    } catch {
+      setSsoError(
+        "SSO を開始できませんでした。VPN 接続を確認して再度お試しください。",
+      );
+    }
+    setSsoLoading(false);
+  };
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -54,13 +82,14 @@ export function LoginForm({ ssoEnabled }: { ssoEnabled: boolean }) {
 
   const ssoButton = (
     <Button
-      disabled={!ssoEnabled}
+      disabled={!ssoEnabled || ssoLoading}
       fullWidth
       leftSection={<IconLogin2 size={16} />}
-      onClick={() => signIn("authentik", { callbackUrl: "/" })}
+      loading={ssoLoading}
+      onClick={ssoLogin}
       size="md"
     >
-      SSO でログイン
+      {ssoLoading ? "認証画面へ移動中…" : "SSO でログイン"}
     </Button>
   );
 
@@ -81,6 +110,11 @@ export function LoginForm({ ssoEnabled }: { ssoEnabled: boolean }) {
             <Tooltip label="SSO は未設定です（管理者にお問い合わせください）">
               <span>{ssoButton}</span>
             </Tooltip>
+          )}
+          {ssoError && (
+            <Text c="red" size="xs" ta="center">
+              {ssoError}
+            </Text>
           )}
 
           <Stack gap="xs">
