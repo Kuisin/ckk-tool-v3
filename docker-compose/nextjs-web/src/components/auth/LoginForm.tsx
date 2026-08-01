@@ -22,17 +22,36 @@ import {
   Tooltip,
 } from "@mantine/core";
 import { IconLogin2 } from "@tabler/icons-react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { signIn } from "next-auth/react";
 import { useState } from "react";
+import { ssoSignIn } from "@/app/(auth)/login/actions";
+
+/** Auth.js が /login?error=… で返すコードを日本語に。 */
+const AUTH_ERROR_MESSAGES: Record<string, string> = {
+  AccessDenied:
+    "アクセスが拒否されました。アカウントが無効、または SSO から必要な情報（ユーザー名/メール）が取得できませんでした。管理者にお問い合わせください。",
+  OAuthCallbackError:
+    "SSO の応答処理に失敗しました（トークン取得/検証エラー）。時間をおいて再度お試しください。",
+  Configuration: "認証設定にエラーがあります。管理者にお問い合わせください。",
+  Verification: "リンクが無効か期限切れです。もう一度お試しください。",
+};
 
 export function LoginForm({ ssoEnabled }: { ssoEnabled: boolean }) {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const urlError = searchParams.get("error");
   const [devOpen, setDevOpen] = useState(false);
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [ssoLoading, setSsoLoading] = useState(false);
+  const [ssoError, setSsoError] = useState<string | null>(
+    urlError
+      ? (AUTH_ERROR_MESSAGES[urlError] ?? `ログインエラー: ${urlError}`)
+      : null,
+  );
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -52,16 +71,28 @@ export function LoginForm({ ssoEnabled }: { ssoEnabled: boolean }) {
     router.refresh();
   };
 
+  // Auth.js v5 の Server Action パターン: form の action で signIn("authentik") を
+  // サーバー実行 → Authentik へリダイレクト（PKCE/state cookie を確実にセット）。
   const ssoButton = (
-    <Button
-      disabled={!ssoEnabled}
-      fullWidth
-      leftSection={<IconLogin2 size={16} />}
-      onClick={() => signIn("authentik", { callbackUrl: "/" })}
-      size="md"
+    <form
+      action={ssoSignIn}
+      onSubmit={() => {
+        setSsoLoading(true);
+        setSsoError(null);
+      }}
+      style={{ width: "100%" }}
     >
-      SSO でログイン
-    </Button>
+      <Button
+        disabled={!ssoEnabled || ssoLoading}
+        fullWidth
+        leftSection={<IconLogin2 size={16} />}
+        loading={ssoLoading}
+        size="md"
+        type="submit"
+      >
+        {ssoLoading ? "認証画面へ移動中…" : "SSO でログイン"}
+      </Button>
+    </form>
   );
 
   return (
@@ -81,6 +112,11 @@ export function LoginForm({ ssoEnabled }: { ssoEnabled: boolean }) {
             <Tooltip label="SSO は未設定です（管理者にお問い合わせください）">
               <span>{ssoButton}</span>
             </Tooltip>
+          )}
+          {ssoError && (
+            <Text c="red" size="xs" ta="center">
+              {ssoError}
+            </Text>
           )}
 
           <Stack gap="xs">

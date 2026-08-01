@@ -18,6 +18,14 @@ cp /vpn/config.ovpn /tmp/config.ovpn
 # Force username/password auth to use the generated file.
 sed -i -E "s#^auth-user-pass.*#auth-user-pass /tmp/auth.txt#" /tmp/config.ovpn
 
+# Keep the tunnel alive. config.ovpn sets no keepalive and SSO/LDAP traffic is
+# sparse, so the link idles out and OpenVPN ping-restarts every few minutes —
+# any SSO discovery/token exchange through the Authentik bridge that lands in a
+# reconnect window then fails ("SSO sometimes not working"). Send a client
+# keepalive every 10s (a pushed value, if any, wins — harmless either way).
+grep -qiE "^[[:space:]]*ping[[:space:]]" /tmp/config.ovpn ||
+  printf 'ping 10\nping-restart 60\n' >> /tmp/config.ovpn
+
 echo "[vpn-ldap] starting OpenVPN to the configured remote..."
 openvpn --config /tmp/config.ovpn --auth-nocache --suppress-timestamps &
 OVPN_PID=$!
@@ -35,6 +43,19 @@ ip link show tun0 >/dev/null 2>&1 || { echo "[vpn-ldap] tun0 never came up"; exi
 if [ -n "${AUTHENTIK_HOST:-}" ]; then
   echo "[vpn-ldap] authentik bridge 0.0.0.0:${AUTHENTIK_LISTEN_PORT:-9000} -> ${AUTHENTIK_HOST}:${AUTHENTIK_PORT:-9000}"
   socat TCP-LISTEN:"${AUTHENTIK_LISTEN_PORT:-9000}",fork,reuseaddr TCP:"${AUTHENTIK_HOST}":"${AUTHENTIK_PORT:-9000}" &
+  # Belt-and-suspenders keepalive: even if OpenVPN's client ping is overridden by
+  # a pushed config, periodic real traffic to the IdP keeps the tunnel non-idle
+  # so it never ping-restarts mid-login. TCP-connect every 10s (bounded, silent).
+  (
+    while true; do
+      python3 -c 'import socket,sys
+try:
+    socket.create_connection((sys.argv[1], int(sys.argv[2])), timeout=3).close()
+except Exception:
+    pass' "${AUTHENTIK_HOST}" "${AUTHENTIK_PORT:-9000}" 2>/dev/null || true
+      sleep 10
+    done
+  ) &
 fi
 
 echo "[vpn-ldap] VPN up — bind-aware forward 0.0.0.0:${LISTEN_PORT} -> ${LDAP_HOST}:${LDAP_PORT}"
