@@ -265,3 +265,38 @@ curl -s -X POST http://restore-agent:9000/snapshot -H "Authorization: Bearer $RE
 
 実復元はダウンタイムを伴う破壊操作。UI からの実行前に、まず①手動
 スナップショットでバックアップ経路が通ることを確認すること。
+
+## 補助バックアップ（aux-backup サービス）— 完全復旧の残り要素
+
+「**サーバー全損 → git repo + オフサイトの /backups だけで完全再構築**」を成立させる
+ための毎日 03時台のスナップショット（`/backups/aux/YYYY-MM-DD/`、14日 + 月次12ヶ月）:
+
+- `authentik-postgresql-1.dump` — SSO（プロバイダ・ユーザー・フロー）
+- `coolify-db.dump` — デプロイ定義（アプリ・環境変数）
+- `metabase-db.dump` — BI ダッシュボード
+- `ckk-legacy-db.dump` — 旧システム アーカイブ
+- `grafana-data.tar.gz` — Grafana ダッシュボード
+- `secrets.tar.gz.enc` — **サーバー限定シークレット**（`~/stacks/*/.env`・`ldap.env`・
+  vpn 設定・Coolify `.env`/`.api-token`）の AES-256-CBC(PBKDF2) 暗号化 tar
+
+`ENV_SNAPSHOT_PASSPHRASE`（サーバーの `~/stacks/db-backup/.env`）が暗号化キー。
+**必ずサーバー外（パスワードマネージャ / Mac Keychain `ckk-env-snapshot-passphrase`）
+にも控える** — サーバー全損時はこれが無いと復号できない。
+
+復号: `openssl enc -d -aes-256-cbc -pbkdf2 -iter 200000 -in secrets.tar.gz.enc | tar -xz`
+
+## サーバー全損からの完全復旧（DR ランブック）
+
+前提: GitHub repo + オフサイト同期済み `/backups` + `ENV_SNAPSHOT_PASSPHRASE`。
+
+1. 新サーバーに Docker を導入し、repo を clone。オフサイトから `/data/db-backups` を取得
+   （`rclone copy r2:ckk-backups /data/db-backups` 等）。
+2. `aux/secrets.tar.gz.enc` を復号 → 各 `~/stacks/<stack>/.env` と Coolify の
+   `.env`/`.api-token` を復元。
+3. `shared-db` スタック起動 → 物理 `daily/`（または `logical/`）から復元
+   （上記 Restore runbook）→ `grants` 適用。
+4. 周辺 DB: 各スタック起動後に `pg_restore -U <user> -d <db> aux/<container>.dump`
+   （authentik → coolify → metabase → legacy）。
+5. Grafana: ボリュームへ `grafana-data.tar.gz` を展開。
+6. SeaweedFS: `seaweedfs/` tar を restore-agent または手動で展開。
+7. 残るスタックを `deploy-stack.sh` / Coolify で順次起動（ingress → app）。
