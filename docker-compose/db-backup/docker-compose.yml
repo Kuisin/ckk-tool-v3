@@ -100,6 +100,29 @@ services:
       - seaweed-data:/seaweed-data:ro
       - ${BACKUP_DIR:-/data/db-backups}:/backups
 
+  # 補助バックアップ — 「git repo + /backups だけでサーバー全損から完全復旧」を
+  # 成立させる残り要素を毎日 03時台に取得: 周辺 PostgreSQL（authentik/coolify/
+  # metabase/legacy の docker exec pg_dump）・Grafana データ・サーバー限定シーク
+  # レット（~/stacks/*/.env 等）の AES-256 暗号化 tar。ENV_SNAPSHOT_PASSPHRASE は
+  # サーバー外（パスワードマネージャ）にも必ず控えること。restore-agent と同様
+  # docker.sock を持つ非公開サービス。
+  aux-backup:
+    build: ./aux
+    image: ckk-aux-backup
+    container_name: aux-backup
+    restart: unless-stopped
+    environment:
+      - TZ=${TZ:-Asia/Tokyo}
+      - AUX_KEEP_DAYS=${AUX_KEEP_DAYS:-14}
+      - AUX_MONTHLY_KEEP=${AUX_MONTHLY_KEEP:-12}
+      - ENV_SNAPSHOT_PASSPHRASE=${ENV_SNAPSHOT_PASSPHRASE:-}
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ${BACKUP_DIR:-/data/db-backups}:/backups
+      - ${STACKS_DIR:-/home/kaiseisawada/stacks}:/host-stacks:ro
+      - ${COOLIFY_SOURCE_DIR:-/data/coolify/source}:/coolify-source:ro
+      - grafana-data:/grafana-data:ro
+
   # オフサイト同期（rclone + inotify）— バックアップが /data/db-backups に作られた
   # 瞬間にクラウドへ copy し、04時台に日次 mirror で保持を追従。OFFSITE_REMOTE
   # 未設定時は待機のみ（安全に無効）。設定は README 参照。
@@ -130,6 +153,9 @@ volumes:
   seaweed-data:
     external: true
     name: nextjs-web_seaweed-data
+  grafana-data:
+    external: true
+    name: monitoring_grafana-data
 
 networks:
   shareddb:
