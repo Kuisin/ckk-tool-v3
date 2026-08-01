@@ -91,7 +91,11 @@ run_backup() {
   log "done: ok=$ok fail=$fail"
 }
 
-[ "${1:-}" = "now" ] && run_backup
+# ワンショット実行（初回検証用）: 実行して終了する（常駐しない）
+if [ "${1:-}" = "now" ]; then
+  run_backup
+  exit 0
+fi
 
 log "scheduler up — daily at ${RUN_HOUR}:xx (keep ${AUX_KEEP_DAYS}d + ${AUX_MONTHLY_KEEP}mo)"
 while true; do
