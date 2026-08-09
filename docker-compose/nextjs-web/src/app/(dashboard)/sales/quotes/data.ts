@@ -14,7 +14,7 @@ import {
   formatQuoteNumber,
 } from "@/lib/doc-number";
 import { type LocalizedText, localized } from "@/lib/format";
-import { mapEntry } from "../price-lists/data";
+import { ENTRY_INCLUDE, mapEntry } from "../price-lists/data";
 
 // 一覧クエリの取得上限（監査 P2-8 — 全件フェッチのデータ増加対策）。
 // DataTable はクライアントページングのため、最新分のみで実用上十分。
@@ -109,31 +109,23 @@ export async function fetchEntriesForQuote(
         some: { quoteYearMonth: key.yearMonth, quoteSeq: key.seq },
       },
     },
-    select: { entryYearMonth: true, entrySeq: true },
+    select: { variant: { select: { entryYearMonth: true, entrySeq: true } } },
   });
   const seen = new Set<string>();
-  const keys = tiers.filter((t) => {
-    const k = `${t.entryYearMonth}-${t.entrySeq}`;
-    if (seen.has(k)) return false;
-    seen.add(k);
-    return true;
-  });
+  const keys = tiers
+    .map((t) => t.variant)
+    .filter((v) => {
+      const k = `${v.entryYearMonth}-${v.entrySeq}`;
+      if (seen.has(k)) return false;
+      seen.add(k);
+      return true;
+    });
   if (keys.length === 0) return [];
   const rows = await prisma.priceListEntry.findMany({
     where: {
-      OR: keys.map((t) => ({ yearMonth: t.entryYearMonth, seq: t.entrySeq })),
+      OR: keys.map((v) => ({ yearMonth: v.entryYearMonth, seq: v.entrySeq })),
     },
-    include: {
-      customerBp: true,
-      product: true,
-      tiers: {
-        orderBy: [
-          { sortOrder: "asc" as const },
-          { minQuantity: "asc" as const },
-        ],
-      },
-      discounts: { orderBy: { createdAt: "asc" as const } },
-    },
+    include: ENTRY_INCLUDE,
   });
   return rows.map(mapEntry);
 }
@@ -144,17 +136,7 @@ export async function fetchEntriesForCustomer(
 ): Promise<PriceListEntry[]> {
   const rows = await prisma.priceListEntry.findMany({
     where: customerBpId ? { customerBpId } : undefined,
-    include: {
-      customerBp: true,
-      product: true,
-      tiers: {
-        orderBy: [
-          { sortOrder: "asc" as const },
-          { minQuantity: "asc" as const },
-        ],
-      },
-      discounts: { orderBy: { createdAt: "asc" as const } },
-    },
+    include: ENTRY_INCLUDE,
   });
   return rows.map(mapEntry);
 }
