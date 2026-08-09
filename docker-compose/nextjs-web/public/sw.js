@@ -26,7 +26,8 @@ self.addEventListener("push", (event) => {
       body: data.body || "",
       icon: "/icons/icon-192.png",
       badge: "/icons/icon-192.png",
-      data: { link: data.link || "/" },
+      // リンク未指定の通知はアプリ内通知センターを開く
+      data: { link: data.link || "/notifications" },
       lang: "ja",
     }),
   );
@@ -54,7 +55,7 @@ self.addEventListener("pushsubscriptionchange", (event) => {
 
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
-  const link = event.notification.data?.link || "/";
+  const link = event.notification.data?.link || "/notifications";
   event.waitUntil(
     self.clients
       .matchAll({ type: "window", includeUncontrolled: true })

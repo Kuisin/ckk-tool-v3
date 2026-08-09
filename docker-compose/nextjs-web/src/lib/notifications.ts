@@ -116,7 +116,8 @@ async function dispatchExternal(
           sendPushToUser(u.id, {
             title: input.title,
             body: input.message,
-            link: input.linkPath,
+            // 対象ページが無い通知はアプリ内通知センターを開く
+            link: input.linkPath ?? "/notifications",
           }),
         );
       }
