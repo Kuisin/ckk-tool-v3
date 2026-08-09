@@ -16,8 +16,9 @@ LAN port `192.168.50.15:15432`, in-cluster host `shared-db:5432`).
 | `public` | pass-through compat views only (`sql/metabase-compat.sql`) | — (Metabase reads via `kot_ro`) |
 
 The v3 web app owns a **single** `app` schema (Prisma-managed). Its scope is
-deliberately **minimal**: 試算 (`app.estimates` + `estimate_tiers`), 価格表
-(`app.price_list_entries` + `price_list_tiers` + `price_list_discounts`), 見積書
+deliberately **minimal**: 試算 (`app.estimates`), 価格表
+(`app.price_list_entries` + `price_list_variants` + `price_list_tiers` +
+`price_list_discounts`), 見積書
 (`app.quotes` + `quote_items`), their master-data deps (`app.material_types` /
 `materials` / `products`), business partners (`app.business_partners` + attrs),
 `app.files` / `numbering_sequences`, and RBAC (`app.users` / `roles` /
