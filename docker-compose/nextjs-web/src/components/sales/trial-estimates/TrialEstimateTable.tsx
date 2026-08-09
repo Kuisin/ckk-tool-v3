@@ -8,12 +8,10 @@ import { Badge, Group, Select, Stack, Text, TextInput } from "@mantine/core";
 import {
   IconCalculator,
   IconCopy,
-  IconCurrencyYen,
   IconSearch,
   IconSettings,
 } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
 import { SecondaryButton } from "@/components/ui/buttons";
 import { type Column, DataTable } from "@/components/ui/DataTable";
 import { DocNumber } from "@/components/ui/DocNumber";
@@ -24,14 +22,12 @@ import { ListShell } from "@/components/ui/shells";
 import { useUrlSelectState, useUrlStringState } from "@/hooks/useUrlState";
 import { useIsMobile } from "@/hooks/useViewport";
 import { formatDateTime } from "@/lib/format";
-import type { Option } from "@/lib/mock";
 import {
   calcTrialPricing,
   TOOL_TYPE_OPTIONS,
   type TrialPricingOptions,
 } from "@/lib/trial-pricing";
-import { ConvertToPriceListModal } from "./ConvertToPriceListModal";
-import type { ExistingEntryRef, TrialEstimateRecord } from "./types";
+import type { TrialEstimateRecord } from "./types";
 
 const BASE_PATH = "/sales/trial-estimates";
 
@@ -45,15 +41,9 @@ const headlinePrice = (r: TrialEstimateRecord, opts: TrialPricingOptions) =>
 
 export function TrialEstimateTable({
   rows,
-  customerOptions,
-  productOptions,
-  existingEntries,
   pricingOptions = {},
 }: {
   rows: TrialEstimateRecord[];
-  customerOptions: Option[];
-  productOptions: Option[];
-  existingEntries: ExistingEntryRef[];
   /** 試算エンジンのオプション（係数・カスタム計算）— 画面間で単価を一致させる。 */
   pricingOptions?: TrialPricingOptions;
 }) {
@@ -63,10 +53,6 @@ export function TrialEstimateTable({
   const [search, setSearch] = useUrlStringState("q");
   const [toolType, setToolType] = useUrlSelectState("toolType");
   const [status, setStatus] = useUrlSelectState("status");
-  // 価格表に登録 modal target (null = closed).
-  const [registerTarget, setRegisterTarget] =
-    useState<TrialEstimateRecord | null>(null);
-
   const filtered = rows.filter((r) => {
     const matchesSearch =
       !search ||
@@ -253,16 +239,7 @@ export function TrialEstimateTable({
             </Stack>
           </Group>
         )}
-        rowActions={(r) => [
-          ...(r.status === "CONFIRMED"
-            ? [
-                {
-                  label: "価格表に登録",
-                  icon: <IconCurrencyYen size={14} />,
-                  onAction: () => setRegisterTarget(r),
-                },
-              ]
-            : []),
+        rowActions={() => [
           {
             label: "複製して再試算",
             icon: <IconCopy size={14} />,
@@ -270,17 +247,6 @@ export function TrialEstimateTable({
           },
         ]}
         urlState
-      />
-
-      <ConvertToPriceListModal
-        customerOptions={customerOptions}
-        estimate={registerTarget}
-        existingEntries={existingEntries}
-        onClose={() => setRegisterTarget(null)}
-        onRegistered={() => router.refresh()}
-        opened={registerTarget !== null}
-        pricingOptions={pricingOptions}
-        productOptions={productOptions}
       />
     </ListShell>
   );

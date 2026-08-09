@@ -20,7 +20,7 @@ import { type NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { formatProductNumber } from "@/lib/doc-number";
 import type { LocalizedText } from "@/lib/format";
-import { formatDate, formatMoney, localized } from "@/lib/format";
+import { formatMoney, localized } from "@/lib/format";
 import {
   genericPreviewTitle,
   type PreviewTarget,
@@ -84,12 +84,19 @@ async function richDescription(target: PreviewTarget): Promise<string | null> {
             seq: target.docKey.seq,
           },
         },
-        include: { customerBp: true, product: true },
+        include: {
+          customerBp: true,
+          product: true,
+          variants: { orderBy: { orderType: "asc" as const } },
+        },
       });
       if (!r) return null;
       const customer = localized(r.customerBp.name as LocalizedText | null);
       const product = localized(r.product.name as LocalizedText | null);
-      return `${customer} / ${product} / ${ORDER_TYPE_LABEL[r.orderType]} / 基準単価 ${formatMoney(Number(r.baseUnitPrice))} / ${formatDate(r.validFrom)}〜${r.validUntil ? formatDate(r.validUntil) : "無期限"}`;
+      const types = r.variants
+        .map((v) => ORDER_TYPE_LABEL[v.orderType] ?? v.orderType)
+        .join("・");
+      return `${customer} / ${product} / ${types || "種別未設定"} / ${r.variants.length}種別`;
     }
     case "quote": {
       const r = await prisma.quote.findUnique({

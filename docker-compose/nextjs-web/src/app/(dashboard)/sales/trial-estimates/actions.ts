@@ -248,4 +248,3 @@ export async function confirmTrialEstimate(
     return actionError(prismaErrorMessage(e, "確定に失敗しました"));
   }
 }
-

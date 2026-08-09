@@ -36,7 +36,7 @@ import {
 import { useTabParam } from "@/hooks/useUrlState";
 import { formatDate, formatDateTime } from "@/lib/format";
 import { ORDER_TYPE_LABEL } from "@/lib/mock";
-import type { PriceListEntry } from "../price-lists/model";
+import { entrySummary, type PriceListEntry } from "../price-lists/model";
 import { IssueQuoteModal } from "./IssueQuoteModal";
 import {
   findPriceTierRefIn,
@@ -316,7 +316,12 @@ export function QuoteDetail({
                       size="sm"
                     >
                       {e.customerName} × {e.productName}（
-                      {ORDER_TYPE_LABEL[e.orderType]}・{e.tiers.length}段階）
+                      {e.variants
+                        .map(
+                          (v) => ORDER_TYPE_LABEL[v.orderType] ?? v.orderType,
+                        )
+                        .join("・")}
+                      ・{entrySummary(e).tierCount}段階）
                     </Anchor>
                   ))}
                 </Stack>
@@ -331,19 +336,22 @@ export function QuoteDetail({
               <Text c="dimmed" mb={4} size="xs">
                 試算元
               </Text>
-              {relatedEntries.some((e) => e.estimateId) ? (
+              {relatedEntries.some((e) =>
+                e.variants.some((v) => v.estimateId),
+              ) ? (
                 <Stack gap={4}>
                   {relatedEntries
-                    .filter((e) => e.estimateId)
-                    .map((e) => (
+                    .flatMap((e) => e.variants)
+                    .filter((v) => v.estimateId)
+                    .map((v) => (
                       <Anchor
-                        key={e.estimateId}
+                        key={`${v.id}-${v.estimateId}`}
                         onClick={() =>
-                          router.push(`/sales/trial-estimates/${e.estimateId}`)
+                          router.push(`/sales/trial-estimates/${v.estimateId}`)
                         }
                         size="sm"
                       >
-                        <DocNumber c="blue">{e.estimateNumber}</DocNumber>
+                        <DocNumber c="blue">{v.estimateNumber}</DocNumber>
                       </Anchor>
                     ))}
                 </Stack>

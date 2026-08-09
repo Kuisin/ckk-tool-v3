@@ -31,10 +31,7 @@ import {
   actionOk,
   prismaErrorMessage,
 } from "@/lib/server-action";
-import {
-  type EstimateSource,
-  fetchEstimateSourcesForProduct,
-} from "./data";
+import { type EstimateSource, fetchEstimateSourcesForProduct } from "./data";
 
 const BASE_PATH = "/sales/price-lists";
 

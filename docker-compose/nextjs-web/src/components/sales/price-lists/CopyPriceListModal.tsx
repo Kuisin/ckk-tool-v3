@@ -3,9 +3,10 @@
 /**
  * CopyPriceListModal — 「別の顧客・製品へコピー」 (design.md §10.4).
  *
- * Copies a (顧客, 製品, 注文種別) entry's 基準単価 + 段階 (数量範囲 → 倍率) to a
- * different target 顧客 / 製品 / 注文種別 with a fresh 有効期間 (Server Action).
- * Unlike 「有効期間を変更」 (same identity), this re-targets the price sheet.
+ * Copies a (顧客, 製品) entry's 全注文種別バリアント（基準単価 + 段階）to a
+ * different target 顧客 / 製品 with a fresh 有効期間 (Server Action). Unlike
+ * 「有効期間を変更」 (same identity), this re-targets the price sheet.
+ * 試算リンクは引き継がない（手動エントリとして作成）。
  */
 
 import { Alert, Select, Text } from "@mantine/core";
@@ -17,12 +18,8 @@ import { useState, useTransition } from "react";
 import { copyPriceEntry } from "@/app/(dashboard)/sales/price-lists/actions";
 import { FormModal, type ModalBaseProps } from "@/components/ui/modals";
 import type { Option } from "@/lib/mock";
-import { ORDER_TYPE_LABEL, ORDER_TYPE_OPTIONS } from "@/lib/mock";
-import {
-  type EntryOrderType,
-  type PriceListEntry,
-  requiresEndDate,
-} from "./model";
+import { ORDER_TYPE_LABEL } from "@/lib/mock";
+import { type PriceListEntry, requiresEndDate } from "./model";
 
 export function CopyPriceListModal({
   opened,
@@ -39,9 +36,6 @@ export function CopyPriceListModal({
   const [isPending, startTransition] = useTransition();
   const [customerId, setCustomerId] = useState<string | null>(null);
   const [productId, setProductId] = useState<string | null>(null);
-  const [orderType, setOrderType] = useState<string | null>(
-    source?.orderType ?? null,
-  );
   const [validFrom, setValidFrom] = useState<string | null>(null);
   const [validUntil, setValidUntil] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -49,7 +43,6 @@ export function CopyPriceListModal({
   const reset = () => {
     setCustomerId(null);
     setProductId(null);
-    setOrderType(source?.orderType ?? null);
     setValidFrom(null);
     setValidUntil(null);
     setError(null);
@@ -60,7 +53,12 @@ export function CopyPriceListModal({
     onClose();
   };
 
-  const tierCount = source?.tiers.length ?? 0;
+  // テスト・サンプルのバリアントを含む場合は終了日が必須（全バリアント共通期間）。
+  const needsEnd = !!source?.variants.some((v) => requiresEndDate(v.orderType));
+  const orderTypeLabels =
+    source?.variants
+      .map((v) => ORDER_TYPE_LABEL[v.orderType] ?? v.orderType)
+      .join("・") ?? "—";
 
   return (
     <FormModal
@@ -69,15 +67,14 @@ export function CopyPriceListModal({
       onSubmit={(e) => {
         e.preventDefault();
         if (!source) return;
-        const needsEnd = !!orderType && requiresEndDate(orderType);
         if (
-          !(customerId && productId && orderType && validFrom) ||
+          !(customerId && productId && validFrom) ||
           (needsEnd && !validUntil)
         ) {
           setError(
             needsEnd
-              ? "コピー先の顧客・製品・注文種別・有効期間（開始・終了）を入力してください"
-              : "コピー先の顧客・製品・注文種別・有効開始日を入力してください",
+              ? "コピー先の顧客・製品・有効期間（開始・終了）を入力してください"
+              : "コピー先の顧客・製品・有効開始日を入力してください",
           );
           return;
         }
@@ -87,7 +84,6 @@ export function CopyPriceListModal({
             targetIdentity: {
               customerBpId: customerId,
               productId,
-              orderType: orderType as EntryOrderType,
             },
             validFrom,
             validUntil,
@@ -117,9 +113,8 @@ export function CopyPriceListModal({
       <Alert color="blue" icon={<IconInfoCircle size={16} />} variant="light">
         <Text size="sm">
           「{source?.productName}
-          」（{source ? ORDER_TYPE_LABEL[source.orderType] : "—"}） の
-          {tierCount}
-          段階をコピー先に複製します。コピー先の有効期間を設定してください。
+          」の全注文種別（{orderTypeLabels}
+          ）をコピー先に複製します。コピー先の有効期間（全種別共通）を設定してください。
         </Text>
       </Alert>
 
@@ -143,13 +138,6 @@ export function CopyPriceListModal({
         value={productId}
         withAsterisk
       />
-      <Select
-        data={ORDER_TYPE_OPTIONS}
-        label="注文種別"
-        onChange={setOrderType}
-        value={orderType}
-        withAsterisk
-      />
       <DatePickerInput
         error={error && !validFrom ? "有効開始日を選択してください" : undefined}
         label="有効開始日"
@@ -161,28 +149,22 @@ export function CopyPriceListModal({
         withAsterisk
       />
       <DatePickerInput
-        clearable={!(orderType && requiresEndDate(orderType))}
+        clearable={!needsEnd}
         description={
-          orderType && requiresEndDate(orderType)
-            ? "テスト・サンプルは終了日が必須"
-            : undefined
+          needsEnd ? "テスト・サンプルの種別を含むため終了日が必須" : undefined
         }
         error={
-          error && orderType && requiresEndDate(orderType) && !validUntil
+          error && needsEnd && !validUntil
             ? "有効終了日を選択してください"
             : undefined
         }
         label="有効終了日"
         leftSection={<IconCalendar size={14} />}
         onChange={setValidUntil}
-        placeholder={
-          orderType && requiresEndDate(orderType)
-            ? "日付を選択"
-            : "空欄で無期限"
-        }
+        placeholder={needsEnd ? "日付を選択" : "空欄で無期限"}
         value={validUntil}
         valueFormat="YYYY/MM/DD"
-        withAsterisk={!!orderType && requiresEndDate(orderType)}
+        withAsterisk={needsEnd}
       />
     </FormModal>
   );

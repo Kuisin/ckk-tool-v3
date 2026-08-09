@@ -193,6 +193,33 @@ function estimateUnitPriceOf(
 }
 
 /**
+ * 試算番号 → 見積単価（基準単価のロック値）。編集フォームで既存バリアントの
+ * 試算リンクごとに使う。
+ */
+export async function fetchEstimateBases(
+  numbers: string[],
+): Promise<Record<string, number>> {
+  const unique = [...new Set(numbers)];
+  if (unique.length === 0) return {};
+  const settings = await getTrialPricingSettings();
+  const bases: Record<string, number> = {};
+  for (const number of unique) {
+    const m = /^EST-(\d{6})-(\d{5})$/.exec(number);
+    if (!m) continue;
+    const row = await prisma.estimate.findUnique({
+      where: { yearMonth_seq: { yearMonth: m[1], seq: Number(m[2]) } },
+    });
+    if (!row) continue;
+    bases[number] = estimateUnitPriceOf(
+      row.result,
+      row.input as unknown as TrialInput,
+      settings,
+    );
+  }
+  return bases;
+}
+
+/**
  * 製品にリンクされた CONFIRMED の試算（価格ソース候補）。REGISTERED も含める
  * （既に他の価格表で使用済みでも、同じ試算を別顧客のソースにできる）。
  */

@@ -1,8 +1,6 @@
 import { notFound } from "next/navigation";
-import type { EntryOrderType } from "@/components/sales/price-lists/model";
 import { PriceListDetail } from "@/components/sales/price-lists/PriceListDetail";
 import { fetchAuditEntries } from "@/lib/audit";
-import { prisma } from "@/lib/db";
 import { parseDocKey } from "@/lib/doc-number";
 import {
   fetchCustomerOptions,
@@ -35,26 +33,13 @@ export default async function PriceListDetailPage({
   const entry = await fetchPriceEntry(key);
   if (!entry) notFound();
 
-  const [
-    relatedQuotes,
-    siblingRows,
-    customerOptions,
-    productOptions,
-    auditEntries,
-  ] = await Promise.all([
-    fetchRelatedQuotes(key),
-    prisma.priceListEntry.findMany({
-      where: {
-        customerBpId: entry.customerId,
-        productId: Number(entry.productId),
-        NOT: { orderType: entry.orderType as EntryOrderType },
-      },
-      select: { orderType: true },
-    }),
-    fetchCustomerOptions(),
-    fetchProductOptions(),
-    fetchAuditEntries("price_list_entries", entry.entryId),
-  ]);
+  const [relatedQuotes, customerOptions, productOptions, auditEntries] =
+    await Promise.all([
+      fetchRelatedQuotes(key),
+      fetchCustomerOptions(),
+      fetchProductOptions(),
+      fetchAuditEntries("price_list_entries", entry.entryId),
+    ]);
 
   return (
     <PriceListDetail
@@ -63,7 +48,6 @@ export default async function PriceListDetailPage({
       entry={entry}
       productOptions={productOptions}
       relatedQuotes={relatedQuotes}
-      siblings={siblingRows.map((s) => s.orderType)}
     />
   );
 }

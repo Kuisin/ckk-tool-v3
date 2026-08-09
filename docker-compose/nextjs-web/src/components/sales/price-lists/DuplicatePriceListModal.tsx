@@ -3,13 +3,13 @@
 /**
  * DuplicatePriceListModal — 「有効期間を変更」 (design.md §10.4).
  *
- * (顧客, 製品, 注文種別) は自然複合キーで一意のため、同一キーの複製行は
- * 存在できない — 価格改定は同じエントリの有効期間を新しい期間に付け替える。
+ * (顧客, 製品) は自然キーで一意のため、同一キーの複製行は存在できない —
+ * 価格改定は選んだ注文種別バリアントの有効期間を新しい期間に付け替える。
  * 内容（基準単価・全段階）はそのまま維持される。(Differs from
  * CopyPriceListModal, which re-targets a different 顧客・製品.)
  */
 
-import { Alert, Table, Text } from "@mantine/core";
+import { Alert, Select, Table, Text } from "@mantine/core";
 import { DatePickerInput } from "@mantine/dates";
 import { notifications } from "@mantine/notifications";
 import { IconCalendar, IconInfoCircle } from "@tabler/icons-react";
@@ -37,25 +37,31 @@ export function DuplicatePriceListModal({
   onDone?: () => void;
 }) {
   const [isPending, startTransition] = useTransition();
+  const [variantId, setVariantId] = useState<string | null>(null);
   const [validFrom, setValidFrom] = useState<string | null>(null);
   const [validUntil, setValidUntil] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  // Reset the period fields whenever a new source is opened.
+  // Reset the fields whenever a new source is opened.
   useEffect(() => {
     if (opened) {
+      setVariantId(source?.variants[0]?.id ?? null);
       setValidFrom(null);
       setValidUntil(null);
       setError(null);
     }
-  }, [opened]);
+  }, [opened, source]);
 
   const handleClose = () => {
+    setVariantId(null);
     setValidFrom(null);
     setValidUntil(null);
     setError(null);
     onClose();
   };
+
+  const variant = source?.variants.find((v) => v.id === variantId) ?? null;
+  const needsEnd = !!variant && requiresEndDate(variant.orderType);
 
   return (
     <FormModal
@@ -63,8 +69,7 @@ export function DuplicatePriceListModal({
       onClose={handleClose}
       onSubmit={(e) => {
         e.preventDefault();
-        if (!source) return;
-        const needsEnd = requiresEndDate(source.orderType);
+        if (!(source && variant)) return;
         if (!validFrom) {
           setError("有効開始日を選択してください");
           return;
@@ -76,6 +81,7 @@ export function DuplicatePriceListModal({
         startTransition(async () => {
           const result = await changePriceEntryPeriod({
             entryNumber: source.entryId,
+            variantId: variant.id,
             validFrom,
             validUntil,
           });
@@ -103,20 +109,30 @@ export function DuplicatePriceListModal({
     >
       <Alert color="blue" icon={<IconInfoCircle size={16} />} variant="light">
         <Text size="sm">
-          下記の内容（顧客・製品・注文種別・全段階）はそのままに、有効期間だけを新しい期間へ付け替えます。
+          選んだ注文種別の内容（基準単価・全段階）はそのままに、有効期間だけを新しい期間へ付け替えます。
         </Text>
       </Alert>
 
       <FieldValue label="顧客" value={source?.customerName} />
       <FieldValue label="製品" value={source?.productName} />
-      <FieldValue
+      <Select
+        data={
+          source?.variants.map((v) => ({
+            value: v.id,
+            label: ORDER_TYPE_LABEL[v.orderType] ?? v.orderType,
+          })) ?? []
+        }
         label="注文種別"
-        value={source ? ORDER_TYPE_LABEL[source.orderType] : undefined}
+        onChange={setVariantId}
+        value={variantId}
+        withAsterisk
       />
       <FieldValue
         label="現在の有効期間"
         value={
-          source ? validPeriod(source.validFrom, source.validUntil) : undefined
+          variant
+            ? validPeriod(variant.validFrom, variant.validUntil)
+            : undefined
         }
       />
 
@@ -128,15 +144,15 @@ export function DuplicatePriceListModal({
           </Table.Tr>
         </Table.Thead>
         <Table.Tbody>
-          {source?.tiers.map((tier) => (
+          {variant?.tiers.map((tier) => (
             <Table.Tr key={tier.id}>
               <Table.Td>
                 {quantityRange(tier.minQuantity, tier.maxQuantity)}
               </Table.Td>
               <Table.Td ta="right">
                 <MoneyText
-                  currency={source.currency}
-                  value={tierUnitPrice(source, tier)}
+                  currency={source?.currency}
+                  value={tierUnitPrice(variant, tier)}
                 />
               </Table.Td>
             </Table.Tr>
@@ -155,28 +171,20 @@ export function DuplicatePriceListModal({
         withAsterisk
       />
       <DatePickerInput
-        clearable={!(source && requiresEndDate(source.orderType))}
-        description={
-          source && requiresEndDate(source.orderType)
-            ? "テスト・サンプルは終了日が必須"
-            : undefined
-        }
+        clearable={!needsEnd}
+        description={needsEnd ? "テスト・サンプルは終了日が必須" : undefined}
         error={
-          error && source && requiresEndDate(source.orderType) && !validUntil
+          error && needsEnd && !validUntil
             ? "有効終了日を選択してください"
             : undefined
         }
         label="新しい有効終了日"
         leftSection={<IconCalendar size={14} />}
         onChange={setValidUntil}
-        placeholder={
-          source && requiresEndDate(source.orderType)
-            ? "日付を選択"
-            : "空欄で無期限"
-        }
+        placeholder={needsEnd ? "日付を選択" : "空欄で無期限"}
         value={validUntil}
         valueFormat="YYYY/MM/DD"
-        withAsterisk={!!source && requiresEndDate(source.orderType)}
+        withAsterisk={needsEnd}
       />
     </FormModal>
   );

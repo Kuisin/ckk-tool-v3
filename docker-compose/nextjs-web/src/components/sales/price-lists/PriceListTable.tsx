@@ -3,8 +3,8 @@
 /**
  * PriceListTable — 価格表 一覧 (design.md §8.1 / §14).
  *
- * One row per (顧客, 製品, 注文種別) entry — 本番・テスト など注文種別ごとに行を
- * 分ける。Row click → the entry's detail page. Rows come from
+ * One row per (顧客, 製品) entry — 注文種別ごとの価格はエントリ内のバリアント
+ * （バッジ表示）。Row click → the entry's detail page. Rows come from
  * sales.price_list_entries via the server page; bulk 有効化/無効化/削除 persist
  * through Server Actions.
  */
@@ -12,7 +12,6 @@
 import { Badge, Group, Select, Stack, Text, TextInput } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import {
-  IconCalculator,
   IconCopy,
   IconCopyPlus,
   IconCurrencyYen,
@@ -28,7 +27,7 @@ import {
   setPriceEntriesActive,
 } from "@/app/(dashboard)/sales/price-lists/actions";
 import { ActiveBadge } from "@/components/ui/ActiveBadge";
-import { SecondaryButton } from "@/components/ui/buttons";
+import { CreateButton } from "@/components/ui/buttons";
 import { type Column, DataTable } from "@/components/ui/DataTable";
 import { DocNumber } from "@/components/ui/DocNumber";
 import { openConfirm } from "@/components/ui/modals";
@@ -141,7 +140,8 @@ export function PriceListTable({
       e.productName.includes(search);
     const matchesCustomer = !customer || e.customerId === customer;
     const matchesProduct = !product || e.productId === product;
-    const matchesType = !orderType || e.orderType === orderType;
+    const matchesType =
+      !orderType || e.variants.some((v) => v.orderType === orderType);
     return matchesSearch && matchesCustomer && matchesProduct && matchesType;
   });
 
@@ -161,12 +161,16 @@ export function PriceListTable({
     {
       key: "orderType",
       header: "注文種別",
-      sortable: true,
-      width: 120,
+      width: 160,
+      sortValue: (e) => e.variants.length,
       render: (e) => (
-        <Badge color="gray" variant="light">
-          {ORDER_TYPE_LABEL[e.orderType]}
-        </Badge>
+        <Group gap={4} wrap="wrap">
+          {e.variants.map((v) => (
+            <Badge color="gray" key={v.id} size="xs" variant="light">
+              {ORDER_TYPE_LABEL[v.orderType] ?? v.orderType}
+            </Badge>
+          ))}
+        </Group>
       ),
     },
     {
@@ -196,9 +200,16 @@ export function PriceListTable({
       header: "値引き",
       hideable: true,
       width: 90,
-      sortValue: (e) => e.discounts.filter((d) => d.isActive).length,
+      sortValue: (e) =>
+        e.variants.reduce(
+          (sum, v) => sum + v.discounts.filter((d) => d.isActive).length,
+          0,
+        ),
       render: (e) => {
-        const active = e.discounts.filter((d) => d.isActive).length;
+        const active = e.variants.reduce(
+          (sum, v) => sum + v.discounts.filter((d) => d.isActive).length,
+          0,
+        );
         return active > 0 ? (
           <Badge color="pink" size="xs" variant="light">
             {active}件
@@ -215,27 +226,45 @@ export function PriceListTable({
       header: "試算元",
       hideable: true,
       width: 160,
-      sortValue: (e) => e.estimateNumber ?? "",
-      render: (e) =>
-        e.estimateId ? (
-          <DocNumber c="blue">{e.estimateNumber}</DocNumber>
-        ) : (
-          <Text c="dimmed" size="xs">
-            手動
-          </Text>
-        ),
+      sortValue: (e) =>
+        e.variants.find((v) => v.estimateNumber)?.estimateNumber ?? "",
+      render: (e) => {
+        const linked = e.variants.filter((v) => v.estimateNumber);
+        if (linked.length === 0) {
+          return (
+            <Text c="dimmed" size="xs">
+              手動
+            </Text>
+          );
+        }
+        return (
+          <Group gap={4} wrap="nowrap">
+            <DocNumber c="blue">{linked[0].estimateNumber}</DocNumber>
+            {linked.length > 1 && (
+              <Badge color="gray" size="xs" variant="light">
+                +{linked.length - 1}
+              </Badge>
+            )}
+          </Group>
+        );
+      },
     },
     {
       key: "validPeriod",
       header: "有効期間",
       hideable: true,
       width: 200,
-      sortValue: (e) => e.validFrom,
-      render: (e) => (
-        <Text c="dimmed" className="tabular-nums" size="xs">
-          {validPeriod(e.validFrom, e.validUntil)}
-        </Text>
-      ),
+      sortValue: (e) => e.variants[0]?.validFrom ?? "",
+      render: (e) =>
+        e.variants.length === 1 ? (
+          <Text c="dimmed" className="tabular-nums" size="xs">
+            {validPeriod(e.variants[0].validFrom, e.variants[0].validUntil)}
+          </Text>
+        ) : (
+          <Text c="dimmed" size="xs">
+            種別ごとに設定
+          </Text>
+        ),
     },
     {
       key: "isActive",
@@ -248,15 +277,7 @@ export function PriceListTable({
 
   return (
     <ListShell
-      action={
-        // 価格表は試算の「価格表に登録」からのみ作成する。
-        <SecondaryButton
-          href="/sales/trial-estimates"
-          leftSection={<IconCalculator size={16} />}
-        >
-          試算から作成
-        </SecondaryButton>
-      }
+      action={<CreateButton href={`${BASE_PATH}/new`} />}
       breadcrumbs={["販売", "価格表"]}
       filters={
         <>
@@ -326,16 +347,9 @@ export function PriceListTable({
         columns={columns}
         data={filtered}
         defaultSort={{ key: "customerName", dir: "asc" }}
-        emptyAction={
-          <SecondaryButton
-            href="/sales/trial-estimates"
-            leftSection={<IconCalculator size={16} />}
-          >
-            試算から作成
-          </SecondaryButton>
-        }
+        emptyAction={<CreateButton href={`${BASE_PATH}/new`} />}
         emptyIcon={<IconCurrencyYen size={24} />}
-        emptyMessage="価格表がありません — 試算の「価格表に登録」から作成します"
+        emptyMessage="価格表がありません — 顧客×製品を選んで作成します"
         getRowId={(e) => e.entryId}
         onRowClick={(e) => router.push(`${BASE_PATH}/${e.entryId}`)}
         renderCard={(e) => {
@@ -350,9 +364,11 @@ export function PriceListTable({
                   {e.productName}
                 </Text>
                 <Group gap="xs">
-                  <Badge color="gray" size="xs" variant="light">
-                    {ORDER_TYPE_LABEL[e.orderType]}
-                  </Badge>
+                  {e.variants.map((v) => (
+                    <Badge color="gray" key={v.id} size="xs" variant="light">
+                      {ORDER_TYPE_LABEL[v.orderType] ?? v.orderType}
+                    </Badge>
+                  ))}
                   <Text c="dimmed" size="xs">
                     {s.tierCount}段階
                   </Text>

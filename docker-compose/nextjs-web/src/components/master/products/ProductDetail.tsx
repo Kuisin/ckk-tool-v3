@@ -232,7 +232,7 @@ export function ProductDetail({
                   {record.priceListEntries.map((e) => (
                     <Table.Tr
                       className="cursor-pointer"
-                      key={e.id}
+                      key={`${e.id}-${e.orderType}`}
                       onClick={() => router.push(`/sales/price-lists/${e.id}`)}
                     >
                       <Table.Td>{e.customerName}</Table.Td>

@@ -4,12 +4,12 @@
  * CreateQuoteModal — 価格表 → 見積書 作成.
  *
  * 見積書は印刷用ドキュメント — 価格は価格表からのみ解決する。単価（基準単価 ×
- * 数量倍率）と値引き（値引きルール）は数量から自動計算され、手入力はない。
- * ユーザーが決めるのは 数量 / 納期 のみ。Submitting opens the 見積書 form
- * pre-filled so the draft can be reviewed and saved.
+ * 数量倍率）と値引き（値引きルール）は 注文種別 × 数量 から自動計算され、
+ * 手入力はない。ユーザーが決めるのは 注文種別 / 数量 / 納期 のみ。Submitting
+ * opens the 見積書 form pre-filled so the draft can be reviewed and saved.
  */
 
-import { Alert, Group, NumberInput, Stack, Text } from "@mantine/core";
+import { Alert, Group, NumberInput, Select, Stack, Text } from "@mantine/core";
 import { DatePickerInput } from "@mantine/dates";
 import { IconAlertTriangle, IconCalendar } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
@@ -18,6 +18,7 @@ import { FieldValue } from "@/components/ui/FieldValue";
 import { HelpLabel } from "@/components/ui/HelpLabel";
 import { FormModal, type ModalBaseProps } from "@/components/ui/modals";
 import { formatMoney } from "@/lib/format";
+import { ORDER_TYPE_LABEL } from "@/lib/mock";
 import {
   discountValueLabel,
   findApplicableDiscount,
@@ -33,38 +34,43 @@ export function CreateQuoteModal({
   source,
 }: ModalBaseProps & { source: PriceListEntry | null }) {
   const router = useRouter();
-  const [quantity, setQuantity] = useState<number>(
-    source?.tiers[0]?.minQuantity ?? 1,
-  );
+  const [variantId, setVariantId] = useState<string | null>(null);
+  const [quantity, setQuantity] = useState<number>(1);
   const [deliveryDate, setDeliveryDate] = useState<string | null>(null);
 
   // Re-seed the defaults each time the modal opens for a (new) entry.
   useEffect(() => {
     if (opened && source) {
-      setQuantity(source.tiers[0]?.minQuantity ?? 1);
+      const first = source.variants[0] ?? null;
+      setVariantId(first?.id ?? null);
+      setQuantity(first?.tiers[0]?.minQuantity ?? 1);
       setDeliveryDate(null);
     }
   }, [opened, source]);
 
   if (!source) return null;
 
-  // 数量 → 価格表 tier（基準単価 × 倍率）+ 値引きルールの自動適用。
-  const tier = source.tiers.find(
+  const variant = source.variants.find((v) => v.id === variantId) ?? null;
+
+  // 注文種別 × 数量 → 価格表 tier（基準単価 × 倍率）+ 値引きルールの自動適用。
+  const tier = variant?.tiers.find(
     (t) =>
       quantity >= t.minQuantity &&
       (t.maxQuantity == null || quantity <= t.maxQuantity),
   );
-  const unitPrice = tier ? tierUnitPrice(source, tier) : 0;
-  const discount = tier
-    ? findApplicableDiscount(source, quantity, unitPrice)
-    : null;
+  const unitPrice = variant && tier ? tierUnitPrice(variant, tier) : 0;
+  const discount =
+    variant && tier
+      ? findApplicableDiscount(variant, quantity, unitPrice)
+      : null;
   const discountAmount = discount
     ? unitDiscountOf(discount, unitPrice) * quantity
     : 0;
   const amount = Math.max(0, quantity * unitPrice - discountAmount);
 
   const handleClose = () => {
-    setQuantity(source.tiers[0]?.minQuantity ?? 1);
+    setVariantId(null);
+    setQuantity(1);
     setDeliveryDate(null);
     onClose();
   };
@@ -74,12 +80,13 @@ export function CreateQuoteModal({
       onClose={handleClose}
       onSubmit={(e) => {
         e.preventDefault();
+        if (!variant) return;
         // TODO(server-action): create the DRAFT quote directly; for now the
         // 見積書 form opens pre-filled with this entry's line.
         const params = new URLSearchParams({
           customer: source.customerId,
           product: source.productId,
-          orderType: source.orderType,
+          orderType: variant.orderType,
           quantity: String(quantity),
         });
         if (deliveryDate) params.set("delivery", deliveryDate);
@@ -96,6 +103,21 @@ export function CreateQuoteModal({
         の価格表から見積書を作成します。単価・値引きは価格表から自動計算されます。
       </Text>
 
+      <Select
+        data={source.variants.map((v) => ({
+          value: v.id,
+          label: ORDER_TYPE_LABEL[v.orderType] ?? v.orderType,
+        }))}
+        label="注文種別"
+        onChange={(v) => {
+          setVariantId(v);
+          const next = source.variants.find((x) => x.id === v);
+          setQuantity(next?.tiers[0]?.minQuantity ?? 1);
+        }}
+        value={variantId}
+        withAsterisk
+      />
+
       <NumberInput
         label={
           <HelpLabel
@@ -110,7 +132,7 @@ export function CreateQuoteModal({
         withAsterisk
       />
 
-      {tier ? (
+      {variant && tier ? (
         <Stack gap="xs">
           <FieldValue
             label="単価（価格表）"
