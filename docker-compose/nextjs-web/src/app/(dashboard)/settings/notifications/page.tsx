@@ -6,15 +6,29 @@ import { isPushConfigured } from "@/lib/push";
 
 export const dynamic = "force-dynamic";
 
-/** 通知設定 — チャネル ON/OFF + このデバイスの Web Push 購読。 */
+/** 通知設定 — チャネル ON/OFF + Web Push（このデバイス + 登録デバイス一覧）。 */
 export default async function NotificationSettingsPage() {
   const session = await auth();
   const userId = (session?.user as { id?: string } | undefined)?.id;
-  const setting = userId
-    ? await prisma.userNotificationSetting.findUnique({ where: { userId } })
-    : null;
+  const [setting, subscriptions] = await Promise.all([
+    userId
+      ? prisma.userNotificationSetting.findUnique({ where: { userId } })
+      : null,
+    userId
+      ? prisma.pushSubscription.findMany({
+          where: { userId },
+          orderBy: { createdAt: "desc" },
+          select: { endpoint: true, userAgent: true, createdAt: true },
+        })
+      : [],
+  ]);
   return (
     <NotificationSettingsForm
+      devices={subscriptions.map((s) => ({
+        endpoint: s.endpoint,
+        userAgent: s.userAgent,
+        createdAt: s.createdAt.toISOString(),
+      }))}
       initial={{
         emailEnabled: setting?.emailEnabled ?? true,
         pushEnabled: setting?.pushEnabled ?? true,

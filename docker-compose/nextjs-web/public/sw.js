@@ -32,6 +32,26 @@ self.addEventListener("push", (event) => {
   );
 });
 
+// ブラウザが購読を差し替えたとき（鍵ローテーション等）に自動で再購読して
+// サーバーへ保存し直す。失敗しても静かに諦める（次回の手動有効化で回復）。
+self.addEventListener("pushsubscriptionchange", (event) => {
+  const oldSub = event.oldSubscription;
+  const key = oldSub?.options?.applicationServerKey;
+  if (!key) return;
+  event.waitUntil(
+    self.registration.pushManager
+      .subscribe({ userVisibleOnly: true, applicationServerKey: key })
+      .then((sub) =>
+        fetch("/api/push/subscribe", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(sub.toJSON()),
+        }),
+      )
+      .catch(() => {}),
+  );
+});
+
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
   const link = event.notification.data?.link || "/";

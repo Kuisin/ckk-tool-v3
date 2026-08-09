@@ -11,6 +11,7 @@ import {
   markAllNotificationsRead,
   markNotificationRead,
 } from "@/lib/notifications";
+import { upsertPushSubscription } from "@/lib/push";
 import { type ActionResult, actionError, actionOk } from "@/lib/server-action";
 
 async function currentUserId(): Promise<string | null> {
@@ -50,17 +51,7 @@ export async function savePushSubscriptionAction(
   if (!input.endpoint || !input.p256dh || !input.auth) {
     return actionError("購読情報が不正です");
   }
-  await prisma.pushSubscription.upsert({
-    where: { endpoint: input.endpoint },
-    create: {
-      userId,
-      endpoint: input.endpoint,
-      p256dh: input.p256dh,
-      auth: input.auth,
-      userAgent: input.userAgent,
-    },
-    update: { userId, p256dh: input.p256dh, auth: input.auth },
-  });
+  await upsertPushSubscription(userId, input);
   return actionOk();
 }
 

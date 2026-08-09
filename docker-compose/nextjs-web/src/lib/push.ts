@@ -43,6 +43,32 @@ export interface PushPayload {
 }
 
 /**
+ * 購読の保存（Server Action / SW の再購読 API 共用）。
+ * 同一 endpoint は本人へ付け替える（ブラウザプロファイル共用対策）。
+ */
+export async function upsertPushSubscription(
+  userId: string,
+  input: { endpoint: string; p256dh: string; auth: string; userAgent?: string },
+): Promise<void> {
+  await prisma.pushSubscription.upsert({
+    where: { endpoint: input.endpoint },
+    create: {
+      userId,
+      endpoint: input.endpoint,
+      p256dh: input.p256dh,
+      auth: input.auth,
+      userAgent: input.userAgent,
+    },
+    update: {
+      userId,
+      p256dh: input.p256dh,
+      auth: input.auth,
+      ...(input.userAgent ? { userAgent: input.userAgent } : {}),
+    },
+  });
+}
+
+/**
  * 1 ユーザーの全購読（全デバイス）へ配信。失効した購読（404/410）は
  * その場で削除する。ベストエフォート — 失敗しても throw しない。
  */
