@@ -37,6 +37,8 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   maximumScale: 1,
+  // Android のステータスバー / インストールバナーの色（manifest と同じ青）。
+  themeColor: "#228be6",
 };
 
 export default function RootLayout({
