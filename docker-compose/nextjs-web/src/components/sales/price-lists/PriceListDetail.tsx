@@ -3,23 +3,23 @@
 /**
  * PriceListDetail — 価格表 詳細 (design.md §8.2).
  *
- * One (顧客, 製品, 注文種別) entry: its 有効期間 + 状態, a read-only table of
- * quantity tiers, and the dedicated 値引きルール list (期間 × 数量 → 値引き —
- * 見積書作成時に自動適用される). 注文種別ごとにページを分ける。Backed by
- * sales.price_list_entries via the server page; 値引きルールの追加・編集・削除
- * は Server Actions で永続化する。
+ * One (顧客, 製品) entry with its 注文種別バリアント一式。バリアントごとに
+ * 有効期間 + 状態 + 基準単価 + 試算元、a read-only table of quantity tiers,
+ * and the dedicated 値引きルール list (期間 × 数量 → 値引き — 見積書作成時に
+ * 自動適用される). Backed by sales.price_list_entries via the server page;
+ * 値引きルールの追加・編集・削除は Server Actions で永続化する。
  */
 
 import {
   ActionIcon,
   Anchor,
   Badge,
+  Divider,
   Group,
   Stack,
   Table,
   Tabs,
   Text,
-  Tooltip,
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import {
@@ -66,6 +66,7 @@ import {
   multiplierLabel,
   type PriceDiscount,
   type PriceListEntry,
+  type PriceVariant,
   priceRangeLabel,
   quantityRange,
   tierUnitPrice,
@@ -76,15 +77,12 @@ const BASE_PATH = "/sales/price-lists";
 
 export function PriceListDetail({
   entry,
-  siblings,
   relatedQuotes,
   customerOptions,
   productOptions,
   auditEntries,
 }: {
   entry: PriceListEntry;
-  /** 同一 (顧客, 製品) の他の注文種別。 */
-  siblings: string[];
   relatedQuotes: RelatedQuoteRow[];
   customerOptions: Option[];
   productOptions: Option[];
@@ -96,22 +94,27 @@ export function PriceListDetail({
   // アクティブタブを ?tab= に保持（URL 共有でタブまで再現）
   const [tab, setTab] = useTabParam("prices");
   const summary = entrySummary(entry);
+  const estimateVariants = entry.variants.filter((v) => v.estimateId);
 
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [duplicateOpen, setDuplicateOpen] = useState(false);
   const [copyOpen, setCopyOpen] = useState(false);
   const [quoteOpen, setQuoteOpen] = useState(false);
 
-  // 値引きルール（専用リスト）— Server Action で永続化。
-  const discounts = entry.discounts;
+  // 値引きルール（バリアントごとの専用リスト）— Server Action で永続化。
   const [discountModalOpen, setDiscountModalOpen] = useState(false);
+  const [discountVariantId, setDiscountVariantId] = useState<string | null>(
+    null,
+  );
   const [discountEditTarget, setDiscountEditTarget] =
     useState<PriceDiscount | null>(null);
 
   const saveDiscount = (rule: PriceDiscount) => {
+    if (!discountVariantId) return;
     startTransition(async () => {
       const result = await saveDiscountRule({
         entryNumber: entry.entryId,
+        variantId: discountVariantId,
         id: rule.id || null,
         label: rule.label,
         discountType: rule.discountType,
@@ -161,6 +164,18 @@ export function PriceListDetail({
     });
   };
 
+  const variantHeading = (variant: PriceVariant) => (
+    <Group gap="xs" wrap="wrap">
+      <Badge color="gray" variant="light">
+        {ORDER_TYPE_LABEL[variant.orderType] ?? variant.orderType}
+      </Badge>
+      <ActiveBadge active={variant.isActive} />
+      <Text c="dimmed" className="tabular-nums" size="xs">
+        {validPeriod(variant.validFrom, variant.validUntil)}
+      </Text>
+    </Group>
+  );
+
   return (
     <DetailShell
       actions={
@@ -195,7 +210,7 @@ export function PriceListDetail({
       breadcrumbs={["販売", { label: "価格表", href: BASE_PATH }, "詳細"]}
       createdAt={formatDateTime(entry.createdAt)}
       status={<ActiveBadge active={entry.isActive} />}
-      title={`価格表 詳細 · ${ORDER_TYPE_LABEL[entry.orderType]}`}
+      title="価格表 詳細"
       updatedAt={formatDateTime(entry.updatedAt)}
     >
       <SummaryGrid>
@@ -204,40 +219,19 @@ export function PriceListDetail({
         <FieldValue
           label="注文種別"
           value={
-            <Badge color="gray" variant="light">
-              {ORDER_TYPE_LABEL[entry.orderType]}
-            </Badge>
+            <Group gap={4} wrap="wrap">
+              {entry.variants.map((v) => (
+                <Badge color="gray" key={v.id} variant="light">
+                  {ORDER_TYPE_LABEL[v.orderType] ?? v.orderType}
+                </Badge>
+              ))}
+            </Group>
           }
-        />
-        <FieldValue
-          label="有効期間"
-          value={validPeriod(entry.validFrom, entry.validUntil)}
-        />
-        <FieldValue
-          label="基準単価"
-          value={<MoneyText ta="left" value={entry.baseUnitPrice} />}
         />
         <FieldValue label="段階数" value={`${summary.tierCount}段階`} />
         <FieldValue
           label="単価範囲"
           value={priceRangeLabel(summary.minPrice, summary.maxPrice)}
-        />
-        <FieldValue
-          label="試算元"
-          value={
-            entry.estimateId ? (
-              <Anchor
-                onClick={() =>
-                  router.push(`/sales/trial-estimates/${entry.estimateId}`)
-                }
-                size="sm"
-              >
-                <DocNumber c="blue">{entry.estimateNumber}</DocNumber>
-              </Anchor>
-            ) : (
-              "手動登録"
-            )
-          }
         />
         <FieldValue label="作成者" value={entry.createdBy} />
       </SummaryGrid>
@@ -251,178 +245,214 @@ export function PriceListDetail({
         </Tabs.List>
 
         <Tabs.Panel pt="md" value="prices">
-          <Group justify="space-between" mb="sm">
-            {siblings.length > 0 ? (
-              <Tooltip
-                label={`登録済: ${siblings
-                  .map((t) => ORDER_TYPE_LABEL[t])
-                  .join("・")}`}
-              >
-                <Badge color="gray" variant="light">
-                  他の注文種別 {siblings.length}件
-                </Badge>
-              </Tooltip>
-            ) : (
-              <span />
-            )}
+          <Group justify="flex-end" mb="sm">
             <SecondaryButton
               leftSection={<IconPlus size={16} />}
-              onClick={() =>
-                router.push(
-                  `${BASE_PATH}/new?customer=${entry.customerId}&product=${entry.productId}`,
-                )
-              }
+              onClick={() => router.push(`${BASE_PATH}/${entry.entryId}/edit`)}
             >
               注文種別を追加
             </SecondaryButton>
           </Group>
 
-          <Text c="dimmed" mb="xs" size="xs">
-            単価 = 基準単価 <MoneyText value={entry.baseUnitPrice} /> ×
-            倍率（行ごとに手動上書き可・編集は「編集」から）
-          </Text>
-          <Table.ScrollContainer minWidth={480}>
-            <Table>
-              <Table.Thead>
-                <Table.Tr>
-                  <Table.Th>数量範囲</Table.Th>
-                  <Table.Th ta="right">倍率</Table.Th>
-                  <Table.Th ta="right">単価</Table.Th>
-                </Table.Tr>
-              </Table.Thead>
-              <Table.Tbody>
-                {entry.tiers.map((tier) => (
-                  <Table.Tr key={tier.id}>
-                    <Table.Td>
-                      {quantityRange(tier.minQuantity, tier.maxQuantity)}
-                    </Table.Td>
-                    <Table.Td ta="right">
-                      <Text className="tabular-nums" ff="mono" size="sm">
-                        {multiplierLabel(tier)}
+          <Stack gap="lg">
+            {entry.variants.map((variant) => (
+              <div key={variant.id}>
+                <Group justify="space-between" mb={4} wrap="wrap">
+                  {variantHeading(variant)}
+                  <Group gap="md" wrap="nowrap">
+                    <Text c="dimmed" size="xs">
+                      基準単価 <MoneyText value={variant.baseUnitPrice} />
+                    </Text>
+                    {variant.estimateId ? (
+                      <Anchor
+                        onClick={() =>
+                          router.push(
+                            `/sales/trial-estimates/${variant.estimateId}`,
+                          )
+                        }
+                        size="xs"
+                      >
+                        <DocNumber c="blue">{variant.estimateNumber}</DocNumber>
+                      </Anchor>
+                    ) : (
+                      <Text c="dimmed" size="xs">
+                        手動設定
                       </Text>
-                    </Table.Td>
-                    <Table.Td ta="right">
-                      <Group gap="xs" justify="flex-end" wrap="nowrap">
-                        {tier.priceOverride != null && (
-                          <Badge color="orange" size="xs" variant="light">
-                            手動
-                          </Badge>
-                        )}
-                        <MoneyText
-                          currency={entry.currency}
-                          value={tierUnitPrice(entry, tier)}
-                        />
-                      </Group>
-                    </Table.Td>
-                  </Table.Tr>
-                ))}
-              </Table.Tbody>
-            </Table>
-          </Table.ScrollContainer>
+                    )}
+                  </Group>
+                </Group>
+                <Table.ScrollContainer minWidth={480}>
+                  <Table>
+                    <Table.Thead>
+                      <Table.Tr>
+                        <Table.Th>数量範囲</Table.Th>
+                        <Table.Th ta="right">倍率</Table.Th>
+                        <Table.Th ta="right">単価</Table.Th>
+                      </Table.Tr>
+                    </Table.Thead>
+                    <Table.Tbody>
+                      {variant.tiers.map((tier) => (
+                        <Table.Tr key={tier.id}>
+                          <Table.Td>
+                            {quantityRange(tier.minQuantity, tier.maxQuantity)}
+                          </Table.Td>
+                          <Table.Td ta="right">
+                            <Text className="tabular-nums" ff="mono" size="sm">
+                              {multiplierLabel(tier)}
+                            </Text>
+                          </Table.Td>
+                          <Table.Td ta="right">
+                            <Group gap="xs" justify="flex-end" wrap="nowrap">
+                              {tier.priceOverride != null && (
+                                <Badge color="orange" size="xs" variant="light">
+                                  手動
+                                </Badge>
+                              )}
+                              <MoneyText
+                                currency={entry.currency}
+                                value={tierUnitPrice(variant, tier)}
+                              />
+                            </Group>
+                          </Table.Td>
+                        </Table.Tr>
+                      ))}
+                    </Table.Tbody>
+                  </Table>
+                </Table.ScrollContainer>
+              </div>
+            ))}
+          </Stack>
         </Tabs.Panel>
 
         <Tabs.Panel pt="md" value="discounts">
-          <Group justify="space-between" mb="sm">
-            <Text c="dimmed" size="xs">
-              期間・数量条件を満たすルールが見積書作成時に自動適用されます（複数該当時は値引き額が最大のもの）。
-            </Text>
-            <SecondaryButton
-              leftSection={<IconPlus size={16} />}
-              onClick={() => {
-                setDiscountEditTarget(null);
-                setDiscountModalOpen(true);
-              }}
-            >
-              値引きルールを追加
-            </SecondaryButton>
-          </Group>
-
-          {discounts.length > 0 ? (
-            <Table.ScrollContainer minWidth={720}>
-              <Table>
-                <Table.Thead>
-                  <Table.Tr>
-                    <Table.Th>名称</Table.Th>
-                    <Table.Th ta="right">値引き</Table.Th>
-                    <Table.Th>数量条件</Table.Th>
-                    <Table.Th>有効期間</Table.Th>
-                    <Table.Th>状態</Table.Th>
-                    <Table.Th w={88} />
-                  </Table.Tr>
-                </Table.Thead>
-                <Table.Tbody>
-                  {discounts.map((d) => (
-                    <Table.Tr key={d.id}>
-                      <Table.Td>
-                        <Text fw={500} size="sm">
-                          {d.label}
-                        </Text>
-                      </Table.Td>
-                      <Table.Td ta="right">
-                        <Text className="tabular-nums" ff="mono" size="sm">
-                          {discountValueLabel(d)}
-                        </Text>
-                      </Table.Td>
-                      <Table.Td>
-                        {quantityRange(d.minQuantity, d.maxQuantity)}
-                      </Table.Td>
-                      <Table.Td>
-                        <Text c="dimmed" className="tabular-nums" size="xs">
-                          {validPeriod(d.validFrom, d.validUntil)}
-                        </Text>
-                      </Table.Td>
-                      <Table.Td>
-                        <ActiveBadge active={d.isActive} />
-                      </Table.Td>
-                      <Table.Td>
-                        <Group gap={4} justify="flex-end" wrap="nowrap">
-                          <ActionIcon
-                            aria-label="値引きルールを編集"
-                            onClick={() => {
-                              setDiscountEditTarget(d);
-                              setDiscountModalOpen(true);
-                            }}
-                            variant="subtle"
-                          >
-                            <IconEdit size={16} />
-                          </ActionIcon>
-                          <ActionIcon
-                            aria-label="値引きルールを削除"
-                            color="red"
-                            onClick={() => removeDiscount(d)}
-                            variant="subtle"
-                          >
-                            <IconTrash size={16} />
-                          </ActionIcon>
-                        </Group>
-                      </Table.Td>
-                    </Table.Tr>
-                  ))}
-                </Table.Tbody>
-              </Table>
-            </Table.ScrollContainer>
-          ) : (
-            <Text c="dimmed" size="sm">
-              値引きルールがありません。「値引きルールを追加」から期間・数量条件つきの値引きを登録できます。
-            </Text>
-          )}
+          <Text c="dimmed" mb="sm" size="xs">
+            期間・数量条件を満たすルールが見積書作成時に自動適用されます（複数該当時は値引き額が最大のもの）。ルールは注文種別ごとに登録します。
+          </Text>
+          <Stack gap="lg">
+            {entry.variants.map((variant) => (
+              <div key={variant.id}>
+                <Group justify="space-between" mb={4} wrap="wrap">
+                  {variantHeading(variant)}
+                  <SecondaryButton
+                    leftSection={<IconPlus size={16} />}
+                    onClick={() => {
+                      setDiscountVariantId(variant.id);
+                      setDiscountEditTarget(null);
+                      setDiscountModalOpen(true);
+                    }}
+                    size="xs"
+                  >
+                    値引きルールを追加
+                  </SecondaryButton>
+                </Group>
+                {variant.discounts.length > 0 ? (
+                  <Table.ScrollContainer minWidth={720}>
+                    <Table>
+                      <Table.Thead>
+                        <Table.Tr>
+                          <Table.Th>名称</Table.Th>
+                          <Table.Th ta="right">値引き</Table.Th>
+                          <Table.Th>数量条件</Table.Th>
+                          <Table.Th>有効期間</Table.Th>
+                          <Table.Th>状態</Table.Th>
+                          <Table.Th w={88} />
+                        </Table.Tr>
+                      </Table.Thead>
+                      <Table.Tbody>
+                        {variant.discounts.map((d) => (
+                          <Table.Tr key={d.id}>
+                            <Table.Td>
+                              <Text fw={500} size="sm">
+                                {d.label}
+                              </Text>
+                            </Table.Td>
+                            <Table.Td ta="right">
+                              <Text
+                                className="tabular-nums"
+                                ff="mono"
+                                size="sm"
+                              >
+                                {discountValueLabel(d)}
+                              </Text>
+                            </Table.Td>
+                            <Table.Td>
+                              {quantityRange(d.minQuantity, d.maxQuantity)}
+                            </Table.Td>
+                            <Table.Td>
+                              <Text
+                                c="dimmed"
+                                className="tabular-nums"
+                                size="xs"
+                              >
+                                {validPeriod(d.validFrom, d.validUntil)}
+                              </Text>
+                            </Table.Td>
+                            <Table.Td>
+                              <ActiveBadge active={d.isActive} />
+                            </Table.Td>
+                            <Table.Td>
+                              <Group gap={4} justify="flex-end" wrap="nowrap">
+                                <ActionIcon
+                                  aria-label="値引きルールを編集"
+                                  onClick={() => {
+                                    setDiscountVariantId(variant.id);
+                                    setDiscountEditTarget(d);
+                                    setDiscountModalOpen(true);
+                                  }}
+                                  variant="subtle"
+                                >
+                                  <IconEdit size={16} />
+                                </ActionIcon>
+                                <ActionIcon
+                                  aria-label="値引きルールを削除"
+                                  color="red"
+                                  onClick={() => removeDiscount(d)}
+                                  variant="subtle"
+                                >
+                                  <IconTrash size={16} />
+                                </ActionIcon>
+                              </Group>
+                            </Table.Td>
+                          </Table.Tr>
+                        ))}
+                      </Table.Tbody>
+                    </Table>
+                  </Table.ScrollContainer>
+                ) : (
+                  <Text c="dimmed" size="sm">
+                    値引きルールがありません。
+                  </Text>
+                )}
+                <Divider mt="md" />
+              </div>
+            ))}
+          </Stack>
         </Tabs.Panel>
 
         <Tabs.Panel pt="md" value="related">
           <Stack gap="md">
             <div>
               <Text c="dimmed" mb={4} size="xs">
-                試算元
+                試算元（注文種別ごと）
               </Text>
-              {entry.estimateId ? (
-                <Anchor
-                  onClick={() =>
-                    router.push(`/sales/trial-estimates/${entry.estimateId}`)
-                  }
-                  size="sm"
-                >
-                  <DocNumber c="blue">{entry.estimateNumber}</DocNumber>
-                </Anchor>
+              {estimateVariants.length > 0 ? (
+                <Stack gap={4}>
+                  {estimateVariants.map((v) => (
+                    <Group gap="xs" key={v.id}>
+                      <Badge color="gray" size="xs" variant="light">
+                        {ORDER_TYPE_LABEL[v.orderType] ?? v.orderType}
+                      </Badge>
+                      <Anchor
+                        onClick={() =>
+                          router.push(`/sales/trial-estimates/${v.estimateId}`)
+                        }
+                        size="sm"
+                      >
+                        <DocNumber c="blue">{v.estimateNumber}</DocNumber>
+                      </Anchor>
+                    </Group>
+                  ))}
+                </Stack>
               ) : (
                 <Text c="dimmed" size="sm">
                   手動登録

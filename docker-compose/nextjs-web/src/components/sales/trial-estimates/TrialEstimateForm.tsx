@@ -34,6 +34,7 @@ import {
 } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
+import { searchProductOptions } from "@/app/(dashboard)/_shared/option-search";
 import {
   createTrialEstimate,
   fetchMaterialPricing,
@@ -44,10 +45,12 @@ import {
   SaveButton,
   SecondaryButton,
 } from "@/components/ui/buttons";
+import { PRODUCT_F4 } from "@/components/ui/f4-presets";
 import { HelpLabel } from "@/components/ui/HelpLabel";
 import { MoneyText } from "@/components/ui/MoneyText";
 import { openConfirm } from "@/components/ui/modals";
 import { PageHeader } from "@/components/ui/PageHeader";
+import { SearchSelect } from "@/components/ui/SearchSelect";
 import { FormSection } from "@/components/ui/shells";
 import { formatDate } from "@/lib/format";
 import type { Option } from "@/lib/mock";
@@ -116,6 +119,10 @@ export function TrialEstimateForm({
   const [name, setName] = useState(source ? `${source.name}（再試算）` : "");
   const [customerId, setCustomerId] = useState<string | null>(
     source?.customerId ?? null,
+  );
+  // 対象製品（任意）— 価格表作成時の基準単価ソース候補になる。
+  const [productId, setProductId] = useState<string | null>(
+    source?.productId ?? null,
   );
   // 材料 = 材種 × 直径 × 黒皮/研磨（参照価格の解決キー）。
   const [materialTypeId, setMaterialTypeId] = useState<string>(
@@ -303,6 +310,7 @@ export function TrialEstimateForm({
       const res = await createTrialEstimate({
         name: name.trim(),
         customerBpId: customerId,
+        productId,
         materialTypeId: materialTypeId || null,
         diameterCode: diameterCode || null,
         surfaceFinishCode: surfaceFinishCode || null,
@@ -387,6 +395,28 @@ export function TrialEstimateForm({
                     placeholder="顧客"
                     searchable
                     value={customerId}
+                  />
+                  <SearchSelect
+                    f4={PRODUCT_F4}
+                    initialOption={
+                      source?.productId && source.productName
+                        ? {
+                            value: source.productId,
+                            label: source.productName,
+                          }
+                        : null
+                    }
+                    label={
+                      <HelpLabel
+                        help="対象製品（任意）。指定して確定すると、価格表（顧客×製品）の作成時にこの試算を基準単価ソースとして選択できます。"
+                        label="製品"
+                      />
+                    }
+                    onChange={setProductId}
+                    onSearch={searchProductOptions}
+                    placeholder="製品を検索（任意）"
+                    storageKey="product"
+                    value={productId}
                   />
                   <NumberInput
                     label={

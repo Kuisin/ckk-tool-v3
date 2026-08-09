@@ -3,13 +3,15 @@
  *
  * Model (per sales.price_list_entries — combined key (year_month, seq)):
  *   Entry — 表示番号 PRC-YYYYMM-NNNNN はキーから導出（URL id と同一）。
- *           (顧客, 製品, 注文種別) は作成後不変の識別（unique）.
- *           Owns 基準単価 (試算の見積単価、手動上書き可) + 有効期間 + 通貨 + 状態.
- *     └ Tier     = 数量範囲 → 倍率 (×1.01 など)。単価 = 基準単価 × 倍率、
- *                  行ごとに手動上書き (priceOverride) 可。
- *     └ Discount = 期間 × 数量条件 → 値引きルール（専用リスト）。
+ *           (顧客, 製品) は作成後不変の識別（unique）。通貨 + 状態を持つ。
+ *     └ Variant  = 注文種別ごとの価格。基準単価（試算の見積単価 or 手動）+
+ *                  有効期間 + 状態 + 試算リンクを持つ。
+ *       └ Tier     = 数量範囲 → 倍率 (×1.01 など)。単価 = 基準単価 × 倍率、
+ *                    行ごとに手動上書き (priceOverride) 可。
+ *       └ Discount = 期間 × 数量条件 → 値引きルール（専用リスト）。
  *
- * 価格表は試算からのみ作成する（基準単価は試算値を直接使うか手動上書き）。
+ * 価格表は顧客×製品で作成する。製品にリンクされた確定済み試算があれば、
+ * その見積単価を基準単価ソースとして選択できる（手動設定も可）。
  * 見積書は価格表からのみ価格を解決する（単価・値引きとも自動計算）。
  * Rows are built by the server pages (app/sales/price-lists/data.ts);
  * everything here is pure and client-safe.
@@ -32,7 +34,7 @@ export interface PriceTier {
 }
 
 /**
- * 値引きルール — 期間 × 数量条件 → 値引き（entry ごとの専用リスト）.
+ * 値引きルール — 期間 × 数量条件 → 値引き（バリアントごとの専用リスト）.
  *   RATE   = 単価に対する率 (%)
  *   AMOUNT = 1本あたりの値引き額 (¥/本)
  * 条件（数量範囲・有効期間）を満たすルールのうち、1本あたりの値引きが最大の
@@ -52,16 +54,16 @@ export interface PriceDiscount {
   isActive: boolean;
 }
 
-/** A price entry — owns the period shared by its tiers. */
-export interface PriceListEntry {
-  /** 価格表番号 PRC-YYYYMM-NNNNN（URL id と同一）。 */
-  entryId: string;
-  customerId: string;
-  customerName: string;
-  productId: string;
-  productName: string;
+export type EntryOrderType = "PRODUCTION" | "TEST" | "SAMPLE" | "OTHER";
+
+/**
+ * 注文種別バリアント — 1 エントリ（顧客×製品）内の種別ごとの価格。
+ * 基準単価・有効期間・試算リンクはバリアント単位で持つ。
+ */
+export interface PriceVariant {
+  /** price_list_variants.id（フォームの未保存行は ""）。 */
+  id: string;
   orderType: string;
-  currency: string;
   /**
    * 基準単価 — 試算の見積単価から登録（そのまま使うか手動上書き）。
    * 各 tier の単価はここから倍率で計算される。
@@ -73,9 +75,23 @@ export interface PriceListEntry {
   tiers: PriceTier[];
   /** 期間・数量条件つき値引きルール（専用リスト）. */
   discounts: PriceDiscount[];
-  /** 試算元の文書番号 EST-…（手動追加種別のみ null）— URL id と同一。 */
+  /** 試算元の文書番号 EST-…（手動設定は null）— URL id と同一。 */
   estimateId: string | null;
   estimateNumber: string | null;
+}
+
+/** A price entry (顧客×製品) — owns the currency/active flag shared by variants. */
+export interface PriceListEntry {
+  /** 価格表番号 PRC-YYYYMM-NNNNN（URL id と同一）。 */
+  entryId: string;
+  customerId: string;
+  customerName: string;
+  productId: string;
+  productName: string;
+  currency: string;
+  isActive: boolean;
+  /** 注文種別ごとの価格（少なくとも 1 件）。 */
+  variants: PriceVariant[];
   createdBy: string;
   createdAt: string;
   updatedAt: string;
@@ -91,20 +107,20 @@ export function requiresEndDate(orderType: string): boolean {
   return END_DATE_REQUIRED_TYPES.includes(orderType);
 }
 
-export type EntryOrderType = "PRODUCTION" | "TEST" | "SAMPLE" | "OTHER";
-
-/** Bare entry identity（顧客×製品×種別）— duplicate warnings 用。 */
+/** Bare entry identity（顧客×製品 + 登録済み種別）— duplicate warnings 用。 */
 export interface EntryIdentity {
   customerBpId: string;
   productId: string;
-  orderType: string;
+  orderTypes: string[];
+  /** 既存エントリの PRC 番号（重複警告からのリンク先）。 */
+  entryId: string;
 }
 
 /**
  * Tier の採用単価 — 手動上書きがあればそれ、なければ 基準単価 × 倍率（円丸め）。
  */
-export function tierUnitPrice(e: PriceListEntry, t: PriceTier): number {
-  return t.priceOverride ?? Math.round(e.baseUnitPrice * t.multiplier);
+export function tierUnitPrice(v: PriceVariant, t: PriceTier): number {
+  return t.priceOverride ?? Math.round(v.baseUnitPrice * t.multiplier);
 }
 
 /** "×1.05" — 倍率表示. */
@@ -112,17 +128,37 @@ export function multiplierLabel(t: PriceTier): string {
   return `×${t.multiplier.toFixed(2)}`;
 }
 
-/** List-row / summary aggregates derived from an entry's tiers. */
+/** Aggregates derived from a variant's tiers. */
+export interface VariantSummary {
+  tierCount: number;
+  minPrice: number;
+  maxPrice: number;
+}
+
+export function variantSummary(v: PriceVariant): VariantSummary {
+  const prices = v.tiers.map((t) => tierUnitPrice(v, t));
+  return {
+    tierCount: v.tiers.length,
+    minPrice: prices.length ? Math.min(...prices) : 0,
+    maxPrice: prices.length ? Math.max(...prices) : 0,
+  };
+}
+
+/** List-row / summary aggregates across ALL variants of an entry. */
 export interface EntrySummary {
+  variantCount: number;
   tierCount: number;
   minPrice: number;
   maxPrice: number;
 }
 
 export function entrySummary(e: PriceListEntry): EntrySummary {
-  const prices = e.tiers.map((t) => tierUnitPrice(e, t));
+  const prices = e.variants.flatMap((v) =>
+    v.tiers.map((t) => tierUnitPrice(v, t)),
+  );
   return {
-    tierCount: e.tiers.length,
+    variantCount: e.variants.length,
+    tierCount: e.variants.reduce((sum, v) => sum + v.tiers.length, 0),
     minPrice: prices.length ? Math.min(...prices) : 0,
     maxPrice: prices.length ? Math.max(...prices) : 0,
   };
@@ -169,13 +205,13 @@ export function unitDiscountOf(
  * 1本あたりの値引き額が最大のものを採用する。
  */
 export function findApplicableDiscount(
-  entry: PriceListEntry,
+  variant: PriceVariant,
   quantity: number,
   baseUnitPrice: number,
   date: Date = new Date(),
 ): PriceDiscount | null {
   const iso = date.toISOString().slice(0, 10);
-  const candidates = entry.discounts.filter(
+  const candidates = variant.discounts.filter(
     (d) =>
       d.isActive &&
       quantity >= d.minQuantity &&
@@ -191,29 +227,24 @@ export function findApplicableDiscount(
   );
 }
 
-/** Other 注文種別 registered for the same (顧客, 製品) — pure over a list. */
-export function siblingOrderTypes(
-  entry: PriceListEntry,
-  entries: PriceListEntry[],
-): string[] {
-  return entries
-    .filter(
-      (e) =>
-        e.customerId === entry.customerId &&
-        e.productId === entry.productId &&
-        e.entryId !== entry.entryId,
-    )
-    .map((e) => e.orderType);
-}
-
-/** Existing entries for a (顧客, 製品) — duplicate warnings (pure over a list). */
-export function findEntriesByCustomerProduct(
+/** The entry for a (顧客, 製品), if registered — pure over a list. */
+export function findEntryByCustomerProduct(
   customerId: string | null | undefined,
   productId: string | null | undefined,
   entries: PriceListEntry[],
-): PriceListEntry[] {
-  if (!(customerId && productId)) return [];
-  return entries.filter(
-    (e) => e.customerId === customerId && e.productId === productId,
+): PriceListEntry | null {
+  if (!(customerId && productId)) return null;
+  return (
+    entries.find(
+      (e) => e.customerId === customerId && e.productId === productId,
+    ) ?? null
   );
+}
+
+/** The variant for a 注文種別 within an entry (null when not registered). */
+export function findVariant(
+  entry: PriceListEntry | null | undefined,
+  orderType: string,
+): PriceVariant | null {
+  return entry?.variants.find((v) => v.orderType === orderType) ?? null;
 }

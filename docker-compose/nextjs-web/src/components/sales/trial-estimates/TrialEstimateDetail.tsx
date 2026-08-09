@@ -5,9 +5,9 @@
  * summary + recomputed results + the material price-history graph.
  *
  * Flow (試算 → 価格表 → 見積書): DRAFT は「確定」で CONFIRMED になり、
- * 「価格表に登録」で数量区分ごとの価格表になる（REGISTERED でロック）。
- * Backed by sales.estimates via the server page; status transitions persist
- * through Server Actions.
+ * 価格表（顧客×製品）の作成時に基準単価ソースとして選択できる（初回使用時に
+ * REGISTERED でロック）。Backed by sales.estimates via the server page;
+ * status transitions persist through Server Actions.
  */
 
 import {
@@ -27,12 +27,11 @@ import {
   IconChartLine,
   IconCheck,
   IconCopy,
-  IconCurrencyYen,
   IconInfoCircle,
   IconLink,
 } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useTransition } from "react";
 import { confirmTrialEstimate } from "@/app/(dashboard)/sales/trial-estimates/actions";
 import { DocNumber } from "@/components/ui/DocNumber";
 import { FieldValue } from "@/components/ui/FieldValue";
@@ -48,20 +47,14 @@ import {
 import { useTabParam } from "@/hooks/useUrlState";
 import { formatDateTime } from "@/lib/format";
 import type { MaterialPricePoint } from "@/lib/material-pricing-core";
-import type { Option } from "@/lib/mock";
 import { ORDER_TYPE_LABEL } from "@/lib/mock";
 import {
   calcTrialPricing,
   TOOL_TYPE_OPTIONS,
   type TrialPricingOptions,
 } from "@/lib/trial-pricing";
-import { ConvertToPriceListModal } from "./ConvertToPriceListModal";
 import { MaterialPriceChart } from "./MaterialPriceChart";
-import type {
-  ExistingEntryRef,
-  LinkedPriceEntry,
-  TrialEstimateRecord,
-} from "./types";
+import type { LinkedPriceEntry, TrialEstimateRecord } from "./types";
 
 const BASE_PATH = "/sales/trial-estimates";
 const toolLabel = (v: string) =>
@@ -81,18 +74,12 @@ const BREAKDOWN_ROWS = [
 export function TrialEstimateDetail({
   record,
   linkedEntries,
-  customerOptions,
-  productOptions,
-  existingEntries,
   auditEntries,
   priceHistory,
   pricingOptions = {},
 }: {
   record: TrialEstimateRecord;
   linkedEntries: LinkedPriceEntry[];
-  customerOptions: Option[];
-  productOptions: Option[];
-  existingEntries: ExistingEntryRef[];
   /** 操作履歴（audit_logs 由来、履歴タブ）。 */
   auditEntries: AuditEntry[];
   /** この素材の仕入実績（サーバー取得、価格推移タブ）。 */
@@ -108,7 +95,6 @@ export function TrialEstimateDetail({
   const result =
     record.resultSnapshot ?? calcTrialPricing(record.input, pricingOptions);
   const history = priceHistory;
-  const [convertOpen, setConvertOpen] = useState(false);
   const [, startTransition] = useTransition();
   const status = record.status;
 
@@ -118,7 +104,8 @@ export function TrialEstimateDetail({
       if (res.ok) {
         notifications.show({
           title: "確定しました",
-          message: "「価格表に登録」で数量区分ごとの価格表を作成できます",
+          message:
+            "価格表（顧客×製品）の作成時に基準単価ソースとして選択できます",
           color: "green",
         });
         router.refresh();
@@ -143,15 +130,6 @@ export function TrialEstimateDetail({
                     label: "確定",
                     icon: <IconCheck size={14} />,
                     onClick: confirm,
-                  },
-                ]
-              : []),
-            ...(status === "CONFIRMED"
-              ? [
-                  {
-                    label: "価格表に登録",
-                    icon: <IconCurrencyYen size={14} />,
-                    onClick: () => setConvertOpen(true),
                   },
                 ]
               : []),
@@ -183,7 +161,13 @@ export function TrialEstimateDetail({
     >
       {status === "REGISTERED" && (
         <Alert color="blue" icon={<IconInfoCircle size={16} />} variant="light">
-          この試算は価格表登録済のため編集できません。単価を見直す場合は複製して再試算してください。
+          この試算は価格表で使用済みのため編集できません。単価を見直す場合は複製して再試算してください。
+        </Alert>
+      )}
+      {status === "CONFIRMED" && (
+        <Alert color="blue" icon={<IconInfoCircle size={16} />} variant="light">
+          確定済み —
+          価格表（顧客×製品）の作成時に、この試算を基準単価ソースとして選択できます。
         </Alert>
       )}
       <SummaryGrid>
@@ -192,6 +176,7 @@ export function TrialEstimateDetail({
           value={<DocNumber>{record.estimateNumber}</DocNumber>}
         />
         <FieldValue label="見積り先" value={record.customerName ?? "—"} />
+        <FieldValue label="製品" value={record.productName ?? "—"} />
         <FieldValue label="工具種" value={toolLabel(record.input.toolType)} />
         <FieldValue label="素材" value={record.materialLabel} />
         <FieldValue label="最大径" value={`${record.input.maxDiameter} mm`} />
@@ -317,7 +302,8 @@ export function TrialEstimateDetail({
                 </Stack>
               ) : (
                 <Text c="dimmed" size="sm">
-                  未登録 — 「価格表に登録」で数量区分ごとの価格表行を作成します
+                  未使用 —
+                  価格表（顧客×製品）の作成時にこの試算を基準単価ソースとして選択できます
                 </Text>
               )}
             </div>
@@ -326,7 +312,7 @@ export function TrialEstimateDetail({
                 見積書
               </Text>
               <Text c="dimmed" size="sm">
-                —（価格表登録後に価格表から作成できます）
+                —（価格表の作成後に価格表から作成できます）
               </Text>
             </div>
           </Stack>
@@ -336,17 +322,6 @@ export function TrialEstimateDetail({
           <HistoryPanel entries={auditEntries} />
         </Tabs.Panel>
       </Tabs>
-
-      <ConvertToPriceListModal
-        customerOptions={customerOptions}
-        estimate={record}
-        existingEntries={existingEntries}
-        onClose={() => setConvertOpen(false)}
-        onRegistered={() => router.refresh()}
-        opened={convertOpen}
-        pricingOptions={pricingOptions}
-        productOptions={productOptions}
-      />
     </DetailShell>
   );
 }

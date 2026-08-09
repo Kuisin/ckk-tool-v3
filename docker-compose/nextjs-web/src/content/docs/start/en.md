@@ -35,7 +35,7 @@ Every screen has a 4-character code. Remembering them lets you jump from the sea
 ## 4. The sales flow (start here)
 
 1. **Compute a unit price in Trial Estimate (SA05)** — enter product, material, dimensions, and the estimate price is derived from cost. ([Trial Estimate manual](/docs/apps/trial-estimate/user))
-2. **Confirm and register it into the Price List (SA01)** — "confirm" the estimate, then register it for a customer/product. ([Price List manual](/docs/apps/price-list/user))
+2. **Create a Price List (SA01)** — choose a customer and product; a confirmed estimate linked to the product can be picked as the base-price source. ([Price List manual](/docs/apps/price-list/user))
 3. **Create a Quote (SA02)** — pick a customer and product, and the unit price fills in from the price list. Export a PDF and send it to the customer. ([Quote manual](/docs/apps/quote/user))
 
 Open the "App User Guides" on the left for the details of each app.
@@ -54,4 +54,4 @@ Open the "App User Guides" on the left for the details of each app.
 - **Lot** — a quantity batch made together. Larger quantities lower the per-piece price.
 - **Order type** — Production, Test, Sample (amount 0), or Other. Prices can differ per type for the same product.
 - **Setup / shape-out** — pre-machining preparation cost, amortized across the quantity to a per-piece amount.
-- **Confirmed / Draft** — Draft (editable) → Confirmed (locked). Confirming makes it eligible for price-list registration.
+- **Confirmed / Draft** — Draft (editable) → Confirmed (locked). A confirmed estimate can be picked when creating a price list.

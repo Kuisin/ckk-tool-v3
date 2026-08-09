@@ -8,13 +8,17 @@
  * duplicate warnings.
  */
 
+import type { EntryIdentity } from "@/components/sales/price-lists/model";
 import type {
-  ExistingEntryRef,
   TrialEstimateRecord,
   TrialPriceSnapshot,
 } from "@/components/sales/trial-estimates/types";
 import { prisma } from "@/lib/db";
-import { formatEstimateNumber, formatProductNumber } from "@/lib/doc-number";
+import {
+  formatEstimateNumber,
+  formatPriceListNumber,
+  formatProductNumber,
+} from "@/lib/doc-number";
 import { type LocalizedText, localized } from "@/lib/format";
 import type { Option } from "@/lib/mock";
 import type { TrialInput } from "@/lib/trial-pricing";
@@ -43,6 +47,7 @@ function fetchEstimateRowByKey(yearMonth: string, seq: number) {
     where: { yearMonth_seq: { yearMonth, seq } },
     include: {
       customerBp: true,
+      product: true,
       materialType: true,
       diameter: true,
       surfaceFinish: true,
@@ -83,6 +88,8 @@ export function mapEstimate(r: EstimateRow): TrialEstimateRecord {
     customerName: r.customerBp
       ? localized(r.customerBp.name as LocalizedText | null)
       : null,
+    productId: r.productId != null ? String(r.productId) : null,
+    productName: r.product ? productOptionLabel(r.product) : null,
     materialTypeId: r.materialTypeId != null ? String(r.materialTypeId) : "",
     diameterCode: r.diameterCode ?? "",
     surfaceFinishCode: r.surfaceFinishCode ?? "",
@@ -103,6 +110,7 @@ export async function fetchTrialEstimates(): Promise<TrialEstimateRecord[]> {
     take: LIST_FETCH_CAP,
     include: {
       customerBp: true,
+      product: true,
       materialType: true,
       diameter: true,
       surfaceFinish: true,
@@ -211,10 +219,21 @@ export async function fetchCustomerOption(id: string): Promise<Option | null> {
   return { value: r.id, label: localized(r.name as LocalizedText | null) };
 }
 
-/** All current price-entry identities — duplicate warnings on 登録. */
-export async function fetchExistingEntryRefs(): Promise<ExistingEntryRef[]> {
+/** All current price-entry identities (顧客×製品) — duplicate warnings. */
+export async function fetchExistingEntryRefs(): Promise<EntryIdentity[]> {
   const rows = await prisma.priceListEntry.findMany({
-    select: { customerBpId: true, productId: true, orderType: true },
+    select: {
+      yearMonth: true,
+      seq: true,
+      customerBpId: true,
+      productId: true,
+      variants: { select: { orderType: true } },
+    },
   });
-  return rows.map((r) => ({ ...r, productId: String(r.productId) }));
+  return rows.map((r) => ({
+    customerBpId: r.customerBpId,
+    productId: String(r.productId),
+    orderTypes: r.variants.map((v) => v.orderType),
+    entryId: formatPriceListNumber({ yearMonth: r.yearMonth, seq: r.seq }),
+  }));
 }
