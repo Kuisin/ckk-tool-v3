@@ -22,8 +22,16 @@ import { notifications } from "@mantine/notifications";
 import { IconInfoCircle } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
-import { updateToolTypeAssignments } from "@/app/(dashboard)/settings/actions";
-import { CancelButton, SaveButton } from "@/components/ui/buttons";
+import {
+  removeToolType,
+  updateToolTypeAssignments,
+} from "@/app/(dashboard)/settings/actions";
+import {
+  CancelButton,
+  DeleteButton,
+  SaveButton,
+} from "@/components/ui/buttons";
+import { openConfirm } from "@/components/ui/modals";
 import { FormSection } from "@/components/ui/shells";
 import {
   type Criterion,
@@ -115,6 +123,35 @@ export function ToolTypeEditForm({
     });
   };
 
+  const remove = () =>
+    openConfirm({
+      title: "工具種の削除",
+      message: `工具種「${toolType.label}」を削除します。各計算基準の適用工具種からも取り除かれます。この操作は取り消せません。`,
+      confirmLabel: "削除",
+      onConfirm: () =>
+        startTransition(async () => {
+          const res = await removeToolType(toolType.value);
+          if (res.ok) {
+            notifications.show({
+              title: "削除しました",
+              message: `工具種「${toolType.label}」を削除しました`,
+              color: "green",
+            });
+            router.push(BASE);
+            router.refresh();
+          } else {
+            notifications.show({
+              title: "エラー",
+              message: res.error,
+              color: "red",
+            });
+          }
+        }),
+    });
+
+  // 組み込み種は削除不可。カスタム種も試算で使用中は削除できない。
+  const deletable = !toolType.builtin && usageCount === 0;
+
   return (
     <Stack gap="md">
       <Group gap="xs">
@@ -196,11 +233,18 @@ export function ToolTypeEditForm({
         />
       </FormSection>
 
-      <Group justify="flex-end" mt="xs">
-        <CancelButton onClick={() => router.push(BASE)} />
-        <SaveButton loading={isPending} onClick={save}>
-          保存
-        </SaveButton>
+      <Group justify="space-between" mt="xs">
+        {toolType.builtin ? (
+          <span />
+        ) : (
+          <DeleteButton disabled={!deletable} onClick={remove} />
+        )}
+        <Group gap="sm">
+          <CancelButton onClick={() => router.push(BASE)} />
+          <SaveButton loading={isPending} onClick={save}>
+            保存
+          </SaveButton>
+        </Group>
       </Group>
     </Stack>
   );

@@ -1,5 +1,5 @@
-import { Center, Stack, Text, ThemeIcon } from "@mantine/core";
 import { IconMathFunction } from "@tabler/icons-react";
+import { MasterDetailPlaceholder } from "@/components/ui/MasterDetailPlaceholder";
 
 export const dynamic = "force-dynamic";
 
@@ -9,15 +9,9 @@ export const dynamic = "force-dynamic";
  */
 export default function CriteriaIndexPage() {
   return (
-    <Center mih={280}>
-      <Stack align="center" gap="sm">
-        <ThemeIcon color="gray" size="xl" variant="light">
-          <IconMathFunction size={24} />
-        </ThemeIcon>
-        <Text c="dimmed" size="sm">
-          左の一覧から基準を選ぶと式を編集できます
-        </Text>
-      </Stack>
-    </Center>
+    <MasterDetailPlaceholder
+      icon={<IconMathFunction size={24} />}
+      message="左の一覧から基準を選ぶと式を編集できます"
+    />
   );
 }

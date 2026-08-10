@@ -1,7 +1,5 @@
-import { IconPlus } from "@tabler/icons-react";
 import type { ReactNode } from "react";
 import { LookupTablesList } from "@/components/settings/LookupTablesList";
-import { PrimaryButton } from "@/components/ui/buttons";
 import { MasterDetailShell } from "@/components/ui/MasterDetailShell";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { getTrialPricingSettings } from "@/lib/system-settings";
@@ -23,14 +21,6 @@ export default async function LookupsLayout({
       basePath={BASE}
       header={
         <PageHeader
-          actions={
-            <PrimaryButton
-              href={`${BASE}/new`}
-              leftSection={<IconPlus size={16} />}
-            >
-              新規
-            </PrimaryButton>
-          }
           breadcrumbs={[
             "システム",
             { label: "試算計算", href: ENGINE },
