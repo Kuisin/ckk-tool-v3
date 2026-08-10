@@ -2,7 +2,7 @@
  * operation-codes.ts — 操作コード（画面番号）レジストリ
  *
  * 形式: `{CAT}{MODE}{IDX}` — 英字2文字 + モード1文字 + インデックス1文字（固定4文字）
- *   CAT  : カテゴリ（CM/SA/PU/PD/SH/BL/MS）
+ *   CAT  : カテゴリ（CM/SA/PU/PD/SH/BL/MS/DC/SY）
  *   MODE : 0=一覧 / 1=新規 / 2=詳細（IDなし→検索）
  *   IDX  : 1–9、10件超は A–Z（最大35件 + 予約スロット 0）
  *
@@ -30,6 +30,7 @@ export const OPERATION_CODE_PREFIX = {
   shipping: "SH",
   billing: "BL",
   master: "MS",
+  documents: "DC",
   system: "SY",
 } as const;
 
@@ -189,6 +190,19 @@ export const OPERATION_CODES: OperationCodeEntry[] = [
     index: "C",
   },
 
+  // ─── ドキュメント (DC) ───────────────────────────────────────────────────
+  // マニュアル（/docs）— 単一画面, list コードのみ（旧 SY03）
+  {
+    code: "DC01",
+    label: "マニュアル",
+    href: "/docs",
+    category: "ドキュメント",
+    kind: "list",
+    categoryCode: "DC",
+    mode: "0",
+    index: "1",
+  },
+
   // ─── システム (SY) ───────────────────────────────────────────────────────
   // システム設定ハブ（アプリ設定・システム管理）— 単一画面, list コードのみ
   {
@@ -211,17 +225,6 @@ export const OPERATION_CODES: OperationCodeEntry[] = [
     categoryCode: "SY",
     mode: "0",
     index: "2",
-  },
-  // マニュアル（/docs）— 単一画面, list コードのみ
-  {
-    code: "SY03",
-    label: "マニュアル",
-    href: "/docs",
-    category: "システム",
-    kind: "list",
-    categoryCode: "SY",
-    mode: "0",
-    index: "3",
   },
   // 製品項目（項目定義ライブラリ）— 単一画面, list コードのみ
   {

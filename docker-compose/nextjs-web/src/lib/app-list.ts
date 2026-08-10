@@ -21,6 +21,7 @@ export type AppCategory =
   | "出荷"
   | "請求"
   | "マスタ"
+  | "ドキュメント"
   | "システム";
 
 export interface AppEntry {
@@ -322,6 +323,18 @@ export const appList: AppEntry[] = [
     requiredPermission: "master",
   },
 
+  // ─── ドキュメント ──────────────────────────────────────────────────────────
+  {
+    // マニュアル（/docs）。全ユーザー閲覧可。多言語 md をアプリ内で表示。
+    key: "docs",
+    label: "マニュアル",
+    operationCode: "DC01",
+    href: "/docs",
+    icon: "IconBook2",
+    category: "ドキュメント",
+    requiredPermission: null,
+  },
+
   // ─── システム ──────────────────────────────────────────────────────────────
   {
     // システム設定ハブ（アプリ設定・システム管理）。
@@ -342,16 +355,6 @@ export const appList: AppEntry[] = [
     icon: "IconMathFunction",
     category: "システム",
     requiredPermission: "system",
-  },
-  {
-    // マニュアル（/docs）。全ユーザー閲覧可。多言語 md をアプリ内で表示。
-    key: "docs",
-    label: "マニュアル",
-    operationCode: "SY03",
-    href: "/docs",
-    icon: "IconBook2",
-    category: "システム",
-    requiredPermission: null,
   },
   {
     // 製品項目 — 入力項目の定義ライブラリ。system 権限。
@@ -399,6 +402,7 @@ export const CATEGORY_COLORS: Record<AppCategory, string> = {
   出荷: "orange",
   請求: "pink",
   マスタ: "gray",
+  ドキュメント: "cyan",
   システム: "dark",
 };
 
@@ -417,6 +421,7 @@ export function getAppsByCategory(): Array<{
     "出荷",
     "請求",
     "マスタ",
+    "ドキュメント",
     "システム",
   ];
   return order.map((category) => ({
