@@ -210,6 +210,61 @@ export async function createTrialEstimate(
   }
 }
 
+/**
+ * 製品リンクの設定/解除（詳細画面から）。REGISTERED は価格表が参照済みのため
+ * 変更不可。productId = null で解除。
+ */
+export async function linkTrialEstimateProduct(
+  number: string,
+  productId: string | null,
+): Promise<ActionResult> {
+  const key = keyOf(number);
+  if (!key) return actionError("試算番号が不正です");
+  const authz = await checkPermission("price_list", "UPDATE");
+  if (!authz.ok) return actionError(authz.error);
+  try {
+    const estimate = await prisma.estimate.findUnique({
+      where: { yearMonth_seq: { yearMonth: key.yearMonth, seq: key.seq } },
+    });
+    if (!estimate) return actionError("試算が見つかりません");
+    if (estimate.status === "REGISTERED") {
+      return actionError(
+        "価格表で使用済みの試算は製品リンクを変更できません（複製して再試算してください）",
+      );
+    }
+    let idNum: number | null = null;
+    if (productId !== null) {
+      idNum = Number(productId);
+      if (!Number.isInteger(idNum) || idNum <= 0) {
+        return actionError("製品の指定が不正です");
+      }
+      const product = await prisma.product.findUnique({
+        where: { id: idNum },
+      });
+      if (!product) return actionError("製品が見つかりません");
+    }
+    if ((estimate.productId ?? null) === idNum) return actionOk();
+    await prisma.estimate.update({
+      where: { yearMonth_seq: { yearMonth: key.yearMonth, seq: key.seq } },
+      data: { productId: idNum },
+    });
+    await recordAudit({
+      action: "UPDATE",
+      tableName: "estimates",
+      recordId: number,
+      before: {
+        productId:
+          estimate.productId != null ? String(estimate.productId) : null,
+      },
+      after: { productId: idNum != null ? String(idNum) : null },
+    });
+    revalidate(number);
+    return actionOk();
+  } catch (e) {
+    return actionError(prismaErrorMessage(e, "製品リンクの更新に失敗しました"));
+  }
+}
+
 export async function confirmTrialEstimate(
   number: string,
 ): Promise<ActionResult> {
