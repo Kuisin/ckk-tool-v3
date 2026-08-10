@@ -198,6 +198,7 @@ AppShell.Header
                 ├── Divider
                 ├── Menu.Item プロフィール (IconUser) → /profile
                 ├── Menu.Item 通知設定 (IconBell) → /profile/notifications
+                ├── Menu.Item ホーム画面設定 (IconLayoutDashboard) → /profile/home
                 ├── Divider
                 └── Menu.Item ログアウト (IconLogout, color="red")
 ```
@@ -329,7 +330,10 @@ Stack (gap="xl", p="md", maw={1200})
 │       └── img (company logo SVG, h=56, opacity=0.75)
 │           light: /design-assets/logo-with-label.svg
 │           dark:  /design-assets/dark_logo-with-label.svg
-└── [per category] Stack gap="sm"
+├── [if starred apps] Stack gap="sm" — お気に入り section（ホーム画面設定 /profile/home で選択。
+│   yellow IconStarFilled section icon; app cards identical to category cards; Divider after）
+└── [per section] Stack gap="sm" — 標準モード: カテゴリ別 / カスタムモード: ユーザー定義グループ別
+    （custom group sections use IconLayoutDashboard + color blue; 未所属アプリは「その他」）
     ├── Group gap="xs" — section header
     │   ├── ThemeIcon variant="light" color={category.color} size="sm" radius="sm"
     │   │   └── <CategoryIcon size={14} />
