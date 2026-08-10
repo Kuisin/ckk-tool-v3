@@ -196,8 +196,8 @@ AppShell.Header
             └── Menu.Dropdown
                 ├── Menu.Label — Avatar(md) + displayName + department
                 ├── Divider
-                ├── Menu.Item プロフィール (IconUser)
-                ├── Menu.Item 設定 (IconSettings)
+                ├── Menu.Item プロフィール (IconUser) → /profile
+                ├── Menu.Item 通知設定 (IconBell) → /profile/notifications
                 ├── Divider
                 └── Menu.Item ログアウト (IconLogout, color="red")
 ```
@@ -302,6 +302,11 @@ Operation codes provide keyboard-shortcut navigation. Format: `{CAT}{MODE}{IDX}`
 | ドキュメント | 1 | マニュアル | DC01 | — | — |
 | システム | 1 | システム設定 | SY01 | — | — |
 | システム | 2 | 試算計算 | SY02 | — | — |
+| システム | 3 | 製品項目 | SY03 | — | — |
+| システム | 4 | 製品種別 | SY04 | — | — |
+| システム | 5 | アプリ管理 | SY05 | — | — |
+| システム | 6 | ファイル管理 | SY06 | — | — |
+| システム | 7 | 操作履歴 | SY07 | — | — |
 
 `OperationCodeJump` component (`src/components/layout/OperationCodeJump.tsx`) renders as a compact TextInput in the header center. Pressing Enter or clicking a result navigates to that screen.
 
@@ -381,6 +386,12 @@ Stack (gap="xl", p="md", maw={1200})
 | 工場 | `IconBuildingWarehouse` |
 | システム設定 | `IconAdjustments` |
 | 試算計算 | `IconMathFunction` |
+| 製品項目 | `IconListDetails` |
+| 製品種別 | `IconCategory` |
+| アプリ管理 | `IconLayoutGrid` |
+| ファイル管理 | `IconFolder` |
+| 操作履歴 | `IconHistory` |
+| マニュアル | `IconBook2` |
 
 ---
 

@@ -204,7 +204,8 @@ export const OPERATION_CODES: OperationCodeEntry[] = [
   },
 
   // ─── システム (SY) ───────────────────────────────────────────────────────
-  // システム設定ハブ（アプリ設定・システム管理）— 単一画面, list コードのみ
+  // 採番: SY01–SY04 = 設定系（ハブ + アプリ設定）、SY05– = 管理系。
+  // いずれも単一画面, list コードのみ。
   {
     code: "SY01",
     label: "システム設定",
@@ -215,7 +216,7 @@ export const OPERATION_CODES: OperationCodeEntry[] = [
     mode: "0",
     index: "1",
   },
-  // 試算計算（計算基準・カスタム入力・カスタム計算）— 単一画面, list コードのみ
+  // 試算計算（計算基準・カスタム入力・カスタム計算）
   {
     code: "SY02",
     label: "試算計算",
@@ -226,27 +227,60 @@ export const OPERATION_CODES: OperationCodeEntry[] = [
     mode: "0",
     index: "2",
   },
-  // 製品項目（項目定義ライブラリ）— 単一画面, list コードのみ
+  // 製品項目（項目定義ライブラリ）— 旧 SY04
   {
-    code: "SY04",
+    code: "SY03",
     label: "製品項目",
     href: "/settings/product-items",
     category: "システム",
     kind: "list",
     categoryCode: "SY",
     mode: "0",
-    index: "4",
+    index: "3",
   },
-  // 製品種別（項目を割り当てるテンプレート）— 単一画面, list コードのみ
+  // 製品種別（項目を割り当てるテンプレート）— 旧 SY05
   {
-    code: "SY05",
+    code: "SY04",
     label: "製品種別",
     href: "/settings/product-types",
     category: "システム",
     kind: "list",
     categoryCode: "SY",
     mode: "0",
+    index: "4",
+  },
+  // アプリ管理（環境別 表示 ON/OFF, feature_flags）
+  {
+    code: "SY05",
+    label: "アプリ管理",
+    href: "/admin/apps",
+    category: "システム",
+    kind: "list",
+    categoryCode: "SY",
+    mode: "0",
     index: "5",
+  },
+  // ファイル管理（SeaweedFS の一覧・削除）
+  {
+    code: "SY06",
+    label: "ファイル管理",
+    href: "/admin/files",
+    category: "システム",
+    kind: "list",
+    categoryCode: "SY",
+    mode: "0",
+    index: "6",
+  },
+  // 操作履歴（監査ログ before/after）
+  {
+    code: "SY07",
+    label: "操作履歴",
+    href: "/admin/activity",
+    category: "システム",
+    kind: "list",
+    categoryCode: "SY",
+    mode: "0",
+    index: "7",
   },
 ];
 

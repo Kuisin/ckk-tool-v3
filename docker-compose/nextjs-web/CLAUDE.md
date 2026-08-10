@@ -76,7 +76,7 @@ inside the Server Action / route handler, not only in the UI.
   `app.system_settings` (key→JSON) via `lib/app-config.ts`
   (`readConfigNamespace`/`writeConfigValues`) — **no schema change per setting**.
   Each app has a typed adapter: `lib/system-settings.ts` (試算/SY02),
-  `lib/product-settings.ts` (製品項目/種別 SY04/SY05). Namespaces are
+  `lib/product-settings.ts` (製品項目/種別 SY03/SY04). Namespaces are
   `"<ns>.<field>"`.
 - **App on/off**: `feature_flags` table via `lib/app-flags.ts`. On `main`, an app
   shows only with an explicit `app:<key>:main` = true row

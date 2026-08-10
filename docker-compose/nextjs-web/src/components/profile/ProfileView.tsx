@@ -28,7 +28,11 @@ import {
   removeDeviceAction,
   updateEmailAction,
 } from "@/app/(dashboard)/profile/actions";
-import { DangerButton, SaveButton } from "@/components/ui/buttons";
+import {
+  DangerButton,
+  SaveButton,
+  SecondaryButton,
+} from "@/components/ui/buttons";
 import { FieldValue } from "@/components/ui/FieldValue";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { APPROVAL_GROUP_TYPE_LABEL } from "@/lib/enum-labels";
@@ -279,13 +283,17 @@ export function ProfileView({ user }: { user: ProfileData }) {
       {/* プッシュ通知の登録デバイス */}
       <Paper p="md" radius="md" shadow="xs">
         <Stack gap="sm">
-          <Text fw={600} size="sm">
-            プッシュ通知の登録デバイス
-          </Text>
+          <Group justify="space-between">
+            <Text fw={600} size="sm">
+              プッシュ通知の登録デバイス
+            </Text>
+            <SecondaryButton href="/profile/notifications">
+              通知設定
+            </SecondaryButton>
+          </Group>
           {devices.length === 0 ? (
             <Text c="dimmed" size="xs">
-              登録されたデバイスはありません。設定 → 通知設定
-              から有効化できます。
+              登録されたデバイスはありません。通知設定から有効化できます。
             </Text>
           ) : (
             devices.map((d) => (

@@ -1,11 +1,10 @@
 /**
  * settings-apps.ts — registry of apps that expose configurable settings.
  *
- * Drives the「アプリ設定」section of the system hub (`/settings`) and the app
- * settings index (`/settings/apps`). Each entry points at that app's dedicated
- * settings page. Client-safe (pure data) so both server pages and client
- * components can render the list. Add an entry here when a new app gains a
- * settings screen.
+ * Drives the システム設定 hub (`/settings`) — a card list of apps with
+ * configurable logic. Each entry points at that app's dedicated settings page.
+ * Client-safe (pure data) so both server pages and client components can
+ * render the list. Add an entry here when a new app gains a settings screen.
  */
 
 export interface SettingsApp {
@@ -40,7 +39,7 @@ export const SETTINGS_APPS: SettingsApp[] = [
       "製品の入力項目を定義するライブラリ（キー・型・選択肢・正規表現など）。製品種別に割り当てて使います。",
     href: "/settings/product-items",
     icon: "IconListDetails",
-    operationCode: "SY04",
+    operationCode: "SY03",
   },
   {
     key: "product-types",
@@ -49,7 +48,7 @@ export const SETTINGS_APPS: SettingsApp[] = [
       "項目を割り当てて作る製品テンプレート。新規製品作成時に種別を選ぶと項目が型付きで展開され、入力を型で検証。",
     href: "/settings/product-types",
     icon: "IconCategory",
-    operationCode: "SY05",
+    operationCode: "SY04",
   },
 ];
 

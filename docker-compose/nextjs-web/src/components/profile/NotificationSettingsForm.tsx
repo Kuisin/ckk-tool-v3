@@ -339,7 +339,7 @@ export function NotificationSettingsForm({
     <Stack gap="md">
       <PageHeader
         breadcrumbs={[
-          { label: "設定", href: "/settings" },
+          { label: "プロフィール", href: "/profile" },
           { label: "通知設定" },
         ]}
         title="通知設定"

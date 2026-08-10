@@ -113,7 +113,7 @@ export function ActivityLog({ entries }: { entries: ActivityEntry[] }) {
 
   return (
     <ListShell
-      breadcrumbs={["管理", "操作履歴"]}
+      breadcrumbs={["システム", "操作履歴"]}
       filters={
         <>
           <Select

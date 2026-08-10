@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * ItemDefsListPanel — 製品項目（SY04）の「項目定義」一覧。
+ * ItemDefsListPanel — 製品項目（SY03）の「項目定義」一覧。
  *
  * 有効切替・並び替え・削除・追加のみ。各項目の編集は
  * /settings/product-items/[key] の編集ページで行う。

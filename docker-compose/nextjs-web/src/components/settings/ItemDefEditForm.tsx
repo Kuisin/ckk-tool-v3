@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * ItemDefEditForm — 製品項目（SY04）の項目定義を 1 件編集する。
+ * ItemDefEditForm — 製品項目（SY03）の項目定義を 1 件編集する。
  * 新規（itemKey 無し）/ 既存編集の両対応。保存で定義配列全体を updateProductItemDefs。
  */
 
