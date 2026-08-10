@@ -95,7 +95,9 @@ export async function fetchMaterialPricing(raw: {
 }
 
 const trialInputSchema = z.looseObject({
-  toolType: z.enum(["ROUND_BAR", "CYLINDER", "OH"]),
+  // 工具種は管理者定義（trial_pricing.tool_types）— 実在チェックは保存時に
+  // 設定リストと突き合わせる。
+  toolType: z.string().min(1),
   maxDiameter: z.number(),
   totalLength: z.number(),
   materialBarPrice: z.number(),
@@ -166,6 +168,9 @@ export async function createTrialEstimate(
   const v = parsed.data;
   try {
     const settings = await getTrialPricingSettings();
+    if (!settings.toolTypes.some((t) => t.value === v.input.toolType)) {
+      return actionError(`工具種「${v.input.toolType}」は定義されていません`);
+    }
     const { yearMonth, seq } = await allocateDocumentKey("ESTIMATE");
     await prisma.estimate.create({
       data: {

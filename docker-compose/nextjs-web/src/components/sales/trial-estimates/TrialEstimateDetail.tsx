@@ -65,8 +65,6 @@ import { MaterialPriceChart } from "./MaterialPriceChart";
 import type { LinkedPriceEntry, TrialEstimateRecord } from "./types";
 
 const BASE_PATH = "/sales/trial-estimates";
-const toolLabel = (v: string) =>
-  TOOL_TYPE_OPTIONS.find((o) => o.value === v)?.label ?? v;
 
 const BREAKDOWN_ROWS = [
   ["材料原価", "material"],
@@ -85,6 +83,7 @@ export function TrialEstimateDetail({
   auditEntries,
   priceHistory,
   pricingOptions = {},
+  toolTypeOptions = TOOL_TYPE_OPTIONS,
 }: {
   record: TrialEstimateRecord;
   linkedEntries: LinkedPriceEntry[];
@@ -94,7 +93,11 @@ export function TrialEstimateDetail({
   priceHistory: MaterialPricePoint[];
   /** 試算エンジンのオプション（係数・カスタム計算）。 */
   pricingOptions?: TrialPricingOptions;
+  /** 工具種の選択肢（管理者定義。未指定は組み込み 3 種）. */
+  toolTypeOptions?: { value: string; label: string }[];
 }) {
+  const toolLabel = (v: string) =>
+    toolTypeOptions.find((o) => o.value === v)?.label ?? v;
   const router = useRouter();
   // アクティブタブを ?tab= に保持（URL 共有でタブまで再現）
   const [tab, setTab] = useTabParam("result");

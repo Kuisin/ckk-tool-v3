@@ -10,12 +10,14 @@
 import type { MaterialPriceBasis } from "./material-pricing-core";
 import type { TrialPricingOptions } from "./trial-pricing";
 import {
+  BUILTIN_TOOL_TYPES,
   type Criterion,
   type CustomInputDef,
   DEFAULT_CRITERIA,
   DEFAULT_CUSTOM_INPUTS,
   DEFAULT_LOOKUP_TABLES,
   type LookupTable,
+  type ToolTypeDef,
 } from "./trial-pricing-criteria";
 
 export interface TrialPricingSettings {
@@ -28,6 +30,8 @@ export interface TrialPricingSettings {
   // ── 計算基準（自由設定）＋カスタム入力 ──────────────────────────────────
   // 旧「既定値・係数（グローバル）」の 4 値（加工単価/予備形状本数/補正値/LDチャージ）
   // は customInputs の scope:"global" 固定係数へ移行した。
+  /** 工具種（管理者定義。組み込み ROUND_BAR/CYLINDER/OH は常に含む）. */
+  toolTypes: ToolTypeDef[];
   /** 見積単価を構成する計算基準（順序付き。既定 = 従来ロジック）. */
   criteria: Criterion[];
   /** 管理者が追加したカスタム入力項目（試算フォームに表示 + 式の変数）. */
@@ -45,6 +49,7 @@ export const DEFAULT_TRIAL_PRICING_SETTINGS: TrialPricingSettings = {
   materialPriceBasis: "MAX",
   materialPriceLookbackMonths: 6,
   defaultMaterialPrice: 0,
+  toolTypes: BUILTIN_TOOL_TYPES,
   criteria: DEFAULT_CRITERIA,
   customInputs: DEFAULT_CUSTOM_INPUTS,
   lookupTables: DEFAULT_LOOKUP_TABLES,
@@ -67,6 +72,13 @@ export function toTrialPricingOptions(
     lookupTables: settings.lookupTables,
     // カスタム計算 JS は廃止したため後処理は行わない。
   };
+}
+
+/** 工具種の選択肢（SegmentedControl/Select 用）— 管理者定義リスト由来。 */
+export function toToolTypeOptions(
+  settings: TrialPricingSettings,
+): { value: string; label: string }[] {
+  return settings.toolTypes.map((t) => ({ value: t.value, label: t.label }));
 }
 
 export const MATERIAL_PRICE_BASIS_OPTIONS: {

@@ -58,7 +58,6 @@ import {
   type CostBreakdown,
   calcTrialPricing,
   type LotResult,
-  TOOL_TYPE_OPTIONS,
   type ToolType,
   type TrialInput,
 } from "@/lib/trial-pricing";
@@ -74,6 +73,7 @@ import {
 import {
   MATERIAL_PRICE_BASIS_OPTIONS,
   type TrialPricingSettings,
+  toToolTypeOptions,
   toTrialPricingOptions,
 } from "@/lib/trial-pricing-settings";
 import { MaterialPriceChart } from "./MaterialPriceChart";
@@ -382,7 +382,7 @@ export function TrialEstimateForm({
             <FormSection title="基本">
               <Stack gap="sm">
                 <SegmentedControl
-                  data={toData(TOOL_TYPE_OPTIONS)}
+                  data={toToolTypeOptions(settings)}
                   onChange={(v) => setToolType(v as ToolType)}
                   value={toolType}
                 />

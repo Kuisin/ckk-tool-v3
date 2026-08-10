@@ -16,6 +16,8 @@ import {
   customInputDefSchema,
   GLOBAL_CUSTOM_INPUTS,
   lookupTableSchema,
+  mergeBuiltinToolTypes,
+  toolTypeDefSchema,
 } from "./trial-pricing-criteria";
 import {
   DEFAULT_TRIAL_PRICING_SETTINGS,
@@ -28,6 +30,7 @@ const KEY_MAP: Record<keyof TrialPricingSettings, string> = {
   materialPriceBasis: "trial_pricing.material_price_basis",
   materialPriceLookbackMonths: "trial_pricing.lookback_months",
   defaultMaterialPrice: "trial_pricing.default_material_price",
+  toolTypes: "trial_pricing.tool_types",
   criteria: "trial_pricing.criteria",
   customInputs: "trial_pricing.custom_inputs",
   lookupTables: "trial_pricing.lookup_tables",
@@ -49,6 +52,7 @@ function mergeGlobalCustomInputs(
 }
 
 const criteriaArraySchema = z.array(criterionSchema);
+const toolTypesArraySchema = z.array(toolTypeDefSchema);
 const customInputsArraySchema = z.array(customInputDefSchema);
 const lookupTablesArraySchema = z.array(lookupTableSchema);
 
@@ -74,6 +78,12 @@ export async function getTrialPricingSettings(): Promise<TrialPricingSettings> {
       case "customScriptEnabled":
         if (typeof v === "boolean") out.customScriptEnabled = v;
         break;
+      case "toolTypes": {
+        // 組み込み 3 種は常に復元（旧データ・空配列でも欠けない）。
+        const parsed = toolTypesArraySchema.safeParse(v);
+        if (parsed.success) out.toolTypes = mergeBuiltinToolTypes(parsed.data);
+        break;
+      }
       case "criteria": {
         const parsed = criteriaArraySchema.safeParse(v);
         if (parsed.success && parsed.data.length > 0)

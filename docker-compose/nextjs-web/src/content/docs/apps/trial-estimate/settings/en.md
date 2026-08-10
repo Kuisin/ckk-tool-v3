@@ -14,8 +14,15 @@ The unit price is the **sum of criteria**. Each criterion is a JavaScript expres
 
 ## Applicable tool types
 
-- Each criterion can target specific **tool types** (Round bar / Cylinder / OH).
-- **Empty selection = applies to no tool type.** Select all three to apply to all (the default is all selected).
+- Each criterion can target specific **tool types**.
+- **Empty selection = applies to no tool type.** Select all to apply to all (the default is all selected).
+
+## Tool type management
+
+- **Add and remove tool types** on the "Tool type management" page. The three built-in types (Round bar / Cylinder / OH) cannot be removed.
+- A custom tool type can be **removed only while no estimate uses it** (the usage count is shown).
+- Added tool types become selectable on the estimate form. Their calculation inputs follow the round-bar style (reference-price based).
+- Each tool type's page assigns **which criteria apply** and **which final (unit-price) criterion is used** for that type. This is another view of the same data as each criterion's "applicable tool types".
 
 ## Custom input fields
 

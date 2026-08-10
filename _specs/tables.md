@@ -314,7 +314,7 @@ Table estimates {
   year_month      char(6) [not null]
   seq             int [not null]
   name            varchar [not null]
-  tool_type       TRIAL_TOOL_TYPE [not null]
+  tool_type       varchar [not null]  // 工具種（管理者定義 — trial_pricing.tool_types。組み込み: ROUND_BAR/CYLINDER/OH）
   status          ESTIMATE_STATUS [not null, default: 'DRAFT']
   customer_bp_id  uuid [ref: > business_partners.id]
   product_id      int [ref: > products.id]     // 対象製品（任意。1製品に複数試算可）
@@ -1221,11 +1221,10 @@ Table design_files {
 // JSON 内に保持）。任意の product_id で製品にリンクし（1製品に複数試算可）、
 // 確定後は価格表（顧客×製品）作成時の基準単価ソースとして選択できる。
 
-Enum TRIAL_TOOL_TYPE {
-  ROUND_BAR       // 丸棒
-  CYLINDER        // 円筒
-  OH              // OH付
-}
+// 工具種は管理者定義（system_settings trial_pricing.tool_types — SY02 工具種管理
+// で追加/削除。未使用の工具種のみ削除可）。estimates.tool_type は varchar で保持。
+// 組み込み 3 種（削除不可）: ROUND_BAR（丸棒） / CYLINDER（円筒） / OH（OH付）。
+// 旧 TRIAL_TOOL_TYPE enum は varchar へ移行済み。
 
 // 汎用アプリ設定ストア（1テーブルで任意のコード設定を保持）。key は名前空間
 // 付き `<namespace>.<field>`。アクセスは lib/app-config.ts（generic）+ アプリ別

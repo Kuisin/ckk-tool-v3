@@ -1,6 +1,9 @@
 import { TrialEstimateTable } from "@/components/sales/trial-estimates/TrialEstimateTable";
 import { getTrialPricingSettings } from "@/lib/system-settings";
-import { toTrialPricingOptions } from "@/lib/trial-pricing-settings";
+import {
+  toToolTypeOptions,
+  toTrialPricingOptions,
+} from "@/lib/trial-pricing-settings";
 import { fetchTrialEstimates } from "./data";
 
 export const dynamic = "force-dynamic";
@@ -16,6 +19,7 @@ export default async function TrialEstimatesPage() {
     <TrialEstimateTable
       pricingOptions={toTrialPricingOptions(settings)}
       rows={rows}
+      toolTypeOptions={toToolTypeOptions(settings)}
     />
   );
 }

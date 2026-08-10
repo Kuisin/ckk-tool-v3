@@ -305,6 +305,61 @@ describe("per-tool-type criteria on/off", () => {
       runCriteriaEngine(base, { criteria }).lots[0].minimumPrice,
     ).toBeCloseTo(runCriteriaEngine(base).lots[0].minimumPrice, 4);
   });
+
+  it("admin-defined custom tool types work with scoped criteria and finals", () => {
+    const customInput: TrialInput = { ...base, toolType: "BALL_END" };
+    // undefined toolTypes（旧データ）= 全工具種 → カスタム種にも適用される。
+    // （DEFAULT_CRITERIA は明示リストを持つため、新種への適用は addToolType の
+    // 「全種適用の基準へ追記」で行われる — ここでは旧データ相当を検証。）
+    const legacy: Criterion[] = DEFAULT_CRITERIA.map(
+      ({ toolTypes: _toolTypes, ...c }) => c,
+    );
+    expect(
+      runCriteriaEngine(customInput, { criteria: legacy }).lots[0].minimumPrice,
+    ).toBeCloseTo(
+      runCriteriaEngine(base, { criteria: legacy }).lots[0].minimumPrice,
+      4,
+    );
+
+    // カスタム種のみに適用の加算 + 種ごとの final の選択。
+    const finalC = DEFAULT_CRITERIA.find(
+      (c) => c.role === "final",
+    ) as Criterion;
+    const criteria: Criterion[] = [
+      // 共通の加算基準（全種適用 = toolTypes 未指定）。
+      ...legacy.filter((c) => c.role !== "final"),
+      {
+        id: "ballOnly",
+        name: "ボールエンドのみ加算",
+        role: "component",
+        order: 105,
+        enabled: true,
+        expression: "500",
+        toolTypes: ["BALL_END"],
+      },
+      // 組み込み種は従来 final、カスタム種は固定 9999 の final を使う。
+      { ...finalC, toolTypes: ["ROUND_BAR", "CYLINDER", "OH"] },
+      {
+        id: "ballFinal",
+        name: "ボールエンド見積単価",
+        role: "final",
+        order: 1000,
+        enabled: true,
+        expression: "9999",
+        toolTypes: ["BALL_END"],
+      },
+    ];
+    const ball = runCriteriaEngine(customInput, { criteria });
+    const round = runCriteriaEngine(base, { criteria });
+    // scoped 加算はカスタム種のみ。
+    expect(ball.lots[0].minimumPrice - round.lots[0].minimumPrice).toBeCloseTo(
+      500,
+      4,
+    );
+    // final は種ごとに選択される。
+    expect(ball.lots[0].estimateUnitPrice).toBe(9999);
+    expect(round.lots[0].estimateUnitPrice).not.toBe(9999);
+  });
 });
 
 describe("sandbox + error handling", () => {
