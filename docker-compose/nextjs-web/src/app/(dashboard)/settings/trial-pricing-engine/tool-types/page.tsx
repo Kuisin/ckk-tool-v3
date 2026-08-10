@@ -1,38 +1,17 @@
-import { Stack } from "@mantine/core";
-import { ToolTypesPanel } from "@/components/settings/ToolTypesPanel";
-import { PageHeader } from "@/components/ui/PageHeader";
-import { prisma } from "@/lib/db";
-import { getTrialPricingSettings } from "@/lib/system-settings";
+import { IconTool } from "@tabler/icons-react";
+import { MasterDetailPlaceholder } from "@/components/ui/MasterDetailPlaceholder";
 
 export const dynamic = "force-dynamic";
 
-const ENGINE = "/settings/trial-pricing-engine";
-
-/** 工具種管理（SY02）— 追加/削除と種ごとの適用基準サマリ。 */
-export default async function ToolTypesPage() {
-  const [settings, counts] = await Promise.all([
-    getTrialPricingSettings(),
-    prisma.estimate.groupBy({ by: ["toolType"], _count: { _all: true } }),
-  ]);
-  const usage = Object.fromEntries(
-    counts.map((c) => [c.toolType, c._count._all]),
-  );
-
+/**
+ * 工具種管理 index — デスクトップ右ペインのプレースホルダ。
+ * モバイルでは MasterDetailShell が一覧（master）を表示するため、これは出ない。
+ */
+export default function ToolTypesIndexPage() {
   return (
-    <Stack gap="md">
-      <PageHeader
-        breadcrumbs={[
-          "システム",
-          { label: "試算計算", href: ENGINE },
-          "工具種管理",
-        ]}
-        title="工具種管理"
-      />
-      <ToolTypesPanel
-        criteria={settings.criteria}
-        toolTypes={settings.toolTypes}
-        usage={usage}
-      />
-    </Stack>
+    <MasterDetailPlaceholder
+      icon={<IconTool size={24} />}
+      message="左の一覧から工具種を選ぶと適用基準を編集できます"
+    />
   );
 }

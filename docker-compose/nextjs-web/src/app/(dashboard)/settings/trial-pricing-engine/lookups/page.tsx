@@ -1,5 +1,5 @@
-import { Center, Stack, Text, ThemeIcon } from "@mantine/core";
 import { IconTable } from "@tabler/icons-react";
+import { MasterDetailPlaceholder } from "@/components/ui/MasterDetailPlaceholder";
 
 export const dynamic = "force-dynamic";
 
@@ -9,15 +9,9 @@ export const dynamic = "force-dynamic";
  */
 export default function LookupsIndexPage() {
   return (
-    <Center mih={280}>
-      <Stack align="center" gap="sm">
-        <ThemeIcon color="gray" size="xl" variant="light">
-          <IconTable size={24} />
-        </ThemeIcon>
-        <Text c="dimmed" size="sm">
-          左の一覧から表を選択してください
-        </Text>
-      </Stack>
-    </Center>
+    <MasterDetailPlaceholder
+      icon={<IconTable size={24} />}
+      message="左の一覧から表を選択してください"
+    />
   );
 }

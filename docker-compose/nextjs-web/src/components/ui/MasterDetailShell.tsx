@@ -12,7 +12,9 @@
  * ページ名はこの header に一度だけ出す（各ペインでは繰り返さない）。
  */
 
-import { Box, Flex, Stack } from "@mantine/core";
+import { Anchor, Box, Flex, Group, Stack } from "@mantine/core";
+import { IconChevronLeft } from "@tabler/icons-react";
+import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   type ReactNode,
@@ -32,9 +34,12 @@ export function MasterDetailShell({
   initialMasterWidth = 300,
   minMasterWidth = 200,
   maxMasterWidth = 560,
+  mobileBackLabel = "一覧へ戻る",
 }: {
   /** 一覧（index）ルートのパス。モバイルでここにいるとき master を表示。 */
   basePath: string;
+  /** モバイル詳細ルートに出す一覧への戻りリンクの文言。 */
+  mobileBackLabel?: string;
   /** 上部の全幅ページヘッダー（ページ名・パンくず・主要アクション）。 */
   header?: ReactNode;
   /** 左ペイン（一覧）。 */
@@ -104,7 +109,18 @@ export function MasterDetailShell({
   );
 
   if (isMobile) {
-    if (!onList) return children;
+    if (!onList)
+      return (
+        <Stack gap="sm">
+          <Anchor c="dimmed" component={Link} href={basePath} size="sm">
+            <Group gap={4} wrap="nowrap">
+              <IconChevronLeft size={14} />
+              {mobileBackLabel}
+            </Group>
+          </Anchor>
+          {children}
+        </Stack>
+      );
     return (
       <Stack gap="md">
         {header}
