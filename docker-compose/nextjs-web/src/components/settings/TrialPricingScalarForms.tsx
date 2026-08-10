@@ -109,12 +109,21 @@ function SectionShell({
         title={title}
       />
       {children}
-      <Group justify={isMobile ? "stretch" : "flex-end"}>
-        <CancelButton fullWidth={isMobile} onClick={onCancel} />
-        <SaveButton fullWidth={isMobile} loading={isPending} onClick={onSave}>
-          保存
-        </SaveButton>
-      </Group>
+      {isMobile ? (
+        <Stack gap="xs">
+          <SaveButton fullWidth loading={isPending} onClick={onSave}>
+            保存
+          </SaveButton>
+          <CancelButton fullWidth onClick={onCancel} />
+        </Stack>
+      ) : (
+        <Group justify="flex-end">
+          <CancelButton onClick={onCancel} />
+          <SaveButton loading={isPending} onClick={onSave}>
+            保存
+          </SaveButton>
+        </Group>
+      )}
     </Stack>
   );
 }
