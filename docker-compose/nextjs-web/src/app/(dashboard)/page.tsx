@@ -1,11 +1,18 @@
+import { auth } from "@/auth";
 import { HomeApps } from "@/components/home/HomeApps";
+import { readHomeSettings } from "@/lib/home-settings";
 import { getCurrentProfile } from "@/lib/profile";
 
 export const dynamic = "force-dynamic";
 
 /** ダッシュボード (CM00) — app navigation home. ログイン中の実ユーザーを表示。 */
 export default async function DashboardPage() {
-  const profile = await getCurrentProfile();
+  const session = await auth();
+  const userId = (session?.user as { id?: string } | undefined)?.id;
+  const [profile, settings] = await Promise.all([
+    getCurrentProfile(),
+    readHomeSettings(userId),
+  ]);
   const user = profile
     ? {
         displayName: profile.displayName,
@@ -19,5 +26,5 @@ export default async function DashboardPage() {
         avatarUrl: profile.avatarUrl,
       }
     : undefined;
-  return <HomeApps user={user} />;
+  return <HomeApps settings={settings} user={user} />;
 }
