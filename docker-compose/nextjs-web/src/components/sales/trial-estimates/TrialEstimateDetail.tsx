@@ -27,16 +27,24 @@ import {
   IconChartLine,
   IconCheck,
   IconCopy,
+  IconCylinder,
   IconInfoCircle,
   IconLink,
 } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
-import { useTransition } from "react";
-import { confirmTrialEstimate } from "@/app/(dashboard)/sales/trial-estimates/actions";
+import { useState, useTransition } from "react";
+import { searchProductOptions } from "@/app/(dashboard)/_shared/option-search";
+import {
+  confirmTrialEstimate,
+  linkTrialEstimateProduct,
+} from "@/app/(dashboard)/sales/trial-estimates/actions";
 import { DocNumber } from "@/components/ui/DocNumber";
 import { FieldValue } from "@/components/ui/FieldValue";
+import { PRODUCT_F4 } from "@/components/ui/f4-presets";
 import { HistoryPanel } from "@/components/ui/HistoryPanel";
 import { MoneyText } from "@/components/ui/MoneyText";
+import { ModalShell } from "@/components/ui/modals";
+import { SearchSelect } from "@/components/ui/SearchSelect";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import {
   type AuditEntry,
@@ -95,8 +103,42 @@ export function TrialEstimateDetail({
   const result =
     record.resultSnapshot ?? calcTrialPricing(record.input, pricingOptions);
   const history = priceHistory;
-  const [, startTransition] = useTransition();
+  const [isPending, startTransition] = useTransition();
   const status = record.status;
+  // 製品リンク モーダル（REGISTERED は価格表が参照済みのため変更不可）
+  const [linkOpen, setLinkOpen] = useState(false);
+  const [linkProductId, setLinkProductId] = useState<string | null>(null);
+
+  const openProductLink = () => {
+    setLinkProductId(record.productId);
+    setLinkOpen(true);
+  };
+
+  const saveProductLink = () => {
+    startTransition(async () => {
+      const res = await linkTrialEstimateProduct(
+        record.estimateNumber,
+        linkProductId,
+      );
+      if (res.ok) {
+        notifications.show({
+          title: "保存しました",
+          message: linkProductId
+            ? "製品にリンクしました。確定後、価格表（顧客×製品）の作成時に基準単価ソースとして選択できます"
+            : "製品リンクを解除しました",
+          color: "green",
+        });
+        setLinkOpen(false);
+        router.refresh();
+      } else {
+        notifications.show({
+          title: "エラー",
+          message: res.error,
+          color: "red",
+        });
+      }
+    });
+  };
 
   const confirm = () => {
     startTransition(async () => {
@@ -130,6 +172,17 @@ export function TrialEstimateDetail({
                     label: "確定",
                     icon: <IconCheck size={14} />,
                     onClick: confirm,
+                  },
+                ]
+              : []),
+            ...(status !== "REGISTERED"
+              ? [
+                  {
+                    label: record.productId
+                      ? "製品リンクを変更"
+                      : "製品にリンク",
+                    icon: <IconCylinder size={14} />,
+                    onClick: openProductLink,
                   },
                 ]
               : []),
@@ -322,6 +375,36 @@ export function TrialEstimateDetail({
           <HistoryPanel entries={auditEntries} />
         </Tabs.Panel>
       </Tabs>
+
+      <ModalShell
+        confirmLabel="保存"
+        loading={isPending}
+        onClose={() => setLinkOpen(false)}
+        onConfirm={saveProductLink}
+        opened={linkOpen}
+        title={record.productId ? "製品リンクを変更" : "製品にリンク"}
+      >
+        <Stack gap="sm">
+          <Text c="dimmed" size="sm">
+            対象製品（任意）。リンクした試算は確定後、価格表（顧客×製品）の作成時に基準単価ソースとして選択できます。クリアして保存するとリンクを解除します。
+          </Text>
+          <SearchSelect
+            clearable
+            f4={PRODUCT_F4}
+            initialOption={
+              record.productId && record.productName
+                ? { value: record.productId, label: record.productName }
+                : null
+            }
+            label="製品"
+            onChange={setLinkProductId}
+            onSearch={searchProductOptions}
+            placeholder="製品を検索"
+            storageKey="product"
+            value={linkProductId}
+          />
+        </Stack>
+      </ModalShell>
     </DetailShell>
   );
 }
