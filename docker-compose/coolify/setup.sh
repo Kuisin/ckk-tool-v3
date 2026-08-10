@@ -146,6 +146,11 @@ create_app() { # name branch host_port env_name result_var
   else
     echo "exists  $name: $uuid"
   fi
+  # Monorepo watch paths: webhook pushes deploy this app only when files under
+  # its base dir changed (manual deploy.sh / UI deploys are unaffected).
+  # Idempotent — always (re)applied, also for pre-existing apps.
+  api PATCH "/applications/$uuid" -d "{\"watch_paths\": \"${BASE_DIR#/}/**\"}" >/dev/null \
+    && echo "watch_paths set for $name: ${BASE_DIR#/}/**"
   # envs/bulk appends rather than upserts — only seed envs once (empty set).
   if [ "$(api GET "/applications/$uuid/envs" | jq 'length')" != "0" ]; then
     echo "envs already present for $name — skipping (manage in Coolify UI)"
