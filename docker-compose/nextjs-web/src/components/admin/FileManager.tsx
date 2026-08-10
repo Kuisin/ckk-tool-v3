@@ -294,7 +294,7 @@ export function FileManager() {
           />
         </Group>
       }
-      breadcrumbs={["管理", "ファイル管理"]}
+      breadcrumbs={["システム", "ファイル管理"]}
       filters={
         <Select
           clearable

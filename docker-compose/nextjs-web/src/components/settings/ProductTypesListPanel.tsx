@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * ProductTypesListPanel — 製品項目（SY04）の「製品種別」一覧。
+ * ProductTypesListPanel — 製品項目（SY03）の「製品種別」一覧。
  *
  * 有効切替・並び替え・削除・追加のみ。各種別（項目の割り当て）の編集は
  * /settings/product-items/types/[id] の編集ページで行う。

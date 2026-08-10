@@ -7,7 +7,9 @@
 -- （行の無いアプリは本番では非表示。dev は従来どおり既定表示）。
 --
 -- 公開セット: 販売フロント（試算・価格表・見積書）＋ 試算計算(設定) ＋
---             参照マスタ（顧客・最終需要家・製品・材種・承認グループ）。
+--             参照マスタ（顧客・最終需要家・製品・材種・承認グループ）＋
+--             システム管理アプリ（system 権限のみに表示 — 旧アバターメニュー
+--             リンクの移行先: システム設定・アプリ管理・ファイル管理・操作履歴）。
 
 BEGIN;
 
@@ -23,7 +25,11 @@ INSERT INTO app.feature_flags (key, is_enabled, description, updated_at) VALUES
   ('app:master-products:main',        true, '製品 本番公開',            now()),
   ('app:master-material-types:main',  true, '材種 本番公開',            now()),
   ('app:master-approval-groups:main', true, '承認グループ 本番公開',    now()),
-  ('app:docs:main',                   true, 'マニュアル 本番公開',      now())
+  ('app:docs:main',                   true, 'マニュアル 本番公開',      now()),
+  ('app:system-settings:main',        true, 'システム設定 本番公開',    now()),
+  ('app:app-management:main',         true, 'アプリ管理 本番公開',      now()),
+  ('app:file-management:main',        true, 'ファイル管理 本番公開',    now()),
+  ('app:activity-log:main',           true, '操作履歴 本番公開',        now())
 ON CONFLICT (key) DO UPDATE
   SET is_enabled = EXCLUDED.is_enabled, updated_at = now();
 

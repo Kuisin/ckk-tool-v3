@@ -140,7 +140,7 @@ export function AppFlagsTable({ rows }: { rows: AppFlagRow[] }) {
 
   return (
     <ListShell
-      breadcrumbs={["管理", "アプリ管理"]}
+      breadcrumbs={["システム", "アプリ管理"]}
       filters={
         <Select
           clearable

@@ -6,7 +6,7 @@ import { getProductItemDefs } from "@/lib/product-settings";
 
 export const dynamic = "force-dynamic";
 
-/** 製品項目（SY04）— 項目定義ライブラリの一覧。system 権限。 */
+/** 製品項目（SY03）— 項目定義ライブラリの一覧。system 権限。 */
 export default async function ProductItemsPage() {
   const defs = await getProductItemDefs();
   return (

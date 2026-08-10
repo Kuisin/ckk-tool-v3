@@ -4,8 +4,8 @@
  * ProductForm.tsx — 製品 新規作成 / 編集フォーム (MS13 / MS23).
  *
  * 製品コードは保存時に自動採番（PRD-YYYYMM-NNNN）。
- * 製品種別（SY05）を選ぶと、その種別が予め定義した入力項目が型付き（文字列/数値/
- * 真偽/選択/日付）で展開される。種別外の値は「追加項目」で 製品項目（SY04）で定義済みの
+ * 製品種別（SY04）を選ぶと、その種別が予め定義した入力項目が型付き（文字列/数値/
+ * 真偽/選択/日付）で展開される。種別外の値は「追加項目」で 製品項目（SY03）で定義済みの
  * 項目のみを選んで追加できる（自由なキーは不可）。値は入力を型で検証し product.spec
  * （JSON）に保存。種別 id は予約キー `_product_type` に保持（編集時に再展開）。定義外の
  * 旧 spec キーは編集画面では触らず、そのまま保持する。
@@ -125,7 +125,7 @@ export function ProductForm({
 }: {
   initial?: ProductFormInitial;
   productTypes: ResolvedProductType[];
-  /** 製品項目（SY04）で定義された入力項目ライブラリ。追加項目の候補になる。 */
+  /** 製品項目（SY03）で定義された入力項目ライブラリ。追加項目の候補になる。 */
   itemDefs: ProductItemDef[];
 }) {
   const router = useRouter();
@@ -449,7 +449,7 @@ export function ProductForm({
 
       {typeOptions.length > 0 && (
         <FormSection
-          description="種別を選ぶと、その種別が予め定義した入力項目が展開されます（製品項目 SY04 で編集）。"
+          description="種別を選ぶと、その種別が予め定義した入力項目が展開されます（製品項目 SY03 で編集）。"
           title="製品種別"
         >
           <Select
@@ -479,7 +479,7 @@ export function ProductForm({
 
       {(extraKeys.length > 0 || addableOptions.length > 0) && (
         <FormSection
-          description="製品項目（SY04）で定義された項目のみ追加できます。自由なキーは使えません。"
+          description="製品項目（SY03）で定義された項目のみ追加できます。自由なキーは使えません。"
           title="追加項目"
         >
           {extraKeys.length > 0 && (

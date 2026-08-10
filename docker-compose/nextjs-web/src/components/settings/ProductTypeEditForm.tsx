@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * ProductTypeEditForm — 製品項目（SY04）の製品種別を 1 件編集する。
+ * ProductTypeEditForm — 製品項目（SY03）の製品種別を 1 件編集する。
  * 種別の基本情報 + 項目の割り当て（項目定義の参照 + 任意の既定値上書き）を編集。
  * 保存で種別配列全体を updateProductTypes。
  */

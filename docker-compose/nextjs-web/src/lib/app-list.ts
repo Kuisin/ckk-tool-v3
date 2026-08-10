@@ -336,8 +336,9 @@ export const appList: AppEntry[] = [
   },
 
   // ─── システム ──────────────────────────────────────────────────────────────
+  // 採番: SY01–SY04 = 設定系（ハブ + アプリ設定）、SY05– = 管理系。
   {
-    // システム設定ハブ（アプリ設定・システム管理）。
+    // システム設定ハブ（アプリ設定の入口）。
     key: "system-settings",
     label: "システム設定",
     operationCode: "SY01",
@@ -360,7 +361,7 @@ export const appList: AppEntry[] = [
     // 製品項目 — 入力項目の定義ライブラリ。system 権限。
     key: "product-items",
     label: "製品項目",
-    operationCode: "SY04",
+    operationCode: "SY03",
     href: "/settings/product-items",
     icon: "IconListDetails",
     category: "システム",
@@ -370,9 +371,39 @@ export const appList: AppEntry[] = [
     // 製品種別 — 項目を割り当てるテンプレート。system 権限。
     key: "product-types",
     label: "製品種別",
-    operationCode: "SY05",
+    operationCode: "SY04",
     href: "/settings/product-types",
     icon: "IconCategory",
+    category: "システム",
+    requiredPermission: "system",
+  },
+  {
+    // アプリ管理 — 環境別のアプリ表示 ON/OFF（feature_flags）。
+    key: "app-management",
+    label: "アプリ管理",
+    operationCode: "SY05",
+    href: "/admin/apps",
+    icon: "IconLayoutGrid",
+    category: "システム",
+    requiredPermission: "system",
+  },
+  {
+    // ファイル管理 — アップロード済みファイル（SeaweedFS）の一覧・削除。
+    key: "file-management",
+    label: "ファイル管理",
+    operationCode: "SY06",
+    href: "/admin/files",
+    icon: "IconFolder",
+    category: "システム",
+    requiredPermission: "system",
+  },
+  {
+    // 操作履歴 — 監査ログ（作成・更新・削除の before/after）。
+    key: "activity-log",
+    label: "操作履歴",
+    operationCode: "SY07",
+    href: "/admin/activity",
+    icon: "IconHistory",
     category: "システム",
     requiredPermission: "system",
   },
