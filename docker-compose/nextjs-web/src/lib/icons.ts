@@ -93,6 +93,7 @@ export const CATEGORY_SECTION_ICONS: Record<AppCategory, AppIcon> = {
   出荷: IconTruck,
   請求: IconFileInvoice,
   マスタ: IconBuilding,
+  ドキュメント: IconBook2,
   システム: IconAdjustments,
 };
 

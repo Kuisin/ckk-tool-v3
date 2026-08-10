@@ -37,6 +37,7 @@ All tokens are derived from Mantine's theme object. Reference semantic tokens in
 | 出荷 | `orange` |
 | 請求 | `pink` |
 | マスタ | `gray` |
+| ドキュメント | `cyan` |
 | システム | `dark` |
 
 **Unread notification accent** — `blue.5` left border (3px) on unread items.
@@ -261,7 +262,7 @@ Operation codes provide keyboard-shortcut navigation. Format: `{CAT}{MODE}{IDX}`
 
 | Part | Position | Values |
 |------|----------|--------|
-| CAT | 1–2 | `CM` `SA` `PU` `PD` `SH` `BL` `MS` `SY` |
+| CAT | 1–2 | `CM` `SA` `PU` `PD` `SH` `BL` `MS` `DC` `SY` |
 | MODE | 3 | `0`=list `1`=new `2`=detail |
 | IDX | 4 | `1`–`9`, `A`–`Z` |
 
@@ -298,6 +299,7 @@ Operation codes provide keyboard-shortcut navigation. Format: `{CAT}{MODE}{IDX}`
 | マスタ | A | 承認グループ | MS0A | MS1A | MS2A |
 | マスタ | B | 工場 | MS0B | MS1B | MS2B |
 | マスタ | C | 採番構成 | MS0C | — | — |
+| ドキュメント | 1 | マニュアル | DC01 | — | — |
 | システム | 1 | システム設定 | SY01 | — | — |
 | システム | 2 | 試算計算 | SY02 | — | — |
 
