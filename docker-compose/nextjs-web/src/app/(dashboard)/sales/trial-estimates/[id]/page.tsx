@@ -12,7 +12,10 @@ import {
 import { type LocalizedText, localized } from "@/lib/format";
 import { fetchPriceHistoryByType } from "@/lib/material-pricing";
 import { getTrialPricingSettings } from "@/lib/system-settings";
-import { toTrialPricingOptions } from "@/lib/trial-pricing-settings";
+import {
+  toToolTypeOptions,
+  toTrialPricingOptions,
+} from "@/lib/trial-pricing-settings";
 import { fetchTrialEstimate } from "../data";
 
 export const dynamic = "force-dynamic";
@@ -89,6 +92,7 @@ export default async function TrialEstimateDetailPage({
       priceHistory={priceHistory}
       pricingOptions={toTrialPricingOptions(settings)}
       record={record}
+      toolTypeOptions={toToolTypeOptions(settings)}
     />
   );
 }

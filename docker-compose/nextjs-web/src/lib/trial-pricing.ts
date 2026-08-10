@@ -38,13 +38,19 @@ import {
 import { runCriteriaEngine } from "./trial-pricing-engine";
 import { applyCustomScript } from "./trial-pricing-script";
 
-export type ToolType = "ROUND_BAR" | "CYLINDER" | "OH";
+/**
+ * 工具種 — 管理者定義（SY02 工具種管理、trial_pricing.tool_types）。組み込み
+ * 3 種（ROUND_BAR/CYLINDER/OH）は常に存在し、カスタム種を追加できるため
+ * union ではなく string。カスタム種の計算入力は丸棒系（参照単価ベース）。
+ */
+export type ToolType = string;
 
-export const TOOL_TYPE_OPTIONS = [
+/** 組み込み工具種の表示ラベル（設定未読時のフォールバック）。 */
+export const TOOL_TYPE_OPTIONS: { value: ToolType; label: string }[] = [
   { value: "ROUND_BAR", label: "丸棒" },
   { value: "CYLINDER", label: "円筒" },
   { value: "OH", label: "OH付" },
-] as const;
+];
 
 export interface TrialInput {
   toolType: ToolType;

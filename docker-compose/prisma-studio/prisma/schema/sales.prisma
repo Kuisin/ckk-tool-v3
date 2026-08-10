@@ -20,15 +20,6 @@ enum OrderType {
   @@schema("app")
 }
 
-enum TrialToolType {
-  ROUND_BAR
-  CYLINDER
-  OH
-
-  @@map("TRIAL_TOOL_TYPE")
-  @@schema("app")
-}
-
 enum EstimateStatus {
   DRAFT
   CONFIRMED
@@ -64,7 +55,9 @@ model Estimate {
   seq       Int
 
   name                String
-  toolType            TrialToolType  @map("tool_type")
+  // 工具種 — 管理者定義（system_settings trial_pricing.tool_types）。
+  // 組み込み: ROUND_BAR / CYLINDER / OH（旧 TRIAL_TOOL_TYPE enum）。
+  toolType            String         @map("tool_type") @db.VarChar(64)
   status              EstimateStatus @default(DRAFT)
   customerBpId        String?        @map("customer_bp_id") @db.Uuid
   // 対象製品（任意）。1製品に複数試算を紐付け可。価格表作成時の

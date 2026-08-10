@@ -22,6 +22,11 @@ export default async function TrialPricingEnginePage() {
       href: `${BASE}/criteria`,
     },
     {
+      title: "工具種管理",
+      summary: `${s.toolTypes.length} 種（追加/削除・種ごとの適用基準と見積単価）`,
+      href: `${BASE}/tool-types`,
+    },
+    {
       title: "材料参照価格ポリシー",
       summary: `${basisLabel} / 参照 ${s.materialPriceLookbackMonths}ヶ月`,
       href: `${BASE}/material-policy`,

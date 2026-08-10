@@ -33,11 +33,10 @@ import {
   SaveButton,
   SecondaryButton,
 } from "@/components/ui/buttons";
-import { TOOL_TYPE_OPTIONS } from "@/lib/trial-pricing";
-import {
-  type Criterion,
-  type CriterionRole,
-  TRIAL_TOOL_TYPES,
+import type {
+  Criterion,
+  CriterionRole,
+  ToolTypeDef,
 } from "@/lib/trial-pricing-criteria";
 
 const BASE = "/settings/trial-pricing-engine/criteria";
@@ -48,19 +47,24 @@ const ROLE_META: Record<CriterionRole, { label: string; color: string }> = {
   final: { label: "見積単価", color: "green" },
 };
 
-const toolLabel = (v: string) =>
-  TOOL_TYPE_OPTIONS.find((o) => o.value === v)?.label ?? v;
-
 const byOrder = (a: Criterion, b: Criterion) => a.order - b.order;
 
 function withOrder(list: Criterion[]): Criterion[] {
   return list.map((c, i) => ({ ...c, order: i * 10 }));
 }
 
-function ToolTypesBadge({ c }: { c: Criterion }) {
+function ToolTypesBadge({
+  c,
+  toolTypes,
+}: {
+  c: Criterion;
+  toolTypes: ToolTypeDef[];
+}) {
+  const toolLabel = (v: string) =>
+    toolTypes.find((t) => t.value === v)?.label ?? v;
   if (
     c.toolTypes === undefined ||
-    c.toolTypes.length === TRIAL_TOOL_TYPES.length
+    toolTypes.every((t) => c.toolTypes?.includes(t.value))
   )
     return (
       <Badge color="teal" size="xs" variant="outline">
@@ -80,7 +84,14 @@ function ToolTypesBadge({ c }: { c: Criterion }) {
   );
 }
 
-export function CriteriaListPanel({ initial }: { initial: Criterion[] }) {
+export function CriteriaListPanel({
+  initial,
+  toolTypes,
+}: {
+  initial: Criterion[];
+  /** 工具種（管理者定義）— 適用バッジの表示に使う。 */
+  toolTypes: ToolTypeDef[];
+}) {
   const [criteria, setCriteria] = useState<Criterion[]>(initial);
   const [isPending, startTransition] = useTransition();
   const router = useRouter();
@@ -138,7 +149,7 @@ export function CriteriaListPanel({ initial }: { initial: Criterion[] }) {
             <Badge color={ROLE_META[c.role].color} size="xs" variant="light">
               {ROLE_META[c.role].label}
             </Badge>
-            <ToolTypesBadge c={c} />
+            <ToolTypesBadge c={c} toolTypes={toolTypes} />
             {!c.enabled && (
               <Badge color="gray" size="xs" variant="light">
                 無効

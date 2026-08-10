@@ -36,17 +36,13 @@ import {
 import { openConfirm } from "@/components/ui/modals";
 import { FormSection } from "@/components/ui/shells";
 import { localized } from "@/lib/format";
-import {
-  TOOL_TYPE_OPTIONS,
-  type ToolType,
-  type TrialInput,
-} from "@/lib/trial-pricing";
-import {
-  type Criterion,
-  type CriterionRole,
-  type CustomInputDef,
-  type LookupTable,
-  TRIAL_TOOL_TYPES,
+import type { ToolType, TrialInput } from "@/lib/trial-pricing";
+import type {
+  Criterion,
+  CriterionRole,
+  CustomInputDef,
+  LookupTable,
+  ToolTypeDef,
 } from "@/lib/trial-pricing-criteria";
 import { runCriteriaEngine } from "@/lib/trial-pricing-engine";
 import {
@@ -135,22 +131,26 @@ export function CriterionEditForm({
   criterionId,
   customInputs,
   lookupTables = [],
+  toolTypes,
 }: {
   allCriteria: Criterion[];
   /** 既存基準の id。null = 新規。 */
   criterionId: string | null;
   customInputs: CustomInputDef[];
   lookupTables?: LookupTable[];
+  /** 工具種（管理者定義）— 適用工具種チップ・テスト実行の選択肢。 */
+  toolTypes: ToolTypeDef[];
 }) {
   const existing = criterionId
     ? allCriteria.find((c) => c.id === criterionId)
     : undefined;
   const isNew = !existing;
+  const allToolValues = toolTypes.map((t) => t.value);
 
   const [criterion, setCriterion] = useState<Criterion>(
     existing
       ? // 旧データ（toolTypes 未設定）は全選択として表示（保存で明示化）。
-        { ...existing, toolTypes: existing.toolTypes ?? [...TRIAL_TOOL_TYPES] }
+        { ...existing, toolTypes: existing.toolTypes ?? allToolValues }
       : {
           id: "",
           name: "新しい基準",
@@ -159,7 +159,7 @@ export function CriterionEditForm({
           order: allCriteria.length * 10,
           enabled: true,
           // 既定は全工具種を選択済み（未選択 = 適用なし の仕様）。
-          toolTypes: [...TRIAL_TOOL_TYPES],
+          toolTypes: allToolValues,
         },
   );
   const [testToolType, setTestToolType] = useState<ToolType>("ROUND_BAR");
@@ -353,7 +353,7 @@ export function CriterionEditForm({
               value={criterion.toolTypes ?? []}
             >
               <Group gap={4}>
-                {TOOL_TYPE_OPTIONS.map((o) => (
+                {toolTypes.map((o) => (
                   <Chip key={o.value} size="xs" value={o.value}>
                     {o.label}
                   </Chip>
@@ -361,7 +361,7 @@ export function CriterionEditForm({
               </Group>
             </Chip.Group>
             <GhostButton
-              onClick={() => set({ toolTypes: [...TRIAL_TOOL_TYPES] })}
+              onClick={() => set({ toolTypes: allToolValues })}
               size="compact-xs"
             >
               全選択
@@ -390,7 +390,7 @@ export function CriterionEditForm({
               テスト工具種
             </Text>
             <SegmentedControl
-              data={TOOL_TYPE_OPTIONS.map((o) => ({
+              data={toolTypes.map((o) => ({
                 value: o.value,
                 label: o.label,
               }))}

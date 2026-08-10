@@ -31,9 +31,6 @@ import type { TrialEstimateRecord } from "./types";
 
 const BASE_PATH = "/sales/trial-estimates";
 
-const toolLabel = (v: string) =>
-  TOOL_TYPE_OPTIONS.find((o) => o.value === v)?.label ?? v;
-
 /** Representative 見積単価 = first lot tier. 記録済みスナップショットを優先。 */
 const headlinePrice = (r: TrialEstimateRecord, opts: TrialPricingOptions) =>
   (r.resultSnapshot ?? calcTrialPricing(r.input, opts)).lots[0]
@@ -42,11 +39,16 @@ const headlinePrice = (r: TrialEstimateRecord, opts: TrialPricingOptions) =>
 export function TrialEstimateTable({
   rows,
   pricingOptions = {},
+  toolTypeOptions = TOOL_TYPE_OPTIONS,
 }: {
   rows: TrialEstimateRecord[];
   /** 試算エンジンのオプション（係数・カスタム計算）— 画面間で単価を一致させる。 */
   pricingOptions?: TrialPricingOptions;
+  /** 工具種の選択肢（管理者定義。未指定は組み込み 3 種）. */
+  toolTypeOptions?: { value: string; label: string }[];
 }) {
+  const toolLabel = (v: string) =>
+    toolTypeOptions.find((o) => o.value === v)?.label ?? v;
   const router = useRouter();
   const isMobile = useIsMobile();
   // 検索・フィルタは URL search params に保持（design.md §8.1 / ページ共有）
@@ -169,10 +171,7 @@ export function TrialEstimateTable({
           />
           <Select
             clearable
-            data={TOOL_TYPE_OPTIONS.map((o) => ({
-              value: o.value,
-              label: o.label,
-            }))}
+            data={toolTypeOptions}
             flex={isMobile ? 1 : undefined}
             onChange={setToolType}
             placeholder="工具種"
