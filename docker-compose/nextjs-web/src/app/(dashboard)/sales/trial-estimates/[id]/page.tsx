@@ -12,13 +12,11 @@ import {
 import { type LocalizedText, localized } from "@/lib/format";
 import { fetchPriceHistoryByType } from "@/lib/material-pricing";
 import { getTrialPricingSettings } from "@/lib/system-settings";
-import { toTrialPricingOptions } from "@/lib/trial-pricing-settings";
 import {
-  fetchCustomerOptions,
-  fetchExistingEntryRefs,
-  fetchProductOptions,
-  fetchTrialEstimate,
-} from "../data";
+  toToolTypeOptions,
+  toTrialPricingOptions,
+} from "@/lib/trial-pricing-settings";
+import { fetchTrialEstimate } from "../data";
 
 export const dynamic = "force-dynamic";
 
@@ -42,24 +40,12 @@ export default async function TrialEstimateDetailPage({
   const key = parseDocKey(id, "EST");
   if (!key) notFound();
 
-  const [
-    record,
-    customerOptions,
-    productOptions,
-    existingEntries,
-    linked,
-    auditEntries,
-    settings,
-  ] = await Promise.all([
+  const [record, linked, auditEntries, settings] = await Promise.all([
     fetchTrialEstimate(key.yearMonth, key.seq),
-    fetchCustomerOptions(),
-    fetchProductOptions(),
-    fetchExistingEntryRefs(),
-    prisma.priceListEntry.findMany({
+    prisma.priceListVariant.findMany({
       where: { estimateYearMonth: key.yearMonth, estimateSeq: key.seq },
       include: {
-        customerBp: true,
-        product: true,
+        entry: { include: { customerBp: true, product: true } },
         _count: { select: { tiers: true } },
       },
     }),
@@ -81,28 +67,32 @@ export default async function TrialEstimateDetailPage({
         })
       : [];
 
-  const linkedEntries: LinkedPriceEntry[] = linked.map((e) => {
-    const code = formatProductNumber(e.product.yearMonth, e.product.seq);
-    const nm = localized(e.product.name as LocalizedText | null);
+  const linkedEntries: LinkedPriceEntry[] = linked.map((v) => {
+    const code = formatProductNumber(
+      v.entry.product.yearMonth,
+      v.entry.product.seq,
+    );
+    const nm = localized(v.entry.product.name as LocalizedText | null);
     return {
-      entryId: formatPriceListNumber({ yearMonth: e.yearMonth, seq: e.seq }),
-      customerName: localized(e.customerBp.name as LocalizedText | null),
+      entryId: formatPriceListNumber({
+        yearMonth: v.entry.yearMonth,
+        seq: v.entry.seq,
+      }),
+      customerName: localized(v.entry.customerBp.name as LocalizedText | null),
       productName: code ? `${nm} ${code}` : nm,
-      orderType: e.orderType,
-      tierCount: e._count.tiers,
+      orderType: v.orderType,
+      tierCount: v._count.tiers,
     };
   });
 
   return (
     <TrialEstimateDetail
       auditEntries={auditEntries}
-      customerOptions={customerOptions}
-      existingEntries={existingEntries}
       linkedEntries={linkedEntries}
       priceHistory={priceHistory}
       pricingOptions={toTrialPricingOptions(settings)}
-      productOptions={productOptions}
       record={record}
+      toolTypeOptions={toToolTypeOptions(settings)}
     />
   );
 }

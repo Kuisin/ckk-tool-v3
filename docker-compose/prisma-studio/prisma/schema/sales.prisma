@@ -1,12 +1,14 @@
 // 販売 — 試算・価格表・見積書 (_specs/tables.md §1 + SA05, UI model準拠).
 //
-// フロー: 試算 (SA05 見積試算, EST-) → 確定後に価格表登録（試算の見積単価が
-// 基準単価）→ 見積書 (QOT-) は価格表 (倍率 tiers + 値引きルール) からのみ
-// 価格を解決する。
+// フロー: 試算 (SA05 見積試算, EST-) は任意で製品にリンク（1製品に複数試算可）。
+// 価格表は顧客×製品で作成し、注文種別ごとの価格は price_list_variants に持つ。
+// 作成時に製品へリンク済みの確定試算を基準単価ソースとして選択できる
+// （選択で試算は REGISTERED へ）。見積書 (QOT-) は価格表
+// (バリアント × 倍率 tiers + 値引きルール) からのみ価格を解決する。
 //
 // キー方針: 文書テーブルは複合キー (year_month + seq) — 文書番号
 // EST-YYYYMM-NNNNN / QOT-YYYYMM-NNNNN はキーから導出し、単一カラムには
-// 保存しない。価格表エントリは自然複合キー (顧客, 製品, 注文種別)。
+// 保存しない。価格表エントリは自然複合キー (顧客, 製品)。
 
 enum OrderType {
   PRODUCTION
@@ -15,15 +17,6 @@ enum OrderType {
   OTHER
 
   @@map("ORDER_TYPE")
-  @@schema("app")
-}
-
-enum TrialToolType {
-  ROUND_BAR
-  CYLINDER
-  OH
-
-  @@map("TRIAL_TOOL_TYPE")
   @@schema("app")
 }
 
@@ -62,9 +55,14 @@ model Estimate {
   seq       Int
 
   name                String
-  toolType            TrialToolType  @map("tool_type")
+  // 工具種 — 管理者定義（system_settings trial_pricing.tool_types）。
+  // 組み込み: ROUND_BAR / CYLINDER / OH（旧 TRIAL_TOOL_TYPE enum）。
+  toolType            String         @map("tool_type") @db.VarChar(64)
   status              EstimateStatus @default(DRAFT)
   customerBpId        String?        @map("customer_bp_id") @db.Uuid
+  // 対象製品（任意）。1製品に複数試算を紐付け可。価格表作成時の
+  // 基準単価ソース候補はこのリンクで解決する。
+  productId           Int?           @map("product_id")
   // 材料は「材種 × 直径 × 黒皮/研磨」で指定する（特定 materials 行には紐付けない）。
   // 参照価格は material_type_prices（¥/1000mm）＋ 仕入実績から解決する。
   materialTypeId      Int?           @map("material_type_id")
@@ -85,12 +83,13 @@ model Estimate {
   updatedAt           DateTime       @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   customerBp    BusinessPartner?       @relation("EstimateCustomer", fields: [customerBpId], references: [id])
+  product       Product?               @relation(fields: [productId], references: [id])
   materialType  MaterialType?          @relation(fields: [materialTypeId], references: [id])
   diameter      MaterialDiameter?      @relation(fields: [diameterCode], references: [code])
   surfaceFinish MaterialSurfaceFinish? @relation(fields: [surfaceFinishCode], references: [code])
   createdByUser User?                  @relation("EstimateCreatedBy", fields: [createdBy], references: [id])
 
-  priceListEntries PriceListEntry[]
+  priceListVariants PriceListVariant[]
 
   @@id([yearMonth, seq])
   @@map("estimates")
@@ -99,81 +98,100 @@ model Estimate {
 
 // 価格表エントリ — 他文書と同じ複合キー (year_month, seq)。表示番号
 // PRC-YYYYMM-NNNNN はキーから導出（URL id にも使用）。自然キー
-// (顧客, 製品, 注文種別) は作成後不変の識別として UNIQUE で維持。
-// 基準単価 = 試算の見積単価（手動上書き可）。tier 単価は基準単価×倍率。
+// (顧客, 製品) は作成後不変の識別として UNIQUE で維持。
+// 注文種別ごとの価格（基準単価・期間・tiers・値引き）は variants に持つ。
 model PriceListEntry {
   yearMonth String @map("year_month") @db.Char(6)
   seq       Int
 
-  customerBpId String    @map("customer_bp_id") @db.Uuid
-  productId    Int       @map("product_id")
-  orderType    OrderType @map("order_type")
+  customerBpId String @map("customer_bp_id") @db.Uuid
+  productId    Int    @map("product_id")
 
-  currency          String    @default("JPY")
+  currency  String   @default("JPY")
+  isActive  Boolean  @default(true) @map("is_active")
+  createdBy String?  @map("created_by") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  customerBp    BusinessPartner    @relation("PriceListEntryCustomer", fields: [customerBpId], references: [id])
+  product       Product            @relation(fields: [productId], references: [id])
+  createdByUser User?              @relation("PriceListEntryCreatedBy", fields: [createdBy], references: [id])
+  variants      PriceListVariant[]
+
+  @@id([yearMonth, seq])
+  @@unique([customerBpId, productId])
+  @@map("price_list_entries")
+  @@schema("app")
+}
+
+// 注文種別バリアント — 1 エントリ（顧客×製品）内の種別ごとの価格。
+// 基準単価 = 試算の見積単価（手動上書き可）。有効期間はバリアント単位
+// （TEST/SAMPLE は終了日必須）。tiers / discounts はバリアント配下。
+model PriceListVariant {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  entryYearMonth String    @map("entry_year_month") @db.Char(6)
+  entrySeq       Int       @map("entry_seq")
+  orderType      OrderType @map("order_type")
+
   baseUnitPrice     Decimal   @default(0) @map("base_unit_price") @db.Decimal(12, 2)
   validFrom         DateTime  @map("valid_from") @db.Date
   validUntil        DateTime? @map("valid_until") @db.Date
   estimateYearMonth String?   @map("estimate_year_month") @db.Char(6)
   estimateSeq       Int?      @map("estimate_seq")
   isActive          Boolean   @default(true) @map("is_active")
-  createdBy         String?   @map("created_by") @db.Uuid
   createdAt         DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt         DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  customerBp    BusinessPartner @relation("PriceListEntryCustomer", fields: [customerBpId], references: [id])
-  product       Product         @relation(fields: [productId], references: [id])
-  estimate      Estimate?       @relation(fields: [estimateYearMonth, estimateSeq], references: [yearMonth, seq])
-  createdByUser User?           @relation("PriceListEntryCreatedBy", fields: [createdBy], references: [id])
-  tiers         PriceListTier[]
-  discounts     PriceListDiscount[]
+  entry    PriceListEntry @relation(fields: [entryYearMonth, entrySeq], references: [yearMonth, seq])
+  estimate Estimate?      @relation(fields: [estimateYearMonth, estimateSeq], references: [yearMonth, seq])
 
-  @@id([yearMonth, seq])
-  @@unique([customerBpId, productId, orderType])
-  @@map("price_list_entries")
+  tiers     PriceListTier[]
+  discounts PriceListDiscount[]
+
+  @@unique([entryYearMonth, entrySeq, orderType])
+  @@map("price_list_variants")
   @@schema("app")
 }
 
 // 数量段階: 数量範囲 → 倍率。単価 = round(基準単価 × 倍率)、
 // price_override で行ごとに手動上書き可（null = 自動計算）。
 model PriceListTier {
-  id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  entryYearMonth String   @map("entry_year_month") @db.Char(6)
-  entrySeq       Int      @map("entry_seq")
-  minQuantity    Int      @default(1) @map("min_quantity")
-  maxQuantity    Int?     @map("max_quantity")
-  multiplier     Decimal  @default(1) @db.Decimal(8, 3)
-  priceOverride  Decimal? @map("price_override") @db.Decimal(12, 2)
-  sortOrder      Int      @default(0) @map("sort_order")
+  id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  variantId     String   @map("variant_id") @db.Uuid
+  minQuantity   Int      @default(1) @map("min_quantity")
+  maxQuantity   Int?     @map("max_quantity")
+  multiplier    Decimal  @default(1) @db.Decimal(8, 3)
+  priceOverride Decimal? @map("price_override") @db.Decimal(12, 2)
+  sortOrder     Int      @default(0) @map("sort_order")
 
-  entry PriceListEntry @relation(fields: [entryYearMonth, entrySeq], references: [yearMonth, seq])
+  variant PriceListVariant @relation(fields: [variantId], references: [id])
 
   quoteItems QuoteItem[]
 
-  @@index([entryYearMonth, entrySeq, minQuantity])
+  @@index([variantId, minQuantity])
   @@map("price_list_tiers")
   @@schema("app")
 }
 
-// 値引きルール — 期間 × 数量条件 → 値引き（entry ごとの専用リスト）。
+// 値引きルール — 期間 × 数量条件 → 値引き（バリアントごとの専用リスト）。
 // RATE = 単価に対する率(%) / AMOUNT = 1本あたりの値引き額(¥)。
 // 条件を満たすルールのうち 1本あたり値引きが最大のものを適用する。
 model PriceListDiscount {
-  id             String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  entryYearMonth String            @map("entry_year_month") @db.Char(6)
-  entrySeq       Int               @map("entry_seq")
-  label          String
-  discountType   PriceDiscountType @map("discount_type")
-  value          Decimal           @db.Decimal(12, 2)
-  minQuantity    Int               @default(1) @map("min_quantity")
-  maxQuantity    Int?              @map("max_quantity")
-  validFrom      DateTime          @map("valid_from") @db.Date
-  validUntil     DateTime?         @map("valid_until") @db.Date
-  isActive       Boolean           @default(true) @map("is_active")
-  createdAt      DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
+  id           String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  variantId    String            @map("variant_id") @db.Uuid
+  label        String
+  discountType PriceDiscountType @map("discount_type")
+  value        Decimal           @db.Decimal(12, 2)
+  minQuantity  Int               @default(1) @map("min_quantity")
+  maxQuantity  Int?              @map("max_quantity")
+  validFrom    DateTime          @map("valid_from") @db.Date
+  validUntil   DateTime?         @map("valid_until") @db.Date
+  isActive     Boolean           @default(true) @map("is_active")
+  createdAt    DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
 
-  entry PriceListEntry @relation(fields: [entryYearMonth, entrySeq], references: [yearMonth, seq])
+  variant PriceListVariant @relation(fields: [variantId], references: [id])
 
-  @@index([entryYearMonth, entrySeq])
+  @@index([variantId])
   @@map("price_list_discounts")
   @@schema("app")
 }

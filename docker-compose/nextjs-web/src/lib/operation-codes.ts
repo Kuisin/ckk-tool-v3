@@ -2,7 +2,7 @@
  * operation-codes.ts — 操作コード（画面番号）レジストリ
  *
  * 形式: `{CAT}{MODE}{IDX}` — 英字2文字 + モード1文字 + インデックス1文字（固定4文字）
- *   CAT  : カテゴリ（CM/SA/PU/PD/SH/BL/MS）
+ *   CAT  : カテゴリ（CM/SA/PU/PD/SH/BL/MS/DC/SY）
  *   MODE : 0=一覧 / 1=新規 / 2=詳細（IDなし→検索）
  *   IDX  : 1–9、10件超は A–Z（最大35件 + 予約スロット 0）
  *
@@ -30,6 +30,7 @@ export const OPERATION_CODE_PREFIX = {
   shipping: "SH",
   billing: "BL",
   master: "MS",
+  documents: "DC",
   system: "SY",
 } as const;
 
@@ -189,8 +190,22 @@ export const OPERATION_CODES: OperationCodeEntry[] = [
     index: "C",
   },
 
+  // ─── ドキュメント (DC) ───────────────────────────────────────────────────
+  // マニュアル（/docs）— 単一画面, list コードのみ（旧 SY03）
+  {
+    code: "DC01",
+    label: "マニュアル",
+    href: "/docs",
+    category: "ドキュメント",
+    kind: "list",
+    categoryCode: "DC",
+    mode: "0",
+    index: "1",
+  },
+
   // ─── システム (SY) ───────────────────────────────────────────────────────
-  // システム設定ハブ（アプリ設定・システム管理）— 単一画面, list コードのみ
+  // 採番: SY01–SY04 = 設定系（ハブ + アプリ設定）、SY05– = 管理系。
+  // いずれも単一画面, list コードのみ。
   {
     code: "SY01",
     label: "システム設定",
@@ -201,7 +216,7 @@ export const OPERATION_CODES: OperationCodeEntry[] = [
     mode: "0",
     index: "1",
   },
-  // 試算計算（計算基準・カスタム入力・カスタム計算）— 単一画面, list コードのみ
+  // 試算計算（計算基準・カスタム入力・カスタム計算）
   {
     code: "SY02",
     label: "試算計算",
@@ -212,38 +227,60 @@ export const OPERATION_CODES: OperationCodeEntry[] = [
     mode: "0",
     index: "2",
   },
-  // マニュアル（/docs）— 単一画面, list コードのみ
+  // 製品項目（項目定義ライブラリ）— 旧 SY04
   {
     code: "SY03",
-    label: "マニュアル",
-    href: "/docs",
-    category: "システム",
-    kind: "list",
-    categoryCode: "SY",
-    mode: "0",
-    index: "3",
-  },
-  // 製品項目（項目定義ライブラリ）— 単一画面, list コードのみ
-  {
-    code: "SY04",
     label: "製品項目",
     href: "/settings/product-items",
     category: "システム",
     kind: "list",
     categoryCode: "SY",
     mode: "0",
-    index: "4",
+    index: "3",
   },
-  // 製品種別（項目を割り当てるテンプレート）— 単一画面, list コードのみ
+  // 製品種別（項目を割り当てるテンプレート）— 旧 SY05
   {
-    code: "SY05",
+    code: "SY04",
     label: "製品種別",
     href: "/settings/product-types",
     category: "システム",
     kind: "list",
     categoryCode: "SY",
     mode: "0",
+    index: "4",
+  },
+  // アプリ管理（環境別 表示 ON/OFF, feature_flags）
+  {
+    code: "SY05",
+    label: "アプリ管理",
+    href: "/admin/apps",
+    category: "システム",
+    kind: "list",
+    categoryCode: "SY",
+    mode: "0",
     index: "5",
+  },
+  // ファイル管理（SeaweedFS の一覧・削除）
+  {
+    code: "SY06",
+    label: "ファイル管理",
+    href: "/admin/files",
+    category: "システム",
+    kind: "list",
+    categoryCode: "SY",
+    mode: "0",
+    index: "6",
+  },
+  // 操作履歴（監査ログ before/after）
+  {
+    code: "SY07",
+    label: "操作履歴",
+    href: "/admin/activity",
+    category: "システム",
+    kind: "list",
+    categoryCode: "SY",
+    mode: "0",
+    index: "7",
   },
 ];
 

@@ -37,6 +37,7 @@ All tokens are derived from Mantine's theme object. Reference semantic tokens in
 | 出荷 | `orange` |
 | 請求 | `pink` |
 | マスタ | `gray` |
+| ドキュメント | `cyan` |
 | システム | `dark` |
 
 **Unread notification accent** — `blue.5` left border (3px) on unread items.
@@ -195,8 +196,8 @@ AppShell.Header
             └── Menu.Dropdown
                 ├── Menu.Label — Avatar(md) + displayName + department
                 ├── Divider
-                ├── Menu.Item プロフィール (IconUser)
-                ├── Menu.Item 設定 (IconSettings)
+                ├── Menu.Item プロフィール (IconUser) → /profile
+                ├── Menu.Item 通知設定 (IconBell) → /profile/notifications
                 ├── Divider
                 └── Menu.Item ログアウト (IconLogout, color="red")
 ```
@@ -261,7 +262,7 @@ Operation codes provide keyboard-shortcut navigation. Format: `{CAT}{MODE}{IDX}`
 
 | Part | Position | Values |
 |------|----------|--------|
-| CAT | 1–2 | `CM` `SA` `PU` `PD` `SH` `BL` `MS` `SY` |
+| CAT | 1–2 | `CM` `SA` `PU` `PD` `SH` `BL` `MS` `DC` `SY` |
 | MODE | 3 | `0`=list `1`=new `2`=detail |
 | IDX | 4 | `1`–`9`, `A`–`Z` |
 
@@ -298,8 +299,14 @@ Operation codes provide keyboard-shortcut navigation. Format: `{CAT}{MODE}{IDX}`
 | マスタ | A | 承認グループ | MS0A | MS1A | MS2A |
 | マスタ | B | 工場 | MS0B | MS1B | MS2B |
 | マスタ | C | 採番構成 | MS0C | — | — |
+| ドキュメント | 1 | マニュアル | DC01 | — | — |
 | システム | 1 | システム設定 | SY01 | — | — |
 | システム | 2 | 試算計算 | SY02 | — | — |
+| システム | 3 | 製品項目 | SY03 | — | — |
+| システム | 4 | 製品種別 | SY04 | — | — |
+| システム | 5 | アプリ管理 | SY05 | — | — |
+| システム | 6 | ファイル管理 | SY06 | — | — |
+| システム | 7 | 操作履歴 | SY07 | — | — |
 
 `OperationCodeJump` component (`src/components/layout/OperationCodeJump.tsx`) renders as a compact TextInput in the header center. Pressing Enter or clicking a result navigates to that screen.
 
@@ -379,6 +386,12 @@ Stack (gap="xl", p="md", maw={1200})
 | 工場 | `IconBuildingWarehouse` |
 | システム設定 | `IconAdjustments` |
 | 試算計算 | `IconMathFunction` |
+| 製品項目 | `IconListDetails` |
+| 製品種別 | `IconCategory` |
+| アプリ管理 | `IconLayoutGrid` |
+| ファイル管理 | `IconFolder` |
+| 操作履歴 | `IconHistory` |
+| マニュアル | `IconBook2` |
 
 ---
 
@@ -1016,8 +1029,8 @@ Row click navigates to detail page.
 
 | Entity | Columns |
 |--------|---------|
-| Estimate | 試算番号 / 顧客 / 製品 / 注文種別 / 単価範囲 / 状態 / 更新日 |
-| PriceList | 顧客 / 製品 / 注文種別 / 数量範囲 / 単価 / 有効期間 / 試算元 / 状態 |
+| Estimate | 試算番号 / 名称 / 工具種 / 顧客 / 製品 / 見積単価 / 状態 / 更新日 |
+| PriceList | 顧客 / 製品 / 注文種別（バリアントのバッジ） / 段階 / 単価範囲 / 試算元 / 有効期間 / 状態 |
 | Quote | 見積番号 / 顧客 / 有効期限 / 状態 / 更新日 |
 | OrderAcceptance | 注文番号 / 顧客 / 顧客注文書番号 / 合計金額 / 状態 / 更新日 |
 | SalesOrder | 注文請書番号 / 顧客 / 製品 / 数量 / 金額 / 納期 / 状態 |

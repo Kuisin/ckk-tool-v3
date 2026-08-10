@@ -32,10 +32,7 @@ import {
 import {
   IconBell,
   IconChevronLeft,
-  IconFolder,
-  IconHistory,
   IconLogout,
-  IconSettings,
   IconShare2,
   IconUser,
 } from "@tabler/icons-react";
@@ -456,35 +453,11 @@ export function AppHeader({
               </Menu.Item>
               <Menu.Item
                 component={Link}
-                href="/settings"
-                leftSection={<IconSettings size={14} />}
-                py={{ base: "sm", md: "xs" }}
-              >
-                設定
-              </Menu.Item>
-              <Menu.Item
-                component={Link}
-                href="/settings/notifications"
+                href="/profile/notifications"
                 leftSection={<IconBell size={14} />}
                 py={{ base: "sm", md: "xs" }}
               >
                 通知設定
-              </Menu.Item>
-              <Menu.Item
-                component={Link}
-                href="/admin/files"
-                leftSection={<IconFolder size={14} />}
-                py={{ base: "sm", md: "xs" }}
-              >
-                ファイル管理
-              </Menu.Item>
-              <Menu.Item
-                component={Link}
-                href="/admin/activity"
-                leftSection={<IconHistory size={14} />}
-                py={{ base: "sm", md: "xs" }}
-              >
-                操作履歴
               </Menu.Item>
               <Divider my="5px" />
               <Menu.Item

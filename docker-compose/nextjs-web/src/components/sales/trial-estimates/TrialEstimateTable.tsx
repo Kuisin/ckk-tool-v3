@@ -8,12 +8,10 @@ import { Badge, Group, Select, Stack, Text, TextInput } from "@mantine/core";
 import {
   IconCalculator,
   IconCopy,
-  IconCurrencyYen,
   IconSearch,
   IconSettings,
 } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
 import { SecondaryButton } from "@/components/ui/buttons";
 import { type Column, DataTable } from "@/components/ui/DataTable";
 import { DocNumber } from "@/components/ui/DocNumber";
@@ -24,19 +22,14 @@ import { ListShell } from "@/components/ui/shells";
 import { useUrlSelectState, useUrlStringState } from "@/hooks/useUrlState";
 import { useIsMobile } from "@/hooks/useViewport";
 import { formatDateTime } from "@/lib/format";
-import type { Option } from "@/lib/mock";
 import {
   calcTrialPricing,
   TOOL_TYPE_OPTIONS,
   type TrialPricingOptions,
 } from "@/lib/trial-pricing";
-import { ConvertToPriceListModal } from "./ConvertToPriceListModal";
-import type { ExistingEntryRef, TrialEstimateRecord } from "./types";
+import type { TrialEstimateRecord } from "./types";
 
 const BASE_PATH = "/sales/trial-estimates";
-
-const toolLabel = (v: string) =>
-  TOOL_TYPE_OPTIONS.find((o) => o.value === v)?.label ?? v;
 
 /** Representative 見積単価 = first lot tier. 記録済みスナップショットを優先。 */
 const headlinePrice = (r: TrialEstimateRecord, opts: TrialPricingOptions) =>
@@ -45,28 +38,23 @@ const headlinePrice = (r: TrialEstimateRecord, opts: TrialPricingOptions) =>
 
 export function TrialEstimateTable({
   rows,
-  customerOptions,
-  productOptions,
-  existingEntries,
   pricingOptions = {},
+  toolTypeOptions = TOOL_TYPE_OPTIONS,
 }: {
   rows: TrialEstimateRecord[];
-  customerOptions: Option[];
-  productOptions: Option[];
-  existingEntries: ExistingEntryRef[];
   /** 試算エンジンのオプション（係数・カスタム計算）— 画面間で単価を一致させる。 */
   pricingOptions?: TrialPricingOptions;
+  /** 工具種の選択肢（管理者定義。未指定は組み込み 3 種）. */
+  toolTypeOptions?: { value: string; label: string }[];
 }) {
+  const toolLabel = (v: string) =>
+    toolTypeOptions.find((o) => o.value === v)?.label ?? v;
   const router = useRouter();
   const isMobile = useIsMobile();
   // 検索・フィルタは URL search params に保持（design.md §8.1 / ページ共有）
   const [search, setSearch] = useUrlStringState("q");
   const [toolType, setToolType] = useUrlSelectState("toolType");
   const [status, setStatus] = useUrlSelectState("status");
-  // 価格表に登録 modal target (null = closed).
-  const [registerTarget, setRegisterTarget] =
-    useState<TrialEstimateRecord | null>(null);
-
   const filtered = rows.filter((r) => {
     const matchesSearch =
       !search ||
@@ -183,10 +171,7 @@ export function TrialEstimateTable({
           />
           <Select
             clearable
-            data={TOOL_TYPE_OPTIONS.map((o) => ({
-              value: o.value,
-              label: o.label,
-            }))}
+            data={toolTypeOptions}
             flex={isMobile ? 1 : undefined}
             onChange={setToolType}
             placeholder="工具種"
@@ -253,16 +238,7 @@ export function TrialEstimateTable({
             </Stack>
           </Group>
         )}
-        rowActions={(r) => [
-          ...(r.status === "CONFIRMED"
-            ? [
-                {
-                  label: "価格表に登録",
-                  icon: <IconCurrencyYen size={14} />,
-                  onAction: () => setRegisterTarget(r),
-                },
-              ]
-            : []),
+        rowActions={() => [
           {
             label: "複製して再試算",
             icon: <IconCopy size={14} />,
@@ -270,17 +246,6 @@ export function TrialEstimateTable({
           },
         ]}
         urlState
-      />
-
-      <ConvertToPriceListModal
-        customerOptions={customerOptions}
-        estimate={registerTarget}
-        existingEntries={existingEntries}
-        onClose={() => setRegisterTarget(null)}
-        onRegistered={() => router.refresh()}
-        opened={registerTarget !== null}
-        pricingOptions={pricingOptions}
-        productOptions={productOptions}
       />
     </ListShell>
   );

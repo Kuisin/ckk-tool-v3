@@ -12,7 +12,7 @@
  * (`MATCH(value, keysDesc, -1)`): pick the smallest key that is ≥ the value.
  */
 
-import type { LookupTable } from "./trial-pricing-criteria";
+import type { Criterion, LookupTable } from "./trial-pricing-criteria";
 import { DEFAULT_LOOKUP_TABLES } from "./trial-pricing-lookups";
 
 // ── Excel descending approximate match (MATCH(...,-1)) ───────────────────────
@@ -747,6 +747,82 @@ export const COATING_OPTIONS: string[] = [
   "オンワード OS-Ⅶ",
 ];
 
+// ── コート表 ID（コート名 → ルックアップ表 ID）────────────────────────────────
+//
+// ルックアップ表の ID は英数字・ハイフン・アンダースコアのみ（LOOKUP_TABLE_ID）。
+// コート名（COATING_OPTIONS の値 = 試算入力のスナップショット値）は日本語・
+// 空白を含み変更できないため、この明示マップで表 ID へ解決する。
+export const COATING_TABLE_IDS: Record<string, string> = {
+  CX200: "coating-cx200",
+  CX400: "coating-cx400",
+  CX500: "coating-cx500",
+  "JFE SX-W": "coating-jfe-sx-w",
+  "JFE SX-3": "coating-jfe-sx-3",
+  "JFE TiAlN": "coating-jfe-tialn",
+  "JFE CrN": "coating-jfe-crn",
+  "JFE TiN": "coating-jfe-tin",
+  "JCC ﾏｰｷｭﾘｰW": "coating-jcc-mercury-w",
+  "JCC DLC": "coating-jcc-dlc",
+  "JCC ﾌﾟﾗｲﾑC": "coating-jcc-prime-c",
+  "JCC TiAlN": "coating-jcc-tialn",
+  "OSG DLC": "coating-osg-dlc",
+  "OSG WXL": "coating-osg-wxl",
+  "OSG SXL": "coating-osg-sxl",
+  "OSG DUROREY": "coating-osg-durorey",
+  "OSG WD1": "coating-osg-wd1",
+  "OSG EgiAs": "coating-osg-egias",
+  "OSG IGUSS": "coating-osg-iguss",
+  "OSG IchAda": "coating-osg-ichada",
+  "OSG FX": "coating-osg-fx",
+  "BAL ALNOVA": "coating-bal-alnova",
+  "BAL LATUMA": "coating-bal-latuma",
+  "BAL ｱﾙｸﾛｰﾅ": "coating-bal-alcrona",
+  "BAL HELICA": "coating-bal-helica",
+  "BAL ALDURA": "coating-bal-aldura",
+  "BAL PERTURA": "coating-bal-pertura",
+  "オンワード OS-T": "coating-onward-os-t",
+  "オンワード OS-C": "coating-onward-os-c",
+  "オンワード OS-8": "coating-onward-os-8",
+  "オンワード OS-Ⅶ": "coating-onward-os-7",
+};
+
+/**
+ * 旧ルックアップ表 ID → 新 ID（2026-08 の ID 形式統一で改名）。
+ * 永続化済みの設定（表・式内の lookup("...") 参照）は読み出し時に
+ * この対応で正規化する（lib/system-settings.ts）。
+ */
+export const LEGACY_LOOKUP_ID_MAP: Record<string, string> = Object.fromEntries(
+  Object.entries(COATING_TABLE_IDS).map(([name, id]) => [
+    `coating:${name}`,
+    id,
+  ]),
+);
+
+/** 永続化済みルックアップ表の旧 ID を新 ID へ正規化（読み出し時に適用）。 */
+export function normalizeLegacyLookupIds(tables: LookupTable[]): LookupTable[] {
+  return tables.map((t) => {
+    const renamed = LEGACY_LOOKUP_ID_MAP[t.id];
+    return renamed ? { ...t, id: renamed } : t;
+  });
+}
+
+/** 式内の lookup("旧ID") / lookup('旧ID') 参照を新 ID へ置換（読み出し時）。 */
+export function normalizeLegacyExpressionIds(
+  criteria: Criterion[],
+): Criterion[] {
+  return criteria.map((c) => {
+    let e = c.expression;
+    for (const [oldId, newId] of Object.entries(LEGACY_LOOKUP_ID_MAP)) {
+      e = e
+        .split(`"${oldId}"`)
+        .join(`"${newId}"`)
+        .split(`'${oldId}'`)
+        .join(`'${newId}'`);
+    }
+    return e === c.expression ? c : { ...c, expression: e };
+  });
+}
+
 /** Seeded coating cost matrices (Excel: 本社 sheet). value before ×1.5 factor. */
 export const COATING_VENDOR_TABLES: Record<string, Matrix> = {
   CX200: {
@@ -1081,9 +1157,11 @@ export function coatingRawCost(
   length: number,
 ): number {
   if (!coating || coating === "無") return 0;
-  // 全 28 コート表（Excel 本社/JFE/JCC/OSG/balzers/オンワード）を lookup 表として
-  // seed 済み。id = coating:<名称> を径×全長(ge/ge)で参照する。
-  const table = DEFAULT_LOOKUP_BY_ID.get(`coating:${coating}`);
+  // 全 31 コート表（Excel 本社/JFE/JCC/OSG/balzers/オンワード）を lookup 表として
+  // seed 済み。コート名 → 表 ID は COATING_TABLE_IDS で解決し、径×全長(ge/ge)で
+  // 参照する。
+  const id = COATING_TABLE_IDS[coating];
+  const table = id ? DEFAULT_LOOKUP_BY_ID.get(id) : undefined;
   if (table) return Number(lookupTableValue(table, [diameter, length]));
   // 未登録コート（表なし）は 0（旧デモ推定は廃止）。
   return 0;

@@ -6,7 +6,7 @@ import { getProductTypes } from "@/lib/product-settings";
 
 export const dynamic = "force-dynamic";
 
-/** 製品種別（SY05）— 製品種別の一覧。system 権限。 */
+/** 製品種別（SY04）— 製品種別の一覧。system 権限。 */
 export default async function ProductTypesPage() {
   const types = await getProductTypes();
   return (

@@ -20,6 +20,7 @@ export default async function CriterionEditPage({
       criterionId={criterionId}
       customInputs={settings.customInputs}
       lookupTables={settings.lookupTables}
+      toolTypes={settings.toolTypes}
     />
   );
 }

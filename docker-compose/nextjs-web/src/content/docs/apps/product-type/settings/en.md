@@ -1,6 +1,6 @@
 # Product Items — Settings Manual
 
-**Product Items (SY04)** is the config app for the input fields used when creating a new [product](/docs/masters/product/user). It has two screens.
+**Product Items (SY03)** is the config app for the input fields used when creating a new [product](/docs/masters/product/user). It has two screens.
 
 - **Item definitions** — a reusable library of input fields (key, type, options, …).
 - **Product types** — templates built by assigning item definitions. When creating a product you pick a type and its items appear.
@@ -9,7 +9,7 @@
 
 ## Opening it
 
-- Home (System) → **製品項目 (Product Items)**, or type `SY04` in the search box.
+- Home (System) → **製品項目 (Product Items)**, or type `SY03` in the search box.
 - The top-right button switches between "Item definitions ⇄ Product types".
 
 ## Terms

@@ -42,8 +42,9 @@ export interface ResolvedPrice {
 
 /**
  * Resolve 単価 + 値引き from the 価格表 for (顧客 × 製品 × 注文種別 × 数量),
- * pure over `entries`. Returns null when no entry/tier matches — the line
- * cannot be quoted.
+ * pure over `entries`. Entry は顧客×製品で一意、注文種別はその中の variant を
+ * 選ぶ。Returns null when no entry/variant/tier matches — the line cannot be
+ * quoted.
  */
 export function resolveUnitPriceFromEntries(
   entries: PriceListEntry[],
@@ -54,21 +55,19 @@ export function resolveUnitPriceFromEntries(
   date: Date = new Date(),
 ): ResolvedPrice | null {
   const entry = entries.find(
-    (e) =>
-      e.customerId === customerId &&
-      e.productId === productId &&
-      e.orderType === orderType,
+    (e) => e.customerId === customerId && e.productId === productId,
   );
-  if (!entry) return null;
-  const tier = entry.tiers.find(
+  const variant = entry?.variants.find((v) => v.orderType === orderType);
+  if (!variant) return null;
+  const tier = variant.tiers.find(
     (t) =>
       quantity >= t.minQuantity &&
       (t.maxQuantity == null || quantity <= t.maxQuantity),
   );
   if (!tier) return null;
   // 単価 = 基準単価 × 数量倍率（tier の手動上書きがあればそれ）。
-  const unitPrice = tierUnitPrice(entry, tier);
-  const discount = findApplicableDiscount(entry, quantity, unitPrice, date);
+  const unitPrice = tierUnitPrice(variant, tier);
+  const discount = findApplicableDiscount(variant, quantity, unitPrice, date);
   return {
     unitPrice,
     tierId: tier.id,
@@ -173,13 +172,15 @@ export function findPriceTierRefIn(
 ): PriceTierRef | null {
   if (!priceTierId) return null;
   for (const entry of entries) {
-    const tier = entry.tiers.find((t) => t.id === priceTierId);
-    if (tier) {
-      return {
-        entryId: entry.entryId,
-        estimateNumber: entry.estimateNumber,
-        label: `${tierLabel(tier)} ${formatMoney(tierUnitPrice(entry, tier))}`,
-      };
+    for (const variant of entry.variants) {
+      const tier = variant.tiers.find((t) => t.id === priceTierId);
+      if (tier) {
+        return {
+          entryId: entry.entryId,
+          estimateNumber: variant.estimateNumber,
+          label: `${tierLabel(tier)} ${formatMoney(tierUnitPrice(variant, tier))}`,
+        };
+      }
     }
   }
   return null;

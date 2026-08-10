@@ -1,7 +1,7 @@
 import "server-only";
 
 /**
- * product-settings.ts — 製品項目（SY04）の型付きアダプタ。
+ * product-settings.ts — 製品項目（SY03）の型付きアダプタ。
  *
  * app.system_settings の名前空間 `product_item` に保存:
  *   - `product_item.definitions` … ProductItemDef[]（項目ライブラリ）

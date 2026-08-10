@@ -11,6 +11,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { recordAudit } from "@/lib/audit";
 import { checkPermission } from "@/lib/authz";
+import { prisma } from "@/lib/db";
 import {
   getProductItemDefs,
   getProductTypes,
@@ -34,8 +35,10 @@ import {
   getTrialPricingSettings,
   saveTrialPricingSettings,
 } from "@/lib/system-settings";
+import type { ToolType } from "@/lib/trial-pricing";
 import {
   type Criterion,
+  criterionAppliesTo,
   criterionSchema,
   customInputDefSchema,
   type LookupTable,
@@ -43,7 +46,8 @@ import {
   lookupTableSchema,
   lookupTablesArraySchema,
   RESERVED_KEYS,
-  TRIAL_TOOL_TYPES,
+  TOOL_TYPE_VALUE,
+  type ToolTypeDef,
 } from "@/lib/trial-pricing-criteria";
 import { checkExpressionSyntax } from "@/lib/trial-pricing-engine";
 import type { TrialPricingSettings } from "@/lib/trial-pricing-settings";
@@ -60,29 +64,26 @@ const settingsInput = z.object({
 
 const criteriaInput = z.array(criterionSchema);
 
-const TOOL_TYPE_LABEL: Record<string, string> = {
-  ROUND_BAR: "丸棒",
-  CYLINDER: "円筒",
-  OH: "OH付",
-};
-
 /**
  * 計算基準の検証 — 壊れた式や不正な構成が全ユーザーの試算を止めないよう、
- * 保存時に弾く。工具種ごとに有効な final がちょうど1つであること。
+ * 保存時に弾く。工具種（管理者定義リスト）ごとに有効な final がちょうど
+ * 1つであること。
  */
-function validateCriteria(criteria: Criterion[]): string | null {
+function validateCriteria(
+  criteria: Criterion[],
+  toolTypes: ToolTypeDef[],
+): string | null {
   const enabled = criteria.filter((c) => c.enabled);
   for (const c of enabled) {
     const err = checkExpressionSyntax(c.expression);
     if (err) return `計算基準「${c.name}」の構文エラー: ${err}`;
   }
-  for (const tt of TRIAL_TOOL_TYPES) {
+  for (const tt of toolTypes) {
     const finals = enabled.filter(
-      (c) =>
-        c.role === "final" && (c.toolTypes ?? TRIAL_TOOL_TYPES).includes(tt),
+      (c) => c.role === "final" && criterionAppliesTo(c, tt.value),
     );
     if (finals.length !== 1) {
-      return `工具種「${TOOL_TYPE_LABEL[tt] ?? tt}」に有効な『見積単価（final）』基準をちょうど1つにしてください`;
+      return `工具種「${tt.label}」に有効な『見積単価（final）』基準をちょうど1つにしてください`;
     }
   }
   return null;
@@ -138,10 +139,10 @@ export async function updateCriteria(
   if (!parsed.success) {
     return actionError(parsed.error.issues[0]?.message ?? "計算基準が不正です");
   }
-  const invalid = validateCriteria(parsed.data);
-  if (invalid) return actionError(invalid);
   try {
     const before = await getTrialPricingSettings();
+    const invalid = validateCriteria(parsed.data, before.toolTypes);
+    if (invalid) return actionError(invalid);
     await saveTrialPricingSettings({ ...before, criteria: parsed.data });
     await recordAudit({
       action: "UPDATE",
@@ -156,6 +157,161 @@ export async function updateCriteria(
   } catch (e) {
     return actionError(prismaErrorMessage(e, "計算基準の保存に失敗しました"));
   }
+}
+
+// ── 工具種（SY02 工具種管理） ────────────────────────────────────────────────
+
+const addToolTypeInput = z.object({
+  value: z
+    .string()
+    .regex(TOOL_TYPE_VALUE, "値は英大文字・数字・_（英大文字始まり）です"),
+  label: z.string().min(1, "表示名を入力してください"),
+});
+
+/** 工具種・計算基準を保存 + 監査 + 再検証パスの共通処理。 */
+async function persistToolTypes(
+  next: { toolTypes: ToolTypeDef[]; criteria: Criterion[] },
+  before: TrialPricingSettings,
+): Promise<ActionResult> {
+  const invalid = validateCriteria(next.criteria, next.toolTypes);
+  if (invalid) return actionError(invalid);
+  try {
+    await saveTrialPricingSettings({ ...before, ...next });
+    await recordAudit({
+      action: "UPDATE",
+      tableName: "system_settings",
+      recordId: "trial_pricing.tool_types",
+      before: { toolTypes: before.toolTypes, criteria: before.criteria },
+      after: next,
+    });
+    revalidatePath("/settings/trial-pricing-engine");
+    revalidatePath("/settings/trial-pricing-engine/tool-types");
+    revalidatePath("/sales/trial-estimates");
+    return actionOk();
+  } catch (e) {
+    return actionError(prismaErrorMessage(e, "工具種の保存に失敗しました"));
+  }
+}
+
+/**
+ * 工具種を追加。既存の「全工具種適用」基準（toolTypes 未指定 or 全種を含む）
+ * は新種にも適用される。final が1つも適用されない場合は最初の有効 final を
+ * 自動適用し、「種ごとに final ちょうど1つ」の不変条件を保つ。
+ */
+export async function addToolType(payload: {
+  value: string;
+  label: string;
+}): Promise<ActionResult> {
+  const authz = await checkPermission("system", "UPDATE");
+  if (!authz.ok) return actionError(authz.error);
+  const parsed = addToolTypeInput.safeParse(payload);
+  if (!parsed.success) {
+    return actionError(parsed.error.issues[0]?.message ?? "入力が不正です");
+  }
+  const { value, label } = parsed.data;
+  const before = await getTrialPricingSettings();
+  if (before.toolTypes.some((t) => t.value === value)) {
+    return actionError(`工具種「${value}」は既に存在します`);
+  }
+  const existingValues = before.toolTypes.map((t) => t.value);
+  const maxOrder = Math.max(0, ...before.toolTypes.map((t) => t.order));
+  const toolTypes: ToolTypeDef[] = [
+    ...before.toolTypes,
+    { value, label, order: maxOrder + 10, builtin: false },
+  ];
+  // 全種に適用中の基準は新種にも適用（明示リストの場合のみ追記が必要）。
+  let criteria = before.criteria.map((c) =>
+    c.toolTypes && existingValues.every((v) => c.toolTypes?.includes(v))
+      ? { ...c, toolTypes: [...c.toolTypes, value] }
+      : c,
+  );
+  // final が適用されない場合は最初の有効 final を適用（不変条件の維持）。
+  const hasFinal = criteria.some(
+    (c) => c.enabled && c.role === "final" && criterionAppliesTo(c, value),
+  );
+  if (!hasFinal) {
+    const firstFinal = criteria
+      .filter((c) => c.enabled && c.role === "final")
+      .sort((a, b) => a.order - b.order)[0];
+    if (!firstFinal) {
+      return actionError(
+        "有効な『見積単価（final）』基準がありません。先に計算基準を設定してください",
+      );
+    }
+    criteria = criteria.map((c) =>
+      c.id === firstFinal.id
+        ? { ...c, toolTypes: [...(c.toolTypes ?? existingValues), value] }
+        : c,
+    );
+  }
+  return persistToolTypes({ toolTypes, criteria }, before);
+}
+
+/**
+ * 工具種を削除。組み込み種は不可。試算（estimates）で使用中の種も不可
+ * （未使用のみ削除可）。削除時は各基準の適用工具種からも取り除く。
+ */
+export async function removeToolType(value: ToolType): Promise<ActionResult> {
+  const authz = await checkPermission("system", "UPDATE");
+  if (!authz.ok) return actionError(authz.error);
+  const before = await getTrialPricingSettings();
+  const def = before.toolTypes.find((t) => t.value === value);
+  if (!def) return actionError("対象の工具種が見つかりません");
+  if (def.builtin) {
+    return actionError(`組み込み工具種「${def.label}」は削除できません`);
+  }
+  try {
+    const used = await prisma.estimate.count({ where: { toolType: value } });
+    if (used > 0) {
+      return actionError(
+        `工具種「${def.label}」は ${used} 件の試算で使用中のため削除できません`,
+      );
+    }
+  } catch (e) {
+    return actionError(prismaErrorMessage(e, "使用状況の確認に失敗しました"));
+  }
+  const toolTypes = before.toolTypes.filter((t) => t.value !== value);
+  const criteria = before.criteria.map((c) =>
+    c.toolTypes?.includes(value)
+      ? { ...c, toolTypes: c.toolTypes.filter((v) => v !== value) }
+      : c,
+  );
+  return persistToolTypes({ toolTypes, criteria }, before);
+}
+
+/**
+ * 工具種ごとの適用基準の割り当て（工具種管理ページから）。
+ * criterionIds = この種に適用する component/intermediate 基準、
+ * finalId = この種の見積単価（final）基準。各基準の適用工具種
+ * （toolTypes）のメンバーシップとして書き戻す。undefined（全種適用）の
+ * 基準は現在の全種リストへ実体化してから編集する。
+ */
+export async function updateToolTypeAssignments(payload: {
+  value: ToolType;
+  criterionIds: string[];
+  finalId: string;
+}): Promise<ActionResult> {
+  const authz = await checkPermission("system", "UPDATE");
+  if (!authz.ok) return actionError(authz.error);
+  const { value, criterionIds, finalId } = payload;
+  const before = await getTrialPricingSettings();
+  if (!before.toolTypes.some((t) => t.value === value)) {
+    return actionError("対象の工具種が見つかりません");
+  }
+  const allValues = before.toolTypes.map((t) => t.value);
+  const wanted = new Set(criterionIds);
+  const criteria = before.criteria.map((c) => {
+    // undefined = 全種適用 → 現在の全種リストへ実体化してから編集する。
+    const materialized = c.toolTypes ?? allValues;
+    const include = c.role === "final" ? c.id === finalId : wanted.has(c.id);
+    const next = include
+      ? materialized.includes(value)
+        ? materialized
+        : [...materialized, value]
+      : materialized.filter((v) => v !== value);
+    return { ...c, toolTypes: next };
+  });
+  return persistToolTypes({ toolTypes: before.toolTypes, criteria }, before);
 }
 
 /** ルックアップ表を保存（表名の一意性を検証）。 */

@@ -16,8 +16,69 @@ import { z } from "zod";
 import type { LocalizedText } from "./format";
 import type { ToolType } from "./trial-pricing";
 
-/** 工具種（試算の product type）— 基準の適用対象の絞り込みに使う。 */
+/** 組み込み工具種の値（旧 enum 互換）— 旧データの既定適用対象にも使う。 */
 export const TRIAL_TOOL_TYPES: ToolType[] = ["ROUND_BAR", "CYLINDER", "OH"];
+
+// ── 工具種（管理者定義）─────────────────────────────────────────────────────
+//
+// 工具種は SY02 工具種管理で追加/削除できる（trial_pricing.tool_types）。
+// 組み込み 3 種は削除不可（フォームの入力分岐・レガシー互換の基盤）。カスタム種の
+// 計算入力は丸棒系（参照単価ベース）で、適用する計算基準は基準側の toolTypes
+// （適用工具種）で決まる。
+export interface ToolTypeDef {
+  /** 値（大文字識別子）。estimates.tool_type に保存される。作成後変更不可。 */
+  value: ToolType;
+  /** 表示名 e.g. 丸棒. */
+  label: string;
+  order: number;
+  /** 組み込み種（ROUND_BAR/CYLINDER/OH）。削除・値変更不可。 */
+  builtin?: boolean;
+}
+
+export const TOOL_TYPE_VALUE = /^[A-Z][A-Z0-9_]{0,31}$/;
+
+export const toolTypeDefSchema = z.object({
+  value: z
+    .string()
+    .regex(TOOL_TYPE_VALUE, "値は英大文字・数字・_（英大文字始まり）です"),
+  label: z.string().min(1, "表示名を入力してください"),
+  order: z.number(),
+  builtin: z.boolean().optional(),
+});
+
+export const toolTypeDefsArraySchema = z.array(toolTypeDefSchema);
+
+/** 組み込み工具種（常に存在・削除不可）。 */
+export const BUILTIN_TOOL_TYPES: ToolTypeDef[] = [
+  { value: "ROUND_BAR", label: "丸棒", order: 10, builtin: true },
+  { value: "CYLINDER", label: "円筒", order: 20, builtin: true },
+  { value: "OH", label: "OH付", order: 30, builtin: true },
+];
+
+/**
+ * 永続化された工具種リストに組み込み 3 種を必ず含める（旧データ・空配列でも
+ * 復元）。値の重複は先勝ちで除去し、order 順に整列して返す。
+ */
+export function mergeBuiltinToolTypes(persisted: ToolTypeDef[]): ToolTypeDef[] {
+  const out: ToolTypeDef[] = [];
+  const seen = new Set<string>();
+  for (const t of [...BUILTIN_TOOL_TYPES, ...persisted]) {
+    if (seen.has(t.value)) continue;
+    seen.add(t.value);
+    // 組み込みは builtin フラグ・値を強制（永続データでは上書き不可）
+    const builtin = BUILTIN_TOOL_TYPES.find((b) => b.value === t.value);
+    out.push(builtin ? { ...t, builtin: true } : { ...t, builtin: false });
+  }
+  return out.sort((a, b) => a.order - b.order);
+}
+
+/**
+ * 基準がこの工具種に適用されるか。undefined（旧データ）= 全工具種、
+ * 空配列 = 適用なし、指定時はメンバーシップ。
+ */
+export function criterionAppliesTo(c: Criterion, toolType: ToolType): boolean {
+  return !c.toolTypes || c.toolTypes.includes(toolType);
+}
 
 /**
  * - `component`   … its value is ADDED to the running subtotal (最低単価).
@@ -80,7 +141,8 @@ export const criterionSchema = z.object({
   expression: z.string().max(4000),
   order: z.number(),
   enabled: z.boolean(),
-  toolTypes: z.array(z.enum(["ROUND_BAR", "CYLINDER", "OH"])).optional(),
+  // 工具種は管理者定義（値は文字列）。undefined = 全工具種 / 空 = 適用なし。
+  toolTypes: z.array(z.string()).optional(),
 });
 
 export const customInputDefSchema = z.object({
@@ -200,8 +262,17 @@ export const lookupRowSchema = z.object({
   value: z.string(),
 });
 
+/** ルックアップ表 ID の形式 — 英数字・ハイフン・アンダースコアのみ。 */
+export const LOOKUP_TABLE_ID = /^[A-Za-z0-9][A-Za-z0-9_-]*$/;
+
 export const lookupTableSchema = z.object({
-  id: z.string().min(1, "ID を入力してください"),
+  id: z
+    .string()
+    .min(1, "ID を入力してください")
+    .regex(
+      LOOKUP_TABLE_ID,
+      "ID は英数字・ハイフン・アンダースコアのみ（英数字始まり）です",
+    ),
   name: z.object({ ja: z.string(), en: z.string() }),
   description: z.string().optional(),
   keyColumns: z

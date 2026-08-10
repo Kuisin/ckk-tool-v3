@@ -241,6 +241,7 @@ model Product {
 
   materialType     MaterialType?    @relation("ProductMaterialType", fields: [materialTypeId], references: [id])
   priceListEntries PriceListEntry[]
+  estimates        Estimate[]
   quoteItems       QuoteItem[]
   salesOrders      SalesOrder[]
   shippingOrderItems ShippingOrderItem[]

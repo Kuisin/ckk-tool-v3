@@ -1,6 +1,7 @@
 /**
  * 価格表 pricing rules — 倍率 tiers + 値引きルール resolution.
  *
+ * Entry = 顧客×製品、注文種別ごとの価格は entry.variants。
  * 単価 = round(基準単価 × 倍率)（行の priceOverride が最優先）。
  * 値引きは数量・期間条件を満たす有効ルールのうち 1本あたり最大のものを採用。
  * All date-sensitive assertions pass explicit dates — never "today".
@@ -10,31 +11,27 @@ import { describe, expect, it } from "vitest";
 import {
   entrySummary,
   findApplicableDiscount,
-  findEntriesByCustomerProduct,
+  findEntryByCustomerProduct,
+  findVariant,
   getPriceEntry,
   MOCK_PRICE_ENTRIES,
   multiplierLabel,
   type PriceDiscount,
-  type PriceListEntry,
+  type PriceVariant,
   priceRangeLabel,
   quantityRange,
   requiresEndDate,
-  siblingOrderTypes,
   tierUnitPrice,
   unitDiscountOf,
   validPeriod,
+  variantSummary,
 } from "./mock";
 
-/** Minimal entry factory for isolated rule tests. */
-function makeEntry(over: Partial<PriceListEntry> = {}): PriceListEntry {
+/** Minimal variant factory for isolated rule tests. */
+function makeVariant(over: Partial<PriceVariant> = {}): PriceVariant {
   return {
-    entryId: "PRC-202607-00099",
-    customerId: "bp-x",
-    customerName: "テスト顧客",
-    productId: "9001",
-    productName: "テスト製品",
+    id: "va-x",
     orderType: "PRODUCTION",
-    currency: "JPY",
     baseUnitPrice: 6000,
     validFrom: "2026-01-01",
     validUntil: null,
@@ -43,9 +40,6 @@ function makeEntry(over: Partial<PriceListEntry> = {}): PriceListEntry {
     discounts: [],
     estimateId: null,
     estimateNumber: null,
-    createdBy: "t",
-    createdAt: "2026-01-01 00:00",
-    updatedAt: "2026-01-01 00:00",
     ...over,
   };
 }
@@ -64,11 +58,11 @@ const rule = (over: Partial<PriceDiscount> = {}): PriceDiscount => ({
 });
 
 describe("tierUnitPrice — 単価 = 基準単価 × 倍率 / 手動上書き", () => {
-  const entry = makeEntry();
+  const variant = makeVariant();
 
   it("computes base × multiplier, rounded to yen", () => {
     expect(
-      tierUnitPrice(entry, {
+      tierUnitPrice(variant, {
         id: "t",
         minQuantity: 1,
         maxQuantity: null,
@@ -78,7 +72,7 @@ describe("tierUnitPrice — 単価 = 基準単価 × 倍率 / 手動上書き", 
     ).toBe(6900);
     // rounding: 6000 × 1.011 = 6066
     expect(
-      tierUnitPrice(entry, {
+      tierUnitPrice(variant, {
         id: "t",
         minQuantity: 1,
         maxQuantity: null,
@@ -90,7 +84,7 @@ describe("tierUnitPrice — 単価 = 基準単価 × 倍率 / 手動上書き", 
 
   it("×1.00 keeps the base price", () => {
     expect(
-      tierUnitPrice(entry, {
+      tierUnitPrice(variant, {
         id: "t",
         minQuantity: 1,
         maxQuantity: null,
@@ -102,7 +96,7 @@ describe("tierUnitPrice — 単価 = 基準単価 × 倍率 / 手動上書き", 
 
   it("manual priceOverride always wins", () => {
     expect(
-      tierUnitPrice(entry, {
+      tierUnitPrice(variant, {
         id: "t",
         minQuantity: 1,
         maxQuantity: null,
@@ -132,68 +126,87 @@ describe("unitDiscountOf — 率(%) / 金額(¥/本)", () => {
 });
 
 describe("findApplicableDiscount — 数量・期間・有効の判定", () => {
-  // entry1 mock: 夏季キャンペーン RATE5% 100本〜 2026-06-01..08-31 (active),
-  //              初回導入割 AMOUNT300 10〜99本 2026-01-01..03-31 (inactive)
+  // entry1 PRODUCTION variant: 夏季キャンペーン RATE5% 100本〜 06-01..08-31
+  // (active), 初回導入割 AMOUNT300 10〜99本 01-01..03-31 (inactive)
   const entry = getPriceEntry("PRC-202601-00001");
-  if (!entry) throw new Error("mock entry missing");
+  const variant = findVariant(entry, "PRODUCTION");
+  if (!variant) throw new Error("mock variant missing");
 
   it("applies a rule when quantity and date match", () => {
-    const d = findApplicableDiscount(entry, 100, 6000, new Date("2026-07-01"));
+    const d = findApplicableDiscount(
+      variant,
+      100,
+      6000,
+      new Date("2026-07-01"),
+    );
     expect(d?.id).toBe("pd-1");
   });
 
   it("period bounds are inclusive", () => {
     expect(
-      findApplicableDiscount(entry, 100, 6000, new Date("2026-06-01"))?.id,
+      findApplicableDiscount(variant, 100, 6000, new Date("2026-06-01"))?.id,
     ).toBe("pd-1");
     expect(
-      findApplicableDiscount(entry, 100, 6000, new Date("2026-08-31"))?.id,
+      findApplicableDiscount(variant, 100, 6000, new Date("2026-08-31"))?.id,
     ).toBe("pd-1");
     expect(
-      findApplicableDiscount(entry, 100, 6000, new Date("2026-09-01")),
+      findApplicableDiscount(variant, 100, 6000, new Date("2026-09-01")),
     ).toBeNull();
   });
 
   it("quantity below the rule's minimum does not match", () => {
     expect(
-      findApplicableDiscount(entry, 99, 6300, new Date("2026-07-01")),
+      findApplicableDiscount(variant, 99, 6300, new Date("2026-07-01")),
     ).toBeNull();
   });
 
   it("inactive rules are never applied", () => {
     // 初回導入割 would match (qty 10-99, 2026-02-01) but is isActive: false
     expect(
-      findApplicableDiscount(entry, 50, 6300, new Date("2026-02-01")),
+      findApplicableDiscount(variant, 50, 6300, new Date("2026-02-01")),
     ).toBeNull();
   });
 
   it("picks the largest per-unit discount when several match", () => {
-    const e = makeEntry({
+    const v = makeVariant({
       discounts: [
         rule({ id: "small", discountType: "RATE", value: 5 }), // 6000→300
         rule({ id: "big", discountType: "AMOUNT", value: 400 }),
       ],
     });
     expect(
-      findApplicableDiscount(e, 10, 6000, new Date("2026-05-01"))?.id,
+      findApplicableDiscount(v, 10, 6000, new Date("2026-05-01"))?.id,
     ).toBe("big");
   });
 
-  it("returns null when the entry has no rules", () => {
+  it("returns null when the variant has no rules", () => {
     expect(
-      findApplicableDiscount(makeEntry(), 10, 6000, new Date("2026-05-01")),
+      findApplicableDiscount(makeVariant(), 10, 6000, new Date("2026-05-01")),
     ).toBeNull();
   });
 });
 
 describe("entry summary & labels", () => {
-  it("entrySummary derives min/max from effective tier prices", () => {
+  it("variantSummary derives min/max from effective tier prices", () => {
     const entry = getPriceEntry("PRC-202601-00001");
-    if (!entry) throw new Error("mock entry missing");
+    const variant = findVariant(entry, "PRODUCTION");
+    if (!variant) throw new Error("mock variant missing");
     // tiers: override 8000 / ×1.15→6900 / ×1.05→6300 / ×1.00→6000
-    expect(entrySummary(entry)).toEqual({
+    expect(variantSummary(variant)).toEqual({
       tierCount: 4,
       minPrice: 6000,
+      maxPrice: 8000,
+    });
+  });
+
+  it("entrySummary aggregates across ALL variants", () => {
+    const entry = getPriceEntry("PRC-202601-00001");
+    if (!entry) throw new Error("mock entry missing");
+    // PRODUCTION (4 tiers, 6000..8000) + SAMPLE (1 tier, ¥0)
+    expect(entrySummary(entry)).toEqual({
+      variantCount: 2,
+      tierCount: 5,
+      minPrice: 0,
       maxPrice: 8000,
     });
   });
@@ -223,17 +236,34 @@ describe("entry summary & labels", () => {
     expect(requiresEndDate("OTHER")).toBe(false);
   });
 
-  it("siblingOrderTypes / findEntriesByCustomerProduct", () => {
-    const entry = getPriceEntry("PRC-202601-00001");
-    if (!entry) throw new Error("mock entry missing");
-    expect(siblingOrderTypes(entry)).toEqual(["SAMPLE"]);
-    expect(findEntriesByCustomerProduct("bp-001", "1001")).toHaveLength(2);
-    expect(findEntriesByCustomerProduct(null, "1001")).toEqual([]);
+  it("findEntryByCustomerProduct / findVariant — 顧客×製品で1エントリ", () => {
+    const entry = findEntryByCustomerProduct(
+      "bp-001",
+      "1001",
+      MOCK_PRICE_ENTRIES,
+    );
+    expect(entry?.entryId).toBe("PRC-202601-00001");
+    expect(entry?.variants.map((v) => v.orderType)).toEqual([
+      "PRODUCTION",
+      "SAMPLE",
+    ]);
+    expect(findVariant(entry, "SAMPLE")?.baseUnitPrice).toBe(0);
+    // 未登録の注文種別 / 未登録の顧客×製品 は null
+    expect(findVariant(entry, "TEST")).toBeNull();
+    expect(
+      findEntryByCustomerProduct(null, "1001", MOCK_PRICE_ENTRIES),
+    ).toBeNull();
+    expect(
+      findEntryByCustomerProduct("bp-001", "9999", MOCK_PRICE_ENTRIES),
+    ).toBeNull();
   });
 
-  it("every mock entry has at least one tier", () => {
+  it("every mock entry has at least one variant with tiers", () => {
     for (const e of MOCK_PRICE_ENTRIES) {
-      expect(e.tiers.length).toBeGreaterThan(0);
+      expect(e.variants.length).toBeGreaterThan(0);
+      for (const v of e.variants) {
+        expect(v.tiers.length).toBeGreaterThan(0);
+      }
     }
   });
 });

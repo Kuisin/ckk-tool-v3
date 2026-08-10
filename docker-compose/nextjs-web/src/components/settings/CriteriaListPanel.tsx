@@ -3,29 +3,19 @@
 /**
  * CriteriaListPanel — SY02 計算基準の一覧（マスタペイン, 閲覧モード）.
  *
- * カード無しの NavLink リスト。「計算基準（加算・中間）」と「見積単価（final・工具種別）」
- * を分けて表示する（見積単価は工具種ごとに設定する最終基準のため別枠）。有効/無効の
- * 切替と削除は詳細ペイン（式編集）で行う。並び替えは専用ポップアップ（モーダル）で。
- * 保存は updateCriteria で即時永続化。
+ * MasterListNav の共通リスト。「計算基準（加算・中間）」と「見積単価（final・
+ * 工具種別）」をセクションで分けて表示する。有効/無効の切替と削除は詳細ペイン
+ * （式編集）で行う。並び替えは専用モーダルで、updateCriteria で即時永続化。
  */
 
-import {
-  ActionIcon,
-  Badge,
-  Group,
-  Modal,
-  NavLink,
-  Stack,
-  Text,
-} from "@mantine/core";
+import { ActionIcon, Badge, Group, Modal, Stack, Text } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import {
   IconArrowDown,
   IconArrowsSort,
   IconArrowUp,
 } from "@tabler/icons-react";
-import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { updateCriteria } from "@/app/(dashboard)/settings/actions";
 import {
@@ -33,11 +23,14 @@ import {
   SaveButton,
   SecondaryButton,
 } from "@/components/ui/buttons";
-import { TOOL_TYPE_OPTIONS } from "@/lib/trial-pricing";
 import {
-  type Criterion,
-  type CriterionRole,
-  TRIAL_TOOL_TYPES,
+  MasterListNav,
+  type MasterNavItem,
+} from "@/components/ui/MasterListNav";
+import type {
+  Criterion,
+  CriterionRole,
+  ToolTypeDef,
 } from "@/lib/trial-pricing-criteria";
 
 const BASE = "/settings/trial-pricing-engine/criteria";
@@ -48,19 +41,24 @@ const ROLE_META: Record<CriterionRole, { label: string; color: string }> = {
   final: { label: "見積単価", color: "green" },
 };
 
-const toolLabel = (v: string) =>
-  TOOL_TYPE_OPTIONS.find((o) => o.value === v)?.label ?? v;
-
 const byOrder = (a: Criterion, b: Criterion) => a.order - b.order;
 
 function withOrder(list: Criterion[]): Criterion[] {
   return list.map((c, i) => ({ ...c, order: i * 10 }));
 }
 
-function ToolTypesBadge({ c }: { c: Criterion }) {
+function ToolTypesBadge({
+  c,
+  toolTypes,
+}: {
+  c: Criterion;
+  toolTypes: ToolTypeDef[];
+}) {
+  const toolLabel = (v: string) =>
+    toolTypes.find((t) => t.value === v)?.label ?? v;
   if (
     c.toolTypes === undefined ||
-    c.toolTypes.length === TRIAL_TOOL_TYPES.length
+    toolTypes.every((t) => c.toolTypes?.includes(t.value))
   )
     return (
       <Badge color="teal" size="xs" variant="outline">
@@ -80,11 +78,17 @@ function ToolTypesBadge({ c }: { c: Criterion }) {
   );
 }
 
-export function CriteriaListPanel({ initial }: { initial: Criterion[] }) {
+export function CriteriaListPanel({
+  initial,
+  toolTypes,
+}: {
+  initial: Criterion[];
+  /** 工具種（管理者定義）— 適用バッジの表示に使う。 */
+  toolTypes: ToolTypeDef[];
+}) {
   const [criteria, setCriteria] = useState<Criterion[]>(initial);
   const [isPending, startTransition] = useTransition();
   const router = useRouter();
-  const pathname = usePathname();
   const [reorderOpen, setReorderOpen] = useState(false);
   const [reorderList, setReorderList] = useState<Criterion[]>([]);
 
@@ -127,82 +131,61 @@ export function CriteriaListPanel({ initial }: { initial: Criterion[] }) {
     setReorderOpen(false);
   };
 
-  const renderItem = (c: Criterion) => {
-    const href = `${BASE}/${encodeURIComponent(c.id)}`;
-    return (
-      <NavLink
-        active={pathname === href}
-        component={Link}
-        description={
-          <Group gap={4} wrap="wrap">
-            <Badge color={ROLE_META[c.role].color} size="xs" variant="light">
-              {ROLE_META[c.role].label}
-            </Badge>
-            <ToolTypesBadge c={c} />
-            {!c.enabled && (
-              <Badge color="gray" size="xs" variant="light">
-                無効
-              </Badge>
-            )}
-          </Group>
-        }
-        href={href}
-        key={c.id}
-        label={
-          <Text
-            c={c.enabled ? undefined : "dimmed"}
-            fw={600}
-            size="sm"
-            truncate
-          >
-            {c.name}
-          </Text>
-        }
-      />
-    );
-  };
+  const toItem = (c: Criterion): MasterNavItem => ({
+    href: `${BASE}/${encodeURIComponent(c.id)}`,
+    searchText: `${c.name} ${c.id}`,
+    label: (
+      <Text c={c.enabled ? undefined : "dimmed"} fw={600} size="sm" truncate>
+        {c.name}
+      </Text>
+    ),
+    description: (
+      <Group gap={4} wrap="wrap">
+        <Badge color={ROLE_META[c.role].color} size="xs" variant="light">
+          {ROLE_META[c.role].label}
+        </Badge>
+        <ToolTypesBadge c={c} toolTypes={toolTypes} />
+        {!c.enabled && (
+          <Badge color="gray" size="xs" variant="light">
+            無効
+          </Badge>
+        )}
+      </Group>
+    ),
+  });
 
   return (
-    <Stack gap="md">
-      <Group gap="xs">
-        <CreateButton onClick={() => router.push(`${BASE}/new`)}>
-          基準を追加
-        </CreateButton>
-        <SecondaryButton
-          disabled={nonFinal.length < 2}
-          leftSection={<IconArrowsSort size={14} />}
-          onClick={openReorder}
-        >
-          並び替え
-        </SecondaryButton>
-      </Group>
-
-      {criteria.length === 0 ? (
-        <Text c="dimmed" size="sm">
-          計算基準がありません。「基準を追加」から作成してください。
-        </Text>
-      ) : (
-        <>
-          <Stack gap={2}>
-            <Text c="dimmed" fw={600} size="xs">
-              計算基準（加算・中間）
-            </Text>
-            {nonFinal.map(renderItem)}
-          </Stack>
-          <Stack gap={2}>
-            <Text c="dimmed" fw={600} size="xs">
-              見積単価（工具種ごとに設定）
-            </Text>
-            {finals.length === 0 ? (
-              <Text c="dimmed" size="xs">
-                見積単価の基準がありません。
-              </Text>
-            ) : (
-              finals.map(renderItem)
-            )}
-          </Stack>
-        </>
-      )}
+    <>
+      <MasterListNav
+        emptyMessage="計算基準がありません。「基準を追加」から作成してください。"
+        searchable
+        searchPlaceholder="基準名・ID で絞り込み..."
+        sections={[
+          {
+            label: "計算基準（加算・中間）",
+            items: nonFinal.map(toItem),
+          },
+          {
+            label: "見積単価（工具種ごとに設定）",
+            items: finals.map(toItem),
+            emptyMessage: "見積単価の基準がありません。",
+          },
+        ]}
+        toolbar={
+          <Group gap="xs">
+            <CreateButton onClick={() => router.push(`${BASE}/new`)}>
+              基準を追加
+            </CreateButton>
+            <SecondaryButton
+              disabled={nonFinal.length < 2}
+              leftSection={<IconArrowsSort size={14} />}
+              onClick={openReorder}
+            >
+              並び替え
+            </SecondaryButton>
+          </Group>
+        }
+      />
 
       <Modal
         onClose={() => setReorderOpen(false)}
@@ -246,6 +229,6 @@ export function CriteriaListPanel({ initial }: { initial: Criterion[] }) {
           </Group>
         </Stack>
       </Modal>
-    </Stack>
+    </>
   );
 }

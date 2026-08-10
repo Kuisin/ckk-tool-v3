@@ -100,7 +100,7 @@ export async function sendNotificationMail(input: {
       : ""
   }
   <p style="font-size:12px;color:#868e96;border-top:1px solid #dee2e6;padding-top:12px;margin-top:32px">
-    CKK 業務管理システムからの自動送信メールです。通知設定はアプリの「設定 → 通知設定」から変更できます。
+    CKK 業務管理システムからの自動送信メールです。通知設定はアプリの「プロフィール → 通知設定」から変更できます。
   </p>
 </div>`;
   return sendMail({

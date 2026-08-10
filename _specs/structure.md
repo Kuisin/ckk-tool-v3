@@ -8,15 +8,9 @@ src/
 │   │   ├── page.tsx                                # ダッシュボード
 │   │   │
 │   │   ├── sales/                                  # 販売（§1 試算・価格・見積 / §2 注文受付 / §10 設計依頼）
-│   │   │   ├── estimates/                          # 試算（原価計算 → 価格表登録）
+│   │   │   ├── price-lists/                        # 価格表（顧客×製品。注文種別ごとの価格はバリアント）
 │   │   │   │   ├── page.tsx
-│   │   │   │   ├── new/page.tsx
-│   │   │   │   └── [id]/
-│   │   │   │       ├── page.tsx
-│   │   │   │       └── edit/page.tsx
-│   │   │   ├── price-lists/                        # 価格表
-│   │   │   │   ├── page.tsx
-│   │   │   │   ├── new/page.tsx
+│   │   │   │   ├── new/page.tsx                    # 顧客×製品を選択。製品にリンク済みの確定試算を基準単価ソースに選択可
 │   │   │   │   └── [id]/
 │   │   │   │       ├── page.tsx
 │   │   │   │       └── edit/page.tsx
@@ -38,7 +32,7 @@ src/
 │   │   │   │   └── [id]/
 │   │   │   │       ├── page.tsx
 │   │   │   │       └── edit/page.tsx
-│   │   │   └── trial-estimates/                    # 試算（見積試算・仕入実績連動）
+│   │   │   └── trial-estimates/                    # 試算（SA05 見積試算・仕入実績連動。任意で製品にリンク）
 │   │   │       ├── page.tsx
 │   │   │       ├── new/page.tsx
 │   │   │       └── [id]/page.tsx

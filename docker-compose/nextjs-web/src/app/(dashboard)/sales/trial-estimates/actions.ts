@@ -4,9 +4,9 @@
  * Server Actions — 試算 (SA05 見積試算).
  *
  * sales.estimates は複合キー (year_month, seq) — EST-YYYYMM-NNNNN は
- * lib/doc-number.ts で導出する。「価格表に登録」は price_list_entries
- * ((year_month, seq) 採番 = PRC-番号) + 既定 tier を作成し、試算を
- * REGISTERED にロックする。
+ * lib/doc-number.ts で導出する。試算は任意で製品にリンクでき（1製品に複数可）、
+ * 確定後は価格表（顧客×製品）の作成時に基準単価ソースとして選択される
+ * （初回使用時に REGISTERED へロック — sales/price-lists/actions.ts）。
  */
 
 import { revalidatePath } from "next/cache";
@@ -17,7 +17,6 @@ import { type Prisma, prisma } from "@/lib/db";
 import {
   type DocKey,
   formatEstimateNumber,
-  formatPriceListNumber,
   parseDocKey,
 } from "@/lib/doc-number";
 import {
@@ -96,7 +95,9 @@ export async function fetchMaterialPricing(raw: {
 }
 
 const trialInputSchema = z.looseObject({
-  toolType: z.enum(["ROUND_BAR", "CYLINDER", "OH"]),
+  // 工具種は管理者定義（trial_pricing.tool_types）— 実在チェックは保存時に
+  // 設定リストと突き合わせる。
+  toolType: z.string().min(1),
   maxDiameter: z.number(),
   totalLength: z.number(),
   materialBarPrice: z.number(),
@@ -106,6 +107,8 @@ const trialInputSchema = z.looseObject({
 const createInput = z.object({
   name: z.string().min(1, "試算名を入力してください"),
   customerBpId: z.string().nullable(),
+  /** 対象製品（任意）— 価格表作成時の基準単価ソース候補になる。 */
+  productId: z.string().nullable(),
   materialTypeId: z.string().nullable(),
   diameterCode: z.string().nullable(),
   surfaceFinishCode: z.string().nullable(),
@@ -165,6 +168,9 @@ export async function createTrialEstimate(
   const v = parsed.data;
   try {
     const settings = await getTrialPricingSettings();
+    if (!settings.toolTypes.some((t) => t.value === v.input.toolType)) {
+      return actionError(`工具種「${v.input.toolType}」は定義されていません`);
+    }
     const { yearMonth, seq } = await allocateDocumentKey("ESTIMATE");
     await prisma.estimate.create({
       data: {
@@ -174,6 +180,7 @@ export async function createTrialEstimate(
         toolType: v.input.toolType,
         status: "DRAFT",
         customerBpId: v.customerBpId,
+        productId: v.productId ? Number(v.productId) : null,
         materialTypeId: v.materialTypeId ? Number(v.materialTypeId) : null,
         diameterCode: v.diameterCode || null,
         surfaceFinishCode: v.surfaceFinishCode || null,
@@ -193,6 +200,7 @@ export async function createTrialEstimate(
       after: {
         name: v.name,
         toolType: v.input.toolType,
+        productId: v.productId,
         materialTypeId: v.materialTypeId,
         diameterCode: v.diameterCode,
         surfaceFinishCode: v.surfaceFinishCode,
@@ -204,6 +212,61 @@ export async function createTrialEstimate(
     return actionOk({ number });
   } catch (e) {
     return actionError(prismaErrorMessage(e, "試算の保存に失敗しました"));
+  }
+}
+
+/**
+ * 製品リンクの設定/解除（詳細画面から）。REGISTERED は価格表が参照済みのため
+ * 変更不可。productId = null で解除。
+ */
+export async function linkTrialEstimateProduct(
+  number: string,
+  productId: string | null,
+): Promise<ActionResult> {
+  const key = keyOf(number);
+  if (!key) return actionError("試算番号が不正です");
+  const authz = await checkPermission("price_list", "UPDATE");
+  if (!authz.ok) return actionError(authz.error);
+  try {
+    const estimate = await prisma.estimate.findUnique({
+      where: { yearMonth_seq: { yearMonth: key.yearMonth, seq: key.seq } },
+    });
+    if (!estimate) return actionError("試算が見つかりません");
+    if (estimate.status === "REGISTERED") {
+      return actionError(
+        "価格表で使用済みの試算は製品リンクを変更できません（複製して再試算してください）",
+      );
+    }
+    let idNum: number | null = null;
+    if (productId !== null) {
+      idNum = Number(productId);
+      if (!Number.isInteger(idNum) || idNum <= 0) {
+        return actionError("製品の指定が不正です");
+      }
+      const product = await prisma.product.findUnique({
+        where: { id: idNum },
+      });
+      if (!product) return actionError("製品が見つかりません");
+    }
+    if ((estimate.productId ?? null) === idNum) return actionOk();
+    await prisma.estimate.update({
+      where: { yearMonth_seq: { yearMonth: key.yearMonth, seq: key.seq } },
+      data: { productId: idNum },
+    });
+    await recordAudit({
+      action: "UPDATE",
+      tableName: "estimates",
+      recordId: number,
+      before: {
+        productId:
+          estimate.productId != null ? String(estimate.productId) : null,
+      },
+      after: { productId: idNum != null ? String(idNum) : null },
+    });
+    revalidate(number);
+    return actionOk();
+  } catch (e) {
+    return actionError(prismaErrorMessage(e, "製品リンクの更新に失敗しました"));
   }
 }
 
@@ -243,111 +306,5 @@ export async function confirmTrialEstimate(
     return actionOk();
   } catch (e) {
     return actionError(prismaErrorMessage(e, "確定に失敗しました"));
-  }
-}
-
-const registerInput = z.object({
-  estimateNumber: z.string(),
-  customerBpId: z.string().min(1, "顧客を選択してください"),
-  productId: z.string().min(1, "製品を選択してください"),
-  orderType: z.enum(["PRODUCTION", "TEST", "SAMPLE", "OTHER"]),
-  baseUnitPrice: z.number().min(0),
-  validFrom: z.string().min(1, "有効開始日を選択してください"),
-  validUntil: z.string().nullable(),
-});
-
-export type RegisterPriceListInput = z.infer<typeof registerInput>;
-
-/**
- * 試算 → 価格表登録 (CONFIRMED → REGISTERED).
- * Creates the entry + a default tier (1本〜 ×1.00) in one transaction and
- * locks the 試算. Fails when the (顧客, 製品, 注文種別) entry already exists.
- */
-export async function registerPriceListFromEstimate(
-  payload: RegisterPriceListInput,
-): Promise<ActionResult<{ entryId: string }>> {
-  const parsed = registerInput.safeParse(payload);
-  if (!parsed.success) {
-    return actionError(parsed.error.issues[0]?.message ?? "入力が不正です");
-  }
-  const v = parsed.data;
-  const key = keyOf(v.estimateNumber);
-  if (!key) return actionError("試算番号が不正です");
-  const authz = await checkPermission("price_list", "CREATE");
-  if (!authz.ok) return actionError(authz.error);
-  try {
-    const estimate = await prisma.estimate.findUnique({
-      where: { yearMonth_seq: { yearMonth: key.yearMonth, seq: key.seq } },
-    });
-    if (!estimate) return actionError("試算が見つかりません");
-    if (estimate.status !== "CONFIRMED") {
-      return actionError("確定済みの試算のみ価格表に登録できます");
-    }
-    const entryKey = await allocateDocumentKey("PRICE_LIST");
-    await prisma.$transaction([
-      prisma.priceListEntry.create({
-        data: {
-          yearMonth: entryKey.yearMonth,
-          seq: entryKey.seq,
-          customerBpId: v.customerBpId,
-          productId: Number(v.productId),
-          orderType: v.orderType,
-          baseUnitPrice: v.baseUnitPrice,
-          validFrom: new Date(v.validFrom),
-          validUntil: v.validUntil ? new Date(v.validUntil) : null,
-          estimateYearMonth: key.yearMonth,
-          estimateSeq: key.seq,
-          tiers: {
-            create: [
-              {
-                minQuantity: 1,
-                maxQuantity: null,
-                multiplier: 1,
-                priceOverride: null,
-                sortOrder: 0,
-              },
-            ],
-          },
-        },
-      }),
-      prisma.estimate.update({
-        where: { yearMonth_seq: { yearMonth: key.yearMonth, seq: key.seq } },
-        data: { status: "REGISTERED", registeredAt: new Date() },
-      }),
-    ]);
-    const entryId = formatPriceListNumber(entryKey);
-    await recordAudit({
-      action: "UPDATE",
-      tableName: "estimates",
-      recordId: v.estimateNumber,
-      before: { status: "CONFIRMED" },
-      after: { status: "REGISTERED", priceListEntry: entryId },
-    });
-    await recordAudit({
-      action: "CREATE",
-      tableName: "price_list_entries",
-      recordId: entryId,
-      after: {
-        baseUnitPrice: v.baseUnitPrice,
-        validFrom: v.validFrom,
-        validUntil: v.validUntil,
-        source: `試算 ${v.estimateNumber}`,
-      },
-    });
-    revalidate(v.estimateNumber);
-    revalidatePath("/sales/price-lists");
-    revalidatePath(`/sales/price-lists/${entryId}`);
-    return actionOk({ entryId });
-  } catch (e) {
-    const code =
-      typeof e === "object" && e !== null && "code" in e
-        ? String((e as { code: unknown }).code)
-        : undefined;
-    if (code === "P2002") {
-      return actionError(
-        "同一の顧客・製品・注文種別の価格表が既に存在します。既存の価格表を編集してください。",
-      );
-    }
-    return actionError(prismaErrorMessage(e, "価格表への登録に失敗しました"));
   }
 }

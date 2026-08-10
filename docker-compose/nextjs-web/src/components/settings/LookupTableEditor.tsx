@@ -249,12 +249,17 @@ export function LookupTableEditor({
             <TextInput
               description={
                 isNew
-                  ? '式内 lookup("ID") の参照キー。作成後は変更できません'
+                  ? '式内 lookup("ID") の参照キー（"" で囲んで渡す）。英数字・ハイフン・アンダースコアのみ。作成後は変更できません'
                   : "参照キー（作成後は変更不可）"
               }
               disabled={!isNew}
               label="ID（参照キー）"
-              onChange={(e) => patch({ id: e.currentTarget.value })}
+              onChange={(e) =>
+                // 許可外の文字（空白・記号・全角）は入力時点で除去する。
+                patch({
+                  id: e.currentTarget.value.replace(/[^A-Za-z0-9_-]/g, ""),
+                })
+              }
               placeholder="centerless"
               style={{ flex: 1, minWidth: 220 }}
               value={table.id}

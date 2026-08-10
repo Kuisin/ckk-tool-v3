@@ -30,7 +30,12 @@ export default async function CriteriaLayout({
         />
       }
       initialMasterWidth={380}
-      master={<CriteriaListPanel initial={settings.criteria} />}
+      master={
+        <CriteriaListPanel
+          initial={settings.criteria}
+          toolTypes={settings.toolTypes}
+        />
+      }
     >
       {children}
     </MasterDetailShell>

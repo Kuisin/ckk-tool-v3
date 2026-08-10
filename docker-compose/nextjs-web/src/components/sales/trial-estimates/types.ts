@@ -29,6 +29,9 @@ export interface TrialEstimateRecord {
   status: EstimateStatus;
   customerId: string | null;
   customerName: string | null;
+  /** 対象製品（任意リンク — 価格表作成時の基準単価ソース候補）. */
+  productId: string | null;
+  productName: string | null;
   /** 材種 × 直径 × 黒皮/研磨（参照価格の解決キー）. */
   materialTypeId: string;
   diameterCode: string;
@@ -52,18 +55,11 @@ export interface TrialEstimateRecord {
   updatedAt: string;
 }
 
-/** 価格表 entry linked to a 試算 (関連 tab / duplicate warnings). */
+/** 価格表バリアント linked to a 試算 (関連 tab). */
 export interface LinkedPriceEntry {
   entryId: string;
   customerName: string;
   productName: string;
   orderType: string;
   tierCount: number;
-}
-
-/** Existing entry identity — duplicate warnings in the register modal. */
-export interface ExistingEntryRef {
-  customerBpId: string;
-  productId: string;
-  orderType: string;
 }

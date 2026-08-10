@@ -27,7 +27,10 @@ export default async function MasterProductsDetailPage({
       include: {
         materialType: { select: { code: true, name: true } },
         priceListEntries: {
-          include: { customerBp: true },
+          include: {
+            customerBp: true,
+            variants: { orderBy: { orderType: "asc" } },
+          },
           orderBy: { createdAt: "desc" },
         },
       },
@@ -71,15 +74,18 @@ export default async function MasterProductsDetailPage({
     productTypeName,
     createdAt: r.createdAt.toISOString(),
     updatedAt: r.updatedAt.toISOString(),
-    priceListEntries: r.priceListEntries.map((e) => ({
-      // 価格表番号 PRC-… — mirrors the price-list URL id format.
-      id: formatPriceListNumber({ yearMonth: e.yearMonth, seq: e.seq }),
-      customerName: localized(e.customerBp.name as LocalizedText | null),
-      orderType: e.orderType,
-      validFrom: e.validFrom.toISOString(),
-      validUntil: e.validUntil?.toISOString() ?? null,
-      isActive: e.isActive,
-    })),
+    // 1 行 = 1 注文種別バリアント（期間・状態はバリアント単位）。
+    priceListEntries: r.priceListEntries.flatMap((e) =>
+      e.variants.map((v) => ({
+        // 価格表番号 PRC-… — mirrors the price-list URL id format.
+        id: formatPriceListNumber({ yearMonth: e.yearMonth, seq: e.seq }),
+        customerName: localized(e.customerBp.name as LocalizedText | null),
+        orderType: v.orderType,
+        validFrom: v.validFrom.toISOString(),
+        validUntil: v.validUntil?.toISOString() ?? null,
+        isActive: e.isActive && v.isActive,
+      })),
+    ),
   };
 
   return <ProductDetail auditEntries={auditEntries} record={record} />;

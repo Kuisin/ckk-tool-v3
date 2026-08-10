@@ -5,9 +5,9 @@
  * summary + recomputed results + the material price-history graph.
  *
  * Flow (試算 → 価格表 → 見積書): DRAFT は「確定」で CONFIRMED になり、
- * 「価格表に登録」で数量区分ごとの価格表になる（REGISTERED でロック）。
- * Backed by sales.estimates via the server page; status transitions persist
- * through Server Actions.
+ * 価格表（顧客×製品）の作成時に基準単価ソースとして選択できる（初回使用時に
+ * REGISTERED でロック）。Backed by sales.estimates via the server page;
+ * status transitions persist through Server Actions.
  */
 
 import {
@@ -27,17 +27,24 @@ import {
   IconChartLine,
   IconCheck,
   IconCopy,
-  IconCurrencyYen,
+  IconCylinder,
   IconInfoCircle,
   IconLink,
 } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
-import { confirmTrialEstimate } from "@/app/(dashboard)/sales/trial-estimates/actions";
+import { searchProductOptions } from "@/app/(dashboard)/_shared/option-search";
+import {
+  confirmTrialEstimate,
+  linkTrialEstimateProduct,
+} from "@/app/(dashboard)/sales/trial-estimates/actions";
 import { DocNumber } from "@/components/ui/DocNumber";
 import { FieldValue } from "@/components/ui/FieldValue";
+import { PRODUCT_F4 } from "@/components/ui/f4-presets";
 import { HistoryPanel } from "@/components/ui/HistoryPanel";
 import { MoneyText } from "@/components/ui/MoneyText";
+import { ModalShell } from "@/components/ui/modals";
+import { SearchSelect } from "@/components/ui/SearchSelect";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import {
   type AuditEntry,
@@ -48,24 +55,16 @@ import {
 import { useTabParam } from "@/hooks/useUrlState";
 import { formatDateTime } from "@/lib/format";
 import type { MaterialPricePoint } from "@/lib/material-pricing-core";
-import type { Option } from "@/lib/mock";
 import { ORDER_TYPE_LABEL } from "@/lib/mock";
 import {
   calcTrialPricing,
   TOOL_TYPE_OPTIONS,
   type TrialPricingOptions,
 } from "@/lib/trial-pricing";
-import { ConvertToPriceListModal } from "./ConvertToPriceListModal";
 import { MaterialPriceChart } from "./MaterialPriceChart";
-import type {
-  ExistingEntryRef,
-  LinkedPriceEntry,
-  TrialEstimateRecord,
-} from "./types";
+import type { LinkedPriceEntry, TrialEstimateRecord } from "./types";
 
 const BASE_PATH = "/sales/trial-estimates";
-const toolLabel = (v: string) =>
-  TOOL_TYPE_OPTIONS.find((o) => o.value === v)?.label ?? v;
 
 const BREAKDOWN_ROWS = [
   ["材料原価", "material"],
@@ -81,25 +80,24 @@ const BREAKDOWN_ROWS = [
 export function TrialEstimateDetail({
   record,
   linkedEntries,
-  customerOptions,
-  productOptions,
-  existingEntries,
   auditEntries,
   priceHistory,
   pricingOptions = {},
+  toolTypeOptions = TOOL_TYPE_OPTIONS,
 }: {
   record: TrialEstimateRecord;
   linkedEntries: LinkedPriceEntry[];
-  customerOptions: Option[];
-  productOptions: Option[];
-  existingEntries: ExistingEntryRef[];
   /** 操作履歴（audit_logs 由来、履歴タブ）。 */
   auditEntries: AuditEntry[];
   /** この素材の仕入実績（サーバー取得、価格推移タブ）。 */
   priceHistory: MaterialPricePoint[];
   /** 試算エンジンのオプション（係数・カスタム計算）。 */
   pricingOptions?: TrialPricingOptions;
+  /** 工具種の選択肢（管理者定義。未指定は組み込み 3 種）. */
+  toolTypeOptions?: { value: string; label: string }[];
 }) {
+  const toolLabel = (v: string) =>
+    toolTypeOptions.find((o) => o.value === v)?.label ?? v;
   const router = useRouter();
   // アクティブタブを ?tab= に保持（URL 共有でタブまで再現）
   const [tab, setTab] = useTabParam("result");
@@ -108,9 +106,42 @@ export function TrialEstimateDetail({
   const result =
     record.resultSnapshot ?? calcTrialPricing(record.input, pricingOptions);
   const history = priceHistory;
-  const [convertOpen, setConvertOpen] = useState(false);
-  const [, startTransition] = useTransition();
+  const [isPending, startTransition] = useTransition();
   const status = record.status;
+  // 製品リンク モーダル（REGISTERED は価格表が参照済みのため変更不可）
+  const [linkOpen, setLinkOpen] = useState(false);
+  const [linkProductId, setLinkProductId] = useState<string | null>(null);
+
+  const openProductLink = () => {
+    setLinkProductId(record.productId);
+    setLinkOpen(true);
+  };
+
+  const saveProductLink = () => {
+    startTransition(async () => {
+      const res = await linkTrialEstimateProduct(
+        record.estimateNumber,
+        linkProductId,
+      );
+      if (res.ok) {
+        notifications.show({
+          title: "保存しました",
+          message: linkProductId
+            ? "製品にリンクしました。確定後、価格表（顧客×製品）の作成時に基準単価ソースとして選択できます"
+            : "製品リンクを解除しました",
+          color: "green",
+        });
+        setLinkOpen(false);
+        router.refresh();
+      } else {
+        notifications.show({
+          title: "エラー",
+          message: res.error,
+          color: "red",
+        });
+      }
+    });
+  };
 
   const confirm = () => {
     startTransition(async () => {
@@ -118,7 +149,8 @@ export function TrialEstimateDetail({
       if (res.ok) {
         notifications.show({
           title: "確定しました",
-          message: "「価格表に登録」で数量区分ごとの価格表を作成できます",
+          message:
+            "価格表（顧客×製品）の作成時に基準単価ソースとして選択できます",
           color: "green",
         });
         router.refresh();
@@ -146,12 +178,14 @@ export function TrialEstimateDetail({
                   },
                 ]
               : []),
-            ...(status === "CONFIRMED"
+            ...(status !== "REGISTERED"
               ? [
                   {
-                    label: "価格表に登録",
-                    icon: <IconCurrencyYen size={14} />,
-                    onClick: () => setConvertOpen(true),
+                    label: record.productId
+                      ? "製品リンクを変更"
+                      : "製品にリンク",
+                    icon: <IconCylinder size={14} />,
+                    onClick: openProductLink,
                   },
                 ]
               : []),
@@ -183,7 +217,13 @@ export function TrialEstimateDetail({
     >
       {status === "REGISTERED" && (
         <Alert color="blue" icon={<IconInfoCircle size={16} />} variant="light">
-          この試算は価格表登録済のため編集できません。単価を見直す場合は複製して再試算してください。
+          この試算は価格表で使用済みのため編集できません。単価を見直す場合は複製して再試算してください。
+        </Alert>
+      )}
+      {status === "CONFIRMED" && (
+        <Alert color="blue" icon={<IconInfoCircle size={16} />} variant="light">
+          確定済み —
+          価格表（顧客×製品）の作成時に、この試算を基準単価ソースとして選択できます。
         </Alert>
       )}
       <SummaryGrid>
@@ -192,6 +232,7 @@ export function TrialEstimateDetail({
           value={<DocNumber>{record.estimateNumber}</DocNumber>}
         />
         <FieldValue label="見積り先" value={record.customerName ?? "—"} />
+        <FieldValue label="製品" value={record.productName ?? "—"} />
         <FieldValue label="工具種" value={toolLabel(record.input.toolType)} />
         <FieldValue label="素材" value={record.materialLabel} />
         <FieldValue label="最大径" value={`${record.input.maxDiameter} mm`} />
@@ -317,7 +358,8 @@ export function TrialEstimateDetail({
                 </Stack>
               ) : (
                 <Text c="dimmed" size="sm">
-                  未登録 — 「価格表に登録」で数量区分ごとの価格表行を作成します
+                  未使用 —
+                  価格表（顧客×製品）の作成時にこの試算を基準単価ソースとして選択できます
                 </Text>
               )}
             </div>
@@ -326,7 +368,7 @@ export function TrialEstimateDetail({
                 見積書
               </Text>
               <Text c="dimmed" size="sm">
-                —（価格表登録後に価格表から作成できます）
+                —（価格表の作成後に価格表から作成できます）
               </Text>
             </div>
           </Stack>
@@ -337,16 +379,35 @@ export function TrialEstimateDetail({
         </Tabs.Panel>
       </Tabs>
 
-      <ConvertToPriceListModal
-        customerOptions={customerOptions}
-        estimate={record}
-        existingEntries={existingEntries}
-        onClose={() => setConvertOpen(false)}
-        onRegistered={() => router.refresh()}
-        opened={convertOpen}
-        pricingOptions={pricingOptions}
-        productOptions={productOptions}
-      />
+      <ModalShell
+        confirmLabel="保存"
+        loading={isPending}
+        onClose={() => setLinkOpen(false)}
+        onConfirm={saveProductLink}
+        opened={linkOpen}
+        title={record.productId ? "製品リンクを変更" : "製品にリンク"}
+      >
+        <Stack gap="sm">
+          <Text c="dimmed" size="sm">
+            対象製品（任意）。リンクした試算は確定後、価格表（顧客×製品）の作成時に基準単価ソースとして選択できます。クリアして保存するとリンクを解除します。
+          </Text>
+          <SearchSelect
+            clearable
+            f4={PRODUCT_F4}
+            initialOption={
+              record.productId && record.productName
+                ? { value: record.productId, label: record.productName }
+                : null
+            }
+            label="製品"
+            onChange={setLinkProductId}
+            onSearch={searchProductOptions}
+            placeholder="製品を検索"
+            storageKey="product"
+            value={linkProductId}
+          />
+        </Stack>
+      </ModalShell>
     </DetailShell>
   );
 }

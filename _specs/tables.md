@@ -193,7 +193,7 @@ Ref: material_types.(manufacturer_code, grade_code) > material_manufacturer_grad
 
 // 材種の既定材料単価マトリクス: (材種 × 直径 × 黒皮/研磨) → 単価。全長には依存しない
 // 固定長基準で ¥/1000mm。採番表 Excel「素材(通常)」由来（価格 × 1000 / 全長 で正規化）。
-// 仕入実績が無いとき試算（trial_estimates）の材料原価フォールバックに使う。
+// 仕入実績が無いとき試算（estimates / SA05）の材料原価フォールバックに使う。
 Table material_type_prices {
   id                  serial [pk]
   material_type_id    int [not null, ref: > material_types.id]
@@ -303,91 +303,130 @@ Table products {
 ### Logic
 ```
 // ===========================
-// 試算（§1）EST-YYYYMM-NNNNN
+// 試算（§1 / SA05 見積試算）EST-YYYYMM-NNNNN
 // ===========================
 
-// 原価計算 → 数量区分別単価。確定後に価格表として登録する（フロー起点）。
+// 工具種（丸棒/円筒/OH付）別の原価計算スナップショット。文書番号
+// EST-YYYYMM-NNNNN は複合キー (year_month, seq) から導出する。
+// 任意で製品にリンク（1製品に複数試算可）— 確定した試算は価格表作成時に
+// バリアントの基準単価ソースとして選択できる（初回使用で REGISTERED）。
 Table estimates {
-  id              uuid [pk]
-  estimate_number varchar [unique, not null]
-  customer_bp_id  uuid [not null, ref: > business_partners.id]
-  product_id      varchar [not null, ref: > products.id]
-  order_type      ORDER_TYPE [not null]
-  material_id     varchar [ref: > materials.id]
-  material_unit_cost numeric(12,2) [not null, default: 0]  // 材料費（/本）
-  machining_minutes  numeric(8,2) [not null, default: 0]   // 加工時間（分/本）
-  machining_rate     numeric(12,2) [not null, default: 0]  // 加工レート（¥/時）
-  outsource_cost     numeric(12,2) [not null, default: 0]  // 外注費（/本）
-  setup_cost         numeric(12,2) [not null, default: 0]  // 段取り費（固定・ロット按分）
-  margin_rate        numeric(5,2) [not null, default: 30]  // 利益率（%）
-  currency        varchar [not null, default: 'JPY']
+  year_month      char(6) [not null]
+  seq             int [not null]
+  name            varchar [not null]
+  tool_type       varchar [not null]  // 工具種（管理者定義 — trial_pricing.tool_types。組み込み: ROUND_BAR/CYLINDER/OH）
   status          ESTIMATE_STATUS [not null, default: 'DRAFT']
-  registered_at   timestamp                    // 価格表登録日時
+  customer_bp_id  uuid [ref: > business_partners.id]
+  product_id      int [ref: > products.id]     // 対象製品（任意。1製品に複数試算可）
+  // 材料は「材種 × 直径 × 黒皮/研磨」で指定する（特定 materials 行には紐付けない）
+  material_type_id     int [ref: > material_types.id]
+  diameter_code        char(3) [ref: > material_diameters.code]
+  surface_finish_code  char(1) [ref: > material_surface_finishes.code]
+  // 参照価格（仕入実績 / 材種既定単価 由来, ¥/1000mm）
+  reference_unit_price numeric(12,2)
+  reference_date  date
+  reference_overridden boolean [not null, default: false]
+  input           json [not null]              // 計算入力スナップショット（TrialInput）
+  result          json                         // 算出結果スナップショット（TrialResult）
+  registered_at   timestamp                    // 価格表で初回使用された日時
   notes           text
   created_by      uuid [ref: > users.id]
   created_at      timestamp
   updated_at      timestamp
+
+  indexes {
+    (year_month, seq) [pk]
+  }
 }
 
 Enum ESTIMATE_STATUS {
   DRAFT           // 下書き
-  CONFIRMED       // 確定（計算確定・登録可能）
-  REGISTERED      // 価格表登録済
-}
-
-// 数量区分ごとの計算結果 = 価格表候補行
-// 原価/本 = 材料費 + 加工時間/60×レート + 外注費 + 段取り費/min_quantity
-// 単価   = 原価 ÷ (1 − 利益率)（10円単位切り上げ、手動調整可）
-Table estimate_tiers {
-  id              uuid [pk]
-  estimate_id     uuid [not null, ref: > estimates.id]
-  min_quantity    int [not null]
-  max_quantity    int                          // null = 上限なし
-  unit_cost       numeric(12,2) [not null]     // 原価/本（自動計算）
-  unit_price      numeric(12,2) [not null]     // 単価（自動計算 → 手動調整可）
-  price_list_id   uuid [ref: > price_lists.id] // 価格表登録後に紐付け
-  sort_order      int [not null, default: 0]
+  CONFIRMED       // 確定（価格表の基準単価ソースに選択可能）
+  REGISTERED      // 価格表で使用済み（ロック — 再試算は複製で）
 }
 
 // ===========================
-// 価格表（§1）
+// 価格表（§1）PRC-YYYYMM-NNNNN
 // ===========================
 
-// 価格表エントリ: 顧客 + 製品 + 注文種別 = 1 エントリ。
-// 有効期間（valid_from/valid_until）・通貨・状態をエントリ単位で管理する。
-// 顧客・製品・注文種別はエントリの識別キーで、作成後は変更不可。
-// 数量段階（本数 → 単価）は price_list_tiers に分離（全段階で有効期間を共有）。
+// 価格表エントリ: 顧客 + 製品 = 1 エントリ（UNIQUE・作成後不変）。
+// 表示番号 PRC-YYYYMM-NNNNN は複合キー (year_month, seq) から導出。
+// 注文種別ごとの価格（基準単価・有効期間・試算リンク・tiers・値引き）は
+// price_list_variants に持つ。
 Table price_list_entries {
-  id              uuid [pk]
+  year_month      char(6) [not null]
+  seq             int [not null]
   customer_bp_id  uuid [not null, ref: > business_partners.id]
-  product_id      varchar [not null, ref: > products.id]
-  order_type      ORDER_TYPE [not null]
+  product_id      int [not null, ref: > products.id]
   currency        varchar [not null, default: 'JPY']
-  valid_from      date [not null]
-  valid_until     date                         // null = 無期限
-  estimate_id     uuid [ref: > estimates.id]   // 試算元（手動登録時は null）
   is_active       boolean [default: true]
   created_by      uuid [ref: > users.id]
   created_at      timestamp
   updated_at      timestamp
 
   indexes {
-    (customer_bp_id, product_id, order_type) [unique]  // 識別キー（作成後不変）
+    (year_month, seq) [pk]
+    (customer_bp_id, product_id) [unique]  // 識別キー（作成後不変）
   }
 }
 
-// 数量段階: 本数範囲 → 単価。親エントリの有効期間・通貨を共有する。
-Table price_list_tiers {
-  id                  uuid [pk]
-  price_list_entry_id uuid [not null, ref: > price_list_entries.id]
-  min_quantity        int [not null, default: 1]
-  max_quantity        int                          // null = 上限なし
-  unit_price          numeric(12,2) [not null]
-  sort_order          int [not null, default: 0]
+// 注文種別バリアント: 1 エントリ内の種別ごとの価格。基準単価は試算の
+// 見積単価（選択時）または手動設定。有効期間はバリアント単位
+// （テスト/サンプルは終了日必須）。
+Table price_list_variants {
+  id              uuid [pk]
+  entry_year_month char(6) [not null]
+  entry_seq       int [not null]
+  order_type      ORDER_TYPE [not null]
+  base_unit_price numeric(12,2) [not null, default: 0]
+  valid_from      date [not null]
+  valid_until     date                         // null = 無期限
+  estimate_year_month char(6)                  // 試算元（手動設定時は null）
+  estimate_seq    int
+  is_active       boolean [not null, default: true]
+  created_at      timestamp
+  updated_at      timestamp
 
   indexes {
-    (price_list_entry_id, min_quantity)
+    (entry_year_month, entry_seq, order_type) [unique]
   }
+}
+
+// 数量段階: 本数範囲 → 倍率。単価 = round(基準単価 × multiplier)、
+// price_override で行ごとに手動上書き可（null = 自動計算）。
+Table price_list_tiers {
+  id              uuid [pk]
+  variant_id      uuid [not null, ref: > price_list_variants.id]
+  min_quantity    int [not null, default: 1]
+  max_quantity    int                          // null = 上限なし
+  multiplier      numeric(8,3) [not null, default: 1]
+  price_override  numeric(12,2)                // 手動上書き単価
+  sort_order      int [not null, default: 0]
+
+  indexes {
+    (variant_id, min_quantity)
+  }
+}
+
+// 値引きルール: 期間 × 数量条件 → 値引き（バリアントごとの専用リスト）。
+// RATE = 単価に対する率(%) / AMOUNT = 1本あたりの値引き額(¥)。
+Table price_list_discounts {
+  id              uuid [pk]
+  variant_id      uuid [not null, ref: > price_list_variants.id]
+  label           varchar [not null]
+  discount_type   PRICE_DISCOUNT_TYPE [not null]
+  value           numeric(12,2) [not null]
+  min_quantity    int [not null, default: 1]
+  max_quantity    int
+  valid_from      date [not null]
+  valid_until     date
+  is_active       boolean [not null, default: true]
+  created_at      timestamp
+}
+
+Enum PRICE_DISCOUNT_TYPE {
+  RATE            // 率 (%)
+  AMOUNT          // 額 (¥/本)
 }
 
 Enum ORDER_TYPE {
@@ -1165,56 +1204,27 @@ Table design_files {
 }
 
 // ===========================
-// 見積試算（SA05）
+// 見積試算（SA05）— 実体は Logic §1 の estimates テーブル
 // ===========================
 //
 // 工具種（丸棒/円筒/OH付）別の見積試算。原価チェーン（材料原価+段加工+首下+加工
-// 単価+コート+ラップ+LD+検査）→ ロット別に掛け率・補正値を適用して見積単価を算出。
+// 単価+コート+ラップ+LD+検査）→ 補正値を適用して見積単価を算出。
 // 材料は「材種 × 直径 × 黒皮/研磨」で指定する（特定 materials 行には紐付けない）。
 // 材料原価の参照価格は、当該構成に一致する全素材の仕入実績
 // （material_purchase_order_items）→ 無ければ材種既定単価 material_type_prices
 // （¥/1000mm）の順で解決する。参照価格の算出方法（最高/最新/平均・参照月数）は
 // system_settings。参照テーブル（センタレス/段加工/首下/円筒/コート/掛け率/割引）は
 // 採番表 Excel 由来で trial_pricing_* マスタ（または import）へ移行する。
+//
+// テーブルは §1 の `estimates`（EST-YYYYMM-NNNNN）に統合済み — 独立した
+// trial_estimates / trial_estimate_lots は存在しない（ロットは input/result
+// JSON 内に保持）。任意の product_id で製品にリンクし（1製品に複数試算可）、
+// 確定後は価格表（顧客×製品）作成時の基準単価ソースとして選択できる。
 
-Enum TRIAL_TOOL_TYPE {
-  ROUND_BAR       // 丸棒
-  CYLINDER        // 円筒
-  OH              // OH付
-}
-
-Table trial_estimates {
-  id              uuid [pk]
-  name            varchar [not null]
-  tool_type       TRIAL_TOOL_TYPE [not null]
-  customer_bp_id  uuid [ref: > business_partners.id]
-  // 材料指定 = 材種 × 直径 × 黒皮/研磨（参照価格の解決キー）。
-  material_type_id     int [ref: > material_types.id]
-  diameter_code        char(3) [ref: > material_diameters.code]
-  surface_finish_code  char(1) [ref: > material_surface_finishes.code]
-  // 参照価格（仕入実績 / 材種既定単価 由来, ¥/1000mm）。reference_date = 採用した仕入実績日。
-  reference_unit_price numeric(12,2)
-  reference_date  date
-  reference_overridden boolean [not null, default: false]  // 手動上書き
-  // 入力スナップショット（最大径/全長/段加工/コート/LD/加工条件 等）
-  input           json [not null]
-  // 算出結果（ロット別 最低単価・掛け率・見積単価 + 原価内訳）
-  result          json
-  created_by      uuid [ref: > users.id]
-  created_at      timestamp
-  updated_at      timestamp
-}
-
-// 試算のロット段階（任意正規化。input/result JSON にも保持）
-Table trial_estimate_lots {
-  id              uuid [pk]
-  trial_estimate_id uuid [not null, ref: > trial_estimates.id]
-  quantity        int [not null]
-  minimum_price   numeric(12,2)
-  discount_rate   numeric(6,3)
-  estimate_unit_price numeric(12,2)
-  sort_order      int [not null, default: 0]
-}
+// 工具種は管理者定義（system_settings trial_pricing.tool_types — SY02 工具種管理
+// で追加/削除。未使用の工具種のみ削除可）。estimates.tool_type は varchar で保持。
+// 組み込み 3 種（削除不可）: ROUND_BAR（丸棒） / CYLINDER（円筒） / OH（OH付）。
+// 旧 TRIAL_TOOL_TYPE enum は varchar へ移行済み。
 
 // 汎用アプリ設定ストア（1テーブルで任意のコード設定を保持）。key は名前空間
 // 付き `<namespace>.<field>`。アクセスは lib/app-config.ts（generic）+ アプリ別

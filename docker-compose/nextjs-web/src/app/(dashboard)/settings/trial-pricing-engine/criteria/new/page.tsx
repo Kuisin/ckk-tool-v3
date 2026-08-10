@@ -12,6 +12,7 @@ export default async function CriterionNewPage() {
       criterionId={null}
       customInputs={settings.customInputs}
       lookupTables={settings.lookupTables}
+      toolTypes={settings.toolTypes}
     />
   );
 }
