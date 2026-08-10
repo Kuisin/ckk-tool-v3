@@ -12,6 +12,7 @@
 import { Badge, Card, Group, Stack, Text, TextInput } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import { IconChevronRight } from "@tabler/icons-react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import {
@@ -26,6 +27,7 @@ import {
   TOOL_TYPE_VALUE,
   type ToolTypeDef,
 } from "@/lib/trial-pricing-criteria";
+import classes from "./SettingsReorderableList.module.css";
 
 const BASE = "/settings/trial-pricing-engine/tool-types";
 
@@ -106,12 +108,15 @@ export function ToolTypesPanel({
     });
 
   return (
-    <Stack gap="md">
-      <Group justify="space-between">
+    <Stack gap="md" maw={960}>
+      <Group align="flex-start" justify="space-between" wrap="nowrap">
         <Text c="dimmed" size="sm">
           工具種ごとに適用する計算基準・見積単価は各行から設定します。
         </Text>
-        <CreateButton onClick={() => setAddOpen(true)}>
+        <CreateButton
+          onClick={() => setAddOpen(true)}
+          style={{ flexShrink: 0 }}
+        >
           工具種を追加
         </CreateButton>
       </Group>
@@ -127,41 +132,46 @@ export function ToolTypesPanel({
               (c) => c.role === "final" && criterionAppliesTo(c, t.value),
             )?.name ?? "—";
           return (
-            <Card key={t.value} padding="md" radius="md" withBorder>
+            <Card
+              className={classes.row}
+              key={t.value}
+              padding="md"
+              radius="md"
+              withBorder
+            >
               <Group justify="space-between" wrap="nowrap">
-                <Stack
-                  gap={4}
-                  onClick={() =>
-                    router.push(`${BASE}/${encodeURIComponent(t.value)}`)
-                  }
-                  style={{ minWidth: 0, cursor: "pointer", flex: 1 }}
+                <Link
+                  className={classes.body}
+                  href={`${BASE}/${encodeURIComponent(t.value)}`}
                 >
-                  <Group gap="xs" wrap="nowrap">
-                    <Text fw={600} size="sm">
-                      {t.label}
-                    </Text>
-                    <Text c="dimmed" ff="mono" size="xs">
-                      {t.value}
-                    </Text>
-                    {t.builtin ? (
-                      <Badge color="gray" size="xs" variant="light">
-                        組み込み
-                      </Badge>
-                    ) : (
-                      <Badge color="blue" size="xs" variant="light">
-                        カスタム
-                      </Badge>
-                    )}
-                  </Group>
-                  <Group gap="md">
-                    <Text c="dimmed" size="xs">
-                      計算基準 {applied} 件 / 見積単価: {finalName}
-                    </Text>
-                    <Text c={used > 0 ? undefined : "dimmed"} size="xs">
-                      試算 {used} 件
-                    </Text>
-                  </Group>
-                </Stack>
+                  <Stack gap={4}>
+                    <Group gap="xs" wrap="nowrap">
+                      <Text fw={600} size="sm">
+                        {t.label}
+                      </Text>
+                      <Text c="dimmed" ff="mono" size="xs">
+                        {t.value}
+                      </Text>
+                      {t.builtin ? (
+                        <Badge color="gray" size="xs" variant="light">
+                          組み込み
+                        </Badge>
+                      ) : (
+                        <Badge color="blue" size="xs" variant="light">
+                          カスタム
+                        </Badge>
+                      )}
+                    </Group>
+                    <Group gap="md">
+                      <Text c="dimmed" size="xs">
+                        計算基準 {applied} 件 / 見積単価: {finalName}
+                      </Text>
+                      <Text c={used > 0 ? undefined : "dimmed"} size="xs">
+                        試算 {used} 件
+                      </Text>
+                    </Group>
+                  </Stack>
+                </Link>
                 <Group gap="xs" style={{ flexShrink: 0 }}>
                   {!t.builtin && (
                     <DeleteButton
