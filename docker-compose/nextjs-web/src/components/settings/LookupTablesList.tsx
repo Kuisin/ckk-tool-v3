@@ -33,7 +33,7 @@ export function LookupTablesList({ tables }: { tables: LookupTable[] }) {
           <NavLink
             active={pathname === href}
             component={Link}
-            description={`${t.id} · ${t.keyColumns.length}キー · ${t.rows.length}行`}
+            description={`lookup("${t.id}", …) · ${t.keyColumns.length}キー · ${t.rows.length}行`}
             href={href}
             key={t.id}
             label={

@@ -19,6 +19,12 @@ import {
   mergeBuiltinToolTypes,
   toolTypeDefSchema,
 } from "./trial-pricing-criteria";
+// 旧ルックアップ表 ID（例: coating:CX200 → coating-cx200）は読み出し時に正規化
+// し、次回保存で新 ID が永続化される（ID 形式統一以前のデータ互換）。
+import {
+  normalizeLegacyExpressionIds,
+  normalizeLegacyLookupIds,
+} from "./trial-pricing-data";
 import {
   DEFAULT_TRIAL_PRICING_SETTINGS,
   type TrialPricingSettings,
@@ -53,8 +59,13 @@ function mergeGlobalCustomInputs(
 
 const criteriaArraySchema = z.array(criterionSchema);
 const toolTypesArraySchema = z.array(toolTypeDefSchema);
+// 読み出しは ID 形式を強制しない（旧 ID の永続データも受け入れて正規化する。
+// 形式の強制（英数字・ハイフン・アンダースコア）は保存時の lookupTableSchema）。
+const lookupTablesReadSchema = z.array(
+  lookupTableSchema.extend({ id: z.string().min(1) }),
+);
+
 const customInputsArraySchema = z.array(customInputDefSchema);
-const lookupTablesArraySchema = z.array(lookupTableSchema);
 
 /** 試算設定 — 未設定キーは既定値で補完。 */
 export async function getTrialPricingSettings(): Promise<TrialPricingSettings> {
@@ -87,7 +98,7 @@ export async function getTrialPricingSettings(): Promise<TrialPricingSettings> {
       case "criteria": {
         const parsed = criteriaArraySchema.safeParse(v);
         if (parsed.success && parsed.data.length > 0)
-          out.criteria = parsed.data;
+          out.criteria = normalizeLegacyExpressionIds(parsed.data);
         break;
       }
       case "customInputs": {
@@ -97,10 +108,10 @@ export async function getTrialPricingSettings(): Promise<TrialPricingSettings> {
         break;
       }
       case "lookupTables": {
-        const parsed = lookupTablesArraySchema.safeParse(v);
+        const parsed = lookupTablesReadSchema.safeParse(v);
         // 空配列は既定（Excel 由来 39 表）を維持（criteria と同様のガード）。
         if (parsed.success && parsed.data.length > 0)
-          out.lookupTables = parsed.data;
+          out.lookupTables = normalizeLegacyLookupIds(parsed.data);
         break;
       }
       default:

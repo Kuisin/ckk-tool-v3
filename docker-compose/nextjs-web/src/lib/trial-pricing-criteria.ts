@@ -262,8 +262,17 @@ export const lookupRowSchema = z.object({
   value: z.string(),
 });
 
+/** ルックアップ表 ID の形式 — 英数字・ハイフン・アンダースコアのみ。 */
+export const LOOKUP_TABLE_ID = /^[A-Za-z0-9][A-Za-z0-9_-]*$/;
+
 export const lookupTableSchema = z.object({
-  id: z.string().min(1, "ID を入力してください"),
+  id: z
+    .string()
+    .min(1, "ID を入力してください")
+    .regex(
+      LOOKUP_TABLE_ID,
+      "ID は英数字・ハイフン・アンダースコアのみ（英数字始まり）です",
+    ),
   name: z.object({ ja: z.string(), en: z.string() }),
   description: z.string().optional(),
   keyColumns: z
