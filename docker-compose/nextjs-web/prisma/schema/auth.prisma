@@ -98,6 +98,12 @@ model User {
   notificationSetting UserNotificationSetting? @relation("UserNotificationSettingUser")
   homeSetting         UserHomeSetting?         @relation("UserHomeSettingUser")
 
+  kioskCards            KioskCard[]    @relation("KioskCardUser")
+  kioskCardsAssigned    KioskCard[]    @relation("KioskCardAssignedBy")
+  kioskCardsRevoked     KioskCard[]    @relation("KioskCardRevokedBy")
+  kioskDevicesActivated KioskDevice[]  @relation("KioskDeviceActivatedBy")
+  kioskSessions         KioskSession[] @relation("KioskSessionUser")
+
   // Employees link to the shared directory by AD objectGUID (stable across
   // username/attribute changes). Null for SYSTEM / GUEST users.
   employee EmployeeDirectory? @relation("UserEmployee", fields: [employeeId], references: [ldapGuid])

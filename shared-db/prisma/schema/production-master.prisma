@@ -31,6 +31,8 @@ model Factory {
   prqItems       PurchaseRequestItem[]       @relation("PrqItemFactory")
   productInventory  ProductInventory[]
   materialInventory MaterialInventory[]
+  kioskDevices      KioskDevice[]   @relation("KioskDeviceFactory")
+  kioskFloorMaps    KioskFloorMap[] @relation("KioskFloorMapFactory")
 
   @@map("factories")
   @@schema("app")

@@ -18,6 +18,7 @@ model File {
   designFiles      DesignFile[]   @relation("DesignFileFile")
   attachments      DocumentAttachment[] @relation("AttachmentFile")
   acceptanceSources OrderAcceptance[]   @relation("AcceptanceSourceFile")
+  kioskFloorMaps   KioskFloorMap[]      @relation("KioskFloorMapFile")
 
   @@map("files")
   @@schema("app")
