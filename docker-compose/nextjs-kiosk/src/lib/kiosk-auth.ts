@@ -1,0 +1,197 @@
+/**
+ * kiosk-auth.ts — キオスク認証のコア（Cookie + DB セッション）。server-only.
+ *
+ * 2 つの独立した信頼（詳細は shared-db/prisma/schema/kiosk.prisma）:
+ *   kiosk_device Cookie  ←→ kiosk_devices.device_token_hash（30日）
+ *   kiosk_session Cookie ←→ kiosk_sessions.id（8h ハード + 5分アイドル）
+ * Cookie にはトークン生値（256bit ランダム）、DB には SHA-256 のみ保存。
+ */
+
+import { createHash, randomBytes } from "node:crypto";
+import { cookies } from "next/headers";
+import { prisma } from "./db";
+import {
+  DEVICE_TOKEN_TTL_MS,
+  isDeviceTokenAlive,
+  isSessionAlive,
+  SESSION_TTL_MS,
+} from "./kiosk-auth-core";
+
+export const DEVICE_COOKIE = "kiosk_device";
+export const SESSION_COOKIE = "kiosk_session";
+
+export function sha256hex(value: string): string {
+  return createHash("sha256").update(value).digest("hex");
+}
+
+export function mintToken(): { raw: string; hash: string } {
+  const raw = randomBytes(32).toString("base64url");
+  return { raw, hash: sha256hex(raw) };
+}
+
+function cookieOptions(maxAgeMs: number) {
+  return {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax" as const,
+    path: "/",
+    maxAge: Math.floor(maxAgeMs / 1000),
+  };
+}
+
+// ─── 端末（デバイストラスト） ────────────────────────────────────────────────
+
+export type DeviceAuth = {
+  id: string;
+  name: string | null;
+  factoryId: number | null;
+  status: "PENDING" | "ACTIVE" | "DISABLED" | "REVOKED";
+};
+
+/** 30日デバイストークンを発行し Cookie に設定、ハッシュを返す。 */
+export async function setDeviceCookie(): Promise<{
+  hash: string;
+  expiresAt: Date;
+}> {
+  const { raw, hash } = mintToken();
+  const store = await cookies();
+  store.set(DEVICE_COOKIE, raw, cookieOptions(DEVICE_TOKEN_TTL_MS));
+  return { hash, expiresAt: new Date(Date.now() + DEVICE_TOKEN_TTL_MS) };
+}
+
+/**
+ * Cookie から信頼済み端末を解決。ACTIVE + トークン期限内のみ返す。
+ * DISABLED/REVOKED は `status` 付きで区別（エラー画面の出し分け用）。
+ */
+export async function getDevice(): Promise<
+  | { ok: true; device: DeviceAuth }
+  | {
+      ok: false;
+      reason: "NO_COOKIE" | "NOT_FOUND" | "EXPIRED" | "DISABLED" | "REVOKED";
+    }
+> {
+  const store = await cookies();
+  const raw = store.get(DEVICE_COOKIE)?.value;
+  if (!raw) return { ok: false, reason: "NO_COOKIE" };
+
+  const device = await prisma.kioskDevice.findUnique({
+    where: { deviceTokenHash: sha256hex(raw) },
+    select: {
+      id: true,
+      name: true,
+      factoryId: true,
+      status: true,
+      deviceTokenExpiresAt: true,
+    },
+  });
+  if (!device) return { ok: false, reason: "NOT_FOUND" };
+  if (device.status === "DISABLED") return { ok: false, reason: "DISABLED" };
+  if (device.status !== "ACTIVE") return { ok: false, reason: "REVOKED" };
+  if (!isDeviceTokenAlive(new Date(), device.deviceTokenExpiresAt)) {
+    return { ok: false, reason: "EXPIRED" };
+  }
+  return {
+    ok: true,
+    device: {
+      id: device.id,
+      name: device.name,
+      factoryId: device.factoryId,
+      status: device.status,
+    },
+  };
+}
+
+// ─── 人セッション ────────────────────────────────────────────────────────────
+
+export type KioskUser = {
+  sessionId: string;
+  userId: string;
+  cardId: string;
+  deviceId: string;
+  displayName: string;
+  username: string;
+  expiresAt: Date;
+  lastActivityAt: Date;
+};
+
+/** ログイン成功時: セッション行 + Cookie を作成。 */
+export async function createSession(
+  userId: string,
+  cardId: string,
+  deviceId: string,
+): Promise<void> {
+  const { raw, hash } = mintToken();
+  const now = new Date();
+  await prisma.kioskSession.create({
+    data: {
+      id: hash,
+      userId,
+      cardId,
+      deviceId,
+      expiresAt: new Date(now.getTime() + SESSION_TTL_MS),
+      lastActivityAt: now,
+    },
+  });
+  const store = await cookies();
+  store.set(SESSION_COOKIE, raw, cookieOptions(SESSION_TTL_MS));
+}
+
+/**
+ * Cookie からログイン中ユーザーを解決。ハード期限 / 5分アイドル / 失効を
+ * 毎回サーバー側で検証し、切れていたら行を失効化して null。
+ */
+export async function getSession(): Promise<KioskUser | null> {
+  const store = await cookies();
+  const raw = store.get(SESSION_COOKIE)?.value;
+  if (!raw) return null;
+
+  const session = await prisma.kioskSession.findUnique({
+    where: { id: sha256hex(raw) },
+    include: {
+      user: { select: { displayName: true, username: true, isActive: true } },
+    },
+  });
+  if (!session) return null;
+
+  const now = new Date();
+  const alive =
+    session.user.isActive &&
+    isSessionAlive(
+      now,
+      session.expiresAt,
+      session.lastActivityAt,
+      session.revokedAt,
+    );
+  if (!alive) {
+    if (!session.revokedAt) {
+      await prisma.kioskSession.update({
+        where: { id: session.id },
+        data: { revokedAt: now },
+      });
+    }
+    return null;
+  }
+  return {
+    sessionId: session.id,
+    userId: session.userId,
+    cardId: session.cardId,
+    deviceId: session.deviceId,
+    displayName: session.user.displayName,
+    username: session.user.username,
+    expiresAt: session.expiresAt,
+    lastActivityAt: session.lastActivityAt,
+  };
+}
+
+/** ログアウト: セッション失効 + Cookie 削除。 */
+export async function destroySession(): Promise<void> {
+  const store = await cookies();
+  const raw = store.get(SESSION_COOKIE)?.value;
+  if (raw) {
+    await prisma.kioskSession.updateMany({
+      where: { id: sha256hex(raw), revokedAt: null },
+      data: { revokedAt: new Date() },
+    });
+  }
+  store.delete(SESSION_COOKIE);
+}
