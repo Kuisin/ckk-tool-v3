@@ -139,7 +139,7 @@ export type KioskUser = {
   lastActivityAt: Date;
 };
 
-/** ログイン成功時: セッション行 + Cookie を作成。 */
+/** ログイン成功時: セッション行 + Cookie を作成（LOGIN ログ + モニター通知）。 */
 export async function createSession(
   userId: string,
   cardId: string,
@@ -157,8 +157,22 @@ export async function createSession(
       lastActivityAt: now,
     },
   });
+  await recordSessionLog(deviceId, "LOGIN", userId, "login");
+  wsBridge()?.notifyDeviceChanged(deviceId);
   const store = await cookies();
   store.set(SESSION_COOKIE, raw, cookieOptions(SESSION_TTL_MS));
+}
+
+/** LOGIN/LOGOUT の利用履歴を記録する（best-effort — 失敗してもフローは継続）。 */
+async function recordSessionLog(
+  deviceId: string,
+  type: "LOGIN" | "LOGOUT",
+  userId: string,
+  source: "login" | "logout" | "expired",
+): Promise<void> {
+  await prisma.kioskDeviceLog
+    .create({ data: { deviceId, type, userId, source } })
+    .catch(() => undefined);
 }
 
 /**
@@ -193,7 +207,13 @@ export async function getSession(): Promise<KioskUser | null> {
         where: { id: session.id },
         data: { revokedAt: now },
       });
-      // 暗黙失効（アイドル/期限切れ）もモニターへ即時反映
+      // 暗黙失効（アイドル/期限切れ）も履歴に残し、モニターへ即時反映
+      await recordSessionLog(
+        session.deviceId,
+        "LOGOUT",
+        session.userId,
+        "expired",
+      );
       wsBridge()?.notifyDeviceChanged(session.deviceId);
     }
     return null;
@@ -234,6 +254,7 @@ export async function destroySession(): Promise<{
     where: { id: session.id },
     data: { revokedAt: new Date() },
   });
+  await recordSessionLog(session.deviceId, "LOGOUT", session.userId, "logout");
   wsBridge()?.notifyDeviceChanged(session.deviceId);
   return { deviceId: session.deviceId, userId: session.userId };
 }

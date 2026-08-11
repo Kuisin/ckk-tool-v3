@@ -7,6 +7,7 @@
  */
 
 import { Pool } from "pg";
+import { IDLE_TIMEOUT_MS } from "./kiosk-auth-core";
 
 let pool: Pool | undefined;
 
@@ -19,11 +20,42 @@ function getPool(): Pool {
   return pool;
 }
 
+/** 現在ログイン中のユーザー（ライブセッションがなければ null）。 */
+export type PresenceUser = { userId: string; displayName: string } | null;
+
 export type PresenceDevice = {
   id: string;
   status: string;
   lastActivityAt: Date | null;
+  user: PresenceUser;
 };
+
+/**
+ * 端末の最新ライブセッション（失効なし・期限内・アイドル窓内）を 1 件選ぶ
+ * LATERAL 句。IDLE_TIMEOUT_MS（kiosk-auth-core）を秒で $1 に渡すこと。
+ */
+const LIVE_SESSION_LATERAL = `
+  LEFT JOIN LATERAL (
+    SELECT s.user_id FROM app.kiosk_sessions s
+    WHERE s.device_id = d.id
+      AND s.revoked_at IS NULL
+      AND s.expires_at > now()
+      AND s.last_activity_at > now() - make_interval(secs => $1)
+    ORDER BY s.created_at DESC
+    LIMIT 1
+  ) s ON true
+  LEFT JOIN app.users u ON u.id = s.user_id`;
+
+const IDLE_TIMEOUT_SECS = IDLE_TIMEOUT_MS / 1000;
+
+function toPresenceUser(row: {
+  user_id: string | null;
+  display_name: string | null;
+}): PresenceUser {
+  return row.user_id
+    ? { userId: row.user_id, displayName: row.display_name ?? "" }
+    : null;
+}
 
 /** upgrade 認証: トークンハッシュ → ACTIVE + 期限内の端末 id。 */
 export async function findActiveDeviceByTokenHash(
@@ -63,31 +95,70 @@ export async function touchConnectedDevices(
   );
 }
 
-/** プレゼンス対象（ACTIVE/DISABLED）の一覧。 */
+/** プレゼンス対象（ACTIVE/DISABLED）の一覧（ログイン中ユーザー付き）。 */
 export async function listPresenceDevices(): Promise<PresenceDevice[]> {
   const res = await getPool().query<{
     id: string;
     status: string;
     last_activity_at: Date | null;
+    user_id: string | null;
+    display_name: string | null;
   }>(
-    `SELECT id, status, last_activity_at FROM app.kiosk_devices
-     WHERE status IN ('ACTIVE', 'DISABLED')`,
+    `SELECT d.id, d.status, d.last_activity_at, s.user_id, u.display_name
+     FROM app.kiosk_devices d
+     ${LIVE_SESSION_LATERAL}
+     WHERE d.status IN ('ACTIVE', 'DISABLED')`,
+    [IDLE_TIMEOUT_SECS],
   );
   return res.rows.map((r) => ({
     id: r.id,
     status: r.status,
     lastActivityAt: r.last_activity_at,
+    user: toPresenceUser(r),
   }));
 }
 
-/** 1 台分の lastActivity を取得（存在しなければ null）。 */
-export async function getDeviceActivity(
-  deviceId: string,
-): Promise<{ lastActivityAt: Date | null } | null> {
-  const res = await getPool().query<{ last_activity_at: Date | null }>(
-    `SELECT last_activity_at FROM app.kiosk_devices WHERE id = $1`,
-    [deviceId],
+/** 1 台分の lastActivity + ログイン中ユーザーを取得（存在しなければ null）。 */
+export async function getDeviceActivity(deviceId: string): Promise<{
+  lastActivityAt: Date | null;
+  user: PresenceUser;
+} | null> {
+  const res = await getPool().query<{
+    last_activity_at: Date | null;
+    user_id: string | null;
+    display_name: string | null;
+  }>(
+    `SELECT d.last_activity_at, s.user_id, u.display_name
+     FROM app.kiosk_devices d
+     ${LIVE_SESSION_LATERAL}
+     WHERE d.id = $2`,
+    [IDLE_TIMEOUT_SECS, deviceId],
   );
   const row = res.rows[0];
-  return row ? { lastActivityAt: row.last_activity_at } : null;
+  return row
+    ? { lastActivityAt: row.last_activity_at, user: toPresenceUser(row) }
+    : null;
+}
+
+/**
+ * ONLINE/OFFLINE 遷移ログの冪等 insert。
+ * 端末の最新 ONLINE/OFFLINE 行と異なるときだけ 1 行書く（履歴なし = OFFLINE
+ * とみなす）ため、どの書き手（refresh/sweep/pg_cron）が何度呼んでも重複しない。
+ */
+export async function insertPresenceLog(
+  deviceId: string,
+  type: "ONLINE" | "OFFLINE",
+  source: string,
+): Promise<void> {
+  await getPool().query(
+    `INSERT INTO app.kiosk_device_logs (device_id, type, source)
+     SELECT $1, $2::app."KIOSK_DEVICE_LOG_TYPE", $3
+     WHERE COALESCE((
+       SELECT l.type::text FROM app.kiosk_device_logs l
+       WHERE l.device_id = $1 AND l.type IN ('ONLINE', 'OFFLINE')
+       ORDER BY l.id DESC
+       LIMIT 1
+     ), 'OFFLINE') IS DISTINCT FROM $2`,
+    [deviceId, type, source],
+  );
 }

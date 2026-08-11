@@ -61,7 +61,12 @@ import { formatCode, normalizeCode } from "@/lib/crockford";
 import { formatDateTime } from "@/lib/format";
 import type { KioskDeviceRow, KioskFactoryOption } from "@/lib/kiosk-admin";
 import type { ActionResult } from "@/lib/server-action";
-import { type KioskPresenceEntry, useKioskPresence } from "./useKioskPresence";
+import { KioskDeviceLogsModal } from "./KioskDeviceLogsModal";
+import {
+  type KioskPresenceEntry,
+  type KioskPresenceTransport,
+  useKioskPresence,
+} from "./useKioskPresence";
 
 // ── オンライン表示（緑/灰ドット） ────────────────────────────────────────────
 
@@ -101,6 +106,24 @@ export function resolveOnline(
   if (row.status !== "ACTIVE") return false;
   if (live) return presence.get(row.id)?.isOnline ?? false;
   return row.initialOnline;
+}
+
+/** 現在の利用者名: ライブ購読（優先）→ サーバー計算のフォールバック。 */
+export function resolveCurrentUserName(
+  row: Pick<KioskDeviceRow, "id" | "status" | "currentUserName">,
+  presence: ReadonlyMap<string, KioskPresenceEntry>,
+  live: boolean,
+): string | null {
+  if (row.status !== "ACTIVE") return null;
+  if (live) return presence.get(row.id)?.user?.displayName ?? null;
+  return row.currentUserName;
+}
+
+/** オンライン列ツールチップ: プレゼンスの供給元表示。 */
+export function transportLabel(transport: KioskPresenceTransport): string {
+  if (transport === "ws") return "ライブ (WS)";
+  if (transport === "poll") return "自動更新（30秒）";
+  return "直近5分の活動から判定";
 }
 
 // ── QR スキャナ（BarcodeDetector — 対応ブラウザのみ表示） ────────────────────
@@ -229,7 +252,7 @@ export function KioskDevicesTable({
   factoryOptions: KioskFactoryOption[];
 }) {
   const [isPending, startTransition] = useTransition();
-  const { presence, live } = useKioskPresence();
+  const { presence, live, transport } = useKioskPresence();
 
   const [search, setSearch] = useUrlStringState("q");
   const [factory, setFactory] = useUrlSelectState("factory");
@@ -244,6 +267,8 @@ export function KioskDevicesTable({
   // 編集モーダル
   const [editTarget, setEditTarget] = useState<KioskDeviceRow | null>(null);
   const [editForm, setEditForm] = useState<DeviceFormState>(EMPTY_FORM);
+  // 利用履歴モーダル
+  const [logsTarget, setLogsTarget] = useState<KioskDeviceRow | null>(null);
   // 確認モーダル（有効化・破壊的操作）
   const [confirm, setConfirm] = useState<{
     title: string;
@@ -499,10 +524,7 @@ export function KioskDevicesTable({
       sortable: true,
       render: (r) =>
         r.status === "ACTIVE" ? (
-          <Tooltip
-            label={live ? "ライブ (WS)" : "直近5分の活動から判定"}
-            withinPortal
-          >
+          <Tooltip label={transportLabel(transport)} withinPortal>
             <Box>
               <OnlineDot online={resolveOnline(r, presence, live)} />
             </Box>
@@ -513,6 +535,21 @@ export function KioskDevicesTable({
           </Text>
         ),
       sortValue: (r) => (resolveOnline(r, presence, live) ? 0 : 1),
+    },
+    {
+      key: "currentUser",
+      header: "利用者",
+      width: 140,
+      sortable: true,
+      render: (r) => {
+        const name = resolveCurrentUserName(r, presence, live);
+        return (
+          <Text c={name ? undefined : "dimmed"} size="sm" truncate>
+            {name ?? "—"}
+          </Text>
+        );
+      },
+      sortValue: (r) => resolveCurrentUserName(r, presence, live) ?? "",
     },
     {
       key: "lastActivityAt",
@@ -571,6 +608,7 @@ export function KioskDevicesTable({
     if (r.status !== "REVOKED") {
       actions.push({ label: "編集", onAction: () => openEdit(r) });
     }
+    actions.push({ label: "利用履歴", onAction: () => setLogsTarget(r) });
     if (r.status === "ACTIVE") {
       actions.push({
         label: "無効化",
@@ -837,6 +875,13 @@ export function KioskDevicesTable({
           </Text>
         </Stack>
       </ModalShell>
+
+      {/* 利用履歴モーダル */}
+      <KioskDeviceLogsModal
+        deviceId={logsTarget?.id ?? null}
+        deviceName={logsTarget?.name ?? null}
+        onClose={() => setLogsTarget(null)}
+      />
 
       {/* 有効化・破壊的操作の確認 */}
       <ConfirmModal

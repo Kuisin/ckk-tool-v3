@@ -8,7 +8,13 @@
  *   device  — キオスク端末（kiosk_device Cookie で upgrade 認証）。
  *             接続中 = オンライン。切断しても直近 5分の活動があればオンライン扱い。
  *   monitor — nextjs-web 管理 UI（KIOSK_WS_SECRET の HMAC トークンで認証）。
- *             接続時に snapshot、以後は変化分の device_status を受信。
+ *             接続時に snapshot、以後は変化分の device_status +
+ *             30s ごとの定期 snapshot（取りこぼしの自己修復・利用者の鮮度維持）。
+ *
+ * ONLINE/OFFLINE の遷移は app.kiosk_device_logs へ記録する（冪等 guarded
+ * insert — ws-db.ts insertPresenceLog）。ハートビート行は書かない。
+ *
+ * メッセージ形状は nextjs-web 側 useKioskPresence.ts と twin — 両方同時に更新。
  */
 
 import type { IncomingMessage } from "node:http";
@@ -18,7 +24,9 @@ import { ONLINE_WINDOW_MS, WS_SWEEP_INTERVAL_MS } from "./kiosk-auth-core";
 import type { KioskWsBridge } from "./ws-bridge";
 import {
   getDeviceActivity,
+  insertPresenceLog,
   listPresenceDevices,
+  type PresenceUser,
   touchConnectedDevices,
   touchDeviceActivity,
 } from "./ws-db";
@@ -28,6 +36,7 @@ type DeviceStatusMessage = {
   deviceId: string;
   isOnline: boolean;
   lastActivityAt: string | null;
+  user: PresenceUser;
 };
 
 type SnapshotMessage = {
@@ -36,17 +45,20 @@ type SnapshotMessage = {
     deviceId: string;
     isOnline: boolean;
     lastActivityAt: string | null;
+    user: PresenceUser;
   }>;
 };
 
 type TrackedSocket = WebSocket & { isAlive?: boolean };
 
+/** 前回観測した状態（変化検知・遷移ログ用）。 */
+type CachedStatus = { online: boolean; userId: string | null };
+
 export class KioskWsServer implements KioskWsBridge {
   private readonly wss = new WebSocketServer({ noServer: true });
   private readonly deviceSockets = new Map<string, Set<WebSocket>>();
   private readonly monitors = new Set<WebSocket>();
-  /** 前回ブロードキャストしたオンライン状態（変化検知用）。 */
-  private readonly statusCache = new Map<string, boolean>();
+  private readonly statusCache = new Map<string, CachedStatus>();
 
   constructor() {
     // 30s ごと: ping/pong 生存確認 + 接続中端末のハートビート + オンライン再計算
@@ -135,6 +147,27 @@ export class KioskWsServer implements KioskWsBridge {
     return Date.now() - lastActivityAt.getTime() < ONLINE_WINDOW_MS;
   }
 
+  /**
+   * 観測した状態を cache に反映し、ONLINE/OFFLINE が変わっていれば遷移ログを
+   * 書く（冪等 insert なので再起動直後の初観測でも重複しない）。
+   * 戻り値: 前回から（online か userId が）変化したか。
+   */
+  private observe(
+    deviceId: string,
+    online: boolean,
+    userId: string | null,
+    source: "ws" | "sweep",
+  ): boolean {
+    const prev = this.statusCache.get(deviceId);
+    if (!prev || prev.online !== online) {
+      insertPresenceLog(deviceId, online ? "ONLINE" : "OFFLINE", source).catch(
+        () => undefined, // ログ失敗でプレゼンス配信は止めない
+      );
+    }
+    this.statusCache.set(deviceId, { online, userId });
+    return !prev || prev.online !== online || prev.userId !== userId;
+  }
+
   /** WS 接続時に lastActivityAt を刻んでからブロードキャスト。 */
   private async touchDevice(deviceId: string): Promise<void> {
     try {
@@ -155,13 +188,20 @@ export class KioskWsServer implements KioskWsBridge {
       const online = device
         ? this.isOnline(deviceId, device.lastActivityAt)
         : false;
-      if (!opts.force && this.statusCache.get(deviceId) === online) return;
-      this.statusCache.set(deviceId, online);
+      const user = device?.user ?? null;
+      const changed = this.observe(
+        deviceId,
+        online,
+        user?.userId ?? null,
+        "ws",
+      );
+      if (!opts.force && !changed) return;
       this.broadcast({
         type: "device_status",
         deviceId,
         isOnline: online,
         lastActivityAt: device?.lastActivityAt?.toISOString() ?? null,
+        user,
       });
     } catch {
       // DB 一時障害はスキップ（次回 sweep で再計算）
@@ -169,23 +209,16 @@ export class KioskWsServer implements KioskWsBridge {
   }
 
   /**
-   * 全 ACTIVE 端末のオンライン判定を回し、変化分だけ配信。
-   * モニター不在でも常時実行する（statusCache を最新に保ち、将来の
-   * 遷移ログ書き込みの土台にする）。broadcast はモニター不在なら no-op。
+   * 全 ACTIVE 端末のオンライン判定を回して遷移をログし、モニターへ定期
+   * snapshot を配信する。モニター不在でも常時実行（遷移ログのため）。
    */
   private async sweep(): Promise<void> {
     try {
-      const devices = await listPresenceDevices();
-      for (const d of devices) {
-        const online = this.isOnline(d.id, d.lastActivityAt);
-        if (this.statusCache.get(d.id) === online) continue;
-        this.statusCache.set(d.id, online);
-        this.broadcast({
-          type: "device_status",
-          deviceId: d.id,
-          isOnline: online,
-          lastActivityAt: d.lastActivityAt?.toISOString() ?? null,
-        });
+      const message = await this.buildSnapshot("sweep");
+      if (this.monitors.size === 0) return;
+      const payload = JSON.stringify(message);
+      for (const ws of this.monitors) {
+        if (ws.readyState === WebSocket.OPEN) ws.send(payload);
       }
     } catch {
       // 次回 sweep で再試行
@@ -194,21 +227,31 @@ export class KioskWsServer implements KioskWsBridge {
 
   private async sendSnapshot(ws: WebSocket): Promise<void> {
     try {
-      const devices = await listPresenceDevices();
-      const message: SnapshotMessage = {
-        type: "snapshot",
-        devices: devices.map((d) => ({
-          deviceId: d.id,
-          isOnline: this.isOnline(d.id, d.lastActivityAt),
-          lastActivityAt: d.lastActivityAt?.toISOString() ?? null,
-        })),
-      };
-      for (const d of message.devices)
-        this.statusCache.set(d.deviceId, d.isOnline);
+      const message = await this.buildSnapshot("ws");
       if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(message));
     } catch {
       // snapshot 失敗時はクライアント側の再接続に任せる
     }
+  }
+
+  /** 全端末の現況スナップショットを構築（cache 更新 + 遷移ログ込み）。 */
+  private async buildSnapshot(
+    source: "ws" | "sweep",
+  ): Promise<SnapshotMessage> {
+    const devices = await listPresenceDevices();
+    return {
+      type: "snapshot",
+      devices: devices.map((d) => {
+        const online = this.isOnline(d.id, d.lastActivityAt);
+        this.observe(d.id, online, d.user?.userId ?? null, source);
+        return {
+          deviceId: d.id,
+          isOnline: online,
+          lastActivityAt: d.lastActivityAt?.toISOString() ?? null,
+          user: d.user,
+        };
+      }),
+    };
   }
 
   private broadcast(message: DeviceStatusMessage): void {

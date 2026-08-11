@@ -13,8 +13,29 @@ import { prisma } from "./db";
 import type { LocalizedText } from "./format";
 import { localized } from "./format";
 
-/** WS 未接続でも直近この時間内の活動があればオンライン扱い（kiosk 側と同値）。 */
+/**
+ * WS 未接続でも直近この時間内の活動があればオンライン扱い。
+ * kiosk 側 ONLINE_WINDOW_MS / IDLE_TIMEOUT_MS（kiosk-auth-core.ts）および
+ * shared-db/sql/kiosk-cron.sql の interval '5 minutes' と同値に保つこと。
+ */
 export const KIOSK_ONLINE_WINDOW_MS = 5 * 60 * 1000;
+
+/** 端末の最新ライブセッション（= 現在の利用者）の Prisma include 句。 */
+function liveSessionInclude(now: number) {
+  return {
+    where: {
+      revokedAt: null,
+      expiresAt: { gt: new Date(now) },
+      lastActivityAt: { gt: new Date(now - KIOSK_ONLINE_WINDOW_MS) },
+    },
+    orderBy: { createdAt: "desc" as const },
+    take: 1,
+    select: {
+      userId: true,
+      user: { select: { displayName: true } },
+    },
+  };
+}
 
 // ── QRカード（SY08） ─────────────────────────────────────────────────────────
 
@@ -118,6 +139,9 @@ export interface KioskDeviceRow {
   fingerprint: string | null;
   /** サーバー計算の初期オンライン判定（WS 未接続時のフォールバック）。 */
   initialOnline: boolean;
+  /** 現在ログイン中のユーザー（ライブセッション。WS 未接続時のフォールバック）。 */
+  currentUserId: string | null;
+  currentUserName: string | null;
   activatedByName: string | null;
   activatedAt: string | null;
   /** タブレットとリンクした日時（LINKED 以降）。 */
@@ -132,6 +156,7 @@ export async function listKioskDevices(): Promise<KioskDeviceRow[]> {
     include: {
       factory: { select: { code: true, name: true } },
       activatedBy: { select: { displayName: true } },
+      sessions: liveSessionInclude(now),
     },
   });
   return rows.map((r) => ({
@@ -152,11 +177,93 @@ export async function listKioskDevices(): Promise<KioskDeviceRow[]> {
       r.status === "ACTIVE" &&
       r.lastActivityAt != null &&
       now - r.lastActivityAt.getTime() < KIOSK_ONLINE_WINDOW_MS,
+    currentUserId: r.sessions[0]?.userId ?? null,
+    currentUserName: r.sessions[0]?.user.displayName ?? null,
     activatedByName: r.activatedBy?.displayName ?? null,
     activatedAt: r.activatedAt?.toISOString() ?? null,
     linkedAt: r.linkedAt?.toISOString() ?? null,
     createdAt: r.createdAt?.toISOString() ?? null,
   }));
+}
+
+// ── プレゼンス（WS 不通時の 30 秒ポーリング用の軽量版） ──────────────────────
+
+export interface KioskPresenceRow {
+  deviceId: string;
+  isOnline: boolean;
+  lastActivityAt: string | null;
+  user: { userId: string; displayName: string } | null;
+}
+
+/** 全 ACTIVE/DISABLED 端末のオンライン状態 + 利用者（ポーリングフォールバック）。 */
+export async function listKioskPresence(): Promise<KioskPresenceRow[]> {
+  const now = Date.now();
+  const rows = await prisma.kioskDevice.findMany({
+    where: { status: { in: ["ACTIVE", "DISABLED"] } },
+    select: {
+      id: true,
+      status: true,
+      lastActivityAt: true,
+      sessions: liveSessionInclude(now),
+    },
+  });
+  return rows.map((r) => ({
+    deviceId: r.id,
+    isOnline:
+      r.status === "ACTIVE" &&
+      r.lastActivityAt != null &&
+      now - r.lastActivityAt.getTime() < KIOSK_ONLINE_WINDOW_MS,
+    lastActivityAt: r.lastActivityAt?.toISOString() ?? null,
+    user: r.sessions[0]
+      ? {
+          userId: r.sessions[0].userId,
+          displayName: r.sessions[0].user.displayName,
+        }
+      : null,
+  }));
+}
+
+// ── 利用履歴（kiosk_device_logs） ────────────────────────────────────────────
+
+export interface KioskDeviceLogRow {
+  /** BigInt id の文字列表現（カーソルにも使う）。 */
+  id: string;
+  type: "ONLINE" | "OFFLINE" | "LOGIN" | "LOGOUT";
+  userName: string | null;
+  source: string | null;
+  createdAt: string;
+}
+
+export const KIOSK_DEVICE_LOG_PAGE_SIZE = 50;
+
+/** 端末の利用履歴を新しい順にページ取得（cursor = 前ページ末尾の id）。 */
+export async function listKioskDeviceLogs(
+  deviceId: string,
+  cursor?: string,
+): Promise<{ rows: KioskDeviceLogRow[]; nextCursor: string | null }> {
+  const rows = await prisma.kioskDeviceLog.findMany({
+    where: {
+      deviceId,
+      ...(cursor ? { id: { lt: BigInt(cursor) } } : {}),
+    },
+    orderBy: { id: "desc" },
+    take: KIOSK_DEVICE_LOG_PAGE_SIZE + 1,
+    include: { user: { select: { displayName: true } } },
+  });
+  const page = rows.slice(0, KIOSK_DEVICE_LOG_PAGE_SIZE);
+  return {
+    rows: page.map((r) => ({
+      id: r.id.toString(),
+      type: r.type,
+      userName: r.user?.displayName ?? null,
+      source: r.source,
+      createdAt: r.createdAt.toISOString(),
+    })),
+    nextCursor:
+      rows.length > KIOSK_DEVICE_LOG_PAGE_SIZE
+        ? (page[page.length - 1]?.id.toString() ?? null)
+        : null,
+  };
 }
 
 // ── フロアマップ ─────────────────────────────────────────────────────────────

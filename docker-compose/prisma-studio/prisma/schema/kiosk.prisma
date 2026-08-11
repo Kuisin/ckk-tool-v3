@@ -94,6 +94,7 @@ model KioskDevice {
   activatedBy User?          @relation("KioskDeviceActivatedBy", fields: [activatedById], references: [id])
   sessions    KioskSession[] @relation("KioskSessionDevice")
   linkRequests KioskLinkRequest[] @relation("KioskLinkRequestDevice")
+  logs        KioskDeviceLog[] @relation("KioskDeviceLogDevice")
 
   @@index([factoryId])
   @@index([status])
@@ -158,6 +159,45 @@ model KioskSession {
   @@index([deviceId])
   @@index([expiresAt])
   @@map("kiosk_sessions")
+  @@schema("app")
+}
+
+// ─── 端末利用ログ（プレゼンス遷移 + ログイン/ログアウト履歴） ─────────────────
+//
+// 書き込み元:
+//   ONLINE/OFFLINE — kiosk の WS サーバー（ws-db.ts の冪等 guarded insert のみ。
+//                    ハートビート行は書かない — 遷移時だけ 1 行）+ pg_cron の
+//                    バックストップ（kiosk アプリ全停止時のオフライン検知。
+//                    shared-db/sql/kiosk-cron.sql）
+//   LOGIN/LOGOUT   — kiosk の createSession/destroySession/getSession（暗黙失効）、
+//                    nextjs-web の unlinkDevice/revokeDevice（管理者失効）、
+//                    pg_cron の stale セッション掃除
+// SY09 の「利用履歴」モーダルが表示する。
+
+enum KioskDeviceLogType {
+  ONLINE
+  OFFLINE
+  LOGIN
+  LOGOUT
+
+  @@map("KIOSK_DEVICE_LOG_TYPE")
+  @@schema("app")
+}
+
+model KioskDeviceLog {
+  id        BigInt             @id @default(autoincrement())
+  deviceId  String             @map("device_id") @db.Uuid
+  type      KioskDeviceLogType
+  userId    String?            @map("user_id") @db.Uuid // LOGIN/LOGOUT のみ
+  source    String? // "ws" | "sweep" | "pg_cron" | "login" | "logout" | "expired" | "admin"
+  createdAt DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  device KioskDevice @relation("KioskDeviceLogDevice", fields: [deviceId], references: [id], onDelete: Cascade)
+  user   User?       @relation("KioskDeviceLogUser", fields: [userId], references: [id])
+
+  @@index([deviceId, createdAt])
+  @@index([createdAt])
+  @@map("kiosk_device_logs")
   @@schema("app")
 }
 
