@@ -151,17 +151,27 @@ export interface KioskDeviceRow {
   createdAt: string | null;
 }
 
-export async function listKioskDevices(): Promise<KioskDeviceRow[]> {
-  const now = Date.now();
-  const rows = await prisma.kioskDevice.findMany({
-    orderBy: [{ createdAt: "desc" }],
-    include: {
-      factory: { select: { code: true, name: true } },
-      activatedBy: { select: { displayName: true } },
-      sessions: liveSessionInclude(now),
-    },
-  });
-  return rows.map((r) => ({
+function deviceInclude(now: number) {
+  return {
+    factory: { select: { code: true, name: true } },
+    activatedBy: { select: { displayName: true } },
+    sessions: liveSessionInclude(now),
+  };
+}
+
+type DeviceWithIncludes = NonNullable<
+  Awaited<
+    ReturnType<
+      typeof prisma.kioskDevice.findUnique<{
+        where: { id: string };
+        include: ReturnType<typeof deviceInclude>;
+      }>
+    >
+  >
+>;
+
+function toDeviceRow(r: DeviceWithIncludes, now: number): KioskDeviceRow {
+  return {
     id: r.id,
     name: r.name,
     location: r.location,
@@ -186,7 +196,71 @@ export async function listKioskDevices(): Promise<KioskDeviceRow[]> {
     activatedAt: r.activatedAt?.toISOString() ?? null,
     linkedAt: r.linkedAt?.toISOString() ?? null,
     createdAt: r.createdAt?.toISOString() ?? null,
-  }));
+  };
+}
+
+export async function listKioskDevices(): Promise<KioskDeviceRow[]> {
+  const now = Date.now();
+  const rows = await prisma.kioskDevice.findMany({
+    orderBy: [{ createdAt: "desc" }],
+    include: deviceInclude(now),
+  });
+  return rows.map((r) => toDeviceRow(r, now));
+}
+
+/** 端末詳細ページ用: 1 台分（存在しなければ null）。 */
+export async function getKioskDevice(
+  id: string,
+): Promise<KioskDeviceRow | null> {
+  const now = Date.now();
+  const row = await prisma.kioskDevice.findUnique({
+    where: { id },
+    include: deviceInclude(now),
+  });
+  return row ? toDeviceRow(row, now) : null;
+}
+
+/** 最近この端末を使ったユーザー（LOGIN ログの集計・最終ログイン降順）。 */
+export interface KioskDeviceRecentUser {
+  userId: string;
+  displayName: string;
+  username: string;
+  lastLoginAt: string;
+  loginCount: number;
+}
+
+export async function listRecentDeviceUsers(
+  deviceId: string,
+  limit = 12,
+): Promise<KioskDeviceRecentUser[]> {
+  const groups = await prisma.kioskDeviceLog.groupBy({
+    by: ["userId"],
+    where: { deviceId, type: "LOGIN", userId: { not: null } },
+    _max: { createdAt: true },
+    _count: { _all: true },
+    orderBy: { _max: { createdAt: "desc" } },
+    take: limit,
+  });
+  const ids = groups.map((g) => g.userId).filter((v): v is string => v != null);
+  if (ids.length === 0) return [];
+  const users = await prisma.user.findMany({
+    where: { id: { in: ids } },
+    select: { id: true, displayName: true, username: true },
+  });
+  const byId = new Map(users.map((u) => [u.id, u]));
+  return groups.flatMap((g) => {
+    const user = g.userId ? byId.get(g.userId) : null;
+    if (!user || !g._max.createdAt) return [];
+    return [
+      {
+        userId: user.id,
+        displayName: user.displayName,
+        username: user.username,
+        lastLoginAt: g._max.createdAt.toISOString(),
+        loginCount: g._count._all,
+      },
+    ];
+  });
 }
 
 // ── プレゼンス（WS 不通時の 30 秒ポーリング用の軽量版） ──────────────────────

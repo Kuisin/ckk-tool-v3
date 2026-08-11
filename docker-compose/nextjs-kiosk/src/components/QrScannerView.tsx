@@ -66,6 +66,16 @@ export function QrScannerView({ onScan, paused = false }: Props) {
 
     scanner
       .start()
+      .catch(async (e: unknown) => {
+        // 保存済みカメラ id は権限リセットやブラウザ再起動で変わることがある。
+        // 消えた id での起動失敗は既定（背面カメラ）でリトライする。
+        if (localStorage.getItem(CAMERA_KEY)) {
+          localStorage.removeItem(CAMERA_KEY);
+          await scanner.setCamera("environment");
+          return scanner.start();
+        }
+        throw e;
+      })
       .then(() => {
         setStarting(false);
         return QrScanner.listCameras(true);
@@ -84,7 +94,13 @@ export function QrScannerView({ onScan, paused = false }: Props) {
     };
   }, []);
 
+  // 一時停止/再開。初回マウントでは何もしない — ここで start() を呼ぶと
+  // 直上の初期化中の start() と並走して video.play() が中断され、
+  // カメラ切替まで黒画面のままになることがある。
+  const pausedRef = useRef(paused);
   useEffect(() => {
+    if (pausedRef.current === paused) return;
+    pausedRef.current = paused;
     const scanner = scannerRef.current;
     if (!scanner) return;
     if (paused) {
