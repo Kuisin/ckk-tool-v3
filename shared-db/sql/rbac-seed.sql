@@ -26,7 +26,8 @@ INSERT INTO app.permissions (code, display_name, description) VALUES
   ('invoice',         '{"ja":"請求書","en":"Invoice"}',               '{"ja":"","en":""}'),
   ('billing_closing', '{"ja":"締日処理","en":"Billing closing"}',     '{"ja":"","en":""}'),
   ('master',          '{"ja":"マスタ管理","en":"Master data"}',       '{"ja":"","en":""}'),
-  ('system',          '{"ja":"システム管理","en":"System admin"}',    '{"ja":"アプリ設定・ファイル管理・操作履歴","en":""}')
+  ('system',          '{"ja":"システム管理","en":"System admin"}',    '{"ja":"アプリ設定・ファイル管理・操作履歴","en":""}'),
+  ('kiosk',           '{"ja":"キオスク管理","en":"Kiosk admin"}',     '{"ja":"QRカード・共有端末の管理","en":""}')
 ON CONFLICT (code) DO NOTHING;
 
 -- ─── roles ───────────────────────────────────────────────────────────────────
@@ -46,13 +47,13 @@ FROM app.roles r CROSS JOIN app.permissions p
 WHERE r.rolename = 'admin'
 ON CONFLICT DO NOTHING;
 
--- staff: system 以外の業務コードに実務アクション（APPROVE は承認グループ所属が実ゲート）
+-- staff: system / kiosk 以外の業務コードに実務アクション（APPROVE は承認グループ所属が実ゲート）
 INSERT INTO app.role_permission_relation (role_id, permission_code, action, scope)
 SELECT r.id, p.code, a.action::app."ACTION", 'ALL'::app."SCOPE"
 FROM app.roles r
 CROSS JOIN app.permissions p
 CROSS JOIN (VALUES ('READ'),('CREATE'),('UPDATE'),('DELETE'),('EXPORT'),('APPROVE')) AS a(action)
-WHERE r.rolename = 'staff' AND p.code <> 'system'
+WHERE r.rolename = 'staff' AND p.code NOT IN ('system', 'kiosk')
 ON CONFLICT DO NOTHING;
 
 -- ─── demo ユーザーへのロール割当 ─────────────────────────────────────────────

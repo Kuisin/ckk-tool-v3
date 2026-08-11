@@ -1,0 +1,157 @@
+// キオスク（共有端末）認証 — 工場フロアの共有タブレット用。
+//
+// 2 つの独立した信頼:
+//   kiosk_devices  = 「この端末は信頼済みキオスク」（登録コードで管理者が有効化、
+//                    30日デバイストークン。Cookie はトークン生値、DB はハッシュのみ）
+//   kiosk_sessions = 「この人がサインイン中」（QRカード + PIN。8h ハード期限 +
+//                    5分アイドル。app.users に解決するので user_permissions /
+//                    監査の actor がそのまま使える）
+// QRカード（kiosk_cards）は app.users への割当。PIN は初回ログインで必須設定、
+// last_used_at が 3 日以内ならスキャンのみでログイン、超えたら PIN 再入力。
+// 端末は工場（factories）単位で管理し、フロアマップ（kiosk_floor_maps）上に
+// map_x/map_y（%座標）でピン配置して所在を可視化する。
+
+enum KioskDeviceStatus {
+  PENDING // 登録コード発行済・有効化待ち
+  ACTIVE // 有効
+  DISABLED // 一時無効（再有効化可）
+  REVOKED // 取り消し（トークン破棄・再登録が必要）
+
+  @@map("KIOSK_DEVICE_STATUS")
+  @@schema("app")
+}
+
+enum KioskCardStatus {
+  UNASSIGNED // 発行済・未割当
+  ASSIGNED // 割当済（ログイン可）
+  SUSPENDED // 一時停止
+  REVOKED // 取り消し
+
+  @@map("KIOSK_CARD_STATUS")
+  @@schema("app")
+}
+
+// ─── フロアマップ（工場ごとの階/エリア。file は任意の図面画像） ────────────────
+
+model KioskFloorMap {
+  id        String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  factoryId Int     @map("factory_id")
+  name      String // 例: 1F 加工場
+  fileId    String? @map("file_id") @db.Uuid
+  sortOrder Int     @default(0) @map("sort_order")
+  isActive  Boolean @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  factory Factory @relation("KioskFloorMapFactory", fields: [factoryId], references: [id])
+  file    File?   @relation("KioskFloorMapFile", fields: [fileId], references: [id])
+  devices KioskDevice[] @relation("KioskDeviceFloorMap")
+
+  @@index([factoryId])
+  @@map("kiosk_floor_maps")
+  @@schema("app")
+}
+
+// ─── 端末（共有タブレット） ──────────────────────────────────────────────────
+
+model KioskDevice {
+  id       String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name     String?
+  location String?
+  // 有効化時に管理者が設定（PENDING の間は null）
+  factoryId Int? @map("factory_id")
+  // フロアマップ上のピン（%座標。null = 未配置）
+  floorMapId String?  @map("floor_map_id") @db.Uuid
+  mapX       Decimal? @map("map_x") @db.Decimal(5, 2)
+  mapY       Decimal? @map("map_y") @db.Decimal(5, 2)
+
+  status KioskDeviceStatus @default(PENDING)
+
+  // 登録コード（Crockford 12桁、有効化で null 化。5分期限）
+  registrationCode      String?   @unique @map("registration_code")
+  registrationExpiresAt DateTime? @map("registration_expires_at") @db.Timestamptz(6)
+
+  // デバイストークン（Cookie は生値、DB は SHA-256 のみ。30日）
+  deviceTokenHash      String?   @unique @map("device_token_hash")
+  deviceTokenExpiresAt DateTime? @map("device_token_expires_at") @db.Timestamptz(6)
+
+  // 参考情報のみ（認証のフォールバックには使わない）
+  userAgent     String? @map("user_agent")
+  lastIpAddress String? @map("last_ip_address")
+
+  activatedById  String?   @map("activated_by") @db.Uuid
+  activatedAt    DateTime? @map("activated_at") @db.Timestamptz(6)
+  lastActivityAt DateTime? @map("last_activity_at") @db.Timestamptz(6)
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  factory     Factory?       @relation("KioskDeviceFactory", fields: [factoryId], references: [id])
+  floorMap    KioskFloorMap? @relation("KioskDeviceFloorMap", fields: [floorMapId], references: [id])
+  activatedBy User?          @relation("KioskDeviceActivatedBy", fields: [activatedById], references: [id])
+  sessions    KioskSession[] @relation("KioskSessionDevice")
+
+  @@index([factoryId])
+  @@index([status])
+  @@map("kiosk_devices")
+  @@schema("app")
+}
+
+// ─── QRカード（従業員に割当。id = Crockford 16桁 = QR ペイロードの secret） ───
+
+model KioskCard {
+  id     String          @id
+  userId String?         @map("user_id") @db.Uuid
+  status KioskCardStatus @default(UNASSIGNED)
+
+  // PIN（scrypt salt:hash hex — nextjs-web src/lib/password.ts と同形式）
+  pinHash           String?   @map("pin_hash")
+  pinSetAt          DateTime? @map("pin_set_at") @db.Timestamptz(6)
+  pinFailedAttempts Int       @default(0) @map("pin_failed_attempts")
+  pinLockedUntil    DateTime? @map("pin_locked_until") @db.Timestamptz(6)
+  pinLastVerifiedAt DateTime? @map("pin_last_verified_at") @db.Timestamptz(6)
+
+  // 3日ルールの基準（スキャンのみログイン可否）。ログイン成功ごとに更新
+  lastUsedAt DateTime? @map("last_used_at") @db.Timestamptz(6)
+  useCount   Int       @default(0) @map("use_count")
+
+  assignedAt   DateTime? @map("assigned_at") @db.Timestamptz(6)
+  assignedById String?   @map("assigned_by") @db.Uuid
+  revokedAt    DateTime? @map("revoked_at") @db.Timestamptz(6)
+  revokedById  String?   @map("revoked_by") @db.Uuid
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  user       User? @relation("KioskCardUser", fields: [userId], references: [id])
+  assignedBy User? @relation("KioskCardAssignedBy", fields: [assignedById], references: [id])
+  revokedBy  User? @relation("KioskCardRevokedBy", fields: [revokedById], references: [id])
+  sessions   KioskSession[] @relation("KioskSessionCard")
+
+  // 「ASSIGNED は 1 ユーザー 1 枚」は migration の手書き部分 partial unique index
+  // (user_id WHERE status = 'ASSIGNED') で担保 — Prisma では表現不可。
+  @@index([userId])
+  @@map("kiosk_cards")
+  @@schema("app")
+}
+
+// ─── 人のセッション（id = セッショントークンの SHA-256 hex） ─────────────────
+
+model KioskSession {
+  id             String    @id
+  userId         String    @map("user_id") @db.Uuid
+  cardId         String    @map("card_id")
+  deviceId       String    @map("device_id") @db.Uuid
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  expiresAt      DateTime  @map("expires_at") @db.Timestamptz(6) // 8h ハード期限
+  lastActivityAt DateTime  @map("last_activity_at") @db.Timestamptz(6) // 5分アイドル窓
+  revokedAt      DateTime? @map("revoked_at") @db.Timestamptz(6)
+
+  user   User        @relation("KioskSessionUser", fields: [userId], references: [id])
+  card   KioskCard   @relation("KioskSessionCard", fields: [cardId], references: [id])
+  device KioskDevice @relation("KioskSessionDevice", fields: [deviceId], references: [id])
+
+  @@index([userId])
+  @@index([deviceId])
+  @@index([expiresAt])
+  @@map("kiosk_sessions")
+  @@schema("app")
+}
