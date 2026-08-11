@@ -7,7 +7,8 @@ import { theme } from "./theme";
 
 export function Providers({ children }: { children: ReactNode }) {
   return (
-    <MantineProvider defaultColorScheme="light" theme={theme}>
+    // キオスクはダークネイビー固定（theme.ts 参照）— web アプリとの識別用
+    <MantineProvider forceColorScheme="dark" theme={theme}>
       <Notifications position="top-center" />
       {children}
     </MantineProvider>

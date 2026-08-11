@@ -21,7 +21,6 @@ import {
   Title,
 } from "@mantine/core";
 import { IconRefresh } from "@tabler/icons-react";
-import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { formatCode } from "@/lib/crockford";
 import { qrSvg } from "@/lib/qr";
@@ -36,7 +35,6 @@ type SetupState =
   | { phase: "error"; message: string };
 
 export default function SetupPage() {
-  const router = useRouter();
   const [state, setState] = useState<SetupState>({ phase: "loading" });
   const [now, setNow] = useState(() => Date.now());
   const startedRef = useRef(false);
@@ -53,7 +51,7 @@ export default function SetupPage() {
           body: JSON.stringify({ deviceId: savedId }),
         });
         if (res.ok) {
-          router.replace("/login");
+          window.location.replace("/login");
           return;
         }
       }
@@ -66,7 +64,7 @@ export default function SetupPage() {
         expiresAt?: string;
       };
       if (data.registered) {
-        router.replace("/login");
+        window.location.replace("/login");
         return;
       }
       localStorage.setItem(DEVICE_ID_KEY, data.deviceId);
@@ -79,7 +77,7 @@ export default function SetupPage() {
     } catch {
       setState({ phase: "error", message: "サーバーに接続できません" });
     }
-  }, [router]);
+  }, []);
 
   useEffect(() => {
     if (startedRef.current) return;
@@ -99,7 +97,7 @@ export default function SetupPage() {
         });
         const data = (await res.json()) as { status: string };
         if (data.status === "CONFIRMED") {
-          router.replace("/login");
+          window.location.replace("/login");
         } else if (data.status === "ALREADY_CONFIRMED") {
           // トークン発行済みなのに Cookie が無い → 再有効化
           const re = await fetch("/api/kiosk/setup/reactivate", {
@@ -107,7 +105,7 @@ export default function SetupPage() {
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ deviceId: state.deviceId }),
           });
-          if (re.ok) router.replace("/login");
+          if (re.ok) window.location.replace("/login");
         }
       } catch {
         // 通信断は次のポーリングで再試行
@@ -121,18 +119,18 @@ export default function SetupPage() {
       clearInterval(poll);
       clearInterval(tick);
     };
-  }, [state, router]);
+  }, [state]);
 
   if (state.phase === "loading") {
     return (
-      <Center h="100dvh">
+      <Center mih="calc(100dvh - 48px)">
         <Loader size="lg" />
       </Center>
     );
   }
 
   return (
-    <Center bg="var(--mantine-color-dark-7)" h="100dvh" p="md">
+    <Center mih="calc(100dvh - 48px)" p="md">
       <Paper maw={480} p="xl" radius="md" w="100%">
         <Stack align="center" gap="md">
           <Title order={2}>専用端末設定</Title>

@@ -30,7 +30,7 @@ function DeviceErrorContent() {
         : "この端末は利用できません。管理者に連絡してください。";
 
   return (
-    <Center bg="var(--mantine-color-dark-7)" h="100dvh" p="md">
+    <Center mih="calc(100dvh - 48px)" p="md">
       <Paper maw={480} p="xl" radius="md" w="100%">
         <Stack align="center" gap="md">
           <IconDeviceTabletX color="var(--mantine-color-red-6)" size={64} />
