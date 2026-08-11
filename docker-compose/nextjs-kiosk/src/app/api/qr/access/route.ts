@@ -4,8 +4,14 @@
  *   端末 Cookie 有効+ACTIVE → カード存在 → ASSIGNED → ユーザー有効 →
  *     1. PIN 未設定        → PIN_SETUP_REQUIRED（単回チケット）
  *     2. ロック中          → LOCKED
- *     3. 3日以内に使用     → セッション作成 → OK
+ *     3. **この端末で** 48h 以内に使用 かつ PIN 検証から 2 週間以内
+ *        → セッション作成 → OK（スキャンのみ）
  *     4. それ以外          → PIN_REQUIRED（単回チケット）
+ *
+ * 端末単位の 48h 判定 = 同カード×同端末の最新セッションの活動時刻
+ * （kiosk_sessions）。初めて使う端末では必ず PIN（カード盗難時に別端末で
+ * スキャンだけで入られるのを防ぐ）。加えて活動が続いていても 2 週間ごとに
+ * 必ず PIN を再要求する（needsPinVerify — kiosk-auth-core.ts）。
  *
  * カードの存在有無を漏らさないため、失敗系は同一メッセージの CARD_INVALID に
  * 集約する（SUSPENDED だけは利用者向けに区別 — 管理者に連絡させるため）。
@@ -93,8 +99,19 @@ export async function POST(req: Request) {
       { status: 429 },
     );
   }
-  // 3. 3日以内の使用 → スキャンのみでログイン
-  if (!needsPinVerify(now, card.lastUsedAt)) {
+  // 3. この端末で 48h 以内に使用 + PIN 検証 2 週間以内 → スキャンのみでログイン
+  const lastDeviceSession = await prisma.kioskSession.findFirst({
+    where: { cardId: card.id, deviceId: device.device.id },
+    orderBy: { lastActivityAt: "desc" },
+    select: { lastActivityAt: true },
+  });
+  if (
+    !needsPinVerify(
+      now,
+      lastDeviceSession?.lastActivityAt ?? null,
+      card.pinLastVerifiedAt,
+    )
+  ) {
     await prisma.kioskCard.update({
       where: { id: card.id },
       data: { lastUsedAt: now, useCount: { increment: 1 } },
@@ -102,7 +119,7 @@ export async function POST(req: Request) {
     await createSession(card.user.id, card.id, device.device.id);
     return NextResponse.json({ state: "OK" });
   }
-  // 4. PIN 再入力
+  // 4. PIN 再入力（この端末で 48h 超過 / 初めて使う端末 / 2 週間経過）
   const ticket = issueTicket(card.id, device.device.id, "PIN_VERIFY");
   return NextResponse.json({ state: "PIN_REQUIRED", ticket });
 }

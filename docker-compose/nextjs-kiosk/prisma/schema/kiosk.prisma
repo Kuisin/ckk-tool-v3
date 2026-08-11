@@ -6,8 +6,10 @@
 //   kiosk_sessions = 「この人がサインイン中」（QRカード + PIN。8h ハード期限 +
 //                    5分アイドル。app.users に解決するので user_permissions /
 //                    監査の actor がそのまま使える）
-// QRカード（kiosk_cards）は app.users への割当。PIN は初回ログインで必須設定、
-// last_used_at が 3 日以内ならスキャンのみでログイン、超えたら PIN 再入力。
+// QRカード（kiosk_cards）は app.users への割当。PIN は初回ログインで必須設定。
+// スキャンのみログインは「**その端末で** 48 時間以内の使用実績（kiosk_sessions）
+// がある かつ 最後の PIN 検証（pin_last_verified_at）から 2 週間以内」のときのみ
+// — 初めて使う端末では必ず PIN、活動が続いても 2 週間ごとに必ず PIN 再入力。
 // 端末は工場（factories）単位で管理し、フロアマップ（kiosk_floor_maps）上に
 // map_x/map_y（%座標）でピン配置して所在を可視化する。
 

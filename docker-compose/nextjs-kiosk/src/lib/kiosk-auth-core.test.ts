@@ -10,7 +10,8 @@ import {
   nextPinFailureState,
   PIN_LOCK_MS,
   PIN_MAX_ATTEMPTS,
-  PIN_REVERIFY_AFTER_MS,
+  PIN_REVERIFY_DEVICE_IDLE_MS,
+  PIN_REVERIFY_MAX_MS,
 } from "./kiosk-auth-core";
 
 const T0 = new Date("2026-08-11T00:00:00Z");
@@ -43,15 +44,25 @@ describe("idleRemainingMs", () => {
   });
 });
 
-describe("needsPinVerify (3日ルール)", () => {
-  it("未使用カードは要 PIN", () => {
-    expect(needsPinVerify(T0, null)).toBe(true);
+describe("needsPinVerify (端末別 48h + 2 週間キャップ)", () => {
+  it("この端末で未使用（初めての端末）は要 PIN", () => {
+    expect(needsPinVerify(T0, null, T0)).toBe(true);
   });
-  it("3日未満はスキャンのみ", () => {
-    expect(needsPinVerify(at(PIN_REVERIFY_AFTER_MS - 1), T0)).toBe(false);
+  it("端末使用 48h 以内 + PIN 検証 2 週間以内はスキャンのみ", () => {
+    expect(needsPinVerify(at(PIN_REVERIFY_DEVICE_IDLE_MS - 1), T0, T0)).toBe(
+      false,
+    );
   });
-  it("ちょうど 72h で要 PIN", () => {
-    expect(needsPinVerify(at(PIN_REVERIFY_AFTER_MS), T0)).toBe(true);
+  it("この端末でちょうど 48h 未使用で要 PIN", () => {
+    expect(needsPinVerify(at(PIN_REVERIFY_DEVICE_IDLE_MS), T0, T0)).toBe(true);
+  });
+  it("活動が続いていても PIN 検証から 2 週間で要 PIN", () => {
+    const now = at(PIN_REVERIFY_MAX_MS);
+    const recentUse = at(PIN_REVERIFY_MAX_MS - 60_000); // 1 分前に使用
+    expect(needsPinVerify(now, recentUse, T0)).toBe(true);
+  });
+  it("PIN 検証記録なしは要 PIN", () => {
+    expect(needsPinVerify(at(60_000), T0, null)).toBe(true);
   });
 });
 
