@@ -64,6 +64,28 @@ services:
     networks:
       - default
 
+  # Stable ingress names for nextjs-kiosk (Coolify apps; per-deploy container names).
+  # cloudflared/nginx target kiosk:3000 / kiosk-main:3000 → host ports 3006 (dev) / 3007 (main).
+  kiosk:
+    image: alpine/socat:1.8.0.0
+    container_name: kiosk-relay-dev
+    restart: unless-stopped
+    command: tcp-listen:3000,fork,reuseaddr tcp:host.docker.internal:3006
+    extra_hosts:
+      - host.docker.internal:host-gateway
+    networks:
+      - default
+
+  kiosk-main:
+    image: alpine/socat:1.8.0.0
+    container_name: kiosk-relay-main
+    restart: unless-stopped
+    command: tcp-listen:3000,fork,reuseaddr tcp:host.docker.internal:3007
+    extra_hosts:
+      - host.docker.internal:host-gateway
+    networks:
+      - default
+
   # HTML → PDF rendering (Chromium). Internal only; reached at http://gotenberg:3000.
   gotenberg:
     image: gotenberg/gotenberg:8.17

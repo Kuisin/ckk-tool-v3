@@ -14,6 +14,8 @@ Project `ckk` — dev app in the `development` environment, main in `production`
 | `nextjs-web-main` | production | `main` | `:3005` | `ckk.kai-lab.net` | cloudflared/nginx → `web-main:3000` relay → `:3005` |
 | `admintools-dev` | production | `dev` | `:8090` | `admin-dev.ckk-tool.co.jp` (Cloudflare **Access**) | tunnel → `admin-dev:8000` relay → `:8090` |
 | `admintools-main` | production | `main` | `:8091` | `admin.ckk-tool.co.jp` (Cloudflare **Access**) | tunnel → `admin:8000` relay → `:8091` |
+| `nextjs-kiosk-dev` | development | `dev` | `:3006` | `ckk-kiosk-dev.kai-lab.net` | cloudflared/nginx → `kiosk:3000` relay → `:3006` |
+| `nextjs-kiosk-main` | production | `main` | `:3007` | `ckk-kiosk.kai-lab.net` | cloudflared/nginx → `kiosk-main:3000` relay → `:3007` |
 
 `admintools` (mail-account mgmt + DB/storage **restore** tool) mirrors nextjs-web:
 a **dev** app (branch `dev`) and a **prod** app (branch `main`), both Coolify-built
@@ -25,6 +27,15 @@ gated by **Cloudflare Access** (allow-list) — never remove that. Cloudflared r
 each via the `admin-dev` / `admin` socat relays in the `nextjs-web` stack (host
 ports 8090/8091, stable across Coolify's per-deploy container names).
 Deploy/rollback: `./deploy.sh admin-dev [<sha>]` / `./deploy.sh admin-main [<sha>]`.
+
+`nextjs-kiosk` (共有キオスク端末アプリ — QR カードログイン) mirrors nextjs-web:
+dev/main apps built from base dir `/docker-compose/nextjs-kiosk`, registered by
+the idempotent `add-kiosk-apps.sh` (also generates the shared `KIOSK_WS_SECRET`
+into `/data/coolify/source/.kiosk-ws-secret` and injects it + each
+`NEXT_PUBLIC_KIOSK_WS_URL` into the nextjs-web apps for the admin monitor WS).
+The app serves WebSocket upgrades on `/api/kiosk/ws` — the socat relays pass TCP
+through unchanged and both cloudflared and the nginx vhosts handle the upgrade.
+Deploy/rollback: `./deploy.sh kiosk-dev [<sha>]` / `./deploy.sh kiosk-main [<sha>]`.
 
 - Coolify UI/API: `https://deploy.ckk-tool.co.jp` (LAN via nginx-proxy; public via
   cloudflared once the tunnel hostnames are added — put a Cloudflare Access policy
