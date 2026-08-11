@@ -1,0 +1,258 @@
+// 素材・製品マスタ (_specs/tables.md §Master Data).
+//
+// 材種コード: [A-Z][0-9]{2}[ABC-Z][0-9]{4} 例: B01B0001
+//   = manufacturer(1) + grade(2, メーカー内) + shape(1) + kind(4, メーカー×材種×形状内連番)
+// 素材コード: [材種コード]-[A-C][0-9]{3}-[0-9]{3} 例: B01B0001-A083-330
+//   = 材種 + surface_finish(1) + diameter(3 = 径mm×10) + length(3 = 全長mm)
+// 採番表 ver1.2 のマスタ値は migration でシード、追加は 採番構成 画面 (MS0C)。
+// レガシー取込の材種 (uuid5 id・フリーテキスト) は構成コード NULL の「未変換」
+// プレースホルダとして共存する。
+
+// ─── 材種コード構成要素 ─────────────────────────────────────────────
+
+// メーカー: 1文字目 [A-Z]（A=アクシス, B=AFC, C=GESAC, D=Ceratizit）
+model MaterialManufacturer {
+  code      String   @id @db.Char(1)
+  name      Json
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  grades        MaterialManufacturerGrade[]
+  materialTypes MaterialType[]
+
+  @@map("material_manufacturers")
+  @@schema("app")
+}
+
+// メーカー材種: 2–3文字目 [0-9]{2}（メーカー内で一意。例: AFC 01=K10UF）
+model MaterialManufacturerGrade {
+  manufacturerCode String   @map("manufacturer_code") @db.Char(1)
+  code             String   @db.Char(2)
+  name             Json
+  isActive         Boolean  @default(true) @map("is_active")
+  createdAt        DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  manufacturer  MaterialManufacturer @relation(fields: [manufacturerCode], references: [code])
+  materialTypes MaterialType[]
+
+  @@id([manufacturerCode, code])
+  @@map("material_manufacturer_grades")
+  @@schema("app")
+}
+
+// 形状: 4文字目 [ABC-Z]（A=通常, B=OH, C=円筒）
+model MaterialShape {
+  code      String   @id @db.Char(1)
+  name      Json
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  kinds         MaterialKind[]
+  materialTypes MaterialType[]
+
+  @@map("material_shapes")
+  @@schema("app")
+}
+
+// 種類（形状別）: 採番表の OH/通常/円筒 種類表。素材コードには含めず FK 相当で保持
+model MaterialKind {
+  shapeCode String   @map("shape_code") @db.Char(1)
+  code      String   @db.Char(2)
+  name      Json
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  shape MaterialShape @relation(fields: [shapeCode], references: [code])
+
+  @@id([shapeCode, code])
+  @@map("material_kinds")
+  @@schema("app")
+}
+
+// ─── 素材コード構成要素 ─────────────────────────────────────────────
+
+// 黒皮・研磨: 素材コード中間部 1文字目（A=黒皮, B=研磨, C=研磨済黒皮）
+model MaterialSurfaceFinish {
+  code      String   @id @db.Char(1)
+  name      Json
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  materials  Material[]
+  typePrices MaterialTypePrice[]
+  estimates  Estimate[]
+
+  @@map("material_surface_finishes")
+  @@schema("app")
+}
+
+// 直径: [0-9]{3} = TEXT(直径mm × 10, '000')。例: 8.3mm → 083
+model MaterialDiameter {
+  code        String   @id @db.Char(3)
+  diameterMm  Decimal  @map("diameter_mm") @db.Decimal(8, 3)
+  displayName Json?    @map("display_name")
+  isActive    Boolean  @default(true) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  materials  Material[]
+  typePrices MaterialTypePrice[]
+  estimates  Estimate[]
+
+  @@map("material_diameters")
+  @@schema("app")
+}
+
+// 全長＋カスタム: [0-9]{3} = TEXT(全長mm, '000')。例: 330mm → 330
+model MaterialLengthVariant {
+  code        String   @id @db.Char(3)
+  lengthMm    Decimal  @map("length_mm") @db.Decimal(10, 3)
+  customLabel String?  @map("custom_label")
+  displayName Json?    @map("display_name")
+  notes       String?
+  isActive    Boolean  @default(true) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  materials Material[]
+
+  @@map("material_length_variants")
+  @@schema("app")
+}
+
+// ─── 材種 ───────────────────────────────────────────────────────────
+
+// 内部 id は連番、表示コード（材種コード）は code。構成コードが NULL の行は
+// レガシー未変換プレースホルダ（code も NULL、legacy_key に取込元 uuid5）。
+model MaterialType {
+  id               Int      @id @default(autoincrement())
+  code             String?  @unique
+  legacyKey        String?  @unique @map("legacy_key")
+  manufacturerCode String?  @map("manufacturer_code") @db.Char(1)
+  gradeCode        String?  @map("grade_code") @db.Char(2)
+  shapeCode        String?  @map("shape_code") @db.Char(1)
+  kindCode         String?  @map("kind_code") @db.Char(4)
+  name             Json
+  description      Json?
+  isActive         Boolean  @default(true) @map("is_active")
+  createdAt        DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  manufacturer MaterialManufacturer?      @relation(fields: [manufacturerCode], references: [code])
+  grade        MaterialManufacturerGrade? @relation(fields: [manufacturerCode, gradeCode], references: [manufacturerCode, code])
+  shape        MaterialShape?             @relation(fields: [shapeCode], references: [code])
+
+  materials      Material[]
+  productsByType Product[] @relation("ProductMaterialType")
+  prices         MaterialTypePrice[]
+  estimates      Estimate[]
+
+  @@unique([manufacturerCode, gradeCode, shapeCode, kindCode])
+  @@map("material_types")
+  @@schema("app")
+}
+
+// 材種の既定材料単価マトリクス: (材種 × 直径 × 黒皮/研磨) → 単価 (¥/1000mm 基準)。
+// 全長には依存しない（固定長基準）。仕入実績が無いとき試算のフォールバックに使う。
+model MaterialTypePrice {
+  id                Int      @id @default(autoincrement())
+  materialTypeId    Int      @map("material_type_id")
+  diameterCode      String   @map("diameter_code") @db.Char(3)
+  surfaceFinishCode String   @map("surface_finish_code") @db.Char(1)
+  /** 既定材料単価 (¥/1000mm)。 */
+  unitPrice         Decimal  @map("unit_price") @db.Decimal(12, 2)
+  createdAt         DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt         DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  materialType  MaterialType          @relation(fields: [materialTypeId], references: [id], onDelete: Cascade)
+  diameter      MaterialDiameter      @relation(fields: [diameterCode], references: [code])
+  surfaceFinish MaterialSurfaceFinish @relation(fields: [surfaceFinishCode], references: [code])
+
+  @@unique([materialTypeId, diameterCode, surfaceFinishCode])
+  @@map("material_type_prices")
+  @@schema("app")
+}
+
+// ─── 素材 ───────────────────────────────────────────────────────────
+
+// 内部 id は連番、表示コード（素材コード）は code（構成から自動組立・不変）。
+model Material {
+  id                Int      @id @default(autoincrement())
+  code              String   @unique
+  materialTypeId    Int      @map("material_type_id")
+  surfaceFinishCode String   @map("surface_finish_code") @db.Char(1)
+  diameterCode      String   @map("diameter_code") @db.Char(3)
+  lengthVariantCode String   @map("length_variant_code") @db.Char(3)
+  // 形状別種類（material_kinds の (材種.shape_code, kind_code)）— spec 通り FK なし、
+  // アクションで親材種の形状と突き合わせて検証する。
+  kindCode          String   @map("kind_code") @db.Char(2)
+  diameterMm        Decimal  @map("diameter_mm") @db.Decimal(8, 3)
+  lengthMm          Decimal  @map("length_mm") @db.Decimal(10, 3)
+  manufacturerModel String?  @map("manufacturer_model")
+  nominalDiameterMm Decimal? @map("nominal_diameter_mm") @db.Decimal(8, 3)
+  name              Json
+  unit              String
+  isActive          Boolean  @default(true) @map("is_active")
+  notes             String?
+  createdAt         DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt         DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  materialType  MaterialType          @relation(fields: [materialTypeId], references: [id])
+  surfaceFinish MaterialSurfaceFinish @relation(fields: [surfaceFinishCode], references: [code])
+  diameter      MaterialDiameter      @relation(fields: [diameterCode], references: [code])
+  lengthVariant MaterialLengthVariant @relation(fields: [lengthVariantCode], references: [code])
+
+  purchaseOrderItems MaterialPurchaseOrderItem[]
+  receipts           MaterialReceipt[]
+  purchaseRequestItems PurchaseRequestItem[]
+  workOrders         WorkOrder[]
+  inventory          MaterialInventory[]
+
+  @@unique([materialTypeId, surfaceFinishCode, diameterCode, lengthVariantCode])
+  @@map("materials")
+  @@schema("app")
+}
+
+// 内部 id は連番。製品コード PRD-YYYYMM-NNNN は (year_month, seq) から導出
+// （estimates と同型の複合キー）。レガシー取込行は未採番（year_month/seq NULL、
+// legacy_key に取込元 uuid5）。
+model Product {
+  id         Int     @id @default(autoincrement())
+  yearMonth  String? @map("year_month") @db.Char(6)
+  seq        Int?
+  legacyKey  String? @unique @map("legacy_key")
+  name       Json
+  // 製品が要求する素材を「材種 + 直径 + 全長」で指定する（cut-to-length のため
+  // 同一材種・直径の複数素材が充当可能で、特定 materials 行には紐付けない）。
+  materialTypeId Int?     @map("material_type_id")
+  diameterMm     Decimal? @map("diameter_mm") @db.Decimal(8, 3)
+  lengthMm       Decimal? @map("length_mm") @db.Decimal(10, 3)
+  unit       String   @default("本")
+  spec       Json?
+  isActive   Boolean  @default(true) @map("is_active")
+  notes      String?
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt  DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  materialType     MaterialType?    @relation("ProductMaterialType", fields: [materialTypeId], references: [id])
+  priceListEntries PriceListEntry[]
+  estimates        Estimate[]
+  quoteItems       QuoteItem[]
+  salesOrders      SalesOrder[]
+  shippingOrderItems ShippingOrderItem[]
+  deliveryNoteItems  DeliveryNoteItem[]
+  inventory          ProductInventory[]
+  designRequests     DesignRequest[]
+  designFiles        DesignFile[]
+  acceptanceItems    OrderAcceptanceItem[]
+
+  @@unique([yearMonth, seq])
+  @@index([materialTypeId])
+  @@map("products")
+  @@schema("app")
+}

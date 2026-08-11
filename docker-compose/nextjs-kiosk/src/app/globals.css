@@ -1,0 +1,12 @@
+/* キオスク globals — Mantine レイヤーの前提宣言のみ（Tailwind 不使用） */
+@layer theme, base, mantine, components, utilities;
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  -webkit-tap-highlight-color: transparent; /* タブレットのタップハイライト抑止 */
+  overscroll-behavior-y: none; /* 全画面キオスクでの引っ張り更新を抑止 */
+}
