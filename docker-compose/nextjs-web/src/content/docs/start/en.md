@@ -38,7 +38,7 @@ Every screen has a 4-character code. Remembering them lets you jump from the sea
 2. **Create a Price List (SA01)** — choose a customer and product; a confirmed estimate linked to the product can be picked as the base-price source. ([Price List manual](/docs/apps/price-list/user))
 3. **Create a Quote (SA02)** — pick a customer and product, and the unit price fills in from the price list. Export a PDF and send it to the customer. ([Quote manual](/docs/apps/quote/user))
 
-Open the "App User Guides" on the left for the details of each app.
+Open the category guides on the left (Sales Apps, Purchasing Apps, and so on) for the details of each app.
 
 ## 5. Getting help
 
