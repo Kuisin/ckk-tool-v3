@@ -9,7 +9,13 @@
 import { randomBytes } from "node:crypto";
 import { TICKET_TTL_MS } from "./kiosk-auth-core";
 
-export type TicketPurpose = "PIN_SETUP" | "PIN_VERIFY" | "ATTEST";
+// DEVICE_SETTINGS は端末設定（/device-settings）の解錠 → リセット実行間の
+// 継続証明。card は関与しないので cardId は "" を渡す。
+export type TicketPurpose =
+  | "PIN_SETUP"
+  | "PIN_VERIFY"
+  | "ATTEST"
+  | "DEVICE_SETTINGS";
 
 type Ticket = {
   cardId: string;

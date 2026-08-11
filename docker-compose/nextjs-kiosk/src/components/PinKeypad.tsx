@@ -1,20 +1,20 @@
 "use client";
 
 /**
- * PinKeypad.tsx — タブレット向け数字キーパッド（PIN 4〜6 桁）。
+ * PinKeypad.tsx — タブレット向け数字キーパッド（既定: PIN 4〜6 桁）。
+ * minLength/maxLength で固定長にも使える（端末設定コードは 6 桁固定）。
  */
 
 import { Box, Button, Center, SimpleGrid, Stack, Text } from "@mantine/core";
 import { IconBackspace, IconCheck } from "@tabler/icons-react";
 import { useState } from "react";
 
-const MAX_LEN = 6;
-const MIN_LEN = 4;
-
 type Props = {
   title: string;
   subtitle?: string;
   submitting?: boolean;
+  minLength?: number;
+  maxLength?: number;
   onSubmit: (pin: string) => void;
 };
 
@@ -22,6 +22,8 @@ export function PinKeypad({
   title,
   subtitle,
   submitting = false,
+  minLength: MIN_LEN = 4,
+  maxLength: MAX_LEN = 6,
   onSubmit,
 }: Props) {
   const [pin, setPin] = useState("");
