@@ -3,25 +3,28 @@
 /**
  * Server Actions — 端末管理（SY09, /settings/kiosk-devices）。
  *
- * キオスク端末プロファイル（app.kiosk_devices）の作成・リンクコード再発行・
+ * キオスク端末プロファイル（app.kiosk_devices）の作成・リンク・リンク解除・
  * 有効化・編集・無効化・取り消しと、フロアマップ（app.kiosk_floor_maps）の
  * 管理・ピン配置。全アクションを RBAC（kiosk）でゲートし、監査ログ
  * （audit_logs）を記録する。
  *
  * プロファイル先行の登録コントラクト（nextjs-kiosk /setup と対）:
- *   1. 管理者が本画面で端末プロファイルを作成（PENDING）→ リンクコード
- *      （Crockford 12桁・24時間期限）が本画面に表示される。
- *   2. タブレットの /setup がコードを入力/スキャン → kiosk API が LINKED 化。
+ *   1. 管理者が本画面で端末プロファイルを作成（PENDING = オープン）。
+ *   2. タブレットの /setup が QR + コード（kiosk_link_requests・10分期限）を
+ *      表示 → 管理者が本画面でそのコードを入力/スキャンし、オープンな
+ *      （PENDING の）プロファイルにリンク → LINKED 化。
  *   3. 管理者が LINKED の行のみ有効化（ACTIVE）→ タブレット側がポーリングで
  *      検知し自らデバイストークンを発行する。よってここではトークンには
  *      一切触れない。
+ *   端末交換時は「リンク解除」でプロファイルをオープン（PENDING）に戻し、
+ *   名称・工場・場所・フロアマップのピンを保ったまま再リンクできる。
  */
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { getCurrentActorId, recordAudit } from "@/lib/audit";
 import { checkPermission } from "@/lib/authz";
-import { generateCode } from "@/lib/crockford";
+import { normalizeCode } from "@/lib/crockford";
 import { prisma } from "@/lib/db";
 import { mintMonitorToken } from "@/lib/kiosk-ws-token";
 import {
@@ -57,20 +60,7 @@ export async function mintKioskWsToken(): Promise<
   return actionOk({ token: mintMonitorToken(secret) });
 }
 
-// ── プロファイル作成・リンクコード ──────────────────────────────────────────
-
-/** リンクコードの有効期間（24時間）。 */
-const LINK_CODE_TTL_MS = 24 * 60 * 60 * 1000;
-
-/** Prisma の一意制約違反（コード衝突の検出に使用）。 */
-function isUniqueViolation(e: unknown): boolean {
-  return (
-    typeof e === "object" &&
-    e !== null &&
-    "code" in e &&
-    (e as { code: unknown }).code === "P2002"
-  );
-}
+// ── プロファイル作成・リンク ────────────────────────────────────────────────
 
 const createProfileInput = z.object({
   name: z.string().min(1, "端末名を入力してください"),
@@ -81,8 +71,8 @@ const createProfileInput = z.object({
 export type CreateDeviceProfileInput = z.infer<typeof createProfileInput>;
 
 /**
- * 端末プロファイルを作成する（PENDING + リンクコード発行）。
- * コードはタブレットの /setup で入力/スキャンしてリンクする。
+ * 端末プロファイルを作成する（PENDING = オープン）。
+ * タブレット側 /setup のコードを「端末をリンク」で入力/スキャンしてリンクする。
  */
 export async function createDeviceProfile(
   raw: CreateDeviceProfileInput,
@@ -103,24 +93,15 @@ export async function createDeviceProfile(
     if (!factory || !factory.isActive) {
       return actionError("対象の工場が見つかりません");
     }
-    const data = () => ({
-      status: "PENDING" as const,
-      name: v.name.trim(),
-      factoryId: v.factoryId,
-      location: v.location?.trim() || null,
-      registrationCode: generateCode(12),
-      registrationExpiresAt: new Date(Date.now() + LINK_CODE_TTL_MS),
+    const created = await prisma.kioskDevice.create({
+      data: {
+        status: "PENDING",
+        name: v.name.trim(),
+        factoryId: v.factoryId,
+        location: v.location?.trim() || null,
+      },
+      select: { id: true },
     });
-    // コード衝突（unique 制約）は極めて稀 — 一度だけ再生成してリトライ。
-    const created = await prisma.kioskDevice
-      .create({ data: data(), select: { id: true } })
-      .catch((e) => {
-        if (!isUniqueViolation(e)) throw e;
-        return prisma.kioskDevice.create({
-          data: data(),
-          select: { id: true },
-        });
-      });
     await recordAudit({
       action: "CREATE",
       tableName: "kiosk_devices",
@@ -141,8 +122,79 @@ export async function createDeviceProfile(
   }
 }
 
-/** リンクコードを再発行する（PENDING のみ。新コード + 24時間期限）。 */
-export async function regenerateLinkCode(id: string): Promise<ActionResult> {
+/**
+ * タブレット側 /setup が表示したコード（kiosk_link_requests）を使って、
+ * 物理端末をオープン（PENDING）なプロファイルにリンクする（→ LINKED）。
+ */
+export async function linkDeviceToProfile(
+  profileId: string,
+  code: string,
+): Promise<ActionResult> {
+  const authz = await checkPermission("kiosk", "UPDATE");
+  if (!authz.ok) return actionError(authz.error);
+  const parsedId = uuidSchema.safeParse(profileId);
+  if (!parsedId.success) return actionError("入力が不正です");
+  const normalized = normalizeCode(code);
+  if (normalized.length !== 12) {
+    return actionError("コードは 12 文字で入力してください");
+  }
+
+  try {
+    const device = await prisma.kioskDevice.findUnique({
+      where: { id: parsedId.data },
+      select: { status: true },
+    });
+    if (!device) return actionError("対象の端末プロファイルが見つかりません");
+    if (device.status !== "PENDING") {
+      return actionError(
+        "オープンな（未リンクの）プロファイルにのみリンクできます",
+      );
+    }
+    const now = new Date();
+    const request = await prisma.kioskLinkRequest.findFirst({
+      where: { code: normalized, deviceId: null, expiresAt: { gt: now } },
+      select: { id: true, userAgent: true, lastIpAddress: true },
+    });
+    if (!request) {
+      return actionError(
+        "コードが無効か期限切れです。タブレット側で再表示してください",
+      );
+    }
+    await prisma.$transaction([
+      prisma.kioskLinkRequest.update({
+        where: { id: request.id },
+        data: { deviceId: parsedId.data },
+      }),
+      prisma.kioskDevice.update({
+        where: { id: parsedId.data },
+        data: {
+          status: "LINKED",
+          linkedAt: now,
+          userAgent: request.userAgent,
+          lastIpAddress: request.lastIpAddress,
+        },
+      }),
+    ]);
+    await recordAudit({
+      action: "UPDATE",
+      tableName: "kiosk_devices",
+      recordId: parsedId.data,
+      before: { status: "PENDING" },
+      after: { status: "LINKED", note: "タブレットとリンク" },
+    });
+    revalidate();
+    return actionOk();
+  } catch (e) {
+    return actionError(prismaErrorMessage(e, "端末のリンクに失敗しました"));
+  }
+}
+
+/**
+ * リンク解除 — 物理端末をプロファイルから切り離してオープン（PENDING）に戻す。
+ * 名称・工場・場所・フロアマップのピンは保持。セッション・デバイストークン・
+ * アテステーション鍵は破棄する（端末の交換・故障時に再リンクするため）。
+ */
+export async function unlinkDevice(id: string): Promise<ActionResult> {
   const authz = await checkPermission("kiosk", "UPDATE");
   if (!authz.ok) return actionError(authz.error);
   const parsed = uuidSchema.safeParse(id);
@@ -153,35 +205,48 @@ export async function regenerateLinkCode(id: string): Promise<ActionResult> {
       where: { id: parsed.data },
       select: { status: true },
     });
-    if (!device) return actionError("対象の端末プロファイルが見つかりません");
-    if (device.status !== "PENDING") {
-      return actionError("リンク待ちの端末プロファイルのみ再発行できます");
+    if (!device) return actionError("対象の端末が見つかりません");
+    if (
+      device.status !== "LINKED" &&
+      device.status !== "ACTIVE" &&
+      device.status !== "DISABLED"
+    ) {
+      return actionError("この端末はリンク解除できる状態ではありません");
     }
-    const data = () => ({
-      registrationCode: generateCode(12),
-      registrationExpiresAt: new Date(Date.now() + LINK_CODE_TTL_MS),
-    });
-    await prisma.kioskDevice
-      .update({ where: { id: parsed.data }, data: data() })
-      .catch((e) => {
-        if (!isUniqueViolation(e)) throw e;
-        return prisma.kioskDevice.update({
-          where: { id: parsed.data },
-          data: data(),
-        });
-      });
+    const now = new Date();
+    await prisma.$transaction([
+      prisma.kioskDevice.update({
+        where: { id: parsed.data },
+        data: {
+          status: "PENDING",
+          linkedAt: null,
+          deviceTokenHash: null,
+          deviceTokenExpiresAt: null,
+          devicePublicKey: null,
+          fingerprint: null,
+          userAgent: null,
+          lastIpAddress: null,
+        },
+      }),
+      prisma.kioskSession.updateMany({
+        where: { deviceId: parsed.data, revokedAt: null },
+        data: { revokedAt: now },
+      }),
+      prisma.kioskLinkRequest.deleteMany({
+        where: { deviceId: parsed.data },
+      }),
+    ]);
     await recordAudit({
       action: "UPDATE",
       tableName: "kiosk_devices",
       recordId: parsed.data,
-      after: { note: "リンクコードを再発行" },
+      before: { status: device.status },
+      after: { status: "PENDING", note: "リンク解除" },
     });
     revalidate();
     return actionOk();
   } catch (e) {
-    return actionError(
-      prismaErrorMessage(e, "リンクコードの再発行に失敗しました"),
-    );
+    return actionError(prismaErrorMessage(e, "リンク解除に失敗しました"));
   }
 }
 
@@ -405,8 +470,6 @@ export async function revokeDevice(id: string): Promise<ActionResult> {
           status: "REVOKED",
           deviceTokenHash: null,
           deviceTokenExpiresAt: null,
-          registrationCode: null,
-          registrationExpiresAt: null,
           devicePublicKey: null,
           fingerprint: null,
           floorMapId: null,

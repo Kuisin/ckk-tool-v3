@@ -15,7 +15,8 @@ export const TICKET_TTL_MS = 2 * 60 * 1000; // PIN チケット 2分・単回使
 export const ONLINE_WINDOW_MS = 5 * 60 * 1000; // WS 未接続でも直近 5分の活動でオンライン扱い
 export const WS_SWEEP_INTERVAL_MS = 30 * 1000; // オンライン判定の再計算間隔
 
-export const REGISTRATION_CODE_LENGTH = 12;
+export const REGISTRATION_CODE_LENGTH = 12; // リンクコード（タブレット発行）
+export const LINK_REQUEST_TTL_MS = 10 * 60 * 1000; // リンクコード 10分
 export const CARD_ID_LENGTH = 16;
 
 /** 人セッションの有効判定（ハード期限 + アイドル窓）。 */
