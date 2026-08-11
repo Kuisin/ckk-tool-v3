@@ -204,12 +204,12 @@ export const OPERATION_CODES: OperationCodeEntry[] = [
   },
 
   // ─── システム (SY) ───────────────────────────────────────────────────────
-  // 採番: SY01–SY04 = 設定系（ハブ + アプリ設定）、SY05– = 管理系。
-  // いずれも単一画面, list コードのみ。
+  // 採番: SY01 = ユーザー管理、SY02–SY04 = アプリ設定、SY05– = 管理系。
+  // （旧 SY01 システム設定ハブは廃止。）いずれも単一画面, list コードのみ。
   {
     code: "SY01",
-    label: "システム設定",
-    href: "/settings",
+    label: "ユーザー管理",
+    href: "/settings/users",
     category: "システム",
     kind: "list",
     categoryCode: "SY",
@@ -253,7 +253,7 @@ export const OPERATION_CODES: OperationCodeEntry[] = [
   {
     code: "SY05",
     label: "アプリ管理",
-    href: "/admin/apps",
+    href: "/settings/apps",
     category: "システム",
     kind: "list",
     categoryCode: "SY",
@@ -264,7 +264,7 @@ export const OPERATION_CODES: OperationCodeEntry[] = [
   {
     code: "SY06",
     label: "ファイル管理",
-    href: "/admin/files",
+    href: "/settings/files",
     category: "システム",
     kind: "list",
     categoryCode: "SY",
@@ -275,7 +275,7 @@ export const OPERATION_CODES: OperationCodeEntry[] = [
   {
     code: "SY07",
     label: "操作履歴",
-    href: "/admin/activity",
+    href: "/settings/activity",
     category: "システム",
     kind: "list",
     categoryCode: "SY",

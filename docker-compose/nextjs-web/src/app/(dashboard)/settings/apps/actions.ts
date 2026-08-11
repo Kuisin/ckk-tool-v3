@@ -1,7 +1,7 @@
 "use server";
 
 /**
- * Server Actions — アプリ ON/OFF（feature_flags, /admin/apps）。
+ * Server Actions — アプリ ON/OFF（feature_flags, /settings/apps）。
  *
  * key = `app:<appKey>:<env>`。無効化 = is_enabled=false の行を upsert、
  * 有効化 = is_enabled=true に更新（行が無ければ何もしない＝デフォルト有効）。

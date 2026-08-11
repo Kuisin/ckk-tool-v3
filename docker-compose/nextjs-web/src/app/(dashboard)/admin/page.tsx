@@ -1,9 +1,9 @@
 import { redirect } from "next/navigation";
 
 /**
- * /admin にはインデックスページがなく 404 になっていたため、
- * 既定のシステム管理アプリ（アプリ管理 SY05）へリダイレクトする。
+ * 旧 /admin 配下。システム系アプリは他カテゴリ同様 /settings 配下へ統一した
+ * ため、旧ブックマーク互換のためリダイレクトする。
  */
 export default function AdminIndexRedirect() {
-  redirect("/admin/apps");
+  redirect("/settings");
 }
