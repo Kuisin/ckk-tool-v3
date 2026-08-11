@@ -23,13 +23,15 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { PinKeypad } from "@/components/PinKeypad";
 import { QrScannerView } from "@/components/QrScannerView";
+import { type AttestOutcome, runAttestation } from "@/lib/wrapper-bridge";
 
 type LoginState =
   | { phase: "checking" }
   | { phase: "scanning" }
   | { phase: "pin_setup"; ticket: string; firstPin?: string }
   | { phase: "pin_verify"; ticket: string }
-  | { phase: "locked"; until: string | null };
+  | { phase: "locked"; until: string | null }
+  | { phase: "attest_blocked"; outcome: AttestOutcome };
 
 export default function LoginPage() {
   const router = useRouter();
@@ -46,9 +48,21 @@ export default function LoginPage() {
         const data = (await res.json()) as {
           registered: boolean;
           reason?: string;
+          attestation?: { required: boolean; attested: boolean };
         };
         if (cancelled) return;
         if (data.registered) {
+          const att = data.attestation;
+          if (att?.required && !att.attested) {
+            const outcome = await runAttestation();
+            if (cancelled) return;
+            setState(
+              outcome === "OK"
+                ? { phase: "scanning" }
+                : { phase: "attest_blocked", outcome },
+            );
+            return;
+          }
           setState({ phase: "scanning" });
         } else if (data.reason === "DISABLED" || data.reason === "REVOKED") {
           router.replace(`/device-error?reason=${data.reason}`);
@@ -95,6 +109,14 @@ export default function LoginPage() {
             setState({ phase: "locked", until: data.until ?? null });
             return;
           case "DEVICE_INVALID":
+            if (data.reason === "ATTEST_REQUIRED") {
+              // attest Cookie 失効（12h）— その場で再アテストして継続
+              const outcome = await runAttestation();
+              if (outcome !== "OK") {
+                setState({ phase: "attest_blocked", outcome });
+              }
+              return;
+            }
             router.replace(
               data.reason === "DISABLED" || data.reason === "REVOKED"
                 ? `/device-error?reason=${data.reason}`
@@ -246,6 +268,24 @@ export default function LoginPage() {
               subtitle="3日以上利用がなかったため、本人確認が必要です。"
               title="PIN を入力"
             />
+          )}
+
+          {state.phase === "attest_blocked" && (
+            <Stack align="center" gap="md">
+              <Alert color="red" icon={<IconLock size={20} />}>
+                {state.outcome === "KEY_MISMATCH"
+                  ? "この端末の鍵が登録済みの鍵と一致しません。管理者に「端末管理 → 鍵リセット」を依頼してください。"
+                  : state.outcome === "NO_BRIDGE"
+                    ? "このシステムは認可された専用端末アプリからのみ利用できます。"
+                    : "端末認証に失敗しました。通信環境を確認して再試行してください。"}
+              </Alert>
+              <Button
+                onClick={() => window.location.reload()}
+                variant="default"
+              >
+                再試行
+              </Button>
+            </Stack>
           )}
 
           {state.phase === "locked" && (
