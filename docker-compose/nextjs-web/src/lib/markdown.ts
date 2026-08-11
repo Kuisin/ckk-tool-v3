@@ -15,7 +15,7 @@ const escapeHtml = (s: string): string =>
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;");
 
-/** Inline: `code`, **bold**, *italic*, [text](url). Operates on escaped text.
+/** Inline: `code`, **bold**, *italic*, ![alt](src), [text](url). Operates on escaped text.
  *  When `lang` is given, internal /docs links get `?lang=<lang>` appended so
  *  cross-links between manuals stay in the current language. */
 function renderInline(text: string, lang?: string): string {
@@ -28,6 +28,12 @@ function renderInline(text: string, lang?: string): string {
   out = out
     .replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>")
     .replace(/(^|[^*])\*([^*]+)\*/g, "$1<em>$2</em>")
+    // ![alt](src) — must run before the link rule (which would otherwise
+    // consume the bracket part and leave a stray "!"). Same URL policy as links.
+    .replace(/!\[([^\]]*)\]\(([^)]+)\)/g, (_m, alt, src) => {
+      if (!/^(https?:|\/)/.test(src)) return "";
+      return `<img src="${src}" alt="${alt}" loading="lazy" />`;
+    })
     // [text](url) — url already escaped; only allow http(s) / relative.
     .replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_m, label, url) => {
       let safe = /^(https?:|\/)/.test(url) ? url : "#";

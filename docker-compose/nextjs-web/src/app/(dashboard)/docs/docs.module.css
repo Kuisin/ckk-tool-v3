@@ -177,3 +177,11 @@
   border-top: 1px solid var(--mantine-color-default-border);
   margin: 1.2rem 0;
 }
+.doc img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin: 0.6rem 0;
+  border: 1px solid var(--mantine-color-default-border);
+  border-radius: var(--mantine-radius-sm);
+}
