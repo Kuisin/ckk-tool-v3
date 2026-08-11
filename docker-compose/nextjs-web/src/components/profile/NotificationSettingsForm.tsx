@@ -336,7 +336,7 @@ export function NotificationSettingsForm({
     isIos && !isStandalone && (!pushSupported || !subscribed);
 
   return (
-    <Stack gap="md">
+    <Stack gap="md" maw={960} mx="auto" w="100%">
       <PageHeader
         breadcrumbs={[
           { label: "プロフィール", href: "/profile" },
