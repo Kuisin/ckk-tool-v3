@@ -37,7 +37,9 @@ export default function proxy(req: NextRequest) {
 
 export const config = {
   matcher: [
-    // API は各ルートが自前で検証（ここで弾くと setup ポーリング等が死ぬ）
-    "/((?!api|_next/static|_next/image|favicon\\.ico|icon\\.svg).*)",
+    // API は各ルートが自前で検証（ここで弾くと setup ポーリング等が死ぬ）。
+    // apk/ は Android ラッパー APK の公開配布パス（未登録端末が Cookie なしで
+    // ダウンロードする — リダイレクトすると provisioning が失敗する）
+    "/((?!api|apk/|_next/static|_next/image|favicon\\.ico|icon\\.svg).*)",
   ],
 };
