@@ -47,6 +47,22 @@ export async function touchDeviceActivity(deviceId: string): Promise<void> {
   );
 }
 
+/**
+ * WS 接続中の端末の lastActivity をまとめて刻む（30s ごとのハートビート）。
+ * これにより「WS 接続中 ⇒ last_activity_at は 30s 以内」が保証され、
+ * 5分窓の判定（SY09 のフォールバック含む）がソケットの有無を知らずに済む。
+ */
+export async function touchConnectedDevices(
+  deviceIds: string[],
+): Promise<void> {
+  if (deviceIds.length === 0) return;
+  await getPool().query(
+    `UPDATE app.kiosk_devices SET last_activity_at = now()
+     WHERE id = ANY($1::uuid[])`,
+    [deviceIds],
+  );
+}
+
 /** プレゼンス対象（ACTIVE/DISABLED）の一覧。 */
 export async function listPresenceDevices(): Promise<PresenceDevice[]> {
   const res = await getPool().query<{

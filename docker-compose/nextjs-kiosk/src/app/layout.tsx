@@ -5,6 +5,7 @@ import "@mantine/notifications/styles.layer.css";
 import { mantineHtmlProps } from "@mantine/core";
 import type { Metadata, Viewport } from "next";
 import { Noto_Sans_JP } from "next/font/google";
+import { DevicePresence } from "@/components/DevicePresence";
 import { KioskShell } from "@/components/KioskShell";
 import { getDevice } from "@/lib/kiosk-auth";
 import { Providers } from "./providers";
@@ -49,6 +50,8 @@ export default async function RootLayout({
     <html lang="ja" {...mantineHtmlProps} className={notoSansJp.variable}>
       <body>
         <Providers>
+          {/* 登録済み端末はログイン前でも WS 接続を保持（プレゼンス） */}
+          {registered && <DevicePresence />}
           <KioskShell deviceName={deviceName} registered={registered}>
             {children}
           </KioskShell>
