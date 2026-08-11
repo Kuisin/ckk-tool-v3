@@ -32,6 +32,7 @@ import {
 import {
   IconBell,
   IconChevronLeft,
+  IconLayoutDashboard,
   IconLogout,
   IconShare2,
   IconUser,
@@ -458,6 +459,14 @@ export function AppHeader({
                 py={{ base: "sm", md: "xs" }}
               >
                 通知設定
+              </Menu.Item>
+              <Menu.Item
+                component={Link}
+                href="/profile/home"
+                leftSection={<IconLayoutDashboard size={14} />}
+                py={{ base: "sm", md: "xs" }}
+              >
+                ホーム画面設定
               </Menu.Item>
               <Divider my="5px" />
               <Menu.Item

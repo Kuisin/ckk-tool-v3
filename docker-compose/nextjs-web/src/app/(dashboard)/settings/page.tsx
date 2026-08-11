@@ -1,8 +1,10 @@
-import { SystemSettingsHub } from "@/components/settings/SystemSettingsHub";
+import { redirect } from "next/navigation";
+import { workprocessHomeHref } from "@/lib/app-list";
 
-export const dynamic = "force-dynamic";
-
-/** システム設定ハブ（SY01）— アプリ設定 + システム管理への入口。 */
-export default function SettingsPage() {
-  return <SystemSettingsHub />;
+/**
+ * 旧 システム設定ハブ（SY01）。他カテゴリ同様にハブアプリは持たない構成へ
+ * 統一したため、ホームのシステムカテゴリ表示へリダイレクトする。
+ */
+export default function SettingsIndexRedirect() {
+  redirect(workprocessHomeHref("システム"));
 }

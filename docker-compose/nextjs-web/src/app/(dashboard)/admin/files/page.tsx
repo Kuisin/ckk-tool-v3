@@ -1,6 +1,9 @@
-import { FileManager } from "@/components/admin/FileManager";
+import { redirect } from "next/navigation";
 
-/** 管理 › ファイル管理 — admin document storage (SeaweedFS) browser. */
-export default function AdminFilesPage() {
-  return <FileManager />;
+/**
+ * 旧 ファイル管理（SY06）。/settings/files へ移動したため、旧ブックマーク互換の
+ * ためリダイレクトする。
+ */
+export default function AdminFilesRedirect() {
+  redirect("/settings/files");
 }

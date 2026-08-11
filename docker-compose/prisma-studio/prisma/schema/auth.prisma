@@ -96,6 +96,7 @@ model User {
   notifications       Notification[]           @relation("NotificationUser")
   pushSubscriptions   PushSubscription[]       @relation("PushSubscriptionUser")
   notificationSetting UserNotificationSetting? @relation("UserNotificationSettingUser")
+  homeSetting         UserHomeSetting?         @relation("UserHomeSettingUser")
 
   // Employees link to the shared directory by AD objectGUID (stable across
   // username/attribute changes). Null for SYSTEM / GUEST users.

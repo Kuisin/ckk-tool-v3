@@ -52,6 +52,9 @@ proxy is unused); public access is via the Cloudflare Tunnel → the `admin-dev`
 auth** — both hostnames are gated by a **Cloudflare Access** allow-list; never
 remove it.
 
+- **Watch paths:** both apps have Coolify `watch_paths =
+  docker-compose/admintools/**` — GitHub push webhooks redeploy them only when
+  admintools files changed (see `../coolify/README.md`).
 - **Deploy / rollback:** `docker-compose/coolify/deploy.sh admin-dev [<git-sha>]`
   (dev) / `... admin-main [<git-sha>]` (prod). Push to the branch auto-deploys.
 - **Env vars are managed in Coolify** (Application → Environment Variables), not

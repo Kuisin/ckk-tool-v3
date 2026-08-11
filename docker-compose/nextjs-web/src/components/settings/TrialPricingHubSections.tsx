@@ -16,7 +16,7 @@ import {
   IconTable,
   IconTool,
 } from "@tabler/icons-react";
-import { HubCard } from "@/components/settings/SystemSettingsHub";
+import { HubCard } from "@/components/settings/HubCard";
 import type { AppIcon } from "@/lib/icons";
 
 const SECTION_ICONS: Record<string, AppIcon> = {

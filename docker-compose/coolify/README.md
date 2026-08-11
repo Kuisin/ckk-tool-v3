@@ -81,6 +81,15 @@ Once `deploy.ckk-tool.co.jp` is publicly reachable, add a repo webhook:
 - Secret: per-app value from `/data/coolify/source/.webhook-secrets`
 - Events: `push`
 
+**Watch paths (monorepo):** every app has `watch_paths` set to its own base dir
+(`docker-compose/nextjs-web/**` for nextjs-web-dev/main,
+`docker-compose/admintools/**` for admintools-dev/main), so a webhook push only
+redeploys the app whose files actually changed — a docs-only or shared-db-only
+push deploys nothing. Manual deploys (`deploy.sh`, Coolify UI/API) ignore watch
+paths. `setup.sh` (re)applies the setting idempotently for the nextjs-web apps;
+the admintools apps were set once via
+`PATCH /api/v1/applications/<uuid> {"watch_paths": "docker-compose/admintools/**"}`.
+
 ## Upgrades
 
 `AUTOUPDATE=false` — upgrades are deliberate: bump the pinned tags in

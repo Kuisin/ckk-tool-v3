@@ -198,6 +198,7 @@ AppShell.Header
                 ├── Divider
                 ├── Menu.Item プロフィール (IconUser) → /profile
                 ├── Menu.Item 通知設定 (IconBell) → /profile/notifications
+                ├── Menu.Item ホーム画面設定 (IconLayoutDashboard) → /profile/home
                 ├── Divider
                 └── Menu.Item ログアウト (IconLogout, color="red")
 ```
@@ -300,7 +301,7 @@ Operation codes provide keyboard-shortcut navigation. Format: `{CAT}{MODE}{IDX}`
 | マスタ | B | 工場 | MS0B | MS1B | MS2B |
 | マスタ | C | 採番構成 | MS0C | — | — |
 | ドキュメント | 1 | マニュアル | DC01 | — | — |
-| システム | 1 | システム設定 | SY01 | — | — |
+| システム | 1 | ユーザー管理 | SY01 | — | — |
 | システム | 2 | 試算計算 | SY02 | — | — |
 | システム | 3 | 製品項目 | SY03 | — | — |
 | システム | 4 | 製品種別 | SY04 | — | — |
@@ -329,7 +330,10 @@ Stack (gap="xl", p="md", maw={1200})
 │       └── img (company logo SVG, h=56, opacity=0.75)
 │           light: /design-assets/logo-with-label.svg
 │           dark:  /design-assets/dark_logo-with-label.svg
-└── [per category] Stack gap="sm"
+├── [if starred apps] Stack gap="sm" — お気に入り section（ホーム画面設定 /profile/home で選択。
+│   yellow IconStarFilled section icon; app cards identical to category cards; Divider after）
+└── [per section] Stack gap="sm" — 標準モード: カテゴリ別 / カスタムモード: ユーザー定義グループ別
+    （custom group sections use IconLayoutDashboard + color blue; 未所属アプリは「その他」）
     ├── Group gap="xs" — section header
     │   ├── ThemeIcon variant="light" color={category.color} size="sm" radius="sm"
     │   │   └── <CategoryIcon size={14} />
@@ -384,7 +388,7 @@ Stack (gap="xl", p="md", maw={1200})
 | 不良種類 | `IconAlertTriangle` |
 | 承認グループ | `IconUsersGroup` |
 | 工場 | `IconBuildingWarehouse` |
-| システム設定 | `IconAdjustments` |
+| ユーザー管理 | `IconUserCog` |
 | 試算計算 | `IconMathFunction` |
 | 製品項目 | `IconListDetails` |
 | 製品種別 | `IconCategory` |

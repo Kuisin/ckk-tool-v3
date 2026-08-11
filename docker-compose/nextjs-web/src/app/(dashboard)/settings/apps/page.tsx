@@ -1,10 +1,10 @@
-import { redirect } from "next/navigation";
+import { AppFlagsTable } from "@/components/admin/AppFlagsTable";
+import { listAppFlags } from "@/lib/app-flags";
 
-/**
- * 旧 アプリ設定インデックス。システム設定ハブ（/settings）がアプリ設定一覧
- * そのものになったため、旧ブックマーク互換のためリダイレクトする。
- * （配下の /settings/apps/trial-estimate リダイレクトは存置。）
- */
-export default function AppSettingsIndexRedirect() {
-  redirect("/settings");
+export const dynamic = "force-dynamic";
+
+/** アプリ管理（環境別 ON/OFF, feature_flags）。 */
+export default async function AdminAppsPage() {
+  const rows = await listAppFlags();
+  return <AppFlagsTable rows={rows} />;
 }

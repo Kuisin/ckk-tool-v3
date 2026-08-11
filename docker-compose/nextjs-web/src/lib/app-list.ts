@@ -336,14 +336,15 @@ export const appList: AppEntry[] = [
   },
 
   // ─── システム ──────────────────────────────────────────────────────────────
-  // 採番: SY01–SY04 = 設定系（ハブ + アプリ設定）、SY05– = 管理系。
+  // 採番: SY01 = ユーザー管理、SY02–SY04 = アプリ設定、SY05– = 管理系。
+  // （旧 SY01 システム設定ハブは廃止 — 他カテゴリ同様ハブアプリは持たない。）
   {
-    // システム設定ハブ（アプリ設定の入口）。
-    key: "system-settings",
-    label: "システム設定",
+    // ユーザー管理 — app.users の一覧・詳細（ロール割当・実効権限の確認）。
+    key: "user-management",
+    label: "ユーザー管理",
     operationCode: "SY01",
-    href: "/settings",
-    icon: "IconAdjustments",
+    href: "/settings/users",
+    icon: "IconUserCog",
     category: "システム",
     requiredPermission: "system",
   },
@@ -382,7 +383,7 @@ export const appList: AppEntry[] = [
     key: "app-management",
     label: "アプリ管理",
     operationCode: "SY05",
-    href: "/admin/apps",
+    href: "/settings/apps",
     icon: "IconLayoutGrid",
     category: "システム",
     requiredPermission: "system",
@@ -392,7 +393,7 @@ export const appList: AppEntry[] = [
     key: "file-management",
     label: "ファイル管理",
     operationCode: "SY06",
-    href: "/admin/files",
+    href: "/settings/files",
     icon: "IconFolder",
     category: "システム",
     requiredPermission: "system",
@@ -402,7 +403,7 @@ export const appList: AppEntry[] = [
     key: "activity-log",
     label: "操作履歴",
     operationCode: "SY07",
-    href: "/admin/activity",
+    href: "/settings/activity",
     icon: "IconHistory",
     category: "システム",
     requiredPermission: "system",

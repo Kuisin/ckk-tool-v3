@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * AppFlagsTable — アプリ ON/OFF 管理（/admin/apps）。
+ * AppFlagsTable — アプリ ON/OFF 管理（/settings/apps）。
  *
  * appList の全アプリ × 環境（dev / main）の有効状態を Switch で切り替える。
  * 行が無い＝有効（デフォルト ON）。切替は setAppEnabled（feature_flags upsert +
@@ -14,7 +14,7 @@ import { notifications } from "@mantine/notifications";
 import { IconApps, IconSearch } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
-import { setAppEnabled } from "@/app/(dashboard)/admin/apps/actions";
+import { setAppEnabled } from "@/app/(dashboard)/settings/apps/actions";
 import { type Column, DataTable } from "@/components/ui/DataTable";
 import { ListShell } from "@/components/ui/shells";
 import { useUrlSelectState, useUrlStringState } from "@/hooks/useUrlState";
