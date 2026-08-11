@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- デバイス管理ポリシー宣言（KioskDeviceAdminReceiver の meta-data） -->
+<device-admin xmlns:android="http://schemas.android.com/apk/res/android">
+    <uses-policies>
+        <force-lock />
+        <disable-keyguard />
+    </uses-policies>
+</device-admin>
