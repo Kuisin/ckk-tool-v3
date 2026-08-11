@@ -9,6 +9,7 @@
  */
 
 import { NextResponse } from "next/server";
+import { attestationRequired } from "@/lib/attest-core";
 import { generateCode } from "@/lib/crockford";
 import { prisma } from "@/lib/db";
 import { getDevice } from "@/lib/kiosk-auth";
@@ -18,8 +19,8 @@ import {
 } from "@/lib/kiosk-auth-core";
 
 export async function POST(req: Request) {
-  // 既に信頼済み端末ならそのまま
-  const existing = await getDevice();
+  // 既に信頼済み端末ならそのまま（登録フェーズはアテスト不要）
+  const existing = await getDevice({ skipAttest: true });
   if (existing.ok) {
     return NextResponse.json({
       registered: true,
@@ -58,12 +59,16 @@ export async function POST(req: Request) {
 }
 
 export async function GET() {
-  const device = await getDevice();
+  // 登録状態の確認はアテステーション前でも可能（skipAttest）— 代わりに
+  // attestation フィールドで「アテスト済みか」をクライアントへ返す。
+  const device = await getDevice({ skipAttest: true });
   if (device.ok) {
+    const attested = (await getDevice()).ok;
     return NextResponse.json({
       registered: true,
       deviceId: device.device.id,
       deviceName: device.device.name,
+      attestation: { required: attestationRequired(), attested },
     });
   }
   return NextResponse.json({ registered: false, reason: device.reason });

@@ -75,6 +75,11 @@ model KioskDevice {
   deviceTokenHash      String?   @unique @map("device_token_hash")
   deviceTokenExpiresAt DateTime? @map("device_token_expires_at") @db.Timestamptz(6)
 
+  // 端末アテステーション（Android ラッパーの Keystore 鍵。初回アテストで TOFU 束縛、
+  // 管理者の「鍵リセット」で null に戻して再束縛可能）
+  devicePublicKey String? @map("device_public_key") // SPKI DER base64 (P-256)
+  fingerprint     String? @unique // SHA-256 hex of SPKI DER
+
   // 参考情報のみ（認証のフォールバックには使わない）
   userAgent     String? @map("user_agent")
   lastIpAddress String? @map("last_ip_address")

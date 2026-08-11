@@ -9,7 +9,7 @@
 import { randomBytes } from "node:crypto";
 import { TICKET_TTL_MS } from "./kiosk-auth-core";
 
-export type TicketPurpose = "PIN_SETUP" | "PIN_VERIFY";
+export type TicketPurpose = "PIN_SETUP" | "PIN_VERIFY" | "ATTEST";
 
 type Ticket = {
   cardId: string;

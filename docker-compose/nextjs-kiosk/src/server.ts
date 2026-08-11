@@ -13,6 +13,11 @@
 import { createHash } from "node:crypto";
 import { createServer, type IncomingMessage } from "node:http";
 import next from "next";
+import {
+  attestationRequired,
+  attestSecret,
+  verifyAttestCookie,
+} from "./lib/attest-core";
 import { verifyMonitorToken } from "./lib/ws-auth";
 import { findActiveDeviceByTokenHash } from "./lib/ws-db";
 import { KioskWsServer } from "./lib/ws-server";
@@ -54,6 +59,14 @@ async function authenticateUpgrade(
   const hash = createHash("sha256").update(raw).digest("hex");
   const deviceId = await findActiveDeviceByTokenHash(hash);
   if (!deviceId) return null;
+  // KIOSK_ATTESTATION=required: WS もアテスト Cookie（12h）を要求
+  if (attestationRequired()) {
+    const secret = attestSecret();
+    const attest = parseCookies(req).kiosk_attest;
+    if (!secret || !attest || !verifyAttestCookie(secret, attest, deviceId)) {
+      return null;
+    }
+  }
   return { kind: "device", deviceId };
 }
 

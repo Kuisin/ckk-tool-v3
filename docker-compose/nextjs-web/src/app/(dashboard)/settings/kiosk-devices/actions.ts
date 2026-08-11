@@ -263,6 +263,8 @@ export async function revokeDevice(id: string): Promise<ActionResult> {
           deviceTokenExpiresAt: null,
           registrationCode: null,
           registrationExpiresAt: null,
+          devicePublicKey: null,
+          fingerprint: null,
           floorMapId: null,
           mapX: null,
           mapY: null,
@@ -284,6 +286,37 @@ export async function revokeDevice(id: string): Promise<ActionResult> {
     return actionOk();
   } catch (e) {
     return actionError(prismaErrorMessage(e, "端末の取り消しに失敗しました"));
+  }
+}
+
+/** アテステーション鍵をリセット（次回ラッパー接続時に再束縛 = TOFU）。 */
+export async function resetDeviceKey(id: string): Promise<ActionResult> {
+  const authz = await checkPermission("kiosk", "UPDATE");
+  if (!authz.ok) return actionError(authz.error);
+  const parsed = uuidSchema.safeParse(id);
+  if (!parsed.success) return actionError("入力が不正です");
+
+  try {
+    const device = await prisma.kioskDevice.findUnique({
+      where: { id: parsed.data },
+      select: { fingerprint: true },
+    });
+    if (!device) return actionError("対象の端末が見つかりません");
+    await prisma.kioskDevice.update({
+      where: { id: parsed.data },
+      data: { devicePublicKey: null, fingerprint: null },
+    });
+    await recordAudit({
+      action: "UPDATE",
+      tableName: "kiosk_devices",
+      recordId: parsed.data,
+      before: { fingerprint: device.fingerprint },
+      after: { fingerprint: null },
+    });
+    revalidate();
+    return actionOk();
+  } catch (e) {
+    return actionError(prismaErrorMessage(e, "鍵のリセットに失敗しました"));
   }
 }
 

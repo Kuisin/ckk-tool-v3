@@ -114,6 +114,8 @@ export interface KioskDeviceRow {
   mapX: number | null;
   mapY: number | null;
   lastActivityAt: string | null;
+  /** アテステーション鍵の SHA-256（未束縛は null）。 */
+  fingerprint: string | null;
   /** サーバー計算の初期オンライン判定（WS 未接続時のフォールバック）。 */
   initialOnline: boolean;
   activatedByName: string | null;
@@ -144,6 +146,7 @@ export async function listKioskDevices(): Promise<KioskDeviceRow[]> {
     mapX: r.mapX != null ? Number(r.mapX) : null,
     mapY: r.mapY != null ? Number(r.mapY) : null,
     lastActivityAt: r.lastActivityAt?.toISOString() ?? null,
+    fingerprint: r.fingerprint,
     initialOnline:
       r.status === "ACTIVE" &&
       r.lastActivityAt != null &&

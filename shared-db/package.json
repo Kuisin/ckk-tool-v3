@@ -2,6 +2,7 @@
   "name": "ckk-shared-db",
   "private": true,
   "version": "1.0.0",
+  "packageManager": "pnpm@10.18.0",
   "description": "Single source of truth for the CKK shared database (Prisma multi-schema)",
   "scripts": {
     "validate": "prisma validate",

@@ -9,6 +9,12 @@
 
 import { createHash, randomBytes } from "node:crypto";
 import { cookies } from "next/headers";
+import {
+  ATTEST_COOKIE,
+  attestationRequired,
+  attestSecret,
+  verifyAttestCookie,
+} from "./attest-core";
 import { prisma } from "./db";
 import {
   DEVICE_TOKEN_TTL_MS,
@@ -63,12 +69,23 @@ export async function setDeviceCookie(): Promise<{
  * Cookie から信頼済み端末を解決。ACTIVE + トークン期限内のみ返す。
  * DISABLED/REVOKED は `status` 付きで区別（エラー画面の出し分け用）。
  */
-export async function getDevice(): Promise<
-  | { ok: true; device: DeviceAuth }
-  | {
-      ok: false;
-      reason: "NO_COOKIE" | "NOT_FOUND" | "EXPIRED" | "DISABLED" | "REVOKED";
-    }
+export type DeviceAuthFailReason =
+  | "NO_COOKIE"
+  | "NOT_FOUND"
+  | "EXPIRED"
+  | "DISABLED"
+  | "REVOKED"
+  | "ATTEST_REQUIRED"; // KIOSK_ATTESTATION=required で有効な attest Cookie が無い
+
+/**
+ * Cookie から信頼済み端末を解決。KIOSK_ATTESTATION=required のときは
+ * Android ラッパーのアテステーション Cookie（attest-core.ts）も要求する。
+ * 登録・アテステーションのフロー自身は `skipAttest: true` で呼ぶ。
+ */
+export async function getDevice(
+  opts: { skipAttest?: boolean } = {},
+): Promise<
+  { ok: true; device: DeviceAuth } | { ok: false; reason: DeviceAuthFailReason }
 > {
   const store = await cookies();
   const raw = store.get(DEVICE_COOKIE)?.value;
@@ -89,6 +106,13 @@ export async function getDevice(): Promise<
   if (device.status !== "ACTIVE") return { ok: false, reason: "REVOKED" };
   if (!isDeviceTokenAlive(new Date(), device.deviceTokenExpiresAt)) {
     return { ok: false, reason: "EXPIRED" };
+  }
+  if (!opts.skipAttest && attestationRequired()) {
+    const secret = attestSecret();
+    const attest = store.get(ATTEST_COOKIE)?.value;
+    if (!secret || !attest || !verifyAttestCookie(secret, attest, device.id)) {
+      return { ok: false, reason: "ATTEST_REQUIRED" };
+    }
   }
   return {
     ok: true,

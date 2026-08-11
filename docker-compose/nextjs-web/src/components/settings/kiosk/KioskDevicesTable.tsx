@@ -32,6 +32,7 @@ import {
   activateDevice,
   disableDevice,
   enableDevice,
+  resetDeviceKey,
   revokeDevice,
   updateDevice,
 } from "@/app/(dashboard)/settings/kiosk-devices/actions";
@@ -378,16 +379,29 @@ export function KioskDevicesTable({
       key: "name",
       header: "端末名",
       sortable: true,
-      render: (r) =>
-        r.name ? (
-          <Text fw={500} size="sm" truncate>
-            {r.name}
-          </Text>
-        ) : (
-          <Text c="dimmed" size="sm">
-            （未設定）
-          </Text>
-        ),
+      render: (r) => (
+        <div>
+          {r.name ? (
+            <Text fw={500} size="sm" truncate>
+              {r.name}
+            </Text>
+          ) : (
+            <Text c="dimmed" size="sm">
+              （未設定）
+            </Text>
+          )}
+          {r.fingerprint && (
+            <Tooltip
+              label={`アテステーション鍵: ${r.fingerprint}`}
+              withinPortal
+            >
+              <Text c="dimmed" ff="monospace" size="xs">
+                🔑 {r.fingerprint.slice(0, 12)}…
+              </Text>
+            </Tooltip>
+          )}
+        </div>
+      ),
       sortValue: (r) => r.name ?? "",
     },
     {
@@ -494,6 +508,20 @@ export function KioskDevicesTable({
       actions.push({
         label: "再有効化",
         onAction: () => run(() => enableDevice(r.id), "端末を再有効化しました"),
+      });
+    }
+    if (r.fingerprint) {
+      actions.push({
+        label: "鍵リセット",
+        color: "orange",
+        onAction: () =>
+          setConfirm({
+            title: "鍵リセットの確認",
+            message:
+              "端末アプリのアテステーション鍵を解除します。次回この端末のアプリが接続したときに新しい鍵が束縛されます（端末を交換・初期化した場合に使用）。",
+            confirmLabel: "鍵リセット",
+            run: () => resetDeviceKey(r.id),
+          }),
       });
     }
     if (r.status !== "REVOKED") {
