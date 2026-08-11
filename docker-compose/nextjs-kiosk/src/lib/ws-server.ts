@@ -19,6 +19,7 @@ import type { KioskWsBridge } from "./ws-bridge";
 import {
   getDeviceActivity,
   listPresenceDevices,
+  touchConnectedDevices,
   touchDeviceActivity,
 } from "./ws-db";
 
@@ -48,7 +49,7 @@ export class KioskWsServer implements KioskWsBridge {
   private readonly statusCache = new Map<string, boolean>();
 
   constructor() {
-    // 30s ごと: ping/pong 生存確認 + オンライン判定の再計算
+    // 30s ごと: ping/pong 生存確認 + 接続中端末のハートビート + オンライン再計算
     const timer = setInterval(() => {
       for (const ws of this.wss.clients as Set<TrackedSocket>) {
         if (ws.isAlive === false) {
@@ -58,9 +59,19 @@ export class KioskWsServer implements KioskWsBridge {
         ws.isAlive = false;
         ws.ping();
       }
-      void this.sweep();
+      void this.tick();
     }, WS_SWEEP_INTERVAL_MS);
     timer.unref();
+  }
+
+  /** 30s ごとの定期処理: 接続中端末の lastActivity 更新 → オンライン再計算。 */
+  private async tick(): Promise<void> {
+    try {
+      await touchConnectedDevices([...this.deviceSockets.keys()]);
+    } catch {
+      // DB 一時障害はスキップ（オンライン判定はソケット存在で維持される）
+    }
+    await this.sweep();
   }
 
   handleUpgrade(
@@ -157,9 +168,12 @@ export class KioskWsServer implements KioskWsBridge {
     }
   }
 
-  /** 全 ACTIVE 端末のオンライン判定を回し、変化分だけ配信。 */
+  /**
+   * 全 ACTIVE 端末のオンライン判定を回し、変化分だけ配信。
+   * モニター不在でも常時実行する（statusCache を最新に保ち、将来の
+   * 遷移ログ書き込みの土台にする）。broadcast はモニター不在なら no-op。
+   */
   private async sweep(): Promise<void> {
-    if (this.monitors.size === 0) return;
     try {
       const devices = await listPresenceDevices();
       for (const d of devices) {

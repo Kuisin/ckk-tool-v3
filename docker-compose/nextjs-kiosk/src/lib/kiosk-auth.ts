@@ -22,6 +22,7 @@ import {
   isSessionAlive,
   SESSION_TTL_MS,
 } from "./kiosk-auth-core";
+import { wsBridge } from "./ws-bridge";
 
 export const DEVICE_COOKIE = "kiosk_device";
 export const SESSION_COOKIE = "kiosk_session";
@@ -192,6 +193,8 @@ export async function getSession(): Promise<KioskUser | null> {
         where: { id: session.id },
         data: { revokedAt: now },
       });
+      // 暗黙失効（アイドル/期限切れ）もモニターへ即時反映
+      wsBridge()?.notifyDeviceChanged(session.deviceId);
     }
     return null;
   }
@@ -207,15 +210,30 @@ export async function getSession(): Promise<KioskUser | null> {
   };
 }
 
-/** ログアウト: セッション失効 + Cookie 削除。 */
-export async function destroySession(): Promise<void> {
+/**
+ * ログアウト: セッション失効 + Cookie 削除。
+ * 実際に失効させたセッションの帰属（端末/ユーザー）を返し、モニターへ通知する。
+ * Cookie なし・行なし・既に失効済みなら null。
+ */
+export async function destroySession(): Promise<{
+  deviceId: string;
+  userId: string;
+} | null> {
   const store = await cookies();
   const raw = store.get(SESSION_COOKIE)?.value;
-  if (raw) {
-    await prisma.kioskSession.updateMany({
-      where: { id: sha256hex(raw), revokedAt: null },
-      data: { revokedAt: new Date() },
-    });
-  }
   store.delete(SESSION_COOKIE);
+  if (!raw) return null;
+
+  const session = await prisma.kioskSession.findUnique({
+    where: { id: sha256hex(raw) },
+    select: { id: true, deviceId: true, userId: true, revokedAt: true },
+  });
+  if (!session || session.revokedAt) return null;
+
+  await prisma.kioskSession.update({
+    where: { id: session.id },
+    data: { revokedAt: new Date() },
+  });
+  wsBridge()?.notifyDeviceChanged(session.deviceId);
+  return { deviceId: session.deviceId, userId: session.userId };
 }
