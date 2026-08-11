@@ -23,6 +23,7 @@ import {
   IconClipboardList,
   IconCurrencyYen,
   IconCylinder,
+  IconDeviceTablet,
   IconFileInvoice,
   IconFileText,
   IconFolder,
@@ -34,6 +35,7 @@ import {
   IconListDetails,
   IconMathFunction,
   IconPackageImport,
+  IconQrcode,
   IconReceipt,
   IconRuler2,
   IconSettings2,
@@ -91,6 +93,8 @@ export const ICON_MAP: Record<string, AppIcon> = {
   IconAlertTriangle,
   IconUsersGroup,
   IconCategory,
+  IconQrcode,
+  IconDeviceTablet,
 };
 
 /** Representative icon for each category section header. */

@@ -308,6 +308,8 @@ Operation codes provide keyboard-shortcut navigation. Format: `{CAT}{MODE}{IDX}`
 | システム | 5 | アプリ管理 | SY05 | — | — |
 | システム | 6 | ファイル管理 | SY06 | — | — |
 | システム | 7 | 操作履歴 | SY07 | — | — |
+| システム | 8 | QRカード管理 | SY08 | — | — |
+| システム | 9 | 端末管理 | SY09 | — | — |
 
 `OperationCodeJump` component (`src/components/layout/OperationCodeJump.tsx`) renders as a compact TextInput in the header center. Pressing Enter or clicking a result navigates to that screen.
 
@@ -395,6 +397,8 @@ Stack (gap="xl", p="md", maw={1200})
 | アプリ管理 | `IconLayoutGrid` |
 | ファイル管理 | `IconFolder` |
 | 操作履歴 | `IconHistory` |
+| QRカード管理 | `IconQrcode` |
+| 端末管理 | `IconDeviceTablet` |
 | マニュアル | `IconBook2` |
 
 ---

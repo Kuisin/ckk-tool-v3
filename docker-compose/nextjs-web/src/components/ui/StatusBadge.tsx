@@ -130,6 +130,20 @@ export const STATUS_MAPS = {
     APPROVED: { label: "承認済", color: "green" },
     REJECTED: { label: "差し戻し", color: "red" },
   },
+  /** キオスク QRカード（app.kiosk_cards — SY08）。 */
+  KioskCard: {
+    UNASSIGNED: { label: "未割当", color: "gray" },
+    ASSIGNED: { label: "割当済", color: "green" },
+    SUSPENDED: { label: "一時停止", color: "orange" },
+    REVOKED: { label: "取り消し", color: "red" },
+  },
+  /** キオスク端末（app.kiosk_devices — SY09）。 */
+  KioskDevice: {
+    PENDING: { label: "有効化待ち", color: "yellow" },
+    ACTIVE: { label: "有効", color: "green" },
+    DISABLED: { label: "無効", color: "gray" },
+    REVOKED: { label: "取り消し", color: "red" },
+  },
 } satisfies Record<string, StatusMap>;
 
 export type StatusEntity = keyof typeof STATUS_MAPS;
