@@ -12,10 +12,11 @@
 // map_x/map_y（%座標）でピン配置して所在を可視化する。
 
 enum KioskDeviceStatus {
-  PENDING // 登録コード発行済・有効化待ち
+  PENDING // プロファイル作成済・端末リンク待ち（リンクコード有効）
+  LINKED // 物理端末リンク済・有効化待ち（有効化はこの状態からのみ）
   ACTIVE // 有効
   DISABLED // 一時無効（再有効化可）
-  REVOKED // 取り消し（トークン破棄・再登録が必要）
+  REVOKED // 取り消し（トークン破棄・再リンクが必要）
 
   @@map("KIOSK_DEVICE_STATUS")
   @@schema("app")
@@ -67,9 +68,11 @@ model KioskDevice {
 
   status KioskDeviceStatus @default(PENDING)
 
-  // 登録コード（Crockford 12桁、有効化で null 化。5分期限）
+  // リンクコード（Crockford 12桁・24h 期限。管理者がプロファイル作成時に発行し、
+  // タブレットが /setup で入力/スキャンしてリンク。リンク成立で null 化）
   registrationCode      String?   @unique @map("registration_code")
   registrationExpiresAt DateTime? @map("registration_expires_at") @db.Timestamptz(6)
+  linkedAt              DateTime? @map("linked_at") @db.Timestamptz(6)
 
   // デバイストークン（Cookie は生値、DB は SHA-256 のみ。30日）
   deviceTokenHash      String?   @unique @map("device_token_hash")

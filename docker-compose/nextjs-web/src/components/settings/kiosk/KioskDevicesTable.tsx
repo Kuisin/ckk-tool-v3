@@ -3,16 +3,21 @@
 /**
  * KioskDevicesTable — 端末管理（SY09, /settings/kiosk-devices）の一覧。
  *
- * キオスク端末の有効化（登録コード入力 or QR スキャン）・編集・無効化・
- * 取り消し。オンライン列は useKioskPresence（WS ライブ）を優先し、
- * 未接続時はサーバー計算の initialOnline（5分以内の活動）で表示する。
+ * プロファイル先行の登録フロー:
+ *   1. 管理者がここで端末プロファイルを作成（PENDING = リンク待ち）→
+ *      リンクコード（12桁・24時間期限）と QR がこの画面に表示される。
+ *   2. タブレットの設定画面（/setup）がコードを入力/カメラでスキャン →
+ *      LINKED（有効化待ち）になる。
+ *   3. 管理者が LINKED の行のみ「有効化」→ ACTIVE。タブレット側が自動検知。
  *
- * QR スキャンは BarcodeDetector 対応ブラウザのみ（feature-detect・追加依存なし）。
+ * オンライン列は useKioskPresence（WS ライブ）を優先し、未接続時は
+ * サーバー計算の initialOnline（5分以内の活動）で表示する。
  */
 
 import {
   Alert,
   Box,
+  Center,
   Group,
   Select,
   Stack,
@@ -21,17 +26,15 @@ import {
   Tooltip,
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
-import {
-  IconDeviceTablet,
-  IconMap2,
-  IconScan,
-  IconSearch,
-} from "@tabler/icons-react";
-import { useCallback, useEffect, useRef, useState, useTransition } from "react";
+import { IconDeviceTablet, IconMap2, IconSearch } from "@tabler/icons-react";
+import { useMemo, useState, useTransition } from "react";
 import {
   activateDevice,
+  createDeviceProfile,
+  deleteDeviceProfile,
   disableDevice,
   enableDevice,
+  regenerateLinkCode,
   resetDeviceKey,
   revokeDevice,
   updateDevice,
@@ -46,9 +49,10 @@ import { ConfirmModal, ModalShell } from "@/components/ui/modals";
 import { StatusBadge, statusOptions } from "@/components/ui/StatusBadge";
 import { ListShell } from "@/components/ui/shells";
 import { useUrlSelectState, useUrlStringState } from "@/hooks/useUrlState";
-import { formatCode, normalizeCode } from "@/lib/crockford";
+import { formatCode } from "@/lib/crockford";
 import { formatDateTime } from "@/lib/format";
 import type { KioskDeviceRow, KioskFactoryOption } from "@/lib/kiosk-admin";
+import { qrSvg } from "@/lib/qr";
 import type { ActionResult } from "@/lib/server-action";
 import { type KioskPresenceEntry, useKioskPresence } from "./useKioskPresence";
 
@@ -92,121 +96,58 @@ export function resolveOnline(
   return row.initialOnline;
 }
 
-// ── QR スキャナ（BarcodeDetector — 対応ブラウザのみ表示） ────────────────────
+// ── リンクコード表示（QR + コード + 期限） ───────────────────────────────────
 
-type BarcodeDetectorLike = {
-  detect(source: CanvasImageSource): Promise<Array<{ rawValue: string }>>;
-};
-type BarcodeDetectorCtor = new (options?: {
-  formats?: string[];
-}) => BarcodeDetectorLike;
-
-function getBarcodeDetectorCtor(): BarcodeDetectorCtor | null {
-  if (typeof window === "undefined") return null;
-  const ctor = (window as { BarcodeDetector?: BarcodeDetectorCtor })
-    .BarcodeDetector;
-  return ctor ?? null;
-}
-
-/** タブレットの設定 QR（{type:"KIOSK_SETUP", code, deviceId}）から code を抽出。 */
-function parseSetupQr(rawValue: string): string | null {
-  try {
-    const payload = JSON.parse(rawValue) as {
-      type?: string;
-      code?: string;
-    };
-    if (payload.type === "KIOSK_SETUP" && typeof payload.code === "string") {
-      const code = normalizeCode(payload.code);
-      return code.length === 12 ? code : null;
-    }
-  } catch {
-    // JSON でない QR は無視
-  }
-  return null;
-}
-
-function SetupQrScanner({ onCode }: { onCode: (code: string) => void }) {
-  const [scanning, setScanning] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const videoRef = useRef<HTMLVideoElement | null>(null);
-  const streamRef = useRef<MediaStream | null>(null);
-  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-
-  const stop = useCallback(() => {
-    if (timerRef.current) clearInterval(timerRef.current);
-    timerRef.current = null;
-    for (const track of streamRef.current?.getTracks() ?? []) track.stop();
-    streamRef.current = null;
-    setScanning(false);
-  }, []);
-
-  useEffect(() => stop, [stop]);
-
-  const start = async () => {
-    const ctor = getBarcodeDetectorCtor();
-    if (!ctor) return;
-    setError(null);
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: "environment" },
-      });
-      streamRef.current = stream;
-      setScanning(true);
-      // video 要素は setScanning 後に描画されるため、次フレームで割り当てる。
-      requestAnimationFrame(() => {
-        const video = videoRef.current;
-        if (!video || !streamRef.current) return;
-        video.srcObject = streamRef.current;
-        video.play().catch(() => undefined);
-        const detector = new ctor({ formats: ["qr_code"] });
-        timerRef.current = setInterval(async () => {
-          const el = videoRef.current;
-          if (!el || el.readyState < 2) return;
-          try {
-            const results = await detector.detect(el);
-            for (const r of results) {
-              const code = parseSetupQr(r.rawValue);
-              if (code) {
-                stop();
-                onCode(code);
-                return;
-              }
-            }
-          } catch {
-            // 検出失敗は無視して次のフレームへ
-          }
-        }, 500);
-      });
-    } catch {
-      setError("カメラを起動できませんでした");
-    }
-  };
-
-  if (!getBarcodeDetectorCtor()) return null; // 非対応ブラウザでは非表示
-
+function isCodeExpired(row: KioskDeviceRow): boolean {
   return (
-    <Stack gap="xs">
-      {scanning ? (
-        <>
-          {/* カメラのライブプレビュー（音声なし・muted） */}
-          <video
-            muted
-            playsInline
-            ref={videoRef}
-            style={{ width: "100%", borderRadius: 8, background: "#000" }}
-          />
-          <SecondaryButton onClick={stop}>スキャンを停止</SecondaryButton>
-        </>
-      ) : (
-        <SecondaryButton leftSection={<IconScan size={14} />} onClick={start}>
-          設定QRをスキャン
-        </SecondaryButton>
-      )}
-      {error && (
-        <Text c="red" size="xs">
-          {error}
-        </Text>
-      )}
+    row.registrationExpiresAt != null &&
+    new Date(row.registrationExpiresAt).getTime() <= Date.now()
+  );
+}
+
+function LinkCodePanel({ row }: { row: KioskDeviceRow }) {
+  const code = row.registrationCode;
+  const formatted = code ? formatCode(code) : null;
+  // QR のペイロードは表示形（ダッシュ入り）— タブレット側は normalizeCode で吸収。
+  const svg = useMemo(
+    () => (formatted ? qrSvg(formatted, { moduleSize: 6 }) : null),
+    [formatted],
+  );
+  if (!code || !formatted || !svg) {
+    return (
+      <Alert color="green" variant="light">
+        この端末はタブレットとリンク済みです。「有効化」で使用を開始できます。
+      </Alert>
+    );
+  }
+  const expired = isCodeExpired(row);
+  return (
+    <Stack align="center" gap="sm">
+      <Text c="dimmed" size="sm" ta="center">
+        タブレットの設定画面（/setup）でこのコードを入力するか、
+        タブレットのカメラでこの QR をスキャンしてください。
+      </Text>
+      {/* QR は白地パディング付き（画面越しにタブレットカメラで読むため） */}
+      <Center
+        p="md"
+        style={{
+          background: "#ffffff",
+          borderRadius: 8,
+          lineHeight: 0,
+          border: "1px solid var(--mantine-color-default-border)",
+        }}
+      >
+        {/* biome-ignore lint/security/noDangerouslySetInnerHtml: 自前 qrSvg の出力（信頼済み） */}
+        <div dangerouslySetInnerHTML={{ __html: svg }} />
+      </Center>
+      <Text ff="monospace" fw={700} size="xl" ta="center">
+        {formatted}
+      </Text>
+      <Text c={expired ? "red" : "dimmed"} size="xs" ta="center">
+        {expired
+          ? `有効期限切れ（${formatDateTime(row.registrationExpiresAt ?? "")}）— 「再発行」で新しいコードを発行してください`
+          : `有効期限: ${row.registrationExpiresAt ? formatDateTime(row.registrationExpiresAt) : "—"}`}
+      </Text>
     </Stack>
   );
 }
@@ -218,6 +159,8 @@ interface DeviceFormState {
   factoryId: string | null;
   location: string;
 }
+
+const EMPTY_FORM: DeviceFormState = { name: "", factoryId: null, location: "" };
 
 export function KioskDevicesTable({
   rows,
@@ -233,27 +176,25 @@ export function KioskDevicesTable({
   const [factory, setFactory] = useUrlSelectState("factory");
   const [status, setStatus] = useUrlSelectState("status");
 
-  // 有効化モーダル
-  const [activateOpen, setActivateOpen] = useState(false);
-  const [activateCode, setActivateCode] = useState("");
-  const [activateForm, setActivateForm] = useState<DeviceFormState>({
-    name: "",
-    factoryId: null,
-    location: "",
-  });
+  // プロファイル作成モーダル
+  const [createOpen, setCreateOpen] = useState(false);
+  const [createForm, setCreateForm] = useState<DeviceFormState>(EMPTY_FORM);
+  // リンクコード表示モーダル（rows から常に最新の行を引く）
+  const [codeTargetId, setCodeTargetId] = useState<string | null>(null);
+  const codeTarget = codeTargetId
+    ? (rows.find((r) => r.id === codeTargetId) ?? null)
+    : null;
   // 編集モーダル
   const [editTarget, setEditTarget] = useState<KioskDeviceRow | null>(null);
-  const [editForm, setEditForm] = useState<DeviceFormState>({
-    name: "",
-    factoryId: null,
-    location: "",
-  });
-  // 破壊的操作の確認
+  const [editForm, setEditForm] = useState<DeviceFormState>(EMPTY_FORM);
+  // 確認モーダル（有効化・破壊的操作）
   const [confirm, setConfirm] = useState<{
     title: string;
     message: string;
     confirmLabel: string;
-    run: () => Promise<ActionResult>;
+    confirmColor?: string;
+    successMessage?: string;
+    run: () => Promise<ActionResult<unknown>>;
   } | null>(null);
 
   const reset = () => {
@@ -274,7 +215,10 @@ export function KioskDevicesTable({
     return matchesSearch && matchesFactory && matchesStatus;
   });
 
-  const run = (action: () => Promise<ActionResult>, successMessage: string) => {
+  const run = (
+    action: () => Promise<ActionResult<unknown>>,
+    successMessage: string,
+  ) => {
     startTransition(async () => {
       const result = await action();
       if (result.ok) {
@@ -293,30 +237,31 @@ export function KioskDevicesTable({
     });
   };
 
-  const handleActivate = () => {
-    const factoryId = Number(activateForm.factoryId);
-    if (!activateCode.trim() || !activateForm.name.trim() || !factoryId) {
+  const handleCreate = () => {
+    const factoryId = Number(createForm.factoryId);
+    if (!createForm.name.trim() || !factoryId) {
       notifications.show({
         title: "エラー",
-        message: "登録コード・端末名・工場は必須です",
+        message: "端末名・工場は必須です",
         color: "red",
       });
       return;
     }
     startTransition(async () => {
-      const result = await activateDevice({
-        registrationCode: activateCode,
-        name: activateForm.name,
+      const result = await createDeviceProfile({
+        name: createForm.name,
         factoryId,
-        location: activateForm.location,
+        location: createForm.location,
       });
       if (result.ok) {
-        setActivateOpen(false);
-        setActivateCode("");
-        setActivateForm({ name: "", factoryId: null, location: "" });
+        setCreateOpen(false);
+        setCreateForm(EMPTY_FORM);
+        // 作成直後にリンクコードを表示（revalidate 済みの rows から引ける）
+        setCodeTargetId(result.data.id);
         notifications.show({
-          title: "有効化しました",
-          message: "端末側の画面が自動で切り替わります",
+          title: "作成しました",
+          message:
+            "端末プロファイルを作成しました。タブレットでリンクコードを入力してください",
           color: "green",
         });
       } else {
@@ -430,9 +375,45 @@ export function KioskDevicesTable({
       header: "状態",
       width: 110,
       sortable: true,
-      // PENDING（有効化待ち）は黄色バッジで強調される（StatusBadge のマップ）。
+      // PENDING=リンク待ち（灰）/ LINKED=有効化待ち（黄）— StatusBadge のマップ。
       render: (r) => <StatusBadge entity="KioskDevice" status={r.status} />,
       sortValue: (r) => r.status,
+    },
+    {
+      key: "link",
+      header: "リンク",
+      width: 170,
+      hideable: true,
+      render: (r) => {
+        if (r.status === "PENDING" && r.registrationCode) {
+          const expired = isCodeExpired(r);
+          return (
+            <div>
+              <Text ff="monospace" size="xs">
+                {formatCode(r.registrationCode)}
+              </Text>
+              <Text c={expired ? "red" : "dimmed"} size="xs">
+                {expired
+                  ? "期限切れ"
+                  : `期限 ${r.registrationExpiresAt ? formatDateTime(r.registrationExpiresAt) : "—"}`}
+              </Text>
+            </div>
+          );
+        }
+        if (r.linkedAt) {
+          return (
+            <Text c="dimmed" size="xs">
+              リンク {formatDateTime(r.linkedAt)}
+            </Text>
+          );
+        }
+        return (
+          <Text c="dimmed" size="sm">
+            —
+          </Text>
+        );
+      },
+      sortValue: (r) => r.linkedAt ?? r.registrationExpiresAt ?? "",
     },
     {
       key: "online",
@@ -487,7 +468,30 @@ export function KioskDevicesTable({
 
   const rowActions = (r: KioskDeviceRow): RowAction<KioskDeviceRow>[] => {
     const actions: RowAction<KioskDeviceRow>[] = [];
-    if (r.status === "ACTIVE" || r.status === "DISABLED") {
+    if (r.status === "PENDING") {
+      actions.push({
+        label: "リンクコードを表示",
+        onAction: () => setCodeTargetId(r.id),
+      });
+    }
+    if (r.status === "LINKED") {
+      actions.push({
+        label: "有効化",
+        onAction: () =>
+          setConfirm({
+            title: "有効化の確認",
+            message: `この端末を有効化します（タブレットとのリンク: ${
+              r.linkedAt ? formatDateTime(r.linkedAt) : "—"
+            }）。有効化するとタブレットが自動でキオスクとして使用可能になります。`,
+            confirmLabel: "有効化",
+            confirmColor: "green",
+            successMessage:
+              "端末を有効化しました。端末側の画面が自動で切り替わります",
+            run: () => activateDevice(r.id),
+          }),
+      });
+    }
+    if (r.status !== "REVOKED") {
       actions.push({ label: "編集", onAction: () => openEdit(r) });
     }
     if (r.status === "ACTIVE") {
@@ -524,7 +528,21 @@ export function KioskDevicesTable({
           }),
       });
     }
-    if (r.status !== "REVOKED") {
+    if (r.status === "PENDING") {
+      actions.push({
+        label: "削除",
+        color: "red",
+        onAction: () =>
+          setConfirm({
+            title: "削除の確認",
+            message:
+              "リンク前の端末プロファイルを削除します。リンクコードは無効になります。この操作は取り消せません。",
+            confirmLabel: "削除",
+            successMessage: "端末プロファイルを削除しました",
+            run: () => deleteDeviceProfile(r.id),
+          }),
+      });
+    } else if (r.status !== "REVOKED") {
       actions.push({
         label: "取り消し",
         color: "red",
@@ -551,11 +569,8 @@ export function KioskDevicesTable({
           >
             フロアマップ
           </SecondaryButton>
-          <CreateButton
-            loading={isPending}
-            onClick={() => setActivateOpen(true)}
-          >
-            端末を追加
+          <CreateButton loading={isPending} onClick={() => setCreateOpen(true)}>
+            端末プロファイル作成
           </CreateButton>
         </Group>
       }
@@ -602,65 +617,74 @@ export function KioskDevicesTable({
         urlState
       />
 
-      {/* 有効化モーダル */}
+      {/* プロファイル作成モーダル */}
       <ModalShell
-        confirmLabel="有効化"
+        confirmLabel="作成"
         loading={isPending}
-        onClose={() => setActivateOpen(false)}
-        onConfirm={handleActivate}
-        opened={activateOpen}
+        onClose={() => setCreateOpen(false)}
+        onConfirm={handleCreate}
+        opened={createOpen}
         size="md"
-        title="端末を追加（有効化）"
+        title="端末プロファイル作成"
       >
         <Stack gap="sm">
           <Alert color="blue" variant="light">
-            タブレット側の設定画面に表示されている 12
-            文字の登録コードを入力してください。有効化するとタブレットが自動で
-            キオスクとして使用可能になります。
+            プロファイルを作成すると 24 時間有効なリンクコードが発行されます。
+            タブレットの設定画面でコードを入力（またはカメラで QR
+            をスキャン）してリンクした後、この画面から有効化できます。
           </Alert>
-          <TextInput
-            label="登録コード"
-            onChange={(e) =>
-              setActivateCode(normalizeCode(e.currentTarget.value).slice(0, 12))
-            }
-            placeholder="XXXX-XXXX-XXXX"
-            styles={{
-              input: { fontFamily: "var(--mantine-font-family-monospace)" },
-            }}
-            value={formatCode(activateCode)}
-            withAsterisk
-          />
-          <SetupQrScanner onCode={setActivateCode} />
           <TextInput
             label="端末名"
             onChange={(e) =>
-              setActivateForm((s) => ({ ...s, name: e.currentTarget.value }))
+              setCreateForm((s) => ({ ...s, name: e.currentTarget.value }))
             }
             placeholder="例: 1F 加工場 タブレット1"
-            value={activateForm.name}
+            value={createForm.name}
             withAsterisk
           />
           <Select
             data={factoryOptions}
             label="工場"
-            onChange={(v) => setActivateForm((s) => ({ ...s, factoryId: v }))}
+            onChange={(v) => setCreateForm((s) => ({ ...s, factoryId: v }))}
             placeholder="工場を選択"
             searchable
-            value={activateForm.factoryId}
+            value={createForm.factoryId}
             withAsterisk
           />
           <TextInput
             label="場所"
             onChange={(e) =>
-              setActivateForm((s) => ({
+              setCreateForm((s) => ({
                 ...s,
                 location: e.currentTarget.value,
               }))
             }
             placeholder="例: 検査室入口"
-            value={activateForm.location}
+            value={createForm.location}
           />
         </Stack>
+      </ModalShell>
+
+      {/* リンクコード表示モーダル */}
+      <ModalShell
+        cancelLabel="閉じる"
+        confirmLabel="再発行"
+        loading={isPending}
+        onClose={() => setCodeTargetId(null)}
+        onConfirm={
+          codeTarget?.status === "PENDING"
+            ? () =>
+                run(
+                  () => regenerateLinkCode(codeTarget.id),
+                  "新しいリンクコードを発行しました",
+                )
+            : undefined
+        }
+        opened={codeTarget != null}
+        size="md"
+        title={`リンクコード — ${codeTarget?.name ?? ""}`}
+      >
+        {codeTarget && <LinkCodePanel row={codeTarget} />}
       </ModalShell>
 
       {/* 編集モーダル */}
@@ -703,14 +727,17 @@ export function KioskDevicesTable({
         </Stack>
       </ModalShell>
 
-      {/* 破壊的操作の確認 */}
+      {/* 有効化・破壊的操作の確認 */}
       <ConfirmModal
+        confirmColor={confirm?.confirmColor ?? "red"}
         confirmLabel={confirm?.confirmLabel ?? "実行"}
         loading={isPending}
         message={confirm?.message ?? ""}
         onClose={() => setConfirm(null)}
         onConfirm={() => {
-          if (confirm) run(confirm.run, "操作が完了しました");
+          if (confirm) {
+            run(confirm.run, confirm.successMessage ?? "操作が完了しました");
+          }
         }}
         opened={confirm != null}
         title={confirm?.title ?? ""}

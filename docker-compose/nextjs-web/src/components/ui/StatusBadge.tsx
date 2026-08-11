@@ -139,7 +139,8 @@ export const STATUS_MAPS = {
   },
   /** キオスク端末（app.kiosk_devices — SY09）。 */
   KioskDevice: {
-    PENDING: { label: "有効化待ち", color: "yellow" },
+    PENDING: { label: "リンク待ち", color: "gray" },
+    LINKED: { label: "有効化待ち", color: "yellow" },
     ACTIVE: { label: "有効", color: "green" },
     DISABLED: { label: "無効", color: "gray" },
     REVOKED: { label: "取り消し", color: "red" },

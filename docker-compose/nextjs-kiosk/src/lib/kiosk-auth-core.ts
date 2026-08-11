@@ -4,7 +4,6 @@
  */
 
 export const DEVICE_TOKEN_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 端末トークン 30日
-export const REGISTRATION_TTL_MS = 5 * 60 * 1000; // 登録コード 5分
 export const SESSION_TTL_MS = 8 * 60 * 60 * 1000; // 人セッション 8h ハード
 export const IDLE_TIMEOUT_MS = 5 * 60 * 1000; // アイドル 5分で失効
 export const IDLE_WARN_MS = 3 * 60 * 1000; // 残り 3分でカウントダウン表示
@@ -71,7 +70,7 @@ export function isDeviceTokenAlive(now: Date, expiresAt: Date | null): boolean {
   return expiresAt !== null && now.getTime() < expiresAt.getTime();
 }
 
-/** 登録コードの有効判定。 */
+/** リンクコードの有効判定（発行と TTL は SY09 側 — 24h）。 */
 export function isRegistrationAlive(
   now: Date,
   expiresAt: Date | null,

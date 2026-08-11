@@ -3,22 +3,25 @@
 /**
  * Server Actions — 端末管理（SY09, /settings/kiosk-devices）。
  *
- * キオスク端末（app.kiosk_devices）の有効化・編集・無効化・取り消しと、
- * フロアマップ（app.kiosk_floor_maps）の管理・ピン配置。全アクションを
- * RBAC（kiosk）でゲートし、監査ログ（audit_logs）を記録する。
+ * キオスク端末プロファイル（app.kiosk_devices）の作成・リンクコード再発行・
+ * 有効化・編集・無効化・取り消しと、フロアマップ（app.kiosk_floor_maps）の
+ * 管理・ピン配置。全アクションを RBAC（kiosk）でゲートし、監査ログ
+ * （audit_logs）を記録する。
  *
- * 有効化のコントラクト（nextjs-kiosk /setup と対）:
- *   タブレットが登録コード（Crockford 12桁・5分期限）を提示 → 管理者が
- *   本アクションでコードを照合して ACTIVE 化（name/工場/場所を設定）→
- *   タブレット側がポーリングで検知し自らデバイストークンを発行する。
- *   よってここではトークンには一切触れない。
+ * プロファイル先行の登録コントラクト（nextjs-kiosk /setup と対）:
+ *   1. 管理者が本画面で端末プロファイルを作成（PENDING）→ リンクコード
+ *      （Crockford 12桁・24時間期限）が本画面に表示される。
+ *   2. タブレットの /setup がコードを入力/スキャン → kiosk API が LINKED 化。
+ *   3. 管理者が LINKED の行のみ有効化（ACTIVE）→ タブレット側がポーリングで
+ *      検知し自らデバイストークンを発行する。よってここではトークンには
+ *      一切触れない。
  */
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { getCurrentActorId, recordAudit } from "@/lib/audit";
 import { checkPermission } from "@/lib/authz";
-import { normalizeCode } from "@/lib/crockford";
+import { generateCode } from "@/lib/crockford";
 import { prisma } from "@/lib/db";
 import { mintMonitorToken } from "@/lib/kiosk-ws-token";
 import {
@@ -54,50 +57,45 @@ export async function mintKioskWsToken(): Promise<
   return actionOk({ token: mintMonitorToken(secret) });
 }
 
-// ── 有効化 ──────────────────────────────────────────────────────────────────
+// ── プロファイル作成・リンクコード ──────────────────────────────────────────
 
-const activateInput = z.object({
-  registrationCode: z.string().min(1, "登録コードを入力してください"),
+/** リンクコードの有効期間（24時間）。 */
+const LINK_CODE_TTL_MS = 24 * 60 * 60 * 1000;
+
+/** Prisma の一意制約違反（コード衝突の検出に使用）。 */
+function isUniqueViolation(e: unknown): boolean {
+  return (
+    typeof e === "object" &&
+    e !== null &&
+    "code" in e &&
+    (e as { code: unknown }).code === "P2002"
+  );
+}
+
+const createProfileInput = z.object({
   name: z.string().min(1, "端末名を入力してください"),
   factoryId: z.number().int().positive("工場を選択してください"),
   location: z.string().optional(),
 });
 
-export type ActivateDeviceInput = z.infer<typeof activateInput>;
+export type CreateDeviceProfileInput = z.infer<typeof createProfileInput>;
 
-/** 登録コードを照合して端末を有効化する（PENDING → ACTIVE）。 */
-export async function activateDevice(
-  raw: ActivateDeviceInput,
+/**
+ * 端末プロファイルを作成する（PENDING + リンクコード発行）。
+ * コードはタブレットの /setup で入力/スキャンしてリンクする。
+ */
+export async function createDeviceProfile(
+  raw: CreateDeviceProfileInput,
 ): Promise<ActionResult<{ id: string }>> {
-  const authz = await checkPermission("kiosk", "UPDATE");
+  const authz = await checkPermission("kiosk", "CREATE");
   if (!authz.ok) return actionError(authz.error);
-  const parsed = activateInput.safeParse(raw);
+  const parsed = createProfileInput.safeParse(raw);
   if (!parsed.success) {
     return actionError(parsed.error.issues[0]?.message ?? "入力が不正です");
   }
   const v = parsed.data;
 
-  const code = normalizeCode(v.registrationCode);
-  if (code.length !== 12) {
-    return actionError("登録コードは 12 文字です（例: XXXX-XXXX-XXXX）");
-  }
-
   try {
-    const device = await prisma.kioskDevice.findUnique({
-      where: { registrationCode: code },
-    });
-    if (!device) return actionError("登録コードが見つかりません");
-    if (device.status !== "PENDING") {
-      return actionError("この端末は有効化待ちではありません");
-    }
-    if (
-      !device.registrationExpiresAt ||
-      device.registrationExpiresAt.getTime() <= Date.now()
-    ) {
-      return actionError(
-        "登録コードの有効期限が切れています。端末側で新しいコードを発行してください",
-      );
-    }
     const factory = await prisma.factory.findUnique({
       where: { id: v.factoryId },
       select: { isActive: true },
@@ -105,28 +103,174 @@ export async function activateDevice(
     if (!factory || !factory.isActive) {
       return actionError("対象の工場が見つかりません");
     }
-    await prisma.kioskDevice.update({
-      where: { id: device.id },
-      data: {
-        status: "ACTIVE",
+    const data = () => ({
+      status: "PENDING" as const,
+      name: v.name.trim(),
+      factoryId: v.factoryId,
+      location: v.location?.trim() || null,
+      registrationCode: generateCode(12),
+      registrationExpiresAt: new Date(Date.now() + LINK_CODE_TTL_MS),
+    });
+    // コード衝突（unique 制約）は極めて稀 — 一度だけ再生成してリトライ。
+    const created = await prisma.kioskDevice
+      .create({ data: data(), select: { id: true } })
+      .catch((e) => {
+        if (!isUniqueViolation(e)) throw e;
+        return prisma.kioskDevice.create({
+          data: data(),
+          select: { id: true },
+        });
+      });
+    await recordAudit({
+      action: "CREATE",
+      tableName: "kiosk_devices",
+      recordId: created.id,
+      after: {
+        status: "PENDING",
         name: v.name.trim(),
         factoryId: v.factoryId,
         location: v.location?.trim() || null,
+      },
+    });
+    revalidate();
+    return actionOk({ id: created.id });
+  } catch (e) {
+    return actionError(
+      prismaErrorMessage(e, "端末プロファイルの作成に失敗しました"),
+    );
+  }
+}
+
+/** リンクコードを再発行する（PENDING のみ。新コード + 24時間期限）。 */
+export async function regenerateLinkCode(id: string): Promise<ActionResult> {
+  const authz = await checkPermission("kiosk", "UPDATE");
+  if (!authz.ok) return actionError(authz.error);
+  const parsed = uuidSchema.safeParse(id);
+  if (!parsed.success) return actionError("入力が不正です");
+
+  try {
+    const device = await prisma.kioskDevice.findUnique({
+      where: { id: parsed.data },
+      select: { status: true },
+    });
+    if (!device) return actionError("対象の端末プロファイルが見つかりません");
+    if (device.status !== "PENDING") {
+      return actionError("リンク待ちの端末プロファイルのみ再発行できます");
+    }
+    const data = () => ({
+      registrationCode: generateCode(12),
+      registrationExpiresAt: new Date(Date.now() + LINK_CODE_TTL_MS),
+    });
+    await prisma.kioskDevice
+      .update({ where: { id: parsed.data }, data: data() })
+      .catch((e) => {
+        if (!isUniqueViolation(e)) throw e;
+        return prisma.kioskDevice.update({
+          where: { id: parsed.data },
+          data: data(),
+        });
+      });
+    await recordAudit({
+      action: "UPDATE",
+      tableName: "kiosk_devices",
+      recordId: parsed.data,
+      after: { note: "リンクコードを再発行" },
+    });
+    revalidate();
+    return actionOk();
+  } catch (e) {
+    return actionError(
+      prismaErrorMessage(e, "リンクコードの再発行に失敗しました"),
+    );
+  }
+}
+
+/** 端末プロファイルを削除する（リンク前 = PENDING のみ。ハード削除）。 */
+export async function deleteDeviceProfile(id: string): Promise<ActionResult> {
+  const authz = await checkPermission("kiosk", "DELETE");
+  if (!authz.ok) return actionError(authz.error);
+  const parsed = uuidSchema.safeParse(id);
+  if (!parsed.success) return actionError("入力が不正です");
+
+  try {
+    const device = await prisma.kioskDevice.findUnique({
+      where: { id: parsed.data },
+      select: { status: true, name: true, factoryId: true },
+    });
+    if (!device) return actionError("対象の端末プロファイルが見つかりません");
+    if (device.status !== "PENDING") {
+      return actionError(
+        "リンク済み・有効化済みの端末は削除できません（取り消しを使用してください）",
+      );
+    }
+    await prisma.kioskDevice.delete({ where: { id: parsed.data } });
+    await recordAudit({
+      action: "DELETE",
+      tableName: "kiosk_devices",
+      recordId: parsed.data,
+      before: {
+        status: device.status,
+        name: device.name,
+        factoryId: device.factoryId,
+      },
+    });
+    revalidate();
+    return actionOk();
+  } catch (e) {
+    return actionError(
+      prismaErrorMessage(e, "端末プロファイルの削除に失敗しました"),
+    );
+  }
+}
+
+// ── 有効化 ──────────────────────────────────────────────────────────────────
+
+/**
+ * リンク済み端末を有効化する（LINKED → ACTIVE）。
+ * リンク前（PENDING）の有効化は許可しない — タブレットとリンクしてから。
+ */
+export async function activateDevice(
+  id: string,
+): Promise<ActionResult<{ id: string }>> {
+  const authz = await checkPermission("kiosk", "UPDATE");
+  if (!authz.ok) return actionError(authz.error);
+  const parsed = uuidSchema.safeParse(id);
+  if (!parsed.success) return actionError("入力が不正です");
+
+  try {
+    const device = await prisma.kioskDevice.findUnique({
+      where: { id: parsed.data },
+      select: { status: true },
+    });
+    if (!device) return actionError("対象の端末プロファイルが見つかりません");
+    if (device.status === "PENDING") {
+      return actionError(
+        "リンクされていない端末プロファイルは有効化できません",
+      );
+    }
+    if (device.status === "ACTIVE") {
+      return actionError("この端末は既に有効です");
+    }
+    if (device.status !== "LINKED") {
+      return actionError("この端末は有効化できる状態ではありません");
+    }
+    await prisma.kioskDevice.update({
+      where: { id: parsed.data },
+      data: {
+        status: "ACTIVE",
         activatedById: authz.userId,
         activatedAt: new Date(),
-        registrationCode: null,
-        registrationExpiresAt: null,
       },
     });
     await recordAudit({
       action: "UPDATE",
       tableName: "kiosk_devices",
-      recordId: device.id,
-      before: { status: "PENDING" },
-      after: { status: "ACTIVE", name: v.name.trim() },
+      recordId: parsed.data,
+      before: { status: "LINKED" },
+      after: { status: "ACTIVE" },
     });
     revalidate();
-    return actionOk({ id: device.id });
+    return actionOk({ id: parsed.data });
   } catch (e) {
     return actionError(prismaErrorMessage(e, "端末の有効化に失敗しました"));
   }
