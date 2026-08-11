@@ -30,8 +30,7 @@ Android Studio（Ladybug 以降）でこのディレクトリを開く。フレ�
 | `devDebug` / `devRelease` | https://ckk-kiosk-dev.kai-lab.net | `jp.co.ckk.kiosk.dev` |
 | `prodRelease` | https://ckk-kiosk.kai-lab.net | `jp.co.ckk.kiosk` |
 
-CLI: `./gradlew assembleDevDebug`（初回は `gradle wrapper` で wrapper を生成、
-または Android Studio が自動生成）。release 署名は通常のキーストア運用で。
+CLI: `./gradlew assembleDevDebug`。release 署名とリリース手順は下の「配布」を参照。
 
 ## タブレット設定メモ
 
@@ -45,3 +44,70 @@ CLI: `./gradlew assembleDevDebug`（初回は `gradle wrapper` で wrapper を�
 Coolify の `nextjs-kiosk-dev` / `nextjs-kiosk-main` に環境変数
 `KIOSK_ATTESTATION=required` を設定して再デプロイ（未設定ならアテステーションは
 任意 = ブラウザでも利用可。dev で動作確認 → main 有効化の順を推奨）。
+
+## 配布（署名付き APK のリリース）
+
+APK は `docker-compose/nextjs-kiosk/public/apk/` にコミットし、Coolify ビルドの
+キオスクアプリがそのまま静的配信する（`/apk/*` は proxy のリダイレクト対象外 =
+Cookie なしの新品タブレットでもダウンロード可。APK に秘密情報は含まれない）。
+リリースごとに同名で上書きし、リポジトリには常に最新 1 世代のみ置く:
+
+| Flavor | 配布 URL |
+|---|---|
+| dev  | https://ckk-kiosk-dev.kai-lab.net/apk/ckk-kiosk-dev.apk |
+| prod | https://ckk-kiosk.kai-lab.net/apk/ckk-kiosk.apk |
+
+同じ場所の `version.json` に versionCode / versionName / sha256（flavor 別）を
+書き出す（キャッシュ確認・将来の自動更新用）。
+
+### 一度だけの準備（Mac）
+
+1. リリース用キーストアを作成（Android Studio → Generate Signed Bundle/APK →
+   Create new、または `keytool -genkeypair`）。**リポジトリ外**
+   （例: `~/keystores/ckk-kiosk.jks`）に保管し、ファイルと各パスワードを
+   ログインキーチェーンにバックアップする。**永続的に同じキーストアを使うこと —
+   紛失すると全端末で上書き更新が不可能になる（初期化して再登録するしかない）。**
+2. `~/.gradle/gradle.properties`（コミット対象外）に署名情報を追加:
+
+   ```
+   CKK_KEYSTORE_PATH=/Users/<you>/keystores/ckk-kiosk.jks
+   CKK_KEYSTORE_PASSWORD=...
+   CKK_KEY_ALIAS=ckk-kiosk
+   CKK_KEY_PASSWORD=...
+   ```
+
+   （プロパティが無いビルド環境では release は unsigned にフォールバックする）
+3. `brew install qrencode`（プロビジョニング QR の PNG 出力用）
+
+### リリース手順
+
+1. `app/build.gradle.kts` の `versionCode` / `versionName` を上げる
+2. `./tools/release-apk.sh` を実行
+   （署名付きビルド → `public/apk/` へコピー → `version.json` → QR を `tools/out/` へ）
+3. コミット → PR → dev マージ → Coolify デプロイ後に
+   `curl -I https://ckk-kiosk-dev.kai-lab.net/apk/ckk-kiosk-dev.apk`（200 を確認。
+   `/setup` への 307 が返る場合は proxy の `apk/` 除外が落ちている）
+4. dev タブレットで登録・動作確認 → dev→main 昇格（通常フロー・ユーザー操作）で
+   prod URL / QR が有効になる
+
+QR（`tools/out/provisioning-*.png`）は APK のチェックサムに紐づくため、
+リリースごとに再生成される。`tools/out/` は gitignore。
+
+### 端末へのインストール
+
+- **新規タブレット（キオスクロック）**: 初期化 → 初期設定の「ようこそ」画面を
+  6 回タップ → そのリリースの QR をスキャン（APK がダウンロードされ
+  デバイスオーナーとして構成される）
+- **ロックなし・検証用**: Chrome で APK URL を開く → 提供元不明アプリを許可 →
+  インストール
+
+### ロック済み端末の更新
+
+ロック済み（デバイスオーナー）端末にはブラウザが無いため、当面は:
+
+- USB で `adb install -r`、または
+- 初期化 → 新リリースの QR を再スキャン（登録は軽量な設計）
+
+将来（Phase 2）: デバイスオーナーは `PackageInstaller` でサイレントインストール
+できるため、ラッパーが `version.json` をポーリングして `/apk/` から自動更新する
+仕組みを端末台数が増えた時点で導入する。
