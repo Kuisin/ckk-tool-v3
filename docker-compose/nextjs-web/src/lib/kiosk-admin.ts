@@ -106,7 +106,7 @@ export interface KioskDeviceRow {
   id: string;
   name: string | null;
   location: string | null;
-  status: "PENDING" | "ACTIVE" | "DISABLED" | "REVOKED";
+  status: "PENDING" | "LINKED" | "ACTIVE" | "DISABLED" | "REVOKED";
   factoryId: number | null;
   factoryLabel: string | null;
   floorMapId: string | null;
@@ -120,7 +120,11 @@ export interface KioskDeviceRow {
   initialOnline: boolean;
   activatedByName: string | null;
   activatedAt: string | null;
+  /** リンクコード（正規化形。PENDING の間のみ非 null）。 */
+  registrationCode: string | null;
   registrationExpiresAt: string | null;
+  /** タブレットとリンクした日時（LINKED 以降）。 */
+  linkedAt: string | null;
   createdAt: string | null;
 }
 
@@ -153,7 +157,9 @@ export async function listKioskDevices(): Promise<KioskDeviceRow[]> {
       now - r.lastActivityAt.getTime() < KIOSK_ONLINE_WINDOW_MS,
     activatedByName: r.activatedBy?.displayName ?? null,
     activatedAt: r.activatedAt?.toISOString() ?? null,
+    registrationCode: r.registrationCode,
     registrationExpiresAt: r.registrationExpiresAt?.toISOString() ?? null,
+    linkedAt: r.linkedAt?.toISOString() ?? null,
     createdAt: r.createdAt?.toISOString() ?? null,
   }));
 }

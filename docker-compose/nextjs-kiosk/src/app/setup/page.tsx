@@ -1,91 +1,127 @@
 "use client";
 
 /**
- * /setup — 端末登録画面。
+ * /setup — 端末リンク画面（profile-first フロー）。
  *
- * POST /api/kiosk/setup で登録コードを発行し、QR + コード + カウントダウンを
- * 表示。3 秒間隔で /api/kiosk/setup/confirm をポーリングし、管理者が
- * nextjs-web の端末管理（SY09）で有効化したら Cookie を得て /login へ。
- * deviceId は localStorage に保持（Cookie 消失時の reactivate 用）。
+ * 管理者が SY09 で作成した端末プロファイルの**リンクコード**（12桁・24h）を
+ * 入力（または管理画面に表示された QR をカメラでスキャン）してリンクする。
+ * リンク後は「有効化待ち」— 管理者がプロファイルを有効化すると confirm
+ * ポーリングが 30日デバイストークンを受け取り /login へ（フルリロード —
+ * ヘッダーの端末名反映のため）。
+ * Cookie 消失時は localStorage の deviceId で reactivate を先に試す。
  */
 
 import {
   Alert,
-  Box,
   Button,
   Center,
   Loader,
   Paper,
   Stack,
   Text,
+  TextInput,
   Title,
 } from "@mantine/core";
-import { IconRefresh } from "@tabler/icons-react";
+import { IconLink, IconQrcode, IconRefresh } from "@tabler/icons-react";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { formatCode } from "@/lib/crockford";
-import { qrSvg } from "@/lib/qr";
+import { QrScannerView } from "@/components/QrScannerView";
+import { formatCode, normalizeCode } from "@/lib/crockford";
 
 const DEVICE_ID_KEY = "kiosk_device_id";
 const POLL_INTERVAL_MS = 3000;
 
 type SetupState =
   | { phase: "loading" }
-  | { phase: "waiting"; deviceId: string; code: string; expiresAt: number }
-  | { phase: "expired" }
+  | { phase: "enter"; error?: string; scanning?: boolean }
+  | { phase: "waiting"; deviceId: string; deviceName: string | null }
   | { phase: "error"; message: string };
 
 export default function SetupPage() {
   const [state, setState] = useState<SetupState>({ phase: "loading" });
-  const [now, setNow] = useState(() => Date.now());
+  const [codeInput, setCodeInput] = useState("");
+  const [linking, setLinking] = useState(false);
   const startedRef = useRef(false);
 
-  const begin = useCallback(async () => {
-    setState({ phase: "loading" });
-    try {
-      // Cookie 消失だが登録済み端末 → deviceId で再有効化を先に試す
-      const savedId = localStorage.getItem(DEVICE_ID_KEY);
-      if (savedId) {
-        const res = await fetch("/api/kiosk/setup/reactivate", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ deviceId: savedId }),
-        });
-        if (res.ok) {
-          window.location.replace("/login");
-          return;
-        }
-      }
-
-      const res = await fetch("/api/kiosk/setup", { method: "POST" });
-      const data = (await res.json()) as {
-        registered: boolean;
-        deviceId: string;
-        registrationCode?: string;
-        expiresAt?: string;
-      };
-      if (data.registered) {
-        window.location.replace("/login");
-        return;
-      }
-      localStorage.setItem(DEVICE_ID_KEY, data.deviceId);
-      setState({
-        phase: "waiting",
-        deviceId: data.deviceId,
-        code: data.registrationCode ?? "",
-        expiresAt: data.expiresAt ? new Date(data.expiresAt).getTime() : 0,
-      });
-    } catch {
-      setState({ phase: "error", message: "サーバーに接続できません" });
-    }
-  }, []);
-
+  // 初期化: 登録済みなら /login へ、Cookie 消失なら reactivate を試す
   useEffect(() => {
     if (startedRef.current) return;
     startedRef.current = true;
-    void begin();
-  }, [begin]);
+    (async () => {
+      try {
+        const status = await fetch("/api/kiosk/setup");
+        const data = (await status.json()) as { registered: boolean };
+        if (data.registered) {
+          window.location.replace("/login");
+          return;
+        }
+        const savedId = localStorage.getItem(DEVICE_ID_KEY);
+        if (savedId) {
+          const res = await fetch("/api/kiosk/setup/reactivate", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ deviceId: savedId }),
+          });
+          if (res.ok) {
+            window.location.replace("/login");
+            return;
+          }
+        }
+        setState({ phase: "enter" });
+      } catch {
+        setState({ phase: "error", message: "サーバーに接続できません" });
+      }
+    })();
+  }, []);
 
-  // 有効化待ちポーリング + カウントダウン
+  const link = useCallback(async (rawCode: string) => {
+    const code = normalizeCode(rawCode);
+    if (code.length !== 12) {
+      setState({ phase: "enter", error: "コードは 12 文字です" });
+      return;
+    }
+    setLinking(true);
+    try {
+      const res = await fetch("/api/kiosk/setup/link", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code }),
+      });
+      const data = (await res.json()) as {
+        status: string;
+        deviceId?: string;
+        deviceName?: string | null;
+      };
+      if (data.status === "ALREADY_REGISTERED") {
+        window.location.replace("/login");
+        return;
+      }
+      if (data.status === "LINKED" && data.deviceId) {
+        localStorage.setItem(DEVICE_ID_KEY, data.deviceId);
+        setState({
+          phase: "waiting",
+          deviceId: data.deviceId,
+          deviceName: data.deviceName ?? null,
+        });
+        return;
+      }
+      setState({
+        phase: "enter",
+        error:
+          data.status === "CODE_EXPIRED"
+            ? "コードの有効期限が切れています。管理者に再発行を依頼してください。"
+            : "コードが正しくありません。",
+      });
+    } catch {
+      setState({
+        phase: "enter",
+        error: "通信エラー。もう一度お試しください。",
+      });
+    } finally {
+      setLinking(false);
+    }
+  }, []);
+
+  // リンク後: 有効化待ちポーリング
   useEffect(() => {
     if (state.phase !== "waiting") return;
     const poll = setInterval(async () => {
@@ -99,7 +135,6 @@ export default function SetupPage() {
         if (data.status === "CONFIRMED") {
           window.location.replace("/login");
         } else if (data.status === "ALREADY_CONFIRMED") {
-          // トークン発行済みなのに Cookie が無い → 再有効化
           const re = await fetch("/api/kiosk/setup/reactivate", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -107,83 +142,97 @@ export default function SetupPage() {
           });
           if (re.ok) window.location.replace("/login");
         }
+        // PENDING / LINKED はそのまま待つ
       } catch {
         // 通信断は次のポーリングで再試行
       }
     }, POLL_INTERVAL_MS);
-    const tick = setInterval(() => {
-      setNow(Date.now());
-      if (Date.now() >= state.expiresAt) setState({ phase: "expired" });
-    }, 1000);
-    return () => {
-      clearInterval(poll);
-      clearInterval(tick);
-    };
+    return () => clearInterval(poll);
   }, [state]);
-
-  if (state.phase === "loading") {
-    return (
-      <Center mih="calc(100dvh - 48px)">
-        <Loader size="lg" />
-      </Center>
-    );
-  }
 
   return (
     <Center mih="calc(100dvh - 48px)" p="md">
-      <Paper maw={480} p="xl" radius="md" w="100%">
+      <Paper maw={560} p="xl" radius="md" w="100%">
         <Stack align="center" gap="md">
-          <Title order={2}>専用端末設定</Title>
-          <Text c="dimmed" size="sm" ta="center">
-            このデバイスを専用端末として登録します。 管理者に「設定 →
-            端末管理」で下のコードを有効化してもらってください。
-          </Text>
+          <Title order={2}>端末リンク</Title>
 
-          {state.phase === "waiting" && (
+          {state.phase === "loading" && <Loader size="lg" />}
+
+          {state.phase === "enter" && !state.scanning && (
             <>
-              <Box
-                // biome-ignore lint/security/noDangerouslySetInnerHtml: 自前生成の静的 SVG（lib/qr.ts）
-                dangerouslySetInnerHTML={{
-                  __html: qrSvg(
-                    JSON.stringify({
-                      type: "KIOSK_SETUP",
-                      code: state.code,
-                      deviceId: state.deviceId,
-                    }),
-                  ),
+              <Text c="dimmed" size="sm" ta="center">
+                管理者が「設定 → 端末管理」で作成した端末プロファイルの
+                リンクコードを入力してください。
+              </Text>
+              <TextInput
+                aria-label="リンクコード"
+                onChange={(e) => setCodeInput(e.currentTarget.value)}
+                placeholder="XXXX-XXXX-XXXX"
+                styles={{
+                  input: {
+                    textAlign: "center",
+                    fontFamily: "monospace",
+                    fontSize: 24,
+                    letterSpacing: 2,
+                  },
                 }}
-                w={240}
+                value={formatCode(normalizeCode(codeInput).slice(0, 12))}
+                w="100%"
               />
-              <Stack align="center" gap={4}>
-                <Text c="dimmed" size="xs">
-                  登録コード
-                </Text>
-                <Text ff="monospace" fw={700} style={{ fontSize: 28 }}>
-                  {formatCode(state.code)}
-                </Text>
-              </Stack>
-              <Text c="dimmed" size="sm">
-                有効期限: {(() => {
-                  const remain = Math.max(0, state.expiresAt - now);
-                  const m = Math.floor(remain / 60_000);
-                  const s = Math.floor((remain % 60_000) / 1000);
-                  return `${m}:${String(s).padStart(2, "0")}`;
-                })()}
-              </Text>
-              <Text c="blue" size="sm">
-                ● 有効化を待っています…
-              </Text>
+              {state.error && (
+                <Alert color="red" w="100%">
+                  {state.error}
+                </Alert>
+              )}
+              <Button
+                disabled={normalizeCode(codeInput).length !== 12}
+                leftSection={<IconLink size={20} />}
+                loading={linking}
+                onClick={() => link(codeInput)}
+                w="100%"
+              >
+                この端末をリンク
+              </Button>
+              <Button
+                leftSection={<IconQrcode size={20} />}
+                onClick={() => setState({ phase: "enter", scanning: true })}
+                variant="subtle"
+              >
+                管理画面の QR をスキャン
+              </Button>
             </>
           )}
 
-          {state.phase === "expired" && (
+          {state.phase === "enter" && state.scanning && (
             <>
-              <Alert color="orange" w="100%">
-                登録コードの有効期限が切れました。
-              </Alert>
-              <Button leftSection={<IconRefresh size={20} />} onClick={begin}>
-                新しいコードを発行
+              <Text c="dimmed" size="sm" ta="center">
+                管理画面（端末管理）に表示されたリンクコードの QR を
+                カメラにかざしてください。
+              </Text>
+              <QrScannerView
+                onScan={(payload) => void link(payload)}
+                paused={linking}
+              />
+              <Button
+                onClick={() => setState({ phase: "enter" })}
+                variant="subtle"
+              >
+                コードを手入力する
               </Button>
+            </>
+          )}
+
+          {state.phase === "waiting" && (
+            <>
+              <Alert color="blue" w="100%">
+                リンクしました{state.deviceName ? `: ${state.deviceName}` : ""}
+                。 管理者がこのプロファイルを<b>有効化</b>
+                すると利用を開始できます。
+              </Alert>
+              <Loader size="sm" />
+              <Text c="dimmed" size="sm">
+                ● 有効化を待っています…
+              </Text>
             </>
           )}
 
@@ -192,7 +241,10 @@ export default function SetupPage() {
               <Alert color="red" w="100%">
                 {state.message}
               </Alert>
-              <Button leftSection={<IconRefresh size={20} />} onClick={begin}>
+              <Button
+                leftSection={<IconRefresh size={20} />}
+                onClick={() => window.location.reload()}
+              >
                 再試行
               </Button>
             </>
