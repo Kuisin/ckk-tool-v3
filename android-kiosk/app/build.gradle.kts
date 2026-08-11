@@ -11,8 +11,14 @@ android {
         applicationId = "jp.co.ckk.kiosk"
         minSdk = 29
         targetSdk = 35
-        versionCode = 1
-        versionName = "0.1.0"
+        versionCode = 2
+        versionName = "0.2.0"
+
+        // メンテナンス退出 PIN（デバイスオーナー時、左上 5 タップ → PIN 入力）。
+        // 既定値のまま配布しないこと — ~/.gradle/gradle.properties（コミット対象外）に
+        // KIOSK_UNLOCK_PIN=xxxx を書いてビルドすると上書きされる。
+        val unlockPin = providers.gradleProperty("KIOSK_UNLOCK_PIN").getOrElse("246810")
+        buildConfigField("String", "KIOSK_UNLOCK_PIN", "\"$unlockPin\"")
     }
 
     // dev / prod でロード先を切替（applicationIdSuffix で併存インストール可）

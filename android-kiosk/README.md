@@ -33,12 +33,63 @@ Android Studio（Ladybug 以降）でこのディレクトリを開く。フレ�
 CLI: `./gradlew assembleDevDebug`（初回は `gradle wrapper` で wrapper を生成、
 または Android Studio が自動生成）。release 署名は通常のキーストア運用で。
 
+## キオスクモード（端末ロック — デバイスオーナー）
+
+このアプリは自前の Device Policy Controller（`KioskDeviceAdminReceiver`）を持ち、
+**デバイスオーナー**として動くとタブレットを専用端末に固定する（MDM 不要）:
+
+- **Lock Task**: このアプリ以外へ離脱不可（ホーム / 最近 / 通知プルダウン無効。
+  電源メニューのみ許可）
+- **ホーム固定**: 再起動すると自動でこのアプリが全画面起動
+- ロック画面無効・給電中は画面常時 ON
+
+通常インストール（デバイスオーナーでない）では従来どおりのただの全画面
+アプリとして動く — 全ロジックは no-op。
+
+### 登録方法 A: QR プロビジョニング（推奨・ケーブル不要）
+
+新品または**初期化した**タブレットで:
+
+1. 署名済み APK をビルドし、公開 URL に置く（例:
+   `https://ckk-kiosk-dev.kai-lab.net/ckk-kiosk-dev.apk`）
+2. QR を生成: `tools/provisioning-qr.sh <apk> <url> dev|prod`
+   （APK を更新したら QR も作り直す — checksum が APK に束縛される）
+3. タブレット初期設定の「ようこそ」画面で**同じ場所を 6 回タップ** → QR
+   スキャナが起動 → Wi-Fi 接続 → QR を読む → APK が自動ダウンロード・
+   インストールされ、デバイスオーナーとしてセットアップ完了 → キオスク起動
+
+### 登録方法 B: adb（初期化したくない既存端末）
+
+端末に **Google アカウント等が 1 つも無い**ことが条件（設定 → アカウントで
+全削除）。APK をインストールしてから:
+
+```bash
+adb shell dpm set-device-owner jp.co.ckk.kiosk.dev/jp.co.ckk.kiosk.KioskDeviceAdminReceiver   # dev 版
+adb shell dpm set-device-owner jp.co.ckk.kiosk/jp.co.ckk.kiosk.KioskDeviceAdminReceiver       # prod 版
+```
+
+アプリを一度起動するとポリシーが適用されロックされる。
+
+### メンテナンス退出
+
+画面**左上を 3 秒以内に 5 回タップ** → 管理者 PIN 入力:
+
+- **設定を開く** — 一時的にロックを外して Android 設定へ（アプリに戻ると再ロック）
+- **キオスク解除** — デバイスオーナーを放棄して通常アプリに戻す
+  （再登録は上の A / B をやり直し）
+
+PIN の既定値は `246810`。**既定値のまま配布しないこと** — ビルドする Mac の
+`~/.gradle/gradle.properties`（コミット対象外）に `KIOSK_UNLOCK_PIN=xxxx` を
+書いてからビルドすると差し替わる。
+
 ## タブレット設定メモ
 
 - カメラ権限は初回 QR スキャン時にダイアログ許可（以後は自動）
-- 画面は常時 ON・システムバー非表示。ホーム/タスクバー経由の離脱まで防ぐ
-  場合は Android の**アプリ固定（screen pinning）**や MDM の kiosk mode を併用
-- dev 版と prod 版は併存インストール可能（id suffix `.dev`）
+- 画面は常時 ON・システムバー非表示
+- デバイスオーナー登録しない場合の簡易ロックは Android の
+  **アプリ固定（screen pinning）**でも可（弱い — 上のキオスクモード推奨）
+- dev 版と prod 版は併存インストール可能（id suffix `.dev`）だが、
+  デバイスオーナーになれるのは端末につき 1 アプリのみ
 
 ## サーバー側の有効化
 
