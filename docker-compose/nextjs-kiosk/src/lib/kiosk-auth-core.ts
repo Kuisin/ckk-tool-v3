@@ -8,7 +8,8 @@ export const SESSION_TTL_MS = 8 * 60 * 60 * 1000; // 人セッション 8h ハ�
 export const IDLE_TIMEOUT_MS = 5 * 60 * 1000; // アイドル 5分で失効
 export const IDLE_WARN_MS = 3 * 60 * 1000; // 残り 3分でカウントダウン表示
 export const ACTIVITY_PING_MIN_INTERVAL_MS = 30 * 1000; // ping は最短 30s 間隔
-export const PIN_REVERIFY_AFTER_MS = 3 * 24 * 60 * 60 * 1000; // 3日未使用で PIN 再入力
+export const PIN_REVERIFY_DEVICE_IDLE_MS = 48 * 60 * 60 * 1000; // その端末で 48h 未使用なら PIN 再入力
+export const PIN_REVERIFY_MAX_MS = 14 * 24 * 60 * 60 * 1000; // 活動に関係なく 2 週間ごとに PIN 再入力
 export const PIN_MAX_ATTEMPTS = 5;
 export const PIN_LOCK_MS = 15 * 60 * 1000; // 15分ロック
 export const TICKET_TTL_MS = 2 * 60 * 1000; // PIN チケット 2分・単回使用
@@ -40,10 +41,31 @@ export function idleRemainingMs(now: Date, lastActivityAt: Date): number {
   );
 }
 
-/** 3日ルール: 前回使用から 3日以上空いたら PIN 再入力（未使用 = 要 PIN）。 */
-export function needsPinVerify(now: Date, lastUsedAt: Date | null): boolean {
-  if (!lastUsedAt) return true;
-  return now.getTime() - lastUsedAt.getTime() >= PIN_REVERIFY_AFTER_MS;
+/**
+ * スキャンのみログインの可否（true = 要 PIN）。両方満たすときだけ PIN を省略:
+ *   1. **この端末で** 48 時間以内に使用実績がある（lastUsedOnDeviceAt =
+ *      同カード×同端末の最新セッションの活動時刻。初めて使う端末は常に PIN）
+ *   2. 最後の PIN 検証（pin_last_verified_at）から 2 週間以内
+ *      （活動が続いていても 2 週間ごとに必ず PIN を求める）
+ */
+export function needsPinVerify(
+  now: Date,
+  lastUsedOnDeviceAt: Date | null,
+  pinLastVerifiedAt: Date | null,
+): boolean {
+  if (
+    !lastUsedOnDeviceAt ||
+    now.getTime() - lastUsedOnDeviceAt.getTime() >= PIN_REVERIFY_DEVICE_IDLE_MS
+  ) {
+    return true;
+  }
+  if (
+    !pinLastVerifiedAt ||
+    now.getTime() - pinLastVerifiedAt.getTime() >= PIN_REVERIFY_MAX_MS
+  ) {
+    return true;
+  }
+  return false;
 }
 
 /** PIN ロック中か。 */
