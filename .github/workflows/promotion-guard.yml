@@ -36,15 +36,30 @@ jobs:
             exit 1
           fi
 
-      - name: dev must already contain main (no diverged history)
+      - name: dev must merge cleanly into main (no diverged content)
         run: |
           git fetch origin main --quiet
-          if git merge-base --is-ancestor origin/main "${{ github.event.pull_request.head.sha }}"; then
-            echo "OK: dev は main を含んでいます。昇格 PR はコンフリクトしません。"
-          else
-            echo "::error::dev が main の履歴を含んでいません（履歴が分岐しています）。"
+          HEAD_SHA="${{ github.event.pull_request.head.sha }}"
+          if git merge-base --is-ancestor origin/main "$HEAD_SHA"; then
+            echo "OK: dev は main を完全に含んでいます。昇格 PR はコンフリクトしません。"
+            exit 0
+          fi
+          # main には昇格マージコミット（main 側にのみ存在する merge commit）が
+          # 残るのが正常なため、is-ancestor だけで落とすと昇格のたびに
+          # back-merge が必要になる。実際にコンフリクトするかをテストマージで判定する。
+          set +e
+          git merge-tree --write-tree --no-messages origin/main "$HEAD_SHA" >/dev/null
+          rc=$?
+          set -e
+          if [ "$rc" -eq 0 ]; then
+            echo "OK: main に dev 未取り込みのコミット（昇格マージコミット等）がありますが、コンフリクトなくマージできます。"
+          elif [ "$rc" -eq 1 ]; then
+            echo "::error::dev と main の内容が分岐しており、昇格 PR がコンフリクトします。"
             echo "::error::原因の多くは、過去の昇格 PR を squash / rebase でマージしたことです。"
             echo "::error::対処: main を dev へ取り込む PR（例: git checkout -b fix/sync-main-into-dev origin/dev && git merge origin/main）を先にマージしてから、この昇格 PR を再実行してください。"
             echo "::error::また、昇格 PR は必ず『Create a merge commit』でマージしてください（squash 禁止）。"
+            exit 1
+          else
+            echo "::error::テストマージの実行に失敗しました（git merge-tree exit=$rc）。"
             exit 1
           fi
