@@ -69,12 +69,19 @@ mkdir -p "$OUT_DIR"
 (cd "$OUT_DIR" && "$SCRIPT_DIR/provisioning-qr.sh" "$APK_DIR/ckk-kiosk-dev.apk" "$DEV_URL" dev > provisioning-dev.json)
 (cd "$OUT_DIR" && "$SCRIPT_DIR/provisioning-qr.sh" "$APK_DIR/ckk-kiosk.apk" "$PROD_URL" prod > provisioning-prod.json)
 
+# QR PNG も public/apk/ へ公開する — DC01 マニュアル（/docs の
+# キオスク端末セットアップ）がこの URL を埋め込み、常に最新 QR を表示する
+if [ -f "$OUT_DIR/provisioning-dev.png" ]; then
+  cp "$OUT_DIR/provisioning-dev.png" "$OUT_DIR/provisioning-prod.png" "$APK_DIR/"
+fi
+
 cat <<EOF
 
 完了: v${VERSION_NAME} (versionCode ${VERSION_CODE})
   $APK_DIR/ckk-kiosk-dev.apk
   $APK_DIR/ckk-kiosk.apk
   $APK_DIR/version.json
+  $APK_DIR/provisioning-{dev,prod}.png   （DC01 マニュアルが参照）
   $OUT_DIR/provisioning-{dev,prod}.{json,png}
 
 次の手順:

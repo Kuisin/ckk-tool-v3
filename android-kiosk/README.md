@@ -91,7 +91,9 @@ Cookie なしの新品タブレットでもダウンロード可。APK に秘密
    prod URL / QR が有効になる
 
 QR（`tools/out/provisioning-*.png`）は APK のチェックサムに紐づくため、
-リリースごとに再生成される。`tools/out/` は gitignore。
+リリースごとに再生成される。`tools/out/` は gitignore。QR PNG は
+`public/apk/provisioning-{dev,prod}.png` にも公開され、メインアプリの
+マニュアル（DC01 → キオスク端末セットアップ）が常に最新の QR を表示する。
 
 ### 端末へのインストール
 
