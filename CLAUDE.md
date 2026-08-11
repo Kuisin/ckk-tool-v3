@@ -27,6 +27,13 @@ that merges `origin/main` back in (resolve conflicts in favor of `dev` unless
 must already contain `main`). A sync/merge PR into `dev` must itself be merged
 with a merge commit — squashing it flattens the join and defeats the fix.
 
+**Branch cleanup (required)** — after a PR is merged into `dev`, **delete its
+feature branch** (remote: `gh pr merge --delete-branch`, or
+`git push origin --delete <branch>`; local: `git branch -d <branch>`). Merged
+branches are archived/pruned to keep the branch list clean — never leave merged
+feature branches behind, and run `git fetch --prune` so stale remote refs drop
+off. Long-lived branches are only `dev` and `main`.
+
 ## Project Overview
 
 Manufacturing Company Business Management System — a Next.js fullstack monolith covering sales, purchasing, production, shipping, billing, and master data. Specs live in `_specs/`; implementation follows those documents.
