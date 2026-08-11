@@ -12,7 +12,8 @@
  *   端末の交換・故障時は「リンク解除」でプロファイルをオープンに戻し
  *   （名称・工場・場所・ピンは保持）、新しい端末を再リンクできる。
  *
- * QR スキャンは BarcodeDetector 対応ブラウザのみ（feature-detect・追加依存なし）。
+ * QR スキャンは qr-scanner（nextjs-kiosk と同じライブラリ）— iOS Safari 含む
+ * 全ブラウザで動作する（旧 BarcodeDetector 実装は iOS/Firefox で非表示だった）。
  * オンライン列は useKioskPresence（WS ライブ）を優先し、未接続時は
  * サーバー計算の initialOnline（5分以内の活動）で表示する。
  */
@@ -41,7 +42,8 @@ import {
   IconSearch,
 } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useRef, useState, useTransition } from "react";
+import QrScanner from "qr-scanner";
+import { useEffect, useRef, useState, useTransition } from "react";
 import {
   activateDevice,
   createDeviceProfile,
@@ -65,6 +67,7 @@ import { ConfirmModal, ModalShell } from "@/components/ui/modals";
 import { StatusBadge, statusOptions } from "@/components/ui/StatusBadge";
 import { ListShell } from "@/components/ui/shells";
 import { useUrlSelectState, useUrlStringState } from "@/hooks/useUrlState";
+import { useIsMobile } from "@/hooks/useViewport";
 import { formatCode, normalizeCode } from "@/lib/crockford";
 import { formatDateTime } from "@/lib/format";
 import type { KioskDeviceRow, KioskFactoryOption } from "@/lib/kiosk-admin";
@@ -134,21 +137,7 @@ export function transportLabel(transport: KioskPresenceTransport): string {
   return "直近5分の活動から判定";
 }
 
-// ── QR スキャナ（BarcodeDetector — 対応ブラウザのみ表示） ────────────────────
-
-type BarcodeDetectorLike = {
-  detect(source: CanvasImageSource): Promise<Array<{ rawValue: string }>>;
-};
-type BarcodeDetectorCtor = new (options?: {
-  formats?: string[];
-}) => BarcodeDetectorLike;
-
-function getBarcodeDetectorCtor(): BarcodeDetectorCtor | null {
-  if (typeof window === "undefined") return null;
-  const ctor = (window as { BarcodeDetector?: BarcodeDetectorCtor })
-    .BarcodeDetector;
-  return ctor ?? null;
-}
+// ── QR スキャナ（qr-scanner — 全ブラウザ対応。kiosk QrScannerView と同方式） ──
 
 /** タブレットの /setup QR（ペイロード = 表示形コード文字列）から code を抽出。 */
 function parseLinkQr(rawValue: string): string | null {
@@ -157,111 +146,71 @@ function parseLinkQr(rawValue: string): string | null {
 }
 
 function LinkQrScanner({ onCode }: { onCode: (code: string) => void }) {
-  // ストリームは state に持ち、video への割り当て・検出ループは effect で行う。
-  // （旧実装は setScanning 直後の requestAnimationFrame 頼みで、video の
-  //   マウント前に走ると何も起きないまま黒画面になる race があった。）
-  const [stream, setStream] = useState<MediaStream | null>(null);
+  const [scanning, setScanning] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [cameras, setCameras] = useState<MediaDeviceInfo[]>([]);
+  const [cameras, setCameras] = useState<QrScanner.Camera[]>([]);
   const videoRef = useRef<HTMLVideoElement | null>(null);
+  const scannerRef = useRef<QrScanner | null>(null);
   const onCodeRef = useRef(onCode);
   onCodeRef.current = onCode;
 
-  const stop = useCallback(() => {
-    setStream((current) => {
-      for (const track of current?.getTracks() ?? []) track.stop();
-      return null;
-    });
-  }, []);
-
-  useEffect(() => stop, [stop]);
-
-  const start = async (deviceId?: string) => {
-    const ctor = getBarcodeDetectorCtor();
-    if (!ctor) return;
-    setError(null);
-    stop();
-    try {
-      const next = await navigator.mediaDevices.getUserMedia({
-        video: deviceId
-          ? { deviceId: { exact: deviceId } }
-          : { facingMode: "environment" },
-      });
-      setStream(next);
-      // 権限付与後はラベル付きで列挙できる（カメラ切替メニュー用）
-      try {
-        const devices = await navigator.mediaDevices.enumerateDevices();
-        setCameras(devices.filter((d) => d.kind === "videoinput"));
-      } catch {
-        // 列挙失敗はメニューなしで続行
-      }
-    } catch {
-      setError("カメラを起動できませんでした");
-    }
-  };
-
-  // ストリームと video が揃ってから割り当て + 検出ループ開始
+  // video がマウントされてから初期化する（マウント前初期化の黒画面 race を回避）
   useEffect(() => {
-    if (!stream) return;
+    if (!scanning) return;
     const video = videoRef.current;
-    const ctor = getBarcodeDetectorCtor();
-    if (!video || !ctor) return;
-    video.srcObject = stream;
-    video.play().catch(() => undefined);
-
-    const detector = new ctor({ formats: ["qr_code"] });
-    const canvas = document.createElement("canvas");
-    let busy = false;
-    const timer = setInterval(async () => {
-      if (busy || video.readyState < 2 || video.videoWidth === 0) return;
-      busy = true;
-      try {
-        // デスクトップ Chrome では video 直接の detect が空を返すことが
-        // あるため canvas 経由を優先し、失敗時のみ video で再試行する。
-        let results: Array<{ rawValue: string }>;
-        try {
-          canvas.width = video.videoWidth;
-          canvas.height = video.videoHeight;
-          const ctx = canvas.getContext("2d");
-          if (!ctx) return;
-          ctx.drawImage(video, 0, 0);
-          results = await detector.detect(canvas);
-        } catch {
-          results = await detector.detect(video);
-        }
-        for (const r of results) {
-          const code = parseLinkQr(r.rawValue);
-          if (code) {
-            stop();
-            onCodeRef.current(code);
-            return;
-          }
-        }
-      } catch {
-        // 検出失敗は無視して次のフレームへ
-      } finally {
-        busy = false;
-      }
-    }, 500);
-    return () => clearInterval(timer);
-  }, [stream, stop]);
-
-  if (!getBarcodeDetectorCtor()) return null; // 非対応ブラウザでは非表示
-
-  const activeCameraId = stream?.getVideoTracks()[0]?.getSettings().deviceId;
+    if (!video) return;
+    setError(null);
+    const scanner = new QrScanner(
+      video,
+      (result) => {
+        const code = parseLinkQr(result.data);
+        if (!code) return;
+        setScanning(false); // アンマウント → クリーンアップで destroy
+        onCodeRef.current(code);
+      },
+      {
+        preferredCamera: "environment",
+        highlightScanRegion: true,
+        highlightCodeOutline: true,
+        maxScansPerSecond: 5,
+      },
+    );
+    scannerRef.current = scanner;
+    scanner
+      .start()
+      .then(() => QrScanner.listCameras(true))
+      .then(setCameras)
+      .catch(() => {
+        setError(
+          "カメラを起動できません。カメラ権限と HTTPS 接続を確認してください。",
+        );
+      });
+    return () => {
+      scanner.destroy();
+      scannerRef.current = null;
+    };
+  }, [scanning]);
 
   return (
     <Stack gap="xs">
-      {stream ? (
+      {scanning ? (
         <>
           <Box pos="relative">
-            {/* カメラのライブプレビュー（音声なし・muted） */}
-            <video
-              muted
-              playsInline
-              ref={videoRef}
-              style={{ width: "100%", borderRadius: 8, background: "#000" }}
-            />
+            <Box
+              style={{
+                borderRadius: 8,
+                overflow: "hidden",
+                aspectRatio: "4 / 3",
+                background: "#000",
+              }}
+            >
+              <video
+                muted
+                playsInline
+                ref={videoRef}
+                style={{ width: "100%", height: "100%", objectFit: "cover" }}
+              />
+            </Box>
             {cameras.length > 1 && (
               <Menu position="bottom-end" shadow="md" withinPortal>
                 <Menu.Target>
@@ -275,25 +224,26 @@ function LinkQrScanner({ onCode }: { onCode: (code: string) => void }) {
                 </Menu.Target>
                 <Menu.Dropdown>
                   <Menu.Label>カメラを選択</Menu.Label>
-                  {cameras.map((cam, i) => (
+                  {cameras.map((cam) => (
                     <Menu.Item
-                      disabled={cam.deviceId === activeCameraId}
-                      key={cam.deviceId || String(i)}
-                      onClick={() => void start(cam.deviceId)}
+                      key={cam.id}
+                      onClick={() => void scannerRef.current?.setCamera(cam.id)}
                     >
-                      {cam.label || `カメラ ${i + 1}`}
+                      {cam.label || cam.id}
                     </Menu.Item>
                   ))}
                 </Menu.Dropdown>
               </Menu>
             )}
           </Box>
-          <SecondaryButton onClick={stop}>スキャンを停止</SecondaryButton>
+          <SecondaryButton onClick={() => setScanning(false)}>
+            スキャンを停止
+          </SecondaryButton>
         </>
       ) : (
         <SecondaryButton
           leftSection={<IconScan size={14} />}
-          onClick={() => void start()}
+          onClick={() => setScanning(true)}
         >
           タブレットのQRをスキャン
         </SecondaryButton>
@@ -326,6 +276,7 @@ export function KioskDevicesTable({
 }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
+  const isMobile = useIsMobile();
   const { presence, live, transport } = useKioskPresence();
 
   const [search, setSearch] = useUrlStringState("q");
@@ -803,11 +754,16 @@ export function KioskDevicesTable({
           <SecondaryButton
             href="/settings/kiosk-devices/map"
             leftSection={<IconMap2 size={14} />}
+            style={{ flexShrink: 0 }}
           >
-            フロアマップ
+            {isMobile ? "マップ" : "フロアマップ"}
           </SecondaryButton>
-          <CreateButton loading={isPending} onClick={() => setCreateOpen(true)}>
-            端末プロファイル作成
+          <CreateButton
+            loading={isPending}
+            onClick={() => setCreateOpen(true)}
+            style={{ flexShrink: 0 }}
+          >
+            {isMobile ? "作成" : "端末プロファイル作成"}
           </CreateButton>
         </Group>
       }
@@ -820,16 +776,18 @@ export function KioskDevicesTable({
             onChange={setFactory}
             placeholder="工場"
             searchable
+            style={isMobile ? { flex: 1 } : undefined}
             value={factory}
-            w={180}
+            w={isMobile ? undefined : 180}
           />
           <Select
             clearable
             data={statusOptions("KioskDevice")}
             onChange={setStatus}
             placeholder="状態"
+            style={isMobile ? { flex: 1 } : undefined}
             value={status}
-            w={140}
+            w={isMobile ? undefined : 140}
           />
         </>
       }
@@ -851,6 +809,35 @@ export function KioskDevicesTable({
         emptyMessage="キオスク端末がありません"
         getRowId={(r) => r.id}
         onRowClick={(r) => router.push(`/settings/kiosk-devices/${r.id}`)}
+        renderCard={(r) => {
+          const online = resolveOnline(r, presence, live);
+          const userName = resolveCurrentUserName(r, presence, live);
+          const liveEntry = live ? presence.get(r.id) : null;
+          const lastAt = liveEntry?.lastActivityAt ?? r.lastActivityAt;
+          return (
+            <Stack gap={3} style={{ minWidth: 0 }}>
+              <Text fw={600} size="sm" truncate>
+                {r.name ?? "（未設定）"}
+              </Text>
+              <Text c="dimmed" size="xs" truncate>
+                {[r.factoryLabel, r.location].filter(Boolean).join(" / ") ||
+                  "—"}
+              </Text>
+              <Group gap="xs" wrap="wrap">
+                <StatusBadge entity="KioskDevice" status={r.status} />
+                {r.status === "ACTIVE" && <OnlineDot online={online} />}
+                {userName && (
+                  <Text c="blue" size="xs" truncate>
+                    {userName} が利用中
+                  </Text>
+                )}
+              </Group>
+              <Text c="dimmed" size="xs">
+                最終アクティビティ {lastAt ? formatDateTime(lastAt) : "—"}
+              </Text>
+            </Stack>
+          );
+        }}
         rowActions={rowActions}
         urlState
       />

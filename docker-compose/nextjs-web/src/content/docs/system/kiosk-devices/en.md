@@ -27,7 +27,7 @@ Registration is "profile first". For preparing the tablet itself (installing the
 
 1. Click **端末プロファイル作成** (Create device profile) and enter a name, factory, and optional location. The status becomes "Awaiting link".
 2. The tablet's setup screen shows a **12-character link code** with a QR (valid for **10 minutes**).
-3. From the row menu, choose **端末をリンク** (Link device) and type the code — or **scan the QR with your camera** (the scan button appears only in supported browsers). On success the status becomes "Awaiting activation".
+3. From the row menu, choose **端末をリンク** (Link device) and type the code — or **scan the QR with your camera** (works on any browser, including phones). On success the status becomes "Awaiting activation".
 4. Click **有効化** (Activate). The status becomes "Active" and the tablet detects this automatically and switches to the login screen.
 
 If the code expires, have the tablet display it again and retry. Only profiles in "Awaiting link" can be linked.
