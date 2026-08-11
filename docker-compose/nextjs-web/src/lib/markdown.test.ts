@@ -41,6 +41,15 @@ describe("renderMarkdown", () => {
     expect(ext).not.toContain("lang=en");
   });
 
+  it("renders images and drops unsafe image sources", () => {
+    const html = renderMarkdown("![QR](https://e.com/qr.png)");
+    expect(html).toContain('<img src="https://e.com/qr.png" alt="QR"');
+    expect(html).not.toContain("<a ");
+    // rooted paths allowed, other schemes dropped entirely
+    expect(renderMarkdown("![x](/img/a.png)")).toContain('src="/img/a.png"');
+    expect(renderMarkdown("![x](javascript:alert(1))")).not.toContain("<img");
+  });
+
   it("does not append lang when none is given, or to non-docs paths", () => {
     expect(renderMarkdown("[a](/docs/start)")).toContain('href="/docs/start"');
     expect(renderMarkdown("[a](/sales/x)", "ja")).toContain('href="/sales/x"');
