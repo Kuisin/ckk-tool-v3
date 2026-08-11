@@ -15,6 +15,7 @@
     "migrate:status:remote": "scripts/remote-db.sh prisma migrate status",
     "migrate:deploy:remote": "scripts/remote-db.sh prisma migrate deploy",
     "grants:remote": "scripts/remote-db.sh sh -c 'psql \"$DATABASE_URL\" -v ON_ERROR_STOP=1 -f sql/grants.sql'",
+    "cron:remote": "scripts/remote-db.sh sh -c 'psql \"$DATABASE_URL\" -v ON_ERROR_STOP=1 -f sql/kiosk-cron.sql'",
     "import:legacy:remote": "scripts/remote-db.sh sh -c 'for f in ../data-migration/imports/*.sql.gz; do echo \"== $f\"; gunzip -c \"$f\" | psql \"$DATABASE_URL\" -v ON_ERROR_STOP=1 -q; done'"
   },
   "devDependencies": {

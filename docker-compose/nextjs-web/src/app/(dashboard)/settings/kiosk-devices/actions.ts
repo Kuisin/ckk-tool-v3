@@ -26,6 +26,12 @@ import { getCurrentActorId, recordAudit } from "@/lib/audit";
 import { checkPermission } from "@/lib/authz";
 import { normalizeCode } from "@/lib/crockford";
 import { prisma } from "@/lib/db";
+import {
+  type KioskDeviceLogRow,
+  type KioskPresenceRow,
+  listKioskDeviceLogs,
+  listKioskPresence,
+} from "@/lib/kiosk-admin";
 import { mintMonitorToken } from "@/lib/kiosk-ws-token";
 import {
   type ActionResult,
@@ -58,6 +64,43 @@ export async function mintKioskWsToken(): Promise<
   const secret = process.env.KIOSK_WS_SECRET;
   if (!secret) return actionOk({ token: null });
   return actionOk({ token: mintMonitorToken(secret) });
+}
+
+/**
+ * プレゼンスの現況を返す（WS 不通時に useKioskPresence が 30 秒間隔で
+ * ポーリングするフォールバック）。
+ */
+export async function fetchKioskPresence(): Promise<
+  ActionResult<{ devices: KioskPresenceRow[] }>
+> {
+  const authz = await checkPermission("kiosk", "READ");
+  if (!authz.ok) return actionError(authz.error);
+  try {
+    return actionOk({ devices: await listKioskPresence() });
+  } catch (e) {
+    return actionError(prismaErrorMessage(e, "取得に失敗しました"));
+  }
+}
+
+/** 端末の利用履歴（kiosk_device_logs）をページ取得する。 */
+export async function fetchDeviceLogs(
+  deviceId: string,
+  cursor?: string,
+): Promise<
+  ActionResult<{ rows: KioskDeviceLogRow[]; nextCursor: string | null }>
+> {
+  const authz = await checkPermission("kiosk", "READ");
+  if (!authz.ok) return actionError(authz.error);
+  const parsed = uuidSchema.safeParse(deviceId);
+  if (!parsed.success) return actionError("入力が不正です");
+  if (cursor != null && !/^\d+$/.test(cursor)) {
+    return actionError("入力が不正です");
+  }
+  try {
+    return actionOk(await listKioskDeviceLogs(parsed.data, cursor));
+  } catch (e) {
+    return actionError(prismaErrorMessage(e, "利用履歴の取得に失敗しました"));
+  }
 }
 
 // ── プロファイル作成・リンク ────────────────────────────────────────────────
@@ -214,6 +257,10 @@ export async function unlinkDevice(id: string): Promise<ActionResult> {
       return actionError("この端末はリンク解除できる状態ではありません");
     }
     const now = new Date();
+    const openSessions = await prisma.kioskSession.findMany({
+      where: { deviceId: parsed.data, revokedAt: null },
+      select: { userId: true },
+    });
     await prisma.$transaction([
       prisma.kioskDevice.update({
         where: { id: parsed.data },
@@ -231,6 +278,15 @@ export async function unlinkDevice(id: string): Promise<ActionResult> {
       prisma.kioskSession.updateMany({
         where: { deviceId: parsed.data, revokedAt: null },
         data: { revokedAt: now },
+      }),
+      // 管理者失効も利用履歴（LOGOUT）に残す
+      prisma.kioskDeviceLog.createMany({
+        data: openSessions.map((s) => ({
+          deviceId: parsed.data,
+          type: "LOGOUT" as const,
+          userId: s.userId,
+          source: "admin",
+        })),
       }),
       prisma.kioskLinkRequest.deleteMany({
         where: { deviceId: parsed.data },
@@ -463,6 +519,10 @@ export async function revokeDevice(id: string): Promise<ActionResult> {
       return actionError("この端末は既に取り消し済みです");
     }
     const now = new Date();
+    const openSessions = await prisma.kioskSession.findMany({
+      where: { deviceId: parsed.data, revokedAt: null },
+      select: { userId: true },
+    });
     await prisma.$transaction([
       prisma.kioskDevice.update({
         where: { id: parsed.data },
@@ -480,6 +540,15 @@ export async function revokeDevice(id: string): Promise<ActionResult> {
       prisma.kioskSession.updateMany({
         where: { deviceId: parsed.data, revokedAt: null },
         data: { revokedAt: now },
+      }),
+      // 管理者失効も利用履歴（LOGOUT）に残す
+      prisma.kioskDeviceLog.createMany({
+        data: openSessions.map((s) => ({
+          deviceId: parsed.data,
+          type: "LOGOUT" as const,
+          userId: s.userId,
+          source: "admin",
+        })),
       }),
     ]);
     await recordAudit({

@@ -57,7 +57,7 @@ import type {
   KioskFloorMapRow,
 } from "@/lib/kiosk-admin";
 import type { ActionResult } from "@/lib/server-action";
-import { resolveOnline } from "./KioskDevicesTable";
+import { resolveCurrentUserName, resolveOnline } from "./KioskDevicesTable";
 import { useKioskPresence } from "./useKioskPresence";
 
 const clampPct = (n: number) => Math.min(100, Math.max(0, n));
@@ -284,10 +284,13 @@ export function KioskFloorMapView({
   const pinFor = (d: KioskDeviceRow) => {
     const pos = localPos[d.id] ?? { x: d.mapX ?? 50, y: d.mapY ?? 50 };
     const online = resolveOnline(d, presence, live);
+    const currentUser = resolveCurrentUserName(d, presence, live);
     return (
       <Tooltip
         key={d.id}
-        label={`${d.name ?? "（未設定）"}${d.location ? ` — ${d.location}` : ""}`}
+        label={`${d.name ?? "（未設定）"}${d.location ? ` — ${d.location}` : ""}${
+          currentUser ? `｜利用中: ${currentUser}` : ""
+        }`}
         withinPortal
       >
         <Box
