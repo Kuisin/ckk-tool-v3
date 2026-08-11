@@ -12,7 +12,7 @@
 // map_x/map_y（%座標）でピン配置して所在を可視化する。
 
 enum KioskDeviceStatus {
-  PENDING // プロファイル作成済・端末リンク待ち（リンクコード有効）
+  PENDING // プロファイル作成済・端末リンク待ち（= オープン。リンク解除で戻る）
   LINKED // 物理端末リンク済・有効化待ち（有効化はこの状態からのみ）
   ACTIVE // 有効
   DISABLED // 一時無効（再有効化可）
@@ -68,11 +68,7 @@ model KioskDevice {
 
   status KioskDeviceStatus @default(PENDING)
 
-  // リンクコード（Crockford 12桁・24h 期限。管理者がプロファイル作成時に発行し、
-  // タブレットが /setup で入力/スキャンしてリンク。リンク成立で null 化）
-  registrationCode      String?   @unique @map("registration_code")
-  registrationExpiresAt DateTime? @map("registration_expires_at") @db.Timestamptz(6)
-  linkedAt              DateTime? @map("linked_at") @db.Timestamptz(6)
+  linkedAt DateTime? @map("linked_at") @db.Timestamptz(6)
 
   // デバイストークン（Cookie は生値、DB は SHA-256 のみ。30日）
   deviceTokenHash      String?   @unique @map("device_token_hash")
@@ -97,6 +93,7 @@ model KioskDevice {
   floorMap    KioskFloorMap? @relation("KioskDeviceFloorMap", fields: [floorMapId], references: [id])
   activatedBy User?          @relation("KioskDeviceActivatedBy", fields: [activatedById], references: [id])
   sessions    KioskSession[] @relation("KioskSessionDevice")
+  linkRequests KioskLinkRequest[] @relation("KioskLinkRequestDevice")
 
   @@index([factoryId])
   @@index([status])
@@ -161,5 +158,27 @@ model KioskSession {
   @@index([deviceId])
   @@index([expiresAt])
   @@map("kiosk_sessions")
+  @@schema("app")
+}
+
+// ─── リンクリクエスト（タブレット側が生成する QR/コード） ─────────────────────
+//
+// タブレットの /setup が発行（10分期限）。管理者が SY09 でコードを入力 or
+// QR をスキャンし、**オープン（PENDING）なプロファイルにのみ**リンクできる。
+// リンク成立で device_id が入り、タブレットのポーリングがそれを検知する。
+
+model KioskLinkRequest {
+  id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  code          String   @unique // Crockford 12桁
+  deviceId      String?  @map("device_id") @db.Uuid // リンク先プロファイル（成立後）
+  userAgent     String?  @map("user_agent")
+  lastIpAddress String?  @map("last_ip_address")
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  expiresAt     DateTime @map("expires_at") @db.Timestamptz(6) // 10分
+
+  device KioskDevice? @relation("KioskLinkRequestDevice", fields: [deviceId], references: [id])
+
+  @@index([expiresAt])
+  @@map("kiosk_link_requests")
   @@schema("app")
 }
