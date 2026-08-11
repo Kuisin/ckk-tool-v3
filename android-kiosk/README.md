@@ -155,13 +155,18 @@ QR（`tools/out/provisioning-*.png`）は APK のチェックサムに紐づく�
 - **ロックなし・検証用**: Chrome で APK URL を開く → 提供元不明アプリを許可 →
   インストール
 
-### ロック済み端末の更新
+### 端末の更新（自動 — SelfUpdater）
 
-ロック済み（デバイスオーナー）端末にはブラウザが無いため、当面は:
+アプリは `SelfUpdater.kt` により**自己更新**する。`{BASE_URL}/apk/version.json`
+を起動 30 秒後 + 1 時間ごとに確認（クエリ付き取得で CDN キャッシュを回避）し、
+自フレーバーの `versionCode` が新しければ APK をダウンロード → SHA-256 を
+`version.json` と照合 → `PackageInstaller` で適用する:
 
-- USB で `adb install -r`、または
-- 初期化 → 新リリースの QR を再スキャン（登録は軽量な設計）
+- **デバイスオーナー**: サイレント更新（ダイアログなし）。適用後は
+  `UpdateReceiver`（`MY_PACKAGE_REPLACED`）+ ホーム固定で自動再起動
+- **通常インストール**: OS の確認ダイアログが出る（`REQUEST_INSTALL_PACKAGES`）
 
-将来（Phase 2）: デバイスオーナーは `PackageInstaller` でサイレントインストール
-できるため、ラッパーが `version.json` をポーリングして `/apk/` から自動更新する
-仕組みを端末台数が増えた時点で導入する。
+業務中の再起動を避けるため、定期チェックで見つけた更新は**深夜 1:00–5:59 のみ**
+適用する（起動直後のチェックは即適用 — 起動直後 = 使用中でないため）。
+リリース作業は従来どおり `release-apk.sh` → コミット → デプロイのみ。旧版
+（v0.2.x 以前）だけは USB `adb install -r` か初期化 + QR 再スキャンで更新する。

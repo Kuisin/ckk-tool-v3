@@ -41,9 +41,11 @@ Once the app starts, register the device with the system.
 
 To try the app without kiosk lock, open the APK URL in Chrome on the tablet, allow installs from the source, and install.
 
-## Updating devices
+## Updating devices (automatic)
 
-Locked devices have no browser, so update the app in one of two ways:
+The app **updates itself**. It checks for a new release about once an hour and applies it with an automatic restart at night (1:00–6:00 AM) so work is never interrupted (an update found right after app start is applied immediately). Just release a new APK — no work on the tablets is needed.
 
-- `adb install -r` over USB (administrator task)
-- Factory-reset the device and re-scan the new release's QR (enrollment is repeated but lightweight)
+- Locked kiosk devices: fully automatic (no dialog)
+- Unlocked test tablets: the OS shows an install confirmation dialog — tap Install
+
+> Only devices still running a pre-self-update version (v0.2.x or older) need the old methods: `adb install -r` over USB, or factory-reset and re-scan the new QR.
