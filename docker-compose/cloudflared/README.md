@@ -16,6 +16,7 @@ Networks > Tunnels > docker-linux > Public Hostname
   ckk-dev.kai-lab.net  →  HTTP  →  web:3000          (nextjs-web dev — relay to Coolify :3004;
                                                       dev.kai-lab.net kept as legacy alias)
   ckk.kai-lab.net      →  HTTP  →  web-main:3000     (nextjs-web main/production — relay to :3005)
+  app.ckk-tool.co.jp   →  HTTP  →  web-main:3000     (same production app, ckk-tool.co.jp alias)
   dockge.kai-lab.net   →  HTTP  →  dockge:5001       (dockge)
   chat.kai-lab.net     →  HTTP  →  open-webui:8080   (ai-stack — Open WebUI GUI)
   monitor.kai-lab.net  →  HTTP  →  grafana:3000      (monitoring — Grafana)
