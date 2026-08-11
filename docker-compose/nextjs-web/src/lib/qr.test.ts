@@ -389,7 +389,7 @@ function decodeQr(m: boolean[][]): Decoded {
 
 const CARD_ID = "ABCDEFGHJKLMNPQR"; // 16文字カードID
 const URL45 = "https://ckk-kiosk.kai-lab.net/q/ABCDEFGHJKLMN"; // 45文字
-const FORCE_V5 = "https://ckk-kiosk.kai-lab.net/q/" + "X".repeat(38); // 70バイト → M では版5
+const FORCE_V5 = `https://ckk-kiosk.kai-lab.net/q/${"X".repeat(38)}`; // 70バイト → M では版5
 
 function json120(): string {
   const build = (n: number): string =>

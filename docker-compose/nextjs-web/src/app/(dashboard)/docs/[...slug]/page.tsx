@@ -1,7 +1,9 @@
-import { Alert, Paper, Stack, Title } from "@mantine/core";
-import { IconInfoCircle } from "@tabler/icons-react";
-import { notFound } from "next/navigation";
+import { Alert, Anchor, Paper, Stack, Title } from "@mantine/core";
+import { IconArrowLeft, IconInfoCircle } from "@tabler/icons-react";
+import Link from "next/link";
+import { notFound, redirect } from "next/navigation";
 import { DOC_LANG_LABEL, type DocLang, isDocLang, readDoc } from "@/lib/docs";
+import { DOCS_TREE } from "@/lib/docs-tree";
 import styles from "../docs.module.css";
 
 export const dynamic = "force-dynamic";
@@ -10,6 +12,12 @@ const FALLBACK_NOTE: Record<DocLang, (l: string) => string> = {
   ja: (l) => `この言語の翻訳が未整備のため ${l} 版を表示しています。`,
   en: (l) => `Translation unavailable; showing the ${l} version.`,
   zh: (l) => `该语言暂无翻译，显示 ${l} 版本。`,
+};
+
+const BACK_LABEL: Record<DocLang, string> = {
+  ja: "マニュアル一覧",
+  en: "All manuals",
+  zh: "手册目录",
 };
 
 /** /docs/[...slug] — 1 マニュアルを表示。?lang= で言語切替（無ければ ja）。 */
@@ -23,11 +31,29 @@ export default async function DocPage({
   const { slug } = await params;
   const sp = await searchParams;
   const requested: DocLang = isDocLang(sp.lang) ? sp.lang : "ja";
-  const doc = await readDoc(slug.join("/"), requested);
-  if (!doc) notFound();
+  const path = slug.join("/");
+  const doc = await readDoc(path, requested);
+  if (!doc) {
+    // 中間パス（/docs/system 等 — セクション途中の URL）は 404 にせず一覧へ戻す
+    const isPrefix = DOCS_TREE.some((s) =>
+      s.pages.some((p) => p.slug.startsWith(`${path}/`)),
+    );
+    if (isPrefix) redirect(`/docs?lang=${requested}`);
+    notFound();
+  }
 
   return (
     <Stack gap="md">
+      <Anchor
+        c="dimmed"
+        component={Link}
+        href={`/docs?lang=${requested}`}
+        size="sm"
+        style={{ display: "inline-flex", alignItems: "center", gap: 4 }}
+      >
+        <IconArrowLeft size={14} />
+        {BACK_LABEL[requested]}
+      </Anchor>
       <Title order={2}>{doc.page.title[requested] ?? doc.page.title.ja}</Title>
 
       {doc.lang !== requested && (

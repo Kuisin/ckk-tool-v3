@@ -44,6 +44,21 @@ export function DocsNav({ onNavigate }: { onNavigate?: () => void }) {
         ))}
       </Group>
       <Divider />
+      <NavLink
+        active={pathname === "/docs"}
+        className={styles.navItem}
+        component={Link}
+        href={`/docs?lang=${lang}`}
+        label={
+          lang === "ja"
+            ? "マニュアル一覧"
+            : lang === "zh"
+              ? "手册目录"
+              : "All manuals"
+        }
+        onClick={onNavigate}
+        styles={{ label: { fontSize: "var(--mantine-font-size-sm)" } }}
+      />
       {DOCS_TREE.map((section) => (
         <Stack gap={2} key={section.title.en}>
           <Text c="dimmed" fw={700} px="xs" size="xs" tt="uppercase">
