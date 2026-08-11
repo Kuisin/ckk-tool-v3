@@ -1,6 +1,5 @@
 import { Alert, Anchor, Paper, Stack, Title } from "@mantine/core";
 import { IconArrowLeft, IconInfoCircle } from "@tabler/icons-react";
-import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { DOC_LANG_LABEL, type DocLang, isDocLang, readDoc } from "@/lib/docs";
 import { DOCS_TREE } from "@/lib/docs-tree";
@@ -44,9 +43,11 @@ export default async function DocPage({
 
   return (
     <Stack gap="md">
+      {/* Server Component のため component={Link}（関数 prop）は渡せない —
+          component="a"（通常遷移）にする。docs 一覧のカードと同じ扱い。 */}
       <Anchor
         c="dimmed"
-        component={Link}
+        component="a"
         href={`/docs?lang=${requested}`}
         size="sm"
         style={{ display: "inline-flex", alignItems: "center", gap: 4 }}
