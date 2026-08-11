@@ -282,6 +282,28 @@ export const OPERATION_CODES: OperationCodeEntry[] = [
     mode: "0",
     index: "7",
   },
+  // QRカード管理（キオスクログイン用カードの発行・割当・印刷）
+  {
+    code: "SY08",
+    label: "QRカード管理",
+    href: "/settings/kiosk-cards",
+    category: "システム",
+    kind: "list",
+    categoryCode: "SY",
+    mode: "0",
+    index: "8",
+  },
+  // 端末管理（キオスク端末の有効化・フロアマップ配置）
+  {
+    code: "SY09",
+    label: "端末管理",
+    href: "/settings/kiosk-devices",
+    category: "システム",
+    kind: "list",
+    categoryCode: "SY",
+    mode: "0",
+    index: "9",
+  },
 ];
 
 const CODE_LOOKUP = new Map(

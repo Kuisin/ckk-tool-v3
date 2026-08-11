@@ -70,6 +70,9 @@ export const AUDIT_TABLE_LABELS: Record<string, string> = {
   design_requests: "設計依頼書",
   approval_requests: "承認依頼",
   order_acceptances: "受注請書",
+  kiosk_cards: "QRカード",
+  kiosk_devices: "キオスク端末",
+  kiosk_floor_maps: "フロアマップ",
   system: "システム",
 };
 

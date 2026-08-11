@@ -408,6 +408,26 @@ export const appList: AppEntry[] = [
     category: "システム",
     requiredPermission: "system",
   },
+  {
+    // QRカード管理 — キオスク（共有端末）ログイン用カードの発行・割当・印刷。
+    key: "kiosk-cards",
+    label: "QRカード管理",
+    operationCode: "SY08",
+    href: "/settings/kiosk-cards",
+    icon: "IconQrcode",
+    category: "システム",
+    requiredPermission: "kiosk",
+  },
+  {
+    // 端末管理 — キオスク端末の有効化・状態管理・フロアマップ配置。
+    key: "kiosk-devices",
+    label: "端末管理",
+    operationCode: "SY09",
+    href: "/settings/kiosk-devices",
+    icon: "IconDeviceTablet",
+    category: "システム",
+    requiredPermission: "kiosk",
+  },
 ];
 
 /** Home 絞り込み（工程）で使う URL パラメータのキー。 */
