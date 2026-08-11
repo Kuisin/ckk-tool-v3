@@ -11,8 +11,8 @@ android {
         applicationId = "jp.co.ckk.kiosk"
         minSdk = 29
         targetSdk = 35
-        versionCode = 2
-        versionName = "0.2.0"
+        versionCode = 3
+        versionName = "0.3.0"
 
         // メンテナンス退出 PIN（デバイスオーナー時、右上 5 タップ → PIN 入力）。
         // 既定値のまま配布しないこと — ~/.gradle/gradle.properties（コミット対象外）に
@@ -28,11 +28,16 @@ android {
             dimension = "env"
             applicationIdSuffix = ".dev"
             buildConfigField("String", "BASE_URL", "\"https://ckk-kiosk-dev.kai-lab.net\"")
+            // 自己更新（SelfUpdater）: version.json のキーと配布 APK 名
+            buildConfigField("String", "UPDATE_FLAVOR", "\"dev\"")
+            buildConfigField("String", "APK_NAME", "\"ckk-kiosk-dev.apk\"")
             resValue("string", "app_name", "CKK Kiosk (dev)")
         }
         create("prod") {
             dimension = "env"
             buildConfigField("String", "BASE_URL", "\"https://ckk-kiosk.kai-lab.net\"")
+            buildConfigField("String", "UPDATE_FLAVOR", "\"prod\"")
+            buildConfigField("String", "APK_NAME", "\"ckk-kiosk.apk\"")
             resValue("string", "app_name", "CKK Kiosk")
         }
     }

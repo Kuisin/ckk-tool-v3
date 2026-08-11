@@ -72,6 +72,9 @@ class MainActivity : ComponentActivity() {
         // デバイスオーナーなら専用端末ポリシーを適用（それ以外は no-op）
         KioskMode.applyPolicies(this)
 
+        // 自己更新: version.json をポーリング → 新版をサイレント適用
+        SelfUpdater.schedule(this)
+
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         WindowCompat.setDecorFitsSystemWindows(window, false)
 

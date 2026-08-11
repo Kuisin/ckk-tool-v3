@@ -5,6 +5,8 @@
     <!-- QR スキャン（WebView 内 getUserMedia） -->
     <uses-permission android:name="android.permission.CAMERA" />
     <uses-feature android:name="android.hardware.camera" android:required="false" />
+    <!-- 自己更新: デバイスオーナーでない端末での確認ダイアログ経由インストール用 -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
 
     <application
         android:allowBackup="false"
@@ -39,6 +41,13 @@
                 <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
         </activity-alias>
+
+        <!-- 自己更新: インストール結果 + 更新適用後の自動再起動 -->
+        <receiver android:name=".UpdateReceiver" android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+            </intent-filter>
+        </receiver>
 
         <!-- デバイスオーナー（DPC）受け口 -->
         <receiver
