@@ -15,6 +15,18 @@ work is done**. Never commit straight to `dev` or `main`.
 PR → merge to `dev` = allowed; merging to `main` = not allowed (prepare the
 promotion PR and leave it for the user).
 
+**Promotion merge method (required)** — the `dev`→`main` promotion PR must be
+merged with **"Create a merge commit"**, never squash/rebase. A squash promotion
+creates a `main`-only commit, so `dev` and `main` histories diverge and **every
+later promotion PR conflicts** on files touched since (this happened with
+`docs-tree.ts`). If histories have already diverged (`git merge-base
+--is-ancestor origin/main origin/dev` fails), first land a sync PR into `dev`
+that merges `origin/main` back in (resolve conflicts in favor of `dev` unless
+`main` has content `dev` lacks), then promote. CI enforces both rules on PRs to
+`main` via `.github/workflows/promotion-guard.yml` (head must be `dev`; `dev`
+must already contain `main`). A sync/merge PR into `dev` must itself be merged
+with a merge commit — squashing it flattens the join and defeats the fix.
+
 ## Project Overview
 
 Manufacturing Company Business Management System — a Next.js fullstack monolith covering sales, purchasing, production, shipping, billing, and master data. Specs live in `_specs/`; implementation follows those documents.
