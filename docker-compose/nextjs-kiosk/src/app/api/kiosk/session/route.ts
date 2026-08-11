@@ -16,6 +16,7 @@ export async function GET() {
     authenticated: true,
     displayName: session.displayName,
     username: session.username,
+    locale: session.locale,
     expiresAt: session.expiresAt,
     idleRemainingMs: idleRemainingMs(new Date(), session.lastActivityAt),
   });

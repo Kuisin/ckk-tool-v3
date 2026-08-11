@@ -16,6 +16,7 @@ import {
   verifyAttestCookie,
 } from "./attest-core";
 import { prisma } from "./db";
+import { type Locale, normalizeLocale } from "./i18n";
 import {
   DEVICE_TOKEN_TTL_MS,
   isDeviceTokenAlive,
@@ -170,6 +171,8 @@ export type KioskUser = {
   deviceId: string;
   displayName: string;
   username: string;
+  /** UI 言語（users.locale — ランチャーの切替で更新）。 */
+  locale: Locale;
   expiresAt: Date;
   lastActivityAt: Date;
 };
@@ -222,7 +225,14 @@ export async function getSession(): Promise<KioskUser | null> {
   const session = await prisma.kioskSession.findUnique({
     where: { id: sha256hex(raw) },
     include: {
-      user: { select: { displayName: true, username: true, isActive: true } },
+      user: {
+        select: {
+          displayName: true,
+          username: true,
+          isActive: true,
+          locale: true,
+        },
+      },
     },
   });
   if (!session) return null;
@@ -260,6 +270,7 @@ export async function getSession(): Promise<KioskUser | null> {
     deviceId: session.deviceId,
     displayName: session.user.displayName,
     username: session.user.username,
+    locale: normalizeLocale(session.user.locale),
     expiresAt: session.expiresAt,
     lastActivityAt: session.lastActivityAt,
   };

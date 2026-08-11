@@ -105,6 +105,10 @@ model User {
   kioskSessions         KioskSession[] @relation("KioskSessionUser")
   kioskDeviceLogs       KioskDeviceLog[] @relation("KioskDeviceLogUser")
 
+  // UI 言語（"ja" | "en" | "zh" — docs の DOCS_LANGS と同じ集合）。
+  // キオスクの QR ログイン後 UI が参照し、ランチャーの切替で本人が更新する。
+  locale String @default("ja")
+
   // Employees link to the shared directory by AD objectGUID (stable across
   // username/attribute changes). Null for SYSTEM / GUEST users.
   employee EmployeeDirectory? @relation("UserEmployee", fields: [employeeId], references: [ldapGuid])
