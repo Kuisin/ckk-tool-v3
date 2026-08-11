@@ -1,10 +1,9 @@
-import { AppFlagsTable } from "@/components/admin/AppFlagsTable";
-import { listAppFlags } from "@/lib/app-flags";
+import { redirect } from "next/navigation";
 
-export const dynamic = "force-dynamic";
-
-/** アプリ管理（環境別 ON/OFF, feature_flags）。 */
-export default async function AdminAppsPage() {
-  const rows = await listAppFlags();
-  return <AppFlagsTable rows={rows} />;
+/**
+ * 旧 アプリ管理（SY05）。/settings/apps へ移動したため、旧ブックマーク互換の
+ * ためリダイレクトする。
+ */
+export default function AdminAppsRedirect() {
+  redirect("/settings/apps");
 }

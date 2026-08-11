@@ -42,6 +42,7 @@ import {
   IconStack2,
   IconTruck,
   IconTruckDelivery,
+  IconUserCog,
   IconUsers,
   IconUsersGroup,
 } from "@tabler/icons-react";
@@ -71,6 +72,7 @@ export const ICON_MAP: Record<string, AppIcon> = {
   IconFileInvoice,
   IconCalendarDue,
   IconBuilding,
+  IconUserCog,
   IconUsers,
   IconCylinder,
   IconAtom,

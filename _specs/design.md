@@ -301,7 +301,7 @@ Operation codes provide keyboard-shortcut navigation. Format: `{CAT}{MODE}{IDX}`
 | マスタ | B | 工場 | MS0B | MS1B | MS2B |
 | マスタ | C | 採番構成 | MS0C | — | — |
 | ドキュメント | 1 | マニュアル | DC01 | — | — |
-| システム | 1 | システム設定 | SY01 | — | — |
+| システム | 1 | ユーザー管理 | SY01 | — | — |
 | システム | 2 | 試算計算 | SY02 | — | — |
 | システム | 3 | 製品項目 | SY03 | — | — |
 | システム | 4 | 製品種別 | SY04 | — | — |
@@ -388,7 +388,7 @@ Stack (gap="xl", p="md", maw={1200})
 | 不良種類 | `IconAlertTriangle` |
 | 承認グループ | `IconUsersGroup` |
 | 工場 | `IconBuildingWarehouse` |
-| システム設定 | `IconAdjustments` |
+| ユーザー管理 | `IconUserCog` |
 | 試算計算 | `IconMathFunction` |
 | 製品項目 | `IconListDetails` |
 | 製品種別 | `IconCategory` |

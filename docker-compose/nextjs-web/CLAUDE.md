@@ -83,7 +83,7 @@ inside the Server Action / route handler, not only in the UI.
   (`../../shared-db/sql/feature-flags-seed.sql`); `dev` shows all by default.
 - **Registries** (keep in sync when adding an app): `lib/app-list.ts` (launcher +
   home), `lib/operation-codes.ts` (`{CAT}{MODE}{IDX}` jump codes),
-  `lib/settings-apps.ts` (アプリ設定 hub), `lib/icons.ts` (name→Tabler icon).
+  `lib/icons.ts` (name→Tabler icon).
 
 ## Docs system (`/docs`)
 
