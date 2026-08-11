@@ -6,6 +6,7 @@
  */
 
 import { redirect } from "next/navigation";
+import { I18nProvider } from "@/components/I18nProvider";
 import { LauncherShell } from "@/components/LauncherShell";
 import { visibleApps } from "@/lib/app-list";
 import { readableCodes } from "@/lib/authz";
@@ -24,5 +25,10 @@ export default async function LauncherPage() {
     href: app.href,
   }));
 
-  return <LauncherShell apps={apps} displayName={session.displayName} />;
+  // QR ログイン後はユーザーの言語（users.locale）で描画（ログイン前は日本語固定）
+  return (
+    <I18nProvider locale={session.locale}>
+      <LauncherShell apps={apps} displayName={session.displayName} />
+    </I18nProvider>
+  );
 }

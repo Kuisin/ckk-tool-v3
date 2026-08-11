@@ -17,6 +17,7 @@ import {
   IDLE_TIMEOUT_MS,
   IDLE_WARN_MS,
 } from "@/lib/kiosk-auth-core";
+import { useI18n } from "./I18nProvider";
 
 const ACTIVITY_EVENTS = [
   "mousedown",
@@ -29,6 +30,7 @@ const ACTIVITY_EVENTS = [
 
 export function ActivityMonitor() {
   const router = useRouter();
+  const { m } = useI18n();
   // 最後にサーバーへ ping が通った時刻（カウントダウンの基準）
   const lastAckRef = useRef<number>(Date.now());
   const lastPingRef = useRef<number>(0);
@@ -110,7 +112,7 @@ export function ActivityMonitor() {
       style={{ position: "fixed", right: 16, bottom: 16, zIndex: 1000 }}
       variant="filled"
     >
-      あと {min}:{String(sec).padStart(2, "0")} で自動ログアウト
+      {m.activity.autoLogout(`${min}:${String(sec).padStart(2, "0")}`)}
     </Badge>
   );
 }

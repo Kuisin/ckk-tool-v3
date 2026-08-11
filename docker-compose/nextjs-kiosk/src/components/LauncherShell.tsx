@@ -3,6 +3,8 @@
 /**
  * LauncherShell.tsx — ランチャー画面（ヘッダー + アプリグリッド + アイドル監視）。
  * 現リリースはシェルのみ — アプリは後続 PR で app-list.ts に追加される。
+ * 文言はユーザー言語（useI18n — ja/en/zh）。言語切替はここで行い users.locale
+ * に保存 → router.refresh() でサーバー側から新しい辞書が流れてくる。
  */
 
 import {
@@ -12,6 +14,7 @@ import {
   Center,
   Group,
   Paper,
+  SegmentedControl,
   SimpleGrid,
   Stack,
   Text,
@@ -22,7 +25,9 @@ import {
 import { IconApps, IconLayoutGrid, IconLogout } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { LOCALE_LABELS, LOCALES } from "@/lib/i18n";
 import { ActivityMonitor } from "./ActivityMonitor";
+import { useI18n } from "./I18nProvider";
 
 type LauncherApp = { key: string; label: string; href: string };
 
@@ -33,7 +38,9 @@ type Props = {
 
 export function LauncherShell({ displayName, apps }: Props) {
   const router = useRouter();
+  const { locale, m } = useI18n();
   const [loggingOut, setLoggingOut] = useState(false);
+  const [switching, setSwitching] = useState(false);
 
   const logout = async () => {
     setLoggingOut(true);
@@ -41,6 +48,21 @@ export function LauncherShell({ displayName, apps }: Props) {
       await fetch("/api/kiosk/session", { method: "DELETE" });
     } finally {
       router.replace("/login");
+    }
+  };
+
+  const changeLocale = async (value: string) => {
+    if (value === locale || switching) return;
+    setSwitching(true);
+    try {
+      await fetch("/api/kiosk/locale", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ locale: value }),
+      });
+      router.refresh(); // サーバーが users.locale を再読込 → 新しい辞書で再描画
+    } finally {
+      setSwitching(false);
     }
   };
 
@@ -61,22 +83,34 @@ export function LauncherShell({ displayName, apps }: Props) {
                 {displayName.slice(0, 1)}
               </Avatar>
               <Text fw={600} size="lg" truncate>
-                {displayName} さん
+                {m.launcher.greeting(displayName)}
               </Text>
             </Group>
-            <Button
-              color="red"
-              leftSection={<IconLogout size={20} />}
-              loading={loggingOut}
-              onClick={logout}
-              variant="default"
-            >
-              ログアウト
-            </Button>
+            <Group gap="sm" wrap="nowrap">
+              <SegmentedControl
+                aria-label={m.launcher.language}
+                data={LOCALES.map((l) => ({
+                  value: l,
+                  label: LOCALE_LABELS[l],
+                }))}
+                disabled={switching}
+                onChange={changeLocale}
+                value={locale}
+              />
+              <Button
+                color="red"
+                leftSection={<IconLogout size={20} />}
+                loading={loggingOut}
+                onClick={logout}
+                variant="default"
+              >
+                {m.launcher.logout}
+              </Button>
+            </Group>
           </Group>
         </Paper>
 
-        <Title order={3}>アプリ</Title>
+        <Title order={3}>{m.launcher.appsTitle}</Title>
 
         {apps.length === 0 ? (
           <Center style={{ flex: 1 }}>
@@ -84,7 +118,7 @@ export function LauncherShell({ displayName, apps }: Props) {
               <ThemeIcon color="blue" radius="md" size={64} variant="light">
                 <IconApps size={36} />
               </ThemeIcon>
-              <Text c="dimmed">利用できるアプリは準備中です</Text>
+              <Text c="dimmed">{m.launcher.noApps}</Text>
             </Stack>
           </Center>
         ) : (
