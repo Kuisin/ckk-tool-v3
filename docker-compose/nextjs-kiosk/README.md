@@ -1,0 +1,80 @@
+# nextjs-kiosk — 共有キオスク端末アプリ
+
+工場フロアの共有タブレット用アプリ。従業員は **QR カード + PIN** でログインする
+（AD パスワード入力なし）。管理（カード発行・端末有効化・フロアマップ）は
+**nextjs-web の設定アプリ**（SY08 QRカード管理 / SY09 端末管理）で行う。
+
+## 認証の仕組み
+
+独立した 2 つの信頼（Cookie は生トークン、DB は SHA-256 のみ）:
+
+| Cookie | 意味 | 期限 |
+|---|---|---|
+| `kiosk_device` | この端末は信頼済みキオスク（`kiosk_devices` ACTIVE 行） | 30日 |
+| `kiosk_session` | この人がサインイン中（`kiosk_sessions` → `app.users`） | 8h ハード + 5分アイドル |
+
+- **端末登録（profile-first）**: 管理者が SY09 で**端末プロファイル**を作成
+  （オープン = リンク待ち）。タブレットの `/setup` が**リンクコード
+  （12桁・10分）を QR + テキストで表示**し、管理者が SY09 の「端末をリンク」で
+  スキャン or 入力 — **オープンなプロファイルにのみ**リンクできる。
+  管理者は**リンク済みプロファイルのみ有効化**でき、有効化で端末の
+  ポーリングが 30日トークンを受け取る。**リンク解除**（SY09）で
+  トークン・セッション・アテステーション鍵を破棄してプロファイルを
+  オープンに戻せる（端末交換・再リンク用。名前/工場/マップピンは維持）。
+- **ログイン**: `/login` で QR スキャン → `POST /api/qr/access`。
+  PIN は必須（初回スキャンで設定）。**3日以内に使用があればスキャンのみ**、
+  空くと PIN 再入力。5回失敗で 15分ロック。
+- **アイドル**: 操作イベント → 30s スロットルで `POST /api/kiosk/activity`。
+  残り 3分でカウントダウン表示 → 0 で自動ログアウト。
+
+## WebSocket（端末プレゼンス）
+
+`/api/kiosk/ws`（カスタムサーバー `src/server.ts` が upgrade を処理）:
+
+- **device** クライアント: 端末（`kiosk_device` Cookie で認証）。接続中 =
+  オンライン。未接続でも直近 5分の活動があればオンライン扱い。
+- **monitor** クライアント: nextjs-web 管理 UI。`KIOSK_WS_SECRET` の HMAC
+  短命トークン（`?token=`）で認証。接続時 snapshot、以後 device_status を受信。
+
+Next のルートからは `src/lib/ws-bridge.ts`（globalThis 経由）で通知する。
+
+## 開発
+
+```bash
+pnpm install --frozen-lockfile
+pnpm db:sync-schema && pnpm db:generate   # shared-db スキーマ同期
+pnpm dev                                   # UI 開発（WS なしでも動く）
+pnpm build:server && NODE_ENV=development node dist/src/server.js  # WS 込み
+pnpm test / pnpm lint
+```
+
+カメラ（getUserMedia）は `http://localhost` では TLS 不要。実端末での確認は
+デプロイ後に `https://ckk-kiosk-dev.kai-lab.net`（LAN TLS 済み）で行う。
+
+## E2E スモーク（手動チェックリスト）
+
+1. 管理者: SY09 で端末プロファイル作成（名前・工場）→ 「リンク待ち」
+2. タブレット: `/setup` にリンクコード + QR 表示 / 管理者: SY09 の
+   「端末をリンク」でスキャン or 入力（オープンなプロファイルのみ選択可）→
+   タブレットが「有効化待ち」へ / 管理者: LINKED の行だけに出る「有効化」→
+   タブレットが `/login` へ（リンク解除 → プロファイルがオープンに戻り、
+   タブレットは新しいコードを再表示することも確認）
+3. 管理者: SY08 でカード発行 → ユーザー割当 → 印刷
+4. 初回スキャン → PIN 設定 → ランチャー表示
+5. ログアウト → 再スキャン → PIN なしで即ログイン
+6. `UPDATE app.kiosk_cards SET last_used_at = now() - interval '4 days' ...` → スキャン → PIN 要求
+7. PIN 5回失敗 → 15分ロック → SY08 でロック解除
+8. 5分放置 → 自動ログアウト
+9. SY09 で端末取り消し → タブレットが `/device-error`
+10. SY09 の端末一覧・フロアマップでオンライン表示が数秒で追従（WS）
+
+## デプロイ
+
+Coolify（`nextjs-kiosk-dev` :3006 / `nextjs-kiosk-main` :3007、
+`docker-compose/coolify/README.md`）。公開: `ckk-kiosk-dev.kai-lab.net` /
+`ckk-kiosk.kai-lab.net`（cloudflared + nginx-proxy、WS upgrade 対応）。
+
+`public/apk/` は Android ラッパー APK（+ `version.json`）の公開配布パス。
+`/apk/*` は proxy のリダイレクト対象外（未登録タブレットが Cookie なしで
+ダウンロードする）。更新は `android-kiosk/tools/release-apk.sh` →
+コミット → デプロイ（`android-kiosk/README.md`「配布」参照）。

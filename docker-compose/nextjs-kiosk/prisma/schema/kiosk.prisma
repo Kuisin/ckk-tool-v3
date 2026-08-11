@@ -1,0 +1,231 @@
+// キオスク（共有端末）認証 — 工場フロアの共有タブレット用。
+//
+// 2 つの独立した信頼:
+//   kiosk_devices  = 「この端末は信頼済みキオスク」（登録コードで管理者が有効化、
+//                    30日デバイストークン。Cookie はトークン生値、DB はハッシュのみ）
+//   kiosk_sessions = 「この人がサインイン中」（QRカード + PIN。8h ハード期限 +
+//                    5分アイドル。app.users に解決するので user_permissions /
+//                    監査の actor がそのまま使える）
+// QRカード（kiosk_cards）は app.users への割当。PIN は初回ログインで必須設定。
+// スキャンのみログインは「**その端末で** 48 時間以内の使用実績（kiosk_sessions）
+// がある かつ 最後の PIN 検証（pin_last_verified_at）から 2 週間以内」のときのみ
+// — 初めて使う端末では必ず PIN、活動が続いても 2 週間ごとに必ず PIN 再入力。
+// 端末は工場（factories）単位で管理し、フロアマップ（kiosk_floor_maps）上に
+// map_x/map_y（%座標）でピン配置して所在を可視化する。
+
+enum KioskDeviceStatus {
+  PENDING // プロファイル作成済・端末リンク待ち（= オープン。リンク解除で戻る）
+  LINKED // 物理端末リンク済・有効化待ち（有効化はこの状態からのみ）
+  ACTIVE // 有効
+  DISABLED // 一時無効（再有効化可）
+  REVOKED // 取り消し（トークン破棄・再リンクが必要）
+
+  @@map("KIOSK_DEVICE_STATUS")
+  @@schema("app")
+}
+
+enum KioskCardStatus {
+  UNASSIGNED // 発行済・未割当
+  ASSIGNED // 割当済（ログイン可）
+  SUSPENDED // 一時停止
+  REVOKED // 取り消し
+
+  @@map("KIOSK_CARD_STATUS")
+  @@schema("app")
+}
+
+// ─── フロアマップ（工場ごとの階/エリア。file は任意の図面画像） ────────────────
+
+model KioskFloorMap {
+  id        String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  factoryId Int     @map("factory_id")
+  name      String // 例: 1F 加工場
+  fileId    String? @map("file_id") @db.Uuid
+  sortOrder Int     @default(0) @map("sort_order")
+  isActive  Boolean @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  factory Factory @relation("KioskFloorMapFactory", fields: [factoryId], references: [id])
+  file    File?   @relation("KioskFloorMapFile", fields: [fileId], references: [id])
+  devices KioskDevice[] @relation("KioskDeviceFloorMap")
+
+  @@index([factoryId])
+  @@map("kiosk_floor_maps")
+  @@schema("app")
+}
+
+// ─── 端末（共有タブレット） ──────────────────────────────────────────────────
+
+model KioskDevice {
+  id       String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name     String?
+  location String?
+  // 有効化時に管理者が設定（PENDING の間は null）
+  factoryId Int? @map("factory_id")
+  // フロアマップ上のピン（%座標。null = 未配置）
+  floorMapId String?  @map("floor_map_id") @db.Uuid
+  mapX       Decimal? @map("map_x") @db.Decimal(5, 2)
+  mapY       Decimal? @map("map_y") @db.Decimal(5, 2)
+
+  status KioskDeviceStatus @default(PENDING)
+
+  // 端末設定画面（ヘッダー5タップ）の解錠コード。SY09 の編集モーダルで管理者が
+  // 確認・再生成し、フロア担当者に伝える運用。平文保持は仕様（低感度の便宜
+  // ゲート — 5回失敗/15分ロックで総当たりは不可。認証はデバイストークンが担う）。
+  settingsCode String @default(dbgenerated("lpad(floor(random() * 1000000)::text, 6, '0')")) @map("settings_code")
+
+  linkedAt DateTime? @map("linked_at") @db.Timestamptz(6)
+
+  // デバイストークン（Cookie は生値、DB は SHA-256 のみ。30日）
+  deviceTokenHash      String?   @unique @map("device_token_hash")
+  deviceTokenExpiresAt DateTime? @map("device_token_expires_at") @db.Timestamptz(6)
+
+  // 端末アテステーション（Android ラッパーの Keystore 鍵。初回アテストで TOFU 束縛、
+  // 管理者の「鍵リセット」で null に戻して再束縛可能）
+  devicePublicKey String? @map("device_public_key") // SPKI DER base64 (P-256)
+  fingerprint     String? @unique // SHA-256 hex of SPKI DER
+
+  // 参考情報のみ（認証のフォールバックには使わない）
+  userAgent     String? @map("user_agent")
+  lastIpAddress String? @map("last_ip_address")
+
+  activatedById  String?   @map("activated_by") @db.Uuid
+  activatedAt    DateTime? @map("activated_at") @db.Timestamptz(6)
+  lastActivityAt DateTime? @map("last_activity_at") @db.Timestamptz(6)
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  factory     Factory?       @relation("KioskDeviceFactory", fields: [factoryId], references: [id])
+  floorMap    KioskFloorMap? @relation("KioskDeviceFloorMap", fields: [floorMapId], references: [id])
+  activatedBy User?          @relation("KioskDeviceActivatedBy", fields: [activatedById], references: [id])
+  sessions    KioskSession[] @relation("KioskSessionDevice")
+  linkRequests KioskLinkRequest[] @relation("KioskLinkRequestDevice")
+  logs        KioskDeviceLog[] @relation("KioskDeviceLogDevice")
+
+  @@index([factoryId])
+  @@index([status])
+  @@map("kiosk_devices")
+  @@schema("app")
+}
+
+// ─── QRカード（従業員に割当。id = Crockford 16桁 = QR ペイロードの secret） ───
+
+model KioskCard {
+  id     String          @id
+  userId String?         @map("user_id") @db.Uuid
+  status KioskCardStatus @default(UNASSIGNED)
+
+  // PIN（scrypt salt:hash hex — nextjs-web src/lib/password.ts と同形式）
+  pinHash           String?   @map("pin_hash")
+  pinSetAt          DateTime? @map("pin_set_at") @db.Timestamptz(6)
+  pinFailedAttempts Int       @default(0) @map("pin_failed_attempts")
+  pinLockedUntil    DateTime? @map("pin_locked_until") @db.Timestamptz(6)
+  pinLastVerifiedAt DateTime? @map("pin_last_verified_at") @db.Timestamptz(6)
+
+  // 3日ルールの基準（スキャンのみログイン可否）。ログイン成功ごとに更新
+  lastUsedAt DateTime? @map("last_used_at") @db.Timestamptz(6)
+  useCount   Int       @default(0) @map("use_count")
+
+  assignedAt   DateTime? @map("assigned_at") @db.Timestamptz(6)
+  assignedById String?   @map("assigned_by") @db.Uuid
+  revokedAt    DateTime? @map("revoked_at") @db.Timestamptz(6)
+  revokedById  String?   @map("revoked_by") @db.Uuid
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  user       User? @relation("KioskCardUser", fields: [userId], references: [id])
+  assignedBy User? @relation("KioskCardAssignedBy", fields: [assignedById], references: [id])
+  revokedBy  User? @relation("KioskCardRevokedBy", fields: [revokedById], references: [id])
+  sessions   KioskSession[] @relation("KioskSessionCard")
+
+  // 「ASSIGNED は 1 ユーザー 1 枚」は migration の手書き部分 partial unique index
+  // (user_id WHERE status = 'ASSIGNED') で担保 — Prisma では表現不可。
+  @@index([userId])
+  @@map("kiosk_cards")
+  @@schema("app")
+}
+
+// ─── 人のセッション（id = セッショントークンの SHA-256 hex） ─────────────────
+
+model KioskSession {
+  id             String    @id
+  userId         String    @map("user_id") @db.Uuid
+  cardId         String    @map("card_id")
+  deviceId       String    @map("device_id") @db.Uuid
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  expiresAt      DateTime  @map("expires_at") @db.Timestamptz(6) // 8h ハード期限
+  lastActivityAt DateTime  @map("last_activity_at") @db.Timestamptz(6) // 5分アイドル窓
+  revokedAt      DateTime? @map("revoked_at") @db.Timestamptz(6)
+
+  user   User        @relation("KioskSessionUser", fields: [userId], references: [id])
+  card   KioskCard   @relation("KioskSessionCard", fields: [cardId], references: [id])
+  device KioskDevice @relation("KioskSessionDevice", fields: [deviceId], references: [id])
+
+  @@index([userId])
+  @@index([deviceId])
+  @@index([expiresAt])
+  @@map("kiosk_sessions")
+  @@schema("app")
+}
+
+// ─── 端末利用ログ（プレゼンス遷移 + ログイン/ログアウト履歴） ─────────────────
+//
+// 書き込み元:
+//   ONLINE/OFFLINE — kiosk の WS サーバー（ws-db.ts の冪等 guarded insert のみ。
+//                    ハートビート行は書かない — 遷移時だけ 1 行）+ pg_cron の
+//                    バックストップ（kiosk アプリ全停止時のオフライン検知。
+//                    shared-db/sql/kiosk-cron.sql）
+//   LOGIN/LOGOUT   — kiosk の createSession/destroySession/getSession（暗黙失効）、
+//                    nextjs-web の unlinkDevice/revokeDevice（管理者失効）、
+//                    pg_cron の stale セッション掃除
+// SY09 の「利用履歴」モーダルが表示する。
+
+enum KioskDeviceLogType {
+  ONLINE
+  OFFLINE
+  LOGIN
+  LOGOUT
+
+  @@map("KIOSK_DEVICE_LOG_TYPE")
+  @@schema("app")
+}
+
+model KioskDeviceLog {
+  id        BigInt             @id @default(autoincrement())
+  deviceId  String             @map("device_id") @db.Uuid
+  type      KioskDeviceLogType
+  userId    String?            @map("user_id") @db.Uuid // LOGIN/LOGOUT のみ
+  source    String? // "ws" | "sweep" | "pg_cron" | "login" | "logout" | "expired" | "admin"
+  createdAt DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  device KioskDevice @relation("KioskDeviceLogDevice", fields: [deviceId], references: [id], onDelete: Cascade)
+  user   User?       @relation("KioskDeviceLogUser", fields: [userId], references: [id])
+
+  @@index([deviceId, createdAt])
+  @@index([createdAt])
+  @@map("kiosk_device_logs")
+  @@schema("app")
+}
+
+// ─── リンクリクエスト（タブレット側が生成する QR/コード） ─────────────────────
+//
+// タブレットの /setup が発行（10分期限）。管理者が SY09 でコードを入力 or
+// QR をスキャンし、**オープン（PENDING）なプロファイルにのみ**リンクできる。
+// リンク成立で device_id が入り、タブレットのポーリングがそれを検知する。
+
+model KioskLinkRequest {
+  id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  code          String   @unique // Crockford 12桁
+  deviceId      String?  @map("device_id") @db.Uuid // リンク先プロファイル（成立後）
+  userAgent     String?  @map("user_agent")
+  lastIpAddress String?  @map("last_ip_address")
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  expiresAt     DateTime @map("expires_at") @db.Timestamptz(6) // 10分
+
+  device KioskDevice? @relation("KioskLinkRequestDevice", fields: [deviceId], references: [id])
+
+  @@index([expiresAt])
+  @@map("kiosk_link_requests")
+  @@schema("app")
+}

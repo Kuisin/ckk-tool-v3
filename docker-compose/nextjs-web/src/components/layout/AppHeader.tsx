@@ -31,6 +31,7 @@ import {
 } from "@mantine/core";
 import {
   IconBell,
+  IconBug,
   IconChevronLeft,
   IconLayoutDashboard,
   IconLogout,
@@ -40,11 +41,13 @@ import {
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { signOut } from "next-auth/react";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { relativeTime, useNotifications } from "@/hooks/useNotifications";
 import { appList } from "@/lib/app-list";
+import { installBugReportCapture } from "@/lib/bug-report";
 import { appKeyForPath } from "./AppFlags";
 import { AppLauncher } from "./AppLauncher";
+import { BugReportModal } from "./BugReportModal";
 import { useNavigationGuard } from "./NavigationGuard";
 import { markAllReadAction, markReadAction } from "./notification-actions";
 import { OperationCodeJump } from "./OperationCodeJump";
@@ -106,6 +109,12 @@ export function AppHeader({
   const [launcherOpen, setLauncherOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
+  const [bugOpen, setBugOpen] = useState(false);
+
+  // バグ報告用のコンソール・エラー捕捉（1 回だけ有効化される）
+  useEffect(() => {
+    installBugReportCapture();
+  }, []);
   const launcherCloseTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
     null,
   );
@@ -309,6 +318,19 @@ export function AppHeader({
             onClose={() => setShareOpen(false)}
             opened={shareOpen}
           />
+          {/* バグ報告（ページ状態・コンソールログを添付して管理者へ） */}
+          <Tooltip label="バグを報告" withinPortal>
+            <ActionIcon
+              aria-label="バグを報告"
+              color="gray"
+              onClick={() => setBugOpen(true)}
+              size="lg"
+              variant="subtle"
+            >
+              <IconBug size={20} />
+            </ActionIcon>
+          </Tooltip>
+          <BugReportModal onClose={() => setBugOpen(false)} opened={bugOpen} />
           <Popover
             onDismiss={() => setNotifOpen(false)}
             opened={notifOpen}

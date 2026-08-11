@@ -1,0 +1,252 @@
+// 販売 — 試算・価格表・見積書 (_specs/tables.md §1 + SA05, UI model準拠).
+//
+// フロー: 試算 (SA05 見積試算, EST-) は任意で製品にリンク（1製品に複数試算可）。
+// 価格表は顧客×製品で作成し、注文種別ごとの価格は price_list_variants に持つ。
+// 作成時に製品へリンク済みの確定試算を基準単価ソースとして選択できる
+// （選択で試算は REGISTERED へ）。見積書 (QOT-) は価格表
+// (バリアント × 倍率 tiers + 値引きルール) からのみ価格を解決する。
+//
+// キー方針: 文書テーブルは複合キー (year_month + seq) — 文書番号
+// EST-YYYYMM-NNNNN / QOT-YYYYMM-NNNNN はキーから導出し、単一カラムには
+// 保存しない。価格表エントリは自然複合キー (顧客, 製品)。
+
+enum OrderType {
+  PRODUCTION
+  TEST
+  SAMPLE
+  OTHER
+
+  @@map("ORDER_TYPE")
+  @@schema("app")
+}
+
+enum EstimateStatus {
+  DRAFT
+  CONFIRMED
+  REGISTERED
+
+  @@map("ESTIMATE_STATUS")
+  @@schema("app")
+}
+
+enum QuoteStatus {
+  DRAFT
+  ISSUED
+  ACCEPTED
+  REJECTED
+  EXPIRED
+
+  @@map("QUOTE_STATUS")
+  @@schema("app")
+}
+
+enum PriceDiscountType {
+  RATE
+  AMOUNT
+
+  @@map("PRICE_DISCOUNT_TYPE")
+  @@schema("app")
+}
+
+// 試算 (SA05 見積試算) — 計算入力のスナップショット + 参照価格。
+// 文書番号 EST-{year_month}-{seq:5桁} はキーから導出。
+model Estimate {
+  yearMonth String @map("year_month") @db.Char(6)
+  seq       Int
+
+  name                String
+  // 工具種 — 管理者定義（system_settings trial_pricing.tool_types）。
+  // 組み込み: ROUND_BAR / CYLINDER / OH（旧 TRIAL_TOOL_TYPE enum）。
+  toolType            String         @map("tool_type") @db.VarChar(64)
+  status              EstimateStatus @default(DRAFT)
+  customerBpId        String?        @map("customer_bp_id") @db.Uuid
+  // 対象製品（任意）。1製品に複数試算を紐付け可。価格表作成時の
+  // 基準単価ソース候補はこのリンクで解決する。
+  productId           Int?           @map("product_id")
+  // 材料は「材種 × 直径 × 黒皮/研磨」で指定する（特定 materials 行には紐付けない）。
+  // 参照価格は material_type_prices（¥/1000mm）＋ 仕入実績から解決する。
+  materialTypeId      Int?           @map("material_type_id")
+  diameterCode        String?        @map("diameter_code") @db.Char(3)
+  surfaceFinishCode   String?        @map("surface_finish_code") @db.Char(1)
+  // 参照価格（仕入実績 / 材種既定単価 由来, ¥/1000mm）。reference_overridden = 手動上書き。
+  referenceUnitPrice  Decimal?       @map("reference_unit_price") @db.Decimal(12, 2)
+  referenceDate       DateTime?      @map("reference_date") @db.Date
+  referenceOverridden Boolean        @default(false) @map("reference_overridden")
+  // 入力スナップショット（lib/trial-pricing TrialInput）
+  input               Json
+  // 算出結果スナップショット（任意 — 表示は input から再計算）
+  result              Json?
+  registeredAt        DateTime?      @map("registered_at") @db.Timestamptz(6)
+  notes               String?
+  createdBy           String?        @map("created_by") @db.Uuid
+  createdAt           DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt           DateTime       @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  customerBp    BusinessPartner?       @relation("EstimateCustomer", fields: [customerBpId], references: [id])
+  product       Product?               @relation(fields: [productId], references: [id])
+  materialType  MaterialType?          @relation(fields: [materialTypeId], references: [id])
+  diameter      MaterialDiameter?      @relation(fields: [diameterCode], references: [code])
+  surfaceFinish MaterialSurfaceFinish? @relation(fields: [surfaceFinishCode], references: [code])
+  createdByUser User?                  @relation("EstimateCreatedBy", fields: [createdBy], references: [id])
+
+  priceListVariants PriceListVariant[]
+
+  @@id([yearMonth, seq])
+  @@map("estimates")
+  @@schema("app")
+}
+
+// 価格表エントリ — 他文書と同じ複合キー (year_month, seq)。表示番号
+// PRC-YYYYMM-NNNNN はキーから導出（URL id にも使用）。自然キー
+// (顧客, 製品) は作成後不変の識別として UNIQUE で維持。
+// 注文種別ごとの価格（基準単価・期間・tiers・値引き）は variants に持つ。
+model PriceListEntry {
+  yearMonth String @map("year_month") @db.Char(6)
+  seq       Int
+
+  customerBpId String @map("customer_bp_id") @db.Uuid
+  productId    Int    @map("product_id")
+
+  currency  String   @default("JPY")
+  isActive  Boolean  @default(true) @map("is_active")
+  createdBy String?  @map("created_by") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  customerBp    BusinessPartner    @relation("PriceListEntryCustomer", fields: [customerBpId], references: [id])
+  product       Product            @relation(fields: [productId], references: [id])
+  createdByUser User?              @relation("PriceListEntryCreatedBy", fields: [createdBy], references: [id])
+  variants      PriceListVariant[]
+
+  @@id([yearMonth, seq])
+  @@unique([customerBpId, productId])
+  @@map("price_list_entries")
+  @@schema("app")
+}
+
+// 注文種別バリアント — 1 エントリ（顧客×製品）内の種別ごとの価格。
+// 基準単価 = 試算の見積単価（手動上書き可）。有効期間はバリアント単位
+// （TEST/SAMPLE は終了日必須）。tiers / discounts はバリアント配下。
+model PriceListVariant {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  entryYearMonth String    @map("entry_year_month") @db.Char(6)
+  entrySeq       Int       @map("entry_seq")
+  orderType      OrderType @map("order_type")
+
+  baseUnitPrice     Decimal   @default(0) @map("base_unit_price") @db.Decimal(12, 2)
+  validFrom         DateTime  @map("valid_from") @db.Date
+  validUntil        DateTime? @map("valid_until") @db.Date
+  estimateYearMonth String?   @map("estimate_year_month") @db.Char(6)
+  estimateSeq       Int?      @map("estimate_seq")
+  isActive          Boolean   @default(true) @map("is_active")
+  createdAt         DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt         DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  entry    PriceListEntry @relation(fields: [entryYearMonth, entrySeq], references: [yearMonth, seq])
+  estimate Estimate?      @relation(fields: [estimateYearMonth, estimateSeq], references: [yearMonth, seq])
+
+  tiers     PriceListTier[]
+  discounts PriceListDiscount[]
+
+  @@unique([entryYearMonth, entrySeq, orderType])
+  @@map("price_list_variants")
+  @@schema("app")
+}
+
+// 数量段階: 数量範囲 → 倍率。単価 = round(基準単価 × 倍率)、
+// price_override で行ごとに手動上書き可（null = 自動計算）。
+model PriceListTier {
+  id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  variantId     String   @map("variant_id") @db.Uuid
+  minQuantity   Int      @default(1) @map("min_quantity")
+  maxQuantity   Int?     @map("max_quantity")
+  multiplier    Decimal  @default(1) @db.Decimal(8, 3)
+  priceOverride Decimal? @map("price_override") @db.Decimal(12, 2)
+  sortOrder     Int      @default(0) @map("sort_order")
+
+  variant PriceListVariant @relation(fields: [variantId], references: [id])
+
+  quoteItems QuoteItem[]
+
+  @@index([variantId, minQuantity])
+  @@map("price_list_tiers")
+  @@schema("app")
+}
+
+// 値引きルール — 期間 × 数量条件 → 値引き（バリアントごとの専用リスト）。
+// RATE = 単価に対する率(%) / AMOUNT = 1本あたりの値引き額(¥)。
+// 条件を満たすルールのうち 1本あたり値引きが最大のものを適用する。
+model PriceListDiscount {
+  id           String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  variantId    String            @map("variant_id") @db.Uuid
+  label        String
+  discountType PriceDiscountType @map("discount_type")
+  value        Decimal           @db.Decimal(12, 2)
+  minQuantity  Int               @default(1) @map("min_quantity")
+  maxQuantity  Int?              @map("max_quantity")
+  validFrom    DateTime          @map("valid_from") @db.Date
+  validUntil   DateTime?         @map("valid_until") @db.Date
+  isActive     Boolean           @default(true) @map("is_active")
+  createdAt    DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  variant PriceListVariant @relation(fields: [variantId], references: [id])
+
+  @@index([variantId])
+  @@map("price_list_discounts")
+  @@schema("app")
+}
+
+// 見積書 — 文書番号 QOT-{year_month}-{seq:5桁} はキーから導出。
+// 価格は価格表からのみ解決（手入力なし・印刷用文書）。
+model Quote {
+  yearMonth String @map("year_month") @db.Char(6)
+  seq       Int
+
+  customerBpId       String      @map("customer_bp_id") @db.Uuid
+  customerBranchBpId String?     @map("customer_branch_bp_id") @db.Uuid
+  status             QuoteStatus @default(DRAFT)
+  validUntil         DateTime?   @map("valid_until") @db.Date
+  notes              String?
+  pdfFileId          String?     @map("pdf_file_id") @db.Uuid
+  createdBy          String?     @map("created_by") @db.Uuid
+  createdAt          DateTime    @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt          DateTime    @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  customerBp       BusinessPartner  @relation("QuoteCustomer", fields: [customerBpId], references: [id])
+  customerBranchBp BusinessPartner? @relation("QuoteCustomerBranch", fields: [customerBranchBpId], references: [id])
+  pdfFile          File?            @relation("QuotePdf", fields: [pdfFileId], references: [id])
+  createdByUser    User?            @relation("QuoteCreatedBy", fields: [createdBy], references: [id])
+  items            QuoteItem[]
+  salesOrders      SalesOrder[]
+  designRequests   DesignRequest[]
+
+  @@id([yearMonth, seq])
+  @@map("quotes")
+  @@schema("app")
+}
+
+model QuoteItem {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  quoteYearMonth String    @map("quote_year_month") @db.Char(6)
+  quoteSeq       Int       @map("quote_seq")
+  productId      Int       @map("product_id")
+  orderType      OrderType @map("order_type")
+  quantity       Int
+  unitPrice      Decimal   @map("unit_price") @db.Decimal(12, 2)
+  // 自動解決元の価格表 tier（価格表なしの旧データのみ null）
+  priceListTierId String?  @map("price_list_tier_id") @db.Uuid
+  // 値引きルールから自動計算された明細値引き（スナップショット）
+  discountAmount Decimal   @default(0) @map("discount_amount") @db.Decimal(12, 2)
+  discountLabel  String?   @map("discount_label")
+  amount         Decimal   @db.Decimal(12, 2)
+  deliveryDate   DateTime? @map("delivery_date") @db.Date
+  notes          String?
+  sortOrder      Int       @default(0) @map("sort_order")
+
+  quote         Quote          @relation(fields: [quoteYearMonth, quoteSeq], references: [yearMonth, seq])
+  product       Product        @relation(fields: [productId], references: [id])
+  priceListTier PriceListTier? @relation(fields: [priceListTierId], references: [id])
+
+  @@map("quote_items")
+  @@schema("app")
+}

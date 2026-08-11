@@ -1,0 +1,22 @@
+// CKK shared database — the ckk-tool-v3 web app's Prisma project.
+//
+// The web app owns ONE schema: `app` (all its business tables — RBAC, master
+// data, business partners, sales: 試算 → 価格表 → 見積書). Cross-system
+// reference data lives in the shared `directory` schema (employee data,
+// AD/LDAP-synced by the vpn-ldap service) which the app reads and FKs into via
+// the immutable `ldap_guid`. The other operational schemas (kot / admintools /
+// public) are owned by their own apps and are NOT modelled here.
+//
+// Prisma owns DDL for `app`. The `directory` schema is owned by the ldap_sync
+// service; Prisma only references its stable key (see directory.prisma) — the
+// init migration adds `ldap_guid` to the existing table, it does not create it.
+
+generator client {
+  provider = "prisma-client"
+  output   = "../../generated/client"
+}
+
+datasource db {
+  provider = "postgresql"
+  schemas  = ["app", "directory"]
+}

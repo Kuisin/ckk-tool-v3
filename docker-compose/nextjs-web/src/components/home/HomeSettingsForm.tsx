@@ -197,7 +197,7 @@ export function HomeSettingsForm({ initial }: { initial: HomeSettings }) {
   };
 
   return (
-    <Stack gap="md">
+    <Stack gap="md" maw={960} mx="auto" w="100%">
       <PageHeader
         breadcrumbs={[
           { label: "プロフィール", href: "/profile" },

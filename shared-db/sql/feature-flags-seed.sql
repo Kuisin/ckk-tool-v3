@@ -33,4 +33,9 @@ INSERT INTO app.feature_flags (key, is_enabled, description, updated_at) VALUES
 ON CONFLICT (key) DO UPDATE
   SET is_enabled = EXCLUDED.is_enabled, updated_at = now();
 
+-- キオスク管理アプリ（SY08/SY09）は dev 検証後に本番公開する。
+-- 公開時にコメントを外して再適用:
+--   ('app:kiosk-cards:main',   true, 'QRカード管理 本番公開', now()),
+--   ('app:kiosk-devices:main', true, '端末管理 本番公開',     now())
+
 COMMIT;

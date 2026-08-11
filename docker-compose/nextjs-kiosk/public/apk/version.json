@@ -1,0 +1,4 @@
+{
+  "dev":  { "versionCode": 1, "versionName": "0.1.0", "sha256": "57fa6f01e0227996190025931e781c2d07dfa2d2c9e7e1781ff4a1085e3fe735" },
+  "prod": { "versionCode": 1, "versionName": "0.1.0", "sha256": "ccea9cba2c400f970e6b49f595a46f3a6f08e9ee863a594778d212c78c2ac451" }
+}

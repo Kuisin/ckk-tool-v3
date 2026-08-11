@@ -30,7 +30,11 @@
 
 services:
   db:
-    image: groonga/pgroonga:4.0.6-alpine-17
+    # PGroonga + pg_cron（Dockerfile 参照）。pg_cron はキオスクのプレゼンス
+    # バックストップ（sql/kiosk-cron.sql — アプリ全停止時のオフライン検知 +
+    # stale セッション掃除）に使う。
+    build: .
+    image: ckk-shared-db:pgroonga-4.0.6-pgcron-1.6.7
     container_name: shared-db
     restart: unless-stopped
     environment:
@@ -47,12 +51,19 @@ services:
     # summarize_wal=on is required for PG17 incremental backups (db-backup stack).
     # hba_file points at the repo-managed pg_hba.conf (adds a replication entry
     # for the backup role — the image default only allows replication locally).
+    # shared_preload_libraries=pg_cron + cron.database_name=ckk enable the
+    # pg_cron scheduler (jobs are created by shared-db/sql/kiosk-cron.sql —
+    # run `pnpm cron:remote` there AFTER this image/command change is live).
     command:
       - postgres
       - -c
       - summarize_wal=on
       - -c
       - hba_file=/etc/postgresql/pg_hba.conf
+      - -c
+      - shared_preload_libraries=pg_cron
+      - -c
+      - cron.database_name=ckk
     volumes:
       - shared-db-data:/var/lib/postgresql/data
       - ./init:/docker-entrypoint-initdb.d:ro
