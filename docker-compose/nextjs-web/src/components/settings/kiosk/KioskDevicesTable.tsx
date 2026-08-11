@@ -732,9 +732,10 @@ export function KioskDevicesTable({
           </Alert>
           <TextInput
             label="端末名"
-            onChange={(e) =>
-              setCreateForm((s) => ({ ...s, name: e.currentTarget.value }))
-            }
+            onChange={(e) => {
+              const name = e.currentTarget.value;
+              setCreateForm((s) => ({ ...s, name }));
+            }}
             placeholder="例: 1F 加工場 タブレット1"
             value={createForm.name}
             withAsterisk
@@ -750,12 +751,10 @@ export function KioskDevicesTable({
           />
           <TextInput
             label="場所"
-            onChange={(e) =>
-              setCreateForm((s) => ({
-                ...s,
-                location: e.currentTarget.value,
-              }))
-            }
+            onChange={(e) => {
+              const location = e.currentTarget.value;
+              setCreateForm((s) => ({ ...s, location }));
+            }}
             placeholder="例: 検査室入口"
             value={createForm.location}
           />
@@ -810,9 +809,10 @@ export function KioskDevicesTable({
         <Stack gap="sm">
           <TextInput
             label="端末名"
-            onChange={(e) =>
-              setEditForm((s) => ({ ...s, name: e.currentTarget.value }))
-            }
+            onChange={(e) => {
+              const name = e.currentTarget.value;
+              setEditForm((s) => ({ ...s, name }));
+            }}
             value={editForm.name}
             withAsterisk
           />
@@ -826,9 +826,10 @@ export function KioskDevicesTable({
           />
           <TextInput
             label="場所"
-            onChange={(e) =>
-              setEditForm((s) => ({ ...s, location: e.currentTarget.value }))
-            }
+            onChange={(e) => {
+              const location = e.currentTarget.value;
+              setEditForm((s) => ({ ...s, location }));
+            }}
             value={editForm.location}
           />
           <Text c="dimmed" size="xs">
