@@ -150,6 +150,24 @@ export const DOCS_TREE: DocSection[] = [
       },
     ],
   },
+  {
+    // システム管理者向け（SY08/SY09 など）
+    title: {
+      ja: "システム管理マニュアル",
+      en: "System Administration Guides",
+      zh: "系统管理手册",
+    },
+    pages: [
+      {
+        slug: "system/kiosk-device-setup",
+        title: {
+          ja: "キオスク端末セットアップ",
+          en: "Kiosk Device Setup",
+          zh: "自助终端设备设置",
+        },
+      },
+    ],
+  },
 ];
 
 const ALL_PAGES: DocPage[] = DOCS_TREE.flatMap((s) => s.pages);
