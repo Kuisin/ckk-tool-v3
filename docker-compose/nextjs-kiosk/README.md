@@ -73,3 +73,8 @@ pnpm test / pnpm lint
 Coolify（`nextjs-kiosk-dev` :3006 / `nextjs-kiosk-main` :3007、
 `docker-compose/coolify/README.md`）。公開: `ckk-kiosk-dev.kai-lab.net` /
 `ckk-kiosk.kai-lab.net`（cloudflared + nginx-proxy、WS upgrade 対応）。
+
+`public/apk/` は Android ラッパー APK（+ `version.json`）の公開配布パス。
+`/apk/*` は proxy のリダイレクト対象外（未登録タブレットが Cookie なしで
+ダウンロードする）。更新は `android-kiosk/tools/release-apk.sh` →
+コミット → デプロイ（`android-kiosk/README.md`「配布」参照）。

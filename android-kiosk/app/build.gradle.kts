@@ -31,10 +31,28 @@ android {
         }
     }
 
+    // release 署名: ~/.gradle/gradle.properties（コミット対象外）に
+    // CKK_KEYSTORE_PATH / CKK_KEYSTORE_PASSWORD / CKK_KEY_ALIAS / CKK_KEY_PASSWORD
+    // が揃っているときのみ署名する。無ければ unsigned のままビルド可能。
+    val releaseKeystorePath = providers.gradleProperty("CKK_KEYSTORE_PATH").orNull
+    if (releaseKeystorePath != null) {
+        signingConfigs {
+            create("release") {
+                storeFile = file(releaseKeystorePath)
+                storePassword = providers.gradleProperty("CKK_KEYSTORE_PASSWORD").get()
+                keyAlias = providers.gradleProperty("CKK_KEY_ALIAS").get()
+                keyPassword = providers.gradleProperty("CKK_KEY_PASSWORD").get()
+            }
+        }
+    }
+
     buildTypes {
         release {
             // JS ブリッジ（addJavascriptInterface）を難読化で壊さないため minify 無効
             isMinifyEnabled = false
+            if (releaseKeystorePath != null) {
+                signingConfig = signingConfigs.getByName("release")
+            }
         }
     }
     buildFeatures {
