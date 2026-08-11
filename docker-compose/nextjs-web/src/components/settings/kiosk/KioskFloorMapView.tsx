@@ -37,6 +37,7 @@ import {
   IconPhotoUp,
   IconPlus,
   IconTrash,
+  IconUser,
   IconX,
 } from "@tabler/icons-react";
 import { useMemo, useRef, useState, useTransition } from "react";
@@ -322,6 +323,26 @@ export function KioskFloorMapView({
             size={28}
             stroke={2}
           />
+          {/* 利用中（ライブセッションあり）の端末はピン右上に利用者バッジ */}
+          {currentUser && (
+            <Box
+              style={{
+                position: "absolute",
+                top: -7,
+                right: -7,
+                width: 16,
+                height: 16,
+                borderRadius: "50%",
+                background: "var(--mantine-color-blue-6)",
+                border: "2px solid var(--mantine-color-body)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <IconUser color="white" size={10} stroke={3} />
+            </Box>
+          )}
         </Box>
       </Tooltip>
     );

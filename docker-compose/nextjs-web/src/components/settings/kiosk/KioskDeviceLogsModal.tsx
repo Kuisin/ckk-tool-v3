@@ -6,6 +6,7 @@
  * SY09 一覧の行アクション「利用履歴」から開く。ONLINE/OFFLINE（プレゼンス
  * 遷移）と LOGIN/LOGOUT（誰がいつ使ったか）を新しい順に 50 件ずつ表示。
  * 取得はサーバーアクション fetchDeviceLogs（kiosk:READ ゲート）。
+ * リスト本体は DeviceLogList — 端末詳細ページ（[id]）と共用。
  */
 
 import {
@@ -45,18 +46,14 @@ const SOURCE_LABEL: Record<string, string> = {
   logout: "本人操作",
   expired: "自動（無操作/期限）",
   admin: "管理者操作",
+  reset: "端末リセット",
 };
 
-export function KioskDeviceLogsModal({
-  deviceId,
-  deviceName,
-  onClose,
-}: {
-  /** null なら閉じている。 */
-  deviceId: string | null;
-  deviceName: string | null;
-  onClose: () => void;
-}) {
+/**
+ * 利用履歴リスト（クライアント取得 + ページング）。
+ * モーダルと端末詳細ページの両方から使う。
+ */
+export function DeviceLogList({ deviceId }: { deviceId: string }) {
   const [rows, setRows] = useState<KioskDeviceLogRow[]>([]);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -64,7 +61,6 @@ export function KioskDeviceLogsModal({
   const [isPending, startTransition] = useTransition();
 
   const load = (cursor?: string) => {
-    if (!deviceId) return;
     startTransition(async () => {
       const result = await fetchDeviceLogs(deviceId, cursor);
       if (!result.ok) {
@@ -81,16 +77,81 @@ export function KioskDeviceLogsModal({
     });
   };
 
-  // 開くたびに最初のページを読み直す。
+  // deviceId が変わったらリセットして最初のページを読み直す。
   // biome-ignore lint/correctness/useExhaustiveDependencies: deviceId の変化でリセットして再取得する
   useEffect(() => {
     setRows([]);
     setNextCursor(null);
     setError(null);
     setLoaded(false);
-    if (deviceId) load();
+    load();
   }, [deviceId]);
 
+  return (
+    <Stack gap={0}>
+      {!loaded && (
+        <Center py="xl">
+          <Loader size="sm" />
+        </Center>
+      )}
+      {loaded && error && (
+        <Text c="red" py="md" size="sm">
+          {error}
+        </Text>
+      )}
+      {loaded && !error && rows.length === 0 && (
+        <EmptyState
+          icon={<IconHistory size={28} />}
+          message="利用履歴はまだありません"
+        />
+      )}
+      {rows.map((r, i) => (
+        <div key={r.id}>
+          {i > 0 && <Divider />}
+          <Group gap="sm" justify="space-between" py={8} wrap="nowrap">
+            <Group gap="sm" style={{ minWidth: 0 }} wrap="nowrap">
+              <Badge color={TYPE_LABEL[r.type].color} miw={92} variant="light">
+                {TYPE_LABEL[r.type].label}
+              </Badge>
+              <Text size="sm" truncate>
+                {r.userName ??
+                  (r.type === "LOGIN" || r.type === "LOGOUT"
+                    ? "（不明なユーザー）"
+                    : "")}
+              </Text>
+              {r.source && SOURCE_LABEL[r.source] && (
+                <Text c="dimmed" size="xs">
+                  {SOURCE_LABEL[r.source] ?? r.source}
+                </Text>
+              )}
+            </Group>
+            <Text c="dimmed" size="sm" style={{ flexShrink: 0 }}>
+              {formatDateTime(r.createdAt)}
+            </Text>
+          </Group>
+        </div>
+      ))}
+      {nextCursor && (
+        <Center pt="sm">
+          <SecondaryButton loading={isPending} onClick={() => load(nextCursor)}>
+            さらに読み込む
+          </SecondaryButton>
+        </Center>
+      )}
+    </Stack>
+  );
+}
+
+export function KioskDeviceLogsModal({
+  deviceId,
+  deviceName,
+  onClose,
+}: {
+  /** null なら閉じている。 */
+  deviceId: string | null;
+  deviceName: string | null;
+  onClose: () => void;
+}) {
   return (
     <ModalShell
       hideFooter
@@ -99,64 +160,7 @@ export function KioskDeviceLogsModal({
       size="lg"
       title={`利用履歴 — ${deviceName ?? ""}`}
     >
-      <Stack gap={0}>
-        {!loaded && (
-          <Center py="xl">
-            <Loader size="sm" />
-          </Center>
-        )}
-        {loaded && error && (
-          <Text c="red" py="md" size="sm">
-            {error}
-          </Text>
-        )}
-        {loaded && !error && rows.length === 0 && (
-          <EmptyState
-            icon={<IconHistory size={28} />}
-            message="利用履歴はまだありません"
-          />
-        )}
-        {rows.map((r, i) => (
-          <div key={r.id}>
-            {i > 0 && <Divider />}
-            <Group gap="sm" justify="space-between" py={8} wrap="nowrap">
-              <Group gap="sm" style={{ minWidth: 0 }} wrap="nowrap">
-                <Badge
-                  color={TYPE_LABEL[r.type].color}
-                  miw={92}
-                  variant="light"
-                >
-                  {TYPE_LABEL[r.type].label}
-                </Badge>
-                <Text size="sm" truncate>
-                  {r.userName ??
-                    (r.type === "LOGIN" || r.type === "LOGOUT"
-                      ? "（不明なユーザー）"
-                      : "")}
-                </Text>
-                {r.source && SOURCE_LABEL[r.source] && (
-                  <Text c="dimmed" size="xs">
-                    {SOURCE_LABEL[r.source] ?? r.source}
-                  </Text>
-                )}
-              </Group>
-              <Text c="dimmed" size="sm" style={{ flexShrink: 0 }}>
-                {formatDateTime(r.createdAt)}
-              </Text>
-            </Group>
-          </div>
-        ))}
-        {nextCursor && (
-          <Center pt="sm">
-            <SecondaryButton
-              loading={isPending}
-              onClick={() => load(nextCursor)}
-            >
-              さらに読み込む
-            </SecondaryButton>
-          </Center>
-        )}
-      </Stack>
+      {deviceId != null && <DeviceLogList deviceId={deviceId} />}
     </ModalShell>
   );
 }
