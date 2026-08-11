@@ -45,38 +45,43 @@ export function LauncherShell({ displayName, apps }: Props) {
   };
 
   return (
-    <Box mih="calc(100dvh - 48px)">
+    <Box p="lg" style={{ flex: 1, display: "flex", flexDirection: "column" }}>
       <ActivityMonitor />
 
-      <Paper px="lg" py="sm" radius={0} withBorder>
-        <Group justify="space-between">
-          <Group gap="sm">
-            <Avatar color="blue" radius="xl" size="md">
-              {displayName.slice(0, 1)}
-            </Avatar>
-            <Text fw={600} size="lg">
-              {displayName} さん
-            </Text>
+      <Stack
+        gap="lg"
+        maw={960}
+        mx="auto"
+        style={{ flex: 1, width: "100%", display: "flex" }}
+      >
+        <Paper p="md" radius="md" withBorder>
+          <Group justify="space-between" wrap="nowrap">
+            <Group gap="sm" wrap="nowrap">
+              <Avatar color="blue" radius="xl" size="md">
+                {displayName.slice(0, 1)}
+              </Avatar>
+              <Text fw={600} size="lg" truncate>
+                {displayName} さん
+              </Text>
+            </Group>
+            <Button
+              color="red"
+              leftSection={<IconLogout size={20} />}
+              loading={loggingOut}
+              onClick={logout}
+              variant="default"
+            >
+              ログアウト
+            </Button>
           </Group>
-          <Button
-            color="red"
-            leftSection={<IconLogout size={20} />}
-            loading={loggingOut}
-            onClick={logout}
-            variant="default"
-          >
-            ログアウト
-          </Button>
-        </Group>
-      </Paper>
+        </Paper>
 
-      <Stack gap="lg" maw={960} mx="auto" p="lg">
         <Title order={3}>アプリ</Title>
 
         {apps.length === 0 ? (
-          <Center py={80}>
+          <Center style={{ flex: 1 }}>
             <Stack align="center" gap="sm">
-              <ThemeIcon color="gray" radius="md" size={64} variant="light">
+              <ThemeIcon color="blue" radius="md" size={64} variant="light">
                 <IconApps size={36} />
               </ThemeIcon>
               <Text c="dimmed">利用できるアプリは準備中です</Text>
