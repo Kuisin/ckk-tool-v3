@@ -45,7 +45,7 @@ export function LauncherShell({ displayName, apps }: Props) {
   };
 
   return (
-    <Box bg="var(--mantine-color-gray-0)" mih="100dvh">
+    <Box mih="calc(100dvh - 48px)">
       <ActivityMonitor />
 
       <Paper px="lg" py="sm" radius={0} withBorder>

@@ -5,6 +5,8 @@ import "@mantine/notifications/styles.layer.css";
 import { mantineHtmlProps } from "@mantine/core";
 import type { Metadata, Viewport } from "next";
 import { Noto_Sans_JP } from "next/font/google";
+import { KioskHeader } from "@/components/KioskHeader";
+import { getDevice } from "@/lib/kiosk-auth";
 import { Providers } from "./providers";
 
 const notoSansJp = Noto_Sans_JP({
@@ -26,13 +28,30 @@ export const viewport: Viewport = {
   themeColor: "#228be6",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
+  // 端末名をヘッダーに常時表示（未登録/ビルド時は「未登録端末」表示）。
+  // skipAttest: アテスト前の画面（/setup, /login 初期）でも名前は出す。
+  let deviceName: string | null = null;
+  let registered = false;
+  try {
+    const device = await getDevice({ skipAttest: true });
+    if (device.ok) {
+      deviceName = device.device.name;
+      registered = true;
+    }
+  } catch {
+    // ビルド時（request scope 外）や DB 不通時はヘッダーだけ既定表示
+  }
+
   return (
     <html lang="ja" {...mantineHtmlProps} className={notoSansJp.variable}>
       <body>
-        <Providers>{children}</Providers>
+        <Providers>
+          <KioskHeader deviceName={deviceName} registered={registered} />
+          {children}
+        </Providers>
       </body>
     </html>
   );

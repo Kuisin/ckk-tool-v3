@@ -216,7 +216,7 @@ export default function LoginPage() {
   );
 
   return (
-    <Center bg="var(--mantine-color-dark-7)" mih="100dvh" p="md">
+    <Center mih="calc(100dvh - 48px)" p="md">
       <Paper maw={640} p="xl" radius="md" w="100%">
         <Stack align="center" gap="lg">
           <Title order={2}>QRコードログイン</Title>
