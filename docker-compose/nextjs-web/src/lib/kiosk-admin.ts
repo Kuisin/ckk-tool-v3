@@ -137,6 +137,8 @@ export interface KioskDeviceRow {
   lastActivityAt: string | null;
   /** アテステーション鍵の SHA-256（未束縛は null）。 */
   fingerprint: string | null;
+  /** 端末設定画面（5タップ）の解錠コード（6桁）。編集モーダルで表示。 */
+  settingsCode: string;
   /** サーバー計算の初期オンライン判定（WS 未接続時のフォールバック）。 */
   initialOnline: boolean;
   /** 現在ログイン中のユーザー（ライブセッション。WS 未接続時のフォールバック）。 */
@@ -173,6 +175,7 @@ export async function listKioskDevices(): Promise<KioskDeviceRow[]> {
     mapY: r.mapY != null ? Number(r.mapY) : null,
     lastActivityAt: r.lastActivityAt?.toISOString() ?? null,
     fingerprint: r.fingerprint,
+    settingsCode: r.settingsCode,
     initialOnline:
       r.status === "ACTIVE" &&
       r.lastActivityAt != null &&

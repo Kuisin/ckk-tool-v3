@@ -14,8 +14,9 @@ import { type NextRequest, NextResponse } from "next/server";
 const DEVICE_COOKIE = "kiosk_device";
 const SESSION_COOKIE = "kiosk_session";
 
-// 端末信頼なしでも入れる画面
-const DEVICE_FREE = new Set(["/setup", "/device-error"]);
+// 端末信頼なしでも入れる画面（/device-settings は Cookie が壊れた端末の
+// 復旧経路でもあるため、ログイン前・端末信頼なしでも到達できる）
+const DEVICE_FREE = new Set(["/setup", "/device-error", "/device-settings"]);
 
 export default function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl;

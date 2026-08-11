@@ -565,6 +565,44 @@ export async function revokeDevice(id: string): Promise<ActionResult> {
   }
 }
 
+/**
+ * 端末設定画面（5タップ）の解錠コードを再生成する。
+ * 新コードは戻り値で一度だけ通知表示する（監査にはコード値を残さない）。
+ */
+export async function regenerateSettingsCode(
+  id: string,
+): Promise<ActionResult<{ code: string }>> {
+  const authz = await checkPermission("kiosk", "UPDATE");
+  if (!authz.ok) return actionError(authz.error);
+  const parsed = uuidSchema.safeParse(id);
+  if (!parsed.success) return actionError("入力が不正です");
+
+  try {
+    const device = await prisma.kioskDevice.findUnique({
+      where: { id: parsed.data },
+      select: { id: true },
+    });
+    if (!device) return actionError("対象の端末が見つかりません");
+    const code = String(Math.floor(Math.random() * 1_000_000)).padStart(6, "0");
+    await prisma.kioskDevice.update({
+      where: { id: parsed.data },
+      data: { settingsCode: code },
+    });
+    await recordAudit({
+      action: "UPDATE",
+      tableName: "kiosk_devices",
+      recordId: parsed.data,
+      after: { note: "端末設定コードを再生成" },
+    });
+    revalidate();
+    return actionOk({ code });
+  } catch (e) {
+    return actionError(
+      prismaErrorMessage(e, "設定コードの再生成に失敗しました"),
+    );
+  }
+}
+
 /** アテステーション鍵をリセット（次回ラッパー接続時に再束縛 = TOFU）。 */
 export async function resetDeviceKey(id: string): Promise<ActionResult> {
   const authz = await checkPermission("kiosk", "UPDATE");

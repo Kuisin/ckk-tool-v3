@@ -126,6 +126,41 @@ export async function getDevice(
   };
 }
 
+// ─── 端末設定（/device-settings — 5タップ + 6桁コードの隠し画面） ─────────────
+
+export type DeviceSettingsInfo = {
+  id: string;
+  name: string | null;
+  status: "PENDING" | "LINKED" | "ACTIVE" | "DISABLED" | "REVOKED";
+  settingsCode: string;
+  linkedAt: Date | null;
+  deviceTokenExpiresAt: Date | null;
+  fingerprint: string | null;
+};
+
+/**
+ * 端末設定用の端末解決 — getDevice と違い **status を絞らない**
+ * （DISABLED/REVOKED でもリセット/再リンクできる必要がある）。
+ * settingsCode を含むため呼び出し側はコード検証前にクライアントへ返さないこと。
+ */
+export async function getDeviceForSettings(): Promise<DeviceSettingsInfo | null> {
+  const store = await cookies();
+  const raw = store.get(DEVICE_COOKIE)?.value;
+  if (!raw) return null;
+  return prisma.kioskDevice.findUnique({
+    where: { deviceTokenHash: sha256hex(raw) },
+    select: {
+      id: true,
+      name: true,
+      status: true,
+      settingsCode: true,
+      linkedAt: true,
+      deviceTokenExpiresAt: true,
+      fingerprint: true,
+    },
+  });
+}
+
 // ─── 人セッション ────────────────────────────────────────────────────────────
 
 export type KioskUser = {
