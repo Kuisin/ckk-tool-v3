@@ -1,10 +1,20 @@
 package jp.co.ckk.kiosk
 
 import android.Manifest
+import android.app.ActivityManager
+import android.app.AlertDialog
+import android.content.Context
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Bundle
+import android.os.SystemClock
+import android.provider.Settings
+import android.text.InputType
+import android.view.MotionEvent
 import android.view.WindowManager
+import android.widget.EditText
+import android.widget.Toast
 import android.webkit.PermissionRequest
 import android.webkit.WebChromeClient
 import android.webkit.WebResourceRequest
@@ -28,12 +38,21 @@ import androidx.core.view.WindowInsetsControllerCompat
  * - 画面常時 ON + イマーシブ（システムバー非表示）
  * - 戻るボタンは WebView 履歴内のみ（アプリは終了しない）
  *
- * さらに固くする場合は MDM / screen pinning（startLockTask）を端末側で設定。
+ * デバイスオーナー時（QR プロビジョニング / adb dpm set-device-owner）は
+ * KioskMode により Lock Task で端末をこのアプリに固定する。メンテナンスは
+ * 画面**右上**を 5 回連続タップ → 管理者 PIN（BuildConfig.KIOSK_UNLOCK_PIN）。
+ * ※ 左上は Web 側の隠し端末設定ジェスチャ（KioskShell のタイトル 5 タップ →
+ *   /device-settings）が使うため右上にしている。
  */
 class MainActivity : ComponentActivity() {
 
     private lateinit var webView: WebView
     private var pendingPermissionRequest: PermissionRequest? = null
+
+    // メンテナンス退出ジェスチャ（右上 5 連続タップ）
+    private var cornerTapCount = 0
+    private var cornerTapFirstAt = 0L
+    private var maintenanceDialogShowing = false
 
     private val requestCamera =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
@@ -49,6 +68,9 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        // デバイスオーナーなら専用端末ポリシーを適用（それ以外は no-op）
+        KioskMode.applyPolicies(this)
 
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         WindowCompat.setDecorFitsSystemWindows(window, false)
@@ -119,6 +141,90 @@ class MainActivity : ComponentActivity() {
     override fun onSaveInstanceState(outState: Bundle) {
         super.onSaveInstanceState(outState)
         webView.saveState(outState)
+    }
+
+    override fun onResume() {
+        super.onResume()
+        // メンテナンスから戻ったとき等に Lock Task とステータスバー無効を復元
+        if (KioskMode.isDeviceOwner(this) && !maintenanceDialogShowing) {
+            KioskMode.setStatusBarDisabled(this, true)
+            if (lockTaskModeState() == ActivityManager.LOCK_TASK_MODE_NONE) {
+                startLockTask()
+            }
+        }
+    }
+
+    private fun lockTaskModeState(): Int =
+        (getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager).lockTaskModeState
+
+    // ─── メンテナンス退出（右上 5 連続タップ → PIN） ───────────────
+    // 左上は Web 側の隠し端末設定（KioskShell タイトル 5 タップ）と衝突するため右上
+
+    override fun dispatchTouchEvent(ev: MotionEvent): Boolean {
+        if (ev.action == MotionEvent.ACTION_DOWN) trackMaintenanceTap(ev)
+        return super.dispatchTouchEvent(ev)
+    }
+
+    private fun trackMaintenanceTap(ev: MotionEvent) {
+        if (!KioskMode.isDeviceOwner(this) || maintenanceDialogShowing) return
+        val corner = resources.displayMetrics.density * 96 // 右上 96dp 四方
+        val width = resources.displayMetrics.widthPixels.toFloat()
+        if (ev.x < width - corner || ev.y > corner) {
+            cornerTapCount = 0
+            return
+        }
+        val now = SystemClock.elapsedRealtime()
+        if (now - cornerTapFirstAt > 3_000) cornerTapCount = 0
+        if (cornerTapCount == 0) cornerTapFirstAt = now
+        cornerTapCount++
+        if (cornerTapCount >= 5) {
+            cornerTapCount = 0
+            showMaintenanceDialog()
+        }
+    }
+
+    private fun showMaintenanceDialog() {
+        maintenanceDialogShowing = true
+        val input = EditText(this).apply {
+            inputType = InputType.TYPE_CLASS_NUMBER or InputType.TYPE_NUMBER_VARIATION_PASSWORD
+            hint = "管理者 PIN"
+        }
+        val dialog = AlertDialog.Builder(this)
+            .setTitle("メンテナンス")
+            .setMessage("設定を開く: 一時的にロックを外して Android 設定へ\nキオスク解除: デバイスオーナーを解除（元に戻すには再プロビジョニング）")
+            .setView(input)
+            .setPositiveButton("設定を開く", null)
+            .setNeutralButton("キオスク解除", null)
+            .setNegativeButton("キャンセル", null)
+            .create()
+        dialog.setOnDismissListener { maintenanceDialogShowing = false }
+        dialog.show()
+        // PIN 不一致時に閉じないよう、show() 後にクリックリスナーを差し替える
+        dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
+            if (!verifyPin(input)) return@setOnClickListener
+            dialog.dismiss()
+            stopLockTaskSafely()
+            KioskMode.setStatusBarDisabled(this, false)
+            startActivity(Intent(Settings.ACTION_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+        }
+        dialog.getButton(AlertDialog.BUTTON_NEUTRAL).setOnClickListener {
+            if (!verifyPin(input)) return@setOnClickListener
+            dialog.dismiss()
+            stopLockTaskSafely()
+            KioskMode.clearDeviceOwner(this)
+            Toast.makeText(this, "キオスクモードを解除しました", Toast.LENGTH_LONG).show()
+        }
+    }
+
+    private fun verifyPin(input: EditText): Boolean {
+        if (input.text.toString() == BuildConfig.KIOSK_UNLOCK_PIN) return true
+        input.error = "PIN が違います"
+        input.setText("")
+        return false
+    }
+
+    private fun stopLockTaskSafely() {
+        if (lockTaskModeState() != ActivityManager.LOCK_TASK_MODE_NONE) stopLockTask()
     }
 
     override fun onWindowFocusChanged(hasFocus: Boolean) {
