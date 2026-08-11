@@ -14,11 +14,7 @@ Create the **quote** you send to a customer and issue it as a PDF. When you add 
 
 1. Click **New** in the list.
 2. Choose the **customer** (and a **branch** if needed).
-3. Add **line items**. For each row enter:
-   - **Product**, **order type**, and **quantity**.
-   - The **unit price** is auto-filled from the price-list tier for customer × product × order type × quantity (can be overridden).
-   - Optionally a **discount amount**. Amount = unit price × quantity − discount.
-   - The **delivery date**.
+3. Add **line items**. For each row enter the **product, order type, and quantity**. The **unit price** is auto-filled from the price-list tier for customer × product × order type × quantity (can be overridden). Optionally enter a **discount amount** (amount = unit price × quantity − discount) and the **delivery date**.
 4. The total amount is shown at the bottom.
 
 ## Issuing
