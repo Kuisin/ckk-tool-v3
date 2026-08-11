@@ -30,8 +30,8 @@ function DeviceErrorContent() {
         : "この端末は利用できません。管理者に連絡してください。";
 
   return (
-    <Center mih="calc(100dvh - 48px)" p="md">
-      <Paper maw={480} p="xl" radius="md" w="100%">
+    <Center p="md" style={{ flex: 1 }}>
+      <Paper maw={480} p="xl" radius="md" w="100%" withBorder>
         <Stack align="center" gap="md">
           <IconDeviceTabletX color="var(--mantine-color-red-6)" size={64} />
           <Title order={2}>端末エラー</Title>
@@ -45,7 +45,7 @@ function DeviceErrorContent() {
                 router.replace("/setup");
               }}
             >
-              端末登録へ
+              端末リンクへ
             </Button>
           )}
         </Stack>

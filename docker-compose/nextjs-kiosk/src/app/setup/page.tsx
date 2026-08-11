@@ -172,8 +172,8 @@ export default function SetupPage() {
   }, [state, begin]);
 
   return (
-    <Center mih="calc(100dvh - 48px)" p="md">
-      <Paper maw={520} p="xl" radius="md" w="100%">
+    <Center p="md" style={{ flex: 1 }}>
+      <Paper maw={520} p="xl" radius="md" w="100%" withBorder>
         <Stack align="center" gap="md">
           <Title order={2}>端末リンク</Title>
 
@@ -182,8 +182,9 @@ export default function SetupPage() {
           {state.phase === "showing" && (
             <>
               <Text c="dimmed" size="sm" ta="center">
-                管理者に「設定 → 端末管理」でこのコードをスキャンまたは入力
-                してもらい、端末プロファイルへリンクしてください。
+                {
+                  "管理者に「設定 → 端末管理」でこのコードをスキャンまたは入力してもらい、端末プロファイルへリンクしてください。"
+                }
               </Text>
               <Box
                 bg="white"
@@ -220,9 +221,9 @@ export default function SetupPage() {
           {state.phase === "linked" && (
             <>
               <Alert color="blue" w="100%">
-                リンクしました{state.deviceName ? `: ${state.deviceName}` : ""}
-                。 管理者がこのプロファイルを<b>有効化</b>
-                すると利用を開始できます。
+                {`リンクしました${state.deviceName ? `: ${state.deviceName}` : ""}。管理者がこのプロファイルを`}
+                <b>有効化</b>
+                {"すると利用を開始できます。"}
               </Alert>
               <Loader size="sm" />
               <Text c="dimmed" size="sm">

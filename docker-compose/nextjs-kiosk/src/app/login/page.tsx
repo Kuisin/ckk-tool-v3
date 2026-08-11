@@ -216,8 +216,8 @@ export default function LoginPage() {
   );
 
   return (
-    <Center mih="calc(100dvh - 48px)" p="md">
-      <Paper maw={640} p="xl" radius="md" w="100%">
+    <Center p="md" style={{ flex: 1 }}>
+      <Paper maw={640} p="xl" radius="md" w="100%" withBorder>
         <Stack align="center" gap="lg">
           <Title order={2}>QRコードログイン</Title>
 
