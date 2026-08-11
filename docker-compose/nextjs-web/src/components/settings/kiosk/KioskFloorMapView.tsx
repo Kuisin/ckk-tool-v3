@@ -19,6 +19,7 @@ import {
   Alert,
   Box,
   Divider,
+  Flex,
   Group,
   Paper,
   Select,
@@ -288,6 +289,7 @@ export function KioskFloorMapView({
     const currentUser = resolveCurrentUserName(d, presence, live);
     return (
       <Tooltip
+        events={{ hover: true, focus: true, touch: true }}
         key={d.id}
         label={`${d.name ?? "（未設定）"}${d.location ? ` — ${d.location}` : ""}${
           currentUser ? `｜利用中: ${currentUser}` : ""
@@ -307,6 +309,8 @@ export function KioskFloorMapView({
             touchAction: "none",
             lineHeight: 0,
             zIndex: 2,
+            // タッチ操作用にヒット領域を広げる（見た目は変えない）
+            padding: 8,
           }}
         >
           <IconMapPin
@@ -466,7 +470,12 @@ export function KioskFloorMapView({
           )}
 
           {activeMap && (
-            <Group align="flex-start" gap="md" wrap="nowrap">
+            // モバイルは縦積み（マップ幅を確保）、md 以上で横並び + 固定幅サイドバー
+            <Flex
+              align="flex-start"
+              direction={{ base: "column", md: "row" }}
+              gap="md"
+            >
               {/* マップ領域 */}
               <Box
                 ref={mapAreaRef}
@@ -474,6 +483,7 @@ export function KioskFloorMapView({
                   position: "relative",
                   flex: 1,
                   minWidth: 0,
+                  width: "100%",
                   border: "1px solid var(--mantine-color-default-border)",
                   borderRadius: "var(--mantine-radius-md)",
                   overflow: "hidden",
@@ -504,9 +514,9 @@ export function KioskFloorMapView({
                 {placedDevices.map(pinFor)}
               </Box>
 
-              {/* 編集モード: サイドバー */}
+              {/* 編集モード: サイドバー（モバイルはマップ下に全幅） */}
               {editMode && (
-                <Stack gap="xs" w={260}>
+                <Stack gap="xs" w={{ base: "100%", md: 260 }}>
                   <Text fw={600} size="sm">
                     未配置の端末
                   </Text>
@@ -578,7 +588,7 @@ export function KioskFloorMapView({
                   )}
                 </Stack>
               )}
-            </Group>
+            </Flex>
           )}
         </Stack>
       </Paper>

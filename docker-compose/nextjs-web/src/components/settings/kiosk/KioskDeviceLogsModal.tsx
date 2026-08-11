@@ -108,8 +108,15 @@ export function DeviceLogList({ deviceId }: { deviceId: string }) {
       {rows.map((r, i) => (
         <div key={r.id}>
           {i > 0 && <Divider />}
-          <Group gap="sm" justify="space-between" py={8} wrap="nowrap">
-            <Group gap="sm" style={{ minWidth: 0 }} wrap="nowrap">
+          {/* モバイルでも潰れないよう左側は折り返し可・時刻は右上に固定 */}
+          <Group
+            align="flex-start"
+            gap="sm"
+            justify="space-between"
+            py={8}
+            wrap="nowrap"
+          >
+            <Group gap="xs" style={{ minWidth: 0 }} wrap="wrap">
               <Badge color={TYPE_LABEL[r.type].color} miw={92} variant="light">
                 {TYPE_LABEL[r.type].label}
               </Badge>
@@ -125,7 +132,7 @@ export function DeviceLogList({ deviceId }: { deviceId: string }) {
                 </Text>
               )}
             </Group>
-            <Text c="dimmed" size="sm" style={{ flexShrink: 0 }}>
+            <Text c="dimmed" size="xs" style={{ flexShrink: 0 }}>
               {formatDateTime(r.createdAt)}
             </Text>
           </Group>

@@ -405,6 +405,7 @@ export function DataTable<T>({
         <Stack gap={0}>
           {pageRows.map((row, i) => {
             const id = getRowId(row);
+            const actions = rowActions?.(row) ?? [];
             return (
               <Box key={id}>
                 {i > 0 && <Divider />}
@@ -443,6 +444,35 @@ export function DataTable<T>({
                       <DefaultCard columns={visibleColumns} row={row} />
                     )}
                   </Box>
+                  {actions.length > 0 && (
+                    // 行アクション（デスクトップの末尾メニューと同等 — モバイル
+                    // でも全操作へ到達できるようにする）
+                    <Box onClick={(e) => e.stopPropagation()}>
+                      <Menu position="bottom-end" shadow="md" withinPortal>
+                        <Menu.Target>
+                          <ActionIcon
+                            aria-label="操作"
+                            color="gray"
+                            variant="subtle"
+                          >
+                            <IconDotsVertical size={16} />
+                          </ActionIcon>
+                        </Menu.Target>
+                        <Menu.Dropdown>
+                          {actions.map((a) => (
+                            <Menu.Item
+                              color={a.color}
+                              key={a.label}
+                              leftSection={a.icon}
+                              onClick={() => a.onAction?.(row)}
+                            >
+                              {a.label}
+                            </Menu.Item>
+                          ))}
+                        </Menu.Dropdown>
+                      </Menu>
+                    </Box>
+                  )}
                 </Group>
               </Box>
             );

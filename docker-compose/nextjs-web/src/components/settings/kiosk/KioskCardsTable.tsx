@@ -39,6 +39,7 @@ import { ConfirmModal, ModalShell } from "@/components/ui/modals";
 import { StatusBadge, statusOptions } from "@/components/ui/StatusBadge";
 import { ListShell } from "@/components/ui/shells";
 import { useUrlSelectState, useUrlStringState } from "@/hooks/useUrlState";
+import { useIsMobile } from "@/hooks/useViewport";
 import { formatCode } from "@/lib/crockford";
 import { formatDateTime } from "@/lib/format";
 import type { KioskCardRow, KioskUserOption } from "@/lib/kiosk-admin";
@@ -64,6 +65,7 @@ export function KioskCardsTable({
   userOptions: KioskUserOption[];
 }) {
   const [isPending, startTransition] = useTransition();
+  const isMobile = useIsMobile();
 
   const [search, setSearch] = useUrlStringState("q");
   const [status, setStatus] = useUrlSelectState("status");
@@ -340,8 +342,12 @@ export function KioskCardsTable({
   return (
     <ListShell
       action={
-        <CreateButton loading={isPending} onClick={() => setIssueOpen(true)}>
-          カードを発行
+        <CreateButton
+          loading={isPending}
+          onClick={() => setIssueOpen(true)}
+          style={{ flexShrink: 0 }}
+        >
+          {isMobile ? "発行" : "カードを発行"}
         </CreateButton>
       }
       breadcrumbs={["システム", "QRカード管理"]}
@@ -351,8 +357,9 @@ export function KioskCardsTable({
           data={statusOptions("KioskCard")}
           onChange={setStatus}
           placeholder="状態"
+          style={isMobile ? { flex: 1 } : undefined}
           value={status}
-          w={140}
+          w={isMobile ? undefined : 140}
         />
       }
       onReset={reset}
@@ -379,6 +386,35 @@ export function KioskCardsTable({
         emptyIcon={<IconQrcode size={28} />}
         emptyMessage="QRカードがありません"
         getRowId={(r) => r.id}
+        renderCard={(r) => (
+          <Stack gap={3} style={{ minWidth: 0 }}>
+            <Text c="dimmed" ff="mono" size="xs">
+              {maskCardId(r.id)}
+            </Text>
+            <Text fw={600} size="sm" truncate>
+              {r.userDisplayName ?? "未割当"}
+            </Text>
+            <Group gap={4} wrap="wrap">
+              <StatusBadge entity="KioskCard" status={r.status} />
+              <Badge color={r.pinSet ? "blue" : "gray"} variant="light">
+                {r.pinSet ? "PIN設定済" : "PIN未設定"}
+              </Badge>
+              {r.pinLocked && (
+                <Badge color="red" variant="light">
+                  ロック中
+                </Badge>
+              )}
+            </Group>
+            <Group gap="md" mt={2}>
+              <Text c="dimmed" size="xs">
+                最終使用 {r.lastUsedAt ? formatDateTime(r.lastUsedAt) : "—"}
+              </Text>
+              <Text c="dimmed" size="xs">
+                {r.useCount} 回
+              </Text>
+            </Group>
+          </Stack>
+        )}
         rowActions={rowActions}
         selectable
         urlState
