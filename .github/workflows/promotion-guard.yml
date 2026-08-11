@@ -1,0 +1,50 @@
+# Promotion Guard — dev → main 昇格 PR の健全性チェック。
+#
+# 守るルール（root CLAUDE.md「Git workflow」参照）:
+#   1. main への PR は dev からのみ（feature ブランチから main へは出さない）。
+#   2. 昇格前に dev が main を完全に含んでいること。含んでいない場合、
+#      昇格 PR は毎回コンフリクトする（過去の squash 昇格で履歴が分岐した状態）。
+#      → 先に main を dev へ merge して履歴を合流させる。
+#
+# 注意: 昇格 PR は必ず「Create a merge commit」でマージすること。
+# squash / rebase でマージすると dev と main の履歴が再び分岐し、
+# 次回の昇格からこのチェックが失敗するようになる。
+
+name: Promotion Guard
+
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  guard:
+    name: dev → main promotion rules
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout (full history)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Head branch must be dev
+        run: |
+          if [ "${{ github.head_ref }}" != "dev" ]; then
+            echo "::error::main への PR は dev からのみ許可されています（現在: ${{ github.head_ref }}）。"
+            echo "::error::feature ブランチは dev へ PR を出し、昇格は dev → main の PR で行ってください。"
+            exit 1
+          fi
+
+      - name: dev must already contain main (no diverged history)
+        run: |
+          git fetch origin main --quiet
+          if git merge-base --is-ancestor origin/main "${{ github.event.pull_request.head.sha }}"; then
+            echo "OK: dev は main を含んでいます。昇格 PR はコンフリクトしません。"
+          else
+            echo "::error::dev が main の履歴を含んでいません（履歴が分岐しています）。"
+            echo "::error::原因の多くは、過去の昇格 PR を squash / rebase でマージしたことです。"
+            echo "::error::対処: main を dev へ取り込む PR（例: git checkout -b fix/sync-main-into-dev origin/dev && git merge origin/main）を先にマージしてから、この昇格 PR を再実行してください。"
+            echo "::error::また、昇格 PR は必ず『Create a merge commit』でマージしてください（squash 禁止）。"
+            exit 1
+          fi
