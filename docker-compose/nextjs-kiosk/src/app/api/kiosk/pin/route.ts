@@ -11,6 +11,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { createSession, getDevice } from "@/lib/kiosk-auth";
 import {
+  isCardWithinValidPeriod,
   isPinLocked,
   isValidPin,
   nextPinFailureState,
@@ -63,6 +64,11 @@ export async function POST(req: Request) {
   }
 
   const now = new Date();
+
+  // テンポラリカードの有効期間外（スキャン後に期限を跨いだ場合もここで弾く）
+  if (!isCardWithinValidPeriod(now, card.validFrom, card.validUntil)) {
+    return NextResponse.json({ state: "CARD_EXPIRED" }, { status: 403 });
+  }
 
   if (purpose === "PIN_SETUP") {
     if (card.pinHash) {

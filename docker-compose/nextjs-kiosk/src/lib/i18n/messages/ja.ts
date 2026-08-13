@@ -26,6 +26,7 @@ export const ja = {
   steps: {
     title: "工程実行",
     back: "アプリ一覧へ",
+    backToList: "工程一覧へ",
     refresh: "更新",
     empty: "本日の担当工程はありません",
     upcoming: (n: number) => `予定 ${n} 件`,

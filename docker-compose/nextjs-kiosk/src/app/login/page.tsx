@@ -133,6 +133,13 @@ export default function LoginPage() {
                 "このカードは停止されています。管理者に連絡してください。",
             });
             return;
+          case "CARD_EXPIRED":
+            notifications.show({
+              color: "orange",
+              title: "カード有効期間外",
+              message: "このカードは有効期間外です。管理者に連絡してください。",
+            });
+            return;
           default:
             notifications.show({
               color: "red",
@@ -187,6 +194,14 @@ export default function LoginPage() {
             return;
           case "LOCKED":
             setState({ phase: "locked", until: data.until ?? null });
+            return;
+          case "CARD_EXPIRED":
+            notifications.show({
+              color: "orange",
+              title: "カード有効期間外",
+              message: "このカードは有効期間外です。管理者に連絡してください。",
+            });
+            setState({ phase: "scanning" });
             return;
           case "TICKET_EXPIRED":
           case "PIN_ALREADY_SET":

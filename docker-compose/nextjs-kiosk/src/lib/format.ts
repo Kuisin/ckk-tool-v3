@@ -33,11 +33,15 @@ export function jstDateString(d: Date): string {
 }
 
 /**
- * その瞬間の JST 日付の 00:00+09:00 を表す Date。
- * `@db.Date` 列（planned_date / worked_date）への書き込みと日付比較に使う。
+ * その瞬間の JST 日付を表す `@db.Date` 値（UTC 00:00）。
+ *
+ * Prisma の `@db.Date` 列（planned_date / worked_date）は **UTC 深夜**として
+ * 格納・比較される。JST 深夜（`...T00:00+09:00` = 前日 15:00Z）で作ると 9 時間
+ * ずれ、`planned_date <= 今日` が本日の計画を取りこぼす（当日の担当工程が
+ * 一覧に出ない）。そこで JST の暦日をそのまま UTC 深夜に載せる。
  */
 export function jstDateOnly(d: Date): Date {
-  return new Date(`${jstDateString(d)}T00:00:00+09:00`);
+  return new Date(`${jstDateString(d)}T00:00:00.000Z`);
 }
 
 /** { ja, en } DB JSON field (_specs/design.md §17.4)。 */

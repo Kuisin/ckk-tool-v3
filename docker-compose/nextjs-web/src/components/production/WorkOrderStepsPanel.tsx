@@ -9,7 +9,8 @@
  * 完了工程からは AddBranchModal で分岐系列を追加できる。
  */
 
-import { Group, Paper, Stack, Text, Title } from "@mantine/core";
+import { Anchor, Group, Paper, Stack, Text, Title } from "@mantine/core";
+import Link from "next/link";
 import { useState } from "react";
 import { AddBranchModal } from "./AddBranchModal";
 import { StepCard } from "./StepCard";
@@ -44,10 +45,20 @@ export function WorkOrderStepsPanel({
     <Paper p="md" radius="md" withBorder>
       <Group justify="space-between" mb="sm" wrap="nowrap">
         <Title order={5}>工程ワークフロー</Title>
-        {!isExecutable && steps.length > 0 && (
-          <Text c="dimmed" size="xs">
-            工程実行は指示書の承認後に可能になります
-          </Text>
+        {isExecutable && steps.length > 0 ? (
+          <Anchor
+            component={Link}
+            href={`${BASE_PATH}/${workOrderNumber}/steps`}
+            size="xs"
+          >
+            工程実行ビューを開く
+          </Anchor>
+        ) : (
+          steps.length > 0 && (
+            <Text c="dimmed" size="xs">
+              工程実行は指示書の承認後に可能になります
+            </Text>
+          )
         )}
       </Group>
 

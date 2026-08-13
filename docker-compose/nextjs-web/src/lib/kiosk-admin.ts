@@ -53,17 +53,29 @@ export interface KioskCardRow {
   useCount: number;
   assignedAt: string | null;
   createdAt: string | null;
+  /** 有効期間（テンポラリカード用。null = 無期限）。 */
+  validFrom: string | null;
+  validUntil: string | null;
 }
 
-export async function listKioskCards(): Promise<KioskCardRow[]> {
-  const now = Date.now();
-  const rows = await prisma.kioskCard.findMany({
-    orderBy: [{ createdAt: "desc" }],
-    include: {
-      user: { select: { displayName: true, username: true } },
-    },
-  });
-  return rows.map((r) => ({
+function toCardRow(
+  now: number,
+  r: {
+    id: string;
+    status: KioskCardRow["status"];
+    userId: string | null;
+    user: { displayName: string; username: string } | null;
+    pinHash: string | null;
+    pinLockedUntil: Date | null;
+    lastUsedAt: Date | null;
+    useCount: number;
+    assignedAt: Date | null;
+    createdAt: Date | null;
+    validFrom: Date | null;
+    validUntil: Date | null;
+  },
+): KioskCardRow {
+  return {
     id: r.id,
     status: r.status,
     userId: r.userId,
@@ -75,6 +87,87 @@ export async function listKioskCards(): Promise<KioskCardRow[]> {
     useCount: r.useCount,
     assignedAt: r.assignedAt?.toISOString() ?? null,
     createdAt: r.createdAt?.toISOString() ?? null,
+    validFrom: r.validFrom?.toISOString() ?? null,
+    validUntil: r.validUntil?.toISOString() ?? null,
+  };
+}
+
+export async function listKioskCards(): Promise<KioskCardRow[]> {
+  const now = Date.now();
+  const rows = await prisma.kioskCard.findMany({
+    orderBy: [{ createdAt: "desc" }],
+    include: {
+      user: { select: { displayName: true, username: true } },
+    },
+  });
+  return rows.map((r) => toCardRow(now, r));
+}
+
+/** カード詳細（SY08 /settings/kiosk-cards/[id]）。 */
+export interface KioskCardDetail extends KioskCardRow {
+  pinSetAt: string | null;
+  pinLastVerifiedAt: string | null;
+  assignedByName: string | null;
+  revokedAt: string | null;
+  revokedByName: string | null;
+}
+
+export async function getKioskCard(
+  id: string,
+): Promise<KioskCardDetail | null> {
+  const now = Date.now();
+  const r = await prisma.kioskCard.findUnique({
+    where: { id },
+    include: {
+      user: { select: { displayName: true, username: true } },
+      assignedBy: { select: { displayName: true } },
+      revokedBy: { select: { displayName: true } },
+    },
+  });
+  if (!r) return null;
+  return {
+    ...toCardRow(now, r),
+    pinSetAt: r.pinSetAt?.toISOString() ?? null,
+    pinLastVerifiedAt: r.pinLastVerifiedAt?.toISOString() ?? null,
+    assignedByName: r.assignedBy?.displayName ?? null,
+    revokedAt: r.revokedAt?.toISOString() ?? null,
+    revokedByName: r.revokedBy?.displayName ?? null,
+  };
+}
+
+/** カードの最近のログインセッション（詳細ページの利用履歴）。 */
+export interface KioskCardSessionRow {
+  id: string;
+  deviceName: string | null;
+  factoryLabel: string | null;
+  createdAt: string;
+  lastActivityAt: string;
+  revokedAt: string | null;
+}
+
+export async function listCardRecentSessions(
+  cardId: string,
+  limit = 20,
+): Promise<KioskCardSessionRow[]> {
+  const rows = await prisma.kioskSession.findMany({
+    where: { cardId },
+    orderBy: { createdAt: "desc" },
+    take: limit,
+    include: {
+      device: {
+        select: { name: true, factory: { select: { name: true } } },
+      },
+    },
+  });
+  return rows.map((s) => ({
+    id: s.id,
+    deviceName: s.device.name,
+    factoryLabel: s.device.factory
+      ? localized(s.device.factory.name as LocalizedText)
+      : null,
+    createdAt: s.createdAt.toISOString(),
+    lastActivityAt: s.lastActivityAt.toISOString(),
+    revokedAt: s.revokedAt?.toISOString() ?? null,
   }));
 }
 

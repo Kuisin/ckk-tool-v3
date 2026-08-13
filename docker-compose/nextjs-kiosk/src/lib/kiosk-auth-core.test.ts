@@ -3,6 +3,7 @@ import { formatCode, generateCode, normalizeCode } from "./crockford";
 import {
   IDLE_TIMEOUT_MS,
   idleRemainingMs,
+  isCardWithinValidPeriod,
   isPinLocked,
   isSessionAlive,
   isValidPin,
@@ -81,6 +82,31 @@ describe("PIN ロック", () => {
     expect(isPinLocked(at(PIN_LOCK_MS - 1), until)).toBe(true);
     expect(isPinLocked(until, until)).toBe(false);
     expect(isPinLocked(T0, null)).toBe(false);
+  });
+});
+
+describe("isCardWithinValidPeriod (テンポラリカード有効期間)", () => {
+  const from = at(0);
+  const until = at(24 * 60 * 60 * 1000);
+  it("無期限（両方 null）は常に有効", () => {
+    expect(isCardWithinValidPeriod(at(1), null, null)).toBe(true);
+  });
+  it("期間内は有効（境界ちょうども有効）", () => {
+    expect(isCardWithinValidPeriod(at(1000), from, until)).toBe(true);
+    expect(isCardWithinValidPeriod(from, from, until)).toBe(true);
+    expect(isCardWithinValidPeriod(until, from, until)).toBe(true);
+  });
+  it("開始前は無効", () => {
+    expect(isCardWithinValidPeriod(at(-1), from, until)).toBe(false);
+    expect(isCardWithinValidPeriod(at(-1), from, null)).toBe(false);
+  });
+  it("終了後は無効", () => {
+    expect(
+      isCardWithinValidPeriod(at(24 * 60 * 60 * 1000 + 1), from, until),
+    ).toBe(false);
+    expect(
+      isCardWithinValidPeriod(at(24 * 60 * 60 * 1000 + 1), null, until),
+    ).toBe(false);
   });
 });
 

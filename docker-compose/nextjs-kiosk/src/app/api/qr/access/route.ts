@@ -1,7 +1,7 @@
 /**
  * POST /api/qr/access — QR スキャンのログイン判定（計画の決定木そのまま）。
  *
- *   端末 Cookie 有効+ACTIVE → カード存在 → ASSIGNED → ユーザー有効 →
+ *   端末 Cookie 有効+ACTIVE → カード存在 → ASSIGNED → ユーザー有効 → 有効期間内 →
  *     1. PIN 未設定        → PIN_SETUP_REQUIRED（単回チケット）
  *     2. ロック中          → LOCKED
  *     3. **この端末で** 48h 以内に使用 かつ PIN 検証から 2 週間以内
@@ -14,7 +14,8 @@
  * 必ず PIN を再要求する（needsPinVerify — kiosk-auth-core.ts）。
  *
  * カードの存在有無を漏らさないため、失敗系は同一メッセージの CARD_INVALID に
- * 集約する（SUSPENDED だけは利用者向けに区別 — 管理者に連絡させるため）。
+ * 集約する（SUSPENDED / 有効期間外の EXPIRED だけは利用者向けに区別 —
+ * 管理者に連絡させるため）。
  */
 
 import { NextResponse } from "next/server";
@@ -24,6 +25,7 @@ import { prisma } from "@/lib/db";
 import { createSession, getDevice } from "@/lib/kiosk-auth";
 import {
   CARD_ID_LENGTH,
+  isCardWithinValidPeriod,
   isPinLocked,
   needsPinVerify,
 } from "@/lib/kiosk-auth-core";
@@ -86,6 +88,11 @@ export async function POST(req: Request) {
   }
 
   const now = new Date();
+
+  // テンポラリカードの有効期間外（利用者に管理者への連絡を促すため区別する）
+  if (!isCardWithinValidPeriod(now, card.validFrom, card.validUntil)) {
+    return NextResponse.json({ state: "CARD_EXPIRED" }, { status: 403 });
+  }
 
   // 1. PIN 未設定 → 初回設定を要求
   if (!card.pinHash) {
