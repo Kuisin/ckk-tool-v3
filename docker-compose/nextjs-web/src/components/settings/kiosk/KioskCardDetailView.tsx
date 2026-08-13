@@ -12,6 +12,7 @@ import {
   Alert,
   Badge,
   Group,
+  NumberInput,
   Paper,
   Select,
   SimpleGrid,
@@ -36,6 +37,7 @@ import {
   revokeCard,
   suspendCard,
   unlockPin,
+  updateCardSessionLimit,
   updateCardValidity,
 } from "@/app/(dashboard)/settings/kiosk-cards/actions";
 import {
@@ -104,6 +106,12 @@ export function KioskCardDetailView({
   const [editFrom, setEditFrom] = useState<string | null>(null);
   const [editUntil, setEditUntil] = useState<string | null>(null);
 
+  // 同時ログイン上限の編集モーダル
+  const [limitOpen, setLimitOpen] = useState(false);
+  const [editLimit, setEditLimit] = useState<number | string>(
+    card.maxActiveSessions,
+  );
+
   const [confirm, setConfirm] = useState<{
     title: string;
     message: string;
@@ -158,6 +166,38 @@ export function KioskCardDetailView({
         notifications.show({
           title: "割当しました",
           message: "カードをユーザーに割り当てました",
+          color: "green",
+        });
+      } else {
+        notifications.show({
+          title: "エラー",
+          message: result.error,
+          color: "red",
+        });
+      }
+    });
+  };
+
+  const handleLimitSave = () => {
+    const limit = typeof editLimit === "number" ? editLimit : Number(editLimit);
+    if (!Number.isInteger(limit) || limit < 1 || limit > 10) {
+      notifications.show({
+        title: "エラー",
+        message: "同時ログイン上限は 1〜10 で指定してください",
+        color: "red",
+      });
+      return;
+    }
+    startTransition(async () => {
+      const result = await updateCardSessionLimit({
+        cardId: card.id,
+        maxActiveSessions: limit,
+      });
+      if (result.ok) {
+        setLimitOpen(false);
+        notifications.show({
+          title: "保存しました",
+          message: "同時ログイン上限を更新しました",
           color: "green",
         });
       } else {
@@ -290,6 +330,10 @@ export function KioskCardDetailView({
             }
           />
           <FieldValue
+            label="同時ログイン上限"
+            value={`${card.maxActiveSessions} 台`}
+          />
+          <FieldValue
             label="最終使用"
             value={card.lastUsedAt ? formatDateTime(card.lastUsedAt) : "—"}
           />
@@ -350,6 +394,15 @@ export function KioskCardDetailView({
             <EditButton loading={isPending} onClick={openValidityModal}>
               有効期間を編集
             </EditButton>
+            <SecondaryButton
+              loading={isPending}
+              onClick={() => {
+                setEditLimit(card.maxActiveSessions);
+                setLimitOpen(true);
+              }}
+            >
+              同時ログイン上限
+            </SecondaryButton>
             <SecondaryButton
               leftSection={<IconPrinter size={14} />}
               onClick={() => openPrintSheet([card.id])}
@@ -547,6 +600,34 @@ export function KioskCardDetailView({
             期間外のカードはキオスクでログインできません（終了日はその日
             いっぱい有効）。両方空欄で無期限に戻ります。ログイン中の
             セッションは最長 8 時間で自然失効します。
+          </Text>
+        </Stack>
+      </ModalShell>
+
+      {/* 同時ログイン上限の編集モーダル */}
+      <ModalShell
+        confirmLabel="保存"
+        loading={isPending}
+        onClose={() => setLimitOpen(false)}
+        onConfirm={handleLimitSave}
+        opened={limitOpen}
+        size="sm"
+        title="同時ログイン上限"
+      >
+        <Stack gap="xs">
+          <NumberInput
+            allowDecimal={false}
+            label="同時にログインできる端末数"
+            max={10}
+            min={1}
+            onChange={setEditLimit}
+            value={editLimit}
+            withAsterisk
+          />
+          <Text c="dimmed" size="xs">
+            上限を超えてログインすると、最も古い端末のセッションから自動的に
+            ログアウトされます。上限を下げても既存のセッションは即時には
+            失効しません（次のログイン時に整理されます）。
           </Text>
         </Stack>
       </ModalShell>

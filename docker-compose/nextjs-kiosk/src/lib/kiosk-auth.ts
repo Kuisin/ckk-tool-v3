@@ -19,6 +19,7 @@ import { prisma } from "./db";
 import { type Locale, normalizeLocale } from "./i18n";
 import {
   DEVICE_TOKEN_TTL_MS,
+  IDLE_TIMEOUT_MS,
   isDeviceTokenAlive,
   isSessionAlive,
   SESSION_TTL_MS,
@@ -177,7 +178,12 @@ export type KioskUser = {
   lastActivityAt: Date;
 };
 
-/** ログイン成功時: セッション行 + Cookie を作成（LOGIN ログ + モニター通知）。 */
+/**
+ * ログイン成功時: セッション行 + Cookie を作成（LOGIN ログ + モニター通知）。
+ * カードの同時ログイン上限（kiosk_cards.max_active_sessions）を enforce —
+ * 超過分は最終活動が最も古いセッションから失効させる（= 最も古い端末を
+ * ログアウト。その端末は次のセッション検証で /login へ戻る）。
+ */
 export async function createSession(
   userId: string,
   cardId: string,
@@ -195,10 +201,57 @@ export async function createSession(
       lastActivityAt: now,
     },
   });
+  await enforceSessionLimit(cardId, hash, now);
   await recordSessionLog(deviceId, "LOGIN", userId, "login");
   wsBridge()?.notifyDeviceChanged(deviceId);
   const store = await cookies();
   store.set(SESSION_COOKIE, raw, cookieOptions(SESSION_TTL_MS));
+}
+
+/**
+ * 同時ログイン上限の enforce。新セッション以外の「生きている」セッション
+ * （未失効・ハード期限内・アイドル窓内）を新しい順に (上限 - 1) 件だけ残し、
+ * 溢れた古いものを失効させる。best-effort — 失敗してもログインは通す。
+ */
+async function enforceSessionLimit(
+  cardId: string,
+  newSessionId: string,
+  now: Date,
+): Promise<void> {
+  try {
+    const card = await prisma.kioskCard.findUnique({
+      where: { id: cardId },
+      select: { maxActiveSessions: true },
+    });
+    const limit = Math.max(1, card?.maxActiveSessions ?? 1);
+    const others = await prisma.kioskSession.findMany({
+      where: {
+        cardId,
+        id: { not: newSessionId },
+        revokedAt: null,
+        expiresAt: { gt: now },
+        lastActivityAt: { gt: new Date(now.getTime() - IDLE_TIMEOUT_MS) },
+      },
+      orderBy: { lastActivityAt: "desc" },
+      select: { id: true, deviceId: true, userId: true },
+    });
+    const excess = others.slice(limit - 1);
+    for (const session of excess) {
+      await prisma.kioskSession.update({
+        where: { id: session.id },
+        data: { revokedAt: now },
+      });
+      await recordSessionLog(
+        session.deviceId,
+        "LOGOUT",
+        session.userId,
+        "displaced",
+      );
+      wsBridge()?.notifyDeviceChanged(session.deviceId);
+    }
+  } catch {
+    // 上限の enforce はログイン成功を妨げない
+  }
 }
 
 /** LOGIN/LOGOUT の利用履歴を記録する（best-effort — 失敗してもフローは継続）。 */
@@ -206,7 +259,7 @@ async function recordSessionLog(
   deviceId: string,
   type: "LOGIN" | "LOGOUT",
   userId: string,
-  source: "login" | "logout" | "expired",
+  source: "login" | "logout" | "expired" | "displaced",
 ): Promise<void> {
   await prisma.kioskDeviceLog
     .create({ data: { deviceId, type, userId, source } })

@@ -88,7 +88,8 @@ export async function POST(req: Request) {
       },
     });
     await createSession(card.user.id, card.id, device.device.id);
-    return NextResponse.json({ state: "OK" });
+    // userId はクライアントの「最後に開いたページ」復元（localStorage キー）用
+    return NextResponse.json({ state: "OK", userId: card.user.id });
   }
 
   // PIN_VERIFY
@@ -136,5 +137,5 @@ export async function POST(req: Request) {
     },
   });
   await createSession(card.user.id, card.id, device.device.id);
-  return NextResponse.json({ state: "OK" });
+  return NextResponse.json({ state: "OK", userId: card.user.id });
 }
