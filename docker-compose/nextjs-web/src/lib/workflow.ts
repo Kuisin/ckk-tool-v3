@@ -35,6 +35,7 @@ export async function loadCatalog(): Promise<WorkflowCatalog> {
       isSyncCapable: s.isSyncCapable,
       isInspection: s.isInspection,
       isApprovalStep: s.isApprovalStep,
+      quantityTracking: s.quantityTracking,
       sortOrder: s.sortOrder,
     })),
     useDeps: useDeps.map((d) => ({
@@ -255,15 +256,30 @@ export async function startStepExecution(
   return { ok: true };
 }
 
-/** 工程完了: 数量整合 + ルーティング整合 → 永続化 → 全完了なら WO 完了。 */
+/**
+ * 工程完了: 数量整合 + ルーティング整合 → 永続化 → 全完了なら WO 完了。
+ *
+ * 数量管理モード（カタログ quantity_tracking）:
+ * - NONE: quantities は不要（null 可・無視）。受入数 = 既存 ?? 想定受入 ??
+ *   予定数量、良品数 = 受入数、不良 0 でパススルー保存する。この規則により
+ *   NONE 工程完了後も outputSuccess が常に埋まるため、expectedInput の
+ *   前工程チェーン・validateRouting・computeWipByStep・onWorkOrderCompleted の
+ *   終端工程集計（終端が NONE でも）が一切変更なしで成立する — 変えないこと。
+ * - FLOW / INSPECTION: quantities 必須。保存則は同一の数式で、INSPECTION は
+ *   ラベルのみ 検査数/合格/不合格 に変わる。
+ */
 export async function completeStepExecution(
   stepId: string,
-  quantities: StepQuantities,
+  quantities: StepQuantities | null,
 ): Promise<StepActionResult> {
   const actor = await getCurrentActorId();
   const stepRow = await prisma.workOrderStep.findUniqueOrThrow({
     where: { id: stepId },
-    include: { workOrder: true, outgoingLinks: true },
+    include: {
+      workOrder: true,
+      outgoingLinks: true,
+      processStep: { select: { quantityTracking: true } },
+    },
   });
   if (stepRow.status !== "IN_PROGRESS") {
     return { ok: false, errors: ["進行中の工程ではありません"] };
@@ -272,20 +288,44 @@ export async function completeStepExecution(
     return { ok: false, errors: ["別のユーザーがセッション中です"] };
   }
 
-  const qIssues = validateQuantities({
-    inputQuantity: quantities.inputQuantity,
-    outputSuccess: quantities.outputSuccessQuantity,
-    defectSemiFinished: quantities.outputDefectSemiFinished,
-    defectScrap: quantities.outputDefectScrap,
-    defectRework: quantities.outputDefectRework,
-  });
-  if (qIssues.length > 0)
-    return { ok: false, errors: qIssues.map((i) => i.message) };
+  const mode = stepRow.processStep.quantityTracking;
+  let persisted: StepQuantities;
+  if (mode === "NONE") {
+    const { ctx } = await fetchWorkflowCtx(stepRow.workOrderId);
+    const input =
+      stepRow.inputQuantity ??
+      expectedInput(stepId, ctx) ??
+      ctx.plannedQuantity;
+    persisted = {
+      inputQuantity: input,
+      outputSuccessQuantity: input,
+      outputDefectSemiFinished: 0,
+      outputDefectScrap: 0,
+      outputDefectRework: 0,
+    };
+  } else {
+    if (quantities == null) {
+      return { ok: false, errors: ["数量を入力してください"] };
+    }
+    persisted = quantities;
+    const qIssues = validateQuantities(
+      {
+        inputQuantity: quantities.inputQuantity,
+        outputSuccess: quantities.outputSuccessQuantity,
+        defectSemiFinished: quantities.outputDefectSemiFinished,
+        defectScrap: quantities.outputDefectScrap,
+        defectRework: quantities.outputDefectRework,
+      },
+      mode,
+    );
+    if (qIssues.length > 0)
+      return { ok: false, errors: qIssues.map((i) => i.message) };
+  }
 
   const rIssues = validateRouting(
     {
-      outputSuccess: quantities.outputSuccessQuantity,
-      defectRework: quantities.outputDefectRework,
+      outputSuccess: persisted.outputSuccessQuantity,
+      defectRework: persisted.outputDefectRework,
     },
     stepRow.outgoingLinks.map((l) => ({
       sourceStepId: l.sourceStepId,
@@ -302,11 +342,11 @@ export async function completeStepExecution(
     where: { id: stepId, status: "IN_PROGRESS" },
     data: {
       status: "COMPLETED",
-      inputQuantity: quantities.inputQuantity,
-      outputSuccessQuantity: quantities.outputSuccessQuantity,
-      outputDefectSemiFinished: quantities.outputDefectSemiFinished,
-      outputDefectScrap: quantities.outputDefectScrap,
-      outputDefectRework: quantities.outputDefectRework,
+      inputQuantity: persisted.inputQuantity,
+      outputSuccessQuantity: persisted.outputSuccessQuantity,
+      outputDefectSemiFinished: persisted.outputDefectSemiFinished,
+      outputDefectScrap: persisted.outputDefectScrap,
+      outputDefectRework: persisted.outputDefectRework,
       completedAt: new Date(),
       completedBy: actor,
       sessionLockedBy: null,
@@ -335,8 +375,8 @@ export async function completeStepExecution(
     tableName: "work_orders",
     recordId: String(stepRow.workOrder.workOrderNumber),
     after: {
-      note: `工程を完了（良品 ${quantities.outputSuccessQuantity}/${quantities.inputQuantity}）`,
-      ...quantities,
+      note: `工程を完了（良品 ${persisted.outputSuccessQuantity}/${persisted.inputQuantity}）`,
+      ...persisted,
     },
   });
   return { ok: true };

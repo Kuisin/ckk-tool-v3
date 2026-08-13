@@ -13,6 +13,9 @@
  * - is_negation（排他）: 依存先が存在してはならない（存在 = エラー）。
  */
 
+/** 工程の数量管理モード（app.QUANTITY_TRACKING）。 */
+export type QuantityTrackingMode = "NONE" | "FLOW" | "INSPECTION";
+
 export interface CatalogStep {
   id: number;
   code: string;
@@ -22,8 +25,46 @@ export interface CatalogStep {
   isSyncCapable: boolean;
   isInspection: boolean;
   isApprovalStep: boolean;
+  quantityTracking: QuantityTrackingMode;
   sortOrder: number;
 }
+
+/**
+ * 数量フィールドの表示ラベル（モード別）。INSPECTION は同じ列を
+ * 検査数/合格/不合格として扱う（保存則の数式は FLOW と同一）。
+ */
+export const QUANTITY_LABELS: Record<
+  QuantityTrackingMode,
+  {
+    input: string;
+    success: string;
+    semi: string;
+    scrap: string;
+    rework: string;
+  }
+> = {
+  FLOW: {
+    input: "受入数",
+    success: "良品数",
+    semi: "半製品",
+    scrap: "廃棄",
+    rework: "手直し",
+  },
+  INSPECTION: {
+    input: "検査数",
+    success: "合格数",
+    semi: "不合格（半製品）",
+    scrap: "不合格（廃棄）",
+    rework: "不合格（手直し）",
+  },
+  NONE: {
+    input: "受入数",
+    success: "良品数",
+    semi: "半製品",
+    scrap: "廃棄",
+    rework: "手直し",
+  },
+};
 
 export interface UseDep {
   stepId: number;
@@ -272,14 +313,23 @@ export function expectedInput(stepId: string, ctx: WorkflowCtx): number | null {
   return ctx.plannedQuantity;
 }
 
-/** 数量整合（§7）: 良品 + 半製品 + 廃棄 + 手直し = 受入。全て 0 以上。 */
-export function validateQuantities(step: {
-  inputQuantity: number | null;
-  outputSuccess: number | null;
-  defectSemiFinished: number | null;
-  defectScrap: number | null;
-  defectRework: number | null;
-}): QuantityIssue[] {
+/**
+ * 数量整合（§7）: 良品 + 半製品 + 廃棄 + 手直し = 受入。全て 0 以上。
+ * INSPECTION は同一の数式（合格 + 不合格 = 検査数）でラベルのみ変わる。
+ * NONE は入力を検証しない（サーバーがパススルー値を自動生成する）。
+ */
+export function validateQuantities(
+  step: {
+    inputQuantity: number | null;
+    outputSuccess: number | null;
+    defectSemiFinished: number | null;
+    defectScrap: number | null;
+    defectRework: number | null;
+  },
+  mode: QuantityTrackingMode = "FLOW",
+): QuantityIssue[] {
+  if (mode === "NONE") return [];
+  const labels = QUANTITY_LABELS[mode];
   const issues: QuantityIssue[] = [];
   const input = step.inputQuantity ?? 0;
   const success = step.outputSuccess ?? 0;
@@ -287,11 +337,11 @@ export function validateQuantities(step: {
   const scrap = step.defectScrap ?? 0;
   const rework = step.defectRework ?? 0;
   for (const [label, v] of [
-    ["受入数", input],
-    ["良品数", success],
-    ["半製品", semi],
-    ["廃棄", scrap],
-    ["手直し", rework],
+    [labels.input, input],
+    [labels.success, success],
+    [labels.semi, semi],
+    [labels.scrap, scrap],
+    [labels.rework, rework],
   ] as const) {
     if (v < 0)
       issues.push({
@@ -302,7 +352,10 @@ export function validateQuantities(step: {
   if (success + semi + scrap + rework !== input) {
     issues.push({
       kind: "CONSERVATION",
-      message: `良品 + 不良（半製品・廃棄・手直し）の合計（${success + semi + scrap + rework}）が受入数（${input}）と一致しません`,
+      message:
+        mode === "INSPECTION"
+          ? `合格 + 不合格（半製品・廃棄・手直し）の合計（${success + semi + scrap + rework}）が検査数（${input}）と一致しません`
+          : `良品 + 不良（半製品・廃棄・手直し）の合計（${success + semi + scrap + rework}）が受入数（${input}）と一致しません`,
     });
   }
   return issues;

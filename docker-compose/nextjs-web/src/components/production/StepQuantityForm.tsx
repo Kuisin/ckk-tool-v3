@@ -24,7 +24,11 @@ import { IconAlertTriangle, IconCheck } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { completeStep } from "@/app/(dashboard)/production/work-orders/[id]/steps/[stepId]/actions";
-import { validateQuantities } from "@/lib/workflow-core";
+import {
+  QUANTITY_LABELS,
+  type QuantityTrackingMode,
+  validateQuantities,
+} from "@/lib/workflow-core";
 
 const num = (v: number | string) =>
   typeof v === "number" ? v : Number(v) || 0;
@@ -34,6 +38,7 @@ export function StepQuantityForm({
   stepId,
   defaultInputQuantity,
   disabled,
+  mode = "FLOW",
 }: {
   workOrderNumber: number;
   stepId: string;
@@ -41,6 +46,8 @@ export function StepQuantityForm({
   defaultInputQuantity: number | null;
   /** 他ユーザーのセッションロック中など、操作不可のとき true。 */
   disabled?: boolean;
+  /** 数量管理モード — INSPECTION は 検査数/合格/不合格 ラベルで表示。 */
+  mode?: QuantityTrackingMode;
 }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -54,14 +61,19 @@ export function StepQuantityForm({
   const [scrap, setScrap] = useState<number | string>(0);
   const [rework, setRework] = useState<number | string>(0);
 
+  const labels = QUANTITY_LABELS[mode];
+
   // ライブ保存則チェック（良品 + 半製品 + 廃棄 + 手直し = 受入）
-  const issues = validateQuantities({
-    inputQuantity: num(input),
-    outputSuccess: num(success),
-    defectSemiFinished: num(semiFinished),
-    defectScrap: num(scrap),
-    defectRework: num(rework),
-  });
+  const issues = validateQuantities(
+    {
+      inputQuantity: num(input),
+      outputSuccess: num(success),
+      defectSemiFinished: num(semiFinished),
+      defectScrap: num(scrap),
+      defectRework: num(rework),
+    },
+    mode,
+  );
 
   const handleComplete = () => {
     startTransition(async () => {
@@ -75,7 +87,7 @@ export function StepQuantityForm({
       if (result.ok) {
         notifications.show({
           title: "工程を完了しました",
-          message: `良品 ${num(success)} / 受入 ${num(input)}`,
+          message: `${labels.success} ${num(success)} / ${labels.input} ${num(input)}`,
           color: "green",
         });
         router.refresh();
@@ -92,11 +104,17 @@ export function StepQuantityForm({
   return (
     <Paper p="lg" radius="md" withBorder>
       <Stack gap="md">
-        <Title order={4}>数量・不良</Title>
+        <Title order={4}>
+          {mode === "INSPECTION" ? "検査数・合否" : "数量・不良"}
+        </Title>
         <NumberInput
-          description="既定値は前工程の良品数（分岐工程は分岐数量）"
+          description={
+            mode === "INSPECTION"
+              ? "既定値は前工程の良品数（検査対象数）"
+              : "既定値は前工程の良品数（分岐工程は分岐数量）"
+          }
           disabled={disabled}
-          label="受入数"
+          label={labels.input}
           min={0}
           onChange={setInput}
           size="lg"
@@ -106,7 +124,7 @@ export function StepQuantityForm({
         <NumberInput
           description="次工程へ渡る数量"
           disabled={disabled}
-          label="良品数"
+          label={labels.success}
           min={0}
           onChange={setSuccess}
           size="lg"
@@ -117,7 +135,7 @@ export function StepQuantityForm({
           <NumberInput
             description="半製品在庫へ"
             disabled={disabled}
-            label="半製品"
+            label={labels.semi}
             min={0}
             onChange={setSemiFinished}
             size="lg"
@@ -125,7 +143,7 @@ export function StepQuantityForm({
           />
           <NumberInput
             disabled={disabled}
-            label="廃棄"
+            label={labels.scrap}
             min={0}
             onChange={setScrap}
             size="lg"
@@ -134,7 +152,7 @@ export function StepQuantityForm({
           <NumberInput
             description="手直し・追加工程へ"
             disabled={disabled}
-            label="手直し"
+            label={labels.rework}
             min={0}
             onChange={setRework}
             size="lg"

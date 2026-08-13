@@ -56,6 +56,8 @@ export interface WorkOrderStepView {
   isInspection: boolean;
   isApprovalStep: boolean;
   isSyncCapable: boolean;
+  /** 数量管理モード（NONE = 記録なしパススルー / FLOW / INSPECTION）。 */
+  quantityTracking: "NONE" | "FLOW" | "INSPECTION";
   sortOrder: number;
   executionLocation: "INTERNAL" | "OUTSOURCE";
   factoryId: number | null;
