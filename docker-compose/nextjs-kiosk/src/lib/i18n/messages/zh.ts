@@ -123,6 +123,21 @@ export const zh: KioskMessages = {
       recordsTitle: "已记录的检查",
       noTemplates: "未设置检查表模板（请在管理端设置）",
       recordedMeta: (at: string, by: string) => `${at} ${by}`,
+      yes: "是",
+      no: "否",
+      samplingAll: "全数",
+      samplingPercent: (pct: number, count: number | null) =>
+        count != null ? `抽检 ${pct}%（${count}件）` : `抽检 ${pct}%`,
+      samplingCount: (count: number) => `抽检 ${count}件`,
+      accept: (label: string) => `合格: ${label}`,
+      goal: (label: string) => `目标: ${label}`,
+      addRow: "添加行",
+      removeRow: "删除",
+      selectPlaceholder: "选择",
+      autoNone: "无自动判定（请手动选择）",
+      autoVerdict: (pass: boolean) => `自动判定: ${pass ? "合格" : "不合格"}`,
+      autoOverridden: (pass: boolean) =>
+        `正在手动覆盖自动判定（${pass ? "合格" : "不合格"}）`,
       status: {
         PENDING: "未实施",
         PASS: "合格",

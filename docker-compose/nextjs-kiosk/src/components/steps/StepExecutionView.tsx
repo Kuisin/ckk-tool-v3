@@ -358,6 +358,11 @@ export function StepExecutionView({ step, recording, otherActive }: Props) {
         {(recording.isInspection || recording.inspectionRecords.length > 0) && (
           <StepInspectionForm
             canRecord={recording.isInspection && (working || paused)}
+            lotQuantity={
+              step.inputQuantity ??
+              step.expectedInputQuantity ??
+              step.workOrderPlannedQuantity
+            }
             records={recording.inspectionRecords}
             stepId={step.stepId}
             templates={recording.templates}

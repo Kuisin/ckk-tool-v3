@@ -7,6 +7,8 @@
  * （Prisma import なし — client-safe）。
  */
 
+import type { InspectionItemSpec } from "@/lib/inspection-core";
+
 export interface SelectOption {
   value: string;
   label: string;
@@ -14,26 +16,26 @@ export interface SelectOption {
 
 // ── 検査表 ───────────────────────────────────────────────────────────────────
 
-export interface InspectionTemplateItemView {
-  id: number;
+/** 検査項目（inspection-core の判定 spec + 表示名。Decimal → Number 済み）。 */
+export interface InspectionTemplateItemView extends InspectionItemSpec {
   name: string;
-  unit: string | null;
-  toleranceMin: number | null; // Decimal → Number 済み
-  toleranceMax: number | null;
-  isRequired: boolean;
 }
 
 export interface InspectionTemplateView {
   id: number;
   code: string;
+  version: number;
   name: string;
+  /** 関連工程（null = どの検査工程でも使用）。 */
+  relatedProcessStepId: number | null;
   items: InspectionTemplateItemView[];
 }
 
 export interface InspectionRecordItemView {
   templateItemId: number;
   itemName: string;
-  measuredValue: string | null;
+  /** 実測値の表示文字列（複数サンプルは " / " 連結。未入力は null）。 */
+  valueLabel: string | null;
   isPass: boolean | null;
 }
 

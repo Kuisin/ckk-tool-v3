@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <title>検査表</title>
+  <link rel="stylesheet" href="base.css" />
+  <style>
+    /* 検査表固有のスタイル（空欄シート = 現場メモ用 / 記入済み = 結果確認用） */
+    .insp-meta table td { padding: 2px 8px 2px 0; }
+    .insp-meta .blank-line {
+      display: inline-block;
+      min-width: 140px;
+      border-bottom: 1px solid #333;
+    }
+    .items-table td.center { text-align: center; }
+    .items-table .item-name { font-weight: 600; }
+    .items-table .sub { color: #666; font-size: 8.5pt; }
+    .value-cells { display: flex; flex-wrap: wrap; gap: 4px; }
+    .value-cell {
+      display: inline-block;
+      min-width: 52px;
+      min-height: 18px;
+      border: 1px solid #999;
+      border-radius: 2px;
+      padding: 1px 4px;
+      font-variant-numeric: tabular-nums;
+    }
+    .value-cell.filled { border-color: #ccc; }
+    .value-more { color: #666; font-size: 8.5pt; align-self: center; }
+    .pass-mark { font-weight: 700; }
+    .pass-mark.pass { color: #0a7a3d; }
+    .pass-mark.fail { color: #c02626; }
+    .judge-blank { color: #666; letter-spacing: 2px; }
+    .overall {
+      margin-top: 10px;
+      display: flex;
+      justify-content: flex-end;
+      gap: 16px;
+      font-size: 10.5pt;
+    }
+    .overall .box {
+      border: 1px solid #333;
+      padding: 6px 14px;
+      min-width: 160px;
+    }
+    .footer-note { margin-top: 12px; color: #666; font-size: 8.5pt; }
+  </style>
+</head>
+<body>
+
+  <div class="header">
+    <div class="brand">
+      <img class="brand-logo" src="logo.svg" alt="シー・ケィ・ケー株式会社" />
+      <div class="doc-title">検査表</div>
+    </div>
+    <div class="issuer">
+      <strong>{{template.name}}</strong><br>
+      {{template.code}}　{{template.version}}<br>
+      関連工程: {{template.related_step}}
+    </div>
+  </div>
+
+  <div class="meta-row insp-meta">
+    <div class="doc-info">
+      <table>
+        <tr><td>指示書番号</td><td>{{meta.work_order}}</td></tr>
+        <tr><td>ロット数量</td><td>{{meta.lot_quantity}}</td></tr>
+        <tr><td>検査日</td><td>{{meta.inspected_at}}</td></tr>
+        <tr><td>記録者</td><td>{{meta.recorded_by}}</td></tr>
+        <tr><td>承認</td><td>{{meta.approved}}</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <table class="items-table">
+    <thead>
+      <tr>
+        <th style="width: 22%">検査項目</th>
+        <th style="width: 13%">合格基準</th>
+        <th style="width: 11%">目標</th>
+        <th style="width: 10%">検査対象</th>
+        <th>実測値</th>
+        <th style="width: 9%" class="center">合否</th>
+      </tr>
+    </thead>
+    <tbody>
+      {{#each items}}
+      <tr>
+        <td>
+          <span class="item-name">{{name}}</span>{{required_mark}}<br>
+          <span class="sub">{{type_label}}</span>
+        </td>
+        <td>{{accept}}</td>
+        <td>{{goal}}</td>
+        <td>{{sampling}}</td>
+        <td><div class="value-cells">{{values_html}}</div></td>
+        <td class="center">{{judge_html}}</td>
+      </tr>
+      {{/each}}
+    </tbody>
+  </table>
+
+  <div class="overall">
+    <div class="box">総合判定: {{overall.judgement}}</div>
+  </div>
+
+  <div class="footer-note">{{footer_note}}</div>
+
+</body>
+</html>

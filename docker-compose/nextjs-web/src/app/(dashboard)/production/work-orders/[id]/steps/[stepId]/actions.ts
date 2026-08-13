@@ -14,6 +14,7 @@ import { z } from "zod";
 import { getCurrentActorId, recordAudit } from "@/lib/audit";
 import { checkPermission, type PermissionAction } from "@/lib/authz";
 import { prisma } from "@/lib/db";
+import { isSampleEmpty, itemSpecFromRow } from "@/lib/inspection-core";
 import {
   abortStepExecution,
   addBranchSeries,
@@ -223,6 +224,9 @@ export async function addBranch(
 
 // ── 検査記録 (§7 / design.md §12.5) ─────────────────────────────────────────
 
+// サンプル値: SELECT_MULTI は value[]、それ以外は文字列（inspection-core と同形）
+const sampleValue = z.union([z.string(), z.array(z.string())]);
+
 const inspectionInput = z.object({
   workOrderNumber: z.number().int().positive(),
   stepId: z.string().min(1),
@@ -231,7 +235,7 @@ const inspectionInput = z.object({
     .array(
       z.object({
         templateItemId: z.number().int().positive(),
-        measuredValue: z.string(),
+        values: z.array(sampleValue),
         isPass: z.boolean(),
       }),
     )
@@ -240,7 +244,13 @@ const inspectionInput = z.object({
 
 export type InspectionInput = z.infer<typeof inspectionInput>;
 
-/** 検査記録の保存 — 全項目合格なら PASS、1 つでも不合格なら FAIL。 */
+/**
+ * 検査記録の保存 — 全項目合格なら PASS、1 つでも不合格なら FAIL。
+ * テンプレートは指示書に紐付くもののみ・項目 id はテンプレートと一致必須。
+ * サンプル値は型検証（選択肢の membership）し、合否は自動判定を検証しつつ
+ * クライアントの値（手動上書き可）を保存する。キオスク側
+ * （nextjs-kiosk step-records.ts recordInspection）と同一規則。
+ */
 export async function saveInspectionRecord(
   payload: InspectionInput,
 ): Promise<StepActionResult> {
@@ -260,6 +270,48 @@ export async function saveInspectionRecord(
     if (step.status !== "IN_PROGRESS") {
       return { ok: false, errors: ["進行中の工程でのみ記録できます"] };
     }
+    // テンプレートが指示書に紐付いているか + 項目 id・サンプル値が妥当か
+    const link = await prisma.workOrderInspectionTemplate.findUnique({
+      where: {
+        workOrderId_inspectionTemplateId: {
+          workOrderId: step.workOrder.id,
+          inspectionTemplateId: v.templateId,
+        },
+      },
+      include: { inspectionTemplate: { include: { items: true } } },
+    });
+    if (!link) {
+      return { ok: false, errors: ["この指示書の検査表ではありません"] };
+    }
+    const templateItems = new Map(
+      link.inspectionTemplate.items.map((it) => [it.id, itemSpecFromRow(it)]),
+    );
+    for (const i of v.items) {
+      const spec = templateItems.get(i.templateItemId);
+      if (!spec) {
+        return {
+          ok: false,
+          errors: ["検査項目がテンプレートと一致しません"],
+        };
+      }
+      const optionValues = new Set(spec.options.map((o) => o.value));
+      for (const s of i.values) {
+        const values = Array.isArray(s) ? s : [s];
+        if (
+          (spec.inputType === "SELECT_SINGLE" ||
+            spec.inputType === "SELECT_MULTI") &&
+          !values.every((x) => x === "" || optionValues.has(x))
+        ) {
+          return { ok: false, errors: ["選択肢にない値が含まれています"] };
+        }
+        if (
+          spec.inputType === "BOOLEAN" &&
+          !values.every((x) => x === "" || x === "true" || x === "false")
+        ) {
+          return { ok: false, errors: ["真偽項目の値が不正です"] };
+        }
+      }
+    }
     const actor = await getCurrentActorId();
     const status = v.items.every((i) => i.isPass) ? "PASS" : "FAIL";
     await prisma.inspectionRecord.create({
@@ -272,7 +324,7 @@ export async function saveInspectionRecord(
         items: {
           create: v.items.map((i) => ({
             templateItemId: i.templateItemId,
-            measuredValue: i.measuredValue.trim() || null,
+            measuredValues: i.values.filter((s) => !isSampleEmpty(s)),
             isPass: i.isPass,
           })),
         },

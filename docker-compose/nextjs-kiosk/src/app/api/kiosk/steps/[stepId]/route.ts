@@ -59,13 +59,20 @@ const bodySchema = z.object({
     )
     .max(100)
     .optional(),
-  /** INSPECTION のみ */
+  /** INSPECTION のみ — サンプル値: SELECT_MULTI は value[]、他は文字列 */
   templateId: z.number().int().positive().optional(),
   items: z
     .array(
       z.object({
         templateItemId: z.number().int().positive(),
-        measuredValue: z.string().max(200),
+        values: z
+          .array(
+            z.union([
+              z.string().max(200),
+              z.array(z.string().max(200)).max(50),
+            ]),
+          )
+          .max(1000),
         isPass: z.boolean(),
       }),
     )

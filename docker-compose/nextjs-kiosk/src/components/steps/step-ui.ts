@@ -30,9 +30,13 @@ export interface StepActionRequest {
     reason: string;
     count: number;
   }[];
-  /** INSPECTION のみ */
+  /** INSPECTION のみ — サンプル値: SELECT_MULTI は value[]、他は文字列 */
   templateId?: number;
-  items?: { templateItemId: number; measuredValue: string; isPass: boolean }[];
+  items?: {
+    templateItemId: number;
+    values: (string | string[])[];
+    isPass: boolean;
+  }[];
   /** DEFECTS のみ */
   defects?: { defectTypeId: number; description: string }[];
 }

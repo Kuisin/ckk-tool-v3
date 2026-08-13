@@ -357,7 +357,8 @@ model InspectionRecordItem {
   id                 String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   inspectionRecordId String  @map("inspection_record_id") @db.Uuid
   templateItemId     Int     @map("template_item_id")
-  measuredValue      String? @map("measured_value")
+  measuredValue      String? @map("measured_value") // 旧記録の表示用（新規は measured_values）
+  measuredValues     Json?   @map("measured_values") // サンプルごとの実測値配列（型は inputType に依存）
   isPass             Boolean? @map("is_pass")
   notes              String?
 

@@ -7,7 +7,15 @@
  * 一括有効化・無効化・削除。
  */
 
-import { Group, Paper, Select, Stack, Text, TextInput } from "@mantine/core";
+import {
+  Badge,
+  Group,
+  Paper,
+  Select,
+  Stack,
+  Text,
+  TextInput,
+} from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import {
   IconCheck,
@@ -42,6 +50,8 @@ const BASE_PATH = "/master/inspection-templates";
 export interface InspectionTemplateRow {
   id: number;
   code: string;
+  version: number; // 表示中の（= code 内最新の）バージョン
+  versionCount: number;
   name: string;
   relatedProcessStep: string; // 未設定は ""
   itemCount: number;
@@ -152,6 +162,26 @@ export function InspectionTemplateTable({
       render: (r) => <DocNumber>{r.code}</DocNumber>,
     },
     {
+      key: "version",
+      header: "Ver",
+      sortable: true,
+      hideable: true,
+      width: 90,
+      sortValue: (r) => r.version,
+      render: (r) => (
+        <Group gap={4} wrap="nowrap">
+          <Badge color="gray" size="sm" variant="outline">
+            v{r.version}
+          </Badge>
+          {r.versionCount > 1 && (
+            <Text c="dimmed" size="xs">
+              全{r.versionCount}
+            </Text>
+          )}
+        </Group>
+      ),
+    },
+    {
       key: "name",
       header: "名称",
       sortable: true,
@@ -246,7 +276,12 @@ export function InspectionTemplateTable({
           <Paper p="sm" radius="sm" withBorder>
             <Group align="flex-start" justify="space-between" wrap="nowrap">
               <Stack gap={3} style={{ minWidth: 0 }}>
-                <DocNumber c="dimmed">{r.code}</DocNumber>
+                <Group gap={6} wrap="nowrap">
+                  <DocNumber c="dimmed">{r.code}</DocNumber>
+                  <Badge color="gray" size="xs" variant="outline">
+                    v{r.version}
+                  </Badge>
+                </Group>
                 <Text fw={600} size="sm" truncate>
                   {r.name}
                 </Text>
