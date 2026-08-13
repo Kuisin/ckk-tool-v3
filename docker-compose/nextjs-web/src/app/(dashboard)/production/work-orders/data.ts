@@ -230,6 +230,78 @@ export async function fetchWorkOrder(
   };
 }
 
+// ── 工程スプリットビュー（/[id]/steps レイアウトの左ペイン） ─────────────────
+
+/** 工程ナビ 1 行分（スプリットペインの一覧項目）。 */
+export interface StepNavItem {
+  id: string;
+  code: string;
+  name: string;
+  status: string;
+  executionLocation: string;
+  factoryName: string | null;
+  supplierName: string | null;
+  isInspection: boolean;
+  isApprovalStep: boolean;
+}
+
+export interface WorkOrderStepNav {
+  workOrderNumber: number;
+  steps: StepNavItem[];
+}
+
+/**
+ * 工程一覧ペイン用の軽量 fetch。fetchWorkOrder と違い実行可否（workflow ctx）
+ * は計算しない — 工程間の遷移ごとにレイアウトで呼ばれるため。
+ */
+export async function fetchWorkOrderStepNav(
+  workOrderNumber: number,
+): Promise<WorkOrderStepNav | null> {
+  const r = await prisma.workOrder.findUnique({
+    where: { workOrderNumber },
+    select: {
+      workOrderNumber: true,
+      steps: {
+        select: {
+          id: true,
+          status: true,
+          executionLocation: true,
+          processStep: {
+            select: {
+              code: true,
+              name: true,
+              isInspection: true,
+              isApprovalStep: true,
+            },
+          },
+          factory: { select: { name: true } },
+          supplierBp: { select: { name: true } },
+        },
+        orderBy: { sortOrder: "asc" },
+      },
+    },
+  });
+  if (!r) return null;
+  return {
+    workOrderNumber: r.workOrderNumber,
+    steps: r.steps.map((s) => ({
+      id: s.id,
+      code: s.processStep.code,
+      name: localized(s.processStep.name as LocalizedText | null),
+      status: s.status,
+      executionLocation: s.executionLocation,
+      factoryName: s.factory
+        ? localized(s.factory.name as LocalizedText | null)
+        : null,
+      supplierName: s.supplierBp
+        ? localized(s.supplierBp.name as LocalizedText | null)
+        : null,
+      isInspection: s.processStep.isInspection,
+      isApprovalStep: s.processStep.isApprovalStep,
+    })),
+  };
+}
+
 // ── 工程実行 (§7 / design.md §12.3) ─────────────────────────────────────────
 
 const dateOnly = (d: Date | null | undefined) =>
