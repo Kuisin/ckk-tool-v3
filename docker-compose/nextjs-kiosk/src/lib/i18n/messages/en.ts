@@ -21,6 +21,8 @@ export const en: KioskMessages = {
     refresh: "Refresh",
     empty: "No steps assigned to you today",
     upcoming: (n: number) => `${n} upcoming`,
+    showCompleted: (n: number) => `Show completed steps (${n})`,
+    hideCompleted: "Hide completed steps",
     sections: {
       overdue: "Overdue",
       today: "Today",
@@ -34,6 +36,7 @@ export const en: KioskMessages = {
       expectedInput: (n: number) => `${n} pcs expected`,
       inputRecorded: (n: number) => `${n} pcs received`,
       elapsed: (t: string) => `Worked ${t}`,
+      elapsedLabel: "Worked",
     },
     state: {
       startable: "Ready",

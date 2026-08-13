@@ -15,8 +15,8 @@ import {
   ActionIcon,
   Alert,
   Badge,
+  Box,
   Group,
-  NumberInput,
   Paper,
   Select,
   SimpleGrid,
@@ -33,6 +33,7 @@ import {
 } from "@/lib/steps-core";
 import type { QuantityTrackingMode } from "@/lib/workflow-core";
 import { useI18n } from "../I18nProvider";
+import { NumberStepper } from "./NumberStepper";
 
 type Props = {
   mode: Exclude<QuantityTrackingMode, "NONE">;
@@ -60,10 +61,8 @@ export function StepQuantityForm({
   const total = defectTotal(values);
   const success = deriveSuccess(values);
 
-  const set = (key: keyof QuantityFormValues) => (v: string | number) => {
-    const n = typeof v === "number" ? v : Number.parseInt(v, 10);
-    onChange({ ...values, [key]: Number.isFinite(n) ? n : Number.NaN });
-  };
+  const setQty = (key: keyof QuantityFormValues) => (n: number) =>
+    onChange({ ...values, [key]: n });
 
   const setReason = (index: number, patch: Partial<DefectReasonEntry>) =>
     onReasonsChange(
@@ -111,28 +110,19 @@ export function StepQuantityForm({
         {m.steps.quantity.defectsTitle}
       </Text>
       <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="sm">
-        <NumberInput
-          allowDecimal={false}
-          allowNegative={false}
+        <NumberStepper
           label={labels.semi}
-          min={0}
-          onChange={set("outputDefectSemiFinished")}
+          onChange={setQty("outputDefectSemiFinished")}
           value={values.outputDefectSemiFinished}
         />
-        <NumberInput
-          allowDecimal={false}
-          allowNegative={false}
+        <NumberStepper
           label={labels.scrap}
-          min={0}
-          onChange={set("outputDefectScrap")}
+          onChange={setQty("outputDefectScrap")}
           value={values.outputDefectScrap}
         />
-        <NumberInput
-          allowDecimal={false}
-          allowNegative={false}
+        <NumberStepper
           label={labels.rework}
-          min={0}
-          onChange={set("outputDefectRework")}
+          onChange={setQty("outputDefectRework")}
           value={values.outputDefectRework}
         />
       </SimpleGrid>
@@ -171,18 +161,15 @@ export function StepQuantityForm({
                 style={{ flex: 1 }}
                 value={row.reason || null}
               />
-              <NumberInput
-                allowDecimal={false}
-                allowNegative={false}
-                aria-label={m.steps.reasons.count}
-                min={1}
-                onChange={(v) => {
-                  const n = typeof v === "number" ? v : Number.parseInt(v, 10);
-                  setReason(index, { count: Number.isFinite(n) ? n : 1 });
-                }}
-                style={{ width: 110 }}
-                value={row.count}
-              />
+              <Box style={{ width: 150, flexShrink: 0 }}>
+                <NumberStepper
+                  ariaLabel={m.steps.reasons.count}
+                  compact
+                  min={1}
+                  onChange={(n) => setReason(index, { count: n })}
+                  value={row.count}
+                />
+              </Box>
               {reasons.length > 1 && (
                 <ActionIcon
                   aria-label={m.steps.reasons.remove}
