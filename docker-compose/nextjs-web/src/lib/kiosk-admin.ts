@@ -56,6 +56,8 @@ export interface KioskCardRow {
   /** 有効期間（テンポラリカード用。null = 無期限）。 */
   validFrom: string | null;
   validUntil: string | null;
+  /** 同時ログイン上限（超過分は最も古いセッションから失効）。 */
+  maxActiveSessions: number;
 }
 
 function toCardRow(
@@ -73,6 +75,7 @@ function toCardRow(
     createdAt: Date | null;
     validFrom: Date | null;
     validUntil: Date | null;
+    maxActiveSessions: number;
   },
 ): KioskCardRow {
   return {
@@ -89,6 +92,7 @@ function toCardRow(
     createdAt: r.createdAt?.toISOString() ?? null,
     validFrom: r.validFrom?.toISOString() ?? null,
     validUntil: r.validUntil?.toISOString() ?? null,
+    maxActiveSessions: r.maxActiveSessions,
   };
 }
 

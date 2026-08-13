@@ -352,6 +352,63 @@ export async function updateCardValidity(raw: {
   }
 }
 
+// ── 同時ログイン上限 ─────────────────────────────────────────────────────────
+
+const updateSessionLimitInput = z.object({
+  cardId: cardIdSchema,
+  maxActiveSessions: z
+    .number()
+    .int()
+    .min(1, "同時ログイン上限は 1〜10 で指定してください")
+    .max(10, "同時ログイン上限は 1〜10 で指定してください"),
+});
+
+/**
+ * カードの同時ログイン上限を変更する（既定 1 台）。超過分はキオスクの
+ * ログイン時に最終活動が最も古いセッションから失効される（= 最も古い端末を
+ * ログアウト）。上限を下げても既存セッションは即時失効しない — 次のログイン
+ * 時に enforce される。
+ */
+export async function updateCardSessionLimit(raw: {
+  cardId: string;
+  maxActiveSessions: number;
+}): Promise<ActionResult> {
+  const authz = await checkPermission("kiosk", "UPDATE");
+  if (!authz.ok) return actionError(authz.error);
+  const parsed = updateSessionLimitInput.safeParse(raw);
+  if (!parsed.success)
+    return actionError(parsed.error.issues[0]?.message ?? "入力が不正です");
+  const { cardId, maxActiveSessions } = parsed.data;
+
+  try {
+    const card = await prisma.kioskCard.findUnique({
+      where: { id: cardId },
+      select: { status: true, maxActiveSessions: true },
+    });
+    if (!card) return actionError("対象のカードが見つかりません");
+    if (card.status === "REVOKED") {
+      return actionError("取り消し済みのカードは変更できません");
+    }
+    await prisma.kioskCard.update({
+      where: { id: cardId },
+      data: { maxActiveSessions },
+    });
+    await recordAudit({
+      action: "UPDATE",
+      tableName: "kiosk_cards",
+      recordId: cardId,
+      before: { maxActiveSessions: card.maxActiveSessions },
+      after: { maxActiveSessions },
+    });
+    revalidate(cardId);
+    return actionOk();
+  } catch (e) {
+    return actionError(
+      prismaErrorMessage(e, "同時ログイン上限の更新に失敗しました"),
+    );
+  }
+}
+
 // ── PIN 管理 ────────────────────────────────────────────────────────────────
 
 /** PIN をリセットする（次回ログインで再設定必須）。 */
