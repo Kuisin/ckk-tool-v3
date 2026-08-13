@@ -122,7 +122,15 @@ export function KioskShell({ deviceName, registered, children }: Props) {
         style={{
           display: "flex",
           flexDirection: "column",
-          minHeight: "100dvh",
+          // ヘッダーがフロー内配置のため Mantine の padding-top と二重になり、
+          // minHeight: 100dvh では 56px はみ出して縦センターもずれていた。
+          // 残り高さちょうどに固定し、はみ出すページは Main 内でスクロールする
+          // （Center flex:1 のページは正確に縦中央・スクロールなしになる）。
+          padding: 0,
+          // Mantine 側の min-height: 100dvh も上書きしないと height が負ける
+          height: `calc(100dvh - ${HEADER_HEIGHT}px - ${FOOTER_HEIGHT}px)`,
+          minHeight: `calc(100dvh - ${HEADER_HEIGHT}px - ${FOOTER_HEIGHT}px)`,
+          overflowY: "auto",
         }}
       >
         {children}

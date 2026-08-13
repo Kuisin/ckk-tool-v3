@@ -28,7 +28,9 @@ import { normalizeCode } from "@/lib/crockford";
 import { prisma } from "@/lib/db";
 import {
   type KioskDeviceLogRow,
+  type KioskDeviceSessionRow,
   type KioskPresenceRow,
+  listDeviceSessions,
   listKioskDeviceLogs,
   listKioskPresence,
 } from "@/lib/kiosk-admin";
@@ -83,21 +85,18 @@ export async function fetchKioskPresence(): Promise<
 }
 
 /** 端末の利用履歴（kiosk_device_logs）をページ取得する。 */
-export async function fetchDeviceLogs(
+export async function fetchDeviceSessions(
   deviceId: string,
   cursor?: string,
 ): Promise<
-  ActionResult<{ rows: KioskDeviceLogRow[]; nextCursor: string | null }>
+  ActionResult<{ rows: KioskDeviceSessionRow[]; nextCursor: string | null }>
 > {
   const authz = await checkPermission("kiosk", "READ");
   if (!authz.ok) return actionError(authz.error);
   const parsed = uuidSchema.safeParse(deviceId);
   if (!parsed.success) return actionError("入力が不正です");
-  if (cursor != null && !/^\d+$/.test(cursor)) {
-    return actionError("入力が不正です");
-  }
   try {
-    return actionOk(await listKioskDeviceLogs(parsed.data, cursor));
+    return actionOk(await listDeviceSessions(parsed.data, cursor));
   } catch (e) {
     return actionError(prismaErrorMessage(e, "利用履歴の取得に失敗しました"));
   }

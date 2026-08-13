@@ -242,6 +242,55 @@ export async function getKioskDevice(
   return row ? toDeviceRow(row, now) : null;
 }
 
+// ── 利用履歴（セッションベース — LOGIN/LOGOUT イベントの対より正確） ─────────
+
+export interface KioskDeviceSessionRow {
+  id: string;
+  userName: string;
+  startedAt: string;
+  /** null = 利用中（未失効セッション）。 */
+  endedAt: string | null;
+}
+
+/**
+ * 端末のセッション履歴（新しい順・カーソルページング）。
+ * 終了時刻は revokedAt（ログアウト/スイープ失効）。未失効でもハード期限を
+ * 過ぎていれば期限時刻を終了として扱う（スイープ遅延の保険）。
+ */
+export async function listDeviceSessions(
+  deviceId: string,
+  cursor?: string,
+): Promise<{ rows: KioskDeviceSessionRow[]; nextCursor: string | null }> {
+  const now = Date.now();
+  const rows = await prisma.kioskSession.findMany({
+    where: { deviceId },
+    orderBy: { createdAt: "desc" },
+    take: 51,
+    ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
+    select: {
+      id: true,
+      createdAt: true,
+      expiresAt: true,
+      revokedAt: true,
+      user: { select: { displayName: true } },
+    },
+  });
+  const nextCursor = rows.length > 50 ? (rows[50]?.id ?? null) : null;
+  return {
+    rows: rows.slice(0, 50).map((r) => {
+      const ended =
+        r.revokedAt ?? (r.expiresAt.getTime() < now ? r.expiresAt : null);
+      return {
+        id: r.id,
+        userName: r.user.displayName,
+        startedAt: r.createdAt.toISOString(),
+        endedAt: ended?.toISOString() ?? null,
+      };
+    }),
+    nextCursor,
+  };
+}
+
 /** 最近この端末を使ったユーザー（LOGIN ログの集計・最終ログイン降順）。 */
 export interface KioskDeviceRecentUser {
   userId: string;
