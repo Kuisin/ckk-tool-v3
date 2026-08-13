@@ -30,6 +30,8 @@ export const ja = {
     refresh: "更新",
     empty: "本日の担当工程はありません",
     upcoming: (n: number) => `予定 ${n} 件`,
+    showCompleted: (n: number) => `完了した工程を表示（${n}）`,
+    hideCompleted: "完了した工程を隠す",
     sections: {
       overdue: "遅延",
       today: "本日",
@@ -43,6 +45,7 @@ export const ja = {
       expectedInput: (n: number) => `受入予定 ${n} 本`,
       inputRecorded: (n: number) => `受入 ${n} 本`,
       elapsed: (t: string) => `作業 ${t}`,
+      elapsedLabel: "作業",
     },
     state: {
       startable: "開始可",

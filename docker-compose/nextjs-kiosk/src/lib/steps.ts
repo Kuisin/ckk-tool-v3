@@ -73,7 +73,14 @@ export interface MyStepView {
 export interface MyStepsResult {
   steps: MyStepView[];
   upcomingCount: number;
+  /** 最近（既定 14 日）完了した自分の工程（既定は非表示・ボタンで開く）。 */
+  completedSteps: MyStepView[];
 }
+
+/** 完了工程を出す遡り期間（ミリ秒）。 */
+const COMPLETED_LOOKBACK_MS = 14 * 24 * 60 * 60 * 1000;
+/** 完了工程の最大表示件数。 */
+const COMPLETED_LIMIT = 50;
 
 /**
  * Prisma の Json 列（{ ja, en } 多言語フィールド）を表示用の型へ。
@@ -283,55 +290,70 @@ export async function listMySteps(
   const today = jstDateOnly(now);
   const todayJst = jstDateString(now);
 
-  const [planned, held, worked, upcomingCount] = await Promise.all([
-    // (1) 期日到来済み（遅延含む）の計画
-    prisma.workOrderStepPlan.findMany({
-      where: {
-        userId,
-        plannedDate: { lte: today },
-        step: {
-          status: { in: ["PENDING", "IN_PROGRESS"] },
-          workOrder: { status: { in: ["APPROVED", "IN_PROGRESS"] } },
+  const [planned, held, worked, upcomingCount, completedRows] =
+    await Promise.all([
+      // (1) 期日到来済み（遅延含む）の計画
+      prisma.workOrderStepPlan.findMany({
+        where: {
+          userId,
+          plannedDate: { lte: today },
+          step: {
+            status: { in: ["PENDING", "IN_PROGRESS"] },
+            workOrder: { status: { in: ["APPROVED", "IN_PROGRESS"] } },
+          },
         },
-      },
-      select: {
-        stepId: true,
-        plannedDate: true,
-        plannedStartAt: true,
-        plannedEndAt: true,
-        quantity: true,
-      },
-      orderBy: [{ plannedDate: "asc" }, { plannedStartAt: "asc" }],
-    }),
-    // (2) 自分がロックを保持している工程
-    prisma.workOrderStep.findMany({
-      where: { sessionLockedBy: userId, status: "IN_PROGRESS" },
-      select: { id: true },
-    }),
-    // (3) 自分が作業した進行中の工程（自分が一時停止したもの）
-    prisma.workOrderStepActual.findMany({
-      where: {
-        userId,
-        step: {
-          status: "IN_PROGRESS",
-          workOrder: { status: { in: ["APPROVED", "IN_PROGRESS"] } },
+        select: {
+          stepId: true,
+          plannedDate: true,
+          plannedStartAt: true,
+          plannedEndAt: true,
+          quantity: true,
         },
-      },
-      select: { stepId: true },
-      distinct: ["stepId"],
-    }),
-    // (4) 予定件数（チップ表示のみ）
-    prisma.workOrderStepPlan.count({
-      where: {
-        userId,
-        plannedDate: { gt: today },
-        step: {
-          status: "PENDING",
-          workOrder: { status: { in: ["APPROVED", "IN_PROGRESS"] } },
+        orderBy: [{ plannedDate: "asc" }, { plannedStartAt: "asc" }],
+      }),
+      // (2) 自分がロックを保持している工程
+      prisma.workOrderStep.findMany({
+        where: { sessionLockedBy: userId, status: "IN_PROGRESS" },
+        select: { id: true },
+      }),
+      // (3) 自分が作業した進行中の工程（自分が一時停止したもの）
+      prisma.workOrderStepActual.findMany({
+        where: {
+          userId,
+          step: {
+            status: "IN_PROGRESS",
+            workOrder: { status: { in: ["APPROVED", "IN_PROGRESS"] } },
+          },
         },
-      },
-    }),
-  ]);
+        select: { stepId: true },
+        distinct: ["stepId"],
+      }),
+      // (4) 予定件数（チップ表示のみ）
+      prisma.workOrderStepPlan.count({
+        where: {
+          userId,
+          plannedDate: { gt: today },
+          step: {
+            status: "PENDING",
+            workOrder: { status: { in: ["APPROVED", "IN_PROGRESS"] } },
+          },
+        },
+      }),
+      // (5) 最近完了した自分の工程（計画 or 実績で関与）— completedAt 降順
+      prisma.workOrderStep.findMany({
+        where: {
+          status: "COMPLETED",
+          completedAt: { gte: new Date(now.getTime() - COMPLETED_LOOKBACK_MS) },
+          OR: [
+            { plans: { some: { userId } } },
+            { actuals: { some: { userId } } },
+          ],
+        },
+        select: { id: true },
+        orderBy: { completedAt: "desc" },
+        take: COMPLETED_LIMIT,
+      }),
+    ]);
 
   // 同一工程に複数計画行がある（分割計画）場合は最も早い 1 行を代表にする
   const plansByStep = new Map<string, PlanRow>();
@@ -354,7 +376,23 @@ export async function listMySteps(
     plansByStep,
     todayJst,
   );
-  return { steps, upcomingCount };
+
+  // 完了工程は completedAt 降順で出す（hydrateSteps は compareSteps 順に
+  // 並べ替えるので、元の id 順へ戻す）。計画情報は付けない（別セクション）。
+  const completedIds = completedRows.map((r) => r.id);
+  const completedHydrated = await hydrateSteps(
+    completedIds,
+    userId,
+    locale,
+    new Map(),
+    todayJst,
+  );
+  const completedById = new Map(completedHydrated.map((v) => [v.stepId, v]));
+  const completedSteps = completedIds
+    .map((id) => completedById.get(id))
+    .filter((v): v is MyStepView => v != null);
+
+  return { steps, upcomingCount, completedSteps };
 }
 
 /**

@@ -22,6 +22,9 @@ import {
 } from "@mantine/core";
 import {
   IconArrowLeft,
+  IconChecks,
+  IconChevronDown,
+  IconChevronUp,
   IconClipboardList,
   IconRefresh,
 } from "@tabler/icons-react";
@@ -29,22 +32,24 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import type { MyStepView } from "@/lib/steps";
 import type { StepBucket } from "@/lib/steps-core";
-import { formatElapsed } from "@/lib/steps-core";
 import { ActivityMonitor } from "../ActivityMonitor";
 import { useI18n } from "../I18nProvider";
+import { LiveElapsed } from "./LiveElapsed";
 import { stateColor, stateLabel } from "./step-ui";
 
 type Props = {
   steps: MyStepView[];
   upcomingCount: number;
+  completedSteps: MyStepView[];
 };
 
 const SECTION_ORDER: StepBucket[] = ["OVERDUE", "TODAY", "UPCOMING"];
 
-export function StepListView({ steps, upcomingCount }: Props) {
+export function StepListView({ steps, upcomingCount, completedSteps }: Props) {
   const router = useRouter();
   const { m } = useI18n();
   const [refreshing, setRefreshing] = useState(false);
+  const [showCompleted, setShowCompleted] = useState(false);
 
   const refresh = () => {
     setRefreshing(true);
@@ -118,6 +123,33 @@ export function StepListView({ steps, upcomingCount }: Props) {
             );
           })
         )}
+
+        {/* 完了した工程 — 既定は非表示。ボタンで開閉する */}
+        {completedSteps.length > 0 && (
+          <Stack gap="sm">
+            <Button
+              fullWidth
+              leftSection={<IconChecks size={20} />}
+              onClick={() => setShowCompleted((s) => !s)}
+              rightSection={
+                showCompleted ? (
+                  <IconChevronUp size={18} />
+                ) : (
+                  <IconChevronDown size={18} />
+                )
+              }
+              variant="subtle"
+            >
+              {showCompleted
+                ? m.steps.hideCompleted
+                : m.steps.showCompleted(completedSteps.length)}
+            </Button>
+            {showCompleted &&
+              completedSteps.map((step) => (
+                <StepCard key={step.stepId} step={step} />
+              ))}
+          </Stack>
+        )}
       </Stack>
     </Box>
   );
@@ -189,7 +221,11 @@ function StepCard({ step }: { step: MyStepView }) {
             </Badge>
             {step.workedMs > 0 && (
               <Text c="dimmed" size="sm">
-                {m.steps.card.elapsed(formatElapsed(step.workedMs))}
+                {m.steps.card.elapsedLabel}{" "}
+                <LiveElapsed
+                  baseMs={step.workedMs}
+                  running={step.sessionState === "WORKING"}
+                />
               </Text>
             )}
           </Stack>

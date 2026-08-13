@@ -21,6 +21,8 @@ export const zh: KioskMessages = {
     refresh: "刷新",
     empty: "今天没有分配给您的工序",
     upcoming: (n: number) => `预定 ${n} 项`,
+    showCompleted: (n: number) => `显示已完成工序（${n}）`,
+    hideCompleted: "隐藏已完成工序",
     sections: {
       overdue: "延迟",
       today: "今天",
@@ -34,6 +36,7 @@ export const zh: KioskMessages = {
       expectedInput: (n: number) => `预计接收 ${n} 支`,
       inputRecorded: (n: number) => `接收 ${n} 支`,
       elapsed: (t: string) => `作业 ${t}`,
+      elapsedLabel: "作业",
     },
     state: {
       startable: "可开始",

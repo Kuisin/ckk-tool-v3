@@ -19,7 +19,6 @@ import {
   Box,
   Button,
   Group,
-  NumberInput,
   Paper,
   Stack,
   Text,
@@ -33,20 +32,21 @@ import {
   IconPlayerPlay,
 } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { playLogoutSound } from "@/lib/sound";
 import type { StepRecordingData } from "@/lib/step-records";
 import type { MyStepView } from "@/lib/steps";
 import {
   cleanReasonEntries,
   type DefectReasonEntry,
-  formatElapsed,
   type QuantityFormValues,
   quantityFormDefaults,
   withDerivedSuccess,
 } from "@/lib/steps-core";
 import { ActivityMonitor } from "../ActivityMonitor";
 import { useI18n } from "../I18nProvider";
+import { LiveElapsed } from "./LiveElapsed";
+import { NumberStepper } from "./NumberStepper";
 import { StepDefectForm } from "./StepDefectForm";
 import { StepInspectionForm } from "./StepInspectionForm";
 import { isQuantityFormValid, StepQuantityForm } from "./StepQuantityForm";
@@ -83,20 +83,6 @@ export function StepExecutionView({ step, recording }: Props) {
   const isNone = trackedMode === null;
   const working = step.sessionState === "WORKING";
   const paused = step.sessionState === "PAUSED";
-
-  // 作業中は経過時間を秒更新する（open な実績行は now まで数えられる）
-  const [elapsed, setElapsed] = useState(step.workedMs);
-  useEffect(() => {
-    setElapsed(step.workedMs);
-    if (!working) return;
-    const started = Date.now();
-    const base = step.workedMs;
-    const id = setInterval(
-      () => setElapsed(base + (Date.now() - started)),
-      1000,
-    );
-    return () => clearInterval(id);
-  }, [step.workedMs, working]);
 
   const run = async (
     body: Parameters<typeof callStepAction>[1],
@@ -175,7 +161,8 @@ export function StepExecutionView({ step, recording }: Props) {
               )}
               {(working || paused) && (
                 <Text c="dimmed" size="sm">
-                  {m.steps.card.elapsed(formatElapsed(elapsed))}
+                  {m.steps.card.elapsedLabel}{" "}
+                  <LiveElapsed baseMs={step.workedMs} running={working} />
                 </Text>
               )}
             </Group>
@@ -216,16 +203,10 @@ export function StepExecutionView({ step, recording }: Props) {
                 <Text c="dimmed">{m.steps.start.noneNote}</Text>
               ) : (
                 <>
-                  <NumberInput
-                    allowDecimal={false}
-                    allowNegative={false}
+                  <NumberStepper
                     label={m.steps.quantity[trackedMode].input}
                     min={0}
-                    onChange={(v) => {
-                      const n =
-                        typeof v === "number" ? v : Number.parseInt(v, 10);
-                      setStartInput(Number.isFinite(n) ? n : 0);
-                    }}
+                    onChange={setStartInput}
                     value={startInput}
                   />
                   {step.expectedInputQuantity != null && (
