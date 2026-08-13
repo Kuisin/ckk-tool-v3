@@ -121,6 +121,8 @@ export function itemRowSpec(
               : null,
     samplingMode: item.samplingMode,
     samplingValue: item.samplingValue,
+    recordStyle: item.recordStyle,
+    allowManualOverride: item.allowManualOverride,
     isRequired: item.isRequired,
   };
 }
@@ -315,10 +317,22 @@ export function InspectionTemplateDetail({
                               )}
                           </Table.Td>
                           <Table.Td>
-                            <Badge color="gray" variant="light">
-                              {INSPECTION_ITEM_TYPE_LABEL[item.inputType] ??
-                                item.inputType}
-                            </Badge>
+                            <Group gap={4} wrap="wrap">
+                              <Badge color="gray" variant="light">
+                                {INSPECTION_ITEM_TYPE_LABEL[item.inputType] ??
+                                  item.inputType}
+                              </Badge>
+                              {item.recordStyle === "COUNTS" && (
+                                <Badge color="cyan" size="xs" variant="light">
+                                  合格数のみ
+                                </Badge>
+                              )}
+                              {!item.allowManualOverride && (
+                                <Badge color="orange" size="xs" variant="light">
+                                  上書き不可
+                                </Badge>
+                              )}
+                            </Group>
                           </Table.Td>
                           <Table.Td>
                             <Text className="tabular-nums" size="sm">

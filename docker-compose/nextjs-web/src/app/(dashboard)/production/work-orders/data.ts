@@ -24,6 +24,7 @@ import { prisma } from "@/lib/db";
 import { formatSalesOrderNumber } from "@/lib/doc-number";
 import { type LocalizedText, localized } from "@/lib/format";
 import {
+  formatCounts,
   formatSampleValue,
   type InspectionItemRecord,
   itemSpecFromRow,
@@ -434,12 +435,18 @@ export async function fetchStepExecution(
   const nameOf = (id: string | null | undefined) =>
     id ? (users.find((u) => u.id === id)?.displayName ?? "システム") : null;
 
-  // 実測値の表示（新形式 measured_values は型別フォーマット、旧形式は生値）
+  // 実測値の表示（合格数のみ → 合格 n/m、新形式 measured_values は型別
+  // フォーマット、旧形式は生値）
   const recordItemLabel = (it: {
     measuredValue: string | null;
     measuredValues: unknown;
+    inspectedCount: number | null;
+    passedCount: number | null;
     templateItem: InspectionItemRecord;
   }): string | null => {
+    if (it.inspectedCount != null || it.passedCount != null) {
+      return formatCounts(it.inspectedCount, it.passedCount);
+    }
     const samples = parseStoredSamples(it.measuredValues);
     if (samples.length === 0) return it.measuredValue;
     const spec = itemSpecFromRow(it.templateItem);

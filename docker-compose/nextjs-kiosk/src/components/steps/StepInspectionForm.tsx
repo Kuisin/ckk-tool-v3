@@ -18,6 +18,7 @@ import {
   Button,
   Group,
   MultiSelect,
+  NumberInput,
   Paper,
   SegmentedControl,
   Select,
@@ -38,12 +39,14 @@ import type { KioskMessages } from "@/lib/i18n";
 import {
   acceptLabel,
   type BoolLabels,
-  evaluateItem,
+  evaluateEntry,
   evaluateSample,
   goalLabel,
   type InspectionSampleValue,
+  isEntryStarted,
   isSampleEmpty,
   requiredSampleCount,
+  resolveItemPass,
 } from "@/lib/inspection-core";
 import type {
   InspectionRecordView,
@@ -132,6 +135,9 @@ function RecordSummary({ record }: { record: InspectionRecordView }) {
 
 interface ItemEntry {
   samples: InspectionSampleValue[];
+  /** 記録方式 COUNTS: 検査数 / 合格数。 */
+  inspectedCount: number | null;
+  passedCount: number | null;
   /** 手動上書き（null = 自動判定に従う）。 */
   manualPass: boolean | null;
 }
@@ -153,13 +159,12 @@ function initialSamples(
   return Array.from({ length: n }, () => emptySample(item));
 }
 
-/** 項目の実効合否 — 手動上書き > 自動判定 > 既定 合格。 */
+/** 項目の実効合否（inspection-core resolveItemPass — サーバー保存と同一規則）。 */
 function effectivePass(
   item: InspectionTemplateItemView,
   entry: ItemEntry,
 ): boolean {
-  if (entry.manualPass != null) return entry.manualPass;
-  return evaluateItem(item, entry.samples) ?? true;
+  return resolveItemPass(item, entry, entry.manualPass);
 }
 
 function SampleInput({
@@ -281,6 +286,8 @@ export function StepInspectionForm({
   ): ItemEntry =>
     entries[`${template.id}:${item.id}`] ?? {
       samples: initialSamples(item, lotQuantity),
+      inspectedCount: null,
+      passedCount: null,
       manualPass: null,
     };
 
@@ -299,10 +306,23 @@ export function StepInspectionForm({
     setSavedTemplate(null);
     const missing = template.items.some((it) => {
       const entry = entryOf(template, it);
-      return it.isRequired && entry.samples.every((s) => isSampleEmpty(s));
+      return it.isRequired && !isEntryStarted(it, entry);
     });
     if (missing) {
       setError(m.steps.inspection.requiredMissing);
+      return;
+    }
+    const countsOver = template.items.some((it) => {
+      const entry = entryOf(template, it);
+      return (
+        it.recordStyle === "COUNTS" &&
+        entry.inspectedCount != null &&
+        entry.passedCount != null &&
+        entry.passedCount > entry.inspectedCount
+      );
+    });
+    if (countsOver) {
+      setError(m.steps.inspection.countsOver);
       return;
     }
     setBusy(true);
@@ -311,9 +331,14 @@ export function StepInspectionForm({
       templateId: template.id,
       items: template.items.map((it) => {
         const entry = entryOf(template, it);
+        const isCounts = it.recordStyle === "COUNTS";
         return {
           templateItemId: it.id,
-          values: entry.samples.filter((s) => !isSampleEmpty(s)),
+          values: isCounts
+            ? []
+            : entry.samples.filter((s) => !isSampleEmpty(s)),
+          inspectedCount: isCounts ? entry.inspectedCount : null,
+          passedCount: isCounts ? entry.passedCount : null,
           isPass: effectivePass(it, entry),
         };
       }),
@@ -379,8 +404,10 @@ export function StepInspectionForm({
                 const accept = acceptLabel(item, locale, bool);
                 const goal = goalLabel(item, locale, bool);
                 const required = requiredSampleCount(item, lotQuantity);
-                const auto = evaluateItem(item, entry.samples);
+                const auto = evaluateEntry(item, entry);
+                const started = isEntryStarted(item, entry);
                 const pass = effectivePass(item, entry);
+                const isCounts = item.recordStyle === "COUNTS";
                 return (
                   <Paper key={item.id} p="sm" radius="sm" withBorder>
                     <Stack gap="xs">
@@ -406,105 +433,182 @@ export function StepInspectionForm({
                         )}
                       </Group>
 
-                      {entry.samples.map((sample, idx) => {
-                        const verdict = evaluateSample(item, sample);
-                        return (
-                          <Group
-                            align="center"
-                            gap="sm"
-                            // biome-ignore lint/suspicious/noArrayIndexKey: 行は追加/削除のみで並べ替えない
-                            key={idx}
-                            wrap="nowrap"
-                          >
-                            <SampleInput
-                              bool={bool}
-                              index={idx}
-                              item={item}
-                              locale={locale}
-                              onChange={(v) =>
-                                setEntry(template, item, {
-                                  samples: entry.samples.map((s, i) =>
-                                    i === idx ? v : s,
-                                  ),
-                                })
-                              }
-                              placeholder={
-                                item.inputType === "NUMBER"
-                                  ? m.steps.inspection.measured
-                                  : m.steps.inspection.selectPlaceholder
-                              }
-                              value={sample}
-                            />
-                            {verdict != null && (
-                              <Text
-                                c={verdict ? "green" : "red"}
-                                fw={700}
-                                size="lg"
-                              >
-                                {verdict ? "○" : "×"}
-                              </Text>
-                            )}
-                            {entry.samples.length > 1 && (
-                              <ActionIcon
-                                aria-label={`${item.name} #${idx + 1} — ${m.steps.inspection.removeRow}`}
-                                color="gray"
-                                onClick={() =>
-                                  setEntry(template, item, {
-                                    samples: entry.samples.filter(
-                                      (_, i) => i !== idx,
-                                    ),
-                                  })
-                                }
-                                size="lg"
-                                variant="subtle"
-                              >
-                                <IconX size={18} />
-                              </ActionIcon>
-                            )}
-                          </Group>
-                        );
-                      })}
-                      <Group justify="space-between" wrap="wrap">
-                        <Button
-                          leftSection={<IconPlus size={16} />}
-                          onClick={() =>
-                            setEntry(template, item, {
-                              samples: [...entry.samples, emptySample(item)],
-                            })
-                          }
-                          size="sm"
-                          variant="subtle"
-                        >
-                          {m.steps.inspection.addRow}
-                        </Button>
-                        <Group gap="xs" wrap="wrap">
-                          <SegmentedControl
-                            color={pass ? "green" : "red"}
-                            data={[
-                              {
-                                value: "PASS",
-                                label: m.steps.inspection.pass,
-                              },
-                              {
-                                value: "FAIL",
-                                label: m.steps.inspection.fail,
-                              },
-                            ]}
+                      {isCounts && (
+                        <Group align="flex-end" gap="sm" wrap="wrap">
+                          <NumberInput
+                            allowNegative={false}
+                            label={m.steps.inspection.inspectedCount}
+                            min={0}
                             onChange={(v) =>
                               setEntry(template, item, {
-                                manualPass: v === "PASS",
+                                inspectedCount:
+                                  v === "" || v == null ? null : Number(v),
+                              })
+                            }
+                            placeholder={
+                              required != null ? String(required) : undefined
+                            }
+                            size="lg"
+                            value={entry.inspectedCount ?? ""}
+                            w={140}
+                          />
+                          <NumberInput
+                            allowNegative={false}
+                            label={m.steps.inspection.passedCount}
+                            min={0}
+                            onChange={(v) =>
+                              setEntry(template, item, {
+                                passedCount:
+                                  v === "" || v == null ? null : Number(v),
                               })
                             }
                             size="lg"
-                            value={pass ? "PASS" : "FAIL"}
+                            value={entry.passedCount ?? ""}
+                            w={140}
                           />
+                          {entry.inspectedCount != null &&
+                            entry.passedCount != null && (
+                              <Text
+                                c={
+                                  entry.passedCount > entry.inspectedCount
+                                    ? "red"
+                                    : "dimmed"
+                                }
+                                size="sm"
+                              >
+                                {entry.passedCount > entry.inspectedCount
+                                  ? m.steps.inspection.countsOver
+                                  : m.steps.inspection.failCount(
+                                      entry.inspectedCount - entry.passedCount,
+                                    )}
+                              </Text>
+                            )}
+                        </Group>
+                      )}
+
+                      {!isCounts &&
+                        entry.samples.map((sample, idx) => {
+                          const verdict = evaluateSample(item, sample);
+                          return (
+                            <Group
+                              align="center"
+                              gap="sm"
+                              // biome-ignore lint/suspicious/noArrayIndexKey: 行は追加/削除のみで並べ替えない
+                              key={idx}
+                              wrap="nowrap"
+                            >
+                              <SampleInput
+                                bool={bool}
+                                index={idx}
+                                item={item}
+                                locale={locale}
+                                onChange={(v) =>
+                                  setEntry(template, item, {
+                                    samples: entry.samples.map((s, i) =>
+                                      i === idx ? v : s,
+                                    ),
+                                  })
+                                }
+                                placeholder={
+                                  item.inputType === "NUMBER"
+                                    ? m.steps.inspection.measured
+                                    : m.steps.inspection.selectPlaceholder
+                                }
+                                value={sample}
+                              />
+                              {verdict != null && (
+                                <Text
+                                  c={verdict ? "green" : "red"}
+                                  fw={700}
+                                  size="lg"
+                                >
+                                  {verdict ? "○" : "×"}
+                                </Text>
+                              )}
+                              {entry.samples.length > 1 && (
+                                <ActionIcon
+                                  aria-label={`${item.name} #${idx + 1} — ${m.steps.inspection.removeRow}`}
+                                  color="gray"
+                                  onClick={() =>
+                                    setEntry(template, item, {
+                                      samples: entry.samples.filter(
+                                        (_, i) => i !== idx,
+                                      ),
+                                    })
+                                  }
+                                  size="lg"
+                                  variant="subtle"
+                                >
+                                  <IconX size={18} />
+                                </ActionIcon>
+                              )}
+                            </Group>
+                          );
+                        })}
+                      <Group justify="space-between" wrap="wrap">
+                        {isCounts ? (
+                          <span />
+                        ) : (
+                          <Button
+                            leftSection={<IconPlus size={16} />}
+                            onClick={() =>
+                              setEntry(template, item, {
+                                samples: [...entry.samples, emptySample(item)],
+                              })
+                            }
+                            size="sm"
+                            variant="subtle"
+                          >
+                            {m.steps.inspection.addRow}
+                          </Button>
+                        )}
+                        <Group gap="xs" wrap="wrap">
+                          {item.allowManualOverride ? (
+                            <SegmentedControl
+                              color={pass ? "green" : "red"}
+                              data={[
+                                {
+                                  value: "PASS",
+                                  label: m.steps.inspection.pass,
+                                },
+                                {
+                                  value: "FAIL",
+                                  label: m.steps.inspection.fail,
+                                },
+                              ]}
+                              onChange={(v) =>
+                                setEntry(template, item, {
+                                  manualPass: v === "PASS",
+                                })
+                              }
+                              size="lg"
+                              value={pass ? "PASS" : "FAIL"}
+                            />
+                          ) : (
+                            started && (
+                              <Badge
+                                color={pass ? "green" : "red"}
+                                size="lg"
+                                variant="light"
+                              >
+                                {pass
+                                  ? m.steps.inspection.pass
+                                  : m.steps.inspection.fail}
+                              </Badge>
+                            )
+                          )}
                           <Text c="dimmed" size="xs">
-                            {auto == null
-                              ? m.steps.inspection.autoNone
-                              : entry.manualPass != null &&
-                                  entry.manualPass !== auto
-                                ? m.steps.inspection.autoOverridden(auto)
-                                : m.steps.inspection.autoVerdict(auto)}
+                            {!started
+                              ? isCounts
+                                ? m.steps.inspection.waitingCounts
+                                : m.steps.inspection.waitingValues
+                              : auto == null
+                                ? m.steps.inspection.autoNone
+                                : entry.manualPass != null &&
+                                    entry.manualPass !== auto &&
+                                    item.allowManualOverride
+                                  ? m.steps.inspection.autoOverridden(auto)
+                                  : m.steps.inspection.autoVerdict(auto)}
                           </Text>
                         </Group>
                       </Group>

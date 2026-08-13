@@ -25,12 +25,14 @@ import { localized } from "./format";
 import type { Locale } from "./i18n";
 import {
   type BoolLabels,
+  formatCounts,
   formatSampleValue,
   type InspectionItemSpec,
   type InspectionSampleValue,
   isSampleEmpty,
   itemSpecFromRow,
   parseStoredSamples,
+  resolveItemPass,
 } from "./inspection-core";
 import type { StepActionResult, StepErrorCode } from "./step-execution";
 import { inspectionOutcome } from "./steps-core";
@@ -171,12 +173,19 @@ export async function getStepRecordingData(
 
   const bool = BOOL_LABELS[locale];
 
-  // 実測値の表示（新形式 measured_values は型別フォーマット、旧形式は生値）
+  // 実測値の表示（合格数のみ → 合格 n/m、新形式 measured_values は型別
+  // フォーマット、旧形式は生値）
+  const passLabel = locale === "en" ? "Pass" : "合格";
   const valueLabel = (it: {
     measuredValue: string | null;
     measuredValues: unknown;
+    inspectedCount: number | null;
+    passedCount: number | null;
     templateItem: Parameters<typeof itemSpecFromRow>[0];
   }): string | null => {
+    if (it.inspectedCount != null || it.passedCount != null) {
+      return formatCounts(it.inspectedCount, it.passedCount, passLabel);
+    }
     const samples = parseStoredSamples(it.measuredValues);
     if (samples.length === 0) return it.measuredValue;
     const spec = itemSpecFromRow(it.templateItem);
@@ -263,14 +272,18 @@ export interface InspectionItemInput {
   templateItemId: number;
   /** サンプル値配列（SELECT_MULTI は value[]、他は文字列）。 */
   values: InspectionSampleValue[];
+  /** 記録方式 COUNTS: 検査数・合格数（VALUES は null）。 */
+  inspectedCount: number | null;
+  passedCount: number | null;
   isPass: boolean;
 }
 
 /**
  * 検査記録の保存 — 全項目合格なら PASS、1 つでも不合格なら FAIL。
  * テンプレートは指示書に紐付くもののみ・項目はそのテンプレートの項目のみ。
- * サンプル値は型検証（選択肢 membership・真偽エンコード）する
- * （nextjs-web saveInspectionRecord と同一規則）。
+ * サンプル値は型検証（選択肢 membership・真偽エンコード）し、合否は
+ * resolveItemPass でサーバー側でも解決（上書き不可の項目は自動判定を強制）
+ * — nextjs-web saveInspectionRecord と同一規則。
  */
 export async function recordInspection(
   stepId: string,
@@ -323,9 +336,35 @@ export async function recordInspection(
         return fail("TEMPLATE_INVALID", "真偽項目の値が不正です");
       }
     }
+    if (
+      spec.recordStyle === "COUNTS" &&
+      i.inspectedCount != null &&
+      i.passedCount != null &&
+      i.passedCount > i.inspectedCount
+    ) {
+      return fail("ITEMS_REQUIRED", "合格数が検査数を超えています");
+    }
   }
 
-  const status = inspectionOutcome(items);
+  // 合否はサーバーでも解決 — 上書き不可の項目はクライアント値を無視して
+  // 自動判定を強制（resolveItemPass — web 側と同一規則）。
+  const resolved = items.map((i) => {
+    const spec = specs.get(i.templateItemId);
+    const isCounts = spec?.recordStyle === "COUNTS";
+    const entryData = {
+      samples: i.values,
+      inspectedCount: isCounts ? i.inspectedCount : null,
+      passedCount: isCounts ? i.passedCount : null,
+    };
+    return {
+      templateItemId: i.templateItemId,
+      measuredValues: isCounts ? [] : i.values.filter((s) => !isSampleEmpty(s)),
+      inspectedCount: entryData.inspectedCount,
+      passedCount: entryData.passedCount,
+      isPass: spec ? resolveItemPass(spec, entryData, i.isPass) : i.isPass,
+    };
+  });
+  const status = inspectionOutcome(resolved);
   await prisma.inspectionRecord.create({
     data: {
       workOrderStepId: stepId,
@@ -333,13 +372,7 @@ export async function recordInspection(
       status,
       recordedBy: actorId,
       recordedAt: new Date(),
-      items: {
-        create: items.map((i) => ({
-          templateItemId: i.templateItemId,
-          measuredValues: i.values.filter((s) => !isSampleEmpty(s)),
-          isPass: i.isPass,
-        })),
-      },
+      items: { create: resolved },
     },
   });
   await recordAudit({
