@@ -57,6 +57,26 @@ The check probes the kiosk URL itself, so **no internet access is required** —
 
 When the server becomes unreachable, the web UI switches to a full-screen "cannot connect" view and returns automatically once the connection recovers. The dedicated app (v0.4.0+) also shows an in-app offline screen when the page itself fails to load, and reloads automatically as soon as the server is reachable again. No action is needed on the tablet.
 
+## Always-on display (clock, battery, connection)
+
+The kiosk runs full-screen with the OS status bar hidden, so the app header always shows the **connection dot, battery level, and current time** at the top right. The battery shows a green bolt while charging and turns red below 15%. The UI is always dark-themed.
+
+## Screen sleep (kept awake while charging)
+
+- **Dedicated app**: the screen stays on whenever the app is showing
+- **Browser use**: the screen is kept awake **only while charging** (on battery it sleeps per OS settings)
+
+## Changing Wi-Fi (network)
+
+Even while kiosk-locked, an administrator can temporarily lift the lock to open Android Settings:
+
+1. **Tap the top-right corner 5 times within 3 seconds** (the maintenance dialog opens)
+2. Enter the **admin PIN** and tap **設定を開く** (Open Settings) — the PIN is the `KIOSK_UNLOCK_PIN` set at build time
+3. Android Settings opens — **change the Wi-Fi**
+4. Return to the app (back button etc.) and it **re-locks automatically**
+
+> The top-LEFT 5-tap is a different feature (device settings, unlocked with the 6-digit settings code). Network changes use the **top right**.
+
 ## Updating devices (automatic)
 
 The app **updates itself**. It checks for a new release about once an hour and applies it with an automatic restart at night (1:00–6:00 AM) so work is never interrupted (an update found right after app start is applied immediately). Just release a new APK — no work on the tablets is needed.
