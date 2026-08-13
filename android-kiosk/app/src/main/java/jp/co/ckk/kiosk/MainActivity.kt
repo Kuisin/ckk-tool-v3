@@ -8,6 +8,8 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.os.SystemClock
 import android.provider.Settings
 import android.text.InputType
@@ -17,7 +19,9 @@ import android.widget.EditText
 import android.widget.Toast
 import android.webkit.PermissionRequest
 import android.webkit.WebChromeClient
+import android.webkit.WebResourceError
 import android.webkit.WebResourceRequest
+import android.webkit.WebResourceResponse
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.activity.ComponentActivity
@@ -27,6 +31,8 @@ import androidx.core.content.ContextCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
+import java.net.HttpURLConnection
+import java.net.URL
 
 /**
  * MainActivity — キオスク WebView シェル。
@@ -48,6 +54,12 @@ class MainActivity : ComponentActivity() {
 
     private lateinit var webView: WebView
     private var pendingPermissionRequest: PermissionRequest? = null
+
+    // オフラインモード: メインフレームの読み込み失敗で表示し、
+    // BASE_URL への疎通（LAN 内解決でも可 — インターネット到達性は見ない）が
+    // 回復したら自動でアプリを再読み込みする
+    private var offlineMode = false
+    private val offlineHandler = Handler(Looper.getMainLooper())
 
     // メンテナンス退出ジェスチャ（右上 5 連続タップ）
     private var cornerTapCount = 0
@@ -100,6 +112,33 @@ class MainActivity : ComponentActivity() {
                 // キオスクのホスト以外へは遷移させない
                 return request.url.host != baseHost
             }
+
+            override fun onReceivedError(
+                view: WebView,
+                request: WebResourceRequest,
+                error: WebResourceError,
+            ) {
+                // メインフレームの失敗のみオフライン扱い（画像等の失敗は無視）
+                if (request.isForMainFrame) showOfflinePage()
+            }
+
+            override fun onReceivedHttpError(
+                view: WebView,
+                request: WebResourceRequest,
+                errorResponse: WebResourceResponse,
+            ) {
+                // 502/503 等（リバースプロキシは生きていてアプリが落ちている場合）
+                if (request.isForMainFrame && errorResponse.statusCode >= 500) {
+                    showOfflinePage()
+                }
+            }
+
+            override fun onPageFinished(view: WebView, url: String) {
+                // 実ページの読み込み完了 = オンライン復帰（フォールバック自身は除外）
+                if (!url.startsWith("data:") && !url.startsWith("about:")) {
+                    offlineMode = false
+                }
+            }
         }
 
         webView.webChromeClient = object : WebChromeClient() {
@@ -146,6 +185,45 @@ class MainActivity : ComponentActivity() {
         webView.saveState(outState)
     }
 
+    // ─── オフラインモード ───────────────────────────────────────────
+
+    private fun showOfflinePage() {
+        if (offlineMode) return
+        offlineMode = true
+        webView.loadDataWithBaseURL(null, OFFLINE_HTML, "text/html", "utf-8", null)
+        offlineHandler.postDelayed({ probeAndRecover() }, OFFLINE_RETRY_MS)
+    }
+
+    /** サーバー疎通を裏スレッドで確認し、回復していれば再読み込みする。 */
+    private fun probeAndRecover() {
+        if (!offlineMode) return
+        Thread {
+            val ok = probeServer()
+            runOnUiThread {
+                if (!offlineMode) return@runOnUiThread
+                if (ok) {
+                    offlineMode = false
+                    webView.loadUrl(BuildConfig.BASE_URL)
+                } else {
+                    offlineHandler.postDelayed({ probeAndRecover() }, OFFLINE_RETRY_MS)
+                }
+            }
+        }.start()
+    }
+
+    /** BASE_URL（/api/healthz）への到達確認。LAN 内の名前解決だけで成立する。 */
+    private fun probeServer(): Boolean = try {
+        val conn =
+            URL("${BuildConfig.BASE_URL}/api/healthz").openConnection() as HttpURLConnection
+        conn.connectTimeout = 4_000
+        conn.readTimeout = 4_000
+        val ok = conn.responseCode in 200..299
+        conn.disconnect()
+        ok
+    } catch (_: Exception) {
+        false
+    }
+
     override fun onResume() {
         super.onResume()
         // メンテナンスから戻ったとき等に Lock Task とステータスバー無効を復元
@@ -155,6 +233,8 @@ class MainActivity : ComponentActivity() {
                 startLockTask()
             }
         }
+        // オフライン中に画面復帰したら待たずに疎通確認
+        if (offlineMode) probeAndRecover()
     }
 
     private fun lockTaskModeState(): Int =
@@ -243,3 +323,26 @@ class MainActivity : ComponentActivity() {
         }
     }
 }
+
+private const val OFFLINE_RETRY_MS = 5_000L
+
+// オフライン時のフォールバック画面（Web と同じ濃紺テーマ・日本語固定）
+private val OFFLINE_HTML = """
+<!doctype html><html lang="ja"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  body { margin:0; height:100vh; display:flex; align-items:center; justify-content:center;
+         background:#121322; color:#c9cce3; font-family:'Noto Sans JP',sans-serif; }
+  .wrap { text-align:center; padding:0 32px; }
+  h1 { font-size:22px; margin:0 0 12px; color:#fff; }
+  p { font-size:15px; line-height:1.8; margin:0 0 20px; color:#8f94b5; }
+  .dot { display:inline-block; width:10px; height:10px; border-radius:50%;
+         background:#6d7394; margin:0 4px; animation:b 1.2s ease-in-out infinite; }
+  .dot:nth-child(2){ animation-delay:.2s } .dot:nth-child(3){ animation-delay:.4s }
+  @keyframes b { 0%,100%{ opacity:.25 } 50%{ opacity:1 } }
+</style></head><body><div class="wrap">
+<h1>サーバーに接続できません</h1>
+<p>ネットワーク（Wi-Fi / LAN）を確認してください。<br>接続が回復すると自動的に再開します。</p>
+<span class="dot"></span><span class="dot"></span><span class="dot"></span>
+</div></body></html>
+""".trimIndent()
