@@ -11,12 +11,19 @@
  * Main は flex column — 各ページは style={{flex:1}} の Center で縦中央に置ける。
  */
 
-import { AppShell, Badge, Group, Text, UnstyledButton } from "@mantine/core";
+import {
+  AppShell,
+  Badge,
+  Box,
+  Group,
+  Text,
+  UnstyledButton,
+} from "@mantine/core";
 import { IconDeviceTablet } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
 import { type ReactNode, useRef } from "react";
 import { ConnectionIndicator } from "./ConnectionIndicator";
-import { StatusTray } from "./StatusTray";
+import { BatteryStatus, HeaderClock } from "./StatusTray";
 
 const HEADER_HEIGHT = 56;
 const FOOTER_HEIGHT = 36;
@@ -59,20 +66,41 @@ export function KioskShell({ deviceName, registered, children }: Props) {
       header={{ height: HEADER_HEIGHT }}
       padding={0}
     >
-      <AppShell.Header>
+      <AppShell.Header style={{ position: "relative" }}>
+        {/* 中央: 日付時刻（左右の幅に影響されない絶対中央配置） */}
+        <Box
+          style={{
+            position: "absolute",
+            left: "50%",
+            top: "50%",
+            transform: "translate(-50%, -50%)",
+            pointerEvents: "none",
+          }}
+        >
+          <HeaderClock />
+        </Box>
         <Group h="100%" justify="space-between" px="lg" wrap="nowrap">
-          <UnstyledButton
-            aria-label="CKK 専用端末"
-            onClick={handleTitleTap}
-            style={{ cursor: "default" }}
-          >
-            <Group gap="xs" wrap="nowrap">
-              <IconDeviceTablet color="var(--mantine-color-blue-4)" size={24} />
-              <Text fw={700} size="md">
-                CKK 専用端末
-              </Text>
-            </Group>
-          </UnstyledButton>
+          {/* 左: タイトル + バッテリー */}
+          <Group gap="md" wrap="nowrap">
+            <UnstyledButton
+              aria-label="CKK 専用端末"
+              onClick={handleTitleTap}
+              style={{ cursor: "default" }}
+            >
+              <Group gap="xs" wrap="nowrap">
+                <IconDeviceTablet
+                  color="var(--mantine-color-blue-4)"
+                  size={24}
+                />
+                <Text fw={700} size="md">
+                  CKK 専用端末
+                </Text>
+              </Group>
+            </UnstyledButton>
+            {/* バッテリー（イマーシブでシステムバーが見えないため常時表示） */}
+            <BatteryStatus />
+          </Group>
+          {/* 右: 接続ドット + 端末名 + 日付時刻 */}
           <Group gap={8} wrap="nowrap">
             {/* 接続状態ドット（灰=接続なし/赤=未登録/橙=ブラウザ/緑=専用アプリ、
                 点滅=不安定）+ オフライン時の全画面オーバーレイ */}
@@ -86,8 +114,6 @@ export function KioskShell({ deviceName, registered, children }: Props) {
                 未登録端末
               </Badge>
             )}
-            {/* バッテリー + 時刻（イマーシブでシステムバーが見えないため常時表示） */}
-            <StatusTray />
           </Group>
         </Group>
       </AppShell.Header>

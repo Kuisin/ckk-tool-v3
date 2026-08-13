@@ -71,7 +71,7 @@ The kiosk runs full-screen with the OS status bar hidden, so the app header alwa
 Even while kiosk-locked, an administrator can temporarily lift the lock to open Android Settings:
 
 1. **Tap the top-right corner 5 times within 3 seconds** (the maintenance dialog opens)
-2. Enter the **admin PIN** and tap **設定を開く** (Open Settings) — the PIN is the `KIOSK_UNLOCK_PIN` set at build time
+2. Enter the **admin PIN** and tap **設定を開く** (Open Settings) — the PIN is **shared by all devices and auto-rotates daily at 4:00**; check it on the device detail page in Device Management (SY09) under "PIN・設定コード" (revealing is audit-logged)
 3. Android Settings opens — **change the Wi-Fi**
 4. Return to the app (back button etc.) and it **re-locks automatically**
 

@@ -1,16 +1,18 @@
 "use client";
 
 /**
- * StatusTray.tsx — ヘッダー常時表示のバッテリー + 時刻（+ 画面ウェイクロック）。
+ * StatusTray.tsx — ヘッダー常時表示のバッテリー（左）と日付時刻（右）。
  *
  * キオスクはシステムバー非表示（イマーシブ）で OS の時計・電池が見えないため、
  * アプリ内ヘッダーに常時表示する。ネットワーク状態は ConnectionIndicator が担当。
+ * ヘッダー配置: 左 = タイトル + BatteryStatus / 右 = 接続ドット + 端末名 + HeaderClock
  *
- * - 時刻: HH:MM（10 秒ごと更新。ハイドレーション不一致を避けるためマウント後に表示）
- * - バッテリー: Battery Status API（非対応ブラウザでは非表示）
- * - ウェイクロック: **充電中は画面をスリープさせない**（Screen Wake Lock API。
- *   Battery API 非対応時は常時保持 — 共有キオスクのため安全側）。専用アプリは
- *   ネイティブ側の FLAG_KEEP_SCREEN_ON もあり常時 ON。
+ * - BatteryStatus: Battery Status API（非対応ブラウザでは非表示）。
+ *   あわせて**充電中は画面をスリープさせない**（Screen Wake Lock。Battery API
+ *   非対応時は常時保持 — 共有キオスクのため安全側）。専用アプリはネイティブ側の
+ *   FLAG_KEEP_SCREEN_ON もあり常時 ON。
+ * - HeaderClock: M/D(曜) HH:MM — 10 秒ごと更新（ハイドレーション不一致を
+ *   避けるためマウント後に表示）
  */
 
 import { Group, Text } from "@mantine/core";
@@ -41,24 +43,37 @@ function batteryIcon(level: number) {
   return IconBattery;
 }
 
-export function StatusTray() {
-  const [time, setTime] = useState<string | null>(null);
-  const [battery, setBattery] = useState<BatteryState | null>(null);
+const WEEKDAYS = ["日", "月", "火", "水", "木", "金", "土"] as const;
 
-  // 時計（HH:MM — 10 秒ごとに再計算）
+/** 日付 + 時刻（ヘッダー右側）。 */
+export function HeaderClock() {
+  const [time, setTime] = useState<string | null>(null);
+
   useEffect(() => {
     const tick = () => {
       const d = new Date();
       setTime(
-        `${String(d.getHours()).padStart(2, "0")}:${String(
-          d.getMinutes(),
-        ).padStart(2, "0")}`,
+        `${d.getMonth() + 1}/${d.getDate()}(${WEEKDAYS[d.getDay()]}) ${String(
+          d.getHours(),
+        ).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`,
       );
     };
     tick();
     const timer = setInterval(tick, 10_000);
     return () => clearInterval(timer);
   }, []);
+
+  if (!time) return null;
+  return (
+    <Text fw={600} size="md" style={{ fontVariantNumeric: "tabular-nums" }}>
+      {time}
+    </Text>
+  );
+}
+
+/** バッテリー表示 + 充電中ウェイクロック（ヘッダー左側）。 */
+export function BatteryStatus() {
+  const [battery, setBattery] = useState<BatteryState | null>(null);
 
   // バッテリー（Battery Status API — 非対応なら非表示のまま）
   useEffect(() => {
@@ -146,38 +161,29 @@ export function StatusTray() {
     };
   }, []);
 
-  const BatteryIcon = battery ? batteryIcon(battery.level) : null;
-
+  if (!battery) return null;
+  const BatteryIcon = batteryIcon(battery.level);
   return (
-    <Group gap="xs" wrap="nowrap">
-      {battery && BatteryIcon && (
-        <Group gap={2} wrap="nowrap">
-          {battery.charging ? (
-            <IconBoltFilled color="var(--mantine-color-green-5)" size={16} />
-          ) : (
-            <BatteryIcon
-              color={
-                battery.level < 0.15
-                  ? "var(--mantine-color-red-5)"
-                  : "var(--mantine-color-gray-4)"
-              }
-              size={18}
-            />
-          )}
-          <Text
-            c={battery.level < 0.15 && !battery.charging ? "red" : "dimmed"}
-            size="sm"
-            style={{ fontVariantNumeric: "tabular-nums" }}
-          >
-            {Math.round(battery.level * 100)}%
-          </Text>
-        </Group>
+    <Group gap={2} wrap="nowrap">
+      {battery.charging ? (
+        <IconBoltFilled color="var(--mantine-color-green-5)" size={16} />
+      ) : (
+        <BatteryIcon
+          color={
+            battery.level < 0.15
+              ? "var(--mantine-color-red-5)"
+              : "var(--mantine-color-gray-4)"
+          }
+          size={18}
+        />
       )}
-      {time && (
-        <Text fw={600} size="md" style={{ fontVariantNumeric: "tabular-nums" }}>
-          {time}
-        </Text>
-      )}
+      <Text
+        c={battery.level < 0.15 && !battery.charging ? "red" : "dimmed"}
+        size="sm"
+        style={{ fontVariantNumeric: "tabular-nums" }}
+      >
+        {Math.round(battery.level * 100)}%
+      </Text>
     </Group>
   );
 }

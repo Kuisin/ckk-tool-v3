@@ -13,7 +13,13 @@ import type { AuditEntry } from "@/components/ui/shells";
 import { prisma } from "@/lib/db";
 import { formatDateTime } from "@/lib/format";
 
-export type AuditAction = "CREATE" | "UPDATE" | "DELETE" | "SEED" | "MIGRATE";
+export type AuditAction =
+  | "CREATE"
+  | "UPDATE"
+  | "DELETE"
+  | "SEED"
+  | "MIGRATE"
+  | "VIEW";
 
 /**
  * システムユーザー（固定 UUID）。認証実装前の操作、および seed・force-migration
