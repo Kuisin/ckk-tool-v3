@@ -18,6 +18,7 @@ import {
   type KioskCardPrintRow,
 } from "@/lib/kiosk-admin";
 import { renderPdf } from "@/lib/pdf";
+import { withPrintPreferences } from "@/lib/pdf-print-prefs";
 import { qrSvg } from "@/lib/qr";
 
 export const dynamic = "force-dynamic";
@@ -114,6 +115,9 @@ export async function GET(request: Request): Promise<Response> {
       { pages: pagesHtml(cards) },
       { margins: "0" },
     );
+    // 印刷ダイアログの既定を「原寸（100%）・用紙は PDF サイズ = A4」に固定する
+    // （フチなし前提のカード位置が「用紙に合わせて縮小」でずれるのを防ぐ）。
+    pdf = withPrintPreferences(pdf);
   } catch (err) {
     console.error("[pdf/kiosk-cards]", err);
     return Response.json({ error: "PDF generation failed" }, { status: 502 });
