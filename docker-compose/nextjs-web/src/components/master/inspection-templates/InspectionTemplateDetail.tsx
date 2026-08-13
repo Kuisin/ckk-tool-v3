@@ -188,6 +188,10 @@ export function InspectionTemplateDetail({
               ? undefined
               : () => router.push(`${BASE_PATH}/${record.id}/edit`)
           }
+          pdf={{
+            href: `/api/pdf/inspection-sheet?templateId=${record.id}`,
+            label: "空欄シート",
+          }}
         />
       }
       breadcrumbs={[

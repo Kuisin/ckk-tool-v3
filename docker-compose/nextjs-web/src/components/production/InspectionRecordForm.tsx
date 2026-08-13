@@ -30,7 +30,7 @@ import {
   Tooltip,
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
-import { IconPlus, IconTrash } from "@tabler/icons-react";
+import { IconFileTypePdf, IconPlus, IconTrash } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import {
@@ -42,6 +42,7 @@ import {
   GhostButton,
   PrimaryButton,
 } from "@/components/ui/buttons";
+import { PdfButton } from "@/components/ui/PdfButton";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { formatDateTime } from "@/lib/format";
 import {
@@ -104,6 +105,19 @@ function RecordSummary({ record }: { record: InspectionRecordView }) {
             {record.approvedByName ? `（${record.approvedByName}）` : ""}
           </Text>
         )}
+        <Tooltip label="記入済み検査表を PDF で表示" withinPortal>
+          <ActionIcon
+            aria-label="検査記録 PDF"
+            color="gray"
+            component="a"
+            href={`/api/pdf/inspection-record?id=${record.id}`}
+            rel="noopener noreferrer"
+            target="_blank"
+            variant="subtle"
+          >
+            <IconFileTypePdf size={16} />
+          </ActionIcon>
+        </Tooltip>
       </Group>
       {record.items.length > 0 && (
         <Group gap="sm" mt="xs" wrap="wrap">
@@ -325,11 +339,17 @@ export function InspectionRecordForm({
         {canRecord &&
           templates.map((template) => (
             <Stack gap="sm" key={template.id}>
-              <Group gap="xs" wrap="wrap">
-                <Title order={5}>{template.name}</Title>
-                <Badge color="gray" size="sm" variant="outline">
-                  v{template.version}
-                </Badge>
+              <Group gap="xs" justify="space-between" wrap="wrap">
+                <Group gap="xs" wrap="nowrap">
+                  <Title order={5}>{template.name}</Title>
+                  <Badge color="gray" size="sm" variant="outline">
+                    v{template.version}
+                  </Badge>
+                </Group>
+                <PdfButton
+                  href={`/api/pdf/inspection-sheet?templateId=${template.id}&workOrder=${workOrderNumber}`}
+                  label="空欄シートを印刷"
+                />
               </Group>
               {template.items.map((item) => {
                 const entry = entryOf(template, item);
