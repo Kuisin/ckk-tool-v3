@@ -6,6 +6,12 @@
  * 工場 → フロア（タブ）→ マップ上に端末ピン（mapX/mapY %座標）を表示する。
  * ピンの色はオンライン状態（useKioskPresence ライブ / initialOnline フォールバック）。
  *
+ * 閲覧モード:
+ *   - 右パネルに工場の端末一覧（このフロア / その他）を表示
+ *   - ピンをクリックで選択 → 一覧の該当行をハイライト（スクロールも追従）、
+ *     一覧の行クリックでもピンをハイライト
+ *   - ピンをダブルクリック / 行の「>」で端末詳細ページへ移動
+ *
  * 編集モード:
  *   - ピンをポインタードラッグで移動（drop で placeDevice に %座標を保存）
  *   - サイドバーの未配置端末をクリックで中央（50%, 50%）に配置
@@ -22,6 +28,7 @@ import {
   Flex,
   Group,
   Paper,
+  ScrollArea,
   Select,
   Stack,
   Switch,
@@ -33,6 +40,7 @@ import {
 import { notifications } from "@mantine/notifications";
 import {
   IconArrowLeft,
+  IconChevronRight,
   IconMapPin,
   IconPencil,
   IconPhotoUp,
@@ -41,6 +49,7 @@ import {
   IconUser,
   IconX,
 } from "@tabler/icons-react";
+import { useRouter } from "next/navigation";
 import { useMemo, useRef, useState, useTransition } from "react";
 import {
   createFloorMap,
@@ -59,10 +68,16 @@ import type {
   KioskFloorMapRow,
 } from "@/lib/kiosk-admin";
 import type { ActionResult } from "@/lib/server-action";
-import { resolveCurrentUserName, resolveOnline } from "./KioskDevicesTable";
+import {
+  OnlineDot,
+  resolveCurrentUserName,
+  resolveOnline,
+} from "./KioskDevicesTable";
 import { useKioskPresence } from "./useKioskPresence";
 
 const clampPct = (n: number) => Math.min(100, Math.max(0, n));
+
+const DEVICE_DETAIL_PATH = "/settings/kiosk-devices";
 
 export function KioskFloorMapView({
   devices,
@@ -73,6 +88,7 @@ export function KioskFloorMapView({
   floorMaps: KioskFloorMapRow[];
   factoryOptions: KioskFactoryOption[];
 }) {
+  const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const { presence, live } = useKioskPresence();
 
@@ -105,6 +121,28 @@ export function KioskFloorMapView({
     ? factoryDevices.filter((d) => d.floorMapId === activeMap.id)
     : [];
   const unplacedDevices = factoryDevices.filter((d) => d.floorMapId == null);
+  /** 右パネルの「その他」= このフロアに配置されていない工場内端末。 */
+  const otherDevices = activeMap
+    ? factoryDevices.filter((d) => d.floorMapId !== activeMap.id)
+    : factoryDevices;
+
+  // ── 選択（ピン ⇄ 右パネルのハイライト連動） ─────────────────────────────────
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const rowRefs = useRef(new Map<string, HTMLDivElement>());
+
+  const selectDevice = (id: string, opts?: { scrollList?: boolean }) => {
+    setSelectedId(id);
+    if (opts?.scrollList) {
+      // 一覧側の該当行を見える位置へ（レンダー後にスクロール）
+      requestAnimationFrame(() => {
+        rowRefs.current
+          .get(id)
+          ?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+      });
+    }
+  };
+
+  const clearSelection = () => setSelectedId(null);
 
   // ドラッグ中のローカル座標（保存完了までの表示上書き）。
   const [localPos, setLocalPos] = useState<
@@ -287,6 +325,7 @@ export function KioskFloorMapView({
     const pos = localPos[d.id] ?? { x: d.mapX ?? 50, y: d.mapY ?? 50 };
     const online = resolveOnline(d, presence, live);
     const currentUser = resolveCurrentUserName(d, presence, live);
+    const selected = selectedId === d.id;
     return (
       <Tooltip
         events={{ hover: true, focus: true, touch: true }}
@@ -297,6 +336,14 @@ export function KioskFloorMapView({
         withinPortal
       >
         <Box
+          onClick={(e) => {
+            if (editMode) return;
+            e.stopPropagation(); // マップ背景クリック（選択解除）と区別
+            selectDevice(d.id, { scrollList: true });
+          }}
+          onDoubleClick={() => {
+            if (!editMode) router.push(`${DEVICE_DETAIL_PATH}/${d.id}`);
+          }}
           onPointerDown={(e) => onPinPointerDown(d.id, e)}
           onPointerMove={onPinPointerMove}
           onPointerUp={onPinPointerUp}
@@ -304,25 +351,31 @@ export function KioskFloorMapView({
             position: "absolute",
             left: `${pos.x}%`,
             top: `${pos.y}%`,
-            transform: "translate(-50%, -50%)",
-            cursor: editMode ? "grab" : "default",
+            transform: selected
+              ? "translate(-50%, -50%) scale(1.25)"
+              : "translate(-50%, -50%)",
+            cursor: editMode ? "grab" : "pointer",
             touchAction: "none",
             lineHeight: 0,
-            zIndex: 2,
+            zIndex: selected ? 3 : 2,
             // タッチ操作用にヒット領域を広げる（見た目は変えない）
             padding: 8,
           }}
         >
           <IconMapPin
             color={
-              online
-                ? "var(--mantine-color-green-6)"
-                : "var(--mantine-color-gray-5)"
+              selected
+                ? "var(--mantine-color-blue-6)"
+                : online
+                  ? "var(--mantine-color-green-6)"
+                  : "var(--mantine-color-gray-5)"
             }
             fill={
-              online
-                ? "var(--mantine-color-green-2)"
-                : "var(--mantine-color-gray-2)"
+              selected
+                ? "var(--mantine-color-blue-2)"
+                : online
+                  ? "var(--mantine-color-green-2)"
+                  : "var(--mantine-color-gray-2)"
             }
             size={28}
             stroke={2}
@@ -352,6 +405,69 @@ export function KioskFloorMapView({
     );
   };
 
+  /**
+   * 右パネルの端末行（閲覧モード）。クリックで選択（配置済みはピンも
+   * ハイライト）、「>」で端末詳細ページへ。
+   */
+  const deviceRow = (d: KioskDeviceRow) => {
+    const online = resolveOnline(d, presence, live);
+    const currentUser = resolveCurrentUserName(d, presence, live);
+    const selected = selectedId === d.id;
+    return (
+      <Paper
+        key={d.id}
+        onClick={() => selectDevice(d.id)}
+        p="xs"
+        ref={(el) => {
+          if (el) rowRefs.current.set(d.id, el);
+          else rowRefs.current.delete(d.id);
+        }}
+        style={{
+          cursor: "pointer",
+          borderColor: selected ? "var(--mantine-color-blue-5)" : undefined,
+          backgroundColor: selected
+            ? "var(--mantine-color-blue-light)"
+            : undefined,
+        }}
+        withBorder
+      >
+        <Group gap="xs" justify="space-between" wrap="nowrap">
+          <Box className="min-w-0" style={{ flex: 1 }}>
+            <Group gap={6} wrap="nowrap">
+              <OnlineDot online={online} />
+              <Text fw={500} size="sm" truncate>
+                {d.name ?? "（未設定）"}
+              </Text>
+            </Group>
+            {d.location && (
+              <Text c="dimmed" size="xs" truncate>
+                {d.location}
+              </Text>
+            )}
+            {currentUser && (
+              <Text c="blue" size="xs" truncate>
+                利用中: {currentUser}
+              </Text>
+            )}
+          </Box>
+          <Tooltip label="端末詳細を開く" withinPortal>
+            <ActionIcon
+              aria-label="端末詳細を開く"
+              color="gray"
+              onClick={(e) => {
+                e.stopPropagation();
+                router.push(`${DEVICE_DETAIL_PATH}/${d.id}`);
+              }}
+              variant="subtle"
+            >
+              <IconChevronRight size={16} />
+            </ActionIcon>
+          </Tooltip>
+        </Group>
+      </Paper>
+    );
+  };
+
   return (
     <Stack gap="md">
       <PageHeader
@@ -376,6 +492,7 @@ export function KioskFloorMapView({
               onChange={(v) => {
                 setFactory(v);
                 setActiveMapId(null);
+                clearSelection();
               }}
               searchable
               value={factory}
@@ -384,7 +501,10 @@ export function KioskFloorMapView({
             <Switch
               checked={editMode}
               label="編集モード"
-              onChange={(e) => setEditMode(e.currentTarget.checked)}
+              onChange={(e) => {
+                setEditMode(e.currentTarget.checked);
+                clearSelection();
+              }}
             />
           </Group>
 
@@ -397,7 +517,10 @@ export function KioskFloorMapView({
             </Alert>
           ) : (
             <Tabs
-              onChange={(v) => setActiveMapId(v)}
+              onChange={(v) => {
+                setActiveMapId(v);
+                clearSelection();
+              }}
               value={activeMap?.id ?? null}
             >
               <Tabs.List>
@@ -476,8 +599,11 @@ export function KioskFloorMapView({
               direction={{ base: "column", md: "row" }}
               gap="md"
             >
-              {/* マップ領域 */}
+              {/* マップ領域（背景クリックで選択解除 — ピン側は stopPropagation） */}
               <Box
+                onClick={() => {
+                  if (!editMode) clearSelection();
+                }}
                 ref={mapAreaRef}
                 style={{
                   position: "relative",
@@ -513,6 +639,43 @@ export function KioskFloorMapView({
                 )}
                 {placedDevices.map(pinFor)}
               </Box>
+
+              {/* 閲覧モード: 端末一覧パネル（ピン選択とハイライト連動） */}
+              {!editMode && (
+                <Stack gap="xs" w={{ base: "100%", md: 280 }}>
+                  <Group justify="space-between">
+                    <Text fw={600} size="sm">
+                      端末一覧
+                    </Text>
+                    <Text c="dimmed" size="xs">
+                      {factoryDevices.length} 台
+                    </Text>
+                  </Group>
+                  <ScrollArea.Autosize mah={560} offsetScrollbars type="auto">
+                    <Stack gap="xs">
+                      <Text c="dimmed" fw={600} size="xs">
+                        このフロア（{placedDevices.length}）
+                      </Text>
+                      {placedDevices.length === 0 ? (
+                        <Text c="dimmed" size="xs">
+                          このフロアに配置済みの端末はありません
+                        </Text>
+                      ) : (
+                        placedDevices.map(deviceRow)
+                      )}
+                      {otherDevices.length > 0 && (
+                        <>
+                          <Divider />
+                          <Text c="dimmed" fw={600} size="xs">
+                            その他の端末（{otherDevices.length}）
+                          </Text>
+                          {otherDevices.map(deviceRow)}
+                        </>
+                      )}
+                    </Stack>
+                  </ScrollArea.Autosize>
+                </Stack>
+              )}
 
               {/* 編集モード: サイドバー（モバイルはマップ下に全幅） */}
               {editMode && (
