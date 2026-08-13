@@ -127,7 +127,9 @@ export function KioskShell({ deviceName, registered, children }: Props) {
           // 残り高さちょうどに固定し、はみ出すページは Main 内でスクロールする
           // （Center flex:1 のページは正確に縦中央・スクロールなしになる）。
           padding: 0,
+          // Mantine 側の min-height: 100dvh も上書きしないと height が負ける
           height: `calc(100dvh - ${HEADER_HEIGHT}px - ${FOOTER_HEIGHT}px)`,
+          minHeight: `calc(100dvh - ${HEADER_HEIGHT}px - ${FOOTER_HEIGHT}px)`,
           overflowY: "auto",
         }}
       >
