@@ -1,16 +1,23 @@
 /**
- * Admin file API — manage documents stored on SeaweedFS (incoming uploads and
- * generated PDFs). Server-only; the filer is not published to the host, so the
- * browser reaches storage only through these proxied routes.
+ * File API — SeaweedFS 上のファイル管理 (SY06)。
  *
- *   GET    /api/admin/files            → list objects (optional ?prefix=)
+ *   GET    /api/admin/files            → list objects（アクセス可能分のみ）
  *   POST   /api/admin/files            → upload (multipart: file[, prefix])
  *   DELETE /api/admin/files?key=<key>  → delete one object
  *
- * アクセスは RBAC（system:ADMIN）でゲート — 監査 P0-2 対応。
+ * アクセスは lib/file-access.ts で判定:
+ * system:ADMIN = 全フォルダ / フォルダ権限（file_folder_grants）= 付与分 /
+ * アプリ生成ファイルは所有アプリの READ 権限でも閲覧可。
+ * 書き込み（アップロード・削除）は ADMIN か can_write 付きフォルダ権限のみ。
  */
 
-import { requirePermissionResponse } from "@/lib/authz";
+import {
+  canWriteKey,
+  filterReadableKeys,
+  resolveFileAccess,
+  SYSTEM_PREFIXES,
+} from "@/lib/file-access";
+import { systematicFileName } from "@/lib/file-naming";
 import {
   deleteObject,
   listObjects,
@@ -27,21 +34,24 @@ function safeKey(key: string): string | null {
   return k;
 }
 
-export async function GET(request: Request): Promise<Response> {
-  const denied = await requirePermissionResponse("system", "ADMIN");
-  if (denied) return denied;
-  const prefix = new URL(request.url).searchParams.get("prefix") ?? "";
-  const clean = safeKey(prefix.endsWith("/") ? prefix : `${prefix}/`) ?? "";
-  const [files, ok] = await Promise.all([
-    listObjects(prefix ? clean.replace(/\/$/, "") : ""),
-    storageReachable(),
-  ]);
-  return Response.json({ storageOk: ok, files });
+export async function GET(): Promise<Response> {
+  const access = await resolveFileAccess();
+  if (!access) return new Response("Unauthorized", { status: 401 });
+  const [files, ok] = await Promise.all([listObjects(""), storageReachable()]);
+  return Response.json({
+    storageOk: ok,
+    files: filterReadableKeys(access, files),
+    isAdmin: access.isAdmin,
+    canWritePrefixes: access.isAdmin
+      ? null // null = 全フォルダ書き込み可
+      : access.grants.filter((g) => g.canWrite).map((g) => g.pathPrefix),
+    systemPrefixes: SYSTEM_PREFIXES,
+  });
 }
 
 export async function POST(request: Request): Promise<Response> {
-  const denied = await requirePermissionResponse("system", "ADMIN");
-  if (denied) return denied;
+  const access = await resolveFileAccess();
+  if (!access) return new Response("Unauthorized", { status: 401 });
   const form = await request.formData();
   const file = form.get("file");
   if (!(file instanceof File)) {
@@ -53,35 +63,37 @@ export async function POST(request: Request): Promise<Response> {
   if (prefix === null) {
     return Response.json({ error: "invalid prefix" }, { status: 400 });
   }
+  if (!canWriteKey(access, `${prefix}/x`)) {
+    return Response.json(
+      { error: "このフォルダへのアップロード権限がありません" },
+      { status: 403 },
+    );
+  }
 
-  // Keep a safe, human-readable filename; prefix a timestamp to avoid clobbering.
-  const base = (file.name || "upload.bin").replace(/[/\\]/g, "_");
-  const stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, "");
-  const key = `${prefix}/${stamp}_${base}`;
-
-  const bytes = new Uint8Array(await file.arrayBuffer());
-  const ok = await putObject(
-    key,
-    bytes,
-    file.type || "application/octet-stream",
-  );
+  // 系統的なリネーム（一意 + 判別可能）: {yyyymmdd-HHmmss}_{rand}_{元名}
+  const key = `${prefix}/${systematicFileName(file.name || "upload.bin")}`;
+  const bytes = await file.arrayBuffer();
+  const ok = await putObject(key, bytes, file.type || "application/octet-stream");
   if (!ok) {
     return Response.json({ error: "storage write failed" }, { status: 502 });
   }
-  return Response.json({ key });
+  return Response.json({ ok: true, key });
 }
 
 export async function DELETE(request: Request): Promise<Response> {
-  const denied = await requirePermissionResponse("system", "ADMIN");
-  if (denied) return denied;
+  const access = await resolveFileAccess();
+  if (!access) return new Response("Unauthorized", { status: 401 });
   const raw = new URL(request.url).searchParams.get("key");
   const key = raw ? safeKey(raw) : null;
   if (!key) {
-    return Response.json({ error: "valid key is required" }, { status: 400 });
+    return Response.json({ error: "key is required" }, { status: 400 });
+  }
+  if (!canWriteKey(access, key)) {
+    return Response.json(
+      { error: "このファイルの削除権限がありません" },
+      { status: 403 },
+    );
   }
   const ok = await deleteObject(key);
-  if (!ok) {
-    return Response.json({ error: "delete failed" }, { status: 502 });
-  }
-  return Response.json({ ok: true });
+  return Response.json({ ok });
 }

@@ -24,6 +24,27 @@ model File {
   @@schema("app")
 }
 
+// ファイル管理 (SY06) のフォルダ単位アクセス権。path_prefix はストレージキーの
+// 前方一致（例: "uploads" / "attachments/material_receipts"）。system:ADMIN は
+// 常に全フォルダ。アプリ生成ファイル（pdfs/* 等）は所有アプリの権限でも
+// 閲覧できる（lib/file-access.ts の prefix→権限マップ）。
+model FileFolderGrant {
+  id         Int      @id @default(autoincrement())
+  pathPrefix String   @map("path_prefix")
+  userId     String   @map("user_id") @db.Uuid
+  canWrite   Boolean  @default(false) @map("can_write") // アップロード・削除も許可
+  createdBy  String?  @map("created_by") @db.Uuid
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  user          User  @relation("FileFolderGrantUser", fields: [userId], references: [id], onDelete: Cascade)
+  createdByUser User? @relation("FileFolderGrantCreatedBy", fields: [createdBy], references: [id])
+
+  @@unique([pathPrefix, userId])
+  @@index([userId])
+  @@map("file_folder_grants")
+  @@schema("app")
+}
+
 // システム設定（試算の価格ポリシーなど。feature_flags 同様の単純 KV）
 // キー例: trial_pricing.material_price_basis / trial_pricing.lookback_months
 model SystemSetting {
