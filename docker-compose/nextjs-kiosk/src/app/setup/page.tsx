@@ -17,6 +17,7 @@ import {
   Box,
   Button,
   Center,
+  Flex,
   Loader,
   Paper,
   Stack,
@@ -172,20 +173,29 @@ export default function SetupPage() {
   }, [state, begin]);
 
   return (
-    <Center p="md" style={{ flex: 1 }}>
-      <Paper maw={520} p="xl" radius="md" w="100%" withBorder>
+    <Center p="md" style={{ flex: 1, overflow: "hidden" }}>
+      <Paper
+        maw={state.phase === "showing" ? 880 : 520}
+        p="xl"
+        radius="md"
+        w="100%"
+        withBorder
+      >
         <Stack align="center" gap="md">
-          <Title order={2}>端末リンク</Title>
+          {state.phase !== "showing" && <Title order={2}>端末リンク</Title>}
 
           {state.phase === "loading" && <Loader size="lg" />}
 
+          {/* タブレット横向きでスクロールなしに収まるよう、QR 左 + 情報右の
+              2 カラム（縦向き・狭幅は従来どおり縦積み） */}
           {state.phase === "showing" && (
-            <>
-              <Text c="dimmed" size="sm" ta="center">
-                {
-                  "管理者に「設定 → 端末管理」でこのコードをスキャンまたは入力してもらい、端末プロファイルへリンクしてください。"
-                }
-              </Text>
+            <Flex
+              align="center"
+              direction={{ base: "column", sm: "row" }}
+              gap="xl"
+              justify="center"
+              w="100%"
+            >
               <Box
                 bg="white"
                 className="kiosk-qr"
@@ -194,29 +204,41 @@ export default function SetupPage() {
                   __html: qrSvg(formatCode(state.code)),
                 }}
                 p="md"
-                style={{ borderRadius: "var(--mantine-radius-md)" }}
-                w={320}
+                style={{
+                  borderRadius: "var(--mantine-radius-md)",
+                  flexShrink: 0,
+                  // 高さの低い画面でもはみ出さない（下限 220px・上限 340px）
+                  width: "clamp(220px, calc(100dvh - 400px), 340px)",
+                }}
               />
-              <Stack align="center" gap={4}>
-                <Text c="dimmed" size="xs">
-                  リンクコード
+              <Stack align="center" gap="sm" maw={420}>
+                <Title order={2}>端末リンク</Title>
+                <Text c="dimmed" size="sm" ta="center">
+                  {
+                    "管理者に「設定 → 端末管理」でこのコードをスキャンまたは入力してもらい、端末プロファイルへリンクしてください。"
+                  }
                 </Text>
-                <Text ff="monospace" fw={700} style={{ fontSize: 28 }}>
-                  {formatCode(state.code)}
+                <Stack align="center" gap={4}>
+                  <Text c="dimmed" size="xs">
+                    リンクコード
+                  </Text>
+                  <Text ff="monospace" fw={700} style={{ fontSize: 30 }}>
+                    {formatCode(state.code)}
+                  </Text>
+                </Stack>
+                <Text c="dimmed" size="sm">
+                  有効期限: {(() => {
+                    const remain = Math.max(0, state.expiresAt - now);
+                    const m = Math.floor(remain / 60_000);
+                    const s = Math.floor((remain % 60_000) / 1000);
+                    return `${m}:${String(s).padStart(2, "0")}`;
+                  })()}
+                </Text>
+                <Text c="blue" size="sm">
+                  ● リンクを待っています…
                 </Text>
               </Stack>
-              <Text c="dimmed" size="sm">
-                有効期限: {(() => {
-                  const remain = Math.max(0, state.expiresAt - now);
-                  const m = Math.floor(remain / 60_000);
-                  const s = Math.floor((remain % 60_000) / 1000);
-                  return `${m}:${String(s).padStart(2, "0")}`;
-                })()}
-              </Text>
-              <Text c="blue" size="sm">
-                ● リンクを待っています…
-              </Text>
-            </>
+            </Flex>
           )}
 
           {state.phase === "linked" && (
