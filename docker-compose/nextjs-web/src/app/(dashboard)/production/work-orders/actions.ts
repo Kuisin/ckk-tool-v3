@@ -16,7 +16,6 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { describeIssue } from "@/components/production/work-orders/model";
 import {
   actOnApprovalRequest,
   appendHistory,
@@ -29,17 +28,23 @@ import { checkPermission } from "@/lib/authz";
 import { prisma } from "@/lib/db";
 import { nextSerialNumber } from "@/lib/numbering";
 import {
+  fetchRouteVersionSteps,
+  listProductRoutes,
+  resolveRouteVersionTx,
+} from "@/lib/product-routes";
+import {
+  computePlannedFloor,
+  type RouteStepSnapshot,
+  type RouteView,
+  type StockFloorInfo,
+} from "@/lib/product-routes-core";
+import {
   type ActionResult,
   actionError,
   actionOk,
   prismaErrorMessage,
 } from "@/lib/server-action";
-import { loadCatalog } from "@/lib/workflow";
-import {
-  defaultOrder,
-  isBlockingIssue,
-  validateComposition,
-} from "@/lib/workflow-core";
+import { validateAndOrderSteps } from "@/lib/workflow";
 import { fetchSalesOrderRef, type SalesOrderRef } from "./data";
 
 const BASE_PATH = "/production/work-orders";
@@ -64,6 +69,24 @@ const stepInput = z.object({
   supplierBpId: z.string().nullable(),
 });
 
+// 工程ルートの出所指定。existing = 既存ルートのバージョンを基準にした構成
+// （変更があれば新バージョンとして自動保存）/ new = 新ルート v1 として保存 /
+// null = ルートを使わない ad-hoc 構成（保存しない）。
+const routeInput = z
+  .union([
+    z.object({
+      mode: z.literal("existing"),
+      routeId: z.number().int().positive(),
+      baseVersionId: z.string().uuid(),
+    }),
+    z.object({
+      mode: z.literal("new"),
+      name: z.string().trim().min(1),
+    }),
+    z.null(),
+  ])
+  .default(null);
+
 const workOrderInput = z.object({
   salesOrderId: z.string().min(1, "注文請書を選択してください"),
   type: z.enum(["FROM_STOCK", "MANUFACTURE"]),
@@ -72,6 +95,7 @@ const workOrderInput = z.object({
   inspectionTemplateIds: z.array(z.number().int().positive()),
   notes: z.string(),
   steps: z.array(stepInput).min(1, "工程を1つ以上選択してください"),
+  route: routeInput,
 });
 
 export type WorkOrderInput = z.infer<typeof workOrderInput>;
@@ -100,51 +124,67 @@ function toHistoryJson(list: HistoryEntry[]): Record<string, string | null>[] {
 }
 
 /**
- * 工程構成のサーバー側検証 + 既定順の並び。
- * ブロッカーがあればエラーメッセージ、なければ sortOrder 付きの create 配列。
+ * 在庫フロア（§4 在庫考慮）: この受注へ引当済みの製品在庫と、同受注の他の
+ * 製造指示の予定数量を差し引いた最低予定数量。編集時は自分自身を除外する。
  */
-interface StepCreate {
-  processStepId: number;
-  sortOrder: number;
-  executionLocation: "INTERNAL" | "OUTSOURCE";
-  factoryId: number | null;
-  supplierBpId: string | null;
+async function stockFloorInfo(
+  salesOrderId: string,
+  excludeWorkOrderNumber?: number | null,
+): Promise<(StockFloorInfo & { productId: number }) | null> {
+  const so = await prisma.salesOrder.findUnique({
+    where: { id: salesOrderId },
+    select: { quantity: true, productId: true },
+  });
+  if (!so) return null;
+  const [reservedAgg, otherAgg] = await Promise.all([
+    prisma.inventoryReservation.aggregate({
+      where: {
+        salesOrderId,
+        inventoryType: "PRODUCT",
+        status: { in: ["RESERVED", "CONFIRMED"] },
+      },
+      _sum: { quantity: true },
+    }),
+    prisma.workOrder.aggregate({
+      where: {
+        salesOrderId,
+        type: "MANUFACTURE",
+        status: { not: "CANCELLED" },
+        ...(excludeWorkOrderNumber != null
+          ? { workOrderNumber: { not: excludeWorkOrderNumber } }
+          : {}),
+      },
+      _sum: { plannedQuantity: true },
+    }),
+  ]);
+  const reservedForSo = Number(reservedAgg._sum.quantity ?? 0);
+  const otherManufacture = otherAgg._sum.plannedQuantity ?? 0;
+  return {
+    soQuantity: so.quantity,
+    reservedForSo,
+    otherManufacture,
+    floor: computePlannedFloor({
+      soQuantity: so.quantity,
+      reservedForSo,
+      otherManufacture,
+    }),
+    productId: so.productId,
+  };
 }
 
-async function buildSteps(
-  v: WorkOrderInput,
-): Promise<{ ok: false; error: string } | { ok: true; creates: StepCreate[] }> {
-  const catalog = await loadCatalog();
-  const ids = v.steps.map((s) => s.processStepId);
-  const known = new Set(catalog.steps.map((s) => s.id));
-  if (ids.some((id) => !known.has(id))) {
-    return { ok: false, error: "存在しない工程が含まれています" };
-  }
-  if (new Set(ids).size !== ids.length) {
-    return { ok: false, error: "同じ工程が重複しています" };
-  }
-  const blocking = validateComposition(ids, catalog.useDeps).filter(
-    isBlockingIssue,
+/** 製造分の予定数量が在庫フロアを下回っていればエラーメッセージを返す。 */
+function describeFloorError(
+  plannedQuantity: number,
+  info: StockFloorInfo,
+): string | null {
+  if (info.floor <= 0 || plannedQuantity >= info.floor) return null;
+  return (
+    `予定数量が不足しています（受注数量 ${info.soQuantity} − 在庫引当済 ${info.reservedForSo}` +
+    (info.otherManufacture > 0
+      ? ` − 他の製造指示 ${info.otherManufacture}`
+      : "") +
+    ` = 最低 ${info.floor}）。不良予備分を含め ${info.floor} 以上で入力してください`
   );
-  if (blocking.length > 0) {
-    return {
-      ok: false,
-      error: blocking.map((i) => describeIssue(i, catalog.steps)).join(" / "),
-    };
-  }
-  const byId = new Map(v.steps.map((s) => [s.processStepId, s]));
-  const creates = defaultOrder(ids, catalog.steps).map((stepId, i) => {
-    const s = byId.get(stepId);
-    if (!s) throw new Error("step mapping failed");
-    return {
-      processStepId: stepId,
-      sortOrder: i,
-      executionLocation: s.executionLocation,
-      factoryId: s.executionLocation === "INTERNAL" ? s.factoryId : null,
-      supplierBpId: s.executionLocation === "OUTSOURCE" ? s.supplierBpId : null,
-    };
-  });
-  return { ok: true, creates };
 }
 
 // ── 作成 / 更新 / コピー / キャンセル ────────────────────────────────────────
@@ -160,13 +200,30 @@ export async function createWorkOrder(
   }
   const v = parsed.data;
   try {
-    const built = await buildSteps(v);
+    const built = await validateAndOrderSteps(v.steps);
     if (!built.ok) return actionError(built.error);
+    const floorInfo = await stockFloorInfo(v.salesOrderId);
+    if (!floorInfo) return actionError("対象の注文請書が見つかりません");
+    // §4 在庫考慮: 製造分は「受注数量 − 引当済在庫 − 他の製造指示」以上を要求
+    // （不良予備分の上乗せは常に可）。在庫分（FROM_STOCK）は対象外。
+    if (v.type === "MANUFACTURE") {
+      const floorError = describeFloorError(v.plannedQuantity, floorInfo);
+      if (floorError) return actionError(floorError);
+    }
     const actor = await getCurrentActorId();
     const workOrderNumber = await nextSerialNumber("WORK_ORDER");
     const materialId = v.type === "MANUFACTURE" ? v.materialId : null;
 
-    await prisma.$transaction(async (tx) => {
+    const routeVersionId = await prisma.$transaction(async (tx) => {
+      // 工程構成 → ルートバージョン解決（変更があれば新バージョンを自動保存）
+      const resolvedRouteVersionId = await resolveRouteVersionTx(
+        tx,
+        v.route,
+        built.creates,
+        actor,
+        floorInfo.productId,
+        `指示書 #${workOrderNumber} 作成時に変更`,
+      );
       await tx.workOrder.create({
         data: {
           workOrderNumber,
@@ -174,6 +231,7 @@ export async function createWorkOrder(
           type: v.type,
           plannedQuantity: v.plannedQuantity,
           materialId,
+          routeVersionId: resolvedRouteVersionId,
           status: "DRAFT",
           approvalStatus: "NONE",
           notes: v.notes.trim() || null,
@@ -198,6 +256,7 @@ export async function createWorkOrder(
           data: { lotNumber: workOrderNumber },
         });
       }
+      return resolvedRouteVersionId;
     });
 
     await recordAudit({
@@ -209,11 +268,15 @@ export async function createWorkOrder(
         type: v.type,
         plannedQuantity: v.plannedQuantity,
         materialId,
+        routeVersionId,
         stepCount: built.creates.length,
         inspectionTemplateCount: v.inspectionTemplateIds.length,
       },
     });
     revalidate(workOrderNumber);
+    if (v.route != null) {
+      revalidatePath(`/master/products/${floorInfo.productId}`);
+    }
     return actionOk({ workOrderNumber });
   } catch (e) {
     return actionError(prismaErrorMessage(e, "指示書の作成に失敗しました"));
@@ -239,12 +302,26 @@ export async function updateWorkOrder(
     if (prior.status !== "DRAFT") {
       return actionError("下書きの指示書のみ編集できます");
     }
-    const built = await buildSteps(v);
+    const built = await validateAndOrderSteps(v.steps);
     if (!built.ok) return actionError(built.error);
+    const floorInfo = await stockFloorInfo(v.salesOrderId, workOrderNumber);
+    if (!floorInfo) return actionError("対象の注文請書が見つかりません");
+    if (v.type === "MANUFACTURE") {
+      const floorError = describeFloorError(v.plannedQuantity, floorInfo);
+      if (floorError) return actionError(floorError);
+    }
     const actor = await getCurrentActorId();
     const materialId = v.type === "MANUFACTURE" ? v.materialId : null;
 
-    await prisma.$transaction(async (tx) => {
+    const routeVersionId = await prisma.$transaction(async (tx) => {
+      const resolvedRouteVersionId = await resolveRouteVersionTx(
+        tx,
+        v.route,
+        built.creates,
+        actor,
+        floorInfo.productId,
+        `指示書 #${workOrderNumber} 更新時に変更`,
+      );
       await tx.workOrderStep.deleteMany({ where: { workOrderId: prior.id } });
       await tx.workOrderInspectionTemplate.deleteMany({
         where: { workOrderId: prior.id },
@@ -256,6 +333,7 @@ export async function updateWorkOrder(
           type: v.type,
           plannedQuantity: v.plannedQuantity,
           materialId,
+          routeVersionId: resolvedRouteVersionId,
           notes: v.notes.trim() || null,
           history: toHistoryJson(
             appendHistory(prior.history, entry("UPDATE", actor)),
@@ -278,6 +356,7 @@ export async function updateWorkOrder(
           data: { lotNumber: workOrderNumber },
         });
       }
+      return resolvedRouteVersionId;
     });
 
     await recordAudit({
@@ -289,16 +368,21 @@ export async function updateWorkOrder(
         type: prior.type,
         plannedQuantity: prior.plannedQuantity,
         materialId: prior.materialId,
+        routeVersionId: prior.routeVersionId,
       },
       after: {
         salesOrderId: v.salesOrderId,
         type: v.type,
         plannedQuantity: v.plannedQuantity,
         materialId,
+        routeVersionId,
         stepCount: built.creates.length,
       },
     });
     revalidate(workOrderNumber);
+    if (v.route != null) {
+      revalidatePath(`/master/products/${floorInfo.productId}`);
+    }
     return actionOk({ workOrderNumber });
   } catch (e) {
     return actionError(prismaErrorMessage(e, "指示書の更新に失敗しました"));
@@ -340,6 +424,7 @@ export async function copyWorkOrder(
           status: "DRAFT",
           approvalStatus: "NONE",
           sourceWorkOrderId: source.id,
+          routeVersionId: source.routeVersionId,
           notes: source.notes,
           createdBy: actor,
           history: toHistoryJson([
@@ -777,4 +862,44 @@ export async function getMaterialAtp(
     console.error("getMaterialAtp failed", e);
     return null;
   }
+}
+
+/** 注文請書 → 対象製品の工程ルート一覧（ビルダーのルート選択用）。 */
+export async function getProductRoutesForSalesOrder(
+  salesOrderId: string,
+): Promise<{ productId: number; routes: RouteView[] } | null> {
+  if (!salesOrderId) return null;
+  const so = await prisma.salesOrder.findUnique({
+    where: { id: salesOrderId },
+    select: { productId: true },
+  });
+  if (!so) return null;
+  const routes = await listProductRoutes(so.productId);
+  return {
+    productId: so.productId,
+    routes: routes.filter((r) => r.isActive),
+  };
+}
+
+/** ルートバージョンの工程スナップショット（ビルダーのプリフィル・比較基準）。 */
+export async function getRouteVersionSteps(
+  versionId: string,
+): Promise<RouteStepSnapshot[]> {
+  if (!versionId) return [];
+  return fetchRouteVersionSteps(versionId);
+}
+
+/**
+ * 在庫フロア情報（§4 在庫考慮 — 製造分の最低予定数量）。ビルダーの表示 +
+ * NumberInput min 用。検証はサーバー側（create/update）が最終判定する。
+ */
+export async function getStockFloorInfo(
+  salesOrderId: string,
+  excludeWorkOrderNumber?: number,
+): Promise<StockFloorInfo | null> {
+  if (!salesOrderId) return null;
+  const info = await stockFloorInfo(salesOrderId, excludeWorkOrderNumber);
+  if (!info) return null;
+  const { productId: _productId, ...rest } = info;
+  return rest;
 }

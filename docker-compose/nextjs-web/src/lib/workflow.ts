@@ -51,6 +51,69 @@ export async function loadCatalog(): Promise<WorkflowCatalog> {
   };
 }
 
+// ─── 工程構成の共通検証（指示書 / 製品工程ルートで共用） ─────────────────────
+
+import { describeIssue } from "@/components/production/work-orders/model";
+import {
+  defaultOrder,
+  isBlockingIssue,
+  validateComposition,
+} from "./workflow-core";
+
+export interface StepCompositionInput {
+  processStepId: number;
+  executionLocation: "INTERNAL" | "OUTSOURCE";
+  factoryId: number | null;
+  supplierBpId: string | null;
+}
+
+export interface OrderedStepCreate extends StepCompositionInput {
+  sortOrder: number;
+}
+
+/**
+ * 工程構成のサーバー側検証 + カタログ既定順の並び。
+ * 未知/重複工程・ブロッカー（AND 不足・排他違反）はエラーメッセージを返す。
+ * 実施場所は INTERNAL → factoryId / OUTSOURCE → supplierBpId のみ保持する。
+ */
+export async function validateAndOrderSteps(
+  steps: readonly StepCompositionInput[],
+): Promise<
+  { ok: false; error: string } | { ok: true; creates: OrderedStepCreate[] }
+> {
+  const catalog = await loadCatalog();
+  const ids = steps.map((s) => s.processStepId);
+  const known = new Set(catalog.steps.map((s) => s.id));
+  if (ids.some((id) => !known.has(id))) {
+    return { ok: false, error: "存在しない工程が含まれています" };
+  }
+  if (new Set(ids).size !== ids.length) {
+    return { ok: false, error: "同じ工程が重複しています" };
+  }
+  const blocking = validateComposition(ids, catalog.useDeps).filter(
+    isBlockingIssue,
+  );
+  if (blocking.length > 0) {
+    return {
+      ok: false,
+      error: blocking.map((i) => describeIssue(i, catalog.steps)).join(" / "),
+    };
+  }
+  const byId = new Map(steps.map((s) => [s.processStepId, s]));
+  const creates = defaultOrder(ids, catalog.steps).map((stepId, i) => {
+    const s = byId.get(stepId);
+    if (!s) throw new Error("step mapping failed");
+    return {
+      processStepId: stepId,
+      sortOrder: i,
+      executionLocation: s.executionLocation,
+      factoryId: s.executionLocation === "INTERNAL" ? s.factoryId : null,
+      supplierBpId: s.executionLocation === "OUTSOURCE" ? s.supplierBpId : null,
+    };
+  });
+  return { ok: true, creates };
+}
+
 // ─── 実行系（§7）: 開始・完了・キャンセル・巻き戻し・分岐追加 ────────────────
 //
 // すべて lib/workflow-core.ts の純ロジックで検証してから永続化する。

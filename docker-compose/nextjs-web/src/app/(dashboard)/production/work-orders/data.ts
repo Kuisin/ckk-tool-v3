@@ -31,6 +31,13 @@ const LIST_FETCH_CAP = 1000;
 const WO_INCLUDE = {
   salesOrder: { include: { customerBp: true, product: true } },
   material: true,
+  routeVersion: {
+    select: {
+      id: true,
+      version: true,
+      route: { select: { id: true, name: true, productId: true } },
+    },
+  },
   sourceWorkOrder: { select: { workOrderNumber: true } },
   copies: {
     select: { workOrderNumber: true, status: true, createdAt: true },
@@ -146,6 +153,13 @@ export async function fetchWorkOrder(
     materialName: r.material
       ? localized(r.material.name as LocalizedText | null)
       : null,
+    productId: r.salesOrder.productId,
+    routeVersionId: r.routeVersion?.id ?? null,
+    routeId: r.routeVersion?.route.id ?? null,
+    routeName: r.routeVersion
+      ? localized(r.routeVersion.route.name as LocalizedText | null)
+      : null,
+    routeVersion: r.routeVersion?.version ?? null,
     lotNumber: r.salesOrder.lotNumber,
     sourceWorkOrderNumber: r.sourceWorkOrder?.workOrderNumber ?? null,
     copies: r.copies.map((c) => ({
@@ -463,6 +477,7 @@ export interface SalesOrderRef {
   label: string;
   customerName: string;
   productName: string;
+  productId: number;
   quantity: number;
   status: string;
 }
@@ -483,6 +498,7 @@ export async function fetchSalesOrderRef(
     label: `${number} ${productName}（${r.quantity}）`,
     customerName: localized(r.customerBp.name as LocalizedText | null),
     productName,
+    productId: r.productId,
     quantity: r.quantity,
     status: r.status,
   };
