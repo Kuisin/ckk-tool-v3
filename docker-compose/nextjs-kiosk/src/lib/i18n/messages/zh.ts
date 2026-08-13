@@ -17,6 +17,7 @@ export const zh: KioskMessages = {
   steps: {
     title: "工序执行",
     back: "返回应用列表",
+    backToList: "返回工序列表",
     refresh: "刷新",
     empty: "今天没有分配给您的工序",
     upcoming: (n: number) => `预定 ${n} 项`,
