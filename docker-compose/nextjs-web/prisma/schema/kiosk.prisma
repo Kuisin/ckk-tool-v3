@@ -102,10 +102,30 @@ model KioskDevice {
   sessions    KioskSession[] @relation("KioskSessionDevice")
   linkRequests KioskLinkRequest[] @relation("KioskLinkRequestDevice")
   logs        KioskDeviceLog[] @relation("KioskDeviceLogDevice")
+  locations   KioskDeviceLocation[] @relation("KioskDeviceLocationDevice")
 
   @@index([factoryId])
   @@index([status])
   @@map("kiosk_devices")
+  @@schema("app")
+}
+
+// ─── 端末位置ログ（GPS。端末が 5 分ごとに報告 — SY09 は最新 1 件を表示） ───
+// 保持期間は pg_cron の kiosk_location_retention で 90 日（kiosk-cron.sql）。
+
+model KioskDeviceLocation {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  deviceId   String   @map("device_id") @db.Uuid
+  latitude   Decimal  @db.Decimal(9, 6)
+  longitude  Decimal  @db.Decimal(9, 6)
+  /** 位置精度（メートル。geolocation API の accuracy） */
+  accuracyM  Decimal? @map("accuracy_m") @db.Decimal(8, 1)
+  recordedAt DateTime @default(now()) @map("recorded_at") @db.Timestamptz(6)
+
+  device KioskDevice @relation("KioskDeviceLocationDevice", fields: [deviceId], references: [id], onDelete: Cascade)
+
+  @@index([deviceId, recordedAt(sort: Desc)])
+  @@map("kiosk_device_locations")
   @@schema("app")
 }
 

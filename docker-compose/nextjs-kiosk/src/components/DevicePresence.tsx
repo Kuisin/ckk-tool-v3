@@ -56,9 +56,16 @@ export function DevicePresence() {
       wsRef.current = ws;
       ws.onopen = () => {
         retryMsRef.current = INITIAL_RETRY_MS;
+        // ConnectionIndicator へ通知（接続状態ドットの「不安定」判定に使う）
+        window.dispatchEvent(
+          new CustomEvent("kiosk:ws", { detail: { up: true } }),
+        );
       };
       ws.onclose = () => {
         wsRef.current = null;
+        window.dispatchEvent(
+          new CustomEvent("kiosk:ws", { detail: { up: false } }),
+        );
         scheduleReconnect();
       };
       ws.onerror = () => {

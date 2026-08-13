@@ -17,6 +17,7 @@ import {
   IDLE_TIMEOUT_MS,
   IDLE_WARN_MS,
 } from "@/lib/kiosk-auth-core";
+import { playLogoutSound, playWarnSound } from "@/lib/sound";
 import { useI18n } from "./I18nProvider";
 
 const ACTIVITY_EVENTS = [
@@ -38,6 +39,7 @@ export function ActivityMonitor() {
   const [remainingMs, setRemainingMs] = useState<number>(IDLE_TIMEOUT_MS);
 
   const logout = useCallback(async () => {
+    playLogoutSound();
     try {
       await fetch("/api/kiosk/session", { method: "DELETE" });
     } finally {
@@ -99,6 +101,14 @@ export function ActivityMonitor() {
     }, 1000);
     return () => clearInterval(timer);
   }, [ping, logout]);
+
+  // 警告表示に入った瞬間に 1 回だけ警告音（活動で解除されたらリセット）
+  const warned = remainingMs <= IDLE_WARN_MS;
+  const warnedRef = useRef(false);
+  useEffect(() => {
+    if (warned && !warnedRef.current) playWarnSound();
+    warnedRef.current = warned;
+  }, [warned]);
 
   if (remainingMs > IDLE_WARN_MS) return null;
 

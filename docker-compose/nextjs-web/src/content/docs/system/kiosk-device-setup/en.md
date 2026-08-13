@@ -41,6 +41,22 @@ Once the app starts, register the device with the system.
 
 To try the app without kiosk lock, open the APK URL in Chrome on the tablet, allow installs from the source, and install.
 
+## Connection indicator (dot at the top right of the header)
+
+The kiosk header shows a connection-status dot at the top right (tap it for a description).
+
+- **Gray**: no connection (the server is unreachable)
+- **Red**: the server is reachable but the device is not linked
+- **Orange**: linked, but running in a plain browser (no dedicated-app hardware key)
+- **Green**: connected through the dedicated app (hardware key)
+- **Blinking orange/green**: the connection is unstable (recent communication failures)
+
+The check probes the kiosk URL itself, so **no internet access is required** — it works as-is when the URL resolves inside the LAN.
+
+## Offline mode
+
+When the server becomes unreachable, the web UI switches to a full-screen "cannot connect" view and returns automatically once the connection recovers. The dedicated app (v0.4.0+) also shows an in-app offline screen when the page itself fails to load, and reloads automatically as soon as the server is reachable again. No action is needed on the tablet.
+
 ## Updating devices (automatic)
 
 The app **updates itself**. It checks for a new release about once an hour and applies it with an automatic restart at night (1:00–6:00 AM) so work is never interrupted (an update found right after app start is applied immediately). Just release a new APK — no work on the tablets is needed.

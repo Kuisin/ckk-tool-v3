@@ -1,4 +1,4 @@
 {
-  "dev":  { "versionCode": 3, "versionName": "0.3.0", "sha256": "57cdc8b992e16e79971add48bab59f15e54f46b224f65d2b6fcb08b64b6fe66c" },
-  "prod": { "versionCode": 3, "versionName": "0.3.0", "sha256": "fe24d40329e6cd20e67113148453f47b8fc13c08268b375080269a85ddcda472" }
+  "dev":  { "versionCode": 5, "versionName": "0.5.0", "sha256": "8a3118461f310b9b056a71251806944e76361f3f0c737308062929206fdcbf96" },
+  "prod": { "versionCode": 5, "versionName": "0.5.0", "sha256": "26ff55398c6960b281b6e087dfe72ee3eb3f953367504cd8b9df4e5b17180307" }
 }

@@ -23,6 +23,7 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { PinKeypad } from "@/components/PinKeypad";
 import { QrScannerView } from "@/components/QrScannerView";
+import { playLoginSound } from "@/lib/sound";
 import { type AttestOutcome, runAttestation } from "@/lib/wrapper-bridge";
 
 type LoginState =
@@ -97,6 +98,7 @@ export default function LoginPage() {
         };
         switch (data.state) {
           case "OK":
+            playLoginSound();
             router.replace("/");
             return;
           case "PIN_SETUP_REQUIRED":
@@ -172,6 +174,7 @@ export default function LoginPage() {
         };
         switch (data.state) {
           case "OK":
+            playLoginSound();
             router.replace("/");
             return;
           case "PIN_MISMATCH":

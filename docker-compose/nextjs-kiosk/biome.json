@@ -13,7 +13,8 @@
       "!.next",
       "!dist",
       "!build",
-      "!src/pdf-templates"
+      "!src/pdf-templates",
+      "!public/apk"
     ]
   },
   "formatter": {

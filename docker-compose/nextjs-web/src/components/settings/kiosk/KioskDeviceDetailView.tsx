@@ -9,6 +9,7 @@
  */
 
 import {
+  Anchor,
   Avatar,
   Flex,
   Group,
@@ -19,7 +20,7 @@ import {
   Title,
   Tooltip,
 } from "@mantine/core";
-import { IconUsers } from "@tabler/icons-react";
+import { IconMapPin, IconUsers } from "@tabler/icons-react";
 import { SecondaryButton } from "@/components/ui/buttons";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { FieldValue } from "@/components/ui/FieldValue";
@@ -118,6 +119,37 @@ export function KioskDeviceDetailView({
           <FieldValue
             label="作成日時"
             value={device.createdAt ? formatDateTime(device.createdAt) : "—"}
+          />
+          <FieldValue
+            label="GPS 位置（最新）"
+            value={
+              device.latestLocation ? (
+                <Stack gap={2}>
+                  <Anchor
+                    href={`https://www.google.com/maps?q=${device.latestLocation.latitude},${device.latestLocation.longitude}`}
+                    rel="noopener noreferrer"
+                    size="sm"
+                    style={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: 4,
+                    }}
+                    target="_blank"
+                  >
+                    <IconMapPin size={14} />
+                    {device.latestLocation.latitude.toFixed(5)},{" "}
+                    {device.latestLocation.longitude.toFixed(5)}
+                    {device.latestLocation.accuracyM != null &&
+                      ` (±${Math.round(device.latestLocation.accuracyM)}m)`}
+                  </Anchor>
+                  <Text c="dimmed" size="xs">
+                    {formatDateTime(device.latestLocation.recordedAt)} 時点
+                  </Text>
+                </Stack>
+              ) : (
+                "未取得"
+              )
+            }
           />
         </SimpleGrid>
       </Paper>

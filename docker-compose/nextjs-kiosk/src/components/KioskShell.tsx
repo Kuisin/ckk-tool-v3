@@ -11,17 +11,11 @@
  * Main は flex column — 各ページは style={{flex:1}} の Center で縦中央に置ける。
  */
 
-import {
-  AppShell,
-  Badge,
-  Box,
-  Group,
-  Text,
-  UnstyledButton,
-} from "@mantine/core";
+import { AppShell, Badge, Group, Text, UnstyledButton } from "@mantine/core";
 import { IconDeviceTablet } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
 import { type ReactNode, useRef } from "react";
+import { ConnectionIndicator } from "./ConnectionIndicator";
 
 const HEADER_HEIGHT = 56;
 const FOOTER_HEIGHT = 36;
@@ -79,16 +73,9 @@ export function KioskShell({ deviceName, registered, children }: Props) {
             </Group>
           </UnstyledButton>
           <Group gap={8} wrap="nowrap">
-            <Box
-              h={8}
-              style={{
-                borderRadius: "50%",
-                background: registered
-                  ? "var(--mantine-color-teal-5)"
-                  : "var(--mantine-color-gray-6)",
-              }}
-              w={8}
-            />
+            {/* 接続状態ドット（灰=接続なし/赤=未登録/橙=ブラウザ/緑=専用アプリ、
+                点滅=不安定）+ オフライン時の全画面オーバーレイ */}
+            <ConnectionIndicator registered={registered} />
             {registered ? (
               <Text fw={600} maw={360} size="md" truncate>
                 {deviceName ?? "（名称未設定）"}
