@@ -1,0 +1,72 @@
+# Auto Promotion PR — dev を更新するたびに dev → main の昇格 PR を維持する。
+#
+# 目的: dev に何かが merge されるたびに、本番昇格 PR（dev → main）を
+# 自動で「開いた状態」に保つ（無ければ作成、あれば dev の差分が自動反映される）。
+# 昇格（マージ）は運用担当が行う — この workflow は PR の作成/維持だけ。
+#
+# 分岐について（root CLAUDE.md「Git workflow」参照）:
+#   dev が main を完全に含んでいないと Promotion Guard が赤になる。
+#   その同期（main → dev の merge）は**この workflow では行わない**（運用判断）。
+#   昇格前に、必要なら先に main→dev の同期マージ PR をマージすること。
+#
+# 昇格 PR は必ず「Create a merge commit」でマージ（squash/rebase 禁止）。
+#
+# 補足: GITHUB_TOKEN が作成した PR は他 workflow（Promotion Guard 等）を
+# 自動起動しない。Guard は、運用担当が同期などで dev を人手で push した時点
+# （pull_request synchronize）に走る。昇格直前には必ず dev を更新するため実害はない。
+
+name: Auto Promotion PR
+
+on:
+  push:
+    branches: [dev]
+
+concurrency:
+  group: auto-promotion-pr
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  promotion-pr:
+    name: Ensure dev → main promotion PR
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      PR_TITLE: "promote: dev → main"
+      PR_BODY: |
+        **本番昇格 PR（dev → main）** — dev が更新されるたびに GitHub Actions が自動で作成/維持します（`.github/workflows/promotion-pr.yml`）。dev の新しい差分はこの PR に自動反映されます。
+
+        ## マージ時の注意（必読）
+        - **必ず「Create a merge commit」でマージ**（squash / rebase は禁止 — dev と main の履歴が分岐し、以降の昇格が毎回コンフリクトします）。
+        - **Promotion Guard が赤の場合**: dev が main を完全に含んでいません。先に **main → dev の同期マージ PR**（merge commit・原則 dev 優先）をマージしてから、この PR を昇格してください。
+        - 昇格（マージ）は運用担当が行います。
+
+        ## 昇格後
+        `main` へマージすると Coolify が本番（`nextjs-web-main` / `nextjs-kiosk-main`）を自動デプロイします。
+    steps:
+      - name: Create or verify the standing dev → main PR
+        run: |
+          set -euo pipefail
+
+          # dev が main より進んでいなければ昇格対象なし
+          ahead=$(gh api "repos/${GH_REPO}/compare/main...dev" --jq '.ahead_by')
+          echo "dev is ${ahead} commit(s) ahead of main."
+          if [ "${ahead:-0}" -eq 0 ]; then
+            echo "昇格する差分がありません。何もしません。"
+            exit 0
+          fi
+
+          # 既に開いている dev → main PR があれば、dev の差分は自動反映されるので何もしない
+          existing=$(gh pr list --base main --head dev --state open \
+            --json number --jq '.[0].number // empty')
+          if [ -n "${existing}" ]; then
+            echo "昇格 PR #${existing} は既に開いています（dev の更新は自動反映）。"
+            exit 0
+          fi
+
+          echo "昇格 PR を新規作成します。"
+          gh pr create --base main --head dev --title "${PR_TITLE}" --body "${PR_BODY}"
