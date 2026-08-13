@@ -136,6 +136,10 @@ model WorkOrder {
   // コピー元（バージョン警告用）
   sourceWorkOrderId String? @map("source_work_order_id") @db.Uuid
 
+  // 工程ルート出所（製品工程リストのバージョン）。ルート削除時は SetNull —
+  // 工程は work_order_steps に実体化済みで、出所リンクだけが外れる。
+  routeVersionId String? @map("route_version_id") @db.Uuid
+
   // 承認遷移（MaterialPurchaseOrder と同型の row-workflow）
   requested1stAt DateTime? @map("requested_1st_at") @db.Timestamptz(6)
   requested1stBy String?   @map("requested_1st_by") @db.Uuid
@@ -160,6 +164,7 @@ model WorkOrder {
   material        Material?  @relation(fields: [materialId], references: [id])
   sourceWorkOrder WorkOrder? @relation("WorkOrderCopySource", fields: [sourceWorkOrderId], references: [id])
   copies          WorkOrder[] @relation("WorkOrderCopySource")
+  routeVersion    ProductProcessRouteVersion? @relation(fields: [routeVersionId], references: [id], onDelete: SetNull)
   createdByUser   User?      @relation("WorkOrderCreatedBy", fields: [createdBy], references: [id])
 
   steps               WorkOrderStep[]
@@ -171,6 +176,7 @@ model WorkOrder {
   @@index([salesOrderId])
   @@index([status])
   @@index([approvalStatus])
+  @@index([routeVersionId])
   @@map("work_orders")
   @@schema("app")
 }

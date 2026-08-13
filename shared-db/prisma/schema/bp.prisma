@@ -86,6 +86,7 @@ model BusinessPartner {
   salesOrdersAsBranch   SalesOrder[]    @relation("SalesOrderCustomerBranch")
   salesOrdersAsEndUser  SalesOrder[]    @relation("SalesOrderEndUser")
   stepsAsSupplier       WorkOrderStep[] @relation("StepSupplier")
+  routeStepsAsSupplier  ProductProcessRouteVersionStep[] @relation("RouteStepSupplier")
 
   deliveryNotesAsRecipient DeliveryNote[] @relation("DeliveryNoteRecipient")
   deliveryNotesAsBranch    DeliveryNote[] @relation("DeliveryNoteRecipientBranch")

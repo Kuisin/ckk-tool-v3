@@ -27,6 +27,7 @@ import {
   DEPENDENCY_RELATION_LABEL,
   PROCESS_CATEGORY_LABEL,
   PROCESS_EXECUTION_LABEL,
+  QUANTITY_TRACKING_LABEL,
 } from "@/lib/enum-labels";
 import {
   DeleteProcessStepModal,
@@ -57,6 +58,7 @@ export interface ProcessStepDetailData {
   isInspection: boolean;
   isApprovalStep: boolean;
   approvalMinRank: string | null;
+  quantityTracking: string;
   sortOrder: number;
   isActive: boolean;
   notes: string;
@@ -242,6 +244,13 @@ export function ProcessStepDetail({
           value={
             PROCESS_EXECUTION_LABEL[record.executionLocation] ??
             record.executionLocation
+          }
+        />
+        <FieldValue
+          label="数量管理"
+          value={
+            QUANTITY_TRACKING_LABEL[record.quantityTracking] ??
+            record.quantityTracking
           }
         />
         <FieldValue label="工程フラグ" value={flagBadges} />
