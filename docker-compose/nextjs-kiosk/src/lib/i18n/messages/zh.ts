@@ -1,6 +1,9 @@
 import type { KioskMessages } from "./ja";
 
 export const zh: KioskMessages = {
+  apps: {
+    stepExecution: "工序执行",
+  },
   launcher: {
     greeting: (name: string) => name,
     logout: "退出登录",
@@ -10,5 +13,92 @@ export const zh: KioskMessages = {
   },
   activity: {
     autoLogout: (time: string) => `${time} 后自动退出`,
+  },
+  steps: {
+    title: "工序执行",
+    back: "返回应用列表",
+    refresh: "刷新",
+    empty: "今天没有分配给您的工序",
+    upcoming: (n: number) => `预定 ${n} 项`,
+    sections: {
+      overdue: "延迟",
+      today: "今天",
+      upcoming: "预定",
+    },
+    card: {
+      workOrder: (n: number) => `工单 #${n}`,
+      plannedQty: (n: number) => `分配 ${n} 支`,
+      plannedTime: (start: string, end: string) => `${start}〜${end}`,
+      allDay: "全天",
+      expectedInput: (n: number) => `预计接收 ${n} 支`,
+      inputRecorded: (n: number) => `接收 ${n} 支`,
+      elapsed: (t: string) => `作业 ${t}`,
+    },
+    state: {
+      startable: "可开始",
+      blocked: "等待前工序",
+      working: "作业中",
+      paused: "已暂停",
+      othersWorking: (name: string) => `${name} 正在作业`,
+      completed: "已完成",
+      cancelled: "已取消",
+    },
+    actions: {
+      start: "开始工序",
+      pause: "暂停",
+      resume: "继续",
+      complete: "完成工序",
+      cancel: "取消",
+      retry: "重试",
+    },
+    start: {
+      title: "开始工序",
+      inputLabel: (label: string) => label,
+      expectedHint: (n: number) => `前工序的预计数量为 ${n} 支`,
+      differsHint: "与预计数量不同（仍可开始）",
+      noneNote: "该工序不记录数量，将直接开始。",
+      submit: "开始",
+    },
+    complete: {
+      title: "完成工序",
+      noneNote: (n: number) => `该工序不记录数量即可完成（通过 ${n} 支）`,
+      submit: "完成",
+    },
+    quantity: {
+      FLOW: {
+        input: "接收数",
+        success: "良品数",
+        semi: "半成品",
+        scrap: "报废",
+        rework: "返工",
+      },
+      INSPECTION: {
+        input: "检查数",
+        success: "合格数",
+        semi: "不合格（半成品）",
+        scrap: "不合格（报废）",
+        rework: "不合格（返工）",
+      },
+      defectsTitle: "不良明细",
+      conservation: (sum: number, input: number) =>
+        `明细合计（${sum}）与接收数（${input}）不一致`,
+      negative: "数量请输入 0 以上的整数",
+    },
+    errors: {
+      OFFLINE: "通信失败，请重试",
+      NOT_FOUND: "未找到该工序",
+      NOT_ASSIGNED: "该工序不是您负责的",
+      WO_NOT_APPROVED: "工单尚未批准或未进行中",
+      NOT_STARTABLE: "前工序未完成，无法开始",
+      LOCK_TAKEN: "其他人已先行开始",
+      LOCK_HELD_BY_OTHER: "其他人正在作业",
+      NOT_IN_PROGRESS: "该工序不在进行中",
+      ALREADY_COMPLETED: "该工序已完成",
+      QUANTITY_REQUIRED: "请输入数量",
+      QUANTITY_INVALID: "请确认数量输入",
+      ROUTING_INVALID: "与分支数量不一致",
+      NO_PERMISSION: "您没有此操作的权限",
+      UNKNOWN: "处理失败",
+    },
   },
 };
