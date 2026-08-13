@@ -428,6 +428,16 @@ export const appList: AppEntry[] = [
     category: "システム",
     requiredPermission: "kiosk",
   },
+  {
+    // キオスク設定 — ランチャーのアプリ表示 on/off + 認証ポリシー参照。
+    key: "kiosk-settings",
+    label: "キオスク設定",
+    operationCode: "SY0A",
+    href: "/settings/kiosk",
+    icon: "IconDeviceTabletCog",
+    category: "システム",
+    requiredPermission: "kiosk",
+  },
 ];
 
 /** Home 絞り込み（工程）で使う URL パラメータのキー。 */

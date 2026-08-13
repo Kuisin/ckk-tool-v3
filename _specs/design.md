@@ -310,6 +310,7 @@ Operation codes provide keyboard-shortcut navigation. Format: `{CAT}{MODE}{IDX}`
 | システム | 7 | 操作履歴 | SY07 | — | — |
 | システム | 8 | QRカード管理 | SY08 | — | — |
 | システム | 9 | 端末管理 | SY09 | — | — |
+| システム | A | キオスク設定 | SY0A | — | — |
 
 `OperationCodeJump` component (`src/components/layout/OperationCodeJump.tsx`) renders as a compact TextInput in the header center. Pressing Enter or clicking a result navigates to that screen.
 
