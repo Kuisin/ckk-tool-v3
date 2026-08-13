@@ -4,8 +4,9 @@
  * KioskCardsTable — QRカード管理（SY08, /settings/kiosk-cards）の一覧。
  *
  * キオスクログイン用 QR カードの発行・割当・停止・取り消し・PIN 管理。
- * カード ID は前半をマスクし末尾 8 文字のみ表示（フル ID は印刷シートでのみ
- * QR 化される）。選択 → 印刷で印刷シート（/settings/kiosk-cards/print）へ。
+ * カード ID は前半をマスクし末尾 8 文字のみ表示（フル ID は印刷 PDF でのみ
+ * QR 化される）。選択 → 印刷で PDF（/api/pdf/kiosk-cards — A4 縦 名刺
+ * 10 面付け・十字トンボ）を新規タブに開く。
  */
 
 import {
@@ -45,15 +46,16 @@ import { formatDateTime } from "@/lib/format";
 import type { KioskCardRow, KioskUserOption } from "@/lib/kiosk-admin";
 import type { ActionResult } from "@/lib/server-action";
 
-const PRINT_PATH = "/settings/kiosk-cards/print";
+const PRINT_PDF_PATH = "/api/pdf/kiosk-cards";
 
 /** カード ID の表示: 前半 8 文字をマスクし末尾 8 文字のみ見せる。 */
 function maskCardId(id: string): string {
   return `****-****-${formatCode(id.slice(8))}`;
 }
 
+/** 印刷 PDF を新規タブで開く（ブラウザの PDF ビューアから印刷/保存）。 */
 function openPrintSheet(ids: string[]) {
-  const url = `${PRINT_PATH}?ids=${encodeURIComponent(ids.join(","))}`;
+  const url = `${PRINT_PDF_PATH}?ids=${encodeURIComponent(ids.join(","))}`;
   window.open(url, "_blank", "noopener,noreferrer");
 }
 
@@ -433,7 +435,7 @@ export function KioskCardsTable({
         <Stack gap="xs">
           <Text c="dimmed" size="sm">
             未割当のカードをまとめて発行します。発行後にユーザーへ割り当て、
-            印刷シートから QR カードを印刷してください。
+            印刷 PDF から QR カードを印刷してください。
           </Text>
           <NumberInput
             label="発行枚数"
