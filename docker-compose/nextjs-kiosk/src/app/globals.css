@@ -10,3 +10,23 @@ body {
   -webkit-tap-highlight-color: transparent; /* タブレットのタップハイライト抑止 */
   overscroll-behavior-y: none; /* 全画面キオスクでの引っ張り更新を抑止 */
 }
+
+/* 接続状態ドット（ヘッダー右上）の「不安定」点滅 */
+@keyframes kiosk-dot-blink {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.2;
+  }
+}
+.kiosk-dot-blink {
+  animation: kiosk-dot-blink 1s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .kiosk-dot-blink {
+    animation: none;
+    opacity: 0.6;
+  }
+}
