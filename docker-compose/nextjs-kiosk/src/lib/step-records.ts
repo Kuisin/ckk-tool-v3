@@ -6,7 +6,9 @@
  * [stepId]/actions.ts）と同じ業務規則で書く:
  * - 検査記録: 進行中（IN_PROGRESS）の工程のみ。全項目合格 = PASS / 1 つでも
  *   不合格 = FAIL。テンプレートは指示書に紐付くもの（work_order_inspection_
- *   templates）のみ受け付ける。
+ *   templates）のみ・工程の関連工程が一致（または未設定）のもののみ表示。
+ *   項目は入力種別（真偽/数値/単一・複数選択）ごとにサンプル値配列
+ *   （measured_values）で記録し、値は inspection-core（twin file）で検証する。
  * - 不良記録: 種類 + 内容の複数行まとめ追加。
  * **検査承認（APPROVED への遷移）はキオスクに持たない** — 承認は nextjs-web の
  * 管理画面のみ。
@@ -21,6 +23,15 @@ import { prisma } from "./db";
 import type { LocalizedText } from "./format";
 import { localized } from "./format";
 import type { Locale } from "./i18n";
+import {
+  type BoolLabels,
+  formatSampleValue,
+  type InspectionItemSpec,
+  type InspectionSampleValue,
+  isSampleEmpty,
+  itemSpecFromRow,
+  parseStoredSamples,
+} from "./inspection-core";
 import type { StepActionResult, StepErrorCode } from "./step-execution";
 import { inspectionOutcome } from "./steps-core";
 
@@ -30,20 +41,24 @@ const fail = (code: StepErrorCode, ...errors: string[]): StepActionResult => ({
   errors: errors.length > 0 ? errors : undefined,
 });
 
+/** 実測値表示のはい/いいえ（ロケール別）。 */
+const BOOL_LABELS: Record<Locale, BoolLabels> = {
+  ja: { yes: "はい", no: "いいえ" },
+  en: { yes: "Yes", no: "No" },
+  zh: { yes: "是", no: "否" },
+};
+
 // ── 読み取り（実行画面に出すデータ） ─────────────────────────────────────────
 
-export interface InspectionTemplateItemView {
-  id: number;
+/** 検査項目（inspection-core の判定 spec + 表示名）。 */
+export interface InspectionTemplateItemView extends InspectionItemSpec {
   name: string;
-  unit: string | null;
-  toleranceMin: number | null;
-  toleranceMax: number | null;
-  isRequired: boolean;
 }
 
 export interface InspectionTemplateView {
   id: number;
   code: string;
+  version: number;
   name: string;
   items: InspectionTemplateItemView[];
 }
@@ -56,7 +71,8 @@ export interface InspectionRecordView {
   recordedByName: string | null;
   items: {
     itemName: string;
-    measuredValue: string | null;
+    /** 実測値の表示文字列（複数サンプルは " / " 連結。未入力は null）。 */
+    valueLabel: string | null;
     isPass: boolean | null;
   }[];
 }
@@ -77,7 +93,7 @@ export interface DefectRecordView {
 export interface StepRecordingData {
   /** 検査工程か（カタログ is_inspection）。 */
   isInspection: boolean;
-  /** 指示書に紐付く検査表テンプレート。 */
+  /** この工程で使う検査表テンプレート（関連工程が一致 or 未設定）。 */
   templates: InspectionTemplateView[];
   /** この工程の既存検査記録（新しい順）。 */
   inspectionRecords: InspectionRecordView[];
@@ -100,6 +116,7 @@ export async function getStepRecordingData(
     where: { id: stepId },
     select: {
       workOrderId: true,
+      processStepId: true,
       processStep: { select: { isInspection: true } },
     },
   });
@@ -118,9 +135,7 @@ export async function getStepRecordingData(
       where: { workOrderStepId: stepId },
       include: {
         template: { select: { name: true } },
-        items: {
-          include: { templateItem: { select: { itemName: true } } },
-        },
+        items: { include: { templateItem: true } },
       },
       orderBy: { recordedAt: "desc" },
     }),
@@ -154,22 +169,41 @@ export async function getStepRecordingData(
   const nameOf = (id: string | null) =>
     id ? (users.find((u) => u.id === id)?.displayName ?? null) : null;
 
+  const bool = BOOL_LABELS[locale];
+
+  // 実測値の表示（新形式 measured_values は型別フォーマット、旧形式は生値）
+  const valueLabel = (it: {
+    measuredValue: string | null;
+    measuredValues: unknown;
+    templateItem: Parameters<typeof itemSpecFromRow>[0];
+  }): string | null => {
+    const samples = parseStoredSamples(it.measuredValues);
+    if (samples.length === 0) return it.measuredValue;
+    const spec = itemSpecFromRow(it.templateItem);
+    return samples
+      .map((s) => formatSampleValue(spec, s, locale, bool))
+      .join(" / ");
+  };
+
   return {
     isInspection: step.processStep.isInspection,
-    templates: templateLinks.map((t) => ({
-      id: t.inspectionTemplate.id,
-      code: t.inspectionTemplate.code,
-      name: localized(asText(t.inspectionTemplate.name), locale),
-      items: t.inspectionTemplate.items.map((it) => ({
-        id: it.id,
-        name: localized(asText(it.itemName), locale),
-        unit: it.unit,
-        // Decimal → Number（境界で変換）
-        toleranceMin: it.toleranceMin == null ? null : Number(it.toleranceMin),
-        toleranceMax: it.toleranceMax == null ? null : Number(it.toleranceMax),
-        isRequired: it.isRequired,
+    // 関連工程がこの工程 or 未設定（汎用）のテンプレートのみ（web 側と同じ規則）
+    templates: templateLinks
+      .filter(
+        (t) =>
+          t.inspectionTemplate.relatedProcessStepId == null ||
+          t.inspectionTemplate.relatedProcessStepId === step.processStepId,
+      )
+      .map((t) => ({
+        id: t.inspectionTemplate.id,
+        code: t.inspectionTemplate.code,
+        version: t.inspectionTemplate.version,
+        name: localized(asText(t.inspectionTemplate.name), locale),
+        items: t.inspectionTemplate.items.map((it) => ({
+          name: localized(asText(it.itemName), locale),
+          ...itemSpecFromRow(it),
+        })),
       })),
-    })),
     inspectionRecords: records.map((r) => ({
       id: r.id,
       templateName: localized(asText(r.template.name), locale),
@@ -178,7 +212,7 @@ export async function getStepRecordingData(
       recordedByName: nameOf(r.recordedBy),
       items: r.items.map((it) => ({
         itemName: localized(asText(it.templateItem.itemName), locale),
-        measuredValue: it.measuredValue,
+        valueLabel: valueLabel(it),
         isPass: it.isPass,
       })),
     })),
@@ -227,13 +261,16 @@ async function findRecordableStep(stepId: string, actorId: string) {
 
 export interface InspectionItemInput {
   templateItemId: number;
-  measuredValue: string;
+  /** サンプル値配列（SELECT_MULTI は value[]、他は文字列）。 */
+  values: InspectionSampleValue[];
   isPass: boolean;
 }
 
 /**
  * 検査記録の保存 — 全項目合格なら PASS、1 つでも不合格なら FAIL。
- * テンプレートは指示書に紐付くもののみ・項目はそのテンプレートの全項目。
+ * テンプレートは指示書に紐付くもののみ・項目はそのテンプレートの項目のみ。
+ * サンプル値は型検証（選択肢 membership・真偽エンコード）する
+ * （nextjs-web saveInspectionRecord と同一規則）。
  */
 export async function recordInspection(
   stepId: string,
@@ -248,7 +285,7 @@ export async function recordInspection(
   if (found.error) return found.error;
   const step = found.step;
 
-  // テンプレートが指示書に紐付いているか + 項目 id がテンプレートのものか
+  // テンプレートが指示書に紐付いているか + 項目 id・サンプル値が妥当か
   const link = await prisma.workOrderInspectionTemplate.findUnique({
     where: {
       workOrderId_inspectionTemplateId: {
@@ -256,16 +293,36 @@ export async function recordInspection(
         inspectionTemplateId: templateId,
       },
     },
-    include: {
-      inspectionTemplate: { include: { items: { select: { id: true } } } },
-    },
+    include: { inspectionTemplate: { include: { items: true } } },
   });
   if (!link) {
     return fail("TEMPLATE_INVALID", "この指示書の検査表ではありません");
   }
-  const validItemIds = new Set(link.inspectionTemplate.items.map((i) => i.id));
-  if (!items.every((i) => validItemIds.has(i.templateItemId))) {
-    return fail("TEMPLATE_INVALID", "検査項目がテンプレートと一致しません");
+  const specs = new Map(
+    link.inspectionTemplate.items.map((it) => [it.id, itemSpecFromRow(it)]),
+  );
+  for (const i of items) {
+    const spec = specs.get(i.templateItemId);
+    if (!spec) {
+      return fail("TEMPLATE_INVALID", "検査項目がテンプレートと一致しません");
+    }
+    const optionValues = new Set(spec.options.map((o) => o.value));
+    for (const s of i.values) {
+      const values = Array.isArray(s) ? s : [s];
+      if (
+        (spec.inputType === "SELECT_SINGLE" ||
+          spec.inputType === "SELECT_MULTI") &&
+        !values.every((x) => x === "" || optionValues.has(x))
+      ) {
+        return fail("TEMPLATE_INVALID", "選択肢にない値が含まれています");
+      }
+      if (
+        spec.inputType === "BOOLEAN" &&
+        !values.every((x) => x === "" || x === "true" || x === "false")
+      ) {
+        return fail("TEMPLATE_INVALID", "真偽項目の値が不正です");
+      }
+    }
   }
 
   const status = inspectionOutcome(items);
@@ -279,7 +336,7 @@ export async function recordInspection(
       items: {
         create: items.map((i) => ({
           templateItemId: i.templateItemId,
-          measuredValue: i.measuredValue.trim() || null,
+          measuredValues: i.values.filter((s) => !isSampleEmpty(s)),
           isPass: i.isPass,
         })),
       },

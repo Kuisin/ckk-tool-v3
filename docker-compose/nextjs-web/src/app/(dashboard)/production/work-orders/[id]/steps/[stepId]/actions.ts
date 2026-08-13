@@ -11,11 +11,10 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { toItemSpec } from "@/app/(dashboard)/master/inspection-templates/data";
 import { getCurrentActorId, recordAudit } from "@/lib/audit";
 import { checkPermission, type PermissionAction } from "@/lib/authz";
 import { prisma } from "@/lib/db";
-import { isSampleEmpty } from "@/lib/inspection-core";
+import { isSampleEmpty, itemSpecFromRow } from "@/lib/inspection-core";
 import {
   abortStepExecution,
   addBranchSeries,
@@ -285,7 +284,7 @@ export async function saveInspectionRecord(
       return { ok: false, errors: ["この指示書の検査表ではありません"] };
     }
     const templateItems = new Map(
-      link.inspectionTemplate.items.map((it) => [it.id, toItemSpec(it)]),
+      link.inspectionTemplate.items.map((it) => [it.id, itemSpecFromRow(it)]),
     );
     for (const i of v.items) {
       const spec = templateItems.get(i.templateItemId);

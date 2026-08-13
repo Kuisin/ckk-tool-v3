@@ -23,13 +23,14 @@ import { getCurrentActorId } from "@/lib/audit";
 import { prisma } from "@/lib/db";
 import { formatSalesOrderNumber } from "@/lib/doc-number";
 import { type LocalizedText, localized } from "@/lib/format";
-import { formatSampleValue, parseStoredSamples } from "@/lib/inspection-core";
+import {
+  formatSampleValue,
+  type InspectionItemRecord,
+  itemSpecFromRow,
+  parseStoredSamples,
+} from "@/lib/inspection-core";
 import { fetchWorkflowCtx, loadCatalog } from "@/lib/workflow";
 import { canStartStep, expectedInput } from "@/lib/workflow-core";
-import {
-  type InspectionItemRecord,
-  toItemSpec,
-} from "../../master/inspection-templates/data";
 
 // 一覧クエリの取得上限（監査 P2-8 — 全件フェッチのデータ増加対策）。
 // DataTable はクライアントページングのため、最新分のみで実用上十分。
@@ -433,7 +434,7 @@ export async function fetchStepExecution(
   }): string | null => {
     const samples = parseStoredSamples(it.measuredValues);
     if (samples.length === 0) return it.measuredValue;
-    const spec = toItemSpec(it.templateItem);
+    const spec = itemSpecFromRow(it.templateItem);
     return samples.map((s) => formatSampleValue(spec, s)).join(" / ");
   };
 
@@ -474,7 +475,7 @@ export async function fetchStepExecution(
       relatedProcessStepId: t.inspectionTemplate.relatedProcessStepId,
       items: t.inspectionTemplate.items.map((it) => ({
         name: localized(it.itemName as LocalizedText | null),
-        ...toItemSpec(it),
+        ...itemSpecFromRow(it),
       })),
     }));
 

@@ -89,6 +89,42 @@ export function parseStoredSamples(raw: unknown): InspectionSampleValue[] {
   return out;
 }
 
+/** inspection_template_items 行のうち spec 変換に使うフィールド（Prisma 由来）。 */
+export interface InspectionItemRecord {
+  id: number;
+  inputType: InspectionItemType;
+  unit: string | null;
+  toleranceMin: unknown; // Prisma Decimal
+  toleranceMax: unknown;
+  options: unknown;
+  acceptBool: boolean | null;
+  acceptOptions: unknown;
+  goalValue: unknown;
+  samplingMode: InspectionSamplingMode;
+  samplingValue: unknown; // Prisma Decimal
+  isRequired: boolean;
+}
+
+const asNumber = (v: unknown): number | null => (v == null ? null : Number(v));
+
+/** DB 行（Decimal / Json そのまま）→ 判定・表示 spec。 */
+export function itemSpecFromRow(row: InspectionItemRecord): InspectionItemSpec {
+  return {
+    id: row.id,
+    inputType: row.inputType,
+    unit: row.unit,
+    toleranceMin: asNumber(row.toleranceMin),
+    toleranceMax: asNumber(row.toleranceMax),
+    options: parseSelectOptions(row.options),
+    acceptBool: row.acceptBool,
+    acceptOptions: parseStringArray(row.acceptOptions),
+    goalValue: row.goalValue ?? null,
+    samplingMode: row.samplingMode,
+    samplingValue: asNumber(row.samplingValue),
+    isRequired: row.isRequired,
+  };
+}
+
 // ── 判定 ─────────────────────────────────────────────────────────────────────
 
 /** サンプルが未入力か（空白のみ・空配列は未入力扱い）。 */

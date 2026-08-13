@@ -9,28 +9,14 @@ import "server-only";
 import type { InspectionTemplateItemRow } from "@/components/master/inspection-templates/InspectionTemplateModals";
 import type { LocalizedText } from "@/lib/format";
 import {
-  type InspectionItemSpec,
-  type InspectionItemType,
-  type InspectionSamplingMode,
+  type InspectionItemRecord as CoreItemRecord,
   parseSelectOptions,
   parseStringArray,
 } from "@/lib/inspection-core";
 
 /** inspection_template_items 行のうち変換に使うフィールド（Prisma include 由来）。 */
-export interface InspectionItemRecord {
-  id: number;
+export interface InspectionItemRecord extends CoreItemRecord {
   itemName: unknown;
-  inputType: InspectionItemType;
-  unit: string | null;
-  toleranceMin: unknown; // Prisma Decimal
-  toleranceMax: unknown;
-  options: unknown;
-  acceptBool: boolean | null;
-  acceptOptions: unknown;
-  goalValue: unknown;
-  samplingMode: InspectionSamplingMode;
-  samplingValue: unknown; // Prisma Decimal
-  isRequired: boolean;
   sortOrder: number;
 }
 
@@ -73,23 +59,5 @@ export function toItemRow(
     samplingValue: num(item.samplingValue),
     isRequired: item.isRequired,
     sortOrder: item.sortOrder,
-  };
-}
-
-/** DB 行 → inspection-core の判定・表示 spec（name はローカライズ不要な内部用）。 */
-export function toItemSpec(item: InspectionItemRecord): InspectionItemSpec {
-  return {
-    id: item.id,
-    inputType: item.inputType,
-    unit: item.unit,
-    toleranceMin: num(item.toleranceMin),
-    toleranceMax: num(item.toleranceMax),
-    options: parseSelectOptions(item.options),
-    acceptBool: item.acceptBool,
-    acceptOptions: parseStringArray(item.acceptOptions),
-    goalValue: item.goalValue ?? null,
-    samplingMode: item.samplingMode,
-    samplingValue: num(item.samplingValue),
-    isRequired: item.isRequired,
   };
 }
