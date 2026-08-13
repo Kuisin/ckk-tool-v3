@@ -8,6 +8,15 @@ import { PrintToolbar } from "./print-toolbar";
 
 export const dynamic = "force-dynamic";
 
+/** PDF 保存名が一意になるよう日時入りタイトル（コンテナ TZ=Asia/Tokyo）。 */
+export function generateMetadata() {
+  const d = new Date();
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return {
+    title: `QRカード印刷_${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}-${pad(d.getHours())}${pad(d.getMinutes())}`,
+  };
+}
+
 /**
  * QRカード印刷シート（SY08, /settings/kiosk-cards/print?ids=...）。
  *
@@ -55,14 +64,6 @@ export default async function KioskCardsPrintPage({
               <span className="kiosk-crop kiosk-crop-bl" />
               <span className="kiosk-crop kiosk-crop-br" />
               <div className="kiosk-print-card">
-                <div className="kiosk-print-card-head">
-                  <span className="kiosk-print-company">
-                    シー・ケィ・ケー株式会社
-                  </span>
-                  <span className="kiosk-print-user">
-                    {card.userDisplayName ?? "（未割当）"}
-                  </span>
-                </div>
                 <div
                   className="kiosk-print-qr"
                   // biome-ignore lint/security/noDangerouslySetInnerHtml: 自前生成の静的 SVG（lib/qr.ts）
@@ -70,6 +71,23 @@ export default async function KioskCardsPrintPage({
                     __html: qrSvg(formatCode(card.id), { margin: 2 }),
                   }}
                 />
+                <div className="kiosk-print-card-head">
+                  <span className="kiosk-print-company">
+                    シー・ケィ・ケー株式会社
+                  </span>
+                  {card.userDisplayName ? (
+                    <span className="kiosk-print-user">
+                      {card.userDisplayName}
+                    </span>
+                  ) : (
+                    // 未割当: 割当後に手書きするための記名線のみ
+                    <span className="kiosk-print-user-line" />
+                  )}
+                  {/* カード識別 No.（SY08 一覧のマスク表示末尾 8 文字と一致） */}
+                  <span className="kiosk-print-shortcode">
+                    No. {formatCode(card.id).slice(-9)}
+                  </span>
+                </div>
                 <div className="kiosk-print-id">{formatCode(card.id)}</div>
               </div>
             </div>
@@ -113,11 +131,11 @@ export default async function KioskCardsPrintPage({
           width: 100%;
           height: 100%;
           box-sizing: border-box;
-          padding: 5mm;
-          display: grid;
-          grid-template-columns: 1fr auto;
-          grid-template-rows: 1fr auto;
-          column-gap: 3mm;
+          padding: 5mm 5mm 3.5mm;
+          display: flex;
+          gap: 4mm;
+          align-items: center;
+          position: relative;
           overflow: hidden;
         }
         /*
@@ -150,10 +168,11 @@ export default async function KioskCardsPrintPage({
         .kiosk-crop-br::before { left: 1mm; bottom: -0.125mm; }
         .kiosk-crop-br::after { top: 1mm; right: -0.125mm; }
         .kiosk-print-card-head {
+          flex: 1;
           display: flex;
           flex-direction: column;
           justify-content: center;
-          gap: 2mm;
+          gap: 2.5mm;
           min-width: 0;
         }
         .kiosk-print-company {
@@ -165,25 +184,42 @@ export default async function KioskCardsPrintPage({
           font-weight: 700;
           overflow-wrap: anywhere;
         }
-        .kiosk-print-qr { grid-row: 1 / span 2; align-self: center; }
+        /* 未割当カード: 割当後に氏名を手書きする記名線 */
+        .kiosk-print-user-line {
+          display: block;
+          height: 9mm;
+          border-bottom: 0.35mm solid #333333;
+        }
+        /* カード識別 No.（SY08 一覧の表示末尾と一致 — 整理・照合用） */
+        .kiosk-print-shortcode {
+          font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+          font-size: 10pt;
+          font-weight: 700;
+          letter-spacing: 0.02em;
+        }
+        .kiosk-print-qr { flex-shrink: 0; }
         .kiosk-print-qr svg {
           width: 36mm;
           height: 36mm;
           display: block;
         }
         .kiosk-print-id {
+          position: absolute;
+          right: 5mm;
+          bottom: 2.5mm;
           font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-          font-size: 7pt;
-          color: #666666;
-          align-self: end;
+          font-size: 6.5pt;
+          color: #777777;
         }
         @media print {
           .kiosk-print-toolbar { display: none; }
-          .kiosk-print-root { padding: 0; min-height: 0; }
+          /* @page margin: 0 でブラウザの URL ヘッダー/フッターを抑止し、
+             余白は body 側 padding で 10mm 確保する */
+          .kiosk-print-root { padding: 10mm; min-height: 0; }
           /* 印刷ではトリム箱の枠線を出さない — 断裁ガイドはトンボのみ */
           .kiosk-print-cell { outline: none; }
         }
-        @page { size: A4 portrait; margin: 10mm; }
+        @page { size: A4 portrait; margin: 0; }
       `}</style>
     </div>
   );
