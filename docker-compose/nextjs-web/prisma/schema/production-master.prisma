@@ -93,6 +93,7 @@ model ProcessStepCatalog {
   isApprovalStep    Boolean          @default(false) @map("is_approval_step") // 検査承認工程
   approvalMinRank   String?          @map("approval_min_rank") // 係長以上等
   quantityTracking  QuantityTracking @default(FLOW) @map("quantity_tracking")
+  defaultWorkHours  Decimal?         @map("default_work_hours") @db.Decimal(6, 2) // 既定作業時間 (h) — ルート/指示書の初期値
   sortOrder         Int              @default(0) @map("sort_order")
   isActive          Boolean          @default(true) @map("is_active")
   notes             String?
