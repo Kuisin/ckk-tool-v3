@@ -54,7 +54,10 @@ export type StepErrorCode =
   | "ALREADY_COMPLETED"
   | "QUANTITY_REQUIRED"
   | "QUANTITY_INVALID"
-  | "ROUTING_INVALID";
+  | "ROUTING_INVALID"
+  | "TEMPLATE_INVALID"
+  | "ITEMS_REQUIRED"
+  | "DEFECT_TYPE_INVALID";
 
 export interface StepActionResult {
   ok: boolean;

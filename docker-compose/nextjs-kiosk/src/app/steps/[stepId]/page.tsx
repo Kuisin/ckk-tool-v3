@@ -10,6 +10,7 @@ import { I18nProvider } from "@/components/I18nProvider";
 import { StepExecutionView } from "@/components/steps/StepExecutionView";
 import { readableCodes } from "@/lib/authz";
 import { getSession } from "@/lib/kiosk-auth";
+import { getStepRecordingData } from "@/lib/step-records";
 import { getMyStep } from "@/lib/steps";
 
 export const dynamic = "force-dynamic";
@@ -33,9 +34,13 @@ export default async function StepExecutionPage({
   );
   if (!step) notFound();
 
+  // 検査・不良セクションのデータ（割り当てゲートは getMyStep が通過済み）
+  const recording = await getStepRecordingData(step.stepId, session.locale);
+  if (!recording) notFound();
+
   return (
     <I18nProvider locale={session.locale}>
-      <StepExecutionView step={step} />
+      <StepExecutionView recording={recording} step={step} />
     </I18nProvider>
   );
 }

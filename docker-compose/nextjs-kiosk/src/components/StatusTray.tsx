@@ -112,7 +112,8 @@ export function BatteryStatus() {
       };
       getBattery?: () => Promise<BatteryManagerLike>;
     };
-    if (!nav.wakeLock) return;
+    const wakeLock = nav.wakeLock;
+    if (!wakeLock) return;
     let lock: { release: () => Promise<void> } | null = null;
     let charging = true; // Battery API 非対応時は常時保持（安全側）
     let stopped = false;
@@ -122,7 +123,7 @@ export function BatteryStatus() {
       const shouldHold = charging && document.visibilityState === "visible";
       if (shouldHold && !lock) {
         try {
-          lock = await nav.wakeLock!.request("screen");
+          lock = await wakeLock.request("screen");
         } catch {
           lock = null; // 省電力モード等で拒否されることがある — 次の機会に再試行
         }
