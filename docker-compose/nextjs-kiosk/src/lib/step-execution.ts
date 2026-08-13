@@ -55,6 +55,7 @@ export type StepErrorCode =
   | "NOT_ASSIGNED"
   | "WO_NOT_APPROVED"
   | "NOT_STARTABLE"
+  | "OTHER_STEP_ACTIVE"
   | "LOCK_TAKEN"
   | "LOCK_HELD_BY_OTHER"
   | "NOT_IN_PROGRESS"
@@ -148,6 +149,31 @@ export async function isAssignedToUser(
 }
 
 /**
+ * 「作業中の別工程」= 自分がセッションロックを保持している進行中の工程。
+ * 同時に作業できる工程は 1 つ — 開始・再開の前ゲートに使う
+ * （一時停止すればロックが空くので、別工程を開始できるようになる）。
+ */
+export async function findMyActiveStep(
+  actorId: string,
+  excludeStepId?: string,
+): Promise<{ stepId: string; workOrderNumber: number } | null> {
+  const active = await prisma.workOrderStep.findFirst({
+    where: {
+      sessionLockedBy: actorId,
+      status: "IN_PROGRESS",
+      ...(excludeStepId ? { id: { not: excludeStepId } } : {}),
+    },
+    select: {
+      id: true,
+      workOrder: { select: { workOrderNumber: true } },
+    },
+  });
+  return active
+    ? { stepId: active.id, workOrderNumber: active.workOrder.workOrderNumber }
+    : null;
+}
+
+/**
  * 工程開始: 依存検証 → セッションロック原子取得 → IN_PROGRESS。
  * 受入数は作業者の入力（`inputQuantity`）を優先し、未指定なら想定受入数。
  * 作業セッション行（work_order_step_actuals）を 1 行 open する。
@@ -167,6 +193,15 @@ export async function startStepExecution(
     stepRow.workOrder.status !== "IN_PROGRESS"
   ) {
     return fail("WO_NOT_APPROVED", "指示書が承認済み/進行中ではありません");
+  }
+
+  // 同時に作業できる工程は 1 つ（先に一時停止 or 完了させる）
+  const active = await findMyActiveStep(actorId, stepId);
+  if (active) {
+    return fail(
+      "OTHER_STEP_ACTIVE",
+      `指示書 #${active.workOrderNumber} の工程を作業中です。先に一時停止または完了してください`,
+    );
   }
 
   const { ctx } = await fetchWorkflowCtx(stepRow.workOrderId);
@@ -292,6 +327,15 @@ export async function resumeStepExecution(
     stepRow.workOrder.status !== "IN_PROGRESS"
   ) {
     return fail("WO_NOT_APPROVED", "指示書が承認済み/進行中ではありません");
+  }
+
+  // 同時に作業できる工程は 1 つ（先に一時停止 or 完了させる）
+  const active = await findMyActiveStep(actorId, stepId);
+  if (active) {
+    return fail(
+      "OTHER_STEP_ACTIVE",
+      `指示書 #${active.workOrderNumber} の工程を作業中です。先に一時停止または完了してください`,
+    );
   }
 
   const now = new Date();
