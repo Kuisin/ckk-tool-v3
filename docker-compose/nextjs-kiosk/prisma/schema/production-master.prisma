@@ -214,6 +214,14 @@ enum InspectionSamplingMode {
   @@schema("app")
 }
 
+// 記録方式（項目ごと）: 製品ごとの実測値 or 合格数のみ
+enum InspectionRecordStyle {
+  VALUES // 実測値（サンプルごとに入力）
+  COUNTS // 合格数のみ（検査数・合格数を入力）
+
+  @@schema("app")
+}
+
 // バージョン管理: 同一 code に複数バージョン（各バージョンが完全な行 + items）。
 // 指示書リンク・検査記録は行 id を参照するので、使用されたバージョンに固定される。
 // 指示書割当済み/記録ありのバージョンは編集不可 — 変更は新バージョンをコピー作成。
@@ -251,6 +259,8 @@ model InspectionTemplateItem {
   goalValue    Json?    @map("goal_value") // 目標値: number | boolean | string | string[]
   samplingMode InspectionSamplingMode @default(ALL) @map("sampling_mode")
   samplingValue Decimal? @map("sampling_value") @db.Decimal(10, 2) // PERCENT: % / COUNT: 本数
+  allowManualOverride Boolean @default(true) @map("allow_manual_override") // 合否の手動上書きを許可（基準未設定の項目は常に手動）
+  recordStyle  InspectionRecordStyle @default(VALUES) @map("record_style") // 実測値 / 合格数のみ
   isRequired   Boolean  @default(true) @map("is_required")
   sortOrder    Int      @default(0) @map("sort_order")
 

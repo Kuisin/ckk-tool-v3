@@ -137,10 +137,16 @@ export const en: KioskMessages = {
       addRow: "Add row",
       removeRow: "Remove",
       selectPlaceholder: "Select",
-      autoNone: "No auto judgement (choose manually)",
+      autoNone: "Cannot judge automatically — choose manually",
       autoVerdict: (pass: boolean) => `Auto: ${pass ? "Pass" : "Fail"}`,
       autoOverridden: (pass: boolean) =>
         `Overriding auto judgement (${pass ? "Pass" : "Fail"})`,
+      waitingValues: "Waiting for measured values",
+      waitingCounts: "Waiting for inspected / passed counts",
+      inspectedCount: "Inspected",
+      passedCount: "Passed",
+      failCount: (n: number) => `${n} failed`,
+      countsOver: "Passed count exceeds inspected count",
       status: {
         PENDING: "Pending",
         PASS: "Pass",

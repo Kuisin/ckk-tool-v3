@@ -362,6 +362,8 @@ model InspectionRecordItem {
   templateItemId     Int     @map("template_item_id")
   measuredValue      String? @map("measured_value") // 旧記録の表示用（新規は measured_values）
   measuredValues     Json?   @map("measured_values") // サンプルごとの実測値配列（型は inputType に依存）
+  inspectedCount     Int?    @map("inspected_count") // 記録方式 COUNTS: 検査数
+  passedCount        Int?    @map("passed_count") // 記録方式 COUNTS: 合格数
   isPass             Boolean? @map("is_pass")
   notes              String?
 

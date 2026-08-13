@@ -73,6 +73,9 @@ const bodySchema = z.object({
             ]),
           )
           .max(1000),
+        // 記録方式 COUNTS: 検査数・合格数（VALUES は null）
+        inspectedCount: z.number().int().min(0).nullable(),
+        passedCount: z.number().int().min(0).nullable(),
         isPass: z.boolean(),
       }),
     )

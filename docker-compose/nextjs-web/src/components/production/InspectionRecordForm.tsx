@@ -20,6 +20,7 @@ import {
   Badge,
   Group,
   MultiSelect,
+  NumberInput,
   Paper,
   SegmentedControl,
   Select,
@@ -47,12 +48,14 @@ import { StatusBadge } from "@/components/ui/StatusBadge";
 import { formatDateTime } from "@/lib/format";
 import {
   acceptLabel,
-  evaluateItem,
+  evaluateEntry,
   evaluateSample,
   goalLabel,
   type InspectionSampleValue,
+  isEntryStarted,
   isSampleEmpty,
   requiredSampleCount,
+  resolveItemPass,
   samplingLabelJa,
 } from "@/lib/inspection-core";
 import type {
@@ -141,17 +144,19 @@ function RecordSummary({ record }: { record: InspectionRecordView }) {
 
 interface ItemEntry {
   samples: InspectionSampleValue[];
+  /** 記録方式 COUNTS: 検査数 / 合格数。 */
+  inspectedCount: number | null;
+  passedCount: number | null;
   /** 手動上書き（null = 自動判定に従う）。 */
   manualPass: boolean | null;
 }
 
-/** 項目の実効合否 — 手動上書き > 自動判定 > 既定 合格。 */
+/** 項目の実効合否（inspection-core resolveItemPass — サーバー保存と同一規則）。 */
 function effectivePass(
   item: InspectionTemplateItemView,
   entry: ItemEntry,
 ): boolean {
-  if (entry.manualPass != null) return entry.manualPass;
-  return evaluateItem(item, entry.samples) ?? true;
+  return resolveItemPass(item, entry, entry.manualPass);
 }
 
 function SampleInput({
@@ -255,6 +260,8 @@ export function InspectionRecordForm({
   ): ItemEntry =>
     entries[`${template.id}:${item.id}`] ?? {
       samples: initialSamples(item, lotQuantity),
+      inspectedCount: null,
+      passedCount: null,
       manualPass: null,
     };
 
@@ -274,12 +281,31 @@ export function InspectionRecordForm({
   const handleSave = (template: InspectionTemplateView) => {
     const missing = template.items.filter((it) => {
       const entry = entryOf(template, it);
-      return it.isRequired && entry.samples.every((s) => isSampleEmpty(s));
+      return it.isRequired && !isEntryStarted(it, entry);
     });
     if (missing.length > 0) {
       notifications.show({
         title: "入力不足",
-        message: `必須項目の実測値を入力してください（${missing
+        message: `必須項目を入力してください（${missing
+          .map((m) => m.name)
+          .join("・")}）`,
+        color: "red",
+      });
+      return;
+    }
+    const invalidCounts = template.items.filter((it) => {
+      const entry = entryOf(template, it);
+      return (
+        it.recordStyle === "COUNTS" &&
+        entry.inspectedCount != null &&
+        entry.passedCount != null &&
+        entry.passedCount > entry.inspectedCount
+      );
+    });
+    if (invalidCounts.length > 0) {
+      notifications.show({
+        title: "入力エラー",
+        message: `合格数が検査数を超えています（${invalidCounts
           .map((m) => m.name)
           .join("・")}）`,
         color: "red",
@@ -295,7 +321,13 @@ export function InspectionRecordForm({
           const entry = entryOf(template, it);
           return {
             templateItemId: it.id,
-            values: entry.samples.filter((s) => !isSampleEmpty(s)),
+            values:
+              it.recordStyle === "COUNTS"
+                ? []
+                : entry.samples.filter((s) => !isSampleEmpty(s)),
+            inspectedCount:
+              it.recordStyle === "COUNTS" ? entry.inspectedCount : null,
+            passedCount: it.recordStyle === "COUNTS" ? entry.passedCount : null,
             isPass: effectivePass(it, entry),
           };
         }),
@@ -356,8 +388,10 @@ export function InspectionRecordForm({
                 const accept = acceptLabel(item);
                 const goal = goalLabel(item);
                 const required = requiredSampleCount(item, lotQuantity);
-                const auto = evaluateItem(item, entry.samples);
+                const auto = evaluateEntry(item, entry);
+                const started = isEntryStarted(item, entry);
                 const pass = effectivePass(item, entry);
+                const isCounts = item.recordStyle === "COUNTS";
                 return (
                   <Paper key={item.id} p="sm" radius="sm" withBorder>
                     <Stack gap="xs">
@@ -385,97 +419,162 @@ export function InspectionRecordForm({
                         )}
                       </Group>
 
-                      <Group align="center" gap="xs" wrap="wrap">
-                        {entry.samples.map((sample, idx) => {
-                          const verdict = evaluateSample(item, sample);
-                          return (
-                            <Group
-                              gap={4}
-                              // biome-ignore lint/suspicious/noArrayIndexKey: 行は追加/削除のみで並べ替えない
-                              key={idx}
-                              wrap="nowrap"
-                            >
-                              <SampleInput
-                                index={idx}
-                                item={item}
-                                onChange={(v) =>
-                                  setEntry(template, item, {
-                                    samples: entry.samples.map((s, i) =>
-                                      i === idx ? v : s,
-                                    ),
-                                  })
+                      {isCounts ? (
+                        <Group align="flex-end" gap="xs" wrap="wrap">
+                          <NumberInput
+                            allowNegative={false}
+                            label="検査数"
+                            min={0}
+                            onChange={(v) =>
+                              setEntry(template, item, {
+                                inspectedCount:
+                                  v === "" || v == null ? null : Number(v),
+                              })
+                            }
+                            placeholder={
+                              required != null ? String(required) : undefined
+                            }
+                            value={entry.inspectedCount ?? ""}
+                            w={120}
+                          />
+                          <NumberInput
+                            allowNegative={false}
+                            label="合格数"
+                            min={0}
+                            onChange={(v) =>
+                              setEntry(template, item, {
+                                passedCount:
+                                  v === "" || v == null ? null : Number(v),
+                              })
+                            }
+                            value={entry.passedCount ?? ""}
+                            w={120}
+                          />
+                          {entry.inspectedCount != null &&
+                            entry.passedCount != null && (
+                              <Text
+                                c={
+                                  entry.passedCount > entry.inspectedCount
+                                    ? "red"
+                                    : "dimmed"
                                 }
-                                value={sample}
-                              />
-                              {verdict != null && (
-                                <Text
-                                  c={verdict ? "green" : "red"}
-                                  fw={700}
-                                  size="sm"
-                                >
-                                  {verdict ? "○" : "×"}
-                                </Text>
-                              )}
-                              {entry.samples.length > 1 && (
-                                <Tooltip label="行を削除" withinPortal>
-                                  <ActionIcon
-                                    aria-label={`${item.name} #${idx + 1} を削除`}
-                                    color="gray"
-                                    onClick={() =>
-                                      setEntry(template, item, {
-                                        samples: entry.samples.filter(
-                                          (_, i) => i !== idx,
-                                        ),
-                                      })
-                                    }
+                                size="sm"
+                              >
+                                {entry.passedCount > entry.inspectedCount
+                                  ? "合格数が検査数を超えています"
+                                  : `不合格 ${entry.inspectedCount - entry.passedCount}`}
+                              </Text>
+                            )}
+                        </Group>
+                      ) : (
+                        <Group align="center" gap="xs" wrap="wrap">
+                          {entry.samples.map((sample, idx) => {
+                            const verdict = evaluateSample(item, sample);
+                            return (
+                              <Group
+                                gap={4}
+                                // biome-ignore lint/suspicious/noArrayIndexKey: 行は追加/削除のみで並べ替えない
+                                key={idx}
+                                wrap="nowrap"
+                              >
+                                <SampleInput
+                                  index={idx}
+                                  item={item}
+                                  onChange={(v) =>
+                                    setEntry(template, item, {
+                                      samples: entry.samples.map((s, i) =>
+                                        i === idx ? v : s,
+                                      ),
+                                    })
+                                  }
+                                  value={sample}
+                                />
+                                {verdict != null && (
+                                  <Text
+                                    c={verdict ? "green" : "red"}
+                                    fw={700}
                                     size="sm"
-                                    variant="subtle"
                                   >
-                                    <IconTrash size={12} />
-                                  </ActionIcon>
-                                </Tooltip>
-                              )}
-                            </Group>
-                          );
-                        })}
-                        <GhostButton
-                          leftSection={<IconPlus size={12} />}
-                          onClick={() =>
-                            setEntry(template, item, {
-                              samples: [
-                                ...entry.samples,
-                                item.inputType === "SELECT_MULTI" ? [] : "",
-                              ],
-                            })
-                          }
-                          size="compact-sm"
-                        >
-                          行を追加
-                        </GhostButton>
-                      </Group>
+                                    {verdict ? "○" : "×"}
+                                  </Text>
+                                )}
+                                {entry.samples.length > 1 && (
+                                  <Tooltip label="行を削除" withinPortal>
+                                    <ActionIcon
+                                      aria-label={`${item.name} #${idx + 1} を削除`}
+                                      color="gray"
+                                      onClick={() =>
+                                        setEntry(template, item, {
+                                          samples: entry.samples.filter(
+                                            (_, i) => i !== idx,
+                                          ),
+                                        })
+                                      }
+                                      size="sm"
+                                      variant="subtle"
+                                    >
+                                      <IconTrash size={12} />
+                                    </ActionIcon>
+                                  </Tooltip>
+                                )}
+                              </Group>
+                            );
+                          })}
+                          <GhostButton
+                            leftSection={<IconPlus size={12} />}
+                            onClick={() =>
+                              setEntry(template, item, {
+                                samples: [
+                                  ...entry.samples,
+                                  item.inputType === "SELECT_MULTI" ? [] : "",
+                                ],
+                              })
+                            }
+                            size="compact-sm"
+                          >
+                            行を追加
+                          </GhostButton>
+                        </Group>
+                      )}
 
                       <Group gap="xs" wrap="wrap">
-                        <SegmentedControl
-                          color={pass ? "green" : "red"}
-                          data={[
-                            { value: "PASS", label: "合格" },
-                            { value: "FAIL", label: "不合格" },
-                          ]}
-                          onChange={(v) =>
-                            setEntry(template, item, {
-                              manualPass: v === "PASS",
-                            })
-                          }
-                          size="xs"
-                          value={pass ? "PASS" : "FAIL"}
-                        />
+                        {item.allowManualOverride ? (
+                          <SegmentedControl
+                            color={pass ? "green" : "red"}
+                            data={[
+                              { value: "PASS", label: "合格" },
+                              { value: "FAIL", label: "不合格" },
+                            ]}
+                            onChange={(v) =>
+                              setEntry(template, item, {
+                                manualPass: v === "PASS",
+                              })
+                            }
+                            size="xs"
+                            value={pass ? "PASS" : "FAIL"}
+                          />
+                        ) : (
+                          started && (
+                            <Badge
+                              color={pass ? "green" : "red"}
+                              variant="light"
+                            >
+                              {pass ? "合格" : "不合格"}
+                            </Badge>
+                          )
+                        )}
                         <Text c="dimmed" size="xs">
-                          {auto == null
-                            ? "自動判定なし（手動で選択）"
-                            : entry.manualPass != null &&
-                                entry.manualPass !== auto
-                              ? `自動判定（${auto ? "合格" : "不合格"}）を手動で上書き中`
-                              : `自動判定: ${auto ? "合格" : "不合格"}`}
+                          {!started
+                            ? isCounts
+                              ? "検査数・合格数の入力待ち"
+                              : "実測値の入力待ち"
+                            : auto == null
+                              ? "自動判定できません — 手動で選択"
+                              : entry.manualPass != null &&
+                                  entry.manualPass !== auto &&
+                                  item.allowManualOverride
+                                ? `自動判定（${auto ? "合格" : "不合格"}）を手動で上書き中`
+                                : `自動判定: ${auto ? "合格" : "不合格"}`}
                         </Text>
                       </Group>
                     </Stack>

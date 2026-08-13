@@ -24,6 +24,9 @@ export type InspectionItemType =
 
 export type InspectionSamplingMode = "ALL" | "PERCENT" | "COUNT";
 
+/** 記録方式: VALUES = 製品ごとの実測値 / COUNTS = 合格数のみ（検査数・合格数）。 */
+export type InspectionRecordStyle = "VALUES" | "COUNTS";
+
 /** 選択肢（inspection_template_items.options の要素）。 */
 export interface InspectionSelectOption {
   value: string;
@@ -46,6 +49,10 @@ export interface InspectionItemSpec {
   goalValue: unknown; // number | boolean | string | string[] | null
   samplingMode: InspectionSamplingMode;
   samplingValue: number | null; // PERCENT: % / COUNT: 本数
+  /** 合否の手動上書きを許可（false = 自動判定のみ。基準未設定の項目は常に手動）。 */
+  allowManualOverride: boolean;
+  /** 記録方式（COUNTS は実測値を持たず検査数・合格数のみ）。 */
+  recordStyle: InspectionRecordStyle;
   isRequired: boolean;
 }
 
@@ -102,6 +109,8 @@ export interface InspectionItemRecord {
   goalValue: unknown;
   samplingMode: InspectionSamplingMode;
   samplingValue: unknown; // Prisma Decimal
+  allowManualOverride: boolean;
+  recordStyle: InspectionRecordStyle;
   isRequired: boolean;
 }
 
@@ -121,8 +130,86 @@ export function itemSpecFromRow(row: InspectionItemRecord): InspectionItemSpec {
     goalValue: row.goalValue ?? null,
     samplingMode: row.samplingMode,
     samplingValue: asNumber(row.samplingValue),
+    allowManualOverride: row.allowManualOverride,
+    recordStyle: row.recordStyle,
     isRequired: row.isRequired,
   };
+}
+
+/** 合格基準が設定されているか（= 自動判定の対象になり得るか）。 */
+export function hasAcceptCriteria(item: InspectionItemSpec): boolean {
+  switch (item.inputType) {
+    case "BOOLEAN":
+      return item.acceptBool != null;
+    case "NUMBER":
+      return item.toleranceMin != null || item.toleranceMax != null;
+    case "SELECT_SINGLE":
+    case "SELECT_MULTI":
+      return item.acceptOptions != null && item.acceptOptions.length > 0;
+  }
+}
+
+/** 記録エントリ（フォーム/保存の共通形）— VALUES はサンプル配列、COUNTS は検査数・合格数。 */
+export interface InspectionItemEntryData {
+  samples: readonly InspectionSampleValue[];
+  inspectedCount: number | null;
+  passedCount: number | null;
+}
+
+/**
+ * 合格数のみ記録（COUNTS）の自動判定 — 全数合格（不合格 0）で合格。
+ * 検査数未入力（または 0）は判定不能。
+ */
+export function evaluateCounts(
+  inspected: number | null,
+  passed: number | null,
+): boolean | null {
+  if (inspected == null || passed == null || inspected <= 0) return null;
+  return passed >= inspected;
+}
+
+/** 記録方式に応じた項目の自動判定。 */
+export function evaluateEntry(
+  item: InspectionItemSpec,
+  entry: InspectionItemEntryData,
+): boolean | null {
+  return item.recordStyle === "COUNTS"
+    ? evaluateCounts(entry.inspectedCount, entry.passedCount)
+    : evaluateItem(item, entry.samples);
+}
+
+/** エントリに何か入力されているか（3 状態表示の「入力待ち」判定に使う）。 */
+export function isEntryStarted(
+  item: InspectionItemSpec,
+  entry: InspectionItemEntryData,
+): boolean {
+  return item.recordStyle === "COUNTS"
+    ? entry.inspectedCount != null || entry.passedCount != null
+    : entry.samples.some((s) => !isSampleEmpty(s));
+}
+
+/**
+ * 項目の実効合否 — 上書き不可（かつ自動判定が出る）なら自動判定を強制。
+ * それ以外は 手動上書き > 自動判定 > 既定 合格。web/kiosk のフォームと
+ * サーバー保存の両方がこの規則を使う。
+ */
+export function resolveItemPass(
+  item: InspectionItemSpec,
+  entry: InspectionItemEntryData,
+  manualPass: boolean | null,
+): boolean {
+  const auto = evaluateEntry(item, entry);
+  if (!item.allowManualOverride && auto != null) return auto;
+  return manualPass ?? auto ?? true;
+}
+
+/** 合格数のみ記録の表示（例: 合格 4/5）。 */
+export function formatCounts(
+  inspected: number | null,
+  passed: number | null,
+  passLabel = "合格",
+): string {
+  return `${passLabel} ${passed ?? "—"}/${inspected ?? "—"}`;
 }
 
 // ── 判定 ─────────────────────────────────────────────────────────────────────
