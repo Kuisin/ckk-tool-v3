@@ -146,9 +146,32 @@ model ProcessStepExecDependency {
 
 // ─── 検査表テンプレート ──────────────────────────────────────────────────────
 
+// 検査項目の入力種別
+enum InspectionItemType {
+  BOOLEAN // はい/いいえ
+  NUMBER // 数値（既存互換 — default）
+  SELECT_SINGLE // 単一選択
+  SELECT_MULTI // 複数選択
+
+  @@schema("app")
+}
+
+// 抜取検査モード（項目ごと）
+enum InspectionSamplingMode {
+  ALL // 全数
+  PERCENT // ロットの割合(%)
+  COUNT // 本数
+
+  @@schema("app")
+}
+
+// バージョン管理: 同一 code に複数バージョン（各バージョンが完全な行 + items）。
+// 指示書リンク・検査記録は行 id を参照するので、使用されたバージョンに固定される。
+// 指示書割当済み/記録ありのバージョンは編集不可 — 変更は新バージョンをコピー作成。
 model InspectionTemplate {
   id                    Int      @id @default(autoincrement())
-  code                  String   @unique
+  code                  String
+  version               Int      @default(1) // code 内 1 始まりの連番
   name                  Json
   relatedProcessStepId  Int?     @map("related_process_step_id")
   isActive              Boolean  @default(true) @map("is_active")
@@ -160,6 +183,7 @@ model InspectionTemplate {
   workOrderTemplates WorkOrderInspectionTemplate[]
   inspectionRecords  InspectionRecord[]            @relation("InspectionRecordTemplate")
 
+  @@unique([code, version])
   @@map("inspection_templates")
   @@schema("app")
 }
@@ -168,9 +192,16 @@ model InspectionTemplateItem {
   id           Int      @id @default(autoincrement())
   templateId   Int      @map("template_id")
   itemName     Json     @map("item_name")
-  unit         String?
-  toleranceMin Decimal? @map("tolerance_min") @db.Decimal(12, 4)
-  toleranceMax Decimal? @map("tolerance_max") @db.Decimal(12, 4)
+  inputType    InspectionItemType @default(NUMBER) @map("input_type")
+  unit         String? // NUMBER 用
+  toleranceMin Decimal? @map("tolerance_min") @db.Decimal(12, 4) // NUMBER: 合格範囲 下限
+  toleranceMax Decimal? @map("tolerance_max") @db.Decimal(12, 4) // NUMBER: 合格範囲 上限
+  options      Json? // SELECT_*: [{ value: string, label: { ja, en } }]
+  acceptBool   Boolean? @map("accept_bool") // BOOLEAN: 合格とする回答
+  acceptOptions Json?   @map("accept_options") // SELECT_*: 合格とする value[]
+  goalValue    Json?    @map("goal_value") // 目標値: number | boolean | string | string[]
+  samplingMode InspectionSamplingMode @default(ALL) @map("sampling_mode")
+  samplingValue Decimal? @map("sampling_value") @db.Decimal(10, 2) // PERCENT: % / COUNT: 本数
   isRequired   Boolean  @default(true) @map("is_required")
   sortOrder    Int      @default(0) @map("sort_order")
 
