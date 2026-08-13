@@ -33,6 +33,7 @@ model Factory {
   materialInventory MaterialInventory[]
   kioskDevices      KioskDevice[]   @relation("KioskDeviceFactory")
   kioskFloorMaps    KioskFloorMap[] @relation("KioskFloorMapFactory")
+  routeVersionSteps ProductProcessRouteVersionStep[] @relation("RouteStepFactory")
 
   @@map("factories")
   @@schema("app")
@@ -68,6 +69,17 @@ enum DependencyRelation {
   @@schema("app")
 }
 
+// 工程の数量管理モード。NONE は記録なし（完了時に受入数をそのまま良品数へ
+// パススルー）。INSPECTION は FLOW と同じ列を 検査数/合格/不合格 として扱う。
+enum QuantityTracking {
+  NONE // 数量記録なし — 完了時パススルー
+  FLOW // 受入/良品/不良の保存則管理（既定）
+  INSPECTION // 検査数/合格/不合格（同じ列・別ラベル）
+
+  @@map("QUANTITY_TRACKING")
+  @@schema("app")
+}
+
 // CKK 実工程カタログ（_docs/manufacturing_details.md）。テンプレート定義であり、
 // 実行順は指示書側の依存解決で決まる（sort_order は既定順の参考）。
 model ProcessStepCatalog {
@@ -80,6 +92,7 @@ model ProcessStepCatalog {
   isInspection      Boolean          @default(false) @map("is_inspection") // 検査工程
   isApprovalStep    Boolean          @default(false) @map("is_approval_step") // 検査承認工程
   approvalMinRank   String?          @map("approval_min_rank") // 係長以上等
+  quantityTracking  QuantityTracking @default(FLOW) @map("quantity_tracking")
   sortOrder         Int              @default(0) @map("sort_order")
   isActive          Boolean          @default(true) @map("is_active")
   notes             String?
@@ -90,6 +103,7 @@ model ProcessStepCatalog {
   execRequiredBy     ProcessStepExecDependency[] @relation("ExecDepTarget")
   inspectionTemplates InspectionTemplate[]
   workOrderSteps      WorkOrderStep[]
+  routeVersionSteps   ProductProcessRouteVersionStep[]
 
   @@map("process_step_catalog")
   @@schema("app")

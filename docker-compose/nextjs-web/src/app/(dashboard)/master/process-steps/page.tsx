@@ -22,6 +22,7 @@ export default async function MasterProcessStepsPage() {
     isSyncCapable: r.isSyncCapable,
     isInspection: r.isInspection,
     isApprovalStep: r.isApprovalStep,
+    quantityTracking: r.quantityTracking,
     sortOrder: r.sortOrder,
     isActive: r.isActive,
   }));
