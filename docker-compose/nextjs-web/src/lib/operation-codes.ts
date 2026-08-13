@@ -304,6 +304,17 @@ export const OPERATION_CODES: OperationCodeEntry[] = [
     mode: "0",
     index: "9",
   },
+  // キオスク設定（ランチャーのアプリ表示 + 認証ポリシー参照）
+  {
+    code: "SY0A",
+    label: "キオスク設定",
+    href: "/settings/kiosk",
+    category: "システム",
+    kind: "list",
+    categoryCode: "SY",
+    mode: "0",
+    index: "A",
+  },
 ];
 
 const CODE_LOOKUP = new Map(

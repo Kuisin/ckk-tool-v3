@@ -24,6 +24,7 @@ import {
   IconCurrencyYen,
   IconCylinder,
   IconDeviceTablet,
+  IconDeviceTabletCog,
   IconFileInvoice,
   IconFileText,
   IconFolder,
@@ -95,6 +96,7 @@ export const ICON_MAP: Record<string, AppIcon> = {
   IconCategory,
   IconQrcode,
   IconDeviceTablet,
+  IconDeviceTabletCog,
 };
 
 /** Representative icon for each category section header. */
