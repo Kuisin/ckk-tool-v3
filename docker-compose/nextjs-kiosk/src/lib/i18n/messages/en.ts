@@ -1,6 +1,9 @@
 import type { KioskMessages } from "./ja";
 
 export const en: KioskMessages = {
+  apps: {
+    stepExecution: "Step Execution",
+  },
   launcher: {
     greeting: (name: string) => name,
     logout: "Log out",
@@ -10,5 +13,93 @@ export const en: KioskMessages = {
   },
   activity: {
     autoLogout: (time: string) => `Auto logout in ${time}`,
+  },
+  steps: {
+    title: "Step Execution",
+    back: "Back to apps",
+    refresh: "Refresh",
+    empty: "No steps assigned to you today",
+    upcoming: (n: number) => `${n} upcoming`,
+    sections: {
+      overdue: "Overdue",
+      today: "Today",
+      upcoming: "Upcoming",
+    },
+    card: {
+      workOrder: (n: number) => `Work order #${n}`,
+      plannedQty: (n: number) => `${n} pcs assigned`,
+      plannedTime: (start: string, end: string) => `${start}–${end}`,
+      allDay: "All day",
+      expectedInput: (n: number) => `${n} pcs expected`,
+      inputRecorded: (n: number) => `${n} pcs received`,
+      elapsed: (t: string) => `Worked ${t}`,
+    },
+    state: {
+      startable: "Ready",
+      blocked: "Waiting on previous step",
+      working: "In progress",
+      paused: "Paused",
+      othersWorking: (name: string) => `${name} is working on this`,
+      completed: "Completed",
+      cancelled: "Cancelled",
+    },
+    actions: {
+      start: "Start",
+      pause: "Pause",
+      resume: "Resume",
+      complete: "Complete",
+      cancel: "Cancel",
+      retry: "Retry",
+    },
+    start: {
+      title: "Start step",
+      inputLabel: (label: string) => label,
+      expectedHint: (n: number) => `Expected ${n} pcs from the previous step`,
+      differsHint: "Differs from the expected count (you can still start)",
+      noneNote: "This step records no quantities. It will start right away.",
+      submit: "Start",
+    },
+    complete: {
+      title: "Complete step",
+      noneNote: (n: number) =>
+        `This step completes without quantity input (${n} pcs passed through)`,
+      submit: "Complete",
+    },
+    quantity: {
+      FLOW: {
+        input: "Received",
+        success: "Good",
+        semi: "Semi-finished",
+        scrap: "Scrapped",
+        rework: "Rework",
+      },
+      INSPECTION: {
+        input: "Inspected",
+        success: "Passed",
+        semi: "Failed (semi-finished)",
+        scrap: "Failed (scrapped)",
+        rework: "Failed (rework)",
+      },
+      defectsTitle: "Defect breakdown",
+      conservation: (sum: number, input: number) =>
+        `The breakdown total (${sum}) does not match the received count (${input})`,
+      negative: "Quantities must be whole numbers of 0 or more",
+    },
+    errors: {
+      OFFLINE: "Connection failed. Please try again",
+      NOT_FOUND: "Step not found",
+      NOT_ASSIGNED: "This step is not assigned to you",
+      WO_NOT_APPROVED: "The work order is not approved or in progress",
+      NOT_STARTABLE: "Cannot start — a previous step is not complete",
+      LOCK_TAKEN: "Someone else started this first",
+      LOCK_HELD_BY_OTHER: "Someone else is working on this",
+      NOT_IN_PROGRESS: "This step is not in progress",
+      ALREADY_COMPLETED: "This step is already completed",
+      QUANTITY_REQUIRED: "Please enter the quantities",
+      QUANTITY_INVALID: "Please check the quantities",
+      ROUTING_INVALID: "Does not match the branch quantities",
+      NO_PERMISSION: "You do not have permission for this action",
+      UNKNOWN: "The operation failed",
+    },
   },
 };

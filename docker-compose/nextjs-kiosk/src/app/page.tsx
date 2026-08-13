@@ -10,6 +10,7 @@ import { I18nProvider } from "@/components/I18nProvider";
 import { LauncherShell } from "@/components/LauncherShell";
 import { visibleApps } from "@/lib/app-list";
 import { readableCodes } from "@/lib/authz";
+import { getMessages } from "@/lib/i18n";
 import { getSession } from "@/lib/kiosk-auth";
 
 export const dynamic = "force-dynamic";
@@ -19,9 +20,10 @@ export default async function LauncherPage() {
   if (!session) redirect("/login");
 
   const codes = await readableCodes(session.userId);
+  const m = getMessages(session.locale);
   const apps = visibleApps(codes).map((app) => ({
     key: app.key,
-    label: app.label,
+    label: m.apps[app.labelKey],
     href: app.href,
   }));
 

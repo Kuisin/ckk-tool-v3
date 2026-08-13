@@ -250,6 +250,7 @@ model Product {
   designRequests     DesignRequest[]
   designFiles        DesignFile[]
   acceptanceItems    OrderAcceptanceItem[]
+  processRoutes      ProductProcessRoute[]
 
   @@unique([yearMonth, seq])
   @@index([materialTypeId])
