@@ -147,6 +147,11 @@ export const en: KioskMessages = {
       passedCount: "Passed",
       failCount: (n: number) => `${n} failed`,
       countsOver: "Passed count exceeds inspected count",
+      productPage: (i: number, n: number) => `Product ${i} / ${n}`,
+      prevProduct: "Previous",
+      nextProduct: "Next",
+      addProduct: "Add product",
+      verdictTitle: "Item verdicts",
       status: {
         PENDING: "Pending",
         PASS: "Pass",

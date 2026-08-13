@@ -43,6 +43,9 @@ export default async function MasterInspectionTemplatesEditPage({
         relatedProcessStepLabel: r.relatedProcessStep
           ? `${localized(r.relatedProcessStep.name as LocalizedText | null)}（${r.relatedProcessStep.code}）`
           : "",
+        samplingMode: r.samplingMode,
+        samplingValue: r.samplingValue == null ? null : Number(r.samplingValue),
+        recordStyle: r.recordStyle,
         isActive: r.isActive,
       }}
     />

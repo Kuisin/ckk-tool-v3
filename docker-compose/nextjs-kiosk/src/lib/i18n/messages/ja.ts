@@ -155,6 +155,11 @@ export const ja = {
       passedCount: "合格数",
       failCount: (n: number) => `不合格 ${n}`,
       countsOver: "合格数が検査数を超えています",
+      productPage: (i: number, n: number) => `製品 ${i} / ${n}`,
+      prevProduct: "前の製品",
+      nextProduct: "次の製品",
+      addProduct: "製品を追加",
+      verdictTitle: "項目の判定",
       status: {
         PENDING: "未実施",
         PASS: "合格",

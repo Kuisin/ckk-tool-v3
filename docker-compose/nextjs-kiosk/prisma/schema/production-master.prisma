@@ -231,6 +231,11 @@ model InspectionTemplate {
   version               Int      @default(1) // code 内 1 始まりの連番
   name                  Json
   relatedProcessStepId  Int?     @map("related_process_step_id")
+  // 検査対象（シート単位）: 全数 / 割合(%) / 本数 — 各項目はこの数の製品に対して記録する
+  samplingMode          InspectionSamplingMode @default(ALL) @map("sampling_mode")
+  samplingValue         Decimal? @map("sampling_value") @db.Decimal(10, 2)
+  // 記録方式（シート単位）: VALUES = 製品ごとにページ送りで実測値 / COUNTS = 項目ごとに検査数・合格数のみ
+  recordStyle           InspectionRecordStyle @default(VALUES) @map("record_style")
   isActive              Boolean  @default(true) @map("is_active")
   createdAt             DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt             DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
@@ -257,10 +262,7 @@ model InspectionTemplateItem {
   acceptBool   Boolean? @map("accept_bool") // BOOLEAN: 合格とする回答
   acceptOptions Json?   @map("accept_options") // SELECT_*: 合格とする value[]
   goalValue    Json?    @map("goal_value") // 目標値: number | boolean | string | string[]
-  samplingMode InspectionSamplingMode @default(ALL) @map("sampling_mode")
-  samplingValue Decimal? @map("sampling_value") @db.Decimal(10, 2) // PERCENT: % / COUNT: 本数
   allowManualOverride Boolean @default(true) @map("allow_manual_override") // 合否の手動上書きを許可（基準未設定の項目は常に手動）
-  recordStyle  InspectionRecordStyle @default(VALUES) @map("record_style") // 実測値 / 合格数のみ
   isRequired   Boolean  @default(true) @map("is_required")
   sortOrder    Int      @default(0) @map("sort_order")
 

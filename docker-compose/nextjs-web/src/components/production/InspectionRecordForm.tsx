@@ -3,13 +3,15 @@
 /**
  * InspectionRecordForm — 検査記録の入力・表示 (design.md §12.5)。
  *
- * コンパクト表示（テーマ既定 size="sm" — 現場タブレットはキオスク側）。
- * 工程に対応する検査表テンプレートごとに、項目の入力種別（真偽/数値/単一・
- * 複数選択）に応じた入力欄をサンプル行単位で出す。抜取（全数/割合/本数）の
- * 要求サンプル数を表示し、行の追加・削除で測定した本数分を記録する。
- * 合否は合格基準からの自動判定を初期値に、手動で上書きできる。
+ * 記録方式はシート（テンプレート）単位:
+ * - VALUES: **製品ごとのカード**を前へ/次へで送りながら、1 製品につき全項目の
+ *   実測値を記録する（ページ数 = 検査対象の製品数。サンプル index = 製品番号
+ *   なので values 配列は位置を保って送る）
+ * - COUNTS: 項目ごとに検査数・合格数のみを記録する
+ * 合否は合格基準からの自動判定を初期値に、項目の「手動上書き許可」に応じて
+ * 上書きできる。判定表示は 3 状態（入力待ち / 自動判定 / 手動選択）で、
+ * 未入力の間は合否コントロールを選択なし（グレー）にする。
  * 保存で InspectionRecord（全項目合格 = PASS / それ以外 = FAIL）+ 項目を作成。
- * 既存記録は読み取り専用で一覧表示。
  *
  * InspectionApprovalPanel — 検査承認工程用: 指示書全体の検査記録を一覧し、
  * PASS の記録を「承認」（APPROVED + approvedBy/At）する。
@@ -31,7 +33,12 @@ import {
   Tooltip,
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
-import { IconFileTypePdf, IconPlus, IconTrash } from "@tabler/icons-react";
+import {
+  IconChevronLeft,
+  IconChevronRight,
+  IconFileTypePdf,
+  IconPlus,
+} from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import {
@@ -42,6 +49,7 @@ import {
   ApproveButton,
   GhostButton,
   PrimaryButton,
+  SecondaryButton,
 } from "@/components/ui/buttons";
 import { PdfButton } from "@/components/ui/PdfButton";
 import { StatusBadge } from "@/components/ui/StatusBadge";
@@ -51,6 +59,7 @@ import {
   evaluateEntry,
   evaluateSample,
   goalLabel,
+  type InspectionItemEntryData,
   type InspectionSampleValue,
   isEntryStarted,
   isSampleEmpty,
@@ -68,23 +77,6 @@ const BOOL_SEGMENT = [
   { value: "true", label: "はい" },
   { value: "false", label: "いいえ" },
 ];
-
-/** 抜取行の初期本数（要求数が多くても入力欄はまず 10 行まで）。 */
-const INITIAL_ROWS_CAP = 10;
-
-function initialSamples(
-  item: InspectionTemplateItemView,
-  lotQuantity: number | null,
-): InspectionSampleValue[] {
-  const empty: InspectionSampleValue =
-    item.inputType === "SELECT_MULTI" ? [] : "";
-  if (item.samplingMode === "ALL") return [empty];
-  const required = requiredSampleCount(item, lotQuantity);
-  const n = Math.max(1, Math.min(required ?? 1, INITIAL_ROWS_CAP));
-  return Array.from({ length: n }, () =>
-    item.inputType === "SELECT_MULTI" ? [] : "",
-  );
-}
 
 /** 既存の検査記録 1 件の読み取り専用表示。 */
 function RecordSummary({ record }: { record: InspectionRecordView }) {
@@ -142,35 +134,28 @@ function RecordSummary({ record }: { record: InspectionRecordView }) {
 
 // ── 記録モード（検査工程） ───────────────────────────────────────────────────
 
-interface ItemEntry {
+interface ItemEntry extends InspectionItemEntryData {
   samples: InspectionSampleValue[];
-  /** 記録方式 COUNTS: 検査数 / 合格数。 */
-  inspectedCount: number | null;
-  passedCount: number | null;
   /** 手動上書き（null = 自動判定に従う）。 */
   manualPass: boolean | null;
 }
 
-/** 項目の実効合否（inspection-core resolveItemPass — サーバー保存と同一規則）。 */
-function effectivePass(
-  item: InspectionTemplateItemView,
-  entry: ItemEntry,
-): boolean {
-  return resolveItemPass(item, entry, entry.manualPass);
+function emptySample(item: InspectionTemplateItemView): InspectionSampleValue {
+  return item.inputType === "SELECT_MULTI" ? [] : "";
 }
 
 function SampleInput({
   item,
   value,
   onChange,
-  index,
+  productNo,
 }: {
   item: InspectionTemplateItemView;
   value: InspectionSampleValue;
   onChange: (v: InspectionSampleValue) => void;
-  index: number;
+  productNo: number;
 }) {
-  const label = `${item.name} #${index + 1}`;
+  const label = `${item.name} — 製品 ${productNo}`;
   switch (item.inputType) {
     case "BOOLEAN":
       return (
@@ -193,7 +178,7 @@ function SampleInput({
           onChange={(v) => onChange(v ?? "")}
           placeholder="選択"
           value={typeof value === "string" && value ? value : null}
-          w={200}
+          w={220}
         />
       );
     case "SELECT_MULTI":
@@ -225,10 +210,64 @@ function SampleInput({
             ) : undefined
           }
           value={typeof value === "string" ? value : ""}
-          w={140}
+          w={160}
         />
       );
   }
+}
+
+/** 項目の判定コントロール + 3 状態の状態表示（VALUES/COUNTS 共通）。 */
+function ItemVerdict({
+  item,
+  entry,
+  style,
+  onManualPass,
+}: {
+  item: InspectionTemplateItemView;
+  entry: ItemEntry;
+  style: "VALUES" | "COUNTS";
+  onManualPass: (pass: boolean) => void;
+}) {
+  const auto = evaluateEntry(item, entry, style);
+  const started = isEntryStarted(entry, style);
+  const pass = resolveItemPass(item, entry, entry.manualPass, style);
+  // 未入力かつ手動未選択の間は選択なし（グレー）で表示する
+  const showVerdict = started || entry.manualPass != null;
+  return (
+    <Group gap="xs" wrap="wrap">
+      {item.allowManualOverride ? (
+        <SegmentedControl
+          color={showVerdict ? (pass ? "green" : "red") : undefined}
+          data={[
+            { value: "PASS", label: "合格" },
+            { value: "FAIL", label: "不合格" },
+          ]}
+          onChange={(v) => onManualPass(v === "PASS")}
+          size="xs"
+          value={showVerdict ? (pass ? "PASS" : "FAIL") : ""}
+        />
+      ) : (
+        showVerdict && (
+          <Badge color={pass ? "green" : "red"} variant="light">
+            {pass ? "合格" : "不合格"}
+          </Badge>
+        )
+      )}
+      <Text c="dimmed" size="xs">
+        {!started
+          ? style === "COUNTS"
+            ? "検査数・合格数の入力待ち"
+            : "実測値の入力待ち"
+          : auto == null
+            ? "自動判定できません — 手動で選択"
+            : entry.manualPass != null &&
+                entry.manualPass !== auto &&
+                item.allowManualOverride
+              ? `自動判定（${auto ? "合格" : "不合格"}）を手動で上書き中`
+              : `自動判定: ${auto ? "合格" : "不合格"}`}
+      </Text>
+    </Group>
+  );
 }
 
 export function InspectionRecordForm({
@@ -246,20 +285,25 @@ export function InspectionRecordForm({
   records: InspectionRecordView[];
   /** 進行中 & セッション保有時のみ true。 */
   canRecord: boolean;
-  /** 抜取の要求サンプル数計算に使うロット数量（受入数 → 予定数量）。 */
+  /** 検査対象の製品数計算に使うロット数量（受入数 → 予定数量）。 */
   lotQuantity: number | null;
 }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   // key = `${templateId}:${itemId}`
   const [entries, setEntries] = useState<Record<string, ItemEntry>>({});
+  // VALUES: 表示中の製品ページ（0 始まり）と、要求数不明時の手動ページ数
+  const [pageByTemplate, setPageByTemplate] = useState<Record<number, number>>(
+    {},
+  );
+  const [extraPages, setExtraPages] = useState<Record<number, number>>({});
 
   const entryOf = (
     template: InspectionTemplateView,
     item: InspectionTemplateItemView,
   ): ItemEntry =>
     entries[`${template.id}:${item.id}`] ?? {
-      samples: initialSamples(item, lotQuantity),
+      samples: [],
       inspectedCount: null,
       passedCount: null,
       manualPass: null,
@@ -278,10 +322,38 @@ export function InspectionRecordForm({
       },
     }));
 
+  /** 製品ページの値（未入力ページは空サンプル）。 */
+  const sampleAt = (
+    template: InspectionTemplateView,
+    item: InspectionTemplateItemView,
+    page: number,
+  ): InspectionSampleValue =>
+    entryOf(template, item).samples[page] ?? emptySample(item);
+
+  const setSampleAt = (
+    template: InspectionTemplateView,
+    item: InspectionTemplateItemView,
+    page: number,
+    value: InspectionSampleValue,
+  ) => {
+    const entry = entryOf(template, item);
+    const samples = [...entry.samples];
+    while (samples.length <= page) samples.push(emptySample(item));
+    samples[page] = value;
+    setEntry(template, item, { samples });
+  };
+
+  /** 検査する製品数（要求数。不明なら手動追加ぶん）。 */
+  const productCount = (template: InspectionTemplateView): number => {
+    const required = requiredSampleCount(template, lotQuantity);
+    return required ?? 1 + (extraPages[template.id] ?? 0);
+  };
+
   const handleSave = (template: InspectionTemplateView) => {
+    const style = template.recordStyle;
     const missing = template.items.filter((it) => {
       const entry = entryOf(template, it);
-      return it.isRequired && !isEntryStarted(it, entry);
+      return it.isRequired && !isEntryStarted(entry, style);
     });
     if (missing.length > 0) {
       notifications.show({
@@ -293,24 +365,25 @@ export function InspectionRecordForm({
       });
       return;
     }
-    const invalidCounts = template.items.filter((it) => {
-      const entry = entryOf(template, it);
-      return (
-        it.recordStyle === "COUNTS" &&
-        entry.inspectedCount != null &&
-        entry.passedCount != null &&
-        entry.passedCount > entry.inspectedCount
-      );
-    });
-    if (invalidCounts.length > 0) {
-      notifications.show({
-        title: "入力エラー",
-        message: `合格数が検査数を超えています（${invalidCounts
-          .map((m) => m.name)
-          .join("・")}）`,
-        color: "red",
+    if (style === "COUNTS") {
+      const invalid = template.items.filter((it) => {
+        const entry = entryOf(template, it);
+        return (
+          entry.inspectedCount != null &&
+          entry.passedCount != null &&
+          entry.passedCount > entry.inspectedCount
+        );
       });
-      return;
+      if (invalid.length > 0) {
+        notifications.show({
+          title: "入力エラー",
+          message: `合格数が検査数を超えています（${invalid
+            .map((m) => m.name)
+            .join("・")}）`,
+          color: "red",
+        });
+        return;
+      }
     }
     startTransition(async () => {
       const result = await saveInspectionRecord({
@@ -319,16 +392,20 @@ export function InspectionRecordForm({
         templateId: template.id,
         items: template.items.map((it) => {
           const entry = entryOf(template, it);
+          // values は位置 = 製品番号なので詰めずに送る（末尾の空のみ削除）
+          const samples = [...entry.samples];
+          while (
+            samples.length > 0 &&
+            isSampleEmpty(samples[samples.length - 1])
+          ) {
+            samples.pop();
+          }
           return {
             templateItemId: it.id,
-            values:
-              it.recordStyle === "COUNTS"
-                ? []
-                : entry.samples.filter((s) => !isSampleEmpty(s)),
-            inspectedCount:
-              it.recordStyle === "COUNTS" ? entry.inspectedCount : null,
-            passedCount: it.recordStyle === "COUNTS" ? entry.passedCount : null,
-            isPass: effectivePass(it, entry),
+            values: style === "COUNTS" ? [] : samples,
+            inspectedCount: style === "COUNTS" ? entry.inspectedCount : null,
+            passedCount: style === "COUNTS" ? entry.passedCount : null,
+            isPass: resolveItemPass(it, entry, entry.manualPass, style),
           };
         }),
       });
@@ -344,6 +421,7 @@ export function InspectionRecordForm({
             delete next[`${template.id}:${it.id}`];
           return next;
         });
+        setPageByTemplate((prev) => ({ ...prev, [template.id]: 0 }));
         router.refresh();
       } else {
         notifications.show({
@@ -369,228 +447,267 @@ export function InspectionRecordForm({
         )}
 
         {canRecord &&
-          templates.map((template) => (
-            <Stack gap="sm" key={template.id}>
-              <Group gap="xs" justify="space-between" wrap="wrap">
-                <Group gap="xs" wrap="nowrap">
-                  <Title order={5}>{template.name}</Title>
-                  <Badge color="gray" size="sm" variant="outline">
-                    v{template.version}
-                  </Badge>
+          templates.map((template) => {
+            const style = template.recordStyle;
+            const required = requiredSampleCount(template, lotQuantity);
+            const pages = productCount(template);
+            const page = Math.min(
+              pageByTemplate[template.id] ?? 0,
+              Math.max(pages - 1, 0),
+            );
+            const setPage = (next: number) =>
+              setPageByTemplate((prev) => ({
+                ...prev,
+                [template.id]: Math.max(0, Math.min(next, pages - 1)),
+              }));
+            return (
+              <Stack gap="sm" key={template.id}>
+                <Group gap="xs" justify="space-between" wrap="wrap">
+                  <Group gap="xs" wrap="nowrap">
+                    <Title order={5}>{template.name}</Title>
+                    <Badge color="gray" size="sm" variant="outline">
+                      v{template.version}
+                    </Badge>
+                    <Badge color="gray" size="sm" variant="light">
+                      {samplingLabelJa(template, required)}
+                    </Badge>
+                    {style === "COUNTS" && (
+                      <Badge color="cyan" size="sm" variant="light">
+                        合格数のみ
+                      </Badge>
+                    )}
+                  </Group>
+                  <PdfButton
+                    href={`/api/pdf/inspection-sheet?templateId=${template.id}&workOrder=${workOrderNumber}`}
+                    label="空欄シートを印刷"
+                  />
                 </Group>
-                <PdfButton
-                  href={`/api/pdf/inspection-sheet?templateId=${template.id}&workOrder=${workOrderNumber}`}
-                  label="空欄シートを印刷"
-                />
-              </Group>
-              {template.items.map((item) => {
-                const entry = entryOf(template, item);
-                const accept = acceptLabel(item);
-                const goal = goalLabel(item);
-                const required = requiredSampleCount(item, lotQuantity);
-                const auto = evaluateEntry(item, entry);
-                const started = isEntryStarted(item, entry);
-                const pass = effectivePass(item, entry);
-                const isCounts = item.recordStyle === "COUNTS";
-                return (
-                  <Paper key={item.id} p="sm" radius="sm" withBorder>
-                    <Stack gap="xs">
-                      <Group gap="xs" wrap="wrap">
-                        <Text fw={600} size="sm">
-                          {item.name}
-                          {item.isRequired && (
-                            <Text c="red" component="span" size="sm">
-                              {" *"}
-                            </Text>
-                          )}
-                        </Text>
-                        <Badge color="gray" size="sm" variant="light">
-                          {samplingLabelJa(item, required)}
-                        </Badge>
-                        {accept && (
-                          <Text c="dimmed" size="xs">
-                            合格: {accept}
-                          </Text>
-                        )}
-                        {goal && (
-                          <Text c="dimmed" size="xs">
-                            目標: {goal}
-                          </Text>
-                        )}
-                      </Group>
 
-                      {isCounts ? (
-                        <Group align="flex-end" gap="xs" wrap="wrap">
-                          <NumberInput
-                            allowNegative={false}
-                            label="検査数"
-                            min={0}
-                            onChange={(v) =>
-                              setEntry(template, item, {
-                                inspectedCount:
-                                  v === "" || v == null ? null : Number(v),
-                              })
-                            }
-                            placeholder={
-                              required != null ? String(required) : undefined
-                            }
-                            value={entry.inspectedCount ?? ""}
-                            w={120}
-                          />
-                          <NumberInput
-                            allowNegative={false}
-                            label="合格数"
-                            min={0}
-                            onChange={(v) =>
-                              setEntry(template, item, {
-                                passedCount:
-                                  v === "" || v == null ? null : Number(v),
-                              })
-                            }
-                            value={entry.passedCount ?? ""}
-                            w={120}
-                          />
-                          {entry.inspectedCount != null &&
-                            entry.passedCount != null && (
-                              <Text
-                                c={
-                                  entry.passedCount > entry.inspectedCount
-                                    ? "red"
-                                    : "dimmed"
-                                }
-                                size="sm"
-                              >
-                                {entry.passedCount > entry.inspectedCount
-                                  ? "合格数が検査数を超えています"
-                                  : `不合格 ${entry.inspectedCount - entry.passedCount}`}
+                {style === "COUNTS" ? (
+                  // ── 合格数のみ: 項目ごとに検査数・合格数 ──
+                  template.items.map((item) => {
+                    const entry = entryOf(template, item);
+                    const accept = acceptLabel(item);
+                    const goal = goalLabel(item);
+                    return (
+                      <Paper key={item.id} p="sm" radius="sm" withBorder>
+                        <Stack gap="xs">
+                          <Group gap="xs" wrap="wrap">
+                            <Text fw={600} size="sm">
+                              {item.name}
+                              {item.isRequired && (
+                                <Text c="red" component="span" size="sm">
+                                  {" *"}
+                                </Text>
+                              )}
+                            </Text>
+                            {accept && (
+                              <Text c="dimmed" size="xs">
+                                合格: {accept}
                               </Text>
                             )}
+                            {goal && (
+                              <Text c="dimmed" size="xs">
+                                目標: {goal}
+                              </Text>
+                            )}
+                          </Group>
+                          <Group align="flex-end" gap="xs" wrap="wrap">
+                            <NumberInput
+                              allowNegative={false}
+                              label="検査数"
+                              min={0}
+                              onChange={(v) =>
+                                setEntry(template, item, {
+                                  inspectedCount:
+                                    v === "" || v == null ? null : Number(v),
+                                })
+                              }
+                              placeholder={
+                                required != null ? String(required) : undefined
+                              }
+                              value={entry.inspectedCount ?? ""}
+                              w={120}
+                            />
+                            <NumberInput
+                              allowNegative={false}
+                              label="合格数"
+                              min={0}
+                              onChange={(v) =>
+                                setEntry(template, item, {
+                                  passedCount:
+                                    v === "" || v == null ? null : Number(v),
+                                })
+                              }
+                              value={entry.passedCount ?? ""}
+                              w={120}
+                            />
+                            {entry.inspectedCount != null &&
+                              entry.passedCount != null && (
+                                <Text
+                                  c={
+                                    entry.passedCount > entry.inspectedCount
+                                      ? "red"
+                                      : "dimmed"
+                                  }
+                                  size="sm"
+                                >
+                                  {entry.passedCount > entry.inspectedCount
+                                    ? "合格数が検査数を超えています"
+                                    : `不合格 ${entry.inspectedCount - entry.passedCount}`}
+                                </Text>
+                              )}
+                          </Group>
+                          <ItemVerdict
+                            entry={entry}
+                            item={item}
+                            onManualPass={(pass) =>
+                              setEntry(template, item, { manualPass: pass })
+                            }
+                            style={style}
+                          />
+                        </Stack>
+                      </Paper>
+                    );
+                  })
+                ) : (
+                  // ── 実測値: 製品ごとのカードをページ送り ──
+                  <>
+                    <Paper p="sm" radius="sm" withBorder>
+                      <Stack gap="sm">
+                        <Group justify="space-between" wrap="nowrap">
+                          <SecondaryButton
+                            disabled={page === 0}
+                            leftSection={<IconChevronLeft size={14} />}
+                            onClick={() => setPage(page - 1)}
+                          >
+                            前の製品
+                          </SecondaryButton>
+                          <Group gap="xs" wrap="nowrap">
+                            <Text className="tabular-nums" fw={600} size="sm">
+                              製品 {page + 1} / {pages}
+                            </Text>
+                            {required == null && (
+                              <GhostButton
+                                leftSection={<IconPlus size={12} />}
+                                onClick={() => {
+                                  setExtraPages((prev) => ({
+                                    ...prev,
+                                    [template.id]: (prev[template.id] ?? 0) + 1,
+                                  }));
+                                  setPage(pages);
+                                }}
+                                size="compact-sm"
+                              >
+                                製品を追加
+                              </GhostButton>
+                            )}
+                          </Group>
+                          <SecondaryButton
+                            disabled={page >= pages - 1}
+                            onClick={() => setPage(page + 1)}
+                            rightSection={<IconChevronRight size={14} />}
+                          >
+                            次の製品
+                          </SecondaryButton>
                         </Group>
-                      ) : (
-                        <Group align="center" gap="xs" wrap="wrap">
-                          {entry.samples.map((sample, idx) => {
-                            const verdict = evaluateSample(item, sample);
+                        <Stack gap="xs">
+                          {template.items.map((item) => {
+                            const value = sampleAt(template, item, page);
+                            const verdict = evaluateSample(item, value);
+                            const accept = acceptLabel(item);
                             return (
                               <Group
-                                gap={4}
-                                // biome-ignore lint/suspicious/noArrayIndexKey: 行は追加/削除のみで並べ替えない
-                                key={idx}
-                                wrap="nowrap"
+                                align="center"
+                                gap="sm"
+                                justify="space-between"
+                                key={item.id}
+                                wrap="wrap"
                               >
-                                <SampleInput
-                                  index={idx}
-                                  item={item}
-                                  onChange={(v) =>
-                                    setEntry(template, item, {
-                                      samples: entry.samples.map((s, i) =>
-                                        i === idx ? v : s,
-                                      ),
-                                    })
-                                  }
-                                  value={sample}
-                                />
-                                {verdict != null && (
+                                <Stack gap={0} style={{ minWidth: 160 }}>
+                                  <Text fw={600} size="sm">
+                                    {item.name}
+                                    {item.isRequired && (
+                                      <Text c="red" component="span" size="sm">
+                                        {" *"}
+                                      </Text>
+                                    )}
+                                  </Text>
+                                  {accept && (
+                                    <Text c="dimmed" size="xs">
+                                      合格: {accept}
+                                    </Text>
+                                  )}
+                                </Stack>
+                                <Group gap={6} wrap="nowrap">
+                                  <SampleInput
+                                    item={item}
+                                    onChange={(v) =>
+                                      setSampleAt(template, item, page, v)
+                                    }
+                                    productNo={page + 1}
+                                    value={value}
+                                  />
                                   <Text
-                                    c={verdict ? "green" : "red"}
+                                    c={
+                                      verdict == null
+                                        ? "dimmed"
+                                        : verdict
+                                          ? "green"
+                                          : "red"
+                                    }
                                     fw={700}
                                     size="sm"
+                                    w={16}
                                   >
-                                    {verdict ? "○" : "×"}
+                                    {verdict == null ? "" : verdict ? "○" : "×"}
                                   </Text>
-                                )}
-                                {entry.samples.length > 1 && (
-                                  <Tooltip label="行を削除" withinPortal>
-                                    <ActionIcon
-                                      aria-label={`${item.name} #${idx + 1} を削除`}
-                                      color="gray"
-                                      onClick={() =>
-                                        setEntry(template, item, {
-                                          samples: entry.samples.filter(
-                                            (_, i) => i !== idx,
-                                          ),
-                                        })
-                                      }
-                                      size="sm"
-                                      variant="subtle"
-                                    >
-                                      <IconTrash size={12} />
-                                    </ActionIcon>
-                                  </Tooltip>
-                                )}
+                                </Group>
                               </Group>
                             );
                           })}
-                          <GhostButton
-                            leftSection={<IconPlus size={12} />}
-                            onClick={() =>
-                              setEntry(template, item, {
-                                samples: [
-                                  ...entry.samples,
-                                  item.inputType === "SELECT_MULTI" ? [] : "",
-                                ],
-                              })
-                            }
-                            size="compact-sm"
-                          >
-                            行を追加
-                          </GhostButton>
-                        </Group>
-                      )}
+                        </Stack>
+                      </Stack>
+                    </Paper>
 
-                      <Group gap="xs" wrap="wrap">
-                        {item.allowManualOverride ? (
-                          <SegmentedControl
-                            color={pass ? "green" : "red"}
-                            data={[
-                              { value: "PASS", label: "合格" },
-                              { value: "FAIL", label: "不合格" },
-                            ]}
-                            onChange={(v) =>
-                              setEntry(template, item, {
-                                manualPass: v === "PASS",
-                              })
-                            }
-                            size="xs"
-                            value={pass ? "PASS" : "FAIL"}
-                          />
-                        ) : (
-                          started && (
-                            <Badge
-                              color={pass ? "green" : "red"}
-                              variant="light"
-                            >
-                              {pass ? "合格" : "不合格"}
-                            </Badge>
-                          )
-                        )}
-                        <Text c="dimmed" size="xs">
-                          {!started
-                            ? isCounts
-                              ? "検査数・合格数の入力待ち"
-                              : "実測値の入力待ち"
-                            : auto == null
-                              ? "自動判定できません — 手動で選択"
-                              : entry.manualPass != null &&
-                                  entry.manualPass !== auto &&
-                                  item.allowManualOverride
-                                ? `自動判定（${auto ? "合格" : "不合格"}）を手動で上書き中`
-                                : `自動判定: ${auto ? "合格" : "不合格"}`}
-                        </Text>
-                      </Group>
+                    {/* 項目ごとの判定サマリ（全製品分の自動判定 + 手動上書き） */}
+                    <Stack gap={6}>
+                      {template.items.map((item) => {
+                        const entry = entryOf(template, item);
+                        return (
+                          <Group
+                            gap="sm"
+                            justify="space-between"
+                            key={item.id}
+                            wrap="wrap"
+                          >
+                            <Text size="sm">{item.name}</Text>
+                            <ItemVerdict
+                              entry={entry}
+                              item={item}
+                              onManualPass={(pass) =>
+                                setEntry(template, item, { manualPass: pass })
+                              }
+                              style={style}
+                            />
+                          </Group>
+                        );
+                      })}
                     </Stack>
-                  </Paper>
-                );
-              })}
-              <Group justify="flex-end">
-                <PrimaryButton
-                  loading={isPending}
-                  onClick={() => handleSave(template)}
-                >
-                  検査記録を保存
-                </PrimaryButton>
-              </Group>
-            </Stack>
-          ))}
+                  </>
+                )}
+
+                <Group justify="flex-end">
+                  <PrimaryButton
+                    loading={isPending}
+                    onClick={() => handleSave(template)}
+                  >
+                    検査記録を保存
+                  </PrimaryButton>
+                </Group>
+              </Stack>
+            );
+          })}
 
         {!canRecord && records.length === 0 && (
           <Text c="dimmed" size="sm">

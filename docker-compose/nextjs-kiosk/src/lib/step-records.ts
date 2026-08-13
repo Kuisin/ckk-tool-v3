@@ -33,6 +33,7 @@ import {
   itemSpecFromRow,
   parseStoredSamples,
   resolveItemPass,
+  samplingSpecFromRow,
 } from "./inspection-core";
 import type { StepActionResult, StepErrorCode } from "./step-execution";
 import { inspectionOutcome } from "./steps-core";
@@ -62,6 +63,10 @@ export interface InspectionTemplateView {
   code: string;
   version: number;
   name: string;
+  /** 検査対象・記録方式（シート単位）。 */
+  samplingMode: "ALL" | "PERCENT" | "COUNT";
+  samplingValue: number | null;
+  recordStyle: "VALUES" | "COUNTS";
   items: InspectionTemplateItemView[];
 }
 
@@ -208,6 +213,7 @@ export async function getStepRecordingData(
         code: t.inspectionTemplate.code,
         version: t.inspectionTemplate.version,
         name: localized(asText(t.inspectionTemplate.name), locale),
+        ...samplingSpecFromRow(t.inspectionTemplate),
         items: t.inspectionTemplate.items.map((it) => ({
           name: localized(asText(it.itemName), locale),
           ...itemSpecFromRow(it),
@@ -311,6 +317,8 @@ export async function recordInspection(
   if (!link) {
     return fail("TEMPLATE_INVALID", "この指示書の検査表ではありません");
   }
+  // 記録方式・検査対象はシート（テンプレート）単位
+  const style = link.inspectionTemplate.recordStyle;
   const specs = new Map(
     link.inspectionTemplate.items.map((it) => [it.id, itemSpecFromRow(it)]),
   );
@@ -337,7 +345,7 @@ export async function recordInspection(
       }
     }
     if (
-      spec.recordStyle === "COUNTS" &&
+      style === "COUNTS" &&
       i.inspectedCount != null &&
       i.passedCount != null &&
       i.passedCount > i.inspectedCount
@@ -348,20 +356,27 @@ export async function recordInspection(
 
   // 合否はサーバーでも解決 — 上書き不可の項目はクライアント値を無視して
   // 自動判定を強制（resolveItemPass — web 側と同一規則）。
+  // values は位置 = 製品番号なので詰めない（末尾の空のみ削除）。
   const resolved = items.map((i) => {
     const spec = specs.get(i.templateItemId);
-    const isCounts = spec?.recordStyle === "COUNTS";
+    const isCounts = style === "COUNTS";
+    const samples = [...i.values];
+    while (samples.length > 0 && isSampleEmpty(samples[samples.length - 1])) {
+      samples.pop();
+    }
     const entryData = {
-      samples: i.values,
+      samples,
       inspectedCount: isCounts ? i.inspectedCount : null,
       passedCount: isCounts ? i.passedCount : null,
     };
     return {
       templateItemId: i.templateItemId,
-      measuredValues: isCounts ? [] : i.values.filter((s) => !isSampleEmpty(s)),
+      measuredValues: isCounts ? [] : samples,
       inspectedCount: entryData.inspectedCount,
       passedCount: entryData.passedCount,
-      isPass: spec ? resolveItemPass(spec, entryData, i.isPass) : i.isPass,
+      isPass: spec
+        ? resolveItemPass(spec, entryData, i.isPass, style)
+        : i.isPass,
     };
   });
   const status = inspectionOutcome(resolved);

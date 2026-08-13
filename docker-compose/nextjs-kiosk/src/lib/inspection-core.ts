@@ -47,13 +47,15 @@ export interface InspectionItemSpec {
   acceptBool: boolean | null; // BOOLEAN: 合格とする回答
   acceptOptions: string[] | null; // SELECT_*: 合格とする value[]
   goalValue: unknown; // number | boolean | string | string[] | null
-  samplingMode: InspectionSamplingMode;
-  samplingValue: number | null; // PERCENT: % / COUNT: 本数
   /** 合否の手動上書きを許可（false = 自動判定のみ。基準未設定の項目は常に手動）。 */
   allowManualOverride: boolean;
-  /** 記録方式（COUNTS は実測値を持たず検査数・合格数のみ）。 */
-  recordStyle: InspectionRecordStyle;
   isRequired: boolean;
+}
+
+/** 検査対象（シート単位の抜取設定 — inspection_templates.sampling_*）。 */
+export interface InspectionSamplingSpec {
+  samplingMode: InspectionSamplingMode;
+  samplingValue: number | null; // PERCENT: % / COUNT: 本数
 }
 
 // ── JSON カラムのパース（DB 由来の unknown を安全に絞る） ────────────────────
@@ -107,11 +109,21 @@ export interface InspectionItemRecord {
   acceptBool: boolean | null;
   acceptOptions: unknown;
   goalValue: unknown;
+  allowManualOverride: boolean;
+  isRequired: boolean;
+}
+
+/** inspection_templates 行の抜取・記録方式列 → シート設定（Decimal → Number）。 */
+export function samplingSpecFromRow(row: {
   samplingMode: InspectionSamplingMode;
   samplingValue: unknown; // Prisma Decimal
-  allowManualOverride: boolean;
   recordStyle: InspectionRecordStyle;
-  isRequired: boolean;
+}): InspectionSamplingSpec & { recordStyle: InspectionRecordStyle } {
+  return {
+    samplingMode: row.samplingMode,
+    samplingValue: row.samplingValue == null ? null : Number(row.samplingValue),
+    recordStyle: row.recordStyle,
+  };
 }
 
 const asNumber = (v: unknown): number | null => (v == null ? null : Number(v));
@@ -128,10 +140,7 @@ export function itemSpecFromRow(row: InspectionItemRecord): InspectionItemSpec {
     acceptBool: row.acceptBool,
     acceptOptions: parseStringArray(row.acceptOptions),
     goalValue: row.goalValue ?? null,
-    samplingMode: row.samplingMode,
-    samplingValue: asNumber(row.samplingValue),
     allowManualOverride: row.allowManualOverride,
-    recordStyle: row.recordStyle,
     isRequired: row.isRequired,
   };
 }
@@ -168,22 +177,23 @@ export function evaluateCounts(
   return passed >= inspected;
 }
 
-/** 記録方式に応じた項目の自動判定。 */
+/** 記録方式（シート単位）に応じた項目の自動判定。 */
 export function evaluateEntry(
   item: InspectionItemSpec,
   entry: InspectionItemEntryData,
+  style: InspectionRecordStyle,
 ): boolean | null {
-  return item.recordStyle === "COUNTS"
+  return style === "COUNTS"
     ? evaluateCounts(entry.inspectedCount, entry.passedCount)
     : evaluateItem(item, entry.samples);
 }
 
 /** エントリに何か入力されているか（3 状態表示の「入力待ち」判定に使う）。 */
 export function isEntryStarted(
-  item: InspectionItemSpec,
   entry: InspectionItemEntryData,
+  style: InspectionRecordStyle,
 ): boolean {
-  return item.recordStyle === "COUNTS"
+  return style === "COUNTS"
     ? entry.inspectedCount != null || entry.passedCount != null
     : entry.samples.some((s) => !isSampleEmpty(s));
 }
@@ -197,8 +207,9 @@ export function resolveItemPass(
   item: InspectionItemSpec,
   entry: InspectionItemEntryData,
   manualPass: boolean | null,
+  style: InspectionRecordStyle,
 ): boolean {
-  const auto = evaluateEntry(item, entry);
+  const auto = evaluateEntry(item, entry, style);
   if (!item.allowManualOverride && auto != null) return auto;
   return manualPass ?? auto ?? true;
 }
@@ -279,26 +290,26 @@ export function evaluateItem(
 // ── 抜取検査 ─────────────────────────────────────────────────────────────────
 
 /**
- * 要求サンプル数。null = 不定（PERCENT/ALL でロット数量が不明）。
+ * 検査する製品数（シート単位）。null = 不定（PERCENT/ALL でロット数量が不明）。
  * PERCENT は切り上げ・最低 1・ロット数上限。COUNT はロット数上限。
  */
 export function requiredSampleCount(
-  item: InspectionItemSpec,
+  sampling: InspectionSamplingSpec,
   lotQuantity: number | null,
 ): number | null {
   const lot =
     lotQuantity != null && lotQuantity > 0 ? Math.floor(lotQuantity) : null;
-  switch (item.samplingMode) {
+  switch (sampling.samplingMode) {
     case "ALL":
       return lot;
     case "PERCENT": {
-      if (item.samplingValue == null || lot == null) return null;
-      const n = Math.ceil((lot * item.samplingValue) / 100);
+      if (sampling.samplingValue == null || lot == null) return null;
+      const n = Math.ceil((lot * sampling.samplingValue) / 100);
       return Math.min(Math.max(n, 1), lot);
     }
     case "COUNT": {
-      if (item.samplingValue == null) return null;
-      const n = Math.max(Math.round(item.samplingValue), 1);
+      if (sampling.samplingValue == null) return null;
+      const n = Math.max(Math.round(sampling.samplingValue), 1);
       return lot == null ? n : Math.min(n, lot);
     }
   }
@@ -426,23 +437,23 @@ export function goalLabel(
 }
 
 /**
- * 抜取の表示（日本語。キオスクは mode/value から i18n で組み立てる）。
+ * 検査対象の表示（日本語。キオスクは mode/value から i18n で組み立てる）。
  * required を渡すと「（n本）」を併記。
  */
 export function samplingLabelJa(
-  item: InspectionItemSpec,
+  sampling: InspectionSamplingSpec,
   required?: number | null,
 ): string {
-  switch (item.samplingMode) {
+  switch (sampling.samplingMode) {
     case "ALL":
-      return "全数";
+      return required != null ? `全数（${required}本）` : "全数";
     case "PERCENT": {
-      const pct = item.samplingValue ?? 0;
+      const pct = sampling.samplingValue ?? 0;
       return required != null
         ? `抜取 ${pct}%（${required}本）`
         : `抜取 ${pct}%`;
     }
     case "COUNT":
-      return `抜取 ${required ?? item.samplingValue ?? 0}本`;
+      return `抜取 ${required ?? sampling.samplingValue ?? 0}本`;
   }
 }

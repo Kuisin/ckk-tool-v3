@@ -145,6 +145,11 @@ export const zh: KioskMessages = {
       passedCount: "合格数",
       failCount: (n: number) => `不合格 ${n}`,
       countsOver: "合格数超过检查数",
+      productPage: (i: number, n: number) => `产品 ${i} / ${n}`,
+      prevProduct: "上一件",
+      nextProduct: "下一件",
+      addProduct: "添加产品",
+      verdictTitle: "项目判定",
       status: {
         PENDING: "未实施",
         PASS: "合格",
