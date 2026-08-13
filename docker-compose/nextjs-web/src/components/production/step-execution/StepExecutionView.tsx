@@ -402,6 +402,11 @@ export function StepExecutionView({ data }: { data: StepExecutionData }) {
         (step.isInspection || data.stepRecords.length > 0) && (
           <InspectionRecordForm
             canRecord={step.status === "IN_PROGRESS" && canOperate}
+            lotQuantity={
+              step.inputQuantity ??
+              data.expectedInputQuantity ??
+              data.plannedQuantity
+            }
             records={data.stepRecords}
             stepId={step.id}
             templates={data.templates}

@@ -23,8 +23,13 @@ import { getCurrentActorId } from "@/lib/audit";
 import { prisma } from "@/lib/db";
 import { formatSalesOrderNumber } from "@/lib/doc-number";
 import { type LocalizedText, localized } from "@/lib/format";
+import { formatSampleValue, parseStoredSamples } from "@/lib/inspection-core";
 import { fetchWorkflowCtx, loadCatalog } from "@/lib/workflow";
 import { canStartStep, expectedInput } from "@/lib/workflow-core";
+import {
+  type InspectionItemRecord,
+  toItemSpec,
+} from "../../master/inspection-templates/data";
 
 // 一覧クエリの取得上限（監査 P2-8 — 全件フェッチのデータ増加対策）。
 // DataTable はクライアントページングのため、最新分のみで実用上十分。
@@ -420,6 +425,18 @@ export async function fetchStepExecution(
   const nameOf = (id: string | null | undefined) =>
     id ? (users.find((u) => u.id === id)?.displayName ?? "システム") : null;
 
+  // 実測値の表示（新形式 measured_values は型別フォーマット、旧形式は生値）
+  const recordItemLabel = (it: {
+    measuredValue: string | null;
+    measuredValues: unknown;
+    templateItem: InspectionItemRecord;
+  }): string | null => {
+    const samples = parseStoredSamples(it.measuredValues);
+    if (samples.length === 0) return it.measuredValue;
+    const spec = toItemSpec(it.templateItem);
+    return samples.map((s) => formatSampleValue(spec, s)).join(" / ");
+  };
+
   type RecordRaw = (typeof step.inspectionRecords)[number];
   const mapRecord = (
     rec: RecordRaw,
@@ -437,25 +454,29 @@ export async function fetchStepExecution(
     items: rec.items.map((it) => ({
       templateItemId: it.templateItemId,
       itemName: localized(it.templateItem.itemName as LocalizedText | null),
-      measuredValue: it.measuredValue,
+      valueLabel: recordItemLabel(it),
       isPass: it.isPass,
     })),
   });
 
-  const templates: InspectionTemplateView[] = templateLinks.map((t) => ({
-    id: t.inspectionTemplate.id,
-    code: t.inspectionTemplate.code,
-    name: localized(t.inspectionTemplate.name as LocalizedText | null),
-    items: t.inspectionTemplate.items.map((it) => ({
-      id: it.id,
-      name: localized(it.itemName as LocalizedText | null),
-      unit: it.unit,
-      // Decimal → Number（境界で変換）
-      toleranceMin: it.toleranceMin == null ? null : Number(it.toleranceMin),
-      toleranceMax: it.toleranceMax == null ? null : Number(it.toleranceMax),
-      isRequired: it.isRequired,
-    })),
-  }));
+  // 検査工程で出すテンプレート: 関連工程がこの工程 or 未設定（汎用）のもの
+  const templates: InspectionTemplateView[] = templateLinks
+    .filter(
+      (t) =>
+        t.inspectionTemplate.relatedProcessStepId == null ||
+        t.inspectionTemplate.relatedProcessStepId === step.processStepId,
+    )
+    .map((t) => ({
+      id: t.inspectionTemplate.id,
+      code: t.inspectionTemplate.code,
+      version: t.inspectionTemplate.version,
+      name: localized(t.inspectionTemplate.name as LocalizedText | null),
+      relatedProcessStepId: t.inspectionTemplate.relatedProcessStepId,
+      items: t.inspectionTemplate.items.map((it) => ({
+        name: localized(it.itemName as LocalizedText | null),
+        ...toItemSpec(it),
+      })),
+    }));
 
   const defectRecords: StepDefectRecordView[] = step.defectRecords.map((d) => ({
     id: d.id,
@@ -599,16 +620,31 @@ export async function fetchFactoryOptions(): Promise<Option[]> {
   }));
 }
 
-/** 検査表テンプレート（有効のみ）— MultiSelect。value = String(内部 id)。 */
-export async function fetchInspectionTemplateOptions(): Promise<Option[]> {
+/** 検査表テンプレートの選択肢（関連工程の自動選択に使う）。 */
+export interface InspectionTemplateOption {
+  value: string; // String(内部 id)
+  label: string;
+  relatedProcessStepId: number | null;
+}
+
+/**
+ * 検査表テンプレート（有効のみ・code ごとに最新バージョンのみ）— MultiSelect。
+ * value = String(内部 id) = そのバージョンの行 id（指示書はバージョン固定）。
+ */
+export async function fetchInspectionTemplateOptions(): Promise<
+  InspectionTemplateOption[]
+> {
   const rows = await prisma.inspectionTemplate.findMany({
     where: { isActive: true },
-    orderBy: { code: "asc" },
+    orderBy: [{ code: "asc" }, { version: "desc" }],
   });
-  return rows.map((r) => ({
-    value: String(r.id),
-    label: `${r.code} ${localized(r.name as LocalizedText | null)}`,
-  }));
+  return rows
+    .filter((r, i) => i === 0 || rows[i - 1].code !== r.code)
+    .map((r) => ({
+      value: String(r.id),
+      label: `${r.code} v${r.version} ${localized(r.name as LocalizedText | null)}`,
+      relatedProcessStepId: r.relatedProcessStepId,
+    }));
 }
 
 /**
