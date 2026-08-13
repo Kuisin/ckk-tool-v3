@@ -74,6 +74,9 @@ export interface WorkOrderStepView {
   outsourceExpectedAt: string | null;
   completedAt: string | null;
   completedByName: string | null;
+  /** 作業計画 / 実績の件数（工程実行ページで記録）。 */
+  planCount: number;
+  actualCount: number;
   /** サーバーで canStartStep により算出（PENDING で依存充足なら true）。 */
   canStart: boolean;
 }

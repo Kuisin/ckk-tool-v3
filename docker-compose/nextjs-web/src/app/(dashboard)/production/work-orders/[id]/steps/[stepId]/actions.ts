@@ -441,3 +441,216 @@ export async function saveOutsourceDates(
     return failed(e, "外注日程の保存に失敗しました");
   }
 }
+
+// ── 作業計画 / 実績 (§7 — 分割記録・担当者・日付/時刻) ──────────────────────
+
+const timePattern = /^([01]\d|2[0-3]):[0-5]\d$/;
+const datePattern = /^\d{4}-\d{2}-\d{2}$/;
+
+const planActualBase = {
+  workOrderNumber: z.number().int().positive(),
+  stepId: z.string().min(1),
+  userId: z.string().min(1, "担当者を選択してください"),
+  date: z.string().regex(datePattern, "日付を選択してください"),
+  startTime: z
+    .string()
+    .regex(timePattern, "時刻は HH:mm 形式で入力してください")
+    .nullable(),
+  endTime: z
+    .string()
+    .regex(timePattern, "時刻は HH:mm 形式で入力してください")
+    .nullable(),
+  quantity: z.number().int().min(1).nullable(),
+  notes: z.string(),
+};
+
+const stepPlanInput = z.object(planActualBase);
+const stepActualInput = z.object(planActualBase);
+
+export type StepPlanInput = z.infer<typeof stepPlanInput>;
+export type StepActualInput = z.infer<typeof stepActualInput>;
+
+/** "YYYY-MM-DD" + "HH:mm"（JST）→ timestamptz。time が null なら null。 */
+function toJstTimestamp(date: string, time: string | null): Date | null {
+  if (!time) return null;
+  return new Date(`${date}T${time}:00+09:00`);
+}
+
+function validateTimeRange(v: {
+  startTime: string | null;
+  endTime: string | null;
+}): string | null {
+  if (v.startTime && v.endTime && v.startTime >= v.endTime) {
+    return "終了時刻は開始時刻より後にしてください";
+  }
+  return null;
+}
+
+/** 作業計画の追加 — 未完了（PENDING / IN_PROGRESS）の工程のみ。 */
+export async function addStepPlan(
+  payload: StepPlanInput,
+): Promise<StepActionResult> {
+  const denied = await deniedStepPermission("UPDATE");
+  if (denied) return denied;
+  const parsed = stepPlanInput.safeParse(payload);
+  if (!parsed.success) {
+    return {
+      ok: false,
+      errors: [parsed.error.issues[0]?.message ?? "入力が不正です"],
+    };
+  }
+  const v = parsed.data;
+  const rangeError = validateTimeRange(v);
+  if (rangeError) return { ok: false, errors: [rangeError] };
+  try {
+    const step = await findStep(v.workOrderNumber, v.stepId);
+    if (!step) return { ok: false, errors: ["工程が見つかりません"] };
+    if (step.status === "COMPLETED" || step.status === "CANCELLED") {
+      return {
+        ok: false,
+        errors: ["完了・キャンセル済みの工程には計画を追加できません"],
+      };
+    }
+    const actor = await getCurrentActorId();
+    await prisma.workOrderStepPlan.create({
+      data: {
+        stepId: v.stepId,
+        userId: v.userId,
+        plannedDate: new Date(`${v.date}T00:00:00+09:00`),
+        plannedStartAt: toJstTimestamp(v.date, v.startTime),
+        plannedEndAt: toJstTimestamp(v.date, v.endTime),
+        quantity: v.quantity,
+        notes: v.notes.trim() || null,
+        createdBy: actor,
+      },
+    });
+    await recordAudit({
+      action: "UPDATE",
+      tableName: "work_orders",
+      recordId: String(v.workOrderNumber),
+      after: {
+        note: `工程の作業計画を追加（${v.date}${v.startTime ? ` ${v.startTime}〜${v.endTime ?? ""}` : ""}${v.quantity != null ? ` / ${v.quantity}` : ""}）`,
+      },
+    });
+    revalidate(v.workOrderNumber, v.stepId);
+    return { ok: true };
+  } catch (e) {
+    return failed(e, "作業計画の追加に失敗しました");
+  }
+}
+
+/** 作業計画の削除。 */
+export async function deleteStepPlan(
+  workOrderNumber: number,
+  stepId: string,
+  planId: string,
+): Promise<StepActionResult> {
+  const denied = await deniedStepPermission("UPDATE");
+  if (denied) return denied;
+  try {
+    const step = await findStep(workOrderNumber, stepId);
+    if (!step) return { ok: false, errors: ["工程が見つかりません"] };
+    const deleted = await prisma.workOrderStepPlan.deleteMany({
+      where: { id: planId, stepId },
+    });
+    if (deleted.count === 0) {
+      return { ok: false, errors: ["対象の計画が見つかりません"] };
+    }
+    await recordAudit({
+      action: "UPDATE",
+      tableName: "work_orders",
+      recordId: String(workOrderNumber),
+      after: { note: "工程の作業計画を削除" },
+    });
+    revalidate(workOrderNumber, stepId);
+    return { ok: true };
+  } catch (e) {
+    return failed(e, "作業計画の削除に失敗しました");
+  }
+}
+
+/** 作業実績の追加 — 進行中（IN_PROGRESS）の工程のみ。 */
+export async function addStepActual(
+  payload: StepActualInput,
+): Promise<StepActionResult> {
+  const denied = await deniedStepPermission("UPDATE");
+  if (denied) return denied;
+  const parsed = stepActualInput.safeParse(payload);
+  if (!parsed.success) {
+    return {
+      ok: false,
+      errors: [parsed.error.issues[0]?.message ?? "入力が不正です"],
+    };
+  }
+  const v = parsed.data;
+  const rangeError = validateTimeRange(v);
+  if (rangeError) return { ok: false, errors: [rangeError] };
+  try {
+    const step = await findStep(v.workOrderNumber, v.stepId);
+    if (!step) return { ok: false, errors: ["工程が見つかりません"] };
+    if (step.status !== "IN_PROGRESS") {
+      return { ok: false, errors: ["進行中の工程のみ実績を記録できます"] };
+    }
+    const actor = await getCurrentActorId();
+    await prisma.workOrderStepActual.create({
+      data: {
+        stepId: v.stepId,
+        userId: v.userId,
+        workedDate: new Date(`${v.date}T00:00:00+09:00`),
+        startedAt: toJstTimestamp(v.date, v.startTime),
+        endedAt: toJstTimestamp(v.date, v.endTime),
+        quantity: v.quantity,
+        notes: v.notes.trim() || null,
+        createdBy: actor,
+      },
+    });
+    await recordAudit({
+      action: "UPDATE",
+      tableName: "work_orders",
+      recordId: String(v.workOrderNumber),
+      after: {
+        note: `工程の作業実績を追加（${v.date}${v.startTime ? ` ${v.startTime}〜${v.endTime ?? ""}` : ""}${v.quantity != null ? ` / ${v.quantity}` : ""}）`,
+      },
+    });
+    revalidate(v.workOrderNumber, v.stepId);
+    return { ok: true };
+  } catch (e) {
+    return failed(e, "作業実績の追加に失敗しました");
+  }
+}
+
+/** 作業実績の削除 — 工程が完了する前まで。 */
+export async function deleteStepActual(
+  workOrderNumber: number,
+  stepId: string,
+  actualId: string,
+): Promise<StepActionResult> {
+  const denied = await deniedStepPermission("UPDATE");
+  if (denied) return denied;
+  try {
+    const step = await findStep(workOrderNumber, stepId);
+    if (!step) return { ok: false, errors: ["工程が見つかりません"] };
+    if (step.status === "COMPLETED" || step.status === "CANCELLED") {
+      return {
+        ok: false,
+        errors: ["完了・キャンセル済みの工程の実績は削除できません"],
+      };
+    }
+    const deleted = await prisma.workOrderStepActual.deleteMany({
+      where: { id: actualId, stepId },
+    });
+    if (deleted.count === 0) {
+      return { ok: false, errors: ["対象の実績が見つかりません"] };
+    }
+    await recordAudit({
+      action: "UPDATE",
+      tableName: "work_orders",
+      recordId: String(workOrderNumber),
+      after: { note: "工程の作業実績を削除" },
+    });
+    revalidate(workOrderNumber, stepId);
+    return { ok: true };
+  } catch (e) {
+    return failed(e, "作業実績の削除に失敗しました");
+  }
+}

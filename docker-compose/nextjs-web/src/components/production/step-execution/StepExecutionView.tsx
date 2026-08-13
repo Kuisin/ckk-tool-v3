@@ -48,6 +48,7 @@ import {
   InspectionApprovalPanel,
   InspectionRecordForm,
 } from "@/components/production/InspectionRecordForm";
+import { StepPlanActualPanel } from "@/components/production/StepPlanActualPanel";
 import { StepQuantityForm } from "@/components/production/StepQuantityForm";
 import { PrimaryButton } from "@/components/ui/buttons";
 import { DocNumber } from "@/components/ui/DocNumber";
@@ -374,6 +375,17 @@ export function StepExecutionView({ data }: { data: StepExecutionData }) {
           />
         )
       )}
+
+      {/* ── 作業計画 / 実績（分割記録・担当者・日付/時刻） ── */}
+      <StepPlanActualPanel
+        actuals={data.actuals}
+        canOperate={canOperate}
+        expectedInputQuantity={step.inputQuantity ?? data.expectedInputQuantity}
+        plans={data.plans}
+        stepId={step.id}
+        stepStatus={step.status}
+        workOrderNumber={workOrderNumber}
+      />
 
       {/* ── 不良記録（§12.6 任意記録） ── */}
       <DefectRecordForm

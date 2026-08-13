@@ -11,6 +11,7 @@ import type {
   InspectionTemplateView,
   StepDefectRecordView,
   StepExecutionData,
+  StepPlanView,
 } from "@/components/production/step-execution/model";
 import type {
   WorkOrderRow,
@@ -44,7 +45,12 @@ const WO_INCLUDE = {
     orderBy: { createdAt: "desc" as const },
   },
   steps: {
-    include: { processStep: true, factory: true, supplierBp: true },
+    include: {
+      processStep: true,
+      factory: true,
+      supplierBp: true,
+      _count: { select: { plans: true, actuals: true } },
+    },
     orderBy: { sortOrder: "asc" as const },
   },
   stepLinks: true,
@@ -203,6 +209,8 @@ export async function fetchWorkOrder(
       outsourceExpectedAt: iso(s.outsourceExpectedAt),
       completedAt: iso(s.completedAt),
       completedByName: s.completedBy ? nameOf(s.completedBy) : null,
+      planCount: s._count.plans,
+      actualCount: s._count.actuals,
       canStart: canStartStep(s.id, ctx, actorId).ok,
     })),
     stepLinks: r.stepLinks.map((l) => ({
@@ -254,6 +262,14 @@ export async function fetchStepExecution(
       defectRecords: {
         include: { defectType: true },
         orderBy: { recordedAt: "desc" },
+      },
+      plans: {
+        include: { user: { select: { displayName: true } } },
+        orderBy: [{ plannedDate: "asc" }, { plannedStartAt: "asc" }],
+      },
+      actuals: {
+        include: { user: { select: { displayName: true } } },
+        orderBy: [{ workedDate: "asc" }, { startedAt: "asc" }],
       },
     },
   });
@@ -355,6 +371,52 @@ export async function fetchStepExecution(
     recordedByName: nameOf(d.recordedBy),
   }));
 
+  // timestamptz → HH:mm（JST）。@db.Date 列は UTC 深夜の Date なので ISO 切り出し。
+  const jstTime = (d: Date | null) =>
+    d
+      ? new Intl.DateTimeFormat("ja-JP", {
+          timeZone: "Asia/Tokyo",
+          hour: "2-digit",
+          minute: "2-digit",
+          hour12: false,
+        }).format(d)
+      : null;
+  const mapPlanRow = (r: {
+    id: string;
+    userId: string;
+    user: { displayName: string };
+    date: Date;
+    start: Date | null;
+    end: Date | null;
+    quantity: number | null;
+    notes: string | null;
+  }): StepPlanView => ({
+    id: r.id,
+    userId: r.userId,
+    userName: r.user.displayName,
+    date: r.date.toISOString().slice(0, 10),
+    startTime: jstTime(r.start),
+    endTime: jstTime(r.end),
+    quantity: r.quantity,
+    notes: r.notes,
+  });
+  const plans = step.plans.map((p) =>
+    mapPlanRow({
+      ...p,
+      date: p.plannedDate,
+      start: p.plannedStartAt,
+      end: p.plannedEndAt,
+    }),
+  );
+  const actuals = step.actuals.map((a) =>
+    mapPlanRow({
+      ...a,
+      date: a.workedDate,
+      start: a.startedAt,
+      end: a.endedAt,
+    }),
+  );
+
   return {
     actorId,
     workOrderNumber,
@@ -409,6 +471,8 @@ export async function fetchStepExecution(
       value: String(d.id),
       label: `${d.code} ${localized(d.name as LocalizedText | null)}`,
     })),
+    plans,
+    actuals,
   };
 }
 
