@@ -27,11 +27,9 @@ import { checkPermission } from "@/lib/authz";
 import { normalizeCode } from "@/lib/crockford";
 import { prisma } from "@/lib/db";
 import {
-  type KioskDeviceLogRow,
   type KioskDeviceSessionRow,
   type KioskPresenceRow,
   listDeviceSessions,
-  listKioskDeviceLogs,
   listKioskPresence,
 } from "@/lib/kiosk-admin";
 import { mintMonitorToken } from "@/lib/kiosk-ws-token";
