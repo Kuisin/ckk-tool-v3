@@ -83,15 +83,19 @@ const quantitiesInput = z.object({
   outputDefectRework: z.number().int(),
 });
 
-/** 工程完了（数量整合はサーバー側でも検証される）。 */
+/**
+ * 工程完了（数量整合はサーバー側でも検証される）。
+ * 数量管理なし（NONE）の工程は quantities = null で呼ぶ — サーバーが
+ * 受入数をそのまま良品数へパススルー保存する。
+ */
 export async function completeStep(
   workOrderNumber: number,
   stepId: string,
-  quantities: z.infer<typeof quantitiesInput>,
+  quantities: z.infer<typeof quantitiesInput> | null,
 ): Promise<StepActionResult> {
   const denied = await deniedStepPermission("UPDATE");
   if (denied) return denied;
-  const parsed = quantitiesInput.safeParse(quantities);
+  const parsed = quantitiesInput.nullable().safeParse(quantities);
   if (!parsed.success) return { ok: false, errors: ["数量の入力が不正です"] };
   try {
     const step = await findStep(workOrderNumber, stepId);

@@ -71,6 +71,8 @@ export interface StepExecutionStepView {
   category: string;
   isInspection: boolean;
   isApprovalStep: boolean;
+  /** 数量管理モード（NONE = 記録なしパススルー / FLOW / INSPECTION）。 */
+  quantityTracking: "NONE" | "FLOW" | "INSPECTION";
   sortOrder: number;
   executionLocation: "INTERNAL" | "OUTSOURCE";
   factoryName: string | null;

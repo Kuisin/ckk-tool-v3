@@ -182,6 +182,7 @@ export async function fetchWorkOrder(
       isInspection: s.processStep.isInspection,
       isApprovalStep: s.processStep.isApprovalStep,
       isSyncCapable: s.processStep.isSyncCapable,
+      quantityTracking: s.processStep.quantityTracking,
       sortOrder: s.sortOrder,
       executionLocation: s.executionLocation,
       factoryId: s.factoryId,
@@ -367,6 +368,7 @@ export async function fetchStepExecution(
       category: step.processStep.category,
       isInspection: step.processStep.isInspection,
       isApprovalStep: step.processStep.isApprovalStep,
+      quantityTracking: step.processStep.quantityTracking,
       sortOrder: step.sortOrder,
       executionLocation: step.executionLocation,
       factoryName: step.factory
