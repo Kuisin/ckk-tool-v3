@@ -178,6 +178,20 @@ export function WorkOrderDetail({
         value={<DocNumber>{wo.lotNumber ?? wo.workOrderNumber}</DocNumber>}
       />
       <FieldValue
+        label="工程ルート"
+        value={
+          wo.routeName != null ? (
+            <Anchor
+              component={Link}
+              href={`/master/products/${wo.productId}?tab=routes`}
+              size="sm"
+            >
+              {wo.routeName} v{wo.routeVersion}
+            </Anchor>
+          ) : null
+        }
+      />
+      <FieldValue
         label="コピー元"
         value={
           wo.sourceWorkOrderNumber != null ? (

@@ -26,12 +26,14 @@ import {
 import { useTabParam } from "@/hooks/useUrlState";
 import { useIsMobile } from "@/hooks/useViewport";
 import { formatDate, formatDateTime } from "@/lib/format";
+import type { RouteView } from "@/lib/product-routes-core";
 import { isReservedSpecKey } from "@/lib/product-types";
 import {
   DeleteProductModal,
   DuplicateProductModal,
   ToggleProductActiveModal,
 } from "./ProductModals";
+import { ProductRoutesPanel } from "./ProductRoutesPanel";
 
 const BASE_PATH = "/master/products";
 
@@ -74,9 +76,12 @@ const ORDER_TYPE_LABEL: Record<string, string> = {
 export function ProductDetail({
   record,
   auditEntries,
+  routes,
 }: {
   record: ProductDetailData;
   auditEntries: AuditEntry[];
+  /** 工程リスト（ルート）— 工程タブ。 */
+  routes: RouteView[];
 }) {
   const router = useRouter();
   const isMobile = useIsMobile();
@@ -170,6 +175,7 @@ export function ProductDetail({
       <Tabs onChange={setTab} value={tab}>
         <Tabs.List>
           <Tabs.Tab value="overview">概要</Tabs.Tab>
+          <Tabs.Tab value="routes">工程</Tabs.Tab>
           <Tabs.Tab value="related">関連</Tabs.Tab>
           <Tabs.Tab value="history">履歴</Tabs.Tab>
         </Tabs.List>
@@ -207,6 +213,10 @@ export function ProductDetail({
             </Stack>
             <FieldValue label="備考" value={record.notes || "—"} />
           </Stack>
+        </Tabs.Panel>
+
+        <Tabs.Panel pt="md" value="routes">
+          <ProductRoutesPanel productId={record.id} routes={routes} />
         </Tabs.Panel>
 
         <Tabs.Panel pt="md" value="related">
