@@ -74,10 +74,21 @@ async function loadTemplate(
   return { html, css };
 }
 
+export interface RenderPdfOptions {
+  /**
+   * Gotenberg (Chromium) の印刷余白。未指定なら Gotenberg 既定（≈10mm）に任せ、
+   * テンプレート側の `@page { margin }` と併せて従来どおりの見た目になる。
+   * ミリ単位のレイアウトを CSS で完全制御するテンプレート（例: QR カード
+   * シート）は `"0"` を渡し、余白をテンプレート内の padding で持つ。
+   */
+  margins?: string;
+}
+
 /** Render `<template>.html` with `data` and convert it to a PDF via Gotenberg. */
 export async function renderPdf(
   templateName: string,
   data: TemplateData,
+  options: RenderPdfOptions = {},
 ): Promise<ArrayBuffer> {
   const { html, css } = await loadTemplate(templateName);
   const rendered = renderTemplate(html, data);
@@ -100,6 +111,12 @@ export async function renderPdf(
   form.append("paperWidth", "210mm");
   form.append("paperHeight", "297mm");
   form.append("printBackground", "true");
+  if (options.margins != null) {
+    form.append("marginTop", options.margins);
+    form.append("marginBottom", options.margins);
+    form.append("marginLeft", options.margins);
+    form.append("marginRight", options.margins);
+  }
 
   const res = await fetch(`${GOTENBERG_URL}/forms/chromium/convert/html`, {
     method: "POST",
