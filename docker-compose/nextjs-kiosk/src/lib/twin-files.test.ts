@@ -21,7 +21,13 @@ const WEB_LIB = path.resolve(__dirname, "../../../nextjs-web/src/lib");
 const KIOSK_LIB = __dirname;
 
 /** 逐語コピーで同期しているファイル（相対名）。 */
-const TWINS = ["workflow-core.ts", "workflow-core.test.ts", "inventory.ts"];
+const TWINS = [
+  "workflow-core.ts",
+  "workflow-core.test.ts",
+  "inventory.ts",
+  "inspection-core.ts",
+  "inspection-core.test.ts",
+];
 
 describe("twin files (nextjs-web ⇄ nextjs-kiosk)", () => {
   for (const name of TWINS) {

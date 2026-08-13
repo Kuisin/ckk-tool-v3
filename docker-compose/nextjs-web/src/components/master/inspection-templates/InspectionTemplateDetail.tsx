@@ -3,12 +3,15 @@
 /**
  * InspectionTemplateDetail.tsx — 検査表テンプレート 詳細 (MS28, design.md §8.2 / §13.4).
  *
- * サマリ（コード・名称・関連工程・状態）+ タブ: テンプレート情報 / 検査項目 /
- * 履歴。検査項目はサブテーブルでインライン追加・編集・削除する（個別ページなし）。
+ * サマリ（コード・バージョン・名称・関連工程・状態）+ タブ: テンプレート情報 /
+ * 検査項目 / バージョン / 履歴。検査項目はサブテーブルでインライン追加・編集・
+ * 削除する（個別ページなし）。指示書割当済み・検査記録ありのバージョンは
+ * ロック — 項目編集は「新バージョンを作成」してから行う。
  */
 
 import {
   ActionIcon,
+  Alert,
   Badge,
   Group,
   ScrollArea,
@@ -21,10 +24,14 @@ import {
 import {
   IconCircleMinus,
   IconEdit,
+  IconGitBranch,
   IconListCheck,
+  IconLock,
   IconPlus,
   IconTrash,
+  IconVersions,
 } from "@tabler/icons-react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { ActiveBadge } from "@/components/ui/ActiveBadge";
@@ -40,8 +47,16 @@ import {
   SummaryGrid,
 } from "@/components/ui/shells";
 import { useTabParam } from "@/hooks/useUrlState";
+import { INSPECTION_ITEM_TYPE_LABEL } from "@/lib/enum-labels";
 import { formatDateTime } from "@/lib/format";
 import {
+  acceptLabel,
+  goalLabel,
+  type InspectionItemSpec,
+  samplingLabelJa,
+} from "@/lib/inspection-core";
+import {
+  CreateVersionModal,
   DeleteInspectionTemplateItemModal,
   DeleteInspectionTemplateModal,
   InspectionTemplateItemModal,
@@ -51,27 +66,63 @@ import {
 
 const BASE_PATH = "/master/inspection-templates";
 
+export interface InspectionTemplateVersionRow {
+  id: number;
+  version: number;
+  isActive: boolean;
+  inUse: boolean; // 指示書割当 or 検査記録あり
+  itemCount: number;
+  updatedAt: string;
+}
+
 export interface InspectionTemplateDetailData {
   id: number;
   code: string;
+  version: number;
   nameJa: string;
   nameEn: string;
   relatedProcessStep: string; // 未設定は ""
   isActive: boolean;
+  /** 指示書割当 or 検査記録あり → 定義変更不可。 */
+  isLocked: boolean;
+  isLatestVersion: boolean;
   items: InspectionTemplateItemRow[];
+  /** 同一 code の全バージョン（新しい順）。 */
+  versions: InspectionTemplateVersionRow[];
   createdAt: string;
   updatedAt: string;
 }
 
-/** 許容値の表示（min〜max + 単位。下限のみ / 上限のみにも対応）。 */
-function toleranceLabel(item: InspectionTemplateItemRow): string {
-  const unit = item.unit ? ` ${item.unit}` : "";
-  if (item.toleranceMin != null && item.toleranceMax != null) {
-    return `${item.toleranceMin} 〜 ${item.toleranceMax}${unit}`;
-  }
-  if (item.toleranceMin != null) return `${item.toleranceMin} 以上${unit}`;
-  if (item.toleranceMax != null) return `${item.toleranceMax} 以下${unit}`;
-  return "—";
+/** 行 → inspection-core の判定・表示に使う spec。 */
+export function itemRowSpec(
+  item: InspectionTemplateItemRow,
+): InspectionItemSpec {
+  return {
+    id: item.id,
+    inputType: item.inputType,
+    unit: item.unit || null,
+    toleranceMin: item.toleranceMin,
+    toleranceMax: item.toleranceMax,
+    options: item.options.map((o) => ({
+      value: o.value,
+      label: { ja: o.labelJa, en: o.labelEn },
+    })),
+    acceptBool: item.acceptBool,
+    acceptOptions: item.acceptOptions.length > 0 ? item.acceptOptions : null,
+    goalValue:
+      item.inputType === "NUMBER"
+        ? item.goalNumber
+        : item.inputType === "BOOLEAN"
+          ? item.goalBool
+          : item.inputType === "SELECT_SINGLE"
+            ? (item.goalOptions[0] ?? null)
+            : item.goalOptions.length > 0
+              ? item.goalOptions
+              : null,
+    samplingMode: item.samplingMode,
+    samplingValue: item.samplingValue,
+    isRequired: item.isRequired,
+  };
 }
 
 export function InspectionTemplateDetail({
@@ -87,6 +138,7 @@ export function InspectionTemplateDetail({
 
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [toggleOpen, setToggleOpen] = useState(false);
+  const [versionOpen, setVersionOpen] = useState(false);
   const [itemModalOpen, setItemModalOpen] = useState(false);
   const [editItem, setEditItem] = useState<InspectionTemplateItemRow | null>(
     null,
@@ -97,6 +149,7 @@ export function InspectionTemplateDetail({
   const target = {
     id: record.id,
     code: record.code,
+    version: record.version,
     name: record.nameJa,
     isActive: record.isActive,
   };
@@ -113,6 +166,11 @@ export function InspectionTemplateDetail({
         <ResourceActions
           menuItems={[
             {
+              label: "新バージョンを作成",
+              icon: <IconVersions size={14} />,
+              onClick: () => setVersionOpen(true),
+            },
+            {
               label: record.isActive ? "無効化" : "有効化",
               icon: <IconCircleMinus size={14} />,
               onClick: () => setToggleOpen(true),
@@ -125,23 +183,50 @@ export function InspectionTemplateDetail({
               onClick: () => setDeleteOpen(true),
             },
           ]}
-          onEdit={() => router.push(`${BASE_PATH}/${record.id}/edit`)}
+          onEdit={
+            record.isLocked
+              ? undefined
+              : () => router.push(`${BASE_PATH}/${record.id}/edit`)
+          }
+          pdf={{
+            href: `/api/pdf/inspection-sheet?templateId=${record.id}`,
+            label: "空欄シート",
+          }}
         />
       }
       breadcrumbs={[
         "マスタ",
         { label: "検査表テンプレート", href: BASE_PATH },
-        record.code,
+        `${record.code} v${record.version}`,
       ]}
       createdAt={formatDateTime(record.createdAt)}
-      status={<ActiveBadge active={record.isActive} />}
+      status={
+        <Group gap="xs" wrap="nowrap">
+          <Badge color="gray" variant="outline">
+            v{record.version}
+          </Badge>
+          <ActiveBadge active={record.isActive} />
+        </Group>
+      }
       title={record.nameJa}
       updatedAt={formatDateTime(record.updatedAt)}
     >
+      {record.isLocked && (
+        <Alert color="blue" icon={<IconLock size={16} />}>
+          このバージョンは指示書または検査記録で使用中のため変更できません。
+          内容を変更するには「新バージョンを作成」してください（既存の記録は
+          このバージョンのまま残ります）。
+        </Alert>
+      )}
+
       <SummaryGrid>
         <FieldValue
           label="コード"
           value={<DocNumber>{record.code}</DocNumber>}
+        />
+        <FieldValue
+          label="バージョン"
+          value={`v${record.version}${record.isLatestVersion ? "（最新）" : ""}`}
         />
         <FieldValue label="名称" value={record.nameJa} />
         <FieldValue label="関連工程" value={record.relatedProcessStep || "—"} />
@@ -156,6 +241,7 @@ export function InspectionTemplateDetail({
         <Tabs.List>
           <Tabs.Tab value="info">テンプレート情報</Tabs.Tab>
           <Tabs.Tab value="items">検査項目</Tabs.Tab>
+          <Tabs.Tab value="versions">バージョン</Tabs.Tab>
           <Tabs.Tab value="history">履歴</Tabs.Tab>
         </Tabs.List>
 
@@ -173,15 +259,24 @@ export function InspectionTemplateDetail({
         <Tabs.Panel pt="md" value="items">
           <Stack gap="sm">
             <Group justify="flex-end">
-              <GhostButton
-                leftSection={<IconPlus size={14} />}
-                onClick={() => {
-                  setEditItem(null);
-                  setItemModalOpen(true);
-                }}
-              >
-                項目を追加
-              </GhostButton>
+              {record.isLocked ? (
+                <GhostButton
+                  leftSection={<IconVersions size={14} />}
+                  onClick={() => setVersionOpen(true)}
+                >
+                  新バージョンを作成して編集
+                </GhostButton>
+              ) : (
+                <GhostButton
+                  leftSection={<IconPlus size={14} />}
+                  onClick={() => {
+                    setEditItem(null);
+                    setItemModalOpen(true);
+                  }}
+                >
+                  項目を追加
+                </GhostButton>
+              )}
             </Group>
             {record.items.length === 0 ? (
               <EmptyState
@@ -194,83 +289,178 @@ export function InspectionTemplateDetail({
                   <Table.Thead>
                     <Table.Tr>
                       <Table.Th>項目名</Table.Th>
-                      <Table.Th w={90}>単位</Table.Th>
-                      <Table.Th w={180}>許容値</Table.Th>
-                      <Table.Th w={80}>必須</Table.Th>
-                      <Table.Th w={80}>表示順</Table.Th>
-                      <Table.Th w={80} />
+                      <Table.Th w={110}>種別</Table.Th>
+                      <Table.Th w={170}>合格基準</Table.Th>
+                      <Table.Th w={130}>目標</Table.Th>
+                      <Table.Th w={120}>検査対象</Table.Th>
+                      <Table.Th w={70}>必須</Table.Th>
+                      <Table.Th w={70}>表示順</Table.Th>
+                      {!record.isLocked && <Table.Th w={80} />}
                     </Table.Tr>
                   </Table.Thead>
                   <Table.Tbody>
-                    {record.items.map((item) => (
-                      <Table.Tr key={item.id}>
-                        <Table.Td>
-                          <Text fw={500} size="sm">
-                            {item.itemNameJa}
-                          </Text>
-                          {item.itemNameEn &&
-                            item.itemNameEn !== item.itemNameJa && (
-                              <Text c="dimmed" size="xs">
-                                {item.itemNameEn}
-                              </Text>
-                            )}
-                        </Table.Td>
-                        <Table.Td>{item.unit || "—"}</Table.Td>
-                        <Table.Td>
-                          <Text className="tabular-nums" size="sm">
-                            {toleranceLabel(item)}
-                          </Text>
-                        </Table.Td>
-                        <Table.Td>
-                          {item.isRequired ? (
-                            <Badge color="blue" variant="light">
-                              必須
-                            </Badge>
-                          ) : (
+                    {record.items.map((item) => {
+                      const spec = itemRowSpec(item);
+                      return (
+                        <Table.Tr key={item.id}>
+                          <Table.Td>
+                            <Text fw={500} size="sm">
+                              {item.itemNameJa}
+                            </Text>
+                            {item.itemNameEn &&
+                              item.itemNameEn !== item.itemNameJa && (
+                                <Text c="dimmed" size="xs">
+                                  {item.itemNameEn}
+                                </Text>
+                              )}
+                          </Table.Td>
+                          <Table.Td>
                             <Badge color="gray" variant="light">
-                              任意
+                              {INSPECTION_ITEM_TYPE_LABEL[item.inputType] ??
+                                item.inputType}
                             </Badge>
+                          </Table.Td>
+                          <Table.Td>
+                            <Text className="tabular-nums" size="sm">
+                              {acceptLabel(spec) ?? "—"}
+                            </Text>
+                          </Table.Td>
+                          <Table.Td>
+                            <Text className="tabular-nums" size="sm">
+                              {goalLabel(spec) ?? "—"}
+                            </Text>
+                          </Table.Td>
+                          <Table.Td>
+                            <Text size="sm">{samplingLabelJa(spec)}</Text>
+                          </Table.Td>
+                          <Table.Td>
+                            {item.isRequired ? (
+                              <Badge color="blue" variant="light">
+                                必須
+                              </Badge>
+                            ) : (
+                              <Badge color="gray" variant="light">
+                                任意
+                              </Badge>
+                            )}
+                          </Table.Td>
+                          <Table.Td>
+                            <Text className="tabular-nums" size="sm">
+                              {item.sortOrder}
+                            </Text>
+                          </Table.Td>
+                          {!record.isLocked && (
+                            <Table.Td>
+                              <Group gap={4} justify="flex-end" wrap="nowrap">
+                                <Tooltip label="編集" withinPortal>
+                                  <ActionIcon
+                                    aria-label="検査項目を編集"
+                                    color="gray"
+                                    onClick={() => {
+                                      setEditItem(item);
+                                      setItemModalOpen(true);
+                                    }}
+                                    variant="subtle"
+                                  >
+                                    <IconEdit size={14} />
+                                  </ActionIcon>
+                                </Tooltip>
+                                <Tooltip label="削除" withinPortal>
+                                  <ActionIcon
+                                    aria-label="検査項目を削除"
+                                    color="red"
+                                    onClick={() => setDeleteItem(item)}
+                                    variant="subtle"
+                                  >
+                                    <IconTrash size={14} />
+                                  </ActionIcon>
+                                </Tooltip>
+                              </Group>
+                            </Table.Td>
                           )}
-                        </Table.Td>
-                        <Table.Td>
-                          <Text className="tabular-nums" size="sm">
-                            {item.sortOrder}
-                          </Text>
-                        </Table.Td>
-                        <Table.Td>
-                          <Group gap={4} justify="flex-end" wrap="nowrap">
-                            <Tooltip label="編集" withinPortal>
-                              <ActionIcon
-                                aria-label="検査項目を編集"
-                                color="gray"
-                                onClick={() => {
-                                  setEditItem(item);
-                                  setItemModalOpen(true);
-                                }}
-                                variant="subtle"
-                              >
-                                <IconEdit size={14} />
-                              </ActionIcon>
-                            </Tooltip>
-                            <Tooltip label="削除" withinPortal>
-                              <ActionIcon
-                                aria-label="検査項目を削除"
-                                color="red"
-                                onClick={() => setDeleteItem(item)}
-                                variant="subtle"
-                              >
-                                <IconTrash size={14} />
-                              </ActionIcon>
-                            </Tooltip>
-                          </Group>
-                        </Table.Td>
-                      </Table.Tr>
-                    ))}
+                        </Table.Tr>
+                      );
+                    })}
                   </Table.Tbody>
                 </Table>
               </ScrollArea>
             )}
           </Stack>
+        </Tabs.Panel>
+
+        <Tabs.Panel pt="md" value="versions">
+          {record.versions.length === 0 ? (
+            <EmptyState
+              icon={<IconGitBranch size={24} />}
+              message="他のバージョンはありません"
+            />
+          ) : (
+            <ScrollArea>
+              <Table striped withTableBorder>
+                <Table.Thead>
+                  <Table.Tr>
+                    <Table.Th w={110}>バージョン</Table.Th>
+                    <Table.Th w={90}>項目数</Table.Th>
+                    <Table.Th w={110}>使用状況</Table.Th>
+                    <Table.Th w={90}>状態</Table.Th>
+                    <Table.Th>更新日時</Table.Th>
+                  </Table.Tr>
+                </Table.Thead>
+                <Table.Tbody>
+                  {record.versions.map((v) => (
+                    <Table.Tr key={v.id}>
+                      <Table.Td>
+                        {v.id === record.id ? (
+                          <Group gap={6} wrap="nowrap">
+                            <Text fw={600} size="sm">
+                              v{v.version}
+                            </Text>
+                            <Text c="dimmed" size="xs">
+                              （表示中）
+                            </Text>
+                          </Group>
+                        ) : (
+                          <Text
+                            component={Link}
+                            fw={600}
+                            href={`${BASE_PATH}/${v.id}`}
+                            size="sm"
+                            td="underline"
+                          >
+                            v{v.version}
+                          </Text>
+                        )}
+                      </Table.Td>
+                      <Table.Td>
+                        <Text className="tabular-nums" size="sm">
+                          {v.itemCount}件
+                        </Text>
+                      </Table.Td>
+                      <Table.Td>
+                        {v.inUse ? (
+                          <Badge color="blue" variant="light">
+                            使用中
+                          </Badge>
+                        ) : (
+                          <Badge color="gray" variant="light">
+                            未使用
+                          </Badge>
+                        )}
+                      </Table.Td>
+                      <Table.Td>
+                        <ActiveBadge active={v.isActive} />
+                      </Table.Td>
+                      <Table.Td>
+                        <Text c="dimmed" size="sm">
+                          {formatDateTime(v.updatedAt)}
+                        </Text>
+                      </Table.Td>
+                    </Table.Tr>
+                  ))}
+                </Table.Tbody>
+              </Table>
+            </ScrollArea>
+          )}
         </Tabs.Panel>
 
         <Tabs.Panel pt="md" value="history">
@@ -288,6 +478,12 @@ export function InspectionTemplateDetail({
         onClose={() => setToggleOpen(false)}
         onDone={() => router.refresh()}
         opened={toggleOpen}
+        target={target}
+      />
+      <CreateVersionModal
+        onClose={() => setVersionOpen(false)}
+        onCreated={(newId) => router.push(`${BASE_PATH}/${newId}`)}
+        opened={versionOpen}
         target={target}
       />
       <InspectionTemplateItemModal

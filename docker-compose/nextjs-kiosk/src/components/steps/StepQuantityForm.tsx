@@ -3,12 +3,12 @@
 /**
  * StepQuantityForm.tsx — 完了時の数量入力（数量管理モード対応）。
  *
- * 受入数は開始時に確定した値で**固定表示**（完了時は編集不可）。作業者は
- * 不良区分（半製品/廃棄/手直し）だけを入力し、**良品数は 受入 − 総不良 で
- * 自動計算**して読み取り専用で表示する。総不良数も合計を表示する。
- * さらに任意で「不良理由（{理由, 数}）」を記録できる（補助記録・在庫には
- * 影響しない）。インライン検証は steps-core.checkConservation（負値 /
- * 不良超過）— 権威はサーバー。
+ * 受入数は開始時に確定した値で**固定表示**（完了時は編集不可）。不良は
+ * **1 本のリスト**で入力し、各行に 種別（半製品/廃棄/手直し）・理由（任意）・数
+ * を持つ。区分ごとの合計はこのリストの合計として導出し、良品数 = 受入 − 総不良
+ * も自動計算する（いずれも読み取り専用表示）。在庫連携は区分合計をそのまま使う
+ * ので不変。インライン検証は steps-core.checkDefectList（負値 / 不良超過）—
+ * 権威はサーバー。
  */
 
 import {
@@ -16,6 +16,7 @@ import {
   Alert,
   Badge,
   Box,
+  Button,
   Group,
   Paper,
   Select,
@@ -25,11 +26,13 @@ import {
 } from "@mantine/core";
 import { IconAlertTriangle, IconPlus, IconTrash } from "@tabler/icons-react";
 import type { DefectTypeView } from "@/lib/step-records";
-import type { DefectReasonEntry, QuantityFormValues } from "@/lib/steps-core";
 import {
-  checkConservation,
-  defectTotal,
-  deriveSuccess,
+  checkDefectList,
+  type DefectDisposition,
+  type DefectReasonEntry,
+  defectListTotal,
+  deriveSuccessFromList,
+  dispositionTotals,
 } from "@/lib/steps-core";
 import type { QuantityTrackingMode } from "@/lib/workflow-core";
 import { useI18n } from "../I18nProvider";
@@ -37,37 +40,33 @@ import { NumberStepper } from "./NumberStepper";
 
 type Props = {
   mode: Exclude<QuantityTrackingMode, "NONE">;
-  values: QuantityFormValues;
-  onChange: (values: QuantityFormValues) => void;
-  /** 不良理由の候補（不良種類）。 */
+  /** 開始時に確定した受入数（固定）。 */
+  inputQuantity: number;
+  /** 不良種類（理由の候補）。 */
   defectTypes: DefectTypeView[];
-  reasons: DefectReasonEntry[];
-  onReasonsChange: (reasons: DefectReasonEntry[]) => void;
+  defects: DefectReasonEntry[];
+  onChange: (defects: DefectReasonEntry[]) => void;
 };
-
-const EMPTY_REASON: DefectReasonEntry = { reason: "", count: 1 };
 
 export function StepQuantityForm({
   mode,
-  values,
-  onChange,
+  inputQuantity,
   defectTypes,
-  reasons,
-  onReasonsChange,
+  defects,
+  onChange,
 }: Props) {
   const { m } = useI18n();
   const labels = m.steps.quantity[mode];
-  const issue = checkConservation(values, mode);
-  const total = defectTotal(values);
-  const success = deriveSuccess(values);
+  const issue = checkDefectList(defects, inputQuantity, mode);
+  const total = defectListTotal(defects);
+  const success = deriveSuccessFromList(inputQuantity, defects);
+  const totals = dispositionTotals(defects);
 
-  const setQty = (key: keyof QuantityFormValues) => (n: number) =>
-    onChange({ ...values, [key]: n });
+  const setRow = (index: number, patch: Partial<DefectReasonEntry>) =>
+    onChange(defects.map((r, i) => (i === index ? { ...r, ...patch } : r)));
 
-  const setReason = (index: number, patch: Partial<DefectReasonEntry>) =>
-    onReasonsChange(
-      reasons.map((r, i) => (i === index ? { ...r, ...patch } : r)),
-    );
+  const addRow = () =>
+    onChange([...defects, { type: "SCRAP", reason: "", count: 1 }]);
 
   return (
     <Stack gap="md">
@@ -78,7 +77,7 @@ export function StepQuantityForm({
             {labels.input}
           </Text>
           <Text fw={700} size="xl">
-            {values.inputQuantity}
+            {inputQuantity}
           </Text>
           <Badge color="gray" mt={4} size="xs" variant="light">
             {m.steps.quantity.fixed}
@@ -105,77 +104,74 @@ export function StepQuantityForm({
         </Paper>
       </SimpleGrid>
 
-      {/* 不良区分（在庫連携の権威） */}
-      <Text c="dimmed" fw={600} size="sm">
-        {m.steps.quantity.defectsTitle}
-      </Text>
-      <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="sm">
-        <NumberStepper
-          label={labels.semi}
-          onChange={setQty("outputDefectSemiFinished")}
-          value={values.outputDefectSemiFinished}
-        />
-        <NumberStepper
-          label={labels.scrap}
-          onChange={setQty("outputDefectScrap")}
-          value={values.outputDefectScrap}
-        />
-        <NumberStepper
-          label={labels.rework}
-          onChange={setQty("outputDefectRework")}
-          value={values.outputDefectRework}
-        />
-      </SimpleGrid>
+      {/* 不良リスト（種別 + 理由 + 数） */}
+      <Group justify="space-between">
+        <Text c="dimmed" fw={600} size="sm">
+          {m.steps.quantity.defectsTitle}
+        </Text>
+        {total > 0 && (
+          <Group gap="xs">
+            {totals.semi > 0 && (
+              <Badge color="orange" variant="light">
+                {labels.semi} {totals.semi}
+              </Badge>
+            )}
+            {totals.scrap > 0 && (
+              <Badge color="red" variant="light">
+                {labels.scrap} {totals.scrap}
+              </Badge>
+            )}
+            {totals.rework > 0 && (
+              <Badge color="yellow" variant="light">
+                {labels.rework} {totals.rework}
+              </Badge>
+            )}
+          </Group>
+        )}
+      </Group>
 
-      {issue && (
-        <Alert color="orange" icon={<IconAlertTriangle size={20} />}>
-          {issue.kind === "NEGATIVE"
-            ? m.steps.quantity.negative
-            : m.steps.quantity.overInput(issue.sum, issue.input)}
-        </Alert>
-      )}
-
-      {/* 不良理由（任意・補助記録） */}
-      {total > 0 && (
-        <Stack gap="xs">
-          <Text c="dimmed" fw={600} size="sm">
-            {m.steps.reasons.title}
-          </Text>
-          {reasons.map((row, index) => (
-            <Group
-              align="flex-end"
-              gap="sm"
-              // biome-ignore lint/suspicious/noArrayIndexKey: 追記専用の行フォーム
-              key={index}
-              wrap="nowrap"
-            >
+      {defects.map((row, index) => (
+        <Paper
+          // biome-ignore lint/suspicious/noArrayIndexKey: 追記専用の行フォーム
+          key={index}
+          p="sm"
+          radius="sm"
+          withBorder
+        >
+          <Stack gap="sm">
+            <Group gap="sm" wrap="nowrap">
+              <Select
+                aria-label={m.steps.quantity.typeLabel}
+                data={[
+                  { value: "SEMI", label: labels.semi },
+                  { value: "SCRAP", label: labels.scrap },
+                  { value: "REWORK", label: labels.rework },
+                ]}
+                onChange={(v) =>
+                  v && setRow(index, { type: v as DefectDisposition })
+                }
+                style={{ width: 150, flexShrink: 0 }}
+                value={row.type}
+              />
               <Select
                 aria-label={m.steps.reasons.reason}
+                clearable
                 data={defectTypes.map((d) => ({
                   value: d.name,
                   label: d.name,
                 }))}
-                onChange={(v) => setReason(index, { reason: v ?? "" })}
+                onChange={(v) => setRow(index, { reason: v ?? "" })}
                 placeholder={m.steps.reasons.reasonPlaceholder}
                 searchable
                 style={{ flex: 1 }}
                 value={row.reason || null}
               />
-              <Box style={{ width: 150, flexShrink: 0 }}>
-                <NumberStepper
-                  ariaLabel={m.steps.reasons.count}
-                  compact
-                  min={1}
-                  onChange={(n) => setReason(index, { count: n })}
-                  value={row.count}
-                />
-              </Box>
-              {reasons.length > 1 && (
+              {defects.length > 0 && (
                 <ActionIcon
                   aria-label={m.steps.reasons.remove}
                   color="red"
                   onClick={() =>
-                    onReasonsChange(reasons.filter((_, i) => i !== index))
+                    onChange(defects.filter((_, i) => i !== index))
                   }
                   size={42}
                   variant="light"
@@ -184,21 +180,34 @@ export function StepQuantityForm({
                 </ActionIcon>
               )}
             </Group>
-          ))}
-          <Group>
-            <ActionIcon
-              aria-label={m.steps.reasons.add}
-              onClick={() => onReasonsChange([...reasons, EMPTY_REASON])}
-              size={42}
-              variant="light"
-            >
-              <IconPlus size={20} />
-            </ActionIcon>
-            <Text c="dimmed" size="xs">
-              {m.steps.reasons.hint}
-            </Text>
-          </Group>
-        </Stack>
+            <Box style={{ maxWidth: 220 }}>
+              <NumberStepper
+                ariaLabel={m.steps.reasons.count}
+                compact
+                label={m.steps.reasons.count}
+                min={1}
+                onChange={(n) => setRow(index, { count: n })}
+                value={row.count}
+              />
+            </Box>
+          </Stack>
+        </Paper>
+      ))}
+
+      <Button
+        leftSection={<IconPlus size={20} />}
+        onClick={addRow}
+        variant="light"
+      >
+        {m.steps.quantity.addDefect}
+      </Button>
+
+      {issue && (
+        <Alert color="orange" icon={<IconAlertTriangle size={20} />}>
+          {issue.kind === "NEGATIVE"
+            ? m.steps.quantity.negative
+            : m.steps.quantity.overInput(issue.sum, issue.input)}
+        </Alert>
       )}
     </Stack>
   );
@@ -206,8 +215,9 @@ export function StepQuantityForm({
 
 /** 完了ボタンを押せるか（インライン検証が通っているか）。 */
 export function isQuantityFormValid(
-  values: QuantityFormValues,
+  defects: DefectReasonEntry[],
+  inputQuantity: number,
   mode: QuantityTrackingMode,
 ): boolean {
-  return checkConservation(values, mode) === null;
+  return checkDefectList(defects, inputQuantity, mode) === null;
 }

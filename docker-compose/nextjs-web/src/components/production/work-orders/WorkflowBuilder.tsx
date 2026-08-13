@@ -36,6 +36,7 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
   useTransition,
 } from "react";
@@ -54,7 +55,10 @@ import {
   updateWorkOrder,
   type WorkOrderInput,
 } from "@/app/(dashboard)/production/work-orders/actions";
-import type { SalesOrderRef } from "@/app/(dashboard)/production/work-orders/data";
+import type {
+  InspectionTemplateOption,
+  SalesOrderRef,
+} from "@/app/(dashboard)/production/work-orders/data";
 import {
   ProcessListEditor,
   type StepLocation,
@@ -177,7 +181,7 @@ export function WorkflowBuilder({
   catalogSteps: CatalogStep[];
   useDeps: UseDep[];
   factoryOptions: Option[];
-  templateOptions: Option[];
+  templateOptions: InspectionTemplateOption[];
   /** 外注先（VENDOR ロールの有効 BP）— サーバーで全件ロード。 */
   supplierOptions: Option[];
 }) {
@@ -219,6 +223,41 @@ export function WorkflowBuilder({
   );
 
   const selected = form.values.selectedStepIds;
+
+  // 工程を追加したら、その工程を関連工程に持つ検査表を自動選択する
+  // （手動で外した選択は、工程を追加し直さない限り復活しない）。
+  const prevSelectedRef = useRef<Set<number>>(new Set(selected));
+  useEffect(() => {
+    const prev = prevSelectedRef.current;
+    const added = selected.filter((id) => !prev.has(id));
+    prevSelectedRef.current = new Set(selected);
+    if (added.length === 0) return;
+    const suggest = templateOptions
+      .filter(
+        (t) =>
+          t.relatedProcessStepId != null &&
+          added.includes(t.relatedProcessStepId),
+      )
+      .map((t) => t.value);
+    if (suggest.length === 0) return;
+    const current = form.values.inspectionTemplateIds;
+    const merged = [...new Set([...current, ...suggest])];
+    if (merged.length !== current.length) {
+      form.setFieldValue("inspectionTemplateIds", merged);
+    }
+  }, [selected, templateOptions, form.values.inspectionTemplateIds, form]);
+
+  // 編集時: 割当済みだが最新でないバージョンも選択肢に残す（バージョン固定）
+  const templateSelectData = useMemo(() => {
+    const known = new Set(templateOptions.map((t) => t.value));
+    const extra = (workOrder?.inspectionTemplates ?? [])
+      .filter((t) => !known.has(String(t.id)))
+      .map((t) => ({ value: String(t.id), label: `${t.code} ${t.name}` }));
+    return [
+      ...templateOptions.map((t) => ({ value: t.value, label: t.label })),
+      ...extra,
+    ];
+  }, [templateOptions, workOrder]);
 
   // ── 工程ルート（製品の工程リスト） ──────────────────────────────────────────
   const [routesInfo, setRoutesInfo] = useState<{
@@ -563,7 +602,7 @@ export function WorkflowBuilder({
           )}
           <MultiSelect
             clearable
-            data={templateOptions}
+            data={templateSelectData}
             label="検査表"
             placeholder={
               form.values.inspectionTemplateIds.length

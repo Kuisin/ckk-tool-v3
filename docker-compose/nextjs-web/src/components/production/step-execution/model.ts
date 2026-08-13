@@ -7,6 +7,8 @@
  * （Prisma import なし — client-safe）。
  */
 
+import type { InspectionItemSpec } from "@/lib/inspection-core";
+
 export interface SelectOption {
   value: string;
   label: string;
@@ -14,26 +16,26 @@ export interface SelectOption {
 
 // ── 検査表 ───────────────────────────────────────────────────────────────────
 
-export interface InspectionTemplateItemView {
-  id: number;
+/** 検査項目（inspection-core の判定 spec + 表示名。Decimal → Number 済み）。 */
+export interface InspectionTemplateItemView extends InspectionItemSpec {
   name: string;
-  unit: string | null;
-  toleranceMin: number | null; // Decimal → Number 済み
-  toleranceMax: number | null;
-  isRequired: boolean;
 }
 
 export interface InspectionTemplateView {
   id: number;
   code: string;
+  version: number;
   name: string;
+  /** 関連工程（null = どの検査工程でも使用）。 */
+  relatedProcessStepId: number | null;
   items: InspectionTemplateItemView[];
 }
 
 export interface InspectionRecordItemView {
   templateItemId: number;
   itemName: string;
-  measuredValue: string | null;
+  /** 実測値の表示文字列（複数サンプルは " / " 連結。未入力は null）。 */
+  valueLabel: string | null;
   isPass: boolean | null;
 }
 
@@ -59,6 +61,13 @@ export interface StepDefectRecordView {
   description: string;
   recordedAt: string;
   recordedByName: string | null;
+}
+
+/** 完了時の不良の内訳（{種別, 理由, 数}）。work_order_steps.defect_reasons 由来。 */
+export interface StepDefectReasonView {
+  type: "SEMI" | "SCRAP" | "REWORK";
+  reason: string;
+  count: number;
 }
 
 // ── 作業計画 / 実績（分割記録・担当者・日付/時刻） ───────────────────────────
@@ -100,6 +109,8 @@ export interface StepExecutionStepView {
   outputDefectSemiFinished: number | null;
   outputDefectScrap: number | null;
   outputDefectRework: number | null;
+  /** 完了時の不良の内訳（{種別, 理由, 数}）。 */
+  defectReasons: StepDefectReasonView[];
   sessionLockedBy: string | null;
   sessionLockedByName: string | null;
   startedAt: string | null;

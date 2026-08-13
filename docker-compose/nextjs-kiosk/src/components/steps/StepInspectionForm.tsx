@@ -3,42 +3,55 @@
 /**
  * StepInspectionForm.tsx — 検査記録の入力・表示（キオスク版 design.md §12.5）。
  *
- * nextjs-web の InspectionRecordForm と同じ業務規則（必須項目の実測値必須・
- * 全合格 = PASS / 1 つでも不合格 = FAIL）。タブレット向けにテーブルではなく
- * 項目ごとの縦積みカードで出す（横スクロールを作らない）。
- * 検査承認はキオスクに持たない — 記録のみ。
+ * nextjs-web の InspectionRecordForm と同じ業務規則（必須項目は 1 サンプル以上・
+ * 全項目合格 = PASS / 1 つでも不合格 = FAIL）。項目の入力種別（真偽/数値/
+ * 単一・複数選択）ごとの入力欄をサンプル行単位で出し、抜取（全数/割合/本数）の
+ * 要求サンプル数を表示、合否は inspection-core（twin file）の自動判定を初期値に
+ * 手動上書きできる。タブレット向けにテーブルではなく項目ごとの縦積みカード
+ * （横スクロールを作らない・size="lg"）。検査承認はキオスクに持たない — 記録のみ。
  */
 
 import {
+  ActionIcon,
   Alert,
   Badge,
   Button,
   Group,
+  MultiSelect,
   Paper,
   SegmentedControl,
+  Select,
   Stack,
   Text,
   TextInput,
   Title,
 } from "@mantine/core";
-import { IconAlertTriangle, IconCheck } from "@tabler/icons-react";
+import {
+  IconAlertTriangle,
+  IconCheck,
+  IconPlus,
+  IconX,
+} from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import type { KioskMessages } from "@/lib/i18n";
+import {
+  acceptLabel,
+  type BoolLabels,
+  evaluateItem,
+  evaluateSample,
+  goalLabel,
+  type InspectionSampleValue,
+  isSampleEmpty,
+  requiredSampleCount,
+} from "@/lib/inspection-core";
 import type {
   InspectionRecordView,
   InspectionTemplateItemView,
   InspectionTemplateView,
 } from "@/lib/step-records";
-import { missingRequiredItems } from "@/lib/steps-core";
 import { useI18n } from "../I18nProvider";
 import { callStepAction, translateError } from "./step-ui";
-
-/** 許容値の表示（min〜max + 単位）。 */
-function toleranceRange(item: InspectionTemplateItemView): string | null {
-  if (item.toleranceMin == null && item.toleranceMax == null) return null;
-  const unit = item.unit ? ` ${item.unit}` : "";
-  return `${item.toleranceMin ?? ""}〜${item.toleranceMax ?? ""}${unit}`;
-}
 
 function statusColor(status: string): string {
   switch (status) {
@@ -50,6 +63,26 @@ function statusColor(status: string): string {
       return "teal";
     default:
       return "gray";
+  }
+}
+
+function samplingLabel(
+  m: KioskMessages,
+  item: InspectionTemplateItemView,
+  required: number | null,
+): string {
+  switch (item.samplingMode) {
+    case "PERCENT":
+      return m.steps.inspection.samplingPercent(
+        item.samplingValue ?? 0,
+        required,
+      );
+    case "COUNT":
+      return m.steps.inspection.samplingCount(
+        required ?? item.samplingValue ?? 0,
+      );
+    default:
+      return m.steps.inspection.samplingAll;
   }
 }
 
@@ -88,7 +121,7 @@ function RecordSummary({ record }: { record: InspectionRecordView }) {
               size="md"
               variant="light"
             >
-              {it.itemName}: {it.measuredValue ?? "—"}
+              {it.itemName}: {it.valueLabel ?? "—"}
             </Badge>
           ))}
         </Group>
@@ -98,8 +131,118 @@ function RecordSummary({ record }: { record: InspectionRecordView }) {
 }
 
 interface ItemEntry {
-  measuredValue: string;
-  isPass: "PASS" | "FAIL";
+  samples: InspectionSampleValue[];
+  /** 手動上書き（null = 自動判定に従う）。 */
+  manualPass: boolean | null;
+}
+
+/** 抜取行の初期本数（要求数が多くても入力欄はまず 10 行まで）。 */
+const INITIAL_ROWS_CAP = 10;
+
+function emptySample(item: InspectionTemplateItemView): InspectionSampleValue {
+  return item.inputType === "SELECT_MULTI" ? [] : "";
+}
+
+function initialSamples(
+  item: InspectionTemplateItemView,
+  lotQuantity: number | null,
+): InspectionSampleValue[] {
+  if (item.samplingMode === "ALL") return [emptySample(item)];
+  const required = requiredSampleCount(item, lotQuantity);
+  const n = Math.max(1, Math.min(required ?? 1, INITIAL_ROWS_CAP));
+  return Array.from({ length: n }, () => emptySample(item));
+}
+
+/** 項目の実効合否 — 手動上書き > 自動判定 > 既定 合格。 */
+function effectivePass(
+  item: InspectionTemplateItemView,
+  entry: ItemEntry,
+): boolean {
+  if (entry.manualPass != null) return entry.manualPass;
+  return evaluateItem(item, entry.samples) ?? true;
+}
+
+function SampleInput({
+  item,
+  value,
+  onChange,
+  index,
+  bool,
+  placeholder,
+  locale,
+}: {
+  item: InspectionTemplateItemView;
+  value: InspectionSampleValue;
+  onChange: (v: InspectionSampleValue) => void;
+  index: number;
+  bool: BoolLabels;
+  placeholder: string;
+  locale: string;
+}) {
+  const label = `${item.name} #${index + 1}`;
+  const optionData = item.options.map((o) => ({
+    value: o.value,
+    label: o.label[locale] || o.label.ja || o.value,
+  }));
+  switch (item.inputType) {
+    case "BOOLEAN":
+      return (
+        <SegmentedControl
+          aria-label={label}
+          data={[
+            { value: "true", label: bool.yes },
+            { value: "false", label: bool.no },
+          ]}
+          onChange={(v) => onChange(v)}
+          size="lg"
+          value={typeof value === "string" ? value : ""}
+        />
+      );
+    case "SELECT_SINGLE":
+      return (
+        <Select
+          aria-label={label}
+          clearable
+          data={optionData}
+          onChange={(v) => onChange(v ?? "")}
+          placeholder={placeholder}
+          size="lg"
+          style={{ flex: 1, minWidth: 180 }}
+          value={typeof value === "string" && value ? value : null}
+        />
+      );
+    case "SELECT_MULTI":
+      return (
+        <MultiSelect
+          aria-label={label}
+          data={optionData}
+          onChange={(v) => onChange(v)}
+          placeholder={placeholder}
+          size="lg"
+          style={{ flex: 1, minWidth: 220 }}
+          value={Array.isArray(value) ? value : []}
+        />
+      );
+    default:
+      return (
+        <TextInput
+          aria-label={label}
+          inputMode="decimal"
+          onChange={(e) => onChange(e.currentTarget.value)}
+          placeholder={placeholder}
+          rightSection={
+            item.unit ? (
+              <Text c="dimmed" size="sm">
+                {item.unit}
+              </Text>
+            ) : undefined
+          }
+          size="lg"
+          style={{ flex: 1, minWidth: 140 }}
+          value={typeof value === "string" ? value : ""}
+        />
+      );
+  }
 }
 
 type Props = {
@@ -108,6 +251,8 @@ type Props = {
   records: InspectionRecordView[];
   /** 作業中 / 一時停止中のみ true（完了・他人セッションでは読み取り専用）。 */
   canRecord: boolean;
+  /** 抜取の要求サンプル数計算に使うロット数量（受入数 → 想定受入数 → 予定数量）。 */
+  lotQuantity: number | null;
 };
 
 export function StepInspectionForm({
@@ -115,36 +260,48 @@ export function StepInspectionForm({
   templates,
   records,
   canRecord,
+  lotQuantity,
 }: Props) {
   const router = useRouter();
-  const { m } = useI18n();
+  const { m, locale } = useI18n();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [savedTemplate, setSavedTemplate] = useState<string | null>(null);
   // key = `${templateId}:${itemId}`
   const [entries, setEntries] = useState<Record<string, ItemEntry>>({});
 
-  const entryOf = (templateId: number, itemId: number): ItemEntry =>
-    entries[`${templateId}:${itemId}`] ?? { measuredValue: "", isPass: "PASS" };
+  const bool: BoolLabels = {
+    yes: m.steps.inspection.yes,
+    no: m.steps.inspection.no,
+  };
+
+  const entryOf = (
+    template: InspectionTemplateView,
+    item: InspectionTemplateItemView,
+  ): ItemEntry =>
+    entries[`${template.id}:${item.id}`] ?? {
+      samples: initialSamples(item, lotQuantity),
+      manualPass: null,
+    };
 
   const setEntry = (
-    templateId: number,
-    itemId: number,
+    template: InspectionTemplateView,
+    item: InspectionTemplateItemView,
     patch: Partial<ItemEntry>,
   ) =>
     setEntries((prev) => ({
       ...prev,
-      [`${templateId}:${itemId}`]: { ...entryOf(templateId, itemId), ...patch },
+      [`${template.id}:${item.id}`]: { ...entryOf(template, item), ...patch },
     }));
 
   const save = async (template: InspectionTemplateView) => {
     setError(null);
     setSavedTemplate(null);
-    const values: Record<number, string> = {};
-    for (const it of template.items) {
-      values[it.id] = entryOf(template.id, it.id).measuredValue;
-    }
-    if (missingRequiredItems(template.items, values).length > 0) {
+    const missing = template.items.some((it) => {
+      const entry = entryOf(template, it);
+      return it.isRequired && entry.samples.every((s) => isSampleEmpty(s));
+    });
+    if (missing) {
       setError(m.steps.inspection.requiredMissing);
       return;
     }
@@ -153,11 +310,11 @@ export function StepInspectionForm({
       action: "INSPECTION",
       templateId: template.id,
       items: template.items.map((it) => {
-        const e = entryOf(template.id, it.id);
+        const entry = entryOf(template, it);
         return {
           templateItemId: it.id,
-          measuredValue: e.measuredValue,
-          isPass: e.isPass === "PASS",
+          values: entry.samples.filter((s) => !isSampleEmpty(s)),
+          isPass: effectivePass(it, entry),
         };
       }),
     });
@@ -211,10 +368,19 @@ export function StepInspectionForm({
         {canRecord &&
           templates.map((template) => (
             <Stack gap="sm" key={template.id}>
-              <Title order={5}>{template.name}</Title>
+              <Group gap="xs" wrap="wrap">
+                <Title order={5}>{template.name}</Title>
+                <Badge color="gray" size="sm" variant="outline">
+                  v{template.version}
+                </Badge>
+              </Group>
               {template.items.map((item) => {
-                const entry = entryOf(template.id, item.id);
-                const range = toleranceRange(item);
+                const entry = entryOf(template, item);
+                const accept = acceptLabel(item, locale, bool);
+                const goal = goalLabel(item, locale, bool);
+                const required = requiredSampleCount(item, lotQuantity);
+                const auto = evaluateItem(item, entry.samples);
+                const pass = effectivePass(item, entry);
                 return (
                   <Paper key={item.id} p="sm" radius="sm" withBorder>
                     <Stack gap="xs">
@@ -225,38 +391,122 @@ export function StepInspectionForm({
                             {m.steps.inspection.required}
                           </Badge>
                         )}
-                        {range && (
+                        <Badge color="gray" size="sm" variant="light">
+                          {samplingLabel(m, item, required)}
+                        </Badge>
+                        {accept && (
                           <Text c="dimmed" size="sm">
-                            {m.steps.inspection.tolerance(range)}
+                            {m.steps.inspection.accept(accept)}
+                          </Text>
+                        )}
+                        {goal && (
+                          <Text c="dimmed" size="sm">
+                            {m.steps.inspection.goal(goal)}
                           </Text>
                         )}
                       </Group>
-                      <Group align="flex-end" gap="sm" wrap="nowrap">
-                        <TextInput
-                          aria-label={`${item.name} — ${m.steps.inspection.measured}`}
-                          onChange={(e) =>
-                            setEntry(template.id, item.id, {
-                              measuredValue: e.currentTarget.value,
+
+                      {entry.samples.map((sample, idx) => {
+                        const verdict = evaluateSample(item, sample);
+                        return (
+                          <Group
+                            align="center"
+                            gap="sm"
+                            // biome-ignore lint/suspicious/noArrayIndexKey: 行は追加/削除のみで並べ替えない
+                            key={idx}
+                            wrap="nowrap"
+                          >
+                            <SampleInput
+                              bool={bool}
+                              index={idx}
+                              item={item}
+                              locale={locale}
+                              onChange={(v) =>
+                                setEntry(template, item, {
+                                  samples: entry.samples.map((s, i) =>
+                                    i === idx ? v : s,
+                                  ),
+                                })
+                              }
+                              placeholder={
+                                item.inputType === "NUMBER"
+                                  ? m.steps.inspection.measured
+                                  : m.steps.inspection.selectPlaceholder
+                              }
+                              value={sample}
+                            />
+                            {verdict != null && (
+                              <Text
+                                c={verdict ? "green" : "red"}
+                                fw={700}
+                                size="lg"
+                              >
+                                {verdict ? "○" : "×"}
+                              </Text>
+                            )}
+                            {entry.samples.length > 1 && (
+                              <ActionIcon
+                                aria-label={`${item.name} #${idx + 1} — ${m.steps.inspection.removeRow}`}
+                                color="gray"
+                                onClick={() =>
+                                  setEntry(template, item, {
+                                    samples: entry.samples.filter(
+                                      (_, i) => i !== idx,
+                                    ),
+                                  })
+                                }
+                                size="lg"
+                                variant="subtle"
+                              >
+                                <IconX size={18} />
+                              </ActionIcon>
+                            )}
+                          </Group>
+                        );
+                      })}
+                      <Group justify="space-between" wrap="wrap">
+                        <Button
+                          leftSection={<IconPlus size={16} />}
+                          onClick={() =>
+                            setEntry(template, item, {
+                              samples: [...entry.samples, emptySample(item)],
                             })
                           }
-                          placeholder={m.steps.inspection.measured}
-                          style={{ flex: 1 }}
-                          value={entry.measuredValue}
-                        />
-                        <SegmentedControl
-                          color={entry.isPass === "PASS" ? "green" : "red"}
-                          data={[
-                            { value: "PASS", label: m.steps.inspection.pass },
-                            { value: "FAIL", label: m.steps.inspection.fail },
-                          ]}
-                          onChange={(v) =>
-                            setEntry(template.id, item.id, {
-                              isPass: v as "PASS" | "FAIL",
-                            })
-                          }
-                          size="lg"
-                          value={entry.isPass}
-                        />
+                          size="sm"
+                          variant="subtle"
+                        >
+                          {m.steps.inspection.addRow}
+                        </Button>
+                        <Group gap="xs" wrap="wrap">
+                          <SegmentedControl
+                            color={pass ? "green" : "red"}
+                            data={[
+                              {
+                                value: "PASS",
+                                label: m.steps.inspection.pass,
+                              },
+                              {
+                                value: "FAIL",
+                                label: m.steps.inspection.fail,
+                              },
+                            ]}
+                            onChange={(v) =>
+                              setEntry(template, item, {
+                                manualPass: v === "PASS",
+                              })
+                            }
+                            size="lg"
+                            value={pass ? "PASS" : "FAIL"}
+                          />
+                          <Text c="dimmed" size="xs">
+                            {auto == null
+                              ? m.steps.inspection.autoNone
+                              : entry.manualPass != null &&
+                                  entry.manualPass !== auto
+                                ? m.steps.inspection.autoOverridden(auto)
+                                : m.steps.inspection.autoVerdict(auto)}
+                          </Text>
+                        </Group>
                       </Group>
                     </Stack>
                   </Paper>

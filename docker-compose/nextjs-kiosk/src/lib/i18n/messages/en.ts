@@ -90,7 +90,9 @@ export const en: KioskMessages = {
         scrap: "Failed (scrapped)",
         rework: "Failed (rework)",
       },
-      defectsTitle: "Defect breakdown (disposition)",
+      defectsTitle: "Defect breakdown",
+      typeLabel: "Type",
+      addDefect: "Add defect",
       total: "Total defects",
       fixed: "Fixed",
       computed: "Auto",
@@ -123,6 +125,21 @@ export const en: KioskMessages = {
       noTemplates:
         "No inspection template is assigned (set one in the admin app)",
       recordedMeta: (at: string, by: string) => `${at} ${by}`,
+      yes: "Yes",
+      no: "No",
+      samplingAll: "All units",
+      samplingPercent: (pct: number, count: number | null) =>
+        count != null ? `Sample ${pct}% (${count} pcs)` : `Sample ${pct}%`,
+      samplingCount: (count: number) => `Sample ${count} pcs`,
+      accept: (label: string) => `Accept: ${label}`,
+      goal: (label: string) => `Target: ${label}`,
+      addRow: "Add row",
+      removeRow: "Remove",
+      selectPlaceholder: "Select",
+      autoNone: "No auto judgement (choose manually)",
+      autoVerdict: (pass: boolean) => `Auto: ${pass ? "Pass" : "Fail"}`,
+      autoOverridden: (pass: boolean) =>
+        `Overriding auto judgement (${pass ? "Pass" : "Fail"})`,
       status: {
         PENDING: "Pending",
         PASS: "Pass",

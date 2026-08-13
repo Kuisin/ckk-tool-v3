@@ -6,13 +6,18 @@
  * テンプレート本体の CRUD と、検査項目（inspection_template_items）の
  * インライン追加・編集・削除（design.md §13.4 — 項目に個別ページは持たない）。
  * 項目操作の監査はテンプレート行（recordId = String(templateId)）に記録する。
+ *
+ * バージョン管理: 同一 code に複数バージョン（各バージョンが完全な行 + 項目）。
+ * 指示書に割当済み or 検査記録があるバージョンは **ロック** — 名称・関連工程・
+ * 項目の変更は拒否し、`createInspectionTemplateVersion` で新バージョンを
+ * コピー作成してから編集する（記録は使用したバージョンに固定される）。
  */
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { recordAudit } from "@/lib/audit";
 import { checkPermission } from "@/lib/authz";
-import { prisma } from "@/lib/db";
+import { Prisma, prisma } from "@/lib/db";
 import { type LocalizedText, localized } from "@/lib/format";
 import {
   type ActionResult,
@@ -23,6 +28,9 @@ import {
 } from "@/lib/server-action";
 
 const BASE_PATH = "/master/inspection-templates";
+
+const LOCKED_MESSAGE =
+  "このバージョンは指示書または検査記録で使用中のため変更できません。新バージョンを作成してください";
 
 // 編集可能フィールド（code は識別子 — 作成後不変）
 const templateUpdateInput = z.object({
@@ -45,32 +53,139 @@ const templateCreateInput = templateUpdateInput.extend({
 export type InspectionTemplateUpdateInput = z.infer<typeof templateUpdateInput>;
 export type InspectionTemplateCreateInput = z.infer<typeof templateCreateInput>;
 
-// 検査項目（許容値は min ≦ max）
+// ── 検査項目（型別バリデーション） ───────────────────────────────────────────
+
+const selectOptionInput = z.object({
+  value: z.string().min(1),
+  labelJa: z.string().min(1, "選択肢の表示名（日本語）を入力してください"),
+  labelEn: z.string().optional(),
+});
+
 const templateItemInput = z
   .object({
     itemNameJa: z.string().min(1, "項目名（日本語）を入力してください"),
     itemNameEn: z.string().optional(),
+    inputType: z.enum(["BOOLEAN", "NUMBER", "SELECT_SINGLE", "SELECT_MULTI"]),
+    // NUMBER
     unit: z.string().optional(),
     toleranceMin: z.number().nullable(),
     toleranceMax: z.number().nullable(),
+    goalNumber: z.number().nullable(),
+    // BOOLEAN
+    acceptBool: z.boolean().nullable(),
+    goalBool: z.boolean().nullable(),
+    // SELECT_*
+    options: z.array(selectOptionInput),
+    acceptOptions: z.array(z.string()),
+    goalOptions: z.array(z.string()),
+    // 抜取
+    samplingMode: z.enum(["ALL", "PERCENT", "COUNT"]),
+    samplingValue: z.number().nullable(),
     isRequired: z.boolean(),
     sortOrder: z.number().int(),
   })
   .superRefine((v, ctx) => {
-    if (
-      v.toleranceMin != null &&
-      v.toleranceMax != null &&
-      v.toleranceMin > v.toleranceMax
-    ) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ["toleranceMax"],
-        message: "許容値の上限は下限以上にしてください",
-      });
+    const issue = (path: string, message: string) =>
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: [path], message });
+
+    if (v.inputType === "NUMBER") {
+      if (
+        v.toleranceMin != null &&
+        v.toleranceMax != null &&
+        v.toleranceMin > v.toleranceMax
+      ) {
+        issue("toleranceMax", "合格範囲の上限は下限以上にしてください");
+      }
+    }
+    if (v.inputType === "SELECT_SINGLE" || v.inputType === "SELECT_MULTI") {
+      if (v.options.length === 0) {
+        issue("options", "選択肢を 1 つ以上登録してください");
+      }
+      const values = v.options.map((o) => o.value);
+      if (new Set(values).size !== values.length) {
+        issue("options", "選択肢が重複しています");
+      }
+      const valueSet = new Set(values);
+      if (!v.acceptOptions.every((a) => valueSet.has(a))) {
+        issue("acceptOptions", "合格選択肢は登録した選択肢から選んでください");
+      }
+      if (!v.goalOptions.every((g) => valueSet.has(g))) {
+        issue("goalOptions", "目標は登録した選択肢から選んでください");
+      }
+      if (v.inputType === "SELECT_SINGLE" && v.goalOptions.length > 1) {
+        issue("goalOptions", "単一選択の目標は 1 つまでです");
+      }
+    }
+    if (v.samplingMode === "PERCENT") {
+      if (v.samplingValue == null || v.samplingValue <= 0) {
+        issue("samplingValue", "抜取の割合(%)を入力してください");
+      } else if (v.samplingValue > 100) {
+        issue("samplingValue", "抜取の割合は 100% 以下にしてください");
+      }
+    }
+    if (v.samplingMode === "COUNT") {
+      if (
+        v.samplingValue == null ||
+        v.samplingValue < 1 ||
+        !Number.isInteger(v.samplingValue)
+      ) {
+        issue("samplingValue", "抜取の本数（1 以上の整数）を入力してください");
+      }
     }
   });
 
 export type InspectionTemplateItemInput = z.infer<typeof templateItemInput>;
+
+/** 入力を inputType に応じた DB カラム値へ正規化（無関係な型の値は null に落とす）。 */
+function itemData(v: InspectionTemplateItemInput) {
+  const isNumber = v.inputType === "NUMBER";
+  const isBool = v.inputType === "BOOLEAN";
+  const isSelect =
+    v.inputType === "SELECT_SINGLE" || v.inputType === "SELECT_MULTI";
+  const goalValue = isNumber
+    ? v.goalNumber
+    : isBool
+      ? v.goalBool
+      : v.goalOptions.length === 0
+        ? null
+        : v.inputType === "SELECT_SINGLE"
+          ? v.goalOptions[0]
+          : v.goalOptions;
+  return {
+    itemName: localizedInput(v.itemNameJa, v.itemNameEn),
+    inputType: v.inputType,
+    unit: isNumber ? v.unit?.trim() || null : null,
+    toleranceMin: isNumber ? v.toleranceMin : null,
+    toleranceMax: isNumber ? v.toleranceMax : null,
+    options: isSelect
+      ? v.options.map((o) => ({
+          value: o.value,
+          label: localizedInput(o.labelJa, o.labelEn),
+        }))
+      : undefined,
+    acceptBool: isBool ? v.acceptBool : null,
+    acceptOptions:
+      isSelect && v.acceptOptions.length > 0 ? v.acceptOptions : undefined,
+    goalValue: goalValue ?? undefined,
+    samplingMode: v.samplingMode,
+    samplingValue: v.samplingMode === "ALL" ? null : v.samplingValue,
+    isRequired: v.isRequired,
+    sortOrder: v.sortOrder,
+  };
+}
+
+// ── バージョンロック ─────────────────────────────────────────────────────────
+
+/** 指示書に割当済み or 検査記録があるバージョンは定義変更不可。 */
+export async function isTemplateLocked(templateId: number): Promise<boolean> {
+  const [linkCount, recordCount] = await Promise.all([
+    prisma.workOrderInspectionTemplate.count({
+      where: { inspectionTemplateId: templateId },
+    }),
+    prisma.inspectionRecord.count({ where: { templateId } }),
+  ]);
+  return linkCount > 0 || recordCount > 0;
+}
 
 function revalidate(id?: number) {
   revalidatePath(BASE_PATH);
@@ -133,6 +248,16 @@ export async function updateInspectionTemplate(
       where: { id },
       select: { name: true, relatedProcessStepId: true, isActive: true },
     });
+    if (!prior) return actionError("対象のテンプレートが見つかりません");
+    // ロック中は状態（有効/無効）の切替のみ許可
+    const priorName = prior.name as LocalizedText | null;
+    const definitionChanged =
+      (priorName?.ja ?? "") !== v.nameJa ||
+      (priorName?.en ?? "") !== (v.nameEn ?? "") ||
+      prior.relatedProcessStepId !== v.relatedProcessStepId;
+    if (definitionChanged && (await isTemplateLocked(id))) {
+      return actionError(LOCKED_MESSAGE);
+    }
     await prisma.inspectionTemplate.update({
       where: { id },
       data: {
@@ -145,13 +270,11 @@ export async function updateInspectionTemplate(
       action: "UPDATE",
       tableName: "inspection_templates",
       recordId: String(id),
-      before: prior
-        ? {
-            nameJa: localized(prior.name as LocalizedText | null),
-            relatedProcessStepId: prior.relatedProcessStepId,
-            isActive: prior.isActive,
-          }
-        : undefined,
+      before: {
+        nameJa: localized(priorName),
+        relatedProcessStepId: prior.relatedProcessStepId,
+        isActive: prior.isActive,
+      },
       after: {
         nameJa: v.nameJa,
         relatedProcessStepId: v.relatedProcessStepId,
@@ -163,6 +286,74 @@ export async function updateInspectionTemplate(
   } catch (e) {
     return actionError(
       prismaErrorMessage(e, "検査表テンプレートの更新に失敗しました"),
+    );
+  }
+}
+
+/**
+ * 新バージョンを作成 — テンプレート行 + 全項目を version = (同 code の最大 + 1)
+ * でコピーし、新しい行の id を返す。元バージョンはそのまま（無効化は手動 —
+ * 新旧バージョンの併用を許容する）。
+ */
+export async function createInspectionTemplateVersion(
+  id: number,
+): Promise<ActionResult<{ id: number; version: number }>> {
+  const authz = await checkPermission("master", "CREATE");
+  if (!authz.ok) return actionError(authz.error);
+  try {
+    const source = await prisma.inspectionTemplate.findUnique({
+      where: { id },
+      include: { items: { orderBy: [{ sortOrder: "asc" }, { id: "asc" }] } },
+    });
+    if (!source) return actionError("対象のテンプレートが見つかりません");
+    const created = await prisma.$transaction(async (tx) => {
+      const max = await tx.inspectionTemplate.aggregate({
+        where: { code: source.code },
+        _max: { version: true },
+      });
+      const version = (max._max.version ?? source.version) + 1;
+      return tx.inspectionTemplate.create({
+        data: {
+          code: source.code,
+          version,
+          name: source.name as object,
+          relatedProcessStepId: source.relatedProcessStepId,
+          isActive: true,
+          items: {
+            create: source.items.map((item) => ({
+              itemName: item.itemName as object,
+              inputType: item.inputType,
+              unit: item.unit,
+              toleranceMin: item.toleranceMin,
+              toleranceMax: item.toleranceMax,
+              options: item.options ?? undefined,
+              acceptBool: item.acceptBool,
+              acceptOptions: item.acceptOptions ?? undefined,
+              goalValue: item.goalValue ?? undefined,
+              samplingMode: item.samplingMode,
+              samplingValue: item.samplingValue,
+              isRequired: item.isRequired,
+              sortOrder: item.sortOrder,
+            })),
+          },
+        },
+        select: { id: true, version: true },
+      });
+    });
+    await recordAudit({
+      action: "CREATE",
+      tableName: "inspection_templates",
+      recordId: String(created.id),
+      after: {
+        note: `${source.code} v${created.version} を v${source.version} からコピー作成`,
+      },
+    });
+    revalidate(created.id);
+    revalidatePath(`${BASE_PATH}/${id}`);
+    return actionOk(created);
+  } catch (e) {
+    return actionError(
+      prismaErrorMessage(e, "新バージョンの作成に失敗しました"),
     );
   }
 }
@@ -202,8 +393,8 @@ export async function deleteInspectionTemplates(
   if (!authz.ok) return actionError(authz.error);
   if (ids.length === 0) return actionError("対象が選択されていません");
   try {
-    // 検査項目は onDelete: Cascade で一括削除。将来 検査記録（inspection_records）
-    // や指示書がテンプレートを参照するようになると P2003 で拒否される。
+    // 検査項目は onDelete: Cascade で一括削除。指示書リンク・検査記録が
+    // 参照しているバージョンは P2003 で拒否される（= ロック中は消えない）。
     await prisma.inspectionTemplate.deleteMany({ where: { id: { in: ids } } });
     for (const id of ids) {
       await recordAudit({
@@ -234,18 +425,11 @@ export async function addTemplateItem(
   if (!parsed.success) {
     return actionError(parsed.error.issues[0]?.message ?? "入力が不正です");
   }
+  if (await isTemplateLocked(templateId)) return actionError(LOCKED_MESSAGE);
   const v = parsed.data;
   try {
     const created = await prisma.inspectionTemplateItem.create({
-      data: {
-        templateId,
-        itemName: localizedInput(v.itemNameJa, v.itemNameEn),
-        unit: v.unit?.trim() || null,
-        toleranceMin: v.toleranceMin,
-        toleranceMax: v.toleranceMax,
-        isRequired: v.isRequired,
-        sortOrder: v.sortOrder,
-      },
+      data: { templateId, ...itemData(v) },
       select: { id: true },
     });
     await recordAudit({
@@ -278,15 +462,19 @@ export async function updateTemplateItem(
       select: { templateId: true },
     });
     if (!prior) return actionError("対象の検査項目が見つかりません");
+    if (await isTemplateLocked(prior.templateId)) {
+      return actionError(LOCKED_MESSAGE);
+    }
+    // Prisma は Json カラムに undefined を渡すと「変更なし」になるため、
+    // 型切替で無関係になった JSON 値は DbNull で明示的にクリアする。
+    const data = itemData(v);
     await prisma.inspectionTemplateItem.update({
       where: { id: itemId },
       data: {
-        itemName: localizedInput(v.itemNameJa, v.itemNameEn),
-        unit: v.unit?.trim() || null,
-        toleranceMin: v.toleranceMin,
-        toleranceMax: v.toleranceMax,
-        isRequired: v.isRequired,
-        sortOrder: v.sortOrder,
+        ...data,
+        options: data.options ?? Prisma.DbNull,
+        acceptOptions: data.acceptOptions ?? Prisma.DbNull,
+        goalValue: data.goalValue ?? Prisma.DbNull,
       },
     });
     await recordAudit({
@@ -314,6 +502,9 @@ export async function deleteTemplateItem(
       select: { templateId: true, itemName: true },
     });
     if (!prior) return actionError("対象の検査項目が見つかりません");
+    if (await isTemplateLocked(prior.templateId)) {
+      return actionError(LOCKED_MESSAGE);
+    }
     await prisma.inspectionTemplateItem.delete({ where: { id: itemId } });
     await recordAudit({
       action: "UPDATE",

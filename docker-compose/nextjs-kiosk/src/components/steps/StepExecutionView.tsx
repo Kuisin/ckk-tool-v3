@@ -39,9 +39,7 @@ import type { MyActiveStep, MyStepView } from "@/lib/steps";
 import {
   cleanReasonEntries,
   type DefectReasonEntry,
-  type QuantityFormValues,
-  quantityFormDefaults,
-  withDerivedSuccess,
+  quantitiesFromList,
 } from "@/lib/steps-core";
 import { ActivityMonitor } from "../ActivityMonitor";
 import { useI18n } from "../I18nProvider";
@@ -78,10 +76,8 @@ export function StepExecutionView({ step, recording, otherActive }: Props) {
   const [startInput, setStartInput] = useState<number>(
     step.expectedInputQuantity ?? step.workOrderPlannedQuantity,
   );
-  const [quantities, setQuantities] = useState<QuantityFormValues>(() =>
-    quantityFormDefaults(step.inputQuantity ?? step.expectedInputQuantity),
-  );
-  const [reasons, setReasons] = useState<DefectReasonEntry[]>([]);
+  // 完了フォームの不良リスト（{種別, 理由, 数}）。良品・区分合計はここから導出。
+  const [defects, setDefects] = useState<DefectReasonEntry[]>([]);
 
   // NONE を型レベルで落として、数量 UI に渡すモードを絞る
   const trackedMode = step.quantityMode === "NONE" ? null : step.quantityMode;
@@ -90,6 +86,12 @@ export function StepExecutionView({ step, recording, otherActive }: Props) {
   const paused = step.sessionState === "PAUSED";
   // 別工程を作業中 → この工程の開始/再開/完了をロック（同時作業は 1 工程まで）
   const lockedByActive = otherActive != null && !working;
+
+  // 完了時の受入数は開始時に確定した値で固定（未記録なら想定/予定へフォールバック）
+  const completeInput =
+    step.inputQuantity ??
+    step.expectedInputQuantity ??
+    step.workOrderPlannedQuantity;
 
   const run = async (
     body: Parameters<typeof callStepAction>[1],
@@ -120,9 +122,9 @@ export function StepExecutionView({ step, recording, otherActive }: Props) {
     run(
       {
         action: "COMPLETE",
-        // 良品数は 受入 − 不良 で導出して送る（サーバーでも受入を固定し再計算）
-        quantities: isNone ? null : withDerivedSuccess(quantities),
-        defectReasons: isNone ? undefined : cleanReasonEntries(reasons),
+        // 区分列・良品はリストから導出して送る（サーバーもリストから再計算）
+        quantities: isNone ? null : quantitiesFromList(completeInput, defects),
+        defectReasons: isNone ? undefined : cleanReasonEntries(defects),
       },
       () => {
         playLogoutSound();
@@ -277,12 +279,11 @@ export function StepExecutionView({ step, recording, otherActive }: Props) {
                     </Text>
                   ) : (
                     <StepQuantityForm
+                      defects={defects}
                       defectTypes={recording.defectTypes}
+                      inputQuantity={completeInput}
                       mode={trackedMode}
-                      onChange={setQuantities}
-                      onReasonsChange={setReasons}
-                      reasons={reasons}
-                      values={quantities}
+                      onChange={setDefects}
                     />
                   )}
                   <Group grow>
@@ -298,7 +299,11 @@ export function StepExecutionView({ step, recording, otherActive }: Props) {
                       color="green"
                       disabled={
                         !isNone &&
-                        !isQuantityFormValid(quantities, step.quantityMode)
+                        !isQuantityFormValid(
+                          defects,
+                          completeInput,
+                          step.quantityMode,
+                        )
                       }
                       leftSection={<IconCheck size={20} />}
                       loading={busy}
@@ -336,13 +341,7 @@ export function StepExecutionView({ step, recording, otherActive }: Props) {
                     color="green"
                     leftSection={<IconCheck size={20} />}
                     onClick={() => {
-                      // 受入数は開始時に確定した値で固定（完了時は編集不可）
-                      setQuantities(
-                        quantityFormDefaults(
-                          step.inputQuantity ?? step.expectedInputQuantity,
-                        ),
-                      );
-                      setReasons([]);
+                      setDefects([]);
                       setPhase("COMPLETING");
                     }}
                     size="lg"
@@ -359,6 +358,11 @@ export function StepExecutionView({ step, recording, otherActive }: Props) {
         {(recording.isInspection || recording.inspectionRecords.length > 0) && (
           <StepInspectionForm
             canRecord={recording.isInspection && (working || paused)}
+            lotQuantity={
+              step.inputQuantity ??
+              step.expectedInputQuantity ??
+              step.workOrderPlannedQuantity
+            }
             records={recording.inspectionRecords}
             stepId={step.stepId}
             templates={recording.templates}
