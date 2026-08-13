@@ -24,8 +24,12 @@ export interface StepActionRequest {
     outputDefectScrap: number;
     outputDefectRework: number;
   } | null;
-  /** COMPLETE のみ: 不良理由の内訳（{理由, 数}）の補助記録。 */
-  defectReasons?: { reason: string; count: number }[];
+  /** COMPLETE のみ: 不良の内訳（{種別, 理由, 数} のリスト）。 */
+  defectReasons?: {
+    type: "SEMI" | "SCRAP" | "REWORK";
+    reason: string;
+    count: number;
+  }[];
   /** INSPECTION のみ */
   templateId?: number;
   items?: { templateItemId: number; measuredValue: string; isPass: boolean }[];

@@ -48,15 +48,16 @@ const bodySchema = z.object({
   inputQuantity: z.number().int().min(0).nullable().optional(),
   /** COMPLETE のみ: NONE モードは null */
   quantities: quantitiesSchema.nullable().optional(),
-  /** COMPLETE のみ: 不良理由の内訳（補助記録）。 */
+  /** COMPLETE のみ: 不良の内訳（{種別, 理由, 数} のリスト）。 */
   defectReasons: z
     .array(
       z.object({
-        reason: z.string().trim().min(1).max(100),
+        type: z.enum(["SEMI", "SCRAP", "REWORK"]),
+        reason: z.string().trim().max(100),
         count: z.number().int().min(1).max(1_000_000),
       }),
     )
-    .max(50)
+    .max(100)
     .optional(),
   /** INSPECTION のみ */
   templateId: z.number().int().positive().optional(),
