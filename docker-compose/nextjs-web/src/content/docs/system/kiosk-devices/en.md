@@ -42,7 +42,7 @@ If the code expires, have the tablet display it again and retry. Only profiles i
 ## Editing and the device settings code
 
 - **編集** (Edit) changes the name, factory, and location. **Changing the factory removes the pin from the floor map** (maps are per factory).
-- The edit dialog shows the **device settings code** (6 digits). It unlocks the tablet's settings screen, opened by tapping the header 5 times; share it with the floor staff for resetting or re-linking a device. You can show / hide it and **regenerate** it (the new code is shown once, on the spot).
+- The **device settings code** (6 digits) and the **maintenance PIN** (shared by all devices, auto-rotated daily at 4:00) are shown on the **device detail page under "PIN・設定コード"**. Revealing them requires a confirmation and **is recorded in the audit log** (auto-hidden after 60 s). The settings code can also be **regenerated** there.
 
 ## Replacing or stopping a device
 

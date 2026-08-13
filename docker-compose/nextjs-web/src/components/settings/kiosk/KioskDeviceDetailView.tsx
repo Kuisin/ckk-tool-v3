@@ -20,10 +20,22 @@ import {
   Title,
   Tooltip,
 } from "@mantine/core";
-import { IconMapPin, IconUsers } from "@tabler/icons-react";
+import { notifications } from "@mantine/notifications";
+import {
+  IconEye,
+  IconMapPin,
+  IconRefresh,
+  IconUsers,
+} from "@tabler/icons-react";
+import { useEffect, useRef, useState, useTransition } from "react";
+import {
+  regenerateSettingsCode,
+  revealKioskPin,
+} from "@/app/(dashboard)/settings/kiosk-devices/actions";
 import { SecondaryButton } from "@/components/ui/buttons";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { FieldValue } from "@/components/ui/FieldValue";
+import { ConfirmModal } from "@/components/ui/modals";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { formatDateTime } from "@/lib/format";
@@ -45,6 +57,62 @@ export function KioskDeviceDetailView({
   recentUsers: KioskDeviceRecentUser[];
 }) {
   const { presence, live, transport } = useKioskPresence();
+  const [isPending, startTransition] = useTransition();
+  // PIN 開示（表示前に確認 → サーバーで監査ログ記録 → 60 秒後に自動で隠す）
+  const [confirmKind, setConfirmKind] = useState<"unlock" | "settings" | null>(
+    null,
+  );
+  const [revealed, setRevealed] = useState<{
+    unlock?: string;
+    settings?: string;
+  }>({});
+  const hideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(
+    () => () => {
+      if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
+    },
+    [],
+  );
+  const scheduleHide = () => {
+    if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
+    hideTimerRef.current = setTimeout(() => setRevealed({}), 60_000);
+  };
+  const reveal = (kind: "unlock" | "settings") => {
+    startTransition(async () => {
+      const result = await revealKioskPin({ kind, deviceId: device.id });
+      if (result.ok) {
+        setRevealed((r) => ({ ...r, [kind]: result.data.value }));
+        scheduleHide();
+      } else {
+        notifications.show({
+          title: "エラー",
+          message: result.error,
+          color: "red",
+        });
+      }
+    });
+  };
+  const [confirmRegen, setConfirmRegen] = useState(false);
+  const regenerate = () => {
+    startTransition(async () => {
+      const result = await regenerateSettingsCode(device.id);
+      if (result.ok) {
+        setRevealed((r) => ({ ...r, settings: result.data.code }));
+        scheduleHide();
+        notifications.show({
+          title: "再生成しました",
+          message: "新しい設定コードを表示しています",
+          color: "green",
+        });
+      } else {
+        notifications.show({
+          title: "エラー",
+          message: result.error,
+          color: "red",
+        });
+      }
+    });
+  };
   const online = resolveOnline(device, presence, live);
   const currentUser = resolveCurrentUserName(device, presence, live);
   const liveActivity = live
@@ -154,6 +222,70 @@ export function KioskDeviceDetailView({
         </SimpleGrid>
       </Paper>
 
+      {/* PIN・設定コード（表示前に確認 → 監査ログ記録。60 秒で自動非表示） */}
+      <Paper p="md" radius="md" withBorder>
+        <Title mb="sm" order={5}>
+          PIN・設定コード
+        </Title>
+        <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
+          <Stack gap={4}>
+            <Text c="dimmed" size="xs">
+              メンテナンス PIN（全端末共通・毎日 4:00 自動更新）
+            </Text>
+            <Group gap="xs" wrap="nowrap">
+              <Text ff="monospace" fw={700} size="lg">
+                {revealed.unlock ?? "••••••"}
+              </Text>
+              {!revealed.unlock && (
+                <SecondaryButton
+                  leftSection={<IconEye size={14} />}
+                  loading={isPending}
+                  onClick={() => setConfirmKind("unlock")}
+                  size="xs"
+                >
+                  表示
+                </SecondaryButton>
+              )}
+            </Group>
+            <Text c="dimmed" size="xs">
+              端末画面の右上 5 タップ → この PIN でキオスクロックを一時解除
+              （Wi-Fi 変更等）
+            </Text>
+          </Stack>
+          <Stack gap={4}>
+            <Text c="dimmed" size="xs">
+              端末設定コード（この端末・左上 5 タップ用）
+            </Text>
+            <Group gap="xs" wrap="nowrap">
+              <Text ff="monospace" fw={700} size="lg">
+                {revealed.settings ?? "••••••"}
+              </Text>
+              {!revealed.settings && (
+                <SecondaryButton
+                  leftSection={<IconEye size={14} />}
+                  loading={isPending}
+                  onClick={() => setConfirmKind("settings")}
+                  size="xs"
+                >
+                  表示
+                </SecondaryButton>
+              )}
+              <SecondaryButton
+                leftSection={<IconRefresh size={14} />}
+                loading={isPending}
+                onClick={() => setConfirmRegen(true)}
+                size="xs"
+              >
+                再生成
+              </SecondaryButton>
+            </Group>
+            <Text c="dimmed" size="xs">
+              端末リセット・再リンク用の解錠コード。フロア担当者に伝えて使用
+            </Text>
+          </Stack>
+        </SimpleGrid>
+      </Paper>
+
       <Flex align="stretch" direction={{ base: "column", md: "row" }} gap="md">
         {/* 最近の利用者（LOGIN ログの集計） */}
         <Flex direction="column" style={{ flex: 5, minWidth: 0 }}>
@@ -208,6 +340,32 @@ export function KioskDeviceDetailView({
           </Paper>
         </Flex>
       </Flex>
+      {/* PIN 表示・再生成の確認 */}
+      <ConfirmModal
+        confirmColor="blue"
+        confirmLabel="表示"
+        loading={isPending}
+        message="PIN を表示します。表示した操作は監査ログに記録されます。"
+        onClose={() => setConfirmKind(null)}
+        onConfirm={() => {
+          if (confirmKind) reveal(confirmKind);
+          setConfirmKind(null);
+        }}
+        opened={confirmKind != null}
+        title="PIN の表示"
+      />
+      <ConfirmModal
+        confirmLabel="再生成"
+        loading={isPending}
+        message="端末設定コードを再生成します。以前のコードは使えなくなります。"
+        onClose={() => setConfirmRegen(false)}
+        onConfirm={() => {
+          regenerate();
+          setConfirmRegen(false);
+        }}
+        opened={confirmRegen}
+        title="設定コードの再生成"
+      />
     </Stack>
   );
 }

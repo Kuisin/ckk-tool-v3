@@ -292,8 +292,6 @@ export function KioskDevicesTable({
   // 編集モーダル
   const [editTarget, setEditTarget] = useState<KioskDeviceRow | null>(null);
   const [editForm, setEditForm] = useState<DeviceFormState>(EMPTY_FORM);
-  // 端末設定コードの表示トグル（編集モーダル内。開き直すたびに隠す）
-  const [codeVisible, setCodeVisible] = useState(false);
   // 利用履歴モーダル
   const [logsTarget, setLogsTarget] = useState<KioskDeviceRow | null>(null);
   // 確認モーダル（有効化・破壊的操作）
@@ -420,36 +418,10 @@ export function KioskDevicesTable({
 
   const openEdit = (r: KioskDeviceRow) => {
     setEditTarget(r);
-    setCodeVisible(false);
     setEditForm({
       name: r.name ?? "",
       factoryId: r.factoryId != null ? String(r.factoryId) : null,
       location: r.location ?? "",
-    });
-  };
-
-  const handleRegenerateCode = () => {
-    if (!editTarget) return;
-    const id = editTarget.id;
-    startTransition(async () => {
-      const result = await regenerateSettingsCode(id);
-      if (result.ok) {
-        setEditTarget((t) =>
-          t && t.id === id ? { ...t, settingsCode: result.data.code } : t,
-        );
-        setCodeVisible(true);
-        notifications.show({
-          title: "再生成しました",
-          message: `新しい設定コード: ${result.data.code}`,
-          color: "green",
-        });
-      } else {
-        notifications.show({
-          title: "エラー",
-          message: result.error,
-          color: "red",
-        });
-      }
     });
   };
 
@@ -963,45 +935,6 @@ export function KioskDevicesTable({
           <Text c="dimmed" size="xs">
             工場を変更するとフロアマップ上のピン配置は解除されます。
           </Text>
-          <Stack gap={4}>
-            <Text fw={500} size="sm">
-              端末設定コード
-            </Text>
-            <Group gap="xs" wrap="nowrap">
-              <Text ff="monospace" fw={600} size="lg">
-                {codeVisible
-                  ? (editTarget?.settingsCode ?? "——————")
-                  : "••••••"}
-              </Text>
-              <Tooltip label={codeVisible ? "隠す" : "表示"} withinPortal>
-                <ActionIcon
-                  aria-label="設定コードの表示切り替え"
-                  onClick={() => setCodeVisible((v) => !v)}
-                  variant="subtle"
-                >
-                  {codeVisible ? (
-                    <IconEyeOff size={16} />
-                  ) : (
-                    <IconEye size={16} />
-                  )}
-                </ActionIcon>
-              </Tooltip>
-              <Tooltip label="再生成" withinPortal>
-                <ActionIcon
-                  aria-label="設定コードを再生成"
-                  loading={isPending}
-                  onClick={handleRegenerateCode}
-                  variant="subtle"
-                >
-                  <IconRefresh size={16} />
-                </ActionIcon>
-              </Tooltip>
-            </Group>
-            <Text c="dimmed" size="xs">
-              端末側でヘッダーを5回タップすると開く端末設定画面の解錠コード。
-              フロア担当者に伝えて、端末のリセット・再リンクに使用します。
-            </Text>
-          </Stack>
         </Stack>
       </ModalShell>
 
