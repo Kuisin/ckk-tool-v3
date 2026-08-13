@@ -22,12 +22,13 @@ export const metadata: Metadata = {
   description: "共有キオスク端末 — QR コードでログイン",
 };
 
-// タブレット全画面運用: 入力フォーカス時の自動ズーム抑止（nextjs-web と同じ）
+// タブレット全画面運用: 入力フォーカス時の自動ズーム抑止（nextjs-web と同じ）。
+// themeColor はダークテーマ固定に合わせて濃紺（theme.ts dark[7] = body 背景）
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   maximumScale: 1,
-  themeColor: "#228be6",
+  themeColor: "#21243b",
 };
 
 export default async function RootLayout({

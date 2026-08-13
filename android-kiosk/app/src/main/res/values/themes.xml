@@ -1,8 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <style name="Theme.CkkKiosk" parent="android:Theme.Material.Light.NoActionBar.Fullscreen">
-        <item name="android:statusBarColor">#1a1b1e</item>
-        <item name="android:navigationBarColor">#1a1b1e</item>
-        <item name="android:windowBackground">#1a1b1e</item>
+    <!-- 常にダークテーマ（Web 側も forceColorScheme="dark"）。
+         親を Material（ダーク）にすることでメンテナンス PIN ダイアログ等も
+         ダーク表示になる。背景は Web の濃紺（theme.ts dark[7]/[8]）に合わせる -->
+    <style name="Theme.CkkKiosk" parent="android:Theme.Material.NoActionBar.Fullscreen">
+        <item name="android:statusBarColor">#191b2e</item>
+        <item name="android:navigationBarColor">#191b2e</item>
+        <item name="android:windowBackground">#21243b</item>
+        <item name="android:colorAccent">#4dabf7</item>
     </style>
 </resources>

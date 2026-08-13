@@ -16,6 +16,7 @@ import { IconDeviceTablet } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
 import { type ReactNode, useRef } from "react";
 import { ConnectionIndicator } from "./ConnectionIndicator";
+import { StatusTray } from "./StatusTray";
 
 const HEADER_HEIGHT = 56;
 const FOOTER_HEIGHT = 36;
@@ -77,7 +78,7 @@ export function KioskShell({ deviceName, registered, children }: Props) {
                 点滅=不安定）+ オフライン時の全画面オーバーレイ */}
             <ConnectionIndicator registered={registered} />
             {registered ? (
-              <Text fw={600} maw={360} size="md" truncate>
+              <Text fw={600} maw={300} size="md" truncate>
                 {deviceName ?? "（名称未設定）"}
               </Text>
             ) : (
@@ -85,6 +86,8 @@ export function KioskShell({ deviceName, registered, children }: Props) {
                 未登録端末
               </Badge>
             )}
+            {/* バッテリー + 時刻（イマーシブでシステムバーが見えないため常時表示） */}
+            <StatusTray />
           </Group>
         </Group>
       </AppShell.Header>

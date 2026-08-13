@@ -11,8 +11,8 @@ android {
         applicationId = "jp.co.ckk.kiosk"
         minSdk = 29
         targetSdk = 35
-        versionCode = 5
-        versionName = "0.5.0"
+        versionCode = 6
+        versionName = "0.5.1"
 
         // メンテナンス退出 PIN（デバイスオーナー時、右上 5 タップ → PIN 入力）。
         // 既定値のまま配布しないこと — ~/.gradle/gradle.properties（コミット対象外）に
