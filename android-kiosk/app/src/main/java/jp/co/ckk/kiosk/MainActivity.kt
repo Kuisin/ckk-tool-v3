@@ -114,6 +114,9 @@ class MainActivity : ComponentActivity() {
         // 自己更新: version.json をポーリング → 新版をサイレント適用
         SelfUpdater.schedule(this)
 
+        // メンテナンス PIN の同期（毎日サーバー側で自動更新されるため）
+        PinSync.schedule(this)
+
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         WindowCompat.setDecorFitsSystemWindows(window, false)
 
@@ -320,6 +323,7 @@ class MainActivity : ComponentActivity() {
 
     private fun showMaintenanceDialog() {
         maintenanceDialogShowing = true
+        PinSync.syncNow(this) // 最新 PIN を取得（毎日自動更新のため）
         val input = EditText(this).apply {
             inputType = InputType.TYPE_CLASS_NUMBER or InputType.TYPE_NUMBER_VARIATION_PASSWORD
             hint = "管理者 PIN"
@@ -352,7 +356,7 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun verifyPin(input: EditText): Boolean {
-        if (input.text.toString() == BuildConfig.KIOSK_UNLOCK_PIN) return true
+        if (input.text.toString() == PinSync.current(this)) return true
         input.error = "PIN が違います"
         input.setText("")
         return false

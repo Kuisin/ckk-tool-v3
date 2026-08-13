@@ -24,6 +24,20 @@ CREATE EXTENSION IF NOT EXISTS pg_cron;
 SELECT cron.unschedule(jobid) FROM cron.job WHERE jobname = 'kiosk_offline_sweep';
 SELECT cron.unschedule(jobid) FROM cron.job WHERE jobname = 'kiosk_stale_session_sweep';
 SELECT cron.unschedule(jobid) FROM cron.job WHERE jobname = 'kiosk_location_retention';
+SELECT cron.unschedule(jobid) FROM cron.job WHERE jobname = 'kiosk_unlock_pin_rotate';
+
+-- メンテナンス退出 PIN（全端末共通）を毎日 4:00 に自動更新。
+-- SY09 端末詳細で確認（表示は監査ログ記録）。端末アプリ（v0.5.3+）は
+-- /api/kiosk/unlock-pin から 1 時間ごと + ダイアログ表示時に同期する。
+SELECT cron.schedule('kiosk_unlock_pin_rotate', '0 4 * * *', $job$
+  INSERT INTO app.system_settings (key, value, description, updated_at)
+  VALUES ('kiosk.unlock_pin',
+          to_jsonb(lpad(floor(random() * 1000000)::text, 6, '0')),
+          'キオスク メンテナンス退出 PIN（毎日 4:00 自動更新・全端末共通）',
+          now())
+  ON CONFLICT (key) DO UPDATE
+    SET value = EXCLUDED.value, description = EXCLUDED.description, updated_at = now()
+$job$);
 
 -- 位置ログの保持期間: 90 日（毎日 3:30 に削除。5 分間隔 × 端末数で増えるため）
 SELECT cron.schedule('kiosk_location_retention', '30 3 * * *', $job$

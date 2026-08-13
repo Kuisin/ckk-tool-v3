@@ -603,6 +603,52 @@ export async function regenerateSettingsCode(
   }
 }
 
+/**
+ * PIN / 設定コードの開示（SY09 端末詳細 — 表示前に確認 + 監査ログ記録）。
+ * kind = "unlock": メンテナンス退出 PIN（全端末共通・毎日 4:00 に自動更新 —
+ *   system_settings kiosk.unlock_pin。端末側は 1 時間ごと + ダイアログ表示時に同期）。
+ * kind = "settings": 端末設定コード（端末ごと・左上 5 タップ画面の解錠用）。
+ */
+export async function revealKioskPin(input: {
+  kind: "unlock" | "settings";
+  deviceId?: string;
+}): Promise<ActionResult<{ value: string }>> {
+  const authz = await checkPermission("kiosk", "READ");
+  if (!authz.ok) return actionError(authz.error);
+  try {
+    if (input.kind === "settings") {
+      const parsed = uuidSchema.safeParse(input.deviceId);
+      if (!parsed.success) return actionError("端末が指定されていません");
+      const device = await prisma.kioskDevice.findUnique({
+        where: { id: parsed.data },
+        select: { settingsCode: true },
+      });
+      if (!device) return actionError("対象の端末が見つかりません");
+      await recordAudit({
+        action: "VIEW",
+        tableName: "kiosk_devices",
+        recordId: parsed.data,
+        after: { note: "端末設定コードを表示" },
+      });
+      return actionOk({ value: device.settingsCode });
+    }
+    const row = await prisma.systemSetting.findUnique({
+      where: { key: "kiosk.unlock_pin" },
+    });
+    const value = typeof row?.value === "string" ? row.value : null;
+    if (!value) return actionError("メンテナンス PIN が未設定です");
+    await recordAudit({
+      action: "VIEW",
+      tableName: "system_settings",
+      recordId: "kiosk.unlock_pin",
+      after: { note: "メンテナンス PIN を表示" },
+    });
+    return actionOk({ value });
+  } catch (e) {
+    return actionError(prismaErrorMessage(e, "PIN の取得に失敗しました"));
+  }
+}
+
 /** アテステーション鍵をリセット（次回ラッパー接続時に再束縛 = TOFU）。 */
 export async function resetDeviceKey(id: string): Promise<ActionResult> {
   const authz = await checkPermission("kiosk", "UPDATE");
