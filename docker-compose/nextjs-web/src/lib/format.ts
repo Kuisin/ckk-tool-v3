@@ -20,19 +20,55 @@ export function formatMoney(
   );
 }
 
-/** ISO date(-time) → `yyyy/MM/dd` */
-export function formatDate(iso: string | Date | null | undefined): string {
-  if (!iso) return "—";
-  const s = iso instanceof Date ? iso.toISOString() : iso;
-  return s.slice(0, 10).replace(/-/g, "/");
+// 表示タイムゾーンは JST（Asia/Tokyo）固定。以前は ISO 文字列の切り出しで
+// UTC のまま表示していた（9 時間ずれ）。Intl + timeZone 固定なら SSR と
+// クライアントで同一出力になり、hydration 不一致も起きない（JST は DST なし）。
+const TOKYO_DATE = new Intl.DateTimeFormat("ja-JP", {
+  timeZone: "Asia/Tokyo",
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+});
+const TOKYO_DATETIME = new Intl.DateTimeFormat("ja-JP", {
+  timeZone: "Asia/Tokyo",
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+  hour: "2-digit",
+  minute: "2-digit",
+  hour12: false,
+});
+const TOKYO_TIME = new Intl.DateTimeFormat("ja-JP", {
+  timeZone: "Asia/Tokyo",
+  hour: "2-digit",
+  minute: "2-digit",
+  hour12: false,
+});
+
+function toDate(iso: string | Date): Date | null {
+  const d = iso instanceof Date ? iso : new Date(iso);
+  return Number.isNaN(d.getTime()) ? null : d;
 }
 
-/** ISO timestamp → `yyyy/MM/dd HH:mm` */
+/** ISO date(-time) → `yyyy/MM/dd`（JST） */
+export function formatDate(iso: string | Date | null | undefined): string {
+  if (!iso) return "—";
+  const d = toDate(iso);
+  return d ? TOKYO_DATE.format(d) : "—";
+}
+
+/** ISO timestamp → `yyyy/MM/dd HH:mm`（JST） */
 export function formatDateTime(iso: string | Date | null | undefined): string {
   if (!iso) return "—";
-  const s = iso instanceof Date ? iso.toISOString() : iso;
-  const [d, t = ""] = s.split(/[ T]/);
-  return `${d.replace(/-/g, "/")} ${t.slice(0, 5)}`.trim();
+  const d = toDate(iso);
+  return d ? TOKYO_DATETIME.format(d) : "—";
+}
+
+/** ISO timestamp → `HH:mm`（JST） */
+export function formatTime(iso: string | Date | null | undefined): string {
+  if (!iso) return "—";
+  const d = toDate(iso);
+  return d ? TOKYO_TIME.format(d) : "—";
 }
 
 /** { ja, en } DB JSON field (_specs/design.md §17.4). */
