@@ -12,12 +12,12 @@
  * 失敗時は IMPORT のまま extract_error を記録（画面から再実行可）。
  */
 
-import { randomUUID } from "node:crypto";
 import { mkdir, readdir, readFile, rename, stat } from "node:fs/promises";
 import path from "node:path";
 import { getCurrentActorId, recordAudit } from "./audit";
 import { prisma } from "./db";
 import { formatDocNumber } from "./doc-number";
+import { systematicFileName } from "./file-naming";
 import { type NormalizedExtraction, normalizeExtraction } from "./intake-core";
 import { notifyGroup } from "./notifications";
 import { allocateDocumentKey } from "./numbering";
@@ -45,8 +45,8 @@ async function ingestFile(input: {
   source: "FOLDER" | "UPLOAD";
 }): Promise<{ yearMonth: string; seq: number; fileId: string }> {
   const actor = await getCurrentActorId();
-  const safeName = input.filename.replace(/[^\w.\-()（）　-鿿]/g, "_");
-  const key = `intake/${randomUUID()}-${safeName}`;
+  // 系統的リネーム（lib/file-naming）: 時刻+乱数で一意、元名で判別可能。
+  const key = `intake/${systematicFileName(input.filename)}`;
   const stored = await putObject(key, input.bytes, input.contentType);
   if (!stored) {
     throw new Error("ストレージ（SeaweedFS）への保存に失敗しました");

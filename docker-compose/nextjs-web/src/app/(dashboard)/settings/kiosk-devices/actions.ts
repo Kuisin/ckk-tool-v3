@@ -26,6 +26,7 @@ import { getCurrentActorId, recordAudit } from "@/lib/audit";
 import { checkPermission } from "@/lib/authz";
 import { normalizeCode } from "@/lib/crockford";
 import { prisma } from "@/lib/db";
+import { systematicFileName } from "@/lib/file-naming";
 import {
   type KioskDeviceSessionRow,
   type KioskPresenceRow,
@@ -922,16 +923,9 @@ const MAP_IMAGE_TYPES: Record<string, string[]> = {
   svg: ["image/svg+xml"],
 };
 
-/** ストレージキー用にファイル名を無害化（attachments.ts と同規約）。 */
-function sanitizeFilename(name: string): string {
-  const base = name.split(/[\\/]/).pop() ?? "file";
-  const safe = base.replace(/[^A-Za-z0-9._-]+/g, "_").replace(/^\.+/, "");
-  return (safe || "file").slice(0, 80);
-}
-
 /**
  * 図面画像をアップロードして差し替える（FormData: `file`）。
- * SeaweedFS `kiosk/floor-maps/{uuid}-{name}` + files 行 —
+ * SeaweedFS `kiosk/floor-maps/{系統的リネーム}` + files 行 —
  * lib/attachments.ts の保存フローと同じ規約。旧画像は best-effort で削除。
  */
 export async function uploadFloorMapImage(
@@ -968,7 +962,7 @@ export async function uploadFloorMapImage(
     }
 
     const bytes = await file.arrayBuffer();
-    const storageKey = `kiosk/floor-maps/${crypto.randomUUID()}-${sanitizeFilename(file.name)}`;
+    const storageKey = `kiosk/floor-maps/${systematicFileName(file.name)}`;
     if (!(await putObject(storageKey, bytes, allowed[0]))) {
       return actionError("ストレージへの保存に失敗しました");
     }
