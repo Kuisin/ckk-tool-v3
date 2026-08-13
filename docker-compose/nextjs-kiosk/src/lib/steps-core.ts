@@ -159,8 +159,9 @@ export interface QuantityFormValues {
 }
 
 /**
- * 完了フォームの初期値。良品 = 受入で「不良なし」を既定にする
- * （現場で最も多いケースを 0 タップで確定できるように）。
+ * 完了フォームの初期値。受入数は開始時に確定した値で固定（完了時は編集不可）、
+ * 不良は 0・良品 = 受入（不良なし）を既定にする。良品は導出値なので初期でも
+ * deriveSuccess と一致する。
  */
 export function quantityFormDefaults(
   inputQuantity: number | null,
@@ -173,6 +174,26 @@ export function quantityFormDefaults(
     outputDefectScrap: 0,
     outputDefectRework: 0,
   };
+}
+
+/** 総不良数 = 区分（半製品 + 廃棄 + 手直し）の合計。 */
+export function defectTotal(v: QuantityFormValues): number {
+  return (
+    v.outputDefectSemiFinished + v.outputDefectScrap + v.outputDefectRework
+  );
+}
+
+/**
+ * 良品数（導出）= 受入数 − 総不良数。作業者は良品を直接入力せず、
+ * 受入（固定）と不良区分から自動計算する。負にはしない（下限 0）。
+ */
+export function deriveSuccess(v: QuantityFormValues): number {
+  return Math.max(0, v.inputQuantity - defectTotal(v));
+}
+
+/** 導出した良品数を outputSuccessQuantity に反映した値を返す（送信直前に使う）。 */
+export function withDerivedSuccess(v: QuantityFormValues): QuantityFormValues {
+  return { ...v, outputSuccessQuantity: deriveSuccess(v) };
 }
 
 // ── 検査記録・不良記録（純ロジック） ─────────────────────────────────────────
@@ -216,14 +237,46 @@ export function isDefectEntryComplete(entry: DefectEntry): boolean {
   return entry.defectTypeId != null && entry.description.trim().length > 0;
 }
 
+// ── 不良理由（完了フォームの補助記録・{理由, 数} の JSON） ────────────────────
+
+export interface DefectReasonEntry {
+  /** 理由（不良種類名など）。 */
+  reason: string;
+  /** 本数。 */
+  count: number;
+}
+
+/** 理由行が保存対象か（理由が空でなく・数が 1 以上）。 */
+export function isReasonEntryComplete(e: DefectReasonEntry): boolean {
+  return e.reason.trim().length > 0 && Number.isFinite(e.count) && e.count > 0;
+}
+
+/** 理由の合計本数（保存対象の行のみ）。 */
+export function reasonTotal(entries: readonly DefectReasonEntry[]): number {
+  return entries.reduce(
+    (s, e) => (isReasonEntryComplete(e) ? s + e.count : s),
+    0,
+  );
+}
+
+/** 保存対象の理由行だけを取り出し、reason をトリムして返す。 */
+export function cleanReasonEntries(
+  entries: readonly DefectReasonEntry[],
+): DefectReasonEntry[] {
+  return entries
+    .filter(isReasonEntryComplete)
+    .map((e) => ({ reason: e.reason.trim(), count: e.count }));
+}
+
 export type ConservationIssue =
   | { kind: "NEGATIVE" }
-  | { kind: "CONSERVATION"; sum: number; input: number };
+  | { kind: "OVER_INPUT"; sum: number; input: number };
 
 /**
- * 入力中のインライン検証（workflow-core の validateQuantities のミラー）。
- * 文言を持たずコードだけ返すので、i18n はコンポーネント側で行う。
- * 権威はサーバー側の validateQuantities — こちらはあくまで即時フィードバック。
+ * 完了フォームの数量検証（良品は導出値なので保存則の一致は常に成立）。
+ * 残る不正は「負の値」と「不良の合計が受入数を超える（良品が負になる）」のみ。
+ * 文言を持たずコードだけ返すので、i18n はコンポーネント側で行う。権威は
+ * サーバー側 validateQuantities — こちらは即時フィードバック用。
  */
 export function checkConservation(
   v: QuantityFormValues,
@@ -232,19 +285,14 @@ export function checkConservation(
   if (mode === "NONE") return null;
   const values = [
     v.inputQuantity,
-    v.outputSuccessQuantity,
     v.outputDefectSemiFinished,
     v.outputDefectScrap,
     v.outputDefectRework,
   ];
   if (values.some((n) => !Number.isFinite(n) || n < 0))
     return { kind: "NEGATIVE" };
-  const sum =
-    v.outputSuccessQuantity +
-    v.outputDefectSemiFinished +
-    v.outputDefectScrap +
-    v.outputDefectRework;
-  if (sum !== v.inputQuantity)
-    return { kind: "CONSERVATION", sum, input: v.inputQuantity };
+  const sum = defectTotal(v);
+  if (sum > v.inputQuantity)
+    return { kind: "OVER_INPUT", sum, input: v.inputQuantity };
   return null;
 }
