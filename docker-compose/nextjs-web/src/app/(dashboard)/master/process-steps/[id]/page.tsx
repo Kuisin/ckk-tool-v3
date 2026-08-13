@@ -66,6 +66,8 @@ export default async function MasterProcessStepsDetailPage({
     isApprovalStep: r.isApprovalStep,
     approvalMinRank: r.approvalMinRank,
     quantityTracking: r.quantityTracking,
+    defaultWorkHours:
+      r.defaultWorkHours == null ? null : Number(r.defaultWorkHours),
     sortOrder: r.sortOrder,
     isActive: r.isActive,
     notes: r.notes ?? "",

@@ -20,6 +20,7 @@ const step = (
   executionLocation: "INTERNAL",
   factoryId: null,
   supplierBpId: null,
+  workHours: null,
   ...overrides,
 });
 
@@ -59,6 +60,24 @@ describe("routeStepsEqual", () => {
       ),
     ).toBe(false);
     expect(routeStepsEqual([step(6, 0)], [step(6, 0)])).toBe(true);
+  });
+
+  it("作業時間の変更で false / 同値・両方なしは true", () => {
+    expect(
+      routeStepsEqual([step(6, 0, { workHours: 1.5 })], [step(6, 0)]),
+    ).toBe(false);
+    expect(
+      routeStepsEqual(
+        [step(6, 0, { workHours: 1.5 })],
+        [step(6, 0, { workHours: 2 })],
+      ),
+    ).toBe(false);
+    expect(
+      routeStepsEqual(
+        [step(6, 0, { workHours: 1.5 })],
+        [step(6, 0, { workHours: 1.5 })],
+      ),
+    ).toBe(true);
   });
 
   it("空 vs 空は true", () => {

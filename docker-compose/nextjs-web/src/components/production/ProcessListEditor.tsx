@@ -17,6 +17,7 @@ import {
   Badge,
   Checkbox,
   Group,
+  NumberInput,
   Paper,
   SegmentedControl,
   Select,
@@ -49,11 +50,13 @@ export interface Option {
   label: string;
 }
 
-/** 社内・外注可の工程ごとの実施場所設定。 */
+/** 工程ごとの実施場所 + 作業時間設定（実施場所は社内・外注可の工程のみ有効）。 */
 export interface StepLocation {
   executionLocation: "INTERNAL" | "OUTSOURCE";
   factoryId: string | null;
   supplierBpId: string | null;
+  /** 作業時間 (h)。undefined = 未設定（カタログ既定値を使う）/ null = 明示的になし。 */
+  workHours?: number | null;
 }
 
 const DEFAULT_LOCATION: StepLocation = {
@@ -61,6 +64,15 @@ const DEFAULT_LOCATION: StepLocation = {
   factoryId: null,
   supplierBpId: null,
 };
+
+/** 工程の実効作業時間 — 明示設定（null 含む）が優先、未設定はカタログ既定値。 */
+export function effectiveWorkHours(
+  entry: StepLocation | undefined,
+  cat: CatalogStep | undefined,
+): number | null {
+  if (entry && entry.workHours !== undefined) return entry.workHours;
+  return cat?.defaultWorkHours ?? null;
+}
 
 /**
  * 現在の選択 + 実施場所 → 工程スナップショット列（保存ペイロードと同じ規則:
@@ -88,6 +100,7 @@ export function toStepSnapshots(
           : null,
       supplierBpId:
         execution === "OUTSOURCE" ? (loc?.supplierBpId ?? null) : null,
+      workHours: effectiveWorkHours(locations[stepId], cat),
     };
   });
 }
@@ -287,7 +300,7 @@ export function ProcessListEditor({
       </FormSection>
 
       <FormSection
-        description="実行順はカタログ既定順です（実際の実行可否は工程間依存の解決で決まります）。社内・外注可の工程は実施場所を選択できます。"
+        description="実行順はカタログ既定順です（実際の実行可否は工程間依存の解決で決まります）。作業時間 (h) は任意 — 未入力は工程マスタの既定値。社内・外注可の工程は実施場所を選択できます。"
         title="選択済み工程・実施場所"
       >
         {orderedSelected.length === 0 ? (
@@ -325,54 +338,73 @@ export function ProcessListEditor({
                         {PROCESS_CATEGORY_LABEL[cat.category] ?? cat.category}
                       </Text>
                     </Group>
-                    {editable ? (
-                      <Group gap="xs" wrap="nowrap">
-                        <SegmentedControl
-                          data={[
-                            { value: "INTERNAL", label: "社内" },
-                            { value: "OUTSOURCE", label: "外注" },
-                          ]}
-                          onChange={(v) =>
-                            setLocation(stepId, {
-                              executionLocation: v as "INTERNAL" | "OUTSOURCE",
-                            })
-                          }
-                          size="xs"
-                          value={loc.executionLocation}
-                        />
-                        {loc.executionLocation === "INTERNAL" ? (
-                          <Select
-                            clearable
-                            data={factoryOptions}
+                    <Group gap="xs" wrap={isMobile ? "wrap" : "nowrap"}>
+                      <NumberInput
+                        aria-label={`${cat.nameJa} の作業時間 (h)`}
+                        decimalScale={2}
+                        min={0.01}
+                        onChange={(v) =>
+                          setLocation(stepId, {
+                            workHours: v === "" || v == null ? null : Number(v),
+                          })
+                        }
+                        placeholder="作業時間"
+                        size="xs"
+                        suffix=" h"
+                        value={effectiveWorkHours(locations[stepId], cat) ?? ""}
+                        w={110}
+                      />
+                      {editable ? (
+                        <>
+                          <SegmentedControl
+                            data={[
+                              { value: "INTERNAL", label: "社内" },
+                              { value: "OUTSOURCE", label: "外注" },
+                            ]}
                             onChange={(v) =>
-                              setLocation(stepId, { factoryId: v })
+                              setLocation(stepId, {
+                                executionLocation: v as
+                                  | "INTERNAL"
+                                  | "OUTSOURCE",
+                              })
                             }
-                            placeholder="工場"
-                            searchable
                             size="xs"
-                            value={loc.factoryId}
-                            w={200}
+                            value={loc.executionLocation}
                           />
-                        ) : (
-                          <Select
-                            clearable
-                            data={supplierOptions}
-                            onChange={(v) =>
-                              setLocation(stepId, { supplierBpId: v })
-                            }
-                            placeholder="仕入先（外注先）"
-                            searchable
-                            size="xs"
-                            value={loc.supplierBpId}
-                            w={200}
-                          />
-                        )}
-                      </Group>
-                    ) : (
-                      <Badge color="gray" size="xs" variant="outline">
-                        社内
-                      </Badge>
-                    )}
+                          {loc.executionLocation === "INTERNAL" ? (
+                            <Select
+                              clearable
+                              data={factoryOptions}
+                              onChange={(v) =>
+                                setLocation(stepId, { factoryId: v })
+                              }
+                              placeholder="工場"
+                              searchable
+                              size="xs"
+                              value={loc.factoryId}
+                              w={200}
+                            />
+                          ) : (
+                            <Select
+                              clearable
+                              data={supplierOptions}
+                              onChange={(v) =>
+                                setLocation(stepId, { supplierBpId: v })
+                              }
+                              placeholder="仕入先（外注先）"
+                              searchable
+                              size="xs"
+                              value={loc.supplierBpId}
+                              w={200}
+                            />
+                          )}
+                        </>
+                      ) : (
+                        <Badge color="gray" size="xs" variant="outline">
+                          社内
+                        </Badge>
+                      )}
+                    </Group>
                   </Group>
                 </Paper>
               );

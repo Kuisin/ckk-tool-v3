@@ -103,6 +103,8 @@ export interface StepExecutionStepView {
   executionLocation: "INTERNAL" | "OUTSOURCE";
   factoryName: string | null;
   supplierName: string | null;
+  /** 予定作業時間 (h) — 任意。 */
+  plannedWorkHours: number | null;
   status: string; // STEP_STATUS
   inputQuantity: number | null;
   outputSuccessQuantity: number | null;

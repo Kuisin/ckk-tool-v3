@@ -57,6 +57,7 @@ export default async function ProductRouteNewVersionPage({
         executionLocation: s.executionLocation,
         factoryId: s.factoryId,
         supplierBpId: s.supplierBpId,
+        workHours: s.workHours == null ? null : Number(s.workHours),
       }))}
       latestVersion={latest?.version ?? 0}
       mode="new-version"

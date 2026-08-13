@@ -168,6 +168,11 @@ export function StepExecutionView({ step, recording, otherActive }: Props) {
                   {m.steps.card.inputRecorded(step.inputQuantity)}
                 </Text>
               )}
+              {step.plannedWorkHours != null && (
+                <Text c="dimmed" size="sm">
+                  {m.steps.card.plannedHours(step.plannedWorkHours)}
+                </Text>
+              )}
               {(working || paused) && (
                 <Text c="dimmed" size="sm">
                   {m.steps.card.elapsedLabel}{" "}

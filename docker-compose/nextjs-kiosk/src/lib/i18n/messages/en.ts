@@ -37,6 +37,7 @@ export const en: KioskMessages = {
       inputRecorded: (n: number) => `${n} pcs received`,
       elapsed: (t: string) => `Worked ${t}`,
       elapsedLabel: "Worked",
+      plannedHours: (h: number) => `Planned ${h}h`,
     },
     state: {
       startable: "Ready",

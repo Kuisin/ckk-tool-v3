@@ -159,6 +159,7 @@ function RouteCard({
                 <Table.Th w={40}>#</Table.Th>
                 <Table.Th>工程</Table.Th>
                 {!isMobile && <Table.Th w={140}>カテゴリ</Table.Th>}
+                <Table.Th w={90}>作業時間</Table.Th>
                 <Table.Th w={isMobile ? 90 : 220}>実施場所</Table.Th>
               </Table.Tr>
             </Table.Thead>
@@ -176,6 +177,11 @@ function RouteCard({
                       </Text>
                     </Table.Td>
                   )}
+                  <Table.Td>
+                    <Text c="dimmed" className="tabular-nums" size="sm">
+                      {s.workHours != null ? `${s.workHours} h` : "—"}
+                    </Text>
+                  </Table.Td>
                   <Table.Td>
                     <Group gap={6} wrap="nowrap">
                       <Badge

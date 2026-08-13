@@ -37,6 +37,8 @@ const stepInput = z.object({
   executionLocation: z.enum(["INTERNAL", "OUTSOURCE"]),
   factoryId: z.number().int().positive().nullable(),
   supplierBpId: z.string().nullable(),
+  // 標準作業時間 (h) — 任意（0.01〜9999.99）
+  workHours: z.number().positive().max(9999.99).nullable(),
 });
 
 const routeCreateInput = z.object({
@@ -155,6 +157,7 @@ export async function createProductRouteVersion(
           executionLocation: s.executionLocation,
           factoryId: s.factoryId,
           supplierBpId: s.supplierBpId,
+          workHours: s.workHours == null ? null : Number(s.workHours),
         })),
         built.creates,
       )

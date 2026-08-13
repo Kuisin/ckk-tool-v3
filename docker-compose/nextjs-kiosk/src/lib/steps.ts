@@ -63,6 +63,8 @@ export interface MyStepView {
   /** 未開始工程の想定受入数 */
   expectedInputQuantity: number | null;
   outputSuccessQuantity: number | null;
+  /** 予定作業時間 (h) — 任意。 */
+  plannedWorkHours: number | null;
   /** 自分の累計作業時間 (ms) */
   workedMs: number;
   /** OTHER のときの作業者名 */
@@ -310,6 +312,8 @@ async function hydrateSteps(
       inputQuantity: r.inputQuantity,
       expectedInputQuantity: expectedInput(r.id, ctx),
       outputSuccessQuantity: r.outputSuccessQuantity,
+      plannedWorkHours:
+        r.plannedWorkHours == null ? null : Number(r.plannedWorkHours),
       workedMs: accumulatedWorkMs(r.actuals, now),
       lockedByName:
         state === "OTHER" && r.sessionLockedBy
