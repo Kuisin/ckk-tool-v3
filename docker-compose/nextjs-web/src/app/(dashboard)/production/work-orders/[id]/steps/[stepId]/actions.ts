@@ -536,7 +536,11 @@ const planActualBase = {
   notes: z.string(),
 };
 
-const stepPlanInput = z.object(planActualBase);
+const stepPlanInput = z.object({
+  ...planActualBase,
+  // 作業場所（機械/エリア — 任意。計画のみ）
+  workLocationId: z.number().int().positive().nullable(),
+});
 const stepActualInput = z.object(planActualBase);
 
 export type StepPlanInput = z.infer<typeof stepPlanInput>;
@@ -583,6 +587,15 @@ export async function addStepPlan(
         errors: ["完了・キャンセル済みの工程には計画を追加できません"],
       };
     }
+    if (v.workLocationId != null) {
+      const location = await prisma.workLocation.findFirst({
+        where: { id: v.workLocationId, isActive: true },
+        select: { id: true },
+      });
+      if (!location) {
+        return { ok: false, errors: ["作業場所が見つかりません"] };
+      }
+    }
     const actor = await getCurrentActorId();
     await prisma.workOrderStepPlan.create({
       data: {
@@ -592,6 +605,7 @@ export async function addStepPlan(
         plannedStartAt: toJstTimestamp(v.date, v.startTime),
         plannedEndAt: toJstTimestamp(v.date, v.endTime),
         quantity: v.quantity,
+        workLocationId: v.workLocationId,
         notes: v.notes.trim() || null,
         createdBy: actor,
       },

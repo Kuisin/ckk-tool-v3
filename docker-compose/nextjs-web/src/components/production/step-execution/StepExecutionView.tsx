@@ -428,6 +428,7 @@ export function StepExecutionView({ data }: { data: StepExecutionData }) {
         plans={data.plans}
         stepId={step.id}
         stepStatus={step.status}
+        workLocationOptions={data.workLocationOptions}
         workOrderNumber={workOrderNumber}
       />
 

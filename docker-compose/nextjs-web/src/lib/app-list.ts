@@ -322,6 +322,16 @@ export const appList: AppEntry[] = [
     category: "マスタ",
     requiredPermission: "master",
   },
+  {
+    // 作業場所（グループ = 機械種別/エリア、場所 = 機械 1 台・1 区画）
+    key: "master-work-locations",
+    label: "作業場所",
+    operationCode: "MS0D",
+    href: "/master/work-locations",
+    icon: "IconMapPin",
+    category: "マスタ",
+    requiredPermission: "master",
+  },
 
   // ─── ドキュメント ──────────────────────────────────────────────────────────
   {

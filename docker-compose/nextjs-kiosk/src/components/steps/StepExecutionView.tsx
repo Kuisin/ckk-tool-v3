@@ -159,6 +159,7 @@ export function StepExecutionView({ step, recording, otherActive }: Props) {
             <Text c="dimmed" size="sm">
               {m.steps.card.workOrder(step.workOrderNumber)}
               {step.factoryName ? ` ・ ${step.factoryName}` : ""}
+              {step.workLocationName ? ` ・ ${step.workLocationName}` : ""}
             </Text>
             <Title order={3}>{step.stepName}</Title>
             <Text c="dimmed">{step.productName}</Text>
