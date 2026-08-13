@@ -10,12 +10,25 @@
 export type KioskBridge = {
   getPublicKey(): string;
   sign(data: string): string;
+  /** ラッパー APK のバージョン（KioskBridge.appVersion — 表示用）。 */
+  appVersion?: () => string;
 };
 
 export function getBridge(): KioskBridge | null {
   if (typeof window === "undefined") return null;
   const bridge = (window as { KioskDevice?: KioskBridge }).KioskDevice;
   return bridge && typeof bridge.sign === "function" ? bridge : null;
+}
+
+/** 専用アプリ（ラッパー）のバージョン。ブラウザ利用時は null。 */
+export function getWrapperVersion(): string | null {
+  const bridge = getBridge();
+  if (!bridge) return null;
+  try {
+    return bridge.appVersion?.() ?? "不明";
+  } catch {
+    return "不明";
+  }
 }
 
 export type AttestOutcome =
