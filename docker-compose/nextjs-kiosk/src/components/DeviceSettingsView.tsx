@@ -35,8 +35,9 @@ import {
   IconTrash,
 } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { PinKeypad } from "@/components/PinKeypad";
+import { getWrapperVersion } from "@/lib/wrapper-bridge";
 
 type DeviceInfo = {
   id: string;
@@ -77,6 +78,11 @@ export function DeviceSettingsView({ hasDevice }: { hasDevice: boolean }) {
     error: null,
     submitting: false,
   });
+  // 専用アプリ（ラッパー）のバージョン — マウント後にブリッジから取得
+  const [wrapperVersion, setWrapperVersion] = useState<string | null>(null);
+  useEffect(() => {
+    setWrapperVersion(getWrapperVersion());
+  }, []);
   const [confirmMode, setConfirmMode] = useState<"local" | "unlink" | null>(
     null,
   );
@@ -287,6 +293,22 @@ export function DeviceSettingsView({ hasDevice }: { hasDevice: boolean }) {
                   {state.device.fingerprint
                     ? `${state.device.fingerprint.slice(0, 16)}…`
                     : "未束縛"}
+                </Text>
+              </Group>
+              <Group justify="space-between">
+                <Text c="dimmed" size="sm">
+                  Web バージョン
+                </Text>
+                <Text ff="monospace" size="sm">
+                  v{process.env.NEXT_PUBLIC_APP_VERSION ?? "0.0.0"}
+                </Text>
+              </Group>
+              <Group justify="space-between">
+                <Text c="dimmed" size="sm">
+                  専用アプリ
+                </Text>
+                <Text ff="monospace" size="sm">
+                  {wrapperVersion ? `v${wrapperVersion}` : "未使用（ブラウザ）"}
                 </Text>
               </Group>
             </Stack>
