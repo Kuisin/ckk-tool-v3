@@ -71,11 +71,12 @@ const stepInput = z.object({
   workHours: z.number().positive().max(9999.99).nullable(),
 });
 
-// 工程ルートの出所指定。existing = 既存ルートのバージョンを基準にした構成
-// （変更があれば新バージョンとして自動保存）/ new = 新ルート v1 として保存 /
-// null = ルートを使わない ad-hoc 構成（保存しない）。
-const routeInput = z
-  .union([
+// 工程ルート（工程リスト）の出所指定 — 指示書は常に工程リストに基づく。
+// existing = 既存ルートのバージョンを基準にした構成（変更があれば新バージョン
+// として自動保存）/ new = 新ルート v1 として保存。使用済みバージョンは
+// 不変（変更は常に新バージョン作成 — resolveRouteVersionTx）。
+const routeInput = z.union(
+  [
     z.object({
       mode: z.literal("existing"),
       routeId: z.number().int().positive(),
@@ -85,9 +86,9 @@ const routeInput = z
       mode: z.literal("new"),
       name: z.string().trim().min(1),
     }),
-    z.null(),
-  ])
-  .default(null);
+  ],
+  { message: "工程リストを選択するか、新しい工程リスト名を入力してください" },
+);
 
 const workOrderInput = z.object({
   salesOrderId: z.string().min(1, "注文請書を選択してください"),
