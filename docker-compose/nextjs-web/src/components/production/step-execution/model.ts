@@ -28,6 +28,11 @@ export interface InspectionTemplateView {
   name: string;
   /** 関連工程（null = どの検査工程でも使用）。 */
   relatedProcessStepId: number | null;
+  /** 検査対象（シート単位）: このシートで検査する製品数を決める。 */
+  samplingMode: "ALL" | "PERCENT" | "COUNT";
+  samplingValue: number | null;
+  /** 記録方式（シート単位）: VALUES = 製品ごとにページ送り / COUNTS = 合格数のみ。 */
+  recordStyle: "VALUES" | "COUNTS";
   items: InspectionTemplateItemView[];
 }
 

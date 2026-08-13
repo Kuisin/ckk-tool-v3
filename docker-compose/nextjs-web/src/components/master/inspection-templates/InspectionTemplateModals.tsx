@@ -42,15 +42,8 @@ import {
   FormModal,
   type ModalBaseProps,
 } from "@/components/ui/modals";
-import {
-  INSPECTION_ITEM_TYPE_OPTIONS,
-  INSPECTION_SAMPLING_MODE_LABEL,
-} from "@/lib/enum-labels";
-import type {
-  InspectionItemType,
-  InspectionRecordStyle,
-  InspectionSamplingMode,
-} from "@/lib/inspection-core";
+import { INSPECTION_ITEM_TYPE_OPTIONS } from "@/lib/enum-labels";
+import type { InspectionItemType } from "@/lib/inspection-core";
 
 export interface InspectionTemplateModalTarget {
   id: number;
@@ -238,9 +231,6 @@ export interface InspectionTemplateItemRow {
   goalNumber: number | null;
   goalBool: boolean | null;
   goalOptions: string[];
-  samplingMode: InspectionSamplingMode;
-  samplingValue: number | null;
-  recordStyle: InspectionRecordStyle;
   allowManualOverride: boolean;
   isRequired: boolean;
   sortOrder: number;
@@ -290,11 +280,6 @@ export function InspectionTemplateItemModal({
   const [goalNumber, setGoalNumber] = useState<number | null>(null);
   const [goalBool, setGoalBool] = useState<boolean | null>(null);
   const [goalOptions, setGoalOptions] = useState<string[]>([]);
-  const [samplingMode, setSamplingMode] =
-    useState<InspectionSamplingMode>("ALL");
-  const [samplingValue, setSamplingValue] = useState<number | null>(null);
-  const [recordStyle, setRecordStyle] =
-    useState<InspectionRecordStyle>("VALUES");
   const [allowManualOverride, setAllowManualOverride] = useState(true);
   const [isRequired, setIsRequired] = useState(true);
   const [sortOrder, setSortOrder] = useState(defaultSortOrder);
@@ -315,9 +300,6 @@ export function InspectionTemplateItemModal({
     setGoalNumber(item?.goalNumber ?? null);
     setGoalBool(item?.goalBool ?? null);
     setGoalOptions(item?.goalOptions ?? []);
-    setSamplingMode(item?.samplingMode ?? "ALL");
-    setSamplingValue(item?.samplingValue ?? null);
-    setRecordStyle(item?.recordStyle ?? "VALUES");
     setAllowManualOverride(item?.allowManualOverride ?? true);
     setIsRequired(item?.isRequired ?? true);
     setSortOrder(item?.sortOrder ?? defaultSortOrder);
@@ -351,20 +333,6 @@ export function InspectionTemplateItemModal({
         next.options = "選択肢の表示名（日本語）を入力してください";
       }
     }
-    if (samplingMode === "PERCENT") {
-      if (samplingValue == null || samplingValue <= 0 || samplingValue > 100) {
-        next.samplingValue = "抜取の割合（0〜100%）を入力してください";
-      }
-    }
-    if (samplingMode === "COUNT") {
-      if (
-        samplingValue == null ||
-        samplingValue < 1 ||
-        !Number.isInteger(samplingValue)
-      ) {
-        next.samplingValue = "抜取の本数（1 以上の整数）を入力してください";
-      }
-    }
     setErrors(next);
     return Object.keys(next).length === 0;
   };
@@ -392,9 +360,6 @@ export function InspectionTemplateItemModal({
           })),
         acceptOptions,
         goalOptions,
-        samplingMode,
-        samplingValue,
-        recordStyle,
         allowManualOverride,
         isRequired,
         sortOrder,
@@ -625,62 +590,6 @@ export function InspectionTemplateItemModal({
             </SimpleGrid>
           </Stack>
         )}
-
-        <Stack gap={4}>
-          <Text fw={500} size="sm">
-            検査対象（抜取）
-          </Text>
-          <Group gap="sm" wrap="wrap">
-            <SegmentedControl
-              data={Object.entries(INSPECTION_SAMPLING_MODE_LABEL).map(
-                ([value, label]) => ({ value, label }),
-              )}
-              onChange={(v) => {
-                setSamplingMode(v as InspectionSamplingMode);
-                if (v === "ALL") setSamplingValue(null);
-              }}
-              value={samplingMode}
-            />
-            {samplingMode !== "ALL" && (
-              <NumberInput
-                aria-label={
-                  samplingMode === "PERCENT" ? "抜取の割合(%)" : "抜取の本数"
-                }
-                error={errors.samplingValue}
-                max={samplingMode === "PERCENT" ? 100 : undefined}
-                min={samplingMode === "PERCENT" ? 0.01 : 1}
-                onChange={(val) =>
-                  setSamplingValue(
-                    val === "" || val == null ? null : Number(val),
-                  )
-                }
-                suffix={samplingMode === "PERCENT" ? " %" : " 本"}
-                value={samplingValue ?? ""}
-                w={140}
-              />
-            )}
-          </Group>
-          <Text c="dimmed" size="xs">
-            全数 = ロット全数を検査 / 割合・本数 = ロットの一部を抜き取って検査
-          </Text>
-        </Stack>
-
-        <Stack gap={4}>
-          <Text fw={500} size="sm">
-            記録方式
-          </Text>
-          <SegmentedControl
-            data={[
-              { value: "VALUES", label: "実測値（製品ごと）" },
-              { value: "COUNTS", label: "合格数のみ" },
-            ]}
-            onChange={(v) => setRecordStyle(v as InspectionRecordStyle)}
-            value={recordStyle}
-          />
-          <Text c="dimmed" size="xs">
-            合格数のみ = 実測値を残さず、検査数と合格数だけを記録します
-          </Text>
-        </Stack>
 
         <Switch
           checked={allowManualOverride}

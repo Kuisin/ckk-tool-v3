@@ -55,9 +55,6 @@ export function toItemRow(
         : item.inputType === "SELECT_MULTI"
           ? (parseStringArray(goal) ?? [])
           : [],
-    samplingMode: item.samplingMode,
-    samplingValue: num(item.samplingValue),
-    recordStyle: item.recordStyle,
     allowManualOverride: item.allowManualOverride,
     isRequired: item.isRequired,
     sortOrder: item.sortOrder,

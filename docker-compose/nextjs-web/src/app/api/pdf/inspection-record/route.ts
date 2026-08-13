@@ -76,7 +76,7 @@ export async function GET(request: Request): Promise<Response> {
     record.step.inputQuantity ?? record.step.workOrder.plannedQuantity;
 
   const pdf = await renderPdf("inspection-sheet.html", {
-    template: sheetTemplateHead(record.template),
+    template: sheetTemplateHead(record.template, lotQuantity),
     meta: {
       work_order: `#${record.step.workOrder.workOrderNumber}`,
       lot_quantity: `${lotQuantity} 本`,
@@ -90,7 +90,7 @@ export async function GET(request: Request): Promise<Response> {
           )
         : "—",
     },
-    items: filledSheetItems(record.items, lotQuantity),
+    items: filledSheetItems(record.items),
     overall: { judgement: STATUS_LABEL[record.status] ?? record.status },
     footer_note: "* は必須項目。実測値はサンプルごとの記録値。",
   });

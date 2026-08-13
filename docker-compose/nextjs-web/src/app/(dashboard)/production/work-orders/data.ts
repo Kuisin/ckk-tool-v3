@@ -29,6 +29,7 @@ import {
   type InspectionItemRecord,
   itemSpecFromRow,
   parseStoredSamples,
+  samplingSpecFromRow,
 } from "@/lib/inspection-core";
 import { fetchWorkLocationOptions } from "@/lib/work-locations";
 import { fetchWorkflowCtx, loadCatalog } from "@/lib/workflow";
@@ -488,6 +489,7 @@ export async function fetchStepExecution(
       version: t.inspectionTemplate.version,
       name: localized(t.inspectionTemplate.name as LocalizedText | null),
       relatedProcessStepId: t.inspectionTemplate.relatedProcessStepId,
+      ...samplingSpecFromRow(t.inspectionTemplate),
       items: t.inspectionTemplate.items.map((it) => ({
         name: localized(it.itemName as LocalizedText | null),
         ...itemSpecFromRow(it),

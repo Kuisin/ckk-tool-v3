@@ -35,14 +35,17 @@ function spec(over: Partial<InspectionItemSpec> = {}): InspectionItemSpec {
     acceptBool: null,
     acceptOptions: null,
     goalValue: null,
-    samplingMode: "ALL",
-    samplingValue: null,
     allowManualOverride: true,
-    recordStyle: "VALUES",
     isRequired: true,
     ...over,
   };
 }
+
+/** シート単位の検査対象 spec 短縮形。 */
+const sampling = (
+  samplingMode: "ALL" | "PERCENT" | "COUNT",
+  samplingValue: number | null = null,
+) => ({ samplingMode, samplingValue });
 
 /** VALUES エントリの短縮形。 */
 const entry = (
@@ -152,26 +155,21 @@ describe("evaluateItem", () => {
 
 describe("requiredSampleCount", () => {
   it("ALL はロット数量（不明なら null）", () => {
-    expect(requiredSampleCount(spec(), 100)).toBe(100);
-    expect(requiredSampleCount(spec(), null)).toBeNull();
+    expect(requiredSampleCount(sampling("ALL"), 100)).toBe(100);
+    expect(requiredSampleCount(sampling("ALL"), null)).toBeNull();
   });
 
   it("PERCENT は切り上げ・最低 1・ロット上限", () => {
-    const p10 = spec({ samplingMode: "PERCENT", samplingValue: 10 });
+    const p10 = sampling("PERCENT", 10);
     expect(requiredSampleCount(p10, 100)).toBe(10);
     expect(requiredSampleCount(p10, 15)).toBe(2); // 1.5 → 2
     expect(requiredSampleCount(p10, 3)).toBe(1); // 0.3 → 最低 1
-    expect(
-      requiredSampleCount(
-        spec({ samplingMode: "PERCENT", samplingValue: 200 }),
-        10,
-      ),
-    ).toBe(10); // ロット上限
+    expect(requiredSampleCount(sampling("PERCENT", 200), 10)).toBe(10); // ロット上限
     expect(requiredSampleCount(p10, null)).toBeNull();
   });
 
   it("COUNT は指定本数・ロット上限（ロット不明でも本数を返す）", () => {
-    const c5 = spec({ samplingMode: "COUNT", samplingValue: 5 });
+    const c5 = sampling("COUNT", 5);
     expect(requiredSampleCount(c5, 100)).toBe(5);
     expect(requiredSampleCount(c5, 3)).toBe(3);
     expect(requiredSampleCount(c5, null)).toBe(5);
@@ -180,43 +178,44 @@ describe("requiredSampleCount", () => {
 
 describe("resolveItemPass / hasAcceptCriteria", () => {
   it("上書き許可: 手動 > 自動 > 既定合格", () => {
-    expect(resolveItemPass(spec(), entry(["9.0"]), true)).toBe(true); // 自動不合格を手動で上書き
-    expect(resolveItemPass(spec(), entry(["8.0"]), false)).toBe(false); // 自動合格を手動で上書き
-    expect(resolveItemPass(spec(), entry(["8.0"]), null)).toBe(true); // 自動判定に従う
-    expect(resolveItemPass(spec(), entry([""]), null)).toBe(true); // 未入力は既定合格
+    expect(resolveItemPass(spec(), entry(["9.0"]), true, "VALUES")).toBe(true); // 自動不合格を手動で上書き
+    expect(resolveItemPass(spec(), entry(["8.0"]), false, "VALUES")).toBe(
+      false,
+    ); // 自動合格を手動で上書き
+    expect(resolveItemPass(spec(), entry(["8.0"]), null, "VALUES")).toBe(true); // 自動判定に従う
+    expect(resolveItemPass(spec(), entry([""]), null, "VALUES")).toBe(true); // 未入力は既定合格
   });
 
   it("上書き不可: 自動判定が出れば手動を無視", () => {
     const locked = spec({ allowManualOverride: false });
-    expect(resolveItemPass(locked, entry(["9.0"]), true)).toBe(false);
-    expect(resolveItemPass(locked, entry(["8.0"]), false)).toBe(true);
+    expect(resolveItemPass(locked, entry(["9.0"]), true, "VALUES")).toBe(false);
+    expect(resolveItemPass(locked, entry(["8.0"]), false, "VALUES")).toBe(true);
     // 自動判定が出ない（未入力）ときは手動にフォールバック
-    expect(resolveItemPass(locked, entry([""]), false)).toBe(false);
+    expect(resolveItemPass(locked, entry([""]), false, "VALUES")).toBe(false);
   });
 
   it("COUNTS: 全数合格で合格・検査数未入力は判定不能", () => {
-    const c = spec({ recordStyle: "COUNTS" });
     expect(evaluateCounts(5, 5)).toBe(true);
     expect(evaluateCounts(5, 4)).toBe(false);
     expect(evaluateCounts(null, 4)).toBeNull();
     expect(evaluateCounts(0, 0)).toBeNull();
-    expect(resolveItemPass(c, counts(5, 4), null)).toBe(false);
-    expect(resolveItemPass(c, counts(5, 4), true)).toBe(true); // 上書き
+    expect(resolveItemPass(spec(), counts(5, 4), null, "COUNTS")).toBe(false);
+    expect(resolveItemPass(spec(), counts(5, 4), true, "COUNTS")).toBe(true); // 上書き
     expect(
       resolveItemPass(
-        spec({ recordStyle: "COUNTS", allowManualOverride: false }),
+        spec({ allowManualOverride: false }),
         counts(5, 4),
         true,
+        "COUNTS",
       ),
     ).toBe(false); // 上書き不可
   });
 
   it("isEntryStarted: 記録方式ごとの入力開始判定", () => {
-    expect(isEntryStarted(spec(), entry(["", ""]))).toBe(false);
-    expect(isEntryStarted(spec(), entry(["8.0"]))).toBe(true);
-    const c = spec({ recordStyle: "COUNTS" });
-    expect(isEntryStarted(c, counts(null, null))).toBe(false);
-    expect(isEntryStarted(c, counts(5, null))).toBe(true);
+    expect(isEntryStarted(entry(["", ""]), "VALUES")).toBe(false);
+    expect(isEntryStarted(entry(["8.0"]), "VALUES")).toBe(true);
+    expect(isEntryStarted(counts(null, null), "COUNTS")).toBe(false);
+    expect(isEntryStarted(counts(5, null), "COUNTS")).toBe(true);
   });
 
   it("formatCounts", () => {
@@ -298,13 +297,10 @@ describe("labels & formatting", () => {
   });
 
   it("samplingLabelJa", () => {
-    expect(samplingLabelJa(spec())).toBe("全数");
-    expect(
-      samplingLabelJa(spec({ samplingMode: "PERCENT", samplingValue: 10 }), 5),
-    ).toBe("抜取 10%（5本）");
-    expect(
-      samplingLabelJa(spec({ samplingMode: "COUNT", samplingValue: 5 })),
-    ).toBe("抜取 5本");
+    expect(samplingLabelJa(sampling("ALL"))).toBe("全数");
+    expect(samplingLabelJa(sampling("ALL"), 50)).toBe("全数（50本）");
+    expect(samplingLabelJa(sampling("PERCENT", 10), 5)).toBe("抜取 10%（5本）");
+    expect(samplingLabelJa(sampling("COUNT", 5))).toBe("抜取 5本");
   });
 });
 

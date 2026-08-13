@@ -65,6 +65,8 @@
       <table>
         <tr><td>指示書番号</td><td>{{meta.work_order}}</td></tr>
         <tr><td>ロット数量</td><td>{{meta.lot_quantity}}</td></tr>
+        <tr><td>検査対象</td><td>{{template.sampling}}</td></tr>
+        <tr><td>記録方式</td><td>{{template.record_style}}</td></tr>
         <tr><td>検査日</td><td>{{meta.inspected_at}}</td></tr>
         <tr><td>記録者</td><td>{{meta.recorded_by}}</td></tr>
         <tr><td>承認</td><td>{{meta.approved}}</td></tr>
@@ -75,11 +77,10 @@
   <table class="items-table">
     <thead>
       <tr>
-        <th style="width: 22%">検査項目</th>
-        <th style="width: 13%">合格基準</th>
-        <th style="width: 11%">目標</th>
-        <th style="width: 10%">検査対象</th>
-        <th>実測値</th>
+        <th style="width: 24%">検査項目</th>
+        <th style="width: 14%">合格基準</th>
+        <th style="width: 12%">目標</th>
+        <th>実測値（製品順）</th>
         <th style="width: 9%" class="center">合否</th>
       </tr>
     </thead>
@@ -92,7 +93,6 @@
         </td>
         <td>{{accept}}</td>
         <td>{{goal}}</td>
-        <td>{{sampling}}</td>
         <td><div class="value-cells">{{values_html}}</div></td>
         <td class="center">{{judge_html}}</td>
       </tr>
