@@ -24,7 +24,7 @@ import { fetchDeviceSessions } from "@/app/(dashboard)/settings/kiosk-devices/ac
 import { SecondaryButton } from "@/components/ui/buttons";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { ModalShell } from "@/components/ui/modals";
-import { formatDateTime } from "@/lib/format";
+import { formatDate, formatDateTime, formatTime } from "@/lib/format";
 import type { KioskDeviceSessionRow } from "@/lib/kiosk-admin";
 
 function formatDuration(startIso: string, endIso: string): string {
@@ -38,20 +38,11 @@ function formatDuration(startIso: string, endIso: string): string {
   return `${Math.floor(mins / 60)}時間${mins % 60 > 0 ? `${mins % 60}分` : ""}`;
 }
 
-/** 終了時刻: 同日なら時刻のみ（行を短く保つ）。 */
+/** 終了時刻: 同日（JST）なら時刻のみ（行を短く保つ）。 */
 function formatEnd(startIso: string, endIso: string): string {
-  const s = new Date(startIso);
-  const e = new Date(endIso);
-  const sameDay =
-    s.getFullYear() === e.getFullYear() &&
-    s.getMonth() === e.getMonth() &&
-    s.getDate() === e.getDate();
-  if (sameDay) {
-    return `${String(e.getHours()).padStart(2, "0")}:${String(
-      e.getMinutes(),
-    ).padStart(2, "0")}`;
-  }
-  return formatDateTime(endIso);
+  return formatDate(startIso) === formatDate(endIso)
+    ? formatTime(endIso)
+    : formatDateTime(endIso);
 }
 
 /**
