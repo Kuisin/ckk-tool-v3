@@ -14,6 +14,7 @@
 import type { AttachmentView } from "@/components/ui/AttachmentsPanel";
 import { getCurrentActorId, recordAudit } from "@/lib/audit";
 import { prisma } from "@/lib/db";
+import { systematicFileName } from "@/lib/file-naming";
 import {
   type ActionResult,
   actionError,
@@ -86,13 +87,6 @@ function validateFile(
   return { ok: true, contentType: allowed[0] };
 }
 
-/** ストレージキー用にファイル名を無害化（ASCII 英数と . _ - のみ、80 文字まで）。 */
-function sanitizeFilename(name: string): string {
-  const base = name.split(/[\\/]/).pop() ?? "file";
-  const safe = base.replace(/[^A-Za-z0-9._-]+/g, "_").replace(/^\.+/, "");
-  return (safe || "file").slice(0, 80);
-}
-
 /** 添付一覧（新しい順）。失敗時は空配列（画面を壊さない）。 */
 export async function listAttachments(
   ownerType: string,
@@ -162,7 +156,8 @@ export async function saveAttachment(
   const checked = validateFile(name, type, bytes.byteLength);
   if (!checked.ok) return actionError(checked.error);
 
-  const storageKey = `attachments/${ownerType}/${crypto.randomUUID()}-${sanitizeFilename(name)}`;
+  // 系統的リネーム（lib/file-naming）: 時刻+乱数で一意、業務キーで判別可能。
+  const storageKey = `attachments/${ownerType}/${systematicFileName(name, ownerId)}`;
   if (!(await putObject(storageKey, bytes, checked.contentType))) {
     return actionError("ストレージへの保存に失敗しました");
   }

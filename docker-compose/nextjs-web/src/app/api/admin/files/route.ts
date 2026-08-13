@@ -73,7 +73,11 @@ export async function POST(request: Request): Promise<Response> {
   // 系統的なリネーム（一意 + 判別可能）: {yyyymmdd-HHmmss}_{rand}_{元名}
   const key = `${prefix}/${systematicFileName(file.name || "upload.bin")}`;
   const bytes = await file.arrayBuffer();
-  const ok = await putObject(key, bytes, file.type || "application/octet-stream");
+  const ok = await putObject(
+    key,
+    bytes,
+    file.type || "application/octet-stream",
+  );
   if (!ok) {
     return Response.json({ error: "storage write failed" }, { status: 502 });
   }

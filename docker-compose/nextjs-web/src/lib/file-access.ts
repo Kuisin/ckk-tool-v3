@@ -37,9 +37,7 @@ export const APP_PREFIX_PERMISSIONS: { prefix: string; code: string }[] = [
 export const SYSTEM_PREFIXES = ["pdfs", "kiosk", "intake"];
 
 export function isSystemKey(key: string): boolean {
-  return SYSTEM_PREFIXES.some(
-    (p) => key === p || key.startsWith(`${p}/`),
-  );
+  return SYSTEM_PREFIXES.some((p) => key === p || key.startsWith(`${p}/`));
 }
 
 function keyInPrefix(key: string, prefix: string): boolean {

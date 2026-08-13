@@ -399,14 +399,16 @@ export const appList: AppEntry[] = [
     requiredPermission: "system",
   },
   {
-    // ファイル管理 — アップロード済みファイル（SeaweedFS）の一覧・削除。
+    // ファイル管理 — ファイル（SeaweedFS）の Finder 風ブラウザ。閲覧範囲は
+    // lib/file-access.ts（system:ADMIN / フォルダ権限 / 所有アプリ権限）で
+    // 決まるため誰でも開ける — 権限が無ければ空表示になるだけ。
     key: "file-management",
     label: "ファイル管理",
     operationCode: "SY06",
     href: "/settings/files",
     icon: "IconFolder",
     category: "システム",
-    requiredPermission: "system",
+    requiredPermission: null,
   },
   {
     // 操作履歴 — 監査ログ（作成・更新・削除の before/after）。
