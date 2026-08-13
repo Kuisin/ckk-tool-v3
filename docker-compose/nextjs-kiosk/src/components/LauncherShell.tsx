@@ -26,6 +26,7 @@ import { IconApps, IconLayoutGrid, IconLogout } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { LOCALE_LABELS, LOCALES } from "@/lib/i18n";
+import { playLogoutSound } from "@/lib/sound";
 import { ActivityMonitor } from "./ActivityMonitor";
 import { useI18n } from "./I18nProvider";
 
@@ -43,6 +44,7 @@ export function LauncherShell({ displayName, apps }: Props) {
   const [switching, setSwitching] = useState(false);
 
   const logout = async () => {
+    playLogoutSound();
     setLoggingOut(true);
     try {
       await fetch("/api/kiosk/session", { method: "DELETE" });
