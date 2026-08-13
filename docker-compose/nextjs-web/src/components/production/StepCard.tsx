@@ -148,6 +148,14 @@ export function StepCard({
         </Group>
       )}
 
+      {(step.planCount > 0 || step.actualCount > 0) && (
+        <Group gap="sm" mt="xs" pl={28}>
+          <Text c="dimmed" size="xs">
+            計画 {step.planCount} 件 / 実績 {step.actualCount} 件
+          </Text>
+        </Group>
+      )}
+
       {hasQuantities &&
         (step.quantityTracking === "NONE" ? (
           <Group gap="sm" mt="xs" pl={28} wrap="wrap">

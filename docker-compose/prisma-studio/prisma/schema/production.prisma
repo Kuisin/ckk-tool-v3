@@ -241,10 +241,59 @@ model WorkOrderStep {
 
   inspectionRecords InspectionRecord[]
   defectRecords     DefectRecord[]
+  plans             WorkOrderStepPlan[]
+  actuals           WorkOrderStepActual[]
 
   @@index([workOrderId, sortOrder])
   @@index([status])
   @@map("work_order_steps")
+  @@schema("app")
+}
+
+// 工程の作業計画（1 工程に複数行 = 分割計画）。担当者必須。
+// 日付のみ、または開始/終了時刻付きで設定できる（§7 計画/実績）。
+model WorkOrderStepPlan {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  stepId         String    @map("work_order_step_id") @db.Uuid
+  userId         String    @map("user_id") @db.Uuid // 担当者（従業員）
+  plannedDate    DateTime  @map("planned_date") @db.Date
+  plannedStartAt DateTime? @map("planned_start_at") @db.Timestamptz(6)
+  plannedEndAt   DateTime? @map("planned_end_at") @db.Timestamptz(6)
+  quantity       Int? // 分割時の割当数量（任意）
+  notes          String?
+  createdBy      String?   @map("created_by") @db.Uuid
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  step          WorkOrderStep @relation(fields: [stepId], references: [id], onDelete: Cascade)
+  user          User          @relation("StepPlanUser", fields: [userId], references: [id])
+  createdByUser User?         @relation("StepPlanCreatedBy", fields: [createdBy], references: [id])
+
+  @@index([stepId, plannedDate])
+  @@index([userId, plannedDate])
+  @@map("work_order_step_plans")
+  @@schema("app")
+}
+
+// 工程の作業実績（1 工程に複数行 = 分割実績）。担当者必須。
+model WorkOrderStepActual {
+  id         String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  stepId     String    @map("work_order_step_id") @db.Uuid
+  userId     String    @map("user_id") @db.Uuid // 作業者（従業員）
+  workedDate DateTime  @map("worked_date") @db.Date
+  startedAt  DateTime? @map("started_at") @db.Timestamptz(6)
+  endedAt    DateTime? @map("ended_at") @db.Timestamptz(6)
+  quantity   Int? // 実施数量（任意）
+  notes      String?
+  createdBy  String?   @map("created_by") @db.Uuid
+  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  step          WorkOrderStep @relation(fields: [stepId], references: [id], onDelete: Cascade)
+  user          User          @relation("StepActualUser", fields: [userId], references: [id])
+  createdByUser User?         @relation("StepActualCreatedBy", fields: [createdBy], references: [id])
+
+  @@index([stepId, workedDate])
+  @@index([userId, workedDate])
+  @@map("work_order_step_actuals")
   @@schema("app")
 }
 

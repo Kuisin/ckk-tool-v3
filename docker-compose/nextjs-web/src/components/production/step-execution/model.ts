@@ -61,6 +61,23 @@ export interface StepDefectRecordView {
   recordedByName: string | null;
 }
 
+// ── 作業計画 / 実績（分割記録・担当者・日付/時刻） ───────────────────────────
+
+export interface StepPlanView {
+  id: string;
+  userId: string;
+  userName: string;
+  /** YYYY-MM-DD（JST）。 */
+  date: string;
+  /** HH:mm（JST）— 時刻指定なしは null。 */
+  startTime: string | null;
+  endTime: string | null;
+  quantity: number | null;
+  notes: string | null;
+}
+
+export type StepActualView = StepPlanView;
+
 // ── 工程実行ページ全体 ───────────────────────────────────────────────────────
 
 export interface StepExecutionStepView {
@@ -116,4 +133,8 @@ export interface StepExecutionData {
   /** この工程の不良記録。 */
   defectRecords: StepDefectRecordView[];
   defectTypeOptions: SelectOption[];
+  /** この工程の作業計画（分割可・担当者付き）。 */
+  plans: StepPlanView[];
+  /** この工程の作業実績（分割可・担当者付き）。 */
+  actuals: StepActualView[];
 }
