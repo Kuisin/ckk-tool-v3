@@ -17,6 +17,7 @@ export const en: KioskMessages = {
   steps: {
     title: "Step Execution",
     back: "Back to apps",
+    backToList: "Back to steps",
     refresh: "Refresh",
     empty: "No steps assigned to you today",
     upcoming: (n: number) => `${n} upcoming`,

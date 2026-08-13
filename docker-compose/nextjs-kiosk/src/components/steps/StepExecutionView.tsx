@@ -142,7 +142,7 @@ export function StepExecutionView({ step, recording }: Props) {
             onClick={() => router.push("/steps")}
             variant="default"
           >
-            {m.steps.back}
+            {m.steps.backToList}
           </Button>
           <Badge
             color={stateColor(step.sessionState)}
