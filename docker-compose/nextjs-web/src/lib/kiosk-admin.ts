@@ -149,6 +149,13 @@ export interface KioskDeviceRow {
   /** タブレットとリンクした日時（LINKED 以降）。 */
   linkedAt: string | null;
   createdAt: string | null;
+  /** 最新の GPS 位置（端末が 5 分ごとに報告。未取得は null）。 */
+  latestLocation: {
+    latitude: number;
+    longitude: number;
+    accuracyM: number | null;
+    recordedAt: string;
+  } | null;
 }
 
 function deviceInclude(now: number) {
@@ -156,6 +163,10 @@ function deviceInclude(now: number) {
     factory: { select: { code: true, name: true } },
     activatedBy: { select: { displayName: true } },
     sessions: liveSessionInclude(now),
+    locations: {
+      orderBy: { recordedAt: "desc" as const },
+      take: 1,
+    },
   };
 }
 
@@ -196,6 +207,17 @@ function toDeviceRow(r: DeviceWithIncludes, now: number): KioskDeviceRow {
     activatedAt: r.activatedAt?.toISOString() ?? null,
     linkedAt: r.linkedAt?.toISOString() ?? null,
     createdAt: r.createdAt?.toISOString() ?? null,
+    latestLocation: r.locations[0]
+      ? {
+          latitude: Number(r.locations[0].latitude),
+          longitude: Number(r.locations[0].longitude),
+          accuracyM:
+            r.locations[0].accuracyM != null
+              ? Number(r.locations[0].accuracyM)
+              : null,
+          recordedAt: r.locations[0].recordedAt.toISOString(),
+        }
+      : null,
   };
 }
 

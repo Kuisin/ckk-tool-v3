@@ -11,6 +11,14 @@ body {
   overscroll-behavior-y: none; /* 全画面キオスクでの引っ張り更新を抑止 */
 }
 
+/* QR 表示ボックス: qrSvg は固有 px サイズの SVG を返すため、
+   コンテナ幅いっぱいに拡大して表示する（/setup のリンク QR 等） */
+.kiosk-qr svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
 /* 接続状態ドット（ヘッダー右上）の「不安定」点滅 */
 @keyframes kiosk-dot-blink {
   0%,

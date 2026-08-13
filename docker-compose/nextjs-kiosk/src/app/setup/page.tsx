@@ -188,13 +188,14 @@ export default function SetupPage() {
               </Text>
               <Box
                 bg="white"
+                className="kiosk-qr"
                 // biome-ignore lint/security/noDangerouslySetInnerHtml: 自前生成の静的 SVG（lib/qr.ts）
                 dangerouslySetInnerHTML={{
                   __html: qrSvg(formatCode(state.code)),
                 }}
-                p="sm"
+                p="md"
                 style={{ borderRadius: "var(--mantine-radius-md)" }}
-                w={220}
+                w={320}
               />
               <Stack align="center" gap={4}>
                 <Text c="dimmed" size="xs">

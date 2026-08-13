@@ -52,6 +52,10 @@ If the code expires, have the tablet display it again and retry. Only profiles i
 - **取り消し** (Revoke) … permanently disables the device. **Cannot be undone.** The device token is destroyed and open sessions are terminated; re-registration via a new profile is required to use the tablet again.
 - **削除** (Delete) … only profiles that have never been linked ("Awaiting link") can be deleted.
 
+## GPS location
+
+Each device reports its GPS position automatically **every 5 minutes**, kept as a history (90-day retention). The device detail page shows the latest coordinates under "GPS 位置（最新）", with a link that opens Google Maps. "未取得" (not acquired) means the tablet has not granted location permission or cannot get a GPS fix. The dedicated app (v0.5.0+) shows the location permission dialog on first use.
+
 ## Floor maps
 
 Open via the **フロアマップ** (Floor map) button at the top right of the list. Choose a factory, then each floor (level / area) tab shows its map with device pins. Pin colors follow the online status, and the name of the logged-in user is shown too.
