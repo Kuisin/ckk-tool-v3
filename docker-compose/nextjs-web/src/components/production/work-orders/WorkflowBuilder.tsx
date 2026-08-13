@@ -364,6 +364,18 @@ export function WorkflowBuilder({
     applyVersion(latest?.id ?? null);
   };
 
+  // 指示書は工程リスト必須 — ルートのある製品では先頭ルートを初期選択する
+  // （create 時にルート情報のロード完了ごとに 1 回。手動クリア後は再発火しない）。
+  // biome-ignore lint/correctness/useExhaustiveDependencies: routesInfo ロード時のみ発火させる
+  useEffect(() => {
+    if (mode !== "create" || routesInfo == null || routeSel != null) return;
+    const first = routesInfo.routes[0];
+    if (first) {
+      setRouteSel(String(first.id));
+      applyVersion(first.versions[0]?.id ?? null);
+    }
+  }, [routesInfo]);
+
   /** 現在の構成のスナップショット（保存ペイロードと同じ規則）。 */
   const currentSnapshots = useMemo(
     () => toStepSnapshots(selected, locations, catalogSteps),
@@ -455,7 +467,8 @@ export function WorkflowBuilder({
       );
       return;
     }
-    const route: WorkOrderInput["route"] =
+    // 指示書は常に工程リスト（ルート）に基づく — 既存を選ぶか新規作成する
+    const route: WorkOrderInput["route"] | null =
       routeSel != null && versionSel != null
         ? {
             mode: "existing",
@@ -465,6 +478,15 @@ export function WorkflowBuilder({
         : newRouteName.trim()
           ? { mode: "new", name: newRouteName.trim() }
           : null;
+    if (route == null) {
+      notifications.show({
+        title: "工程リストが必要です",
+        message:
+          "既存の工程リストを選択するか、新しい工程リスト名を入力してください",
+        color: "red",
+      });
+      return;
+    }
     const payload: WorkOrderInput = {
       salesOrderId: values.salesOrderId,
       type: values.type,
@@ -635,19 +657,20 @@ export function WorkflowBuilder({
 
       {soInfo && (
         <FormSection
-          description="製品に登録された工程リストを選ぶと工程構成をプリフィルします。構成を変更した場合は保存時に新バージョンとして自動保存されます。"
-          title="工程ルート"
+          description="指示書は常に製品の工程リストに基づきます。既存のリストを選ぶと工程構成をプリフィル、未登録の製品はこの画面から新しいリストを作成します。構成を変更した場合は保存時に新バージョンとして自動保存されます（使用済みバージョンは変更されません）。"
+          required
+          title="工程リスト"
         >
           <SimpleGrid cols={isMobile ? 1 : 2} spacing="sm">
             <Select
               clearable
               data={routeOptions}
-              label="ルート"
+              label="工程リスト"
               onChange={onRouteChange}
               placeholder={
                 routeOptions.length
-                  ? "ルートを選択（未選択 = ルートを使わず構成）"
-                  : "この製品の工程リストは未登録です"
+                  ? "工程リストを選択"
+                  : "この製品の工程リストは未登録です（下で新規作成）"
               }
               searchable
               value={routeSel}
@@ -662,11 +685,12 @@ export function WorkflowBuilder({
               />
             ) : (
               <TextInput
-                description="入力すると、この工程構成を製品の工程ルート v1 として保存します"
-                label="ルート名（保存する場合）"
+                description="この工程構成を製品の工程リスト v1 として保存します"
+                label="新しい工程リスト名"
                 onChange={(e) => setNewRouteName(e.currentTarget.value)}
                 placeholder="例: 標準工程"
                 value={newRouteName}
+                withAsterisk
               />
             )}
           </SimpleGrid>
