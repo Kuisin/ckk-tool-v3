@@ -1,10 +1,12 @@
 "use client";
 
 /**
- * StepExecutionView.tsx — 工程の実行画面（開始・一時停止・再開・完了）。
+ * StepExecutionView.tsx — 工程の実行画面
+ * （開始・一時停止・再開・完了 + 検査記録・不良記録）。
  *
- * できることは意図的にこの 4 つだけ。検査記録・不良記録・分岐追加・中断
- * （PENDING へ戻す）・巻き戻しは nextjs-web 側の管理画面に残す。
+ * 分岐追加・中断（PENDING へ戻す）・巻き戻し・検査承認は nextjs-web 側の
+ * 管理画面に残す。検査記録は検査工程（is_inspection）でのみ、不良記録は
+ * すべての工程で、作業中 / 一時停止中に記録できる。
  *
  * 一時停止は STEP_STATUS を変えず、ロックを解放して作業セッションを閉じる。
  * そのため「一時停止中」は他の端末からも再開でき、累計作業時間は
@@ -33,6 +35,7 @@ import {
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { playLogoutSound } from "@/lib/sound";
+import type { StepRecordingData } from "@/lib/step-records";
 import type { MyStepView } from "@/lib/steps";
 import {
   formatElapsed,
@@ -41,6 +44,8 @@ import {
 } from "@/lib/steps-core";
 import { ActivityMonitor } from "../ActivityMonitor";
 import { useI18n } from "../I18nProvider";
+import { StepDefectForm } from "./StepDefectForm";
+import { StepInspectionForm } from "./StepInspectionForm";
 import { isQuantityFormValid, StepQuantityForm } from "./StepQuantityForm";
 import {
   callStepAction,
@@ -49,11 +54,11 @@ import {
   translateError,
 } from "./step-ui";
 
-type Props = { step: MyStepView };
+type Props = { step: MyStepView; recording: StepRecordingData };
 
 type Phase = "IDLE" | "STARTING" | "COMPLETING";
 
-export function StepExecutionView({ step }: Props) {
+export function StepExecutionView({ step, recording }: Props) {
   const router = useRouter();
   const { m } = useI18n();
 
@@ -329,6 +334,24 @@ export function StepExecutionView({ step }: Props) {
             </Stack>
           </Paper>
         )}
+
+        {/* 検査記録 — 検査工程のみ（既存記録があれば読み取り専用でも表示） */}
+        {(recording.isInspection || recording.inspectionRecords.length > 0) && (
+          <StepInspectionForm
+            canRecord={recording.isInspection && (working || paused)}
+            records={recording.inspectionRecords}
+            stepId={step.stepId}
+            templates={recording.templates}
+          />
+        )}
+
+        {/* 不良記録 — 全工程で任意（既存記録があれば読み取り専用でも表示） */}
+        <StepDefectForm
+          canRecord={working || paused}
+          defectTypes={recording.defectTypes}
+          records={recording.defectRecords}
+          stepId={step.stepId}
+        />
       </Stack>
     </Box>
   );

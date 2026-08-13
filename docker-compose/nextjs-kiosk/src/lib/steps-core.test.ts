@@ -13,6 +13,9 @@ import {
   checkConservation,
   compareSteps,
   formatElapsed,
+  inspectionOutcome,
+  isDefectEntryComplete,
+  missingRequiredItems,
   quantityFormDefaults,
   type SortableStep,
   type StepSessionState,
@@ -283,5 +286,60 @@ describe("checkConservation", () => {
     expect(
       checkConservation(v({ outputSuccessQuantity: Number.NaN }), "FLOW"),
     ).toEqual({ kind: "NEGATIVE" });
+  });
+});
+
+describe("inspectionOutcome", () => {
+  it("全項目合格なら PASS", () => {
+    expect(inspectionOutcome([{ isPass: true }, { isPass: true }])).toBe(
+      "PASS",
+    );
+  });
+
+  it("1 つでも不合格なら FAIL", () => {
+    expect(inspectionOutcome([{ isPass: true }, { isPass: false }])).toBe(
+      "FAIL",
+    );
+  });
+
+  it("空配列は PASS（every の空真 — 呼び出し側が ITEMS_REQUIRED で弾く）", () => {
+    expect(inspectionOutcome([])).toBe("PASS");
+  });
+});
+
+describe("missingRequiredItems", () => {
+  const items = [
+    { id: 1, isRequired: true },
+    { id: 2, isRequired: false },
+    { id: 3, isRequired: true },
+  ];
+
+  it("必須項目の未入力だけを列挙する", () => {
+    expect(missingRequiredItems(items, { 1: "7.99" })).toEqual([3]);
+  });
+
+  it("空白のみは未入力扱い", () => {
+    expect(missingRequiredItems(items, { 1: "  ", 3: "330" })).toEqual([1]);
+  });
+
+  it("任意項目は未入力でもよい", () => {
+    expect(missingRequiredItems(items, { 1: "a", 3: "b" })).toEqual([]);
+  });
+});
+
+describe("isDefectEntryComplete", () => {
+  it("種類 + 内容が揃えば true", () => {
+    expect(
+      isDefectEntryComplete({ defectTypeId: 1, description: "キズあり" }),
+    ).toBe(true);
+  });
+
+  it("種類未選択 / 内容が空白のみは false", () => {
+    expect(
+      isDefectEntryComplete({ defectTypeId: null, description: "x" }),
+    ).toBe(false);
+    expect(isDefectEntryComplete({ defectTypeId: 1, description: "  " })).toBe(
+      false,
+    );
   });
 });

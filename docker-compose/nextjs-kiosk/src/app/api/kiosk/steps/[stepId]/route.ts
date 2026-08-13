@@ -1,5 +1,6 @@
 /**
- * POST /api/kiosk/steps/[stepId] — 工程の開始・一時停止・再開・完了。
+ * POST /api/kiosk/steps/[stepId] — 工程の開始・一時停止・再開・完了・
+ * 検査記録・不良記録。
  *
  * キオスク内で完結する（nextjs-web の内部 API は叩かない）。
  * 門は 4 段で、すべて fail-closed:
@@ -24,6 +25,7 @@ import {
   type StepActionResult,
   startStepExecution,
 } from "@/lib/step-execution";
+import { recordDefects, recordInspection } from "@/lib/step-records";
 
 const quantitiesSchema = z.object({
   inputQuantity: z.number().int().min(0),
@@ -34,11 +36,40 @@ const quantitiesSchema = z.object({
 });
 
 const bodySchema = z.object({
-  action: z.enum(["START", "PAUSE", "RESUME", "COMPLETE"]),
+  action: z.enum([
+    "START",
+    "PAUSE",
+    "RESUME",
+    "COMPLETE",
+    "INSPECTION",
+    "DEFECTS",
+  ]),
   /** START のみ: 作業者が実際に受け取った本数（未指定は想定受入数） */
   inputQuantity: z.number().int().min(0).nullable().optional(),
   /** COMPLETE のみ: NONE モードは null */
   quantities: quantitiesSchema.nullable().optional(),
+  /** INSPECTION のみ */
+  templateId: z.number().int().positive().optional(),
+  items: z
+    .array(
+      z.object({
+        templateItemId: z.number().int().positive(),
+        measuredValue: z.string().max(200),
+        isPass: z.boolean(),
+      }),
+    )
+    .max(200)
+    .optional(),
+  /** DEFECTS のみ */
+  defects: z
+    .array(
+      z.object({
+        defectTypeId: z.number().int().positive(),
+        description: z.string().trim().min(1).max(2000),
+      }),
+    )
+    .max(50)
+    .optional(),
 });
 
 export async function POST(
@@ -71,8 +102,29 @@ export async function POST(
     );
   }
 
-  const { action, inputQuantity, quantities } = parsed.data;
+  const { action, inputQuantity, quantities, templateId, items, defects } =
+    parsed.data;
   const actor = session.userId;
+
+  // 記録系はペイロード必須（zod は action 別の必須化をしないのでここで縛る）
+  if (action === "INSPECTION") {
+    if (templateId == null || items == null) {
+      return NextResponse.json({ error: "invalid request" }, { status: 400 });
+    }
+    const result = await runWithActor(actor, () =>
+      recordInspection(stepId, actor, templateId, items),
+    );
+    return NextResponse.json(result);
+  }
+  if (action === "DEFECTS") {
+    if (defects == null) {
+      return NextResponse.json({ error: "invalid request" }, { status: 400 });
+    }
+    const result = await runWithActor(actor, () =>
+      recordDefects(stepId, actor, defects),
+    );
+    return NextResponse.json(result);
+  }
 
   // audit_logs / inventory_transactions の created_by をこの actor に束ねる
   const result: StepActionResult = await runWithActor(actor, async () => {
