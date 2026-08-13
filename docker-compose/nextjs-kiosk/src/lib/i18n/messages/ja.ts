@@ -90,10 +90,24 @@ export const ja = {
         scrap: "不合格（廃棄）",
         rework: "不合格（手直し）",
       },
-      defectsTitle: "不良内訳",
+      defectsTitle: "不良内訳（区分）",
+      total: "総不良数",
+      fixed: "固定",
+      computed: "自動計算",
       conservation: (sum: number, input: number) =>
         `内訳の合計（${sum}）が受入数（${input}）と一致しません`,
+      overInput: (sum: number, input: number) =>
+        `不良の合計（${sum}）が受入数（${input}）を超えています`,
       negative: "数量は 0 以上の整数で入力してください",
+    },
+    reasons: {
+      title: "不良理由（任意）",
+      reason: "理由",
+      reasonPlaceholder: "不良種類を選択",
+      count: "本数",
+      add: "理由を追加",
+      remove: "削除",
+      hint: "在庫には影響しません（補助記録）",
     },
     inspection: {
       title: "検査記録",

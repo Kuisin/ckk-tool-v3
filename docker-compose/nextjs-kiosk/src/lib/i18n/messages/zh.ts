@@ -80,10 +80,24 @@ export const zh: KioskMessages = {
         scrap: "不合格（报废）",
         rework: "不合格（返工）",
       },
-      defectsTitle: "不良明细",
+      defectsTitle: "不良明细（区分）",
+      total: "总不良数",
+      fixed: "固定",
+      computed: "自动",
       conservation: (sum: number, input: number) =>
         `明细合计（${sum}）与接收数（${input}）不一致`,
+      overInput: (sum: number, input: number) =>
+        `不良合计（${sum}）超过接收数（${input}）`,
       negative: "数量请输入 0 以上的整数",
+    },
+    reasons: {
+      title: "不良原因（可选）",
+      reason: "原因",
+      reasonPlaceholder: "选择不良类型",
+      count: "数量",
+      add: "添加原因",
+      remove: "删除",
+      hint: "不影响库存（辅助记录）",
     },
     inspection: {
       title: "检查记录",

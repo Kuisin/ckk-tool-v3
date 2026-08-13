@@ -81,10 +81,24 @@ export const en: KioskMessages = {
         scrap: "Failed (scrapped)",
         rework: "Failed (rework)",
       },
-      defectsTitle: "Defect breakdown",
+      defectsTitle: "Defect breakdown (disposition)",
+      total: "Total defects",
+      fixed: "Fixed",
+      computed: "Auto",
       conservation: (sum: number, input: number) =>
         `The breakdown total (${sum}) does not match the received count (${input})`,
+      overInput: (sum: number, input: number) =>
+        `Defect total (${sum}) exceeds the received count (${input})`,
       negative: "Quantities must be whole numbers of 0 or more",
+    },
+    reasons: {
+      title: "Defect reasons (optional)",
+      reason: "Reason",
+      reasonPlaceholder: "Select a defect type",
+      count: "Count",
+      add: "Add reason",
+      remove: "Remove",
+      hint: "Does not affect inventory (supplementary record)",
     },
     inspection: {
       title: "Inspection record",
