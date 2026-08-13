@@ -68,6 +68,21 @@ export function needsPinVerify(
   return false;
 }
 
+/**
+ * カード有効期間の判定（テンポラリカード用。null = 無期限）。
+ * 期間外はログイン不可 — 判定はログイン時のみ（既存セッションは
+ * 8h ハード期限 / 5分アイドルで自然失効）。
+ */
+export function isCardWithinValidPeriod(
+  now: Date,
+  validFrom: Date | null,
+  validUntil: Date | null,
+): boolean {
+  if (validFrom && now.getTime() < validFrom.getTime()) return false;
+  if (validUntil && now.getTime() > validUntil.getTime()) return false;
+  return true;
+}
+
 /** PIN ロック中か。 */
 export function isPinLocked(now: Date, pinLockedUntil: Date | null): boolean {
   return pinLockedUntil !== null && now.getTime() < pinLockedUntil.getTime();

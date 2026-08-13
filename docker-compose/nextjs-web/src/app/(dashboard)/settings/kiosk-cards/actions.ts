@@ -31,9 +31,36 @@ const cardIdSchema = z
   .string()
   .regex(/^[A-Z2-9]{16}$/, "カードIDの形式が正しくありません");
 
-function revalidate() {
+function revalidate(cardId?: string) {
   revalidatePath(BASE_PATH);
+  if (cardId) revalidatePath(`${BASE_PATH}/${cardId}`);
 }
+
+/**
+ * 有効期間の入力（ISO 日時文字列 / null = 無期限）。クライアントが
+ * ブラウザのタイムゾーンで 開始日 00:00:00 / 終了日 23:59:59.999 に変換して
+ * 送る（サーバーの TZ に依存させない）。
+ */
+const validitySchema = z
+  .object({
+    validFrom: z.string().nullable(),
+    validUntil: z.string().nullable(),
+  })
+  .transform(({ validFrom, validUntil }) => ({
+    validFrom: validFrom ? new Date(validFrom) : null,
+    validUntil: validUntil ? new Date(validUntil) : null,
+  }))
+  .refine(
+    ({ validFrom, validUntil }) =>
+      (!validFrom || !Number.isNaN(validFrom.getTime())) &&
+      (!validUntil || !Number.isNaN(validUntil.getTime())),
+    { message: "日付の形式が正しくありません" },
+  )
+  .refine(
+    ({ validFrom, validUntil }) =>
+      !validFrom || !validUntil || validFrom.getTime() <= validUntil.getTime(),
+    { message: "有効期間の開始日は終了日以前にしてください" },
+  );
 
 // ── 発行 ────────────────────────────────────────────────────────────────────
 
@@ -93,18 +120,22 @@ export async function issueCards(raw: {
 const assignInput = z.object({
   cardId: cardIdSchema,
   userId: z.string().uuid("ユーザーの指定が不正です"),
+  // 任意: テンポラリカードとして割当時に有効期間を設定
+  validity: validitySchema.optional(),
 });
 
 /** 未割当カードをユーザーに割り当てる（1 ユーザー 1 枚）。 */
 export async function assignCard(raw: {
   cardId: string;
   userId: string;
+  validity?: { validFrom: string | null; validUntil: string | null };
 }): Promise<ActionResult> {
   const authz = await checkPermission("kiosk", "UPDATE");
   if (!authz.ok) return actionError(authz.error);
   const parsed = assignInput.safeParse(raw);
-  if (!parsed.success) return actionError("入力が不正です");
-  const { cardId, userId } = parsed.data;
+  if (!parsed.success)
+    return actionError(parsed.error.issues[0]?.message ?? "入力が不正です");
+  const { cardId, userId, validity } = parsed.data;
 
   try {
     const card = await prisma.kioskCard.findUnique({ where: { id: cardId } });
@@ -140,6 +171,8 @@ export async function assignCard(raw: {
         userId,
         assignedAt: new Date(),
         assignedById: authz.userId,
+        validFrom: validity?.validFrom ?? null,
+        validUntil: validity?.validUntil ?? null,
       },
     });
     await recordAudit({
@@ -147,9 +180,14 @@ export async function assignCard(raw: {
       tableName: "kiosk_cards",
       recordId: cardId,
       before: { status: card.status },
-      after: { status: "ASSIGNED", user: user.displayName },
+      after: {
+        status: "ASSIGNED",
+        user: user.displayName,
+        validFrom: validity?.validFrom?.toISOString() ?? null,
+        validUntil: validity?.validUntil?.toISOString() ?? null,
+      },
     });
-    revalidate();
+    revalidate(cardId);
     return actionOk();
   } catch (e) {
     // partial unique index (user_id WHERE status='ASSIGNED') のレース。
@@ -194,7 +232,7 @@ async function transitionCard(
       before: { status: card.status },
       after: { status: to },
     });
-    revalidate();
+    revalidate(parsed.data);
     return actionOk();
   } catch (e) {
     return actionError(prismaErrorMessage(e, `カードの${note}に失敗しました`));
@@ -248,10 +286,69 @@ export async function revokeCard(cardId: string): Promise<ActionResult> {
       before: { status: card.status },
       after: { status: "REVOKED" },
     });
-    revalidate();
+    revalidate(parsed.data);
     return actionOk();
   } catch (e) {
     return actionError(prismaErrorMessage(e, "カードの取り消しに失敗しました"));
+  }
+}
+
+// ── 有効期間（テンポラリカード） ─────────────────────────────────────────────
+
+const updateValidityInput = z.object({
+  cardId: cardIdSchema,
+  validity: validitySchema,
+});
+
+/**
+ * カードの有効期間を設定・変更・解除する（両方 null = 無期限に戻す）。
+ * 期間外のカードはキオスクでログイン不可（判定はキオスク側のログイン時のみ —
+ * 既存セッションは 8h ハード期限 / 5分アイドルで自然失効）。
+ */
+export async function updateCardValidity(raw: {
+  cardId: string;
+  validity: { validFrom: string | null; validUntil: string | null };
+}): Promise<ActionResult> {
+  const authz = await checkPermission("kiosk", "UPDATE");
+  if (!authz.ok) return actionError(authz.error);
+  const parsed = updateValidityInput.safeParse(raw);
+  if (!parsed.success)
+    return actionError(parsed.error.issues[0]?.message ?? "入力が不正です");
+  const { cardId, validity } = parsed.data;
+
+  try {
+    const card = await prisma.kioskCard.findUnique({
+      where: { id: cardId },
+      select: { status: true, validFrom: true, validUntil: true },
+    });
+    if (!card) return actionError("対象のカードが見つかりません");
+    if (card.status === "REVOKED") {
+      return actionError("取り消し済みのカードは変更できません");
+    }
+    await prisma.kioskCard.update({
+      where: { id: cardId },
+      data: {
+        validFrom: validity.validFrom,
+        validUntil: validity.validUntil,
+      },
+    });
+    await recordAudit({
+      action: "UPDATE",
+      tableName: "kiosk_cards",
+      recordId: cardId,
+      before: {
+        validFrom: card.validFrom?.toISOString() ?? null,
+        validUntil: card.validUntil?.toISOString() ?? null,
+      },
+      after: {
+        validFrom: validity.validFrom?.toISOString() ?? null,
+        validUntil: validity.validUntil?.toISOString() ?? null,
+      },
+    });
+    revalidate(cardId);
+    return actionOk();
+  } catch (e) {
+    return actionError(prismaErrorMessage(e, "有効期間の更新に失敗しました"));
   }
 }
 
@@ -286,7 +383,7 @@ export async function resetPin(cardId: string): Promise<ActionResult> {
       recordId: parsed.data,
       after: { note: "PIN をリセット" },
     });
-    revalidate();
+    revalidate(parsed.data);
     return actionOk();
   } catch (e) {
     return actionError(prismaErrorMessage(e, "PIN のリセットに失敗しました"));
@@ -316,7 +413,7 @@ export async function unlockPin(cardId: string): Promise<ActionResult> {
       recordId: parsed.data,
       after: { note: "PIN ロックを解除" },
     });
-    revalidate();
+    revalidate(parsed.data);
     return actionOk();
   } catch (e) {
     return actionError(prismaErrorMessage(e, "PIN ロックの解除に失敗しました"));
