@@ -265,6 +265,7 @@ model WorkOrderStepPlan {
   plannedStartAt DateTime? @map("planned_start_at") @db.Timestamptz(6)
   plannedEndAt   DateTime? @map("planned_end_at") @db.Timestamptz(6)
   quantity       Int? // 分割時の割当数量（任意）
+  workLocationId Int?      @map("work_location_id") // 作業場所（機械/エリア — 任意）
   notes          String?
   createdBy      String?   @map("created_by") @db.Uuid
   createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
@@ -272,6 +273,7 @@ model WorkOrderStepPlan {
   step          WorkOrderStep @relation(fields: [stepId], references: [id], onDelete: Cascade)
   user          User          @relation("StepPlanUser", fields: [userId], references: [id])
   createdByUser User?         @relation("StepPlanCreatedBy", fields: [createdBy], references: [id])
+  workLocation  WorkLocation? @relation("StepPlanWorkLocation", fields: [workLocationId], references: [id])
 
   @@index([stepId, plannedDate])
   @@index([userId, plannedDate])

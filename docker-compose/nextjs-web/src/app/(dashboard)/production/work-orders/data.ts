@@ -29,6 +29,7 @@ import {
   itemSpecFromRow,
   parseStoredSamples,
 } from "@/lib/inspection-core";
+import { fetchWorkLocationOptions } from "@/lib/work-locations";
 import { fetchWorkflowCtx, loadCatalog } from "@/lib/workflow";
 import { canStartStep, expectedInput } from "@/lib/workflow-core";
 
@@ -366,7 +367,10 @@ export async function fetchStepExecution(
         orderBy: { recordedAt: "desc" },
       },
       plans: {
-        include: { user: { select: { displayName: true } } },
+        include: {
+          user: { select: { displayName: true } },
+          workLocation: { select: { id: true, name: true } },
+        },
         orderBy: [{ plannedDate: "asc" }, { plannedStartAt: "asc" }],
       },
       actuals: {
@@ -377,22 +381,24 @@ export async function fetchStepExecution(
   });
   if (!step) return null;
 
-  const [{ ctx }, actorId, templateLinks, defectTypes] = await Promise.all([
-    fetchWorkflowCtx(wo.id),
-    getCurrentActorId(),
-    prisma.workOrderInspectionTemplate.findMany({
-      where: { workOrderId: wo.id },
-      include: {
-        inspectionTemplate: {
-          include: { items: { orderBy: { sortOrder: "asc" } } },
+  const [{ ctx }, actorId, templateLinks, defectTypes, workLocationOptions] =
+    await Promise.all([
+      fetchWorkflowCtx(wo.id),
+      getCurrentActorId(),
+      prisma.workOrderInspectionTemplate.findMany({
+        where: { workOrderId: wo.id },
+        include: {
+          inspectionTemplate: {
+            include: { items: { orderBy: { sortOrder: "asc" } } },
+          },
         },
-      },
-    }),
-    prisma.defectType.findMany({
-      where: { isActive: true },
-      orderBy: [{ sortOrder: "asc" }, { id: "asc" }],
-    }),
-  ]);
+      }),
+      prisma.defectType.findMany({
+        where: { isActive: true },
+        orderBy: [{ sortOrder: "asc" }, { id: "asc" }],
+      }),
+      fetchWorkLocationOptions(),
+    ]);
 
   // 承認工程は指示書全体の検査記録を承認対象として表示する
   const woRecordsRaw = step.processStep.isApprovalStep
@@ -508,6 +514,7 @@ export async function fetchStepExecution(
     end: Date | null;
     quantity: number | null;
     notes: string | null;
+    workLocation?: { id: number; name: unknown } | null;
   }): StepPlanView => ({
     id: r.id,
     userId: r.userId,
@@ -516,6 +523,10 @@ export async function fetchStepExecution(
     startTime: jstTime(r.start),
     endTime: jstTime(r.end),
     quantity: r.quantity,
+    workLocationId: r.workLocation?.id ?? null,
+    workLocationName: r.workLocation
+      ? localized(r.workLocation.name as LocalizedText | null)
+      : null,
     notes: r.notes,
   });
   const plans = step.plans.map((p) =>
@@ -594,6 +605,7 @@ export async function fetchStepExecution(
     })),
     plans,
     actuals,
+    workLocationOptions,
   };
 }
 

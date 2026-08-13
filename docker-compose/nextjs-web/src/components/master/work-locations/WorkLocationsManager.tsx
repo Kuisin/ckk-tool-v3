@@ -1,0 +1,803 @@
+"use client";
+
+/**
+ * WorkLocationsManager.tsx — 作業場所マスタ (MS0D) 単一管理画面。
+ *
+ * グループ（= 同型機械のまとまり・エリア区分。種別 + 工場 + 状態）ごとの
+ * カードに配下の場所（1 台の機械・1 区画。capacity = 同時に割り当て可能な
+ * 作業数）をテーブル表示し、すべてモーダルで追加・編集・削除する。
+ * 種別（machine / area + 管理者定義）は「種別管理」モーダルで編集する。
+ * 場所は指示書の作業計画（work_order_step_plans）から選択される。
+ */
+
+import {
+  ActionIcon,
+  Badge,
+  Group,
+  NumberInput,
+  Paper,
+  Select,
+  SimpleGrid,
+  Stack,
+  Switch,
+  Table,
+  Text,
+  TextInput,
+  Tooltip,
+} from "@mantine/core";
+import { notifications } from "@mantine/notifications";
+import {
+  IconAdjustments,
+  IconBuildingFactory2,
+  IconEdit,
+  IconMapPin,
+  IconPlus,
+  IconTrash,
+} from "@tabler/icons-react";
+import { useRouter } from "next/navigation";
+import { useEffect, useState, useTransition } from "react";
+import {
+  addWorkLocation,
+  createWorkLocationGroup,
+  deleteWorkLocation,
+  deleteWorkLocationGroup,
+  saveWorkLocationTypes,
+  updateWorkLocation,
+  updateWorkLocationGroup,
+  type WorkLocationGroupInput,
+  type WorkLocationInput,
+} from "@/app/(dashboard)/master/work-locations/actions";
+import { ActiveBadge } from "@/components/ui/ActiveBadge";
+import {
+  GhostButton,
+  PrimaryButton,
+  SecondaryButton,
+} from "@/components/ui/buttons";
+import { DocNumber } from "@/components/ui/DocNumber";
+import { EmptyState } from "@/components/ui/EmptyState";
+import {
+  ConfirmModal,
+  FormModal,
+  type ModalBaseProps,
+} from "@/components/ui/modals";
+import { PageHeader } from "@/components/ui/PageHeader";
+
+export interface WorkLocationRow {
+  id: number;
+  code: string;
+  nameJa: string;
+  nameEn: string;
+  capacity: number | null;
+  sortOrder: number;
+  isActive: boolean;
+  notes: string;
+  /** この場所を参照する作業計画数（削除可否の目安）。 */
+  planCount: number;
+}
+
+export interface WorkLocationGroupRow {
+  id: number;
+  code: string;
+  nameJa: string;
+  nameEn: string;
+  typeKey: string;
+  factoryId: number | null;
+  factoryName: string | null;
+  sortOrder: number;
+  isActive: boolean;
+  notes: string;
+  locations: WorkLocationRow[];
+}
+
+export interface WorkLocationTypeRow {
+  key: string;
+  labelJa: string;
+  labelEn: string;
+  builtin: boolean;
+}
+
+interface Option {
+  value: string;
+  label: string;
+}
+
+function notifyResult(
+  result: { ok: boolean; error?: string },
+  message: string,
+  onOk: () => void,
+) {
+  if (result.ok) {
+    notifications.show({ title: "保存しました", message, color: "green" });
+    onOk();
+  } else {
+    notifications.show({
+      title: "エラー",
+      message: result.error ?? "処理に失敗しました",
+      color: "red",
+    });
+  }
+}
+
+// ── グループ追加/編集モーダル ────────────────────────────────────────────────
+
+function GroupModal({
+  opened,
+  onClose,
+  group,
+  types,
+  factoryOptions,
+  onDone,
+}: ModalBaseProps & {
+  group: WorkLocationGroupRow | null;
+  types: WorkLocationTypeRow[];
+  factoryOptions: Option[];
+  onDone: () => void;
+}) {
+  const [isPending, startTransition] = useTransition();
+  const isEdit = !!group;
+  const [code, setCode] = useState("");
+  const [nameJa, setNameJa] = useState("");
+  const [nameEn, setNameEn] = useState("");
+  const [typeKey, setTypeKey] = useState("machine");
+  const [factoryId, setFactoryId] = useState<string | null>(null);
+  const [sortOrder, setSortOrder] = useState(0);
+  const [isActive, setIsActive] = useState(true);
+  const [notes, setNotes] = useState("");
+
+  useEffect(() => {
+    if (!opened) return;
+    setCode(group?.code ?? "");
+    setNameJa(group?.nameJa ?? "");
+    setNameEn(group?.nameEn ?? "");
+    setTypeKey(group?.typeKey ?? "machine");
+    setFactoryId(group?.factoryId != null ? String(group.factoryId) : null);
+    setSortOrder(group?.sortOrder ?? 0);
+    setIsActive(group?.isActive ?? true);
+    setNotes(group?.notes ?? "");
+  }, [opened, group]);
+
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    startTransition(async () => {
+      const input: WorkLocationGroupInput = {
+        code,
+        nameJa,
+        nameEn,
+        typeKey,
+        factoryId: factoryId ? Number(factoryId) : null,
+        sortOrder,
+        isActive,
+        notes,
+      };
+      const result = isEdit
+        ? await updateWorkLocationGroup(group.id, input)
+        : await createWorkLocationGroup(input);
+      notifyResult(
+        result,
+        isEdit ? "グループを更新しました" : "グループを作成しました",
+        () => {
+          onClose();
+          onDone();
+        },
+      );
+    });
+  };
+
+  return (
+    <FormModal
+      loading={isPending}
+      onClose={onClose}
+      onSubmit={handleSubmit}
+      opened={opened}
+      size="lg"
+      submitLabel={isEdit ? "保存" : "作成"}
+      title={isEdit ? "グループの編集" : "グループの追加"}
+    >
+      <Stack gap="sm">
+        <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
+          <TextInput
+            label="コード"
+            onChange={(e) => setCode(e.currentTarget.value)}
+            placeholder="例: NC-LATHE"
+            value={code}
+            withAsterisk
+          />
+          <Select
+            allowDeselect={false}
+            data={types.map((t) => ({ value: t.key, label: t.labelJa }))}
+            label="種別"
+            onChange={(v) => v && setTypeKey(v)}
+            value={typeKey}
+            withAsterisk
+          />
+          <TextInput
+            label="名称（日本語）"
+            onChange={(e) => setNameJa(e.currentTarget.value)}
+            placeholder="例: NC旋盤"
+            value={nameJa}
+            withAsterisk
+          />
+          <TextInput
+            label="名称（English）"
+            onChange={(e) => setNameEn(e.currentTarget.value)}
+            value={nameEn}
+          />
+          <Select
+            clearable
+            data={factoryOptions}
+            label="工場"
+            onChange={setFactoryId}
+            searchable
+            value={factoryId}
+          />
+          <NumberInput
+            label="表示順"
+            onChange={(v) =>
+              setSortOrder(v === "" || v == null ? 0 : Number(v))
+            }
+            value={sortOrder}
+          />
+        </SimpleGrid>
+        <TextInput
+          label="備考"
+          onChange={(e) => setNotes(e.currentTarget.value)}
+          value={notes}
+        />
+        <Switch
+          checked={isActive}
+          label="有効"
+          onChange={(e) => setIsActive(e.currentTarget.checked)}
+        />
+      </Stack>
+    </FormModal>
+  );
+}
+
+// ── 場所追加/編集モーダル ────────────────────────────────────────────────────
+
+function LocationModal({
+  opened,
+  onClose,
+  groupId,
+  location,
+  defaultSortOrder,
+  onDone,
+}: ModalBaseProps & {
+  groupId: number;
+  location: WorkLocationRow | null;
+  defaultSortOrder: number;
+  onDone: () => void;
+}) {
+  const [isPending, startTransition] = useTransition();
+  const isEdit = !!location;
+  const [code, setCode] = useState("");
+  const [nameJa, setNameJa] = useState("");
+  const [nameEn, setNameEn] = useState("");
+  const [capacity, setCapacity] = useState<number | null>(null);
+  const [sortOrder, setSortOrder] = useState(defaultSortOrder);
+  const [isActive, setIsActive] = useState(true);
+  const [notes, setNotes] = useState("");
+
+  useEffect(() => {
+    if (!opened) return;
+    setCode(location?.code ?? "");
+    setNameJa(location?.nameJa ?? "");
+    setNameEn(location?.nameEn ?? "");
+    setCapacity(location?.capacity ?? null);
+    setSortOrder(location?.sortOrder ?? defaultSortOrder);
+    setIsActive(location?.isActive ?? true);
+    setNotes(location?.notes ?? "");
+  }, [opened, location, defaultSortOrder]);
+
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    startTransition(async () => {
+      const input: WorkLocationInput = {
+        code,
+        nameJa,
+        nameEn,
+        capacity,
+        sortOrder,
+        isActive,
+        notes,
+      };
+      const result = isEdit
+        ? await updateWorkLocation(location.id, input)
+        : await addWorkLocation(groupId, input);
+      notifyResult(
+        result,
+        isEdit ? "作業場所を更新しました" : "作業場所を追加しました",
+        () => {
+          onClose();
+          onDone();
+        },
+      );
+    });
+  };
+
+  return (
+    <FormModal
+      loading={isPending}
+      onClose={onClose}
+      onSubmit={handleSubmit}
+      opened={opened}
+      size="lg"
+      submitLabel={isEdit ? "保存" : "追加"}
+      title={isEdit ? "作業場所の編集" : "作業場所の追加"}
+    >
+      <Stack gap="sm">
+        <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
+          <TextInput
+            label="コード"
+            onChange={(e) => setCode(e.currentTarget.value)}
+            placeholder="例: NC-01"
+            value={code}
+            withAsterisk
+          />
+          <NumberInput
+            description="同時に割り当て可能な作業数（空欄 = 制限なし）"
+            label="キャパシティ"
+            min={1}
+            onChange={(v) =>
+              setCapacity(v === "" || v == null ? null : Number(v))
+            }
+            value={capacity ?? ""}
+          />
+          <TextInput
+            label="名称（日本語）"
+            onChange={(e) => setNameJa(e.currentTarget.value)}
+            placeholder="例: NC旋盤 1号機"
+            value={nameJa}
+            withAsterisk
+          />
+          <TextInput
+            label="名称（English）"
+            onChange={(e) => setNameEn(e.currentTarget.value)}
+            value={nameEn}
+          />
+          <NumberInput
+            label="表示順"
+            onChange={(v) =>
+              setSortOrder(v === "" || v == null ? 0 : Number(v))
+            }
+            value={sortOrder}
+          />
+          <Switch
+            checked={isActive}
+            label="有効"
+            mt="lg"
+            onChange={(e) => setIsActive(e.currentTarget.checked)}
+          />
+        </SimpleGrid>
+        <TextInput
+          label="備考"
+          onChange={(e) => setNotes(e.currentTarget.value)}
+          value={notes}
+        />
+      </Stack>
+    </FormModal>
+  );
+}
+
+// ── 種別管理モーダル ─────────────────────────────────────────────────────────
+
+function TypesModal({
+  opened,
+  onClose,
+  types,
+  onDone,
+}: ModalBaseProps & { types: WorkLocationTypeRow[]; onDone: () => void }) {
+  const [isPending, startTransition] = useTransition();
+  const [rows, setRows] = useState<WorkLocationTypeRow[]>(types);
+
+  useEffect(() => {
+    if (opened) setRows(types);
+  }, [opened, types]);
+
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    startTransition(async () => {
+      const result = await saveWorkLocationTypes(
+        rows
+          .filter((r) => !r.builtin && r.key.trim())
+          .map((r) => ({
+            key: r.key.trim(),
+            labelJa: r.labelJa,
+            labelEn: r.labelEn,
+          })),
+      );
+      notifyResult(result, "種別を保存しました", () => {
+        onClose();
+        onDone();
+      });
+    });
+  };
+
+  return (
+    <FormModal
+      loading={isPending}
+      onClose={onClose}
+      onSubmit={handleSubmit}
+      opened={opened}
+      size="lg"
+      submitLabel="保存"
+      title="種別管理"
+    >
+      <Stack gap="xs">
+        <Text c="dimmed" size="xs">
+          machine / area
+          は組み込み（削除不可）。グループが使用中の種別は削除できません。
+        </Text>
+        {rows.map((r, idx) => (
+          <Group gap="xs" key={r.builtin ? r.key : `row-${idx}`} wrap="nowrap">
+            <TextInput
+              aria-label="種別キー"
+              disabled={r.builtin}
+              onChange={(e) => {
+                const key = e.currentTarget.value;
+                setRows((prev) =>
+                  prev.map((p, i) => (i === idx ? { ...p, key } : p)),
+                );
+              }}
+              placeholder="キー（例: line）"
+              value={r.key}
+              w={150}
+            />
+            <TextInput
+              aria-label="種別表示名（日本語）"
+              disabled={r.builtin}
+              onChange={(e) => {
+                const labelJa = e.currentTarget.value;
+                setRows((prev) =>
+                  prev.map((p, i) => (i === idx ? { ...p, labelJa } : p)),
+                );
+              }}
+              placeholder="表示名（日本語）"
+              style={{ flex: 1 }}
+              value={r.labelJa}
+            />
+            <TextInput
+              aria-label="種別表示名（English）"
+              disabled={r.builtin}
+              onChange={(e) => {
+                const labelEn = e.currentTarget.value;
+                setRows((prev) =>
+                  prev.map((p, i) => (i === idx ? { ...p, labelEn } : p)),
+                );
+              }}
+              placeholder="English"
+              style={{ flex: 1 }}
+              value={r.labelEn}
+            />
+            {r.builtin ? (
+              <Badge color="gray" variant="light">
+                組み込み
+              </Badge>
+            ) : (
+              <Tooltip label="削除" withinPortal>
+                <ActionIcon
+                  aria-label="種別を削除"
+                  color="red"
+                  onClick={() =>
+                    setRows((prev) => prev.filter((_, i) => i !== idx))
+                  }
+                  variant="subtle"
+                >
+                  <IconTrash size={14} />
+                </ActionIcon>
+              </Tooltip>
+            )}
+          </Group>
+        ))}
+        <Group>
+          <GhostButton
+            leftSection={<IconPlus size={14} />}
+            onClick={() =>
+              setRows((prev) => [
+                ...prev,
+                { key: "", labelJa: "", labelEn: "", builtin: false },
+              ])
+            }
+          >
+            種別を追加
+          </GhostButton>
+        </Group>
+      </Stack>
+    </FormModal>
+  );
+}
+
+// ── 本体 ─────────────────────────────────────────────────────────────────────
+
+export function WorkLocationsManager({
+  groups,
+  types,
+  factoryOptions,
+}: {
+  groups: WorkLocationGroupRow[];
+  types: WorkLocationTypeRow[];
+  factoryOptions: Option[];
+}) {
+  const router = useRouter();
+  const [, startTransition] = useTransition();
+
+  const [groupModal, setGroupModal] = useState<{
+    opened: boolean;
+    group: WorkLocationGroupRow | null;
+  }>({ opened: false, group: null });
+  const [locationModal, setLocationModal] = useState<{
+    opened: boolean;
+    groupId: number;
+    location: WorkLocationRow | null;
+    defaultSortOrder: number;
+  }>({ opened: false, groupId: 0, location: null, defaultSortOrder: 10 });
+  const [typesOpen, setTypesOpen] = useState(false);
+  const [deleteGroup, setDeleteGroup] = useState<WorkLocationGroupRow | null>(
+    null,
+  );
+  const [deleteLocation, setDeleteLocation] = useState<WorkLocationRow | null>(
+    null,
+  );
+
+  const refresh = () => router.refresh();
+  const typeLabel = (key: string) =>
+    types.find((t) => t.key === key)?.labelJa ?? key;
+
+  return (
+    <Stack gap="md">
+      <PageHeader
+        actions={
+          <Group gap="xs">
+            <SecondaryButton
+              leftSection={<IconAdjustments size={14} />}
+              onClick={() => setTypesOpen(true)}
+            >
+              種別管理
+            </SecondaryButton>
+            <PrimaryButton
+              leftSection={<IconPlus size={14} />}
+              onClick={() => setGroupModal({ opened: true, group: null })}
+            >
+              グループ追加
+            </PrimaryButton>
+          </Group>
+        }
+        breadcrumbs={["マスタ", "作業場所"]}
+        title="作業場所"
+      />
+
+      {groups.length === 0 ? (
+        <EmptyState
+          icon={<IconMapPin size={24} />}
+          message="作業場所が未登録です。グループ（機械種別・エリアなど）を作成し、配下に物理的な場所（機械 1 台・1 区画）を追加してください。"
+        />
+      ) : (
+        groups.map((group) => (
+          <Paper key={group.id} p="md" radius="md" withBorder>
+            <Stack gap="sm">
+              <Group justify="space-between" wrap="wrap">
+                <Group gap="sm" style={{ minWidth: 0 }} wrap="nowrap">
+                  <DocNumber>{group.code}</DocNumber>
+                  <Text fw={600} size="sm" truncate>
+                    {group.nameJa}
+                  </Text>
+                  <Badge color="grape" size="sm" variant="light">
+                    {typeLabel(group.typeKey)}
+                  </Badge>
+                  {group.factoryName && (
+                    <Group gap={4} wrap="nowrap">
+                      <IconBuildingFactory2 size={14} />
+                      <Text c="dimmed" size="xs">
+                        {group.factoryName}
+                      </Text>
+                    </Group>
+                  )}
+                  <ActiveBadge active={group.isActive} />
+                </Group>
+                <Group gap="xs" wrap="nowrap">
+                  <GhostButton
+                    leftSection={<IconPlus size={14} />}
+                    onClick={() =>
+                      setLocationModal({
+                        opened: true,
+                        groupId: group.id,
+                        location: null,
+                        defaultSortOrder:
+                          group.locations.length > 0
+                            ? Math.max(
+                                ...group.locations.map((l) => l.sortOrder),
+                              ) + 10
+                            : 10,
+                      })
+                    }
+                    size="xs"
+                  >
+                    場所を追加
+                  </GhostButton>
+                  <GhostButton
+                    leftSection={<IconEdit size={14} />}
+                    onClick={() => setGroupModal({ opened: true, group })}
+                    size="xs"
+                  >
+                    編集
+                  </GhostButton>
+                  <GhostButton
+                    color="red"
+                    leftSection={<IconTrash size={14} />}
+                    onClick={() => setDeleteGroup(group)}
+                    size="xs"
+                  >
+                    削除
+                  </GhostButton>
+                </Group>
+              </Group>
+
+              {group.locations.length === 0 ? (
+                <Text c="dimmed" size="sm">
+                  場所が未登録です（「場所を追加」から機械 1 台・1 区画を登録）
+                </Text>
+              ) : (
+                <Table striped withTableBorder>
+                  <Table.Thead>
+                    <Table.Tr>
+                      <Table.Th w={140}>コード</Table.Th>
+                      <Table.Th>名称</Table.Th>
+                      <Table.Th w={120}>キャパシティ</Table.Th>
+                      <Table.Th w={90}>計画数</Table.Th>
+                      <Table.Th w={80}>状態</Table.Th>
+                      <Table.Th w={80} />
+                    </Table.Tr>
+                  </Table.Thead>
+                  <Table.Tbody>
+                    {group.locations.map((loc) => (
+                      <Table.Tr key={loc.id}>
+                        <Table.Td>
+                          <DocNumber>{loc.code}</DocNumber>
+                        </Table.Td>
+                        <Table.Td>
+                          <Text size="sm">{loc.nameJa}</Text>
+                          {loc.notes && (
+                            <Text c="dimmed" size="xs">
+                              {loc.notes}
+                            </Text>
+                          )}
+                        </Table.Td>
+                        <Table.Td>
+                          <Text className="tabular-nums" size="sm">
+                            {loc.capacity != null
+                              ? `${loc.capacity} 作業`
+                              : "制限なし"}
+                          </Text>
+                        </Table.Td>
+                        <Table.Td>
+                          <Text c="dimmed" className="tabular-nums" size="sm">
+                            {loc.planCount}
+                          </Text>
+                        </Table.Td>
+                        <Table.Td>
+                          <ActiveBadge active={loc.isActive} />
+                        </Table.Td>
+                        <Table.Td>
+                          <Group gap={4} justify="flex-end" wrap="nowrap">
+                            <Tooltip label="編集" withinPortal>
+                              <ActionIcon
+                                aria-label="作業場所を編集"
+                                color="gray"
+                                onClick={() =>
+                                  setLocationModal({
+                                    opened: true,
+                                    groupId: group.id,
+                                    location: loc,
+                                    defaultSortOrder: loc.sortOrder,
+                                  })
+                                }
+                                variant="subtle"
+                              >
+                                <IconEdit size={14} />
+                              </ActionIcon>
+                            </Tooltip>
+                            <Tooltip label="削除" withinPortal>
+                              <ActionIcon
+                                aria-label="作業場所を削除"
+                                color="red"
+                                onClick={() => setDeleteLocation(loc)}
+                                variant="subtle"
+                              >
+                                <IconTrash size={14} />
+                              </ActionIcon>
+                            </Tooltip>
+                          </Group>
+                        </Table.Td>
+                      </Table.Tr>
+                    ))}
+                  </Table.Tbody>
+                </Table>
+              )}
+            </Stack>
+          </Paper>
+        ))
+      )}
+
+      <GroupModal
+        factoryOptions={factoryOptions}
+        group={groupModal.group}
+        onClose={() => setGroupModal({ opened: false, group: null })}
+        onDone={refresh}
+        opened={groupModal.opened}
+        types={types}
+      />
+      <LocationModal
+        defaultSortOrder={locationModal.defaultSortOrder}
+        groupId={locationModal.groupId}
+        location={locationModal.location}
+        onClose={() => setLocationModal((s) => ({ ...s, opened: false }))}
+        onDone={refresh}
+        opened={locationModal.opened}
+      />
+      <TypesModal
+        onClose={() => setTypesOpen(false)}
+        onDone={refresh}
+        opened={typesOpen}
+        types={types}
+      />
+      <ConfirmModal
+        confirmLabel="削除する"
+        message={
+          deleteGroup
+            ? `グループ「${deleteGroup.nameJa}」を削除します。配下の場所（${deleteGroup.locations.length}件）も削除されます。この操作は取り消せません。`
+            : ""
+        }
+        onClose={() => setDeleteGroup(null)}
+        onConfirm={() => {
+          const target = deleteGroup;
+          if (!target) return;
+          startTransition(async () => {
+            const result = await deleteWorkLocationGroup(target.id);
+            notifyResult(
+              result,
+              `グループ「${target.nameJa}」を削除しました`,
+              () => {
+                setDeleteGroup(null);
+                refresh();
+              },
+            );
+          });
+        }}
+        opened={!!deleteGroup}
+        title="グループの削除"
+        warning="作業計画で使用中の場所が含まれる場合は削除できません。"
+      />
+      <ConfirmModal
+        confirmLabel="削除する"
+        message={
+          deleteLocation
+            ? `作業場所「${deleteLocation.nameJa}」を削除します。この操作は取り消せません。`
+            : ""
+        }
+        onClose={() => setDeleteLocation(null)}
+        onConfirm={() => {
+          const target = deleteLocation;
+          if (!target) return;
+          startTransition(async () => {
+            const result = await deleteWorkLocation(target.id);
+            notifyResult(
+              result,
+              `作業場所「${target.nameJa}」を削除しました`,
+              () => {
+                setDeleteLocation(null);
+                refresh();
+              },
+            );
+          });
+        }}
+        opened={!!deleteLocation}
+        title="作業場所の削除"
+        warning={
+          deleteLocation && deleteLocation.planCount > 0
+            ? `この場所は ${deleteLocation.planCount} 件の作業計画から参照されています（削除できません — 無効化をご検討ください）。`
+            : undefined
+        }
+      />
+    </Stack>
+  );
+}

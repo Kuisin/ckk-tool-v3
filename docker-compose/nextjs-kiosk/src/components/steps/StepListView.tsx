@@ -203,6 +203,7 @@ function StepCard({
             <Text c="dimmed" size="sm">
               {m.steps.card.workOrder(step.workOrderNumber)}
               {step.factoryName ? ` ・ ${step.factoryName}` : ""}
+              {step.workLocationName ? ` ・ ${step.workLocationName}` : ""}
             </Text>
             <Text fw={600} size="lg" truncate>
               {step.stepName}
