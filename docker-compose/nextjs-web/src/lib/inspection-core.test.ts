@@ -93,7 +93,9 @@ describe("evaluateSample", () => {
     expect(evaluateSample(selectSpec(), "ok")).toBe(true);
     expect(evaluateSample(selectSpec(), "minor")).toBe(true);
     expect(evaluateSample(selectSpec(), "bad")).toBe(false);
-    expect(evaluateSample(selectSpec({ acceptOptions: null }), "ok")).toBeNull();
+    expect(
+      evaluateSample(selectSpec({ acceptOptions: null }), "ok"),
+    ).toBeNull();
   });
 
   it("SELECT_MULTI: 選択全部が acceptOptions 内で合格", () => {
@@ -169,9 +171,9 @@ describe("labels & formatting", () => {
   it("acceptLabel: 型別の合格基準表示", () => {
     expect(acceptLabel(spec())).toBe("7.9 〜 8.1 mm");
     expect(acceptLabel(spec({ toleranceMax: null }))).toBe("7.9 以上 mm");
-    expect(
-      acceptLabel(spec({ inputType: "BOOLEAN", acceptBool: true })),
-    ).toBe("はい");
+    expect(acceptLabel(spec({ inputType: "BOOLEAN", acceptBool: true }))).toBe(
+      "はい",
+    );
     expect(acceptLabel(selectSpec())).toBe("良好・軽微");
     expect(acceptLabel(selectSpec(), "en")).toBe("OK・Minor");
     expect(acceptLabel(selectSpec({ acceptOptions: [] }))).toBeNull();
@@ -179,9 +181,9 @@ describe("labels & formatting", () => {
 
   it("goalLabel: 型別の目標表示", () => {
     expect(goalLabel(spec({ goalValue: 8 }))).toBe("8 mm");
-    expect(
-      goalLabel(spec({ inputType: "BOOLEAN", goalValue: false })),
-    ).toBe("いいえ");
+    expect(goalLabel(spec({ inputType: "BOOLEAN", goalValue: false }))).toBe(
+      "いいえ",
+    );
     expect(goalLabel(selectSpec({ goalValue: "ok" }))).toBe("良好");
     expect(
       goalLabel(
@@ -193,9 +195,9 @@ describe("labels & formatting", () => {
 
   it("formatSampleValue: 型別の実測値表示", () => {
     expect(formatSampleValue(spec(), "8.02")).toBe("8.02 mm");
-    expect(
-      formatSampleValue(spec({ inputType: "BOOLEAN" }), "true"),
-    ).toBe("はい");
+    expect(formatSampleValue(spec({ inputType: "BOOLEAN" }), "true")).toBe(
+      "はい",
+    );
     expect(formatSampleValue(selectSpec(), "ok")).toBe("良好");
     expect(
       formatSampleValue(selectSpec({ inputType: "SELECT_MULTI" }), [

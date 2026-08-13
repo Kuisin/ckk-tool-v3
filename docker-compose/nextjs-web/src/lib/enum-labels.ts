@@ -210,3 +210,26 @@ export const NOTIFICATION_TYPE_LABEL: Record<string, string> = {
 export const NOTIFICATION_TYPE_OPTIONS = Object.entries(
   NOTIFICATION_TYPE_LABEL,
 ).map(([value, label]) => ({ value, label }));
+
+/** app.InspectionItemType（検査項目の入力種別） */
+export const INSPECTION_ITEM_TYPE_LABEL: Record<string, string> = {
+  BOOLEAN: "真偽（はい/いいえ）",
+  NUMBER: "数値",
+  SELECT_SINGLE: "単一選択",
+  SELECT_MULTI: "複数選択",
+};
+
+export const INSPECTION_ITEM_TYPE_OPTIONS = Object.entries(
+  INSPECTION_ITEM_TYPE_LABEL,
+).map(([value, label]) => ({ value, label }));
+
+/** app.InspectionSamplingMode（抜取検査モード） */
+export const INSPECTION_SAMPLING_MODE_LABEL: Record<string, string> = {
+  ALL: "全数",
+  PERCENT: "割合(%)",
+  COUNT: "本数",
+};
+
+export const INSPECTION_SAMPLING_MODE_OPTIONS = Object.entries(
+  INSPECTION_SAMPLING_MODE_LABEL,
+).map(([value, label]) => ({ value, label }));
