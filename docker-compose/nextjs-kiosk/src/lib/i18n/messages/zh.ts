@@ -47,6 +47,12 @@ export const zh: KioskMessages = {
       completed: "已完成",
       cancelled: "已取消",
     },
+    activeLock: {
+      badge: "正在处理其他工序",
+      alert: (workOrderNumber: number, stepName: string) =>
+        `正在处理指示书 #${workOrderNumber}「${stepName}」。请先暂停或完成后再操作其他工序。`,
+      goto: "前往进行中的工序",
+    },
     actions: {
       start: "开始工序",
       pause: "暂停",
@@ -141,6 +147,7 @@ export const zh: KioskMessages = {
       NOT_ASSIGNED: "该工序不是您负责的",
       WO_NOT_APPROVED: "工单尚未批准或未进行中",
       NOT_STARTABLE: "前工序未完成，无法开始",
+      OTHER_STEP_ACTIVE: "正在处理其他工序，无法操作（请先暂停或完成）",
       LOCK_TAKEN: "其他人已先行开始",
       LOCK_HELD_BY_OTHER: "其他人正在作业",
       NOT_IN_PROGRESS: "该工序不在进行中",

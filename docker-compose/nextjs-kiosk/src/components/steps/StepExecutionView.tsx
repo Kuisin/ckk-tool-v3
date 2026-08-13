@@ -35,7 +35,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { playLogoutSound } from "@/lib/sound";
 import type { StepRecordingData } from "@/lib/step-records";
-import type { MyStepView } from "@/lib/steps";
+import type { MyActiveStep, MyStepView } from "@/lib/steps";
 import {
   cleanReasonEntries,
   type DefectReasonEntry,
@@ -57,11 +57,16 @@ import {
   translateError,
 } from "./step-ui";
 
-type Props = { step: MyStepView; recording: StepRecordingData };
+type Props = {
+  step: MyStepView;
+  recording: StepRecordingData;
+  /** 自分が作業中の別工程（同時作業は 1 工程まで — 開始/再開をロック）。 */
+  otherActive: MyActiveStep | null;
+};
 
 type Phase = "IDLE" | "STARTING" | "COMPLETING";
 
-export function StepExecutionView({ step, recording }: Props) {
+export function StepExecutionView({ step, recording, otherActive }: Props) {
   const router = useRouter();
   const { m } = useI18n();
 
@@ -83,6 +88,8 @@ export function StepExecutionView({ step, recording }: Props) {
   const isNone = trackedMode === null;
   const working = step.sessionState === "WORKING";
   const paused = step.sessionState === "PAUSED";
+  // 別工程を作業中 → この工程の開始/再開/完了をロック（同時作業は 1 工程まで）
+  const lockedByActive = otherActive != null && !working;
 
   const run = async (
     body: Parameters<typeof callStepAction>[1],
@@ -194,8 +201,29 @@ export function StepExecutionView({ step, recording }: Props) {
           </Alert>
         )}
 
+        {/* 別工程を作業中 — 開始/再開/完了の代わりに誘導を出す */}
+        {lockedByActive && otherActive && (
+          <Alert color="orange" icon={<IconAlertTriangle size={20} />}>
+            <Stack align="flex-start" gap="sm">
+              <Text size="sm">
+                {m.steps.activeLock.alert(
+                  otherActive.workOrderNumber,
+                  otherActive.stepName,
+                )}
+              </Text>
+              <Button
+                onClick={() => router.push(`/steps/${otherActive.stepId}`)}
+                size="sm"
+                variant="light"
+              >
+                {m.steps.activeLock.goto}
+              </Button>
+            </Stack>
+          </Alert>
+        )}
+
         {/* 開始 — 受入数の確認（NONE は数量を聞かない） */}
-        {step.sessionState === "STARTABLE" && (
+        {step.sessionState === "STARTABLE" && !lockedByActive && (
           <Paper p="md" radius="md" withBorder>
             <Stack gap="md">
               <Title order={4}>{m.steps.start.title}</Title>
@@ -233,7 +261,7 @@ export function StepExecutionView({ step, recording }: Props) {
         )}
 
         {/* 進行中 / 一時停止中 — 完了フォームと操作 */}
-        {(working || paused) && (
+        {(working || paused) && !lockedByActive && (
           <Paper p="md" radius="md" withBorder>
             <Stack gap="md">
               {phase === "COMPLETING" ? (
