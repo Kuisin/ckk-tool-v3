@@ -136,6 +136,10 @@ model WorkOrder {
   // コピー元（バージョン警告用）
   sourceWorkOrderId String? @map("source_work_order_id") @db.Uuid
 
+  // 工程ルート出所（製品工程リストのバージョン）。ルート削除時は SetNull —
+  // 工程は work_order_steps に実体化済みで、出所リンクだけが外れる。
+  routeVersionId String? @map("route_version_id") @db.Uuid
+
   // 承認遷移（MaterialPurchaseOrder と同型の row-workflow）
   requested1stAt DateTime? @map("requested_1st_at") @db.Timestamptz(6)
   requested1stBy String?   @map("requested_1st_by") @db.Uuid
@@ -160,6 +164,7 @@ model WorkOrder {
   material        Material?  @relation(fields: [materialId], references: [id])
   sourceWorkOrder WorkOrder? @relation("WorkOrderCopySource", fields: [sourceWorkOrderId], references: [id])
   copies          WorkOrder[] @relation("WorkOrderCopySource")
+  routeVersion    ProductProcessRouteVersion? @relation(fields: [routeVersionId], references: [id], onDelete: SetNull)
   createdByUser   User?      @relation("WorkOrderCreatedBy", fields: [createdBy], references: [id])
 
   steps               WorkOrderStep[]
@@ -171,6 +176,7 @@ model WorkOrder {
   @@index([salesOrderId])
   @@index([status])
   @@index([approvalStatus])
+  @@index([routeVersionId])
   @@map("work_orders")
   @@schema("app")
 }
@@ -235,10 +241,59 @@ model WorkOrderStep {
 
   inspectionRecords InspectionRecord[]
   defectRecords     DefectRecord[]
+  plans             WorkOrderStepPlan[]
+  actuals           WorkOrderStepActual[]
 
   @@index([workOrderId, sortOrder])
   @@index([status])
   @@map("work_order_steps")
+  @@schema("app")
+}
+
+// 工程の作業計画（1 工程に複数行 = 分割計画）。担当者必須。
+// 日付のみ、または開始/終了時刻付きで設定できる（§7 計画/実績）。
+model WorkOrderStepPlan {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  stepId         String    @map("work_order_step_id") @db.Uuid
+  userId         String    @map("user_id") @db.Uuid // 担当者（従業員）
+  plannedDate    DateTime  @map("planned_date") @db.Date
+  plannedStartAt DateTime? @map("planned_start_at") @db.Timestamptz(6)
+  plannedEndAt   DateTime? @map("planned_end_at") @db.Timestamptz(6)
+  quantity       Int? // 分割時の割当数量（任意）
+  notes          String?
+  createdBy      String?   @map("created_by") @db.Uuid
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  step          WorkOrderStep @relation(fields: [stepId], references: [id], onDelete: Cascade)
+  user          User          @relation("StepPlanUser", fields: [userId], references: [id])
+  createdByUser User?         @relation("StepPlanCreatedBy", fields: [createdBy], references: [id])
+
+  @@index([stepId, plannedDate])
+  @@index([userId, plannedDate])
+  @@map("work_order_step_plans")
+  @@schema("app")
+}
+
+// 工程の作業実績（1 工程に複数行 = 分割実績）。担当者必須。
+model WorkOrderStepActual {
+  id         String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  stepId     String    @map("work_order_step_id") @db.Uuid
+  userId     String    @map("user_id") @db.Uuid // 作業者（従業員）
+  workedDate DateTime  @map("worked_date") @db.Date
+  startedAt  DateTime? @map("started_at") @db.Timestamptz(6)
+  endedAt    DateTime? @map("ended_at") @db.Timestamptz(6)
+  quantity   Int? // 実施数量（任意）
+  notes      String?
+  createdBy  String?   @map("created_by") @db.Uuid
+  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  step          WorkOrderStep @relation(fields: [stepId], references: [id], onDelete: Cascade)
+  user          User          @relation("StepActualUser", fields: [userId], references: [id])
+  createdByUser User?         @relation("StepActualCreatedBy", fields: [createdBy], references: [id])
+
+  @@index([stepId, workedDate])
+  @@index([userId, workedDate])
+  @@map("work_order_step_actuals")
   @@schema("app")
 }
 

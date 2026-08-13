@@ -71,9 +71,16 @@ export interface ProcessStepRow {
   isSyncCapable: boolean;
   isInspection: boolean;
   isApprovalStep: boolean;
+  quantityTracking: string;
   sortOrder: number;
   isActive: boolean;
 }
+
+/** 数量管理モードの短縮ラベル（一覧列用）。 */
+const QUANTITY_TRACKING_SHORT: Record<string, string> = {
+  FLOW: "数量",
+  INSPECTION: "検査",
+};
 
 const STATUS_OPTIONS = [
   { value: "active", label: "有効" },
@@ -261,6 +268,28 @@ export function ProcessStepTable({ rows }: { rows: ProcessStepRow[] }) {
       render: (r) => (
         <FlagBadge color="green" label="承認" on={r.isApprovalStep} />
       ),
+    },
+    {
+      key: "quantityTracking",
+      header: "数量管理",
+      sortable: true,
+      hideable: true,
+      width: 100,
+      sortValue: (r) => r.quantityTracking,
+      render: (r) =>
+        r.quantityTracking === "NONE" ? (
+          <Text c="dimmed" size="sm">
+            —
+          </Text>
+        ) : (
+          <Badge
+            color={r.quantityTracking === "INSPECTION" ? "blue" : "violet"}
+            size="xs"
+            variant="light"
+          >
+            {QUANTITY_TRACKING_SHORT[r.quantityTracking] ?? r.quantityTracking}
+          </Badge>
+        ),
     },
     {
       key: "sortOrder",

@@ -148,31 +148,50 @@ export function StepCard({
         </Group>
       )}
 
-      {hasQuantities && (
-        <Group gap="sm" mt="xs" pl={28} wrap="wrap">
-          <Text size="xs">受入 {step.inputQuantity}</Text>
-          {step.outputSuccessQuantity != null && (
-            <Text c="green" size="xs">
-              良品 {step.outputSuccessQuantity}
-            </Text>
-          )}
-          {(step.outputDefectSemiFinished ?? 0) > 0 && (
-            <Badge color="orange" size="xs" variant="light">
-              半製品 {step.outputDefectSemiFinished}
-            </Badge>
-          )}
-          {(step.outputDefectScrap ?? 0) > 0 && (
-            <Badge color="red" size="xs" variant="light">
-              廃棄 {step.outputDefectScrap}
-            </Badge>
-          )}
-          {(step.outputDefectRework ?? 0) > 0 && (
-            <Badge color="yellow" size="xs" variant="light">
-              手直し {step.outputDefectRework}
-            </Badge>
-          )}
+      {(step.planCount > 0 || step.actualCount > 0) && (
+        <Group gap="sm" mt="xs" pl={28}>
+          <Text c="dimmed" size="xs">
+            計画 {step.planCount} 件 / 実績 {step.actualCount} 件
+          </Text>
         </Group>
       )}
+
+      {hasQuantities &&
+        (step.quantityTracking === "NONE" ? (
+          <Group gap="sm" mt="xs" pl={28} wrap="wrap">
+            <Text c="dimmed" size="xs">
+              通過 {step.inputQuantity}（数量記録なし）
+            </Text>
+          </Group>
+        ) : (
+          <Group gap="sm" mt="xs" pl={28} wrap="wrap">
+            <Text size="xs">
+              {step.quantityTracking === "INSPECTION" ? "検査" : "受入"}{" "}
+              {step.inputQuantity}
+            </Text>
+            {step.outputSuccessQuantity != null && (
+              <Text c="green" size="xs">
+                {step.quantityTracking === "INSPECTION" ? "合格" : "良品"}{" "}
+                {step.outputSuccessQuantity}
+              </Text>
+            )}
+            {(step.outputDefectSemiFinished ?? 0) > 0 && (
+              <Badge color="orange" size="xs" variant="light">
+                半製品 {step.outputDefectSemiFinished}
+              </Badge>
+            )}
+            {(step.outputDefectScrap ?? 0) > 0 && (
+              <Badge color="red" size="xs" variant="light">
+                廃棄 {step.outputDefectScrap}
+              </Badge>
+            )}
+            {(step.outputDefectRework ?? 0) > 0 && (
+              <Badge color="yellow" size="xs" variant="light">
+                手直し {step.outputDefectRework}
+              </Badge>
+            )}
+          </Group>
+        ))}
     </Paper>
   );
 }

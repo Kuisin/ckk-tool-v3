@@ -118,6 +118,7 @@ describe("defaultOrder", () => {
       isSyncCapable: false,
       isInspection: false,
       isApprovalStep: false,
+      quantityTracking: "FLOW" as const,
     }));
     expect(defaultOrder([9, 7, 1, 8], catalog)).toEqual([1, 7, 8, 9]);
   });
@@ -328,6 +329,60 @@ describe("validateQuantities / validateRouting", () => {
     expect(
       validateRouting({ outputSuccess: 8, defectRework: 1 }, out)[0].kind,
     ).toBe("ROUTING");
+  });
+
+  it("INSPECTION モード: 同じ保存則・検査/合格ラベルのメッセージ", () => {
+    const issues = validateQuantities(
+      {
+        inputQuantity: 10,
+        outputSuccess: 7,
+        defectSemiFinished: 0,
+        defectScrap: 2,
+        defectRework: 0,
+      },
+      "INSPECTION",
+    );
+    expect(issues).toHaveLength(1);
+    expect(issues[0].kind).toBe("CONSERVATION");
+    expect(issues[0].message).toContain("検査数");
+    expect(issues[0].message).toContain("合格");
+  });
+
+  it("NONE モード: 常に issue なし（サーバーがパススルー生成）", () => {
+    expect(
+      validateQuantities(
+        {
+          inputQuantity: null,
+          outputSuccess: null,
+          defectSemiFinished: null,
+          defectScrap: null,
+          defectRework: null,
+        },
+        "NONE",
+      ),
+    ).toEqual([]);
+  });
+
+  it("NONE パススルー規則: 完了時 output = input なら後続の expectedInput が成立", () => {
+    // s1(FLOW, 良品8) → s2(NONE, パススルー 8→8) → s3 の想定受入は 8
+    const ctx: WorkflowCtx = {
+      plannedQuantity: 10,
+      steps: [
+        step("s1", 100, 10, "COMPLETED", { outputSuccess: 8 }),
+        step("s2", 200, 20, "COMPLETED", {
+          inputQuantity: 8,
+          outputSuccess: 8, // NONE 完了時のサーバー生成値（input と同値）
+        }),
+        step("s3", 300, 30, "PENDING"),
+      ],
+      links: [],
+      execDeps: [],
+    };
+    expect(expectedInput("s3", ctx)).toBe(8);
+    // 終端 NONE でも outputSuccess が非 null — onWorkOrderCompleted の
+    // 終端工程集計の前提を守る
+    const terminal = ctx.steps[1];
+    expect(terminal.outputSuccess).not.toBeNull();
   });
 });
 

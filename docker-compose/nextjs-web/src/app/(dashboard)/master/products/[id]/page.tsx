@@ -7,6 +7,7 @@ import { fetchAuditEntries } from "@/lib/audit";
 import { prisma } from "@/lib/db";
 import { formatPriceListNumber, formatProductNumber } from "@/lib/doc-number";
 import { type LocalizedText, localized } from "@/lib/format";
+import { listProductRoutes } from "@/lib/product-routes";
 import { getProductTypes } from "@/lib/product-settings";
 import { PRODUCT_TYPE_SPEC_KEY } from "@/lib/product-types";
 
@@ -21,7 +22,7 @@ export default async function MasterProductsDetailPage({
   const { id: idParam } = await params;
   const id = Number(idParam);
   if (!Number.isInteger(id)) notFound();
-  const [r, auditEntries] = await Promise.all([
+  const [r, auditEntries, routes] = await Promise.all([
     prisma.product.findUnique({
       where: { id },
       include: {
@@ -36,6 +37,7 @@ export default async function MasterProductsDetailPage({
       },
     }),
     fetchAuditEntries("products", String(id)),
+    listProductRoutes(id),
   ]);
   if (!r) notFound();
 
@@ -88,5 +90,11 @@ export default async function MasterProductsDetailPage({
     ),
   };
 
-  return <ProductDetail auditEntries={auditEntries} record={record} />;
+  return (
+    <ProductDetail
+      auditEntries={auditEntries}
+      record={record}
+      routes={routes}
+    />
+  );
 }

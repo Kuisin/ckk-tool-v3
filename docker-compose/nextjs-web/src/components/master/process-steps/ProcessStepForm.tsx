@@ -43,6 +43,7 @@ import {
   DEPENDENCY_RELATION_OPTIONS,
   PROCESS_CATEGORY_OPTIONS,
   PROCESS_EXECUTION_OPTIONS,
+  QUANTITY_TRACKING_OPTIONS,
 } from "@/lib/enum-labels";
 import { zodResolver } from "@/lib/form";
 
@@ -94,6 +95,7 @@ const processStepSchema = z
     isInspection: z.boolean(),
     isApprovalStep: z.boolean(),
     approvalMinRank: z.string(),
+    quantityTracking: z.enum(["NONE", "FLOW", "INSPECTION"]),
     sortOrder: z.number().int("表示順は整数で入力してください"),
     isActive: z.boolean(),
     notes: z.string(),
@@ -126,6 +128,7 @@ export interface ProcessStepFormInitial {
   isInspection: boolean;
   isApprovalStep: boolean;
   approvalMinRank: string;
+  quantityTracking: string;
   sortOrder: number;
   isActive: boolean;
   notes: string;
@@ -179,6 +182,11 @@ export function ProcessStepForm({
       isInspection: initial?.isInspection ?? false,
       isApprovalStep: initial?.isApprovalStep ?? false,
       approvalMinRank: initial?.approvalMinRank ?? "",
+      quantityTracking:
+        initial?.quantityTracking === "NONE" ||
+        initial?.quantityTracking === "INSPECTION"
+          ? initial.quantityTracking
+          : "FLOW",
       sortOrder: initial?.sortOrder ?? 0,
       isActive: initial?.isActive ?? true,
       notes: initial?.notes ?? "",
@@ -237,6 +245,7 @@ export function ProcessStepForm({
       isInspection: values.isInspection,
       isApprovalStep: values.isApprovalStep,
       approvalMinRank: values.approvalMinRank,
+      quantityTracking: values.quantityTracking,
       sortOrder: values.sortOrder,
       isActive: values.isActive,
       notes: values.notes,
@@ -408,6 +417,13 @@ export function ProcessStepForm({
             withAsterisk
             {...form.getInputProps("executionLocation")}
           />
+          <Select
+            allowDeselect={false}
+            data={QUANTITY_TRACKING_OPTIONS}
+            description="工程実行時の数量入力。なし = 記録せず通過数をそのまま次工程へ"
+            label="数量管理"
+            {...form.getInputProps("quantityTracking")}
+          />
         </SimpleGrid>
         <Stack gap="xs" mt="sm">
           <Switch
@@ -418,6 +434,19 @@ export function ProcessStepForm({
           <Switch
             label="検査工程"
             {...form.getInputProps("isInspection", { type: "checkbox" })}
+            onChange={(event) => {
+              const checked = event.currentTarget.checked;
+              form.setFieldValue("isInspection", checked);
+              // 検査工程トグルに合わせて数量管理モードを提案（手動変更可）。
+              if (checked && form.values.quantityTracking === "FLOW") {
+                form.setFieldValue("quantityTracking", "INSPECTION");
+              } else if (
+                !checked &&
+                form.values.quantityTracking === "INSPECTION"
+              ) {
+                form.setFieldValue("quantityTracking", "FLOW");
+              }
+            }}
           />
           <Switch
             label="検査承認工程"

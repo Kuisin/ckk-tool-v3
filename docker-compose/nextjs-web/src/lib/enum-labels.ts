@@ -85,6 +85,17 @@ export const PROCESS_EXECUTION_OPTIONS = Object.entries(
   PROCESS_EXECUTION_LABEL,
 ).map(([value, label]) => ({ value, label }));
 
+/** app.QUANTITY_TRACKING（工程の数量管理モード） */
+export const QUANTITY_TRACKING_LABEL: Record<string, string> = {
+  NONE: "なし（記録しない）",
+  FLOW: "数量管理（受入・良品・不良）",
+  INSPECTION: "検査（検査数・合格・不合格）",
+};
+
+export const QUANTITY_TRACKING_OPTIONS = Object.entries(
+  QUANTITY_TRACKING_LABEL,
+).map(([value, label]) => ({ value, label }));
+
 /** app.DEPENDENCY_RELATION（工程依存の結合） */
 export const DEPENDENCY_RELATION_LABEL: Record<string, string> = {
   AND: "AND（すべて）",

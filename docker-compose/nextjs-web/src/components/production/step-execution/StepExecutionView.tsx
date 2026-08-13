@@ -29,6 +29,7 @@ import { notifications } from "@mantine/notifications";
 import {
   IconArrowBackUp,
   IconCalendar,
+  IconCheck,
   IconLock,
   IconPlayerPlay,
 } from "@tabler/icons-react";
@@ -37,6 +38,7 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import {
   abortStep,
+  completeStep,
   rollbackStep,
   saveOutsourceDates,
   startStep,
@@ -46,6 +48,7 @@ import {
   InspectionApprovalPanel,
   InspectionRecordForm,
 } from "@/components/production/InspectionRecordForm";
+import { StepPlanActualPanel } from "@/components/production/StepPlanActualPanel";
 import { StepQuantityForm } from "@/components/production/StepQuantityForm";
 import { PrimaryButton } from "@/components/ui/buttons";
 import { DocNumber } from "@/components/ui/DocNumber";
@@ -53,6 +56,7 @@ import { FieldValue } from "@/components/ui/FieldValue";
 import { ModalShell } from "@/components/ui/modals";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { formatDateTime } from "@/lib/format";
+import { QUANTITY_LABELS } from "@/lib/workflow-core";
 import type { StepExecutionData } from "./model";
 
 const BASE_PATH = "/production/work-orders";
@@ -83,6 +87,7 @@ export function StepExecutionView({ data }: { data: StepExecutionData }) {
   );
 
   const isOutsource = step.executionLocation === "OUTSOURCE";
+  const qtyLabels = QUANTITY_LABELS[step.quantityTracking];
   const lockedByOther =
     step.sessionLockedBy != null && step.sessionLockedBy !== data.actorId;
   const woExecutable =
@@ -115,6 +120,14 @@ export function StepExecutionView({ data }: { data: StepExecutionData }) {
     startTransition(async () => {
       const result = await startStep(workOrderNumber, step.id);
       notifyResult(result, "工程を開始しました", "工程の開始に失敗しました");
+    });
+  };
+
+  /** 数量管理なし（NONE）工程の完了 — 数量はサーバーがパススルー生成する。 */
+  const handleCompleteWithoutQuantities = () => {
+    startTransition(async () => {
+      const result = await completeStep(workOrderNumber, step.id, null);
+      notifyResult(result, "工程を完了しました", "工程の完了に失敗しました");
     });
   };
 
@@ -259,36 +272,81 @@ export function StepExecutionView({ data }: { data: StepExecutionData }) {
           </Alert>
         ))}
 
-      {/* ── IN_PROGRESS: 数量・不良入力 ── */}
-      {step.status === "IN_PROGRESS" && (
-        <StepQuantityForm
-          defaultInputQuantity={
-            step.inputQuantity ?? data.expectedInputQuantity
-          }
-          disabled={!canOperate}
-          stepId={step.id}
-          workOrderNumber={workOrderNumber}
-        />
-      )}
+      {/* ── IN_PROGRESS: 数量・不良入力（NONE は記録なしで完了） ── */}
+      {step.status === "IN_PROGRESS" &&
+        (step.quantityTracking === "NONE" ? (
+          <Paper p="lg" radius="md" withBorder>
+            <Stack align="center" gap="md">
+              <Text size="sm">
+                この工程は数量記録なしで完了します（通過数{" "}
+                {step.inputQuantity ?? data.expectedInputQuantity ?? "—"}）
+              </Text>
+              <Button
+                color="green"
+                disabled={!canOperate}
+                leftSection={<IconCheck size={20} />}
+                loading={isPending}
+                onClick={handleCompleteWithoutQuantities}
+                size="lg"
+              >
+                工程完了
+              </Button>
+            </Stack>
+          </Paper>
+        ) : (
+          <StepQuantityForm
+            defaultInputQuantity={
+              step.inputQuantity ?? data.expectedInputQuantity
+            }
+            disabled={!canOperate}
+            mode={step.quantityTracking}
+            stepId={step.id}
+            workOrderNumber={workOrderNumber}
+          />
+        ))}
 
       {/* ── COMPLETED: 数量サマリ（読み取り専用） ── */}
-      {step.status === "COMPLETED" && (
-        <Paper p="lg" radius="md" withBorder>
-          <Stack gap="md">
-            <Title order={4}>数量・不良（記録済み）</Title>
-            <SimpleGrid cols={{ base: 2, sm: 5 }} spacing="md">
-              <FieldValue label="受入数" value={step.inputQuantity} />
-              <FieldValue label="良品数" value={step.outputSuccessQuantity} />
-              <FieldValue
-                label="半製品"
-                value={step.outputDefectSemiFinished}
-              />
-              <FieldValue label="廃棄" value={step.outputDefectScrap} />
-              <FieldValue label="手直し" value={step.outputDefectRework} />
-            </SimpleGrid>
-          </Stack>
-        </Paper>
-      )}
+      {step.status === "COMPLETED" &&
+        (step.quantityTracking === "NONE" ? (
+          <Paper p="lg" radius="md" withBorder>
+            <Stack gap="md">
+              <Title order={4}>数量（記録なし・パススルー）</Title>
+              <FieldValue label="通過数" value={step.inputQuantity} />
+            </Stack>
+          </Paper>
+        ) : (
+          <Paper p="lg" radius="md" withBorder>
+            <Stack gap="md">
+              <Title order={4}>
+                {step.quantityTracking === "INSPECTION"
+                  ? "検査数・合否（記録済み）"
+                  : "数量・不良（記録済み）"}
+              </Title>
+              <SimpleGrid cols={{ base: 2, sm: 5 }} spacing="md">
+                <FieldValue
+                  label={qtyLabels.input}
+                  value={step.inputQuantity}
+                />
+                <FieldValue
+                  label={qtyLabels.success}
+                  value={step.outputSuccessQuantity}
+                />
+                <FieldValue
+                  label={qtyLabels.semi}
+                  value={step.outputDefectSemiFinished}
+                />
+                <FieldValue
+                  label={qtyLabels.scrap}
+                  value={step.outputDefectScrap}
+                />
+                <FieldValue
+                  label={qtyLabels.rework}
+                  value={step.outputDefectRework}
+                />
+              </SimpleGrid>
+            </Stack>
+          </Paper>
+        ))}
 
       {/* ── CANCELLED ── */}
       {step.status === "CANCELLED" && (
@@ -317,6 +375,17 @@ export function StepExecutionView({ data }: { data: StepExecutionData }) {
           />
         )
       )}
+
+      {/* ── 作業計画 / 実績（分割記録・担当者・日付/時刻） ── */}
+      <StepPlanActualPanel
+        actuals={data.actuals}
+        canOperate={canOperate}
+        expectedInputQuantity={step.inputQuantity ?? data.expectedInputQuantity}
+        plans={data.plans}
+        stepId={step.id}
+        stepStatus={step.status}
+        workOrderNumber={workOrderNumber}
+      />
 
       {/* ── 不良記録（§12.6 任意記録） ── */}
       <DefectRecordForm
