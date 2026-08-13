@@ -20,6 +20,7 @@ import {
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import { IconPrinter, IconQrcode, IconSearch } from "@tabler/icons-react";
+import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import {
   assignCard,
@@ -42,21 +43,65 @@ import { ListShell } from "@/components/ui/shells";
 import { useUrlSelectState, useUrlStringState } from "@/hooks/useUrlState";
 import { useIsMobile } from "@/hooks/useViewport";
 import { formatCode } from "@/lib/crockford";
-import { formatDateTime } from "@/lib/format";
+import { formatDate, formatDateTime } from "@/lib/format";
 import type { KioskCardRow, KioskUserOption } from "@/lib/kiosk-admin";
 import type { ActionResult } from "@/lib/server-action";
 
 const PRINT_PDF_PATH = "/api/pdf/kiosk-cards";
 
 /** カード ID の表示: 前半 8 文字をマスクし末尾 8 文字のみ見せる。 */
-function maskCardId(id: string): string {
+export function maskCardId(id: string): string {
   return `****-****-${formatCode(id.slice(8))}`;
 }
 
 /** 印刷 PDF を新規タブで開く（ブラウザの PDF ビューアから印刷/保存）。 */
-function openPrintSheet(ids: string[]) {
+export function openPrintSheet(ids: string[]) {
   const url = `${PRINT_PDF_PATH}?ids=${encodeURIComponent(ids.join(","))}`;
   window.open(url, "_blank", "noopener,noreferrer");
+}
+
+// ── 有効期間（テンポラリカード） ─────────────────────────────────────────────
+
+export type CardValidity = "PERMANENT" | "ACTIVE" | "NOT_YET" | "EXPIRED";
+
+/** 有効期間の現在判定（無期限 / 有効 / 開始前 / 期限切れ）。 */
+export function resolveCardValidity(
+  now: number,
+  r: Pick<KioskCardRow, "validFrom" | "validUntil">,
+): CardValidity {
+  if (!r.validFrom && !r.validUntil) return "PERMANENT";
+  if (r.validFrom && now < new Date(r.validFrom).getTime()) return "NOT_YET";
+  if (r.validUntil && now > new Date(r.validUntil).getTime()) return "EXPIRED";
+  return "ACTIVE";
+}
+
+/** 有効期間の表示（yyyy/MM/dd 〜 yyyy/MM/dd。無期限は「無期限」）。 */
+export function formatValidityRange(
+  r: Pick<KioskCardRow, "validFrom" | "validUntil">,
+): string {
+  if (!r.validFrom && !r.validUntil) return "無期限";
+  const from = r.validFrom ? formatDate(r.validFrom) : "";
+  const until = r.validUntil ? formatDate(r.validUntil) : "";
+  return `${from} 〜 ${until}`;
+}
+
+/** 期間外のときだけ出す警告バッジ（期間内・無期限は何も出さない）。 */
+export function ValidityBadge({ validity }: { validity: CardValidity }) {
+  if (validity === "EXPIRED") {
+    return (
+      <Badge color="red" variant="light">
+        期限切れ
+      </Badge>
+    );
+  }
+  if (validity === "NOT_YET") {
+    return (
+      <Badge color="yellow" variant="light">
+        開始前
+      </Badge>
+    );
+  }
+  return null;
 }
 
 export function KioskCardsTable({
@@ -68,6 +113,8 @@ export function KioskCardsTable({
 }) {
   const [isPending, startTransition] = useTransition();
   const isMobile = useIsMobile();
+  const router = useRouter();
+  const now = Date.now();
 
   const [search, setSearch] = useUrlStringState("q");
   const [status, setStatus] = useUrlSelectState("status");
@@ -242,6 +289,24 @@ export function KioskCardsTable({
       ),
     },
     {
+      key: "validity",
+      header: "有効期間",
+      width: 200,
+      sortable: true,
+      render: (r) => (
+        <Group gap={4} wrap="nowrap">
+          <Text
+            c={r.validFrom || r.validUntil ? undefined : "dimmed"}
+            size="sm"
+          >
+            {formatValidityRange(r)}
+          </Text>
+          <ValidityBadge validity={resolveCardValidity(now, r)} />
+        </Group>
+      ),
+      sortValue: (r) => r.validUntil ?? "9999",
+    },
+    {
       key: "lastUsedAt",
       header: "最終使用",
       width: 150,
@@ -388,6 +453,7 @@ export function KioskCardsTable({
         emptyIcon={<IconQrcode size={28} />}
         emptyMessage="QRカードがありません"
         getRowId={(r) => r.id}
+        onRowClick={(r) => router.push(`/settings/kiosk-cards/${r.id}`)}
         renderCard={(r) => (
           <Stack gap={3} style={{ minWidth: 0 }}>
             <Text c="dimmed" ff="mono" size="xs">
@@ -406,7 +472,13 @@ export function KioskCardsTable({
                   ロック中
                 </Badge>
               )}
+              <ValidityBadge validity={resolveCardValidity(now, r)} />
             </Group>
+            {(r.validFrom || r.validUntil) && (
+              <Text c="dimmed" size="xs">
+                有効期間 {formatValidityRange(r)}
+              </Text>
+            )}
             <Group gap="md" mt={2}>
               <Text c="dimmed" size="xs">
                 最終使用 {r.lastUsedAt ? formatDateTime(r.lastUsedAt) : "—"}
