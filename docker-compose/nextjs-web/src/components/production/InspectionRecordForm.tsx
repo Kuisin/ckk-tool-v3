@@ -3,7 +3,8 @@
 /**
  * InspectionRecordForm — 検査記録の入力・表示 (design.md §12.5)。
  *
- * タブレット最優先（size="lg"、§20.1）。指示書に紐付く検査表テンプレート
+ * コンパクト表示（テーマ既定 size="sm" — 現場タブレットはキオスク側）。
+ * 指示書に紐付く検査表テンプレート
  * ごとに 検査項目 / 許容値 / 実測値 / 合否（SegmentedControl 合格・不合格）の
  * 表を出し、保存で InspectionRecord（全合格 = PASS / それ以外 = FAIL）+
  * 項目を作成する。既存記録は読み取り専用で一覧表示。
@@ -177,7 +178,7 @@ export function InspectionRecordForm({
   };
 
   return (
-    <Paper p="lg" radius="md" withBorder>
+    <Paper p="md" radius="md" withBorder>
       <Stack gap="md">
         <Title order={4}>検査記録</Title>
 
@@ -232,7 +233,6 @@ export function InspectionRecordForm({
                                 })
                               }
                               placeholder="実測値"
-                              size="lg"
                               value={entry.measuredValue}
                             />
                           </Table.Td>
@@ -247,7 +247,6 @@ export function InspectionRecordForm({
                                   isPass: v as "PASS" | "FAIL",
                                 })
                               }
-                              size="lg"
                               value={entry.isPass}
                             />
                           </Table.Td>
@@ -261,7 +260,6 @@ export function InspectionRecordForm({
                 <PrimaryButton
                   loading={isPending}
                   onClick={() => handleSave(template)}
-                  size="lg"
                 >
                   検査記録を保存
                 </PrimaryButton>
@@ -321,7 +319,7 @@ export function InspectionApprovalPanel({
   };
 
   return (
-    <Paper p="lg" radius="md" withBorder>
+    <Paper p="md" radius="md" withBorder>
       <Stack gap="md">
         <Title order={4}>検査承認</Title>
         {records.length === 0 ? (
@@ -339,7 +337,6 @@ export function InspectionApprovalPanel({
                   <ApproveButton
                     loading={isPending}
                     onClick={() => handleApprove(r)}
-                    size="lg"
                   />
                 )}
               </Group>

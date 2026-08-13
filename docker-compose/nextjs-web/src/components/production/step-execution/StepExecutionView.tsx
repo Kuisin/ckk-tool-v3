@@ -3,7 +3,8 @@
 /**
  * StepExecutionView — 工程実行画面 (design.md §12.3 / §20.1)。
  *
- * タブレット最優先: すべての操作要素は size="lg"（44px タッチターゲット）。
+ * スプリットパネルの右ペイン向けにコンパクト表示（テーマ既定 size="sm"）。
+ * 現場のタブレット操作はキオスク（nextjs-kiosk /steps）が担う。
  * 構成: 工程アイデンティティ Paper → セッションロック Alert →
  * [PENDING] 開始可否 + 工程開始 → [IN_PROGRESS] 数量入力 + 検査記録 +
  * 不良記録 + 中断（巻き戻し）→ [COMPLETED] 数量サマリ + 巻き戻し。
@@ -179,12 +180,12 @@ export function StepExecutionView({ data }: { data: StepExecutionData }) {
   return (
     <Stack gap="md">
       {/* ── 工程アイデンティティ ── */}
-      <Paper p="lg" radius="md" withBorder>
+      <Paper p="md" radius="md" withBorder>
         <Stack gap="xs">
           <Group justify="space-between" wrap="wrap">
             <Group gap="sm" wrap="wrap">
-              <Title order={3}>{step.name}</Title>
-              <StatusBadge entity="Step" size="lg" status={step.status} />
+              <Title order={4}>{step.name}</Title>
+              <StatusBadge entity="Step" status={step.status} />
               <Badge
                 color={isOutsource ? "orange" : "gray"}
                 size="sm"
@@ -254,10 +255,9 @@ export function StepExecutionView({ data }: { data: StepExecutionData }) {
           <Group justify="center" mt="md">
             <Button
               color="blue"
-              leftSection={<IconPlayerPlay size={20} />}
+              leftSection={<IconPlayerPlay size={16} />}
               loading={isPending}
               onClick={handleStart}
-              size="lg"
             >
               工程開始
             </Button>
@@ -275,7 +275,7 @@ export function StepExecutionView({ data }: { data: StepExecutionData }) {
       {/* ── IN_PROGRESS: 数量・不良入力（NONE は記録なしで完了） ── */}
       {step.status === "IN_PROGRESS" &&
         (step.quantityTracking === "NONE" ? (
-          <Paper p="lg" radius="md" withBorder>
+          <Paper p="md" radius="md" withBorder>
             <Stack align="center" gap="md">
               <Text size="sm">
                 この工程は数量記録なしで完了します（通過数{" "}
@@ -284,10 +284,9 @@ export function StepExecutionView({ data }: { data: StepExecutionData }) {
               <Button
                 color="green"
                 disabled={!canOperate}
-                leftSection={<IconCheck size={20} />}
+                leftSection={<IconCheck size={16} />}
                 loading={isPending}
                 onClick={handleCompleteWithoutQuantities}
-                size="lg"
               >
                 工程完了
               </Button>
@@ -308,14 +307,14 @@ export function StepExecutionView({ data }: { data: StepExecutionData }) {
       {/* ── COMPLETED: 数量サマリ（読み取り専用） ── */}
       {step.status === "COMPLETED" &&
         (step.quantityTracking === "NONE" ? (
-          <Paper p="lg" radius="md" withBorder>
+          <Paper p="md" radius="md" withBorder>
             <Stack gap="md">
-              <Title order={4}>数量（記録なし・パススルー）</Title>
+              <Title order={5}>数量（記録なし・パススルー）</Title>
               <FieldValue label="通過数" value={step.inputQuantity} />
             </Stack>
           </Paper>
         ) : (
-          <Paper p="lg" radius="md" withBorder>
+          <Paper p="md" radius="md" withBorder>
             <Stack gap="md">
               <Title order={4}>
                 {step.quantityTracking === "INSPECTION"
@@ -398,9 +397,9 @@ export function StepExecutionView({ data }: { data: StepExecutionData }) {
 
       {/* ── 外注日程 ── */}
       {isOutsource && (
-        <Paper p="lg" radius="md" withBorder>
+        <Paper p="md" radius="md" withBorder>
           <Stack gap="md">
-            <Title order={4}>外注日程</Title>
+            <Title order={5}>外注日程</Title>
             <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="md">
               <DatePickerInput
                 clearable
@@ -409,7 +408,6 @@ export function StepExecutionView({ data }: { data: StepExecutionData }) {
                 leftSection={<IconCalendar size={16} />}
                 onChange={setRequestedAt}
                 placeholder="日付を選択"
-                size="lg"
                 value={requestedAt}
                 valueFormat="YYYY/MM/DD"
               />
@@ -420,7 +418,6 @@ export function StepExecutionView({ data }: { data: StepExecutionData }) {
                 leftSection={<IconCalendar size={16} />}
                 onChange={setExpectedAt}
                 placeholder="日付を選択"
-                size="lg"
                 value={expectedAt}
                 valueFormat="YYYY/MM/DD"
               />
@@ -431,7 +428,6 @@ export function StepExecutionView({ data }: { data: StepExecutionData }) {
                 leftSection={<IconCalendar size={16} />}
                 onChange={setReceivedAt}
                 placeholder="日付を選択"
-                size="lg"
                 value={receivedAt}
                 valueFormat="YYYY/MM/DD"
               />
@@ -444,7 +440,6 @@ export function StepExecutionView({ data }: { data: StepExecutionData }) {
                   setOutsourceCost(typeof v === "number" ? v : "")
                 }
                 prefix="¥"
-                size="lg"
                 thousandSeparator=","
                 value={outsourceCost}
               />
@@ -454,7 +449,6 @@ export function StepExecutionView({ data }: { data: StepExecutionData }) {
                 <PrimaryButton
                   loading={isPending}
                   onClick={handleSaveOutsourceDates}
-                  size="lg"
                 >
                   外注日程を保存
                 </PrimaryButton>
@@ -470,7 +464,6 @@ export function StepExecutionView({ data }: { data: StepExecutionData }) {
           <Button
             color="red"
             onClick={() => setReasonMode("abort")}
-            size="lg"
             variant="outline"
           >
             中断（巻き戻し）
@@ -481,9 +474,8 @@ export function StepExecutionView({ data }: { data: StepExecutionData }) {
         <Group justify="center" mt="md">
           <Button
             color="orange"
-            leftSection={<IconArrowBackUp size={20} />}
+            leftSection={<IconArrowBackUp size={16} />}
             onClick={() => setReasonMode("rollback")}
-            size="lg"
             variant="outline"
           >
             巻き戻し
@@ -517,7 +509,6 @@ export function StepExecutionView({ data }: { data: StepExecutionData }) {
             label="理由"
             minRows={3}
             onChange={(e) => setReason(e.currentTarget.value)}
-            size="lg"
             value={reason}
             withAsterisk
           />

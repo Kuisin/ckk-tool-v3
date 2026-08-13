@@ -3,7 +3,8 @@
 /**
  * DefectRecordForm — 不良記録（任意）の入力・表示 (design.md §12.6)。
  *
- * タブレット最優先（size="lg"、§20.1）。不良種類 Select + 内容 Textarea の
+ * コンパクト表示（テーマ既定 size="sm" — 現場タブレットはキオスク側）。
+ * 不良種類 Select + 内容 Textarea の
  * 行を「追加」で増やし、まとめて saveDefectRecords へ渡す。
  * 既存記録は読み取り専用で一覧表示。
  */
@@ -111,7 +112,7 @@ export function DefectRecordForm({
   };
 
   return (
-    <Paper p="lg" radius="md" withBorder>
+    <Paper p="md" radius="md" withBorder>
       <Stack gap="md">
         <Title order={4}>不良記録（任意）</Title>
 
@@ -146,7 +147,6 @@ export function DefectRecordForm({
                   onChange={(v) => updateRow(row.key, { defectTypeId: v })}
                   placeholder="不良種類"
                   searchable
-                  size="lg"
                   value={row.defectTypeId}
                   w={220}
                 />
@@ -158,7 +158,6 @@ export function DefectRecordForm({
                     updateRow(row.key, { description: e.currentTarget.value })
                   }
                   placeholder="不良内容"
-                  size="lg"
                   style={{ flex: 1 }}
                   value={row.description}
                 />
@@ -167,7 +166,6 @@ export function DefectRecordForm({
                   color="red"
                   mt={8}
                   onClick={() => removeRow(row.key)}
-                  size="lg"
                   variant="subtle"
                 >
                   <IconTrash size={18} />
@@ -178,16 +176,11 @@ export function DefectRecordForm({
               <GhostButton
                 leftSection={<IconPlus size={16} />}
                 onClick={addRow}
-                size="lg"
               >
                 追加
               </GhostButton>
               {rows.length > 0 && (
-                <PrimaryButton
-                  loading={isPending}
-                  onClick={handleSave}
-                  size="lg"
-                >
+                <PrimaryButton loading={isPending} onClick={handleSave}>
                   不良記録を保存
                 </PrimaryButton>
               )}
