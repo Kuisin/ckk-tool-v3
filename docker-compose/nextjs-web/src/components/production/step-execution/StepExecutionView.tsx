@@ -216,6 +216,11 @@ export function StepExecutionView({ data }: { data: StepExecutionData }) {
             <Text c="dimmed" size="sm">
               予定数量: {data.plannedQuantity}
             </Text>
+            {step.plannedWorkHours != null && (
+              <Text c="dimmed" size="sm">
+                予定作業時間: {step.plannedWorkHours} h
+              </Text>
+            )}
             {step.startedAt && (
               <Text c="dimmed" size="sm">
                 開始: {formatDateTime(step.startedAt)}

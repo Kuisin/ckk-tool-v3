@@ -37,6 +37,7 @@ export const zh: KioskMessages = {
       inputRecorded: (n: number) => `接收 ${n} 支`,
       elapsed: (t: string) => `作业 ${t}`,
       elapsedLabel: "作业",
+      plannedHours: (h: number) => `计划 ${h}h`,
     },
     state: {
       startable: "可开始",

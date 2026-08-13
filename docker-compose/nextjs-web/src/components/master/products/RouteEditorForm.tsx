@@ -86,6 +86,7 @@ export function RouteEditorForm({
           executionLocation: s.executionLocation,
           factoryId: s.factoryId != null ? String(s.factoryId) : null,
           supplierBpId: s.supplierBpId,
+          workHours: s.workHours,
         };
       }
       return map;
@@ -125,6 +126,7 @@ export function RouteEditorForm({
         executionLocation: s.executionLocation,
         factoryId: s.factoryId,
         supplierBpId: s.supplierBpId,
+        workHours: s.workHours,
       }),
     );
     startTransition(async () => {

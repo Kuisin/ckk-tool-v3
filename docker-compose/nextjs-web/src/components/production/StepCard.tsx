@@ -98,6 +98,11 @@ export function StepCard({
           )}
         </Group>
         <Group gap="xs" wrap="nowrap">
+          {step.plannedWorkHours != null && (
+            <Text c="dimmed" className="tabular-nums" size="xs">
+              予定 {step.plannedWorkHours}h
+            </Text>
+          )}
           {locationName && (
             <Text c="dimmed" size="xs" truncate>
               {locationName}

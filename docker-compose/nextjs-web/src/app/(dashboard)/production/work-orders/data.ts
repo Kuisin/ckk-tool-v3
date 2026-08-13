@@ -224,6 +224,8 @@ export async function fetchWorkOrder(
         ? localized(s.factory.name as LocalizedText | null)
         : null,
       supplierBpId: s.supplierBpId,
+      plannedWorkHours:
+        s.plannedWorkHours == null ? null : Number(s.plannedWorkHours),
       supplierName: s.supplierBp
         ? localized(s.supplierBp.name as LocalizedText | null)
         : null,
@@ -555,6 +557,8 @@ export async function fetchStepExecution(
       supplierName: step.supplierBp
         ? localized(step.supplierBp.name as LocalizedText | null)
         : null,
+      plannedWorkHours:
+        step.plannedWorkHours == null ? null : Number(step.plannedWorkHours),
       status: step.status,
       inputQuantity: step.inputQuantity,
       outputSuccessQuantity: step.outputSuccessQuantity,

@@ -46,6 +46,7 @@ export const ja = {
       inputRecorded: (n: number) => `受入 ${n} 本`,
       elapsed: (t: string) => `作業 ${t}`,
       elapsedLabel: "作業",
+      plannedHours: (h: number) => `予定 ${h}h`,
     },
     state: {
       startable: "開始可",

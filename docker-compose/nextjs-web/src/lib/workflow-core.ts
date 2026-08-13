@@ -26,6 +26,8 @@ export interface CatalogStep {
   isInspection: boolean;
   isApprovalStep: boolean;
   quantityTracking: QuantityTrackingMode;
+  /** 既定作業時間 (h) — ルート/指示書ビルダーの初期値（任意）。 */
+  defaultWorkHours?: number | null;
   sortOrder: number;
 }
 
