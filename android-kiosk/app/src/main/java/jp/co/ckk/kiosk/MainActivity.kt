@@ -17,6 +17,7 @@ import android.view.MotionEvent
 import android.view.WindowManager
 import android.widget.EditText
 import android.widget.Toast
+import android.webkit.GeolocationPermissions
 import android.webkit.PermissionRequest
 import android.webkit.WebChromeClient
 import android.webkit.WebResourceError
@@ -55,6 +56,10 @@ class MainActivity : ComponentActivity() {
     private lateinit var webView: WebView
     private var pendingPermissionRequest: PermissionRequest? = null
 
+    // WebView geolocation（位置報告）の許可コールバック保留
+    private var pendingGeoOrigin: String? = null
+    private var pendingGeoCallback: GeolocationPermissions.Callback? = null
+
     // オフラインモード: メインフレームの読み込み失敗で表示し、
     // BASE_URL への疎通（LAN 内解決でも可 — インターネット到達性は見ない）が
     // 回復したら自動でアプリを再読み込みする
@@ -77,6 +82,28 @@ class MainActivity : ComponentActivity() {
                 request.deny()
             }
         }
+
+    private val requestLocation =
+        registerForActivityResult(
+            ActivityResultContracts.RequestMultiplePermissions(),
+        ) { grants ->
+            val granted =
+                grants[Manifest.permission.ACCESS_FINE_LOCATION] == true ||
+                    grants[Manifest.permission.ACCESS_COARSE_LOCATION] == true
+            pendingGeoCallback?.invoke(pendingGeoOrigin, granted, false)
+            pendingGeoCallback = null
+            pendingGeoOrigin = null
+        }
+
+    private fun hasLocationPermission(): Boolean =
+        ContextCompat.checkSelfPermission(
+            this,
+            Manifest.permission.ACCESS_FINE_LOCATION,
+        ) == PackageManager.PERMISSION_GRANTED ||
+            ContextCompat.checkSelfPermission(
+                this,
+                Manifest.permission.ACCESS_COARSE_LOCATION,
+            ) == PackageManager.PERMISSION_GRANTED
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -101,6 +128,8 @@ class MainActivity : ComponentActivity() {
             mediaPlaybackRequiresUserGesture = false
             // ズーム無効（キオスク UI はタブレット前提のレイアウト）
             setSupportZoom(false)
+            // 位置報告（LocationReporter — navigator.geolocation）
+            setGeolocationEnabled(true)
         }
         webView.addJavascriptInterface(KioskBridge(), "KioskDevice")
 
@@ -142,6 +171,29 @@ class MainActivity : ComponentActivity() {
         }
 
         webView.webChromeClient = object : WebChromeClient() {
+            override fun onGeolocationPermissionsShowPrompt(
+                origin: String,
+                callback: GeolocationPermissions.Callback,
+            ) {
+                // キオスクのオリジンのみ許可。実行時権限が無ければ要求してから応答
+                if (Uri.parse(origin).host != baseHost) {
+                    callback.invoke(origin, false, false)
+                    return
+                }
+                if (hasLocationPermission()) {
+                    callback.invoke(origin, true, false)
+                    return
+                }
+                pendingGeoOrigin = origin
+                pendingGeoCallback = callback
+                requestLocation.launch(
+                    arrayOf(
+                        Manifest.permission.ACCESS_FINE_LOCATION,
+                        Manifest.permission.ACCESS_COARSE_LOCATION,
+                    ),
+                )
+            }
+
             override fun onPermissionRequest(request: PermissionRequest) {
                 val wantsCamera =
                     request.resources.contains(PermissionRequest.RESOURCE_VIDEO_CAPTURE)

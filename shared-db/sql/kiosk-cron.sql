@@ -23,6 +23,13 @@ CREATE EXTENSION IF NOT EXISTS pg_cron;
 -- 再実行時は既存ジョブを置き換える
 SELECT cron.unschedule(jobid) FROM cron.job WHERE jobname = 'kiosk_offline_sweep';
 SELECT cron.unschedule(jobid) FROM cron.job WHERE jobname = 'kiosk_stale_session_sweep';
+SELECT cron.unschedule(jobid) FROM cron.job WHERE jobname = 'kiosk_location_retention';
+
+-- 位置ログの保持期間: 90 日（毎日 3:30 に削除。5 分間隔 × 端末数で増えるため）
+SELECT cron.schedule('kiosk_location_retention', '30 3 * * *', $job$
+  DELETE FROM app.kiosk_device_locations
+  WHERE recorded_at < now() - interval '90 days'
+$job$);
 
 SELECT cron.schedule('kiosk_offline_sweep', '* * * * *', $job$
   INSERT INTO app.kiosk_device_logs (device_id, type, source)

@@ -7,6 +7,7 @@ import type { Metadata, Viewport } from "next";
 import { Noto_Sans_JP } from "next/font/google";
 import { DevicePresence } from "@/components/DevicePresence";
 import { KioskShell } from "@/components/KioskShell";
+import { LocationReporter } from "@/components/LocationReporter";
 import { getDevice } from "@/lib/kiosk-auth";
 import { Providers } from "./providers";
 
@@ -50,8 +51,9 @@ export default async function RootLayout({
     <html lang="ja" {...mantineHtmlProps} className={notoSansJp.variable}>
       <body>
         <Providers>
-          {/* 登録済み端末はログイン前でも WS 接続を保持（プレゼンス） */}
+          {/* 登録済み端末はログイン前でも WS 接続を保持（プレゼンス）+ GPS 報告 */}
           {registered && <DevicePresence />}
+          {registered && <LocationReporter />}
           <KioskShell deviceName={deviceName} registered={registered}>
             {children}
           </KioskShell>
