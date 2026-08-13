@@ -34,10 +34,7 @@ import { notifications } from "@mantine/notifications";
 import {
   IconCamera,
   IconDeviceTablet,
-  IconEye,
-  IconEyeOff,
   IconMap2,
-  IconRefresh,
   IconScan,
   IconSearch,
 } from "@tabler/icons-react";
@@ -51,7 +48,6 @@ import {
   disableDevice,
   enableDevice,
   linkDeviceToProfile,
-  regenerateSettingsCode,
   resetDeviceKey,
   revokeDevice,
   unlinkDevice,
