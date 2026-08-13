@@ -3,92 +3,104 @@
 /**
  * StepQuantityForm — 工程の数量・不良入力 (design.md §12.3)。
  *
- * スプリットパネルの右ペイン向けにコンパクト表示（テーマ既定 size="sm"）。
- * 現場のタブレット操作はキオスク（nextjs-kiosk /steps）が担う。
- * 受入数（既定 = 想定受入）/ 良品数 / 不良内訳（半製品・廃棄・手直し）を入力し、
- * validateQuantities（純関数）でライブに保存則（良品 + 不良 = 受入）を警告する。
- * 「工程完了」で completeStep アクションを呼ぶ（サーバー側でも再検証される）。
+ * 受入数は開始時に確定した値で**固定表示**（完了時は編集不可）。不良は
+ * **1 本のリスト**で入力し、各行に 種別（半製品/廃棄/手直し）・理由（任意）・数
+ * を持つ。区分ごとの合計はこのリストの合計として導出し、良品数 = 受入 − 総不良
+ * も自動計算する（キオスクと同一モデル）。在庫連携は区分合計をそのまま使うので
+ * 不変。「工程完了」で completeStep アクションを呼ぶ（サーバー側でも再検証）。
  */
 
 import {
+  ActionIcon,
   Alert,
+  Badge,
   Button,
   Group,
-  List,
   NumberInput,
   Paper,
+  Select,
+  SimpleGrid,
   Stack,
+  Text,
   Title,
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
-import { IconAlertTriangle, IconCheck } from "@tabler/icons-react";
+import {
+  IconAlertTriangle,
+  IconCheck,
+  IconPlus,
+  IconTrash,
+} from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { completeStep } from "@/app/(dashboard)/production/work-orders/[id]/steps/[stepId]/actions";
+import type { SelectOption } from "@/components/production/step-execution/model";
+import {
+  checkDefectList,
+  cleanReasonEntries,
+  type DefectDisposition,
+  type DefectReasonEntry,
+  defectListTotal,
+  deriveSuccessFromList,
+  dispositionTotals,
+  quantitiesFromList,
+} from "@/lib/step-defects";
 import {
   QUANTITY_LABELS,
   type QuantityTrackingMode,
-  validateQuantities,
 } from "@/lib/workflow-core";
-
-const num = (v: number | string) =>
-  typeof v === "number" ? v : Number(v) || 0;
 
 export function StepQuantityForm({
   workOrderNumber,
   stepId,
-  defaultInputQuantity,
+  inputQuantity,
+  defectTypeOptions,
   disabled,
   mode = "FLOW",
 }: {
   workOrderNumber: number;
   stepId: string;
-  /** 受入数の既定値（前工程の良品数 / Σ流入エッジ / 予定数量）。 */
-  defaultInputQuantity: number | null;
-  /** 他ユーザーのセッションロック中など、操作不可のとき true。 */
+  /** 受入数（開始時に確定した値。完了時は編集不可）。 */
+  inputQuantity: number | null;
+  /** 不良種類（理由の候補）。 */
+  defectTypeOptions: SelectOption[];
   disabled?: boolean;
-  /** 数量管理モード — INSPECTION は 検査数/合格/不合格 ラベルで表示。 */
   mode?: QuantityTrackingMode;
 }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
-  const [input, setInput] = useState<number | string>(
-    defaultInputQuantity ?? 0,
-  );
-  const [success, setSuccess] = useState<number | string>(
-    defaultInputQuantity ?? 0,
-  );
-  const [semiFinished, setSemiFinished] = useState<number | string>(0);
-  const [scrap, setScrap] = useState<number | string>(0);
-  const [rework, setRework] = useState<number | string>(0);
+  const [defects, setDefects] = useState<DefectReasonEntry[]>([]);
 
+  const input = inputQuantity ?? 0;
   const labels = QUANTITY_LABELS[mode];
+  const issue = checkDefectList(defects, input, mode);
+  const total = defectListTotal(defects);
+  const success = deriveSuccessFromList(input, defects);
+  const totals = dispositionTotals(defects);
 
-  // ライブ保存則チェック（良品 + 半製品 + 廃棄 + 手直し = 受入）
-  const issues = validateQuantities(
-    {
-      inputQuantity: num(input),
-      outputSuccess: num(success),
-      defectSemiFinished: num(semiFinished),
-      defectScrap: num(scrap),
-      defectRework: num(rework),
-    },
-    mode,
-  );
+  // 理由の候補は名称（value=label）で保持し、保存も名称文字列にする。
+  const reasonData = defectTypeOptions.map((o) => ({
+    value: o.label,
+    label: o.label,
+  }));
+
+  const setRow = (index: number, patch: Partial<DefectReasonEntry>) =>
+    setDefects((prev) =>
+      prev.map((r, i) => (i === index ? { ...r, ...patch } : r)),
+    );
 
   const handleComplete = () => {
     startTransition(async () => {
-      const result = await completeStep(workOrderNumber, stepId, {
-        inputQuantity: num(input),
-        outputSuccessQuantity: num(success),
-        outputDefectSemiFinished: num(semiFinished),
-        outputDefectScrap: num(scrap),
-        outputDefectRework: num(rework),
-      });
+      const result = await completeStep(
+        workOrderNumber,
+        stepId,
+        quantitiesFromList(input, defects),
+        cleanReasonEntries(defects),
+      );
       if (result.ok) {
         notifications.show({
           title: "工程を完了しました",
-          message: `${labels.success} ${num(success)} / ${labels.input} ${num(input)}`,
+          message: `${labels.success} ${success} / ${labels.input} ${input}`,
           color: "green",
         });
         router.refresh();
@@ -103,81 +115,167 @@ export function StepQuantityForm({
   };
 
   return (
-    <Paper p="md" radius="md" withBorder>
+    <Paper p="lg" radius="md" withBorder>
       <Stack gap="md">
         <Title order={4}>
           {mode === "INSPECTION" ? "検査数・合否" : "数量・不良"}
         </Title>
-        <NumberInput
-          description={
-            mode === "INSPECTION"
-              ? "既定値は前工程の良品数（検査対象数）"
-              : "既定値は前工程の良品数（分岐工程は分岐数量）"
-          }
-          disabled={disabled}
-          label={labels.input}
-          min={0}
-          onChange={setInput}
-          value={input}
-          withAsterisk
-        />
-        <NumberInput
-          description="次工程へ渡る数量"
-          disabled={disabled}
-          label={labels.success}
-          min={0}
-          onChange={setSuccess}
-          value={success}
-          withAsterisk
-        />
-        <Group grow>
-          <NumberInput
-            description="半製品在庫へ"
-            disabled={disabled}
-            label={labels.semi}
-            min={0}
-            onChange={setSemiFinished}
-            value={semiFinished}
-          />
-          <NumberInput
-            disabled={disabled}
-            label={labels.scrap}
-            min={0}
-            onChange={setScrap}
-            value={scrap}
-          />
-          <NumberInput
-            description="手直し・追加工程へ"
-            disabled={disabled}
-            label={labels.rework}
-            min={0}
-            onChange={setRework}
-            value={rework}
-          />
+
+        {/* 受入（固定）+ 良品（自動計算）+ 総不良 */}
+        <SimpleGrid cols={{ base: 3 }} spacing="md">
+          <Paper p="sm" radius="sm" withBorder>
+            <Text c="dimmed" size="xs">
+              {labels.input}
+            </Text>
+            <Text fw={700} size="xl">
+              {input}
+            </Text>
+            <Badge color="gray" mt={4} size="xs" variant="light">
+              固定
+            </Badge>
+          </Paper>
+          <Paper p="sm" radius="sm" withBorder>
+            <Text c="dimmed" size="xs">
+              {labels.success}
+            </Text>
+            <Text c="green" fw={700} size="xl">
+              {success}
+            </Text>
+            <Badge color="green" mt={4} size="xs" variant="light">
+              自動計算
+            </Badge>
+          </Paper>
+          <Paper p="sm" radius="sm" withBorder>
+            <Text c="dimmed" size="xs">
+              総不良数
+            </Text>
+            <Text c={total > 0 ? "orange" : undefined} fw={700} size="xl">
+              {total}
+            </Text>
+          </Paper>
+        </SimpleGrid>
+
+        <Group justify="space-between">
+          <Text c="dimmed" fw={600} size="sm">
+            不良内訳
+          </Text>
+          {total > 0 && (
+            <Group gap="xs">
+              {totals.semi > 0 && (
+                <Badge color="orange" variant="light">
+                  {labels.semi} {totals.semi}
+                </Badge>
+              )}
+              {totals.scrap > 0 && (
+                <Badge color="red" variant="light">
+                  {labels.scrap} {totals.scrap}
+                </Badge>
+              )}
+              {totals.rework > 0 && (
+                <Badge color="yellow" variant="light">
+                  {labels.rework} {totals.rework}
+                </Badge>
+              )}
+            </Group>
+          )}
         </Group>
 
-        {issues.length > 0 && (
+        {defects.map((row, index) => (
+          <Group
+            align="flex-end"
+            gap="sm"
+            // biome-ignore lint/suspicious/noArrayIndexKey: 追記専用の行フォーム
+            key={index}
+            wrap="nowrap"
+          >
+            <Select
+              aria-label="種別"
+              data={[
+                { value: "SEMI", label: labels.semi },
+                { value: "SCRAP", label: labels.scrap },
+                { value: "REWORK", label: labels.rework },
+              ]}
+              disabled={disabled}
+              onChange={(v) =>
+                v && setRow(index, { type: v as DefectDisposition })
+              }
+              style={{ width: 160, flexShrink: 0 }}
+              value={row.type}
+            />
+            <Select
+              aria-label="理由"
+              clearable
+              data={reasonData}
+              disabled={disabled}
+              onChange={(v) => setRow(index, { reason: v ?? "" })}
+              placeholder="不良種類を選択"
+              searchable
+              style={{ flex: 1 }}
+              value={row.reason || null}
+            />
+            <NumberInput
+              allowDecimal={false}
+              allowNegative={false}
+              aria-label="本数"
+              disabled={disabled}
+              min={1}
+              onChange={(v) =>
+                setRow(index, {
+                  count: typeof v === "number" ? v : Number(v) || 1,
+                })
+              }
+              style={{ width: 120 }}
+              value={row.count}
+            />
+            <ActionIcon
+              aria-label="削除"
+              color="red"
+              disabled={disabled}
+              onClick={() =>
+                setDefects((prev) => prev.filter((_, i) => i !== index))
+              }
+              size={36}
+              variant="light"
+            >
+              <IconTrash size={18} />
+            </ActionIcon>
+          </Group>
+        ))}
+
+        <Button
+          disabled={disabled}
+          leftSection={<IconPlus size={18} />}
+          onClick={() =>
+            setDefects((prev) => [
+              ...prev,
+              { type: "SCRAP", reason: "", count: 1 },
+            ])
+          }
+          variant="light"
+        >
+          不良を追加
+        </Button>
+
+        {issue && (
           <Alert
             color="orange"
             icon={<IconAlertTriangle size={16} />}
-            title="数量が整合していません"
             variant="light"
           >
-            <List size="sm">
-              {issues.map((i) => (
-                <List.Item key={i.message}>{i.message}</List.Item>
-              ))}
-            </List>
+            {issue.kind === "NEGATIVE"
+              ? "数量は 0 以上の整数で入力してください"
+              : `不良の合計（${issue.sum}）が受入数（${issue.input}）を超えています`}
           </Alert>
         )}
 
         <Group justify="center" mt="sm">
           <Button
             color="green"
-            disabled={disabled || issues.length > 0}
+            disabled={disabled || issue != null}
             leftSection={<IconCheck size={20} />}
             loading={isPending}
             onClick={handleComplete}
+            size="lg"
           >
             工程完了
           </Button>

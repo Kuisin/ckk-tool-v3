@@ -61,6 +61,13 @@ export interface StepDefectRecordView {
   recordedByName: string | null;
 }
 
+/** 完了時の不良の内訳（{種別, 理由, 数}）。work_order_steps.defect_reasons 由来。 */
+export interface StepDefectReasonView {
+  type: "SEMI" | "SCRAP" | "REWORK";
+  reason: string;
+  count: number;
+}
+
 // ── 作業計画 / 実績（分割記録・担当者・日付/時刻） ───────────────────────────
 
 export interface StepPlanView {
@@ -100,6 +107,8 @@ export interface StepExecutionStepView {
   outputDefectSemiFinished: number | null;
   outputDefectScrap: number | null;
   outputDefectRework: number | null;
+  /** 完了時の不良の内訳（{種別, 理由, 数}）。 */
+  defectReasons: StepDefectReasonView[];
   sessionLockedBy: string | null;
   sessionLockedByName: string | null;
   startedAt: string | null;

@@ -294,10 +294,9 @@ export function StepExecutionView({ data }: { data: StepExecutionData }) {
           </Paper>
         ) : (
           <StepQuantityForm
-            defaultInputQuantity={
-              step.inputQuantity ?? data.expectedInputQuantity
-            }
+            defectTypeOptions={data.defectTypeOptions}
             disabled={!canOperate}
+            inputQuantity={step.inputQuantity ?? data.expectedInputQuantity}
             mode={step.quantityTracking}
             stepId={step.id}
             workOrderNumber={workOrderNumber}
@@ -343,6 +342,42 @@ export function StepExecutionView({ data }: { data: StepExecutionData }) {
                   value={step.outputDefectRework}
                 />
               </SimpleGrid>
+              {step.defectReasons.length > 0 && (
+                <Stack gap="xs">
+                  <Text c="dimmed" fw={600} size="sm">
+                    不良内訳（種別・理由・数）
+                  </Text>
+                  {step.defectReasons.map((r, i) => (
+                    <Group
+                      gap="sm"
+                      // biome-ignore lint/suspicious/noArrayIndexKey: 読み取り専用の内訳
+                      key={i}
+                      wrap="wrap"
+                    >
+                      <Badge
+                        color={
+                          r.type === "SEMI"
+                            ? "orange"
+                            : r.type === "SCRAP"
+                              ? "red"
+                              : "yellow"
+                        }
+                        variant="light"
+                      >
+                        {r.type === "SEMI"
+                          ? qtyLabels.semi
+                          : r.type === "SCRAP"
+                            ? qtyLabels.scrap
+                            : qtyLabels.rework}
+                      </Badge>
+                      <Text size="sm">{r.reason || "—"}</Text>
+                      <Text fw={600} size="sm">
+                        {r.count}
+                      </Text>
+                    </Group>
+                  ))}
+                </Stack>
+              )}
             </Stack>
           </Paper>
         ))}

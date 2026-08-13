@@ -10,22 +10,23 @@ import {
   accumulatedWorkMs,
   availableActions,
   bucketOf,
-  checkConservation,
+  checkDefectList,
   cleanReasonEntries,
   compareSteps,
-  defectTotal,
-  deriveSuccess,
+  type DefectReasonEntry,
+  defectListTotal,
+  deriveSuccessFromList,
+  dispositionTotals,
   formatElapsed,
   inspectionOutcome,
   isDefectEntryComplete,
   isReasonEntryComplete,
   missingRequiredItems,
+  quantitiesFromList,
   quantityFormDefaults,
-  reasonTotal,
   type SortableStep,
   type StepSessionState,
   stepSessionState,
-  withDerivedSuccess,
 } from "./steps-core";
 import type { StepState, WorkflowCtx } from "./workflow-core";
 
@@ -246,93 +247,95 @@ describe("quantityFormDefaults", () => {
   });
 });
 
-describe("defectTotal / deriveSuccess / withDerivedSuccess", () => {
-  const v = (over: Partial<ReturnType<typeof quantityFormDefaults>> = {}) => ({
-    ...quantityFormDefaults(100),
-    ...over,
+describe("不良リスト（{種別, 理由, 数}）", () => {
+  const list: DefectReasonEntry[] = [
+    { type: "SEMI", reason: "寸法不良", count: 3 },
+    { type: "SCRAP", reason: "キズ", count: 2 },
+    { type: "SCRAP", reason: "", count: 1 },
+    { type: "REWORK", reason: "バリ", count: 4 },
+  ];
+
+  it("dispositionTotals: 種別ごとに合計", () => {
+    expect(dispositionTotals(list)).toEqual({ semi: 3, scrap: 3, rework: 4 });
   });
 
-  it("総不良 = 区分の合計、良品 = 受入 − 総不良", () => {
-    const q = v({
-      outputDefectSemiFinished: 3,
-      outputDefectScrap: 2,
-      outputDefectRework: 1,
-    });
-    expect(defectTotal(q)).toBe(6);
-    expect(deriveSuccess(q)).toBe(94);
-    expect(withDerivedSuccess(q).outputSuccessQuantity).toBe(94);
-  });
-
-  it("不良なしなら良品 = 受入", () => {
-    expect(deriveSuccess(v())).toBe(100);
+  it("defectListTotal / deriveSuccessFromList", () => {
+    expect(defectListTotal(list)).toBe(10);
+    expect(deriveSuccessFromList(100, list)).toBe(90);
   });
 
   it("良品は負にならない（下限 0）", () => {
-    expect(deriveSuccess(v({ outputDefectScrap: 150 }))).toBe(0);
+    expect(
+      deriveSuccessFromList(5, [{ type: "SCRAP", reason: "", count: 20 }]),
+    ).toBe(0);
+  });
+
+  it("quantitiesFromList: 区分列 + 導出良品を組み立てる", () => {
+    expect(quantitiesFromList(100, list)).toEqual({
+      inputQuantity: 100,
+      outputSuccessQuantity: 90,
+      outputDefectSemiFinished: 3,
+      outputDefectScrap: 3,
+      outputDefectRework: 4,
+    });
+  });
+
+  it("isReasonEntryComplete: 種別あり + 数≥1（理由は任意）", () => {
+    expect(isReasonEntryComplete({ type: "SCRAP", reason: "", count: 2 })).toBe(
+      true,
+    );
+    expect(
+      isReasonEntryComplete({ type: "SCRAP", reason: "x", count: 0 }),
+    ).toBe(false);
+  });
+
+  it("cleanReasonEntries: 有効行のみ・reason をトリム・種別を保持", () => {
+    expect(
+      cleanReasonEntries([
+        { type: "SEMI", reason: " 寸法不良 ", count: 2 },
+        { type: "SCRAP", reason: "x", count: 0 },
+      ]),
+    ).toEqual([{ type: "SEMI", reason: "寸法不良", count: 2 }]);
   });
 });
 
-describe("checkConservation（良品は導出なので保存則は常に成立）", () => {
-  const v = (over: Partial<ReturnType<typeof quantityFormDefaults>> = {}) => ({
-    ...quantityFormDefaults(100),
-    ...over,
-  });
+describe("checkDefectList（良品は導出なので保存則は常に成立）", () => {
+  const scrap = (count: number): DefectReasonEntry[] => [
+    { type: "SCRAP", reason: "", count },
+  ];
 
   it("NONE は常に問題なし（サーバーがパススルーする）", () => {
-    expect(checkConservation(v({ outputDefectScrap: 3 }), "NONE")).toBeNull();
+    expect(checkDefectList(scrap(3), 100, "NONE")).toBeNull();
   });
 
   it("不良が受入以内なら null", () => {
-    expect(checkConservation(v(), "FLOW")).toBeNull();
-    expect(checkConservation(v({ outputDefectScrap: 2 }), "FLOW")).toBeNull();
-    expect(checkConservation(v({ outputDefectScrap: 100 }), "FLOW")).toBeNull();
+    expect(checkDefectList([], 100, "FLOW")).toBeNull();
+    expect(checkDefectList(scrap(2), 100, "FLOW")).toBeNull();
+    expect(checkDefectList(scrap(100), 100, "FLOW")).toBeNull();
   });
 
   it("不良が受入を超えれば OVER_INPUT", () => {
-    const issue = checkConservation(
-      v({ outputDefectScrap: 60, outputDefectRework: 50 }),
+    const issue = checkDefectList(
+      [
+        { type: "SCRAP", reason: "", count: 60 },
+        { type: "REWORK", reason: "", count: 50 },
+      ],
+      100,
       "FLOW",
     );
     expect(issue).toEqual({ kind: "OVER_INPUT", sum: 110, input: 100 });
   });
 
   it("負値は NEGATIVE", () => {
-    expect(checkConservation(v({ outputDefectScrap: -1 }), "FLOW")).toEqual({
+    expect(checkDefectList(scrap(-1), 100, "FLOW")).toEqual({
       kind: "NEGATIVE",
     });
   });
 
-  it("NaN も NEGATIVE 扱い（空欄の NumberInput）", () => {
-    expect(
-      checkConservation(v({ outputDefectScrap: Number.NaN }), "FLOW"),
-    ).toEqual({ kind: "NEGATIVE" });
-  });
-});
-
-describe("不良理由（{理由, 数}）", () => {
-  it("isReasonEntryComplete: 理由あり + 数≥1", () => {
-    expect(isReasonEntryComplete({ reason: "寸法不良", count: 2 })).toBe(true);
-    expect(isReasonEntryComplete({ reason: "", count: 2 })).toBe(false);
-    expect(isReasonEntryComplete({ reason: "キズ", count: 0 })).toBe(false);
-  });
-
-  it("reasonTotal: 有効行の count 合計", () => {
-    expect(
-      reasonTotal([
-        { reason: "寸法不良", count: 2 },
-        { reason: "", count: 5 },
-        { reason: "キズ", count: 3 },
-      ]),
-    ).toBe(5);
-  });
-
-  it("cleanReasonEntries: 有効行のみ・reason をトリム", () => {
-    expect(
-      cleanReasonEntries([
-        { reason: " 寸法不良 ", count: 2 },
-        { reason: "  ", count: 1 },
-      ]),
-    ).toEqual([{ reason: "寸法不良", count: 2 }]);
+  it("NaN も NEGATIVE 扱い（空欄の入力）", () => {
+    expect(checkDefectList(scrap(Number.NaN), 100, "FLOW")).toEqual({
+      kind: "NEGATIVE",
+    });
   });
 });
 

@@ -42,8 +42,9 @@ export interface StepQuantities {
   outputDefectRework: number;
 }
 
-/** 不良理由の内訳（補助記録 — defect_reasons JSON）。 */
+/** 不良の内訳（{種別, 理由, 数} — defect_reasons JSON + 区分列の権威）。 */
 export interface StepDefectReason {
+  type: "SEMI" | "SCRAP" | "REWORK";
   reason: string;
   count: number;
 }
@@ -419,23 +420,34 @@ export async function completeStepExecution(
       outputDefectRework: 0,
     };
   } else {
-    if (quantities == null) {
+    if (quantities == null && (defectReasons?.length ?? 0) === 0) {
       return fail("QUANTITY_REQUIRED", "数量を入力してください");
     }
     // 受入数は開始時に確定した値を権威とする（完了時のクライアント値は無視）。
-    // 未記録の場合のみクライアント値へフォールバック。良品数は 受入 − 不良（区分）で導出。
     const authoritativeInput =
-      stepRow.inputQuantity ?? quantities.inputQuantity;
-    const totalDefects =
-      quantities.outputDefectSemiFinished +
-      quantities.outputDefectScrap +
-      quantities.outputDefectRework;
+      stepRow.inputQuantity ?? quantities?.inputQuantity ?? 0;
+    // 区分合計（半製品/廃棄/手直し）は**不良リストから導出**して権威とする。
+    // リストが無い場合のみ quantities の区分へフォールバック（後方互換）。
+    const list = defectReasons ?? [];
+    const sumType = (t: StepDefectReason["type"]) =>
+      list.reduce((s, r) => (r.type === t ? s + r.count : s), 0);
+    const semi =
+      list.length > 0
+        ? sumType("SEMI")
+        : (quantities?.outputDefectSemiFinished ?? 0);
+    const scrap =
+      list.length > 0 ? sumType("SCRAP") : (quantities?.outputDefectScrap ?? 0);
+    const rework =
+      list.length > 0
+        ? sumType("REWORK")
+        : (quantities?.outputDefectRework ?? 0);
+    const totalDefects = semi + scrap + rework;
     persisted = {
       inputQuantity: authoritativeInput,
       outputSuccessQuantity: authoritativeInput - totalDefects,
-      outputDefectSemiFinished: quantities.outputDefectSemiFinished,
-      outputDefectScrap: quantities.outputDefectScrap,
-      outputDefectRework: quantities.outputDefectRework,
+      outputDefectSemiFinished: semi,
+      outputDefectScrap: scrap,
+      outputDefectRework: rework,
     };
     const qIssues = validateQuantities(
       {
@@ -475,13 +487,10 @@ export async function completeStepExecution(
     };
   }
 
-  // 不良理由の補助記録（{理由, 数}）— 有効行のみ。空なら列を触らない。
+  // 不良の内訳（{種別, 理由, 数}）— 有効行のみ。空なら列を触らない。
   const cleanedReasons = (defectReasons ?? [])
-    .filter(
-      (r) =>
-        r.reason.trim().length > 0 && Number.isFinite(r.count) && r.count > 0,
-    )
-    .map((r) => ({ reason: r.reason.trim(), count: r.count }));
+    .filter((r) => Number.isFinite(r.count) && r.count > 0)
+    .map((r) => ({ type: r.type, reason: r.reason.trim(), count: r.count }));
 
   const now = new Date();
   // 完了クレームは条件付き更新 — 同時完了はどちらか一方だけ成立し、

@@ -176,26 +176,6 @@ export function quantityFormDefaults(
   };
 }
 
-/** 総不良数 = 区分（半製品 + 廃棄 + 手直し）の合計。 */
-export function defectTotal(v: QuantityFormValues): number {
-  return (
-    v.outputDefectSemiFinished + v.outputDefectScrap + v.outputDefectRework
-  );
-}
-
-/**
- * 良品数（導出）= 受入数 − 総不良数。作業者は良品を直接入力せず、
- * 受入（固定）と不良区分から自動計算する。負にはしない（下限 0）。
- */
-export function deriveSuccess(v: QuantityFormValues): number {
-  return Math.max(0, v.inputQuantity - defectTotal(v));
-}
-
-/** 導出した良品数を outputSuccessQuantity に反映した値を返す（送信直前に使う）。 */
-export function withDerivedSuccess(v: QuantityFormValues): QuantityFormValues {
-  return { ...v, outputSuccessQuantity: deriveSuccess(v) };
-}
-
 // ── 検査記録・不良記録（純ロジック） ─────────────────────────────────────────
 
 export interface InspectionItemEntry {
@@ -237,35 +217,93 @@ export function isDefectEntryComplete(entry: DefectEntry): boolean {
   return entry.defectTypeId != null && entry.description.trim().length > 0;
 }
 
-// ── 不良理由（完了フォームの補助記録・{理由, 数} の JSON） ────────────────────
+// ── 不良の内訳（完了フォーム — {種別, 理由, 数} の 1 本のリスト） ────────────
+//
+// 作業者は不良を 1 行ずつ足す。各行に **種別（在庫区分）** と理由・数を持ち、
+// 区分ごとの合計（半製品/廃棄/手直し）はこのリストの合計として導出する
+// （旧: 区分ごとの数値入力 + 別の理由リスト、を 1 本化）。在庫連携は区分合計を
+// そのまま使うので不変。良品 = 受入 − 総不良（全行の合計）。
+
+/** 不良の在庫区分（在庫連携の権威。列 output_defect_* に対応）。 */
+export type DefectDisposition = "SEMI" | "SCRAP" | "REWORK";
+export const DEFECT_DISPOSITIONS: DefectDisposition[] = [
+  "SEMI",
+  "SCRAP",
+  "REWORK",
+];
 
 export interface DefectReasonEntry {
-  /** 理由（不良種類名など）。 */
+  /** 種別（半製品/廃棄/手直し）。 */
+  type: DefectDisposition;
+  /** 理由（不良種類名など・任意）。 */
   reason: string;
   /** 本数。 */
   count: number;
 }
 
-/** 理由行が保存対象か（理由が空でなく・数が 1 以上）。 */
+/** 行が有効か（種別が正当・数が 1 以上）。理由は任意。 */
 export function isReasonEntryComplete(e: DefectReasonEntry): boolean {
-  return e.reason.trim().length > 0 && Number.isFinite(e.count) && e.count > 0;
-}
-
-/** 理由の合計本数（保存対象の行のみ）。 */
-export function reasonTotal(entries: readonly DefectReasonEntry[]): number {
-  return entries.reduce(
-    (s, e) => (isReasonEntryComplete(e) ? s + e.count : s),
-    0,
+  return (
+    DEFECT_DISPOSITIONS.includes(e.type) &&
+    Number.isFinite(e.count) &&
+    e.count > 0
   );
 }
 
-/** 保存対象の理由行だけを取り出し、reason をトリムして返す。 */
+/** 区分ごとの合計（在庫列にそのまま入る）。無効行は無視。 */
+export function dispositionTotals(entries: readonly DefectReasonEntry[]): {
+  semi: number;
+  scrap: number;
+  rework: number;
+} {
+  let semi = 0;
+  let scrap = 0;
+  let rework = 0;
+  for (const e of entries) {
+    if (!isReasonEntryComplete(e)) continue;
+    if (e.type === "SEMI") semi += e.count;
+    else if (e.type === "SCRAP") scrap += e.count;
+    else rework += e.count;
+  }
+  return { semi, scrap, rework };
+}
+
+/** 総不良数 = 全区分の合計。 */
+export function defectListTotal(entries: readonly DefectReasonEntry[]): number {
+  const { semi, scrap, rework } = dispositionTotals(entries);
+  return semi + scrap + rework;
+}
+
+/** 良品数（導出）= 受入数 − 総不良数（下限 0）。 */
+export function deriveSuccessFromList(
+  inputQuantity: number,
+  entries: readonly DefectReasonEntry[],
+): number {
+  return Math.max(0, inputQuantity - defectListTotal(entries));
+}
+
+/** サーバー送信用の数量（区分列 + 導出良品）をリストから組み立てる。 */
+export function quantitiesFromList(
+  inputQuantity: number,
+  entries: readonly DefectReasonEntry[],
+): QuantityFormValues {
+  const { semi, scrap, rework } = dispositionTotals(entries);
+  return {
+    inputQuantity,
+    outputSuccessQuantity: Math.max(0, inputQuantity - semi - scrap - rework),
+    outputDefectSemiFinished: semi,
+    outputDefectScrap: scrap,
+    outputDefectRework: rework,
+  };
+}
+
+/** 保存対象の行だけを取り出し、reason をトリムして返す。 */
 export function cleanReasonEntries(
   entries: readonly DefectReasonEntry[],
 ): DefectReasonEntry[] {
   return entries
     .filter(isReasonEntryComplete)
-    .map((e) => ({ reason: e.reason.trim(), count: e.count }));
+    .map((e) => ({ type: e.type, reason: e.reason.trim(), count: e.count }));
 }
 
 export type ConservationIssue =
@@ -278,21 +316,16 @@ export type ConservationIssue =
  * 文言を持たずコードだけ返すので、i18n はコンポーネント側で行う。権威は
  * サーバー側 validateQuantities — こちらは即時フィードバック用。
  */
-export function checkConservation(
-  v: QuantityFormValues,
+export function checkDefectList(
+  entries: readonly DefectReasonEntry[],
+  inputQuantity: number,
   mode: QuantityTrackingMode,
 ): ConservationIssue | null {
   if (mode === "NONE") return null;
-  const values = [
-    v.inputQuantity,
-    v.outputDefectSemiFinished,
-    v.outputDefectScrap,
-    v.outputDefectRework,
-  ];
-  if (values.some((n) => !Number.isFinite(n) || n < 0))
+  if (entries.some((e) => !Number.isFinite(e.count) || e.count < 0))
     return { kind: "NEGATIVE" };
-  const sum = defectTotal(v);
-  if (sum > v.inputQuantity)
-    return { kind: "OVER_INPUT", sum, input: v.inputQuantity };
+  const sum = defectListTotal(entries);
+  if (sum > inputQuantity)
+    return { kind: "OVER_INPUT", sum, input: inputQuantity };
   return null;
 }
