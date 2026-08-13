@@ -175,6 +175,47 @@ export function quantityFormDefaults(
   };
 }
 
+// ── 検査記録・不良記録（純ロジック） ─────────────────────────────────────────
+
+export interface InspectionItemEntry {
+  templateItemId: number;
+  measuredValue: string;
+  isPass: boolean;
+}
+
+/**
+ * 検査記録の判定 — 全項目合格なら PASS、1 つでも不合格なら FAIL。
+ * nextjs-web の saveInspectionRecord と同じ規則（サーバー側でも同判定）。
+ */
+export function inspectionOutcome(
+  items: readonly { isPass: boolean }[],
+): "PASS" | "FAIL" {
+  return items.every((i) => i.isPass) ? "PASS" : "FAIL";
+}
+
+/**
+ * 必須項目のうち実測値が未入力のものの id 列。
+ * （空白のみは未入力扱い — nextjs-web の InspectionRecordForm と同じ）
+ */
+export function missingRequiredItems(
+  items: readonly { id: number; isRequired: boolean }[],
+  measuredValues: Readonly<Record<number, string | undefined>>,
+): number[] {
+  return items
+    .filter((it) => it.isRequired && !(measuredValues[it.id] ?? "").trim())
+    .map((it) => it.id);
+}
+
+export interface DefectEntry {
+  defectTypeId: number | null;
+  description: string;
+}
+
+/** 不良記録行が保存可能か（種類選択済み・内容が空白でない）。 */
+export function isDefectEntryComplete(entry: DefectEntry): boolean {
+  return entry.defectTypeId != null && entry.description.trim().length > 0;
+}
+
 export type ConservationIssue =
   | { kind: "NEGATIVE" }
   | { kind: "CONSERVATION"; sum: number; input: number };

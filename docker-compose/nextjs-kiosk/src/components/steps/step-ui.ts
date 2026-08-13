@@ -6,7 +6,13 @@ import type { KioskMessages } from "@/lib/i18n";
 import type { StepErrorCode } from "@/lib/step-execution";
 import type { StepSessionState } from "@/lib/steps-core";
 
-export type StepAction = "START" | "PAUSE" | "RESUME" | "COMPLETE";
+export type StepAction =
+  | "START"
+  | "PAUSE"
+  | "RESUME"
+  | "COMPLETE"
+  | "INSPECTION"
+  | "DEFECTS";
 
 export interface StepActionRequest {
   action: StepAction;
@@ -18,6 +24,11 @@ export interface StepActionRequest {
     outputDefectScrap: number;
     outputDefectRework: number;
   } | null;
+  /** INSPECTION のみ */
+  templateId?: number;
+  items?: { templateItemId: number; measuredValue: string; isPass: boolean }[];
+  /** DEFECTS のみ */
+  defects?: { defectTypeId: number; description: string }[];
 }
 
 export interface StepActionResponse {
