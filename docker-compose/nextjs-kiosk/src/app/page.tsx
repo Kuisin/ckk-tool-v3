@@ -12,6 +12,7 @@ import { visibleApps } from "@/lib/app-list";
 import { readableCodes } from "@/lib/authz";
 import { getMessages } from "@/lib/i18n";
 import { getSession } from "@/lib/kiosk-auth";
+import { getKioskAppFlags, isKioskAppEnabled } from "@/lib/kiosk-settings";
 
 export const dynamic = "force-dynamic";
 
@@ -19,13 +20,19 @@ export default async function LauncherPage() {
   const session = await getSession();
   if (!session) redirect("/login");
 
-  const codes = await readableCodes(session.userId);
+  const [codes, appFlags] = await Promise.all([
+    readableCodes(session.userId),
+    getKioskAppFlags(),
+  ]);
   const m = getMessages(session.locale);
-  const apps = visibleApps(codes).map((app) => ({
-    key: app.key,
-    label: m.apps[app.labelKey],
-    href: app.href,
-  }));
+  // 権限（user_permissions）に加えて SY0A の表示フラグでも絞る
+  const apps = visibleApps(codes)
+    .filter((app) => isKioskAppEnabled(appFlags, app.key))
+    .map((app) => ({
+      key: app.key,
+      label: m.apps[app.labelKey],
+      href: app.href,
+    }));
 
   // QR ログイン後はユーザーの言語（users.locale）で描画（ログイン前は日本語固定）
   return (
