@@ -13,6 +13,7 @@ import {
   Group,
   NumberInput,
   Paper,
+  Select,
   Stack,
   Table,
   Text,
@@ -45,11 +46,14 @@ function RecordTable({
   canEdit,
   onDelete,
   deleting,
+  showLocation,
 }: {
   rows: (StepPlanView | StepActualView)[];
   canEdit: boolean;
   onDelete: (id: string) => void;
   deleting: boolean;
+  /** 作業場所列（計画のみ）。 */
+  showLocation?: boolean;
 }) {
   if (rows.length === 0) {
     return (
@@ -68,6 +72,7 @@ function RecordTable({
           <Table.Th ta="right" w={90}>
             数量
           </Table.Th>
+          {showLocation && <Table.Th w={180}>作業場所</Table.Th>}
           <Table.Th>備考</Table.Th>
           {canEdit && <Table.Th w={50} />}
         </Table.Tr>
@@ -91,6 +96,13 @@ function RecordTable({
                 {r.quantity ?? "—"}
               </Text>
             </Table.Td>
+            {showLocation && (
+              <Table.Td>
+                <Text c="dimmed" size="sm" truncate>
+                  {r.workLocationName ?? "—"}
+                </Text>
+              </Table.Td>
+            )}
             <Table.Td>
               <Text c="dimmed" size="sm">
                 {r.notes ?? ""}
@@ -125,6 +137,7 @@ function RecordSection({
   workOrderNumber,
   stepId,
   suggestedQuantity,
+  workLocationOptions = [],
 }: {
   kind: "plan" | "actual";
   title: string;
@@ -135,6 +148,8 @@ function RecordSection({
   stepId: string;
   /** 数量の目安（残数などは設けず参考表示のみ）。 */
   suggestedQuantity: number | null;
+  /** 作業場所の選択肢（計画のみ）。 */
+  workLocationOptions?: { value: string; label: string }[];
 }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -143,7 +158,9 @@ function RecordSection({
   const [startTime, setStartTime] = useState("");
   const [endTime, setEndTime] = useState("");
   const [quantity, setQuantity] = useState<number | "">("");
+  const [workLocationId, setWorkLocationId] = useState<string | null>(null);
   const [notes, setNotes] = useState("");
+  const showLocation = kind === "plan" && workLocationOptions.length > 0;
 
   const handleAdd = () => {
     if (!userId) {
@@ -170,6 +187,7 @@ function RecordSection({
       startTime: startTime || null,
       endTime: endTime || null,
       quantity: quantity === "" ? null : quantity,
+      workLocationId: workLocationId ? Number(workLocationId) : null,
       notes,
     };
     startTransition(async () => {
@@ -233,6 +251,7 @@ function RecordSection({
           deleting={isPending}
           onDelete={handleDelete}
           rows={rows}
+          showLocation={kind === "plan"}
         />
         {canEdit && (
           <Stack gap="xs">
@@ -281,6 +300,18 @@ function RecordSection({
                 value={quantity}
                 w={120}
               />
+              {showLocation && (
+                <Select
+                  clearable
+                  data={workLocationOptions}
+                  label="作業場所（任意）"
+                  onChange={setWorkLocationId}
+                  placeholder="機械・エリア"
+                  searchable
+                  value={workLocationId}
+                  w={220}
+                />
+              )}
               <TextInput
                 label="備考"
                 onChange={(e) => setNotes(e.currentTarget.value)}
@@ -310,6 +341,7 @@ export function StepPlanActualPanel({
   plans,
   actuals,
   expectedInputQuantity,
+  workLocationOptions,
 }: {
   workOrderNumber: number;
   stepId: string;
@@ -319,6 +351,8 @@ export function StepPlanActualPanel({
   plans: StepPlanView[];
   actuals: StepActualView[];
   expectedInputQuantity: number | null;
+  /** 作業場所の選択肢（計画フォーム用）。 */
+  workLocationOptions: { value: string; label: string }[];
 }) {
   const planEditable =
     canOperate && (stepStatus === "PENDING" || stepStatus === "IN_PROGRESS");
@@ -328,12 +362,13 @@ export function StepPlanActualPanel({
     <>
       <RecordSection
         canEdit={planEditable}
-        description="担当者・日付（または時刻）ごとに分割して計画できます。"
+        description="担当者・日付（または時刻）ごとに分割して計画できます。作業場所（機械・エリア）も任意で割り当てられます。"
         kind="plan"
         rows={plans}
         stepId={stepId}
         suggestedQuantity={expectedInputQuantity}
         title="作業計画"
+        workLocationOptions={workLocationOptions}
         workOrderNumber={workOrderNumber}
       />
       <RecordSection

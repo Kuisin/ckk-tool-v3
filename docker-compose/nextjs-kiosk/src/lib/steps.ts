@@ -63,6 +63,10 @@ export interface MyStepView {
   /** 未開始工程の想定受入数 */
   expectedInputQuantity: number | null;
   outputSuccessQuantity: number | null;
+  /** 予定作業時間 (h) — 任意。 */
+  plannedWorkHours: number | null;
+  /** 計画に割り当てられた作業場所名（任意）。 */
+  workLocationName: string | null;
   /** 自分の累計作業時間 (ms) */
   workedMs: number;
   /** OTHER のときの作業者名 */
@@ -135,6 +139,8 @@ type PlanRow = {
   plannedStartAt: Date | null;
   plannedEndAt: Date | null;
   quantity: number | null;
+  /** 割り当てられた作業場所（機械/エリア — 任意）。 */
+  workLocation?: { name: unknown } | null;
 };
 
 /** 指示書ごとの WorkflowCtx をまとめて組む（工程ごとに引かない）。 */
@@ -310,6 +316,11 @@ async function hydrateSteps(
       inputQuantity: r.inputQuantity,
       expectedInputQuantity: expectedInput(r.id, ctx),
       outputSuccessQuantity: r.outputSuccessQuantity,
+      plannedWorkHours:
+        r.plannedWorkHours == null ? null : Number(r.plannedWorkHours),
+      workLocationName: plan?.workLocation
+        ? localized(asText(plan.workLocation.name), locale)
+        : null,
       workedMs: accumulatedWorkMs(r.actuals, now),
       lockedByName:
         state === "OTHER" && r.sessionLockedBy
@@ -347,6 +358,7 @@ export async function listMySteps(
           plannedStartAt: true,
           plannedEndAt: true,
           quantity: true,
+          workLocation: { select: { name: true } },
         },
         orderBy: [{ plannedDate: "asc" }, { plannedStartAt: "asc" }],
       }),
@@ -458,6 +470,7 @@ export async function getMyStep(
         plannedStartAt: true,
         plannedEndAt: true,
         quantity: true,
+        workLocation: { select: { name: true } },
       },
       orderBy: [{ plannedDate: "asc" }, { plannedStartAt: "asc" }],
     }),

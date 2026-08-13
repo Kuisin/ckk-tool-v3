@@ -44,7 +44,7 @@ import {
   actionOk,
   prismaErrorMessage,
 } from "@/lib/server-action";
-import { validateAndOrderSteps } from "@/lib/workflow";
+import { type OrderedStepCreate, validateAndOrderSteps } from "@/lib/workflow";
 import { fetchSalesOrderRef, type SalesOrderRef } from "./data";
 
 const BASE_PATH = "/production/work-orders";
@@ -67,6 +67,8 @@ const stepInput = z.object({
   executionLocation: z.enum(["INTERNAL", "OUTSOURCE"]),
   factoryId: z.number().int().positive().nullable(),
   supplierBpId: z.string().nullable(),
+  // 作業時間 (h) — 任意（0.01〜9999.99）
+  workHours: z.number().positive().max(9999.99).nullable(),
 });
 
 // 工程ルートの出所指定。existing = 既存ルートのバージョンを基準にした構成
@@ -99,6 +101,14 @@ const workOrderInput = z.object({
 });
 
 export type WorkOrderInput = z.infer<typeof workOrderInput>;
+
+/** 共通の工程 create 行 → work_order_steps 行（workHours → planned_work_hours）。 */
+function toWorkOrderStepCreates(creates: OrderedStepCreate[]) {
+  return creates.map(({ workHours, ...s }) => ({
+    ...s,
+    plannedWorkHours: workHours,
+  }));
+}
 
 function entry(
   action: string,
@@ -237,7 +247,7 @@ export async function createWorkOrder(
           notes: v.notes.trim() || null,
           createdBy: actor,
           history: toHistoryJson([entry("CREATE", actor)]),
-          steps: { create: built.creates },
+          steps: { create: toWorkOrderStepCreates(built.creates) },
           inspectionTemplates: {
             create: v.inspectionTemplateIds.map((id) => ({
               inspectionTemplateId: id,
@@ -338,7 +348,7 @@ export async function updateWorkOrder(
           history: toHistoryJson(
             appendHistory(prior.history, entry("UPDATE", actor)),
           ),
-          steps: { create: built.creates },
+          steps: { create: toWorkOrderStepCreates(built.creates) },
           inspectionTemplates: {
             create: v.inspectionTemplateIds.map((id) => ({
               inspectionTemplateId: id,
@@ -437,6 +447,7 @@ export async function copyWorkOrder(
               executionLocation: s.executionLocation,
               factoryId: s.factoryId,
               supplierBpId: s.supplierBpId,
+              plannedWorkHours: s.plannedWorkHours,
             })),
           },
           inspectionTemplates: {

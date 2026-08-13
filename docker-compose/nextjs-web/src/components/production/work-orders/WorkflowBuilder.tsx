@@ -138,6 +138,7 @@ function initialLocations(
       executionLocation: s.executionLocation,
       factoryId: s.factoryId != null ? String(s.factoryId) : null,
       supplierBpId: s.supplierBpId,
+      workHours: s.plannedWorkHours,
     };
   }
   return map;
@@ -153,6 +154,7 @@ function snapshotLocations(
       executionLocation: s.executionLocation,
       factoryId: s.factoryId != null ? String(s.factoryId) : null,
       supplierBpId: s.supplierBpId,
+      workHours: s.workHours,
     };
   }
   return map;
@@ -478,6 +480,7 @@ export function WorkflowBuilder({
         executionLocation: s.executionLocation,
         factoryId: s.factoryId,
         supplierBpId: s.supplierBpId,
+        workHours: s.workHours,
       })),
       route,
     };

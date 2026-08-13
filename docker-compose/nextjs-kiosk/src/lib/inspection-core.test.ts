@@ -6,16 +6,21 @@
 import { describe, expect, it } from "vitest";
 import {
   acceptLabel,
+  evaluateCounts,
   evaluateItem,
   evaluateSample,
+  formatCounts,
   formatSampleValue,
   goalLabel,
+  hasAcceptCriteria,
   type InspectionItemSpec,
+  isEntryStarted,
   isSampleEmpty,
   missingRequiredEntries,
   parseSelectOptions,
   parseStoredSamples,
   requiredSampleCount,
+  resolveItemPass,
   samplingLabelJa,
 } from "./inspection-core";
 
@@ -32,10 +37,31 @@ function spec(over: Partial<InspectionItemSpec> = {}): InspectionItemSpec {
     goalValue: null,
     samplingMode: "ALL",
     samplingValue: null,
+    allowManualOverride: true,
+    recordStyle: "VALUES",
     isRequired: true,
     ...over,
   };
 }
+
+/** VALUES エントリの短縮形。 */
+const entry = (
+  samples: (string | string[])[],
+): {
+  samples: (string | string[])[];
+  inspectedCount: null;
+  passedCount: null;
+} => ({ samples, inspectedCount: null, passedCount: null });
+
+/** COUNTS エントリの短縮形。 */
+const counts = (
+  inspected: number | null,
+  passed: number | null,
+): {
+  samples: [];
+  inspectedCount: number | null;
+  passedCount: number | null;
+} => ({ samples: [], inspectedCount: inspected, passedCount: passed });
 
 const selectSpec = (over: Partial<InspectionItemSpec> = {}) =>
   spec({
@@ -149,6 +175,69 @@ describe("requiredSampleCount", () => {
     expect(requiredSampleCount(c5, 100)).toBe(5);
     expect(requiredSampleCount(c5, 3)).toBe(3);
     expect(requiredSampleCount(c5, null)).toBe(5);
+  });
+});
+
+describe("resolveItemPass / hasAcceptCriteria", () => {
+  it("上書き許可: 手動 > 自動 > 既定合格", () => {
+    expect(resolveItemPass(spec(), entry(["9.0"]), true)).toBe(true); // 自動不合格を手動で上書き
+    expect(resolveItemPass(spec(), entry(["8.0"]), false)).toBe(false); // 自動合格を手動で上書き
+    expect(resolveItemPass(spec(), entry(["8.0"]), null)).toBe(true); // 自動判定に従う
+    expect(resolveItemPass(spec(), entry([""]), null)).toBe(true); // 未入力は既定合格
+  });
+
+  it("上書き不可: 自動判定が出れば手動を無視", () => {
+    const locked = spec({ allowManualOverride: false });
+    expect(resolveItemPass(locked, entry(["9.0"]), true)).toBe(false);
+    expect(resolveItemPass(locked, entry(["8.0"]), false)).toBe(true);
+    // 自動判定が出ない（未入力）ときは手動にフォールバック
+    expect(resolveItemPass(locked, entry([""]), false)).toBe(false);
+  });
+
+  it("COUNTS: 全数合格で合格・検査数未入力は判定不能", () => {
+    const c = spec({ recordStyle: "COUNTS" });
+    expect(evaluateCounts(5, 5)).toBe(true);
+    expect(evaluateCounts(5, 4)).toBe(false);
+    expect(evaluateCounts(null, 4)).toBeNull();
+    expect(evaluateCounts(0, 0)).toBeNull();
+    expect(resolveItemPass(c, counts(5, 4), null)).toBe(false);
+    expect(resolveItemPass(c, counts(5, 4), true)).toBe(true); // 上書き
+    expect(
+      resolveItemPass(
+        spec({ recordStyle: "COUNTS", allowManualOverride: false }),
+        counts(5, 4),
+        true,
+      ),
+    ).toBe(false); // 上書き不可
+  });
+
+  it("isEntryStarted: 記録方式ごとの入力開始判定", () => {
+    expect(isEntryStarted(spec(), entry(["", ""]))).toBe(false);
+    expect(isEntryStarted(spec(), entry(["8.0"]))).toBe(true);
+    const c = spec({ recordStyle: "COUNTS" });
+    expect(isEntryStarted(c, counts(null, null))).toBe(false);
+    expect(isEntryStarted(c, counts(5, null))).toBe(true);
+  });
+
+  it("formatCounts", () => {
+    expect(formatCounts(5, 4)).toBe("合格 4/5");
+    expect(formatCounts(null, null)).toBe("合格 —/—");
+    expect(formatCounts(5, 5, "Pass")).toBe("Pass 5/5");
+  });
+
+  it("hasAcceptCriteria: 型別の基準有無", () => {
+    expect(hasAcceptCriteria(spec())).toBe(true);
+    expect(
+      hasAcceptCriteria(spec({ toleranceMin: null, toleranceMax: null })),
+    ).toBe(false);
+    expect(
+      hasAcceptCriteria(spec({ inputType: "BOOLEAN", acceptBool: true })),
+    ).toBe(true);
+    expect(
+      hasAcceptCriteria(spec({ inputType: "BOOLEAN", acceptBool: null })),
+    ).toBe(false);
+    expect(hasAcceptCriteria(selectSpec())).toBe(true);
+    expect(hasAcceptCriteria(selectSpec({ acceptOptions: [] }))).toBe(false);
   });
 });
 

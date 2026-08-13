@@ -34,8 +34,56 @@ model Factory {
   kioskDevices      KioskDevice[]   @relation("KioskDeviceFactory")
   kioskFloorMaps    KioskFloorMap[] @relation("KioskFloorMapFactory")
   routeVersionSteps ProductProcessRouteVersionStep[] @relation("RouteStepFactory")
+  workLocationGroups WorkLocationGroup[] @relation("WorkLocationGroupFactory")
 
   @@map("factories")
+  @@schema("app")
+}
+
+// ─── 作業場所マスタ ──────────────────────────────────────────────────────────
+
+// 作業場所グループ（例: 同型機械のまとまり = 1 グループ、エリア区分）。
+// 種別（machine / area …）は system_settings `work_location.types` の
+// 管理者定義キー — スキーマ変更なしで種別を追加できる。
+model WorkLocationGroup {
+  id        Int      @id @default(autoincrement())
+  code      String   @unique
+  name      Json // { ja, en }
+  typeKey   String   @map("type_key") // work_location.types のキー
+  factoryId Int?     @map("factory_id")
+  sortOrder Int      @default(0) @map("sort_order")
+  isActive  Boolean  @default(true) @map("is_active")
+  notes     String?
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  factory   Factory?       @relation("WorkLocationGroupFactory", fields: [factoryId], references: [id])
+  locations WorkLocation[]
+
+  @@index([typeKey])
+  @@map("work_location_groups")
+  @@schema("app")
+}
+
+// 物理的な作業場所（グループ内の 1 台の機械・1 区画）。
+// capacity = 同時に割り当て可能な作業数（任意 — null は無制限扱い）。
+model WorkLocation {
+  id        Int      @id @default(autoincrement())
+  groupId   Int      @map("group_id")
+  code      String   @unique
+  name      Json // { ja, en }
+  capacity  Int?
+  sortOrder Int      @default(0) @map("sort_order")
+  isActive  Boolean  @default(true) @map("is_active")
+  notes     String?
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  group     WorkLocationGroup   @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  stepPlans WorkOrderStepPlan[] @relation("StepPlanWorkLocation")
+
+  @@index([groupId, sortOrder])
+  @@map("work_locations")
   @@schema("app")
 }
 
@@ -93,6 +141,7 @@ model ProcessStepCatalog {
   isApprovalStep    Boolean          @default(false) @map("is_approval_step") // 検査承認工程
   approvalMinRank   String?          @map("approval_min_rank") // 係長以上等
   quantityTracking  QuantityTracking @default(FLOW) @map("quantity_tracking")
+  defaultWorkHours  Decimal?         @map("default_work_hours") @db.Decimal(6, 2) // 既定作業時間 (h) — ルート/指示書の初期値
   sortOrder         Int              @default(0) @map("sort_order")
   isActive          Boolean          @default(true) @map("is_active")
   notes             String?
@@ -165,6 +214,14 @@ enum InspectionSamplingMode {
   @@schema("app")
 }
 
+// 記録方式（項目ごと）: 製品ごとの実測値 or 合格数のみ
+enum InspectionRecordStyle {
+  VALUES // 実測値（サンプルごとに入力）
+  COUNTS // 合格数のみ（検査数・合格数を入力）
+
+  @@schema("app")
+}
+
 // バージョン管理: 同一 code に複数バージョン（各バージョンが完全な行 + items）。
 // 指示書リンク・検査記録は行 id を参照するので、使用されたバージョンに固定される。
 // 指示書割当済み/記録ありのバージョンは編集不可 — 変更は新バージョンをコピー作成。
@@ -202,6 +259,8 @@ model InspectionTemplateItem {
   goalValue    Json?    @map("goal_value") // 目標値: number | boolean | string | string[]
   samplingMode InspectionSamplingMode @default(ALL) @map("sampling_mode")
   samplingValue Decimal? @map("sampling_value") @db.Decimal(10, 2) // PERCENT: % / COUNT: 本数
+  allowManualOverride Boolean @default(true) @map("allow_manual_override") // 合否の手動上書きを許可（基準未設定の項目は常に手動）
+  recordStyle  InspectionRecordStyle @default(VALUES) @map("record_style") // 実測値 / 合格数のみ
   isRequired   Boolean  @default(true) @map("is_required")
   sortOrder    Int      @default(0) @map("sort_order")
 

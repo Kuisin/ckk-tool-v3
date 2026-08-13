@@ -24,11 +24,13 @@ import { prisma } from "@/lib/db";
 import { formatSalesOrderNumber } from "@/lib/doc-number";
 import { type LocalizedText, localized } from "@/lib/format";
 import {
+  formatCounts,
   formatSampleValue,
   type InspectionItemRecord,
   itemSpecFromRow,
   parseStoredSamples,
 } from "@/lib/inspection-core";
+import { fetchWorkLocationOptions } from "@/lib/work-locations";
 import { fetchWorkflowCtx, loadCatalog } from "@/lib/workflow";
 import { canStartStep, expectedInput } from "@/lib/workflow-core";
 
@@ -224,6 +226,8 @@ export async function fetchWorkOrder(
         ? localized(s.factory.name as LocalizedText | null)
         : null,
       supplierBpId: s.supplierBpId,
+      plannedWorkHours:
+        s.plannedWorkHours == null ? null : Number(s.plannedWorkHours),
       supplierName: s.supplierBp
         ? localized(s.supplierBp.name as LocalizedText | null)
         : null,
@@ -364,7 +368,10 @@ export async function fetchStepExecution(
         orderBy: { recordedAt: "desc" },
       },
       plans: {
-        include: { user: { select: { displayName: true } } },
+        include: {
+          user: { select: { displayName: true } },
+          workLocation: { select: { id: true, name: true } },
+        },
         orderBy: [{ plannedDate: "asc" }, { plannedStartAt: "asc" }],
       },
       actuals: {
@@ -375,22 +382,24 @@ export async function fetchStepExecution(
   });
   if (!step) return null;
 
-  const [{ ctx }, actorId, templateLinks, defectTypes] = await Promise.all([
-    fetchWorkflowCtx(wo.id),
-    getCurrentActorId(),
-    prisma.workOrderInspectionTemplate.findMany({
-      where: { workOrderId: wo.id },
-      include: {
-        inspectionTemplate: {
-          include: { items: { orderBy: { sortOrder: "asc" } } },
+  const [{ ctx }, actorId, templateLinks, defectTypes, workLocationOptions] =
+    await Promise.all([
+      fetchWorkflowCtx(wo.id),
+      getCurrentActorId(),
+      prisma.workOrderInspectionTemplate.findMany({
+        where: { workOrderId: wo.id },
+        include: {
+          inspectionTemplate: {
+            include: { items: { orderBy: { sortOrder: "asc" } } },
+          },
         },
-      },
-    }),
-    prisma.defectType.findMany({
-      where: { isActive: true },
-      orderBy: [{ sortOrder: "asc" }, { id: "asc" }],
-    }),
-  ]);
+      }),
+      prisma.defectType.findMany({
+        where: { isActive: true },
+        orderBy: [{ sortOrder: "asc" }, { id: "asc" }],
+      }),
+      fetchWorkLocationOptions(),
+    ]);
 
   // 承認工程は指示書全体の検査記録を承認対象として表示する
   const woRecordsRaw = step.processStep.isApprovalStep
@@ -426,12 +435,18 @@ export async function fetchStepExecution(
   const nameOf = (id: string | null | undefined) =>
     id ? (users.find((u) => u.id === id)?.displayName ?? "システム") : null;
 
-  // 実測値の表示（新形式 measured_values は型別フォーマット、旧形式は生値）
+  // 実測値の表示（合格数のみ → 合格 n/m、新形式 measured_values は型別
+  // フォーマット、旧形式は生値）
   const recordItemLabel = (it: {
     measuredValue: string | null;
     measuredValues: unknown;
+    inspectedCount: number | null;
+    passedCount: number | null;
     templateItem: InspectionItemRecord;
   }): string | null => {
+    if (it.inspectedCount != null || it.passedCount != null) {
+      return formatCounts(it.inspectedCount, it.passedCount);
+    }
     const samples = parseStoredSamples(it.measuredValues);
     if (samples.length === 0) return it.measuredValue;
     const spec = itemSpecFromRow(it.templateItem);
@@ -506,6 +521,7 @@ export async function fetchStepExecution(
     end: Date | null;
     quantity: number | null;
     notes: string | null;
+    workLocation?: { id: number; name: unknown } | null;
   }): StepPlanView => ({
     id: r.id,
     userId: r.userId,
@@ -514,6 +530,10 @@ export async function fetchStepExecution(
     startTime: jstTime(r.start),
     endTime: jstTime(r.end),
     quantity: r.quantity,
+    workLocationId: r.workLocation?.id ?? null,
+    workLocationName: r.workLocation
+      ? localized(r.workLocation.name as LocalizedText | null)
+      : null,
     notes: r.notes,
   });
   const plans = step.plans.map((p) =>
@@ -555,6 +575,8 @@ export async function fetchStepExecution(
       supplierName: step.supplierBp
         ? localized(step.supplierBp.name as LocalizedText | null)
         : null,
+      plannedWorkHours:
+        step.plannedWorkHours == null ? null : Number(step.plannedWorkHours),
       status: step.status,
       inputQuantity: step.inputQuantity,
       outputSuccessQuantity: step.outputSuccessQuantity,
@@ -590,6 +612,7 @@ export async function fetchStepExecution(
     })),
     plans,
     actuals,
+    workLocationOptions,
   };
 }
 

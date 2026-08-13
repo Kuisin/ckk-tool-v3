@@ -14,6 +14,8 @@ export interface RouteStepSnapshot {
   executionLocation: "INTERNAL" | "OUTSOURCE";
   factoryId: number | null;
   supplierBpId: string | null;
+  /** 標準作業時間 (h) — 任意。 */
+  workHours: number | null;
 }
 
 /**
@@ -38,7 +40,8 @@ export function routeStepsEqual(
       s.processStepId === t.processStepId &&
       s.executionLocation === t.executionLocation &&
       (s.factoryId ?? null) === (t.factoryId ?? null) &&
-      (s.supplierBpId ?? null) === (t.supplierBpId ?? null)
+      (s.supplierBpId ?? null) === (t.supplierBpId ?? null) &&
+      (s.workHours ?? null) === (t.workHours ?? null)
     );
   });
 }
@@ -69,6 +72,8 @@ export interface RouteVersionStepView {
   executionLocation: "INTERNAL" | "OUTSOURCE";
   factoryName: string | null;
   supplierName: string | null;
+  /** 標準作業時間 (h) — 任意。 */
+  workHours: number | null;
 }
 
 export interface RouteVersionView {

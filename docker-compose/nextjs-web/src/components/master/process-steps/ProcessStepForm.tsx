@@ -96,6 +96,11 @@ const processStepSchema = z
     isApprovalStep: z.boolean(),
     approvalMinRank: z.string(),
     quantityTracking: z.enum(["NONE", "FLOW", "INSPECTION"]),
+    // NumberInput の未入力は "" — 送信時に null へ変換する
+    defaultWorkHours: z.union([
+      z.number().positive("既定作業時間は正の数で入力してください"),
+      z.literal(""),
+    ]),
     sortOrder: z.number().int("表示順は整数で入力してください"),
     isActive: z.boolean(),
     notes: z.string(),
@@ -129,6 +134,7 @@ export interface ProcessStepFormInitial {
   isApprovalStep: boolean;
   approvalMinRank: string;
   quantityTracking: string;
+  defaultWorkHours: number | null;
   sortOrder: number;
   isActive: boolean;
   notes: string;
@@ -187,6 +193,7 @@ export function ProcessStepForm({
         initial?.quantityTracking === "INSPECTION"
           ? initial.quantityTracking
           : "FLOW",
+      defaultWorkHours: initial?.defaultWorkHours ?? "",
       sortOrder: initial?.sortOrder ?? 0,
       isActive: initial?.isActive ?? true,
       notes: initial?.notes ?? "",
@@ -246,6 +253,8 @@ export function ProcessStepForm({
       isApprovalStep: values.isApprovalStep,
       approvalMinRank: values.approvalMinRank,
       quantityTracking: values.quantityTracking,
+      defaultWorkHours:
+        values.defaultWorkHours === "" ? null : values.defaultWorkHours,
       sortOrder: values.sortOrder,
       isActive: values.isActive,
       notes: values.notes,
@@ -423,6 +432,14 @@ export function ProcessStepForm({
             description="工程実行時の数量入力。なし = 記録せず通過数をそのまま次工程へ"
             label="数量管理"
             {...form.getInputProps("quantityTracking")}
+          />
+          <NumberInput
+            decimalScale={2}
+            description="ルート/指示書の工程に入る初期値（任意・上書き可）"
+            label="既定作業時間"
+            min={0.01}
+            suffix=" h"
+            {...form.getInputProps("defaultWorkHours")}
           />
         </SimpleGrid>
         <Stack gap="xs" mt="sm">

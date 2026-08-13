@@ -59,6 +59,8 @@ export interface ProcessStepDetailData {
   isApprovalStep: boolean;
   approvalMinRank: string | null;
   quantityTracking: string;
+  /** 既定作業時間 (h) — 任意。 */
+  defaultWorkHours: number | null;
   sortOrder: number;
   isActive: boolean;
   notes: string;
@@ -251,6 +253,14 @@ export function ProcessStepDetail({
           value={
             QUANTITY_TRACKING_LABEL[record.quantityTracking] ??
             record.quantityTracking
+          }
+        />
+        <FieldValue
+          label="既定作業時間"
+          value={
+            record.defaultWorkHours != null
+              ? `${record.defaultWorkHours} h`
+              : "—"
           }
         />
         <FieldValue label="工程フラグ" value={flagBadges} />

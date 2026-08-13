@@ -189,6 +189,17 @@ export const OPERATION_CODES: OperationCodeEntry[] = [
     mode: "0",
     index: "C",
   },
+  // 作業場所は単一管理画面（グループカード + モーダル）— list コードのみ
+  {
+    code: "MS0D",
+    label: "作業場所",
+    href: "/master/work-locations",
+    category: "マスタ",
+    kind: "list",
+    categoryCode: "MS",
+    mode: "0",
+    index: "D",
+  },
 
   // ─── ドキュメント (DC) ───────────────────────────────────────────────────
   // マニュアル（/docs）— 単一画面, list コードのみ（旧 SY03）

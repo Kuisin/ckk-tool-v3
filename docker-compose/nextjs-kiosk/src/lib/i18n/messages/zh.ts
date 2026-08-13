@@ -37,6 +37,7 @@ export const zh: KioskMessages = {
       inputRecorded: (n: number) => `接收 ${n} 支`,
       elapsed: (t: string) => `作业 ${t}`,
       elapsedLabel: "作业",
+      plannedHours: (h: number) => `计划 ${h}h`,
     },
     state: {
       startable: "可开始",
@@ -134,10 +135,16 @@ export const zh: KioskMessages = {
       addRow: "添加行",
       removeRow: "删除",
       selectPlaceholder: "选择",
-      autoNone: "无自动判定（请手动选择）",
+      autoNone: "无法自动判定 — 请手动选择",
       autoVerdict: (pass: boolean) => `自动判定: ${pass ? "合格" : "不合格"}`,
       autoOverridden: (pass: boolean) =>
         `正在手动覆盖自动判定（${pass ? "合格" : "不合格"}）`,
+      waitingValues: "等待输入实测值",
+      waitingCounts: "等待输入检查数・合格数",
+      inspectedCount: "检查数",
+      passedCount: "合格数",
+      failCount: (n: number) => `不合格 ${n}`,
+      countsOver: "合格数超过检查数",
       status: {
         PENDING: "未实施",
         PASS: "合格",

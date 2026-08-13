@@ -82,6 +82,9 @@ export interface StepPlanView {
   startTime: string | null;
   endTime: string | null;
   quantity: number | null;
+  /** 作業場所（計画のみ・任意 — 実績は常に null）。 */
+  workLocationId: number | null;
+  workLocationName: string | null;
   notes: string | null;
 }
 
@@ -103,6 +106,8 @@ export interface StepExecutionStepView {
   executionLocation: "INTERNAL" | "OUTSOURCE";
   factoryName: string | null;
   supplierName: string | null;
+  /** 予定作業時間 (h) — 任意。 */
+  plannedWorkHours: number | null;
   status: string; // STEP_STATUS
   inputQuantity: number | null;
   outputSuccessQuantity: number | null;
@@ -148,4 +153,6 @@ export interface StepExecutionData {
   plans: StepPlanView[];
   /** この工程の作業実績（分割可・担当者付き）。 */
   actuals: StepActualView[];
+  /** 作業場所の選択肢（計画フォーム用 —「グループ / 場所」ラベル）。 */
+  workLocationOptions: SelectOption[];
 }

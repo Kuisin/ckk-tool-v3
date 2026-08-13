@@ -159,6 +159,7 @@ export function StepExecutionView({ step, recording, otherActive }: Props) {
             <Text c="dimmed" size="sm">
               {m.steps.card.workOrder(step.workOrderNumber)}
               {step.factoryName ? ` ・ ${step.factoryName}` : ""}
+              {step.workLocationName ? ` ・ ${step.workLocationName}` : ""}
             </Text>
             <Title order={3}>{step.stepName}</Title>
             <Text c="dimmed">{step.productName}</Text>
@@ -166,6 +167,11 @@ export function StepExecutionView({ step, recording, otherActive }: Props) {
               {step.inputQuantity != null && (
                 <Text size="sm">
                   {m.steps.card.inputRecorded(step.inputQuantity)}
+                </Text>
+              )}
+              {step.plannedWorkHours != null && (
+                <Text c="dimmed" size="sm">
+                  {m.steps.card.plannedHours(step.plannedWorkHours)}
                 </Text>
               )}
               {(working || paused) && (

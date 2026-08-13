@@ -48,6 +48,7 @@ import {
 } from "@/lib/enum-labels";
 import type {
   InspectionItemType,
+  InspectionRecordStyle,
   InspectionSamplingMode,
 } from "@/lib/inspection-core";
 
@@ -239,6 +240,8 @@ export interface InspectionTemplateItemRow {
   goalOptions: string[];
   samplingMode: InspectionSamplingMode;
   samplingValue: number | null;
+  recordStyle: InspectionRecordStyle;
+  allowManualOverride: boolean;
   isRequired: boolean;
   sortOrder: number;
 }
@@ -290,6 +293,9 @@ export function InspectionTemplateItemModal({
   const [samplingMode, setSamplingMode] =
     useState<InspectionSamplingMode>("ALL");
   const [samplingValue, setSamplingValue] = useState<number | null>(null);
+  const [recordStyle, setRecordStyle] =
+    useState<InspectionRecordStyle>("VALUES");
+  const [allowManualOverride, setAllowManualOverride] = useState(true);
   const [isRequired, setIsRequired] = useState(true);
   const [sortOrder, setSortOrder] = useState(defaultSortOrder);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -311,6 +317,8 @@ export function InspectionTemplateItemModal({
     setGoalOptions(item?.goalOptions ?? []);
     setSamplingMode(item?.samplingMode ?? "ALL");
     setSamplingValue(item?.samplingValue ?? null);
+    setRecordStyle(item?.recordStyle ?? "VALUES");
+    setAllowManualOverride(item?.allowManualOverride ?? true);
     setIsRequired(item?.isRequired ?? true);
     setSortOrder(item?.sortOrder ?? defaultSortOrder);
     setErrors({});
@@ -386,6 +394,8 @@ export function InspectionTemplateItemModal({
         goalOptions,
         samplingMode,
         samplingValue,
+        recordStyle,
+        allowManualOverride,
         isRequired,
         sortOrder,
       };
@@ -654,6 +664,30 @@ export function InspectionTemplateItemModal({
             全数 = ロット全数を検査 / 割合・本数 = ロットの一部を抜き取って検査
           </Text>
         </Stack>
+
+        <Stack gap={4}>
+          <Text fw={500} size="sm">
+            記録方式
+          </Text>
+          <SegmentedControl
+            data={[
+              { value: "VALUES", label: "実測値（製品ごと）" },
+              { value: "COUNTS", label: "合格数のみ" },
+            ]}
+            onChange={(v) => setRecordStyle(v as InspectionRecordStyle)}
+            value={recordStyle}
+          />
+          <Text c="dimmed" size="xs">
+            合格数のみ = 実測値を残さず、検査数と合格数だけを記録します
+          </Text>
+        </Stack>
+
+        <Switch
+          checked={allowManualOverride}
+          description="オフにすると合格基準からの自動判定のみ（基準未設定の項目は常に手動）"
+          label="合否の手動上書きを許可"
+          onChange={(e) => setAllowManualOverride(e.currentTarget.checked)}
+        />
 
         <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
           <NumberInput

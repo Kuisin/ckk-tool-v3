@@ -81,6 +81,9 @@ const templateItemInput = z
     // 抜取
     samplingMode: z.enum(["ALL", "PERCENT", "COUNT"]),
     samplingValue: z.number().nullable(),
+    // 記録方式（実測値 / 合格数のみ）と手動上書き許可
+    recordStyle: z.enum(["VALUES", "COUNTS"]),
+    allowManualOverride: z.boolean(),
     isRequired: z.boolean(),
     sortOrder: z.number().int(),
   })
@@ -169,6 +172,8 @@ function itemData(v: InspectionTemplateItemInput) {
     goalValue: goalValue ?? undefined,
     samplingMode: v.samplingMode,
     samplingValue: v.samplingMode === "ALL" ? null : v.samplingValue,
+    recordStyle: v.recordStyle,
+    allowManualOverride: v.allowManualOverride,
     isRequired: v.isRequired,
     sortOrder: v.sortOrder,
   };
@@ -332,6 +337,8 @@ export async function createInspectionTemplateVersion(
               goalValue: item.goalValue ?? undefined,
               samplingMode: item.samplingMode,
               samplingValue: item.samplingValue,
+              recordStyle: item.recordStyle,
+              allowManualOverride: item.allowManualOverride,
               isRequired: item.isRequired,
               sortOrder: item.sortOrder,
             })),

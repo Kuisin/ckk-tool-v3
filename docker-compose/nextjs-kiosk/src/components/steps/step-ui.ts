@@ -35,6 +35,9 @@ export interface StepActionRequest {
   items?: {
     templateItemId: number;
     values: (string | string[])[];
+    /** 記録方式 COUNTS: 検査数・合格数（VALUES は null）。 */
+    inspectedCount: number | null;
+    passedCount: number | null;
     isPass: boolean;
   }[];
   /** DEFECTS のみ */

@@ -66,6 +66,7 @@ export async function listProductRoutes(
         supplierName: s.supplierBp
           ? localized(s.supplierBp.name as LocalizedText | null)
           : null,
+        workHours: s.workHours == null ? null : Number(s.workHours),
       })),
     })),
   }));
@@ -85,6 +86,7 @@ export async function fetchRouteVersionSteps(
     executionLocation: s.executionLocation,
     factoryId: s.factoryId,
     supplierBpId: s.supplierBpId,
+    workHours: s.workHours == null ? null : Number(s.workHours),
   }));
 }
 
@@ -120,6 +122,7 @@ export async function createRouteVersionTx(
           executionLocation: s.executionLocation,
           factoryId: s.factoryId,
           supplierBpId: s.supplierBpId,
+          workHours: s.workHours,
         })),
       },
     },
@@ -212,6 +215,7 @@ export async function resolveRouteVersionTx(
     executionLocation: s.executionLocation,
     factoryId: s.factoryId,
     supplierBpId: s.supplierBpId,
+    workHours: s.workHours == null ? null : Number(s.workHours),
   }));
   if (routeStepsEqual(baseSteps, steps)) return input.baseVersionId;
   const created = await createRouteVersionTx(tx, {

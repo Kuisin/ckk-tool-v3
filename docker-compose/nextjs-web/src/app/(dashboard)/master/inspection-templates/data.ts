@@ -57,6 +57,8 @@ export function toItemRow(
           : [],
     samplingMode: item.samplingMode,
     samplingValue: num(item.samplingValue),
+    recordStyle: item.recordStyle,
+    allowManualOverride: item.allowManualOverride,
     isRequired: item.isRequired,
     sortOrder: item.sortOrder,
   };

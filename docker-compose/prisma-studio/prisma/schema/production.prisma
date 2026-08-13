@@ -203,6 +203,7 @@ model WorkOrderStep {
   executionLocation StepExecution @map("execution_location")
   factoryId     Int?          @map("factory_id") // 社内実行時の工場
   supplierBpId  String?       @map("supplier_bp_id") @db.Uuid // 外注時
+  plannedWorkHours Decimal?   @map("planned_work_hours") @db.Decimal(6, 2) // 予定作業時間 (h) — 任意
 
   outsourceRequestedAt DateTime? @map("outsource_requested_at") @db.Date
   outsourceExpectedAt  DateTime? @map("outsource_expected_at") @db.Date
@@ -264,6 +265,7 @@ model WorkOrderStepPlan {
   plannedStartAt DateTime? @map("planned_start_at") @db.Timestamptz(6)
   plannedEndAt   DateTime? @map("planned_end_at") @db.Timestamptz(6)
   quantity       Int? // 分割時の割当数量（任意）
+  workLocationId Int?      @map("work_location_id") // 作業場所（機械/エリア — 任意）
   notes          String?
   createdBy      String?   @map("created_by") @db.Uuid
   createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
@@ -271,6 +273,7 @@ model WorkOrderStepPlan {
   step          WorkOrderStep @relation(fields: [stepId], references: [id], onDelete: Cascade)
   user          User          @relation("StepPlanUser", fields: [userId], references: [id])
   createdByUser User?         @relation("StepPlanCreatedBy", fields: [createdBy], references: [id])
+  workLocation  WorkLocation? @relation("StepPlanWorkLocation", fields: [workLocationId], references: [id])
 
   @@index([stepId, plannedDate])
   @@index([userId, plannedDate])
@@ -359,6 +362,8 @@ model InspectionRecordItem {
   templateItemId     Int     @map("template_item_id")
   measuredValue      String? @map("measured_value") // 旧記録の表示用（新規は measured_values）
   measuredValues     Json?   @map("measured_values") // サンプルごとの実測値配列（型は inputType に依存）
+  inspectedCount     Int?    @map("inspected_count") // 記録方式 COUNTS: 検査数
+  passedCount        Int?    @map("passed_count") // 記録方式 COUNTS: 合格数
   isPass             Boolean? @map("is_pass")
   notes              String?
 

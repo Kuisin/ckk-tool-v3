@@ -14,7 +14,11 @@ import { z } from "zod";
 import { getCurrentActorId, recordAudit } from "@/lib/audit";
 import { checkPermission, type PermissionAction } from "@/lib/authz";
 import { prisma } from "@/lib/db";
-import { isSampleEmpty, itemSpecFromRow } from "@/lib/inspection-core";
+import {
+  isSampleEmpty,
+  itemSpecFromRow,
+  resolveItemPass,
+} from "@/lib/inspection-core";
 import {
   abortStepExecution,
   addBranchSeries,
@@ -236,6 +240,9 @@ const inspectionInput = z.object({
       z.object({
         templateItemId: z.number().int().positive(),
         values: z.array(sampleValue),
+        // 記録方式 COUNTS: 検査数・合格数（VALUES は null）
+        inspectedCount: z.number().int().min(0).nullable(),
+        passedCount: z.number().int().min(0).nullable(),
         isPass: z.boolean(),
       }),
     )
@@ -311,9 +318,37 @@ export async function saveInspectionRecord(
           return { ok: false, errors: ["真偽項目の値が不正です"] };
         }
       }
+      if (
+        spec.recordStyle === "COUNTS" &&
+        i.inspectedCount != null &&
+        i.passedCount != null &&
+        i.passedCount > i.inspectedCount
+      ) {
+        return { ok: false, errors: ["合格数が検査数を超えています"] };
+      }
     }
     const actor = await getCurrentActorId();
-    const status = v.items.every((i) => i.isPass) ? "PASS" : "FAIL";
+    // 合否はサーバーでも解決 — 上書き不可の項目はクライアント値を無視して
+    // 自動判定を強制する（resolveItemPass — フォームと同一規則）。
+    const resolved = v.items.map((i) => {
+      const spec = templateItems.get(i.templateItemId);
+      const isCounts = spec?.recordStyle === "COUNTS";
+      const entry = {
+        samples: i.values,
+        inspectedCount: isCounts ? i.inspectedCount : null,
+        passedCount: isCounts ? i.passedCount : null,
+      };
+      return {
+        templateItemId: i.templateItemId,
+        measuredValues: isCounts
+          ? []
+          : i.values.filter((s) => !isSampleEmpty(s)),
+        inspectedCount: entry.inspectedCount,
+        passedCount: entry.passedCount,
+        isPass: spec ? resolveItemPass(spec, entry, i.isPass) : i.isPass,
+      };
+    });
+    const status = resolved.every((i) => i.isPass) ? "PASS" : "FAIL";
     await prisma.inspectionRecord.create({
       data: {
         workOrderStepId: v.stepId,
@@ -321,13 +356,7 @@ export async function saveInspectionRecord(
         status,
         recordedBy: actor,
         recordedAt: new Date(),
-        items: {
-          create: v.items.map((i) => ({
-            templateItemId: i.templateItemId,
-            measuredValues: i.values.filter((s) => !isSampleEmpty(s)),
-            isPass: i.isPass,
-          })),
-        },
+        items: { create: resolved },
       },
     });
     await recordAudit({
@@ -536,7 +565,11 @@ const planActualBase = {
   notes: z.string(),
 };
 
-const stepPlanInput = z.object(planActualBase);
+const stepPlanInput = z.object({
+  ...planActualBase,
+  // 作業場所（機械/エリア — 任意。計画のみ）
+  workLocationId: z.number().int().positive().nullable(),
+});
 const stepActualInput = z.object(planActualBase);
 
 export type StepPlanInput = z.infer<typeof stepPlanInput>;
@@ -583,6 +616,15 @@ export async function addStepPlan(
         errors: ["完了・キャンセル済みの工程には計画を追加できません"],
       };
     }
+    if (v.workLocationId != null) {
+      const location = await prisma.workLocation.findFirst({
+        where: { id: v.workLocationId, isActive: true },
+        select: { id: true },
+      });
+      if (!location) {
+        return { ok: false, errors: ["作業場所が見つかりません"] };
+      }
+    }
     const actor = await getCurrentActorId();
     await prisma.workOrderStepPlan.create({
       data: {
@@ -592,6 +634,7 @@ export async function addStepPlan(
         plannedStartAt: toJstTimestamp(v.date, v.startTime),
         plannedEndAt: toJstTimestamp(v.date, v.endTime),
         quantity: v.quantity,
+        workLocationId: v.workLocationId,
         notes: v.notes.trim() || null,
         createdBy: actor,
       },

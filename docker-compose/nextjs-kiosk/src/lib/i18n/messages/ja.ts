@@ -46,6 +46,7 @@ export const ja = {
       inputRecorded: (n: number) => `受入 ${n} 本`,
       elapsed: (t: string) => `作業 ${t}`,
       elapsedLabel: "作業",
+      plannedHours: (h: number) => `予定 ${h}h`,
     },
     state: {
       startable: "開始可",
@@ -144,10 +145,16 @@ export const ja = {
       addRow: "行を追加",
       removeRow: "削除",
       selectPlaceholder: "選択",
-      autoNone: "自動判定なし（手動で選択）",
+      autoNone: "自動判定できません — 手動で選択",
       autoVerdict: (pass: boolean) => `自動判定: ${pass ? "合格" : "不合格"}`,
       autoOverridden: (pass: boolean) =>
         `自動判定（${pass ? "合格" : "不合格"}）を手動で上書き中`,
+      waitingValues: "実測値の入力待ち",
+      waitingCounts: "検査数・合格数の入力待ち",
+      inspectedCount: "検査数",
+      passedCount: "合格数",
+      failCount: (n: number) => `不合格 ${n}`,
+      countsOver: "合格数が検査数を超えています",
       status: {
         PENDING: "未実施",
         PASS: "合格",

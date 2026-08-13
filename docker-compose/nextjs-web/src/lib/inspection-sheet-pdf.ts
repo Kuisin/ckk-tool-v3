@@ -14,6 +14,7 @@ import type { LocalizedText } from "@/lib/format";
 import { localized } from "@/lib/format";
 import {
   acceptLabel,
+  formatCounts,
   formatSampleValue,
   goalLabel,
   type InspectionItemRecord,
@@ -92,7 +93,10 @@ export function blankSheetItems(items: ItemRow[], lotQuantity: number | null) {
     return {
       ...base,
       sampling: esc(samplingLabelJa(base.spec, required)),
-      values_html: blankValueCells(required),
+      values_html:
+        base.spec.recordStyle === "COUNTS"
+          ? '<span class="value-more">検査数</span><span class="value-cell"></span><span class="value-more">合格数</span><span class="value-cell"></span>'
+          : blankValueCells(required),
       judge_html: '<span class="judge-blank">合 ・ 否</span>',
     };
   });
@@ -104,6 +108,8 @@ export function filledSheetItems(
     templateItem: ItemRow;
     measuredValue: string | null;
     measuredValues: unknown;
+    inspectedCount: number | null;
+    passedCount: number | null;
     isPass: boolean | null;
   }[],
   lotQuantity: number | null,
@@ -121,14 +127,16 @@ export function filledSheetItems(
           ? [row.measuredValue]
           : [];
     const values_html =
-      values.length > 0
-        ? values
-            .map(
-              (s) =>
-                `<span class="value-cell filled">${esc(formatSampleValue(base.spec, s))}</span>`,
-            )
-            .join("")
-        : '<span class="value-more">—</span>';
+      row.inspectedCount != null || row.passedCount != null
+        ? `<span class="value-cell filled">${esc(formatCounts(row.inspectedCount, row.passedCount))}</span>`
+        : values.length > 0
+          ? values
+              .map(
+                (s) =>
+                  `<span class="value-cell filled">${esc(formatSampleValue(base.spec, s))}</span>`,
+              )
+              .join("")
+          : '<span class="value-more">—</span>';
     const judge_html =
       row.isPass == null
         ? '<span class="judge-blank">—</span>'

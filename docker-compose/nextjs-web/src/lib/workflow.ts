@@ -36,6 +36,8 @@ export async function loadCatalog(): Promise<WorkflowCatalog> {
       isInspection: s.isInspection,
       isApprovalStep: s.isApprovalStep,
       quantityTracking: s.quantityTracking,
+      defaultWorkHours:
+        s.defaultWorkHours == null ? null : Number(s.defaultWorkHours),
       sortOrder: s.sortOrder,
     })),
     useDeps: useDeps.map((d) => ({
@@ -66,6 +68,8 @@ export interface StepCompositionInput {
   executionLocation: "INTERNAL" | "OUTSOURCE";
   factoryId: number | null;
   supplierBpId: string | null;
+  /** 作業時間 (h) — 任意。指示書は planned_work_hours、ルートは work_hours へ。 */
+  workHours: number | null;
 }
 
 export interface OrderedStepCreate extends StepCompositionInput {
@@ -110,6 +114,7 @@ export async function validateAndOrderSteps(
       executionLocation: s.executionLocation,
       factoryId: s.executionLocation === "INTERNAL" ? s.factoryId : null,
       supplierBpId: s.executionLocation === "OUTSOURCE" ? s.supplierBpId : null,
+      workHours: s.workHours,
     };
   });
   return { ok: true, creates };
