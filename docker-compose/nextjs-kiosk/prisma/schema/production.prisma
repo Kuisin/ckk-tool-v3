@@ -218,6 +218,10 @@ model WorkOrderStep {
   outputDefectSemiFinished Int? @map("output_defect_semi_finished") // 半製品在庫へ
   outputDefectScrap        Int? @map("output_defect_scrap") // 廃棄
   outputDefectRework       Int? @map("output_defect_rework") // 手直し分岐へ
+  // 不良理由の内訳（キオスク完了時の補助記録・区分とは別軸）。
+  // 形: [{ reason: string, count: int }]（理由=不良種類名など・count=本数）。
+  // 在庫連携には使わない（区分 semi/scrap/rework が数量の権威）。
+  defectReasons Json? @map("defect_reasons")
 
   sessionLockedBy String?   @map("session_locked_by") @db.Uuid
   sessionLockedAt DateTime? @map("session_locked_at") @db.Timestamptz(6)

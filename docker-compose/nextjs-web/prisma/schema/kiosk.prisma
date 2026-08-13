@@ -147,6 +147,11 @@ model KioskCard {
   lastUsedAt DateTime? @map("last_used_at") @db.Timestamptz(6)
   useCount   Int       @default(0) @map("use_count")
 
+  // 同時ログイン上限（このカードで同時に維持できるセッション数）。超過分は
+  // ログイン時に最終活動が最も古いセッションから失効させる（= 最も古い端末を
+  // ログアウト）— キオスク側 kiosk-auth.createSession が enforce する
+  maxActiveSessions Int @default(1) @map("max_active_sessions")
+
   // 有効期間（テンポラリカード用。null = 無期限）。期間外はログイン不可 —
   // 判定はキオスク側 kiosk-auth-core.isCardWithinValidPeriod（ログイン時のみ。
   // 既存セッションは 8h ハード期限 / 5分アイドルで自然失効）
@@ -222,7 +227,7 @@ model KioskDeviceLog {
   deviceId  String             @map("device_id") @db.Uuid
   type      KioskDeviceLogType
   userId    String?            @map("user_id") @db.Uuid // LOGIN/LOGOUT のみ
-  source    String? // "ws" | "sweep" | "pg_cron" | "login" | "logout" | "expired" | "admin"
+  source    String? // "ws" | "sweep" | "pg_cron" | "login" | "logout" | "expired" | "displaced" | "admin"
   createdAt DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
 
   device KioskDevice @relation("KioskDeviceLogDevice", fields: [deviceId], references: [id], onDelete: Cascade)

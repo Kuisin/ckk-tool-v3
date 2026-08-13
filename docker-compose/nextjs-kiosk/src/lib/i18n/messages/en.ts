@@ -21,6 +21,8 @@ export const en: KioskMessages = {
     refresh: "Refresh",
     empty: "No steps assigned to you today",
     upcoming: (n: number) => `${n} upcoming`,
+    showCompleted: (n: number) => `Show completed steps (${n})`,
+    hideCompleted: "Hide completed steps",
     sections: {
       overdue: "Overdue",
       today: "Today",
@@ -34,6 +36,7 @@ export const en: KioskMessages = {
       expectedInput: (n: number) => `${n} pcs expected`,
       inputRecorded: (n: number) => `${n} pcs received`,
       elapsed: (t: string) => `Worked ${t}`,
+      elapsedLabel: "Worked",
     },
     state: {
       startable: "Ready",
@@ -43,6 +46,12 @@ export const en: KioskMessages = {
       othersWorking: (name: string) => `${name} is working on this`,
       completed: "Completed",
       cancelled: "Cancelled",
+    },
+    activeLock: {
+      badge: "Working on another step",
+      alert: (workOrderNumber: number, stepName: string) =>
+        `You are working on "${stepName}" (order #${workOrderNumber}). Pause or complete it before operating another step.`,
+      goto: "Go to active step",
     },
     actions: {
       start: "Start",
@@ -81,10 +90,24 @@ export const en: KioskMessages = {
         scrap: "Failed (scrapped)",
         rework: "Failed (rework)",
       },
-      defectsTitle: "Defect breakdown",
+      defectsTitle: "Defect breakdown (disposition)",
+      total: "Total defects",
+      fixed: "Fixed",
+      computed: "Auto",
       conservation: (sum: number, input: number) =>
         `The breakdown total (${sum}) does not match the received count (${input})`,
+      overInput: (sum: number, input: number) =>
+        `Defect total (${sum}) exceeds the received count (${input})`,
       negative: "Quantities must be whole numbers of 0 or more",
+    },
+    reasons: {
+      title: "Defect reasons (optional)",
+      reason: "Reason",
+      reasonPlaceholder: "Select a defect type",
+      count: "Count",
+      add: "Add reason",
+      remove: "Remove",
+      hint: "Does not affect inventory (supplementary record)",
     },
     inspection: {
       title: "Inspection record",
@@ -126,6 +149,8 @@ export const en: KioskMessages = {
       NOT_ASSIGNED: "This step is not assigned to you",
       WO_NOT_APPROVED: "The work order is not approved or in progress",
       NOT_STARTABLE: "Cannot start — a previous step is not complete",
+      OTHER_STEP_ACTIVE:
+        "You are working on another step — pause or complete it first",
       LOCK_TAKEN: "Someone else started this first",
       LOCK_HELD_BY_OTHER: "Someone else is working on this",
       NOT_IN_PROGRESS: "This step is not in progress",

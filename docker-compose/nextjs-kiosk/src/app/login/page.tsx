@@ -23,6 +23,7 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { PinKeypad } from "@/components/PinKeypad";
 import { QrScannerView } from "@/components/QrScannerView";
+import { beginUserPageTracking } from "@/lib/last-page";
 import { playLoginSound } from "@/lib/sound";
 import { type AttestOutcome, runAttestation } from "@/lib/wrapper-bridge";
 
@@ -95,11 +96,15 @@ export default function LoginPage() {
           ticket?: string;
           until?: string;
           reason?: string;
+          userId?: string;
         };
         switch (data.state) {
           case "OK":
             playLoginSound();
-            router.replace("/");
+            // このユーザーが最後に開いていたページへ直行（端末ローカル復元）
+            router.replace(
+              data.userId ? beginUserPageTracking(data.userId) : "/",
+            );
             return;
           case "PIN_SETUP_REQUIRED":
             setState({ phase: "pin_setup", ticket: data.ticket ?? "" });
@@ -178,11 +183,14 @@ export default function LoginPage() {
           state: string;
           ticket?: string;
           until?: string;
+          userId?: string;
         };
         switch (data.state) {
           case "OK":
             playLoginSound();
-            router.replace("/");
+            router.replace(
+              data.userId ? beginUserPageTracking(data.userId) : "/",
+            );
             return;
           case "PIN_MISMATCH":
             notifications.show({

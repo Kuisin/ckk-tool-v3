@@ -220,7 +220,7 @@ function RecordSection({
   };
 
   return (
-    <Paper p="lg" radius="md" withBorder>
+    <Paper p="md" radius="md" withBorder>
       <Stack gap="md">
         <Stack gap={2}>
           <Title order={4}>{title}</Title>

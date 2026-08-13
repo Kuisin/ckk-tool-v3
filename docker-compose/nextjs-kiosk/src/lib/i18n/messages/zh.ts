@@ -21,6 +21,8 @@ export const zh: KioskMessages = {
     refresh: "刷新",
     empty: "今天没有分配给您的工序",
     upcoming: (n: number) => `预定 ${n} 项`,
+    showCompleted: (n: number) => `显示已完成工序（${n}）`,
+    hideCompleted: "隐藏已完成工序",
     sections: {
       overdue: "延迟",
       today: "今天",
@@ -34,6 +36,7 @@ export const zh: KioskMessages = {
       expectedInput: (n: number) => `预计接收 ${n} 支`,
       inputRecorded: (n: number) => `接收 ${n} 支`,
       elapsed: (t: string) => `作业 ${t}`,
+      elapsedLabel: "作业",
     },
     state: {
       startable: "可开始",
@@ -43,6 +46,12 @@ export const zh: KioskMessages = {
       othersWorking: (name: string) => `${name} 正在作业`,
       completed: "已完成",
       cancelled: "已取消",
+    },
+    activeLock: {
+      badge: "正在处理其他工序",
+      alert: (workOrderNumber: number, stepName: string) =>
+        `正在处理指示书 #${workOrderNumber}「${stepName}」。请先暂停或完成后再操作其他工序。`,
+      goto: "前往进行中的工序",
     },
     actions: {
       start: "开始工序",
@@ -80,10 +89,24 @@ export const zh: KioskMessages = {
         scrap: "不合格（报废）",
         rework: "不合格（返工）",
       },
-      defectsTitle: "不良明细",
+      defectsTitle: "不良明细（区分）",
+      total: "总不良数",
+      fixed: "固定",
+      computed: "自动",
       conservation: (sum: number, input: number) =>
         `明细合计（${sum}）与接收数（${input}）不一致`,
+      overInput: (sum: number, input: number) =>
+        `不良合计（${sum}）超过接收数（${input}）`,
       negative: "数量请输入 0 以上的整数",
+    },
+    reasons: {
+      title: "不良原因（可选）",
+      reason: "原因",
+      reasonPlaceholder: "选择不良类型",
+      count: "数量",
+      add: "添加原因",
+      remove: "删除",
+      hint: "不影响库存（辅助记录）",
     },
     inspection: {
       title: "检查记录",
@@ -124,6 +147,7 @@ export const zh: KioskMessages = {
       NOT_ASSIGNED: "该工序不是您负责的",
       WO_NOT_APPROVED: "工单尚未批准或未进行中",
       NOT_STARTABLE: "前工序未完成，无法开始",
+      OTHER_STEP_ACTIVE: "正在处理其他工序，无法操作（请先暂停或完成）",
       LOCK_TAKEN: "其他人已先行开始",
       LOCK_HELD_BY_OTHER: "其他人正在作业",
       NOT_IN_PROGRESS: "该工序不在进行中",

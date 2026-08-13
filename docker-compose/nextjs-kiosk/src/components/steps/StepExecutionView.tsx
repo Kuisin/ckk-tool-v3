@@ -19,7 +19,6 @@ import {
   Box,
   Button,
   Group,
-  NumberInput,
   Paper,
   Stack,
   Text,
@@ -33,17 +32,21 @@ import {
   IconPlayerPlay,
 } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { playLogoutSound } from "@/lib/sound";
 import type { StepRecordingData } from "@/lib/step-records";
-import type { MyStepView } from "@/lib/steps";
+import type { MyActiveStep, MyStepView } from "@/lib/steps";
 import {
-  formatElapsed,
+  cleanReasonEntries,
+  type DefectReasonEntry,
   type QuantityFormValues,
   quantityFormDefaults,
+  withDerivedSuccess,
 } from "@/lib/steps-core";
 import { ActivityMonitor } from "../ActivityMonitor";
 import { useI18n } from "../I18nProvider";
+import { LiveElapsed } from "./LiveElapsed";
+import { NumberStepper } from "./NumberStepper";
 import { StepDefectForm } from "./StepDefectForm";
 import { StepInspectionForm } from "./StepInspectionForm";
 import { isQuantityFormValid, StepQuantityForm } from "./StepQuantityForm";
@@ -54,11 +57,16 @@ import {
   translateError,
 } from "./step-ui";
 
-type Props = { step: MyStepView; recording: StepRecordingData };
+type Props = {
+  step: MyStepView;
+  recording: StepRecordingData;
+  /** 自分が作業中の別工程（同時作業は 1 工程まで — 開始/再開をロック）。 */
+  otherActive: MyActiveStep | null;
+};
 
 type Phase = "IDLE" | "STARTING" | "COMPLETING";
 
-export function StepExecutionView({ step, recording }: Props) {
+export function StepExecutionView({ step, recording, otherActive }: Props) {
   const router = useRouter();
   const { m } = useI18n();
 
@@ -73,26 +81,15 @@ export function StepExecutionView({ step, recording }: Props) {
   const [quantities, setQuantities] = useState<QuantityFormValues>(() =>
     quantityFormDefaults(step.inputQuantity ?? step.expectedInputQuantity),
   );
+  const [reasons, setReasons] = useState<DefectReasonEntry[]>([]);
 
   // NONE を型レベルで落として、数量 UI に渡すモードを絞る
   const trackedMode = step.quantityMode === "NONE" ? null : step.quantityMode;
   const isNone = trackedMode === null;
   const working = step.sessionState === "WORKING";
   const paused = step.sessionState === "PAUSED";
-
-  // 作業中は経過時間を秒更新する（open な実績行は now まで数えられる）
-  const [elapsed, setElapsed] = useState(step.workedMs);
-  useEffect(() => {
-    setElapsed(step.workedMs);
-    if (!working) return;
-    const started = Date.now();
-    const base = step.workedMs;
-    const id = setInterval(
-      () => setElapsed(base + (Date.now() - started)),
-      1000,
-    );
-    return () => clearInterval(id);
-  }, [step.workedMs, working]);
+  // 別工程を作業中 → この工程の開始/再開/完了をロック（同時作業は 1 工程まで）
+  const lockedByActive = otherActive != null && !working;
 
   const run = async (
     body: Parameters<typeof callStepAction>[1],
@@ -123,7 +120,9 @@ export function StepExecutionView({ step, recording }: Props) {
     run(
       {
         action: "COMPLETE",
-        quantities: isNone ? null : quantities,
+        // 良品数は 受入 − 不良 で導出して送る（サーバーでも受入を固定し再計算）
+        quantities: isNone ? null : withDerivedSuccess(quantities),
+        defectReasons: isNone ? undefined : cleanReasonEntries(reasons),
       },
       () => {
         playLogoutSound();
@@ -169,7 +168,8 @@ export function StepExecutionView({ step, recording }: Props) {
               )}
               {(working || paused) && (
                 <Text c="dimmed" size="sm">
-                  {m.steps.card.elapsed(formatElapsed(elapsed))}
+                  {m.steps.card.elapsedLabel}{" "}
+                  <LiveElapsed baseMs={step.workedMs} running={working} />
                 </Text>
               )}
             </Group>
@@ -201,8 +201,29 @@ export function StepExecutionView({ step, recording }: Props) {
           </Alert>
         )}
 
+        {/* 別工程を作業中 — 開始/再開/完了の代わりに誘導を出す */}
+        {lockedByActive && otherActive && (
+          <Alert color="orange" icon={<IconAlertTriangle size={20} />}>
+            <Stack align="flex-start" gap="sm">
+              <Text size="sm">
+                {m.steps.activeLock.alert(
+                  otherActive.workOrderNumber,
+                  otherActive.stepName,
+                )}
+              </Text>
+              <Button
+                onClick={() => router.push(`/steps/${otherActive.stepId}`)}
+                size="sm"
+                variant="light"
+              >
+                {m.steps.activeLock.goto}
+              </Button>
+            </Stack>
+          </Alert>
+        )}
+
         {/* 開始 — 受入数の確認（NONE は数量を聞かない） */}
-        {step.sessionState === "STARTABLE" && (
+        {step.sessionState === "STARTABLE" && !lockedByActive && (
           <Paper p="md" radius="md" withBorder>
             <Stack gap="md">
               <Title order={4}>{m.steps.start.title}</Title>
@@ -210,16 +231,10 @@ export function StepExecutionView({ step, recording }: Props) {
                 <Text c="dimmed">{m.steps.start.noneNote}</Text>
               ) : (
                 <>
-                  <NumberInput
-                    allowDecimal={false}
-                    allowNegative={false}
+                  <NumberStepper
                     label={m.steps.quantity[trackedMode].input}
                     min={0}
-                    onChange={(v) => {
-                      const n =
-                        typeof v === "number" ? v : Number.parseInt(v, 10);
-                      setStartInput(Number.isFinite(n) ? n : 0);
-                    }}
+                    onChange={setStartInput}
                     value={startInput}
                   />
                   {step.expectedInputQuantity != null && (
@@ -246,7 +261,7 @@ export function StepExecutionView({ step, recording }: Props) {
         )}
 
         {/* 進行中 / 一時停止中 — 完了フォームと操作 */}
-        {(working || paused) && (
+        {(working || paused) && !lockedByActive && (
           <Paper p="md" radius="md" withBorder>
             <Stack gap="md">
               {phase === "COMPLETING" ? (
@@ -262,8 +277,11 @@ export function StepExecutionView({ step, recording }: Props) {
                     </Text>
                   ) : (
                     <StepQuantityForm
+                      defectTypes={recording.defectTypes}
                       mode={trackedMode}
                       onChange={setQuantities}
+                      onReasonsChange={setReasons}
+                      reasons={reasons}
                       values={quantities}
                     />
                   )}
@@ -318,11 +336,13 @@ export function StepExecutionView({ step, recording }: Props) {
                     color="green"
                     leftSection={<IconCheck size={20} />}
                     onClick={() => {
+                      // 受入数は開始時に確定した値で固定（完了時は編集不可）
                       setQuantities(
                         quantityFormDefaults(
                           step.inputQuantity ?? step.expectedInputQuantity,
                         ),
                       );
+                      setReasons([]);
                       setPhase("COMPLETING");
                     }}
                     size="lg"

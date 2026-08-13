@@ -48,6 +48,16 @@ const bodySchema = z.object({
   inputQuantity: z.number().int().min(0).nullable().optional(),
   /** COMPLETE のみ: NONE モードは null */
   quantities: quantitiesSchema.nullable().optional(),
+  /** COMPLETE のみ: 不良理由の内訳（補助記録）。 */
+  defectReasons: z
+    .array(
+      z.object({
+        reason: z.string().trim().min(1).max(100),
+        count: z.number().int().min(1).max(1_000_000),
+      }),
+    )
+    .max(50)
+    .optional(),
   /** INSPECTION のみ */
   templateId: z.number().int().positive().optional(),
   items: z
@@ -102,8 +112,15 @@ export async function POST(
     );
   }
 
-  const { action, inputQuantity, quantities, templateId, items, defects } =
-    parsed.data;
+  const {
+    action,
+    inputQuantity,
+    quantities,
+    defectReasons,
+    templateId,
+    items,
+    defects,
+  } = parsed.data;
   const actor = session.userId;
 
   // 記録系はペイロード必須（zod は action 別の必須化をしないのでここで縛る）
@@ -136,7 +153,12 @@ export async function POST(
       case "RESUME":
         return resumeStepExecution(stepId, actor);
       case "COMPLETE":
-        return completeStepExecution(stepId, actor, quantities ?? null);
+        return completeStepExecution(
+          stepId,
+          actor,
+          quantities ?? null,
+          defectReasons ?? null,
+        );
     }
   });
 

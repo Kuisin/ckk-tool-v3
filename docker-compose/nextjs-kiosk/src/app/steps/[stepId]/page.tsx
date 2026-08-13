@@ -11,7 +11,7 @@ import { StepExecutionView } from "@/components/steps/StepExecutionView";
 import { readableCodes } from "@/lib/authz";
 import { getSession } from "@/lib/kiosk-auth";
 import { getStepRecordingData } from "@/lib/step-records";
-import { getMyStep } from "@/lib/steps";
+import { getMyActiveStep, getMyStep } from "@/lib/steps";
 
 export const dynamic = "force-dynamic";
 
@@ -38,9 +38,20 @@ export default async function StepExecutionPage({
   const recording = await getStepRecordingData(step.stepId, session.locale);
   if (!recording) notFound();
 
+  // 同時作業は 1 工程まで — 別工程を作業中なら開始/再開をロック表示する
+  const otherActive = await getMyActiveStep(
+    session.userId,
+    step.stepId,
+    session.locale,
+  );
+
   return (
     <I18nProvider locale={session.locale}>
-      <StepExecutionView recording={recording} step={step} />
+      <StepExecutionView
+        otherActive={otherActive}
+        recording={recording}
+        step={step}
+      />
     </I18nProvider>
   );
 }

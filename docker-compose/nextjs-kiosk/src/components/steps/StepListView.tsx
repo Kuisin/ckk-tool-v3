@@ -22,6 +22,9 @@ import {
 } from "@mantine/core";
 import {
   IconArrowLeft,
+  IconChecks,
+  IconChevronDown,
+  IconChevronUp,
   IconClipboardList,
   IconRefresh,
 } from "@tabler/icons-react";
@@ -29,22 +32,31 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import type { MyStepView } from "@/lib/steps";
 import type { StepBucket } from "@/lib/steps-core";
-import { formatElapsed } from "@/lib/steps-core";
 import { ActivityMonitor } from "../ActivityMonitor";
 import { useI18n } from "../I18nProvider";
+import { LiveElapsed } from "./LiveElapsed";
 import { stateColor, stateLabel } from "./step-ui";
 
 type Props = {
   steps: MyStepView[];
   upcomingCount: number;
+  completedSteps: MyStepView[];
+  /** 自分が作業中の工程 id（同時作業は 1 工程まで — 他はロック表示）。 */
+  activeStepId: string | null;
 };
 
 const SECTION_ORDER: StepBucket[] = ["OVERDUE", "TODAY", "UPCOMING"];
 
-export function StepListView({ steps, upcomingCount }: Props) {
+export function StepListView({
+  steps,
+  upcomingCount,
+  completedSteps,
+  activeStepId,
+}: Props) {
   const router = useRouter();
   const { m } = useI18n();
   const [refreshing, setRefreshing] = useState(false);
+  const [showCompleted, setShowCompleted] = useState(false);
 
   const refresh = () => {
     setRefreshing(true);
@@ -112,30 +124,78 @@ export function StepListView({ steps, upcomingCount }: Props) {
                       : m.steps.sections.upcoming}
                 </Text>
                 {rows.map((step) => (
-                  <StepCard key={step.stepId} step={step} />
+                  <StepCard
+                    key={step.stepId}
+                    lockedByActive={
+                      activeStepId != null && step.stepId !== activeStepId
+                    }
+                    step={step}
+                  />
                 ))}
               </Stack>
             );
           })
+        )}
+
+        {/* 完了した工程 — 既定は非表示。ボタンで開閉する */}
+        {completedSteps.length > 0 && (
+          <Stack gap="sm">
+            <Button
+              fullWidth
+              leftSection={<IconChecks size={20} />}
+              onClick={() => setShowCompleted((s) => !s)}
+              rightSection={
+                showCompleted ? (
+                  <IconChevronUp size={18} />
+                ) : (
+                  <IconChevronDown size={18} />
+                )
+              }
+              variant="subtle"
+            >
+              {showCompleted
+                ? m.steps.hideCompleted
+                : m.steps.showCompleted(completedSteps.length)}
+            </Button>
+            {showCompleted &&
+              completedSteps.map((step) => (
+                <StepCard
+                  key={step.stepId}
+                  lockedByActive={false}
+                  step={step}
+                />
+              ))}
+          </Stack>
         )}
       </Stack>
     </Box>
   );
 }
 
-function StepCard({ step }: { step: MyStepView }) {
+function StepCard({
+  step,
+  lockedByActive,
+}: {
+  step: MyStepView;
+  /** 別工程を作業中（このカードは開始/再開できない — 詳細は開ける）。 */
+  lockedByActive: boolean;
+}) {
   const router = useRouter();
   const { m } = useI18n();
   const openable =
     step.sessionState === "STARTABLE" ||
     step.sessionState === "WORKING" ||
     step.sessionState === "PAUSED";
+  const dimmed =
+    !openable ||
+    (lockedByActive &&
+      (step.sessionState === "STARTABLE" || step.sessionState === "PAUSED"));
 
   return (
     <UnstyledButton
       disabled={!openable}
       onClick={() => openable && router.push(`/steps/${step.stepId}`)}
-      style={{ opacity: openable ? 1 : 0.6 }}
+      style={{ opacity: dimmed ? 0.6 : 1 }}
     >
       <Paper p="md" radius="md" withBorder>
         <Group align="flex-start" justify="space-between" wrap="nowrap">
@@ -187,9 +247,20 @@ function StepCard({ step }: { step: MyStepView }) {
             >
               {stateLabel(m, step.sessionState, step.lockedByName)}
             </Badge>
+            {lockedByActive &&
+              (step.sessionState === "STARTABLE" ||
+                step.sessionState === "PAUSED") && (
+                <Badge color="gray" size="sm" variant="outline">
+                  {m.steps.activeLock.badge}
+                </Badge>
+              )}
             {step.workedMs > 0 && (
               <Text c="dimmed" size="sm">
-                {m.steps.card.elapsed(formatElapsed(step.workedMs))}
+                {m.steps.card.elapsedLabel}{" "}
+                <LiveElapsed
+                  baseMs={step.workedMs}
+                  running={step.sessionState === "WORKING"}
+                />
               </Text>
             )}
           </Stack>

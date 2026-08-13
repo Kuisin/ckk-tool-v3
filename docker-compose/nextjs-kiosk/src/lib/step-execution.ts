@@ -42,12 +42,19 @@ export interface StepQuantities {
   outputDefectRework: number;
 }
 
+/** 不良理由の内訳（補助記録 — defect_reasons JSON）。 */
+export interface StepDefectReason {
+  reason: string;
+  count: number;
+}
+
 /** UI が翻訳して表示するエラー識別子（日本語文言に依存しないため）。 */
 export type StepErrorCode =
   | "NOT_FOUND"
   | "NOT_ASSIGNED"
   | "WO_NOT_APPROVED"
   | "NOT_STARTABLE"
+  | "OTHER_STEP_ACTIVE"
   | "LOCK_TAKEN"
   | "LOCK_HELD_BY_OTHER"
   | "NOT_IN_PROGRESS"
@@ -141,6 +148,31 @@ export async function isAssignedToUser(
 }
 
 /**
+ * 「作業中の別工程」= 自分がセッションロックを保持している進行中の工程。
+ * 同時に作業できる工程は 1 つ — 開始・再開の前ゲートに使う
+ * （一時停止すればロックが空くので、別工程を開始できるようになる）。
+ */
+export async function findMyActiveStep(
+  actorId: string,
+  excludeStepId?: string,
+): Promise<{ stepId: string; workOrderNumber: number } | null> {
+  const active = await prisma.workOrderStep.findFirst({
+    where: {
+      sessionLockedBy: actorId,
+      status: "IN_PROGRESS",
+      ...(excludeStepId ? { id: { not: excludeStepId } } : {}),
+    },
+    select: {
+      id: true,
+      workOrder: { select: { workOrderNumber: true } },
+    },
+  });
+  return active
+    ? { stepId: active.id, workOrderNumber: active.workOrder.workOrderNumber }
+    : null;
+}
+
+/**
  * 工程開始: 依存検証 → セッションロック原子取得 → IN_PROGRESS。
  * 受入数は作業者の入力（`inputQuantity`）を優先し、未指定なら想定受入数。
  * 作業セッション行（work_order_step_actuals）を 1 行 open する。
@@ -160,6 +192,15 @@ export async function startStepExecution(
     stepRow.workOrder.status !== "IN_PROGRESS"
   ) {
     return fail("WO_NOT_APPROVED", "指示書が承認済み/進行中ではありません");
+  }
+
+  // 同時に作業できる工程は 1 つ（先に一時停止 or 完了させる）
+  const active = await findMyActiveStep(actorId, stepId);
+  if (active) {
+    return fail(
+      "OTHER_STEP_ACTIVE",
+      `指示書 #${active.workOrderNumber} の工程を作業中です。先に一時停止または完了してください`,
+    );
   }
 
   const { ctx } = await fetchWorkflowCtx(stepRow.workOrderId);
@@ -287,6 +328,15 @@ export async function resumeStepExecution(
     return fail("WO_NOT_APPROVED", "指示書が承認済み/進行中ではありません");
   }
 
+  // 同時に作業できる工程は 1 つ（先に一時停止 or 完了させる）
+  const active = await findMyActiveStep(actorId, stepId);
+  if (active) {
+    return fail(
+      "OTHER_STEP_ACTIVE",
+      `指示書 #${active.workOrderNumber} の工程を作業中です。先に一時停止または完了してください`,
+    );
+  }
+
   const now = new Date();
   const claimed = await prisma.$transaction(async (tx) => {
     const c = await tx.workOrderStep.updateMany({
@@ -326,11 +376,16 @@ export async function resumeStepExecution(
  *   （expectedInput チェーン・validateRouting・onWorkOrderCompleted の終端集計が
  *   これに依存している）。
  * - FLOW / INSPECTION: quantities 必須。保存則は同一、ラベルのみ異なる。
+ *   受入数は**開始時に確定した stepRow.inputQuantity を権威**とし、完了時の
+ *   クライアント値では上書きしない（受入は開始後編集不可）。良品数は
+ *   受入 − 不良（区分合計）で導出する。不良理由（defectReasons）は補助記録
+ *   として defect_reasons JSON に保存する（在庫連携には使わない）。
  */
 export async function completeStepExecution(
   stepId: string,
   actorId: string,
   quantities: StepQuantities | null,
+  defectReasons: StepDefectReason[] | null = null,
 ): Promise<StepActionResult> {
   const stepRow = await prisma.workOrderStep.findUnique({
     where: { id: stepId },
@@ -367,14 +422,28 @@ export async function completeStepExecution(
     if (quantities == null) {
       return fail("QUANTITY_REQUIRED", "数量を入力してください");
     }
-    persisted = quantities;
+    // 受入数は開始時に確定した値を権威とする（完了時のクライアント値は無視）。
+    // 未記録の場合のみクライアント値へフォールバック。良品数は 受入 − 不良（区分）で導出。
+    const authoritativeInput =
+      stepRow.inputQuantity ?? quantities.inputQuantity;
+    const totalDefects =
+      quantities.outputDefectSemiFinished +
+      quantities.outputDefectScrap +
+      quantities.outputDefectRework;
+    persisted = {
+      inputQuantity: authoritativeInput,
+      outputSuccessQuantity: authoritativeInput - totalDefects,
+      outputDefectSemiFinished: quantities.outputDefectSemiFinished,
+      outputDefectScrap: quantities.outputDefectScrap,
+      outputDefectRework: quantities.outputDefectRework,
+    };
     const qIssues = validateQuantities(
       {
-        inputQuantity: quantities.inputQuantity,
-        outputSuccess: quantities.outputSuccessQuantity,
-        defectSemiFinished: quantities.outputDefectSemiFinished,
-        defectScrap: quantities.outputDefectScrap,
-        defectRework: quantities.outputDefectRework,
+        inputQuantity: persisted.inputQuantity,
+        outputSuccess: persisted.outputSuccessQuantity,
+        defectSemiFinished: persisted.outputDefectSemiFinished,
+        defectScrap: persisted.outputDefectScrap,
+        defectRework: persisted.outputDefectRework,
       },
       mode,
     );
@@ -406,6 +475,14 @@ export async function completeStepExecution(
     };
   }
 
+  // 不良理由の補助記録（{理由, 数}）— 有効行のみ。空なら列を触らない。
+  const cleanedReasons = (defectReasons ?? [])
+    .filter(
+      (r) =>
+        r.reason.trim().length > 0 && Number.isFinite(r.count) && r.count > 0,
+    )
+    .map((r) => ({ reason: r.reason.trim(), count: r.count }));
+
   const now = new Date();
   // 完了クレームは条件付き更新 — 同時完了はどちらか一方だけ成立し、
   // 在庫の二重計上を防ぐ（監査 P0-7/#5）。作業セッションも同 tx で閉じる。
@@ -419,6 +496,7 @@ export async function completeStepExecution(
         outputDefectSemiFinished: persisted.outputDefectSemiFinished,
         outputDefectScrap: persisted.outputDefectScrap,
         outputDefectRework: persisted.outputDefectRework,
+        ...(cleanedReasons.length > 0 ? { defectReasons: cleanedReasons } : {}),
         completedAt: now,
         completedBy: actorId,
         sessionLockedBy: null,

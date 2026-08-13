@@ -11,15 +11,21 @@ import {
   availableActions,
   bucketOf,
   checkConservation,
+  cleanReasonEntries,
   compareSteps,
+  defectTotal,
+  deriveSuccess,
   formatElapsed,
   inspectionOutcome,
   isDefectEntryComplete,
+  isReasonEntryComplete,
   missingRequiredItems,
   quantityFormDefaults,
+  reasonTotal,
   type SortableStep,
   type StepSessionState,
   stepSessionState,
+  withDerivedSuccess,
 } from "./steps-core";
 import type { StepState, WorkflowCtx } from "./workflow-core";
 
@@ -240,40 +246,54 @@ describe("quantityFormDefaults", () => {
   });
 });
 
-describe("checkConservation", () => {
+describe("defectTotal / deriveSuccess / withDerivedSuccess", () => {
+  const v = (over: Partial<ReturnType<typeof quantityFormDefaults>> = {}) => ({
+    ...quantityFormDefaults(100),
+    ...over,
+  });
+
+  it("総不良 = 区分の合計、良品 = 受入 − 総不良", () => {
+    const q = v({
+      outputDefectSemiFinished: 3,
+      outputDefectScrap: 2,
+      outputDefectRework: 1,
+    });
+    expect(defectTotal(q)).toBe(6);
+    expect(deriveSuccess(q)).toBe(94);
+    expect(withDerivedSuccess(q).outputSuccessQuantity).toBe(94);
+  });
+
+  it("不良なしなら良品 = 受入", () => {
+    expect(deriveSuccess(v())).toBe(100);
+  });
+
+  it("良品は負にならない（下限 0）", () => {
+    expect(deriveSuccess(v({ outputDefectScrap: 150 }))).toBe(0);
+  });
+});
+
+describe("checkConservation（良品は導出なので保存則は常に成立）", () => {
   const v = (over: Partial<ReturnType<typeof quantityFormDefaults>> = {}) => ({
     ...quantityFormDefaults(100),
     ...over,
   });
 
   it("NONE は常に問題なし（サーバーがパススルーする）", () => {
-    expect(
-      checkConservation(v({ outputSuccessQuantity: 3 }), "NONE"),
-    ).toBeNull();
+    expect(checkConservation(v({ outputDefectScrap: 3 }), "NONE")).toBeNull();
   });
 
-  it("保存則が成立していれば null", () => {
+  it("不良が受入以内なら null", () => {
     expect(checkConservation(v(), "FLOW")).toBeNull();
-    expect(
-      checkConservation(
-        v({ outputSuccessQuantity: 98, outputDefectScrap: 2 }),
-        "FLOW",
-      ),
-    ).toBeNull();
+    expect(checkConservation(v({ outputDefectScrap: 2 }), "FLOW")).toBeNull();
+    expect(checkConservation(v({ outputDefectScrap: 100 }), "FLOW")).toBeNull();
   });
 
-  it("合計が受入と違えば CONSERVATION", () => {
-    const issue = checkConservation(v({ outputSuccessQuantity: 98 }), "FLOW");
-    expect(issue).toEqual({ kind: "CONSERVATION", sum: 98, input: 100 });
-  });
-
-  it("INSPECTION も同じ数式（ラベルだけが違う）", () => {
-    expect(
-      checkConservation(
-        v({ outputSuccessQuantity: 90, outputDefectScrap: 10 }),
-        "INSPECTION",
-      ),
-    ).toBeNull();
+  it("不良が受入を超えれば OVER_INPUT", () => {
+    const issue = checkConservation(
+      v({ outputDefectScrap: 60, outputDefectRework: 50 }),
+      "FLOW",
+    );
+    expect(issue).toEqual({ kind: "OVER_INPUT", sum: 110, input: 100 });
   });
 
   it("負値は NEGATIVE", () => {
@@ -284,8 +304,35 @@ describe("checkConservation", () => {
 
   it("NaN も NEGATIVE 扱い（空欄の NumberInput）", () => {
     expect(
-      checkConservation(v({ outputSuccessQuantity: Number.NaN }), "FLOW"),
+      checkConservation(v({ outputDefectScrap: Number.NaN }), "FLOW"),
     ).toEqual({ kind: "NEGATIVE" });
+  });
+});
+
+describe("不良理由（{理由, 数}）", () => {
+  it("isReasonEntryComplete: 理由あり + 数≥1", () => {
+    expect(isReasonEntryComplete({ reason: "寸法不良", count: 2 })).toBe(true);
+    expect(isReasonEntryComplete({ reason: "", count: 2 })).toBe(false);
+    expect(isReasonEntryComplete({ reason: "キズ", count: 0 })).toBe(false);
+  });
+
+  it("reasonTotal: 有効行の count 合計", () => {
+    expect(
+      reasonTotal([
+        { reason: "寸法不良", count: 2 },
+        { reason: "", count: 5 },
+        { reason: "キズ", count: 3 },
+      ]),
+    ).toBe(5);
+  });
+
+  it("cleanReasonEntries: 有効行のみ・reason をトリム", () => {
+    expect(
+      cleanReasonEntries([
+        { reason: " 寸法不良 ", count: 2 },
+        { reason: "  ", count: 1 },
+      ]),
+    ).toEqual([{ reason: "寸法不良", count: 2 }]);
   });
 });
 

@@ -20,14 +20,17 @@ export default async function StepsPage() {
   const codes = await readableCodes(session.userId);
   if (!codes.has("work_order") && !codes.has("*")) redirect("/");
 
-  const { steps, upcomingCount } = await listMySteps(
-    session.userId,
-    session.locale,
-  );
+  const { steps, upcomingCount, completedSteps, activeStepId } =
+    await listMySteps(session.userId, session.locale);
 
   return (
     <I18nProvider locale={session.locale}>
-      <StepListView steps={steps} upcomingCount={upcomingCount} />
+      <StepListView
+        activeStepId={activeStepId}
+        completedSteps={completedSteps}
+        steps={steps}
+        upcomingCount={upcomingCount}
+      />
     </I18nProvider>
   );
 }

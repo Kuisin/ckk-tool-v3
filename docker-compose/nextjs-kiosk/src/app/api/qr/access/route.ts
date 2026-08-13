@@ -124,7 +124,8 @@ export async function POST(req: Request) {
       data: { lastUsedAt: now, useCount: { increment: 1 } },
     });
     await createSession(card.user.id, card.id, device.device.id);
-    return NextResponse.json({ state: "OK" });
+    // userId はクライアントの「最後に開いたページ」復元（localStorage キー）用
+    return NextResponse.json({ state: "OK", userId: card.user.id });
   }
   // 4. PIN 再入力（この端末で 48h 超過 / 初めて使う端末 / 2 週間経過）
   const ticket = issueTicket(card.id, device.device.id, "PIN_VERIFY");

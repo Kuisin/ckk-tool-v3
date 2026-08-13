@@ -1,5 +1,6 @@
 package jp.co.ckk.kiosk
 
+import android.Manifest
 import android.app.admin.DevicePolicyManager
 import android.content.ComponentName
 import android.content.Context
@@ -24,6 +25,15 @@ import android.provider.Settings
 object KioskMode {
 
     private const val HOME_ALIAS = "jp.co.ckk.kiosk.HomeActivity"
+
+    // WebView（QR ログイン・位置報告）が使う実行時権限。Lock Task 中は権限
+    // ダイアログが表示されない（自動拒否される）ため、デバイスオーナー権限で
+    // 事前に確定付与する。
+    private val RUNTIME_PERMISSIONS = arrayOf(
+        Manifest.permission.CAMERA,
+        Manifest.permission.ACCESS_FINE_LOCATION,
+        Manifest.permission.ACCESS_COARSE_LOCATION,
+    )
 
     private fun dpm(context: Context): DevicePolicyManager =
         context.getSystemService(Context.DEVICE_POLICY_SERVICE) as DevicePolicyManager
@@ -63,6 +73,16 @@ object KioskMode {
         dpm.setKeyguardDisabled(admin, true)
         dpm.setStatusBarDisabled(admin, true)
 
+        // カメラ・位置を自己付与（アプリ再セットアップで権限が消えても復元）
+        for (permission in RUNTIME_PERMISSIONS) {
+            dpm.setPermissionGrantState(
+                admin,
+                pkg,
+                permission,
+                DevicePolicyManager.PERMISSION_GRANT_STATE_GRANTED,
+            )
+        }
+
         // 給電中は画面常時 ON（アプリ内の FLAG_KEEP_SCREEN_ON に加えた保険）
         dpm.setGlobalSetting(
             admin,
@@ -91,6 +111,14 @@ object KioskMode {
         val admin = admin(context)
         val pkg = context.packageName
 
+        for (permission in RUNTIME_PERMISSIONS) {
+            dpm.setPermissionGrantState(
+                admin,
+                pkg,
+                permission,
+                DevicePolicyManager.PERMISSION_GRANT_STATE_DEFAULT,
+            )
+        }
         dpm.setStatusBarDisabled(admin, false)
         dpm.setKeyguardDisabled(admin, false)
         dpm.clearPackagePersistentPreferredActivities(admin, pkg)

@@ -30,6 +30,8 @@ export const ja = {
     refresh: "更新",
     empty: "本日の担当工程はありません",
     upcoming: (n: number) => `予定 ${n} 件`,
+    showCompleted: (n: number) => `完了した工程を表示（${n}）`,
+    hideCompleted: "完了した工程を隠す",
     sections: {
       overdue: "遅延",
       today: "本日",
@@ -43,6 +45,7 @@ export const ja = {
       expectedInput: (n: number) => `受入予定 ${n} 本`,
       inputRecorded: (n: number) => `受入 ${n} 本`,
       elapsed: (t: string) => `作業 ${t}`,
+      elapsedLabel: "作業",
     },
     state: {
       startable: "開始可",
@@ -52,6 +55,12 @@ export const ja = {
       othersWorking: (name: string) => `${name} さんが作業中`,
       completed: "完了",
       cancelled: "キャンセル",
+    },
+    activeLock: {
+      badge: "他工程を作業中",
+      alert: (workOrderNumber: number, stepName: string) =>
+        `指示書 #${workOrderNumber}「${stepName}」を作業中です。他の工程を操作するには、先に一時停止または完了してください。`,
+      goto: "作業中の工程へ",
     },
     actions: {
       start: "工程開始",
@@ -90,10 +99,24 @@ export const ja = {
         scrap: "不合格（廃棄）",
         rework: "不合格（手直し）",
       },
-      defectsTitle: "不良内訳",
+      defectsTitle: "不良内訳（区分）",
+      total: "総不良数",
+      fixed: "固定",
+      computed: "自動計算",
       conservation: (sum: number, input: number) =>
         `内訳の合計（${sum}）が受入数（${input}）と一致しません`,
+      overInput: (sum: number, input: number) =>
+        `不良の合計（${sum}）が受入数（${input}）を超えています`,
       negative: "数量は 0 以上の整数で入力してください",
+    },
+    reasons: {
+      title: "不良理由（任意）",
+      reason: "理由",
+      reasonPlaceholder: "不良種類を選択",
+      count: "本数",
+      add: "理由を追加",
+      remove: "削除",
+      hint: "在庫には影響しません（補助記録）",
     },
     inspection: {
       title: "検査記録",
@@ -134,6 +157,8 @@ export const ja = {
       NOT_ASSIGNED: "この工程は担当ではありません",
       WO_NOT_APPROVED: "指示書が承認済み/進行中ではありません",
       NOT_STARTABLE: "前工程が完了していないため開始できません",
+      OTHER_STEP_ACTIVE:
+        "別の工程を作業中のため操作できません（先に一時停止または完了してください）",
       LOCK_TAKEN: "別の人が先に開始しました",
       LOCK_HELD_BY_OTHER: "別の人が作業中です",
       NOT_IN_PROGRESS: "進行中の工程ではありません",

@@ -3,7 +3,8 @@
 /**
  * StepQuantityForm — 工程の数量・不良入力 (design.md §12.3)。
  *
- * タブレット最優先: すべての入力・ボタンは size="lg"（§20.1）。
+ * スプリットパネルの右ペイン向けにコンパクト表示（テーマ既定 size="sm"）。
+ * 現場のタブレット操作はキオスク（nextjs-kiosk /steps）が担う。
  * 受入数（既定 = 想定受入）/ 良品数 / 不良内訳（半製品・廃棄・手直し）を入力し、
  * validateQuantities（純関数）でライブに保存則（良品 + 不良 = 受入）を警告する。
  * 「工程完了」で completeStep アクションを呼ぶ（サーバー側でも再検証される）。
@@ -102,7 +103,7 @@ export function StepQuantityForm({
   };
 
   return (
-    <Paper p="lg" radius="md" withBorder>
+    <Paper p="md" radius="md" withBorder>
       <Stack gap="md">
         <Title order={4}>
           {mode === "INSPECTION" ? "検査数・合否" : "数量・不良"}
@@ -117,7 +118,6 @@ export function StepQuantityForm({
           label={labels.input}
           min={0}
           onChange={setInput}
-          size="lg"
           value={input}
           withAsterisk
         />
@@ -127,7 +127,6 @@ export function StepQuantityForm({
           label={labels.success}
           min={0}
           onChange={setSuccess}
-          size="lg"
           value={success}
           withAsterisk
         />
@@ -138,7 +137,6 @@ export function StepQuantityForm({
             label={labels.semi}
             min={0}
             onChange={setSemiFinished}
-            size="lg"
             value={semiFinished}
           />
           <NumberInput
@@ -146,7 +144,6 @@ export function StepQuantityForm({
             label={labels.scrap}
             min={0}
             onChange={setScrap}
-            size="lg"
             value={scrap}
           />
           <NumberInput
@@ -155,7 +152,6 @@ export function StepQuantityForm({
             label={labels.rework}
             min={0}
             onChange={setRework}
-            size="lg"
             value={rework}
           />
         </Group>
@@ -182,7 +178,6 @@ export function StepQuantityForm({
             leftSection={<IconCheck size={20} />}
             loading={isPending}
             onClick={handleComplete}
-            size="lg"
           >
             工程完了
           </Button>
