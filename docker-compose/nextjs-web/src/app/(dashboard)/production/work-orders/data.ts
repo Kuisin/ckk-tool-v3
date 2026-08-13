@@ -9,6 +9,7 @@ import type { ApprovalTrailView } from "@/components/production/ApprovalStatusPa
 import type {
   InspectionRecordView,
   InspectionTemplateView,
+  StepDefectReasonView,
   StepDefectRecordView,
   StepExecutionData,
   StepPlanView,
@@ -28,6 +29,27 @@ import { canStartStep, expectedInput } from "@/lib/workflow-core";
 // 一覧クエリの取得上限（監査 P2-8 — 全件フェッチのデータ増加対策）。
 // DataTable はクライアントページングのため、最新分のみで実用上十分。
 const LIST_FETCH_CAP = 1000;
+
+/** work_order_steps.defect_reasons（Json）→ 表示用の {種別, 理由, 数} 配列。 */
+function parseDefectReasons(value: unknown): StepDefectReasonView[] {
+  if (!Array.isArray(value)) return [];
+  const out: StepDefectReasonView[] = [];
+  for (const v of value) {
+    if (v == null || typeof v !== "object") continue;
+    const r = v as Record<string, unknown>;
+    if (
+      (r.type === "SEMI" || r.type === "SCRAP" || r.type === "REWORK") &&
+      typeof r.count === "number"
+    ) {
+      out.push({
+        type: r.type,
+        reason: typeof r.reason === "string" ? r.reason : "",
+        count: r.count,
+      });
+    }
+  }
+  return out;
+}
 
 const WO_INCLUDE = {
   salesOrder: { include: { customerBp: true, product: true } },
@@ -517,6 +539,7 @@ export async function fetchStepExecution(
       outputDefectSemiFinished: step.outputDefectSemiFinished,
       outputDefectScrap: step.outputDefectScrap,
       outputDefectRework: step.outputDefectRework,
+      defectReasons: parseDefectReasons(step.defectReasons),
       sessionLockedBy: step.sessionLockedBy,
       sessionLockedByName: nameOf(step.sessionLockedBy),
       startedAt: iso(step.startedAt),

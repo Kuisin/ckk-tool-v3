@@ -142,6 +142,13 @@ export interface StepQuantities {
   outputDefectRework: number;
 }
 
+/** 不良の内訳（{種別, 理由, 数} — defect_reasons JSON + 区分列の権威）。 */
+export interface StepDefectReason {
+  type: "SEMI" | "SCRAP" | "REWORK";
+  reason: string;
+  count: number;
+}
+
 /** 指示書の実行コンテキスト（engine 形式）をロードする。 */
 export async function fetchWorkflowCtx(workOrderId: string): Promise<{
   ctx: WorkflowCtx;
@@ -271,6 +278,7 @@ export async function startStepExecution(
 export async function completeStepExecution(
   stepId: string,
   quantities: StepQuantities | null,
+  defectReasons: StepDefectReason[] | null = null,
 ): Promise<StepActionResult> {
   const actor = await getCurrentActorId();
   const stepRow = await prisma.workOrderStep.findUniqueOrThrow({
@@ -304,23 +312,52 @@ export async function completeStepExecution(
       outputDefectRework: 0,
     };
   } else {
-    if (quantities == null) {
+    if (quantities == null && (defectReasons?.length ?? 0) === 0) {
       return { ok: false, errors: ["数量を入力してください"] };
     }
-    persisted = quantities;
+    // 受入数は開始時に確定した値を権威とする（完了時のクライアント値は無視）。
+    const authoritativeInput =
+      stepRow.inputQuantity ?? quantities?.inputQuantity ?? 0;
+    // 区分合計（半製品/廃棄/手直し）は**不良リストから導出**して権威とする。
+    // リストが無い場合のみ quantities の区分へフォールバック（後方互換）。
+    const list = defectReasons ?? [];
+    const sumType = (t: StepDefectReason["type"]) =>
+      list.reduce((s, r) => (r.type === t ? s + r.count : s), 0);
+    const semi =
+      list.length > 0
+        ? sumType("SEMI")
+        : (quantities?.outputDefectSemiFinished ?? 0);
+    const scrap =
+      list.length > 0 ? sumType("SCRAP") : (quantities?.outputDefectScrap ?? 0);
+    const rework =
+      list.length > 0
+        ? sumType("REWORK")
+        : (quantities?.outputDefectRework ?? 0);
+    persisted = {
+      inputQuantity: authoritativeInput,
+      outputSuccessQuantity: authoritativeInput - semi - scrap - rework,
+      outputDefectSemiFinished: semi,
+      outputDefectScrap: scrap,
+      outputDefectRework: rework,
+    };
     const qIssues = validateQuantities(
       {
-        inputQuantity: quantities.inputQuantity,
-        outputSuccess: quantities.outputSuccessQuantity,
-        defectSemiFinished: quantities.outputDefectSemiFinished,
-        defectScrap: quantities.outputDefectScrap,
-        defectRework: quantities.outputDefectRework,
+        inputQuantity: persisted.inputQuantity,
+        outputSuccess: persisted.outputSuccessQuantity,
+        defectSemiFinished: persisted.outputDefectSemiFinished,
+        defectScrap: persisted.outputDefectScrap,
+        defectRework: persisted.outputDefectRework,
       },
       mode,
     );
     if (qIssues.length > 0)
       return { ok: false, errors: qIssues.map((i) => i.message) };
   }
+
+  // 不良の内訳（{種別, 理由, 数}）— 有効行のみ。空なら列を触らない。
+  const cleanedReasons = (defectReasons ?? [])
+    .filter((r) => Number.isFinite(r.count) && r.count > 0)
+    .map((r) => ({ type: r.type, reason: r.reason.trim(), count: r.count }));
 
   const rIssues = validateRouting(
     {
@@ -347,6 +384,7 @@ export async function completeStepExecution(
       outputDefectSemiFinished: persisted.outputDefectSemiFinished,
       outputDefectScrap: persisted.outputDefectScrap,
       outputDefectRework: persisted.outputDefectRework,
+      ...(cleanedReasons.length > 0 ? { defectReasons: cleanedReasons } : {}),
       completedAt: new Date(),
       completedBy: actor,
       sessionLockedBy: null,

@@ -83,24 +83,44 @@ const quantitiesInput = z.object({
   outputDefectRework: z.number().int(),
 });
 
+const defectReasonsInput = z
+  .array(
+    z.object({
+      type: z.enum(["SEMI", "SCRAP", "REWORK"]),
+      reason: z.string().trim().max(100),
+      count: z.number().int().min(1).max(1_000_000),
+    }),
+  )
+  .max(100);
+
 /**
  * 工程完了（数量整合はサーバー側でも検証される）。
  * 数量管理なし（NONE）の工程は quantities = null で呼ぶ — サーバーが
- * 受入数をそのまま良品数へパススルー保存する。
+ * 受入数をそのまま良品数へパススルー保存する。不良は {種別, 理由, 数} の
+ * リスト（defectReasons）で渡し、サーバーが区分合計を再計算する。
  */
 export async function completeStep(
   workOrderNumber: number,
   stepId: string,
   quantities: z.infer<typeof quantitiesInput> | null,
+  defectReasons?: z.infer<typeof defectReasonsInput>,
 ): Promise<StepActionResult> {
   const denied = await deniedStepPermission("UPDATE");
   if (denied) return denied;
   const parsed = quantitiesInput.nullable().safeParse(quantities);
   if (!parsed.success) return { ok: false, errors: ["数量の入力が不正です"] };
+  const parsedReasons = defectReasonsInput.optional().safeParse(defectReasons);
+  if (!parsedReasons.success) {
+    return { ok: false, errors: ["不良の入力が不正です"] };
+  }
   try {
     const step = await findStep(workOrderNumber, stepId);
     if (!step) return { ok: false, errors: ["工程が見つかりません"] };
-    const result = await completeStepExecution(stepId, parsed.data);
+    const result = await completeStepExecution(
+      stepId,
+      parsed.data,
+      parsedReasons.data ?? null,
+    );
     if (result.ok) revalidate(workOrderNumber, stepId);
     return result;
   } catch (e) {
