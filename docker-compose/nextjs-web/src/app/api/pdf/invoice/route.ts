@@ -12,6 +12,7 @@
  */
 
 import { fetchInvoice } from "@/app/(dashboard)/billing/invoices/data";
+import { taxLabel } from "@/components/billing/invoices/model";
 import { requirePermissionResponse } from "@/lib/authz";
 import { parseDocKey } from "@/lib/doc-number";
 import { formatDate } from "@/lib/format";
@@ -101,6 +102,8 @@ export async function GET(request: Request): Promise<Response> {
     })),
     totals: {
       subtotal: yen(invoice.subtotal),
+      // 顧客の課税区分に合わせたラベル（8% / 非課税の顧客がいるため固定にしない）
+      tax_label: taxLabel(invoice.taxType),
       tax: yen(invoice.taxAmount),
       grand_total: yen(invoice.totalAmount),
     },

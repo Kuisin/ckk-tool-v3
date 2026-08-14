@@ -214,7 +214,19 @@ export function DuplicateProductModal({
       title="製品の複製"
     >
       <Stack gap="sm">
-        <TextInput disabled label="複製元" readOnly value={source?.id ?? ""} />
+        {/* 内部 ID ではなく製品名と採番済みコードを見せる */}
+        <TextInput
+          disabled
+          label="複製元"
+          readOnly
+          value={
+            source
+              ? source.code
+                ? `${source.name}（${source.code}）`
+                : source.name
+              : ""
+          }
+        />
         <TextInput
           description="製品コードは保存時に自動採番されます（PRD-YYYYMM-NNNN）"
           label="名称（日本語）"

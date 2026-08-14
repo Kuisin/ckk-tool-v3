@@ -355,7 +355,9 @@ export function ProductForm({
             disabled
             label="製品コード"
             placeholder="保存時に自動採番"
-            value={initial?.id ?? ""}
+            // 内部 ID ではなく採番済みの製品コードを表示する
+            // （レガシー取込の製品はコード未採番なので空欄）。
+            value={initial?.code ?? ""}
           />
           <Select
             data={UNIT_OPTIONS}

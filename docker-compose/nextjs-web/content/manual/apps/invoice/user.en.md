@@ -64,7 +64,7 @@ Below the lines there are two tabs. 「**概要**」 (Overview) shows the date a
 
 > 💡 If you want to make sure the amount is right, open the original shipping order from the "由来" (Source) link — you can check there and then how many pieces were sent and when.
 
-> ⚠️ The tax box says 「**消費税（10%）**」 (Consumption tax (10%)), but the real tax is worked out with the rule set for each customer (10% / 8% / 0%). Please do not judge the tax rate from the words on the screen alone.
+> 💡 The tax box shows the rate that applies to that customer — 「**消費税（10%）**」 (Consumption tax (10%)), 「**消費税（8%）**」 (8%), or 「**消費税（非課税）**」 (tax exempt). The rate comes from the customer's registered details.
 
 ## Recording from issue to payment
 

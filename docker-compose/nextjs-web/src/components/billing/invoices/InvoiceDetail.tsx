@@ -51,7 +51,13 @@ import {
 import { useTabParam } from "@/hooks/useUrlState";
 import { formatDate, formatDateTime } from "@/lib/format";
 import type { ActionResult } from "@/lib/server-action";
-import { canIssue, canMarkPaid, canMarkSent, type Invoice } from "./model";
+import {
+  canIssue,
+  canMarkPaid,
+  canMarkSent,
+  type Invoice,
+  taxLabel,
+} from "./model";
 
 const BASE_PATH = "/billing/invoices";
 
@@ -170,7 +176,7 @@ export function InvoiceDetail({
           value={<MoneyText ta="left" value={invoice.subtotal} />}
         />
         <FieldValue
-          label="消費税（10%）"
+          label={taxLabel(invoice.taxType)}
           value={<MoneyText ta="left" value={invoice.taxAmount} />}
         />
         <FieldValue
@@ -270,7 +276,7 @@ export function InvoiceDetail({
                 <Table.Td />
               </Table.Tr>
               <Table.Tr>
-                <Table.Td fw={700}>消費税（10%）</Table.Td>
+                <Table.Td fw={700}>{taxLabel(invoice.taxType)}</Table.Td>
                 <Table.Td />
                 <Table.Td />
                 <Table.Td fw={700} ta="right">

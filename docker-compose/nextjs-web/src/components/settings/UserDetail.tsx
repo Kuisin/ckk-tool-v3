@@ -29,6 +29,7 @@ import {
 import { SaveButton } from "@/components/ui/buttons";
 import { FieldValue } from "@/components/ui/FieldValue";
 import { DetailShell, SummaryGrid } from "@/components/ui/shells";
+import { permissionActionLabel, permissionScopeLabel } from "@/lib/enum-labels";
 import { formatDateTime, localized } from "@/lib/format";
 import type { AdminUserDetail, AdminUserPlant } from "@/lib/users-admin";
 
@@ -111,7 +112,7 @@ function UserPlantsCard({
         所属拠点
       </Title>
       <Text c="dimmed" mb="sm" size="xs">
-        user_plants — PLANT / REGION スコープ権限の対象拠点
+        「拠点」「地域」スコープの権限が適用される対象拠点
       </Text>
       {canEdit ? (
         <>
@@ -260,8 +261,7 @@ export function UserDetail({
           実効権限
         </Title>
         <Text c="dimmed" mb="sm" size="xs">
-          user_permissions ビュー（有効ロール経由の全 grant —
-          実効アクセスは全行の和集合）
+          有効なロールから与えられている許可の一覧（この人ができることは、下の行すべての合計です）
         </Text>
         {user.permissions.length === 0 ? (
           <Text c="dimmed" size="sm">
@@ -289,12 +289,12 @@ export function UserDetail({
                     </Table.Td>
                     <Table.Td>
                       <Badge color="blue" variant="light">
-                        {p.action}
+                        {permissionActionLabel(p.action)}
                       </Badge>
                     </Table.Td>
                     <Table.Td>
-                      <Text ff="mono" size="sm">
-                        {p.scope}
+                      <Text size="sm">
+                        {permissionScopeLabel(p.scope)}
                         {(p.scope === "PLANT" || p.scope === "REGION") &&
                         !(
                           p.scopeValues.length === 1 && p.scopeValues[0] === "*"
