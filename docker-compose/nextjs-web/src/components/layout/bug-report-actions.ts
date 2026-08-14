@@ -10,6 +10,7 @@
  * 併せて system:ADMIN 保持者へ SYSTEM 通知を送る（ベル / プッシュ / メール）。
  */
 
+import { findUserIdsWithPermission } from "@ckk/authz-core";
 import { auth } from "@/auth";
 import type { BugReportDiagnostics, CapturedLog } from "@/lib/bug-report";
 import { prisma } from "@/lib/db";
@@ -94,10 +95,8 @@ export async function submitBugReportAction(
 
   // system:ADMIN 保持者へ通知（失敗しても報告自体は成立）
   try {
-    const admins = await prisma.$queryRaw<{ user_id: string }[]>`
-      SELECT DISTINCT user_id FROM app.user_permissions
-      WHERE permission_code = 'system' AND action::text = 'ADMIN'`;
-    const recipients = admins.map((a) => a.user_id).filter((u) => u !== su.id);
+    const admins = await findUserIdsWithPermission(prisma, "system", "ADMIN");
+    const recipients = admins.filter((u) => u !== su.id);
     if (recipients.length > 0) {
       await notify({
         userIds: recipients,

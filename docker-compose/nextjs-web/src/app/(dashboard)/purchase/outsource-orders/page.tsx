@@ -1,4 +1,5 @@
 import { OutsourceTable } from "@/components/purchase/outsource-orders/OutsourceTable";
+import { requireAppRead } from "@/lib/authz-page";
 import { fetchOutsourceSteps } from "./data";
 
 export const dynamic = "force-dynamic";
@@ -11,6 +12,8 @@ export const dynamic = "force-dynamic";
  * （行クリックで遷移）。新規作成・編集ページは持たない。
  */
 export default async function PurchaseOutsourceOrdersPage() {
+  const denied = await requireAppRead("outsource-orders");
+  if (denied) return denied;
   const rows = await fetchOutsourceSteps();
   return <OutsourceTable rows={rows} />;
 }

@@ -1,21 +1,36 @@
 "use client";
 
 /**
- * UserDetail — ユーザー管理（SY01）の詳細。読み取り専用。
+ * UserDetail — ユーザー管理（SY01）の詳細。
  *
  * プロフィール概要 + ロール割当履歴（user_role_relation）+ 実効権限
- * （user_permissions ビュー = 集約済み・最上位スコープ）を表示する。
+ * （user_permissions ビュー = 有効ロール経由の全 grant 行）+ 所属拠点
+ * （user_plants — PLANT/REGION スコープ解決の基盤）を表示する。
+ * 所属拠点は system:ADMIN のみ編集可（それ以外は読み取り表示）。
  */
 
-import { Badge, Paper, Table, Text, Title } from "@mantine/core";
+import {
+  Badge,
+  Group,
+  MultiSelect,
+  Paper,
+  Table,
+  Text,
+  Title,
+} from "@mantine/core";
+import { notifications } from "@mantine/notifications";
+import { useRouter } from "next/navigation";
+import { useMemo, useState, useTransition } from "react";
+import { updateUserPlants } from "@/app/(dashboard)/settings/users/actions";
 import {
   UserActiveBadge,
   UserGroupBadge,
 } from "@/components/settings/UsersTable";
+import { SaveButton } from "@/components/ui/buttons";
 import { FieldValue } from "@/components/ui/FieldValue";
 import { DetailShell, SummaryGrid } from "@/components/ui/shells";
 import { formatDateTime, localized } from "@/lib/format";
-import type { AdminUserDetail } from "@/lib/users-admin";
+import type { AdminUserDetail, AdminUserPlant } from "@/lib/users-admin";
 
 function roleLabel(role: {
   rolename: string;
@@ -25,7 +40,124 @@ function roleLabel(role: {
   return label === "—" ? role.rolename : label;
 }
 
-export function UserDetail({ user }: { user: AdminUserDetail }) {
+function plantLabel(p: AdminUserPlant): string {
+  return `${p.code} ${localized(p.name)}`;
+}
+
+/** 所属拠点カード — system:ADMIN は MultiSelect で編集、他はバッジ表示。 */
+function UserPlantsCard({
+  user,
+  plantOptions,
+  canEdit,
+}: {
+  user: AdminUserDetail;
+  plantOptions: AdminUserPlant[];
+  canEdit: boolean;
+}) {
+  const router = useRouter();
+  const [isPending, startTransition] = useTransition();
+  const assignedIds = useMemo(
+    () => user.plants.map((p) => String(p.id)),
+    [user.plants],
+  );
+  const [value, setValue] = useState<string[]>(assignedIds);
+  const options = useMemo(() => {
+    // 無効化済みでも割当済みの拠点は選択肢に残す（外すと保存で消えるため明示）。
+    const byId = new Map<string, { value: string; label: string }>();
+    for (const p of plantOptions) {
+      byId.set(String(p.id), { value: String(p.id), label: plantLabel(p) });
+    }
+    for (const p of user.plants) {
+      if (!byId.has(String(p.id))) {
+        byId.set(String(p.id), {
+          value: String(p.id),
+          label: `${plantLabel(p)}（無効）`,
+        });
+      }
+    }
+    return [...byId.values()];
+  }, [plantOptions, user.plants]);
+
+  const dirty =
+    value.length !== assignedIds.length ||
+    value.some((v) => !assignedIds.includes(v));
+
+  const handleSave = () => {
+    startTransition(async () => {
+      const result = await updateUserPlants(
+        user.id,
+        value.map((v) => Number(v)),
+      );
+      if (result.ok) {
+        notifications.show({
+          title: "保存しました",
+          message: "所属拠点を更新しました",
+          color: "green",
+        });
+        router.refresh();
+      } else {
+        notifications.show({
+          title: "エラー",
+          message: result.error,
+          color: "red",
+        });
+      }
+    });
+  };
+
+  return (
+    <Paper p="md" radius="md" withBorder>
+      <Title mb="sm" order={5}>
+        所属拠点
+      </Title>
+      <Text c="dimmed" mb="sm" size="xs">
+        user_plants — PLANT / REGION スコープ権限の対象拠点
+      </Text>
+      {canEdit ? (
+        <>
+          <MultiSelect
+            clearable
+            data={options}
+            onChange={setValue}
+            placeholder={value.length === 0 ? "拠点を選択" : undefined}
+            searchable
+            value={value}
+          />
+          <Group justify="flex-end" mt="sm">
+            <SaveButton
+              disabled={!dirty}
+              loading={isPending}
+              onClick={handleSave}
+              type="button"
+            />
+          </Group>
+        </>
+      ) : user.plants.length === 0 ? (
+        <Text c="dimmed" size="sm">
+          所属拠点がありません
+        </Text>
+      ) : (
+        <Group gap="xs">
+          {user.plants.map((p) => (
+            <Badge color="blue" key={p.id} variant="light">
+              {plantLabel(p)}
+            </Badge>
+          ))}
+        </Group>
+      )}
+    </Paper>
+  );
+}
+
+export function UserDetail({
+  user,
+  plantOptions,
+  canEditPlants,
+}: {
+  user: AdminUserDetail;
+  plantOptions: AdminUserPlant[];
+  canEditPlants: boolean;
+}) {
   return (
     <DetailShell
       breadcrumbs={[
@@ -117,13 +249,19 @@ export function UserDetail({ user }: { user: AdminUserDetail }) {
         )}
       </Paper>
 
+      <UserPlantsCard
+        canEdit={canEditPlants}
+        plantOptions={plantOptions}
+        user={user}
+      />
+
       <Paper p="md" radius="md" withBorder>
         <Title mb="sm" order={5}>
           実効権限
         </Title>
         <Text c="dimmed" mb="sm" size="xs">
-          user_permissions
-          ビュー（有効ロールを集約・アクション毎に最上位スコープのみ）
+          user_permissions ビュー（有効ロール経由の全 grant —
+          実効アクセスは全行の和集合）
         </Text>
         {user.permissions.length === 0 ? (
           <Text c="dimmed" size="sm">
@@ -140,8 +278,10 @@ export function UserDetail({ user }: { user: AdminUserDetail }) {
                 </Table.Tr>
               </Table.Thead>
               <Table.Tbody>
-                {user.permissions.map((p) => (
-                  <Table.Tr key={`${p.permissionCode}:${p.action}`}>
+                {user.permissions.map((p, i) => (
+                  <Table.Tr
+                    key={`${p.permissionCode}:${p.action}:${p.scope}:${i}`}
+                  >
                     <Table.Td>
                       <Text ff="mono" size="sm">
                         {p.permissionCode}
@@ -155,7 +295,12 @@ export function UserDetail({ user }: { user: AdminUserDetail }) {
                     <Table.Td>
                       <Text ff="mono" size="sm">
                         {p.scope}
-                        {p.scopeCustom != null ? ` (${p.scopeCustom})` : ""}
+                        {(p.scope === "PLANT" || p.scope === "REGION") &&
+                        !(
+                          p.scopeValues.length === 1 && p.scopeValues[0] === "*"
+                        )
+                          ? ` (${p.scopeValues.join(", ")})`
+                          : ""}
                       </Text>
                     </Table.Td>
                   </Table.Tr>

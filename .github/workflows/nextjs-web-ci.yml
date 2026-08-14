@@ -1,10 +1,11 @@
-# nextjs-web CI — lint, test & build on every PR.
+# Workspace CI — lint, test & build on every PR.
 #
 #   PR → dev  : Biome lint + Vitest unit tests + production build (baseline gate)
 #   PR → main : strict — frozen-lockfile install, Biome with warnings-as-errors,
 #               tsc --noEmit, Vitest, production build (promotion gate; main
 #               auto-deploys via the Coolify webhook on merge)
 #
+# pnpm workspace（ルート lockfile）。install は必ずリポジトリルートで実行する。
 # E2E (Playwright) not set up yet — add a job here when it lands
 # (see _specs/techstack.md).
 
@@ -18,32 +19,58 @@ concurrency:
   group: nextjs-web-ci-${{ github.ref }}
   cancel-in-progress: true
 
-defaults:
-  run:
-    working-directory: docker-compose/nextjs-web
-
 jobs:
-  lint-build:
-    name: Lint & build (base ${{ github.base_ref }})
+  authz-core:
+    name: authz-core — lint & test
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: packages/authz-core
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          package_json_file: package.json
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+      - name: Install (frozen lockfile, workspace root)
+        run: pnpm install --frozen-lockfile
+        working-directory: .
+      - name: Lint (Biome)
+        run: pnpm lint
+      - name: Typecheck
+        run: pnpm typecheck
+      - name: Unit tests (Vitest)
+        run: pnpm test
+
+  web:
+    name: nextjs-web — lint & build (base ${{ github.base_ref }})
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: docker-compose/nextjs-web
     steps:
       - uses: actions/checkout@v4
 
-      # Reads the pinned pnpm version from the app's "packageManager" field.
-      # (working-directory does not apply to `uses:` steps — point at the file.)
+      # Reads the pinned pnpm version from the root "packageManager" field.
       - uses: pnpm/action-setup@v4
         with:
-          package_json_file: docker-compose/nextjs-web/package.json
+          package_json_file: package.json
 
       - uses: actions/setup-node@v4
         with:
           node-version: 24
           cache: pnpm
-          cache-dependency-path: docker-compose/nextjs-web/pnpm-lock.yaml
+          cache-dependency-path: pnpm-lock.yaml
 
-      - name: Install (frozen lockfile)
+      - name: Install (frozen lockfile, workspace root)
         run: pnpm install --frozen-lockfile
+        working-directory: .
 
       - name: Sync Prisma schema (shared-db) + generate client
         run: pnpm db:sync-schema && pnpm db:generate
@@ -53,6 +80,9 @@ jobs:
 
       - name: Unit tests (Vitest)
         run: pnpm test
+
+      - name: Page gate guard (requireAppRead)
+        run: bash scripts/check-page-gates.sh
 
       # ── strict gates: promotion PRs into main only ──────────────────────
       - name: Lint strict — warnings as errors (main)
@@ -64,4 +94,49 @@ jobs:
         run: pnpm exec tsc --noEmit
 
       - name: Build (production)
+        run: pnpm build
+
+  kiosk:
+    name: nextjs-kiosk — lint & build (base ${{ github.base_ref }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: docker-compose/nextjs-kiosk
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          package_json_file: package.json
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Install (frozen lockfile, workspace root)
+        run: pnpm install --frozen-lockfile
+        working-directory: .
+
+      - name: Sync Prisma schema (shared-db) + generate client
+        run: pnpm db:sync-schema && pnpm db:generate
+
+      - name: Lint (Biome)
+        run: pnpm lint
+
+      # twin ファイルのドリフト検知を含む
+      - name: Unit tests (Vitest)
+        run: pnpm test
+
+      - name: Lint strict — warnings as errors (main)
+        if: github.base_ref == 'main'
+        run: pnpm exec biome check --error-on-warnings
+
+      - name: Typecheck (main)
+        if: github.base_ref == 'main'
+        run: pnpm exec tsc --noEmit
+
+      - name: Build (production, next + custom server tsc)
         run: pnpm build

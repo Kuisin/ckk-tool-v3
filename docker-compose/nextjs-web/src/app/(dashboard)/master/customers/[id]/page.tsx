@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { CustomerDetail } from "@/components/master/customers/CustomerDetail";
 import { fetchAuditEntries } from "@/lib/audit";
+import { requireAppRead } from "@/lib/authz-page";
 import { fetchCustomerDetail } from "../../_shared/bp-data";
 
 export const dynamic = "force-dynamic";
@@ -11,6 +12,8 @@ export default async function MasterCustomersDetailPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
+  const denied = await requireAppRead("master-customers");
+  if (denied) return denied;
   const { id } = await params;
   const record = await fetchCustomerDetail(id);
   if (!record) notFound();

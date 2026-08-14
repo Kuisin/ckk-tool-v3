@@ -14,6 +14,7 @@
  *   承認可否は actOnApprovalRequest 内で判定（本人メンバー or 有効期間内の代理）。
  */
 
+import { type Access, rowInScope } from "@ckk/authz-core";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import {
@@ -49,6 +50,29 @@ import { fetchSalesOrderRef, type SalesOrderRef } from "./data";
 
 const BASE_PATH = "/production/work-orders";
 const APPROVALS_PATH = "/production/approvals";
+const SCOPE_DENIED = "この操作の権限がありません（対象範囲外）";
+
+/**
+ * 対象指示書がスコープ内か（PLANT = 工程の実施拠点 ∪ OWN = 作成者）。
+ * ALL は素通し。不存在は true — 既存の not-found 系エラー処理に委ねる。
+ */
+async function workOrderInScope(
+  access: Access,
+  userId: string,
+  workOrderNumber: number,
+): Promise<boolean> {
+  if (access.kind === "ALL") return true;
+  const row = await prisma.workOrder.findUnique({
+    where: { workOrderNumber },
+    select: { createdBy: true, steps: { select: { plantId: true } } },
+  });
+  if (!row) return true;
+  return rowInScope(
+    access,
+    { plantIds: row.steps.map((s) => s.plantId), createdBy: row.createdBy },
+    userId,
+  );
+}
 
 function revalidate(workOrderNumber?: number) {
   revalidatePath(BASE_PATH);
@@ -300,6 +324,9 @@ export async function updateWorkOrder(
 ): Promise<ActionResult<{ workOrderNumber: number }>> {
   const authz = await checkPermission("work_order", "UPDATE");
   if (!authz.ok) return actionError(authz.error);
+  if (!(await workOrderInScope(authz.access, authz.userId, workOrderNumber))) {
+    return actionError(SCOPE_DENIED);
+  }
   const parsed = workOrderInput.safeParse(payload);
   if (!parsed.success) {
     return actionError(parsed.error.issues[0]?.message ?? "入力が不正です");
@@ -412,6 +439,11 @@ export async function copyWorkOrder(
   if (!authz.ok) return actionError(authz.error);
   if (!targetSalesOrderId)
     return actionError("対象の注文請書を選択してください");
+  if (
+    !(await workOrderInScope(authz.access, authz.userId, sourceWorkOrderNumber))
+  ) {
+    return actionError(SCOPE_DENIED);
+  }
   try {
     const source = await prisma.workOrder.findUnique({
       where: { workOrderNumber: sourceWorkOrderNumber },
@@ -496,6 +528,9 @@ export async function cancelWorkOrder(
 ): Promise<ActionResult> {
   const authz = await checkPermission("work_order", "UPDATE");
   if (!authz.ok) return actionError(authz.error);
+  if (!(await workOrderInScope(authz.access, authz.userId, workOrderNumber))) {
+    return actionError(SCOPE_DENIED);
+  }
   try {
     const prior = await prisma.workOrder.findUnique({
       where: { workOrderNumber },
@@ -553,6 +588,9 @@ export async function requestApproval(
   // 依頼者は起票側の操作 — "approve" ではなく "work_order":UPDATE（判断メモ）。
   const authz = await checkPermission("work_order", "UPDATE");
   if (!authz.ok) return actionError(authz.error);
+  if (!(await workOrderInScope(authz.access, authz.userId, workOrderNumber))) {
+    return actionError(SCOPE_DENIED);
+  }
   try {
     const prior = await prisma.workOrder.findUnique({
       where: { workOrderNumber },
@@ -610,8 +648,11 @@ export async function approveFirst(
 ): Promise<ActionResult> {
   // 権限チェックは追加ゲート — 実体の承認可否（本人/代理）は
   // actOnApprovalRequest のグループ所属判定が引き続き行う。
-  const authz = await checkPermission("approve", "APPROVE");
+  const authz = await checkPermission("work_order", "APPROVE");
   if (!authz.ok) return actionError(authz.error);
+  if (!(await workOrderInScope(authz.access, authz.userId, workOrderNumber))) {
+    return actionError(SCOPE_DENIED);
+  }
   try {
     const prior = await prisma.workOrder.findUnique({
       where: { workOrderNumber },
@@ -672,8 +713,11 @@ export async function approveFirst(
 export async function approveSecond(
   workOrderNumber: number,
 ): Promise<ActionResult> {
-  const authz = await checkPermission("approve", "APPROVE");
+  const authz = await checkPermission("work_order", "APPROVE");
   if (!authz.ok) return actionError(authz.error);
+  if (!(await workOrderInScope(authz.access, authz.userId, workOrderNumber))) {
+    return actionError(SCOPE_DENIED);
+  }
   try {
     const prior = await prisma.workOrder.findUnique({
       where: { workOrderNumber },
@@ -782,10 +826,13 @@ export async function rejectWorkOrder(
   workOrderNumber: number,
   reason: string,
 ): Promise<ActionResult> {
-  const authz = await checkPermission("approve", "APPROVE");
+  const authz = await checkPermission("work_order", "APPROVE");
   if (!authz.ok) return actionError(authz.error);
   const trimmed = reason.trim();
   if (!trimmed) return actionError("差し戻し理由を入力してください");
+  if (!(await workOrderInScope(authz.access, authz.userId, workOrderNumber))) {
+    return actionError(SCOPE_DENIED);
+  }
   try {
     const prior = await prisma.workOrder.findUnique({
       where: { workOrderNumber },

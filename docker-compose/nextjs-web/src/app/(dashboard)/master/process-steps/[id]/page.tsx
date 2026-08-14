@@ -5,6 +5,7 @@ import {
   type ProcessStepDetailData,
 } from "@/components/master/process-steps/ProcessStepDetail";
 import { fetchAuditEntries } from "@/lib/audit";
+import { requireAppRead } from "@/lib/authz-page";
 import { prisma } from "@/lib/db";
 import { type LocalizedText, localized } from "@/lib/format";
 
@@ -16,6 +17,8 @@ export default async function MasterProcessStepsDetailPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
+  const denied = await requireAppRead("master-process-steps");
+  if (denied) return denied;
   const { id: idParam } = await params;
   const id = Number(idParam);
   if (!Number.isInteger(id)) notFound();

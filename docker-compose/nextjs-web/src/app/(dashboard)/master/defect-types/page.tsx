@@ -2,6 +2,7 @@ import {
   type DefectTypeRow,
   DefectTypeTable,
 } from "@/components/master/defect-types/DefectTypeTable";
+import { requireAppRead } from "@/lib/authz-page";
 import { prisma } from "@/lib/db";
 import { type LocalizedText, localized } from "@/lib/format";
 
@@ -9,6 +10,8 @@ export const dynamic = "force-dynamic";
 
 /** 不良種類 一覧 (MS09). */
 export default async function MasterDefectTypesPage() {
+  const denied = await requireAppRead("master-defect-types");
+  if (denied) return denied;
   const records = await prisma.defectType.findMany({
     orderBy: [{ sortOrder: "asc" }, { code: "asc" }],
   });

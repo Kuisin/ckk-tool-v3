@@ -1,0 +1,10 @@
+{
+  "name": "ckk-tool",
+  "private": true,
+  "packageManager": "pnpm@10.18.0",
+  "scripts": {
+    "lint": "pnpm -r lint",
+    "test": "pnpm -r test",
+    "build": "pnpm -r build"
+  }
+}

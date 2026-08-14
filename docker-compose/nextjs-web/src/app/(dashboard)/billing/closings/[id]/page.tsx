@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { ClosingDetail } from "@/components/billing/closings/ClosingDetail";
 import { fetchAuditEntries } from "@/lib/audit";
+import { requireAppRead } from "@/lib/authz-page";
 import { fetchClosing } from "../data";
 
 export const dynamic = "force-dynamic";
@@ -16,6 +17,8 @@ export default async function BillingClosingsDetailPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
+  const denied = await requireAppRead("billing-closings");
+  if (denied) return denied;
   const { id } = await params;
   const closingId = decodeURIComponent(id);
   // uuid 以外は Prisma に渡す前に 404（不正入力での 500 を避ける）。

@@ -93,7 +93,8 @@ export const appList: AppEntry[] = [
     href: "/sales/trial-estimates",
     icon: "IconCalculator",
     category: "販売",
-    requiredPermission: "quote",
+    // 試算のアクションは price_list を要求する（見積連動の価格表ソース）
+    requiredPermission: "price_list",
   },
 
   // ─── 購買 ──────────────────────────────────────────────────────────────────

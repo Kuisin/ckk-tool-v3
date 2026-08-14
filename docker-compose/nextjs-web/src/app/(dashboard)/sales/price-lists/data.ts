@@ -7,8 +7,10 @@
  * price_list_variants（基準単価・期間・試算リンク + tiers/discounts）。
  */
 
+import { ownWhere, rowInScope } from "@ckk/authz-core";
 import type { PriceListEntry } from "@/components/sales/price-lists/model";
-import { prisma } from "@/lib/db";
+import { checkPermission } from "@/lib/authz";
+import { type Prisma, prisma } from "@/lib/db";
 import {
   type DocKey,
   formatEstimateNumber,
@@ -107,7 +109,15 @@ export function mapEntry(r: EntryRow): PriceListEntry {
 }
 
 export async function fetchPriceEntries(): Promise<PriceListEntry[]> {
+  // スコープ行フィルタ（OWN = 自分の作成分のみ。ALL は {} で従来通り全件）。
+  const authz = await checkPermission("price_list", "READ");
+  if (!authz.ok) return [];
   const rows = await prisma.priceListEntry.findMany({
+    where: ownWhere(
+      authz.access,
+      authz.userId,
+      "createdBy",
+    ) as Prisma.PriceListEntryWhereInput,
     include: ENTRY_INCLUDE,
     orderBy: [{ yearMonth: "desc" }, { seq: "desc" }],
   });
@@ -117,8 +127,15 @@ export async function fetchPriceEntries(): Promise<PriceListEntry[]> {
 export async function fetchPriceEntry(
   key: DocKey,
 ): Promise<PriceListEntry | null> {
+  const authz = await checkPermission("price_list", "READ");
+  if (!authz.ok) return null;
   const row = await findEntryRow(key);
-  return row ? mapEntry(row) : null;
+  if (!row) return null;
+  // スコープ外の行は不可視（null → 呼び出し側の notFound に乗せる）。
+  if (!rowInScope(authz.access, { createdBy: row.createdBy }, authz.userId)) {
+    return null;
+  }
+  return mapEntry(row);
 }
 
 /** この価格表（の tier）から作成された見積書 — 関連タブ用の集計。 */

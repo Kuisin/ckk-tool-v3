@@ -1,4 +1,5 @@
 import { TrialEstimateForm } from "@/components/sales/trial-estimates/TrialEstimateForm";
+import { requireAppRead } from "@/lib/authz-page";
 import { parseDocKey } from "@/lib/doc-number";
 import {
   fetchMaterialTypeDefaultPrice,
@@ -23,6 +24,8 @@ export default async function TrialEstimateNewPage({
 }: {
   searchParams: Promise<{ from?: string }>;
 }) {
+  const denied = await requireAppRead("trial-estimates");
+  if (denied) return denied;
   const { from } = await searchParams;
   const fromKey = from ? parseDocKey(from, "EST") : null;
 

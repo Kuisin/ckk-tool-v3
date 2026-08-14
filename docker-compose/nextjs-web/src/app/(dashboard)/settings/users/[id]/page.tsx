@@ -1,36 +1,31 @@
-import { IconLock } from "@tabler/icons-react";
 import { notFound } from "next/navigation";
 import { UserDetail } from "@/components/settings/UserDetail";
-import { EmptyState } from "@/components/ui/EmptyState";
-import { PageHeader } from "@/components/ui/PageHeader";
 import { checkPermission } from "@/lib/authz";
-import { getAdminUser } from "@/lib/users-admin";
+import { requireAppRead } from "@/lib/authz-page";
+import { getAdminUser, listActivePlantOptions } from "@/lib/users-admin";
 
 export const dynamic = "force-dynamic";
 
-/** ユーザー管理（SY01）— ユーザー詳細（ロール割当・実効権限）。system 権限（READ）。 */
+/** ユーザー管理（SY01）— ユーザー詳細（ロール割当・実効権限・所属拠点）。system 権限（READ）。 */
 export default async function UserDetailPage({
   params,
 }: {
   params: Promise<{ id: string }>;
 }) {
-  const authz = await checkPermission("system", "READ");
-  if (!authz.ok) {
-    return (
-      <>
-        <PageHeader
-          breadcrumbs={[
-            "システム",
-            { label: "ユーザー管理", href: "/settings/users" },
-          ]}
-          title="ユーザー詳細"
-        />
-        <EmptyState icon={<IconLock size={28} />} message={authz.error} />
-      </>
-    );
-  }
+  const denied = await requireAppRead("user-management");
+  if (denied) return denied;
   const { id } = await params;
-  const user = await getAdminUser(id);
+  const [user, plantOptions, adminAuthz] = await Promise.all([
+    getAdminUser(id),
+    listActivePlantOptions(),
+    checkPermission("system", "ADMIN"),
+  ]);
   if (!user) notFound();
-  return <UserDetail user={user} />;
+  return (
+    <UserDetail
+      canEditPlants={adminAuthz.ok}
+      plantOptions={plantOptions}
+      user={user}
+    />
+  );
 }

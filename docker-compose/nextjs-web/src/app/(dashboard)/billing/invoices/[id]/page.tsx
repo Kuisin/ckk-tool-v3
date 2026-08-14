@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { InvoiceDetail } from "@/components/billing/invoices/InvoiceDetail";
 import { fetchAuditEntries } from "@/lib/audit";
+import { requireAppRead } from "@/lib/authz-page";
 import { formatDocNumber, parseDocKey } from "@/lib/doc-number";
 import { fetchInvoice } from "../data";
 
@@ -22,6 +23,8 @@ export default async function BillingInvoicesDetailPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
+  const denied = await requireAppRead("invoices");
+  if (denied) return denied;
   const { id } = await params;
   const key = parseDocKey(decodeURIComponent(id), "INV");
   if (!key) notFound();

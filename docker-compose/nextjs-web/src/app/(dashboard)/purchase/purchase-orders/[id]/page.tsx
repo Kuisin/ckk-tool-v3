@@ -3,6 +3,7 @@ import { PurchaseOrderDetail } from "@/components/purchase/purchase-orders/Purch
 import { fetchApprovalTrail, isApprover } from "@/lib/approvals";
 import { listAttachments } from "@/lib/attachments";
 import { fetchAuditEntries } from "@/lib/audit";
+import { requireAppRead } from "@/lib/authz-page";
 import { fetchPurchaseOrder } from "../data";
 
 export const dynamic = "force-dynamic";
@@ -25,6 +26,8 @@ export default async function PurchasePurchaseOrdersDetailPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
+  const denied = await requireAppRead("purchase-orders");
+  if (denied) return denied;
   const { id } = await params;
   const poNumber = decodeURIComponent(id);
 

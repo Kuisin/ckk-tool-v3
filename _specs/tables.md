@@ -54,10 +54,27 @@ Table role_permission_relation {
   permission_code varchar
   action          ACTION
   scope           SCOPE
-  scope_custom    numeric  // use when allowing outside execution user's attribute
+  // grant のスコープ対象コード（default '{*}'）。
+  //   PLANT:  '*' = 所属拠点（user_plants）全部 / plants.code 列挙 = 列挙 ∩ 所属
+  //   REGION: '*' = 所属拠点の地域の全拠点（再交差なし）/ regions.code 列挙 = その地域の全拠点
+  //   ALL/OWN では無視。解決は packages/authz-core decide()
+  scope_values    "text[]" [default: '{*}']
 
   indexes {
     (role_id, action, permission_code) [pk]
+  }
+}
+
+// ユーザーの所属拠点（多対多）— PLANT/REGION スコープ解決の基盤。
+// 管理 UI: /settings/users/[id]（system:ADMIN）
+Table user_plants {
+  user_id         uuid [not null, ref: > users.id]
+  plant_id        int  [not null, ref: > plants.id]
+  assigned_at     timestamp
+  assigned_by     uuid [ref: > users.id]
+
+  indexes {
+    (user_id, plant_id) [pk]
   }
 }
 
@@ -85,24 +102,35 @@ Enum SCOPE {
   OWN
 }
 
+// 有効ロール経由の「全 grant 行」を返す（(user, action, code) は一意でない）。
+// 実効アクセスはアプリ側（packages/authz-core decide()）が全行の和集合で解決:
+// ALL 行 or system:ADMIN → 無制限 / それ以外 → 拠点集合の和 + OWN。
+// users.is_active も JOIN 済み — 無効化ユーザーは即権限ゼロ。
 View user_permissions {
-  user_id         uuid [pk]
+  user_id         uuid
   action          ACTION
   permission_code varchar
-  scope           SCOPE  // only highest scope
-  scope_custom    numeric
-
-  indexes {
-    (user_id, action, permission_code) [pk]
-  }
+  scope           SCOPE
+  scope_values    "text[]"
 }
 ```
 
 ### Master Data
 ```
 // ===========================
-// 拠点（拠点）
+// 地域・拠点
 // ===========================
+
+// 地域（拠点のグループ）。SCOPE.REGION の実体。scope_values は code を参照。
+// 管理 UI は拠点マスタ配下 /master/plants/regions（専用アプリ・opcode なし）。
+Table regions {
+  id              serial [pk]
+  code            varchar [unique, not null]
+  name            json [not null]              // { ja: '', en: '' }
+  is_active       boolean [default: true]
+  created_at      timestamp
+  updated_at      timestamp
+}
 
 // 拠点（製造・在庫・出荷の拠点）。SCOPE.PLANT の実体。
 Table plants {
@@ -110,7 +138,8 @@ Table plants {
   code            varchar [unique, not null]   // 拠点コード
   name            json [not null]              // { ja: '', en: '' }
   name_kana       varchar
-  country_code    varchar(2)                   // ISO 3166-1 alpha-2
+  country_code    varchar(2)                   // ISO 3166-1 alpha-2（拠点ごとに 1 国）
+  region_id       int [ref: > regions.id]      // 所属地域（任意）
   postal_code     varchar
   address         json                         // { ja: '', en: '' }
   phone           varchar

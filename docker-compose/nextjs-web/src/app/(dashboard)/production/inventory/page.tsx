@@ -1,5 +1,6 @@
 import type { TransferPlantOption } from "@/components/production/inventory/StockTransferModal";
 import { UnifiedInventory } from "@/components/production/inventory/UnifiedInventory";
+import { requireAppRead } from "@/lib/authz-page";
 import { prisma } from "@/lib/db";
 import { type LocalizedText, localized } from "@/lib/format";
 import { fetchMaterialInventories } from "./materials/data";
@@ -55,6 +56,8 @@ async function fetchPlantStorageOptions(): Promise<TransferPlantOption[]> {
 
 /** 在庫管理 (PD04) — 製品・素材・仕掛品・ロケーションの統合ビュー。 */
 export default async function UnifiedInventoryPage() {
+  const denied = await requireAppRead("inventory");
+  if (denied) return denied;
   const [productRows, materialRows, wipRows, plants] = await Promise.all([
     fetchProductInventories(),
     fetchMaterialInventories(),

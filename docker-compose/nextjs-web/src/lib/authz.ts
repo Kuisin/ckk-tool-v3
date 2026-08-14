@@ -1,8 +1,9 @@
 /**
- * authz.ts — RBAC 強制（監査 P0-1）。server-only.
+ * authz.ts — RBAC 強制（web アダプタ）。server-only.
  *
- * `user_permissions` ビュー（roles → role_permission_relation を user 毎に
- * 集約、最上位 SCOPE のみ）で permission_code × ACTION を判定する。
+ * 判定ロジックは @ckk/authz-core（両アプリ共通・純粋・単体テスト済み）。
+ * このファイルは Auth.js セッション解決 + React cache() によるリクエスト
+ * 単位メモ化 + 既存 API（AuthzResult）互換の薄いアダプタ。
  *
  * 使い方 — 全 mutating Server Action / Route Handler の先頭で:
  *   const authz = await checkPermission("quote", "CREATE");
@@ -11,26 +12,32 @@
  * 規約:
  * - ACTION は要求アクション or ADMIN のどちらかを持てば許可。
  * - permission_code "system" の ADMIN はスーパーユーザー（全コード許可）。
- * - スコープ（PLANT/OWN 等）は現状 ALL 前提 — 行レベル絞り込みは各機能側
- *   の将来拡張（このヘルパは code×action の門番）。
- * - 環境変数 AUTHZ_DISABLED=1 で一時無効化（ロールアウト時の緊急脱出。
- *   使用時は警告ログ）。
+ * - スコープ: checkPermission は access（ALL / 拠点集合+OWN）も返す。
+ *   行レベル絞り込みは各機能が access-where ヘルパで適用する（未適用の
+ *   機能は従来通り ok だけ見ればよい）。
  */
 
+import {
+  type Access,
+  type AppPermissionRef,
+  buildPermissionSet,
+  decide,
+  loadPermissionRows,
+  loadScopeContext,
+  type PermissionAction,
+  type PermissionSet,
+  readableCodes,
+  type ScopeContext,
+  visibleAppKeys,
+} from "@ckk/authz-core";
+import { cache } from "react";
 import { auth } from "@/auth";
 import { prisma } from "./db";
 
-export type PermissionAction =
-  | "READ"
-  | "CREATE"
-  | "UPDATE"
-  | "DELETE"
-  | "EXPORT"
-  | "APPROVE"
-  | "ADMIN";
+export type { Access, PermissionAction, ScopeContext };
 
 export type AuthzResult =
-  | { ok: true; userId: string }
+  | { ok: true; userId: string; access: Access }
   | { ok: false; error: string };
 
 /** セッションのユーザー id（未ログインは null）。 */
@@ -43,9 +50,36 @@ export async function sessionUserId(): Promise<string | null> {
   }
 }
 
+/** ユーザーの権限集合（リクエスト単位でメモ化 — 1 クエリ）。 */
+const permissionSetFor = cache(
+  async (userId: string): Promise<PermissionSet> =>
+    buildPermissionSet(await loadPermissionRows(prisma, userId)),
+);
+
+/** スコープ解決コンテキスト（リクエスト単位でメモ化 — 2 クエリ）。 */
+const scopeContextFor = cache(
+  async (userId: string): Promise<ScopeContext> =>
+    loadScopeContext(prisma, userId),
+);
+
+/** セッションユーザーの権限集合（未ログインは null）。 */
+export async function getPermissionSet(): Promise<PermissionSet | null> {
+  const userId = await sessionUserId();
+  if (!userId) return null;
+  return permissionSetFor(userId);
+}
+
+/** セッションユーザーのスコープ解決コンテキスト（未ログインは null）。 */
+export async function getScopeContext(): Promise<ScopeContext | null> {
+  const userId = await sessionUserId();
+  if (!userId) return null;
+  return scopeContextFor(userId);
+}
+
 /**
  * permission_code × action の権限チェック。
- * 判定は user_permissions ビュー（有効ロールのみ・最上位スコープ）。
+ * 成功時は実効アクセス（access）も返す — スコープ未対応の呼び出し側は
+ * これまで通り ok / userId / error だけ見れば挙動不変。
  */
 export async function checkPermission(
   code: string,
@@ -54,20 +88,14 @@ export async function checkPermission(
   const userId = await sessionUserId();
   if (!userId) return { ok: false, error: "ログインが必要です" };
 
-  if (process.env.AUTHZ_DISABLED === "1") {
-    console.warn(`[authz] AUTHZ_DISABLED=1 — ${code}:${action} を素通し`);
-    return { ok: true, userId };
+  const [set, ctx] = await Promise.all([
+    permissionSetFor(userId),
+    scopeContextFor(userId),
+  ]);
+  const decision = decide(set, ctx, code, action);
+  if (decision.allowed) {
+    return { ok: true, userId, access: decision.access };
   }
-
-  const rows = await prisma.$queryRaw<{ ok: number }[]>`
-    SELECT 1 AS ok FROM app.user_permissions
-    WHERE user_id = ${userId}::uuid
-      AND (
-        (permission_code = ${code} AND action::text IN (${action}, 'ADMIN'))
-        OR (permission_code = 'system' AND action::text = 'ADMIN')
-      )
-    LIMIT 1`;
-  if (rows.length > 0) return { ok: true, userId };
   return {
     ok: false,
     error: `この操作の権限がありません（${code}:${action}）`,
@@ -83,4 +111,22 @@ export async function requirePermissionResponse(
   if (res.ok) return null;
   const status = res.error.startsWith("ログイン") ? 401 : 403;
   return Response.json({ error: res.error }, { status });
+}
+
+/**
+ * READ 可能な permission code 集合（アプリ可視性フィルタ用）。
+ * superuser は番兵 "*" を含む。未ログインは空集合。
+ */
+export async function getReadableCodes(): Promise<ReadonlySet<string>> {
+  const set = await getPermissionSet();
+  return set ? readableCodes(set) : new Set<string>();
+}
+
+/** アプリ一覧 → 表示してよい key 集合（requiredPermission=null は常時可視）。 */
+export async function getVisibleAppKeys<T extends AppPermissionRef>(
+  apps: readonly T[],
+): Promise<Set<string>> {
+  const set = await getPermissionSet();
+  if (!set) return new Set<string>();
+  return visibleAppKeys(set, apps);
 }

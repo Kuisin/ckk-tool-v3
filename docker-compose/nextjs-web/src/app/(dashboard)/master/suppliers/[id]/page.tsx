@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { SupplierDetail } from "@/components/master/suppliers/SupplierDetail";
 import { fetchAuditEntries } from "@/lib/audit";
+import { requireAppRead } from "@/lib/authz-page";
 import { fetchSupplierDetail } from "../../_shared/bp-data";
 
 export const dynamic = "force-dynamic";
@@ -11,6 +12,8 @@ export default async function MasterSuppliersDetailPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
+  const denied = await requireAppRead("master-suppliers");
+  if (denied) return denied;
   const { id } = await params;
   const record = await fetchSupplierDetail(id);
   if (!record) notFound();

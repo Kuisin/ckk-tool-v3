@@ -36,7 +36,7 @@ import {
 } from "@tabler/icons-react";
 import { useState, useTransition } from "react";
 import { saveHomeSettingsAction } from "@/app/(dashboard)/profile/home/actions";
-import { useDisabledApps } from "@/components/layout/AppFlags";
+import { useHiddenApps } from "@/components/layout/AppFlags";
 import {
   CancelButton,
   PrimaryButton,
@@ -125,7 +125,7 @@ function StarToggleCard({
 }
 
 export function HomeSettingsForm({ initial }: { initial: HomeSettings }) {
-  const disabledApps = useDisabledApps();
+  const hiddenApps = useHiddenApps();
   const isMobile = useIsMobile();
   const [isPending, startTransition] = useTransition();
 
@@ -137,7 +137,7 @@ export function HomeSettingsForm({ initial }: { initial: HomeSettings }) {
   const [newGroupName, setNewGroupName] = useState("");
 
   // 環境フラグで無効化されたアプリは選択肢に出さない
-  const apps = appList.filter((a) => !disabledApps.has(a.key));
+  const apps = appList.filter((a) => !hiddenApps.has(a.key));
 
   const toggleStar = (key: string) => {
     setStarred((prev) =>

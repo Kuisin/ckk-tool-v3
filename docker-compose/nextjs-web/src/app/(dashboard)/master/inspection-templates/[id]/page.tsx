@@ -4,6 +4,7 @@ import {
   type InspectionTemplateDetailData,
 } from "@/components/master/inspection-templates/InspectionTemplateDetail";
 import { fetchAuditEntries } from "@/lib/audit";
+import { requireAppRead } from "@/lib/authz-page";
 import { prisma } from "@/lib/db";
 import { type LocalizedText, localized } from "@/lib/format";
 import { toItemRow } from "../data";
@@ -16,6 +17,8 @@ export default async function MasterInspectionTemplatesDetailPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
+  const denied = await requireAppRead("master-inspection-templates");
+  if (denied) return denied;
   const { id: idParam } = await params;
   const id = Number(idParam);
   if (!Number.isInteger(id)) notFound();

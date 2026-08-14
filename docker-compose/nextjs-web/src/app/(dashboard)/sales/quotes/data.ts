@@ -5,9 +5,11 @@
  * doubles as the URL id.
  */
 
+import { ownWhere, rowInScope } from "@ckk/authz-core";
 import type { PriceListEntry } from "@/components/sales/price-lists/model";
 import type { Quote } from "@/components/sales/quotes/model";
-import { prisma } from "@/lib/db";
+import { checkPermission } from "@/lib/authz";
+import { type Prisma, prisma } from "@/lib/db";
 import {
   type DocKey,
   formatProductNumber,
@@ -86,8 +88,16 @@ export function mapQuote(r: QuoteRow): Quote {
 }
 
 export async function fetchQuotes(): Promise<Quote[]> {
+  // スコープ行フィルタ（OWN = 自分の作成分のみ。ALL は {} で従来通り全件）。
+  const authz = await checkPermission("quote", "READ");
+  if (!authz.ok) return [];
   const rows = await prisma.quote.findMany({
     take: LIST_FETCH_CAP,
+    where: ownWhere(
+      authz.access,
+      authz.userId,
+      "createdBy",
+    ) as Prisma.QuoteWhereInput,
     include: QUOTE_INCLUDE,
     orderBy: [{ yearMonth: "desc" }, { seq: "desc" }],
   });
@@ -95,8 +105,15 @@ export async function fetchQuotes(): Promise<Quote[]> {
 }
 
 export async function fetchQuote(key: DocKey): Promise<Quote | null> {
+  const authz = await checkPermission("quote", "READ");
+  if (!authz.ok) return null;
   const row = await findQuoteRow(key);
-  return row ? mapQuote(row) : null;
+  if (!row) return null;
+  // スコープ外の行は不可視（null → 呼び出し側の notFound / 404 に乗せる）。
+  if (!rowInScope(authz.access, { createdBy: row.createdBy }, authz.userId)) {
+    return null;
+  }
+  return mapQuote(row);
 }
 
 /** 価格表 entries referenced by a quote's item tiers (関連タブ・適用価格表). */

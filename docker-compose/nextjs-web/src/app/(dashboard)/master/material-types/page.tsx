@@ -2,6 +2,7 @@ import {
   type MaterialTypeRow,
   MaterialTypeTable,
 } from "@/components/master/material-types/MaterialTypeTable";
+import { requireAppRead } from "@/lib/authz-page";
 import { prisma } from "@/lib/db";
 import { type LocalizedText, localized } from "@/lib/format";
 
@@ -10,6 +11,8 @@ export const dynamic = "force-dynamic";
 
 /** 材種 一覧 (MS04). */
 export default async function MasterMaterialTypesPage() {
+  const denied = await requireAppRead("master-material-types");
+  if (denied) return denied;
   const records = await prisma.materialType.findMany({
     include: { manufacturer: true, shape: true },
     orderBy: { id: "asc" },

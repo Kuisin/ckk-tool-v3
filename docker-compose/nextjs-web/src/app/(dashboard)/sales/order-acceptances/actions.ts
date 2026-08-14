@@ -15,6 +15,7 @@
  * lib/approvals（approval_requests / approval_records — FIRST 段のみ）。
  */
 
+import { type Access, rowInScope } from "@ckk/authz-core";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { actOnApprovalRequest, createApprovalRequest } from "@/lib/approvals";
@@ -54,6 +55,26 @@ const trimOrNull = (v: string | null | undefined) => {
 /** 番号（ORD-YYYYMM-NNNNN）→ 複合キー。不正は null。 */
 function keyOf(number: string): DocKey | null {
   return parseDocKey(number.trim(), "ORD");
+}
+
+const SCOPE_DENIED = "この操作の権限がありません（対象範囲外）";
+
+/**
+ * 対象受注請書がスコープ内か（OWN 行チェック）。ALL は素通し。
+ * 不存在は true — 既存の not-found 系エラー処理に委ねる。
+ */
+async function acceptanceInScope(
+  access: Access,
+  userId: string,
+  key: DocKey,
+): Promise<boolean> {
+  if (access.kind === "ALL") return true;
+  const row = await prisma.orderAcceptance.findUnique({
+    where: { yearMonth_seq: key },
+    select: { createdBy: true },
+  });
+  if (!row) return true;
+  return rowInScope(access, { createdBy: row.createdBy }, userId);
 }
 
 // ── 入力スキーマ ─────────────────────────────────────────────────────────────
@@ -121,6 +142,9 @@ export async function retryExtraction(number: string): Promise<ActionResult> {
   if (!key) return actionError("受注請書番号が不正です");
   const authz = await checkPermission("order_acceptance", "UPDATE");
   if (!authz.ok) return actionError(authz.error);
+  if (!(await acceptanceInScope(authz.access, authz.userId, key))) {
+    return actionError(SCOPE_DENIED);
+  }
   try {
     const prior = await prisma.orderAcceptance.findUnique({
       where: { yearMonth_seq: key },
@@ -156,6 +180,9 @@ export async function saveDraft(
   }
   const authz = await checkPermission("order_acceptance", "UPDATE");
   if (!authz.ok) return actionError(authz.error);
+  if (!(await acceptanceInScope(authz.access, authz.userId, key))) {
+    return actionError(SCOPE_DENIED);
+  }
   const v = parsed.data;
   try {
     const prior = await prisma.orderAcceptance.findUnique({
@@ -231,6 +258,9 @@ export async function submitForApproval(
   if (!key) return actionError("受注請書番号が不正です");
   const authz = await checkPermission("order_acceptance", "UPDATE");
   if (!authz.ok) return actionError(authz.error);
+  if (!(await acceptanceInScope(authz.access, authz.userId, key))) {
+    return actionError(SCOPE_DENIED);
+  }
   try {
     const prior = await prisma.orderAcceptance.findUnique({
       where: { yearMonth_seq: key },
@@ -296,6 +326,9 @@ export async function approveAcceptance(number: string): Promise<ActionResult> {
   if (!key) return actionError("受注請書番号が不正です");
   const authz = await checkPermission("order_acceptance", "APPROVE");
   if (!authz.ok) return actionError(authz.error);
+  if (!(await acceptanceInScope(authz.access, authz.userId, key))) {
+    return actionError(SCOPE_DENIED);
+  }
   try {
     const prior = await prisma.orderAcceptance.findUnique({
       where: { yearMonth_seq: key },
@@ -342,6 +375,9 @@ export async function rejectAcceptance(
   if (!trimmed) return actionError("差し戻し理由を入力してください");
   const authz = await checkPermission("order_acceptance", "APPROVE");
   if (!authz.ok) return actionError(authz.error);
+  if (!(await acceptanceInScope(authz.access, authz.userId, key))) {
+    return actionError(SCOPE_DENIED);
+  }
   try {
     const prior = await prisma.orderAcceptance.findUnique({
       where: { yearMonth_seq: key },
@@ -394,6 +430,9 @@ export async function deployToSalesOrders(
   if (!key) return actionError("受注請書番号が不正です");
   const authz = await checkPermission("order_acceptance", "CREATE");
   if (!authz.ok) return actionError(authz.error);
+  if (!(await acceptanceInScope(authz.access, authz.userId, key))) {
+    return actionError(SCOPE_DENIED);
+  }
   try {
     const prior = await prisma.orderAcceptance.findUnique({
       where: { yearMonth_seq: key },
@@ -450,6 +489,7 @@ export async function deployToSalesOrders(
             // 見積 → 受注 → 注文請書のトレーサビリティ（監査 P2-2）
             quoteYearMonth: prior.quoteYearMonth,
             quoteSeq: prior.quoteSeq,
+            createdBy: authz.userId,
             notes: it.notes,
           },
         });
@@ -510,6 +550,9 @@ export async function archiveAcceptance(number: string): Promise<ActionResult> {
   if (!key) return actionError("受注請書番号が不正です");
   const authz = await checkPermission("order_acceptance", "UPDATE");
   if (!authz.ok) return actionError(authz.error);
+  if (!(await acceptanceInScope(authz.access, authz.userId, key))) {
+    return actionError(SCOPE_DENIED);
+  }
   try {
     const updated = await prisma.orderAcceptance.updateMany({
       where: { ...key, status: "COMPLETED" },

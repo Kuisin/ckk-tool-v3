@@ -38,7 +38,16 @@ export interface AdminUserPermission {
   permissionCode: string;
   action: string;
   scope: string;
-  scopeCustom: number | null;
+  /** grant のスコープ対象コード（'*' = ワイルドカード）。ALL/OWN では無意味 */
+  scopeValues: string[];
+}
+
+/** 所属拠点（user_plants — PLANT/REGION スコープ解決の基盤）。 */
+export interface AdminUserPlant {
+  id: number;
+  code: string;
+  name: LocalizedText | null;
+  isActive: boolean;
 }
 
 export interface AdminUserDetail extends AdminUserRow {
@@ -49,6 +58,22 @@ export interface AdminUserDetail extends AdminUserRow {
   updatedAt: string | null;
   assignments: AdminUserAssignment[];
   permissions: AdminUserPermission[];
+  plants: AdminUserPlant[];
+}
+
+/** 有効な拠点一覧（所属拠点セレクタの選択肢）。 */
+export async function listActivePlantOptions(): Promise<AdminUserPlant[]> {
+  const rows = await prisma.plant.findMany({
+    where: { isActive: true },
+    orderBy: { code: "asc" },
+    select: { id: true, code: true, name: true, isActive: true },
+  });
+  return rows.map((p) => ({
+    id: p.id,
+    code: p.code,
+    name: p.name as LocalizedText | null,
+    isActive: p.isActive,
+  }));
 }
 
 export async function listAdminUsers(): Promise<AdminUserRow[]> {
@@ -90,21 +115,26 @@ export async function getAdminUser(
         include: { role: true },
         orderBy: { assignedAt: "desc" },
       },
+      userPlants: {
+        include: { plant: true },
+        orderBy: { plant: { code: "asc" } },
+      },
     },
   });
   if (!u) return null;
+  // ビューは grant 単位の全行を返す（1 code×action に複数ロール分の行があり得る）。
   const permissions = await prisma.$queryRaw<
     {
       permission_code: string;
       action: string;
       scope: string;
-      scope_custom: number | null;
+      scope_values: string[] | null;
     }[]
   >`
-    SELECT permission_code, action::text AS action, scope::text AS scope, scope_custom
+    SELECT permission_code, action::text AS action, scope::text AS scope, scope_values
     FROM app.user_permissions
     WHERE user_id = ${id}::uuid
-    ORDER BY permission_code, action`;
+    ORDER BY permission_code, action, scope`;
   const activeAssignments = u.roleAssignments.filter((a) => a.isActive);
   return {
     id: u.id,
@@ -133,7 +163,13 @@ export async function getAdminUser(
       permissionCode: p.permission_code,
       action: p.action,
       scope: p.scope,
-      scopeCustom: p.scope_custom,
+      scopeValues: p.scope_values ?? ["*"],
+    })),
+    plants: u.userPlants.map((up) => ({
+      id: up.plant.id,
+      code: up.plant.code,
+      name: up.plant.name as LocalizedText | null,
+      isActive: up.plant.isActive,
     })),
   };
 }

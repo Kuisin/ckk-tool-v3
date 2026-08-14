@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { CriterionEditForm } from "@/components/settings/CriterionEditForm";
+import { requireAppRead } from "@/lib/authz-page";
 import { getTrialPricingSettings } from "@/lib/system-settings";
 
 export const dynamic = "force-dynamic";
@@ -10,6 +11,8 @@ export default async function CriterionEditPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
+  const denied = await requireAppRead("trial-pricing-engine");
+  if (denied) return denied;
   const { id } = await params;
   const criterionId = decodeURIComponent(id);
   const settings = await getTrialPricingSettings();

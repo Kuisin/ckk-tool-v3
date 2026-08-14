@@ -8,12 +8,14 @@
  * duplicate warnings.
  */
 
+import { ownWhere, rowInScope } from "@ckk/authz-core";
 import type { EntryIdentity } from "@/components/sales/price-lists/model";
 import type {
   TrialEstimateRecord,
   TrialPriceSnapshot,
 } from "@/components/sales/trial-estimates/types";
-import { prisma } from "@/lib/db";
+import { checkPermission } from "@/lib/authz";
+import { type Prisma, prisma } from "@/lib/db";
 import {
   formatEstimateNumber,
   formatPriceListNumber,
@@ -106,8 +108,16 @@ export function mapEstimate(r: EstimateRow): TrialEstimateRecord {
 }
 
 export async function fetchTrialEstimates(): Promise<TrialEstimateRecord[]> {
+  // スコープ行フィルタ（OWN = 自分の作成分のみ。ALL は {} で従来通り全件）。
+  const authz = await checkPermission("price_list", "READ");
+  if (!authz.ok) return [];
   const rows = await prisma.estimate.findMany({
     take: LIST_FETCH_CAP,
+    where: ownWhere(
+      authz.access,
+      authz.userId,
+      "createdBy",
+    ) as Prisma.EstimateWhereInput,
     include: {
       customerBp: true,
       product: true,
@@ -124,8 +134,15 @@ export async function fetchTrialEstimate(
   yearMonth: string,
   seq: number,
 ): Promise<TrialEstimateRecord | null> {
+  const authz = await checkPermission("price_list", "READ");
+  if (!authz.ok) return null;
   const row = await fetchEstimateRowByKey(yearMonth, seq);
-  return row ? mapEstimate(row) : null;
+  if (!row) return null;
+  // スコープ外の行は不可視（null → 呼び出し側の notFound に乗せる）。
+  if (!rowInScope(authz.access, { createdBy: row.createdBy }, authz.userId)) {
+    return null;
+  }
+  return mapEstimate(row);
 }
 
 /** 顧客 options — BPs with an active CUSTOMER role (top-level only). */

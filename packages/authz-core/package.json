@@ -1,0 +1,24 @@
+{
+  "name": "@ckk/authz-core",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Unified RBAC decision logic shared by nextjs-web and nextjs-kiosk (TS source, no build step — consumed via transpilePackages)",
+  "type": "module",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "lint": "biome check .",
+    "format": "biome check --write .",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "2.2.0",
+    "typescript": "^5",
+    "vitest": "4.1.9"
+  }
+}

@@ -1,9 +1,6 @@
-import { IconLock } from "@tabler/icons-react";
 import { notFound } from "next/navigation";
 import { KioskDeviceDetailView } from "@/components/settings/kiosk/KioskDeviceDetailView";
-import { EmptyState } from "@/components/ui/EmptyState";
-import { PageHeader } from "@/components/ui/PageHeader";
-import { checkPermission } from "@/lib/authz";
+import { requireAppRead } from "@/lib/authz-page";
 import { getKioskDevice, listRecentDeviceUsers } from "@/lib/kiosk-admin";
 
 export const dynamic = "force-dynamic";
@@ -14,19 +11,9 @@ export default async function KioskDeviceDetailPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
+  const denied = await requireAppRead("kiosk-devices");
+  if (denied) return denied;
   const { id } = await params;
-  const authz = await checkPermission("kiosk", "READ");
-  if (!authz.ok) {
-    return (
-      <>
-        <PageHeader
-          breadcrumbs={["システム", "端末管理", "端末詳細"]}
-          title="端末詳細"
-        />
-        <EmptyState icon={<IconLock size={28} />} message={authz.error} />
-      </>
-    );
-  }
   const device = await getKioskDevice(id);
   if (!device) notFound();
   const recentUsers = await listRecentDeviceUsers(id);

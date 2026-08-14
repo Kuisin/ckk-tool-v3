@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { DesignRequestDetail } from "@/components/sales/design-requests/DesignRequestDetail";
 import { listAttachments } from "@/lib/attachments";
 import { fetchAuditEntries } from "@/lib/audit";
+import { requireAppRead } from "@/lib/authz-page";
 import { fetchDesignRequest } from "../data";
 
 export const dynamic = "force-dynamic";
@@ -24,6 +25,8 @@ export default async function SalesDesignRequestsDetailPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
+  const denied = await requireAppRead("design-requests");
+  if (denied) return denied;
   const { id } = await params;
   const requestNumber = decodeURIComponent(id);
 

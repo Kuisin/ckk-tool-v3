@@ -24,6 +24,7 @@ import {
   setPlantsActive,
 } from "@/app/(dashboard)/master/plants/actions";
 import { ActiveBadge } from "@/components/ui/ActiveBadge";
+import { SecondaryButton } from "@/components/ui/buttons";
 import { type Column, DataTable } from "@/components/ui/DataTable";
 import { DocNumber } from "@/components/ui/DocNumber";
 import { openConfirm } from "@/components/ui/modals";
@@ -46,6 +47,8 @@ export interface PlantRow {
   code: string;
   name: string;
   countryCode: string | null;
+  /** 地域名（コード + 名称）。未設定は null。 */
+  regionName: string | null;
   isActive: boolean;
   /** ISO timestamp */
   updatedAt: string;
@@ -162,6 +165,15 @@ export function PlantTable({ rows }: { rows: PlantRow[] }) {
       render: (r) => countryLabel(r.countryCode),
     },
     {
+      key: "region",
+      header: "地域",
+      sortable: true,
+      hideable: true,
+      width: 130,
+      sortValue: (r) => r.regionName ?? "",
+      render: (r) => r.regionName ?? "—",
+    },
+    {
       key: "isActive",
       header: "状態",
       sortable: true,
@@ -182,7 +194,14 @@ export function PlantTable({ rows }: { rows: PlantRow[] }) {
 
   return (
     <ListShell
-      action={<NewButton href={`${BASE_PATH}/new`} />}
+      action={
+        <Group gap="xs" wrap="nowrap">
+          <SecondaryButton href={`${BASE_PATH}/regions`}>
+            地域管理
+          </SecondaryButton>
+          <NewButton href={`${BASE_PATH}/new`} />
+        </Group>
+      }
       breadcrumbs={["マスタ", "拠点"]}
       filters={
         <Select

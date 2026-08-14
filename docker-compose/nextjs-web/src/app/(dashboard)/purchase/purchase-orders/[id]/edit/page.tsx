@@ -1,6 +1,7 @@
 import { notFound, redirect } from "next/navigation";
 import { isEditable } from "@/components/purchase/purchase-orders/model";
 import { PurchaseOrderForm } from "@/components/purchase/purchase-orders/PurchaseOrderForm";
+import { requireAppRead } from "@/lib/authz-page";
 import {
   fetchPlantOptions,
   fetchPurchaseOrder,
@@ -20,6 +21,8 @@ export default async function PurchasePurchaseOrdersEditPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
+  const denied = await requireAppRead("purchase-orders");
+  if (denied) return denied;
   const { id } = await params;
   const poNumber = decodeURIComponent(id);
 

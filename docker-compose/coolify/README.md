@@ -29,7 +29,8 @@ ports 8090/8091, stable across Coolify's per-deploy container names).
 Deploy/rollback: `./deploy.sh admin-dev [<sha>]` / `./deploy.sh admin-main [<sha>]`.
 
 `nextjs-kiosk` (共有キオスク端末アプリ — QR カードログイン) mirrors nextjs-web:
-dev/main apps built from base dir `/docker-compose/nextjs-kiosk`, registered by
+dev/main apps built from the repo-root workspace context (base dir `/`,
+dockerfile `/docker-compose/nextjs-kiosk/Dockerfile`), registered by
 the idempotent `add-kiosk-apps.sh` (also generates the shared `KIOSK_WS_SECRET`
 into `/data/coolify/source/.kiosk-ws-secret` and injects it + each
 `NEXT_PUBLIC_KIOSK_WS_URL` into the nextjs-web apps for the admin monitor WS).
@@ -92,12 +93,14 @@ Once `deploy.ckk-tool.co.jp` is publicly reachable, add a repo webhook:
 - Secret: per-app value from `/data/coolify/source/.webhook-secrets`
 - Events: `push`
 
-**Watch paths (monorepo):** every app has `watch_paths` set to its own base dir
-(`docker-compose/nextjs-web/**` for nextjs-web-dev/main,
-`docker-compose/admintools/**` for admintools-dev/main), so a webhook push only
-redeploys the app whose files actually changed — a docs-only or shared-db-only
-push deploys nothing. Manual deploys (`deploy.sh`, Coolify UI/API) ignore watch
-paths. `setup.sh` (re)applies the setting idempotently for the nextjs-web apps;
+**Watch paths (monorepo):** every app has `watch_paths` scoped to what actually
+affects its build. The pnpm-workspace apps (nextjs-web / nextjs-kiosk dev+main —
+base dir `/`, dockerfile under the app dir) watch their app dir **plus**
+`packages/**` and the root manifests (`pnpm-lock.yaml`, `pnpm-workspace.yaml`,
+`package.json`); admintools keeps `docker-compose/admintools/**`. So a docs-only
+or shared-db-only push deploys nothing. Manual deploys (`deploy.sh`, Coolify
+UI/API) ignore watch paths. `setup.sh` (re)applies the settings idempotently
+for the nextjs-web apps;
 the admintools apps were set once via
 `PATCH /api/v1/applications/<uuid> {"watch_paths": "docker-compose/admintools/**"}`.
 

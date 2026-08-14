@@ -2,6 +2,7 @@ import {
   type MaterialNumberingData,
   MaterialNumberingTabs,
 } from "@/components/master/material-numbering/MaterialNumberingTabs";
+import { requireAppRead } from "@/lib/authz-page";
 import { prisma } from "@/lib/db";
 import { type LocalizedText, localized } from "@/lib/format";
 
@@ -9,6 +10,8 @@ export const dynamic = "force-dynamic";
 
 /** 採番構成 (MS0C) — 材種/素材コードの構成要素マスタ管理. */
 export default async function MaterialNumberingPage() {
+  const denied = await requireAppRead("master-material-numbering");
+  if (denied) return denied;
   const [manufacturers, grades, shapes, kinds, finishes, diameters, lengths] =
     await Promise.all([
       prisma.materialManufacturer.findMany({ orderBy: { code: "asc" } }),

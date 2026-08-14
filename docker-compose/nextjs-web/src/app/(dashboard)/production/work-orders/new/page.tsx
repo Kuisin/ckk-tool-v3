@@ -1,4 +1,5 @@
 import { WorkflowBuilder } from "@/components/production/work-orders/WorkflowBuilder";
+import { requireAppRead } from "@/lib/authz-page";
 import { loadCatalog } from "@/lib/workflow";
 import {
   fetchInspectionTemplateOptions,
@@ -19,6 +20,8 @@ export default async function ProductionWorkOrdersNewPage({
 }: {
   searchParams: Promise<{ salesOrder?: string; type?: string; qty?: string }>;
 }) {
+  const denied = await requireAppRead("work-orders");
+  if (denied) return denied;
   const sp = await searchParams;
   const [catalog, plantOptions, templateOptions, supplierOptions, soRef] =
     await Promise.all([

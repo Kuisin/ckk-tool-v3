@@ -2,6 +2,7 @@ import {
   type ProductRow,
   ProductTable,
 } from "@/components/master/products/ProductTable";
+import { requireAppRead } from "@/lib/authz-page";
 import { prisma } from "@/lib/db";
 import { formatProductNumber } from "@/lib/doc-number";
 import { type LocalizedText, localized } from "@/lib/format";
@@ -10,6 +11,8 @@ export const dynamic = "force-dynamic";
 
 /** 製品 一覧 (MS03). */
 export default async function MasterProductsPage() {
+  const denied = await requireAppRead("master-products");
+  if (denied) return denied;
   const records = await prisma.product.findMany({
     orderBy: { id: "asc" },
     include: { materialType: { select: { code: true, name: true } } },

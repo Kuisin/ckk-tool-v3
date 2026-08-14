@@ -4,6 +4,7 @@ import {
   TrialPricingHubSections,
 } from "@/components/settings/TrialPricingHubSections";
 import { PageHeader } from "@/components/ui/PageHeader";
+import { requireAppRead } from "@/lib/authz-page";
 import { getTrialPricingSettings } from "@/lib/system-settings";
 import { MATERIAL_PRICE_BASIS_OPTIONS } from "@/lib/trial-pricing-settings";
 
@@ -13,6 +14,8 @@ const BASE = "/settings/trial-pricing-engine";
 
 /** 試算計算（SY02）— 各セクションを閲覧し、クリックで個別の編集ページへ。 */
 export default async function TrialPricingEnginePage() {
+  const denied = await requireAppRead("trial-pricing-engine");
+  if (denied) return denied;
   const s = await getTrialPricingSettings();
   const basisLabel =
     MATERIAL_PRICE_BASIS_OPTIONS.find((o) => o.value === s.materialPriceBasis)

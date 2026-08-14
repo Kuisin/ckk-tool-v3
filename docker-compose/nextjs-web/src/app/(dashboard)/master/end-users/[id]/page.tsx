@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { EndUserDetail } from "@/components/master/end-users/EndUserDetail";
+import { requireAppRead } from "@/lib/authz-page";
 import { fetchEndUserDetail } from "../../_shared/bp-data";
 
 export const dynamic = "force-dynamic";
@@ -10,6 +11,8 @@ export default async function MasterEndUsersDetailPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
+  const denied = await requireAppRead("master-end-users");
+  if (denied) return denied;
   const { id } = await params;
   const record = await fetchEndUserDetail(id);
   if (!record) notFound();

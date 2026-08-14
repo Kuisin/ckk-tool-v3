@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { ItemDefEditForm } from "@/components/settings/ItemDefEditForm";
+import { requireAppRead } from "@/lib/authz-page";
 import { getProductItemDefs } from "@/lib/product-settings";
 
 export const dynamic = "force-dynamic";
@@ -10,6 +11,8 @@ export default async function ProductItemEditPage({
 }: {
   params: Promise<{ key: string }>;
 }) {
+  const denied = await requireAppRead("product-items");
+  if (denied) return denied;
   const { key } = await params;
   const itemKey = decodeURIComponent(key);
   const defs = await getProductItemDefs();

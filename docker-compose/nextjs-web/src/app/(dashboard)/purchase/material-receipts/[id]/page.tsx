@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { MaterialReceiptDetail } from "@/components/purchase/material-receipts/MaterialReceiptDetail";
 import { listAttachments } from "@/lib/attachments";
+import { requireAppRead } from "@/lib/authz-page";
 import { fetchMaterialReceipt } from "../data";
 
 export const dynamic = "force-dynamic";
@@ -16,6 +17,8 @@ export default async function PurchaseMaterialReceiptsDetailPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
+  const denied = await requireAppRead("material-receipts");
+  if (denied) return denied;
   const { id } = await params;
   const receiptId = decodeURIComponent(id);
   const [receipt, attachments] = await Promise.all([
