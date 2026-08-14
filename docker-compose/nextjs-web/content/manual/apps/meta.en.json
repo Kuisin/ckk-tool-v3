@@ -1,0 +1,23 @@
+{
+  "title": "App Guides",
+  "pages": [
+    "trial-estimate",
+    "price-list",
+    "quote",
+    "order-acceptance",
+    "design-request",
+    "purchase-request",
+    "purchase-order",
+    "material-receipt",
+    "outsource-order",
+    "work-order",
+    "approval",
+    "product-inventory",
+    "material-inventory",
+    "shipping-order",
+    "delivery-note",
+    "invoice",
+    "billing-closing",
+    "product-type"
+  ]
+}
