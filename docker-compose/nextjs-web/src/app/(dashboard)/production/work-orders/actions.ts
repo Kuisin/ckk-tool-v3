@@ -610,7 +610,7 @@ export async function approveFirst(
 ): Promise<ActionResult> {
   // 権限チェックは追加ゲート — 実体の承認可否（本人/代理）は
   // actOnApprovalRequest のグループ所属判定が引き続き行う。
-  const authz = await checkPermission("approve", "APPROVE");
+  const authz = await checkPermission("work_order", "APPROVE");
   if (!authz.ok) return actionError(authz.error);
   try {
     const prior = await prisma.workOrder.findUnique({
@@ -672,7 +672,7 @@ export async function approveFirst(
 export async function approveSecond(
   workOrderNumber: number,
 ): Promise<ActionResult> {
-  const authz = await checkPermission("approve", "APPROVE");
+  const authz = await checkPermission("work_order", "APPROVE");
   if (!authz.ok) return actionError(authz.error);
   try {
     const prior = await prisma.workOrder.findUnique({
@@ -782,7 +782,7 @@ export async function rejectWorkOrder(
   workOrderNumber: number,
   reason: string,
 ): Promise<ActionResult> {
-  const authz = await checkPermission("approve", "APPROVE");
+  const authz = await checkPermission("work_order", "APPROVE");
   if (!authz.ok) return actionError(authz.error);
   const trimmed = reason.trim();
   if (!trimmed) return actionError("差し戻し理由を入力してください");
