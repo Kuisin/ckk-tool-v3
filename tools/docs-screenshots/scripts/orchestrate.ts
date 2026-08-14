@@ -28,11 +28,14 @@ const HERE = join(fileURLToPath(import.meta.url), "../..");
 const REPO = resolve(HERE, "../..");
 const SHARED_DB = join(REPO, "shared-db");
 const NEXTJS_WEB = join(REPO, "docker-compose/nextjs-web");
+const NEXTJS_KIOSK = join(REPO, "docker-compose/nextjs-kiosk");
 const SHOT_DIR = join(NEXTJS_WEB, "content/manual/assets/screenshots");
 
 const DB_PORT = Number(process.env.SHOT_DB_PORT ?? 55432);
 const APP_PORT = Number(process.env.SHOT_APP_PORT ?? 3100);
 const APP_URL = process.env.APP_URL ?? `http://localhost:${APP_PORT}`;
+const KIOSK_PORT = Number(process.env.SHOT_KIOSK_PORT ?? 3101);
+const KIOSK_URL = process.env.KIOSK_URL ?? `http://localhost:${KIOSK_PORT}`;
 const DB_CONTAINER = "ckk-shots-db";
 const DB_IMAGE = "groonga/pgroonga:4.0.6-alpine-17";
 const DATABASE_URL = `postgresql://postgres:shots@127.0.0.1:${DB_PORT}/ckk`;
@@ -65,6 +68,9 @@ const SEED_FILES_POST = [
   "sql/production-demo-seed.sql",
   "sql/shipping-billing-demo-seed.sql",
   "sql/system-demo-seed.sql",
+  // キオスク撮影用の端末（既知トークン）+ カード（PIN 4321・demo_shot 割当）。
+  // 拠点 F01（masters-demo）とユーザー demo_shot が先に要るので最後。
+  "sql/kiosk-shot-seed.sql",
 ];
 
 const args = process.argv.slice(2);
@@ -229,6 +235,57 @@ function buildApp(): void {
   });
 }
 
+/**
+ * キオスク（現場タブレット）アプリのビルド・起動。
+ * 別アプリ・別ポートだが DB は同じ使い捨て DB を見る。
+ * KIOSK_ATTESTATION は設定しない（設定すると Android ラッパー以外は弾かれる）。
+ */
+function buildKiosk(): void {
+  log("next build (kiosk)");
+  execFileSync("pnpm", ["run", "build"], {
+    cwd: NEXTJS_KIOSK,
+    env: { ...process.env, DATABASE_URL },
+    stdio: "inherit",
+  });
+}
+
+let kioskProc: ChildProcess | null = null;
+
+async function startKiosk(): Promise<void> {
+  log(`kiosk server on :${KIOSK_PORT}`);
+  kioskProc = spawn("pnpm", ["run", "start"], {
+    cwd: NEXTJS_KIOSK,
+    env: {
+      ...process.env,
+      DATABASE_URL,
+      NODE_ENV: "production",
+      PORT: String(KIOSK_PORT),
+      KIOSK_WS_SECRET: "docs-screenshots-fixed-ws-secret",
+    },
+    stdio: "inherit",
+  });
+  for (let i = 0; i < 60; i++) {
+    try {
+      const res = await fetch(`${KIOSK_URL}/api/healthz`);
+      if (res.ok) {
+        log("kiosk is up");
+        return;
+      }
+    } catch {
+      /* not up yet */
+    }
+    await sleep(1000);
+  }
+  throw new Error("kiosk did not become ready in 60s");
+}
+
+function stopKiosk(): void {
+  if (kioskProc && !kioskProc.killed) {
+    kioskProc.kill("SIGTERM");
+    log("kiosk stopped");
+  }
+}
+
 let appProc: ChildProcess | null = null;
 
 async function startApp(): Promise<void> {
@@ -280,6 +337,7 @@ function capture(outDir?: string): void {
     env: {
       ...process.env,
       APP_URL,
+      KIOSK_URL,
       ...(outDir ? { PW_OUT_DIR: outDir } : {}),
     },
     stdio: "inherit",
@@ -331,12 +389,19 @@ async function main(): Promise<void> {
     seed();
     buildApp();
     await startApp();
+    // キオスク（現場タブレット）マニュアル用。--no-kiosk で省略できる
+    // （web だけ撮り直したいときはビルド 1 本ぶん速い）。
+    if (!flag("--no-kiosk")) {
+      buildKiosk();
+      await startKiosk();
+    }
     if (flag("--verify")) await verify();
     else {
       capture();
       lint();
     }
   } finally {
+    stopKiosk();
     stopApp();
     stopDb();
   }
@@ -344,6 +409,7 @@ async function main(): Promise<void> {
 
 main().catch((e) => {
   console.error(e);
+  stopKiosk();
   stopApp();
   stopDb();
   process.exit(1);

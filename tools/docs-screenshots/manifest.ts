@@ -24,6 +24,8 @@ export interface Shot {
   loggedOut?: boolean;
   /** "admin" = system 権限の管理者（demo1）で撮る（/settings/* 用）。既定は demo_shot。 */
   user?: "admin";
+  /** "kiosk" = 現場タブレットアプリ（別ポート・端末 cookie 付き・縦長画面）で撮る。 */
+  app?: "kiosk";
   /** ページ到達後の操作（モーダルを開く・フォームに入力する等）。 */
   steps?: (page: Page) => Promise<void>;
   /** CSS セレクタ — 指定時はその要素だけを撮る。 */
@@ -32,6 +34,22 @@ export interface Shot {
   fullPage?: boolean;
   /** 撮影時に塗りつぶす揮発領域（時計・相対時刻など）。 */
   mask?: string[];
+}
+
+/**
+ * キオスク（現場タブレット）のログイン。
+ * 画面の QR スキャナはカメラ必須で自動化できないため、同じ 2 段階
+ * （カード照会 → PIN 照合）を API で実行してセッション cookie を得る。
+ * cookie はブラウザコンテキストと共有される。
+ */
+async function kioskLogin(page: Page): Promise<void> {
+  const access = await page.request.post("/api/qr/access", {
+    data: { cardId: "SHT1234567890ABC" },
+  });
+  const { ticket } = (await access.json()) as { ticket: string };
+  await page.request.post("/api/kiosk/pin", {
+    data: { ticket, purpose: "PIN_VERIFY", pin: "4321" },
+  });
 }
 
 export const shots: Shot[] = [
@@ -1171,6 +1189,7 @@ export const shots: Shot[] = [
     steps: async (page) => {
       await page.getByText("A02A0001").first().click();
       await page.getByText("材種コード").first().waitFor();
+      await page.waitForLoadState("networkidle");
     },
   },
   {
@@ -1208,11 +1227,15 @@ export const shots: Shot[] = [
   },
   {
     id: "master-material-detail-01",
+    // 作成/更新日時はシード投入時刻（now()）由来で撮影ごとに変わる — 塗りつぶす
+    mask: ["text=/\\d{4}\\/\\d{2}\\/\\d{2} \\d{2}:\\d{2}/"],
     docPage: "masters/material/user",
     path: "/master/materials?q=A02A0001",
     steps: async (page) => {
       await page.getByText(/^A02A0001-/).first().click();
       await page.getByText("素材コード").first().waitFor();
+      // 行クリック→詳細は遷移直後に撮ると描画途中が写る（負荷時に顕著）
+      await page.waitForLoadState("networkidle");
     },
   },
   {
@@ -1615,6 +1638,8 @@ export const shots: Shot[] = [
   },
   {
     id: "settings-activity-detail-01",
+    // 作成/更新日時はシード投入時刻（now()）由来で撮影ごとに変わる — 塗りつぶす
+    mask: ["text=/\\d{4}\\/\\d{2}\\/\\d{2} \\d{2}:\\d{2}/"],
     docPage: "system/activity-log/user",
     path: "/settings/activity",
     user: "admin",
@@ -1778,6 +1803,61 @@ export const shots: Shot[] = [
   // NOTE: カード割当モーダル（旧 kiosk-cards-assign-01）は撮影を見送り。
   // 管理者コンテキストで /settings/kiosk-cards に遷移できず別画面が写るため
   // （原因未特定 — _docs/manual-plan.md の宿題に記載）。
+  // ── キオスク（現場タブレット）: 作業者が見る画面 ──────────────────────────
+  {
+    // ログイン画面。カメラ映像は毎回変わるので video を mask して決定性を保つ。
+    id: "kiosk-login-01",
+    docPage: "kiosk/start/user",
+    app: "kiosk",
+    path: "/login",
+    mask: ["video", "text=/\\d+\\/\\d+\\(.\\) \\d+:\\d+/"],
+    steps: async (page) => {
+      await page.getByText("社員QRカードをスキャンしてください").waitFor();
+    },
+  },
+  {
+    // ログイン後のアプリ一覧（ランチャー）
+    id: "kiosk-home-01",
+    // ヘッダーの時計と作業経過時間は実時刻由来 — 塗りつぶして決定的にする
+    mask: ["text=/\\d+\\/\\d+\\(.\\) \\d+:\\d+/", "text=/作業 \\d+:\\d+/"],
+    docPage: "kiosk/start/user",
+    app: "kiosk",
+    path: "/login",
+    steps: async (page) => {
+      await kioskLogin(page);
+      await page.goto("/", { waitUntil: "networkidle" });
+      await page.getByText("工程実行").first().waitFor();
+    },
+  },
+  {
+    // 本日の担当工程一覧
+    id: "kiosk-steps-01",
+    // ヘッダーの時計と作業経過時間は実時刻由来 — 塗りつぶして決定的にする
+    mask: ["text=/\\d+\\/\\d+\\(.\\) \\d+:\\d+/", "text=/作業 \\d+:\\d+/"],
+    docPage: "kiosk/steps/user",
+    app: "kiosk",
+    path: "/login",
+    steps: async (page) => {
+      await kioskLogin(page);
+      await page.goto("/steps", { waitUntil: "networkidle" });
+      await page.getByText(/指示書 #/).first().waitFor();
+    },
+  },
+  {
+    // 工程の詳細（開始・一時停止・完了のボタンが出る画面）
+    id: "kiosk-step-detail-01",
+    // ヘッダーの時計と作業経過時間は実時刻由来 — 塗りつぶして決定的にする
+    mask: ["text=/\\d+\\/\\d+\\(.\\) \\d+:\\d+/", "text=/作業 \\d+:\\d+/"],
+    docPage: "kiosk/steps/user",
+    app: "kiosk",
+    path: "/login",
+    steps: async (page) => {
+      await kioskLogin(page);
+      await page.goto("/steps", { waitUntil: "networkidle" });
+      await page.getByText(/指示書 #/).first().click();
+      await page.getByText("工程一覧へ").first().waitFor();
+    },
+  },
   {
     id: "kiosk-devices-link-01",
     docPage: "system/kiosk-device/user",

@@ -16,6 +16,21 @@ export default defineConfig({
   retries: 0,
   timeout: 60_000,
   globalSetup: "./global-setup.ts",
+  // キオスクのログイン画面はカメラを使う。実カメラが無い環境でも
+  // スキャナが描画されるようフェイクデバイスを許可する（映像は mask で塗る）。
+  projects: [
+    {
+      name: "chromium",
+      use: {
+        launchOptions: {
+          args: [
+            "--use-fake-ui-for-media-stream",
+            "--use-fake-device-for-media-stream",
+          ],
+        },
+      },
+    },
+  ],
   use: {
     baseURL: APP_URL,
     viewport: { width: 1440, height: 900 },
