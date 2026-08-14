@@ -28,17 +28,19 @@ import {
   IconArrowsExchange,
   IconBoxSeam,
   IconBuildingWarehouse,
+  IconMap2,
   IconProgress,
   IconSearch,
   IconStack2,
 } from "@tabler/icons-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { InventoryBadge } from "@/components/production/InventoryBadge";
 import { GhostButton } from "@/components/ui/buttons";
 import { type Column, DataTable } from "@/components/ui/DataTable";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { FloorMapCanvas } from "@/components/ui/FloorMapCanvas";
 import { ListShell } from "@/components/ui/shells";
 import {
   useTabParam,
@@ -690,6 +692,11 @@ function LocationView({
   );
   const selected = factories.find((f) => String(f.id) === factoryId) ?? null;
 
+  // フロアマップ（端末管理と共用の図面）のピン選択 → 該当ロケーションカードへ
+  const [activeMapId, setActiveMapId] = useState<string | null>(null);
+  const [selectedLocId, setSelectedLocId] = useState<number | null>(null);
+  const cardRefs = useRef(new Map<number, HTMLDivElement>());
+
   if (!selected) {
     return (
       <EmptyState
@@ -811,16 +818,103 @@ function LocationView({
     </Paper>
   );
 
+  // フロアマップ（端末管理 SY09 と共用）: 配置済み保管場所のピンを表示し、
+  // クリックで下のロケーションカード（棚ダイアグラム）へスクロール・ハイライト
+  const activeMap =
+    selected.floorMaps.find((m) => m.id === activeMapId) ??
+    selected.floorMaps[0] ??
+    null;
+  const placedLocs = activeMap
+    ? selected.locations.filter((l) => l.floorMapId === activeMap.id)
+    : [];
+  const selectPin = (locId: number) => {
+    setSelectedLocId(locId);
+    requestAnimationFrame(() => {
+      cardRefs.current
+        .get(locId)
+        ?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+    });
+  };
+
   return (
     <Stack gap="md">
       <Select
         allowDeselect={false}
         data={factories.map((f) => ({ value: String(f.id), label: f.name }))}
         label="工場"
-        onChange={setFactoryId}
+        onChange={(v) => {
+          setFactoryId(v);
+          setActiveMapId(null);
+          setSelectedLocId(null);
+        }}
         value={factoryId}
         w={240}
       />
+
+      {activeMap && placedLocs.length > 0 && (
+        <Paper p="md" radius="md" withBorder>
+          <Group justify="space-between" mb="sm" wrap="wrap">
+            <Group gap="xs">
+              <IconMap2 color="var(--mantine-color-gray-6)" size={18} />
+              <Text fw={600} size="sm">
+                フロアマップ
+              </Text>
+              <Text c="dimmed" size="xs">
+                ピンをクリックで棚の内訳へ
+              </Text>
+            </Group>
+            {selected.floorMaps.length > 1 && (
+              <Tabs onChange={setActiveMapId} value={activeMap.id}>
+                <Tabs.List>
+                  {selected.floorMaps.map((m) => (
+                    <Tabs.Tab key={m.id} value={m.id}>
+                      {m.name}
+                    </Tabs.Tab>
+                  ))}
+                </Tabs.List>
+              </Tabs>
+            )}
+          </Group>
+          <FloorMapCanvas
+            imageAlt={`フロアマップ: ${activeMap.name}`}
+            imageUrl={
+              activeMap.hasImage
+                ? `/api/kiosk/floor-maps/${activeMap.id}/image`
+                : null
+            }
+            onBackgroundClick={() => setSelectedLocId(null)}
+            onSelect={(id) => selectPin(Number(id))}
+            pins={placedLocs.map((l) => {
+              const count =
+                itemsAt(l.id, null).length +
+                l.shelves.reduce((s, sh) => s + itemsAt(l.id, sh.id).length, 0);
+              return {
+                id: String(l.id),
+                x: l.mapX ?? 50,
+                y: l.mapY ?? 50,
+                label: `${l.name}（${l.code}）｜在庫 ${count} 件`,
+                selected: selectedLocId === l.id,
+                icon: (
+                  <IconBuildingWarehouse
+                    color={
+                      selectedLocId === l.id
+                        ? "var(--mantine-color-blue-6)"
+                        : "var(--mantine-color-violet-6)"
+                    }
+                    fill={
+                      selectedLocId === l.id
+                        ? "var(--mantine-color-blue-1)"
+                        : "var(--mantine-color-violet-1)"
+                    }
+                    size={26}
+                    stroke={1.8}
+                  />
+                ),
+              };
+            })}
+          />
+        </Paper>
+      )}
 
       {selected.locations.length === 0 && unassigned.length === 0 ? (
         <EmptyState
@@ -832,7 +926,22 @@ function LocationView({
           {selected.locations.map((loc) => {
             const atLocation = itemsAt(loc.id, null);
             return (
-              <Paper key={loc.id} p="md" radius="md" withBorder>
+              <Paper
+                key={loc.id}
+                p="md"
+                radius="md"
+                ref={(el) => {
+                  if (el) cardRefs.current.set(loc.id, el);
+                  else cardRefs.current.delete(loc.id);
+                }}
+                style={{
+                  borderColor:
+                    selectedLocId === loc.id
+                      ? "var(--mantine-color-blue-5)"
+                      : undefined,
+                }}
+                withBorder
+              >
                 <Group gap="xs" mb="sm">
                   <IconBuildingWarehouse
                     color="var(--mantine-color-gray-6)"

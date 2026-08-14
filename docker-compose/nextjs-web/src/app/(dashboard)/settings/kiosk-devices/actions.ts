@@ -49,6 +49,9 @@ const uuidSchema = z.string().uuid("対象の指定が不正です");
 function revalidate() {
   revalidatePath(BASE_PATH);
   revalidatePath(`${BASE_PATH}/map`);
+  // フロアマップは MS0B（工場詳細）/ PD04（在庫管理）とも共用
+  revalidatePath("/master/factories");
+  revalidatePath("/production/inventory");
 }
 
 // ── プレゼンス WS トークン ───────────────────────────────────────────────────
@@ -768,6 +771,18 @@ export async function unplaceDevice(id: string): Promise<ActionResult> {
 
 // ── フロアマップ: 管理 ──────────────────────────────────────────────────────
 
+/**
+ * フロアマップは端末管理 (SY09) と工場マスタ (MS0B 保管場所タブ) で共用 —
+ * kiosk / master どちらの権限でも管理できる。
+ */
+async function checkFloorMapPermission(
+  action: "CREATE" | "UPDATE" | "DELETE",
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const kiosk = await checkPermission("kiosk", action);
+  if (kiosk.ok) return kiosk;
+  return checkPermission("master", action);
+}
+
 const floorMapCreateInput = z.object({
   factoryId: z.number().int().positive("工場を選択してください"),
   name: z.string().min(1, "フロア名を入力してください"),
@@ -778,7 +793,7 @@ export async function createFloorMap(raw: {
   factoryId: number;
   name: string;
 }): Promise<ActionResult<{ id: string }>> {
-  const authz = await checkPermission("kiosk", "CREATE");
+  const authz = await checkFloorMapPermission("CREATE");
   if (!authz.ok) return actionError(authz.error);
   const parsed = floorMapCreateInput.safeParse(raw);
   if (!parsed.success) {
@@ -832,7 +847,7 @@ export async function renameFloorMap(raw: {
   id: string;
   name: string;
 }): Promise<ActionResult> {
-  const authz = await checkPermission("kiosk", "UPDATE");
+  const authz = await checkFloorMapPermission("UPDATE");
   if (!authz.ok) return actionError(authz.error);
   const parsed = floorMapRenameInput.safeParse(raw);
   if (!parsed.success) {
@@ -867,7 +882,7 @@ export async function renameFloorMap(raw: {
 
 /** フロアマップを削除する（端末が配置されていない場合のみ）。 */
 export async function deleteFloorMap(id: string): Promise<ActionResult> {
-  const authz = await checkPermission("kiosk", "DELETE");
+  const authz = await checkFloorMapPermission("DELETE");
   if (!authz.ok) return actionError(authz.error);
   const parsed = uuidSchema.safeParse(id);
   if (!parsed.success) return actionError("入力が不正です");
@@ -876,7 +891,7 @@ export async function deleteFloorMap(id: string): Promise<ActionResult> {
     const map = await prisma.kioskFloorMap.findUnique({
       where: { id: parsed.data },
       include: {
-        _count: { select: { devices: true } },
+        _count: { select: { devices: true, storageLocations: true } },
         file: { select: { id: true, storageKey: true } },
       },
     });
@@ -884,6 +899,11 @@ export async function deleteFloorMap(id: string): Promise<ActionResult> {
     if (map._count.devices > 0) {
       return actionError(
         "端末が配置されているフロアマップは削除できません。先にピンを解除してください",
+      );
+    }
+    if (map._count.storageLocations > 0) {
+      return actionError(
+        "保管場所が配置されているフロアマップは削除できません。先にピンを解除してください",
       );
     }
     await prisma.kioskFloorMap.delete({ where: { id: parsed.data } });
@@ -932,7 +952,7 @@ export async function uploadFloorMapImage(
   mapId: string,
   formData: FormData,
 ): Promise<ActionResult> {
-  const authz = await checkPermission("kiosk", "UPDATE");
+  const authz = await checkFloorMapPermission("UPDATE");
   if (!authz.ok) return actionError(authz.error);
   const parsedId = uuidSchema.safeParse(mapId);
   if (!parsedId.success) return actionError("入力が不正です");

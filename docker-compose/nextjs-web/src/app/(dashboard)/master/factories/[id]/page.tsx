@@ -31,6 +31,9 @@ async function fetchStorageLocations(
       sortOrder: r.sortOrder,
       isActive: r.isActive,
       notes: r.notes ?? "",
+      floorMapId: r.floorMapId,
+      mapX: r.mapX != null ? Number(r.mapX) : null,
+      mapY: r.mapY != null ? Number(r.mapY) : null,
       shelves: r.shelves.map((s) => {
         const sname = s.name as LocalizedText | null;
         return {
@@ -44,6 +47,20 @@ async function fetchStorageLocations(
       }),
     };
   });
+}
+
+/** 保管場所タブ用 — 工場のフロアマップ（端末管理 SY09 と共用の図面）。 */
+async function fetchFactoryFloorMaps(factoryId: number) {
+  const maps = await prisma.kioskFloorMap.findMany({
+    where: { factoryId, isActive: true },
+    orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
+    select: { id: true, name: true, fileId: true },
+  });
+  return maps.map((m) => ({
+    id: m.id,
+    name: m.name,
+    hasImage: m.fileId != null,
+  }));
 }
 
 export const dynamic = "force-dynamic";
@@ -103,12 +120,14 @@ export default async function MasterFactoriesDetailPage({
   const { id: idParam } = await params;
   const id = Number(idParam);
   if (!Number.isInteger(id)) notFound();
-  const [r, auditEntries, inventory, storageLocations] = await Promise.all([
-    prisma.factory.findUnique({ where: { id } }),
-    fetchAuditEntries("factories", String(id)),
-    fetchInventorySummary(id),
-    fetchStorageLocations(id),
-  ]);
+  const [r, auditEntries, inventory, storageLocations, floorMaps] =
+    await Promise.all([
+      prisma.factory.findUnique({ where: { id } }),
+      fetchAuditEntries("factories", String(id)),
+      fetchInventorySummary(id),
+      fetchStorageLocations(id),
+      fetchFactoryFloorMaps(id),
+    ]);
   if (!r) notFound();
 
   const name = r.name as LocalizedText | null;
@@ -136,6 +155,7 @@ export default async function MasterFactoriesDetailPage({
   return (
     <FactoryDetail
       auditEntries={auditEntries}
+      floorMaps={floorMaps}
       inventory={inventory}
       record={record}
       storageLocations={storageLocations}

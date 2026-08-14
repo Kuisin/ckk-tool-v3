@@ -48,11 +48,17 @@ model StorageLocation {
   sortOrder Int      @default(0) @map("sort_order")
   isActive  Boolean  @default(true) @map("is_active")
   notes     String?
+  // フロアマップ上のピン（%座標。null = 未配置）— kiosk_floor_maps は
+  // 端末管理と共用の工場フロアマップ（端末ピンと同じ図面に保管場所を配置）
+  floorMapId String?  @map("floor_map_id") @db.Uuid
+  mapX       Decimal? @map("map_x") @db.Decimal(5, 2)
+  mapY       Decimal? @map("map_y") @db.Decimal(5, 2)
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  factory Factory        @relation("StorageLocationFactory", fields: [factoryId], references: [id])
-  shelves StorageShelf[]
+  factory  Factory        @relation("StorageLocationFactory", fields: [factoryId], references: [id])
+  floorMap KioskFloorMap? @relation("StorageLocationFloorMap", fields: [floorMapId], references: [id])
+  shelves  StorageShelf[]
 
   productInventory  ProductInventory[]
   materialInventory MaterialInventory[]

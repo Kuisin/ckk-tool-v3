@@ -40,6 +40,7 @@ import {
 import { notifications } from "@mantine/notifications";
 import {
   IconArrowLeft,
+  IconBuildingWarehouse,
   IconChevronRight,
   IconMapPin,
   IconPencil,
@@ -66,6 +67,7 @@ import type {
   KioskDeviceRow,
   KioskFactoryOption,
   KioskFloorMapRow,
+  StorageLocationPin,
 } from "@/lib/kiosk-admin";
 import type { ActionResult } from "@/lib/server-action";
 import {
@@ -83,10 +85,13 @@ export function KioskFloorMapView({
   devices,
   floorMaps,
   factoryOptions,
+  storagePins,
 }: {
   devices: KioskDeviceRow[];
   floorMaps: KioskFloorMapRow[];
   factoryOptions: KioskFactoryOption[];
+  /** 保管場所ピン（読み取り専用レイヤ — 配置は工場マスタ MS0B）。 */
+  storagePins: StorageLocationPin[];
 }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -637,6 +642,37 @@ export function KioskFloorMapView({
                     }}
                   />
                 )}
+                {/* 保管場所レイヤ（読み取り専用 — 配置は工場マスタ MS0B の保管場所タブ） */}
+                {activeMap &&
+                  storagePins
+                    .filter((p) => p.floorMapId === activeMap.id)
+                    .map((p) => (
+                      <Tooltip
+                        events={{ hover: true, focus: true, touch: true }}
+                        key={`storage-${p.id}`}
+                        label={`保管場所: ${p.name}（${p.code}）｜棚 ${p.shelfCount} 件`}
+                        withinPortal
+                      >
+                        <Box
+                          style={{
+                            position: "absolute",
+                            left: `${p.mapX}%`,
+                            top: `${p.mapY}%`,
+                            transform: "translate(-50%, -50%)",
+                            lineHeight: 0,
+                            zIndex: 1,
+                            padding: 6,
+                          }}
+                        >
+                          <IconBuildingWarehouse
+                            color="var(--mantine-color-violet-6)"
+                            fill="var(--mantine-color-violet-1)"
+                            size={24}
+                            stroke={1.8}
+                          />
+                        </Box>
+                      </Tooltip>
+                    ))}
                 {placedDevices.map(pinFor)}
               </Box>
 

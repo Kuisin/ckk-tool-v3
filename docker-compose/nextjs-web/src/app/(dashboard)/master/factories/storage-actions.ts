@@ -172,6 +172,78 @@ export async function deleteStorageLocation(id: number): Promise<ActionResult> {
   }
 }
 
+// ── フロアマップ配置 ─────────────────────────────────────────────────────────
+
+const placeInput = z.object({
+  id: z.number().int().positive(),
+  floorMapId: z.string().uuid("フロアマップの指定が不正です"),
+  mapX: z.number().min(0).max(100),
+  mapY: z.number().min(0).max(100),
+});
+
+/** 保管場所をフロアマップ（端末管理と共用の工場図面）に %座標で配置する。 */
+export async function placeStorageLocation(input: {
+  id: number;
+  floorMapId: string;
+  mapX: number;
+  mapY: number;
+}): Promise<ActionResult> {
+  const authz = await checkPermission("master", "UPDATE");
+  if (!authz.ok) return actionError(authz.error);
+  const parsed = placeInput.safeParse(input);
+  if (!parsed.success) {
+    return actionError(parsed.error.issues[0]?.message ?? "入力が不正です");
+  }
+  const v = parsed.data;
+  try {
+    const [location, map] = await Promise.all([
+      prisma.storageLocation.findUnique({
+        where: { id: v.id },
+        select: { factoryId: true },
+      }),
+      prisma.kioskFloorMap.findUnique({
+        where: { id: v.floorMapId },
+        select: { factoryId: true, isActive: true },
+      }),
+    ]);
+    if (!location) return actionError("対象の保管場所が見つかりません");
+    if (!map || !map.isActive || map.factoryId !== location.factoryId) {
+      return actionError("フロアマップが保管場所の工場と一致しません");
+    }
+    await prisma.storageLocation.update({
+      where: { id: v.id },
+      data: { floorMapId: v.floorMapId, mapX: v.mapX, mapY: v.mapY },
+    });
+    revalidate(location.factoryId);
+    return actionOk();
+  } catch (e) {
+    return actionError(prismaErrorMessage(e, "配置に失敗しました"));
+  }
+}
+
+/** 保管場所のフロアマップピンを外す。 */
+export async function unplaceStorageLocation(
+  id: number,
+): Promise<ActionResult> {
+  const authz = await checkPermission("master", "UPDATE");
+  if (!authz.ok) return actionError(authz.error);
+  try {
+    const location = await prisma.storageLocation.findUnique({
+      where: { id },
+      select: { factoryId: true },
+    });
+    if (!location) return actionError("対象の保管場所が見つかりません");
+    await prisma.storageLocation.update({
+      where: { id },
+      data: { floorMapId: null, mapX: null, mapY: null },
+    });
+    revalidate(location.factoryId);
+    return actionOk();
+  } catch (e) {
+    return actionError(prismaErrorMessage(e, "ピン解除に失敗しました"));
+  }
+}
+
 // ── 棚 ───────────────────────────────────────────────────────────────────────
 
 export async function createStorageShelf(
