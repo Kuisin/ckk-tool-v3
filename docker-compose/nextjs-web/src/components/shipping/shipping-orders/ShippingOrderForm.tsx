@@ -32,7 +32,7 @@ import { useForm } from "@mantine/form";
 import { notifications } from "@mantine/notifications";
 import { IconInfoCircle, IconPlus, IconTrash } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
-import { useRef, useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { z } from "zod";
 import {
   searchProductOptions,
@@ -128,10 +128,20 @@ export function ShippingOrderForm({
   const [isPending, startTransition] = useTransition();
   const orderId = mode === "edit" ? order?.id : undefined;
 
-  // 選択中注文請書の情報（完了指示書・受注数量の案内表示用）。
+  // 選択中注文請書の情報（完了指示書・在庫ロット・受注数量の案内表示用）。
   const [soInfo, setSoInfo] = useState<ShippingSourceInfo | null>(null);
   // 注文請書変更の競合ガード — 最後の要求のみ採用する。
   const soToken = useRef(0);
+
+  // 編集時もロットピッカー用に在庫ロット情報をロードする（SO は変更不可）。
+  const editSalesOrderId = mode === "edit" ? (order?.salesOrderId ?? "") : "";
+  useEffect(() => {
+    if (!editSalesOrderId) return;
+    const token = ++soToken.current;
+    fetchShippingSourceInfo(editSalesOrderId).then((info) => {
+      if (soToken.current === token) setSoInfo(info);
+    });
+  }, [editSalesOrderId]);
 
   const form = useForm<FormValues>({
     validate: zodResolver(schema),
@@ -300,7 +310,7 @@ export function ShippingOrderForm({
       </FormSection>
 
       <FormSection
-        description="注文請書を選択すると、完了済みの指示書（ロット）ごとに明細が既定生成されます（数量 = 最終工程の良品数、未記録は予定数量）。"
+        description="注文請書を選択すると、完了済みの指示書（ロット）ごとに明細が既定生成されます（数量 = 残良品数、未記録は予定数量）。発送のロットは対象製品の在庫ロット（他の注文請書・在庫向け指示書の完成ロットを含む）から選択し、在庫数に対して検証されます。"
         title="明細"
       >
         {soInfo && (
@@ -312,7 +322,8 @@ export function ShippingOrderForm({
           >
             {soInfo.salesOrderNumber}（{soInfo.customerName} /{" "}
             {soInfo.productName}）: 受注数量 {soInfo.quantity} · 完了指示書{" "}
-            {soInfo.completedWorkOrders.length} 件
+            {soInfo.completedWorkOrders.length} 件 · 在庫ロット{" "}
+            {soInfo.stockLots.length} 件
           </Alert>
         )}
         <Group justify="flex-end" mb="xs">
@@ -355,19 +366,45 @@ export function ShippingOrderForm({
                     value={item.productId || null}
                     withAsterisk
                   />
-                  <NumberInput
-                    label="ロット番号"
-                    maw={140}
-                    min={1}
-                    onChange={(v) =>
-                      form.setFieldValue(
-                        `items.${ri}.lotNumber`,
-                        typeof v === "number" ? v : null,
-                      )
-                    }
-                    placeholder="指示書番号"
-                    value={item.lotNumber ?? ""}
-                  />
+                  {form.values.type === "DISPATCH" &&
+                  (soInfo?.stockLots.length ?? 0) > 0 ? (
+                    <Select
+                      clearable
+                      data={(soInfo?.stockLots ?? []).map((lot) => ({
+                        value: String(lot.lotNumber),
+                        label: `#${lot.lotNumber}（現物 ${lot.quantity}${
+                          lot.reserved > 0 ? ` / 予約 ${lot.reserved}` : ""
+                        }）${lot.fromThisSalesOrder ? "" : " · 他ロット"}`,
+                      }))}
+                      label="ロット（在庫）"
+                      maw={230}
+                      onChange={(v) =>
+                        form.setFieldValue(
+                          `items.${ri}.lotNumber`,
+                          v ? Number(v) : null,
+                        )
+                      }
+                      placeholder="在庫ロットを選択"
+                      searchable
+                      value={
+                        item.lotNumber != null ? String(item.lotNumber) : null
+                      }
+                    />
+                  ) : (
+                    <NumberInput
+                      label="ロット番号"
+                      maw={140}
+                      min={1}
+                      onChange={(v) =>
+                        form.setFieldValue(
+                          `items.${ri}.lotNumber`,
+                          typeof v === "number" ? v : null,
+                        )
+                      }
+                      placeholder="指示書番号"
+                      value={item.lotNumber ?? ""}
+                    />
+                  )}
                   <NumberInput
                     error={form.errors[`items.${ri}.quantity`]}
                     label="数量"
