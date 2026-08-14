@@ -17,6 +17,17 @@ const nextConfig: NextConfig = {
   outputFileTracingIncludes: {
     "/api/pdf/**": ["src/pdf-templates/**/*"],
   },
+  // メモリの少ないビルドホスト（例: 8GB の Docker Desktop VM）では Turbopack の
+  // 並列コンパイル + MDX ローダ子プロセスがスラッシングして IPC タイムアウトに
+  // なることがある。TURBOPACK_MEMORY_LIMIT（バイト）でキャッシュ目標を絞れる。
+  // 未設定（Coolify 等）では無効 — 従来どおり。
+  ...(process.env.TURBOPACK_MEMORY_LIMIT
+    ? {
+        experimental: {
+          turbopackMemoryLimit: Number(process.env.TURBOPACK_MEMORY_LIMIT),
+        },
+      }
+    : {}),
   async redirects() {
     return [
       // 旧 /docs（?lang= クエリ方式）→ 新 /manual・/internal-docs（ロケール
