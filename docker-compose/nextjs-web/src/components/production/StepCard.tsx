@@ -39,12 +39,15 @@ export function StepCard({
   step,
   executeHref,
   onAddBranch,
+  selected,
 }: {
   step: WorkOrderStepView;
   /** 工程実行画面への deep link（指示書が承認済み/進行中のときのみ）。 */
   executeHref?: string;
-  /** 分岐追加（COMPLETED の工程のみ）。 */
+  /** 分岐追加（COMPLETED かつ分岐可能数量が残る工程のみ）。 */
   onAddBranch?: () => void;
+  /** フロー図側で選択中（強調枠で表示）。 */
+  selected?: boolean;
 }) {
   const icon = STATUS_ICON[step.status] ?? STATUS_ICON.PENDING;
   const isOutsource = step.executionLocation === "OUTSOURCE";
@@ -70,7 +73,19 @@ export function StepCard({
   }
 
   return (
-    <Paper p="sm" radius="sm" withBorder>
+    <Paper
+      p="sm"
+      radius="sm"
+      style={
+        selected
+          ? {
+              borderColor: "var(--mantine-color-blue-5)",
+              boxShadow: "0 0 0 1px var(--mantine-color-blue-5)",
+            }
+          : undefined
+      }
+      withBorder
+    >
       <Group justify="space-between" wrap="nowrap">
         <Group gap="sm" wrap="nowrap">
           <ThemeIcon color={icon.color} radius="xl" size="sm" variant="light">
