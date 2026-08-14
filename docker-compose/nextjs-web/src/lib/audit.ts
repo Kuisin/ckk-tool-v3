@@ -79,6 +79,13 @@ export const AUDIT_TABLE_LABELS: Record<string, string> = {
   kiosk_cards: "QRカード",
   kiosk_devices: "キオスク端末",
   kiosk_floor_maps: "フロアマップ",
+  product_inventory: "製品在庫",
+  material_inventory: "素材在庫",
+  storage_locations: "保管場所",
+  storage_shelves: "棚",
+  work_location_groups: "作業場所グループ",
+  work_locations: "作業場所",
+  file_folder_grants: "ファイルフォルダ権限",
   system: "システム",
 };
 
@@ -262,6 +269,48 @@ export interface ActivityEntry extends AuditEntry {
   tableName: string;
   tableLabel: string;
   recordId: string | null;
+}
+
+/** 操作履歴 詳細（SY07 詳細ページ用）— 一覧行 + 生データ・ユーザー id。 */
+export interface ActivityDetailEntry extends ActivityEntry {
+  /** 操作ユーザー id（システム操作・不明時は null — ユーザー詳細リンク用）。 */
+  userId: string | null;
+  /** 生の操作種別（CREATE / UPDATE / DELETE / SEED / MIGRATE …）。 */
+  actionRaw: string;
+  beforeData: unknown;
+  afterData: unknown;
+}
+
+/** 操作履歴 1 件の詳細。未存在・不正 id は null。 */
+export async function getActivityEntry(
+  id: string,
+): Promise<ActivityDetailEntry | null> {
+  let key: bigint;
+  try {
+    key = BigInt(id);
+  } catch {
+    return null;
+  }
+  try {
+    const row = await prisma.auditLog.findUnique({
+      where: { id: key },
+      include: { user: { select: { id: true, displayName: true } } },
+    });
+    if (!row) return null;
+    return {
+      ...mapAudit(row),
+      tableName: row.tableName,
+      tableLabel: auditTableLabel(row.tableName),
+      recordId: row.recordId,
+      userId: row.user?.id ?? null,
+      actionRaw: row.action,
+      beforeData: row.beforeData ?? null,
+      afterData: row.afterData ?? null,
+    };
+  } catch (e) {
+    console.error("getActivityEntry failed", e);
+    return null;
+  }
 }
 
 /** 全体の操作履歴（管理者一覧）。失敗時は空配列。 */
