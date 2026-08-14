@@ -2,11 +2,13 @@
  * GET /api/kiosk/floor-maps/[id]/image — フロアマップ図面画像の配信。
  *
  * kiosk_floor_maps.file_id → files.storage_key を解決し、SeaweedFS
- * （lib/storage）から本体をインライン返却する。RBAC は kiosk:READ
- * （SY09 端末管理と同じゲート）。行・オブジェクトが無ければ 404。
+ * （lib/storage）から本体をインライン返却する。フロアマップは端末管理
+ * （SY09）と保管場所（MS0B / 在庫管理 PD04）で共用のため、RBAC は
+ * kiosk:READ / inventory:READ / master:READ のいずれか。
+ * 行・オブジェクトが無ければ 404。
  */
 
-import { requirePermissionResponse } from "@/lib/authz";
+import { checkPermission } from "@/lib/authz";
 import { prisma } from "@/lib/db";
 import { contentTypeForKey, getObject } from "@/lib/storage";
 
@@ -18,8 +20,14 @@ export async function GET(
   _request: Request,
   { params }: Params,
 ): Promise<Response> {
-  const denied = await requirePermissionResponse("kiosk", "READ");
-  if (denied) return denied;
+  const allowed = await Promise.all([
+    checkPermission("kiosk", "READ"),
+    checkPermission("inventory", "READ"),
+    checkPermission("master", "READ"),
+  ]);
+  if (!allowed.some((a) => a.ok)) {
+    return new Response("Forbidden", { status: 403 });
+  }
 
   const { id } = await params;
   let file: { storageKey: string; mimeType: string } | null = null;

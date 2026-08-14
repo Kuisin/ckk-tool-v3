@@ -3,7 +3,7 @@
 /**
  * WorkLocationsManager.tsx — 作業場所マスタ (MS0D) 単一管理画面。
  *
- * グループ（= 同型機械のまとまり・エリア区分。種別 + 工場 + 状態）ごとの
+ * グループ（= 同型機械のまとまり・エリア区分。種別 + 拠点 + 状態）ごとの
  * カードに配下の場所（1 台の機械・1 区画。capacity = 同時に割り当て可能な
  * 作業数）をテーブル表示し、すべてモーダルで追加・編集・削除する。
  * 種別（machine / area + 管理者定義）は「種別管理」モーダルで編集する。
@@ -81,8 +81,8 @@ export interface WorkLocationGroupRow {
   nameJa: string;
   nameEn: string;
   typeKey: string;
-  factoryId: number | null;
-  factoryName: string | null;
+  plantId: number | null;
+  plantName: string | null;
   sortOrder: number;
   isActive: boolean;
   notes: string;
@@ -125,12 +125,12 @@ function GroupModal({
   onClose,
   group,
   types,
-  factoryOptions,
+  plantOptions,
   onDone,
 }: ModalBaseProps & {
   group: WorkLocationGroupRow | null;
   types: WorkLocationTypeRow[];
-  factoryOptions: Option[];
+  plantOptions: Option[];
   onDone: () => void;
 }) {
   const [isPending, startTransition] = useTransition();
@@ -139,7 +139,7 @@ function GroupModal({
   const [nameJa, setNameJa] = useState("");
   const [nameEn, setNameEn] = useState("");
   const [typeKey, setTypeKey] = useState("machine");
-  const [factoryId, setFactoryId] = useState<string | null>(null);
+  const [plantId, setPlantId] = useState<string | null>(null);
   const [sortOrder, setSortOrder] = useState(0);
   const [isActive, setIsActive] = useState(true);
   const [notes, setNotes] = useState("");
@@ -150,7 +150,7 @@ function GroupModal({
     setNameJa(group?.nameJa ?? "");
     setNameEn(group?.nameEn ?? "");
     setTypeKey(group?.typeKey ?? "machine");
-    setFactoryId(group?.factoryId != null ? String(group.factoryId) : null);
+    setPlantId(group?.plantId != null ? String(group.plantId) : null);
     setSortOrder(group?.sortOrder ?? 0);
     setIsActive(group?.isActive ?? true);
     setNotes(group?.notes ?? "");
@@ -164,7 +164,7 @@ function GroupModal({
         nameJa,
         nameEn,
         typeKey,
-        factoryId: factoryId ? Number(factoryId) : null,
+        plantId: plantId ? Number(plantId) : null,
         sortOrder,
         isActive,
         notes,
@@ -224,11 +224,11 @@ function GroupModal({
           />
           <Select
             clearable
-            data={factoryOptions}
-            label="工場"
-            onChange={setFactoryId}
+            data={plantOptions}
+            label="拠点"
+            onChange={setPlantId}
             searchable
-            value={factoryId}
+            value={plantId}
           />
           <NumberInput
             label="表示順"
@@ -512,11 +512,11 @@ function TypesModal({
 export function WorkLocationsManager({
   groups,
   types,
-  factoryOptions,
+  plantOptions,
 }: {
   groups: WorkLocationGroupRow[];
   types: WorkLocationTypeRow[];
-  factoryOptions: Option[];
+  plantOptions: Option[];
 }) {
   const router = useRouter();
   const [, startTransition] = useTransition();
@@ -584,11 +584,11 @@ export function WorkLocationsManager({
                   <Badge color="grape" size="sm" variant="light">
                     {typeLabel(group.typeKey)}
                   </Badge>
-                  {group.factoryName && (
+                  {group.plantName && (
                     <Group gap={4} wrap="nowrap">
                       <IconBuildingFactory2 size={14} />
                       <Text c="dimmed" size="xs">
-                        {group.factoryName}
+                        {group.plantName}
                       </Text>
                     </Group>
                   )}
@@ -719,11 +719,11 @@ export function WorkLocationsManager({
       )}
 
       <GroupModal
-        factoryOptions={factoryOptions}
         group={groupModal.group}
         onClose={() => setGroupModal({ opened: false, group: null })}
         onDone={refresh}
         opened={groupModal.opened}
+        plantOptions={plantOptions}
         types={types}
       />
       <LocationModal

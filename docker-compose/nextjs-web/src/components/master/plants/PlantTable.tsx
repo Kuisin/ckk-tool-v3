@@ -1,9 +1,9 @@
 "use client";
 
 /**
- * FactoryTable.tsx — 工場 一覧 (MS0B, design.md §8.1 / §13.6 / §14).
+ * PlantTable.tsx — 拠点 一覧 (MS0B, design.md §8.1 / §13.6 / §14).
  *
- * 列: コード / 名称（ja） / 国 / 状態 / 更新日。app.factories を Prisma で
+ * 列: コード / 名称（ja） / 国 / 状態 / 更新日。app.plants を Prisma で
  * 取得したサーバーデータを表示する。
  */
 
@@ -20,9 +20,9 @@ import {
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import {
-  deleteFactories,
-  setFactoriesActive,
-} from "@/app/(dashboard)/master/factories/actions";
+  deletePlants,
+  setPlantsActive,
+} from "@/app/(dashboard)/master/plants/actions";
 import { ActiveBadge } from "@/components/ui/ActiveBadge";
 import { type Column, DataTable } from "@/components/ui/DataTable";
 import { DocNumber } from "@/components/ui/DocNumber";
@@ -34,14 +34,14 @@ import { useIsMobile } from "@/hooks/useViewport";
 import { COUNTRY_LABEL } from "@/lib/enum-labels";
 import { formatDate } from "@/lib/format";
 import {
-  DeleteFactoryModal,
-  type FactoryModalTarget,
-  ToggleFactoryActiveModal,
-} from "./FactoryModals";
+  DeletePlantModal,
+  type PlantModalTarget,
+  TogglePlantActiveModal,
+} from "./PlantModals";
 
-const BASE_PATH = "/master/factories";
+const BASE_PATH = "/master/plants";
 
-export interface FactoryRow {
+export interface PlantRow {
   id: number;
   code: string;
   name: string;
@@ -61,7 +61,7 @@ const STATUS_OPTIONS = [
   { value: "inactive", label: "無効" },
 ];
 
-export function FactoryTable({ rows }: { rows: FactoryRow[] }) {
+export function PlantTable({ rows }: { rows: PlantRow[] }) {
   const router = useRouter();
   const isMobile = useIsMobile();
   const [, startTransition] = useTransition();
@@ -70,8 +70,8 @@ export function FactoryTable({ rows }: { rows: FactoryRow[] }) {
   const [search, setSearch] = useUrlStringState("q");
   const [statusFilter, setStatusFilter] = useUrlSelectState("status");
 
-  const [deleteRow, setDeleteRow] = useState<FactoryModalTarget | null>(null);
-  const [toggleRow, setToggleRow] = useState<FactoryModalTarget | null>(null);
+  const [deleteRow, setDeleteRow] = useState<PlantModalTarget | null>(null);
+  const [toggleRow, setToggleRow] = useState<PlantModalTarget | null>(null);
 
   const reset = () => {
     setSearch(null);
@@ -86,16 +86,16 @@ export function FactoryTable({ rows }: { rows: FactoryRow[] }) {
     return matchesSearch && matchesStatus;
   });
 
-  const bulkSetActive = (targets: FactoryRow[], isActive: boolean) => {
+  const bulkSetActive = (targets: PlantRow[], isActive: boolean) => {
     startTransition(async () => {
-      const result = await setFactoriesActive(
+      const result = await setPlantsActive(
         targets.map((r) => r.id),
         isActive,
       );
       if (result.ok) {
         notifications.show({
           title: isActive ? "有効化しました" : "無効化しました",
-          message: `${targets.length}件の工場を${isActive ? "有効化" : "無効化"}しました`,
+          message: `${targets.length}件の拠点を${isActive ? "有効化" : "無効化"}しました`,
           color: "green",
         });
         router.refresh();
@@ -109,18 +109,18 @@ export function FactoryTable({ rows }: { rows: FactoryRow[] }) {
     });
   };
 
-  const bulkDelete = (targets: FactoryRow[]) => {
+  const bulkDelete = (targets: PlantRow[]) => {
     openConfirm({
-      title: "工場の一括削除",
-      message: `選択中の${targets.length}件の工場を削除します。この操作は取り消せません。`,
+      title: "拠点の一括削除",
+      message: `選択中の${targets.length}件の拠点を削除します。この操作は取り消せません。`,
       confirmLabel: "削除する",
       onConfirm: () => {
         startTransition(async () => {
-          const result = await deleteFactories(targets.map((r) => r.id));
+          const result = await deletePlants(targets.map((r) => r.id));
           if (result.ok) {
             notifications.show({
               title: "削除しました",
-              message: `${targets.length}件の工場を削除しました`,
+              message: `${targets.length}件の拠点を削除しました`,
               color: "green",
             });
             router.refresh();
@@ -136,7 +136,7 @@ export function FactoryTable({ rows }: { rows: FactoryRow[] }) {
     });
   };
 
-  const columns: Column<FactoryRow>[] = [
+  const columns: Column<PlantRow>[] = [
     {
       key: "code",
       header: "コード",
@@ -183,7 +183,7 @@ export function FactoryTable({ rows }: { rows: FactoryRow[] }) {
   return (
     <ListShell
       action={<NewButton href={`${BASE_PATH}/new`} />}
-      breadcrumbs={["マスタ", "工場"]}
+      breadcrumbs={["マスタ", "拠点"]}
       filters={
         <Select
           clearable
@@ -203,7 +203,7 @@ export function FactoryTable({ rows }: { rows: FactoryRow[] }) {
           value={search}
         />
       }
-      title="工場"
+      title="拠点"
     >
       <DataTable
         bulkActions={[
@@ -231,7 +231,7 @@ export function FactoryTable({ rows }: { rows: FactoryRow[] }) {
         defaultSort={{ key: "code", dir: "asc" }}
         emptyAction={<NewButton href={`${BASE_PATH}/new`} />}
         emptyIcon={<IconBuildingWarehouse size={24} />}
-        emptyMessage="工場がありません"
+        emptyMessage="拠点がありません"
         getRowId={(r) => String(r.id)}
         onRowClick={(r) => router.push(`${BASE_PATH}/${r.id}`)}
         renderCard={(r) => (
@@ -277,13 +277,13 @@ export function FactoryTable({ rows }: { rows: FactoryRow[] }) {
         urlState
       />
 
-      <DeleteFactoryModal
+      <DeletePlantModal
         onClose={() => setDeleteRow(null)}
         onDone={() => router.refresh()}
         opened={!!deleteRow}
         target={deleteRow}
       />
-      <ToggleFactoryActiveModal
+      <TogglePlantActiveModal
         onClose={() => setToggleRow(null)}
         onDone={() => router.refresh()}
         opened={!!toggleRow}

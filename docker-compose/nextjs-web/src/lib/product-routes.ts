@@ -22,7 +22,7 @@ const ROUTE_VERSION_INCLUDE = {
   steps: {
     include: {
       processStep: { select: { name: true, category: true } },
-      factory: { select: { name: true } },
+      plant: { select: { name: true } },
       supplierBp: { select: { name: true } },
     },
     orderBy: { sortOrder: "asc" as const },
@@ -60,8 +60,8 @@ export async function listProductRoutes(
         name: localized(s.processStep.name as LocalizedText | null),
         category: s.processStep.category,
         executionLocation: s.executionLocation,
-        factoryName: s.factory
-          ? localized(s.factory.name as LocalizedText | null)
+        plantName: s.plant
+          ? localized(s.plant.name as LocalizedText | null)
           : null,
         supplierName: s.supplierBp
           ? localized(s.supplierBp.name as LocalizedText | null)
@@ -84,7 +84,7 @@ export async function fetchRouteVersionSteps(
     processStepId: s.processStepId,
     sortOrder: s.sortOrder,
     executionLocation: s.executionLocation,
-    factoryId: s.factoryId,
+    plantId: s.plantId,
     supplierBpId: s.supplierBpId,
     workHours: s.workHours == null ? null : Number(s.workHours),
   }));
@@ -120,7 +120,7 @@ export async function createRouteVersionTx(
           processStepId: s.processStepId,
           sortOrder: i,
           executionLocation: s.executionLocation,
-          factoryId: s.factoryId,
+          plantId: s.plantId,
           supplierBpId: s.supplierBpId,
           workHours: s.workHours,
         })),
@@ -213,7 +213,7 @@ export async function resolveRouteVersionTx(
     processStepId: s.processStepId,
     sortOrder: s.sortOrder,
     executionLocation: s.executionLocation,
-    factoryId: s.factoryId,
+    plantId: s.plantId,
     supplierBpId: s.supplierBpId,
     workHours: s.workHours == null ? null : Number(s.workHours),
   }));

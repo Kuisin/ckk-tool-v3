@@ -311,7 +311,7 @@ export async function runStockCheck(
     const result = await reserveProductStock(salesOrderId);
     revalidate(formatSalesOrderNumber(so));
     // 在庫台帳（予約数）が動くため在庫ページも再検証する。
-    revalidatePath("/production/inventory/products");
+    revalidatePath("/production/inventory");
     return actionOk(result);
   } catch (e) {
     return actionError(prismaErrorMessage(e, "在庫照合に失敗しました"));

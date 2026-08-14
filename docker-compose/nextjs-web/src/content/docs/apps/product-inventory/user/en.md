@@ -16,10 +16,10 @@ Product inventory is a **read-only** screen. You never edit quantities here dire
 
 A switch at the top of the list toggles between two views: **product stock** and **work in progress (仕掛品)**.
 
-**Product stock** … One row = product × factory × lot.
+**Product stock** … One row = product × plant × lot.
 
-- Columns: **product** (name + product code), **factory**, **lot**, **quantity**, **reserved**, **available** (quantity − reserved), **kind** (finished / semi-finished), and **updated at**.
-- Search by product name or code, and filter by **factory** and **kind**.
+- Columns: **product** (name + product code), **plant**, **lot**, **quantity**, **reserved**, **available** (quantity − reserved), **kind** (finished / semi-finished), and **updated at**.
+- Search by product name or code, and filter by **plant** and **kind**.
 - Click a row to open the detail screen.
 
 **Work in progress** … The number of pieces currently on the process steps, computed from in-progress work orders (no inventory records exist — real stock only moves when all steps complete).
@@ -29,7 +29,7 @@ A switch at the top of the list toggles between two views: **product stock** and
 
 ## Detail screen
 
-- Summary … product, factory, lot, kind, quantity, reserved, available, and storage location. For semi-finished stock, the **originating step** (which work order and step it came from) is also shown.
+- Summary … product, plant, lot, kind, quantity, reserved, available, and storage location. For semi-finished stock, the **originating step** (which work order and step it came from) is also shown.
 - **Reservations** tab … The list of reservations against this inventory row. Status moves through **予約中 (reserved)** (in production / after stock check) → **確定 (confirmed)** (when all steps complete) → **解除 (released)** (on shipping or cancellation). Related sales order and work order numbers are shown.
 - **Transaction history** tab … Every stock movement. Types are **入庫 (in) / 出庫 (out) / 予約 (reserve) / 解除 (release) / 調整 (adjust)**, with timestamp, quantity, reference (shipping number or work order number), and notes.
 

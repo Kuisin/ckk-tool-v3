@@ -3,7 +3,7 @@
 /**
  * PurchaseRequestForm — 購買依頼 新規作成 / 編集 (PU04, design.md §8.3)。
  *
- * ヘッダ（依頼理由 / 備考）+ 明細 1..N 行（素材 SearchSelect / 入荷先工場
+ * ヘッダ（依頼理由 / 備考）+ 明細 1..N 行（素材 SearchSelect / 入荷先拠点
  * Select / 数量 + 単位 / 希望納期 / 備考）。単価・金額は持たない
  * （発注書へ変換した後、発注側で確定する）。
  *
@@ -52,7 +52,7 @@ const itemSchema = z.object({
   rowId: z.string(),
   materialId: z.string().min(1, "素材を選択してください"),
   materialLabel: z.string(),
-  factoryId: z.string().nullable(),
+  plantId: z.string().nullable(),
   quantity: z.number().positive("0より大きい値"),
   unit: z.string().min(1, "必須"),
   desiredAt: z.string().nullable(),
@@ -75,7 +75,7 @@ const emptyItem = (): ItemForm => ({
   rowId: newRowId(),
   materialId: "",
   materialLabel: "",
-  factoryId: null,
+  plantId: null,
   quantity: 1,
   unit: "本",
   desiredAt: null,
@@ -90,7 +90,7 @@ function toFormValues(request: PurchaseRequestView): FormValues {
       rowId: newRowId(),
       materialId: it.materialId,
       materialLabel: `${it.materialCode}（${it.materialName}）`,
-      factoryId: it.factoryId,
+      plantId: it.plantId,
       quantity: it.quantity,
       unit: it.unit,
       desiredAt: it.desiredAt,
@@ -102,13 +102,13 @@ function toFormValues(request: PurchaseRequestView): FormValues {
 export function PurchaseRequestForm({
   mode,
   purchaseRequest,
-  factoryOptions,
+  plantOptions,
 }: {
   mode: "create" | "edit";
   /** 編集時: 対象購買依頼（サーバー取得の view-model）。 */
   purchaseRequest?: PurchaseRequestView | null;
-  /** 入荷先工場（有効のみ）。value = String(内部 id)。 */
-  factoryOptions: Option[];
+  /** 入荷先拠点（有効のみ）。value = String(内部 id)。 */
+  plantOptions: Option[];
 }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -134,7 +134,7 @@ export function PurchaseRequestForm({
         notes: values.notes,
         items: values.items.map((it) => ({
           materialId: it.materialId,
-          factoryId: it.factoryId,
+          plantId: it.plantId,
           quantity: it.quantity,
           unit: it.unit,
           desiredAt: it.desiredAt,
@@ -255,11 +255,11 @@ export function PurchaseRequestForm({
                   />
                   <Select
                     clearable
-                    data={factoryOptions}
-                    label="入荷先工場"
+                    data={plantOptions}
+                    label="入荷先拠点"
                     maw={180}
-                    placeholder="工場を選択"
-                    {...form.getInputProps(`items.${ri}.factoryId`)}
+                    placeholder="拠点を選択"
+                    {...form.getInputProps(`items.${ri}.plantId`)}
                   />
                   <NumberInput
                     decimalScale={3}

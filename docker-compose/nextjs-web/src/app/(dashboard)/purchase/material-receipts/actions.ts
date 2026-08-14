@@ -4,7 +4,7 @@
  * Server Actions — 素材入荷 (app.material_receipts, PU01)。
  *
  * PU01 の新規登録は「直接調達の入荷」（発注明細に紐付かない入荷）。
- * 作成後は必ず lib/inventory の onMaterialReceipt を呼び、入荷先工場の
+ * 作成後は必ず lib/inventory の onMaterialReceipt を呼び、入荷先拠点の
  * 素材在庫へ入庫する（inventory_transactions + キャッシュ数量）。
  * 発注入荷は素材発注書 (PU03) の入荷完了アクションが自動作成する。
  */
@@ -27,7 +27,7 @@ const BASE_PATH = "/purchase/material-receipts";
 const receiptInput = z.object({
   materialId: z.string().min(1, "素材を選択してください"),
   supplierBpId: z.string().nullable(),
-  factoryId: z.string().nullable(),
+  plantId: z.string().nullable(),
   quantity: z.number().positive("数量は0より大きい値"),
   unit: z.string().min(1, "単位を入力してください"),
   receivedAt: z.string().min(1, "入荷日を入力してください"),
@@ -55,7 +55,7 @@ export async function createMaterialReceipt(
         supplierBpId: v.supplierBpId,
         // 直接調達 — 発注明細には紐付けない。
         purchaseOrderItemId: null,
-        factoryId: v.factoryId ? Number(v.factoryId) : null,
+        plantId: v.plantId ? Number(v.plantId) : null,
         quantity: v.quantity,
         unit: v.unit,
         receivedAt: new Date(v.receivedAt),
@@ -75,7 +75,7 @@ export async function createMaterialReceipt(
       after: {
         materialId: Number(v.materialId),
         supplierBpId: v.supplierBpId,
-        factoryId: v.factoryId ? Number(v.factoryId) : null,
+        plantId: v.plantId ? Number(v.plantId) : null,
         quantity: v.quantity,
         unit: v.unit,
         receivedAt: v.receivedAt,
@@ -85,7 +85,7 @@ export async function createMaterialReceipt(
     revalidatePath(BASE_PATH);
     revalidatePath(`${BASE_PATH}/${receipt.id}`);
     // 在庫台帳（数量）が動くため在庫ページも再検証する。
-    revalidatePath("/production/inventory/materials");
+    revalidatePath("/production/inventory");
     return actionOk({ id: receipt.id });
   } catch (e) {
     return actionError(prismaErrorMessage(e, "素材入荷の登録に失敗しました"));

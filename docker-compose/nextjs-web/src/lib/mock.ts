@@ -40,7 +40,7 @@ export const BRANCHES: Record<string, Option[]> = {
   ],
   "bp-002": [],
   "bp-003": [{ value: "bp-003-n", label: "名古屋支店" }],
-  "bp-004": [{ value: "bp-004-k", label: "神戸工場" }],
+  "bp-004": [{ value: "bp-004-k", label: "神戸拠点" }],
 };
 
 // ── End users ─────────────────────────────────────────────────────────────--

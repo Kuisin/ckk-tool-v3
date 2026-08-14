@@ -3,7 +3,7 @@
 /**
  * ProductInventoryDetail — 製品在庫 詳細 (PD24, design.md §8.2)。
  *
- * SummaryGrid（製品 / 工場 / ロット / 区分 / 在庫数 / 予約数 / 利用可能 /
+ * SummaryGrid（製品 / 拠点 / ロット / 区分 / 在庫数 / 予約数 / 利用可能 /
  * 保管場所 / 半製品の発生工程）+ Tabs: 予約（引当予約の一覧）/ 取引履歴。
  */
 
@@ -24,7 +24,7 @@ import {
 } from "../model";
 import type { ProductInventoryDetailData } from "./model";
 
-const BASE_PATH = "/production/inventory/products";
+const BASE_PATH = "/production/inventory?tab=products";
 
 export function ProductInventoryDetail({
   record,
@@ -35,7 +35,7 @@ export function ProductInventoryDetail({
   const [tab, setTab] = useTabParam("reservations");
   return (
     <DetailShell
-      breadcrumbs={["生産", { label: "製品在庫", href: BASE_PATH }, "詳細"]}
+      breadcrumbs={["生産", { label: "在庫管理", href: BASE_PATH }, "詳細"]}
       status={
         record.isSemiFinished ? (
           <Badge color="orange" variant="light">
@@ -64,7 +64,7 @@ export function ProductInventoryDetail({
             </>
           }
         />
-        <FieldValue label="工場" value={record.factoryName ?? "—"} />
+        <FieldValue label="拠点" value={record.plantName ?? "—"} />
         <FieldValue
           label="ロット番号"
           value={
@@ -115,7 +115,10 @@ export function ProductInventoryDetail({
             />
           }
         />
-        <FieldValue label="保管場所" value={record.location || "—"} />
+        <FieldValue
+          label="保管場所"
+          value={record.storageLabel ?? record.location ?? "未割当"}
+        />
         {record.sourceStepLabel && (
           <FieldValue label="発生工程" value={record.sourceStepLabel} />
         )}

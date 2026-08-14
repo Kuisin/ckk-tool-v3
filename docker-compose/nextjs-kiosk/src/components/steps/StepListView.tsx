@@ -202,7 +202,7 @@ function StepCard({
           <Stack gap={4} style={{ minWidth: 0 }}>
             <Text c="dimmed" size="sm">
               {m.steps.card.workOrder(step.workOrderNumber)}
-              {step.factoryName ? ` ・ ${step.factoryName}` : ""}
+              {step.plantName ? ` ・ ${step.plantName}` : ""}
               {step.workLocationName ? ` ・ ${step.workLocationName}` : ""}
             </Text>
             <Text fw={600} size="lg" truncate>

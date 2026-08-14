@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import {
-  fetchFactoryOptions,
+  fetchPlantOptions,
   fetchSupplierOptions,
 } from "@/app/(dashboard)/production/work-orders/data";
 import { RouteEditorForm } from "@/components/master/products/RouteEditorForm";
@@ -20,17 +20,15 @@ export default async function ProductRouteNewPage({
   const { id: idParam } = await params;
   const id = Number(idParam);
   if (!Number.isInteger(id)) notFound();
-  const [product, catalog, factoryOptions, supplierOptions] = await Promise.all(
-    [
-      prisma.product.findUnique({
-        where: { id },
-        select: { id: true, name: true, yearMonth: true, seq: true },
-      }),
-      loadCatalog(),
-      fetchFactoryOptions(),
-      fetchSupplierOptions(),
-    ],
-  );
+  const [product, catalog, plantOptions, supplierOptions] = await Promise.all([
+    prisma.product.findUnique({
+      where: { id },
+      select: { id: true, name: true, yearMonth: true, seq: true },
+    }),
+    loadCatalog(),
+    fetchPlantOptions(),
+    fetchSupplierOptions(),
+  ]);
   if (!product) notFound();
 
   const productLabel =
@@ -40,8 +38,8 @@ export default async function ProductRouteNewPage({
   return (
     <RouteEditorForm
       catalogSteps={catalog.steps}
-      factoryOptions={factoryOptions}
       mode="create"
+      plantOptions={plantOptions}
       productId={product.id}
       productLabel={productLabel}
       supplierOptions={supplierOptions}

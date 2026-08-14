@@ -6,7 +6,7 @@ Operation code **PU04**. Manages internal "please buy this material" requests �
 
 ## What you can do here
 
-An app for requesting a material purchase (購買依頼) with approval. At the request stage you do **not** decide the supplier or the unit price — you only write what, for which factory, how many, and by when, and send it for approval.
+An app for requesting a material purchase (購買依頼) with approval. At the request stage you do **not** decide the supplier or the unit price — you only write what, for which plant, how many, and by when, and send it for approval.
 
 - An approved request becomes a draft [material purchase order (素材発注書, PU03)](/docs/apps/purchase-order/user) via **Convert to purchase order**. The supplier is chosen at conversion time; unit prices are entered on the purchase-order side.
 - Approval requests also appear in [approval management (承認管理, PD03)](/docs/apps/approval/user), where approval-group members (or their delegates) can act on them.
@@ -24,7 +24,7 @@ An app for requesting a material purchase (購買依頼) with approval. At the r
 ## How to create
 
 1. Open **New** in the list and enter the **request reason** (optional) and **notes**.
-2. Add line items. One line = [material](/docs/masters/material/user) × receiving factory × quantity/unit × desired delivery date (optional). There is no unit-price field.
+2. Add line items. One line = [material](/docs/masters/material/user) × receiving plant × quantity/unit × desired delivery date (optional). There is no unit-price field.
 3. Saving creates a draft. Review the content and press **Request approval** to start the approval flow.
 
 Editing is possible only while the request is a draft or sent back.

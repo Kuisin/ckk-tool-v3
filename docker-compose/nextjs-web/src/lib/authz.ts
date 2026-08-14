@@ -11,7 +11,7 @@
  * 規約:
  * - ACTION は要求アクション or ADMIN のどちらかを持てば許可。
  * - permission_code "system" の ADMIN はスーパーユーザー（全コード許可）。
- * - スコープ（FACTORY/OWN 等）は現状 ALL 前提 — 行レベル絞り込みは各機能側
+ * - スコープ（PLANT/OWN 等）は現状 ALL 前提 — 行レベル絞り込みは各機能側
  *   の将来拡張（このヘルパは code×action の門番）。
  * - 環境変数 AUTHZ_DISABLED=1 で一時無効化（ロールアウト時の緊急脱出。
  *   使用時は警告ログ）。

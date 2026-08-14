@@ -1,6 +1,6 @@
 # android-kiosk — キオスク端末ラッパー（Android）
 
-工場フロアの Android タブレット用ラッパーアプリ。`nextjs-kiosk` の Web アプリを
+拠点フロアの Android タブレット用ラッパーアプリ。`nextjs-kiosk` の Web アプリを
 全画面 WebView で表示し、**端末フィンガープリント（ハードウェア鍵）で
 「認可された端末からのみアクセス可能」を担保**する。
 

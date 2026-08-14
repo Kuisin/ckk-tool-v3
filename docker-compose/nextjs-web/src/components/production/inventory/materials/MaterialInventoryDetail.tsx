@@ -3,7 +3,7 @@
 /**
  * MaterialInventoryDetail — 素材在庫 詳細 (PD25, design.md §8.2)。
  *
- * SummaryGrid（素材 / 工場 / 在庫数 / 予約数 / 利用可能 / 次回入荷 /
+ * SummaryGrid（素材 / 拠点 / 在庫数 / 予約数 / 利用可能 / 次回入荷 /
  * 保管場所）+ ATP タイムライン（現時点 → 入荷予定日ごとの累積 available、
  * 「未定」= 9999-12-31 マーカー、負数は赤表示）+ 取引履歴。
  */
@@ -18,7 +18,7 @@ import { formatDate, formatDateTime } from "@/lib/format";
 import { InventoryTransactionsTable } from "../InventoryTransactionsTable";
 import type { MaterialInventoryDetailData } from "./model";
 
-const BASE_PATH = "/production/inventory/materials";
+const BASE_PATH = "/production/inventory?tab=materials";
 
 /** 入荷日未定マーカー（lib/atp-core buildAtpTimeline と一致）。 */
 const UNDATED_MARKER = "9999-12-31";
@@ -32,7 +32,7 @@ export function MaterialInventoryDetail({
   const [tab, setTab] = useTabParam("atp");
   return (
     <DetailShell
-      breadcrumbs={["生産", { label: "素材在庫", href: BASE_PATH }, "詳細"]}
+      breadcrumbs={["生産", { label: "在庫管理", href: BASE_PATH }, "詳細"]}
       title={record.materialCode}
       updatedAt={formatDateTime(record.updatedAt)}
     >
@@ -48,7 +48,7 @@ export function MaterialInventoryDetail({
             </>
           }
         />
-        <FieldValue label="工場" value={record.factoryName ?? "—"} />
+        <FieldValue label="拠点" value={record.plantName ?? "—"} />
         <FieldValue
           label="在庫数"
           value={
@@ -83,7 +83,10 @@ export function MaterialInventoryDetail({
               : "—"
           }
         />
-        <FieldValue label="保管場所" value={record.location || "—"} />
+        <FieldValue
+          label="保管場所"
+          value={record.storageLabel ?? record.location ?? "未割当"}
+        />
         <FieldValue label="備考" value={record.notes || "—"} />
       </SummaryGrid>
 

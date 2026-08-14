@@ -33,22 +33,60 @@ const LOCKED_MESSAGE =
   "このバージョンは指示書または検査記録で使用中のため変更できません。新バージョンを作成してください";
 
 // 編集可能フィールド（code は識別子 — 作成後不変）
-const templateUpdateInput = z.object({
+const templateFields = z.object({
   nameJa: z.string().min(1, "名称（日本語）を入力してください"),
   nameEn: z.string().optional(),
   relatedProcessStepId: z.number().int().positive().nullable(),
+  // 検査対象（シート単位）: 全数 / 割合(%) / 本数
+  samplingMode: z.enum(["ALL", "PERCENT", "COUNT"]),
+  samplingValue: z.number().nullable(),
+  // 記録方式（シート単位）: 実測値（製品ごと） / 合格数のみ
+  recordStyle: z.enum(["VALUES", "COUNTS"]),
   isActive: z.boolean(),
 });
 
-const templateCreateInput = templateUpdateInput.extend({
-  code: z
-    .string()
-    .min(1, "コードを入力してください")
-    .regex(
-      /^[A-Za-z0-9_-]+$/,
-      "コードは英数字・ハイフン・アンダースコアで入力してください",
-    ),
-});
+/** 検査対象の値検証（PERCENT は 0–100、COUNT は 1 以上の整数）。 */
+function refineSampling(
+  v: { samplingMode: string; samplingValue: number | null },
+  ctx: z.RefinementCtx,
+) {
+  const issue = (message: string) =>
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["samplingValue"],
+      message,
+    });
+  if (v.samplingMode === "PERCENT") {
+    if (v.samplingValue == null || v.samplingValue <= 0) {
+      issue("検査対象の割合(%)を入力してください");
+    } else if (v.samplingValue > 100) {
+      issue("検査対象の割合は 100% 以下にしてください");
+    }
+  }
+  if (v.samplingMode === "COUNT") {
+    if (
+      v.samplingValue == null ||
+      v.samplingValue < 1 ||
+      !Number.isInteger(v.samplingValue)
+    ) {
+      issue("検査対象の本数（1 以上の整数）を入力してください");
+    }
+  }
+}
+
+const templateUpdateInput = templateFields.superRefine(refineSampling);
+
+const templateCreateInput = templateFields
+  .extend({
+    code: z
+      .string()
+      .min(1, "コードを入力してください")
+      .regex(
+        /^[A-Za-z0-9_-]+$/,
+        "コードは英数字・ハイフン・アンダースコアで入力してください",
+      ),
+  })
+  .superRefine(refineSampling);
 
 export type InspectionTemplateUpdateInput = z.infer<typeof templateUpdateInput>;
 export type InspectionTemplateCreateInput = z.infer<typeof templateCreateInput>;
@@ -78,11 +116,6 @@ const templateItemInput = z
     options: z.array(selectOptionInput),
     acceptOptions: z.array(z.string()),
     goalOptions: z.array(z.string()),
-    // 抜取
-    samplingMode: z.enum(["ALL", "PERCENT", "COUNT"]),
-    samplingValue: z.number().nullable(),
-    // 記録方式（実測値 / 合格数のみ）と手動上書き許可
-    recordStyle: z.enum(["VALUES", "COUNTS"]),
     allowManualOverride: z.boolean(),
     isRequired: z.boolean(),
     sortOrder: z.number().int(),
@@ -117,22 +150,6 @@ const templateItemInput = z
       }
       if (v.inputType === "SELECT_SINGLE" && v.goalOptions.length > 1) {
         issue("goalOptions", "単一選択の目標は 1 つまでです");
-      }
-    }
-    if (v.samplingMode === "PERCENT") {
-      if (v.samplingValue == null || v.samplingValue <= 0) {
-        issue("samplingValue", "抜取の割合(%)を入力してください");
-      } else if (v.samplingValue > 100) {
-        issue("samplingValue", "抜取の割合は 100% 以下にしてください");
-      }
-    }
-    if (v.samplingMode === "COUNT") {
-      if (
-        v.samplingValue == null ||
-        v.samplingValue < 1 ||
-        !Number.isInteger(v.samplingValue)
-      ) {
-        issue("samplingValue", "抜取の本数（1 以上の整数）を入力してください");
       }
     }
   });
@@ -170,9 +187,6 @@ function itemData(v: InspectionTemplateItemInput) {
     acceptOptions:
       isSelect && v.acceptOptions.length > 0 ? v.acceptOptions : undefined,
     goalValue: goalValue ?? undefined,
-    samplingMode: v.samplingMode,
-    samplingValue: v.samplingMode === "ALL" ? null : v.samplingValue,
-    recordStyle: v.recordStyle,
     allowManualOverride: v.allowManualOverride,
     isRequired: v.isRequired,
     sortOrder: v.sortOrder,
@@ -213,6 +227,9 @@ export async function createInspectionTemplate(
         code: v.code.trim(),
         name: localizedInput(v.nameJa, v.nameEn),
         relatedProcessStepId: v.relatedProcessStepId,
+        samplingMode: v.samplingMode,
+        samplingValue: v.samplingMode === "ALL" ? null : v.samplingValue,
+        recordStyle: v.recordStyle,
         isActive: v.isActive,
       },
       select: { id: true },
@@ -251,15 +268,28 @@ export async function updateInspectionTemplate(
   try {
     const prior = await prisma.inspectionTemplate.findUnique({
       where: { id },
-      select: { name: true, relatedProcessStepId: true, isActive: true },
+      select: {
+        name: true,
+        relatedProcessStepId: true,
+        samplingMode: true,
+        samplingValue: true,
+        recordStyle: true,
+        isActive: true,
+      },
     });
     if (!prior) return actionError("対象のテンプレートが見つかりません");
     // ロック中は状態（有効/無効）の切替のみ許可
     const priorName = prior.name as LocalizedText | null;
+    const priorSamplingValue =
+      prior.samplingValue == null ? null : Number(prior.samplingValue);
     const definitionChanged =
       (priorName?.ja ?? "") !== v.nameJa ||
       (priorName?.en ?? "") !== (v.nameEn ?? "") ||
-      prior.relatedProcessStepId !== v.relatedProcessStepId;
+      prior.relatedProcessStepId !== v.relatedProcessStepId ||
+      prior.samplingMode !== v.samplingMode ||
+      prior.recordStyle !== v.recordStyle ||
+      priorSamplingValue !==
+        (v.samplingMode === "ALL" ? null : v.samplingValue);
     if (definitionChanged && (await isTemplateLocked(id))) {
       return actionError(LOCKED_MESSAGE);
     }
@@ -268,6 +298,9 @@ export async function updateInspectionTemplate(
       data: {
         name: localizedInput(v.nameJa, v.nameEn),
         relatedProcessStepId: v.relatedProcessStepId,
+        samplingMode: v.samplingMode,
+        samplingValue: v.samplingMode === "ALL" ? null : v.samplingValue,
+        recordStyle: v.recordStyle,
         isActive: v.isActive,
       },
     });
@@ -323,6 +356,9 @@ export async function createInspectionTemplateVersion(
           version,
           name: source.name as object,
           relatedProcessStepId: source.relatedProcessStepId,
+          samplingMode: source.samplingMode,
+          samplingValue: source.samplingValue,
+          recordStyle: source.recordStyle,
           isActive: true,
           items: {
             create: source.items.map((item) => ({
@@ -335,9 +371,6 @@ export async function createInspectionTemplateVersion(
               acceptBool: item.acceptBool,
               acceptOptions: item.acceptOptions ?? undefined,
               goalValue: item.goalValue ?? undefined,
-              samplingMode: item.samplingMode,
-              samplingValue: item.samplingValue,
-              recordStyle: item.recordStyle,
               allowManualOverride: item.allowManualOverride,
               isRequired: item.isRequired,
               sortOrder: item.sortOrder,

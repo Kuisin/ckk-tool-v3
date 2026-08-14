@@ -28,7 +28,7 @@ enum Scope {
   ALL
   REGION
   COUNTRY
-  FACTORY
+  PLANT
   DEPARTMENT
   TEAM
   SUB
@@ -59,6 +59,8 @@ model User {
   priceListEntriesCreated PriceListEntry[]   @relation("PriceListEntryCreatedBy")
   quotesCreated           Quote[]            @relation("QuoteCreatedBy")
   filesUploaded           File[]             @relation("FileUploadedBy")
+  fileFolderGrants        FileFolderGrant[]  @relation("FileFolderGrantUser")
+  fileFolderGrantsCreated FileFolderGrant[]  @relation("FileFolderGrantCreatedBy")
   auditLogs               AuditLog[]         @relation("AuditLogUser")
   systemSettingsUpdated   SystemSetting[]    @relation("SystemSettingUpdatedBy")
   featureFlagsUpdated     FeatureFlag[]      @relation("FeatureFlagUpdatedBy")

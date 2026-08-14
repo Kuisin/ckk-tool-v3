@@ -23,19 +23,19 @@ export interface MaterialAtp {
   nextReceiptDate: string | null;
 }
 
-/** 素材の ATP（factoryId 指定で工場別、省略で全工場合算）。 */
+/** 素材の ATP（plantId 指定で拠点別、省略で全拠点合算）。 */
 export async function materialAtp(
   materialId: number,
-  factoryId?: number | null,
+  plantId?: number | null,
 ): Promise<MaterialAtp> {
   const [invRows, orderedItems] = await Promise.all([
     prisma.materialInventory.findMany({
-      where: { materialId, ...(factoryId != null ? { factoryId } : {}) },
+      where: { materialId, ...(plantId != null ? { plantId } : {}) },
     }),
     prisma.materialPurchaseOrderItem.findMany({
       where: {
         materialId,
-        ...(factoryId != null ? { factoryId } : {}),
+        ...(plantId != null ? { plantId } : {}),
         purchaseOrder: { status: "ORDERED" },
       },
       include: { purchaseOrder: { select: { poNumber: true } } },

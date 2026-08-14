@@ -130,20 +130,18 @@ export const OPERATION_CODES: OperationCodeEntry[] = [
   // PD22 詳細（ID無し→検索）が旧 PD20 工程実行 のエントリポイントを兼ねる
   ...makeResource("生産", "PD", "2", "指示書", "/production/work-orders"),
   ...makeResource("生産", "PD", "3", "承認管理", "/production/approvals"),
-  ...makeResource(
-    "生産",
-    "PD",
-    "4",
-    "製品在庫",
-    "/production/inventory/products",
-  ),
-  ...makeResource(
-    "生産",
-    "PD",
-    "5",
-    "素材在庫",
-    "/production/inventory/materials",
-  ),
+  // 在庫管理 — 製品・素材・仕掛品・ロケーションの統合単一画面, list コードのみ
+  // （旧 PD04 製品在庫 / PD05 素材在庫 は本画面へ統合）
+  {
+    code: "PD04",
+    label: "在庫管理",
+    href: "/production/inventory",
+    category: "生産",
+    kind: "list",
+    categoryCode: "PD",
+    mode: "0",
+    index: "4",
+  },
 
   // ─── 出荷 (SH) ───────────────────────────────────────────────────────────
   ...makeResource("出荷", "SH", "1", "出荷書", "/shipping/shipping-orders"),
@@ -177,7 +175,7 @@ export const OPERATION_CODES: OperationCodeEntry[] = [
     "承認グループ",
     "/master/approval-groups",
   ),
-  ...makeResource("マスタ", "MS", "B", "工場", "/master/factories"),
+  ...makeResource("マスタ", "MS", "B", "拠点", "/master/plants"),
   // 採番構成は単一管理画面（タブ + モーダル）— list コードのみ
   {
     code: "MS0C",

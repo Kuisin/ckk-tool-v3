@@ -29,6 +29,7 @@ import {
   type InspectionItemRecord,
   itemSpecFromRow,
   parseStoredSamples,
+  samplingSpecFromRow,
 } from "@/lib/inspection-core";
 import { fetchWorkLocationOptions } from "@/lib/work-locations";
 import { fetchWorkflowCtx, loadCatalog } from "@/lib/workflow";
@@ -77,7 +78,7 @@ const WO_INCLUDE = {
   steps: {
     include: {
       processStep: true,
-      factory: true,
+      plant: true,
       supplierBp: true,
       _count: { select: { plans: true, actuals: true } },
     },
@@ -221,9 +222,9 @@ export async function fetchWorkOrder(
       quantityTracking: s.processStep.quantityTracking,
       sortOrder: s.sortOrder,
       executionLocation: s.executionLocation,
-      factoryId: s.factoryId,
-      factoryName: s.factory
-        ? localized(s.factory.name as LocalizedText | null)
+      plantId: s.plantId,
+      plantName: s.plant
+        ? localized(s.plant.name as LocalizedText | null)
         : null,
       supplierBpId: s.supplierBpId,
       plannedWorkHours:
@@ -271,7 +272,7 @@ export interface StepNavItem {
   name: string;
   status: string;
   executionLocation: string;
-  factoryName: string | null;
+  plantName: string | null;
   supplierName: string | null;
   isInspection: boolean;
   isApprovalStep: boolean;
@@ -306,7 +307,7 @@ export async function fetchWorkOrderStepNav(
               isApprovalStep: true,
             },
           },
-          factory: { select: { name: true } },
+          plant: { select: { name: true } },
           supplierBp: { select: { name: true } },
         },
         orderBy: { sortOrder: "asc" },
@@ -322,8 +323,8 @@ export async function fetchWorkOrderStepNav(
       name: localized(s.processStep.name as LocalizedText | null),
       status: s.status,
       executionLocation: s.executionLocation,
-      factoryName: s.factory
-        ? localized(s.factory.name as LocalizedText | null)
+      plantName: s.plant
+        ? localized(s.plant.name as LocalizedText | null)
         : null,
       supplierName: s.supplierBp
         ? localized(s.supplierBp.name as LocalizedText | null)
@@ -354,7 +355,7 @@ export async function fetchStepExecution(
     where: { id: stepId, workOrderId: wo.id },
     include: {
       processStep: true,
-      factory: true,
+      plant: true,
       supplierBp: true,
       inspectionRecords: {
         include: {
@@ -488,6 +489,7 @@ export async function fetchStepExecution(
       version: t.inspectionTemplate.version,
       name: localized(t.inspectionTemplate.name as LocalizedText | null),
       relatedProcessStepId: t.inspectionTemplate.relatedProcessStepId,
+      ...samplingSpecFromRow(t.inspectionTemplate),
       items: t.inspectionTemplate.items.map((it) => ({
         name: localized(it.itemName as LocalizedText | null),
         ...itemSpecFromRow(it),
@@ -569,8 +571,8 @@ export async function fetchStepExecution(
       quantityTracking: step.processStep.quantityTracking,
       sortOrder: step.sortOrder,
       executionLocation: step.executionLocation,
-      factoryName: step.factory
-        ? localized(step.factory.name as LocalizedText | null)
+      plantName: step.plant
+        ? localized(step.plant.name as LocalizedText | null)
         : null,
       supplierName: step.supplierBp
         ? localized(step.supplierBp.name as LocalizedText | null)
@@ -632,9 +634,9 @@ export async function fetchCatalogStepOptions(): Promise<Option[]> {
   }));
 }
 
-/** 工場（有効のみ）— 社内工程の実施工場 Select。value = String(内部 id)。 */
-export async function fetchFactoryOptions(): Promise<Option[]> {
-  const rows = await prisma.factory.findMany({
+/** 拠点（有効のみ）— 社内工程の実施拠点 Select。value = String(内部 id)。 */
+export async function fetchPlantOptions(): Promise<Option[]> {
+  const rows = await prisma.plant.findMany({
     where: { isActive: true },
     orderBy: { code: "asc" },
   });

@@ -1,8 +1,8 @@
 import { WorkflowBuilder } from "@/components/production/work-orders/WorkflowBuilder";
 import { loadCatalog } from "@/lib/workflow";
 import {
-  fetchFactoryOptions,
   fetchInspectionTemplateOptions,
+  fetchPlantOptions,
   fetchSalesOrderRef,
   fetchSupplierOptions,
 } from "../data";
@@ -20,10 +20,10 @@ export default async function ProductionWorkOrdersNewPage({
   searchParams: Promise<{ salesOrder?: string; type?: string; qty?: string }>;
 }) {
   const sp = await searchParams;
-  const [catalog, factoryOptions, templateOptions, supplierOptions, soRef] =
+  const [catalog, plantOptions, templateOptions, supplierOptions, soRef] =
     await Promise.all([
       loadCatalog(),
-      fetchFactoryOptions(),
+      fetchPlantOptions(),
       fetchInspectionTemplateOptions(),
       fetchSupplierOptions(),
       sp.salesOrder ? fetchSalesOrderRef(sp.salesOrder) : null,
@@ -36,11 +36,11 @@ export default async function ProductionWorkOrdersNewPage({
   return (
     <WorkflowBuilder
       catalogSteps={catalog.steps}
-      factoryOptions={factoryOptions}
       initialQuantity={initialQty}
       initialSalesOrder={soRef}
       initialType={initialType}
       mode="create"
+      plantOptions={plantOptions}
       supplierOptions={supplierOptions}
       templateOptions={templateOptions}
       useDeps={catalog.useDeps}

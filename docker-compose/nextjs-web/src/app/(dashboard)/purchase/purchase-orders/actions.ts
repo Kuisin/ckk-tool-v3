@@ -54,7 +54,7 @@ function revalidate(poNumber?: string) {
 
 const itemInput = z.object({
   materialId: z.string().min(1, "素材を選択してください"),
-  factoryId: z.string().nullable(),
+  plantId: z.string().nullable(),
   quantity: z.number().positive("数量は0より大きい値"),
   unit: z.string().min(1, "単位を入力してください"),
   unitPrice: z.number().min(0, "単価は0以上"),
@@ -98,7 +98,7 @@ function toHistoryJson(list: HistoryEntry[]): Record<string, string | null>[] {
 function buildItemCreates(items: PurchaseOrderInput["items"]) {
   return items.map((it, i) => ({
     materialId: Number(it.materialId),
-    factoryId: it.factoryId ? Number(it.factoryId) : null,
+    plantId: it.plantId ? Number(it.plantId) : null,
     quantity: it.quantity,
     unit: it.unit,
     unitPrice: it.unitPrice,
@@ -427,7 +427,7 @@ export async function orderPurchaseOrder(
     });
     revalidate(poNumber);
     // ATP（素材在庫の入荷予定）が変わるため在庫ページも再検証する。
-    revalidatePath("/production/inventory/materials");
+    revalidatePath("/production/inventory");
     return actionOk();
   } catch (e) {
     return actionError(prismaErrorMessage(e, "発注に失敗しました"));
@@ -495,7 +495,7 @@ export async function receivePurchaseOrderItems(
             materialId: it.materialId,
             supplierBpId: prior.supplierBpId,
             purchaseOrderItemId: it.id,
-            factoryId: it.factoryId,
+            plantId: it.plantId,
             quantity: line.quantity,
             unit: it.unit,
             receivedAt,
@@ -568,7 +568,7 @@ export async function receivePurchaseOrderItems(
     }
     revalidate(poNumber);
     revalidatePath(RECEIPTS_PATH);
-    revalidatePath("/production/inventory/materials");
+    revalidatePath("/production/inventory");
     return actionOk({ completed: result.completed });
   } catch (e) {
     if (e instanceof Error && e.message.startsWith("GUARD:")) {

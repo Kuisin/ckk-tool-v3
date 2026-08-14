@@ -61,6 +61,9 @@ export default async function MasterInspectionTemplatesDetailPage({
     relatedProcessStep: r.relatedProcessStep
       ? localized(r.relatedProcessStep.name as LocalizedText | null)
       : "",
+    samplingMode: r.samplingMode,
+    samplingValue: r.samplingValue == null ? null : Number(r.samplingValue),
+    recordStyle: r.recordStyle,
     isActive: r.isActive,
     isLocked: r._count.workOrderTemplates > 0 || r._count.inspectionRecords > 0,
     isLatestVersion: r.version === latestVersion,

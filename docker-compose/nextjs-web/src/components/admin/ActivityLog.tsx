@@ -9,6 +9,7 @@
 
 import { Group, Select, Text, TextInput } from "@mantine/core";
 import { IconHistory, IconSearch } from "@tabler/icons-react";
+import { useRouter } from "next/navigation";
 import { useMemo } from "react";
 import { type Column, DataTable } from "@/components/ui/DataTable";
 import { ListShell } from "@/components/ui/shells";
@@ -17,6 +18,7 @@ import { useIsMobile } from "@/hooks/useViewport";
 import type { ActivityEntry } from "@/lib/audit";
 
 export function ActivityLog({ entries }: { entries: ActivityEntry[] }) {
+  const router = useRouter();
   const isMobile = useIsMobile();
   // 検索・フィルタは URL search params に保持（design.md §8.1 / ページ共有）
   const [search, setSearch] = useUrlStringState("q");
@@ -154,6 +156,7 @@ export function ActivityLog({ entries }: { entries: ActivityEntry[] }) {
         emptyIcon={<IconHistory size={24} />}
         emptyMessage="操作履歴がありません"
         getRowId={(e) => String(e.id)}
+        onRowClick={(e) => router.push(`/settings/activity/${e.id}`)}
         renderCard={(e) => (
           <Group align="flex-start" justify="space-between" wrap="nowrap">
             <div className="min-w-0">

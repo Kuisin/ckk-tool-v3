@@ -290,6 +290,8 @@ export async function saveInspectionRecord(
     if (!link) {
       return { ok: false, errors: ["この指示書の検査表ではありません"] };
     }
+    // 記録方式・検査対象はシート（テンプレート）単位
+    const style = link.inspectionTemplate.recordStyle;
     const templateItems = new Map(
       link.inspectionTemplate.items.map((it) => [it.id, itemSpecFromRow(it)]),
     );
@@ -319,7 +321,7 @@ export async function saveInspectionRecord(
         }
       }
       if (
-        spec.recordStyle === "COUNTS" &&
+        style === "COUNTS" &&
         i.inspectedCount != null &&
         i.passedCount != null &&
         i.passedCount > i.inspectedCount
@@ -330,22 +332,25 @@ export async function saveInspectionRecord(
     const actor = await getCurrentActorId();
     // 合否はサーバーでも解決 — 上書き不可の項目はクライアント値を無視して
     // 自動判定を強制する（resolveItemPass — フォームと同一規則）。
+    // values は位置 = 製品番号なので詰めない（末尾の空のみ削除）。
     const resolved = v.items.map((i) => {
       const spec = templateItems.get(i.templateItemId);
-      const isCounts = spec?.recordStyle === "COUNTS";
+      const isCounts = style === "COUNTS";
+      const samples = [...i.values];
+      while (samples.length > 0 && isSampleEmpty(samples[samples.length - 1])) {
+        samples.pop();
+      }
       const entry = {
-        samples: i.values,
+        samples,
         inspectedCount: isCounts ? i.inspectedCount : null,
         passedCount: isCounts ? i.passedCount : null,
       };
       return {
         templateItemId: i.templateItemId,
-        measuredValues: isCounts
-          ? []
-          : i.values.filter((s) => !isSampleEmpty(s)),
+        measuredValues: isCounts ? [] : samples,
         inspectedCount: entry.inspectedCount,
         passedCount: entry.passedCount,
-        isPass: spec ? resolveItemPass(spec, entry, i.isPass) : i.isPass,
+        isPass: spec ? resolveItemPass(spec, entry, i.isPass, style) : i.isPass,
       };
     });
     const status = resolved.every((i) => i.isPass) ? "PASS" : "FAIL";

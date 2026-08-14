@@ -1,38 +1,38 @@
 "use client";
 
 /**
- * FactoryModals.tsx — 工場の削除 / 有効・無効切替ポップアップ (MS0B).
+ * PlantModals.tsx — 拠点の削除 / 有効・無効切替ポップアップ (MS0B).
  *
- * 工場コードは作成後不変のため複製モーダルは持たない（類似拠点は新規作成で
+ * 拠点コードは作成後不変のため複製モーダルは持たない（類似拠点は新規作成で
  * コードを変えて登録する）。
  */
 
 import { notifications } from "@mantine/notifications";
 import { useTransition } from "react";
 import {
-  deleteFactories,
-  setFactoriesActive,
-} from "@/app/(dashboard)/master/factories/actions";
+  deletePlants,
+  setPlantsActive,
+} from "@/app/(dashboard)/master/plants/actions";
 import { ConfirmModal, type ModalBaseProps } from "@/components/ui/modals";
 
-export interface FactoryModalTarget {
+export interface PlantModalTarget {
   id: number;
   code: string;
   name: string;
   isActive: boolean;
 }
 
-function label(t: FactoryModalTarget) {
+function label(t: PlantModalTarget) {
   return t.name !== "—" ? `${t.name}（${t.code}）` : t.code;
 }
 
-export function DeleteFactoryModal({
+export function DeletePlantModal({
   opened,
   onClose,
   target,
   onDone,
 }: ModalBaseProps & {
-  target: FactoryModalTarget | null;
+  target: PlantModalTarget | null;
   onDone?: () => void;
 }) {
   const [isPending, startTransition] = useTransition();
@@ -42,18 +42,18 @@ export function DeleteFactoryModal({
       loading={isPending}
       message={
         target
-          ? `工場「${label(target)}」を削除します。この操作は取り消せません。`
+          ? `拠点「${label(target)}」を削除します。この操作は取り消せません。`
           : ""
       }
       onClose={onClose}
       onConfirm={() => {
         if (!target) return;
         startTransition(async () => {
-          const result = await deleteFactories([target.id]);
+          const result = await deletePlants([target.id]);
           if (result.ok) {
             notifications.show({
               title: "削除しました",
-              message: `工場「${label(target)}」を削除しました`,
+              message: `拠点「${label(target)}」を削除しました`,
               color: "green",
             });
             onDone?.();
@@ -67,19 +67,19 @@ export function DeleteFactoryModal({
         });
       }}
       opened={opened}
-      title="工場の削除"
-      warning="この工場を参照する在庫・工程データが存在する場合は削除できません。無効化をご検討ください。"
+      title="拠点の削除"
+      warning="この拠点を参照する在庫・工程データが存在する場合は削除できません。無効化をご検討ください。"
     />
   );
 }
 
-export function ToggleFactoryActiveModal({
+export function TogglePlantActiveModal({
   opened,
   onClose,
   target,
   onDone,
 }: ModalBaseProps & {
-  target: FactoryModalTarget | null;
+  target: PlantModalTarget | null;
   onDone?: () => void;
 }) {
   const [isPending, startTransition] = useTransition();
@@ -92,19 +92,19 @@ export function ToggleFactoryActiveModal({
       message={
         target
           ? isActive
-            ? `工場「${label(target)}」を無効化します。新規の在庫・出荷・工程で選択できなくなります。`
-            : `工場「${label(target)}」を有効化します。再び在庫・出荷・工程で選択できるようになります。`
+            ? `拠点「${label(target)}」を無効化します。新規の在庫・出荷・工程で選択できなくなります。`
+            : `拠点「${label(target)}」を有効化します。再び在庫・出荷・工程で選択できるようになります。`
           : ""
       }
       onClose={onClose}
       onConfirm={() => {
         if (!target) return;
         startTransition(async () => {
-          const result = await setFactoriesActive([target.id], !isActive);
+          const result = await setPlantsActive([target.id], !isActive);
           if (result.ok) {
             notifications.show({
               title: isActive ? "無効化しました" : "有効化しました",
-              message: `工場「${label(target)}」を${isActive ? "無効化" : "有効化"}しました`,
+              message: `拠点「${label(target)}」を${isActive ? "無効化" : "有効化"}しました`,
               color: "green",
             });
             onDone?.();
@@ -118,7 +118,7 @@ export function ToggleFactoryActiveModal({
         });
       }}
       opened={opened}
-      title={isActive ? "工場の無効化" : "工場の有効化"}
+      title={isActive ? "拠点の無効化" : "拠点の有効化"}
     />
   );
 }

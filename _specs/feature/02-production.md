@@ -23,7 +23,7 @@
 
 ### 業務ルール
 
-- 製品在庫は `product_inventory`（ロット番号付き・`factory_id` で工場別保有）
+- 製品在庫は `product_inventory`（ロット番号付き・`plant_id` で拠点別保有）
 - 引当予約により他受注との重複割当を防止
 - 予約解除: 出荷またはキャンセル時
 
@@ -39,7 +39,7 @@
 
 | パス | 内容 |
 |------|------|
-| `/production/inventory/materials` | 素材在庫台帳一覧（工場別） |
+| `/production/inventory/materials` | 素材在庫台帳一覧（拠点別） |
 | `/production/inventory/materials/[id]` | 素材在庫詳細 |
 | `/purchase/purchase-orders` | 素材発注書一覧 |
 | `/purchase/purchase-orders/new` | 素材発注書作成 |
@@ -51,11 +51,11 @@
 
 ### 主要機能
 
-- 素材在庫照合: `material_inventory` テーブルを確認（`factory_id` で工場別に保有）
+- 素材在庫照合: `material_inventory` テーブルを確認（`plant_id` で拠点別に保有）
 - リブ母材（半製品）在庫チェックと先行製作指示
-- **素材発注書（承認フロー）**: `material_purchase_orders` + `material_purchase_order_items`（素材×工場×数量×単価）。
+- **素材発注書（承認フロー）**: `material_purchase_orders` + `material_purchase_order_items`（素材×拠点×数量×単価）。
   承認者は `material_purchase_approvers`（承認グループ or 個人）。PDF: `app/api/pdf/purchase-order`
-- 素材入荷登録: `material_receipts` テーブル、仕入先・入荷日・入荷工場（`factory_id`）管理。
+- 素材入荷登録: `material_receipts` テーブル、仕入先・入荷日・入荷拠点（`plant_id`）管理。
   発注明細（`purchase_order_item_id`）と紐付け可能（発注経由の入荷）
 - 素材在庫引当予約: 発注 `ORDERED` 時は入荷予定として在庫予約（`lib/purchasing.ts`）
 
@@ -64,7 +64,7 @@
 - 発注ステータス遷移: `DRAFT → REQUESTED → APPROVED → ORDERED → COMPLETED`（任意で `CANCELLED`）。
   状態遷移は `history` JSON に記録（操作・操作者・日時）
 - `DRAFT` のみ編集可。`REQUESTED` 以降は承認者の承認/差し戻しで進行
-- `ORDERED` で入荷予定（在庫予約）追加、`COMPLETED` で実在庫増（入荷工場へ計上）
+- `ORDERED` で入荷予定（在庫予約）追加、`COMPLETED` で実在庫増（入荷拠点へ計上）
 - 素材の形態は材種コード（黒皮/研磨 = `surface_finish_code`）・素材コードで表現（`tables.md` 参照）
 - 半製品（外部調達）は指示書なし・素材受入のみ
 
@@ -122,7 +122,7 @@
 ### 主要機能
 
 - 工程実行制御: 実行依存（前工程完了）を満たした工程のみ開始可能（`lib/workflow.ts`）
-- 実行工場: 社内工程は `work_order_steps.factory_id`、外注は `supplier_bp_id`
+- 実行拠点: 社内工程は `work_order_steps.plant_id`、外注は `supplier_bp_id`
 - セッションロック: 同一工程の同時セッション防止（`session_locked_by` / `session_locked_at`）
 - 工程ステータス管理: `PENDING → IN_PROGRESS → COMPLETED / CANCELLED`
 - **工程間数量伝播**: 各工程で受入数（`input_quantity`）→ 良品数（`output_success_quantity`）を記録。

@@ -4,7 +4,7 @@
  * PurchaseOrderForm — 素材発注書 新規作成 / 編集 (PU03, design.md §8.3)。
  *
  * ヘッダ（仕入先 Select（VENDOR ロール BP）/ 発注日 / 備考）+ 明細 1..N 行
- * （素材 SearchSelect / 入荷先工場 Select / 数量 + 単位 / 単価 / 金額自動 /
+ * （素材 SearchSelect / 入荷先拠点 Select / 数量 + 単位 / 単価 / 金額自動 /
  * 入荷予定日 / 備考）。金額・合計はサーバー側で再計算する（表示は参考値）。
  *
  * 編集は DRAFT のみ（サーバー側でもガード）。保存後は詳細ページへ遷移する。
@@ -54,7 +54,7 @@ const itemSchema = z.object({
   rowId: z.string(),
   materialId: z.string().min(1, "素材を選択してください"),
   materialLabel: z.string(),
-  factoryId: z.string().nullable(),
+  plantId: z.string().nullable(),
   quantity: z.number().positive("0より大きい値"),
   unit: z.string().min(1, "必須"),
   unitPrice: z.number().min(0, "0以上"),
@@ -79,7 +79,7 @@ const emptyItem = (): ItemForm => ({
   rowId: newRowId(),
   materialId: "",
   materialLabel: "",
-  factoryId: null,
+  plantId: null,
   quantity: 1,
   unit: "本",
   unitPrice: 0,
@@ -96,7 +96,7 @@ function toFormValues(po: PurchaseOrderView): FormValues {
       rowId: newRowId(),
       materialId: it.materialId,
       materialLabel: `${it.materialCode}（${it.materialName}）`,
-      factoryId: it.factoryId,
+      plantId: it.plantId,
       quantity: it.quantity,
       unit: it.unit,
       unitPrice: it.unitPrice,
@@ -110,15 +110,15 @@ export function PurchaseOrderForm({
   mode,
   purchaseOrder,
   supplierOptions,
-  factoryOptions,
+  plantOptions,
 }: {
   mode: "create" | "edit";
   /** 編集時: 対象発注書（サーバー取得の view-model）。 */
   purchaseOrder?: PurchaseOrderView | null;
   /** 仕入先（VENDOR ロールの有効 BP）。value = uuid。 */
   supplierOptions: Option[];
-  /** 入荷先工場（有効のみ）。value = String(内部 id)。 */
-  factoryOptions: Option[];
+  /** 入荷先拠点（有効のみ）。value = String(内部 id)。 */
+  plantOptions: Option[];
 }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -150,7 +150,7 @@ export function PurchaseOrderForm({
         notes: values.notes,
         items: values.items.map((it) => ({
           materialId: it.materialId,
-          factoryId: it.factoryId,
+          plantId: it.plantId,
           quantity: it.quantity,
           unit: it.unit,
           unitPrice: it.unitPrice,
@@ -285,11 +285,11 @@ export function PurchaseOrderForm({
                   />
                   <Select
                     clearable
-                    data={factoryOptions}
-                    label="入荷先工場"
+                    data={plantOptions}
+                    label="入荷先拠点"
                     maw={180}
-                    placeholder="工場を選択"
-                    {...form.getInputProps(`items.${ri}.factoryId`)}
+                    placeholder="拠点を選択"
+                    {...form.getInputProps(`items.${ri}.plantId`)}
                   />
                   <NumberInput
                     decimalScale={3}

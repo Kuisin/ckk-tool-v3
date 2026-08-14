@@ -69,7 +69,7 @@ export async function GET(request: Request): Promise<Response> {
   const lotQuantity = wo?.plannedQuantity ?? null;
 
   const pdf = await renderPdf("inspection-sheet.html", {
-    template: sheetTemplateHead(template),
+    template: sheetTemplateHead(template, lotQuantity),
     meta: {
       work_order: workOrderNumber != null ? `#${workOrderNumber}` : BLANK_LINE,
       lot_quantity: lotQuantity != null ? `${lotQuantity} 本` : BLANK_LINE,
@@ -77,7 +77,18 @@ export async function GET(request: Request): Promise<Response> {
       recorded_by: BLANK_LINE,
       approved: BLANK_LINE,
     },
-    items: blankSheetItems(template.items, lotQuantity),
+    items: blankSheetItems(
+      template.items,
+      {
+        samplingMode: template.samplingMode,
+        samplingValue:
+          template.samplingValue == null
+            ? null
+            : Number(template.samplingValue),
+      },
+      template.recordStyle,
+      lotQuantity,
+    ),
     overall: { judgement: "合格 ・ 不合格" },
     footer_note:
       "* は必須項目。抜取の欄数はロット数量からの要求サンプル数（上限 10 欄）。",

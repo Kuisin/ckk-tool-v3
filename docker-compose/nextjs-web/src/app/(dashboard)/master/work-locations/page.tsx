@@ -10,10 +10,10 @@ export const dynamic = "force-dynamic";
 
 /** 作業場所マスタ (MS0D) — 単一管理画面（グループ + 場所 + 種別）。 */
 export default async function MasterWorkLocationsPage() {
-  const [groups, types, factories] = await Promise.all([
+  const [groups, types, plants] = await Promise.all([
     prisma.workLocationGroup.findMany({
       include: {
-        factory: { select: { name: true } },
+        plant: { select: { name: true } },
         locations: {
           include: { _count: { select: { stepPlans: true } } },
           orderBy: [{ sortOrder: "asc" }, { id: "asc" }],
@@ -22,7 +22,7 @@ export default async function MasterWorkLocationsPage() {
       orderBy: [{ sortOrder: "asc" }, { id: "asc" }],
     }),
     readWorkLocationTypes(),
-    prisma.factory.findMany({
+    prisma.plant.findMany({
       where: { isActive: true },
       orderBy: { code: "asc" },
       select: { id: true, name: true, code: true },
@@ -37,9 +37,9 @@ export default async function MasterWorkLocationsPage() {
       nameJa: name?.ja ?? "",
       nameEn: name?.en ?? "",
       typeKey: g.typeKey,
-      factoryId: g.factoryId,
-      factoryName: g.factory
-        ? localized(g.factory.name as LocalizedText | null)
+      plantId: g.plantId,
+      plantName: g.plant
+        ? localized(g.plant.name as LocalizedText | null)
         : null,
       sortOrder: g.sortOrder,
       isActive: g.isActive,
@@ -63,11 +63,11 @@ export default async function MasterWorkLocationsPage() {
 
   return (
     <WorkLocationsManager
-      factoryOptions={factories.map((f) => ({
+      groups={rows}
+      plantOptions={plants.map((f) => ({
         value: String(f.id),
         label: `${localized(f.name as LocalizedText | null)}（${f.code}）`,
       }))}
-      groups={rows}
       types={types.map((t) => ({
         key: t.key,
         labelJa: t.label.ja,

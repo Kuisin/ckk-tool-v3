@@ -1,6 +1,6 @@
 # Work Order (指示書) — User Manual
 
-Operation code **PD02**. Create work orders (指示書) — manufacturing instructions for the factory floor — and manage them from approval through step execution and completion.
+Operation code **PD02**. Create work orders (指示書) — manufacturing instructions for the plant floor — and manage them from approval through step execution and completion.
 
 > This app is currently available **in the development (dev) environment only**. Screens and steps may change before the production release.
 
@@ -22,7 +22,7 @@ The underlying **sales orders (注文請書)** are managed at `/production/sales
 3. For manufacture type, select the **material**. Stock sufficiency or shortage is shown inline (a shortage does not block saving — it is a purchasing signal).
 4. Select **inspection sheet templates** as needed.
 5. Choose the **process steps** from the category-grouped catalog checklist. If a prerequisite step is missing, a red warning appears and you cannot save. "必須工程を自動追加" (auto-add required steps) adds all missing prerequisites at once.
-6. For steps that can run in-house or outsourced, set the **execution location** (in-house → factory / outsourced → supplier).
+6. For steps that can run in-house or outsourced, set the **execution location** (in-house → plant / outsourced → supplier).
 7. Saving creates a **draft** work order with steps in the catalog's default order.
 
 ## Statuses and the approval flow
@@ -30,7 +30,7 @@ The underlying **sales orders (注文請書)** are managed at `/production/sales
 A work order moves through **下書き (draft) → 承認待ち (pending approval) → 承認済 (approved) → 進行中 (in progress) → 完了 (completed)**, or キャンセル (cancelled).
 
 - **承認依頼 (request approval)** … Run from the draft's detail screen. The work order becomes pending and the sales order is locked against editing.
-- **第一承認 (first approval)** (factory manager / department manager class) → **第二承認 (second approval)** (department manager class) … Only members of each approval group (or a delegate within their valid period) can approve or reject. Progress is shown on the stepper in the detail screen.
+- **第一承認 (first approval)** (plant manager / department manager class) → **第二承認 (second approval)** (department manager class) … Only members of each approval group (or a delegate within their valid period) can approve or reject. Progress is shown on the stepper in the detail screen.
 - After second approval the work order becomes **approved** and steps can start. For manufacture type, the material is automatically **reserved**.
 - **差し戻し (reject)** … A reason is required. The work order returns to draft; after fixing it you can "再承認依頼" (re-request approval).
 

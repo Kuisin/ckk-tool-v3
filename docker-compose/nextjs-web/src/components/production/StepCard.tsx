@@ -48,7 +48,7 @@ export function StepCard({
 }) {
   const icon = STATUS_ICON[step.status] ?? STATUS_ICON.PENDING;
   const isOutsource = step.executionLocation === "OUTSOURCE";
-  const locationName = isOutsource ? step.supplierName : step.factoryName;
+  const locationName = isOutsource ? step.supplierName : step.plantName;
   const hasQuantities = step.inputQuantity != null;
 
   // 状態別の実行ボタン（PENDING=開始 / IN_PROGRESS=実行 / COMPLETED=詳細）

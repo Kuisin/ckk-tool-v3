@@ -1,9 +1,9 @@
 "use client";
 
 /**
- * FactoryDetail.tsx — 工場 詳細 (MS2B, design.md §8.2 / §13.6).
+ * PlantDetail.tsx — 拠点 詳細 (MS2B, design.md §8.2 / §13.6).
  *
- * サマリーグリッドに連絡先・住所を表示する。関連タブは工場別の在庫サマリ
+ * サマリーグリッドに連絡先・住所を表示する。関連タブは拠点別の在庫サマリ
  * （製品在庫・素材在庫の件数 + 直近更新 10 行、在庫詳細へリンク）を表示する。
  */
 
@@ -39,11 +39,16 @@ import {
 import { useTabParam } from "@/hooks/useUrlState";
 import { COUNTRY_LABEL } from "@/lib/enum-labels";
 import { formatDate, formatDateTime } from "@/lib/format";
-import { DeleteFactoryModal, ToggleFactoryActiveModal } from "./FactoryModals";
+import { DeletePlantModal, TogglePlantActiveModal } from "./PlantModals";
+import {
+  type PlantFloorMapRef,
+  type StorageLocationRow,
+  StorageLocationsPanel,
+} from "./StorageLocationsPanel";
 
-const BASE_PATH = "/master/factories";
+const BASE_PATH = "/master/plants";
 
-export interface FactoryDetailData {
+export interface PlantDetailData {
   id: number;
   code: string;
   nameJa: string;
@@ -62,8 +67,8 @@ export interface FactoryDetailData {
   updatedAt: string;
 }
 
-/** 関連タブ: 工場の製品在庫 1 行（直近更新分の抜粋）。 */
-export interface FactoryProductInventoryRef {
+/** 関連タブ: 拠点の製品在庫 1 行（直近更新分の抜粋）。 */
+export interface PlantProductInventoryRef {
   id: string;
   productName: string;
   productCode: string | null;
@@ -74,8 +79,8 @@ export interface FactoryProductInventoryRef {
   updatedAt: string;
 }
 
-/** 関連タブ: 工場の素材在庫 1 行（直近更新分の抜粋、Decimal → Number 済み）。 */
-export interface FactoryMaterialInventoryRef {
+/** 関連タブ: 拠点の素材在庫 1 行（直近更新分の抜粋、Decimal → Number 済み）。 */
+export interface PlantMaterialInventoryRef {
   id: string;
   materialCode: string;
   materialName: string;
@@ -85,22 +90,26 @@ export interface FactoryMaterialInventoryRef {
   updatedAt: string;
 }
 
-/** 関連タブ: 工場別在庫サマリ。 */
-export interface FactoryInventorySummary {
+/** 関連タブ: 拠点別在庫サマリ。 */
+export interface PlantInventorySummary {
   productCount: number;
   materialCount: number;
-  products: FactoryProductInventoryRef[];
-  materials: FactoryMaterialInventoryRef[];
+  products: PlantProductInventoryRef[];
+  materials: PlantMaterialInventoryRef[];
 }
 
-export function FactoryDetail({
+export function PlantDetail({
   record,
   auditEntries,
   inventory,
+  storageLocations,
+  floorMaps,
 }: {
-  record: FactoryDetailData;
+  record: PlantDetailData;
   auditEntries: AuditEntry[];
-  inventory: FactoryInventorySummary;
+  inventory: PlantInventorySummary;
+  storageLocations: StorageLocationRow[];
+  floorMaps: PlantFloorMapRef[];
 }) {
   const router = useRouter();
   // アクティブタブを ?tab= に保持（URL 共有でタブまで再現）
@@ -137,7 +146,7 @@ export function FactoryDetail({
           onEdit={() => router.push(`${BASE_PATH}/${record.id}/edit`)}
         />
       }
-      breadcrumbs={["マスタ", { label: "工場", href: BASE_PATH }, record.code]}
+      breadcrumbs={["マスタ", { label: "拠点", href: BASE_PATH }, record.code]}
       createdAt={formatDateTime(record.createdAt)}
       status={<ActiveBadge active={record.isActive} />}
       title={record.nameJa}
@@ -145,7 +154,7 @@ export function FactoryDetail({
     >
       <SummaryGrid>
         <FieldValue
-          label="工場コード"
+          label="拠点コード"
           value={<DocNumber>{record.code}</DocNumber>}
         />
         <FieldValue label="名称（日本語）" value={record.nameJa} />
@@ -170,6 +179,7 @@ export function FactoryDetail({
       <Tabs onChange={setTab} value={tab}>
         <Tabs.List>
           <Tabs.Tab value="overview">概要</Tabs.Tab>
+          <Tabs.Tab value="storage">保管場所</Tabs.Tab>
           <Tabs.Tab value="related">関連</Tabs.Tab>
           <Tabs.Tab value="history">履歴</Tabs.Tab>
         </Tabs.List>
@@ -180,9 +190,17 @@ export function FactoryDetail({
           </Stack>
         </Tabs.Panel>
 
+        <Tabs.Panel pt="md" value="storage">
+          <StorageLocationsPanel
+            floorMaps={floorMaps}
+            locations={storageLocations}
+            plantId={record.id}
+          />
+        </Tabs.Panel>
+
         <Tabs.Panel pt="md" value="related">
           <Stack gap="lg">
-            {/* 製品在庫（工場別サマリ — 直近更新 10 行） */}
+            {/* 製品在庫（拠点別サマリ — 直近更新 10 行） */}
             <Stack gap="xs">
               <Group justify="space-between">
                 <Group gap="xs">
@@ -193,15 +211,15 @@ export function FactoryDetail({
                 </Group>
                 <Anchor
                   component={Link}
-                  href="/production/inventory/products"
+                  href="/production/inventory?tab=products"
                   size="sm"
                 >
-                  製品在庫一覧へ
+                  在庫管理（製品）へ
                 </Anchor>
               </Group>
               {inventory.products.length === 0 ? (
                 <Text c="dimmed" size="sm">
-                  この工場の製品在庫はありません
+                  この拠点の製品在庫はありません
                 </Text>
               ) : (
                 <Table.ScrollContainer minWidth={560}>
@@ -272,7 +290,7 @@ export function FactoryDetail({
               )}
             </Stack>
 
-            {/* 素材在庫（工場別サマリ — 直近更新 10 行） */}
+            {/* 素材在庫（拠点別サマリ — 直近更新 10 行） */}
             <Stack gap="xs">
               <Group justify="space-between">
                 <Group gap="xs">
@@ -283,15 +301,15 @@ export function FactoryDetail({
                 </Group>
                 <Anchor
                   component={Link}
-                  href="/production/inventory/materials"
+                  href="/production/inventory?tab=materials"
                   size="sm"
                 >
-                  素材在庫一覧へ
+                  在庫管理（素材）へ
                 </Anchor>
               </Group>
               {inventory.materials.length === 0 ? (
                 <Text c="dimmed" size="sm">
-                  この工場の素材在庫はありません
+                  この拠点の素材在庫はありません
                 </Text>
               ) : (
                 <Table.ScrollContainer minWidth={560}>
@@ -351,13 +369,13 @@ export function FactoryDetail({
         </Tabs.Panel>
       </Tabs>
 
-      <DeleteFactoryModal
+      <DeletePlantModal
         onClose={() => setDeleteOpen(false)}
         onDone={() => router.push(BASE_PATH)}
         opened={deleteOpen}
         target={target}
       />
-      <ToggleFactoryActiveModal
+      <TogglePlantActiveModal
         onClose={() => setToggleOpen(false)}
         onDone={() => router.refresh()}
         opened={toggleOpen}

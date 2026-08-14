@@ -35,7 +35,7 @@ const BASE_PATH = "/master/products";
 const stepInput = z.object({
   processStepId: z.number().int().positive(),
   executionLocation: z.enum(["INTERNAL", "OUTSOURCE"]),
-  factoryId: z.number().int().positive().nullable(),
+  plantId: z.number().int().positive().nullable(),
   supplierBpId: z.string().nullable(),
   // 標準作業時間 (h) — 任意（0.01〜9999.99）
   workHours: z.number().positive().max(9999.99).nullable(),
@@ -155,7 +155,7 @@ export async function createProductRouteVersion(
           processStepId: s.processStepId,
           sortOrder: s.sortOrder,
           executionLocation: s.executionLocation,
-          factoryId: s.factoryId,
+          plantId: s.plantId,
           supplierBpId: s.supplierBpId,
           workHours: s.workHours == null ? null : Number(s.workHours),
         })),

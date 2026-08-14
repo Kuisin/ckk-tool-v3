@@ -28,22 +28,44 @@ import { fetchInventoryTransactions } from "../shared";
 const productName = (p: { name: unknown }) =>
   localized(p.name as LocalizedText | null);
 
-const factoryName = (f: { name: unknown } | null) =>
+const plantName = (f: { name: unknown } | null) =>
   f ? localized(f.name as LocalizedText | null) : null;
+
+/** 保管場所 / 棚 の表示ラベル（例: 第一倉庫 / A-1）。未割当は null。 */
+export function storageLabelOf(r: {
+  storageLocation: { name: unknown } | null;
+  shelf: { code: string } | null;
+}): string | null {
+  if (!r.storageLocation) return null;
+  const loc = localized(r.storageLocation.name as LocalizedText | null);
+  return r.shelf ? `${loc} / ${r.shelf.code}` : loc;
+}
 
 /** 製品在庫 一覧（更新日の新しい順）。 */
 export async function fetchProductInventories(): Promise<
   ProductInventoryRow[]
 > {
   const rows = await prisma.productInventory.findMany({
-    include: { product: true, factory: true },
+    include: {
+      product: true,
+      plant: true,
+      storageLocation: true,
+      shelf: true,
+    },
     orderBy: { updatedAt: "desc" },
   });
   return rows.map((r) => ({
     id: r.id,
     productName: productName(r.product),
     productCode: formatProductNumber(r.product.yearMonth, r.product.seq),
-    factoryName: factoryName(r.factory),
+    plantId: r.plantId,
+    plantName: plantName(r.plant),
+    storageLocationId: r.storageLocationId,
+    storageLocationName: r.storageLocation
+      ? localized(r.storageLocation.name as LocalizedText | null)
+      : null,
+    shelfId: r.shelfId,
+    shelfCode: r.shelf?.code ?? null,
     lotNumber: r.lotNumber,
     quantity: r.quantity,
     reservedQuantity: r.reservedQuantity,
@@ -161,7 +183,12 @@ export async function fetchProductInventoryDetail(
 ): Promise<ProductInventoryDetailData | null> {
   const r = await prisma.productInventory.findUnique({
     where: { id },
-    include: { product: true, factory: true },
+    include: {
+      product: true,
+      plant: true,
+      storageLocation: true,
+      shelf: true,
+    },
   });
   if (!r) return null;
 
@@ -191,12 +218,13 @@ export async function fetchProductInventoryDetail(
     id: r.id,
     productName: productName(r.product),
     productCode: formatProductNumber(r.product.yearMonth, r.product.seq),
-    factoryName: factoryName(r.factory),
+    plantName: plantName(r.plant),
     lotNumber: r.lotNumber,
     quantity: r.quantity,
     reservedQuantity: r.reservedQuantity,
     available: r.quantity - r.reservedQuantity,
     isSemiFinished: r.isSemiFinished,
+    storageLabel: storageLabelOf(r),
     location: r.location,
     sourceStepLabel,
     notes: r.notes,

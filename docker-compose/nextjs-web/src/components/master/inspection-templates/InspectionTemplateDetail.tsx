@@ -82,6 +82,10 @@ export interface InspectionTemplateDetailData {
   nameJa: string;
   nameEn: string;
   relatedProcessStep: string; // 未設定は ""
+  /** 検査対象・記録方式（シート単位）。 */
+  samplingMode: "ALL" | "PERCENT" | "COUNT";
+  samplingValue: number | null;
+  recordStyle: "VALUES" | "COUNTS";
   isActive: boolean;
   /** 指示書割当 or 検査記録あり → 定義変更不可。 */
   isLocked: boolean;
@@ -119,9 +123,6 @@ export function itemRowSpec(
             : item.goalOptions.length > 0
               ? item.goalOptions
               : null,
-    samplingMode: item.samplingMode,
-    samplingValue: item.samplingValue,
-    recordStyle: item.recordStyle,
     allowManualOverride: item.allowManualOverride,
     isRequired: item.isRequired,
   };
@@ -232,6 +233,21 @@ export function InspectionTemplateDetail({
         />
         <FieldValue label="名称" value={record.nameJa} />
         <FieldValue label="関連工程" value={record.relatedProcessStep || "—"} />
+        <FieldValue
+          label="検査対象"
+          value={samplingLabelJa({
+            samplingMode: record.samplingMode,
+            samplingValue: record.samplingValue,
+          })}
+        />
+        <FieldValue
+          label="記録方式"
+          value={
+            record.recordStyle === "COUNTS"
+              ? "合格数のみ"
+              : "実測値（製品ごと）"
+          }
+        />
         <FieldValue label="検査項目数" value={`${record.items.length}件`} />
         <FieldValue
           label="状態"
@@ -294,7 +310,6 @@ export function InspectionTemplateDetail({
                       <Table.Th w={110}>種別</Table.Th>
                       <Table.Th w={170}>合格基準</Table.Th>
                       <Table.Th w={130}>目標</Table.Th>
-                      <Table.Th w={120}>検査対象</Table.Th>
                       <Table.Th w={70}>必須</Table.Th>
                       <Table.Th w={70}>表示順</Table.Th>
                       {!record.isLocked && <Table.Th w={80} />}
@@ -322,11 +337,6 @@ export function InspectionTemplateDetail({
                                 {INSPECTION_ITEM_TYPE_LABEL[item.inputType] ??
                                   item.inputType}
                               </Badge>
-                              {item.recordStyle === "COUNTS" && (
-                                <Badge color="cyan" size="xs" variant="light">
-                                  合格数のみ
-                                </Badge>
-                              )}
                               {!item.allowManualOverride && (
                                 <Badge color="orange" size="xs" variant="light">
                                   上書き不可
@@ -343,9 +353,6 @@ export function InspectionTemplateDetail({
                             <Text className="tabular-nums" size="sm">
                               {goalLabel(spec) ?? "—"}
                             </Text>
-                          </Table.Td>
-                          <Table.Td>
-                            <Text size="sm">{samplingLabelJa(spec)}</Text>
                           </Table.Td>
                           <Table.Td>
                             {item.isRequired ? (

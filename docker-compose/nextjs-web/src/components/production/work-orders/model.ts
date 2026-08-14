@@ -60,8 +60,8 @@ export interface WorkOrderStepView {
   quantityTracking: "NONE" | "FLOW" | "INSPECTION";
   sortOrder: number;
   executionLocation: "INTERNAL" | "OUTSOURCE";
-  factoryId: number | null;
-  factoryName: string | null;
+  plantId: number | null;
+  plantName: string | null;
   supplierBpId: string | null;
   supplierName: string | null;
   /** 予定作業時間 (h) — 任意。 */

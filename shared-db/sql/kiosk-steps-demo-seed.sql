@@ -94,15 +94,15 @@ BEGIN
   -- 工程: 切断(5) → 段加工(13) → 段加工検査(14)。
   -- 段加工検査は exec 依存（14 AND 13）により段加工完了まで開始不可。
   INSERT INTO app.work_order_steps
-    (id, work_order_id, process_step_id, sort_order, execution_location, factory_id, status)
+    (id, work_order_id, process_step_id, sort_order, execution_location, plant_id, status)
   VALUES (gen_random_uuid(), v_wo, 5, 1, 'INTERNAL', 1, 'PENDING')
   RETURNING id INTO v_step_cutting;
   INSERT INTO app.work_order_steps
-    (id, work_order_id, process_step_id, sort_order, execution_location, factory_id, status)
+    (id, work_order_id, process_step_id, sort_order, execution_location, plant_id, status)
   VALUES (gen_random_uuid(), v_wo, 13, 2, 'INTERNAL', 1, 'PENDING')
   RETURNING id INTO v_step_machining;
   INSERT INTO app.work_order_steps
-    (id, work_order_id, process_step_id, sort_order, execution_location, factory_id, status)
+    (id, work_order_id, process_step_id, sort_order, execution_location, plant_id, status)
   VALUES (gen_random_uuid(), v_wo, 14, 3, 'INTERNAL', 1, 'PENDING')
   RETURNING id INTO v_step_inspection;
 

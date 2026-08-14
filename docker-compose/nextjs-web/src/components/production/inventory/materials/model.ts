@@ -12,7 +12,14 @@ export interface MaterialInventoryRow {
   id: string;
   materialCode: string;
   materialName: string;
-  factoryName: string | null;
+  plantId: number | null;
+  plantName: string | null;
+  /** 保管場所（null = 未割当）。 */
+  storageLocationId: number | null;
+  storageLocationName: string | null;
+  /** 棚（null = 場所内未割当）。 */
+  shelfId: number | null;
+  shelfCode: string | null;
   quantity: number;
   reservedQuantity: number;
   /** 利用可能数 = quantity − reservedQuantity。 */
@@ -40,15 +47,17 @@ export interface MaterialInventoryDetailData {
   id: string;
   materialCode: string;
   materialName: string;
-  factoryName: string | null;
+  plantName: string | null;
   quantity: number;
   reservedQuantity: number;
   available: number;
   unit: string;
+  /** 保管場所 / 棚 の表示ラベル（未割当は null — 旧 location を後段で併記）。 */
+  storageLabel: string | null;
   location: string | null;
   notes: string | null;
   updatedAt: string;
-  /** ATP（この在庫行の工場で絞り込み。工場未設定行は全工場合算）。 */
+  /** ATP（この在庫行の拠点で絞り込み。拠点未設定行は全拠点合算）。 */
   atp: {
     onHand: number;
     reserved: number;

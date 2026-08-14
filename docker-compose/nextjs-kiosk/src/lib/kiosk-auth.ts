@@ -53,7 +53,7 @@ function cookieOptions(maxAgeMs: number) {
 export type DeviceAuth = {
   id: string;
   name: string | null;
-  factoryId: number | null;
+  plantId: number | null;
   status: "PENDING" | "ACTIVE" | "DISABLED" | "REVOKED";
 };
 
@@ -99,7 +99,7 @@ export async function getDevice(
     select: {
       id: true,
       name: true,
-      factoryId: true,
+      plantId: true,
       status: true,
       deviceTokenExpiresAt: true,
     },
@@ -122,7 +122,7 @@ export async function getDevice(
     device: {
       id: device.id,
       name: device.name,
-      factoryId: device.factoryId,
+      plantId: device.plantId,
       status: device.status,
     },
   };

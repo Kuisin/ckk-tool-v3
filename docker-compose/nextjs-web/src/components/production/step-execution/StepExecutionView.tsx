@@ -211,7 +211,7 @@ export function StepExecutionView({ data }: { data: StepExecutionData }) {
           <Group gap="xl" wrap="wrap">
             <Text c="dimmed" size="sm">
               実施先:{" "}
-              {(isOutsource ? step.supplierName : step.factoryName) ?? "—"}
+              {(isOutsource ? step.supplierName : step.plantName) ?? "—"}
             </Text>
             <Text c="dimmed" size="sm">
               予定数量: {data.plannedQuantity}

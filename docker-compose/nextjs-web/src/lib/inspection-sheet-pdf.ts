@@ -18,7 +18,9 @@ import {
   formatSampleValue,
   goalLabel,
   type InspectionItemRecord,
+  type InspectionRecordStyle,
   type InspectionSampleValue,
+  type InspectionSamplingSpec,
   itemSpecFromRow,
   parseStoredSamples,
   requiredSampleCount,
@@ -42,6 +44,9 @@ interface TemplateHead {
   version: number;
   name: unknown;
   relatedProcessStep: { name: unknown } | null;
+  samplingMode: "ALL" | "PERCENT" | "COUNT";
+  samplingValue: unknown; // Prisma Decimal
+  recordStyle: InspectionRecordStyle;
 }
 
 interface ItemRow extends InspectionItemRecord {
@@ -85,16 +90,20 @@ function itemBase(item: ItemRow) {
   };
 }
 
-/** 空欄シート（メモ用）の items。 */
-export function blankSheetItems(items: ItemRow[], lotQuantity: number | null) {
+/** 空欄シート（メモ用）の items — 検査対象・記録方式はシート単位。 */
+export function blankSheetItems(
+  items: ItemRow[],
+  sampling: InspectionSamplingSpec,
+  style: InspectionRecordStyle,
+  lotQuantity: number | null,
+) {
+  const required = requiredSampleCount(sampling, lotQuantity);
   return items.map((item) => {
     const base = itemBase(item);
-    const required = requiredSampleCount(base.spec, lotQuantity);
     return {
       ...base,
-      sampling: esc(samplingLabelJa(base.spec, required)),
       values_html:
-        base.spec.recordStyle === "COUNTS"
+        style === "COUNTS"
           ? '<span class="value-more">検査数</span><span class="value-cell"></span><span class="value-more">合格数</span><span class="value-cell"></span>'
           : blankValueCells(required),
       judge_html: '<span class="judge-blank">合 ・ 否</span>',
@@ -112,11 +121,9 @@ export function filledSheetItems(
     passedCount: number | null;
     isPass: boolean | null;
   }[],
-  lotQuantity: number | null,
 ) {
   return rows.map((row) => {
     const base = itemBase(row.templateItem);
-    const required = requiredSampleCount(base.spec, lotQuantity);
     const samples: InspectionSampleValue[] = parseStoredSamples(
       row.measuredValues,
     );
@@ -145,15 +152,19 @@ export function filledSheetItems(
           : '<span class="pass-mark fail">不合格</span>';
     return {
       ...base,
-      sampling: esc(samplingLabelJa(base.spec, required)),
       values_html,
       judge_html,
     };
   });
 }
 
-/** テンプレートヘッダ部の共通データ。 */
-export function sheetTemplateHead(t: TemplateHead) {
+/** テンプレートヘッダ部の共通データ（検査対象・記録方式を含む）。 */
+export function sheetTemplateHead(t: TemplateHead, lotQuantity: number | null) {
+  const sampling: InspectionSamplingSpec = {
+    samplingMode: t.samplingMode,
+    samplingValue: t.samplingValue == null ? null : Number(t.samplingValue),
+  };
+  const required = requiredSampleCount(sampling, lotQuantity);
   return {
     code: esc(t.code),
     version: `v${t.version}`,
@@ -161,6 +172,8 @@ export function sheetTemplateHead(t: TemplateHead) {
     related_step: t.relatedProcessStep
       ? esc(localized(t.relatedProcessStep.name as LocalizedText | null))
       : "—",
+    sampling: esc(samplingLabelJa(sampling, required)),
+    record_style: t.recordStyle === "COUNTS" ? "合格数のみ" : "実測値",
   };
 }
 

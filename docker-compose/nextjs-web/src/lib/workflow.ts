@@ -66,7 +66,7 @@ import {
 export interface StepCompositionInput {
   processStepId: number;
   executionLocation: "INTERNAL" | "OUTSOURCE";
-  factoryId: number | null;
+  plantId: number | null;
   supplierBpId: string | null;
   /** 作業時間 (h) — 任意。指示書は planned_work_hours、ルートは work_hours へ。 */
   workHours: number | null;
@@ -79,7 +79,7 @@ export interface OrderedStepCreate extends StepCompositionInput {
 /**
  * 工程構成のサーバー側検証 + カタログ既定順の並び。
  * 未知/重複工程・ブロッカー（AND 不足・排他違反）はエラーメッセージを返す。
- * 実施場所は INTERNAL → factoryId / OUTSOURCE → supplierBpId のみ保持する。
+ * 実施場所は INTERNAL → plantId / OUTSOURCE → supplierBpId のみ保持する。
  */
 export async function validateAndOrderSteps(
   steps: readonly StepCompositionInput[],
@@ -112,7 +112,7 @@ export async function validateAndOrderSteps(
       processStepId: stepId,
       sortOrder: i,
       executionLocation: s.executionLocation,
-      factoryId: s.executionLocation === "INTERNAL" ? s.factoryId : null,
+      plantId: s.executionLocation === "INTERNAL" ? s.plantId : null,
       supplierBpId: s.executionLocation === "OUTSOURCE" ? s.supplierBpId : null,
       workHours: s.workHours,
     };

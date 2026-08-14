@@ -155,20 +155,13 @@ export const appList: AppEntry[] = [
     requiredPermission: "approve",
   },
   {
-    key: "product-inventory",
-    label: "製品在庫",
+    // 在庫管理 — 旧 製品在庫 (PD04) / 素材在庫 (PD05) を統合した単一アプリ。
+    // 製品・素材・仕掛品・ロケーション（保管場所×棚）+ 在庫移動。
+    key: "inventory",
+    label: "在庫管理",
     operationCode: "PD04",
-    href: "/production/inventory/products",
+    href: "/production/inventory",
     icon: "IconBoxSeam",
-    category: "生産",
-    requiredPermission: "inventory",
-  },
-  {
-    key: "material-inventory",
-    label: "素材在庫",
-    operationCode: "PD05",
-    href: "/production/inventory/materials",
-    icon: "IconStack2",
     category: "生産",
     requiredPermission: "inventory",
   },
@@ -305,10 +298,10 @@ export const appList: AppEntry[] = [
     requiredPermission: "master",
   },
   {
-    key: "master-factories",
-    label: "工場",
+    key: "master-plants",
+    label: "拠点",
     operationCode: "MS0B",
-    href: "/master/factories",
+    href: "/master/plants",
     icon: "IconBuildingWarehouse",
     category: "マスタ",
     requiredPermission: "master",
@@ -399,14 +392,16 @@ export const appList: AppEntry[] = [
     requiredPermission: "system",
   },
   {
-    // ファイル管理 — アップロード済みファイル（SeaweedFS）の一覧・削除。
+    // ファイル管理 — ファイル（SeaweedFS）の Finder 風ブラウザ。閲覧範囲は
+    // lib/file-access.ts（system:ADMIN / フォルダ権限 / 所有アプリ権限）で
+    // 決まるため誰でも開ける — 権限が無ければ空表示になるだけ。
     key: "file-management",
     label: "ファイル管理",
     operationCode: "SY06",
     href: "/settings/files",
     icon: "IconFolder",
     category: "システム",
-    requiredPermission: "system",
+    requiredPermission: null,
   },
   {
     // 操作履歴 — 監査ログ（作成・更新・削除の before/after）。

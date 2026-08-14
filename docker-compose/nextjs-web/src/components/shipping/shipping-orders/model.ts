@@ -3,7 +3,7 @@
  *
  * Model (app.shipping_orders — 複合キー (year_month, seq)):
  *   表示番号 SHP-YYYYMM-NNNNN はキーから導出（保存しない）。URL id も導出番号。
- *   ヘッダは注文請書（必須）+ 任意で指示書・出荷元工場に紐付き、明細は
+ *   ヘッダは注文請書（必須）+ 任意で指示書・出荷元拠点に紐付き、明細は
  *   製品 × ロット（= 指示書番号）× 数量 — 複数指示書の成果を 1 出荷書に束ねる。
  *
  * Decimal 列はサーバー境界で Number() 済み。ここは pure / client-safe のみ。
@@ -53,8 +53,8 @@ export interface ShippingOrder {
   salesOrderQuantity: number;
   /** ヘッダ紐付けの指示書番号（任意）。 */
   workOrderNumber: number | null;
-  fromFactoryId: string | null;
-  fromFactoryName: string | null;
+  fromPlantId: string | null;
+  fromPlantName: string | null;
   type: ShippingType;
   status: ShippingOrderStatus;
   shippedAt: string | null;

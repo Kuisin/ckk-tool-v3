@@ -27,7 +27,7 @@ import {
   variantSummary,
 } from "./mock";
 
-/** Minimal variant factory for isolated rule tests. */
+/** Minimal variant plant for isolated rule tests. */
 function makeVariant(over: Partial<PriceVariant> = {}): PriceVariant {
   return {
     id: "va-x",

@@ -1,4 +1,4 @@
-// キオスク（共有端末）認証 — 工場フロアの共有タブレット用。
+// キオスク（共有端末）認証 — 拠点フロアの共有タブレット用。
 //
 // 2 つの独立した信頼:
 //   kiosk_devices  = 「この端末は信頼済みキオスク」（登録コードで管理者が有効化、
@@ -10,7 +10,7 @@
 // スキャンのみログインは「**その端末で** 48 時間以内の使用実績（kiosk_sessions）
 // がある かつ 最後の PIN 検証（pin_last_verified_at）から 2 週間以内」のときのみ
 // — 初めて使う端末では必ず PIN、活動が続いても 2 週間ごとに必ず PIN 再入力。
-// 端末は工場（factories）単位で管理し、フロアマップ（kiosk_floor_maps）上に
+// 端末は拠点（plants）単位で管理し、フロアマップ（kiosk_floor_maps）上に
 // map_x/map_y（%座標）でピン配置して所在を可視化する。
 
 enum KioskDeviceStatus {
@@ -34,23 +34,25 @@ enum KioskCardStatus {
   @@schema("app")
 }
 
-// ─── フロアマップ（工場ごとの階/エリア。file は任意の図面画像） ────────────────
+// ─── フロアマップ（拠点ごとの階/エリア。file は任意の図面画像） ────────────────
 
 model KioskFloorMap {
   id        String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  factoryId Int     @map("factory_id")
-  name      String // 例: 1F 加工場
+  plantId Int     @map("plant_id")
+  name      String // 例: 1F 加拠点
   fileId    String? @map("file_id") @db.Uuid
   sortOrder Int     @default(0) @map("sort_order")
   isActive  Boolean @default(true) @map("is_active")
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  factory Factory @relation("KioskFloorMapFactory", fields: [factoryId], references: [id])
+  plant Plant @relation("KioskFloorMapPlant", fields: [plantId], references: [id])
   file    File?   @relation("KioskFloorMapFile", fields: [fileId], references: [id])
   devices KioskDevice[] @relation("KioskDeviceFloorMap")
+  // 端末管理と共用: 保管場所（storage_locations）のピンも同じ図面に配置する
+  storageLocations StorageLocation[] @relation("StorageLocationFloorMap")
 
-  @@index([factoryId])
+  @@index([plantId])
   @@map("kiosk_floor_maps")
   @@schema("app")
 }
@@ -62,7 +64,7 @@ model KioskDevice {
   name     String?
   location String?
   // 有効化時に管理者が設定（PENDING の間は null）
-  factoryId Int? @map("factory_id")
+  plantId Int? @map("plant_id")
   // フロアマップ上のピン（%座標。null = 未配置）
   floorMapId String?  @map("floor_map_id") @db.Uuid
   mapX       Decimal? @map("map_x") @db.Decimal(5, 2)
@@ -96,7 +98,7 @@ model KioskDevice {
   createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt      DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  factory     Factory?       @relation("KioskDeviceFactory", fields: [factoryId], references: [id])
+  plant     Plant?       @relation("KioskDevicePlant", fields: [plantId], references: [id])
   floorMap    KioskFloorMap? @relation("KioskDeviceFloorMap", fields: [floorMapId], references: [id])
   activatedBy User?          @relation("KioskDeviceActivatedBy", fields: [activatedById], references: [id])
   sessions    KioskSession[] @relation("KioskSessionDevice")
@@ -104,7 +106,7 @@ model KioskDevice {
   logs        KioskDeviceLog[] @relation("KioskDeviceLogDevice")
   locations   KioskDeviceLocation[] @relation("KioskDeviceLocationDevice")
 
-  @@index([factoryId])
+  @@index([plantId])
   @@index([status])
   @@map("kiosk_devices")
   @@schema("app")
