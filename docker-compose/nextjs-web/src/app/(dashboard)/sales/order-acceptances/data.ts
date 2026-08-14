@@ -8,12 +8,14 @@
  * Prisma Decimal はここで Number() へ、日付は ISO 文字列へ変換して渡す。
  */
 
+import { ownWhere, rowInScope } from "@ckk/authz-core";
 import type {
   OrderAcceptanceItemView,
   OrderAcceptanceListRow,
   OrderAcceptanceView,
 } from "@/components/sales/order-acceptances/model";
-import { prisma } from "@/lib/db";
+import { checkPermission } from "@/lib/authz";
+import { type Prisma, prisma } from "@/lib/db";
 import {
   type DocKey,
   formatDocNumber,
@@ -41,8 +43,16 @@ function productLabel(p: {
 export async function fetchOrderAcceptances(): Promise<
   OrderAcceptanceListRow[]
 > {
+  // スコープ行フィルタ（OWN = 自分の作成分のみ。ALL は {} で従来通り全件）。
+  const authz = await checkPermission("order_acceptance", "READ");
+  if (!authz.ok) return [];
   const rows = await prisma.orderAcceptance.findMany({
     take: LIST_FETCH_CAP,
+    where: ownWhere(
+      authz.access,
+      authz.userId,
+      "createdBy",
+    ) as Prisma.OrderAcceptanceWhereInput,
     include: {
       sourceFile: { select: { filename: true } },
       customerBp: { select: { name: true } },
@@ -69,6 +79,8 @@ export async function fetchOrderAcceptances(): Promise<
 export async function fetchOrderAcceptance(
   key: DocKey,
 ): Promise<OrderAcceptanceView | null> {
+  const authz = await checkPermission("order_acceptance", "READ");
+  if (!authz.ok) return null;
   const r = await prisma.orderAcceptance.findUnique({
     where: { yearMonth_seq: key },
     include: {
@@ -84,6 +96,10 @@ export async function fetchOrderAcceptance(
     },
   });
   if (!r) return null;
+  // スコープ外の行は不可視（null → 呼び出し側の notFound に乗せる）。
+  if (!rowInScope(authz.access, { createdBy: r.createdBy }, authz.userId)) {
+    return null;
+  }
 
   // 伝票展開で生成された注文請書（同一 yearMonth+seq の枝番 1..N）。
   const salesOrders = await prisma.salesOrder.findMany({

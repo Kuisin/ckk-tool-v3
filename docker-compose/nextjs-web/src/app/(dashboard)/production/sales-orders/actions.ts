@@ -12,6 +12,7 @@
  * 編集・確定は「下書きかつ未ロック（isLocked=false）」の行のみ。
  */
 
+import { type Access, rowInScope } from "@ckk/authz-core";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { resolveUnitPriceFromEntries } from "@/components/sales/quotes/model";
@@ -34,6 +35,35 @@ import {
 import { fetchEntriesForCustomer } from "../../sales/quotes/data";
 
 const BASE_PATH = "/production/sales-orders";
+const SCOPE_DENIED = "この操作の権限がありません（対象範囲外）";
+
+/**
+ * 対象注文請書がスコープ内か（PLANT = 配下指示書の工程実施拠点 ∪ OWN =
+ * 作成者）。ALL は素通し。不存在は true — 既存エラー処理に委ねる。
+ */
+async function salesOrderInScope(
+  access: Access,
+  userId: string,
+  where: { yearMonth: string; seq: number; branch: number } | { id: string },
+): Promise<boolean> {
+  if (access.kind === "ALL") return true;
+  const row = await prisma.salesOrder.findFirst({
+    where,
+    select: {
+      createdBy: true,
+      workOrders: { select: { steps: { select: { plantId: true } } } },
+    },
+  });
+  if (!row) return true;
+  return rowInScope(
+    access,
+    {
+      plantIds: row.workOrders.flatMap((w) => w.steps.map((s) => s.plantId)),
+      createdBy: row.createdBy,
+    },
+    userId,
+  );
+}
 
 const orderTypeEnum = z.enum(["PRODUCTION", "TEST", "SAMPLE", "OTHER"]);
 
@@ -143,6 +173,7 @@ export async function createSalesOrders(
             amount: ln.quantity * ln.unitPrice,
             deliveryDate: delivery ? new Date(delivery) : null,
             status: "DRAFT",
+            createdBy: authz.userId,
             notes: trimOrNull(ln.notes),
           },
         });
@@ -192,6 +223,9 @@ export async function updateSalesOrder(
     return actionError(parsed.error.issues[0]?.message ?? "入力が不正です");
   }
   const v = parsed.data;
+  if (!(await salesOrderInScope(authz.access, authz.userId, key))) {
+    return actionError(SCOPE_DENIED);
+  }
   try {
     const prior = await prisma.salesOrder.findUnique({
       where: { yearMonth_seq_branch: key },
@@ -263,6 +297,9 @@ export async function confirmSalesOrder(number: string): Promise<ActionResult> {
   if (!authz.ok) return actionError(authz.error);
   const key = parseSalesOrderKey(number);
   if (!key) return actionError("注文請書番号が不正です");
+  if (!(await salesOrderInScope(authz.access, authz.userId, key))) {
+    return actionError(SCOPE_DENIED);
+  }
   try {
     const updated = await prisma.salesOrder.updateMany({
       where: { ...key, status: "DRAFT", isLocked: false },
@@ -299,6 +336,11 @@ export async function runStockCheck(
   const authz = await checkPermission("work_order", "UPDATE");
   if (!authz.ok) return actionError(authz.error);
   if (!salesOrderId) return actionError("注文請書が不正です");
+  if (
+    !(await salesOrderInScope(authz.access, authz.userId, { id: salesOrderId }))
+  ) {
+    return actionError(SCOPE_DENIED);
+  }
   try {
     const so = await prisma.salesOrder.findUnique({
       where: { id: salesOrderId },
@@ -324,6 +366,9 @@ export async function cancelSalesOrder(number: string): Promise<ActionResult> {
   if (!authz.ok) return actionError(authz.error);
   const key = parseSalesOrderKey(number);
   if (!key) return actionError("注文請書番号が不正です");
+  if (!(await salesOrderInScope(authz.access, authz.userId, key))) {
+    return actionError(SCOPE_DENIED);
+  }
   try {
     const prior = await prisma.salesOrder.findUnique({
       where: { yearMonth_seq_branch: key },

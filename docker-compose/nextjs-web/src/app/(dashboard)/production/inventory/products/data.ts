@@ -8,13 +8,15 @@
  * - 詳細: 在庫行 + 引当予約 + 取引履歴（Decimal → Number 変換済み）。
  */
 
+import { plantWhere, rowInScope } from "@ckk/authz-core";
 import type { InventoryReservationRow } from "@/components/production/inventory/model";
 import type {
   ProductInventoryDetailData,
   ProductInventoryRow,
   WipRow,
 } from "@/components/production/inventory/products/model";
-import { prisma } from "@/lib/db";
+import { checkPermission } from "@/lib/authz";
+import { type Prisma, prisma } from "@/lib/db";
 import { formatProductNumber, formatSalesOrderNumber } from "@/lib/doc-number";
 import { type LocalizedText, localized } from "@/lib/format";
 import {
@@ -45,7 +47,14 @@ export function storageLabelOf(r: {
 export async function fetchProductInventories(): Promise<
   ProductInventoryRow[]
 > {
+  // スコープ行フィルタ（PLANT = 保管拠点。ALL は {} で従来通り全件）。
+  const authz = await checkPermission("inventory", "READ");
+  if (!authz.ok) return [];
   const rows = await prisma.productInventory.findMany({
+    where: plantWhere(
+      authz.access,
+      "plantId",
+    ) as Prisma.ProductInventoryWhereInput,
     include: {
       product: true,
       plant: true,
@@ -80,9 +89,20 @@ export async function fetchProductInventories(): Promise<
  * 実行依存・カタログは 1 回だけロードし、指示書ごとに ctx を組み立てる。
  */
 export async function fetchWipRows(): Promise<WipRow[]> {
+  // 仕掛品はスコープ拠点で工程が走る指示書に限定（ALL は追加条件なし）。
+  const authz = await checkPermission("inventory", "READ");
+  if (!authz.ok) return [];
+  const plantFilter: Prisma.WorkOrderWhereInput =
+    authz.access.kind === "ALL"
+      ? {}
+      : {
+          steps: {
+            some: { plantId: { in: [...authz.access.plantIds] } },
+          },
+        };
   const [workOrders, execDeps, catalogSteps] = await Promise.all([
     prisma.workOrder.findMany({
-      where: { status: "IN_PROGRESS" },
+      where: { status: "IN_PROGRESS", ...plantFilter },
       include: {
         steps: true,
         stepLinks: true,
@@ -181,6 +201,8 @@ async function fetchReservations(
 export async function fetchProductInventoryDetail(
   id: string,
 ): Promise<ProductInventoryDetailData | null> {
+  const authz = await checkPermission("inventory", "READ");
+  if (!authz.ok) return null;
   const r = await prisma.productInventory.findUnique({
     where: { id },
     include: {
@@ -191,6 +213,10 @@ export async function fetchProductInventoryDetail(
     },
   });
   if (!r) return null;
+  // スコープ外の行は不可視（null → 呼び出し側の notFound に乗せる）。
+  if (!rowInScope(authz.access, { plantIds: [r.plantId] }, authz.userId)) {
+    return null;
+  }
 
   // 半製品の発生工程（source_step_id → 指示書 #N / 工程名）
   let sourceStepLabel: string | null = null;

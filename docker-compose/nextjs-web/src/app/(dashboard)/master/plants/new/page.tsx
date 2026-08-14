@@ -1,5 +1,6 @@
 import { PlantForm } from "@/components/master/plants/PlantForm";
 import { requireAppRead } from "@/lib/authz-page";
+import { fetchRegionOptions } from "../data";
 
 export const dynamic = "force-dynamic";
 
@@ -7,5 +8,6 @@ export const dynamic = "force-dynamic";
 export default async function MasterPlantsNewPage() {
   const denied = await requireAppRead("master-plants");
   if (denied) return denied;
-  return <PlantForm />;
+  const regionOptions = await fetchRegionOptions();
+  return <PlantForm regionOptions={regionOptions} />;
 }

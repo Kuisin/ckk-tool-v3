@@ -12,13 +12,19 @@ export const dynamic = "force-dynamic";
 export default async function MasterPlantsPage() {
   const denied = await requireAppRead("master-plants");
   if (denied) return denied;
-  const records = await prisma.plant.findMany({ orderBy: { code: "asc" } });
+  const records = await prisma.plant.findMany({
+    orderBy: { code: "asc" },
+    include: { region: true },
+  });
 
   const rows: PlantRow[] = records.map((r) => ({
     id: r.id,
     code: r.code,
     name: localized(r.name as LocalizedText | null),
     countryCode: r.countryCode,
+    regionName: r.region
+      ? `${r.region.code} ${localized(r.region.name as LocalizedText | null)}`
+      : null,
     isActive: r.isActive,
     updatedAt: r.updatedAt.toISOString(),
   }));

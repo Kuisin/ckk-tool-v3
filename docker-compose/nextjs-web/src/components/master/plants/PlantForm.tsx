@@ -42,6 +42,7 @@ const plantSchema = z.object({
   nameEn: z.string(),
   nameKana: z.string(),
   countryCode: z.string().nullable(),
+  regionId: z.string().nullable(),
   postalCode: z.string(),
   addressJa: z.string(),
   addressEn: z.string(),
@@ -64,6 +65,7 @@ export interface PlantFormInitial {
   nameEn: string;
   nameKana: string;
   countryCode: string | null;
+  regionId: number | null;
   postalCode: string;
   addressJa: string;
   addressEn: string;
@@ -74,7 +76,14 @@ export interface PlantFormInitial {
   notes: string;
 }
 
-export function PlantForm({ initial }: { initial?: PlantFormInitial }) {
+export function PlantForm({
+  initial,
+  regionOptions,
+}: {
+  initial?: PlantFormInitial;
+  /** 地域 Select の選択肢（value = String(region id)）。 */
+  regionOptions: { value: string; label: string }[];
+}) {
   const router = useRouter();
   const isMobile = useIsMobile();
   const [isPending, startTransition] = useTransition();
@@ -88,6 +97,7 @@ export function PlantForm({ initial }: { initial?: PlantFormInitial }) {
       nameEn: initial?.nameEn ?? "",
       nameKana: initial?.nameKana ?? "",
       countryCode: initial?.countryCode ?? "JP",
+      regionId: initial?.regionId != null ? String(initial.regionId) : null,
       postalCode: initial?.postalCode ?? "",
       addressJa: initial?.addressJa ?? "",
       addressEn: initial?.addressEn ?? "",
@@ -100,10 +110,14 @@ export function PlantForm({ initial }: { initial?: PlantFormInitial }) {
   });
 
   const handleSubmit = (values: FormValues) => {
+    const payload = {
+      ...values,
+      regionId: values.regionId ? Number(values.regionId) : null,
+    };
     startTransition(async () => {
       const result = isEdit
-        ? await updatePlant(initial.id, values)
-        : await createPlant(values);
+        ? await updatePlant(initial.id, payload)
+        : await createPlant(payload);
       if (result.ok) {
         notifications.show({
           title: "保存しました",
@@ -184,6 +198,15 @@ export function PlantForm({ initial }: { initial?: PlantFormInitial }) {
             label="国"
             placeholder="国を選択"
             {...form.getInputProps("countryCode")}
+          />
+          <Select
+            clearable
+            data={regionOptions}
+            description="REGION スコープ権限の対象地域"
+            label="地域"
+            placeholder="地域を選択"
+            searchable={regionOptions.length > 5}
+            {...form.getInputProps("regionId")}
           />
           <TextInput
             label="郵便番号"

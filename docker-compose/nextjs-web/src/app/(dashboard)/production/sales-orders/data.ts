@@ -6,11 +6,13 @@
  * Prisma Decimal はここで Number() へ変換してからクライアントへ渡す。
  */
 
+import { type Access, ownOrPlantWhere, rowInScope } from "@ckk/authz-core";
 import type {
   SalesOrder,
   SalesOrderStatus,
 } from "@/components/production/sales-orders/model";
-import { prisma } from "@/lib/db";
+import { checkPermission } from "@/lib/authz";
+import { type Prisma, prisma } from "@/lib/db";
 import {
   formatProductNumber,
   formatQuoteNumber,
@@ -30,6 +32,8 @@ const SALES_ORDER_INCLUDE = {
   product: true,
   workOrders: {
     orderBy: { workOrderNumber: "asc" as const },
+    // スコープ判定（PLANT = 配下指示書の工程実施拠点）にも使う。
+    include: { steps: { select: { plantId: true } } },
   },
   // §4 在庫照合の引当済みサマリ用（予約中のみ — 確定/解除は数えない）。
   reservations: {
@@ -116,20 +120,62 @@ function mapSalesOrder(r: SalesOrderRow): SalesOrder {
   };
 }
 
+/**
+ * 注文請書のスコープ where 断片（PLANT = 配下指示書の工程実施拠点経由 ∪
+ * OWN = 作成者）。ALL は {} — 従来通り全件。
+ */
+function salesOrderScopeWhere(
+  access: Access,
+  userId: string,
+): Prisma.SalesOrderWhereInput {
+  return ownOrPlantWhere(access, userId, {
+    plantClause: (ids) => ({
+      workOrders: { some: { steps: { some: { plantId: { in: ids } } } } },
+    }),
+    ownColumn: "createdBy",
+  }) as Prisma.SalesOrderWhereInput;
+}
+
+/** 取得済み注文請書行（workOrders.steps 付き）がスコープ内か。 */
+function salesOrderRowInScope(
+  access: Access,
+  userId: string,
+  row: {
+    createdBy: string | null;
+    workOrders: { steps: { plantId: number | null }[] }[];
+  },
+): boolean {
+  return rowInScope(
+    access,
+    {
+      plantIds: row.workOrders.flatMap((w) => w.steps.map((s) => s.plantId)),
+      createdBy: row.createdBy,
+    },
+    userId,
+  );
+}
+
 /** 一覧 — 新しい採番から順に。 */
 export async function fetchSalesOrders(): Promise<SalesOrder[]> {
+  const authz = await checkPermission("work_order", "READ");
+  if (!authz.ok) return [];
   const rows = await prisma.salesOrder.findMany({
     take: LIST_FETCH_CAP,
+    where: salesOrderScopeWhere(authz.access, authz.userId),
     include: SALES_ORDER_INCLUDE,
     orderBy: [{ yearMonth: "desc" }, { seq: "desc" }, { branch: "asc" }],
   });
   return rows.map(mapSalesOrder);
 }
 
-/** 1件取得 — キー不一致・未存在は null。 */
+/** 1件取得 — キー不一致・未存在・スコープ外は null。 */
 export async function fetchSalesOrder(
   key: SalesOrderKey,
 ): Promise<SalesOrder | null> {
+  const authz = await checkPermission("work_order", "READ");
+  if (!authz.ok) return null;
   const row = await findRow(key);
-  return row ? mapSalesOrder(row) : null;
+  if (!row) return null;
+  if (!salesOrderRowInScope(authz.access, authz.userId, row)) return null;
+  return mapSalesOrder(row);
 }

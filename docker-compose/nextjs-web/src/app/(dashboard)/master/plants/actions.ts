@@ -29,6 +29,7 @@ const plantInput = z.object({
   nameEn: z.string().optional(),
   nameKana: z.string().optional(),
   countryCode: z.string().nullable(),
+  regionId: z.number().int().positive().nullable(),
   postalCode: z.string().optional(),
   addressJa: z.string().optional(),
   addressEn: z.string().optional(),
@@ -56,6 +57,7 @@ function plantData(v: PlantInput) {
     name: localizedInput(v.nameJa, v.nameEn),
     nameKana: v.nameKana?.trim() || null,
     countryCode: v.countryCode,
+    regionId: v.regionId,
     postalCode: v.postalCode?.trim() || null,
     address: localizedInputOrNull(v.addressJa, v.addressEn) ?? Prisma.DbNull,
     phone: v.phone?.trim() || null,
@@ -72,6 +74,7 @@ function auditSnapshot(v: PlantInput) {
     code: v.code.trim(),
     nameJa: v.nameJa,
     countryCode: v.countryCode,
+    regionId: v.regionId,
     postalCode: v.postalCode?.trim() || null,
     addressJa: v.addressJa?.trim() || null,
     phone: v.phone?.trim() || null,
@@ -126,6 +129,7 @@ export async function updatePlant(
       where: { id },
       select: {
         countryCode: true,
+        regionId: true,
         postalCode: true,
         phone: true,
         email: true,
@@ -175,6 +179,144 @@ export async function setPlantsActive(
     return actionOk();
   } catch (e) {
     return actionError(prismaErrorMessage(e, "状態の更新に失敗しました"));
+  }
+}
+
+// ── 地域（regions — REGION スコープの実体） ──────────────────────────────────
+
+const REGIONS_PATH = "/master/plants/regions";
+
+const regionInput = z.object({
+  code: z.string().min(1, "地域コードを入力してください"),
+  nameJa: z.string().min(1, "名称（日本語）を入力してください"),
+  nameEn: z.string().optional(),
+  isActive: z.boolean(),
+});
+
+export type RegionInput = z.infer<typeof regionInput>;
+
+function revalidateRegions() {
+  revalidatePath(REGIONS_PATH);
+  revalidatePath(BASE_PATH);
+}
+
+export async function createRegion(
+  input: RegionInput,
+): Promise<ActionResult<{ id: number }>> {
+  const authz = await checkPermission("master", "CREATE");
+  if (!authz.ok) return actionError(authz.error);
+  const parsed = regionInput.safeParse(input);
+  if (!parsed.success) {
+    return actionError(parsed.error.issues[0]?.message ?? "入力が不正です");
+  }
+  const v = parsed.data;
+  try {
+    const created = await prisma.region.create({
+      data: {
+        code: v.code.trim(),
+        name: localizedInput(v.nameJa, v.nameEn),
+        isActive: v.isActive,
+      },
+      select: { id: true },
+    });
+    await recordAudit({
+      action: "CREATE",
+      tableName: "regions",
+      recordId: String(created.id),
+      after: { code: v.code.trim(), nameJa: v.nameJa, isActive: v.isActive },
+    });
+    revalidateRegions();
+    return actionOk({ id: created.id });
+  } catch (e) {
+    return actionError(prismaErrorMessage(e, "地域の作成に失敗しました"));
+  }
+}
+
+export async function updateRegion(
+  id: number,
+  input: RegionInput,
+): Promise<ActionResult<{ id: number }>> {
+  const authz = await checkPermission("master", "UPDATE");
+  if (!authz.ok) return actionError(authz.error);
+  const parsed = regionInput.safeParse(input);
+  if (!parsed.success) {
+    return actionError(parsed.error.issues[0]?.message ?? "入力が不正です");
+  }
+  const v = parsed.data;
+  try {
+    const prior = await prisma.region.findUnique({
+      where: { id },
+      select: { code: true, name: true, isActive: true },
+    });
+    if (!prior) return actionError("対象の地域が見つかりません");
+    // code は識別子（authz-core の scope_values が参照）のため更新しない。
+    await prisma.region.update({
+      where: { id },
+      data: {
+        name: localizedInput(v.nameJa, v.nameEn),
+        isActive: v.isActive,
+      },
+    });
+    await recordAudit({
+      action: "UPDATE",
+      tableName: "regions",
+      recordId: String(id),
+      before: {
+        code: prior.code,
+        name: prior.name,
+        isActive: prior.isActive,
+      },
+      after: { nameJa: v.nameJa, isActive: v.isActive },
+    });
+    revalidateRegions();
+    return actionOk({ id });
+  } catch (e) {
+    return actionError(prismaErrorMessage(e, "地域の更新に失敗しました"));
+  }
+}
+
+export async function setRegionActive(
+  id: number,
+  isActive: boolean,
+): Promise<ActionResult> {
+  const authz = await checkPermission("master", "UPDATE");
+  if (!authz.ok) return actionError(authz.error);
+  try {
+    await prisma.region.update({ where: { id }, data: { isActive } });
+    await recordAudit({
+      action: "UPDATE",
+      tableName: "regions",
+      recordId: String(id),
+      after: { isActive },
+    });
+    revalidateRegions();
+    return actionOk();
+  } catch (e) {
+    return actionError(prismaErrorMessage(e, "状態の更新に失敗しました"));
+  }
+}
+
+/** 削除 — 拠点から参照されていない地域のみ。 */
+export async function deleteRegion(id: number): Promise<ActionResult> {
+  const authz = await checkPermission("master", "DELETE");
+  if (!authz.ok) return actionError(authz.error);
+  try {
+    const plantCount = await prisma.plant.count({ where: { regionId: id } });
+    if (plantCount > 0) {
+      return actionError(
+        `この地域は ${plantCount} 件の拠点から参照されているため削除できません（先に拠点の地域を変更してください）`,
+      );
+    }
+    await prisma.region.delete({ where: { id } });
+    await recordAudit({
+      action: "DELETE",
+      tableName: "regions",
+      recordId: String(id),
+    });
+    revalidateRegions();
+    return actionOk();
+  } catch (e) {
+    return actionError(prismaErrorMessage(e, "地域の削除に失敗しました"));
   }
 }
 

@@ -11,6 +11,7 @@
  */
 
 import { randomUUID } from "node:crypto";
+import { rowInScope } from "@ckk/authz-core";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { recordAudit } from "@/lib/audit";
@@ -59,6 +60,32 @@ export async function transferStock(
     return actionError(parsed.error.issues[0]?.message ?? "入力が不正です");
   }
   const v = parsed.data;
+
+  // スコープ行チェック（PLANT）: 移動元の保管拠点と移動先拠点の両方が
+  // スコープ内であること。ALL は素通し。
+  if (authz.access.kind !== "ALL") {
+    const src =
+      v.inventoryType === "PRODUCT"
+        ? await prisma.productInventory.findUnique({
+            where: { id: v.inventoryId },
+            select: { plantId: true },
+          })
+        : await prisma.materialInventory.findUnique({
+            where: { id: v.inventoryId },
+            select: { plantId: true },
+          });
+    const srcOk =
+      !src ||
+      rowInScope(authz.access, { plantIds: [src.plantId] }, authz.userId);
+    const destOk = rowInScope(
+      authz.access,
+      { plantIds: [v.targetPlantId] },
+      authz.userId,
+    );
+    if (!srcOk || !destOk) {
+      return actionError("この操作の権限がありません（対象範囲外）");
+    }
+  }
 
   try {
     // 移動先の整合性: 保管場所は移動先拠点のもの、棚はその保管場所のもの

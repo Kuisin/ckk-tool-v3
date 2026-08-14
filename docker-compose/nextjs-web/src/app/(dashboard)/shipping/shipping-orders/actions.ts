@@ -12,12 +12,14 @@
  * 注文請書ステータスに影響しない）。削除（キャンセル）は下書きのみ hard delete。
  */
 
+import { type Access, rowInScope } from "@ckk/authz-core";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { recordAudit } from "@/lib/audit";
 import { checkPermission } from "@/lib/authz";
 import { prisma } from "@/lib/db";
 import {
+  type DocKey,
   formatDocNumber,
   formatSalesOrderNumber,
   parseDocKey,
@@ -32,6 +34,25 @@ import {
 } from "@/lib/server-action";
 
 const BASE_PATH = "/shipping/shipping-orders";
+const SCOPE_DENIED = "この操作の権限がありません（対象範囲外）";
+
+/**
+ * 対象出荷書がスコープ内か（PLANT = 出荷元拠点）。ALL は素通し。
+ * 不存在は true — 既存の not-found 系エラー処理に委ねる。
+ */
+async function shippingOrderInScope(
+  access: Access,
+  userId: string,
+  key: DocKey,
+): Promise<boolean> {
+  if (access.kind === "ALL") return true;
+  const row = await prisma.shippingOrder.findUnique({
+    where: { yearMonth_seq: key },
+    select: { fromPlantId: true },
+  });
+  if (!row) return true;
+  return rowInScope(access, { plantIds: [row.fromPlantId] }, userId);
+}
 
 const itemInput = z.object({
   productId: z.string().min(1, "製品を選択してください"),
@@ -143,6 +164,18 @@ export async function createShippingOrder(
     return actionError(parsed.error.issues[0]?.message ?? "入力が不正です");
   }
   const v = parsed.data;
+  // スコープ行チェック（PLANT）: 出荷元拠点がスコープ内であること
+  // （SCOPED ユーザーは拠点未設定の出荷書を作成できない — fail-closed）。
+  if (
+    authz.access.kind !== "ALL" &&
+    !rowInScope(
+      authz.access,
+      { plantIds: [v.fromPlantId ? Number(v.fromPlantId) : null] },
+      authz.userId,
+    )
+  ) {
+    return actionError(SCOPE_DENIED);
+  }
   try {
     const { yearMonth, seq } = await allocateDocumentKey("SHIPPING");
     await prisma.shippingOrder.create({
@@ -153,6 +186,7 @@ export async function createShippingOrder(
         type: v.type,
         fromPlantId: v.fromPlantId ? Number(v.fromPlantId) : null,
         notes: trimOrNull(v.notes),
+        createdBy: authz.userId,
         items: {
           create: v.items.map((it, i) => ({
             productId: Number(it.productId),
@@ -199,6 +233,9 @@ export async function updateShippingOrder(
     return actionError(parsed.error.issues[0]?.message ?? "入力が不正です");
   }
   const v = parsed.data;
+  if (!(await shippingOrderInScope(authz.access, authz.userId, key))) {
+    return actionError(SCOPE_DENIED);
+  }
   try {
     const prior = await prisma.shippingOrder.findUnique({
       where: { yearMonth_seq: key },
@@ -279,6 +316,9 @@ export async function confirmShippingOrder(
   if (!authz.ok) return actionError(authz.error);
   const key = parseDocKey(number, "SHP");
   if (!key) return actionError("出荷書番号が不正です");
+  if (!(await shippingOrderInScope(authz.access, authz.userId, key))) {
+    return actionError(SCOPE_DENIED);
+  }
   try {
     const updated = await prisma.shippingOrder.updateMany({
       where: { ...key, status: "DRAFT" },
@@ -313,6 +353,9 @@ export async function shipShippingOrder(number: string): Promise<ActionResult> {
   if (!authz.ok) return actionError(authz.error);
   const key = parseDocKey(number, "SHP");
   if (!key) return actionError("出荷書番号が不正です");
+  if (!(await shippingOrderInScope(authz.access, authz.userId, key))) {
+    return actionError(SCOPE_DENIED);
+  }
   try {
     const row = await prisma.shippingOrder.findUnique({
       where: { yearMonth_seq: key },
@@ -447,6 +490,9 @@ export async function deleteShippingOrder(
   if (!authz.ok) return actionError(authz.error);
   const key = parseDocKey(number, "SHP");
   if (!key) return actionError("出荷書番号が不正です");
+  if (!(await shippingOrderInScope(authz.access, authz.userId, key))) {
+    return actionError(SCOPE_DENIED);
+  }
   try {
     const deleted = await prisma.shippingOrder.deleteMany({
       where: { ...key, status: "DRAFT" },

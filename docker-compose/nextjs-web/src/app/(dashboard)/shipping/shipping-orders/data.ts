@@ -6,12 +6,14 @@
  * Prisma Decimal はここで Number() へ変換してからクライアントへ渡す。
  */
 
+import { plantWhere, rowInScope } from "@ckk/authz-core";
 import type {
   ShippingOrder,
   ShippingOrderStatus,
   ShippingType,
 } from "@/components/shipping/shipping-orders/model";
-import { prisma } from "@/lib/db";
+import { checkPermission } from "@/lib/authz";
+import { type Prisma, prisma } from "@/lib/db";
 import {
   type DocKey,
   formatDocNumber,
@@ -117,18 +119,33 @@ function mapShippingOrder(r: ShippingOrderRow): ShippingOrder {
 
 /** 一覧 — 新しい採番から順に。 */
 export async function fetchShippingOrders(): Promise<ShippingOrder[]> {
+  // スコープ行フィルタ（PLANT = 出荷元拠点。ALL は {} で従来通り全件）。
+  const authz = await checkPermission("shipping_order", "READ");
+  if (!authz.ok) return [];
   const rows = await prisma.shippingOrder.findMany({
     take: LIST_FETCH_CAP,
+    where: plantWhere(
+      authz.access,
+      "fromPlantId",
+    ) as Prisma.ShippingOrderWhereInput,
     include: SHIPPING_ORDER_INCLUDE,
     orderBy: [{ yearMonth: "desc" }, { seq: "desc" }],
   });
   return rows.map(mapShippingOrder);
 }
 
-/** 1件取得 — 未存在は null。 */
+/** 1件取得 — 未存在・スコープ外は null。 */
 export async function fetchShippingOrder(
   key: DocKey,
 ): Promise<ShippingOrder | null> {
+  const authz = await checkPermission("shipping_order", "READ");
+  if (!authz.ok) return null;
   const row = await findRow(key);
-  return row ? mapShippingOrder(row) : null;
+  if (!row) return null;
+  if (
+    !rowInScope(authz.access, { plantIds: [row.fromPlantId] }, authz.userId)
+  ) {
+    return null;
+  }
+  return mapShippingOrder(row);
 }
