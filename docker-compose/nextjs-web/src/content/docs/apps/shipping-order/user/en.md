@@ -6,7 +6,7 @@ Operation code **SH01**. Create and manage shipping orders (出荷書, SHP-YYYYM
 
 ## What you can do with this app
 
-This is the ledger for the **shipping order (出荷書)** you create when finished products leave the factory. The shipping order is the starting point of billing: you create the [delivery note](/docs/apps/delivery-note/user) from it, and shipped dispatch orders are grouped into invoices by the [billing closing](/docs/apps/billing-closing/user).
+This is the ledger for the **shipping order (出荷書)** you create when finished products leave the plant. The shipping order is the starting point of billing: you create the [delivery note](/docs/apps/delivery-note/user) from it, and shipped dispatch orders are grouped into invoices by the [billing closing](/docs/apps/billing-closing/user).
 
 - When you pick a sales order (注文請書), the line items are generated automatically from its completed [work orders](/docs/apps/work-order/user) (lots).
 - Shipping deducts stock from [product inventory](/docs/apps/product-inventory/user) and automatically updates the sales order's shipping status (partially shipped / shipped).
@@ -15,13 +15,13 @@ This is the ledger for the **shipping order (出荷書)** you create when finish
 ## Types: dispatch and stock storage
 
 - **Dispatch (発送)**: a normal shipment sent to the customer. Shipping deducts inventory and the shipment becomes billable.
-- **Stock storage (在庫保管)**: records spare production kept in stock instead of being sent out. It is outside the billing flow and does not change the sales order's shipping status. Completing the "ship" step adds the quantity to the storage factory's inventory.
+- **Stock storage (在庫保管)**: records spare production kept in stock instead of being sent out. It is outside the billing flow and does not change the sales order's shipping status. Completing the "ship" step adds the quantity to the storage plant's inventory.
 
 ## Creating a shipping order
 
 1. Press **新規作成** (Create) on the list page.
 2. Search for and select the **sales order (注文請書)**. One line item is generated per completed work order (lot = work order number, quantity = good-part count of the final process step).
-3. Choose the **type** (dispatch / stock storage) and the **shipping factory**.
+3. Choose the **type** (dispatch / stock storage) and the **shipping plant**.
 4. Line items (product, lot, quantity, notes) can be added, removed, and edited.
 5. Saving registers the document as a **draft**. The sales order cannot be changed after creation.
 
@@ -34,7 +34,7 @@ Actions are in the menu at the top right of the detail page. The status moves th
 - **Shipped (出荷済 / SHIPPED)**: the ship date is recorded, inventory is deducted, and the sales order's shipping status (partially shipped / shipped) is updated.
 
 - A dispatch whose cumulative shipped quantity would exceed the ordered quantity is rejected (over-shipment guard).
-- Shipping also fails if the shipping factory does not have enough stock — check inventory first.
+- Shipping also fails if the shipping plant does not have enough stock — check inventory first.
 
 ## Working with delivery notes
 

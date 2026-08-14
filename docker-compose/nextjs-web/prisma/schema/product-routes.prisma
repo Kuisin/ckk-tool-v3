@@ -50,13 +50,13 @@ model ProductProcessRouteVersionStep {
   processStepId     Int           @map("process_step_id")
   sortOrder         Int           @map("sort_order")
   executionLocation StepExecution @map("execution_location")
-  factoryId         Int?          @map("factory_id")
+  plantId         Int?          @map("plant_id")
   supplierBpId      String?       @map("supplier_bp_id") @db.Uuid
   workHours         Decimal?      @map("work_hours") @db.Decimal(6, 2) // 標準作業時間 (h) — 任意
 
   routeVersion ProductProcessRouteVersion @relation(fields: [routeVersionId], references: [id], onDelete: Cascade)
   processStep  ProcessStepCatalog         @relation(fields: [processStepId], references: [id])
-  factory      Factory?                   @relation("RouteStepFactory", fields: [factoryId], references: [id])
+  plant      Plant?                   @relation("RouteStepPlant", fields: [plantId], references: [id])
   supplierBp   BusinessPartner?           @relation("RouteStepSupplier", fields: [supplierBpId], references: [id])
 
   @@unique([routeVersionId, processStepId])

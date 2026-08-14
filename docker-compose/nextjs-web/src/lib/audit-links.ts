@@ -121,18 +121,18 @@ const TABLE_ROUTES: Record<string, TableRoute> = {
     directDetail: true,
   },
   business_partners: { appLabel: "取引先", listPath: "/master/customers" },
-  factories: {
-    appLabel: "工場",
-    listPath: "/master/factories",
+  plants: {
+    appLabel: "拠点",
+    listPath: "/master/plants",
     directDetail: true,
   },
   storage_locations: {
-    appLabel: "工場（保管場所）",
-    listPath: "/master/factories",
+    appLabel: "拠点（保管場所）",
+    listPath: "/master/plants",
   },
   storage_shelves: {
-    appLabel: "工場（保管場所）",
-    listPath: "/master/factories",
+    appLabel: "拠点（保管場所）",
+    listPath: "/master/plants",
   },
   process_step_catalog: {
     appLabel: "工程マスタ",

@@ -58,7 +58,10 @@ export const AUDIT_TABLE_LABELS: Record<string, string> = {
   material_types: "材種",
   business_partners: "取引先",
   feature_flags: "アプリ管理",
-  factories: "工場",
+  plants: "拠点",
+  // 旧テーブル名 — audit_logs.table_name は保存済み文字列なので rename 後も
+  // 履歴行は 'factories' のまま。表示だけ新名称に揃える。
+  factories: "拠点（旧）",
   process_step_catalog: "工程マスタ",
   inspection_templates: "検査表テンプレート",
   defect_types: "不良種類",

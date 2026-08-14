@@ -1,9 +1,9 @@
 "use client";
 
 /**
- * FactoryForm.tsx — 工場 新規作成 / 編集フォーム (MS1B / MS2B edit).
+ * PlantForm.tsx — 拠点 新規作成 / 編集フォーム (MS1B / MS2B edit).
  *
- * 工場コードは手入力（unique）。識別子のため編集時は変更不可（disabled）。
+ * 拠点コードは手入力（unique）。識別子のため編集時は変更不可（disabled）。
  * 名称・住所は { ja, en } ペア入力（LocalizedTextInput）。
  */
 
@@ -21,9 +21,9 @@ import { useRouter } from "next/navigation";
 import { useTransition } from "react";
 import { z } from "zod";
 import {
-  createFactory,
-  updateFactory,
-} from "@/app/(dashboard)/master/factories/actions";
+  createPlant,
+  updatePlant,
+} from "@/app/(dashboard)/master/plants/actions";
 import { ActiveBadge } from "@/components/ui/ActiveBadge";
 import {
   FormSection,
@@ -34,10 +34,10 @@ import { useIsMobile } from "@/hooks/useViewport";
 import { COUNTRY_OPTIONS } from "@/lib/enum-labels";
 import { zodResolver } from "@/lib/form";
 
-const BASE_PATH = "/master/factories";
+const BASE_PATH = "/master/plants";
 
-const factorySchema = z.object({
-  code: z.string().min(1, "工場コードを入力してください"),
+const plantSchema = z.object({
+  code: z.string().min(1, "拠点コードを入力してください"),
   nameJa: z.string().min(1, "名称（日本語）を入力してください"),
   nameEn: z.string(),
   nameKana: z.string(),
@@ -55,9 +55,9 @@ const factorySchema = z.object({
   notes: z.string(),
 });
 
-type FormValues = z.infer<typeof factorySchema>;
+type FormValues = z.infer<typeof plantSchema>;
 
-export interface FactoryFormInitial {
+export interface PlantFormInitial {
   id: number;
   code: string;
   nameJa: string;
@@ -74,14 +74,14 @@ export interface FactoryFormInitial {
   notes: string;
 }
 
-export function FactoryForm({ initial }: { initial?: FactoryFormInitial }) {
+export function PlantForm({ initial }: { initial?: PlantFormInitial }) {
   const router = useRouter();
   const isMobile = useIsMobile();
   const [isPending, startTransition] = useTransition();
   const isEdit = !!initial;
 
   const form = useForm<FormValues>({
-    validate: zodResolver(factorySchema),
+    validate: zodResolver(plantSchema),
     initialValues: {
       code: initial?.code ?? "",
       nameJa: initial?.nameJa ?? "",
@@ -102,12 +102,12 @@ export function FactoryForm({ initial }: { initial?: FactoryFormInitial }) {
   const handleSubmit = (values: FormValues) => {
     startTransition(async () => {
       const result = isEdit
-        ? await updateFactory(initial.id, values)
-        : await createFactory(values);
+        ? await updatePlant(initial.id, values)
+        : await createPlant(values);
       if (result.ok) {
         notifications.show({
           title: "保存しました",
-          message: isEdit ? "工場を更新しました" : "工場を作成しました",
+          message: isEdit ? "拠点を更新しました" : "拠点を作成しました",
           color: "green",
         });
         router.push(`${BASE_PATH}/${result.data.id}`);
@@ -125,7 +125,7 @@ export function FactoryForm({ initial }: { initial?: FactoryFormInitial }) {
     <FormShell
       breadcrumbs={[
         "マスタ",
-        { label: "工場", href: BASE_PATH },
+        { label: "拠点", href: BASE_PATH },
         isEdit ? "編集" : "新規作成",
       ]}
       isDirty={form.isDirty()}
@@ -135,16 +135,16 @@ export function FactoryForm({ initial }: { initial?: FactoryFormInitial }) {
       }
       onSubmit={form.onSubmit(handleSubmit)}
       status={isEdit ? <ActiveBadge active={initial.isActive} /> : undefined}
-      title={isEdit ? `工場 編集 — ${initial.code}` : "工場 新規作成"}
+      title={isEdit ? `拠点 編集 — ${initial.code}` : "拠点 新規作成"}
     >
       <FormSection title="基本情報">
         <SimpleGrid cols={isMobile ? 1 : 2} spacing="sm">
           <TextInput
             description={
-              isEdit ? "作成後は変更できません" : "工場を識別する一意のコード"
+              isEdit ? "作成後は変更できません" : "拠点を識別する一意のコード"
             }
             disabled={isEdit}
-            label="工場コード"
+            label="拠点コード"
             placeholder="例: F01"
             withAsterisk={!isEdit}
             {...form.getInputProps("code")}
@@ -206,7 +206,7 @@ export function FactoryForm({ initial }: { initial?: FactoryFormInitial }) {
           />
           <TextInput
             label="メールアドレス"
-            placeholder="例: factory@example.co.jp"
+            placeholder="例: plant@example.co.jp"
             {...form.getInputProps("email")}
           />
         </SimpleGrid>

@@ -17,7 +17,7 @@ export const theme = createTheme({
   colors: {
     // ネイビー寄りの dark パレット（demo キオスクの dark navy 基調）。
     // dark[7] = body 背景 / dark[6] = Paper 背景 / dark[0] = 本文テキスト。
-    // 0〜2（本文 / 準本文 / dimmed）は工場の視認性優先で明るめの白
+    // 0〜2（本文 / 準本文 / dimmed）は拠点の視認性優先で明るめの白
     // （照明・粉じん・保護メガネ越しでも読めるコントラスト）。
     dark: [
       "#ffffff",

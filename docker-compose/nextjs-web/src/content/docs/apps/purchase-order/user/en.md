@@ -8,7 +8,7 @@ Operation code **PU03**. Manages material orders to suppliers through request �
 
 - Create material purchase orders (素材発注書) per supplier and place them through an approval flow. Creating, editing, and ordering require the purchase-order permission.
 - Once ordered, the line items are automatically reflected as **expected arrivals** in [material inventory (素材在庫, PD05)](/docs/apps/material-inventory/user).
-- **Complete receiving** automatically creates a [material receipt (素材入荷, PU01)](/docs/apps/material-receipt/user) record per line item and posts the stock to the receiving factory's material inventory.
+- **Complete receiving** automatically creates a [material receipt (素材入荷, PU01)](/docs/apps/material-receipt/user) record per line item and posts the stock to the receiving plant's material inventory.
 - A purchase order can also be created by converting a [purchase request (購買依頼, PU04)](/docs/apps/purchase-request/user).
 
 ## Statuses and flow
@@ -24,7 +24,7 @@ Operation code **PU03**. Manages material orders to suppliers through request �
 
 There are two ways.
 
-- **New** — from **New** in the list. Enter the **supplier** (required), the order date, and notes, and add at least one line item (material × receiving factory × quantity/unit × unit price × expected arrival date). Amounts (quantity × unit price) and the total are computed server-side.
+- **New** — from **New** in the list. Enter the **supplier** (required), the order date, and notes, and add at least one line item (material × receiving plant × quantity/unit × unit price × expected arrival date). Amounts (quantity × unit price) and the total are computed server-side.
 - **Convert from a purchase request** — via **Convert to purchase order** on an approved purchase request. Line items are carried over with a unit price of 0 yen, so enter the prices on the edit screen while the order is still a draft.
 
 After saving you are taken to the detail screen. Editing is possible only in draft.

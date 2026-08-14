@@ -136,7 +136,7 @@ function initialLocations(
   for (const s of workOrder?.steps ?? []) {
     map[s.processStepId] = {
       executionLocation: s.executionLocation,
-      factoryId: s.factoryId != null ? String(s.factoryId) : null,
+      plantId: s.plantId != null ? String(s.plantId) : null,
       supplierBpId: s.supplierBpId,
       workHours: s.plannedWorkHours,
     };
@@ -152,7 +152,7 @@ function snapshotLocations(
   for (const s of steps) {
     map[s.processStepId] = {
       executionLocation: s.executionLocation,
-      factoryId: s.factoryId != null ? String(s.factoryId) : null,
+      plantId: s.plantId != null ? String(s.plantId) : null,
       supplierBpId: s.supplierBpId,
       workHours: s.workHours,
     };
@@ -166,7 +166,7 @@ export function WorkflowBuilder({
   initialSalesOrder,
   catalogSteps,
   useDeps,
-  factoryOptions,
+  plantOptions,
   templateOptions,
   supplierOptions,
   initialType = null,
@@ -182,7 +182,7 @@ export function WorkflowBuilder({
   initialQuantity?: number | null;
   catalogSteps: CatalogStep[];
   useDeps: UseDep[];
-  factoryOptions: Option[];
+  plantOptions: Option[];
   templateOptions: InspectionTemplateOption[];
   /** 外注先（VENDOR ロールの有効 BP）— サーバーで全件ロード。 */
   supplierOptions: Option[];
@@ -500,7 +500,7 @@ export function WorkflowBuilder({
       steps: currentSnapshots.map((s) => ({
         processStepId: s.processStepId,
         executionLocation: s.executionLocation,
-        factoryId: s.factoryId,
+        plantId: s.plantId,
         supplierBpId: s.supplierBpId,
         workHours: s.workHours,
       })),
@@ -717,10 +717,10 @@ export function WorkflowBuilder({
             ? form.errors.selectedStepIds
             : null
         }
-        factoryOptions={factoryOptions}
         locations={locations}
         onLocationsChange={setLocations}
         onSelectedChange={(next) => form.setFieldValue("selectedStepIds", next)}
+        plantOptions={plantOptions}
         selected={selected}
         supplierOptions={supplierOptions}
         useDeps={useDeps}

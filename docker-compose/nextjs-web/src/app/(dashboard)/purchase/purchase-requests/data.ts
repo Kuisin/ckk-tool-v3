@@ -4,7 +4,7 @@
  * URL id = request_number（PRQ-YYYYMM-NNNNN、文字列保存）。
  * Prisma Decimal はここで Number() へ変換してからクライアントへ渡す。
  * history Json（{action,user,at,notes}）は displayName 解決して返す。
- * 仕入先（変換モーダル）/ 工場 options は work-orders の data.ts を再利用する。
+ * 仕入先（変換モーダル）/ 拠点 options は work-orders の data.ts を再利用する。
  */
 
 import type {
@@ -21,7 +21,7 @@ import { type LocalizedText, localized } from "@/lib/format";
 const LIST_FETCH_CAP = 1000;
 
 export {
-  fetchFactoryOptions,
+  fetchPlantOptions,
   fetchSupplierOptions,
   type Option,
 } from "../../production/work-orders/data";
@@ -70,7 +70,7 @@ export async function fetchPurchaseRequest(
       createdByUser: { select: { displayName: true } },
       purchaseOrder: { select: { poNumber: true } },
       items: {
-        include: { material: true, factory: true },
+        include: { material: true, plant: true },
         orderBy: { sortOrder: "asc" },
       },
     },
@@ -110,9 +110,9 @@ export async function fetchPurchaseRequest(
       materialId: String(it.materialId),
       materialCode: it.material.code,
       materialName: localized(it.material.name as LocalizedText | null),
-      factoryId: it.factoryId != null ? String(it.factoryId) : null,
-      factoryName: it.factory
-        ? `${it.factory.code} ${localized(it.factory.name as LocalizedText | null)}`
+      plantId: it.plantId != null ? String(it.plantId) : null,
+      plantName: it.plant
+        ? `${it.plant.code} ${localized(it.plant.name as LocalizedText | null)}`
         : null,
       quantity: Number(it.quantity),
       unit: it.unit,

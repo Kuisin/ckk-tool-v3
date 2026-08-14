@@ -1,6 +1,6 @@
 # Kiosk Device Setup
 
-Distribution and enrollment manual for the shared factory-floor tablets (kiosk devices). For administrators. QR cards are issued in QR Card Management (SY08); devices are managed in Device Management (SY09).
+Distribution and enrollment manual for the shared plant-floor tablets (kiosk devices). For administrators. QR cards are issued in QR Card Management (SY08); devices are managed in Device Management (SY09).
 
 ## The dedicated app (APK)
 
@@ -11,9 +11,9 @@ Each tablet runs a dedicated Android app. The latest APK is always served at:
 
 ## Enrolling a new device (QR provisioning)
 
-Configure a freshly factory-reset tablet as a dedicated kiosk device — no cable, no PC.
+Configure a freshly plant-reset tablet as a dedicated kiosk device — no cable, no PC.
 
-1. Factory-reset the tablet
+1. Plant-reset the tablet
 2. On the setup "Welcome" screen, **tap 6 times** (a QR scanner opens)
 3. Connect to Wi-Fi and scan the provisioning QR below
 4. The APK downloads and installs automatically, and the device locks into kiosk mode
@@ -84,4 +84,4 @@ The app **updates itself**. It checks for a new release about once an hour and a
 - Locked kiosk devices: fully automatic (no dialog)
 - Unlocked test tablets: the OS shows an install confirmation dialog — tap Install
 
-> Only devices still running a pre-self-update version (v0.2.x or older) need the old methods: `adb install -r` over USB, or factory-reset and re-scan the new QR.
+> Only devices still running a pre-self-update version (v0.2.x or older) need the old methods: `adb install -r` over USB, or plant-reset and re-scan the new QR.

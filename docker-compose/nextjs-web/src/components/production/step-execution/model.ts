@@ -109,7 +109,7 @@ export interface StepExecutionStepView {
   quantityTracking: "NONE" | "FLOW" | "INSPECTION";
   sortOrder: number;
   executionLocation: "INTERNAL" | "OUTSOURCE";
-  factoryName: string | null;
+  plantName: string | null;
   supplierName: string | null;
   /** 予定作業時間 (h) — 任意。 */
   plannedWorkHours: number | null;

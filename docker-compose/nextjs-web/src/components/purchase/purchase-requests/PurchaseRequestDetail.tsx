@@ -423,7 +423,7 @@ export function PurchaseRequestDetail({
               <Table.Thead>
                 <Table.Tr>
                   <Table.Th>素材</Table.Th>
-                  <Table.Th>入荷先工場</Table.Th>
+                  <Table.Th>入荷先拠点</Table.Th>
                   <Table.Th ta="right">数量</Table.Th>
                   <Table.Th>希望納期</Table.Th>
                   <Table.Th>備考</Table.Th>
@@ -440,7 +440,7 @@ export function PurchaseRequestDetail({
                         {it.materialName}
                       </Text>
                     </Table.Td>
-                    <Table.Td>{it.factoryName ?? "—"}</Table.Td>
+                    <Table.Td>{it.plantName ?? "—"}</Table.Td>
                     <Table.Td className="tabular-nums" ta="right">
                       {it.quantity} {it.unit}
                     </Table.Td>

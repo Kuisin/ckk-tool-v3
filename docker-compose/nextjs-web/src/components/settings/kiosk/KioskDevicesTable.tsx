@@ -10,7 +10,7 @@
  *      LINKED（有効化待ち）になる。
  *   3. 管理者が LINKED の行のみ「有効化」→ ACTIVE。タブレット側が自動検知。
  *   端末の交換・故障時は「リンク解除」でプロファイルをオープンに戻し
- *   （名称・工場・場所・ピンは保持）、新しい端末を再リンクできる。
+ *   （名称・拠点・場所・ピンは保持）、新しい端末を再リンクできる。
  *
  * QR スキャンは qr-scanner（nextjs-kiosk と同じライブラリ）— iOS Safari 含む
  * 全ブラウザで動作する（旧 BarcodeDetector 実装は iOS/Firefox で非表示だった）。
@@ -66,7 +66,7 @@ import { useUrlSelectState, useUrlStringState } from "@/hooks/useUrlState";
 import { useIsMobile } from "@/hooks/useViewport";
 import { formatCode, normalizeCode } from "@/lib/crockford";
 import { formatDateTime } from "@/lib/format";
-import type { KioskDeviceRow, KioskFactoryOption } from "@/lib/kiosk-admin";
+import type { KioskDeviceRow, KioskPlantOption } from "@/lib/kiosk-admin";
 import type { ActionResult } from "@/lib/server-action";
 import { KioskDeviceLogsModal } from "./KioskDeviceLogsModal";
 import {
@@ -257,18 +257,18 @@ function LinkQrScanner({ onCode }: { onCode: (code: string) => void }) {
 
 interface DeviceFormState {
   name: string;
-  factoryId: string | null;
+  plantId: string | null;
   location: string;
 }
 
-const EMPTY_FORM: DeviceFormState = { name: "", factoryId: null, location: "" };
+const EMPTY_FORM: DeviceFormState = { name: "", plantId: null, location: "" };
 
 export function KioskDevicesTable({
   rows,
-  factoryOptions,
+  plantOptions,
 }: {
   rows: KioskDeviceRow[];
-  factoryOptions: KioskFactoryOption[];
+  plantOptions: KioskPlantOption[];
 }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -276,7 +276,7 @@ export function KioskDevicesTable({
   const { presence, live, transport } = useKioskPresence();
 
   const [search, setSearch] = useUrlStringState("q");
-  const [factory, setFactory] = useUrlSelectState("factory");
+  const [plant, setPlant] = useUrlSelectState("plant");
   const [status, setStatus] = useUrlSelectState("status");
 
   // プロファイル作成モーダル
@@ -302,7 +302,7 @@ export function KioskDevicesTable({
 
   const reset = () => {
     setSearch(null);
-    setFactory(null);
+    setPlant(null);
     setStatus(null);
   };
 
@@ -312,10 +312,10 @@ export function KioskDevicesTable({
       !q ||
       (r.name ?? "").toLowerCase().includes(q) ||
       (r.location ?? "").toLowerCase().includes(q) ||
-      (r.factoryLabel ?? "").toLowerCase().includes(q);
-    const matchesFactory = !factory || String(r.factoryId ?? "") === factory;
+      (r.plantLabel ?? "").toLowerCase().includes(q);
+    const matchesPlant = !plant || String(r.plantId ?? "") === plant;
     const matchesStatus = !status || r.status === status;
-    return matchesSearch && matchesFactory && matchesStatus;
+    return matchesSearch && matchesPlant && matchesStatus;
   });
 
   const run = (
@@ -341,11 +341,11 @@ export function KioskDevicesTable({
   };
 
   const handleCreate = () => {
-    const factoryId = Number(createForm.factoryId);
-    if (!createForm.name.trim() || !factoryId) {
+    const plantId = Number(createForm.plantId);
+    if (!createForm.name.trim() || !plantId) {
       notifications.show({
         title: "エラー",
-        message: "端末名・工場は必須です",
+        message: "端末名・拠点は必須です",
         color: "red",
       });
       return;
@@ -353,7 +353,7 @@ export function KioskDevicesTable({
     startTransition(async () => {
       const result = await createDeviceProfile({
         name: createForm.name,
-        factoryId,
+        plantId,
         location: createForm.location,
       });
       if (result.ok) {
@@ -416,18 +416,18 @@ export function KioskDevicesTable({
     setEditTarget(r);
     setEditForm({
       name: r.name ?? "",
-      factoryId: r.factoryId != null ? String(r.factoryId) : null,
+      plantId: r.plantId != null ? String(r.plantId) : null,
       location: r.location ?? "",
     });
   };
 
   const handleEdit = () => {
     if (!editTarget) return;
-    const factoryId = Number(editForm.factoryId);
-    if (!editForm.name.trim() || !factoryId) {
+    const plantId = Number(editForm.plantId);
+    if (!editForm.name.trim() || !plantId) {
       notifications.show({
         title: "エラー",
-        message: "端末名・工場は必須です",
+        message: "端末名・拠点は必須です",
         color: "red",
       });
       return;
@@ -437,7 +437,7 @@ export function KioskDevicesTable({
       const result = await updateDevice({
         id,
         name: editForm.name,
-        factoryId,
+        plantId,
         location: editForm.location,
       });
       if (result.ok) {
@@ -498,15 +498,15 @@ export function KioskDevicesTable({
       ),
     },
     {
-      key: "factory",
-      header: "工場",
+      key: "plant",
+      header: "拠点",
       sortable: true,
       render: (r) => (
-        <Text c={r.factoryLabel ? undefined : "dimmed"} size="sm" truncate>
-          {r.factoryLabel ?? "—"}
+        <Text c={r.plantLabel ? undefined : "dimmed"} size="sm" truncate>
+          {r.plantLabel ?? "—"}
         </Text>
       ),
-      sortValue: (r) => r.factoryLabel ?? "",
+      sortValue: (r) => r.plantLabel ?? "",
     },
     {
       key: "status",
@@ -740,12 +740,12 @@ export function KioskDevicesTable({
         <>
           <Select
             clearable
-            data={factoryOptions}
-            onChange={setFactory}
-            placeholder="工場"
+            data={plantOptions}
+            onChange={setPlant}
+            placeholder="拠点"
             searchable
             style={isMobile ? { flex: 1 } : undefined}
-            value={factory}
+            value={plant}
             w={isMobile ? undefined : 180}
           />
           <Select
@@ -764,7 +764,7 @@ export function KioskDevicesTable({
         <TextInput
           leftSection={<IconSearch size={14} />}
           onChange={(e) => setSearch(e.currentTarget.value || null)}
-          placeholder="端末名 / 場所 / 工場..."
+          placeholder="端末名 / 場所 / 拠点..."
           value={search}
         />
       }
@@ -788,8 +788,7 @@ export function KioskDevicesTable({
                 {r.name ?? "（未設定）"}
               </Text>
               <Text c="dimmed" size="xs" truncate>
-                {[r.factoryLabel, r.location].filter(Boolean).join(" / ") ||
-                  "—"}
+                {[r.plantLabel, r.location].filter(Boolean).join(" / ") || "—"}
               </Text>
               <Group gap="xs" wrap="wrap">
                 <StatusBadge entity="KioskDevice" status={r.status} />
@@ -832,17 +831,17 @@ export function KioskDevicesTable({
               const name = e.currentTarget.value;
               setCreateForm((s) => ({ ...s, name }));
             }}
-            placeholder="例: 1F 加工場 タブレット1"
+            placeholder="例: 1F 加拠点 タブレット1"
             value={createForm.name}
             withAsterisk
           />
           <Select
-            data={factoryOptions}
-            label="工場"
-            onChange={(v) => setCreateForm((s) => ({ ...s, factoryId: v }))}
-            placeholder="工場を選択"
+            data={plantOptions}
+            label="拠点"
+            onChange={(v) => setCreateForm((s) => ({ ...s, plantId: v }))}
+            placeholder="拠点を選択"
             searchable
-            value={createForm.factoryId}
+            value={createForm.plantId}
             withAsterisk
           />
           <TextInput
@@ -913,11 +912,11 @@ export function KioskDevicesTable({
             withAsterisk
           />
           <Select
-            data={factoryOptions}
-            label="工場"
-            onChange={(v) => setEditForm((s) => ({ ...s, factoryId: v }))}
+            data={plantOptions}
+            label="拠点"
+            onChange={(v) => setEditForm((s) => ({ ...s, plantId: v }))}
             searchable
-            value={editForm.factoryId}
+            value={editForm.plantId}
             withAsterisk
           />
           <TextInput
@@ -929,7 +928,7 @@ export function KioskDevicesTable({
             value={editForm.location}
           />
           <Text c="dimmed" size="xs">
-            工場を変更するとフロアマップ上のピン配置は解除されます。
+            拠点を変更するとフロアマップ上のピン配置は解除されます。
           </Text>
         </Stack>
       </ModalShell>

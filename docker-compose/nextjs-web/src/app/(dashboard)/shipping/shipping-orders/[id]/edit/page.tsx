@@ -2,7 +2,7 @@ import { notFound, redirect } from "next/navigation";
 import { isEditable } from "@/components/shipping/shipping-orders/model";
 import { ShippingOrderForm } from "@/components/shipping/shipping-orders/ShippingOrderForm";
 import { parseDocKey } from "@/lib/doc-number";
-import { fetchFactoryOptions } from "../../../../production/work-orders/data";
+import { fetchPlantOptions } from "../../../../production/work-orders/data";
 import { fetchShippingOrder } from "../../data";
 
 export const dynamic = "force-dynamic";
@@ -22,18 +22,14 @@ export default async function ShippingShippingOrdersEditPage({
   const key = parseDocKey(decodeURIComponent(id), "SHP");
   if (!key) notFound();
 
-  const [order, factoryOptions] = await Promise.all([
+  const [order, plantOptions] = await Promise.all([
     fetchShippingOrder(key),
-    fetchFactoryOptions(),
+    fetchPlantOptions(),
   ]);
   if (!order) notFound();
   if (!isEditable(order)) redirect(`/shipping/shipping-orders/${order.id}`);
 
   return (
-    <ShippingOrderForm
-      factoryOptions={factoryOptions}
-      mode="edit"
-      order={order}
-    />
+    <ShippingOrderForm mode="edit" order={order} plantOptions={plantOptions} />
   );
 }

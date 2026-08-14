@@ -3,7 +3,7 @@
 /**
  * KioskDeviceDetailView — 端末詳細（SY09, /settings/kiosk-devices/[id]）。
  *
- * サマリ（状態・工場・場所・リンク/有効化・アテスト鍵）+ ライブのオンライン/
+ * サマリ（状態・拠点・場所・リンク/有効化・アテスト鍵）+ ライブのオンライン/
  * 利用者表示（useKioskPresence — 一覧と同じ解決規則）+ 最近の利用者
  * （LOGIN ログの集計）+ 利用履歴（DeviceLogList — モーダルと共用）。
  */
@@ -154,7 +154,7 @@ export function KioskDeviceDetailView({
             label="最終アクティビティ"
             value={liveActivity ? formatDateTime(liveActivity) : "—"}
           />
-          <FieldValue label="工場" value={device.factoryLabel ?? "—"} />
+          <FieldValue label="拠点" value={device.plantLabel ?? "—"} />
           <FieldValue label="場所" value={device.location ?? "—"} />
           <FieldValue
             label="リンク日時"

@@ -50,7 +50,9 @@ def bp_canon(name):
 SCHEMA = r"""
 PRAGMA journal_mode=OFF; PRAGMA synchronous=0;
 
--- 工場（製造・在庫・出荷の拠点）— _specs/tables.md factories
+-- 拠点（製造・在庫・出荷の拠点）— 中間 sqlite 内部名は旧名 factories のまま。
+-- 本番 DB 側は plants に改名済み（20260825090000_plant_rename）。この staging
+-- テーブルから import SQL は生成されない（export_* は参照しない）ため実害なし。
 CREATE TABLE factories (
   id TEXT PRIMARY KEY NOT NULL, code TEXT UNIQUE NOT NULL, name TEXT NOT NULL,
   name_kana TEXT, country_code TEXT, postal_code TEXT, address TEXT, phone TEXT,

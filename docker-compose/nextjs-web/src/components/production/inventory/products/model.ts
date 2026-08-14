@@ -17,8 +17,8 @@ export interface ProductInventoryRow {
   productName: string;
   /** 製品コード（PRD-… 導出。レガシーは未採番 → null）。 */
   productCode: string | null;
-  factoryId: number | null;
-  factoryName: string | null;
+  plantId: number | null;
+  plantName: string | null;
   /** 保管場所（null = 未割当）。 */
   storageLocationId: number | null;
   storageLocationName: string | null;
@@ -52,7 +52,7 @@ export interface ProductInventoryDetailData {
   id: string;
   productName: string;
   productCode: string | null;
-  factoryName: string | null;
+  plantName: string | null;
   lotNumber: number | null;
   quantity: number;
   reservedQuantity: number;

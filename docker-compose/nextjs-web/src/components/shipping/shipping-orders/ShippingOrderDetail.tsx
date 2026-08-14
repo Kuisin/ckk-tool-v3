@@ -3,7 +3,7 @@
 /**
  * ShippingOrderDetail — 出荷書 詳細 (SH21, design.md §8.2).
  *
- * SummaryGrid（番号 / 注文請書番号 link / 顧客 / 種別 / 出荷元工場 / 出荷日 …）+
+ * SummaryGrid（番号 / 注文請書番号 link / 顧客 / 種別 / 出荷元拠点 / 出荷日 …）+
  * 明細テーブル（製品 / ロット / 数量 / 備考）+
  * Tabs: 概要 / 納品書（DRN 一覧 + 作成ボタン）/ 履歴。
  *
@@ -176,7 +176,7 @@ export function ShippingOrderDetail({
           label="種別"
           value={<ShippingTypeBadge type={order.type} />}
         />
-        <FieldValue label="出荷元工場" value={order.fromFactoryName ?? "—"} />
+        <FieldValue label="出荷元拠点" value={order.fromPlantName ?? "—"} />
         <FieldValue
           label="数量合計"
           value={

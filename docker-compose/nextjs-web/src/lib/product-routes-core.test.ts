@@ -18,7 +18,7 @@ const step = (
   processStepId,
   sortOrder,
   executionLocation: "INTERNAL",
-  factoryId: null,
+  plantId: null,
   supplierBpId: null,
   workHours: null,
   ...overrides,
@@ -49,8 +49,8 @@ describe("routeStepsEqual", () => {
     expect(routeStepsEqual(a, b)).toBe(false);
   });
 
-  it("工場・仕入先の変更で false / null と undefined 相当は同値", () => {
-    expect(routeStepsEqual([step(6, 0, { factoryId: 1 })], [step(6, 0)])).toBe(
+  it("拠点・仕入先の変更で false / null と undefined 相当は同値", () => {
+    expect(routeStepsEqual([step(6, 0, { plantId: 1 })], [step(6, 0)])).toBe(
       false,
     );
     expect(

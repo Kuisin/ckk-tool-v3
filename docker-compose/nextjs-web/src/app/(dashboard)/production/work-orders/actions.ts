@@ -65,7 +65,7 @@ function revalidate(workOrderNumber?: number) {
 const stepInput = z.object({
   processStepId: z.number().int().positive(),
   executionLocation: z.enum(["INTERNAL", "OUTSOURCE"]),
-  factoryId: z.number().int().positive().nullable(),
+  plantId: z.number().int().positive().nullable(),
   supplierBpId: z.string().nullable(),
   // 作業時間 (h) — 任意（0.01〜9999.99）
   workHours: z.number().positive().max(9999.99).nullable(),
@@ -446,7 +446,7 @@ export async function copyWorkOrder(
               processStepId: s.processStepId,
               sortOrder: s.sortOrder,
               executionLocation: s.executionLocation,
-              factoryId: s.factoryId,
+              plantId: s.plantId,
               supplierBpId: s.supplierBpId,
               plannedWorkHours: s.plannedWorkHours,
             })),
@@ -735,7 +735,7 @@ export async function approveSecond(
         await prisma.$transaction(async (tx) => {
           const invId = await ensureMaterialInventory(tx, {
             materialId: prior.materialId as number,
-            factoryId: null,
+            plantId: null,
             unit: material?.unit ?? "本",
           });
           await applyTransaction(tx, {

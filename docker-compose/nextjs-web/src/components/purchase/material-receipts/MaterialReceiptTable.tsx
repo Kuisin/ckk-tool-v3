@@ -3,7 +3,7 @@
 /**
  * MaterialReceiptTable — 素材入荷 一覧 (PU01, design.md §8.1 / §14)。
  *
- * Columns: 素材（コード+名称）/ 仕入先 / 入荷工場 / 数量 / 入荷日 /
+ * Columns: 素材（コード+名称）/ 仕入先 / 入荷拠点 / 数量 / 入荷日 /
  * 発注明細（PO番号リンク or 直接調達）。
  * フィルタ: 検索（素材・仕入先・PO番号）+ 入荷区分。行クリック → 詳細。
  */
@@ -90,10 +90,10 @@ export function MaterialReceiptTable({
       render: (r) => r.supplierName ?? "—",
     },
     {
-      key: "factoryName",
-      header: "入荷工場",
-      sortValue: (r) => r.factoryName ?? "",
-      render: (r) => r.factoryName ?? "—",
+      key: "plantName",
+      header: "入荷拠点",
+      sortValue: (r) => r.plantName ?? "",
+      render: (r) => r.plantName ?? "—",
     },
     {
       key: "quantity",
@@ -190,7 +190,7 @@ export function MaterialReceiptTable({
               </Text>
               <Text c="dimmed" size="xs" truncate>
                 {r.supplierName ?? "仕入先なし"}
-                {r.factoryName ? ` / ${r.factoryName}` : ""}
+                {r.plantName ? ` / ${r.plantName}` : ""}
               </Text>
               <Group gap="md" mt={2}>
                 <Text c="dimmed" size="xs">

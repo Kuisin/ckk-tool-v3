@@ -33,19 +33,19 @@
 
 ## マスタ管理
 
-### 工場マスタ
+### 拠点マスタ
 
 | パス | 内容 |
 |------|------|
-| `/master/factories` | 工場一覧 |
-| `/master/factories/new` | 工場新規作成 |
-| `/master/factories/[id]` | 工場詳細 |
-| `/master/factories/[id]/edit` | 工場編集 |
+| `/master/plants` | 拠点一覧 |
+| `/master/plants/new` | 拠点新規作成 |
+| `/master/plants/[id]` | 拠点詳細 |
+| `/master/plants/[id]/edit` | 拠点編集 |
 
-- 工場（`factories`）は製造・在庫・出荷の拠点。`SCOPE.FACTORY` の実体
+- 拠点（`plants`）は製造・在庫・出荷の拠点。`SCOPE.PLANT` の実体
 - `name` は `{ ja: '', en: '' }` JSON、`code` で一意
-- 在庫（`product_inventory` / `material_inventory`）・工程実行（`work_order_steps.factory_id`）・
-  出荷元（`shipping_orders.from_factory_id`）・入荷先（`material_receipts.factory_id`）から参照
+- 在庫（`product_inventory` / `material_inventory`）・工程実行（`work_order_steps.plant_id`）・
+  出荷元（`shipping_orders.from_plant_id`）・入荷先（`material_receipts.plant_id`）から参照
 
 ### 顧客マスタ
 

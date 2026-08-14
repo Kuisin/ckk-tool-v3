@@ -158,7 +158,7 @@ export function StepExecutionView({ step, recording, otherActive }: Props) {
           <Stack gap={4}>
             <Text c="dimmed" size="sm">
               {m.steps.card.workOrder(step.workOrderNumber)}
-              {step.factoryName ? ` ・ ${step.factoryName}` : ""}
+              {step.plantName ? ` ・ ${step.plantName}` : ""}
               {step.workLocationName ? ` ・ ${step.workLocationName}` : ""}
             </Text>
             <Title order={3}>{step.stepName}</Title>

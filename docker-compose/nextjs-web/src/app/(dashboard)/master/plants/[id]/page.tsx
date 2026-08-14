@@ -1,21 +1,21 @@
 import { notFound } from "next/navigation";
 import {
-  FactoryDetail,
-  type FactoryDetailData,
-  type FactoryInventorySummary,
-} from "@/components/master/factories/FactoryDetail";
-import type { StorageLocationRow } from "@/components/master/factories/StorageLocationsPanel";
+  PlantDetail,
+  type PlantDetailData,
+  type PlantInventorySummary,
+} from "@/components/master/plants/PlantDetail";
+import type { StorageLocationRow } from "@/components/master/plants/StorageLocationsPanel";
 import { fetchAuditEntries } from "@/lib/audit";
 import { prisma } from "@/lib/db";
 import { formatProductNumber } from "@/lib/doc-number";
 import { type LocalizedText, localized } from "@/lib/format";
 
-/** 保管場所タブ用 — 工場の保管場所 + 棚（表示順 → コード順）。 */
+/** 保管場所タブ用 — 拠点の保管場所 + 棚（表示順 → コード順）。 */
 async function fetchStorageLocations(
-  factoryId: number,
+  plantId: number,
 ): Promise<StorageLocationRow[]> {
   const rows = await prisma.storageLocation.findMany({
-    where: { factoryId },
+    where: { plantId },
     include: {
       shelves: { orderBy: [{ sortOrder: "asc" }, { code: "asc" }] },
     },
@@ -49,10 +49,10 @@ async function fetchStorageLocations(
   });
 }
 
-/** 保管場所タブ用 — 工場のフロアマップ（端末管理 SY09 と共用の図面）。 */
-async function fetchFactoryFloorMaps(factoryId: number) {
+/** 保管場所タブ用 — 拠点のフロアマップ（端末管理 SY09 と共用の図面）。 */
+async function fetchPlantFloorMaps(plantId: number) {
   const maps = await prisma.kioskFloorMap.findMany({
-    where: { factoryId, isActive: true },
+    where: { plantId, isActive: true },
     orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
     select: { id: true, name: true, fileId: true },
   });
@@ -67,19 +67,19 @@ export const dynamic = "force-dynamic";
 
 /** 関連タブの在庫サマリ — 件数 + 更新日の新しい順 上位 10 行。 */
 async function fetchInventorySummary(
-  factoryId: number,
-): Promise<FactoryInventorySummary> {
+  plantId: number,
+): Promise<PlantInventorySummary> {
   const [productCount, materialCount, products, materials] = await Promise.all([
-    prisma.productInventory.count({ where: { factoryId } }),
-    prisma.materialInventory.count({ where: { factoryId } }),
+    prisma.productInventory.count({ where: { plantId } }),
+    prisma.materialInventory.count({ where: { plantId } }),
     prisma.productInventory.findMany({
-      where: { factoryId },
+      where: { plantId },
       include: { product: true },
       orderBy: { updatedAt: "desc" },
       take: 10,
     }),
     prisma.materialInventory.findMany({
-      where: { factoryId },
+      where: { plantId },
       include: { material: true },
       orderBy: { updatedAt: "desc" },
       take: 10,
@@ -111,8 +111,8 @@ async function fetchInventorySummary(
   };
 }
 
-/** 工場 詳細 (MS2B). */
-export default async function MasterFactoriesDetailPage({
+/** 拠点 詳細 (MS2B). */
+export default async function MasterPlantsDetailPage({
   params,
 }: {
   params: Promise<{ id: string }>;
@@ -122,18 +122,18 @@ export default async function MasterFactoriesDetailPage({
   if (!Number.isInteger(id)) notFound();
   const [r, auditEntries, inventory, storageLocations, floorMaps] =
     await Promise.all([
-      prisma.factory.findUnique({ where: { id } }),
-      fetchAuditEntries("factories", String(id)),
+      prisma.plant.findUnique({ where: { id } }),
+      fetchAuditEntries("plants", String(id)),
       fetchInventorySummary(id),
       fetchStorageLocations(id),
-      fetchFactoryFloorMaps(id),
+      fetchPlantFloorMaps(id),
     ]);
   if (!r) notFound();
 
   const name = r.name as LocalizedText | null;
   const address = r.address as LocalizedText | null;
 
-  const record: FactoryDetailData = {
+  const record: PlantDetailData = {
     id: r.id,
     code: r.code,
     nameJa: name?.ja ?? "",
@@ -153,7 +153,7 @@ export default async function MasterFactoriesDetailPage({
   };
 
   return (
-    <FactoryDetail
+    <PlantDetail
       auditEntries={auditEntries}
       floorMaps={floorMaps}
       inventory={inventory}

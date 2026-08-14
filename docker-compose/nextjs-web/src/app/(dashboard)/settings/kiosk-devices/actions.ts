@@ -17,7 +17,7 @@
  *      検知し自らデバイストークンを発行する。よってここではトークンには
  *      一切触れない。
  *   端末交換時は「リンク解除」でプロファイルをオープン（PENDING）に戻し、
- *   名称・工場・場所・フロアマップのピンを保ったまま再リンクできる。
+ *   名称・拠点・場所・フロアマップのピンを保ったまま再リンクできる。
  */
 
 import { revalidatePath } from "next/cache";
@@ -49,8 +49,8 @@ const uuidSchema = z.string().uuid("対象の指定が不正です");
 function revalidate() {
   revalidatePath(BASE_PATH);
   revalidatePath(`${BASE_PATH}/map`);
-  // フロアマップは MS0B（工場詳細）/ PD04（在庫管理）とも共用
-  revalidatePath("/master/factories");
+  // フロアマップは MS0B（拠点詳細）/ PD04（在庫管理）とも共用
+  revalidatePath("/master/plants");
   revalidatePath("/production/inventory");
 }
 
@@ -108,7 +108,7 @@ export async function fetchDeviceSessions(
 
 const createProfileInput = z.object({
   name: z.string().min(1, "端末名を入力してください"),
-  factoryId: z.number().int().positive("工場を選択してください"),
+  plantId: z.number().int().positive("拠点を選択してください"),
   location: z.string().optional(),
 });
 
@@ -130,18 +130,18 @@ export async function createDeviceProfile(
   const v = parsed.data;
 
   try {
-    const factory = await prisma.factory.findUnique({
-      where: { id: v.factoryId },
+    const plant = await prisma.plant.findUnique({
+      where: { id: v.plantId },
       select: { isActive: true },
     });
-    if (!factory || !factory.isActive) {
-      return actionError("対象の工場が見つかりません");
+    if (!plant || !plant.isActive) {
+      return actionError("対象の拠点が見つかりません");
     }
     const created = await prisma.kioskDevice.create({
       data: {
         status: "PENDING",
         name: v.name.trim(),
-        factoryId: v.factoryId,
+        plantId: v.plantId,
         location: v.location?.trim() || null,
       },
       select: { id: true },
@@ -153,7 +153,7 @@ export async function createDeviceProfile(
       after: {
         status: "PENDING",
         name: v.name.trim(),
-        factoryId: v.factoryId,
+        plantId: v.plantId,
         location: v.location?.trim() || null,
       },
     });
@@ -235,7 +235,7 @@ export async function linkDeviceToProfile(
 
 /**
  * リンク解除 — 物理端末をプロファイルから切り離してオープン（PENDING）に戻す。
- * 名称・工場・場所・フロアマップのピンは保持。セッション・デバイストークン・
+ * 名称・拠点・場所・フロアマップのピンは保持。セッション・デバイストークン・
  * アテステーション鍵は破棄する（端末の交換・故障時に再リンクするため）。
  */
 export async function unlinkDevice(id: string): Promise<ActionResult> {
@@ -317,7 +317,7 @@ export async function deleteDeviceProfile(id: string): Promise<ActionResult> {
   try {
     const device = await prisma.kioskDevice.findUnique({
       where: { id: parsed.data },
-      select: { status: true, name: true, factoryId: true },
+      select: { status: true, name: true, plantId: true },
     });
     if (!device) return actionError("対象の端末プロファイルが見つかりません");
     if (device.status !== "PENDING") {
@@ -333,7 +333,7 @@ export async function deleteDeviceProfile(id: string): Promise<ActionResult> {
       before: {
         status: device.status,
         name: device.name,
-        factoryId: device.factoryId,
+        plantId: device.plantId,
       },
     });
     revalidate();
@@ -403,13 +403,13 @@ export async function activateDevice(
 const updateInput = z.object({
   id: uuidSchema,
   name: z.string().min(1, "端末名を入力してください"),
-  factoryId: z.number().int().positive("工場を選択してください"),
+  plantId: z.number().int().positive("拠点を選択してください"),
   location: z.string().optional(),
 });
 
 export type UpdateDeviceInput = z.infer<typeof updateInput>;
 
-/** 端末情報（名称・場所・工場）を更新する。工場変更時はピン配置を解除。 */
+/** 端末情報（名称・場所・拠点）を更新する。拠点変更時はピン配置を解除。 */
 export async function updateDevice(
   raw: UpdateDeviceInput,
 ): Promise<ActionResult> {
@@ -424,15 +424,15 @@ export async function updateDevice(
   try {
     const device = await prisma.kioskDevice.findUnique({ where: { id: v.id } });
     if (!device) return actionError("対象の端末が見つかりません");
-    const factoryChanged = device.factoryId !== v.factoryId;
+    const plantChanged = device.plantId !== v.plantId;
     await prisma.kioskDevice.update({
       where: { id: v.id },
       data: {
         name: v.name.trim(),
-        factoryId: v.factoryId,
+        plantId: v.plantId,
         location: v.location?.trim() || null,
-        // 工場をまたぐ移動はフロアマップのピンを外す（マップは工場単位）。
-        ...(factoryChanged ? { floorMapId: null, mapX: null, mapY: null } : {}),
+        // 拠点をまたぐ移動はフロアマップのピンを外す（マップは拠点単位）。
+        ...(plantChanged ? { floorMapId: null, mapX: null, mapY: null } : {}),
       },
     });
     await recordAudit({
@@ -442,12 +442,12 @@ export async function updateDevice(
       before: {
         name: device.name,
         location: device.location,
-        factoryId: device.factoryId,
+        plantId: device.plantId,
       },
       after: {
         name: v.name.trim(),
         location: v.location?.trim() || null,
-        factoryId: v.factoryId,
+        plantId: v.plantId,
       },
     });
     revalidate();
@@ -712,8 +712,8 @@ export async function placeDevice(raw: {
     if (!map || !map.isActive) {
       return actionError("対象のフロアマップが見つかりません");
     }
-    if (device.factoryId !== map.factoryId) {
-      return actionError("端末の所属工場とフロアマップの工場が一致しません");
+    if (device.plantId !== map.plantId) {
+      return actionError("端末の所属拠点とフロアマップの拠点が一致しません");
     }
     const round = (n: number) => Math.round(n * 100) / 100;
     await prisma.kioskDevice.update({
@@ -772,7 +772,7 @@ export async function unplaceDevice(id: string): Promise<ActionResult> {
 // ── フロアマップ: 管理 ──────────────────────────────────────────────────────
 
 /**
- * フロアマップは端末管理 (SY09) と工場マスタ (MS0B 保管場所タブ) で共用 —
+ * フロアマップは端末管理 (SY09) と拠点マスタ (MS0B 保管場所タブ) で共用 —
  * kiosk / master どちらの権限でも管理できる。
  */
 async function checkFloorMapPermission(
@@ -784,13 +784,13 @@ async function checkFloorMapPermission(
 }
 
 const floorMapCreateInput = z.object({
-  factoryId: z.number().int().positive("工場を選択してください"),
+  plantId: z.number().int().positive("拠点を選択してください"),
   name: z.string().min(1, "フロア名を入力してください"),
 });
 
 /** フロアマップ（階/エリア）を追加する。 */
 export async function createFloorMap(raw: {
-  factoryId: number;
+  plantId: number;
   name: string;
 }): Promise<ActionResult<{ id: string }>> {
   const authz = await checkFloorMapPermission("CREATE");
@@ -802,21 +802,21 @@ export async function createFloorMap(raw: {
   const v = parsed.data;
 
   try {
-    const factory = await prisma.factory.findUnique({
-      where: { id: v.factoryId },
+    const plant = await prisma.plant.findUnique({
+      where: { id: v.plantId },
       select: { isActive: true },
     });
-    if (!factory || !factory.isActive) {
-      return actionError("対象の工場が見つかりません");
+    if (!plant || !plant.isActive) {
+      return actionError("対象の拠点が見つかりません");
     }
     const last = await prisma.kioskFloorMap.findFirst({
-      where: { factoryId: v.factoryId, isActive: true },
+      where: { plantId: v.plantId, isActive: true },
       orderBy: { sortOrder: "desc" },
       select: { sortOrder: true },
     });
     const created = await prisma.kioskFloorMap.create({
       data: {
-        factoryId: v.factoryId,
+        plantId: v.plantId,
         name: v.name.trim(),
         sortOrder: (last?.sortOrder ?? -1) + 1,
       },
@@ -826,7 +826,7 @@ export async function createFloorMap(raw: {
       action: "CREATE",
       tableName: "kiosk_floor_maps",
       recordId: created.id,
-      after: { name: v.name.trim(), factoryId: v.factoryId },
+      after: { name: v.name.trim(), plantId: v.plantId },
     });
     revalidate();
     return actionOk({ id: created.id });
@@ -919,7 +919,7 @@ export async function deleteFloorMap(id: string): Promise<ActionResult> {
       action: "DELETE",
       tableName: "kiosk_floor_maps",
       recordId: parsed.data,
-      before: { name: map.name, factoryId: map.factoryId },
+      before: { name: map.name, plantId: map.plantId },
     });
     revalidate();
     return actionOk();

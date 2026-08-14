@@ -3,11 +3,11 @@
 /**
  * KioskFloorMapView — フロアマップ（SY09, /settings/kiosk-devices/map）。
  *
- * 工場 → フロア（タブ）→ マップ上に端末ピン（mapX/mapY %座標）を表示する。
+ * 拠点 → フロア（タブ）→ マップ上に端末ピン（mapX/mapY %座標）を表示する。
  * ピンの色はオンライン状態（useKioskPresence ライブ / initialOnline フォールバック）。
  *
  * 閲覧モード:
- *   - 右パネルに工場の端末一覧（このフロア / その他）を表示
+ *   - 右パネルに拠点の端末一覧（このフロア / その他）を表示
  *   - ピンをクリックで選択 → 一覧の該当行をハイライト（スクロールも追従）、
  *     一覧の行クリックでもピンをハイライト
  *   - ピンをダブルクリック / 行の「>」で端末詳細ページへ移動
@@ -65,8 +65,8 @@ import { ConfirmModal, ModalShell } from "@/components/ui/modals";
 import { PageHeader } from "@/components/ui/PageHeader";
 import type {
   KioskDeviceRow,
-  KioskFactoryOption,
   KioskFloorMapRow,
+  KioskPlantOption,
   StorageLocationPin,
 } from "@/lib/kiosk-admin";
 import type { ActionResult } from "@/lib/server-action";
@@ -84,52 +84,52 @@ const DEVICE_DETAIL_PATH = "/settings/kiosk-devices";
 export function KioskFloorMapView({
   devices,
   floorMaps,
-  factoryOptions,
+  plantOptions,
   storagePins,
 }: {
   devices: KioskDeviceRow[];
   floorMaps: KioskFloorMapRow[];
-  factoryOptions: KioskFactoryOption[];
-  /** 保管場所ピン（読み取り専用レイヤ — 配置は工場マスタ MS0B）。 */
+  plantOptions: KioskPlantOption[];
+  /** 保管場所ピン（読み取り専用レイヤ — 配置は拠点マスタ MS0B）。 */
   storagePins: StorageLocationPin[];
 }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const { presence, live } = useKioskPresence();
 
-  // 工場選択（既定: フロアマップを持つ最初の工場 → 無ければ先頭）。
-  const defaultFactory =
-    factoryOptions.find((f) =>
-      floorMaps.some((m) => String(m.factoryId) === f.value),
+  // 拠点選択（既定: フロアマップを持つ最初の拠点 → 無ければ先頭）。
+  const defaultPlant =
+    plantOptions.find((f) =>
+      floorMaps.some((m) => String(m.plantId) === f.value),
     )?.value ??
-    factoryOptions[0]?.value ??
+    plantOptions[0]?.value ??
     null;
-  const [factory, setFactory] = useState<string | null>(defaultFactory);
+  const [plant, setPlant] = useState<string | null>(defaultPlant);
   const [editMode, setEditMode] = useState(false);
   const [activeMapId, setActiveMapId] = useState<string | null>(null);
 
-  const factoryMaps = useMemo(
-    () => floorMaps.filter((m) => String(m.factoryId) === (factory ?? "")),
-    [floorMaps, factory],
+  const plantMaps = useMemo(
+    () => floorMaps.filter((m) => String(m.plantId) === (plant ?? "")),
+    [floorMaps, plant],
   );
   const activeMap =
-    factoryMaps.find((m) => m.id === activeMapId) ?? factoryMaps[0] ?? null;
+    plantMaps.find((m) => m.id === activeMapId) ?? plantMaps[0] ?? null;
 
-  const factoryDevices = useMemo(
+  const plantDevices = useMemo(
     () =>
       devices.filter(
-        (d) => d.status === "ACTIVE" && String(d.factoryId ?? "") === factory,
+        (d) => d.status === "ACTIVE" && String(d.plantId ?? "") === plant,
       ),
-    [devices, factory],
+    [devices, plant],
   );
   const placedDevices = activeMap
-    ? factoryDevices.filter((d) => d.floorMapId === activeMap.id)
+    ? plantDevices.filter((d) => d.floorMapId === activeMap.id)
     : [];
-  const unplacedDevices = factoryDevices.filter((d) => d.floorMapId == null);
-  /** 右パネルの「その他」= このフロアに配置されていない工場内端末。 */
+  const unplacedDevices = plantDevices.filter((d) => d.floorMapId == null);
+  /** 右パネルの「その他」= このフロアに配置されていない拠点内端末。 */
   const otherDevices = activeMap
-    ? factoryDevices.filter((d) => d.floorMapId !== activeMap.id)
-    : factoryDevices;
+    ? plantDevices.filter((d) => d.floorMapId !== activeMap.id)
+    : plantDevices;
 
   // ── 選択（ピン ⇄ 右パネルのハイライト連動） ─────────────────────────────────
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -271,9 +271,9 @@ export function KioskFloorMapView({
       return;
     }
     if (floorModal?.mode === "create") {
-      const factoryId = Number(factory);
+      const plantId = Number(plant);
       startTransition(async () => {
-        const result = await createFloorMap({ factoryId, name: floorName });
+        const result = await createFloorMap({ plantId, name: floorName });
         if (result.ok) {
           setFloorModal(null);
           setFloorName("");
@@ -492,15 +492,15 @@ export function KioskFloorMapView({
           <Group justify="space-between" wrap="wrap">
             <Select
               allowDeselect={false}
-              data={factoryOptions}
-              label="工場"
+              data={plantOptions}
+              label="拠点"
               onChange={(v) => {
-                setFactory(v);
+                setPlant(v);
                 setActiveMapId(null);
                 clearSelection();
               }}
               searchable
-              value={factory}
+              value={plant}
               w={240}
             />
             <Switch
@@ -513,9 +513,9 @@ export function KioskFloorMapView({
             />
           </Group>
 
-          {factoryMaps.length === 0 ? (
+          {plantMaps.length === 0 ? (
             <Alert color="gray" variant="light">
-              この工場にはフロアマップがありません。
+              この拠点にはフロアマップがありません。
               {editMode
                 ? "下の「フロアを追加」から作成してください。"
                 : "編集モードでフロアを追加できます。"}
@@ -529,7 +529,7 @@ export function KioskFloorMapView({
               value={activeMap?.id ?? null}
             >
               <Tabs.List>
-                {factoryMaps.map((m) => (
+                {plantMaps.map((m) => (
                   <Tabs.Tab key={m.id} value={m.id}>
                     {m.name}
                   </Tabs.Tab>
@@ -541,7 +541,7 @@ export function KioskFloorMapView({
           {editMode && (
             <Group gap="xs" wrap="wrap">
               <SecondaryButton
-                disabled={!factory}
+                disabled={!plant}
                 leftSection={<IconPlus size={14} />}
                 onClick={() => {
                   setFloorModal({ mode: "create" });
@@ -642,7 +642,7 @@ export function KioskFloorMapView({
                     }}
                   />
                 )}
-                {/* 保管場所レイヤ（読み取り専用 — 配置は工場マスタ MS0B の保管場所タブ） */}
+                {/* 保管場所レイヤ（読み取り専用 — 配置は拠点マスタ MS0B の保管場所タブ） */}
                 {activeMap &&
                   storagePins
                     .filter((p) => p.floorMapId === activeMap.id)
@@ -684,7 +684,7 @@ export function KioskFloorMapView({
                       端末一覧
                     </Text>
                     <Text c="dimmed" size="xs">
-                      {factoryDevices.length} 台
+                      {plantDevices.length} 台
                     </Text>
                   </Group>
                   <ScrollArea.Autosize mah={560} offsetScrollbars type="auto">
@@ -721,7 +721,7 @@ export function KioskFloorMapView({
                   </Text>
                   {unplacedDevices.length === 0 ? (
                     <Text c="dimmed" size="xs">
-                      この工場に未配置の端末はありません
+                      この拠点に未配置の端末はありません
                     </Text>
                   ) : (
                     unplacedDevices.map((d) => (
@@ -807,7 +807,7 @@ export function KioskFloorMapView({
         <TextInput
           label="フロア名"
           onChange={(e) => setFloorName(e.currentTarget.value)}
-          placeholder="例: 1F 加工場"
+          placeholder="例: 1F 加拠点"
           value={floorName}
           withAsterisk
         />

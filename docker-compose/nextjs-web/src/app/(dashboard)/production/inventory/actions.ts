@@ -3,7 +3,7 @@
 /**
  * Server Actions — 在庫管理 (PD04) の在庫移動。
  *
- * 在庫移動 = 同一品目の在庫を 工場 × 保管場所 × 棚 の別バケットへ動かす。
+ * 在庫移動 = 同一品目の在庫を 拠点 × 保管場所 × 棚 の別バケットへ動かす。
  * 記録は inventory_transactions の OUT / IN ペア（referenceType
  * "stock_transfer"、referenceId = 共通 uuid）— 専用テーブルは持たない
  * （取引台帳が唯一の増減記録という既存方針のまま）。
@@ -29,7 +29,7 @@ const transferInput = z.object({
   inventoryType: z.enum(["PRODUCT", "MATERIAL"]),
   inventoryId: z.string().uuid(),
   quantity: z.number().positive("数量を入力してください"),
-  targetFactoryId: z.number().int().positive("移動先の工場を選択してください"),
+  targetPlantId: z.number().int().positive("移動先の拠点を選択してください"),
   targetStorageLocationId: z.number().int().positive().nullable(),
   targetShelfId: z.number().int().positive().nullable(),
   notes: z.string().optional(),
@@ -37,13 +37,13 @@ const transferInput = z.object({
 
 export type StockTransferInput = z.infer<typeof transferInput>;
 
-/** 保管先の表示ラベル（工場 / 保管場所 / 棚）。 */
+/** 保管先の表示ラベル（拠点 / 保管場所 / 棚）。 */
 function targetLabel(
-  factory: { name: unknown },
+  plant: { name: unknown },
   location: { name: unknown } | null,
   shelf: { code: string } | null,
 ): string {
-  const parts = [localized(factory.name as LocalizedText | null)];
+  const parts = [localized(plant.name as LocalizedText | null)];
   if (location) parts.push(localized(location.name as LocalizedText | null));
   if (shelf) parts.push(shelf.code);
   return parts.join(" / ");
@@ -61,16 +61,16 @@ export async function transferStock(
   const v = parsed.data;
 
   try {
-    // 移動先の整合性: 保管場所は移動先工場のもの、棚はその保管場所のもの
-    const [factory, location, shelf] = await Promise.all([
-      prisma.factory.findUnique({
-        where: { id: v.targetFactoryId },
+    // 移動先の整合性: 保管場所は移動先拠点のもの、棚はその保管場所のもの
+    const [plant, location, shelf] = await Promise.all([
+      prisma.plant.findUnique({
+        where: { id: v.targetPlantId },
         select: { name: true, isActive: true },
       }),
       v.targetStorageLocationId
         ? prisma.storageLocation.findUnique({
             where: { id: v.targetStorageLocationId },
-            select: { name: true, factoryId: true, isActive: true },
+            select: { name: true, plantId: true, isActive: true },
           })
         : null,
       v.targetShelfId
@@ -80,12 +80,12 @@ export async function transferStock(
           })
         : null,
     ]);
-    if (!factory || !factory.isActive) {
-      return actionError("移動先の工場が見つかりません");
+    if (!plant || !plant.isActive) {
+      return actionError("移動先の拠点が見つかりません");
     }
     if (v.targetStorageLocationId) {
-      if (!location || location.factoryId !== v.targetFactoryId) {
-        return actionError("移動先の保管場所が移動先工場と一致しません");
+      if (!location || location.plantId !== v.targetPlantId) {
+        return actionError("移動先の保管場所が移動先拠点と一致しません");
       }
     }
     if (v.targetShelfId) {
@@ -97,7 +97,7 @@ export async function transferStock(
         return actionError("移動先の棚が保管場所と一致しません");
       }
     }
-    const destLabel = targetLabel(factory, location, shelf);
+    const destLabel = targetLabel(plant, location, shelf);
     const transferId = randomUUID();
 
     const targetInventoryId = await prisma.$transaction(async (tx) => {
@@ -106,7 +106,7 @@ export async function transferStock(
           where: { id: v.inventoryId },
           include: {
             product: { select: { name: true } },
-            factory: { select: { name: true } },
+            plant: { select: { name: true } },
             storageLocation: { select: { name: true } },
             shelf: { select: { code: true } },
           },
@@ -120,7 +120,7 @@ export async function transferStock(
         }
         const bucket = {
           productId: src.productId,
-          factoryId: v.targetFactoryId,
+          plantId: v.targetPlantId,
           lotNumber: src.lotNumber,
           isSemiFinished: src.isSemiFinished,
           storageLocationId: v.targetStorageLocationId,
@@ -140,7 +140,7 @@ export async function transferStock(
           });
         }
         const srcLabel = targetLabel(
-          src.factory ?? { name: null },
+          src.plant ?? { name: null },
           src.storageLocation,
           src.shelf,
         );
@@ -180,7 +180,7 @@ export async function transferStock(
         where: { id: v.inventoryId },
         include: {
           material: { select: { code: true } },
-          factory: { select: { name: true } },
+          plant: { select: { name: true } },
           storageLocation: { select: { name: true } },
           shelf: { select: { code: true } },
         },
@@ -194,7 +194,7 @@ export async function transferStock(
       }
       const bucket = {
         materialId: src.materialId,
-        factoryId: v.targetFactoryId,
+        plantId: v.targetPlantId,
         storageLocationId: v.targetStorageLocationId,
         shelfId: v.targetShelfId,
       };
@@ -212,7 +212,7 @@ export async function transferStock(
         });
       }
       const srcLabel = targetLabel(
-        src.factory ?? { name: null },
+        src.plant ?? { name: null },
         src.storageLocation,
         src.shelf,
       );

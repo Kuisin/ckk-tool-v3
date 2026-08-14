@@ -41,8 +41,8 @@ The detail page has three blocks.
 ## How to read effective permissions
 
 - Permissions belong to roles, and a user can hold several roles.
-- When the same permission and action come from multiple roles, **only the widest scope** is shown (e.g. with both FACTORY and ALL, only ALL appears).
-- The scope is the range the action covers (ALL = everything, FACTORY = own factory, OWN = own data, and so on).
+- When the same permission and action come from multiple roles, **only the widest scope** is shown (e.g. with both PLANT and ALL, only ALL appears).
+- The scope is the range the action covers (ALL = everything, PLANT = own plant, OWN = own data, and so on).
 
 ## FAQ
 

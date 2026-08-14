@@ -298,10 +298,10 @@ export const appList: AppEntry[] = [
     requiredPermission: "master",
   },
   {
-    key: "master-factories",
-    label: "工場",
+    key: "master-plants",
+    label: "拠点",
     operationCode: "MS0B",
-    href: "/master/factories",
+    href: "/master/plants",
     icon: "IconBuildingWarehouse",
     category: "マスタ",
     requiredPermission: "master",

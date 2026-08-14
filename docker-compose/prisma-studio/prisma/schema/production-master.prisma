@@ -1,14 +1,14 @@
 // 製造マスタ (_specs/tables.md §Master/§Logic 該当分):
-// 工場 / 工程カタログ + 使用・実行依存 / 検査表テンプレート / 不良種類 /
+// 拠点 / 工程カタログ + 使用・実行依存 / 検査表テンプレート / 不良種類 /
 // 承認グループ。実データ（指示書・工程ステップ等）は production.prisma（後続）。
 //
 // id 方針: マスタは Int autoincrement（MaterialType/Material の再キー後の慣例）。
 // 依存・メンバーは複合 PK の純ジョイン。@@map は _specs/tables.md の表名に一致
 // させ、audit_logs のラベル解決と揃える。
 
-// ─── 工場（製造・在庫・出荷の拠点。SCOPE.FACTORY の実体） ────────────────────
+// ─── 拠点（製造・在庫・出荷の拠点。SCOPE.PLANT の実体） ────────────────────
 
-model Factory {
+model Plant {
   id            Int      @id @default(autoincrement())
   code          String   @unique
   name          Json
@@ -26,18 +26,18 @@ model Factory {
 
   workOrderSteps WorkOrderStep[]
   shippingOrders ShippingOrder[]
-  poItems        MaterialPurchaseOrderItem[] @relation("PoItemFactory")
-  receipts       MaterialReceipt[]           @relation("ReceiptFactory")
-  prqItems       PurchaseRequestItem[]       @relation("PrqItemFactory")
+  poItems        MaterialPurchaseOrderItem[] @relation("PoItemPlant")
+  receipts       MaterialReceipt[]           @relation("ReceiptPlant")
+  prqItems       PurchaseRequestItem[]       @relation("PrqItemPlant")
   productInventory  ProductInventory[]
   materialInventory MaterialInventory[]
-  kioskDevices      KioskDevice[]   @relation("KioskDeviceFactory")
-  kioskFloorMaps    KioskFloorMap[] @relation("KioskFloorMapFactory")
-  routeVersionSteps ProductProcessRouteVersionStep[] @relation("RouteStepFactory")
-  workLocationGroups WorkLocationGroup[] @relation("WorkLocationGroupFactory")
-  storageLocations   StorageLocation[]   @relation("StorageLocationFactory")
+  kioskDevices      KioskDevice[]   @relation("KioskDevicePlant")
+  kioskFloorMaps    KioskFloorMap[] @relation("KioskFloorMapPlant")
+  routeVersionSteps ProductProcessRouteVersionStep[] @relation("RouteStepPlant")
+  workLocationGroups WorkLocationGroup[] @relation("WorkLocationGroupPlant")
+  storageLocations   StorageLocation[]   @relation("StorageLocationPlant")
 
-  @@map("factories")
+  @@map("plants")
   @@schema("app")
 }
 
@@ -51,14 +51,14 @@ model WorkLocationGroup {
   code      String   @unique
   name      Json // { ja, en }
   typeKey   String   @map("type_key") // work_location.types のキー
-  factoryId Int?     @map("factory_id")
+  plantId Int?     @map("plant_id")
   sortOrder Int      @default(0) @map("sort_order")
   isActive  Boolean  @default(true) @map("is_active")
   notes     String?
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  factory   Factory?       @relation("WorkLocationGroupFactory", fields: [factoryId], references: [id])
+  plant   Plant?       @relation("WorkLocationGroupPlant", fields: [plantId], references: [id])
   locations WorkLocation[]
 
   @@index([typeKey])

@@ -1,10 +1,10 @@
 "use server";
 
 /**
- * Server Actions — 保管場所マスタ（MS0B 工場詳細「保管場所」タブ）。
+ * Server Actions — 保管場所マスタ（MS0B 拠点詳細「保管場所」タブ）。
  *
- * 保管場所（storage_locations = 工場内の倉庫・置場）と棚（storage_shelves）を
- * 工場詳細からモーダルで CRUD する。在庫（product/material_inventory）が参照
+ * 保管場所（storage_locations = 拠点内の倉庫・置場）と棚（storage_shelves）を
+ * 拠点詳細からモーダルで CRUD する。在庫（product/material_inventory）が参照
  * する場所・棚は削除できない（FK RESTRICT → prismaErrorMessage）。
  */
 
@@ -50,15 +50,15 @@ const shelfInput = z.object({
 export type StorageLocationInput = z.infer<typeof locationInput>;
 export type StorageShelfInput = z.infer<typeof shelfInput>;
 
-function revalidate(factoryId: number) {
-  revalidatePath(`/master/factories/${factoryId}`);
+function revalidate(plantId: number) {
+  revalidatePath(`/master/plants/${plantId}`);
   revalidatePath("/production/inventory");
 }
 
 // ── 保管場所 ─────────────────────────────────────────────────────────────────
 
 export async function createStorageLocation(
-  factoryId: number,
+  plantId: number,
   input: StorageLocationInput,
 ): Promise<ActionResult<{ id: number }>> {
   const authz = await checkPermission("master", "CREATE");
@@ -69,14 +69,14 @@ export async function createStorageLocation(
   }
   const v = parsed.data;
   try {
-    const factory = await prisma.factory.findUnique({
-      where: { id: factoryId },
+    const plant = await prisma.plant.findUnique({
+      where: { id: plantId },
       select: { id: true },
     });
-    if (!factory) return actionError("対象の工場が見つかりません");
+    if (!plant) return actionError("対象の拠点が見つかりません");
     const created = await prisma.storageLocation.create({
       data: {
-        factoryId,
+        plantId,
         code: v.code.trim(),
         name: localizedInput(v.nameJa, v.nameEn),
         sortOrder: v.sortOrder,
@@ -89,9 +89,9 @@ export async function createStorageLocation(
       action: "CREATE",
       tableName: "storage_locations",
       recordId: String(created.id),
-      after: { factoryId, code: v.code.trim(), nameJa: v.nameJa },
+      after: { plantId, code: v.code.trim(), nameJa: v.nameJa },
     });
-    revalidate(factoryId);
+    revalidate(plantId);
     return actionOk({ id: created.id });
   } catch (e) {
     return actionError(prismaErrorMessage(e, "保管場所の作成に失敗しました"));
@@ -129,7 +129,7 @@ export async function updateStorageLocation(
       before: { code: before.code, isActive: before.isActive },
       after: { code: v.code.trim(), nameJa: v.nameJa, isActive: v.isActive },
     });
-    revalidate(before.factoryId);
+    revalidate(before.plantId);
     return actionOk({ id });
   } catch (e) {
     return actionError(prismaErrorMessage(e, "保管場所の更新に失敗しました"));
@@ -165,7 +165,7 @@ export async function deleteStorageLocation(id: number): Promise<ActionResult> {
       recordId: String(id),
       before: { code: before.code, shelves: before.shelves.length },
     });
-    revalidate(before.factoryId);
+    revalidate(before.plantId);
     return actionOk();
   } catch (e) {
     return actionError(prismaErrorMessage(e, "保管場所の削除に失敗しました"));
@@ -181,7 +181,7 @@ const placeInput = z.object({
   mapY: z.number().min(0).max(100),
 });
 
-/** 保管場所をフロアマップ（端末管理と共用の工場図面）に %座標で配置する。 */
+/** 保管場所をフロアマップ（端末管理と共用の拠点図面）に %座標で配置する。 */
 export async function placeStorageLocation(input: {
   id: number;
   floorMapId: string;
@@ -199,22 +199,22 @@ export async function placeStorageLocation(input: {
     const [location, map] = await Promise.all([
       prisma.storageLocation.findUnique({
         where: { id: v.id },
-        select: { factoryId: true },
+        select: { plantId: true },
       }),
       prisma.kioskFloorMap.findUnique({
         where: { id: v.floorMapId },
-        select: { factoryId: true, isActive: true },
+        select: { plantId: true, isActive: true },
       }),
     ]);
     if (!location) return actionError("対象の保管場所が見つかりません");
-    if (!map || !map.isActive || map.factoryId !== location.factoryId) {
-      return actionError("フロアマップが保管場所の工場と一致しません");
+    if (!map || !map.isActive || map.plantId !== location.plantId) {
+      return actionError("フロアマップが保管場所の拠点と一致しません");
     }
     await prisma.storageLocation.update({
       where: { id: v.id },
       data: { floorMapId: v.floorMapId, mapX: v.mapX, mapY: v.mapY },
     });
-    revalidate(location.factoryId);
+    revalidate(location.plantId);
     return actionOk();
   } catch (e) {
     return actionError(prismaErrorMessage(e, "配置に失敗しました"));
@@ -230,14 +230,14 @@ export async function unplaceStorageLocation(
   try {
     const location = await prisma.storageLocation.findUnique({
       where: { id },
-      select: { factoryId: true },
+      select: { plantId: true },
     });
     if (!location) return actionError("対象の保管場所が見つかりません");
     await prisma.storageLocation.update({
       where: { id },
       data: { floorMapId: null, mapX: null, mapY: null },
     });
-    revalidate(location.factoryId);
+    revalidate(location.plantId);
     return actionOk();
   } catch (e) {
     return actionError(prismaErrorMessage(e, "ピン解除に失敗しました"));
@@ -260,7 +260,7 @@ export async function createStorageShelf(
   try {
     const location = await prisma.storageLocation.findUnique({
       where: { id: locationId },
-      select: { factoryId: true },
+      select: { plantId: true },
     });
     if (!location) return actionError("対象の保管場所が見つかりません");
     const created = await prisma.storageShelf.create({
@@ -279,7 +279,7 @@ export async function createStorageShelf(
       recordId: String(created.id),
       after: { locationId, code: v.code.trim() },
     });
-    revalidate(location.factoryId);
+    revalidate(location.plantId);
     return actionOk({ id: created.id });
   } catch (e) {
     return actionError(prismaErrorMessage(e, "棚の作成に失敗しました"));
@@ -300,7 +300,7 @@ export async function updateStorageShelf(
   try {
     const before = await prisma.storageShelf.findUnique({
       where: { id },
-      include: { location: { select: { factoryId: true } } },
+      include: { location: { select: { plantId: true } } },
     });
     if (!before) return actionError("対象の棚が見つかりません");
     await prisma.storageShelf.update({
@@ -319,7 +319,7 @@ export async function updateStorageShelf(
       before: { code: before.code, isActive: before.isActive },
       after: { code: v.code.trim(), isActive: v.isActive },
     });
-    revalidate(before.location.factoryId);
+    revalidate(before.location.plantId);
     return actionOk({ id });
   } catch (e) {
     return actionError(prismaErrorMessage(e, "棚の更新に失敗しました"));
@@ -333,7 +333,7 @@ export async function deleteStorageShelf(id: number): Promise<ActionResult> {
   try {
     const before = await prisma.storageShelf.findUnique({
       where: { id },
-      include: { location: { select: { factoryId: true } } },
+      include: { location: { select: { plantId: true } } },
     });
     if (!before) return actionError("対象の棚が見つかりません");
     const [prodRefs, matRefs] = await Promise.all([
@@ -352,7 +352,7 @@ export async function deleteStorageShelf(id: number): Promise<ActionResult> {
       recordId: String(id),
       before: { code: before.code },
     });
-    revalidate(before.location.factoryId);
+    revalidate(before.location.plantId);
     return actionOk();
   } catch (e) {
     return actionError(prismaErrorMessage(e, "棚の削除に失敗しました"));

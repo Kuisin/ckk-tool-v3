@@ -73,7 +73,7 @@ export function StepListPane({
               ),
               description: [
                 s.code,
-                (isOutsource ? s.supplierName : s.factoryName) ?? null,
+                (isOutsource ? s.supplierName : s.plantName) ?? null,
               ]
                 .filter(Boolean)
                 .join(" · "),

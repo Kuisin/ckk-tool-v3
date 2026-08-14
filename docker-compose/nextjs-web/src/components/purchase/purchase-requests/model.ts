@@ -41,8 +41,8 @@ export interface PurchaseRequestItemView {
   materialId: string;
   materialCode: string;
   materialName: string;
-  factoryId: string | null;
-  factoryName: string | null;
+  plantId: string | null;
+  plantName: string | null;
   quantity: number;
   unit: string;
   desiredAt: string | null;

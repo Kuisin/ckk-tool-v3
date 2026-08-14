@@ -43,7 +43,7 @@ const itemInput = z.object({
 const createInput = z.object({
   salesOrderId: z.string().min(1, "注文請書を選択してください"),
   type: z.enum(["DISPATCH", "STOCK_STORAGE"]),
-  fromFactoryId: z.string().nullable(),
+  fromPlantId: z.string().nullable(),
   notes: z.string().nullable(),
   items: z.array(itemInput).min(1, "明細を1件以上追加してください"),
 });
@@ -151,7 +151,7 @@ export async function createShippingOrder(
         seq,
         salesOrderId: v.salesOrderId,
         type: v.type,
-        fromFactoryId: v.fromFactoryId ? Number(v.fromFactoryId) : null,
+        fromPlantId: v.fromPlantId ? Number(v.fromPlantId) : null,
         notes: trimOrNull(v.notes),
         items: {
           create: v.items.map((it, i) => ({
@@ -172,7 +172,7 @@ export async function createShippingOrder(
       after: {
         salesOrderId: v.salesOrderId,
         type: v.type,
-        fromFactoryId: v.fromFactoryId,
+        fromPlantId: v.fromPlantId,
         status: "DRAFT",
         notes: trimOrNull(v.notes),
         items: v.items,
@@ -204,7 +204,7 @@ export async function updateShippingOrder(
       where: { yearMonth_seq: key },
       select: {
         type: true,
-        fromFactoryId: true,
+        fromPlantId: true,
         notes: true,
         items: {
           orderBy: { sortOrder: "asc" },
@@ -223,7 +223,7 @@ export async function updateShippingOrder(
         where: { ...key, status: "DRAFT" },
         data: {
           type: v.type,
-          fromFactoryId: v.fromFactoryId ? Number(v.fromFactoryId) : null,
+          fromPlantId: v.fromPlantId ? Number(v.fromPlantId) : null,
           notes: trimOrNull(v.notes),
         },
       });
@@ -256,7 +256,7 @@ export async function updateShippingOrder(
       before: prior ?? undefined,
       after: {
         type: v.type,
-        fromFactoryId: v.fromFactoryId ? Number(v.fromFactoryId) : null,
+        fromPlantId: v.fromPlantId ? Number(v.fromPlantId) : null,
         notes: trimOrNull(v.notes),
         items: v.items,
       },

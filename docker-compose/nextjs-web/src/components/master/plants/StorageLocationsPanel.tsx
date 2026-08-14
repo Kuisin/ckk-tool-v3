@@ -1,9 +1,9 @@
 "use client";
 
 /**
- * StorageLocationsPanel — MS0B 工場詳細「保管場所」タブ。
+ * StorageLocationsPanel — MS0B 拠点詳細「保管場所」タブ。
  *
- * 保管場所（工場内の倉庫・置場）と棚をこの場で CRUD する。
+ * 保管場所（拠点内の倉庫・置場）と棚をこの場で CRUD する。
  * 在庫が参照する場所・棚はサーバー側で削除拒否（無効化を案内）。
  */
 
@@ -46,7 +46,7 @@ import {
   unplaceStorageLocation,
   updateStorageLocation,
   updateStorageShelf,
-} from "@/app/(dashboard)/master/factories/storage-actions";
+} from "@/app/(dashboard)/master/plants/storage-actions";
 import {
   createFloorMap,
   deleteFloorMap,
@@ -87,8 +87,8 @@ export interface StorageLocationRow {
   shelves: StorageShelfRow[];
 }
 
-/** 工場のフロアマップ（端末管理 SY09 と共用の図面）。 */
-export interface FactoryFloorMapRef {
+/** 拠点のフロアマップ（端末管理 SY09 と共用の図面）。 */
+export interface PlantFloorMapRef {
   id: string;
   name: string;
   hasImage: boolean;
@@ -102,13 +102,13 @@ type ShelfModalState = {
 } | null;
 
 export function StorageLocationsPanel({
-  factoryId,
+  plantId,
   locations,
   floorMaps,
 }: {
-  factoryId: number;
+  plantId: number;
   locations: StorageLocationRow[];
-  floorMaps: FactoryFloorMapRef[];
+  floorMaps: PlantFloorMapRef[];
 }) {
   const router = useRouter();
   const [locationModal, setLocationModal] = useState<LocationModalState>(null);
@@ -168,7 +168,7 @@ export function StorageLocationsPanel({
     <Stack gap="md">
       <Group justify="space-between">
         <Text c="dimmed" size="sm">
-          工場内の倉庫・置場と棚。在庫はこの単位で保管され、在庫管理（PD04）
+          拠点内の倉庫・置場と棚。在庫はこの単位で保管され、在庫管理（PD04）
           の在庫移動で場所間を動かせます。
         </Text>
         <PrimaryButton
@@ -181,9 +181,9 @@ export function StorageLocationsPanel({
       </Group>
 
       <StorageMapSection
-        factoryId={factoryId}
         floorMaps={floorMaps}
         locations={locations}
+        plantId={plantId}
       />
 
       {locations.length === 0 ? (
@@ -296,13 +296,13 @@ export function StorageLocationsPanel({
 
       {locationModal && (
         <LocationModal
-          factoryId={factoryId}
           location={locationModal.location}
           onClose={() => setLocationModal(null)}
           onDone={() => {
             setLocationModal(null);
             router.refresh();
           }}
+          plantId={plantId}
         />
       )}
       {shelfModal && (
@@ -322,25 +322,25 @@ export function StorageLocationsPanel({
 
 /**
  * フロアマップ管理 + 保管場所配置 — フロアマップは端末管理 (SY09) と共用の
- * 工場図面。ここ（工場マスタ）でフロアの追加・名称変更・図面アップロード・
+ * 拠点図面。ここ（拠点マスタ）でフロアの追加・名称変更・図面アップロード・
  * 削除も行い、保管場所ピンをドラッグ配置する。
  * 「重ね表示」で他フロアの図面を低不透明度で重ね、図面同士の位置合わせが
  * できる（複数フロアのスタッキング）。
  */
 function StorageMapSection({
-  factoryId,
+  plantId,
   floorMaps,
   locations,
 }: {
-  factoryId: number;
-  floorMaps: FactoryFloorMapRef[];
+  plantId: number;
+  floorMaps: PlantFloorMapRef[];
   locations: StorageLocationRow[];
 }) {
   const router = useRouter();
   const [activeMapId, setActiveMapId] = useState<string | null>(null);
   const [overlayIds, setOverlayIds] = useState<string[]>([]);
   const [floorModal, setFloorModal] = useState<
-    { mode: "create" } | { mode: "rename"; map: FactoryFloorMapRef } | null
+    { mode: "create" } | { mode: "rename"; map: PlantFloorMapRef } | null
   >(null);
   const [floorName, setFloorName] = useState("");
   const [pending, startTransition] = useTransition();
@@ -379,7 +379,7 @@ function StorageMapSection({
     if (!floorName.trim()) return;
     if (floorModal?.mode === "create") {
       startTransition(async () => {
-        const res = await createFloorMap({ factoryId, name: floorName });
+        const res = await createFloorMap({ plantId, name: floorName });
         if (!res.ok) {
           notifications.show({
             title: "エラー",
@@ -637,7 +637,7 @@ function StorageMapSection({
           <TextInput
             label="フロア名"
             onChange={(e) => setFloorName(e.currentTarget.value)}
-            placeholder="例: 1F 加工場"
+            placeholder="例: 1F 加拠点"
             value={floorName}
             withAsterisk
           />
@@ -658,12 +658,12 @@ function StorageMapSection({
 }
 
 function LocationModal({
-  factoryId,
+  plantId,
   location,
   onClose,
   onDone,
 }: {
-  factoryId: number;
+  plantId: number;
   location: StorageLocationRow | null;
   onClose: () => void;
   onDone: () => void;
@@ -684,7 +684,7 @@ function LocationModal({
     startTransition(async () => {
       const res = location
         ? await updateStorageLocation(location.id, values)
-        : await createStorageLocation(factoryId, values);
+        : await createStorageLocation(plantId, values);
       if (!res.ok) {
         notifications.show({
           title: "保存失敗",

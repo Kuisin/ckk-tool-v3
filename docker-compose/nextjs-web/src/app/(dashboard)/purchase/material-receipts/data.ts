@@ -15,14 +15,14 @@ import { type LocalizedText, localized } from "@/lib/format";
 const LIST_FETCH_CAP = 1000;
 
 export {
-  fetchFactoryOptions,
+  fetchPlantOptions,
   fetchSupplierOptions,
   type Option,
 } from "../../production/work-orders/data";
 
 const RECEIPT_INCLUDE = {
   material: true,
-  factory: true,
+  plant: true,
   supplierBp: true,
   purchaseOrderItem: {
     include: { purchaseOrder: { select: { poNumber: true } } },
@@ -47,8 +47,8 @@ function mapReceipt(r: ReceiptRow): MaterialReceiptView {
     supplierName: r.supplierBp
       ? localized(r.supplierBp.name as LocalizedText | null)
       : null,
-    factoryName: r.factory
-      ? `${r.factory.code} ${localized(r.factory.name as LocalizedText | null)}`
+    plantName: r.plant
+      ? `${r.plant.code} ${localized(r.plant.name as LocalizedText | null)}`
       : null,
     quantity: Number(r.quantity),
     unit: r.unit,

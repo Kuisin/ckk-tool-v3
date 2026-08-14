@@ -5,8 +5,8 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { checkPermission } from "@/lib/authz";
 import {
   listKioskDevices,
-  listKioskFactoryOptions,
   listKioskFloorMaps,
+  listKioskPlantOptions,
   listStorageLocationPins,
 } from "@/lib/kiosk-admin";
 
@@ -26,17 +26,17 @@ export default async function KioskFloorMapPage() {
       </>
     );
   }
-  const [devices, floorMaps, factoryOptions, storagePins] = await Promise.all([
+  const [devices, floorMaps, plantOptions, storagePins] = await Promise.all([
     listKioskDevices(),
     listKioskFloorMaps(),
-    listKioskFactoryOptions(),
+    listKioskPlantOptions(),
     listStorageLocationPins(),
   ]);
   return (
     <KioskFloorMapView
       devices={devices}
-      factoryOptions={factoryOptions}
       floorMaps={floorMaps}
+      plantOptions={plantOptions}
       storagePins={storagePins}
     />
   );

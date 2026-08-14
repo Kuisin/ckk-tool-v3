@@ -28,7 +28,7 @@ import { fetchInventoryTransactions } from "../shared";
 const productName = (p: { name: unknown }) =>
   localized(p.name as LocalizedText | null);
 
-const factoryName = (f: { name: unknown } | null) =>
+const plantName = (f: { name: unknown } | null) =>
   f ? localized(f.name as LocalizedText | null) : null;
 
 /** 保管場所 / 棚 の表示ラベル（例: 第一倉庫 / A-1）。未割当は null。 */
@@ -48,7 +48,7 @@ export async function fetchProductInventories(): Promise<
   const rows = await prisma.productInventory.findMany({
     include: {
       product: true,
-      factory: true,
+      plant: true,
       storageLocation: true,
       shelf: true,
     },
@@ -58,8 +58,8 @@ export async function fetchProductInventories(): Promise<
     id: r.id,
     productName: productName(r.product),
     productCode: formatProductNumber(r.product.yearMonth, r.product.seq),
-    factoryId: r.factoryId,
-    factoryName: factoryName(r.factory),
+    plantId: r.plantId,
+    plantName: plantName(r.plant),
     storageLocationId: r.storageLocationId,
     storageLocationName: r.storageLocation
       ? localized(r.storageLocation.name as LocalizedText | null)
@@ -185,7 +185,7 @@ export async function fetchProductInventoryDetail(
     where: { id },
     include: {
       product: true,
-      factory: true,
+      plant: true,
       storageLocation: true,
       shelf: true,
     },
@@ -218,7 +218,7 @@ export async function fetchProductInventoryDetail(
     id: r.id,
     productName: productName(r.product),
     productCode: formatProductNumber(r.product.yearMonth, r.product.seq),
-    factoryName: factoryName(r.factory),
+    plantName: plantName(r.plant),
     lotNumber: r.lotNumber,
     quantity: r.quantity,
     reservedQuantity: r.reservedQuantity,
