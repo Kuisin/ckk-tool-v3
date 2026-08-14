@@ -122,8 +122,8 @@ export function UserDetail({ user }: { user: AdminUserDetail }) {
           実効権限
         </Title>
         <Text c="dimmed" mb="sm" size="xs">
-          user_permissions
-          ビュー（有効ロールを集約・アクション毎に最上位スコープのみ）
+          user_permissions ビュー（有効ロール経由の全 grant —
+          実効アクセスは全行の和集合）
         </Text>
         {user.permissions.length === 0 ? (
           <Text c="dimmed" size="sm">
@@ -140,8 +140,10 @@ export function UserDetail({ user }: { user: AdminUserDetail }) {
                 </Table.Tr>
               </Table.Thead>
               <Table.Tbody>
-                {user.permissions.map((p) => (
-                  <Table.Tr key={`${p.permissionCode}:${p.action}`}>
+                {user.permissions.map((p, i) => (
+                  <Table.Tr
+                    key={`${p.permissionCode}:${p.action}:${p.scope}:${i}`}
+                  >
                     <Table.Td>
                       <Text ff="mono" size="sm">
                         {p.permissionCode}
@@ -155,7 +157,12 @@ export function UserDetail({ user }: { user: AdminUserDetail }) {
                     <Table.Td>
                       <Text ff="mono" size="sm">
                         {p.scope}
-                        {p.scopeCustom != null ? ` (${p.scopeCustom})` : ""}
+                        {(p.scope === "PLANT" || p.scope === "REGION") &&
+                        !(
+                          p.scopeValues.length === 1 && p.scopeValues[0] === "*"
+                        )
+                          ? ` (${p.scopeValues.join(", ")})`
+                          : ""}
                       </Text>
                     </Table.Td>
                   </Table.Tr>

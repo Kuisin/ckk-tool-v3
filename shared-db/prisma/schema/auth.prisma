@@ -106,6 +106,9 @@ model User {
   notificationSetting UserNotificationSetting? @relation("UserNotificationSettingUser")
   homeSetting         UserHomeSetting?         @relation("UserHomeSettingUser")
 
+  userPlants         UserPlant[] @relation("UserPlantUser")
+  userPlantsAssigned UserPlant[] @relation("UserPlantAssignedBy")
+
   kioskCards            KioskCard[]    @relation("KioskCardUser")
   kioskCardsAssigned    KioskCard[]    @relation("KioskCardAssignedBy")
   kioskCardsRevoked     KioskCard[]    @relation("KioskCardRevokedBy")
@@ -172,12 +175,33 @@ model RolePermissionRelation {
   permissionCode String @map("permission_code")
   action         Action
   scope          Scope
-  scopeCustom    Int?   @map("scope_custom")
+  // スコープ対象コード。PLANT: '*'=所属拠点全部 / plants.code 列挙 = 列挙∩所属。
+  // REGION: '*'=所属拠点の地域の全拠点 / regions.code 列挙 = その地域の全拠点。
+  // ALL/OWN では無視。解決は @ckk/authz-core decide()。
+  scopeValues String[] @default(["*"]) @map("scope_values")
 
   role       Role       @relation(fields: [roleId], references: [id])
   permission Permission @relation(fields: [permissionCode], references: [code])
 
   @@id([roleId, action, permissionCode])
   @@map("role_permission_relation")
+  @@schema("app")
+}
+
+// ユーザーの所属拠点（多対多）。PLANT/REGION スコープ解決の基盤。
+// 管理 UI: /settings/users/[id]（system:ADMIN）。
+model UserPlant {
+  userId     String   @map("user_id") @db.Uuid
+  plantId    Int      @map("plant_id")
+  assignedAt DateTime @default(now()) @map("assigned_at") @db.Timestamptz(6)
+  assignedBy String?  @map("assigned_by") @db.Uuid
+
+  user           User  @relation("UserPlantUser", fields: [userId], references: [id], onDelete: Cascade)
+  plant          Plant @relation("PlantUsers", fields: [plantId], references: [id])
+  assignedByUser User? @relation("UserPlantAssignedBy", fields: [assignedBy], references: [id])
+
+  @@id([userId, plantId])
+  @@index([plantId])
+  @@map("user_plants")
   @@schema("app")
 }

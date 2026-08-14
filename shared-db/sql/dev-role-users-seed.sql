@@ -103,4 +103,38 @@ SELECT u.id, r.id, true, now() FROM app.users u JOIN app.roles r ON r.rolename =
 WHERE u.username = 'dev_accounting_mgr'
 ON CONFLICT (user_id, role_id) DO UPDATE SET is_active = true, deactivate_at = NULL;
 
+-- ─── スコープ検証用: 地域 + 所属拠点 + REGION デモロール（dev 専用） ─────────
+
+-- 地域 'jp'（国内）を作成し、地域未設定の拠点をすべて所属させる
+INSERT INTO app.regions (code, name, is_active, updated_at)
+VALUES ('jp', '{"ja":"国内","en":"Japan"}', true, now())
+ON CONFLICT (code) DO NOTHING;
+
+UPDATE app.plants SET region_id = (SELECT id FROM app.regions WHERE code = 'jp')
+WHERE region_id IS NULL;
+
+-- PLANT/REGION スコープを持つ dev ユーザーに全拠点を所属させる
+-- （所属ゼロ = fail-closed で何も見えないため。実運用では管理 UI から個別付与）
+INSERT INTO app.user_plants (user_id, plant_id)
+SELECT u.id, p.id
+FROM app.users u CROSS JOIN app.plants p
+WHERE u.username IN ('dev_production', 'dev_quality', 'dev_shipping')
+ON CONFLICT (user_id, plant_id) DO NOTHING;
+
+-- REGION スコープの e2e 検証用デモロール（dev 専用・is_system=false）:
+-- work_order/inventory READ を REGION '{*}' で付与
+INSERT INTO app.roles (is_system, rolename, display_name, description) VALUES
+  (false, 'dev_region_viewer', '{"ja":"[dev] 地域閲覧","en":"[dev] Region viewer"}',
+   '{"ja":"REGION スコープ検証用 — 所属拠点の地域の指示書/在庫を閲覧","en":""}')
+ON CONFLICT (rolename) DO NOTHING;
+
+DELETE FROM app.role_permission_relation
+WHERE role_id = (SELECT id FROM app.roles WHERE rolename = 'dev_region_viewer');
+INSERT INTO app.role_permission_relation (role_id, permission_code, action, scope, scope_values)
+SELECT r.id, g.code, g.action::app."ACTION", 'REGION'::app."SCOPE", '{*}'::text[]
+FROM app.roles r
+CROSS JOIN (VALUES ('work_order','READ'), ('inventory','READ'), ('master','READ')) AS g(code, action)
+WHERE r.rolename = 'dev_region_viewer'
+ON CONFLICT DO NOTHING;
+
 COMMIT;

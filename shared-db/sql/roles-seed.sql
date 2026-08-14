@@ -44,6 +44,19 @@ ON CONFLICT (rolename) DO NOTHING;
 
 -- ─── 権限グラント ────────────────────────────────────────────────────────────
 
+-- 本ファイル所有の 15 ロールは毎回 DELETE → INSERT で作り直す（真の冪等）。
+-- PK (role_id, action, permission_code) + ON CONFLICT DO NOTHING のままだと
+-- scope / scope_values の変更が既存行に反映されない（サイレント no-op）ため。
+DELETE FROM app.role_permission_relation
+WHERE role_id IN (
+  SELECT id FROM app.roles WHERE rolename IN (
+    'manager','sales','purchasing','production','quality','shipping',
+    'accounting','viewer','sales_assistant','sales_manager',
+    'purchasing_manager','production_manager','quality_manager',
+    'shipping_manager','accounting_manager'
+  )
+);
+
 -- manager: 全業務コード（system 以外）に R + E + A
 INSERT INTO app.role_permission_relation (role_id, permission_code, action, scope)
 SELECT r.id, p.code, a.action::app."ACTION", 'ALL'::app."SCOPE"

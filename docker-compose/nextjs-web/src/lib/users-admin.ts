@@ -38,7 +38,8 @@ export interface AdminUserPermission {
   permissionCode: string;
   action: string;
   scope: string;
-  scopeCustom: number | null;
+  /** grant のスコープ対象コード（'*' = ワイルドカード）。ALL/OWN では無意味 */
+  scopeValues: string[];
 }
 
 export interface AdminUserDetail extends AdminUserRow {
@@ -93,18 +94,19 @@ export async function getAdminUser(
     },
   });
   if (!u) return null;
+  // ビューは grant 単位の全行を返す（1 code×action に複数ロール分の行があり得る）。
   const permissions = await prisma.$queryRaw<
     {
       permission_code: string;
       action: string;
       scope: string;
-      scope_custom: number | null;
+      scope_values: string[] | null;
     }[]
   >`
-    SELECT permission_code, action::text AS action, scope::text AS scope, scope_custom
+    SELECT permission_code, action::text AS action, scope::text AS scope, scope_values
     FROM app.user_permissions
     WHERE user_id = ${id}::uuid
-    ORDER BY permission_code, action`;
+    ORDER BY permission_code, action, scope`;
   const activeAssignments = u.roleAssignments.filter((a) => a.isActive);
   return {
     id: u.id,
@@ -133,7 +135,7 @@ export async function getAdminUser(
       permissionCode: p.permission_code,
       action: p.action,
       scope: p.scope,
-      scopeCustom: p.scope_custom,
+      scopeValues: p.scope_values ?? ["*"],
     })),
   };
 }

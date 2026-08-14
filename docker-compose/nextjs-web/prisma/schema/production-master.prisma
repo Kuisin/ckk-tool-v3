@@ -6,6 +6,24 @@
 // 依存・メンバーは複合 PK の純ジョイン。@@map は _specs/tables.md の表名に一致
 // させ、audit_logs のラベル解決と揃える。
 
+// ─── 地域（拠点のグループ。SCOPE.REGION の実体） ─────────────────────────────
+
+// scope_values は regions.code を参照する。管理 UI は 拠点マスタ配下
+// （/master/plants/regions — 変更頻度が低いため専用アプリ・opcode なし）。
+model Region {
+  id        Int      @id @default(autoincrement())
+  code      String   @unique
+  name      Json // { ja, en }
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  plants Plant[] @relation("PlantRegion")
+
+  @@map("regions")
+  @@schema("app")
+}
+
 // ─── 拠点（製造・在庫・出荷の拠点。SCOPE.PLANT の実体） ────────────────────
 
 model Plant {
@@ -13,7 +31,9 @@ model Plant {
   code          String   @unique
   name          Json
   nameKana      String?  @map("name_kana")
+  // 国は拠点ごとに 1 つ（ISO 3166-1 alpha-2）
   countryCode   String?  @map("country_code") @db.VarChar(2)
+  regionId      Int?     @map("region_id")
   postalCode    String?  @map("postal_code")
   address       Json?
   phone         String?
@@ -23,6 +43,8 @@ model Plant {
   notes         String?
   createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt     DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  region Region? @relation("PlantRegion", fields: [regionId], references: [id])
 
   workOrderSteps WorkOrderStep[]
   shippingOrders ShippingOrder[]
@@ -36,7 +58,9 @@ model Plant {
   routeVersionSteps ProductProcessRouteVersionStep[] @relation("RouteStepPlant")
   workLocationGroups WorkLocationGroup[] @relation("WorkLocationGroupPlant")
   storageLocations   StorageLocation[]   @relation("StorageLocationPlant")
+  userPlants         UserPlant[]         @relation("PlantUsers")
 
+  @@index([regionId])
   @@map("plants")
   @@schema("app")
 }
