@@ -81,11 +81,11 @@ Below that, three tables are lined up.
 
 This is the list of what the person can actually do right now. If the person has several roles, **everything from all of them put together is what that person can do**. The same row may appear twice, but that is not a problem.
 
-The table shows words in English. Here is how to read them.
+Here is how to read the table.
 
 - 「**権限コード**」 (Permission code) … which app it is about (`quote` is 見積書 (quotes), `master` is マスタ (master data), `system` is system administration, and so on).
-- 「**アクション**」 (Action) … what the person may do. `READ` is look only, `CREATE` is make something new, `UPDATE` is change, `DELETE` is remove, and `ADMIN` is operations for administrators.
-- 「**スコープ**」 (Scope) … how far the permission reaches. `ALL` means the whole company, `PLANT` means their own site only, `REGION` means their own region only, and `OWN` means only the data they created themselves.
+- 「**アクション**」 (Action) … what the person may do: 閲覧 (look only), 作成 (create), 更新 (change), 削除 (remove), 書き出し (export), 承認 (approve), and 管理 (operations for administrators).
+- 「**スコープ**」 (Scope) … how far the permission reaches: 全社 (the whole company), 拠点 (their own site only), 地域 (their own region only), 自分の担当 (only the data they are responsible for), and so on. For site and region, the targets follow in brackets.
 
 When there is nothing, 「**権限がありません**」 (No permissions) is shown.
 

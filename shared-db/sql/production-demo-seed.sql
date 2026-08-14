@@ -124,7 +124,7 @@ VALUES
 ON CONFLICT (id) DO NOTHING;
 
 -- ── 指示書 #9001〜#9004（固定番号 — 採番と衝突しないよう sequence を追従）──────
-INSERT INTO app.work_orders (id, work_order_number, sales_order_id, type,
+INSERT INTO app.work_orders (id, work_order_number, sales_order_id, product_id, type,
   planned_quantity, material_id, status, approval_status, route_version_id,
   requested_1st_at, requested_1st_by, approved_1st_at, approved_1st_by,
   approved_2nd_at, approved_2nd_by, approved_at, started_at, completed_at,
@@ -132,7 +132,7 @@ INSERT INTO app.work_orders (id, work_order_number, sales_order_id, type,
 VALUES
   -- #9001: 進行中（受注 50 + 予備 5 = 55。承認記録あり・工程は下の steps 参照）
   ('dc000000-0000-4000-8000-000000009001'::uuid, 9001,
-   'e0000000-0000-4000-8000-000000000001'::uuid, 'MANUFACTURE'::app."WORK_ORDER_TYPE",
+   'e0000000-0000-4000-8000-000000000001'::uuid, 9001, 'MANUFACTURE'::app."WORK_ORDER_TYPE",
    55, (SELECT id FROM app.materials WHERE code = 'B01A0001-B060-310'),
    'IN_PROGRESS'::app."WORK_ORDER_STATUS", 'APPROVED'::app."WORK_ORDER_APPROVAL_STATUS",
    'dc040000-0000-4000-8000-000000000001'::uuid,
@@ -149,7 +149,7 @@ VALUES
    '2026-07-14T10:30:00+09', '2026-07-21T09:00:00+09'),
   -- #9002: 承認待ち（PENDING_1ST — PD03 の主役。approval_requests 行あり）
   ('dc000000-0000-4000-8000-000000009002'::uuid, 9002,
-   'e0000000-0000-4000-8000-000000000002'::uuid, 'MANUFACTURE'::app."WORK_ORDER_TYPE",
+   'e0000000-0000-4000-8000-000000000002'::uuid, 9002, 'MANUFACTURE'::app."WORK_ORDER_TYPE",
    100, (SELECT id FROM app.materials WHERE code = 'B04A0001-B040-310'),
    'PENDING_APPROVAL'::app."WORK_ORDER_STATUS", 'PENDING_1ST'::app."WORK_ORDER_APPROVAL_STATUS",
    NULL,
@@ -161,7 +161,7 @@ VALUES
    '2026-07-19T15:00:00+09', '2026-07-20T09:30:00+09'),
   -- #9003: 下書き（在庫分 — 編集・コピー・キャンセル可の状態バリエーション）
   ('dc000000-0000-4000-8000-000000009003'::uuid, 9003,
-   'e0000000-0000-4000-8000-000000000001'::uuid, 'FROM_STOCK'::app."WORK_ORDER_TYPE",
+   'e0000000-0000-4000-8000-000000000001'::uuid, 9001, 'FROM_STOCK'::app."WORK_ORDER_TYPE",
    10, NULL,
    'DRAFT'::app."WORK_ORDER_STATUS", 'NONE'::app."WORK_ORDER_APPROVAL_STATUS",
    NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
@@ -170,7 +170,7 @@ VALUES
    '2026-07-19T16:20:00+09', '2026-07-19T16:20:00+09'),
   -- #9004: 完了（全工程完了 → 良品 55 を製品在庫ロット 9004 として入庫済み）
   ('dc000000-0000-4000-8000-000000009004'::uuid, 9004,
-   'e0000000-0000-4000-8000-000000000001'::uuid, 'MANUFACTURE'::app."WORK_ORDER_TYPE",
+   'e0000000-0000-4000-8000-000000000001'::uuid, 9001, 'MANUFACTURE'::app."WORK_ORDER_TYPE",
    60, (SELECT id FROM app.materials WHERE code = 'B01A0001-B060-310'),
    'COMPLETED'::app."WORK_ORDER_STATUS", 'APPROVED'::app."WORK_ORDER_APPROVAL_STATUS",
    'dc040000-0000-4000-8000-000000000001'::uuid,

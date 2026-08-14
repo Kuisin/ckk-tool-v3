@@ -481,7 +481,8 @@ export const shots: Shot[] = [
     docPage: "apps/outsource-order/user",
     path: "/production/work-orders/9001",
     steps: async (page) => {
-      await page.getByText("センタレス").first().waitFor();
+      // 工程名は SVG の <title>（非表示）にも入るため、見える見出しで待つ
+      await page.getByRole("heading", { name: "工程ワークフロー" }).waitFor();
     },
   },
   {

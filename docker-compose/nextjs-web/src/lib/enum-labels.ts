@@ -233,3 +233,36 @@ export const INSPECTION_SAMPLING_MODE_LABEL: Record<string, string> = {
 export const INSPECTION_SAMPLING_MODE_OPTIONS = Object.entries(
   INSPECTION_SAMPLING_MODE_LABEL,
 ).map(([value, label]) => ({ value, label }));
+
+/**
+ * app.ACTION — 権限のアクション（SY01 実効権限テーブル等の表示用）。
+ * 以前は英字のまま画面に出ていた。
+ */
+export const PERMISSION_ACTION_LABEL: Record<string, string> = {
+  READ: "閲覧",
+  CREATE: "作成",
+  UPDATE: "更新",
+  DELETE: "削除",
+  EXPORT: "書き出し",
+  APPROVE: "承認",
+  ADMIN: "管理",
+};
+
+/** app.SCOPE — 権限が及ぶ範囲。 */
+export const PERMISSION_SCOPE_LABEL: Record<string, string> = {
+  ALL: "全社",
+  REGION: "地域",
+  COUNTRY: "国",
+  PLANT: "拠点",
+  FACTORY: "拠点",
+  DEPARTMENT: "部門",
+  TEAM: "チーム",
+  SUB: "配下",
+  OWN: "自分の担当",
+};
+
+/** 表示用ラベル（未知の値はそのまま返す — 新しい enum 追加時も画面が壊れない）。 */
+export const permissionActionLabel = (v: string): string =>
+  PERMISSION_ACTION_LABEL[v] ?? v;
+export const permissionScopeLabel = (v: string): string =>
+  PERMISSION_SCOPE_LABEL[v] ?? v;

@@ -38,6 +38,8 @@ export interface Invoice {
   billingPeriodTo: string;
   subtotal: number;
   taxAmount: number;
+  /** 顧客の課税区分（消費税ラベルの % 表示に使う）。未設定は課税扱い。 */
+  taxType: "TAXABLE" | "REDUCED" | "EXEMPT" | null;
   totalAmount: number;
   status: InvoiceStatus;
   issuedAt: string | null;
@@ -64,4 +66,20 @@ export function canMarkSent(inv: Pick<Invoice, "status">) {
 /** 入金済みにできるか — 送付済みのみ。 */
 export function canMarkPaid(inv: Pick<Invoice, "status">) {
   return inv.status === "SENT";
+}
+
+/**
+ * 消費税の表示ラベル — 顧客の課税区分に応じて 10% / 8% / 非課税 を出す。
+ * 税額は締日処理が同じ区分で計算しているので、ラベルと金額が一致する
+ * （以前は区分によらず「消費税（10%）」固定で、8% 顧客と食い違っていた）。
+ */
+export function taxLabel(taxType: Invoice["taxType"]): string {
+  switch (taxType) {
+    case "REDUCED":
+      return "消費税（8%）";
+    case "EXEMPT":
+      return "消費税（非課税）";
+    default:
+      return "消費税（10%）";
+  }
 }
