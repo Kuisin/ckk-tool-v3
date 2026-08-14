@@ -8,6 +8,7 @@
  * 価格表から再解決してスナップショットする（クライアント表示値は信用しない）。
  */
 
+import { type Access, rowInScope } from "@ckk/authz-core";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { resolveUnitPriceFromEntries } from "@/components/sales/quotes/model";
@@ -25,6 +26,25 @@ import {
 import { fetchEntriesForCustomer } from "./data";
 
 const BASE_PATH = "/sales/quotes";
+const SCOPE_DENIED = "この操作の権限がありません（対象範囲外）";
+
+/**
+ * 対象見積書がスコープ内か（OWN 行チェック）。ALL は素通し。
+ * 不存在は true — 既存の not-found 系エラー処理に委ねる。
+ */
+async function quoteInScope(
+  access: Access,
+  userId: string,
+  key: { yearMonth: string; seq: number },
+): Promise<boolean> {
+  if (access.kind === "ALL") return true;
+  const row = await prisma.quote.findUnique({
+    where: { yearMonth_seq: { yearMonth: key.yearMonth, seq: key.seq } },
+    select: { createdBy: true },
+  });
+  if (!row) return true;
+  return rowInScope(access, { createdBy: row.createdBy }, userId);
+}
 
 const itemInput = z.object({
   productId: z.string().min(1, "製品を選択してください"),
@@ -111,6 +131,7 @@ export async function createQuote(
         status: v.status,
         validUntil: v.validUntil ? new Date(v.validUntil) : null,
         notes: v.notes.trim() || null,
+        createdBy: authz.userId,
         items: { create: items },
       },
     });
@@ -149,6 +170,9 @@ export async function updateQuote(
   }
   const authz = await checkPermission("quote", "UPDATE");
   if (!authz.ok) return actionError(authz.error);
+  if (!(await quoteInScope(authz.access, authz.userId, key))) {
+    return actionError(SCOPE_DENIED);
+  }
   const v = parsed.data;
   try {
     const items = await resolveItems(v);
@@ -217,6 +241,9 @@ export async function issueQuote(
   if (!key) return actionError("見積番号が不正です");
   const authz = await checkPermission("quote", "UPDATE");
   if (!authz.ok) return actionError(authz.error);
+  if (!(await quoteInScope(authz.access, authz.userId, key))) {
+    return actionError(SCOPE_DENIED);
+  }
   try {
     const updated = await prisma.quote.updateMany({
       where: { yearMonth: key.yearMonth, seq: key.seq, status: "DRAFT" },

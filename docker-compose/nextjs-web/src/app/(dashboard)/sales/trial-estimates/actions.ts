@@ -9,6 +9,7 @@
  * （初回使用時に REGISTERED へロック — sales/price-lists/actions.ts）。
  */
 
+import { type Access, rowInScope } from "@ckk/authz-core";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { recordAudit } from "@/lib/audit";
@@ -41,6 +42,16 @@ import { calcTrialPricing, type TrialInput } from "@/lib/trial-pricing";
 import { toTrialPricingOptions } from "@/lib/trial-pricing-settings";
 
 const BASE_PATH = "/sales/trial-estimates";
+const SCOPE_DENIED = "この操作の権限がありません（対象範囲外）";
+
+/** 取得済みの試算行がスコープ内か（OWN 行チェック）。ALL は素通し。 */
+function estimateInScope(
+  access: Access,
+  userId: string,
+  row: { createdBy: string | null },
+): boolean {
+  return rowInScope(access, { createdBy: row.createdBy }, userId);
+}
 
 export interface MaterialPricing {
   history: MaterialPricePoint[];
@@ -190,6 +201,7 @@ export async function createTrialEstimate(
         input: v.input as Prisma.InputJsonValue,
         // 作成時点の価格を記録（計算ロジック変更後も過去の価格は不変）。
         result: buildPriceSnapshot(payload.input, settings),
+        createdBy: authz.userId,
       },
     });
     const number = formatEstimateNumber({ yearMonth, seq });
@@ -232,6 +244,9 @@ export async function linkTrialEstimateProduct(
       where: { yearMonth_seq: { yearMonth: key.yearMonth, seq: key.seq } },
     });
     if (!estimate) return actionError("試算が見つかりません");
+    if (!estimateInScope(authz.access, authz.userId, estimate)) {
+      return actionError(SCOPE_DENIED);
+    }
     if (estimate.status === "REGISTERED") {
       return actionError(
         "価格表で使用済みの試算は製品リンクを変更できません（複製して再試算してください）",
@@ -282,6 +297,9 @@ export async function confirmTrialEstimate(
       where: { yearMonth_seq: { yearMonth: key.yearMonth, seq: key.seq } },
     });
     if (!estimate) return actionError("試算が見つかりません");
+    if (!estimateInScope(authz.access, authz.userId, estimate)) {
+      return actionError(SCOPE_DENIED);
+    }
     if (estimate.status !== "DRAFT") {
       return actionError("下書きの試算のみ確定できます");
     }

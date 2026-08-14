@@ -11,9 +11,9 @@
 --   manager    : 全業務 R+E+A（承認者・閲覧横断）
 --   sales (営業メンバー)  : 見積(quote)/価格表(price_list) C·R·U（自分=OWN）+ マスタ R
 --   purchasing : 購買依頼・発注/入荷/外注 RCUDE(+発注 A)、在庫 R、他 R
---   production : 注文請書・指示書 RCUDEA、在庫 RCUE、外注 RU、他 R
---   quality    : 指示書（検査記録・検査承認） RUA、他 R
---   shipping   : 出荷書/納品書 RCUDE、在庫 RU、他 R
+--   production : 注文請書・指示書 RCUDEA（拠点スコープ）、在庫 RCUE（拠点スコープ）、外注 RU、他 R
+--   quality    : 指示書（検査記録・検査承認） RUA（拠点スコープ）、他 R
+--   shipping   : 出荷書/納品書 RCUDE（出荷書は拠点スコープ）、在庫 RU（拠点スコープ）、他 R
 --   accounting : 請求書/締日 RCUDE、販売・出荷 R、他 R
 --   viewer     : 全業務 R
 --   sales_assistant (営業補佐) : 見積/価格表 R（全件=ALL）+ マスタ R。作成/編集/承認なし
@@ -103,9 +103,10 @@ CROSS JOIN (VALUES
 WHERE r.rolename = 'purchasing'
 ON CONFLICT DO NOTHING;
 
--- production
+-- production（work_order / inventory は拠点スコープ — scope_values 既定 '{*}' = 所属拠点すべて）
 INSERT INTO app.role_permission_relation (role_id, permission_code, action, scope)
-SELECT r.id, g.code, g.action::app."ACTION", 'ALL'::app."SCOPE"
+SELECT r.id, g.code, g.action::app."ACTION",
+       (CASE WHEN g.code IN ('work_order','inventory') THEN 'PLANT' ELSE 'ALL' END)::app."SCOPE"
 FROM app.roles r
 CROSS JOIN (VALUES
   ('work_order','READ'),('work_order','CREATE'),('work_order','UPDATE'),('work_order','DELETE'),('work_order','EXPORT'),('work_order','APPROVE'),
@@ -118,9 +119,10 @@ CROSS JOIN (VALUES
 WHERE r.rolename = 'production'
 ON CONFLICT DO NOTHING;
 
--- quality（検査記録・検査承認は work_order の UPDATE/APPROVE）
+-- quality（検査記録・検査承認は work_order の UPDATE/APPROVE。work_order は拠点スコープ）
 INSERT INTO app.role_permission_relation (role_id, permission_code, action, scope)
-SELECT r.id, g.code, g.action::app."ACTION", 'ALL'::app."SCOPE"
+SELECT r.id, g.code, g.action::app."ACTION",
+       (CASE WHEN g.code = 'work_order' THEN 'PLANT' ELSE 'ALL' END)::app."SCOPE"
 FROM app.roles r
 CROSS JOIN (VALUES
   ('work_order','READ'),('work_order','UPDATE'),('work_order','APPROVE'),
@@ -129,9 +131,10 @@ CROSS JOIN (VALUES
 WHERE r.rolename = 'quality'
 ON CONFLICT DO NOTHING;
 
--- shipping
+-- shipping（shipping_order / inventory は拠点スコープ）
 INSERT INTO app.role_permission_relation (role_id, permission_code, action, scope)
-SELECT r.id, g.code, g.action::app."ACTION", 'ALL'::app."SCOPE"
+SELECT r.id, g.code, g.action::app."ACTION",
+       (CASE WHEN g.code IN ('shipping_order','inventory') THEN 'PLANT' ELSE 'ALL' END)::app."SCOPE"
 FROM app.roles r
 CROSS JOIN (VALUES
   ('shipping_order','READ'),('shipping_order','CREATE'),('shipping_order','UPDATE'),('shipping_order','DELETE'),('shipping_order','EXPORT'),

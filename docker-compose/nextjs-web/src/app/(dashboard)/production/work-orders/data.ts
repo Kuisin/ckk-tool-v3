@@ -5,6 +5,7 @@
  * 承認履歴は history Json（{action,user,at,notes}）を displayName 解決して返す。
  */
 
+import { type Access, ownOrPlantWhere, rowInScope } from "@ckk/authz-core";
 import type { ApprovalTrailView } from "@/components/production/ApprovalStatusPanel";
 import type {
   InspectionRecordView,
@@ -20,7 +21,8 @@ import type {
 } from "@/components/production/work-orders/model";
 import { fetchApprovalTrail, type HistoryEntry } from "@/lib/approvals";
 import { getCurrentActorId } from "@/lib/audit";
-import { prisma } from "@/lib/db";
+import { checkPermission } from "@/lib/authz";
+import { type Prisma, prisma } from "@/lib/db";
 import { formatSalesOrderNumber } from "@/lib/doc-number";
 import { type LocalizedText, localized } from "@/lib/format";
 import {
@@ -118,10 +120,40 @@ function mapRow(r: {
   };
 }
 
+/**
+ * 指示書のスコープ where 断片（PLANT = 工程の実施拠点経由 ∪ OWN = 作成者）。
+ * ALL は {} — 従来通り全件。
+ */
+function workOrderScopeWhere(
+  access: Access,
+  userId: string,
+): Prisma.WorkOrderWhereInput {
+  return ownOrPlantWhere(access, userId, {
+    plantClause: (ids) => ({ steps: { some: { plantId: { in: ids } } } }),
+    ownColumn: "createdBy",
+  }) as Prisma.WorkOrderWhereInput;
+}
+
+/** 取得済み指示書行（steps 付き）がスコープ内か。 */
+function workOrderRowInScope(
+  access: Access,
+  userId: string,
+  row: { createdBy: string | null; steps: { plantId: number | null }[] },
+): boolean {
+  return rowInScope(
+    access,
+    { plantIds: row.steps.map((s) => s.plantId), createdBy: row.createdBy },
+    userId,
+  );
+}
+
 /** 指示書一覧 (PD02)。 */
 export async function fetchWorkOrders(): Promise<WorkOrderRow[]> {
+  const authz = await checkPermission("work_order", "READ");
+  if (!authz.ok) return [];
   const rows = await prisma.workOrder.findMany({
     take: LIST_FETCH_CAP,
+    where: workOrderScopeWhere(authz.access, authz.userId),
     include: { salesOrder: { include: { product: true } } },
     orderBy: { workOrderNumber: "desc" },
   });
@@ -142,11 +174,15 @@ export async function fetchWorkOrderApprovalTrail(
 export async function fetchWorkOrder(
   workOrderNumber: number,
 ): Promise<WorkOrderView | null> {
+  const authz = await checkPermission("work_order", "READ");
+  if (!authz.ok) return null;
   const r = await prisma.workOrder.findUnique({
     where: { workOrderNumber },
     include: WO_INCLUDE,
   });
   if (!r) return null;
+  // スコープ外の行は不可視（null → 呼び出し側の notFound に乗せる）。
+  if (!workOrderRowInScope(authz.access, authz.userId, r)) return null;
 
   // 工程ごとの開始可否（実行依存 + 分岐流入 + ロック）をサーバーで算出
   const [{ ctx }, actorId] = await Promise.all([
@@ -290,15 +326,19 @@ export interface WorkOrderStepNav {
 export async function fetchWorkOrderStepNav(
   workOrderNumber: number,
 ): Promise<WorkOrderStepNav | null> {
+  const authz = await checkPermission("work_order", "READ");
+  if (!authz.ok) return null;
   const r = await prisma.workOrder.findUnique({
     where: { workOrderNumber },
     select: {
       workOrderNumber: true,
+      createdBy: true,
       steps: {
         select: {
           id: true,
           status: true,
           executionLocation: true,
+          plantId: true,
           processStep: {
             select: {
               code: true,
@@ -315,6 +355,7 @@ export async function fetchWorkOrderStepNav(
     },
   });
   if (!r) return null;
+  if (!workOrderRowInScope(authz.access, authz.userId, r)) return null;
   return {
     workOrderNumber: r.workOrderNumber,
     steps: r.steps.map((s) => ({
@@ -345,11 +386,20 @@ export async function fetchStepExecution(
   workOrderNumber: number,
   stepId: string,
 ): Promise<StepExecutionData | null> {
+  const authz = await checkPermission("work_order", "READ");
+  if (!authz.ok) return null;
   const wo = await prisma.workOrder.findUnique({
     where: { workOrderNumber },
-    select: { id: true, status: true, plannedQuantity: true },
+    select: {
+      id: true,
+      status: true,
+      plannedQuantity: true,
+      createdBy: true,
+      steps: { select: { plantId: true } },
+    },
   });
   if (!wo) return null;
+  if (!workOrderRowInScope(authz.access, authz.userId, wo)) return null;
 
   const step = await prisma.workOrderStep.findFirst({
     where: { id: stepId, workOrderId: wo.id },

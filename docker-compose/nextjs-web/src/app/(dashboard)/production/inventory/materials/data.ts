@@ -8,12 +8,14 @@
  * Prisma Decimal はここで Number() へ変換してからクライアントへ渡す。
  */
 
+import { plantWhere, rowInScope } from "@ckk/authz-core";
 import type {
   MaterialInventoryDetailData,
   MaterialInventoryRow,
 } from "@/components/production/inventory/materials/model";
 import { materialAtp } from "@/lib/atp";
-import { prisma } from "@/lib/db";
+import { checkPermission } from "@/lib/authz";
+import { type Prisma, prisma } from "@/lib/db";
 import { type LocalizedText, localized } from "@/lib/format";
 import { storageLabelOf } from "../products/data";
 import { fetchInventoryTransactions } from "../shared";
@@ -25,7 +27,14 @@ const plantName = (f: { name: unknown } | null) =>
 export async function fetchMaterialInventories(): Promise<
   MaterialInventoryRow[]
 > {
+  // スコープ行フィルタ（PLANT = 保管拠点。ALL は {} で従来通り全件）。
+  const authz = await checkPermission("inventory", "READ");
+  if (!authz.ok) return [];
   const rows = await prisma.materialInventory.findMany({
+    where: plantWhere(
+      authz.access,
+      "plantId",
+    ) as Prisma.MaterialInventoryWhereInput,
     include: {
       material: true,
       plant: true,
@@ -85,6 +94,8 @@ export async function fetchMaterialInventories(): Promise<
 export async function fetchMaterialInventoryDetail(
   id: string,
 ): Promise<MaterialInventoryDetailData | null> {
+  const authz = await checkPermission("inventory", "READ");
+  if (!authz.ok) return null;
   const r = await prisma.materialInventory.findUnique({
     where: { id },
     include: {
@@ -95,6 +106,10 @@ export async function fetchMaterialInventoryDetail(
     },
   });
   if (!r) return null;
+  // スコープ外の行は不可視（null → 呼び出し側の notFound に乗せる）。
+  if (!rowInScope(authz.access, { plantIds: [r.plantId] }, authz.userId)) {
+    return null;
+  }
 
   const [atp, transactions] = await Promise.all([
     // 拠点が設定された在庫行はその拠点の ATP、未設定行は全拠点合算。

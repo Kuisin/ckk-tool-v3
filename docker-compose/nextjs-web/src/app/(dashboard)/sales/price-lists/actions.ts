@@ -13,6 +13,7 @@
  * 基準単価ソースに選択できる（初回使用時に試算を REGISTERED へロック）。
  */
 
+import { type Access, rowInScope } from "@ckk/authz-core";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { requiresEndDate } from "@/components/sales/price-lists/model";
@@ -34,6 +35,26 @@ import {
 import { type EstimateSource, fetchEstimateSourcesForProduct } from "./data";
 
 const BASE_PATH = "/sales/price-lists";
+const SCOPE_DENIED = "この操作の権限がありません（対象範囲外）";
+
+/**
+ * 対象エントリ（複数可）がスコープ内か（OWN 行チェック）。ALL は素通し。
+ * 不存在キーは true — 既存の not-found 系エラー処理に委ねる。
+ */
+async function entriesInScope(
+  access: Access,
+  userId: string,
+  keys: DocKey[],
+): Promise<boolean> {
+  if (access.kind === "ALL") return true;
+  const rows = await prisma.priceListEntry.findMany({
+    where: { OR: keys.map((k) => ({ yearMonth: k.yearMonth, seq: k.seq })) },
+    select: { createdBy: true },
+  });
+  return rows.every((r) =>
+    rowInScope(access, { createdBy: r.createdBy }, userId),
+  );
+}
 
 const orderTypeSchema = z.enum(["PRODUCTION", "TEST", "SAMPLE", "OTHER"]);
 
@@ -207,6 +228,7 @@ export async function createPriceEntry(
           yearMonth: key.yearMonth,
           seq: key.seq,
           ...v.identity,
+          createdBy: authz.userId,
           variants: {
             create: v.variants.map((variant) => {
               const estKey = variant.estimateNumber
@@ -300,6 +322,9 @@ export async function updatePriceEntry(
   if (!key) return actionError("価格表番号が不正です");
   const authz = await checkPermission("price_list", "UPDATE");
   if (!authz.ok) return actionError(authz.error);
+  if (!(await entriesInScope(authz.access, authz.userId, [key]))) {
+    return actionError(SCOPE_DENIED);
+  }
   const variantError = validateVariants(v.variants);
   if (variantError) return actionError(variantError);
   try {
@@ -443,6 +468,9 @@ export async function copyPriceEntry(payload: {
   if (!authz.ok) return actionError(authz.error);
   const sourceKey = keyOf(payload.sourceEntryNumber);
   if (!sourceKey) return actionError("コピー元の価格表番号が不正です");
+  if (!(await entriesInScope(authz.access, authz.userId, [sourceKey]))) {
+    return actionError(SCOPE_DENIED);
+  }
   const source = await prisma.priceListEntry.findUnique({
     where: whereKey(sourceKey),
     include: { variants: { include: { tiers: true } } },
@@ -492,6 +520,9 @@ export async function changePriceEntryPeriod(payload: {
   if (!key) return actionError("価格表番号が不正です");
   const authz = await checkPermission("price_list", "UPDATE");
   if (!authz.ok) return actionError(authz.error);
+  if (!(await entriesInScope(authz.access, authz.userId, [key]))) {
+    return actionError(SCOPE_DENIED);
+  }
   try {
     const variant = await prisma.priceListVariant.findUnique({
       where: { id: payload.variantId },
@@ -542,6 +573,9 @@ export async function setPriceEntriesActive(
   if (!keys) return actionError("価格表番号が不正です");
   const authz = await checkPermission("price_list", "UPDATE");
   if (!authz.ok) return actionError(authz.error);
+  if (!(await entriesInScope(authz.access, authz.userId, keys))) {
+    return actionError(SCOPE_DENIED);
+  }
   try {
     await prisma.$transaction(
       keys.map((key) =>
@@ -575,6 +609,9 @@ export async function deletePriceEntries(
   if (!keys) return actionError("価格表番号が不正です");
   const authz = await checkPermission("price_list", "DELETE");
   if (!authz.ok) return actionError(authz.error);
+  if (!(await entriesInScope(authz.access, authz.userId, keys))) {
+    return actionError(SCOPE_DENIED);
+  }
   try {
     await prisma.$transaction(
       keys.flatMap((key) => [
@@ -632,6 +669,9 @@ export async function saveDiscountRule(
   if (!key) return actionError("価格表番号が不正です");
   const authz = await checkPermission("price_list", "UPDATE");
   if (!authz.ok) return actionError(authz.error);
+  if (!(await entriesInScope(authz.access, authz.userId, [key]))) {
+    return actionError(SCOPE_DENIED);
+  }
   const data = {
     label: v.label,
     discountType: v.discountType,
@@ -689,6 +729,9 @@ export async function deleteDiscountRule(
   if (!key) return actionError("価格表番号が不正です");
   const authz = await checkPermission("price_list", "DELETE");
   if (!authz.ok) return actionError(authz.error);
+  if (!(await entriesInScope(authz.access, authz.userId, [key]))) {
+    return actionError(SCOPE_DENIED);
+  }
   try {
     await prisma.priceListDiscount.delete({ where: { id } });
     await recordAudit({

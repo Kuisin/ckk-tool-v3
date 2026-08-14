@@ -3,6 +3,7 @@ import { PlantForm } from "@/components/master/plants/PlantForm";
 import { requireAppRead } from "@/lib/authz-page";
 import { prisma } from "@/lib/db";
 import type { LocalizedText } from "@/lib/format";
+import { fetchRegionOptions } from "../../data";
 
 export const dynamic = "force-dynamic";
 
@@ -17,7 +18,10 @@ export default async function MasterPlantsEditPage({
   const { id: idParam } = await params;
   const id = Number(idParam);
   if (!Number.isInteger(id)) notFound();
-  const r = await prisma.plant.findUnique({ where: { id } });
+  const [r, regionOptions] = await Promise.all([
+    prisma.plant.findUnique({ where: { id } }),
+    fetchRegionOptions(),
+  ]);
   if (!r) notFound();
 
   const name = r.name as LocalizedText | null;
@@ -32,6 +36,7 @@ export default async function MasterPlantsEditPage({
         nameEn: name?.en ?? "",
         nameKana: r.nameKana ?? "",
         countryCode: r.countryCode,
+        regionId: r.regionId,
         postalCode: r.postalCode ?? "",
         addressJa: address?.ja ?? "",
         addressEn: address?.en ?? "",
@@ -41,6 +46,7 @@ export default async function MasterPlantsEditPage({
         isActive: r.isActive,
         notes: r.notes ?? "",
       }}
+      regionOptions={regionOptions}
     />
   );
 }

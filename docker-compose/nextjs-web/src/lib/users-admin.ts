@@ -42,6 +42,14 @@ export interface AdminUserPermission {
   scopeValues: string[];
 }
 
+/** 所属拠点（user_plants — PLANT/REGION スコープ解決の基盤）。 */
+export interface AdminUserPlant {
+  id: number;
+  code: string;
+  name: LocalizedText | null;
+  isActive: boolean;
+}
+
 export interface AdminUserDetail extends AdminUserRow {
   employeeId: string | null;
   /** credentials ログイン可否（false = SSO のみ）。ハッシュ自体は返さない。 */
@@ -50,6 +58,22 @@ export interface AdminUserDetail extends AdminUserRow {
   updatedAt: string | null;
   assignments: AdminUserAssignment[];
   permissions: AdminUserPermission[];
+  plants: AdminUserPlant[];
+}
+
+/** 有効な拠点一覧（所属拠点セレクタの選択肢）。 */
+export async function listActivePlantOptions(): Promise<AdminUserPlant[]> {
+  const rows = await prisma.plant.findMany({
+    where: { isActive: true },
+    orderBy: { code: "asc" },
+    select: { id: true, code: true, name: true, isActive: true },
+  });
+  return rows.map((p) => ({
+    id: p.id,
+    code: p.code,
+    name: p.name as LocalizedText | null,
+    isActive: p.isActive,
+  }));
 }
 
 export async function listAdminUsers(): Promise<AdminUserRow[]> {
@@ -90,6 +114,10 @@ export async function getAdminUser(
       roleAssignments: {
         include: { role: true },
         orderBy: { assignedAt: "desc" },
+      },
+      userPlants: {
+        include: { plant: true },
+        orderBy: { plant: { code: "asc" } },
       },
     },
   });
@@ -136,6 +164,12 @@ export async function getAdminUser(
       action: p.action,
       scope: p.scope,
       scopeValues: p.scope_values ?? ["*"],
+    })),
+    plants: u.userPlants.map((up) => ({
+      id: up.plant.id,
+      code: up.plant.code,
+      name: up.plant.name as LocalizedText | null,
+      isActive: up.plant.isActive,
     })),
   };
 }

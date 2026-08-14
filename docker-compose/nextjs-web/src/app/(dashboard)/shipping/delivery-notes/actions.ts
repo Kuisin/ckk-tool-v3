@@ -12,12 +12,13 @@
  * ステータス遷移: DRAFT →(発行)→ ISSUED →(納品)→ DELIVERED。
  */
 
+import { type Access, rowInScope } from "@ckk/authz-core";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { recordAudit } from "@/lib/audit";
 import { checkPermission } from "@/lib/authz";
 import { prisma } from "@/lib/db";
-import { formatDocNumber, parseDocKey } from "@/lib/doc-number";
+import { type DocKey, formatDocNumber, parseDocKey } from "@/lib/doc-number";
 import { type LocalizedText, localized } from "@/lib/format";
 import { allocateDocumentKey } from "@/lib/numbering";
 import {
@@ -28,6 +29,32 @@ import {
 } from "@/lib/server-action";
 
 const BASE_PATH = "/shipping/delivery-notes";
+const SCOPE_DENIED = "この操作の権限がありません（対象範囲外）";
+
+/**
+ * 対象納品書がスコープ内か（PLANT = 出荷書の出荷元拠点 ∪ OWN = 作成者）。
+ * ALL は素通し。不存在は true — 既存の not-found 系エラー処理に委ねる。
+ */
+async function deliveryNoteInScope(
+  access: Access,
+  userId: string,
+  key: DocKey,
+): Promise<boolean> {
+  if (access.kind === "ALL") return true;
+  const row = await prisma.deliveryNote.findUnique({
+    where: { yearMonth_seq: key },
+    select: {
+      createdBy: true,
+      shippingOrder: { select: { fromPlantId: true } },
+    },
+  });
+  if (!row) return true;
+  return rowInScope(
+    access,
+    { plantIds: [row.shippingOrder.fromPlantId], createdBy: row.createdBy },
+    userId,
+  );
+}
 
 const itemInput = z.object({
   productId: z.string().min(1, "製品を選択してください"),
@@ -172,6 +199,13 @@ export async function createDeliveryNote(
       include: { salesOrder: true },
     });
     if (!shp) return actionError("対象の出荷書が見つかりません");
+    // スコープ行チェック（PLANT）: 対象出荷書の出荷元拠点がスコープ内であること。
+    if (
+      authz.access.kind !== "ALL" &&
+      !rowInScope(authz.access, { plantIds: [shp.fromPlantId] }, authz.userId)
+    ) {
+      return actionError(SCOPE_DENIED);
+    }
     if (shp.status !== "CONFIRMED" && shp.status !== "SHIPPED") {
       return actionError("確定済み・出荷済みの出荷書のみ納品書を作成できます");
     }
@@ -192,6 +226,7 @@ export async function createDeliveryNote(
           v.deliveryMethod === "DIRECT_TO_USER" ? v.endUserBpId : null,
         includePrice: v.includePrice,
         notes: trimOrNull(v.notes),
+        createdBy: authz.userId,
         items: {
           create: v.items.map((it, i) => toItemData(it, i, v.includePrice)),
         },
@@ -238,6 +273,9 @@ export async function updateDeliveryNote(
   const v = parsed.data;
   if (v.deliveryMethod === "DIRECT_TO_USER" && !v.endUserBpId) {
     return actionError("ユーザー直送では最終需要家を選択してください");
+  }
+  if (!(await deliveryNoteInScope(authz.access, authz.userId, key))) {
+    return actionError(SCOPE_DENIED);
   }
   try {
     const prior = await prisma.deliveryNote.findUnique({
@@ -325,6 +363,9 @@ export async function issueDeliveryNote(number: string): Promise<ActionResult> {
   if (!authz.ok) return actionError(authz.error);
   const key = parseDocKey(number, "DRN");
   if (!key) return actionError("納品番号が不正です");
+  if (!(await deliveryNoteInScope(authz.access, authz.userId, key))) {
+    return actionError(SCOPE_DENIED);
+  }
   try {
     const updated = await prisma.deliveryNote.updateMany({
       where: { ...key, status: "DRAFT" },
@@ -353,6 +394,9 @@ export async function markDelivered(number: string): Promise<ActionResult> {
   if (!authz.ok) return actionError(authz.error);
   const key = parseDocKey(number, "DRN");
   if (!key) return actionError("納品番号が不正です");
+  if (!(await deliveryNoteInScope(authz.access, authz.userId, key))) {
+    return actionError(SCOPE_DENIED);
+  }
   try {
     const updated = await prisma.deliveryNote.updateMany({
       where: { ...key, status: "ISSUED" },

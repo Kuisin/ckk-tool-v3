@@ -6,13 +6,15 @@
  * Prisma Decimal はここで Number() へ変換してからクライアントへ渡す。
  */
 
+import { ownOrPlantWhere, plantWhere, rowInScope } from "@ckk/authz-core";
 import type {
   DeliveryMethod,
   DeliveryNote,
   DeliveryNoteStatus,
   ShippingOrderCandidate,
 } from "@/components/shipping/delivery-notes/model";
-import { prisma } from "@/lib/db";
+import { checkPermission } from "@/lib/authz";
+import { type Prisma, prisma } from "@/lib/db";
 import {
   type DocKey,
   formatDocNumber,
@@ -107,20 +109,40 @@ function mapDeliveryNote(r: DeliveryNoteRow): DeliveryNote {
 
 /** 一覧 — 新しい採番から順に。 */
 export async function fetchDeliveryNotes(): Promise<DeliveryNote[]> {
+  // スコープ行フィルタ（PLANT = 出荷書の出荷元拠点経由 ∪ OWN = 作成者）。
+  // ALL は {} で従来通り全件。
+  const authz = await checkPermission("delivery_note", "READ");
+  if (!authz.ok) return [];
   const rows = await prisma.deliveryNote.findMany({
     take: LIST_FETCH_CAP,
+    where: ownOrPlantWhere(authz.access, authz.userId, {
+      plantClause: (ids) => ({ shippingOrder: { fromPlantId: { in: ids } } }),
+      ownColumn: "createdBy",
+    }) as Prisma.DeliveryNoteWhereInput,
     include: DELIVERY_NOTE_INCLUDE,
     orderBy: [{ yearMonth: "desc" }, { seq: "desc" }],
   });
   return rows.map(mapDeliveryNote);
 }
 
-/** 1件取得 — 未存在は null。 */
+/** 1件取得 — 未存在・スコープ外は null。 */
 export async function fetchDeliveryNote(
   key: DocKey,
 ): Promise<DeliveryNote | null> {
+  const authz = await checkPermission("delivery_note", "READ");
+  if (!authz.ok) return null;
   const row = await findRow(key);
-  return row ? mapDeliveryNote(row) : null;
+  if (!row) return null;
+  if (
+    !rowInScope(
+      authz.access,
+      { plantIds: [row.shippingOrder.fromPlantId], createdBy: row.createdBy },
+      authz.userId,
+    )
+  ) {
+    return null;
+  }
+  return mapDeliveryNote(row);
 }
 
 // ── 新規フォーム用: 出荷書候補（確定済み・出荷済みのみ） ─────────────────────
@@ -132,8 +154,17 @@ export async function fetchDeliveryNote(
 export async function fetchShippingOrderCandidates(): Promise<
   ShippingOrderCandidate[]
 > {
+  // SCOPED ユーザーにはスコープ拠点の出荷書のみ候補に出す。
+  const authz = await checkPermission("delivery_note", "READ");
+  if (!authz.ok) return [];
   const rows = await prisma.shippingOrder.findMany({
-    where: { status: { in: ["CONFIRMED", "SHIPPED"] } },
+    where: {
+      status: { in: ["CONFIRMED", "SHIPPED"] },
+      ...(plantWhere(
+        authz.access,
+        "fromPlantId",
+      ) as Prisma.ShippingOrderWhereInput),
+    },
     include: {
       salesOrder: {
         include: { customerBp: true, customerBranchBp: true, endUserBp: true },
