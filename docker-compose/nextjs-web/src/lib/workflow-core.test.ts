@@ -127,13 +127,17 @@ describe("defaultOrder", () => {
 // ─── 実行側（開始可否・数量伝播・DAG・レイアウト・WIP・完了判定） ────────────
 
 import {
+  branchableQuantity,
   canStartStep,
+  computeFinishedQuantity,
   computeWipByStep,
   downstreamStepIds,
   type ExecDep,
   expectedInput,
+  isOffMainline,
   isWorkOrderComplete,
   layoutWorkflowGraph,
+  resolveLinkQuantity,
   type StepLinkState,
   type StepState,
   validateDagShape,
@@ -494,5 +498,241 @@ describe("downstreamStepIds", () => {
 
   it("先頭の下流は全工程", () => {
     expect(downstreamStepIds("s1", ctx).sort()).toEqual(["br", "s2", "s3"]);
+  });
+});
+
+// ─── 分岐/合流の数量セマンティクス（オフメインライン・動的エッジ） ────────────
+
+describe("isOffMainline / resolveLinkQuantity", () => {
+  // メインライン a(10) → b(20) → c(30)。分岐 a→r1(40, 静的2) → r2(50, 動的) → c(動的)
+  const steps = [
+    step("a", 100, 10, "COMPLETED", {
+      inputQuantity: 10,
+      outputSuccess: 8,
+      defectRework: 2,
+      defectSemiFinished: 0,
+      defectScrap: 0,
+    }),
+    step("b", 200, 20, "COMPLETED", { inputQuantity: 8, outputSuccess: 8 }),
+    step("c", 300, 30),
+    step("r1", 400, 40, "COMPLETED", {
+      inputQuantity: 2,
+      outputSuccess: 1,
+      defectScrap: 1,
+      defectSemiFinished: 0,
+      defectRework: 0,
+    }),
+    step("r2", 500, 50),
+  ];
+  const links: StepLinkState[] = [
+    { sourceStepId: "a", targetStepId: "r1", routedQuantity: 2 },
+    { sourceStepId: "r1", targetStepId: "r2", routedQuantity: 0 },
+    { sourceStepId: "r2", targetStepId: "c", routedQuantity: 0 },
+  ];
+  const ctx: WorkflowCtx = { plannedQuantity: 10, steps, links, execDeps: [] };
+
+  it("分岐系列はオフメインライン・合流先はメインライン", () => {
+    expect(isOffMainline("r1", ctx)).toBe(true);
+    expect(isOffMainline("r2", ctx)).toBe(true);
+    expect(isOffMainline("c", ctx)).toBe(false); // 合流先（流入元は高 sortOrder）
+    expect(isOffMainline("a", ctx)).toBe(false);
+    expect(isOffMainline("b", ctx)).toBe(false);
+  });
+
+  it("動的リンクは分岐元の良品数へ解決・未完了は null・静的はそのまま", () => {
+    expect(resolveLinkQuantity(links[0], steps)).toBe(2); // 静的
+    expect(resolveLinkQuantity(links[1], steps)).toBe(1); // r1 良品 1
+    expect(resolveLinkQuantity(links[2], steps)).toBe(null); // r2 未完了
+  });
+
+  it("チェーン内の受入は上流の不良に追従（r2 = r1 の良品 1）", () => {
+    expect(expectedInput("r2", ctx)).toBe(1);
+  });
+});
+
+describe("expectedInput — 合流の加算", () => {
+  it("合流先 = メインライン前工程の良品 + 分岐流入", () => {
+    // a 完了(良8/手2) → b 完了(良7) → c 合流先。分岐 a→r(静的2) 完了(良2) → c(動的)
+    const steps = [
+      step("a", 100, 10, "COMPLETED", { outputSuccess: 8, defectRework: 2 }),
+      step("b", 200, 20, "COMPLETED", { inputQuantity: 8, outputSuccess: 7 }),
+      step("c", 300, 30),
+      step("r", 400, 40, "COMPLETED", { inputQuantity: 2, outputSuccess: 2 }),
+    ];
+    const links: StepLinkState[] = [
+      { sourceStepId: "a", targetStepId: "r", routedQuantity: 2 },
+      { sourceStepId: "r", targetStepId: "c", routedQuantity: 0 },
+    ];
+    const ctx: WorkflowCtx = {
+      plannedQuantity: 10,
+      steps,
+      links,
+      execDeps: [],
+    };
+    expect(expectedInput("c", ctx)).toBe(7 + 2);
+  });
+
+  it("合流先より後の工程は合流先の良品数を継ぐ", () => {
+    // a 完了 → b 合流先（完了・良9） → c。分岐 a→r(静的2) → b(動的)
+    const steps = [
+      step("a", 100, 10, "COMPLETED", { outputSuccess: 8, defectRework: 2 }),
+      step("b", 200, 20, "COMPLETED", { inputQuantity: 10, outputSuccess: 9 }),
+      step("c", 300, 30),
+      step("r", 400, 40, "COMPLETED", { inputQuantity: 2, outputSuccess: 2 }),
+    ];
+    const links: StepLinkState[] = [
+      { sourceStepId: "a", targetStepId: "r", routedQuantity: 2 },
+      { sourceStepId: "r", targetStepId: "b", routedQuantity: 0 },
+    ];
+    const ctx: WorkflowCtx = {
+      plannedQuantity: 10,
+      steps,
+      links,
+      execDeps: [],
+    };
+    expect(expectedInput("c", ctx)).toBe(9);
+  });
+
+  it("分岐元が未完了なら合流先の受入は未確定（null）", () => {
+    const steps = [
+      step("a", 100, 10, "COMPLETED", { outputSuccess: 8, defectRework: 2 }),
+      step("b", 200, 20, "COMPLETED", { inputQuantity: 8, outputSuccess: 8 }),
+      step("c", 300, 30),
+      step("r", 400, 40, "IN_PROGRESS", { inputQuantity: 2 }),
+    ];
+    const links: StepLinkState[] = [
+      { sourceStepId: "a", targetStepId: "r", routedQuantity: 2 },
+      { sourceStepId: "r", targetStepId: "c", routedQuantity: 0 },
+    ];
+    const ctx: WorkflowCtx = {
+      plannedQuantity: 10,
+      steps,
+      links,
+      execDeps: [],
+    };
+    expect(expectedInput("c", ctx)).toBe(null);
+  });
+});
+
+describe("branchableQuantity", () => {
+  const src = (over: Partial<StepState> = {}) =>
+    step("a", 100, 10, "COMPLETED", {
+      inputQuantity: 10,
+      outputSuccess: 8,
+      defectRework: 2,
+      defectSemiFinished: 0,
+      defectScrap: 0,
+      ...over,
+    });
+
+  it("メインライン後続があれば手直し数まで", () => {
+    const ctx: WorkflowCtx = {
+      plannedQuantity: 10,
+      steps: [src(), step("b", 200, 20)],
+      links: [],
+      execDeps: [],
+    };
+    expect(branchableQuantity("a", ctx)).toBe(2);
+  });
+
+  it("既存の静的分岐分を差し引く", () => {
+    const ctx: WorkflowCtx = {
+      plannedQuantity: 10,
+      steps: [src(), step("b", 200, 20), step("r", 300, 30)],
+      links: [{ sourceStepId: "a", targetStepId: "r", routedQuantity: 1 }],
+      execDeps: [],
+    };
+    expect(branchableQuantity("a", ctx)).toBe(1);
+  });
+
+  it("終端工程（後続なし）は 良品 + 手直し まで", () => {
+    const ctx: WorkflowCtx = {
+      plannedQuantity: 10,
+      steps: [src()],
+      links: [],
+      execDeps: [],
+    };
+    expect(branchableQuantity("a", ctx)).toBe(10);
+  });
+
+  it("未完了の工程は null", () => {
+    const ctx: WorkflowCtx = {
+      plannedQuantity: 10,
+      steps: [step("a", 100, 10)],
+      links: [],
+      execDeps: [],
+    };
+    expect(branchableQuantity("a", ctx)).toBe(null);
+  });
+});
+
+describe("computeFinishedQuantity", () => {
+  it("直列: 最終工程の良品のみ", () => {
+    const steps = [
+      step("a", 100, 10, "COMPLETED", { outputSuccess: 9 }),
+      step("b", 200, 20, "COMPLETED", { inputQuantity: 9, outputSuccess: 8 }),
+    ];
+    expect(computeFinishedQuantity(steps, [])).toBe(8);
+  });
+
+  it("合流なし分岐: メインライン終端 + 分岐末端の合計", () => {
+    const steps = [
+      step("a", 100, 10, "COMPLETED", { outputSuccess: 8, defectRework: 2 }),
+      step("b", 200, 20, "COMPLETED", { inputQuantity: 8, outputSuccess: 8 }),
+      step("r", 300, 30, "COMPLETED", { inputQuantity: 2, outputSuccess: 1 }),
+    ];
+    const links: StepLinkState[] = [
+      { sourceStepId: "a", targetStepId: "r", routedQuantity: 2 },
+    ];
+    expect(computeFinishedQuantity(steps, links)).toBe(8 + 1);
+  });
+
+  it("合流あり: 合流先のみ計上（動的流出を持つ分岐末端は 0）", () => {
+    const steps = [
+      step("a", 100, 10, "COMPLETED", { outputSuccess: 8, defectRework: 2 }),
+      step("b", 200, 20, "COMPLETED", { inputQuantity: 10, outputSuccess: 10 }),
+      step("r", 300, 30, "COMPLETED", { inputQuantity: 2, outputSuccess: 2 }),
+    ];
+    const links: StepLinkState[] = [
+      { sourceStepId: "a", targetStepId: "r", routedQuantity: 2 },
+      { sourceStepId: "r", targetStepId: "b", routedQuantity: 0 },
+    ];
+    expect(computeFinishedQuantity(steps, links)).toBe(10);
+  });
+
+  it("終端工程からの分岐: 静的流出は手直し優先で差し引き残良品を計上", () => {
+    // a 終端 良8/手2、a→r 静的3（手2 + 良1）→ a の残 7、r 良3 → 計 10
+    const steps = [
+      step("a", 100, 10, "COMPLETED", { outputSuccess: 8, defectRework: 2 }),
+      step("r", 300, 30, "COMPLETED", { inputQuantity: 3, outputSuccess: 3 }),
+    ];
+    const links: StepLinkState[] = [
+      { sourceStepId: "a", targetStepId: "r", routedQuantity: 3 },
+    ];
+    expect(computeFinishedQuantity(steps, links)).toBe(7 + 3);
+  });
+});
+
+describe("layoutWorkflowGraph — レーンと暗黙フロー", () => {
+  it("メインラインはレーン 0・分岐系列はレーン 1、合流先はより後の layer", () => {
+    const steps = [
+      step("a", 1, 10, "COMPLETED"),
+      step("b", 2, 20),
+      step("r", 3, 30),
+    ];
+    const links: StepLinkState[] = [
+      { sourceStepId: "a", targetStepId: "r", routedQuantity: 2 },
+      { sourceStepId: "r", targetStepId: "b", routedQuantity: 0 },
+    ];
+    const { nodes, edges } = layoutWorkflowGraph(steps, links);
+    const byId = new Map(nodes.map((n) => [n.id, n]));
+    expect(byId.get("a")?.row).toBe(0);
+    expect(byId.get("b")?.row).toBe(0);
+    expect(byId.get("r")?.row).toBe(1);
+    expect(
+      edges.some((e) => e.kind === "flow" && e.from === "a" && e.to === "b"),
+    ).toBe(true);
+    expect(byId.get("r")?.layer).toBeGreaterThan(byId.get("a")?.layer ?? 99);
+    expect(byId.get("b")?.layer).toBeGreaterThan(byId.get("r")?.layer ?? 99);
   });
 });

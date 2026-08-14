@@ -23,6 +23,7 @@ import {
   abortStepExecution,
   addBranchSeries,
   completeStepExecution,
+  removeBranchSeries,
   rollbackStepExecution,
   type StepActionResult,
   startStepExecution,
@@ -223,6 +224,41 @@ export async function addBranch(
     return result;
   } catch (e) {
     return failed(e, "分岐の追加に失敗しました");
+  }
+}
+
+const removeBranchInput = z.object({
+  workOrderNumber: z.number().int().positive(),
+  headStepId: z.string().min(1),
+});
+
+export type RemoveBranchInput = z.infer<typeof removeBranchInput>;
+
+/** 分岐系列の削除（全工程が未着手 PENDING の間のみ）。 */
+export async function removeBranch(
+  payload: RemoveBranchInput,
+): Promise<StepActionResult> {
+  const denied = await deniedStepPermission("UPDATE");
+  if (denied) return denied;
+  const parsed = removeBranchInput.safeParse(payload);
+  if (!parsed.success) {
+    return { ok: false, errors: ["入力が不正です"] };
+  }
+  const v = parsed.data;
+  try {
+    const wo = await prisma.workOrder.findUnique({
+      where: { workOrderNumber: v.workOrderNumber },
+      select: { id: true },
+    });
+    if (!wo) return { ok: false, errors: ["指示書が見つかりません"] };
+    const result = await removeBranchSeries({
+      workOrderId: wo.id,
+      headStepId: v.headStepId,
+    });
+    if (result.ok) revalidate(v.workOrderNumber);
+    return result;
+  } catch (e) {
+    return failed(e, "分岐の削除に失敗しました");
   }
 }
 
