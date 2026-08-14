@@ -15,6 +15,7 @@ import type {
 import { materialAtp } from "@/lib/atp";
 import { prisma } from "@/lib/db";
 import { type LocalizedText, localized } from "@/lib/format";
+import { storageLabelOf } from "../products/data";
 import { fetchInventoryTransactions } from "../shared";
 
 const factoryName = (f: { name: unknown } | null) =>
@@ -25,7 +26,12 @@ export async function fetchMaterialInventories(): Promise<
   MaterialInventoryRow[]
 > {
   const rows = await prisma.materialInventory.findMany({
-    include: { material: true, factory: true },
+    include: {
+      material: true,
+      factory: true,
+      storageLocation: true,
+      shelf: true,
+    },
     orderBy: { updatedAt: "desc" },
   });
 
@@ -57,7 +63,14 @@ export async function fetchMaterialInventories(): Promise<
       id: r.id,
       materialCode: r.material.code,
       materialName: localized(r.material.name as LocalizedText | null),
+      factoryId: r.factoryId,
       factoryName: factoryName(r.factory),
+      storageLocationId: r.storageLocationId,
+      storageLocationName: r.storageLocation
+        ? localized(r.storageLocation.name as LocalizedText | null)
+        : null,
+      shelfId: r.shelfId,
+      shelfCode: r.shelf?.code ?? null,
       quantity,
       reservedQuantity,
       available: quantity - reservedQuantity,
@@ -74,7 +87,12 @@ export async function fetchMaterialInventoryDetail(
 ): Promise<MaterialInventoryDetailData | null> {
   const r = await prisma.materialInventory.findUnique({
     where: { id },
-    include: { material: true, factory: true },
+    include: {
+      material: true,
+      factory: true,
+      storageLocation: true,
+      shelf: true,
+    },
   });
   if (!r) return null;
 
@@ -96,6 +114,7 @@ export async function fetchMaterialInventoryDetail(
     reservedQuantity,
     available: quantity - reservedQuantity,
     unit: r.unit,
+    storageLabel: storageLabelOf(r),
     location: r.location,
     notes: r.notes,
     updatedAt: r.updatedAt.toISOString(),

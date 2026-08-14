@@ -18,7 +18,7 @@ import { formatDate, formatDateTime } from "@/lib/format";
 import { InventoryTransactionsTable } from "../InventoryTransactionsTable";
 import type { MaterialInventoryDetailData } from "./model";
 
-const BASE_PATH = "/production/inventory/materials";
+const BASE_PATH = "/production/inventory?tab=materials";
 
 /** 入荷日未定マーカー（lib/atp-core buildAtpTimeline と一致）。 */
 const UNDATED_MARKER = "9999-12-31";
@@ -32,7 +32,7 @@ export function MaterialInventoryDetail({
   const [tab, setTab] = useTabParam("atp");
   return (
     <DetailShell
-      breadcrumbs={["生産", { label: "素材在庫", href: BASE_PATH }, "詳細"]}
+      breadcrumbs={["生産", { label: "在庫管理", href: BASE_PATH }, "詳細"]}
       title={record.materialCode}
       updatedAt={formatDateTime(record.updatedAt)}
     >
@@ -83,7 +83,10 @@ export function MaterialInventoryDetail({
               : "—"
           }
         />
-        <FieldValue label="保管場所" value={record.location || "—"} />
+        <FieldValue
+          label="保管場所"
+          value={record.storageLabel ?? record.location ?? "未割当"}
+        />
         <FieldValue label="備考" value={record.notes || "—"} />
       </SummaryGrid>
 

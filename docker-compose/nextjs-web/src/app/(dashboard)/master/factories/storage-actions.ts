@@ -137,9 +137,7 @@ export async function updateStorageLocation(
 }
 
 /** 保管場所の削除 — 在庫・棚から参照されていない場合のみ（棚は同時削除）。 */
-export async function deleteStorageLocation(
-  id: number,
-): Promise<ActionResult> {
+export async function deleteStorageLocation(id: number): Promise<ActionResult> {
   const authz = await checkPermission("master", "DELETE");
   if (!authz.ok) return actionError(authz.error);
   try {

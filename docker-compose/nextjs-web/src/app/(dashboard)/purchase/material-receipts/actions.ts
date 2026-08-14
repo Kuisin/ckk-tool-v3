@@ -85,7 +85,7 @@ export async function createMaterialReceipt(
     revalidatePath(BASE_PATH);
     revalidatePath(`${BASE_PATH}/${receipt.id}`);
     // 在庫台帳（数量）が動くため在庫ページも再検証する。
-    revalidatePath("/production/inventory/materials");
+    revalidatePath("/production/inventory");
     return actionOk({ id: receipt.id });
   } catch (e) {
     return actionError(prismaErrorMessage(e, "素材入荷の登録に失敗しました"));

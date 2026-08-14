@@ -1,10 +1,6 @@
-import { MaterialInventoryTable } from "@/components/production/inventory/materials/MaterialInventoryTable";
-import { fetchMaterialInventories } from "./data";
+import { redirect } from "next/navigation";
 
-export const dynamic = "force-dynamic";
-
-/** 素材在庫 一覧 (PD05). */
-export default async function ProductionInventoryMaterialsPage() {
-  const rows = await fetchMaterialInventories();
-  return <MaterialInventoryTable rows={rows} />;
+/** 旧 素材在庫 (PD05) 一覧 — 在庫管理（統合）へリダイレクト。 */
+export default function ProductionInventoryMaterialsPage() {
+  redirect("/production/inventory?tab=materials");
 }

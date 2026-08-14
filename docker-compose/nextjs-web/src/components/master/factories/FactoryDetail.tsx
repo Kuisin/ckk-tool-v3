@@ -41,8 +41,8 @@ import { COUNTRY_LABEL } from "@/lib/enum-labels";
 import { formatDate, formatDateTime } from "@/lib/format";
 import { DeleteFactoryModal, ToggleFactoryActiveModal } from "./FactoryModals";
 import {
-  StorageLocationsPanel,
   type StorageLocationRow,
+  StorageLocationsPanel,
 } from "./StorageLocationsPanel";
 
 const BASE_PATH = "/master/factories";
@@ -207,10 +207,10 @@ export function FactoryDetail({
                 </Group>
                 <Anchor
                   component={Link}
-                  href="/production/inventory/products"
+                  href="/production/inventory?tab=products"
                   size="sm"
                 >
-                  製品在庫一覧へ
+                  在庫管理（製品）へ
                 </Anchor>
               </Group>
               {inventory.products.length === 0 ? (
@@ -297,10 +297,10 @@ export function FactoryDetail({
                 </Group>
                 <Anchor
                   component={Link}
-                  href="/production/inventory/materials"
+                  href="/production/inventory?tab=materials"
                   size="sm"
                 >
-                  素材在庫一覧へ
+                  在庫管理（素材）へ
                 </Anchor>
               </Group>
               {inventory.materials.length === 0 ? (

@@ -1,13 +1,6 @@
-import { ProductInventoryTable } from "@/components/production/inventory/products/ProductInventoryTable";
-import { fetchProductInventories, fetchWipRows } from "./data";
+import { redirect } from "next/navigation";
 
-export const dynamic = "force-dynamic";
-
-/** 製品在庫 一覧 (PD04) — 製品在庫 / 仕掛品。 */
-export default async function ProductionInventoryProductsPage() {
-  const [rows, wipRows] = await Promise.all([
-    fetchProductInventories(),
-    fetchWipRows(),
-  ]);
-  return <ProductInventoryTable rows={rows} wipRows={wipRows} />;
+/** 旧 製品在庫 (PD04) 一覧 — 在庫管理（統合）へリダイレクト。 */
+export default function ProductionInventoryProductsPage() {
+  redirect("/production/inventory?tab=products");
 }

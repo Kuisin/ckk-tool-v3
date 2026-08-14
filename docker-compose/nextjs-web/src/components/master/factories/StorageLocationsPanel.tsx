@@ -40,10 +40,10 @@ import {
   updateStorageShelf,
 } from "@/app/(dashboard)/master/factories/storage-actions";
 import {
+  CancelButton,
   GhostButton,
   PrimaryButton,
   SaveButton,
-  CancelButton,
 } from "@/components/ui/buttons";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { openConfirm } from "@/components/ui/modals";
@@ -352,10 +352,7 @@ function LocationModal({
             {...form.getInputProps("nameJa")}
           />
           <TextInput label="名称（英語）" {...form.getInputProps("nameEn")} />
-          <NumberInput
-            label="表示順"
-            {...form.getInputProps("sortOrder")}
-          />
+          <NumberInput label="表示順" {...form.getInputProps("sortOrder")} />
           <Switch
             checked={form.values.isActive}
             label="有効"
