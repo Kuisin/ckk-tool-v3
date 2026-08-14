@@ -155,20 +155,13 @@ export const appList: AppEntry[] = [
     requiredPermission: "approve",
   },
   {
-    key: "product-inventory",
-    label: "製品在庫",
+    // 在庫管理 — 旧 製品在庫 (PD04) / 素材在庫 (PD05) を統合した単一アプリ。
+    // 製品・素材・仕掛品・ロケーション（保管場所×棚）+ 在庫移動。
+    key: "inventory",
+    label: "在庫管理",
     operationCode: "PD04",
-    href: "/production/inventory/products",
+    href: "/production/inventory",
     icon: "IconBoxSeam",
-    category: "生産",
-    requiredPermission: "inventory",
-  },
-  {
-    key: "material-inventory",
-    label: "素材在庫",
-    operationCode: "PD05",
-    href: "/production/inventory/materials",
-    icon: "IconStack2",
     category: "生産",
     requiredPermission: "inventory",
   },

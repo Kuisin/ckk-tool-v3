@@ -12,7 +12,14 @@ export interface MaterialInventoryRow {
   id: string;
   materialCode: string;
   materialName: string;
+  factoryId: number | null;
   factoryName: string | null;
+  /** 保管場所（null = 未割当）。 */
+  storageLocationId: number | null;
+  storageLocationName: string | null;
+  /** 棚（null = 場所内未割当）。 */
+  shelfId: number | null;
+  shelfCode: string | null;
   quantity: number;
   reservedQuantity: number;
   /** 利用可能数 = quantity − reservedQuantity。 */
@@ -45,6 +52,8 @@ export interface MaterialInventoryDetailData {
   reservedQuantity: number;
   available: number;
   unit: string;
+  /** 保管場所 / 棚 の表示ラベル（未割当は null — 旧 location を後段で併記）。 */
+  storageLabel: string | null;
   location: string | null;
   notes: string | null;
   updatedAt: string;

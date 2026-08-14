@@ -17,7 +17,14 @@ export interface ProductInventoryRow {
   productName: string;
   /** 製品コード（PRD-… 導出。レガシーは未採番 → null）。 */
   productCode: string | null;
+  factoryId: number | null;
   factoryName: string | null;
+  /** 保管場所（null = 未割当）。 */
+  storageLocationId: number | null;
+  storageLocationName: string | null;
+  /** 棚（null = 場所内未割当）。 */
+  shelfId: number | null;
+  shelfCode: string | null;
   /** ロット番号 = 指示書番号。 */
   lotNumber: number | null;
   quantity: number;
@@ -51,6 +58,8 @@ export interface ProductInventoryDetailData {
   reservedQuantity: number;
   available: number;
   isSemiFinished: boolean;
+  /** 保管場所 / 棚 の表示ラベル（未割当は null — 旧 location を後段で併記）。 */
+  storageLabel: string | null;
   location: string | null;
   /** 半製品の発生工程（指示書 #N / 工程名）。sourceStepId がある場合のみ。 */
   sourceStepLabel: string | null;

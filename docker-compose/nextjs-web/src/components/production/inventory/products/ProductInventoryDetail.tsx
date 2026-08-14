@@ -24,7 +24,7 @@ import {
 } from "../model";
 import type { ProductInventoryDetailData } from "./model";
 
-const BASE_PATH = "/production/inventory/products";
+const BASE_PATH = "/production/inventory?tab=products";
 
 export function ProductInventoryDetail({
   record,
@@ -35,7 +35,7 @@ export function ProductInventoryDetail({
   const [tab, setTab] = useTabParam("reservations");
   return (
     <DetailShell
-      breadcrumbs={["生産", { label: "製品在庫", href: BASE_PATH }, "詳細"]}
+      breadcrumbs={["生産", { label: "在庫管理", href: BASE_PATH }, "詳細"]}
       status={
         record.isSemiFinished ? (
           <Badge color="orange" variant="light">
@@ -115,7 +115,10 @@ export function ProductInventoryDetail({
             />
           }
         />
-        <FieldValue label="保管場所" value={record.location || "—"} />
+        <FieldValue
+          label="保管場所"
+          value={record.storageLabel ?? record.location ?? "未割当"}
+        />
         {record.sourceStepLabel && (
           <FieldValue label="発生工程" value={record.sourceStepLabel} />
         )}

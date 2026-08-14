@@ -4,10 +4,47 @@ import {
   type FactoryDetailData,
   type FactoryInventorySummary,
 } from "@/components/master/factories/FactoryDetail";
+import type { StorageLocationRow } from "@/components/master/factories/StorageLocationsPanel";
 import { fetchAuditEntries } from "@/lib/audit";
 import { prisma } from "@/lib/db";
 import { formatProductNumber } from "@/lib/doc-number";
 import { type LocalizedText, localized } from "@/lib/format";
+
+/** 保管場所タブ用 — 工場の保管場所 + 棚（表示順 → コード順）。 */
+async function fetchStorageLocations(
+  factoryId: number,
+): Promise<StorageLocationRow[]> {
+  const rows = await prisma.storageLocation.findMany({
+    where: { factoryId },
+    include: {
+      shelves: { orderBy: [{ sortOrder: "asc" }, { code: "asc" }] },
+    },
+    orderBy: [{ sortOrder: "asc" }, { code: "asc" }],
+  });
+  return rows.map((r) => {
+    const name = r.name as LocalizedText | null;
+    return {
+      id: r.id,
+      code: r.code,
+      nameJa: name?.ja ?? "",
+      nameEn: name?.en ?? "",
+      sortOrder: r.sortOrder,
+      isActive: r.isActive,
+      notes: r.notes ?? "",
+      shelves: r.shelves.map((s) => {
+        const sname = s.name as LocalizedText | null;
+        return {
+          id: s.id,
+          code: s.code,
+          nameJa: sname?.ja ?? "",
+          nameEn: sname?.en ?? "",
+          sortOrder: s.sortOrder,
+          isActive: s.isActive,
+        };
+      }),
+    };
+  });
+}
 
 export const dynamic = "force-dynamic";
 
@@ -66,10 +103,11 @@ export default async function MasterFactoriesDetailPage({
   const { id: idParam } = await params;
   const id = Number(idParam);
   if (!Number.isInteger(id)) notFound();
-  const [r, auditEntries, inventory] = await Promise.all([
+  const [r, auditEntries, inventory, storageLocations] = await Promise.all([
     prisma.factory.findUnique({ where: { id } }),
     fetchAuditEntries("factories", String(id)),
     fetchInventorySummary(id),
+    fetchStorageLocations(id),
   ]);
   if (!r) notFound();
 
@@ -100,6 +138,7 @@ export default async function MasterFactoriesDetailPage({
       auditEntries={auditEntries}
       inventory={inventory}
       record={record}
+      storageLocations={storageLocations}
     />
   );
 }

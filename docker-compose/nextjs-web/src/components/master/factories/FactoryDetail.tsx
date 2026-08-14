@@ -40,6 +40,10 @@ import { useTabParam } from "@/hooks/useUrlState";
 import { COUNTRY_LABEL } from "@/lib/enum-labels";
 import { formatDate, formatDateTime } from "@/lib/format";
 import { DeleteFactoryModal, ToggleFactoryActiveModal } from "./FactoryModals";
+import {
+  type StorageLocationRow,
+  StorageLocationsPanel,
+} from "./StorageLocationsPanel";
 
 const BASE_PATH = "/master/factories";
 
@@ -97,10 +101,12 @@ export function FactoryDetail({
   record,
   auditEntries,
   inventory,
+  storageLocations,
 }: {
   record: FactoryDetailData;
   auditEntries: AuditEntry[];
   inventory: FactoryInventorySummary;
+  storageLocations: StorageLocationRow[];
 }) {
   const router = useRouter();
   // アクティブタブを ?tab= に保持（URL 共有でタブまで再現）
@@ -170,6 +176,7 @@ export function FactoryDetail({
       <Tabs onChange={setTab} value={tab}>
         <Tabs.List>
           <Tabs.Tab value="overview">概要</Tabs.Tab>
+          <Tabs.Tab value="storage">保管場所</Tabs.Tab>
           <Tabs.Tab value="related">関連</Tabs.Tab>
           <Tabs.Tab value="history">履歴</Tabs.Tab>
         </Tabs.List>
@@ -178,6 +185,13 @@ export function FactoryDetail({
           <Stack gap="md">
             <FieldValue label="備考" value={record.notes || "—"} />
           </Stack>
+        </Tabs.Panel>
+
+        <Tabs.Panel pt="md" value="storage">
+          <StorageLocationsPanel
+            factoryId={record.id}
+            locations={storageLocations}
+          />
         </Tabs.Panel>
 
         <Tabs.Panel pt="md" value="related">
@@ -193,10 +207,10 @@ export function FactoryDetail({
                 </Group>
                 <Anchor
                   component={Link}
-                  href="/production/inventory/products"
+                  href="/production/inventory?tab=products"
                   size="sm"
                 >
-                  製品在庫一覧へ
+                  在庫管理（製品）へ
                 </Anchor>
               </Group>
               {inventory.products.length === 0 ? (
@@ -283,10 +297,10 @@ export function FactoryDetail({
                 </Group>
                 <Anchor
                   component={Link}
-                  href="/production/inventory/materials"
+                  href="/production/inventory?tab=materials"
                   size="sm"
                 >
-                  素材在庫一覧へ
+                  在庫管理（素材）へ
                 </Anchor>
               </Group>
               {inventory.materials.length === 0 ? (

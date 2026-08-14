@@ -427,7 +427,7 @@ export async function orderPurchaseOrder(
     });
     revalidate(poNumber);
     // ATP（素材在庫の入荷予定）が変わるため在庫ページも再検証する。
-    revalidatePath("/production/inventory/materials");
+    revalidatePath("/production/inventory");
     return actionOk();
   } catch (e) {
     return actionError(prismaErrorMessage(e, "発注に失敗しました"));
@@ -568,7 +568,7 @@ export async function receivePurchaseOrderItems(
     }
     revalidate(poNumber);
     revalidatePath(RECEIPTS_PATH);
-    revalidatePath("/production/inventory/materials");
+    revalidatePath("/production/inventory");
     return actionOk({ completed: result.completed });
   } catch (e) {
     if (e instanceof Error && e.message.startsWith("GUARD:")) {
