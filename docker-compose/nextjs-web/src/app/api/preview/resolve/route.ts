@@ -16,6 +16,12 @@
  */
 
 import { timingSafeEqual } from "node:crypto";
+import {
+  buildPermissionSet,
+  decide,
+  loadPermissionRows,
+  loadScopeContext,
+} from "@ckk/authz-core";
 import { type NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { formatProductNumber } from "@/lib/doc-number";
@@ -37,7 +43,11 @@ function tokenMatches(given: string | null, expected: string): boolean {
   return a.length === b.length && timingSafeEqual(a, b);
 }
 
-/** user_permissions view（raw relation は使わない — CLAUDE.md RBAC）。 */
+/**
+ * READ 判定は authz-core decide()（コード ADMIN / system:ADMIN も許可 —
+ * 旧実装は完全一致 READ のみで管理者を取りこぼしていた）。
+ * users.is_active はビュー側で除外済みだが、username→id 解決で明示チェック。
+ */
 async function hasReadPermission(
   username: string,
   permissionCode: string,
@@ -47,14 +57,11 @@ async function hasReadPermission(
     select: { id: true, isActive: true },
   });
   if (!user?.isActive) return false;
-  const rows = await prisma.$queryRaw<{ ok: number }[]>`
-    SELECT 1 AS ok
-    FROM app.user_permissions
-    WHERE user_id = ${user.id}::uuid
-      AND permission_code = ${permissionCode}
-      AND action = 'READ'::app."ACTION"
-    LIMIT 1`;
-  return rows.length > 0;
+  const [set, ctx] = await Promise.all([
+    loadPermissionRows(prisma, user.id).then(buildPermissionSet),
+    loadScopeContext(prisma, user.id),
+  ]);
+  return decide(set, ctx, permissionCode, "READ").allowed;
 }
 
 /** 権限ありユーザー向けのリッチ本文（見つからなければ null → 汎用文のみ）。 */

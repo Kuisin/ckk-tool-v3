@@ -4,7 +4,7 @@
  * UserDetail — ユーザー管理（SY01）の詳細。読み取り専用。
  *
  * プロフィール概要 + ロール割当履歴（user_role_relation）+ 実効権限
- * （user_permissions ビュー = 集約済み・最上位スコープ）を表示する。
+ * （user_permissions ビュー = 有効ロール経由の全 grant 行）を表示する。
  */
 
 import { Badge, Paper, Table, Text, Title } from "@mantine/core";
