@@ -1,9 +1,9 @@
 ---
 title: "素材订购单 — 操作手册"
-description: "操作码 PU03。以 申请 → 审批 → 下单 → 入库 的流程管理向供应商的素材采购。采购单号为 PO-YYYYMM-NNNNN。"
+description: "操作码 PU02。以 申请 → 审批 → 下单 → 入库 的流程管理向供应商的素材采购。采购单号为 PO-YYYYMM-NNNNN。"
 screenshots: [purchase-order-list-01, purchase-order-detail-01]
 ---
-操作码 **PU03**。以 申请 → 审批 → 下单 → 入库 的流程管理向供应商的素材采购。采购单号为 **PO-YYYYMM-NNNNN**。
+操作码 **PU02**。以 申请 → 审批 → 下单 → 入库 的流程管理向供应商的素材采购。采购单号为 **PO-YYYYMM-NNNNN**。
 
 > 此应用目前仅在**开发环境（dev）**中开放。正式发布前，界面和操作步骤可能会有所调整。
 
@@ -11,8 +11,8 @@ screenshots: [purchase-order-list-01, purchase-order-detail-01]
 
 - 按供应商创建素材采购单（素材発注書），经审批流程后下单。创建・编辑・下单需要采购（下单）权限。
 - 已下单的明细会自动反映到[库存管理（PD04）素材标签页](/manual/zh/apps/material-inventory/user)的 **预计入库**（下次到货）中。
-- 「入库完成」会按明细自动创建[素材入库（素材入荷，PU01）](/manual/zh/apps/material-receipt/user)记录，并计入入库工厂的素材库存。
-- 也可以由[采购申请（購買依頼，PU04）](/manual/zh/apps/purchase-request/user)转换生成。
+- 「入库完成」会按明细自动创建[素材入库（素材入荷，PU03）](/manual/zh/apps/material-receipt/user)记录，并计入入库工厂的素材库存。
+- 也可以由[采购申请（購買依頼，PU01）](/manual/zh/apps/purchase-request/user)转换生成。
 
 ![素材采购单列表（采购单号、供应商、明细数、合计金额、状态、下单日列）](../../assets/screenshots/purchase-order-list-01.png)
 
@@ -47,7 +47,7 @@ screenshots: [purchase-order-list-01, purchase-order-detail-01]
 
 ## 常见问题
 
-**可以分批（部分）入库吗？** — 「入库完成」会一次性入库未入库的剩余数量。分批到货的部分请在[素材入库（PU01）](/manual/zh/apps/material-receipt/user)中直接登记。
+**可以分批（部分）入库吗？** — 「入库完成」会一次性入库未入库的剩余数量。分批到货的部分请在[素材入库（PU03）](/manual/zh/apps/material-receipt/user)中直接登记。
 
 **忘记填下单日了** — 若下单日为空时点击「下单」，执行下单的当天会自动成为下单日。
 

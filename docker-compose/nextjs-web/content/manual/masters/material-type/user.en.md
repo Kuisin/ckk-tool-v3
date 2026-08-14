@@ -1,9 +1,9 @@
 ---
 title: "Material Type — User Manual"
-description: "Operation code MS04. A registry for managing material types (材種) — the kinds of raw material you use. Products, mater…"
+description: "Operation code MS05. A registry for managing material types (材種) — the kinds of raw material you use. Products, mater…"
 screenshots: [master-material-type-list-01]
 ---
-Operation code **MS04**. A registry for managing material types (材種) — the kinds of raw material you use. [Products](/manual/en/masters/product/user), [material](/manual/en/masters/material/user) registration, and material-cost calculation in [trial estimates](/manual/en/apps/trial-estimate/user) all use the material types registered here.
+Operation code **MS05**. A registry for managing material types (材種) — the kinds of raw material you use. [Products](/manual/en/masters/product/user), [material](/manual/en/masters/material/user) registration, and material-cost calculation in [trial estimates](/manual/en/apps/trial-estimate/user) all use the material types registered here.
 
 ## What you can do with this app
 

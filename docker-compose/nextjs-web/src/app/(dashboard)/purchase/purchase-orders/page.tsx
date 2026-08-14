@@ -4,7 +4,7 @@ import { fetchPurchaseOrders } from "./data";
 
 export const dynamic = "force-dynamic";
 
-/** 素材発注書 一覧 (PU03). */
+/** 素材発注書 一覧 (PU02). */
 export default async function PurchasePurchaseOrdersPage() {
   const denied = await requireAppRead("purchase-orders");
   if (denied) return denied;

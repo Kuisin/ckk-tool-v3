@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * AddComponentModal.tsx — 採番構成 (MS0C) の構成要素 追加モーダル。
+ * AddComponentModal.tsx — 採番構成 (MS07) の構成要素 追加モーダル。
  *
  * 種別（kind）ごとに入力フィールドを切り替える。直径・全長は mm 入力から
  * コード（TEXT(径×10,'000') / TEXT(全長,'000')）をライブ導出して表示する。

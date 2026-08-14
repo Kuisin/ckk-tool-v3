@@ -1,9 +1,9 @@
 ---
 title: "Material Receipt — User Manual"
-description: "Operation code PU01. Records the arrival of materials at a plant and adds them to material inventory."
+description: "Operation code PU03. Records the arrival of materials at a plant and adds them to material inventory."
 screenshots: [material-receipt-list-01, material-receipt-detail-01]
 ---
-Operation code **PU01**. Records the arrival of materials at a plant and adds them to material inventory.
+Operation code **PU03**. Records the arrival of materials at a plant and adds them to material inventory.
 
 > This app is currently available **in the development (dev) environment only**. Screens and steps may change before the production release.
 
@@ -11,7 +11,7 @@ Operation code **PU01**. Records the arrival of materials at a plant and adds th
 
 A ledger of material receipt (素材入荷) records. There are two kinds of receipt.
 
-- **Purchase-order receipt** — created **automatically** by the "Complete receiving" action of a [material purchase order (素材発注書, PU03)](/manual/en/apps/purchase-order/user). The list shows a link to the PO number (PO-…).
+- **Purchase-order receipt** — created **automatically** by the "Complete receiving" action of a [material purchase order (素材発注書, PU02)](/manual/en/apps/purchase-order/user). The list shows a link to the PO number (PO-…).
 - **Direct procurement** — a receipt of material procured without a purchase order. You register it manually with **New** in this app.
 
 In both cases, the material is added to the receiving plant's material stock ([Inventory, PD04](/manual/en/apps/material-inventory/user)) at the same time the record is created. Registration requires the material-receipt permission.
@@ -44,7 +44,7 @@ After saving you are taken to the detail screen.
 
 ## FAQ
 
-**Do I register receipts for ordered materials here?** — No. PO receipts are created automatically by "Complete receiving" on the material purchase order (PU03). Only direct procurement is entered manually in this app.
+**Do I register receipts for ordered materials here?** — No. PO receipts are created automatically by "Complete receiving" on the material purchase order (PU02). Only direct procurement is entered manually in this app.
 
 **What about split (partial) deliveries?** — "Complete receiving" on a purchase order receives the remaining quantity all at once. Register partial arrivals directly in this app instead.
 

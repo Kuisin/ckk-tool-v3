@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * ProductForm.tsx — 製品 新規作成 / 編集フォーム (MS13 / MS23).
+ * ProductForm.tsx — 製品 新規作成 / 編集フォーム (MS14 / MS24).
  *
  * 製品コードは保存時に自動採番（PRD-YYYYMM-NNNN）。
  * 製品種別（SY04）を選ぶと、その種別が予め定義した入力項目が型付き（文字列/数値/

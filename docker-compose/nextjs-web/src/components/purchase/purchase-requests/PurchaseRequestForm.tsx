@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * PurchaseRequestForm — 購買依頼 新規作成 / 編集 (PU04, design.md §8.3)。
+ * PurchaseRequestForm — 購買依頼 新規作成 / 編集 (PU01, design.md §8.3)。
  *
  * ヘッダ（依頼理由 / 備考）+ 明細 1..N 行（素材 SearchSelect / 入荷先拠点
  * Select / 数量 + 単位 / 希望納期 / 備考）。単価・金額は持たない

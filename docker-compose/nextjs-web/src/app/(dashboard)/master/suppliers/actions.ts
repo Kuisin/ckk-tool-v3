@@ -1,7 +1,7 @@
 "use server";
 
 /**
- * Server Actions — 外注企業マスタ (MS06).
+ * Server Actions — 外注企業マスタ (MS03).
  *
  * VENDOR ロール + bp_vendor_attrs（仕入先/外注先種別・支払条件・振込先・
  * 標準リードタイム）。

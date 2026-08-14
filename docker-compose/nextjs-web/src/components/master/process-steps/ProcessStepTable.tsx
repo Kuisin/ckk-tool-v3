@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * ProcessStepTable.tsx — 工程マスタ 一覧 (MS07, design.md §8.1 / §13.3 / §14).
+ * ProcessStepTable.tsx — 工程マスタ 一覧 (MS08, design.md §8.1 / §13.3 / §14).
  *
  * 列: コード / 名称 / カテゴリ / 実施場所 / 同期可 / 検査 / 承認 / 状態。
  * 既定ソートは sort_order（カタログの参考順）。

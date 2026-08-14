@@ -1,6 +1,6 @@
 /**
  * bp-data.ts — server-side fetch/mapping shared by the BP master screens
- * (顧客 MS01 / 最終需要家 MS02 / 外注企業 MS06).
+ * (顧客 MS01 / 最終需要家 MS02 / 外注企業 MS03).
  *
  * One bp.business_partners row per 法人（支店は parent_id 参照の子 BP）;
  * role-specific attrs live in bp_customer_attrs / bp_vendor_attrs /

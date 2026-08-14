@@ -19,7 +19,7 @@ export async function generateMetadata({
   };
 }
 
-/** 購買依頼 詳細 (PU24). URL id = request_number（PRQ-YYYYMM-NNNNN）. */
+/** 購買依頼 詳細 (PU21). URL id = request_number（PRQ-YYYYMM-NNNNN）. */
 export default async function PurchasePurchaseRequestsDetailPage({
   params,
 }: {

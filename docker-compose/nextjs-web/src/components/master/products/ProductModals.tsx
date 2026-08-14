@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * ProductModals.tsx — 製品の削除 / 有効・無効切替 / 複製ポップアップ (MS03).
+ * ProductModals.tsx — 製品の削除 / 有効・無効切替 / 複製ポップアップ (MS04).
  *
  * Ported from design-preview (designs/master/products/_modals) and wired to
  * the Server Actions. 複製は新コードを自動採番して作成する。

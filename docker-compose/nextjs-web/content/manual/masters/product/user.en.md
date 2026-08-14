@@ -1,9 +1,9 @@
 ---
 title: "Product — User Manual"
-description: "Operation code MS03. A ledger for registering and managing the products you make. Trial Estimates, Quotes, and price …"
+description: "Operation code MS04. A ledger for registering and managing the products you make. Trial Estimates, Quotes, and price …"
 screenshots: [master-product-list-01, master-product-routes-01]
 ---
-Operation code **MS03**. A ledger for registering and managing the products you make. [Trial Estimates](/manual/en/apps/trial-estimate/user), [Quotes](/manual/en/apps/quote/user), and price lists are created by choosing a product registered here.
+Operation code **MS04**. A ledger for registering and managing the products you make. [Trial Estimates](/manual/en/apps/trial-estimate/user), [Quotes](/manual/en/apps/quote/user), and price lists are created by choosing a product registered here.
 
 ## What you can do here
 

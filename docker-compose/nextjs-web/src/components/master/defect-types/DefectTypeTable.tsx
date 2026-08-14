@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * DefectTypeTable.tsx — 不良種類 一覧 (MS09, design.md §8.1 / §14).
+ * DefectTypeTable.tsx — 不良種類 一覧 (MS0A, design.md §8.1 / §14).
  *
  * 列: コード / 名称 / 表示順 / 状態。詳細ページを持たない小マスタのため、
  * 行クリック・行アクションの「編集」はモーダルで完結する。

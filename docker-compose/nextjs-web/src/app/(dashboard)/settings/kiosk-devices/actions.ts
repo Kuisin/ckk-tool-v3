@@ -49,7 +49,7 @@ const uuidSchema = z.string().uuid("対象の指定が不正です");
 function revalidate() {
   revalidatePath(BASE_PATH);
   revalidatePath(`${BASE_PATH}/map`);
-  // フロアマップは MS0B（拠点詳細）/ PD04（在庫管理）とも共用
+  // フロアマップは MS0C（拠点詳細）/ PD04（在庫管理）とも共用
   revalidatePath("/master/plants");
   revalidatePath("/production/inventory");
 }
@@ -772,7 +772,7 @@ export async function unplaceDevice(id: string): Promise<ActionResult> {
 // ── フロアマップ: 管理 ──────────────────────────────────────────────────────
 
 /**
- * フロアマップは端末管理 (SY09)・拠点マスタ (MS0B フロアマップタブ)・保管場所 (MS0E) で共用 —
+ * フロアマップは端末管理 (SY09)・拠点マスタ (MS0C フロアマップタブ)・保管場所 (MS0E) で共用 —
  * kiosk / master どちらの権限でも管理できる。
  */
 async function checkFloorMapPermission(

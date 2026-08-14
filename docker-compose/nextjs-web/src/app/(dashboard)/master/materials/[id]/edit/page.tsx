@@ -6,7 +6,7 @@ import { type LocalizedText, localized } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
 
-/** 素材 編集 (MS25 edit) — コード構成はロック、属性のみ編集可. */
+/** 素材 編集 (MS26 edit) — コード構成はロック、属性のみ編集可. */
 export default async function MasterMaterialsEditPage({
   params,
 }: {

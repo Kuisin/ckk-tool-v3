@@ -1,9 +1,9 @@
 ---
 title: "Order Acceptance — User Manual"
-description: "Operation code SA03. AI automatically reads customer purchase orders (PDFs and scanned images), imports them as order…"
+description: "Operation code SA04. AI automatically reads customer purchase orders (PDFs and scanned images), imports them as order…"
 screenshots: [order-acceptance-list-01, order-acceptance-detail-01, order-acceptance-detail-02]
 ---
-Operation code **SA03**. AI automatically reads customer purchase orders (PDFs and scanned images), imports them as order acceptances (受注請書), and lets you review, approve, and expand them into sales orders (注文請書) — all on one screen.
+Operation code **SA04**. AI automatically reads customer purchase orders (PDFs and scanned images), imports them as order acceptances (受注請書), and lets you review, approve, and expand them into sales orders (注文請書) — all on one screen.
 
 > This app is currently available **in the development (dev) environment only**. Screens and steps may change before the production release.
 

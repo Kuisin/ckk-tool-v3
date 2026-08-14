@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * OrderAcceptanceIntakeTable — 受注請書 取込状況一覧 (SA03, design.md §8.1)。
+ * OrderAcceptanceIntakeTable — 受注請書 取込状況一覧 (SA04, design.md §8.1)。
  *
  * 監視フォルダ（FOLDER）/ 優先取込（UPLOAD）/ 手入力（MANUAL）で作成された
  * 受注請書の取込・承認・展開の進捗を一覧する。

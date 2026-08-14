@@ -222,7 +222,7 @@ Ref: material_types.(manufacturer_code, grade_code) > material_manufacturer_grad
 
 // 材種の既定材料単価マトリクス: (材種 × 直径 × 黒皮/研磨) → 単価。全長には依存しない
 // 固定長基準で ¥/1000mm。採番表 Excel「素材(通常)」由来（価格 × 1000 / 全長 で正規化）。
-// 仕入実績が無いとき試算（estimates / SA05）の材料原価フォールバックに使う。
+// 仕入実績が無いとき試算（estimates / SA01）の材料原価フォールバックに使う。
 Table material_type_prices {
   id                  serial [pk]
   material_type_id    int [not null, ref: > material_types.id]
@@ -332,7 +332,7 @@ Table products {
 ### Logic
 ```
 // ===========================
-// 試算（§1 / SA05 見積試算）EST-YYYYMM-NNNNN
+// 試算（§1 / SA01 見積試算）EST-YYYYMM-NNNNN
 // ===========================
 
 // 工具種（丸棒/円筒/OH付）別の原価計算スナップショット。文書番号
@@ -1233,7 +1233,7 @@ Table design_files {
 }
 
 // ===========================
-// 見積試算（SA05）— 実体は Logic §1 の estimates テーブル
+// 見積試算（SA01）— 実体は Logic §1 の estimates テーブル
 // ===========================
 //
 // 工具種（丸棒/円筒/OH付）別の見積試算。原価チェーン（材料原価+段加工+首下+加工

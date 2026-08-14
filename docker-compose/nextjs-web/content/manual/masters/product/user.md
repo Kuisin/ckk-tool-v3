@@ -1,9 +1,9 @@
 ---
 title: "製品 — 操作マニュアル"
-description: "操作コード MS03。自社で作る製品を登録・管理する台帳です。試算 や 見積書、価格表は、ここで登録した製品を選んで作成します。"
+description: "操作コード MS04。自社で作る製品を登録・管理する台帳です。試算 や 見積書、価格表は、ここで登録した製品を選んで作成します。"
 screenshots: [master-product-list-01, master-product-routes-01]
 ---
-操作コード **MS03**。自社で作る製品を登録・管理する台帳です。[試算](/manual/ja/apps/trial-estimate/user) や [見積書](/manual/ja/apps/quote/user)、価格表は、ここで登録した製品を選んで作成します。
+操作コード **MS04**。自社で作る製品を登録・管理する台帳です。[試算](/manual/ja/apps/trial-estimate/user) や [見積書](/manual/ja/apps/quote/user)、価格表は、ここで登録した製品を選んで作成します。
 
 ## このアプリでできること
 

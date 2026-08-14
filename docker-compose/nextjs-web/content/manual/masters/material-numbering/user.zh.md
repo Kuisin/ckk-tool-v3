@@ -1,9 +1,9 @@
 ---
 title: "编号构成 — 操作手册"
-description: "操作代码 MS0C。用于管理组装 材种 代码和 素材 代码的\"零件\"（构成要素）的画面。"
+description: "操作代码 MS07。用于管理组装 材种 代码和 素材 代码的\"零件\"（构成要素）的画面。"
 screenshots: [master-material-numbering-01]
 ---
-操作代码 **MS0C**。用于管理组装 [材种](/manual/zh/masters/material-type/user) 代码和 [素材](/manual/zh/masters/material/user) 代码的"零件"（构成要素）的画面。
+操作代码 **MS07**。用于管理组装 [材种](/manual/zh/masters/material-type/user) 代码和 [素材](/manual/zh/masters/material/user) 代码的"零件"（构成要素）的画面。
 
 > 此应用目前仅在**开发环境（dev）**中开放。正式发布前，界面和操作步骤可能会有所调整。
 

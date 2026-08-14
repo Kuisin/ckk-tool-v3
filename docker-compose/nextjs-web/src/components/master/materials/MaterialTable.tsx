@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * MaterialTable.tsx — 素材 一覧 (MS05, design.md §8.1 / §14).
+ * MaterialTable.tsx — 素材 一覧 (MS06, design.md §8.1 / §14).
  *
  * 列: 素材コード / 材種 / 直径 / 全長 / 黒皮研磨 / 状態。
  * 材種フィルタは表示中の素材が使う材種から導出する（全 3,555 材種を送らない）。

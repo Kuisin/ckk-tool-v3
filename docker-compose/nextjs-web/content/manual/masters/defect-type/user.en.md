@@ -1,9 +1,9 @@
 ---
 title: "Defect Type — User Manual"
-description: "Operation code MS09. A small master for registering the categories used when recording defects during manufacturing (…"
+description: "Operation code MS0A. A small master for registering the categories used when recording defects during manufacturing (…"
 screenshots: [master-defect-type-list-01]
 ---
-Operation code **MS09**. A small master for registering the categories used when recording defects during manufacturing (scratch, chip, dimensional defect, etc.). The types registered here become the choices in the defect record on the step execution screen of a [work order (指示書)](/manual/en/apps/work-order/user).
+Operation code **MS0A**. A small master for registering the categories used when recording defects during manufacturing (scratch, chip, dimensional defect, etc.). The types registered here become the choices in the defect record on the step execution screen of a [work order (指示書)](/manual/en/apps/work-order/user).
 
 > This app is currently available **in the development (dev) environment only**. Screens and steps may change before the production release.
 

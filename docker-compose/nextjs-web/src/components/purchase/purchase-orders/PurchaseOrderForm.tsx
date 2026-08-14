@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * PurchaseOrderForm — 素材発注書 新規作成 / 編集 (PU03, design.md §8.3)。
+ * PurchaseOrderForm — 素材発注書 新規作成 / 編集 (PU02, design.md §8.3)。
  *
  * ヘッダ（仕入先 Select（VENDOR ロール BP）/ 発注日 / 備考）+ 明細 1..N 行
  * （素材 SearchSelect / 入荷先拠点 Select / 数量 + 単位 / 単価 / 金額自動 /

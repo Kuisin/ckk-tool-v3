@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * MaterialTypeDetail.tsx — 材種 詳細 (MS24, design.md §8.2).
+ * MaterialTypeDetail.tsx — 材種 詳細 (MS25, design.md §8.2).
  *
  * Ported from design-preview (designs/master/material-types/detail.tsx) and
  * backed by server data. 関連タブはこの材種に紐づく素材の一覧。

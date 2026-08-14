@@ -12,8 +12,8 @@ screenshots: [approval-list-01, approval-panel-01]
 这是一个只显示**尚未处理的审批申请**的"审批收件箱"。涉及的文档类型如下：
 
 - **制造指示单（指示書）** … 第一审批・第二审批（[指示書](/manual/zh/apps/work-order/user) PD02）。
-- **素材订购单（素材発注書）** … 下单前的审批（[素材発注書](/manual/zh/apps/purchase-order/user) PU03）。
-- **采购申请（購買依頼）** … [購買依頼](/manual/zh/apps/purchase-request/user) PU04。
+- **素材订购单（素材発注書）** … 下单前的审批（[素材発注書](/manual/zh/apps/purchase-order/user) PU02）。
+- **采购申请（購買依頼）** … [購買依頼](/manual/zh/apps/purchase-request/user) PU01。
 - **订单受理（受注請書）** … 会显示在列表中（专用审批画面尚未实现，点击该类行不会跳转）。
 
 实际的审批・驳回操作在从此列表打开的**各文档详情页**中进行。处理完毕的申请会自动从列表中消失。

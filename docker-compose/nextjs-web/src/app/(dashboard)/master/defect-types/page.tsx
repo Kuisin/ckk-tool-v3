@@ -8,7 +8,7 @@ import { type LocalizedText, localized } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
 
-/** 不良種類 一覧 (MS09). */
+/** 不良種類 一覧 (MS0A). */
 export default async function MasterDefectTypesPage() {
   const denied = await requireAppRead("master-defect-types");
   if (denied) return denied;

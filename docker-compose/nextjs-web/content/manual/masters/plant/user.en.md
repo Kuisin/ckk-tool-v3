@@ -1,9 +1,9 @@
 ---
 title: "Plant — User Manual"
-description: "Operation code MS0B. A registry for the plants (拠点) that serve as your manufacturing, inventory, and shipping locations. Besides basic information, it manages the regions that group plants and the floor maps (drawings)."
+description: "Operation code MS0C. A registry for the plants (拠点) that serve as your manufacturing, inventory, and shipping locations. Besides basic information, it manages the regions that group plants and the floor maps (drawings)."
 screenshots: [master-plant-list-01, master-plant-regions-01]
 ---
-Operation code **MS0B**. A registry for the plants (拠点) that serve as your manufacturing, inventory, and shipping locations. [Product inventory](/manual/en/apps/product-inventory/user) and [material inventory](/manual/en/apps/material-inventory/user) are managed per plant, and receiving destinations for materials are chosen from the plants registered here.
+Operation code **MS0C**. A registry for the plants (拠点) that serve as your manufacturing, inventory, and shipping locations. [Product inventory](/manual/en/apps/product-inventory/user) and [material inventory](/manual/en/apps/material-inventory/user) are managed per plant, and receiving destinations for materials are chosen from the plants registered here.
 
 > This app is currently available **in the development (dev) environment only**. Screens and steps may change before the production release.
 
@@ -66,7 +66,7 @@ Manage the plant's floor drawings on the **Floor maps** tab of the detail page.
 - **Overlay view** shows multiple floor drawings on top of each other to check alignment.
 - A floor **cannot be deleted** while device or storage-location pins are placed on it.
 
-Drawings are managed only in this app (MS0B). The storage location app (MS0E) and device management (SY09) only place pins on these maps.
+Drawings are managed only in this app (MS0C). The storage location app (MS0E) and device management (SY09) only place pins on these maps.
 
 ## Edit and delete rules
 

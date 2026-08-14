@@ -2,7 +2,7 @@
 
 /**
  * ApprovalGroupModals.tsx — 承認グループの削除 / 有効・無効切替と、
- * メンバー・期間限定代理の追加・削除ポップアップ (MS0A, design.md §13.5)。
+ * メンバー・期間限定代理の追加・削除ポップアップ (MS0B, design.md §13.5)。
  */
 
 import { Select, Stack, Text, Textarea } from "@mantine/core";

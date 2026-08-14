@@ -21,7 +21,7 @@ export async function generateMetadata({
   return { title: `価格表 ${decodeURIComponent(id)} | CKK 業務管理システム` };
 }
 
-/** 価格表 詳細 (SA21). `id` は価格表番号 PRC-YYYYMM-NNNNN. */
+/** 価格表 詳細 (SA22). `id` は価格表番号 PRC-YYYYMM-NNNNN. */
 export default async function PriceListDetailPage({
   params,
 }: {

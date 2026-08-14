@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * ProductRoutesPanel — 製品詳細の工程タブ (MS23)。
+ * ProductRoutesPanel — 製品詳細の工程タブ (MS24)。
  *
  * 製品の工程ルート（工程リスト）一覧。ルートごとにバージョン Select（既定 =
  * 最新）でスナップショットの工程を読み取り表示する。ルートの作成・新バージョン

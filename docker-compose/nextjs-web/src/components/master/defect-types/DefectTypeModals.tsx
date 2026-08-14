@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * DefectTypeModals.tsx — 不良種類の編集 / 削除 / 有効・無効切替ポップアップ (MS09).
+ * DefectTypeModals.tsx — 不良種類の編集 / 削除 / 有効・無効切替ポップアップ (MS0A).
  *
  * 詳細ページを持たない小マスタのため、編集は一覧上のモーダルで完結する
  * （コードは識別子のため disabled）。

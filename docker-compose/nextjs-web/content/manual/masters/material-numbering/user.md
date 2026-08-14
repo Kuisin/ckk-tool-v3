@@ -1,9 +1,9 @@
 ---
 title: "採番構成 — 操作マニュアル"
-description: "操作コード MS0C。材種 コードと 素材 コードを組み立てる「部品」（構成要素）を管理する画面です。"
+description: "操作コード MS07。材種 コードと 素材 コードを組み立てる「部品」（構成要素）を管理する画面です。"
 screenshots: [master-material-numbering-01]
 ---
-操作コード **MS0C**。[材種](/manual/ja/masters/material-type/user) コードと [素材](/manual/ja/masters/material/user) コードを組み立てる「部品」（構成要素）を管理する画面です。
+操作コード **MS07**。[材種](/manual/ja/masters/material-type/user) コードと [素材](/manual/ja/masters/material/user) コードを組み立てる「部品」（構成要素）を管理する画面です。
 
 > このアプリは現在 **開発環境（dev）のみ** で公開されています。本番公開までに画面や手順が変わる場合があります。
 

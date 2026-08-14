@@ -1,9 +1,9 @@
 ---
 title: "Trial Estimate — User Manual"
-description: "Operation code SA05. Calculates a quoted unit price from costs and serves as the base-price source for price lists."
+description: "Operation code SA01. Calculates a quoted unit price from costs and serves as the base-price source for price lists."
 screenshots: [trial-estimate-list-01, trial-estimate-new-01, trial-estimate-detail-01]
 ---
-Operation code **SA05**. Calculates a quoted unit price from costs and serves as the base-price source for price lists.
+Operation code **SA01**. Calculates a quoted unit price from costs and serves as the base-price source for price lists.
 
 ## What you can do here
 
@@ -38,7 +38,7 @@ The **trial result** below (per-piece cost breakdown, minimum price, and base qu
 ## Saving, confirming, and use in price lists
 
 - **Save** registers the estimate as a draft (DRAFT) and snapshots the price at that moment (changing the calculation settings later never re-prices it). A saved estimate cannot be edited — use **Duplicate & recalculate** to change it.
-- **Confirm** from the detail menu makes the estimate selectable as a **base-price source** when creating or editing a price list (SA01). **It must be linked to a product** (the link can also be set from the "Link to product" menu item).
+- **Confirm** from the detail menu makes the estimate selectable as a **base-price source** when creating or editing a price list (SA02). **It must be linked to a product** (the link can also be set from the "Link to product" menu item).
 - When first used by a price list it locks as **REGISTERED** and the product link can no longer be changed (recalculate via Duplicate & recalculate). A registered estimate can still be chosen as the source for another customer's price list.
 
 ![Trial estimate detail (registered)](../../assets/screenshots/trial-estimate-detail-01.png)

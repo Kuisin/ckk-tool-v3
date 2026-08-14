@@ -1,5 +1,5 @@
 /**
- * data.ts — 外注依頼 (PU02) のサーバーサイド取得・マッピング。
+ * data.ts — 外注依頼 (PU04) のサーバーサイド取得・マッピング。
  *
  * 外注依頼は独立テーブルを持たず、指示書の外注工程
  * （work_order_steps.execution_location = OUTSOURCE）の読み取り専用ビュー。
@@ -14,7 +14,7 @@ import { type LocalizedText, localized } from "@/lib/format";
 const dateOnly = (d: Date | null | undefined) =>
   d ? d.toISOString().slice(0, 10) : null;
 
-/** 外注工程一覧 (PU02) — 指示書番号の新しい順。 */
+/** 外注工程一覧 (PU04) — 指示書番号の新しい順。 */
 export async function fetchOutsourceSteps(): Promise<OutsourceStepRow[]> {
   const rows = await prisma.workOrderStep.findMany({
     where: { executionLocation: "OUTSOURCE" },

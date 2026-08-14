@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * MaterialReceiptForm — 素材入荷 新規登録 (PU11, design.md §8.3)。
+ * MaterialReceiptForm — 素材入荷 新規登録 (PU13, design.md §8.3)。
  *
  * 直接調達（発注書を経由しない外部調達）の入荷登録。
  * 素材 SearchSelect（必須）/ 仕入先 Select（任意）/ 入荷先拠点 Select（任意）/
@@ -9,7 +9,7 @@
  * 保存で material_receipts を作成し onMaterialReceipt で在庫入庫。証憑を
  * 選択していれば作成後に /api/attachments/upload へ順次 POST（進捗通知付き・
  * 失敗しても登録自体は成立）してから詳細へ遷移する。
- * 発注入荷は素材発注書 (PU03) の「入荷完了」から自動作成される。
+ * 発注入荷は素材発注書 (PU02) の「入荷完了」から自動作成される。
  */
 
 import {

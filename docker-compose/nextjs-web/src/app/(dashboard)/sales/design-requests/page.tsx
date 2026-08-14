@@ -4,7 +4,7 @@ import { fetchDesignRequests } from "./data";
 
 export const dynamic = "force-dynamic";
 
-/** 設計依頼書 一覧 (SA04). */
+/** 設計依頼書 一覧 (SA05). */
 export default async function SalesDesignRequestsPage() {
   const denied = await requireAppRead("design-requests");
   if (denied) return denied;

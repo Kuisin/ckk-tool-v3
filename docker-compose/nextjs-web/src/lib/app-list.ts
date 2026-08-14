@@ -47,10 +47,21 @@ export interface AppEntry {
 
 export const appList: AppEntry[] = [
   // ─── 販売 ──────────────────────────────────────────────────────────────────
+  // 業務フロー順: 試算 → 価格表 → 見積書 → 受注請書（設計依頼書は並行フロー）
+  {
+    key: "trial-estimates",
+    label: "試算",
+    operationCode: "SA01",
+    href: "/sales/trial-estimates",
+    icon: "IconCalculator",
+    category: "販売",
+    // 試算のアクションは price_list を要求する（見積連動の価格表ソース）
+    requiredPermission: "price_list",
+  },
   {
     key: "price-lists",
     label: "価格表",
-    operationCode: "SA01",
+    operationCode: "SA02",
     href: "/sales/price-lists",
     icon: "IconCurrencyYen",
     category: "販売",
@@ -59,7 +70,7 @@ export const appList: AppEntry[] = [
   {
     key: "quotes",
     label: "見積書",
-    operationCode: "SA02",
+    operationCode: "SA03",
     href: "/sales/quotes",
     icon: "IconFileText",
     category: "販売",
@@ -67,11 +78,11 @@ export const appList: AppEntry[] = [
   },
   {
     // 受注請書 intake（§2）— 監視フォルダ / 優先取込の取込状況一覧が本体。
-    // 展開後の注文請書管理（旧 PD01）は /production/sales-orders
+    // 展開後の注文請書管理（PD01）は /production/sales-orders
     // （取込一覧のヘッダーからリンク）。
     key: "order-acceptances",
     label: "受注請書",
-    operationCode: "SA03",
+    operationCode: "SA04",
     href: "/sales/order-acceptances",
     icon: "IconClipboardCheck",
     category: "販売",
@@ -80,47 +91,20 @@ export const appList: AppEntry[] = [
   {
     key: "design-requests",
     label: "設計依頼書",
-    operationCode: "SA04",
+    operationCode: "SA05",
     href: "/sales/design-requests",
     icon: "IconRuler2",
     category: "販売",
     requiredPermission: "design_request",
   },
-  {
-    key: "trial-estimates",
-    label: "試算",
-    operationCode: "SA05",
-    href: "/sales/trial-estimates",
-    icon: "IconCalculator",
-    category: "販売",
-    // 試算のアクションは price_list を要求する（見積連動の価格表ソース）
-    requiredPermission: "price_list",
-  },
 
   // ─── 購買 ──────────────────────────────────────────────────────────────────
-  {
-    key: "material-receipts",
-    label: "素材入荷",
-    operationCode: "PU01",
-    href: "/purchase/material-receipts",
-    icon: "IconPackageImport",
-    category: "購買",
-    requiredPermission: "material_receipt",
-  },
-  {
-    key: "outsource-orders",
-    label: "外注依頼",
-    operationCode: "PU02",
-    href: "/purchase/outsource-orders",
-    icon: "IconTruckDelivery",
-    category: "購買",
-    requiredPermission: "outsource_order",
-  },
+  // 業務フロー順: 購買依頼 → 素材発注書 → 素材入荷（外注依頼は工程外注の別フロー）
   {
     // 業務フロー上、素材発注書の前段（依頼 → 承認 → 発注書へ変換）
     key: "purchase-requests",
     label: "購買依頼",
-    operationCode: "PU04",
+    operationCode: "PU01",
     href: "/purchase/purchase-requests",
     icon: "IconClipboardList",
     category: "購買",
@@ -129,11 +113,29 @@ export const appList: AppEntry[] = [
   {
     key: "purchase-orders",
     label: "素材発注書",
-    operationCode: "PU03",
+    operationCode: "PU02",
     href: "/purchase/purchase-orders",
     icon: "IconShoppingCart",
     category: "購買",
     requiredPermission: "purchase_order",
+  },
+  {
+    key: "material-receipts",
+    label: "素材入荷",
+    operationCode: "PU03",
+    href: "/purchase/material-receipts",
+    icon: "IconPackageImport",
+    category: "購買",
+    requiredPermission: "material_receipt",
+  },
+  {
+    key: "outsource-orders",
+    label: "外注依頼",
+    operationCode: "PU04",
+    href: "/purchase/outsource-orders",
+    icon: "IconTruckDelivery",
+    category: "購買",
+    requiredPermission: "outsource_order",
   },
 
   // ─── 生産 ──────────────────────────────────────────────────────────────────
@@ -227,9 +229,18 @@ export const appList: AppEntry[] = [
     requiredPermission: "master",
   },
   {
+    key: "master-suppliers",
+    label: "外注企業",
+    operationCode: "MS03",
+    href: "/master/suppliers",
+    icon: "IconBuildingFactory2",
+    category: "マスタ",
+    requiredPermission: "master",
+  },
+  {
     key: "master-products",
     label: "製品",
-    operationCode: "MS03",
+    operationCode: "MS04",
     href: "/master/products",
     icon: "IconCylinder",
     category: "マスタ",
@@ -238,7 +249,7 @@ export const appList: AppEntry[] = [
   {
     key: "master-material-types",
     label: "材種",
-    operationCode: "MS04",
+    operationCode: "MS05",
     href: "/master/material-types",
     icon: "IconAtom",
     category: "マスタ",
@@ -247,25 +258,25 @@ export const appList: AppEntry[] = [
   {
     key: "master-materials",
     label: "素材",
-    operationCode: "MS05",
+    operationCode: "MS06",
     href: "/master/materials",
     icon: "IconBolt",
     category: "マスタ",
     requiredPermission: "master",
   },
   {
-    key: "master-suppliers",
-    label: "外注企業",
-    operationCode: "MS06",
-    href: "/master/suppliers",
-    icon: "IconBuildingFactory2",
+    key: "master-material-numbering",
+    label: "採番構成",
+    operationCode: "MS07",
+    href: "/master/material-numbering",
+    icon: "IconHash",
     category: "マスタ",
     requiredPermission: "master",
   },
   {
     key: "master-process-steps",
     label: "工程マスタ",
-    operationCode: "MS07",
+    operationCode: "MS08",
     href: "/master/process-steps",
     icon: "IconGitBranch",
     category: "マスタ",
@@ -274,7 +285,7 @@ export const appList: AppEntry[] = [
   {
     key: "master-inspection-templates",
     label: "検査表テンプレート",
-    operationCode: "MS08",
+    operationCode: "MS09",
     href: "/master/inspection-templates",
     icon: "IconListCheck",
     category: "マスタ",
@@ -283,7 +294,7 @@ export const appList: AppEntry[] = [
   {
     key: "master-defect-types",
     label: "不良種類",
-    operationCode: "MS09",
+    operationCode: "MS0A",
     href: "/master/defect-types",
     icon: "IconAlertTriangle",
     category: "マスタ",
@@ -292,7 +303,7 @@ export const appList: AppEntry[] = [
   {
     key: "master-approval-groups",
     label: "承認グループ",
-    operationCode: "MS0A",
+    operationCode: "MS0B",
     href: "/master/approval-groups",
     icon: "IconUsersGroup",
     category: "マスタ",
@@ -301,18 +312,9 @@ export const appList: AppEntry[] = [
   {
     key: "master-plants",
     label: "拠点",
-    operationCode: "MS0B",
+    operationCode: "MS0C",
     href: "/master/plants",
     icon: "IconBuildingWarehouse",
-    category: "マスタ",
-    requiredPermission: "master",
-  },
-  {
-    key: "master-material-numbering",
-    label: "採番構成",
-    operationCode: "MS0C",
-    href: "/master/material-numbering",
-    icon: "IconHash",
     category: "マスタ",
     requiredPermission: "master",
   },

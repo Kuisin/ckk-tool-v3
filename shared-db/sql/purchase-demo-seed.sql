@@ -1,4 +1,4 @@
--- purchase-demo-seed.sql — 購買アプリ（PU01/PU03/PU04）のマニュアル撮影用デモデータ。
+-- purchase-demo-seed.sql — 購買アプリ（PU03/PU02/PU01）のマニュアル撮影用デモデータ。
 --
 -- tools/docs-screenshots のローカル一時 DB に流す（orchestrate.ts SEED_FILES_POST）。
 -- 実行順の前提: sales-demo-seed → masters-demo-seed → 本ファイル。

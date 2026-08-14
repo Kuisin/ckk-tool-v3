@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * OrderAcceptanceItemsEditor — 受注請書明細の行エディタ（SA03）。
+ * OrderAcceptanceItemsEditor — 受注請書明細の行エディタ（SA04）。
  *
  * DRAFT 詳細のインライン編集と手入力（MANUAL）新規作成の両方で使う。
  * 各行: 製品 SearchSelect（未突合可 — 未選択は「製品未特定」バッジ）+

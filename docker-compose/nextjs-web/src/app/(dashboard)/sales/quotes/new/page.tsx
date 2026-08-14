@@ -11,7 +11,7 @@ import {
 export const dynamic = "force-dynamic";
 
 /**
- * 見積書 新規作成 (SA12).
+ * 見積書 新規作成 (SA13).
  *
  * 価格表の「見積書を作成」から `?customer=…&product=…&orderType=…&quantity=…`
  * 付きで開かれると、1行目が価格表解決済みの明細で事前入力される。

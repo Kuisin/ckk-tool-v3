@@ -10,7 +10,7 @@ import { type LocalizedText, localized } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
 
-/** 素材 詳細 (MS25). */
+/** 素材 詳細 (MS26). */
 export default async function MasterMaterialsDetailPage({
   params,
 }: {

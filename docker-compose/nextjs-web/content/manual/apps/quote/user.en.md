@@ -1,13 +1,13 @@
 ---
 title: "Quote — User Manual"
-description: "Operation code SA02. Creates and issues quotes for customers. Unit prices and discounts resolve automatically from the price list."
+description: "Operation code SA03. Creates and issues quotes for customers. Unit prices and discounts resolve automatically from the price list."
 screenshots: [quote-list-01, quote-detail-01]
 ---
-Operation code **SA02**. Creates and issues quotes for [customers](/manual/en/masters/customer/user). Unit prices and discounts resolve automatically from the price list.
+Operation code **SA03**. Creates and issues quotes for [customers](/manual/en/masters/customer/user). Unit prices and discounts resolve automatically from the price list.
 
 ## What you can do here
 
-Create the **quote** you send to a customer and issue it as a PDF. When you add a [product](/manual/en/masters/product/user), order type, and quantity to a line item, the unit price and discount fill in automatically from the **Price List (SA01)**.
+Create the **quote** you send to a customer and issue it as a PDF. When you add a [product](/manual/en/masters/product/user), order type, and quantity to a line item, the unit price and discount fill in automatically from the **Price List (SA02)**.
 
 - The unit price resolves from the price-list quantity tier for customer × product × order type × quantity (base price × multiplier, or the tier's manual override). **There is no manual price entry on the quote** — change prices on the price list instead.
 - The price list's **discount rules** (period/quantity conditions) also apply automatically (when several match, the one with the largest discount wins).
@@ -28,7 +28,7 @@ Changing the customer re-resolves every line against the new customer's price li
 ## Issuing
 
 - Run **Issue** from the detail page menu. Confirm the validity date in the dialog and the status becomes **ISSUED**, and the **quote PDF is generated and stored** (view, download, or regenerate it on the PDF tab).
-- To record **ACCEPTED** / **REJECTED** / **EXPIRED** after issuing, open **Edit** and change the status field. If the quote number was referenced in an [order acceptance (SA03)](/manual/en/apps/order-acceptance/user) deployment, the quote becomes accepted automatically.
+- To record **ACCEPTED** / **REJECTED** / **EXPIRED** after issuing, open **Edit** and change the status field. If the quote number was referenced in an [order acceptance (SA04)](/manual/en/apps/order-acceptance/user) deployment, the quote becomes accepted automatically.
 - **Duplicate** creates a draft copy (a new number is assigned on save).
 
 ![Quote detail (line items tab)](../../assets/screenshots/quote-detail-01.png)

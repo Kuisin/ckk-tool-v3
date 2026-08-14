@@ -1,7 +1,7 @@
 "use server";
 
 /**
- * Server Actions — 承認グループ (MS0A).
+ * Server Actions — 承認グループ (MS0B).
  *
  * グループ本体の CRUD と、メンバー（approval_group_members）の追加・削除・
  * 有効/無効切替（design.md §13.5 — メンバーはグループ詳細のタブで管理）、

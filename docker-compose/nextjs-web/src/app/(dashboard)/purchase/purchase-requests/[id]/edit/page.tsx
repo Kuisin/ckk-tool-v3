@@ -7,7 +7,7 @@ import { fetchPlantOptions, fetchPurchaseRequest } from "../../data";
 export const dynamic = "force-dynamic";
 
 /**
- * 購買依頼 編集 (PU24 → edit)。
+ * 購買依頼 編集 (PU21 → edit)。
  *
  * 編集できるのは作成中（DRAFT）・差し戻し（REJECTED）のみ — それ以外は詳細へ
  * リダイレクト（サーバーアクション側でも同じガードを行う）。明細は保存時に

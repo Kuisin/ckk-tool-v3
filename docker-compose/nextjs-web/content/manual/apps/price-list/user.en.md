@@ -1,15 +1,15 @@
 ---
 title: "Price List — User Manual"
-description: "Operation code SA01. Manages per-customer product prices. Quote prices resolve automatically from here."
+description: "Operation code SA02. Manages per-customer product prices. Quote prices resolve automatically from here."
 screenshots: [price-list-list-01, price-list-detail-01, price-list-discounts-01, price-list-edit-01]
 ---
-Operation code **SA01**. Manages per-customer product prices. Quote prices resolve automatically from here.
+Operation code **SA02**. Manages per-customer product prices. Quote prices resolve automatically from here.
 
 ## What you can do here
 
 A ledger of **selling prices** — "this [product](/manual/en/masters/product/user) costs this much for this [customer](/manual/en/masters/customer/user)". Once registered, unit prices and discounts fill in automatically when creating a [quote](/manual/en/apps/quote/user) (there is no manual price entry on the quote side).
 
-- The base unit price is usually taken from a **confirmed trial estimate (SA05)** linked to the product (manual entry is also possible — with confirmation).
+- The base unit price is usually taken from a **confirmed trial estimate (SA01)** linked to the product (manual entry is also possible — with confirmation).
 - One price list (customer × product) holds **per-order-type prices** and **quantity tiers (quantity range → multiplier)** for volume pricing.
 - Register **discount rules** (period and quantity conditions) and they apply automatically when a quote is created.
 - The **validity period** is set per variant (order type). An end date is required for Test and Sample.
@@ -28,7 +28,7 @@ A ledger of **selling prices** — "this [product](/manual/en/masters/product/us
 ## Creating
 
 1. From **New** in the list, choose the **customer and product**. If a price list for the same customer × product already exists, a warning is shown (edit the existing one; saving also fails with a duplicate error).
-2. Set prices per order type. If the product has a **linked confirmed estimate (SA05)**, you can select it as the **price source** and its quoted unit price fills the base price (recommended).
+2. Set prices per order type. If the product has a **linked confirmed estimate (SA01)**, you can select it as the **price source** and its quoted unit price fills the base price (recommended).
 3. Without an estimate — or to use a different price — check **Use custom price** and set the base price manually (with confirmation).
 4. Set the **valid-from date**. For Test and Sample the **valid-until date is also required**.
 5. **Add order type** adds another variant to the same entry.

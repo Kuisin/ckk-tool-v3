@@ -1,9 +1,9 @@
 ---
 title: "Inspection Template — User Manual"
-description: "Operation code MS08. Register and manage templates of inspection items used in inspection steps. When a template is attached to a work order, inspections can be recorded along its items."
+description: "Operation code MS09. Register and manage templates of inspection items used in inspection steps. When a template is attached to a work order, inspections can be recorded along its items."
 screenshots: [master-inspection-template-list-01, master-inspection-template-items-01]
 ---
-Operation code **MS08**. Register and manage templates of inspection items used in inspection steps. When a template is attached to a [work order (指示書)](/manual/en/apps/work-order/user), inspections can be recorded along its items.
+Operation code **MS09**. Register and manage templates of inspection items used in inspection steps. When a template is attached to a [work order (指示書)](/manual/en/apps/work-order/user), inspections can be recorded along its items.
 
 > This app is currently available **in the development (dev) environment only**. Screens and steps may change before the production release.
 

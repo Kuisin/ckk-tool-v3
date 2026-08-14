@@ -1,9 +1,9 @@
 ---
 title: "采购申请 — 操作手册"
-description: "操作码 PU04。管理素材采购单前置阶段的内部申请（「希望采购这种素材」），流程为 申请 → 审批 → 转换为采购单。申请编号为 PRQ-YYYYMM-NNNNN。"
+description: "操作码 PU01。管理素材采购单前置阶段的内部申请（「希望采购这种素材」），流程为 申请 → 审批 → 转换为采购单。申请编号为 PRQ-YYYYMM-NNNNN。"
 screenshots: [purchase-request-list-01, purchase-request-detail-01]
 ---
-操作码 **PU04**。管理素材采购单前置阶段的内部申请（「希望采购这种素材」），流程为 申请 → 审批 → 转换为采购单。申请编号为 **PRQ-YYYYMM-NNNNN**。
+操作码 **PU01**。管理素材采购单前置阶段的内部申请（「希望采购这种素材」），流程为 申请 → 审批 → 转换为采购单。申请编号为 **PRQ-YYYYMM-NNNNN**。
 
 > 此应用目前仅在**开发环境（dev）**中开放。正式发布前，界面和操作步骤可能会有所调整。
 
@@ -11,7 +11,7 @@ screenshots: [purchase-request-list-01, purchase-request-detail-01]
 
 带审批流程的素材采购申请（購買依頼）应用。在申请阶段 **不确定供应商与单价** — 只需填写买什么、送到哪个工厂、买多少、何时要，然后提交审批。
 
-- 审批通过的申请可通过「转换为采购单」生成[素材采购单（素材発注書，PU03）](/manual/zh/apps/purchase-order/user)（草稿）。供应商在转换时指定，单价在采购单侧输入。
+- 审批通过的申请可通过「转换为采购单」生成[素材采购单（素材発注書，PU02）](/manual/zh/apps/purchase-order/user)（草稿）。供应商在转换时指定，单价在采购单侧输入。
 - 审批请求同时会显示在[审批管理（承認管理，PD03）](/manual/zh/apps/approval/user)中，由审批组成员（或代理人）处理。
 - 创建・编辑需要采购（下单）权限。
 

@@ -11,7 +11,7 @@ screenshots: [inventory-materials-01, inventory-wip-01]
 
 原有的素材库存（PD05）应用已并入**库存管理** — 旧的列表 URL 会自动重定向到素材标签页。不能在这里直接修改数量 — 库存会随业务操作自动变动（唯一的写入操作是[库存移动](/manual/zh/apps/product-inventory/user)）。
 
-- **入库** … 在[素材到货（素材入荷）](/manual/zh/apps/material-receipt/user)（PU01）登记到货后，入库到到货工厂的库存。
+- **入库** … 在[素材到货（素材入荷）](/manual/zh/apps/material-receipt/user)（PU03）登记到货后，入库到到货工厂的库存。
 - **预约** … 生产供货（製造分）的[制造指示单（指示書）](/manual/zh/apps/work-order/user)审批通过后，所用素材按计划数量被预约。
 - **消耗（出库）** … 指示書的全部工序完成后，已预约的素材被消耗。
 - **到货计划** … 已下单的[素材订购单（素材発注書）](/manual/zh/apps/purchase-order/user)明细提供下次到货日和到货数量。

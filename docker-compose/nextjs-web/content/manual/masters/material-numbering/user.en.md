@@ -1,9 +1,9 @@
 ---
 title: "Numbering Structure — User Manual"
-description: "Operation code MS0C. A screen for managing the building blocks (components) that make up material type codes and mate…"
+description: "Operation code MS07. A screen for managing the building blocks (components) that make up material type codes and mate…"
 screenshots: [master-material-numbering-01]
 ---
-Operation code **MS0C**. A screen for managing the building blocks (components) that make up [material type](/manual/en/masters/material-type/user) codes and [material](/manual/en/masters/material/user) codes.
+Operation code **MS07**. A screen for managing the building blocks (components) that make up [material type](/manual/en/masters/material-type/user) codes and [material](/manual/en/masters/material/user) codes.
 
 > This app is currently available **in the development (dev) environment only**. Screens and steps may change before the production release.
 

@@ -1,9 +1,9 @@
 ---
 title: "产品 — 操作手册"
-description: "操作码 MS03。用于登记和管理自家制作产品的台账。试算、报价单 与价格表都通过选择此处登记的产品来创建。"
+description: "操作码 MS04。用于登记和管理自家制作产品的台账。试算、报价单 与价格表都通过选择此处登记的产品来创建。"
 screenshots: [master-product-list-01, master-product-routes-01]
 ---
-操作码 **MS03**。用于登记和管理自家制作产品的台账。[试算](/manual/zh/apps/trial-estimate/user)、[报价单](/manual/zh/apps/quote/user) 与价格表都通过选择此处登记的产品来创建。
+操作码 **MS04**。用于登记和管理自家制作产品的台账。[试算](/manual/zh/apps/trial-estimate/user)、[报价单](/manual/zh/apps/quote/user) 与价格表都通过选择此处登记的产品来创建。
 
 ## 本应用能做什么
 

@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * ApprovalGroupDetail.tsx — 承認グループ 詳細 (MS2A, design.md §8.2 / §13.5).
+ * ApprovalGroupDetail.tsx — 承認グループ 詳細 (MS2B, design.md §8.2 / §13.5).
  *
  * サマリ（名称・種別・状態）+ タブ: グループ情報 / メンバー / 代理設定 / 履歴。
  * メンバーはタブ内でインライン追加・削除・有効/無効切替する。

@@ -5,7 +5,7 @@ import { type LocalizedText, localized } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
 
-/** 素材 新規作成 (MS15) — コード構成ビルダー. */
+/** 素材 新規作成 (MS16) — コード構成ビルダー. */
 export default async function MasterMaterialsNewPage() {
   const denied = await requireAppRead("master-materials");
   if (denied) return denied;

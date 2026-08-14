@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * PurchaseOrderTable — 素材発注書 一覧 (PU03, design.md §8.1 / §14)。
+ * PurchaseOrderTable — 素材発注書 一覧 (PU02, design.md §8.1 / §14)。
  *
  * Columns: 発注番号 / 仕入先 / 明細数 / 合計金額 / 状態 / 発注日。
  * フィルタ: 検索（発注番号・仕入先）+ 状態。行クリック → 詳細。

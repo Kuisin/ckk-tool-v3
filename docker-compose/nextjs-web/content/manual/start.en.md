@@ -26,7 +26,7 @@ These three connect in order: **Trial Estimate → Price List → Quote** (see "
 ## 2. Reading the screen
 
 - Click the **logo (top left)** → the app launcher opens.
-- **Center search box** — type an app name or an "operation code" (e.g. `SA05`) and press Enter to jump straight to that screen.
+- **Center search box** — type an app name or an "operation code" (e.g. `SA01`) and press Enter to jump straight to that screen.
 - **Bell (top right)** — notifications. **Avatar** — Profile, Notification Settings, Home Screen Settings, Sign out.
 - **Home** — available apps grouped by category. Apps you lack permission for are hidden, and the set of published apps also differs per environment (production / development).
 
@@ -38,14 +38,14 @@ These three connect in order: **Trial Estimate → Price List → Quote** (see "
 
 Every screen has a 4-character code. Remembering them lets you jump from the search box.
 
-- `SA05` Trial Estimate / `SA01` Price List / `SA02` Quote
-- `MS01` Customers / `MS02` End Users / `MS0A` Approval Groups
+- `SA01` Trial Estimate / `SA02` Price List / `SA03` Quote
+- `MS01` Customers / `MS02` End Users / `MS0B` Approval Groups
 
 ## 4. The sales flow (start here)
 
-1. **Compute a unit price in Trial Estimate (SA05)** — enter product, material, dimensions, and the estimate price is derived from cost. ([Trial Estimate manual](/manual/en/apps/trial-estimate/user))
-2. **Create a Price List (SA01)** — choose a customer and product; a confirmed estimate linked to the product can be picked as the base-price source. ([Price List manual](/manual/en/apps/price-list/user))
-3. **Create a Quote (SA02)** — pick a customer and product, and the unit price fills in from the price list. Export a PDF and send it to the customer. ([Quote manual](/manual/en/apps/quote/user))
+1. **Compute a unit price in Trial Estimate (SA01)** — enter product, material, dimensions, and the estimate price is derived from cost. ([Trial Estimate manual](/manual/en/apps/trial-estimate/user))
+2. **Create a Price List (SA02)** — choose a customer and product; a confirmed estimate linked to the product can be picked as the base-price source. ([Price List manual](/manual/en/apps/price-list/user))
+3. **Create a Quote (SA03)** — pick a customer and product, and the unit price fills in from the price list. Export a PDF and send it to the customer. ([Quote manual](/manual/en/apps/quote/user))
 
 Open the category guides on the left (Sales Apps, Purchasing Apps, and so on) for the details of each app.
 

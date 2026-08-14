@@ -6,7 +6,7 @@ import { type LocalizedText, localized } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
 
-/** 検査表テンプレート 編集 (MS28 edit) — コードはロック、属性のみ編集可. */
+/** 検査表テンプレート 編集 (MS29 edit) — コードはロック、属性のみ編集可. */
 export default async function MasterInspectionTemplatesEditPage({
   params,
 }: {

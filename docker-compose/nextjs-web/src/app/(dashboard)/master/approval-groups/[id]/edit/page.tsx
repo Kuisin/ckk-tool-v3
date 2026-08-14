@@ -6,7 +6,7 @@ import type { LocalizedText } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
 
-/** 承認グループ 編集 (MS2A edit) — 種別はロック、属性のみ編集可. */
+/** 承認グループ 編集 (MS2B edit) — 種別はロック、属性のみ編集可. */
 export default async function MasterApprovalGroupsEditPage({
   params,
 }: {

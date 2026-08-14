@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * ApprovalGroupForm.tsx — 承認グループ 新規作成 / 編集フォーム (MS1A / MS2A).
+ * ApprovalGroupForm.tsx — 承認グループ 新規作成 / 編集フォーム (MS1B / MS2B).
  *
  * 種別（type）はグループの識別 — 作成時のみ選択でき、編集では変更不可。
  * メンバーは詳細画面の「メンバー」タブで管理する（design.md §13.5）。

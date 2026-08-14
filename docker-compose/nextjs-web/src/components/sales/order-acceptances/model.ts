@@ -1,5 +1,5 @@
 /**
- * model.ts — 受注請書 intake (SA03) の client-safe view model と表示定数。
+ * model.ts — 受注請書 intake (SA04) の client-safe view model と表示定数。
  *
  * ライフサイクル: IMPORT（取込・抽出中/失敗）→ DRAFT（抽出済・編集可）→
  * REQUESTED（承認依頼）→ APPROVED → COMPLETED（伝票展開済）→ ARCHIVED。

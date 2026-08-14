@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * MaterialDetail.tsx — 素材 詳細 (MS25, design.md §8.2).
+ * MaterialDetail.tsx — 素材 詳細 (MS26, design.md §8.2).
  *
  * コード構成（材種×黒皮研磨×径×全長×種類）のサマリ + 関連（使用製品）+
  * 履歴（audit_logs）。構成は作成後不変なので表示のみ。

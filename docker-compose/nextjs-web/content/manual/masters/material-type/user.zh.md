@@ -1,9 +1,9 @@
 ---
 title: "材种 — 操作手册"
-description: "操作代码 MS04。用于登记和管理材料种类（材种，材種）的台账。产品 的素材规格、素材 的登记，以及 试算 的材料成本计算都使用在这里登记的材种。"
+description: "操作代码 MS05。用于登记和管理材料种类（材种，材種）的台账。产品 的素材规格、素材 的登记，以及 试算 的材料成本计算都使用在这里登记的材种。"
 screenshots: [master-material-type-list-01]
 ---
-操作代码 **MS04**。用于登记和管理材料种类（材种，材種）的台账。[产品](/manual/zh/masters/product/user) 的素材规格、[素材](/manual/zh/masters/material/user) 的登记，以及 [试算](/manual/zh/apps/trial-estimate/user) 的材料成本计算都使用在这里登记的材种。
+操作代码 **MS05**。用于登记和管理材料种类（材种，材種）的台账。[产品](/manual/zh/masters/product/user) 的素材规格、[素材](/manual/zh/masters/material/user) 的登记，以及 [试算](/manual/zh/apps/trial-estimate/user) 的材料成本计算都使用在这里登记的材种。
 
 ## 本应用能做什么
 

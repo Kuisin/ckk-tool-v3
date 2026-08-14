@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * PlantDetail.tsx — 拠点 詳細 (MS2B, design.md §8.2 / §13.6).
+ * PlantDetail.tsx — 拠点 詳細 (MS2C, design.md §8.2 / §13.6).
  *
  * サマリーグリッドに連絡先・住所を表示する。タブは 概要（備考）と
  * フロアマップ（端末管理 SY09 と共用の拠点図面の管理）のみ。

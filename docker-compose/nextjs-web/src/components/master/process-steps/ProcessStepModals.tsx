@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * ProcessStepModals.tsx — 工程マスタの削除 / 有効・無効切替ポップアップ (MS07).
+ * ProcessStepModals.tsx — 工程マスタの削除 / 有効・無効切替ポップアップ (MS08).
  *
  * 削除は「他の工程がこの工程に依存していないこと」がサーバー側の前提条件
  * （actions.ts の deleteProcessSteps ガード）。

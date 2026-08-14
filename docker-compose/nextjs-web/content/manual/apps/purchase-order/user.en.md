@@ -1,9 +1,9 @@
 ---
 title: "Material Purchase Order — User Manual"
-description: "Operation code PU03. Manages material orders to suppliers through request → approval → order → receiving. PO numbers are PO-YYYYMM-NNNNN."
+description: "Operation code PU02. Manages material orders to suppliers through request → approval → order → receiving. PO numbers are PO-YYYYMM-NNNNN."
 screenshots: [purchase-order-list-01, purchase-order-detail-01]
 ---
-Operation code **PU03**. Manages material orders to suppliers through request → approval → order → receiving. PO numbers are **PO-YYYYMM-NNNNN**.
+Operation code **PU02**. Manages material orders to suppliers through request → approval → order → receiving. PO numbers are **PO-YYYYMM-NNNNN**.
 
 > This app is currently available **in the development (dev) environment only**. Screens and steps may change before the production release.
 
@@ -11,8 +11,8 @@ Operation code **PU03**. Manages material orders to suppliers through request �
 
 - Create material purchase orders (素材発注書) per supplier and place them through an approval flow. Creating, editing, and ordering require the purchase-order permission.
 - Once ordered, the line items are automatically reflected as **expected arrivals** (next receipt) on the [Inventory app's materials tab (PD04)](/manual/en/apps/material-inventory/user).
-- **Complete receiving** automatically creates a [material receipt (素材入荷, PU01)](/manual/en/apps/material-receipt/user) record per line item and posts the stock to the receiving plant's material inventory.
-- A purchase order can also be created by converting a [purchase request (購買依頼, PU04)](/manual/en/apps/purchase-request/user).
+- **Complete receiving** automatically creates a [material receipt (素材入荷, PU03)](/manual/en/apps/material-receipt/user) record per line item and posts the stock to the receiving plant's material inventory.
+- A purchase order can also be created by converting a [purchase request (購買依頼, PU01)](/manual/en/apps/purchase-request/user).
 
 ![Material purchase order list with PO number, supplier, item count, total amount, status, and order date columns](../../assets/screenshots/purchase-order-list-01.png)
 
@@ -47,7 +47,7 @@ After approval (approved / ordered / receiving complete), you can attach files s
 
 ## FAQ
 
-**Can I receive in installments (partial receiving)?** — "Complete receiving" receives the entire remaining quantity at once. Register partial arrivals directly in [material receipt (PU01)](/manual/en/apps/material-receipt/user).
+**Can I receive in installments (partial receiving)?** — "Complete receiving" receives the entire remaining quantity at once. Register partial arrivals directly in [material receipt (PU03)](/manual/en/apps/material-receipt/user).
 
 **I forgot to set the order date** — If the order date is empty when you press Order, the day the order is executed becomes the order date automatically.
 
