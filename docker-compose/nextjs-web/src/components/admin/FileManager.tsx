@@ -431,7 +431,7 @@ export function FileManager() {
           >
             <Stack align="center" gap={4}>
               {isImageFile(f) ? (
-                // eslint-disable-next-line @next/next/no-img-element
+                // biome-ignore lint/performance/noImgElement: 認証付き /api/admin/files/raw のプレビュー — next/image の最適化プロキシはセッション cookie を持たず 403 になる
                 <img
                   alt={f.name}
                   height={44}
@@ -559,7 +559,7 @@ export function FileManager() {
         </Group>
 
         {isImageFile(selectedFile) ? (
-          // eslint-disable-next-line @next/next/no-img-element
+          // biome-ignore lint/performance/noImgElement: 認証付き /api/admin/files/raw のプレビュー — next/image の最適化プロキシはセッション cookie を持たず 403 になる
           <img
             alt={selectedFile.name}
             src={rawHref(selectedFile.key)}
