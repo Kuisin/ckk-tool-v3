@@ -26,11 +26,16 @@ PNG は `docker-compose/nextjs-web/content/manual/assets/screenshots/<id>.png` �
 ## 撮影の追加手順
 
 1. `manifest.ts` にエントリを足す（`id` / `docPage` / `path` / 必要なら `steps`）。
-2. `pnpm docs:shots:one -- --only <id>` で撮影。
-3. マニュアルページ（`content/manual/**.md`）に以下を書く:
+2. マニュアルページ（`content/manual/**.md`）に以下を書く:
    - frontmatter: `screenshots: [<id>]`
    - 本文: `![説明](./assets/screenshots/<id>.png)`（ページ位置に応じた相対パス）
+3. `pnpm docs:shots:one -- --only <id>` で撮影。
 4. `pnpm docs:lint` が通ることを確認してコミット。
+
+> 本文の参照とマニフェスト登録はどちらが先でも構いません。撮影前でも
+> `scripts/placeholders.ts` が未撮影 id に一時 PNG を置くため、ビルドは通ります
+> （docs:shots がビルド前に自動実行）。プレースホルダは撮影で上書きされるので、
+> **灰色一色の PNG が残っていたら、その id の撮影が失敗している** サインです。
 
 ## 決定性の設計
 

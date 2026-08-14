@@ -1,53 +1,106 @@
 ---
-title: "Numbering Structure — User Manual"
-description: "Operation code MS07. A screen for managing the building blocks (components) that make up material type codes and mate…"
-screenshots: [master-material-numbering-01]
+title: "Numbering Setup — User Manual"
+description: "A screen where you register the parts used to build material type codes and material codes. You add to it when you start using a new maker or a new shape."
+screenshots: [master-material-numbering-01, master-material-numbering-grades-01, master-material-numbering-add-01, master-material-numbering-diameters-01]
 ---
-Operation code **MS07**. A screen for managing the building blocks (components) that make up [material type](/manual/en/masters/material-type/user) codes and [material](/manual/en/masters/material/user) codes.
+This is a screen where you register the "parts" used to build [Material Type](/manual/en/masters/material-type/user) codes and [Material](/manual/en/masters/material/user) codes. The operation code is `MS07`.
 
-> This app is currently available **in the development (dev) environment only**. Screens and steps may change before the production release.
+When you register a material type or a material, you **choose** the 「メーカー」 (Maker), the 「形状」 (Shape) and so on from a list. This screen is where those choices themselves are prepared. **When you start using material from a new maker, for example, you add it here first.**
 
-## What you can do with this app
+> ⚠️ This app is currently available **only in the development environment (the environment for testing)**. The screens and the steps may change before it becomes available for real work.
 
-Material type codes are assembled as `[manufacturer][grade 2 digits][shape][kind 4 digits]`, and material codes as `[type]-[finish][diameter×10, 3 digits]-[length, 3 digits]`. This screen lists, adds, and activates/deactivates the 7 component categories, one per tab.
+## What you can do in this app
 
-- **Manufacturer (メーカー)** — the material maker (one uppercase letter, e.g. `B` = AFC).
-- **Manufacturer grade (メーカー材種)** — a grade within a maker (2 digits per maker, e.g. `01` = K10UF).
-- **Shape (形状)** — standard / OH / cylinder etc. (one uppercase letter).
-- **Kind (種類)** — kinds per shape (2 alphanumeric characters, e.g. `B5` = CH for the OH shape).
-- **Surface finish (黒皮・研磨)** — the material surface category (one uppercase letter, e.g. `A` = mill scale, `B` = ground).
-- **Diameter (直径)** — a 3-digit code derived from mm (diameter × 10, e.g. φ8.3 → `083`).
-- **Length (全長)** — a 3-digit code of the length in mm (e.g. 330mm → `330`). A custom label can be attached.
+- You can see all seven kinds of choices used in material type codes and material codes in one place.
+- You can add a new maker, a new shape and so on.
+- You can stop a choice you no longer use from appearing in new registrations.
 
-![Numbering structure (manufacturer tab)](../../assets/screenshots/master-material-numbering-01.png)
+## Words used on this page
 
-## Viewing the list
+- **構成要素 (Code element)** … the "parts" that build a code. It means each single choice, such as a maker or a shape.
+- **材種コード (Material type code)** … the 8-character number given to each material type (for example `A02A0001`).
+- **素材コード (Material code)** … the material type code with the surface finish, the diameter and the length added (for example `A02A0001-A080-310`).
+- **黒皮 / 研磨 (Black skin / Ground)** … the surface finish of the material.
 
-- Switch categories with the tabs. Each tab shows **code / name / status / updated** (the grade tab adds a **manufacturer** column, the kind tab a **shape** column, and the diameter/length tabs an **mm** column).
-- Use the row menu to **activate / deactivate** an entry.
+## Before you start
 
-## Adding an entry
+You need **master data permission** to use this app. If the screen does not open, please ask your administrator.
 
-Use the "◯◯を追加" (Add …) button at the top right — its label follows the active tab.
+You will almost never open this screen in your daily work. It is the screen you use **when the choice you want does not appear on the [Material Type](/manual/en/masters/material-type/user) or [Material](/manual/en/masters/material/user) registration screen**.
 
-- Manufacturer / shape / surface finish — a **code** (one uppercase letter) and a **name** (Japanese required, English optional).
-- Manufacturer grade — select the **manufacturer**, then a **code** (2 digits) and **name**.
-- Kind — select the **shape**, then a **code** (2 alphanumeric characters) and **name**.
-- Diameter — the **diameter (mm)** (0.1–99.9). The code is derived automatically and shown below the input.
-- Length — the **length (mm)** (1–999) and an optional **custom label** (e.g. "特注 330L").
+## How to read the screen
 
-Adding fails if the same code already exists.
+This screen is split into seven tabs. Press a tab at the top to switch what is shown.
 
-## Why there is no delete — deactivation
+![Maker tab of the numbering setup screen](../../assets/screenshots/master-material-numbering-01.png)
 
-- Codes are **embedded** in material type and material codes, so entries **cannot be deleted** (deactivation only).
-- Deactivated entries can no longer be chosen when creating new material types or materials. **Existing codes are not affected.**
-- Diameters and lengths are also registered automatically when creating a [material](/manual/en/masters/material/user) if missing. Adding them here manually is for preparing choices in advance or tidying display names.
+| Tab | What choices it holds | Where it is used |
+|---|---|---|
+| **メーカー** (Maker) | Material makers | The first 1 character of the material type code |
+| **メーカー材種** (Maker grade) | The grades inside that maker | Characters 2–3 of the material type code |
+| **形状** (Shape) | 通常 / OH / 円筒 (normal / OH / cylinder) and so on | The 4th character of the material type code |
+| **種類** (Kind) | The detailed divisions for each shape | Chosen when you register a material |
+| **黒皮・研磨** (Black skin / Ground) | The surface finish of the material | The middle 1 character of the material code |
+| **直径** (Diameter) | The diameter of the material | The middle 3 digits of the material code |
+| **全長** (Length) | The length of the material | The last 3 digits of the material code |
 
-## Glossary
+On every tab, the table has the columns 「**コード**」 (Code), 「**名称**」 (Name), 「**状態**」 (Status) and 「**更新日**」 (Updated). The 「メーカー材種」 (Maker grade) tab also has a 「**メーカー**」 (Maker) column showing which maker it belongs to, and the 「種類」 (Kind) tab has a 「**形状**」 (Shape) column.
 
-- **Material type code (材種コード)** — 8 characters: manufacturer + grade + shape + kind (e.g. `B01B0001`).
-- **Material code (素材コード)** — the type code plus finish, diameter, and length (e.g. `B01B0001-A083-330`).
-- **Component (構成要素)** — a category value used as a building block of the codes.
+![Maker grade tab of the numbering setup screen](../../assets/screenshots/master-material-numbering-grades-01.png)
 
-This app requires the **master permission**. New users may also want to read the [Start Manual](/manual/en/start).
+## Adding a choice
+
+1. Open the tab for the kind you want to add.
+2. Press the button at the top right of the screen. **The text on the button changes to match the tab you have open** (「**メーカーを追加**」 / Add maker, 「**形状を追加**」 / Add shape, and so on).
+3. Fill in the content on the screen that opens (see the table below).
+4. Press 「**追加**」 (Add).
+
+![Screen for adding a choice](../../assets/screenshots/master-material-numbering-add-01.png)
+
+| Tab | What to enter |
+|---|---|
+| メーカー (Maker) | One capital letter in 「**コード**」 (Code) — for example `A` — and 「**名称（日本語）**」 (Name in Japanese) |
+| メーカー材種 (Maker grade) | Choose 「**メーカー**」 (Maker), enter 2 digits in 「**コード**」 (Code) — for example `01` — and 「**名称（日本語）**」 (Name in Japanese) |
+| 形状 (Shape) | One capital letter in 「**コード**」 (Code) and 「**名称（日本語）**」 (Name in Japanese) |
+| 種類 (Kind) | Choose 「**形状**」 (Shape), enter 2 characters in 「**コード**」 (Code) — capital letters and digits can be mixed, for example `B5` — and 「**名称（日本語）**」 (Name in Japanese) |
+| 黒皮・研磨 (Black skin / Ground) | One capital letter in 「**コード**」 (Code) and 「**名称（日本語）**」 (Name in Japanese) |
+| 直径 (Diameter) | Only 「**直径 (mm)**」 (Diameter in mm), from 0.1 to 99.9. The code is decided automatically |
+| 全長 (Length) | 「**全長 (mm)**」 (Length in mm), from 1 to 999, and 「**カスタム識別（任意）**」 (Custom label, optional) if you need it — for example 特注 330L |
+
+> 💡 On the 「直径」 (Diameter) and 「全長」 (Length) tabs, **you do not need to decide the code yourself**. When you enter a number, the 3 digits decided automatically are shown under the input field as 「コード:」 (Code).
+
+![Diameter tab of the numbering setup screen](../../assets/screenshots/master-material-numbering-diameters-01.png)
+
+> 💡 「直径」 (Diameter) and 「全長」 (Length) are **added automatically on the spot** when you register a [Material](/manual/en/masters/material/user). You only add them here in advance when you want the choices ready beforehand, or when you want to tidy up the names.
+
+## Hiding a choice you no longer use
+
+The entries on this screen **cannot be deleted**. Once a code is made, it is inside material type codes and material codes. Set it to "Inactive" instead.
+
+1. Press the menu on the right of the row you want to hide.
+2. Choose 「**無効化**」 (Deactivate).
+3. A screen named 「無効化の確認」 (Deactivation confirmation) opens. Press 「**無効化する**」 (Deactivate).
+
+Once it is inactive, **it no longer appears among the choices when you make a new material type or material.** The material type codes and material codes that are already registered do not change at all.
+
+If you want to use it again, you can turn it back with the same steps using 「**有効化**」 (Activate).
+
+## Questions and problems
+
+**Q. I see 「同じコードが既に存在します」 (The same code already exists) and cannot add it.**
+A. That code is already in use. Look at the table and check whether the one you are looking for is already there. If it is only 「無効」 (Inactive), you can bring it back with 「有効化」 (Activate).
+
+**Q. I see 「コードは英大文字1文字です」 (The code must be one capital letter).**
+A. Please enter exactly one capital letter in the code field. Small letters, numbers and two or more characters cannot be used.
+
+**Q. I see 「コードは数字2桁です」 (The code must be 2 digits) or 「コードは英数字2桁です」 (The code must be 2 letters or digits).**
+A. A maker grade code is 2 digits (for example `01`). A kind code is 2 characters and can mix capital letters and digits (for example `B5`). Please make it exactly 2 characters.
+
+**Q. I cannot find the delete button.**
+A. There is no delete on this screen. Codes are inside material type codes and material codes, so deleting one would make past data unreadable. Please use 「無効化」 (Deactivate) for the ones you do not use.
+
+**Q. If I make a choice inactive, what happens to the past data for that material?**
+A. Nothing changes. Past material type codes and material codes stay as they are and can still be used. Only "the choices when you create something new" become inactive.
+
+**Q. I registered a name by mistake. Can I correct it?**
+A. There is no edit on this screen. Please deactivate the wrong one with 「無効化」 (Deactivate) and add a new one with the correct name. Note that codes cannot be duplicated, so you need to use a different code.

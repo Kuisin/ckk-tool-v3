@@ -1,84 +1,164 @@
 ---
 title: "Product — User Manual"
-description: "Operation code MS04. A ledger for registering and managing the products you make. Trial Estimates, Quotes, and price …"
-screenshots: [master-product-list-01, master-product-routes-01]
+description: "A ledger for the products you make. The products you register here become the choices in the 「製品」 (Product) field of trial estimates and quotes."
+screenshots: [master-product-list-01, master-product-new-01, master-product-detail-01, master-product-routes-01, master-product-route-new-01]
 ---
-Operation code **MS04**. A ledger for registering and managing the products you make. [Trial Estimates](/manual/en/apps/trial-estimate/user), [Quotes](/manual/en/apps/quote/user), and price lists are created by choosing a product registered here.
+This is a ledger for the products you make. The operation code is `MS04`.
 
-## What you can do here
+**If a product is not registered, you cannot make a [Trial Estimate](/manual/en/apps/trial-estimate/user), a [Price List](/manual/en/apps/price-list/user) or a [Quote](/manual/en/apps/quote/user).** When a new product comes up, register it on this screen first.
 
-Register "what products you handle". Besides a name, a product records what material it is made from (**material spec**), per-type input items and additional items (**specifications**), and the manufacturing **process routes**.
+## What you can do in this app
 
-- Once a product is registered, it becomes selectable in the Trial Estimate, Quote, and [Price List](/manual/en/apps/price-list/user).
-- Material is specified as "**material type + diameter + length**". It is not tied to a specific material code.
-- Specification items are not free-form: you pick them from the items defined in **Product Items (SY03)**.
+- You can register the products you make.
+- After you register a product, you can choose it in the 「製品」 (Product) field of trial estimates, price lists and quotes.
+- You can record **what material the product is made from** (material type, diameter, length).
+- You can record the rules for each product, such as hardness and tolerance.
+- You can register the **order of the process steps** used to make that product.
+- You can **copy** a similar product and change only the parts you need.
 
-## Viewing the list
+## Words used on this page
 
-- The list columns are **Product code / Name / Material type / Unit / Status**. The material-type column shows the material spec as "type name φdiameter×length". Click a row to open its detail screen.
-- Use the search box to filter by **product code, name, or material type**. You can also filter by **status** (active / inactive).
-- Selecting rows enables **bulk activate / bulk deactivate / bulk delete**.
-- The row menu offers **Edit** / **Duplicate** / **Deactivate** / **Delete**.
-- Products imported from the legacy system without a product code are shown as "**未採番**" (unnumbered).
+- **製品コード (Product code)** … one control number for each product. It starts with `PRD-`. It is added automatically when you save.
+- **材種 (Material type)** … the kind of material. It shows whose material it is and what kind it is (you register it in [Material Type](/manual/en/masters/material-type/user)).
+- **単位 (Unit)** … how the items are counted (本 / 個 / kg / m / セット).
+- **製品種別 (Product type)** … a set of input fields prepared for each type of product, such as 「標準品」 (standard product) or 「コーティング品」 (coated product).
+- **仕様 (Specification)** … the rules for that product, such as hardness, tolerance and drawing number.
+- **工程リスト（ルート） (Process route)** … the order of the process steps used to make that product.
 
-![Product list with product code, name, material type, unit, and status columns, plus the search and filter bar](../../assets/screenshots/master-product-list-01.png)
+## Before you start
 
-## Creating a new product
+To register a product, the **[Material Type](/manual/en/masters/material-type/user) must be registered first**. The material type is used in the field where you choose "what material to use".
 
-Register from **New** at the top right of the list. The main fields are:
+You can also register a product without choosing a material type, but then you cannot get the material cost later when you make a [Trial Estimate](/manual/en/apps/trial-estimate/user). We recommend that you fill in the material type as well whenever you can.
 
-**Basic info**
+## How to read the screen
 
-- **Name** (Japanese required, English optional).
-- **Unit** (required) — choose from pcs (本) / piece (個) / kg / m / set.
-- **Active** — turn off to hide it from selection lists.
-- **Notes**.
+When you open the app, a list of the registered products is shown.
 
-**Material spec**
+![Product list screen](../../assets/screenshots/master-product-list-01.png)
 
-- **Material type** — only material types that have a registered code structure (converted) can be selected. Search by material-type code or name.
-- **Diameter (mm)** — 0.1 to 99.9 mm. Entering it shows the code (diameter × 10).
-- **Length (mm)** — 1 to 999 mm.
-- Once a material type is chosen, diameter and length become required. The idea is to cut a material of the same type and diameter to the required length. It is not tied to a specific material.
+- **製品コード (Product code)** … a control number that starts with `PRD-`. The system adds it automatically.
+- **材種 (Material type)** … shows what material the product is made from, in the form "material type code — material type name φdiameter×length". For a product with no material decided, it shows "—".
+- **状態 (Status)** … the green 「**有効**」 (Active) means a product you can still use. The gray 「**無効**」 (Inactive) means a product you can no longer choose.
+- In the search box at the top (「**製品コード・名称・材種で検索**」 / Search by product code, name or material type) you can search **not only by product name but also by material type**.
+- Click a row to open the detail screen for that product.
 
-**Product type**
+> 💡 Some products brought over from the old system have no product code. Those rows show 「**未採番**」 (Not numbered) in gray. You can use them as they are.
 
-- Shown when **product types (SY04)** are registered. Choosing a type expands the input items predefined by that type (text, number, switch, select, date). Whether each item is required follows the type's definition.
+## Registering a product
 
-**Additional items**
+### Entering the name and the unit
 
-- Use "Add item" to pick from the **items defined in Product Items (SY03)** and enter values. Free-form keys cannot be used. Added items can be removed with the "−" button.
+1. Press 「**新規作成**」 (New) at the top right of the list screen.
+2. Enter the product name in 「**名称（日本語）**」 (Name in Japanese). **This field must always be filled in.**
+3. Choose 「**単位**」 (Unit). **This must also always be chosen** (it is usually 「本」).
 
-The **product code** (`PRD-YYYYMM-NNNN`) is assigned automatically on save. No manual entry is needed.
+### Choosing the material
 
-## Detail screen
+4. Click the 「**材種**」 (Material type) field in 「**素材仕様**」 (Material specification) and type a material type name or a material type code.
+5. Choose the material type you use from the list that appears.
+6. Enter the diameter of the material in 「**直径 (mm)**」 (Diameter in mm).
+7. Enter the length of the material in 「**全長 (mm)**」 (Length in mm).
+8. Press 「**保存**」 (Save).
 
-The summary shows the product code, name, material type, diameter, length, and unit; below it, the screen is split into tabs.
+![New product form](../../assets/screenshots/master-product-new-01.png)
 
-- **Overview** — the product type (if set), the specifications (item/value table), and notes.
-- **Routes** — the process routes for this product. See below.
-- **Related** — the price-list entries linked to this product (customer / order type / validity / status). Click to jump to the price-list detail.
-- **History** — the record of changes (when and who updated it).
+> 💡 When you enter the diameter or the length, a 3-digit number appears under the field (for example, 「060」 for a diameter of 6.0mm). The system makes this number by itself, so you do not need to worry about it.
 
-Use the menu at the top right to **Edit** / **Duplicate** / **Deactivate** / **Delete**.
+> ⚠️ When you choose a material type, you **must also enter the diameter and the length**. You cannot save with only one of them.
 
-## Process routes
+> ⚠️ You cannot type in the 「**製品コード**」 (Product code) field. As the screen says 「保存時に自動採番」 (numbered automatically on save), a number such as `PRD-202607-0001` is added by itself when you save.
 
-On the "Routes" tab, you can register the process composition used to make this product as **routes**. Once registered, the process composition can be prefilled when creating a work order.
+### Entering the rules for each product (optional)
 
-- Use "New route" to register a new route.
-- A route is managed in **versions**. Switching the version shows that version's step list (snapshot).
-- "Create new version" makes a new version with a changed process composition. "Edit" changes the name and active flag; "Delete" removes the route.
+When the 「**製品種別**」 (Product type) field is shown, choose from 「標準品」 (standard product), 「コーティング品」 (coated product) and so on. When you choose one, the input fields decided for that category (surface treatment, hardness, tolerance and so on) appear below.
 
-![Routes tab on the product detail screen, showing the route list and the "New route" button](../../assets/screenshots/master-product-routes-01.png)
+If you want more fields, choose them from 「**項目を追加**」 (Add item) under 「**追加項目**」 (Extra items). **You cannot make a field with a name of your own.** You choose from the items that are prepared in advance. To remove a field you added, press the 「−」 button on that row.
 
-## Glossary
+> 💡 The items and the categories you can choose are decided by the administrator. If the item you need is missing, please ask the person in charge of [Product Type](/manual/en/apps/product-type/settings).
 
-- **Material type** — the kind of material (a combination of maker, grade, shape, etc.). A product specifies its material by material type plus dimensions.
-- **Diameter / length** — the thickness (mm) and length (mm) of the material.
-- **Product type** — a definition that bundles the input items per product type (managed in SY04).
-- **Additional item** — a specification item added by picking from the items defined in Product Items (SY03).
-- **Process route** — the process composition used to make this product. It is versioned and used to prefill work orders.
-- **Unit** — how quantity is counted (pcs, piece, etc.).
+## Looking at what you registered
 
-If you are new, please also see the [Start Manual](/manual/en/start).
+The screen of a saved product has four tabs.
+
+![Product detail screen](../../assets/screenshots/master-product-detail-01.png)
+
+- **概要** (Overview) … the product type, the specification (a table of items and values) and the notes.
+- **工程** (Processes) … the order of the process steps used to make this product.
+- **関連** (Related) … the price lists for this product, listed per customer. Click one to open that price list.
+- **履歴** (History) … the record of when and who changed this registration.
+
+To correct the content, press 「**編集**」 (Edit) at the top right of the screen.
+
+## Registering the order of the process steps
+
+On the 「工程」 (Processes) tab you can register the order of the process steps used to make that product. If you register it, the steps are **already filled in** when you make a [Work Order](/manual/en/apps/work-order/user). You no longer have to choose the steps from nothing every time.
+
+![Processes tab on the product detail screen](../../assets/screenshots/master-product-routes-01.png)
+
+1. Open the 「**工程**」 (Processes) tab.
+2. Press 「**ルート新規作成**」 (New route).
+3. Enter 「**ルート名（日本語）**」 (Route name in Japanese) — for example, 標準工程 (standard process). **This field must always be filled in.**
+4. In 「**工程選択**」 (Choose steps), tick the steps you use.
+5. The steps you ticked are listed in 「**選択済み工程・実施場所**」 (Chosen steps and where they are done).
+6. For a step that can be done in-house or outside, choose 「**社内**」 (In-house) or 「**外注**」 (Outsourced).
+7. When you choose 「**外注**」 (Outsourced), also choose 「**仕入先（外注先）**」 (Supplier / outsourcing company).
+8. For the steps you know, enter 「**作業時間**」 (Work time) (you can leave it empty).
+9. Press 「**保存**」 (Save).
+
+![New process route screen](../../assets/screenshots/master-product-route-new-01.png)
+
+> 💡 Some steps, such as inspection and approval, are always needed together with another step. Those steps are added automatically when you choose the other one. A blue bar tells you: 「必須工程を自動追加しました」 (Required steps were added automatically).
+
+### When you want to change the order of the steps
+
+The order of the steps is kept by **version**. The earlier content is kept too, so you can see later when and how it changed.
+
+- To change the steps → press 「**新バージョン**」 (New version) on the route. It starts with the earlier content already filled in.
+- To correct only the name → press 「**編集**」 (Edit).
+- To remove the whole route → press 「**削除**」 (Delete).
+
+## Making a similar product
+
+When you add a product that is almost the same as one you registered before, you can copy it instead of typing everything again.
+
+1. Open the product you want to copy.
+2. From the menu at the top right (the button with three dots), press 「**複製**」 (Copy).
+3. 「**名称（日本語）**」 (Name in Japanese) contains a name with 「（コピー）」 (copy) added, so change it to the correct name.
+4. Check 「**単位**」 (Unit).
+5. Press 「**複製して新規作成**」 (Copy and create).
+
+The material type, the diameter and the length are carried over from the product you copied. A new product code is added automatically.
+
+## What to do with a product you no longer make
+
+Even when you stop making a product, **please do not delete it**. Past quotes and other documents point to that product. Set it to "Inactive" instead.
+
+1. Press the menu (the button with three dots) at the top right of the product screen.
+2. Choose 「**無効化**」 (Deactivate).
+3. On the confirmation screen, press 「**無効化する**」 (Deactivate).
+
+Once a product is inactive, you can no longer choose it in new trial estimates, price lists or quotes, but **the past data stays as it is**.
+
+## Questions and problems
+
+**Q. I see 「単位を選択してください」 (Please choose the unit) and cannot save.**
+A. 「単位」 (Unit) in 「基本情報」 (Basic information) has not been chosen yet. Normally you choose 「本」.
+
+**Q. I see 「直径は 0.1〜99.9mm で入力してください」 (Please enter a diameter between 0.1 and 99.9 mm).**
+A. When you choose a material type, the diameter is required. Enter a value between 0.1 and 99.9. The length must be between 1 and 999.
+
+**Q. I type in the material type field, but the material type I want does not appear.**
+A. Only material types "that have a code structure registered" can be chosen. The screen also says under the field: 「変換済（コード構成あり）の材種のみ選択できます」 (Only converted material types, which have a code structure, can be chosen). Material types brought over from the old system cannot be chosen, so please register them again in [Material Type](/manual/en/masters/material-type/user).
+
+**Q. When I try to delete, I see 「この製品を参照するデータ（価格表・見積書）が存在するため削除できません。無効化を検討してください。」 (This product cannot be deleted because data that refers to it — price lists, quotes — exists. Please consider deactivating it instead).**
+A. Price lists or quotes that use that product already exist, so it cannot be deleted. This is normal. Please use 「無効化」 (Deactivate).
+
+**Q. When I try to save a process route, I see 「工程を1つ以上選択してください」 (Please choose at least one step).**
+A. No step is ticked. Please tick the steps you use in 「工程選択」 (Choose steps).
+
+**Q. When I try to save a new version, I see 「最新バージョン v◯ と同じ構成です（変更がありません）」 (This is the same as the latest version v◯ — there is no change).**
+A. The steps are exactly the same as the earlier version. Change something before saving, or press 「キャンセル」 (Cancel) to go back if it is fine as it is.
+
+**Q. I cannot make an extra item with a name of my own.**
+A. That is how it works. You can only choose from the items prepared in advance. If the item you need is missing, please ask your administrator.

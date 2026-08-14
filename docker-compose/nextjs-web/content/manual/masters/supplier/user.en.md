@@ -1,71 +1,119 @@
 ---
-title: "Supplier — User Manual"
-description: "Operation code MS03. A directory for registering and managing suppliers (仕入先 — companies you buy materials from) and …"
-screenshots: [master-supplier-list-01, master-supplier-detail-01]
+title: "Supplier / Outsourcing Company — User Manual"
+description: "A ledger for the companies you buy materials from and the companies you ask to do part of the machining. The companies you register here become the choices for purchase orders and outsourcing requests."
+screenshots: [master-supplier-list-01, master-supplier-new-01, master-supplier-new-terms-01, master-supplier-detail-01]
 ---
-Operation code **MS03**. A directory for registering and managing **suppliers** (仕入先 — companies you buy materials from) and **subcontractors** (外注先 — companies you outsource process steps such as centerless grinding or coating to).
+This is a ledger for the companies you buy materials from and the companies you ask to do part of the machining. The operation code is `MS03`.
 
-> This app is currently available **in the development (dev) environment only**. Screens and steps may change before the production release.
+You keep more than the company name and address here. You also keep the **closing day, the payment terms and the bank account for transfers**. A company that is not registered here **cannot be chosen** as the partner on a [Material Purchase Order](/manual/en/apps/purchase-order/user) or an [Outsourcing Request](/manual/en/apps/outsource-order/user).
 
-## What you can do with this app
+> ⚠️ This app is currently available **only in the development environment (the environment for testing)**. The screens and the steps may change before it becomes available for real work.
 
-Along with basic company information, you can register closing day, payment terms, bank account for payments, and standard lead time. Companies registered here become selectable in [purchase orders (素材発注書)](/manual/en/apps/purchase-order/user) and [outsource orders (外注依頼)](/manual/en/apps/outsource-order/user).
+## What you can do in this app
 
-- The **vendor type** distinguishes "supplier" (procurement of materials) from "subcontractor" (outsourcing of process steps).
-- These companies are managed internally as business partners (BP) that carry the **vendor role**.
+- You can register the companies you buy materials from (suppliers).
+- You can register the companies you ask to do part of the machining, such as grinding or coating (outsourcing companies).
+- After you register a company, you can choose it as the partner on a [Material Purchase Order](/manual/en/apps/purchase-order/user) or an [Outsourcing Request](/manual/en/apps/outsource-order/user).
+- You can register the closing day, the payment terms and the bank account for transfers.
+- You can register the usual number of days from the request until the goods arrive (standard lead time).
 
-The **master permission** is required to use this app.
+## Words used on this page
 
-## Viewing the list
+- **仕入先 (Supplier)** … the company you buy materials or supplies from.
+- **外注先 (Outsourcing company)** … the company you ask to do part of the machining.
+- **外注種別 (Vendor type)** … whether that company is a 「仕入先」 (Supplier) or an 「外注先」 (Outsourcing company).
+- **標準リードタイム (Standard lead time)** … the usual number of days from the request until the goods arrive.
+- **BPコード (BP code)** … one control number for each company. It starts with `BP-`. It is added automatically when you save.
+- **締日 / 支払サイト (Closing day / Payment terms)** … the day the payment is put together, and the number of days until payment.
 
-- The list columns are **BP code / Name / Vendor type / Standard lead time / Status**. Click a row to open the detail screen.
-- Use the search box at the top to filter by **BP code or name**. You can also filter by **vendor type** (supplier / subcontractor) and **status** (active / inactive).
-- Selecting rows enables **bulk activate / bulk deactivate / bulk delete**.
+## Before you start
 
-![Supplier list with BP code, name, vendor type, standard lead time, and status columns, plus the search and filter bar](../../assets/screenshots/master-supplier-list-01.png)
+You need **master data permission** to use this app. If the screen does not open, please ask your administrator.
 
-## Creating a new entry
+Before you buy material, the company must be registered here. Without it, you cannot choose the company in the 「仕入先」 (Supplier) field of a [Material Purchase Order](/manual/en/apps/purchase-order/user).
 
-Use "New" at the top right of the list. The **BP code** (`BP-NNNNN`) is assigned automatically on save.
+## How to read the screen
 
-**Basic information**
+When you open the app, a list of the registered companies is shown.
 
-- **Name** (Japanese required, English optional) / **Country** / **Kana reading** / **Short name** / **Corporate number**.
-- **Active** ... turning it off removes the company from selection lists (past data is kept).
-- **AI match names** ... a matching list that helps the automatic document reader (AI extraction) resolve company names to this partner. Register spelling variants, one per line.
+![Supplier list screen](../../assets/screenshots/master-supplier-list-01.png)
 
-**Address & contact**
+- **BPコード (BP code)** … a control number that starts with `BP-`. The system adds it automatically.
+- **外注種別 (Vendor type)** … either 「**仕入先**」 (Supplier) or 「**外注先**」 (Outsourcing company) is shown as a badge.
+- **標準リードタイム (Standard lead time)** … shown like "7日" (7 days). When it is not registered, it shows "—".
+- **状態 (Status)** … the green 「**有効**」 (Active) means a company you can still use. The gray 「**無効**」 (Inactive) means a company you can no longer choose.
+- Use the search box at the top (「**BPコード・名称で検索**」 / Search by BP code or name) to narrow the list by company name.
+- In the 「**外注種別**」 (Vendor type) field you can show only suppliers or only outsourcing companies.
+- Click a row to open the detail screen for that company.
 
-- **Postal code** / **Address** (Japanese, English) / **Phone** / **FAX** / **Email** / **Website** / **Notes**.
+## Registering a company
 
-**Terms of trade**
+### Entering the company information
 
-- **Vendor type** (required) ... supplier / subcontractor.
-- **Legacy system code** ... old supplier code (optional).
-- **Closing day** ... 1–31; `31` means "end of month".
-- **Payment terms (days)** / **Payment day**.
-- **Standard lead time (days)** ... typical days from request to receipt; used as a reference for expected arrival in outsource orders.
+1. Press 「**新規作成**」 (New) at the top right of the list screen.
+2. Enter the company name in 「**名称（日本語）**」 (Name in Japanese). **This field must always be filled in.**
+3. Fill in 「**フリガナ**」 (Kana reading), 「**略称**」 (Short name) and 「**法人番号**」 (Corporate number) as far as you know them.
+4. In the 「**住所・連絡先**」 (Address and contact) area, enter the postal code, address, phone number and so on.
 
-**Bank account**
+![New supplier form](../../assets/screenshots/master-supplier-new-01.png)
 
-- **Bank name** / **Branch name** / **Account type** (ordinary / current) / **Account number**.
+### Entering the trade terms and the bank account
 
-## Detail screen
+5. Choose 「**外注種別**」 (Vendor type) in the 「**取引条件**」 (Trade terms) area. **This must also always be chosen.**
+   - A company you buy materials or supplies from → 「**仕入先**」 (Supplier)
+   - A company you ask to do part of the machining → 「**外注先**」 (Outsourcing company)
+6. Enter 「**締日**」 (Closing day), 「**支払サイト（日数）**」 (Payment terms in days) and 「**支払日**」 (Payment day).
+7. In 「**標準リードタイム（日数）**」 (Standard lead time in days), enter the usual number of days from the request until the goods arrive.
+8. In the 「**振込先**」 (Bank account) area, enter 「**銀行名**」 (Bank name), 「**支店名**」 (Branch name), 「**口座種別**」 (Account type) and 「**口座番号**」 (Account number).
+9. Press 「**保存**」 (Save).
 
-- The summary at the top shows the basic information, with a **vendor type** badge and the status badge next to the title. The **Overview** tab shows terms of trade, bank account and notes; the **History** tab shows the change log (who changed what and when).
-- The menu at the top right offers **Edit** / **Deactivate** / **Delete**.
+![Trade terms and bank account on the supplier form](../../assets/screenshots/master-supplier-new-terms-01.png)
 
-![Supplier detail screen with the basic-info summary, vendor type badge, and the Overview tab's trade terms and bank account](../../assets/screenshots/master-supplier-detail-01.png)
+> 💡 If you enter `31` in 「**締日**」 (Closing day), it means "end of month". The screen also shows 「31 = 月末」 (31 = end of month) under the field.
 
-## Deleting vs. deactivating
+> 💡 If you fill in 「**標準リードタイム（日数）**」 (Standard lead time in days), it is used as a guide for the expected arrival date when you make an [Outsourcing Request](/manual/en/apps/outsource-order/user). If you do not know it, you can save with the field empty.
 
-- A partner cannot be deleted while other data still references it. For companies you no longer trade with, use **deactivate** instead of delete (they disappear from selection lists, past data is kept).
+> ⚠️ You cannot type in the 「**BPコード**」 (BP code) field. As the screen says 「保存時に自動採番」 (numbered automatically on save), the number is added by itself when you save.
 
-## Glossary
+## Looking at what you registered
 
-- **Supplier (仕入先)** ... a company you procure materials and supplies from (vendor type = supplier).
-- **Subcontractor (外注先)** ... a company you outsource part of the manufacturing process to (vendor type = subcontractor).
-- **Standard lead time** ... typical number of days from request to receipt.
-- **BP (business partner)** ... the company unit that manages customers, vendors and end users together.
+Click a row in the list to open the screen for that company.
 
-New here? See the [Start Manual](/manual/en/start) as well.
+![Supplier detail screen](../../assets/screenshots/master-supplier-detail-01.png)
+
+Next to the company name you see a 「**仕入先**」 (Supplier) or 「**外注先**」 (Outsourcing company) badge, together with an 「**有効**」 (Active) or 「**無効**」 (Inactive) badge. Below that, the screen is split into two tabs.
+
+- **概要** (Overview) … the trade terms (closing day, payment terms, standard lead time and so on), the bank account and the notes.
+- **履歴** (History) … the record of when and who changed this registration.
+
+To correct the content, press 「**編集**」 (Edit) at the top right of the screen.
+
+## What to do with a company you stopped working with
+
+Even after business with a company ends, **please do not delete it**. Past purchase and receipt records point to that company. Set it to "Inactive" instead.
+
+1. Press the menu (the button with three dots) at the top right of the company screen.
+2. Choose 「**無効化**」 (Deactivate).
+3. On the confirmation screen, press 「**無効化する**」 (Deactivate).
+
+Once a company is inactive, you can no longer choose it on new purchase orders, but **the past data stays as it is**. If business starts again, you can turn it back with the same steps using 「有効化」 (Activate).
+
+## Questions and problems
+
+**Q. I see 「名称（日本語）を入力してください」 (Please enter the name in Japanese) and cannot save.**
+A. The Japanese company-name field is empty. Fill in 「名称（日本語）」 (Name in Japanese) and press 「保存」 (Save) again.
+
+**Q. I see 「外注種別を選択してください」 (Please choose the vendor type) and cannot save.**
+A. 「外注種別」 (Vendor type) in 「取引条件」 (Trade terms) has not been chosen yet. Choose 「仕入先」 (Supplier) for a company you buy materials from, or 「外注先」 (Outsourcing company) for a company you ask to do machining.
+
+**Q. The company does not appear in the 「仕入先」 (Supplier) field of a material purchase order.**
+A. The vendor type may be set to 「外注先」 (Outsourcing company). To use it as a company you buy materials from, change it to 「仕入先」 (Supplier). Please also check that it is not 「無効」 (Inactive).
+
+**Q. When I try to delete, I see 「関連するデータが存在するため実行できません」 (This cannot be done because related data exists).**
+A. Purchase or receipt records that use that company already exist, so it cannot be deleted. This is normal. Please use 「無効化」 (Deactivate).
+
+**Q. One company sells us material and also does machining for us. Which one should I choose?**
+A. You can choose only one vendor type. Choose the one you use more often, and write the other side in the notes so it is easy to understand.
+
+**Q. If I correct the company name or address, does the content of past purchase orders change?**
+A. No. Past documents keep the content they had at that time.
