@@ -30,9 +30,11 @@ consumed as TS source via `transpilePackages`).
 
 **No new dependencies.** The lockfile is frozen (`pnpm install --frozen-lockfile`
 runs in the Docker build). Build utilities in-house instead — precedents:
-`lib/markdown.ts` (Markdown), `lib/csv.ts` (CSV), `lib/js-highlight.ts`
-(syntax highlight/format). If a dep is truly required, raise it explicitly; don't
-edit `pnpm-lock.yaml` casually.
+`lib/csv.ts` (CSV), `lib/js-highlight.ts` (syntax highlight/format). If a dep is
+truly required, raise it explicitly; don't edit `pnpm-lock.yaml` casually.
+Sanctioned exception (explicit sign-off): the docs stack — `fumadocs-ui` /
+`fumadocs-core` / `fumadocs-mdx` / `@orama/tokenizers` (+ `@types/mdx`) for
+`/manual` + `/internal-docs`.
 
 ## Layout
 
@@ -90,13 +92,28 @@ inside the Server Action / route handler, not only in the UI.
   home), `lib/operation-codes.ts` (`{CAT}{MODE}{IDX}` jump codes),
   `lib/icons.ts` (name→Tabler icon).
 
-## Docs system (`/docs`)
+## Docs system (`/manual` public + `/internal-docs` auth) — fumadocs
 
-In-app manuals: `src/content/docs/<slug>/<lang>.md` (ja/en/zh) + tree in
-`lib/docs-tree.ts` + dep-free renderer `lib/markdown.ts` + full-text search
-(`lib/docs-search.ts` + `⌘K`). `next.config.ts` `outputFileTracingIncludes` ships
-the md into the standalone image. Renderer supports a safe subset only — **no
-tables, no nested lists**.
+Two content trees, both fumadocs-mdx collections (`source.config.ts`):
+
+- `content/manual/` — public user manual, served at `/manual/<lang>/<slug>`
+  (**no login** — `manual` + `llms-manual` are excluded in `src/proxy.ts`).
+- `content/internal/` — internal docs (kiosk setup, admin) at
+  `/internal-docs/<lang>/<slug>` — proxy-gated AND `auth()`-checked in the layout.
+
+Conventions: locale by filename suffix (`page.md` = ja, `page.en.md`,
+`page.zh.md`; same for `meta.json`/`meta.en.json`/`meta.zh.json`); frontmatter
+`title` + `description` + (manual only) `screenshots: [ids]`; ordering via
+`meta.json` `pages`. GFM tables/nested lists are fine (old no-tables rule is
+gone). Sources: `lib/manual-source.ts` / `lib/internal-source.ts` — **public
+routes must never import `internal-source.ts`** (that import boundary is what
+keeps internal content out of the public search index / llms endpoints).
+Search: `/manual/search` (public) + `/internal-docs/search` (session-checked),
+Orama with ja/zh tokenizers. LLM: `/manual/llms.txt` + raw markdown at
+`/manual/<lang>/<slug>.md` (rewrite → `/llms-manual`); no internal equivalents.
+Old `/docs/...?lang=xx` URLs 308-redirect (see `next.config.ts`). Screenshots:
+`content/manual/assets/screenshots/<id>.png`, captured/linted by
+`tools/docs-screenshots` (see its README).
 
 ## Prisma / DB
 

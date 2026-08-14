@@ -211,11 +211,11 @@ export const OPERATION_CODES: OperationCodeEntry[] = [
   },
 
   // ─── ドキュメント (DC) ───────────────────────────────────────────────────
-  // マニュアル（/docs）— 単一画面, list コードのみ（旧 SY03）
+  // マニュアル（/manual・fumadocs）— 単一画面, list コードのみ（旧 SY03）
   {
     code: "DC01",
     label: "マニュアル",
-    href: "/docs",
+    href: "/manual/ja",
     category: "ドキュメント",
     kind: "list",
     categoryCode: "DC",

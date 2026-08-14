@@ -20,6 +20,9 @@ import { DatePickerInput } from "@mantine/dates";
 export const theme = createTheme({
   primaryColor: "blue",
   defaultRadius: "sm",
+  // OS の「視差効果を減らす」を尊重（スクリーンショット撮影でも
+  // reducedMotion: "reduce" でトランジションを止められる）。
+  respectReducedMotion: true,
   fontFamily: "'Noto Sans JP', system-ui, -apple-system, sans-serif",
   components: {
     Button: Button.extend({ defaultProps: { size: "sm" } }),

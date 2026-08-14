@@ -37,6 +37,14 @@
 @import "tailwindcss";
 
 /*
+ * fumadocs (/manual・/internal-docs) のスタイル。fd- プレフィックスの CSS
+ * 変数とクラスで概ね自己完結する（Mantine 画面への波及はスモークテスト済み
+ * の前提 — 崩れが出た場合は docs レイアウト専用 CSS へ隔離する）。
+ */
+@import "fumadocs-ui/css/neutral.css";
+@import "fumadocs-ui/css/preset.css";
+
+/*
  * Drive Tailwind's `dark:` variant from Mantine's color scheme instead of the
  * OS `prefers-color-scheme`, so `dark:` utilities and the `[data-mantine-color-scheme]`
  * selectors in §3 stay in sync (one toggle). Mantine sets the attribute on <html>.

@@ -339,11 +339,11 @@ export const appList: AppEntry[] = [
 
   // ─── ドキュメント ──────────────────────────────────────────────────────────
   {
-    // マニュアル（/docs）。全ユーザー閲覧可。多言語 md をアプリ内で表示。
+    // マニュアル（/manual・fumadocs）。公開ページだが launcher からも開ける。
     key: "docs",
     label: "マニュアル",
     operationCode: "DC01",
-    href: "/docs",
+    href: "/manual/ja",
     icon: "IconBook2",
     category: "ドキュメント",
     requiredPermission: null,

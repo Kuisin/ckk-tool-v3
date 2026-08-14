@@ -1,0 +1,41 @@
+---
+title: "Trial Estimate — User Manual"
+description: "Operation code SA05. Computes a unit price from cost and is the starting point for price-list registration."
+screenshots: []
+---
+Operation code **SA05**. Computes a unit price from cost and is the starting point for price-list registration.
+
+## What you can do here
+
+Work out "what to sell this [product](/manual/en/masters/product/user) for" automatically from **cost** — material, machining, coating, etc. An estimate can optionally be linked to a product (multiple estimates per product), and a confirmed estimate becomes a base-price source when creating a price list (customer × product).
+
+- **Material cost** fills in automatically from the purchase history of a **material-type × diameter × black-skin/polished-surface** construction (i.e. what you paid before = the reference price, ¥/1000mm). When there is no purchase history, the material-type's **default unit price (¥/1000mm)** is used.
+- As you enter dimensions and machining conditions, the **cost breakdown** and **unit price** appear on the right in real time.
+- New here? Pick a [customer](/manual/en/masters/customer/user) and a material-type, diameter, and black-skin/polished-surface, enter the max diameter and length, and check that numbers appear. See the Glossary in the Start Manual for terms.
+
+## Creating an estimate
+
+1. Click **New** at the top right of the list.
+2. Choose the **tool type** (Round bar / Cylinder / OH). Inputs change per tool type.
+3. Choose the **customer**, optionally the **product** (linking it lets the price list pick this estimate later), and the material's **material-type, diameter, and black-skin/polished-surface**. Once all three are set, the **reference unit price (¥/1000mm)** is auto-filled from that construction's purchase history (or the material-type's default unit price when there is none).
+4. Enter dimensions and machining conditions (max diameter, total length, step, neck, coating, lap, LD, machining minutes, etc.).
+5. Fill in any **custom fields** added by an administrator.
+6. Enter the **base quantity** (used to amortize the shape-out cost).
+
+The **cost breakdown** and **unit price** on the right recompute instantly as you type.
+
+## Overriding the reference price
+
+- By default the reference price is derived from the purchase history of that material-type construction (material-type × diameter × black-skin/polished-surface). When there is no purchase history, the material-type's default unit price (¥/1000mm) is used (a "default price" badge is shown).
+- To set it manually, click **Custom** and enter the value. An estimate using a custom price is recorded as "custom".
+
+## Save, confirm, use in price lists
+
+- **Save** stores a draft (DRAFT) and records the price at that point as a snapshot (later changes to the calculation logic will not change this estimate's price).
+- On the detail screen, **Confirm** (CONFIRMED) makes it selectable as a **base-price source** when creating or editing a price list (SA01) — provided it is linked to the product.
+- The first time it is used by a price list it is locked as **REGISTERED** (re-estimate via "Duplicate & re-estimate"). The same estimate can source several price lists (e.g. different customers).
+
+## List & search
+
+- Filter the list by estimate number, customer, tool type, price, and status.
+- Click a row to view the detail (cost breakdown, per-lot price, history).
