@@ -45,7 +45,7 @@ model ShippingOrder {
 
   salesOrderId  String  @map("sales_order_id") @db.Uuid
   workOrderId   String? @map("work_order_id") @db.Uuid
-  fromFactoryId Int?    @map("from_factory_id")
+  fromPlantId Int?    @map("from_plant_id")
 
   type      ShippingType
   status    ShippingStatus @default(DRAFT)
@@ -57,7 +57,7 @@ model ShippingOrder {
 
   salesOrder    SalesOrder @relation(fields: [salesOrderId], references: [id])
   workOrder     WorkOrder? @relation(fields: [workOrderId], references: [id])
-  fromFactory   Factory?   @relation(fields: [fromFactoryId], references: [id])
+  fromPlant   Plant?   @relation(fields: [fromPlantId], references: [id])
   createdByUser User?      @relation("ShippingOrderCreatedBy", fields: [createdBy], references: [id])
 
   items         ShippingOrderItem[]

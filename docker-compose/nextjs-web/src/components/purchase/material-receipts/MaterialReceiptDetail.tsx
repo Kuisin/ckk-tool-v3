@@ -62,7 +62,7 @@ export function MaterialReceiptDetail({
           }
         />
         <FieldValue label="仕入先" value={r.supplierName ?? "—"} />
-        <FieldValue label="入荷先工場" value={r.factoryName ?? "—"} />
+        <FieldValue label="入荷先拠点" value={r.plantName ?? "—"} />
         <FieldValue
           label="数量"
           value={

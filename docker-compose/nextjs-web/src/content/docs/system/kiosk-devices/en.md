@@ -1,6 +1,6 @@
 # Kiosk Device Management — User Manual
 
-Operation code **SY09**. Registers and manages the shared factory-floor tablets (kiosk devices): linking, activation, floor-map placement, and usage history.
+Operation code **SY09**. Registers and manages the shared plant-floor tablets (kiosk devices): linking, activation, floor-map placement, and usage history.
 
 > This app is currently available **in the development (dev) environment only**. Screens and steps may change before the production release.
 
@@ -9,7 +9,7 @@ Operation code **SY09**. Registers and manages the shared factory-floor tablets 
 ## What you can do here
 
 - Create device profiles, then **link** and **activate** tablets
-- Edit device info (name, factory, location); disable / re-enable, unlink, revoke
+- Edit device info (name, plant, location); disable / re-enable, unlink, revoke
 - Place device pins on **floor maps** with live online status
 - View usage history (login / logout, online / offline)
 
@@ -25,7 +25,7 @@ Operation code **SY09**. Registers and manages the shared factory-floor tablets 
 
 Registration is "profile first". For preparing the tablet itself (installing the dedicated app, etc.), see [Kiosk Device Setup](/docs/system/kiosk-device-setup).
 
-1. Click **端末プロファイル作成** (Create device profile) and enter a name, factory, and optional location. The status becomes "Awaiting link".
+1. Click **端末プロファイル作成** (Create device profile) and enter a name, plant, and optional location. The status becomes "Awaiting link".
 2. The tablet's setup screen shows a **12-character link code** with a QR (valid for **10 minutes**).
 3. From the row menu, choose **端末をリンク** (Link device) and type the code — or **scan the QR with your camera** (works on any browser, including phones). On success the status becomes "Awaiting activation".
 4. Click **有効化** (Activate). The status becomes "Active" and the tablet detects this automatically and switches to the login screen.
@@ -41,12 +41,12 @@ If the code expires, have the tablet display it again and retry. Only profiles i
 
 ## Editing and the device settings code
 
-- **編集** (Edit) changes the name, factory, and location. **Changing the factory removes the pin from the floor map** (maps are per factory).
+- **編集** (Edit) changes the name, plant, and location. **Changing the plant removes the pin from the floor map** (maps are per plant).
 - The **device settings code** (6 digits) and the **maintenance PIN** (shared by all devices, auto-rotated daily at 4:00) are shown on the **device detail page under "PIN・設定コード"**. Revealing them requires a confirmation and **is recorded in the audit log** (auto-hidden after 60 s). The settings code can also be **regenerated** there.
 
 ## Replacing or stopping a device
 
-- **リンク解除** (Unlink) … detaches the tablet from the profile and returns it to "Awaiting link". Name, factory, location, and the map pin are kept; sessions, the device token, and the attestation key are destroyed. Use this to replace a broken tablet, then re-link the new one to the same profile.
+- **リンク解除** (Unlink) … detaches the tablet from the profile and returns it to "Awaiting link". Name, plant, location, and the map pin are kept; sessions, the device token, and the attestation key are destroyed. Use this to replace a broken tablet, then re-link the new one to the same profile.
 - **鍵リセット** (Key reset) … clears only the attestation key. The next time that device's app connects, a new key is bound (use after re-initializing a tablet).
 - **無効化 / 再有効化** (Disable / Re-enable) … temporarily stop / resume use. A disabled device cannot be used as a kiosk.
 - **取り消し** (Revoke) … permanently disables the device. **Cannot be undone.** The device token is destroyed and open sessions are terminated; re-registration via a new profile is required to use the tablet again.
@@ -58,7 +58,7 @@ Each device reports its GPS position automatically **every 5 minutes**, kept as 
 
 ## Floor maps
 
-Open via the **フロアマップ** (Floor map) button at the top right of the list. Choose a factory, then each floor (level / area) tab shows its map with device pins. Pin colors follow the online status, and the name of the logged-in user is shown too.
+Open via the **フロアマップ** (Floor map) button at the top right of the list. Choose a plant, then each floor (level / area) tab shows its map with device pins. Pin colors follow the online status, and the name of the logged-in user is shown too.
 
 In edit mode (toggle switch) you can:
 

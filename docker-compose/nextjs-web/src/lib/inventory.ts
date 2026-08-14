@@ -6,7 +6,7 @@
  * - onWorkOrderCompleted: 完成品をロット入庫 + 半製品バケットを入庫、
  *   予約 RESERVED → CONFIRMED。
  * - onShippingShipped: DISPATCH は出庫 + 予約 RELEASE。STOCK_STORAGE は
- *   保管工場へ入庫（請求フロー外）。
+ *   保管拠点へ入庫（請求フロー外）。
  * - reserveProductStock: §4 二段照合 → 引当予約（不足分は指示書分割の材料）。
  */
 
@@ -93,7 +93,7 @@ export async function applyTransaction(
 }
 
 /**
- * 製品在庫行の取得 or 作成（productId×factoryId×lot×半製品フラグ）。
+ * 製品在庫行の取得 or 作成（productId×plantId×lot×半製品フラグ）。
  * 保管場所×棚は「未割当」（null）バケット固定 — システム入庫は必ず未割当へ
  * 入り、場所への配置は在庫移動（PD04 在庫管理）で行う。
  */
@@ -101,7 +101,7 @@ async function ensureProductInventory(
   tx: Tx,
   data: {
     productId: number;
-    factoryId: number | null;
+    plantId: number | null;
     lotNumber: number | null;
     isSemiFinished: boolean;
     sourceStepId?: string | null;
@@ -109,7 +109,7 @@ async function ensureProductInventory(
 ): Promise<string> {
   const bucket = {
     productId: data.productId,
-    factoryId: data.factoryId,
+    plantId: data.plantId,
     lotNumber: data.lotNumber,
     isSemiFinished: data.isSemiFinished,
     storageLocationId: null,
@@ -142,11 +142,11 @@ async function ensureProductInventory(
 /** 素材在庫行の取得 or 作成（保管場所×棚は未割当バケット固定 — 同上）。 */
 export async function ensureMaterialInventory(
   tx: Tx,
-  data: { materialId: number; factoryId: number | null; unit: string },
+  data: { materialId: number; plantId: number | null; unit: string },
 ): Promise<string> {
   const bucket = {
     materialId: data.materialId,
-    factoryId: data.factoryId,
+    plantId: data.plantId,
     storageLocationId: null,
     shelfId: null,
   };
@@ -202,14 +202,13 @@ export async function onWorkOrderCompleted(workOrderId: string): Promise<void> {
     (sum, s) => sum + (s.outputDefectSemiFinished ?? 0),
     0,
   );
-  const factoryId =
-    wo.steps.find((s) => s.factoryId != null)?.factoryId ?? null;
+  const plantId = wo.steps.find((s) => s.plantId != null)?.plantId ?? null;
 
   await prisma.$transaction(async (tx) => {
     if (finishedQty > 0) {
       const invId = await ensureProductInventory(tx, {
         productId: wo.salesOrder.productId,
-        factoryId,
+        plantId,
         lotNumber: wo.workOrderNumber,
         isSemiFinished: false,
       });
@@ -229,7 +228,7 @@ export async function onWorkOrderCompleted(workOrderId: string): Promise<void> {
       );
       const invId = await ensureProductInventory(tx, {
         productId: wo.salesOrder.productId,
-        factoryId,
+        plantId,
         lotNumber: wo.workOrderNumber,
         isSemiFinished: true,
         sourceStepId: semiStep?.id ?? null,
@@ -374,10 +373,10 @@ export async function onShippingShippedTx(
         );
       }
     } else {
-      // STOCK_STORAGE: 保管工場へ入庫（請求フロー外の予備分）
+      // STOCK_STORAGE: 保管拠点へ入庫（請求フロー外の予備分）
       const invId = await ensureProductInventory(tx, {
         productId: item.productId,
-        factoryId: so.fromFactoryId,
+        plantId: so.fromPlantId,
         lotNumber: item.lotNumber,
         isSemiFinished: false,
       });
@@ -464,7 +463,7 @@ export async function releaseSalesOrderReservations(
   return reservations.length;
 }
 
-/** 素材入荷フック: 入荷工場の素材在庫へ入庫。 */
+/** 素材入荷フック: 入荷拠点の素材在庫へ入庫。 */
 export async function onMaterialReceipt(receiptId: string): Promise<void> {
   const r = await prisma.materialReceipt.findUniqueOrThrow({
     where: { id: receiptId },
@@ -472,7 +471,7 @@ export async function onMaterialReceipt(receiptId: string): Promise<void> {
   await prisma.$transaction(async (tx) => {
     const invId = await ensureMaterialInventory(tx, {
       materialId: r.materialId,
-      factoryId: r.factoryId,
+      plantId: r.plantId,
       unit: r.unit,
     });
     await applyTransaction(tx, {

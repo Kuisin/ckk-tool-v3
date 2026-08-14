@@ -1,7 +1,7 @@
 import { notFound, redirect } from "next/navigation";
 import { isEditable } from "@/components/purchase/purchase-requests/model";
 import { PurchaseRequestForm } from "@/components/purchase/purchase-requests/PurchaseRequestForm";
-import { fetchFactoryOptions, fetchPurchaseRequest } from "../../data";
+import { fetchPlantOptions, fetchPurchaseRequest } from "../../data";
 
 export const dynamic = "force-dynamic";
 
@@ -20,9 +20,9 @@ export default async function PurchasePurchaseRequestsEditPage({
   const { id } = await params;
   const requestNumber = decodeURIComponent(id);
 
-  const [purchaseRequest, factoryOptions] = await Promise.all([
+  const [purchaseRequest, plantOptions] = await Promise.all([
     fetchPurchaseRequest(requestNumber),
-    fetchFactoryOptions(),
+    fetchPlantOptions(),
   ]);
   if (!purchaseRequest) notFound();
   if (!isEditable(purchaseRequest)) {
@@ -31,8 +31,8 @@ export default async function PurchasePurchaseRequestsEditPage({
 
   return (
     <PurchaseRequestForm
-      factoryOptions={factoryOptions}
       mode="edit"
+      plantOptions={plantOptions}
       purchaseRequest={purchaseRequest}
     />
   );

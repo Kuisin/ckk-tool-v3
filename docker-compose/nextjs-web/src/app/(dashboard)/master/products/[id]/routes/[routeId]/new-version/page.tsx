@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import {
-  fetchFactoryOptions,
+  fetchPlantOptions,
   fetchSupplierOptions,
 } from "@/app/(dashboard)/production/work-orders/data";
 import { RouteEditorForm } from "@/components/master/products/RouteEditorForm";
@@ -22,7 +22,7 @@ export default async function ProductRouteNewVersionPage({
   const routeId = Number(routeIdParam);
   if (!Number.isInteger(id) || !Number.isInteger(routeId)) notFound();
 
-  const [route, catalog, factoryOptions, supplierOptions] = await Promise.all([
+  const [route, catalog, plantOptions, supplierOptions] = await Promise.all([
     prisma.productProcessRoute.findFirst({
       where: { id: routeId, productId: id },
       include: {
@@ -37,7 +37,7 @@ export default async function ProductRouteNewVersionPage({
       },
     }),
     loadCatalog(),
-    fetchFactoryOptions(),
+    fetchPlantOptions(),
     fetchSupplierOptions(),
   ]);
   if (!route) notFound();
@@ -50,17 +50,17 @@ export default async function ProductRouteNewVersionPage({
   return (
     <RouteEditorForm
       catalogSteps={catalog.steps}
-      factoryOptions={factoryOptions}
       initialSteps={(latest?.steps ?? []).map((s) => ({
         processStepId: s.processStepId,
         sortOrder: s.sortOrder,
         executionLocation: s.executionLocation,
-        factoryId: s.factoryId,
+        plantId: s.plantId,
         supplierBpId: s.supplierBpId,
         workHours: s.workHours == null ? null : Number(s.workHours),
       }))}
       latestVersion={latest?.version ?? 0}
       mode="new-version"
+      plantOptions={plantOptions}
       productId={route.product.id}
       productLabel={productLabel}
       routeId={route.id}

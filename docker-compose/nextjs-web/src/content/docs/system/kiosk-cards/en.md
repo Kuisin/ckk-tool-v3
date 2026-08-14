@@ -1,6 +1,6 @@
 # QR Card Management — User Manual
 
-Operation code **SY08**. Issues and manages the **QR cards** employees use to log in to shared factory-floor tablets (kiosk devices).
+Operation code **SY08**. Issues and manages the **QR cards** employees use to log in to shared plant-floor tablets (kiosk devices).
 
 > This app is currently available **in the development (dev) environment only**. Screens and steps may change before the production release.
 

@@ -3,7 +3,7 @@
 /**
  * FloorMapCanvas — フロアマップ + ピンの共有キャンバス。
  *
- * 工場フロアマップ（kiosk_floor_maps — 端末管理と保管場所で共用）の図面上に
+ * 拠点フロアマップ（kiosk_floor_maps — 端末管理と保管場所で共用）の図面上に
  * %座標のピンを表示し、editable ではポインタードラッグで移動できる
  * （SY09 KioskFloorMapView と同じ Pointer Events 方式・外部ライブラリなし）。
  * 利用側: MS0B 保管場所タブ（配置編集）/ 在庫管理 PD04 ロケーション（閲覧）。

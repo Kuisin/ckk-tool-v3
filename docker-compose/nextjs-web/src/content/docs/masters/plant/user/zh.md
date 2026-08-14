@@ -1,6 +1,6 @@
 # 工厂 — 操作手册
 
-操作代码 **MS0B**。用于登记和管理作为制造、库存、发货据点的工厂（工場）的台账。[产品库存](/docs/apps/product-inventory/user) 和 [素材库存](/docs/apps/material-inventory/user) 按工厂管理，素材的入库地点等也从这里登记的工厂中选择。
+操作代码 **MS0B**。用于登记和管理作为制造、库存、发货据点的工厂（拠点）的台账。[产品库存](/docs/apps/product-inventory/user) 和 [素材库存](/docs/apps/material-inventory/user) 按工厂管理，素材的入库地点等也从这里登记的工厂中选择。
 
 > 此应用目前仅在**开发环境（dev）**中开放。正式发布前，界面和操作步骤可能会有所调整。
 

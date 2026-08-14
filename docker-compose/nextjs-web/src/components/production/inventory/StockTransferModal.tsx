@@ -3,7 +3,7 @@
 /**
  * StockTransferModal — 在庫移動（在庫管理 PD04）。
  *
- * 移動元（在庫行）から 移動先 = 工場 → 保管場所 → 棚 を選んで数量を移す。
+ * 移動元（在庫行）から 移動先 = 拠点 → 保管場所 → 棚 を選んで数量を移す。
  * 予約分は動かせない（最大 = 利用可能数）。サーバー側 transferStock が
  * OUT/IN の取引ペアで記録する。
  */
@@ -23,8 +23,8 @@ import { useMemo, useState, useTransition } from "react";
 import { transferStock } from "@/app/(dashboard)/production/inventory/actions";
 import { CancelButton, PrimaryButton } from "@/components/ui/buttons";
 
-/** 移動先の選択肢（工場 → 保管場所 → 棚。サーバーで有効行のみに整形済み）。 */
-export interface TransferFactoryOption {
+/** 移動先の選択肢（拠点 → 保管場所 → 棚。サーバーで有効行のみに整形済み）。 */
+export interface TransferPlantOption {
   id: number;
   name: string;
   locations: {
@@ -37,7 +37,7 @@ export interface TransferFactoryOption {
     mapY: number | null;
     shelves: { id: number; code: string; name: string | null }[];
   }[];
-  /** 工場のフロアマップ（端末管理 SY09 と共用。ロケーションビュー用）。 */
+  /** 拠点のフロアマップ（端末管理 SY09 と共用。ロケーションビュー用）。 */
   floorMaps: { id: string; name: string; hasImage: boolean }[];
 }
 
@@ -54,39 +54,39 @@ export interface TransferSource {
   unit: string;
   /** 製品は整数のみ。 */
   integerOnly: boolean;
-  /** 現在の場所ラベル（工場 / 保管場所 / 棚）。 */
+  /** 現在の場所ラベル（拠点 / 保管場所 / 棚）。 */
   currentLabel: string;
 }
 
 export function StockTransferModal({
   source,
-  factories,
+  plants,
   onClose,
   onDone,
 }: {
   source: TransferSource;
-  factories: TransferFactoryOption[];
+  plants: TransferPlantOption[];
   onClose: () => void;
   onDone: () => void;
 }) {
-  const [factoryId, setFactoryId] = useState<string | null>(null);
+  const [plantId, setPlantId] = useState<string | null>(null);
   const [locationId, setLocationId] = useState<string | null>(null);
   const [shelfId, setShelfId] = useState<string | null>(null);
   const [quantity, setQuantity] = useState<number | string>("");
   const [notes, setNotes] = useState("");
   const [pending, startTransition] = useTransition();
 
-  const factory = factories.find((f) => String(f.id) === factoryId) ?? null;
+  const plant = plants.find((f) => String(f.id) === plantId) ?? null;
   const location =
-    factory?.locations.find((l) => String(l.id) === locationId) ?? null;
+    plant?.locations.find((l) => String(l.id) === locationId) ?? null;
 
   const locationOptions = useMemo(
     () =>
-      (factory?.locations ?? []).map((l) => ({
+      (plant?.locations ?? []).map((l) => ({
         value: String(l.id),
         label: `${l.name}（${l.code}）`,
       })),
-    [factory],
+    [plant],
   );
   const shelfOptions = useMemo(
     () =>
@@ -98,16 +98,16 @@ export function StockTransferModal({
   );
 
   const qty = typeof quantity === "number" ? quantity : Number(quantity);
-  const valid = factoryId != null && qty > 0 && qty <= source.available;
+  const valid = plantId != null && qty > 0 && qty <= source.available;
 
   function submit() {
-    if (!valid || !factoryId) return;
+    if (!valid || !plantId) return;
     startTransition(async () => {
       const res = await transferStock({
         inventoryType: source.inventoryType,
         inventoryId: source.inventoryId,
         quantity: qty,
-        targetFactoryId: Number(factoryId),
+        targetPlantId: Number(plantId),
         targetStorageLocationId: locationId ? Number(locationId) : null,
         targetShelfId: shelfId ? Number(shelfId) : null,
         notes: notes || undefined,
@@ -159,32 +159,32 @@ export function StockTransferModal({
         </div>
 
         <Select
-          data={factories.map((f) => ({
+          data={plants.map((f) => ({
             value: String(f.id),
             label: f.name,
           }))}
-          label="移動先の工場"
+          label="移動先の拠点"
           onChange={(v) => {
-            setFactoryId(v);
+            setPlantId(v);
             setLocationId(null);
             setShelfId(null);
           }}
           placeholder="選択"
           searchable
-          value={factoryId}
+          value={plantId}
           withAsterisk
         />
         <Select
           clearable
           data={locationOptions}
-          disabled={!factory}
+          disabled={!plant}
           label="保管場所"
           onChange={(v) => {
             setLocationId(v);
             setShelfId(null);
           }}
           placeholder={
-            factory && locationOptions.length === 0
+            plant && locationOptions.length === 0
               ? "保管場所なし（未割当のまま移動）"
               : "未割当"
           }

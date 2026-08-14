@@ -2,8 +2,8 @@ import { notFound, redirect } from "next/navigation";
 import { WorkflowBuilder } from "@/components/production/work-orders/WorkflowBuilder";
 import { loadCatalog } from "@/lib/workflow";
 import {
-  fetchFactoryOptions,
   fetchInspectionTemplateOptions,
+  fetchPlantOptions,
   fetchSupplierOptions,
   fetchWorkOrder,
 } from "../../data";
@@ -26,10 +26,10 @@ export default async function ProductionWorkOrdersEditPage({
     redirect(`/production/work-orders/${workOrderNumber}`);
   }
 
-  const [catalog, factoryOptions, templateOptions, supplierOptions] =
+  const [catalog, plantOptions, templateOptions, supplierOptions] =
     await Promise.all([
       loadCatalog(),
-      fetchFactoryOptions(),
+      fetchPlantOptions(),
       fetchInspectionTemplateOptions(),
       fetchSupplierOptions(),
     ]);
@@ -37,8 +37,8 @@ export default async function ProductionWorkOrdersEditPage({
   return (
     <WorkflowBuilder
       catalogSteps={catalog.steps}
-      factoryOptions={factoryOptions}
       mode="edit"
+      plantOptions={plantOptions}
       supplierOptions={supplierOptions}
       templateOptions={templateOptions}
       useDeps={catalog.useDeps}

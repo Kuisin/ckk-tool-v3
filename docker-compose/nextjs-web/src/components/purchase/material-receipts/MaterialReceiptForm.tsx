@@ -4,7 +4,7 @@
  * MaterialReceiptForm — 素材入荷 新規登録 (PU11, design.md §8.3)。
  *
  * 直接調達（発注書を経由しない外部調達）の入荷登録。
- * 素材 SearchSelect（必須）/ 仕入先 Select（任意）/ 入荷先工場 Select（任意）/
+ * 素材 SearchSelect（必須）/ 仕入先 Select（任意）/ 入荷先拠点 Select（任意）/
  * 数量 + 単位 / 入荷日（既定: 今日）/ 備考 / 証憑（任意・複数可）。
  * 保存で material_receipts を作成し onMaterialReceipt で在庫入庫。証憑を
  * 選択していれば作成後に /api/attachments/upload へ順次 POST（進捗通知付き・
@@ -53,7 +53,7 @@ interface Option {
 const schema = z.object({
   materialId: z.string().min(1, "素材を選択してください"),
   supplierBpId: z.string().nullable(),
-  factoryId: z.string().nullable(),
+  plantId: z.string().nullable(),
   quantity: z.number().positive("0より大きい値"),
   unit: z.string().min(1, "必須"),
   receivedAt: z.string().min(1, "入荷日を入力してください"),
@@ -66,12 +66,12 @@ const today = () => new Date().toISOString().slice(0, 10);
 
 export function MaterialReceiptForm({
   supplierOptions,
-  factoryOptions,
+  plantOptions,
 }: {
   /** 仕入先（VENDOR ロールの有効 BP）。value = uuid。 */
   supplierOptions: Option[];
-  /** 入荷先工場（有効のみ）。value = String(内部 id)。 */
-  factoryOptions: Option[];
+  /** 入荷先拠点（有効のみ）。value = String(内部 id)。 */
+  plantOptions: Option[];
 }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -159,7 +159,7 @@ export function MaterialReceiptForm({
     initialValues: {
       materialId: "",
       supplierBpId: null,
-      factoryId: null,
+      plantId: null,
       quantity: 1,
       unit: "本",
       receivedAt: today(),
@@ -172,7 +172,7 @@ export function MaterialReceiptForm({
       const result = await createMaterialReceipt({
         materialId: values.materialId,
         supplierBpId: values.supplierBpId,
-        factoryId: values.factoryId,
+        plantId: values.plantId,
         quantity: values.quantity,
         unit: values.unit,
         receivedAt: values.receivedAt,
@@ -210,7 +210,7 @@ export function MaterialReceiptForm({
       title="素材入荷 新規登録"
     >
       <FormSection
-        description="直接調達（発注書を経由しない入荷）を登録します。登録と同時に入荷先工場の素材在庫へ入庫されます。発注入荷は素材発注書の「入荷完了」から自動登録されます。"
+        description="直接調達（発注書を経由しない入荷）を登録します。登録と同時に入荷先拠点の素材在庫へ入庫されます。発注入荷は素材発注書の「入荷完了」から自動登録されます。"
         title="入荷情報"
       >
         <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
@@ -234,10 +234,10 @@ export function MaterialReceiptForm({
           />
           <Select
             clearable
-            data={factoryOptions}
-            label="入荷先工場"
-            placeholder="工場を選択（任意）"
-            {...form.getInputProps("factoryId")}
+            data={plantOptions}
+            label="入荷先拠点"
+            placeholder="拠点を選択（任意）"
+            {...form.getInputProps("plantId")}
           />
           <DatePickerInput
             label="入荷日"

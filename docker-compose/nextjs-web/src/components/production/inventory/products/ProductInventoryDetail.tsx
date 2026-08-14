@@ -3,7 +3,7 @@
 /**
  * ProductInventoryDetail — 製品在庫 詳細 (PD24, design.md §8.2)。
  *
- * SummaryGrid（製品 / 工場 / ロット / 区分 / 在庫数 / 予約数 / 利用可能 /
+ * SummaryGrid（製品 / 拠点 / ロット / 区分 / 在庫数 / 予約数 / 利用可能 /
  * 保管場所 / 半製品の発生工程）+ Tabs: 予約（引当予約の一覧）/ 取引履歴。
  */
 
@@ -64,7 +64,7 @@ export function ProductInventoryDetail({
             </>
           }
         />
-        <FieldValue label="工場" value={record.factoryName ?? "—"} />
+        <FieldValue label="拠点" value={record.plantName ?? "—"} />
         <FieldValue
           label="ロット番号"
           value={

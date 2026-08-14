@@ -78,7 +78,7 @@ Enum SCOPE {
   ALL
   REGION
   COUNTRY
-  FACTORY
+  PLANT
   DEPARTMENT
   TEAM
   SUB
@@ -101,13 +101,13 @@ View user_permissions {
 ### Master Data
 ```
 // ===========================
-// 拠点（工場）
+// 拠点（拠点）
 // ===========================
 
-// 工場（製造・在庫・出荷の拠点）。SCOPE.FACTORY の実体。
-Table factories {
+// 拠点（製造・在庫・出荷の拠点）。SCOPE.PLANT の実体。
+Table plants {
   id              uuid [pk]
-  code            varchar [unique, not null]   // 工場コード
+  code            varchar [unique, not null]   // 拠点コード
   name            json [not null]              // { ja: '', en: '' }
   name_kana       varchar
   country_code    varchar(2)                   // ISO 3166-1 alpha-2
@@ -662,7 +662,7 @@ Table work_order_steps {
   process_step_id int [not null, ref: > process_step_catalog.id]
   sort_order      int [not null]           // テンプレート順（参考。実行は依存解決で決定）
   execution_location STEP_EXECUTION [not null]
-  factory_id      uuid [ref: > factories.id]          // 社内実行時の工場
+  plant_id      uuid [ref: > plants.id]          // 社内実行時の拠点
   supplier_bp_id  uuid [ref: > business_partners.id]  // 外注時
   outsource_requested_at date
   outsource_expected_at  date
@@ -867,7 +867,7 @@ Table defect_records {
 Table product_inventory {
   id              uuid [pk]
   product_id      varchar [not null, ref: > products.id]
-  factory_id      uuid [ref: > factories.id]   // 保管工場
+  plant_id      uuid [ref: > plants.id]   // 保管拠点
   lot_number      int [ref: > work_orders.work_order_number]
   quantity        int [not null, default: 0]
   reserved_quantity int [not null, default: 0]
@@ -879,7 +879,7 @@ Table product_inventory {
 Table material_inventory {
   id              uuid [pk]
   material_id     varchar [not null, ref: > materials.id]
-  factory_id      uuid [ref: > factories.id]   // 保管工場
+  plant_id      uuid [ref: > plants.id]   // 保管拠点
   quantity        numeric(12,3) [not null, default: 0]
   reserved_quantity numeric(12,3) [not null, default: 0]
   unit            varchar [not null]
@@ -978,7 +978,7 @@ Table material_purchase_order_items {
   id              uuid [pk]
   purchase_order_id uuid [not null, ref: > material_purchase_orders.id]
   material_id     varchar [not null, ref: > materials.id]
-  factory_id      uuid [ref: > factories.id]   // 入荷先工場
+  plant_id      uuid [ref: > plants.id]   // 入荷先拠点
   quantity        numeric(12,3) [not null]
   unit            varchar [not null]
   unit_price      numeric(12,2) [not null]
@@ -1008,7 +1008,7 @@ Table material_receipts {
   material_id     varchar [not null, ref: > materials.id]
   supplier_bp_id  uuid [ref: > business_partners.id]
   purchase_order_item_id uuid [ref: > material_purchase_order_items.id]  // 発注明細との紐付け（任意）
-  factory_id      uuid [ref: > factories.id]   // 入荷先工場
+  plant_id      uuid [ref: > plants.id]   // 入荷先拠点
   quantity        numeric(12,3) [not null]
   unit            varchar [not null]
   received_at     date [not null]
@@ -1025,7 +1025,7 @@ Table shipping_orders {
   id              uuid [pk]
   sales_order_id  uuid [not null, ref: > sales_orders.id]
   work_order_id   uuid [ref: > work_orders.id]
-  from_factory_id uuid [ref: > factories.id]   // 出荷元工場
+  from_plant_id uuid [ref: > plants.id]   // 出荷元拠点
   type            SHIPPING_TYPE [not null]
   status          SHIPPING_STATUS [not null, default: 'DRAFT']
   shipped_at      timestamp

@@ -105,7 +105,7 @@ src/
 │   │   │       └── [id]/page.tsx
 │   │   │
 │   │   └── master/                                 # マスタ管理
-│   │       ├── factories/                          # 工場（製造・在庫・出荷の拠点）
+│   │       ├── plants/                          # 拠点（製造・在庫・出荷の拠点）
 │   │       │   ├── page.tsx
 │   │       │   ├── new/page.tsx
 │   │       │   └── [id]/
@@ -223,11 +223,11 @@ src/
 │   │   └── AuditTimeline.tsx
 │   ├── purchase/
 │   │   ├── PurchaseOrderForm.tsx                   # 素材発注書フォーム（@mantine/form）
-│   │   ├── PurchaseOrderItemsTable.tsx             # 発注明細（素材×工場×数量×単価）
+│   │   ├── PurchaseOrderItemsTable.tsx             # 発注明細（素材×拠点×数量×単価）
 │   │   └── PurchaseApprovalPanel.tsx               # 承認状況・承認/差し戻し操作
 │   └── master/
 │       ├── CustomerSelect.tsx
-│       ├── FactorySelect.tsx                       # 工場選択
+│       ├── PlantSelect.tsx                       # 拠点選択
 │       └── [entity]Table.tsx                       # per master entity
 │
 ├── lib/

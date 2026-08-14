@@ -373,7 +373,7 @@ export function PurchaseOrderDetail({
               <Table.Thead>
                 <Table.Tr>
                   <Table.Th>素材</Table.Th>
-                  <Table.Th>入荷先工場</Table.Th>
+                  <Table.Th>入荷先拠点</Table.Th>
                   <Table.Th ta="right">数量</Table.Th>
                   <Table.Th ta="right">単価</Table.Th>
                   <Table.Th ta="right">金額</Table.Th>
@@ -392,7 +392,7 @@ export function PurchaseOrderDetail({
                         {it.materialName}
                       </Text>
                     </Table.Td>
-                    <Table.Td>{it.factoryName ?? "—"}</Table.Td>
+                    <Table.Td>{it.plantName ?? "—"}</Table.Td>
                     <Table.Td className="tabular-nums" ta="right">
                       {it.quantity} {it.unit}
                       {po.status === "ORDERED" || po.status === "COMPLETED" ? (
@@ -577,7 +577,7 @@ export function PurchaseOrderDetail({
       >
         <Text size="sm">
           明細 {po.items.length}{" "}
-          件を全量入荷として素材入荷を登録し、入荷先工場の素材在庫へ入庫します。
+          件を全量入荷として素材入荷を登録し、入荷先拠点の素材在庫へ入庫します。
           分納（部分入荷）が必要な場合は素材入荷 (PU01)
           から直接登録してください。
         </Text>

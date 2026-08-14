@@ -28,7 +28,7 @@ enum Scope {
   ALL
   REGION
   COUNTRY
-  FACTORY
+  PLANT
   DEPARTMENT
   TEAM
   SUB

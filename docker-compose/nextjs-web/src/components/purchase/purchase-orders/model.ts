@@ -37,8 +37,8 @@ export interface PurchaseOrderItemView {
   materialId: string;
   materialCode: string;
   materialName: string;
-  factoryId: string | null;
-  factoryName: string | null;
+  plantId: string | null;
+  plantName: string | null;
   quantity: number;
   /** 累計入荷数（分納 — 監査 P2-5）。 */
   receivedQuantity: number;

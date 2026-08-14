@@ -3,7 +3,7 @@ import { KioskDevicesTable } from "@/components/settings/kiosk/KioskDevicesTable
 import { EmptyState } from "@/components/ui/EmptyState";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { checkPermission } from "@/lib/authz";
-import { listKioskDevices, listKioskFactoryOptions } from "@/lib/kiosk-admin";
+import { listKioskDevices, listKioskPlantOptions } from "@/lib/kiosk-admin";
 
 export const dynamic = "force-dynamic";
 
@@ -18,9 +18,9 @@ export default async function KioskDevicesPage() {
       </>
     );
   }
-  const [devices, factoryOptions] = await Promise.all([
+  const [devices, plantOptions] = await Promise.all([
     listKioskDevices(),
-    listKioskFactoryOptions(),
+    listKioskPlantOptions(),
   ]);
-  return <KioskDevicesTable factoryOptions={factoryOptions} rows={devices} />;
+  return <KioskDevicesTable plantOptions={plantOptions} rows={devices} />;
 }

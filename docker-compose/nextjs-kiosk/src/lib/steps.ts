@@ -45,7 +45,7 @@ export interface MyStepView {
   productName: string;
   stepName: string;
   stepCode: string;
-  factoryName: string | null;
+  plantName: string | null;
   quantityMode: QuantityTrackingMode;
   sessionState: StepSessionState;
   /** BLOCKED の理由（日本語・サーバー由来。UI は補助表示に使う）。 */
@@ -243,7 +243,7 @@ async function hydrateSteps(
       processStep: {
         select: { code: true, name: true, quantityTracking: true },
       },
-      factory: { select: { name: true } },
+      plant: { select: { name: true } },
       workOrder: {
         select: {
           id: true,
@@ -301,7 +301,7 @@ async function hydrateSteps(
       ),
       stepName: localized(asText(r.processStep.name), locale),
       stepCode: r.processStep.code,
-      factoryName: r.factory ? localized(asText(r.factory.name), locale) : null,
+      plantName: r.plant ? localized(asText(r.plant.name), locale) : null,
       quantityMode: r.processStep.quantityTracking,
       sessionState: state,
       blockReasons:

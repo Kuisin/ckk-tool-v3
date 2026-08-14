@@ -40,7 +40,7 @@ export function RouteEditorForm({
   initialSteps,
   catalogSteps,
   useDeps,
-  factoryOptions,
+  plantOptions,
   supplierOptions,
 }: {
   mode: "create" | "new-version";
@@ -54,7 +54,7 @@ export function RouteEditorForm({
   initialSteps?: RouteStepSnapshot[];
   catalogSteps: CatalogStep[];
   useDeps: UseDep[];
-  factoryOptions: Option[];
+  plantOptions: Option[];
   supplierOptions: Option[];
 }) {
   const router = useRouter();
@@ -84,7 +84,7 @@ export function RouteEditorForm({
       for (const s of usableInitial) {
         map[s.processStepId] = {
           executionLocation: s.executionLocation,
-          factoryId: s.factoryId != null ? String(s.factoryId) : null,
+          plantId: s.plantId != null ? String(s.plantId) : null,
           supplierBpId: s.supplierBpId,
           workHours: s.workHours,
         };
@@ -124,7 +124,7 @@ export function RouteEditorForm({
       (s) => ({
         processStepId: s.processStepId,
         executionLocation: s.executionLocation,
-        factoryId: s.factoryId,
+        plantId: s.plantId,
         supplierBpId: s.supplierBpId,
         workHours: s.workHours,
       }),
@@ -229,10 +229,10 @@ export function RouteEditorForm({
       <ProcessListEditor
         catalogSteps={catalogSteps}
         error={stepsError}
-        factoryOptions={factoryOptions}
         locations={locations}
         onLocationsChange={setLocations}
         onSelectedChange={setSelected}
+        plantOptions={plantOptions}
         selected={selected}
         supplierOptions={supplierOptions}
         useDeps={useDeps}

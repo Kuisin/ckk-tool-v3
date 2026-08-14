@@ -175,7 +175,7 @@ export const OPERATION_CODES: OperationCodeEntry[] = [
     "承認グループ",
     "/master/approval-groups",
   ),
-  ...makeResource("マスタ", "MS", "B", "工場", "/master/factories"),
+  ...makeResource("マスタ", "MS", "B", "拠点", "/master/plants"),
   // 採番構成は単一管理画面（タブ + モーダル）— list コードのみ
   {
     code: "MS0C",

@@ -199,7 +199,7 @@ function RouteCard({
                         <Text c="dimmed" size="xs" truncate>
                           {s.executionLocation === "OUTSOURCE"
                             ? (s.supplierName ?? "")
-                            : (s.factoryName ?? "")}
+                            : (s.plantName ?? "")}
                         </Text>
                       )}
                     </Group>

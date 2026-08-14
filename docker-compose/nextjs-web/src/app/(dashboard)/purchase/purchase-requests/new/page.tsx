@@ -1,5 +1,5 @@
 import { PurchaseRequestForm } from "@/components/purchase/purchase-requests/PurchaseRequestForm";
-import { fetchFactoryOptions } from "../data";
+import { fetchPlantOptions } from "../data";
 
 export const dynamic = "force-dynamic";
 
@@ -10,6 +10,6 @@ export const dynamic = "force-dynamic";
  * 採番して作成する。単価・仕入先は持たない（発注書側で確定）。保存後は詳細へ。
  */
 export default async function PurchasePurchaseRequestsNewPage() {
-  const factoryOptions = await fetchFactoryOptions();
-  return <PurchaseRequestForm factoryOptions={factoryOptions} mode="create" />;
+  const plantOptions = await fetchPlantOptions();
+  return <PurchaseRequestForm mode="create" plantOptions={plantOptions} />;
 }

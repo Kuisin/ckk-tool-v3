@@ -8,7 +8,7 @@
  * 明細を「完了指示書 1 件 = 1 行」（製品 = 受注製品 / ロット = 指示書番号 /
  * 数量 = 最終工程の良品数）で既定生成する。行は追加・削除可能
  * （追加行の製品は受注製品を既定、ロットは手入力任意）。
- * 種別（発送 / 在庫保管）・出荷元工場・備考をヘッダで指定する。
+ * 種別（発送 / 在庫保管）・出荷元拠点・備考をヘッダで指定する。
  *
  * 編集: 下書きのみ（ガードはサーバー側でも実施）。注文請書は作成後変更不可。
  */
@@ -71,7 +71,7 @@ const itemSchema = z.object({
 const schema = z.object({
   salesOrderId: z.string().min(1, "注文請書を選択してください"),
   type: z.enum(SHIPPING_TYPES),
-  fromFactoryId: z.string().nullable(),
+  fromPlantId: z.string().nullable(),
   notes: z.string(),
   items: z.array(itemSchema).min(1, "明細を1件以上追加してください"),
 });
@@ -100,7 +100,7 @@ function toFormValues(order: ShippingOrder): FormValues {
   return {
     salesOrderId: order.salesOrderId,
     type: order.type,
-    fromFactoryId: order.fromFactoryId,
+    fromPlantId: order.fromPlantId,
     notes: order.notes ?? "",
     items: order.items.map((it) => ({
       rowId: newRowId(),
@@ -116,13 +116,13 @@ function toFormValues(order: ShippingOrder): FormValues {
 export function ShippingOrderForm({
   mode,
   order,
-  factoryOptions,
+  plantOptions,
 }: {
   mode: "create" | "edit";
   /** 編集時: 対象出荷書（サーバー取得の view-model）。 */
   order?: ShippingOrder | null;
-  /** 出荷元工場 options（サーバーロード）。value = String(内部 id)。 */
-  factoryOptions: Option[];
+  /** 出荷元拠点 options（サーバーロード）。value = String(内部 id)。 */
+  plantOptions: Option[];
 }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -141,7 +141,7 @@ export function ShippingOrderForm({
         : {
             salesOrderId: "",
             type: "DISPATCH",
-            fromFactoryId: null,
+            fromPlantId: null,
             notes: "",
             items: [emptyItem()],
           },
@@ -186,7 +186,7 @@ export function ShippingOrderForm({
     startTransition(async () => {
       const payload = {
         type: values.type,
-        fromFactoryId: values.fromFactoryId,
+        fromPlantId: values.fromPlantId,
         notes: values.notes || null,
         items: values.items.map((it) => ({
           productId: it.productId,
@@ -273,11 +273,11 @@ export function ShippingOrderForm({
           </Input.Wrapper>
           <Select
             clearable
-            data={factoryOptions}
-            label="出荷元工場"
-            placeholder="工場を選択"
-            searchable={factoryOptions.length > 5}
-            {...form.getInputProps("fromFactoryId")}
+            data={plantOptions}
+            label="出荷元拠点"
+            placeholder="拠点を選択"
+            searchable={plantOptions.length > 5}
+            {...form.getInputProps("fromPlantId")}
           />
           <Textarea
             autosize

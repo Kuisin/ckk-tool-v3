@@ -494,7 +494,7 @@ export function KioskCardDetailView({
               <Table.Thead>
                 <Table.Tr>
                   <Table.Th>端末</Table.Th>
-                  <Table.Th>工場</Table.Th>
+                  <Table.Th>拠点</Table.Th>
                   <Table.Th>ログイン</Table.Th>
                   <Table.Th>最終アクティビティ</Table.Th>
                 </Table.Tr>
@@ -503,7 +503,7 @@ export function KioskCardDetailView({
                 {sessions.map((s) => (
                   <Table.Tr key={s.id}>
                     <Table.Td>{s.deviceName ?? "（名称未設定）"}</Table.Td>
-                    <Table.Td>{s.factoryLabel ?? "—"}</Table.Td>
+                    <Table.Td>{s.plantLabel ?? "—"}</Table.Td>
                     <Table.Td>{formatDateTime(s.createdAt)}</Table.Td>
                     <Table.Td>{formatDateTime(s.lastActivityAt)}</Table.Td>
                   </Table.Tr>

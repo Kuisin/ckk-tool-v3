@@ -298,7 +298,7 @@ Operation codes provide keyboard-shortcut navigation. Format: `{CAT}{MODE}{IDX}`
 | マスタ | 8 | 検査表テンプレート | MS08 | MS18 | MS28 |
 | マスタ | 9 | 不良種類 | MS09 | MS19 | MS29 |
 | マスタ | A | 承認グループ | MS0A | MS1A | MS2A |
-| マスタ | B | 工場 | MS0B | MS1B | MS2B |
+| マスタ | B | 拠点 | MS0B | MS1B | MS2B |
 | マスタ | C | 採番構成 | MS0C | — | — |
 | ドキュメント | 1 | マニュアル | DC01 | — | — |
 | システム | 1 | ユーザー管理 | SY01 | — | — |
@@ -390,7 +390,7 @@ Stack (gap="xl", p="md", maw={1200})
 | 検査表テンプレート | `IconListCheck` |
 | 不良種類 | `IconAlertTriangle` |
 | 承認グループ | `IconUsersGroup` |
-| 工場 | `IconBuildingWarehouse` |
+| 拠点 | `IconBuildingWarehouse` |
 | ユーザー管理 | `IconUserCog` |
 | 試算計算 | `IconMathFunction` |
 | 製品項目 | `IconListDetails` |
@@ -1008,11 +1008,11 @@ Items sub-table has inline add/edit (no separate page).
 
 **Detail tabs**: グループ情報 / メンバー / 代理設定
 
-### 13.6 Factories (工場)
+### 13.6 Plants (拠点)
 
 **List columns**: コード / 名称（ja） / 国 / 状態 / 更新日
 
-**Detail**: summary grid (連絡先・住所); related tabs for 在庫サマリ（工場別）/ 実行中工程.
+**Detail**: summary grid (連絡先・住所); related tabs for 在庫サマリ（拠点別）/ 実行中工程.
 Category color `gray` (マスタ), icon `IconBuildingWarehouse`.
 
 ---
@@ -1049,12 +1049,12 @@ Row click navigates to detail page.
 | Invoice | 請求番号 / 顧客 / 請求期間 / 合計金額 / 状態 / 発行日 |
 | BillingClosing | 顧客 / 締日 / 合計金額 / 状態 / 処理日 |
 | DesignRequest | 依頼番号 / トリガー / 製品 / 状態 / 更新日 |
-| MaterialPurchaseOrder | 発注番号 / 仕入先 / 入荷先工場 / 合計金額 / 状態 / 発注日 |
-| MaterialReceipt | 素材 / 仕入先 / 入荷工場 / 数量 / 入荷日 |
+| MaterialPurchaseOrder | 発注番号 / 仕入先 / 入荷先拠点 / 合計金額 / 状態 / 発注日 |
+| MaterialReceipt | 素材 / 仕入先 / 入荷拠点 / 数量 / 入荷日 |
 | OutsourceOrder | 外注先 / 工程 / 依頼日 / 入荷予定日 / 入荷日 / 状態 |
 | Customer | BPコード / 名称 / 支店数 / 状態 / 更新日 |
 | EndUser | BPコード / 名称 / 業種 / 状態 |
-| Factory | コード / 名称 / 国 / 状態 / 更新日 |
+| Plant | コード / 名称 / 国 / 状態 / 更新日 |
 | Product | 製品コード / 名称 / 材種（+ φ直径×全長） / 単位 / 状態 |
 | MaterialType | 材種コード / メーカー / 形状 / 名称 / 状態 |
 | Material | 素材コード / 材種 / 直径 / 全長 / 黒皮研磨 / 状態 |

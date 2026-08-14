@@ -52,7 +52,7 @@ function revalidate(requestNumber?: string) {
 
 const itemInput = z.object({
   materialId: z.string().min(1, "素材を選択してください"),
-  factoryId: z.string().nullable(),
+  plantId: z.string().nullable(),
   quantity: z.number().positive("数量は0より大きい値"),
   unit: z.string().min(1, "単位を入力してください"),
   desiredAt: z.string().nullable(),
@@ -94,7 +94,7 @@ function toHistoryJson(list: HistoryEntry[]): Record<string, string | null>[] {
 function buildItemCreates(items: PurchaseRequestInput["items"]) {
   return items.map((it, i) => ({
     materialId: Number(it.materialId),
-    factoryId: it.factoryId ? Number(it.factoryId) : null,
+    plantId: it.plantId ? Number(it.plantId) : null,
     quantity: it.quantity,
     unit: it.unit,
     desiredAt: it.desiredAt ? new Date(it.desiredAt) : null,
@@ -468,7 +468,7 @@ export async function convertToPurchaseOrder(
           items: {
             create: prior.items.map((it, i) => ({
               materialId: it.materialId,
-              factoryId: it.factoryId,
+              plantId: it.plantId,
               quantity: it.quantity,
               unit: it.unit,
               unitPrice: 0,

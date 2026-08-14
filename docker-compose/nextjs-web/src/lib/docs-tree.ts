@@ -310,10 +310,10 @@ export const DOCS_TREE: DocSection[] = [
         },
       },
       {
-        slug: "masters/factory/user",
+        slug: "masters/plant/user",
         title: {
-          ja: "工場 — 操作マニュアル",
-          en: "Factory — User Manual",
+          ja: "拠点 — 操作マニュアル",
+          en: "Plant — User Manual",
           zh: "工厂 — 操作手册",
         },
       },

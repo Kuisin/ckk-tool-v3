@@ -1,17 +1,17 @@
 import {
-  type FactoryRow,
-  FactoryTable,
-} from "@/components/master/factories/FactoryTable";
+  type PlantRow,
+  PlantTable,
+} from "@/components/master/plants/PlantTable";
 import { prisma } from "@/lib/db";
 import { type LocalizedText, localized } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
 
-/** 工場 一覧 (MS0B). */
-export default async function MasterFactoriesPage() {
-  const records = await prisma.factory.findMany({ orderBy: { code: "asc" } });
+/** 拠点 一覧 (MS0B). */
+export default async function MasterPlantsPage() {
+  const records = await prisma.plant.findMany({ orderBy: { code: "asc" } });
 
-  const rows: FactoryRow[] = records.map((r) => ({
+  const rows: PlantRow[] = records.map((r) => ({
     id: r.id,
     code: r.code,
     name: localized(r.name as LocalizedText | null),
@@ -20,5 +20,5 @@ export default async function MasterFactoriesPage() {
     updatedAt: r.updatedAt.toISOString(),
   }));
 
-  return <FactoryTable rows={rows} />;
+  return <PlantTable rows={rows} />;
 }

@@ -12,8 +12,8 @@ export interface MaterialInventoryRow {
   id: string;
   materialCode: string;
   materialName: string;
-  factoryId: number | null;
-  factoryName: string | null;
+  plantId: number | null;
+  plantName: string | null;
   /** 保管場所（null = 未割当）。 */
   storageLocationId: number | null;
   storageLocationName: string | null;
@@ -47,7 +47,7 @@ export interface MaterialInventoryDetailData {
   id: string;
   materialCode: string;
   materialName: string;
-  factoryName: string | null;
+  plantName: string | null;
   quantity: number;
   reservedQuantity: number;
   available: number;
@@ -57,7 +57,7 @@ export interface MaterialInventoryDetailData {
   location: string | null;
   notes: string | null;
   updatedAt: string;
-  /** ATP（この在庫行の工場で絞り込み。工場未設定行は全工場合算）。 */
+  /** ATP（この在庫行の拠点で絞り込み。拠点未設定行は全拠点合算）。 */
   atp: {
     onHand: number;
     reserved: number;

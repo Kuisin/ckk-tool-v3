@@ -2,7 +2,7 @@ import { notFound, redirect } from "next/navigation";
 import { isEditable } from "@/components/purchase/purchase-orders/model";
 import { PurchaseOrderForm } from "@/components/purchase/purchase-orders/PurchaseOrderForm";
 import {
-  fetchFactoryOptions,
+  fetchPlantOptions,
   fetchPurchaseOrder,
   fetchSupplierOptions,
 } from "../../data";
@@ -23,10 +23,10 @@ export default async function PurchasePurchaseOrdersEditPage({
   const { id } = await params;
   const poNumber = decodeURIComponent(id);
 
-  const [purchaseOrder, supplierOptions, factoryOptions] = await Promise.all([
+  const [purchaseOrder, supplierOptions, plantOptions] = await Promise.all([
     fetchPurchaseOrder(poNumber),
     fetchSupplierOptions(),
-    fetchFactoryOptions(),
+    fetchPlantOptions(),
   ]);
   if (!purchaseOrder) notFound();
   if (!isEditable(purchaseOrder)) {
@@ -35,8 +35,8 @@ export default async function PurchasePurchaseOrdersEditPage({
 
   return (
     <PurchaseOrderForm
-      factoryOptions={factoryOptions}
       mode="edit"
+      plantOptions={plantOptions}
       purchaseOrder={purchaseOrder}
       supplierOptions={supplierOptions}
     />

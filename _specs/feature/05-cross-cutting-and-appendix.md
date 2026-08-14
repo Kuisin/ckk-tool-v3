@@ -7,7 +7,7 @@
 - Auth.js v5 によるログイン（Samba AD LDAP/OAuth）
 - DB セッション + Short JWT
 - `user_permissions` ビューで権限照合（raw テーブル直参照禁止）
-- RBAC スコープ: `ALL / REGION / COUNTRY / FACTORY / DEPARTMENT / TEAM / SUB / OWN`
+- RBAC スコープ: `ALL / REGION / COUNTRY / PLANT / DEPARTMENT / TEAM / SUB / OWN`
 - Middleware でルート保護
 
 ### 採番（`lib/numbering.ts`）
@@ -86,7 +86,7 @@
 
 | 優先度 | セクション | 理由 |
 |--------|-----------|------|
-| 1 | マスタ管理（工場・顧客・製品・材種・素材・外注・工程・検査表・不良種類） | 全機能の前提データ |
+| 1 | マスタ管理（拠点・顧客・製品・材種・素材・外注・工程・検査表・不良種類） | 全機能の前提データ |
 | 2 | 認証・RBAC | 全画面に必要 |
 | 3 | §1 価格・見積 | フロー起点 |
 | 4 | §2 注文受付 | §1 の続き |

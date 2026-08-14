@@ -33,7 +33,7 @@ const SHIPPING_ORDER_INCLUDE = {
     },
   },
   workOrder: true,
-  fromFactory: true,
+  fromPlant: true,
   items: {
     orderBy: { sortOrder: "asc" as const },
     include: { product: true },
@@ -83,9 +83,9 @@ function mapShippingOrder(r: ShippingOrderRow): ShippingOrder {
     productName: productLabel(r.salesOrder.product),
     salesOrderQuantity: r.salesOrder.quantity,
     workOrderNumber: r.workOrder?.workOrderNumber ?? null,
-    fromFactoryId: r.fromFactoryId != null ? String(r.fromFactoryId) : null,
-    fromFactoryName: r.fromFactory
-      ? localized(r.fromFactory.name as LocalizedText | null)
+    fromPlantId: r.fromPlantId != null ? String(r.fromPlantId) : null,
+    fromPlantName: r.fromPlant
+      ? localized(r.fromPlant.name as LocalizedText | null)
       : null,
     type: r.type as ShippingType,
     status: r.status as ShippingOrderStatus,

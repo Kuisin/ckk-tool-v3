@@ -1,10 +1,10 @@
 "use server";
 
 /**
- * Server Actions — 工場マスタ (MS0B).
+ * Server Actions — 拠点マスタ (MS0B).
  *
- * 工場コードは手入力（unique）。識別子のため作成後は変更しない
- * （updateFactory では書き換えない）。住所は { ja, en } JSON（任意）。
+ * 拠点コードは手入力（unique）。識別子のため作成後は変更しない
+ * （updatePlant では書き換えない）。住所は { ja, en } JSON（任意）。
  */
 
 import { revalidatePath } from "next/cache";
@@ -21,10 +21,10 @@ import {
   prismaErrorMessage,
 } from "@/lib/server-action";
 
-const BASE_PATH = "/master/factories";
+const BASE_PATH = "/master/plants";
 
-const factoryInput = z.object({
-  code: z.string().min(1, "工場コードを入力してください"),
+const plantInput = z.object({
+  code: z.string().min(1, "拠点コードを入力してください"),
   nameJa: z.string().min(1, "名称（日本語）を入力してください"),
   nameEn: z.string().optional(),
   nameKana: z.string().optional(),
@@ -43,7 +43,7 @@ const factoryInput = z.object({
   notes: z.string().optional(),
 });
 
-export type FactoryInput = z.infer<typeof factoryInput>;
+export type PlantInput = z.infer<typeof plantInput>;
 
 function revalidate(id?: number) {
   revalidatePath(BASE_PATH);
@@ -51,7 +51,7 @@ function revalidate(id?: number) {
 }
 
 /** 共通カラム（create/update 共用。code は create のみ別途設定）。 */
-function factoryData(v: FactoryInput) {
+function plantData(v: PlantInput) {
   return {
     name: localizedInput(v.nameJa, v.nameEn),
     nameKana: v.nameKana?.trim() || null,
@@ -67,7 +67,7 @@ function factoryData(v: FactoryInput) {
 }
 
 /** 監査ログ用スナップショット（差分表示のためスカラーのみ）。 */
-function auditSnapshot(v: FactoryInput) {
+function auditSnapshot(v: PlantInput) {
   return {
     code: v.code.trim(),
     nameJa: v.nameJa,
@@ -82,47 +82,47 @@ function auditSnapshot(v: FactoryInput) {
   };
 }
 
-export async function createFactory(
-  input: FactoryInput,
+export async function createPlant(
+  input: PlantInput,
 ): Promise<ActionResult<{ id: number }>> {
   const authz = await checkPermission("master", "CREATE");
   if (!authz.ok) return actionError(authz.error);
-  const parsed = factoryInput.safeParse(input);
+  const parsed = plantInput.safeParse(input);
   if (!parsed.success) {
     return actionError(parsed.error.issues[0]?.message ?? "入力が不正です");
   }
   const v = parsed.data;
   try {
-    const created = await prisma.factory.create({
-      data: { code: v.code.trim(), ...factoryData(v) },
+    const created = await prisma.plant.create({
+      data: { code: v.code.trim(), ...plantData(v) },
       select: { id: true },
     });
     await recordAudit({
       action: "CREATE",
-      tableName: "factories",
+      tableName: "plants",
       recordId: String(created.id),
       after: auditSnapshot(v),
     });
     revalidate(created.id);
     return actionOk({ id: created.id });
   } catch (e) {
-    return actionError(prismaErrorMessage(e, "工場の作成に失敗しました"));
+    return actionError(prismaErrorMessage(e, "拠点の作成に失敗しました"));
   }
 }
 
-export async function updateFactory(
+export async function updatePlant(
   id: number,
-  input: FactoryInput,
+  input: PlantInput,
 ): Promise<ActionResult<{ id: number }>> {
   const authz = await checkPermission("master", "UPDATE");
   if (!authz.ok) return actionError(authz.error);
-  const parsed = factoryInput.safeParse(input);
+  const parsed = plantInput.safeParse(input);
   if (!parsed.success) {
     return actionError(parsed.error.issues[0]?.message ?? "入力が不正です");
   }
   const v = parsed.data;
   try {
-    const prior = await prisma.factory.findUnique({
+    const prior = await prisma.plant.findUnique({
       where: { id },
       select: {
         countryCode: true,
@@ -135,10 +135,10 @@ export async function updateFactory(
       },
     });
     // code は識別子のため更新対象に含めない。
-    await prisma.factory.update({ where: { id }, data: factoryData(v) });
+    await prisma.plant.update({ where: { id }, data: plantData(v) });
     await recordAudit({
       action: "UPDATE",
-      tableName: "factories",
+      tableName: "plants",
       recordId: String(id),
       before: prior ?? undefined,
       after: auditSnapshot(v),
@@ -146,11 +146,11 @@ export async function updateFactory(
     revalidate(id);
     return actionOk({ id });
   } catch (e) {
-    return actionError(prismaErrorMessage(e, "工場の更新に失敗しました"));
+    return actionError(prismaErrorMessage(e, "拠点の更新に失敗しました"));
   }
 }
 
-export async function setFactoriesActive(
+export async function setPlantsActive(
   ids: number[],
   isActive: boolean,
 ): Promise<ActionResult> {
@@ -158,14 +158,14 @@ export async function setFactoriesActive(
   if (!authz.ok) return actionError(authz.error);
   if (ids.length === 0) return actionError("対象が選択されていません");
   try {
-    await prisma.factory.updateMany({
+    await prisma.plant.updateMany({
       where: { id: { in: ids } },
       data: { isActive },
     });
     for (const id of ids) {
       await recordAudit({
         action: "UPDATE",
-        tableName: "factories",
+        tableName: "plants",
         recordId: String(id),
         after: { isActive },
       });
@@ -178,25 +178,25 @@ export async function setFactoriesActive(
   }
 }
 
-export async function deleteFactories(ids: number[]): Promise<ActionResult> {
+export async function deletePlants(ids: number[]): Promise<ActionResult> {
   const authz = await checkPermission("master", "DELETE");
   if (!authz.ok) return actionError(authz.error);
   if (ids.length === 0) return actionError("対象が選択されていません");
   try {
-    // Guard: 現時点で工場を参照するテーブルは未実装（在庫・工程ステップは後続）。
+    // Guard: 現時点で拠点を参照するテーブルは未実装（在庫・工程ステップは後続）。
     // 参照テーブルが増えたら products と同様の count ガードを追加する。
     // FK 違反は P2003 として prismaErrorMessage が日本語メッセージに変換する。
-    await prisma.factory.deleteMany({ where: { id: { in: ids } } });
+    await prisma.plant.deleteMany({ where: { id: { in: ids } } });
     for (const id of ids) {
       await recordAudit({
         action: "DELETE",
-        tableName: "factories",
+        tableName: "plants",
         recordId: String(id),
       });
     }
     revalidate();
     return actionOk();
   } catch (e) {
-    return actionError(prismaErrorMessage(e, "工場の削除に失敗しました"));
+    return actionError(prismaErrorMessage(e, "拠点の削除に失敗しました"));
   }
 }

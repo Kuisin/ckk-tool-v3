@@ -17,7 +17,7 @@ export interface MaterialReceiptView {
   materialCode: string;
   materialName: string;
   supplierName: string | null;
-  factoryName: string | null;
+  plantName: string | null;
   quantity: number;
   unit: string;
   receivedAt: string;

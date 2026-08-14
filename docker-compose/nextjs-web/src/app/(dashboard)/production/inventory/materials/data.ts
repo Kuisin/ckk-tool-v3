@@ -18,7 +18,7 @@ import { type LocalizedText, localized } from "@/lib/format";
 import { storageLabelOf } from "../products/data";
 import { fetchInventoryTransactions } from "../shared";
 
-const factoryName = (f: { name: unknown } | null) =>
+const plantName = (f: { name: unknown } | null) =>
   f ? localized(f.name as LocalizedText | null) : null;
 
 /** 素材在庫 一覧（更新日の新しい順）。 */
@@ -28,14 +28,14 @@ export async function fetchMaterialInventories(): Promise<
   const rows = await prisma.materialInventory.findMany({
     include: {
       material: true,
-      factory: true,
+      plant: true,
       storageLocation: true,
       shelf: true,
     },
     orderBy: { updatedAt: "desc" },
   });
 
-  // 次回入荷（素材単位、全工場合算 — materialAtp() と同じ規則）を一括算出:
+  // 次回入荷（素材単位、全拠点合算 — materialAtp() と同じ規則）を一括算出:
   // ORDERED 発注明細のうち expected_at のある直近日。
   const materialIds = [...new Set(rows.map((r) => r.materialId))];
   const orderedItems = materialIds.length
@@ -63,8 +63,8 @@ export async function fetchMaterialInventories(): Promise<
       id: r.id,
       materialCode: r.material.code,
       materialName: localized(r.material.name as LocalizedText | null),
-      factoryId: r.factoryId,
-      factoryName: factoryName(r.factory),
+      plantId: r.plantId,
+      plantName: plantName(r.plant),
       storageLocationId: r.storageLocationId,
       storageLocationName: r.storageLocation
         ? localized(r.storageLocation.name as LocalizedText | null)
@@ -89,7 +89,7 @@ export async function fetchMaterialInventoryDetail(
     where: { id },
     include: {
       material: true,
-      factory: true,
+      plant: true,
       storageLocation: true,
       shelf: true,
     },
@@ -97,8 +97,8 @@ export async function fetchMaterialInventoryDetail(
   if (!r) return null;
 
   const [atp, transactions] = await Promise.all([
-    // 工場が設定された在庫行はその工場の ATP、未設定行は全工場合算。
-    materialAtp(r.materialId, r.factoryId),
+    // 拠点が設定された在庫行はその拠点の ATP、未設定行は全拠点合算。
+    materialAtp(r.materialId, r.plantId),
     fetchInventoryTransactions("MATERIAL", r.id),
   ]);
 
@@ -109,7 +109,7 @@ export async function fetchMaterialInventoryDetail(
     id: r.id,
     materialCode: r.material.code,
     materialName: localized(r.material.name as LocalizedText | null),
-    factoryName: factoryName(r.factory),
+    plantName: plantName(r.plant),
     quantity,
     reservedQuantity,
     available: quantity - reservedQuantity,

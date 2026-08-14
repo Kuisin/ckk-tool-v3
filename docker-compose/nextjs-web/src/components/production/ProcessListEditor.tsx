@@ -53,7 +53,7 @@ export interface Option {
 /** 工程ごとの実施場所 + 作業時間設定（実施場所は社内・外注可の工程のみ有効）。 */
 export interface StepLocation {
   executionLocation: "INTERNAL" | "OUTSOURCE";
-  factoryId: string | null;
+  plantId: string | null;
   supplierBpId: string | null;
   /** 作業時間 (h)。undefined = 未設定（カタログ既定値を使う）/ null = 明示的になし。 */
   workHours?: number | null;
@@ -61,7 +61,7 @@ export interface StepLocation {
 
 const DEFAULT_LOCATION: StepLocation = {
   executionLocation: "INTERNAL",
-  factoryId: null,
+  plantId: null,
   supplierBpId: null,
 };
 
@@ -94,10 +94,8 @@ export function toStepSnapshots(
       processStepId: stepId,
       sortOrder: i,
       executionLocation: execution,
-      factoryId:
-        execution === "INTERNAL" && loc?.factoryId
-          ? Number(loc.factoryId)
-          : null,
+      plantId:
+        execution === "INTERNAL" && loc?.plantId ? Number(loc.plantId) : null,
       supplierBpId:
         execution === "OUTSOURCE" ? (loc?.supplierBpId ?? null) : null,
       workHours: effectiveWorkHours(locations[stepId], cat),
@@ -112,7 +110,7 @@ export function ProcessListEditor({
   onLocationsChange,
   catalogSteps,
   useDeps,
-  factoryOptions,
+  plantOptions,
   supplierOptions,
   error,
 }: {
@@ -122,7 +120,7 @@ export function ProcessListEditor({
   onLocationsChange: (next: Record<number, StepLocation>) => void;
   catalogSteps: CatalogStep[];
   useDeps: UseDep[];
-  factoryOptions: Option[];
+  plantOptions: Option[];
   supplierOptions: Option[];
   /** フォーム側の selectedStepIds エラー表示。 */
   error?: string | null;
@@ -374,14 +372,14 @@ export function ProcessListEditor({
                           {loc.executionLocation === "INTERNAL" ? (
                             <Select
                               clearable
-                              data={factoryOptions}
+                              data={plantOptions}
                               onChange={(v) =>
-                                setLocation(stepId, { factoryId: v })
+                                setLocation(stepId, { plantId: v })
                               }
-                              placeholder="工場"
+                              placeholder="拠点"
                               searchable
                               size="xs"
-                              value={loc.factoryId}
+                              value={loc.plantId}
                               w={200}
                             />
                           ) : (

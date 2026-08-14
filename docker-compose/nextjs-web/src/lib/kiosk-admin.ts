@@ -143,7 +143,7 @@ export async function getKioskCard(
 export interface KioskCardSessionRow {
   id: string;
   deviceName: string | null;
-  factoryLabel: string | null;
+  plantLabel: string | null;
   createdAt: string;
   lastActivityAt: string;
   revokedAt: string | null;
@@ -159,15 +159,15 @@ export async function listCardRecentSessions(
     take: limit,
     include: {
       device: {
-        select: { name: true, factory: { select: { name: true } } },
+        select: { name: true, plant: { select: { name: true } } },
       },
     },
   });
   return rows.map((s) => ({
     id: s.id,
     deviceName: s.device.name,
-    factoryLabel: s.device.factory
-      ? localized(s.device.factory.name as LocalizedText)
+    plantLabel: s.device.plant
+      ? localized(s.device.plant.name as LocalizedText)
       : null,
     createdAt: s.createdAt.toISOString(),
     lastActivityAt: s.lastActivityAt.toISOString(),
@@ -225,8 +225,8 @@ export interface KioskDeviceRow {
   name: string | null;
   location: string | null;
   status: "PENDING" | "LINKED" | "ACTIVE" | "DISABLED" | "REVOKED";
-  factoryId: number | null;
-  factoryLabel: string | null;
+  plantId: number | null;
+  plantLabel: string | null;
   floorMapId: string | null;
   /** フロアマップ上のピン座標（%）。未配置は null。 */
   mapX: number | null;
@@ -257,7 +257,7 @@ export interface KioskDeviceRow {
 
 function deviceInclude(now: number) {
   return {
-    factory: { select: { code: true, name: true } },
+    plant: { select: { code: true, name: true } },
     activatedBy: { select: { displayName: true } },
     sessions: liveSessionInclude(now),
     locations: {
@@ -284,9 +284,9 @@ function toDeviceRow(r: DeviceWithIncludes, now: number): KioskDeviceRow {
     name: r.name,
     location: r.location,
     status: r.status,
-    factoryId: r.factoryId,
-    factoryLabel: r.factory
-      ? `${r.factory.code} ${localized(r.factory.name as LocalizedText | null)}`
+    plantId: r.plantId,
+    plantLabel: r.plant
+      ? `${r.plant.code} ${localized(r.plant.name as LocalizedText | null)}`
       : null,
     floorMapId: r.floorMapId,
     mapX: r.mapX != null ? Number(r.mapX) : null,
@@ -515,7 +515,7 @@ export async function listKioskDeviceLogs(
 
 export interface KioskFloorMapRow {
   id: string;
-  factoryId: number;
+  plantId: number;
   name: string;
   /** 図面画像の files.id（未設定は null）。 */
   fileId: string | null;
@@ -527,12 +527,12 @@ export interface KioskFloorMapRow {
 export async function listKioskFloorMaps(): Promise<KioskFloorMapRow[]> {
   const rows = await prisma.kioskFloorMap.findMany({
     where: { isActive: true },
-    orderBy: [{ factoryId: "asc" }, { sortOrder: "asc" }, { createdAt: "asc" }],
+    orderBy: [{ plantId: "asc" }, { sortOrder: "asc" }, { createdAt: "asc" }],
     include: { _count: { select: { devices: true } } },
   });
   return rows.map((r) => ({
     id: r.id,
-    factoryId: r.factoryId,
+    plantId: r.plantId,
     name: r.name,
     fileId: r.fileId,
     sortOrder: r.sortOrder,
@@ -574,14 +574,14 @@ export async function listStorageLocationPins(): Promise<StorageLocationPin[]> {
     });
 }
 
-/** 工場の選択肢（有効のみ）。value = String(factories.id)。 */
-export interface KioskFactoryOption {
+/** 拠点の選択肢（有効のみ）。value = String(plants.id)。 */
+export interface KioskPlantOption {
   value: string;
   label: string;
 }
 
-export async function listKioskFactoryOptions(): Promise<KioskFactoryOption[]> {
-  const rows = await prisma.factory.findMany({
+export async function listKioskPlantOptions(): Promise<KioskPlantOption[]> {
+  const rows = await prisma.plant.findMany({
     where: { isActive: true },
     orderBy: { code: "asc" },
   });

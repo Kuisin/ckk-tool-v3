@@ -1,4 +1,4 @@
-import type { TransferFactoryOption } from "@/components/production/inventory/StockTransferModal";
+import type { TransferPlantOption } from "@/components/production/inventory/StockTransferModal";
 import { UnifiedInventory } from "@/components/production/inventory/UnifiedInventory";
 import { prisma } from "@/lib/db";
 import { type LocalizedText, localized } from "@/lib/format";
@@ -7,9 +7,9 @@ import { fetchProductInventories, fetchWipRows } from "./products/data";
 
 export const dynamic = "force-dynamic";
 
-/** 移動先・ロケーションビュー用: 有効な工場 → 保管場所 → 棚。 */
-async function fetchFactoryStorageOptions(): Promise<TransferFactoryOption[]> {
-  const factories = await prisma.factory.findMany({
+/** 移動先・ロケーションビュー用: 有効な拠点 → 保管場所 → 棚。 */
+async function fetchPlantStorageOptions(): Promise<TransferPlantOption[]> {
+  const plants = await prisma.plant.findMany({
     where: { isActive: true },
     include: {
       storageLocations: {
@@ -30,7 +30,7 @@ async function fetchFactoryStorageOptions(): Promise<TransferFactoryOption[]> {
     },
     orderBy: { code: "asc" },
   });
-  return factories.map((f) => ({
+  return plants.map((f) => ({
     id: f.id,
     name: localized(f.name as LocalizedText | null),
     locations: f.storageLocations.map((l) => ({
@@ -55,16 +55,16 @@ async function fetchFactoryStorageOptions(): Promise<TransferFactoryOption[]> {
 
 /** 在庫管理 (PD04) — 製品・素材・仕掛品・ロケーションの統合ビュー。 */
 export default async function UnifiedInventoryPage() {
-  const [productRows, materialRows, wipRows, factories] = await Promise.all([
+  const [productRows, materialRows, wipRows, plants] = await Promise.all([
     fetchProductInventories(),
     fetchMaterialInventories(),
     fetchWipRows(),
-    fetchFactoryStorageOptions(),
+    fetchPlantStorageOptions(),
   ]);
   return (
     <UnifiedInventory
-      factories={factories}
       materialRows={materialRows}
+      plants={plants}
       productRows={productRows}
       wipRows={wipRows}
     />

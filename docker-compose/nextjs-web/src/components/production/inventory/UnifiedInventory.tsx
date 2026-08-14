@@ -5,10 +5,10 @@
  *
  * 製品在庫・素材在庫・仕掛品を 1 アプリに統合し、タブで切り替える
  * （旧 PD04 製品在庫 / PD05 素材在庫 は本アプリへ統合 — 旧 URL はリダイレクト）。
- * - 製品 / 素材: 一覧 + 行アクション「移動」（在庫移動 = 工場・保管場所・棚の
+ * - 製品 / 素材: 一覧 + 行アクション「移動」（在庫移動 = 拠点・保管場所・棚の
  *   間の移動。StockTransferModal）
  * - 仕掛品: 進行中指示書の工程別仕掛数（旧 PD04 の WIP ビュー）
- * - ロケーション: 工場 → 保管場所 → 棚 の在庫を視覚表示
+ * - ロケーション: 拠点 → 保管場所 → 棚 の在庫を視覚表示
  */
 
 import {
@@ -53,7 +53,7 @@ import type { MaterialInventoryRow } from "./materials/model";
 import type { ProductInventoryRow, WipRow } from "./products/model";
 import {
   StockTransferModal,
-  type TransferFactoryOption,
+  type TransferPlantOption,
   type TransferSource,
 } from "./StockTransferModal";
 
@@ -77,19 +77,19 @@ export function UnifiedInventory({
   productRows,
   materialRows,
   wipRows,
-  factories,
+  plants,
 }: {
   productRows: ProductInventoryRow[];
   materialRows: MaterialInventoryRow[];
   wipRows: WipRow[];
-  factories: TransferFactoryOption[];
+  plants: TransferPlantOption[];
 }) {
   const router = useRouter();
   const isMobile = useIsMobile();
 
   const [tab, setTab] = useTabParam("products");
   const [search, setSearch] = useUrlStringState("q");
-  const [factory, setFactory] = useUrlSelectState("factory");
+  const [plant, setPlant] = useUrlSelectState("plant");
   const [kind, setKind] = useUrlSelectState("kind");
   const [transferSource, setTransferSource] = useState<TransferSource | null>(
     null,
@@ -97,14 +97,14 @@ export function UnifiedInventory({
 
   const reset = () => {
     setSearch(null);
-    setFactory(null);
+    setPlant(null);
     setKind(null);
   };
 
-  const factoryOptions = useMemo(() => {
+  const plantOptions = useMemo(() => {
     const names = new Set<string>();
-    for (const r of productRows) if (r.factoryName) names.add(r.factoryName);
-    for (const r of materialRows) if (r.factoryName) names.add(r.factoryName);
+    for (const r of productRows) if (r.plantName) names.add(r.plantName);
+    for (const r of materialRows) if (r.plantName) names.add(r.plantName);
     return [...names].sort((a, b) => a.localeCompare(b, "ja"));
   }, [productRows, materialRows]);
 
@@ -113,11 +113,11 @@ export function UnifiedInventory({
       !search ||
       r.productName.includes(search) ||
       (r.productCode ?? "").includes(search);
-    const matchesFactory = !factory || r.factoryName === factory;
+    const matchesPlant = !plant || r.plantName === plant;
     const matchesKind =
       !kind ||
       (kind === "SEMI_FINISHED" ? r.isSemiFinished : !r.isSemiFinished);
-    return matchesSearch && matchesFactory && matchesKind;
+    return matchesSearch && matchesPlant && matchesKind;
   });
 
   const filteredMaterials = materialRows.filter((r) => {
@@ -125,8 +125,8 @@ export function UnifiedInventory({
       !search ||
       r.materialName.includes(search) ||
       r.materialCode.includes(search);
-    const matchesFactory = !factory || r.factoryName === factory;
-    return matchesSearch && matchesFactory;
+    const matchesPlant = !plant || r.plantName === plant;
+    return matchesSearch && matchesPlant;
   });
 
   const filteredWip = wipRows.filter(
@@ -167,12 +167,12 @@ export function UnifiedInventory({
       ),
     },
     {
-      key: "factoryName",
-      header: "工場",
+      key: "plantName",
+      header: "拠点",
       sortable: true,
       width: 120,
-      sortValue: (r) => r.factoryName ?? "",
-      render: (r) => r.factoryName ?? "—",
+      sortValue: (r) => r.plantName ?? "",
+      render: (r) => r.plantName ?? "—",
     },
     {
       key: "storage",
@@ -273,7 +273,7 @@ export function UnifiedInventory({
           available: r.available,
           unit: "本",
           integerOnly: true,
-          currentLabel: `${r.factoryName ?? "工場未設定"} / ${storageCell(r)}`,
+          currentLabel: `${r.plantName ?? "拠点未設定"} / ${storageCell(r)}`,
         }),
     },
   ];
@@ -296,12 +296,12 @@ export function UnifiedInventory({
       ),
     },
     {
-      key: "factoryName",
-      header: "工場",
+      key: "plantName",
+      header: "拠点",
       sortable: true,
       width: 120,
-      sortValue: (r) => r.factoryName ?? "",
-      render: (r) => r.factoryName ?? "—",
+      sortValue: (r) => r.plantName ?? "",
+      render: (r) => r.plantName ?? "—",
     },
     {
       key: "storage",
@@ -383,7 +383,7 @@ export function UnifiedInventory({
           available: r.available,
           unit: r.unit,
           integerOnly: false,
-          currentLabel: `${r.factoryName ?? "工場未設定"} / ${storageCell(r)}`,
+          currentLabel: `${r.plantName ?? "拠点未設定"} / ${storageCell(r)}`,
         }),
     },
   ];
@@ -396,11 +396,11 @@ export function UnifiedInventory({
           <>
             <Select
               clearable
-              data={factoryOptions}
+              data={plantOptions}
               flex={isMobile ? 1 : undefined}
-              onChange={setFactory}
-              placeholder="工場"
-              value={factory}
+              onChange={setPlant}
+              placeholder="拠点"
+              value={plant}
               w={isMobile ? undefined : 160}
             />
             {tab === "products" && (
@@ -474,7 +474,7 @@ export function UnifiedInventory({
                   </Text>
                   <Group gap="md">
                     <Text c="dimmed" size="xs">
-                      {r.factoryName ?? "工場未設定"} / {storageCell(r)}
+                      {r.plantName ?? "拠点未設定"} / {storageCell(r)}
                     </Text>
                     {r.lotNumber != null && (
                       <Text c="dimmed" ff="mono" size="xs">
@@ -524,7 +524,7 @@ export function UnifiedInventory({
                     {r.materialName}
                   </Text>
                   <Text c="dimmed" size="xs">
-                    {r.factoryName ?? "工場未設定"} / {storageCell(r)}
+                    {r.plantName ?? "拠点未設定"} / {storageCell(r)}
                   </Text>
                   <Text size="xs">
                     在庫 {r.quantity.toLocaleString("ja-JP")} {r.unit} /
@@ -546,9 +546,9 @@ export function UnifiedInventory({
 
         <Tabs.Panel value="locations">
           <LocationView
-            factories={factories}
             materialRows={materialRows}
             onTransfer={setTransferSource}
+            plants={plants}
             productRows={productRows}
           />
         </Tabs.Panel>
@@ -556,12 +556,12 @@ export function UnifiedInventory({
 
       {transferSource && (
         <StockTransferModal
-          factories={factories}
           onClose={() => setTransferSource(null)}
           onDone={() => {
             setTransferSource(null);
             router.refresh();
           }}
+          plants={plants}
           source={transferSource}
         />
       )}
@@ -673,24 +673,24 @@ interface LocationStockItem {
 }
 
 /**
- * ロケーションビュー — 工場を選び、保管場所 → 棚 の在庫を視覚表示する。
+ * ロケーションビュー — 拠点を選び、保管場所 → 棚 の在庫を視覚表示する。
  * 未割当（保管場所なし）と 棚未割当（場所直下）も専用枠で表示。
  */
 function LocationView({
-  factories,
+  plants,
   productRows,
   materialRows,
   onTransfer,
 }: {
-  factories: TransferFactoryOption[];
+  plants: TransferPlantOption[];
   productRows: ProductInventoryRow[];
   materialRows: MaterialInventoryRow[];
   onTransfer: (source: TransferSource) => void;
 }) {
-  const [factoryId, setFactoryId] = useState<string | null>(
-    factories[0] ? String(factories[0].id) : null,
+  const [plantId, setPlantId] = useState<string | null>(
+    plants[0] ? String(plants[0].id) : null,
   );
-  const selected = factories.find((f) => String(f.id) === factoryId) ?? null;
+  const selected = plants.find((f) => String(f.id) === plantId) ?? null;
 
   // フロアマップ（端末管理と共用の図面）のピン選択 → 該当ロケーションカードへ
   const [activeMapId, setActiveMapId] = useState<string | null>(null);
@@ -701,18 +701,18 @@ function LocationView({
     return (
       <EmptyState
         icon={<IconBuildingWarehouse size={24} />}
-        message="工場が登録されていません"
+        message="拠点が登録されていません"
       />
     );
   }
 
-  // 選択工場の在庫をロケーション別に整理
-  const inFactory = {
+  // 選択拠点の在庫をロケーション別に整理
+  const inPlant = {
     products: productRows.filter(
-      (r) => r.factoryId === selected.id && r.quantity !== 0,
+      (r) => r.plantId === selected.id && r.quantity !== 0,
     ),
     materials: materialRows.filter(
-      (r) => r.factoryId === selected.id && r.quantity !== 0,
+      (r) => r.plantId === selected.id && r.quantity !== 0,
     ),
   };
 
@@ -740,7 +740,7 @@ function LocationView({
               available: p.available,
               unit: "本",
               integerOnly: true,
-              currentLabel: `${p.factoryName ?? "—"} / ${storageCell(p)}`,
+              currentLabel: `${p.plantName ?? "—"} / ${storageCell(p)}`,
             },
           };
         })()
@@ -761,7 +761,7 @@ function LocationView({
               available: m.available,
               unit: m.unit,
               integerOnly: false,
-              currentLabel: `${m.factoryName ?? "—"} / ${storageCell(m)}`,
+              currentLabel: `${m.plantName ?? "—"} / ${storageCell(m)}`,
             },
           };
         })();
@@ -770,12 +770,12 @@ function LocationView({
     locationId: number | null,
     shelfId: number | null,
   ): LocationStockItem[] => [
-    ...inFactory.products
+    ...inPlant.products
       .filter(
         (r) => r.storageLocationId === locationId && r.shelfId === shelfId,
       )
       .map((r) => itemOf(r, "PRODUCT")),
-    ...inFactory.materials
+    ...inPlant.materials
       .filter(
         (r) => r.storageLocationId === locationId && r.shelfId === shelfId,
       )
@@ -840,14 +840,14 @@ function LocationView({
     <Stack gap="md">
       <Select
         allowDeselect={false}
-        data={factories.map((f) => ({ value: String(f.id), label: f.name }))}
-        label="工場"
+        data={plants.map((f) => ({ value: String(f.id), label: f.name }))}
+        label="拠点"
         onChange={(v) => {
-          setFactoryId(v);
+          setPlantId(v);
           setActiveMapId(null);
           setSelectedLocId(null);
         }}
-        value={factoryId}
+        value={plantId}
         w={240}
       />
 
@@ -919,7 +919,7 @@ function LocationView({
       {selected.locations.length === 0 && unassigned.length === 0 ? (
         <EmptyState
           icon={<IconBuildingWarehouse size={24} />}
-          message="この工場には保管場所も在庫もありません（保管場所は 工場マスタ MS0B で登録）"
+          message="この拠点には保管場所も在庫もありません（保管場所は 拠点マスタ MS0B で登録）"
         />
       ) : (
         <>
