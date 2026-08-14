@@ -1,4 +1,5 @@
 import { DeliveryNoteForm } from "@/components/shipping/delivery-notes/DeliveryNoteForm";
+import { requireAppRead } from "@/lib/authz-page";
 import { fetchShippingOrderCandidates } from "../data";
 
 export const dynamic = "force-dynamic";
@@ -14,6 +15,8 @@ export default async function ShippingDeliveryNotesNewPage({
 }: {
   searchParams: Promise<{ shippingOrder?: string }>;
 }) {
+  const denied = await requireAppRead("delivery-notes");
+  if (denied) return denied;
   const [sp, candidates] = await Promise.all([
     searchParams,
     fetchShippingOrderCandidates(),

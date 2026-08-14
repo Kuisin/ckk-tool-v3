@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { ShippingOrderDetail } from "@/components/shipping/shipping-orders/ShippingOrderDetail";
 import { fetchAuditEntries } from "@/lib/audit";
+import { requireAppRead } from "@/lib/authz-page";
 import { formatDocNumber, parseDocKey } from "@/lib/doc-number";
 import { fetchShippingOrder } from "../data";
 
@@ -22,6 +23,8 @@ export default async function ShippingShippingOrdersDetailPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
+  const denied = await requireAppRead("shipping-orders");
+  if (denied) return denied;
   const { id } = await params;
   const key = parseDocKey(decodeURIComponent(id), "SHP");
   if (!key) notFound();

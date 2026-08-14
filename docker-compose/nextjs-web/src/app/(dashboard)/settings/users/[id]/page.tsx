@@ -1,9 +1,6 @@
-import { IconLock } from "@tabler/icons-react";
 import { notFound } from "next/navigation";
 import { UserDetail } from "@/components/settings/UserDetail";
-import { EmptyState } from "@/components/ui/EmptyState";
-import { PageHeader } from "@/components/ui/PageHeader";
-import { checkPermission } from "@/lib/authz";
+import { requireAppRead } from "@/lib/authz-page";
 import { getAdminUser } from "@/lib/users-admin";
 
 export const dynamic = "force-dynamic";
@@ -14,21 +11,8 @@ export default async function UserDetailPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
-  const authz = await checkPermission("system", "READ");
-  if (!authz.ok) {
-    return (
-      <>
-        <PageHeader
-          breadcrumbs={[
-            "システム",
-            { label: "ユーザー管理", href: "/settings/users" },
-          ]}
-          title="ユーザー詳細"
-        />
-        <EmptyState icon={<IconLock size={28} />} message={authz.error} />
-      </>
-    );
-  }
+  const denied = await requireAppRead("user-management");
+  if (denied) return denied;
   const { id } = await params;
   const user = await getAdminUser(id);
   if (!user) notFound();

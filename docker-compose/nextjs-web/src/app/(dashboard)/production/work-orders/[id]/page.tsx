@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { WorkOrderDetail } from "@/components/production/work-orders/WorkOrderDetail";
 import { isApprover } from "@/lib/approvals";
 import { fetchAuditEntries } from "@/lib/audit";
+import { requireAppRead } from "@/lib/authz-page";
 import {
   fetchCatalogStepOptions,
   fetchWorkOrder,
@@ -26,6 +27,8 @@ export default async function ProductionWorkOrdersDetailPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
+  const denied = await requireAppRead("work-orders");
+  if (denied) return denied;
   const { id } = await params;
   const workOrderNumber = Number(id);
   if (!Number.isInteger(workOrderNumber) || workOrderNumber < 1) notFound();

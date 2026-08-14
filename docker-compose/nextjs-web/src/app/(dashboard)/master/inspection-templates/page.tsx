@@ -2,6 +2,7 @@ import {
   type InspectionTemplateRow,
   InspectionTemplateTable,
 } from "@/components/master/inspection-templates/InspectionTemplateTable";
+import { requireAppRead } from "@/lib/authz-page";
 import { prisma } from "@/lib/db";
 import { type LocalizedText, localized } from "@/lib/format";
 
@@ -9,6 +10,8 @@ export const dynamic = "force-dynamic";
 
 /** 検査表テンプレート 一覧 (MS08) — code ごとに最新バージョンのみ表示。 */
 export default async function MasterInspectionTemplatesPage() {
+  const denied = await requireAppRead("master-inspection-templates");
+  if (denied) return denied;
   const records = await prisma.inspectionTemplate.findMany({
     include: {
       relatedProcessStep: true,

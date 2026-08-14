@@ -24,7 +24,7 @@ import { IconHome, IconSearch } from "@tabler/icons-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { appKeyForPath, useDisabledApps } from "@/components/layout/AppFlags";
+import { appKeyForPath, useHiddenApps } from "@/components/layout/AppFlags";
 import {
   type AppCategory,
   appList,
@@ -51,12 +51,12 @@ export function AppLauncher({ onNavigate }: AppLauncherProps) {
   // Index of the keyboard-highlighted search result (Arrow Up/Down).
   const [activeIndex, setActiveIndex] = useState(0);
   const itemRefs = useRef<(HTMLButtonElement | null)[]>([]);
-  const disabledApps = useDisabledApps();
+  const hiddenApps = useHiddenApps();
   // 環境別フラグで無効化されたアプリは一覧から除外（空カテゴリも消す）。
   const categories = getAppsByCategory()
     .map((c) => ({
       ...c,
-      apps: c.apps.filter((a) => !disabledApps.has(a.key)),
+      apps: c.apps.filter((a) => !hiddenApps.has(a.key)),
     }))
     .filter((c) => c.apps.length > 0);
 
@@ -76,7 +76,7 @@ export function AppLauncher({ onNavigate }: AppLauncherProps) {
     // 無効化アプリの画面は検索結果からも除外する。
     const isEnabled = (href: string) => {
       const key = appKeyForPath(href);
-      return !key || !disabledApps.has(key);
+      return !key || !hiddenApps.has(key);
     };
 
     const codeMatch = resolveOperationCode(q);
@@ -90,7 +90,7 @@ export function AppLauncher({ onNavigate }: AppLauncherProps) {
 
     const labelResults = appList.filter(
       (app) =>
-        !disabledApps.has(app.key) &&
+        !hiddenApps.has(app.key) &&
         (app.label.toLowerCase().includes(q.toLowerCase()) ||
           app.operationCode.toUpperCase().startsWith(cleaned)),
     );
@@ -103,7 +103,7 @@ export function AppLauncher({ onNavigate }: AppLauncherProps) {
     }
 
     return codeResults;
-  }, [search, disabledApps]);
+  }, [search, hiddenApps]);
 
   // Keep the highlighted result scrolled into view as it moves.
   useEffect(() => {

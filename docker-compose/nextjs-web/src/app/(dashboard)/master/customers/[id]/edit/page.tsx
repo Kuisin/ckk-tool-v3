@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { CustomerForm } from "@/components/master/customers/CustomerForm";
+import { requireAppRead } from "@/lib/authz-page";
 import { fetchCustomerDetail, fetchCustomers } from "../../../_shared/bp-data";
 
 export const dynamic = "force-dynamic";
@@ -10,6 +11,8 @@ export default async function MasterCustomersEditPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
+  const denied = await requireAppRead("master-customers");
+  if (denied) return denied;
   const { id } = await params;
   const [record, customers] = await Promise.all([
     fetchCustomerDetail(id),

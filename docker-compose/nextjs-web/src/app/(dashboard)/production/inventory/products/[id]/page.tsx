@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { ProductInventoryDetail } from "@/components/production/inventory/products/ProductInventoryDetail";
+import { requireAppRead } from "@/lib/authz-page";
 import { fetchProductInventoryDetail } from "../data";
 
 export const dynamic = "force-dynamic";
@@ -10,6 +11,8 @@ export default async function ProductionInventoryProductsDetailPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
+  const denied = await requireAppRead("inventory");
+  if (denied) return denied;
   const { id } = await params;
   const record = await fetchProductInventoryDetail(id).catch(() => null);
   if (!record) notFound();

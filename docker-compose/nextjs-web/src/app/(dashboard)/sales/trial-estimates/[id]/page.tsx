@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { TrialEstimateDetail } from "@/components/sales/trial-estimates/TrialEstimateDetail";
 import type { LinkedPriceEntry } from "@/components/sales/trial-estimates/types";
 import { fetchAuditEntries } from "@/lib/audit";
+import { requireAppRead } from "@/lib/authz-page";
 import { prisma } from "@/lib/db";
 import {
   formatEstimateNumber,
@@ -36,6 +37,8 @@ export default async function TrialEstimateDetailPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
+  const denied = await requireAppRead("trial-estimates");
+  if (denied) return denied;
   const { id } = await params;
   const key = parseDocKey(id, "EST");
   if (!key) notFound();

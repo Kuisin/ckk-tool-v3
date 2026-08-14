@@ -1,6 +1,7 @@
 import { notFound, redirect } from "next/navigation";
 import { isEditable } from "@/components/production/sales-orders/model";
 import { SalesOrderForm } from "@/components/production/sales-orders/SalesOrderForm";
+import { requireAppRead } from "@/lib/authz-page";
 import { parseSalesOrderKey } from "@/lib/doc-number";
 import { fetchBranchesByCustomer } from "../../../../sales/quotes/data";
 import { fetchSalesOrder } from "../../data";
@@ -18,6 +19,8 @@ export default async function ProductionSalesOrdersEditPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
+  const denied = await requireAppRead("work-orders");
+  if (denied) return denied;
   const { id } = await params;
   const key = parseSalesOrderKey(decodeURIComponent(id));
   if (!key) notFound();

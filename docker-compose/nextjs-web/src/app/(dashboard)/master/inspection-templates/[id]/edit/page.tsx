@@ -1,5 +1,6 @@
 import { notFound, redirect } from "next/navigation";
 import { InspectionTemplateForm } from "@/components/master/inspection-templates/InspectionTemplateForm";
+import { requireAppRead } from "@/lib/authz-page";
 import { prisma } from "@/lib/db";
 import { type LocalizedText, localized } from "@/lib/format";
 
@@ -11,6 +12,8 @@ export default async function MasterInspectionTemplatesEditPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
+  const denied = await requireAppRead("master-inspection-templates");
+  if (denied) return denied;
   const { id: idParam } = await params;
   const id = Number(idParam);
   if (!Number.isInteger(id)) notFound();

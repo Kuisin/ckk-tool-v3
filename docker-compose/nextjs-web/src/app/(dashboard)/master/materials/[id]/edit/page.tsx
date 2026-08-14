@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { MaterialForm } from "@/components/master/materials/MaterialForm";
+import { requireAppRead } from "@/lib/authz-page";
 import { prisma } from "@/lib/db";
 import { type LocalizedText, localized } from "@/lib/format";
 
@@ -11,6 +12,8 @@ export default async function MasterMaterialsEditPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
+  const denied = await requireAppRead("master-materials");
+  if (denied) return denied;
   const { id: idParam } = await params;
   const id = Number(idParam);
   if (!Number.isInteger(id)) notFound();

@@ -2,6 +2,7 @@ import {
   type WorkLocationGroupRow,
   WorkLocationsManager,
 } from "@/components/master/work-locations/WorkLocationsManager";
+import { requireAppRead } from "@/lib/authz-page";
 import { prisma } from "@/lib/db";
 import { type LocalizedText, localized } from "@/lib/format";
 import { readWorkLocationTypes } from "@/lib/work-locations";
@@ -10,6 +11,8 @@ export const dynamic = "force-dynamic";
 
 /** 作業場所マスタ (MS0D) — 単一管理画面（グループ + 場所 + 種別）。 */
 export default async function MasterWorkLocationsPage() {
+  const denied = await requireAppRead("master-work-locations");
+  if (denied) return denied;
   const [groups, types, plants] = await Promise.all([
     prisma.workLocationGroup.findMany({
       include: {

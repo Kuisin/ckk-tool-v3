@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { PlantForm } from "@/components/master/plants/PlantForm";
+import { requireAppRead } from "@/lib/authz-page";
 import { prisma } from "@/lib/db";
 import type { LocalizedText } from "@/lib/format";
 
@@ -11,6 +12,8 @@ export default async function MasterPlantsEditPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
+  const denied = await requireAppRead("master-plants");
+  if (denied) return denied;
   const { id: idParam } = await params;
   const id = Number(idParam);
   if (!Number.isInteger(id)) notFound();

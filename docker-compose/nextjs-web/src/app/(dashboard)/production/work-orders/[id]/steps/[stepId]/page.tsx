@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { StepExecutionView } from "@/components/production/step-execution/StepExecutionView";
+import { requireAppRead } from "@/lib/authz-page";
 import { fetchStepExecution } from "../../../data";
 
 export const dynamic = "force-dynamic";
@@ -25,6 +26,8 @@ export default async function WorkOrderStepExecutionPage({
 }: {
   params: Promise<{ id: string; stepId: string }>;
 }) {
+  const denied = await requireAppRead("work-orders");
+  if (denied) return denied;
   const { id, stepId } = await params;
   const workOrderNumber = Number(id);
   if (!Number.isInteger(workOrderNumber) || workOrderNumber < 1) notFound();

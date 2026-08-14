@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { MaterialInventoryDetail } from "@/components/production/inventory/materials/MaterialInventoryDetail";
+import { requireAppRead } from "@/lib/authz-page";
 import { fetchMaterialInventoryDetail } from "../data";
 
 export const dynamic = "force-dynamic";
@@ -10,6 +11,8 @@ export default async function ProductionInventoryMaterialsDetailPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
+  const denied = await requireAppRead("inventory");
+  if (denied) return denied;
   const { id } = await params;
   const record = await fetchMaterialInventoryDetail(id).catch(() => null);
   if (!record) notFound();

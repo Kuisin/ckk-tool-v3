@@ -4,6 +4,7 @@ import {
   type ApprovalGroupDetailData,
 } from "@/components/master/approval-groups/ApprovalGroupDetail";
 import { fetchAuditEntries } from "@/lib/audit";
+import { requireAppRead } from "@/lib/authz-page";
 import { prisma } from "@/lib/db";
 import type { LocalizedText } from "@/lib/format";
 
@@ -15,6 +16,8 @@ export default async function MasterApprovalGroupsDetailPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
+  const denied = await requireAppRead("master-approval-groups");
+  if (denied) return denied;
   const { id: idParam } = await params;
   const id = Number(idParam);
   if (!Number.isInteger(id)) notFound();

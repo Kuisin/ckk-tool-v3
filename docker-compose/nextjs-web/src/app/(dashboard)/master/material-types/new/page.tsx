@@ -2,6 +2,7 @@ import {
   type GradeOption,
   MaterialTypeForm,
 } from "@/components/master/material-types/MaterialTypeForm";
+import { requireAppRead } from "@/lib/authz-page";
 import { prisma } from "@/lib/db";
 import { type LocalizedText, localized } from "@/lib/format";
 
@@ -9,6 +10,8 @@ export const dynamic = "force-dynamic";
 
 /** 材種 新規作成 (MS14) — コード構成ビルダー. */
 export default async function MasterMaterialTypesNewPage() {
+  const denied = await requireAppRead("master-material-types");
+  if (denied) return denied;
   const [manufacturers, grades, shapes] = await Promise.all([
     prisma.materialManufacturer.findMany({
       where: { isActive: true },

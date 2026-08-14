@@ -2,6 +2,7 @@ import {
   type MaterialRow,
   MaterialTable,
 } from "@/components/master/materials/MaterialTable";
+import { requireAppRead } from "@/lib/authz-page";
 import { prisma } from "@/lib/db";
 import { type LocalizedText, localized } from "@/lib/format";
 
@@ -9,6 +10,8 @@ export const dynamic = "force-dynamic";
 
 /** 素材 一覧 (MS05). */
 export default async function MasterMaterialsPage() {
+  const denied = await requireAppRead("master-materials");
+  if (denied) return denied;
   const records = await prisma.material.findMany({
     include: { materialType: true, surfaceFinish: true },
     orderBy: { code: "asc" },
