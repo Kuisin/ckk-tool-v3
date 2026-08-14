@@ -1,6 +1,6 @@
 ---
 title: "Product Items — Settings Manual"
-screenshots: []
+screenshots: [product-types-01]
 ---
 **Product Items (SY03)** is the config app for the input fields used when creating a new [product](/manual/en/masters/product/user). It has two screens.
 
@@ -44,6 +44,8 @@ Each field:
 ## 2. Product types (templates)
 
 On `/settings/product-types` you create product types. The list supports enable/disable, reorder, and delete; edit each on its own page.
+
+![Product type list](../../assets/screenshots/product-types-01.png)
 
 On a type's edit page:
 

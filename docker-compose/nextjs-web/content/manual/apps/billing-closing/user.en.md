@@ -1,7 +1,7 @@
 ---
 title: "Billing Closing — User Manual"
 description: "Operation code BL02. A monthly process that aggregates uninvoiced shipments by each customer's closing day (締日) and g…"
-screenshots: []
+screenshots: [billing-closing-list-01, billing-closing-detail-01]
 ---
 Operation code **BL02**. A monthly process that aggregates uninvoiced shipments by each customer's closing day (締日) and generates invoices.
 
@@ -14,6 +14,8 @@ This app performs the once-a-month "closing". It aggregates the target month's u
 - Shipments of type "stock storage" are outside the billing flow and are not included.
 - Shipments already on an invoice's line items are no longer "uninvoiced", so double billing cannot happen.
 - Using this app requires the billing-closing permission (billing_closing).
+
+![Billing closing list (with the 締日処理を実行 button)](../../assets/screenshots/billing-closing-list-01.png)
 
 ## How the closing day is determined
 
@@ -29,6 +31,8 @@ This app performs the once-a-month "closing". It aggregates the target month's u
 5. Depending on server configuration, the current month's run may also happen automatically every morning.
 
 ## Generating invoices
+
+![Billing closing detail (pending; target shipments and 請求書を生成)](../../assets/screenshots/billing-closing-detail-01.png)
 
 1. Open a closing row from the list to review the target shipments (shipping order number, ship date, quantity, amount).
 2. Press **請求書を生成** (Generate invoice): a draft invoice is created from the target shipments' line items and the row becomes **processed (処理済 / PROCESSED)**. You are taken straight to the generated invoice's detail page.

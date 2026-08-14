@@ -1,7 +1,7 @@
 ---
 title: "Approval Group — User Manual"
 description: "Operation code MS0A. Registers and manages groups of people who perform approvals. Approvals for work orders, materia…"
-screenshots: []
+screenshots: [master-approval-group-list-01]
 ---
 Operation code **MS0A**. Registers and manages groups of people who perform approvals. Approvals for work orders, material purchases, and the like are done by the members of these groups.
 
@@ -21,10 +21,13 @@ There are three group types. You choose one at creation and cannot change it lat
 - **Second approval** — the second-stage approval, such as a department sign-off.
 - **Workflow change approval** — a dedicated group that approves changes to the manufacturing workflow.
 
+![Approval group list](../../assets/screenshots/master-approval-group-list-01.png)
+
 ## Viewing the list
 
-- The list shows registered groups. Click a row to open its detail screen.
-- You can filter by type and status (active / inactive).
+- The list columns are **Name / Type / Member count / Status**. Click a row to open its detail screen.
+- Use the search box at the top to filter by **name**. You can also filter by **type** and **status** (active / inactive).
+- Selecting rows enables **bulk activate / bulk deactivate / bulk delete**.
 
 ## Creating a new group
 

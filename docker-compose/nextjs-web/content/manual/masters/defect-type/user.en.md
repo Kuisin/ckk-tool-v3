@@ -1,7 +1,7 @@
 ---
 title: "Defect Type — User Manual"
 description: "Operation code MS09. A small master for registering the categories used when recording defects during manufacturing (…"
-screenshots: []
+screenshots: [master-defect-type-list-01]
 ---
 Operation code **MS09**. A small master for registering the categories used when recording defects during manufacturing (scratch, chip, dimensional defect, etc.). The types registered here become the choices in the defect record on the step execution screen of a [work order (指示書)](/manual/en/apps/work-order/user).
 
@@ -13,6 +13,8 @@ Operation code **MS09**. A small master for registering the categories used when
 - Because this master holds only a code, a name and a sort order, **there is no detail page**. Editing is done in a modal (small window) on the list.
 
 The **master permission** is required to use this app.
+
+![Defect type list](../../assets/screenshots/master-defect-type-list-01.png)
 
 ## Viewing the list
 

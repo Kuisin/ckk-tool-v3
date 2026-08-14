@@ -1,9 +1,9 @@
 ---
 title: "User Settings Manual"
-description: "Settings for your own account. Open them from the avatar menu (top right) → Profile / Notifications."
-screenshots: []
+description: "Settings for your own account. Open them from the avatar menu (top right) → Profile / Notification Settings / Home Screen Settings."
+screenshots: [profile-home-01]
 ---
-Settings for your own account. Open them from the avatar menu (top right) → **Profile** / **Notifications**.
+Settings for your own account. Open them from the avatar menu (top right) → **Profile** / **Notification Settings** / **Home Screen Settings**.
 
 ## Profile
 
@@ -32,6 +32,16 @@ Settings for your own account. Open them from the avatar menu (top right) → **
 
 - Under **Profile → Notifications → Registered devices**, review and remove devices where push is enabled. Remove any device you no longer use.
 
+## Home screen settings
+
+Use **Home Screen Settings** in the avatar menu to customize your home screen layout.
+
+- **Favorite apps** — click the cards to select apps; they appear together as "Favorites" at the top of the home screen, in the order you selected them.
+- **Display mode** — switch between **Standard (by category)** and **Custom (by group)**. In custom mode, apps are arranged by the groups you create; apps not assigned to any group are collected under "Other".
+- **Custom groups** — type a name into "New group" to add one. Each group can be renamed, moved up/down, or deleted, and you choose which apps belong to it (an app can belong to at most one group; apps already in another group cannot be selected).
+
+![Home screen settings](./assets/screenshots/profile-home-01.png)
+
 ## Language
 
-- The manuals (/docs) can be switched between 日本語 / English / 中文 using the language links at the top right.
+- The manuals (/manual) can be switched between 日本語 / English / 中文 using the language links at the top right.

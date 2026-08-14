@@ -1,6 +1,6 @@
 ---
 title: "产品项目 — 设置手册"
-screenshots: []
+screenshots: [product-types-01]
 ---
 **产品项目（SY03）** 是管理新建[产品](/manual/zh/masters/product/user)时输入项目的设置应用，分为两个界面。
 
@@ -44,6 +44,8 @@ screenshots: []
 ## 2. 产品种别（模板）
 
 在 `/settings/product-types` 创建产品种别。列表支持启用/停用、排序、删除；各种别在专用页面编辑。
+
+![产品种别列表](../../assets/screenshots/product-types-01.png)
 
 在种别编辑页：
 

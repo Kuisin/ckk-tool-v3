@@ -1,7 +1,7 @@
 ---
 title: "Start Manual"
 description: "Welcome to the CKK Business Management System. This page is an introduction for first-time users. Technical terms are…"
-screenshots: []
+screenshots: [login-01, launcher-01, home-01]
 ---
 Welcome to the CKK Business Management System. This page is an introduction for **first-time users**. Technical terms are explained in the Glossary at the end.
 
@@ -18,15 +18,21 @@ These three connect in order: **Trial Estimate → Price List → Quote** (see "
 ## 1. Signing in
 
 1. Open the internal portal URL in your browser.
-2. Sign in with the **SSO (company account)** button. Development accounts are available via the link at the bottom of the login screen.
+2. Sign in with the **SSO (company account)** button. Development accounts are available from the input fields that appear when you press the "Sign in with a development account" button at the bottom of the login screen.
 3. Once in, click the round avatar (top right) and check that your name and department are correct.
+
+![Login screen](./assets/screenshots/login-01.png)
 
 ## 2. Reading the screen
 
 - Click the **logo (top left)** → the app launcher opens.
 - **Center search box** — type an app name or an "operation code" (e.g. `SA05`) and press Enter to jump straight to that screen.
-- **Bell (top right)** — notifications. **Avatar** — profile, settings, sign out.
-- **Home** — available apps grouped by category. Apps you lack permission for are hidden.
+- **Bell (top right)** — notifications. **Avatar** — Profile, Notification Settings, Home Screen Settings, Sign out.
+- **Home** — available apps grouped by category. Apps you lack permission for are hidden, and the set of published apps also differs per environment (production / development).
+
+![App launcher](./assets/screenshots/launcher-01.png)
+
+![Home screen](./assets/screenshots/home-01.png)
 
 ## 3. Operation codes (screen numbers)
 
@@ -47,13 +53,13 @@ Open the category guides on the left (Sales Apps, Purchasing Apps, and so on) fo
 
 - **Can't find a screen** — you may lack the required permission; ask an administrator.
 - **Got a notification** — review it from the bell (top right).
-- **Change your own settings** — use **Settings** in the top-right menu to update your notification email or password (see the [User Settings Manual](/manual/en/user-settings)).
+- **Change your own settings** — use **Profile** in the top-right avatar menu to update your notification email or password, and **Home Screen Settings** for favorite apps and display mode (see the [User Settings Manual](/manual/en/user-settings)).
 
 ## Glossary
 
 - **Trial Estimate** — computing a selling price from cost; the groundwork for a quote.
 - **Reference price / purchase history** — how much a material was purchased for (past purchasing records). The estimate's material cost is derived from this.
-- **Tool type** — the product type: Round bar, Cylinder, or OH. Inputs and formulas differ per type.
+- **Tool type** — the product type. By default there are three (Round bar, Cylinder, OH); administrators can add more. Inputs and formulas differ per type.
 - **Lot** — a quantity batch made together. Larger quantities lower the per-piece price.
 - **Order type** — Production, Test, Sample (amount 0), or Other. Prices can differ per type for the same product.
 - **Setup / shape-out** — pre-machining preparation cost, amortized across the quantity to a per-piece amount.

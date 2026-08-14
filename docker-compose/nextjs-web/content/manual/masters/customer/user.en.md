@@ -1,7 +1,7 @@
 ---
 title: "Customer — User Manual"
 description: "Operation code MS01. A ledger for registering and managing the customers who place orders with you. Quotes and price …"
-screenshots: []
+screenshots: [master-customer-list-01, master-customer-branches-01]
 ---
 Operation code **MS01**. A ledger for registering and managing the customers who place orders with you. Quotes and price lists are created by choosing a customer registered here.
 
@@ -17,9 +17,11 @@ Customers are managed internally as "business partners (BP)"; a customer is a BP
 
 ## Viewing the list
 
-- The list shows registered customers. Click a row to open its detail screen.
-- Use the search box at the top to filter by **company name or code**.
-- You can also filter by **status** (active / inactive).
+- The list columns are **BP code / Name / Branches / Status / Updated**. Click a row to open its detail screen.
+- Use the search box at the top to filter by **BP code or name**. You can also filter by **status** (active / inactive).
+- Selecting rows enables **bulk activate / bulk deactivate / bulk delete**.
+
+![Customer list with BP code, name, branch count, status, and updated columns, plus the search and filter bar](../../assets/screenshots/master-customer-list-01.png)
 
 ## Creating a new customer
 
@@ -38,6 +40,7 @@ Register from **New** at the top right of the list. The main fields are:
 
 **Trade terms**
 
+- **Legacy system code** — the old customer code (optional).
 - **Billing party** — set when billing goes to a different company (if unset, this customer is billed directly).
 - **Closing day** — a day from 1 to 31. `31` means "end of month".
 - **Payment terms (days)** / **Payment day** / **Credit limit**.
@@ -51,7 +54,7 @@ The **BP code** (`BP-NNNNN`) is assigned automatically on save. No manual entry 
 
 The detail screen is split into tabs.
 
-- **Overview** — trade terms and the contact list. Contacts can be added and edited here.
+- **Overview** — trade terms and the contact list. Contacts can be added and removed here via "Add contact".
 - **Branches** — the branches under this customer. Register with "Add branch".
 - **Quote/order history** — the quote and order history related to this customer.
 - **History** — the record of changes (when and who updated it).
@@ -63,6 +66,8 @@ Use the menu at the top right to **Edit** / **Deactivate** / **Delete**.
 - Register from the "Branches" tab → "Add branch" on the detail screen.
 - A branch takes the same basic info as a customer. When creating one, you can also register a **primary contact name** at the same time (optional).
 - The branch code is auto-numbered as `parent code-NN` (e.g. `BP-00001-01`).
+
+![Branches tab on the customer detail screen, showing the branch table and the "Add branch" button](../../assets/screenshots/master-customer-branches-01.png)
 
 ## Glossary
 

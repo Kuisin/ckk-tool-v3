@@ -1,7 +1,7 @@
 ---
 title: "採番構成 — 操作マニュアル"
 description: "操作コード MS0C。材種 コードと 素材 コードを組み立てる「部品」（構成要素）を管理する画面です。"
-screenshots: []
+screenshots: [master-material-numbering-01]
 ---
 操作コード **MS0C**。[材種](/manual/ja/masters/material-type/user) コードと [素材](/manual/ja/masters/material/user) コードを組み立てる「部品」（構成要素）を管理する画面です。
 
@@ -18,6 +18,8 @@ screenshots: []
 - **黒皮・研磨** … 素材表面の区分（英大文字1文字。例 `A` = 黒皮、`B` = 研磨）。
 - **直径** … 直径 mm から自動導出される3桁コード（径 × 10。例 φ8.3 → `083`）。
 - **全長** … 全長 mm の3桁コード（例 330mm → `330`）。カスタム識別を付けられます。
+
+![採番構成（メーカータブ）](../../assets/screenshots/master-material-numbering-01.png)
 
 ## 一覧を見る
 

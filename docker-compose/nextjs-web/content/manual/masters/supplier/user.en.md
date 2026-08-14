@@ -1,7 +1,7 @@
 ---
 title: "Supplier — User Manual"
 description: "Operation code MS06. A directory for registering and managing suppliers (仕入先 — companies you buy materials from) and …"
-screenshots: []
+screenshots: [master-supplier-list-01, master-supplier-detail-01]
 ---
 Operation code **MS06**. A directory for registering and managing **suppliers** (仕入先 — companies you buy materials from) and **subcontractors** (外注先 — companies you outsource process steps such as centerless grinding or coating to).
 
@@ -21,6 +21,8 @@ The **master permission** is required to use this app.
 - The list columns are **BP code / Name / Vendor type / Standard lead time / Status**. Click a row to open the detail screen.
 - Use the search box at the top to filter by **BP code or name**. You can also filter by **vendor type** (supplier / subcontractor) and **status** (active / inactive).
 - Selecting rows enables **bulk activate / bulk deactivate / bulk delete**.
+
+![Supplier list with BP code, name, vendor type, standard lead time, and status columns, plus the search and filter bar](../../assets/screenshots/master-supplier-list-01.png)
 
 ## Creating a new entry
 
@@ -50,8 +52,10 @@ Use "New" at the top right of the list. The **BP code** (`BP-NNNNN`) is assigned
 
 ## Detail screen
 
-- The summary at the top shows the basic information; the **Overview** tab shows terms of trade, bank account and notes; the **History** tab shows the change log (who changed what and when).
+- The summary at the top shows the basic information, with a **vendor type** badge and the status badge next to the title. The **Overview** tab shows terms of trade, bank account and notes; the **History** tab shows the change log (who changed what and when).
 - The menu at the top right offers **Edit** / **Deactivate** / **Delete**.
+
+![Supplier detail screen with the basic-info summary, vendor type badge, and the Overview tab's trade terms and bank account](../../assets/screenshots/master-supplier-detail-01.png)
 
 ## Deleting vs. deactivating
 

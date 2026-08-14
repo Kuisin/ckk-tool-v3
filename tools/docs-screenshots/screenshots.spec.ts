@@ -21,11 +21,26 @@ const OUT_DIR = resolve(
 );
 
 for (const shot of shots) {
-  test(shot.id, async ({ page }) => {
+  test(shot.id, async ({ page, browser }) => {
     if (shot.loggedOut) {
       // 各テストは独立コンテキスト（storageState 適用済み）— cookie を消せば
       // このテストだけ未ログイン状態になる。
       await page.context().clearCookies();
+    }
+    if (shot.user === "admin") {
+      // system 権限が必要な画面は管理者（demo1）の storageState に差し替える。
+      // 既定コンテキストの描画設定（viewport/locale/TZ/reducedMotion）を引き継ぐ。
+      const admin = await browser.newContext({
+        storageState: ".auth/admin.json",
+        viewport: { width: 1440, height: 900 },
+        deviceScaleFactor: 2,
+        locale: "ja-JP",
+        timezoneId: "Asia/Tokyo",
+        colorScheme: "light",
+        reducedMotion: "reduce",
+        baseURL: process.env.APP_URL ?? "http://localhost:3100",
+      });
+      page = await admin.newPage();
     }
 
     await page.goto(shot.path, { waitUntil: "networkidle" });

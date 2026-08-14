@@ -1,7 +1,7 @@
 ---
 title: "编号构成 — 操作手册"
 description: "操作代码 MS0C。用于管理组装 材种 代码和 素材 代码的\"零件\"（构成要素）的画面。"
-screenshots: []
+screenshots: [master-material-numbering-01]
 ---
 操作代码 **MS0C**。用于管理组装 [材种](/manual/zh/masters/material-type/user) 代码和 [素材](/manual/zh/masters/material/user) 代码的"零件"（构成要素）的画面。
 
@@ -18,6 +18,8 @@ screenshots: []
 - **黑皮・研磨** … 素材表面的区分（大写字母 1 位。例 `A` = 黑皮、`B` = 研磨）。
 - **直径** … 由 mm 自动导出的 3 位代码（径 × 10。例 φ8.3 → `083`）。
 - **全长** … 全长 mm 的 3 位代码（例 330mm → `330`）。可附加自定义标识。
+
+![编号构成（厂商标签页）](../../assets/screenshots/master-material-numbering-01.png)
 
 ## 查看列表
 

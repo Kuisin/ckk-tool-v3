@@ -1,7 +1,7 @@
 ---
 title: "製品項目 — 設定マニュアル"
 description: "入力項目まわりは 2 つのアプリに分かれています。上部のボタンで切り替えられます。"
-screenshots: []
+screenshots: [product-types-01]
 ---
 入力項目まわりは 2 つのアプリに分かれています。上部のボタンで切り替えられます。
 
@@ -45,6 +45,8 @@ screenshots: []
 ## 2. 製品種別（テンプレート）
 
 `/settings/product-types` で製品種別を作ります。一覧では有効/無効・並び替え・削除、編集は専用ページで行います。
+
+![製品種別一覧](../../assets/screenshots/product-types-01.png)
 
 種別の編集ページで設定する内容:
 

@@ -4,7 +4,7 @@ description: "Public user manual for the CKK business management system — how 
 screenshots: []
 ---
 
-This is the public manual for the CKK business management system. Use the sidebar or the search box (searchable by app name or operation code) to open a page.
+This is the public manual for the CKK business management system. Use the sidebar or the search (sidebar Search button / ⌘K; searchable by app name or operation code) to open a page.
 
 ## New here?
 

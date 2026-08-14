@@ -1,7 +1,7 @@
 ---
 title: "Approvals — User Manual"
 description: "Operation code PD03. See all pending approval requests across document types in one place, so you can review everythi…"
-screenshots: []
+screenshots: [approval-list-01, approval-panel-01]
 ---
 Operation code **PD03**. See all pending approval requests across document types in one place, so you can review everything waiting for your approval.
 
@@ -25,11 +25,15 @@ The actual approve/reject operations are performed on the **detail screen of eac
 - The search box matches **target number, requester, and notes**; you can also filter by **type** and **stage**.
 - "旧データ" (legacy) badge … requests submitted before the approval-request recording format was normalized. They can be processed just the same.
 
+![Approvals list — the pending-approval inbox with type badges and stages](../../assets/screenshots/approval-list-01.png)
+
 ## How to approve or reject
 
-1. Click a row to open the target document's detail screen (work order → work order detail, material purchase order → purchase order detail).
+1. Click a row to open the target document's detail screen (work order → work order detail, material purchase order → purchase order detail, purchase request → purchase request detail).
 2. In the **approval status** panel, press "第一承認" (first approval), "第二承認" (second approval), or "差し戻し" (reject). Rejecting requires a reason.
 3. Work orders use a two-stage flow: first approval → second approval. After second approval, production can start.
+
+![Approval status panel — stepper with approve and reject buttons](../../assets/screenshots/approval-panel-01.png)
 
 Only **members of the approval group** for that stage (or a **delegate** within their valid period) can approve or reject. If you are not a member, the buttons are not shown and a message explains why. Records made by a delegate are marked "（代理: original approver）". Groups and delegates are configured in the [Approval Group](/manual/en/masters/approval-group/user) master.
 

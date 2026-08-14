@@ -1,7 +1,7 @@
 ---
 title: "納品書 — 操作マニュアル"
 description: "操作コード SH02。出荷書から納品書（DRN-YYYYMM-NNNNN）を作成し、発行・納品の管理と PDF 出力を行います。"
-screenshots: []
+screenshots: [delivery-note-list-01, delivery-note-detail-01]
 ---
 操作コード **SH02**。出荷書から納品書（DRN-YYYYMM-NNNNN）を作成し、発行・納品の管理と PDF 出力を行います。
 
@@ -15,6 +15,8 @@ screenshots: []
 - 納品方法（通常納品 / ユーザー直送）と価格記載の有無を選べます。
 - 納品書 PDF を出力して同梱・送付できます。
 - 操作には納品書の権限（delivery_note）が必要です。
+
+![納品書一覧（納品方法・状態バッジ付き）](../../assets/screenshots/delivery-note-list-01.png)
 
 ## 納品方法と価格記載
 
@@ -39,6 +41,9 @@ screenshots: []
 - **納品済（DELIVERED）**：完了状態です。
 
 - **PDF** ボタンでいつでも納品書 PDF を出力できます。
+- 納品書に削除（キャンセル）の操作はありません。作成した納品書は削除できないため、内容は下書きのうちに確認してください。
+
+![納品書詳細（発行済み・価格記載あり）](../../assets/screenshots/delivery-note-detail-01.png)
 
 ## 請求との関係
 
@@ -47,4 +52,5 @@ screenshots: []
 ## 一覧・検索
 
 - 納品番号・出荷書番号・納品先で検索でき、納品方法・状態で絞り込めます。
+- 一覧に表示されるのは、自分の所属[拠点](/manual/ja/masters/plant/user)が出荷元の納品書と、自分が作成した納品書です。
 - 行をクリックすると詳細画面へ移動します。

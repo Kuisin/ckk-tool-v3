@@ -1,7 +1,7 @@
 ---
 title: "End User — User Manual"
 description: "Operation code MS02. A ledger for registering and managing the companies that actually use the products (the end users)."
-screenshots: []
+screenshots: [master-end-user-list-01]
 ---
 Operation code **MS02**. A ledger for registering and managing the companies that actually use the products (the end users).
 
@@ -14,8 +14,11 @@ Separate from the [customer](/manual/en/masters/customer/user) who places the or
 
 ## Viewing the list
 
-- The list shows registered end users. Click a row to open its detail screen.
-- Use the search box to filter by **company name or code**. You can also filter by status (active / inactive).
+- The list columns are **BP code / Name / Industry / Status**. Click a row to open its detail screen.
+- Use the search box to filter by **BP code, name, or industry**. You can also filter by **status** (active / inactive).
+- Selecting rows enables **bulk activate / bulk deactivate / bulk delete**.
+
+![End-user list with BP code, name, industry, and status columns, plus the search and filter bar](../../assets/screenshots/master-end-user-list-01.png)
 
 ## Creating a new end user
 
@@ -38,7 +41,7 @@ The **BP code** (`BP-NNNNN`) is assigned automatically on save.
 
 ## Detail screen
 
-- Basic info, end-user info, and contacts are shown.
+- Along with the basic-info summary, the **industry**, **notes**, and **end-user memo** are shown.
 - Use the menu at the top right to **Edit** / **Deactivate** / **Delete**.
 
 ## Glossary

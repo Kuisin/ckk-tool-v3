@@ -1,7 +1,7 @@
 ---
 title: "出荷書 — 操作マニュアル"
 description: "操作コード SH01。注文請書にもとづいて製品の出荷を記録する出荷書（SHP-YYYYMM-NNNNN）を作成・管理します。"
-screenshots: []
+screenshots: [shipping-order-list-01, shipping-order-detail-01]
 ---
 操作コード **SH01**。注文請書にもとづいて製品の出荷を記録する出荷書（SHP-YYYYMM-NNNNN）を作成・管理します。
 
@@ -14,6 +14,8 @@ screenshots: []
 - 注文請書を選ぶと、完了した[指示書](/manual/ja/apps/work-order/user)（ロット）から明細が自動で作られます。
 - 出荷すると[製品在庫](/manual/ja/apps/product-inventory/user)から出庫され、注文請書の出荷状態（一部出荷 / 出荷済）も自動で更新されます。
 - 操作には出荷書の権限（shipping_order）が必要です。
+
+![出荷書一覧（種別・状態バッジ付き）](../../assets/screenshots/shipping-order-list-01.png)
 
 ## 種別（発送と在庫保管）
 
@@ -39,6 +41,8 @@ screenshots: []
 - 発送の累計出荷数量が受注数量を超える出荷はエラーになります（過出荷ガード）。
 - 出荷元の在庫が不足している場合も出荷できません。先に在庫をご確認ください。
 
+![出荷書詳細（出荷済み。明細と納品書タブ）](../../assets/screenshots/shipping-order-detail-01.png)
+
 ## 納品書との連携
 
 - 詳細画面の「納品書」タブで、この出荷書から作った納品書の一覧を確認できます。
@@ -47,4 +51,5 @@ screenshots: []
 ## 一覧・検索
 
 - 出荷書番号・注文請書番号・顧客・製品で検索でき、種別・状態で絞り込めます。
+- 一覧に表示されるのは、自分の所属[拠点](/manual/ja/masters/plant/user)が出荷元の出荷書です（拠点スコープ）。
 - 行をクリックすると詳細画面へ移動します。

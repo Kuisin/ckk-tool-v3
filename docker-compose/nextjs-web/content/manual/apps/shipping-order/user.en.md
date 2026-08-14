@@ -1,7 +1,7 @@
 ---
 title: "Shipping Order — User Manual"
 description: "Operation code SH01. Create and manage shipping orders (出荷書, SHP-YYYYMM-NNNNN) that record product shipments based on…"
-screenshots: []
+screenshots: [shipping-order-list-01, shipping-order-detail-01]
 ---
 Operation code **SH01**. Create and manage shipping orders (出荷書, SHP-YYYYMM-NNNNN) that record product shipments based on a sales order (注文請書).
 
@@ -14,6 +14,8 @@ This is the ledger for the **shipping order (出荷書)** you create when finish
 - When you pick a sales order (注文請書), the line items are generated automatically from its completed [work orders](/manual/en/apps/work-order/user) (lots).
 - Shipping deducts stock from [product inventory](/manual/en/apps/product-inventory/user) and automatically updates the sales order's shipping status (partially shipped / shipped).
 - Using this app requires the shipping-order permission (shipping_order).
+
+![Shipping order list (with type and status badges)](../../assets/screenshots/shipping-order-list-01.png)
 
 ## Types: dispatch and stock storage
 
@@ -39,6 +41,8 @@ Actions are in the menu at the top right of the detail page. The status moves th
 - A dispatch whose cumulative shipped quantity would exceed the ordered quantity is rejected (over-shipment guard).
 - Shipping also fails if the shipping plant does not have enough stock — check inventory first.
 
+![Shipping order detail (shipped; line items and delivery notes tab)](../../assets/screenshots/shipping-order-detail-01.png)
+
 ## Working with delivery notes
 
 - The **納品書** (Delivery notes) tab on the detail page lists the delivery notes created from this shipping order.
@@ -47,4 +51,5 @@ Actions are in the menu at the top right of the detail page. The status moves th
 ## List and search
 
 - Search by shipping order number, sales order number, customer, or product; filter by type and status.
+- The list shows only shipping orders whose shipping plant is one of your assigned [plants](/manual/en/masters/plant/user) (plant scope).
 - Click a row to open the detail page.
