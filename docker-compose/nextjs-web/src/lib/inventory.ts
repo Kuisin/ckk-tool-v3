@@ -92,7 +92,11 @@ export async function applyTransaction(
   }
 }
 
-/** 製品在庫行の取得 or 作成（productId×factoryId×lot×半製品フラグ）。 */
+/**
+ * 製品在庫行の取得 or 作成（productId×factoryId×lot×半製品フラグ）。
+ * 保管場所×棚は「未割当」（null）バケット固定 — システム入庫は必ず未割当へ
+ * 入り、場所への配置は在庫移動（PD04 在庫管理）で行う。
+ */
 async function ensureProductInventory(
   tx: Tx,
   data: {
@@ -103,13 +107,16 @@ async function ensureProductInventory(
     sourceStepId?: string | null;
   },
 ): Promise<string> {
+  const bucket = {
+    productId: data.productId,
+    factoryId: data.factoryId,
+    lotNumber: data.lotNumber,
+    isSemiFinished: data.isSemiFinished,
+    storageLocationId: null,
+    shelfId: null,
+  };
   const existing = await tx.productInventory.findFirst({
-    where: {
-      productId: data.productId,
-      factoryId: data.factoryId,
-      lotNumber: data.lotNumber,
-      isSemiFinished: data.isSemiFinished,
-    },
+    where: bucket,
     select: { id: true },
   });
   if (existing) return existing.id;
@@ -123,12 +130,7 @@ async function ensureProductInventory(
     // 同時 ensure の一意制約競合（NULLS NOT DISTINCT index）→ 再取得
     if ((e as { code?: string }).code === "P2002") {
       const again = await tx.productInventory.findFirst({
-        where: {
-          productId: data.productId,
-          factoryId: data.factoryId,
-          lotNumber: data.lotNumber,
-          isSemiFinished: data.isSemiFinished,
-        },
+        where: bucket,
         select: { id: true },
       });
       if (again) return again.id;
@@ -137,13 +139,19 @@ async function ensureProductInventory(
   }
 }
 
-/** 素材在庫行の取得 or 作成。 */
+/** 素材在庫行の取得 or 作成（保管場所×棚は未割当バケット固定 — 同上）。 */
 export async function ensureMaterialInventory(
   tx: Tx,
   data: { materialId: number; factoryId: number | null; unit: string },
 ): Promise<string> {
+  const bucket = {
+    materialId: data.materialId,
+    factoryId: data.factoryId,
+    storageLocationId: null,
+    shelfId: null,
+  };
   const existing = await tx.materialInventory.findFirst({
-    where: { materialId: data.materialId, factoryId: data.factoryId },
+    where: bucket,
     select: { id: true },
   });
   if (existing) return existing.id;
@@ -156,7 +164,7 @@ export async function ensureMaterialInventory(
   } catch (e) {
     if ((e as { code?: string }).code === "P2002") {
       const again = await tx.materialInventory.findFirst({
-        where: { materialId: data.materialId, factoryId: data.factoryId },
+        where: bucket,
         select: { id: true },
       });
       if (again) return again.id;
@@ -328,29 +336,43 @@ export async function onShippingShippedTx(
   for (const item of so.items) {
     if (so.type === "DISPATCH") {
       // ロット在庫から出庫。行が無ければ失敗させる（黙ってスキップすると
-      // 台帳と実出荷が乖離する — 監査 P0-4）。
-      const inv = await tx.productInventory.findFirst({
+      // 台帳と実出荷が乖離する — 監査 P0-4）。ロットは保管場所×棚で複数
+      // バケットに分かれ得るため、残量のある行から順に消費する。
+      const invRows = await tx.productInventory.findMany({
         where: {
           productId: item.productId,
           lotNumber: item.lotNumber,
           isSemiFinished: false,
         },
-        select: { id: true },
+        select: { id: true, quantity: true },
+        orderBy: { quantity: "desc" },
       });
-      if (!inv) {
+      if (invRows.length === 0) {
         throw new Error(
           `ロット ${item.lotNumber ?? "-"} の在庫台帳がありません（製品 ${item.productId}）。指示書完了または棚卸調整で入庫してから出荷してください`,
         );
       }
-      await applyTransaction(tx, {
-        inventoryType: "PRODUCT",
-        inventoryId: inv.id,
-        transactionType: "OUT",
-        quantity: item.quantity,
-        referenceType: "shipping_order",
-        referenceId: ref,
-        notes: `出荷 ${ref}`,
-      });
+      let remaining = item.quantity;
+      for (const inv of invRows) {
+        if (remaining <= 0) break;
+        const take = Math.min(inv.quantity, remaining);
+        if (take <= 0) continue;
+        await applyTransaction(tx, {
+          inventoryType: "PRODUCT",
+          inventoryId: inv.id,
+          transactionType: "OUT",
+          quantity: take,
+          referenceType: "shipping_order",
+          referenceId: ref,
+          notes: `出荷 ${ref}`,
+        });
+        remaining -= take;
+      }
+      if (remaining > 0) {
+        throw new Error(
+          `在庫が不足しています（OUT ${item.quantity}）: ロット ${item.lotNumber ?? "-"}`,
+        );
+      }
     } else {
       // STOCK_STORAGE: 保管工場へ入庫（請求フロー外の予備分）
       const invId = await ensureProductInventory(tx, {

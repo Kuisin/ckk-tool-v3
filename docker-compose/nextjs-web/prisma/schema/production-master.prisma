@@ -35,6 +35,7 @@ model Factory {
   kioskFloorMaps    KioskFloorMap[] @relation("KioskFloorMapFactory")
   routeVersionSteps ProductProcessRouteVersionStep[] @relation("RouteStepFactory")
   workLocationGroups WorkLocationGroup[] @relation("WorkLocationGroupFactory")
+  storageLocations   StorageLocation[]   @relation("StorageLocationFactory")
 
   @@map("factories")
   @@schema("app")
