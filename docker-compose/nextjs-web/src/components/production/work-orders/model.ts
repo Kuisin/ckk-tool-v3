@@ -25,7 +25,8 @@ export const WORK_ORDER_HISTORY_ACTION_LABEL: Record<string, string> = {
 
 export interface WorkOrderRow {
   workOrderNumber: number;
-  salesOrderNumber: string;
+  /** null = 在庫向けの独立指示書（注文請書なし）。 */
+  salesOrderNumber: string | null;
   productName: string;
   type: string; // WORK_ORDER_TYPE
   plannedQuantity: number;
@@ -105,10 +106,11 @@ export interface WorkOrderView {
   type: string;
   plannedQuantity: number;
   notes: string | null;
-  salesOrderId: string;
-  salesOrderNumber: string;
-  salesOrderQuantity: number;
-  customerName: string;
+  /** null = 在庫向けの独立指示書（注文請書なし・製品直接指定）。 */
+  salesOrderId: string | null;
+  salesOrderNumber: string | null;
+  salesOrderQuantity: number | null;
+  customerName: string | null;
   productName: string;
   materialId: number | null;
   materialCode: string | null;

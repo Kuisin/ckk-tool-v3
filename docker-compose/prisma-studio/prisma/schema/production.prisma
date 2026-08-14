@@ -122,10 +122,14 @@ model SalesOrder {
 }
 
 // 指示書（§3〜§7）— 通し連番。ロット番号と共用。
+// sales_order_id は nullable — null = 在庫向けの独立指示書（type は
+// MANUFACTURE のみ。顧客注文分は常に注文請書配下）。product_id は常に保持
+// （SO 配下は SO の製品から複写、独立指示書は直接指定）。
 model WorkOrder {
   id              String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   workOrderNumber Int     @unique @map("work_order_number")
-  salesOrderId    String  @map("sales_order_id") @db.Uuid
+  salesOrderId    String? @map("sales_order_id") @db.Uuid
+  productId       Int     @map("product_id")
   type            WorkOrderType
   plannedQuantity Int     @map("planned_quantity")
   materialId      Int?    @map("material_id")
@@ -160,8 +164,9 @@ model WorkOrder {
   createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt   DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  salesOrder      SalesOrder @relation(fields: [salesOrderId], references: [id])
-  material        Material?  @relation(fields: [materialId], references: [id])
+  salesOrder      SalesOrder? @relation(fields: [salesOrderId], references: [id])
+  product         Product     @relation(fields: [productId], references: [id])
+  material        Material?   @relation(fields: [materialId], references: [id])
   sourceWorkOrder WorkOrder? @relation("WorkOrderCopySource", fields: [sourceWorkOrderId], references: [id])
   copies          WorkOrder[] @relation("WorkOrderCopySource")
   routeVersion    ProductProcessRouteVersion? @relation(fields: [routeVersionId], references: [id], onDelete: SetNull)
@@ -174,6 +179,7 @@ model WorkOrder {
   reservations        InventoryReservation[]
 
   @@index([salesOrderId])
+  @@index([productId])
   @@index([status])
   @@index([approvalStatus])
   @@index([routeVersionId])

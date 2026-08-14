@@ -71,7 +71,7 @@ export function WorkOrderTable({
     const matchesSearch =
       !search ||
       String(r.workOrderNumber).includes(search) ||
-      r.salesOrderNumber.includes(search) ||
+      (r.salesOrderNumber ?? "").includes(search) ||
       r.productName.includes(search);
     const matchesType = !type || r.type === type;
     const matchesStatus =
@@ -97,11 +97,16 @@ export function WorkOrderTable({
       header: "注文請書番号",
       sortable: true,
       width: 190,
-      render: (r) => (
-        <Text className="tabular-nums" ff="mono" size="sm">
-          {r.salesOrderNumber}
-        </Text>
-      ),
+      render: (r) =>
+        r.salesOrderNumber ? (
+          <Text className="tabular-nums" ff="mono" size="sm">
+            {r.salesOrderNumber}
+          </Text>
+        ) : (
+          <Badge color="teal" size="xs" variant="light">
+            在庫向け
+          </Badge>
+        ),
     },
     {
       key: "productName",
@@ -253,7 +258,7 @@ export function WorkOrderTable({
           <Group align="flex-start" justify="space-between" wrap="nowrap">
             <Stack className="min-w-0" gap={3}>
               <Text c="dimmed" ff="mono" size="xs">
-                #{r.workOrderNumber} · {r.salesOrderNumber}
+                #{r.workOrderNumber} · {r.salesOrderNumber ?? "在庫向け"}
               </Text>
               <Text fw={600} size="sm" truncate>
                 {r.productName}
