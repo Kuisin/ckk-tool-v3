@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * MaterialReceiptDetail — 素材入荷 詳細 (PU21)。
+ * MaterialReceiptDetail — 素材入荷 詳細 (PU23)。
  *
  * SummaryGrid + 証憑パネル。発注入荷なら関連する素材発注書へのリンクを
  * 表示する（直接調達はバッジ表示）。入荷は在庫入庫済みの確定記録のため

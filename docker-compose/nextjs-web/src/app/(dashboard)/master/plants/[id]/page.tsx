@@ -26,7 +26,7 @@ async function fetchPlantFloorMaps(
 
 export const dynamic = "force-dynamic";
 
-/** 拠点 詳細 (MS2B). */
+/** 拠点 詳細 (MS2C). */
 export default async function MasterPlantsDetailPage({
   params,
 }: {

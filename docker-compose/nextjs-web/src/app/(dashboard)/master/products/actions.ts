@@ -1,7 +1,7 @@
 "use server";
 
 /**
- * Server Actions — 製品マスタ (MS03).
+ * Server Actions — 製品マスタ (MS04).
  *
  * 製品コードは PRD-YYYYMM-NNNN の自動採番（lib/numbering.ts →
  * app.numbering_sequences）。spec はキー/値ペアの自由構造 JSON。

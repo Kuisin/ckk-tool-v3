@@ -32,7 +32,7 @@ src/
 │   │   │   │   └── [id]/
 │   │   │   │       ├── page.tsx
 │   │   │   │       └── edit/page.tsx
-│   │   │   └── trial-estimates/                    # 試算（SA05 見積試算・仕入実績連動。任意で製品にリンク）
+│   │   │   └── trial-estimates/                    # 試算（SA01 見積試算・仕入実績連動。任意で製品にリンク）
 │   │   │       ├── page.tsx
 │   │   │       ├── new/page.tsx
 │   │   │       └── [id]/page.tsx

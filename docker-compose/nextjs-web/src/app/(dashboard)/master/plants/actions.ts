@@ -1,7 +1,7 @@
 "use server";
 
 /**
- * Server Actions — 拠点マスタ (MS0B).
+ * Server Actions — 拠点マスタ (MS0C).
  *
  * 拠点コードは手入力（unique）。識別子のため作成後は変更しない
  * （updatePlant では書き換えない）。住所は { ja, en } JSON（任意）。

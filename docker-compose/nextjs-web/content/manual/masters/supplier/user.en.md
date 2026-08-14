@@ -1,9 +1,9 @@
 ---
 title: "Supplier — User Manual"
-description: "Operation code MS06. A directory for registering and managing suppliers (仕入先 — companies you buy materials from) and …"
+description: "Operation code MS03. A directory for registering and managing suppliers (仕入先 — companies you buy materials from) and …"
 screenshots: [master-supplier-list-01, master-supplier-detail-01]
 ---
-Operation code **MS06**. A directory for registering and managing **suppliers** (仕入先 — companies you buy materials from) and **subcontractors** (外注先 — companies you outsource process steps such as centerless grinding or coating to).
+Operation code **MS03**. A directory for registering and managing **suppliers** (仕入先 — companies you buy materials from) and **subcontractors** (外注先 — companies you outsource process steps such as centerless grinding or coating to).
 
 > This app is currently available **in the development (dev) environment only**. Screens and steps may change before the production release.
 

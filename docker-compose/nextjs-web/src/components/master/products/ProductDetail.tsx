@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * ProductDetail.tsx — 製品 詳細 (MS23, design.md §8.2).
+ * ProductDetail.tsx — 製品 詳細 (MS24, design.md §8.2).
  *
  * Ported from design-preview (designs/master/products/detail.tsx) and backed
  * by server data. 関連タブはこの製品の価格表エントリ。設計図・在庫・受注は

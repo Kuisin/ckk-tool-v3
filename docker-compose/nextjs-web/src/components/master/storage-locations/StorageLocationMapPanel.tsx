@@ -3,10 +3,10 @@
 /**
  * StorageLocationMapPanel — 保管場所アプリ (MS0E) のフロアマップ配置パネル。
  *
- * 拠点マスタ (MS0B) で管理されているフロアマップ（端末管理 SY09 と共用の
+ * 拠点マスタ (MS0C) で管理されているフロアマップ（端末管理 SY09 と共用の
  * 図面）を「閲覧のみ」で表示し、保管場所ピンのドラッグ配置 / 配置解除だけを
  * 行う。フロア自体の追加・名称変更・図面アップロード・削除はここでは
- * できない（拠点マスタ MS0B のフロアマップタブで行う）。
+ * できない（拠点マスタ MS0C のフロアマップタブで行う）。
  */
 
 import { Chip, Group, Paper, Stack, Tabs, Text } from "@mantine/core";
@@ -89,13 +89,13 @@ export function StorageLocationMapPanel({
           フロアマップ配置
         </Text>
         <Text c="dimmed" size="xs">
-          保管場所ピンをドラッグで配置。図面の管理は拠点マスタ (MS0B)
+          保管場所ピンをドラッグで配置。図面の管理は拠点マスタ (MS0C)
         </Text>
       </Group>
 
       {floorMaps.length === 0 ? (
         <Text c="dimmed" size="sm">
-          この拠点にはフロアマップがありません。拠点マスタ (MS0B)
+          この拠点にはフロアマップがありません。拠点マスタ (MS0C)
           の「フロアマップ」タブでフロアと図面を登録してください。
         </Text>
       ) : (

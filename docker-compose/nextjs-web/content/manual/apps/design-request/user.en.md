@@ -1,9 +1,9 @@
 ---
 title: "Design Request — User Manual"
-description: "Operation code SA04. Request design work from the design department at quotation or order time, manage the finished d…"
+description: "Operation code SA05. Request design work from the design department at quotation or order time, manage the finished d…"
 screenshots: [design-request-list-01, design-request-new-01, design-request-files-01]
 ---
-Operation code **SA04**. Request design work from the design department at quotation or order time, manage the finished design files with version control, and register them to the product master.
+Operation code **SA05**. Request design work from the design department at quotation or order time, manage the finished design files with version control, and register them to the product master.
 
 > This app is currently available **in the development (dev) environment only**. Screens and steps may change before the production release.
 
@@ -57,4 +57,4 @@ Operation code **SA04**. Request design work from the design department at quota
 
 - **The complete button shows an error** — if the message says a design file must be attached first, upload the design file on the **ファイル** tab and then complete.
 - **Is specifying a quote or sales order required?** — Both are optional. A request can be created without any link.
-- **How does this relate to order acceptance?** — Order intake and deployment are handled in the [order acceptance](/manual/en/apps/order-acceptance/user) app (SA03); the sales orders generated there can be set as the source of a request with the "受注時" (at order) trigger.
+- **How does this relate to order acceptance?** — Order intake and deployment are handled in the [order acceptance](/manual/en/apps/order-acceptance/user) app (SA04); the sales orders generated there can be set as the source of a request with the "受注時" (at order) trigger.

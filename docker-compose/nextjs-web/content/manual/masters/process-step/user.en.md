@@ -1,9 +1,9 @@
 ---
 title: "Process Step Master — User Manual"
-description: "Operation code MS07. The catalog of manufacturing process steps (cylindrical machining, coating, inspection, etc.). The manufacturing workflow of a work order is assembled from the steps registered here."
+description: "Operation code MS08. The catalog of manufacturing process steps (cylindrical machining, coating, inspection, etc.). The manufacturing workflow of a work order is assembled from the steps registered here."
 screenshots: [master-process-step-list-01]
 ---
-Operation code **MS07**. The catalog of manufacturing process steps (cylindrical machining, coating, inspection, etc.). The manufacturing workflow of a [work order (指示書)](/manual/en/apps/work-order/user) is assembled from the steps registered here.
+Operation code **MS08**. The catalog of manufacturing process steps (cylindrical machining, coating, inspection, etc.). The manufacturing workflow of a [work order (指示書)](/manual/en/apps/work-order/user) is assembled from the steps registered here.
 
 > This app is currently available **in the development (dev) environment only**. Screens and steps may change before the production release.
 

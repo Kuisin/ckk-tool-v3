@@ -1,9 +1,9 @@
 ---
 title: "Approval Group — User Manual"
-description: "Operation code MS0A. Registers and manages groups of people who perform approvals. Approvals for work orders, materia…"
+description: "Operation code MS0B. Registers and manages groups of people who perform approvals. Approvals for work orders, materia…"
 screenshots: [master-approval-group-list-01]
 ---
-Operation code **MS0A**. Registers and manages groups of people who perform approvals. Approvals for work orders, material purchases, and the like are done by the members of these groups.
+Operation code **MS0B**. Registers and manages groups of people who perform approvals. Approvals for work orders, material purchases, and the like are done by the members of these groups.
 
 ## What you can do here
 

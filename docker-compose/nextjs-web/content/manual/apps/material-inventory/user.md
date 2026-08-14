@@ -11,7 +11,7 @@ screenshots: [inventory-materials-01, inventory-wip-01]
 
 旧 素材在庫（PD05）は **在庫管理** アプリに統合されました — 旧一覧 URL は自動で在庫管理の素材タブへリダイレクトされます。数量をここで直接編集することはありません — 在庫は業務の操作に連動して自動的に動きます（唯一の書き込み操作は [在庫移動](/manual/ja/apps/product-inventory/user)）。
 
-- **入庫** … [素材入荷](/manual/ja/apps/material-receipt/user)（PU01）で入荷を登録すると、入荷先拠点の在庫に入庫されます。
+- **入庫** … [素材入荷](/manual/ja/apps/material-receipt/user)（PU03）で入荷を登録すると、入荷先拠点の在庫に入庫されます。
 - **予約** … 製造分の [指示書](/manual/ja/apps/work-order/user) が承認されると、使用素材が予定数量ぶん予約されます。
 - **消費（出庫）** … 指示書の全工程が完了すると、予約されていた素材が消費されます。
 - **入荷予定** … 発注済みの [素材発注書](/manual/ja/apps/purchase-order/user) の明細から、次回入荷日と入荷予定量が表示されます。

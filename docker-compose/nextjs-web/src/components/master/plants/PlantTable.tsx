@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * PlantTable.tsx — 拠点 一覧 (MS0B, design.md §8.1 / §13.6 / §14).
+ * PlantTable.tsx — 拠点 一覧 (MS0C, design.md §8.1 / §13.6 / §14).
  *
  * 列: コード / 名称（ja） / 国 / 状態 / 更新日。app.plants を Prisma で
  * 取得したサーバーデータを表示する。

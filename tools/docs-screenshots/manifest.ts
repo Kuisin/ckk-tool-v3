@@ -61,7 +61,7 @@ export const shots: Shot[] = [
     docPage: "apps/quote/user",
     path: "/sales/quotes",
   },
-  // ── 販売: 試算（SA05）──────────────────────────────────────────────────────
+  // ── 販売: 試算（SA01）──────────────────────────────────────────────────────
   {
     id: "trial-estimate-list-01",
     docPage: "apps/trial-estimate/user",
@@ -97,7 +97,7 @@ export const shots: Shot[] = [
       await page.getByText("価格表で使用済み").first().waitFor();
     },
   },
-  // ── 販売: 価格表（SA01）────────────────────────────────────────────────────
+  // ── 販売: 価格表（SA02）────────────────────────────────────────────────────
   {
     id: "price-list-list-01",
     docPage: "apps/price-list/user",
@@ -130,7 +130,7 @@ export const shots: Shot[] = [
       await page.getByText("注文種別: 本番").first().waitFor();
     },
   },
-  // ── 販売: 見積書（SA02）────────────────────────────────────────────────────
+  // ── 販売: 見積書（SA03）────────────────────────────────────────────────────
   {
     id: "quote-detail-01",
     docPage: "apps/quote/user",
@@ -139,7 +139,7 @@ export const shots: Shot[] = [
       await page.getByText("50〜99本").first().waitFor();
     },
   },
-  // ── 販売: 受注請書（SA03）──────────────────────────────────────────────────
+  // ── 販売: 受注請書（SA04）──────────────────────────────────────────────────
   {
     id: "order-acceptance-list-01",
     docPage: "apps/order-acceptance/user",
@@ -164,7 +164,7 @@ export const shots: Shot[] = [
       await page.getByRole("button", { name: "伝票展開" }).first().waitFor();
     },
   },
-  // ── 販売: 設計依頼書（SA04）────────────────────────────────────────────────
+  // ── 販売: 設計依頼書（SA05）────────────────────────────────────────────────
   {
     id: "design-request-list-01",
     docPage: "apps/design-request/user",
@@ -189,7 +189,7 @@ export const shots: Shot[] = [
       await page.getByText("設計図面_PRD-202607-0001_v2.pdf").first().waitFor();
     },
   },
-  // ── 購買: 購買依頼（PU04）──────────────────────────────────────────────────
+  // ── 購買: 購買依頼（PU01）──────────────────────────────────────────────────
   {
     id: "purchase-request-list-01",
     docPage: "apps/purchase-request/user",
@@ -206,7 +206,7 @@ export const shots: Shot[] = [
       await page.getByText("発注書へ変換").first().waitFor();
     },
   },
-  // ── 購買: 素材発注書（PU03）────────────────────────────────────────────────
+  // ── 購買: 素材発注書（PU02）────────────────────────────────────────────────
   {
     id: "purchase-order-list-01",
     docPage: "apps/purchase-order/user",
@@ -223,7 +223,7 @@ export const shots: Shot[] = [
       await page.getByText("入荷完了").first().waitFor();
     },
   },
-  // ── 購買: 素材入荷（PU01）──────────────────────────────────────────────────
+  // ── 購買: 素材入荷（PU03）──────────────────────────────────────────────────
   {
     id: "material-receipt-list-01",
     docPage: "apps/material-receipt/user",
@@ -240,7 +240,7 @@ export const shots: Shot[] = [
       await page.getByText("入荷日").first().waitFor();
     },
   },
-  // ── 購買: 外注依頼（PU02）──────────────────────────────────────────────────
+  // ── 購買: 外注依頼（PU04）──────────────────────────────────────────────────
   {
     id: "outsource-order-list-01",
     docPage: "apps/outsource-order/user",
@@ -423,7 +423,7 @@ export const shots: Shot[] = [
       await page.getByText("デモ電子工業").first().waitFor();
     },
   },
-  // ── マスタ: 製品（MS03）────────────────────────────────────────────────────
+  // ── マスタ: 製品（MS04）────────────────────────────────────────────────────
   {
     id: "master-product-list-01",
     docPage: "masters/product/user",
@@ -440,7 +440,7 @@ export const shots: Shot[] = [
       await page.getByText("標準工程").first().waitFor();
     },
   },
-  // ── マスタ: 材種（MS04）────────────────────────────────────────────────────
+  // ── マスタ: 材種（MS05）────────────────────────────────────────────────────
   {
     id: "master-material-type-list-01",
     docPage: "masters/material-type/user",
@@ -449,7 +449,7 @@ export const shots: Shot[] = [
       await page.getByText("A02A0001").first().waitFor();
     },
   },
-  // ── マスタ: 素材（MS05）────────────────────────────────────────────────────
+  // ── マスタ: 素材（MS06）────────────────────────────────────────────────────
   {
     id: "master-material-list-01",
     docPage: "masters/material/user",
@@ -458,7 +458,7 @@ export const shots: Shot[] = [
       await page.getByText("A02A0001-A010-310").first().waitFor();
     },
   },
-  // ── マスタ: 外注企業（MS06）────────────────────────────────────────────────
+  // ── マスタ: 外注企業（MS03）────────────────────────────────────────────────
   {
     id: "master-supplier-list-01",
     docPage: "masters/supplier/user",
@@ -477,7 +477,7 @@ export const shots: Shot[] = [
         .waitFor();
     },
   },
-  // ── マスタ: 工程マスタ（MS07）──────────────────────────────────────────────
+  // ── マスタ: 工程マスタ（MS08）──────────────────────────────────────────────
   {
     id: "master-process-step-list-01",
     docPage: "masters/process-step/user",
@@ -486,7 +486,7 @@ export const shots: Shot[] = [
       await page.getByText("センタレス").first().waitFor();
     },
   },
-  // ── マスタ: 検査表テンプレート（MS08）──────────────────────────────────────
+  // ── マスタ: 検査表テンプレート（MS09）──────────────────────────────────────
   {
     id: "master-inspection-template-list-01",
     docPage: "masters/inspection-template/user",
@@ -503,7 +503,7 @@ export const shots: Shot[] = [
       await page.getByText("検査項目").first().waitFor();
     },
   },
-  // ── マスタ: 不良種類（MS09）────────────────────────────────────────────────
+  // ── マスタ: 不良種類（MS0A）────────────────────────────────────────────────
   {
     id: "master-defect-type-list-01",
     docPage: "masters/defect-type/user",
@@ -512,7 +512,7 @@ export const shots: Shot[] = [
       await page.getByText("キズ").first().waitFor();
     },
   },
-  // ── マスタ: 承認グループ（MS0A）────────────────────────────────────────────
+  // ── マスタ: 承認グループ（MS0B）────────────────────────────────────────────
   {
     id: "master-approval-group-list-01",
     docPage: "masters/approval-group/user",
@@ -521,7 +521,7 @@ export const shots: Shot[] = [
       await page.getByText("第一承認グループ").first().waitFor();
     },
   },
-  // ── マスタ: 拠点（MS0B）────────────────────────────────────────────────────
+  // ── マスタ: 拠点（MS0C）────────────────────────────────────────────────────
   {
     id: "master-plant-list-01",
     docPage: "masters/plant/user",
@@ -538,7 +538,7 @@ export const shots: Shot[] = [
       await page.getByText("関東").first().waitFor();
     },
   },
-  // ── マスタ: 採番構成（MS0C）────────────────────────────────────────────────
+  // ── マスタ: 採番構成（MS07）────────────────────────────────────────────────
   {
     id: "master-material-numbering-01",
     docPage: "masters/material-numbering/user",

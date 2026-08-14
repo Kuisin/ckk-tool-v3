@@ -1,5 +1,5 @@
 /**
- * model.ts — 購買依頼 (PU04) view-model types + pure helpers.
+ * model.ts — 購買依頼 (PU01) view-model types + pure helpers.
  *
  * Model (app.purchase_requests — uuid PK + request_number 文字列 unique):
  *   依頼番号 PRQ-YYYYMM-NNNNN は nextDocumentNumber("PURCHASE_REQUEST") で
@@ -21,7 +21,7 @@ export type PurchaseRequestStatus =
   | "ORDERED"
   | "CANCELLED";
 
-/** 一覧 (PU04) の1行。 */
+/** 一覧 (PU01) の1行。 */
 export interface PurchaseRequestRow {
   requestNumber: string;
   requesterName: string;
@@ -58,7 +58,7 @@ export interface PurchaseRequestHistoryView {
   notes: string | null;
 }
 
-/** 詳細 (PU24) view model。 */
+/** 詳細 (PU21) view model。 */
 export interface PurchaseRequestView {
   /** DB uuid — 内部参照用。 */
   id: string;

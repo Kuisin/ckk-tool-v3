@@ -20,7 +20,7 @@ export async function generateMetadata({
   };
 }
 
-/** 素材発注書 詳細 (PU23). URL id = po_number（PO-YYYYMM-NNNNN）. */
+/** 素材発注書 詳細 (PU22). URL id = po_number（PO-YYYYMM-NNNNN）. */
 export default async function PurchasePurchaseOrdersDetailPage({
   params,
 }: {

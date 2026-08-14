@@ -11,7 +11,7 @@ import {
 
 export const dynamic = "force-dynamic";
 
-/** 製品 編集 (MS23 edit). */
+/** 製品 編集 (MS24 edit). */
 export default async function MasterProductsEditPage({
   params,
 }: {

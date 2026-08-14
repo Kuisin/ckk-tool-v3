@@ -1,5 +1,5 @@
 /**
- * model.ts — 素材発注書 (PU03) view-model types + pure helpers.
+ * model.ts — 素材発注書 (PU02) view-model types + pure helpers.
  *
  * Model (app.material_purchase_orders — uuid PK + po_number 文字列 unique):
  *   発注番号 PO-YYYYMM-NNNNN は nextDocumentNumber("PURCHASE") で採番して
@@ -19,7 +19,7 @@ export type PurchaseStatus =
   | "COMPLETED"
   | "CANCELLED";
 
-/** 一覧 (PU03) の1行。 */
+/** 一覧 (PU02) の1行。 */
 export interface PurchaseOrderRow {
   poNumber: string;
   supplierName: string;
@@ -58,14 +58,14 @@ export interface PurchaseHistoryView {
   notes: string | null;
 }
 
-/** 詳細 (PU23) view model。 */
+/** 詳細 (PU22) view model。 */
 export interface PurchaseOrderView {
   /** DB uuid — 内部参照用。 */
   id: string;
   poNumber: string;
   supplierBpId: string;
   supplierName: string;
-  /** 変換元の購買依頼番号（PU04 から作成された場合のみ）。 */
+  /** 変換元の購買依頼番号（PU01 から作成された場合のみ）。 */
   sourceRequestNumber: string | null;
   status: PurchaseStatus;
   totalAmount: number;

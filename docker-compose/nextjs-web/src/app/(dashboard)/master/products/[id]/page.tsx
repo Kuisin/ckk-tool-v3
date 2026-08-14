@@ -14,7 +14,7 @@ import { PRODUCT_TYPE_SPEC_KEY } from "@/lib/product-types";
 
 export const dynamic = "force-dynamic";
 
-/** 製品 詳細 (MS23). */
+/** 製品 詳細 (MS24). */
 export default async function MasterProductsDetailPage({
   params,
 }: {

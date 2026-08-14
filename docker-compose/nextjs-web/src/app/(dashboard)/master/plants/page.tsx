@@ -8,7 +8,7 @@ import { type LocalizedText, localized } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
 
-/** 拠点 一覧 (MS0B). */
+/** 拠点 一覧 (MS0C). */
 export default async function MasterPlantsPage() {
   const denied = await requireAppRead("master-plants");
   if (denied) return denied;

@@ -1,7 +1,7 @@
 "use server";
 
 /**
- * Server Actions — 工程マスタ (MS07).
+ * Server Actions — 工程マスタ (MS08).
  *
  * process_step_catalog（工程カタログ）と、その使用依存
  * （process_step_use_dependencies = ワークフローに含めてよい条件）・実行依存

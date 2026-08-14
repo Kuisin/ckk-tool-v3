@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * MaterialTypeTable.tsx — 材種 一覧 (MS04, design.md §8.1 / §14).
+ * MaterialTypeTable.tsx — 材種 一覧 (MS05, design.md §8.1 / §14).
  *
  * Ported from design-preview (designs/master/material-types/list.tsx) and
  * backed by server data (master.material_types via Prisma). Filtering stays

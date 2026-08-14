@@ -1,9 +1,9 @@
 ---
 title: "Outsource Order — User Manual"
-description: "Operation code PU02. A cross-cutting list of outsourced process steps (centerless grinding, coating, etc.) across all work orders."
+description: "Operation code PU04. A cross-cutting list of outsourced process steps (centerless grinding, coating, etc.) across all work orders."
 screenshots: [outsource-order-list-01]
 ---
-Operation code **PU02**. A cross-cutting list of outsourced process steps (centerless grinding, coating, etc.) across all work orders.
+Operation code **PU04**. A cross-cutting list of outsourced process steps (centerless grinding, coating, etc.) across all work orders.
 
 > This app is currently available **in the development (dev) environment only**. Screens and steps may change before the production release.
 
@@ -33,4 +33,4 @@ You cannot add one from this app. Choose **outsource** as the execution location
 
 **I want to fix a date** — Dates cannot be edited on this screen. Click the row to open the step execution screen and change the request / expected-arrival / arrival dates there.
 
-**Do I order materials here?** — No. Material ordering is done with the [material purchase order (素材発注書, PU03)](/manual/en/apps/purchase-order/user). This app lists outsourced manufacturing steps only.
+**Do I order materials here?** — No. Material ordering is done with the [material purchase order (素材発注書, PU02)](/manual/en/apps/purchase-order/user). This app lists outsourced manufacturing steps only.

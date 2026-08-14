@@ -1,7 +1,7 @@
 "use server";
 
 /**
- * Server Actions — 購買依頼 (app.purchase_requests, PU04)。
+ * Server Actions — 購買依頼 (app.purchase_requests, PU01)。
  *
  * - 採番: nextDocumentNumber("PURCHASE_REQUEST") → PRQ-YYYYMM-NNNNN
  *   （文字列保存、月次リセット）。
@@ -428,7 +428,7 @@ export async function cancelPurchaseRequest(
  * 発注書へ変換 — APPROVED のみ。1 tx で素材発注書（DRAFT）を生成し、
  * 依頼を ORDERED にして purchase_order_id で紐付ける。
  * 仕入先は変換時に指定（依頼は仕入先を持たない）。単価は 0 で複写し、
- * 金額・発注承認は発注書（PU03）側で確定する。
+ * 金額・発注承認は発注書（PU02）側で確定する。
  */
 export async function convertToPurchaseOrder(
   requestNumber: string,

@@ -1,5 +1,5 @@
 /**
- * types.ts — 試算 (見積試算) view-model shared by the SA05 screens.
+ * types.ts — 試算 (見積試算) view-model shared by the SA01 screens.
  *
  * Rows come from sales.estimates via Prisma (combined key year_month+seq);
  * `id` is the DERIVED document number (EST-YYYYMM-NNNNN) and doubles as the

@@ -6,7 +6,7 @@ import { type LocalizedText, localized } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
 
-/** 材種 編集 (MS24 edit) — 名称・説明・有効のみ（コード構成は不変）. */
+/** 材種 編集 (MS25 edit) — 名称・説明・有効のみ（コード構成は不変）. */
 export default async function MasterMaterialTypesEditPage({
   params,
 }: {

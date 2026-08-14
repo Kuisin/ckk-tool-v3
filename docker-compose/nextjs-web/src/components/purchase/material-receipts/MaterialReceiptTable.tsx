@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * MaterialReceiptTable — 素材入荷 一覧 (PU01, design.md §8.1 / §14)。
+ * MaterialReceiptTable — 素材入荷 一覧 (PU03, design.md §8.1 / §14)。
  *
  * Columns: 素材（コード+名称）/ 仕入先 / 入荷拠点 / 数量 / 入荷日 /
  * 発注明細（PO番号リンク or 直接調達）。

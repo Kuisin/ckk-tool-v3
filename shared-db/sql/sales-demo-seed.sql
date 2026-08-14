@@ -1,4 +1,4 @@
--- sales-demo-seed.sql — 販売アプリ（SA01〜SA05）のマニュアル撮影用デモデータ。
+-- sales-demo-seed.sql — 販売アプリ（SA02〜SA01）のマニュアル撮影用デモデータ。
 --
 -- tools/docs-screenshots のローカル一時 DB に流す（orchestrate.ts SEED_FILES_POST）。
 -- 公開マニュアルのスクリーンショットに実在の取引先名を写さないため、架空の顧客

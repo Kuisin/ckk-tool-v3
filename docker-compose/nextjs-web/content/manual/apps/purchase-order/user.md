@@ -1,9 +1,9 @@
 ---
 title: "素材発注書 — 操作マニュアル"
-description: "操作コード PU03。仕入先への素材の発注を、依頼 → 承認 → 発注 → 入荷 の流れで管理します。発注番号は PO-YYYYMM-NNNNN です。"
+description: "操作コード PU02。仕入先への素材の発注を、依頼 → 承認 → 発注 → 入荷 の流れで管理します。発注番号は PO-YYYYMM-NNNNN です。"
 screenshots: [purchase-order-list-01, purchase-order-detail-01]
 ---
-操作コード **PU03**。仕入先への素材の発注を、依頼 → 承認 → 発注 → 入荷 の流れで管理します。発注番号は **PO-YYYYMM-NNNNN** です。
+操作コード **PU02**。仕入先への素材の発注を、依頼 → 承認 → 発注 → 入荷 の流れで管理します。発注番号は **PO-YYYYMM-NNNNN** です。
 
 > このアプリは現在 **開発環境（dev）のみ** で公開されています。本番公開までに画面や手順が変わる場合があります。
 
@@ -11,8 +11,8 @@ screenshots: [purchase-order-list-01, purchase-order-detail-01]
 
 - 仕入先ごとの素材発注書を作成し、承認フローを経て発注します。作成・編集・発注には購買（発注）の権限が必要です。
 - 発注済になった明細は[在庫管理（PD04）の素材タブ](/manual/ja/apps/material-inventory/user)の **入荷予定**（次回入荷）に自動反映されます。
-- 「入荷完了」で明細ごとに[素材入荷（PU01）](/manual/ja/apps/material-receipt/user)の記録が自動作成され、入荷先拠点の素材在庫へ入庫されます。
-- [購買依頼（PU04）](/manual/ja/apps/purchase-request/user)から変換して作成することもできます。
+- 「入荷完了」で明細ごとに[素材入荷（PU03）](/manual/ja/apps/material-receipt/user)の記録が自動作成され、入荷先拠点の素材在庫へ入庫されます。
+- [購買依頼（PU01）](/manual/ja/apps/purchase-request/user)から変換して作成することもできます。
 
 ![素材発注書一覧（発注番号・仕入先・明細数・合計金額・状態・発注日の列）](../../assets/screenshots/purchase-order-list-01.png)
 
@@ -47,7 +47,7 @@ screenshots: [purchase-order-list-01, purchase-order-detail-01]
 
 ## よくある質問
 
-**分納（部分入荷）できますか？** — 「入荷完了」は未入荷の残数量をまとめて入荷にします。分けて届いた分は[素材入荷（PU01）](/manual/ja/apps/material-receipt/user)から直接登録してください。
+**分納（部分入荷）できますか？** — 「入荷完了」は未入荷の残数量をまとめて入荷にします。分けて届いた分は[素材入荷（PU03）](/manual/ja/apps/material-receipt/user)から直接登録してください。
 
 **発注日を入れ忘れました** — 発注日が未設定のまま「発注」すると、発注を実行した日が自動で発注日になります。
 

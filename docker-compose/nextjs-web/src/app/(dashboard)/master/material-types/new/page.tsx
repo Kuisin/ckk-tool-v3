@@ -8,7 +8,7 @@ import { type LocalizedText, localized } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
 
-/** 材種 新規作成 (MS14) — コード構成ビルダー. */
+/** 材種 新規作成 (MS15) — コード構成ビルダー. */
 export default async function MasterMaterialTypesNewPage() {
   const denied = await requireAppRead("master-material-types");
   if (denied) return denied;

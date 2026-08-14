@@ -1,7 +1,7 @@
 "use server";
 
 /**
- * Server Actions — 試算 (SA05 見積試算).
+ * Server Actions — 試算 (SA01 見積試算).
  *
  * sales.estimates は複合キー (year_month, seq) — EST-YYYYMM-NNNNN は
  * lib/doc-number.ts で導出する。試算は任意で製品にリンクでき（1製品に複数可）、

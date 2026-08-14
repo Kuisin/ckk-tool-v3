@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * DefectTypeForm.tsx — 不良種類 新規作成フォーム (MS19).
+ * DefectTypeForm.tsx — 不良種類 新規作成フォーム (MS1A).
  *
  * 詳細ページを持たないマスタのため、保存後は一覧へ戻る（編集は一覧の
  * モーダルで行う）。

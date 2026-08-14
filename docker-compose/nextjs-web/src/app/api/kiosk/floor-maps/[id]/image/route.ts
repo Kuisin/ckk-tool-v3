@@ -3,7 +3,7 @@
  *
  * kiosk_floor_maps.file_id → files.storage_key を解決し、SeaweedFS
  * （lib/storage）から本体をインライン返却する。フロアマップは端末管理
- * （SY09）と保管場所（MS0B / 在庫管理 PD04）で共用のため、RBAC は
+ * （SY09）と保管場所（MS0C / 在庫管理 PD04）で共用のため、RBAC は
  * kiosk:READ / inventory:READ / master:READ のいずれか。
  * 行・オブジェクトが無ければ 404。
  */

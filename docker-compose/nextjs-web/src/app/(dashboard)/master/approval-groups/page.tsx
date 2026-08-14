@@ -8,7 +8,7 @@ import { type LocalizedText, localized } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
 
-/** 承認グループ 一覧 (MS0A). */
+/** 承認グループ 一覧 (MS0B). */
 export default async function MasterApprovalGroupsPage() {
   const denied = await requireAppRead("master-approval-groups");
   if (denied) return denied;

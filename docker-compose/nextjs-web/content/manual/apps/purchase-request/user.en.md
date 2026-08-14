@@ -1,9 +1,9 @@
 ---
 title: "Purchase Request — User Manual"
-description: "Operation code PU04. Manages internal \"please buy this material\" requests — the stage before the material purchase order — through request → approval → conversion to a purchase order. Request numbers are PRQ-YYYYMM-NNNNN."
+description: "Operation code PU01. Manages internal \"please buy this material\" requests — the stage before the material purchase order — through request → approval → conversion to a purchase order. Request numbers are PRQ-YYYYMM-NNNNN."
 screenshots: [purchase-request-list-01, purchase-request-detail-01]
 ---
-Operation code **PU04**. Manages internal "please buy this material" requests — the stage before the material purchase order — through request → approval → conversion to a purchase order. Request numbers are **PRQ-YYYYMM-NNNNN**.
+Operation code **PU01**. Manages internal "please buy this material" requests — the stage before the material purchase order — through request → approval → conversion to a purchase order. Request numbers are **PRQ-YYYYMM-NNNNN**.
 
 > This app is currently available **in the development (dev) environment only**. Screens and steps may change before the production release.
 
@@ -11,7 +11,7 @@ Operation code **PU04**. Manages internal "please buy this material" requests �
 
 An app for requesting a material purchase (購買依頼) with approval. At the request stage you do **not** decide the supplier or the unit price — you only write what, for which plant, how many, and by when, and send it for approval.
 
-- An approved request becomes a draft [material purchase order (素材発注書, PU03)](/manual/en/apps/purchase-order/user) via **Convert to purchase order**. The supplier is chosen at conversion time; unit prices are entered on the purchase-order side.
+- An approved request becomes a draft [material purchase order (素材発注書, PU02)](/manual/en/apps/purchase-order/user) via **Convert to purchase order**. The supplier is chosen at conversion time; unit prices are entered on the purchase-order side.
 - Approval requests also appear in [approval management (承認管理, PD03)](/manual/en/apps/approval/user), where approval-group members (or their delegates) can act on them.
 - Creating and editing requires the purchase-order permission.
 

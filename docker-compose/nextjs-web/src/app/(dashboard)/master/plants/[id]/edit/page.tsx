@@ -7,7 +7,7 @@ import { fetchRegionOptions } from "../../data";
 
 export const dynamic = "force-dynamic";
 
-/** 拠点 編集 (MS2B edit). */
+/** 拠点 編集 (MS2C edit). */
 export default async function MasterPlantsEditPage({
   params,
 }: {

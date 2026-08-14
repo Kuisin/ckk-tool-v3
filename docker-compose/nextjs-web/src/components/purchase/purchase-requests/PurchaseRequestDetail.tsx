@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * PurchaseRequestDetail — 購買依頼 詳細 (PU24, design.md §8.2)。
+ * PurchaseRequestDetail — 購買依頼 詳細 (PU21, design.md §8.2)。
  *
  * SummaryGrid + 承認/変換パネル（線形 Stepper 依頼→承認→発注書へ変換 +
  * 状態別アクション）+ Tabs（明細 / 概要 / 履歴）。

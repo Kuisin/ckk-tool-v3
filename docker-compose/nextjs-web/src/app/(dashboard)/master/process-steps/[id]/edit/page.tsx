@@ -9,7 +9,7 @@ import { type LocalizedText, localized } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
 
-/** 工程マスタ 編集 (MS27 edit). 依存行は保存時に全置換される。 */
+/** 工程マスタ 編集 (MS28 edit). 依存行は保存時に全置換される。 */
 export default async function MasterProcessStepsEditPage({
   params,
 }: {

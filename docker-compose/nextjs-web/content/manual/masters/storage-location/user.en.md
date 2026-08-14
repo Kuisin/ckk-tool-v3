@@ -3,14 +3,14 @@ title: "Storage Location — User Manual"
 description: "Operation code MS0E. A registry that manages the warehouses and storage areas (storage locations) inside each plant and their shelves. Inventory is stored per storage location × shelf, and pins are placed on floor maps here as well."
 screenshots: [master-storage-location-01, master-storage-location-manage-01]
 ---
-Operation code **MS0E**. A registry that manages the warehouses and storage areas (**storage locations**) inside each plant and their **shelves**. Inventory is stored per storage location × shelf and can be moved between them with the stock-transfer feature of inventory management (PD04). You can also place storage-location pins on the floor maps managed in [Plant](/manual/en/masters/plant/user) (MS0B).
+Operation code **MS0E**. A registry that manages the warehouses and storage areas (**storage locations**) inside each plant and their **shelves**. Inventory is stored per storage location × shelf and can be moved between them with the stock-transfer feature of inventory management (PD04). You can also place storage-location pins on the floor maps managed in [Plant](/manual/en/masters/plant/user) (MS0C).
 
 > This app is currently available **in the development (dev) environment only**. Screens and steps may change before the production release.
 
 ## What you can do with this app
 
 - Register **storage locations** (warehouses, storage areas) per plant, and **shelves** under them.
-- **Place pins** for storage locations on the plant's floor maps (the drawings themselves are managed in the plant master, MS0B).
+- **Place pins** for storage locations on the plant's floor maps (the drawings themselves are managed in the plant master, MS0C).
 - The registered storage location × shelf combinations are used by inventory management (PD04) as the storage unit of stock and as the destination of **stock transfers**.
 
 ## The list (all plants)
@@ -31,7 +31,7 @@ Selecting a plant switches to a screen that manages that plant's storage locatio
 ![Managing storage locations](../../assets/screenshots/master-storage-location-manage-01.png)
 
 - "**Add storage location**" registers a storage location in the plant.
-- **Floor-map placement** — the floor maps registered in the plant master (MS0B) are shown, and you can **drag-place** or **remove** storage-location pins on them. Adding or replacing drawings is not possible in this app (do that in the plant master, MS0B).
+- **Floor-map placement** — the floor maps registered in the plant master (MS0C) are shown, and you can **drag-place** or **remove** storage-location pins on them. Adding or replacing drawings is not possible in this app (do that in the plant master, MS0C).
 - Each storage location has a card showing its name, code, an "inactive" badge when deactivated, and notes, with "**Add shelf**" plus edit/delete per shelf. Shelves are listed as chips with code + name.
 
 ## Input fields
@@ -56,6 +56,6 @@ Selecting a plant switches to a screen that manages that plant's storage locatio
 
 - **Storage location** — a warehouse or storage area inside a plant. The storage unit of inventory.
 - **Shelf** — a section inside a storage location. Inventory is managed per storage location × shelf.
-- **Floor-map placement** — placing a storage-location pin on a plant's floor drawing. The drawings are managed in the plant master (MS0B).
+- **Floor-map placement** — placing a storage-location pin on a plant's floor drawing. The drawings are managed in the plant master (MS0C).
 
 This app requires the **master permission**. New users may also want to read the [Start Manual](/manual/en/start).

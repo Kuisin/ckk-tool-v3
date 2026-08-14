@@ -1,5 +1,5 @@
 /**
- * data.ts — 受注請書 intake (SA03) のサーバーサイド取得・マッピング。
+ * data.ts — 受注請書 intake (SA04) のサーバーサイド取得・マッピング。
  *
  * app.order_acceptances は (year_month, seq) の複合キー — 表示番号
  * ORD-YYYYMM-NNNNN は導出（保存しない）で、URL id を兼ねる。

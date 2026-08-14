@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * PurchaseOrderDetail — 素材発注書 詳細 (PU23, design.md §8.2)。
+ * PurchaseOrderDetail — 素材発注書 詳細 (PU22, design.md §8.2)。
  *
  * SummaryGrid + 承認/遷移パネル（線形 Stepper 依頼→承認→発注→入荷完了 +
  * 状態別アクション）+ Tabs（明細 / 概要 / 履歴）。
@@ -578,7 +578,7 @@ export function PurchaseOrderDetail({
         <Text size="sm">
           明細 {po.items.length}{" "}
           件を全量入荷として素材入荷を登録し、入荷先拠点の素材在庫へ入庫します。
-          分納（部分入荷）が必要な場合は素材入荷 (PU01)
+          分納（部分入荷）が必要な場合は素材入荷 (PU03)
           から直接登録してください。
         </Text>
       </ModalShell>

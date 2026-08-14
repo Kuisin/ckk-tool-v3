@@ -12,8 +12,8 @@ Operation code **PD03**. See all pending approval requests across document types
 This is an "approval inbox" that lists only the **approval requests that have not yet been processed**. The document types covered are:
 
 - **Work orders (指示書)** … first and second approval ([Work Order](/manual/en/apps/work-order/user) PD02).
-- **Material purchase orders (素材発注書)** … pre-order approval ([Purchase Order](/manual/en/apps/purchase-order/user) PU03).
-- **Purchase requests (購買依頼)** … [Purchase Request](/manual/en/apps/purchase-request/user) PU04.
+- **Material purchase orders (素材発注書)** … pre-order approval ([Purchase Order](/manual/en/apps/purchase-order/user) PU02).
+- **Purchase requests (購買依頼)** … [Purchase Request](/manual/en/apps/purchase-request/user) PU01.
 - **Order acceptances (受注請書)** … shown in the list (a dedicated approval screen is not yet implemented, so clicking these rows does not navigate).
 
 The actual approve/reject operations are performed on the **detail screen of each document**, opened from this list. Processed requests disappear from the list automatically.

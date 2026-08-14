@@ -249,7 +249,7 @@ VALUES
    'PENDING'::app."STEP_STATUS", NULL, NULL, NULL, NULL, NULL, NULL, NULL,
    NULL, NULL, NULL, NULL, NULL),
 
-  -- #9002: 全工程 PENDING（センタレスは外注依頼済み・入荷待ち — PU02 の未入荷例）
+  -- #9002: 全工程 PENDING（センタレスは外注依頼済み・入荷待ち — PU04 の未入荷例）
   ('dc012000-0000-4000-8000-000000000001'::uuid, 'dc000000-0000-4000-8000-000000009002'::uuid,
    (SELECT id FROM app.process_step_catalog WHERE code = 'MATERIAL_ISSUE'), 1,
    'INTERNAL'::app."STEP_EXECUTION", (SELECT id FROM app.plants WHERE code = 'F01'),

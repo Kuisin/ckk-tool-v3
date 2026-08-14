@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * PurchaseRequestTable — 購買依頼 一覧 (PU04, design.md §8.1 / §14)。
+ * PurchaseRequestTable — 購買依頼 一覧 (PU01, design.md §8.1 / §14)。
  *
  * Columns: 依頼番号 / 依頼者 / 主要素材 / 明細数 / 状態 / 希望納期 / 更新日。
  * フィルタ: 検索（依頼番号・依頼者・素材）+ 状態。行クリック → 詳細。

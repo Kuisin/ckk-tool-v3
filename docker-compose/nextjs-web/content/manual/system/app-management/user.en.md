@@ -36,7 +36,7 @@ In other words, **turning the main switch ON is itself the production release**.
 
 - **Category** … a badge: Sales / Purchasing / Production / Shipping / Billing / Master / Documents / System.
 - **App** … the app name.
-- **Operation code** … the jump code such as `SA01` (monospaced).
+- **Operation code** … the jump code such as `SA02` (monospaced).
 - **dev (staging)** / **main (production)** … the per-environment visibility switches.
 
 Toggling shows an "Enabled / Disabled" notification and takes effect immediately. If it fails, the switch reverts and an error is shown.

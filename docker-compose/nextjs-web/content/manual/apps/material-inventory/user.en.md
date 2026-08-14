@@ -11,7 +11,7 @@ How to read the **materials** and **WIP (仕掛品)** tabs of the [Inventory](/m
 
 The former Material Inventory (PD05) app has been merged into the **Inventory** app — the old list URL redirects to the materials tab automatically. You never edit quantities here directly — stock moves automatically with business operations (the only write operation is the [stock transfer](/manual/en/apps/product-inventory/user)).
 
-- **Stock-in** … Registering a receipt in [Material Receipt (素材入荷)](/manual/en/apps/material-receipt/user) (PU01) stocks the receiving plant's inventory.
+- **Stock-in** … Registering a receipt in [Material Receipt (素材入荷)](/manual/en/apps/material-receipt/user) (PU03) stocks the receiving plant's inventory.
 - **Reservation** … When a manufacture-type [work order (指示書)](/manual/en/apps/work-order/user) is approved, its material is reserved for the planned quantity.
 - **Consumption (stock-out)** … When all steps of the work order are complete, the reserved material is consumed.
 - **Scheduled receipts** … Line items of ordered [material purchase orders (素材発注書)](/manual/en/apps/purchase-order/user) provide the next receipt date and incoming quantities.

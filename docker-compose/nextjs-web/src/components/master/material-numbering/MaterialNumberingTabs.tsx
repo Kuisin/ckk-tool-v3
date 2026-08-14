@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * MaterialNumberingTabs.tsx — 採番構成 (MS0C) 管理画面。
+ * MaterialNumberingTabs.tsx — 採番構成 (MS07) 管理画面。
  *
  * 材種/素材コードの構成要素 7 テーブルをタブで一覧・追加・有効/無効切替する。
  * 材種コード = [メーカー][メーカー材種][形状][種類]、

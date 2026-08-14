@@ -17,7 +17,7 @@ export async function generateMetadata({
   return { title: `見積書 ${decodeURIComponent(id)} | CKK 業務管理システム` };
 }
 
-/** 見積書 詳細 (SA22). URL id = 導出文書番号 QOT-YYYYMM-NNNNN. */
+/** 見積書 詳細 (SA23). URL id = 導出文書番号 QOT-YYYYMM-NNNNN. */
 export default async function SalesQuotesDetailPage({
   params,
 }: {

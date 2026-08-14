@@ -1,7 +1,7 @@
 "use server";
 
 /**
- * Server Actions — 材種マスタ (MS04).
+ * Server Actions — 材種マスタ (MS05).
  *
  * Writes go through the shared Prisma client (shared DB `ckk`, schema
  * `master`). Each action revalidates the list + detail paths so the

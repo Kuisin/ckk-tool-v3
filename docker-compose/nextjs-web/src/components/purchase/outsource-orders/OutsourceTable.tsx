@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * OutsourceTable — 外注依頼 一覧 (PU02, design.md §8.1 / §14)。
+ * OutsourceTable — 外注依頼 一覧 (PU04, design.md §8.1 / §14)。
  *
  * 指示書の外注工程（execution_location = OUTSOURCE）の読み取り専用一覧。
  * Columns: 指示書番号（指示書詳細へのリンク）/ 製品 / 工程名 / 外注先 /

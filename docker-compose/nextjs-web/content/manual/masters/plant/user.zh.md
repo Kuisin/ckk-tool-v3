@@ -1,9 +1,9 @@
 ---
 title: "工厂 — 操作手册"
-description: "操作代码 MS0B。用于登记和管理制造、库存、发货据点（拠点）的台账。除基本信息外，还管理将据点分组的地域，以及楼层平面图（图纸）。"
+description: "操作代码 MS0C。用于登记和管理制造、库存、发货据点（拠点）的台账。除基本信息外，还管理将据点分组的地域，以及楼层平面图（图纸）。"
 screenshots: [master-plant-list-01, master-plant-regions-01]
 ---
-操作代码 **MS0B**。用于登记和管理作为制造、库存、发货据点的工厂（拠点）的台账。[产品库存](/manual/zh/apps/product-inventory/user) 和 [素材库存](/manual/zh/apps/material-inventory/user) 按工厂管理，素材的入库地点等也从这里登记的工厂中选择。
+操作代码 **MS0C**。用于登记和管理作为制造、库存、发货据点的工厂（拠点）的台账。[产品库存](/manual/zh/apps/product-inventory/user) 和 [素材库存](/manual/zh/apps/material-inventory/user) 按工厂管理，素材的入库地点等也从这里登记的工厂中选择。
 
 > 此应用目前仅在**开发环境（dev）**中开放。正式发布前，界面和操作步骤可能会有所调整。
 
@@ -66,7 +66,7 @@ screenshots: [master-plant-list-01, master-plant-regions-01]
 - 通过 **叠加显示** 可将多个楼层的图纸重叠显示，确认位置对齐。
 - 若楼层上已放置终端或保管场所的图钉，则该楼层 **无法删除**。
 
-图纸仅在本应用（MS0B）中管理。保管场所应用（MS0E）和终端管理（SY09）只在这些平面图上放置图钉。
+图纸仅在本应用（MS0C）中管理。保管场所应用（MS0E）和终端管理（SY09）只在这些平面图上放置图钉。
 
 ## 编辑・删除规则
 

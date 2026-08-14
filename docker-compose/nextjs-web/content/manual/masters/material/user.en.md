@@ -1,9 +1,9 @@
 ---
 title: "Material — User Manual"
-description: "Operation code MS05. A registry for the raw materials (素材) you purchase and stock. A material is a physical bar: a ma…"
+description: "Operation code MS06. A registry for the raw materials (素材) you purchase and stock. A material is a physical bar: a ma…"
 screenshots: [master-material-list-01]
 ---
-Operation code **MS05**. A registry for the raw materials (素材) you purchase and stock. A material is a physical bar: a [material type](/manual/en/masters/material-type/user) combined with a surface finish (黒皮/研磨), diameter, and length. It is used by [material inventory](/manual/en/apps/material-inventory/user) and by material purchasing and receiving.
+Operation code **MS06**. A registry for the raw materials (素材) you purchase and stock. A material is a physical bar: a [material type](/manual/en/masters/material-type/user) combined with a surface finish (黒皮/研磨), diameter, and length. It is used by [material inventory](/manual/en/apps/material-inventory/user) and by material purchasing and receiving.
 
 > This app is currently available **in the development (dev) environment only**. Screens and steps may change before the production release.
 

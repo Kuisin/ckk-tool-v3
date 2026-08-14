@@ -8,7 +8,7 @@ import { fetchPriceEntries } from "./data";
 
 export const dynamic = "force-dynamic";
 
-/** 価格表 一覧 (SA01). */
+/** 価格表 一覧 (SA02). */
 export default async function PriceListsPage() {
   const denied = await requireAppRead("price-lists");
   if (denied) return denied;

@@ -12,8 +12,8 @@ screenshots: [approval-list-01, approval-panel-01]
 各アプリで出された **承認依頼のうち、まだ処理されていないもの** だけが並ぶ「承認待ちの受信箱」です。対象になる文書は次のとおりです。
 
 - **指示書** … 第一承認・第二承認（[指示書](/manual/ja/apps/work-order/user) PD02）。
-- **素材発注書** … 発注前の承認（[素材発注書](/manual/ja/apps/purchase-order/user) PU03）。
-- **購買依頼** … [購買依頼](/manual/ja/apps/purchase-request/user) PU04。
+- **素材発注書** … 発注前の承認（[素材発注書](/manual/ja/apps/purchase-order/user) PU02）。
+- **購買依頼** … [購買依頼](/manual/ja/apps/purchase-request/user) PU01。
 - **受注請書** … 一覧に表示されます（専用の承認画面は未実装のため、行クリックでの遷移はありません）。
 
 承認や差し戻しの操作そのものは、この一覧から開いた **各文書の詳細画面** で行います。処理が済んだ依頼は一覧から自動的に消えます。

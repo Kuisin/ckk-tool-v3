@@ -19,7 +19,7 @@ export async function generateMetadata({
   };
 }
 
-/** 設計依頼書 詳細 (SA24). URL id = 依頼番号 DSG-YYYYMM-NNNNN. */
+/** 設計依頼書 詳細 (SA25). URL id = 依頼番号 DSG-YYYYMM-NNNNN. */
 export default async function SalesDesignRequestsDetailPage({
   params,
 }: {

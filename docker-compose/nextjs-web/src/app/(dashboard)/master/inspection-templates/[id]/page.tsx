@@ -11,7 +11,7 @@ import { toItemRow } from "../data";
 
 export const dynamic = "force-dynamic";
 
-/** 検査表テンプレート 詳細 (MS28). */
+/** 検査表テンプレート 詳細 (MS29). */
 export default async function MasterInspectionTemplatesDetailPage({
   params,
 }: {

@@ -7,7 +7,7 @@ import { fetchEstimateBases, fetchPriceEntry } from "../../data";
 
 export const dynamic = "force-dynamic";
 
-/** 価格表 編集 (SA21 → edit). `id` は価格表番号 PRC-YYYYMM-NNNNN. */
+/** 価格表 編集 (SA22 → edit). `id` は価格表番号 PRC-YYYYMM-NNNNN. */
 export default async function PriceListEditPage({
   params,
 }: {

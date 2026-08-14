@@ -20,7 +20,7 @@ BEGIN;
 -- ── 撮影用フラグ ────────────────────────────────────────────────────────────
 -- 撮影は APP_ENV=main で行うため、main 未公開のマスタアプリを撮影 DB に限り
 -- 明示有効化する（本番の feature-flags-seed.sql には影響しない）。
--- MS01〜MS04・MS0A（承認グループ）は feature-flags-seed.sql で有効化済み。
+-- MS01〜MS05・MS0B（承認グループ）は feature-flags-seed.sql で有効化済み。
 INSERT INTO app.feature_flags (key, is_enabled, description, updated_at) VALUES
   ('app:master-materials:main',            true, '素材（マニュアル撮影用）',             now()),
   ('app:master-suppliers:main',            true, '外注企業（マニュアル撮影用）',         now()),
@@ -171,7 +171,7 @@ VALUES
    '2026-07-01T10:12:00+09', '2026-07-01T10:12:00+09')
 ON CONFLICT (code) DO NOTHING;
 
--- ── 検査表テンプレート（MS08 — DEMO-INS-01 v1/v2）──────────────────────────
+-- ── 検査表テンプレート（MS09 — DEMO-INS-01 v1/v2）──────────────────────────
 -- 固定 id（9101/9102, 項目 9111〜/9121〜）+ setval — 項目 FK と撮影パスを決定的に
 -- する。v2 が最新（型付き項目 4 件・抜取 5 本）、v1 は旧版（バージョンタブ表示用。
 -- ロック表示は指示書/検査記録の参照で決まるため、未参照の v1 は「未使用」表示）。

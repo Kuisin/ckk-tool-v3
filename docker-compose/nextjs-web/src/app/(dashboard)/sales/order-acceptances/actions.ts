@@ -1,7 +1,7 @@
 "use server";
 
 /**
- * Server Actions — 受注請書 intake (app.order_acceptances, SA03)。
+ * Server Actions — 受注請書 intake (app.order_acceptances, SA04)。
  *
  * ライフサイクル遷移:
  *   IMPORT（抽出失敗）→ 再抽出（retryExtraction — lib/intake.runExtraction）

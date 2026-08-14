@@ -1,5 +1,5 @@
 /**
- * data.ts — 素材入荷 (PU01) のサーバーサイド取得・マッピング。
+ * data.ts — 素材入荷 (PU03) のサーバーサイド取得・マッピング。
  *
  * URL id = uuid。発注明細（purchaseOrderItem → purchaseOrder）を辿って
  * 発注番号を解決する（null = 直接調達）。
@@ -59,7 +59,7 @@ function mapReceipt(r: ReceiptRow): MaterialReceiptView {
   };
 }
 
-/** 一覧 (PU01) — 入荷日の新しい順。 */
+/** 一覧 (PU03) — 入荷日の新しい順。 */
 export async function fetchMaterialReceipts(): Promise<MaterialReceiptView[]> {
   const rows = await prisma.materialReceipt.findMany({
     take: LIST_FETCH_CAP,

@@ -1,9 +1,9 @@
 ---
 title: "材種 — 操作マニュアル"
-description: "操作コード MS04。素材の種類（材種）を登録・管理する台帳です。製品 の素材仕様や 素材 の登録、試算 の材料原価計算は、ここで登録した材種を使います。"
+description: "操作コード MS05。素材の種類（材種）を登録・管理する台帳です。製品 の素材仕様や 素材 の登録、試算 の材料原価計算は、ここで登録した材種を使います。"
 screenshots: [master-material-type-list-01]
 ---
-操作コード **MS04**。素材の種類（材種）を登録・管理する台帳です。[製品](/manual/ja/masters/product/user) の素材仕様や [素材](/manual/ja/masters/material/user) の登録、[試算](/manual/ja/apps/trial-estimate/user) の材料原価計算は、ここで登録した材種を使います。
+操作コード **MS05**。素材の種類（材種）を登録・管理する台帳です。[製品](/manual/ja/masters/product/user) の素材仕様や [素材](/manual/ja/masters/material/user) の登録、[試算](/manual/ja/apps/trial-estimate/user) の材料原価計算は、ここで登録した材種を使います。
 
 ## このアプリでできること
 

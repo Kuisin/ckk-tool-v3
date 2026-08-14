@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * SupplierTable.tsx — 外注企業 一覧 (MS06, design.md §8.1 / §14).
+ * SupplierTable.tsx — 外注企業 一覧 (MS03, design.md §8.1 / §14).
  *
  * bp.business_partners（VENDOR ロール）。仕入先/外注先は vendor_type で区別。
  */

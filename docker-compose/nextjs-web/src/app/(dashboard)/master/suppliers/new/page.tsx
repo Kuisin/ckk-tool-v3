@@ -3,7 +3,7 @@ import { requireAppRead } from "@/lib/authz-page";
 
 export const dynamic = "force-dynamic";
 
-/** 外注企業 新規作成 (MS16). */
+/** 外注企業 新規作成 (MS13). */
 export default async function MasterSuppliersNewPage() {
   const denied = await requireAppRead("master-suppliers");
   if (denied) return denied;

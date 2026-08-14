@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * SupplierForm.tsx — 外注企業 新規作成 / 編集フォーム (MS16 / MS26).
+ * SupplierForm.tsx — 外注企業 新規作成 / 編集フォーム (MS13 / MS23).
  *
  * 法人基本情報（BpBaseFields 共通）+ 取引条件・振込先（bp_vendor_attrs）。
  */

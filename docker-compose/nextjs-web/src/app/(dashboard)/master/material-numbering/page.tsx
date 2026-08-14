@@ -8,7 +8,7 @@ import { type LocalizedText, localized } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
 
-/** 採番構成 (MS0C) — 材種/素材コードの構成要素マスタ管理. */
+/** 採番構成 (MS07) — 材種/素材コードの構成要素マスタ管理. */
 export default async function MaterialNumberingPage() {
   const denied = await requireAppRead("master-material-numbering");
   if (denied) return denied;

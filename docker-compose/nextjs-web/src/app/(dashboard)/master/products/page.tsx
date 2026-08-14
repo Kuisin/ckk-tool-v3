@@ -9,7 +9,7 @@ import { type LocalizedText, localized } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
 
-/** 製品 一覧 (MS03). */
+/** 製品 一覧 (MS04). */
 export default async function MasterProductsPage() {
   const denied = await requireAppRead("master-products");
   if (denied) return denied;

@@ -1,5 +1,5 @@
 /**
- * model.ts — 設計依頼書 (SA04) view-model types + pure helpers.
+ * model.ts — 設計依頼書 (SA05) view-model types + pure helpers.
  *
  * Model (app.design_requests — uuid PK):
  *   依頼番号 DSG-YYYYMM-NNNNN は nextDocumentNumber("DESIGN") で採番し

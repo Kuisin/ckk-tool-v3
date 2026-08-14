@@ -22,7 +22,7 @@ export async function generateMetadata({
   };
 }
 
-/** 受注請書 詳細 (SA23). URL id = 表示番号（ORD-YYYYMM-NNNNN）. */
+/** 受注請書 詳細 (SA24). URL id = 表示番号（ORD-YYYYMM-NNNNN）. */
 export default async function SalesOrderAcceptancesDetailPage({
   params,
 }: {
