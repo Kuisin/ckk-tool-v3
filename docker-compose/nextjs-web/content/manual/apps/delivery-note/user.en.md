@@ -1,7 +1,7 @@
 ---
 title: "Delivery Note — User Manual"
 description: "Operation code SH02. Create delivery notes (納品書, DRN-YYYYMM-NNNNN) from shipping orders, manage issuing and delivery,…"
-screenshots: []
+screenshots: [delivery-note-list-01, delivery-note-detail-01]
 ---
 Operation code **SH02**. Create delivery notes (納品書, DRN-YYYYMM-NNNNN) from shipping orders, manage issuing and delivery, and output PDFs.
 
@@ -15,6 +15,8 @@ Create the **delivery note (納品書)** that accompanies shipped products. When
 - You can choose the delivery method (normal delivery / direct to end user) and whether prices are printed.
 - A delivery note PDF can be generated for enclosure or sending.
 - Using this app requires the delivery-note permission (delivery_note).
+
+![Delivery note list (with delivery method and status badges)](../../assets/screenshots/delivery-note-list-01.png)
 
 ## Delivery methods and price printing
 
@@ -39,6 +41,9 @@ Actions are in the menu at the top right of the detail page.
 - **Delivered (納品済 / DELIVERED)**: final state.
 
 - The **PDF** button outputs the delivery note PDF at any time.
+- There is no delete (cancel) action for delivery notes. A created delivery note cannot be deleted, so check the contents while it is still a draft.
+
+![Delivery note detail (issued, prices printed)](../../assets/screenshots/delivery-note-detail-01.png)
 
 ## Relation to billing
 
@@ -47,4 +52,5 @@ Actions are in the menu at the top right of the detail page.
 ## List and search
 
 - Search by delivery number, shipping order number, or recipient; filter by delivery method and status.
+- The list shows delivery notes whose shipping plant is one of your assigned [plants](/manual/en/masters/plant/user), plus the ones you created yourself.
 - Click a row to open the detail page.

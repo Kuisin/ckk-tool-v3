@@ -1,7 +1,7 @@
 ---
 title: "Purchase Request — User Manual"
-description: "Operation code PU04. Manages internal \"please buy this material\" requests — the stage before the material purchase or…"
-screenshots: []
+description: "Operation code PU04. Manages internal \"please buy this material\" requests — the stage before the material purchase order — through request → approval → conversion to a purchase order. Request numbers are PRQ-YYYYMM-NNNNN."
+screenshots: [purchase-request-list-01, purchase-request-detail-01]
 ---
 Operation code **PU04**. Manages internal "please buy this material" requests — the stage before the material purchase order — through request → approval → conversion to a purchase order. Request numbers are **PRQ-YYYYMM-NNNNN**.
 
@@ -15,19 +15,23 @@ An app for requesting a material purchase (購買依頼) with approval. At the r
 - Approval requests also appear in [approval management (承認管理, PD03)](/manual/en/apps/approval/user), where approval-group members (or their delegates) can act on them.
 - Creating and editing requires the purchase-order permission.
 
+![Purchase request list with request number, requester, primary material, and status columns plus the status filter](../../assets/screenshots/purchase-request-list-01.png)
+
 ## Statuses and flow
 
 - **下書き** (draft) — right after creation. Editable and cancellable. The **Request approval** button starts the approval flow.
 - **承認依頼中** (approval requested) — only members of the first approval group (or delegates) can **Approve** or **Send back**.
-- **承認済** (approved) — can be **converted to a purchase order**. Before conversion it can also be cancelled (reason required).
+- **承認済** (approved) — can be **converted to a purchase order**. Before conversion it can also be cancelled.
 - **差し戻し** (sent back) — sent back with a reason. The reason is shown on the detail screen; you can edit the request and request approval again.
 - **発注済** (ordered) — already converted. The detail screen shows a link to the resulting material purchase order.
-- **キャンセル** (cancelled) — a pre-conversion request withdrawn with a reason.
+- **キャンセル** (cancelled) — a pre-conversion request (draft / approval requested / approved / sent back) that was withdrawn.
+
+Both cancelling and sending back **require a reason**.
 
 ## How to create
 
 1. Open **New** in the list and enter the **request reason** (optional) and **notes**.
-2. Add line items. One line = [material](/manual/en/masters/material/user) × receiving plant × quantity/unit × desired delivery date (optional). There is no unit-price field.
+2. Add line items. One line = [material](/manual/en/masters/material/user) × receiving plant × quantity/unit (default: 本) × desired delivery date (optional). Each line can also carry its own note. There is no unit-price field.
 3. Saving creates a draft. Review the content and press **Request approval** to start the approval flow.
 
 Editing is possible only while the request is a draft or sent back.
@@ -37,6 +41,8 @@ Editing is possible only while the request is a draft or sent back.
 1. On the detail screen of an approved request, press **Convert to purchase order**.
 2. Choose the **supplier** and press **Convert** — a draft material purchase order carrying over the line items is created and opened.
 3. Unit prices are copied as 0 yen, so enter the prices on the purchase order's edit screen before requesting its approval.
+
+![Purchase request detail in the approved state, showing the request → approval → conversion stepper and the Convert to purchase order button](../../assets/screenshots/purchase-request-detail-01.png)
 
 ## List & search / detail screen
 

@@ -1,7 +1,7 @@
 ---
 title: "Material — User Manual"
 description: "Operation code MS05. A registry for the raw materials (素材) you purchase and stock. A material is a physical bar: a ma…"
-screenshots: []
+screenshots: [master-material-list-01]
 ---
 Operation code **MS05**. A registry for the raw materials (素材) you purchase and stock. A material is a physical bar: a [material type](/manual/en/masters/material-type/user) combined with a surface finish (黒皮/研磨), diameter, and length. It is used by [material inventory](/manual/en/apps/material-inventory/user) and by material purchasing and receiving.
 
@@ -32,11 +32,13 @@ The finish categories and other components are managed in [Material Numbering (�
 - You can also filter by **material type / finish / status**.
 - Select rows to run **bulk activate / bulk deactivate / bulk delete**.
 
+![Material list with code, material type, name, diameter, length, finish, and status columns, plus the search and filter bar](../../assets/screenshots/master-material-list-01.png)
+
 ## Creating a new material
 
 Click "新規作成" (New) at the top right of the list.
 
-1. Search for and select the **material type**. Only converted types (with a code composition) can be chosen.
+1. Search for and select the **material type**. Only converted types (with a code composition) can be chosen. You can also press **F4 (advanced search)** to browse while filtering by manufacturer and shape.
 2. Select the **surface finish**.
 3. Enter the **diameter (mm)** (0.1–99.9) and **length (mm)** (1–999). The derived codes are shown below the inputs.
 4. Select the **kind**. Only kinds belonging to the parent type's shape are shown (for the standard shape, `A0` is picked automatically).

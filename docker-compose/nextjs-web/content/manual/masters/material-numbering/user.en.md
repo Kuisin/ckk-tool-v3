@@ -1,7 +1,7 @@
 ---
 title: "Numbering Structure — User Manual"
 description: "Operation code MS0C. A screen for managing the building blocks (components) that make up material type codes and mate…"
-screenshots: []
+screenshots: [master-material-numbering-01]
 ---
 Operation code **MS0C**. A screen for managing the building blocks (components) that make up [material type](/manual/en/masters/material-type/user) codes and [material](/manual/en/masters/material/user) codes.
 
@@ -18,6 +18,8 @@ Material type codes are assembled as `[manufacturer][grade 2 digits][shape][kind
 - **Surface finish (黒皮・研磨)** — the material surface category (one uppercase letter, e.g. `A` = mill scale, `B` = ground).
 - **Diameter (直径)** — a 3-digit code derived from mm (diameter × 10, e.g. φ8.3 → `083`).
 - **Length (全長)** — a 3-digit code of the length in mm (e.g. 330mm → `330`). A custom label can be attached.
+
+![Numbering structure (manufacturer tab)](../../assets/screenshots/master-material-numbering-01.png)
 
 ## Viewing the list
 

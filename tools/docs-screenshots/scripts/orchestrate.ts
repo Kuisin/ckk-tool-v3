@@ -52,10 +52,18 @@ const SEED_FILES_PRE = [
 // BP マスタ前提のデモデータ。
 // kiosk-steps-demo-seed は既存の order_acceptances（実運用データ）前提のため
 // まっさらな DB では流せない — 受注〜指示書チェーンのシードが将来できたら追加。
+// 順序が重要: sales（デモ顧客/製品/販売伝票）→ masters（架空仕入先/拠点/保管・
+// 作業場所/検査テンプレート）→ purchase（購買依頼/発注/入荷 — BP-90003/90004 前提）
+// → production（受注→指示書チェーン/在庫 — BP-90004・F01 前提）→ shipping-billing
+// （出荷/納品/請求/締日 — production の sales_orders 前提）。
 const SEED_FILES_POST = [
   "sql/manufacturing-demo-seed.sql",
   "sql/audit-demo-seed.sql",
   "sql/sales-demo-seed.sql",
+  "sql/masters-demo-seed.sql",
+  "sql/purchase-demo-seed.sql",
+  "sql/production-demo-seed.sql",
+  "sql/shipping-billing-demo-seed.sql",
 ];
 
 const args = process.argv.slice(2);

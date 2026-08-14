@@ -1,7 +1,7 @@
 ---
 title: "Material Purchase Order — User Manual"
-description: "Operation code PU03. Manages material orders to suppliers through request → approval → order → receiving. PO numbers …"
-screenshots: []
+description: "Operation code PU03. Manages material orders to suppliers through request → approval → order → receiving. PO numbers are PO-YYYYMM-NNNNN."
+screenshots: [purchase-order-list-01, purchase-order-detail-01]
 ---
 Operation code **PU03**. Manages material orders to suppliers through request → approval → order → receiving. PO numbers are **PO-YYYYMM-NNNNN**.
 
@@ -10,9 +10,11 @@ Operation code **PU03**. Manages material orders to suppliers through request �
 ## What you can do here
 
 - Create material purchase orders (素材発注書) per supplier and place them through an approval flow. Creating, editing, and ordering require the purchase-order permission.
-- Once ordered, the line items are automatically reflected as **expected arrivals** in [material inventory (素材在庫, PD05)](/manual/en/apps/material-inventory/user).
+- Once ordered, the line items are automatically reflected as **expected arrivals** (next receipt) on the [Inventory app's materials tab (PD04)](/manual/en/apps/material-inventory/user).
 - **Complete receiving** automatically creates a [material receipt (素材入荷, PU01)](/manual/en/apps/material-receipt/user) record per line item and posts the stock to the receiving plant's material inventory.
 - A purchase order can also be created by converting a [purchase request (購買依頼, PU04)](/manual/en/apps/purchase-request/user).
+
+![Material purchase order list with PO number, supplier, item count, total amount, status, and order date columns](../../assets/screenshots/purchase-order-list-01.png)
 
 ## Statuses and flow
 
@@ -23,12 +25,14 @@ Operation code **PU03**. Manages material orders to suppliers through request �
 - **入荷完了** (receiving complete) — the **Complete receiving** button registers material receipts for the entire remaining quantity and posts them to stock. The requester and creator are notified.
 - **キャンセル** (cancelled) — possible only before ordering (draft / approval requested / approved), with a reason.
 
+![Material purchase order detail in the ordered state, showing the request → approval → order → receiving stepper, the Complete receiving button, and received quantities on the line items](../../assets/screenshots/purchase-order-detail-01.png)
+
 ## How to create
 
 There are two ways.
 
-- **New** — from **New** in the list. Enter the **supplier** (required), the order date, and notes, and add at least one line item (material × receiving plant × quantity/unit × unit price × expected arrival date). Amounts (quantity × unit price) and the total are computed server-side.
-- **Convert from a purchase request** — via **Convert to purchase order** on an approved purchase request. Line items are carried over with a unit price of 0 yen, so enter the prices on the edit screen while the order is still a draft.
+- **New** — from **New** in the list. Enter the **supplier** (required; shown as BP code + name), the order date, and notes, and add at least one line item (material × receiving plant × quantity/unit × unit price × expected arrival date). Amounts (quantity × unit price) and the total are computed server-side.
+- **Convert from a purchase request** — via **Convert to purchase order** on an approved purchase request. Line items are carried over with a unit price of 0 yen, so enter the prices on the edit screen while the order is still a draft. The notes field is auto-filled with "購買依頼 PRQ-… から作成" (created from purchase request PRQ-…).
 
 After saving you are taken to the detail screen. Editing is possible only in draft.
 

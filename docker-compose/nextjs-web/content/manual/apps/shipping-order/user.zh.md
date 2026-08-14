@@ -1,7 +1,7 @@
 ---
 title: "发货单 — 操作手册"
 description: "操作代码 SH01。依据订单回执（注文請書）创建并管理记录产品出货的出货单（出荷書，SHP-YYYYMM-NNNNN）。"
-screenshots: []
+screenshots: [shipping-order-list-01, shipping-order-detail-01]
 ---
 操作代码 **SH01**。依据订单回执（注文請書）创建并管理记录产品出货的出货单（出荷書，SHP-YYYYMM-NNNNN）。
 
@@ -14,6 +14,8 @@ screenshots: []
 - 选择订单回执（注文請書）后，会根据已完成的[作业指示书](/manual/zh/apps/work-order/user)（批次）自动生成明细行。
 - 出货后会从[产品库存](/manual/zh/apps/product-inventory/user)扣减库存，并自动更新订单回执的出货状态（部分出货 / 已出货）。
 - 操作本应用需要出货单权限（shipping_order）。
+
+![出货单列表（含类型、状态徽章）](../../assets/screenshots/shipping-order-list-01.png)
 
 ## 类型（发货与库存保管）
 
@@ -39,6 +41,8 @@ screenshots: []
 - 发货的累计出货数量超过订单数量时会报错（防超发保护）。
 - 出货工厂库存不足时也无法出货，请先确认库存。
 
+![出货单详情（已出货。明细与送货单标签页）](../../assets/screenshots/shipping-order-detail-01.png)
+
 ## 与送货单的联动
 
 - 在详情页的**納品書**（送货单）标签页可查看由此出货单创建的送货单列表。
@@ -47,4 +51,5 @@ screenshots: []
 ## 列表与搜索
 
 - 可按出货单号、订单回执编号、客户、产品搜索，并按类型、状态筛选。
+- 列表仅显示出货工厂为自己所属[工厂](/manual/zh/masters/plant/user)的出货单（工厂范围）。
 - 点击行即可进入详情页。

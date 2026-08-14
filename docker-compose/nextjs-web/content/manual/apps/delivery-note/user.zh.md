@@ -1,7 +1,7 @@
 ---
 title: "送货单 — 操作手册"
 description: "操作代码 SH02。从出货单创建送货单（納品書，DRN-YYYYMM-NNNNN），管理开具与送达，并输出 PDF。"
-screenshots: []
+screenshots: [delivery-note-list-01, delivery-note-detail-01]
 ---
 操作代码 **SH02**。从出货单创建送货单（納品書，DRN-YYYYMM-NNNNN），管理开具与送达，并输出 PDF。
 
@@ -15,6 +15,8 @@ screenshots: []
 - 可选择送货方式（普通送货 / 直送用户）以及是否记载价格。
 - 可输出送货单 PDF 用于随货同封或寄送。
 - 操作本应用需要送货单权限（delivery_note）。
+
+![送货单列表（含送货方式、状态徽章）](../../assets/screenshots/delivery-note-list-01.png)
 
 ## 送货方式与价格记载
 
@@ -39,6 +41,9 @@ screenshots: []
 - **已送达（納品済 / DELIVERED）**：完成状态。
 
 - 通过 **PDF** 按钮可随时输出送货单 PDF。
+- 送货单没有删除（取消）操作。已创建的送货单无法删除，请在草稿阶段确认好内容。
+
+![送货单详情（已开具、记载价格）](../../assets/screenshots/delivery-note-detail-01.png)
 
 ## 与开票的关系
 
@@ -47,4 +52,5 @@ screenshots: []
 ## 列表与搜索
 
 - 可按送货单号、出货单号、收货方搜索，并按送货方式、状态筛选。
+- 列表显示出货工厂为自己所属[工厂](/manual/zh/masters/plant/user)的送货单，以及自己创建的送货单。
 - 点击行即可进入详情页。

@@ -1,7 +1,7 @@
 ---
 title: "Outsource Order — User Manual"
-description: "Operation code PU02. A cross-cutting list of outsourced process steps (centerless grinding, coating, etc.) across all…"
-screenshots: []
+description: "Operation code PU02. A cross-cutting list of outsourced process steps (centerless grinding, coating, etc.) across all work orders."
+screenshots: [outsource-order-list-01]
 ---
 Operation code **PU02**. A cross-cutting list of outsourced process steps (centerless grinding, coating, etc.) across all work orders.
 
@@ -14,6 +14,8 @@ A list of only those steps of [work orders (指示書, PD02)](/manual/en/apps/wo
 - This app is **read-only**. There is no separate outsource-order (外注依頼) document — the outsourced steps of work orders are shown directly.
 - Entering or changing the request date, expected-arrival date, and arrival date is done on the **step execution screen** (the corresponding step in the work order detail). Clicking a row in the list takes you straight to that screen.
 - Viewing requires the outsource-order permission.
+
+![Outsource order list with work order number, product, process name, subcontractor, request date, expected arrival, and status columns plus the subcontractor and status filters](../../assets/screenshots/outsource-order-list-01.png)
 
 ## Reading the list
 

@@ -1,7 +1,7 @@
 ---
 title: "Material Type — User Manual"
 description: "Operation code MS04. A registry for managing material types (材種) — the kinds of raw material you use. Products, mater…"
-screenshots: []
+screenshots: [master-material-type-list-01]
 ---
 Operation code **MS04**. A registry for managing material types (材種) — the kinds of raw material you use. [Products](/manual/en/masters/product/user), [material](/manual/en/masters/material/user) registration, and material-cost calculation in [trial estimates](/manual/en/apps/trial-estimate/user) all use the material types registered here.
 
@@ -32,6 +32,8 @@ The choices themselves (manufacturers, shapes, etc.) are managed in [Material Nu
 
 "Unconverted" rows were imported from the legacy system and have no code composition yet. You can edit their names, but they cannot be used as the parent of a material.
 
+![Material type list with code, name, manufacturer, shape, status, and updated columns, plus the search and filter bar](../../assets/screenshots/master-material-type-list-01.png)
+
 ## Creating a new material type
 
 Click "新規作成" (New) at the top right of the list.
@@ -44,7 +46,7 @@ Click "新規作成" (New) at the top right of the list.
 ## Detail page
 
 - **概要 (Overview)** — descriptions (Japanese / English).
-- **既定単価 (Default prices)** — enter default material prices (¥/1000mm) per diameter × surface finish in a grid. When there is no purchase history, [trial estimates](/manual/en/apps/trial-estimate/user) fall back to these prices. Empty cells mean "no price".
+- **既定単価 (Default prices)** — enter default material prices (¥/1000mm) per diameter × surface finish in a grid. Use "直径を追加" (Add diameter) to add a diameter row, enter the prices, and save with "既定単価を保存" (Save default prices); remove unneeded rows with "行を削除" (Delete row). When there is no purchase history, [trial estimates](/manual/en/apps/trial-estimate/user) fall back to these prices. Empty cells mean "no price".
 - **関連 (Related)** — the materials belonging to this type. Click to jump to the material detail.
 - **履歴 (History)** — change log (who updated what, when).
 

@@ -11,7 +11,7 @@ DO $$
 DECLARE
   v_sys       uuid := '00000000-0000-0000-0000-000000000000';
   v_customer  uuid;
-  v_product   text;
+  v_product   int;
   v_ym        text := '202607';
   v_seq       int  := 1;
   v_est_no    text := 'EST-202607-00001';
@@ -35,6 +35,13 @@ BEGIN
     RETURN;
   END IF;
 
+  -- 撮影用の販売デモ（sales-demo-seed.sql）が既に居る DB では何もしない —
+  -- 同じ 202607/1 の文書番号帯を使うため、二重投入・上書きを避ける。
+  IF EXISTS (SELECT 1 FROM app.estimates WHERE year_month = v_ym AND seq = v_seq) THEN
+    RAISE NOTICE 'sales demo data present; skipping audit demo seed';
+    RETURN;
+  END IF;
+
   v_entry_key := v_customer || '__' || v_product || '__PRODUCTION';
 
   -- 試算（EST-202607-00001）
@@ -48,21 +55,29 @@ BEGIN
      v_sys, now(), now())
   ON CONFLICT (year_month, seq) DO NOTHING;
 
-  -- 価格表エントリ + 段階
+  -- 価格表エントリ（(year_month, seq) キー）+ 本番バリアント + 段階
   INSERT INTO app.price_list_entries
-    (customer_bp_id, product_id, order_type, base_unit_price, valid_from, is_active,
-     estimate_year_month, estimate_seq, created_by, created_at, updated_at)
+    (year_month, seq, customer_bp_id, product_id, currency, is_active,
+     created_by, created_at, updated_at)
   VALUES
-    (v_customer, v_product, 'PRODUCTION', 1000, CURRENT_DATE, true, v_ym, v_seq, v_sys, now(), now())
-  ON CONFLICT (customer_bp_id, product_id, order_type) DO NOTHING;
+    (v_ym, 90001, v_customer, v_product, 'JPY', true, v_sys, now(), now())
+  ON CONFLICT (customer_bp_id, product_id) DO NOTHING;
+
+  INSERT INTO app.price_list_variants
+    (entry_year_month, entry_seq, order_type, base_unit_price, valid_from,
+     estimate_year_month, estimate_seq, is_active, created_at, updated_at)
+  SELECT v_ym, 90001, 'PRODUCTION', 1000, CURRENT_DATE, v_ym, v_seq, true, now(), now()
+  WHERE EXISTS (
+    SELECT 1 FROM app.price_list_entries WHERE year_month = v_ym AND seq = 90001
+  )
+  ON CONFLICT (entry_year_month, entry_seq, order_type) DO NOTHING;
 
   INSERT INTO app.price_list_tiers
-    (customer_bp_id, product_id, order_type, min_quantity, max_quantity, multiplier, sort_order)
-  SELECT v_customer, v_product, 'PRODUCTION', 1, NULL, 1, 0
-  WHERE NOT EXISTS (
-    SELECT 1 FROM app.price_list_tiers
-    WHERE customer_bp_id = v_customer AND product_id = v_product AND order_type = 'PRODUCTION'
-  );
+    (variant_id, min_quantity, max_quantity, multiplier, sort_order)
+  SELECT v.id, 1, NULL, 1, 0
+  FROM app.price_list_variants v
+  WHERE v.entry_year_month = v_ym AND v.entry_seq = 90001 AND v.order_type = 'PRODUCTION'
+    AND NOT EXISTS (SELECT 1 FROM app.price_list_tiers t WHERE t.variant_id = v.id);
 
   -- 見積書（QOT-202607-00001）+ 明細
   INSERT INTO app.quotes
