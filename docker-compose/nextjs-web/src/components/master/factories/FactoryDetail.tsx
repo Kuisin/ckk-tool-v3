@@ -40,6 +40,10 @@ import { useTabParam } from "@/hooks/useUrlState";
 import { COUNTRY_LABEL } from "@/lib/enum-labels";
 import { formatDate, formatDateTime } from "@/lib/format";
 import { DeleteFactoryModal, ToggleFactoryActiveModal } from "./FactoryModals";
+import {
+  StorageLocationsPanel,
+  type StorageLocationRow,
+} from "./StorageLocationsPanel";
 
 const BASE_PATH = "/master/factories";
 
@@ -97,10 +101,12 @@ export function FactoryDetail({
   record,
   auditEntries,
   inventory,
+  storageLocations,
 }: {
   record: FactoryDetailData;
   auditEntries: AuditEntry[];
   inventory: FactoryInventorySummary;
+  storageLocations: StorageLocationRow[];
 }) {
   const router = useRouter();
   // アクティブタブを ?tab= に保持（URL 共有でタブまで再現）
@@ -170,6 +176,7 @@ export function FactoryDetail({
       <Tabs onChange={setTab} value={tab}>
         <Tabs.List>
           <Tabs.Tab value="overview">概要</Tabs.Tab>
+          <Tabs.Tab value="storage">保管場所</Tabs.Tab>
           <Tabs.Tab value="related">関連</Tabs.Tab>
           <Tabs.Tab value="history">履歴</Tabs.Tab>
         </Tabs.List>
@@ -178,6 +185,13 @@ export function FactoryDetail({
           <Stack gap="md">
             <FieldValue label="備考" value={record.notes || "—"} />
           </Stack>
+        </Tabs.Panel>
+
+        <Tabs.Panel pt="md" value="storage">
+          <StorageLocationsPanel
+            factoryId={record.id}
+            locations={storageLocations}
+          />
         </Tabs.Panel>
 
         <Tabs.Panel pt="md" value="related">
