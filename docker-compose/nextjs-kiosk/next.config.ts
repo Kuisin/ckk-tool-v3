@@ -5,6 +5,8 @@ const nextConfig: NextConfig = {
   // NOTE: nextjs-web と違い standalone を使わない — WebSocket (/api/kiosk/ws)
   // のために独自サーバー (src/server.ts → dist/src/server.js) で起動するため。
   // ランタイムイメージは node_modules + .next + dist を持つ（Dockerfile 参照）。
+  // pnpm workspace: 共有パッケージは TS ソースのまま取り込む（ビルドなし）。
+  transpilePackages: ["@ckk/authz-core"],
 };
 
 export default nextConfig;
