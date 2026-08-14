@@ -54,7 +54,9 @@ export function AppFooter({
             size="xs"
             style={{
               position: "absolute",
-              right: "var(--mantine-spacing-md)",
+              // 丸角ディスプレイの端で切れないよう、セーフエリア分を上乗せ
+              // しつつ最低 16px は確保する（デスクトップは実質 16px 固定）。
+              right: "max(calc(env(safe-area-inset-right, 0px) + 12px), 16px)",
               top: "50%",
               transform: "translateY(-50%)",
             }}

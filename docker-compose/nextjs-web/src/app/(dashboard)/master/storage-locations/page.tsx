@@ -78,7 +78,7 @@ export default async function MasterStorageLocationsPage({
   const plantId =
     Number.isInteger(plantIdParam) && plantIdParam > 0 ? plantIdParam : null;
 
-  const [plants, allLocations] = await Promise.all([
+  const [plants, allLocations, allFloorMaps] = await Promise.all([
     prisma.plant.findMany({
       orderBy: { code: "asc" },
       select: { id: true, code: true, name: true, isActive: true },
@@ -89,6 +89,12 @@ export default async function MasterStorageLocationsPage({
         _count: { select: { shelves: true } },
       },
       orderBy: [{ plantId: "asc" }, { sortOrder: "asc" }, { code: "asc" }],
+    }),
+    // 全拠点の有効なフロアマップ — 新規作成モーダルのフロア Select 用
+    prisma.kioskFloorMap.findMany({
+      where: { isActive: true },
+      orderBy: [{ plantId: "asc" }, { sortOrder: "asc" }, { name: "asc" }],
+      select: { id: true, plantId: true, name: true },
     }),
   ]);
 
@@ -118,12 +124,16 @@ export default async function MasterStorageLocationsPage({
     };
   });
 
+  const toOption = (p: (typeof plants)[number]) => ({
+    value: String(p.id),
+    label: `${localized(p.name as LocalizedText | null)}（${p.code}）`,
+  });
+
   return (
     <StorageLocationsApp
-      plantOptions={plants.map((p) => ({
-        value: String(p.id),
-        label: `${localized(p.name as LocalizedText | null)}（${p.code}）`,
-      }))}
+      activePlantOptions={plants.filter((p) => p.isActive).map(toOption)}
+      allFloorMaps={allFloorMaps}
+      plantOptions={plants.map(toOption)}
       rows={rows}
       selected={selected}
     />

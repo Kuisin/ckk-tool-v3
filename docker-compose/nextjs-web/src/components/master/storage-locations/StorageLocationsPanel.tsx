@@ -4,7 +4,8 @@
  * StorageLocationsPanel — 保管場所アプリ (MS0E) の拠点別管理パネル。
  *
  * 選択中拠点の保管場所（拠点内の倉庫・置場）と棚をこの場で CRUD し、
- * フロアマップ（FloorMapsPanel）へのピン配置も行う。
+ * フロアマップへのピン配置（StorageLocationMapPanel — 閲覧＋ピンのみ。
+ * フロア自体の管理は拠点マスタ MS0B）も行う。
  * 在庫が参照する場所・棚はサーバー側で削除拒否（無効化を案内）。
  */
 
@@ -17,7 +18,6 @@ import {
   Stack,
   Switch,
   Text,
-  Textarea,
   TextInput,
 } from "@mantine/core";
 import { useForm } from "@mantine/form";
@@ -31,19 +31,13 @@ import {
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import {
-  createStorageLocation,
   createStorageShelf,
   deleteStorageLocation,
   deleteStorageShelf,
-  type StorageLocationInput,
   type StorageShelfInput,
-  updateStorageLocation,
   updateStorageShelf,
 } from "@/app/(dashboard)/master/storage-locations/actions";
-import {
-  FloorMapsPanel,
-  type PlantFloorMapRef,
-} from "@/components/master/plants/FloorMapsPanel";
+import type { PlantFloorMapRef } from "@/components/master/plants/FloorMapsPanel";
 import {
   CancelButton,
   GhostButton,
@@ -52,6 +46,8 @@ import {
 } from "@/components/ui/buttons";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { openConfirm } from "@/components/ui/modals";
+import { type FloorMapOption, LocationModal } from "./LocationModal";
+import { StorageLocationMapPanel } from "./StorageLocationMapPanel";
 
 export interface StorageShelfRow {
   id: number;
@@ -88,10 +84,16 @@ export function StorageLocationsPanel({
   plantId,
   locations,
   floorMaps,
+  plantOptions,
+  allFloorMaps,
 }: {
   plantId: number;
   locations: StorageLocationRow[];
   floorMaps: PlantFloorMapRef[];
+  /** 有効な拠点（新規作成モーダルの拠点 Select 用）。 */
+  plantOptions: { value: string; label: string }[];
+  /** 全拠点の有効なフロアマップ（新規作成モーダルのフロア Select 用）。 */
+  allFloorMaps: FloorMapOption[];
 }) {
   const router = useRouter();
   const [locationModal, setLocationModal] = useState<LocationModalState>(null);
@@ -163,7 +165,7 @@ export function StorageLocationsPanel({
         </PrimaryButton>
       </Group>
 
-      <FloorMapsPanel
+      <StorageLocationMapPanel
         floorMaps={floorMaps}
         pins={locations.map((l) => ({
           id: l.id,
@@ -175,7 +177,6 @@ export function StorageLocationsPanel({
           mapY: l.mapY,
           shelfCount: l.shelves.length,
         }))}
-        plantId={plantId}
       />
 
       {locations.length === 0 ? (
@@ -288,13 +289,15 @@ export function StorageLocationsPanel({
 
       {locationModal && (
         <LocationModal
+          defaultPlantId={plantId}
+          floorMaps={allFloorMaps}
           location={locationModal.location}
           onClose={() => setLocationModal(null)}
           onDone={() => {
             setLocationModal(null);
             router.refresh();
           }}
-          plantId={plantId}
+          plantOptions={plantOptions}
         />
       )}
       {shelfModal && (
@@ -309,91 +312,6 @@ export function StorageLocationsPanel({
         />
       )}
     </Stack>
-  );
-}
-
-function LocationModal({
-  plantId,
-  location,
-  onClose,
-  onDone,
-}: {
-  plantId: number;
-  location: StorageLocationRow | null;
-  onClose: () => void;
-  onDone: () => void;
-}) {
-  const [pending, startTransition] = useTransition();
-  const form = useForm<StorageLocationInput>({
-    initialValues: {
-      code: location?.code ?? "",
-      nameJa: location?.nameJa ?? "",
-      nameEn: location?.nameEn ?? "",
-      sortOrder: location?.sortOrder ?? 0,
-      isActive: location?.isActive ?? true,
-      notes: location?.notes ?? "",
-    },
-  });
-
-  function submit(values: StorageLocationInput) {
-    startTransition(async () => {
-      const res = location
-        ? await updateStorageLocation(location.id, values)
-        : await createStorageLocation(plantId, values);
-      if (!res.ok) {
-        notifications.show({
-          title: "保存失敗",
-          message: res.error,
-          color: "red",
-        });
-        return;
-      }
-      notifications.show({
-        title: "保存しました",
-        message: values.nameJa,
-        color: "green",
-      });
-      onDone();
-    });
-  }
-
-  return (
-    <Modal
-      onClose={onClose}
-      opened
-      title={location ? "保管場所の編集" : "保管場所の追加"}
-    >
-      <form onSubmit={form.onSubmit(submit)}>
-        <Stack gap="sm">
-          <TextInput
-            label="コード"
-            placeholder="WH1"
-            withAsterisk
-            {...form.getInputProps("code")}
-          />
-          <TextInput
-            label="名称（日本語）"
-            placeholder="第一倉庫"
-            withAsterisk
-            {...form.getInputProps("nameJa")}
-          />
-          <TextInput label="名称（英語）" {...form.getInputProps("nameEn")} />
-          <NumberInput label="表示順" {...form.getInputProps("sortOrder")} />
-          <Switch
-            checked={form.values.isActive}
-            label="有効"
-            onChange={(e) =>
-              form.setFieldValue("isActive", e.currentTarget.checked)
-            }
-          />
-          <Textarea label="備考" {...form.getInputProps("notes")} />
-          <Group justify="flex-end" mt="xs">
-            <CancelButton onClick={onClose} />
-            <SaveButton loading={pending} />
-          </Group>
-        </Stack>
-      </form>
-    </Modal>
   );
 }
 
