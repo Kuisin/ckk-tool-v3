@@ -42,6 +42,29 @@ for (const shot of shots) {
       });
       page = await admin.newPage();
     }
+    if (shot.app === "kiosk") {
+      // 現場タブレット（別アプリ・別ポート）。端末 cookie に撮影用シードの
+      // 既知トークンを載せることで「管理者にリンク済みの端末」として扱われる。
+      // タブレット実機に近い縦長ビューポートで撮る。
+      const kioskUrl = process.env.KIOSK_URL ?? "http://localhost:3101";
+      const ctx = await browser.newContext({
+        viewport: { width: 1200, height: 1600 },
+        deviceScaleFactor: 2,
+        locale: "ja-JP",
+        timezoneId: "Asia/Tokyo",
+        colorScheme: "light",
+        reducedMotion: "reduce",
+        baseURL: kioskUrl,
+      });
+      await ctx.addCookies([
+        {
+          name: "kiosk_device",
+          value: "ckk-shot-device-token-fixed-0001",
+          url: kioskUrl,
+        },
+      ]);
+      page = await ctx.newPage();
+    }
 
     await page.goto(shot.path, { waitUntil: "networkidle" });
     if (shot.steps) await shot.steps(page);
@@ -51,11 +74,18 @@ for (const shot of shots) {
     mkdirSync(OUT_DIR, { recursive: true });
     const path = join(OUT_DIR, `${shot.id}.png`);
     const mask = (shot.mask ?? []).map((sel) => page.locator(sel));
+    // 既定のマスク色（マゼンタ）はマニュアルに載せると目を引きすぎるので、
+    // 画面の地の色に近いグレーで塗る（キオスクはダークテーマ）。
+    const maskColor = shot.app === "kiosk" ? "#2a2f45" : "#e9ecef";
 
     if (shot.clip) {
-      await page
-        .locator(shot.clip)
-        .screenshot({ path, animations: "disabled", caret: "hide", mask });
+      await page.locator(shot.clip).screenshot({
+        path,
+        animations: "disabled",
+        caret: "hide",
+        mask,
+        maskColor,
+      });
     } else {
       await page.screenshot({
         path,
@@ -63,6 +93,7 @@ for (const shot of shots) {
         animations: "disabled",
         caret: "hide",
         mask,
+        maskColor,
       });
     }
   });

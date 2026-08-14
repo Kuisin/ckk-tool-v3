@@ -1,3 +1,11 @@
 {
-  "pages": ["start", "user-settings", "using-docs", "apps", "masters", "system"]
+  "pages": [
+    "start",
+    "user-settings",
+    "using-docs",
+    "apps",
+    "masters",
+    "kiosk",
+    "system"
+  ]
 }
