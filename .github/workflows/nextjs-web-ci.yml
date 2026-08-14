@@ -89,9 +89,11 @@ jobs:
         if: github.base_ref == 'main'
         run: pnpm exec biome check --error-on-warnings
 
+      # fumadocs-mdx の生成物 .source/ が無いと tsc が落ちるため、
+      # package.json の typecheck スクリプト（fumadocs-mdx && tsc --noEmit）を使う
       - name: Typecheck (main)
         if: github.base_ref == 'main'
-        run: pnpm exec tsc --noEmit
+        run: pnpm typecheck
 
       - name: Build (production)
         run: pnpm build

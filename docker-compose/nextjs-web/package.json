@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "typecheck": "fumadocs-mdx && tsc --noEmit",
     "start": "next start",
     "lint": "biome check",
     "format": "biome format --write",
