@@ -6,6 +6,7 @@ import {
 } from "@/components/master/plants/PlantDetail";
 import type { StorageLocationRow } from "@/components/master/plants/StorageLocationsPanel";
 import { fetchAuditEntries } from "@/lib/audit";
+import { requireAppRead } from "@/lib/authz-page";
 import { prisma } from "@/lib/db";
 import { formatProductNumber } from "@/lib/doc-number";
 import { type LocalizedText, localized } from "@/lib/format";
@@ -117,6 +118,8 @@ export default async function MasterPlantsDetailPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
+  const denied = await requireAppRead("master-plants");
+  if (denied) return denied;
   const { id: idParam } = await params;
   const id = Number(idParam);
   if (!Number.isInteger(id)) notFound();

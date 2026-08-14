@@ -1,5 +1,6 @@
 import { IconMathFunction } from "@tabler/icons-react";
 import { MasterDetailPlaceholder } from "@/components/ui/MasterDetailPlaceholder";
+import { requireAppRead } from "@/lib/authz-page";
 
 export const dynamic = "force-dynamic";
 
@@ -7,7 +8,9 @@ export const dynamic = "force-dynamic";
  * 計算基準 index — デスクトップ右ペインのプレースホルダ。
  * モバイルでは MasterDetailShell が一覧（master）を表示するため、これは出ない。
  */
-export default function CriteriaIndexPage() {
+export default async function CriteriaIndexPage() {
+  const denied = await requireAppRead("trial-pricing-engine");
+  if (denied) return denied;
   return (
     <MasterDetailPlaceholder
       icon={<IconMathFunction size={24} />}

@@ -1,6 +1,7 @@
 import { notFound, redirect } from "next/navigation";
 import { isEditable } from "@/components/shipping/shipping-orders/model";
 import { ShippingOrderForm } from "@/components/shipping/shipping-orders/ShippingOrderForm";
+import { requireAppRead } from "@/lib/authz-page";
 import { parseDocKey } from "@/lib/doc-number";
 import { fetchPlantOptions } from "../../../../production/work-orders/data";
 import { fetchShippingOrder } from "../../data";
@@ -18,6 +19,8 @@ export default async function ShippingShippingOrdersEditPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
+  const denied = await requireAppRead("shipping-orders");
+  if (denied) return denied;
   const { id } = await params;
   const key = parseDocKey(decodeURIComponent(id), "SHP");
   if (!key) notFound();

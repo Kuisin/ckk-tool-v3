@@ -3,6 +3,7 @@ import { OrderAcceptanceDetail } from "@/components/sales/order-acceptances/Orde
 import { fetchApprovalTrail, isApprover } from "@/lib/approvals";
 import { listAttachments } from "@/lib/attachments";
 import { fetchAuditEntries } from "@/lib/audit";
+import { requireAppRead } from "@/lib/authz-page";
 import { formatDocNumber, parseDocKey } from "@/lib/doc-number";
 import { fetchOrderAcceptance } from "../data";
 import { checkAcceptancePrices } from "../price-check";
@@ -27,6 +28,8 @@ export default async function SalesOrderAcceptancesDetailPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
+  const denied = await requireAppRead("order-acceptances");
+  if (denied) return denied;
   const { id } = await params;
   const key = parseDocKey(decodeURIComponent(id), "ORD");
   if (!key) notFound();

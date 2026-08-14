@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { BranchForm } from "@/components/master/customers/BranchForm";
+import { requireAppRead } from "@/lib/authz-page";
 import { fetchCustomerDetail } from "../../../../_shared/bp-data";
 
 export const dynamic = "force-dynamic";
@@ -10,6 +11,8 @@ export default async function CustomerBranchNewPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
+  const denied = await requireAppRead("master-customers");
+  if (denied) return denied;
   const { id } = await params;
   const parent = await fetchCustomerDetail(id);
   if (!parent) notFound();

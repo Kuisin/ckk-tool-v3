@@ -81,6 +81,9 @@ jobs:
       - name: Unit tests (Vitest)
         run: pnpm test
 
+      - name: Page gate guard (requireAppRead)
+        run: bash scripts/check-page-gates.sh
+
       # ── strict gates: promotion PRs into main only ──────────────────────
       - name: Lint strict — warnings as errors (main)
         if: github.base_ref == 'main'

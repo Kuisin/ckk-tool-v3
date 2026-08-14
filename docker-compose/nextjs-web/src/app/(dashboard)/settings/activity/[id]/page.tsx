@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { ActivityLogDetail } from "@/components/admin/ActivityLogDetail";
 import { getActivityEntry } from "@/lib/audit";
+import { requireAppRead } from "@/lib/authz-page";
 
 export const dynamic = "force-dynamic";
 
@@ -10,6 +11,8 @@ export default async function AdminActivityDetailPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
+  const denied = await requireAppRead("activity-log");
+  if (denied) return denied;
   const { id } = await params;
   const entry = await getActivityEntry(id);
   if (!entry) notFound();

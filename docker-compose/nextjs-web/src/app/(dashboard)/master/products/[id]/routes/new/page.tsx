@@ -4,6 +4,7 @@ import {
   fetchSupplierOptions,
 } from "@/app/(dashboard)/production/work-orders/data";
 import { RouteEditorForm } from "@/components/master/products/RouteEditorForm";
+import { requireAppRead } from "@/lib/authz-page";
 import { prisma } from "@/lib/db";
 import { formatProductNumber } from "@/lib/doc-number";
 import { type LocalizedText, localized } from "@/lib/format";
@@ -17,6 +18,8 @@ export default async function ProductRouteNewPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
+  const denied = await requireAppRead("master-products");
+  if (denied) return denied;
   const { id: idParam } = await params;
   const id = Number(idParam);
   if (!Number.isInteger(id)) notFound();

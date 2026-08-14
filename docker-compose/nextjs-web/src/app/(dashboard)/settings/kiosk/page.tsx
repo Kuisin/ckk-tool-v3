@@ -1,9 +1,7 @@
 import { Stack } from "@mantine/core";
-import { IconLock } from "@tabler/icons-react";
 import { KioskSettingsPanel } from "@/components/settings/kiosk/KioskSettingsPanel";
-import { EmptyState } from "@/components/ui/EmptyState";
 import { PageHeader } from "@/components/ui/PageHeader";
-import { checkPermission } from "@/lib/authz";
+import { requireAppRead } from "@/lib/authz-page";
 import {
   getKioskAppFlags,
   KIOSK_APP_CATALOG,
@@ -14,18 +12,8 @@ export const dynamic = "force-dynamic";
 
 /** キオスク設定（SY0A）— ランチャーのアプリ表示 + ポリシー参照。kiosk 権限。 */
 export default async function KioskSettingsPage() {
-  const authz = await checkPermission("kiosk", "READ");
-  if (!authz.ok) {
-    return (
-      <>
-        <PageHeader
-          breadcrumbs={["システム", "キオスク設定"]}
-          title="キオスク設定"
-        />
-        <EmptyState icon={<IconLock size={28} />} message={authz.error} />
-      </>
-    );
-  }
+  const denied = await requireAppRead("kiosk-settings");
+  if (denied) return denied;
 
   const flags = await getKioskAppFlags();
   const p = KIOSK_POLICY_DEFAULTS;

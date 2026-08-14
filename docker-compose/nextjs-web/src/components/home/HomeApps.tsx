@@ -7,7 +7,6 @@
  * （app.user_home_settings — /profile/home）に従う: お気に入りを上部に固定し、
  * 残りをカテゴリ別（標準）またはカスタムグループ別に表示する。
  * 工程絞り込み（?wp=）中は従来どおりカテゴリ表示のみ。App cards are Links.
- * TODO(auth): filter apps by permission (user_permissions view).
  */
 
 import {
@@ -30,10 +29,7 @@ import {
 import { IconLayoutDashboard, IconStarFilled } from "@tabler/icons-react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import {
-  useDisabledApps,
-  useUnreleasedApps,
-} from "@/components/layout/AppFlags";
+import { useHiddenApps, useUnreleasedApps } from "@/components/layout/AppFlags";
 import { GhostButton } from "@/components/ui/buttons";
 import { useIsMobile } from "@/hooks/useViewport";
 import {
@@ -93,14 +89,14 @@ export function HomeApps({
   settings = DEFAULT_HOME_SETTINGS,
   isLoading = false,
 }: HomeAppsProps) {
-  const disabledApps = useDisabledApps();
+  const hiddenApps = useHiddenApps();
   const unreleasedApps = useUnreleasedApps();
   const searchParams = useSearchParams();
   // 工程（カテゴリ）絞り込み。パンくずの工程リンクから遷移してくる。
   const rawWp = searchParams.get(WORKPROCESS_PARAM);
   const workprocess = rawWp && isAppCategory(rawWp) ? rawWp : null;
   // 環境別フラグで無効化されたアプリはカードを出さない。
-  const visibleApps = appList.filter((a) => !disabledApps.has(a.key));
+  const visibleApps = appList.filter((a) => !hiddenApps.has(a.key));
   // 工程絞り込み中はカスタマイズを適用せず、その工程のカテゴリ表示のみ。
   const organized = workprocess
     ? organizeHomeApps(

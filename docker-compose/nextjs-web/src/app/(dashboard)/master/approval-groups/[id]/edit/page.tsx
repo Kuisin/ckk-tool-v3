@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { ApprovalGroupForm } from "@/components/master/approval-groups/ApprovalGroupForm";
+import { requireAppRead } from "@/lib/authz-page";
 import { prisma } from "@/lib/db";
 import type { LocalizedText } from "@/lib/format";
 
@@ -11,6 +12,8 @@ export default async function MasterApprovalGroupsEditPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
+  const denied = await requireAppRead("master-approval-groups");
+  if (denied) return denied;
   const { id: idParam } = await params;
   const id = Number(idParam);
   if (!Number.isInteger(id)) notFound();

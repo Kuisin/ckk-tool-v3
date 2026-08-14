@@ -1,9 +1,6 @@
-import { IconLock } from "@tabler/icons-react";
 import { notFound } from "next/navigation";
 import { KioskCardDetailView } from "@/components/settings/kiosk/KioskCardDetailView";
-import { EmptyState } from "@/components/ui/EmptyState";
-import { PageHeader } from "@/components/ui/PageHeader";
-import { checkPermission } from "@/lib/authz";
+import { requireAppRead } from "@/lib/authz-page";
 import { normalizeCode } from "@/lib/crockford";
 import {
   getKioskCard,
@@ -22,19 +19,9 @@ export default async function KioskCardDetailPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
+  const denied = await requireAppRead("kiosk-cards");
+  if (denied) return denied;
   const { id } = await params;
-  const authz = await checkPermission("kiosk", "READ");
-  if (!authz.ok) {
-    return (
-      <>
-        <PageHeader
-          breadcrumbs={["システム", "QRカード管理", "カード詳細"]}
-          title="カード詳細"
-        />
-        <EmptyState icon={<IconLock size={28} />} message={authz.error} />
-      </>
-    );
-  }
   const card = await getKioskCard(normalizeCode(id));
   if (!card) notFound();
   const [sessions, userOptions] = await Promise.all([

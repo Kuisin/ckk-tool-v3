@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { PriceListDetail } from "@/components/sales/price-lists/PriceListDetail";
 import { fetchAuditEntries } from "@/lib/audit";
+import { requireAppRead } from "@/lib/authz-page";
 import { parseDocKey } from "@/lib/doc-number";
 import {
   fetchCustomerOptions,
@@ -26,6 +27,8 @@ export default async function PriceListDetailPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
+  const denied = await requireAppRead("price-lists");
+  if (denied) return denied;
   const { id } = await params;
   const key = parseDocKey(decodeURIComponent(id), "PRC");
   if (!key) notFound();

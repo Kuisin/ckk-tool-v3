@@ -1,6 +1,7 @@
 import { notFound, redirect } from "next/navigation";
 import { DesignRequestForm } from "@/components/sales/design-requests/DesignRequestForm";
 import { isEditable } from "@/components/sales/design-requests/model";
+import { requireAppRead } from "@/lib/authz-page";
 import { fetchDesignRequest } from "../../data";
 
 export const dynamic = "force-dynamic";
@@ -17,6 +18,8 @@ export default async function SalesDesignRequestsEditPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
+  const denied = await requireAppRead("design-requests");
+  if (denied) return denied;
   const { id } = await params;
   const request = await fetchDesignRequest(decodeURIComponent(id));
   if (!request) notFound();

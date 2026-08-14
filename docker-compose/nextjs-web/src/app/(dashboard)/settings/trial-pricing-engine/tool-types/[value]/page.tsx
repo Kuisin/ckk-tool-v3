@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { ToolTypeEditForm } from "@/components/settings/ToolTypeEditForm";
+import { requireAppRead } from "@/lib/authz-page";
 import { prisma } from "@/lib/db";
 import { getTrialPricingSettings } from "@/lib/system-settings";
 
@@ -11,6 +12,8 @@ export default async function ToolTypeEditPage({
 }: {
   params: Promise<{ value: string }>;
 }) {
+  const denied = await requireAppRead("trial-pricing-engine");
+  if (denied) return denied;
   const { value: raw } = await params;
   const value = decodeURIComponent(raw);
   const settings = await getTrialPricingSettings();

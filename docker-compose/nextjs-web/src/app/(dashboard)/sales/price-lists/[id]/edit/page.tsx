@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { PriceListTypeForm } from "@/components/sales/price-lists/PriceListTypeForm";
+import { requireAppRead } from "@/lib/authz-page";
 import { parseDocKey } from "@/lib/doc-number";
 import { fetchExistingEntryRefs } from "../../../trial-estimates/data";
 import { fetchEstimateBases, fetchPriceEntry } from "../../data";
@@ -12,6 +13,8 @@ export default async function PriceListEditPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
+  const denied = await requireAppRead("price-lists");
+  if (denied) return denied;
   const { id } = await params;
   const key = parseDocKey(decodeURIComponent(id), "PRC");
   if (!key) notFound();

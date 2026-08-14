@@ -7,6 +7,8 @@ import { DashboardShell } from "@/components/layout/AppShell";
 import { NavigationGuardProvider } from "@/components/layout/NavigationGuard";
 import { PwaRegister } from "@/components/layout/PwaRegister";
 import { currentAppEnv, getDisabledAppKeys } from "@/lib/app-flags";
+import { appList } from "@/lib/app-list";
+import { getVisibleAppKeys } from "@/lib/authz";
 import { getCurrentProfile } from "@/lib/profile";
 
 // feature_flags はリクエスト毎に読む（静的プリレンダだとビルド時の値で固まり、
@@ -22,11 +24,18 @@ export default async function DashboardLayout({
   // main 無効 = 未リリース。DEV リボンは dev 環境のみ（main では未リリース
   // アプリ自体が非表示になるため、リボン情報は配布しない）。
   const isDevEnv = currentAppEnv() === "dev";
-  const [disabledKeys, unreleasedKeys, profile] = await Promise.all([
-    getDisabledAppKeys(),
-    isDevEnv ? getDisabledAppKeys("main") : Promise.resolve([]),
-    getCurrentProfile(),
-  ]);
+  const [disabledKeys, unreleasedKeys, profile, visibleKeys] =
+    await Promise.all([
+      getDisabledAppKeys(),
+      isDevEnv ? getDisabledAppKeys("main") : Promise.resolve([]),
+      getCurrentProfile(),
+      getVisibleAppKeys(appList),
+    ]);
+  // 権限外アプリ（READ なし）は表示から隠す — fail-closed（未ログイン/権限
+  // 取得失敗時は gated アプリ全非表示）。実防壁は各 page の requireAppRead。
+  const deniedKeys = appList
+    .map((a) => a.key)
+    .filter((key) => !visibleKeys.has(key));
   const headerUser = profile
     ? {
         displayName: profile.displayName,
@@ -38,6 +47,7 @@ export default async function DashboardLayout({
     : null;
   return (
     <AppFlagsProvider
+      deniedKeys={deniedKeys}
       disabledKeys={disabledKeys}
       unreleasedKeys={unreleasedKeys}
     >

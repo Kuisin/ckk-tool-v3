@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { SalesOrderDetail } from "@/components/production/sales-orders/SalesOrderDetail";
 import { fetchAuditEntries } from "@/lib/audit";
+import { requireAppRead } from "@/lib/authz-page";
 import { formatSalesOrderNumber, parseSalesOrderKey } from "@/lib/doc-number";
 import { fetchSalesOrder } from "../data";
 
@@ -22,6 +23,8 @@ export default async function ProductionSalesOrdersDetailPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
+  const denied = await requireAppRead("work-orders");
+  if (denied) return denied;
   const { id } = await params;
   const key = parseSalesOrderKey(decodeURIComponent(id));
   if (!key) notFound();

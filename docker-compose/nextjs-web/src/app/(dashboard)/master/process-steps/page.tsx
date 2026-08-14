@@ -2,6 +2,7 @@ import {
   type ProcessStepRow,
   ProcessStepTable,
 } from "@/components/master/process-steps/ProcessStepTable";
+import { requireAppRead } from "@/lib/authz-page";
 import { prisma } from "@/lib/db";
 import { type LocalizedText, localized } from "@/lib/format";
 
@@ -9,6 +10,8 @@ export const dynamic = "force-dynamic";
 
 /** 工程マスタ 一覧 (MS07). */
 export default async function MasterProcessStepsPage() {
+  const denied = await requireAppRead("master-process-steps");
+  if (denied) return denied;
   const records = await prisma.processStepCatalog.findMany({
     orderBy: [{ sortOrder: "asc" }, { id: "asc" }],
   });

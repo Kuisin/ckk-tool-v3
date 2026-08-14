@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { LookupTableEditor } from "@/components/settings/LookupTableEditor";
+import { requireAppRead } from "@/lib/authz-page";
 import { getTrialPricingSettings } from "@/lib/system-settings";
 
 export const dynamic = "force-dynamic";
@@ -10,6 +11,8 @@ export default async function LookupTablePage({
 }: {
   params: Promise<{ id: string }>;
 }) {
+  const denied = await requireAppRead("trial-pricing-engine");
+  if (denied) return denied;
   const { id } = await params;
   const tableId = decodeURIComponent(id);
   const settings = await getTrialPricingSettings();

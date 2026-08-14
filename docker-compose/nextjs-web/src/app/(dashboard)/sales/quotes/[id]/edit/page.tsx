@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { QuoteForm } from "@/components/sales/quotes/QuoteForm";
+import { requireAppRead } from "@/lib/authz-page";
 import { parseDocKey } from "@/lib/doc-number";
 import { fetchCustomerOptions } from "../../../trial-estimates/data";
 import {
@@ -16,6 +17,8 @@ export default async function SalesQuotesEditPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
+  const denied = await requireAppRead("quotes");
+  if (denied) return denied;
   const { id } = await params;
   const key = parseDocKey(id, "QOT");
   if (!key) notFound();

@@ -1,4 +1,5 @@
 import { MaterialForm } from "@/components/master/materials/MaterialForm";
+import { requireAppRead } from "@/lib/authz-page";
 import { prisma } from "@/lib/db";
 import { type LocalizedText, localized } from "@/lib/format";
 
@@ -6,6 +7,8 @@ export const dynamic = "force-dynamic";
 
 /** 素材 新規作成 (MS15) — コード構成ビルダー. */
 export default async function MasterMaterialsNewPage() {
+  const denied = await requireAppRead("master-materials");
+  if (denied) return denied;
   const [finishes, manufacturers, shapes] = await Promise.all([
     prisma.materialSurfaceFinish.findMany({
       where: { isActive: true },

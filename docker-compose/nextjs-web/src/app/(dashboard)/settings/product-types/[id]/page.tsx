@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { ProductTypeEditForm } from "@/components/settings/ProductTypeEditForm";
+import { requireAppRead } from "@/lib/authz-page";
 import { getProductItemSettings } from "@/lib/product-settings";
 
 export const dynamic = "force-dynamic";
@@ -10,6 +11,8 @@ export default async function ProductTypeEditPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
+  const denied = await requireAppRead("product-types");
+  if (denied) return denied;
   const { id } = await params;
   const typeId = decodeURIComponent(id);
   const { defs, types } = await getProductItemSettings();

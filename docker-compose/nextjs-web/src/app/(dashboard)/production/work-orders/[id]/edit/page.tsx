@@ -1,5 +1,6 @@
 import { notFound, redirect } from "next/navigation";
 import { WorkflowBuilder } from "@/components/production/work-orders/WorkflowBuilder";
+import { requireAppRead } from "@/lib/authz-page";
 import { loadCatalog } from "@/lib/workflow";
 import {
   fetchInspectionTemplateOptions,
@@ -16,6 +17,8 @@ export default async function ProductionWorkOrdersEditPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
+  const denied = await requireAppRead("work-orders");
+  if (denied) return denied;
   const { id } = await params;
   const workOrderNumber = Number(id);
   if (!Number.isInteger(workOrderNumber) || workOrderNumber < 1) notFound();
