@@ -772,7 +772,7 @@ export async function unplaceDevice(id: string): Promise<ActionResult> {
 // ── フロアマップ: 管理 ──────────────────────────────────────────────────────
 
 /**
- * フロアマップは端末管理 (SY09) と拠点マスタ (MS0B 保管場所タブ) で共用 —
+ * フロアマップは端末管理 (SY09)・拠点マスタ (MS0B フロアマップタブ)・保管場所 (MS0E) で共用 —
  * kiosk / master どちらの権限でも管理できる。
  */
 async function checkFloorMapPermission(

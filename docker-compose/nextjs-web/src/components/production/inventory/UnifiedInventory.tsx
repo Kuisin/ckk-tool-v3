@@ -919,7 +919,7 @@ function LocationView({
       {selected.locations.length === 0 && unassigned.length === 0 ? (
         <EmptyState
           icon={<IconBuildingWarehouse size={24} />}
-          message="この拠点には保管場所も在庫もありません（保管場所は 拠点マスタ MS0B で登録）"
+          message="この拠点には保管場所も在庫もありません（保管場所は 保管場所マスタ MS0E で登録）"
         />
       ) : (
         <>

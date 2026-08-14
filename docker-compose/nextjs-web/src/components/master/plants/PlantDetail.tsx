@@ -3,48 +3,28 @@
 /**
  * PlantDetail.tsx — 拠点 詳細 (MS2B, design.md §8.2 / §13.6).
  *
- * サマリーグリッドに連絡先・住所を表示する。関連タブは拠点別の在庫サマリ
- * （製品在庫・素材在庫の件数 + 直近更新 10 行、在庫詳細へリンク）を表示する。
+ * サマリーグリッドに連絡先・住所を表示する。タブは 概要（備考）と
+ * フロアマップ（端末管理 SY09 と共用の拠点図面の管理）のみ。
+ * 保管場所の管理は専用アプリ 保管場所 (MS0E, /master/storage-locations) へ移設。
  */
 
-import {
-  Anchor,
-  Badge,
-  Group,
-  Stack,
-  Table,
-  Tabs,
-  Text,
-  Title,
-} from "@mantine/core";
-import {
-  IconBoxSeam,
-  IconCircleMinus,
-  IconStack2,
-  IconTrash,
-} from "@tabler/icons-react";
-import Link from "next/link";
+import { Stack, Tabs } from "@mantine/core";
+import { IconCircleMinus, IconTrash } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { ActiveBadge } from "@/components/ui/ActiveBadge";
 import { DocNumber } from "@/components/ui/DocNumber";
 import { FieldValue } from "@/components/ui/FieldValue";
-import { HistoryPanel } from "@/components/ui/HistoryPanel";
 import {
-  type AuditEntry,
   DetailShell,
   ResourceActions,
   SummaryGrid,
 } from "@/components/ui/shells";
 import { useTabParam } from "@/hooks/useUrlState";
 import { COUNTRY_LABEL } from "@/lib/enum-labels";
-import { formatDate, formatDateTime } from "@/lib/format";
+import { formatDateTime } from "@/lib/format";
+import { FloorMapsPanel, type PlantFloorMapRef } from "./FloorMapsPanel";
 import { DeletePlantModal, TogglePlantActiveModal } from "./PlantModals";
-import {
-  type PlantFloorMapRef,
-  type StorageLocationRow,
-  StorageLocationsPanel,
-} from "./StorageLocationsPanel";
 
 const BASE_PATH = "/master/plants";
 
@@ -67,48 +47,11 @@ export interface PlantDetailData {
   updatedAt: string;
 }
 
-/** 関連タブ: 拠点の製品在庫 1 行（直近更新分の抜粋）。 */
-export interface PlantProductInventoryRef {
-  id: string;
-  productName: string;
-  productCode: string | null;
-  lotNumber: number | null;
-  quantity: number;
-  reservedQuantity: number;
-  isSemiFinished: boolean;
-  updatedAt: string;
-}
-
-/** 関連タブ: 拠点の素材在庫 1 行（直近更新分の抜粋、Decimal → Number 済み）。 */
-export interface PlantMaterialInventoryRef {
-  id: string;
-  materialCode: string;
-  materialName: string;
-  quantity: number;
-  reservedQuantity: number;
-  unit: string;
-  updatedAt: string;
-}
-
-/** 関連タブ: 拠点別在庫サマリ。 */
-export interface PlantInventorySummary {
-  productCount: number;
-  materialCount: number;
-  products: PlantProductInventoryRef[];
-  materials: PlantMaterialInventoryRef[];
-}
-
 export function PlantDetail({
   record,
-  auditEntries,
-  inventory,
-  storageLocations,
   floorMaps,
 }: {
   record: PlantDetailData;
-  auditEntries: AuditEntry[];
-  inventory: PlantInventorySummary;
-  storageLocations: StorageLocationRow[];
   floorMaps: PlantFloorMapRef[];
 }) {
   const router = useRouter();
@@ -179,9 +122,7 @@ export function PlantDetail({
       <Tabs onChange={setTab} value={tab}>
         <Tabs.List>
           <Tabs.Tab value="overview">概要</Tabs.Tab>
-          <Tabs.Tab value="storage">保管場所</Tabs.Tab>
-          <Tabs.Tab value="related">関連</Tabs.Tab>
-          <Tabs.Tab value="history">履歴</Tabs.Tab>
+          <Tabs.Tab value="floor-maps">フロアマップ</Tabs.Tab>
         </Tabs.List>
 
         <Tabs.Panel pt="md" value="overview">
@@ -190,182 +131,8 @@ export function PlantDetail({
           </Stack>
         </Tabs.Panel>
 
-        <Tabs.Panel pt="md" value="storage">
-          <StorageLocationsPanel
-            floorMaps={floorMaps}
-            locations={storageLocations}
-            plantId={record.id}
-          />
-        </Tabs.Panel>
-
-        <Tabs.Panel pt="md" value="related">
-          <Stack gap="lg">
-            {/* 製品在庫（拠点別サマリ — 直近更新 10 行） */}
-            <Stack gap="xs">
-              <Group justify="space-between">
-                <Group gap="xs">
-                  <IconBoxSeam size={16} />
-                  <Title order={5}>
-                    製品在庫（{inventory.productCount} 件）
-                  </Title>
-                </Group>
-                <Anchor
-                  component={Link}
-                  href="/production/inventory?tab=products"
-                  size="sm"
-                >
-                  在庫管理（製品）へ
-                </Anchor>
-              </Group>
-              {inventory.products.length === 0 ? (
-                <Text c="dimmed" size="sm">
-                  この拠点の製品在庫はありません
-                </Text>
-              ) : (
-                <Table.ScrollContainer minWidth={560}>
-                  <Table highlightOnHover>
-                    <Table.Thead>
-                      <Table.Tr>
-                        <Table.Th>製品</Table.Th>
-                        <Table.Th ta="right" w={90}>
-                          ロット
-                        </Table.Th>
-                        <Table.Th ta="right" w={90}>
-                          在庫数
-                        </Table.Th>
-                        <Table.Th ta="right" w={90}>
-                          予約数
-                        </Table.Th>
-                        <Table.Th w={90}>区分</Table.Th>
-                        <Table.Th w={110}>更新日</Table.Th>
-                      </Table.Tr>
-                    </Table.Thead>
-                    <Table.Tbody>
-                      {inventory.products.map((p) => (
-                        <Table.Tr
-                          key={p.id}
-                          onClick={() =>
-                            router.push(
-                              `/production/inventory/products/${p.id}`,
-                            )
-                          }
-                          style={{ cursor: "pointer" }}
-                        >
-                          <Table.Td>
-                            <Text size="sm">{p.productName}</Text>
-                            {p.productCode && (
-                              <Text c="dimmed" ff="mono" size="xs">
-                                {p.productCode}
-                              </Text>
-                            )}
-                          </Table.Td>
-                          <Table.Td className="tabular-nums" ta="right">
-                            {p.lotNumber ?? "—"}
-                          </Table.Td>
-                          <Table.Td className="tabular-nums" ta="right">
-                            {p.quantity.toLocaleString("ja-JP")}
-                          </Table.Td>
-                          <Table.Td className="tabular-nums" ta="right">
-                            {p.reservedQuantity.toLocaleString("ja-JP")}
-                          </Table.Td>
-                          <Table.Td>
-                            {p.isSemiFinished ? (
-                              <Badge color="orange" variant="light">
-                                半製品
-                              </Badge>
-                            ) : (
-                              <Badge color="gray" variant="light">
-                                完成品
-                              </Badge>
-                            )}
-                          </Table.Td>
-                          <Table.Td className="tabular-nums">
-                            {formatDate(p.updatedAt)}
-                          </Table.Td>
-                        </Table.Tr>
-                      ))}
-                    </Table.Tbody>
-                  </Table>
-                </Table.ScrollContainer>
-              )}
-            </Stack>
-
-            {/* 素材在庫（拠点別サマリ — 直近更新 10 行） */}
-            <Stack gap="xs">
-              <Group justify="space-between">
-                <Group gap="xs">
-                  <IconStack2 size={16} />
-                  <Title order={5}>
-                    素材在庫（{inventory.materialCount} 件）
-                  </Title>
-                </Group>
-                <Anchor
-                  component={Link}
-                  href="/production/inventory?tab=materials"
-                  size="sm"
-                >
-                  在庫管理（素材）へ
-                </Anchor>
-              </Group>
-              {inventory.materials.length === 0 ? (
-                <Text c="dimmed" size="sm">
-                  この拠点の素材在庫はありません
-                </Text>
-              ) : (
-                <Table.ScrollContainer minWidth={560}>
-                  <Table highlightOnHover>
-                    <Table.Thead>
-                      <Table.Tr>
-                        <Table.Th>素材</Table.Th>
-                        <Table.Th ta="right" w={110}>
-                          在庫数
-                        </Table.Th>
-                        <Table.Th ta="right" w={90}>
-                          予約数
-                        </Table.Th>
-                        <Table.Th w={110}>更新日</Table.Th>
-                      </Table.Tr>
-                    </Table.Thead>
-                    <Table.Tbody>
-                      {inventory.materials.map((m) => (
-                        <Table.Tr
-                          key={m.id}
-                          onClick={() =>
-                            router.push(
-                              `/production/inventory/materials/${m.id}`,
-                            )
-                          }
-                          style={{ cursor: "pointer" }}
-                        >
-                          <Table.Td>
-                            <Text ff="mono" size="sm">
-                              {m.materialCode}
-                            </Text>
-                            <Text c="dimmed" size="xs">
-                              {m.materialName}
-                            </Text>
-                          </Table.Td>
-                          <Table.Td className="tabular-nums" ta="right">
-                            {m.quantity.toLocaleString("ja-JP")} {m.unit}
-                          </Table.Td>
-                          <Table.Td className="tabular-nums" ta="right">
-                            {m.reservedQuantity.toLocaleString("ja-JP")}
-                          </Table.Td>
-                          <Table.Td className="tabular-nums">
-                            {formatDate(m.updatedAt)}
-                          </Table.Td>
-                        </Table.Tr>
-                      ))}
-                    </Table.Tbody>
-                  </Table>
-                </Table.ScrollContainer>
-              )}
-            </Stack>
-          </Stack>
-        </Tabs.Panel>
-
-        <Tabs.Panel pt="md" value="history">
-          <HistoryPanel entries={auditEntries} />
+        <Tabs.Panel pt="md" value="floor-maps">
+          <FloorMapsPanel floorMaps={floorMaps} plantId={record.id} />
         </Tabs.Panel>
       </Tabs>
 

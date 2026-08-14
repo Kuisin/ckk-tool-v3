@@ -90,7 +90,7 @@ export function KioskFloorMapView({
   devices: KioskDeviceRow[];
   floorMaps: KioskFloorMapRow[];
   plantOptions: KioskPlantOption[];
-  /** 保管場所ピン（読み取り専用レイヤ — 配置は拠点マスタ MS0B）。 */
+  /** 保管場所ピン（読み取り専用レイヤ — 配置は保管場所マスタ MS0E）。 */
   storagePins: StorageLocationPin[];
 }) {
   const router = useRouter();
@@ -642,7 +642,7 @@ export function KioskFloorMapView({
                     }}
                   />
                 )}
-                {/* 保管場所レイヤ（読み取り専用 — 配置は拠点マスタ MS0B の保管場所タブ） */}
+                {/* 保管場所レイヤ（読み取り専用 — 配置は保管場所マスタ MS0E） */}
                 {activeMap &&
                   storagePins
                     .filter((p) => p.floorMapId === activeMap.id)
