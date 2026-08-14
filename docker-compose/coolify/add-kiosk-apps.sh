@@ -15,7 +15,10 @@
 set -euo pipefail
 
 GIT_REPO="https://github.com/Kuisin/ckk-tool-v3"
-BASE_DIR="/docker-compose/nextjs-kiosk"
+# pnpm workspace: build context はリポジトリルート、Dockerfile はアプリ配下。
+BASE_DIR="/"
+DOCKERFILE="/docker-compose/nextjs-kiosk/Dockerfile"
+WATCH_PATHS="docker-compose/nextjs-kiosk/**\npackages/**\npnpm-lock.yaml\npnpm-workspace.yaml\npackage.json"
 API="http://127.0.0.1:8000/api/v1"
 TOKEN_FILE=/data/coolify/source/.api-token
 WEBHOOK_FILE=/data/coolify/source/.webhook-secrets
@@ -59,7 +62,7 @@ create_app() { # name branch host_port env_name
       \"git_branch\": \"$branch\",
       \"build_pack\": \"dockerfile\",
       \"base_directory\": \"$BASE_DIR\",
-      \"dockerfile_location\": \"/Dockerfile\",
+      \"dockerfile_location\": \"$DOCKERFILE\",
       \"ports_exposes\": \"3000\",
       \"ports_mappings\": \"$port:3000\",
       \"autogenerate_domain\": false,
@@ -73,8 +76,12 @@ create_app() { # name branch host_port env_name
   else
     echo "exists  $name: $uuid"
   fi
-  api PATCH "/applications/$uuid" -d "{\"watch_paths\": \"${BASE_DIR#/}/**\"}" >/dev/null \
-    && echo "watch_paths set for $name"
+  api PATCH "/applications/$uuid" -d "{
+    \"base_directory\": \"$BASE_DIR\",
+    \"dockerfile_location\": \"$DOCKERFILE\",
+    \"watch_paths\": \"$WATCH_PATHS\"
+  }" >/dev/null \
+    && echo "workspace build settings applied for $name"
   if [ "$(api GET "/applications/$uuid/envs" | jq 'length')" != "0" ]; then
     echo "envs already present for $name — skipping (manage in Coolify UI)"
     return 0

@@ -17,6 +17,7 @@
     "twin:sync": "for f in workflow-core.ts workflow-core.test.ts inventory.ts inspection-core.ts inspection-core.test.ts; do cp ../nextjs-web/src/lib/$f src/lib/$f; done"
   },
   "dependencies": {
+    "@ckk/authz-core": "workspace:*",
     "@mantine/core": "^9.3.1",
     "@mantine/hooks": "^9.3.1",
     "@mantine/notifications": "^9.3.1",

@@ -1,0 +1,16 @@
+# Docker build context = repo root (nextjs-web / nextjs-kiosk の Coolify ビルド)。
+# deny-all + allowlist で context を workspace 必要分に絞る。
+*
+!package.json
+!pnpm-workspace.yaml
+!pnpm-lock.yaml
+!packages/
+!docker-compose/nextjs-web/
+!docker-compose/nextjs-kiosk/
+**/node_modules
+**/.next
+**/dist
+**/generated
+**/tsconfig.tsbuildinfo
+**/.env
+**/.env.*

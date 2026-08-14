@@ -1,0 +1,11 @@
+# pnpm workspace — nextjs-web / nextjs-kiosk と共有パッケージ (packages/*)。
+# shared-db / prisma-studio / admintools / design-preview は独立プロジェクトの
+# まま（各自の lockfile を維持）。ルートで `pnpm install` してから各アプリ
+# ディレクトリで `pnpm dev` 等を実行する。
+packages:
+  - docker-compose/nextjs-web
+  - docker-compose/nextjs-kiosk
+  - packages/*
+ignoredBuiltDependencies:
+  - sharp
+  - unrs-resolver

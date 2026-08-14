@@ -15,6 +15,7 @@
     "db:generate": "prisma generate"
   },
   "dependencies": {
+    "@ckk/authz-core": "workspace:*",
     "@mantine/core": "^9.3.1",
     "@mantine/dates": "^9.3.1",
     "@mantine/form": "^9.3.1",

@@ -49,10 +49,11 @@ Manufacturing Company Business Management System — a Next.js fullstack monolit
 ## Commands
 
 ```bash
-# Install (lockfile must not change)
-pnpm install --frozen-lockfile
+# Install — pnpm workspace: ルートで 1 回（lockfile はルートの 1 本。変更禁止）
+# workspace = nextjs-web / nextjs-kiosk / packages/*（authz-core 等の共有パッケージ）
+pnpm install --frozen-lockfile   # リポジトリルートで実行
 
-# Dev server (Turbopack)
+# Dev server (Turbopack) — 各アプリディレクトリで実行
 pnpm dev
 
 # Build
@@ -117,7 +118,7 @@ Powers the AI-first 受注請書 intake (scan image + auto-filled form → user 
 
 **Branch → environment (deploy to dev first, always)** — All work lands on `dev` and is **deployed to `ckk-dev.kai-lab.net` first** for verification. **Feature-branch PRs always target `dev` — never open a PR against `main`.** Promotion to production is by **PR `dev` → `main`**; `main` deploys to **`ckk.kai-lab.net`**. Never deploy straight to `main`/production — verify on `ckk-dev.kai-lab.net`, then open the PR.
 
-**nextjs-web deploys via Coolify** (all other stacks use the rsync + rebuild flow below). Coolify (`~/stacks/coolify`, dashboard `https://deploy.ckk-tool.co.jp`, LAN fallback `http://192.168.50.15:8000`) builds the app from GitHub per branch — see `docker-compose/coolify/README.md` for full topology, bootstrap, and webhook setup:
+**nextjs-web deploys via Coolify** (all other stacks use the rsync + rebuild flow below). Coolify (`~/stacks/coolify`, dashboard `https://deploy.ckk-tool.co.jp`, LAN fallback `http://192.168.50.15:8000`) builds the app from GitHub per branch — see `docker-compose/coolify/README.md` for full topology, bootstrap, and webhook setup. **pnpm workspace build**: the 4 apps build with `base_directory` = `/` (repo root context, root lockfile + `packages/*`) and `dockerfile_location` = `/docker-compose/nextjs-<app>/Dockerfile`; watch_paths cover the app dir + `packages/**` + root manifests (applied by `setup.sh` / `add-kiosk-apps.sh`):
 
 | App | Branch | Host port | Public host |
 |-----|--------|-----------|-------------|

@@ -24,7 +24,12 @@
 set -euo pipefail
 
 GIT_REPO="https://github.com/Kuisin/ckk-tool-v3"
-BASE_DIR="/docker-compose/nextjs-web"
+# pnpm workspace: build context はリポジトリルート、Dockerfile はアプリ配下。
+BASE_DIR="/"
+APP_DIR="docker-compose/nextjs-web"
+DOCKERFILE="/docker-compose/nextjs-web/Dockerfile"
+# ルート lockfile / 共有パッケージの変更でも再ビルドする。
+WATCH_PATHS="docker-compose/nextjs-web/**\npackages/**\npnpm-lock.yaml\npnpm-workspace.yaml\npackage.json"
 API="http://127.0.0.1:8000/api/v1"
 TOKEN_FILE=/data/coolify/source/.api-token
 WEBHOOK_FILE=/data/coolify/source/.webhook-secrets
@@ -132,7 +137,7 @@ create_app() { # name branch host_port env_name result_var
       \"git_branch\": \"$branch\",
       \"build_pack\": \"dockerfile\",
       \"base_directory\": \"$BASE_DIR\",
-      \"dockerfile_location\": \"/Dockerfile\",
+      \"dockerfile_location\": \"$DOCKERFILE\",
       \"ports_exposes\": \"3000\",
       \"ports_mappings\": \"$port:3000\",
       \"autogenerate_domain\": false,
@@ -147,10 +152,15 @@ create_app() { # name branch host_port env_name result_var
     echo "exists  $name: $uuid"
   fi
   # Monorepo watch paths: webhook pushes deploy this app only when files under
-  # its base dir changed (manual deploy.sh / UI deploys are unaffected).
-  # Idempotent — always (re)applied, also for pre-existing apps.
-  api PATCH "/applications/$uuid" -d "{\"watch_paths\": \"${BASE_DIR#/}/**\"}" >/dev/null \
-    && echo "watch_paths set for $name: ${BASE_DIR#/}/**"
+  # its app dir / shared packages / root manifests changed (manual deploy.sh /
+  # UI deploys are unaffected). Idempotent — always (re)applied, also for
+  # pre-existing apps (base_directory/dockerfile_location も再適用)。
+  api PATCH "/applications/$uuid" -d "{
+    \"base_directory\": \"$BASE_DIR\",
+    \"dockerfile_location\": \"$DOCKERFILE\",
+    \"watch_paths\": \"$WATCH_PATHS\"
+  }" >/dev/null \
+    && echo "workspace build settings applied for $name"
   # envs/bulk appends rather than upserts — only seed envs once (empty set).
   if [ "$(api GET "/applications/$uuid/envs" | jq 'length')" != "0" ]; then
     echo "envs already present for $name — skipping (manage in Coolify UI)"

@@ -23,6 +23,11 @@ pnpm db:sync-schema      # copy shared-db/prisma/schema → prisma/schema (see b
 pnpm db:generate         # prisma generate
 ```
 
+**pnpm workspace.** This app is a member of the repo-root pnpm workspace — run
+`pnpm install` at the REPO ROOT (single root `pnpm-lock.yaml`; no per-app
+lockfile). Shared packages live in `packages/*` (`@ckk/authz-core` = RBAC core;
+consumed as TS source via `transpilePackages`).
+
 **No new dependencies.** The lockfile is frozen (`pnpm install --frozen-lockfile`
 runs in the Docker build). Build utilities in-house instead — precedents:
 `lib/markdown.ts` (Markdown), `lib/csv.ts` (CSV), `lib/js-highlight.ts`
