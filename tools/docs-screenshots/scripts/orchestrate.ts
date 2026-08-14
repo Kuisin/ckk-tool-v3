@@ -214,6 +214,13 @@ function seed(): void {
 // ── 3. app build + start ─────────────────────────────────────────────────────
 
 function buildApp(): void {
+  // 新規撮影を足した初回は「本文が参照 / PNG は未撮影」でビルドが落ちるため、
+  // 先に不足分のプレースホルダを置く（撮影で実物に上書きされる）。
+  log("placeholders for uncaptured shots");
+  execFileSync("pnpm", ["exec", "tsx", "scripts/placeholders.ts"], {
+    cwd: HERE,
+    stdio: "inherit",
+  });
   log("next build (production)");
   execFileSync("pnpm", ["run", "build"], {
     cwd: NEXTJS_WEB,

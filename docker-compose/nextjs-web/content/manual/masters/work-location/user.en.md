@@ -1,70 +1,129 @@
 ---
 title: "Work Location — User Manual"
-description: "Operation code MS0D. A registry that manages physical work locations (one machine, one work area) organized into groups such as machine types and areas. Registered work locations can be selected in work-order step plans."
-screenshots: [master-work-location-01]
+description: "An app for registering the machines and areas where work is really done, such as NC lathe no. 1. They become selectable in the work plan of a work order."
+screenshots: [master-work-location-01, master-work-location-group-new-01, master-work-location-add-01, master-work-location-types-01]
 ---
-Operation code **MS0D**. A registry that manages physical **work locations** — one machine or one work area — organized into **groups** such as machine types and areas. Registered work locations can be selected as the optional "work location" in a step's **work plan** on a [work order](/manual/en/apps/work-order/user).
+This app is for registering the **machines and areas where work is really done**, such as NC旋盤 1号機 (NC lathe no. 1). The operation code is `MS0D`.
 
-> This app is currently available **in the development (dev) environment only**. Screens and steps may change before the production release.
+The places registered here become selectable as "where the work is done" in the work plan of a step on a [指示書 (work order)](/manual/en/apps/work-order/user).
+
+> ⚠️ This app is in trial release. Depending on your environment, it may not be shown yet.
+
+## The difference between three similar apps
+
+There are three apps about places, and they are easy to mix up. Please take care.
+
+| App | What you register | Example |
+|--------|----------------|-----|
+| [拠点 (Site)](/manual/en/masters/plant/user) | The factory itself | Head office plant, second plant |
+| **作業場所 (Work location)** (this page) | A place or machine inside the site where work is done | NC lathe no. 1, polishing area |
+| [保管場所 (Storage location)](/manual/en/masters/storage-location/user) | A warehouse or shelf inside the site where things are kept | Shelf A-1 in material warehouse A |
+
+**Places where people work** belong in this app; **places where things are kept** belong in the storage location app.
 
 ## What you can do with this app
 
-- Create **groups** (machine types, areas, etc.) and register **work locations** (one machine, one work area) under them.
-- Manage the **types** used to classify groups (you can add your own types besides the built-in "machine" and "area").
-- Set a **capacity** per work location (the number of tasks that can be assigned to it at the same time).
-- See how much each work location is used by work-order plans via the **plan count** column.
+- You can register machines and areas sorted into **groups** (sets by machine kind or by area).
+- For each machine you can decide **how many jobs can be put on it at the same time** (the capacity).
+- You can check how many work plans are using that machine right now.
+- You can add your own **types** for sorting the groups.
 
-![Work locations](../../assets/screenshots/master-work-location-01.png)
+## Words used on this page
 
-## Understanding the screen
+- **Group** … the unit that brings work locations together. You make them by machine kind or by area, such as 「NC旋盤」 (NC lathe) or 「研磨エリア」 (polishing area). A group always belongs to one of the sites.
+- **Work location** … one machine, or one area. It is always registered under one of the groups.
+- **Capacity** … the number of jobs that can be put on that place at the same time. Leave it empty and there is no limit.
+- **Planned count** … the number of work plans that are set to use that place.
+- **Type** … the division used for sorting the groups. 「機械」 (machine) and 「エリア」 (area) are there from the start.
 
-There are no separate list/detail pages — everything happens on a single management screen.
+## Before you start
 
-- The top right of the screen has "**Type management**" and "**Add group**" buttons.
-- Each group is shown as a card with its code, name, type, plant, and status, plus **edit / delete / add location** actions.
-- The work-location table inside a card has the columns **code / name / capacity / plan count / status**, with edit and delete per row.
-- When nothing is registered yet, the screen guides you to create a group (machine type, area, etc.) and add physical locations (one machine, one work area) under it.
+- You need the **master permission** to use this app.
+- A group is given a site. Please register the [site (拠点)](/manual/en/masters/plant/user) first.
+- You register **the group first and the machine after that**. You cannot register a machine on its own without making a group.
 
-## Adding a group
+## How to read the screen
 
-Register groups via "Add group".
+This app is not split into a list and a detail screen. **You do everything on one screen.**
 
-- **Code** — a code identifying the group (e.g. `NC-LATHE`).
-- **Type** — choose machine / area, or a type added in type management.
-- **Name (Japanese)** (e.g. NC旋盤) / **Name (English)** (optional).
-- **Plant** — the plant this group belongs to.
-- **Sort order** / **notes** / **active**.
+![Work location screen](../../assets/screenshots/master-work-location-01.png)
 
-## Adding a work location
+- At the top right of the screen there are the 「**種別管理**」 (Manage types) and 「**グループ追加**」 (Add group) buttons.
+- The groups are shown as cards. The top of a card shows the code, name, type, site and status of that group.
+- At the right of a card there are the 「**場所を追加**」 (Add location), 「**編集**」 (Edit) and 「**削除**」 (Delete) buttons.
+- The table inside a card lists the machines of that group in the order **コード** (code) / **名称** (name) / **キャパシティ** (capacity) / **計画数** (planned count) / **状態** (status).
+- When nothing is registered yet, 「**作業場所が未登録です。グループ（機械種別・エリアなど）を作成し、配下に物理的な場所（機械 1 台・1 区画）を追加してください。**」 (no work locations are registered; create a group such as a machine kind or area, and add physical places under it, one machine or one area at a time) is shown.
 
-Use "Add location" on a group card to register a location under that group.
+## Make a group
 
-- **Code** — a code identifying the work location (e.g. `NC-01`).
-- **Capacity** — the number of tasks that can be assigned at the same time.
-- **Name (Japanese)** (e.g. NC旋盤 1号機) / **Name (English)** (optional).
-- **Sort order** / **active** / **notes**.
+First make the container that brings the machines together.
 
-## Type management
+1. Press 「**グループ追加**」 (Add group) at the top right of the screen.
+2. Enter text that stands for this group in 「**コード**」 (code), for example `NC-LATHE`.
+3. Choose 「**種別**」 (type): machine, area, or a type you added yourself.
+4. Enter the name of the group in 「**名称（日本語）**」 (name, Japanese), for example NC旋盤 (NC lathe).
+5. In 「**拠点**」 (site), choose the site this group is in.
+6. Enter a number in 「**表示順**」 (display order). A smaller number comes higher.
+7. Press 「**作成**」 (Create).
 
-Use "Type management" at the top right to manage the **types** used to classify groups.
+![Screen for adding a group](../../assets/screenshots/master-work-location-group-new-01.png)
 
-- Add a type per row by entering a **key** (e.g. `line`) and a **display name (Japanese)** / **English**.
-- **Machine** and **area** are built-in types and **cannot be deleted**.
-- A custom type also cannot be deleted while any group uses it.
+## Add a machine (work location)
 
-## Relation to work-order plans
+Once the group is made, register the machines inside it one at a time.
 
-In the **work plan** of a step on the work-order detail page, each plan row can select an optional "**work location**". The selected location is shown in the plan list and also on the kiosk step-execution screen. The number of these references appears in the **plan count** column.
+1. On the card of the group you want to add to, press 「**場所を追加**」 (Add location).
+2. Enter text that stands for this machine in 「**コード**」 (code), for example `NC-01`.
+3. Enter the number of jobs that can be on it at the same time in 「**キャパシティ**」 (capacity). If it is one at a time on one machine, that is `1`. Leave it empty for "no limit".
+4. Enter the name of the machine in 「**名称（日本語）**」 (name, Japanese), for example NC旋盤 1号機 (NC lathe no. 1).
+5. Enter a number in 「**表示順**」 (display order).
+6. Press 「**追加**」 (Add).
 
-## Delete rules
+![Screen for adding a work location](../../assets/screenshots/master-work-location-add-01.png)
 
-- Deleting a group also deletes the work locations under it.
-- A work location that is **in use by a work plan** cannot be deleted (an error explains that groups containing locations used by work plans cannot be deleted). Deactivate locations that are no longer in use.
+The machines you register are listed in the table on that group's card. Use the buttons at the right of a table row to edit or delete it.
 
-## Glossary
+> 💡 If you set the capacity to `1`, it is easier to notice when two or more jobs are on that machine at the same time.
 
-- **Group** — a unit that bundles work locations (machine type, area, etc.). Belongs to a plant.
-- **Work location** — a physical place such as one machine or one work area. Selected in work-order plans.
-- **Capacity** — the number of tasks that can be assigned to the location at the same time.
+## Add more types
 
-This app requires the **master permission**. New users may also want to read the [Start Manual](/manual/en/start).
+You can add your own divisions for sorting the groups. Use this when you want groupings such as 「ライン」 (line) or 「検査室」 (inspection room).
+
+1. Press 「**種別管理**」 (Manage types) at the top right of the screen.
+2. Press 「**追加**」 (Add) at the bottom to add a row.
+3. In the left box, enter text that stands for the division, for example `line`. Small letters, numbers, hyphens and underscores can be used.
+4. In the middle box, enter the Japanese display name, for example ライン (line).
+5. Press 「**保存**」 (Save).
+
+![Type management screen](../../assets/screenshots/master-work-location-types-01.png)
+
+「**機械**」 (machine) and 「**エリア**」 (area) are prepared from the start. They are shown as 「**組み込み**」 (built in) and cannot be deleted or renamed.
+
+## How it connects to work orders
+
+In the 「**作業計画**」 (work plan) of a step on a work order, you can choose 「**作業場所（任意）**」 (work location, optional) for each plan row. The work location you choose is shown in the plan list, and can also be seen on the shared tablet screen on the floor.
+
+The number of times it has been chosen appears in the 「**計画数**」 (planned count) column of the work location table. A place whose planned count is not 0 is still in use.
+
+## Questions and problems
+
+**Q. I want to add a machine, but I cannot find the 「場所を追加」 (Add location) button.**
+A. This button is inside a group card. When there is no group at all yet, make one first with 「**グループ追加**」 (Add group).
+
+**Q. I see 「この場所は 3 件の作業計画から参照されています（削除できません — 無効化をご検討ください）。」 (this location is referred to by 3 work plans; it cannot be deleted, please consider deactivating it).**
+A. That machine is in use in the work plan of a work order. Do not delete it. Turn off 「**有効**」 (active) on the edit screen to make it inactive. Once it is inactive it can no longer be chosen in plans made from now on.
+
+**Q. I see 「グループの削除に失敗しました（作業計画で使用中の場所が含まれる場合は削除できません）」 (deleting the group failed; it cannot be deleted if it contains a location in use in a work plan).**
+A. That group still contains a machine that is in use. Check which machine is in use, do not delete the whole group, and make that machine inactive instead.
+
+**Q. If I delete a group, what happens to the machines inside it?**
+A. They are deleted with it. The confirmation screen shows how many machines will be deleted. This cannot be undone.
+
+**Q. I see 「使用中の種別は削除できません」 (a type in use cannot be deleted).**
+A. There is a group that has chosen that type. First change 「**種別**」 (type) of that group to another one, and then try again.
+
+**Q. I see 「存在しない種別です（先に種別を追加してください）」 (this type does not exist; please add the type first).**
+A. The type you tried to choose is not registered yet. Add it in 「**種別管理**」 (Manage types) and then save the group.
+
+**Q. I want to register warehouses and shelves. Is this the right place?**
+A. No. Places where things are kept are registered in [storage location (保管場所)](/manual/en/masters/storage-location/user).

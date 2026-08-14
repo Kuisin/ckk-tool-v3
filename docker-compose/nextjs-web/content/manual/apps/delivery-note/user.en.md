@@ -1,56 +1,135 @@
 ---
 title: "Delivery Note — User Manual"
-description: "Operation code SH02. Create delivery notes (納品書, DRN-YYYYMM-NNNNN) from shipping orders, manage issuing and delivery,…"
-screenshots: [delivery-note-list-01, delivery-note-detail-01]
+description: "Make the delivery note that goes with the products you ship, turn it into a PDF, and print it."
+screenshots: [delivery-note-list-01, delivery-note-new-01, delivery-note-detail-noprice-01, delivery-note-direct-01, delivery-note-issue-01, delivery-note-detail-01]
 ---
-Operation code **SH02**. Create delivery notes (納品書, DRN-YYYYMM-NNNNN) from shipping orders, manage issuing and delivery, and output PDFs.
+This app makes the **delivery note** (納品書) that goes together with the products you ship. The operation code is `SH02`.
 
-> This app is currently available **in the development (dev) environment only**. Screens and steps may change before the production release.
+> ⚠️ This app is still being prepared. Screens and steps may change before it is fully released.
 
 ## What you can do with this app
 
-Create the **delivery note (納品書)** that accompanies shipped products. When you pick a [shipping order](/manual/en/apps/shipping-order/user) (confirmed or shipped), the recipient and line items are filled in automatically.
+- Make the delivery note you hand to the place receiving the goods.
+- Just pick a [shipping order](/manual/en/apps/shipping-order/user), and **the receiver and the contents are filled in for you**.
+- Choose whether to **show or hide** the amounts.
+- Turn the delivery note into a **PDF** to print it or put it in the box.
+- Record where things stand — "issued", "delivered".
 
-- The recipient is determined automatically from the shipping order → sales order's [customer](/manual/en/masters/customer/user) (plus branch) and cannot be changed.
-- You can choose the delivery method (normal delivery / direct to end user) and whether prices are printed.
-- A delivery note PDF can be generated for enclosure or sending.
-- Using this app requires the delivery-note permission (delivery_note).
+## Words used on this page
 
-![Delivery note list (with delivery method and status badges)](../../assets/screenshots/delivery-note-list-01.png)
+- **出荷書 (shipping order)** … The document that records what you send and how many. The delivery note is made from it.
+- **納品先 (delivery destination)** … The customer who placed the order. It is decided by the shipping order.
+- **通常納品 / ユーザー直送 (Normal delivery / Direct to end user)** … "通常納品" means delivering to the customer who ordered. "ユーザー直送" means delivering straight to the company that actually uses the product.
+- **最終需要家 (end user)** … The company that actually uses the product. It is the receiver when you deliver direct to the end user.
+- **価格記載 (show prices)** … The setting for whether unit prices and amounts appear on the delivery note.
 
-## Delivery methods and price printing
+## Before you start
 
-- **Normal delivery (通常納品)**: the usual pattern — the delivery note is enclosed for the ordering customer. Price printing defaults to "on".
-- **Direct to end user (ユーザー直送)**: the shipment goes straight to the [end user](/manual/en/masters/end-user/user). Selecting the **destination (end user)** is required, and price printing defaults to "off".
-- When price printing is "off", unit prices and amounts are not saved and do not appear on screen or in the PDF.
+- You need a [shipping order](/manual/en/apps/shipping-order/user) first. It must also be 「**確定**」 (Confirmed) or 「**出荷済**」 (Shipped). You cannot make a delivery note from a 「下書き」 (Draft) shipping order.
+- If you deliver direct to the end user, the receiving company must be registered as an [end user](/manual/en/masters/end-user/user).
+- You need delivery note permission to make one. If you cannot use it, please ask your administrator.
 
-## Creating a delivery note
+## How to read the screen
 
-1. Press **新規作成** (Create) on the list page (you can also start from **納品書を作成** on a shipping order's detail page — the shipping order is then preselected).
-2. Select the **shipping order**. Line items (product, quantity, unit price = the sales order's unit price) are filled in automatically.
-3. Set the **delivery method** and **price printing**. For direct-to-user delivery, choose the **destination (end user)**.
-4. Line items can be edited, but you cannot register products that are not on the shipping order or quantities exceeding the shipped quantity.
-5. Saving creates a **draft**. The shipping order and recipient cannot be changed after creation.
+When you open the app, you see a list of the delivery notes made so far.
 
-## Statuses and actions
+![Delivery note list screen](../../assets/screenshots/delivery-note-list-01.png)
 
-Actions are in the menu at the top right of the detail page.
+- **納品番号 (Delivery number)** … A number that starts with `DRN-`. The system adds it for you.
+- **方法 (Method)** … An orange 「ユーザー直送」 (Direct to end user) means it goes straight to the company using the product; a grey 「通常納品」 (Normal delivery) means it goes to the customer.
+- **状態 (Status)** … Grey is 「下書き」 (Draft), blue is 「発行済」 (Issued), green is 「納品済」 (Delivered).
+- In the search box at the top you can type a delivery number, a shipping order number, or the receiver's name to narrow the list.
+- The list shows **delivery notes sent from the site you belong to** and **delivery notes you made yourself**.
+- Click a row to open the detail screen for that delivery note.
 
-- **Draft (下書き / DRAFT)**: editable. When ready, press **発行** (Issue) — after issuing it can no longer be edited.
-- **Issued (発行済 / ISSUED)**: once it reaches the customer, press **納品済みにする** (Mark delivered). The delivery date is recorded as today.
-- **Delivered (納品済 / DELIVERED)**: final state.
+## Making a delivery note
 
-- The **PDF** button outputs the delivery note PDF at any time.
-- There is no delete (cancel) action for delivery notes. A created delivery note cannot be deleted, so check the contents while it is still a draft.
+1. Press 「**新規作成**」 (New) at the top right of the list screen.
+2. Click the 「**出荷書**」 (Shipping order) box and pick the shipping order.
+3. The 「**納品先**」 (Delivery destination) and the lines (product, quantity, unit price) are **filled in for you**.
+4. In 「**納品方法**」 (Delivery method), choose 「**通常納品**」 (Normal delivery) or 「**ユーザー直送**」 (Direct to end user).
+5. If you do not want to show the amounts, turn off the 「**価格記載（納品書に単価・金額を記載する）**」 (Show prices — print unit prices and amounts on the delivery note) switch.
+6. If a quantity is different from what you really sent, change the 「**数量**」 (Quantity) on that line.
+7. Press 「**保存**」 (Save).
 
-![Delivery note detail (issued, prices printed)](../../assets/screenshots/delivery-note-detail-01.png)
+![New delivery note form](../../assets/screenshots/delivery-note-new-01.png)
 
-## Relation to billing
+After you save, it is registered as a 「**下書き**」 (Draft) and the detail screen opens.
 
-- The delivery note number appears as a linked "source" on [invoice](/manual/en/apps/invoice/user) line items (the invoice itself is generated from shipping orders by the [billing closing](/manual/en/apps/billing-closing/user)).
+> 💡 If you start from 「**納品書を作成**」 (Create delivery note) on the shipping order screen, the shipping order is already chosen. That way is faster.
 
-## List and search
+## Showing or hiding the amounts
 
-- Search by delivery number, shipping order number, or recipient; filter by delivery method and status.
-- The list shows delivery notes whose shipping plant is one of your assigned [plants](/manual/en/masters/plant/user), plus the ones you created yourself.
-- Click a row to open the detail page.
+Whether unit prices and amounts appear on the delivery note is decided by the 「**価格記載**」 (Show prices) switch.
+
+- If you choose **通常納品** (Normal delivery), it starts as "show".
+- If you choose **ユーザー直送** (Direct to end user), it switches to "hide". This is so the company using the product does not see the amounts.
+- These starting settings are only a guide — you can change the switch if you need to.
+
+When the switch is off, you cannot type in the unit price boxes. If you save it that way, **no amounts appear on the screen or in the PDF**.
+
+![Delivery note without amounts](../../assets/screenshots/delivery-note-detail-noprice-01.png)
+
+## Delivering direct to the end user
+
+When you deliver straight to the company that uses the product, do this.
+
+1. In 「**納品方法**」 (Delivery method), press 「**ユーザー直送**」 (Direct to end user).
+2. The 「**最終需要家**」 (End user) box appears — pick the receiving company.
+3. Everything else is the same as normal delivery.
+
+![Form with Direct to end user chosen](../../assets/screenshots/delivery-note-direct-01.png)
+
+If you try to save without choosing 「最終需要家」, you get 「**最終需要家を選択してください**」 (Please choose an end user).
+
+## Issuing and delivering
+
+A delivery note moves through three stages: 「下書き」 (Draft) → 「発行済」 (Issued) → 「納品済」 (Delivered). You do this from the 「**…**」 button (the three dots) at the top right of the screen.
+
+### 1. Issue it
+
+1. On the delivery note screen, press 「**…**」 at the top right.
+2. Choose 「**発行**」 (Issue).
+3. 「発行の確認」 (Issue check) appears. Press 「**発行**」 (Issue).
+
+![Issue check window](../../assets/screenshots/delivery-note-issue-01.png)
+
+Once issued, the status becomes 「**発行済**」 (Issued) and **you can no longer edit it**.
+
+### 2. When it has arrived
+
+1. Press 「**…**」 at the top right.
+2. Choose 「**納品済みにする**」 (Mark as delivered).
+3. 「納品の確認」 (Delivery check) appears. Press 「**納品済みにする**」 (Mark as delivered).
+
+Today's date is recorded as the **納品日 (delivery date)** and the status becomes 「**納品済**」 (Delivered).
+
+By the way, this delivery note's number appears later as the "source" on the lines of the [invoice](/manual/en/apps/invoice/user). From the invoice you will be able to open this delivery note right away.
+
+## Printing (PDF)
+
+Press 「**PDF**」 at the top right of the screen and the delivery note PDF opens in another tab. From there you can print it or save it. You can print it while it is still a draft, so you can also use it to check before sending.
+
+![Delivery note detail screen](../../assets/screenshots/delivery-note-detail-01.png)
+
+> ⚠️ There is no delete action for delivery notes. Once made, a delivery note cannot be removed, so please check the contents carefully **while it is still a draft**.
+
+## Questions and problems
+
+**Q. The shipping order I want does not appear in the box.**
+A. You can only pick shipping orders that are 「確定」 (Confirmed) or 「出荷済」 (Shipped). If it is still a 「下書き」 (Draft), first confirm it on the [shipping order](/manual/en/apps/shipping-order/user) side.
+
+**Q. I want to change the delivery destination to another company, but I cannot choose it.**
+A. The delivery destination is decided by the customer on the sales order behind the shipping order, so it cannot be changed on this screen. If the receiver is different, make the delivery note again from the correct shipping order.
+
+**Q. I get 「…は出荷書に含まれていません」 (… is not included in the shipping order) and cannot save.**
+A. You have put a product on a line that is not on the shipping order. Delete that row, or change it to a product that is on the shipping order.
+
+**Q. I get 「…の数量 60 が出荷数量 50 を超えています」 (Quantity 60 for … is more than the shipped quantity 50) and cannot save.**
+A. You have written more pieces than you really sent. Change the quantity so it is not more than the shipping order.
+
+**Q. I saved with the amounts hidden, but now I want to show them.**
+A. While it is a 「下書き」 (Draft) you can turn the switch back on with 「編集」 (Edit). The unit prices were not saved, though, so please enter them again. After it is issued you cannot fix it, so make a new one.
+
+**Q. I noticed a mistake after issuing it.**
+A. There is no way to undo an issue. Make a new delivery note with the correct contents, and do not hand the wrong one to the customer.

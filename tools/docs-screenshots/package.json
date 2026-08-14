@@ -10,7 +10,8 @@
     "docs:shots": "tsx scripts/orchestrate.ts",
     "docs:shots:one": "tsx scripts/orchestrate.ts --only",
     "docs:verify": "tsx scripts/orchestrate.ts --verify",
-    "docs:lint": "tsx scripts/lint-screenshots.ts"
+    "docs:lint": "tsx scripts/lint-screenshots.ts",
+    "docs:placeholders": "tsx scripts/placeholders.ts"
   },
   "devDependencies": {
     "@playwright/test": "^1.58.2",

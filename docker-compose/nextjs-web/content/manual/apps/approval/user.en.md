@@ -1,50 +1,108 @@
 ---
-title: "Approvals — User Manual"
-description: "Operation code PD03. See all pending approval requests across document types in one place, so you can review everythi…"
-screenshots: [approval-list-01, approval-panel-01]
+title: "Approval Management — User Manual"
+description: "An app that gathers, on one screen, only the documents that are waiting for your approval, across every type of document."
+screenshots: [approval-list-01, approval-panel-01, approval-reject-01, approval-detail-01]
 ---
-Operation code **PD03**. See all pending approval requests across document types in one place, so you can review everything waiting for your approval.
+This app gathers, on one screen, only the documents that are waiting for approval, across every type of document. Think of it as your approval inbox. The operation code is `PD03`.
 
-> This app is currently available **in the development (dev) environment only**. Screens and steps may change before the production release.
+> ⚠️ For now this app works **only in the test environment**. The screens and the steps may change before it can be used for real work.
 
 ## What you can do with this app
 
-This is an "approval inbox" that lists only the **approval requests that have not yet been processed**. The document types covered are:
+- You can see all the documents that are waiting for approval right now, **across every type of document**.
+- Click a row and the screen for that document opens directly.
+- From there you can approve or send back.
+- Documents you have dealt with disappear from this list automatically.
 
-- **Work orders (指示書)** … first and second approval ([Work Order](/manual/en/apps/work-order/user) PD02).
-- **Material purchase orders (素材発注書)** … pre-order approval ([Purchase Order](/manual/en/apps/purchase-order/user) PU02).
-- **Purchase requests (購買依頼)** … [Purchase Request](/manual/en/apps/purchase-request/user) PU01.
-- **Order acceptances (受注請書)** … shown in the list (a dedicated approval screen is not yet implemented, so clicking these rows does not navigate).
+These are the documents that appear in the list.
 
-The actual approve/reject operations are performed on the **detail screen of each document**, opened from this list. Processed requests disappear from the list automatically.
+- **指示書** (work order) … first and second approval ([work order](/manual/en/apps/work-order/user) PD02)
+- **素材発注書** (material purchase order) … the approval before the order is placed ([material purchase order](/manual/en/apps/purchase-order/user) PU02)
+- **購買依頼** (purchase request) … [purchase request](/manual/en/apps/purchase-request/user) PU01
+- **受注請書** (order acceptance) … it appears in the list, but because there is no dedicated approval screen for it yet, clicking the row does not take you anywhere
 
-## Reading the list
+## Words used on this page
 
-- Columns: **type** (badge for work order / material purchase order / purchase request / order acceptance), **target number**, **stage** (first / second), **requester**, **requested at**, and **notes**.
-- Rows are sorted oldest-first by request time (earlier requests at the top).
-- The search box matches **target number, requester, and notes**; you can also filter by **type** and **stage**.
-- "旧データ" (legacy) badge … requests submitted before the approval-request recording format was normalized. They can be processed just the same.
+- **承認グループ** (approval group) … the list of people who are allowed to approve. Only people on this list can approve or send back.
+- **代理** (stand-in) … a person appointed for a set period to approve while the usual approver is away.
+- **段階** (stage) … the order of approvals. A work order is split into two: first and second.
+- **差し戻し** (send back) … returning a document to the person who made it when there is a problem. The document goes back to draft.
 
-![Approvals list — the pending-approval inbox with type badges and stages](../../assets/screenshots/approval-list-01.png)
+## Before you start
 
-## How to approve or reject
+- To approve or send back, **you must be in the approval group for that stage**. If you are not, the buttons do not appear on the screen.
+- Being added to a group and setting up stand-ins is done in [approval group](/manual/en/masters/approval-group/user). It is not something you set up yourself, so please ask an administrator when you need it.
 
-1. Click a row to open the target document's detail screen (work order → work order detail, material purchase order → purchase order detail, purchase request → purchase request detail).
-2. In the **approval status** panel, press "第一承認" (first approval), "第二承認" (second approval), or "差し戻し" (reject). Rejecting requires a reason.
-3. Work orders use a two-stage flow: first approval → second approval. After second approval, production can start.
+## How to read the screen
 
-![Approval status panel — stepper with approve and reject buttons](../../assets/screenshots/approval-panel-01.png)
+When you open the app, the documents waiting for approval are listed.
 
-Only **members of the approval group** for that stage (or a **delegate** within their valid period) can approve or reject. If you are not a member, the buttons are not shown and a message explains why. Records made by a delegate are marked "（代理: original approver）". Groups and delegates are configured in the [Approval Group](/manual/en/masters/approval-group/user) master.
+![Approval management list](../../assets/screenshots/approval-list-01.png)
 
-## Approval detail screen
+- **種別** (document type) … a coloured badge shows which of 「指示書」 (work order), 「素材発注書」 (material purchase order), 「購買依頼」 (purchase request), or 「受注請書」 (order acceptance) it is.
+- **対象番号** (document number) … the number of that document.
+- **段階** (stage) … either 「**第一**」 (first) or 「**第二**」 (second). Everything except work orders is approved once.
+- **依頼者** (requester) … the person who asked for approval.
+- **依頼日時** (request date and time) … when it was asked for. **The oldest are at the top**, so the ones that have been waiting longest come first.
+- **備考** (notes) … any note written when the approval was requested.
+- Use the search box at the top to search by **document number, requester, or notes**. You can also narrow it down with 「**種別**」 (document type) and 「**段階**」 (stage).
+- Rows with a 「**旧データ**」 (older data) badge are requests made before the way of recording was changed. You can approve them just as before.
+- When the list is empty, it shows 「**承認待ちの依頼はありません**」 (There are no requests waiting for approval).
 
-Work order approvals can also be done on a dedicated approval detail screen (`/production/approvals/<work order number>`). It shows the same content as the work order detail, with the approval status panel at the top (used e.g. when opened from a notification link).
+## Approving
 
-## FAQ
+1. Click a row in the list. The screen for that document opens.
+2. For a work order, 「**承認状況**」 (approval status) is near the top of the screen and shows which stage it is at.
+3. If it is your turn to approve, the 「**第一承認**」 (First approval) or 「**第二承認**」 (Second approval) button appears. On documents other than work orders, it is simply 「**承認**」 (Approve).
+4. Check the content and press the button.
 
-**Q. The list is empty.** — There are no pending requests. Processed and rejected requests are not shown.
+![Approval status shown on the work order screen](../../assets/screenshots/approval-panel-01.png)
 
-**Q. I don't see the approve buttons.** — You are not a member of the approval group for the current stage, or you lack the approval permission. Ask your administrator.
+A work order goes through **first approval → second approval**, two stages. Once the second approval is done, the factory can start the work.
 
-Using this app requires the approval (approve) permission.
+> 💡 Only people in the approval group for that stage, and stand-ins within their period, can approve. If the button does not appear, the screen shows 「第一承認グループのメンバーのみ承認・差し戻しできます」 (Only members of the first approval group can approve or send back).
+
+## Sending back
+
+When there is a problem, you return the document to the person who made it.
+
+1. Press 「**差し戻し**」 (Send back).
+2. A small window called 「差し戻しの確認」 (confirm send back) appears.
+3. Write your reason in 「**差し戻し理由**」 (reason for sending back). This is required.
+4. Press 「**差し戻す**」 (Send back).
+
+![Confirm send back screen](../../assets/screenshots/approval-reject-01.png)
+
+Once you send it back, that document returns to 「**下書き**」 (draft), and the reason appears in red on the screen of the person who made it. After they fix it, they request approval again.
+
+## The screen just for approving
+
+For work orders there is also a screen used only for approving. It shows the same content as the work order screen, with 「承認状況」 (approval status) placed at the very top. This screen is used when you open it from a link in a notification, for example.
+
+![The screen just for approving](../../assets/screenshots/approval-detail-01.png)
+
+## The record of approvals
+
+When you approve or send back, an **approval record** stays under 「承認状況」 (approval status). It shows who, when, at which stage, whether they approved or sent it back, and any comment. Ones approved by a stand-in are marked 「（代理: 原承認者）」 (stand-in for the original approver).
+
+You need approval permission to use this app.
+
+## Questions and problems
+
+**Q. Nothing appears in the list.**
+A. There are no requests waiting for approval right now. Requests that have been dealt with or sent back do not appear in this list.
+
+**Q. The approval button does not appear.**
+A. You are not in the approval group for that stage. Please ask an administrator about being added to the approval group.
+
+**Q. Nothing happens when I click a row.**
+A. That row is of the type 「受注請書」 (order acceptance). There is no dedicated approval screen for this document yet, so it only appears in the list.
+
+**Q. I pressed the send-back button and saw 「差し戻し理由を入力してください」 (Please enter a reason for sending back).**
+A. The reason is still empty. A reason is required, so please write it and press 「差し戻す」 (Send back) again.
+
+**Q. A request that was here a moment ago has disappeared from the list.**
+A. Another person who can approve may have dealt with it first. Requests that have been dealt with disappear from this list automatically. You can still open the document itself from its own app.
+
+**Q. Approvals stop while I am away.**
+A. A stand-in can be set up for a set period. This is set in [approval group](/manual/en/masters/approval-group/user), so please ask an administrator.

@@ -1,54 +1,171 @@
 ---
 title: "Material Purchase Order — User Manual"
-description: "Operation code PU02. Manages material orders to suppliers through request → approval → order → receiving. PO numbers are PO-YYYYMM-NNNNN."
-screenshots: [purchase-order-list-01, purchase-order-detail-01]
+description: "An app for ordering material from a supplier. You order it after approval, and record it right up to the point where it arrives and goes into stock."
+screenshots: [purchase-order-list-01, purchase-order-new-01, purchase-order-detail-02, purchase-order-detail-01, purchase-order-complete-01, purchase-order-attachments-01]
 ---
-Operation code **PU02**. Manages material orders to suppliers through request → approval → order → receiving. PO numbers are **PO-YYYYMM-NNNNN**.
+This app is for making a **素材発注書** (material purchase order), which is how you order material from a supplier. The operation code is `PU02`.
 
-> This app is currently available **in the development (dev) environment only**. Screens and steps may change before the production release.
+> ⚠️ This app is still being prepared, so it may not appear on the live system yet. If you cannot find it, please ask the person in charge at your company.
 
-## What you can do here
+## What you can do with this app
 
-- Create material purchase orders (素材発注書) per supplier and place them through an approval flow. Creating, editing, and ordering require the purchase-order permission.
-- Once ordered, the line items are automatically reflected as **expected arrivals** (next receipt) on the [Inventory app's materials tab (PD04)](/manual/en/apps/material-inventory/user).
-- **Complete receiving** automatically creates a [material receipt (素材入荷, PU03)](/manual/en/apps/material-receipt/user) record per line item and posts the stock to the receiving plant's material inventory.
-- A purchase order can also be created by converting a [purchase request (購買依頼, PU01)](/manual/en/apps/purchase-request/user).
+- You can write which supplier, which material, how many pieces, and at what price.
+- You can place the order after your manager has given **承認** (approval).
+- Once you place the order, the material appears as "arriving soon" on its [stock screen](/manual/en/apps/material-inventory/user).
+- When the material arrives, you press 「入荷完了」 (Receiving complete) and it **goes into stock automatically**.
+- You can keep copies of order forms and delivery notes attached to the purchase order.
 
-![Material purchase order list with PO number, supplier, item count, total amount, status, and order date columns](../../assets/screenshots/purchase-order-list-01.png)
+## Words used on this page
 
-## Statuses and flow
+- **明細** (line item) … one line inside the purchase order. It says "which material, how many, at what price".
+- **仕入先** (supplier) … the company you buy the material from.
+- **入荷先拠点** (receiving site) … the site (plant or business location) that will receive the material.
+- **入荷予定日** (expected arrival date) … the date the material is expected to arrive.
+- **入荷** (arrival) … the material actually arriving.
+- **証憑** (supporting document) … papers you may want to look at later, such as a copy of the order form or the delivery note.
 
-- **下書き** (draft) — right after creation. The only state in which editing and cancelling are possible. The **Request approval** button starts the approval flow.
-- **承認依頼中** (approval requested) — only members of the first approval group (or delegates) can **Approve** or **Send back**. Sending back (reason required) returns the order to draft. The approval request also appears in [approval management (承認管理, PD03)](/manual/en/apps/approval/user).
-- **承認済** (approved) — the **Order** button moves it to ordered. Before ordering, cancellation (reason required) is still possible.
-- **発注済** (ordered) — line items are reflected in material inventory's expected arrivals (ATP). Each item shows its cumulative received quantity.
-- **入荷完了** (receiving complete) — the **Complete receiving** button registers material receipts for the entire remaining quantity and posts them to stock. The requester and creator are notified.
-- **キャンセル** (cancelled) — possible only before ordering (draft / approval requested / approved), with a reason.
+## Before you start
 
-![Material purchase order detail in the ordered state, showing the request → approval → order → receiving stepper, the Complete receiving button, and received quantities on the line items](../../assets/screenshots/purchase-order-detail-01.png)
+- The **material you want must be registered in the [material master](/manual/en/masters/material/user)**.
+- The **supplier must be registered in the [supplier master](/manual/en/masters/supplier/user)**. You cannot choose a company that is not registered.
+- You need purchasing permission to create, edit, and place orders. If the buttons do not appear, please ask the person in charge at your company.
 
-## How to create
+## The order in which a purchase order moves along
 
-There are two ways.
+A material purchase order moves along in this order. The coloured badge on the screen tells you where it is now.
 
-- **New** — from **New** in the list. Enter the **supplier** (required; shown as BP code + name), the order date, and notes, and add at least one line item (material × receiving plant × quantity/unit × unit price × expected arrival date). Amounts (quantity × unit price) and the total are computed server-side.
-- **Convert from a purchase request** — via **Convert to purchase order** on an approved purchase request. Line items are carried over with a unit price of 0 yen, so enter the prices on the edit screen while the order is still a draft. The notes field is auto-filled with "購買依頼 PRQ-… から作成" (created from purchase request PRQ-…).
+1. **下書き** (draft) … you have only created it. This is the only time you can change it.
+2. **承認依頼中** (waiting for approval) … you are waiting for your manager's answer.
+3. **承認済** (approved) … it was accepted. You can now order from the supplier.
+4. **発注済** (ordered) … you have ordered from the supplier. Now you wait for the material.
+5. **入荷完了** (receiving complete) … the material arrived and went into stock.
 
-After saving you are taken to the detail screen. Editing is possible only in draft.
+Before you place the order, you can still withdraw it and make it 「**キャンセル**」 (cancelled).
 
-## Evidence
+## How to read the screen
 
-After approval (approved / ordered / receiving complete), you can attach files such as order and delivery-note copies on the detail screen's **Evidence** tab. Attachment is not possible before approval.
+When you open the app, you see a list of the material purchase orders made so far.
 
-## List & search / detail screen
+![Material purchase order list](../../assets/screenshots/purchase-order-list-01.png)
 
-- List columns: PO number / supplier / item count / total amount / status / order date. Filter with the search box (PO number, supplier) and status.
-- The detail screen shows a request → approval → order → receiving stepper, the approval trail (delegate approvals marked with the original approver), the transition history, and tabs (items / evidence / overview / history). Orders created from a purchase request also show a link back to the source request.
+- **発注番号** (order number) … a number starting with `PO-`. The system adds it for you.
+- **状態** (status) … a coloured badge shows the current situation. Grey is 「下書き」 (draft), yellow is 「承認依頼中」 (waiting for approval), blue is 「承認済」 (approved), purple is 「発注済」 (ordered), green is 「入荷完了」 (receiving complete), and red is 「キャンセル」 (cancelled).
+- Type an order number or a supplier name into the search box at the top to narrow down the list.
+- Click a row to open the detail screen for that purchase order.
 
-## FAQ
+## Creating a material purchase order
 
-**Can I receive in installments (partial receiving)?** — "Complete receiving" receives the entire remaining quantity at once. Register partial arrivals directly in [material receipt (PU03)](/manual/en/apps/material-receipt/user).
+There are two ways to make one.
 
-**I forgot to set the order date** — If the order date is empty when you press Order, the day the order is executed becomes the order date automatically.
+### Way 1: create it from scratch
 
-**I want to cancel an ordered PO** — Ordered and receiving-complete POs cannot be cancelled. Cancellation is possible only before ordering.
+1. Press 「**新規作成**」 (New) at the top right of the list screen.
+2. Choose the 「**仕入先**」 (supplier). You must choose one.
+3. Enter the 「**発注日**」 (order date). You may leave it blank.
+4. Click the 「**素材**」 (material) box on the line item, search by material code or name, and choose one.
+5. Choose the site that will receive it in 「**入荷先拠点**」 (receiving site).
+6. Enter the 「**数量**」 (quantity) and the 「**単位**」 (unit).
+7. Enter the price for one piece in 「**単価**」 (unit price).
+8. Enter the date the material should arrive in 「**入荷予定日**」 (expected arrival date). You may leave it blank.
+9. To add another material, press 「**明細を追加**」 (Add line item) and repeat steps 4 to 8.
+10. Finally, press 「**保存**」 (Save).
+
+![New material purchase order form](../../assets/screenshots/purchase-order-new-01.png)
+
+The amount (quantity × unit price) and the total are shown automatically as you type. You do not need a calculator.
+
+> 💡 If you leave 「発注日」 (order date) blank, the day you press 「発注」 (Order) later becomes the order date automatically.
+
+### Way 2: convert a purchase request
+
+If a [purchase request](/manual/en/apps/purchase-request/user) has been approved, you can create the purchase order from 「**発注書へ変換**」 (Convert to purchase order) on its screen. The material, quantity, and site are carried over, but **the unit prices stay at 0 yen**. Please enter the prices from 「編集」 (Edit) while it is still a draft.
+
+## Asking for approval
+
+1. Open the purchase order screen.
+2. Press 「**承認依頼**」 (Request approval) in the 「**承認・発注状況**」 (approval and ordering status) box.
+
+![Draft material purchase order](../../assets/screenshots/purchase-order-detail-02.png)
+
+The status changes to 「**承認依頼中**」 (waiting for approval), and the request reaches the person who approves it. The same request also appears on the [approval management](/manual/en/apps/approval/user) screen.
+
+## Approving or sending back (for the approver)
+
+Only the person who approves sees these buttons.
+
+- If the content is fine, press 「**承認**」 (Approve). The status becomes 「承認済」 (approved).
+- If something needs fixing, press 「**差し戻し**」 (Send back), write your reason in 「**差し戻し理由**」 (reason for sending back), and press 「**差し戻す**」 (Send back).
+
+A purchase order that was sent back returns to 「**下書き**」 (draft). The person who made it can fix the content and press 「承認依頼」 (Request approval) again.
+
+## Ordering from the supplier
+
+1. Open a purchase order with the status 「承認済」 (approved).
+2. Press 「**発注**」 (Order).
+3. A small window called 「発注の確認」 (confirm order) appears, so press 「**発注する**」 (Place order).
+
+The status becomes 「**発注済**」 (ordered). From this moment, the material you ordered is shown as "arriving soon" on the [stock screen](/manual/en/apps/material-inventory/user).
+
+## Recording that the material has arrived
+
+When everything you ordered has arrived, use this to put it into stock.
+
+1. Open a purchase order with the status 「発注済」 (ordered).
+2. Press 「**入荷完了**」 (Receiving complete).
+
+![Ordered material purchase order](../../assets/screenshots/purchase-order-detail-01.png)
+
+3. A small window called 「入荷完了の確認」 (confirm receiving complete) appears.
+4. Check the content and press 「**入荷完了にする**」 (Mark as receiving complete).
+
+![Confirm receiving complete screen](../../assets/screenshots/purchase-order-complete-01.png)
+
+All the quantity that had not arrived yet is treated as arrived, and it is added to the material stock at the receiving site. At the same time, a [material receipt](/manual/en/apps/material-receipt/user) record is created automatically, and the person who requested it and the person who made it are notified.
+
+> ⚠️ Please do not use this when only part of the order has arrived. Register just the part that arrived in [material receipt](/manual/en/apps/material-receipt/user). 「入荷完了」 (Receiving complete) handles all the remaining quantity at once.
+
+From 「発注済」 (ordered) onwards, each line item shows how many pieces have arrived so far, like 「**入荷済 20**」 (20 received).
+
+## Keeping documents attached
+
+You can keep copies of order forms and delivery notes together with the purchase order.
+
+1. Open the 「**証憑**」 (supporting documents) tab on the purchase order screen.
+2. Press 「**アップロード**」 (Upload) and choose a file.
+3. A screen called 「証憑のアップロード」 (upload supporting document) appears. If you like, write something such as "copy of order form" in 「**ラベル（任意）**」 (label, optional).
+4. Press 「**アップロード**」 (Upload).
+
+![Supporting documents tab](../../assets/screenshots/purchase-order-attachments-01.png)
+
+You cannot attach files before approval. If you open the tab before approval, the screen shows 「**証憑の添付は承認後（承認済・発注済・入荷完了）に可能になります**」 (Supporting documents can be attached after approval — approved, ordered, or receiving complete).
+
+## Checking the content
+
+The purchase order screen has four tabs.
+
+- **明細** (line items) … the list of material, quantity, unit price, and amount. The total is shown at the bottom.
+- **証憑** (supporting documents) … the list of files you attached.
+- **概要** (overview) … the notes.
+- **履歴** (history) … a record of who changed what and when.
+
+A purchase order made from a purchase request shows a link to the original request number near the top, as 「**変換元（購買依頼）**」 (converted from — purchase request).
+
+## Questions and problems
+
+**Q. The 「編集」 (Edit) button does not appear.**
+A. You can only change a purchase order while it is 「下書き」 (draft). Once approval has been requested, you cannot change it. If you try anyway, the screen shows 「**作成中の素材発注書のみ編集できます**」 (Only material purchase orders being created can be edited). If you need to change it, ask the approver to send it back to you.
+
+**Q. The 「承認」 (Approve) and 「差し戻し」 (Send back) buttons do not appear.**
+A. Only people in the first approval group (or a stand-in for them) can approve. Instead of the buttons, the screen shows 「**第一承認グループのメンバーのみ承認・差し戻しできます**」 (Only members of the first approval group can approve or send back).
+
+**Q. I see 「仕入先を選択してください」 (Please select a supplier) and cannot save.**
+A. The supplier is still empty. Click the 「仕入先」 (supplier) box and choose a company from the list.
+
+**Q. I want to cancel an order that has already been placed.**
+A. 「発注済」 (ordered) and 「入荷完了」 (receiving complete) cannot be cancelled. You can only cancel before the order is placed (draft, waiting for approval, or approved). If you try anyway, the screen shows 「**発注前の素材発注書のみキャンセルできます**」 (Only material purchase orders before ordering can be cancelled).
+
+**Q. The material arrived in several deliveries.**
+A. Register just the part that arrived in [material receipt](/manual/en/apps/material-receipt/user). When everything has arrived, press 「入荷完了」 (Receiving complete) and the rest is handled together.
+
+**Q. I see 「未入荷の明細がありません」 (There are no line items still to arrive).**
+A. All the quantity is already treated as arrived. There is nothing left to do on this purchase order.

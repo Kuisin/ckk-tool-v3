@@ -76,7 +76,13 @@ export function ResourceActions({
     extra.length > 0 ? (
       <Menu position="bottom-end" shadow="sm" withinPortal>
         <Menu.Target>
-          <Button px="xs" size={isMobile ? "sm" : undefined} variant="default">
+          {/* アイコンのみのボタンには aria-label が必須（design.md §18.2）。 */}
+          <Button
+            aria-label="操作メニュー"
+            px="xs"
+            size={isMobile ? "sm" : undefined}
+            variant="default"
+          >
             <IconDotsVertical size={16} />
           </Button>
         </Menu.Target>

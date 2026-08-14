@@ -1,59 +1,126 @@
 ---
-title: "User Management — User Manual"
-description: "Operation code SY01. A read-only directory of every user in the system, showing each user's role assignments, assigned plants, and effective permissions."
-screenshots: [settings-users-list-01, settings-users-detail-01]
+title: "User Management — Operation Manual"
+description: "An app for seeing the list of people who use the system, and checking what each person is allowed to do."
+screenshots: [settings-users-list-01, settings-users-detail-01, settings-users-roles-01, settings-users-plants-01, settings-users-permissions-01]
 ---
-Operation code **SY01**. A **read-only** directory of every user registered in the system, showing each user's role assignments, assigned plants, and effective permissions.
+An app for seeing the list of people who use the system and checking **what each person is allowed to do**. The operation code is `SY01`.
 
-> This app is currently available **in the development (dev) environment only**. Screens and steps may change before the production release.
+This app is **for looking, not for changing**. You cannot add a person or change a name here (there is one exception — please see "Changing 所属拠点 (assigned sites)" below).
 
 ## What you can do with this app
 
-- Browse all users in a list with search and filters.
-- On each user's detail page, review role assignments (including history), assigned plants, and the user's **effective permissions** (permission code × action × scope).
+- You can see everyone registered in the system in one list.
+- You can narrow the list down by name or email address to find the person you are looking for.
+- When you choose one person, you can check the **roles** they have been given and the list of **things they can do**.
+- You can use it when you want to find out why a person cannot open a certain screen.
 
-This app requires the **system permission**. It is essentially read-only — users cannot be created, edited, or deleted from this screen (user records are managed by synchronization with the company identity directory). The one exception is **assigned plants**, which only administrators with the system admin action can edit.
+## Words used on this page
 
-## How to open
+- **ロール (role)** … the person's job role. Roles are registered as a set, such as 「営業」 (sales) or 「工場担当」 (plant staff), and each role decides which screens the person can use.
+- **権限 (permission)** … permission to do something, such as "you may look at this screen" or "you may save". It comes together with the role.
+- **拠点 (site)** … a factory or an office. Some people have a rule that they can only see the data for their own site.
+- **区分 (group)** … the kind of person. There are three: **社員** (employee) / **ゲスト** (guest) / **システム** (system — not a person, but work the system itself carries out).
 
-- Home (System) → **User Management**, or type `SY01` in the search box.
+## Before you start
 
-## List and search
+- You need **system administration permission** to open this app. If you cannot open it, the screen shows 「この操作の権限がありません（system:READ）」 (You do not have permission for this operation). Please ask your system administrator.
+- You cannot add people, delete people, or change their names in this app. People are managed by the company's shared login system.
 
-The list shows the following columns.
+## How to open it
 
-- **Username** … the login ID (monospaced).
-- **Display name** … the name shown on screens.
-- **Email** … the registered email address ("—" if none).
-- **Group** … a badge: **System** / **Employee** / **Guest**.
-- **Roles** … badges for the assigned roles (multiple allowed).
-- **Status** … **Active** / **Inactive**.
-- **Last login** … the last login timestamp ("—" if the user has never logged in).
+Press **ユーザー管理** (User Management) inside 「システム」 (System) on the home screen. Or type `SY01` into the search box at the top of the screen.
 
-The search box matches username, display name, email, and role names. Narrow the list with the **Group** and **Status** selects, and clear everything with **Reset**. Click a row to open the detail page.
+## How to read the screen
 
-![User Management list](../../assets/screenshots/settings-users-list-01.png)
+When you open the app, the list of registered people is shown.
 
-## User detail
+![User Management list screen](../../assets/screenshots/settings-users-list-01.png)
 
-The detail page consists of a summary and three cards.
+- **ユーザー名** (Username) … the ID used to log in.
+- **表示名** (Display name) … the name shown on the screen.
+- **メール** (Email) … the registered email address. When there is none, 「—」 is shown.
+- **区分** (Group) … one of **システム** (system) / **社員** (employee) / **ゲスト** (guest).
+- **ロール** (Roles) … the roles the person has been given. There may be more than one.
+- **状態** (Status) … people who can log in now are 「**有効**」 (active); people who have been stopped are 「**無効**」 (inactive).
+- **最終ログイン** (Last login) … the date and time of the last login. For someone who has never logged in, 「—」 is shown.
 
-- **Summary** … username, group, email, **login method** (**password + SSO** or **SSO only**), last login, and employee ID.
-- **Role assignments** … the assignment history: role name, rolename (internal name), status, assigned date, and deactivation date. Past (deactivated) assignments remain visible.
-- **Assigned plants** … the plants targeted by PLANT / REGION scoped permissions. Normally shown as badges only; administrators with the system admin action see a plant picker and a Save button and can edit the assignment.
-- **Effective permissions** … the permissions granted to this user via active roles. For each permission code (e.g. `quote`, `master`, `system`) the action (READ / CREATE / UPDATE / ADMIN, etc.) and scope are shown.
+When you type into the search box at the top, 「**ユーザー名 / 表示名 / メール / ロール...**」 (Username / Display name / Email / Role...), only the people whose details contain those characters stay in the list. You can also narrow the list with 「**区分**」 and 「**状態**」. To clear all of the conditions, press 「**リセット**」 (Reset).
 
-![User detail (role assignments, assigned plants, effective permissions)](../../assets/screenshots/settings-users-detail-01.png)
+Click a row to open that person's detail screen.
 
-## Reading effective permissions
+## Checking one person
 
-- Permissions belong to roles, and a user can hold multiple roles.
-- The same permission and action may appear on multiple rows (when granted by more than one role). What the user can actually do is the **union** of all displayed rows.
-- The scope is the range the operation covers (ALL = everything, PLANT = assigned plants, REGION = assigned region, OWN = the user's own data, etc.). When a PLANT / REGION scope is limited to specific plants, the plant codes are shown next to the scope.
+Click a row in the list to open that person's screen. The basic information is lined up near the top.
 
-## FAQ
+![User detail screen](../../assets/screenshots/settings-users-detail-01.png)
 
-- **I want to add or edit a user** … Not possible from this screen. Contact your system administrator.
-- **I want to change roles** … This screen is view-only. Role assignment changes are made by system administrators.
-- **A user's permissions look wrong** … Check the "Effective permissions" and "Assigned plants" cards on the detail page. PLANT / REGION scoped permissions cover nothing when no plants are assigned.
-- To see who changed what and when, use the [Activity Log](/manual/en/system/activity-log/user). For app visibility ON/OFF, see [App Management](/manual/en/system/app-management/user).
+- **ユーザー名** / **区分** / **メール** / **最終ログイン** / **社員 ID** (Employee ID) … the same as in the list.
+- **ログイン方式** (Login method) … 「**パスワード + SSO**」 (Password + SSO) means the person can sign in either with a password for this system or with the company's shared login. 「**SSO のみ**」 (SSO only) means the person signs in with the company's shared login only.
+
+Below that, three tables are lined up.
+
+### ロール割当 (Role assignments) — which roles the person has
+
+![Role assignment table](../../assets/screenshots/settings-users-roles-01.png)
+
+- 「**ロール**」 shows the name of the role, and 「**状態**」 shows whether it is in effect now.
+- Roles that were taken away in the past stay on record. A row with a date in 「**解除日時**」 (Removed on) is not in effect now.
+- When there is nothing, 「**ロールが割り当てられていません**」 (No roles are assigned) is shown. This person cannot do anything yet.
+
+### 所属拠点 (Assigned sites) — which site the person belongs to
+
+![Assigned sites card](../../assets/screenshots/settings-users-plants-01.png)
+
+- These are the factories and offices the person belongs to.
+- If a permission has the rule "can only see their own site" and this is empty, **the person can see no data at all**. When someone has been given a permission but still sees nothing, please check here.
+- When there is nothing, 「**所属拠点がありません**」 (No assigned sites) is shown.
+
+### 実効権限 (Effective permissions) — what the person can actually do
+
+![Effective permissions table](../../assets/screenshots/settings-users-permissions-01.png)
+
+This is the list of what the person can actually do right now. If the person has several roles, **everything from all of them put together is what that person can do**. The same row may appear twice, but that is not a problem.
+
+The table shows words in English. Here is how to read them.
+
+- 「**権限コード**」 (Permission code) … which app it is about (`quote` is 見積書 (quotes), `master` is マスタ (master data), `system` is system administration, and so on).
+- 「**アクション**」 (Action) … what the person may do. `READ` is look only, `CREATE` is make something new, `UPDATE` is change, `DELETE` is remove, and `ADMIN` is operations for administrators.
+- 「**スコープ**」 (Scope) … how far the permission reaches. `ALL` means the whole company, `PLANT` means their own site only, `REGION` means their own region only, and `OWN` means only the data they created themselves.
+
+When there is nothing, 「**権限がありません**」 (No permissions) is shown.
+
+## Changing 所属拠点 (assigned sites) — system administrators only
+
+This is the only item in this app that can be rewritten. The selection box and the 「**保存**」 (Save) button are shown only to people who have system administration permission.
+
+1. Open the detail screen of the person you want to change.
+2. Click the 「**所属拠点**」 field.
+3. Choose a site from the list. You can choose more than one.
+4. To take a site away, click it once more to deselect it.
+5. Press 「**保存**」.
+
+When 「**保存しました**」 (Saved) and 「**所属拠点を更新しました**」 (Assigned sites updated) are shown, you are finished.
+
+> ⚠️ When you take a site away, the person will see less data. Screens with the rule "only their own site" may become empty.
+
+> 💡 A site with 「（無効）」 (inactive) next to it may appear in the selection box. It is a site that is no longer in use, but it is still assigned to this person, so it is shown.
+
+## Questions and problems
+
+**Q. I want to add someone who has just joined, but there is no add button.**
+A. You cannot add people from this app. Information about people is brought in from the company's shared login system. Please ask your system administrator.
+
+**Q. I want to change someone's role.**
+A. On this screen you can only look; you cannot change anything. Please ask your system administrator.
+
+**Q. 「この操作の権限がありません（system:ADMIN）」 (You do not have permission for this operation) is shown and I cannot save the assigned sites.**
+A. Only system administrators can change assigned sites. Everyone else can only look. Please ask your system administrator.
+
+**Q. Someone was given a role, but they say they still cannot open the screen.**
+A. Open that person's detail screen and look for the matching row in 「**実効権限**」 (Effective permissions). If the row is there but the data is empty, please also check whether 「**所属拠点**」 is empty.
+
+**Q. The same permission code appears on two rows in 「実効権限」.**
+A. That is normal. It happens when the person has two roles and the same permission comes from both. What they can actually do is the two rows put together.
+
+**Q. I want to know who changed this person's assigned sites, and when.**
+A. You can check in the [Activity Log](/manual/en/system/activity-log/user). Every change is recorded.
