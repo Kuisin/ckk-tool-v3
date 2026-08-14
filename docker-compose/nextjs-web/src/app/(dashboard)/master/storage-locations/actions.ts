@@ -1,11 +1,11 @@
 "use server";
 
 /**
- * Server Actions — 保管場所マスタ（MS0B 拠点詳細「保管場所」タブ）。
+ * Server Actions — 保管場所マスタ（MS0E /master/storage-locations）。
  *
  * 保管場所（storage_locations = 拠点内の倉庫・置場）と棚（storage_shelves）を
- * 拠点詳細からモーダルで CRUD する。在庫（product/material_inventory）が参照
- * する場所・棚は削除できない（FK RESTRICT → prismaErrorMessage）。
+ * 保管場所アプリからモーダルで CRUD する。在庫（product/material_inventory）が
+ * 参照する場所・棚は削除できない（FK RESTRICT → prismaErrorMessage）。
  */
 
 import { revalidatePath } from "next/cache";
@@ -50,8 +50,8 @@ const shelfInput = z.object({
 export type StorageLocationInput = z.infer<typeof locationInput>;
 export type StorageShelfInput = z.infer<typeof shelfInput>;
 
-function revalidate(plantId: number) {
-  revalidatePath(`/master/plants/${plantId}`);
+function revalidate() {
+  revalidatePath("/master/storage-locations");
   revalidatePath("/production/inventory");
 }
 
@@ -91,7 +91,7 @@ export async function createStorageLocation(
       recordId: String(created.id),
       after: { plantId, code: v.code.trim(), nameJa: v.nameJa },
     });
-    revalidate(plantId);
+    revalidate();
     return actionOk({ id: created.id });
   } catch (e) {
     return actionError(prismaErrorMessage(e, "保管場所の作成に失敗しました"));
@@ -129,7 +129,7 @@ export async function updateStorageLocation(
       before: { code: before.code, isActive: before.isActive },
       after: { code: v.code.trim(), nameJa: v.nameJa, isActive: v.isActive },
     });
-    revalidate(before.plantId);
+    revalidate();
     return actionOk({ id });
   } catch (e) {
     return actionError(prismaErrorMessage(e, "保管場所の更新に失敗しました"));
@@ -165,7 +165,7 @@ export async function deleteStorageLocation(id: number): Promise<ActionResult> {
       recordId: String(id),
       before: { code: before.code, shelves: before.shelves.length },
     });
-    revalidate(before.plantId);
+    revalidate();
     return actionOk();
   } catch (e) {
     return actionError(prismaErrorMessage(e, "保管場所の削除に失敗しました"));
@@ -214,7 +214,7 @@ export async function placeStorageLocation(input: {
       where: { id: v.id },
       data: { floorMapId: v.floorMapId, mapX: v.mapX, mapY: v.mapY },
     });
-    revalidate(location.plantId);
+    revalidate();
     return actionOk();
   } catch (e) {
     return actionError(prismaErrorMessage(e, "配置に失敗しました"));
@@ -237,7 +237,7 @@ export async function unplaceStorageLocation(
       where: { id },
       data: { floorMapId: null, mapX: null, mapY: null },
     });
-    revalidate(location.plantId);
+    revalidate();
     return actionOk();
   } catch (e) {
     return actionError(prismaErrorMessage(e, "ピン解除に失敗しました"));
@@ -279,7 +279,7 @@ export async function createStorageShelf(
       recordId: String(created.id),
       after: { locationId, code: v.code.trim() },
     });
-    revalidate(location.plantId);
+    revalidate();
     return actionOk({ id: created.id });
   } catch (e) {
     return actionError(prismaErrorMessage(e, "棚の作成に失敗しました"));
@@ -319,7 +319,7 @@ export async function updateStorageShelf(
       before: { code: before.code, isActive: before.isActive },
       after: { code: v.code.trim(), isActive: v.isActive },
     });
-    revalidate(before.location.plantId);
+    revalidate();
     return actionOk({ id });
   } catch (e) {
     return actionError(prismaErrorMessage(e, "棚の更新に失敗しました"));
@@ -352,7 +352,7 @@ export async function deleteStorageShelf(id: number): Promise<ActionResult> {
       recordId: String(id),
       before: { code: before.code },
     });
-    revalidate(before.location.plantId);
+    revalidate();
     return actionOk();
   } catch (e) {
     return actionError(prismaErrorMessage(e, "棚の削除に失敗しました"));

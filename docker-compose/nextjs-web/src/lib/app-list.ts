@@ -326,6 +326,16 @@ export const appList: AppEntry[] = [
     category: "マスタ",
     requiredPermission: "master",
   },
+  {
+    // 保管場所（拠点内の倉庫・置場 + 棚。フロアマップへのピン配置も行う）
+    key: "master-storage-locations",
+    label: "保管場所",
+    operationCode: "MS0E",
+    href: "/master/storage-locations",
+    icon: "IconPackages",
+    category: "マスタ",
+    requiredPermission: "master",
+  },
 
   // ─── ドキュメント ──────────────────────────────────────────────────────────
   {

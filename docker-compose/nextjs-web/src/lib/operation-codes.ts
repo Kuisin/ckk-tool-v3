@@ -198,6 +198,17 @@ export const OPERATION_CODES: OperationCodeEntry[] = [
     mode: "0",
     index: "D",
   },
+  // 保管場所は単一管理画面（一覧 + 拠点選択で管理パネル）— list コードのみ
+  {
+    code: "MS0E",
+    label: "保管場所",
+    href: "/master/storage-locations",
+    category: "マスタ",
+    kind: "list",
+    categoryCode: "MS",
+    mode: "0",
+    index: "E",
+  },
 
   // ─── ドキュメント (DC) ───────────────────────────────────────────────────
   // マニュアル（/docs）— 単一画面, list コードのみ（旧 SY03）
