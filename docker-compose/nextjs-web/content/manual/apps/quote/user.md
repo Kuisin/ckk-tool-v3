@@ -1,7 +1,7 @@
 ---
 title: "見積書 — 操作マニュアル"
 description: "操作コード SA02。顧客へ提示する見積書を作成・発行します。単価は価格表から自動解決されます。"
-screenshots: []
+screenshots: [quote-list-01]
 ---
 操作コード **SA02**。[顧客](/manual/ja/masters/customer/user)へ提示する見積書を作成・発行します。単価は価格表から自動解決されます。
 
@@ -33,3 +33,5 @@ screenshots: []
 ## 一覧・検索
 
 - 見積番号（QOT-YYYYMM-NNNNN）・顧客・有効期限・状態で絞り込めます。
+
+![見積書一覧](../../assets/screenshots/quote-list-01.png)
