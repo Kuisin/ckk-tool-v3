@@ -55,6 +55,7 @@ const SEED_FILES_PRE = [
 const SEED_FILES_POST = [
   "sql/manufacturing-demo-seed.sql",
   "sql/audit-demo-seed.sql",
+  "sql/sales-demo-seed.sql",
 ];
 
 const args = process.argv.slice(2);
