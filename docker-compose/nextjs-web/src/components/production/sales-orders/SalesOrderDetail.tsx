@@ -30,6 +30,7 @@ import {
   IconClipboardList,
   IconLock,
   IconPackageImport,
+  IconTruck,
   IconX,
 } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
@@ -54,7 +55,11 @@ import {
   SummaryGrid,
 } from "@/components/ui/shells";
 import { useTabParam } from "@/hooks/useUrlState";
-import { ORDER_TYPE_LABEL, WORK_ORDER_TYPE_LABEL } from "@/lib/enum-labels";
+import {
+  ORDER_TYPE_LABEL,
+  SHIPPING_TYPE_LABEL,
+  WORK_ORDER_TYPE_LABEL,
+} from "@/lib/enum-labels";
 import { formatDate, formatDateTime } from "@/lib/format";
 // type-only import — lib/inventory は server-only（型はバンドルされない）。
 import type { StockCheckResult } from "@/lib/inventory";
@@ -303,6 +308,14 @@ export function SalesOrderDetail({
             )
           }
         />
+        <FieldValue
+          label="出荷済み"
+          value={
+            <Text className="tabular-nums" size="sm" span>
+              {order.shippedQuantity} / {order.quantity} 本
+            </Text>
+          }
+        />
       </SummaryGrid>
 
       <Tabs onChange={setTab} value={tab}>
@@ -310,6 +323,9 @@ export function SalesOrderDetail({
           <Tabs.Tab value="overview">概要</Tabs.Tab>
           <Tabs.Tab value="work-orders">
             指示書（{order.workOrders.length}）
+          </Tabs.Tab>
+          <Tabs.Tab value="shipping">
+            出荷（{order.shippingOrders.length}）
           </Tabs.Tab>
           <Tabs.Tab value="history">履歴</Tabs.Tab>
         </Tabs.List>
@@ -384,6 +400,59 @@ export function SalesOrderDetail({
                       <Table.Td>
                         <StatusBadge entity="WorkOrder" status={wo.status} />
                       </Table.Td>
+                    </Table.Tr>
+                  ))}
+                </Table.Tbody>
+              </Table>
+            </Table.ScrollContainer>
+          )}
+        </Tabs.Panel>
+
+        <Tabs.Panel pt="md" value="shipping">
+          {order.shippingOrders.length === 0 ? (
+            <EmptyState
+              icon={<IconTruck size={24} />}
+              message="この注文請書の出荷書はまだありません"
+            />
+          ) : (
+            <Table.ScrollContainer minWidth={640}>
+              <Table highlightOnHover>
+                <Table.Thead>
+                  <Table.Tr>
+                    <Table.Th>出荷書番号</Table.Th>
+                    <Table.Th>種別</Table.Th>
+                    <Table.Th ta="right">数量</Table.Th>
+                    <Table.Th>状態</Table.Th>
+                    <Table.Th>出荷日</Table.Th>
+                  </Table.Tr>
+                </Table.Thead>
+                <Table.Tbody>
+                  {order.shippingOrders.map((s) => (
+                    <Table.Tr
+                      key={s.number}
+                      onClick={() =>
+                        router.push(`/shipping/shipping-orders/${s.number}`)
+                      }
+                      style={{ cursor: "pointer" }}
+                    >
+                      <Table.Td>
+                        <DocNumber>{s.number}</DocNumber>
+                      </Table.Td>
+                      <Table.Td>
+                        <Badge
+                          color={s.type === "DISPATCH" ? "blue" : "gray"}
+                          variant="light"
+                        >
+                          {SHIPPING_TYPE_LABEL[s.type] ?? s.type}
+                        </Badge>
+                      </Table.Td>
+                      <Table.Td className="tabular-nums" ta="right">
+                        {s.quantity}
+                      </Table.Td>
+                      <Table.Td>
+                        <StatusBadge entity="ShippingOrder" status={s.status} />
+                      </Table.Td>
+                      <Table.Td>{formatDate(s.shippedAt)}</Table.Td>
                     </Table.Tr>
                   ))}
                 </Table.Tbody>

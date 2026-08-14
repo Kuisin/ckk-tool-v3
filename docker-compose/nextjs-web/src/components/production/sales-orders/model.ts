@@ -63,8 +63,24 @@ export interface SalesOrder {
   reservedStockQuantity: number;
   notes: string | null;
   workOrders: SalesOrderWorkOrderRef[];
+  /** 出荷済み数量 = SHIPPED な発送出荷書の明細数量合計。 */
+  shippedQuantity: number;
+  shippingOrders: SalesOrderShippingRef[];
   createdAt: string;
   updatedAt: string;
+}
+
+/** 注文請書配下の出荷書（出荷タブ・進捗表示用）。 */
+export interface SalesOrderShippingRef {
+  /** SHP-YYYYMM-NNNNN（URL id と同一）。 */
+  number: string;
+  /** SHIPPING_TYPE（DISPATCH / STOCK_STORAGE）。 */
+  type: string;
+  /** SHIPPING_STATUS。 */
+  status: string;
+  /** 明細数量合計。 */
+  quantity: number;
+  shippedAt: string | null;
 }
 
 /** 編集可能か — 下書きかつロックされていない注文請書のみ。 */

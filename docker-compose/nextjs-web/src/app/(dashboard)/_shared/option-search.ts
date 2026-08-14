@@ -313,7 +313,10 @@ export async function searchSalesOrderOptions(
   const q = query.trim();
   const rows = await prisma.salesOrder.findMany({
     where: {
-      status: { in: ["DRAFT", "CONFIRMED", "IN_PRODUCTION"] },
+      // PARTIAL_SHIPPED を含める — 一部出荷済みの注文請書へ追加出荷できる
+      status: {
+        in: ["DRAFT", "CONFIRMED", "IN_PRODUCTION", "PARTIAL_SHIPPED"],
+      },
       ...(q
         ? {
             OR: [
