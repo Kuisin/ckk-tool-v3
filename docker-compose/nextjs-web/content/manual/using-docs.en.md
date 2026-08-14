@@ -9,7 +9,7 @@ Operation code **DC01**. This page explains how to use the Manuals app itself. I
 
 You can read the user manuals for every app in the system without leaving the system. Manuals are available in three languages: **日本語 (Japanese), English, and 中文 (Chinese)**.
 
-- Use the left sidebar to open pages, grouped into **App Guides** (how to operate each app) and **Master Data Guides** (registering and managing master data).
+- Use the left sidebar to open pages, grouped into **App Guides** (how to operate each app), **Master Data Guides** (registering and managing master data), and **System Administration** (settings and management for system administrators).
 - If you are new to the system, start with the [Start Manual](/manual/en/start).
 
 ## How to open

@@ -611,4 +611,123 @@ export const shots: Shot[] = [
       await page.getByText("製品種別").first().waitFor();
     },
   },
+  // ── マスタ: 作業場所（MS0D）────────────────────────────────────────────────
+  {
+    id: "master-work-location-01",
+    docPage: "masters/work-location/user",
+    path: "/master/work-locations",
+    steps: async (page) => {
+      await page.getByText("切削エリア").first().waitFor();
+    },
+  },
+  // ── マスタ: 保管場所（MS0E）────────────────────────────────────────────────
+  {
+    id: "master-storage-location-01",
+    docPage: "masters/storage-location/user",
+    path: "/master/storage-locations",
+    steps: async (page) => {
+      await page.getByText("資材倉庫A").first().waitFor();
+    },
+  },
+  {
+    id: "master-storage-location-manage-01",
+    docPage: "masters/storage-location/user",
+    path: "/master/storage-locations",
+    steps: async (page) => {
+      await page.getByText("本社工場").first().click();
+      await page.getByText("保管場所を追加").first().waitFor();
+    },
+  },
+  // ── システム: ユーザー管理（SY01, 管理者）──────────────────────────────────
+  {
+    id: "settings-users-list-01",
+    docPage: "system/user-management/user",
+    path: "/settings/users?q=dev_",
+    user: "admin",
+    steps: async (page) => {
+      await page.getByText("dev_").first().waitFor();
+    },
+  },
+  {
+    id: "settings-users-detail-01",
+    docPage: "system/user-management/user",
+    path: "/settings/users?q=dev_",
+    user: "admin",
+    steps: async (page) => {
+      await page.getByText("dev_").first().click();
+      await page.getByText("実効権限").first().waitFor();
+    },
+  },
+  // ── システム: アプリ管理（SY05, 管理者）────────────────────────────────────
+  {
+    id: "settings-apps-01",
+    docPage: "system/app-management/user",
+    path: "/settings/apps",
+    user: "admin",
+    steps: async (page) => {
+      await page.getByText("試算").first().waitFor();
+    },
+  },
+  // ── システム: ファイル管理（SY06, 管理者）──────────────────────────────────
+  {
+    id: "settings-files-grants-01",
+    docPage: "system/file-management/user",
+    path: "/settings/files",
+    user: "admin",
+    clip: ".mantine-Modal-content",
+    steps: async (page) => {
+      await page.getByRole("button", { name: /フォルダ権限/ }).click();
+      await page.getByText("フォルダ権限").first().waitFor();
+    },
+  },
+  // ── システム: 操作履歴（SY07, 管理者）──────────────────────────────────────
+  {
+    id: "settings-activity-01",
+    docPage: "system/activity-log/user",
+    path: "/settings/activity",
+    user: "admin",
+    steps: async (page) => {
+      await page.getByText("操作履歴").first().waitFor();
+    },
+  },
+  {
+    id: "settings-activity-detail-01",
+    docPage: "system/activity-log/user",
+    path: "/settings/activity",
+    user: "admin",
+    steps: async (page) => {
+      await page.getByRole("row").nth(1).click();
+      await page.getByText("変更内容").first().waitFor();
+    },
+  },
+  // ── システム: QRカード管理（SY08, 管理者）──────────────────────────────────
+  {
+    id: "kiosk-cards-01",
+    docPage: "system/kiosk-card/user",
+    path: "/settings/kiosk-cards",
+    user: "admin",
+    steps: async (page) => {
+      await page.getByText("カード").first().waitFor();
+    },
+  },
+  // ── システム: 端末管理（SY09, 管理者）──────────────────────────────────────
+  {
+    id: "kiosk-devices-01",
+    docPage: "system/kiosk-device/user",
+    path: "/settings/kiosk-devices",
+    user: "admin",
+    steps: async (page) => {
+      await page.getByText("端末").first().waitFor();
+    },
+  },
+  // ── システム: キオスク設定（SY0A, 管理者）──────────────────────────────────
+  {
+    id: "kiosk-settings-01",
+    docPage: "system/kiosk-settings/user",
+    path: "/settings/kiosk",
+    user: "admin",
+    steps: async (page) => {
+      await page.getByText("認証ポリシー").first().waitFor();
+    },
+  },
 ];

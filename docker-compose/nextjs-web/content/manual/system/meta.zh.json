@@ -1,0 +1,12 @@
+{
+  "title": "系统管理手册",
+  "pages": [
+    "user-management",
+    "app-management",
+    "file-management",
+    "activity-log",
+    "kiosk-card",
+    "kiosk-device",
+    "kiosk-settings"
+  ]
+}
