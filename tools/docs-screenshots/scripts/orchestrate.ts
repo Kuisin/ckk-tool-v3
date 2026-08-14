@@ -64,6 +64,7 @@ const SEED_FILES_POST = [
   "sql/purchase-demo-seed.sql",
   "sql/production-demo-seed.sql",
   "sql/shipping-billing-demo-seed.sql",
+  "sql/system-demo-seed.sql",
 ];
 
 const args = process.argv.slice(2);

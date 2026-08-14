@@ -12,6 +12,8 @@
     "defect-type",
     "approval-group",
     "plant",
-    "material-numbering"
+    "material-numbering",
+    "work-location",
+    "storage-location"
   ]
 }
