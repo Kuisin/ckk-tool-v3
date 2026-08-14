@@ -19,13 +19,17 @@ import {
   TextInput,
 } from "@mantine/core";
 import { IconMapPin, IconPackages, IconSearch } from "@tabler/icons-react";
+import { useRouter } from "next/navigation";
+import { useState } from "react";
 import type { PlantFloorMapRef } from "@/components/master/plants/FloorMapsPanel";
 import { ActiveBadge } from "@/components/ui/ActiveBadge";
+import { CreateButton } from "@/components/ui/buttons";
 import { type Column, DataTable } from "@/components/ui/DataTable";
 import { DocNumber } from "@/components/ui/DocNumber";
 import { ListShell } from "@/components/ui/shells";
 import { useUrlPatcher, useUrlStringState } from "@/hooks/useUrlState";
 import { useIsMobile } from "@/hooks/useViewport";
+import { type FloorMapOption, LocationModal } from "./LocationModal";
 import {
   type StorageLocationRow,
   StorageLocationsPanel,
@@ -47,10 +51,16 @@ export interface StorageLocationListRow {
 
 export function StorageLocationsApp({
   plantOptions,
+  activePlantOptions,
+  allFloorMaps,
   rows,
   selected,
 }: {
   plantOptions: { value: string; label: string }[];
+  /** 有効な拠点のみ（新規作成モーダルの拠点 Select 用）。 */
+  activePlantOptions: { value: string; label: string }[];
+  /** 全拠点の有効なフロアマップ（新規作成モーダルのフロア Select 用）。 */
+  allFloorMaps: FloorMapOption[];
   rows: StorageLocationListRow[];
   /** `?plant=` で選択中の拠点の管理データ（未選択は null）。 */
   selected: {
@@ -60,9 +70,12 @@ export function StorageLocationsApp({
   } | null;
 }) {
   const isMobile = useIsMobile();
+  const router = useRouter();
   // 拠点選択はサーバー再取得が必要 → server モードで URL に反映
   const patch = useUrlPatcher("server");
   const [search, setSearch] = useUrlStringState("q");
+  // 一覧ビューからの新規作成（拠点はモーダル内で選ぶ）
+  const [createOpen, setCreateOpen] = useState(false);
 
   const setPlant = (v: string | null) => patch({ plant: v, page: null });
 
@@ -156,6 +169,13 @@ export function StorageLocationsApp({
 
   return (
     <ListShell
+      action={
+        selected ? undefined : (
+          <CreateButton onClick={() => setCreateOpen(true)}>
+            {isMobile ? "新規" : "新規作成"}
+          </CreateButton>
+        )
+      }
       breadcrumbs={["マスタ", "保管場所"]}
       filters={
         <Select
@@ -183,9 +203,11 @@ export function StorageLocationsApp({
     >
       {selected ? (
         <StorageLocationsPanel
+          allFloorMaps={allFloorMaps}
           floorMaps={selected.floorMaps}
           locations={selected.locations}
           plantId={selected.plantId}
+          plantOptions={activePlantOptions}
         />
       ) : (
         <DataTable
@@ -218,6 +240,18 @@ export function StorageLocationsApp({
             </Paper>
           )}
           urlState
+        />
+      )}
+      {createOpen && (
+        <LocationModal
+          floorMaps={allFloorMaps}
+          location={null}
+          onClose={() => setCreateOpen(false)}
+          onDone={() => {
+            setCreateOpen(false);
+            router.refresh();
+          }}
+          plantOptions={activePlantOptions}
         />
       )}
     </ListShell>

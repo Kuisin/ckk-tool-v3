@@ -4,11 +4,9 @@
  * FloorMapsPanel — 拠点フロアマップ管理（端末管理 SY09 と共用の図面）。
  *
  * フロアの追加・名称変更・図面アップロード・削除と、「重ね表示」（他フロアの
- * 図面を低不透明度で重ねた位置合わせ）を提供する。拠点マスタ (MS0B) の
- * 「フロアマップ」タブと、保管場所アプリ (MS0E) の両方から使う。
- *
- * `pins` を渡すと保管場所ピンのドラッグ配置 / 配置解除 UI が有効になる
- * （保管場所アプリ用）。省略時は図面管理のみ（拠点マスタ用）。
+ * 図面を低不透明度で重ねた位置合わせ）を提供する。フロア（図面）管理は
+ * 拠点マスタ (MS0B) の「フロアマップ」タブ専用 — 保管場所アプリ (MS0E) は
+ * 図面を変更せず、閲覧＋ピン配置のみの StorageLocationMapPanel を使う。
  */
 
 import {
@@ -23,21 +21,14 @@ import {
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import {
-  IconBuildingWarehouse,
   IconEdit,
   IconMap2,
-  IconMapPin,
   IconPhotoUp,
   IconPlus,
   IconTrash,
-  IconX,
 } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
 import { useRef, useState, useTransition } from "react";
-import {
-  placeStorageLocation,
-  unplaceStorageLocation,
-} from "@/app/(dashboard)/master/storage-locations/actions";
 import {
   createFloorMap,
   deleteFloorMap,
@@ -59,28 +50,12 @@ export interface PlantFloorMapRef {
   hasImage: boolean;
 }
 
-/** フロアマップに配置する保管場所ピン。 */
-export interface StorageMapPin {
-  id: number;
-  code: string;
-  nameJa: string;
-  isActive: boolean;
-  /** フロアマップ上のピン（%座標。null = 未配置）。 */
-  floorMapId: string | null;
-  mapX: number | null;
-  mapY: number | null;
-  shelfCount: number;
-}
-
 export function FloorMapsPanel({
   plantId,
   floorMaps,
-  pins,
 }: {
   plantId: number;
   floorMaps: PlantFloorMapRef[];
-  /** 保管場所ピン配置を有効にする場合のみ渡す（保管場所アプリ）。 */
-  pins?: StorageMapPin[];
 }) {
   const router = useRouter();
   const [activeMapId, setActiveMapId] = useState<string | null>(null);
@@ -94,12 +69,6 @@ export function FloorMapsPanel({
   const activeMap =
     floorMaps.find((m) => m.id === activeMapId) ?? floorMaps[0] ?? null;
 
-  const withPins = pins != null;
-  const placed =
-    activeMap && pins ? pins.filter((l) => l.floorMapId === activeMap.id) : [];
-  const unplaced = pins
-    ? pins.filter((l) => l.floorMapId == null && l.isActive)
-    : [];
   /** 重ね表示候補 = アクティブ以外の図面ありフロア。 */
   const overlayCandidates = floorMaps.filter(
     (m) => m.id !== activeMap?.id && m.hasImage,
@@ -189,9 +158,7 @@ export function FloorMapsPanel({
             フロアマップ
           </Text>
           <Text c="dimmed" size="xs">
-            {withPins
-              ? "端末管理 (SY09) と共用の図面。保管場所ピンをドラッグで配置"
-              : "端末管理 (SY09) と共用の拠点図面"}
+            端末管理 (SY09) と共用の拠点図面
           </Text>
         </Group>
         <Group gap="xs" wrap="wrap">
@@ -300,77 +267,15 @@ export function FloorMapsPanel({
 
           {activeMap && (
             <FloorMapCanvas
-              editable={withPins}
               imageAlt={`フロアマップ: ${activeMap.name}`}
               imageUrl={
                 activeMap.hasImage
                   ? `/api/kiosk/floor-maps/${activeMap.id}/image`
                   : null
               }
-              onMove={(id, x, y) =>
-                run(() =>
-                  placeStorageLocation({
-                    id: Number(id),
-                    floorMapId: activeMap.id,
-                    mapX: x,
-                    mapY: y,
-                  }),
-                )
-              }
               overlays={overlays}
-              pins={placed.map((l) => ({
-                id: String(l.id),
-                x: l.mapX ?? 50,
-                y: l.mapY ?? 50,
-                label: `${l.nameJa}（${l.code}）｜棚 ${l.shelfCount} 件`,
-                icon: (
-                  <IconBuildingWarehouse
-                    color="var(--mantine-color-violet-6)"
-                    fill="var(--mantine-color-violet-1)"
-                    size={26}
-                    stroke={1.8}
-                  />
-                ),
-              }))}
+              pins={[]}
             />
-          )}
-
-          {activeMap && withPins && (
-            <Group gap="xs" wrap="wrap">
-              {placed.map((l) => (
-                <Paper key={l.id} px="xs" py={2} radius="sm" withBorder>
-                  <Group gap={6} wrap="nowrap">
-                    <Text size="xs">{l.nameJa}</Text>
-                    <GhostButton
-                      onClick={() => run(() => unplaceStorageLocation(l.id))}
-                      px={4}
-                      size="compact-xs"
-                    >
-                      <IconX size={12} />
-                    </GhostButton>
-                  </Group>
-                </Paper>
-              ))}
-              {unplaced.map((l) => (
-                <GhostButton
-                  key={l.id}
-                  leftSection={<IconMapPin size={12} />}
-                  onClick={() =>
-                    run(() =>
-                      placeStorageLocation({
-                        id: l.id,
-                        floorMapId: activeMap.id,
-                        mapX: 50,
-                        mapY: 50,
-                      }),
-                    )
-                  }
-                  size="compact-xs"
-                >
-                  {l.nameJa} を配置
-                </GhostButton>
-              ))}
-            </Group>
           )}
         </Stack>
       )}

@@ -47,7 +47,18 @@ const shelfInput = z.object({
   isActive: z.boolean(),
 });
 
+/** 新規作成は拠点必須 + フロア（マップ）任意 — 一覧ビューからも作成できる。 */
+const locationCreateInput = locationInput.extend({
+  plantId: z.number().int().positive("拠点を選択してください"),
+  floorMapId: z
+    .string()
+    .uuid("フロアマップの指定が不正です")
+    .nullable()
+    .optional(),
+});
+
 export type StorageLocationInput = z.infer<typeof locationInput>;
+export type StorageLocationCreateInput = z.infer<typeof locationCreateInput>;
 export type StorageShelfInput = z.infer<typeof shelfInput>;
 
 function revalidate() {
@@ -58,30 +69,45 @@ function revalidate() {
 // ── 保管場所 ─────────────────────────────────────────────────────────────────
 
 export async function createStorageLocation(
-  plantId: number,
-  input: StorageLocationInput,
+  input: StorageLocationCreateInput,
 ): Promise<ActionResult<{ id: number }>> {
   const authz = await checkPermission("master", "CREATE");
   if (!authz.ok) return actionError(authz.error);
-  const parsed = locationInput.safeParse(input);
+  const parsed = locationCreateInput.safeParse(input);
   if (!parsed.success) {
     return actionError(parsed.error.issues[0]?.message ?? "入力が不正です");
   }
   const v = parsed.data;
   try {
     const plant = await prisma.plant.findUnique({
-      where: { id: plantId },
-      select: { id: true },
+      where: { id: v.plantId },
+      select: { id: true, isActive: true },
     });
     if (!plant) return actionError("対象の拠点が見つかりません");
+    if (!plant.isActive) return actionError("無効な拠点には追加できません");
+    // フロア指定時は、そのフロアマップが選択拠点のものであることを検証
+    if (v.floorMapId) {
+      const map = await prisma.kioskFloorMap.findUnique({
+        where: { id: v.floorMapId },
+        select: { plantId: true, isActive: true },
+      });
+      if (!map || !map.isActive || map.plantId !== v.plantId) {
+        return actionError("フロアマップが選択した拠点と一致しません");
+      }
+    }
     const created = await prisma.storageLocation.create({
       data: {
-        plantId,
+        plantId: v.plantId,
         code: v.code.trim(),
         name: localizedInput(v.nameJa, v.nameEn),
         sortOrder: v.sortOrder,
         isActive: v.isActive,
         notes: v.notes?.trim() || null,
+        // フロア指定時はマップ中央 (50%, 50%) に仮配置 — MS0E の
+        // フロアマップ配置パネルでドラッグして位置を調整する
+        floorMapId: v.floorMapId ?? null,
+        mapX: v.floorMapId ? 50 : null,
+        mapY: v.floorMapId ? 50 : null,
       },
       select: { id: true },
     });
@@ -89,7 +115,12 @@ export async function createStorageLocation(
       action: "CREATE",
       tableName: "storage_locations",
       recordId: String(created.id),
-      after: { plantId, code: v.code.trim(), nameJa: v.nameJa },
+      after: {
+        plantId: v.plantId,
+        code: v.code.trim(),
+        nameJa: v.nameJa,
+        floorMapId: v.floorMapId ?? null,
+      },
     });
     revalidate();
     return actionOk({ id: created.id });
