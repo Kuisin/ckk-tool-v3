@@ -106,7 +106,7 @@ export async function fetchWipRows(): Promise<WipRow[]> {
       include: {
         steps: true,
         stepLinks: true,
-        salesOrder: { include: { product: true } },
+        product: true,
       },
       orderBy: { workOrderNumber: "asc" },
     }),
@@ -151,11 +151,8 @@ export async function fetchWipRows(): Promise<WipRow[]> {
     for (const w of computeWipByStep(ctx)) {
       rows.push({
         stepId: w.stepId,
-        productName: productName(wo.salesOrder.product),
-        productCode: formatProductNumber(
-          wo.salesOrder.product.yearMonth,
-          wo.salesOrder.product.seq,
-        ),
+        productName: productName(wo.product),
+        productCode: formatProductNumber(wo.product.yearMonth, wo.product.seq),
         workOrderNumber: wo.workOrderNumber,
         stepName: stepNameOf.get(w.processStepId) ?? "—",
         wip: w.wip,

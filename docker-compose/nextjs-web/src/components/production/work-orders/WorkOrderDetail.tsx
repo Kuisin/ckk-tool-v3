@@ -12,7 +12,7 @@
  * 新しい版があれば警告）/ キャンセル（DRAFT・承認待ちのみ）。
  */
 
-import { Alert, Anchor, Stack, Tabs, Text } from "@mantine/core";
+import { Alert, Anchor, Badge, Stack, Tabs, Text } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import { IconAlertTriangle, IconCopy, IconX } from "@tabler/icons-react";
 import Link from "next/link";
@@ -151,16 +151,22 @@ export function WorkOrderDetail({
       <FieldValue
         label="注文請書番号"
         value={
-          <Anchor
-            component={Link}
-            href={`${SALES_ORDERS_PATH}/${wo.salesOrderNumber}`}
-            size="sm"
-          >
-            <DocNumber c="blue">{wo.salesOrderNumber}</DocNumber>
-          </Anchor>
+          wo.salesOrderNumber != null ? (
+            <Anchor
+              component={Link}
+              href={`${SALES_ORDERS_PATH}/${wo.salesOrderNumber}`}
+              size="sm"
+            >
+              <DocNumber c="blue">{wo.salesOrderNumber}</DocNumber>
+            </Anchor>
+          ) : (
+            <Badge color="teal" size="sm" variant="light">
+              在庫向け（注文請書なし）
+            </Badge>
+          )
         }
       />
-      <FieldValue label="顧客" value={wo.customerName} />
+      <FieldValue label="顧客" value={wo.customerName ?? "—"} />
       <FieldValue label="製品" value={wo.productName} />
       <FieldValue
         label="種別"
@@ -327,13 +333,19 @@ export function WorkOrderDetail({
               <Text c="dimmed" mb={4} size="xs">
                 注文請書
               </Text>
-              <Anchor
-                component={Link}
-                href={`${SALES_ORDERS_PATH}/${wo.salesOrderNumber}`}
-                size="sm"
-              >
-                <DocNumber c="blue">{wo.salesOrderNumber}</DocNumber>
-              </Anchor>
+              {wo.salesOrderNumber != null ? (
+                <Anchor
+                  component={Link}
+                  href={`${SALES_ORDERS_PATH}/${wo.salesOrderNumber}`}
+                  size="sm"
+                >
+                  <DocNumber c="blue">{wo.salesOrderNumber}</DocNumber>
+                </Anchor>
+              ) : (
+                <Text c="dimmed" size="sm">
+                  在庫向けの独立指示書（注文請書なし）
+                </Text>
+              )}
             </div>
             <div>
               <Text c="dimmed" mb={4} size="xs">
@@ -404,20 +416,25 @@ export function WorkOrderDetail({
             </Alert>
           )}
           <SearchSelect
-            initialOption={{
-              value: wo.salesOrderId,
-              label: `${wo.salesOrderNumber} ${wo.productName}（${wo.salesOrderQuantity}）`,
-            }}
+            initialOption={
+              wo.salesOrderId != null
+                ? {
+                    value: wo.salesOrderId,
+                    label: `${wo.salesOrderNumber} ${wo.productName}（${wo.salesOrderQuantity}）`,
+                  }
+                : null
+            }
             label="対象注文請書"
             onChange={setCopyTargetSoId}
             onSearch={searchSalesOrderOptions}
-            placeholder="注文請書番号・製品・顧客で検索"
+            placeholder="未選択 = 在庫向け（注文請書なし）としてコピー"
             storageKey="sales-order"
             value={copyTargetSoId}
-            withAsterisk
           />
           <Text c="dimmed" size="xs">
             工程・実施場所・検査表を引き継いだ下書きを作成します。
+            注文請書を選ばない場合は在庫向けの独立指示書としてコピーします
+            （在庫分の指示書は注文請書が必要です）。
           </Text>
         </Stack>
       </ModalShell>
