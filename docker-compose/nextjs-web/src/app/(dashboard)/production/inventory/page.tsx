@@ -22,6 +22,11 @@ async function fetchFactoryStorageOptions(): Promise<TransferFactoryOption[]> {
         },
         orderBy: [{ sortOrder: "asc" }, { code: "asc" }],
       },
+      kioskFloorMaps: {
+        where: { isActive: true },
+        orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
+        select: { id: true, name: true, fileId: true },
+      },
     },
     orderBy: { code: "asc" },
   });
@@ -32,10 +37,18 @@ async function fetchFactoryStorageOptions(): Promise<TransferFactoryOption[]> {
       id: l.id,
       code: l.code,
       name: localized(l.name as LocalizedText | null),
+      floorMapId: l.floorMapId,
+      mapX: l.mapX != null ? Number(l.mapX) : null,
+      mapY: l.mapY != null ? Number(l.mapY) : null,
       shelves: l.shelves.map((s) => {
         const name = s.name as LocalizedText | null;
         return { id: s.id, code: s.code, name: name?.ja || null };
       }),
+    })),
+    floorMaps: f.kioskFloorMaps.map((m) => ({
+      id: m.id,
+      name: m.name,
+      hasImage: m.fileId != null,
     })),
   }));
 }

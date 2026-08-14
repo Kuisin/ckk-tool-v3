@@ -41,6 +41,7 @@ import { COUNTRY_LABEL } from "@/lib/enum-labels";
 import { formatDate, formatDateTime } from "@/lib/format";
 import { DeleteFactoryModal, ToggleFactoryActiveModal } from "./FactoryModals";
 import {
+  type FactoryFloorMapRef,
   type StorageLocationRow,
   StorageLocationsPanel,
 } from "./StorageLocationsPanel";
@@ -102,11 +103,13 @@ export function FactoryDetail({
   auditEntries,
   inventory,
   storageLocations,
+  floorMaps,
 }: {
   record: FactoryDetailData;
   auditEntries: AuditEntry[];
   inventory: FactoryInventorySummary;
   storageLocations: StorageLocationRow[];
+  floorMaps: FactoryFloorMapRef[];
 }) {
   const router = useRouter();
   // アクティブタブを ?tab= に保持（URL 共有でタブまで再現）
@@ -190,6 +193,7 @@ export function FactoryDetail({
         <Tabs.Panel pt="md" value="storage">
           <StorageLocationsPanel
             factoryId={record.id}
+            floorMaps={floorMaps}
             locations={storageLocations}
           />
         </Tabs.Panel>

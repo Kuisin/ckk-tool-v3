@@ -540,6 +540,40 @@ export async function listKioskFloorMaps(): Promise<KioskFloorMapRow[]> {
   }));
 }
 
+/** フロアマップ上の保管場所ピン（読み取り専用レイヤ — 配置は MS0B）。 */
+export interface StorageLocationPin {
+  id: number;
+  floorMapId: string;
+  name: string;
+  code: string;
+  mapX: number;
+  mapY: number;
+  shelfCount: number;
+}
+
+/** 配置済み保管場所のピン一覧（フロアマップは端末管理と共用）。 */
+export async function listStorageLocationPins(): Promise<StorageLocationPin[]> {
+  const rows = await prisma.storageLocation.findMany({
+    where: { isActive: true, floorMapId: { not: null } },
+    include: { _count: { select: { shelves: true } } },
+    orderBy: [{ sortOrder: "asc" }, { code: "asc" }],
+  });
+  return rows
+    .filter((r) => r.floorMapId != null && r.mapX != null && r.mapY != null)
+    .map((r) => {
+      const name = r.name as { ja?: string } | null;
+      return {
+        id: r.id,
+        floorMapId: r.floorMapId as string,
+        name: name?.ja ?? r.code,
+        code: r.code,
+        mapX: Number(r.mapX),
+        mapY: Number(r.mapY),
+        shelfCount: r._count.shelves,
+      };
+    });
+}
+
 /** 工場の選択肢（有効のみ）。value = String(factories.id)。 */
 export interface KioskFactoryOption {
   value: string;

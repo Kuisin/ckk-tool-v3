@@ -49,6 +49,8 @@ model KioskFloorMap {
   factory Factory @relation("KioskFloorMapFactory", fields: [factoryId], references: [id])
   file    File?   @relation("KioskFloorMapFile", fields: [fileId], references: [id])
   devices KioskDevice[] @relation("KioskDeviceFloorMap")
+  // 端末管理と共用: 保管場所（storage_locations）のピンも同じ図面に配置する
+  storageLocations StorageLocation[] @relation("StorageLocationFloorMap")
 
   @@index([factoryId])
   @@map("kiosk_floor_maps")

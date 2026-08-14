@@ -31,8 +31,14 @@ export interface TransferFactoryOption {
     id: number;
     code: string;
     name: string;
+    /** フロアマップ上のピン（ロケーションビュー用。null = 未配置）。 */
+    floorMapId: string | null;
+    mapX: number | null;
+    mapY: number | null;
     shelves: { id: number; code: string; name: string | null }[];
   }[];
+  /** 工場のフロアマップ（端末管理 SY09 と共用。ロケーションビュー用）。 */
+  floorMaps: { id: string; name: string; hasImage: boolean }[];
 }
 
 /** 移動元在庫の表示・制約情報。 */

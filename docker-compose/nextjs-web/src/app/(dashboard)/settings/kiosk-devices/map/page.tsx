@@ -7,6 +7,7 @@ import {
   listKioskDevices,
   listKioskFactoryOptions,
   listKioskFloorMaps,
+  listStorageLocationPins,
 } from "@/lib/kiosk-admin";
 
 export const dynamic = "force-dynamic";
@@ -25,16 +26,18 @@ export default async function KioskFloorMapPage() {
       </>
     );
   }
-  const [devices, floorMaps, factoryOptions] = await Promise.all([
+  const [devices, floorMaps, factoryOptions, storagePins] = await Promise.all([
     listKioskDevices(),
     listKioskFloorMaps(),
     listKioskFactoryOptions(),
+    listStorageLocationPins(),
   ]);
   return (
     <KioskFloorMapView
       devices={devices}
       factoryOptions={factoryOptions}
       floorMaps={floorMaps}
+      storagePins={storagePins}
     />
   );
 }
