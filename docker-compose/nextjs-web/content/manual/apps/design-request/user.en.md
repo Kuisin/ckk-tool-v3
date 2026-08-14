@@ -1,7 +1,7 @@
 ---
 title: "Design Request — User Manual"
 description: "Operation code SA04. Request design work from the design department at quotation or order time, manage the finished d…"
-screenshots: []
+screenshots: [design-request-list-01, design-request-new-01, design-request-files-01]
 ---
 Operation code **SA04**. Request design work from the design department at quotation or order time, manage the finished design files with version control, and register them to the product master.
 
@@ -15,6 +15,8 @@ Operation code **SA04**. Request design work from the design department at quota
 - On completion, the attached design file is registered as a **version (v1, v2, …)**, and if a product is specified it becomes the latest design in the [product master](/manual/en/masters/product/user).
 - Requires the design request permission (design_request).
 
+![Design request list](../../assets/screenshots/design-request-list-01.png)
+
 ## How to create
 
 1. Open **新規作成** (new) from the list.
@@ -23,6 +25,8 @@ Operation code **SA04**. Request design work from the design department at quota
 4. Enter the **product** (optional) and the **request description**, then **save**. The request number is assigned and you are taken to the detail page.
 
 **Note**: the trigger and the source document (quote / sales order) **cannot be changed after creation**. If you picked the wrong one, create a new request.
+
+![New design request form](../../assets/screenshots/design-request-new-01.png)
 
 ## Working through the statuses
 
@@ -41,6 +45,8 @@ Operation code **SA04**. Request design work from the design department at quota
 - Upload and delete design files on the **ファイル** (files) tab of the detail screen (only before completion).
 - Each time the request is **completed**, the latest attachment at that moment is registered as v1, v2, … with the newest version carrying a **最新** (latest) badge.
 - For requests with a product specified, completing also switches that product's latest design to the new version.
+
+![Files tab (version list with latest badge)](../../assets/screenshots/design-request-files-01.png)
 
 ## List and search
 

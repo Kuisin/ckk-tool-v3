@@ -1,7 +1,7 @@
 ---
 title: "Order Acceptance — User Manual"
 description: "Operation code SA03. AI automatically reads customer purchase orders (PDFs and scanned images), imports them as order…"
-screenshots: []
+screenshots: [order-acceptance-list-01, order-acceptance-detail-01, order-acceptance-detail-02]
 ---
 Operation code **SA03**. AI automatically reads customer purchase orders (PDFs and scanned images), imports them as order acceptances (受注請書), and lets you review, approve, and expand them into sales orders (注文請書) — all on one screen.
 
@@ -13,6 +13,8 @@ Operation code **SA03**. AI automatically reads customer purchase orders (PDFs a
 - A person reviews and corrects the extracted result, then **requests approval → approve → deploy**, creating one **sales order (注文請書)** per line item in a single step.
 - Line unit prices are automatically checked against the [price list](/manual/en/apps/price-list/user), and any **price difference** is flagged.
 - Requires the order acceptance permission (order_acceptance). Approving and rejecting additionally require membership in the first approval group (or a delegate).
+
+![Order acceptance intake list](../../assets/screenshots/order-acceptance-list-01.png)
 
 ## Three ways to import
 
@@ -37,6 +39,8 @@ On the detail screen (while in draft) you edit the AI-extracted result directly.
 2. **Line items**: check product, order type (production / test / sample / other), quantity, unit price, and delivery date. Match any **unidentified product** rows against the product master.
 3. Press **保存** (save), then request approval (unsaved edits must be saved before requesting).
 
+![Editing a draft order acceptance (with a price-difference warning)](../../assets/screenshots/order-acceptance-detail-01.png)
+
 ## Price check and approval
 
 - Saved line prices are always checked against the price list (customer × product × order type × quantity); mismatching rows get an orange **価格差異** (price difference) badge plus a warning at the top of the page.
@@ -50,6 +54,8 @@ On the detail screen (while in draft) you edit the AI-extracted result directly.
 - The created sales orders can be opened from the "生成された注文請書" links on the detail screen, or via the **注文請書一覧** (sales order list) button at the top right of the list (/production/sales-orders).
 - If a quote number was entered, that quote is automatically marked as accepted.
 - After deployment, **archive** the record to finish.
+
+![Approved order acceptance (before deployment)](../../assets/screenshots/order-acceptance-detail-02.png)
 
 ## List and search
 
