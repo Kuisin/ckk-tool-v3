@@ -6,7 +6,9 @@
  *
  * - フォルダ階層ナビゲーション（パンくず + フォルダを開いて掘る）
  * - 表示切替: リスト / アイコン / カラム（Miller columns）
- * - システムファイル（アプリ生成物 pdfs/ 等）の表示/非表示トグル
+ * - システムファイル（OS・ツールの残骸 — `.DS_Store` / `*.tmp` 等。
+ *   lib/system-files.ts）の表示/非表示トグル。業務ファイル（PDF・添付）は
+ *   システムファイルではないので既定で表示される。
  * - 右側プレビューペイン（画像 / PDF はインライン、他はメタデータ）
  * - フォルダ単位のユーザー権限付与（管理者のみ — FolderGrantsModal）
  *
@@ -59,6 +61,7 @@ import { GhostButton, PrimaryButton } from "@/components/ui/buttons";
 import { openConfirm } from "@/components/ui/modals";
 import { ListShell } from "@/components/ui/shells";
 import { formatDateTime } from "@/lib/format";
+import { isSystemFileKey } from "@/lib/system-files";
 
 interface StoredFile {
   key: string;
@@ -136,7 +139,6 @@ export function FileManager() {
   const [storageOk, setStorageOk] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
   const [writePrefixes, setWritePrefixes] = useState<string[] | null>([]);
-  const [systemPrefixes, setSystemPrefixes] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
 
@@ -156,7 +158,6 @@ export function FileManager() {
       setStorageOk(json.storageOk !== false);
       setIsAdmin(json.isAdmin === true);
       setWritePrefixes(json.canWritePrefixes ?? []);
-      setSystemPrefixes(json.systemPrefixes ?? []);
     } catch {
       setStorageOk(false);
       setFiles([]);
@@ -168,11 +169,6 @@ export function FileManager() {
   useEffect(() => {
     reload();
   }, [reload]);
-
-  const isSystemKey = useCallback(
-    (key: string) => systemPrefixes.some((p) => keyInPrefix(key, p)),
-    [systemPrefixes],
-  );
 
   const canWrite = useCallback(
     (key: string) => {
@@ -187,10 +183,16 @@ export function FileManager() {
     const q = query.trim().toLowerCase();
     return files.filter(
       (f) =>
-        (showSystem || !isSystemKey(f.key)) &&
+        (showSystem || !isSystemFileKey(f.key)) &&
         (!q || f.key.toLowerCase().includes(q)),
     );
-  }, [files, query, showSystem, isSystemKey]);
+  }, [files, query, showSystem]);
+
+  /** 隠れているシステムファイル数（トグルの案内用）。 */
+  const hiddenSystemCount = useMemo(
+    () => (showSystem ? 0 : files.filter((f) => isSystemFileKey(f.key)).length),
+    [files, showSystem],
+  );
 
   const searching = query.trim().length > 0;
 
@@ -377,7 +379,7 @@ export function FileManager() {
                     </Text>
                   )}
                 </Stack>
-                {isSystemKey(f.key) && (
+                {isSystemFileKey(f.key) && (
                   <Badge color="gray" size="xs" variant="light">
                     システム
                   </Badge>
@@ -621,7 +623,7 @@ export function FileManager() {
             </Text>
             <Text size="xs">{selectedFile.mime || "不明"}</Text>
           </Group>
-          {isSystemKey(selectedFile.key) && (
+          {isSystemFileKey(selectedFile.key) && (
             <Badge color="gray" variant="light">
               システムファイル
             </Badge>
@@ -733,15 +735,24 @@ export function FileManager() {
             size="xs"
             value={view}
           />
-          <Switch
-            checked={showSystem}
-            label="システムファイル"
-            onChange={(e) => {
-              setShowSystem(e.currentTarget.checked);
-              setSelectedKey(null);
-            }}
-            size="sm"
-          />
+          <Tooltip
+            label="「.DS_Store」「*.tmp」など、OS・ツールが自動生成した残骸ファイルを表示します"
+            withinPortal
+          >
+            <Switch
+              checked={showSystem}
+              label={
+                hiddenSystemCount > 0
+                  ? `システムファイル (${hiddenSystemCount})`
+                  : "システムファイル"
+              }
+              onChange={(e) => {
+                setShowSystem(e.currentTarget.checked);
+                setSelectedKey(null);
+              }}
+              size="sm"
+            />
+          </Tooltip>
         </Group>
       }
       onReset={() => {
