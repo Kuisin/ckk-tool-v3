@@ -726,6 +726,37 @@ return <>{value?.[locale] ?? value?.ja ?? '—'}</>
 new Intl.NumberFormat('ja-JP', { style: 'currency', currency: currency ?? 'JPY' }).format(value)
 ```
 
+### 10.8 MemoPanel / RichTextEditorField / RichTextView
+
+社内向けリッチテキストの メモ（1 文書 1 件）と コメント（投稿スレッド）。
+詳細画面の `Tabs` にタブ 1 枚 + パネル 1 枚を足すだけで付く。
+
+| コンポーネント | ファイル | 役割 |
+|---|---|---|
+| `MemoPanel` | `src/components/ui/MemoPanel.tsx` | `mode="memo"` = 共有メモ（誰でも編集）/ `mode="comment"` = 投稿スレッド（投稿者本人 + ADMIN のみ編集・削除） |
+| `RichTextEditorField` | `src/components/ui/RichTextEditorField.tsx` | `@mantine/tiptap` ラッパ。太字 / 斜体 / 下線 / 打消 / コード / H3・H4 / 箇条書き / 番号付き / 引用 / コードブロック / 区切り線 / リンク |
+| `RichTextView` | `src/components/ui/RichTextView.tsx` | 読み取り専用表示。React 要素を組み立てる（`dangerouslySetInnerHTML` 不使用） |
+
+搭載画面: 見積書 / 注文請書 / 指示書 / 出荷書 / 請求書 = **メモ**、
+価格表 / 試算 = **コメント**。既存の 備考（`notes`）は平文のまま別物として残り、
+PDF 印字も従来どおり（メモ・コメントは社内限定で PDF に出ない）。
+
+```tsx
+// page.tsx（owner キーは fetchAuditEntries に渡す値と同一）
+const memos = await listMemos("quotes", formatQuoteNumber(key));
+
+// *Detail.tsx — keepMounted={false} でエディタをタブを開くまで遅延ロード
+<Tabs.Tab value="memo">メモ</Tabs.Tab>
+<Tabs.Panel keepMounted={false} pt="md" value="memo">
+  <MemoPanel memos={memos} mode="memo" ownerId={quote.quoteNumber} ownerType="quotes" />
+</Tabs.Panel>
+```
+
+本文は HTML 文字列ではなく **ProseMirror ドキュメント JSON** で
+`app.document_memos` に保存する（保存 XSS を構造的に排除するため）。検証・
+平文射影・HTML 化は `src/lib/rich-text-core.ts`、読み書きは
+`src/lib/document-memos.ts`（`MEMO_OWNERS` が owner→権限コードの唯一の登録簿）。
+
 ---
 
 ## 11. Components: Variants and States

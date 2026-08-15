@@ -39,6 +39,7 @@ import {
 import { DocNumber } from "@/components/ui/DocNumber";
 import { FieldValue } from "@/components/ui/FieldValue";
 import { HistoryPanel } from "@/components/ui/HistoryPanel";
+import { MemoPanel } from "@/components/ui/MemoPanel";
 import { MoneyText } from "@/components/ui/MoneyText";
 import { ConfirmModal } from "@/components/ui/modals";
 import { StatusBadge } from "@/components/ui/StatusBadge";
@@ -49,6 +50,7 @@ import {
   SummaryGrid,
 } from "@/components/ui/shells";
 import { useTabParam } from "@/hooks/useUrlState";
+import type { MemoView } from "@/lib/document-memos";
 import { formatDate, formatDateTime } from "@/lib/format";
 import type { ActionResult } from "@/lib/server-action";
 import {
@@ -64,10 +66,13 @@ const BASE_PATH = "/billing/invoices";
 export function InvoiceDetail({
   invoice,
   auditEntries,
+  memos,
 }: {
   invoice: Invoice;
   /** 操作履歴（audit_logs 由来、履歴タブ）。 */
   auditEntries: AuditEntry[];
+  /** 社内メモ（document_memos 由来、メモタブ）。 */
+  memos: MemoView[];
 }) {
   const router = useRouter();
   // アクティブタブを ?tab= に保持（URL 共有でタブまで再現）
@@ -301,6 +306,7 @@ export function InvoiceDetail({
       <Tabs onChange={setTab} value={tab}>
         <Tabs.List>
           <Tabs.Tab value="overview">概要</Tabs.Tab>
+          <Tabs.Tab value="memo">メモ</Tabs.Tab>
           <Tabs.Tab value="history">履歴</Tabs.Tab>
         </Tabs.List>
 
@@ -321,6 +327,16 @@ export function InvoiceDetail({
               </Text>
             </div>
           </Stack>
+        </Tabs.Panel>
+
+        {/* keepMounted={false}: エディタ（prosemirror）はタブを開くまで読み込まない。 */}
+        <Tabs.Panel keepMounted={false} pt="md" value="memo">
+          <MemoPanel
+            memos={memos}
+            mode="memo"
+            ownerId={invoice.invoiceNumber}
+            ownerType="invoices"
+          />
         </Tabs.Panel>
 
         <Tabs.Panel pt="md" value="history">

@@ -65,7 +65,16 @@ table per screen (page/size/sort in the URL); never on a sub-table in a detail t
 - Values: `FieldValue`, `MoneyText`, `JsonLocalizedText` (`{ja,en}` renderer),
   `DocNumber` (`ff="mono"` doc numbers), `EmptyState`, `HelpLabel`.
 - Panels: `HistoryPanel` (audit timeline), `AttachmentsPanel` /
-  `PdfAttachmentPanel`.
+  `PdfAttachmentPanel`, `MemoPanel` (メモ / コメント — 下記）。
+- Rich text: `MemoPanel` を詳細画面の Tabs に 1 枚差すだけで社内メモ
+  （`mode="memo"` = 1 文書 1 件）またはコメントスレッド（`mode="comment"`）が付く。
+  データは `lib/document-memos.listMemos(ownerType, ownerId)` を `page.tsx` で
+  取って渡す（owner キーは `fetchAuditEntries` と同じ値）。パネルのタブは
+  **`keepMounted={false}`** にすること — エディタ（prosemirror, ~426KB）を
+  タブを開くまで読み込ませないため。表示専用は `RichTextView`、入力は
+  `RichTextEditorField`（`@mantine/tiptap`）。本文は HTML ではなく
+  **ProseMirror JSON** で保存し、`lib/rich-text-core.ts` が許可リスト検証・
+  平文射影・HTML 化を担う。
 - Selects: `SearchSelect` (async option search), `F4SearchModal` + `f4-presets.ts`
   (F4 master lookup), `CustomerSelect`/`FactorySelect` (two-level).
 - Destructive confirm: `openConfirm` (`ui/modals.tsx`, wraps `@mantine/modals`)

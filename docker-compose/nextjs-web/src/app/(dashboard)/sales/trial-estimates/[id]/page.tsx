@@ -10,6 +10,7 @@ import {
   formatProductNumber,
   parseDocKey,
 } from "@/lib/doc-number";
+import { listMemos } from "@/lib/document-memos";
 import { type LocalizedText, localized } from "@/lib/format";
 import { fetchPriceHistoryByType } from "@/lib/material-pricing";
 import { getTrialPricingSettings } from "@/lib/system-settings";
@@ -43,7 +44,7 @@ export default async function TrialEstimateDetailPage({
   const key = parseDocKey(id, "EST");
   if (!key) notFound();
 
-  const [record, linked, auditEntries, settings] = await Promise.all([
+  const [record, linked, auditEntries, settings, memos] = await Promise.all([
     fetchTrialEstimate(key.yearMonth, key.seq),
     prisma.priceListVariant.findMany({
       where: { estimateYearMonth: key.yearMonth, estimateSeq: key.seq },
@@ -54,6 +55,7 @@ export default async function TrialEstimateDetailPage({
     }),
     fetchAuditEntries("estimates", formatEstimateNumber(key)),
     getTrialPricingSettings(),
+    listMemos("estimates", formatEstimateNumber(key)),
   ]);
   if (!record) notFound();
 
@@ -92,6 +94,7 @@ export default async function TrialEstimateDetailPage({
     <TrialEstimateDetail
       auditEntries={auditEntries}
       linkedEntries={linkedEntries}
+      memos={memos}
       priceHistory={priceHistory}
       pricingOptions={toTrialPricingOptions(settings)}
       record={record}

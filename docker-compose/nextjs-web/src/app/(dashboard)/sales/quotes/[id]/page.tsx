@@ -3,6 +3,7 @@ import { QuoteDetail } from "@/components/sales/quotes/QuoteDetail";
 import { fetchAuditEntries } from "@/lib/audit";
 import { requireAppRead } from "@/lib/authz-page";
 import { formatQuoteNumber, parseDocKey } from "@/lib/doc-number";
+import { listMemos } from "@/lib/document-memos";
 import { fetchEntriesForQuote, fetchQuote } from "../data";
 
 export const dynamic = "force-dynamic";
@@ -29,16 +30,18 @@ export default async function SalesQuotesDetailPage({
   const key = parseDocKey(id, "QOT");
   if (!key) notFound();
 
-  const [quote, relatedEntries, auditEntries] = await Promise.all([
+  const [quote, relatedEntries, auditEntries, memos] = await Promise.all([
     fetchQuote(key),
     fetchEntriesForQuote(key),
     fetchAuditEntries("quotes", formatQuoteNumber(key)),
+    listMemos("quotes", formatQuoteNumber(key)),
   ]);
   if (!quote) notFound();
 
   return (
     <QuoteDetail
       auditEntries={auditEntries}
+      memos={memos}
       quote={quote}
       relatedEntries={relatedEntries}
     />

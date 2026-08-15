@@ -3,6 +3,7 @@ import { WorkOrderDetail } from "@/components/production/work-orders/WorkOrderDe
 import { isApprover } from "@/lib/approvals";
 import { fetchAuditEntries } from "@/lib/audit";
 import { requireAppRead } from "@/lib/authz-page";
+import { listMemos } from "@/lib/document-memos";
 import {
   fetchWorkOrder,
   fetchWorkOrderApprovalTrail,
@@ -41,12 +42,14 @@ export default async function ProductionApprovalsDetailPage({
     canApproveFirst,
     canApproveSecond,
     approvalTrail,
+    memos,
   ] = await Promise.all([
     fetchWorkOrder(workOrderNumber),
     fetchAuditEntries("work_orders", String(workOrderNumber)),
     isApprover("FIRST"),
     isApprover("SECOND"),
     fetchWorkOrderApprovalTrail(workOrderNumber),
+    listMemos("work_orders", String(workOrderNumber)),
   ]);
   if (!workOrder) notFound();
 
@@ -56,6 +59,7 @@ export default async function ProductionApprovalsDetailPage({
       auditEntries={auditEntries}
       canApproveFirst={canApproveFirst}
       canApproveSecond={canApproveSecond}
+      memos={memos}
       variant="approval"
       workOrder={workOrder}
     />

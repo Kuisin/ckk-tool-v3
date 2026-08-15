@@ -3,6 +3,7 @@ import { PriceListDetail } from "@/components/sales/price-lists/PriceListDetail"
 import { fetchAuditEntries } from "@/lib/audit";
 import { requireAppRead } from "@/lib/authz-page";
 import { parseDocKey } from "@/lib/doc-number";
+import { listMemos } from "@/lib/document-memos";
 import {
   fetchCustomerOptions,
   fetchProductOptions,
@@ -36,12 +37,13 @@ export default async function PriceListDetailPage({
   const entry = await fetchPriceEntry(key);
   if (!entry) notFound();
 
-  const [relatedQuotes, customerOptions, productOptions, auditEntries] =
+  const [relatedQuotes, customerOptions, productOptions, auditEntries, memos] =
     await Promise.all([
       fetchRelatedQuotes(key),
       fetchCustomerOptions(),
       fetchProductOptions(),
       fetchAuditEntries("price_list_entries", entry.entryId),
+      listMemos("price_list_entries", entry.entryId),
     ]);
 
   return (
@@ -49,6 +51,7 @@ export default async function PriceListDetailPage({
       auditEntries={auditEntries}
       customerOptions={customerOptions}
       entry={entry}
+      memos={memos}
       productOptions={productOptions}
       relatedQuotes={relatedQuotes}
     />

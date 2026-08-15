@@ -34,7 +34,10 @@ runs in the Docker build). Build utilities in-house instead — precedents:
 truly required, raise it explicitly; don't edit `pnpm-lock.yaml` casually.
 Sanctioned exception (explicit sign-off): the docs stack — `fumadocs-ui` /
 `fumadocs-core` / `fumadocs-mdx` / `@orama/tokenizers` (+ `@types/mdx`) for
-`/manual` + `/internal-docs`.
+`/manual` + `/internal-docs`. Second sanctioned exception: the rich-text stack —
+`@mantine/tiptap` (version-pinned **exactly** to `@mantine/core`) + `@tiptap/react`
+/ `@tiptap/pm` / `@tiptap/starter-kit` / `@tiptap/extension-link` for the 文書メモ
+/ コメント (`ui/MemoPanel.tsx`).
 
 ## Layout
 
