@@ -325,7 +325,7 @@ export async function completeStepExecution(
     // 受入数は開始時に確定した値を権威とする（完了時のクライアント値は無視）。
     const authoritativeInput =
       stepRow.inputQuantity ?? quantities?.inputQuantity ?? 0;
-    // 区分合計（半製品/廃棄/手直し）は**不良リストから導出**して権威とする。
+    // 区分合計（半製品/廃棄/工程分岐）は**不良リストから導出**して権威とする。
     // リストが無い場合のみ quantities の区分へフォールバック（後方互換）。
     const list = defectReasons ?? [];
     const sumType = (t: StepDefectReason["type"]) =>
@@ -572,10 +572,10 @@ function ctxFromWorkOrder(wo: {
 }
 
 /**
- * 分岐追加（§7 手直し・半製品再投入）: source 完了後に流す追加工程系列を作り、
+ * 分岐追加（§7 工程分岐・半製品再投入）: source 完了後に流す追加工程系列を作り、
  * source→先頭 のエッジ（routedQuantity・静的）+ 系列内チェーン + 任意の
  * 合流エッジ（いずれも動的 = 0。上流の不良発生に受入数が追従する）を張る。
- * 分岐数量は分岐可能数（branchableQuantity — 基本は手直しの未割当分）まで。
+ * 分岐数量は分岐可能数（branchableQuantity — 基本は工程分岐の未割当分）まで。
  * ワークフロー変更承認（WORKFLOW_CHANGE）は §6 本実装まで監査記録のみ。
  */
 export async function addBranchSeries(input: {

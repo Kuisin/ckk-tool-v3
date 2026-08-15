@@ -207,7 +207,7 @@ export function StepCard({
             )}
             {(step.outputDefectRework ?? 0) > 0 && (
               <Badge color="yellow" size="xs" variant="light">
-                手直し {step.outputDefectRework}
+                工程分岐 {step.outputDefectRework}
               </Badge>
             )}
           </Group>

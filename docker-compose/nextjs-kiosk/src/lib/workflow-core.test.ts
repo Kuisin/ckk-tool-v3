@@ -322,7 +322,7 @@ describe("validateQuantities / validateRouting", () => {
     expect(issues.some((i) => i.kind === "NEGATIVE")).toBe(true);
   });
 
-  it("ルーティング: Σrouted = 良品 + 手直し", () => {
+  it("ルーティング: Σrouted = 良品 + 工程分岐", () => {
     const out: StepLinkState[] = [
       { sourceStepId: "a", targetStepId: "b", routedQuantity: 8 },
       { sourceStepId: "a", targetStepId: "r", routedQuantity: 2 },
@@ -432,8 +432,8 @@ describe("layoutWorkflowGraph", () => {
 });
 
 describe("computeWipByStep / isWorkOrderComplete", () => {
-  it("手直し分岐の一巡: IN_PROGRESS の受入 + 開始可能 PENDING の想定受入", () => {
-    // a 完了(10 → 良品8, 手直し2) → b（8 流入）, rework（2 流入）
+  it("工程分岐分岐の一巡: IN_PROGRESS の受入 + 開始可能 PENDING の想定受入", () => {
+    // a 完了(10 → 良品8, 工程分岐2) → b（8 流入）, rework（2 流入）
     const ctx: WorkflowCtx = {
       plannedQuantity: 10,
       steps: [
@@ -625,7 +625,7 @@ describe("branchableQuantity", () => {
       ...over,
     });
 
-  it("メインライン後続があれば手直し数まで", () => {
+  it("メインライン後続があれば工程分岐数まで", () => {
     const ctx: WorkflowCtx = {
       plannedQuantity: 10,
       steps: [src(), step("b", 200, 20)],
@@ -645,7 +645,7 @@ describe("branchableQuantity", () => {
     expect(branchableQuantity("a", ctx)).toBe(1);
   });
 
-  it("終端工程（後続なし）は 良品 + 手直し まで", () => {
+  it("終端工程（後続なし）は 良品 + 工程分岐 まで", () => {
     const ctx: WorkflowCtx = {
       plannedQuantity: 10,
       steps: [src()],
@@ -700,7 +700,7 @@ describe("computeFinishedQuantity", () => {
     expect(computeFinishedQuantity(steps, links)).toBe(10);
   });
 
-  it("終端工程からの分岐: 静的流出は手直し優先で差し引き残良品を計上", () => {
+  it("終端工程からの分岐: 静的流出は工程分岐優先で差し引き残良品を計上", () => {
     // a 終端 良8/手2、a→r 静的3（手2 + 良1）→ a の残 7、r 良3 → 計 10
     const steps = [
       step("a", 100, 10, "COMPLETED", { outputSuccess: 8, defectRework: 2 }),

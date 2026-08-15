@@ -50,21 +50,21 @@ export const QUANTITY_LABELS: Record<
     success: "良品数",
     semi: "半製品",
     scrap: "廃棄",
-    rework: "手直し",
+    rework: "工程分岐",
   },
   INSPECTION: {
     input: "検査数",
     success: "合格数",
     semi: "不合格（半製品）",
     scrap: "不合格（廃棄）",
-    rework: "不合格（手直し）",
+    rework: "不合格（工程分岐）",
   },
   NONE: {
     input: "受入数",
     success: "良品数",
     semi: "半製品",
     scrap: "廃棄",
-    rework: "手直し",
+    rework: "工程分岐",
   },
 };
 
@@ -377,8 +377,8 @@ export function expectedInput(stepId: string, ctx: WorkflowCtx): number | null {
 /**
  * 分岐可能数量: 分岐元から新たに静的エッジで流せる残数。
  * 良品はメインラインの次工程（または動的流出エッジ）へ全量流れるため、
- * 基本は手直し数のみ。流し先を持たない終端工程（メインライン後続なし・
- * 動的流出なし）に限り 良品 + 手直し まで。既存の静的流出分は差し引く。
+ * 基本は工程分岐数のみ。流し先を持たない終端工程（メインライン後続なし・
+ * 動的流出なし）に限り 良品 + 工程分岐 まで。既存の静的流出分は差し引く。
  * 分岐元が未完了なら null。
  */
 export function branchableQuantity(
@@ -405,7 +405,7 @@ export function branchableQuantity(
 /**
  * 完成数: 良品がどこにも流れない COMPLETED 工程の残良品の合計
  * （指示書完了時の入庫数）。動的流出エッジ or メインライン後続を持つ工程は
- * 0（良品は次工程へ流れる）。静的流出は手直しから優先して引き当て、
+ * 0（良品は次工程へ流れる）。静的流出は工程分岐から優先して引き当て、
  * 良品から流出した分だけ差し引く。
  */
 export function computeFinishedQuantity(
@@ -433,7 +433,7 @@ export function computeFinishedQuantity(
 }
 
 /**
- * 数量整合（§7）: 良品 + 半製品 + 廃棄 + 手直し = 受入。全て 0 以上。
+ * 数量整合（§7）: 良品 + 半製品 + 廃棄 + 工程分岐 = 受入。全て 0 以上。
  * INSPECTION は同一の数式（合格 + 不合格 = 検査数）でラベルのみ変わる。
  * NONE は入力を検証しない（サーバーがパススルー値を自動生成する）。
  */
@@ -473,8 +473,8 @@ export function validateQuantities(
       kind: "CONSERVATION",
       message:
         mode === "INSPECTION"
-          ? `合格 + 不合格（半製品・廃棄・手直し）の合計（${success + semi + scrap + rework}）が検査数（${input}）と一致しません`
-          : `良品 + 不良（半製品・廃棄・手直し）の合計（${success + semi + scrap + rework}）が受入数（${input}）と一致しません`,
+          ? `合格 + 不合格（半製品・廃棄・工程分岐）の合計（${success + semi + scrap + rework}）が検査数（${input}）と一致しません`
+          : `良品 + 不良（半製品・廃棄・工程分岐）の合計（${success + semi + scrap + rework}）が受入数（${input}）と一致しません`,
     });
   }
   return issues;
@@ -482,7 +482,7 @@ export function validateQuantities(
 
 /**
  * 分岐ルーティング整合: 静的エッジ（routedQuantity > 0）の合計が
- * 良品 + 手直し を超えないこと（半製品・廃棄はフロー外）。動的エッジ
+ * 良品 + 工程分岐 を超えないこと（半製品・廃棄はフロー外）。動的エッジ
  * （0 = 良品全量）は定義上自己整合のため対象外。
  */
 export function validateRouting(
@@ -499,7 +499,7 @@ export function validateRouting(
     return [
       {
         kind: "ROUTING",
-        message: `分岐数量の合計（${staticTotal}）が 良品 + 手直し（${limit}）を超えています`,
+        message: `分岐数量の合計（${staticTotal}）が 良品 + 工程分岐（${limit}）を超えています`,
       },
     ];
   }

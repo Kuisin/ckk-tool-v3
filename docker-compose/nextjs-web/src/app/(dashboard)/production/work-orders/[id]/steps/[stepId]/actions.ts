@@ -192,7 +192,7 @@ const addBranchInput = z.object({
 
 export type AddBranchInput = z.infer<typeof addBranchInput>;
 
-/** 分岐系列の追加（手直し・半製品再投入）。 */
+/** 分岐系列の追加（工程分岐・半製品再投入）。 */
 export async function addBranch(
   payload: AddBranchInput,
 ): Promise<StepActionResult> {
