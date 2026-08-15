@@ -21,6 +21,7 @@ import { PrimaryButton } from "@/components/ui/buttons";
 import { DocNumber } from "@/components/ui/DocNumber";
 import { FieldValue } from "@/components/ui/FieldValue";
 import { HistoryPanel } from "@/components/ui/HistoryPanel";
+import { MemoPanel } from "@/components/ui/MemoPanel";
 import { MoneyText } from "@/components/ui/MoneyText";
 import {
   PdfAttachmentPanel,
@@ -34,6 +35,7 @@ import {
   SummaryGrid,
 } from "@/components/ui/shells";
 import { useTabParam } from "@/hooks/useUrlState";
+import type { MemoView } from "@/lib/document-memos";
 import { formatDate, formatDateTime } from "@/lib/format";
 import { ORDER_TYPE_LABEL } from "@/lib/mock";
 import { entrySummary, type PriceListEntry } from "../price-lists/model";
@@ -51,12 +53,15 @@ export function QuoteDetail({
   quote,
   relatedEntries,
   auditEntries,
+  memos,
 }: {
   quote: Quote;
   /** この見積の明細 tier が属する価格表エントリ（関連タブ・適用価格表）。 */
   relatedEntries: PriceListEntry[];
   /** 操作履歴（audit_logs 由来、履歴タブ）。 */
   auditEntries: AuditEntry[];
+  /** 社内メモ（document_memos 由来、メモタブ）。 */
+  memos: MemoView[];
 }) {
   const router = useRouter();
   // アクティブタブを ?tab= に保持（URL 共有でタブまで再現）
@@ -151,6 +156,7 @@ export function QuoteDetail({
           <Tabs.Tab value="items">明細</Tabs.Tab>
           <Tabs.Tab value="pdf">PDF</Tabs.Tab>
           <Tabs.Tab value="related">関連</Tabs.Tab>
+          <Tabs.Tab value="memo">メモ</Tabs.Tab>
           <Tabs.Tab value="history">履歴</Tabs.Tab>
         </Tabs.List>
 
@@ -371,6 +377,16 @@ export function QuoteDetail({
               </Text>
             </div>
           </Stack>
+        </Tabs.Panel>
+
+        {/* keepMounted={false}: エディタ（prosemirror）はタブを開くまで読み込まない。 */}
+        <Tabs.Panel keepMounted={false} pt="md" value="memo">
+          <MemoPanel
+            memos={memos}
+            mode="memo"
+            ownerId={quote.quoteNumber}
+            ownerType="quotes"
+          />
         </Tabs.Panel>
 
         <Tabs.Panel pt="md" value="history">

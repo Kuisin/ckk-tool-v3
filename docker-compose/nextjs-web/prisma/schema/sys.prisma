@@ -155,3 +155,36 @@ model DocumentAttachment {
   @@map("document_attachments")
   @@schema("app")
 }
+
+// 文書メモ / コメント（社内向けリッチテキスト）。owner の規約は
+// document_attachments・audit_logs と同じ多態参照（owner_type = @@map 名 /
+// owner_id = 業務キー文字列）。
+//
+// kind = MEMO   … 1 文書に 1 件（見積書 / 注文請書 / 指示書 / 出荷書 / 請求書）
+// kind = COMMENT… 1 文書に複数件の投稿スレッド（価格表 / 試算）
+// MEMO の単一性はアプリ側（lib/document-memos.ts の saveMemo）で担保する
+// — Prisma が部分 UNIQUE を表現できず、手書きすると migrate diff が濁るため。
+//
+// content は ProseMirror ドキュメント JSON。HTML 文字列では保存しない
+// （保存 XSS を構造的に排除する — lib/rich-text-core.ts で許可リスト検証し、
+// 表示は React 要素を組み立てて行う）。plain_text はその平文射影で、
+// 一覧プレビューと監査ログの可読性のために持つ。
+model DocumentMemo {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  ownerType String   @map("owner_type") // quotes / sales_orders / work_orders / price_list_entries …
+  ownerId   String   @map("owner_id") // 業務キー（QOT-… / EST-… / 指示書番号 / エントリキー）
+  kind      String // MEMO | COMMENT
+  content   Json // ProseMirror doc（lib/rich-text-core.ts で検証）
+  plainText String   @map("plain_text") // content の平文射影（プレビュー・監査用）
+  createdBy String?  @map("created_by") @db.Uuid
+  updatedBy String?  @map("updated_by") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  createdByUser User? @relation("DocumentMemoCreatedBy", fields: [createdBy], references: [id])
+  updatedByUser User? @relation("DocumentMemoUpdatedBy", fields: [updatedBy], references: [id])
+
+  @@index([ownerType, ownerId, createdAt])
+  @@map("document_memos")
+  @@schema("app")
+}

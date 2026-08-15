@@ -3,6 +3,7 @@ import { ShippingOrderDetail } from "@/components/shipping/shipping-orders/Shipp
 import { fetchAuditEntries } from "@/lib/audit";
 import { requireAppRead } from "@/lib/authz-page";
 import { formatDocNumber, parseDocKey } from "@/lib/doc-number";
+import { listMemos } from "@/lib/document-memos";
 import { fetchShippingOrder } from "../data";
 
 export const dynamic = "force-dynamic";
@@ -29,11 +30,18 @@ export default async function ShippingShippingOrdersDetailPage({
   const key = parseDocKey(decodeURIComponent(id), "SHP");
   if (!key) notFound();
 
-  const [order, auditEntries] = await Promise.all([
+  const [order, auditEntries, memos] = await Promise.all([
     fetchShippingOrder(key),
     fetchAuditEntries("shipping_orders", formatDocNumber("SHP", key)),
+    listMemos("shipping_orders", formatDocNumber("SHP", key)),
   ]);
   if (!order) notFound();
 
-  return <ShippingOrderDetail auditEntries={auditEntries} order={order} />;
+  return (
+    <ShippingOrderDetail
+      auditEntries={auditEntries}
+      memos={memos}
+      order={order}
+    />
+  );
 }

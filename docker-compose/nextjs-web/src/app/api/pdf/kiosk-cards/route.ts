@@ -13,6 +13,7 @@
 
 import { requirePermissionResponse } from "@/lib/authz";
 import { formatCode } from "@/lib/crockford";
+import { escapeHtml } from "@/lib/format";
 import {
   fetchKioskCardsForPrint,
   type KioskCardPrintRow,
@@ -24,13 +25,6 @@ import { qrSvg } from "@/lib/qr";
 export const dynamic = "force-dynamic";
 
 const CARDS_PER_PAGE = 10; // 2 列 × 5 行
-
-const escapeHtml = (s: string): string =>
-  s
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;");
 
 /** カード 1 枚分のセル（十字トンボ + QR + 社名 + 氏名/記名線 + No.）。 */
 function cardCell(card: KioskCardPrintRow): string {

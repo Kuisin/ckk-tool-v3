@@ -86,6 +86,8 @@ model User {
   designRequestsCreated   DesignRequest[]       @relation("DesignRequestCreatedBy")
   designFilesCreated      DesignFile[]          @relation("DesignFileCreatedBy")
   attachmentsUploaded     DocumentAttachment[]  @relation("AttachmentUploadedBy")
+  documentMemosCreated    DocumentMemo[]        @relation("DocumentMemoCreatedBy")
+  documentMemosUpdated    DocumentMemo[]        @relation("DocumentMemoUpdatedBy")
   approvalRequestsMade    ApprovalRequest[]     @relation("ApprovalRequestedBy")
   approvalRecords         ApprovalRecord[]      @relation("ApprovalRecordApprover")
   approvalRecordsAsOrig   ApprovalRecord[]      @relation("ApprovalRecordDelegateFor")

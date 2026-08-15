@@ -3,6 +3,7 @@ import { SalesOrderDetail } from "@/components/production/sales-orders/SalesOrde
 import { fetchAuditEntries } from "@/lib/audit";
 import { requireAppRead } from "@/lib/authz-page";
 import { formatSalesOrderNumber, parseSalesOrderKey } from "@/lib/doc-number";
+import { listMemos } from "@/lib/document-memos";
 import { fetchSalesOrder } from "../data";
 
 export const dynamic = "force-dynamic";
@@ -29,11 +30,14 @@ export default async function ProductionSalesOrdersDetailPage({
   const key = parseSalesOrderKey(decodeURIComponent(id));
   if (!key) notFound();
 
-  const [order, auditEntries] = await Promise.all([
+  const [order, auditEntries, memos] = await Promise.all([
     fetchSalesOrder(key),
     fetchAuditEntries("sales_orders", formatSalesOrderNumber(key)),
+    listMemos("sales_orders", formatSalesOrderNumber(key)),
   ]);
   if (!order) notFound();
 
-  return <SalesOrderDetail auditEntries={auditEntries} order={order} />;
+  return (
+    <SalesOrderDetail auditEntries={auditEntries} memos={memos} order={order} />
+  );
 }

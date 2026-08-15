@@ -42,6 +42,7 @@ import { SecondaryButton } from "@/components/ui/buttons";
 import { DocNumber } from "@/components/ui/DocNumber";
 import { FieldValue } from "@/components/ui/FieldValue";
 import { HistoryPanel } from "@/components/ui/HistoryPanel";
+import { MemoPanel } from "@/components/ui/MemoPanel";
 import { MoneyText } from "@/components/ui/MoneyText";
 import { openConfirm } from "@/components/ui/modals";
 import { StatusBadge } from "@/components/ui/StatusBadge";
@@ -52,6 +53,7 @@ import {
   SummaryGrid,
 } from "@/components/ui/shells";
 import { useTabParam } from "@/hooks/useUrlState";
+import type { MemoView } from "@/lib/document-memos";
 import { formatDate, formatDateTime } from "@/lib/format";
 import type { Option } from "@/lib/mock";
 import { ORDER_TYPE_LABEL } from "@/lib/mock";
@@ -81,6 +83,7 @@ export function PriceListDetail({
   customerOptions,
   productOptions,
   auditEntries,
+  memos,
 }: {
   entry: PriceListEntry;
   relatedQuotes: RelatedQuoteRow[];
@@ -88,6 +91,8 @@ export function PriceListDetail({
   productOptions: Option[];
   /** 操作履歴（audit_logs 由来、履歴タブ）。 */
   auditEntries: AuditEntry[];
+  /** 社内コメント（document_memos 由来、コメントタブ）。 */
+  memos: MemoView[];
 }) {
   const router = useRouter();
   const [, startTransition] = useTransition();
@@ -241,6 +246,7 @@ export function PriceListDetail({
           <Tabs.Tab value="prices">価格設定</Tabs.Tab>
           <Tabs.Tab value="discounts">値引き設定</Tabs.Tab>
           <Tabs.Tab value="related">関連</Tabs.Tab>
+          <Tabs.Tab value="comments">コメント</Tabs.Tab>
           <Tabs.Tab value="history">履歴</Tabs.Tab>
         </Tabs.List>
 
@@ -512,6 +518,16 @@ export function PriceListDetail({
               )}
             </div>
           </Stack>
+        </Tabs.Panel>
+
+        {/* keepMounted={false}: エディタ（prosemirror）はタブを開くまで読み込まない。 */}
+        <Tabs.Panel keepMounted={false} pt="md" value="comments">
+          <MemoPanel
+            memos={memos}
+            mode="comment"
+            ownerId={entry.entryId}
+            ownerType="price_list_entries"
+          />
         </Tabs.Panel>
 
         <Tabs.Panel pt="md" value="history">
