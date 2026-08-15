@@ -15,7 +15,6 @@ import {
   canWriteKey,
   filterReadableKeys,
   resolveFileAccess,
-  SYSTEM_PREFIXES,
 } from "@/lib/file-access";
 import { systematicFileName } from "@/lib/file-naming";
 import {
@@ -45,7 +44,6 @@ export async function GET(): Promise<Response> {
     canWritePrefixes: access.isAdmin
       ? null // null = 全フォルダ書き込み可
       : access.grants.filter((g) => g.canWrite).map((g) => g.pathPrefix),
-    systemPrefixes: SYSTEM_PREFIXES,
   });
 }
 

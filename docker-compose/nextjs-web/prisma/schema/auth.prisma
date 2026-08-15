@@ -47,11 +47,15 @@ model User {
   email       String?
   // credentials ログイン用（scrypt: salt:hash hex）。SSO ユーザーは null。
   passwordHash String?  @map("password_hash")
+  // プロフィール写真（アプリ内でアップロード — AD からは取得しない）。
+  // 実体は SeaweedFS `avatars/…`、参照は app.files 行。
+  avatarFileId String?  @map("avatar_file_id") @db.Uuid
   isActive    Boolean   @default(true) @map("is_active")
   lastLoginAt DateTime? @map("last_login_at") @db.Timestamptz(6)
   createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt   DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
 
+  avatarFile              File?              @relation("UserAvatarFile", fields: [avatarFileId], references: [id], onDelete: SetNull)
   roleAssignments         UserRoleRelation[] @relation("UserRoles")
   rolesAssigned           UserRoleRelation[] @relation("UserRolesAssignedBy")
   businessPartnersCreated BusinessPartner[]  @relation("BpCreatedBy")
@@ -124,6 +128,7 @@ model User {
   // username/attribute changes). Null for SYSTEM / GUEST users.
   employee EmployeeDirectory? @relation("UserEmployee", fields: [employeeId], references: [ldapGuid])
 
+  @@index([avatarFileId])
   @@map("users")
   @@schema("app")
 }

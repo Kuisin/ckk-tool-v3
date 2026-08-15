@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { ProfileView } from "@/components/profile/ProfileView";
+import { avatarUrl } from "@/lib/avatar";
 import { prisma } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
@@ -16,6 +17,7 @@ export default async function ProfilePage() {
     select: {
       username: true,
       displayName: true,
+      avatarFileId: true,
       email: true,
       group: true,
       passwordHash: true,
@@ -36,6 +38,9 @@ export default async function ProfilePage() {
       user={{
         username: user.username,
         displayName: user.displayName,
+        avatarUrl: user.avatarFileId
+          ? avatarUrl(userId, user.avatarFileId)
+          : null,
         email: user.email,
         group: user.group,
         hasPassword: Boolean(user.passwordHash),

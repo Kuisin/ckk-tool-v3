@@ -2,12 +2,15 @@
 
 /**
  * Server Actions — プロフィール（本人のみ）。
- * メールアドレス変更（通知メールの宛先）・パスワード変更（credentials ユーザー）。
+ * プロフィール写真の設定・削除、メールアドレス変更（通知メールの宛先）・
+ * パスワード変更（credentials ユーザー）。
  */
 
+import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { auth } from "@/auth";
 import { recordAudit } from "@/lib/audit";
+import { avatarUrl, removeAvatar, saveAvatar } from "@/lib/avatar";
 import { prisma } from "@/lib/db";
 import { hashPassword, verifyPassword } from "@/lib/password";
 import { type ActionResult, actionError, actionOk } from "@/lib/server-action";
@@ -76,6 +79,35 @@ export async function changePasswordAction(input: {
     recordId: user.username,
     after: { note: "パスワード変更" },
   });
+  return actionOk();
+}
+
+/**
+ * 本人のプロフィール写真を設定（差し替え）。FormData の `file` を受ける。
+ * 成功時は新しい表示 URL を返す（`?v=` 付きなのでその場で差し替わる）。
+ */
+export async function uploadAvatarAction(
+  formData: FormData,
+): Promise<ActionResult<{ avatarUrl: string }>> {
+  const userId = await currentUserId();
+  if (!userId) return actionError("ログインが必要です");
+  const file = formData.get("file");
+  if (!(file instanceof File)) {
+    return actionError("画像ファイルを選択してください");
+  }
+  const res = await saveAvatar(userId, file);
+  if (!res.ok) return res;
+  revalidatePath("/", "layout"); // ヘッダー・ホームのアバターを更新
+  return actionOk({ avatarUrl: avatarUrl(userId, res.data.fileId) });
+}
+
+/** 本人のプロフィール写真を削除。 */
+export async function removeAvatarAction(): Promise<ActionResult> {
+  const userId = await currentUserId();
+  if (!userId) return actionError("ログインが必要です");
+  const res = await removeAvatar(userId);
+  if (!res.ok) return res;
+  revalidatePath("/", "layout");
   return actionOk();
 }
 
