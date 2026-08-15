@@ -27,6 +27,8 @@ The PC screens (quotes, stock, and so on) do not appear here. This screen is onl
 - Only tablets **registered by an administrator** can be used. If the screen says 「この端末は登録されていません」 (This device is not registered), please contact an administrator.
 - The first time you use it, **you choose your own PIN and register it** (the screen guides you during the steps below).
 
+The steps for preparing a brand-new tablet (installing the app, the registration QR code) are in the administrator [internal documents](/internal-docs/en/system/kiosk-device-setup) (you need to log in and have permission to read them).
+
 ## Logging in
 
 1. Check that the tablet shows 「**社員QRカードをスキャンしてください**」 (Please scan your employee QR card).

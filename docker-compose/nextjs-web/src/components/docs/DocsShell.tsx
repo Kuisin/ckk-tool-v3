@@ -31,18 +31,24 @@ export function DocsShell({
   tree,
   title,
   searchApi,
+  crossLink,
   children,
 }: {
   lang: string;
   tree: PageTreeRoot;
   title: string;
   searchApi: string;
+  /** もう一方のドキュメント（マニュアル ⇄ 社内ドキュメント）へのリンク。 */
+  crossLink?: { text: string; url: string };
   children: ReactNode;
 }) {
   return (
     <DocsProvider i18nProps={provider(lang)} searchApi={searchApi}>
       <DocsLayout
-        links={[{ text: "アプリへ戻る", url: "/" }]}
+        links={[
+          ...(crossLink ? [crossLink] : []),
+          { text: "アプリへ戻る", url: "/" },
+        ]}
         nav={{ title }}
         sidebar={{
           // v16 の DocsLayout は言語スイッチャを自動では出さない —

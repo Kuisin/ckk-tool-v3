@@ -304,6 +304,7 @@ Operation codes provide keyboard-shortcut navigation. Format: `{CAT}{MODE}{IDX}`
 | マスタ | D | 作業場所 | MS0D | — | — |
 | マスタ | E | 保管場所 | MS0E | — | — |
 | ドキュメント | 1 | マニュアル | DC01 | — | — |
+| ドキュメント | 2 | 社内ドキュメント | DC02 | — | — |
 | システム | 1 | ユーザー管理 | SY01 | — | — |
 | システム | 2 | 試算計算 | SY02 | — | — |
 | システム | 3 | 製品項目 | SY03 | — | — |

@@ -228,6 +228,17 @@ export const OPERATION_CODES: OperationCodeEntry[] = [
     mode: "0",
     index: "1",
   },
+  // 社内ドキュメント（要ログイン + internal_docs 権限）— 単一画面, list コードのみ
+  {
+    code: "DC02",
+    label: "社内ドキュメント",
+    href: "/internal-docs/ja",
+    category: "ドキュメント",
+    kind: "list",
+    categoryCode: "DC",
+    mode: "0",
+    index: "2",
+  },
 
   // ─── システム (SY) ───────────────────────────────────────────────────────
   // 採番: SY01 = ユーザー管理、SY02–SY04 = アプリ設定、SY05– = 管理系。

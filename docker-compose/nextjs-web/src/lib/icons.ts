@@ -12,6 +12,7 @@ import {
   IconAtom,
   IconBolt,
   IconBook2,
+  IconBookmarks,
   IconBoxSeam,
   IconBuilding,
   IconBuildingFactory2,
@@ -60,6 +61,7 @@ export type AppIcon = ComponentType<{ size?: number; stroke?: number }>;
 export const ICON_MAP: Record<string, AppIcon> = {
   IconAdjustments,
   IconBook2,
+  IconBookmarks,
   IconCurrencyYen,
   IconCalculator,
   IconFileText,
