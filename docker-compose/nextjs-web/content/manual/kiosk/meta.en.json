@@ -1,7 +1,4 @@
 {
   "title": "Shop-floor Tablet",
-  "pages": [
-    "start",
-    "steps"
-  ]
+  "pages": ["start", "steps"]
 }

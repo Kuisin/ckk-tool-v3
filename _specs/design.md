@@ -849,14 +849,14 @@ Paper (withBorder, p="sm", radius="sm")
     ├── Text size="xs" c="green" — "良品 {output_success_quantity}"
     ├── [if output_defect_semi_finished] Badge size="xs" color="orange" variant="light" — "半製品 {n}"
     ├── [if output_defect_scrap]         Badge size="xs" color="red"    variant="light" — "廃棄 {n}"
-    └── [if output_defect_rework]        Badge size="xs" color="yellow" variant="light" — "手直し {n}"
+    └── [if output_defect_rework]        Badge size="xs" color="yellow" variant="light" — "工程分岐 {n}"
 ```
 
 Branch/merge edges (`work_order_step_links`) use the convention `routed_quantity > 0` =
 static (the branched amount, only the source→head edge) and `routed_quantity = 0` =
 dynamic (carries the source's full 良品数 — chain and merge edges), so in-series
 defects propagate automatically. Branch quantity is capped at the source's
-unallocated 手直し数 (良品+手直し for terminal steps) — `branchableQuantity` in
+unallocated 工程分岐数 (良品+工程分岐 for terminal steps) — `branchableQuantity` in
 `lib/workflow-core.ts`, enforced server-side and reflected in AddBranchModal.
 
 ### 12.3 WorkOrderStepExecutionPage
@@ -895,7 +895,7 @@ Paper (withBorder, p="lg")
 └── Group grow — 不良内訳
     ├── NumberInput "半製品 (output_defect_semi_finished)"  // 在庫へ
     ├── NumberInput "廃棄 (output_defect_scrap)"
-    └── NumberInput "手直し (output_defect_rework)"          // 分岐で追加工程へ
+    └── NumberInput "工程分岐 (output_defect_rework)"          // 分岐で追加工程へ
 // バリデーション: output_success + 不良合計 = input_quantity（不一致時はインライン警告）
 ```
 

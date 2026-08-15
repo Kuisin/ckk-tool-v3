@@ -1,6 +1,4 @@
 {
   "title": "工序记录",
-  "pages": [
-    "user"
-  ]
+  "pages": ["user"]
 }

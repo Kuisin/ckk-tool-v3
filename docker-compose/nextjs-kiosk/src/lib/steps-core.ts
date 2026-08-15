@@ -220,7 +220,7 @@ export function isDefectEntryComplete(entry: DefectEntry): boolean {
 // ── 不良の内訳（完了フォーム — {種別, 理由, 数} の 1 本のリスト） ────────────
 //
 // 作業者は不良を 1 行ずつ足す。各行に **種別（在庫区分）** と理由・数を持ち、
-// 区分ごとの合計（半製品/廃棄/手直し）はこのリストの合計として導出する
+// 区分ごとの合計（半製品/廃棄/工程分岐）はこのリストの合計として導出する
 // （旧: 区分ごとの数値入力 + 別の理由リスト、を 1 本化）。在庫連携は区分合計を
 // そのまま使うので不変。良品 = 受入 − 総不良（全行の合計）。
 
@@ -233,7 +233,7 @@ export const DEFECT_DISPOSITIONS: DefectDisposition[] = [
 ];
 
 export interface DefectReasonEntry {
-  /** 種別（半製品/廃棄/手直し）。 */
+  /** 種別（半製品/廃棄/工程分岐）。 */
   type: DefectDisposition;
   /** 理由（不良種類名など・任意）。 */
   reason: string;

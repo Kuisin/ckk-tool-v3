@@ -1,12 +1,12 @@
 "use client";
 
 /**
- * AddBranchModal — 完了工程からの分岐系列追加 (§7 手直し・半製品再投入)。
+ * AddBranchModal — 完了工程からの分岐系列追加 (§7 工程分岐・半製品再投入)。
  *
  * 分岐元（COMPLETED の工程）を起点に、カタログ工程の系列 + 分岐数量 +
  * 任意の合流先（PENDING のメインライン工程）を指定して addBranch を呼ぶ。
- * 分岐数量は分岐可能数（maxQuantity — 手直しの未割当分。終端工程のみ
- * 良品+手直し）まで。既定値は 手直し数 と分岐可能数の小さい方。
+ * 分岐数量は分岐可能数（maxQuantity — 工程分岐の未割当分。終端工程のみ
+ * 良品+工程分岐）まで。既定値は 工程分岐数 と分岐可能数の小さい方。
  */
 
 import { MultiSelect, NumberInput, Select, Stack, Text } from "@mantine/core";
@@ -47,7 +47,7 @@ export function AddBranchModal({
   );
   const max = maxQuantity ?? null;
 
-  // 分岐元が変わったら既定値へリセット（既定数量 = min(手直し数 or 1, 分岐可能数)）
+  // 分岐元が変わったら既定値へリセット（既定数量 = min(工程分岐数 or 1, 分岐可能数)）
   useEffect(() => {
     if (sourceStep) {
       setCatalogStepIds([]);
@@ -107,7 +107,7 @@ export function AddBranchModal({
         />
         <NumberInput
           description={
-            max != null ? `分岐可能: ${max}（手直しの未割当分）` : undefined
+            max != null ? `分岐可能: ${max}（工程分岐の未割当分）` : undefined
           }
           label="分岐数量"
           max={max ?? undefined}
