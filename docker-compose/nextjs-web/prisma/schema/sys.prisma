@@ -20,6 +20,7 @@ model File {
   acceptanceSources OrderAcceptance[]   @relation("AcceptanceSourceFile")
   kioskFloorMaps   KioskFloorMap[]      @relation("KioskFloorMapFile")
   userAvatars      User[]               @relation("UserAvatarFile")
+  userAvatarThumbs User[]               @relation("UserAvatarThumbFile")
 
   @@map("files")
   @@schema("app")

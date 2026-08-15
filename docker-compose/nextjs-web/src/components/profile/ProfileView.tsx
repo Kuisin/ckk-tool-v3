@@ -11,7 +11,6 @@
  */
 
 import {
-  Avatar,
   Badge,
   Group,
   Paper,
@@ -36,7 +35,12 @@ import {
   SecondaryButton,
 } from "@/components/ui/buttons";
 import { FieldValue } from "@/components/ui/FieldValue";
+import {
+  type CroppedImages,
+  ImageCropModal,
+} from "@/components/ui/ImageCropModal";
 import { PageHeader } from "@/components/ui/PageHeader";
+import { UserAvatar } from "@/components/ui/UserAvatar";
 import { APPROVAL_GROUP_TYPE_LABEL } from "@/lib/enum-labels";
 import { type LocalizedText, localized } from "@/lib/format";
 
@@ -45,6 +49,8 @@ export interface ProfileData {
   displayName: string;
   /** プロフィール写真の配信 URL（未設定なら null → イニシャル表示）。 */
   avatarUrl: string | null;
+  /** 同・小サイズ（一覧・ヘッダー・履歴用）。 */
+  avatarThumbUrl: string | null;
   email: string | null;
   group: string;
   hasPassword: boolean;
@@ -98,6 +104,9 @@ function deviceLabel(ua: string | null): string {
 export function ProfileView({ user }: { user: ProfileData }) {
   const photoInputRef = useRef<HTMLInputElement>(null);
   const [avatarUrl, setAvatarUrl] = useState(user.avatarUrl);
+  const [avatarThumbUrl, setAvatarThumbUrl] = useState(user.avatarThumbUrl);
+  /** 選択直後の元ファイル — 切り抜きモーダルに渡す。 */
+  const [cropTarget, setCropTarget] = useState<File | null>(null);
   const [photoPending, startPhoto] = useTransition();
   const [email, setEmail] = useState(user.email ?? "");
   const [currentPassword, setCurrentPassword] = useState("");
@@ -120,16 +129,20 @@ export function ProfileView({ user }: { user: ProfileData }) {
     return json;
   };
 
-  const uploadPhoto = (file: File | null | undefined) => {
-    if (!file) return;
+  /** 切り抜き済みの正方形画像（大・小）を保存する。 */
+  const uploadPhoto = (cropped: CroppedImages) => {
     startPhoto(async () => {
       try {
         const body = new FormData();
-        body.append("file", file);
+        body.append("file", cropped.full);
+        body.append("thumb", cropped.thumb);
         const json = (await callAvatarApi({ method: "POST", body })) as {
           avatarUrl: string;
+          avatarThumbUrl: string;
         };
         setAvatarUrl(json.avatarUrl);
+        setAvatarThumbUrl(json.avatarThumbUrl);
+        setCropTarget(null);
         notifications.show({
           title: "設定しました",
           message: "プロフィール写真を更新しました",
@@ -152,6 +165,7 @@ export function ProfileView({ user }: { user: ProfileData }) {
       try {
         await callAvatarApi({ method: "DELETE" });
         setAvatarUrl(null);
+        setAvatarThumbUrl(null);
         notifications.show({
           title: "削除しました",
           message: "プロフィール写真を削除しました",
@@ -237,20 +251,28 @@ export function ProfileView({ user }: { user: ProfileData }) {
         title="プロフィール"
       />
 
+      {/* 正方形に切り抜いてから保存する（表示は常に真円）。 */}
+      <ImageCropModal
+        file={cropTarget}
+        loading={photoPending}
+        onCancel={() => {
+          setCropTarget(null);
+          if (photoInputRef.current) photoInputRef.current.value = "";
+        }}
+        onConfirm={uploadPhoto}
+      />
+
       {/* 基本情報 */}
       <Paper p="md" radius="md" withBorder>
         <Group align="flex-start" gap="lg" wrap="nowrap">
           {/* プロフィール写真 — 本人がアップロード。未設定はイニシャル。 */}
           <Stack align="center" gap={6}>
-            <Avatar
-              alt={user.displayName}
-              color="blue"
-              radius="xl"
+            <UserAvatar
+              name={user.displayName}
               size={64}
-              src={avatarUrl ?? undefined}
-            >
-              {user.displayName.slice(0, 2)}
-            </Avatar>
+              src={avatarUrl}
+              thumbSrc={avatarThumbUrl}
+            />
             <Group gap={2} wrap="nowrap">
               <GhostButton
                 leftSection={<IconCamera size={14} />}
@@ -276,7 +298,8 @@ export function ProfileView({ user }: { user: ProfileData }) {
             <input
               accept="image/png,image/jpeg,image/webp"
               hidden
-              onChange={(e) => uploadPhoto(e.target.files?.[0])}
+              // 選択したら即アップロードせず、まず切り抜きモーダルへ。
+              onChange={(e) => setCropTarget(e.target.files?.[0] ?? null)}
               ref={photoInputRef}
               type="file"
             />

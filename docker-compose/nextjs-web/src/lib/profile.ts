@@ -23,7 +23,10 @@ export interface UserProfile {
   company: string | null;
   office: string | null;
   phone: string | null;
+  /** 写真（大 — プロフィール・ホーム用）。 */
   avatarUrl: string | null;
+  /** 写真（小 — ヘッダー・一覧・履歴用）。 */
+  avatarThumbUrl: string | null;
 }
 
 function initialsOf(name: string, fallback: string): string {
@@ -63,5 +66,13 @@ export async function getCurrentProfile(): Promise<UserProfile | null> {
       user?.id && user.avatarFileId
         ? avatarUrl(user.id, user.avatarFileId)
         : null,
+    // サムネイル未生成の古い写真は大サイズで代用（配信側もフォールバック）。
+    avatarThumbUrl: user?.id
+      ? user.avatarThumbFileId
+        ? avatarUrl(user.id, user.avatarThumbFileId, "thumb")
+        : user.avatarFileId
+          ? avatarUrl(user.id, user.avatarFileId)
+          : null
+      : null,
   };
 }

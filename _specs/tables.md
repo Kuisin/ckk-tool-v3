@@ -9,7 +9,9 @@ Table users {
   display_name    varchar  // AD[lastNamePhonetic], AD[firstNamePhonetic] - AD[lastName] AD[lastName]
   email           varchar  // AD[email]
   // プロフィール写真（アプリ内でアップロード。AD からは取得しない）
-  avatar_file_id  uuid [ref: > files.id]
+  // 正方形に切り抜いて 2 サイズ保存: 大 512px / 小 96px（一覧・履歴用）
+  avatar_file_id       uuid [ref: > files.id]
+  avatar_thumb_file_id uuid [ref: > files.id]
   is_active       boolean
   last_login_at   timestamp
   created_at      timestamp

@@ -10,7 +10,6 @@
 
 import {
   Anchor,
-  Avatar,
   Flex,
   Group,
   Paper,
@@ -38,6 +37,7 @@ import { FieldValue } from "@/components/ui/FieldValue";
 import { ConfirmModal } from "@/components/ui/modals";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { StatusBadge } from "@/components/ui/StatusBadge";
+import { UserAvatar } from "@/components/ui/UserAvatar";
 import { formatDateTime } from "@/lib/format";
 import type { KioskDeviceRecentUser, KioskDeviceRow } from "@/lib/kiosk-admin";
 import { DeviceLogList } from "./KioskDeviceLogsModal";
@@ -303,9 +303,11 @@ export function KioskDeviceDetailView({
                 {recentUsers.map((u) => (
                   <Group justify="space-between" key={u.userId} wrap="nowrap">
                     <Group gap="sm" style={{ minWidth: 0 }} wrap="nowrap">
-                      <Avatar color="blue" radius="xl" size="sm">
-                        {u.displayName.slice(0, 1)}
-                      </Avatar>
+                      <UserAvatar
+                        initials={u.displayName.slice(0, 1)}
+                        name={u.displayName}
+                        size="sm"
+                      />
                       <div style={{ minWidth: 0 }}>
                         <Text fw={500} size="sm" truncate>
                           {u.displayName}

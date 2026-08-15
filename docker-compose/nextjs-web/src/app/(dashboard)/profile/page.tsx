@@ -18,6 +18,7 @@ export default async function ProfilePage() {
       username: true,
       displayName: true,
       avatarFileId: true,
+      avatarThumbFileId: true,
       email: true,
       group: true,
       passwordHash: true,
@@ -40,6 +41,9 @@ export default async function ProfilePage() {
         displayName: user.displayName,
         avatarUrl: user.avatarFileId
           ? avatarUrl(userId, user.avatarFileId)
+          : null,
+        avatarThumbUrl: user.avatarThumbFileId
+          ? avatarUrl(userId, user.avatarThumbFileId, "thumb")
           : null,
         email: user.email,
         group: user.group,

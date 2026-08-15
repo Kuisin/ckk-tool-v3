@@ -49,6 +49,7 @@ import {
 } from "./buttons";
 import { type Crumb, PageHeader } from "./PageHeader";
 import { PdfButton } from "./PdfButton";
+import { UserAvatar } from "./UserAvatar";
 
 export interface MenuItemDef {
   label: string;
@@ -353,6 +354,8 @@ export interface AuditEntry {
   id: string | number;
   action: string;
   user: string;
+  /** 操作者の顔写真（小）。未設定・システム操作なら null → イニシャル。 */
+  avatarUrl?: string | null;
   at: string;
   detail?: ReactNode;
 }
@@ -370,9 +373,13 @@ export function AuditTimeline({ entries }: { entries: AuditEntry[] }) {
       {entries.map((log) => (
         <Timeline.Item
           bullet={
-            <Text fw={700} fz={10}>
-              {log.user[0]}
-            </Text>
+            log.avatarUrl ? (
+              <UserAvatar name={log.user} size={18} thumbSrc={log.avatarUrl} />
+            ) : (
+              <Text fw={700} fz={10}>
+                {log.user[0]}
+              </Text>
+            )
           }
           key={log.id}
           lineVariant="dotted"
