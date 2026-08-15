@@ -26,10 +26,8 @@ import { IconCamera, IconDeviceMobile, IconTrash } from "@tabler/icons-react";
 import { useRef, useState, useTransition } from "react";
 import {
   changePasswordAction,
-  removeAvatarAction,
   removeDeviceAction,
   updateEmailAction,
-  uploadAvatarAction,
 } from "@/app/(dashboard)/profile/actions";
 import {
   DangerButton,
@@ -109,44 +107,60 @@ export function ProfileView({ user }: { user: ProfileData }) {
   const [emailPending, startEmail] = useTransition();
   const [pwPending, startPw] = useTransition();
 
+  /**
+   * 写真の設定・削除は /api/avatars（Route Handler）へ。Server Action は
+   * ボディ 1MB 上限で写真が 413 になるため使わない。
+   */
+  const callAvatarApi = async (init: RequestInit): Promise<unknown> => {
+    const res = await fetch("/api/avatars", init);
+    const json = await res.json().catch(() => ({}));
+    if (!res.ok || json?.ok !== true) {
+      throw new Error(json?.error ?? `HTTP ${res.status}`);
+    }
+    return json;
+  };
+
   const uploadPhoto = (file: File | null | undefined) => {
     if (!file) return;
     startPhoto(async () => {
-      const body = new FormData();
-      body.append("file", file);
-      const res = await uploadAvatarAction(body);
-      if (photoInputRef.current) photoInputRef.current.value = "";
-      if (res.ok) {
-        setAvatarUrl(res.data.avatarUrl);
+      try {
+        const body = new FormData();
+        body.append("file", file);
+        const json = (await callAvatarApi({ method: "POST", body })) as {
+          avatarUrl: string;
+        };
+        setAvatarUrl(json.avatarUrl);
         notifications.show({
           title: "設定しました",
           message: "プロフィール写真を更新しました",
           color: "green",
         });
-      } else {
+      } catch (err) {
         notifications.show({
           title: "エラー",
-          message: res.error,
+          message: err instanceof Error ? err.message : "不明なエラー",
           color: "red",
         });
+      } finally {
+        if (photoInputRef.current) photoInputRef.current.value = "";
       }
     });
   };
 
   const deletePhoto = () => {
     startPhoto(async () => {
-      const res = await removeAvatarAction();
-      if (res.ok) {
+      try {
+        await callAvatarApi({ method: "DELETE" });
         setAvatarUrl(null);
         notifications.show({
           title: "削除しました",
           message: "プロフィール写真を削除しました",
           color: "green",
         });
-      } else {
+      } catch (err) {
         notifications.show({
           title: "エラー",
-          message: res.error,
+          message: err instanceof Error ? err.message : "不明なエラー",
           color: "red",
         });
       }
