@@ -129,6 +129,13 @@ are owned by `shared-db` (see root CLAUDE.md).
   `"use client"`). `server-only` modules (`import "server-only"`) may be imported
   by client code only as **`import type`**.
 - Pages that read runtime state use `export const dynamic = "force-dynamic"`.
+- **File uploads never go through a Server Action** — the Server Action request
+  body is capped at **1MB** by default, so anything bigger fails with
+  `Error: Body exceeded 1 MB limit` (413) *before* your code runs, and the
+  client sees an error page instead of the action's `ActionResult`. Upload via a
+  Route Handler + `fetch` instead: `/api/attachments/upload`, `/api/admin/files`,
+  `/api/avatars`. (Known offender still on the old pattern:
+  `uploadFloorMapImage` in `settings/kiosk-devices/actions.ts`, allows 10MB.)
 - i18n: DB `{ ja, en }` fields always carry both (`localizedInput`); UI strings are
   Japanese-first. Terminology + status-color map are fixed — see `design.md` /
   `_specs/design.md §9, §17`.
