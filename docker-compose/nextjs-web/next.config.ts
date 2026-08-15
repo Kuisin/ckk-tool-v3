@@ -18,7 +18,11 @@ const nextConfig: NextConfig = {
   // できなくても表示できる。
   images: {
     remotePatterns: [
-      { protocol: "https", hostname: "ckk-kiosk.kai-lab.net", pathname: "/apk/**" },
+      {
+        protocol: "https",
+        hostname: "ckk-kiosk.kai-lab.net",
+        pathname: "/apk/**",
+      },
       {
         protocol: "https",
         hostname: "ckk-kiosk-dev.kai-lab.net",
