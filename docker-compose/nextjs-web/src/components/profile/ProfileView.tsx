@@ -3,6 +3,7 @@
 /**
  * ProfileView — プロフィール画面（本人）。
  *
+ * - プロフィール写真（本人がアップロード / 削除。AD からは取得しない）
  * - 基本情報（名前・ユーザー名・種別・最終ログイン・承認グループ）
  * - メールアドレス変更（通知メールの宛先 — lib/notifications の email チャネル）
  * - パスワード変更（credentials ユーザーのみ表示。SSO ユーザーは非表示）
@@ -21,15 +22,18 @@ import {
   TextInput,
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
-import { IconDeviceMobile } from "@tabler/icons-react";
-import { useState, useTransition } from "react";
+import { IconCamera, IconDeviceMobile, IconTrash } from "@tabler/icons-react";
+import { useRef, useState, useTransition } from "react";
 import {
   changePasswordAction,
+  removeAvatarAction,
   removeDeviceAction,
   updateEmailAction,
+  uploadAvatarAction,
 } from "@/app/(dashboard)/profile/actions";
 import {
   DangerButton,
+  GhostButton,
   SaveButton,
   SecondaryButton,
 } from "@/components/ui/buttons";
@@ -41,6 +45,8 @@ import { type LocalizedText, localized } from "@/lib/format";
 export interface ProfileData {
   username: string;
   displayName: string;
+  /** プロフィール写真の配信 URL（未設定なら null → イニシャル表示）。 */
+  avatarUrl: string | null;
   email: string | null;
   group: string;
   hasPassword: boolean;
@@ -92,6 +98,9 @@ function deviceLabel(ua: string | null): string {
 }
 
 export function ProfileView({ user }: { user: ProfileData }) {
+  const photoInputRef = useRef<HTMLInputElement>(null);
+  const [avatarUrl, setAvatarUrl] = useState(user.avatarUrl);
+  const [photoPending, startPhoto] = useTransition();
   const [email, setEmail] = useState(user.email ?? "");
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -99,6 +108,50 @@ export function ProfileView({ user }: { user: ProfileData }) {
   const [devices, setDevices] = useState(user.devices);
   const [emailPending, startEmail] = useTransition();
   const [pwPending, startPw] = useTransition();
+
+  const uploadPhoto = (file: File | null | undefined) => {
+    if (!file) return;
+    startPhoto(async () => {
+      const body = new FormData();
+      body.append("file", file);
+      const res = await uploadAvatarAction(body);
+      if (photoInputRef.current) photoInputRef.current.value = "";
+      if (res.ok) {
+        setAvatarUrl(res.data.avatarUrl);
+        notifications.show({
+          title: "設定しました",
+          message: "プロフィール写真を更新しました",
+          color: "green",
+        });
+      } else {
+        notifications.show({
+          title: "エラー",
+          message: res.error,
+          color: "red",
+        });
+      }
+    });
+  };
+
+  const deletePhoto = () => {
+    startPhoto(async () => {
+      const res = await removeAvatarAction();
+      if (res.ok) {
+        setAvatarUrl(null);
+        notifications.show({
+          title: "削除しました",
+          message: "プロフィール写真を削除しました",
+          color: "green",
+        });
+      } else {
+        notifications.show({
+          title: "エラー",
+          message: res.error,
+          color: "red",
+        });
+      }
+    });
+  };
 
   const saveEmail = () => {
     startEmail(async () => {
@@ -173,9 +226,47 @@ export function ProfileView({ user }: { user: ProfileData }) {
       {/* 基本情報 */}
       <Paper p="md" radius="md" withBorder>
         <Group align="flex-start" gap="lg" wrap="nowrap">
-          <Avatar color="blue" radius="xl" size={64}>
-            {user.displayName.slice(0, 2)}
-          </Avatar>
+          {/* プロフィール写真 — 本人がアップロード。未設定はイニシャル。 */}
+          <Stack align="center" gap={6}>
+            <Avatar
+              alt={user.displayName}
+              color="blue"
+              radius="xl"
+              size={64}
+              src={avatarUrl ?? undefined}
+            >
+              {user.displayName.slice(0, 2)}
+            </Avatar>
+            <Group gap={2} wrap="nowrap">
+              <GhostButton
+                leftSection={<IconCamera size={14} />}
+                loading={photoPending}
+                onClick={() => photoInputRef.current?.click()}
+                size="xs"
+              >
+                {avatarUrl ? "変更" : "写真を設定"}
+              </GhostButton>
+              {avatarUrl && (
+                <GhostButton
+                  aria-label="プロフィール写真を削除"
+                  color="red"
+                  disabled={photoPending}
+                  onClick={deletePhoto}
+                  px={6}
+                  size="xs"
+                >
+                  <IconTrash size={14} />
+                </GhostButton>
+              )}
+            </Group>
+            <input
+              accept="image/png,image/jpeg,image/webp"
+              hidden
+              onChange={(e) => uploadPhoto(e.target.files?.[0])}
+              ref={photoInputRef}
+              type="file"
+            />
+          </Stack>
           <Stack className="min-w-0 flex-1" gap="md">
             <SimpleGrid cols={{ base: 1, md: 3 }} spacing="md">
               <FieldValue label="表示名" value={user.displayName} />

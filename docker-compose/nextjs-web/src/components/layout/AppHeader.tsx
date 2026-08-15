@@ -81,6 +81,7 @@ const GUEST_USER = {
   displayName: "ゲスト",
   initials: "—",
   department: "",
+  avatarUrl: null as string | null,
 };
 
 export interface HeaderUser {
@@ -89,6 +90,8 @@ export interface HeaderUser {
   initials: string;
   department: string | null;
   title: string | null;
+  /** プロフィール写真の URL（未設定なら null → イニシャル表示）。 */
+  avatarUrl: string | null;
 }
 
 export function AppHeader({
@@ -104,6 +107,7 @@ export function AppHeader({
         initials: user.initials,
         // 所属（無ければ役職 → ユーザー名の順でフォールバック）。
         department: user.department || user.title || user.username,
+        avatarUrl: user.avatarUrl,
       }
     : GUEST_USER;
   const [launcherOpen, setLauncherOpen] = useState(false);
@@ -440,11 +444,13 @@ export function AppHeader({
           <Menu position="bottom-end" shadow="md" width={PROFILE_MENU_WIDTH}>
             <Menu.Target>
               <Avatar
+                alt={sessionUser.displayName}
                 aria-label="ユーザーメニュー"
                 className="cursor-pointer"
                 color="blue"
                 radius="xl"
                 size="sm"
+                src={sessionUser.avatarUrl ?? undefined}
               >
                 {sessionUser.initials}
               </Avatar>
@@ -452,7 +458,14 @@ export function AppHeader({
             <Menu.Dropdown px="xs">
               <Menu.Label px="0" py="xs">
                 <Group align="center" gap="sm" wrap="nowrap">
-                  <Avatar aria-hidden color="blue" radius="xl" size="md">
+                  <Avatar
+                    alt=""
+                    aria-hidden
+                    color="blue"
+                    radius="xl"
+                    size="md"
+                    src={sessionUser.avatarUrl ?? undefined}
+                  >
                     {sessionUser.initials}
                   </Avatar>
                   <Stack gap={0}>

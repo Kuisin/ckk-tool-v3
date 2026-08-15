@@ -8,6 +8,8 @@ Table users {
   username        varchar  // AD[uid]
   display_name    varchar  // AD[lastNamePhonetic], AD[firstNamePhonetic] - AD[lastName] AD[lastName]
   email           varchar  // AD[email]
+  // プロフィール写真（アプリ内でアップロード。AD からは取得しない）
+  avatar_file_id  uuid [ref: > files.id]
   is_active       boolean
   last_login_at   timestamp
   created_at      timestamp

@@ -163,6 +163,7 @@ export function HomeApps({
         <Group align="flex-start" justify="space-between" wrap="nowrap">
           <Group>
             <Avatar
+              alt={user.displayName}
               color="blue"
               radius="xl"
               size={72}

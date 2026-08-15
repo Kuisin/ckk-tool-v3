@@ -9,12 +9,13 @@ import "server-only";
  */
 
 import { auth } from "@/auth";
+import { avatarUrl } from "./avatar";
 import { prisma } from "./db";
 
 export interface UserProfile {
   displayName: string;
   username: string;
-  /** アバターのイニシャル（表示名の先頭 2 文字）。 */
+  /** アバターのイニシャル（表示名の先頭 2 文字）。写真が無いときの代替。 */
   initials: string;
   email: string | null;
   department: string | null;
@@ -57,6 +58,10 @@ export async function getCurrentProfile(): Promise<UserProfile | null> {
     company: emp?.company ?? null,
     office: emp?.office ?? null,
     phone: emp?.phone ?? emp?.mobile ?? null,
-    avatarUrl: null,
+    // 写真はアプリ内でアップロードしたもの（AD からは取得しない）。
+    avatarUrl:
+      user?.id && user.avatarFileId
+        ? avatarUrl(user.id, user.avatarFileId)
+        : null,
   };
 }
