@@ -12,7 +12,7 @@
 import type { AuditEntry } from "@/components/ui/shells";
 import { avatarUrl } from "@/lib/avatar";
 import { prisma } from "@/lib/db";
-import { formatDateTime } from "@/lib/format";
+import { deviceName, formatDateTime } from "@/lib/format";
 
 export type AuditAction =
   | "CREATE"
@@ -243,6 +243,8 @@ type AuditRow = {
     avatarThumbFileId: string | null;
     avatarFileId: string | null;
   } | null;
+  /** 操作元のキオスク端末（共有タブレット経由の操作のみ）。 */
+  kioskDevice: { id: string; name: unknown } | null;
 };
 
 function mapAudit(row: AuditRow): AuditEntry {
@@ -252,6 +254,8 @@ function mapAudit(row: AuditRow): AuditEntry {
     user: row.user?.displayName ?? "システム",
     // 操作者の顔写真（小）。未設定・システム操作ならイニシャル表示になる。
     avatarUrl: row.user ? actorAvatarUrl(row.user) : null,
+    // 操作元の共有タブレット（Web からの操作は null → バッジを出さない）。
+    device: row.kioskDevice ? deviceName(row.kioskDevice.name) : null,
     at: formatDateTime(row.createdAt),
     detail: describeChange(row.action, row.beforeData, row.afterData),
   };
@@ -288,6 +292,7 @@ export async function fetchAuditEntries(
             avatarFileId: true,
           },
         },
+        kioskDevice: { select: { id: true, name: true } },
       },
       take: 100,
     });
@@ -336,6 +341,7 @@ export async function getActivityEntry(
             avatarFileId: true,
           },
         },
+        kioskDevice: { select: { id: true, name: true } },
       },
     });
     if (!row) return null;
@@ -372,6 +378,7 @@ export async function listAuditEntries(
             avatarFileId: true,
           },
         },
+        kioskDevice: { select: { id: true, name: true } },
       },
       take,
       skip,

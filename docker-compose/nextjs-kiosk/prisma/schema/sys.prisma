@@ -19,6 +19,8 @@ model File {
   attachments      DocumentAttachment[] @relation("AttachmentFile")
   acceptanceSources OrderAcceptance[]   @relation("AcceptanceSourceFile")
   kioskFloorMaps   KioskFloorMap[]      @relation("KioskFloorMapFile")
+  userAvatars      User[]               @relation("UserAvatarFile")
+  userAvatarThumbs User[]               @relation("UserAvatarThumbFile")
 
   @@map("files")
   @@schema("app")
@@ -117,12 +119,18 @@ model AuditLog {
   recordId   String?  @map("record_id") // 業務識別子（文書番号・エントリキー・id）
   beforeData Json?    @map("before_data")
   afterData  Json?    @map("after_data")
+  // 操作元のキオスク端末（共有タブレットからの操作のみ。Web からは null）。
+  // 誰が だけでなく **どの端末で** を残すため — 履歴一覧・履歴タブで
+  // 端末名バッジとして表示する。
+  kioskDeviceId String? @map("kiosk_device_id") @db.Uuid
   createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
-  user User? @relation("AuditLogUser", fields: [userId], references: [id])
+  user        User?        @relation("AuditLogUser", fields: [userId], references: [id])
+  kioskDevice KioskDevice? @relation("AuditLogKioskDevice", fields: [kioskDeviceId], references: [id], onDelete: SetNull)
 
   @@index([tableName, recordId])
   @@index([createdAt])
+  @@index([kioskDeviceId])
   @@map("audit_logs")
   @@schema("app")
 }

@@ -60,8 +60,10 @@ model KioskFloorMap {
 // ─── 端末（共有タブレット） ──────────────────────────────────────────────────
 
 model KioskDevice {
-  id       String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  name     String?
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  // 端末名は多言語 JSON { ja, en }（_specs/design.md §17.4）。キオスク UI の
+  // zh は ja へフォールバックする（lib/format.ts localized）。
+  name     Json?
   location String?
   // 有効化時に管理者が設定（PENDING の間は null）
   plantId Int? @map("plant_id")
@@ -105,6 +107,7 @@ model KioskDevice {
   linkRequests KioskLinkRequest[] @relation("KioskLinkRequestDevice")
   logs        KioskDeviceLog[] @relation("KioskDeviceLogDevice")
   locations   KioskDeviceLocation[] @relation("KioskDeviceLocationDevice")
+  auditLogs   AuditLog[]            @relation("AuditLogKioskDevice")
 
   @@index([plantId])
   @@index([status])

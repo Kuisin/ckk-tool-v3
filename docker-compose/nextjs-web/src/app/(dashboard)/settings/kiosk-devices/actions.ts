@@ -38,6 +38,7 @@ import {
   type ActionResult,
   actionError,
   actionOk,
+  localizedInput,
   prismaErrorMessage,
 } from "@/lib/server-action";
 import { deleteObject, putObject } from "@/lib/storage";
@@ -107,7 +108,9 @@ export async function fetchDeviceSessions(
 // ── プロファイル作成・リンク ────────────────────────────────────────────────
 
 const createProfileInput = z.object({
-  name: z.string().min(1, "端末名を入力してください"),
+  // 端末名は多言語（{ ja, en }）。英語未入力なら日本語で埋める。
+  nameJa: z.string().min(1, "端末名を入力してください"),
+  nameEn: z.string().optional(),
   plantId: z.number().int().positive("拠点を選択してください"),
   location: z.string().optional(),
 });
@@ -137,10 +140,11 @@ export async function createDeviceProfile(
     if (!plant || !plant.isActive) {
       return actionError("対象の拠点が見つかりません");
     }
+    const name = localizedInput(v.nameJa, v.nameEn);
     const created = await prisma.kioskDevice.create({
       data: {
         status: "PENDING",
-        name: v.name.trim(),
+        name,
         plantId: v.plantId,
         location: v.location?.trim() || null,
       },
@@ -152,7 +156,7 @@ export async function createDeviceProfile(
       recordId: created.id,
       after: {
         status: "PENDING",
-        name: v.name.trim(),
+        name,
         plantId: v.plantId,
         location: v.location?.trim() || null,
       },
@@ -402,7 +406,9 @@ export async function activateDevice(
 
 const updateInput = z.object({
   id: uuidSchema,
-  name: z.string().min(1, "端末名を入力してください"),
+  // 端末名は多言語（{ ja, en }）。英語未入力なら日本語で埋める。
+  nameJa: z.string().min(1, "端末名を入力してください"),
+  nameEn: z.string().optional(),
   plantId: z.number().int().positive("拠点を選択してください"),
   location: z.string().optional(),
 });
@@ -425,10 +431,11 @@ export async function updateDevice(
     const device = await prisma.kioskDevice.findUnique({ where: { id: v.id } });
     if (!device) return actionError("対象の端末が見つかりません");
     const plantChanged = device.plantId !== v.plantId;
+    const name = localizedInput(v.nameJa, v.nameEn);
     await prisma.kioskDevice.update({
       where: { id: v.id },
       data: {
-        name: v.name.trim(),
+        name,
         plantId: v.plantId,
         location: v.location?.trim() || null,
         // 拠点をまたぐ移動はフロアマップのピンを外す（マップは拠点単位）。
@@ -445,7 +452,7 @@ export async function updateDevice(
         plantId: device.plantId,
       },
       after: {
-        name: v.name.trim(),
+        name,
         location: v.location?.trim() || null,
         plantId: v.plantId,
       },
