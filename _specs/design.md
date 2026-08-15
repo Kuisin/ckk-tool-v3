@@ -272,35 +272,39 @@ Operation codes provide keyboard-shortcut navigation. Format: `{CAT}{MODE}{IDX}`
 | Category | IDX | Base label | list | new | detail |
 |----------|-----|-----------|------|-----|--------|
 | 共通 | — | ダッシュボード | CM00 | — | — |
-| 販売 | 1 | 価格表 | SA01 | SA11 | SA21 |
-| 販売 | 2 | 見積書 | SA02 | SA12 | SA22 |
-| 販売 | 3 | 受注請書 | SA03 | SA13 | SA23 |
-| 販売 | 4 | 設計依頼書 | SA04 | SA14 | SA24 |
-| 販売 | 5 | 試算 | SA05 | SA15 | SA25 |
-| 購買 | 1 | 素材入荷 | PU01 | PU11 | PU21 |
-| 購買 | 2 | 外注依頼 | PU02 | PU12 | PU22 |
-| 購買 | 3 | 素材発注書 | PU03 | PU13 | PU23 |
+| 販売 | 1 | 試算 | SA01 | SA11 | SA21 |
+| 販売 | 2 | 価格表 | SA02 | SA12 | SA22 |
+| 販売 | 3 | 見積書 | SA03 | SA13 | SA23 |
+| 販売 | 4 | 受注請書 | SA04 | SA14 | SA24 |
+| 販売 | 5 | 設計依頼書 | SA05 | SA15 | SA25 |
+| 購買 | 1 | 購買依頼 | PU01 | PU11 | PU21 |
+| 購買 | 2 | 素材発注書 | PU02 | PU12 | PU22 |
+| 購買 | 3 | 素材入荷 | PU03 | PU13 | PU23 |
+| 購買 | 4 | 外注依頼 | PU04 | PU14 | PU24 |
+| 生産 | 1 | 注文請書 | PD01 | PD11 | PD21 |
 | 生産 | 2 | 指示書 | PD02 | PD12 | PD22 |
 | 生産 | 3 | 承認管理 | PD03 | PD13 | PD23 |
-| 生産 | 4 | 製品在庫 | PD04 | PD14 | PD24 |
-| 生産 | 5 | 素材在庫 | PD05 | PD15 | PD25 |
+| 生産 | 4 | 在庫管理 | PD04 | — | — |
 | 出荷 | 1 | 出荷書 | SH01 | SH11 | SH21 |
 | 出荷 | 2 | 納品書 | SH02 | SH12 | SH22 |
 | 請求 | 1 | 請求書 | BL01 | BL11 | BL21 |
 | 請求 | 2 | 締日処理 | BL02 | BL12 | BL22 |
 | マスタ | 1 | 顧客 | MS01 | MS11 | MS21 |
 | マスタ | 2 | 最終需要家 | MS02 | MS12 | MS22 |
-| マスタ | 3 | 製品 | MS03 | MS13 | MS23 |
-| マスタ | 4 | 材種 | MS04 | MS14 | MS24 |
-| マスタ | 5 | 素材 | MS05 | MS15 | MS25 |
-| マスタ | 6 | 外注企業 | MS06 | MS16 | MS26 |
-| マスタ | 7 | 工程マスタ | MS07 | MS17 | MS27 |
-| マスタ | 8 | 検査表テンプレート | MS08 | MS18 | MS28 |
-| マスタ | 9 | 不良種類 | MS09 | MS19 | MS29 |
-| マスタ | A | 承認グループ | MS0A | MS1A | MS2A |
-| マスタ | B | 拠点 | MS0B | MS1B | MS2B |
-| マスタ | C | 採番構成 | MS0C | — | — |
+| マスタ | 3 | 外注企業 | MS03 | MS13 | MS23 |
+| マスタ | 4 | 製品 | MS04 | MS14 | MS24 |
+| マスタ | 5 | 材種 | MS05 | MS15 | MS25 |
+| マスタ | 6 | 素材 | MS06 | MS16 | MS26 |
+| マスタ | 7 | 採番構成 | MS07 | — | — |
+| マスタ | 8 | 工程マスタ | MS08 | MS18 | MS28 |
+| マスタ | 9 | 検査表テンプレート | MS09 | MS19 | MS29 |
+| マスタ | A | 不良種類 | MS0A | MS1A | MS2A |
+| マスタ | B | 承認グループ | MS0B | MS1B | MS2B |
+| マスタ | C | 拠点 | MS0C | MS1C | MS2C |
+| マスタ | D | 作業場所 | MS0D | — | — |
+| マスタ | E | 保管場所 | MS0E | — | — |
 | ドキュメント | 1 | マニュアル | DC01 | — | — |
+| ドキュメント | 2 | 社内ドキュメント | DC02 | — | — |
 | システム | 1 | ユーザー管理 | SY01 | — | — |
 | システム | 2 | 試算計算 | SY02 | — | — |
 | システム | 3 | 製品項目 | SY03 | — | — |
@@ -802,13 +806,22 @@ Timeline (active={-1}, bulletSize={28}, lineWidth={2})
 Paper (withBorder, p="md", radius="md")
 ├── Group justify="space-between" mb="sm"
 │   ├── Title order={5} "工程ワークフロー"
-│   └── [desktop, if APPROVED or IN_PROGRESS] Button variant="subtle" size="xs" "変更承認依頼"
-├── [if has step links (分岐/合流)] WorkflowGraph — DAG view of steps + routed quantities
-│   `src/components/production/WorkflowGraph.tsx` — nodes = work_order_steps,
-│   edges = work_order_step_links (source→target, routed_quantity label)
-├── Stack gap="xs"
-│   └── [per work_order_step] StepCard (see below)
-└── [mobile] Button variant="subtle" size="xs" fullWidth mt="sm" "変更承認依頼"
+│   └── [if APPROVED or IN_PROGRESS] Anchor "工程実行ビューを開く"
+└── Grid gap="md"  — 2 ペイン（デスクトップは余白を情報で埋める）
+    ├── Grid.Col span={{ base: 12, lg: 7 }} — 工程リスト
+    │   ├── [lg 未満のみ] SecondaryButton トグル + Collapse — フロー図の折りたたみ表示
+    │   └── Stack gap="xs" — メインライン工程の StepCard 列（sortOrder 順）
+    │       └── [分岐系列] 分岐元カード直下にネスト Paper（左 3px orange アクセント + ml="md"）
+    │           ├── Group — IconArrowsSplit + "分岐系列" + Badge 数量 + [Badge 合流 → 工程名]
+    │           │   └── [全工程 PENDING かつ実行可能] ActionIcon(red) 削除 → openConfirm → removeBranch
+    │           └── Stack gap="xs" — 系列内 StepCard（分岐 off 分岐は再帰ネスト）
+    └── Grid.Col span={{ base: 12, lg: 5 }} visibleFrom="lg" — フロー図（sticky top:76）
+        └── WorkflowGraph — 縦型 SVG キャンバス（直列でも常時表示）
+            `src/components/production/WorkflowGraph.tsx` — layer→Y（フロー方向）、
+            レーン→X（メインライン=0 / 分岐系列=1..）。メインラインの暗黙フロー
+            （kind:"flow"）は灰色実線・無ラベル、分岐/合流エッジ（kind:"link"）は
+            橙の破線 + 数量ラベル（動的エッジは解決値 or「全量」）。ノードクリックで
+            リスト側の StepCard を選択・スクロール同期（selected = blue 強調枠）
 ```
 
 **StepCard** (`src/components/production/StepCard.tsx`)
@@ -837,11 +850,15 @@ Paper (withBorder, p="sm", radius="sm")
     ├── Text size="xs" c="green" — "良品 {output_success_quantity}"
     ├── [if output_defect_semi_finished] Badge size="xs" color="orange" variant="light" — "半製品 {n}"
     ├── [if output_defect_scrap]         Badge size="xs" color="red"    variant="light" — "廃棄 {n}"
-    └── [if output_defect_rework]        Badge size="xs" color="yellow" variant="light" — "手直し {n}"
+    └── [if output_defect_rework]        Badge size="xs" color="yellow" variant="light" — "工程分岐 {n}"
 ```
 
-When the step is a split/merge node, `WorkOrderStepsPanel` renders `WorkflowGraph` (see §12.2)
-above the card list to show the branch/merge edges (`work_order_step_links`) and routed quantities.
+Branch/merge edges (`work_order_step_links`) use the convention `routed_quantity > 0` =
+static (the branched amount, only the source→head edge) and `routed_quantity = 0` =
+dynamic (carries the source's full 良品数 — chain and merge edges), so in-series
+defects propagate automatically. Branch quantity is capped at the source's
+unallocated 工程分岐数 (良品+工程分岐 for terminal steps) — `branchableQuantity` in
+`lib/workflow-core.ts`, enforced server-side and reflected in AddBranchModal.
 
 ### 12.3 WorkOrderStepExecutionPage
 
@@ -879,7 +896,7 @@ Paper (withBorder, p="lg")
 └── Group grow — 不良内訳
     ├── NumberInput "半製品 (output_defect_semi_finished)"  // 在庫へ
     ├── NumberInput "廃棄 (output_defect_scrap)"
-    └── NumberInput "手直し (output_defect_rework)"          // 分岐で追加工程へ
+    └── NumberInput "工程分岐 (output_defect_rework)"          // 分岐で追加工程へ
 // バリデーション: output_success + 不良合計 = input_quantity（不一致時はインライン警告）
 ```
 

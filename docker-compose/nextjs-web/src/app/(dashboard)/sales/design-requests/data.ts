@@ -1,5 +1,5 @@
 /**
- * data.ts — 設計依頼書 (SA04) ページのサーバーサイド取得・マッピング。
+ * data.ts — 設計依頼書 (SA05) ページのサーバーサイド取得・マッピング。
  *
  * app.design_requests は uuid PK + request_number（DSG-YYYYMM-NNNNN、保存済み）。
  * URL id = request_number。参照元（見積書/注文請書）の表示番号はキーから導出する。

@@ -127,9 +127,11 @@ export async function validateAndOrderSteps(
 
 import { getCurrentActorId, recordAudit } from "./audit";
 import {
+  branchableQuantity,
   canStartStep,
   downstreamStepIds,
   expectedInput,
+  isOffMainline,
   isWorkOrderComplete,
   type StepLinkState,
   type StepState,
@@ -323,7 +325,7 @@ export async function completeStepExecution(
     // 受入数は開始時に確定した値を権威とする（完了時のクライアント値は無視）。
     const authoritativeInput =
       stepRow.inputQuantity ?? quantities?.inputQuantity ?? 0;
-    // 区分合計（半製品/廃棄/手直し）は**不良リストから導出**して権威とする。
+    // 区分合計（半製品/廃棄/工程分岐）は**不良リストから導出**して権威とする。
     // リストが無い場合のみ quantities の区分へフォールバック（後方互換）。
     const list = defectReasons ?? [];
     const sumType = (t: StepDefectReason["type"]) =>
@@ -525,9 +527,55 @@ export async function rollbackStepExecution(
   return { ok: true };
 }
 
+/** 読み込んだ指示書行 → engine コンテキスト（分岐系の純ロジック検証用）。 */
+function ctxFromWorkOrder(wo: {
+  plannedQuantity: number;
+  steps: {
+    id: string;
+    processStepId: number;
+    status: StepState["status"];
+    sortOrder: number;
+    inputQuantity: number | null;
+    outputSuccessQuantity: number | null;
+    outputDefectSemiFinished: number | null;
+    outputDefectScrap: number | null;
+    outputDefectRework: number | null;
+    sessionLockedBy: string | null;
+  }[];
+  stepLinks: {
+    sourceStepId: string;
+    targetStepId: string;
+    routedQuantity: number;
+  }[];
+}): WorkflowCtx {
+  return {
+    plannedQuantity: wo.plannedQuantity,
+    steps: wo.steps.map((s) => ({
+      id: s.id,
+      processStepId: s.processStepId,
+      status: s.status,
+      sortOrder: s.sortOrder,
+      inputQuantity: s.inputQuantity,
+      outputSuccess: s.outputSuccessQuantity,
+      defectSemiFinished: s.outputDefectSemiFinished,
+      defectScrap: s.outputDefectScrap,
+      defectRework: s.outputDefectRework,
+      sessionLockedBy: s.sessionLockedBy,
+    })),
+    links: wo.stepLinks.map((l) => ({
+      sourceStepId: l.sourceStepId,
+      targetStepId: l.targetStepId,
+      routedQuantity: l.routedQuantity,
+    })),
+    execDeps: [],
+  };
+}
+
 /**
- * 分岐追加（§7 手直し・半製品再投入）: source 完了後に流す追加工程系列を作り、
- * source→先頭 のエッジ（routedQuantity）+ 系列内チェーン + 任意の合流エッジを張る。
+ * 分岐追加（§7 工程分岐・半製品再投入）: source 完了後に流す追加工程系列を作り、
+ * source→先頭 のエッジ（routedQuantity・静的）+ 系列内チェーン + 任意の
+ * 合流エッジ（いずれも動的 = 0。上流の不良発生に受入数が追従する）を張る。
+ * 分岐数量は分岐可能数（branchableQuantity — 基本は工程分岐の未割当分）まで。
  * ワークフロー変更承認（WORKFLOW_CHANGE）は §6 本実装まで監査記録のみ。
  */
 export async function addBranchSeries(input: {
@@ -547,13 +595,31 @@ export async function addBranchSeries(input: {
     where: { id: workOrderId },
     include: { steps: true, stepLinks: true },
   });
+  const ctx = ctxFromWorkOrder(wo);
   const source = wo.steps.find((s) => s.id === sourceStepId);
   if (!source) return { ok: false, errors: ["分岐元の工程が見つかりません"] };
+  if (source.status !== "COMPLETED")
+    return { ok: false, errors: ["分岐元の工程が完了していません"] };
+  const available = branchableQuantity(sourceStepId, ctx);
+  if (available == null || routedQuantity > available) {
+    return {
+      ok: false,
+      errors: [
+        `分岐数量（${routedQuantity}）が分岐可能数（${available ?? 0}）を超えています`,
+      ],
+    };
+  }
   if (input.mergeTargetStepId) {
     const merge = wo.steps.find((s) => s.id === input.mergeTargetStepId);
     if (!merge) return { ok: false, errors: ["合流先の工程が見つかりません"] };
     if (merge.status !== "PENDING")
       return { ok: false, errors: ["合流先が未着手ではありません"] };
+    // 合流先は メインライン工程のみ（オフメインライン判定の前提を守る）
+    if (isOffMainline(merge.id, ctx))
+      return {
+        ok: false,
+        errors: ["合流先に分岐系列の工程は指定できません"],
+      };
   }
 
   const maxSort = Math.max(...wo.steps.map((s) => s.sortOrder));
@@ -573,19 +639,20 @@ export async function addBranchSeries(input: {
       });
       created.push(row.id);
     }
+    // 先頭エッジのみ静的（分岐数量）。チェーン・合流は動的（0 = 良品全量）
     const linkRows = [
       { sourceStepId, targetStepId: created[0], routedQuantity },
       ...created.slice(0, -1).map((id, i) => ({
         sourceStepId: id,
         targetStepId: created[i + 1],
-        routedQuantity,
+        routedQuantity: 0,
       })),
       ...(input.mergeTargetStepId
         ? [
             {
               sourceStepId: created[created.length - 1],
               targetStepId: input.mergeTargetStepId,
-              routedQuantity,
+              routedQuantity: 0,
             },
           ]
         : []),
@@ -620,6 +687,75 @@ export async function addBranchSeries(input: {
     after: {
       note: `分岐を追加（${result.length} 工程, 数量 ${routedQuantity}${input.mergeTargetStepId ? ", 合流あり" : ""}）— ワークフロー変更承認は §6 本実装まで記録のみ`,
     },
+  });
+  return { ok: true };
+}
+
+/**
+ * 分岐系列の削除: 先頭工程から流出エッジをオフメインライン工程づたいに辿って
+ * 系列を収集し（合流先 = メインライン工程で停止。入れ子の分岐も含む）、
+ * 全工程が PENDING の場合のみ削除する。リンクは FK cascade で消える。
+ */
+export async function removeBranchSeries(input: {
+  workOrderId: string;
+  headStepId: string;
+}): Promise<StepActionResult> {
+  const wo = await prisma.workOrder.findUniqueOrThrow({
+    where: { id: input.workOrderId },
+    include: { steps: true, stepLinks: true },
+  });
+  const ctx = ctxFromWorkOrder(wo);
+  const head = wo.steps.find((s) => s.id === input.headStepId);
+  if (!head) return { ok: false, errors: ["分岐先頭の工程が見つかりません"] };
+  if (!isOffMainline(head.id, ctx))
+    return { ok: false, errors: ["分岐系列の工程ではありません"] };
+
+  const series: string[] = [];
+  const seen = new Set<string>();
+  const queue = [head.id];
+  while (queue.length > 0) {
+    const id = queue.pop();
+    if (id == null || seen.has(id)) continue;
+    seen.add(id);
+    if (!isOffMainline(id, ctx)) continue; // 合流先（メインライン）で停止
+    series.push(id);
+    for (const l of ctx.links) {
+      if (l.sourceStepId === id) queue.push(l.targetStepId);
+    }
+  }
+  const rows = wo.steps.filter((s) => series.includes(s.id));
+  if (rows.some((r) => r.status !== "PENDING")) {
+    return {
+      ok: false,
+      errors: ["着手済みの工程を含む分岐は削除できません"],
+    };
+  }
+
+  try {
+    await prisma.$transaction(async (tx) => {
+      // 条件付き削除 — 読み取り後に着手された行があれば全体をロールバック
+      const res = await tx.workOrderStep.deleteMany({
+        where: {
+          id: { in: series },
+          workOrderId: input.workOrderId,
+          status: "PENDING",
+        },
+      });
+      if (res.count !== series.length)
+        throw new Error("着手済みの工程を含む分岐は削除できません");
+    });
+  } catch (e) {
+    return {
+      ok: false,
+      errors: [e instanceof Error ? e.message : "分岐の削除に失敗しました"],
+    };
+  }
+
+  await recordAudit({
+    action: "UPDATE",
+    tableName: "work_orders",
+    recordId: String(wo.workOrderNumber),
+    after: { note: `分岐を削除（${series.length} 工程）` },
   });
   return { ok: true };
 }

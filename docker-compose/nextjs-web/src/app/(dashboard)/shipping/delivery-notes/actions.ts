@@ -18,7 +18,12 @@ import { z } from "zod";
 import { recordAudit } from "@/lib/audit";
 import { checkPermission } from "@/lib/authz";
 import { prisma } from "@/lib/db";
-import { type DocKey, formatDocNumber, parseDocKey } from "@/lib/doc-number";
+import {
+  type DocKey,
+  formatDocNumber,
+  formatProductNumber,
+  parseDocKey,
+} from "@/lib/doc-number";
 import { type LocalizedText, localized } from "@/lib/format";
 import { allocateDocumentKey } from "@/lib/numbering";
 import {
@@ -165,13 +170,27 @@ async function validateItemsAgainstShipment(
     const pid = Number(it.productId);
     requested.set(pid, (requested.get(pid) ?? 0) + it.quantity);
   }
+  // エラー文には内部 ID ではなく画面と同じ表記（製品名 + 製品コード）を出す。
+  const products = await prisma.product.findMany({
+    where: { id: { in: [...requested.keys()] } },
+    select: { id: true, name: true, yearMonth: true, seq: true },
+  });
+  const labelById = new Map(
+    products.map((p) => {
+      const code = formatProductNumber(p.yearMonth, p.seq);
+      const name = localized(p.name as LocalizedText);
+      return [p.id, code ? `${name}（${code}）` : name];
+    }),
+  );
+  const labelOf = (id: number) => labelById.get(id) ?? `製品 #${id}`;
+
   for (const [productId, qty] of requested) {
     const shipped = shippedByProduct.get(productId);
     if (shipped == null) {
-      return `製品 ${productId} は出荷書に含まれていません`;
+      return `${labelOf(productId)} は出荷書に含まれていません`;
     }
     if (qty > shipped) {
-      return `製品 ${productId} の数量 ${qty} が出荷数量 ${shipped} を超えています`;
+      return `${labelOf(productId)} の数量 ${qty} が出荷数量 ${shipped} を超えています`;
     }
   }
   return null;

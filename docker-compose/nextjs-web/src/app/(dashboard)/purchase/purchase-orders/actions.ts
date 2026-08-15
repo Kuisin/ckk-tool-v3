@@ -1,7 +1,7 @@
 "use server";
 
 /**
- * Server Actions — 素材発注書 (app.material_purchase_orders, PU03)。
+ * Server Actions — 素材発注書 (app.material_purchase_orders, PU02)。
  *
  * - 採番: nextDocumentNumber("PURCHASE") → PO-YYYYMM-NNNNN（文字列保存、月次リセット）。
  * - 金額はサーバー側で計算（amount = quantity × unitPrice、totalAmount = Σamount）。
@@ -438,7 +438,7 @@ export async function orderPurchaseOrder(
  * 入荷完了 — ORDERED → COMPLETED。
  * 明細ごとに MaterialReceipt を「全量入荷」で作成し、onMaterialReceipt で
  * 素材在庫へ入庫する。明細単位の分納（部分入荷）はスコープ外 — 分納が必要な
- * 場合は素材入荷 (PU01) の直接登録で補う。
+ * 場合は素材入荷 (PU03) の直接登録で補う。
  */
 /** 分納入荷の 1 行分の入力。 */
 export interface PoReceiptLine {

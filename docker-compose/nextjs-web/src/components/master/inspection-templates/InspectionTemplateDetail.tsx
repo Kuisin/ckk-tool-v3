@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * InspectionTemplateDetail.tsx — 検査表テンプレート 詳細 (MS28, design.md §8.2 / §13.4).
+ * InspectionTemplateDetail.tsx — 検査表テンプレート 詳細 (MS29, design.md §8.2 / §13.4).
  *
  * サマリ（コード・バージョン・名称・関連工程・状態）+ タブ: テンプレート情報 /
  * 検査項目 / バージョン / 履歴。検査項目はサブテーブルでインライン追加・編集・

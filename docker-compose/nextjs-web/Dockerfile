@@ -33,6 +33,10 @@ WORKDIR /app/docker-compose/nextjs-web
 ENV NEXT_TELEMETRY_DISABLED=1
 ARG NEXT_PUBLIC_APP_VERSION=0.1.0
 ENV NEXT_PUBLIC_APP_VERSION=$NEXT_PUBLIC_APP_VERSION
+# メモリの少ないビルドホスト用の任意ノブ（バイト値 → next.config.ts の
+# experimental.turbopackMemoryLimit）。未指定なら無効。
+ARG TURBOPACK_MEMORY_LIMIT=
+ENV TURBOPACK_MEMORY_LIMIT=$TURBOPACK_MEMORY_LIMIT
 # Prisma Client from the synced shared-db schema (prisma/schema).
 RUN pnpm exec prisma generate
 RUN pnpm build

@@ -10,7 +10,7 @@ import type { LocalizedText } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
 
-/** 承認グループ 詳細 (MS2A). */
+/** 承認グループ 詳細 (MS2B). */
 export default async function MasterApprovalGroupsDetailPage({
   params,
 }: {

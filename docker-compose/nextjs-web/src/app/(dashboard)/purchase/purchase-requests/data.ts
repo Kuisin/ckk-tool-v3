@@ -1,5 +1,5 @@
 /**
- * data.ts — 購買依頼 (PU04) のサーバーサイド取得・マッピング。
+ * data.ts — 購買依頼 (PU01) のサーバーサイド取得・マッピング。
  *
  * URL id = request_number（PRQ-YYYYMM-NNNNN、文字列保存）。
  * Prisma Decimal はここで Number() へ変換してからクライアントへ渡す。
@@ -30,7 +30,7 @@ const iso = (d: Date | null | undefined) => d?.toISOString() ?? null;
 const dateOnly = (d: Date | null | undefined) =>
   d ? d.toISOString().slice(0, 10) : null;
 
-/** 一覧 (PU04) — 新しい依頼番号から順に。 */
+/** 一覧 (PU01) — 新しい依頼番号から順に。 */
 export async function fetchPurchaseRequests(): Promise<PurchaseRequestRow[]> {
   const rows = await prisma.purchaseRequest.findMany({
     take: LIST_FETCH_CAP,
@@ -60,7 +60,7 @@ export async function fetchPurchaseRequests(): Promise<PurchaseRequestRow[]> {
   });
 }
 
-/** 詳細 (PU24) view model。id = request_number。未存在は null。 */
+/** 詳細 (PU21) view model。id = request_number。未存在は null。 */
 export async function fetchPurchaseRequest(
   requestNumber: string,
 ): Promise<PurchaseRequestView | null> {

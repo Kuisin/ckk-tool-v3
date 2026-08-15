@@ -1,7 +1,7 @@
 import "server-only";
 
 /**
- * data.ts — 検査表テンプレートの読み取りヘルパ (MS08)。
+ * data.ts — 検査表テンプレートの読み取りヘルパ (MS09)。
  * inspection_template_items の Json カラムを型別フィールドへ分解して
  * クライアント行 / inspection-core spec に変換する。
  */

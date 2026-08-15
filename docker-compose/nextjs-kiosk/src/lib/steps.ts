@@ -249,7 +249,7 @@ async function hydrateSteps(
           id: true,
           workOrderNumber: true,
           plannedQuantity: true,
-          salesOrder: { select: { product: { select: { name: true } } } },
+          product: { select: { name: true } },
         },
       },
       actuals: {
@@ -295,10 +295,7 @@ async function hydrateSteps(
     views.push({
       stepId: r.id,
       workOrderNumber: r.workOrder.workOrderNumber,
-      productName: localized(
-        asText(r.workOrder.salesOrder.product.name),
-        locale,
-      ),
+      productName: localized(asText(r.workOrder.product.name), locale),
       stepName: localized(asText(r.processStep.name), locale),
       stepCode: r.processStep.code,
       plantName: r.plant ? localized(asText(r.plant.name), locale) : null,

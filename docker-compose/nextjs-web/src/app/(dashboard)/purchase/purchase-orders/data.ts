@@ -1,5 +1,5 @@
 /**
- * data.ts — 素材発注書 (PU03) のサーバーサイド取得・マッピング。
+ * data.ts — 素材発注書 (PU02) のサーバーサイド取得・マッピング。
  *
  * URL id = po_number（PO-YYYYMM-NNNNN、文字列保存）。
  * Prisma Decimal はここで Number() へ変換してからクライアントへ渡す。
@@ -39,7 +39,7 @@ const iso = (d: Date | null | undefined) => d?.toISOString() ?? null;
 const dateOnly = (d: Date | null | undefined) =>
   d ? d.toISOString().slice(0, 10) : null;
 
-/** 一覧 (PU03) — 新しい発注番号から順に。 */
+/** 一覧 (PU02) — 新しい発注番号から順に。 */
 export async function fetchPurchaseOrders(): Promise<PurchaseOrderRow[]> {
   const rows = await prisma.materialPurchaseOrder.findMany({
     take: LIST_FETCH_CAP,
@@ -60,7 +60,7 @@ export async function fetchPurchaseOrders(): Promise<PurchaseOrderRow[]> {
   }));
 }
 
-/** 詳細 (PU23) view model。id = po_number。未存在は null。 */
+/** 詳細 (PU22) view model。id = po_number。未存在は null。 */
 export async function fetchPurchaseOrder(
   poNumber: string,
 ): Promise<PurchaseOrderView | null> {

@@ -4,7 +4,7 @@ import { fetchSuppliers } from "../_shared/bp-data";
 
 export const dynamic = "force-dynamic";
 
-/** 外注企業 一覧 (MS06). */
+/** 外注企業 一覧 (MS03). */
 export default async function MasterSuppliersPage() {
   const denied = await requireAppRead("master-suppliers");
   if (denied) return denied;

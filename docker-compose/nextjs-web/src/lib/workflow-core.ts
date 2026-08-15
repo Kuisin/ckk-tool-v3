@@ -50,21 +50,21 @@ export const QUANTITY_LABELS: Record<
     success: "良品数",
     semi: "半製品",
     scrap: "廃棄",
-    rework: "手直し",
+    rework: "工程分岐",
   },
   INSPECTION: {
     input: "検査数",
     success: "合格数",
     semi: "不合格（半製品）",
     scrap: "不合格（廃棄）",
-    rework: "不合格（手直し）",
+    rework: "不合格（工程分岐）",
   },
   NONE: {
     input: "受入数",
     success: "良品数",
     semi: "半製品",
     scrap: "廃棄",
-    rework: "手直し",
+    rework: "工程分岐",
   },
 };
 
@@ -288,35 +288,152 @@ export function canStartStep(
 }
 
 /**
- * 工程の想定受入数: Σ流入エッジ routed → 前工程（sortOrder 順・CANCELLED
- * スキップ）の良品数 → 先頭工程は予定数量。
+ * 分岐で作られた工程（オフメインライン）か。
+ * 「自分より小さい (sortOrder, id) の工程からの流入リンクを持つ」= 分岐系列の
+ * 工程。成立条件（サーバーで強制）: 分岐工程は常に既存 max sortOrder より上へ
+ * 追加し、合流先はメインライン工程のみ許可する。合流エッジは必ず
+ * 高 sortOrder → 低 sortOrder になるため、合流先はオフメインラインに
+ * 分類されない。
+ */
+export function isOffMainline(stepId: string, ctx: WorkflowCtx): boolean {
+  const step = ctx.steps.find((s) => s.id === stepId);
+  if (!step) return false;
+  return ctx.links.some((l) => {
+    if (l.targetStepId !== stepId) return false;
+    const src = ctx.steps.find((s) => s.id === l.sourceStepId);
+    if (!src) return false;
+    return (
+      src.sortOrder < step.sortOrder ||
+      (src.sortOrder === step.sortOrder && src.id.localeCompare(step.id) < 0)
+    );
+  });
+}
+
+/**
+ * リンクの実効数量: 静的（routedQuantity > 0）はその値。動的
+ * （routedQuantity = 0 — 「分岐元の良品全量を運ぶ」規約。分岐チェーン内・
+ * 合流エッジで使い、上流の不良発生に追従する）は分岐元が COMPLETED なら
+ * その良品数、未完了なら null（未確定）。
+ */
+export function resolveLinkQuantity(
+  link: StepLinkState,
+  steps: readonly StepState[],
+): number | null {
+  if (link.routedQuantity > 0) return link.routedQuantity;
+  const src = steps.find((s) => s.id === link.sourceStepId);
+  if (!src || src.status !== "COMPLETED") return null;
+  return src.outputSuccess ?? null;
+}
+
+/** 対象より後ろに（sortOrder, id 順で）メインライン工程が存在するか。 */
+function hasMainlineSuccessor(step: StepState, ctx: WorkflowCtx): boolean {
+  if (isOffMainline(step.id, ctx)) return false;
+  return ctx.steps.some(
+    (s) =>
+      s.id !== step.id &&
+      s.status !== "CANCELLED" &&
+      !isOffMainline(s.id, ctx) &&
+      (s.sortOrder > step.sortOrder ||
+        (s.sortOrder === step.sortOrder && s.id.localeCompare(step.id) > 0)),
+  );
+}
+
+/**
+ * 工程の想定受入数。
+ * - オフメインライン工程（分岐系列）: Σ流入エッジの実効数量。
+ * - メインライン工程: 直前のメインライン工程（sortOrder 順・CANCELLED と
+ *   オフメインラインをスキップ）の良品数（先頭は予定数量）+ Σ流入エッジ
+ *   （合流分の加算 — 合流先はメインラインの流れに分岐分が合流する）。
+ * いずれも未確定（前工程未記録・分岐元未完了）が混ざれば null。
  */
 export function expectedInput(stepId: string, ctx: WorkflowCtx): number | null {
   const step = ctx.steps.find((s) => s.id === stepId);
   if (!step) return null;
 
   const incoming = ctx.links.filter((l) => l.targetStepId === stepId);
-  if (incoming.length > 0)
-    return incoming.reduce((sum, l) => sum + l.routedQuantity, 0);
+  let linkSum = 0;
+  for (const l of incoming) {
+    const q = resolveLinkQuantity(l, ctx.steps);
+    if (q == null) return null; // 分岐元が未完了/未記録 → 未確定
+    linkSum += q;
+  }
+  if (isOffMainline(stepId, ctx)) return linkSum;
 
   const ordered = [...ctx.steps]
     .filter((s) => s.status !== "CANCELLED")
     .sort((a, b) => a.sortOrder - b.sortOrder || a.id.localeCompare(b.id));
   const idx = ordered.findIndex((s) => s.id === stepId);
   if (idx < 0) return null;
-  // 直前の「分岐先でない」工程の良品数を継ぐ（分岐先は合流エッジ側で受ける）
+  // 直前のメインライン工程の良品数を継ぐ（分岐系列の工程はスキップ）
   for (let i = idx - 1; i >= 0; i--) {
     const prev = ordered[i];
-    const isBranchTarget = ctx.links.some((l) => l.targetStepId === prev.id);
-    if (isBranchTarget) continue;
-    if (prev.outputSuccess != null) return prev.outputSuccess;
-    return null; // 前工程が未記録
+    if (isOffMainline(prev.id, ctx)) continue;
+    if (prev.outputSuccess == null) return null; // 前工程が未記録
+    return prev.outputSuccess + linkSum;
   }
-  return ctx.plannedQuantity;
+  return ctx.plannedQuantity + linkSum;
 }
 
 /**
- * 数量整合（§7）: 良品 + 半製品 + 廃棄 + 手直し = 受入。全て 0 以上。
+ * 分岐可能数量: 分岐元から新たに静的エッジで流せる残数。
+ * 良品はメインラインの次工程（または動的流出エッジ）へ全量流れるため、
+ * 基本は工程分岐数のみ。流し先を持たない終端工程（メインライン後続なし・
+ * 動的流出なし）に限り 良品 + 工程分岐 まで。既存の静的流出分は差し引く。
+ * 分岐元が未完了なら null。
+ */
+export function branchableQuantity(
+  sourceStepId: string,
+  ctx: WorkflowCtx,
+): number | null {
+  const step = ctx.steps.find((s) => s.id === sourceStepId);
+  if (!step || step.status !== "COMPLETED") return null;
+  const outgoing = ctx.links.filter((l) => l.sourceStepId === sourceStepId);
+  const staticOut = outgoing.reduce(
+    (s, l) => s + (l.routedQuantity > 0 ? l.routedQuantity : 0),
+    0,
+  );
+  const hasDynamicOut = outgoing.some((l) => l.routedQuantity <= 0);
+  const rework = step.defectRework ?? 0;
+  const success = step.outputSuccess ?? 0;
+  const base =
+    hasDynamicOut || hasMainlineSuccessor(step, ctx)
+      ? rework
+      : success + rework;
+  return Math.max(0, base - staticOut);
+}
+
+/**
+ * 完成数: 良品がどこにも流れない COMPLETED 工程の残良品の合計
+ * （指示書完了時の入庫数）。動的流出エッジ or メインライン後続を持つ工程は
+ * 0（良品は次工程へ流れる）。静的流出は工程分岐から優先して引き当て、
+ * 良品から流出した分だけ差し引く。
+ */
+export function computeFinishedQuantity(
+  steps: readonly StepState[],
+  links: readonly StepLinkState[],
+): number {
+  const ctx: WorkflowCtx = {
+    plannedQuantity: 0,
+    steps: [...steps],
+    links: [...links],
+    execDeps: [],
+  };
+  let total = 0;
+  for (const s of steps) {
+    if (s.status !== "COMPLETED") continue;
+    const outgoing = links.filter((l) => l.sourceStepId === s.id);
+    if (outgoing.some((l) => l.routedQuantity <= 0)) continue; // 動的流出あり
+    if (hasMainlineSuccessor(s, ctx)) continue; // 良品は次工程へ
+    const staticOut = outgoing.reduce((sum, l) => sum + l.routedQuantity, 0);
+    const rework = s.defectRework ?? 0;
+    const success = s.outputSuccess ?? 0;
+    total += Math.max(0, success - Math.max(0, staticOut - rework));
+  }
+  return total;
+}
+
+/**
+ * 数量整合（§7）: 良品 + 半製品 + 廃棄 + 工程分岐 = 受入。全て 0 以上。
  * INSPECTION は同一の数式（合格 + 不合格 = 検査数）でラベルのみ変わる。
  * NONE は入力を検証しない（サーバーがパススルー値を自動生成する）。
  */
@@ -356,26 +473,33 @@ export function validateQuantities(
       kind: "CONSERVATION",
       message:
         mode === "INSPECTION"
-          ? `合格 + 不合格（半製品・廃棄・手直し）の合計（${success + semi + scrap + rework}）が検査数（${input}）と一致しません`
-          : `良品 + 不良（半製品・廃棄・手直し）の合計（${success + semi + scrap + rework}）が受入数（${input}）と一致しません`,
+          ? `合格 + 不合格（半製品・廃棄・工程分岐）の合計（${success + semi + scrap + rework}）が検査数（${input}）と一致しません`
+          : `良品 + 不良（半製品・廃棄・工程分岐）の合計（${success + semi + scrap + rework}）が受入数（${input}）と一致しません`,
     });
   }
   return issues;
 }
 
-/** 分岐ルーティング整合: Σrouted = 良品 + 手直し（半製品・廃棄はフロー外）。 */
+/**
+ * 分岐ルーティング整合: 静的エッジ（routedQuantity > 0）の合計が
+ * 良品 + 工程分岐 を超えないこと（半製品・廃棄はフロー外）。動的エッジ
+ * （0 = 良品全量）は定義上自己整合のため対象外。
+ */
 export function validateRouting(
   step: { outputSuccess: number | null; defectRework: number | null },
   outgoing: readonly StepLinkState[],
 ): QuantityIssue[] {
   if (outgoing.length === 0) return [];
-  const total = outgoing.reduce((s, l) => s + l.routedQuantity, 0);
-  const expected = (step.outputSuccess ?? 0) + (step.defectRework ?? 0);
-  if (total !== expected) {
+  const staticTotal = outgoing.reduce(
+    (s, l) => s + (l.routedQuantity > 0 ? l.routedQuantity : 0),
+    0,
+  );
+  const limit = (step.outputSuccess ?? 0) + (step.defectRework ?? 0);
+  if (staticTotal > limit) {
     return [
       {
         kind: "ROUTING",
-        message: `分岐数量の合計（${total}）が 良品 + 手直し（${expected}）と一致しません`,
+        message: `分岐数量の合計（${staticTotal}）が 良品 + 工程分岐（${limit}）を超えています`,
       },
     ];
   }
@@ -422,56 +546,112 @@ export function validateDagShape(
 
 export interface GraphNode {
   id: string;
-  layer: number; // 横位置（トポロジカル層）
-  row: number; // 縦位置（層内の行）
+  layer: number; // フロー方向の位置（縦レイアウトでは Y）
+  row: number; // レーン（0 = メインライン、1.. = 分岐系列。縦レイアウトでは X）
 }
 
 export interface GraphEdge {
   from: string;
   to: string;
   label: string;
+  /** flow = メインラインの暗黙フロー / link = 分岐・合流エッジ。 */
+  kind: "flow" | "link";
 }
 
-/** DAG の層状レイアウト（SVG 描画用）。エッジに沿って layer が単調増加。 */
+/**
+ * DAG の層状レイアウト（SVG 縦描画用）。layer はフロー方向（エッジに沿って
+ * 単調増加）、row はレーン（メインライン = 0、分岐系列ごとに 1, 2, …）。
+ * エッジは明示リンクに加え、メインライン隣接工程間の暗黙フロー
+ * （kind: "flow"、無ラベル）を含む — 直列指示書でもフローが描ける。
+ */
 export function layoutWorkflowGraph(
   steps: readonly StepState[],
   links: readonly StepLinkState[],
 ): { nodes: GraphNode[]; edges: GraphEdge[] } {
+  const ctx: WorkflowCtx = {
+    plannedQuantity: 0,
+    steps: [...steps],
+    links: [...links],
+    execDeps: [],
+  };
   const ordered = [...steps].sort(
     (a, b) => a.sortOrder - b.sortOrder || a.id.localeCompare(b.id),
   );
-  const layer = new Map<string, number>();
-  ordered.forEach((s, i) => {
-    layer.set(s.id, i); // 基本は直列順
-  });
+  const mainline = ordered.filter((s) => !isOffMainline(s.id, ctx));
 
-  // エッジ制約: to.layer > from.layer（数回の緩和で十分 — 小規模 DAG）
-  for (let pass = 0; pass < links.length + 1; pass++) {
+  // エッジ = メインライン隣接の暗黙フロー + 明示リンク（動的は解決値/全量）
+  const edges: GraphEdge[] = [];
+  for (let i = 0; i + 1 < mainline.length; i++) {
+    edges.push({
+      from: mainline[i].id,
+      to: mainline[i + 1].id,
+      label: "",
+      kind: "flow",
+    });
+  }
+  for (const l of links) {
+    const resolved = resolveLinkQuantity(l, ordered);
+    edges.push({
+      from: l.sourceStepId,
+      to: l.targetStepId,
+      label:
+        l.routedQuantity > 0
+          ? String(l.routedQuantity)
+          : resolved != null
+            ? String(resolved)
+            : "全量",
+      kind: "link",
+    });
+  }
+
+  // layer: メインライン順で初期化し、エッジ制約（to > from）を反復緩和。
+  // 上限つきで収束させる（想定外の閉路があっても停止する）。
+  const layer = new Map<string, number>();
+  mainline.forEach((s, i) => {
+    layer.set(s.id, i);
+  });
+  for (const s of ordered) if (!layer.has(s.id)) layer.set(s.id, 0);
+  for (let pass = 0; pass < edges.length + ordered.length + 1; pass++) {
     let changed = false;
-    for (const l of links) {
-      const from = layer.get(l.sourceStepId) ?? 0;
-      const to = layer.get(l.targetStepId) ?? 0;
+    for (const e of edges) {
+      const from = layer.get(e.from) ?? 0;
+      const to = layer.get(e.to) ?? 0;
       if (to <= from) {
-        layer.set(l.targetStepId, from + 1);
+        layer.set(e.to, from + 1);
         changed = true;
       }
     }
     if (!changed) break;
   }
 
-  // 層内の行割り当て
-  const rows = new Map<number, number>();
-  const nodes: GraphNode[] = ordered.map((s) => {
-    const ly = layer.get(s.id) ?? 0;
-    const row = rows.get(ly) ?? 0;
-    rows.set(ly, row + 1);
-    return { id: s.id, layer: ly, row };
-  });
+  // レーン割当: 分岐系列（動的チェーンで続く一連のオフメインライン工程）
+  // ごとに 1, 2, …。チェーン継続は動的エッジ優先（静的はフォールバック）。
+  const laneOf = new Map<string, number>();
+  let nextLane = 1;
+  for (const s of ordered) {
+    if (!isOffMainline(s.id, ctx) || laneOf.has(s.id)) continue;
+    const lane = nextLane++;
+    let cur: StepState | undefined = s;
+    while (cur && !laneOf.has(cur.id)) {
+      laneOf.set(cur.id, lane);
+      const outs = links.filter((l) => l.sourceStepId === cur?.id);
+      const nextIds = [
+        ...outs.filter((l) => l.routedQuantity <= 0),
+        ...outs.filter((l) => l.routedQuantity > 0),
+      ].map((l) => l.targetStepId);
+      cur = undefined;
+      for (const id of nextIds) {
+        if (laneOf.has(id) || !isOffMainline(id, ctx)) continue;
+        cur = ordered.find((t) => t.id === id);
+        break;
+      }
+    }
+  }
 
-  const edges: GraphEdge[] = links.map((l) => ({
-    from: l.sourceStepId,
-    to: l.targetStepId,
-    label: String(l.routedQuantity),
+  const nodes: GraphNode[] = ordered.map((s) => ({
+    id: s.id,
+    layer: layer.get(s.id) ?? 0,
+    row: laneOf.get(s.id) ?? 0,
   }));
   return { nodes, edges };
 }
@@ -511,7 +691,7 @@ export function isWorkOrderComplete(ctx: WorkflowCtx): boolean {
 }
 
 /**
- * 下流工程の閉包（DAG 到達性）: 線形の次工程（分岐流入先はスキップ —
+ * 下流工程の閉包（DAG 到達性）: 線形の次工程（分岐系列の工程はスキップ —
  * expectedInput と同じ規則）+ 流出エッジ先を辿った集合。巻き戻しガードは
  * sortOrder ではなくこれで判定する（合流先は分岐工程より小さい sortOrder を
  * 持ち得るため）。
@@ -520,13 +700,11 @@ export function downstreamStepIds(stepId: string, ctx: WorkflowCtx): string[] {
   const ordered = ctx.steps
     .filter((s) => s.status !== "CANCELLED")
     .sort((a, b) => a.sortOrder - b.sortOrder || a.id.localeCompare(b.id));
-  const isBranchTarget = (id: string) =>
-    ctx.links.some((l) => l.targetStepId === id);
   const linearNext = (id: string): string | null => {
     const idx = ordered.findIndex((s) => s.id === id);
     if (idx < 0) return null;
     for (let i = idx + 1; i < ordered.length; i++) {
-      if (!isBranchTarget(ordered[i].id)) return ordered[i].id;
+      if (!isOffMainline(ordered[i].id, ctx)) return ordered[i].id;
     }
     return null;
   };

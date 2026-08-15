@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * MaterialTypePriceGrid — 材種の既定単価マトリクス編集 (MS24 既定単価タブ).
+ * MaterialTypePriceGrid — 材種の既定単価マトリクス編集 (MS25 既定単価タブ).
  *
  * 行 = 直径、列 = 黒皮/研磨。セルは ¥/1000mm の単価。仕入実績が無いとき試算の
  * フォールバック材料単価に使う（material_type_prices）。空セルは「価格なし」。

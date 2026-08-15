@@ -7,7 +7,7 @@ import { fetchDesignRequest } from "../../data";
 export const dynamic = "force-dynamic";
 
 /**
- * 設計依頼書 編集 (SA24 → edit)。
+ * 設計依頼書 編集 (SA25 → edit)。
  *
  * 編集できるのは「未着手・進行中」のみ — 完了済みは詳細へリダイレクト
  * （サーバーアクション側でも同じガードを行う）。

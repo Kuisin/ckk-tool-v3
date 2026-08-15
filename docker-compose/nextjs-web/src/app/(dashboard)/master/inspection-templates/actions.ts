@@ -1,7 +1,7 @@
 "use server";
 
 /**
- * Server Actions — 検査表テンプレート (MS08).
+ * Server Actions — 検査表テンプレート (MS09).
  *
  * テンプレート本体の CRUD と、検査項目（inspection_template_items）の
  * インライン追加・編集・削除（design.md §13.4 — 項目に個別ページは持たない）。

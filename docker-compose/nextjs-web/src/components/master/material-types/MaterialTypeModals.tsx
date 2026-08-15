@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * MaterialTypeModals.tsx — 材種の削除 / 有効・無効切替ポップアップ (MS04).
+ * MaterialTypeModals.tsx — 材種の削除 / 有効・無効切替ポップアップ (MS05).
  *
  * Ported from design-preview (designs/master/material-types/_modals) and wired
  * to the Server Actions. Both call back `onDone` (e.g. router.refresh or

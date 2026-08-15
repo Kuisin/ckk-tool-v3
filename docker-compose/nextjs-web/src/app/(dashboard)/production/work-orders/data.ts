@@ -63,7 +63,8 @@ function parseDefectReasons(value: unknown): StepDefectReasonView[] {
 }
 
 const WO_INCLUDE = {
-  salesOrder: { include: { customerBp: true, product: true } },
+  salesOrder: { include: { customerBp: true } },
+  product: true,
   material: true,
   routeVersion: {
     select: {
@@ -98,8 +99,8 @@ function mapRow(r: {
     yearMonth: string;
     seq: number;
     branch: number;
-    product: { name: unknown };
-  };
+  } | null;
+  product: { name: unknown };
   type: string;
   plannedQuantity: number;
   approvalStatus: string;
@@ -109,8 +110,10 @@ function mapRow(r: {
 }): WorkOrderRow {
   return {
     workOrderNumber: r.workOrderNumber,
-    salesOrderNumber: formatSalesOrderNumber(r.salesOrder),
-    productName: localized(r.salesOrder.product.name as LocalizedText | null),
+    salesOrderNumber: r.salesOrder
+      ? formatSalesOrderNumber(r.salesOrder)
+      : null,
+    productName: localized(r.product.name as LocalizedText | null),
     type: r.type,
     plannedQuantity: r.plannedQuantity,
     approvalStatus: r.approvalStatus,
@@ -154,7 +157,7 @@ export async function fetchWorkOrders(): Promise<WorkOrderRow[]> {
   const rows = await prisma.workOrder.findMany({
     take: LIST_FETCH_CAP,
     where: workOrderScopeWhere(authz.access, authz.userId),
-    include: { salesOrder: { include: { product: true } } },
+    include: { salesOrder: true, product: true },
     orderBy: { workOrderNumber: "desc" },
   });
   return rows.map(mapRow);
@@ -215,25 +218,27 @@ export async function fetchWorkOrder(
     plannedQuantity: r.plannedQuantity,
     notes: r.notes,
     salesOrderId: r.salesOrderId,
-    salesOrderNumber: formatSalesOrderNumber(r.salesOrder),
-    salesOrderQuantity: r.salesOrder.quantity,
-    customerName: localized(
-      r.salesOrder.customerBp.name as LocalizedText | null,
-    ),
-    productName: localized(r.salesOrder.product.name as LocalizedText | null),
+    salesOrderNumber: r.salesOrder
+      ? formatSalesOrderNumber(r.salesOrder)
+      : null,
+    salesOrderQuantity: r.salesOrder?.quantity ?? null,
+    customerName: r.salesOrder
+      ? localized(r.salesOrder.customerBp.name as LocalizedText | null)
+      : null,
+    productName: localized(r.product.name as LocalizedText | null),
     materialId: r.materialId,
     materialCode: r.material?.code ?? null,
     materialName: r.material
       ? localized(r.material.name as LocalizedText | null)
       : null,
-    productId: r.salesOrder.productId,
+    productId: r.productId,
     routeVersionId: r.routeVersion?.id ?? null,
     routeId: r.routeVersion?.route.id ?? null,
     routeName: r.routeVersion
       ? localized(r.routeVersion.route.name as LocalizedText | null)
       : null,
     routeVersion: r.routeVersion?.version ?? null,
-    lotNumber: r.salesOrder.lotNumber,
+    lotNumber: r.salesOrder?.lotNumber ?? null,
     sourceWorkOrderNumber: r.sourceWorkOrder?.workOrderNumber ?? null,
     copies: r.copies.map((c) => ({
       workOrderNumber: c.workOrderNumber,

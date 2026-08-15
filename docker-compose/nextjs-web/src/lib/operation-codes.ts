@@ -113,20 +113,25 @@ export const OPERATION_CODES: OperationCodeEntry[] = [
   },
 
   // ─── 販売 (SA) ───────────────────────────────────────────────────────────
-  ...makeResource("販売", "SA", "1", "価格表", "/sales/price-lists"),
-  ...makeResource("販売", "SA", "2", "見積書", "/sales/quotes"),
-  ...makeResource("販売", "SA", "3", "受注請書", "/sales/order-acceptances"),
-  ...makeResource("販売", "SA", "4", "設計依頼書", "/sales/design-requests"),
-  ...makeResource("販売", "SA", "5", "試算", "/sales/trial-estimates"),
+  // 業務フロー順: 試算 → 価格表 → 見積書 → 受注請書（設計依頼書は並行フロー）
+  ...makeResource("販売", "SA", "1", "試算", "/sales/trial-estimates"),
+  ...makeResource("販売", "SA", "2", "価格表", "/sales/price-lists"),
+  ...makeResource("販売", "SA", "3", "見積書", "/sales/quotes"),
+  ...makeResource("販売", "SA", "4", "受注請書", "/sales/order-acceptances"),
+  ...makeResource("販売", "SA", "5", "設計依頼書", "/sales/design-requests"),
 
   // ─── 購買 (PU) ───────────────────────────────────────────────────────────
-  ...makeResource("購買", "PU", "1", "素材入荷", "/purchase/material-receipts"),
-  ...makeResource("購買", "PU", "2", "外注依頼", "/purchase/outsource-orders"),
-  ...makeResource("購買", "PU", "3", "素材発注書", "/purchase/purchase-orders"),
-  // 発注書の前段（業務フロー上は PU03 より先）— コードは追加順で PU04
-  ...makeResource("購買", "PU", "4", "購買依頼", "/purchase/purchase-requests"),
+  // 業務フロー順: 購買依頼 → 素材発注書 → 素材入荷（外注依頼は工程外注の別フロー）
+  ...makeResource("購買", "PU", "1", "購買依頼", "/purchase/purchase-requests"),
+  ...makeResource("購買", "PU", "2", "素材発注書", "/purchase/purchase-orders"),
+  ...makeResource("購買", "PU", "3", "素材入荷", "/purchase/material-receipts"),
+  ...makeResource("購買", "PU", "4", "外注依頼", "/purchase/outsource-orders"),
 
   // ─── 生産 (PD) ───────────────────────────────────────────────────────────
+  // 業務フロー順: 注文請書 → 指示書 → 承認管理 → 在庫管理。
+  // 注文請書はランチャー非掲載（SA04 受注請書からの展開が入口）だが、
+  // 画面は存在するため操作コードでジャンプできる。
+  ...makeResource("生産", "PD", "1", "注文請書", "/production/sales-orders"),
   // PD22 詳細（ID無し→検索）が旧 PD20 工程実行 のエントリポイントを兼ねる
   ...makeResource("生産", "PD", "2", "指示書", "/production/work-orders"),
   ...makeResource("生産", "PD", "3", "承認管理", "/production/approvals"),
@@ -152,41 +157,42 @@ export const OPERATION_CODES: OperationCodeEntry[] = [
   ...makeResource("請求", "BL", "2", "締日処理", "/billing/closings"),
 
   // ─── マスタ (MS) ─────────────────────────────────────────────────────────
-  // 10件目（承認グループ）は IDX に英字 A を使用
+  // グループ順: 取引先系 (01–03) → 製品・素材系 (04–07) → 製造定義系 (08–0A)
+  //           → 組織・拠点系 (0B–0E)。10件目以降は IDX に英字 A– を使用。
   ...makeResource("マスタ", "MS", "1", "顧客", "/master/customers"),
   ...makeResource("マスタ", "MS", "2", "最終需要家", "/master/end-users"),
-  ...makeResource("マスタ", "MS", "3", "製品", "/master/products"),
-  ...makeResource("マスタ", "MS", "4", "材種", "/master/material-types"),
-  ...makeResource("マスタ", "MS", "5", "素材", "/master/materials"),
-  ...makeResource("マスタ", "MS", "6", "外注企業", "/master/suppliers"),
-  ...makeResource("マスタ", "MS", "7", "工程マスタ", "/master/process-steps"),
-  ...makeResource(
-    "マスタ",
-    "MS",
-    "8",
-    "検査表テンプレート",
-    "/master/inspection-templates",
-  ),
-  ...makeResource("マスタ", "MS", "9", "不良種類", "/master/defect-types"),
-  ...makeResource(
-    "マスタ",
-    "MS",
-    "A",
-    "承認グループ",
-    "/master/approval-groups",
-  ),
-  ...makeResource("マスタ", "MS", "B", "拠点", "/master/plants"),
+  ...makeResource("マスタ", "MS", "3", "外注企業", "/master/suppliers"),
+  ...makeResource("マスタ", "MS", "4", "製品", "/master/products"),
+  ...makeResource("マスタ", "MS", "5", "材種", "/master/material-types"),
+  ...makeResource("マスタ", "MS", "6", "素材", "/master/materials"),
   // 採番構成は単一管理画面（タブ + モーダル）— list コードのみ
   {
-    code: "MS0C",
+    code: "MS07",
     label: "採番構成",
     href: "/master/material-numbering",
     category: "マスタ",
     kind: "list",
     categoryCode: "MS",
     mode: "0",
-    index: "C",
+    index: "7",
   },
+  ...makeResource("マスタ", "MS", "8", "工程マスタ", "/master/process-steps"),
+  ...makeResource(
+    "マスタ",
+    "MS",
+    "9",
+    "検査表テンプレート",
+    "/master/inspection-templates",
+  ),
+  ...makeResource("マスタ", "MS", "A", "不良種類", "/master/defect-types"),
+  ...makeResource(
+    "マスタ",
+    "MS",
+    "B",
+    "承認グループ",
+    "/master/approval-groups",
+  ),
+  ...makeResource("マスタ", "MS", "C", "拠点", "/master/plants"),
   // 作業場所は単一管理画面（グループカード + モーダル）— list コードのみ
   {
     code: "MS0D",
@@ -198,18 +204,40 @@ export const OPERATION_CODES: OperationCodeEntry[] = [
     mode: "0",
     index: "D",
   },
+  // 保管場所は単一管理画面（一覧 + 拠点選択で管理パネル）— list コードのみ
+  {
+    code: "MS0E",
+    label: "保管場所",
+    href: "/master/storage-locations",
+    category: "マスタ",
+    kind: "list",
+    categoryCode: "MS",
+    mode: "0",
+    index: "E",
+  },
 
   // ─── ドキュメント (DC) ───────────────────────────────────────────────────
-  // マニュアル（/docs）— 単一画面, list コードのみ（旧 SY03）
+  // マニュアル（/manual・fumadocs）— 単一画面, list コードのみ（旧 SY03）
   {
     code: "DC01",
     label: "マニュアル",
-    href: "/docs",
+    href: "/manual/ja",
     category: "ドキュメント",
     kind: "list",
     categoryCode: "DC",
     mode: "0",
     index: "1",
+  },
+  // 社内ドキュメント（要ログイン + internal_docs 権限）— 単一画面, list コードのみ
+  {
+    code: "DC02",
+    label: "社内ドキュメント",
+    href: "/internal-docs/ja",
+    category: "ドキュメント",
+    kind: "list",
+    categoryCode: "DC",
+    mode: "0",
+    index: "2",
   },
 
   // ─── システム (SY) ───────────────────────────────────────────────────────

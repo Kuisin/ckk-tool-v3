@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * OrderAcceptanceCreateForm — 受注請書 手入力作成 (SA13, design.md §8.3)。
+ * OrderAcceptanceCreateForm — 受注請書 手入力作成 (SA14, design.md §8.3)。
  *
  * AI 取込を使わない手入力ルート（source = MANUAL）。顧客 + 明細 1 件以上で
  * DRAFT の受注請書を直接作成し、詳細ページへ遷移する。

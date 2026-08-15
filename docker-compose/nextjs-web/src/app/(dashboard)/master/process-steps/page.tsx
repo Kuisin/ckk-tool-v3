@@ -8,7 +8,7 @@ import { type LocalizedText, localized } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
 
-/** 工程マスタ 一覧 (MS07). */
+/** 工程マスタ 一覧 (MS08). */
 export default async function MasterProcessStepsPage() {
   const denied = await requireAppRead("master-process-steps");
   if (denied) return denied;

@@ -426,7 +426,7 @@ export async function completeStepExecution(
     // 受入数は開始時に確定した値を権威とする（完了時のクライアント値は無視）。
     const authoritativeInput =
       stepRow.inputQuantity ?? quantities?.inputQuantity ?? 0;
-    // 区分合計（半製品/廃棄/手直し）は**不良リストから導出**して権威とする。
+    // 区分合計（半製品/廃棄/工程分岐）は**不良リストから導出**して権威とする。
     // リストが無い場合のみ quantities の区分へフォールバック（後方互換）。
     const list = defectReasons ?? [];
     const sumType = (t: StepDefectReason["type"]) =>

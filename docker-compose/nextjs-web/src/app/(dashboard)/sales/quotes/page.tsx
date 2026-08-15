@@ -5,7 +5,7 @@ import { fetchQuotes } from "./data";
 
 export const dynamic = "force-dynamic";
 
-/** 見積書 一覧 (SA02). */
+/** 見積書 一覧 (SA03). */
 export default async function SalesQuotesPage() {
   const denied = await requireAppRead("quotes");
   if (denied) return denied;

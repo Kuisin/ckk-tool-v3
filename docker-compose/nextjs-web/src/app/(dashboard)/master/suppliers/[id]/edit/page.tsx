@@ -5,7 +5,7 @@ import { fetchSupplierDetail } from "../../../_shared/bp-data";
 
 export const dynamic = "force-dynamic";
 
-/** 外注企業 編集 (MS26). */
+/** 外注企業 編集 (MS23). */
 export default async function MasterSuppliersEditPage({
   params,
 }: {

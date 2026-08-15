@@ -1,5 +1,5 @@
 /**
- * data.ts — 拠点マスタ (MS0B) の共有サーバーサイド取得ヘルパ。
+ * data.ts — 拠点マスタ (MS0C) の共有サーバーサイド取得ヘルパ。
  */
 
 import { prisma } from "@/lib/db";

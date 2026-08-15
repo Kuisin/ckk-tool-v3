@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * ProductTable.tsx — 製品 一覧 (MS03, design.md §8.1 / §14).
+ * ProductTable.tsx — 製品 一覧 (MS04, design.md §8.1 / §14).
  *
  * Ported from design-preview (designs/master/products/list.tsx) and backed by
  * server data (master.products via Prisma).

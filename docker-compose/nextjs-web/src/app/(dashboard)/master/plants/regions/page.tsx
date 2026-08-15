@@ -8,7 +8,7 @@ import type { LocalizedText } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
 
-/** 地域マスタ — 拠点 (MS0B) のサブページ。REGION スコープの実体。 */
+/** 地域マスタ — 拠点 (MS0C) のサブページ。REGION スコープの実体。 */
 export default async function MasterPlantRegionsPage() {
   const denied = await requireAppRead("master-plants");
   if (denied) return denied;

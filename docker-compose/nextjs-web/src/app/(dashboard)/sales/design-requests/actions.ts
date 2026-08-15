@@ -1,7 +1,7 @@
 "use server";
 
 /**
- * Server Actions — 設計依頼書 (app.design_requests, SA04).
+ * Server Actions — 設計依頼書 (app.design_requests, SA05).
  *
  * 作成時に nextDocumentNumber("DESIGN") で依頼番号 DSG-YYYYMM-NNNNN を採番し
  * request_number に保存する（URL id も依頼番号）。

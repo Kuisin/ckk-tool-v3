@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * ProcessStepForm.tsx — 工程マスタ 新規作成 / 編集フォーム (MS17 / MS27).
+ * ProcessStepForm.tsx — 工程マスタ 新規作成 / 編集フォーム (MS18 / MS28).
  *
  * 基本情報に加えて、使用依存・実行依存の行エディタ（依存先 SearchSelect ×
  * 結合 AND/OR ×（使用依存のみ）排他 × 備考）を持つ。保存時は依存行を

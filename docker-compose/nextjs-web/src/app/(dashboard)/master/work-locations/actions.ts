@@ -3,7 +3,7 @@
 /**
  * Server Actions — 作業場所マスタ (MS0D)。
  *
- * 単一管理画面（MS0C 採番構成と同型 — list コードのみ）: グループと配下の
+ * 単一管理画面（MS07 採番構成と同型 — list コードのみ）: グループと配下の
  * 場所をモーダルで CRUD する。種別は system_settings `work_location.types`
  * の管理者定義（lib/work-locations.ts — 組み込み machine/area は削除不可）。
  * 作業計画（work_order_step_plans）が参照する場所は削除できない（P2003）。

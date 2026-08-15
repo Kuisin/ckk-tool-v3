@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * DesignRequestForm — 設計依頼書 新規作成 / 編集 (SA04, design.md §8.3).
+ * DesignRequestForm — 設計依頼書 新規作成 / 編集 (SA05, design.md §8.3).
  *
  * 新規: トリガー SegmentedControl（見積時 / 受注時）→ トリガーに応じて
  * 見積書 Select（サーバー読込の直近見積）/ 注文請書 SearchSelect を切替、

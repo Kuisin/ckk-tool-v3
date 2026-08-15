@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * DesignRequestTable — 設計依頼書 一覧 (SA04, design.md §8.1 / §14).
+ * DesignRequestTable — 設計依頼書 一覧 (SA05, design.md §8.1 / §14).
  *
  * Columns: 依頼番号 / トリガー / 製品 / 状態 / 更新日。
  * フィルタ: 検索（番号・製品・依頼内容）+ トリガー + 状態。行クリック → 詳細。

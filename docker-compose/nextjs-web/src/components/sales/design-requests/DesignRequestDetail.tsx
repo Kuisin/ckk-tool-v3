@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * DesignRequestDetail — 設計依頼書 詳細 (SA24, design.md §8.2).
+ * DesignRequestDetail — 設計依頼書 詳細 (SA25, design.md §8.2).
  *
  * SummaryGrid（依頼番号 / トリガー / 見積書 or 注文請書リンク / 製品 / 状態 /
  * 完了日）+ Tabs: 概要（依頼内容）/ ファイル（バージョン一覧 — アップロードは

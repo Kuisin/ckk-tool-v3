@@ -1,0 +1,25 @@
+{
+  "name": "ckk-docs-screenshots",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "packageManager": "pnpm@10.18.0",
+  "description": "マニュアル用スクリーンショット自動撮影パイプライン（ローカル一時 DB + Playwright）",
+  "scripts": {
+    "docs:seed": "tsx scripts/orchestrate.ts --seed-only",
+    "docs:shots": "tsx scripts/orchestrate.ts",
+    "docs:shots:one": "tsx scripts/orchestrate.ts --only",
+    "docs:verify": "tsx scripts/orchestrate.ts --verify",
+    "docs:lint": "tsx scripts/lint-screenshots.ts",
+    "docs:placeholders": "tsx scripts/placeholders.ts"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.58.2",
+    "@types/node": "^24",
+    "pixelmatch": "^7.1.0",
+    "pngjs": "^7.0.0",
+    "@types/pngjs": "^6.0.5",
+    "tsx": "^4.20.0",
+    "typescript": "^5"
+  }
+}

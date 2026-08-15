@@ -11,7 +11,7 @@ export async function generateMetadata() {
   return { title: "素材入荷 詳細 | CKK 業務管理システム" };
 }
 
-/** 素材入荷 詳細 (PU21). URL id = uuid. */
+/** 素材入荷 詳細 (PU23). URL id = uuid. */
 export default async function PurchaseMaterialReceiptsDetailPage({
   params,
 }: {

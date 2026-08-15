@@ -9,7 +9,7 @@ import { type LocalizedText, localized } from "@/lib/format";
 // DB-backed list — always render fresh data.
 export const dynamic = "force-dynamic";
 
-/** 材種 一覧 (MS04). */
+/** 材種 一覧 (MS05). */
 export default async function MasterMaterialTypesPage() {
   const denied = await requireAppRead("master-material-types");
   if (denied) return denied;

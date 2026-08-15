@@ -14,6 +14,7 @@ import type {
 import { checkPermission } from "@/lib/authz";
 import { type Prisma, prisma } from "@/lib/db";
 import {
+  formatDocNumber,
   formatProductNumber,
   formatQuoteNumber,
   formatSalesOrderNumber,
@@ -39,6 +40,18 @@ const SALES_ORDER_INCLUDE = {
   reservations: {
     where: { status: "RESERVED" as const },
     select: { quantity: true },
+  },
+  // 出荷進捗（§8）— 出荷書一覧 + 出荷済み数量の集計用。
+  shippingOrders: {
+    select: {
+      yearMonth: true,
+      seq: true,
+      type: true,
+      status: true,
+      shippedAt: true,
+      items: { select: { quantity: true } },
+    },
+    orderBy: [{ yearMonth: "desc" as const }, { seq: "desc" as const }],
   },
 };
 
@@ -114,6 +127,20 @@ function mapSalesOrder(r: SalesOrderRow): SalesOrder {
       plannedQuantity: w.plannedQuantity,
       approvalStatus: w.approvalStatus,
       status: w.status,
+    })),
+    // 出荷済み数量 = SHIPPED な発送（DISPATCH）出荷書の明細数量合計
+    shippedQuantity: r.shippingOrders
+      .filter((s) => s.type === "DISPATCH" && s.status === "SHIPPED")
+      .reduce(
+        (sum, s) => sum + s.items.reduce((a, it) => a + it.quantity, 0),
+        0,
+      ),
+    shippingOrders: r.shippingOrders.map((s) => ({
+      number: formatDocNumber("SHP", { yearMonth: s.yearMonth, seq: s.seq }),
+      type: s.type,
+      status: s.status,
+      quantity: s.items.reduce((a, it) => a + it.quantity, 0),
+      shippedAt: s.shippedAt?.toISOString() ?? null,
     })),
     createdAt: r.createdAt.toISOString(),
     updatedAt: r.updatedAt.toISOString(),

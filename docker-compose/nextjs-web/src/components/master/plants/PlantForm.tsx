@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * PlantForm.tsx — 拠点 新規作成 / 編集フォーム (MS1B / MS2B edit).
+ * PlantForm.tsx — 拠点 新規作成 / 編集フォーム (MS1C / MS2C edit).
  *
  * 拠点コードは手入力（unique）。識別子のため編集時は変更不可（disabled）。
  * 名称・住所は { ja, en } ペア入力（LocalizedTextInput）。

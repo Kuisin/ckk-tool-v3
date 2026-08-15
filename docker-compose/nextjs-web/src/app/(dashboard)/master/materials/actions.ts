@@ -1,7 +1,7 @@
 "use server";
 
 /**
- * Server Actions — 素材マスタ (MS05).
+ * Server Actions — 素材マスタ (MS06).
  *
  * 内部 id は連番、素材コード（表示・変更不可）は構成（材種 × 黒皮研磨 × 径 ×
  * 全長）から自動で組み立てる (採番表 ver1.2 / _specs/tables.md)。径・全長の

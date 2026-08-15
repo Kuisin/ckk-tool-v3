@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * OrderAcceptanceDetail — 受注請書 詳細 (SA23, design.md §8.2)。
+ * OrderAcceptanceDetail — 受注請書 詳細 (SA24, design.md §8.2)。
  *
  * ライフサイクル: 取込（IMPORT）→ 下書き（DRAFT — インライン編集可）→
  * 承認依頼（REQUESTED）→ 承認（APPROVED）→ 伝票展開（COMPLETED）→

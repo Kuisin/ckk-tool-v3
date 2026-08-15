@@ -13,6 +13,7 @@
 import type { Prisma as PrismaNS } from "../../generated/client/client";
 import { getCurrentActorId, recordAudit } from "./audit";
 import { prisma } from "./db";
+import { computeFinishedQuantity } from "./workflow-core";
 
 type Tx = PrismaNS.TransactionClient;
 
@@ -175,27 +176,42 @@ export async function ensureMaterialInventory(
 
 /**
  * 全工程完了フック: 最終工程の良品をロット入庫、半製品バケット合計を半製品
- * 入庫、WO の予約を CONFIRMED に。completeStepExecution から呼ぶ。
+ * 入庫。completeStepExecution から呼ぶ。
+ * - MANUFACTURE: WO/SO の製品予約を CONFIRMED に（在庫向けの独立指示書 =
+ *   salesOrderId null は予約なし — 入庫のみ）。
+ * - FROM_STOCK（在庫分）: 受注へ引当済みの在庫ロットを消費（RELEASE + OUT）
+ *   して自ロットの IN と相殺する（付け替え — 二重計上を防ぐ）。
  */
 export async function onWorkOrderCompleted(workOrderId: string): Promise<void> {
   const wo = await prisma.workOrder.findUniqueOrThrow({
     where: { id: workOrderId },
     include: {
-      salesOrder: true,
       steps: { orderBy: { sortOrder: "asc" } },
-      stepLinks: { select: { sourceStepId: true } },
+      stepLinks: true,
     },
   });
-  // 完成数 = 終端工程（出力リンクを持たない COMPLETED 工程）の良品数合計。
+  // 完成数 = 良品がどこにも流れない COMPLETED 工程の残良品合計。
   // sortOrder 最大では分岐合流 DAG（合流先が手前に並ぶ場合）で誤るため、
-  // グラフの終端で判定する（監査 #15）。
-  const sourceIds = new Set(wo.stepLinks.map((l) => l.sourceStepId));
-  const terminal = wo.steps.filter(
-    (s) => s.status === "COMPLETED" && !sourceIds.has(s.id),
-  );
-  const finishedQty = terminal.reduce(
-    (sum, s) => sum + (s.outputSuccessQuantity ?? 0),
-    0,
+  // グラフ集計の純関数（workflow-core computeFinishedQuantity）で判定する
+  // （監査 #15。終端工程から分岐した場合の残良品もここで拾う）。
+  const finishedQty = computeFinishedQuantity(
+    wo.steps.map((s) => ({
+      id: s.id,
+      processStepId: s.processStepId,
+      status: s.status,
+      sortOrder: s.sortOrder,
+      inputQuantity: s.inputQuantity,
+      outputSuccess: s.outputSuccessQuantity,
+      defectSemiFinished: s.outputDefectSemiFinished,
+      defectScrap: s.outputDefectScrap,
+      defectRework: s.outputDefectRework,
+      sessionLockedBy: s.sessionLockedBy,
+    })),
+    wo.stepLinks.map((l) => ({
+      sourceStepId: l.sourceStepId,
+      targetStepId: l.targetStepId,
+      routedQuantity: l.routedQuantity,
+    })),
   );
   // 半製品 = 全工程の半製品バケット合計
   const semiTotal = wo.steps.reduce(
@@ -207,7 +223,7 @@ export async function onWorkOrderCompleted(workOrderId: string): Promise<void> {
   await prisma.$transaction(async (tx) => {
     if (finishedQty > 0) {
       const invId = await ensureProductInventory(tx, {
-        productId: wo.salesOrder.productId,
+        productId: wo.productId,
         plantId,
         lotNumber: wo.workOrderNumber,
         isSemiFinished: false,
@@ -227,7 +243,7 @@ export async function onWorkOrderCompleted(workOrderId: string): Promise<void> {
         (s) => (s.outputDefectSemiFinished ?? 0) > 0,
       );
       const invId = await ensureProductInventory(tx, {
-        productId: wo.salesOrder.productId,
+        productId: wo.productId,
         plantId,
         lotNumber: wo.workOrderNumber,
         isSemiFinished: true,
@@ -293,16 +309,81 @@ export async function onWorkOrderCompleted(workOrderId: string): Promise<void> {
       });
     }
 
-    // 予約 → 確定（§7: 全工程完了時）。予約は salesOrderId で作られる
-    // （workOrderId は付かない）ため両方で照合 — 監査 P1-2 の修正。
-    await tx.inventoryReservation.updateMany({
-      where: {
-        OR: [{ workOrderId: wo.id }, { salesOrderId: wo.salesOrderId }],
-        inventoryType: "PRODUCT",
-        status: "RESERVED",
-      },
-      data: { status: "CONFIRMED", confirmedAt: new Date() },
-    });
+    if (wo.type === "FROM_STOCK" && wo.salesOrderId) {
+      // 在庫分（FROM_STOCK）: 受注へ引当済みの在庫ロットから受入数分を消費
+      // （RELEASE + OUT）— 上の自ロット IN との付け替えで二重計上を防ぐ。
+      // 引当/台帳が不足しても完了は止めない（警告のみ — 素材消費と同方針）。
+      const head = wo.steps.find((s) => s.status !== "CANCELLED");
+      let needed = head?.inputQuantity ?? wo.plannedQuantity;
+      const productReservations = await tx.inventoryReservation.findMany({
+        where: {
+          salesOrderId: wo.salesOrderId,
+          inventoryType: "PRODUCT",
+          status: "RESERVED",
+        },
+        orderBy: { reservedAt: "asc" },
+      });
+      for (const r of productReservations) {
+        if (needed <= 0) break;
+        const inv = await tx.productInventory.findUnique({
+          where: { id: r.inventoryId },
+          select: { quantity: true },
+        });
+        const take = Math.min(needed, Number(r.quantity), inv?.quantity ?? 0);
+        if (take > 0) {
+          await applyTransaction(tx, {
+            inventoryType: "PRODUCT",
+            inventoryId: r.inventoryId,
+            transactionType: "RELEASE",
+            quantity: take,
+            referenceType: "work_order",
+            referenceId: wo.id,
+            notes: `指示書 #${wo.workOrderNumber} 在庫分消費（引当解除）`,
+          });
+          await applyTransaction(tx, {
+            inventoryType: "PRODUCT",
+            inventoryId: r.inventoryId,
+            transactionType: "OUT",
+            quantity: take,
+            referenceType: "work_order",
+            referenceId: wo.id,
+            notes: `指示書 #${wo.workOrderNumber} 在庫分消費（ロット #${wo.workOrderNumber} へ付け替え）`,
+          });
+        }
+        if (take >= Number(r.quantity)) {
+          await tx.inventoryReservation.update({
+            where: { id: r.id },
+            data: { status: "RELEASED", releasedAt: new Date() },
+          });
+        } else if (take > 0) {
+          await tx.inventoryReservation.update({
+            where: { id: r.id },
+            data: { quantity: Number(r.quantity) - take },
+          });
+        }
+        needed -= take;
+      }
+      if (needed > 0) {
+        console.warn(
+          `[inventory] 在庫分消費を一部スキップ（引当/台帳不足 残 ${needed}）: WO #${wo.workOrderNumber}`,
+        );
+      }
+    } else {
+      // 予約 → 確定（§7: 全工程完了時）。予約は salesOrderId で作られる
+      // （workOrderId は付かない）ため両方で照合 — 監査 P1-2 の修正。
+      // 在庫向けの独立指示書（salesOrderId null）は workOrderId 分のみ。
+      await tx.inventoryReservation.updateMany({
+        where: {
+          OR: [
+            { workOrderId: wo.id },
+            ...(wo.salesOrderId ? [{ salesOrderId: wo.salesOrderId }] : []),
+          ],
+          inventoryType: "PRODUCT",
+          status: "RESERVED",
+        },
+        data: { status: "CONFIRMED", confirmedAt: new Date() },
+      });
+    }
   });
 }
 

@@ -11,7 +11,7 @@ import { type LocalizedText, localized } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
 
-/** 工程マスタ 詳細 (MS27). 依存関係タブに使用依存・実行依存の 2 表を表示。 */
+/** 工程マスタ 詳細 (MS28). 依存関係タブに使用依存・実行依存の 2 表を表示。 */
 export default async function MasterProcessStepsDetailPage({
   params,
 }: {

@@ -540,7 +540,7 @@ export async function listKioskFloorMaps(): Promise<KioskFloorMapRow[]> {
   }));
 }
 
-/** フロアマップ上の保管場所ピン（読み取り専用レイヤ — 配置は MS0B）。 */
+/** フロアマップ上の保管場所ピン（読み取り専用レイヤ — 配置は MS0C）。 */
 export interface StorageLocationPin {
   id: number;
   floorMapId: string;

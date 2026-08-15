@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * ApprovalGroupTable.tsx — 承認グループ 一覧 (MS0A, design.md §8.1 / §14).
+ * ApprovalGroupTable.tsx — 承認グループ 一覧 (MS0B, design.md §8.1 / §14).
  *
  * 列: 名称 / 種別 / メンバー数 / 状態。種別 + 状態フィルタ、
  * 一括有効化・無効化・削除。

@@ -32,6 +32,7 @@ import {
   actionOk,
   prismaErrorMessage,
 } from "@/lib/server-action";
+import { computeFinishedQuantity } from "@/lib/workflow-core";
 
 const BASE_PATH = "/shipping/shipping-orders";
 const SCOPE_DENIED = "この操作の権限がありません（対象範囲外）";
@@ -93,8 +94,20 @@ const trimOrNull = (v: string | null | undefined) => {
 export interface CompletedWorkOrderRef {
   /** 指示書番号 = ロット番号。 */
   workOrderNumber: number;
-  /** 出来高 — 最終工程の良品数（未記録なら予定数量）。 */
+  /** 出来高 — グラフ終端集計の残良品（未記録なら予定数量）。 */
   outputQuantity: number;
+}
+
+/** 出荷に使える在庫ロット（product_inventory を lot 単位に集約）。 */
+export interface StockLotRef {
+  /** ロット番号 = 指示書番号。 */
+  lotNumber: number;
+  /** 現物数量（非半製品バケット合計）。 */
+  quantity: number;
+  /** 予約中数量。 */
+  reserved: number;
+  /** この注文請書配下の指示書のロットか（他 SO / 在庫向け指示書由来 = false）。 */
+  fromThisSalesOrder: boolean;
 }
 
 export interface ShippingSourceInfo {
@@ -107,11 +120,14 @@ export interface ShippingSourceInfo {
   quantity: number;
   status: string;
   completedWorkOrders: CompletedWorkOrderRef[];
+  /** 対象製品の在庫ロット（現物あり — この SO 以外の完成ロットも含む）。 */
+  stockLots: StockLotRef[];
 }
 
 /**
- * 注文請書選択時のライブ取得 — 注文請書情報 + 完了済み指示書（ロット）一覧。
- * 明細の既定行（1 完了指示書 = 1 行、数量 = 最終工程の良品数）を組み立てる。
+ * 注文請書選択時のライブ取得 — 注文請書情報 + 完了済み指示書（ロット）+
+ * 対象製品の在庫ロット一覧。明細の既定行（1 完了指示書 = 1 行、数量 =
+ * グラフ終端集計の残良品）とロットピッカーの選択肢を組み立てる。
  */
 export async function fetchShippingSourceInfo(
   salesOrderId: string,
@@ -123,14 +139,49 @@ export async function fetchShippingSourceInfo(
       include: { customerBp: true, product: true },
     });
     if (!so) return null;
-    const workOrders = await prisma.workOrder.findMany({
-      where: { salesOrderId, status: "COMPLETED" },
-      include: {
-        // 最終工程（sortOrder 最大）の良品数を出来高として採用する。
-        steps: { orderBy: { sortOrder: "desc" }, take: 1 },
-      },
-      orderBy: { workOrderNumber: "asc" },
-    });
+    const [workOrders, inventories] = await Promise.all([
+      prisma.workOrder.findMany({
+        where: { salesOrderId, status: "COMPLETED" },
+        include: { steps: true, stepLinks: true },
+        orderBy: { workOrderNumber: "asc" },
+      }),
+      // 対象製品の在庫ロット（非半製品・ロット番号あり）— 他 SO / 在庫向け
+      // 指示書の完成ロットも出荷に充当できる。
+      prisma.productInventory.findMany({
+        where: {
+          productId: so.productId,
+          isSemiFinished: false,
+          lotNumber: { not: null },
+        },
+        select: {
+          lotNumber: true,
+          quantity: true,
+          reservedQuantity: true,
+        },
+      }),
+    ]);
+    const soLots = new Set(workOrders.map((wo) => wo.workOrderNumber));
+    const byLot = new Map<number, { quantity: number; reserved: number }>();
+    for (const inv of inventories) {
+      if (inv.lotNumber == null) continue;
+      const cur = byLot.get(inv.lotNumber) ?? { quantity: 0, reserved: 0 };
+      cur.quantity += inv.quantity;
+      cur.reserved += inv.reservedQuantity;
+      byLot.set(inv.lotNumber, cur);
+    }
+    const stockLots: StockLotRef[] = [...byLot.entries()]
+      .filter(([, v]) => v.quantity > 0)
+      .map(([lotNumber, v]) => ({
+        lotNumber,
+        quantity: v.quantity,
+        reserved: v.reserved,
+        fromThisSalesOrder: soLots.has(lotNumber),
+      }))
+      .sort(
+        (a, b) =>
+          Number(b.fromThisSalesOrder) - Number(a.fromThisSalesOrder) ||
+          a.lotNumber - b.lotNumber,
+      );
     return {
       salesOrderId: so.id,
       salesOrderNumber: formatSalesOrderNumber(so),
@@ -139,16 +190,98 @@ export async function fetchShippingSourceInfo(
       productName: localized(so.product.name as LocalizedText | null),
       quantity: so.quantity,
       status: so.status,
-      completedWorkOrders: workOrders.map((wo) => ({
-        workOrderNumber: wo.workOrderNumber,
-        outputQuantity:
-          wo.steps[0]?.outputSuccessQuantity ?? wo.plannedQuantity,
-      })),
+      completedWorkOrders: workOrders.map((wo) => {
+        // 出来高 = グラフ終端集計（分岐合流 DAG でも正しい残良品）
+        const finished = computeFinishedQuantity(
+          wo.steps.map((s) => ({
+            id: s.id,
+            processStepId: s.processStepId,
+            status: s.status,
+            sortOrder: s.sortOrder,
+            inputQuantity: s.inputQuantity,
+            outputSuccess: s.outputSuccessQuantity,
+            defectSemiFinished: s.outputDefectSemiFinished,
+            defectScrap: s.outputDefectScrap,
+            defectRework: s.outputDefectRework,
+            sessionLockedBy: s.sessionLockedBy,
+          })),
+          wo.stepLinks.map((l) => ({
+            sourceStepId: l.sourceStepId,
+            targetStepId: l.targetStepId,
+            routedQuantity: l.routedQuantity,
+          })),
+        );
+        return {
+          workOrderNumber: wo.workOrderNumber,
+          outputQuantity: finished > 0 ? finished : wo.plannedQuantity,
+        };
+      }),
+      stockLots,
     };
   } catch (e) {
     console.error("fetchShippingSourceInfo failed", e);
     return null;
   }
+}
+
+/**
+ * DISPATCH 明細のロット在庫検証（fail-fast — 出荷時の在庫ガードは
+ * onShippingShippedTx が最終判定する）。ロット指定行のみ、現物数量
+ * （非半製品バケット合計）に対して検証する。エラー時は文字列を返す。
+ */
+async function validateDispatchLots(
+  items: { productId: string; lotNumber: number | null; quantity: number }[],
+): Promise<string | null> {
+  const byKey = new Map<
+    string,
+    { productId: number; lot: number; qty: number }
+  >();
+  for (const it of items) {
+    if (it.lotNumber == null) continue;
+    const key = `${it.productId}:${it.lotNumber}`;
+    const cur = byKey.get(key) ?? {
+      productId: Number(it.productId),
+      lot: it.lotNumber,
+      qty: 0,
+    };
+    cur.qty += it.quantity;
+    byKey.set(key, cur);
+  }
+  for (const { productId, lot, qty } of byKey.values()) {
+    const agg = await prisma.productInventory.aggregate({
+      where: { productId, lotNumber: lot, isSemiFinished: false },
+      _sum: { quantity: true },
+      _count: { _all: true },
+    });
+    if ((agg._count._all ?? 0) === 0) {
+      return `ロット #${lot} の在庫がありません（完了済み指示書のロット番号を指定してください）`;
+    }
+    const available = agg._sum.quantity ?? 0;
+    if (qty > available) {
+      return `ロット #${lot} の在庫が不足しています（現物 ${available} / 指定 ${qty}）`;
+    }
+  }
+  return null;
+}
+
+/**
+ * 明細ロットが単一の指示書ロットなら、その指示書 id を返す
+ * （shipping_orders.work_order_id — 表示・トレース用）。
+ */
+async function resolveHeaderWorkOrderId(
+  items: { lotNumber: number | null }[],
+): Promise<string | null> {
+  const lots = [
+    ...new Set(
+      items.map((it) => it.lotNumber).filter((l): l is number => l != null),
+    ),
+  ];
+  if (lots.length !== 1) return null;
+  const wo = await prisma.workOrder.findUnique({
+    where: { workOrderNumber: lots[0] },
+    select: { id: true },
+  });
+  return wo?.id ?? null;
 }
 
 // ── CRUD ─────────────────────────────────────────────────────────────────────
@@ -177,12 +310,19 @@ export async function createShippingOrder(
     return actionError(SCOPE_DENIED);
   }
   try {
+    // 発送（DISPATCH）はロット在庫を fail-fast 検証（最終ガードは出荷時）
+    if (v.type === "DISPATCH") {
+      const lotError = await validateDispatchLots(v.items);
+      if (lotError) return actionError(lotError);
+    }
+    const workOrderId = await resolveHeaderWorkOrderId(v.items);
     const { yearMonth, seq } = await allocateDocumentKey("SHIPPING");
     await prisma.shippingOrder.create({
       data: {
         yearMonth,
         seq,
         salesOrderId: v.salesOrderId,
+        workOrderId,
         type: v.type,
         fromPlantId: v.fromPlantId ? Number(v.fromPlantId) : null,
         notes: trimOrNull(v.notes),
@@ -254,12 +394,19 @@ export async function updateShippingOrder(
         },
       },
     });
+    // 発送（DISPATCH）はロット在庫を fail-fast 検証（最終ガードは出荷時）
+    if (v.type === "DISPATCH") {
+      const lotError = await validateDispatchLots(v.items);
+      if (lotError) return actionError(lotError);
+    }
+    const workOrderId = await resolveHeaderWorkOrderId(v.items);
     await prisma.$transaction(async (tx) => {
       // status を where に含めた updateMany で原子的にガードする。
       const updated = await tx.shippingOrder.updateMany({
         where: { ...key, status: "DRAFT" },
         data: {
           type: v.type,
+          workOrderId,
           fromPlantId: v.fromPlantId ? Number(v.fromPlantId) : null,
           notes: trimOrNull(v.notes),
         },

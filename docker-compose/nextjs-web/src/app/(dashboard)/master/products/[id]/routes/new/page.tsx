@@ -12,7 +12,7 @@ import { loadCatalog } from "@/lib/workflow";
 
 export const dynamic = "force-dynamic";
 
-/** 製品工程ルート 新規作成 (MS23 工程タブ). */
+/** 製品工程ルート 新規作成 (MS24 工程タブ). */
 export default async function ProductRouteNewPage({
   params,
 }: {

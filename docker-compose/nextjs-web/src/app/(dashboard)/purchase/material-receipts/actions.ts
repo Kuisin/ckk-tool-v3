@@ -1,12 +1,12 @@
 "use server";
 
 /**
- * Server Actions — 素材入荷 (app.material_receipts, PU01)。
+ * Server Actions — 素材入荷 (app.material_receipts, PU03)。
  *
- * PU01 の新規登録は「直接調達の入荷」（発注明細に紐付かない入荷）。
+ * PU03 の新規登録は「直接調達の入荷」（発注明細に紐付かない入荷）。
  * 作成後は必ず lib/inventory の onMaterialReceipt を呼び、入荷先拠点の
  * 素材在庫へ入庫する（inventory_transactions + キャッシュ数量）。
- * 発注入荷は素材発注書 (PU03) の入荷完了アクションが自動作成する。
+ * 発注入荷は素材発注書 (PU02) の入荷完了アクションが自動作成する。
  */
 
 import { revalidatePath } from "next/cache";

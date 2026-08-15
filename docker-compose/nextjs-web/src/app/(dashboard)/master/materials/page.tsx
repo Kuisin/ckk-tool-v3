@@ -8,7 +8,7 @@ import { type LocalizedText, localized } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
 
-/** 素材 一覧 (MS05). */
+/** 素材 一覧 (MS06). */
 export default async function MasterMaterialsPage() {
   const denied = await requireAppRead("master-materials");
   if (denied) return denied;

@@ -464,7 +464,7 @@ export function PriceListTypeForm({
         )}
         {form.values.productId && sources.length === 0 && (
           <Alert color="gray" mt="sm" variant="light">
-            この製品にリンクされた確定済みの試算はありません。基準単価は手動で設定します（試算（SA05）で製品を指定して確定すると、ここで選択できます）。
+            この製品にリンクされた確定済みの試算はありません。基準単価は手動で設定します（試算（SA01）で製品を指定して確定すると、ここで選択できます）。
           </Alert>
         )}
       </FormSection>

@@ -1,7 +1,7 @@
 "use server";
 
 /**
- * Server Actions — 不良種類マスタ (MS09).
+ * Server Actions — 不良種類マスタ (MS0A).
  *
  * コード + { ja, en } 名称 + 表示順のみの小さなマスタ。詳細ページを持たず、
  * 一覧のモーダルで編集する（structure.md — defect-types は list/new のみ）。

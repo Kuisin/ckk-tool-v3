@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * SupplierDetail.tsx — 外注企業 詳細 (MS26, design.md §8.2).
+ * SupplierDetail.tsx — 外注企業 詳細 (MS23, design.md §8.2).
  *
  * 外注依頼・素材発注の履歴タブは購買機能の導入後に追加する。
  */

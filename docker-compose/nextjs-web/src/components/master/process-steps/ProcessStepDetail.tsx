@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * ProcessStepDetail.tsx — 工程マスタ 詳細 (MS27, design.md §8.2 / §13.3).
+ * ProcessStepDetail.tsx — 工程マスタ 詳細 (MS28, design.md §8.2 / §13.3).
  *
  * 依存関係タブに「使用依存」（ワークフローに含めてよい条件。排他 = is_negation）
  * と「実行依存」（開始してよい条件 = 依存先工程の完了）の 2 表を表示する。

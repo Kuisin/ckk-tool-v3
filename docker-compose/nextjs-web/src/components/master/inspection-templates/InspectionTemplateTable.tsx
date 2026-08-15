@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * InspectionTemplateTable.tsx — 検査表テンプレート 一覧 (MS08, design.md §8.1 / §14).
+ * InspectionTemplateTable.tsx — 検査表テンプレート 一覧 (MS09, design.md §8.1 / §14).
  *
  * 列: コード / 名称 / 関連工程 / 項目数 / 状態。検索 + 状態フィルタ、
  * 一括有効化・無効化・削除。

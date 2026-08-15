@@ -11,7 +11,7 @@ import {
 
 export const dynamic = "force-dynamic";
 
-/** 見積書 編集 (SA22 → edit). */
+/** 見積書 編集 (SA23 → edit). */
 export default async function SalesQuotesEditPage({
   params,
 }: {
