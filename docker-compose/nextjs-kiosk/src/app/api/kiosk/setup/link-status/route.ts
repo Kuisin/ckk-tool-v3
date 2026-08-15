@@ -10,6 +10,7 @@
 import { NextResponse } from "next/server";
 import { normalizeCode } from "@/lib/crockford";
 import { prisma } from "@/lib/db";
+import { deviceName } from "@/lib/format";
 import { REGISTRATION_CODE_LENGTH } from "@/lib/kiosk-auth-core";
 
 export async function GET(req: Request) {
@@ -30,7 +31,7 @@ export async function GET(req: Request) {
     return NextResponse.json({
       status: "LINKED",
       deviceId: request.device.id,
-      deviceName: request.device.name,
+      deviceName: deviceName(request.device.name),
     });
   }
   if (request.expiresAt.getTime() <= Date.now()) {

@@ -57,3 +57,20 @@ export function localized(
   const primary = locale === "zh" ? value.ja : value[locale];
   return primary || value.ja || value.en || "—";
 }
+
+/**
+ * 端末名（kiosk_devices.name = { ja, en } JSON）を表示文字列にする。
+ * 旧データ（文字列のまま）も受け付ける — 移行前後どちらでも壊れない。
+ */
+export function deviceName(
+  value: unknown,
+  locale: Locale = "ja",
+): string | null {
+  if (value == null) return null;
+  if (typeof value === "string") return value || null;
+  if (typeof value === "object") {
+    const text = localized(value as LocalizedText, locale);
+    return text === "—" ? null : text;
+  }
+  return null;
+}

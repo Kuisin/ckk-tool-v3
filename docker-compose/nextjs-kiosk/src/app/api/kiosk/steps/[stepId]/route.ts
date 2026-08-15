@@ -133,14 +133,18 @@ export async function POST(
     defects,
   } = parsed.data;
   const actor = session.userId;
+  // 監査ログに「どの端末で」を残す（session.deviceId = この共有タブレット）。
+  const device = session.deviceId;
 
   // 記録系はペイロード必須（zod は action 別の必須化をしないのでここで縛る）
   if (action === "INSPECTION") {
     if (templateId == null || items == null) {
       return NextResponse.json({ error: "invalid request" }, { status: 400 });
     }
-    const result = await runWithActor(actor, () =>
-      recordInspection(stepId, actor, templateId, items),
+    const result = await runWithActor(
+      actor,
+      () => recordInspection(stepId, actor, templateId, items),
+      device,
     );
     return NextResponse.json(result);
   }
@@ -148,30 +152,36 @@ export async function POST(
     if (defects == null) {
       return NextResponse.json({ error: "invalid request" }, { status: 400 });
     }
-    const result = await runWithActor(actor, () =>
-      recordDefects(stepId, actor, defects),
+    const result = await runWithActor(
+      actor,
+      () => recordDefects(stepId, actor, defects),
+      device,
     );
     return NextResponse.json(result);
   }
 
   // audit_logs / inventory_transactions の created_by をこの actor に束ねる
-  const result: StepActionResult = await runWithActor(actor, async () => {
-    switch (action) {
-      case "START":
-        return startStepExecution(stepId, actor, inputQuantity ?? null);
-      case "PAUSE":
-        return pauseStepExecution(stepId, actor);
-      case "RESUME":
-        return resumeStepExecution(stepId, actor);
-      case "COMPLETE":
-        return completeStepExecution(
-          stepId,
-          actor,
-          quantities ?? null,
-          defectReasons ?? null,
-        );
-    }
-  });
+  const result: StepActionResult = await runWithActor(
+    actor,
+    async () => {
+      switch (action) {
+        case "START":
+          return startStepExecution(stepId, actor, inputQuantity ?? null);
+        case "PAUSE":
+          return pauseStepExecution(stepId, actor);
+        case "RESUME":
+          return resumeStepExecution(stepId, actor);
+        case "COMPLETE":
+          return completeStepExecution(
+            stepId,
+            actor,
+            quantities ?? null,
+            defectReasons ?? null,
+          );
+      }
+    },
+    device,
+  );
 
   return NextResponse.json(result);
 }
