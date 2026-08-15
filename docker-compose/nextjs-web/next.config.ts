@@ -11,21 +11,11 @@ const nextConfig: NextConfig = {
   transpilePackages: ["@ckk/authz-core"],
   // monorepo ルートを明示 — standalone のトレース基点をリポジトリルートに固定。
   outputFileTracingRoot: path.join(__dirname, "../../"),
-  // 社内ドキュメント（キオスク端末セットアップ）のプロビジョニング QR は
-  // キオスク配信ホストの画像を参照する。fumadocs は Markdown の画像を
-  // next/image で描画するため、ホストを許可しないと表示されない。
-  // 経由は /_next/image なので、閲覧者のブラウザがキオスクホストに到達
-  // できなくても表示できる。
-  images: {
-    remotePatterns: [
-      { protocol: "https", hostname: "ckk-kiosk.kai-lab.net", pathname: "/apk/**" },
-      {
-        protocol: "https",
-        hostname: "ckk-kiosk-dev.kai-lab.net",
-        pathname: "/apk/**",
-      },
-    ],
-  },
+  // NOTE: 外部 URL の画像に images.remotePatterns を足しても standalone 実行
+  // （本番コンテナ）では効かず 400 "url" parameter is not allowed になった
+  // （同じビルドでも next start では通る）。docs の外部画像は next/image を
+  // 経由させない方針に変更したため、ここには設定を置かない
+  // — components/docs/mdx-components.tsx を参照。
   // PDF route handlers read HTML/CSS templates from src/pdf-templates at runtime;
   // file tracing can't see fs.readFile paths, so include them in the bundle.
   // (docs content needs no entry — fumadocs-mdx compiles it at build time.)
