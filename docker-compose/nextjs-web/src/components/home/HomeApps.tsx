@@ -10,7 +10,6 @@
  */
 
 import {
-  Avatar,
   Badge,
   Card,
   CloseButton,
@@ -31,6 +30,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useHiddenApps, useUnreleasedApps } from "@/components/layout/AppFlags";
 import { GhostButton } from "@/components/ui/buttons";
+import { UserAvatar } from "@/components/ui/UserAvatar";
 import { useIsMobile } from "@/hooks/useViewport";
 import {
   type AppEntry,
@@ -60,6 +60,7 @@ export interface HomeUser {
   office: string | null;
   company: string | null;
   avatarUrl: string | null;
+  avatarThumbUrl: string | null;
 }
 
 /** 未ログイン時のフォールバック（デモ ID は出さない）。 */
@@ -73,6 +74,7 @@ const GUEST_USER: HomeUser = {
   office: null,
   company: null,
   avatarUrl: null,
+  avatarThumbUrl: null,
 };
 
 interface HomeAppsProps {
@@ -162,15 +164,13 @@ export function HomeApps({
       <Card padding="lg" radius="md" shadow="xs" withBorder>
         <Group align="flex-start" justify="space-between" wrap="nowrap">
           <Group>
-            <Avatar
-              alt={user.displayName}
-              color="blue"
-              radius="xl"
+            <UserAvatar
+              initials={user.initials}
+              name={user.displayName}
               size={72}
-              src={user.avatarUrl ?? undefined}
-            >
-              {user.initials}
-            </Avatar>
+              src={user.avatarUrl}
+              thumbSrc={user.avatarThumbUrl}
+            />
             <Stack gap={4}>
               <Title order={3}>{user.displayName}</Title>
               {user.username && (

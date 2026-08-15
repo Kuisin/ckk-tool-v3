@@ -50,22 +50,25 @@ export async function POST(request: Request): Promise<NextResponse> {
     return badRequest("multipart/form-data で送信してください");
   }
 
+  // 大（詳細・ホーム用）と小（一覧・ヘッダー・履歴用）の 2 枚を受け取る。
   const file = form.get("file");
-  if (!(file instanceof File)) {
+  const thumb = form.get("thumb");
+  if (!(file instanceof File) || !(thumb instanceof File)) {
     return badRequest("画像ファイルを選択してください");
   }
   // 巨大ファイルはバッファリング前に弾く。
-  if (file.size > MAX_AVATAR_BYTES) {
+  if (file.size > MAX_AVATAR_BYTES || thumb.size > MAX_AVATAR_BYTES) {
     return badRequest("画像サイズは 5MB 以下にしてください");
   }
 
-  const result = await saveAvatar(userId, file);
+  const result = await saveAvatar(userId, file, thumb);
   if (!result.ok) return badRequest(result.error);
 
   revalidatePath("/", "layout"); // ヘッダー・ホームのアバターを更新
   return NextResponse.json({
     ok: true,
     avatarUrl: avatarUrl(userId, result.data.fileId),
+    avatarThumbUrl: avatarUrl(userId, result.data.thumbFileId, "thumb"),
   });
 }
 
