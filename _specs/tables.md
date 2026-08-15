@@ -1496,6 +1496,8 @@ Table audit_logs {
   record_id       uuid
   before_data     json
   after_data      json
+  // 操作元のキオスク端末（共有タブレット経由のみ。Web からの操作は null）
+  kiosk_device_id uuid [ref: > kiosk_devices.id]
   created_at      timestamp
 }
 
