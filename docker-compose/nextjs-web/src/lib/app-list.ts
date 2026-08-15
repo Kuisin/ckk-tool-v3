@@ -350,6 +350,17 @@ export const appList: AppEntry[] = [
     category: "ドキュメント",
     requiredPermission: null,
   },
+  {
+    // 社内ドキュメント（/internal-docs）。端末セットアップ等の管理者向け手順。
+    // 公開マニュアル（DC01）とは別権限 — internal_docs を持つ人だけに見せる。
+    key: "internal-docs",
+    label: "社内ドキュメント",
+    operationCode: "DC02",
+    href: "/internal-docs/ja",
+    icon: "IconBookmarks",
+    category: "ドキュメント",
+    requiredPermission: "internal_docs",
+  },
 
   // ─── システム ──────────────────────────────────────────────────────────────
   // 採番: SY01 = ユーザー管理、SY02–SY04 = アプリ設定、SY05– = 管理系。

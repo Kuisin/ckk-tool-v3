@@ -1,7 +1,4 @@
 {
   "title": "現場タブレット",
-  "pages": [
-    "start",
-    "steps"
-  ]
+  "pages": ["start", "steps"]
 }

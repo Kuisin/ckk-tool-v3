@@ -8,6 +8,7 @@ import { createTokenizer as createJapaneseTokenizer } from "@orama/tokenizers/ja
 import { createTokenizer as createMandarinTokenizer } from "@orama/tokenizers/mandarin";
 import { createFromSource } from "fumadocs-core/search/server";
 import { auth } from "@/auth";
+import { checkPermission } from "@/lib/authz";
 import { internalSource } from "@/lib/internal-source";
 
 const handler = createFromSource(internalSource, {
@@ -28,6 +29,11 @@ export async function GET(req: Request): Promise<Response> {
   const session = await auth();
   if (!session?.user) {
     return new Response("Unauthorized", { status: 401 });
+  }
+  // 本文と同じ権限で検索も塞ぐ（検索結果から見出しが漏れないように）。
+  const authz = await checkPermission("internal_docs", "READ");
+  if (!authz.ok) {
+    return new Response("Forbidden", { status: 403 });
   }
   return handler.GET(req);
 }
