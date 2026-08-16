@@ -169,20 +169,25 @@ model DocumentAttachment {
 // （保存 XSS を構造的に排除する — lib/rich-text-core.ts で許可リスト検証し、
 // 表示は React 要素を組み立てて行う）。plain_text はその平文射影で、
 // 一覧プレビューと監査ログの可読性のために持つ。
+// アーカイブ（archived_at）は削除ではなく「畳む」— スレッドから流れた古い
+// やり取りを既定で折りたたみつつ、展開すればいつでも読める状態で残す。
 model DocumentMemo {
-  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  ownerType String   @map("owner_type") // quotes / sales_orders / work_orders / price_list_entries …
-  ownerId   String   @map("owner_id") // 業務キー（QOT-… / EST-… / 指示書番号 / エントリキー）
-  kind      String // MEMO | COMMENT
-  content   Json // ProseMirror doc（lib/rich-text-core.ts で検証）
-  plainText String   @map("plain_text") // content の平文射影（プレビュー・監査用）
-  createdBy String?  @map("created_by") @db.Uuid
-  updatedBy String?  @map("updated_by") @db.Uuid
-  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  id         String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  ownerType  String    @map("owner_type") // quotes / sales_orders / work_orders / price_list_entries …
+  ownerId    String    @map("owner_id") // 業務キー（QOT-… / EST-… / 指示書番号 / エントリキー）
+  kind       String // MEMO | COMMENT
+  content    Json // ProseMirror doc（lib/rich-text-core.ts で検証）
+  plainText  String    @map("plain_text") // content の平文射影（プレビュー・監査用）
+  archivedAt DateTime? @map("archived_at") @db.Timestamptz(6) // 非 null = 折りたたみ表示
+  archivedBy String?   @map("archived_by") @db.Uuid
+  createdBy  String?   @map("created_by") @db.Uuid
+  updatedBy  String?   @map("updated_by") @db.Uuid
+  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt  DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  createdByUser User? @relation("DocumentMemoCreatedBy", fields: [createdBy], references: [id])
-  updatedByUser User? @relation("DocumentMemoUpdatedBy", fields: [updatedBy], references: [id])
+  createdByUser  User? @relation("DocumentMemoCreatedBy", fields: [createdBy], references: [id])
+  updatedByUser  User? @relation("DocumentMemoUpdatedBy", fields: [updatedBy], references: [id])
+  archivedByUser User? @relation("DocumentMemoArchivedBy", fields: [archivedBy], references: [id])
 
   @@index([ownerType, ownerId, createdAt])
   @@map("document_memos")

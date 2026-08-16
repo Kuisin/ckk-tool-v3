@@ -9,39 +9,58 @@
  * （AttachmentsPanel と同じ流儀）。
  *
  * 2 形態:
- *   mode="memo"    … 1 文書 1 件の共有メモ。誰でも編集できる
- *   mode="comment" … 投稿スレッド。編集・削除は投稿者本人（+ADMIN）のみ
+ *   mode="memo"    … 1 文書 1 件の共有メモ。UPDATE 権限があれば誰でも編集できる
+ *   mode="comment" … 投稿スレッド。**新しい順**（チャット履歴と同じ向き）で、
+ *                    投稿フォームは先頭。編集 / 削除 / アーカイブは投稿者本人
+ *                    （+ADMIN）のみ、かつ操作ごとに権限が分かれる
+ *                    （canEdit = UPDATE / canDelete = DELETE）。
+ *
+ * アーカイブは削除ではなく「畳む」— 既定は 1 行に折りたたみ、クリックで展開して
+ * 本文を読める。
  *
  * エディタ（prosemirror 一式で重い）は next/dynamic + ssr:false で遅延ロード
- * する。詳細画面を開いただけでは読み込まれず、編集・投稿を始めて初めて要る。
+ * する。呼び出し側は Tabs.Panel に `keepMounted={false}` を付けること。
  */
 
 import {
+  ActionIcon,
   Box,
+  Collapse,
   Divider,
   Group,
   Paper,
   Skeleton,
   Stack,
   Text,
+  Tooltip,
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
-import { IconMessage2, IconNote, IconTrash } from "@tabler/icons-react";
+import {
+  IconArchive,
+  IconArchiveOff,
+  IconChevronDown,
+  IconChevronRight,
+  IconEdit,
+  IconMessage2,
+  IconNote,
+  IconTrash,
+} from "@tabler/icons-react";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
-import {
-  GhostButton,
-  PrimaryButton,
-  SecondaryButton,
-} from "@/components/ui/buttons";
+import { PrimaryButton, SecondaryButton } from "@/components/ui/buttons";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { openConfirm } from "@/components/ui/modals";
 import { RichTextView } from "@/components/ui/RichTextView";
+import { UserAvatar } from "@/components/ui/UserAvatar";
 import type { MemoView } from "@/lib/document-memos";
 import { formatDateTime } from "@/lib/format";
 import { emptyDoc, isEmptyDoc, type RichTextDoc } from "@/lib/rich-text-core";
-import { deleteMemoAction, saveMemoAction } from "./memo-actions";
+import {
+  deleteMemoAction,
+  saveMemoAction,
+  setMemoArchivedAction,
+} from "./memo-actions";
 
 const RichTextEditorField = dynamic(
   () => import("./RichTextEditorField").then((m) => m.RichTextEditorField),
@@ -63,6 +82,28 @@ export function MemoPanel(props: MemoPanelProps) {
   );
 }
 
+/** 失敗は赤トースト。成功したら true。 */
+function notifyResult(
+  result: { ok: true } | { ok: false; error: string },
+  successTitle: string,
+  successMessage: string,
+): boolean {
+  if (!result.ok) {
+    notifications.show({
+      title: "エラー",
+      message: result.error,
+      color: "red",
+    });
+    return false;
+  }
+  notifications.show({
+    title: successTitle,
+    message: successMessage,
+    color: "green",
+  });
+  return true;
+}
+
 // ── 共有メモ（1 文書 1 件） ─────────────────────────────────────────────
 
 function MemoBlock({ ownerType, ownerId, memos }: MemoPanelProps) {
@@ -81,19 +122,7 @@ function MemoBlock({ ownerType, ownerId, memos }: MemoPanelProps) {
         ownerId,
         content: draft,
       });
-      if (!result.ok) {
-        notifications.show({
-          title: "エラー",
-          message: result.error,
-          color: "red",
-        });
-        return;
-      }
-      notifications.show({
-        title: "保存しました",
-        message: "メモを更新しました",
-        color: "green",
-      });
+      if (!notifyResult(result, "保存しました", "メモを更新しました")) return;
       setEditing(false);
       router.refresh();
     });
@@ -130,12 +159,10 @@ function MemoBlock({ ownerType, ownerId, memos }: MemoPanelProps) {
       {existing ? (
         <>
           <RichTextView doc={existing.content} />
-          <Group gap="xs">
-            <Text c="dimmed" size="xs">
-              最終更新: {formatDateTime(existing.updatedAt)}（
-              {existing.editorName ?? existing.authorName}）
-            </Text>
-          </Group>
+          <Text c="dimmed" size="xs">
+            最終更新: {formatDateTime(existing.updatedAt)}（
+            {existing.editorName ?? existing.authorName}）
+          </Text>
         </>
       ) : (
         <EmptyState
@@ -143,16 +170,18 @@ function MemoBlock({ ownerType, ownerId, memos }: MemoPanelProps) {
           message="メモはまだありません"
         />
       )}
-      <Group justify="flex-end">
-        <SecondaryButton onClick={() => setEditing(true)}>
-          {existing ? "編集" : "メモを追加"}
-        </SecondaryButton>
-      </Group>
+      {(existing?.canEdit ?? true) && (
+        <Group justify="flex-end">
+          <SecondaryButton onClick={() => setEditing(true)}>
+            {existing ? "編集" : "メモを追加"}
+          </SecondaryButton>
+        </Group>
+      )}
     </Stack>
   );
 }
 
-// ── コメントスレッド（複数件） ───────────────────────────────────────────
+// ── コメントスレッド（新しい順） ─────────────────────────────────────────
 
 function CommentThread({ ownerType, ownerId, memos }: MemoPanelProps) {
   const router = useRouter();
@@ -170,19 +199,8 @@ function CommentThread({ ownerType, ownerId, memos }: MemoPanelProps) {
         ownerId,
         content: draft,
       });
-      if (!result.ok) {
-        notifications.show({
-          title: "エラー",
-          message: result.error,
-          color: "red",
-        });
+      if (!notifyResult(result, "投稿しました", "コメントを追加しました"))
         return;
-      }
-      notifications.show({
-        title: "投稿しました",
-        message: "コメントを追加しました",
-        color: "green",
-      });
       setDraft(emptyDoc());
       setComposerKey((k) => k + 1);
       router.refresh();
@@ -197,20 +215,28 @@ function CommentThread({ ownerType, ownerId, memos }: MemoPanelProps) {
         id,
         content: editDraft,
       });
-      if (!result.ok) {
-        notifications.show({
-          title: "エラー",
-          message: result.error,
-          color: "red",
-        });
+      if (!notifyResult(result, "保存しました", "コメントを更新しました"))
+        return;
+      setEditingId(null);
+      router.refresh();
+    });
+  };
+
+  const toggleArchive = (memo: MemoView) => {
+    const archiving = memo.archivedAt === null;
+    start(async () => {
+      const result = await setMemoArchivedAction(memo.id, archiving);
+      if (
+        !notifyResult(
+          result,
+          archiving ? "アーカイブしました" : "復元しました",
+          archiving
+            ? "コメントを折りたたみました"
+            : "コメントを通常表示に戻しました",
+        )
+      ) {
         return;
       }
-      notifications.show({
-        title: "保存しました",
-        message: "コメントを更新しました",
-        color: "green",
-      });
-      setEditingId(null);
       router.refresh();
     });
   };
@@ -218,24 +244,15 @@ function CommentThread({ ownerType, ownerId, memos }: MemoPanelProps) {
   const remove = (id: string) => {
     openConfirm({
       title: "コメントの削除",
-      message: "このコメントを削除します。この操作は取り消せません。",
+      message:
+        "このコメントを完全に削除します。この操作は取り消せません。残したまま畳むだけならアーカイブを使ってください。",
       confirmLabel: "削除",
       onConfirm: () =>
         start(async () => {
           const result = await deleteMemoAction(id);
-          if (!result.ok) {
-            notifications.show({
-              title: "エラー",
-              message: result.error,
-              color: "red",
-            });
+          if (!notifyResult(result, "削除しました", "コメントを削除しました")) {
             return;
           }
-          notifications.show({
-            title: "削除しました",
-            message: "コメントを削除しました",
-            color: "green",
-          });
           router.refresh();
         }),
     });
@@ -243,91 +260,9 @@ function CommentThread({ ownerType, ownerId, memos }: MemoPanelProps) {
 
   return (
     <Stack gap="md">
-      {memos.length === 0 ? (
-        <EmptyState
-          icon={<IconMessage2 size={24} />}
-          message="コメントはまだありません"
-        />
-      ) : (
-        <Stack gap={0}>
-          {memos.map((memo, i) => (
-            <Box key={memo.id}>
-              {i > 0 && <Divider my="sm" />}
-              <Group
-                align="flex-start"
-                gap="sm"
-                justify="space-between"
-                wrap="nowrap"
-              >
-                <Text fw={600} size="sm">
-                  {memo.authorName}
-                </Text>
-                <Group gap="xs" wrap="nowrap">
-                  <Text c="dimmed" size="xs">
-                    {formatDateTime(memo.createdAt)}
-                    {memo.updatedAt !== memo.createdAt && "（編集済み）"}
-                  </Text>
-                </Group>
-              </Group>
-
-              {editingId === memo.id ? (
-                <Stack gap="sm" mt="xs">
-                  <RichTextEditorField
-                    onChange={setEditDraft}
-                    value={editDraft}
-                  />
-                  <Group justify="flex-end">
-                    <SecondaryButton
-                      disabled={pending}
-                      onClick={() => setEditingId(null)}
-                    >
-                      キャンセル
-                    </SecondaryButton>
-                    <PrimaryButton
-                      disabled={isEmptyDoc(editDraft)}
-                      loading={pending}
-                      onClick={() => saveEdit(memo.id)}
-                    >
-                      保存
-                    </PrimaryButton>
-                  </Group>
-                </Stack>
-              ) : (
-                <>
-                  <Box mt={4}>
-                    <RichTextView doc={memo.content} />
-                  </Box>
-                  {memo.canEdit && (
-                    <Group gap="xs" mt={4}>
-                      <GhostButton
-                        onClick={() => {
-                          setEditDraft(memo.content);
-                          setEditingId(memo.id);
-                        }}
-                      >
-                        編集
-                      </GhostButton>
-                      <GhostButton
-                        color="red"
-                        leftSection={<IconTrash size={14} />}
-                        onClick={() => remove(memo.id)}
-                      >
-                        削除
-                      </GhostButton>
-                    </Group>
-                  )}
-                </>
-              )}
-            </Box>
-          ))}
-        </Stack>
-      )}
-
+      {/* 新しい順なので投稿フォームは先頭に置く。 */}
       <Paper p="sm" radius="md" withBorder>
         <Stack gap="sm">
-          <Text fw={600} size="sm">
-            コメントを追加
-          </Text>
           <RichTextEditorField
             key={composerKey}
             onChange={setDraft}
@@ -344,6 +279,183 @@ function CommentThread({ ownerType, ownerId, memos }: MemoPanelProps) {
           </Group>
         </Stack>
       </Paper>
+
+      {memos.length === 0 ? (
+        <EmptyState
+          icon={<IconMessage2 size={24} />}
+          message="コメントはまだありません"
+        />
+      ) : (
+        <Stack gap={0}>
+          {memos.map((memo, i) => (
+            <Box key={memo.id}>
+              {i > 0 && <Divider my="sm" />}
+              <CommentRow
+                editDraft={editDraft}
+                editing={editingId === memo.id}
+                memo={memo}
+                onCancelEdit={() => setEditingId(null)}
+                onDelete={() => remove(memo.id)}
+                onEditDraftChange={setEditDraft}
+                onSaveEdit={() => saveEdit(memo.id)}
+                onStartEdit={() => {
+                  setEditDraft(memo.content);
+                  setEditingId(memo.id);
+                }}
+                onToggleArchive={() => toggleArchive(memo)}
+                pending={pending}
+              />
+            </Box>
+          ))}
+        </Stack>
+      )}
+    </Stack>
+  );
+}
+
+// ── コメント 1 件 ────────────────────────────────────────────────────────
+
+function CommentRow({
+  memo,
+  editing,
+  editDraft,
+  pending,
+  onStartEdit,
+  onCancelEdit,
+  onSaveEdit,
+  onEditDraftChange,
+  onToggleArchive,
+  onDelete,
+}: {
+  memo: MemoView;
+  editing: boolean;
+  editDraft: RichTextDoc;
+  pending: boolean;
+  onStartEdit: () => void;
+  onCancelEdit: () => void;
+  onSaveEdit: () => void;
+  onEditDraftChange: (doc: RichTextDoc) => void;
+  onToggleArchive: () => void;
+  onDelete: () => void;
+}) {
+  const archived = memo.archivedAt !== null;
+  // アーカイブ済みは既定で畳む。展開状態は行ごとに保持する。
+  const [open, setOpen] = useState(!archived);
+
+  return (
+    <Stack gap={4}>
+      <Group align="center" gap="sm" justify="space-between" wrap="nowrap">
+        <Group align="center" gap="xs" style={{ minWidth: 0 }} wrap="nowrap">
+          {archived && (
+            <ActionIcon
+              aria-label={open ? "折りたたむ" : "展開する"}
+              color="gray"
+              onClick={() => setOpen((v) => !v)}
+              size="sm"
+              variant="subtle"
+            >
+              {open ? (
+                <IconChevronDown size={14} />
+              ) : (
+                <IconChevronRight size={14} />
+              )}
+            </ActionIcon>
+          )}
+          <UserAvatar
+            name={memo.authorName}
+            size={24}
+            thumbSrc={memo.authorAvatarUrl}
+          />
+          <Text fw={600} size="sm" truncate>
+            {memo.authorName}
+          </Text>
+          <Text c="dimmed" size="xs" style={{ whiteSpace: "nowrap" }}>
+            {formatDateTime(memo.createdAt)}
+            {memo.updatedAt !== memo.createdAt && "（編集済み）"}
+          </Text>
+          {archived && (
+            <Text c="dimmed" size="xs" style={{ whiteSpace: "nowrap" }}>
+              · アーカイブ済み
+              {memo.archivedByName ? `（${memo.archivedByName}）` : ""}
+            </Text>
+          )}
+        </Group>
+
+        {!editing && (
+          <Group gap={2} wrap="nowrap">
+            {memo.canEdit && !archived && (
+              <Tooltip label="編集" withArrow>
+                <ActionIcon
+                  aria-label="編集"
+                  color="gray"
+                  disabled={pending}
+                  onClick={onStartEdit}
+                  size="sm"
+                  variant="subtle"
+                >
+                  <IconEdit size={15} />
+                </ActionIcon>
+              </Tooltip>
+            )}
+            {memo.canArchive && (
+              <Tooltip label={archived ? "復元" : "アーカイブ"} withArrow>
+                <ActionIcon
+                  aria-label={archived ? "復元" : "アーカイブ"}
+                  color="gray"
+                  disabled={pending}
+                  onClick={onToggleArchive}
+                  size="sm"
+                  variant="subtle"
+                >
+                  {archived ? (
+                    <IconArchiveOff size={15} />
+                  ) : (
+                    <IconArchive size={15} />
+                  )}
+                </ActionIcon>
+              </Tooltip>
+            )}
+            {memo.canDelete && (
+              <Tooltip label="削除" withArrow>
+                <ActionIcon
+                  aria-label="削除"
+                  color="red"
+                  disabled={pending}
+                  onClick={onDelete}
+                  size="sm"
+                  variant="subtle"
+                >
+                  <IconTrash size={15} />
+                </ActionIcon>
+              </Tooltip>
+            )}
+          </Group>
+        )}
+      </Group>
+
+      {editing ? (
+        <Stack gap="sm" mt="xs">
+          <RichTextEditorField onChange={onEditDraftChange} value={editDraft} />
+          <Group justify="flex-end">
+            <SecondaryButton disabled={pending} onClick={onCancelEdit}>
+              キャンセル
+            </SecondaryButton>
+            <PrimaryButton
+              disabled={isEmptyDoc(editDraft)}
+              loading={pending}
+              onClick={onSaveEdit}
+            >
+              保存
+            </PrimaryButton>
+          </Group>
+        </Stack>
+      ) : (
+        <Collapse expanded={open}>
+          <Box pl={32}>
+            <RichTextView doc={memo.content} />
+          </Box>
+        </Collapse>
+      )}
     </Stack>
   );
 }

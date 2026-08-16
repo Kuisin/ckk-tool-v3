@@ -10,7 +10,12 @@
  * （平文 20,000 文字上限 — lib/rich-text-core.MAX_PLAIN_TEXT_LENGTH）。
  */
 
-import { deleteMemo, type SaveMemoInput, saveMemo } from "@/lib/document-memos";
+import {
+  deleteMemo,
+  type SaveMemoInput,
+  saveMemo,
+  setMemoArchived,
+} from "@/lib/document-memos";
 import type { ActionResult } from "@/lib/server-action";
 
 export async function saveMemoAction(
@@ -21,4 +26,11 @@ export async function saveMemoAction(
 
 export async function deleteMemoAction(id: string): Promise<ActionResult> {
   return deleteMemo(id);
+}
+
+export async function setMemoArchivedAction(
+  id: string,
+  archived: boolean,
+): Promise<ActionResult> {
+  return setMemoArchived(id, archived);
 }

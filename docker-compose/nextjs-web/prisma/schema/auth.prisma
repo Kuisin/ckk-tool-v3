@@ -88,6 +88,7 @@ model User {
   attachmentsUploaded     DocumentAttachment[]  @relation("AttachmentUploadedBy")
   documentMemosCreated    DocumentMemo[]        @relation("DocumentMemoCreatedBy")
   documentMemosUpdated    DocumentMemo[]        @relation("DocumentMemoUpdatedBy")
+  documentMemosArchived   DocumentMemo[]        @relation("DocumentMemoArchivedBy")
   approvalRequestsMade    ApprovalRequest[]     @relation("ApprovalRequestedBy")
   approvalRecords         ApprovalRecord[]      @relation("ApprovalRecordApprover")
   approvalRecordsAsOrig   ApprovalRecord[]      @relation("ApprovalRecordDelegateFor")
