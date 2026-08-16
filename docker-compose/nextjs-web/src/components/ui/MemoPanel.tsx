@@ -41,6 +41,7 @@ import {
   IconChevronDown,
   IconChevronRight,
   IconEdit,
+  IconHistory,
   IconMessage2,
   IconNote,
   IconTrash,
@@ -50,6 +51,7 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { PrimaryButton, SecondaryButton } from "@/components/ui/buttons";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { MemoHistoryModal } from "@/components/ui/MemoHistoryModal";
 import { openConfirm } from "@/components/ui/modals";
 import { RichTextView } from "@/components/ui/RichTextView";
 import { UserAvatar } from "@/components/ui/UserAvatar";
@@ -113,6 +115,7 @@ function MemoBlock({ ownerType, ownerId, memos }: MemoPanelProps) {
   const [draft, setDraft] = useState<RichTextDoc>(
     existing?.content ?? emptyDoc(),
   );
+  const [historyOpen, setHistoryOpen] = useState(false);
   const [pending, start] = useTransition();
 
   const save = () => {
@@ -170,13 +173,34 @@ function MemoBlock({ ownerType, ownerId, memos }: MemoPanelProps) {
           message="メモはまだありません"
         />
       )}
-      {(existing?.canEdit ?? true) && (
-        <Group justify="flex-end">
+      <Group justify="flex-end">
+        {existing && (
+          <>
+            <Tooltip label="変更履歴" withArrow>
+              <ActionIcon
+                aria-label="変更履歴"
+                color="gray"
+                onClick={() => setHistoryOpen(true)}
+                size="sm"
+                variant="subtle"
+              >
+                <IconHistory size={15} />
+              </ActionIcon>
+            </Tooltip>
+            <MemoHistoryModal
+              memoId={existing.id}
+              onClose={() => setHistoryOpen(false)}
+              opened={historyOpen}
+              ownerType={ownerType}
+            />
+          </>
+        )}
+        {(existing?.canEdit ?? true) && (
           <SecondaryButton onClick={() => setEditing(true)}>
             {existing ? "編集" : "メモを追加"}
           </SecondaryButton>
-        </Group>
-      )}
+        )}
+      </Group>
     </Stack>
   );
 }
@@ -303,6 +327,7 @@ function CommentThread({ ownerType, ownerId, memos }: MemoPanelProps) {
                   setEditingId(memo.id);
                 }}
                 onToggleArchive={() => toggleArchive(memo)}
+                ownerType={ownerType}
                 pending={pending}
               />
             </Box>
@@ -317,6 +342,7 @@ function CommentThread({ ownerType, ownerId, memos }: MemoPanelProps) {
 
 function CommentRow({
   memo,
+  ownerType,
   editing,
   editDraft,
   pending,
@@ -328,6 +354,7 @@ function CommentRow({
   onDelete,
 }: {
   memo: MemoView;
+  ownerType: string;
   editing: boolean;
   editDraft: RichTextDoc;
   pending: boolean;
@@ -341,6 +368,7 @@ function CommentRow({
   const archived = memo.archivedAt !== null;
   // アーカイブ済みは既定で畳む。展開状態は行ごとに保持する。
   const [open, setOpen] = useState(!archived);
+  const [historyOpen, setHistoryOpen] = useState(false);
 
   return (
     <Stack gap={4}>
@@ -383,6 +411,24 @@ function CommentRow({
 
         {!editing && (
           <Group gap={2} wrap="nowrap">
+            {/* 履歴は「読める人なら誰でも」— 書き換えの証跡なので閲覧を絞らない。 */}
+            <Tooltip label="変更履歴" withArrow>
+              <ActionIcon
+                aria-label="変更履歴"
+                color="gray"
+                onClick={() => setHistoryOpen(true)}
+                size="sm"
+                variant="subtle"
+              >
+                <IconHistory size={15} />
+              </ActionIcon>
+            </Tooltip>
+            <MemoHistoryModal
+              memoId={memo.id}
+              onClose={() => setHistoryOpen(false)}
+              opened={historyOpen}
+              ownerType={ownerType}
+            />
             {memo.canEdit && !archived && (
               <Tooltip label="編集" withArrow>
                 <ActionIcon

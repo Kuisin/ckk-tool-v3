@@ -89,6 +89,7 @@ model User {
   documentMemosCreated    DocumentMemo[]        @relation("DocumentMemoCreatedBy")
   documentMemosUpdated    DocumentMemo[]        @relation("DocumentMemoUpdatedBy")
   documentMemosArchived   DocumentMemo[]        @relation("DocumentMemoArchivedBy")
+  documentMemoRevisions   DocumentMemoRevision[] @relation("DocumentMemoRevisionEditedBy")
   linkIndexCreated        LinkIndex[]           @relation("LinkIndexCreatedBy")
   linkBlacklistCreated    LinkBlacklist[]       @relation("LinkBlacklistCreatedBy")
   approvalRequestsMade    ApprovalRequest[]     @relation("ApprovalRequestedBy")

@@ -189,8 +189,43 @@ model DocumentMemo {
   updatedByUser  User? @relation("DocumentMemoUpdatedBy", fields: [updatedBy], references: [id])
   archivedByUser User? @relation("DocumentMemoArchivedBy", fields: [archivedBy], references: [id])
 
+  revisions DocumentMemoRevision[]
+
   @@index([ownerType, ownerId, createdAt])
   @@map("document_memos")
+  @@schema("app")
+}
+
+// メモ / コメントの改訂履歴（証跡）。
+//
+// 目的は**セキュリティ・監査**: 誰がいつ何を書き換えたか、書き換え前の本文は
+// 何だったかを後から追えるようにする。audit_logs には平文の要約しか残らないため、
+// 復元・突き合わせに耐える完全な本文スナップショットをここに持つ。
+//
+// 1 行 = 1 操作。`content` はその操作**後**の本文（DELETE は削除直前の本文）。
+// memo_id は本体削除後も履歴を残すため FK を張らず、業務キー
+// （owner_type / owner_id）も併記して単独で追跡できるようにする。
+model DocumentMemoRevision {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  // 本体が消えても履歴は残す（削除の証跡が消えては監査にならない）ので
+  // nullable + onDelete: SetNull。業務キーは下の owner_type/owner_id で追える。
+  memoId    String?  @map("memo_id") @db.Uuid
+  ownerType String   @map("owner_type")
+  ownerId   String   @map("owner_id")
+  kind      String // MEMO | COMMENT
+  // CREATE | UPDATE | DELETE | ARCHIVE | RESTORE
+  action    String
+  content   Json // その操作後の本文（DELETE は削除直前の本文）
+  plainText String   @map("plain_text")
+  editedBy  String?  @map("edited_by") @db.Uuid
+  editedAt  DateTime @default(now()) @map("edited_at") @db.Timestamptz(6)
+
+  memo         DocumentMemo? @relation(fields: [memoId], references: [id], onDelete: SetNull)
+  editedByUser User?         @relation("DocumentMemoRevisionEditedBy", fields: [editedBy], references: [id])
+
+  @@index([memoId, editedAt])
+  @@index([ownerType, ownerId, editedAt])
+  @@map("document_memo_revisions")
   @@schema("app")
 }
 

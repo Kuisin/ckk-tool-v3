@@ -123,6 +123,28 @@ describe("parseRichText", () => {
     expect(result.ok && result.plainText).toBe("こんにちは");
   });
 
+  // 不変条件: 却下の理由に「どこが」を必ず含める。理由なしの
+  // 「形式が不正です」だけだと、利用者の報告からもログからも原因を追えない
+  // （実際に文書リンク付きメモの保存失敗で原因特定に難儀した）。
+  it("names the offending path when rejecting", () => {
+    const unknownNode = parseRichText(doc({ type: "image" } as RichTextNode));
+    expect(unknownNode.ok).toBe(false);
+    if (!unknownNode.ok) {
+      expect(unknownNode.error).toContain("content.0.type");
+    }
+
+    const badHref = parseRichText(
+      doc(
+        para(text("x", [{ type: "link", attrs: { href: "//evil.example" } }])),
+      ),
+    );
+    expect(badHref.ok).toBe(false);
+    if (!badHref.ok) {
+      expect(badHref.error).toContain("marks.0.attrs.href");
+      expect(badHref.error).toContain("リンク先の形式が不正です");
+    }
+  });
+
   // 不変条件: tiptap（StarterKit v3）が実際に吐く JSON をそのまま受け入れ、
   // 余剰属性（link の target/rel/class・codeBlock の language 等）は捨てる。
   // ここが落ちるとエディタで入力できるのに保存だけ失敗する。
