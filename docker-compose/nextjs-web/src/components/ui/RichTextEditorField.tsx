@@ -134,7 +134,11 @@ export function RichTextEditorField({
         </RichTextEditor.ControlsGroup>
       </RichTextEditor.Toolbar>
 
-      <RichTextEditor.Content aria-label={placeholder} style={{ minHeight }} />
+      <RichTextEditor.Content
+        aria-label={placeholder}
+        className="memo-rich-text"
+        style={{ minHeight }}
+      />
 
       <DocumentLinkModal
         onClose={() => setDocPickerOpen(false)}
