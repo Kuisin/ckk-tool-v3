@@ -38,12 +38,15 @@ const STATUS_ICON: Record<string, { color: string; icon: React.ReactNode }> = {
 export function StepCard({
   step,
   executeHref,
+  viewOnly = false,
   onAddBranch,
   selected,
 }: {
   step: WorkOrderStepView;
-  /** 工程実行画面への deep link（指示書が承認済み/進行中のときのみ）。 */
+  /** 工程実行画面への deep link。 */
   executeHref?: string;
+  /** 指示書が操作不可（完了・キャンセル・未承認）— ラベルを「詳細」にする。 */
+  viewOnly?: boolean;
   /** 分岐追加（COMPLETED かつ分岐可能数量が残る工程のみ）。 */
   onAddBranch?: () => void;
   /** フロー図側で選択中（強調枠で表示）。 */
@@ -54,9 +57,12 @@ export function StepCard({
   const locationName = isOutsource ? step.supplierName : step.plantName;
   const hasQuantities = step.inputQuantity != null;
 
-  // 状態別の実行ボタン（PENDING=開始 / IN_PROGRESS=実行 / COMPLETED=詳細）
+  // 状態別の実行ボタン（PENDING=開始 / IN_PROGRESS=実行 / COMPLETED=詳細）。
+  // 指示書が操作不可のときは、どの状態でも「詳細」（閲覧）に倒す。
   let executeButton: React.ReactNode = null;
-  if (executeHref && step.status !== "CANCELLED") {
+  if (executeHref && viewOnly) {
+    executeButton = <SecondaryButton href={executeHref}>詳細</SecondaryButton>;
+  } else if (executeHref && step.status !== "CANCELLED") {
     if (step.status === "PENDING") {
       executeButton = step.canStart ? (
         <PrimaryButton href={executeHref}>開始</PrimaryButton>
