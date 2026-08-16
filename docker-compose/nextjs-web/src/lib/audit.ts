@@ -251,6 +251,12 @@ function mapAudit(row: AuditRow): AuditEntry {
   return {
     id: row.id.toString(),
     action: ACTION_LABEL[row.action] ?? row.action,
+    // 詳細ポップアップ用の生データ（一覧では使わない）。
+    tableName: row.tableName,
+    tableLabel: auditTableLabel(row.tableName),
+    recordId: row.recordId,
+    before: row.beforeData,
+    after: row.afterData,
     user: row.user?.displayName ?? "システム",
     // 操作者の顔写真（小）。未設定・システム操作ならイニシャル表示になる。
     avatarUrl: row.user ? actorAvatarUrl(row.user) : null,
