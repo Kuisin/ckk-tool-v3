@@ -3,6 +3,9 @@
 /**
  * Server Actions — プロフィール（本人のみ）。
  * メールアドレス変更（通知メールの宛先）・パスワード変更（credentials ユーザー）。
+ *
+ * プロフィール写真は Server Action ではなく /api/avatars（Route Handler）—
+ * Server Action のボディは既定 1MB 上限で、写真が 413 になるため。
  */
 
 import { z } from "zod";

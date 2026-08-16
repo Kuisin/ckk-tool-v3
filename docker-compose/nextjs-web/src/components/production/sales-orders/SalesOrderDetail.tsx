@@ -45,6 +45,7 @@ import { DocNumber } from "@/components/ui/DocNumber";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { FieldValue } from "@/components/ui/FieldValue";
 import { HistoryPanel } from "@/components/ui/HistoryPanel";
+import { MemoPanel } from "@/components/ui/MemoPanel";
 import { MoneyText } from "@/components/ui/MoneyText";
 import { ConfirmModal } from "@/components/ui/modals";
 import { StatusBadge } from "@/components/ui/StatusBadge";
@@ -55,6 +56,7 @@ import {
   SummaryGrid,
 } from "@/components/ui/shells";
 import { useTabParam } from "@/hooks/useUrlState";
+import type { MemoView } from "@/lib/document-memos";
 import {
   ORDER_TYPE_LABEL,
   SHIPPING_TYPE_LABEL,
@@ -70,10 +72,13 @@ const BASE_PATH = "/production/sales-orders";
 export function SalesOrderDetail({
   order,
   auditEntries,
+  memos,
 }: {
   order: SalesOrder;
   /** 操作履歴（audit_logs 由来、履歴タブ）。 */
   auditEntries: AuditEntry[];
+  /** 社内メモ（document_memos 由来、メモタブ）。 */
+  memos: MemoView[];
 }) {
   const router = useRouter();
   // アクティブタブを ?tab= に保持（URL 共有でタブまで再現）
@@ -327,6 +332,7 @@ export function SalesOrderDetail({
           <Tabs.Tab value="shipping">
             出荷（{order.shippingOrders.length}）
           </Tabs.Tab>
+          <Tabs.Tab value="memo">メモ</Tabs.Tab>
           <Tabs.Tab value="history">履歴</Tabs.Tab>
         </Tabs.List>
 
@@ -459,6 +465,16 @@ export function SalesOrderDetail({
               </Table>
             </Table.ScrollContainer>
           )}
+        </Tabs.Panel>
+
+        {/* keepMounted={false}: エディタ（prosemirror）はタブを開くまで読み込まない。 */}
+        <Tabs.Panel keepMounted={false} pt="md" value="memo">
+          <MemoPanel
+            memos={memos}
+            mode="memo"
+            ownerId={order.orderNumber}
+            ownerType="sales_orders"
+          />
         </Tabs.Panel>
 
         <Tabs.Panel pt="md" value="history">

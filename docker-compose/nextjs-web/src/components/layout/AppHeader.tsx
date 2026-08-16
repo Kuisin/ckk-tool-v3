@@ -14,7 +14,6 @@
 import {
   ActionIcon,
   AppShell,
-  Avatar,
   Box,
   Divider,
   Group,
@@ -42,6 +41,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { signOut } from "next-auth/react";
 import { useEffect, useRef, useState } from "react";
+import { UserAvatar } from "@/components/ui/UserAvatar";
 import { relativeTime, useNotifications } from "@/hooks/useNotifications";
 import { appList } from "@/lib/app-list";
 import { installBugReportCapture } from "@/lib/bug-report";
@@ -81,6 +81,8 @@ const GUEST_USER = {
   displayName: "ゲスト",
   initials: "—",
   department: "",
+  avatarUrl: null as string | null,
+  avatarThumbUrl: null as string | null,
 };
 
 export interface HeaderUser {
@@ -89,6 +91,10 @@ export interface HeaderUser {
   initials: string;
   department: string | null;
   title: string | null;
+  /** プロフィール写真の URL（未設定なら null → イニシャル表示）。 */
+  avatarUrl: string | null;
+  /** 同・小サイズ（ヘッダーはこちらを読む）。 */
+  avatarThumbUrl: string | null;
 }
 
 export function AppHeader({
@@ -104,6 +110,8 @@ export function AppHeader({
         initials: user.initials,
         // 所属（無ければ役職 → ユーザー名の順でフォールバック）。
         department: user.department || user.title || user.username,
+        avatarUrl: user.avatarUrl,
+        avatarThumbUrl: user.avatarThumbUrl,
       }
     : GUEST_USER;
   const [launcherOpen, setLauncherOpen] = useState(false);
@@ -439,22 +447,27 @@ export function AppHeader({
           {/* User menu */}
           <Menu position="bottom-end" shadow="md" width={PROFILE_MENU_WIDTH}>
             <Menu.Target>
-              <Avatar
+              <UserAvatar
                 aria-label="ユーザーメニュー"
                 className="cursor-pointer"
-                color="blue"
-                radius="xl"
+                initials={sessionUser.initials}
+                name={sessionUser.displayName}
                 size="sm"
-              >
-                {sessionUser.initials}
-              </Avatar>
+                src={sessionUser.avatarUrl}
+                thumbSrc={sessionUser.avatarThumbUrl}
+              />
             </Menu.Target>
             <Menu.Dropdown px="xs">
               <Menu.Label px="0" py="xs">
                 <Group align="center" gap="sm" wrap="nowrap">
-                  <Avatar aria-hidden color="blue" radius="xl" size="md">
-                    {sessionUser.initials}
-                  </Avatar>
+                  <UserAvatar
+                    aria-hidden
+                    initials={sessionUser.initials}
+                    name={sessionUser.displayName}
+                    size="md"
+                    src={sessionUser.avatarUrl}
+                    thumbSrc={sessionUser.avatarThumbUrl}
+                  />
                   <Stack gap={0}>
                     <Text fw={600} size="sm">
                       {sessionUser.displayName}

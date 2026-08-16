@@ -3,6 +3,7 @@
 /**
  * ProfileView — プロフィール画面（本人）。
  *
+ * - プロフィール写真（本人がアップロード / 削除。AD からは取得しない）
  * - 基本情報（名前・ユーザー名・種別・最終ログイン・承認グループ）
  * - メールアドレス変更（通知メールの宛先 — lib/notifications の email チャネル）
  * - パスワード変更（credentials ユーザーのみ表示。SSO ユーザーは非表示）
@@ -10,7 +11,6 @@
  */
 
 import {
-  Avatar,
   Badge,
   Group,
   Paper,
@@ -21,8 +21,8 @@ import {
   TextInput,
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
-import { IconDeviceMobile } from "@tabler/icons-react";
-import { useState, useTransition } from "react";
+import { IconCamera, IconDeviceMobile, IconTrash } from "@tabler/icons-react";
+import { useRef, useState, useTransition } from "react";
 import {
   changePasswordAction,
   removeDeviceAction,
@@ -30,17 +30,27 @@ import {
 } from "@/app/(dashboard)/profile/actions";
 import {
   DangerButton,
+  GhostButton,
   SaveButton,
   SecondaryButton,
 } from "@/components/ui/buttons";
 import { FieldValue } from "@/components/ui/FieldValue";
+import {
+  type CroppedImages,
+  ImageCropModal,
+} from "@/components/ui/ImageCropModal";
 import { PageHeader } from "@/components/ui/PageHeader";
+import { UserAvatar } from "@/components/ui/UserAvatar";
 import { APPROVAL_GROUP_TYPE_LABEL } from "@/lib/enum-labels";
 import { type LocalizedText, localized } from "@/lib/format";
 
 export interface ProfileData {
   username: string;
   displayName: string;
+  /** プロフィール写真の配信 URL（未設定なら null → イニシャル表示）。 */
+  avatarUrl: string | null;
+  /** 同・小サイズ（一覧・ヘッダー・履歴用）。 */
+  avatarThumbUrl: string | null;
   email: string | null;
   group: string;
   hasPassword: boolean;
@@ -92,6 +102,12 @@ function deviceLabel(ua: string | null): string {
 }
 
 export function ProfileView({ user }: { user: ProfileData }) {
+  const photoInputRef = useRef<HTMLInputElement>(null);
+  const [avatarUrl, setAvatarUrl] = useState(user.avatarUrl);
+  const [avatarThumbUrl, setAvatarThumbUrl] = useState(user.avatarThumbUrl);
+  /** 選択直後の元ファイル — 切り抜きモーダルに渡す。 */
+  const [cropTarget, setCropTarget] = useState<File | null>(null);
+  const [photoPending, startPhoto] = useTransition();
   const [email, setEmail] = useState(user.email ?? "");
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -99,6 +115,71 @@ export function ProfileView({ user }: { user: ProfileData }) {
   const [devices, setDevices] = useState(user.devices);
   const [emailPending, startEmail] = useTransition();
   const [pwPending, startPw] = useTransition();
+
+  /**
+   * 写真の設定・削除は /api/avatars（Route Handler）へ。Server Action は
+   * ボディ 1MB 上限で写真が 413 になるため使わない。
+   */
+  const callAvatarApi = async (init: RequestInit): Promise<unknown> => {
+    const res = await fetch("/api/avatars", init);
+    const json = await res.json().catch(() => ({}));
+    if (!res.ok || json?.ok !== true) {
+      throw new Error(json?.error ?? `HTTP ${res.status}`);
+    }
+    return json;
+  };
+
+  /** 切り抜き済みの正方形画像（大・小）を保存する。 */
+  const uploadPhoto = (cropped: CroppedImages) => {
+    startPhoto(async () => {
+      try {
+        const body = new FormData();
+        body.append("file", cropped.full);
+        body.append("thumb", cropped.thumb);
+        const json = (await callAvatarApi({ method: "POST", body })) as {
+          avatarUrl: string;
+          avatarThumbUrl: string;
+        };
+        setAvatarUrl(json.avatarUrl);
+        setAvatarThumbUrl(json.avatarThumbUrl);
+        setCropTarget(null);
+        notifications.show({
+          title: "設定しました",
+          message: "プロフィール写真を更新しました",
+          color: "green",
+        });
+      } catch (err) {
+        notifications.show({
+          title: "エラー",
+          message: err instanceof Error ? err.message : "不明なエラー",
+          color: "red",
+        });
+      } finally {
+        if (photoInputRef.current) photoInputRef.current.value = "";
+      }
+    });
+  };
+
+  const deletePhoto = () => {
+    startPhoto(async () => {
+      try {
+        await callAvatarApi({ method: "DELETE" });
+        setAvatarUrl(null);
+        setAvatarThumbUrl(null);
+        notifications.show({
+          title: "削除しました",
+          message: "プロフィール写真を削除しました",
+          color: "green",
+        });
+      } catch (err) {
+        notifications.show({
+          title: "エラー",
+          message: err instanceof Error ? err.message : "不明なエラー",
+          color: "red",
+        });
+      }
+    });
+  };
 
   const saveEmail = () => {
     startEmail(async () => {
@@ -170,12 +251,59 @@ export function ProfileView({ user }: { user: ProfileData }) {
         title="プロフィール"
       />
 
+      {/* 正方形に切り抜いてから保存する（表示は常に真円）。 */}
+      <ImageCropModal
+        file={cropTarget}
+        loading={photoPending}
+        onCancel={() => {
+          setCropTarget(null);
+          if (photoInputRef.current) photoInputRef.current.value = "";
+        }}
+        onConfirm={uploadPhoto}
+      />
+
       {/* 基本情報 */}
       <Paper p="md" radius="md" withBorder>
         <Group align="flex-start" gap="lg" wrap="nowrap">
-          <Avatar color="blue" radius="xl" size={64}>
-            {user.displayName.slice(0, 2)}
-          </Avatar>
+          {/* プロフィール写真 — 本人がアップロード。未設定はイニシャル。 */}
+          <Stack align="center" gap={6}>
+            <UserAvatar
+              name={user.displayName}
+              size={64}
+              src={avatarUrl}
+              thumbSrc={avatarThumbUrl}
+            />
+            <Group gap={2} wrap="nowrap">
+              <GhostButton
+                leftSection={<IconCamera size={14} />}
+                loading={photoPending}
+                onClick={() => photoInputRef.current?.click()}
+                size="xs"
+              >
+                {avatarUrl ? "変更" : "写真を設定"}
+              </GhostButton>
+              {avatarUrl && (
+                <GhostButton
+                  aria-label="プロフィール写真を削除"
+                  color="red"
+                  disabled={photoPending}
+                  onClick={deletePhoto}
+                  px={6}
+                  size="xs"
+                >
+                  <IconTrash size={14} />
+                </GhostButton>
+              )}
+            </Group>
+            <input
+              accept="image/png,image/jpeg,image/webp"
+              hidden
+              // 選択したら即アップロードせず、まず切り抜きモーダルへ。
+              onChange={(e) => setCropTarget(e.target.files?.[0] ?? null)}
+              ref={photoInputRef}
+              type="file"
+            />
+          </Stack>
           <Stack className="min-w-0 flex-1" gap="md">
             <SimpleGrid cols={{ base: 1, md: 3 }} spacing="md">
               <FieldValue label="表示名" value={user.displayName} />

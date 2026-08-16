@@ -17,6 +17,7 @@
  */
 
 import {
+  Badge,
   Box,
   Button,
   Divider,
@@ -33,6 +34,7 @@ import {
 } from "@mantine/core";
 import type { GetInputPropsReturnType } from "@mantine/form";
 import {
+  IconDeviceTablet,
   IconDotsVertical,
   IconEdit,
   IconFileTypePdf,
@@ -49,6 +51,7 @@ import {
 } from "./buttons";
 import { type Crumb, PageHeader } from "./PageHeader";
 import { PdfButton } from "./PdfButton";
+import { UserAvatar } from "./UserAvatar";
 
 export interface MenuItemDef {
   label: string;
@@ -353,6 +356,10 @@ export interface AuditEntry {
   id: string | number;
   action: string;
   user: string;
+  /** 操作者の顔写真（小）。未設定・システム操作なら null → イニシャル。 */
+  avatarUrl?: string | null;
+  /** 操作元のキオスク端末名（共有タブレット経由のみ。Web 操作は null）。 */
+  device?: string | null;
   at: string;
   detail?: ReactNode;
 }
@@ -370,9 +377,13 @@ export function AuditTimeline({ entries }: { entries: AuditEntry[] }) {
       {entries.map((log) => (
         <Timeline.Item
           bullet={
-            <Text fw={700} fz={10}>
-              {log.user[0]}
-            </Text>
+            log.avatarUrl ? (
+              <UserAvatar name={log.user} size={18} thumbSrc={log.avatarUrl} />
+            ) : (
+              <Text fw={700} fz={10}>
+                {log.user[0]}
+              </Text>
+            )
           }
           key={log.id}
           lineVariant="dotted"
@@ -384,6 +395,16 @@ export function AuditTimeline({ entries }: { entries: AuditEntry[] }) {
               <Text c="dimmed" size="xs">
                 {log.at} · {log.user}
               </Text>
+              {log.device && (
+                <Badge
+                  color="grape"
+                  leftSection={<IconDeviceTablet size={11} />}
+                  size="xs"
+                  variant="light"
+                >
+                  {log.device}
+                </Badge>
+              )}
             </Group>
           }
         >

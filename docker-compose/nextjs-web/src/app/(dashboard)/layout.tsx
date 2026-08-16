@@ -43,6 +43,8 @@ export default async function DashboardLayout({
         initials: profile.initials,
         department: profile.department,
         title: profile.title,
+        avatarUrl: profile.avatarUrl,
+        avatarThumbUrl: profile.avatarThumbUrl,
       }
     : null;
   return (

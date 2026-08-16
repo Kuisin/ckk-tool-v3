@@ -9,12 +9,13 @@ import "server-only";
  */
 
 import { auth } from "@/auth";
+import { avatarUrl } from "./avatar";
 import { prisma } from "./db";
 
 export interface UserProfile {
   displayName: string;
   username: string;
-  /** アバターのイニシャル（表示名の先頭 2 文字）。 */
+  /** アバターのイニシャル（表示名の先頭 2 文字）。写真が無いときの代替。 */
   initials: string;
   email: string | null;
   department: string | null;
@@ -22,7 +23,10 @@ export interface UserProfile {
   company: string | null;
   office: string | null;
   phone: string | null;
+  /** 写真（大 — プロフィール・ホーム用）。 */
   avatarUrl: string | null;
+  /** 写真（小 — ヘッダー・一覧・履歴用）。 */
+  avatarThumbUrl: string | null;
 }
 
 function initialsOf(name: string, fallback: string): string {
@@ -57,6 +61,18 @@ export async function getCurrentProfile(): Promise<UserProfile | null> {
     company: emp?.company ?? null,
     office: emp?.office ?? null,
     phone: emp?.phone ?? emp?.mobile ?? null,
-    avatarUrl: null,
+    // 写真はアプリ内でアップロードしたもの（AD からは取得しない）。
+    avatarUrl:
+      user?.id && user.avatarFileId
+        ? avatarUrl(user.id, user.avatarFileId)
+        : null,
+    // サムネイル未生成の古い写真は大サイズで代用（配信側もフォールバック）。
+    avatarThumbUrl: user?.id
+      ? user.avatarThumbFileId
+        ? avatarUrl(user.id, user.avatarThumbFileId, "thumb")
+        : user.avatarFileId
+          ? avatarUrl(user.id, user.avatarFileId)
+          : null
+      : null,
   };
 }

@@ -81,3 +81,36 @@ export function localized(
 ): string {
   return value?.[locale] || value?.ja || value?.en || "—";
 }
+
+/**
+ * 端末名（kiosk_devices.name = { ja, en } JSON）を表示文字列にする。
+ * 旧データ（文字列のまま）も受け付ける — 移行前後どちらでも壊れない。
+ */
+export function deviceName(
+  value: unknown,
+  locale: "ja" | "en" = "ja",
+): string | null {
+  if (value == null) return null;
+  if (typeof value === "string") return value || null;
+  if (typeof value === "object") {
+    const text = localized(value as LocalizedText, locale);
+    return text === "—" ? null : text;
+  }
+  return null;
+}
+
+/**
+ * HTML 特殊文字のエスケープ — 文字列を HTML の **テキスト位置、または
+ * 二重引用符で囲んだ属性値** へ埋め込むときに使う。
+ *
+ * lib/pdf.ts のテンプレート差し込みは無エスケープなので、HTML を組み立てる
+ * 側の責任でここを通すこと（PDF / メール本文が共通の経路）。属性値は必ず
+ * `"` で囲む — `'` はエスケープしない。
+ */
+export function escapeHtml(s: string): string {
+  return s
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;");
+}

@@ -6,6 +6,8 @@
  * 整形はブラケット深さに基づく再インデントのみ（文字列内は不可侵）。
  */
 
+import { escapeHtml } from "./format";
+
 const KEYWORDS = new Set([
   "return",
   "if",
@@ -31,13 +33,6 @@ const COLORS = {
   comment: "#868e96",
   variable: "#0c8599",
 } as const;
-
-const escapeHtml = (s: string): string =>
-  s
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
 
 const span = (cls: keyof typeof COLORS, text: string): string =>
   `<span style="color:${COLORS[cls]}">${escapeHtml(text)}</span>`;

@@ -11,7 +11,15 @@ import "server-only";
 
 import { prisma } from "./db";
 import type { LocalizedText } from "./format";
-import { localized } from "./format";
+import { deviceName, localized } from "./format";
+
+/** 多言語 JSON（または旧文字列）から編集用の片側を取り出す。 */
+function namePart(value: unknown, key: "ja" | "en"): string {
+  if (value == null) return "";
+  if (typeof value === "string") return value; // 移行前の文字列データ
+  const v = value as Record<string, unknown>;
+  return typeof v[key] === "string" ? (v[key] as string) : "";
+}
 
 /**
  * WS 未接続でも直近この時間内の活動があればオンライン扱い。
@@ -165,7 +173,7 @@ export async function listCardRecentSessions(
   });
   return rows.map((s) => ({
     id: s.id,
-    deviceName: s.device.name,
+    deviceName: deviceName(s.device.name),
     plantLabel: s.device.plant
       ? localized(s.device.plant.name as LocalizedText)
       : null,
@@ -222,7 +230,11 @@ export async function listKioskAssignableUsers(): Promise<KioskUserOption[]> {
 
 export interface KioskDeviceRow {
   id: string;
+  /** 表示用の端末名（現在ロケール解決済み。未設定は null）。 */
   name: string | null;
+  /** 編集用の原文（多言語 JSON の各言語）。 */
+  nameJa: string;
+  nameEn: string;
   location: string | null;
   status: "PENDING" | "LINKED" | "ACTIVE" | "DISABLED" | "REVOKED";
   plantId: number | null;
@@ -281,7 +293,10 @@ type DeviceWithIncludes = NonNullable<
 function toDeviceRow(r: DeviceWithIncludes, now: number): KioskDeviceRow {
   return {
     id: r.id,
-    name: r.name,
+    // 表示用に多言語 JSON を解決（編集は nameJa/nameEn を別途返す）。
+    name: deviceName(r.name),
+    nameJa: namePart(r.name, "ja"),
+    nameEn: namePart(r.name, "en"),
     location: r.location,
     status: r.status,
     plantId: r.plantId,

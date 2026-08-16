@@ -11,6 +11,7 @@
 import { timingSafeEqual } from "node:crypto";
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { deviceName } from "@/lib/format";
 import { getDeviceForSettings } from "@/lib/kiosk-auth";
 import {
   clearGate,
@@ -58,7 +59,7 @@ export async function POST(req: Request) {
     ticket,
     device: {
       id: device.id,
-      name: device.name,
+      name: deviceName(device.name),
       status: device.status,
       linkedAt: device.linkedAt,
       deviceTokenExpiresAt: device.deviceTokenExpiresAt,

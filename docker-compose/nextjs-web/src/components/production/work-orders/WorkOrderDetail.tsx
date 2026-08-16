@@ -31,6 +31,7 @@ import { WorkOrderStepsPanel } from "@/components/production/WorkOrderStepsPanel
 import { DocNumber } from "@/components/ui/DocNumber";
 import { FieldValue } from "@/components/ui/FieldValue";
 import { HistoryPanel } from "@/components/ui/HistoryPanel";
+import { MemoPanel } from "@/components/ui/MemoPanel";
 import { ModalShell, openConfirm } from "@/components/ui/modals";
 import { SearchSelect } from "@/components/ui/SearchSelect";
 import { StatusBadge } from "@/components/ui/StatusBadge";
@@ -41,6 +42,7 @@ import {
   SummaryGrid,
 } from "@/components/ui/shells";
 import { useTabParam } from "@/hooks/useUrlState";
+import type { MemoView } from "@/lib/document-memos";
 import { WORK_ORDER_TYPE_LABEL } from "@/lib/enum-labels";
 import { formatDateTime } from "@/lib/format";
 import type { WorkOrderView } from "./model";
@@ -55,10 +57,13 @@ export function WorkOrderDetail({
   canApproveSecond,
   approvalTrail = [],
   catalogOptions = [],
+  memos = [],
   variant = "default",
 }: {
   workOrder: WorkOrderView;
   auditEntries: AuditEntry[];
+  /** 社内メモ（document_memos 由来、メモタブ）。 */
+  memos?: MemoView[];
   canApproveFirst: boolean;
   canApproveSecond: boolean;
   /** 正規化された承認記録（approval_records — 代理承認マーカー付き）。 */
@@ -302,6 +307,7 @@ export function WorkOrderDetail({
         <Tabs.List>
           <Tabs.Tab value="overview">概要</Tabs.Tab>
           <Tabs.Tab value="related">関連</Tabs.Tab>
+          <Tabs.Tab value="memo">メモ</Tabs.Tab>
           <Tabs.Tab value="history">履歴</Tabs.Tab>
         </Tabs.List>
 
@@ -387,6 +393,16 @@ export function WorkOrderDetail({
               </div>
             )}
           </Stack>
+        </Tabs.Panel>
+
+        {/* keepMounted={false}: エディタ（prosemirror）はタブを開くまで読み込まない。 */}
+        <Tabs.Panel keepMounted={false} pt="md" value="memo">
+          <MemoPanel
+            memos={memos}
+            mode="memo"
+            ownerId={String(wo.workOrderNumber)}
+            ownerType="work_orders"
+          />
         </Tabs.Panel>
 
         <Tabs.Panel pt="md" value="history">

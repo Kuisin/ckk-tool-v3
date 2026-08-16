@@ -8,6 +8,10 @@ Table users {
   username        varchar  // AD[uid]
   display_name    varchar  // AD[lastNamePhonetic], AD[firstNamePhonetic] - AD[lastName] AD[lastName]
   email           varchar  // AD[email]
+  // プロフィール写真（アプリ内でアップロード。AD からは取得しない）
+  // 正方形に切り抜いて 2 サイズ保存: 大 512px / 小 96px（一覧・履歴用）
+  avatar_file_id       uuid [ref: > files.id]
+  avatar_thumb_file_id uuid [ref: > files.id]
   is_active       boolean
   last_login_at   timestamp
   created_at      timestamp
@@ -1492,6 +1496,8 @@ Table audit_logs {
   record_id       uuid
   before_data     json
   after_data      json
+  // 操作元のキオスク端末（共有タブレット経由のみ。Web からの操作は null）
+  kiosk_device_id uuid [ref: > kiosk_devices.id]
   created_at      timestamp
 }
 

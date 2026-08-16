@@ -16,6 +16,7 @@ import {
   verifyAttestCookie,
 } from "./attest-core";
 import { prisma } from "./db";
+import { deviceName } from "./format";
 import { type Locale, normalizeLocale } from "./i18n";
 import {
   DEVICE_TOKEN_TTL_MS,
@@ -121,7 +122,8 @@ export async function getDevice(
     ok: true,
     device: {
       id: device.id,
-      name: device.name,
+      // 端末名は多言語 JSON。ログイン前画面は ja 固定（lib/i18n の方針）。
+      name: deviceName(device.name),
       plantId: device.plantId,
       status: device.status,
     },
@@ -149,7 +151,7 @@ export async function getDeviceForSettings(): Promise<DeviceSettingsInfo | null>
   const store = await cookies();
   const raw = store.get(DEVICE_COOKIE)?.value;
   if (!raw) return null;
-  return prisma.kioskDevice.findUnique({
+  const row = await prisma.kioskDevice.findUnique({
     where: { deviceTokenHash: sha256hex(raw) },
     select: {
       id: true,
@@ -161,6 +163,8 @@ export async function getDeviceForSettings(): Promise<DeviceSettingsInfo | null>
       fingerprint: true,
     },
   });
+  // 端末名は多言語 JSON。端末設定はログイン前画面なので ja 固定。
+  return row ? { ...row, name: deviceName(row.name) } : null;
 }
 
 // ─── 人セッション ────────────────────────────────────────────────────────────

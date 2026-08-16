@@ -3,6 +3,7 @@ import { InvoiceDetail } from "@/components/billing/invoices/InvoiceDetail";
 import { fetchAuditEntries } from "@/lib/audit";
 import { requireAppRead } from "@/lib/authz-page";
 import { formatDocNumber, parseDocKey } from "@/lib/doc-number";
+import { listMemos } from "@/lib/document-memos";
 import { fetchInvoice } from "../data";
 
 export const dynamic = "force-dynamic";
@@ -29,11 +30,18 @@ export default async function BillingInvoicesDetailPage({
   const key = parseDocKey(decodeURIComponent(id), "INV");
   if (!key) notFound();
 
-  const [invoice, auditEntries] = await Promise.all([
+  const [invoice, auditEntries, memos] = await Promise.all([
     fetchInvoice(key),
     fetchAuditEntries("invoices", formatDocNumber("INV", key)),
+    listMemos("invoices", formatDocNumber("INV", key)),
   ]);
   if (!invoice) notFound();
 
-  return <InvoiceDetail auditEntries={auditEntries} invoice={invoice} />;
+  return (
+    <InvoiceDetail
+      auditEntries={auditEntries}
+      invoice={invoice}
+      memos={memos}
+    />
+  );
 }

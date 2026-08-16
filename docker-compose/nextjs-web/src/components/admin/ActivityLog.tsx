@@ -7,8 +7,8 @@
  * 検索・操作種別・対象で絞り込む。各詳細画面の「履歴」タブと同じデータ源。
  */
 
-import { Group, Select, Text, TextInput } from "@mantine/core";
-import { IconHistory, IconSearch } from "@tabler/icons-react";
+import { Badge, Group, Select, Stack, Text, TextInput } from "@mantine/core";
+import { IconDeviceTablet, IconHistory, IconSearch } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
 import { useMemo } from "react";
 import { type Column, DataTable } from "@/components/ui/DataTable";
@@ -53,6 +53,7 @@ export function ActivityLog({ entries }: { entries: ActivityEntry[] }) {
       !q ||
       (e.recordId?.includes(q) ?? false) ||
       e.user.includes(q) ||
+      (e.device ?? "").toLowerCase().includes(q) ||
       (typeof e.detail === "string" && e.detail.includes(q));
     const matchesAction = !action || e.action === action;
     const matchesTable = !table || e.tableName === table;
@@ -98,9 +99,24 @@ export function ActivityLog({ entries }: { entries: ActivityEntry[] }) {
     {
       key: "user",
       header: "ユーザー",
-      width: 120,
+      width: 150,
       sortable: true,
-      render: (e) => <Text size="sm">{e.user}</Text>,
+      render: (e) => (
+        <Stack gap={2}>
+          <Text size="sm">{e.user}</Text>
+          {/* 共有タブレットからの操作は端末名バッジを出す（Web 操作は無し）。 */}
+          {e.device && (
+            <Badge
+              color="grape"
+              leftSection={<IconDeviceTablet size={11} />}
+              size="xs"
+              variant="light"
+            >
+              {e.device}
+            </Badge>
+          )}
+        </Stack>
+      ),
     },
     {
       key: "detail",
@@ -180,6 +196,17 @@ export function ActivityLog({ entries }: { entries: ActivityEntry[] }) {
                 {e.at}
               </Text>
               <Text size="xs">{e.user}</Text>
+              {e.device && (
+                <Badge
+                  color="grape"
+                  leftSection={<IconDeviceTablet size={10} />}
+                  mt={2}
+                  size="xs"
+                  variant="light"
+                >
+                  {e.device}
+                </Badge>
+              )}
             </div>
           </Group>
         )}

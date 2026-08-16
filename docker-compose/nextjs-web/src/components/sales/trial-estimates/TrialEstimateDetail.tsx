@@ -30,6 +30,7 @@ import {
   IconCylinder,
   IconInfoCircle,
   IconLink,
+  IconMessage2,
 } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
@@ -42,6 +43,7 @@ import { DocNumber } from "@/components/ui/DocNumber";
 import { FieldValue } from "@/components/ui/FieldValue";
 import { PRODUCT_F4 } from "@/components/ui/f4-presets";
 import { HistoryPanel } from "@/components/ui/HistoryPanel";
+import { MemoPanel } from "@/components/ui/MemoPanel";
 import { MoneyText } from "@/components/ui/MoneyText";
 import { ModalShell } from "@/components/ui/modals";
 import { SearchSelect } from "@/components/ui/SearchSelect";
@@ -53,6 +55,7 @@ import {
   SummaryGrid,
 } from "@/components/ui/shells";
 import { useTabParam } from "@/hooks/useUrlState";
+import type { MemoView } from "@/lib/document-memos";
 import { formatDateTime } from "@/lib/format";
 import type { MaterialPricePoint } from "@/lib/material-pricing-core";
 import { ORDER_TYPE_LABEL } from "@/lib/mock";
@@ -81,6 +84,7 @@ export function TrialEstimateDetail({
   record,
   linkedEntries,
   auditEntries,
+  memos,
   priceHistory,
   pricingOptions = {},
   toolTypeOptions = TOOL_TYPE_OPTIONS,
@@ -89,6 +93,8 @@ export function TrialEstimateDetail({
   linkedEntries: LinkedPriceEntry[];
   /** 操作履歴（audit_logs 由来、履歴タブ）。 */
   auditEntries: AuditEntry[];
+  /** 社内コメント（document_memos 由来、コメントタブ）。 */
+  memos: MemoView[];
   /** この素材の仕入実績（サーバー取得、価格推移タブ）。 */
   priceHistory: MaterialPricePoint[];
   /** 試算エンジンのオプション（係数・カスタム計算）。 */
@@ -260,6 +266,9 @@ export function TrialEstimateDetail({
           <Tabs.Tab leftSection={<IconLink size={14} />} value="related">
             関連
           </Tabs.Tab>
+          <Tabs.Tab leftSection={<IconMessage2 size={14} />} value="comments">
+            コメント
+          </Tabs.Tab>
           <Tabs.Tab value="audit">履歴</Tabs.Tab>
         </Tabs.List>
 
@@ -372,6 +381,16 @@ export function TrialEstimateDetail({
               </Text>
             </div>
           </Stack>
+        </Tabs.Panel>
+
+        {/* keepMounted={false}: エディタ（prosemirror）はタブを開くまで読み込まない。 */}
+        <Tabs.Panel keepMounted={false} pt="md" value="comments">
+          <MemoPanel
+            memos={memos}
+            mode="comment"
+            ownerId={record.estimateNumber}
+            ownerType="estimates"
+          />
         </Tabs.Panel>
 
         <Tabs.Panel pt="md" value="audit">

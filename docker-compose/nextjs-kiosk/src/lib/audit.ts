@@ -40,19 +40,35 @@ export interface RecordAuditInput {
   after?: unknown;
 }
 
-const actorStore = new AsyncLocalStorage<string>();
+interface ActorContext {
+  actorId: string;
+  /** 操作元のキオスク端末（audit_logs.kiosk_device_id に残す）。 */
+  deviceId: string | null;
+}
+
+const actorStore = new AsyncLocalStorage<ActorContext>();
 
 /**
- * この非同期コンテキスト内の操作 actor を束ねる。ルートハンドラで
- * `runWithActor(session.userId, () => …)` と包むこと。
+ * この非同期コンテキスト内の操作 actor（と操作元端末）を束ねる。
+ * ルートハンドラで `runWithActor(session.userId, () => …, session.deviceId)`
+ * と包むこと。端末を渡すと監査ログに「どの端末で」が残る。
  */
-export function runWithActor<T>(actorId: string, fn: () => Promise<T>) {
-  return actorStore.run(actorId, fn);
+export function runWithActor<T>(
+  actorId: string,
+  fn: () => Promise<T>,
+  deviceId: string | null = null,
+) {
+  return actorStore.run({ actorId, deviceId }, fn);
 }
 
 /** 現在の操作ユーザー ID（未束縛はシステムユーザー）。 */
 export async function getCurrentActorId(): Promise<string | null> {
-  return actorStore.getStore() ?? SYSTEM_USER_ID;
+  return actorStore.getStore()?.actorId ?? SYSTEM_USER_ID;
+}
+
+/** 現在の操作元キオスク端末 ID（未束縛・Web 経由は null）。 */
+export function getCurrentDeviceId(): string | null {
+  return actorStore.getStore()?.deviceId ?? null;
 }
 
 /** unknown を Prisma Json 相当（プレーン値）へ。best-effort。 */
@@ -80,6 +96,8 @@ export async function recordAudit(input: RecordAuditInput): Promise<void> {
         recordId: input.recordId,
         beforeData: toJson(input.before),
         afterData: toJson(input.after),
+        // 共有タブレットからの操作は端末も残す（Web からの操作は null）。
+        kioskDeviceId: getCurrentDeviceId(),
       },
     });
   } catch (e) {

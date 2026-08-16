@@ -467,6 +467,16 @@ export const appList: AppEntry[] = [
     category: "システム",
     requiredPermission: "kiosk",
   },
+  {
+    // リンク管理 — メモ / コメント内の外部リンク索引とブロック指定。
+    key: "links",
+    label: "リンク管理",
+    operationCode: "SY0B",
+    href: "/settings/links",
+    icon: "IconLink",
+    category: "システム",
+    requiredPermission: "system",
+  },
 ];
 
 /** Home 絞り込み（工程）で使う URL パラメータのキー。 */

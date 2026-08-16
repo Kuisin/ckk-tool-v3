@@ -24,6 +24,7 @@ export default async function DashboardPage() {
         office: profile.office,
         company: profile.company,
         avatarUrl: profile.avatarUrl,
+        avatarThumbUrl: profile.avatarThumbUrl,
       }
     : undefined;
   return <HomeApps settings={settings} user={user} />;

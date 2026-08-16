@@ -19,7 +19,7 @@ It holds the files you uploaded yourself, and also the PDFs the system made for 
 ## Words used on this page
 
 - **Folder** … a container that holds files. The same idea as a folder on your computer.
-- **System file** … a file **the system made automatically**, rather than one a person uploaded. Quote and invoice PDFs are examples.
+- **System file** … a leftover scrap file that your computer or an app creates on its own — `.DS_Store`, `Thumbs.db`, `~$report.xlsx`, `drawing.png.tmp` and the like. These are hidden by default. Quote and invoice PDFs are **not** system files; they are business documents and are always listed.
 - **Folder permission** … a rule that says "this person may look inside this folder". A system administrator sets it.
 
 ## Before you start
@@ -65,7 +65,7 @@ Where there is nothing inside, you will see 「**空のフォルダ**」 (Empty 
 2. Every file with a matching name is listed, no matter which folder it is in.
 3. When you are done searching, delete the text you typed.
 
-> 💡 If a quote or invoice PDF does not appear, turn on the 「**システムファイル**」 (System files) switch. Files the system made are normally hidden.
+> 💡 Quote and invoice PDFs are listed normally. If one does not appear, you may not be allowed to look inside that folder.
 
 ## Opening and downloading a file
 
@@ -119,7 +119,7 @@ When no one has been allowed anything yet, you will see 「**個別付与はあ�
 A. The equipment that keeps the files has stopped. While this lasts, the file list will not appear. Please contact your system administrator.
 
 **Q. A file that should be there is missing.**
-A. There are two likely reasons. One is that it is a file the system made, so it is hidden — try turning on the 「**システムファイル**」 (System files) switch. The other is that you are not allowed to look inside that folder. Please ask your system administrator.
+A. There are two likely reasons. One is that you are not allowed to look inside that folder — please ask your system administrator. The other is that it is a scrap file (a name starting with `.`, or ending in `.tmp` and the like), which is hidden; turn on the 「**システムファイル**」 (System files) switch to show those.
 
 **Q. There is no 「アップロード」 button.**
 A. You are not allowed to put files into the folder you have open. Move to a different folder, or ask your system administrator.

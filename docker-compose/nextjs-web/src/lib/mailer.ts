@@ -11,6 +11,7 @@
  */
 
 import nodemailer, { type Transporter } from "nodemailer";
+import { escapeHtml } from "./format";
 
 let cached: Transporter | null | undefined;
 
@@ -109,12 +110,4 @@ export async function sendNotificationMail(input: {
     text: text || input.title,
     html,
   });
-}
-
-function escapeHtml(s: string): string {
-  return s
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;");
 }

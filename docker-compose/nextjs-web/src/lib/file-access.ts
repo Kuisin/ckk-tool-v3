@@ -10,8 +10,8 @@ import "server-only";
  * 3. 所有アプリの権限 — 生成ファイルはフォルダ → アプリ権限のマップで
  *    そのアプリの READ を持つユーザーに読みを許可（例: pdfs/quotes → quote）
  *
- * 「システムファイル」= アプリが生成するファイル（SYSTEM_PREFIXES 配下）。
- * SY06 の一覧はこの分類でトグル表示する。
+ * SY06 の「システムファイル」トグル（= OS・ツールの残骸）は表示上の分類で、
+ * アクセス制御とは無関係 — lib/system-files.ts を参照。
  */
 
 import { checkPermission } from "@/lib/authz";
@@ -32,13 +32,6 @@ export const APP_PREFIX_PERMISSIONS: { prefix: string; code: string }[] = [
   { prefix: "kiosk", code: "kiosk" },
   { prefix: "intake", code: "order_acceptance" },
 ];
-
-/** システムファイル（アプリ生成物）と見なすキー prefix。 */
-export const SYSTEM_PREFIXES = ["pdfs", "kiosk", "intake"];
-
-export function isSystemKey(key: string): boolean {
-  return SYSTEM_PREFIXES.some((p) => key === p || key.startsWith(`${p}/`));
-}
 
 function keyInPrefix(key: string, prefix: string): boolean {
   return key === prefix || key.startsWith(`${prefix}/`);

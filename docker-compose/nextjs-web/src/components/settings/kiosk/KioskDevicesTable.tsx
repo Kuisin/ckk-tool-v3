@@ -25,6 +25,7 @@ import {
   Group,
   Menu,
   Select,
+  SimpleGrid,
   Stack,
   Text,
   TextInput,
@@ -256,12 +257,19 @@ function LinkQrScanner({ onCode }: { onCode: (code: string) => void }) {
 // ── 本体 ────────────────────────────────────────────────────────────────────
 
 interface DeviceFormState {
-  name: string;
+  /** 端末名は多言語（{ ja, en }）。英語は任意 — 空なら日本語で埋まる。 */
+  nameJa: string;
+  nameEn: string;
   plantId: string | null;
   location: string;
 }
 
-const EMPTY_FORM: DeviceFormState = { name: "", plantId: null, location: "" };
+const EMPTY_FORM: DeviceFormState = {
+  nameJa: "",
+  nameEn: "",
+  plantId: null,
+  location: "",
+};
 
 export function KioskDevicesTable({
   rows,
@@ -342,7 +350,7 @@ export function KioskDevicesTable({
 
   const handleCreate = () => {
     const plantId = Number(createForm.plantId);
-    if (!createForm.name.trim() || !plantId) {
+    if (!createForm.nameJa.trim() || !plantId) {
       notifications.show({
         title: "エラー",
         message: "端末名・拠点は必須です",
@@ -352,7 +360,8 @@ export function KioskDevicesTable({
     }
     startTransition(async () => {
       const result = await createDeviceProfile({
-        name: createForm.name,
+        nameJa: createForm.nameJa,
+        nameEn: createForm.nameEn,
         plantId,
         location: createForm.location,
       });
@@ -415,7 +424,8 @@ export function KioskDevicesTable({
   const openEdit = (r: KioskDeviceRow) => {
     setEditTarget(r);
     setEditForm({
-      name: r.name ?? "",
+      nameJa: r.nameJa,
+      nameEn: r.nameEn,
       plantId: r.plantId != null ? String(r.plantId) : null,
       location: r.location ?? "",
     });
@@ -424,7 +434,7 @@ export function KioskDevicesTable({
   const handleEdit = () => {
     if (!editTarget) return;
     const plantId = Number(editForm.plantId);
-    if (!editForm.name.trim() || !plantId) {
+    if (!editForm.nameJa.trim() || !plantId) {
       notifications.show({
         title: "エラー",
         message: "端末名・拠点は必須です",
@@ -436,7 +446,8 @@ export function KioskDevicesTable({
     startTransition(async () => {
       const result = await updateDevice({
         id,
-        name: editForm.name,
+        nameJa: editForm.nameJa,
+        nameEn: editForm.nameEn,
         plantId,
         location: editForm.location,
       });
@@ -825,16 +836,28 @@ export function KioskDevicesTable({
             設定画面（/setup）に表示されるコードを「端末をリンク」で
             入力またはスキャンしてリンクした後、この画面から有効化できます。
           </Alert>
-          <TextInput
-            label="端末名"
-            onChange={(e) => {
-              const name = e.currentTarget.value;
-              setCreateForm((s) => ({ ...s, name }));
-            }}
-            placeholder="例: 1F 加拠点 タブレット1"
-            value={createForm.name}
-            withAsterisk
-          />
+          <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
+            <TextInput
+              label="端末名（日本語）"
+              onChange={(e) => {
+                const nameJa = e.currentTarget.value;
+                setCreateForm((s) => ({ ...s, nameJa }));
+              }}
+              placeholder="例: 1F 加工場 タブレット1"
+              value={createForm.nameJa}
+              withAsterisk
+            />
+            <TextInput
+              description="未入力なら日本語名を使います"
+              label="端末名（English）"
+              onChange={(e) => {
+                const nameEn = e.currentTarget.value;
+                setCreateForm((s) => ({ ...s, nameEn }));
+              }}
+              placeholder="e.g. 1F Machining Tablet 1"
+              value={createForm.nameEn}
+            />
+          </SimpleGrid>
           <Select
             data={plantOptions}
             label="拠点"
@@ -902,15 +925,26 @@ export function KioskDevicesTable({
         title="端末の編集"
       >
         <Stack gap="sm">
-          <TextInput
-            label="端末名"
-            onChange={(e) => {
-              const name = e.currentTarget.value;
-              setEditForm((s) => ({ ...s, name }));
-            }}
-            value={editForm.name}
-            withAsterisk
-          />
+          <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
+            <TextInput
+              label="端末名（日本語）"
+              onChange={(e) => {
+                const nameJa = e.currentTarget.value;
+                setEditForm((s) => ({ ...s, nameJa }));
+              }}
+              value={editForm.nameJa}
+              withAsterisk
+            />
+            <TextInput
+              description="未入力なら日本語名を使います"
+              label="端末名（English）"
+              onChange={(e) => {
+                const nameEn = e.currentTarget.value;
+                setEditForm((s) => ({ ...s, nameEn }));
+              }}
+              value={editForm.nameEn}
+            />
+          </SimpleGrid>
           <Select
             data={plantOptions}
             label="拠点"

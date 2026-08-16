@@ -10,8 +10,9 @@
  */
 
 import type { AuditEntry } from "@/components/ui/shells";
+import { avatarUrl } from "@/lib/avatar";
 import { prisma } from "@/lib/db";
-import { formatDateTime } from "@/lib/format";
+import { deviceName, formatDateTime } from "@/lib/format";
 
 export type AuditAction =
   | "CREATE"
@@ -236,7 +237,14 @@ type AuditRow = {
   beforeData: unknown;
   afterData: unknown;
   createdAt: Date;
-  user: { displayName: string } | null;
+  user: {
+    id: string;
+    displayName: string;
+    avatarThumbFileId: string | null;
+    avatarFileId: string | null;
+  } | null;
+  /** 操作元のキオスク端末（共有タブレット経由の操作のみ）。 */
+  kioskDevice: { id: string; name: unknown } | null;
 };
 
 function mapAudit(row: AuditRow): AuditEntry {
@@ -244,9 +252,29 @@ function mapAudit(row: AuditRow): AuditEntry {
     id: row.id.toString(),
     action: ACTION_LABEL[row.action] ?? row.action,
     user: row.user?.displayName ?? "システム",
+    // 操作者の顔写真（小）。未設定・システム操作ならイニシャル表示になる。
+    avatarUrl: row.user ? actorAvatarUrl(row.user) : null,
+    // 操作元の共有タブレット（Web からの操作は null → バッジを出さない）。
+    device: row.kioskDevice ? deviceName(row.kioskDevice.name) : null,
     at: formatDateTime(row.createdAt),
     detail: describeChange(row.action, row.beforeData, row.afterData),
   };
+}
+
+/**
+ * 操作者のサムネイル URL（無ければ大サイズ → null）。
+ * 履歴タブとコメント（lib/document-memos）で顔写真の出し方を揃えるため共有する。
+ */
+export function actorAvatarUrl(user: {
+  id: string;
+  avatarThumbFileId: string | null;
+  avatarFileId: string | null;
+}): string | null {
+  if (user.avatarThumbFileId) {
+    return avatarUrl(user.id, user.avatarThumbFileId, "thumb");
+  }
+  if (user.avatarFileId) return avatarUrl(user.id, user.avatarFileId);
+  return null;
 }
 
 /** 1 レコードの履歴（詳細画面「履歴」タブ）。失敗時は空配列（画面を壊さない）。 */
@@ -258,7 +286,17 @@ export async function fetchAuditEntries(
     const rows = await prisma.auditLog.findMany({
       where: { tableName, recordId },
       orderBy: { createdAt: "desc" },
-      include: { user: { select: { displayName: true } } },
+      include: {
+        user: {
+          select: {
+            id: true,
+            displayName: true,
+            avatarThumbFileId: true,
+            avatarFileId: true,
+          },
+        },
+        kioskDevice: { select: { id: true, name: true } },
+      },
       take: 100,
     });
     return rows.map(mapAudit);
@@ -297,7 +335,17 @@ export async function getActivityEntry(
   try {
     const row = await prisma.auditLog.findUnique({
       where: { id: key },
-      include: { user: { select: { id: true, displayName: true } } },
+      include: {
+        user: {
+          select: {
+            id: true,
+            displayName: true,
+            avatarThumbFileId: true,
+            avatarFileId: true,
+          },
+        },
+        kioskDevice: { select: { id: true, name: true } },
+      },
     });
     if (!row) return null;
     return {
@@ -324,7 +372,17 @@ export async function listAuditEntries(
   try {
     const rows = await prisma.auditLog.findMany({
       orderBy: { createdAt: "desc" },
-      include: { user: { select: { displayName: true } } },
+      include: {
+        user: {
+          select: {
+            id: true,
+            displayName: true,
+            avatarThumbFileId: true,
+            avatarFileId: true,
+          },
+        },
+        kioskDevice: { select: { id: true, name: true } },
+      },
       take,
       skip,
     });
