@@ -1,16 +1,18 @@
 "use client";
 
 /**
- * PdfAttachmentPanel — saved-PDF attachment panel（詳細ページ「PDF」タブ用）.
+ * PdfAttachmentPanel — 生成 PDF パネル（詳細ページ「PDF」タブ用）.
  *
- * Shows the stored PDF (`files` table row, referenced via e.g. `quotes.pdf_file_id`)
- * of a document: file meta bar + inline A4 preview + download / regenerate actions.
- * `file == null` (draft — no PDF yet) renders the empty state instead.
+ * ファイルメタバー + インライン A4 プレビュー + ダウンロード / 再生成。
  *
- * `previewSrc` points at the streaming route that serves the stored object
- * (e.g. `/api/pdf/quote?id=…`, later `/api/files/[id]`), rendered inline in an
- * A4-aspect iframe (see VIEWER_HASH — ビューア既定の「ページ全体」表示だと
- * 余白が大きく見えるため、幅にフィットさせる)。
+ * `previewSrc` は保管済み PDF を配信するルート（`/api/pdf/quote?id=…` 等）。
+ * **未発行（下書き）の文書では呼び出し側が `previewSrc` を渡さない** — その場合は
+ * 空状態（「発行後に閲覧できます」等）を表示する。発行済みで PDF が未生成でも
+ * ルートが初回アクセスで生成するため、プレビューは表示してよい（`file` は
+ * 保管済みメタが判っているときだけ渡す）。
+ *
+ * プレビューは A4 アスペクトの iframe（VIEWER_HASH — ビューア既定の
+ * 「ページ全体」表示だと余白が大きく見えるため幅にフィットさせる）。
  *
  * ダウンロードは `downloadHref` を渡すと `lib/download.ts` 経由になり、
  * モバイルでは OS の共有シート（保存先を選択）が開く。
@@ -37,12 +39,13 @@ import { useIsMobile } from "@/hooks/useViewport";
 import { downloadFile } from "@/lib/download";
 import { formatDateTime } from "@/lib/format";
 
-/** `files` table row subset shown in the meta bar. */
+/** 保管済み PDF のメタ（SeaweedFS の stat 由来 — メタバーに表示）。 */
 export interface PdfFileMeta {
-  filename: string;
   sizeBytes: number;
-  generatedAt: string;
-  generatedBy: string;
+  /** ISO タイムスタンプ。filer が返さなければ null。 */
+  generatedAt: string | null;
+  /** 生成者が判るときだけ（現状は未取得）。 */
+  generatedBy?: string | null;
 }
 
 function formatBytes(bytes: number): string {
@@ -69,6 +72,7 @@ function withViewerHash(src: string): string {
 }
 
 export function PdfAttachmentPanel({
+  filename,
   file,
   previewSrc,
   downloadHref,
@@ -77,9 +81,11 @@ export function PdfAttachmentPanel({
   onDownload,
   onRegenerate,
 }: {
-  /** Saved file meta — null while the document is still a draft (no PDF yet). */
+  /** 表示・保存名（例 `QOT-202608-00001.pdf`）。 */
+  filename: string;
+  /** 保管済みメタ — null なら未生成（初回プレビュー時に生成される）。 */
   file: PdfFileMeta | null;
-  /** Inline preview URL (streams the stored PDF). */
+  /** プレビュー URL。未指定 = 閲覧不可（未発行）→ 空状態。 */
   previewSrc?: string;
   /** ダウンロード URL（渡すとモバイルで共有シート経由になる）。 */
   downloadHref?: string;
@@ -91,7 +97,7 @@ export function PdfAttachmentPanel({
 }) {
   const isMobile = useIsMobile();
 
-  if (!file) {
+  if (!previewSrc) {
     return (
       <EmptyState
         action={emptyAction}
@@ -117,19 +123,25 @@ export function PdfAttachmentPanel({
             <Stack className="min-w-0" gap={2}>
               <Group gap="xs" wrap="nowrap">
                 <Text ff="mono" fw={600} size="sm" truncate>
-                  {file.filename}
+                  {filename}
                 </Text>
-                <Badge
-                  className="shrink-0"
-                  color="gray"
-                  size="xs"
-                  variant="light"
-                >
-                  {formatBytes(file.sizeBytes)}
-                </Badge>
+                {file && file.sizeBytes > 0 && (
+                  <Badge
+                    className="shrink-0"
+                    color="gray"
+                    size="xs"
+                    variant="light"
+                  >
+                    {formatBytes(file.sizeBytes)}
+                  </Badge>
+                )}
               </Group>
               <Text c="dimmed" size="xs">
-                生成: {formatDateTime(file.generatedAt)}（{file.generatedBy}）
+                {file?.generatedAt
+                  ? `生成: ${formatDateTime(file.generatedAt)}${
+                      file.generatedBy ? `（${file.generatedBy}）` : ""
+                    }`
+                  : "生成: 表示時に生成されます"}
               </Text>
             </Stack>
           </Group>
@@ -138,7 +150,7 @@ export function PdfAttachmentPanel({
               leftSection={<IconDownload size={14} />}
               onClick={
                 downloadHref
-                  ? () => void downloadFile(downloadHref, file.filename)
+                  ? () => void downloadFile(downloadHref, filename)
                   : onDownload
               }
             >
@@ -164,27 +176,21 @@ export function PdfAttachmentPanel({
             padding: isMobile ? 4 : 8,
           }}
         >
-          {previewSrc ? (
-            <iframe
-              src={withViewerHash(previewSrc)}
-              style={{
-                display: "block",
-                width: "100%",
-                maxWidth: A4_W,
-                // A4 縦（210:297）— ページ 1 枚がちょうど収まる高さになる。
-                aspectRatio: "210 / 297",
-                margin: "0 auto",
-                border: "none",
-                background: "white",
-                boxShadow: "0 2px 16px rgba(0,0,0,0.15)",
-              }}
-              title={file.filename}
-            />
-          ) : (
-            <Text c="dimmed" py="xl" size="sm" ta="center">
-              プレビューを表示できません。ダウンロードして確認してください。
-            </Text>
-          )}
+          <iframe
+            src={withViewerHash(previewSrc)}
+            style={{
+              display: "block",
+              width: "100%",
+              maxWidth: A4_W,
+              // A4 縦（210:297）— ページ 1 枚がちょうど収まる高さになる。
+              aspectRatio: "210 / 297",
+              margin: "0 auto",
+              border: "none",
+              background: "white",
+              boxShadow: "0 2px 16px rgba(0,0,0,0.15)",
+            }}
+            title={filename}
+          />
         </Box>
       </Paper>
     </Stack>

@@ -25,7 +25,6 @@ const LIST_FETCH_CAP = 1000;
 const QUOTE_INCLUDE = {
   customerBp: true,
   customerBranchBp: true,
-  pdfFile: true,
   items: {
     orderBy: { sortOrder: "asc" as const },
     include: { product: true },
@@ -73,14 +72,6 @@ export function mapQuote(r: QuoteRow): Quote {
       deliveryDate: it.deliveryDate?.toISOString().slice(0, 10) ?? null,
       notes: it.notes,
     })),
-    pdfFile: r.pdfFile
-      ? {
-          filename: r.pdfFile.filename,
-          sizeBytes: Number(r.pdfFile.sizeBytes ?? 0),
-          generatedAt: r.pdfFile.createdAt.toISOString(),
-          generatedBy: "—",
-        }
-      : null,
     createdBy: "—",
     createdAt: r.createdAt.toISOString(),
     updatedAt: r.updatedAt.toISOString(),

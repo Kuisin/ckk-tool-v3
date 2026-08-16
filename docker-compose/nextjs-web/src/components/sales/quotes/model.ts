@@ -22,7 +22,6 @@ import {
   tierUnitPrice,
   unitDiscountOf,
 } from "@/components/sales/price-lists/model";
-import type { PdfFileMeta } from "@/components/ui/PdfAttachmentPanel";
 import { formatMoney } from "@/lib/format";
 import { ORDER_TYPE_LABEL } from "@/lib/mock";
 
@@ -128,11 +127,6 @@ export interface Quote {
   validUntil: string | null;
   notes: string | null;
   items: QuoteItem[];
-  /**
-   * 発行時に保存された PDF（quotes.pdf_file_id → files）。DRAFT の間は null。
-   * 実データは /api/pdf/quote が SeaweedFS に保存・配信する。
-   */
-  pdfFile: PdfFileMeta | null;
   createdBy: string;
   createdAt: string;
   updatedAt: string;

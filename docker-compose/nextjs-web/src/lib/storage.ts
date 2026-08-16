@@ -50,6 +50,28 @@ export async function getObject(key: string): Promise<ArrayBuffer | null> {
   }
 }
 
+/**
+ * Stored-object metadata (size + 最終更新) without fetching the body, or null
+ * if the object is absent / storage is unreachable. 生成済み PDF のメタ表示に使う。
+ */
+export async function statObject(
+  key: string,
+): Promise<{ size: number; mtime: string | null } | null> {
+  try {
+    const res = await fetch(objectUrl(key), { method: "HEAD" });
+    if (!res.ok) return null;
+    const size = Number(res.headers.get("content-length") ?? "");
+    const lastModified = res.headers.get("last-modified");
+    const at = lastModified ? new Date(lastModified) : null;
+    return {
+      size: Number.isFinite(size) ? size : 0,
+      mtime: at && !Number.isNaN(at.getTime()) ? at.toISOString() : null,
+    };
+  } catch {
+    return null;
+  }
+}
+
 /** Delete an object. Returns false if storage is unreachable / not found. */
 export async function deleteObject(key: string): Promise<boolean> {
   try {

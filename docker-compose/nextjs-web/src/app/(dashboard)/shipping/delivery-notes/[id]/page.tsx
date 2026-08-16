@@ -3,6 +3,7 @@ import { DeliveryNoteDetail } from "@/components/shipping/delivery-notes/Deliver
 import { fetchAuditEntries } from "@/lib/audit";
 import { requireAppRead } from "@/lib/authz-page";
 import { formatDocNumber, parseDocKey } from "@/lib/doc-number";
+import { isIssued, pdfStorageKey, storedPdfMeta } from "@/lib/document-pdf";
 import { fetchDeliveryNote } from "../data";
 
 export const dynamic = "force-dynamic";
@@ -35,5 +36,16 @@ export default async function ShippingDeliveryNotesDetailPage({
   ]);
   if (!note) notFound();
 
-  return <DeliveryNoteDetail auditEntries={auditEntries} note={note} />;
+  // 保管済み PDF のメタ（発行済みのみ。未生成なら null → 初回表示時に生成）。
+  const pdfMeta = isIssued(note.status)
+    ? await storedPdfMeta(pdfStorageKey.deliveryNote(note.deliveryNumber))
+    : null;
+
+  return (
+    <DeliveryNoteDetail
+      auditEntries={auditEntries}
+      note={note}
+      pdfMeta={pdfMeta}
+    />
+  );
 }
