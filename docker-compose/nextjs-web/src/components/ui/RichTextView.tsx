@@ -9,9 +9,11 @@
  * 任せる — エディタ側（@mantine/tiptap）と同じ組版になる。
  */
 
-import { Text, Typography } from "@mantine/core";
+import { Stack, Text, Tooltip, Typography } from "@mantine/core";
 import { IconExternalLink } from "@tabler/icons-react";
 import type { JSX } from "react";
+// type-only import — lib/link-index は server-only（型はバンドルされない）。
+import type { ShortLinkTarget } from "@/lib/link-index";
 import type { RichTextDoc } from "@/lib/rich-text-core";
 import {
   isEmptyDoc,
@@ -19,7 +21,11 @@ import {
   isSafeHref,
   isShortLink,
   type RichTextNode,
+  SHORT_LINK_PREFIX,
 } from "@/lib/rich-text-core";
+
+/** 短縮コード → 遷移先。 */
+export type LinkTargets = Record<string, ShortLinkTarget>;
 
 /** マーク種別 → 包むコンポーネント（link は href を検証するので別扱い）。 */
 const MARK_ELEMENTS: Record<string, keyof JSX.IntrinsicElements> = {
@@ -40,8 +46,46 @@ const BLOCK_ELEMENTS: Record<string, keyof JSX.IntrinsicElements> = {
   codeBlock: "pre",
 };
 
+/**
+ * リンクのホバー表示。
+ *
+ * 短縮リンク（`/l/<code>`）はそのままでは行き先が分からないので、解決済みの
+ * 実 URL を出す。ブロック中ならその旨も添える。文書リンク・素の URL は
+ * href をそのまま見せる。
+ */
+function linkTooltip(
+  href: string,
+  targets: LinkTargets,
+): { label: React.ReactNode; blocked: boolean } {
+  if (isShortLink(href)) {
+    const target = targets[href.slice(SHORT_LINK_PREFIX.length)];
+    if (!target) {
+      return { label: "リンク先を解決できませんでした", blocked: false };
+    }
+    return {
+      label: (
+        <Stack gap={2}>
+          <Text fw={600} size="xs">
+            {target.blocked ? "⚠ ブロック中: " : "外部サイト: "}
+            {target.hostname}
+          </Text>
+          <Text size="xs" style={{ overflowWrap: "anywhere" }}>
+            {target.url}
+          </Text>
+        </Stack>
+      ),
+      blocked: target.blocked,
+    };
+  }
+  return { label: href, blocked: false };
+}
+
 /** テキストノードを、付与されたマークで内側から包んでいく。 */
-function renderText(node: RichTextNode, key: string): React.ReactNode {
+function renderText(
+  node: RichTextNode,
+  key: string,
+  targets: LinkTargets,
+): React.ReactNode {
   let el: React.ReactNode = node.text ?? "";
   for (const mark of node.marks ?? []) {
     if (mark.type === "link") {
@@ -52,10 +96,16 @@ function renderText(node: RichTextNode, key: string): React.ReactNode {
       // 文書リンク（その他のアプリ内パス）は同じタブで遷移する。
       const short = isShortLink(href);
       const internal = isInternalPath(href) && !short;
-      el = internal ? (
+      const { label, blocked } = linkTooltip(href, targets);
+      const anchor = internal ? (
         <a href={href}>{el}</a>
       ) : (
-        <a href={href} rel="noopener noreferrer" target="_blank">
+        <a
+          href={href}
+          rel="noopener noreferrer"
+          style={blocked ? { textDecorationLine: "line-through" } : undefined}
+          target="_blank"
+        >
           {el}
           {short && (
             <IconExternalLink
@@ -66,6 +116,17 @@ function renderText(node: RichTextNode, key: string): React.ReactNode {
           )}
         </a>
       );
+      el = (
+        <Tooltip
+          color={blocked ? "red" : undefined}
+          label={label}
+          multiline
+          w={320}
+          withArrow
+        >
+          {anchor}
+        </Tooltip>
+      );
       continue;
     }
     const Tag = MARK_ELEMENTS[mark.type];
@@ -74,13 +135,17 @@ function renderText(node: RichTextNode, key: string): React.ReactNode {
   return <span key={key}>{el}</span>;
 }
 
-function renderNode(node: RichTextNode, key: string): React.ReactNode {
-  if (node.type === "text") return renderText(node, key);
+function renderNode(
+  node: RichTextNode,
+  key: string,
+  targets: LinkTargets,
+): React.ReactNode {
+  if (node.type === "text") return renderText(node, key, targets);
   if (node.type === "hardBreak") return <br key={key} />;
   if (node.type === "horizontalRule") return <hr key={key} />;
 
   const children = (node.content ?? []).map((child, i) =>
-    renderNode(child, `${key}.${i}`),
+    renderNode(child, `${key}.${i}`, targets),
   );
 
   if (node.type === "heading") {
@@ -99,9 +164,15 @@ function renderNode(node: RichTextNode, key: string): React.ReactNode {
 export function RichTextView({
   doc,
   emptyLabel = "—",
+  linkTargets = {},
 }: {
   doc: RichTextDoc | null | undefined;
   emptyLabel?: string;
+  /**
+   * 短縮リンク（コード → 遷移先）。ホバーで実 URL を見せるために使う。
+   * 省略すると短縮リンクは「解決できませんでした」と表示する。
+   */
+  linkTargets?: LinkTargets;
 }) {
   if (isEmptyDoc(doc)) {
     return (
@@ -112,7 +183,9 @@ export function RichTextView({
   }
   return (
     <Typography p={0}>
-      {(doc?.content ?? []).map((node, i) => renderNode(node, String(i)))}
+      {(doc?.content ?? []).map((node, i) =>
+        renderNode(node, String(i), linkTargets),
+      )}
     </Typography>
   );
 }

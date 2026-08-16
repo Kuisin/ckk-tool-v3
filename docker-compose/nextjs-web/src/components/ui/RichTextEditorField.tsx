@@ -18,11 +18,13 @@
 import { Tooltip } from "@mantine/core";
 import { RichTextEditor } from "@mantine/tiptap";
 import { IconFileSymlink } from "@tabler/icons-react";
+import type { Editor } from "@tiptap/react";
 import { useEditor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import { useState } from "react";
 import { emptyDoc, type RichTextDoc } from "@/lib/rich-text-core";
 import { DocumentLinkModal } from "./DocumentLinkModal";
+import type { DocumentHit } from "./document-link-types";
 
 /** ツールバーの aria-label（Mantine の既定は英語）。 */
 const LABELS = {
@@ -78,7 +80,12 @@ export function RichTextEditorField({
       }),
     ],
     content: value ?? emptyDoc(),
-    onUpdate: ({ editor: e }) => onChange(e.getJSON() as RichTextDoc),
+    // JSON へ一度落としてから渡す。Server Action の引数はシリアライズされる
+    // ので、関数など JSON にならない値が混ざると壊れた形でサーバーに届く
+    // （実際に link の attrs が function として届き保存が落ちた）。
+    // ここで正規化しておけば、状態にもサーバーにも素の JSON しか流れない。
+    onUpdate: ({ editor: e }) =>
+      onChange(JSON.parse(JSON.stringify(e.getJSON())) as RichTextDoc),
   });
 
   const [docPickerOpen, setDocPickerOpen] = useState(false);
@@ -131,28 +138,44 @@ export function RichTextEditorField({
 
       <DocumentLinkModal
         onClose={() => setDocPickerOpen(false)}
-        onSelect={(hit) => {
-          // 選択範囲があればその文字にリンクを張り、無ければ文書番号を挿入する。
-          const chain = editor?.chain().focus();
-          if (!chain) return;
-          if (editor?.state.selection.empty) {
-            chain
-              .insertContent({
-                type: "text",
-                text: hit.number,
-                marks: [{ type: "link", attrs: { href: hit.href } }],
-              })
-              // リンクマークが後続の入力へ引き継がれないようにする。
-              .unsetMark("link")
-              .run();
-          } else {
-            chain.setMark("link", { href: hit.href }).run();
-          }
-        }}
+        onSelect={(hit) => insertDocumentLink(editor, hit)}
         opened={docPickerOpen}
       />
     </RichTextEditor>
   );
+}
+
+/**
+ * 文書リンクを挿入する。
+ *
+ * **`insertContent` に marks の生 JSON を渡してはいけない。** そのやり方だと
+ * Link 拡張の属性生成を通らず、`attrs` が壊れた（サーバーには function として
+ * 届き、保存が「メモの形式が不正です」で必ず失敗した）。Link 拡張が提供する
+ * `setLink` を使い、拡張自身に属性を作らせるのが正しい経路。
+ *
+ * 選択範囲があればその文字にリンクを張り、無ければ文書番号を挿入して
+ * その範囲だけにリンクを張る（マークが後続の入力へ引き継がれないよう、
+ * 最後にカーソルを末尾へ戻して link を解除する）。
+ */
+function insertDocumentLink(editor: Editor | null, hit: DocumentHit): void {
+  if (!editor) return;
+
+  if (!editor.state.selection.empty) {
+    editor.chain().focus().setLink({ href: hit.href }).run();
+    return;
+  }
+
+  const from = editor.state.selection.from;
+  const to = from + hit.number.length;
+  editor
+    .chain()
+    .focus()
+    .insertContent(hit.number)
+    .setTextSelection({ from, to })
+    .setLink({ href: hit.href })
+    .setTextSelection(to)
+    .unsetMark("link")
+    .run();
 }
 
 export default RichTextEditorField;

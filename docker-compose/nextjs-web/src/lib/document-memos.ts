@@ -25,15 +25,22 @@ import "server-only";
 import { actorAvatarUrl, getCurrentActorId, recordAudit } from "@/lib/audit";
 import { checkPermission, type PermissionAction } from "@/lib/authz";
 import { prisma } from "@/lib/db";
-import { findBlockedLinks, mintShortLinks } from "@/lib/link-index";
+import {
+  findBlockedLinks,
+  mintShortLinks,
+  resolveShortLinkTargets,
+  type ShortLinkTarget,
+} from "@/lib/link-index";
 import {
   collectLinkHrefs,
   describeStructure,
   isEmptyDoc,
   isIndexableUrl,
+  isShortLink,
   parseRichText,
   type RichTextDoc,
   rewriteLinkHrefs,
+  SHORT_LINK_PREFIX,
 } from "@/lib/rich-text-core";
 import {
   type ActionResult,
@@ -104,6 +111,12 @@ export interface MemoView {
   canDelete: boolean;
   /** 現在のユーザーがこの行をアーカイブ / 復元してよいか（COMMENT のみ）。 */
   canArchive: boolean;
+  /**
+   * 本文中の短縮リンク（コード → 遷移先）。閲覧時にホバーで実 URL を
+   * 見せるために持つ — クリックするまで行き先が分からないのは短縮リンクの
+   * 弱点なので、表示側で補う。
+   */
+  linkTargets: Record<string, ShortLinkTarget>;
 }
 
 export interface SaveMemoInput {
@@ -128,6 +141,26 @@ async function actorFor(
   if (!authz.ok) return { ok: false, error: authz.error };
   const admin = await checkPermission(permission, "ADMIN");
   return { ok: true, actor: { userId: authz.userId, isAdmin: admin.ok } };
+}
+
+/** 本文中の短縮リンク（`/l/<code>`）のコードを取り出す。 */
+function shortLinkCodesIn(doc: RichTextDoc | null): string[] {
+  if (!doc) return [];
+  return collectLinkHrefs(doc)
+    .filter(isShortLink)
+    .map((href) => href.slice(SHORT_LINK_PREFIX.length));
+}
+
+/** doc に出てくるコードぶんだけを抜き出す（行ごとの view model 用）。 */
+function pickTargets(
+  doc: RichTextDoc | null,
+  all: Record<string, ShortLinkTarget>,
+): Record<string, ShortLinkTarget> {
+  const picked: Record<string, ShortLinkTarget> = {};
+  for (const code of shortLinkCodesIn(doc)) {
+    if (all[code]) picked[code] = all[code];
+  }
+  return picked;
 }
 
 /** COMMENT は投稿者本人（or ADMIN）だけが触れる。MEMO は共有欄なので誰でも可。 */
@@ -169,8 +202,16 @@ export async function listMemos(
     ]);
     const actor: Actor = { userId: actorId ?? "", isAdmin };
 
+    // 本文中の短縮リンクをまとめて解決する（行ごとに引くと N+1 になる）。
+    const targets = await resolveShortLinkTargets(
+      rows.flatMap((r) =>
+        shortLinkCodesIn(r.content as unknown as RichTextDoc),
+      ),
+    );
+
     return rows.map((r) => {
       const mine = mayMutate(r.kind, r.createdBy, actor);
+      const doc = r.content as unknown as RichTextDoc;
       return {
         id: r.id,
         // 保存時に parseRichText を通した doc のみが入る。万一壊れた行があっても
@@ -191,6 +232,7 @@ export async function listMemos(
         canEdit: canUpdate && mine,
         canDelete: canDelete && mine,
         canArchive: r.kind === "COMMENT" && canUpdate && mine,
+        linkTargets: pickTargets(doc, targets),
       };
     });
   } catch (e) {
