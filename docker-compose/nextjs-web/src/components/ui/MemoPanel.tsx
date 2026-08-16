@@ -161,7 +161,10 @@ function MemoBlock({ ownerType, ownerId, memos }: MemoPanelProps) {
     <Stack gap="sm">
       {existing ? (
         <>
-          <RichTextView doc={existing.content} />
+          <RichTextView
+            doc={existing.content}
+            linkTargets={existing.linkTargets}
+          />
           <Text c="dimmed" size="xs">
             最終更新: {formatDateTime(existing.updatedAt)}（
             {existing.editorName ?? existing.authorName}）
@@ -498,7 +501,7 @@ function CommentRow({
       ) : (
         <Collapse expanded={open}>
           <Box pl={32}>
-            <RichTextView doc={memo.content} />
+            <RichTextView doc={memo.content} linkTargets={memo.linkTargets} />
           </Box>
         </Collapse>
       )}
