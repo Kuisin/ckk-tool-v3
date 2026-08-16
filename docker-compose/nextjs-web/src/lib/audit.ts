@@ -261,8 +261,11 @@ function mapAudit(row: AuditRow): AuditEntry {
   };
 }
 
-/** 操作者のサムネイル URL（無ければ大サイズ → null）。 */
-function actorAvatarUrl(user: {
+/**
+ * 操作者のサムネイル URL（無ければ大サイズ → null）。
+ * 履歴タブとコメント（lib/document-memos）で顔写真の出し方を揃えるため共有する。
+ */
+export function actorAvatarUrl(user: {
   id: string;
   avatarThumbFileId: string | null;
   avatarFileId: string | null;

@@ -7,8 +7,14 @@
  * 各詳細ページが `fetchAuditEntries` に渡しているのと**同じ値**を使うこと。
  *
  * 2 形態:
- *   MEMO    … 1 文書 1 件。誰でも編集できる共有の申し送り欄
- *   COMMENT … 投稿スレッド。編集・削除は投稿者本人（または ADMIN）のみ
+ *   MEMO    … 1 文書 1 件の共有欄。UPDATE 権限があれば誰でも編集できる
+ *   COMMENT … 投稿スレッド（新しい順）。編集・削除・アーカイブは投稿者本人
+ *             （または ADMIN）のみ
+ *
+ * 権限は操作ごとに分ける（同じ文書でも「直せるが消せない」を作れる）:
+ *   投稿・編集     → <code>:UPDATE
+ *   削除           → <code>:DELETE
+ *   アーカイブ復元 → <code>:UPDATE（削除ではなく畳むだけなので UPDATE 側）
  *
  * 本文は ProseMirror JSON のまま保存し、保存前に必ず
  * `parseRichText`（lib/rich-text-core）の許可リスト検証を通す。
@@ -16,8 +22,8 @@
 
 import "server-only";
 
-import { getCurrentActorId, recordAudit } from "@/lib/audit";
-import { checkPermission } from "@/lib/authz";
+import { actorAvatarUrl, getCurrentActorId, recordAudit } from "@/lib/audit";
+import { checkPermission, type PermissionAction } from "@/lib/authz";
 import { prisma } from "@/lib/db";
 import {
   isEmptyDoc,
@@ -53,19 +59,46 @@ export function memoKindFor(ownerType: string): MemoKind | null {
   return MEMO_OWNERS[ownerType]?.kind ?? null;
 }
 
+/** 投稿者情報（顔写真は履歴タブと同じ解決規則）。 */
+const USER_SELECT = {
+  select: {
+    id: true,
+    displayName: true,
+    avatarFileId: true,
+    avatarThumbFileId: true,
+  },
+} as const;
+
+type UserRow = {
+  id: string;
+  displayName: string;
+  avatarFileId: string | null;
+  avatarThumbFileId: string | null;
+};
+
 /** クライアントへ渡す 1 件分の view model。 */
 export interface MemoView {
   id: string;
   content: RichTextDoc;
   /** 投稿者の表示名（不明ならシステム）。 */
   authorName: string;
+  /** 投稿者の顔写真（小）。未設定なら null → イニシャル表示。 */
+  authorAvatarUrl: string | null;
   /** 最終更新者の表示名（作成者と同じなら null）。 */
   editorName: string | null;
   /** ISO タイムスタンプ。 */
   createdAt: string;
   updatedAt: string;
-  /** 現在のユーザーがこの行を編集・削除してよいか。 */
+  /** アーカイブ日時（非 null = 折りたたみ表示）。 */
+  archivedAt: string | null;
+  /** アーカイブした人の表示名。 */
+  archivedByName: string | null;
+  /** 現在のユーザーがこの行を編集してよいか（<code>:UPDATE + 本人 or ADMIN）。 */
   canEdit: boolean;
+  /** 現在のユーザーがこの行を削除してよいか（<code>:DELETE + 本人 or ADMIN）。 */
+  canDelete: boolean;
+  /** 現在のユーザーがこの行をアーカイブ / 復元してよいか（COMMENT のみ）。 */
+  canArchive: boolean;
 }
 
 export interface SaveMemoInput {
@@ -76,64 +109,85 @@ export interface SaveMemoInput {
   content: unknown;
 }
 
-/** 権限判定に使う「現在のユーザー + 管理者か」。 */
+interface Actor {
+  userId: string;
+  isAdmin: boolean;
+}
+
+/** 指定アクションの権限を確認し、実行者（+ADMIN か）を返す。 */
 async function actorFor(
   permission: string,
-): Promise<
-  { ok: true; userId: string; isAdmin: boolean } | { ok: false; error: string }
-> {
-  const authz = await checkPermission(permission, "UPDATE");
+  action: PermissionAction,
+): Promise<{ ok: true; actor: Actor } | { ok: false; error: string }> {
+  const authz = await checkPermission(permission, action);
   if (!authz.ok) return { ok: false, error: authz.error };
   const admin = await checkPermission(permission, "ADMIN");
-  return { ok: true, userId: authz.userId, isAdmin: admin.ok };
+  return { ok: true, actor: { userId: authz.userId, isAdmin: admin.ok } };
+}
+
+/** COMMENT は投稿者本人（or ADMIN）だけが触れる。MEMO は共有欄なので誰でも可。 */
+function mayMutate(
+  kind: string,
+  createdBy: string | null,
+  actor: Actor,
+): boolean {
+  if (kind === "MEMO") return true;
+  return actor.isAdmin || createdBy === actor.userId;
 }
 
 /**
- * メモ一覧（古い順 — スレッドは読み進める向きに並べる）。
- * MEMO の owner では 0 件または 1 件になる。
+ * メモ一覧。COMMENT は**新しい順**（チャット履歴と同じ向き）、MEMO は 0 件か 1 件。
  * 失敗時は空配列（詳細画面を壊さない — attachments と同じ方針）。
  */
 export async function listMemos(
   ownerType: string,
   ownerId: string,
 ): Promise<MemoView[]> {
-  if (!MEMO_OWNERS[ownerType]) return [];
+  const owner = MEMO_OWNERS[ownerType];
+  if (!owner) return [];
   try {
-    const [rows, actor] = await Promise.all([
+    const [rows, actorId, canUpdate, canDelete, isAdmin] = await Promise.all([
       prisma.documentMemo.findMany({
         where: { ownerType, ownerId },
-        orderBy: { createdAt: "asc" },
+        // COMMENT は新しい順。MEMO は 1 件なので実質どちらでも同じ。
+        orderBy: { createdAt: "desc" },
         include: {
-          createdByUser: { select: { displayName: true } },
+          createdByUser: USER_SELECT,
           updatedByUser: { select: { displayName: true } },
+          archivedByUser: { select: { displayName: true } },
         },
       }),
       getCurrentActorId(),
+      checkPermission(owner.permission, "UPDATE").then((r) => r.ok),
+      checkPermission(owner.permission, "DELETE").then((r) => r.ok),
+      checkPermission(owner.permission, "ADMIN").then((r) => r.ok),
     ]);
-    const { kind, permission } = MEMO_OWNERS[ownerType];
-    // MEMO は共有欄なので誰でも編集可、COMMENT は投稿者本人（+ADMIN）のみ。
-    const isAdmin =
-      kind === "COMMENT"
-        ? (await checkPermission(permission, "ADMIN")).ok
-        : false;
+    const actor: Actor = { userId: actorId ?? "", isAdmin };
 
-    return rows.map((r) => ({
-      id: r.id,
-      // 保存時に parseRichText を通した doc のみが入る。万一壊れた行があっても
-      // RichTextView / isEmptyDoc は未知の形を無視するので表示は壊れない。
-      content: r.content as unknown as RichTextDoc,
-      authorName: r.createdByUser?.displayName ?? "システム",
-      editorName:
-        r.updatedBy && r.updatedBy !== r.createdBy
-          ? (r.updatedByUser?.displayName ?? "システム")
+    return rows.map((r) => {
+      const mine = mayMutate(r.kind, r.createdBy, actor);
+      return {
+        id: r.id,
+        // 保存時に parseRichText を通した doc のみが入る。万一壊れた行があっても
+        // RichTextView / isEmptyDoc は未知の形を無視するので表示は壊れない。
+        content: r.content as unknown as RichTextDoc,
+        authorName: r.createdByUser?.displayName ?? "システム",
+        authorAvatarUrl: r.createdByUser
+          ? actorAvatarUrl(r.createdByUser as UserRow)
           : null,
-      createdAt: r.createdAt.toISOString(),
-      updatedAt: r.updatedAt.toISOString(),
-      canEdit:
-        kind === "MEMO"
-          ? true
-          : isAdmin || (actor != null && r.createdBy === actor),
-    }));
+        editorName:
+          r.updatedBy && r.updatedBy !== r.createdBy
+            ? (r.updatedByUser?.displayName ?? "システム")
+            : null,
+        createdAt: r.createdAt.toISOString(),
+        updatedAt: r.updatedAt.toISOString(),
+        archivedAt: r.archivedAt?.toISOString() ?? null,
+        archivedByName: r.archivedByUser?.displayName ?? null,
+        canEdit: canUpdate && mine,
+        canDelete: canDelete && mine,
+        canArchive: r.kind === "COMMENT" && canUpdate && mine,
+      };
+    });
   } catch (e) {
     console.error("listMemos failed", e);
     return [];
@@ -141,11 +195,12 @@ export async function listMemos(
 }
 
 /**
- * メモ / コメントを保存する。
+ * メモ / コメントを保存する（<code>:UPDATE）。
  *
- * MEMO は owner ごとに 1 件へ寄せる（`findFirst` → update / create）。
+ * MEMO は owner ごとに **1 件**へ寄せる（`findFirst` → update / create）。
  * 単一性を DB の部分 UNIQUE で縛らないのは、Prisma がそれを表現できず
- * migration.sql に手書きすると `migrate diff` が濁るため。
+ * migration.sql に手書きすると `migrate diff` が濁るため。同時実行で二重作成
+ * されないよう、探索と作成は 1 トランザクションにまとめる。
  */
 export async function saveMemo(
   input: SaveMemoInput,
@@ -155,8 +210,9 @@ export async function saveMemo(
   const owner = MEMO_OWNERS[ownerType];
   if (!owner || !ownerId) return actionError("メモの対象が不正です");
 
-  const actor = await actorFor(owner.permission);
-  if (!actor.ok) return actionError(actor.error);
+  const auth = await actorFor(owner.permission, "UPDATE");
+  if (!auth.ok) return actionError(auth.error);
+  const actor = auth.actor;
 
   const parsed = parseRichText(input.content);
   if (!parsed.ok) return actionError(parsed.error);
@@ -166,72 +222,74 @@ export async function saveMemo(
   const content = parsed.doc as unknown as object;
 
   try {
-    // 更新対象の決定: 明示 id > MEMO の既存行 > 新規。
-    const existing = input.id
-      ? await prisma.documentMemo.findUnique({ where: { id: input.id } })
-      : owner.kind === "MEMO"
-        ? await prisma.documentMemo.findFirst({
-            where: { ownerType, ownerId, kind: "MEMO" },
-            orderBy: { createdAt: "asc" },
-          })
-        : null;
+    const outcome = await prisma.$transaction(async (tx) => {
+      // 更新対象の決定: 明示 id > MEMO の既存行 > 新規。
+      const existing = input.id
+        ? await tx.documentMemo.findUnique({ where: { id: input.id } })
+        : owner.kind === "MEMO"
+          ? await tx.documentMemo.findFirst({
+              where: { ownerType, ownerId, kind: "MEMO" },
+              orderBy: { createdAt: "asc" },
+            })
+          : null;
 
-    if (existing) {
+      if (!existing) {
+        const row = await tx.documentMemo.create({
+          data: {
+            ownerType,
+            ownerId,
+            kind: owner.kind,
+            content,
+            plainText: parsed.plainText,
+            createdBy: actor.userId,
+            updatedBy: actor.userId,
+          },
+          select: { id: true },
+        });
+        return { created: true as const, id: row.id, before: null };
+      }
+
       if (existing.ownerType !== ownerType || existing.ownerId !== ownerId) {
-        return actionError("メモの対象が一致しません");
+        throw new MemoError("メモの対象が一致しません");
       }
-      // COMMENT の編集は投稿者本人（または ADMIN）のみ。
-      if (
-        existing.kind === "COMMENT" &&
-        !actor.isAdmin &&
-        existing.createdBy !== actor.userId
-      ) {
-        return actionError("他のユーザーの投稿は編集できません");
+      if (!mayMutate(existing.kind, existing.createdBy, actor)) {
+        throw new MemoError("他のユーザーの投稿は編集できません");
       }
-      const row = await prisma.documentMemo.update({
+      const row = await tx.documentMemo.update({
         where: { id: existing.id },
-        data: {
-          content,
-          plainText: parsed.plainText,
-          updatedBy: actor.userId,
-        },
+        data: { content, plainText: parsed.plainText, updatedBy: actor.userId },
         select: { id: true },
       });
-      await recordAudit({
-        action: "UPDATE",
-        tableName: ownerType,
-        recordId: ownerId,
-        before: { note: `${label}を更新（変更前）`, text: existing.plainText },
-        after: { note: `${label}を更新`, text: parsed.plainText },
-      });
-      return actionOk({ id: row.id });
-    }
-
-    const row = await prisma.documentMemo.create({
-      data: {
-        ownerType,
-        ownerId,
-        kind: owner.kind,
-        content,
-        plainText: parsed.plainText,
-        createdBy: actor.userId,
-        updatedBy: actor.userId,
-      },
-      select: { id: true },
+      return {
+        created: false as const,
+        id: row.id,
+        before: existing.plainText,
+      };
     });
+
     await recordAudit({
       action: "UPDATE",
       tableName: ownerType,
       recordId: ownerId,
-      after: { note: `${label}を追加`, text: parsed.plainText },
+      before: outcome.created
+        ? undefined
+        : { note: `${label}を更新（変更前）`, text: outcome.before },
+      after: {
+        note: `${label}を${outcome.created ? "追加" : "更新"}`,
+        text: parsed.plainText,
+      },
     });
-    return actionOk({ id: row.id });
+    return actionOk({ id: outcome.id });
   } catch (e) {
+    if (e instanceof MemoError) return actionError(e.message);
     return actionError(prismaErrorMessage(e, `${label}の保存に失敗しました`));
   }
 }
 
-/** メモ / コメントを削除する（COMMENT は投稿者本人または ADMIN のみ）。 */
+/** トランザクション内から利用者向けメッセージを返すための内部エラー。 */
+class MemoError extends Error {}
+
+/** メモ / コメントを削除する（<code>:DELETE、COMMENT は本人 or ADMIN のみ）。 */
 export async function deleteMemo(id: string): Promise<ActionResult> {
   try {
     const row = await prisma.documentMemo.findUnique({ where: { id } });
@@ -240,13 +298,9 @@ export async function deleteMemo(id: string): Promise<ActionResult> {
     const owner = MEMO_OWNERS[row.ownerType];
     if (!owner) return actionError("メモの対象が不正です");
 
-    const actor = await actorFor(owner.permission);
-    if (!actor.ok) return actionError(actor.error);
-    if (
-      row.kind === "COMMENT" &&
-      !actor.isAdmin &&
-      row.createdBy !== actor.userId
-    ) {
+    const auth = await actorFor(owner.permission, "DELETE");
+    if (!auth.ok) return actionError(auth.error);
+    if (!mayMutate(row.kind, row.createdBy, auth.actor)) {
       return actionError("他のユーザーの投稿は削除できません");
     }
 
@@ -263,5 +317,51 @@ export async function deleteMemo(id: string): Promise<ActionResult> {
     return actionOk();
   } catch (e) {
     return actionError(prismaErrorMessage(e, "削除に失敗しました"));
+  }
+}
+
+/**
+ * コメントをアーカイブ / 復元する（<code>:UPDATE、本人 or ADMIN のみ）。
+ * 削除ではなく「畳む」— 本文は残り、展開すれば読める。
+ */
+export async function setMemoArchived(
+  id: string,
+  archived: boolean,
+): Promise<ActionResult> {
+  try {
+    const row = await prisma.documentMemo.findUnique({ where: { id } });
+    if (!row) return actionError("対象が見つかりません");
+    if (row.kind !== "COMMENT") {
+      return actionError("メモはアーカイブできません");
+    }
+
+    const owner = MEMO_OWNERS[row.ownerType];
+    if (!owner) return actionError("メモの対象が不正です");
+
+    const auth = await actorFor(owner.permission, "UPDATE");
+    if (!auth.ok) return actionError(auth.error);
+    if (!mayMutate(row.kind, row.createdBy, auth.actor)) {
+      return actionError("他のユーザーの投稿は操作できません");
+    }
+
+    await prisma.documentMemo.update({
+      where: { id },
+      data: {
+        archivedAt: archived ? new Date() : null,
+        archivedBy: archived ? auth.actor.userId : null,
+      },
+    });
+    await recordAudit({
+      action: "UPDATE",
+      tableName: row.ownerType,
+      recordId: row.ownerId,
+      after: {
+        note: `コメントを${archived ? "アーカイブ" : "復元"}`,
+        text: row.plainText,
+      },
+    });
+    return actionOk();
+  } catch (e) {
+    return actionError(prismaErrorMessage(e, "操作に失敗しました"));
   }
 }
