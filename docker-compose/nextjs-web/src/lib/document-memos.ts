@@ -28,6 +28,7 @@ import { prisma } from "@/lib/db";
 import { findBlockedLinks, mintShortLinks } from "@/lib/link-index";
 import {
   collectLinkHrefs,
+  describeStructure,
   isEmptyDoc,
   isIndexableUrl,
   parseRichText,
@@ -226,6 +227,9 @@ export async function saveMemo(
       ownerType,
       ownerId,
       detail: parsed.detail ?? parsed.error,
+      // 構造だけ（本文は出さない）。zod のメッセージだけでは
+      // 「どの型の値が来たのか」まで辿れないことがある。
+      structure: describeStructure(input.content),
     });
     return actionError(parsed.error);
   }
