@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   collectLinkHrefs,
+  describeStructure,
   emptyDoc,
   isEmptyDoc,
   isIndexableUrl,
@@ -198,6 +199,23 @@ describe("parseRichText", () => {
     expect(result.plainText).toBe("詳細\n手順\nconst a = 1;");
   });
 
+  // 回帰: union の下位 issue に外側のパスを継ぎ足さないと配列添字が落ち、
+  // 「どのマークが原因か」が分からなくなる（実際にこれで原因特定に難儀した）。
+  it("keeps the array index when a mark inside a union fails", () => {
+    const result = parseRichText(
+      doc(
+        para(
+          text("ok", [{ type: "bold" }]),
+          text("ng", [{ type: "link", attrs: { href: "javascript:1" } }]),
+        ),
+      ),
+    );
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    // 2 番目のテキストの 0 番目のマークだと分かること。
+    expect(result.error).toContain("content.0.content.1.marks.0");
+  });
+
   // 不変条件: null / 非オブジェクト / 壊れた JSON でも例外を投げず ok:false を返す。
   it("handles null and malformed input", () => {
     for (const bad of [
@@ -211,6 +229,49 @@ describe("parseRichText", () => {
     ]) {
       expect(parseRichText(bad).ok, `${JSON.stringify(bad)}`).toBe(false);
     }
+  });
+});
+
+describe("describeStructure", () => {
+  // 不変条件: 本文（text）は出さず、構造と型だけを出す。
+  // ログに業務データを流さずに原因を特定するための道具。
+  it("summarises node and mark types without leaking text", () => {
+    const summary = describeStructure(
+      doc(
+        para(
+          text("社外秘の本文", [
+            { type: "link", attrs: { href: "https://example.com" } },
+          ]),
+        ),
+      ),
+    );
+    expect(summary).not.toContain("社外秘の本文");
+    expect(summary).toContain("doc");
+    expect(summary).toContain("paragraph");
+    expect(summary).toContain("link");
+    expect(summary).toContain("attrs=object");
+  });
+
+  // これが今回の調査の決め手になる出力。
+  it("reveals a function where attrs should be an object", () => {
+    const summary = describeStructure({
+      type: "doc",
+      content: [
+        {
+          type: "paragraph",
+          content: [
+            { type: "text", marks: [{ type: "link", attrs: () => null }] },
+          ],
+        },
+      ],
+    });
+    expect(summary).toContain("attrs=function");
+  });
+
+  it("handles null, primitives and deep nesting", () => {
+    expect(describeStructure(null)).toBe("null");
+    expect(describeStructure(42)).toBe("number");
+    expect(describeStructure("x")).toBe("string");
   });
 });
 
