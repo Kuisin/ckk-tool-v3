@@ -219,7 +219,16 @@ export async function saveMemo(
   const actor = auth.actor;
 
   const parsed = parseRichText(input.content);
-  if (!parsed.ok) return actionError(parsed.error);
+  if (!parsed.ok) {
+    // 弾かれた本文はサーバーログにも残す（利用者のトーストだけでは
+    // どのノードが原因か追えないため）。本文そのものは出さない。
+    console.error("saveMemo: rejected content", {
+      ownerType,
+      ownerId,
+      detail: parsed.detail ?? parsed.error,
+    });
+    return actionError(parsed.error);
+  }
   if (isEmptyDoc(parsed.doc)) return actionError("本文を入力してください");
 
   const label = owner.kind === "MEMO" ? "メモ" : "コメント";
@@ -268,6 +277,19 @@ export async function saveMemo(
           },
           select: { id: true },
         });
+        // 証跡は本体と同一トランザクションで積む（片方だけ残らないように）。
+        await tx.documentMemoRevision.create({
+          data: {
+            memoId: row.id,
+            ownerType,
+            ownerId,
+            kind: owner.kind,
+            action: "CREATE",
+            content,
+            plainText: parsed.plainText,
+            editedBy: actor.userId,
+          },
+        });
         return { created: true as const, id: row.id, before: null };
       }
 
@@ -281,6 +303,18 @@ export async function saveMemo(
         where: { id: existing.id },
         data: { content, plainText: parsed.plainText, updatedBy: actor.userId },
         select: { id: true },
+      });
+      await tx.documentMemoRevision.create({
+        data: {
+          memoId: row.id,
+          ownerType,
+          ownerId,
+          kind: existing.kind,
+          action: "UPDATE",
+          content,
+          plainText: parsed.plainText,
+          editedBy: actor.userId,
+        },
       });
       return {
         created: false as const,
@@ -311,6 +345,53 @@ export async function saveMemo(
 /** トランザクション内から利用者向けメッセージを返すための内部エラー。 */
 class MemoError extends Error {}
 
+/** 改訂履歴 1 件（証跡ビュー）。 */
+export interface MemoRevisionView {
+  id: string;
+  action: "CREATE" | "UPDATE" | "DELETE" | "ARCHIVE" | "RESTORE";
+  content: RichTextDoc;
+  editorName: string;
+  editorAvatarUrl: string | null;
+  editedAt: string;
+}
+
+/**
+ * 1 件のメモ / コメントの改訂履歴（新しい順）。
+ *
+ * 閲覧はその文書の READ 権限で足りる（書き換えの証跡は、その文書を読める人が
+ * 確認できるべきもの）。本体が削除済みでも履歴は残るため、memoId で引く。
+ */
+export async function listMemoRevisions(
+  ownerType: string,
+  memoId: string,
+): Promise<MemoRevisionView[]> {
+  const owner = MEMO_OWNERS[ownerType];
+  if (!owner) return [];
+  const authz = await checkPermission(owner.permission, "READ");
+  if (!authz.ok) return [];
+
+  try {
+    const rows = await prisma.documentMemoRevision.findMany({
+      where: { memoId },
+      orderBy: { editedAt: "desc" },
+      include: { editedByUser: USER_SELECT },
+    });
+    return rows.map((r) => ({
+      id: r.id,
+      action: r.action as MemoRevisionView["action"],
+      content: r.content as unknown as RichTextDoc,
+      editorName: r.editedByUser?.displayName ?? "システム",
+      editorAvatarUrl: r.editedByUser
+        ? actorAvatarUrl(r.editedByUser as UserRow)
+        : null,
+      editedAt: r.editedAt.toISOString(),
+    }));
+  } catch (e) {
+    console.error("listMemoRevisions failed", e);
+    return [];
+  }
+}
+
 /** メモ / コメントを削除する（<code>:DELETE、COMMENT は本人 or ADMIN のみ）。 */
 export async function deleteMemo(id: string): Promise<ActionResult> {
   try {
@@ -326,7 +407,24 @@ export async function deleteMemo(id: string): Promise<ActionResult> {
       return actionError("他のユーザーの投稿は削除できません");
     }
 
-    await prisma.documentMemo.delete({ where: { id } });
+    // 削除の証跡を先に積んでから本体を消す（memo_id は ON DELETE SET NULL
+    // なので、行は残り memo_id だけが外れる）。content は削除直前の本文。
+    await prisma.$transaction(async (tx) => {
+      await tx.documentMemoRevision.create({
+        data: {
+          memoId: row.id,
+          ownerType: row.ownerType,
+          ownerId: row.ownerId,
+          kind: row.kind,
+          action: "DELETE",
+          content: row.content as object,
+          plainText: row.plainText,
+          editedBy: auth.actor.userId,
+        },
+      });
+      await tx.documentMemo.delete({ where: { id } });
+    });
+
     await recordAudit({
       action: "UPDATE",
       tableName: row.ownerType,
@@ -366,12 +464,26 @@ export async function setMemoArchived(
       return actionError("他のユーザーの投稿は操作できません");
     }
 
-    await prisma.documentMemo.update({
-      where: { id },
-      data: {
-        archivedAt: archived ? new Date() : null,
-        archivedBy: archived ? auth.actor.userId : null,
-      },
+    await prisma.$transaction(async (tx) => {
+      await tx.documentMemo.update({
+        where: { id },
+        data: {
+          archivedAt: archived ? new Date() : null,
+          archivedBy: archived ? auth.actor.userId : null,
+        },
+      });
+      await tx.documentMemoRevision.create({
+        data: {
+          memoId: row.id,
+          ownerType: row.ownerType,
+          ownerId: row.ownerId,
+          kind: row.kind,
+          action: archived ? "ARCHIVE" : "RESTORE",
+          content: row.content as object,
+          plainText: row.plainText,
+          editedBy: auth.actor.userId,
+        },
+      });
     });
     await recordAudit({
       action: "UPDATE",

@@ -12,6 +12,8 @@
 
 import {
   deleteMemo,
+  listMemoRevisions,
+  type MemoRevisionView,
   type SaveMemoInput,
   saveMemo,
   setMemoArchived,
@@ -33,4 +35,11 @@ export async function setMemoArchivedAction(
   archived: boolean,
 ): Promise<ActionResult> {
   return setMemoArchived(id, archived);
+}
+
+export async function listMemoRevisionsAction(
+  ownerType: string,
+  memoId: string,
+): Promise<MemoRevisionView[]> {
+  return listMemoRevisions(ownerType, memoId);
 }
