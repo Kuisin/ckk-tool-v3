@@ -84,6 +84,12 @@ jobs:
       - name: Page gate guard (requireAppRead)
         run: bash scripts/check-page-gates.sh
 
+      # "use server" は async 関数しか export できない。定数を export すると
+      # クライアントにはアクション参照が渡り、実行時に画面ごと落ちる
+      # （tsc も biome も next build も検出しない）。
+      - name: Server Action export guard ("use server")
+        run: bash scripts/check-use-server-exports.sh
+
       # ── strict gates: promotion PRs into main only ──────────────────────
       - name: Lint strict — warnings as errors (main)
         if: github.base_ref == 'main'
