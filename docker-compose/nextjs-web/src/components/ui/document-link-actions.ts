@@ -8,6 +8,10 @@
  * （短縮リンク）は挟まない — アプリ内なので確認ページを通す必要がない。
  *
  * 権限: 読めない文書は候補に出さない（種別ごとの permission_code を READ で確認）。
+ *
+ * **このファイルは async 関数しか export しないこと。** `"use server"` の制約で、
+ * 定数を export するとクライアント側では配列ではなく Server Action の参照が
+ * 渡り、`.map()` で落ちる。値の定義は document-link-types.ts に置く。
  */
 
 import { checkPermission } from "@/lib/authz";
@@ -20,41 +24,13 @@ import {
   formatSalesOrderNumber,
 } from "@/lib/doc-number";
 import { type LocalizedText, localized } from "@/lib/format";
+import {
+  DOCUMENT_TYPE_PERMISSION,
+  type DocumentHit,
+  type DocumentLinkType,
+} from "./document-link-types";
 
 const LIMIT = 15;
-
-/** 選択できる文書種別。 */
-export const DOCUMENT_LINK_TYPES = [
-  { value: "quote", label: "見積書" },
-  { value: "sales_order", label: "注文請書" },
-  { value: "work_order", label: "指示書" },
-  { value: "shipping_order", label: "出荷書" },
-  { value: "invoice", label: "請求書" },
-  { value: "price_list", label: "価格表" },
-  { value: "estimate", label: "試算" },
-] as const;
-
-export type DocumentLinkType = (typeof DOCUMENT_LINK_TYPES)[number]["value"];
-
-export interface DocumentHit {
-  /** 挿入するアプリ内パス。 */
-  href: string;
-  /** 文書番号（リンク文字列の既定値）。 */
-  number: string;
-  /** 補足（顧客名・製品名など）。 */
-  detail: string;
-}
-
-/** 種別 → 権限コード（各画面の actions.ts と揃える）。 */
-const TYPE_PERMISSION: Record<DocumentLinkType, string> = {
-  quote: "quote",
-  sales_order: "work_order",
-  work_order: "work_order",
-  shipping_order: "shipping_order",
-  invoice: "invoice",
-  price_list: "price_list",
-  estimate: "price_list",
-};
 
 /** 数値化できる検索語だけ返す（指示書番号は整数）。 */
 function asInt(query: string): number | null {
@@ -78,7 +54,7 @@ export async function searchDocuments(
   type: DocumentLinkType,
   query: string,
 ): Promise<DocumentHit[]> {
-  const permission = TYPE_PERMISSION[type];
+  const permission = DOCUMENT_TYPE_PERMISSION[type];
   if (!permission) return [];
   const authz = await checkPermission(permission, "READ");
   if (!authz.ok) return [];

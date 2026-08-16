@@ -23,12 +23,12 @@ import { IconSearch } from "@tabler/icons-react";
 import { useEffect, useState, useTransition } from "react";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { ModalShell } from "@/components/ui/modals";
+import { searchDocuments } from "./document-link-actions";
 import {
   DOCUMENT_LINK_TYPES,
   type DocumentHit,
   type DocumentLinkType,
-  searchDocuments,
-} from "./document-link-actions";
+} from "./document-link-types";
 
 export function DocumentLinkModal({
   opened,
