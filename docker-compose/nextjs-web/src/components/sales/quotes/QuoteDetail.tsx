@@ -36,6 +36,7 @@ import {
 } from "@/components/ui/shells";
 import { useTabParam } from "@/hooks/useUrlState";
 import type { MemoView } from "@/lib/document-memos";
+import { downloadFile } from "@/lib/download";
 import { formatDate, formatDateTime } from "@/lib/format";
 import { ORDER_TYPE_LABEL } from "@/lib/mock";
 import { entrySummary, type PriceListEntry } from "../price-lists/model";
@@ -116,10 +117,9 @@ export function QuoteDetail({
               label: "PDFをダウンロード",
               icon: <IconDownload size={14} />,
               onClick: () =>
-                window.open(
+                void downloadFile(
                   pdfUrl("&download=1"),
-                  "_blank",
-                  "noopener,noreferrer",
+                  `${quote.quoteNumber}.pdf`,
                 ),
             },
             {
@@ -281,6 +281,7 @@ export function QuoteDetail({
 
         <Tabs.Panel pt="md" value="pdf">
           <PdfAttachmentPanel
+            downloadHref={pdfUrl("&download=1")}
             emptyAction={
               status === "DRAFT" ? (
                 <PrimaryButton
@@ -293,13 +294,6 @@ export function QuoteDetail({
             }
             emptyMessage="PDF は未生成です。発行すると PDF が生成・保存されます。"
             file={pdfFile}
-            onDownload={() =>
-              window.open(
-                pdfUrl("&download=1"),
-                "_blank",
-                "noopener,noreferrer",
-              )
-            }
             onRegenerate={regenerate}
             previewSrc={pdfUrl(`&v=${pdfNonce}`)}
           />

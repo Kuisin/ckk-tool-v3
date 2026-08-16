@@ -60,6 +60,7 @@ import { FolderGrantsModal } from "@/components/admin/FolderGrantsModal";
 import { GhostButton, PrimaryButton } from "@/components/ui/buttons";
 import { openConfirm } from "@/components/ui/modals";
 import { ListShell } from "@/components/ui/shells";
+import { downloadFile } from "@/lib/download";
 import { formatDateTime } from "@/lib/format";
 import { isSystemFileKey } from "@/lib/system-files";
 
@@ -575,7 +576,9 @@ export function FileManager() {
           />
         ) : isPdfFile(selectedFile) ? (
           <iframe
-            src={`${rawHref(selectedFile.key)}#toolbar=0`}
+            // view=FitH / zoom=page-width — 既定の「ページ全体」だと狭い枠内で
+            // ページが縮み、周囲の灰色余白ばかりになるため幅フィットに固定。
+            src={`${rawHref(selectedFile.key)}#toolbar=0&navpanes=0&view=FitH&zoom=page-width`}
             style={{
               width: "100%",
               height: 320,
@@ -640,9 +643,13 @@ export function FileManager() {
             開く
           </GhostButton>
           <GhostButton
-            external
-            href={rawHref(selectedFile.key, true)}
             leftSection={<IconDownload size={14} />}
+            onClick={() =>
+              void downloadFile(
+                rawHref(selectedFile.key, true),
+                selectedFile.name,
+              )
+            }
             size="xs"
           >
             ダウンロード
