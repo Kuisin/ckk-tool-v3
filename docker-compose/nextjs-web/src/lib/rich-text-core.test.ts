@@ -1,13 +1,17 @@
 import { describe, expect, it } from "vitest";
 import {
+  collectLinkHrefs,
   emptyDoc,
   isEmptyDoc,
+  isIndexableUrl,
+  isInternalPath,
   isSafeHref,
   MAX_NODE_DEPTH,
   MAX_PLAIN_TEXT_LENGTH,
   parseRichText,
   type RichTextDoc,
   type RichTextNode,
+  rewriteLinkHrefs,
   toHtml,
   toPlainText,
 } from "./rich-text-core";
@@ -197,7 +201,9 @@ describe("isSafeHref", () => {
       "data:text/html;base64,PHNjcmlwdD4=",
       "vbscript:msgbox(1)",
       "file:///etc/passwd",
-      "/relative/path",
+      // アプリ内パスは許可されるが、別オリジンへ抜ける書き方は不可。
+      "//evil.example",
+      "/\\evil.example",
       "not a url",
       "",
     ];
@@ -206,11 +212,13 @@ describe("isSafeHref", () => {
     }
   });
 
-  it("accepts http, https and mailto", () => {
+  it("accepts http, https, mailto and in-app paths", () => {
     for (const href of [
       "https://example.com/a?b=1",
       "http://192.168.50.15:3000/",
       "mailto:someone@example.com",
+      "/sales/quotes/QOT-202608-00001",
+      "/l/ABCD2345",
     ]) {
       expect(isSafeHref(href), href).toBe(true);
     }
@@ -227,6 +235,150 @@ describe("isSafeHref", () => {
       ),
     );
     expect(result.ok).toBe(false);
+  });
+});
+
+describe("isInternalPath", () => {
+  // 不変条件: ブラウザが外部 URL として解釈しうる書き方は内部パス扱いしない。
+  // ここを緩めるとオープンリダイレクトの入口になる。
+  it("rejects paths that can escape to another origin", () => {
+    for (const href of [
+      "//evil.example",
+      "//evil.example/path",
+      "/\\evil.example",
+      "/\\/evil.example",
+      "https://evil.example",
+      "evil.example",
+      "",
+    ]) {
+      expect(isInternalPath(href), href).toBe(false);
+    }
+  });
+
+  it("rejects control characters smuggled into a path", () => {
+    expect(isInternalPath("/sales/quotes\n/../evil")).toBe(false);
+    expect(isInternalPath("/sales\tquotes")).toBe(false);
+  });
+
+  it("accepts ordinary in-app paths", () => {
+    for (const href of [
+      "/sales/quotes/QOT-202608-00001",
+      "/production/work-orders/1234",
+      "/l/ABCD2345",
+      "/settings/users?tab=roles",
+    ]) {
+      expect(isInternalPath(href), href).toBe(true);
+    }
+  });
+
+  it("accepts in-app paths through the parse allowlist", () => {
+    const result = parseRichText(
+      doc(
+        para(
+          text("見積書", [
+            { type: "link", attrs: { href: "/sales/quotes/QOT-202608-00001" } },
+          ]),
+        ),
+      ),
+    );
+    expect(result.ok).toBe(true);
+  });
+
+  it("still rejects protocol-relative hrefs at parse time", () => {
+    const result = parseRichText(
+      doc(
+        para(text("x", [{ type: "link", attrs: { href: "//evil.example" } }])),
+      ),
+    );
+    expect(result.ok).toBe(false);
+  });
+});
+
+describe("isIndexableUrl", () => {
+  // 不変条件: 短縮の対象は http(s) だけ。mailto とアプリ内パスは素通し。
+  it("indexes only http and https", () => {
+    expect(isIndexableUrl("https://example.com")).toBe(true);
+    expect(isIndexableUrl("http://example.com")).toBe(true);
+    expect(isIndexableUrl("mailto:a@example.com")).toBe(false);
+    expect(isIndexableUrl("/sales/quotes/QOT-1")).toBe(false);
+    expect(isIndexableUrl("javascript:alert(1)")).toBe(false);
+  });
+});
+
+describe("collectLinkHrefs", () => {
+  it("collects every link href once, at any depth", () => {
+    const found = collectLinkHrefs(
+      doc(
+        para(
+          text("a", [{ type: "link", attrs: { href: "https://a.example" } }]),
+          text("dup", [{ type: "link", attrs: { href: "https://a.example" } }]),
+        ),
+        {
+          type: "bulletList",
+          content: [
+            {
+              type: "listItem",
+              content: [
+                para(
+                  text("b", [
+                    { type: "link", attrs: { href: "https://b.example" } },
+                  ]),
+                ),
+              ],
+            },
+          ],
+        },
+      ),
+    );
+    expect(found.sort()).toEqual(["https://a.example", "https://b.example"]);
+  });
+
+  it("handles null and link-free docs", () => {
+    expect(collectLinkHrefs(null)).toEqual([]);
+    expect(collectLinkHrefs(doc(para(text("プレーン"))))).toEqual([]);
+  });
+});
+
+describe("rewriteLinkHrefs", () => {
+  // 不変条件: 元の doc を破壊しない（保存前の値を監査ログに残せる必要がある）。
+  it("returns a new doc and leaves the original untouched", () => {
+    const original = doc(
+      para(text("a", [{ type: "link", attrs: { href: "https://a.example" } }])),
+    );
+    const next = rewriteLinkHrefs(original, { "https://a.example": "/l/AB12" });
+    expect(next.content?.[0]?.content?.[0]?.marks?.[0]?.attrs?.href).toBe(
+      "/l/AB12",
+    );
+    expect(original.content?.[0]?.content?.[0]?.marks?.[0]?.attrs?.href).toBe(
+      "https://a.example",
+    );
+  });
+
+  it("rewrites nested links and leaves unmapped ones alone", () => {
+    const next = rewriteLinkHrefs(
+      doc({
+        type: "blockquote",
+        content: [
+          para(
+            text("a", [{ type: "link", attrs: { href: "https://a.example" } }]),
+            text("b", [{ type: "link", attrs: { href: "https://b.example" } }]),
+          ),
+        ],
+      }),
+      { "https://a.example": "/l/AB12" },
+    );
+    const marks = next.content?.[0]?.content?.[0]?.content;
+    expect(marks?.[0]?.marks?.[0]?.attrs?.href).toBe("/l/AB12");
+    expect(marks?.[1]?.marks?.[0]?.attrs?.href).toBe("https://b.example");
+  });
+
+  it("leaves non-link marks untouched", () => {
+    const next = rewriteLinkHrefs(doc(para(text("x", [{ type: "bold" }]))), {
+      "https://a.example": "/l/AB12",
+    });
+    expect(next.content?.[0]?.content?.[0]?.marks?.[0]).toEqual({
+      type: "bold",
+    });
   });
 });
 
@@ -317,6 +469,24 @@ describe("toHtml", () => {
     expect(html).toBe(
       '<p><a href="https://example.com/?a=1&amp;b=&quot;2&quot;" rel="noopener noreferrer" target="_blank">リンク</a></p>',
     );
+  });
+
+  // 内部リンク（文書リンク・短縮リンク）はアプリ内遷移なので target を付けない。
+  it("renders in-app links without target=_blank", () => {
+    expect(
+      toHtml(
+        doc(
+          para(
+            text("見積書", [
+              {
+                type: "link",
+                attrs: { href: "/sales/quotes/QOT-202608-00001" },
+              },
+            ]),
+          ),
+        ),
+      ),
+    ).toBe('<p><a href="/sales/quotes/QOT-202608-00001">見積書</a></p>');
   });
 
   // 不変条件: 検証を迂回して危険な href が届いても、リンクにはしない。

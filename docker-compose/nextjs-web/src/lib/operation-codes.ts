@@ -352,6 +352,17 @@ export const OPERATION_CODES: OperationCodeEntry[] = [
     mode: "0",
     index: "A",
   },
+  // リンク管理（メモ / コメント内の外部リンク索引 + ブロック指定）
+  {
+    code: "SY0B",
+    label: "リンク管理",
+    href: "/settings/links",
+    category: "システム",
+    kind: "list",
+    categoryCode: "SY",
+    mode: "0",
+    index: "B",
+  },
 ];
 
 const CODE_LOOKUP = new Map(
