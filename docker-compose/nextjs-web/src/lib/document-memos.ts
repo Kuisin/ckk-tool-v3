@@ -25,10 +25,14 @@ import "server-only";
 import { actorAvatarUrl, getCurrentActorId, recordAudit } from "@/lib/audit";
 import { checkPermission, type PermissionAction } from "@/lib/authz";
 import { prisma } from "@/lib/db";
+import { findBlockedLinks, mintShortLinks } from "@/lib/link-index";
 import {
+  collectLinkHrefs,
   isEmptyDoc,
+  isIndexableUrl,
   parseRichText,
   type RichTextDoc,
+  rewriteLinkHrefs,
 } from "@/lib/rich-text-core";
 import {
   type ActionResult,
@@ -219,7 +223,25 @@ export async function saveMemo(
   if (isEmptyDoc(parsed.doc)) return actionError("本文を入力してください");
 
   const label = owner.kind === "MEMO" ? "メモ" : "コメント";
-  const content = parsed.doc as unknown as object;
+
+  // 外部 URL は索引に登録して `/l/<code>` へ置き換える。ブロック対象は
+  // ここで弾く（クリック時にも再判定するので、後から足したルールも効く）。
+  const externalUrls = collectLinkHrefs(parsed.doc).filter(isIndexableUrl);
+  let doc = parsed.doc;
+  if (externalUrls.length > 0) {
+    const blocked = await findBlockedLinks(externalUrls);
+    if (blocked.length > 0) {
+      const first = blocked[0];
+      return actionError(
+        `このリンクは登録できません（${first.hostname}）${
+          first.reason ? `: ${first.reason}` : ""
+        }`,
+      );
+    }
+    doc = rewriteLinkHrefs(parsed.doc, await mintShortLinks(externalUrls));
+  }
+
+  const content = doc as unknown as object;
 
   try {
     const outcome = await prisma.$transaction(async (tx) => {

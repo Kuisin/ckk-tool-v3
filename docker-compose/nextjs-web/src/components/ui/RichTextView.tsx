@@ -10,11 +10,14 @@
  */
 
 import { Text, Typography } from "@mantine/core";
+import { IconExternalLink } from "@tabler/icons-react";
 import type { JSX } from "react";
 import type { RichTextDoc } from "@/lib/rich-text-core";
 import {
   isEmptyDoc,
+  isInternalPath,
   isSafeHref,
+  isShortLink,
   type RichTextNode,
 } from "@/lib/rich-text-core";
 
@@ -45,9 +48,22 @@ function renderText(node: RichTextNode, key: string): React.ReactNode {
       const href = String(mark.attrs?.href ?? "");
       // 検証済みのはずだが、表示側でも危険な href はリンクにしない。
       if (!isSafeHref(href)) continue;
-      el = (
+      // 短縮リンク（/l/…）は外部への出口なので別タブ + 外部アイコン。
+      // 文書リンク（その他のアプリ内パス）は同じタブで遷移する。
+      const short = isShortLink(href);
+      const internal = isInternalPath(href) && !short;
+      el = internal ? (
+        <a href={href}>{el}</a>
+      ) : (
         <a href={href} rel="noopener noreferrer" target="_blank">
           {el}
+          {short && (
+            <IconExternalLink
+              aria-hidden
+              size={12}
+              style={{ verticalAlign: "-1px", marginInlineStart: 2 }}
+            />
+          )}
         </a>
       );
       continue;

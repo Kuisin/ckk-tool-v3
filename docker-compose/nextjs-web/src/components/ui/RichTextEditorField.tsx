@@ -15,10 +15,14 @@
  * 遅延ロードすること（MemoPanel がそうしている）。
  */
 
+import { Tooltip } from "@mantine/core";
 import { RichTextEditor } from "@mantine/tiptap";
+import { IconFileSymlink } from "@tabler/icons-react";
 import { useEditor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
+import { useState } from "react";
 import { emptyDoc, type RichTextDoc } from "@/lib/rich-text-core";
+import { DocumentLinkModal } from "./DocumentLinkModal";
 
 /** ツールバーの aria-label（Mantine の既定は英語）。 */
 const LABELS = {
@@ -77,6 +81,8 @@ export function RichTextEditorField({
     onUpdate: ({ editor: e }) => onChange(e.getJSON() as RichTextDoc),
   });
 
+  const [docPickerOpen, setDocPickerOpen] = useState(false);
+
   return (
     <RichTextEditor editor={editor} labels={LABELS}>
       <RichTextEditor.Toolbar sticky stickyOffset={60}>
@@ -104,6 +110,15 @@ export function RichTextEditorField({
         <RichTextEditor.ControlsGroup>
           <RichTextEditor.Link />
           <RichTextEditor.Unlink />
+          {/* 文書リンク — 他の業務文書の詳細ページへのアプリ内リンクを挿す。 */}
+          <Tooltip label="文書リンク" withArrow>
+            <RichTextEditor.Control
+              aria-label="文書リンク"
+              onClick={() => setDocPickerOpen(true)}
+            >
+              <IconFileSymlink size={16} stroke={1.5} />
+            </RichTextEditor.Control>
+          </Tooltip>
         </RichTextEditor.ControlsGroup>
 
         <RichTextEditor.ControlsGroup>
@@ -113,6 +128,29 @@ export function RichTextEditorField({
       </RichTextEditor.Toolbar>
 
       <RichTextEditor.Content aria-label={placeholder} style={{ minHeight }} />
+
+      <DocumentLinkModal
+        onClose={() => setDocPickerOpen(false)}
+        onSelect={(hit) => {
+          // 選択範囲があればその文字にリンクを張り、無ければ文書番号を挿入する。
+          const chain = editor?.chain().focus();
+          if (!chain) return;
+          if (editor?.state.selection.empty) {
+            chain
+              .insertContent({
+                type: "text",
+                text: hit.number,
+                marks: [{ type: "link", attrs: { href: hit.href } }],
+              })
+              // リンクマークが後続の入力へ引き継がれないようにする。
+              .unsetMark("link")
+              .run();
+          } else {
+            chain.setMark("link", { href: hit.href }).run();
+          }
+        }}
+        opened={docPickerOpen}
+      />
     </RichTextEditor>
   );
 }
