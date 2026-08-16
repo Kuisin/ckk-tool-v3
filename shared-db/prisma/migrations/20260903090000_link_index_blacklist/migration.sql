@@ -9,7 +9,7 @@
 --
 -- 純粋な追加のみ。既存テーブル・既存データには触れない。
 -- 既存メモ本文の URL 取り込みは別途べき等スクリプトで行う
---   （shared-db/scripts/backfill-link-index.mjs）。
+--   （shared-db/scripts/backfill-link-index.mts）。
 -- ロールバック:
 --   DROP TABLE "app"."link_index"; DROP TABLE "app"."link_blacklist";
 

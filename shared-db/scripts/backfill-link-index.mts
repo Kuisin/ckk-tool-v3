@@ -1,5 +1,9 @@
 /**
- * backfill-link-index.ts — 既存メモ / コメント本文の外部リンクを索引へ取り込む。
+ * backfill-link-index.mts — 既存メモ / コメント本文の外部リンクを索引へ取り込む。
+ *
+ * 拡張子が `.mts` なのは、shared-db に `"type": "module"` を足さずに Node へ
+ * ESM だと伝えるため（package 全体のモジュール種別を変えると生成物や他の
+ * スクリプトに影響するので避けている）。
  *
  * リンク機能の導入以前に保存された本文は外部 URL を生のまま持っている。この
  * スクリプトは全 document_memos を走査し、`http(s)` リンクを `app.link_index`
