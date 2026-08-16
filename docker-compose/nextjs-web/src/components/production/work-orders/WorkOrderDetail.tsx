@@ -44,7 +44,7 @@ import {
 import { useTabParam } from "@/hooks/useUrlState";
 import type { MemoView } from "@/lib/document-memos";
 import { WORK_ORDER_TYPE_LABEL } from "@/lib/enum-labels";
-import { formatDateTime } from "@/lib/format";
+import { formatDateTime, workOrderNumberLabel } from "@/lib/format";
 import type { WorkOrderView } from "./model";
 
 const BASE_PATH = "/production/work-orders";
@@ -83,6 +83,8 @@ export function WorkOrderDetail({
   );
 
   const wo = workOrder;
+  // 表示番号 YYYYMMDD-XXXXX（保存側は従来どおり通し連番の int）。
+  const woLabel = workOrderNumberLabel(wo.workOrderNumber, wo.createdAt);
   const isApproval = variant === "approval";
   const canEdit = wo.status === "DRAFT";
   const canCancel = wo.status === "DRAFT" || wo.status === "PENDING_APPROVAL";
@@ -96,7 +98,10 @@ export function WorkOrderDetail({
       if (result.ok) {
         notifications.show({
           title: "コピーしました",
-          message: `指示書 #${result.data.workOrderNumber} を作成しました`,
+          message: `指示書 ${workOrderNumberLabel(
+            result.data.workOrderNumber,
+            new Date(),
+          )} を作成しました`,
           color: "green",
         });
         setCopyOpen(false);
@@ -114,7 +119,7 @@ export function WorkOrderDetail({
   const handleCancel = () => {
     openConfirm({
       title: "キャンセルの確認",
-      message: `指示書 #${wo.workOrderNumber} をキャンセルします。この操作は取り消せません。`,
+      message: `指示書 ${woLabel} をキャンセルします。この操作は取り消せません。`,
       confirmLabel: "キャンセルする",
       onConfirm: () => {
         startTransition(async () => {
@@ -122,7 +127,7 @@ export function WorkOrderDetail({
           if (result.ok) {
             notifications.show({
               title: "キャンセルしました",
-              message: `指示書 #${wo.workOrderNumber}`,
+              message: `指示書 ${woLabel}`,
               color: "green",
             });
             router.refresh();
@@ -263,13 +268,9 @@ export function WorkOrderDetail({
           ? [
               "生産",
               { label: "承認管理", href: "/production/approvals" },
-              `#${wo.workOrderNumber}`,
+              woLabel,
             ]
-          : [
-              "生産",
-              { label: "指示書", href: BASE_PATH },
-              `#${wo.workOrderNumber}`,
-            ]
+          : ["生産", { label: "指示書", href: BASE_PATH }, woLabel]
       }
       createdAt={formatDateTime(wo.createdAt)}
       status={
@@ -283,11 +284,7 @@ export function WorkOrderDetail({
           )}
         </>
       }
-      title={
-        isApproval
-          ? `承認 #${wo.workOrderNumber}`
-          : `指示書 #${wo.workOrderNumber}`
-      }
+      title={isApproval ? `承認 ${woLabel}` : `指示書 ${woLabel}`}
       updatedAt={formatDateTime(wo.updatedAt)}
     >
       {/* 承認画面は承認状況を最上部に */}
@@ -367,7 +364,8 @@ export function WorkOrderDetail({
                       size="sm"
                     >
                       <DocNumber c="blue">
-                        #{c.workOrderNumber}（{formatDateTime(c.createdAt)}）
+                        {workOrderNumberLabel(c.workOrderNumber, c.createdAt)}（
+                        {formatDateTime(c.createdAt)}）
                       </DocNumber>
                     </Anchor>
                   ))}
@@ -417,7 +415,7 @@ export function WorkOrderDetail({
         onConfirm={handleCopy}
         opened={copyOpen}
         size="md"
-        title={`指示書 #${wo.workOrderNumber} をコピー`}
+        title={`指示書 ${woLabel} をコピー`}
       >
         <Stack gap="sm">
           {wo.copies.length > 0 && (

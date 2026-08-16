@@ -25,6 +25,8 @@ export const WORK_ORDER_HISTORY_ACTION_LABEL: Record<string, string> = {
 
 export interface WorkOrderRow {
   workOrderNumber: number;
+  /** 表示番号 YYYYMMDD-XXXXX の日付部分（作成日）。 */
+  createdAt: string;
   /** null = 在庫向けの独立指示書（注文請書なし）。 */
   salesOrderNumber: string | null;
   productName: string;

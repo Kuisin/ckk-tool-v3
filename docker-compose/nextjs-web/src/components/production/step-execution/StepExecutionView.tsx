@@ -56,7 +56,7 @@ import { DocNumber } from "@/components/ui/DocNumber";
 import { FieldValue } from "@/components/ui/FieldValue";
 import { ModalShell } from "@/components/ui/modals";
 import { StatusBadge } from "@/components/ui/StatusBadge";
-import { formatDateTime } from "@/lib/format";
+import { formatDateTime, workOrderNumberLabel } from "@/lib/format";
 import { QUANTITY_LABELS } from "@/lib/workflow-core";
 import type { StepExecutionData } from "./model";
 
@@ -66,6 +66,11 @@ export function StepExecutionView({ data }: { data: StepExecutionData }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const { step, workOrderNumber } = data;
+  // 表示番号 YYYYMMDD-XXXXX（内部キーは通し連番の int のまま）。
+  const woLabel = workOrderNumberLabel(
+    workOrderNumber,
+    data.workOrderCreatedAt,
+  );
 
   // 中断 / 巻き戻し 理由モーダル
   const [reasonMode, setReasonMode] = useState<"abort" | "rollback" | null>(
@@ -205,7 +210,7 @@ export function StepExecutionView({ data }: { data: StepExecutionData }) {
               )}
             </Group>
             <Link href={`${BASE_PATH}/${workOrderNumber}`}>
-              <DocNumber c="blue">指示書 #{workOrderNumber}</DocNumber>
+              <DocNumber c="blue">指示書 {woLabel}</DocNumber>
             </Link>
           </Group>
           <Group gap="xl" wrap="wrap">

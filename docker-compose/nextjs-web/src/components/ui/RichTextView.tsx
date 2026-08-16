@@ -182,7 +182,7 @@ export function RichTextView({
     );
   }
   return (
-    <Typography p={0}>
+    <Typography className="memo-rich-text" p={0}>
       {(doc?.content ?? []).map((node, i) =>
         renderNode(node, String(i), linkTargets),
       )}

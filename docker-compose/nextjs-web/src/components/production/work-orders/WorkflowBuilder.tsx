@@ -73,7 +73,7 @@ import { useIsMobile } from "@/hooks/useViewport";
 import type { MaterialAtp } from "@/lib/atp";
 import { WORK_ORDER_TYPE_OPTIONS } from "@/lib/enum-labels";
 import { zodResolver } from "@/lib/form";
-import { formatDate } from "@/lib/format";
+import { formatDate, workOrderNumberLabel } from "@/lib/format";
 import type {
   RouteStepSnapshot,
   RouteView,
@@ -558,8 +558,14 @@ export function WorkflowBuilder({
           title: "保存しました",
           message:
             mode === "edit"
-              ? `指示書 #${result.data.workOrderNumber} を更新しました`
-              : `指示書 #${result.data.workOrderNumber} を作成しました`,
+              ? `指示書 ${workOrderNumberLabel(
+                  result.data.workOrderNumber,
+                  workOrder?.createdAt ?? new Date(),
+                )} を更新しました`
+              : `指示書 ${workOrderNumberLabel(
+                  result.data.workOrderNumber,
+                  new Date(),
+                )} を作成しました`,
           color: "green",
         });
         router.push(`${BASE_PATH}/${result.data.workOrderNumber}`);
@@ -599,7 +605,10 @@ export function WorkflowBuilder({
       onSubmit={form.onSubmit(handleSubmit)}
       title={
         mode === "edit"
-          ? `指示書 #${workOrder?.workOrderNumber} 編集`
+          ? `指示書 ${workOrderNumberLabel(
+              workOrder?.workOrderNumber,
+              workOrder?.createdAt,
+            )} 編集`
           : "指示書 新規作成"
       }
     >
