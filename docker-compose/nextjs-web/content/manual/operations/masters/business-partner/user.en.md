@@ -157,7 +157,7 @@ Click a row in the list to open that company's screen. The summary area at the t
 
 ![Business partner detail screen](../../../assets/screenshots/master-bp-detail-01.png)
 
-- **概要 (Overview)** … only the areas for the roles the company **actually has**. With the customer role you see the trade terms, with the end user role the industry, and with the supplier role the trade terms and the bank account. The contacts and the remarks are shown as well.
+- **概要 (Overview)** … a series of panels. The first is 「**一般**」 (General — remarks and anything else that belongs to the company itself, whatever its roles), then one panel for **each role the company actually has**, and 「**担当者**」 (Contacts) last. A role panel holds the trade terms for 「**顧客**」 (customer), the industry for 「**最終需要家**」 (end user), and the trade terms plus the bank account for 「**仕入先・外注先**」 (supplier / outsourcing partner). The dot to the left of a panel heading uses the same colour as that role's badge in the list.
 - **支店一覧 (Branches)** … the list of branches of this company.
 - **見積・受注履歴 (Quote and order history)** … the record of quotes and other documents made for this company.
 - **履歴 (History)** … the record of when and who changed this registration.

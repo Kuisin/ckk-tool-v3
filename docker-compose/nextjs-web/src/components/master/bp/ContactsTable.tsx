@@ -23,10 +23,13 @@ export function ContactsTable({
   bpId,
   bpName,
   contacts,
+  hideHeading = false,
 }: {
   bpId: string;
   bpName: string;
   contacts: ContactRow[];
+  /** 見出しを持つセクションの中で使うとき（取引先詳細）は「担当者」を二重に出さない。 */
+  hideHeading?: boolean;
 }) {
   const router = useRouter();
   const isMobile = useIsMobile();
@@ -62,10 +65,12 @@ export function ContactsTable({
 
   return (
     <>
-      <Group justify="space-between" mb="xs">
-        <Text fw={600} size="sm">
-          担当者
-        </Text>
+      <Group justify={hideHeading ? "flex-end" : "space-between"} mb="xs">
+        {!hideHeading && (
+          <Text fw={600} size="sm">
+            担当者
+          </Text>
+        )}
         <GhostButton
           leftSection={<IconPlus size={14} />}
           onClick={() => setAddOpen(true)}
