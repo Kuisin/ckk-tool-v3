@@ -1,0 +1,9 @@
+{
+  "title": "采购",
+  "pages": [
+    "purchase-request",
+    "purchase-order",
+    "material-receipt",
+    "outsource-order"
+  ]
+}

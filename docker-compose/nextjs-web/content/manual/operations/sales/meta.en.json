@@ -1,0 +1,10 @@
+{
+  "title": "Sales",
+  "pages": [
+    "trial-estimate",
+    "price-list",
+    "quote",
+    "order-acceptance",
+    "design-request"
+  ]
+}

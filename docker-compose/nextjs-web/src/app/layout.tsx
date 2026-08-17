@@ -18,6 +18,17 @@ const notoSansJp = Noto_Sans_JP({
   weight: ["400", "500", "600", "700"],
 });
 
+/**
+ * iOS ホーム画面アイコン。dev 環境（APP_ENV=dev）だけ左上にオレンジの DEV
+ * リボンが入った版を返し、本番の PWA と並んでも取り違えないようにする。
+ * 判定は明示的に "dev" のときだけ — 未設定（ローカル / ビルド時）は本番用に
+ * フォールバックするので、main のアイコンにリボンが混入することはない。
+ */
+const appleTouchIcon =
+  process.env.APP_ENV === "dev"
+    ? "/icons/apple-touch-icon-dev.png"
+    : "/icons/apple-touch-icon.png";
+
 export const metadata: Metadata = {
   title: "CKK 業務管理システム",
   description: "製造業務管理システム — 販売・購買・生産・出荷・請求・マスタ",
@@ -29,7 +40,7 @@ export const metadata: Metadata = {
   // 認証ガードに掛かるとブラウザは HTML を受け取ってアイコンを描画できない。
   icons: {
     icon: [{ url: "/icon.svg", type: "image/svg+xml", sizes: "any" }],
-    apple: "/icons/apple-touch-icon.png",
+    apple: appleTouchIcon,
   },
   appleWebApp: {
     capable: true,

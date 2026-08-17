@@ -43,11 +43,15 @@ Every screen has a 4-character code. Remembering them lets you jump from the sea
 
 ## 4. The sales flow (start here)
 
-1. **Compute a unit price in Trial Estimate (SA01)** — enter product, material, dimensions, and the estimate price is derived from cost. ([Trial Estimate manual](/manual/en/apps/trial-estimate/user))
-2. **Create a Price List (SA02)** — choose a customer and product; a confirmed estimate linked to the product can be picked as the base-price source. ([Price List manual](/manual/en/apps/price-list/user))
-3. **Create a Quote (SA03)** — pick a customer and product, and the unit price fills in from the price list. Export a PDF and send it to the customer. ([Quote manual](/manual/en/apps/quote/user))
+Sales moves in this order: **trial estimate → price list → quote → order acceptance**.
+Who does what at each step, and which app they use, is described in
+[The sales flow](/manual/en/process/sales).
 
-Open the category guides on the left (Sales Apps, Purchasing Apps, and so on) for the details of each app.
+- Work out a unit price … [Trial Estimate](/manual/en/operations/sales/trial-estimate/user) (`SA01`)
+- Set the price for a customer … [Price List](/manual/en/operations/sales/price-list/user) (`SA02`)
+- Issue a quote … [Quote](/manual/en/operations/sales/quote/user) (`SA03`)
+
+For detailed steps and what each input field means, open **Operations** in the sidebar.
 
 ## 5. Getting help
 

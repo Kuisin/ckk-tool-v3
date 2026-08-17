@@ -1,0 +1,13 @@
+{
+  "title": "操作方法",
+  "pages": [
+    "sales",
+    "purchasing",
+    "production",
+    "shipping",
+    "billing",
+    "masters",
+    "system",
+    "kiosk"
+  ]
+}

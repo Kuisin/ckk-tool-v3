@@ -101,6 +101,12 @@ Two content trees, both fumadocs-mdx collections (`source.config.ts`):
 
 - `content/manual/` — public user manual, served at `/manual/<lang>/<slug>`
   (**no login** — `manual` + `llms-manual` are excluded in `src/proxy.ts`).
+  Two top-level sections: **`operations/<category>/<app>/user.md`** (操作方法 —
+  how to work each screen, grouped by the same categories as `lib/app-list.ts`)
+  and **`process/<domain>.md`** (プロセス — the business flow and which app is
+  used at each step). Old `apps|masters|system|kiosk/...` URLs 308-redirect
+  (`MANUAL_APP_CATEGORY` in `next.config.ts`) — keep that map in sync when an
+  app page moves. Note pages sit 3 deep, so images are `../../../assets/…`.
 - `content/internal/` — internal docs (kiosk setup, admin) at
   `/internal-docs/<lang>/<slug>` — proxy-gated AND `auth()`-checked in the layout.
 
@@ -117,6 +123,16 @@ Orama with ja/zh tokenizers. LLM: `/manual/llms.txt` + raw markdown at
 Old `/docs/...?lang=xx` URLs 308-redirect (see `next.config.ts`). Screenshots:
 `content/manual/assets/screenshots/<id>.png`, captured/linted by
 `tools/docs-screenshots` (see its README).
+
+**Field help (the "?" next to inputs)** — summaries and manual anchors live in
+ONE place, `lib/field-help.ts`; call sites just spread it:
+`<TextInput label={<HelpLabel {...fieldHelp("quote", "deliveryDate")} />} />`.
+`HelpLabel` shows a hover popup with the summary + 「もっと読む」 into the manual
+(plain tooltip when no `manual` target). The manual side must use **explicit
+heading ids** — `### 納期 [#field-delivery-date]` — because auto ids derive from
+Japanese heading text and break easily. `lib/field-help.test.ts` reads the real
+markdown and fails if any registered anchor is missing in ja/en/zh, which is what
+keeps these links from rotting (`docs:lint` is not in CI).
 
 ## Prisma / DB
 
