@@ -33,6 +33,14 @@ const nextConfig: NextConfig = {
         },
       }
     : {}),
+  // デプロイ（Docker/Coolify）ビルドでは next build 内の型チェックを省く。
+  // 同じ検証は PR の CI が `pnpm build`（型チェック有効）で必ず実施しており、
+  // dev/main へは PR 経由でしか入らないため二重実行になっている。
+  // 計測: このステップだけで約 17 秒（デプロイ全体 約 112 秒のうち）。
+  // ローカル / CI では未設定 = 従来どおり型チェックする。
+  ...(process.env.NEXT_SKIP_TYPE_CHECK === "1"
+    ? { typescript: { ignoreBuildErrors: true } }
+    : {}),
   async redirects() {
     return [
       // 旧 /docs（?lang= クエリ方式）→ 新 /manual・/internal-docs（ロケール
