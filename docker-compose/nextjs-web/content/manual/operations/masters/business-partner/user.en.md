@@ -253,11 +253,11 @@ Kana is used when searching by name. A short name is for showing it briefly wher
 
 ### Country [#field-country]
 
-The partner's country.
+The partner's country. It is used to tell overseas partners apart.
 
 ### Corporate number [#field-tax-number]
 
-A corporate or tax identification number.
+A corporate or tax identification number. It is used when matching up billing and accounting.
 
 ### AI matching names [#field-match-names]
 
@@ -277,7 +277,7 @@ Turning it off means the company **can no longer be picked** on quotes, purchase
 
 ### Notes [#field-notes]
 
-Notes.
+Notes. Writing down why something was decided, or anything to watch out for, helps whoever reads it later.
 
 ---
 
@@ -314,7 +314,7 @@ Whether invoices go by email, fax, post or portal.
 
 ### Consignment [#field-consignment]
 
-Whether consignment selling applies.
+Whether consignment selling applies. Set it only for partners you sell on consignment with.
 
 ---
 
@@ -341,7 +341,7 @@ The agreement for paying them.
 
 ### Bank / branch / account type / number [#field-bank]
 
-The account to pay into.
+The account to pay into. It is used when you pay them.
 
 ---
 

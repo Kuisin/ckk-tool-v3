@@ -118,7 +118,7 @@ screenshots: [master-approval-group-list-01, master-approval-group-new-01, maste
 
 ### 名称 [#field-name]
 
-グループの名前です。
+グループの名前です。承認者を選ぶときの一覧に、この名前で出ます。
 
 ### 有効 [#field-active]
 

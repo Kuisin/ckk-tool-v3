@@ -45,7 +45,9 @@ import {
   SaveButton,
 } from "@/components/ui/buttons";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { HelpLabel } from "@/components/ui/HelpLabel";
 import { openConfirm } from "@/components/ui/modals";
+import { fieldHelp } from "@/lib/field-help";
 import { type FloorMapOption, LocationModal } from "./LocationModal";
 import { StorageLocationMapPanel } from "./StorageLocationMapPanel";
 
@@ -359,20 +361,46 @@ function ShelfModal({
       <form onSubmit={form.onSubmit(submit)}>
         <Stack gap="sm">
           <TextInput
-            label="棚コード"
+            label={
+              <HelpLabel
+                {...fieldHelp("storageLocation", "code", { label: "棚コード" })}
+              />
+            }
             placeholder="A-1"
             withAsterisk
             {...form.getInputProps("code")}
           />
           <TextInput
-            label="名称（日本語・任意）"
+            label={
+              <HelpLabel
+                {...fieldHelp("storageLocation", "code", {
+                  label: "名称（日本語・任意）",
+                })}
+              />
+            }
             {...form.getInputProps("nameJa")}
           />
-          <TextInput label="名称（英語）" {...form.getInputProps("nameEn")} />
-          <NumberInput label="表示順" {...form.getInputProps("sortOrder")} />
+          <TextInput
+            label={
+              <HelpLabel
+                {...fieldHelp("storageLocation", "code", {
+                  label: "名称（英語）",
+                })}
+              />
+            }
+            {...form.getInputProps("nameEn")}
+          />
+          <NumberInput
+            label={<HelpLabel {...fieldHelp("storageLocation", "sortOrder")} />}
+            {...form.getInputProps("sortOrder")}
+          />
           <Switch
             checked={form.values.isActive}
-            label="有効"
+            label={
+              <HelpLabel
+                {...fieldHelp("storageLocation", "active", { label: "有効" })}
+              />
+            }
             onChange={(e) =>
               form.setFieldValue("isActive", e.currentTarget.checked)
             }

@@ -253,11 +253,11 @@ screenshots: [master-bp-list-01, master-bp-new-01, master-bp-roles-01, master-bp
 
 ### 国 [#field-country]
 
-相手の国です。
+相手の国です。海外の取引先を見分けるのに使います。
 
 ### 法人番号 [#field-tax-number]
 
-法人番号などの識別番号です。
+法人番号などの識別番号です。請求や会計の照合に使います。
 
 ### AI 照合名 [#field-match-names]
 
@@ -277,7 +277,7 @@ screenshots: [master-bp-list-01, master-bp-new-01, master-bp-roles-01, master-bp
 
 ### 備考 [#field-notes]
 
-補足です。
+補足です。後から見た人が経緯をたどれるように、決めた理由や注意点を書いておくと役に立ちます。
 
 ---
 
@@ -314,7 +314,7 @@ screenshots: [master-bp-list-01, master-bp-new-01, master-bp-roles-01, master-bp
 
 ### 委託先 [#field-consignment]
 
-委託販売の対象かどうかです。
+委託販売の対象かどうかです。委託販売をしている相手にだけ付けます。
 
 ---
 
@@ -341,7 +341,7 @@ screenshots: [master-bp-list-01, master-bp-new-01, master-bp-roles-01, master-bp
 
 ### 銀行名 / 支店名 / 口座種別 / 口座番号 [#field-bank]
 
-振込先の口座です。
+振込先の口座です。こちらから支払うときに使います。
 
 ---
 

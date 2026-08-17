@@ -37,12 +37,14 @@ import {
   DataTable,
   type RowAction,
 } from "@/components/ui/DataTable";
+import { HelpLabel } from "@/components/ui/HelpLabel";
 import { ConfirmModal, ModalShell } from "@/components/ui/modals";
 import { StatusBadge, statusOptions } from "@/components/ui/StatusBadge";
 import { ListShell } from "@/components/ui/shells";
 import { useUrlSelectState, useUrlStringState } from "@/hooks/useUrlState";
 import { useIsMobile } from "@/hooks/useViewport";
 import { formatCode } from "@/lib/crockford";
+import { fieldHelp } from "@/lib/field-help";
 import { formatDate, formatDateTime } from "@/lib/format";
 import type { KioskCardRow, KioskUserOption } from "@/lib/kiosk-admin";
 import type { ActionResult } from "@/lib/server-action";
@@ -520,7 +522,7 @@ export function KioskCardsTable({
             印刷 PDF から QR カードを印刷してください。
           </Text>
           <NumberInput
-            label="発行枚数"
+            label={<HelpLabel {...fieldHelp("kioskCard", "count")} />}
             max={100}
             min={1}
             onChange={setIssueCount}
@@ -546,7 +548,7 @@ export function KioskCardsTable({
           </Text>
           <Select
             data={userOptions}
-            label="割当先ユーザー"
+            label={<HelpLabel {...fieldHelp("kioskCard", "user")} />}
             onChange={setAssignUserId}
             placeholder="ユーザーを選択"
             searchable

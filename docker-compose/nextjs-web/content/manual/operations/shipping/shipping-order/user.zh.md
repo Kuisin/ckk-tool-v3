@@ -140,7 +140,7 @@ screenshots: [shipping-order-list-01, shipping-order-new-01, shipping-order-deta
 
 ### 类别 [#field-type]
 
-发货的种类。
+发货的种类。**仅发送会进入交货单与请款流程。**
 
 - **发送** … 送交客户。会进入送货单与请款
 - **库存保管** … 作为备用制作并存放在公司内。**不进入请款**
@@ -151,7 +151,7 @@ screenshots: [shipping-order-list-01, shipping-order-new-01, shipping-order-deta
 
 ### 备注 [#field-notes]
 
-对整份发货单的补充。
+对整份发货单的补充。各明细的补充说明请写在对应行的备注中。
 
 ### 产品 [#field-product]
 

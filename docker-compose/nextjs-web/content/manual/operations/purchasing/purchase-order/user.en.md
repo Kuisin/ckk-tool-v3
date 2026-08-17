@@ -205,7 +205,7 @@ The date the material is due, as agreed with the supplier.
 
 ### Line notes [#field-item-notes]
 
-Notes for that material only.
+Notes for that material only. Notes about the whole order go in the notes field above.
 
 ## Questions and problems
 

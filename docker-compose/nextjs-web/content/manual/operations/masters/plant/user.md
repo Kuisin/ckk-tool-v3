@@ -145,7 +145,7 @@ screenshots: [master-plant-list-01, master-plant-new-01, master-plant-detail-01,
 
 ### 電話番号 / メールアドレス / 担当者 [#field-contact]
 
-連絡先です。
+連絡先です。書類の問い合わせ先として使います。
 
 ### 有効 [#field-active]
 
@@ -153,7 +153,7 @@ screenshots: [master-plant-list-01, master-plant-new-01, master-plant-detail-01,
 
 ### 備考 [#field-notes]
 
-補足です。
+補足です。後から見た人が経緯をたどれるように、決めた理由や注意点を書いておくと役に立ちます。
 
 ## よくある質問・困ったとき
 

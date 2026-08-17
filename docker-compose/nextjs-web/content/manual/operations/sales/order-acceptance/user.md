@@ -155,7 +155,7 @@ screenshots: [order-acceptance-list-01, order-acceptance-new-01, order-acceptanc
 
 ### 備考 [#field-notes]
 
-受注請書全体への補足です。
+受注請書全体への補足です。明細ごとの補足は、各行の備考に書きます。
 
 ### 製品 [#field-product]
 

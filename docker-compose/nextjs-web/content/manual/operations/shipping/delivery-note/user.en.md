@@ -153,7 +153,7 @@ Whether unit prices and amounts appear on the note. **For direct-to-end-user del
 
 ### Notes [#field-notes]
 
-Notes to appear on the delivery note.
+Notes to appear on the delivery note. **It appears on the delivery note PDF.** Keep internal remarks on the memo tab instead.
 
 ### Product [#field-product]
 
@@ -161,7 +161,7 @@ The product being delivered, carried over from the shipping order.
 
 ### Quantity [#field-quantity]
 
-How many pieces are delivered.
+How many pieces are delivered. The shipping order's quantity is filled in for you. When delivering in parts, change it to what is actually delivered.
 
 ### Unit price [#field-unit-price]
 

@@ -173,7 +173,7 @@ Turning it off removes it from material pick lists on orders and receipts.
 
 ### Notes [#field-notes]
 
-Notes.
+Notes. Writing down why something was decided, or anything to watch out for, helps whoever reads it later.
 
 ## Questions and problems
 

@@ -30,6 +30,7 @@ import {
   updateInspectionTemplate,
 } from "@/app/(dashboard)/master/inspection-templates/actions";
 import { ActiveBadge } from "@/components/ui/ActiveBadge";
+import { HelpLabel } from "@/components/ui/HelpLabel";
 import { SearchSelect } from "@/components/ui/SearchSelect";
 import {
   FormSection,
@@ -38,6 +39,7 @@ import {
 } from "@/components/ui/shells";
 import { useIsMobile } from "@/hooks/useViewport";
 import { INSPECTION_SAMPLING_MODE_OPTIONS } from "@/lib/enum-labels";
+import { fieldHelp, fieldHelpTip } from "@/lib/field-help";
 import { zodResolver } from "@/lib/form";
 
 const BASE_PATH = "/master/inspection-templates";
@@ -191,7 +193,13 @@ export function InspectionTemplateForm({
               isEdit ? "コードは作成後変更できません" : "英数字・-・_（一意）"
             }
             disabled={isEdit}
-            label="コード"
+            label={
+              <HelpLabel
+                {...fieldHelp("inspectionTemplate", "code", {
+                  label: "コード",
+                })}
+              />
+            }
             placeholder="例: INSP-DIM-01"
             withAsterisk={!isEdit}
             {...form.getInputProps("code")}
@@ -206,7 +214,9 @@ export function InspectionTemplateForm({
                   }
                 : undefined
             }
-            label="関連工程"
+            label={
+              <HelpLabel {...fieldHelp("inspectionTemplate", "processStep")} />
+            }
             onChange={(value) =>
               form.setFieldValue("relatedProcessStepId", value)
             }
@@ -219,6 +229,7 @@ export function InspectionTemplateForm({
         <SimpleGrid cols={1} mt="sm" spacing="sm">
           <LocalizedTextInput
             enProps={form.getInputProps("nameEn")}
+            help={fieldHelpTip("inspectionTemplate", "code")}
             jaProps={form.getInputProps("nameJa")}
             label="名称"
             required
@@ -278,7 +289,7 @@ export function InspectionTemplateForm({
             </Text>
           </Stack>
           <Switch
-            label="有効"
+            label={<HelpLabel {...fieldHelp("inspectionTemplate", "active")} />}
             {...form.getInputProps("isActive", { type: "checkbox" })}
           />
         </SimpleGrid>

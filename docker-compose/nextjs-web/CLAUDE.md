@@ -125,14 +125,22 @@ Old `/docs/...?lang=xx` URLs 308-redirect (see `next.config.ts`). Screenshots:
 `tools/docs-screenshots` (see its README).
 
 **Field help (the "?" next to inputs)** — summaries and manual anchors live in
-ONE place, `lib/field-help.ts`; call sites just spread it:
+ONE place, `lib/field-help.ts` (31 apps / 212 fields); call sites just spread it:
 `<TextInput label={<HelpLabel {...fieldHelp("quote", "deliveryDate")} />} />`.
 `HelpLabel` shows a hover popup with the summary + 「もっと読む」 into the manual
-(plain tooltip when no `manual` target). The manual side must use **explicit
-heading ids** — `### 納期 [#field-delivery-date]` — because auto ids derive from
-Japanese heading text and break easily. `lib/field-help.test.ts` reads the real
-markdown and fails if any registered anchor is missing in ja/en/zh, which is what
-keeps these links from rotting (`docs:lint` is not in CI).
+(plain tooltip when no `manual` target). Two variants for awkward call sites:
+`fieldHelp(app, field, { label })` keeps the screen's own wording when the manual
+merges several inputs under one heading (`名称 / よみがな`), and `fieldHelpTip`
+returns only `{ help, manual }` for components that build the label themselves
+(`LocalizedTextInput`'s 「〜（日本語）」). Read-only `FieldValue` labels get no `?`.
+
+**`field-help.ts` is generated from the manual** — label + summary come from each
+`### 見出し [#field-x]` and its first paragraph, so the same sentence is never
+written twice. Fix wording in `content/manual/**`, not in the registry. The manual
+side must use **explicit heading ids** because auto ids derive from Japanese
+heading text and break easily. `lib/field-help.test.ts` reads the real markdown and
+fails if any registered anchor is missing in ja/en/zh, which is what keeps these
+links from rotting (`docs:lint` is not in CI).
 
 ## Prisma / DB
 

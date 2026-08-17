@@ -224,7 +224,7 @@ The inspection templates used by this work order. Several can be selected; they 
 
 ### Notes [#field-notes]
 
-Notes.
+Notes. **The floor reads this when working from the order.** Put anything to watch out for here.
 
 ## Questions and problems
 

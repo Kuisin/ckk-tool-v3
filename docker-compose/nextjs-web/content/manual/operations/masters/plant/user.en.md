@@ -145,7 +145,7 @@ The location, used on documents.
 
 ### Phone / email / contact [#field-contact]
 
-Contact details.
+Contact details. It is used as the contact point on documents.
 
 ### Active [#field-active]
 
@@ -153,7 +153,7 @@ Turning it off removes the plant from receiving and shipping pick lists.
 
 ### Notes [#field-notes]
 
-Notes.
+Notes. Writing down why something was decided, or anything to watch out for, helps whoever reads it later.
 
 ## Questions and problems
 

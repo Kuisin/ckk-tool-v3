@@ -42,10 +42,12 @@ import {
 import { GhostButton } from "@/components/ui/buttons";
 import { FieldValue } from "@/components/ui/FieldValue";
 import { PRODUCT_F4 } from "@/components/ui/f4-presets";
+import { HelpLabel } from "@/components/ui/HelpLabel";
 import { SearchSelect } from "@/components/ui/SearchSelect";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { FormSection, FormShell } from "@/components/ui/shells";
 import { DELIVERY_METHOD_LABEL } from "@/lib/enum-labels";
+import { fieldHelp } from "@/lib/field-help";
 import { zodResolver } from "@/lib/form";
 import { formatMoney } from "@/lib/format";
 import type {
@@ -329,7 +331,9 @@ export function DeliveryNoteForm({
                 label: c.label,
               }))}
               error={form.errors.shippingOrderNumber}
-              label="出荷書"
+              label={
+                <HelpLabel {...fieldHelp("deliveryNote", "shippingOrder")} />
+              }
               onChange={onShippingOrderChange}
               placeholder="確定済み・出荷済みの出荷書を選択"
               searchable={candidates.length > 5}
@@ -339,7 +343,12 @@ export function DeliveryNoteForm({
           ) : (
             <FieldValue label="出荷書" value={note?.shippingOrderNumber} />
           )}
-          <Input.Wrapper label="納品方法" withAsterisk>
+          <Input.Wrapper
+            label={
+              <HelpLabel {...fieldHelp("deliveryNote", "deliveryMethod")} />
+            }
+            withAsterisk
+          >
             <SegmentedControl
               data={DELIVERY_METHODS.map((m) => ({
                 value: m,
@@ -357,7 +366,7 @@ export function DeliveryNoteForm({
               description="ユーザー直送の届け先（配送完了書に価格なし・納品書別送）"
               error={form.errors.endUserBpId}
               initialOption={endUserInitialOption}
-              label="最終需要家"
+              label={<HelpLabel {...fieldHelp("deliveryNote", "endUser")} />}
               onChange={(v) => form.setFieldValue("endUserBpId", v)}
               onSearch={searchEndUserOptions}
               placeholder="最終需要家を検索"
@@ -368,7 +377,13 @@ export function DeliveryNoteForm({
           )}
           <Switch
             checked={form.values.includePrice}
-            label="価格記載（納品書に単価・金額を記載する）"
+            label={
+              <HelpLabel
+                {...fieldHelp("deliveryNote", "includePrice", {
+                  label: "価格記載（納品書に単価・金額を記載する）",
+                })}
+              />
+            }
             mt="xs"
             onChange={(e) =>
               form.setFieldValue("includePrice", e.currentTarget.checked)
@@ -376,7 +391,7 @@ export function DeliveryNoteForm({
           />
           <Textarea
             autosize
-            label="備考"
+            label={<HelpLabel {...fieldHelp("deliveryNote", "notes")} />}
             minRows={1}
             placeholder="備考（任意）"
             {...form.getInputProps("notes")}
@@ -414,7 +429,9 @@ export function DeliveryNoteForm({
                         ? { value: item.productId, label: item.productName }
                         : null
                     }
-                    label="製品"
+                    label={
+                      <HelpLabel {...fieldHelp("deliveryNote", "product")} />
+                    }
                     onChange={(v, opt) =>
                       form.setFieldValue(`items.${ri}`, {
                         ...item,
@@ -430,7 +447,9 @@ export function DeliveryNoteForm({
                   />
                   <NumberInput
                     error={form.errors[`items.${ri}.quantity`]}
-                    label="数量"
+                    label={
+                      <HelpLabel {...fieldHelp("deliveryNote", "quantity")} />
+                    }
                     maw={110}
                     min={1}
                     onChange={(v) =>
@@ -446,7 +465,9 @@ export function DeliveryNoteForm({
                     decimalScale={2}
                     disabled={!form.values.includePrice}
                     error={form.errors[`items.${ri}.unitPrice`]}
-                    label="単価"
+                    label={
+                      <HelpLabel {...fieldHelp("deliveryNote", "unitPrice")} />
+                    }
                     maw={160}
                     min={0}
                     onChange={(v) =>
@@ -460,7 +481,9 @@ export function DeliveryNoteForm({
                     value={item.unitPrice}
                   />
                   <TextInput
-                    label="備考"
+                    label={
+                      <HelpLabel {...fieldHelp("deliveryNote", "notes")} />
+                    }
                     placeholder="行の備考（任意）"
                     {...form.getInputProps(`items.${ri}.notes`)}
                   />

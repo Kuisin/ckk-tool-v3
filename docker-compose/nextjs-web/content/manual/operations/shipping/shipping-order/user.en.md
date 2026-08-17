@@ -140,7 +140,7 @@ Which order this shipment is for. Choosing it shows that order's products and th
 
 ### Type [#field-type]
 
-The kind of shipment.
+The kind of shipment. **Only dispatch goes on to a delivery note and billing.**
 
 - **Dispatch** — going to the customer; continues to the delivery note and billing
 - **Stock storage** — spare production kept in-house; **does not continue to billing**
@@ -151,7 +151,7 @@ Which plant it leaves from. **Stock falls at this plant**, so choose the one the
 
 ### Notes [#field-notes]
 
-Notes about the shipping order as a whole.
+Notes about the shipping order as a whole. Notes about one line go in that line's own notes.
 
 ### Product [#field-product]
 

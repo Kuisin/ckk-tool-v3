@@ -120,11 +120,11 @@ Which plant and floor the location is on. **Stock is located down to this level.
 
 ### Code / name (ja, en) [#field-code]
 
-The location's code and name.
+The location's code and name. Once registered, it can be picked as where stock is kept.
 
 ### Sort order [#field-sort-order]
 
-Order in the pick list.
+Order in the pick list. Smaller comes first. Putting frequently used places at the top makes them quicker to pick.
 
 ### Active / notes [#field-active]
 

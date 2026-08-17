@@ -38,7 +38,9 @@ import {
   PrimaryButton,
   RejectButton,
 } from "@/components/ui/buttons";
+import { HelpLabel } from "@/components/ui/HelpLabel";
 import { ModalShell } from "@/components/ui/modals";
+import { fieldHelp } from "@/lib/field-help";
 import { formatDateTime } from "@/lib/format";
 import type { ActionResult } from "@/lib/server-action";
 import {
@@ -328,7 +330,7 @@ export function ApprovalStatusPanel({
       >
         <Textarea
           autosize
-          label="差し戻し理由"
+          label={<HelpLabel {...fieldHelp("approval", "rejectReason")} />}
           minRows={3}
           onChange={(e) => setReason(e.currentTarget.value)}
           placeholder="理由を入力"

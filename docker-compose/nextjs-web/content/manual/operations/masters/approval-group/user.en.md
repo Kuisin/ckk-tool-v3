@@ -118,7 +118,7 @@ First approval (production decision), second approval (departmental), or workflo
 
 ### Name [#field-name]
 
-The group name.
+The group name. This is the name shown when choosing approvers.
 
 ### Active [#field-active]
 

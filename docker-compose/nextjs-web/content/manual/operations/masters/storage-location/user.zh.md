@@ -120,11 +120,11 @@ screenshots: [master-storage-location-01, master-storage-location-new-01, master
 
 ### 编码 / 名称（日文・英文） [#field-code]
 
-场所的管理编号与名称。
+场所的管理编号与名称。登记后即可作为库存的存放位置进行选择。
 
 ### 显示顺序 [#field-sort-order]
 
-选项中的排列顺序。
+选项中的排列顺序。数值越小越靠前。将常用场所置顶可更便于选择。
 
 ### 有效 / 备注 [#field-active]
 

@@ -185,7 +185,7 @@ Turning it off removes the product from pick lists on quotes and price lists.
 
 ### Notes [#field-notes]
 
-Notes.
+Notes. Writing down why something was decided, or anything to watch out for, helps whoever reads it later.
 
 ## Questions and problems
 

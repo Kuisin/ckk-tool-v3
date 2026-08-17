@@ -55,12 +55,14 @@ import {
 } from "@/components/ui/buttons";
 import { DocNumber } from "@/components/ui/DocNumber";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { HelpLabel } from "@/components/ui/HelpLabel";
 import {
   ConfirmModal,
   FormModal,
   type ModalBaseProps,
 } from "@/components/ui/modals";
 import { PageHeader } from "@/components/ui/PageHeader";
+import { fieldHelp } from "@/lib/field-help";
 
 export interface WorkLocationRow {
   id: number;
@@ -196,7 +198,11 @@ function GroupModal({
       <Stack gap="sm">
         <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
           <TextInput
-            label="コード"
+            label={
+              <HelpLabel
+                {...fieldHelp("workLocation", "code", { label: "コード" })}
+              />
+            }
             onChange={(e) => setCode(e.currentTarget.value)}
             placeholder="例: NC-LATHE"
             value={code}
@@ -205,33 +211,49 @@ function GroupModal({
           <Select
             allowDeselect={false}
             data={types.map((t) => ({ value: t.key, label: t.labelJa }))}
-            label="種別"
+            label={<HelpLabel {...fieldHelp("workLocation", "type")} />}
             onChange={(v) => v && setTypeKey(v)}
             value={typeKey}
             withAsterisk
           />
           <TextInput
-            label="名称（日本語）"
+            label={
+              <HelpLabel
+                {...fieldHelp("workLocation", "code", {
+                  label: "名称（日本語）",
+                })}
+              />
+            }
             onChange={(e) => setNameJa(e.currentTarget.value)}
             placeholder="例: NC旋盤"
             value={nameJa}
             withAsterisk
           />
           <TextInput
-            label="名称（English）"
+            label={
+              <HelpLabel
+                {...fieldHelp("workLocation", "code", {
+                  label: "名称（English）",
+                })}
+              />
+            }
             onChange={(e) => setNameEn(e.currentTarget.value)}
             value={nameEn}
           />
           <Select
             clearable
             data={plantOptions}
-            label="拠点"
+            label={<HelpLabel {...fieldHelp("workLocation", "plant")} />}
             onChange={setPlantId}
             searchable
             value={plantId}
           />
           <NumberInput
-            label="表示順"
+            label={
+              <HelpLabel
+                {...fieldHelp("workLocation", "sortOrder", { label: "表示順" })}
+              />
+            }
             onChange={(v) =>
               setSortOrder(v === "" || v == null ? 0 : Number(v))
             }
@@ -239,13 +261,21 @@ function GroupModal({
           />
         </SimpleGrid>
         <TextInput
-          label="備考"
+          label={
+            <HelpLabel
+              {...fieldHelp("workLocation", "sortOrder", { label: "備考" })}
+            />
+          }
           onChange={(e) => setNotes(e.currentTarget.value)}
           value={notes}
         />
         <Switch
           checked={isActive}
-          label="有効"
+          label={
+            <HelpLabel
+              {...fieldHelp("workLocation", "sortOrder", { label: "有効" })}
+            />
+          }
           onChange={(e) => setIsActive(e.currentTarget.checked)}
         />
       </Stack>
@@ -328,7 +358,11 @@ function LocationModal({
       <Stack gap="sm">
         <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
           <TextInput
-            label="コード"
+            label={
+              <HelpLabel
+                {...fieldHelp("workLocation", "code", { label: "コード" })}
+              />
+            }
             onChange={(e) => setCode(e.currentTarget.value)}
             placeholder="例: NC-01"
             value={code}
@@ -336,7 +370,7 @@ function LocationModal({
           />
           <NumberInput
             description="同時に割り当て可能な作業数（空欄 = 制限なし）"
-            label="キャパシティ"
+            label={<HelpLabel {...fieldHelp("workLocation", "capacity")} />}
             min={1}
             onChange={(v) =>
               setCapacity(v === "" || v == null ? null : Number(v))
@@ -344,19 +378,35 @@ function LocationModal({
             value={capacity ?? ""}
           />
           <TextInput
-            label="名称（日本語）"
+            label={
+              <HelpLabel
+                {...fieldHelp("workLocation", "code", {
+                  label: "名称（日本語）",
+                })}
+              />
+            }
             onChange={(e) => setNameJa(e.currentTarget.value)}
             placeholder="例: NC旋盤 1号機"
             value={nameJa}
             withAsterisk
           />
           <TextInput
-            label="名称（English）"
+            label={
+              <HelpLabel
+                {...fieldHelp("workLocation", "code", {
+                  label: "名称（English）",
+                })}
+              />
+            }
             onChange={(e) => setNameEn(e.currentTarget.value)}
             value={nameEn}
           />
           <NumberInput
-            label="表示順"
+            label={
+              <HelpLabel
+                {...fieldHelp("workLocation", "sortOrder", { label: "表示順" })}
+              />
+            }
             onChange={(v) =>
               setSortOrder(v === "" || v == null ? 0 : Number(v))
             }
@@ -364,13 +414,21 @@ function LocationModal({
           />
           <Switch
             checked={isActive}
-            label="有効"
+            label={
+              <HelpLabel
+                {...fieldHelp("workLocation", "sortOrder", { label: "有効" })}
+              />
+            }
             mt="lg"
             onChange={(e) => setIsActive(e.currentTarget.checked)}
           />
         </SimpleGrid>
         <TextInput
-          label="備考"
+          label={
+            <HelpLabel
+              {...fieldHelp("workLocation", "sortOrder", { label: "備考" })}
+            />
+          }
           onChange={(e) => setNotes(e.currentTarget.value)}
           value={notes}
         />

@@ -224,7 +224,7 @@ screenshots: [work-order-list-01, work-order-new-01, work-order-detail-01, work-
 
 ### 备注 [#field-notes]
 
-补充说明。
+补充说明。**现场作业时会阅读此处。** 如有注意事项请写在这里。
 
 ## 常见问题・遇到困难时
 

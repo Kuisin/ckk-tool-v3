@@ -253,11 +253,11 @@ screenshots: [master-bp-list-01, master-bp-new-01, master-bp-roles-01, master-bp
 
 ### 国家 [#field-country]
 
-对方所在国家。
+对方所在国家。用于区分海外业务伙伴。
 
 ### 法人编号 [#field-tax-number]
 
-法人编号等识别编号。
+法人编号等识别编号。用于请款与会计的核对。
 
 ### AI 匹配名称 [#field-match-names]
 
@@ -277,7 +277,7 @@ screenshots: [master-bp-list-01, master-bp-new-01, master-bp-roles-01, master-bp
 
 ### 备注 [#field-notes]
 
-补充说明。
+补充说明。写下决定的理由或注意事项，有助于日后查阅的人了解来龙去脉。
 
 ---
 
@@ -314,7 +314,7 @@ screenshots: [master-bp-list-01, master-bp-new-01, master-bp-roles-01, master-bp
 
 ### 委托方 [#field-consignment]
 
-是否为委托销售对象。
+是否为委托销售对象。仅对进行委托销售的对象设定。
 
 ---
 
@@ -341,7 +341,7 @@ screenshots: [master-bp-list-01, master-bp-new-01, master-bp-roles-01, master-bp
 
 ### 银行名 / 支行名 / 账户种别 / 账号 [#field-bank]
 
-汇款账户。
+汇款账户。用于我方付款时。
 
 ---
 

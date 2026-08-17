@@ -153,7 +153,7 @@ screenshots: [delivery-note-list-01, delivery-note-new-01, delivery-note-detail-
 
 ### 备注 [#field-notes]
 
-送货单上的补充说明。
+送货单上的补充说明。**会显示在交货单 PDF 上。** 面向内部的备忘请写在备忘录标签页。
 
 ### 产品 [#field-product]
 
@@ -161,7 +161,7 @@ screenshots: [delivery-note-list-01, delivery-note-new-01, delivery-note-detail-
 
 ### 数量 [#field-quantity]
 
-交付的数量。
+交付的数量。系统会预填出货单的数量。分批交货时，请改为实际交付的数量。
 
 ### 单价 [#field-unit-price]
 

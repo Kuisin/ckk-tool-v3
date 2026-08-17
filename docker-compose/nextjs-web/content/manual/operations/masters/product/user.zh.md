@@ -185,7 +185,7 @@ screenshots: [master-product-list-01, master-product-new-01, master-product-deta
 
 ### 备注 [#field-notes]
 
-补充说明。
+补充说明。写下决定的理由或注意事项，有助于日后查阅的人了解来龙去脉。
 
 ## 常见问题与故障处理
 

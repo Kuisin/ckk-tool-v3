@@ -155,7 +155,7 @@ screenshots: [order-acceptance-list-01, order-acceptance-new-01, order-acceptanc
 
 ### 备注 [#field-notes]
 
-对整份受理书的补充。
+对整份受理书的补充。各明细的补充说明请写在对应行的备注中。
 
 ### 产品 [#field-product]
 

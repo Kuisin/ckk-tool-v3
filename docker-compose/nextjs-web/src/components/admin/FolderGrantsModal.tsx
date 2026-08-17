@@ -28,7 +28,9 @@ import {
   upsertFolderGrant,
 } from "@/app/(dashboard)/settings/files/actions";
 import { GhostButton, PrimaryButton } from "@/components/ui/buttons";
+import { HelpLabel } from "@/components/ui/HelpLabel";
 import { openConfirm } from "@/components/ui/modals";
+import { fieldHelp } from "@/lib/field-help";
 
 export function FolderGrantsModal({
   opened,
@@ -135,7 +137,9 @@ export function FolderGrantsModal({
             </Text>
             <Group align="flex-end" gap="xs" wrap="wrap">
               <TextInput
-                label="フォルダ（パス前方一致）"
+                label={
+                  <HelpLabel {...fieldHelp("fileManagement", "grantFolder")} />
+                }
                 leftSection={<IconFolder size={14} />}
                 list="folder-grant-suggestions"
                 onChange={(e) => setPrefix(e.currentTarget.value)}
@@ -150,7 +154,9 @@ export function FolderGrantsModal({
               </datalist>
               <Select
                 data={users}
-                label="ユーザー"
+                label={
+                  <HelpLabel {...fieldHelp("fileManagement", "grantUser")} />
+                }
                 onChange={setUserId}
                 placeholder="選択"
                 searchable
@@ -159,7 +165,9 @@ export function FolderGrantsModal({
               />
               <Switch
                 checked={canWrite}
-                label="書き込みも許可"
+                label={
+                  <HelpLabel {...fieldHelp("fileManagement", "grantWrite")} />
+                }
                 onChange={(e) => setCanWrite(e.currentTarget.checked)}
                 pb={6}
                 size="sm"

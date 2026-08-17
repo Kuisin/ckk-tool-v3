@@ -153,7 +153,7 @@ screenshots: [delivery-note-list-01, delivery-note-new-01, delivery-note-detail-
 
 ### 備考 [#field-notes]
 
-納品書への補足です。
+納品書への補足です。**納品書の PDF に出ます。** 社内向けのメモはメモタブに書いてください。
 
 ### 製品 [#field-product]
 
@@ -161,7 +161,7 @@ screenshots: [delivery-note-list-01, delivery-note-new-01, delivery-note-detail-
 
 ### 数量 [#field-quantity]
 
-納品する本数です。
+納品する本数です。出荷書の数量が初めから入っています。分けて納品するときは、実際に納める数へ直してください。
 
 ### 単価 [#field-unit-price]
 

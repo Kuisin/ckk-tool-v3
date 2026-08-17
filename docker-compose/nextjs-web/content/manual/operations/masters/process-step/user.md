@@ -178,7 +178,7 @@ screenshots: [master-process-step-list-01, master-process-step-new-01, master-pr
 
 ### 表示順 [#field-sort-order]
 
-一覧や選択肢での並び順です。
+一覧や選択肢での並び順です。小さいほど先に出ます。**実行の順番はここではなく、製品ごとの工程リストで決まります。**
 
 ### 有効 / 備考 [#field-active]
 

@@ -22,9 +22,11 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { updateProductItemDefs } from "@/app/(dashboard)/settings/actions";
 import { CancelButton, GhostButton, SaveButton } from "@/components/ui/buttons";
+import { HelpLabel } from "@/components/ui/HelpLabel";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { FormSection } from "@/components/ui/shells";
 import { useIsMobile } from "@/hooks/useViewport";
+import { fieldHelp } from "@/lib/field-help";
 import {
   IDENTIFIER,
   PRODUCT_FIELD_TYPES,
@@ -122,7 +124,13 @@ export function ItemDefEditForm({
       <FormSection title="項目定義">
         <SimpleGrid cols={isMobile ? 1 : 2} spacing="sm">
           <TextInput
-            label="項目名（日本語）"
+            label={
+              <HelpLabel
+                {...fieldHelp("productType", "itemName", {
+                  label: "項目名（日本語）",
+                })}
+              />
+            }
             onChange={(e) =>
               patch({ label: { ...def.label, ja: e.currentTarget.value } })
             }
@@ -131,7 +139,13 @@ export function ItemDefEditForm({
             withAsterisk
           />
           <TextInput
-            label="項目名（英語）"
+            label={
+              <HelpLabel
+                {...fieldHelp("productType", "itemName", {
+                  label: "項目名（英語）",
+                })}
+              />
+            }
             onChange={(e) =>
               patch({ label: { ...def.label, en: e.currentTarget.value } })
             }
@@ -146,7 +160,7 @@ export function ItemDefEditForm({
             }
             disabled={isEdit}
             error={error?.includes("キー") ? error : undefined}
-            label="キー（識別子）"
+            label={<HelpLabel {...fieldHelp("productType", "key")} />}
             onChange={(e) => patch({ key: e.currentTarget.value })}
             placeholder="surfaceTreatment"
             value={def.key}
@@ -154,7 +168,7 @@ export function ItemDefEditForm({
           />
           <Select
             data={PRODUCT_FIELD_TYPES}
-            label="型"
+            label={<HelpLabel {...fieldHelp("productType", "type")} />}
             onChange={(v) =>
               patch({ type: (v as ProductItemDef["type"]) ?? "string" })
             }
@@ -162,13 +176,13 @@ export function ItemDefEditForm({
           />
           <TextInput
             description="種別への割り当て時に上書きできます"
-            label="既定値（基本）"
+            label={<HelpLabel {...fieldHelp("productType", "default")} />}
             onChange={(e) => patch({ default: e.currentTarget.value })}
             placeholder={def.type === "boolean" ? "true / false" : "（任意）"}
             value={def.default ?? ""}
           />
           <TextInput
-            label="プレースホルダ"
+            label={<HelpLabel {...fieldHelp("productType", "placeholder")} />}
             onChange={(e) => patch({ placeholder: e.currentTarget.value })}
             placeholder="入力例など（任意）"
             value={def.placeholder ?? ""}
@@ -177,7 +191,7 @@ export function ItemDefEditForm({
 
         <Switch
           checked={def.required}
-          label="必須項目にする"
+          label={<HelpLabel {...fieldHelp("productType", "required")} />}
           mt="sm"
           onChange={(e) => patch({ required: e.currentTarget.checked })}
         />
@@ -186,7 +200,7 @@ export function ItemDefEditForm({
           <TextInput
             description="入力形式を制限する正規表現（例: ^[A-Z]{2}-\d{4}$）。空欄なら制限なし。"
             error={error?.includes("正規表現") ? error : undefined}
-            label="パターン（正規表現）"
+            label={<HelpLabel {...fieldHelp("productType", "pattern")} />}
             mt="sm"
             onChange={(e) =>
               patch({ pattern: e.currentTarget.value || undefined })
@@ -199,14 +213,22 @@ export function ItemDefEditForm({
         {def.type === "number" && (
           <SimpleGrid cols={isMobile ? 1 : 2} mt="sm" spacing="sm">
             <NumberInput
-              label="最小値"
+              label={
+                <HelpLabel
+                  {...fieldHelp("productType", "range", { label: "最小値" })}
+                />
+              }
               onChange={(v) =>
                 patch({ min: v === "" || v == null ? undefined : Number(v) })
               }
               value={def.min ?? ""}
             />
             <NumberInput
-              label="最大値"
+              label={
+                <HelpLabel
+                  {...fieldHelp("productType", "range", { label: "最大値" })}
+                />
+              }
               onChange={(v) =>
                 patch({ max: v === "" || v == null ? undefined : Number(v) })
               }

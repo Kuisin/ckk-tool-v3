@@ -173,7 +173,7 @@ screenshots: [master-material-list-01, master-material-new-01, master-material-s
 
 ### 備考 [#field-notes]
 
-補足です。
+補足です。後から見た人が経緯をたどれるように、決めた理由や注意点を書いておくと役に立ちます。
 
 ## よくある質問・困ったとき
 

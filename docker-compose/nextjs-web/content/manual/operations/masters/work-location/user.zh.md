@@ -119,7 +119,7 @@ screenshots: [master-work-location-01, master-work-location-group-new-01, master
 
 ### 基地 [#field-plant]
 
-属于哪个基地的作业场所。
+属于哪个基地的作业场所。选择工序执行场所时，**仅显示该基地的作业场所**。
 
 ### 编码 / 名称（日文・English） [#field-code]
 
@@ -127,11 +127,11 @@ screenshots: [master-work-location-01, master-work-location-group-new-01, master
 
 ### 类别 [#field-type]
 
-作业场所的区分。
+作业场所的区分。用于列表的筛选。
 
 ### 产能 [#field-capacity]
 
-可同时处理量的大致标准。
+可同时处理量的大致标准。单台机器填 1，区块则填写可同时容纳的数量。
 
 ### 显示顺序 / 有效 / 备注 [#field-sort-order]
 

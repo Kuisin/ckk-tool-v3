@@ -140,7 +140,7 @@ screenshots: [shipping-order-list-01, shipping-order-new-01, shipping-order-deta
 
 ### 種別 [#field-type]
 
-出荷の種類です。
+出荷の種類です。**発送だけが納品書・請求へ進みます。**
 
 - **発送** … お客様へ送るもの。納品書・請求へ進みます
 - **在庫保管** … 予備に作った分を社内に置いておくもの。**請求には進みません**
@@ -151,7 +151,7 @@ screenshots: [shipping-order-list-01, shipping-order-new-01, shipping-order-deta
 
 ### 備考 [#field-notes]
 
-出荷書全体への補足です。
+出荷書全体への補足です。明細ごとの補足は、各行の備考に書きます。
 
 ### 製品 [#field-product]
 
