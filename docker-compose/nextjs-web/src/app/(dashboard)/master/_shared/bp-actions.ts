@@ -65,8 +65,23 @@ export async function deleteBps(ids: string[]): Promise<ActionResult> {
   if (!authz.ok) return actionError(authz.error);
   if (ids.length === 0) return actionError("対象が選択されていません");
   try {
-    // Guard: sales documents referencing one of the BPs (as 顧客 or 支店).
-    const [estimates, priceListEntries, quotes, branches] = await Promise.all([
+    // Guard: どのロールで使われていても参照があれば消させない
+    // （顧客・支店としての販売書類 / 需要家 / 仕入先・外注先としての購買・工程）。
+    const [
+      estimates,
+      priceListEntries,
+      quotes,
+      acceptances,
+      salesOrders,
+      deliveryNotes,
+      invoices,
+      billingClosings,
+      purchaseOrders,
+      materialReceipts,
+      workOrderSteps,
+      routeSteps,
+      branches,
+    ] = await Promise.all([
       prisma.estimate.count({ where: { customerBpId: { in: ids } } }),
       prisma.priceListEntry.count({ where: { customerBpId: { in: ids } } }),
       prisma.quote.count({
@@ -77,13 +92,69 @@ export async function deleteBps(ids: string[]): Promise<ActionResult> {
           ],
         },
       }),
+      prisma.orderAcceptance.count({
+        where: {
+          OR: [
+            { customerBpId: { in: ids } },
+            { customerBranchBpId: { in: ids } },
+          ],
+        },
+      }),
+      prisma.salesOrder.count({
+        where: {
+          OR: [
+            { customerBpId: { in: ids } },
+            { customerBranchBpId: { in: ids } },
+            { endUserBpId: { in: ids } },
+          ],
+        },
+      }),
+      prisma.deliveryNote.count({
+        where: {
+          OR: [
+            { recipientBpId: { in: ids } },
+            { recipientBranchBpId: { in: ids } },
+            { endUserBpId: { in: ids } },
+          ],
+        },
+      }),
+      prisma.invoice.count({
+        where: {
+          OR: [
+            { customerBpId: { in: ids } },
+            { customerBranchBpId: { in: ids } },
+          ],
+        },
+      }),
+      prisma.billingClosing.count({ where: { customerBpId: { in: ids } } }),
+      prisma.materialPurchaseOrder.count({
+        where: { supplierBpId: { in: ids } },
+      }),
+      prisma.materialReceipt.count({ where: { supplierBpId: { in: ids } } }),
+      prisma.workOrderStep.count({ where: { supplierBpId: { in: ids } } }),
+      prisma.productProcessRouteVersionStep.count({
+        where: { supplierBpId: { in: ids } },
+      }),
       prisma.businessPartner.count({
         where: { parentId: { in: ids } },
       }),
     ]);
-    if (estimates + priceListEntries + quotes > 0) {
+    const referenced =
+      estimates +
+      priceListEntries +
+      quotes +
+      acceptances +
+      salesOrders +
+      deliveryNotes +
+      invoices +
+      billingClosings +
+      purchaseOrders +
+      materialReceipts +
+      workOrderSteps +
+      routeSteps;
+    if (referenced > 0) {
       return actionError(
-        "この取引先を参照するデータ（試算・価格表・見積書）が存在するため削除できません。無効化を検討してください。",
+        "この取引先を参照するデータ（販売・購買・製造の書類）が存在するため削除できません。無効化を検討してください。",
       );
     }
     if (branches > 0) {

@@ -7,7 +7,7 @@ A register where you record "this [product](/manual/en/operations/masters/produc
 
 ## What you can do with this app
 
-- You can record the selling price of a product for each [customer](/manual/en/operations/masters/customer/user).
+- You can record the selling price of a product for each [customer](/manual/en/operations/masters/business-partner/user).
 - Once recorded, the amounts on a [quote](/manual/en/operations/sales/quote/user) **fill in automatically** (you never have to type an amount on the quote screen).
 - On an [order acceptance](/manual/en/operations/sales/order-acceptance/user), the unit price on the customer's order form is **compared with the price here automatically**, and you are told if they differ.
 - You can set prices per quantity, so that **each piece becomes cheaper when the customer buys more**.
@@ -27,7 +27,7 @@ Register a price here when you and the customer have agreed a price. From then o
 
 ## Before you start
 
-- The [customer](/manual/en/operations/masters/customer/user) and the [product](/manual/en/operations/masters/product/user) must already be registered.
+- The [customer](/manual/en/operations/masters/business-partner/user) and the [product](/manual/en/operations/masters/product/user) must already be registered.
 - It helps to have a [trial estimate](/manual/en/operations/sales/trial-estimate/user) to base the price on. If you set a product on the estimate and set it to 確定 (confirmed), you can choose it on this screen and the amount fills in automatically.
 - You can still register a price list without an estimate by typing the price in by hand.
 

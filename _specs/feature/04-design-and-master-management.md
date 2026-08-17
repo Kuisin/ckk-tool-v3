@@ -47,31 +47,32 @@
 - 在庫（`product_inventory` / `material_inventory`）・工程実行（`work_order_steps.plant_id`）・
   出荷元（`shipping_orders.from_plant_id`）・入荷先（`material_receipts.plant_id`）から参照
 
-### 顧客マスタ
+### 取引先マスタ（顧客・最終需要家・仕入先/外注先を統合）
 
 | パス | 内容 |
 |------|------|
-| `/master/customers` | 顧客一覧 |
-| `/master/customers/new` | 顧客新規作成 |
-| `/master/customers/[id]` | 顧客詳細 |
-| `/master/customers/[id]/edit` | 顧客編集 |
-| `/master/customers/[id]/branches/new` | 支店新規作成 |
-| `/master/customers/[id]/branches/[branchId]` | 支店詳細 |
-| `/master/customers/[id]/branches/[branchId]/edit` | 支店編集 |
+| `/master/business-partners` | 取引先一覧（ロール・状態でフィルタ） |
+| `/master/business-partners/new` | 取引先新規作成 |
+| `/master/business-partners/[id]` | 取引先詳細 |
+| `/master/business-partners/[id]/edit` | 取引先編集（ロール付与もここ） |
+| `/master/business-partners/[id]/branches/new` | 支店新規作成 |
+| `/master/business-partners/[id]/branches/[branchId]` | 支店詳細 |
+| `/master/business-partners/[id]/branches/[branchId]/edit` | 支店編集 |
 
-- 顧客は企業・支店の 2 階層（`business_partners` + `bp_customer_attrs`）
+- **1 法人 = `business_partners` 1 行**。まず取引先を登録し、そのあと
+  `bp_role_assignments` に **ロール**（`CUSTOMER` / `END_USER` / `VENDOR`）を付与して
+  使う。1 法人が複数ロールを兼ねられる（例: 顧客かつ最終需要家）
+- ロール固有の属性はロールごとの表に持つ:
+  `bp_customer_attrs`（締日・支払条件・請求先・課税区分・請求書送付方法・委託先）/
+  `bp_end_user_attrs`（業種）/
+  `bp_vendor_attrs`（外注種別 `SUPPLIER`/`OUTSOURCE`・支払条件・標準リードタイム・振込先）
+- ロールを外すときは割当行を消さず `is_active=false` + `deactivated_at` に落とす
+  （属性は残るので付け直せば復帰）。各書類のセレクトは
+  `roleAssignments: { some: { role, isActive: true } }` で絞る
+- 企業・支店の 2 階層（支店は `parent_id` 子行。BPコードは `親コード-NN`）
 - `name` / `short_name` は `{ ja: '', en: '' }` JSON
-
-### 最終需要家（エンドユーザー）マスタ
-
-| パス | 内容 |
-|------|------|
-| `/master/end-users` | 最終需要家一覧 |
-| `/master/end-users/new` | 最終需要家新規作成 |
-| `/master/end-users/[id]` | 詳細 |
-| `/master/end-users/[id]/edit` | 編集 |
-
-- 大口ユーザーのみ任意登録（`bp_end_user_attrs`）
+- 旧 `/master/customers` `/master/end-users` `/master/suppliers`（MS01/MS02/MS03）は
+  廃止し、この 1 アプリ（`MS01`）へ 308 リダイレクト。`MS02` / `MS03` は欠番
 
 ### 製品マスタ
 
@@ -103,17 +104,6 @@
   （構成マスタ: `material_manufacturers` / `material_manufacturer_grades` / `material_shapes` / `material_kinds`）
 - 素材コード: `[材種コード]-[A-C][0-9]{3}-[0-9]{3}`（例: `B01B0001-A083-330`）= 材種＋黒皮研磨＋直径＋全長
   （構成マスタ: `material_surface_finishes` / `material_diameters` / `material_length_variants`。採番表 ver1.2 準拠）
-
-### 外注企業マスタ（仕入先）
-
-| パス | 内容 |
-|------|------|
-| `/master/suppliers` | 外注企業一覧 |
-| `/master/suppliers/new` | 外注企業新規作成 |
-| `/master/suppliers/[id]` | 詳細 |
-| `/master/suppliers/[id]/edit` | 編集 |
-
-- `bp_vendor_attrs` で外注先（`OUTSOURCE`）/ 仕入先（`SUPPLIER`）を区別
 
 ### 検査表テンプレート
 

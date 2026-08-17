@@ -28,7 +28,7 @@ Use this when an order form arrives from a customer by fax or email.
 
 ## Before you start
 
-- The customer must be registered in the [customer master](/manual/en/operations/masters/customer/user). Without it, the customer stays 「未特定」(not identified) even after reading the form.
+- The customer must be registered in the [business partner master](/manual/en/operations/masters/business-partner/user). Without it, the customer stays 「未特定」(not identified) even after reading the form.
 - The ordered [product](/manual/en/operations/masters/product/user) must be registered in the product master.
 - Having a [price list](/manual/en/operations/sales/price-list/user) makes checking the unit price easier, but you can go on without one.
 - Only people in the approval group can approve or send back.
@@ -124,7 +124,7 @@ When the work is finished, press「**アーカイブ**」(archive) to put it awa
 A. Reading the order form did not work. Press「**再抽出**」(read again) inside that message to try once more. If it keeps failing, enter it from「**手入力で新規**」(new, typed in) in the list.
 
 **Q. The customer stays 「未特定」(not identified).**
-A. The company name on the order form could not be matched to the customer master. On the draft screen, search for the customer, choose it, and press「保存」(save). For customers whose name is often written in different ways, register the other spellings in the [customer master](/manual/en/operations/masters/customer/user) and they will be matched automatically next time.
+A. The company name on the order form could not be matched to the business partner master. On the draft screen, search for the customer, choose it, and press「保存」(save). For customers whose name is often written in different ways, register the other spellings in the [business partner master](/manual/en/operations/masters/business-partner/user) and they will be matched automatically next time.
 
 **Q. It says「顧客が未特定です。顧客を選択して保存してください」(the customer is not identified; please choose a customer and save) and I cannot request approval.**
 A. No customer is set. Choose the「顧客」(customer), press「保存」(save), then press「承認依頼」(request approval) again.

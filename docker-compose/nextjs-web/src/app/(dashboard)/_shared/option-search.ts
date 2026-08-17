@@ -65,7 +65,7 @@ export async function searchCustomerOptions(
     where: {
       isActive: true,
       parentId: null,
-      roleAssignments: { some: { role: "CUSTOMER" } },
+      roleAssignments: { some: { role: "CUSTOMER", isActive: true } },
       ...(q
         ? {
             OR: [
@@ -187,7 +187,7 @@ export async function f4SearchCustomers(
     where: {
       isActive: true,
       parentId: null,
-      roleAssignments: { some: { role: "CUSTOMER" } },
+      roleAssignments: { some: { role: "CUSTOMER", isActive: true } },
       ...(code ? { bpCode: { contains: code, mode: "insensitive" } } : {}),
       ...(name
         ? {

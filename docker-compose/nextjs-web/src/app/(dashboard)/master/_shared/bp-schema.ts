@@ -111,6 +111,51 @@ export function vendorAttrsData(v: VendorAttrsInput) {
   };
 }
 
+export const endUserAttrsInput = z.object({
+  industry: z.string().optional(),
+});
+
+export type EndUserAttrsInput = z.infer<typeof endUserAttrsInput>;
+
+export function endUserAttrsData(v: EndUserAttrsInput) {
+  return { industry: v.industry?.trim() || null };
+}
+
+/** 付与できるロール（bp_role_assignments.role）。 */
+export const BP_ROLES = ["CUSTOMER", "END_USER", "VENDOR"] as const;
+
+export type BpRoleValue = (typeof BP_ROLES)[number];
+
+/**
+ * 取引先（MS01）の入力 — 法人基本情報 + 付与ロール + ロール別属性。
+ *
+ * ロールは 0 件でも作れる（まず BP を登録し、後からロールを付ける運用）。
+ * 属性は対応ロールが選ばれているときだけ必須。
+ */
+export const bpInput = bpBaseInput
+  .extend({
+    roles: z.array(z.enum(BP_ROLES)),
+    customer: customerAttrsInput.nullable(),
+    endUser: endUserAttrsInput.nullable(),
+    vendor: vendorAttrsInput.nullable(),
+  })
+  .superRefine((v, ctx) => {
+    const missing = (role: BpRoleValue, path: string) => {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: [path],
+        message: `${role === "CUSTOMER" ? "顧客" : role === "END_USER" ? "最終需要家" : "仕入先・外注先"}の情報を入力してください`,
+      });
+    };
+    if (v.roles.includes("CUSTOMER") && !v.customer)
+      missing("CUSTOMER", "customer");
+    if (v.roles.includes("END_USER") && !v.endUser)
+      missing("END_USER", "endUser");
+    if (v.roles.includes("VENDOR") && !v.vendor) missing("VENDOR", "vendor");
+  });
+
+export type BpInput = z.infer<typeof bpInput>;
+
 export const contactInput = z.object({
   name: z.string().min(1, "氏名を入力してください"),
   nameKana: z.string().optional(),
@@ -123,9 +168,6 @@ export const contactInput = z.object({
 
 export type ContactInput = z.infer<typeof contactInput>;
 
-/** BP master 一覧・詳細で共有する再検証パス。 */
-export const BP_PATHS = [
-  "/master/customers",
-  "/master/end-users",
-  "/master/suppliers",
-];
+// パス定数は client component からも使うため bp-paths.ts に分離してある
+// （このファイルは @/lib/db 経由で Prisma を引き込むのでブラウザに乗せられない）。
+export { BP_BASE_PATH, BP_PATHS } from "./bp-paths";

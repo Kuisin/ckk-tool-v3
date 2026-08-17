@@ -28,7 +28,7 @@ screenshots: [order-acceptance-list-01, order-acceptance-new-01, order-acceptanc
 
 ## 开始之前
 
-- 客户需要已登记在[客户主数据](/manual/zh/operations/masters/customer/user)中。没有登记的话，就算读取了，客户也会一直是「未特定」（未确定）。
+- 客户需要已登记在[业务伙伴主数据](/manual/zh/operations/masters/business-partner/user)中。没有登记的话，就算读取了，客户也会一直是「未特定」（未确定）。
 - 所订购的[产品](/manual/zh/operations/masters/product/user)需要已登记在产品主数据中。
 - 为了确认单价，登记好[价格表](/manual/zh/operations/sales/price-list/user)会比较方便（没有也能继续）。
 - 审批和退回，只有属于审批组的人才能做。
@@ -124,7 +124,7 @@ screenshots: [order-acceptance-list-01, order-acceptance-new-01, order-acceptanc
 A. 订单读取失败了。点击该提示中的「**再抽出**」（重新提取）会再读一次。如果反复失败，请从列表的「**手入力で新規**」（手动输入新建）输入。
 
 **Q. 客户一直是「未特定」（未确定）。**
-A. 订单上的公司名称没能和客户主数据对上。请在草稿画面搜索并选择「顧客」（客户），然后点击「保存」（保存）。名称写法经常变化的客户，可以在[客户主数据](/manual/zh/operations/masters/customer/user)里登记其他写法，下次就能自动对上。
+A. 订单上的公司名称没能和业务伙伴主数据对上。请在草稿画面搜索并选择「顧客」（客户），然后点击「保存」（保存）。名称写法经常变化的客户，可以在[业务伙伴主数据](/manual/zh/operations/masters/business-partner/user)里登记其他写法，下次就能自动对上。
 
 **Q. 出现「顧客が未特定です。顧客を選択して保存してください」（客户未确定，请选择客户并保存），无法申请审批。**
 A. 客户是空的。请选择「顧客」（客户），点击「保存」（保存）后，再点击「承認依頼」（申请审批）。

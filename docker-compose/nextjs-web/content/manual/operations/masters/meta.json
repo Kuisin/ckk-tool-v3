@@ -1,12 +1,10 @@
 {
   "title": "マスタ",
   "pages": [
-    "customer",
-    "end-user",
+    "business-partner",
     "product",
     "material-type",
     "material",
-    "supplier",
     "process-step",
     "inspection-template",
     "defect-type",

@@ -122,7 +122,7 @@ export async function searchEndUserOptions(
   const rows = await prisma.businessPartner.findMany({
     where: {
       isActive: true,
-      roleAssignments: { some: { role: "END_USER" } },
+      roleAssignments: { some: { role: "END_USER", isActive: true } },
       ...(q
         ? {
             OR: [

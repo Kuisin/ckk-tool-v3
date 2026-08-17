@@ -26,7 +26,7 @@ screenshots: [delivery-note-list-01, delivery-note-new-01, delivery-note-detail-
 ## 开始之前
 
 - 需要先有[出货单](/manual/zh/operations/shipping/shipping-order/user)，而且这张出货单必须是「**確定**」（确定）或「**出荷済**」（已发货）。「下書き」（草稿）状态的出货单做不了送货单。
-- 要直送最终需求方时，收货公司必须已经登记为[最终需求方](/manual/zh/operations/masters/end-user/user)。
+- 要直送最终需求方时，收货公司必须已经登记为[业务伙伴](/manual/zh/operations/masters/business-partner/user)，并且加上了「最終需要家」（最终需求方）角色。
 - 做送货单需要送货单权限。如果不能用，请联系管理员。
 
 ## 界面怎么看

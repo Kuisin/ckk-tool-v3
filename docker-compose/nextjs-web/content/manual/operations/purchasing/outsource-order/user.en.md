@@ -29,7 +29,7 @@ This is the **外注依頼** (outsourcing orders) app, where you check in one li
 
 This app is a **view-only screen**. You cannot add new outsourcing from here.
 
-To make outsourcing appear in this list, open a step in a [work order](/manual/en/operations/production/work-order/user), choose 「**外注**」 (outsourced) as the place where it is done, and name the outsourcing partner. Partner companies are registered in the [supplier master](/manual/en/operations/masters/supplier/user).
+To make outsourcing appear in this list, open a step in a [work order](/manual/en/operations/production/work-order/user), choose 「**外注**」 (outsourced) as the place where it is done, and name the outsourcing partner. Partner companies are registered in the [business partner master](/manual/en/operations/masters/business-partner/user).
 
 You need outsourcing order permission to view this screen. If the screen does not open, please ask the person in charge at your company.
 

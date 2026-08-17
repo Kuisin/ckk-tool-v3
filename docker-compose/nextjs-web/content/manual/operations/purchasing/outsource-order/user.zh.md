@@ -29,7 +29,7 @@ screenshots: [outsource-order-list-01, outsource-order-list-02, outsource-order-
 
 本应用是 **只能查看的画面**，无法从这里新增外协。
 
-要让外协出现在这个列表中，请在[制造指示书](/manual/zh/operations/production/work-order/user)的工序中，把实施地点选为「**外注**」（外协），并指定外协厂。外协厂在[外协企业主数据](/manual/zh/operations/masters/supplier/user)中登记。
+要让外协出现在这个列表中，请在[制造指示书](/manual/zh/operations/production/work-order/user)的工序中，把实施地点选为「**外注**」（外协），并指定外协厂。外协厂在[业务伙伴主数据](/manual/zh/operations/masters/business-partner/user)中登记。
 
 查看需要外协委托权限。画面打不开时请咨询公司内的负责人。
 

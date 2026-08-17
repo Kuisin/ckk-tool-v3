@@ -1,12 +1,10 @@
 {
   "title": "Master Data",
   "pages": [
-    "customer",
-    "end-user",
+    "business-partner",
     "product",
     "material-type",
     "material",
-    "supplier",
     "process-step",
     "inspection-template",
     "defect-type",
