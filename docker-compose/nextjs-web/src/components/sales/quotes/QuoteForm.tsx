@@ -37,8 +37,10 @@ import {
   type ResolverValue,
 } from "@/components/sales/ProductPriceResolverInput";
 import { GhostButton } from "@/components/ui/buttons";
+import { HelpLabel } from "@/components/ui/HelpLabel";
 import { StatusBadge, statusOptions } from "@/components/ui/StatusBadge";
 import { FormSection, FormShell } from "@/components/ui/shells";
+import { fieldHelp } from "@/lib/field-help";
 import { zodResolver } from "@/lib/form";
 import { formatMoney } from "@/lib/format";
 import type { Option } from "@/lib/mock";
@@ -293,7 +295,7 @@ export function QuoteForm({
           <Select
             data={customerOptions}
             error={form.errors.customerId}
-            label="顧客"
+            label={<HelpLabel {...fieldHelp("quote", "customer")} />}
             onChange={(v) => onCustomerChange(v ?? "")}
             placeholder="顧客を選択"
             searchable
@@ -304,13 +306,13 @@ export function QuoteForm({
             clearable
             data={branches}
             disabled={branches.length === 0}
-            label="支店"
+            label={<HelpLabel {...fieldHelp("quote", "customerBranch")} />}
             placeholder={branches.length ? "支店を選択" : "支店なし"}
             {...form.getInputProps("customerBranchId")}
           />
           <DatePickerInput
             clearable
-            label="有効期限"
+            label={<HelpLabel {...fieldHelp("quote", "validUntil")} />}
             leftSection={<IconCalendar size={14} />}
             placeholder="日付を選択"
             valueFormat="YYYY/MM/DD"
@@ -384,7 +386,7 @@ export function QuoteForm({
               </Group>
               <DatePickerInput
                 clearable
-                label="納期"
+                label={<HelpLabel {...fieldHelp("quote", "deliveryDate")} />}
                 leftSection={<IconCalendar size={14} />}
                 maw={220}
                 mt="xs"
@@ -425,7 +427,7 @@ export function QuoteForm({
 
       <Textarea
         autosize
-        label="備考"
+        label={<HelpLabel {...fieldHelp("quote", "notes")} />}
         minRows={2}
         {...form.getInputProps("notes")}
       />

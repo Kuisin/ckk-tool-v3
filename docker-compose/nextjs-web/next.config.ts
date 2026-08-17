@@ -2,6 +2,31 @@ import path from "node:path";
 import { createMDX } from "fumadocs-mdx/next";
 import type { NextConfig } from "next";
 
+/**
+ * マニュアル再編前の `apps/<アプリ>` → 再編後の `operations/<カテゴリ>/<アプリ>`。
+ * 旧 URL のリダイレクト生成にのみ使う（カテゴリは src/lib/app-list.ts と同じ区分）。
+ */
+const MANUAL_APP_CATEGORY: Record<string, string> = {
+  "trial-estimate": "sales",
+  "price-list": "sales",
+  quote: "sales",
+  "order-acceptance": "sales",
+  "design-request": "sales",
+  "purchase-request": "purchasing",
+  "purchase-order": "purchasing",
+  "material-receipt": "purchasing",
+  "outsource-order": "purchasing",
+  "work-order": "production",
+  approval: "production",
+  "product-inventory": "production",
+  "material-inventory": "production",
+  "shipping-order": "shipping",
+  "delivery-note": "shipping",
+  invoice: "billing",
+  "billing-closing": "billing",
+  "product-type": "system",
+};
+
 const nextConfig: NextConfig = {
   /* config options here */
   reactCompiler: true,
@@ -63,6 +88,20 @@ const nextConfig: NextConfig = {
       },
       { source: "/docs", destination: "/manual/ja", permanent: true },
       { source: "/manual", destination: "/manual/ja", permanent: true },
+
+      // マニュアル再編（apps/masters/system/kiosk → operations/<カテゴリ>/…）。
+      // 既存のブックマーク・外部リンク・社内チャットに貼られた URL を維持する。
+      // apps だけはカテゴリを跨ぐのでアプリ単位、他はまとめて 1 行ずつ。
+      ...Object.entries(MANUAL_APP_CATEGORY).map(([app, category]) => ({
+        source: `/manual/:lang(ja|en|zh)/apps/${app}/:path*`,
+        destination: `/manual/:lang/operations/${category}/${app}/:path*`,
+        permanent: true,
+      })),
+      ...(["masters", "system", "kiosk"] as const).map((section) => ({
+        source: `/manual/:lang(ja|en|zh)/${section}/:path*`,
+        destination: `/manual/:lang/operations/${section}/:path*`,
+        permanent: true,
+      })),
       {
         source: "/internal-docs",
         destination: "/internal-docs/ja",

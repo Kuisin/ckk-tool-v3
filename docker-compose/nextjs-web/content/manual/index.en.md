@@ -14,5 +14,5 @@ This is the public manual for the CKK business management system. Use the sideba
 
 ## Contents
 
-- **App Guides** — how to operate the sales, purchasing, production, shipping and billing apps
-- **Master Data Guides** — registering and managing customers, products, materials and more
+- **Operations** — step-by-step instructions and what each input field means, grouped by category: sales, purchasing, production, shipping, billing, master data, system and shop-floor tablet
+- **Process** — how the business flows from order to shipment, and which app is used at each stage

@@ -1,0 +1,19 @@
+{
+  "title": "主数据",
+  "pages": [
+    "customer",
+    "end-user",
+    "product",
+    "material-type",
+    "material",
+    "supplier",
+    "process-step",
+    "inspection-template",
+    "defect-type",
+    "approval-group",
+    "plant",
+    "material-numbering",
+    "work-location",
+    "storage-location"
+  ]
+}

@@ -1,0 +1,12 @@
+{
+  "title": "システム",
+  "pages": [
+    "user-management",
+    "app-management",
+    "file-management",
+    "activity-log",
+    "kiosk-card",
+    "kiosk-device",
+    "kiosk-settings"
+  ]
+}

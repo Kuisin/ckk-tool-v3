@@ -1,0 +1,13 @@
+{
+  "title": "Operations",
+  "pages": [
+    "sales",
+    "purchasing",
+    "production",
+    "shipping",
+    "billing",
+    "masters",
+    "system",
+    "kiosk"
+  ]
+}
