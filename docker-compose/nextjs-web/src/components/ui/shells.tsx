@@ -31,6 +31,7 @@ import {
   TextInput,
   Timeline,
   Title,
+  UnstyledButton,
 } from "@mantine/core";
 import type { GetInputPropsReturnType } from "@mantine/form";
 import {
@@ -39,9 +40,10 @@ import {
   IconEdit,
   IconFileTypePdf,
 } from "@tabler/icons-react";
-import type { ReactNode } from "react";
+import { type ReactNode, useState } from "react";
 import { useUnsavedChanges } from "@/components/layout/NavigationGuard";
 import { useIsMobile } from "@/hooks/useViewport";
+import { AuditDetailModal } from "./AuditDetailModal";
 import {
   CancelButton,
   EditButton,
@@ -58,6 +60,11 @@ export interface MenuItemDef {
   icon?: ReactNode;
   color?: string;
   onClick?: () => void;
+  /**
+   * リンクとして開く項目（PDF 等）。`window.open` ではなく実アンカーを描画する
+   * ので、ホーム画面に追加した PWA（standalone）でもアプリ内ブラウザで開く。
+   */
+  href?: string;
   divider?: boolean;
 }
 
@@ -93,13 +100,27 @@ export function ResourceActions({
           {extra.map((m, i) => (
             <Box key={m.label}>
               {m.divider && i > 0 && <Menu.Divider />}
-              <Menu.Item
-                color={m.color}
-                leftSection={m.icon}
-                onClick={m.onClick}
-              >
-                {m.label}
-              </Menu.Item>
+              {m.href ? (
+                // 実アンカー + target="_blank" — PWA でもアプリ内ブラウザで開く。
+                <Menu.Item
+                  color={m.color}
+                  component="a"
+                  href={m.href}
+                  leftSection={m.icon}
+                  rel="noopener noreferrer"
+                  target="_blank"
+                >
+                  {m.label}
+                </Menu.Item>
+              ) : (
+                <Menu.Item
+                  color={m.color}
+                  leftSection={m.icon}
+                  onClick={m.onClick}
+                >
+                  {m.label}
+                </Menu.Item>
+              )}
             </Box>
           ))}
         </Menu.Dropdown>
@@ -116,11 +137,10 @@ export function ResourceActions({
             {
               label: pdf.label ?? "PDF",
               icon: <IconFileTypePdf size={14} />,
-              // Mobile has no inline button — open the PDF href in a new tab,
-              // or fall back to the provided onClick.
-              onClick: pdf.href
-                ? () => window.open(pdf.href, "_blank", "noopener,noreferrer")
-                : pdf.onClick,
+              // モバイルにはインラインボタンが無いので、メニュー項目を別タブ
+              // リンクとして描画する（PWA ではアプリ内ブラウザで開く）。
+              href: pdf.href,
+              onClick: pdf.href ? undefined : pdf.onClick,
             },
           ]
         : []),
@@ -362,60 +382,89 @@ export interface AuditEntry {
   device?: string | null;
   at: string;
   detail?: ReactNode;
+  /** 以下は詳細ポップアップ用（一覧表示では使わない）。 */
+  tableName?: string;
+  tableLabel?: string;
+  recordId?: string | null;
+  before?: unknown;
+  after?: unknown;
 }
 
+/**
+ * 履歴タイムライン。行をクリックすると詳細ポップアップ（AuditDetailModal）を
+ * 開く — 何がどう変わったかを画面遷移なしで確認できる。
+ */
 export function AuditTimeline({ entries }: { entries: AuditEntry[] }) {
+  const [selected, setSelected] = useState<AuditEntry | null>(null);
   return (
-    <Timeline
-      active={-1}
-      bulletSize={18}
-      classNames={{
-        item: "audit-timeline-item",
-      }}
-      lineWidth={1}
-    >
-      {entries.map((log) => (
-        <Timeline.Item
-          bullet={
-            log.avatarUrl ? (
-              <UserAvatar name={log.user} size={18} thumbSrc={log.avatarUrl} />
-            ) : (
-              <Text fw={700} fz={10}>
-                {log.user[0]}
+    <>
+      <Timeline
+        active={-1}
+        bulletSize={18}
+        classNames={{
+          item: "audit-timeline-item",
+        }}
+        lineWidth={1}
+      >
+        {entries.map((log) => (
+          <Timeline.Item
+            bullet={
+              log.avatarUrl ? (
+                <UserAvatar
+                  name={log.user}
+                  size={18}
+                  thumbSrc={log.avatarUrl}
+                />
+              ) : (
+                <Text fw={700} fz={10}>
+                  {log.user[0]}
+                </Text>
+              )
+            }
+            key={log.id}
+            lineVariant="dotted"
+            title={
+              <UnstyledButton
+                aria-label={`${log.action} の詳細を開く`}
+                onClick={() => setSelected(log)}
+                style={{ display: "block", width: "100%" }}
+              >
+                <Group gap="xs" wrap="nowrap">
+                  <Text fw={600} size="sm">
+                    {log.action}
+                  </Text>
+                  <Text c="dimmed" size="xs">
+                    {log.at} · {log.user}
+                  </Text>
+                  {log.device && (
+                    <Badge
+                      color="grape"
+                      leftSection={<IconDeviceTablet size={11} />}
+                      size="xs"
+                      variant="light"
+                    >
+                      {log.device}
+                    </Badge>
+                  )}
+                </Group>
+              </UnstyledButton>
+            }
+          >
+            {log.detail && (
+              <Text
+                mt={2}
+                onClick={() => setSelected(log)}
+                size="xs"
+                style={{ cursor: "pointer" }}
+              >
+                {log.detail}
               </Text>
-            )
-          }
-          key={log.id}
-          lineVariant="dotted"
-          title={
-            <Group gap="xs" wrap="nowrap">
-              <Text fw={600} size="sm">
-                {log.action}
-              </Text>
-              <Text c="dimmed" size="xs">
-                {log.at} · {log.user}
-              </Text>
-              {log.device && (
-                <Badge
-                  color="grape"
-                  leftSection={<IconDeviceTablet size={11} />}
-                  size="xs"
-                  variant="light"
-                >
-                  {log.device}
-                </Badge>
-              )}
-            </Group>
-          }
-        >
-          {log.detail && (
-            <Text mt={2} size="xs">
-              {log.detail}
-            </Text>
-          )}
-        </Timeline.Item>
-      ))}
-    </Timeline>
+            )}
+          </Timeline.Item>
+        ))}
+      </Timeline>
+      <AuditDetailModal entry={selected} onClose={() => setSelected(null)} />
+    </>
   );
 }
 

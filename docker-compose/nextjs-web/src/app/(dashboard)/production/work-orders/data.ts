@@ -106,10 +106,12 @@ function mapRow(r: {
   approvalStatus: string;
   status: string;
   requested1stAt: Date | null;
+  createdAt: Date;
   updatedAt: Date;
 }): WorkOrderRow {
   return {
     workOrderNumber: r.workOrderNumber,
+    createdAt: r.createdAt.toISOString(),
     salesOrderNumber: r.salesOrder
       ? formatSalesOrderNumber(r.salesOrder)
       : null,
@@ -317,10 +319,18 @@ export interface StepNavItem {
   supplierName: string | null;
   isInspection: boolean;
   isApprovalStep: boolean;
+  /** 数量サマリ（指示書詳細のカードと同じ内訳を一覧にも出す）。 */
+  inputQuantity: number | null;
+  outputSuccessQuantity: number | null;
+  outputDefectSemiFinished: number | null;
+  outputDefectScrap: number | null;
+  outputDefectRework: number | null;
 }
 
 export interface WorkOrderStepNav {
   workOrderNumber: number;
+  /** 表示番号（YYYYMMDD-XXXXX）用の作成日。 */
+  createdAt: string;
   steps: StepNavItem[];
 }
 
@@ -337,6 +347,7 @@ export async function fetchWorkOrderStepNav(
     where: { workOrderNumber },
     select: {
       workOrderNumber: true,
+      createdAt: true,
       createdBy: true,
       steps: {
         select: {
@@ -344,6 +355,11 @@ export async function fetchWorkOrderStepNav(
           status: true,
           executionLocation: true,
           plantId: true,
+          inputQuantity: true,
+          outputSuccessQuantity: true,
+          outputDefectSemiFinished: true,
+          outputDefectScrap: true,
+          outputDefectRework: true,
           processStep: {
             select: {
               code: true,
@@ -363,6 +379,7 @@ export async function fetchWorkOrderStepNav(
   if (!workOrderRowInScope(authz.access, authz.userId, r)) return null;
   return {
     workOrderNumber: r.workOrderNumber,
+    createdAt: r.createdAt.toISOString(),
     steps: r.steps.map((s) => ({
       id: s.id,
       code: s.processStep.code,
@@ -377,6 +394,11 @@ export async function fetchWorkOrderStepNav(
         : null,
       isInspection: s.processStep.isInspection,
       isApprovalStep: s.processStep.isApprovalStep,
+      inputQuantity: s.inputQuantity,
+      outputSuccessQuantity: s.outputSuccessQuantity,
+      outputDefectSemiFinished: s.outputDefectSemiFinished,
+      outputDefectScrap: s.outputDefectScrap,
+      outputDefectRework: s.outputDefectRework,
     })),
   };
 }
@@ -398,6 +420,7 @@ export async function fetchStepExecution(
     select: {
       id: true,
       status: true,
+      createdAt: true,
       plannedQuantity: true,
       createdBy: true,
       steps: { select: { plantId: true } },
@@ -613,6 +636,7 @@ export async function fetchStepExecution(
   return {
     actorId,
     workOrderNumber,
+    workOrderCreatedAt: wo.createdAt.toISOString(),
     workOrderStatus: wo.status,
     plannedQuantity: wo.plannedQuantity,
     step: {

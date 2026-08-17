@@ -395,7 +395,7 @@ export async function recordInspection(
     tableName: "work_orders",
     recordId: String(step.workOrder.workOrderNumber),
     after: {
-      note: `検査記録を保存（${status === "PASS" ? "合格" : "不合格"} / ${items.length} 項目）（キオスク）`,
+      note: `検査記録を保存（${status === "PASS" ? "合格" : "不合格"} / ${items.length} 項目）`,
     },
   });
   return { ok: true };
@@ -440,7 +440,7 @@ export async function recordDefects(
     action: "UPDATE",
     tableName: "work_orders",
     recordId: String(step.workOrder.workOrderNumber),
-    after: { note: `不良記録を追加（${defects.length} 件）（キオスク）` },
+    after: { note: `不良記録を追加（${defects.length} 件）` },
   });
   return { ok: true };
 }

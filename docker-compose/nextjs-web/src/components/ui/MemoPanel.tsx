@@ -158,22 +158,9 @@ function MemoBlock({ ownerType, ownerId, memos }: MemoPanelProps) {
   }
 
   return (
-    <Stack gap="sm">
-      {existing ? (
-        <>
-          <RichTextView doc={existing.content} />
-          <Text c="dimmed" size="xs">
-            最終更新: {formatDateTime(existing.updatedAt)}（
-            {existing.editorName ?? existing.authorName}）
-          </Text>
-        </>
-      ) : (
-        <EmptyState
-          icon={<IconNote size={24} />}
-          message="メモはまだありません"
-        />
-      )}
-      <Group justify="flex-end">
+    <Stack gap="xs">
+      {/* 操作は上部にアイコンで置く（履歴・編集）。本文より先に見つかる位置。 */}
+      <Group gap={2} justify="flex-end" wrap="nowrap">
         {existing && (
           <>
             <Tooltip label="変更履歴" withArrow>
@@ -195,12 +182,46 @@ function MemoBlock({ ownerType, ownerId, memos }: MemoPanelProps) {
             />
           </>
         )}
-        {(existing?.canEdit ?? true) && (
-          <SecondaryButton onClick={() => setEditing(true)}>
-            {existing ? "編集" : "メモを追加"}
-          </SecondaryButton>
-        )}
+        {(existing?.canEdit ?? true) &&
+          (existing ? (
+            <Tooltip label="編集" withArrow>
+              <ActionIcon
+                aria-label="編集"
+                color="gray"
+                onClick={() => setEditing(true)}
+                size="sm"
+                variant="subtle"
+              >
+                <IconEdit size={15} />
+              </ActionIcon>
+            </Tooltip>
+          ) : (
+            <SecondaryButton onClick={() => setEditing(true)}>
+              メモを追加
+            </SecondaryButton>
+          ))}
       </Group>
+
+      {existing ? (
+        /* メモ本文は白いカードに載せて、タブ背景と区別する。 */
+        <Paper bg="var(--mantine-color-body)" p="md" radius="md" withBorder>
+          <Stack gap="sm">
+            <RichTextView
+              doc={existing.content}
+              linkTargets={existing.linkTargets}
+            />
+            <Text c="dimmed" size="xs">
+              最終更新: {formatDateTime(existing.updatedAt)}（
+              {existing.editorName ?? existing.authorName}）
+            </Text>
+          </Stack>
+        </Paper>
+      ) : (
+        <EmptyState
+          icon={<IconNote size={24} />}
+          message="メモはまだありません"
+        />
+      )}
     </Stack>
   );
 }
@@ -498,7 +519,7 @@ function CommentRow({
       ) : (
         <Collapse expanded={open}>
           <Box pl={32}>
-            <RichTextView doc={memo.content} />
+            <RichTextView doc={memo.content} linkTargets={memo.linkTargets} />
           </Box>
         </Collapse>
       )}

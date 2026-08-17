@@ -89,10 +89,14 @@ export function WorkOrderStepsPanel({
   const [graphOpen, setGraphOpen] = useState(false);
   const cardRefs = useRef(new Map<string, HTMLDivElement>());
 
-  // 工程実行は承認済み/進行中の指示書のみ（design.md §12.3）
+  // 工程を「操作」できるのは承認済み/進行中の指示書のみ（design.md §12.3）。
   const isExecutable =
     workOrderNumber != null &&
     (workOrderStatus === "APPROVED" || workOrderStatus === "IN_PROGRESS");
+  // 「開く」（閲覧）は状態を問わず許可する — 完了・キャンセル後も実績や検査
+  // 記録を見返せる必要がある。実行画面側は工程状態と woExecutable で操作を
+  // 抑止するので、閲覧だけ通しても書き換えはできない。
+  const canOpenSteps = workOrderNumber != null;
 
   // engine 形式（オフメインライン判定・分岐可能数量の計算用）
   const ctx = useMemo<WorkflowCtx>(() => {
@@ -237,10 +241,11 @@ export function WorkOrderStepsPanel({
     return (
       <StepCard
         executeHref={
-          isExecutable
+          canOpenSteps
             ? `${BASE_PATH}/${workOrderNumber}/steps/${s.id}`
             : undefined
         }
+        // 操作不可（完了・未承認）のときはラベルを「詳細」に寄せる。
         onAddBranch={
           isExecutable &&
           s.status === "COMPLETED" &&
@@ -251,6 +256,7 @@ export function WorkOrderStepsPanel({
         }
         selected={selectedId === s.id}
         step={s}
+        viewOnly={!isExecutable}
       />
     );
   };
@@ -328,14 +334,24 @@ export function WorkOrderStepsPanel({
     <Paper p="md" radius="md" withBorder>
       <Group justify="space-between" mb="sm" wrap="nowrap">
         <Title order={5}>工程ワークフロー</Title>
-        {isExecutable && steps.length > 0 ? (
-          <Anchor
-            component={Link}
-            href={`${BASE_PATH}/${workOrderNumber}/steps`}
-            size="xs"
-          >
-            工程実行ビューを開く
-          </Anchor>
+        {canOpenSteps && steps.length > 0 ? (
+          <Group gap="sm" wrap="nowrap">
+            <Anchor
+              component={Link}
+              href={`${BASE_PATH}/${workOrderNumber}/steps`}
+              size="xs"
+            >
+              {isExecutable ? "工程実行ビューを開く" : "工程ビューを開く"}
+            </Anchor>
+            {!isExecutable && (
+              <Text c="dimmed" size="xs">
+                {workOrderStatus === "COMPLETED" ||
+                workOrderStatus === "CANCELLED"
+                  ? "（閲覧のみ）"
+                  : "（実行は承認後）"}
+              </Text>
+            )}
+          </Group>
         ) : (
           steps.length > 0 && (
             <Text c="dimmed" size="xs">

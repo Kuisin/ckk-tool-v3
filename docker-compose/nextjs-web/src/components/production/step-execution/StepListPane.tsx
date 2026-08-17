@@ -8,7 +8,7 @@
  * 状態アイコンは StepCard と同じ対応（design.md §12.2）。
  */
 
-import { Badge, Group, Text, ThemeIcon } from "@mantine/core";
+import { Badge, Group, Stack, Text, ThemeIcon } from "@mantine/core";
 import { IconCheck, IconClock, IconLoader, IconX } from "@tabler/icons-react";
 import type { StepNavItem } from "@/app/(dashboard)/production/work-orders/data";
 import { MasterListNav } from "@/components/ui/MasterListNav";
@@ -71,12 +71,46 @@ export function StepListPane({
                   )}
                 </Group>
               ),
-              description: [
-                s.code,
-                (isOutsource ? s.supplierName : s.plantName) ?? null,
-              ]
-                .filter(Boolean)
-                .join(" · "),
+              description: (
+                <Stack gap={2}>
+                  <Text c="dimmed" size="xs" truncate>
+                    {[
+                      s.code,
+                      (isOutsource ? s.supplierName : s.plantName) ?? null,
+                    ]
+                      .filter(Boolean)
+                      .join(" · ")}
+                  </Text>
+                  {/* 数量サマリ — 指示書詳細のカードと同じ内訳を一覧にも出す。 */}
+                  {s.inputQuantity != null && (
+                    <Group gap={6} wrap="wrap">
+                      <Text c="dimmed" size="xs">
+                        受入 {s.inputQuantity}
+                      </Text>
+                      {s.outputSuccessQuantity != null && (
+                        <Text c="green" size="xs">
+                          良品 {s.outputSuccessQuantity}
+                        </Text>
+                      )}
+                      {(s.outputDefectSemiFinished ?? 0) > 0 && (
+                        <Badge color="orange" size="xs" variant="light">
+                          半製品 {s.outputDefectSemiFinished}
+                        </Badge>
+                      )}
+                      {(s.outputDefectScrap ?? 0) > 0 && (
+                        <Badge color="red" size="xs" variant="light">
+                          廃棄 {s.outputDefectScrap}
+                        </Badge>
+                      )}
+                      {(s.outputDefectRework ?? 0) > 0 && (
+                        <Badge color="yellow" size="xs" variant="light">
+                          工程分岐 {s.outputDefectRework}
+                        </Badge>
+                      )}
+                    </Group>
+                  )}
+                </Stack>
+              ),
             };
           }),
         },

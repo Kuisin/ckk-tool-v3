@@ -114,3 +114,22 @@ export function escapeHtml(s: string): string {
     .replaceAll(">", "&gt;")
     .replaceAll('"', "&quot;");
 }
+
+/**
+ * 指示書番号の表示形式 `YYYYMMDD-XXXXX`（作成日 + 通し連番 5 桁）。
+ *
+ * **保存側は従来どおり通し連番の int**（= ロット番号・URL のキー）で、
+ * これは表示専用の整形。日付が取れない画面では従来の `#N` を返す。
+ */
+export function workOrderNumberLabel(
+  workOrderNumber: number | null | undefined,
+  createdAt?: string | Date | null,
+): string {
+  if (workOrderNumber == null) return "—";
+  const serial = String(workOrderNumber).padStart(5, "0");
+  const d = createdAt ? toDate(createdAt) : null;
+  if (!d) return `#${workOrderNumber}`;
+  // JST の暦日で採る（TOKYO_DATE は yyyy/MM/dd）。
+  const ymd = TOKYO_DATE.format(d).replace(/\D/g, "");
+  return `${ymd}-${serial}`;
+}

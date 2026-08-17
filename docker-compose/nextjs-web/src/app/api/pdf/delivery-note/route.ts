@@ -16,6 +16,7 @@
 import { fetchDeliveryNote } from "@/app/(dashboard)/shipping/delivery-notes/data";
 import { requirePermissionResponse } from "@/lib/authz";
 import { parseDocKey } from "@/lib/doc-number";
+import { isIssued, notIssuedResponse, pdfStorageKey } from "@/lib/document-pdf";
 import { DELIVERY_METHOD_LABEL } from "@/lib/enum-labels";
 import { formatDate } from "@/lib/format";
 import { renderPdf } from "@/lib/pdf";
@@ -59,8 +60,10 @@ export async function GET(request: Request): Promise<Response> {
   if (!note) {
     return new Response(`Delivery note not found: ${id}`, { status: 404 });
   }
+  // 閲覧は発行後のみ（下書きの納品書は PDF を出さない）。
+  if (!isIssued(note.status)) return notIssuedResponse("納品書");
 
-  const storageKey = `pdfs/delivery-notes/${note.deliveryNumber}.pdf`;
+  const storageKey = pdfStorageKey.deliveryNote(note.deliveryNumber);
 
   // Serve the stored copy if it exists (SeaweedFS), else generate + store.
   // `force=1` regenerates and overwrites the stored copy.

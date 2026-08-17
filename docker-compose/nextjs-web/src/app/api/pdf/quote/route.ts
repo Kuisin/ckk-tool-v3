@@ -12,6 +12,7 @@ import { fetchQuote } from "@/app/(dashboard)/sales/quotes/data";
 import { orderTypeLabel, quoteTotals } from "@/components/sales/quotes/model";
 import { requirePermissionResponse } from "@/lib/authz";
 import { parseDocKey } from "@/lib/doc-number";
+import { isIssued, notIssuedResponse, pdfStorageKey } from "@/lib/document-pdf";
 import { formatDate } from "@/lib/format";
 import { renderPdf } from "@/lib/pdf";
 import { getObject, putObject } from "@/lib/storage";
@@ -54,8 +55,10 @@ export async function GET(request: Request): Promise<Response> {
   if (!quote) {
     return new Response(`Quote not found: ${id}`, { status: 404 });
   }
+  // 閲覧は発行後のみ（下書きの見積書は PDF を出さない）。
+  if (!isIssued(quote.status)) return notIssuedResponse("見積書");
 
-  const storageKey = `pdfs/quotes/${quote.quoteNumber}.pdf`;
+  const storageKey = pdfStorageKey.quote(quote.quoteNumber);
 
   // Serve the stored copy if it exists (SeaweedFS), else generate + store.
   // `force=1` regenerates and overwrites the stored copy.

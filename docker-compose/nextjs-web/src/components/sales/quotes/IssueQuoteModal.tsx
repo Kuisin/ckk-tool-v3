@@ -3,16 +3,16 @@
 /**
  * IssueQuoteModal — 見積書 発行（DRAFT → ISSUED）.
  *
- * 発行と同時に PDF を生成・保存する（/api/pdf/quote が Gotenberg でレンダリングし
- * SeaweedFS に保存）。生成された PDF は詳細ページの「PDF」タブで閲覧できる。
- * TODO(server-action): status 遷移 + quotes.pdf_file_id の永続化。
+ * **順序が重要** — まず `onIssue`（issueQuote Server Action）で状態を ISSUED に
+ * してから PDF を生成する。PDF ルートは未発行（DRAFT）の見積書を 403 で拒否する
+ * ため、逆順だと必ず生成に失敗する。生成された PDF（Gotenberg → SeaweedFS）は
+ * 詳細ページの「PDF」タブで閲覧できる。
  */
 
 import { Checkbox, Stack, Text } from "@mantine/core";
 import { DatePickerInput } from "@mantine/dates";
 import { notifications } from "@mantine/notifications";
 import { IconCalendar } from "@tabler/icons-react";
-import { format } from "date-fns";
 import { useState } from "react";
 import { type ModalBaseProps, ModalShell } from "@/components/ui/modals";
 import type { PdfFileMeta } from "@/components/ui/PdfAttachmentPanel";
@@ -23,13 +23,16 @@ export function IssueQuoteModal({
   quoteId,
   quoteNumber,
   defaultValidUntil,
+  onIssue,
   onIssued,
 }: ModalBaseProps & {
   quoteId: string;
   quoteNumber: string;
   defaultValidUntil: string | null;
-  /** Called with the saved-PDF meta + 有効期限 once 発行 (+ PDF 生成) completes. */
-  onIssued: (pdf: PdfFileMeta, validUntil: string | null) => void;
+  /** 発行（Server Action）。成功 = true のときだけ PDF を生成する。 */
+  onIssue: (validUntil: string | null) => Promise<boolean>;
+  /** 発行 + PDF 生成後に呼ぶ（meta は生成できなかった場合 null）。 */
+  onIssued: (pdf: PdfFileMeta | null) => void;
 }) {
   const [validUntil, setValidUntil] = useState<string | null>(
     defaultValidUntil,
@@ -39,20 +42,21 @@ export function IssueQuoteModal({
 
   const issue = async () => {
     setLoading(true);
-    const meta: PdfFileMeta = {
-      filename: `${quoteNumber}.pdf`,
-      sizeBytes: 0,
-      generatedAt: format(new Date(), "yyyy-MM-dd HH:mm"),
-      generatedBy: "鈴木 一郎", // TODO(auth): current user
-    };
+    // 1) 発行（失敗時は呼び出し側がエラー通知を出す — モーダルは開いたまま）。
+    const issued = await onIssue(validUntil);
+    if (!issued) {
+      setLoading(false);
+      return;
+    }
+    // 2) PDF 生成: route が Gotenberg でレンダリングし SeaweedFS に保存する。
+    let meta: PdfFileMeta | null = null;
     try {
-      // 実生成: route が Gotenberg でレンダリングし SeaweedFS に保存する。
       const res = await fetch(
         `/api/pdf/quote?id=${encodeURIComponent(quoteId)}`,
       );
       if (!res.ok) throw new Error(`PDF route ${res.status}`);
       const blob = await res.blob();
-      meta.sizeBytes = blob.size;
+      meta = { sizeBytes: blob.size, generatedAt: new Date().toISOString() };
       notifications.show({
         title: "発行しました",
         message: `見積書 ${quoteNumber} を発行し、PDF を保存しました${
@@ -70,7 +74,7 @@ export function IssueQuoteModal({
     } finally {
       setLoading(false);
     }
-    onIssued(meta, validUntil);
+    onIssued(meta);
     onClose();
   };
 

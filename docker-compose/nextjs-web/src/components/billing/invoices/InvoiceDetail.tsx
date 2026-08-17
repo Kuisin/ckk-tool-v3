@@ -26,6 +26,7 @@ import { notifications } from "@mantine/notifications";
 import {
   IconCash,
   IconCheck,
+  IconDownload,
   IconFileSpreadsheet,
   IconSend,
 } from "@tabler/icons-react";
@@ -36,12 +37,17 @@ import {
   markPaid,
   markSent,
 } from "@/app/(dashboard)/billing/invoices/actions";
+import { PrimaryButton } from "@/components/ui/buttons";
 import { DocNumber } from "@/components/ui/DocNumber";
 import { FieldValue } from "@/components/ui/FieldValue";
 import { HistoryPanel } from "@/components/ui/HistoryPanel";
 import { MemoPanel } from "@/components/ui/MemoPanel";
 import { MoneyText } from "@/components/ui/MoneyText";
 import { ConfirmModal } from "@/components/ui/modals";
+import {
+  PdfAttachmentPanel,
+  type PdfFileMeta,
+} from "@/components/ui/PdfAttachmentPanel";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import {
   type AuditEntry,
@@ -51,6 +57,7 @@ import {
 } from "@/components/ui/shells";
 import { useTabParam } from "@/hooks/useUrlState";
 import type { MemoView } from "@/lib/document-memos";
+import { downloadFile } from "@/lib/download";
 import { formatDate, formatDateTime } from "@/lib/format";
 import type { ActionResult } from "@/lib/server-action";
 import {
@@ -65,10 +72,13 @@ const BASE_PATH = "/billing/invoices";
 
 export function InvoiceDetail({
   invoice,
+  pdfMeta,
   auditEntries,
   memos,
 }: {
   invoice: Invoice;
+  /** 保管済み PDF のメタ（SeaweedFS 由来。未生成なら null）。 */
+  pdfMeta: PdfFileMeta | null;
   /** 操作履歴（audit_logs 由来、履歴タブ）。 */
   auditEntries: AuditEntry[];
   /** 社内メモ（document_memos 由来、メモタブ）。 */
@@ -81,6 +91,40 @@ export function InvoiceDetail({
   const [issueOpen, setIssueOpen] = useState(false);
   const [sentOpen, setSentOpen] = useState(false);
   const [paidOpen, setPaidOpen] = useState(false);
+
+  // PDF は発行後のみ閲覧できる（ルート側も 403 で拒否する）。
+  const canViewPdf = invoice.status !== "DRAFT";
+  const pdfFilename = `${invoice.invoiceNumber}.pdf`;
+  const [pdfFile, setPdfFile] = useState<PdfFileMeta | null>(pdfMeta);
+  // 再生成でプレビューの iframe を貼り替えるためのキャッシュバスター。
+  const [pdfNonce, setPdfNonce] = useState(0);
+
+  const pdfUrl = (extra = "") =>
+    `/api/pdf/invoice?id=${encodeURIComponent(invoice.id)}${extra}`;
+
+  const regenerate = async () => {
+    try {
+      const res = await fetch(pdfUrl("&force=1"));
+      if (!res.ok) throw new Error(`PDF route ${res.status}`);
+      const blob = await res.blob();
+      setPdfFile({
+        sizeBytes: blob.size,
+        generatedAt: new Date().toISOString(),
+      });
+      setPdfNonce((n) => n + 1);
+      notifications.show({
+        title: "再生成しました",
+        message: "PDF を再生成・保存しました",
+        color: "green",
+      });
+    } catch {
+      notifications.show({
+        title: "エラー",
+        message: "PDF の再生成に失敗しました",
+        color: "red",
+      });
+    }
+  };
 
   const run = (
     action: () => Promise<ActionResult>,
@@ -138,19 +182,26 @@ export function InvoiceDetail({
                   },
                 ]
               : []),
+            // PDF は発行後のみ（未発行はルートも 403）。
+            ...(canViewPdf
+              ? [
+                  {
+                    label: "PDFをダウンロード",
+                    icon: <IconDownload size={14} />,
+                    onClick: () =>
+                      void downloadFile(pdfUrl("&download=1"), pdfFilename),
+                  },
+                ]
+              : []),
             {
               label: "弥生会計CSV",
               icon: <IconFileSpreadsheet size={14} />,
               divider: true,
-              onClick: () =>
-                window.open(
-                  `/api/export/yayoi?invoice=${invoice.invoiceNumber}`,
-                  "_blank",
-                  "noopener,noreferrer",
-                ),
+              // 実アンカーで別タブへ（PWA でもアプリ内ブラウザで開く）。
+              href: `/api/export/yayoi?invoice=${invoice.invoiceNumber}`,
             },
           ]}
-          pdf={{ href: `/api/pdf/invoice?id=${invoice.id}` }}
+          pdf={canViewPdf ? { href: pdfUrl() } : undefined}
         />
       }
       breadcrumbs={["請求", { label: "請求書", href: BASE_PATH }, "詳細"]}
@@ -306,6 +357,7 @@ export function InvoiceDetail({
       <Tabs onChange={setTab} value={tab}>
         <Tabs.List>
           <Tabs.Tab value="overview">概要</Tabs.Tab>
+          <Tabs.Tab value="pdf">PDF</Tabs.Tab>
           <Tabs.Tab value="memo">メモ</Tabs.Tab>
           <Tabs.Tab value="history">履歴</Tabs.Tab>
         </Tabs.List>
@@ -327,6 +379,28 @@ export function InvoiceDetail({
               </Text>
             </div>
           </Stack>
+        </Tabs.Panel>
+
+        {/* keepMounted={false}: 未表示タブの iframe は読み込まない。 */}
+        <Tabs.Panel keepMounted={false} pt="md" value="pdf">
+          <PdfAttachmentPanel
+            downloadHref={pdfUrl("&download=1")}
+            emptyAction={
+              canIssue(invoice) ? (
+                <PrimaryButton
+                  leftSection={<IconCheck size={14} />}
+                  onClick={() => setIssueOpen(true)}
+                >
+                  発行
+                </PrimaryButton>
+              ) : undefined
+            }
+            emptyMessage="発行後に PDF を閲覧できます。"
+            file={pdfFile}
+            filename={pdfFilename}
+            onRegenerate={regenerate}
+            previewSrc={canViewPdf ? pdfUrl(`&v=${pdfNonce}`) : undefined}
+          />
         </Tabs.Panel>
 
         {/* keepMounted={false}: エディタ（prosemirror）はタブを開くまで読み込まない。 */}

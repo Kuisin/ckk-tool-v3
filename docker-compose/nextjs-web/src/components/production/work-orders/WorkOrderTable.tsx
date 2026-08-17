@@ -26,7 +26,7 @@ import {
   WORK_ORDER_TYPE_LABEL,
   WORK_ORDER_TYPE_OPTIONS,
 } from "@/lib/enum-labels";
-import { formatDate, formatDateTime } from "@/lib/format";
+import { formatDate, formatDateTime, workOrderNumberLabel } from "@/lib/format";
 import type { WorkOrderRow } from "./model";
 
 const WORK_ORDERS_PATH = "/production/work-orders";
@@ -71,6 +71,7 @@ export function WorkOrderTable({
     const matchesSearch =
       !search ||
       String(r.workOrderNumber).includes(search) ||
+      workOrderNumberLabel(r.workOrderNumber, r.createdAt).includes(search) ||
       (r.salesOrderNumber ?? "").includes(search) ||
       r.productName.includes(search);
     const matchesType = !type || r.type === type;
@@ -84,11 +85,11 @@ export function WorkOrderTable({
       key: "workOrderNumber",
       header: "指示書番号",
       sortable: true,
-      width: 110,
+      width: 150,
       sortValue: (r) => r.workOrderNumber,
       render: (r) => (
         <Text className="tabular-nums" ff="mono" size="sm">
-          {r.workOrderNumber}
+          {workOrderNumberLabel(r.workOrderNumber, r.createdAt)}
         </Text>
       ),
     },
@@ -258,7 +259,8 @@ export function WorkOrderTable({
           <Group align="flex-start" justify="space-between" wrap="nowrap">
             <Stack className="min-w-0" gap={3}>
               <Text c="dimmed" ff="mono" size="xs">
-                #{r.workOrderNumber} · {r.salesOrderNumber ?? "在庫向け"}
+                {workOrderNumberLabel(r.workOrderNumber, r.createdAt)} ·{" "}
+                {r.salesOrderNumber ?? "在庫向け"}
               </Text>
               <Text fw={600} size="sm" truncate>
                 {r.productName}

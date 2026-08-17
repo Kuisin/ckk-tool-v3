@@ -137,6 +137,48 @@ export async function mintShortLinks(
   return map;
 }
 
+/** 表示用のリンク情報（ホバーで遷移先を見せるため）。 */
+export interface ShortLinkTarget {
+  url: string;
+  hostname: string;
+  blocked: boolean;
+}
+
+/**
+ * 短縮コード群 → 遷移先。**閲覧側でホバー表示するため**に使う。
+ * クリックしないと遷移先が分からないのは短縮リンクの弱点なので、
+ * 本文の描画時にまとめて解決して見せる。
+ */
+export async function resolveShortLinkTargets(
+  codes: readonly string[],
+): Promise<Record<string, ShortLinkTarget>> {
+  const unique = [
+    ...new Set(codes.map((c) => normalizeCode(c)).filter(Boolean)),
+  ];
+  if (unique.length === 0) return {};
+  try {
+    const [rows, patterns] = await Promise.all([
+      prisma.linkIndex.findMany({
+        where: { code: { in: unique } },
+        select: { code: true, url: true, hostname: true },
+      }),
+      activePatterns(),
+    ]);
+    const map: Record<string, ShortLinkTarget> = {};
+    for (const row of rows) {
+      map[row.code] = {
+        url: row.url,
+        hostname: row.hostname,
+        blocked: matchBlacklist(row.hostname, patterns) !== null,
+      };
+    }
+    return map;
+  } catch (e) {
+    console.error("resolveShortLinkTargets failed", e);
+    return {};
+  }
+}
+
 export type ResolvedLink =
   | { status: "ok"; url: string; hostname: string }
   | { status: "blocked"; url: string; hostname: string; reason: string | null }

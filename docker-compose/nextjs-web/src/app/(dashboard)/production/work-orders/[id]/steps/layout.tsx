@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { StepListPane } from "@/components/production/step-execution/StepListPane";
 import { MasterDetailShell } from "@/components/ui/MasterDetailShell";
 import { PageHeader } from "@/components/ui/PageHeader";
+import { workOrderNumberLabel } from "@/lib/format";
 import { fetchWorkOrderStepNav } from "../../data";
 
 export const dynamic = "force-dynamic";
@@ -26,6 +27,8 @@ export default async function WorkOrderStepsLayout({
 
   const nav = await fetchWorkOrderStepNav(workOrderNumber);
   if (!nav) notFound();
+  // 表示番号 YYYYMMDD-XXXXX（内部キーは通し連番の int のまま）。
+  const woLabel = workOrderNumberLabel(nav.workOrderNumber, nav.createdAt);
 
   const basePath = `/production/work-orders/${workOrderNumber}/steps`;
   return (
@@ -37,12 +40,12 @@ export default async function WorkOrderStepsLayout({
             "生産",
             { label: "指示書", href: "/production/work-orders" },
             {
-              label: `#${workOrderNumber}`,
+              label: woLabel,
               href: `/production/work-orders/${workOrderNumber}`,
             },
             "工程",
           ]}
-          title={`工程 — 指示書 #${workOrderNumber}`}
+          title={`工程 — 指示書 ${woLabel}`}
         />
       }
       master={<StepListPane basePath={basePath} steps={nav.steps} />}

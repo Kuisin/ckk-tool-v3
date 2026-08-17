@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { formatDate, formatDateTime, formatTime } from "./format";
+import {
+  formatDate,
+  formatDateTime,
+  formatTime,
+  workOrderNumberLabel,
+} from "./format";
 
 // 表示は JST（Asia/Tokyo）固定 — UTC の ISO を 9 時間進めて表示する。
 describe("format (JST)", () => {
@@ -23,5 +28,32 @@ describe("format (JST)", () => {
     expect(formatDate(null)).toBe("—");
     expect(formatDateTime(undefined)).toBe("—");
     expect(formatDateTime("not-a-date")).toBe("—");
+  });
+});
+
+describe("workOrderNumberLabel", () => {
+  it("作成日 + 通し連番 5 桁で表示する", () => {
+    expect(workOrderNumberLabel(1, "2026-08-13T05:00:00.000Z")).toBe(
+      "20260813-00001",
+    );
+    expect(workOrderNumberLabel(12345, "2026-01-05T00:00:00.000Z")).toBe(
+      "20260105-12345",
+    );
+  });
+
+  it("JST の暦日で採る（UTC 深夜は翌日扱い）", () => {
+    // 2026-08-13T16:00Z = 2026-08-14 01:00 JST
+    expect(workOrderNumberLabel(7, "2026-08-13T16:00:00.000Z")).toBe(
+      "20260814-00007",
+    );
+  });
+
+  it("日付が無ければ従来表記にフォールバック", () => {
+    expect(workOrderNumberLabel(42, null)).toBe("#42");
+    expect(workOrderNumberLabel(42)).toBe("#42");
+  });
+
+  it("番号が無ければダッシュ", () => {
+    expect(workOrderNumberLabel(null, "2026-08-13T05:00:00.000Z")).toBe("—");
   });
 });

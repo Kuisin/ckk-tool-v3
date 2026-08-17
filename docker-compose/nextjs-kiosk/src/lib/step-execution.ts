@@ -259,7 +259,7 @@ export async function startStepExecution(
     tableName: "work_orders",
     recordId: String(stepRow.workOrder.workOrderNumber),
     after: {
-      note: `工程を開始（step ${stepRow.sortOrder}・受入 ${input ?? "—"}）（キオスク）`,
+      note: `工程を開始（step ${stepRow.sortOrder}・受入 ${input ?? "—"}）`,
     },
   });
   return { ok: true };
@@ -304,7 +304,7 @@ export async function pauseStepExecution(
     action: "UPDATE",
     tableName: "work_orders",
     recordId: String(stepRow.workOrder.workOrderNumber),
-    after: { note: `工程を一時停止（step ${stepRow.sortOrder}）（キオスク）` },
+    after: { note: `工程を一時停止（step ${stepRow.sortOrder}）` },
   });
   return { ok: true };
 }
@@ -364,7 +364,7 @@ export async function resumeStepExecution(
     action: "UPDATE",
     tableName: "work_orders",
     recordId: String(stepRow.workOrder.workOrderNumber),
-    after: { note: `工程を再開（step ${stepRow.sortOrder}）（キオスク）` },
+    after: { note: `工程を再開（step ${stepRow.sortOrder}）` },
   });
   return { ok: true };
 }
@@ -543,7 +543,7 @@ export async function completeStepExecution(
     tableName: "work_orders",
     recordId: String(stepRow.workOrder.workOrderNumber),
     after: {
-      note: `工程を完了（良品 ${persisted.outputSuccessQuantity}/${persisted.inputQuantity}）（キオスク）`,
+      note: `工程を完了（良品 ${persisted.outputSuccessQuantity}/${persisted.inputQuantity}）`,
       ...persisted,
     },
   });
