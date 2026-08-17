@@ -38,9 +38,11 @@ import {
   ATTACHMENT_MAX_BYTES,
 } from "@/components/ui/AttachmentsPanel";
 import { SecondaryButton } from "@/components/ui/buttons";
+import { HelpLabel } from "@/components/ui/HelpLabel";
 import { SearchSelect } from "@/components/ui/SearchSelect";
 import { FormSection, FormShell } from "@/components/ui/shells";
 import { UNIT_OPTIONS } from "@/lib/enum-labels";
+import { fieldHelp } from "@/lib/field-help";
 import { zodResolver } from "@/lib/form";
 
 const BASE_PATH = "/purchase/material-receipts";
@@ -216,7 +218,7 @@ export function MaterialReceiptForm({
         <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
           <SearchSelect
             error={form.errors.materialId}
-            label="素材"
+            label={<HelpLabel {...fieldHelp("materialReceipt", "material")} />}
             onChange={(v) => form.setFieldValue("materialId", v ?? "")}
             onSearch={searchMaterialOptions}
             placeholder="素材を検索"
@@ -227,7 +229,7 @@ export function MaterialReceiptForm({
           <Select
             clearable
             data={supplierOptions}
-            label="仕入先"
+            label={<HelpLabel {...fieldHelp("materialReceipt", "supplier")} />}
             placeholder="仕入先を選択（任意）"
             searchable
             {...form.getInputProps("supplierBpId")}
@@ -235,12 +237,14 @@ export function MaterialReceiptForm({
           <Select
             clearable
             data={plantOptions}
-            label="入荷先拠点"
+            label={<HelpLabel {...fieldHelp("materialReceipt", "plant")} />}
             placeholder="拠点を選択（任意）"
             {...form.getInputProps("plantId")}
           />
           <DatePickerInput
-            label="入荷日"
+            label={
+              <HelpLabel {...fieldHelp("materialReceipt", "receivedDate")} />
+            }
             leftSection={<IconCalendar size={14} />}
             valueFormat="YYYY/MM/DD"
             withAsterisk
@@ -248,7 +252,7 @@ export function MaterialReceiptForm({
           />
           <NumberInput
             decimalScale={3}
-            label="数量"
+            label={<HelpLabel {...fieldHelp("materialReceipt", "quantity")} />}
             min={0}
             withAsterisk
             {...form.getInputProps("quantity")}

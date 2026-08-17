@@ -76,6 +76,48 @@ Click a row in the list to open the detail screen for that arrival.
 
 - You can add or delete files later from the 「証憑」 (supporting documents) box.
 
+## Input fields
+
+Every field on the material receipt screen. The **?** next to a field in the app links straight to its description here.
+
+| Field | Required | What to enter |
+|-------|----------|---------------|
+| [Material](#field-material) | Required | The material that arrived |
+| [Supplier](#field-supplier) | Optional | Who delivered it |
+| [Receiving plant](#field-plant) | Required | Where it was received |
+| [Received date](#field-received-date) | Required | The day it arrived |
+| [Quantity](#field-quantity) | Required | How much actually arrived |
+| [Unit](#field-unit) | Required | Pieces, kg and so on |
+| [Notes](#field-notes) | Optional | Anything worth recording, such as damage |
+
+### Material [#field-material]
+
+The material that arrived. When recording against a purchase order, its contents are carried over.
+
+### Supplier [#field-supplier]
+
+Who delivered it. This is filled in automatically when recording against a purchase order; choose it here for a direct purchase.
+
+### Receiving plant [#field-plant]
+
+The plant that actually received it. **Stock increases at this plant**, so choose where the goods arrived.
+
+### Received date [#field-received-date]
+
+The day it arrived. **Stock increases as of this date.** Even if you record it later, enter the day it was actually received.
+
+### Quantity [#field-quantity]
+
+How much actually arrived. **It does not have to match the ordered quantity** — if the delivery is split, record what arrived and enter the rest as a later receipt.
+
+### Unit [#field-unit]
+
+Pieces, kg, m and so on. Choosing the material fills in its default unit.
+
+### Notes [#field-notes]
+
+Anything worth checking later, such as damage or a count that did not match. Delivery notes and other paperwork can be attached as files on this screen.
+
 ## Questions and problems
 
 **Q. Material I ordered has arrived. Do I register it here?**

@@ -35,10 +35,12 @@ import {
   updatePurchaseOrder,
 } from "@/app/(dashboard)/purchase/purchase-orders/actions";
 import { GhostButton } from "@/components/ui/buttons";
+import { HelpLabel } from "@/components/ui/HelpLabel";
 import { SearchSelect } from "@/components/ui/SearchSelect";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { FormSection, FormShell } from "@/components/ui/shells";
 import { UNIT_OPTIONS } from "@/lib/enum-labels";
+import { fieldHelp } from "@/lib/field-help";
 import { zodResolver } from "@/lib/form";
 import { formatMoney } from "@/lib/format";
 import type { PurchaseOrderView } from "./model";
@@ -214,7 +216,7 @@ export function PurchaseOrderForm({
           <Select
             clearable
             data={supplierOptions}
-            label="仕入先"
+            label={<HelpLabel {...fieldHelp("purchaseOrder", "supplier")} />}
             placeholder="仕入先を選択"
             searchable
             withAsterisk
@@ -223,7 +225,7 @@ export function PurchaseOrderForm({
           <DatePickerInput
             clearable
             description="未入力の場合は発注実行時に自動設定されます"
-            label="発注日"
+            label={<HelpLabel {...fieldHelp("purchaseOrder", "orderDate")} />}
             leftSection={<IconCalendar size={14} />}
             placeholder="日付を選択"
             valueFormat="YYYY/MM/DD"
@@ -286,7 +288,9 @@ export function PurchaseOrderForm({
                   <Select
                     clearable
                     data={plantOptions}
-                    label="入荷先拠点"
+                    label={
+                      <HelpLabel {...fieldHelp("purchaseOrder", "plant")} />
+                    }
                     maw={180}
                     placeholder="拠点を選択"
                     {...form.getInputProps(`items.${ri}.plantId`)}
@@ -310,7 +314,9 @@ export function PurchaseOrderForm({
                   <NumberInput
                     decimalScale={2}
                     error={form.errors[`items.${ri}.unitPrice`]}
-                    label="単価"
+                    label={
+                      <HelpLabel {...fieldHelp("purchaseOrder", "unitPrice")} />
+                    }
                     maw={150}
                     min={0}
                     prefix="¥"
@@ -334,7 +340,9 @@ export function PurchaseOrderForm({
             <Group align="flex-end" gap="sm" mt="xs">
               <DatePickerInput
                 clearable
-                label="入荷予定日"
+                label={
+                  <HelpLabel {...fieldHelp("purchaseOrder", "expectedDate")} />
+                }
                 leftSection={<IconCalendar size={14} />}
                 maw={200}
                 placeholder="日付を選択"
