@@ -28,17 +28,28 @@ FROM base AS builder
 WORKDIR /app
 COPY --from=deps /app ./
 COPY packages ./packages
+# Prisma Client はスキーマ（shared-db から同期した prisma/）だけに依存するので
+# アプリソースより前に生成する — ソース変更だけのデプロイではこの層が
+# 丸ごとキャッシュヒットする（計測: 約 5.5 秒/デプロイ）。
+COPY docker-compose/nextjs-web/package.json docker-compose/nextjs-web/prisma.config.ts ./docker-compose/nextjs-web/
+COPY docker-compose/nextjs-web/prisma ./docker-compose/nextjs-web/prisma
+WORKDIR /app/docker-compose/nextjs-web
+RUN pnpm exec prisma generate
+WORKDIR /app
 COPY docker-compose/nextjs-web ./docker-compose/nextjs-web
 WORKDIR /app/docker-compose/nextjs-web
 ENV NEXT_TELEMETRY_DISABLED=1
 ARG NEXT_PUBLIC_APP_VERSION=0.1.0
 ENV NEXT_PUBLIC_APP_VERSION=$NEXT_PUBLIC_APP_VERSION
+# デプロイビルドは型チェックを省く（PR の CI が同じ next build で検証済み）。
+# 0 を渡せば従来どおり型チェックする。詳細は next.config.ts のコメント。
+ARG NEXT_SKIP_TYPE_CHECK=1
+ENV NEXT_SKIP_TYPE_CHECK=$NEXT_SKIP_TYPE_CHECK
 # メモリの少ないビルドホスト用の任意ノブ（バイト値 → next.config.ts の
 # experimental.turbopackMemoryLimit）。未指定なら無効。
 ARG TURBOPACK_MEMORY_LIMIT=
 ENV TURBOPACK_MEMORY_LIMIT=$TURBOPACK_MEMORY_LIMIT
-# Prisma Client from the synced shared-db schema (prisma/schema).
-RUN pnpm exec prisma generate
+# Prisma Client は上（アプリソース COPY の前）で生成済み。
 RUN pnpm build
 
 # --- runtime ----------------------------------------------------------------
