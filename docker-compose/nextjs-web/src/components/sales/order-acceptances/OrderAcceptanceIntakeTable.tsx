@@ -7,9 +7,11 @@
  * 受注請書の取込・承認・展開の進捗を一覧する。
  * Columns: 番号 / 取込元 / ファイル名 / 顧客 / 明細数 / 状態 / エラー / 取込日時。
  *
- * ヘッダー: 「優先取込」FileButton（複数可 — 逐次 POST /api/intake/upload、
- * 抽出は 1 件 約30〜60秒。進捗は persistent notification を更新）+
+ * ヘッダー: 「優先取込」FileButton（複数可 — 逐次 POST /api/intake/upload）+
  * 手入力新規 + 注文請書一覧（/production/sales-orders）へのリンク。
+ * アップロードは保存までで即返り、**抽出はサーバー側の待ち行列**で 1 件ずつ
+ * 走る（GPU が同時に 1 件しか捌けないため）。よってボタンのローディングは
+ * 送信が終われば解除され、抽出を待たずに次のファイルを投げられる。
  * 取込中（IMPORT・未エラー）の行がある間は 30 秒ごとに自動更新する。
  */
 
@@ -45,11 +47,13 @@ import { INTAKE_SOURCE_BADGE, type OrderAcceptanceListRow } from "./model";
 const BASE_PATH = "/sales/order-acceptances";
 const UPLOAD_ACCEPT = ".pdf,.png,.jpg,.jpeg,.webp";
 
-/** アップロード API の応答。 */
+/** アップロード API の応答（保存まで — 抽出はサーバー側の列で走る）。 */
 interface UploadResult {
   ok?: boolean;
   number?: string;
   status?: string;
+  /** 抽出待ちの件数（この 1 件を含む）。 */
+  pending?: number;
   error?: string;
 }
 
@@ -94,7 +98,12 @@ export function OrderAcceptanceIntakeTable({
     return matchesSearch && matchesStatus;
   });
 
-  /** 優先取込 — 選択ファイルを 1 件ずつ抽出（GPU は 1 件ずつ処理）。 */
+  /**
+   * 優先取込 — ファイルを送るところまでを待つ（1 件あたり数百 ms）。
+   * 抽出はサーバー側の待ち行列で 1 件ずつ走る（GPU は同時に 1 件しか捌けない）
+   * ので、**ボタンはアップロードが終わった時点で戻る** — 抽出の完了を待たずに
+   * 続けて次のファイルを投げられる。進捗は一覧の状態（取込中 → 下書き）で見る。
+   */
   const handlePriorityIntake = async (files: File[]) => {
     if (files.length === 0 || uploading) return;
     setUploading(true);
@@ -104,11 +113,12 @@ export function OrderAcceptanceIntakeTable({
       autoClose: false,
       color: "blue",
       loading: true,
-      message: `${files.length} 件を順番に抽出します（1件あたり約30〜60秒）`,
-      title: "優先取込を開始しました",
+      message: `${files.length} 件を送信しています…`,
+      title: "優先取込",
       withCloseButton: false,
     });
     let okCount = 0;
+    let pending = 0;
     const failures: string[] = [];
     for (const [i, file] of files.entries()) {
       notifications.update({
@@ -116,8 +126,8 @@ export function OrderAcceptanceIntakeTable({
         autoClose: false,
         color: "blue",
         loading: true,
-        message: `${i + 1} / ${files.length} 件目: ${file.name} を抽出中…`,
-        title: "優先取込 処理中",
+        message: `${i + 1} / ${files.length} 件目: ${file.name} を送信中…`,
+        title: "優先取込",
         withCloseButton: false,
       });
       try {
@@ -127,16 +137,15 @@ export function OrderAcceptanceIntakeTable({
         const json = (await res
           .json()
           .catch(() => null)) as UploadResult | null;
-        if (res.ok && json?.ok && json.status === "DRAFT") {
+        if (res.ok && json?.ok) {
           okCount += 1;
+          pending = json.pending ?? pending;
         } else {
           failures.push(`${file.name}: ${json?.error ?? "取込に失敗しました"}`);
         }
       } catch {
         failures.push(`${file.name}: 通信エラー`);
       }
-      // 1 件ごとに一覧を更新（IMPORT → DRAFT の進捗を見せる）。
-      router.refresh();
     }
     notifications.update({
       id: nid,
@@ -145,12 +154,14 @@ export function OrderAcceptanceIntakeTable({
       loading: false,
       message:
         failures.length > 0
-          ? `${okCount} 件成功 / 失敗: ${failures.join(" ・ ")}`
-          : `${okCount} 件を取り込みました`,
+          ? `${okCount} 件を受け付けました / 失敗: ${failures.join(" ・ ")}`
+          : `${okCount} 件を受け付けました。抽出はこのあと順番に実行されます` +
+            `${pending > 1 ? `（抽出待ち ${pending} 件）` : ""}`,
       title:
-        failures.length > 0 ? "優先取込 完了（一部失敗）" : "優先取込 完了",
+        failures.length > 0 ? "優先取込 受付（一部失敗）" : "優先取込 受付",
       withCloseButton: true,
     });
+    // ボタンはここで戻る — 抽出の完了は待たない。
     setUploading(false);
     router.refresh();
   };
@@ -322,7 +333,7 @@ export function OrderAcceptanceIntakeTable({
             監視フォルダ取込: {intakeDirConfigured ? "有効" : "未設定"}
           </Badge>
           <Text c="dimmed" size="xs">
-            抽出は1件あたり約30〜60秒。取込中の行がある間は30秒ごとに自動更新します。
+            抽出はバックグラウンドで1件ずつ実行します（1件あたり約1〜3分）。アップロード後すぐ次のファイルを追加できます。取込中の行がある間は30秒ごとに自動更新します。
           </Text>
         </Group>
         <DataTable

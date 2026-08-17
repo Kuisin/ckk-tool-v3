@@ -18,6 +18,14 @@ export async function register() {
   );
   process.on("SIGTERM", () => clearInterval(closingTimer));
 
+  // 抽出待ちのまま落ちた行の拾い直し（優先取込はプロセス内キューで動くため、
+  // コンテナが入れ替わると待機分が消える）。十分に古い行だけを対象にするので、
+  // ローリングデプロイで旧コンテナが処理中の行を横取りしない。
+  const { requeueStuckExtractions } = await import("./lib/intake");
+  requeueStuckExtractions().catch((e) =>
+    console.error("[intake] 未抽出の再投入に失敗", e),
+  );
+
   if (!process.env.INTAKE_DIR) return;
 
   const { scanIntakeFolder } = await import("./lib/intake");

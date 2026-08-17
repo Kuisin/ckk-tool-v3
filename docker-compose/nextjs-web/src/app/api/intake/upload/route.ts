@@ -1,21 +1,24 @@
 /**
  * POST /api/intake/upload — 受注請書の優先取込（multipart: file）。
  *
- * 画面の「優先取込」から 1 ファイルずつ呼ばれ、lib/intake.ingestAndExtract
- * （保存 → IMPORT 行採番 → po-extract 抽出 → 突合 → DRAFT + 明細）を同期
- * 実行する。抽出は 1 件あたり約 30〜60 秒 — クライアントは逐次呼び出す。
- * 応答: { ok: true, number, status, error? }（抽出失敗でも行は作成される —
- * status: "IMPORT" + error）。入力不正は { ok: false, error }（400）。
+ * 画面の「優先取込」から呼ばれ、**保存 + IMPORT 行の採番までを同期実行**して
+ * すぐ返す（数百 ms）。重い抽出（po-extract、1 件 約30〜60秒）は
+ * lib/intake の待ち行列へ積み、バックグラウンドで 1 件ずつ流す —
+ * 利用者はボタンが戻ってすぐ次のファイルを投げられる。
+ *
+ * 応答: { ok: true, number, status: "IMPORT", pending }（pending = 抽出待ち件数）。
+ * 抽出の成否は一覧の状態（IMPORT → DRAFT / 抽出失敗バッジ）で確認する。
+ * 入力不正は { ok: false, error }（400）。
  */
 
 import { revalidatePath } from "next/cache";
 import { NextResponse } from "next/server";
 import { requirePermissionResponse } from "@/lib/authz";
-import { ingestAndExtract } from "@/lib/intake";
+import { ingestAndQueueExtraction } from "@/lib/intake";
 
 export const dynamic = "force-dynamic";
-// 抽出 ~48s/doc + 余裕（po-extract 側タイムアウト 180s に合わせる）。
-export const maxDuration = 300;
+// 保存 + 採番のみなので短い。抽出はレスポンス後のキューで動く。
+export const maxDuration = 60;
 
 /** 受け付ける拡張子 → 保存用 MIME（lib/intake の許可リストと同一）。 */
 const MIME_BY_EXT: Record<string, string> = {
@@ -61,7 +64,7 @@ export async function POST(request: Request): Promise<Response> {
   }
 
   try {
-    const result = await ingestAndExtract({
+    const result = await ingestAndQueueExtraction({
       filename: file.name,
       bytes: Buffer.from(await file.arrayBuffer()),
       contentType,
@@ -71,8 +74,9 @@ export async function POST(request: Request): Promise<Response> {
     return NextResponse.json({
       ok: true,
       number: result.number,
-      status: result.status,
-      ...(result.error ? { error: result.error } : {}),
+      // 抽出はこれから走る — 行はまず IMPORT（取込中）で見える。
+      status: "IMPORT",
+      pending: result.pending,
     });
   } catch (e) {
     console.error("[intake/upload]", e);

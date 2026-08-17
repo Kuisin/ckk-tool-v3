@@ -46,7 +46,7 @@ import {
 } from "@tabler/icons-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { searchCustomerOptions } from "@/app/(dashboard)/_shared/option-search";
 import {
   approveAcceptance,
@@ -161,6 +161,15 @@ export function OrderAcceptanceDetail({
 
   const a = acceptance;
   const sourceDef = INTAKE_SOURCE_BADGE[a.source];
+
+  // 抽出はバックグラウンドの列で走るので、待っている間は定期的に見に行く
+  // （完了しても画面は自分では変わらないため）。一覧と同じ 30 秒間隔。
+  const awaitingExtraction = a.status === "IMPORT" && !a.extractError;
+  useEffect(() => {
+    if (!awaitingExtraction) return;
+    const timer = setInterval(() => router.refresh(), 30_000);
+    return () => clearInterval(timer);
+  }, [awaitingExtraction, router]);
   const fileUrl = a.sourceFilename ? sourceFileUrl(a) : null;
 
   // §2 価格照合（P0-8）— 差異行と明細 id → 照合結果の索引。
@@ -285,7 +294,10 @@ export function OrderAcceptanceDetail({
                   leftSection={<IconRefresh size={14} />}
                   loading={isPending}
                   onClick={() =>
-                    run(() => retryExtraction(a.number), "再抽出しました")
+                    run(
+                      () => retryExtraction(a.number),
+                      "再抽出を受け付けました（順番に実行されます）",
+                    )
                   }
                 >
                   再抽出
@@ -300,7 +312,7 @@ export function OrderAcceptanceDetail({
             title="抽出処理中"
             variant="light"
           >
-            自動抽出を実行中です（1件あたり約30〜60秒）。完了すると下書きになります。
+            自動抽出の順番待ち・実行中です（1件あたり約1〜3分）。完了すると下書きになります。この画面を閉じても処理は続きます。
           </Alert>
         ))}
 

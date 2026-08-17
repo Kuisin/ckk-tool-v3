@@ -3,7 +3,16 @@
  *
  * 入口は 2 つ:
  *  - 監視フォルダ（INTAKE_DIR）: instrumentation.ts のポーラーが定期スキャン
- *  - 画面からの優先取込（UPLOAD）: 同じ ingestAndExtract を即時実行
+ *    → ingestAndExtract（結果を待ってファイルを processed/failed へ動かす）
+ *  - 画面からの優先取込（UPLOAD）: ingestAndQueueExtraction —
+ *    保存 + 採番だけ同期で行い、**抽出は待ち行列へ積んで即返す**
+ *
+ * 抽出は po-extract → ollama へ行く。ollama は OLLAMA_NUM_PARALLEL（ai-stack
+ * では 2）までなら同じ常駐モデルへ並行に流せるので、**空いている枠の分だけ
+ * 並列**に走らせる（lib/task-queue、既定 2 / INTAKE_EXTRACT_CONCURRENCY）。
+ * 両方の入口が同じ列を通るため、上限を超えて GPU を叩くことはない。
+ * キューはプロセス内なので、コンテナが入れ替わると待機分は消える →
+ * 起動時に requeueStuckExtractions() が IMPORT のまま残った行を拾い直す。
  *
  * 流れ: ファイルを SeaweedFS へ保存 + files 行 → order_acceptances を
  * IMPORT で採番作成（ORDER シーケンス — 番号 ORD-YYYYMM-NNNNN）→ po-extract
@@ -22,10 +31,38 @@ import { type NormalizedExtraction, normalizeExtraction } from "./intake-core";
 import { notifyGroup } from "./notifications";
 import { allocateDocumentKey } from "./numbering";
 import { putObject } from "./storage";
+import { createTaskQueue } from "./task-queue";
 
 const PO_EXTRACT_URL = (
   process.env.PO_EXTRACT_URL ?? "http://po-extract:8000"
 ).replace(/\/$/, "");
+
+/**
+ * po-extract を待つ上限（既定 15 分 / PO_EXTRACT_TIMEOUT_MS で変更可）。
+ *
+ * po-extract 側は 1 回のモデル呼び出しに 600 秒を許しており（ai-stack
+ * extractor/app.py の httpx timeout）、しかも 3 段（OCR → Vision → LLM）を
+ * 順に叩く。以前ここは 180 秒で、**サーバーがまだ処理中なのにこちらが
+ * 打ち切って**「The operation was aborted due to timeout」で失敗していた。
+ * 抽出はバックグラウンドの列で動く（利用者を待たせない）ので、上限は
+ * サーバー側の実力に合わせて長く取る。
+ */
+const EXTRACT_TIMEOUT_MS = Number(
+  process.env.PO_EXTRACT_TIMEOUT_MS ?? 15 * 60_000,
+);
+
+/**
+ * 同時に走らせる抽出の数（既定 2 / INTAKE_EXTRACT_CONCURRENCY で変更可）。
+ *
+ * ai-stack の ollama は `OLLAMA_NUM_PARALLEL=2` — 同じ常駐モデルへの並行
+ * リクエストを 2 本まで捌ける。ここを ollama 側より大きくすると、超過分は
+ * ollama のキューで待つだけで速くならず、1 件あたりの待ち時間だけ伸びる。
+ * ollama 側を増やすときは**両方**揃えること。
+ */
+const EXTRACT_CONCURRENCY = Math.max(
+  1,
+  Number(process.env.INTAKE_EXTRACT_CONCURRENCY ?? 2),
+);
 
 const ALLOWED_EXT = new Set([".pdf", ".png", ".jpg", ".jpeg", ".webp"]);
 
@@ -157,7 +194,16 @@ export async function runExtraction(key: {
     const res = await fetch(`${PO_EXTRACT_URL}/extract/order-request`, {
       method: "POST",
       body: form,
-      signal: AbortSignal.timeout(180_000), // 抽出 ~48s/doc + 余裕
+      signal: AbortSignal.timeout(EXTRACT_TIMEOUT_MS),
+    }).catch((e) => {
+      // タイムアウトは原因が分かる文言にする（画面にそのまま出るため）。
+      if (e instanceof Error && e.name === "TimeoutError") {
+        throw new Error(
+          `抽出がタイムアウトしました（${Math.round(EXTRACT_TIMEOUT_MS / 60_000)}分）。` +
+            "ファイルが大きすぎるか、抽出サーバー（po-extract）が応答していません",
+        );
+      }
+      throw e;
     });
     if (!res.ok) throw new Error(`po-extract HTTP ${res.status}`);
     const raw = (await res.json()) as unknown;
@@ -235,7 +281,101 @@ export async function runExtraction(key: {
   }
 }
 
-/** 取込 + 抽出の一括実行（優先取込・フォルダ双方から使う）。 */
+// ─── 抽出キュー（1 件ずつ） ──────────────────────────────────────────────────
+//
+// po-extract は GPU にモデルを常駐させて動くため **同時実行できない**。
+// 画面からのアップロードは保存 + 採番だけで即返し、重い抽出はこの列に積む
+// （フォルダ取込も同じ列を通るので、両方が同時に走ることはない）。
+// プロセス内キューなので、コンテナが落ちると待機分は消える —
+// 起動時に requeueStuckExtractions() が IMPORT のまま残った行を拾い直す。
+
+interface ExtractionKey {
+  yearMonth: string;
+  seq: number;
+}
+
+/**
+ * キーとコールバックは**混ぜない** — ジョブをそのまま Prisma の
+ * `where: { yearMonth_seq: … }` に渡すと settle/fail が紛れ込んで
+ * 「could not serialize [object Function]」で落ちる（実際にやらかした）。
+ */
+interface ExtractionJob {
+  key: ExtractionKey;
+  settle: (result: IngestResult) => void;
+  fail: (error: unknown) => void;
+}
+
+const jobId = (key: ExtractionKey) => `${key.yearMonth}-${key.seq}`;
+
+/** 待機中・実行中の抽出（同じ書類を二重に走らせないための相乗り表）。 */
+const inFlight = new Map<string, Promise<IngestResult>>();
+
+const extractionQueue = createTaskQueue<ExtractionJob>(
+  async (job) => {
+    try {
+      job.settle(await runExtraction(job.key));
+    } catch (error) {
+      job.fail(error);
+    } finally {
+      inFlight.delete(jobId(job.key));
+    }
+  },
+  {
+    concurrency: EXTRACT_CONCURRENCY,
+    onError: (error, job) =>
+      console.error(`[intake] 抽出ジョブが異常終了 ${jobId(job.key)}`, error),
+  },
+);
+
+/**
+ * 抽出を列に積み、その 1 件の結果を待つ Promise を返す。
+ * 同じ書類が既に列にいる場合は**その結果に相乗り**する（二重抽出しない）。
+ */
+function scheduleExtraction(key: ExtractionKey): Promise<IngestResult> {
+  const id = jobId(key);
+  const existing = inFlight.get(id);
+  if (existing) return existing;
+  let settle!: (result: IngestResult) => void;
+  let fail!: (error: unknown) => void;
+  const promise = new Promise<IngestResult>((resolve, reject) => {
+    settle = resolve;
+    fail = reject;
+  });
+  inFlight.set(id, promise);
+  extractionQueue.push({
+    key: { yearMonth: key.yearMonth, seq: key.seq },
+    settle,
+    fail,
+  });
+  return promise;
+}
+
+/** 抽出を待ち行列に積む（即戻る）。待機件数を返す。 */
+export function enqueueExtraction(key: ExtractionKey): number {
+  void scheduleExtraction(key).catch((e) =>
+    console.error(`[intake] 抽出に失敗 ${jobId(key)}`, e),
+  );
+  return extractionQueue.size();
+}
+
+/** 抽出待ち + 実行中の状況（画面の案内文用）。 */
+export function extractionQueueStatus(): {
+  pending: number;
+  active: number;
+  concurrency: number;
+} {
+  return {
+    pending: extractionQueue.size(),
+    active: extractionQueue.activeCount(),
+    concurrency: EXTRACT_CONCURRENCY,
+  };
+}
+
+/**
+ * 取込 + 抽出の一括実行（監視フォルダ用 — 抽出の完了まで待つ）。
+ * フォルダ側は結果を見てファイルを processed/failed へ動かすため同期が必要。
+ * 抽出自体はアップロードと同じ列を通るので、同時実行にはならない。
+ */
 export async function ingestAndExtract(input: {
   filename: string;
   bytes: Buffer;
@@ -243,7 +383,67 @@ export async function ingestAndExtract(input: {
   source: "FOLDER" | "UPLOAD";
 }): Promise<IngestResult> {
   const { yearMonth, seq } = await ingestFile(input);
-  return runExtraction({ yearMonth, seq });
+  return runExtractionSerialized({ yearMonth, seq });
+}
+
+/**
+ * 取込のみ即時実行し、抽出は待ち行列へ（画面の優先取込用）。
+ * 応答は数百 ms — 利用者は続けて次のファイルを投げられる。
+ */
+export async function ingestAndQueueExtraction(input: {
+  filename: string;
+  bytes: Buffer;
+  contentType: string;
+  source: "FOLDER" | "UPLOAD";
+}): Promise<{
+  yearMonth: string;
+  seq: number;
+  number: string;
+  pending: number;
+}> {
+  const { yearMonth, seq } = await ingestFile(input);
+  const pending = enqueueExtraction({ yearMonth, seq });
+  return {
+    yearMonth,
+    seq,
+    number: `ORD-${yearMonth}-${String(seq).padStart(5, "0")}`,
+    pending,
+  };
+}
+
+/** 列を通して抽出し、その 1 件の結果を待つ（フォルダ取込・画面の再実行から使う）。 */
+export function runExtractionSerialized(
+  key: ExtractionKey,
+): Promise<IngestResult> {
+  return scheduleExtraction(key);
+}
+
+/**
+ * 起動時の拾い直し — IMPORT のままエラーも無い行（＝抽出前にプロセスが落ちた）を
+ * 列へ積み直す。監視フォルダの孤児 .processing 回収と同じ考え方。
+ * ローリングデプロイで一瞬 2 コンテナが並ぶため、**十分に古い行だけ**を対象に
+ * する（新コンテナが、旧コンテナで抽出中の行を横取りしないように）。
+ */
+export async function requeueStuckExtractions(): Promise<number> {
+  const STUCK_MS = 10 * 60_000;
+  const rows = await prisma.orderAcceptance.findMany({
+    where: {
+      status: "IMPORT",
+      extractError: null,
+      sourceFileId: { not: null },
+      createdAt: { lt: new Date(Date.now() - STUCK_MS) },
+    },
+    select: { yearMonth: true, seq: true },
+    orderBy: [{ yearMonth: "asc" }, { seq: "asc" }],
+    take: 20,
+  });
+  for (const row of rows) {
+    enqueueExtraction({ yearMonth: row.yearMonth, seq: row.seq });
+  }
+  if (rows.length > 0) {
+    console.warn(`[intake] 未抽出の ${rows.length} 件を再投入しました`);
+  }
+  return rows.length;
 }
 
 // ─── 監視フォルダ ────────────────────────────────────────────────────────────
