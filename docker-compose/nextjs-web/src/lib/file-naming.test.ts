@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { sanitizeFileName, systematicFileName } from "./file-naming";
+import {
+  avatarStorageKey,
+  sanitizeFileName,
+  systematicFileName,
+} from "./file-naming";
 
 describe("sanitizeFileName", () => {
   it("drops path segments", () => {
@@ -41,5 +45,41 @@ describe("systematicFileName", () => {
     );
     // 同一秒内でも乱数 4 桁で衝突確率は無視できる（50 件で重複なしを確認）
     expect(names.size).toBe(50);
+  });
+});
+
+describe("avatarStorageKey", () => {
+  const uid = "645bffad-83ca-4444-94fd-af1d8b0529c9";
+  const at = 1_755_400_000_000;
+
+  it("[userid]-large-[timestamp] / -small- で保存する", () => {
+    expect(avatarStorageKey(uid, "large", "image/jpeg", at)).toBe(
+      `avatars/${uid}-large-${at}.jpg`,
+    );
+    expect(avatarStorageKey(uid, "small", "image/jpeg", at)).toBe(
+      `avatars/${uid}-small-${at}.jpg`,
+    );
+  });
+
+  it("拡張子は保存 MIME に合わせる", () => {
+    expect(avatarStorageKey(uid, "large", "image/png", at)).toBe(
+      `avatars/${uid}-large-${at}.png`,
+    );
+    expect(avatarStorageKey(uid, "small", "image/webp", at)).toBe(
+      `avatars/${uid}-small-${at}.webp`,
+    );
+  });
+
+  it("差し替えのたびにキーが変わる（キャッシュを踏まない）", () => {
+    const a = avatarStorageKey(uid, "large", "image/jpeg", at);
+    const b = avatarStorageKey(uid, "large", "image/jpeg", at + 1);
+    expect(a).not.toBe(b);
+  });
+
+  it("ユーザーごとに分かれる", () => {
+    const other = "230963cc-be72-4991-a75f-662baa9da977";
+    expect(avatarStorageKey(other, "large", "image/jpeg", at)).not.toBe(
+      avatarStorageKey(uid, "large", "image/jpeg", at),
+    );
   });
 });

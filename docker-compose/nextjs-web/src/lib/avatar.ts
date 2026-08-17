@@ -20,7 +20,7 @@ import "server-only";
 
 import { recordAudit } from "@/lib/audit";
 import { prisma } from "@/lib/db";
-import { systematicFileName } from "@/lib/file-naming";
+import { avatarStorageKey } from "@/lib/file-naming";
 import { imageSize } from "@/lib/image-size";
 import {
   type ActionResult,
@@ -139,8 +139,15 @@ export async function saveAvatar(
     });
     if (!before) return actionError("ユーザーが見つかりません");
 
-    const fullKey = `avatars/${systematicFileName(full.filename)}`;
-    const thumbKey = `avatars/${systematicFileName(thumb.filename, "thumb")}`;
+    // 同一リクエストの 2 枚は同じ timestamp を共有する（対で追いやすい）。
+    const stamp = Date.now();
+    const fullKey = avatarStorageKey(userId, "large", full.contentType, stamp);
+    const thumbKey = avatarStorageKey(
+      userId,
+      "small",
+      thumb.contentType,
+      stamp,
+    );
     const stored = await Promise.all([
       putObject(fullKey, full.bytes, full.contentType),
       putObject(thumbKey, thumb.bytes, thumb.contentType),
@@ -189,8 +196,11 @@ export async function saveAvatar(
       throw e;
     }
 
-    await discardFile(before.avatarFile);
-    await discardFile(before.avatarThumbFile);
+    // 新旧が同じキー（同ミリ秒の差し替え）なら実体は消さない — 消すと
+    // いま保存したばかりのオブジェクトが消えるため。
+    const newKeys = new Set([fullKey, thumbKey]);
+    await discardFile(before.avatarFile, newKeys);
+    await discardFile(before.avatarThumbFile, newKeys);
     await recordAudit({
       action: "UPDATE",
       tableName: "users",
@@ -221,6 +231,7 @@ export async function removeAvatar(userId: string): Promise<ActionResult> {
       where: { id: userId },
       data: { avatarFileId: null, avatarThumbFileId: null },
     });
+    // 削除では実体も確実に消す。
     await discardFile(before.avatarFile);
     await discardFile(before.avatarThumbFile);
     await recordAudit({
@@ -235,14 +246,20 @@ export async function removeAvatar(userId: string): Promise<ActionResult> {
   }
 }
 
-/** 旧写真の files 行 + 実体を掃除（他参照が残るなら温存）。 */
+/**
+ * 旧写真の files 行 + 実体を掃除（他参照が残るなら温存）。
+ * `keepKeys` に含まれるキーは実体を消さない（新しい写真と同じキーのとき）。
+ */
 async function discardFile(
   file: { id: string; storageKey: string } | null,
+  keepKeys: ReadonlySet<string> = new Set(),
 ): Promise<void> {
   if (!file) return;
   const deleted = await prisma.file
     .delete({ where: { id: file.id } })
     .then(() => true)
     .catch(() => false);
-  if (deleted) await deleteObject(file.storageKey);
+  if (deleted && !keepKeys.has(file.storageKey)) {
+    await deleteObject(file.storageKey);
+  }
 }
