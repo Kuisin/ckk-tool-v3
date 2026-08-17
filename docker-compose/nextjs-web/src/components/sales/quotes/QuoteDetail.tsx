@@ -36,6 +36,7 @@ import {
 } from "@/components/ui/shells";
 import { useTabParam } from "@/hooks/useUrlState";
 import type { MemoView } from "@/lib/document-memos";
+import { downloadFile } from "@/lib/download";
 import { formatDate, formatDateTime } from "@/lib/format";
 import { ORDER_TYPE_LABEL } from "@/lib/mock";
 import { entrySummary, type PriceListEntry } from "../price-lists/model";
@@ -51,11 +52,14 @@ const BASE_PATH = "/sales/quotes";
 
 export function QuoteDetail({
   quote,
+  pdfMeta,
   relatedEntries,
   auditEntries,
   memos,
 }: {
   quote: Quote;
+  /** 保管済み PDF のメタ（SeaweedFS 由来。未生成なら null）。 */
+  pdfMeta: PdfFileMeta | null;
   /** この見積の明細 tier が属する価格表エントリ（関連タブ・適用価格表）。 */
   relatedEntries: PriceListEntry[];
   /** 操作履歴（audit_logs 由来、履歴タブ）。 */
@@ -69,7 +73,10 @@ export function QuoteDetail({
   const totals = quoteTotals(quote);
 
   const status = quote.status;
-  const [pdfFile, setPdfFile] = useState<PdfFileMeta | null>(quote.pdfFile);
+  // PDF は発行後のみ閲覧できる（ルート側も 403 で拒否する）。
+  const canViewPdf = status !== "DRAFT";
+  const pdfFilename = `${quote.quoteNumber}.pdf`;
+  const [pdfFile, setPdfFile] = useState<PdfFileMeta | null>(pdfMeta);
   const [issueOpen, setIssueOpen] = useState(false);
   // Bumped on 再生成 so the preview iframe reloads the regenerated PDF.
   const [pdfNonce, setPdfNonce] = useState(0);
@@ -82,7 +89,10 @@ export function QuoteDetail({
       const res = await fetch(pdfUrl("&force=1"));
       if (!res.ok) throw new Error(`PDF route ${res.status}`);
       const blob = await res.blob();
-      setPdfFile((prev) => (prev ? { ...prev, sizeBytes: blob.size } : prev));
+      setPdfFile({
+        sizeBytes: blob.size,
+        generatedAt: new Date().toISOString(),
+      });
       setPdfNonce((n) => n + 1);
       notifications.show({
         title: "再生成しました",
@@ -112,16 +122,17 @@ export function QuoteDetail({
                   },
                 ]
               : []),
-            {
-              label: "PDFをダウンロード",
-              icon: <IconDownload size={14} />,
-              onClick: () =>
-                window.open(
-                  pdfUrl("&download=1"),
-                  "_blank",
-                  "noopener,noreferrer",
-                ),
-            },
+            // PDF は発行後のみ（未発行はルートも 403）。
+            ...(canViewPdf
+              ? [
+                  {
+                    label: "PDFをダウンロード",
+                    icon: <IconDownload size={14} />,
+                    onClick: () =>
+                      void downloadFile(pdfUrl("&download=1"), pdfFilename),
+                  },
+                ]
+              : []),
             {
               label: "複製",
               icon: <IconCopy size={14} />,
@@ -130,7 +141,7 @@ export function QuoteDetail({
             },
           ]}
           onEdit={() => router.push(`${BASE_PATH}/${quote.id}/edit`)}
-          pdf={{ href: pdfUrl() }}
+          pdf={canViewPdf ? { href: pdfUrl() } : undefined}
         />
       }
       breadcrumbs={["販売", { label: "見積書", href: BASE_PATH }, "詳細"]}
@@ -281,6 +292,7 @@ export function QuoteDetail({
 
         <Tabs.Panel pt="md" value="pdf">
           <PdfAttachmentPanel
+            downloadHref={pdfUrl("&download=1")}
             emptyAction={
               status === "DRAFT" ? (
                 <PrimaryButton
@@ -291,17 +303,11 @@ export function QuoteDetail({
                 </PrimaryButton>
               ) : undefined
             }
-            emptyMessage="PDF は未生成です。発行すると PDF が生成・保存されます。"
+            emptyMessage="発行後に PDF を閲覧できます。"
             file={pdfFile}
-            onDownload={() =>
-              window.open(
-                pdfUrl("&download=1"),
-                "_blank",
-                "noopener,noreferrer",
-              )
-            }
+            filename={pdfFilename}
             onRegenerate={regenerate}
-            previewSrc={pdfUrl(`&v=${pdfNonce}`)}
+            previewSrc={canViewPdf ? pdfUrl(`&v=${pdfNonce}`) : undefined}
           />
         </Tabs.Panel>
 
@@ -397,19 +403,22 @@ export function QuoteDetail({
       <IssueQuoteModal
         defaultValidUntil={quote.validUntil}
         onClose={() => setIssueOpen(false)}
-        onIssued={async (meta, validUntil) => {
+        // 発行 → 成功後に PDF 生成（PDF ルートは未発行を 403 で拒否する）。
+        onIssue={async (validUntil) => {
           const result = await issueQuote(quote.quoteNumber, validUntil);
-          if (result.ok) {
-            setPdfFile(meta);
-            setPdfNonce((n) => n + 1);
-            router.refresh();
-          } else {
+          if (!result.ok) {
             notifications.show({
               title: "エラー",
               message: result.error,
               color: "red",
             });
           }
+          return result.ok;
+        }}
+        onIssued={(meta) => {
+          setPdfFile(meta);
+          setPdfNonce((n) => n + 1);
+          router.refresh();
         }}
         opened={issueOpen}
         quoteId={quote.id}

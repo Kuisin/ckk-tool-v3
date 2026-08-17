@@ -4,6 +4,7 @@ import { fetchAuditEntries } from "@/lib/audit";
 import { requireAppRead } from "@/lib/authz-page";
 import { formatDocNumber, parseDocKey } from "@/lib/doc-number";
 import { listMemos } from "@/lib/document-memos";
+import { isIssued, pdfStorageKey, storedPdfMeta } from "@/lib/document-pdf";
 import { fetchInvoice } from "../data";
 
 export const dynamic = "force-dynamic";
@@ -37,11 +38,17 @@ export default async function BillingInvoicesDetailPage({
   ]);
   if (!invoice) notFound();
 
+  // 保管済み PDF のメタ（発行済みのみ。未生成なら null → 初回表示時に生成）。
+  const pdfMeta = isIssued(invoice.status)
+    ? await storedPdfMeta(pdfStorageKey.invoice(invoice.invoiceNumber))
+    : null;
+
   return (
     <InvoiceDetail
       auditEntries={auditEntries}
       invoice={invoice}
       memos={memos}
+      pdfMeta={pdfMeta}
     />
   );
 }

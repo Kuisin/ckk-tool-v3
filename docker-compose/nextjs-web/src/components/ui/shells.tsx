@@ -60,6 +60,11 @@ export interface MenuItemDef {
   icon?: ReactNode;
   color?: string;
   onClick?: () => void;
+  /**
+   * リンクとして開く項目（PDF 等）。`window.open` ではなく実アンカーを描画する
+   * ので、ホーム画面に追加した PWA（standalone）でもアプリ内ブラウザで開く。
+   */
+  href?: string;
   divider?: boolean;
 }
 
@@ -95,13 +100,27 @@ export function ResourceActions({
           {extra.map((m, i) => (
             <Box key={m.label}>
               {m.divider && i > 0 && <Menu.Divider />}
-              <Menu.Item
-                color={m.color}
-                leftSection={m.icon}
-                onClick={m.onClick}
-              >
-                {m.label}
-              </Menu.Item>
+              {m.href ? (
+                // 実アンカー + target="_blank" — PWA でもアプリ内ブラウザで開く。
+                <Menu.Item
+                  color={m.color}
+                  component="a"
+                  href={m.href}
+                  leftSection={m.icon}
+                  rel="noopener noreferrer"
+                  target="_blank"
+                >
+                  {m.label}
+                </Menu.Item>
+              ) : (
+                <Menu.Item
+                  color={m.color}
+                  leftSection={m.icon}
+                  onClick={m.onClick}
+                >
+                  {m.label}
+                </Menu.Item>
+              )}
             </Box>
           ))}
         </Menu.Dropdown>
@@ -118,11 +137,10 @@ export function ResourceActions({
             {
               label: pdf.label ?? "PDF",
               icon: <IconFileTypePdf size={14} />,
-              // Mobile has no inline button — open the PDF href in a new tab,
-              // or fall back to the provided onClick.
-              onClick: pdf.href
-                ? () => window.open(pdf.href, "_blank", "noopener,noreferrer")
-                : pdf.onClick,
+              // モバイルにはインラインボタンが無いので、メニュー項目を別タブ
+              // リンクとして描画する（PWA ではアプリ内ブラウザで開く）。
+              href: pdf.href,
+              onClick: pdf.href ? undefined : pdf.onClick,
             },
           ]
         : []),

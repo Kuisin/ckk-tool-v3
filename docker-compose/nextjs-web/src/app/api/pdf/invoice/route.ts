@@ -15,6 +15,7 @@ import { fetchInvoice } from "@/app/(dashboard)/billing/invoices/data";
 import { taxLabel } from "@/components/billing/invoices/model";
 import { requirePermissionResponse } from "@/lib/authz";
 import { parseDocKey } from "@/lib/doc-number";
+import { isIssued, notIssuedResponse, pdfStorageKey } from "@/lib/document-pdf";
 import { formatDate } from "@/lib/format";
 import { renderPdf } from "@/lib/pdf";
 import { getObject, putObject } from "@/lib/storage";
@@ -57,8 +58,10 @@ export async function GET(request: Request): Promise<Response> {
   if (!invoice) {
     return new Response(`Invoice not found: ${id}`, { status: 404 });
   }
+  // 閲覧は発行後のみ（下書きの請求書は PDF を出さない）。
+  if (!isIssued(invoice.status)) return notIssuedResponse("請求書");
 
-  const storageKey = `pdfs/invoices/${invoice.invoiceNumber}.pdf`;
+  const storageKey = pdfStorageKey.invoice(invoice.invoiceNumber);
 
   // Serve the stored copy if it exists (SeaweedFS), else generate + store.
   // `force=1` regenerates and overwrites the stored copy.

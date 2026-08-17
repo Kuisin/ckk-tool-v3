@@ -54,10 +54,20 @@ export function maskCardId(id: string): string {
   return `****-****-${formatCode(id.slice(8))}`;
 }
 
-/** 印刷 PDF を新規タブで開く（ブラウザの PDF ビューアから印刷/保存）。 */
+/**
+ * 印刷 PDF を新規タブで開く（ブラウザの PDF ビューアから印刷/保存）。
+ * `window.open` ではなく実アンカーをクリックする — ホーム画面に追加した PWA
+ * （standalone）でもアプリ内ブラウザで開けるようにするため。
+ */
 export function openPrintSheet(ids: string[]) {
   const url = `${PRINT_PDF_PATH}?ids=${encodeURIComponent(ids.join(","))}`;
-  window.open(url, "_blank", "noopener,noreferrer");
+  const a = document.createElement("a");
+  a.href = url;
+  a.target = "_blank";
+  a.rel = "noopener noreferrer";
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
 }
 
 // ── 有効期間（テンポラリカード） ─────────────────────────────────────────────

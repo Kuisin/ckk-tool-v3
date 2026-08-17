@@ -4,6 +4,7 @@ import { fetchAuditEntries } from "@/lib/audit";
 import { requireAppRead } from "@/lib/authz-page";
 import { formatQuoteNumber, parseDocKey } from "@/lib/doc-number";
 import { listMemos } from "@/lib/document-memos";
+import { isIssued, pdfStorageKey, storedPdfMeta } from "@/lib/document-pdf";
 import { fetchEntriesForQuote, fetchQuote } from "../data";
 
 export const dynamic = "force-dynamic";
@@ -38,10 +39,16 @@ export default async function SalesQuotesDetailPage({
   ]);
   if (!quote) notFound();
 
+  // 保管済み PDF のメタ（発行済みのみ。未生成なら null → 初回表示時に生成）。
+  const pdfMeta = isIssued(quote.status)
+    ? await storedPdfMeta(pdfStorageKey.quote(quote.quoteNumber))
+    : null;
+
   return (
     <QuoteDetail
       auditEntries={auditEntries}
       memos={memos}
+      pdfMeta={pdfMeta}
       quote={quote}
       relatedEntries={relatedEntries}
     />

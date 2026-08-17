@@ -108,7 +108,6 @@ describe("quoteTotals — 小計 / 消費税10% / 合計", () => {
     validUntil: null,
     notes: null,
     items,
-    pdfFile: null,
     createdBy: "t",
     createdAt: "2026-01-01 00:00",
     updatedAt: "2026-01-01 00:00",
