@@ -43,3 +43,25 @@ export function systematicFileName(original: string, label?: string): string {
   const safeLabel = label ? `${sanitizeFileName(label)}_` : "";
   return `${timestamp()}_${rand4()}_${safeLabel}${sanitizeFileName(original)}`;
 }
+
+/**
+ * 保存キー `avatars/{userId}-{large|small}-{epoch ms}.{ext}`。
+ *
+ * 誰の・どちらのサイズ・いつのものかがキーだけで分かる形にしている
+ * （SY06 のファイル一覧で人が読んで判別できる）。timestamp はミリ秒 —
+ * 同一ユーザーが同じ秒に差し替えても衝突しない。
+ */
+export function avatarStorageKey(
+  userId: string,
+  variant: "large" | "small",
+  contentType: string,
+  at: number = Date.now(),
+): string {
+  const ext =
+    contentType === "image/png"
+      ? "png"
+      : contentType === "image/webp"
+        ? "webp"
+        : "jpg";
+  return `avatars/${userId}-${variant}-${at}.${ext}`;
+}

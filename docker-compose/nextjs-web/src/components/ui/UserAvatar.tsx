@@ -12,8 +12,14 @@
 
 import { Avatar, type AvatarProps } from "@mantine/core";
 
-/** これ以下の表示サイズならサムネイルで十分（px）。 */
-const THUMB_THRESHOLD_PX = 64;
+/**
+ * これ以下の表示サイズなら小サイズ（96px）で十分（px）。
+ *
+ * 96 / 2 = 48 — 2x ディスプレイでも等倍以上になる境界。一覧・ヘッダー・
+ * 履歴・コメントのアイコン（18〜32px）は全て小を読み、プロフィールや
+ * ホームの大きいアバター（64・72px）だけ大を読む。
+ */
+const THUMB_THRESHOLD_PX = 48;
 
 /** Mantine のサイズトークン → おおよその実サイズ px。 */
 const TOKEN_PX: Record<string, number> = {
