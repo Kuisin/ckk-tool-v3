@@ -1,5 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<svg id="Layer_1" data-name="Layer 1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 600">
+<!-- ブラウザタブ用ファビコン。viewBox はロゴの実描画領域（getBBox: x23.11
+     y46.66 w553.78 h506.71）を正方形に切り出したもの — 元の 0 0 600 600 では
+     周囲に余白があり 16px のタブで小さく見えるため、余白ゼロまで寄せている。
+     ロゴは横長（1.093:1）なので横は 100%、縦は 91.5% で中央配置になる。 -->
+<svg id="Layer_1" data-name="Layer 1" xmlns="http://www.w3.org/2000/svg" viewBox="23.11 23.12 553.78 553.78">
   <defs>
     <style>
       .cls-1 {
