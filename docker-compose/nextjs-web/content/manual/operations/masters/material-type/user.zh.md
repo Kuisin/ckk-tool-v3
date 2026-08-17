@@ -116,6 +116,48 @@ screenshots: [master-material-type-list-01, master-material-type-new-01, master-
 
 设为无效后，登记新材料时就无法再选择它，但是 **过去的数据会原样保留**。
 
+## 输入项
+
+材种登记画面的输入项一览。材种编码由下列 4 项选择**自动组合而成**。
+
+| 项目 | 必填 | 填什么 |
+|------|------|--------|
+| [厂商](#field-manufacturer) | 必填 | 材料的厂商 |
+| [厂商材种](#field-grade) | 必填 | 该厂商内的材质 |
+| [形状](#field-shape) | 必填 | 通常・OH・圆筒 等 |
+| [种类（自动采番）](#field-kind) | 自动 | 上述 3 项组合内的流水号 |
+| [名称](#field-name) | 必填 | 材种的名称 |
+| [说明（日文 / English）](#field-description) | 选填 | 补充说明 |
+| [有效](#field-active) | — | 是否出现在选项中 |
+
+### 厂商 [#field-manufacturer]
+
+材料的厂商。选项在[采番构成](/manual/zh/operations/masters/material-numbering/user)中登记。
+
+### 厂商材种 [#field-grade]
+
+该厂商内的材质。选择厂商后仅显示该厂商的材质。
+
+### 形状 [#field-shape]
+
+通常・OH・圆筒等形状。
+
+### 种类（自动采番）[#field-kind]
+
+厂商・材质・形状组合内的流水号。**由系统自动决定。**
+
+### 名称 [#field-name]
+
+材种的名称，会显示在材料与产品画面。
+
+### 说明（日文 / English）[#field-description]
+
+补充说明。填写两种语言后，英文显示时也可阅读。
+
+### 有效 [#field-active]
+
+取消后，材料与产品的材种选项中将不再显示。
+
 ## 常见问题与故障处理
 
 **Q.「メーカー材種」（厂商材种）栏是灰色的，无法选择。**

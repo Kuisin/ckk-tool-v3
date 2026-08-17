@@ -98,6 +98,38 @@ When it is done, the newest attached file at that moment is **registered as a ve
 
 If a correction is needed after it is done, press「**差し戻し**」(send back) from「**…**」, then press「**差し戻す**」(send back). The status returns to 進行中 (in progress), and you can edit it and add files again. The completion date is cleared.
 
+## Input fields
+
+Every field on the design request screen. The **?** next to a field in the app links straight to its description here.
+
+| Field | Required | What to enter |
+|-------|----------|---------------|
+| [Trigger](#field-trigger) | Required | Raised at quoting time or after the order |
+| [Quote](#field-quote) | Conditional | The quote it relates to, when raised at quoting time |
+| [Sales order](#field-sales-order) | Conditional | The sales order it relates to, when raised after the order |
+| [Product](#field-product) | Optional | The product the drawing is for |
+| [Request details](#field-description) | Required | What needs to be designed |
+
+### Trigger [#field-trigger]
+
+Whether the request is **for a quote** or **for a confirmed order**. Which one you choose decides whether you then link a quote or a sales order.
+
+### Quote [#field-quote]
+
+Chosen when the trigger is quoting time. Recording which quote the design is for makes the history easy to follow later.
+
+### Sales order [#field-sales-order]
+
+Chosen when the trigger is after the order, recording which order the design is for.
+
+### Product [#field-product]
+
+The product the drawing is for. **It can be left empty for a new product that is not registered yet** — you can link it once the product exists.
+
+### Request details [#field-description]
+
+What needs to be designed. **The manufacturing side works from this text alone**, so be specific: dimensions, shape, any existing item to work from, and anything to watch out for.
+
 ## Questions and problems
 
 **Q. It says「設計ファイルを添付してから完了してください」(please attach a design file before finishing) and I cannot finish.**

@@ -113,6 +113,48 @@ Once you register a drawing of a floor of the site, you can place marks on it fo
 
 Registering and swapping drawings is done only in this app. On the [storage location (保管場所)](/manual/en/operations/masters/storage-location/user) screen you can only place marks on this drawing.
 
+## Input fields
+
+Every field on the plant screen.
+
+| Field | Required | What to enter |
+|-------|----------|---------------|
+| [Plant code](#field-code) | Required | The plant's reference code |
+| [Name / kana](#field-name) | Required | The plant name |
+| [Country / region](#field-region) | Optional | Used to scope permissions |
+| [Postcode / address](#field-address) | Optional | Location |
+| [Phone / email / contact](#field-contact) | Optional | Contact details |
+| [Active](#field-active) | — | Whether it appears in pick lists |
+| [Notes](#field-notes) | Optional | Notes |
+
+### Plant code [#field-code]
+
+The plant's reference code, used on stock and shipping screens.
+
+### Name / kana [#field-name]
+
+The plant name — the "where" on stock, receipts and shipments.
+
+### Country / region [#field-region]
+
+Country and region. **Region is the unit used to scope a user's permission to "plants in this region only".**
+
+### Postcode / address [#field-address]
+
+The location, used on documents.
+
+### Phone / email / contact [#field-contact]
+
+Contact details.
+
+### Active [#field-active]
+
+Turning it off removes the plant from receiving and shipping pick lists.
+
+### Notes [#field-notes]
+
+Notes.
+
 ## Questions and problems
 
 **Q. The storage location screen shows 「この拠点にはフロアマップがありません」 (this site has no floor map).**

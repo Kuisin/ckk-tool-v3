@@ -220,6 +220,149 @@ When you have re-registered many companies, you can switch them together.
 
 > ⚠️ 「**一括削除**」 (Bulk delete) cannot be undone. Normally please use 「一括無効化」 (Bulk deactivate).
 
+## Input fields
+
+A business partner has **fields common to every company** and **fields that appear only once you give it a role** (customer, supplier or outsourcer, end user).
+
+### Common fields
+
+| Field | Required | What to enter |
+|-------|----------|---------------|
+| [BP code](#field-bp-code) | Automatic | The partner's number |
+| [Name](#field-name) | Required | The company name |
+| [Kana / short name](#field-name-kana) | Optional | For searching and for narrow screens |
+| [Country](#field-country) | Optional | The partner's country |
+| [Corporate number](#field-tax-number) | Optional | Corporate or tax number |
+| [AI matching names](#field-match-names) | Optional | Other spellings used on documents |
+| [Postal code / address](#field-address) | Optional | Where they are |
+| [Phone / fax / email / website](#field-contact) | Optional | Contact details |
+| [Active](#field-active) | — | Whether it appears in pick lists |
+| [Notes](#field-notes) | Optional | Notes |
+
+### BP code [#field-bp-code]
+
+The partner's number, assigned automatically.
+
+### Name [#field-name]
+
+The company name. **It appears on documents exactly as written**, so use the formal name.
+
+### Kana / short name [#field-name-kana]
+
+Kana is used when searching by name. A short name is for showing it briefly where space is tight, such as lists.
+
+### Country [#field-country]
+
+The partner's country.
+
+### Corporate number [#field-tax-number]
+
+A corporate or tax identification number.
+
+### AI matching names [#field-match-names]
+
+Other spellings that should be **recognised as the same company** when a received document is read automatically. Listing former names and different ways of writing the company suffix makes intake less likely to pick the wrong company.
+
+### Postal code / address [#field-address]
+
+Where they are. It appears on delivery notes and invoices.
+
+### Phone / fax / email / website [#field-contact]
+
+Company-level contact details. Details for individual people are registered separately as contacts.
+
+### Active [#field-active]
+
+Turning it off means the company **can no longer be picked** on quotes, purchase orders and so on. Documents already made for it stay. Turn this off rather than deleting a company you stopped working with.
+
+### Notes [#field-notes]
+
+Notes.
+
+---
+
+### Fields for the customer role
+
+| Field | Required | What to enter |
+|-------|----------|---------------|
+| [Billing partner (if different)](#field-billing-bp) | Optional | When invoices go to another company |
+| [Closing day / payment terms / payment day](#field-payment-terms) | Optional | The payment agreement |
+| [Credit limit](#field-credit-limit) | Optional | How much may be on account |
+| [Tax treatment](#field-tax-type) | Optional | How tax is handled |
+| [Invoice delivery method](#field-invoice-method) | Optional | How invoices reach them |
+| [Consignment](#field-consignment) | — | Whether consignment applies |
+
+### Billing partner (if different) [#field-billing-bp]
+
+Set it when invoices go to a different company. Empty means the company itself.
+
+### Closing day / payment terms / payment day [#field-payment-terms]
+
+The payment agreement. **The closing run works from the closing day set here**, and the terms and payment day decide the invoice due date.
+
+### Credit limit [#field-credit-limit]
+
+A guide to how much may be outstanding on account.
+
+### Tax treatment [#field-tax-type]
+
+How consumption tax is handled; used when calculating invoices.
+
+### Invoice delivery method [#field-invoice-method]
+
+Whether invoices go by email, fax, post or portal.
+
+### Consignment [#field-consignment]
+
+Whether consignment selling applies.
+
+---
+
+### Fields for the supplier / outsourcer role
+
+| Field | Required | What to enter |
+|-------|----------|---------------|
+| [Vendor type](#field-vendor-type) | Required | Buying materials or sending out work |
+| [Standard lead time (days)](#field-lead-time) | Optional | How long work usually takes |
+| [Closing day / payment terms / payment day](#field-vendor-payment) | Optional | The payment agreement |
+| [Bank / branch / account type / number](#field-bank) | Optional | Where to pay |
+
+### Vendor type [#field-vendor-type]
+
+Whether they are a **supplier** (you buy materials from them) or an **outsourcer** (you send part of a process to them). The company appears only on the corresponding screens.
+
+### Standard lead time (days) [#field-lead-time]
+
+Roughly how long between sending work out and getting it back; used as a guide for the expected date.
+
+### Closing day / payment terms / payment day [#field-vendor-payment]
+
+The agreement for paying them.
+
+### Bank / branch / account type / number [#field-bank]
+
+The account to pay into.
+
+---
+
+### Fields for the end-user role
+
+| Field | Required | What to enter |
+|-------|----------|---------------|
+| [Industry](#field-industry) | Optional | What industry they are in |
+
+### Industry [#field-industry]
+
+What industry the company is in. **Only the larger end users need registering** — there is no need to register every one.
+
+---
+
+### Branch and contact fields
+
+Branches are registered under a company (**two levels at most**) and use the same fields as the common ones above.
+
+A contact takes a name plus department, title, email and phone. Marking one as the **primary contact** makes them the first suggestion when addressing documents.
+
 ## Questions and problems
 
 **Q. Where did the old 顧客 (Customer), 最終需要家 (End User) and 外注企業 (Supplier) apps go?**

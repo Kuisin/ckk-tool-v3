@@ -127,6 +127,63 @@ For a step you no longer use, it is better to **stop** it (make it inactive) tha
 
 You can also tick several rows in the list and stop them together with 「**一括無効化**」 (Deactivate selected).
 
+## Input fields
+
+Every field on the process step screen. Steps registered here are the building blocks laid out in a work order's workflow.
+
+| Field | Required | What to enter |
+|-------|----------|---------------|
+| [Step code / name](#field-code) | Required | Reference code and name |
+| [Category](#field-category) | Required | Material prep, machining, inspection and so on |
+| [Location](#field-execution) | Required | Internal only, or outsourcing allowed |
+| [Quantity tracking](#field-quantity-tracking) | Required | How the step handles piece counts |
+| [Default work time](#field-default-time) | Optional | Typical time per run |
+| [Can run in parallel](#field-sync) | — | Whether it can run alongside others |
+| [Inspection / inspection approval](#field-inspection) | — | Whether it is an inspection step |
+| [Approval rank required](#field-approval-rank) | Optional | Rank needed to approve |
+| [Sort order](#field-sort-order) | Optional | Order in lists |
+| [Active / notes](#field-active) | — | Whether it is offered, plus notes |
+
+### Step code / name [#field-code]
+
+The step's reference code and name; the name is what appears in the work order.
+
+### Category [#field-category]
+
+Material preparation, machining, coating, inspection, inspection approval or shipping.
+
+### Location [#field-execution]
+
+**Internal only**, or **internal or outsourced**. Allowing outsourcing lets a work order pick a subcontractor for the step.
+
+### Quantity tracking [#field-quantity-tracking]
+
+How the step handles piece counts: **pass through, count as inspection, or do not count.** It changes which inputs appear on the execution screen.
+
+### Default work time [#field-default-time]
+
+Typical time per run, used as the initial value when a work order is created.
+
+### Can run in parallel [#field-sync]
+
+Whether the step can proceed alongside other steps.
+
+### Inspection / inspection approval [#field-inspection]
+
+Whether the step performs inspection, or approves inspection results. **Inspection steps allow an inspection sheet to be recorded during execution.**
+
+### Approval rank required [#field-approval-rank]
+
+The rank required to approve this step.
+
+### Sort order [#field-sort-order]
+
+Order in lists and pick lists.
+
+### Active / notes [#field-active]
+
+Turning it off removes it from step pick lists. Notes are free text.
+
 ## Questions and problems
 
 **Q. I see 「他の工程がこの工程に依存しているため削除できません。無効化を検討してください。」 (this step cannot be deleted because other steps depend on it; please consider deactivating it).**

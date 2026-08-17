@@ -91,6 +91,25 @@ The close row becomes 「**処理済**」 (Processed), and from the 「**生成�
 
 After this, recording the issue, the sending, and the payment — and making the file for the accounting software — is done in the [invoice](/manual/en/operations/billing/invoice/user) app.
 
+## Input fields
+
+This screen has no input boxes. What to close and for which dates follows **the closing day set per customer.**
+
+| Action | What happens |
+|--------|--------------|
+| [Close](#field-process) | Gathers the period's deliveries and creates invoices |
+| [Export to Yayoi](#field-export) | Writes the journal entries out as CSV |
+
+### Close [#field-process]
+
+Gathers what was delivered in the period and creates **one invoice per customer.**
+
+Before closing, check that every delivery in the period has been recorded. **A delivery added afterwards does not join a closed invoice** — it moves to the next period.
+
+### Export to Yayoi [#field-export]
+
+Writes the closed contents out as a CSV the accounting software can import. The export date is kept, which helps avoid importing twice.
+
 ## Questions and problems
 
 **Q. I get 「対象月に未請求の出荷がありません」 (There are no unbilled shipments in the target month).**

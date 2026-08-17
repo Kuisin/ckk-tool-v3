@@ -78,6 +78,20 @@ The 48 hours and the 14 days above are not two separate triggers. Logging in by 
 
 If even one of them is not true, the PIN is asked for. Use is counted **per tablet**, so **the first login on a new tablet always asks for the PIN.**
 
+## Input fields
+
+This screen has no input boxes — switches decide what appears in the shop-floor tablet's app list.
+
+| Control | What happens |
+|---------|--------------|
+| [App on / off](#field-app-enabled) | Whether it appears in the tablet's app list |
+
+### App on / off [#field-app-enabled]
+
+Turning it off **removes the app from the shop-floor tablet's app list**.
+
+Note that turning it on **does not show it to people without permission**. If someone on the floor cannot see it, check their permission first.
+
 ## Questions and problems
 
 **Q. An app does not appear on the tablet.**

@@ -118,6 +118,63 @@ Even when you stop buying a material, **please do not delete it**. Past purchase
 
 Once it is inactive, you can no longer choose it on new purchase orders or work orders, but **the past data stays as it is**.
 
+## Input fields
+
+Every field on the material screen. The material code is **assembled automatically** from the material type plus the three selections below.
+
+| Field | Required | What to enter |
+|-------|----------|---------------|
+| [Material type](#field-material-type) | Required | The type it is based on |
+| [Black / ground](#field-surface-finish) | Required | Surface condition |
+| [Diameter / length (mm)](#field-dimensions) | Required | Stock dimensions |
+| [Kind](#field-kind) | Required | The kind for that shape |
+| [Material code](#field-code) | Automatic | Derived from the combination |
+| [Name](#field-name) | Required | The material name |
+| [Unit](#field-unit) | Required | Pieces, kg and so on |
+| [Manufacturer model / nominal dia.](#field-model) | Optional | Manufacturer's model and nominal diameter |
+| [Active](#field-active) | — | Whether it appears in pick lists |
+| [Notes](#field-notes) | Optional | Notes |
+
+### Material type [#field-material-type]
+
+The type it is based on. Register the [material type](/manual/en/operations/masters/material-type/user) first.
+
+### Black / ground [#field-surface-finish]
+
+The surface condition: **black, ground, or ground-black.** In trial estimates this difference changes the material price.
+
+### Diameter / length (mm) [#field-dimensions]
+
+Stock dimensions. Both form part of the material code.
+
+### Kind [#field-kind]
+
+The kind defined for that shape (such as CH or 2V30 for OH).
+
+### Material code [#field-code]
+
+Derived from the type, surface, diameter and length. **It is assembled automatically.**
+
+### Name [#field-name]
+
+The material name, shown on ordering and receiving screens.
+
+### Unit [#field-unit]
+
+How it is counted; becomes the default unit on orders and receipts.
+
+### Manufacturer model / nominal diameter (mm) [#field-model]
+
+The manufacturer's model and nominal diameter, recorded to quote back when ordering.
+
+### Active [#field-active]
+
+Turning it off removes it from material pick lists on orders and receipts.
+
+### Notes [#field-notes]
+
+Notes.
+
 ## Questions and problems
 
 **Q. I see 「同一構成（材種 × 黒皮研磨 × 直径 × 全長）の素材が既に存在します」 (A material with the same make-up — material type × surface finish × diameter × length — already exists) and cannot save.**

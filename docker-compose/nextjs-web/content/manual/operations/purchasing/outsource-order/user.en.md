@@ -75,6 +75,30 @@ You cannot enter the sent date, expected return date, or return date in this lis
 
 Once you save, the dates also appear in the outsourcing order list.
 
+## Input fields
+
+This screen has no input boxes. It is **a list for seeing the steps that were sent out to a supplier**.
+
+The details (supplier, request date, expected date, received date) are entered on **the step inside the work order**. This screen simply gathers the result.
+
+| Filter | What it changes |
+|--------|-----------------|
+| [Supplier](#field-supplier) | Which company's work is shown |
+| [Status](#field-status) | Narrow by requested, received, and so on |
+| [Search](#field-search) | Find by work order number, product, step or supplier |
+
+### Supplier [#field-supplier]
+
+Which company's work is shown.
+
+### Status [#field-status]
+
+Narrows by status such as requested or received. Use it to find **work that is past its expected date but has not come back.**
+
+### Search [#field-search]
+
+Finds by work order number, product, step or supplier. Clicking a row opens the work order that holds the step.
+
 ## Questions and problems
 
 **Q. The list is empty.**

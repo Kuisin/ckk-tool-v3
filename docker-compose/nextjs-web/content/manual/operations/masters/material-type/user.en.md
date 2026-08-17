@@ -116,6 +116,48 @@ Even when you stop using a material type, **please do not delete it**. Materials
 
 Once it is inactive, you can no longer choose it when you register a new material, but **the past data stays as it is**.
 
+## Input fields
+
+Every field on the material type screen. The material type code is **assembled automatically** from the four selections below.
+
+| Field | Required | What to enter |
+|-------|----------|---------------|
+| [Manufacturer](#field-manufacturer) | Required | The material manufacturer |
+| [Manufacturer grade](#field-grade) | Required | The grade within that manufacturer |
+| [Shape](#field-shape) | Required | Standard, OH, cylinder and so on |
+| [Kind (auto)](#field-kind) | Automatic | Serial within the three above |
+| [Name](#field-name) | Required | The material type name |
+| [Description (ja / en)](#field-description) | Optional | Notes |
+| [Active](#field-active) | — | Whether it appears in pick lists |
+
+### Manufacturer [#field-manufacturer]
+
+The material manufacturer. The options are registered in [Numbering Components](/manual/en/operations/masters/material-numbering/user).
+
+### Manufacturer grade [#field-grade]
+
+The grade within that manufacturer; choosing a manufacturer narrows the list.
+
+### Shape [#field-shape]
+
+Standard, OH, cylinder and so on.
+
+### Kind (auto) [#field-kind]
+
+A serial within the manufacturer, grade and shape combination. **It is assigned automatically.**
+
+### Name [#field-name]
+
+The material type name, shown on material and product screens.
+
+### Description (ja / en) [#field-description]
+
+Notes. Filling in both languages keeps it readable in English too.
+
+### Active [#field-active]
+
+Turning it off removes it from material type pick lists.
+
 ## Questions and problems
 
 **Q. The 「メーカー材種」 (Maker grade) field is gray and I cannot use it.**

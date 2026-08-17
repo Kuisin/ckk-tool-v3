@@ -164,6 +164,34 @@ Turn on the 「**編集モード**」 (Edit mode) switch at the top of the scree
 
 At a site that does not have a layout drawing yet, 「**この拠点にはフロアマップがありません。**」 (This site has no floor map.) is shown. Turn on edit mode and create one from 「**フロアを追加**」.
 
+## Input fields
+
+| Field | Required | What to enter |
+|-------|----------|---------------|
+| [Device name (Japanese / English)](#field-name) | Required | The name shown in lists and logs |
+| [Plant](#field-plant) | Required | Where the device lives |
+| [Location](#field-location) | Optional | Where within that plant |
+| [Link code](#field-link-code) | Required | The code shown on the tablet |
+
+### Device name (Japanese / English) [#field-name]
+
+The name shown in the list, on the floor map, and on activity-log badges. Use a name that **lets someone find the physical device**, such as "Plant 1 entrance". Fill in both Japanese and English.
+
+### Plant [#field-plant]
+
+Where the device lives. Devices are listed per plant.
+
+### Location [#field-location]
+
+Where it sits inside the plant. Placing a pin on the floor map also shows its position on screen.
+
+### Link code [#field-link-code]
+
+The code shown on the tablet's own screen. **Create the device entry here first**, then scan (or type) the code from the tablet to tie that entry to the physical device.
+
+- An entry that is not tied to a device **cannot be activated**
+- To swap a device, **unlink** it. The name, plant and pin stay, so a new device can be tied to the same entry
+
 ## FAQ and troubleshooting
 
 **Q. I get 「コードが無効か期限切れです。タブレット側で再表示してください」 (The code is invalid or expired. Please display it again on the tablet).**

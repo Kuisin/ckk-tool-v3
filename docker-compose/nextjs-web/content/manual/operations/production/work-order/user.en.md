@@ -179,6 +179,53 @@ You can check stock in [inventory management](/manual/en/operations/production/p
 
 You need work order permission to use this app.
 
+## Input fields
+
+Every field on the work order screen. The order of the steps themselves is set in the process list.
+
+| Field | Required | What to enter |
+|-------|----------|---------------|
+| [Sales order](#field-sales-order) | Optional | Which order this work order is for |
+| [Product](#field-product) | Required | The product being made |
+| [Planned quantity](#field-planned-quantity) | Required | How many pieces |
+| [Material](#field-material) | Optional | The material used |
+| [Process list / version](#field-route) | Required | Which sequence of steps to use |
+| [New process list name](#field-new-route-name) | Conditional | Name when creating a new list |
+| [Inspection sheets](#field-inspection-templates) | Optional | Templates to use |
+| [Notes](#field-notes) | Optional | Notes |
+
+### Sales order [#field-sales-order]
+
+Which order the work order is for. **It can be left empty for work orders that only build stock** (standalone stock work orders).
+
+### Product [#field-product]
+
+The product being made. Choosing a sales order fills in that order's product.
+
+### Planned quantity [#field-planned-quantity]
+
+How many pieces to make. It becomes **the initial received quantity for the steps**, and is the basis for splitting between stock and manufacture.
+
+### Material [#field-material]
+
+The material used. When the work order is approved, **this material is reserved from stock.**
+
+### Process list / version [#field-route]
+
+Which sequence of steps to use, chosen from the lists registered for that product. **Choosing a version copies that sequence as it stands** — editing the process list later does not change work orders already created.
+
+### New process list name [#field-new-route-name]
+
+The name when creating a new process list here. It becomes selectable for the same product next time.
+
+### Inspection sheets [#field-inspection-templates]
+
+The inspection templates used by this work order. Several can be selected; they are what the inspection steps offer during execution.
+
+### Notes [#field-notes]
+
+Notes.
+
 ## Questions and problems
 
 **Q. 「工程実行ビューを開く」 (Open step execution view) does not appear.**

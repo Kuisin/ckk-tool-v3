@@ -122,6 +122,108 @@ When you want to calculate again with only small changes, copy it instead of mak
 
 「（再試算）」(re-estimate) is added to the estimate name automatically, and a new number is given. You can do the same from「**…**」on a row in the list.
 
+## Input fields
+
+Every field on the trial estimate screen. There are many, so they are grouped by **which cost they affect**. The **?** next to a field in the app links straight to its description here.
+
+| Field | Required | What to enter |
+|-------|----------|---------------|
+| [Quoted for](#field-customer) | Optional | Who the estimate is for |
+| [Product](#field-product) | Optional | Which product it is for |
+| [Max diameter (mm)](#field-max-diameter) | Required | The product's largest diameter |
+| [Length (mm)](#field-length) | Required | The product's length |
+| [Material type](#field-material-type) | Required | The material grade used |
+| [Diameter](#field-diameter) | Required | The stock diameter |
+| [Black/ground](#field-surface-finish) | Required | The stock surface condition |
+| [Reference price (¥/1000mm)](#field-reference-price) | Automatic | Material price from purchase history |
+| [Material price (manual, ¥/pc)](#field-manual-material-price) | Optional | Price when not using the reference |
+| [Black bar (centreless addition)](#field-centerless) | Optional | Extra machining for black bar |
+| [Cylinder type](#field-cylinder-type) | Conditional | For cylinder tools |
+| [Step length / type](#field-step-machining) | Optional | Step machining length and type |
+| [Neck length / type](#field-neck-machining) | Optional | Neck machining length and type |
+| [Machining time (min)](#field-machining-time) | Required | Machining time per piece |
+| [Coating](#field-coating) | Optional | Coating type |
+| [Lapping](#field-lapping) | Optional | Whether lapping is applied |
+| [Inspection report](#field-inspection-report) | Optional | Whether a report is supplied |
+| [LD machining / area / OD / flute length](#field-ld) | Optional | LD machining conditions |
+| [Base quantity (pcs)](#field-base-quantity) | Required | How many pieces the costing assumes |
+
+### Quoted for [#field-customer]
+
+Who the estimate is for. **It can be left empty** — the estimate still calculates, which suits rough costing before a customer is decided.
+
+### Product [#field-product]
+
+Which product the estimate is for. Linking it to a product means that, once confirmed, **it can be chosen as the base-price source on a price list**. A product can have several estimates.
+
+### Max diameter (mm) [#field-max-diameter]
+
+The product's largest diameter. It guides which stock diameter to choose.
+
+### Length (mm) [#field-length]
+
+The product's length. **Material cost is driven by length**, so changing this changes the material cost.
+
+### Material type [#field-material-type]
+
+The material grade used, chosen from the registered manufacturer and grade combinations.
+
+### Diameter [#field-diameter]
+
+The stock diameter. Choose one larger than the product's maximum diameter.
+
+### Black/ground [#field-surface-finish]
+
+The stock surface condition. **Black bar is cheaper but may require a centreless grinding addition.**
+
+### Reference price (¥/1000mm) [#field-reference-price]
+
+The price derived **automatically from purchase history** for that material type, diameter and surface. Where there is no history, the material type's default price is used. The screen shows which history it came from.
+
+### Material price (manual, ¥/pc) [#field-manual-material-price]
+
+Used when you want to set the price yourself instead of the reference — **for special purchases, or material with no history yet.**
+
+### Black bar (centreless addition) [#field-centerless]
+
+Extra machining when black bar is used. Selecting it adds that machining cost.
+
+### Cylinder type [#field-cylinder-type]
+
+Chosen when the tool type is cylinder. The type changes the machining cost.
+
+### Step length / type [#field-step-machining]
+
+The length and type of step machining. Cost comes from the combination. Leave empty if there is none.
+
+### Neck length / type [#field-neck-machining]
+
+The length and type of neck machining. Leave empty if there is none.
+
+### Machining time (min) [#field-machining-time]
+
+Machining time per piece. **The machining cost is calculated from this time**, so enter a value close to the real setup.
+
+### Coating [#field-coating]
+
+The coating type. Choosing one adds its cost.
+
+### Lapping [#field-lapping]
+
+Whether lapping is applied.
+
+### Inspection report [#field-inspection-report]
+
+Whether an inspection report is supplied. Selecting it adds the inspection cost.
+
+### LD machining / area / OD (mm) / flute length (mm) [#field-ld]
+
+The conditions when LD machining applies. Turning on LD machining enables the area, outside diameter and flute length.
+
+### Base quantity (pcs) [#field-base-quantity]
+
+How many pieces the costing assumes. **Cost per piece changes with quantity** because setup is spread across them, so enter the quantity you actually expect.
+
 ## Questions and problems
 
 **Q. I cannot edit a saved estimate.**
