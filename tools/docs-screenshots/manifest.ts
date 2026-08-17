@@ -921,30 +921,22 @@ export const shots: Shot[] = [
       await page.getByText("追加項目").first().waitFor();
     },
   },
-  // ── マスタ: 顧客（MS01）────────────────────────────────────────────────────
+  // ── マスタ: 取引先（MS01）──────────────────────────────────────────────────
+  // 顧客・最終需要家・外注企業を統合した 1 台帳（ロールで使い分ける）。
   {
-    id: "master-customer-list-01",
-    docPage: "operations/masters/customer/user",
-    path: "/master/customers?q=%E3%83%87%E3%83%A2",
+    id: "master-bp-list-01",
+    docPage: "operations/masters/business-partner/user",
+    path: "/master/business-partners?q=%E3%83%87%E3%83%A2",
     steps: async (page) => {
       await page.getByText("デモ商事株式会社").first().waitFor();
     },
   },
   {
-    id: "master-customer-branches-01",
-    docPage: "operations/masters/customer/user",
-    path: "/master/customers/d0000000-0000-4000-8000-000000000001?tab=branches",
+    id: "master-bp-branches-01",
+    docPage: "operations/masters/business-partner/user",
+    path: "/master/business-partners/d0000000-0000-4000-8000-000000000001?tab=branches",
     steps: async (page) => {
       await page.getByText("大阪支店").first().waitFor();
-    },
-  },
-  // ── マスタ: 最終需要家（MS02）──────────────────────────────────────────────
-  {
-    id: "master-end-user-list-01",
-    docPage: "operations/masters/end-user/user",
-    path: "/master/end-users?q=%E3%83%87%E3%83%A2",
-    steps: async (page) => {
-      await page.getByText("デモ電子工業").first().waitFor();
     },
   },
   // ── マスタ: 製品（MS04）────────────────────────────────────────────────────
@@ -982,19 +974,19 @@ export const shots: Shot[] = [
       await page.getByText("A02A0001-A010-310").first().waitFor();
     },
   },
-  // ── マスタ: 外注企業（MS03）────────────────────────────────────────────────
+  // 仕入先・外注先ロールで絞り込んだ一覧と、その詳細（振込先・リードタイム）。
   {
-    id: "master-supplier-list-01",
-    docPage: "operations/masters/supplier/user",
-    path: "/master/suppliers?q=%E3%83%87%E3%83%A2",
+    id: "master-bp-vendor-list-01",
+    docPage: "operations/masters/business-partner/user",
+    path: "/master/business-partners?q=%E3%83%87%E3%83%A2&role=VENDOR",
     steps: async (page) => {
       await page.getByText("デモ研磨工業").first().waitFor();
     },
   },
   {
-    id: "master-supplier-detail-01",
-    docPage: "operations/masters/supplier/user",
-    path: "/master/suppliers/da000000-0000-4000-8000-000000000004",
+    id: "master-bp-vendor-detail-01",
+    docPage: "operations/masters/business-partner/user",
+    path: "/master/business-partners/da000000-0000-4000-8000-000000000004",
     steps: async (page) => {
       await page
         .getByRole("heading", { name: "デモ研磨工業株式会社" })
@@ -1075,71 +1067,73 @@ export const shots: Shot[] = [
   // 公開マニュアル用のため、一覧はデモ* レコードだけが写る URL / 検索を使う
   // （レガシー import には実在の取引先名が入っているため）。
   {
-    id: "master-customer-new-01",
-    docPage: "operations/masters/customer/user",
-    path: "/master/customers/new",
-    steps: async (page) => {
-      await page.getByText("取引条件").first().waitFor();
-    },
-  },
-  {
-    id: "master-customer-detail-01",
-    docPage: "operations/masters/customer/user",
-    path: "/master/customers/d0000000-0000-4000-8000-000000000001",
-    steps: async (page) => {
-      await page.getByText("デモ商事株式会社").first().waitFor();
-    },
-  },
-  {
-    id: "master-customer-branch-new-01",
-    docPage: "operations/masters/customer/user",
-    path: "/master/customers/d0000000-0000-4000-8000-000000000001/branches/new",
-    steps: async (page) => {
-      await page.getByText("担当者名").first().waitFor();
-    },
-  },
-  {
-    id: "master-end-user-new-01",
-    docPage: "operations/masters/end-user/user",
-    path: "/master/end-users/new",
-    steps: async (page) => {
-      await page.getByText("需要家情報").first().waitFor();
-    },
-  },
-  {
-    id: "master-end-user-detail-01",
-    docPage: "operations/masters/end-user/user",
-    path: "/master/end-users/da000000-0000-4000-8000-000000000005",
-    steps: async (page) => {
-      await page.getByText("デモ電子工業株式会社").first().waitFor();
-    },
-  },
-  {
-    // 無効化の確認モーダル（実行はしない）
-    id: "master-end-user-deactivate-01",
-    docPage: "operations/masters/end-user/user",
-    path: "/master/end-users/da000000-0000-4000-8000-000000000005",
-    steps: async (page) => {
-      await page.getByRole("button", { name: "操作メニュー" }).first().click();
-      await page.getByRole("menuitem", { name: "無効化" }).first().click();
-      await page.getByText("最終需要家の無効化").first().waitFor();
-    },
-  },
-  {
-    id: "master-supplier-new-01",
-    docPage: "operations/masters/supplier/user",
-    path: "/master/suppliers/new",
+    id: "master-bp-new-01",
+    docPage: "operations/masters/business-partner/user",
+    path: "/master/business-partners/new",
     steps: async (page) => {
       await page.getByText("住所・連絡先").first().waitFor();
     },
   },
   {
-    id: "master-supplier-new-terms-01",
-    docPage: "operations/masters/supplier/user",
-    path: "/master/suppliers/new",
+    // ロール選択セクション（未選択の状態 — ここで役割を決める）
+    id: "master-bp-roles-01",
+    docPage: "operations/masters/business-partner/user",
+    path: "/master/business-partners/new",
     steps: async (page) => {
+      await page.getByText("ロール").first().scrollIntoViewIfNeeded();
+      await page.getByText("見積書・受注請書・請求書の宛先").first().waitFor();
+    },
+  },
+  {
+    // 顧客ロールにチェックを入れると「顧客情報」セクションが出る
+    id: "master-bp-new-customer-01",
+    docPage: "operations/masters/business-partner/user",
+    path: "/master/business-partners/new",
+    steps: async (page) => {
+      await page.getByRole("checkbox", { name: "顧客" }).first().check();
+      await page.getByText("顧客情報").first().scrollIntoViewIfNeeded();
+      await page.getByText("課税区分").first().waitFor();
+    },
+  },
+  {
+    // 仕入先・外注先ロールの入力（取引条件 + 振込先）
+    id: "master-bp-new-vendor-01",
+    docPage: "operations/masters/business-partner/user",
+    path: "/master/business-partners/new",
+    steps: async (page) => {
+      await page
+        .getByRole("checkbox", { name: "仕入先・外注先" })
+        .first()
+        .check();
       await page.getByText("振込先").first().scrollIntoViewIfNeeded();
       await page.getByText("振込先").first().waitFor();
+    },
+  },
+  {
+    id: "master-bp-detail-01",
+    docPage: "operations/masters/business-partner/user",
+    path: "/master/business-partners/d0000000-0000-4000-8000-000000000001",
+    steps: async (page) => {
+      await page.getByText("デモ商事株式会社").first().waitFor();
+    },
+  },
+  {
+    id: "master-bp-branch-new-01",
+    docPage: "operations/masters/business-partner/user",
+    path: "/master/business-partners/d0000000-0000-4000-8000-000000000001/branches/new",
+    steps: async (page) => {
+      await page.getByText("担当者名").first().waitFor();
+    },
+  },
+  {
+    // 無効化の確認モーダル（実行はしない）
+    id: "master-bp-deactivate-01",
+    docPage: "operations/masters/business-partner/user",
+    path: "/master/business-partners/da000000-0000-4000-8000-000000000005",
+    steps: async (page) => {
+      await page.getByRole("button", { name: "操作メニュー" }).first().click();
+      await page.getByRole("menuitem", { name: "無効化" }).first().click();
+      await page.getByText("取引先の無効化").first().waitFor();
     },
   },
   {

@@ -26,7 +26,7 @@ This app makes the **delivery note** (納品書) that goes together with the pro
 ## Before you start
 
 - You need a [shipping order](/manual/en/operations/shipping/shipping-order/user) first. It must also be 「**確定**」 (Confirmed) or 「**出荷済**」 (Shipped). You cannot make a delivery note from a 「下書き」 (Draft) shipping order.
-- If you deliver direct to the end user, the receiving company must be registered as an [end user](/manual/en/operations/masters/end-user/user).
+- If you deliver direct to the end user, the receiving company must be registered as a [business partner](/manual/en/operations/masters/business-partner/user) with the 最終需要家 (End user) role.
 - You need delivery note permission to make one. If you cannot use it, please ask your administrator.
 
 ## How to read the screen

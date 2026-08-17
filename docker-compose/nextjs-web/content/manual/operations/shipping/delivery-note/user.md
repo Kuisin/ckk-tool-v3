@@ -26,7 +26,7 @@ screenshots: [delivery-note-list-01, delivery-note-new-01, delivery-note-detail-
 ## はじめる前に
 
 - 先に[出荷書](/manual/ja/operations/shipping/shipping-order/user)が必要です。しかも、その出荷書が「**確定**」または「**出荷済**」になっている必要があります。「下書き」の出荷書からは作れません。
-- ユーザー直送でお届けする場合は、届け先の会社が[最終需要家](/manual/ja/operations/masters/end-user/user)として登録されている必要があります。
+- ユーザー直送でお届けする場合は、届け先の会社が[取引先](/manual/ja/operations/masters/business-partner/user)に登録され、「最終需要家」ロールが付いている必要があります。
 - 納品書を作るには、納品書の権限が必要です。使えないときは管理者にご相談ください。
 
 ## 画面の見かた

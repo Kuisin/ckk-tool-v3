@@ -761,7 +761,7 @@ export async function fetchSupplierOptions(): Promise<Option[]> {
   const rows = await prisma.businessPartner.findMany({
     where: {
       isActive: true,
-      roleAssignments: { some: { role: "VENDOR" } },
+      roleAssignments: { some: { role: "VENDOR", isActive: true } },
     },
     orderBy: { bpCode: "asc" },
   });

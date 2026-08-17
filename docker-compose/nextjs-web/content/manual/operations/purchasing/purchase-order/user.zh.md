@@ -27,7 +27,7 @@ screenshots: [purchase-order-list-01, purchase-order-new-01, purchase-order-deta
 ## 开始之前
 
 - 想订购的 **材料必须已登记在[材料主数据](/manual/zh/operations/masters/material/user)中**。
-- **供应商必须已登记在[外协企业主数据](/manual/zh/operations/masters/supplier/user)中**。未登记的公司无法选择。
+- **供应商必须已登记在[业务伙伴主数据](/manual/zh/operations/masters/business-partner/user)中**。未登记的公司无法选择。
 - 创建、编辑、下单都需要采购权限。看不到按钮时请咨询公司内的负责人。
 
 ## 订购推进的顺序

@@ -107,6 +107,27 @@ const nextConfig: NextConfig = {
         destination: "/internal-docs/ja",
         permanent: true,
       },
+
+      // 顧客(MS01) / 最終需要家(MS02) / 外注企業(MS03) → 取引先マスタ(MS01)。
+      // 3 アプリを 1 台帳 + ロール付与に統合したので、旧パスは id ごと引き継ぐ
+      // （BP の id はそのまま。支店パスも同形なので :path* で足りる）。
+      ...(["customers", "end-users", "suppliers"] as const).map((old) => ({
+        source: `/master/${old}/:path*`,
+        destination: "/master/business-partners/:path*",
+        permanent: true,
+      })),
+      ...(["customers", "end-users", "suppliers"] as const).map((old) => ({
+        source: `/master/${old}`,
+        destination: "/master/business-partners",
+        permanent: true,
+      })),
+
+      // マニュアルも 1 ページに統合。
+      ...(["customer", "end-user", "supplier"] as const).map((old) => ({
+        source: `/manual/:lang(ja|en|zh)/operations/masters/${old}/:path*`,
+        destination: "/manual/:lang/operations/masters/business-partner/:path*",
+        permanent: true,
+      })),
     ];
   },
   async rewrites() {

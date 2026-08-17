@@ -28,7 +28,7 @@ screenshots: [order-acceptance-list-01, order-acceptance-new-01, order-acceptanc
 
 ## はじめる前に
 
-- お客様が[顧客マスタ](/manual/ja/operations/masters/customer/user)に登録されている必要があります。登録が無いと、読み取ってもお客様が「未特定」のままになります。
+- お客様が[取引先マスタ](/manual/ja/operations/masters/business-partner/user)に登録されている必要があります。登録が無いと、読み取ってもお客様が「未特定」のままになります。
 - 注文された[製品](/manual/ja/operations/masters/product/user)が製品マスタに登録されている必要があります。
 - 単価の確認をするために、[価格表](/manual/ja/operations/sales/price-list/user)が登録されていると便利です（無くても進められます）。
 - 承認と差し戻しは、承認するグループに入っている人だけができます。
@@ -124,7 +124,7 @@ screenshots: [order-acceptance-list-01, order-acceptance-new-01, order-acceptanc
 A. 注文書の読み取りに失敗しています。その表示の中にある「**再抽出**」を押すともう一度読み取ります。何度やっても失敗する場合は、一覧の「**手入力で新規**」から入力してください。
 
 **Q. お客様が「未特定」のままです。**
-A. 注文書の会社名と顧客マスタが結び付きませんでした。下書きの画面で「顧客」を検索して選び、「保存」を押してください。よく表記がゆれるお客様は、[顧客マスタ](/manual/ja/operations/masters/customer/user)に別の書き方を登録しておくと次から自動で結び付きます。
+A. 注文書の会社名と取引先マスタが結び付きませんでした。下書きの画面で「顧客」を検索して選び、「保存」を押してください。よく表記がゆれるお客様は、[取引先マスタ](/manual/ja/operations/masters/business-partner/user)に別の書き方を登録しておくと次から自動で結び付きます。
 
 **Q.「顧客が未特定です。顧客を選択して保存してください」と出て承認依頼できません。**
 A. お客様が入っていません。「顧客」を選び、「保存」を押してから、もう一度「承認依頼」を押してください。

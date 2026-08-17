@@ -33,6 +33,24 @@ export const INVOICE_METHOD_OPTIONS = Object.entries(INVOICE_METHOD_LABEL).map(
   ([value, label]) => ({ value, label }),
 );
 
+/** bp.BP_ROLE — 1 取引先に複数付与できるロール（MS01 取引先マスタ）。 */
+export const BP_ROLE_LABEL: Record<string, string> = {
+  CUSTOMER: "顧客",
+  END_USER: "最終需要家",
+  VENDOR: "仕入先・外注先",
+};
+
+export const BP_ROLE_OPTIONS = Object.entries(BP_ROLE_LABEL).map(
+  ([value, label]) => ({ value, label }),
+);
+
+/** ロールバッジの色（design.md §1.1 のカテゴリ色に合わせる）。 */
+export const BP_ROLE_COLOR: Record<string, string> = {
+  CUSTOMER: "blue",
+  END_USER: "violet",
+  VENDOR: "teal",
+};
+
 /** bp.VENDOR_TYPE */
 export const VENDOR_TYPE_LABEL: Record<string, string> = {
   SUPPLIER: "仕入先",

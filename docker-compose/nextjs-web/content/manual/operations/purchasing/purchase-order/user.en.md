@@ -27,7 +27,7 @@ This app is for making a **素材発注書** (material purchase order), which is
 ## Before you start
 
 - The **material you want must be registered in the [material master](/manual/en/operations/masters/material/user)**.
-- The **supplier must be registered in the [supplier master](/manual/en/operations/masters/supplier/user)**. You cannot choose a company that is not registered.
+- The **supplier must be registered in the [business partner master](/manual/en/operations/masters/business-partner/user)**. You cannot choose a company that is not registered.
 - You need purchasing permission to create, edit, and place orders. If the buttons do not appear, please ask the person in charge at your company.
 
 ## The order in which a purchase order moves along

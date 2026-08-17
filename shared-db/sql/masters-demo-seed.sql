@@ -20,10 +20,10 @@ BEGIN;
 -- ── 撮影用フラグ ────────────────────────────────────────────────────────────
 -- 撮影は APP_ENV=main で行うため、main 未公開のマスタアプリを撮影 DB に限り
 -- 明示有効化する（本番の feature-flags-seed.sql には影響しない）。
--- MS01〜MS05・MS0B（承認グループ）は feature-flags-seed.sql で有効化済み。
+-- MS01（取引先）・MS04/MS05・MS0B（承認グループ）は feature-flags-seed.sql で
+-- 有効化済み（顧客・最終需要家・外注企業は取引先マスタ MS01 に統合）。
 INSERT INTO app.feature_flags (key, is_enabled, description, updated_at) VALUES
   ('app:master-materials:main',            true, '素材（マニュアル撮影用）',             now()),
-  ('app:master-suppliers:main',            true, '外注企業（マニュアル撮影用）',         now()),
   ('app:master-process-steps:main',        true, '工程マスタ（マニュアル撮影用）',       now()),
   ('app:master-inspection-templates:main', true, '検査表テンプレート（マニュアル撮影用）', now()),
   ('app:master-defect-types:main',         true, '不良種類（マニュアル撮影用）',         now()),

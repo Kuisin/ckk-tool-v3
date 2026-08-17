@@ -120,7 +120,10 @@ const TABLE_ROUTES: Record<string, TableRoute> = {
     listPath: "/master/material-types",
     directDetail: true,
   },
-  business_partners: { appLabel: "取引先", listPath: "/master/customers" },
+  business_partners: {
+    appLabel: "取引先",
+    listPath: "/master/business-partners",
+  },
   plants: {
     appLabel: "拠点",
     listPath: "/master/plants",

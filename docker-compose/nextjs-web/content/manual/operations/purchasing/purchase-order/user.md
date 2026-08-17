@@ -27,7 +27,7 @@ screenshots: [purchase-order-list-01, purchase-order-new-01, purchase-order-deta
 ## はじめる前に
 
 - 注文したい **素材が[素材マスタ](/manual/ja/operations/masters/material/user)に登録されている** 必要があります。
-- **仕入先が[外注企業マスタ](/manual/ja/operations/masters/supplier/user)に登録されている** 必要があります。登録されていない会社は選べません。
+- **仕入先が[取引先マスタ](/manual/ja/operations/masters/business-partner/user)に登録されている** 必要があります。登録されていない会社は選べません。
 - 作成・編集・発注には購買の権限が必要です。ボタンが出ないときは社内の担当者にご確認ください。
 
 ## 発注が進んでいく順番

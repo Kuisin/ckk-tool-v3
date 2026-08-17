@@ -7,7 +7,7 @@ screenshots: [price-list-list-01, price-list-new-01, price-list-detail-01, price
 
 ## このアプリでできること
 
-- [お客様](/manual/ja/operations/masters/customer/user)ごとの製品の売値を登録できます。
+- [お客様](/manual/ja/operations/masters/business-partner/user)ごとの製品の売値を登録できます。
 - 登録しておくと、[見積書](/manual/ja/operations/sales/quote/user)の金額が **自動で入ります**（見積書の画面で金額を手入力する必要はありません）。
 - [受注請書](/manual/ja/operations/sales/order-acceptance/user)では、お客様の注文書の単価とここの値段が **自動で見比べられ**、違っていれば知らせてくれます。
 - 「**たくさん買うと 1 本あたりが安くなる**」という数量ごとの値段を設定できます。
@@ -27,7 +27,7 @@ screenshots: [price-list-list-01, price-list-new-01, price-list-detail-01, price
 
 ## はじめる前に
 
-- 対象の[お客様](/manual/ja/operations/masters/customer/user)と[製品](/manual/ja/operations/masters/product/user)が登録されている必要があります。
+- 対象の[お客様](/manual/ja/operations/masters/business-partner/user)と[製品](/manual/ja/operations/masters/product/user)が登録されている必要があります。
 - 値段のもとにする[試算](/manual/ja/operations/sales/trial-estimate/user)があると便利です。試算に製品を指定して「確定」しておくと、この画面で選べるようになり、金額が自動で入ります。
 - 試算がなくても、値段を手で入力して登録できます。
 

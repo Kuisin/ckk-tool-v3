@@ -7,7 +7,7 @@ screenshots: [price-list-list-01, price-list-new-01, price-list-detail-01, price
 
 ## 本应用能做什么
 
-- 可以按[客户](/manual/zh/operations/masters/customer/user)登记每个产品的售价。
+- 可以按[客户](/manual/zh/operations/masters/business-partner/user)登记每个产品的售价。
 - 登记之后，[报价单](/manual/zh/operations/sales/quote/user)的金额会 **自动带入**（在报价单画面不需要手动输入金额）。
 - 在[受注請書](/manual/zh/operations/sales/order-acceptance/user)（订单受理）中，客户订单上的单价会与这里的价格 **自动比对**，不一致时会提示。
 - 可以设定「**买得越多，每支越便宜**」这种按数量的价格。
@@ -27,7 +27,7 @@ screenshots: [price-list-list-01, price-list-new-01, price-list-detail-01, price
 
 ## 开始之前
 
-- 需要先登记好对象[客户](/manual/zh/operations/masters/customer/user)和[产品](/manual/zh/operations/masters/product/user)。
+- 需要先登记好对象[客户](/manual/zh/operations/masters/business-partner/user)和[产品](/manual/zh/operations/masters/product/user)。
 - 如果有作为价格来源的[试算](/manual/zh/operations/sales/trial-estimate/user)会很方便。在试算中指定产品并设为「確定」（确定）后，在这个画面就能选到，金额也会自动带入。
 - 没有试算时，也可以手动输入价格来登记。
 

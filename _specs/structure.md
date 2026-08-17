@@ -111,7 +111,8 @@ src/
 │   │       │   └── [id]/
 │   │       │       ├── page.tsx
 │   │       │       └── edit/page.tsx
-│   │       ├── customers/                          # 顧客（企業 2階層）
+│   │       ├── business-partners/                  # 取引先（顧客・最終需要家・仕入先/外注先を
+│   │       │   │                                   #   ロール付与で兼ねる。企業 2階層）
 │   │       │   ├── page.tsx
 │   │       │   ├── new/page.tsx
 │   │       │   └── [id]/
@@ -122,12 +123,6 @@ src/
 │   │       │           └── [branchId]/
 │   │       │               ├── page.tsx
 │   │       │               └── edit/page.tsx
-│   │       ├── end-users/                          # 最終需要家（大口顧客のみ）
-│   │       │   ├── page.tsx
-│   │       │   ├── new/page.tsx
-│   │       │   └── [id]/
-│   │       │       ├── page.tsx
-│   │       │       └── edit/page.tsx
 │   │       ├── products/                           # 製品
 │   │       │   ├── page.tsx
 │   │       │   ├── new/page.tsx
@@ -141,12 +136,6 @@ src/
 │   │       │       ├── page.tsx
 │   │       │       └── edit/page.tsx
 │   │       ├── materials/                          # 素材
-│   │       │   ├── page.tsx
-│   │       │   ├── new/page.tsx
-│   │       │   └── [id]/
-│   │       │       ├── page.tsx
-│   │       │       └── edit/page.tsx
-│   │       ├── suppliers/                          # 外注企業
 │   │       │   ├── page.tsx
 │   │       │   ├── new/page.tsx
 │   │       │   └── [id]/

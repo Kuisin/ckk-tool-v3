@@ -29,7 +29,7 @@ screenshots: [outsource-order-list-01, outsource-order-list-02, outsource-order-
 
 このアプリは **見るだけの画面** です。ここから新しく外注を追加することはできません。
 
-外注をこの一覧に載せるには、[指示書](/manual/ja/operations/production/work-order/user)の工程で実施場所に「**外注**」を選び、外注先の会社を指定します。外注先の会社は[外注企業マスタ](/manual/ja/operations/masters/supplier/user)で登録します。
+外注をこの一覧に載せるには、[指示書](/manual/ja/operations/production/work-order/user)の工程で実施場所に「**外注**」を選び、外注先の会社を指定します。外注先の会社は[取引先マスタ](/manual/ja/operations/masters/business-partner/user)で登録します。
 
 閲覧には外注依頼の権限が必要です。画面が開かないときは社内の担当者にご確認ください。
 

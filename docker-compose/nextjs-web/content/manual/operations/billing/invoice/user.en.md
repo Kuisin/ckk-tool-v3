@@ -125,7 +125,7 @@ A. That invoice has already been issued. Close the screen and open it again to s
 A. A step has been skipped. Please go in order: issue → mark as sent → mark as paid.
 
 **Q. The consumption tax does not look like it was worked out at 10%.**
-A. The tax is worked out with the rule set for each customer. Customers on the reduced rate are 8%, and tax-free customers are 0%. To change the rule, fix the registered details of the [customer](/manual/en/operations/masters/customer/user).
+A. The tax is worked out with the rule set for each customer. Customers on the reduced rate are 8%, and tax-free customers are 0%. To change the rule, fix the registered details of the [customer](/manual/en/operations/masters/business-partner/user).
 
 **Q. I press 「弥生会計CSV」 but no file comes out.**
 A. You may not have the export permission. Please ask your administrator.
