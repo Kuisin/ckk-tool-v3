@@ -23,7 +23,14 @@ export const metadata: Metadata = {
   description: "製造業務管理システム — 販売・購買・生産・出荷・請求・マスタ",
   // PWA: manifest は app/manifest.ts が /manifest.webmanifest として配信。
   // iOS はホーム画面追加（スタンドアロン）で Web Push が有効になる（16.4+）。
-  icons: { apple: "/icons/apple-touch-icon.png" },
+  // metadata.icons を定義すると app/icon.svg のファイル規約による自動 <link> が
+  // 出なくなる（= タブアイコンが無い状態になる）。ここで両方を明示する。
+  // どちらも proxy.ts の matcher 除外パス（/icon.svg・/icons/**）に置くこと —
+  // 認証ガードに掛かるとブラウザは HTML を受け取ってアイコンを描画できない。
+  icons: {
+    icon: [{ url: "/icon.svg", type: "image/svg+xml", sizes: "any" }],
+    apple: "/icons/apple-touch-icon.png",
+  },
   appleWebApp: {
     capable: true,
     title: "CKK",
