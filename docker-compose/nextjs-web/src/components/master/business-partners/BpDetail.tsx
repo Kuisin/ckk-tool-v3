@@ -173,6 +173,7 @@ export function BpDetail({
       <Tabs onChange={setTab} value={tab}>
         <Tabs.List>
           <Tabs.Tab value="overview">概要</Tabs.Tab>
+          <Tabs.Tab value="contacts">担当者</Tabs.Tab>
           <Tabs.Tab value="branches">支店一覧</Tabs.Tab>
           <Tabs.Tab value="history">見積・受注履歴</Tabs.Tab>
           <Tabs.Tab value="audit">履歴</Tabs.Tab>
@@ -288,18 +289,18 @@ export function BpDetail({
                 </Group>
               </OverviewSection>
             )}
-
-            {/* 担当者はロールに依らず取引先共通。表なので独立セクションにして
-                ロール別の取引条件が先に読めるようにする。 */}
-            <OverviewSection title="担当者">
-              <ContactsTable
-                bpId={record.id}
-                bpName={record.nameJa}
-                contacts={record.contacts}
-                hideHeading
-              />
-            </OverviewSection>
           </Stack>
+        </Tabs.Panel>
+
+        {/* 担当者はロールに依らず取引先共通。件数が増えると縦に伸びるので、
+            概要のロール別セクションを圧迫しないよう独立タブにしている。 */}
+        <Tabs.Panel pt="md" value="contacts">
+          <ContactsTable
+            bpId={record.id}
+            bpName={record.nameJa}
+            contacts={record.contacts}
+            hideHeading
+          />
         </Tabs.Panel>
 
         <Tabs.Panel pt="md" value="branches">
