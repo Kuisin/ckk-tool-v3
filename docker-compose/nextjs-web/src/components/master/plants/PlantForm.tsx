@@ -25,6 +25,7 @@ import {
   updatePlant,
 } from "@/app/(dashboard)/master/plants/actions";
 import { ActiveBadge } from "@/components/ui/ActiveBadge";
+import { HelpLabel } from "@/components/ui/HelpLabel";
 import {
   FormSection,
   FormShell,
@@ -32,6 +33,7 @@ import {
 } from "@/components/ui/shells";
 import { useIsMobile } from "@/hooks/useViewport";
 import { COUNTRY_OPTIONS } from "@/lib/enum-labels";
+import { fieldHelp, fieldHelpTip } from "@/lib/field-help";
 import { zodResolver } from "@/lib/form";
 
 const BASE_PATH = "/master/plants";
@@ -158,13 +160,17 @@ export function PlantForm({
               isEdit ? "作成後は変更できません" : "拠点を識別する一意のコード"
             }
             disabled={isEdit}
-            label="拠点コード"
+            label={<HelpLabel {...fieldHelp("plant", "code")} />}
             placeholder="例: F01"
             withAsterisk={!isEdit}
             {...form.getInputProps("code")}
           />
           <TextInput
-            label="よみがな"
+            label={
+              <HelpLabel
+                {...fieldHelp("plant", "name", { label: "よみがな" })}
+              />
+            }
             placeholder="例: ほんしゃこうじょう"
             {...form.getInputProps("nameKana")}
           />
@@ -172,17 +178,18 @@ export function PlantForm({
         <Stack gap="sm" mt="sm">
           <LocalizedTextInput
             enProps={form.getInputProps("nameEn")}
+            help={fieldHelpTip("plant", "name")}
             jaProps={form.getInputProps("nameJa")}
             label="名称"
             required
           />
           <Switch
-            label="有効"
+            label={<HelpLabel {...fieldHelp("plant", "active")} />}
             {...form.getInputProps("isActive", { type: "checkbox" })}
           />
         </Stack>
         <Textarea
-          label="備考"
+          label={<HelpLabel {...fieldHelp("plant", "notes")} />}
           mt="sm"
           placeholder="備考・特記事項"
           rows={3}
@@ -195,7 +202,9 @@ export function PlantForm({
           <Select
             clearable
             data={COUNTRY_OPTIONS}
-            label="国"
+            label={
+              <HelpLabel {...fieldHelp("plant", "region", { label: "国" })} />
+            }
             placeholder="国を選択"
             {...form.getInputProps("countryCode")}
           />
@@ -203,13 +212,19 @@ export function PlantForm({
             clearable
             data={regionOptions}
             description="REGION スコープ権限の対象地域"
-            label="地域"
+            label={
+              <HelpLabel {...fieldHelp("plant", "region", { label: "地域" })} />
+            }
             placeholder="地域を選択"
             searchable={regionOptions.length > 5}
             {...form.getInputProps("regionId")}
           />
           <TextInput
-            label="郵便番号"
+            label={
+              <HelpLabel
+                {...fieldHelp("plant", "address", { label: "郵便番号" })}
+              />
+            }
             placeholder="例: 123-4567"
             {...form.getInputProps("postalCode")}
           />
@@ -217,25 +232,38 @@ export function PlantForm({
         <Stack gap="sm" mt="sm">
           <LocalizedTextInput
             enProps={form.getInputProps("addressEn")}
+            help={fieldHelpTip("plant", "address")}
             jaProps={form.getInputProps("addressJa")}
             label="住所"
           />
         </Stack>
         <SimpleGrid cols={isMobile ? 1 : 2} mt="sm" spacing="sm">
           <TextInput
-            label="電話番号"
+            label={
+              <HelpLabel
+                {...fieldHelp("plant", "contact", { label: "電話番号" })}
+              />
+            }
             placeholder="例: 03-1234-5678"
             {...form.getInputProps("phone")}
           />
           <TextInput
-            label="メールアドレス"
+            label={
+              <HelpLabel
+                {...fieldHelp("plant", "contact", { label: "メールアドレス" })}
+              />
+            }
             placeholder="例: plant@example.co.jp"
             {...form.getInputProps("email")}
           />
         </SimpleGrid>
         <SimpleGrid cols={isMobile ? 1 : 2} mt="sm" spacing="sm">
           <TextInput
-            label="担当者"
+            label={
+              <HelpLabel
+                {...fieldHelp("plant", "contact", { label: "担当者" })}
+              />
+            }
             placeholder="例: 山田 太郎"
             {...form.getInputProps("contactPerson")}
           />

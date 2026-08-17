@@ -145,7 +145,7 @@ screenshots: [master-plant-list-01, master-plant-new-01, master-plant-detail-01,
 
 ### 电话 / 邮箱 / 负责人 [#field-contact]
 
-联系方式。
+联系方式。用作单据上的联系方式。
 
 ### 有效 [#field-active]
 
@@ -153,7 +153,7 @@ screenshots: [master-plant-list-01, master-plant-new-01, master-plant-detail-01,
 
 ### 备注 [#field-notes]
 
-补充说明。
+补充说明。写下决定的理由或注意事项，有助于日后查阅的人了解来龙去脉。
 
 ## 常见问题・遇到麻烦时
 

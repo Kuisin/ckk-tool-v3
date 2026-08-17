@@ -205,7 +205,7 @@ screenshots: [purchase-order-list-01, purchase-order-new-01, purchase-order-deta
 
 ### 明细备注 [#field-item-notes]
 
-仅针对该材料的补充。
+仅针对该材料的补充。针对整份订购单的补充说明请写在上方的备注中。
 
 ## 常见问题・遇到困难时
 

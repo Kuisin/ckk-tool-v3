@@ -58,11 +58,11 @@ import {
   placeDevice,
   renameFloorMap,
   unplaceDevice,
-  uploadFloorMapImage,
 } from "@/app/(dashboard)/settings/kiosk-devices/actions";
 import { GhostButton, SecondaryButton } from "@/components/ui/buttons";
 import { ConfirmModal, ModalShell } from "@/components/ui/modals";
 import { PageHeader } from "@/components/ui/PageHeader";
+import { uploadFloorMapImage } from "@/lib/floor-map-client";
 import type {
   KioskDeviceRow,
   KioskFloorMapRow,
@@ -316,10 +316,9 @@ export function KioskFloorMapView({
 
   const handleImageSelected = (file: File | null) => {
     if (!file || !activeMap) return;
-    const formData = new FormData();
-    formData.append("file", file);
+    // 図面は最大 10MB。Server Action ではなく API 経由（lib/floor-map-client.ts）。
     run(
-      () => uploadFloorMapImage(activeMap.id, formData),
+      () => uploadFloorMapImage(activeMap.id, file),
       "図面画像を更新しました",
     );
   };

@@ -29,12 +29,14 @@ import {
 } from "@/app/(dashboard)/master/material-types/actions";
 import { ActiveBadge } from "@/components/ui/ActiveBadge";
 import { DocNumber } from "@/components/ui/DocNumber";
+import { HelpLabel } from "@/components/ui/HelpLabel";
 import {
   FormSection,
   FormShell,
   LocalizedTextInput,
 } from "@/components/ui/shells";
 import { useIsMobile } from "@/hooks/useViewport";
+import { fieldHelp, fieldHelpTip } from "@/lib/field-help";
 import { zodResolver } from "@/lib/form";
 import type { Option } from "@/lib/mock";
 
@@ -177,17 +179,19 @@ export function MaterialTypeForm({
             <SimpleGrid cols={isMobile ? 1 : 2} spacing="sm">
               <TextInput
                 disabled
-                label="メーカー"
+                label={
+                  <HelpLabel {...fieldHelp("materialType", "manufacturer")} />
+                }
                 value={initial.composition.manufacturerLabel}
               />
               <TextInput
                 disabled
-                label="メーカー材種"
+                label={<HelpLabel {...fieldHelp("materialType", "grade")} />}
                 value={initial.composition.gradeLabel}
               />
               <TextInput
                 disabled
-                label="形状"
+                label={<HelpLabel {...fieldHelp("materialType", "shape")} />}
                 value={initial.composition.shapeLabel}
               />
               <TextInput
@@ -215,7 +219,9 @@ export function MaterialTypeForm({
           <SimpleGrid cols={isMobile ? 1 : 3} mb="sm" spacing="sm">
             <Select
               data={manufacturerOptions}
-              label="メーカー"
+              label={
+                <HelpLabel {...fieldHelp("materialType", "manufacturer")} />
+              }
               placeholder="メーカーを選択"
               withAsterisk
               {...form.getInputProps("manufacturerCode")}
@@ -227,7 +233,7 @@ export function MaterialTypeForm({
             <Select
               data={filteredGrades}
               disabled={!form.values.manufacturerCode}
-              label="メーカー材種"
+              label={<HelpLabel {...fieldHelp("materialType", "grade")} />}
               placeholder={
                 form.values.manufacturerCode
                   ? "材種を選択"
@@ -238,7 +244,7 @@ export function MaterialTypeForm({
             />
             <Select
               data={shapeOptions}
-              label="形状"
+              label={<HelpLabel {...fieldHelp("materialType", "shape")} />}
               placeholder="形状を選択"
               withAsterisk
               {...form.getInputProps("shapeCode")}
@@ -258,13 +264,14 @@ export function MaterialTypeForm({
       <FormSection title="基本情報">
         <LocalizedTextInput
           enProps={form.getInputProps("nameEn")}
+          help={fieldHelpTip("materialType", "name")}
           jaProps={form.getInputProps("nameJa")}
           label="名称"
           placeholder="K40UF"
           required
         />
         <Switch
-          label="有効"
+          label={<HelpLabel {...fieldHelp("materialType", "active")} />}
           mt="md"
           {...form.getInputProps("isActive", { type: "checkbox" })}
         />

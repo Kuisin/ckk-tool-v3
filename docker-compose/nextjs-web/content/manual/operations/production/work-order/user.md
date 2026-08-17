@@ -224,7 +224,7 @@ screenshots: [work-order-list-01, work-order-new-01, work-order-detail-01, work-
 
 ### 備考 [#field-notes]
 
-補足です。
+補足です。**現場が指示書を見るときに読まれます。** 注意点があればここに書いてください。
 
 ## よくある質問・困ったとき
 

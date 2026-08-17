@@ -118,7 +118,7 @@ screenshots: [master-approval-group-list-01, master-approval-group-new-01, maste
 
 ### 名称 [#field-name]
 
-组的名称。
+组的名称。选择审批人时将以该名称显示。
 
 ### 有效 [#field-active]
 

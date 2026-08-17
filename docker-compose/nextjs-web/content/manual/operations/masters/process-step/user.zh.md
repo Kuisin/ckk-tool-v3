@@ -178,7 +178,7 @@ screenshots: [master-process-step-list-01, master-process-step-new-01, master-pr
 
 ### 显示顺序 [#field-sort-order]
 
-列表与选项中的排列顺序。
+列表与选项中的排列顺序。数值越小越靠前。**实际执行顺序由各产品的工序列表决定，而非此处。**
 
 ### 有效 / 备注 [#field-active]
 

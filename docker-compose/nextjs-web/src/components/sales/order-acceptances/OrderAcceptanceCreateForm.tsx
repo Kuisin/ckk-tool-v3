@@ -16,8 +16,10 @@ import { useState, useTransition } from "react";
 import { searchCustomerOptions } from "@/app/(dashboard)/_shared/option-search";
 import { createManualAcceptance } from "@/app/(dashboard)/sales/order-acceptances/actions";
 import { CUSTOMER_F4 } from "@/components/ui/f4-presets";
+import { HelpLabel } from "@/components/ui/HelpLabel";
 import { SearchSelect } from "@/components/ui/SearchSelect";
 import { FormSection, FormShell } from "@/components/ui/shells";
+import { fieldHelp } from "@/lib/field-help";
 import {
   type ItemRowForm,
   newItemRow,
@@ -110,7 +112,7 @@ export function OrderAcceptanceCreateForm() {
           <SearchSelect
             error={customerError}
             f4={CUSTOMER_F4}
-            label="顧客"
+            label={<HelpLabel {...fieldHelp("orderAcceptance", "customer")} />}
             onChange={(v) => {
               setCustomerId(v);
               if (v) setCustomerError(null);
@@ -122,20 +124,30 @@ export function OrderAcceptanceCreateForm() {
             withAsterisk
           />
           <TextInput
-            label="顧客注文書番号"
+            label={
+              <HelpLabel
+                {...fieldHelp("orderAcceptance", "customerOrderRef")}
+              />
+            }
             onChange={(e) => setCustomerOrderRef(e.currentTarget.value)}
             placeholder="注文書の番号"
             value={customerOrderRef}
           />
           <TextInput
-            label="見積書番号（任意）"
+            label={
+              <HelpLabel
+                {...fieldHelp("orderAcceptance", "quoteNumber", {
+                  label: "見積書番号（任意）",
+                })}
+              />
+            }
             onChange={(e) => setQuoteNumber(e.currentTarget.value)}
             placeholder="QOT-YYYYMM-NNNNN"
             value={quoteNumber}
           />
           <DatePickerInput
             clearable
-            label="注文日"
+            label={<HelpLabel {...fieldHelp("orderAcceptance", "orderDate")} />}
             leftSection={<IconCalendar size={14} />}
             onChange={setOrderDate}
             placeholder="日付を選択"
@@ -143,7 +155,7 @@ export function OrderAcceptanceCreateForm() {
             valueFormat="YYYY/MM/DD"
           />
           <TextInput
-            label="備考"
+            label={<HelpLabel {...fieldHelp("orderAcceptance", "notes")} />}
             onChange={(e) => setNotes(e.currentTarget.value)}
             placeholder="備考（任意）"
             value={notes}

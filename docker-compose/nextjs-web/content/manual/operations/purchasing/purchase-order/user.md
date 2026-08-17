@@ -205,7 +205,7 @@ screenshots: [purchase-order-list-01, purchase-order-new-01, purchase-order-deta
 
 ### 明細の備考 [#field-item-notes]
 
-その素材だけへの補足です。
+その素材だけへの補足です。発注書全体への補足は、上の備考に書きます。
 
 ## よくある質問・困ったとき
 

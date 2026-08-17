@@ -47,10 +47,12 @@ import {
 import { GhostButton } from "@/components/ui/buttons";
 import { FieldValue } from "@/components/ui/FieldValue";
 import { PRODUCT_F4 } from "@/components/ui/f4-presets";
+import { HelpLabel } from "@/components/ui/HelpLabel";
 import { SearchSelect } from "@/components/ui/SearchSelect";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { FormSection, FormShell } from "@/components/ui/shells";
 import { SHIPPING_TYPE_LABEL } from "@/lib/enum-labels";
+import { fieldHelp } from "@/lib/field-help";
 import { zodResolver } from "@/lib/form";
 import type { Option } from "@/lib/mock";
 import type { ShippingOrder, ShippingType } from "./model";
@@ -259,7 +261,9 @@ export function ShippingOrderForm({
           {mode === "create" ? (
             <SearchSelect
               error={form.errors.salesOrderId}
-              label="注文請書"
+              label={
+                <HelpLabel {...fieldHelp("shippingOrder", "salesOrder")} />
+              }
               onChange={onSalesOrderChange}
               onSearch={searchSalesOrderOptions}
               placeholder="注文請書を検索"
@@ -270,7 +274,10 @@ export function ShippingOrderForm({
           ) : (
             <FieldValue label="注文請書" value={order?.salesOrderNumber} />
           )}
-          <Input.Wrapper label="種別" withAsterisk>
+          <Input.Wrapper
+            label={<HelpLabel {...fieldHelp("shippingOrder", "type")} />}
+            withAsterisk
+          >
             <SegmentedControl
               data={SHIPPING_TYPES.map((t) => ({
                 value: t,
@@ -284,14 +291,14 @@ export function ShippingOrderForm({
           <Select
             clearable
             data={plantOptions}
-            label="出荷元拠点"
+            label={<HelpLabel {...fieldHelp("shippingOrder", "plant")} />}
             placeholder="拠点を選択"
             searchable={plantOptions.length > 5}
             {...form.getInputProps("fromPlantId")}
           />
           <Textarea
             autosize
-            label="備考"
+            label={<HelpLabel {...fieldHelp("shippingOrder", "notes")} />}
             minRows={1}
             placeholder="備考（任意）"
             {...form.getInputProps("notes")}
@@ -352,7 +359,9 @@ export function ShippingOrderForm({
                         ? { value: item.productId, label: item.productName }
                         : null
                     }
-                    label="製品"
+                    label={
+                      <HelpLabel {...fieldHelp("shippingOrder", "product")} />
+                    }
                     onChange={(v, opt) =>
                       form.setFieldValue(`items.${ri}`, {
                         ...item,
@@ -407,7 +416,9 @@ export function ShippingOrderForm({
                   )}
                   <NumberInput
                     error={form.errors[`items.${ri}.quantity`]}
-                    label="数量"
+                    label={
+                      <HelpLabel {...fieldHelp("shippingOrder", "quantity")} />
+                    }
                     maw={110}
                     min={1}
                     onChange={(v) =>
@@ -420,7 +431,9 @@ export function ShippingOrderForm({
                     withAsterisk
                   />
                   <TextInput
-                    label="備考"
+                    label={
+                      <HelpLabel {...fieldHelp("shippingOrder", "notes")} />
+                    }
                     placeholder="行の備考（任意）"
                     {...form.getInputProps(`items.${ri}.notes`)}
                   />

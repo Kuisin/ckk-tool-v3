@@ -155,7 +155,7 @@ The date the customer placed the order, as printed on their document.
 
 ### Notes [#field-notes]
 
-Notes about the acceptance as a whole.
+Notes about the acceptance as a whole. Notes about one line go in that line's own notes.
 
 ### Product [#field-product]
 

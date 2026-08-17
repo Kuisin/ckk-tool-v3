@@ -52,6 +52,7 @@ import { openConfirm } from "@/components/ui/modals";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { SearchSelect } from "@/components/ui/SearchSelect";
 import { FormSection } from "@/components/ui/shells";
+import { fieldHelp } from "@/lib/field-help";
 import { formatDate } from "@/lib/format";
 import type { Option } from "@/lib/mock";
 import {
@@ -390,7 +391,9 @@ export function TrialEstimateForm({
                   <Select
                     clearable
                     data={customerOptions}
-                    label="見積り先"
+                    label={
+                      <HelpLabel {...fieldHelp("trialEstimate", "customer")} />
+                    }
                     onChange={setCustomerId}
                     placeholder="顧客"
                     searchable
@@ -409,7 +412,11 @@ export function TrialEstimateForm({
                     label={
                       <HelpLabel
                         help="対象製品（任意）。指定して確定すると、価格表（顧客×製品）の作成時にこの試算を基準単価ソースとして選択できます。"
-                        label="製品"
+                        label={
+                          <HelpLabel
+                            {...fieldHelp("trialEstimate", "product")}
+                          />
+                        }
                       />
                     }
                     onChange={setProductId}
@@ -422,7 +429,11 @@ export function TrialEstimateForm({
                     label={
                       <HelpLabel
                         help="工具の最大外径。加工費マトリクスの参照キーになります。"
-                        label="最大径 (mm)"
+                        label={
+                          <HelpLabel
+                            {...fieldHelp("trialEstimate", "maxDiameter")}
+                          />
+                        }
                       />
                     }
                     min={0}
@@ -433,7 +444,11 @@ export function TrialEstimateForm({
                     label={
                       <HelpLabel
                         help="工具全長。材料原価 = 参照単価 × (全長 ÷ 1000mm)。"
-                        label="全長 (mm)"
+                        label={
+                          <HelpLabel
+                            {...fieldHelp("trialEstimate", "length")}
+                          />
+                        }
                       />
                     }
                     min={0}
@@ -452,7 +467,11 @@ export function TrialEstimateForm({
                 <Select
                   data={materialTypeOptions}
                   disabled={isPricingLoading}
-                  label="材種"
+                  label={
+                    <HelpLabel
+                      {...fieldHelp("trialEstimate", "materialType")}
+                    />
+                  }
                   onChange={(v) => {
                     const id = v ?? "";
                     setMaterialTypeId(id);
@@ -465,7 +484,9 @@ export function TrialEstimateForm({
                   clearable
                   data={diameterOptions}
                   disabled={isPricingLoading}
-                  label="直径"
+                  label={
+                    <HelpLabel {...fieldHelp("trialEstimate", "diameter")} />
+                  }
                   onChange={(v) => {
                     const code = v ?? "";
                     setDiameterCode(code);
@@ -478,7 +499,11 @@ export function TrialEstimateForm({
                   clearable
                   data={surfaceFinishOptions}
                   disabled={isPricingLoading}
-                  label="黒皮/研磨"
+                  label={
+                    <HelpLabel
+                      {...fieldHelp("trialEstimate", "surfaceFinish")}
+                    />
+                  }
                   onChange={(v) => {
                     const code = v ?? "";
                     setSurfaceFinishCode(code);
@@ -571,7 +596,11 @@ export function TrialEstimateForm({
               {isCylinder && (
                 <Select
                   data={toData(CYLINDER_TYPE_OPTIONS)}
-                  label="円筒種類"
+                  label={
+                    <HelpLabel
+                      {...fieldHelp("trialEstimate", "cylinderType")}
+                    />
+                  }
                   mt="sm"
                   onChange={(v) => setCylinderType(v ?? "NORMAL")}
                   value={cylinderType}
@@ -583,26 +612,50 @@ export function TrialEstimateForm({
             <FormSection title="加工">
               <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
                 <NumberInput
-                  label="段加工長 (mm)"
+                  label={
+                    <HelpLabel
+                      {...fieldHelp("trialEstimate", "stepMachining", {
+                        label: "段加工長 (mm)",
+                      })}
+                    />
+                  }
                   min={0}
                   onChange={setStepLength}
                   value={stepLength}
                 />
                 <Select
                   data={toData(STEP_TYPE_OPTIONS)}
-                  label="段加工種類"
+                  label={
+                    <HelpLabel
+                      {...fieldHelp("trialEstimate", "stepMachining", {
+                        label: "段加工種類",
+                      })}
+                    />
+                  }
                   onChange={(v) => setStepType(v ?? "NONE")}
                   value={stepType}
                 />
                 <NumberInput
-                  label="首下加工長 (mm)"
+                  label={
+                    <HelpLabel
+                      {...fieldHelp("trialEstimate", "neckMachining", {
+                        label: "首下加工長 (mm)",
+                      })}
+                    />
+                  }
                   min={0}
                   onChange={setNeckLength}
                   value={neckLength}
                 />
                 <Select
                   data={toData(NECK_TYPE_OPTIONS)}
-                  label="首下加工種類"
+                  label={
+                    <HelpLabel
+                      {...fieldHelp("trialEstimate", "neckMachining", {
+                        label: "首下加工種類",
+                      })}
+                    />
+                  }
                   onChange={(v) => setNeckType(v ?? "NONE")}
                   value={neckType}
                 />
@@ -610,7 +663,11 @@ export function TrialEstimateForm({
                   label={
                     <HelpLabel
                       help="1本あたりの機械加工時間。加工単価 = 加工時間 × 加工レート（/10分）。"
-                      label="加工時間 (分)"
+                      label={
+                        <HelpLabel
+                          {...fieldHelp("trialEstimate", "machiningTime")}
+                        />
+                      }
                     />
                   }
                   min={0}
@@ -633,20 +690,28 @@ export function TrialEstimateForm({
               <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="sm">
                 <Select
                   data={COATING_OPTIONS.map((c) => ({ value: c, label: c }))}
-                  label="コート"
+                  label={
+                    <HelpLabel {...fieldHelp("trialEstimate", "coating")} />
+                  }
                   onChange={(v) => setCoating(v ?? "無")}
                   searchable
                   value={coating}
                 />
                 <Select
                   data={toData(LAP_OPTIONS)}
-                  label="ラップ処理"
+                  label={
+                    <HelpLabel {...fieldHelp("trialEstimate", "lapping")} />
+                  }
                   onChange={(v) => setLapType(v ?? "NONE")}
                   value={lapType}
                 />
                 <Select
                   data={toData(INSPECTION_OPTIONS)}
-                  label="検査成績書"
+                  label={
+                    <HelpLabel
+                      {...fieldHelp("trialEstimate", "inspectionReport")}
+                    />
+                  }
                   onChange={(v) => setInspection(v ?? "NONE")}
                   value={inspection}
                 />
@@ -657,7 +722,13 @@ export function TrialEstimateForm({
               <Group gap="sm" mb={ldEnabled ? "sm" : 0}>
                 <Switch
                   checked={ldEnabled}
-                  label="LD加工あり"
+                  label={
+                    <HelpLabel
+                      {...fieldHelp("trialEstimate", "ld", {
+                        label: "LD加工あり",
+                      })}
+                    />
+                  }
                   onChange={(e) => setLdEnabled(e.currentTarget.checked)}
                   size="sm"
                 />
@@ -666,18 +737,36 @@ export function TrialEstimateForm({
                 <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="sm">
                   <Select
                     data={toData(LD_LOCATION_OPTIONS)}
-                    label="LD部位"
+                    label={
+                      <HelpLabel
+                        {...fieldHelp("trialEstimate", "ld", {
+                          label: "LD部位",
+                        })}
+                      />
+                    }
                     onChange={(v) => setLdLocation(v ?? "TIP")}
                     value={ldLocation}
                   />
                   <NumberInput
-                    label="LD外径 (mm)"
+                    label={
+                      <HelpLabel
+                        {...fieldHelp("trialEstimate", "ld", {
+                          label: "LD外径 (mm)",
+                        })}
+                      />
+                    }
                     min={0}
                     onChange={setLdOuterDiameter}
                     value={ldOuterDiameter}
                   />
                   <NumberInput
-                    label="LD刃長 (mm)"
+                    label={
+                      <HelpLabel
+                        {...fieldHelp("trialEstimate", "ld", {
+                          label: "LD刃長 (mm)",
+                        })}
+                      />
+                    }
                     min={0}
                     onChange={setLdBladeLength}
                     value={ldBladeLength}

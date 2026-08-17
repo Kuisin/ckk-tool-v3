@@ -29,6 +29,8 @@ import {
   updateStorageLocation,
 } from "@/app/(dashboard)/master/storage-locations/actions";
 import { CancelButton, SaveButton } from "@/components/ui/buttons";
+import { HelpLabel } from "@/components/ui/HelpLabel";
+import { fieldHelp } from "@/lib/field-help";
 import type { StorageLocationRow } from "./StorageLocationsPanel";
 
 /** 全拠点分のフロアマップ（拠点選択に応じて絞り込む）。 */
@@ -126,7 +128,13 @@ export function LocationModal({
             <>
               <Select
                 data={plantOptions}
-                label="拠点"
+                label={
+                  <HelpLabel
+                    {...fieldHelp("storageLocation", "plant", {
+                      label: "拠点",
+                    })}
+                  />
+                }
                 placeholder="拠点を選択"
                 searchable
                 withAsterisk
@@ -145,7 +153,13 @@ export function LocationModal({
                     : "任意 — 選択するとマップ中央に仮配置（あとでドラッグ調整）"
                 }
                 disabled={selectedPlantId == null || floorOptions.length === 0}
-                label="フロア"
+                label={
+                  <HelpLabel
+                    {...fieldHelp("storageLocation", "plant", {
+                      label: "フロア",
+                    })}
+                  />
+                }
                 placeholder={
                   selectedPlantId == null
                     ? "先に拠点を選択"
@@ -158,27 +172,60 @@ export function LocationModal({
             </>
           )}
           <TextInput
-            label="コード"
+            label={
+              <HelpLabel
+                {...fieldHelp("storageLocation", "code", { label: "コード" })}
+              />
+            }
             placeholder="WH1"
             withAsterisk
             {...form.getInputProps("code")}
           />
           <TextInput
-            label="名称（日本語）"
+            label={
+              <HelpLabel
+                {...fieldHelp("storageLocation", "code", {
+                  label: "名称（日本語）",
+                })}
+              />
+            }
             placeholder="第一倉庫"
             withAsterisk
             {...form.getInputProps("nameJa")}
           />
-          <TextInput label="名称（英語）" {...form.getInputProps("nameEn")} />
-          <NumberInput label="表示順" {...form.getInputProps("sortOrder")} />
+          <TextInput
+            label={
+              <HelpLabel
+                {...fieldHelp("storageLocation", "code", {
+                  label: "名称（英語）",
+                })}
+              />
+            }
+            {...form.getInputProps("nameEn")}
+          />
+          <NumberInput
+            label={<HelpLabel {...fieldHelp("storageLocation", "sortOrder")} />}
+            {...form.getInputProps("sortOrder")}
+          />
           <Switch
             checked={form.values.isActive}
-            label="有効"
+            label={
+              <HelpLabel
+                {...fieldHelp("storageLocation", "active", { label: "有効" })}
+              />
+            }
             onChange={(e) =>
               form.setFieldValue("isActive", e.currentTarget.checked)
             }
           />
-          <Textarea label="備考" {...form.getInputProps("notes")} />
+          <Textarea
+            label={
+              <HelpLabel
+                {...fieldHelp("storageLocation", "active", { label: "備考" })}
+              />
+            }
+            {...form.getInputProps("notes")}
+          />
           <Group justify="flex-end" mt="xs">
             <CancelButton onClick={onClose} />
             <SaveButton loading={pending} />

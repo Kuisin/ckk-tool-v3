@@ -119,7 +119,7 @@ screenshots: [master-work-location-01, master-work-location-group-new-01, master
 
 ### 拠点 [#field-plant]
 
-どの拠点の作業場所かです。
+どの拠点の作業場所かです。工程の実施場所を選ぶときは、**その拠点の作業場所だけ**が候補に出ます。
 
 ### コード / 名称（日本語・English） [#field-code]
 
@@ -127,11 +127,11 @@ screenshots: [master-work-location-01, master-work-location-group-new-01, master
 
 ### 種別 [#field-type]
 
-作業場所の区分です。
+作業場所の区分です。一覧の絞り込みに使います。
 
 ### キャパシティ [#field-capacity]
 
-同時に扱える量の目安です。
+同時に扱える量の目安です。1 台の機械なら 1、区画なら同時に置ける数を入れます。
 
 ### 表示順 / 有効 / 備考 [#field-sort-order]
 

@@ -120,11 +120,11 @@ screenshots: [master-storage-location-01, master-storage-location-new-01, master
 
 ### コード / 名称（日本語・英語） [#field-code]
 
-場所の管理番号と名前です。
+場所の管理番号と名前です。登録すると、在庫の置き場所として選べるようになります。
 
 ### 表示順 [#field-sort-order]
 
-選択肢での並び順です。
+選択肢での並び順です。小さいほど先に出ます。よく使う場所を上にすると選びやすくなります。
 
 ### 有効 / 備考 [#field-active]
 

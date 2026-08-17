@@ -36,10 +36,12 @@ import {
 import type { QuoteOption } from "@/app/(dashboard)/sales/design-requests/data";
 import { FieldValue } from "@/components/ui/FieldValue";
 import { PRODUCT_F4 } from "@/components/ui/f4-presets";
+import { HelpLabel } from "@/components/ui/HelpLabel";
 import { SearchSelect } from "@/components/ui/SearchSelect";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { FormSection, FormShell } from "@/components/ui/shells";
 import { DESIGN_TRIGGER_LABEL } from "@/lib/enum-labels";
+import { fieldHelp } from "@/lib/field-help";
 import { zodResolver } from "@/lib/form";
 import { DESIGN_TRIGGER_COLOR, type DesignRequest } from "./model";
 
@@ -173,7 +175,10 @@ export function DesignRequestForm({
         <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
           {mode === "create" ? (
             <>
-              <Input.Wrapper label="トリガー" withAsterisk>
+              <Input.Wrapper
+                label={<HelpLabel {...fieldHelp("designRequest", "trigger")} />}
+                withAsterisk
+              >
                 <SegmentedControl
                   data={TRIGGERS.map((t) => ({
                     value: t,
@@ -189,7 +194,7 @@ export function DesignRequestForm({
                   clearable
                   data={quoteOptions}
                   description="§1 見積と並行して設計を依頼する場合の見積元（任意）"
-                  label="見積書"
+                  label={<HelpLabel {...fieldHelp("designRequest", "quote")} />}
                   placeholder="直近の見積書から選択"
                   searchable
                   {...form.getInputProps("quoteNumber")}
@@ -197,7 +202,9 @@ export function DesignRequestForm({
               ) : (
                 <SearchSelect
                   description="§3 受注と並行して設計を依頼する場合の注文請書（任意）"
-                  label="注文請書"
+                  label={
+                    <HelpLabel {...fieldHelp("designRequest", "salesOrder")} />
+                  }
                   onChange={(v) => form.setFieldValue("salesOrderId", v)}
                   onSearch={searchSalesOrderOptions}
                   placeholder="注文請書を検索"
@@ -245,7 +252,7 @@ export function DesignRequestForm({
                   }
                 : null
             }
-            label="製品"
+            label={<HelpLabel {...fieldHelp("designRequest", "product")} />}
             onChange={(v, opt) => {
               form.setFieldValue("productId", v);
               form.setFieldValue("productName", opt?.label ?? "");
@@ -261,7 +268,7 @@ export function DesignRequestForm({
       <FormSection title="依頼内容">
         <Textarea
           autosize
-          label="依頼内容"
+          label={<HelpLabel {...fieldHelp("designRequest", "description")} />}
           minRows={4}
           placeholder="設計依頼の内容・要件（任意）"
           {...form.getInputProps("description")}

@@ -178,7 +178,7 @@ The rank required to approve this step.
 
 ### Sort order [#field-sort-order]
 
-Order in lists and pick lists.
+Order in lists and pick lists. Smaller comes first. **The order steps actually run in is set by the product's process list, not here.**
 
 ### Active / notes [#field-active]
 

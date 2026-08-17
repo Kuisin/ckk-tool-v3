@@ -34,6 +34,7 @@ import {
 import { ActiveBadge } from "@/components/ui/ActiveBadge";
 import { DocNumber } from "@/components/ui/DocNumber";
 import { materialTypeF4 } from "@/components/ui/f4-presets";
+import { HelpLabel } from "@/components/ui/HelpLabel";
 import { SearchSelect } from "@/components/ui/SearchSelect";
 import {
   FormSection,
@@ -42,6 +43,7 @@ import {
 } from "@/components/ui/shells";
 import { useIsMobile } from "@/hooks/useViewport";
 import { UNIT_OPTIONS } from "@/lib/enum-labels";
+import { fieldHelp, fieldHelpTip } from "@/lib/field-help";
 import { zodResolver } from "@/lib/form";
 import {
   composeMaterialCode,
@@ -281,26 +283,46 @@ export function MaterialForm({
           <SimpleGrid cols={isMobile ? 1 : 3} spacing="sm">
             <TextInput
               disabled
-              label="材種"
+              label={<HelpLabel {...fieldHelp("material", "materialType")} />}
               value={initial.materialTypeLabel}
             />
             <TextInput
               disabled
-              label="黒皮・研磨"
+              label={<HelpLabel {...fieldHelp("material", "surfaceFinish")} />}
               value={initial.surfaceFinishLabel}
             />
-            <TextInput disabled label="種類" value={initial.kindLabel} />
             <TextInput
               disabled
-              label="直径 (mm)"
+              label={<HelpLabel {...fieldHelp("material", "kind")} />}
+              value={initial.kindLabel}
+            />
+            <TextInput
+              disabled
+              label={
+                <HelpLabel
+                  {...fieldHelp("material", "dimensions", {
+                    label: "直径 (mm)",
+                  })}
+                />
+              }
               value={String(initial.diameterMm)}
             />
             <TextInput
               disabled
-              label="全長 (mm)"
+              label={
+                <HelpLabel
+                  {...fieldHelp("material", "dimensions", {
+                    label: "全長 (mm)",
+                  })}
+                />
+              }
               value={String(initial.lengthMm)}
             />
-            <TextInput disabled label="素材コード" value={initial.code} />
+            <TextInput
+              disabled
+              label={<HelpLabel {...fieldHelp("material", "code")} />}
+              value={initial.code}
+            />
           </SimpleGrid>
         ) : (
           <>
@@ -308,7 +330,7 @@ export function MaterialForm({
               <SearchSelect
                 description="変換済（コード構成あり）の材種のみ選択できます"
                 f4={materialTypeF4(manufacturerOptions, shapeOptions)}
-                label="材種"
+                label={<HelpLabel {...fieldHelp("material", "materialType")} />}
                 onChange={onTypeChange}
                 onSearch={searchStructuredMaterialTypeOptions}
                 placeholder="材種コード・名称で検索"
@@ -318,7 +340,9 @@ export function MaterialForm({
               />
               <Select
                 data={finishOptions}
-                label="黒皮・研磨"
+                label={
+                  <HelpLabel {...fieldHelp("material", "surfaceFinish")} />
+                }
                 placeholder="区分を選択"
                 withAsterisk
                 {...form.getInputProps("surfaceFinishCode")}
@@ -331,7 +355,13 @@ export function MaterialForm({
                     ? diameterCodeFromMm(Number(form.values.diameterMm))
                     : "—"
                 }（径×10）`}
-                label="直径 (mm)"
+                label={
+                  <HelpLabel
+                    {...fieldHelp("material", "dimensions", {
+                      label: "直径 (mm)",
+                    })}
+                  />
+                }
                 max={99.9}
                 min={0.1}
                 step={0.1}
@@ -345,7 +375,13 @@ export function MaterialForm({
                     ? lengthCodeFromMm(Number(form.values.lengthMm))
                     : "—"
                 }`}
-                label="全長 (mm)"
+                label={
+                  <HelpLabel
+                    {...fieldHelp("material", "dimensions", {
+                      label: "全長 (mm)",
+                    })}
+                  />
+                }
                 max={999}
                 min={1}
                 withAsterisk
@@ -355,7 +391,7 @@ export function MaterialForm({
                 data={kindOptions}
                 description="親材種の形状に属する種類のみ"
                 disabled={kindOptions.length === 0}
-                label="種類"
+                label={<HelpLabel {...fieldHelp("material", "kind")} />}
                 placeholder={
                   form.values.materialTypeId
                     ? "種類を選択"
@@ -381,6 +417,7 @@ export function MaterialForm({
       <FormSection title="基本情報">
         <LocalizedTextInput
           enProps={form.getInputProps("nameEn")}
+          help={fieldHelpTip("material", "name")}
           jaProps={form.getInputProps("nameJa")}
           label="名称"
           placeholder="K40UF φ3×330"
@@ -389,29 +426,37 @@ export function MaterialForm({
         <SimpleGrid cols={isMobile ? 1 : 3} mt="sm" spacing="sm">
           <Select
             data={UNIT_OPTIONS}
-            label="単位"
+            label={<HelpLabel {...fieldHelp("material", "unit")} />}
             withAsterisk
             {...form.getInputProps("unit")}
           />
           <TextInput
-            label="メーカ型式"
+            label={
+              <HelpLabel
+                {...fieldHelp("material", "model", { label: "メーカ型式" })}
+              />
+            }
             placeholder="103.70.083"
             {...form.getInputProps("manufacturerModel")}
           />
           <NumberInput
             decimalScale={1}
-            label="呼び径 (mm)"
+            label={
+              <HelpLabel
+                {...fieldHelp("material", "model", { label: "呼び径 (mm)" })}
+              />
+            }
             min={0}
             {...form.getInputProps("nominalDiameterMm")}
           />
         </SimpleGrid>
         <Switch
-          label="有効"
+          label={<HelpLabel {...fieldHelp("material", "active")} />}
           mt="md"
           {...form.getInputProps("isActive", { type: "checkbox" })}
         />
         <Textarea
-          label="備考"
+          label={<HelpLabel {...fieldHelp("material", "notes")} />}
           mt="sm"
           placeholder="備考・特記事項"
           rows={3}

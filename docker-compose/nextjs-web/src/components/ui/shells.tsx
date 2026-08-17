@@ -51,6 +51,7 @@ import {
   SaveButton,
   SecondaryButton,
 } from "./buttons";
+import { HelpLabel } from "./HelpLabel";
 import { type Crumb, PageHeader } from "./PageHeader";
 import { PdfButton } from "./PdfButton";
 import { UserAvatar } from "./UserAvatar";
@@ -475,24 +476,32 @@ export function LocalizedTextInput({
   enProps,
   required,
   placeholder,
+  help,
 }: {
   label: string;
   jaProps: GetInputPropsReturnType;
   enProps: GetInputPropsReturnType;
   required?: boolean;
   placeholder?: string;
+  /**
+   * 「?」に出す説明とマニュアルの該当箇所。ラベルは「〜（日本語）」の形に
+   * 組み立てるため、`fieldHelp` ではなく `fieldHelpTip` を渡す。
+   */
+  help?: { help: string; manual: string };
 }) {
   const isMobile = useIsMobile();
+  const withHelp = (text: string) =>
+    help ? <HelpLabel label={text} {...help} /> : text;
   return (
     <SimpleGrid cols={isMobile ? 1 : 2} spacing="sm">
       <TextInput
-        label={`${label}（日本語）`}
+        label={withHelp(`${label}（日本語）`)}
         placeholder={placeholder}
         withAsterisk={required}
         {...jaProps}
       />
       <TextInput
-        label={`${label}（English）`}
+        label={withHelp(`${label}（English）`)}
         placeholder={placeholder}
         {...enProps}
       />

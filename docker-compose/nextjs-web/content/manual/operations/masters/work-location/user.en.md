@@ -119,7 +119,7 @@ Every field on the Work location screen.
 
 ### Plant [#field-plant]
 
-Which plant the work location belongs to.
+Which plant the work location belongs to. When picking where a step runs, **only that plant's work locations** are offered.
 
 ### Code / name (ja, en) [#field-code]
 
@@ -127,11 +127,11 @@ The work location's code and name, selectable as where a step is carried out.
 
 ### Type [#field-type]
 
-The kind of work location.
+The kind of work location. It is used to narrow the list.
 
 ### Capacity [#field-capacity]
 
-A guide to how much it can handle at once.
+A guide to how much it can handle at once. Enter 1 for a single machine, or how many fit at once for an area.
 
 ### Sort order / active / notes [#field-sort-order]
 

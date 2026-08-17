@@ -32,6 +32,7 @@ import {
 } from "@/app/(dashboard)/master/process-steps/actions";
 import { ActiveBadge } from "@/components/ui/ActiveBadge";
 import { GhostButton } from "@/components/ui/buttons";
+import { HelpLabel } from "@/components/ui/HelpLabel";
 import { SearchSelect } from "@/components/ui/SearchSelect";
 import {
   FormSection,
@@ -45,6 +46,7 @@ import {
   PROCESS_EXECUTION_OPTIONS,
   QUANTITY_TRACKING_OPTIONS,
 } from "@/lib/enum-labels";
+import { fieldHelp, fieldHelpTip } from "@/lib/field-help";
 import { zodResolver } from "@/lib/form";
 
 const BASE_PATH = "/master/process-steps";
@@ -387,13 +389,21 @@ export function ProcessStepForm({
             <TextInput
               description="工程コードは作成後変更できません"
               disabled
-              label="工程コード"
+              label={
+                <HelpLabel
+                  {...fieldHelp("processStep", "code", { label: "工程コード" })}
+                />
+              }
               value={initial.code}
             />
           ) : (
             <TextInput
               description="英大文字・数字・アンダースコア（例: CYLINDER_MACHINING）"
-              label="工程コード"
+              label={
+                <HelpLabel
+                  {...fieldHelp("processStep", "code", { label: "工程コード" })}
+                />
+              }
               placeholder="CYLINDER_MACHINING"
               withAsterisk
               {...form.getInputProps("code")}
@@ -401,13 +411,14 @@ export function ProcessStepForm({
           )}
           <NumberInput
             description="一覧・カタログの既定の並び順（実行順は依存解決で決定）"
-            label="表示順"
+            label={<HelpLabel {...fieldHelp("processStep", "sortOrder")} />}
             {...form.getInputProps("sortOrder")}
           />
         </SimpleGrid>
         <Stack gap="sm" mt="sm">
           <LocalizedTextInput
             enProps={form.getInputProps("nameEn")}
+            help={fieldHelpTip("processStep", "code")}
             jaProps={form.getInputProps("nameJa")}
             label="名称"
             required
@@ -416,13 +427,13 @@ export function ProcessStepForm({
         <SimpleGrid cols={isMobile ? 1 : 2} mt="sm" spacing="sm">
           <Select
             data={PROCESS_CATEGORY_OPTIONS}
-            label="カテゴリ"
+            label={<HelpLabel {...fieldHelp("processStep", "category")} />}
             withAsterisk
             {...form.getInputProps("category")}
           />
           <Select
             data={PROCESS_EXECUTION_OPTIONS}
-            label="実施場所"
+            label={<HelpLabel {...fieldHelp("processStep", "execution")} />}
             withAsterisk
             {...form.getInputProps("executionLocation")}
           />
@@ -430,13 +441,15 @@ export function ProcessStepForm({
             allowDeselect={false}
             data={QUANTITY_TRACKING_OPTIONS}
             description="工程実行時の数量入力。なし = 記録せず通過数をそのまま次工程へ"
-            label="数量管理"
+            label={
+              <HelpLabel {...fieldHelp("processStep", "quantityTracking")} />
+            }
             {...form.getInputProps("quantityTracking")}
           />
           <NumberInput
             decimalScale={2}
             description="ルート/指示書の工程に入る初期値（任意・上書き可）"
-            label="既定作業時間"
+            label={<HelpLabel {...fieldHelp("processStep", "defaultTime")} />}
             min={0.01}
             suffix=" h"
             {...form.getInputProps("defaultWorkHours")}
@@ -445,11 +458,17 @@ export function ProcessStepForm({
         <Stack gap="xs" mt="sm">
           <Switch
             description="他工程と同時実施・記録できる工程"
-            label="同期可"
+            label={<HelpLabel {...fieldHelp("processStep", "sync")} />}
             {...form.getInputProps("isSyncCapable", { type: "checkbox" })}
           />
           <Switch
-            label="検査工程"
+            label={
+              <HelpLabel
+                {...fieldHelp("processStep", "inspection", {
+                  label: "検査工程",
+                })}
+              />
+            }
             {...form.getInputProps("isInspection", { type: "checkbox" })}
             onChange={(event) => {
               const checked = event.currentTarget.checked;
@@ -466,24 +485,40 @@ export function ProcessStepForm({
             }}
           />
           <Switch
-            label="検査承認工程"
+            label={
+              <HelpLabel
+                {...fieldHelp("processStep", "inspection", {
+                  label: "検査承認工程",
+                })}
+              />
+            }
             {...form.getInputProps("isApprovalStep", { type: "checkbox" })}
           />
           {form.values.isApprovalStep && (
             <TextInput
               description="この承認工程を実行できる最低役職"
-              label="承認必要役職"
+              label={
+                <HelpLabel {...fieldHelp("processStep", "approvalRank")} />
+              }
               placeholder="例: 係長以上"
               {...form.getInputProps("approvalMinRank")}
             />
           )}
           <Switch
-            label="有効"
+            label={
+              <HelpLabel
+                {...fieldHelp("processStep", "active", { label: "有効" })}
+              />
+            }
             {...form.getInputProps("isActive", { type: "checkbox" })}
           />
         </Stack>
         <Textarea
-          label="備考"
+          label={
+            <HelpLabel
+              {...fieldHelp("processStep", "active", { label: "備考" })}
+            />
+          }
           mt="sm"
           placeholder="備考・特記事項"
           rows={3}

@@ -36,6 +36,7 @@ import {
   bpBaseInitialValues,
 } from "@/components/master/bp/BpBaseFields";
 import { ActiveBadge } from "@/components/ui/ActiveBadge";
+import { HelpLabel } from "@/components/ui/HelpLabel";
 import { FormSection, FormShell } from "@/components/ui/shells";
 import { useIsMobile } from "@/hooks/useViewport";
 import {
@@ -45,6 +46,7 @@ import {
   TAX_TYPE_OPTIONS,
   VENDOR_TYPE_OPTIONS,
 } from "@/lib/enum-labels";
+import { fieldHelp } from "@/lib/field-help";
 import { zodResolver } from "@/lib/form";
 import type { Option } from "@/lib/mock";
 
@@ -285,31 +287,53 @@ export function BpForm({
             <Select
               clearable
               data={billingOptions}
-              label="請求先（別法人の場合）"
+              label={
+                <HelpLabel {...fieldHelp("businessPartner", "billingBp")} />
+              }
               placeholder="この取引先自身に請求"
               searchable
               {...form.getInputProps("customer.billingBpId")}
             />
             <NumberInput
               description="31 = 月末"
-              label="締日"
+              label={
+                <HelpLabel
+                  {...fieldHelp("businessPartner", "paymentTerms", {
+                    label: "締日",
+                  })}
+                />
+              }
               max={31}
               min={1}
               {...form.getInputProps("customer.closingDay")}
             />
             <NumberInput
-              label="支払サイト（日数）"
+              label={
+                <HelpLabel
+                  {...fieldHelp("businessPartner", "paymentTerms", {
+                    label: "支払サイト（日数）",
+                  })}
+                />
+              }
               min={0}
               {...form.getInputProps("customer.paymentTermsDays")}
             />
             <NumberInput
-              label="支払日"
+              label={
+                <HelpLabel
+                  {...fieldHelp("businessPartner", "paymentTerms", {
+                    label: "支払日",
+                  })}
+                />
+              }
               max={31}
               min={1}
               {...form.getInputProps("customer.paymentDay")}
             />
             <NumberInput
-              label="与信限度額"
+              label={
+                <HelpLabel {...fieldHelp("businessPartner", "creditLimit")} />
+              }
               min={0}
               prefix="¥"
               thousandSeparator=","
@@ -317,17 +341,25 @@ export function BpForm({
             />
             <Select
               data={TAX_TYPE_OPTIONS}
-              label="課税区分"
+              label={<HelpLabel {...fieldHelp("businessPartner", "taxType")} />}
               {...form.getInputProps("customer.taxType")}
             />
             <Select
               data={INVOICE_METHOD_OPTIONS}
-              label="請求書送付方法"
+              label={
+                <HelpLabel {...fieldHelp("businessPartner", "invoiceMethod")} />
+              }
               {...form.getInputProps("customer.invoiceMethod")}
             />
           </SimpleGrid>
           <Checkbox
-            label="委託先（委託販売の対象）"
+            label={
+              <HelpLabel
+                {...fieldHelp("businessPartner", "consignment", {
+                  label: "委託先（委託販売の対象）",
+                })}
+              />
+            }
             mt="sm"
             {...form.getInputProps("customer.isConsignment", {
               type: "checkbox",
@@ -343,7 +375,9 @@ export function BpForm({
         >
           <SimpleGrid cols={isMobile ? 1 : 2} spacing="sm">
             <TextInput
-              label="業種"
+              label={
+                <HelpLabel {...fieldHelp("businessPartner", "industry")} />
+              }
               placeholder="自動車部品"
               {...form.getInputProps("endUser.industry")}
             />
@@ -360,7 +394,9 @@ export function BpForm({
             <SimpleGrid cols={isMobile ? 1 : 2} spacing="sm">
               <Select
                 data={VENDOR_TYPE_OPTIONS}
-                label="外注種別"
+                label={
+                  <HelpLabel {...fieldHelp("businessPartner", "vendorType")} />
+                }
                 withAsterisk
                 {...form.getInputProps("vendor.vendorType")}
               />
@@ -371,24 +407,44 @@ export function BpForm({
               />
               <NumberInput
                 description="31 = 月末"
-                label="締日"
+                label={
+                  <HelpLabel
+                    {...fieldHelp("businessPartner", "paymentTerms", {
+                      label: "締日",
+                    })}
+                  />
+                }
                 max={31}
                 min={1}
                 {...form.getInputProps("vendor.closingDay")}
               />
               <NumberInput
-                label="支払サイト（日数）"
+                label={
+                  <HelpLabel
+                    {...fieldHelp("businessPartner", "paymentTerms", {
+                      label: "支払サイト（日数）",
+                    })}
+                  />
+                }
                 min={0}
                 {...form.getInputProps("vendor.paymentTermsDays")}
               />
               <NumberInput
-                label="支払日"
+                label={
+                  <HelpLabel
+                    {...fieldHelp("businessPartner", "paymentTerms", {
+                      label: "支払日",
+                    })}
+                  />
+                }
                 max={31}
                 min={1}
                 {...form.getInputProps("vendor.paymentDay")}
               />
               <NumberInput
-                label="標準リードタイム（日数）"
+                label={
+                  <HelpLabel {...fieldHelp("businessPartner", "leadTime")} />
+                }
                 min={0}
                 {...form.getInputProps("vendor.leadTimeDays")}
               />
@@ -398,23 +454,47 @@ export function BpForm({
           <FormSection description="支払振込先の口座情報。" title="振込先">
             <SimpleGrid cols={isMobile ? 1 : 2} spacing="sm">
               <TextInput
-                label="銀行名"
+                label={
+                  <HelpLabel
+                    {...fieldHelp("businessPartner", "bank", {
+                      label: "銀行名",
+                    })}
+                  />
+                }
                 placeholder="〇〇銀行"
                 {...form.getInputProps("vendor.bankName")}
               />
               <TextInput
-                label="支店名"
+                label={
+                  <HelpLabel
+                    {...fieldHelp("businessPartner", "bank", {
+                      label: "支店名",
+                    })}
+                  />
+                }
                 placeholder="〇〇支店"
                 {...form.getInputProps("vendor.bankBranch")}
               />
               <Select
                 clearable
                 data={BANK_ACCOUNT_TYPE_OPTIONS}
-                label="口座種別"
+                label={
+                  <HelpLabel
+                    {...fieldHelp("businessPartner", "bank", {
+                      label: "口座種別",
+                    })}
+                  />
+                }
                 {...form.getInputProps("vendor.bankAccountType")}
               />
               <TextInput
-                label="口座番号"
+                label={
+                  <HelpLabel
+                    {...fieldHelp("businessPartner", "bank", {
+                      label: "口座番号",
+                    })}
+                  />
+                }
                 placeholder="1234567"
                 {...form.getInputProps("vendor.bankAccountNumber")}
               />
