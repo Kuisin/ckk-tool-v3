@@ -150,6 +150,63 @@ The purchase order screen has four tabs.
 
 A purchase order made from a purchase request shows a link to the original request number near the top, as 「**変換元（購買依頼）**」 (converted from — purchase request).
 
+## Input fields
+
+Every field on the material purchase order screen. The **?** next to a field in the app links straight to its description here.
+
+| Field | Required | What to enter |
+|-------|----------|---------------|
+| [Supplier](#field-supplier) | Required | Who you are buying from |
+| [Order date](#field-order-date) | Required | The date of the order |
+| [Notes](#field-notes) | Optional | Notes for the whole order |
+| [Material](#field-material) | Required | The material being ordered |
+| [Receiving plant](#field-plant) | Required | Where it will be received |
+| [Quantity](#field-quantity) | Required | How much to order |
+| [Unit](#field-unit) | Required | Pieces, kg and so on |
+| [Unit price](#field-unit-price) | Required | Price per unit |
+| [Expected arrival](#field-expected-date) | Optional | When it is due |
+| [Line notes](#field-item-notes) | Optional | Notes for that material only |
+
+### Supplier [#field-supplier]
+
+Who you are buying the material from. If they are not listed, register them in [Suppliers](/manual/en/operations/masters/supplier/user).
+
+### Order date [#field-order-date]
+
+The date of the order. Today's date is filled in by default.
+
+### Notes [#field-notes]
+
+Notes about the order as a whole. Anything specific to one material belongs in the line notes.
+
+### Material [#field-material]
+
+The material being ordered. If the order was created from a purchase request, the request's contents are carried over.
+
+### Receiving plant [#field-plant]
+
+The plant that receives the material. **Recording the arrival increases stock at this plant.**
+
+### Quantity [#field-quantity]
+
+How much to order. **Arrivals can be recorded in parts** when the delivery arrives across several shipments.
+
+### Unit [#field-unit]
+
+Pieces, kg, m and so on. Choosing the material fills in its default unit.
+
+### Unit price [#field-unit-price]
+
+The price per unit. **This amount is used as the reference material price in trial estimates**, so enter the real transaction price.
+
+### Expected arrival [#field-expected-date]
+
+The date the material is due, as agreed with the supplier.
+
+### Line notes [#field-item-notes]
+
+Notes for that material only.
+
 ## Questions and problems
 
 **Q. The 「編集」 (Edit) button does not appear.**

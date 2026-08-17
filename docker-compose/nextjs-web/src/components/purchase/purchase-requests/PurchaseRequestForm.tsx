@@ -34,10 +34,12 @@ import {
   updatePurchaseRequest,
 } from "@/app/(dashboard)/purchase/purchase-requests/actions";
 import { GhostButton } from "@/components/ui/buttons";
+import { HelpLabel } from "@/components/ui/HelpLabel";
 import { SearchSelect } from "@/components/ui/SearchSelect";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { FormSection, FormShell } from "@/components/ui/shells";
 import { UNIT_OPTIONS } from "@/lib/enum-labels";
+import { fieldHelp } from "@/lib/field-help";
 import { zodResolver } from "@/lib/form";
 import type { PurchaseRequestView } from "./model";
 
@@ -195,7 +197,7 @@ export function PurchaseRequestForm({
       <FormSection title="基本情報">
         <Textarea
           autosize
-          label="依頼理由"
+          label={<HelpLabel {...fieldHelp("purchaseRequest", "reason")} />}
           minRows={2}
           placeholder="依頼理由・用途（任意）"
           {...form.getInputProps("purpose")}
@@ -239,7 +241,11 @@ export function PurchaseRequestForm({
                         ? { value: item.materialId, label: item.materialLabel }
                         : null
                     }
-                    label="素材"
+                    label={
+                      <HelpLabel
+                        {...fieldHelp("purchaseRequest", "material")}
+                      />
+                    }
                     onChange={(v, opt) => {
                       form.setFieldValue(`items.${ri}.materialId`, v ?? "");
                       form.setFieldValue(
@@ -256,7 +262,9 @@ export function PurchaseRequestForm({
                   <Select
                     clearable
                     data={plantOptions}
-                    label="入荷先拠点"
+                    label={
+                      <HelpLabel {...fieldHelp("purchaseRequest", "plant")} />
+                    }
                     maw={180}
                     placeholder="拠点を選択"
                     {...form.getInputProps(`items.${ri}.plantId`)}
@@ -293,7 +301,9 @@ export function PurchaseRequestForm({
             <Group align="flex-end" gap="sm" mt="xs">
               <DatePickerInput
                 clearable
-                label="希望納期"
+                label={
+                  <HelpLabel {...fieldHelp("purchaseRequest", "desiredDate")} />
+                }
                 leftSection={<IconCalendar size={14} />}
                 maw={200}
                 placeholder="日付を選択"

@@ -18,6 +18,9 @@
 /** マニュアル上のアプリ位置（operations/<カテゴリ>/<アプリ>）。 */
 const APP_MANUAL_PATH = {
   quote: "operations/sales/quote",
+  purchaseRequest: "operations/purchasing/purchase-request",
+  purchaseOrder: "operations/purchasing/purchase-order",
+  materialReceipt: "operations/purchasing/material-receipt",
 } as const satisfies Record<string, string>;
 
 export type HelpApp = keyof typeof APP_MANUAL_PATH;
@@ -74,6 +77,79 @@ export const FIELD_HELP = {
     notes: {
       label: "備考",
       summary: "社内向けの補足です。見積書の PDF には出ません。",
+    },
+  },
+  purchaseRequest: {
+    reason: {
+      label: "依頼理由",
+      summary:
+        "なぜその素材が必要なのかです。承認する人はここを見て判断するので、どの製品のどの工程で使うのかまで書くとやり取りが減ります。",
+    },
+    material: {
+      label: "素材",
+      summary:
+        "ほしい素材です。一覧に無いときは先に素材マスタへ登録してください。",
+    },
+    plant: {
+      label: "入荷先拠点",
+      summary:
+        "その素材を受け取る拠点です。ここで指定した拠点の在庫として入ります。",
+    },
+    desiredDate: {
+      label: "希望納期",
+      summary:
+        "いつまでに欲しいかの希望日です。確定した予定ではありません — 実際の入荷予定日は発注書で決めます。",
+    },
+  },
+  purchaseOrder: {
+    supplier: {
+      label: "仕入先",
+      summary:
+        "素材を買う相手です。一覧に無いときは外注企業マスタへ登録してください。",
+    },
+    orderDate: {
+      label: "発注日",
+      summary: "発注する日です。既定で今日が入ります。",
+    },
+    plant: {
+      label: "入荷先拠点",
+      summary:
+        "その素材を受け取る拠点です。入荷を記録するとこの拠点の在庫が増えます。",
+    },
+    unitPrice: {
+      label: "単価",
+      summary:
+        "1 単位あたりの価格です。ここに入れた金額が試算の材料費の参考価格として使われます。",
+    },
+    expectedDate: {
+      label: "入荷予定日",
+      summary: "その素材が届く予定の日です。仕入先と決めた日を入れます。",
+    },
+  },
+  materialReceipt: {
+    material: {
+      label: "素材",
+      summary:
+        "届いた素材です。発注書から記録する場合は発注の内容が引き継がれます。",
+    },
+    supplier: {
+      label: "仕入先",
+      summary:
+        "届けてくれた会社です。発注書からの入荷では自動で入ります。直接仕入れた場合はここで選びます。",
+    },
+    plant: {
+      label: "入荷先拠点",
+      summary: "実際に受け取った拠点です。この拠点の在庫が増えます。",
+    },
+    receivedDate: {
+      label: "入荷日",
+      summary:
+        "受け取った日です。この日付で在庫が増えます。後日まとめて記録する場合も実際に受け取った日を入れてください。",
+    },
+    quantity: {
+      label: "数量",
+      summary:
+        "実際に届いた数です。発注した数と違っても構いません — 残りは次の入荷として記録します。",
     },
   },
 } as const satisfies Record<HelpApp, Record<string, FieldHelpEntry>>;

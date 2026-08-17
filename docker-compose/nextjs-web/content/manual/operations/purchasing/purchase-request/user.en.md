@@ -125,6 +125,53 @@ The request screen has three tabs.
 
 The 「承認・変換状況」 (approval and conversion status) box shows how far the request has moved along — request → approval → conversion to purchase order — and who approved it and when.
 
+## Input fields
+
+Every field on the purchase request screen. The **?** next to a field in the app links straight to its description here.
+
+| Field | Required | What to enter |
+|-------|----------|---------------|
+| [Reason](#field-reason) | Optional | Why it is needed — the approver reads this |
+| [Notes](#field-notes) | Optional | Notes for the whole request |
+| [Material](#field-material) | Required | The material you want |
+| [Receiving plant](#field-plant) | Required | Where it will be received |
+| [Quantity](#field-quantity) | Required | How much you want |
+| [Unit](#field-unit) | Required | Pieces, kg and so on |
+| [Requested date](#field-desired-date) | Optional | When you need it by |
+| [Line notes](#field-item-notes) | Optional | Notes for that material only |
+
+### Reason [#field-reason]
+
+Why the material is needed. **The approver decides based on this**, so saying which product and which process step it is for saves a round trip.
+
+### Notes [#field-notes]
+
+Notes about the request as a whole. Anything specific to one material belongs in the line notes instead.
+
+### Material [#field-material]
+
+The material you want. If it is not in the list, register it first in [Materials](/manual/en/operations/masters/material/user).
+
+### Receiving plant [#field-plant]
+
+The plant that will receive the material. **It enters stock at the plant you choose here**, so pick where it will actually be used.
+
+### Quantity [#field-quantity]
+
+How much you want. The same quantity carries over to the purchase order.
+
+### Unit [#field-unit]
+
+Pieces, kg, m and so on. Choosing the material fills in its default unit.
+
+### Requested date [#field-desired-date]
+
+The date you would like it by. **It is not a committed date** — the actual expected arrival is agreed with the supplier when the purchase order is created.
+
+### Line notes [#field-item-notes]
+
+Notes for that material only, such as asking for the same lot as last time.
+
 ## Questions and problems
 
 **Q. The 「承認」 (Approve) and 「差し戻し」 (Send back) buttons do not appear.**
