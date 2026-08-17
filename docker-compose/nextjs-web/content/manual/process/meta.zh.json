@@ -1,4 +1,10 @@
 {
   "title": "业务流程",
-  "pages": ["sales", "purchasing"]
+  "pages": [
+    "sales",
+    "purchasing",
+    "production",
+    "shipping",
+    "billing"
+  ]
 }

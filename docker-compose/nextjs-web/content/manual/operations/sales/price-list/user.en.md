@@ -131,6 +131,63 @@ From「**…**」at the top right of the price list screen, you can also do the 
 
 In the list, you can also tick the checkboxes on the left of several rows and then use「**有効化**」(activate),「**無効化**」(deactivate) or「**一括削除**」(delete all selected).
 
+## Input fields
+
+Every field on the price list screen. The **?** next to a field in the app links straight to its description here.
+
+| Field | Required | What to enter |
+|-------|----------|---------------|
+| [Customer](#field-customer) | Required | Who the price is for |
+| [Product](#field-product) | Required | Which product the price is for |
+| [Active (whole list)](#field-active) | — | Whether this price list is in use |
+| [Order type](#field-order-type) | Required | Production, test and so on |
+| [Price source (trial estimate)](#field-estimate) | Optional | The estimate the base price comes from |
+| [Base price](#field-base-price) | Required | The price the quantity tiers work from |
+| [Valid from](#field-valid-from) | Required | When this price starts to apply |
+| [Valid until](#field-valid-until) | Optional | When it stops applying |
+| [Multiplier](#field-multiplier) | Required | The factor for each quantity tier |
+| [Custom price](#field-custom-price) | Optional | Set a tier's price by hand |
+
+### Customer [#field-customer]
+
+Who the price is for. **One price list covers one customer and one product**, and this cannot be changed after creation — recreate the list if it is wrong.
+
+### Product [#field-product]
+
+Which product the price is for. Like the customer, it cannot be changed after creation.
+
+### Active (whole list) [#field-active]
+
+Whether this price list is in use. **Turning it off means quotes can no longer resolve a price** from it. Use it to retire a list without deleting it.
+
+### Order type [#field-order-type]
+
+Production, test, sample or other. **The same customer and product can hold a different price per type.** Samples are handled at zero value.
+
+### Price source (trial estimate) [#field-estimate]
+
+The trial estimate the base price comes from. **Only confirmed estimates can be chosen.** Choosing one copies its quoted unit price into the base price and locks that estimate as registered, so past prices cannot change afterwards. Leave it unset to enter the price by hand.
+
+### Base price [#field-base-price]
+
+The price the quantity tiers work from. Each tier's price is this price times its multiplier.
+
+### Valid from [#field-valid-from]
+
+When this price starts to apply. A quote uses **the price that is valid at that moment**.
+
+### Valid until [#field-valid-until]
+
+When it stops applying. Leave it empty for no end date. **Test and sample prices are normally given an end date.**
+
+### Multiplier [#field-multiplier]
+
+The factor for each quantity range. Use a value below 1 where buying more should cost less per piece.
+
+### Custom price [#field-custom-price]
+
+Sets one tier's price by hand. When set, it takes precedence over the multiplier calculation.
+
 ## Questions and problems
 
 **Q. It says「同一の顧客・製品の価格表が既に存在します。既存の価格表を編集してください。」(a price list for the same customer and product already exists; please edit the existing one).**

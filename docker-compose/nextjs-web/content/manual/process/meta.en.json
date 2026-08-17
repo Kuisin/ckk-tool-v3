@@ -1,4 +1,10 @@
 {
   "title": "Process",
-  "pages": ["sales", "purchasing"]
+  "pages": [
+    "sales",
+    "purchasing",
+    "production",
+    "shipping",
+    "billing"
+  ]
 }
