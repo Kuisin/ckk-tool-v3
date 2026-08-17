@@ -76,6 +76,28 @@ You can also tick several rows and take them out together with 「**一括無効
 
 When you really want to delete one, choose 「**削除**」 (Delete) from the same 「**…**」. The small confirmation window shows 「**この不良種類を参照する不良記録が存在する場合は削除できません。無効化をご検討ください。**」 (it cannot be deleted if defect records refer to this defect type; please consider deactivating it). Once deleted, it cannot be brought back.
 
+## Input fields
+
+Every field on the Defect type screen.
+
+| Field | What to enter |
+|-------|---------------|
+| [Code / name](#field-code) | The defect type's code and name, chosen when recording a defect on a step |
+| [Sort order](#field-sort-order) | Order in the pick list |
+| [Active](#field-active) | Turning it off removes it from the defect pick list |
+
+### Code / name [#field-code]
+
+The defect type's code and name, chosen when recording a defect on a step.
+
+### Sort order [#field-sort-order]
+
+Order in the pick list. Putting common ones first speeds up shop-floor entry.
+
+### Active [#field-active]
+
+Turning it off removes it from the defect pick list.
+
 ## Questions and problems
 
 **Q. I clicked a row, but no detail screen opened.**

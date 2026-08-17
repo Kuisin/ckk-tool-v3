@@ -105,6 +105,38 @@ In the 「**作業計画**」 (work plan) of a step on a work order, you can cho
 
 The number of times it has been chosen appears in the 「**計画数**」 (planned count) column of the work location table. A place whose planned count is not 0 is still in use.
 
+## Input fields
+
+Every field on the Work location screen.
+
+| Field | What to enter |
+|-------|---------------|
+| [Plant](#field-plant) | Which plant the work location belongs to |
+| [Code / name (ja, en)](#field-code) | The work location's code and name, selectable as where a step is carried out |
+| [Type](#field-type) | The kind of work location |
+| [Capacity](#field-capacity) | A guide to how much it can handle at once |
+| [Sort order / active / notes](#field-sort-order) | Ordering, whether it is offered, and notes |
+
+### Plant [#field-plant]
+
+Which plant the work location belongs to.
+
+### Code / name (ja, en) [#field-code]
+
+The work location's code and name, selectable as where a step is carried out.
+
+### Type [#field-type]
+
+The kind of work location.
+
+### Capacity [#field-capacity]
+
+A guide to how much it can handle at once.
+
+### Sort order / active / notes [#field-sort-order]
+
+Ordering, whether it is offered, and notes.
+
 ## Questions and problems
 
 **Q. I want to add a machine, but I cannot find the 「場所を追加」 (Add location) button.**

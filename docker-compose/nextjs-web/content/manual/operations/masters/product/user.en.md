@@ -140,6 +140,53 @@ Even when you stop making a product, **please do not delete it**. Past quotes an
 
 Once a product is inactive, you can no longer choose it in new trial estimates, price lists or quotes, but **the past data stays as it is**.
 
+## Input fields
+
+Every field on the product screen.
+
+| Field | Required | What to enter |
+|-------|----------|---------------|
+| [Product code](#field-code) | Required | The product's reference number |
+| [Name](#field-name) | Required | The product name |
+| [Unit](#field-unit) | Required | Pieces and so on |
+| [Product type](#field-product-type) | Optional | The type, which decides the spec fields |
+| [Material type](#field-material-type) | Optional | The material grade used |
+| [Diameter / length (mm)](#field-dimensions) | Optional | Stock dimensions |
+| [Active](#field-active) | — | Whether it appears in pick lists |
+| [Notes](#field-notes) | Optional | Notes |
+
+### Product code [#field-code]
+
+The product's reference number, used on quotes, sales orders, work orders and every other document.
+
+### Name [#field-name]
+
+The product name, printed on documents.
+
+### Unit [#field-unit]
+
+How it is counted. The default is pieces.
+
+### Product type [#field-product-type]
+
+The product's type. **Choosing a type brings up the spec fields defined for it.** Types and their fields are set by an administrator in [Product Types](/manual/en/operations/system/product-type/settings).
+
+### Material type [#field-material-type]
+
+The material grade used to make it.
+
+### Diameter / length (mm) [#field-dimensions]
+
+The stock dimensions required. **Products specify material type plus diameter and length rather than one specific stock item**, because any stock meeting those conditions can be used.
+
+### Active [#field-active]
+
+Turning it off removes the product from pick lists on quotes and price lists.
+
+### Notes [#field-notes]
+
+Notes.
+
 ## Questions and problems
 
 **Q. I see 「単位を選択してください」 (Please choose the unit) and cannot save.**

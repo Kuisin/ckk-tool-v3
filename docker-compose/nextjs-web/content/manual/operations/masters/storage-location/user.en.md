@@ -103,6 +103,33 @@ A site's management screen has a section called 「**フロアマップ配置**�
 
 When there is no drawing yet, 「**この拠点にはフロアマップがありません。拠点マスタ (MS0C) の「フロアマップ」タブでフロアと図面を登録してください。**」 (this site has no floor map; please register a floor and a drawing on the "floor maps" tab of the site master (MS0C)) is shown.
 
+## Input fields
+
+Every field on the Storage location screen.
+
+| Field | What to enter |
+|-------|---------------|
+| [Plant / floor](#field-plant) | Which plant and floor the location is on |
+| [Code / name (ja, en)](#field-code) | The location's code and name |
+| [Sort order](#field-sort-order) | Order in the pick list |
+| [Active / notes](#field-active) | Turning it off removes it from storage pick lists |
+
+### Plant / floor [#field-plant]
+
+Which plant and floor the location is on. **Stock is located down to this level.**
+
+### Code / name (ja, en) [#field-code]
+
+The location's code and name.
+
+### Sort order [#field-sort-order]
+
+Order in the pick list.
+
+### Active / notes [#field-active]
+
+Turning it off removes it from storage pick lists. Notes are free text.
+
 ## Questions and problems
 
 **Q. I see 「この保管場所を参照する在庫があるため削除できません（在庫移動で空にするか、無効化してください）」 (this storage location cannot be deleted because stock refers to it; empty it with a stock transfer, or deactivate it).**

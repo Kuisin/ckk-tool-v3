@@ -128,6 +128,28 @@ Open the 「**バージョン**」 (versions) tab and all editions so far are li
 
 Press 「**空欄シート**」 (Blank sheet) at the top right of the detail screen and a blank PDF with only the inspection items lined up is produced. You can print it when you want to write by hand on the floor.
 
+## Input fields
+
+Every field on the Inspection template screen.
+
+| Field | What to enter |
+|-------|---------------|
+| [Code / name](#field-code) | The template's reference code and name, used when linking it to a work order |
+| [Related process step](#field-process-step) | Which step the sheet belongs to |
+| [Active](#field-active) | Turning it off removes it from the pick list when linking to a work order |
+
+### Code / name [#field-code]
+
+The template's reference code and name, used when linking it to a work order.
+
+### Related process step [#field-process-step]
+
+Which step the sheet belongs to. Setting it makes the sheet easier to pick during execution.
+
+### Active [#field-active]
+
+Turning it off removes it from the pick list when linking to a work order.
+
 ## Questions and problems
 
 **Q. I cannot find the 「編集」 (Edit) button.**
