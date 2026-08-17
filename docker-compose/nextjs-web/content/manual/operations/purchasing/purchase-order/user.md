@@ -169,7 +169,7 @@ screenshots: [purchase-order-list-01, purchase-order-new-01, purchase-order-deta
 
 ### 仕入先 [#field-supplier]
 
-素材を買う相手です。一覧に無いときは[外注企業マスタ](/manual/ja/operations/masters/supplier/user)へ登録してください。
+素材を買う相手です。一覧に無いときは[外注企業マスタ](/manual/ja/operations/masters/business-partner/user)へ登録してください。
 
 ### 発注日 [#field-order-date]
 

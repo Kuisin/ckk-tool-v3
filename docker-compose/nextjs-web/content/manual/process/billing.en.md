@@ -28,7 +28,7 @@ Closing ─→ Invoice created ─→ Issue ─→ Send ─→ Payment ─→ Ac
 
 ### 1. Closing
 
-Deliveries are gathered per customer using that customer's **closing day**. The closing day and payment terms come from the [customer master](/manual/en/operations/masters/customer/user). Closing produces the invoices for that period.
+Deliveries are gathered per customer using that customer's **closing day**. The closing day and payment terms come from the [customer master](/manual/en/operations/masters/business-partner/user). Closing produces the invoices for that period.
 
 ### 2–5. Invoice
 
@@ -60,4 +60,4 @@ The lines come from the delivery notes. Check the unit price and quantity there,
 
 - Operating each app, and what the fields mean — see **Operations › Billing** in the sidebar
 - Previous flow — [The shipping flow](/manual/en/process/shipping)
-- Per-customer closing settings — [Customers](/manual/en/operations/masters/customer/user)
+- Per-customer closing settings — [Customers](/manual/en/operations/masters/business-partner/user)

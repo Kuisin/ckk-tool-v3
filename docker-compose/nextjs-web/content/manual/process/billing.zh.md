@@ -28,7 +28,7 @@ screenshots: []
 
 ### 1. 结算（结算日处理）
 
-按各客户设定的**结算日**汇总该期间已交付的部分。结算日与付款周期取自[客户主数据](/manual/zh/operations/masters/customer/user)。结算后会由该期间的交付生成请款单。
+按各客户设定的**结算日**汇总该期间已交付的部分。结算日与付款周期取自[客户主数据](/manual/zh/operations/masters/business-partner/user)。结算后会由该期间的交付生成请款单。
 
 ### 2〜5. 请款单
 
@@ -60,4 +60,4 @@ screenshots: []
 
 - 各应用的操作与输入栏含义 … 左侧的 **操作方法 › 请款**
 - 上一流程 … [发货流程](/manual/zh/process/shipping)
-- 各客户的结算设定 … [客户主数据](/manual/zh/operations/masters/customer/user)
+- 各客户的结算设定 … [客户主数据](/manual/zh/operations/masters/business-partner/user)

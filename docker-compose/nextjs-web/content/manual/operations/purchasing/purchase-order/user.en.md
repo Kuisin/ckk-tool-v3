@@ -169,7 +169,7 @@ Every field on the material purchase order screen. The **?** next to a field in 
 
 ### Supplier [#field-supplier]
 
-Who you are buying the material from. If they are not listed, register them in [Suppliers](/manual/en/operations/masters/supplier/user).
+Who you are buying the material from. If they are not listed, register them in [Suppliers](/manual/en/operations/masters/business-partner/user).
 
 ### Order date [#field-order-date]
 

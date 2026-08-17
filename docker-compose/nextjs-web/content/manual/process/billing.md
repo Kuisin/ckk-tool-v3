@@ -28,7 +28,7 @@ screenshots: []
 
 ### 1. 締める（締日処理）
 
-顧客ごとに決めた**締日**で、その期間に納品した分をまとめます。締日と支払サイトは[顧客マスタ](/manual/ja/operations/masters/customer/user)に登録されているものが使われます。締めると、その期間の納品分から請求書が作られます。
+顧客ごとに決めた**締日**で、その期間に納品した分をまとめます。締日と支払サイトは[顧客マスタ](/manual/ja/operations/masters/business-partner/user)に登録されているものが使われます。締めると、その期間の納品分から請求書が作られます。
 
 ### 2〜5. 請求書
 
@@ -60,4 +60,4 @@ screenshots: []
 
 - 各アプリの操作と入力欄の意味 … 左の **操作方法 › 請求**
 - 前の流れ … [出荷の流れ](/manual/ja/process/shipping)
-- 顧客ごとの締日設定 … [顧客マスタ](/manual/ja/operations/masters/customer/user)
+- 顧客ごとの締日設定 … [顧客マスタ](/manual/ja/operations/masters/business-partner/user)

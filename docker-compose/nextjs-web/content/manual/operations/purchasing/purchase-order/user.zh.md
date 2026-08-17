@@ -169,7 +169,7 @@ screenshots: [purchase-order-list-01, purchase-order-new-01, purchase-order-deta
 
 ### 供应商 [#field-supplier]
 
-采购材料的对象。列表中没有时，请在[外协企业主数据](/manual/zh/operations/masters/supplier/user)中登记。
+采购材料的对象。列表中没有时，请在[外协企业主数据](/manual/zh/operations/masters/business-partner/user)中登记。
 
 ### 采购日期 [#field-order-date]
 
