@@ -161,8 +161,15 @@ are owned by `shared-db` (see root CLAUDE.md).
   `Error: Body exceeded 1 MB limit` (413) *before* your code runs, and the
   client sees an error page instead of the action's `ActionResult`. Upload via a
   Route Handler + `fetch` instead: `/api/attachments/upload`, `/api/admin/files`,
-  `/api/avatars`. (Known offender still on the old pattern:
-  `uploadFloorMapImage` in `settings/kiosk-devices/actions.ts`, allows 10MB.)
+  `/api/avatars`, `/api/floor-maps/[mapId]/image`.
+- **A second, quieter cap: the proxy** — every request body passes through
+  `proxy.ts`, and Next caps what it buffers (default **10MB**). Over that, the
+  body is silently **truncated** — you get a corrupt file plus one server log
+  line (`Request body exceeded 10MB … Only the first 10MB will be available`),
+  not an error. `experimental.proxyClientMaxBodySize` in `next.config.ts` is set
+  above the largest per-handler limit (attachments / intake = 20MB) for that
+  reason; raise it before raising any `MAX_*_BYTES`, and keep rejecting
+  oversized files in the handler itself.
 - i18n: DB `{ ja, en }` fields always carry both (`localizedInput`); UI strings are
   Japanese-first. Terminology + status-color map are fixed — see `design.md` /
   `_specs/design.md §9, §17`.

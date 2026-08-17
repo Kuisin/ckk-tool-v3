@@ -33,7 +33,6 @@ import {
   createFloorMap,
   deleteFloorMap,
   renameFloorMap,
-  uploadFloorMapImage,
 } from "@/app/(dashboard)/settings/kiosk-devices/actions";
 import {
   CancelButton,
@@ -42,6 +41,7 @@ import {
 } from "@/components/ui/buttons";
 import { FloorMapCanvas } from "@/components/ui/FloorMapCanvas";
 import { openConfirm } from "@/components/ui/modals";
+import { uploadFloorMapImage } from "@/lib/floor-map-client";
 
 /** 拠点のフロアマップ（端末管理 SY09 と共用の図面）。 */
 export interface PlantFloorMapRef {
@@ -131,9 +131,8 @@ export function FloorMapsPanel({
 
   const onImageSelected = (file: File | null) => {
     if (!file || !activeMap) return;
-    const formData = new FormData();
-    formData.append("file", file);
-    run(() => uploadFloorMapImage(activeMap.id, formData));
+    // 図面は最大 10MB。Server Action ではなく API 経由（lib/floor-map-client.ts）。
+    run(() => uploadFloorMapImage(activeMap.id, file));
   };
 
   const onDeleteFloor = () => {
