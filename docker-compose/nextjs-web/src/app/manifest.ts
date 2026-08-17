@@ -4,6 +4,11 @@ import type { MetadataRoute } from "next";
  * PWA マニフェスト（/manifest.webmanifest — Proxy の除外パスと一致）。
  * ホーム画面追加でスタンドアロン起動 + Web Push の受け皿になる
  * （iOS はホーム画面に追加した PWA のみ Web Push 可 — iOS 16.4+）。
+ *
+ * アイコン（public/icons/*.png、白背景）は `_assets/logo.svg` をベクタのまま
+ * 描画して生成する。ロゴ幅はキャンバス比で **通常 83%（余白 8.4%/辺）**、
+ * maskable は **62%**（アダプティブアイコンのセーフゾーン内）。iOS の
+ * apple-touch-icon（180px）は app/layout.tsx が参照する。
  */
 export default function manifest(): MetadataRoute.Manifest {
   return {
