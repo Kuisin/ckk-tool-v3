@@ -120,6 +120,51 @@ When you choose 「在庫保管」 in Type, an explanation appears on the screen
 
 This tab also lists the delivery notes made from this shipping order (delivery number, delivery destination, method, status, delivery date).
 
+## Input fields
+
+Every field on the shipping order screen. The **?** next to a field in the app links straight to its description here.
+
+| Field | Required | What to enter |
+|-------|----------|---------------|
+| [Sales order](#field-sales-order) | Required | Which order this shipment is for |
+| [Type](#field-type) | Required | Dispatch, or stock storage |
+| [Shipping plant](#field-plant) | Required | Which plant it leaves from |
+| [Notes](#field-notes) | Optional | Notes for the whole shipping order |
+| [Product](#field-product) | Required | The product going out |
+| [Lot (stock)](#field-lot) | Required | Which production run it comes from |
+| [Quantity](#field-quantity) | Required | How many pieces go out |
+
+### Sales order [#field-sales-order]
+
+Which order this shipment is for. Choosing it shows that order's products and the quantity still outstanding.
+
+### Type [#field-type]
+
+The kind of shipment.
+
+- **Dispatch** — going to the customer; continues to the delivery note and billing
+- **Stock storage** — spare production kept in-house; **does not continue to billing**
+
+### Shipping plant [#field-plant]
+
+Which plant it leaves from. **Stock falls at this plant**, so choose the one the goods physically leave.
+
+### Notes [#field-notes]
+
+Notes about the shipping order as a whole.
+
+### Product [#field-product]
+
+The product going out, chosen from the products on the sales order.
+
+### Lot (stock) [#field-lot]
+
+Which production run (lot) it comes from. **The lot number is the same as the work order number**, which is how you can trace later which production run went to which customer. Only lots with stock at the shipping plant can be chosen.
+
+### Quantity [#field-quantity]
+
+How many pieces go out. It cannot exceed the lot's stock. To ship in parts, create separate shipping orders.
+
 ## Questions and problems
 
 **Q. In the 「注文請書」 box on the new shipping order screen, I search but the sales order I want to ship does not appear.**

@@ -114,6 +114,59 @@ Press 「**PDF**」 at the top right of the screen and the delivery note PDF ope
 
 > ⚠️ There is no delete action for delivery notes. Once made, a delivery note cannot be removed, so please check the contents carefully **while it is still a draft**.
 
+## Input fields
+
+Every field on the delivery note screen. The **?** next to a field in the app links straight to its description here.
+
+| Field | Required | What to enter |
+|-------|----------|---------------|
+| [Shipping order](#field-shipping-order) | Required | The shipping order it is based on |
+| [Delivery method](#field-delivery-method) | Required | To the customer, or direct to the end user |
+| [Deliver to](#field-recipient) | Required | Who the note is addressed to |
+| [End user](#field-end-user) | Optional | The destination for a direct delivery |
+| [Show prices](#field-include-price) | — | Whether prices and amounts appear |
+| [Notes](#field-notes) | Optional | Notes on the delivery note |
+| [Product](#field-product) | Required | The product being delivered |
+| [Quantity](#field-quantity) | Required | How many pieces |
+| [Unit price](#field-unit-price) | Optional | The price shown on the note |
+
+### Shipping order [#field-shipping-order]
+
+The shipping order this note is based on. Choosing it carries over that shipment's products and quantities.
+
+### Delivery method [#field-delivery-method]
+
+- **Normal** — delivered to the customer who ordered, with the note enclosed with the goods
+- **Direct to end user** — sent straight to the end user. **The note is sent separately**, and prices are normally hidden
+
+### Deliver to [#field-recipient]
+
+Who the note is addressed to: usually the ordering customer, or the destination for a direct delivery.
+
+### End user [#field-end-user]
+
+The actual destination for a direct delivery. Only major customers are registered as end users.
+
+### Show prices [#field-include-price]
+
+Whether unit prices and amounts appear on the note. **For direct-to-end-user delivery this is normally turned off**, so the end user does not see the trade price.
+
+### Notes [#field-notes]
+
+Notes to appear on the delivery note.
+
+### Product [#field-product]
+
+The product being delivered, carried over from the shipping order.
+
+### Quantity [#field-quantity]
+
+How many pieces are delivered.
+
+### Unit price [#field-unit-price]
+
+The price shown on the note. It is not printed when "show prices" is off.
+
 ## Questions and problems
 
 **Q. The shipping order I want does not appear in the box.**
