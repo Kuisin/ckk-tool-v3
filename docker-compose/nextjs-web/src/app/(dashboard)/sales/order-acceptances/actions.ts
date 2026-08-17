@@ -4,7 +4,7 @@
  * Server Actions — 受注請書 intake (app.order_acceptances, SA04)。
  *
  * ライフサイクル遷移:
- *   IMPORT（抽出失敗）→ 再抽出（retryExtraction — lib/intake.runExtraction）
+ *   IMPORT（抽出失敗）→ 再抽出（retryExtraction — lib/intake の抽出キューへ積む）
  *   DRAFT → saveDraft（ヘッダ + 明細全置換）/ submitForApproval（→ REQUESTED）
  *   REQUESTED → approveAcceptance（→ APPROVED）/ rejectAcceptance（→ DRAFT）
  *   APPROVED → deployToSalesOrders（伝票展開 → COMPLETED）
@@ -27,7 +27,7 @@ import {
   formatSalesOrderNumber,
   parseDocKey,
 } from "@/lib/doc-number";
-import { runExtraction } from "@/lib/intake";
+import { enqueueExtraction } from "@/lib/intake";
 import { allocateDocumentKey } from "@/lib/numbering";
 import {
   type ActionResult,
@@ -136,7 +136,13 @@ function buildItemCreates(items: OrderAcceptanceDraftInput["items"]) {
 
 // ── 再抽出（IMPORT のみ） ────────────────────────────────────────────────────
 
-/** 抽出失敗した IMPORT 行の再抽出。成功で DRAFT へ（数十秒かかる）。 */
+/**
+ * 抽出失敗した IMPORT 行の再抽出。
+ *
+ * **待ち行列へ積んで即戻る** — 抽出は数分かかることがあり、Server Action で
+ * 待つと画面が固まるうえ、優先取込の抽出と同時に po-extract を叩いてしまう
+ * （GPU は 1 件ずつ）。結果は行の状態（取込中 → 下書き / 抽出失敗）で見る。
+ */
 export async function retryExtraction(number: string): Promise<ActionResult> {
   const key = keyOf(number);
   if (!key) return actionError("受注請書番号が不正です");
@@ -154,11 +160,13 @@ export async function retryExtraction(number: string): Promise<ActionResult> {
     if (prior.status !== "IMPORT") {
       return actionError("取込中（未抽出）の受注請書のみ再抽出できます");
     }
-    const result = await runExtraction(key);
+    // 前回のエラー表示を消してから積む（画面上は「取込中」に戻る）。
+    await prisma.orderAcceptance.update({
+      where: { yearMonth_seq: key },
+      data: { extractError: null },
+    });
+    enqueueExtraction(key);
     revalidate(number);
-    if (result.status !== "DRAFT") {
-      return actionError(result.error ?? "抽出に失敗しました");
-    }
     return actionOk();
   } catch (e) {
     return actionError(prismaErrorMessage(e, "再抽出に失敗しました"));
