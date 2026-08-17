@@ -9,12 +9,16 @@
 
 import {
   Badge,
+  Box,
   Checkbox,
+  Divider,
   Group,
+  Paper,
   Stack,
   Table,
   Tabs,
   Text,
+  Title,
 } from "@mantine/core";
 import {
   IconBuildingStore,
@@ -49,6 +53,7 @@ import {
 import { useTabParam } from "@/hooks/useUrlState";
 import { useIsMobile } from "@/hooks/useViewport";
 import {
+  BP_ROLE_COLOR,
   INVOICE_METHOD_LABEL,
   TAX_TYPE_LABEL,
   VENDOR_TYPE_LABEL,
@@ -59,6 +64,39 @@ const day = (v: number | null) =>
   v == null ? "—" : v === 31 ? "月末" : `${v}日`;
 
 const days = (v: number | null) => (v == null ? "—" : `${v}日`);
+
+/**
+ * 概要タブの 1 セクション。「一般」（取引先そのものの情報）と、付与されている
+ * ロールごとのセクションを同じ体裁で並べる。role を渡すと見出しにロール色の
+ * ドットが付き、一覧のバッジ色と対応が取れる。
+ */
+function OverviewSection({
+  title,
+  bpRole,
+  children,
+}: {
+  title: string;
+  bpRole?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <Paper p="md" radius="md" withBorder>
+      <Group align="center" gap="xs" mb="sm">
+        {bpRole && (
+          <Box
+            bg={`var(--mantine-color-${BP_ROLE_COLOR[bpRole] ?? "gray"}-6)`}
+            h={10}
+            style={{ borderRadius: 9999, flexShrink: 0 }}
+            w={10}
+          />
+        )}
+        <Title order={5}>{title}</Title>
+      </Group>
+      <Divider mb="md" />
+      {children}
+    </Paper>
+  );
+}
 
 export function BpDetail({
   record,
@@ -141,19 +179,25 @@ export function BpDetail({
         </Tabs.List>
 
         <Tabs.Panel pt="md" value="overview">
-          <Stack gap="lg">
+          <Stack gap="md">
+            {/* 一般 — ロールに関係なく取引先そのものに紐づく情報。 */}
+            <OverviewSection title="一般">
+              <FieldValue label="備考" value={record.notes || "—"} />
+            </OverviewSection>
+
+            {/* ロール別 — 付与されているロールの分だけセクションが並ぶ。 */}
             {record.roles.length === 0 && (
-              <Text c="dimmed" size="sm">
-                ロールが設定されていません。「編集」から顧客・最終需要家・仕入先
-                ・外注先のいずれかを付与すると、各書類で選べるようになります。
-              </Text>
+              <OverviewSection title="ロール">
+                <Text c="dimmed" size="sm">
+                  ロールが設定されていません。「編集」から顧客・最終需要家・
+                  仕入先・外注先のいずれかを付与すると、各書類で選べるように
+                  なります。
+                </Text>
+              </OverviewSection>
             )}
 
             {customer && (
-              <Stack gap="xs">
-                <Text fw={600} size="sm">
-                  顧客情報
-                </Text>
+              <OverviewSection bpRole="CUSTOMER" title="顧客">
                 <Group gap="xl" wrap="wrap">
                   <FieldValue
                     label="旧システムコード"
@@ -188,28 +232,22 @@ export function BpDetail({
                 <Checkbox
                   checked={customer.isConsignment}
                   label="委託先"
-                  mt={4}
+                  mt="sm"
                   readOnly
                 />
-              </Stack>
+              </OverviewSection>
             )}
 
             {endUser && (
-              <Stack gap="xs">
-                <Text fw={600} size="sm">
-                  最終需要家情報
-                </Text>
+              <OverviewSection bpRole="END_USER" title="最終需要家">
                 <Group gap="xl" wrap="wrap">
                   <FieldValue label="業種" value={endUser.industry || "—"} />
                 </Group>
-              </Stack>
+              </OverviewSection>
             )}
 
             {vendor && (
-              <Stack gap="xs">
-                <Text fw={600} size="sm">
-                  仕入先・外注先情報
-                </Text>
+              <OverviewSection bpRole="VENDOR" title="仕入先・外注先">
                 <Group gap="xl" wrap="wrap">
                   <FieldValue
                     label="外注種別"
@@ -234,6 +272,9 @@ export function BpDetail({
                     label="標準リードタイム"
                     value={days(vendor.leadTimeDays)}
                   />
+                </Group>
+                <Divider label="振込先" labelPosition="left" my="sm" />
+                <Group gap="xl" wrap="wrap">
                   <FieldValue label="銀行名" value={vendor.bankName || "—"} />
                   <FieldValue label="支店名" value={vendor.bankBranch || "—"} />
                   <FieldValue
@@ -245,17 +286,19 @@ export function BpDetail({
                     value={vendor.bankAccountNumber || "—"}
                   />
                 </Group>
-              </Stack>
+              </OverviewSection>
             )}
 
-            <Stack gap="xs">
+            {/* 担当者はロールに依らず取引先共通。表なので独立セクションにして
+                ロール別の取引条件が先に読めるようにする。 */}
+            <OverviewSection title="担当者">
               <ContactsTable
                 bpId={record.id}
                 bpName={record.nameJa}
                 contacts={record.contacts}
+                hideHeading
               />
-            </Stack>
-            <FieldValue label="備考" value={record.notes || "—"} />
+            </OverviewSection>
           </Stack>
         </Tabs.Panel>
 

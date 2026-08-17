@@ -21,7 +21,7 @@ INSERT INTO app.kiosk_devices (id, name, location, plant_id,
   created_at, updated_at)
 VALUES
   ('de000000-0000-4000-8000-000000000901'::uuid,
-   '1F 加工場 タブレット（撮影用）', '加工場入口',
+   '{"ja": "1F 加工場 タブレット（撮影用）", "en": "1F Machining Floor Tablet (docs)"}'::jsonb, '加工場入口',
    (SELECT id FROM app.plants WHERE code = 'F01'),
    NULL, NULL, NULL, 'ACTIVE'::app."KIOSK_DEVICE_STATUS", '901234',
    '2026-07-01T09:00:00+09',
