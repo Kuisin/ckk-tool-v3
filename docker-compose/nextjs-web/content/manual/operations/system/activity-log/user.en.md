@@ -93,6 +93,28 @@ For a record of something newly made, 「変更前（before）」 shows 「**な
 
 > 💡 The contents of 「変更前」 and 「変更後」 are shown in the form the system stores them in. English field names and symbols are mixed in, but there is nothing wrong. The easy way to check what changed is 「変更内容（要約）」.
 
+## Input fields
+
+Activity log is a **read-only screen**. There is nothing to type — you only choose filters. The records themselves cannot be edited or deleted.
+
+| Filter | What it changes |
+|--------|-----------------|
+| [Period](#field-period) | Which dates are shown |
+| [User](#field-user) | Whose actions are shown |
+| [Target](#field-target) | Which documents or master data are shown |
+
+### Period [#field-period]
+
+The date range of records to show.
+
+### User [#field-user]
+
+Filters by who acted. Actions from a shop-floor tablet also carry a **badge** showing which device it was.
+
+### Target [#field-target]
+
+Filters by what the record is about, such as quotes or work orders. Clicking a row opens the detail with **before and after** side by side.
+
 ## Frequently asked questions and troubleshooting
 
 **Q. I only want to see the history of one particular quotation.**

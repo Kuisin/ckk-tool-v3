@@ -134,6 +134,25 @@ The upper part shows the assigned user, validity period, PIN, last used, use cou
 
 At the very bottom, 「**最近のログイン**」 (Recent logins) lets you check which tablet the card was used on, and when.
 
+## Input fields
+
+| Field | Required | What to enter |
+|-------|----------|---------------|
+| [Number of cards](#field-count) | Required | How many to issue at once |
+| [Assigned user](#field-user) | Required | Who will use the card |
+
+### Number of cards [#field-count]
+
+How many cards to make at once. A newly made card **belongs to nobody yet**; print them and assign a person when handing one out.
+
+### Assigned user [#field-user]
+
+Who will use the card. Once assigned, that person can hold the card to a shop-floor tablet to log in.
+
+The PIN is not entered here — the person sets it at their first login. If they forget it, **reset** it from the card detail.
+
+A lost card should be **revoked**. A revoked card no longer works when held to a tablet, so issue a new one and assign it again.
+
 ## FAQ and troubleshooting
 
 **Q. An employee has lost their card.**

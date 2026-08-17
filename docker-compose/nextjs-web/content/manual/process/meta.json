@@ -1,10 +1,4 @@
 {
   "title": "プロセス",
-  "pages": [
-    "sales",
-    "purchasing",
-    "production",
-    "shipping",
-    "billing"
-  ]
+  "pages": ["sales", "purchasing", "production", "shipping", "billing"]
 }

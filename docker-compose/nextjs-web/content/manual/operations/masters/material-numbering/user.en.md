@@ -85,6 +85,28 @@ Once it is inactive, **it no longer appears among the choices when you make a ne
 
 If you want to use it again, you can turn it back with the same steps using 「**有効化**」 (Activate).
 
+## Input fields
+
+Numbering components registers the "parts" from which material type and material codes are assembled. Every part uses the same three fields.
+
+| Field | Required | What to enter |
+|-------|----------|---------------|
+| [Code](#field-code) | Required | The symbol used in the code |
+| [Name](#field-name) | Required | The name shown in pick lists |
+| [Active](#field-active) | — | Whether it appears in pick lists |
+
+### Code [#field-code]
+
+The symbol that becomes part of a material type or material code. **Changing it later would no longer match codes already assembled from it**, so decide it at registration. The number of characters is fixed per part (one for manufacturer, three for diameter, and so on).
+
+### Name [#field-name]
+
+The name shown in pick lists on the material type and material screens.
+
+### Active [#field-active]
+
+Turning it off removes it from the pick lists when registering material types and materials. Use it to **hide a manufacturer or shape you no longer use while keeping past registrations**.
+
 ## Questions and problems
 
 **Q. I see 「同じコードが既に存在します」 (The same code already exists) and cannot add it.**

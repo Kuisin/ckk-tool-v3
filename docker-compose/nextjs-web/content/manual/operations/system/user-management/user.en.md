@@ -105,6 +105,22 @@ When 「**保存しました**」 (Saved) and 「**所属拠点を更新しま�
 
 > 💡 A site with 「（無効）」 (inactive) next to it may appear in the selection box. It is a site that is no longer in use, but it is still assigned to this person, so it is shown.
 
+## Input fields
+
+A user's name and email are **imported from Active Directory** and cannot be changed here. The only input on this screen is the plant assignment.
+
+| Field | Required | What to enter |
+|-------|----------|---------------|
+| [Assigned plants](#field-plants) | Optional | The plants this user works with |
+
+### Assigned plants [#field-plants]
+
+The plants the user is responsible for. Several can be selected.
+
+The "plant" range of a permission is **decided by the overlap with what is selected here**. Someone whose permission is "view within their plant" sees only data for the plants listed here. If this is empty, plant-ranged permissions show nothing.
+
+Only a system administrator can edit it; everyone else sees the current assignment as badges.
+
 ## Questions and problems
 
 **Q. I want to add someone who has just joined, but there is no add button.**

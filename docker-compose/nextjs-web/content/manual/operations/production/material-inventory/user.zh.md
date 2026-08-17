@@ -84,6 +84,33 @@ screenshots: [inventory-materials-01, inventory-material-detail-01, inventory-ma
 
 使用本应用需要库存权限。产品标签页、位置标签页以及库存移动的步骤，请参考[库存管理](/manual/zh/operations/production/product-inventory/user)。
 
+## 输入项
+
+库存管理基本上是**用于查看的画面**，仅在将库存移至其他场所时需要输入。
+
+| 项目 | 必填 | 填什么 |
+|------|------|--------|
+| [移动目标基地](#field-plant) | 必填 | 移动到何处 |
+| [保管场所 / 货架](#field-location) | 选填 | 在该基地内放置的位置 |
+| [数量](#field-quantity) | 必填 | 移动的数量 |
+| [备注](#field-notes) | 选填 | 移动的理由等 |
+
+### 移动目标基地 [#field-plant]
+
+移动到哪个基地。**移动源的库存减少，移动目标的库存增加。**
+
+### 保管场所 / 货架 [#field-location]
+
+在移动目标基地内放置的位置。事先确定后，日后更容易找到实物。
+
+### 数量 [#field-quantity]
+
+移动的数量。不能超过移动源现有的数量。
+
+### 备注 [#field-notes]
+
+用于记录移动理由等。移动记录会保留在履历中。
+
 ## 常见问题・遇到困难时
 
 **Q. 预留数比库存数还多，是不是不正常？**

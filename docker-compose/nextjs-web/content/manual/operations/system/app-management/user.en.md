@@ -78,6 +78,20 @@ An app that has not yet been released to the real screen is shown on the practic
 - Opening the old address directly no longer works either.
 - **The data you have entered is not deleted.** Turn the switch back on and everything works just as before.
 
+## Input fields
+
+This screen has no input boxes — you only flip a switch per app.
+
+| Control | What happens |
+|---------|--------------|
+| [App on / off](#field-enabled) | Whether it appears on the home screen and app list |
+
+### App on / off [#field-enabled]
+
+Turning it off **removes the app from the home screen and the app list**. No data is deleted — it simply stops being shown.
+
+The switch is saved **per environment** (the test and production sites are separate), so try it on the test site before switching production.
+
 ## Questions and problems
 
 **Q. I pressed a switch, a red 「エラー」 (Error) appeared, and it went back.**
