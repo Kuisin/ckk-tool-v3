@@ -153,11 +153,12 @@ Removing a role works the same way — untick it and press 「保存」 (Save).
 
 ## Looking at what you registered
 
-Click a row in the list to open that company's screen. The summary area at the top shows the **roles**, and below it the screen is split into four tabs.
+Click a row in the list to open that company's screen. The summary area at the top shows the **roles**, and below it the screen is split into five tabs.
 
 ![Business partner detail screen](../../../assets/screenshots/master-bp-detail-01.png)
 
-- **概要 (Overview)** … a series of panels. The first is 「**一般**」 (General — remarks and anything else that belongs to the company itself, whatever its roles), then one panel for **each role the company actually has**, and 「**担当者**」 (Contacts) last. A role panel holds the trade terms for 「**顧客**」 (customer), the industry for 「**最終需要家**」 (end user), and the trade terms plus the bank account for 「**仕入先・外注先**」 (supplier / outsourcing partner). The dot to the left of a panel heading uses the same colour as that role's badge in the list.
+- **概要 (Overview)** … a series of panels. The first is 「**一般**」 (General — remarks and anything else that belongs to the company itself, whatever its roles), followed by one panel for **each role the company actually has**. A role panel holds the trade terms for 「**顧客**」 (customer), the industry for 「**最終需要家**」 (end user), and the trade terms plus the bank account for 「**仕入先・外注先**」 (supplier / outsourcing partner). The dot to the left of a panel heading uses the same colour as that role's badge in the list.
+- **担当者 (Contacts)** … the list of people you talk to at that company.
 - **支店一覧 (Branches)** … the list of branches of this company.
 - **見積・受注履歴 (Quote and order history)** … the record of quotes and other documents made for this company.
 - **履歴 (History)** … the record of when and who changed this registration.
@@ -172,8 +173,8 @@ To correct the content, press 「**編集**」 (Edit) at the top right of the sc
 
 You can register the name and contact details of the person you deal with. The steps are the same for a customer and for a supplier.
 
-1. Open the 「**概要**」 (Overview) tab.
-2. Press 「**担当者を追加**」 (Add contact) to the right of 「**担当者**」 (Contacts).
+1. Open the 「**担当者**」 (Contacts) tab.
+2. Press 「**担当者を追加**」 (Add contact) at the top right.
 3. Enter 「**氏名**」 (Name). **This field must always be filled in.**
 4. Fill in 「**フリガナ**」 (Kana reading), 「**部署**」 (Department), 「**役職**」 (Title), 「**メールアドレス**」 (Email) and 「**電話番号**」 (Phone) as far as you know them.
 5. If that person is your main contact, tick 「**主担当にする**」 (Set as primary contact).
