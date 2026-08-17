@@ -6,8 +6,9 @@ import type { MetadataRoute } from "next";
  * （iOS はホーム画面に追加した PWA のみ Web Push 可 — iOS 16.4+）。
  *
  * アイコン（public/icons/*.png、白背景）は `_assets/logo.svg` をベクタのまま
- * 描画して生成する。ロゴ幅はキャンバス比で **通常 83%（余白 8.4%/辺）**、
- * maskable は **62%**（アダプティブアイコンのセーフゾーン内）。iOS の
+ * 描画して生成する。**全アイコン共通でロゴ幅 = キャンバスの 61.875%**
+ * （= maskable のセーフゾーン基準。192 / 512 / maskable / apple-touch-icon
+ * すべて同比率なので、どのプラットフォームでも同じ見え方になる）。iOS の
  * apple-touch-icon（180px）は app/layout.tsx が参照する。
  */
 export default function manifest(): MetadataRoute.Manifest {
