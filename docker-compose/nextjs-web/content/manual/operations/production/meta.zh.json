@@ -1,0 +1,4 @@
+{
+  "title": "生产",
+  "pages": ["work-order", "approval", "product-inventory", "material-inventory"]
+}

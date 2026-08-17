@@ -76,13 +76,13 @@ export const shots: Shot[] = [
   },
   {
     id: "quote-list-01",
-    docPage: "apps/quote/user",
+    docPage: "operations/sales/quote/user",
     path: "/sales/quotes",
   },
   // ── 販売: 試算（SA01）──────────────────────────────────────────────────────
   {
     id: "trial-estimate-list-01",
-    docPage: "apps/trial-estimate/user",
+    docPage: "operations/sales/trial-estimate/user",
     path: "/sales/trial-estimates",
     steps: async (page) => {
       await page.getByText("EST-202607-00001").first().waitFor();
@@ -90,7 +90,7 @@ export const shots: Shot[] = [
   },
   {
     id: "trial-estimate-new-01",
-    docPage: "apps/trial-estimate/user",
+    docPage: "operations/sales/trial-estimate/user",
     path: "/sales/trial-estimates/new",
     steps: async (page) => {
       // 材料構成（材種 × 直径 × 黒皮/研磨）を選ぶと参照単価が自動セットされる
@@ -109,7 +109,7 @@ export const shots: Shot[] = [
   },
   {
     id: "trial-estimate-detail-01",
-    docPage: "apps/trial-estimate/user",
+    docPage: "operations/sales/trial-estimate/user",
     path: "/sales/trial-estimates/EST-202607-00001",
     steps: async (page) => {
       await page.getByText("価格表で使用済み").first().waitFor();
@@ -118,7 +118,7 @@ export const shots: Shot[] = [
   // ── 販売: 価格表（SA02）────────────────────────────────────────────────────
   {
     id: "price-list-list-01",
-    docPage: "apps/price-list/user",
+    docPage: "operations/sales/price-list/user",
     path: "/sales/price-lists",
     steps: async (page) => {
       await page.getByText("デモ商事株式会社").first().waitFor();
@@ -126,7 +126,7 @@ export const shots: Shot[] = [
   },
   {
     id: "price-list-detail-01",
-    docPage: "apps/price-list/user",
+    docPage: "operations/sales/price-list/user",
     path: "/sales/price-lists/PRC-202607-00001",
     steps: async (page) => {
       await page.getByText("EST-202607-00001").first().waitFor();
@@ -134,7 +134,7 @@ export const shots: Shot[] = [
   },
   {
     id: "price-list-discounts-01",
-    docPage: "apps/price-list/user",
+    docPage: "operations/sales/price-list/user",
     path: "/sales/price-lists/PRC-202607-00001?tab=discounts",
     steps: async (page) => {
       await page.getByText("夏季キャンペーン").first().waitFor();
@@ -142,7 +142,7 @@ export const shots: Shot[] = [
   },
   {
     id: "price-list-edit-01",
-    docPage: "apps/price-list/user",
+    docPage: "operations/sales/price-list/user",
     path: "/sales/price-lists/PRC-202607-00001/edit",
     steps: async (page) => {
       await page.getByText("注文種別: 本番").first().waitFor();
@@ -151,7 +151,7 @@ export const shots: Shot[] = [
   // ── 販売: 見積書（SA03）────────────────────────────────────────────────────
   {
     id: "quote-detail-01",
-    docPage: "apps/quote/user",
+    docPage: "operations/sales/quote/user",
     path: "/sales/quotes/QOT-202607-00001",
     steps: async (page) => {
       await page.getByText("50〜99本").first().waitFor();
@@ -160,7 +160,7 @@ export const shots: Shot[] = [
   {
     // 顧客 + 明細 1 行を入力した状態の新規フォーム（単価が自動で入る様子）
     id: "quote-new-01",
-    docPage: "apps/quote/user",
+    docPage: "operations/sales/quote/user",
     path: "/sales/quotes/new",
     steps: async (page) => {
       await page.getByRole("combobox", { name: "顧客" }).click();
@@ -174,7 +174,7 @@ export const shots: Shot[] = [
   {
     // 発行モーダル（下書きの QOT-202607-00002 でのみ発行できる）
     id: "quote-issue-01",
-    docPage: "apps/quote/user",
+    docPage: "operations/sales/quote/user",
     path: "/sales/quotes/QOT-202607-00002",
     steps: async (page) => {
       await page.getByRole("button", { name: "操作メニュー" }).first().click();
@@ -184,7 +184,7 @@ export const shots: Shot[] = [
   },
   {
     id: "quote-pdf-01",
-    docPage: "apps/quote/user",
+    docPage: "operations/sales/quote/user",
     path: "/sales/quotes/QOT-202607-00001?tab=pdf",
     steps: async (page) => {
       await page.getByRole("tab", { name: "PDF" }).waitFor();
@@ -193,7 +193,7 @@ export const shots: Shot[] = [
   // ── 販売: 受注請書（SA04）──────────────────────────────────────────────────
   {
     id: "order-acceptance-list-01",
-    docPage: "apps/order-acceptance/user",
+    docPage: "operations/sales/order-acceptance/user",
     path: "/sales/order-acceptances",
     steps: async (page) => {
       await page.getByText("ORD-202607-00001").first().waitFor();
@@ -201,7 +201,7 @@ export const shots: Shot[] = [
   },
   {
     id: "order-acceptance-detail-01",
-    docPage: "apps/order-acceptance/user",
+    docPage: "operations/sales/order-acceptance/user",
     path: "/sales/order-acceptances/ORD-202607-00001",
     steps: async (page) => {
       await page.getByText("価格差異").first().waitFor();
@@ -209,7 +209,7 @@ export const shots: Shot[] = [
   },
   {
     id: "order-acceptance-detail-02",
-    docPage: "apps/order-acceptance/user",
+    docPage: "operations/sales/order-acceptance/user",
     path: "/sales/order-acceptances/ORD-202607-00002",
     steps: async (page) => {
       await page.getByRole("button", { name: "伝票展開" }).first().waitFor();
@@ -218,7 +218,7 @@ export const shots: Shot[] = [
   // ── 販売: 設計依頼書（SA05）────────────────────────────────────────────────
   {
     id: "design-request-list-01",
-    docPage: "apps/design-request/user",
+    docPage: "operations/sales/design-request/user",
     path: "/sales/design-requests",
     steps: async (page) => {
       await page.getByText("DSG-202607-00001").first().waitFor();
@@ -226,7 +226,7 @@ export const shots: Shot[] = [
   },
   {
     id: "design-request-new-01",
-    docPage: "apps/design-request/user",
+    docPage: "operations/sales/design-request/user",
     path: "/sales/design-requests/new",
     steps: async (page) => {
       await page.getByText("トリガー").first().waitFor();
@@ -234,7 +234,7 @@ export const shots: Shot[] = [
   },
   {
     id: "design-request-files-01",
-    docPage: "apps/design-request/user",
+    docPage: "operations/sales/design-request/user",
     path: "/sales/design-requests/DSG-202607-00002?tab=files",
     steps: async (page) => {
       await page.getByText("設計図面_PRD-202607-0001_v2.pdf").first().waitFor();
@@ -244,7 +244,7 @@ export const shots: Shot[] = [
   {
     // 試算結果パネル（原価内訳〜見積単価）
     id: "trial-estimate-new-02",
-    docPage: "apps/trial-estimate/user",
+    docPage: "operations/sales/trial-estimate/user",
     path: "/sales/trial-estimates/new",
     steps: async (page) => {
       await page.getByRole("combobox", { name: "材種" }).click();
@@ -261,7 +261,7 @@ export const shots: Shot[] = [
   },
   {
     id: "trial-estimate-detail-02",
-    docPage: "apps/trial-estimate/user",
+    docPage: "operations/sales/trial-estimate/user",
     path: "/sales/trial-estimates/EST-202607-00001?tab=history",
     steps: async (page) => {
       await page.getByText("素材価格推移").first().waitFor();
@@ -270,7 +270,7 @@ export const shots: Shot[] = [
   {
     // 下書き試算の操作メニュー（確定 / 製品にリンク / 複製して再試算）
     id: "trial-estimate-detail-03",
-    docPage: "apps/trial-estimate/user",
+    docPage: "operations/sales/trial-estimate/user",
     path: "/sales/trial-estimates/EST-202607-00003",
     steps: async (page) => {
       await page.getByRole("button", { name: "操作メニュー" }).first().click();
@@ -279,7 +279,7 @@ export const shots: Shot[] = [
   },
   {
     id: "price-list-new-01",
-    docPage: "apps/price-list/user",
+    docPage: "operations/sales/price-list/user",
     path: "/sales/price-lists/new",
     steps: async (page) => {
       await page.getByText("注文種別: 本番").first().waitFor();
@@ -288,7 +288,7 @@ export const shots: Shot[] = [
   {
     // 価格表から見積書を作るモーダル（送信はしない）
     id: "price-list-quote-01",
-    docPage: "apps/price-list/user",
+    docPage: "operations/sales/price-list/user",
     path: "/sales/price-lists/PRC-202607-00001",
     steps: async (page) => {
       await page.getByRole("button", { name: "操作メニュー" }).first().click();
@@ -298,7 +298,7 @@ export const shots: Shot[] = [
   },
   {
     id: "order-acceptance-new-01",
-    docPage: "apps/order-acceptance/user",
+    docPage: "operations/sales/order-acceptance/user",
     path: "/sales/order-acceptances/new",
     steps: async (page) => {
       await page.getByText("明細 1").first().waitFor();
@@ -306,7 +306,7 @@ export const shots: Shot[] = [
   },
   {
     id: "order-acceptance-detail-03",
-    docPage: "apps/order-acceptance/user",
+    docPage: "operations/sales/order-acceptance/user",
     path: "/sales/order-acceptances/ORD-202607-00003",
     steps: async (page) => {
       await page.getByText("承認依頼中").first().waitFor();
@@ -315,7 +315,7 @@ export const shots: Shot[] = [
   {
     // 伝票展開の確認モーダル（展開はしない — 実行するとシードが変わる）
     id: "order-acceptance-deploy-01",
-    docPage: "apps/order-acceptance/user",
+    docPage: "operations/sales/order-acceptance/user",
     path: "/sales/order-acceptances/ORD-202607-00002",
     steps: async (page) => {
       await page.getByRole("button", { name: "伝票展開", exact: true }).click();
@@ -325,7 +325,7 @@ export const shots: Shot[] = [
   {
     // 未着手の設計依頼（「着手」ボタンが出ている）
     id: "design-request-detail-01",
-    docPage: "apps/design-request/user",
+    docPage: "operations/sales/design-request/user",
     path: "/sales/design-requests/DSG-202607-00003",
     steps: async (page) => {
       await page.getByRole("button", { name: "着手" }).first().waitFor();
@@ -334,7 +334,7 @@ export const shots: Shot[] = [
   {
     // 進行中の設計依頼（操作メニューに「完了」）
     id: "design-request-detail-02",
-    docPage: "apps/design-request/user",
+    docPage: "operations/sales/design-request/user",
     path: "/sales/design-requests/DSG-202607-00001",
     steps: async (page) => {
       await page.getByRole("button", { name: "操作メニュー" }).first().click();
@@ -344,7 +344,7 @@ export const shots: Shot[] = [
   // ── 購買: 購買依頼（PU01）──────────────────────────────────────────────────
   {
     id: "purchase-request-list-01",
-    docPage: "apps/purchase-request/user",
+    docPage: "operations/purchasing/purchase-request/user",
     path: "/purchase/purchase-requests",
     steps: async (page) => {
       await page.getByText("PRQ-202607-00001").first().waitFor();
@@ -352,7 +352,7 @@ export const shots: Shot[] = [
   },
   {
     id: "purchase-request-detail-01",
-    docPage: "apps/purchase-request/user",
+    docPage: "operations/purchasing/purchase-request/user",
     path: "/purchase/purchase-requests/PRQ-202607-00002",
     steps: async (page) => {
       await page.getByText("発注書へ変換").first().waitFor();
@@ -361,7 +361,7 @@ export const shots: Shot[] = [
   // ── 購買: 素材発注書（PU02）────────────────────────────────────────────────
   {
     id: "purchase-order-list-01",
-    docPage: "apps/purchase-order/user",
+    docPage: "operations/purchasing/purchase-order/user",
     path: "/purchase/purchase-orders",
     steps: async (page) => {
       await page.getByText("PO-202607-00001").first().waitFor();
@@ -369,7 +369,7 @@ export const shots: Shot[] = [
   },
   {
     id: "purchase-order-detail-01",
-    docPage: "apps/purchase-order/user",
+    docPage: "operations/purchasing/purchase-order/user",
     path: "/purchase/purchase-orders/PO-202607-00001",
     steps: async (page) => {
       await page.getByText("入荷完了").first().waitFor();
@@ -378,7 +378,7 @@ export const shots: Shot[] = [
   // ── 購買: 素材入荷（PU03）──────────────────────────────────────────────────
   {
     id: "material-receipt-list-01",
-    docPage: "apps/material-receipt/user",
+    docPage: "operations/purchasing/material-receipt/user",
     path: "/purchase/material-receipts",
     steps: async (page) => {
       await page.getByText("直接調達").first().waitFor();
@@ -386,7 +386,7 @@ export const shots: Shot[] = [
   },
   {
     id: "material-receipt-detail-01",
-    docPage: "apps/material-receipt/user",
+    docPage: "operations/purchasing/material-receipt/user",
     path: "/purchase/material-receipts/db300000-0000-4000-8000-000000000001",
     steps: async (page) => {
       await page.getByText("入荷日").first().waitFor();
@@ -395,7 +395,7 @@ export const shots: Shot[] = [
   // ── 購買: 外注依頼（PU04）──────────────────────────────────────────────────
   {
     id: "outsource-order-list-01",
-    docPage: "apps/outsource-order/user",
+    docPage: "operations/purchasing/outsource-order/user",
     path: "/purchase/outsource-orders",
     steps: async (page) => {
       await page.getByText("デモ研磨工業").first().waitFor();
@@ -404,7 +404,7 @@ export const shots: Shot[] = [
   // ── 購買: 初心者向けマニュアル用の追加撮影 ────────────────────────────────
   {
     id: "purchase-request-new-01",
-    docPage: "apps/purchase-request/user",
+    docPage: "operations/purchasing/purchase-request/user",
     path: "/purchase/purchase-requests/new",
     steps: async (page) => {
       await page.getByRole("button", { name: "明細を追加" }).first().waitFor();
@@ -413,7 +413,7 @@ export const shots: Shot[] = [
   {
     // 承認依頼中（第一承認グループのみ操作可）の状態
     id: "purchase-request-detail-02",
-    docPage: "apps/purchase-request/user",
+    docPage: "operations/purchasing/purchase-request/user",
     path: "/purchase/purchase-requests/PRQ-202607-00001",
     steps: async (page) => {
       await page.getByText("承認依頼中").first().waitFor();
@@ -422,7 +422,7 @@ export const shots: Shot[] = [
   {
     // 変換確認モーダル（確定はしない）
     id: "purchase-request-convert-01",
-    docPage: "apps/purchase-request/user",
+    docPage: "operations/purchasing/purchase-request/user",
     path: "/purchase/purchase-requests/PRQ-202607-00002",
     steps: async (page) => {
       await page
@@ -433,7 +433,7 @@ export const shots: Shot[] = [
   },
   {
     id: "purchase-order-new-01",
-    docPage: "apps/purchase-order/user",
+    docPage: "operations/purchasing/purchase-order/user",
     path: "/purchase/purchase-orders/new",
     steps: async (page) => {
       await page.getByText("合計金額").first().waitFor();
@@ -442,7 +442,7 @@ export const shots: Shot[] = [
   {
     // 下書き状態（「承認依頼」ボタンが出ている）
     id: "purchase-order-detail-02",
-    docPage: "apps/purchase-order/user",
+    docPage: "operations/purchasing/purchase-order/user",
     path: "/purchase/purchase-orders/PO-202607-00003",
     steps: async (page) => {
       await page.getByRole("button", { name: "承認依頼" }).first().waitFor();
@@ -451,7 +451,7 @@ export const shots: Shot[] = [
   {
     // 入荷完了の確認モーダル（確定はしない）
     id: "purchase-order-complete-01",
-    docPage: "apps/purchase-order/user",
+    docPage: "operations/purchasing/purchase-order/user",
     path: "/purchase/purchase-orders/PO-202607-00001",
     steps: async (page) => {
       await page
@@ -462,7 +462,7 @@ export const shots: Shot[] = [
   },
   {
     id: "purchase-order-attachments-01",
-    docPage: "apps/purchase-order/user",
+    docPage: "operations/purchasing/purchase-order/user",
     path: "/purchase/purchase-orders/PO-202607-00001?tab=attachments",
     steps: async (page) => {
       await page.getByText("証憑").first().waitFor();
@@ -470,7 +470,7 @@ export const shots: Shot[] = [
   },
   {
     id: "material-receipt-new-01",
-    docPage: "apps/material-receipt/user",
+    docPage: "operations/purchasing/material-receipt/user",
     path: "/purchase/material-receipts/new",
     steps: async (page) => {
       await page.getByText("証憑（任意）").first().waitFor();
@@ -479,7 +479,7 @@ export const shots: Shot[] = [
   {
     // 直接調達（発注書なし）の入荷例
     id: "material-receipt-detail-02",
-    docPage: "apps/material-receipt/user",
+    docPage: "operations/purchasing/material-receipt/user",
     path: "/purchase/material-receipts/db300000-0000-4000-8000-000000000002",
     steps: async (page) => {
       await page.getByText("直接調達（発注書なし）").first().waitFor();
@@ -487,7 +487,7 @@ export const shots: Shot[] = [
   },
   {
     id: "outsource-order-list-02",
-    docPage: "apps/outsource-order/user",
+    docPage: "operations/purchasing/outsource-order/user",
     path: "/purchase/outsource-orders?status=PENDING",
     steps: async (page) => {
       await page.getByText("デモ研磨工業").first().waitFor();
@@ -496,7 +496,7 @@ export const shots: Shot[] = [
   {
     // 指示書 9001（進行中）の外注バッジが付いた工程カード
     id: "outsource-order-work-order-01",
-    docPage: "apps/outsource-order/user",
+    docPage: "operations/purchasing/outsource-order/user",
     path: "/production/work-orders/9001",
     steps: async (page) => {
       // 工程名は SVG の <title>（非表示）にも入るため、見える見出しで待つ
@@ -506,7 +506,7 @@ export const shots: Shot[] = [
   {
     // 外注日程パネル（9001 は進行中なので入力欄が有効）
     id: "outsource-order-step-01",
-    docPage: "apps/outsource-order/user",
+    docPage: "operations/purchasing/outsource-order/user",
     path: "/production/work-orders/9001/steps/dc011000-0000-4000-8000-000000000003",
     steps: async (page) => {
       await page.getByText("外注日程").first().waitFor();
@@ -515,7 +515,7 @@ export const shots: Shot[] = [
   // ── 生産: 指示書（PD02）────────────────────────────────────────────────────
   {
     id: "work-order-list-01",
-    docPage: "apps/work-order/user",
+    docPage: "operations/production/work-order/user",
     path: "/production/work-orders",
     steps: async (page) => {
       await page.getByText("9002").first().waitFor();
@@ -523,7 +523,7 @@ export const shots: Shot[] = [
   },
   {
     id: "work-order-detail-01",
-    docPage: "apps/work-order/user",
+    docPage: "operations/production/work-order/user",
     path: "/production/work-orders/9001",
     fullPage: true,
     steps: async (page) => {
@@ -536,7 +536,7 @@ export const shots: Shot[] = [
   },
   {
     id: "work-order-new-01",
-    docPage: "apps/work-order/user",
+    docPage: "operations/production/work-order/user",
     path: "/production/work-orders/new?salesOrder=e0000000-0000-4000-8000-000000000002",
     steps: async (page) => {
       await page.getByText("工程リスト").first().waitFor();
@@ -545,7 +545,7 @@ export const shots: Shot[] = [
   // ── 生産: 承認管理（PD03）──────────────────────────────────────────────────
   {
     id: "approval-list-01",
-    docPage: "apps/approval/user",
+    docPage: "operations/production/approval/user",
     path: "/production/approvals",
     steps: async (page) => {
       await page.getByText("9002").first().waitFor();
@@ -553,7 +553,7 @@ export const shots: Shot[] = [
   },
   {
     id: "approval-panel-01",
-    docPage: "apps/approval/user",
+    docPage: "operations/production/approval/user",
     path: "/production/work-orders/9002",
     steps: async (page) => {
       await page.getByText("承認状況").first().waitFor();
@@ -564,7 +564,7 @@ export const shots: Shot[] = [
     // 指示書ページ側の承認カット。approval-panel-01 と URL が同じなので
     // fullPage で「指示書全体の中の承認状況」として差別化する。
     id: "work-order-approval-01",
-    docPage: "apps/work-order/user",
+    docPage: "operations/production/work-order/user",
     path: "/production/work-orders/9002",
     fullPage: true,
     steps: async (page) => {
@@ -573,7 +573,7 @@ export const shots: Shot[] = [
   },
   {
     id: "work-order-steps-01",
-    docPage: "apps/work-order/user",
+    docPage: "operations/production/work-order/user",
     path: "/production/work-orders/9001/steps",
     steps: async (page) => {
       await page.getByText("段加工").first().waitFor();
@@ -582,7 +582,7 @@ export const shots: Shot[] = [
   {
     // 数量・不良の入力（不良行を 1 行出した状態）
     id: "work-order-step-quantity-01",
-    docPage: "apps/work-order/user",
+    docPage: "operations/production/work-order/user",
     path: "/production/work-orders/9001/steps/dc011000-0000-4000-8000-000000000004",
     steps: async (page) => {
       await page.getByText("数量・不良").first().waitFor();
@@ -593,7 +593,7 @@ export const shots: Shot[] = [
   {
     // 差し戻しの確認モーダル（実行はしない）
     id: "approval-reject-01",
-    docPage: "apps/approval/user",
+    docPage: "operations/production/approval/user",
     path: "/production/work-orders/9002",
     steps: async (page) => {
       await page.getByRole("button", { name: "差し戻し" }).first().click();
@@ -602,7 +602,7 @@ export const shots: Shot[] = [
   },
   {
     id: "approval-detail-01",
-    docPage: "apps/approval/user",
+    docPage: "operations/production/approval/user",
     path: "/production/approvals/9002",
     steps: async (page) => {
       await page.getByText("承認状況").first().waitFor();
@@ -611,7 +611,7 @@ export const shots: Shot[] = [
   {
     // 製品在庫の詳細（在庫 55 / 予約 50 / 利用可能 5）
     id: "inventory-product-detail-01",
-    docPage: "apps/product-inventory/user",
+    docPage: "operations/production/product-inventory/user",
     path: "/production/inventory/products/dc050000-0000-4000-8000-000000000001",
     steps: async (page) => {
       await page.getByText("ORD-202607-00003-01").first().waitFor();
@@ -620,7 +620,7 @@ export const shots: Shot[] = [
   {
     // 在庫移動モーダル（保管場所が未割当の行から開く）
     id: "inventory-transfer-01",
-    docPage: "apps/product-inventory/user",
+    docPage: "operations/production/product-inventory/user",
     path: "/production/inventory",
     steps: async (page) => {
       await page.getByRole("button", { name: "移動" }).first().click();
@@ -629,7 +629,7 @@ export const shots: Shot[] = [
   },
   {
     id: "inventory-transactions-01",
-    docPage: "apps/product-inventory/user",
+    docPage: "operations/production/product-inventory/user",
     path: "/production/inventory/products/dc050000-0000-4000-8000-000000000001?tab=transactions",
     steps: async (page) => {
       await page.getByText("取引履歴").first().waitFor();
@@ -638,7 +638,7 @@ export const shots: Shot[] = [
   {
     // 素材在庫の詳細（利用可能がマイナス + 入荷予定の ATP タイムライン）
     id: "inventory-material-detail-01",
-    docPage: "apps/material-inventory/user",
+    docPage: "operations/production/material-inventory/user",
     path: "/production/inventory/materials/dc051000-0000-4000-8000-000000000002",
     fullPage: true,
     steps: async (page) => {
@@ -647,7 +647,7 @@ export const shots: Shot[] = [
   },
   {
     id: "inventory-material-transactions-01",
-    docPage: "apps/material-inventory/user",
+    docPage: "operations/production/material-inventory/user",
     path: "/production/inventory/materials/dc051000-0000-4000-8000-000000000002?tab=transactions",
     steps: async (page) => {
       await page.getByText("取引履歴").first().waitFor();
@@ -656,7 +656,7 @@ export const shots: Shot[] = [
   // ── 生産: 在庫管理（PD04）──────────────────────────────────────────────────
   {
     id: "inventory-products-01",
-    docPage: "apps/product-inventory/user",
+    docPage: "operations/production/product-inventory/user",
     path: "/production/inventory",
     steps: async (page) => {
       await page.getByText("超硬エンドミル").first().waitFor();
@@ -664,7 +664,7 @@ export const shots: Shot[] = [
   },
   {
     id: "inventory-locations-01",
-    docPage: "apps/product-inventory/user",
+    docPage: "operations/production/product-inventory/user",
     path: "/production/inventory?tab=locations",
     steps: async (page) => {
       await page.getByText("資材倉庫A").filter({ visible: true }).first().waitFor();
@@ -672,7 +672,7 @@ export const shots: Shot[] = [
   },
   {
     id: "inventory-materials-01",
-    docPage: "apps/material-inventory/user",
+    docPage: "operations/production/material-inventory/user",
     path: "/production/inventory?tab=materials",
     steps: async (page) => {
       await page.getByText("B01A0001").first().waitFor();
@@ -680,7 +680,7 @@ export const shots: Shot[] = [
   },
   {
     id: "inventory-wip-01",
-    docPage: "apps/material-inventory/user",
+    docPage: "operations/production/material-inventory/user",
     path: "/production/inventory?tab=wip",
     steps: async (page) => {
       await page.getByText("9001").filter({ visible: true }).first().waitFor();
@@ -689,7 +689,7 @@ export const shots: Shot[] = [
   // ── 出荷: 出荷書（SH01）────────────────────────────────────────────────────
   {
     id: "shipping-order-list-01",
-    docPage: "apps/shipping-order/user",
+    docPage: "operations/shipping/shipping-order/user",
     path: "/shipping/shipping-orders",
     steps: async (page) => {
       await page.getByText("SHP-202607-00001").first().waitFor();
@@ -697,7 +697,7 @@ export const shots: Shot[] = [
   },
   {
     id: "shipping-order-detail-01",
-    docPage: "apps/shipping-order/user",
+    docPage: "operations/shipping/shipping-order/user",
     path: "/shipping/shipping-orders/SHP-202607-00001",
     steps: async (page) => {
       await page.getByText("明細").first().waitFor();
@@ -706,7 +706,7 @@ export const shots: Shot[] = [
   // ── 出荷: 納品書（SH02）────────────────────────────────────────────────────
   {
     id: "delivery-note-list-01",
-    docPage: "apps/delivery-note/user",
+    docPage: "operations/shipping/delivery-note/user",
     path: "/shipping/delivery-notes",
     steps: async (page) => {
       await page.getByText("DRN-202607-00001").first().waitFor();
@@ -714,7 +714,7 @@ export const shots: Shot[] = [
   },
   {
     id: "delivery-note-detail-01",
-    docPage: "apps/delivery-note/user",
+    docPage: "operations/shipping/delivery-note/user",
     path: "/shipping/delivery-notes/DRN-202607-00001",
     steps: async (page) => {
       await page.getByText("納品方法").first().waitFor();
@@ -723,7 +723,7 @@ export const shots: Shot[] = [
   // ── 請求: 請求書（BL01）────────────────────────────────────────────────────
   {
     id: "invoice-list-01",
-    docPage: "apps/invoice/user",
+    docPage: "operations/billing/invoice/user",
     path: "/billing/invoices",
     steps: async (page) => {
       await page.getByText("INV-202606-00001").first().waitFor();
@@ -731,7 +731,7 @@ export const shots: Shot[] = [
   },
   {
     id: "invoice-detail-01",
-    docPage: "apps/invoice/user",
+    docPage: "operations/billing/invoice/user",
     path: "/billing/invoices/INV-202606-00001",
     steps: async (page) => {
       await page.getByText("支払期限").first().waitFor();
@@ -740,7 +740,7 @@ export const shots: Shot[] = [
   // ── 請求: 締日処理（BL02）──────────────────────────────────────────────────
   {
     id: "billing-closing-list-01",
-    docPage: "apps/billing-closing/user",
+    docPage: "operations/billing/billing-closing/user",
     path: "/billing/closings",
     steps: async (page) => {
       await page.getByText("デモ商事株式会社").first().waitFor();
@@ -748,7 +748,7 @@ export const shots: Shot[] = [
   },
   {
     id: "billing-closing-detail-01",
-    docPage: "apps/billing-closing/user",
+    docPage: "operations/billing/billing-closing/user",
     path: "/billing/closings/dd000000-0000-4000-8000-000000000041",
     steps: async (page) => {
       await page.getByText("請求書を生成").first().waitFor();
@@ -758,7 +758,7 @@ export const shots: Shot[] = [
   // 確認モーダルは「開くだけ」— 確定を押すとデータが変わり撮影が非決定になる。
   {
     id: "shipping-order-new-01",
-    docPage: "apps/shipping-order/user",
+    docPage: "operations/shipping/shipping-order/user",
     path: "/shipping/shipping-orders/new",
     steps: async (page) => {
       await page.getByText("注文請書").first().waitFor();
@@ -766,7 +766,7 @@ export const shots: Shot[] = [
   },
   {
     id: "shipping-order-menu-01",
-    docPage: "apps/shipping-order/user",
+    docPage: "operations/shipping/shipping-order/user",
     path: "/shipping/shipping-orders/SHP-202607-00002",
     steps: async (page) => {
       await page.getByRole("button", { name: "操作メニュー" }).first().click();
@@ -775,7 +775,7 @@ export const shots: Shot[] = [
   },
   {
     id: "shipping-order-confirm-01",
-    docPage: "apps/shipping-order/user",
+    docPage: "operations/shipping/shipping-order/user",
     path: "/shipping/shipping-orders/SHP-202607-00003",
     steps: async (page) => {
       await page.getByRole("button", { name: "操作メニュー" }).first().click();
@@ -785,7 +785,7 @@ export const shots: Shot[] = [
   },
   {
     id: "shipping-order-delivery-notes-01",
-    docPage: "apps/shipping-order/user",
+    docPage: "operations/shipping/shipping-order/user",
     path: "/shipping/shipping-orders/SHP-202607-00001?tab=delivery-notes",
     steps: async (page) => {
       await page.getByText("DRN-202607-00001").first().waitFor();
@@ -793,7 +793,7 @@ export const shots: Shot[] = [
   },
   {
     id: "delivery-note-new-01",
-    docPage: "apps/delivery-note/user",
+    docPage: "operations/shipping/delivery-note/user",
     path: "/shipping/delivery-notes/new?shippingOrder=SHP-202607-00002",
     steps: async (page) => {
       await page.getByText("納品方法").first().waitFor();
@@ -802,7 +802,7 @@ export const shots: Shot[] = [
   {
     // 価格を載せない納品書（単価・金額の列が無い）
     id: "delivery-note-detail-noprice-01",
-    docPage: "apps/delivery-note/user",
+    docPage: "operations/shipping/delivery-note/user",
     path: "/shipping/delivery-notes/DRN-202607-00002",
     steps: async (page) => {
       await page.getByText("ユーザー直送").first().waitFor();
@@ -810,7 +810,7 @@ export const shots: Shot[] = [
   },
   {
     id: "delivery-note-direct-01",
-    docPage: "apps/delivery-note/user",
+    docPage: "operations/shipping/delivery-note/user",
     path: "/shipping/delivery-notes/new?shippingOrder=SHP-202607-00002",
     steps: async (page) => {
       await page.getByText("ユーザー直送").first().click();
@@ -819,7 +819,7 @@ export const shots: Shot[] = [
   },
   {
     id: "delivery-note-issue-01",
-    docPage: "apps/delivery-note/user",
+    docPage: "operations/shipping/delivery-note/user",
     path: "/shipping/delivery-notes/DRN-202607-00002",
     steps: async (page) => {
       await page.getByRole("button", { name: "操作メニュー" }).first().click();
@@ -829,7 +829,7 @@ export const shots: Shot[] = [
   },
   {
     id: "invoice-items-01",
-    docPage: "apps/invoice/user",
+    docPage: "operations/billing/invoice/user",
     path: "/billing/invoices/INV-202606-00001",
     steps: async (page) => {
       await page.getByText("SHP-202606-00001").first().waitFor();
@@ -837,7 +837,7 @@ export const shots: Shot[] = [
   },
   {
     id: "invoice-menu-01",
-    docPage: "apps/invoice/user",
+    docPage: "operations/billing/invoice/user",
     path: "/billing/invoices/INV-202606-00001",
     steps: async (page) => {
       await page.getByRole("button", { name: "操作メニュー" }).first().click();
@@ -846,7 +846,7 @@ export const shots: Shot[] = [
   },
   {
     id: "invoice-sent-01",
-    docPage: "apps/invoice/user",
+    docPage: "operations/billing/invoice/user",
     path: "/billing/invoices/INV-202606-00001",
     steps: async (page) => {
       await page.getByRole("button", { name: "操作メニュー" }).first().click();
@@ -857,7 +857,7 @@ export const shots: Shot[] = [
   {
     // 年/月の既定値は実行日由来 — 揮発領域なので mask で塗りつぶす
     id: "billing-closing-run-01",
-    docPage: "apps/billing-closing/user",
+    docPage: "operations/billing/billing-closing/user",
     path: "/billing/closings",
     steps: async (page) => {
       await page.getByRole("button", { name: "締日処理を実行" }).first().click();
@@ -867,7 +867,7 @@ export const shots: Shot[] = [
   },
   {
     id: "billing-closing-generate-01",
-    docPage: "apps/billing-closing/user",
+    docPage: "operations/billing/billing-closing/user",
     path: "/billing/closings/dd000000-0000-4000-8000-000000000041",
     steps: async (page) => {
       await page.getByRole("button", { name: "請求書を生成" }).first().click();
@@ -876,7 +876,7 @@ export const shots: Shot[] = [
   },
   {
     id: "billing-closing-processed-01",
-    docPage: "apps/billing-closing/user",
+    docPage: "operations/billing/billing-closing/user",
     path: "/billing/closings/dd000000-0000-4000-8000-000000000042",
     steps: async (page) => {
       await page.getByText("INV-202606-00001").first().waitFor();
@@ -885,7 +885,7 @@ export const shots: Shot[] = [
   // 製品項目・製品種別（SY03/SY04）は system 権限 — 管理者で撮影
   {
     id: "product-items-01",
-    docPage: "apps/product-type/settings",
+    docPage: "operations/system/product-type/settings",
     path: "/settings/product-items",
     user: "admin",
     steps: async (page) => {
@@ -894,7 +894,7 @@ export const shots: Shot[] = [
   },
   {
     id: "product-item-edit-01",
-    docPage: "apps/product-type/settings",
+    docPage: "operations/system/product-type/settings",
     path: "/settings/product-items/surfaceTreatment",
     user: "admin",
     steps: async (page) => {
@@ -903,7 +903,7 @@ export const shots: Shot[] = [
   },
   {
     id: "product-type-edit-01",
-    docPage: "apps/product-type/settings",
+    docPage: "operations/system/product-type/settings",
     path: "/settings/product-types/standard",
     user: "admin",
     steps: async (page) => {
@@ -913,7 +913,7 @@ export const shots: Shot[] = [
   {
     // 製品種別を選ぶと、その種別の項目が入力欄として出てくる様子
     id: "product-form-type-01",
-    docPage: "apps/product-type/settings",
+    docPage: "operations/system/product-type/settings",
     path: "/master/products/new",
     steps: async (page) => {
       await page.getByRole("combobox", { name: "製品種別" }).click();
@@ -924,7 +924,7 @@ export const shots: Shot[] = [
   // ── マスタ: 顧客（MS01）────────────────────────────────────────────────────
   {
     id: "master-customer-list-01",
-    docPage: "masters/customer/user",
+    docPage: "operations/masters/customer/user",
     path: "/master/customers?q=%E3%83%87%E3%83%A2",
     steps: async (page) => {
       await page.getByText("デモ商事株式会社").first().waitFor();
@@ -932,7 +932,7 @@ export const shots: Shot[] = [
   },
   {
     id: "master-customer-branches-01",
-    docPage: "masters/customer/user",
+    docPage: "operations/masters/customer/user",
     path: "/master/customers/d0000000-0000-4000-8000-000000000001?tab=branches",
     steps: async (page) => {
       await page.getByText("大阪支店").first().waitFor();
@@ -941,7 +941,7 @@ export const shots: Shot[] = [
   // ── マスタ: 最終需要家（MS02）──────────────────────────────────────────────
   {
     id: "master-end-user-list-01",
-    docPage: "masters/end-user/user",
+    docPage: "operations/masters/end-user/user",
     path: "/master/end-users?q=%E3%83%87%E3%83%A2",
     steps: async (page) => {
       await page.getByText("デモ電子工業").first().waitFor();
@@ -950,7 +950,7 @@ export const shots: Shot[] = [
   // ── マスタ: 製品（MS04）────────────────────────────────────────────────────
   {
     id: "master-product-list-01",
-    docPage: "masters/product/user",
+    docPage: "operations/masters/product/user",
     path: "/master/products",
     steps: async (page) => {
       await page.getByText("超硬エンドミル").first().waitFor();
@@ -958,7 +958,7 @@ export const shots: Shot[] = [
   },
   {
     id: "master-product-routes-01",
-    docPage: "masters/product/user",
+    docPage: "operations/masters/product/user",
     path: "/master/products/9001?tab=routes",
     steps: async (page) => {
       await page.getByText("標準工程").first().waitFor();
@@ -967,7 +967,7 @@ export const shots: Shot[] = [
   // ── マスタ: 材種（MS05）────────────────────────────────────────────────────
   {
     id: "master-material-type-list-01",
-    docPage: "masters/material-type/user",
+    docPage: "operations/masters/material-type/user",
     path: "/master/material-types?q=A02",
     steps: async (page) => {
       await page.getByText("A02A0001").first().waitFor();
@@ -976,7 +976,7 @@ export const shots: Shot[] = [
   // ── マスタ: 素材（MS06）────────────────────────────────────────────────────
   {
     id: "master-material-list-01",
-    docPage: "masters/material/user",
+    docPage: "operations/masters/material/user",
     path: "/master/materials?q=A02A0001",
     steps: async (page) => {
       await page.getByText("A02A0001-A010-310").first().waitFor();
@@ -985,7 +985,7 @@ export const shots: Shot[] = [
   // ── マスタ: 外注企業（MS03）────────────────────────────────────────────────
   {
     id: "master-supplier-list-01",
-    docPage: "masters/supplier/user",
+    docPage: "operations/masters/supplier/user",
     path: "/master/suppliers?q=%E3%83%87%E3%83%A2",
     steps: async (page) => {
       await page.getByText("デモ研磨工業").first().waitFor();
@@ -993,7 +993,7 @@ export const shots: Shot[] = [
   },
   {
     id: "master-supplier-detail-01",
-    docPage: "masters/supplier/user",
+    docPage: "operations/masters/supplier/user",
     path: "/master/suppliers/da000000-0000-4000-8000-000000000004",
     steps: async (page) => {
       await page
@@ -1004,7 +1004,7 @@ export const shots: Shot[] = [
   // ── マスタ: 工程マスタ（MS08）──────────────────────────────────────────────
   {
     id: "master-process-step-list-01",
-    docPage: "masters/process-step/user",
+    docPage: "operations/masters/process-step/user",
     path: "/master/process-steps",
     steps: async (page) => {
       await page.getByText("センタレス").first().waitFor();
@@ -1013,7 +1013,7 @@ export const shots: Shot[] = [
   // ── マスタ: 検査表テンプレート（MS09）──────────────────────────────────────
   {
     id: "master-inspection-template-list-01",
-    docPage: "masters/inspection-template/user",
+    docPage: "operations/masters/inspection-template/user",
     path: "/master/inspection-templates",
     steps: async (page) => {
       await page.getByText("DEMO-INS-01").first().waitFor();
@@ -1021,7 +1021,7 @@ export const shots: Shot[] = [
   },
   {
     id: "master-inspection-template-items-01",
-    docPage: "masters/inspection-template/user",
+    docPage: "operations/masters/inspection-template/user",
     path: "/master/inspection-templates/9102?tab=items",
     steps: async (page) => {
       await page.getByText("検査項目").first().waitFor();
@@ -1030,7 +1030,7 @@ export const shots: Shot[] = [
   // ── マスタ: 不良種類（MS0A）────────────────────────────────────────────────
   {
     id: "master-defect-type-list-01",
-    docPage: "masters/defect-type/user",
+    docPage: "operations/masters/defect-type/user",
     path: "/master/defect-types",
     steps: async (page) => {
       await page.getByText("キズ").first().waitFor();
@@ -1039,7 +1039,7 @@ export const shots: Shot[] = [
   // ── マスタ: 承認グループ（MS0B）────────────────────────────────────────────
   {
     id: "master-approval-group-list-01",
-    docPage: "masters/approval-group/user",
+    docPage: "operations/masters/approval-group/user",
     path: "/master/approval-groups",
     steps: async (page) => {
       await page.getByText("第一承認グループ").first().waitFor();
@@ -1048,7 +1048,7 @@ export const shots: Shot[] = [
   // ── マスタ: 拠点（MS0C）────────────────────────────────────────────────────
   {
     id: "master-plant-list-01",
-    docPage: "masters/plant/user",
+    docPage: "operations/masters/plant/user",
     path: "/master/plants",
     steps: async (page) => {
       await page.getByText("第二工場").first().waitFor();
@@ -1056,7 +1056,7 @@ export const shots: Shot[] = [
   },
   {
     id: "master-plant-regions-01",
-    docPage: "masters/plant/user",
+    docPage: "operations/masters/plant/user",
     path: "/master/plants/regions",
     steps: async (page) => {
       await page.getByText("関東").first().waitFor();
@@ -1065,7 +1065,7 @@ export const shots: Shot[] = [
   // ── マスタ: 採番構成（MS07）────────────────────────────────────────────────
   {
     id: "master-material-numbering-01",
-    docPage: "masters/material-numbering/user",
+    docPage: "operations/masters/material-numbering/user",
     path: "/master/material-numbering",
     steps: async (page) => {
       await page.getByText("メーカー").first().waitFor();
@@ -1076,7 +1076,7 @@ export const shots: Shot[] = [
   // （レガシー import には実在の取引先名が入っているため）。
   {
     id: "master-customer-new-01",
-    docPage: "masters/customer/user",
+    docPage: "operations/masters/customer/user",
     path: "/master/customers/new",
     steps: async (page) => {
       await page.getByText("取引条件").first().waitFor();
@@ -1084,7 +1084,7 @@ export const shots: Shot[] = [
   },
   {
     id: "master-customer-detail-01",
-    docPage: "masters/customer/user",
+    docPage: "operations/masters/customer/user",
     path: "/master/customers/d0000000-0000-4000-8000-000000000001",
     steps: async (page) => {
       await page.getByText("デモ商事株式会社").first().waitFor();
@@ -1092,7 +1092,7 @@ export const shots: Shot[] = [
   },
   {
     id: "master-customer-branch-new-01",
-    docPage: "masters/customer/user",
+    docPage: "operations/masters/customer/user",
     path: "/master/customers/d0000000-0000-4000-8000-000000000001/branches/new",
     steps: async (page) => {
       await page.getByText("担当者名").first().waitFor();
@@ -1100,7 +1100,7 @@ export const shots: Shot[] = [
   },
   {
     id: "master-end-user-new-01",
-    docPage: "masters/end-user/user",
+    docPage: "operations/masters/end-user/user",
     path: "/master/end-users/new",
     steps: async (page) => {
       await page.getByText("需要家情報").first().waitFor();
@@ -1108,7 +1108,7 @@ export const shots: Shot[] = [
   },
   {
     id: "master-end-user-detail-01",
-    docPage: "masters/end-user/user",
+    docPage: "operations/masters/end-user/user",
     path: "/master/end-users/da000000-0000-4000-8000-000000000005",
     steps: async (page) => {
       await page.getByText("デモ電子工業株式会社").first().waitFor();
@@ -1117,7 +1117,7 @@ export const shots: Shot[] = [
   {
     // 無効化の確認モーダル（実行はしない）
     id: "master-end-user-deactivate-01",
-    docPage: "masters/end-user/user",
+    docPage: "operations/masters/end-user/user",
     path: "/master/end-users/da000000-0000-4000-8000-000000000005",
     steps: async (page) => {
       await page.getByRole("button", { name: "操作メニュー" }).first().click();
@@ -1127,7 +1127,7 @@ export const shots: Shot[] = [
   },
   {
     id: "master-supplier-new-01",
-    docPage: "masters/supplier/user",
+    docPage: "operations/masters/supplier/user",
     path: "/master/suppliers/new",
     steps: async (page) => {
       await page.getByText("住所・連絡先").first().waitFor();
@@ -1135,7 +1135,7 @@ export const shots: Shot[] = [
   },
   {
     id: "master-supplier-new-terms-01",
-    docPage: "masters/supplier/user",
+    docPage: "operations/masters/supplier/user",
     path: "/master/suppliers/new",
     steps: async (page) => {
       await page.getByText("振込先").first().scrollIntoViewIfNeeded();
@@ -1144,7 +1144,7 @@ export const shots: Shot[] = [
   },
   {
     id: "master-product-new-01",
-    docPage: "masters/product/user",
+    docPage: "operations/masters/product/user",
     path: "/master/products/new",
     steps: async (page) => {
       await page.getByText("素材仕様").first().waitFor();
@@ -1152,7 +1152,7 @@ export const shots: Shot[] = [
   },
   {
     id: "master-product-detail-01",
-    docPage: "masters/product/user",
+    docPage: "operations/masters/product/user",
     path: "/master/products/9001",
     steps: async (page) => {
       await page.getByText("超硬エンドミル").first().waitFor();
@@ -1160,7 +1160,7 @@ export const shots: Shot[] = [
   },
   {
     id: "master-product-route-new-01",
-    docPage: "masters/product/user",
+    docPage: "operations/masters/product/user",
     path: "/master/products/9001/routes/new",
     steps: async (page) => {
       await page.getByText("工程選択").first().waitFor();
@@ -1169,7 +1169,7 @@ export const shots: Shot[] = [
   {
     // メーカー・材種・形状を選ぶと材種コードが自動で組み上がる様子
     id: "master-material-type-new-01",
-    docPage: "masters/material-type/user",
+    docPage: "operations/masters/material-type/user",
     path: "/master/material-types/new",
     steps: async (page) => {
       await page.getByRole("combobox", { name: "メーカー" }).first().click();
@@ -1184,7 +1184,7 @@ export const shots: Shot[] = [
   {
     // id は serial のため検索 → 行クリックで開く
     id: "master-material-type-detail-01",
-    docPage: "masters/material-type/user",
+    docPage: "operations/masters/material-type/user",
     path: "/master/material-types?q=A02A0001",
     steps: async (page) => {
       await page.getByText("A02A0001").first().click();
@@ -1194,7 +1194,7 @@ export const shots: Shot[] = [
   },
   {
     id: "master-material-type-prices-01",
-    docPage: "masters/material-type/user",
+    docPage: "operations/masters/material-type/user",
     path: "/master/material-types?q=A02A0001",
     steps: async (page) => {
       await page.getByText("A02A0001").first().click();
@@ -1205,7 +1205,7 @@ export const shots: Shot[] = [
   {
     // 材種の詳細検索モーダル（欄の左の虫めがね）
     id: "master-material-search-01",
-    docPage: "masters/material/user",
+    docPage: "operations/masters/material/user",
     path: "/master/materials/new",
     steps: async (page) => {
       await page.getByRole("button", { name: "詳細検索" }).first().click();
@@ -1215,7 +1215,7 @@ export const shots: Shot[] = [
   {
     // 素材コードが自動で組み上がる様子
     id: "master-material-new-01",
-    docPage: "masters/material/user",
+    docPage: "operations/masters/material/user",
     path: "/master/materials/new",
     steps: async (page) => {
       await page.getByRole("combobox", { name: "材種" }).first().click();
@@ -1229,7 +1229,7 @@ export const shots: Shot[] = [
     id: "master-material-detail-01",
     // 作成/更新日時はシード投入時刻（now()）由来で撮影ごとに変わる — 塗りつぶす
     mask: ["text=/\\d{4}\\/\\d{2}\\/\\d{2} \\d{2}:\\d{2}/"],
-    docPage: "masters/material/user",
+    docPage: "operations/masters/material/user",
     path: "/master/materials?q=A02A0001",
     steps: async (page) => {
       await page.getByText(/^A02A0001-/).first().click();
@@ -1240,7 +1240,7 @@ export const shots: Shot[] = [
   },
   {
     id: "master-material-numbering-grades-01",
-    docPage: "masters/material-numbering/user",
+    docPage: "operations/masters/material-numbering/user",
     path: "/master/material-numbering",
     steps: async (page) => {
       await page.getByRole("tab", { name: "メーカー材種" }).first().click();
@@ -1249,7 +1249,7 @@ export const shots: Shot[] = [
   },
   {
     id: "master-material-numbering-add-01",
-    docPage: "masters/material-numbering/user",
+    docPage: "operations/masters/material-numbering/user",
     path: "/master/material-numbering",
     steps: async (page) => {
       await page.getByRole("button", { name: "メーカーを追加" }).first().click();
@@ -1258,7 +1258,7 @@ export const shots: Shot[] = [
   },
   {
     id: "master-material-numbering-diameters-01",
-    docPage: "masters/material-numbering/user",
+    docPage: "operations/masters/material-numbering/user",
     path: "/master/material-numbering",
     steps: async (page) => {
       await page.getByRole("tab", { name: "直径" }).first().click();
@@ -1294,7 +1294,7 @@ export const shots: Shot[] = [
   // ── 設定: 試算計算（SY02, 管理者）──────────────────────────────────────────
   {
     id: "trial-pricing-hub-01",
-    docPage: "apps/trial-estimate/settings",
+    docPage: "operations/sales/trial-estimate/settings",
     path: "/settings/trial-pricing-engine",
     user: "admin",
     steps: async (page) => {
@@ -1303,7 +1303,7 @@ export const shots: Shot[] = [
   },
   {
     id: "trial-pricing-criteria-01",
-    docPage: "apps/trial-estimate/settings",
+    docPage: "operations/sales/trial-estimate/settings",
     path: "/settings/trial-pricing-engine/criteria/material",
     user: "admin",
     steps: async (page) => {
@@ -1312,7 +1312,7 @@ export const shots: Shot[] = [
   },
   {
     id: "trial-pricing-tool-types-01",
-    docPage: "apps/trial-estimate/settings",
+    docPage: "operations/sales/trial-estimate/settings",
     path: "/settings/trial-pricing-engine/tool-types/ROUND_BAR",
     user: "admin",
     steps: async (page) => {
@@ -1322,7 +1322,7 @@ export const shots: Shot[] = [
   // ── 設定: 製品種別（SY04, 管理者）──────────────────────────────────────────
   {
     id: "product-types-01",
-    docPage: "apps/product-type/settings",
+    docPage: "operations/system/product-type/settings",
     path: "/settings/product-types",
     user: "admin",
     steps: async (page) => {
@@ -1332,7 +1332,7 @@ export const shots: Shot[] = [
   // ── マスタ: 作業場所（MS0D）────────────────────────────────────────────────
   {
     id: "master-work-location-01",
-    docPage: "masters/work-location/user",
+    docPage: "operations/masters/work-location/user",
     path: "/master/work-locations",
     steps: async (page) => {
       await page.getByText("切削エリア").first().waitFor();
@@ -1341,7 +1341,7 @@ export const shots: Shot[] = [
   // ── マスタ: 保管場所（MS0E）────────────────────────────────────────────────
   {
     id: "master-storage-location-01",
-    docPage: "masters/storage-location/user",
+    docPage: "operations/masters/storage-location/user",
     path: "/master/storage-locations",
     steps: async (page) => {
       await page.getByText("資材倉庫A").first().waitFor();
@@ -1349,7 +1349,7 @@ export const shots: Shot[] = [
   },
   {
     id: "master-storage-location-manage-01",
-    docPage: "masters/storage-location/user",
+    docPage: "operations/masters/storage-location/user",
     path: "/master/storage-locations",
     steps: async (page) => {
       await page.getByText("本社工場").first().click();
@@ -1359,7 +1359,7 @@ export const shots: Shot[] = [
   // ── マスタ（製造定義・拠点系）: 初心者向けマニュアル用の追加撮影 ──────────
   {
     id: "master-process-step-new-01",
-    docPage: "masters/process-step/user",
+    docPage: "operations/masters/process-step/user",
     path: "/master/process-steps/new",
     steps: async (page) => {
       await page.getByText("基本情報").first().waitFor();
@@ -1367,7 +1367,7 @@ export const shots: Shot[] = [
   },
   {
     id: "master-process-step-detail-01",
-    docPage: "masters/process-step/user",
+    docPage: "operations/masters/process-step/user",
     path: "/master/process-steps",
     steps: async (page) => {
       await page.getByText("円筒加工").first().click();
@@ -1376,7 +1376,7 @@ export const shots: Shot[] = [
   },
   {
     id: "master-process-step-dependencies-01",
-    docPage: "masters/process-step/user",
+    docPage: "operations/masters/process-step/user",
     path: "/master/process-steps",
     steps: async (page) => {
       await page.getByText("円筒加工").first().click();
@@ -1387,7 +1387,7 @@ export const shots: Shot[] = [
   {
     // 削除確認モーダル（開くだけ — 実行しない）
     id: "master-defect-type-delete-01",
-    docPage: "masters/defect-type/user",
+    docPage: "operations/masters/defect-type/user",
     path: "/master/defect-types",
     steps: async (page) => {
       await page.getByRole("button", { name: "操作" }).first().click();
@@ -1398,7 +1398,7 @@ export const shots: Shot[] = [
   {
     // 編集フォームの「使用依存」セクション
     id: "master-process-step-deps-01",
-    docPage: "masters/process-step/user",
+    docPage: "operations/masters/process-step/user",
     path: "/master/process-steps",
     steps: async (page) => {
       await page.getByText("円筒加工").first().click();
@@ -1409,7 +1409,7 @@ export const shots: Shot[] = [
   },
   {
     id: "master-inspection-template-new-01",
-    docPage: "masters/inspection-template/user",
+    docPage: "operations/masters/inspection-template/user",
     path: "/master/inspection-templates/new",
     steps: async (page) => {
       await page.getByText("検査対象").first().waitFor();
@@ -1417,7 +1417,7 @@ export const shots: Shot[] = [
   },
   {
     id: "master-inspection-template-detail-01",
-    docPage: "masters/inspection-template/user",
+    docPage: "operations/masters/inspection-template/user",
     path: "/master/inspection-templates/9102",
     steps: async (page) => {
       await page.getByText("記録方式").first().waitFor();
@@ -1426,7 +1426,7 @@ export const shots: Shot[] = [
   {
     // 数値項目の追加モーダル（合格範囲の入力欄が出た状態）
     id: "master-inspection-template-item-modal-01",
-    docPage: "masters/inspection-template/user",
+    docPage: "operations/masters/inspection-template/user",
     path: "/master/inspection-templates/9102?tab=items",
     steps: async (page) => {
       await page.getByRole("button", { name: "項目を追加" }).first().click();
@@ -1437,7 +1437,7 @@ export const shots: Shot[] = [
   },
   {
     id: "master-inspection-template-versions-01",
-    docPage: "masters/inspection-template/user",
+    docPage: "operations/masters/inspection-template/user",
     path: "/master/inspection-templates/9102?tab=versions",
     steps: async (page) => {
       await page.getByText("使用状況").first().waitFor();
@@ -1445,7 +1445,7 @@ export const shots: Shot[] = [
   },
   {
     id: "master-defect-type-new-01",
-    docPage: "masters/defect-type/user",
+    docPage: "operations/masters/defect-type/user",
     path: "/master/defect-types/new",
     steps: async (page) => {
       await page.getByText("不良種類 新規作成").first().waitFor();
@@ -1453,7 +1453,7 @@ export const shots: Shot[] = [
   },
   {
     id: "master-defect-type-edit-01",
-    docPage: "masters/defect-type/user",
+    docPage: "operations/masters/defect-type/user",
     path: "/master/defect-types",
     steps: async (page) => {
       await page.getByText("キズ").first().click();
@@ -1462,7 +1462,7 @@ export const shots: Shot[] = [
   },
   {
     id: "master-approval-group-new-01",
-    docPage: "masters/approval-group/user",
+    docPage: "operations/masters/approval-group/user",
     path: "/master/approval-groups/new",
     steps: async (page) => {
       await page.getByText("種別").first().waitFor();
@@ -1470,7 +1470,7 @@ export const shots: Shot[] = [
   },
   {
     id: "master-approval-group-members-01",
-    docPage: "masters/approval-group/user",
+    docPage: "operations/masters/approval-group/user",
     path: "/master/approval-groups",
     steps: async (page) => {
       await page.getByText("第一承認グループ（デモ）").first().click();
@@ -1480,7 +1480,7 @@ export const shots: Shot[] = [
   },
   {
     id: "master-approval-group-member-add-01",
-    docPage: "masters/approval-group/user",
+    docPage: "operations/masters/approval-group/user",
     path: "/master/approval-groups",
     steps: async (page) => {
       await page.getByText("第一承認グループ（デモ）").first().click();
@@ -1491,7 +1491,7 @@ export const shots: Shot[] = [
   },
   {
     id: "master-approval-group-delegate-add-01",
-    docPage: "masters/approval-group/user",
+    docPage: "operations/masters/approval-group/user",
     path: "/master/approval-groups",
     steps: async (page) => {
       await page.getByText("第一承認グループ（デモ）").first().click();
@@ -1502,7 +1502,7 @@ export const shots: Shot[] = [
   },
   {
     id: "master-plant-new-01",
-    docPage: "masters/plant/user",
+    docPage: "operations/masters/plant/user",
     path: "/master/plants/new",
     steps: async (page) => {
       await page.getByText("連絡先・住所").first().waitFor();
@@ -1510,7 +1510,7 @@ export const shots: Shot[] = [
   },
   {
     id: "master-plant-detail-01",
-    docPage: "masters/plant/user",
+    docPage: "operations/masters/plant/user",
     path: "/master/plants",
     steps: async (page) => {
       await page.getByText("第二工場").first().click();
@@ -1520,7 +1520,7 @@ export const shots: Shot[] = [
   {
     // フロアマップ未登録の空状態（シードには画像を入れていない）
     id: "master-plant-floor-maps-01",
-    docPage: "masters/plant/user",
+    docPage: "operations/masters/plant/user",
     path: "/master/plants",
     steps: async (page) => {
       await page.getByText("第二工場").first().click();
@@ -1530,7 +1530,7 @@ export const shots: Shot[] = [
   },
   {
     id: "master-work-location-group-new-01",
-    docPage: "masters/work-location/user",
+    docPage: "operations/masters/work-location/user",
     path: "/master/work-locations",
     steps: async (page) => {
       await page.getByRole("button", { name: "グループ追加" }).first().click();
@@ -1539,7 +1539,7 @@ export const shots: Shot[] = [
   },
   {
     id: "master-work-location-add-01",
-    docPage: "masters/work-location/user",
+    docPage: "operations/masters/work-location/user",
     path: "/master/work-locations",
     steps: async (page) => {
       await page.getByRole("button", { name: "場所を追加" }).first().click();
@@ -1548,7 +1548,7 @@ export const shots: Shot[] = [
   },
   {
     id: "master-work-location-types-01",
-    docPage: "masters/work-location/user",
+    docPage: "operations/masters/work-location/user",
     path: "/master/work-locations",
     steps: async (page) => {
       await page.getByRole("button", { name: "種別管理" }).first().click();
@@ -1557,7 +1557,7 @@ export const shots: Shot[] = [
   },
   {
     id: "master-storage-location-new-01",
-    docPage: "masters/storage-location/user",
+    docPage: "operations/masters/storage-location/user",
     path: "/master/storage-locations",
     steps: async (page) => {
       await page.getByRole("button", { name: "新規作成" }).first().click();
@@ -1566,7 +1566,7 @@ export const shots: Shot[] = [
   },
   {
     id: "master-storage-location-shelf-01",
-    docPage: "masters/storage-location/user",
+    docPage: "operations/masters/storage-location/user",
     path: "/master/storage-locations",
     steps: async (page) => {
       await page.getByText("本社工場").first().click();
@@ -1577,7 +1577,7 @@ export const shots: Shot[] = [
   {
     // フロアマップ未登録のため「地図なし」の案内が出る状態
     id: "master-storage-location-map-01",
-    docPage: "masters/storage-location/user",
+    docPage: "operations/masters/storage-location/user",
     path: "/master/storage-locations",
     steps: async (page) => {
       await page.getByText("本社工場").first().click();
@@ -1587,7 +1587,7 @@ export const shots: Shot[] = [
   // ── システム: ユーザー管理（SY01, 管理者）──────────────────────────────────
   {
     id: "settings-users-list-01",
-    docPage: "system/user-management/user",
+    docPage: "operations/system/user-management/user",
     path: "/settings/users?q=dev_",
     user: "admin",
     steps: async (page) => {
@@ -1596,7 +1596,7 @@ export const shots: Shot[] = [
   },
   {
     id: "settings-users-detail-01",
-    docPage: "system/user-management/user",
+    docPage: "operations/system/user-management/user",
     path: "/settings/users?q=dev_",
     user: "admin",
     steps: async (page) => {
@@ -1607,7 +1607,7 @@ export const shots: Shot[] = [
   // ── システム: アプリ管理（SY05, 管理者）────────────────────────────────────
   {
     id: "settings-apps-01",
-    docPage: "system/app-management/user",
+    docPage: "operations/system/app-management/user",
     path: "/settings/apps",
     user: "admin",
     steps: async (page) => {
@@ -1617,7 +1617,7 @@ export const shots: Shot[] = [
   // ── システム: ファイル管理（SY06, 管理者）──────────────────────────────────
   {
     id: "settings-files-grants-01",
-    docPage: "system/file-management/user",
+    docPage: "operations/system/file-management/user",
     path: "/settings/files",
     user: "admin",
     clip: ".mantine-Modal-content",
@@ -1629,7 +1629,7 @@ export const shots: Shot[] = [
   // ── システム: 操作履歴（SY07, 管理者）──────────────────────────────────────
   {
     id: "settings-activity-01",
-    docPage: "system/activity-log/user",
+    docPage: "operations/system/activity-log/user",
     path: "/settings/activity",
     user: "admin",
     steps: async (page) => {
@@ -1640,7 +1640,7 @@ export const shots: Shot[] = [
     id: "settings-activity-detail-01",
     // 作成/更新日時はシード投入時刻（now()）由来で撮影ごとに変わる — 塗りつぶす
     mask: ["text=/\\d{4}\\/\\d{2}\\/\\d{2} \\d{2}:\\d{2}/"],
-    docPage: "system/activity-log/user",
+    docPage: "operations/system/activity-log/user",
     path: "/settings/activity",
     user: "admin",
     steps: async (page) => {
@@ -1651,7 +1651,7 @@ export const shots: Shot[] = [
   // ── システム: QRカード管理（SY08, 管理者）──────────────────────────────────
   {
     id: "kiosk-cards-01",
-    docPage: "system/kiosk-card/user",
+    docPage: "operations/system/kiosk-card/user",
     path: "/settings/kiosk-cards",
     user: "admin",
     steps: async (page) => {
@@ -1661,7 +1661,7 @@ export const shots: Shot[] = [
   // ── システム: 端末管理（SY09, 管理者）──────────────────────────────────────
   {
     id: "kiosk-devices-01",
-    docPage: "system/kiosk-device/user",
+    docPage: "operations/system/kiosk-device/user",
     path: "/settings/kiosk-devices",
     user: "admin",
     steps: async (page) => {
@@ -1671,7 +1671,7 @@ export const shots: Shot[] = [
   // ── システム: キオスク設定（SY0A, 管理者）──────────────────────────────────
   {
     id: "kiosk-settings-01",
-    docPage: "system/kiosk-settings/user",
+    docPage: "operations/system/kiosk-settings/user",
     path: "/settings/kiosk",
     user: "admin",
     steps: async (page) => {
@@ -1681,7 +1681,7 @@ export const shots: Shot[] = [
   // ── システム: 初心者向けマニュアル用の追加撮影（すべて管理者で撮影）──────
   {
     id: "settings-users-roles-01",
-    docPage: "system/user-management/user",
+    docPage: "operations/system/user-management/user",
     path: "/settings/users?q=dev_",
     user: "admin",
     steps: async (page) => {
@@ -1691,7 +1691,7 @@ export const shots: Shot[] = [
   },
   {
     id: "settings-users-plants-01",
-    docPage: "system/user-management/user",
+    docPage: "operations/system/user-management/user",
     path: "/settings/users?q=dev_",
     user: "admin",
     steps: async (page) => {
@@ -1701,7 +1701,7 @@ export const shots: Shot[] = [
   },
   {
     id: "settings-users-permissions-01",
-    docPage: "system/user-management/user",
+    docPage: "operations/system/user-management/user",
     path: "/settings/users?q=dev_",
     user: "admin",
     steps: async (page) => {
@@ -1711,7 +1711,7 @@ export const shots: Shot[] = [
   },
   {
     id: "settings-apps-filter-01",
-    docPage: "system/app-management/user",
+    docPage: "operations/system/app-management/user",
     path: "/settings/apps",
     user: "admin",
     steps: async (page) => {
@@ -1721,7 +1721,7 @@ export const shots: Shot[] = [
   },
   {
     id: "settings-activity-filter-01",
-    docPage: "system/activity-log/user",
+    docPage: "operations/system/activity-log/user",
     path: "/settings/activity",
     user: "admin",
     steps: async (page) => {
@@ -1732,7 +1732,7 @@ export const shots: Shot[] = [
   {
     // 変更前 / 変更後 の差分表示
     id: "settings-activity-diff-01",
-    docPage: "system/activity-log/user",
+    docPage: "operations/system/activity-log/user",
     path: "/settings/activity",
     user: "admin",
     steps: async (page) => {
@@ -1742,7 +1742,7 @@ export const shots: Shot[] = [
   },
   {
     id: "kiosk-cards-issue-01",
-    docPage: "system/kiosk-card/user",
+    docPage: "operations/system/kiosk-card/user",
     path: "/settings/kiosk-cards",
     user: "admin",
     steps: async (page) => {
@@ -1752,7 +1752,7 @@ export const shots: Shot[] = [
   },
   {
     id: "kiosk-cards-detail-01",
-    docPage: "system/kiosk-card/user",
+    docPage: "operations/system/kiosk-card/user",
     path: "/settings/kiosk-cards/7A2B3C4D5E6F7G8H",
     user: "admin",
     steps: async (page) => {
@@ -1761,7 +1761,7 @@ export const shots: Shot[] = [
   },
   {
     id: "kiosk-devices-create-01",
-    docPage: "system/kiosk-device/user",
+    docPage: "operations/system/kiosk-device/user",
     path: "/settings/kiosk-devices",
     user: "admin",
     steps: async (page) => {
@@ -1775,7 +1775,7 @@ export const shots: Shot[] = [
   {
     // PIN・設定コードは伏せたまま撮る（「表示」は押さない）
     id: "kiosk-devices-detail-01",
-    docPage: "system/kiosk-device/user",
+    docPage: "operations/system/kiosk-device/user",
     path: "/settings/kiosk-devices/de000000-0000-4000-8000-000000000101",
     user: "admin",
     steps: async (page) => {
@@ -1784,7 +1784,7 @@ export const shots: Shot[] = [
   },
   {
     id: "kiosk-settings-apps-01",
-    docPage: "system/kiosk-settings/user",
+    docPage: "operations/system/kiosk-settings/user",
     path: "/settings/kiosk",
     user: "admin",
     steps: async (page) => {
@@ -1793,7 +1793,7 @@ export const shots: Shot[] = [
   },
   {
     id: "kiosk-settings-policy-01",
-    docPage: "system/kiosk-settings/user",
+    docPage: "operations/system/kiosk-settings/user",
     path: "/settings/kiosk",
     user: "admin",
     steps: async (page) => {
@@ -1807,7 +1807,7 @@ export const shots: Shot[] = [
   {
     // ログイン画面。カメラ映像は毎回変わるので video を mask して決定性を保つ。
     id: "kiosk-login-01",
-    docPage: "kiosk/start/user",
+    docPage: "operations/kiosk/start/user",
     app: "kiosk",
     path: "/login",
     mask: ["video", "text=/\\d+\\/\\d+\\(.\\) \\d+:\\d+/"],
@@ -1820,7 +1820,7 @@ export const shots: Shot[] = [
     id: "kiosk-home-01",
     // ヘッダーの時計と作業経過時間は実時刻由来 — 塗りつぶして決定的にする
     mask: ["text=/\\d+\\/\\d+\\(.\\) \\d+:\\d+/", "text=/作業 \\d+:\\d+/"],
-    docPage: "kiosk/start/user",
+    docPage: "operations/kiosk/start/user",
     app: "kiosk",
     path: "/login",
     steps: async (page) => {
@@ -1834,7 +1834,7 @@ export const shots: Shot[] = [
     id: "kiosk-steps-01",
     // ヘッダーの時計と作業経過時間は実時刻由来 — 塗りつぶして決定的にする
     mask: ["text=/\\d+\\/\\d+\\(.\\) \\d+:\\d+/", "text=/作業 \\d+:\\d+/"],
-    docPage: "kiosk/steps/user",
+    docPage: "operations/kiosk/steps/user",
     app: "kiosk",
     path: "/login",
     steps: async (page) => {
@@ -1848,7 +1848,7 @@ export const shots: Shot[] = [
     id: "kiosk-step-detail-01",
     // ヘッダーの時計と作業経過時間は実時刻由来 — 塗りつぶして決定的にする
     mask: ["text=/\\d+\\/\\d+\\(.\\) \\d+:\\d+/", "text=/作業 \\d+:\\d+/"],
-    docPage: "kiosk/steps/user",
+    docPage: "operations/kiosk/steps/user",
     app: "kiosk",
     path: "/login",
     steps: async (page) => {
@@ -1860,7 +1860,7 @@ export const shots: Shot[] = [
   },
   {
     id: "kiosk-devices-link-01",
-    docPage: "system/kiosk-device/user",
+    docPage: "operations/system/kiosk-device/user",
     path: "/settings/kiosk-devices",
     user: "admin",
     steps: async (page) => {
@@ -1877,7 +1877,7 @@ export const shots: Shot[] = [
   {
     // 環境別の表示スイッチ（切り替えはしない — 状態を変えず一覧のまま撮る）
     id: "settings-apps-switch-01",
-    docPage: "system/app-management/user",
+    docPage: "operations/system/app-management/user",
     path: "/settings/apps",
     user: "admin",
     steps: async (page) => {
@@ -1886,7 +1886,7 @@ export const shots: Shot[] = [
   },
   {
     id: "trial-pricing-material-policy-01",
-    docPage: "apps/trial-estimate/settings",
+    docPage: "operations/sales/trial-estimate/settings",
     path: "/settings/trial-pricing-engine/material-policy",
     user: "admin",
     steps: async (page) => {
@@ -1895,7 +1895,7 @@ export const shots: Shot[] = [
   },
   {
     id: "trial-pricing-custom-inputs-01",
-    docPage: "apps/trial-estimate/settings",
+    docPage: "operations/sales/trial-estimate/settings",
     path: "/settings/trial-pricing-engine/custom-inputs",
     user: "admin",
     steps: async (page) => {
@@ -1904,7 +1904,7 @@ export const shots: Shot[] = [
   },
   {
     id: "trial-pricing-lookups-01",
-    docPage: "apps/trial-estimate/settings",
+    docPage: "operations/sales/trial-estimate/settings",
     path: "/settings/trial-pricing-engine/lookups/centerless",
     user: "admin",
     steps: async (page) => {

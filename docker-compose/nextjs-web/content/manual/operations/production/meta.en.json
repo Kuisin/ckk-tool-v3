@@ -1,0 +1,4 @@
+{
+  "title": "Production",
+  "pages": ["work-order", "approval", "product-inventory", "material-inventory"]
+}

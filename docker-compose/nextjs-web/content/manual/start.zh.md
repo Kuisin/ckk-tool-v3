@@ -43,11 +43,15 @@ screenshots: [login-01, launcher-01, home-01]
 
 ## 4. 销售流程（先掌握这些）
 
-1. **在试算（SA01）计算单价** … 输入产品、材料、尺寸等，即可根据成本得出报价单价。（[试算操作手册](/manual/zh/apps/trial-estimate/user)）
-2. **创建价格表（SA02）** … 选择客户与产品创建价格表；可将已关联产品并确定的试算选为基准单价来源。（[价格表操作手册](/manual/zh/apps/price-list/user)）
-3. **制作报价单（SA03）** … 选择客户与产品，单价会从价格表自动填入。导出 PDF 提交给客户。（[报价单操作手册](/manual/zh/apps/quote/user)）
+销售按 **试算 → 价格表 → 报价单 → 订单受理书** 的顺序推进。
+各环节由谁负责、使用哪个应用，请参见
+[销售流程](/manual/zh/process/sales)。
 
-各应用的详细操作请打开左侧的分类手册（销售应用、采购应用等）。
+- 计算单价 … [试算](/manual/zh/operations/sales/trial-estimate/user)（`SA01`）
+- 确定客户价格 … [价格表](/manual/zh/operations/sales/price-list/user)（`SA02`）
+- 出具报价单 … [报价单](/manual/zh/operations/sales/quote/user)（`SA03`）
+
+各应用的详细操作与输入栏的含义，请从左侧的 **操作方法** 打开。
 
 ## 5. 遇到问题时
 
