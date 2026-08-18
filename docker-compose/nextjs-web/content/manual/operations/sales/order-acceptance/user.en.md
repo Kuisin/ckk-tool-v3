@@ -24,7 +24,7 @@ Use this when an order form arrives from a customer by fax or email.
 - **明細 (line item)** … one row inside the order. It says which product and how many pieces.
 - **注文確定 (deploy)** … the action of making the order lines from an order acceptance all at once.
 - **価格差異 (price difference)** … when the unit price written on the order form differs from the price on the price list.
-- **取込中 (importing) / 下書き (draft) / 承認依頼中 (waiting for approval) / 承認済 (approved) / 展開済 (deployed) / アーカイブ (archived)** … where the order acceptance stands now.
+- **取込中 (importing) / 下書き (draft) / 承認依頼中 (waiting for approval) / 承認済 (approved) / 確定済 (deployed) / アーカイブ (archived)** … where the order acceptance stands now.
 
 ## Before you start
 
@@ -90,7 +90,7 @@ Press the file name link to open the original order form in another tab and comp
 
 ## Asking for approval
 
-1. After saving the contents, press「**承認依頼**」(request approval) in the「**承認・展開状況**」(approval and deployment status) area.
+1. After saving the contents, press「**承認依頼**」(request approval) in the「**承認・確定状況**」(approval and deployment status) area.
 2. If there is a price difference, a screen called「価格差異の確認」(check the price difference) appears. Check the contents and press「**差異を確認して依頼**」(confirm the difference and request).
 
 The status changes to「**承認依頼中**」(waiting for approval).
@@ -108,7 +108,7 @@ Once approved, a「**注文確定**」(deploy) button appears on the screen.
 ![Approved order acceptance](../../../assets/screenshots/order-acceptance-detail-02.png)
 
 1. Press「**注文確定**」(deploy).
-2. On the confirmation screen, check how many will be made and press「**展開する**」(deploy).
+2. On the confirmation screen, check how many will be made and press「**確定する**」(deploy).
 
 ![Deploy confirmation screen](../../../assets/screenshots/order-acceptance-deploy-01.png)
 
@@ -196,7 +196,7 @@ A. The company name on the order form could not be matched to the business partn
 **Q. It says「顧客が未特定です。顧客を選択して保存してください」(the customer is not identified; please choose a customer and save) and I cannot request approval.**
 A. No customer is set. Choose the「顧客」(customer), press「保存」(save), then press「承認依頼」(request approval) again.
 
-**Q. It says「明細 2 行目: 製品未特定または単価未入力のため展開できません」(line item row 2 cannot be deployed because the product is not identified or the unit price is empty).**
+**Q. It says「明細 2 行目: 製品未特定または単価未入力のため確定できません」(line item row 2 cannot be confirmed because the product is not identified or the unit price is empty).**
 A. The product or the unit price on the row shown is empty. It has to go back to a draft before approval, so ask the person who approved it to do「**差し戻し**」(send back), correct that row, and go on from there.
 
 **Q. The approve button does not appear.**

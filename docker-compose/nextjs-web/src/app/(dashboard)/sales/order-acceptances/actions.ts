@@ -7,10 +7,10 @@
  *   IMPORT（抽出失敗）→ 再抽出（retryExtraction — lib/intake の抽出キューへ積む）
  *   DRAFT → saveDraft（ヘッダ + 明細全置換）/ submitForApproval（→ REQUESTED）
  *   REQUESTED → approveAcceptance（→ APPROVED）/ rejectAcceptance（→ DRAFT）
- *   APPROVED → deployToOrderLines（伝票展開 → COMPLETED）
+ *   APPROVED → confirmOrderLines（注文確定 → COMPLETED）
  *   COMPLETED → archiveAcceptance（→ ARCHIVED）
  *
- * 伝票展開は注文請書と同じ (year_month, seq) の order_lines 枝番 1..N を
+ * 注文確定は注文請書と同じ (year_month, seq) の order_lines 枝番 1..N を
  * $transaction で一括作成する（§2: 注文請書 1 → 注文明細 N）。承認は
  * lib/approvals（approval_requests / approval_records — FIRST 段のみ）。
  */
@@ -476,10 +476,10 @@ export async function rejectAcceptance(
   }
 }
 
-// ── 伝票展開（APPROVED → COMPLETED） ────────────────────────────────────────
+// ── 注文確定（APPROVED → COMPLETED） ────────────────────────────────────────
 
 /**
- * 伝票展開 — 明細ごとに注文明細（order_lines）を作成する。
+ * 注文確定 — 明細ごとに注文明細（order_lines）を作成する。
  * 注文請書と同じ (year_month, seq) を共有し、枝番 branch = 1..N。
  * 全明細が製品特定済み + 単価入力済みであることが必要。
  */
@@ -521,7 +521,7 @@ export async function confirmOrderLines(
 
     const completedAt = new Date();
     await prisma.$transaction(async (tx) => {
-      // 二重展開ガード — APPROVED の行だけを原子的に COMPLETED へ。
+      // 二重確定ガード — APPROVED の行だけを原子的に COMPLETED へ。
       const updated = await tx.orderAcceptance.updateMany({
         where: { ...key, status: "APPROVED" },
         data: { status: "COMPLETED", completedAt },
@@ -609,7 +609,7 @@ export async function archiveAcceptance(number: string): Promise<ActionResult> {
       data: { status: "ARCHIVED", archivedAt: new Date() },
     });
     if (updated.count === 0) {
-      return actionError("展開済の注文請書のみアーカイブできます");
+      return actionError("確定済の注文請書のみアーカイブできます");
     }
     await recordAudit({
       action: "UPDATE",
