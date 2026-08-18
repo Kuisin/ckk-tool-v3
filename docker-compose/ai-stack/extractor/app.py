@@ -15,6 +15,12 @@ MAX_PAGES = int(os.environ.get("MAX_PAGES", "5"))
 OCR_ENABLED = os.environ.get("OCR_ENABLED", "true").lower() != "false"
 RENDER_DPI = int(os.environ.get("RENDER_DPI", "200"))
 KEEP_ALIVE = os.environ.get("OLLAMA_KEEP_ALIVE", "10m")
+# 自社名（注文書の「宛先」側）。顧客と取り違えないようプロンプトに埋める。
+# 表記ゆれは列挙してよい（そのまま文中に出る）。
+OWN_COMPANY = os.environ.get(
+    "OWN_COMPANY",
+    "シー・ケイ・ケー株式会社 (CKK / シーケイケー / C.K.K.)",
+)
 
 # Stage-3 system rules — the structuring LLM turns the two readings into DB JSON.
 STRUCT_PROMPT = (
@@ -112,9 +118,23 @@ SCHEMAS = {
 
 PROMPTS = {
     "order-request": (
-        "This is a customer purchase order (注文書). Extract the ordering customer, "
-        "their order reference number, and every ordered line item.\n"
-        "- customer_contact is the customer's contact person (担当/担当者), if printed.\n"
+        # 向き（どちらが顧客か）が最重要。注文書は相手の視点で書かれており、
+        # 宛先（御中）＝自社、発行元・社判のある側＝顧客。ここを取り違えると
+        # 顧客欄に自社名が入る（実際に起きた）。
+        "This is a purchase order (注文書) that a CUSTOMER issued and sent TO US. "
+        "Everything on it is written from the customer's point of view, so read the "
+        "two sides carefully.\n"
+        f"- WE are the recipient (the addressee). Our company is {OWN_COMPANY}. "
+        "On the document we usually appear at the top next to 「御中」/「様」, or after "
+        "宛先/送付先/発注先/仕入先/供給者/Supplier/Vendor/To. NEVER return our own "
+        "company in customer_name — if the name you are about to return matches "
+        "ours, you picked the wrong side.\n"
+        "- customer_name is the OTHER party: the company that ISSUED the order and "
+        "will be billed. It is usually printed near 発行元/注文者/発注元/購入者/買主/"
+        "Buyer/From, or in the block with the company seal (印/社判), address and "
+        "phone, often at the bottom-right. Return that company's full legal name as "
+        "printed.\n"
+        "- customer_contact is that customer's contact person (担当/担当者), if printed.\n"
         "- order_type per item: PRODUCTION (本番/量産), TEST (テスト/試作), "
         "SAMPLE (サンプル/無償), OTHER (その他); null when not stated.\n"
         "- version per item: drawing/revision number (版数, Rev, 図番改訂), if printed.\n"

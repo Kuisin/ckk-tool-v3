@@ -11,6 +11,7 @@
  */
 
 import { type NormalizedExtraction, normalizeExtraction } from "./intake-core";
+import { isOwnCompany } from "./own-company";
 
 /** 項目の突合状態。 */
 export type FieldMatchStatus =
@@ -73,6 +74,16 @@ export function reviewIntake(
       label: "顧客",
       status: "matched",
       read: norm.customerName,
+    });
+  } else if (isOwnCompany(norm.customerName)) {
+    // 注文書は相手の視点で書かれている（宛先＝自社／発行元＝顧客）。
+    // 自社名が来たということは、AI が読む側を取り違えている。
+    out.push({
+      key: "customer",
+      label: "顧客",
+      status: "unmatched",
+      read: norm.customerName,
+      hint: `自社名「${norm.customerName}」を顧客として読み取っています（書類の宛先＝自社）。発行元・社判のある側が顧客です — 書類を見て選び直してください`,
     });
   } else if (has(norm.customerName)) {
     out.push({

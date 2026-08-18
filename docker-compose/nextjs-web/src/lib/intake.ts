@@ -30,6 +30,7 @@ import { systematicFileName } from "./file-naming";
 import { type NormalizedExtraction, normalizeExtraction } from "./intake-core";
 import { notifyGroup } from "./notifications";
 import { allocateDocumentKey } from "./numbering";
+import { isOwnCompany } from "./own-company";
 import { putObject } from "./storage";
 import { createTaskQueue } from "./task-queue";
 
@@ -121,9 +122,16 @@ async function ingestFile(input: {
   return { yearMonth, seq, fileId: fileRow.id };
 }
 
-/** 顧客突合: match_names 完全一致 → 名称 ja 一致。 */
+/**
+ * 顧客突合: match_names 完全一致 → 名称 ja 一致。
+ *
+ * 注文書は相手の視点で書かれているため、AI が向きを取り違えると**自社名**が
+ * 顧客として来る。自社は顧客になり得ないので、突合そのものを行わない
+ * （画面側は「向きが逆」の案内を出す — lib/intake-review）。
+ */
 async function matchCustomer(name: string | null): Promise<string | null> {
   if (!name) return null;
+  if (isOwnCompany(name)) return null;
   const byMatch = await prisma.businessPartner.findFirst({
     where: { isActive: true, matchNames: { has: name } },
     select: { id: true },
