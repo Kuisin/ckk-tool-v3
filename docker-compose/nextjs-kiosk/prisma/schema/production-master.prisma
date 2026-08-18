@@ -326,29 +326,84 @@ enum ApprovalGroupType {
   @@schema("app")
 }
 
+// 承認グループ = 承認者の集合。「何段目か」は持たない — それは
+// approval_flow_steps が書類種別ごとに決める。
 model ApprovalGroup {
   id       Int               @id @default(autoincrement())
-  type     ApprovalGroupType
+  type     ApprovalGroupType // 旧 2 段固定の名残 — M3 で削除
   name     Json
   isActive Boolean           @default(true) @map("is_active")
 
   members   ApprovalGroupMember[]
   delegates ApprovalDelegate[]
+  flowSteps ApprovalFlowStep[]
+  requests  ApprovalRequest[]
 
   @@map("approval_groups")
   @@schema("app")
 }
 
+// 常任メンバー = valid_from / valid_until とも NULL。
+// 期間限定メンバー = 両方に日時が入る（片側だけは CHECK で禁止）。
+// 実効判定は lib/approval-membership.ts isMemberEffective() が唯一の定義。
 model ApprovalGroupMember {
-  groupId  Int     @map("group_id")
-  userId   String  @map("user_id") @db.Uuid
-  isActive Boolean @default(true) @map("is_active")
+  groupId    Int       @map("group_id")
+  userId     String    @map("user_id") @db.Uuid
+  isActive   Boolean   @default(true) @map("is_active")
+  validFrom  DateTime? @map("valid_from") @db.Timestamptz(6)
+  validUntil DateTime? @map("valid_until") @db.Timestamptz(6)
+  note       String? // 期間限定の理由（任意）
 
   group ApprovalGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
   user  User          @relation("ApprovalGroupMemberUser", fields: [userId], references: [id])
 
   @@id([groupId, userId])
   @@map("approval_group_members")
+  @@schema("app")
+}
+
+// ─── 承認フロー定義（書類種別ごとに 1 本） ──────────────────────────────────
+//
+// target_type は approval_requests.target_type と同じ値（= @@map 名）。
+// 新しい enum を足さないのは、既存の多態規約（audit と同じ）に合わせるため。
+// 値の範囲は DB 側の CHECK 制約と TS 側の APPROVAL_TARGET_TYPES で守る。
+
+enum ApprovalMode {
+  ANY // いずれか 1 名の承認でこの段は通過
+  ALL // 対象メンバー全員の承認が必要
+
+  @@map("APPROVAL_MODE")
+  @@schema("app")
+}
+
+model ApprovalFlow {
+  targetType String   @id @map("target_type")
+  updatedBy  String?  @map("updated_by") @db.Uuid
+  updatedAt  DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  steps         ApprovalFlowStep[]
+  updatedByUser User?              @relation("ApprovalFlowUpdatedBy", fields: [updatedBy], references: [id])
+
+  @@map("approval_flows")
+  @@schema("app")
+}
+
+// step_no は 1..N の連番（詰めて保存）。並べ替えは全削除 + 再作成で行う
+// （進行中の依頼はこの行を参照していない — flow_snapshot を持つため）。
+model ApprovalFlowStep {
+  id         Int          @id @default(autoincrement())
+  targetType String       @map("target_type")
+  stepNo     Int          @map("step_no")
+  name       Json // { ja, en } 例「第一承認」
+  groupId    Int          @map("group_id")
+  mode       ApprovalMode @default(ANY)
+
+  flow  ApprovalFlow  @relation(fields: [targetType], references: [targetType], onDelete: Cascade)
+  group ApprovalGroup @relation(fields: [groupId], references: [id], onDelete: Restrict)
+
+  @@unique([targetType, stepNo])
+  @@index([groupId])
+  @@map("approval_flow_steps")
   @@schema("app")
 }
 
@@ -382,22 +437,56 @@ enum ApprovalAction {
   @@schema("app")
 }
 
+// 1 行 = 1 段の承認依頼。進行中は (target_type, target_id) につき常に 1 行だけ
+// PENDING（部分 unique index が保証）。段 N を閉じるのと段 N+1 を作るのは
+// 同一トランザクション。
+//
+// flow_snapshot は依頼時点のフロー全段のコピー
+// [{ stepNo, name:{ja,en}, groupId, groupName:{ja,en}, mode }]。
+// これを持つことで (a) 進行中の書類が後からのフロー編集に影響されず、
+// (b) Stepper が 1 行読むだけで全体を描ける。同じ配列がフロー中の全依頼行に
+// 載るのは承知のうえの非正規化 — join を無くすための意図的な設計。
 model ApprovalRequest {
-  id          String                @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  targetType  String                @map("target_type") // work_orders / material_purchase_orders / order_acceptances
-  targetId    String                @map("target_id") // 業務キー
-  step        ApprovalStep
-  status      ApprovalRequestStatus @default(PENDING)
-  requestedBy String?               @map("requested_by") @db.Uuid
-  requestedAt DateTime              @default(now()) @map("requested_at") @db.Timestamptz(6)
-  notes       String?
+  id           String                @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  targetType   String                @map("target_type") // work_orders / material_purchase_orders / order_acceptances / purchase_requests
+  targetId     String                @map("target_id") // 業務キー
+  step         ApprovalStep? // 旧 2 段固定の名残 — M3 で削除
+  stepNo       Int                   @map("step_no") // 1..N
+  stepCount    Int                   @map("step_count") // 依頼時点の総段数
+  groupId      Int?                  @map("group_id") // 依頼時点の承認グループ
+  mode         ApprovalMode          @default(ANY)
+  flowSnapshot Json                  @map("flow_snapshot")
+  status       ApprovalRequestStatus @default(PENDING)
+  requestedBy  String?               @map("requested_by") @db.Uuid
+  requestedAt  DateTime              @default(now()) @map("requested_at") @db.Timestamptz(6)
+  notes        String?
 
-  requestedByUser User? @relation("ApprovalRequestedBy", fields: [requestedBy], references: [id])
+  requestedByUser User?                     @relation("ApprovalRequestedBy", fields: [requestedBy], references: [id])
+  group           ApprovalGroup?            @relation(fields: [groupId], references: [id], onDelete: SetNull)
   records         ApprovalRecord[]
+  approvers       ApprovalRequestApprover[]
 
   @@index([targetType, targetId])
   @@index([status])
   @@map("approval_requests")
+  @@schema("app")
+}
+
+// 依頼時点で「この段で承認しうる人」のスナップショット。
+// ALL モードでは必須チェックリスト（全枠が acted_at で埋まると段が閉じる）、
+// ANY モードでは表示・通知用。acted_by は代理が押した場合の実行者。
+model ApprovalRequestApprover {
+  approvalRequestId String    @map("approval_request_id") @db.Uuid
+  userId            String    @map("user_id") @db.Uuid
+  actedAt           DateTime? @map("acted_at") @db.Timestamptz(6)
+  actedBy           String?   @map("acted_by") @db.Uuid
+
+  request     ApprovalRequest @relation(fields: [approvalRequestId], references: [id], onDelete: Cascade)
+  user        User            @relation("ApprovalRequestApproverUser", fields: [userId], references: [id])
+  actedByUser User?           @relation("ApprovalRequestApproverActedBy", fields: [actedBy], references: [id])
+
+  @@id([approvalRequestId, userId])
+  @@map("approval_request_approvers")
   @@schema("app")
 }
 

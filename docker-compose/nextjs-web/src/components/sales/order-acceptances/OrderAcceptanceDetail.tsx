@@ -45,13 +45,11 @@ import {
   IconAlertTriangle,
   IconArchive,
   IconCalendar,
-  IconClock,
   IconFile,
   IconInfoCircle,
   IconPencil,
   IconRefresh,
   IconSend,
-  IconShieldCheck,
   IconTransform,
 } from "@tabler/icons-react";
 import Link from "next/link";
@@ -76,6 +74,10 @@ import type {
   AcceptancePriceCheckLine,
 } from "@/app/(dashboard)/sales/order-acceptances/price-check";
 import {
+  ApprovalActionCard,
+  type ApprovalActionState,
+} from "@/components/approvals/ApprovalActionCard";
+import {
   ApprovalTrailList,
   type ApprovalTrailView,
   countTrailRecords,
@@ -85,12 +87,7 @@ import {
   AttachmentsPanel,
   type AttachmentView,
 } from "@/components/ui/AttachmentsPanel";
-import {
-  ApproveButton,
-  PrimaryButton,
-  RejectButton,
-  SecondaryButton,
-} from "@/components/ui/buttons";
+import { PrimaryButton, SecondaryButton } from "@/components/ui/buttons";
 import { DocNumber } from "@/components/ui/DocNumber";
 import { FieldValue } from "@/components/ui/FieldValue";
 import { CUSTOMER_F4 } from "@/components/ui/f4-presets";
@@ -160,7 +157,7 @@ export function OrderAcceptanceDetail({
   attachments,
   memos,
   approvalTrail = [],
-  canApprove,
+  approval,
   priceCheck = EMPTY_PRICE_CHECK,
 }: {
   acceptance: OrderAcceptanceView;
@@ -173,7 +170,7 @@ export function OrderAcceptanceDetail({
   /** 正規化された承認記録（approval_records — 代理承認マーカー付き）。 */
   approvalTrail?: ApprovalTrailView[];
   /** 第一承認グループのメンバー（or 代理）か。 */
-  canApprove: boolean;
+  approval: ApprovalActionState;
   /** §2 価格照合結果（保存済み明細 × 価格表 — サーバー側で計算）。 */
   priceCheck?: AcceptancePriceCheck;
 }) {
@@ -347,32 +344,16 @@ export function OrderAcceptanceDetail({
       />
     );
   } else if (a.status === "REQUESTED") {
-    actionCard = canApprove ? (
-      <ActionCard
-        actions={
-          <>
-            <ApproveButton
-              loading={isPending}
-              onClick={() =>
-                run(() => approveAcceptance(a.number), "承認しました")
-              }
-            >
-              承認
-            </ApproveButton>
-            <RejectButton onClick={() => setRejectOpen(true)} />
-          </>
-        }
-        description="第一承認グループの承認者としてこの注文請書を承認できます"
-        icon={<IconShieldCheck size={20} />}
-        title="承認してください"
-        tone="approve"
-      />
-    ) : (
-      <ActionCard
-        description="第一承認グループのメンバーのみ承認・差し戻しできます"
-        icon={<IconClock size={20} />}
-        title="承認待ち"
-        tone="wait"
+    // 承認・差し戻しは 4 書類共通のカードに任せる（段数は承認設定 MS0B）。
+    // 依頼側（DRAFT）は完成条件・価格差異の確認があるので上の分岐が持つ。
+    actionCard = (
+      <ApprovalActionCard
+        approval={approval}
+        canRequest={false}
+        onApprove={() => approveAcceptance(a.number)}
+        onReject={(reason) => rejectAcceptance(a.number, reason)}
+        rejectReason={null}
+        subject={`注文請書 ${a.number}`}
       />
     );
   } else if (a.status === "APPROVED") {

@@ -24,6 +24,7 @@ import {
   cancelWorkOrder,
   copyWorkOrder,
 } from "@/app/(dashboard)/production/work-orders/actions";
+import type { ApprovalActionState } from "@/components/approvals/ApprovalActionCard";
 import {
   ApprovalStatusPanel,
   type ApprovalTrailView,
@@ -55,8 +56,7 @@ const SALES_ORDERS_PATH = "/sales/order-lines";
 export function WorkOrderDetail({
   workOrder,
   auditEntries,
-  canApproveFirst,
-  canApproveSecond,
+  approval,
   approvalTrail = [],
   catalogOptions = [],
   memos = [],
@@ -66,8 +66,7 @@ export function WorkOrderDetail({
   auditEntries: AuditEntry[];
   /** 社内メモ（document_memos 由来、メモタブ）。 */
   memos?: MemoView[];
-  canApproveFirst: boolean;
-  canApproveSecond: boolean;
+  approval: ApprovalActionState;
   /** 正規化された承認記録（approval_records — 代理承認マーカー付き）。 */
   approvalTrail?: ApprovalTrailView[];
   /** 分岐追加モーダル用の工程カタログ options（詳細画面のみ）。 */
@@ -148,9 +147,7 @@ export function WorkOrderDetail({
   // 状態別の操作は最上部のカードへ（承認権限の有無で色が変わる）。
   const approvalCard = (
     <WorkOrderApprovalCard
-      approvalStatus={wo.approvalStatus}
-      canApproveFirst={canApproveFirst}
-      canApproveSecond={canApproveSecond}
+      approval={approval}
       rejectReason={wo.rejectReason}
       status={wo.status}
       workOrderNumber={wo.workOrderNumber}
@@ -159,7 +156,7 @@ export function WorkOrderDetail({
 
   const approvalPanel = (
     <ApprovalStatusPanel
-      approvalStatus={wo.approvalStatus}
+      approval={approval}
       history={wo.history}
       rejectReason={wo.rejectReason}
       trail={approvalTrail}

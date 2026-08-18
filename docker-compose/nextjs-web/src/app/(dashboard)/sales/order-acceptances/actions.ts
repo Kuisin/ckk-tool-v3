@@ -18,7 +18,11 @@
 import { type Access, rowInScope } from "@ckk/authz-core";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { actOnApprovalRequest, createApprovalRequest } from "@/lib/approvals";
+import {
+  actOnCurrentStep,
+  assertFlowConfigured,
+  startApprovalFlow,
+} from "@/lib/approvals";
 import { getCurrentActorId, recordAudit } from "@/lib/audit";
 import { checkPermission } from "@/lib/authz";
 import { prisma } from "@/lib/db";
@@ -365,16 +369,20 @@ export async function submitForApproval(
         `価格差異があります: ${diffLines.join(" / ")}（差異を確認のうえ再実行）`,
       );
     }
+    // フローが無いと依頼を出しても誰も承認できないので、状態を変える前に確かめる
+    const flowError = await assertFlowConfigured("order_acceptances");
+    if (flowError) return actionError(flowError);
     await prisma.orderAcceptance.update({
       where: { yearMonth_seq: key },
       data: { status: "REQUESTED" },
     });
-    // 正規化された承認依頼行（PD03 横断表示・承認記録の紐付け先）。
-    await createApprovalRequest({
+    // 1 段目の承認依頼を作る（PD03 横断表示・承認記録の紐付け先）。
+    const started = await startApprovalFlow({
       targetType: "order_acceptances",
       targetId: number,
-      step: "FIRST",
     });
+    if (!started.ok)
+      return actionError(started.error ?? "承認依頼に失敗しました");
     await recordAudit({
       action: "UPDATE",
       tableName: "order_acceptances",
@@ -415,14 +423,27 @@ export async function approveAcceptance(number: string): Promise<ActionResult> {
     if (prior.status !== "REQUESTED") {
       return actionError("承認依頼中の注文請書ではありません");
     }
-    const acted = await actOnApprovalRequest({
+    const acted = await actOnCurrentStep({
       targetType: "order_acceptances",
       targetId: number,
-      step: "FIRST",
-      groupType: "FIRST",
       action: "APPROVED",
     });
     if (!acted.ok) return actionError(acted.error ?? "承認の権限がありません");
+    // 全段を通過して初めて APPROVED。途中の段は REQUESTED のまま進む。
+    if (!acted.flowCompleted) {
+      await recordAudit({
+        action: "UPDATE",
+        tableName: "order_acceptances",
+        recordId: number,
+        after: {
+          note: acted.stepClosed
+            ? "承認（次の段へ）"
+            : `承認（この段の残り ${acted.remaining} 名）`,
+        },
+      });
+      revalidate(number);
+      return actionOk();
+    }
     await prisma.orderAcceptance.update({
       where: { yearMonth_seq: key },
       data: { status: "APPROVED" },
@@ -464,11 +485,9 @@ export async function rejectAcceptance(
     if (prior.status !== "REQUESTED") {
       return actionError("承認依頼中の注文請書ではありません");
     }
-    const acted = await actOnApprovalRequest({
+    const acted = await actOnCurrentStep({
       targetType: "order_acceptances",
       targetId: number,
-      step: "FIRST",
-      groupType: "FIRST",
       action: "REJECTED",
       comment: trimmed,
     });

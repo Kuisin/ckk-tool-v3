@@ -28,11 +28,10 @@ enum WorkOrderStatus {
   @@schema("app")
 }
 
+// 段数非依存 — 何段目まで進んでいるかは approval_requests.step_no が持つ。
 enum WorkOrderApprovalStatus {
   NONE
-  PENDING_1ST
-  APPROVED_1ST
-  PENDING_2ND
+  PENDING // 承認フロー進行中
   APPROVED
   REJECTED
 
@@ -81,19 +80,17 @@ model WorkOrder {
   // 工程は work_order_steps に実体化済みで、出所リンクだけが外れる。
   routeVersionId String? @map("route_version_id") @db.Uuid
 
-  // 承認遷移（MaterialPurchaseOrder と同型の row-workflow）
-  requested1stAt DateTime? @map("requested_1st_at") @db.Timestamptz(6)
-  requested1stBy String?   @map("requested_1st_by") @db.Uuid
-  approved1stAt  DateTime? @map("approved_1st_at") @db.Timestamptz(6)
-  approved1stBy  String?   @map("approved_1st_by") @db.Uuid
-  approved2ndAt  DateTime? @map("approved_2nd_at") @db.Timestamptz(6)
-  approved2ndBy  String?   @map("approved_2nd_by") @db.Uuid
-  rejectedAt     DateTime? @map("rejected_at") @db.Timestamptz(6)
-  rejectedBy     String?   @map("rejected_by") @db.Uuid
-  rejectReason   String?   @map("reject_reason")
-  history        Json? // 状態遷移履歴 [{ action, user, at, notes }]
+  // 承認遷移（MaterialPurchaseOrder と同型の row-workflow）。
+  // 段ごとの日時・承認者は approval_requests / approval_records が持つ。
+  requestedAt  DateTime? @map("requested_at") @db.Timestamptz(6)
+  requestedBy  String?   @map("requested_by") @db.Uuid
+  rejectedAt   DateTime? @map("rejected_at") @db.Timestamptz(6)
+  rejectedBy   String?   @map("rejected_by") @db.Uuid
+  rejectReason String?   @map("reject_reason")
+  history      Json? // 状態遷移履歴 [{ action, user, at, notes }]
 
   approvedAt  DateTime? @map("approved_at") @db.Timestamptz(6)
+  approvedBy  String?   @map("approved_by") @db.Uuid
   startedAt   DateTime? @map("started_at") @db.Timestamptz(6)
   completedAt DateTime? @map("completed_at") @db.Timestamptz(6)
   notes       String?
