@@ -33,6 +33,54 @@ export interface NotificationItem {
 const FALLBACK_POLL_MS = 300_000;
 
 /**
+ * タブにつき SSE 接続 1 本を、購読者数で数えて共有する。
+ *
+ * 通知一覧ページではヘッダーのベルと一覧の両方がこのフックを使う。素直に
+ * フックごとに EventSource を張ると 1 タブで 2 本になり、購読者が増えるほど
+ * サーバー側の接続も倍々に増えていく。合図の中身は購読者によらず同じなので、
+ * 接続は 1 本にして配るだけでよい。
+ */
+let sharedStream: {
+  source: EventSource;
+  handlers: Set<() => void>;
+  timer: ReturnType<typeof setInterval>;
+  onVisible: () => void;
+} | null = null;
+
+function subscribeToSignal(handler: () => void): () => void {
+  if (!sharedStream) {
+    const handlers = new Set<() => void>();
+    const fanOut = () => {
+      for (const h of handlers) h();
+    };
+    const source = new EventSource("/api/sse/notifications");
+    source.addEventListener("ready", fanOut);
+    source.addEventListener("notification", fanOut);
+    // SSE が届かない環境（プロキシがストリームを潰す等）でも凍りつかない保険。
+    const timer = setInterval(fanOut, FALLBACK_POLL_MS);
+    const onVisible = () => {
+      if (document.visibilityState === "visible") fanOut();
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    sharedStream = { source, handlers, timer, onVisible };
+  }
+
+  const stream = sharedStream;
+  stream.handlers.add(handler);
+
+  return () => {
+    stream.handlers.delete(handler);
+    // 最後の購読者が消えたら接続も畳む（次の購読で張り直す）。
+    if (stream.handlers.size === 0) {
+      stream.source.close();
+      clearInterval(stream.timer);
+      document.removeEventListener("visibilitychange", stream.onVisible);
+      if (sharedStream === stream) sharedStream = null;
+    }
+  };
+}
+
+/**
  * 通知の「更新された」合図を購読する（ベルと通知一覧の共通土台）。
  *
  * `onSignal` は ready（購読確立）と notification（変化）の両方で呼ぶ。
@@ -40,34 +88,13 @@ const FALLBACK_POLL_MS = 300_000;
  * 同じ 1 本の道で埋めるため。
  *
  * 最新の `onSignal` は ref に持つ — 呼び出し側が useCallback を付け忘れても
- * 毎レンダリングで EventSource を張り直さない（接続が暴れると通知どころか
- * サーバーの接続数まで巻き添えになる）。
+ * 毎レンダリングで購読し直さない。
  */
 export function useNotificationSignal(onSignal: () => void): void {
   const latest = useRef(onSignal);
   latest.current = onSignal;
 
-  useEffect(() => {
-    const source = new EventSource("/api/sse/notifications");
-    const handler = () => latest.current();
-    source.addEventListener("ready", handler);
-    source.addEventListener("notification", handler);
-
-    // SSE が届かない環境（プロキシがストリームを潰す等）でも凍りつかない保険。
-    const timer = setInterval(handler, FALLBACK_POLL_MS);
-    const onVisible = () => {
-      if (document.visibilityState === "visible") handler();
-    };
-    document.addEventListener("visibilitychange", onVisible);
-
-    return () => {
-      source.removeEventListener("ready", handler);
-      source.removeEventListener("notification", handler);
-      source.close();
-      clearInterval(timer);
-      document.removeEventListener("visibilitychange", onVisible);
-    };
-  }, []);
+  useEffect(() => subscribeToSignal(() => latest.current()), []);
 }
 
 export function useNotifications(): {

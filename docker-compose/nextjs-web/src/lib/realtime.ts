@@ -103,9 +103,17 @@ async function connect(bus: Bus): Promise<void> {
     if (event) fanOut(bus, event);
   });
 
-  await client.connect();
-  // チャネル名は本モジュールの定数（外部入力ではない）。
-  await client.query(`LISTEN "${REALTIME_CHANNEL}"`);
+  try {
+    await client.connect();
+    // チャネル名は本モジュールの定数（外部入力ではない）。
+    await client.query(`LISTEN "${REALTIME_CHANNEL}"`);
+  } catch (e) {
+    // 接続はできたが LISTEN で落ちた場合、この client は bus に載らないため
+    // 'end' ハンドラの `bus.client === client` にも掛からず、閉じる者が
+    // いなくなる。再接続のたびに接続が 1 本ずつ残るので明示的に閉じる。
+    await client.end().catch(() => {});
+    throw e;
+  }
   bus.client = client;
   bus.retryMs = RETRY_BASE_MS;
 }
