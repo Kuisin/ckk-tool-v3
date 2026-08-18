@@ -30,7 +30,7 @@ screenshots: [design-request-list-01, design-request-new-01, design-request-deta
 
 - 如果图纸对象的[产品](/manual/zh/operations/masters/product/user)已经登记，完成时就能作为该产品的最新图纸保存下来（不选产品也可以提出委托）。
 - 用「見積時」（报价时）登记时，先有[报价单](/manual/zh/operations/sales/quote/user)就能和该报价关联起来。
-- 用「受注時」（接单时）登记时，先有受注明細（销售订单）就能关联起来（销售订单由[订单受理](/manual/zh/operations/sales/order-acceptance/user)的「伝票展開」（单据展开）生成）。
+- 用「受注時」（接单时）登记时，先有受注明細（销售订单）就能关联起来（销售订单由[订单受理](/manual/zh/operations/sales/order-acceptance/user)的「受注確定」（单据展开）生成）。
 - 要完成委托，**至少需要附上 1 个图纸文件**。
 
 ## 界面怎么看

@@ -1,9 +1,9 @@
 ---
 title: "Order Acceptance — User Manual"
-description: "An app that reads the order form sent by the customer, lets you check it, and takes you through to making the sales orders."
+description: "An app that reads the order form sent by the customer, lets you check it, and takes you through to making the order lines."
 screenshots: [order-acceptance-list-01, order-acceptance-new-01, order-acceptance-detail-01, order-acceptance-detail-03, order-acceptance-detail-02, order-acceptance-deploy-01]
 ---
-The computer reads the order form sent by the customer (a PDF or a scanned image) by itself. You then check the contents, and go on to make the **注文請書 (sales orders)**. The operation code is `SA04`.
+The computer reads the order form sent by the customer (a PDF or a scanned image) by itself. You then check the contents, and go on to make the **受注明細 (order lines)**. The operation code is `SA04`.
 
 > ⚠️ This app is still in trial release. The screens and the steps may change later.
 
@@ -12,7 +12,7 @@ The computer reads the order form sent by the customer (a PDF or a scanned image
 - Load the order form file, and it is registered with **the customer name, the items and the number of pieces already filled in**.
 - You can check what was read with your own eyes and correct it before moving on.
 - If a unit price differs from the [price list](/manual/en/operations/sales/price-list/user), **the screen tells you**.
-- After you get your manager's approval, you can make the **注文請書 (sales orders)** all at once — one per line item.
+- After you get your manager's approval, you can make the **受注明細 (order lines)** all at once — one per line item.
 - If there is no order form file, you can register it by typing it in.
 
 Use this when an order form arrives from a customer by fax or email.
@@ -20,9 +20,9 @@ Use this when an order form arrives from a customer by fax or email.
 ## Words used on this page
 
 - **受注請書 (order acceptance)** … the record of one order received from a customer. This is what this app handles.
-- **注文請書 (sales order)** … the internal slip made for each line item of an order acceptance. It is the basis for manufacturing and shipping.
+- **受注明細 (order line)** … the internal slip made for each line item of an order acceptance. It is the basis for manufacturing and shipping.
 - **明細 (line item)** … one row inside the order. It says which product and how many pieces.
-- **伝票展開 (deploy)** … the action of making the sales orders from an order acceptance all at once.
+- **受注確定 (deploy)** … the action of making the order lines from an order acceptance all at once.
 - **価格差異 (price difference)** … when the unit price written on the order form differs from the price on the price list.
 - **取込中 (importing) / 下書き (draft) / 承認依頼中 (waiting for approval) / 承認済 (approved) / 展開済 (deployed) / アーカイブ (archived)** … where the order acceptance stands now.
 
@@ -101,18 +101,18 @@ The person who approves presses「**承認**」(approve) or「**差し戻し**�
 
 > ⚠️ Changes you have not saved are not included in the approval request. Press「**保存**」(save) first.
 
-## Making the sales orders (伝票展開 / deploy)
+## Making the order lines (受注確定 / deploy)
 
-Once approved, a「**伝票展開**」(deploy) button appears on the screen.
+Once approved, a「**受注確定**」(deploy) button appears on the screen.
 
 ![Approved order acceptance](../../../assets/screenshots/order-acceptance-detail-02.png)
 
-1. Press「**伝票展開**」(deploy).
+1. Press「**受注確定**」(deploy).
 2. On the confirmation screen, check how many will be made and press「**展開する**」(deploy).
 
 ![Deploy confirmation screen](../../../assets/screenshots/order-acceptance-deploy-01.png)
 
-One 注文請書 (sales order) is made per line item. The numbers follow the order acceptance number with `-01`, `-02` and so on. You can open the sales orders that were made from the「**生成された注文請書**」(generated sales orders) links on the screen, or from「**注文請書一覧**」(sales order list) at the top right of the list screen.
+One 受注明細 (order line) is made per line item. The numbers follow the order acceptance number with `-01`, `-02` and so on. You can open the order lines that were made from the「**生成された受注明細**」(generated order lines) links on the screen, or from「**受注明細一覧**」(order line list) at the top right of the list screen.
 
 If you entered a quote number, that [quote](/manual/en/operations/sales/quote/user) becomes 「受諾済」(accepted) automatically.
 

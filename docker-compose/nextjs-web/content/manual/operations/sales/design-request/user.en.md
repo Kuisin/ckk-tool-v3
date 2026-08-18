@@ -30,7 +30,7 @@ Use this when a customer asks about a special shape and a drawing is needed.
 
 - If the [product](/manual/en/operations/masters/product/user) the drawing is for is registered, the drawing can be kept as that product's newest drawing when the request is done. You can also make a request without choosing a product.
 - If you register it as 見積時 (at quotation), having the [quote](/manual/en/operations/sales/quote/user) first lets you link the request to it.
-- If you register it as 受注時 (at order), having the 受注明細 (sales order) first lets you link the request to it. Sales orders are made by 「伝票展開」(deploy) in [Order Acceptance](/manual/en/operations/sales/order-acceptance/user).
+- If you register it as 受注時 (at order), having the 受注明細 (order line) first lets you link the request to it. Order lines are made by 「受注確定」(deploy) in [Order Acceptance](/manual/en/operations/sales/order-acceptance/user).
 - To finish a request, **at least one drawing file must be attached**.
 
 ## Reading the screen
@@ -50,7 +50,7 @@ When you open the app, the requests so far are shown as a list.
 1. Press「**新規作成**」(New) at the top right of the list screen.
 2. In「**トリガー**」(trigger), press「**見積時**」(at quotation) or「**受注時**」(at order) to choose it.
 3. If you chose 見積時, choose the quote it is based on in the「**見積書**」(quote) field. You can also leave it empty.
-4. If you chose 受注時, search for and choose the sales order it is based on in the「**受注明細**」(sales order) field. You can also leave it empty.
+4. If you chose 受注時, search for and choose the order line it is based on in the「**受注明細**」(order line) field. You can also leave it empty.
 5. Choose the product in the「**製品**」(product) field. You can also leave it empty.
 6. Write what you want designed in「**依頼内容**」(request details).
 7. Press「**保存**」(save).
@@ -59,7 +59,7 @@ When you open the app, the requests so far are shown as a list.
 
 When you save, a request number is added and the detail screen opens.
 
-> ⚠️ The「トリガー」(trigger), and the quote or sales order you chose there, **cannot be changed afterwards**. If you made a mistake, make a new request.
+> ⚠️ The「トリガー」(trigger), and the quote or order line you chose there, **cannot be changed afterwards**. If you made a mistake, make a new request.
 
 ## Moving the request along
 
@@ -106,13 +106,13 @@ Every field on the design request screen. The **?** next to a field in the app l
 |-------|----------|---------------|
 | [Trigger](#field-trigger) | Required | Raised at quoting time or after the order |
 | [Quote](#field-quote) | Conditional | The quote it relates to, when raised at quoting time |
-| [Order line](#field-order-line) | Conditional | The sales order it relates to, when raised after the order |
+| [Order line](#field-order-line) | Conditional | The order line it relates to, when raised after the order |
 | [Product](#field-product) | Optional | The product the drawing is for |
 | [Request details](#field-description) | Required | What needs to be designed |
 
 ### Trigger [#field-trigger]
 
-Whether the request is **for a quote** or **for a confirmed order**. Which one you choose decides whether you then link a quote or a sales order.
+Whether the request is **for a quote** or **for a confirmed order**. Which one you choose decides whether you then link a quote or a order line.
 
 ### Quote [#field-quote]
 
@@ -139,9 +139,9 @@ A. No drawing file is attached yet. Upload the drawing from the「**ファイル
 A. The rule is that a finished request cannot be edited and no files can be added. To change it, first use「**差し戻し**」(send back) to return it to 進行中 (in progress).
 
 **Q. I cannot change the trigger or the quote field.**
-A. The trigger, and the quote or sales order chosen there, cannot be changed after the request is made. If you made a mistake, make a new request, and either leave the wrong one as it is or talk to the person in charge.
+A. The trigger, and the quote or order line chosen there, cannot be changed after the request is made. If you made a mistake, make a new request, and either leave the wrong one as it is or talk to the person in charge.
 
-**Q. Do I always have to choose a quote or a sales order?**
+**Q. Do I always have to choose a quote or a order line?**
 A. Both are optional. You can make a request without linking anything.
 
 **Q. It says「未着手の設計依頼書のみ着手できます」(only design requests that have not started can be started).**
