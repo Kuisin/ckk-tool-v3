@@ -13,7 +13,7 @@
  *   「編集」を押すと入力（基本情報 + 明細エディタ）に切り替わり、保存 /
  *   キャンセルで閲覧へ戻る。編集中は承認依頼を出さない（未保存の編集が
  *   消えるため）。
- * - REQUESTED: 承認 / 差し戻し（第一承認グループ — 代理可）。
+ * - REQUESTED: 承認 / 差し戻し（承認設定 MS0B のフローに従う — 代理可）。
  * - APPROVED: 確定（明細ごとに注文明細 ORD-…-NN を一括作成）。
  * - COMPLETED: 生成された注文明細リンク + アーカイブ。
  * 状態ごとの操作は最上部の ActionCard にまとめる（承認権限の有無で色が変わる
@@ -151,6 +151,17 @@ function stepperActive(status: string): number {
 
 const EMPTY_PRICE_CHECK: AcceptancePriceCheck = { lines: [], diffCount: 0 };
 
+/**
+ * 書類ライフサイクルの Stepper に出す「承認」段の説明。段数は承認設定 (MS0B)
+ * が決めるので、進行中は「2/3 部門承認」、それ以外は担当グループ名を出す。
+ */
+function approvalStepDescription(approval: ApprovalActionState): string {
+  if (approval.phase === "PENDING" && approval.stepCount > 1) {
+    return `${approval.stepNo}/${approval.stepCount} ${approval.stepLabel}`;
+  }
+  return approval.groupLabel || "承認グループ";
+}
+
 export function OrderAcceptanceDetail({
   acceptance,
   auditEntries,
@@ -169,7 +180,7 @@ export function OrderAcceptanceDetail({
   memos: MemoView[];
   /** 正規化された承認記録（approval_records — 代理承認マーカー付き）。 */
   approvalTrail?: ApprovalTrailView[];
-  /** 第一承認グループのメンバー（or 代理）か。 */
+  /** 承認フローの現在状態（承認 / 差し戻しのゲートと表示）。 */
   approval: ApprovalActionState;
   /** §2 価格照合結果（保存済み明細 × 価格表 — サーバー側で計算）。 */
   priceCheck?: AcceptancePriceCheck;
@@ -748,7 +759,7 @@ export function OrderAcceptanceDetail({
                   loading={a.status === "DRAFT"}
                 />
                 <Stepper.Step
-                  description="第一承認グループ"
+                  description={approvalStepDescription(approval)}
                   label="承認"
                   loading={a.status === "REQUESTED"}
                 />

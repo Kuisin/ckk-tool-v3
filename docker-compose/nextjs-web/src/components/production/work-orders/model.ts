@@ -15,6 +15,9 @@ export const WORK_ORDER_HISTORY_ACTION_LABEL: Record<string, string> = {
   COPY: "コピー作成",
   UPDATE: "更新",
   REQUEST_APPROVAL: "承認依頼",
+  APPROVE_STEP: "承認",
+  APPROVE_FINAL: "最終承認",
+  // 2 段固定だった頃の履歴行。過去データを読むために残す。
   APPROVE_1ST: "第一承認",
   APPROVE_2ND: "第二承認",
   REJECT: "差し戻し",

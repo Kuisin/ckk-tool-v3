@@ -405,7 +405,7 @@ export async function submitForApproval(
   }
 }
 
-/** 承認 — REQUESTED → APPROVED。第一承認グループのメンバー（or 代理）のみ。 */
+/** 承認 — 現在の段に承認を記録し、全段通過で APPROVED。 */
 export async function approveAcceptance(number: string): Promise<ActionResult> {
   const key = keyOf(number);
   if (!key) return actionError("注文請書番号が不正です");

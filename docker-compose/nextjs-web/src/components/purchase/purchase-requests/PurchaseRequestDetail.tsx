@@ -104,6 +104,17 @@ function stepperActive(status: string): number {
   }
 }
 
+/**
+ * 書類ライフサイクルの Stepper に出す「承認」段の説明。段数は承認設定 (MS0B)
+ * が決めるので、進行中は「2/3 部門承認」、それ以外は担当グループ名を出す。
+ */
+function approvalStepDescription(approval: ApprovalActionState): string {
+  if (approval.phase === "PENDING" && approval.stepCount > 1) {
+    return `${approval.stepNo}/${approval.stepCount} ${approval.stepLabel}`;
+  }
+  return approval.groupLabel || "承認グループ";
+}
+
 export function PurchaseRequestDetail({
   purchaseRequest,
   auditEntries,
@@ -315,7 +326,9 @@ export function PurchaseRequestDetail({
           />
           <Stepper.Step
             description={
-              rq.approvedAt ? formatDate(rq.approvedAt) : "第一承認グループ"
+              rq.approvedAt
+                ? formatDate(rq.approvedAt)
+                : approvalStepDescription(approval)
             }
             label="承認"
             loading={rq.status === "REQUESTED"}

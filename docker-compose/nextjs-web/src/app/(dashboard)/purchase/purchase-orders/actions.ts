@@ -9,7 +9,7 @@
  *   指示書の承認と同型の row-workflow: 遷移列（at/by）+ history Json + audit。
  *   加えて承認依頼・記録を approval_requests / approval_records へ正規化する
  *   （§6 本実装 — PD03 横断表示・代理対応）。承認可否は actOnApprovalRequest
- *   内で判定（第一承認グループの本人メンバー or 有効期間内の代理）。
+ *   内で判定（その段の承認グループの本人メンバー or 有効期間内の代理）。
  * - ORDERED になった明細は lib/atp.ts が「入荷予定」として自動的に読む
  *   （追加の連携処理は不要）。
  * - COMPLETED 時は明細ごとに MaterialReceipt を全量入荷で作成し、

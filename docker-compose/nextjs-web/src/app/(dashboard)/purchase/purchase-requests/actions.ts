@@ -261,7 +261,7 @@ export async function requestPurchaseRequestApproval(
   }
 }
 
-/** 承認 — REQUESTED → APPROVED。第一承認グループのメンバーのみ。 */
+/** 承認 — 現在の段に承認を記録し、全段通過で APPROVED。 */
 export async function approvePurchaseRequest(
   requestNumber: string,
 ): Promise<ActionResult> {
