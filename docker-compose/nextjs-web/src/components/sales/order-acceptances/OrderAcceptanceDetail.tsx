@@ -85,7 +85,6 @@ import {
   ApproveButton,
   PrimaryButton,
   RejectButton,
-  SaveButton,
   SecondaryButton,
 } from "@/components/ui/buttons";
 import { DocNumber } from "@/components/ui/DocNumber";
@@ -100,6 +99,7 @@ import { StatusBadge } from "@/components/ui/StatusBadge";
 import {
   type AuditEntry,
   DetailShell,
+  FormActions,
   FormSection,
   ResourceActions,
   SummaryGrid,
@@ -985,9 +985,7 @@ function DraftEditor({
         />
       </FormSection>
 
-      <Group justify="flex-end">
-        <SaveButton loading={isPending} onClick={save} type="button" />
-      </Group>
+      <FormActions loading={isPending} onSave={save} />
     </Stack>
   );
 }

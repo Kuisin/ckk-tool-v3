@@ -310,7 +310,6 @@ export function FormShell({
   submitLabel?: string;
   children: ReactNode;
 }) {
-  const isMobile = useIsMobile();
   // 送信中は保存処理の遷移を妨げないよう、未保存ガードを解除する。
   useUnsavedChanges(isDirty && !isPending);
   return (
@@ -320,21 +319,11 @@ export function FormShell({
         <LoadingOverlay visible={!!isPending} />
         <Stack gap="md">
           {children}
-          <FormActions>
-            {isMobile ? (
-              <Stack gap="xs">
-                <SaveButton fullWidth loading={isPending}>
-                  {submitLabel}
-                </SaveButton>
-                <CancelButton fullWidth onClick={onCancel} />
-              </Stack>
-            ) : (
-              <Group justify="flex-end">
-                <CancelButton onClick={onCancel} />
-                <SaveButton loading={isPending}>{submitLabel}</SaveButton>
-              </Group>
-            )}
-          </FormActions>
+          <FormActions
+            loading={isPending}
+            onCancel={onCancel}
+            submitLabel={submitLabel}
+          />
         </Stack>
       </Box>
     </Stack>
@@ -343,15 +332,77 @@ export function FormShell({
 
 // ── FormActions ─────────────────────────────────────────────────────────────
 /**
- * フォーム下部のアクション行（キャンセル / 保存）。デスクトップでは画面下端に
+ * フォーム下部のアクション行（キャンセル / 保存）。**保存ボタンは常にここ** —
+ * 画面ヘッダー（PageHeader の actions）には置かない。デスクトップでは画面下端に
  * 固定され、フォームがどれだけ長くてもボタンが常に見える（globals.css
- * `.form-actions`）。モバイルは従来どおり本文末尾に流す。
+ * `.form-actions`）。モバイルは従来どおり本文末尾に流す（ソフトキーボードが
+ * 画面下を占有するため）。
  *
- * `FormShell` は自動でこれを使う。`FormShell` を使わない独自フォームは、
- * 既存のボタン行をこれで包むだけで同じ挙動になる。
+ * 既定でキャンセル / 保存の並び（モバイルは縦積み・全幅）を描画する:
+ *
+ *   <FormActions loading={isPending} onCancel={back} onSave={save} />
+ *
+ * `onSave` を渡さない場合は保存ボタンが `type="submit"`（`<form>` 送信）になる。
+ * `FormShell` は自動でこれを使う。独自のボタン構成が要るときだけ `children` を
+ * 渡す（その場合 `onCancel` / `onSave` は無視される）。
  */
-export function FormActions({ children }: { children: ReactNode }) {
-  return <Box className="form-actions">{children}</Box>;
+export function FormActions({
+  children,
+  onCancel,
+  onSave,
+  submitLabel = "保存",
+  cancelLabel,
+  loading,
+  disabled,
+}: {
+  /** 独自のボタン構成。渡すとキャンセル / 保存の既定描画を置き換える。 */
+  children?: ReactNode;
+  /** キャンセル（省略するとキャンセルボタンを出さない）。 */
+  onCancel?: () => void;
+  /** 保存ハンドラ。省略時は保存ボタンが `type="submit"` になる。 */
+  onSave?: () => void;
+  submitLabel?: string;
+  cancelLabel?: string;
+  loading?: boolean;
+  disabled?: boolean;
+}) {
+  const isMobile = useIsMobile();
+
+  if (children) return <Box className="form-actions">{children}</Box>;
+
+  const save = (
+    <SaveButton
+      disabled={disabled}
+      fullWidth={isMobile}
+      loading={loading}
+      onClick={onSave}
+      type={onSave ? "button" : "submit"}
+    >
+      {submitLabel}
+    </SaveButton>
+  );
+  const cancel = onCancel ? (
+    <CancelButton fullWidth={isMobile} onClick={onCancel}>
+      {cancelLabel}
+    </CancelButton>
+  ) : null;
+
+  return (
+    <Box className="form-actions">
+      {isMobile ? (
+        // モバイルは主操作（保存）を上に、全幅で積む。
+        <Stack gap="xs">
+          {save}
+          {cancel}
+        </Stack>
+      ) : (
+        <Group justify="flex-end">
+          {cancel}
+          {save}
+        </Group>
+      )}
+    </Box>
+  );
 }
 
 // ── FormSection ─────────────────────────────────────────────────────────────

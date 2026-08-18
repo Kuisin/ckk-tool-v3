@@ -23,7 +23,7 @@ import { notifications } from "@mantine/notifications";
 import { IconInfoCircle } from "@tabler/icons-react";
 import { useState, useTransition } from "react";
 import { updateKioskAppFlags } from "@/app/(dashboard)/settings/kiosk/actions";
-import { PrimaryButton } from "@/components/ui/buttons";
+import { FormActions } from "@/components/ui/shells";
 import type { KioskAppCatalogEntry } from "@/lib/kiosk-settings";
 
 type PolicyRow = { label: string; value: string };
@@ -92,11 +92,6 @@ export function KioskSettingsPanel({
               </Group>
             ))}
           </Stack>
-          <Group justify="flex-end" mt="sm">
-            <PrimaryButton disabled={!dirty} loading={isPending} onClick={save}>
-              保存
-            </PrimaryButton>
-          </Group>
         </Stack>
       </Paper>
 
@@ -127,6 +122,9 @@ export function KioskSettingsPanel({
           </Table.ScrollContainer>
         </Stack>
       </Paper>
+
+      {/* 保存は画面下端に固定（design.md §8.3）。 */}
+      <FormActions disabled={!dirty} loading={isPending} onSave={save} />
     </Stack>
   );
 }

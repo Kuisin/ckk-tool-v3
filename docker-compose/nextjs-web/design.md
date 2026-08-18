@@ -43,9 +43,24 @@ Action (label+icon+role baked in): `SaveButton` (`type=submit`, 保存/💾),
 - `DetailShell` — `PageHeader` + `SummaryGrid` + `Tabs` + `ResourceActions`
   (edit/pdf/copy/cancel menu; collapses to a `…` menu on mobile).
 - `FormShell` — `PageHeader` + `<form>` + `LoadingOverlay` + stacked
-  `FormSection`s + submit/cancel row. `FormSection` = one bordered `Paper`
+  `FormSection`s + `FormActions`. `FormSection` = one bordered `Paper`
   (title + divider + fields). **Don't wrap `FormSection` in another `Paper`**
   (double card).
+- `FormActions` — **the only place a 保存 button may live.** Never put
+  保存/キャンセル in `PageHeader actions` (that row is for detail-screen actions:
+  編集 / PDF / ⋯). It renders キャンセル + 保存 itself and pins them to the bottom
+  of the viewport on desktop (sticky, `globals.css .form-actions`), so the
+  buttons stay visible however long the form is; mobile stacks them full-width
+  at the end of the body (the soft keyboard already owns the screen bottom):
+
+  ```tsx
+  <FormActions loading={isPending} onCancel={back} onSave={save} />   // 独自フォーム
+  <FormActions loading={isPending} onCancel={back} />                 // <form> 送信（type=submit）
+  ```
+
+  `FormShell` uses it automatically. Screens that build their own form (試算 /
+  受注請書ドラフト / 材種の既定単価 / キオスク設定 …) call it directly — pass
+  `children` only when the button set really differs.
 - `PageHeader` (`ui/PageHeader.tsx`) — breadcrumbs (desktop) / **mobile "← back"
   link to the nearest linkable parent** / `order={2→3}` title / status / actions.
 - `PlaceholderPage` for un-built routes.
