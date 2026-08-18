@@ -8,7 +8,7 @@
  * 共通の EditableCellTable（スリムな行編集表）で描画する。
  */
 
-import { Group, NumberInput, Select, Stack, Text } from "@mantine/core";
+import { NumberInput, Select, Stack, Text } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
@@ -16,8 +16,8 @@ import {
   type MaterialTypePriceRow,
   saveMaterialTypePrices,
 } from "@/app/(dashboard)/master/material-types/actions";
-import { SaveButton } from "@/components/ui/buttons";
 import { EditableCellTable } from "@/components/ui/EditableCellTable";
+import { FormActions } from "@/components/ui/shells";
 import type { Option } from "@/lib/mock";
 
 /** 保存済み価格（材種の全 material_type_prices 行）. */
@@ -166,11 +166,11 @@ export function MaterialTypePriceGrid({
         }}
         rows={rows}
       />
-      <Group justify="flex-end">
-        <SaveButton loading={isSaving} onClick={save}>
-          既定単価を保存
-        </SaveButton>
-      </Group>
+      <FormActions
+        loading={isSaving}
+        onSave={save}
+        submitLabel="既定単価を保存"
+      />
     </Stack>
   );
 }

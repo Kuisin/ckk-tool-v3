@@ -564,13 +564,25 @@ Stack (gap="md")
 │       └── Button type="submit" loading={isPending} — 保存
 ```
 
-**Action row placement** — アクション行は `FormActions`（`shells.tsx`）で包む。
+**Action row placement** — 保存 / キャンセルは **必ずフォーム下部の
+`FormActions`（`shells.tsx`）**。画面ヘッダー（`PageHeader` の `actions`）に
+保存ボタンを置いてはいけない — あの行は詳細画面の操作（編集 / PDF / ⋯）専用。
 デスクトップ（≥768px）では `position: sticky; bottom` で画面下端に貼り付き、
 フォームがどれだけ長くてもキャンセル / 保存が常に見える（globals.css
 `.form-actions`。`bottom` は固定 AppShell フッターぶんを
-`--app-shell-footer-offset` で避ける）。モバイルは従来どおり本文末尾に流す —
-ソフトキーボードが画面下を占有するため。`FormShell` は自動でこれを使うので、
-`FormShell` を使わない独自フォームだけ既存のボタン行を `FormActions` で包む。
+`--app-shell-footer-offset` で避ける）。モバイルは本文末尾に全幅で積む
+（保存が上）— ソフトキーボードが画面下を占有するため。
+
+`FormActions` はキャンセル / 保存の並びを自分で描画する:
+
+```tsx
+<FormActions loading={isPending} onCancel={back} onSave={save} />  // 独自フォーム（type="button"）
+<FormActions loading={isPending} onCancel={back} />                 // <form> 送信（type="submit"）
+```
+
+`FormShell` は自動でこれを使う。`FormShell` を使わない画面（試算 SA11 /
+受注請書ドラフト / 材種の既定単価 / キオスク設定 など）も同じ 1 行を置くこと。
+ボタン構成そのものが違うときだけ `children` を渡して差し替える。
 
 ---
 

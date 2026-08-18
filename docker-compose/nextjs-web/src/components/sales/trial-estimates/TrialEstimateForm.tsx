@@ -40,18 +40,14 @@ import {
   fetchMaterialPricing,
   type MaterialPricing,
 } from "@/app/(dashboard)/sales/trial-estimates/actions";
-import {
-  EditButton,
-  SaveButton,
-  SecondaryButton,
-} from "@/components/ui/buttons";
+import { EditButton } from "@/components/ui/buttons";
 import { PRODUCT_F4 } from "@/components/ui/f4-presets";
 import { HelpLabel } from "@/components/ui/HelpLabel";
 import { MoneyText } from "@/components/ui/MoneyText";
 import { openConfirm } from "@/components/ui/modals";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { SearchSelect } from "@/components/ui/SearchSelect";
-import { FormSection } from "@/components/ui/shells";
+import { FormActions, FormSection } from "@/components/ui/shells";
 import { fieldHelp } from "@/lib/field-help";
 import { formatDate } from "@/lib/format";
 import type { Option } from "@/lib/mock";
@@ -345,17 +341,8 @@ export function TrialEstimateForm({
 
   return (
     <Stack gap="md">
+      {/* 保存 / キャンセルはヘッダーではなく画面下端の FormActions に置く。 */}
       <PageHeader
-        actions={
-          <Group gap="xs">
-            <SecondaryButton onClick={() => router.push(BASE_PATH)}>
-              一覧へ
-            </SecondaryButton>
-            <SaveButton loading={isPending} onClick={save}>
-              保存
-            </SaveButton>
-          </Group>
-        }
         breadcrumbs={["販売", { label: "試算", href: BASE_PATH }, "新規"]}
         status={
           overridden ? (
@@ -912,6 +899,13 @@ export function TrialEstimateForm({
           </Paper>
         </Tabs.Panel>
       </Tabs>
+
+      <FormActions
+        cancelLabel="一覧へ"
+        loading={isPending}
+        onCancel={() => router.push(BASE_PATH)}
+        onSave={save}
+      />
     </Stack>
   );
 }
