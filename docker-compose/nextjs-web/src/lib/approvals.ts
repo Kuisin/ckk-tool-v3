@@ -409,7 +409,9 @@ async function notifyStepStart(
     await notifyApprovalGroup(step.groupId, {
       type: "APPROVAL_REQUEST",
       title: `${APPROVAL_TARGET[targetType].label} ${targetId} の${localized(step.name)}依頼`,
-      linkPath: "/production/approvals",
+      // 承認管理の一覧ではなく当の書類を開く（承認操作は書類詳細の
+      // ActionCard にある — design.md §10.9）。承認結果通知と同じ行き先。
+      linkPath: APPROVAL_TARGET[targetType].href(targetId),
       userIds,
     });
   } catch (e) {
