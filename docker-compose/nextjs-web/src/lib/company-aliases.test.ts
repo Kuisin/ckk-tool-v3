@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  autoMatchNames,
   companyCore,
   generateAliases,
   kanaToRomaji,
@@ -75,24 +76,18 @@ describe("generateAliases", () => {
     expect(out).toContain("AFCジャパン");
   });
 
-  it("かなだけの社名は かな 3 形式を作れる", () => {
-    const out = generateAliases({ nameJa: "セラミック商事" });
-    // 「商事」は漢字なので読みは作らない
-    expect(out.some((v) => /[ぁ-ゖ]/.test(v))).toBe(false);
-
+  it("かな・ローマ字は候補に出さない（自動生成側の担当）", () => {
+    // 画面の「AI照合名」は人が入れる欄。フリガナ由来の表記を混ぜない。
     const kanaOnly = generateAliases({ nameJa: "トウキョウセラミック" });
-    expect(kanaOnly).toContain("とうきょうせらみっく");
-    expect(kanaOnly).toContain("toukyouseramikku");
-  });
+    expect(kanaOnly).not.toContain("とうきょうせらみっく");
+    expect(kanaOnly).not.toContain("toukyouseramikku");
 
-  it("フリガナがあれば漢字社名でも 3 形式を作れる", () => {
-    const out = generateAliases({
+    const withKana = generateAliases({
       nameJa: "東京精機株式会社",
       nameKana: "トウキョウセイキ",
     });
-    expect(out).toContain("トウキョウセイキ");
-    expect(out).toContain("とうきょうせいき");
-    expect(out).toContain("toukyouseiki");
+    expect(withKana.some((v) => /[ぁ-ゖ]/.test(v))).toBe(false);
+    expect(withKana.some((v) => /^[a-z]+$/.test(v))).toBe(false);
   });
 
   it("**漢字の読みは勝手に作らない**（フリガナが無いとき）", () => {
@@ -131,18 +126,28 @@ describe("missingKeywordFormats", () => {
     });
   });
 
-  it("かな社名は読み不要（カタカナは充足）", () => {
+  it("かな社名は読み不要で、3 形式とも自動生成で充足", () => {
     const m = missingKeywordFormats({ nameJa: "トウキョウセラミック" });
-    expect(m.needsReading).toBe(false);
-    expect(m.katakana).toBe(false);
+    expect(m).toEqual({
+      hiragana: false,
+      katakana: false,
+      romaji: false,
+      needsReading: false,
+    });
+  });
+
+  it("漢字社名でフリガナが無ければ、やはり 3 形式とも欠ける", () => {
+    const m = missingKeywordFormats({ nameJa: "東京精機株式会社" });
+    expect(m.needsReading).toBe(true);
     expect(m.hiragana).toBe(true);
   });
 
-  it("登録済みの照合名で充足を判定する", () => {
+  it("フリガナがあれば（自動生成分で）3 形式とも充足", () => {
+    // 画面の AI照合名 に無くても、match_names_auto が持っているので指摘しない。
     const m = missingKeywordFormats({
       nameJa: "東京精機株式会社",
       nameKana: "トウキョウセイキ",
-      existing: ["とうきょうせいき", "トウキョウセイキ", "toukyouseiki"],
+      existing: [],
     });
     expect(m).toEqual({
       hiragana: false,
@@ -158,5 +163,32 @@ describe("missingKeywordFormats", () => {
       existing: ["Tokyo Seiki"],
     });
     expect(m.romaji).toBe(false);
+  });
+});
+
+describe("autoMatchNames（画面に出さない自動生成分）", () => {
+  it("フリガナがあれば カタカナ / ひらがな / ローマ字 を作る", () => {
+    expect(
+      autoMatchNames({
+        nameJa: "東京精機株式会社",
+        nameKana: "トウキョウセイキ",
+      }),
+    ).toEqual(["トウキョウセイキ", "とうきょうせいき", "toukyouseiki"]);
+  });
+
+  it("かなだけの社名はフリガナ無しでも作れる（法人格は除く）", () => {
+    const out = autoMatchNames({ nameJa: "トウキョウセラミック株式会社" });
+    expect(out).toContain("とうきょうせらみっく");
+    expect(out).toContain("toukyouseramikku");
+  });
+
+  it("漢字社名でフリガナが無ければ **何も作らない**", () => {
+    expect(autoMatchNames({ nameJa: "東京精機株式会社" })).toEqual([]);
+  });
+
+  it("英字混じりのカタカナ社名は読みを勝手に作らない", () => {
+    expect(autoMatchNames({ nameJa: "NGKファインモールド株式会社" })).toEqual(
+      [],
+    );
   });
 });
