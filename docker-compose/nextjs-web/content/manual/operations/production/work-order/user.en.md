@@ -28,7 +28,7 @@ This app is for making the document (**指示書**, work order) that decides whi
 
 - You need a **order line** first. Order lines are made from the import screen of [order acceptance](/manual/en/operations/sales/order-acceptance/user), and you can check them on the order line screen (operation code `PD01`).
 - When you run 「**在庫照合**」 (Check stock) on the order line screen, the stock you already have is set aside for that order. You make the missing amount with this app.
-- People who approve must be registered in an [approval group](/manual/en/operations/masters/approval-group/user) in advance.
+- People who approve must be registered in an [approval group](/manual/en/operations/masters/approval-setting/user) in advance.
 
 ## How to read the screen
 
@@ -39,7 +39,7 @@ When you open the app, you see a list of the work orders made so far.
 - **指示書番号** (work order number) … a serial number such as `#9001`. The system adds it for you. This number also becomes the lot number.
 - **種別** (type) … either 「**在庫分**」 (from stock — using stock you already have) or 「**製造分**」 (to make — making new pieces).
 - **予定数量** (planned quantity) … how many pieces you plan to make.
-- **承認状態** (approval status) … a coloured badge shows how far the approval has gone: 「第一承認待ち」 (waiting for first approval), 「第一承認済」 (first approval done), 「第二承認待ち」 (waiting for second approval), 「承認済」 (approved), 「差し戻し」 (sent back), and so on.
+- **承認状態** (approval status) … a coloured badge shows 「承認待ち」 (waiting for approval), 「承認済」 (approved) or 「差し戻し」 (sent back). Which step it is currently on is shown on the card on the detail screen.
 - **状態** (status) … one of 「下書き」 (draft), 「承認待ち」 (waiting for approval), 「承認済」 (approved), 「進行中」 (in progress), 「完了」 (finished), or 「キャンセル」 (cancelled).
 - Type a work order number, a order line number, or a product name into the search box at the top to find one. You can also narrow it down with 「**種別**」 (type) and 「**状態**」 (status).
 - Click a row to open the detail screen for that work order.
@@ -84,13 +84,13 @@ Work cannot start on a work order until it is approved. Approval has **two stage
 
 1. On the work order screen, press 「**承認依頼**」 (Request approval) in the 「**承認状況**」 (approval status) area.
 2. The status changes to 「**承認待ち**」 (waiting for approval). From this point, the original order line can no longer be edited.
-3. The person doing the first approval (factory manager or department manager level) presses 「**第一承認**」 (First approval).
-4. Then the person doing the second approval (department manager level) presses 「**第二承認**」 (Second approval).
+3. The person approving the first step presses 「**承認**」 (Approve).
+4. If the approval settings define further steps, the person for each step presses 「**承認**」 in turn. Once the last step is through, the work order becomes approved.
 5. When both stages are done, the status becomes 「**承認済**」 (approved) and the work can start.
 
 ![Approval status panel of a work order](../../../assets/screenshots/work-order-approval-01.png)
 
-- Only people **in the approval group** for that stage, and stand-ins appointed for a set period, can approve. If you are not in the group, the buttons do not appear and the screen shows 「第一承認グループのメンバーのみ承認・差し戻しできます」 (Only members of the first approval group can approve or send back).
+- Only people **in the approval group** for that step, and stand-ins appointed for a set period, can approve. If you are not in the group, the buttons do not appear and the screen shows 「◯◯ のメンバーのみ承認・差し戻しできます」 (Only members of that group can approve or send back).
 - If there is a problem, press 「**差し戻し**」 (Send back). You must enter a 「**差し戻し理由**」 (reason for sending back).
 - A work order that was sent back returns to 「下書き」 (draft) and the reason appears in red on the screen. After fixing it, you can send it out again with 「**再承認依頼**」 (Request approval again).
 - Records of approvals and send-backs stay under 「承認状況」 (approval status). Ones approved by a stand-in are marked 「（代理: 原承認者）」 (stand-in for the original approver).
@@ -232,7 +232,7 @@ Notes. **The floor reads this when working from the order.** Put anything to wat
 A. That work order has not been approved yet. If the screen shows 「工程実行は指示書の承認後に可能になります」 (Steps can be run after the work order is approved), please get it approved first.
 
 **Q. The approval buttons do not appear.**
-A. You are not in the approval group for that stage. The screen shows 「第一承認グループのメンバーのみ承認・差し戻しできます」 (Only members of the first approval group can approve or send back). Please ask an administrator about being added to the approval group.
+A. You are not in the approval group for that step. The screen shows 「◯◯ のメンバーのみ承認・差し戻しできます」 (Only members of that group can approve or send back). Please ask an administrator about being added to the approval group in the approval settings.
 
 **Q. I see 「別のユーザーがセッション中です」 (Another user is working on this) and cannot do anything.**
 A. Someone else is working on that step. Please wait until they complete or pause it.

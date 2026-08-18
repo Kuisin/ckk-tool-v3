@@ -213,7 +213,7 @@ Notes for that material only. Notes about the whole order go in the notes field 
 A. You can only change a purchase order while it is 「下書き」 (draft). Once approval has been requested, you cannot change it. If you try anyway, the screen shows 「**作成中の素材発注書のみ編集できます**」 (Only material purchase orders being created can be edited). If you need to change it, ask the approver to send it back to you.
 
 **Q. The 「承認」 (Approve) and 「差し戻し」 (Send back) buttons do not appear.**
-A. Only people in the first approval group (or a stand-in for them) can approve. Instead of the buttons, the screen shows 「**第一承認グループのメンバーのみ承認・差し戻しできます**」 (Only members of the first approval group can approve or send back).
+A. Only people in that step's approval group (or a stand-in for them) can approve. Instead of the buttons, the screen shows 「**◯◯ のメンバーのみ承認・差し戻しできます**」 with the group name (Only members of that group can approve or send back).
 
 **Q. I see 「仕入先を選択してください」 (Please select a supplier) and cannot save.**
 A. The supplier is still empty. Click the 「仕入先」 (supplier) box and choose a company from the list.

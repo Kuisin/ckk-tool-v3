@@ -39,7 +39,7 @@ These three connect in order: **Trial Estimate → Price List → Quote** (see "
 Every screen has a 4-character code. Remembering them lets you jump from the search box.
 
 - `SA01` Trial Estimate / `SA02` Price List / `SA03` Quote
-- `MS01` Customers / `MS02` End Users / `MS0B` Approval Groups
+- `MS01` Customers / `MS02` End Users / `MS0B` Approval Settingss
 
 ## 4. The sales flow (start here)
 

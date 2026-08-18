@@ -27,6 +27,7 @@ import {
   setApprovalGroupsActive,
   updateGroupMemberValidity,
 } from "@/app/(dashboard)/master/approval-settings/actions";
+import { HelpLabel } from "@/components/ui/HelpLabel";
 import {
   ConfirmModal,
   type ModalBaseProps,
@@ -34,6 +35,7 @@ import {
 } from "@/components/ui/modals";
 import { SearchSelect } from "@/components/ui/SearchSelect";
 import { validateMemberPeriod } from "@/lib/approval-membership";
+import { fieldHelp } from "@/lib/field-help";
 
 export interface ApprovalGroupModalTarget {
   id: number;
@@ -231,7 +233,7 @@ function MemberPeriodFields({
           </Text>
           <Group grow>
             <DateTimePicker
-              label="開始日時"
+              label={<HelpLabel {...fieldHelp("approvalGroup", "validFrom")} />}
               onChange={(v) =>
                 onPeriodChange({
                   ...period,
@@ -243,7 +245,9 @@ function MemberPeriodFields({
               withAsterisk
             />
             <DateTimePicker
-              label="終了日時"
+              label={
+                <HelpLabel {...fieldHelp("approvalGroup", "validUntil")} />
+              }
               onChange={(v) =>
                 onPeriodChange({
                   ...period,

@@ -174,6 +174,15 @@ const nextConfig: NextConfig = {
         permanent: true,
       },
 
+      // 承認グループのマニュアルも 承認設定 へ改称。MANUAL_APP_CATEGORY は
+      // カテゴリ移動用でスラッグの改称は見ないので、ここに個別に置く。
+      {
+        source: "/manual/:lang(ja|en|zh)/operations/masters/approval-group/:path*",
+        destination:
+          "/manual/:lang/operations/masters/approval-setting/:path*",
+        permanent: true,
+      },
+
       // マニュアルも 1 ページに統合。
       ...(["customer", "end-user", "supplier"] as const).map((old) => ({
         source: `/manual/:lang(ja|en|zh)/operations/masters/${old}/:path*`,

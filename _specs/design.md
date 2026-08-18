@@ -299,7 +299,7 @@ Operation codes provide keyboard-shortcut navigation. Format: `{CAT}{MODE}{IDX}`
 | マスタ | 8 | 工程マスタ | MS08 | MS18 | MS28 |
 | マスタ | 9 | 検査表テンプレート | MS09 | MS19 | MS29 |
 | マスタ | A | 不良種類 | MS0A | MS1A | MS2A |
-| マスタ | B | 承認グループ | MS0B | MS1B | MS2B |
+| マスタ | B | 承認設定 | MS0B | MS1B | MS2B |
 | マスタ | C | 拠点 | MS0C | MS1C | MS2C |
 | マスタ | D | 作業場所 | MS0D | — | — |
 | マスタ | E | 保管場所 | MS0E | — | — |
@@ -402,7 +402,7 @@ Stack (gap="xl", p="md", maw={1200})
 | 工程マスタ | `IconGitBranch` |
 | 検査表テンプレート | `IconListCheck` |
 | 不良種類 | `IconAlertTriangle` |
-| 承認グループ | `IconUsersGroup` |
+| 承認設定 | `IconUsersGroup` |
 | 拠点 | `IconBuildingWarehouse` |
 | ユーザー管理 | `IconUserCog` |
 | 試算計算 | `IconMathFunction` |
@@ -621,9 +621,7 @@ Stack (gap="md")
 | WorkOrder | COMPLETED | green | 完了 |
 | WorkOrder | CANCELLED | red | キャンセル |
 | WorkOrder (approval) | NONE | gray | — |
-| WorkOrder (approval) | PENDING_1ST | yellow | 第一承認待ち |
-| WorkOrder (approval) | APPROVED_1ST | blue | 第一承認済 |
-| WorkOrder (approval) | PENDING_2ND | orange | 第二承認待ち |
+| WorkOrder (approval) | PENDING | yellow | 承認待ち |
 | WorkOrder (approval) | APPROVED | green | 承認済 |
 | WorkOrder (approval) | REJECTED | red | 差し戻し |
 | StepStatus | PENDING | gray | 未着手 |
@@ -1003,7 +1001,7 @@ Paper (withBorder, p="lg")
 `src/components/production/ApprovalStatusPanel.tsx` — 2 つを出す。
 
 **WorkOrderApprovalCard** — 画面最上部の ActionCard (§10.9)。承認依頼 / 第一・
-第二承認 / 差し戻し（理由必須モーダル）を持つ唯一の場所。色は承認権限で決まる
+承認 / 差し戻し（理由必須モーダル）を持つ唯一の場所。色は承認権限で決まる
 （権限あり = green + 承認・差し戻し、権限なし = gray の「第一（第二）承認待ち」、
 差し戻し中 = red + 再承認依頼）。操作が無い状態では何も描画しない。
 
@@ -1013,8 +1011,8 @@ Paper (withBorder, p="lg")
 Paper (withBorder, p="md", radius="md")
 ├── Title order={5} mb="md" "承認状況"
 ├── Stepper (active={stepIndex}, size="sm", orientation={isMobile ? "vertical" : "horizontal"})
-│   ├── Stepper.Step label="第一承認" description="工場長・部長クラス"
-│   └── Stepper.Step label="第二承認" description="部長クラス" loading={PENDING_2ND}
+│   └── Stepper.Step × N — 段数・名称・グループは依頼時のスナップショット
+│       （approval_requests.flow_snapshot）由来。承認設定 MS0B が決める
 ├── [if REJECTED] Alert color="red" — 差し戻し理由
 └── approval_records list
     └── Group — approver name + acted_at + action badge + comment
@@ -1320,7 +1318,7 @@ Use these exact terms consistently across all UI strings, error messages, and no
 | 最終需要家 | 最終需要家 | END_USER |
 | 顧客 | 顧客 | CUSTOMER |
 | 支店 | 支店 | branch |
-| 承認グループ | 承認グループ | — |
+| 承認設定 | 承認設定 | — |
 | 操作コード | 操作コード | operation code |
 | 下書き | 下書き | DRAFT |
 | 確定 | 確定 | CONFIRMED |

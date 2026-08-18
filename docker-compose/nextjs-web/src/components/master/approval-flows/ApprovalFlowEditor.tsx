@@ -35,10 +35,12 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { saveApprovalFlow } from "@/app/(dashboard)/master/approval-settings/actions";
 import { GhostButton } from "@/components/ui/buttons";
+import { HelpLabel } from "@/components/ui/HelpLabel";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { FormActions, FormSection } from "@/components/ui/shells";
 import { type ApprovalMode, validateFlowSteps } from "@/lib/approval-flow";
 import { APPROVAL_MODE_OPTIONS } from "@/lib/enum-labels";
+import { fieldHelp } from "@/lib/field-help";
 
 const BASE_PATH = "/master/approval-settings";
 
@@ -179,7 +181,9 @@ export function ApprovalFlowEditor({
                 </Badge>
                 <TextInput
                   flex={1}
-                  label="名称"
+                  label={
+                    <HelpLabel {...fieldHelp("approvalFlow", "stepName")} />
+                  }
                   onChange={(e) =>
                     patch(s.key, { nameJa: e.currentTarget.value })
                   }
@@ -189,7 +193,7 @@ export function ApprovalFlowEditor({
                 />
                 <Select
                   data={groupOptions}
-                  label="承認グループ"
+                  label={<HelpLabel {...fieldHelp("approvalFlow", "group")} />}
                   onChange={(v) => patch(s.key, { groupId: v })}
                   placeholder="選択"
                   searchable

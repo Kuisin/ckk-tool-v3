@@ -656,11 +656,10 @@ Enum WORK_ORDER_STATUS {
   CANCELLED
 }
 
+// 段数非依存 — 何段目まで進んでいるかは approval_requests.step_no が持つ。
 Enum WORK_ORDER_APPROVAL_STATUS {
   NONE
-  PENDING_1ST
-  APPROVED_1ST
-  PENDING_2ND
+  PENDING         // 承認フロー進行中
   APPROVED
   REJECTED
 }
@@ -801,26 +800,64 @@ Table work_order_step_links {
 // 承認（§6）
 // ===========================
 
+// 承認グループ = 承認者の集合。「何段目か」は持たない — それは
+// approval_flow_steps が書類種別ごとに決める。
 Table approval_groups {
   id              serial [pk]
-  type            APPROVAL_GROUP_TYPE [not null]
   name            json [not null]         // { ja: '', en: '' }
   is_active       boolean [not null, default: true]
 }
 
-Enum APPROVAL_GROUP_TYPE {
-  FIRST           // 第一承認（生産判断：工場長・部長クラス）
-  SECOND          // 第二承認（部門承認：部長クラス）
-  WORKFLOW_CHANGE // 製造ワークフロー変更承認
-}
-
+// 常任 = valid_from / valid_until とも NULL。
+// 期間限定 = 両方に日時（片側だけは CHECK で禁止）。実効判定の唯一の定義は
+// lib/approval-membership.ts isMemberEffective()。代理（approval_delegates）
+// とは別概念 — 代理は「本来の承認者の代わりに押す」。
 Table approval_group_members {
   group_id        int [not null, ref: > approval_groups.id]
   user_id         uuid [not null, ref: > users.id]
   is_active       boolean [not null, default: true]
+  valid_from      timestamp
+  valid_until     timestamp
+  note            text
   indexes {
     (group_id, user_id) [pk]
   }
+}
+
+// ===========================
+// 承認フロー定義（書類種別ごとに 1 本）
+// ===========================
+//
+// target_type は approval_requests.target_type と同じ値（= テーブル名）。
+// 新しい enum を作らないのは既存の多態規約（audit と同じ）に合わせるため。
+// 値の範囲は DB 側の CHECK 制約と TS 側の APPROVAL_TARGET_TYPES で守る。
+// 管理 UI: 承認設定（MS0B, /master/approval-settings）。
+
+Table approval_flows {
+  target_type     varchar [pk]  // work_orders / order_acceptances /
+                                // material_purchase_orders / purchase_requests
+  updated_by      uuid [ref: > users.id]
+  updated_at      timestamp
+}
+
+// step_no は 1..N の連番（詰めて保存）。並べ替えは全削除 + 再作成
+// （進行中の依頼はこの行を参照していない — flow_snapshot を持つため）。
+Table approval_flow_steps {
+  id              serial [pk]
+  target_type     varchar [not null, ref: > approval_flows.target_type]
+  step_no         int [not null]
+  name            json [not null]         // { ja: '', en: '' } 例「第一承認」
+  group_id        int [not null, ref: > approval_groups.id]  // 削除は Restrict
+  mode            APPROVAL_MODE [not null, default: 'ANY']
+
+  indexes {
+    (target_type, step_no) [unique]
+  }
+}
+
+Enum APPROVAL_MODE {
+  ANY   // いずれか 1 名の承認でこの段は通過
+  ALL   // 対象メンバー全員の承認が必要
 }
 
 // 期間限定代理設定
@@ -836,19 +873,47 @@ Table approval_delegates {
   created_at      timestamp
 }
 
+// 1 行 = 1 段の承認依頼。対象は多態（target_type = テーブル名 /
+// target_id = 業務キー — audit と同じ規約）。進行中は
+// (target_type, target_id) につき常に 1 行だけ PENDING（部分 unique index）。
+//
+// flow_snapshot は依頼時点のフロー全段のコピー
+// [{ stepNo, name, groupId, groupName, mode }]。これを持つことで
+// (a) 進行中の書類が後からのフロー編集に影響されず、(b) Stepper が 1 行
+// 読むだけで全体を描ける。同じ配列がフロー中の全依頼行に載るのは承知の
+// うえの非正規化。
 Table approval_requests {
   id              uuid [pk]
-  work_order_id   uuid [not null, ref: > work_orders.id]
-  step            APPROVAL_STEP [not null]
+  target_type     varchar [not null]
+  target_id       varchar [not null]
+  step_no         int [not null]          // 1..N
+  step_count      int [not null]          // 依頼時点の総段数
+  group_id        int [ref: > approval_groups.id]  // 依頼時点の承認グループ
+  mode            APPROVAL_MODE [not null, default: 'ANY']
+  flow_snapshot   json [not null]
   status          APPROVAL_REQUEST_STATUS [not null, default: 'PENDING']
   requested_by    uuid [ref: > users.id]
   requested_at    timestamp
   notes           text
+
+  indexes {
+    (target_type, target_id)
+    status
+  }
 }
 
-Enum APPROVAL_STEP {
-  FIRST
-  SECOND
+// 依頼時点で「この段で承認しうる人」のスナップショット。
+// ALL では必須チェックリスト（全枠が acted_at で埋まると段が閉じる）、
+// ANY では表示・通知用。acted_by は代理が押した場合の実行者。
+Table approval_request_approvers {
+  approval_request_id uuid [not null, ref: > approval_requests.id]
+  user_id         uuid [not null, ref: > users.id]
+  acted_at        timestamp
+  acted_by        uuid [ref: > users.id]
+
+  indexes {
+    (approval_request_id, user_id) [pk]
+  }
 }
 
 Enum APPROVAL_REQUEST_STATUS {
