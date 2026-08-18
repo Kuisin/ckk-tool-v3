@@ -90,6 +90,8 @@ export const AUDIT_TABLE_LABELS: Record<string, string> = {
   work_location_groups: "作業場所グループ",
   work_locations: "作業場所",
   file_folder_grants: "ファイルフォルダ権限",
+  // テーブルではなく取込フォルダ（INTAKE_DIR）の操作 — SY0C の投入・再取込。
+  intake_folder: "注文書取込フォルダ",
   system: "システム",
 };
 
