@@ -7,6 +7,7 @@
  * bp_vendor_attrs に持つ。Underscore folder → not routable.
  */
 
+import { bpSearchKeys } from "@/lib/bp-search";
 import { prisma } from "@/lib/db";
 import { formatQuoteNumber } from "@/lib/doc-number";
 import { type LocalizedText, localized } from "@/lib/format";
@@ -34,6 +35,12 @@ export interface BpRow {
   id: string;
   bpCode: string;
   name: string;
+  /**
+   * 検索用のキー（画面には出さない）。社名以外の探し方 — フリガナ・ローマ字・
+   * 「THK」だけ・㈱ の表記違い — でも一覧を絞り込めるようにするため。
+   * 中身は lib/bp-search の判定にそのまま渡す。
+   */
+  searchKeys: string[];
   roles: BpRoleValue[];
   vendorType: string | null;
   branchCount: number;
@@ -55,6 +62,15 @@ export async function fetchBusinessPartners(): Promise<BpRow[]> {
     id: r.id,
     bpCode: r.bpCode ?? "—",
     name: localized(r.name as LocalizedText | null),
+    searchKeys: bpSearchKeys({
+      bpCode: r.bpCode,
+      nameJa: localized(r.name as LocalizedText | null),
+      nameEn: (r.name as { en?: string } | null)?.en ?? null,
+      nameKana: r.nameKana,
+      shortName: r.shortName,
+      matchNames: r.matchNames,
+      matchNamesAuto: r.matchNamesAuto,
+    }),
     roles: activeRoles(r.roleAssignments),
     vendorType: r.vendorAttrs?.vendorType ?? null,
     branchCount: r._count.branches,
