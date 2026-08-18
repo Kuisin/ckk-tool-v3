@@ -3,12 +3,13 @@
 /**
  * PurchaseRequestDetail — 購買依頼 詳細 (PU21, design.md §8.2)。
  *
- * SummaryGrid + 承認/変換パネル（線形 Stepper 依頼→承認→発注書へ変換 +
- * 状態別アクション）+ Tabs（明細 / 概要 / 履歴）。
+ * 最上部の ActionCard（いまやること — 権限で色が変わる）+ SummaryGrid +
+ * 承認/変換パネル（線形 Stepper 依頼→承認→発注書へ変換）+ Tabs
+ * （明細 / 概要 / 履歴）。
  *
  * 状態別アクション:
  *   DRAFT / REJECTED: 承認依頼 + 編集 / キャンセル
- *   REQUESTED: 承認（isApprover("FIRST") ゲート）/ 差し戻し（理由必須 → REJECTED）
+ *   REQUESTED: 承認 / 差し戻し（理由必須 → REJECTED）— 段数は承認設定 MS0B
  *   APPROVED: 発注書へ変換（仕入先を指定 → 発注書 DRAFT を生成）/ キャンセル
  *   ORDERED: 変換先の発注書へのリンク表示
  */
@@ -32,14 +33,12 @@ import {
 import { notifications } from "@mantine/notifications";
 import {
   IconAlertTriangle,
-  IconArrowBackUp,
-  IconSend,
   IconShoppingCart,
   IconX,
 } from "@tabler/icons-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { type ReactNode, useState, useTransition } from "react";
 import {
   approvePurchaseRequest,
   cancelPurchaseRequest,
@@ -48,15 +47,16 @@ import {
   requestPurchaseRequestApproval,
 } from "@/app/(dashboard)/purchase/purchase-requests/actions";
 import {
+  ApprovalActionCard,
+  type ApprovalActionState,
+} from "@/components/approvals/ApprovalActionCard";
+import {
   ApprovalTrailList,
   type ApprovalTrailView,
   countTrailRecords,
 } from "@/components/production/ApprovalStatusPanel";
-import {
-  ApproveButton,
-  PrimaryButton,
-  RejectButton,
-} from "@/components/ui/buttons";
+import { ActionCard } from "@/components/ui/ActionCard";
+import { PrimaryButton } from "@/components/ui/buttons";
 import { DocNumber } from "@/components/ui/DocNumber";
 import { FieldValue } from "@/components/ui/FieldValue";
 import { HistoryPanel } from "@/components/ui/HistoryPanel";
@@ -104,18 +104,29 @@ function stepperActive(status: string): number {
   }
 }
 
+/**
+ * 書類ライフサイクルの Stepper に出す「承認」段の説明。段数は承認設定 (MS0B)
+ * が決めるので、進行中は「2/3 部門承認」、それ以外は担当グループ名を出す。
+ */
+function approvalStepDescription(approval: ApprovalActionState): string {
+  if (approval.phase === "PENDING" && approval.stepCount > 1) {
+    return `${approval.stepNo}/${approval.stepCount} ${approval.stepLabel}`;
+  }
+  return approval.groupLabel || "承認グループ";
+}
+
 export function PurchaseRequestDetail({
   purchaseRequest,
   auditEntries,
-  canApprove,
+  approval,
   supplierOptions,
   approvalTrail = [],
 }: {
   purchaseRequest: PurchaseRequestView;
   /** 操作履歴（audit_logs 由来、履歴タブ）。 */
   auditEntries: AuditEntry[];
-  /** 第一承認グループのメンバー（or 代理）か（承認 / 差し戻しのゲート）。 */
-  canApprove: boolean;
+  /** 承認フローの現在状態（承認 / 差し戻しのゲートと表示）。 */
+  approval: ApprovalActionState;
   /** 仕入先（VENDOR ロールの有効 BP）— 変換モーダルの Select。value = uuid。 */
   supplierOptions: Option[];
   /** 正規化された承認記録（approval_records — 代理承認マーカー付き）。 */
@@ -125,8 +136,6 @@ export function PurchaseRequestDetail({
   // アクティブタブを ?tab= に保持（URL 共有でタブまで再現）
   const [tab, setTab] = useTabParam("items");
   const [isPending, startTransition] = useTransition();
-  const [rejectOpen, setRejectOpen] = useState(false);
-  const [rejectReason, setRejectReason] = useState("");
   const [cancelOpen, setCancelOpen] = useState(false);
   const [cancelReason, setCancelReason] = useState("");
   const [convertOpen, setConvertOpen] = useState(false);
@@ -143,8 +152,6 @@ export function PurchaseRequestDetail({
           message: `購買依頼 ${rq.requestNumber}`,
           color: "green",
         });
-        setRejectOpen(false);
-        setRejectReason("");
         setCancelOpen(false);
         setCancelReason("");
         setConvertOpen(false);
@@ -197,6 +204,44 @@ export function PurchaseRequestDetail({
   // 差し戻し中の表示用: 最新の REJECT エントリの理由
   const lastReject = records.find((h) => h.action === "REJECT");
 
+  /**
+   * 「いまやること」カード（最上部）。承認待ちは承認権限の有無で色が変わる
+   * — 権限あり = 緑 + 承認/差し戻し、権限なし = グレーの「承認待ち」表示。
+   */
+  let actionCard: ReactNode = null;
+  if (canRequestApproval(rq) || rq.status === "REQUESTED") {
+    // 依頼・承認・差し戻しは 4 書類共通のカードに任せる（段数は承認設定 MS0B）
+    actionCard = (
+      <ApprovalActionCard
+        approval={approval}
+        canRequest={canRequestApproval(rq)}
+        onApprove={() => approvePurchaseRequest(rq.requestNumber)}
+        onReject={(reason) => rejectPurchaseRequest(rq.requestNumber, reason)}
+        onRequest={() => requestPurchaseRequestApproval(rq.requestNumber)}
+        rejectReason={lastReject?.notes ?? null}
+        subject={`購買依頼 ${rq.requestNumber}`}
+      />
+    );
+  } else if (rq.status === "APPROVED") {
+    actionCard = (
+      <ActionCard
+        actions={
+          <PrimaryButton
+            leftSection={<IconShoppingCart size={14} />}
+            loading={isPending}
+            onClick={() => setConvertOpen(true)}
+          >
+            発注書へ変換
+          </PrimaryButton>
+        }
+        description="仕入先を指定すると素材発注書（下書き）を生成します"
+        icon={<IconShoppingCart size={20} />}
+        title="発注書へ変換できます"
+        tone="action"
+      />
+    );
+  }
+
   return (
     <DetailShell
       actions={
@@ -226,6 +271,8 @@ export function PurchaseRequestDetail({
       title={rq.requestNumber}
       updatedAt={formatDateTime(rq.updatedAt)}
     >
+      {actionCard}
+
       <SummaryGrid>
         <FieldValue
           label="依頼番号"
@@ -279,7 +326,9 @@ export function PurchaseRequestDetail({
           />
           <Stepper.Step
             description={
-              rq.approvedAt ? formatDate(rq.approvedAt) : "第一承認グループ"
+              rq.approvedAt
+                ? formatDate(rq.approvedAt)
+                : approvalStepDescription(approval)
             }
             label="承認"
             loading={rq.status === "REQUESTED"}
@@ -292,18 +341,6 @@ export function PurchaseRequestDetail({
             loading={rq.status === "APPROVED"}
           />
         </Stepper>
-
-        {rq.status === "REJECTED" && (
-          <Alert
-            color="orange"
-            icon={<IconArrowBackUp size={16} />}
-            mt="md"
-            title="差し戻されました"
-            variant="light"
-          >
-            {lastReject?.notes ?? "—"}（編集して再度承認依頼できます）
-          </Alert>
-        )}
 
         {rq.status === "CANCELLED" && (
           <Alert
@@ -318,50 +355,6 @@ export function PurchaseRequestDetail({
         )}
 
         <Group gap="xs" mt="md">
-          {canRequestApproval(rq) && (
-            <PrimaryButton
-              leftSection={<IconSend size={14} />}
-              loading={isPending}
-              onClick={() =>
-                run(
-                  () => requestPurchaseRequestApproval(rq.requestNumber),
-                  "承認依頼しました",
-                )
-              }
-            >
-              承認依頼
-            </PrimaryButton>
-          )}
-          {rq.status === "REQUESTED" &&
-            (canApprove ? (
-              <>
-                <ApproveButton
-                  loading={isPending}
-                  onClick={() =>
-                    run(
-                      () => approvePurchaseRequest(rq.requestNumber),
-                      "承認しました",
-                    )
-                  }
-                >
-                  承認
-                </ApproveButton>
-                <RejectButton onClick={() => setRejectOpen(true)} />
-              </>
-            ) : (
-              <Text c="dimmed" size="xs">
-                第一承認グループのメンバーのみ承認・差し戻しできます
-              </Text>
-            ))}
-          {rq.status === "APPROVED" && (
-            <PrimaryButton
-              leftSection={<IconShoppingCart size={14} />}
-              loading={isPending}
-              onClick={() => setConvertOpen(true)}
-            >
-              発注書へ変換
-            </PrimaryButton>
-          )}
           {rq.status === "ORDERED" && rq.purchaseOrderNumber && (
             <Anchor
               component={Link}
@@ -484,41 +477,6 @@ export function PurchaseRequestDetail({
           <HistoryPanel entries={auditEntries} />
         </Tabs.Panel>
       </Tabs>
-
-      {/* 差し戻し（理由必須 → REJECTED — 編集して再依頼可能） */}
-      <ModalShell
-        confirmColor="red"
-        confirmLabel="差し戻す"
-        loading={isPending}
-        onClose={() => setRejectOpen(false)}
-        onConfirm={() => {
-          if (!rejectReason.trim()) {
-            notifications.show({
-              title: "エラー",
-              message: "差し戻し理由を入力してください",
-              color: "red",
-            });
-            return;
-          }
-          run(
-            () => rejectPurchaseRequest(rq.requestNumber, rejectReason),
-            "差し戻しました",
-          );
-        }}
-        opened={rejectOpen}
-        size="sm"
-        title="差し戻しの確認"
-      >
-        <Textarea
-          autosize
-          label="差し戻し理由"
-          minRows={3}
-          onChange={(e) => setRejectReason(e.currentTarget.value)}
-          placeholder="理由を入力"
-          value={rejectReason}
-          withAsterisk
-        />
-      </ModalShell>
 
       {/* キャンセル（変換前のみ・理由必須） */}
       <ModalShell

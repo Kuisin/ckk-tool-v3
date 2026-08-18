@@ -3,12 +3,12 @@
 /**
  * ShippingOrderDetail — 出荷書 詳細 (SH21, design.md §8.2).
  *
- * SummaryGrid（番号 / 注文請書番号 link / 顧客 / 種別 / 出荷元拠点 / 出荷日 …）+
+ * SummaryGrid（番号 / 注文明細番号 link / 顧客 / 種別 / 出荷元拠点 / 出荷日 …）+
  * 明細テーブル（製品 / ロット / 数量 / 備考）+
  * Tabs: 概要 / 納品書（DRN 一覧 + 作成ボタン）/ 履歴。
  *
  * Actions: 編集（DRAFT のみ）/ 確定（DRAFT → CONFIRMED）/
- * 出荷（CONFIRMED → SHIPPED + 注文請書の出荷状態再計算）/
+ * 出荷（CONFIRMED → SHIPPED + 注文明細の出荷状態再計算）/
  * キャンセル（DRAFT のみ hard delete, 確認モーダル・赤）。
  */
 
@@ -154,18 +154,25 @@ export function ShippingOrderDetail({
           value={<DocNumber>{order.shippingNumber}</DocNumber>}
         />
         <FieldValue
-          label="注文請書番号"
+          label="注文明細番号"
           value={
-            <Anchor
-              onClick={() =>
-                router.push(
-                  `/production/sales-orders/${order.salesOrderNumber}`,
-                )
-              }
-              size="sm"
-            >
-              <DocNumber c="blue">{order.salesOrderNumber}</DocNumber>
-            </Anchor>
+            order.orderLineNumbers.length > 0 ? (
+              <Stack gap={2}>
+                {order.orderLineNumbers.map((n) => (
+                  <Anchor
+                    key={n}
+                    onClick={() =>
+                      router.push(`/sales/order-lines/${encodeURIComponent(n)}`)
+                    }
+                    size="sm"
+                  >
+                    <DocNumber c="blue">{n}</DocNumber>
+                  </Anchor>
+                ))}
+              </Stack>
+            ) : (
+              "—"
+            )
           }
         />
         <FieldValue
@@ -176,7 +183,6 @@ export function ShippingOrderDetail({
               : order.customerName
           }
         />
-        <FieldValue label="製品（受注）" value={order.productName} />
         <FieldValue
           label="種別"
           value={<ShippingTypeBadge type={order.type} />}
@@ -186,7 +192,7 @@ export function ShippingOrderDetail({
           label="数量合計"
           value={
             <Text className="tabular-nums" size="sm" span>
-              {order.totalQuantity} / 受注 {order.salesOrderQuantity}
+              {order.totalQuantity}
             </Text>
           }
         />
@@ -387,8 +393,8 @@ export function ShippingOrderDetail({
         loading={isPending}
         message={
           order.type === "DISPATCH"
-            ? `出荷書 ${order.shippingNumber} を出荷済みにします。注文請書の出荷状態も再計算されます。`
-            : `出荷書 ${order.shippingNumber} を出荷済みにします（在庫保管のため注文請書の出荷状態は変わりません）。`
+            ? `出荷書 ${order.shippingNumber} を出荷済みにします。注文明細の出荷状態も再計算されます。`
+            : `出荷書 ${order.shippingNumber} を出荷済みにします（在庫保管のため注文明細の出荷状態は変わりません）。`
         }
         onClose={() => setShipOpen(false)}
         onConfirm={() =>

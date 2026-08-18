@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import { WorkOrderDetail } from "@/components/production/work-orders/WorkOrderDetail";
-import { isApprover } from "@/lib/approvals";
+import { fetchApprovalState } from "@/lib/approvals";
 import { fetchAuditEntries } from "@/lib/audit";
 import { requireAppRead } from "@/lib/authz-page";
 import { listMemos } from "@/lib/document-memos";
@@ -36,29 +36,21 @@ export default async function ProductionApprovalsDetailPage({
   const workOrderNumber = Number(id);
   if (!Number.isInteger(workOrderNumber) || workOrderNumber < 1) notFound();
 
-  const [
-    workOrder,
-    auditEntries,
-    canApproveFirst,
-    canApproveSecond,
-    approvalTrail,
-    memos,
-  ] = await Promise.all([
-    fetchWorkOrder(workOrderNumber),
-    fetchAuditEntries("work_orders", String(workOrderNumber)),
-    isApprover("FIRST"),
-    isApprover("SECOND"),
-    fetchWorkOrderApprovalTrail(workOrderNumber),
-    listMemos("work_orders", String(workOrderNumber)),
-  ]);
+  const [workOrder, auditEntries, approval, approvalTrail, memos] =
+    await Promise.all([
+      fetchWorkOrder(workOrderNumber),
+      fetchAuditEntries("work_orders", String(workOrderNumber)),
+      fetchApprovalState("work_orders", String(workOrderNumber)),
+      fetchWorkOrderApprovalTrail(workOrderNumber),
+      listMemos("work_orders", String(workOrderNumber)),
+    ]);
   if (!workOrder) notFound();
 
   return (
     <WorkOrderDetail
+      approval={approval}
       approvalTrail={approvalTrail}
       auditEntries={auditEntries}
-      canApproveFirst={canApproveFirst}
-      canApproveSecond={canApproveSecond}
       memos={memos}
       variant="approval"
       workOrder={workOrder}

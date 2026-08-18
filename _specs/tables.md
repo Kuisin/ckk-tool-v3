@@ -1,4 +1,29 @@
 ## Tables (Database)
+
+> **この文書はデータモデルの設計意図**であり、**実装の正ではない**。
+> 実装の正は `shared-db/prisma/schema/*.prisma`（PG スキーマごとに 1 ファイル）で、
+> マイグレーションも `shared-db` が持つ。列の型・既定値・索引を確かめるときは
+> 必ずスキーマを見ること。
+>
+> 以下は現在の差分（実装と突き合わせて確認済み）。
+>
+> **仕様にあるが実装されていない（3）** — 設計だけで作られていない:
+> `system_logs` / `ad_sync_logs` / `material_purchase_approvers`
+> （DB にも存在しない。使う前に作る必要がある）
+>
+> **実装にあるが本書に未記載（31）** — 後から足した機能の分:
+> - `directory.prisma`: `employee_directory` / `ldap_sync_log`
+> - `intake.prisma`: （`order_lines` は本書に記載済み）
+> - `inventory.prisma`: `storage_locations` / `storage_shelves`
+> - `kiosk.prisma`: `kiosk_cards` / `kiosk_device_locations` / `kiosk_device_logs` / `kiosk_devices` / `kiosk_floor_maps` / `kiosk_link_requests` / `kiosk_sessions`
+> - `notification.prisma`: `notifications` / `push_subscriptions` / `user_notification_settings`
+> - `product-routes.prisma`: `product_process_route_version_steps` / `product_process_route_versions` / `product_process_routes`
+> - `production-master.prisma`: `work_location_groups` / `work_locations`
+> - `production.prisma`: `work_order_step_actuals` / `work_order_step_plans`
+> - `purchase.prisma`: `purchase_request_items` / `purchase_requests`
+> - `sys.prisma`: `document_attachments` / `document_memo_revisions` / `document_memos` / `file_folder_grants` / `link_blacklist` / `link_index` / `user_home_settings`
+>
+> 追記する場合は、スキーマからコピーせず**設計意図だけ**を書くこと。
 ### Auth
 ```
 Table users {
@@ -511,7 +536,7 @@ Table quote_items {
 }
 
 // ===========================
-// 受注請書（§2）ORD-YYYYMM-NNNNN
+// 注文請書（§2）ORD-YYYYMM-NNNNN
 // ===========================
 
 Table order_acceptances {
@@ -522,7 +547,7 @@ Table order_acceptances {
   customer_branch_bp_id uuid [ref: > business_partners.id]
   customer_order_ref varchar               // 顧客注文書番号（FAX受取）
   status          ORDER_ACCEPTANCE_STATUS [not null, default: 'PENDING']
-  total_amount    numeric(12,2)            // 注文請書から自動計算
+  total_amount    numeric(12,2)            // 注文明細から自動計算
   order_doc_file_id uuid [ref: > files.id] // 受領した注文書 PDF
   notes           text
   created_by      uuid [ref: > users.id]
@@ -537,30 +562,55 @@ Enum ORDER_ACCEPTANCE_STATUS {
 }
 
 // ===========================
-// 注文請書（§3）ORD-YYYYMM-NNNNN-NN
+// 注文明細（§3）ORD-YYYYMM-NNNNN-NN
 // ===========================
 
-Table sales_orders {
+// 注文明細 = 注文請書（order_acceptances）の明細行そのもの。
+// 別テーブルではない — 旧 sales_orders は order_lines に統合済み。
+// 注文請書 1 行 = 注文明細 1 行で固定（分割も統合もしない）。
+// 確定前は branch / amount が null で status = DRAFT、確定時に sort_order 順で
+// branch 1..N を採番し金額を凍結する。以後 branch は不変。
+Table order_lines {
   id              uuid [pk]
-  sales_order_number varchar [unique, not null]
-  order_acceptance_id uuid [not null, ref: > order_acceptances.id]
-  product_id      varchar [not null, ref: > products.id]
-  lot_number      int [unique]             // 通し連番（指示書と共用）
+  acceptance_year_month char(6) [not null]
+  acceptance_seq  int [not null]
+  branch          int                      // 枝番。確定時に採番（未確定は null）
+  sort_order      int [not null, default: 0]
+
+  // 明細内容（抽出直後は product_text のみ。突合後に product_id）
+  product_id      int [ref: > products.id]
+  product_text    varchar
   order_type      ORDER_TYPE [not null]
   quantity        int [not null]
-  unit_price      numeric(12,2) [not null]
-  amount          numeric(12,2) [not null]
+  unit_price      numeric(12,2)
+  amount          numeric(12,2)            // 確定時に quantity * unit_price
   delivery_date   date
-  status          SALES_ORDER_STATUS [not null, default: 'DRAFT']
-  end_user_bp_id  uuid [ref: > business_partners.id]  // 任意
-  is_locked       boolean [not null, default: false]  // 承認依頼中のロック
   notes           text
-  created_by      uuid [ref: > users.id]
+
+  // 実行（旧 sales_orders 由来）
+  status          ORDER_LINE_STATUS [not null, default: 'DRAFT']
+  lot_number      int [unique]             // 通し連番（指示書と共用）
+  is_locked       boolean [not null, default: false]  // 承認依頼中のロック
+  end_user_bp_id  uuid [ref: > business_partners.id]  // 行ごとに異なり得る
+  confirmed_at    timestamp
+  cancelled_at    timestamp
   created_at      timestamp
   updated_at      timestamp
+
+  // 顧客・注文書番号・見積キー・作成者はヘッダ（order_acceptances）から読む。
+  // 行に複写すると乖離するため持たない。
+
+  indexes {
+    (acceptance_year_month, acceptance_seq, branch) [unique]
+  }
 }
 
-Enum SALES_ORDER_STATUS {
+Ref: order_lines.(acceptance_year_month, acceptance_seq) > order_acceptances.(year_month, seq)
+
+// 確定済み（DRAFT 以外）は公開番号と金額が揃っていること —
+// CHECK order_lines_confirmed_complete で DB 側にも置いている。
+
+Enum ORDER_LINE_STATUS {
   DRAFT
   CONFIRMED
   IN_PRODUCTION
@@ -576,7 +626,7 @@ Enum SALES_ORDER_STATUS {
 Table work_orders {
   id              uuid [pk]
   work_order_number int [unique, not null]  // 通し連番
-  sales_order_id  uuid [not null, ref: > sales_orders.id]
+  order_line_id   uuid [not null, ref: > order_lines.id]
   type            WORK_ORDER_TYPE [not null]
   planned_quantity int [not null]
   material_id     varchar [ref: > materials.id]
@@ -606,11 +656,10 @@ Enum WORK_ORDER_STATUS {
   CANCELLED
 }
 
+// 段数非依存 — 何段目まで進んでいるかは approval_requests.step_no が持つ。
 Enum WORK_ORDER_APPROVAL_STATUS {
   NONE
-  PENDING_1ST
-  APPROVED_1ST
-  PENDING_2ND
+  PENDING         // 承認フロー進行中
   APPROVED
   REJECTED
 }
@@ -751,26 +800,64 @@ Table work_order_step_links {
 // 承認（§6）
 // ===========================
 
+// 承認グループ = 承認者の集合。「何段目か」は持たない — それは
+// approval_flow_steps が書類種別ごとに決める。
 Table approval_groups {
   id              serial [pk]
-  type            APPROVAL_GROUP_TYPE [not null]
   name            json [not null]         // { ja: '', en: '' }
   is_active       boolean [not null, default: true]
 }
 
-Enum APPROVAL_GROUP_TYPE {
-  FIRST           // 第一承認（生産判断：工場長・部長クラス）
-  SECOND          // 第二承認（部門承認：部長クラス）
-  WORKFLOW_CHANGE // 製造ワークフロー変更承認
-}
-
+// 常任 = valid_from / valid_until とも NULL。
+// 期間限定 = 両方に日時（片側だけは CHECK で禁止）。実効判定の唯一の定義は
+// lib/approval-membership.ts isMemberEffective()。代理（approval_delegates）
+// とは別概念 — 代理は「本来の承認者の代わりに押す」。
 Table approval_group_members {
   group_id        int [not null, ref: > approval_groups.id]
   user_id         uuid [not null, ref: > users.id]
   is_active       boolean [not null, default: true]
+  valid_from      timestamp
+  valid_until     timestamp
+  note            text
   indexes {
     (group_id, user_id) [pk]
   }
+}
+
+// ===========================
+// 承認フロー定義（書類種別ごとに 1 本）
+// ===========================
+//
+// target_type は approval_requests.target_type と同じ値（= テーブル名）。
+// 新しい enum を作らないのは既存の多態規約（audit と同じ）に合わせるため。
+// 値の範囲は DB 側の CHECK 制約と TS 側の APPROVAL_TARGET_TYPES で守る。
+// 管理 UI: 承認設定（MS0B, /master/approval-settings）。
+
+Table approval_flows {
+  target_type     varchar [pk]  // work_orders / order_acceptances /
+                                // material_purchase_orders / purchase_requests
+  updated_by      uuid [ref: > users.id]
+  updated_at      timestamp
+}
+
+// step_no は 1..N の連番（詰めて保存）。並べ替えは全削除 + 再作成
+// （進行中の依頼はこの行を参照していない — flow_snapshot を持つため）。
+Table approval_flow_steps {
+  id              serial [pk]
+  target_type     varchar [not null, ref: > approval_flows.target_type]
+  step_no         int [not null]
+  name            json [not null]         // { ja: '', en: '' } 例「第一承認」
+  group_id        int [not null, ref: > approval_groups.id]  // 削除は Restrict
+  mode            APPROVAL_MODE [not null, default: 'ANY']
+
+  indexes {
+    (target_type, step_no) [unique]
+  }
+}
+
+Enum APPROVAL_MODE {
+  ANY   // いずれか 1 名の承認でこの段は通過
+  ALL   // 対象メンバー全員の承認が必要
 }
 
 // 期間限定代理設定
@@ -786,19 +873,47 @@ Table approval_delegates {
   created_at      timestamp
 }
 
+// 1 行 = 1 段の承認依頼。対象は多態（target_type = テーブル名 /
+// target_id = 業務キー — audit と同じ規約）。進行中は
+// (target_type, target_id) につき常に 1 行だけ PENDING（部分 unique index）。
+//
+// flow_snapshot は依頼時点のフロー全段のコピー
+// [{ stepNo, name, groupId, groupName, mode }]。これを持つことで
+// (a) 進行中の書類が後からのフロー編集に影響されず、(b) Stepper が 1 行
+// 読むだけで全体を描ける。同じ配列がフロー中の全依頼行に載るのは承知の
+// うえの非正規化。
 Table approval_requests {
   id              uuid [pk]
-  work_order_id   uuid [not null, ref: > work_orders.id]
-  step            APPROVAL_STEP [not null]
+  target_type     varchar [not null]
+  target_id       varchar [not null]
+  step_no         int [not null]          // 1..N
+  step_count      int [not null]          // 依頼時点の総段数
+  group_id        int [ref: > approval_groups.id]  // 依頼時点の承認グループ
+  mode            APPROVAL_MODE [not null, default: 'ANY']
+  flow_snapshot   json [not null]
   status          APPROVAL_REQUEST_STATUS [not null, default: 'PENDING']
   requested_by    uuid [ref: > users.id]
   requested_at    timestamp
   notes           text
+
+  indexes {
+    (target_type, target_id)
+    status
+  }
 }
 
-Enum APPROVAL_STEP {
-  FIRST
-  SECOND
+// 依頼時点で「この段で承認しうる人」のスナップショット。
+// ALL では必須チェックリスト（全枠が acted_at で埋まると段が閉じる）、
+// ANY では表示・通知用。acted_by は代理が押した場合の実行者。
+Table approval_request_approvers {
+  approval_request_id uuid [not null, ref: > approval_requests.id]
+  user_id         uuid [not null, ref: > users.id]
+  acted_at        timestamp
+  acted_by        uuid [ref: > users.id]
+
+  indexes {
+    (approval_request_id, user_id) [pk]
+  }
 }
 
 Enum APPROVAL_REQUEST_STATUS {
@@ -926,7 +1041,7 @@ Table inventory_reservations {
   id              uuid [pk]
   inventory_type  INVENTORY_TYPE [not null]
   inventory_id    uuid [not null]
-  sales_order_id  uuid [ref: > sales_orders.id]
+  order_line_id   uuid [ref: > order_lines.id]
   work_order_id   uuid [ref: > work_orders.id]
   quantity        numeric(12,3) [not null]
   status          RESERVATION_STATUS [not null, default: 'RESERVED']
@@ -1023,6 +1138,7 @@ Table material_purchase_order_items {
 }
 
 // 発注承認者（承認グループ or 個人）
+// ⚠️ 未実装 — 設計のみ（素材発注の承認者）。Prisma スキーマにも DB にも存在しない。
 Table material_purchase_approvers {
   id              uuid [pk]
   purchase_order_id uuid [not null, ref: > material_purchase_orders.id]
@@ -1056,7 +1172,7 @@ Table material_receipts {
 
 Table shipping_orders {
   id              uuid [pk]
-  sales_order_id  uuid [not null, ref: > sales_orders.id]
+  order_line_id   uuid [not null, ref: > order_lines.id]
   work_order_id   uuid [ref: > work_orders.id]
   from_plant_id uuid [ref: > plants.id]   // 出荷元拠点
   type            SHIPPING_TYPE [not null]
@@ -1203,7 +1319,7 @@ Table design_requests {
   request_number  varchar [unique, not null]
   trigger         DESIGN_TRIGGER [not null]
   quote_id        uuid [ref: > quotes.id]           // 見積時
-  sales_order_id  uuid [ref: > sales_orders.id]     // 受注時
+  order_line_id   uuid [ref: > order_lines.id]      // 受注時
   product_id      varchar [ref: > products.id]
   description     text
   status          DESIGN_STATUS [not null, default: 'PENDING']
@@ -1443,7 +1559,7 @@ Table files {
 //   EST-YYYYMM-NNNNN（試算）
 //   QOT-YYYYMM-NNNNN（見積書）
 //   ORD-YYYYMM-NNNNN（注文受取書）
-//   ORD-YYYYMM-NNNNN-NN（注文請書）
+//   ORD-YYYYMM-NNNNN-NN（注文明細）
 //   DRN-YYYYMM-NNNNN（納品書）
 //   INV-YYYYMM-NNNNN（請求書）
 //   指示書・ロット番号: 通し連番 (int)
@@ -1473,6 +1589,7 @@ Table feature_flags {
 // -----------------------------
 // System Log（統合ログ）
 // -----------------------------
+// ⚠️ 未実装 — 設計のみ（システム操作ログ）。Prisma スキーマにも DB にも存在しない。
 Table system_logs {
   id              uuid [pk]
   user_id         uuid
@@ -1512,6 +1629,7 @@ Enum SYNC_STATUS {
   FAILED
 }
 
+// ⚠️ 未実装 — 設計のみ（AD 同期ログ）。Prisma スキーマにも DB にも存在しない。
 Table ad_sync_logs {
   id              serial      [pk]
   sync_type       varchar     [not null]           // full, delta, single

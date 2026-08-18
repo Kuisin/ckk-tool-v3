@@ -1,5 +1,5 @@
 /**
- * POST /api/intake/upload — 受注請書の優先取込（multipart: file）。
+ * POST /api/intake/upload — 注文請書の優先取込（multipart: file）。
  *
  * 画面の「優先取込」から呼ばれ、**保存 + IMPORT 行の採番までを同期実行**して
  * すぐ返す（数百 ms）。重い抽出（po-extract、1 件 約30〜60秒）は

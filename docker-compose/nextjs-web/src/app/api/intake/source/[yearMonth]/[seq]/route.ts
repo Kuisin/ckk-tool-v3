@@ -1,5 +1,5 @@
 /**
- * GET /api/intake/source/[yearMonth]/[seq] — 受注請書の取込元ファイル配信。
+ * GET /api/intake/source/[yearMonth]/[seq] — 注文請書の取込元ファイル配信。
  *
  * 取込元は files 行（source_file_id）+ SeaweedFS のオブジェクト —
  * 添付（document_attachments）ではないため /api/attachments では配信

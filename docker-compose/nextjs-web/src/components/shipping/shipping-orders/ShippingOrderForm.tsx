@@ -3,14 +3,14 @@
 /**
  * ShippingOrderForm — 出荷書 新規作成 / 編集 (SH01, design.md §8.3).
  *
- * 新規: 注文請書 SearchSelect（必須）を選択すると、サーバーアクション
- * fetchShippingSourceInfo で注文請書情報 + 完了済み指示書（ロット）を取得し、
+ * 新規: 注文明細 SearchSelect（必須）を選択すると、サーバーアクション
+ * fetchShippingSourceInfo で注文明細情報 + 完了済み指示書（ロット）を取得し、
  * 明細を「完了指示書 1 件 = 1 行」（製品 = 受注製品 / ロット = 指示書番号 /
  * 数量 = 最終工程の良品数）で既定生成する。行は追加・削除可能
  * （追加行の製品は受注製品を既定、ロットは手入力任意）。
  * 種別（発送 / 在庫保管）・出荷元拠点・備考をヘッダで指定する。
  *
- * 編集: 下書きのみ（ガードはサーバー側でも実施）。注文請書は作成後変更不可。
+ * 編集: 下書きのみ（ガードはサーバー側でも実施）。注文明細は作成後変更不可。
  */
 
 import {
@@ -35,8 +35,8 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useTransition } from "react";
 import { z } from "zod";
 import {
+  searchOrderLineOptions,
   searchProductOptions,
-  searchSalesOrderOptions,
 } from "@/app/(dashboard)/_shared/option-search";
 import {
   createShippingOrder,
@@ -63,6 +63,9 @@ const SHIPPING_TYPES = ["DISPATCH", "STOCK_STORAGE"] as const;
 
 const itemSchema = z.object({
   rowId: z.string(),
+  /** 出荷元の注文明細（1 出荷書に複数載せられる）。 */
+  orderLineId: z.string().nullable(),
+  orderLineNumber: z.string().nullable(),
   productId: z.string().min(1, "製品を選択してください"),
   productName: z.string(),
   lotNumber: z.number().int().min(1).nullable(),
@@ -71,7 +74,8 @@ const itemSchema = z.object({
 });
 
 const schema = z.object({
-  salesOrderId: z.string().min(1, "注文請書を選択してください"),
+  /** 顧客はヘッダが権威（1 出荷書 = 1 顧客）。 */
+  customerBpId: z.string().min(1, "注文明細を選択してください"),
   type: z.enum(SHIPPING_TYPES),
   fromPlantId: z.string().nullable(),
   notes: z.string(),
@@ -89,8 +93,12 @@ const emptyItem = (
   productName = "",
   lotNumber: number | null = null,
   quantity = 1,
+  orderLineId: string | null = null,
+  orderLineNumber: string | null = null,
 ): ItemForm => ({
   rowId: newRowId(),
+  orderLineId,
+  orderLineNumber,
   productId,
   productName,
   lotNumber,
@@ -100,12 +108,14 @@ const emptyItem = (
 
 function toFormValues(order: ShippingOrder): FormValues {
   return {
-    salesOrderId: order.salesOrderId,
+    customerBpId: order.customerId,
     type: order.type,
     fromPlantId: order.fromPlantId,
     notes: order.notes ?? "",
     items: order.items.map((it) => ({
       rowId: newRowId(),
+      orderLineId: it.orderLineId,
+      orderLineNumber: it.orderLineNumber,
       productId: it.productId,
       productName: it.productName,
       lotNumber: it.lotNumber,
@@ -130,20 +140,23 @@ export function ShippingOrderForm({
   const [isPending, startTransition] = useTransition();
   const orderId = mode === "edit" ? order?.id : undefined;
 
-  // 選択中注文請書の情報（完了指示書・在庫ロット・受注数量の案内表示用）。
+  // 選択中注文明細の情報（完了指示書・在庫ロット・受注数量の案内表示用）。
   const [soInfo, setSoInfo] = useState<ShippingSourceInfo | null>(null);
-  // 注文請書変更の競合ガード — 最後の要求のみ採用する。
+  // 注文明細変更の競合ガード — 最後の要求のみ採用する。
   const soToken = useRef(0);
 
-  // 編集時もロットピッカー用に在庫ロット情報をロードする（SO は変更不可）。
-  const editSalesOrderId = mode === "edit" ? (order?.salesOrderId ?? "") : "";
+  // 現在ピッカーで選んでいる注文明細（明細行の追加元）。
+  const [pickedLineId, setPickedLineId] = useState<string>("");
+  // 編集時もロットピッカー用に在庫ロット情報をロードする。
+  const editOrderLineId =
+    mode === "edit" ? (order?.items[0]?.orderLineId ?? "") : "";
   useEffect(() => {
-    if (!editSalesOrderId) return;
+    if (!editOrderLineId) return;
     const token = ++soToken.current;
-    fetchShippingSourceInfo(editSalesOrderId).then((info) => {
+    fetchShippingSourceInfo(editOrderLineId).then((info) => {
       if (soToken.current === token) setSoInfo(info);
     });
-  }, [editSalesOrderId]);
+  }, [editOrderLineId]);
 
   const form = useForm<FormValues>({
     validate: zodResolver(schema),
@@ -151,7 +164,7 @@ export function ShippingOrderForm({
       mode === "edit" && order
         ? toFormValues(order)
         : {
-            salesOrderId: "",
+            customerBpId: "",
             type: "DISPATCH",
             fromPlantId: null,
             notes: "",
@@ -160,20 +173,24 @@ export function ShippingOrderForm({
   });
 
   /**
-   * 注文請書選択 → サーバーから受注情報 + 完了指示書を取得し、明細を
+   * 注文明細選択 → サーバーから受注情報 + 完了指示書を取得し、明細を
    * 「完了指示書 1 件 = 1 行」で既定生成する（完了指示書なしは空行1件）。
    */
-  const onSalesOrderChange = (salesOrderId: string | null) => {
-    form.setFieldValue("salesOrderId", salesOrderId ?? "");
-    if (!salesOrderId) {
+  const onOrderLineChange = (orderLineId: string | null) => {
+    setPickedLineId(orderLineId ?? "");
+    if (!orderLineId) {
       setSoInfo(null);
       return;
     }
     const token = ++soToken.current;
-    fetchShippingSourceInfo(salesOrderId).then((info) => {
+    fetchShippingSourceInfo(orderLineId).then((info) => {
       if (soToken.current !== token) return;
       setSoInfo(info);
       if (!info) return;
+      // 顧客はヘッダが権威 — 最初に選んだ注文明細の顧客で確定する。
+      if (!form.values.customerBpId && info.customerBpId) {
+        form.setFieldValue("customerBpId", info.customerBpId);
+      }
       const defaults =
         info.completedWorkOrders.length > 0
           ? info.completedWorkOrders.map((wo) =>
@@ -182,10 +199,26 @@ export function ShippingOrderForm({
                 info.productName,
                 wo.workOrderNumber,
                 wo.outputQuantity,
+                info.orderLineId,
+                info.orderLineNumber,
               ),
             )
-          : [emptyItem(info.productId, info.productName)];
-      form.setFieldValue("items", defaults);
+          : [
+              emptyItem(
+                info.productId,
+                info.productName,
+                null,
+                1,
+                info.orderLineId,
+                info.orderLineNumber,
+              ),
+            ];
+      // 既に別の注文明細の行があるときは**置き換えず追記**する
+      // （1 出荷書に複数の注文明細を載せられるのがこの画面の要点）。
+      const keep = form.values.items.filter(
+        (it) => it.orderLineId && it.orderLineId !== info.orderLineId,
+      );
+      form.setFieldValue("items", [...keep, ...defaults]);
     });
   };
 
@@ -201,6 +234,7 @@ export function ShippingOrderForm({
         fromPlantId: values.fromPlantId,
         notes: values.notes || null,
         items: values.items.map((it) => ({
+          orderLineId: it.orderLineId,
           productId: it.productId,
           lotNumber: it.lotNumber,
           quantity: it.quantity,
@@ -212,7 +246,8 @@ export function ShippingOrderForm({
           ? await updateShippingOrder(orderId, payload)
           : await createShippingOrder({
               ...payload,
-              salesOrderId: values.salesOrderId,
+              customerBpId: values.customerBpId,
+              customerBranchBpId: null,
             });
       if (result.ok) {
         notifications.show({
@@ -258,22 +293,18 @@ export function ShippingOrderForm({
     >
       <FormSection title="基本情報">
         <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
-          {mode === "create" ? (
-            <SearchSelect
-              error={form.errors.salesOrderId}
-              label={
-                <HelpLabel {...fieldHelp("shippingOrder", "salesOrder")} />
-              }
-              onChange={onSalesOrderChange}
-              onSearch={searchSalesOrderOptions}
-              placeholder="注文請書を検索"
-              storageKey="sales-order"
-              value={form.values.salesOrderId || null}
-              withAsterisk
-            />
-          ) : (
-            <FieldValue label="注文請書" value={order?.salesOrderNumber} />
-          )}
+          {/* 注文明細ピッカー — 選ぶたびに明細行を**追記**する
+              （1 出荷書に複数の注文明細を全量・部分数量で載せられる）。 */}
+          <SearchSelect
+            error={form.errors.customerBpId}
+            label={<HelpLabel {...fieldHelp("shippingOrder", "orderLine")} />}
+            onChange={onOrderLineChange}
+            onSearch={searchOrderLineOptions}
+            placeholder="注文明細を検索して明細を追加"
+            storageKey="order-line"
+            value={pickedLineId || null}
+            withAsterisk={mode === "create"}
+          />
           <Input.Wrapper
             label={<HelpLabel {...fieldHelp("shippingOrder", "type")} />}
             withAsterisk
@@ -311,13 +342,13 @@ export function ShippingOrderForm({
             mt="sm"
             variant="light"
           >
-            在庫保管（予備製作分）は請求フロー外です。出荷しても注文請書の出荷状態は変わりません。
+            在庫保管（予備製作分）は請求フロー外です。出荷しても注文明細の出荷状態は変わりません。
           </Alert>
         )}
       </FormSection>
 
       <FormSection
-        description="注文請書を選択すると、完了済みの指示書（ロット）ごとに明細が既定生成されます（数量 = 残良品数、未記録は予定数量）。発送のロットは対象製品の在庫ロット（他の注文請書・在庫向け指示書の完成ロットを含む）から選択し、在庫数に対して検証されます。"
+        description="注文明細を選択すると、完了済みの指示書（ロット）ごとに明細が既定生成されます（数量 = 残良品数、未記録は予定数量）。発送のロットは対象製品の在庫ロット（他の注文明細・在庫向け指示書の完成ロットを含む）から選択し、在庫数に対して検証されます。"
         title="明細"
       >
         {soInfo && (
@@ -327,7 +358,7 @@ export function ShippingOrderForm({
             mb="sm"
             variant="light"
           >
-            {soInfo.salesOrderNumber}（{soInfo.customerName} /{" "}
+            {soInfo.orderLineNumber}（{soInfo.customerName} /{" "}
             {soInfo.productName}）: 受注数量 {soInfo.quantity} · 完了指示書{" "}
             {soInfo.completedWorkOrders.length} 件 · 在庫ロット{" "}
             {soInfo.stockLots.length} 件
@@ -383,7 +414,7 @@ export function ShippingOrderForm({
                         value: String(lot.lotNumber),
                         label: `#${lot.lotNumber}（現物 ${lot.quantity}${
                           lot.reserved > 0 ? ` / 予約 ${lot.reserved}` : ""
-                        }）${lot.fromThisSalesOrder ? "" : " · 他ロット"}`,
+                        }）${lot.fromThisOrderLine ? "" : " · 他ロット"}`,
                       }))}
                       label="ロット（在庫）"
                       maw={230}

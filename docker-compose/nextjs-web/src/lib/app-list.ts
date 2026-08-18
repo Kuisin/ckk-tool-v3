@@ -47,7 +47,7 @@ export interface AppEntry {
 
 export const appList: AppEntry[] = [
   // ─── 販売 ──────────────────────────────────────────────────────────────────
-  // 業務フロー順: 試算 → 価格表 → 見積書 → 受注請書（設計依頼書は並行フロー）
+  // 業務フロー順: 試算 → 価格表 → 見積書 → 注文請書（設計依頼書は並行フロー）
   {
     key: "trial-estimates",
     label: "試算",
@@ -77,11 +77,11 @@ export const appList: AppEntry[] = [
     requiredPermission: "quote",
   },
   {
-    // 受注請書 intake（§2）— 監視フォルダ / 優先取込の取込状況一覧が本体。
-    // 展開後の注文請書管理（PD01）は /production/sales-orders
+    // 注文請書 intake（§2）— 監視フォルダ / 優先取込の取込状況一覧が本体。
+    // 展開後の注文明細管理（PD01）は /sales/order-lines
     // （取込一覧のヘッダーからリンク）。
     key: "order-acceptances",
-    label: "受注請書",
+    label: "注文請書",
     operationCode: "SA04",
     href: "/sales/order-acceptances",
     icon: "IconClipboardCheck",
@@ -89,9 +89,21 @@ export const appList: AppEntry[] = [
     requiredPermission: "order_acceptance",
   },
   {
+    // 注文請書を確定すると明細ごとに ORD-…-NN が採番される。その明細を
+    // 注文請書をまたいで横断表示し、指示書・出荷・引当の進捗を追う画面。
+    // 作成・編集は注文請書 (SA04) の明細エディタが唯一の入口。
+    key: "order-lines",
+    label: "注文明細",
+    operationCode: "SA05",
+    href: "/sales/order-lines",
+    icon: "IconListDetails",
+    category: "販売",
+    requiredPermission: "order_acceptance",
+  },
+  {
     key: "design-requests",
     label: "設計依頼書",
-    operationCode: "SA05",
+    operationCode: "SA06",
     href: "/sales/design-requests",
     icon: "IconRuler2",
     category: "販売",
@@ -286,10 +298,12 @@ export const appList: AppEntry[] = [
     requiredPermission: "master",
   },
   {
+    // key は feature_flags のキー（app:<key>:main）— 変えると main で
+    // アプリが消えるので、改称してもキーは据え置く。
     key: "master-approval-groups",
-    label: "承認グループ",
+    label: "承認設定",
     operationCode: "MS0B",
-    href: "/master/approval-groups",
+    href: "/master/approval-settings",
     icon: "IconUsersGroup",
     category: "マスタ",
     requiredPermission: "master",
@@ -459,6 +473,17 @@ export const appList: AppEntry[] = [
     operationCode: "SY0B",
     href: "/settings/links",
     icon: "IconLink",
+    category: "システム",
+    requiredPermission: "system",
+  },
+  {
+    // 注文書取込 — 受注請書の監視フォルダ（INTAKE_DIR）へまとめて投入し、
+    // 待ち / 取込済 / 失敗を見る。取り込まれた中身は SA04 受注請書で見る。
+    key: "order-intake",
+    label: "注文書取込",
+    operationCode: "SY0C",
+    href: "/settings/order-intake",
+    icon: "IconFileImport",
     category: "システム",
     requiredPermission: "system",
   },

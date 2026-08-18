@@ -37,7 +37,7 @@ const TABLE_ROUTES: Record<string, TableRoute> = {
     directDetail: true,
   },
   order_acceptances: {
-    appLabel: "受注請書",
+    appLabel: "注文請書",
     listPath: "/sales/order-acceptances",
     directDetail: true,
   },
@@ -47,9 +47,9 @@ const TABLE_ROUTES: Record<string, TableRoute> = {
     directDetail: true,
   },
   // 生産
-  sales_orders: {
-    appLabel: "注文請書",
-    listPath: "/production/sales-orders",
+  order_lines: {
+    appLabel: "注文明細",
+    listPath: "/sales/order-lines",
     directDetail: true,
   },
   work_orders: {
@@ -149,9 +149,13 @@ const TABLE_ROUTES: Record<string, TableRoute> = {
   },
   defect_types: { appLabel: "不良種類", listPath: "/master/defect-types" },
   approval_groups: {
-    appLabel: "承認グループ",
-    listPath: "/master/approval-groups",
+    appLabel: "承認設定",
+    listPath: "/master/approval-settings",
     directDetail: true,
+  },
+  approval_flows: {
+    appLabel: "承認設定",
+    listPath: "/master/approval-settings",
   },
   work_location_groups: {
     appLabel: "作業場所",

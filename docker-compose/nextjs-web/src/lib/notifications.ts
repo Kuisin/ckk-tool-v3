@@ -8,7 +8,7 @@
  * 止めない・応答をブロックしない）。
  */
 
-import type { ApprovalGroupType } from "../../generated/client/client";
+import { effectiveMemberWhere } from "./approval-membership";
 import { SYSTEM_USER_ID } from "./audit";
 import { prisma } from "./db";
 import { sendNotificationMail } from "./mailer";
@@ -17,7 +17,7 @@ import { sendPushToUser } from "./push";
 export type NotificationType =
   | "APPROVAL_REQUEST" // 承認依頼 → 承認者へ
   | "APPROVAL_RESULT" // 承認/差し戻し → 依頼者へ
-  | "INTAKE" // 受注請書 自動取込の結果
+  | "INTAKE" // 注文請書 自動取込の結果
   | "PURCHASE" // 素材発注の状態遷移
   | "SHARE" // ページ共有（layout/share-actions）
   | "SYSTEM";
@@ -127,24 +127,42 @@ async function dispatchExternal(
 }
 
 /**
- * 承認グループ（有効メンバー + 期間内の代理人）へ通知。
- * 承認依頼の宛先解決に使う。
+ * 承認グループ（実効メンバー + 期間内の代理人）へ通知。承認依頼の宛先解決。
+ *
+ * 代理人の条件は resolveApprover と同じ — 原承認者（delegator）が今も実効
+ * メンバーであること。以前はここだけ所属を確認しておらず、「通知は届くのに
+ * 承認ボタンでは弾かれる」という食い違いがあった。
+ *
+ * userIds を渡すとその集合にだけ送る（ALL 段で、まだ押していない対象者
+ * だけに催促する用途）。
  */
-export async function notifyGroup(
-  groupType: ApprovalGroupType,
-  input: Omit<NotifyInput, "userIds">,
+export async function notifyApprovalGroup(
+  groupId: number,
+  input: Omit<NotifyInput, "userIds"> & { userIds?: string[] },
 ): Promise<void> {
+  if (input.userIds) {
+    const { userIds, ...rest } = input;
+    await notify({ ...rest, userIds });
+    return;
+  }
   const now = new Date();
+  const effective = effectiveMemberWhere(now);
   const [members, delegates] = await Promise.all([
     prisma.approvalGroupMember.findMany({
-      where: { isActive: true, group: { type: groupType, isActive: true } },
+      where: { groupId, group: { isActive: true }, ...effective },
       select: { userId: true },
     }),
     prisma.approvalDelegate.findMany({
       where: {
+        groupId,
         validFrom: { lte: now },
         validUntil: { gte: now },
-        group: { type: groupType, isActive: true },
+        group: { isActive: true },
+        delegator: {
+          approvalGroupMembers: {
+            some: { groupId, group: { isActive: true }, ...effective },
+          },
+        },
       },
       select: { delegateId: true },
     }),

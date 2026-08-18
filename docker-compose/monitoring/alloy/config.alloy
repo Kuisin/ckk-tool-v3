@@ -31,6 +31,30 @@ discovery.relabel "docker" {
     source_labels = ["__meta_docker_container_image"]
     target_label  = "image"
   }
+
+  // ── Coolify のアプリだけ名前を読める形に上書きする ─────────────────
+  // Coolify はコンテナ名も compose project もハッシュ（例:
+  // f110okf12c7iz5dglveg3qsh-034406048923）なので、そのままだと
+  // nextjs-web / po-extract / kiosk のログが Loki で判別できない。
+  // Coolify は本来の名前を `coolify.resourceName` ラベルに入れているので、
+  // それがあるコンテナだけ container / stack を差し替える
+  // （マッチしないコンテナは上のルールの値がそのまま残る）。
+  rule {
+    source_labels = ["__meta_docker_container_label_coolify_resourceName"]
+    regex         = "(.+)"
+    target_label  = "container"
+  }
+  rule {
+    source_labels = ["__meta_docker_container_label_coolify_projectName"]
+    regex         = "(.+)"
+    target_label  = "stack"
+  }
+  // 環境（development / production）— dev と main のログを分けて見るため。
+  rule {
+    source_labels = ["__meta_docker_container_label_coolify_environmentName"]
+    regex         = "(.+)"
+    target_label  = "environment"
+  }
 }
 
 loki.source.docker "all" {

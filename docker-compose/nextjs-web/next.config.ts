@@ -51,7 +51,7 @@ const nextConfig: NextConfig = {
     // アップロードは proxy.ts を通るので、**プロキシ側のボディ上限が実効上限**に
     // なる（既定 10MB）。超えた分は黙って切り捨てられ、サーバーログに
     // "Request body exceeded 10MB … Only the first 10MB will be available" が
-    // 出るだけ — 受け取ったファイルは壊れる。添付・受注請書取込が 20MB、
+    // 出るだけ — 受け取ったファイルは壊れる。添付・注文請書取込が 20MB、
     // フロアマップ図面が 10MB を許可しているため、multipart のオーバーヘッド
     // 込みで収まる値にしておく。個々の上限は各ハンドラ側で弾く。
     proxyClientMaxBodySize: "24mb",
@@ -134,6 +134,54 @@ const nextConfig: NextConfig = {
         destination: "/master/business-partners",
         permanent: true,
       })),
+
+      // 注文請書（PD01, /production/sales-orders）→ 注文明細（SA05,
+      // /sales/order-lines）。注文請書の明細に統合し、販売カテゴリへ移設した。
+      // 新規・編集画面は廃止（作成は注文請書の明細エディタ）なので、
+      // /new と /:id/edit は一覧・詳細へ寄せる。
+      {
+        source: "/production/sales-orders/new",
+        destination: "/sales/order-lines",
+        permanent: true,
+      },
+      {
+        source: "/production/sales-orders/:id/edit",
+        destination: "/sales/order-lines/:id",
+        permanent: true,
+      },
+      {
+        source: "/production/sales-orders/:path*",
+        destination: "/sales/order-lines/:path*",
+        permanent: true,
+      },
+      {
+        source: "/production/sales-orders",
+        destination: "/sales/order-lines",
+        permanent: true,
+      },
+
+      // 承認グループ (MS0B) → 承認設定。グループの箱を作るだけでなく、
+      // 書類種別ごとの承認ステップ（何段目にどのグループか）も持つようになった
+      // ため、旧パス名では中身と合わない。
+      {
+        source: "/master/approval-groups/:path*",
+        destination: "/master/approval-settings/:path*",
+        permanent: true,
+      },
+      {
+        source: "/master/approval-groups",
+        destination: "/master/approval-settings",
+        permanent: true,
+      },
+
+      // 承認グループのマニュアルも 承認設定 へ改称。MANUAL_APP_CATEGORY は
+      // カテゴリ移動用でスラッグの改称は見ないので、ここに個別に置く。
+      {
+        source: "/manual/:lang(ja|en|zh)/operations/masters/approval-group/:path*",
+        destination:
+          "/manual/:lang/operations/masters/approval-setting/:path*",
+        permanent: true,
+      },
 
       // マニュアルも 1 ページに統合。
       ...(["customer", "end-user", "supplier"] as const).map((old) => ({

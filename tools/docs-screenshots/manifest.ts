@@ -190,7 +190,7 @@ export const shots: Shot[] = [
       await page.getByRole("tab", { name: "PDF" }).waitFor();
     },
   },
-  // ── 販売: 受注請書（SA04）──────────────────────────────────────────────────
+  // ── 販売: 注文請書（SA04）──────────────────────────────────────────────────
   {
     id: "order-acceptance-list-01",
     docPage: "operations/sales/order-acceptance/user",
@@ -1028,11 +1028,20 @@ export const shots: Shot[] = [
       await page.getByText("キズ").first().waitFor();
     },
   },
-  // ── マスタ: 承認グループ（MS0B）────────────────────────────────────────────
+  // ── マスタ: 承認設定（MS0B）────────────────────────────────────────────────
   {
-    id: "master-approval-group-list-01",
-    docPage: "operations/masters/approval-group/user",
-    path: "/master/approval-groups",
+    id: "master-approval-setting-flow-01",
+    docPage: "operations/masters/approval-setting/user",
+    path: "/master/approval-settings",
+    steps: async (page) => {
+      await page.getByText("注文請書").first().waitFor();
+    },
+  },
+  {
+    // 一覧は既定タブがフローになったので、グループのタブを直に開く
+    id: "master-approval-setting-list-01",
+    docPage: "operations/masters/approval-setting/user",
+    path: "/master/approval-settings?tab=groups",
     steps: async (page) => {
       await page.getByText("第一承認グループ").first().waitFor();
     },
@@ -1081,7 +1090,7 @@ export const shots: Shot[] = [
     path: "/master/business-partners/new",
     steps: async (page) => {
       await page.getByText("ロール").first().scrollIntoViewIfNeeded();
-      await page.getByText("見積書・受注請書・請求書の宛先").first().waitFor();
+      await page.getByText("見積書・注文請書・請求書の宛先").first().waitFor();
     },
   },
   {
@@ -1455,17 +1464,17 @@ export const shots: Shot[] = [
     },
   },
   {
-    id: "master-approval-group-new-01",
-    docPage: "operations/masters/approval-group/user",
-    path: "/master/approval-groups/new",
+    id: "master-approval-setting-new-01",
+    docPage: "operations/masters/approval-setting/user",
+    path: "/master/approval-settings/new",
     steps: async (page) => {
-      await page.getByText("種別").first().waitFor();
+      await page.getByText("基本情報").first().waitFor();
     },
   },
   {
-    id: "master-approval-group-members-01",
-    docPage: "operations/masters/approval-group/user",
-    path: "/master/approval-groups",
+    id: "master-approval-setting-members-01",
+    docPage: "operations/masters/approval-setting/user",
+    path: "/master/approval-settings?tab=groups",
     steps: async (page) => {
       await page.getByText("第一承認グループ（デモ）").first().click();
       await page.getByRole("tab", { name: "メンバー" }).first().click();
@@ -1473,9 +1482,9 @@ export const shots: Shot[] = [
     },
   },
   {
-    id: "master-approval-group-member-add-01",
-    docPage: "operations/masters/approval-group/user",
-    path: "/master/approval-groups",
+    id: "master-approval-setting-member-add-01",
+    docPage: "operations/masters/approval-setting/user",
+    path: "/master/approval-settings?tab=groups",
     steps: async (page) => {
       await page.getByText("第一承認グループ（デモ）").first().click();
       await page.getByRole("tab", { name: "メンバー" }).first().click();
@@ -1484,9 +1493,9 @@ export const shots: Shot[] = [
     },
   },
   {
-    id: "master-approval-group-delegate-add-01",
-    docPage: "operations/masters/approval-group/user",
-    path: "/master/approval-groups",
+    id: "master-approval-setting-delegate-add-01",
+    docPage: "operations/masters/approval-setting/user",
+    path: "/master/approval-settings?tab=groups",
     steps: async (page) => {
       await page.getByText("第一承認グループ（デモ）").first().click();
       await page.getByRole("tab", { name: "代理設定" }).first().click();

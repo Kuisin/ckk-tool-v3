@@ -19,6 +19,8 @@ model File {
   attachments      DocumentAttachment[] @relation("AttachmentFile")
   acceptanceSources OrderAcceptance[]   @relation("AcceptanceSourceFile")
   kioskFloorMaps   KioskFloorMap[]      @relation("KioskFloorMapFile")
+  userAvatars      User[]               @relation("UserAvatarFile")
+  userAvatarThumbs User[]               @relation("UserAvatarThumbFile")
 
   @@map("files")
   @@schema("app")
@@ -117,12 +119,18 @@ model AuditLog {
   recordId   String?  @map("record_id") // 業務識別子（文書番号・エントリキー・id）
   beforeData Json?    @map("before_data")
   afterData  Json?    @map("after_data")
+  // 操作元のキオスク端末（共有タブレットからの操作のみ。Web からは null）。
+  // 誰が だけでなく **どの端末で** を残すため — 履歴一覧・履歴タブで
+  // 端末名バッジとして表示する。
+  kioskDeviceId String? @map("kiosk_device_id") @db.Uuid
   createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
-  user User? @relation("AuditLogUser", fields: [userId], references: [id])
+  user        User?        @relation("AuditLogUser", fields: [userId], references: [id])
+  kioskDevice KioskDevice? @relation("AuditLogKioskDevice", fields: [kioskDeviceId], references: [id], onDelete: SetNull)
 
   @@index([tableName, recordId])
   @@index([createdAt])
+  @@index([kioskDeviceId])
   @@map("audit_logs")
   @@schema("app")
 }
@@ -130,13 +138,15 @@ model AuditLog {
 // 文書添付（証憑等）。owner は多態参照（owner_type = @@map 名 / owner_id =
 // 各画面の業務キー文字列 — audit_logs の record_id と同じ規約）。
 // 実体は files（SeaweedFS）。用途: 発注書の承認後証憑・素材入荷の納品書控え・
-// 受注請書の取込元ファイルなど。
+// 注文請書の取込元ファイルなど。
 model DocumentAttachment {
   id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   ownerType  String   @map("owner_type") // material_purchase_orders / material_receipts / order_acceptances …
   ownerId    String   @map("owner_id") // 業務キー（PO-… / uuid / ORD-…）
   fileId     String   @map("file_id") @db.Uuid
   label      String? // 表示名・区分（注文書控え 等）
+  /// システムが付けた添付（取込元の原本など）。削除・差し替え不可。
+  isLocked   Boolean  @default(false) @map("is_locked")
   uploadedBy String?  @map("uploaded_by") @db.Uuid
   createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
@@ -145,5 +155,121 @@ model DocumentAttachment {
 
   @@index([ownerType, ownerId])
   @@map("document_attachments")
+  @@schema("app")
+}
+
+// 文書メモ / コメント（社内向けリッチテキスト）。owner の規約は
+// document_attachments・audit_logs と同じ多態参照（owner_type = @@map 名 /
+// owner_id = 業務キー文字列）。
+//
+// kind = MEMO   … 1 文書に 1 件（見積書 / 注文請書 / 指示書 / 出荷書 / 請求書）
+// kind = COMMENT… 1 文書に複数件の投稿スレッド（価格表 / 試算）
+// MEMO の単一性はアプリ側（lib/document-memos.ts の saveMemo）で担保する
+// — Prisma が部分 UNIQUE を表現できず、手書きすると migrate diff が濁るため。
+//
+// content は ProseMirror ドキュメント JSON。HTML 文字列では保存しない
+// （保存 XSS を構造的に排除する — lib/rich-text-core.ts で許可リスト検証し、
+// 表示は React 要素を組み立てて行う）。plain_text はその平文射影で、
+// 一覧プレビューと監査ログの可読性のために持つ。
+// アーカイブ（archived_at）は削除ではなく「畳む」— スレッドから流れた古い
+// やり取りを既定で折りたたみつつ、展開すればいつでも読める状態で残す。
+model DocumentMemo {
+  id         String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  ownerType  String    @map("owner_type") // quotes / sales_orders / work_orders / price_list_entries …
+  ownerId    String    @map("owner_id") // 業務キー（QOT-… / EST-… / 指示書番号 / エントリキー）
+  kind       String // MEMO | COMMENT
+  content    Json // ProseMirror doc（lib/rich-text-core.ts で検証）
+  plainText  String    @map("plain_text") // content の平文射影（プレビュー・監査用）
+  archivedAt DateTime? @map("archived_at") @db.Timestamptz(6) // 非 null = 折りたたみ表示
+  archivedBy String?   @map("archived_by") @db.Uuid
+  createdBy  String?   @map("created_by") @db.Uuid
+  updatedBy  String?   @map("updated_by") @db.Uuid
+  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt  DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  createdByUser  User? @relation("DocumentMemoCreatedBy", fields: [createdBy], references: [id])
+  updatedByUser  User? @relation("DocumentMemoUpdatedBy", fields: [updatedBy], references: [id])
+  archivedByUser User? @relation("DocumentMemoArchivedBy", fields: [archivedBy], references: [id])
+
+  revisions DocumentMemoRevision[]
+
+  @@index([ownerType, ownerId, createdAt])
+  @@map("document_memos")
+  @@schema("app")
+}
+
+// メモ / コメントの改訂履歴（証跡）。
+//
+// 目的は**セキュリティ・監査**: 誰がいつ何を書き換えたか、書き換え前の本文は
+// 何だったかを後から追えるようにする。audit_logs には平文の要約しか残らないため、
+// 復元・突き合わせに耐える完全な本文スナップショットをここに持つ。
+//
+// 1 行 = 1 操作。`content` はその操作**後**の本文（DELETE は削除直前の本文）。
+// memo_id は本体削除後も履歴を残すため FK を張らず、業務キー
+// （owner_type / owner_id）も併記して単独で追跡できるようにする。
+model DocumentMemoRevision {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  // 本体が消えても履歴は残す（削除の証跡が消えては監査にならない）ので
+  // nullable + onDelete: SetNull。業務キーは下の owner_type/owner_id で追える。
+  memoId    String?  @map("memo_id") @db.Uuid
+  ownerType String   @map("owner_type")
+  ownerId   String   @map("owner_id")
+  kind      String // MEMO | COMMENT
+  // CREATE | UPDATE | DELETE | ARCHIVE | RESTORE
+  action    String
+  content   Json // その操作後の本文（DELETE は削除直前の本文）
+  plainText String   @map("plain_text")
+  editedBy  String?  @map("edited_by") @db.Uuid
+  editedAt  DateTime @default(now()) @map("edited_at") @db.Timestamptz(6)
+
+  memo         DocumentMemo? @relation(fields: [memoId], references: [id], onDelete: SetNull)
+  editedByUser User?         @relation("DocumentMemoRevisionEditedBy", fields: [editedBy], references: [id])
+
+  @@index([memoId, editedAt])
+  @@index([ownerType, ownerId, editedAt])
+  @@map("document_memo_revisions")
+  @@schema("app")
+}
+
+// 外部リンクの索引（短縮リンク）。リッチテキスト中の外部 URL は保存時に
+// `/l/<code>` へ置き換え、実 URL はここだけが持つ。閲覧者はいきなり外部へ
+// 飛ばされず、`/l/<code>` の確認ページで遷移先を見てから続行する。
+//
+// 索引に集約する利点:
+//   - 遷移先を 1 か所で把握でき、後からブロック（link_blacklist）できる
+//   - ブロック判定を**クリック時**に行うので、登録済みリンクにも遡って効く
+// url は正規化して UNIQUE — 同じ URL は 1 コードに寄せる。
+model LinkIndex {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  code      String   @unique // 短縮コード（Crockford Base32・大文字）
+  url       String   @unique // 実際の遷移先（http/https のみ）
+  hostname  String // 判定・一覧用に切り出したホスト名（小文字）
+  hitCount  Int      @default(0) @map("hit_count")
+  lastUsedAt DateTime? @map("last_used_at") @db.Timestamptz(6)
+  createdBy String?  @map("created_by") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  createdByUser User? @relation("LinkIndexCreatedBy", fields: [createdBy], references: [id])
+
+  @@index([hostname])
+  @@map("link_index")
+  @@schema("app")
+}
+
+// リンクのブロック指定。`pattern` はホスト名の完全一致またはサフィックス
+// （例: "evil.example" は sub.evil.example にも一致）。判定は保存時と
+// 確認ページの両方で行うため、後から足したルールも既存リンクに効く。
+model LinkBlacklist {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  pattern   String   @unique // ホスト名（小文字）。前方の "*." は無視して suffix 一致
+  reason    String? // 画面に出すブロック理由
+  isActive  Boolean  @default(true) @map("is_active")
+  createdBy String?  @map("created_by") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  createdByUser User? @relation("LinkBlacklistCreatedBy", fields: [createdBy], references: [id])
+
+  @@map("link_blacklist")
   @@schema("app")
 }

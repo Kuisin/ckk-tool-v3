@@ -1,13 +1,41 @@
 /**
- * intake-core.test.ts — 受注請書抽出の正規化テスト。
+ * intake-core.test.ts — 注文請書抽出の正規化テスト。
  */
 
 import { describe, expect, it } from "vitest";
 import {
+  intakeFileName,
   normalizeDate,
   normalizeExtraction,
   normalizeOrderType,
+  parseIntakeFileNumber,
 } from "./intake-core";
+
+describe("取込ファイル名の番号（二重登録の防止）", () => {
+  it("番号付きの名前を分解する", () => {
+    expect(parseIntakeFileNumber("ORD-202608-00003-注文書 5.pdf")).toEqual({
+      number: "ORD-202608-00003",
+      yearMonth: "202608",
+      seq: 3,
+      rest: "注文書 5.pdf",
+    });
+  });
+
+  it("番号が無い / 形が違う名前は null", () => {
+    expect(parseIntakeFileNumber("注文書.pdf")).toBeNull();
+    expect(parseIntakeFileNumber("ORD-202608-3-注文書.pdf")).toBeNull();
+    expect(parseIntakeFileNumber("ORD-202608-00003.pdf")).toBeNull();
+  });
+
+  it("番号は付け替える（重ねない）", () => {
+    expect(intakeFileName("ORD-202608-00003", "注文書.pdf")).toBe(
+      "ORD-202608-00003-注文書.pdf",
+    );
+    expect(
+      intakeFileName("ORD-202608-00004", "ORD-202608-00003-注文書.pdf"),
+    ).toBe("ORD-202608-00004-注文書.pdf");
+  });
+});
 
 describe("normalizeOrderType", () => {
   it("表記ゆれを吸収", () => {

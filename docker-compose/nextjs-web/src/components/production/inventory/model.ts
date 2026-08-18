@@ -12,7 +12,7 @@ export interface InventoryTransactionRow {
   /** IN / OUT / RESERVE / RELEASE / ADJUST。 */
   transactionType: string;
   quantity: number;
-  /** work_order / shipping_order / sales_order / material_receipt …（null = なし）。 */
+  /** work_order / shipping_order / order_line / material_receipt …（null = なし）。 */
   referenceType: string | null;
   /** 解決済み参照ラベル（指示書 #N・ORD-…・SHP-… 等、mono 表示）。 */
   referenceLabel: string | null;
@@ -25,8 +25,8 @@ export interface InventoryReservationRow {
   quantity: number;
   /** RESERVED / CONFIRMED / RELEASED。 */
   status: string;
-  /** 関連注文請書番号（ORD-… 導出番号、リンク用）。 */
-  salesOrderNumber: string | null;
+  /** 関連注文明細番号（ORD-… 導出番号、リンク用）。 */
+  orderLineNumber: string | null;
   /** 関連指示書番号（リンク用）。 */
   workOrderNumber: number | null;
   reservedAt: string | null;

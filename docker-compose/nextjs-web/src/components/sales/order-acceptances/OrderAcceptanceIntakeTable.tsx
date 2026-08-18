@@ -1,14 +1,14 @@
 "use client";
 
 /**
- * OrderAcceptanceIntakeTable — 受注請書 取込状況一覧 (SA04, design.md §8.1)。
+ * OrderAcceptanceIntakeTable — 注文請書 取込状況一覧 (SA04, design.md §8.1)。
  *
  * 監視フォルダ（FOLDER）/ 優先取込（UPLOAD）/ 手入力（MANUAL）で作成された
- * 受注請書の取込・承認・展開の進捗を一覧する。
+ * 注文請書の取込・承認・展開の進捗を一覧する。
  * Columns: 番号 / 取込元 / ファイル名 / 顧客 / 明細数 / 状態 / エラー / 取込日時。
  *
  * ヘッダー: 「優先取込」FileButton（複数可 — 逐次 POST /api/intake/upload）+
- * 手入力新規 + 注文請書一覧（/production/sales-orders）へのリンク。
+ * 手入力新規 + 注文明細一覧（/sales/order-lines）へのリンク。
  * アップロードは保存までで即返り、**抽出はサーバー側の待ち行列**で 1 件ずつ
  * 走る（GPU が同時に 1 件しか捌けないため）。よってボタンのローディングは
  * 送信が終われば解除され、抽出を待たずに次のファイルを投げられる。
@@ -42,7 +42,42 @@ import { ListShell } from "@/components/ui/shells";
 import { useUrlSelectState, useUrlStringState } from "@/hooks/useUrlState";
 import { useIsMobile } from "@/hooks/useViewport";
 import { formatDateTime } from "@/lib/format";
+import { parseExtractError } from "@/lib/intake-extract-error";
 import { INTAKE_SOURCE_BADGE, type OrderAcceptanceListRow } from "./model";
+
+/** 抽出失敗の表示（分類済みメッセージ — 旧形式の 1 行もそのまま読める）。 */
+function ExtractErrorBadge({
+  stored,
+  size = "sm",
+}: {
+  stored: string;
+  size?: "xs" | "sm";
+}) {
+  const failure = parseExtractError(stored);
+  return (
+    <Tooltip
+      label={[
+        failure.summary,
+        failure.cause,
+        `対処: ${failure.hint}`,
+        failure.detail,
+      ]
+        .filter(Boolean)
+        .join("\n")}
+      multiline
+      w={340}
+      withinPortal
+    >
+      <Badge
+        color={failure.retrying ? "orange" : "red"}
+        size={size}
+        variant="light"
+      >
+        {failure.retrying ? "再試行中" : "抽出失敗"}
+      </Badge>
+    </Tooltip>
+  );
+}
 
 const BASE_PATH = "/sales/order-acceptances";
 const UPLOAD_ACCEPT = ".pdf,.png,.jpg,.jpeg,.webp";
@@ -73,9 +108,12 @@ export function OrderAcceptanceIntakeTable({
   const [status, setStatus] = useUrlSelectState("status");
   const [uploading, setUploading] = useState(false);
 
-  // 取込中（抽出待ち）の行がある間は 30 秒ごとに自動更新（進捗の可視化）。
+  // 取込中（抽出待ち・自動再試行の待機中）の行がある間は 30 秒ごとに
+  // 自動更新（進捗の可視化）。
   const hasImporting = rows.some(
-    (r) => r.status === "IMPORT" && !r.extractError,
+    (r) =>
+      r.status === "IMPORT" &&
+      (!r.extractError || parseExtractError(r.extractError).retrying),
   );
   useEffect(() => {
     if (!hasImporting) return;
@@ -245,11 +283,7 @@ export function OrderAcceptanceIntakeTable({
       sortValue: (r) => (r.extractError ? 1 : 0),
       render: (r) =>
         r.extractError ? (
-          <Tooltip label={r.extractError} multiline w={320} withinPortal>
-            <Badge color="red" size="sm" variant="light">
-              抽出失敗
-            </Badge>
-          </Tooltip>
+          <ExtractErrorBadge stored={r.extractError} />
         ) : (
           <Text c="dimmed" size="sm">
             —
@@ -276,10 +310,10 @@ export function OrderAcceptanceIntakeTable({
         <Group gap="xs" wrap="nowrap">
           {!isMobile && (
             <SecondaryButton
-              href="/production/sales-orders"
+              href="/sales/order-lines"
               leftSection={<IconClipboardList size={14} />}
             >
-              注文請書一覧
+              注文明細一覧
             </SecondaryButton>
           )}
           <FileButton
@@ -300,7 +334,7 @@ export function OrderAcceptanceIntakeTable({
           <NewButton href={`${BASE_PATH}/new`} label="手入力で新規" />
         </Group>
       }
-      breadcrumbs={["販売", "受注請書"]}
+      breadcrumbs={["販売", "注文請書"]}
       filters={
         <Select
           clearable
@@ -321,7 +355,7 @@ export function OrderAcceptanceIntakeTable({
           value={search}
         />
       }
-      title="受注請書 取込状況"
+      title="注文請書"
     >
       <Stack gap="xs">
         <Group gap="sm">
@@ -341,7 +375,7 @@ export function OrderAcceptanceIntakeTable({
           data={filtered}
           defaultSort={{ key: "number", dir: "desc" }}
           emptyIcon={<IconClipboardCheck size={24} />}
-          emptyMessage="取込された受注請書がありません"
+          emptyMessage="注文請書がありません"
           getRowId={(r) => r.number}
           onRowClick={(r) => router.push(`${BASE_PATH}/${r.number}`)}
           renderCard={(r) => {
@@ -372,9 +406,7 @@ export function OrderAcceptanceIntakeTable({
                       明細 {r.itemCount} 件
                     </Text>
                     {r.extractError && (
-                      <Badge color="red" size="xs" variant="light">
-                        抽出失敗
-                      </Badge>
+                      <ExtractErrorBadge size="xs" stored={r.extractError} />
                     )}
                   </Group>
                 </Stack>

@@ -24,10 +24,10 @@ model DesignRequest {
   id            String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   requestNumber String        @unique @map("request_number") // DSG-YYYYMM-NNNNN
   trigger       DesignTrigger
-  // 見積時: 見積書（複合キー）/ 受注時: 注文請書
+  // 見積時: 見積書（複合キー）/ 受注時: 注文明細
   quoteYearMonth String? @map("quote_year_month") @db.Char(6)
   quoteSeq       Int?    @map("quote_seq")
-  salesOrderId   String? @map("sales_order_id") @db.Uuid
+  orderLineId    String? @map("order_line_id") @db.Uuid
   productId      Int?    @map("product_id")
   description    String?
   status         DesignStatus @default(PENDING)
@@ -37,7 +37,7 @@ model DesignRequest {
   updatedAt      DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   quote         Quote?      @relation(fields: [quoteYearMonth, quoteSeq], references: [yearMonth, seq])
-  salesOrder    SalesOrder? @relation(fields: [salesOrderId], references: [id])
+  orderLine     OrderLine?  @relation(fields: [orderLineId], references: [id])
   product       Product?    @relation(fields: [productId], references: [id])
   createdByUser User?       @relation("DesignRequestCreatedBy", fields: [createdBy], references: [id])
 

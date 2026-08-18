@@ -9,7 +9,7 @@ This page describes how work moves from setting a unit price to accepting an ord
 ## The flow at a glance
 
 ```
-Trial estimate ─→ Price list ─→ Quote ─→ Order acceptance ─→ Sales order ─→ Work order
+Trial estimate ─→ Price list ─→ Quote ─→ Order acceptance ─→ Order line ─→ Work order
  (work out a price) (price per customer) (send to customer) (take the order) (confirm it) (instruct production)
                                                  ↑          │
                                                  └─ if the price differs, go back and adjust
@@ -25,7 +25,7 @@ When a product has no drawing yet, a **design request** is raised alongside this
 | 2. Set the price for a customer | Create a price list for a customer + product, including quantity breaks | Sales | [Price List](/manual/en/operations/sales/price-list/user) (`SA02`) |
 | 3. Issue a quote | Build the quote from price-list prices and send the PDF to the customer | Sales | [Quote](/manual/en/operations/sales/quote/user) (`SA03`) |
 | 4. Take the order | Import the customer's order, check it and accept it | Sales support | [Order Acceptance](/manual/en/operations/sales/order-acceptance/user) (`SA04`) |
-| 5. Confirm the order | Sales orders are created from the accepted content (one per product) | Sales support | Sales Order (`PD01`) |
+| 5. Confirm the order | Order lines are created from the accepted content (one per product) | Sales support | Sales Order (`PD01`) |
 | 6. Instruct production | Split into stock and manufacture, and lay out the process steps | Sales support | [Work Order](/manual/en/operations/production/work-order/user) (`PD02`) |
 | (parallel) No drawing yet | Raise a design request; production produces the drawing | Sales / Sales support → Manufacturing | [Design Request](/manual/en/operations/sales/design-request/user) (`SA05`) |
 
@@ -49,7 +49,7 @@ Import the order the customer sent (fax or PDF). It is read automatically, and y
 
 ### 5–6. Confirm the order and instruct production (Sales Order, Work Order)
 
-Confirming the order acceptance creates a **sales order** per line. You then create a **work order** against it, splitting what comes from stock and what is manufactured, and laying out the process steps in order. From here the production flow takes over.
+Confirming the order acceptance creates a **order line** per line. You then create a **work order** against it, splitting what comes from stock and what is manufactured, and laying out the process steps in order. From here the production flow takes over.
 
 ## Document states
 
@@ -58,7 +58,7 @@ Confirming the order acceptance creates a **sales order** per line. You then cre
 | Trial estimate | Draft → Confirmed → Registered to price list |
 | Quote | Draft → Issued → Accepted / Rejected / Expired |
 | Order acceptance | Importing → Draft → Approval requested → Approved → Expanded → Archived |
-| Sales order | Draft → Confirmed → In production → Partially shipped → Shipped |
+| Order line | Draft → Confirmed → In production → Partially shipped → Shipped |
 | Work order | Draft → Pending approval → Approved → In progress → Completed |
 | Design request | Not started → In progress → Completed |
 
@@ -74,7 +74,7 @@ Once used by a price list it becomes registered and is locked. Duplicate it and 
 The difference is shown on the order acceptance screen. Adjust the price on the quote, then correct the order acceptance.
 
 **The order acceptance will not move on**
-Check that approval has been requested and granted. Once approved, it can be expanded into sales orders and work orders.
+Check that approval has been requested and granted. Once approved, it can be expanded into order lines and work orders.
 
 ## Related pages
 

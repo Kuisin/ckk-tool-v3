@@ -5,6 +5,7 @@
     "price-list",
     "quote",
     "order-acceptance",
+    "order-line",
     "design-request"
   ]
 }

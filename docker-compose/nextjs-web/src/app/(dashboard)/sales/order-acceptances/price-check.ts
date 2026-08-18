@@ -1,12 +1,12 @@
 /**
- * price-check.ts — 受注請書 明細の価格表照合（§2 価格差異検出、監査 P0-8）。
+ * price-check.ts — 注文請書 明細の価格表照合（§2 価格差異検出、監査 P0-8）。
  *
  * 抽出/手入力された明細単価を、価格表（顧客 × 製品 × 注文種別 × 数量）から
  * 解決した期待単価と突き合わせる。差異（diff=true）は「製品突合済み かつ
  * 期待単価・入力単価の両方が存在し、一致しない」ときのみ — 製品未特定や
  * 価格表なし（unpriced）は未解決であって差異ではない。
  *
- * 解決ロジックは見積書・注文請書と同一（quotes/model の pure 関数 +
+ * 解決ロジックは見積書・注文明細と同一（quotes/model の pure 関数 +
  * fetchEntriesForCustomer）。保存時点ではなく読み出し/依頼時に計算するため、
  * 手動編集後も常に最新の保存内容で照合される（lib/intake.ts は不変更）。
  * サーバー専用（prisma import）— actions.ts と詳細ページから呼ぶ。
@@ -34,7 +34,7 @@ export interface AcceptancePriceCheckLine {
   unpriced: boolean;
 }
 
-/** 受注請書 1 件の照合結果。 */
+/** 注文請書 1 件の照合結果。 */
 export interface AcceptancePriceCheck {
   lines: AcceptancePriceCheckLine[];
   /** diff=true の行数。 */
@@ -44,7 +44,7 @@ export interface AcceptancePriceCheck {
 const EMPTY_CHECK: AcceptancePriceCheck = { lines: [], diffCount: 0 };
 
 /**
- * 受注請書の全明細を価格表と照合する。
+ * 注文請書の全明細を価格表と照合する。
  * 顧客未特定は照合不能 — 全行 expected=null / diff=false（承認依頼は
  * 顧客必須チェックで別途止まる）。
  */

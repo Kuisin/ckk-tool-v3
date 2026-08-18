@@ -3,10 +3,10 @@
 /**
  * WorkflowBuilder — 指示書 新規作成 / 編集 (PD12 / PD22, design.md §8.3)。
  *
- * 注文請書・種別・予定数量・使用素材・検査表の基本情報と、工程構成エディタ
+ * 注文明細・種別・予定数量・使用素材・検査表の基本情報と、工程構成エディタ
  * （ProcessListEditor — 工程選択 + 実施場所、必須随伴工程の自動追加）で構成する。
  *
- * 工程ルート（製品の工程リスト）: 注文請書を選ぶと対象製品のルートを読み込み、
+ * 工程ルート（製品の工程リスト）: 注文明細を選ぶと対象製品のルートを読み込み、
  * ルート + バージョン（既定 = 最新）を選ぶと工程構成をプリフィルする。構成を
  * 変更すると保存時に新バージョンとして自動保存される（変更検知は
  * routeStepsEqual — server 側と同一基準）。ルートを使わない場合、ルート名を
@@ -43,23 +43,23 @@ import {
 import { z } from "zod";
 import {
   searchMaterialOptions,
+  searchOrderLineOptions,
   searchProductOptions,
-  searchSalesOrderOptions,
 } from "@/app/(dashboard)/_shared/option-search";
 import {
   createWorkOrder,
   getMaterialAtp,
+  getOrderLineInfo,
+  getProductRoutesForOrderLine,
   getProductRoutesForProduct,
-  getProductRoutesForSalesOrder,
   getRouteVersionSteps,
-  getSalesOrderInfo,
   getStockFloorInfo,
   updateWorkOrder,
   type WorkOrderInput,
 } from "@/app/(dashboard)/production/work-orders/actions";
 import type {
   InspectionTemplateOption,
-  SalesOrderRef,
+  OrderLineRef,
 } from "@/app/(dashboard)/production/work-orders/data";
 import {
   ProcessListEditor,
@@ -94,9 +94,9 @@ interface Option {
 }
 
 const schema = z.object({
-  // 対象が注文請書のときのみ必須（handleSubmit で検証）
-  salesOrderId: z.string(),
-  // 在庫向け（注文請書なし）のときの対象製品
+  // 対象が注文明細のときのみ必須（handleSubmit で検証）
+  orderLineId: z.string(),
+  // 在庫向け（注文明細なし）のときの対象製品
   productId: z.string().nullable(),
   type: z.enum(["FROM_STOCK", "MANUFACTURE"]),
   plannedQuantity: z.number().int().min(1, "予定数量は1以上"),
@@ -108,7 +108,7 @@ const schema = z.object({
 
 type FormValues = z.infer<typeof schema>;
 
-/** 指示書の対象: 注文請書配下 / 在庫向け（注文請書なし・製品直接指定）。 */
+/** 指示書の対象: 注文明細配下 / 在庫向け（注文明細なし・製品直接指定）。 */
 type BuilderTarget = "SALES_ORDER" | "STOCK";
 
 function initialValues(
@@ -116,7 +116,7 @@ function initialValues(
 ): FormValues {
   if (!workOrder) {
     return {
-      salesOrderId: "",
+      orderLineId: "",
       productId: null,
       type: "MANUFACTURE",
       plannedQuantity: 1,
@@ -127,9 +127,9 @@ function initialValues(
     };
   }
   return {
-    salesOrderId: workOrder.salesOrderId ?? "",
+    orderLineId: workOrder.orderLineId ?? "",
     productId:
-      workOrder.salesOrderId == null ? String(workOrder.productId) : null,
+      workOrder.orderLineId == null ? String(workOrder.productId) : null,
     type: workOrder.type as FormValues["type"],
     plannedQuantity: workOrder.plannedQuantity,
     materialId:
@@ -176,7 +176,7 @@ function snapshotLocations(
 export function WorkflowBuilder({
   mode,
   workOrder,
-  initialSalesOrder,
+  initialOrderLine,
   catalogSteps,
   useDeps,
   plantOptions,
@@ -188,8 +188,8 @@ export function WorkflowBuilder({
   mode: "create" | "edit";
   /** 編集時の既存指示書（view model）。 */
   workOrder?: WorkOrderView | null;
-  /** `?salesOrder=` プリセレクト（create 時）。 */
-  initialSalesOrder?: SalesOrderRef | null;
+  /** `?orderLine=` プリセレクト（create 時）。 */
+  initialOrderLine?: OrderLineRef | null;
   /** §4 分割ガイドからの起動: 種別・数量のプリセット（create 時）。 */
   initialType?: "FROM_STOCK" | "MANUFACTURE" | null;
   initialQuantity?: number | null;
@@ -208,10 +208,10 @@ export function WorkflowBuilder({
     validate: zodResolver(schema),
     initialValues: {
       ...initialValues(workOrder),
-      ...(mode === "create" && initialSalesOrder
+      ...(mode === "create" && initialOrderLine
         ? {
-            salesOrderId: initialSalesOrder.id,
-            plannedQuantity: initialQuantity ?? initialSalesOrder.quantity,
+            orderLineId: initialOrderLine.id,
+            plannedQuantity: initialQuantity ?? initialOrderLine.quantity,
           }
         : {}),
       ...(mode === "create" && initialType ? { type: initialType } : {}),
@@ -221,23 +221,23 @@ export function WorkflowBuilder({
   const [locations, setLocations] = useState<Record<number, StepLocation>>(
     initialLocations(workOrder),
   );
-  // 対象: 注文請書配下 / 在庫向け（編集時は既存指示書から導出）
+  // 対象: 注文明細配下 / 在庫向け（編集時は既存指示書から導出）
   const [target, setTarget] = useState<BuilderTarget>(
-    workOrder && workOrder.salesOrderId == null ? "STOCK" : "SALES_ORDER",
+    workOrder && workOrder.orderLineId == null ? "STOCK" : "SALES_ORDER",
   );
-  const [soInfo, setSoInfo] = useState<SalesOrderRef | null>(
-    initialSalesOrder ??
-      (workOrder?.salesOrderId != null &&
-      workOrder.salesOrderNumber != null &&
-      workOrder.salesOrderQuantity != null
+  const [soInfo, setSoInfo] = useState<OrderLineRef | null>(
+    initialOrderLine ??
+      (workOrder?.orderLineId != null &&
+      workOrder.orderLineNumber != null &&
+      workOrder.orderLineQuantity != null
         ? {
-            id: workOrder.salesOrderId,
-            number: workOrder.salesOrderNumber,
-            label: `${workOrder.salesOrderNumber} ${workOrder.productName}（${workOrder.salesOrderQuantity}）`,
+            id: workOrder.orderLineId,
+            number: workOrder.orderLineNumber,
+            label: `${workOrder.orderLineNumber} ${workOrder.productName}（${workOrder.orderLineQuantity}）`,
             customerName: workOrder.customerName ?? "",
             productName: workOrder.productName,
             productId: workOrder.productId,
-            quantity: workOrder.salesOrderQuantity,
+            quantity: workOrder.orderLineQuantity,
             status: "",
           }
         : null),
@@ -297,14 +297,14 @@ export function WorkflowBuilder({
   /** ルートを使わない構成を保存する場合の新ルート名（空 = 保存しない）。 */
   const [newRouteName, setNewRouteName] = useState("");
 
-  const salesOrderIdValue = form.values.salesOrderId;
+  const orderLineIdValue = form.values.orderLineId;
   const productIdValue = form.values.productId;
   useEffect(() => {
-    // 対象に応じてルートを解決: 注文請書 → SO の製品 / 在庫向け → 直接指定製品
+    // 対象に応じてルートを解決: 注文明細 → SO の製品 / 在庫向け → 直接指定製品
     const load =
       target === "SALES_ORDER"
-        ? salesOrderIdValue
-          ? () => getProductRoutesForSalesOrder(salesOrderIdValue)
+        ? orderLineIdValue
+          ? () => getProductRoutesForOrderLine(orderLineIdValue)
           : null
         : productIdValue
           ? () => getProductRoutesForProduct(Number(productIdValue))
@@ -320,9 +320,9 @@ export function WorkflowBuilder({
     return () => {
       cancelled = true;
     };
-  }, [target, salesOrderIdValue, productIdValue]);
+  }, [target, orderLineIdValue, productIdValue]);
 
-  // 別製品の注文請書へ切り替えたらルート選択をリセット
+  // 別製品の注文明細へ切り替えたらルート選択をリセット
   useEffect(() => {
     if (routeSel == null || routesInfo == null) return;
     if (!routesInfo.routes.some((r) => String(r.id) === routeSel)) {
@@ -419,13 +419,13 @@ export function WorkflowBuilder({
   // ── 在庫フロア（§4 在庫考慮 — 製造分の最低予定数量） ────────────────────────
   const [stockFloor, setStockFloor] = useState<StockFloorInfo | null>(null);
   useEffect(() => {
-    if (target !== "SALES_ORDER" || !salesOrderIdValue) {
+    if (target !== "SALES_ORDER" || !orderLineIdValue) {
       setStockFloor(null);
       return;
     }
     let cancelled = false;
     getStockFloorInfo(
-      salesOrderIdValue,
+      orderLineIdValue,
       mode === "edit" ? workOrder?.workOrderNumber : undefined,
     ).then((info) => {
       if (!cancelled) setStockFloor(info);
@@ -433,7 +433,7 @@ export function WorkflowBuilder({
     return () => {
       cancelled = true;
     };
-  }, [target, salesOrderIdValue, mode, workOrder?.workOrderNumber]);
+  }, [target, orderLineIdValue, mode, workOrder?.workOrderNumber]);
 
   const floor =
     target === "SALES_ORDER" && form.values.type === "MANUFACTURE"
@@ -466,13 +466,13 @@ export function WorkflowBuilder({
     [selected, useDeps],
   );
 
-  const onSalesOrderChange = (value: string | null) => {
-    form.setFieldValue("salesOrderId", value ?? "");
+  const onOrderLineChange = (value: string | null) => {
+    form.setFieldValue("orderLineId", value ?? "");
     if (!value) {
       setSoInfo(null);
       return;
     }
-    getSalesOrderInfo(value).then((info) => {
+    getOrderLineInfo(value).then((info) => {
       setSoInfo(info);
       if (info) form.setFieldValue("plannedQuantity", info.quantity);
     });
@@ -487,8 +487,8 @@ export function WorkflowBuilder({
       });
       return;
     }
-    if (target === "SALES_ORDER" && !values.salesOrderId) {
-      form.setFieldError("salesOrderId", "注文請書を選択してください");
+    if (target === "SALES_ORDER" && !values.orderLineId) {
+      form.setFieldError("orderLineId", "注文明細を選択してください");
       return;
     }
     if (target === "STOCK" && !values.productId) {
@@ -528,7 +528,7 @@ export function WorkflowBuilder({
       return;
     }
     const payload: WorkOrderInput = {
-      salesOrderId: target === "SALES_ORDER" ? values.salesOrderId : null,
+      orderLineId: target === "SALES_ORDER" ? values.orderLineId : null,
       productId:
         target === "STOCK" && values.productId
           ? Number(values.productId)
@@ -621,13 +621,13 @@ export function WorkflowBuilder({
           </Text>
           <SegmentedControl
             data={[
-              { value: "SALES_ORDER", label: "注文請書に紐づく" },
-              { value: "STOCK", label: "在庫向け（注文請書なし）" },
+              { value: "SALES_ORDER", label: "注文明細に紐づく" },
+              { value: "STOCK", label: "在庫向け（注文明細なし）" },
             ]}
             onChange={(v) => {
               const next = v as BuilderTarget;
               setTarget(next);
-              // 在庫向けは製造分のみ（顧客注文分は常に注文請書配下）
+              // 在庫向けは製造分のみ（顧客注文分は常に注文明細配下）
               if (next === "STOCK") form.setFieldValue("type", "MANUFACTURE");
             }}
             value={target}
@@ -637,16 +637,16 @@ export function WorkflowBuilder({
           {target === "SALES_ORDER" ? (
             <Stack gap={4}>
               <SearchSelect
-                error={form.errors.salesOrderId}
+                error={form.errors.orderLineId}
                 initialOption={
                   soInfo ? { value: soInfo.id, label: soInfo.label } : null
                 }
-                label={<HelpLabel {...fieldHelp("workOrder", "salesOrder")} />}
-                onChange={onSalesOrderChange}
-                onSearch={searchSalesOrderOptions}
-                placeholder="注文請書番号・製品・顧客で検索"
+                label={<HelpLabel {...fieldHelp("workOrder", "orderLine")} />}
+                onChange={onOrderLineChange}
+                onSearch={searchOrderLineOptions}
+                placeholder="注文明細番号・製品・顧客で検索"
                 storageKey="sales-order"
-                value={form.values.salesOrderId || null}
+                value={form.values.orderLineId || null}
                 withAsterisk
               />
               {soInfo && (
@@ -661,7 +661,7 @@ export function WorkflowBuilder({
               <SearchSelect
                 error={form.errors.productId}
                 initialOption={
-                  workOrder && workOrder.salesOrderId == null
+                  workOrder && workOrder.orderLineId == null
                     ? {
                         value: String(workOrder.productId),
                         label: workOrder.productName,
@@ -677,7 +677,7 @@ export function WorkflowBuilder({
                 withAsterisk
               />
               <Text c="dimmed" size="xs">
-                完成品は指示書番号のロットで在庫入庫され、後日任意の注文請書の
+                完成品は指示書番号のロットで在庫入庫され、後日任意の注文明細の
                 出荷に充当できます
               </Text>
             </Stack>

@@ -1,3 +1,9 @@
+-- ⚠️ 注文明細（order_lines）統合により、このデモシードは未更新です。
+--    app.sales_orders は削除され、受注ラインは app.order_lines
+--    （注文請書 order_acceptances の明細行）に統合されました。
+--    実行すると "relation app.sales_orders does not exist" で失敗します。
+--    親の注文請書を作ったうえで order_lines を挿入する形へ書き換えが必要です。
+
 -- production-demo-seed.sql — 生産アプリ（PD02 指示書 / PD03 承認管理 / PD04 在庫管理）
 -- のマニュアル撮影用デモデータ。
 --
@@ -7,11 +13,11 @@
 --     素材マスタ = 20260719120000_materials_from_excel）
 --   - screenshot-user-seed.sql（demo_shot = a0b1c2d3-…5107）
 --   - manufacturing-demo-seed.sql（第一/第二承認グループ（デモ）+ system ユーザー）
---   - sales-demo-seed.sql（デモ商事 d0…01、製品 9001〜9003、受注請書 ORD-202607-1〜3）
+--   - sales-demo-seed.sql（デモ商事 d0…01、製品 9001〜9003、注文請書 ORD-202607-1〜3）
 --   - masters-demo-seed.sql（外注先 BP-90004 デモ研磨工業 — VENDOR）
 --
 -- シナリオ:
---   受注請書 ORD-202607-00003 を注文請書 2 本（-01 / -02）に展開し、
+--   注文請書 ORD-202607-00003 を注文請書 2 本（-01 / -02）に展開し、
 --   指示書 #9001〜#9004 で状態のバリエーションを揃える:
 --     #9001 進行中（承認済・段加工を demo_shot がセッションロック中・外注センタレス完了）
 --     #9002 承認待ち（PENDING_1ST — PD03 一覧と承認ボタン撮影の主役）
@@ -53,7 +59,7 @@ WHERE u.username = 'demo_shot'
 ON CONFLICT (user_id, plant_id) DO NOTHING;
 
 -- ── 注文請書（ORD-202607-00003-01 / -02）────────────────────────────────────
--- 受注請書 (202607, 3)（REQUESTED のまま — 更新しない）に相乗り。
+-- 注文請書 (202607, 3)（REQUESTED のまま — 更新しない）に相乗り。
 -- shipping-demo-seed がこの 2 行の固定 UUID に依存する（変更禁止）。
 INSERT INTO app.sales_orders (id, year_month, seq, branch,
   customer_bp_id, customer_branch_bp_id, end_user_bp_id, customer_order_ref,
@@ -383,7 +389,7 @@ ON CONFLICT (id) DO NOTHING;
 
 -- ── 承認依頼・承認記録（PD03 横断受信箱 + 指示書の承認記録リスト）──────────────
 -- targetType = @@map 名 / targetId = 業務キー（指示書 = 番号文字列, PO = PO-…,
--- 受注請書 = ORD-…）。ORD-202607-00003 は sales-demo-seed の REQUESTED 行に対応。
+-- 注文請書 = ORD-…）。ORD-202607-00003 は sales-demo-seed の REQUESTED 行に対応。
 INSERT INTO app.approval_requests (id, target_type, target_id, step, status,
   requested_by, requested_at, notes)
 VALUES

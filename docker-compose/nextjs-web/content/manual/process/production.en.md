@@ -9,7 +9,7 @@ This page describes how work moves from a confirmed order, through checking stoc
 ## The flow at a glance
 
 ```
-Sales order ─→ Check stock ─→ Work order ─→ Approval ─→ Run the steps ─→ Complete
+Order line ─→ Check stock ─→ Work order ─→ Approval ─→ Run the steps ─→ Complete
  (confirmed)  (enough?)   (from stock / make) (1st, 2nd) (shop floor records) (into stock)
                    │
                    └─ if material is short, go to purchasing
@@ -54,7 +54,7 @@ Once every step is finished, the product enters stock and [the shipping flow](/m
 
 | Document | States |
 |----------|--------|
-| Sales order | Draft → Confirmed → In production → Partially shipped → Shipped (can be cancelled) |
+| Order line | Draft → Confirmed → In production → Partially shipped → Shipped (can be cancelled) |
 | Work order | Draft → Pending approval → Approved → In progress → Completed (can be cancelled) |
 | Work order approval | 1st pending → 1st approved → 2nd pending → Approved (can be sent back) |
 | Process step | Not started → In progress → Completed (can be cancelled; paused stays in progress) |

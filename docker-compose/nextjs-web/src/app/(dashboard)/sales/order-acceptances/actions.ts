@@ -1,34 +1,43 @@
 "use server";
 
 /**
- * Server Actions — 受注請書 intake (app.order_acceptances, SA04)。
+ * Server Actions — 注文請書 intake (app.order_acceptances, SA04)。
  *
  * ライフサイクル遷移:
  *   IMPORT（抽出失敗）→ 再抽出（retryExtraction — lib/intake の抽出キューへ積む）
  *   DRAFT → saveDraft（ヘッダ + 明細全置換）/ submitForApproval（→ REQUESTED）
  *   REQUESTED → approveAcceptance（→ APPROVED）/ rejectAcceptance（→ DRAFT）
- *   APPROVED → deployToSalesOrders（伝票展開 → COMPLETED）
+ *   APPROVED → confirmOrderLines（注文確定 → COMPLETED）
  *   COMPLETED → archiveAcceptance（→ ARCHIVED）
  *
- * 伝票展開は受注請書と同じ (year_month, seq) の sales_orders 枝番 1..N を
- * $transaction で一括作成する（§2: 受注請書 1 → 注文請書 N）。承認は
+ * 注文確定は注文請書と同じ (year_month, seq) の order_lines 枝番 1..N を
+ * $transaction で一括作成する（§2: 注文請書 1 → 注文明細 N）。承認は
  * lib/approvals（approval_requests / approval_records — FIRST 段のみ）。
  */
 
 import { type Access, rowInScope } from "@ckk/authz-core";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { actOnApprovalRequest, createApprovalRequest } from "@/lib/approvals";
+import {
+  actOnCurrentStep,
+  assertFlowConfigured,
+  startApprovalFlow,
+} from "@/lib/approvals";
 import { getCurrentActorId, recordAudit } from "@/lib/audit";
 import { checkPermission } from "@/lib/authz";
 import { prisma } from "@/lib/db";
 import {
   type DocKey,
-  formatSalesOrderNumber,
+  formatOrderLineNumber,
   parseDocKey,
 } from "@/lib/doc-number";
 import { enqueueExtraction } from "@/lib/intake";
 import { allocateDocumentKey } from "@/lib/numbering";
+import {
+  acceptanceReadiness,
+  readinessSummary,
+} from "@/lib/order-acceptance-readiness";
+import { linesReplaceBlockReason, nextBranches } from "@/lib/order-line-core";
 import {
   type ActionResult,
   actionError,
@@ -38,7 +47,7 @@ import {
 import { checkAcceptancePrices, priceDiffSummary } from "./price-check";
 
 const BASE_PATH = "/sales/order-acceptances";
-const SALES_ORDERS_PATH = "/production/sales-orders";
+const SALES_ORDERS_PATH = "/sales/order-lines";
 const APPROVALS_PATH = "/production/approvals";
 
 function revalidate(number?: string) {
@@ -60,7 +69,7 @@ function keyOf(number: string): DocKey | null {
 const SCOPE_DENIED = "この操作の権限がありません（対象範囲外）";
 
 /**
- * 対象受注請書がスコープ内か（OWN 行チェック）。ALL は素通し。
+ * 対象注文請書がスコープ内か（OWN 行チェック）。ALL は素通し。
  * 不存在は true — 既存の not-found 系エラー処理に委ねる。
  */
 async function acceptanceInScope(
@@ -145,7 +154,7 @@ function buildItemCreates(items: OrderAcceptanceDraftInput["items"]) {
  */
 export async function retryExtraction(number: string): Promise<ActionResult> {
   const key = keyOf(number);
-  if (!key) return actionError("受注請書番号が不正です");
+  if (!key) return actionError("注文請書番号が不正です");
   const authz = await checkPermission("order_acceptance", "UPDATE");
   if (!authz.ok) return actionError(authz.error);
   if (!(await acceptanceInScope(authz.access, authz.userId, key))) {
@@ -156,9 +165,9 @@ export async function retryExtraction(number: string): Promise<ActionResult> {
       where: { yearMonth_seq: key },
       select: { status: true },
     });
-    if (!prior) return actionError("対象の受注請書が見つかりません");
+    if (!prior) return actionError("対象の注文請書が見つかりません");
     if (prior.status !== "IMPORT") {
-      return actionError("取込中（未抽出）の受注請書のみ再抽出できます");
+      return actionError("取込中（未抽出）の注文請書のみ再抽出できます");
     }
     // 前回のエラー表示を消してから積む（画面上は「取込中」に戻る）。
     await prisma.orderAcceptance.update({
@@ -183,7 +192,7 @@ export async function retryExtraction(number: string): Promise<ActionResult> {
  */
 export async function takeOverManually(number: string): Promise<ActionResult> {
   const key = keyOf(number);
-  if (!key) return actionError("受注請書番号が不正です");
+  if (!key) return actionError("注文請書番号が不正です");
   const authz = await checkPermission("order_acceptance", "UPDATE");
   if (!authz.ok) return actionError(authz.error);
   if (!(await acceptanceInScope(authz.access, authz.userId, key))) {
@@ -194,9 +203,9 @@ export async function takeOverManually(number: string): Promise<ActionResult> {
       where: { yearMonth_seq: key },
       select: { status: true },
     });
-    if (!prior) return actionError("対象の受注請書が見つかりません");
+    if (!prior) return actionError("対象の注文請書が見つかりません");
     if (prior.status !== "IMPORT") {
-      return actionError("取込中の受注請書のみ手入力へ切り替えられます");
+      return actionError("取込中の注文請書のみ手入力へ切り替えられます");
     }
     await prisma.orderAcceptance.update({
       where: { yearMonth_seq: key },
@@ -225,7 +234,7 @@ export async function saveDraft(
   payload: OrderAcceptanceDraftInput,
 ): Promise<ActionResult> {
   const key = keyOf(number);
-  if (!key) return actionError("受注請書番号が不正です");
+  if (!key) return actionError("注文請書番号が不正です");
   const parsed = draftInput.safeParse(payload);
   if (!parsed.success) {
     return actionError(parsed.error.issues[0]?.message ?? "入力が不正です");
@@ -247,13 +256,19 @@ export async function saveDraft(
         notes: true,
       },
     });
-    if (!prior) return actionError("対象の受注請書が見つかりません");
-    if (prior.status !== "DRAFT") {
-      return actionError("下書きの受注請書のみ編集できます");
-    }
+    if (!prior) return actionError("対象の注文請書が見つかりません");
     const creates = buildItemCreates(v.items);
+    let blocked: string | null = null;
     await prisma.$transaction(async (tx) => {
-      await tx.orderAcceptanceItem.deleteMany({
+      // ラインチェック: 確定済みの明細は変更させない。tx 内で読むことで
+      // 判定と削除の間に確定が割り込むのを防ぐ（判定は order-line-core に集約）。
+      const lines = await tx.orderLine.findMany({
+        where: { acceptanceYearMonth: key.yearMonth, acceptanceSeq: key.seq },
+        select: { status: true, branch: true, isLocked: true },
+      });
+      blocked = linesReplaceBlockReason(prior.status, lines);
+      if (blocked) return;
+      await tx.orderLine.deleteMany({
         where: { acceptanceYearMonth: key.yearMonth, acceptanceSeq: key.seq },
       });
       await tx.orderAcceptance.update({
@@ -268,6 +283,7 @@ export async function saveDraft(
         },
       });
     });
+    if (blocked) return actionError(blocked);
     await recordAudit({
       action: "UPDATE",
       tableName: "order_acceptances",
@@ -289,14 +305,15 @@ export async function saveDraft(
     revalidate(number);
     return actionOk();
   } catch (e) {
-    return actionError(prismaErrorMessage(e, "受注請書の保存に失敗しました"));
+    return actionError(prismaErrorMessage(e, "注文請書の保存に失敗しました"));
   }
 }
 
 // ── 承認フロー ───────────────────────────────────────────────────────────────
 
 /**
- * 承認依頼 — DRAFT → REQUESTED（顧客特定 + 明細 1 件以上が必要）。
+ * 承認依頼 — DRAFT → REQUESTED（確定と同じ完成条件が要る: 顧客特定 +
+ * 明細 1 件以上 + 全行の製品特定・単価入力 — lib/order-acceptance-readiness）。
  *
  * §2 価格照合（監査 P0-8）: 明細単価を価格表と突合し、差異がある場合は
  * `acknowledgePriceDiff: true`（UI の確認モーダル経由）なしには依頼できない。
@@ -307,7 +324,7 @@ export async function submitForApproval(
   acknowledgePriceDiff = false,
 ): Promise<ActionResult> {
   const key = keyOf(number);
-  if (!key) return actionError("受注請書番号が不正です");
+  if (!key) return actionError("注文請書番号が不正です");
   const authz = await checkPermission("order_acceptance", "UPDATE");
   if (!authz.ok) return actionError(authz.error);
   if (!(await acceptanceInScope(authz.access, authz.userId, key))) {
@@ -319,18 +336,30 @@ export async function submitForApproval(
       select: {
         status: true,
         customerBpId: true,
-        _count: { select: { items: true } },
+        items: {
+          orderBy: { sortOrder: "asc" },
+          select: { productId: true, unitPrice: true },
+        },
       },
     });
-    if (!prior) return actionError("対象の受注請書が見つかりません");
+    if (!prior) return actionError("対象の注文請書が見つかりません");
     if (prior.status !== "DRAFT") {
-      return actionError("下書きの受注請書のみ承認依頼できます");
+      return actionError("下書きの注文請書のみ承認依頼できます");
     }
-    if (!prior.customerBpId) {
-      return actionError("顧客が未特定です。顧客を選択して保存してください");
-    }
-    if (prior._count.items < 1) {
-      return actionError("明細が1件もありません。明細を追加してください");
+    // 確定と同じ完成条件を入口で確かめる（lib/order-acceptance-readiness）。
+    // 画面のボタンも同じ判定で押せなくなっているので、ここに来るのは
+    // 古い画面からの依頼だけ。
+    const readiness = acceptanceReadiness({
+      customerBpId: prior.customerBpId,
+      items: prior.items.map((it) => ({
+        productId: it.productId,
+        unitPrice: it.unitPrice == null ? null : Number(it.unitPrice),
+      })),
+    });
+    if (!readiness.ok) {
+      return actionError(
+        `承認依頼できません: ${readinessSummary(readiness.issues)}`,
+      );
     }
     // 価格照合はサーバー側で必ず再計算する（クライアント表示値は信用しない）。
     const priceCheck = await checkAcceptancePrices(key);
@@ -340,16 +369,20 @@ export async function submitForApproval(
         `価格差異があります: ${diffLines.join(" / ")}（差異を確認のうえ再実行）`,
       );
     }
+    // フローが無いと依頼を出しても誰も承認できないので、状態を変える前に確かめる
+    const flowError = await assertFlowConfigured("order_acceptances");
+    if (flowError) return actionError(flowError);
     await prisma.orderAcceptance.update({
       where: { yearMonth_seq: key },
       data: { status: "REQUESTED" },
     });
-    // 正規化された承認依頼行（PD03 横断表示・承認記録の紐付け先）。
-    await createApprovalRequest({
+    // 1 段目の承認依頼を作る（PD03 横断表示・承認記録の紐付け先）。
+    const started = await startApprovalFlow({
       targetType: "order_acceptances",
       targetId: number,
-      step: "FIRST",
     });
+    if (!started.ok)
+      return actionError(started.error ?? "承認依頼に失敗しました");
     await recordAudit({
       action: "UPDATE",
       tableName: "order_acceptances",
@@ -372,10 +405,10 @@ export async function submitForApproval(
   }
 }
 
-/** 承認 — REQUESTED → APPROVED。第一承認グループのメンバー（or 代理）のみ。 */
+/** 承認 — 現在の段に承認を記録し、全段通過で APPROVED。 */
 export async function approveAcceptance(number: string): Promise<ActionResult> {
   const key = keyOf(number);
-  if (!key) return actionError("受注請書番号が不正です");
+  if (!key) return actionError("注文請書番号が不正です");
   const authz = await checkPermission("order_acceptance", "APPROVE");
   if (!authz.ok) return actionError(authz.error);
   if (!(await acceptanceInScope(authz.access, authz.userId, key))) {
@@ -386,18 +419,31 @@ export async function approveAcceptance(number: string): Promise<ActionResult> {
       where: { yearMonth_seq: key },
       select: { status: true },
     });
-    if (!prior) return actionError("対象の受注請書が見つかりません");
+    if (!prior) return actionError("対象の注文請書が見つかりません");
     if (prior.status !== "REQUESTED") {
-      return actionError("承認依頼中の受注請書ではありません");
+      return actionError("承認依頼中の注文請書ではありません");
     }
-    const acted = await actOnApprovalRequest({
+    const acted = await actOnCurrentStep({
       targetType: "order_acceptances",
       targetId: number,
-      step: "FIRST",
-      groupType: "FIRST",
       action: "APPROVED",
     });
     if (!acted.ok) return actionError(acted.error ?? "承認の権限がありません");
+    // 全段を通過して初めて APPROVED。途中の段は REQUESTED のまま進む。
+    if (!acted.flowCompleted) {
+      await recordAudit({
+        action: "UPDATE",
+        tableName: "order_acceptances",
+        recordId: number,
+        after: {
+          note: acted.stepClosed
+            ? "承認（次の段へ）"
+            : `承認（この段の残り ${acted.remaining} 名）`,
+        },
+      });
+      revalidate(number);
+      return actionOk();
+    }
     await prisma.orderAcceptance.update({
       where: { yearMonth_seq: key },
       data: { status: "APPROVED" },
@@ -422,7 +468,7 @@ export async function rejectAcceptance(
   reason: string,
 ): Promise<ActionResult> {
   const key = keyOf(number);
-  if (!key) return actionError("受注請書番号が不正です");
+  if (!key) return actionError("注文請書番号が不正です");
   const trimmed = reason.trim();
   if (!trimmed) return actionError("差し戻し理由を入力してください");
   const authz = await checkPermission("order_acceptance", "APPROVE");
@@ -435,15 +481,13 @@ export async function rejectAcceptance(
       where: { yearMonth_seq: key },
       select: { status: true },
     });
-    if (!prior) return actionError("対象の受注請書が見つかりません");
+    if (!prior) return actionError("対象の注文請書が見つかりません");
     if (prior.status !== "REQUESTED") {
-      return actionError("承認依頼中の受注請書ではありません");
+      return actionError("承認依頼中の注文請書ではありません");
     }
-    const acted = await actOnApprovalRequest({
+    const acted = await actOnCurrentStep({
       targetType: "order_acceptances",
       targetId: number,
-      step: "FIRST",
-      groupType: "FIRST",
       action: "REJECTED",
       comment: trimmed,
     });
@@ -468,18 +512,18 @@ export async function rejectAcceptance(
   }
 }
 
-// ── 伝票展開（APPROVED → COMPLETED） ────────────────────────────────────────
+// ── 注文確定（APPROVED → COMPLETED） ────────────────────────────────────────
 
 /**
- * 伝票展開 — 明細ごとに注文請書（sales_orders）を作成する。
- * 受注請書と同じ (year_month, seq) を共有し、枝番 branch = 1..N。
+ * 注文確定 — 明細ごとに注文明細（order_lines）を作成する。
+ * 注文請書と同じ (year_month, seq) を共有し、枝番 branch = 1..N。
  * 全明細が製品特定済み + 単価入力済みであることが必要。
  */
-export async function deployToSalesOrders(
+export async function confirmOrderLines(
   number: string,
 ): Promise<ActionResult<{ numbers: string[] }>> {
   const key = keyOf(number);
-  if (!key) return actionError("受注請書番号が不正です");
+  if (!key) return actionError("注文請書番号が不正です");
   const authz = await checkPermission("order_acceptance", "CREATE");
   if (!authz.ok) return actionError(authz.error);
   if (!(await acceptanceInScope(authz.access, authz.userId, key))) {
@@ -490,59 +534,48 @@ export async function deployToSalesOrders(
       where: { yearMonth_seq: key },
       include: { items: { orderBy: { sortOrder: "asc" } } },
     });
-    if (!prior) return actionError("対象の受注請書が見つかりません");
+    if (!prior) return actionError("対象の注文請書が見つかりません");
     if (prior.status !== "APPROVED") {
-      return actionError("承認済の受注請書のみ展開できます");
+      return actionError("承認済の注文請書のみ確定できます");
     }
-    if (!prior.customerBpId) {
-      return actionError("顧客が未特定のため展開できません");
-    }
-    if (prior.items.length < 1) {
-      return actionError("明細がありません");
-    }
-    // 全明細の突合・単価を検証（不備行を列挙して返す）。
-    const offending = prior.items
-      .map((it, i) => ({ row: i + 1, it }))
-      .filter(({ it }) => it.productId == null || it.unitPrice == null);
-    if (offending.length > 0) {
-      const rows = offending.map((o) => `${o.row}`).join(", ");
+    // 承認依頼と同じ完成条件（lib/order-acceptance-readiness）。通常は
+    // 依頼の時点で満たされているが、承認中に明細が壊れる筋道が無いとは
+    // 言い切れないので確定の直前にも確かめる。
+    const readiness = acceptanceReadiness({
+      customerBpId: prior.customerBpId,
+      items: prior.items.map((it) => ({
+        productId: it.productId,
+        unitPrice: it.unitPrice == null ? null : Number(it.unitPrice),
+      })),
+    });
+    if (!readiness.ok) {
       return actionError(
-        `明細 ${rows} 行目: 製品未特定または単価未入力のため展開できません`,
+        `確定できません: ${readinessSummary(readiness.issues)}`,
       );
     }
 
     const completedAt = new Date();
     await prisma.$transaction(async (tx) => {
-      // 二重展開ガード — APPROVED の行だけを原子的に COMPLETED へ。
+      // 二重確定ガード — APPROVED の行だけを原子的に COMPLETED へ。
       const updated = await tx.orderAcceptance.updateMany({
         where: { ...key, status: "APPROVED" },
         data: { status: "COMPLETED", completedAt },
       });
       if (updated.count === 0) {
-        throw new Error("承認済の受注請書のみ展開できます");
+        throw new Error("承認済の注文請書のみ確定できます");
       }
+      // 明細行はすでに存在する — 確定は「枝番の採番 + 金額の凍結」だけ。
+      // sortOrder 順に 1..N。以後 branch は不変（公開番号 ORD-…-NN の一部）。
+      const branches = nextBranches(0, prior.items.length);
       for (const [i, it] of prior.items.entries()) {
-        await tx.salesOrder.create({
+        await tx.orderLine.update({
+          where: { id: it.id },
           data: {
-            yearMonth: key.yearMonth,
-            seq: key.seq,
-            branch: i + 1,
-            customerBpId: prior.customerBpId as string,
-            customerBranchBpId: prior.customerBranchBpId,
-            customerOrderRef: prior.customerOrderRef,
-            productId: it.productId as number,
-            orderType: it.orderType,
-            quantity: it.quantity,
-            unitPrice: it.unitPrice as NonNullable<typeof it.unitPrice>,
-            // 金額はサーバー側で計算。
-            amount: it.quantity * Number(it.unitPrice),
-            deliveryDate: it.deliveryDate,
+            branch: branches[i],
             status: "CONFIRMED",
-            // 見積 → 受注 → 注文請書のトレーサビリティ（監査 P2-2）
-            quoteYearMonth: prior.quoteYearMonth,
-            quoteSeq: prior.quoteSeq,
-            createdBy: authz.userId,
-            notes: it.notes,
+            confirmedAt: completedAt,
+            // 金額はサーバー側で計算し、この時点で凍結する。
+            amount: it.quantity * Number(it.unitPrice),
           },
         });
       }
@@ -560,15 +593,15 @@ export async function deployToSalesOrders(
     });
 
     const numbers = prior.items.map((_, i) =>
-      formatSalesOrderNumber({ ...key, branch: i + 1 }),
+      formatOrderLineNumber({ ...key, branch: i + 1 }),
     );
     for (const [i, it] of prior.items.entries()) {
       await recordAudit({
         action: "CREATE",
-        tableName: "sales_orders",
+        tableName: "order_lines",
         recordId: numbers[i],
         after: {
-          note: `受注請書 ${number} の伝票展開`,
+          note: `注文請書 ${number} の確定`,
           customerBpId: prior.customerBpId,
           productId: it.productId,
           orderType: it.orderType,
@@ -583,23 +616,23 @@ export async function deployToSalesOrders(
       tableName: "order_acceptances",
       recordId: number,
       before: { status: "APPROVED" },
-      after: { status: "COMPLETED", salesOrders: numbers },
+      after: { status: "COMPLETED", orderLines: numbers },
     });
     revalidate(number);
     revalidatePath(SALES_ORDERS_PATH);
     return actionOk({ numbers });
   } catch (e) {
-    if (e instanceof Error && e.message.includes("展開")) {
+    if (e instanceof Error && e.message.includes("確定")) {
       return actionError(e.message);
     }
-    return actionError(prismaErrorMessage(e, "伝票展開に失敗しました"));
+    return actionError(prismaErrorMessage(e, "注文確定に失敗しました"));
   }
 }
 
 /** アーカイブ — COMPLETED → ARCHIVED。 */
 export async function archiveAcceptance(number: string): Promise<ActionResult> {
   const key = keyOf(number);
-  if (!key) return actionError("受注請書番号が不正です");
+  if (!key) return actionError("注文請書番号が不正です");
   const authz = await checkPermission("order_acceptance", "UPDATE");
   if (!authz.ok) return actionError(authz.error);
   if (!(await acceptanceInScope(authz.access, authz.userId, key))) {
@@ -611,7 +644,7 @@ export async function archiveAcceptance(number: string): Promise<ActionResult> {
       data: { status: "ARCHIVED", archivedAt: new Date() },
     });
     if (updated.count === 0) {
-      return actionError("展開済の受注請書のみアーカイブできます");
+      return actionError("確定済の注文請書のみアーカイブできます");
     }
     await recordAudit({
       action: "UPDATE",
@@ -629,7 +662,7 @@ export async function archiveAcceptance(number: string): Promise<ActionResult> {
 
 // ── 手入力作成（MANUAL） ─────────────────────────────────────────────────────
 
-/** 手入力の受注請書を DRAFT で作成する（source = MANUAL）。 */
+/** 手入力の注文請書を DRAFT で作成する（source = MANUAL）。 */
 export async function createManualAcceptance(
   payload: OrderAcceptanceManualInput,
 ): Promise<ActionResult<{ number: string }>> {
@@ -673,6 +706,6 @@ export async function createManualAcceptance(
     revalidate(number);
     return actionOk({ number });
   } catch (e) {
-    return actionError(prismaErrorMessage(e, "受注請書の作成に失敗しました"));
+    return actionError(prismaErrorMessage(e, "注文請書の作成に失敗しました"));
   }
 }

@@ -138,13 +138,15 @@ model AuditLog {
 // 文書添付（証憑等）。owner は多態参照（owner_type = @@map 名 / owner_id =
 // 各画面の業務キー文字列 — audit_logs の record_id と同じ規約）。
 // 実体は files（SeaweedFS）。用途: 発注書の承認後証憑・素材入荷の納品書控え・
-// 受注請書の取込元ファイルなど。
+// 注文請書の取込元ファイルなど。
 model DocumentAttachment {
   id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   ownerType  String   @map("owner_type") // material_purchase_orders / material_receipts / order_acceptances …
   ownerId    String   @map("owner_id") // 業務キー（PO-… / uuid / ORD-…）
   fileId     String   @map("file_id") @db.Uuid
   label      String? // 表示名・区分（注文書控え 等）
+  /// システムが付けた添付（取込元の原本など）。削除・差し替え不可。
+  isLocked   Boolean  @default(false) @map("is_locked")
   uploadedBy String?  @map("uploaded_by") @db.Uuid
   createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 

@@ -20,12 +20,18 @@ src/
 │   │   │   │   └── [id]/
 │   │   │   │       ├── page.tsx
 │   │   │   │       └── edit/page.tsx
-│   │   │   ├── order-acceptances/                  # 受注請書（§2）
+│   │   │   ├── order-acceptances/                  # 注文請書（§2）
 │   │   │   │   ├── page.tsx
 │   │   │   │   ├── new/page.tsx
 │   │   │   │   └── [id]/
 │   │   │   │       ├── page.tsx
 │   │   │   │       └── edit/page.tsx
+│   │   │   ├── order-lines/                        # 注文明細（§3 SA05）
+│   │   │   │   │                                   #   注文請書の明細行 = 実行の単位。
+│   │   │   │   │                                   #   作成・編集は注文請書側なので
+│   │   │   │   │                                   #   new / edit は持たない。
+│   │   │   │   ├── page.tsx                        # 横断一覧（確定済みのみ）
+│   │   │   │   └── [id]/page.tsx                   # 実行詳細（在庫照合・キャンセル）
 │   │   │   ├── design-requests/                    # 設計依頼書（§10）
 │   │   │   │   ├── page.tsx
 │   │   │   │   ├── new/page.tsx
@@ -55,13 +61,7 @@ src/
 │   │   │           ├── page.tsx
 │   │   │           └── edit/page.tsx
 │   │   │
-│   │   ├── production/                             # 生産（§3〜§7）
-│   │   │   ├── sales-orders/                       # 注文請書（§3）
-│   │   │   │   ├── page.tsx
-│   │   │   │   ├── new/page.tsx
-│   │   │   │   └── [id]/
-│   │   │   │       ├── page.tsx
-│   │   │   │       └── edit/page.tsx
+│   │   ├── production/                             # 生産（§4〜§7）
 │   │   │   ├── work-orders/                        # 指示書（§3〜§7）
 │   │   │   │   ├── page.tsx
 │   │   │   │   ├── new/page.tsx
@@ -156,7 +156,10 @@ src/
 │   │       ├── defect-types/                       # 不良種類
 │   │       │   ├── page.tsx
 │   │       │   └── new/page.tsx
-│   │       └── approval-groups/                    # 承認グループ・代理設定
+│   │       ├── material-numbering/                 # 採番構成（MS07 — 材種/素材コードの部品）
+│   │       ├── work-locations/                     # 作業場所（MS0D — 工程の実施場所）
+│   │       ├── storage-locations/                  # 保管場所（MS0E — 棚・フロアマップのピン）
+│   │       └── approval-settings/                  # 承認設定（承認フロー・グループ・代理）
 │   │           ├── page.tsx
 │   │           ├── new/page.tsx
 │   │           └── [id]/
@@ -166,7 +169,7 @@ src/
 │   ├── api/
 │   │   ├── pdf/                                    # Gotenberg PDF生成
 │   │   │   ├── quote/route.ts                      # 見積書
-│   │   │   ├── sales-order/route.ts                # 注文請書
+│   │   │   ├── order-line/route.ts                 # 注文明細
 │   │   │   ├── purchase-order/route.ts             # 素材発注書
 │   │   │   ├── work-order/route.ts                 # 指示書
 │   │   │   ├── shipping-order/route.ts             # 出荷書

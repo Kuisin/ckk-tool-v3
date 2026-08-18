@@ -4,8 +4,8 @@ import { fetchOrderAcceptances } from "./data";
 
 export const dynamic = "force-dynamic";
 
-/** 受注請書 取込状況一覧 (SA04). 監視フォルダ / 優先取込 / 手入力の進捗管理。 */
-export default async function SalesOrderAcceptancesPage() {
+/** 注文請書 取込状況一覧 (SA04). 監視フォルダ / 優先取込 / 手入力の進捗管理。 */
+export default async function OrderLineAcceptancesPage() {
   const denied = await requireAppRead("order-acceptances");
   if (denied) return denied;
   const rows = await fetchOrderAcceptances();

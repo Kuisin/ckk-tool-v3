@@ -267,7 +267,9 @@ Operation codes provide keyboard-shortcut navigation. Format: `{CAT}{MODE}{IDX}`
 | MODE | 3 | `0`=list `1`=new `2`=detail |
 | IDX | 4 | `1`–`9`, `A`–`Z` |
 
-**Full table** (derived from `design-preview/designs/lib/operation-codes.ts`):
+**Full table** — 実装の正は `docker-compose/nextjs-web/src/lib/app-list.ts`
+（コードの組み立ては `src/lib/operation-codes.ts`）。`design-preview/` 配下は
+デザイン確認用の複製なので、参照しないこと。
 
 | Category | IDX | Base label | list | new | detail |
 |----------|-----|-----------|------|-----|--------|
@@ -275,13 +277,13 @@ Operation codes provide keyboard-shortcut navigation. Format: `{CAT}{MODE}{IDX}`
 | 販売 | 1 | 試算 | SA01 | SA11 | SA21 |
 | 販売 | 2 | 価格表 | SA02 | SA12 | SA22 |
 | 販売 | 3 | 見積書 | SA03 | SA13 | SA23 |
-| 販売 | 4 | 受注請書 | SA04 | SA14 | SA24 |
-| 販売 | 5 | 設計依頼書 | SA05 | SA15 | SA25 |
+| 販売 | 4 | 注文請書 | SA04 | SA14 | SA24 |
+| 販売 | 5 | 注文明細 | SA05 | — | SA25 |
+| 販売 | 6 | 設計依頼書 | SA06 | SA16 | SA26 |
 | 購買 | 1 | 購買依頼 | PU01 | PU11 | PU21 |
 | 購買 | 2 | 素材発注書 | PU02 | PU12 | PU22 |
 | 購買 | 3 | 素材入荷 | PU03 | PU13 | PU23 |
 | 購買 | 4 | 外注依頼 | PU04 | PU14 | PU24 |
-| 生産 | 1 | 注文請書 | PD01 | PD11 | PD21 |
 | 生産 | 2 | 指示書 | PD02 | PD12 | PD22 |
 | 生産 | 3 | 承認管理 | PD03 | PD13 | PD23 |
 | 生産 | 4 | 在庫管理 | PD04 | — | — |
@@ -297,7 +299,7 @@ Operation codes provide keyboard-shortcut navigation. Format: `{CAT}{MODE}{IDX}`
 | マスタ | 8 | 工程マスタ | MS08 | MS18 | MS28 |
 | マスタ | 9 | 検査表テンプレート | MS09 | MS19 | MS29 |
 | マスタ | A | 不良種類 | MS0A | MS1A | MS2A |
-| マスタ | B | 承認グループ | MS0B | MS1B | MS2B |
+| マスタ | B | 承認設定 | MS0B | MS1B | MS2B |
 | マスタ | C | 拠点 | MS0C | MS1C | MS2C |
 | マスタ | D | 作業場所 | MS0D | — | — |
 | マスタ | E | 保管場所 | MS0E | — | — |
@@ -313,6 +315,17 @@ Operation codes provide keyboard-shortcut navigation. Format: `{CAT}{MODE}{IDX}`
 | システム | 8 | QRカード管理 | SY08 | — | — |
 | システム | 9 | 端末管理 | SY09 | — | — |
 | システム | A | キオスク設定 | SY0A | — | — |
+| システム | B | リンク管理 | SY0B | — | — |
+| システム | C | 注文書取込 | SY0C | — | — |
+
+> `CM00`（ダッシュボード）は**アプリ一覧（`lib/app-list.ts`）には登録されて
+> いない** — ホーム自体だから。ランチャーに出るアプリの正は常に
+> `lib/app-list.ts`。
+>
+> `PD01` / `PD11` / `PD21` は**欠番**。旧 注文請書 は注文請書の明細に統合され、
+> 注文明細（`SA05`）として販売カテゴリへ移った。注文明細は新規・編集画面を
+> 持たない（作成は注文請書の明細エディタ）ため `SA15` も欠番で、一覧 `SA05` と
+> 詳細 `SA25` だけを登録する。
 
 `OperationCodeJump` component (`src/components/layout/OperationCodeJump.tsx`) renders as a compact TextInput in the header center. Pressing Enter or clicking a result navigates to that screen.
 
@@ -368,7 +381,7 @@ Stack (gap="xl", p="md", maw={1200})
 | 試算 | `IconCalculator` |
 | 価格表 | `IconCurrencyYen` |
 | 見積書 | `IconFileText` |
-| 受注請書 | `IconClipboardCheck` |
+| 注文請書 | `IconClipboardCheck` |
 | 設計依頼書 | `IconRuler2` |
 | 試算 | `IconCalculator` |
 | 素材入荷 | `IconPackageImport` |
@@ -389,7 +402,7 @@ Stack (gap="xl", p="md", maw={1200})
 | 工程マスタ | `IconGitBranch` |
 | 検査表テンプレート | `IconListCheck` |
 | 不良種類 | `IconAlertTriangle` |
-| 承認グループ | `IconUsersGroup` |
+| 承認設定 | `IconUsersGroup` |
 | 拠点 | `IconBuildingWarehouse` |
 | ユーザー管理 | `IconUserCog` |
 | 試算計算 | `IconMathFunction` |
@@ -400,6 +413,7 @@ Stack (gap="xl", p="md", maw={1200})
 | 操作履歴 | `IconHistory` |
 | QRカード管理 | `IconQrcode` |
 | 端末管理 | `IconDeviceTablet` |
+| 注文書取込 | `IconFileImport` |
 | マニュアル | `IconBook2` |
 
 ---
@@ -487,6 +501,7 @@ Stack (gap="md")
 │   └── [mobile] Menu shadow="sm" position="bottom-end"
 │       ├── Menu.Target → Button variant="default" px="xs" size="sm" → <IconDotsVertical>
 │       └── Menu.Dropdown: 編集 / PDF / コピー / Divider / キャンセル(red)
+├── [if an action is pending] ActionCard (see §10.9) — ヘッダー直下・最上部
 ├── Paper (withBorder, p="md", radius="md") — summary card
 │   ├── SimpleGrid cols={isMobile ? 1 : 3} spacing="md"
 │   │   └── FieldValue[] (see §10.1)
@@ -546,10 +561,30 @@ Stack (gap="md")
 │   └── [mobile] Stack gap="xs" — full-width stacked buttons
 │       ├── Button type="submit" loading={isPending} fullWidth
 │       └── Button variant="default" fullWidth — キャンセル
-│   └── [desktop] Group justify="flex-end" mt="md"
+│   └── [desktop] FormActions — Group justify="flex-end"
 │       ├── Button variant="default" — キャンセル
 │       └── Button type="submit" loading={isPending} — 保存
 ```
+
+**Action row placement** — 保存 / キャンセルは **必ずフォーム下部の
+`FormActions`（`shells.tsx`）**。画面ヘッダー（`PageHeader` の `actions`）に
+保存ボタンを置いてはいけない — あの行は詳細画面の操作（編集 / PDF / ⋯）専用。
+デスクトップ（≥768px）では `position: sticky; bottom` で画面下端に貼り付き、
+フォームがどれだけ長くてもキャンセル / 保存が常に見える（globals.css
+`.form-actions`。`bottom` は固定 AppShell フッターぶんを
+`--app-shell-footer-offset` で避ける）。モバイルは本文末尾に全幅で積む
+（保存が上）— ソフトキーボードが画面下を占有するため。
+
+`FormActions` はキャンセル / 保存の並びを自分で描画する:
+
+```tsx
+<FormActions loading={isPending} onCancel={back} onSave={save} />  // 独自フォーム（type="button"）
+<FormActions loading={isPending} onCancel={back} />                 // <form> 送信（type="submit"）
+```
+
+`FormShell` は自動でこれを使う。`FormShell` を使わない画面（試算 SA11 /
+受注請書ドラフト / 材種の既定単価 / キオスク設定 など）も同じ 1 行を置くこと。
+ボタン構成そのものが違うときだけ `children` を渡して差し替える。
 
 ---
 
@@ -567,9 +602,12 @@ Stack (gap="md")
 | Quote | ACCEPTED | green | 受諾済 |
 | Quote | REJECTED | red | 却下 |
 | Quote | EXPIRED | orange | 期限切れ |
-| OrderAcceptance | PENDING | yellow | 照合中 |
-| OrderAcceptance | PRICE_DIFF | orange | 価格差異 |
-| OrderAcceptance | CONFIRMED | green | 確定 |
+| OrderAcceptanceIntake | IMPORT | gray | 取込中 |
+| OrderAcceptanceIntake | DRAFT | blue | 下書き |
+| OrderAcceptanceIntake | REQUESTED | yellow | 承認依頼中 |
+| OrderAcceptanceIntake | APPROVED | green | 承認済 |
+| OrderAcceptanceIntake | COMPLETED | teal | 展開済 |
+| OrderAcceptanceIntake | ARCHIVED | dark | アーカイブ |
 | SalesOrder | DRAFT | gray | 下書き |
 | SalesOrder | CONFIRMED | blue | 確定 |
 | SalesOrder | IN_PRODUCTION | violet | 製造中 |
@@ -583,9 +621,7 @@ Stack (gap="md")
 | WorkOrder | COMPLETED | green | 完了 |
 | WorkOrder | CANCELLED | red | キャンセル |
 | WorkOrder (approval) | NONE | gray | — |
-| WorkOrder (approval) | PENDING_1ST | yellow | 第一承認待ち |
-| WorkOrder (approval) | APPROVED_1ST | blue | 第一承認済 |
-| WorkOrder (approval) | PENDING_2ND | orange | 第二承認待ち |
+| WorkOrder (approval) | PENDING | yellow | 承認待ち |
 | WorkOrder (approval) | APPROVED | green | 承認済 |
 | WorkOrder (approval) | REJECTED | red | 差し戻し |
 | StepStatus | PENDING | gray | 未着手 |
@@ -628,8 +664,10 @@ Stack (gap="md")
 `src/components/ui/FieldValue.tsx`
 
 ```tsx
-// props: label: string, value: ReactNode, span?: number
-<Stack gap={2}>
+// props: label: string, value: ReactNode, fullWidth?: boolean
+// fullWidth = SummaryGrid の 1 行を丸ごと使う（備考など長い値）。
+// 列数に依らず gridColumn: '1 / -1' なので、モバイルの 1 列でも崩れない。
+<Stack gap={2} style={fullWidth ? { gridColumn: '1 / -1' } : undefined}>
   <Text size="xs" c="dimmed">{label}</Text>
   <Text size="sm" fw={500}>{value ?? '—'}</Text>
 </Stack>
@@ -733,7 +771,7 @@ new Intl.NumberFormat('ja-JP', { style: 'currency', currency: currency ?? 'JPY' 
 | `RichTextEditorField` | `src/components/ui/RichTextEditorField.tsx` | `@mantine/tiptap` ラッパ。太字 / 斜体 / 下線 / 打消 / コード / H3・H4 / 箇条書き / 番号付き / 引用 / コードブロック / 区切り線 / リンク |
 | `RichTextView` | `src/components/ui/RichTextView.tsx` | 読み取り専用表示。React 要素を組み立てる（`dangerouslySetInnerHTML` 不使用） |
 
-搭載画面: 見積書 / 注文請書 / 指示書 / 出荷書 / 請求書 = **メモ**、
+搭載画面: 見積書 / 注文明細 / 指示書 / 出荷書 / 請求書 = **メモ**、
 価格表 / 試算 = **コメント**。既存の 備考（`notes`）は平文のまま別物として残り、
 PDF 印字も従来どおり（メモ・コメントは社内限定で PDF に出ない）。
 
@@ -752,6 +790,37 @@ const memos = await listMemos("quotes", formatQuoteNumber(key));
 `app.document_memos` に保存する（保存 XSS を構造的に排除するため）。検証・
 平文射影・HTML 化は `src/lib/rich-text-core.ts`、読み書きは
 `src/lib/document-memos.ts`（`MEMO_OWNERS` が owner→権限コードの唯一の登録簿）。
+
+### 10.9 ActionCard
+
+`src/components/ui/ActionCard.tsx` — `'use client'`
+
+書類詳細の**最上部**（ヘッダー直下・サマリより上）に 1 枚だけ出す「いま何を
+すべきか」カード。承認フローの操作は以前 Stepper の下のボタン行にあり見落とさ
+れやすかったため、状態と操作をここへまとめる。フロー（Stepper）のパネルは
+表示専用に残る。
+
+```
+Paper (withBorder, p="md", radius="md")
+  style: borderLeft 4px solid {color}-filled / backgroundColor {color}-light
+└── Group (justify="space-between", wrap={isMobile ? "wrap" : "nowrap"})
+    ├── Group gap="sm"
+    │   ├── ThemeIcon (variant="light", color, size="lg", radius="md")
+    │   └── Stack gap={2} — Text fw={600} size="sm" (title)
+    │                     + Text c="dimmed" size="xs" (description)
+    └── Group gap="xs" — 操作ボタン（無い状態は省略可）
+```
+
+**tone — 色はログイン中ユーザーの権限で決まる**
+
+| tone | 色 | 意味 |
+|------|----|------|
+| `action` | blue | 自分で先へ進められる操作（承認依頼・注文確定・発注・入荷完了 …） |
+| `approve` | green | 承認権限がある。承認 / 差し戻しできる |
+| `wait` | gray | 権限が無いので待つだけ。タイトルは「承認待ち」 |
+| `alert` | red | 差し戻しなど、対応が必要な状態 |
+
+搭載画面: 指示書 (`WorkOrderApprovalCard`) / 注文請書 / 素材発注書 / 購買依頼。
 
 ---
 
@@ -927,19 +996,24 @@ Paper (withBorder, p="lg")
 // バリデーション: output_success + 不良合計 = input_quantity（不一致時はインライン警告）
 ```
 
-### 12.4 ApprovalStatusPanel
+### 12.4 ApprovalStatusPanel / WorkOrderApprovalCard
 
-`src/components/production/ApprovalStatusPanel.tsx`
+`src/components/production/ApprovalStatusPanel.tsx` — 2 つを出す。
+
+**WorkOrderApprovalCard** — 画面最上部の ActionCard (§10.9)。承認依頼 / 第一・
+承認 / 差し戻し（理由必須モーダル）を持つ唯一の場所。色は承認権限で決まる
+（権限あり = green + 承認・差し戻し、権限なし = gray の「第一（第二）承認待ち」、
+差し戻し中 = red + 再承認依頼）。操作が無い状態では何も描画しない。
+
+**ApprovalStatusPanel** — フローと記録の**表示のみ**（操作ボタンは持たない）。
 
 ```
 Paper (withBorder, p="md", radius="md")
 ├── Title order={5} mb="md" "承認状況"
 ├── Stepper (active={stepIndex}, size="sm", orientation={isMobile ? "vertical" : "horizontal"})
-│   ├── Stepper.Step label="第一承認" description="工場長・部長クラス"
-│   └── Stepper.Step label="第二承認" description="部長クラス" loading={PENDING_2ND}
-├── [if current user is approver and PENDING] Group
-│   ├── Button color="green" — 承認
-│   └── Button color="red" variant="outline" — 差し戻し
+│   └── Stepper.Step × N — 段数・名称・グループは依頼時のスナップショット
+│       （approval_requests.flow_snapshot）由来。承認設定 MS0B が決める
+├── [if REJECTED] Alert color="red" — 差し戻し理由
 └── approval_records list
     └── Group — approver name + acted_at + action badge + comment
 ```
@@ -1102,9 +1176,9 @@ Row click navigates to detail page.
 | PriceList | 顧客 / 製品 / 注文種別（バリアントのバッジ） / 段階 / 単価範囲 / 試算元 / 有効期間 / 状態 |
 | Quote | 見積番号 / 顧客 / 有効期限 / 状態 / 更新日 |
 | OrderAcceptance | 注文番号 / 顧客 / 顧客注文書番号 / 合計金額 / 状態 / 更新日 |
-| SalesOrder | 注文請書番号 / 顧客 / 製品 / 数量 / 金額 / 納期 / 状態 |
-| WorkOrder | 指示書番号 / 注文請書番号 / 種別 / 予定数量 / 承認状態 / 状態 / 更新日 |
-| ShippingOrder | 出荷書番号 / 注文請書番号 / 種別 / 状態 / 出荷日 |
+| SalesOrder | 注文明細番号 / 顧客 / 製品 / 数量 / 金額 / 納期 / 状態 |
+| WorkOrder | 指示書番号 / 注文明細番号 / 種別 / 予定数量 / 承認状態 / 状態 / 更新日 |
+| ShippingOrder | 出荷書番号 / 注文明細番号 / 種別 / 状態 / 出荷日 |
 | DeliveryNote | 納品番号 / 出荷書番号 / 納品先 / 方法 / 状態 / 納品日 |
 | Invoice | 請求番号 / 顧客 / 請求期間 / 合計金額 / 状態 / 発行日 |
 | BillingClosing | 顧客 / 締日 / 合計金額 / 状態 / 処理日 |
@@ -1172,7 +1246,7 @@ Do **not** use toast for:
 ### 16.2 Confirmation Modal
 
 Use `modals.openConfirmModal()` (see §10.4) for:
-- Cancelling a document (注文請書、指示書 etc.)
+- Cancelling a document (注文明細、指示書 etc.)
 - Deleting a master record
 - Rolling back a manufacturing step
 
@@ -1212,13 +1286,20 @@ Respect `@media (prefers-reduced-motion: reduce)` — disable all CSS transition
 
 Use these exact terms consistently across all UI strings, error messages, and notifications:
 
+> **未確認の用語（2026-08 時点）** — 「注文請書」「注文明細」は本仕様で定めた語で、
+> 業務側の文書 `_docs/business_flow.md` は同じものを **「注文受諾書」（§2）**
+> **「受注書」（§3）** と呼んでいる。利用者から「注文明細という語は聞いたことが
+> ない」との指摘があり、**現場の語彙と一致していない可能性が高い**。
+> 改称する場合は UI ラベル・マニュアル・本節をまとめて直すこと（DB のテーブル名
+> `order_acceptances` / `sales_orders` と操作コードは利用者に見えないので変えない）。
+
 | Concept | Japanese term | Abbreviation/code |
 |---------|---------------|-------------------|
 | 試算 | 試算 | EST |
 | 価格表 | 価格表 | price_list |
 | 見積書 | 見積書 | QOT |
-| 受注請書 | 受注請書 | ORD |
-| 注文請書 | 注文請書 | ORD-...-NN |
+| 注文請書 | 注文請書 | ORD |
+| 注文明細 | 注文明細 | ORD-...-NN |
 | 指示書 | 指示書 | — (serial int) |
 | 出荷書 | 出荷書 | — |
 | 納品書 | 納品書 | DRN |
@@ -1237,14 +1318,14 @@ Use these exact terms consistently across all UI strings, error messages, and no
 | 最終需要家 | 最終需要家 | END_USER |
 | 顧客 | 顧客 | CUSTOMER |
 | 支店 | 支店 | branch |
-| 承認グループ | 承認グループ | — |
+| 承認設定 | 承認設定 | — |
 | 操作コード | 操作コード | operation code |
 | 下書き | 下書き | DRAFT |
 | 確定 | 確定 | CONFIRMED |
 | キャンセル | キャンセル | CANCELLED |
 | 差し戻し | 差し戻し | REJECTED |
 
-Do **not** use synonyms — e.g. never write "注文書" where "受注請書" is meant.
+Do **not** use synonyms — e.g. never write "注文書" where "注文請書" is meant.
 
 ### 17.2 敬語 / Tone
 

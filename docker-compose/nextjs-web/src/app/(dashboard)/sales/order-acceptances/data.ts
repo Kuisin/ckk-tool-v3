@@ -1,10 +1,10 @@
 /**
- * data.ts — 受注請書 intake (SA04) のサーバーサイド取得・マッピング。
+ * data.ts — 注文請書 intake (SA04) のサーバーサイド取得・マッピング。
  *
  * app.order_acceptances は (year_month, seq) の複合キー — 表示番号
  * ORD-YYYYMM-NNNNN は導出（保存しない）で、URL id を兼ねる。
- * 伝票展開後は同じ (year_month, seq) の sales_orders 枝番 1..N を持つため、
- * 詳細では展開済み注文請書番号も併せて返す。
+ * 注文確定後は同じ (year_month, seq) の order_lines 枝番 1..N を持つため、
+ * 詳細では確定済み注文明細番号も併せて返す。
  * Prisma Decimal はここで Number() へ、日付は ISO 文字列へ変換して渡す。
  */
 
@@ -19,8 +19,8 @@ import { type Prisma, prisma } from "@/lib/db";
 import {
   type DocKey,
   formatDocNumber,
+  formatOrderLineNumber,
   formatProductNumber,
-  formatSalesOrderNumber,
 } from "@/lib/doc-number";
 import { type LocalizedText, localized } from "@/lib/format";
 import { reviewIntake } from "@/lib/intake-review";
@@ -102,9 +102,13 @@ export async function fetchOrderAcceptance(
     return null;
   }
 
-  // 伝票展開で生成された注文請書（同一 yearMonth+seq の枝番 1..N）。
-  const salesOrders = await prisma.salesOrder.findMany({
-    where: { yearMonth: key.yearMonth, seq: key.seq },
+  // 確定済みの注文明細（枝番 1..N）。未確定行は公開番号を持たない。
+  const orderLines = await prisma.orderLine.findMany({
+    where: {
+      acceptanceYearMonth: key.yearMonth,
+      acceptanceSeq: key.seq,
+      branch: { not: null },
+    },
     orderBy: { branch: "asc" },
     select: { branch: true },
   });
@@ -161,8 +165,8 @@ export async function fetchOrderAcceptance(
     orderDate: r.orderDate?.toISOString().slice(0, 10) ?? null,
     notes: r.notes,
     items,
-    salesOrderNumbers: salesOrders.map((so) =>
-      formatSalesOrderNumber({ ...key, branch: so.branch }),
+    orderLineNumbers: orderLines.map((l) =>
+      formatOrderLineNumber({ ...key, branch: l.branch as number }),
     ),
     completedAt: r.completedAt?.toISOString() ?? null,
     archivedAt: r.archivedAt?.toISOString() ?? null,

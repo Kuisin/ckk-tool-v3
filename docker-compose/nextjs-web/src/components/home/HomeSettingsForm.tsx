@@ -43,6 +43,7 @@ import {
   SaveButton,
 } from "@/components/ui/buttons";
 import { PageHeader } from "@/components/ui/PageHeader";
+import { FormActions } from "@/components/ui/shells";
 import { useIsMobile } from "@/hooks/useViewport";
 import { type AppEntry, appList, CATEGORY_COLORS } from "@/lib/app-list";
 import {
@@ -377,22 +378,24 @@ export function HomeSettingsForm({ initial }: { initial: HomeSettings }) {
       )}
 
       {/* ── 保存 ─────────────────────────────────────────────────────── */}
-      {isMobile ? (
-        <Stack gap="xs">
-          <SaveButton
-            fullWidth
-            loading={isPending}
-            onClick={save}
-            type="button"
-          />
-          <CancelButton fullWidth href="/" />
-        </Stack>
-      ) : (
-        <Group justify="flex-end">
-          <CancelButton href="/" />
-          <SaveButton loading={isPending} onClick={save} type="button" />
-        </Group>
-      )}
+      <FormActions>
+        {isMobile ? (
+          <Stack gap="xs">
+            <SaveButton
+              fullWidth
+              loading={isPending}
+              onClick={save}
+              type="button"
+            />
+            <CancelButton fullWidth href="/" />
+          </Stack>
+        ) : (
+          <Group justify="flex-end">
+            <CancelButton href="/" />
+            <SaveButton loading={isPending} onClick={save} type="button" />
+          </Group>
+        )}
+      </FormActions>
     </Stack>
   );
 }

@@ -6,7 +6,7 @@
  *
  * Usage:
  *   <StatusBadge entity="Quote" status="ISSUED" />
- *   <StatusBadge entity="WorkOrderApproval" status="PENDING_2ND" />
+ *   <StatusBadge entity="WorkOrderApproval" status="PENDING" />
  */
 
 import { Badge, type BadgeProps } from "@mantine/core";
@@ -37,13 +37,13 @@ export const STATUS_MAPS = {
     PRICE_DIFF: { label: "価格差異", color: "orange" },
     CONFIRMED: { label: "確定", color: "green" },
   },
-  /** 受注請書 intake（app.order_acceptances — 取込→下書き→承認→展開）。 */
+  /** 注文請書 intake（app.order_acceptances — 取込→下書き→承認→確定）。 */
   OrderAcceptanceIntake: {
     IMPORT: { label: "取込中", color: "gray" },
     DRAFT: { label: "下書き", color: "blue" },
     REQUESTED: { label: "承認依頼中", color: "yellow" },
     APPROVED: { label: "承認済", color: "green" },
-    COMPLETED: { label: "展開済", color: "teal" },
+    COMPLETED: { label: "確定", color: "teal" },
     ARCHIVED: { label: "アーカイブ", color: "dark" },
   },
   MaterialPurchaseOrder: {
@@ -63,7 +63,7 @@ export const STATUS_MAPS = {
     ORDERED: { label: "発注済", color: "violet" },
     CANCELLED: { label: "キャンセル", color: "red" },
   },
-  SalesOrder: {
+  OrderLine: {
     DRAFT: { label: "下書き", color: "gray" },
     CONFIRMED: { label: "確定", color: "blue" },
     IN_PRODUCTION: { label: "製造中", color: "violet" },
@@ -79,11 +79,11 @@ export const STATUS_MAPS = {
     COMPLETED: { label: "完了", color: "green" },
     CANCELLED: { label: "キャンセル", color: "red" },
   },
+  // 段数は承認設定 (MS0B) が書類種別ごとに決めるので、ここは局面だけを表す。
+  // 何段目かは承認カード / Stepper が依頼のスナップショットから出す。
   WorkOrderApproval: {
     NONE: { label: "—", color: "gray" },
-    PENDING_1ST: { label: "第一承認待ち", color: "yellow" },
-    APPROVED_1ST: { label: "第一承認済", color: "blue" },
-    PENDING_2ND: { label: "第二承認待ち", color: "orange" },
+    PENDING: { label: "承認待ち", color: "yellow" },
     APPROVED: { label: "承認済", color: "green" },
     REJECTED: { label: "差し戻し", color: "red" },
   },

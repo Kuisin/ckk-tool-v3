@@ -33,8 +33,9 @@ export interface DeliveryNote {
   deliveryNumber: string;
   /** 導出番号 SHP-YYYYMM-NNNNN。 */
   shippingOrderNumber: string;
-  /** 出荷書経由の注文請書番号（参考表示）。 */
-  salesOrderNumber: string;
+  /** 出荷書経由の注文明細番号（参考表示）。 */
+  /** 束ねている注文明細の番号（1 出荷書は複数の注文明細を持てる）。 */
+  orderLineNumbers: string[];
   deliveryMethod: DeliveryMethod;
   recipientId: string;
   recipientName: string;
@@ -60,17 +61,17 @@ export function isEditable(n: Pick<DeliveryNote, "status">) {
   return n.status === "DRAFT";
 }
 
-/** 納品書フォームの出荷書候補 — 注文請書由来の既定値（納品先・単価）込み。 */
+/** 納品書フォームの出荷書候補 — 注文明細由来の既定値（納品先・単価）込み。 */
 export interface ShippingOrderCandidate {
   /** 導出番号 SHP-YYYYMM-NNNNN（Select の値）。 */
   number: string;
   label: string;
   customerName: string;
   customerBranchName: string | null;
-  /** 注文請書の最終需要家（ユーザー直送時の届け先既定値）。 */
+  /** 注文明細の最終需要家（ユーザー直送時の届け先既定値）。 */
   endUserBpId: string | null;
   endUserName: string | null;
-  /** 出荷書明細 → 納品書明細の既定行（単価は注文請書の単価）。 */
+  /** 出荷書明細 → 納品書明細の既定行（単価は注文明細の単価）。 */
   items: {
     productId: string;
     productName: string;

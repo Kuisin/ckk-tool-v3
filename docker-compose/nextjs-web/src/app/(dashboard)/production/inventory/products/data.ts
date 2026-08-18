@@ -17,7 +17,7 @@ import type {
 } from "@/components/production/inventory/products/model";
 import { checkPermission } from "@/lib/authz";
 import { type Prisma, prisma } from "@/lib/db";
-import { formatProductNumber, formatSalesOrderNumber } from "@/lib/doc-number";
+import { formatProductNumber, orderLineNumberOf } from "@/lib/doc-number";
 import { type LocalizedText, localized } from "@/lib/format";
 import {
   computeWipByStep,
@@ -175,7 +175,13 @@ async function fetchReservations(
   const rows = await prisma.inventoryReservation.findMany({
     where: { inventoryType: "PRODUCT", inventoryId },
     include: {
-      salesOrder: { select: { yearMonth: true, seq: true, branch: true } },
+      orderLine: {
+        select: {
+          acceptanceYearMonth: true,
+          acceptanceSeq: true,
+          branch: true,
+        },
+      },
       workOrder: { select: { workOrderNumber: true } },
     },
     orderBy: { reservedAt: "desc" },
@@ -184,9 +190,7 @@ async function fetchReservations(
     id: r.id,
     quantity: Number(r.quantity),
     status: r.status,
-    salesOrderNumber: r.salesOrder
-      ? formatSalesOrderNumber(r.salesOrder)
-      : null,
+    orderLineNumber: r.orderLine ? orderLineNumberOf(r.orderLine) : null,
     workOrderNumber: r.workOrder?.workOrderNumber ?? null,
     reservedAt: r.reservedAt?.toISOString() ?? null,
     confirmedAt: r.confirmedAt?.toISOString() ?? null,

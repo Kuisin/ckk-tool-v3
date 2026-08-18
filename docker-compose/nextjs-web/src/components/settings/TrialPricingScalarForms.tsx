@@ -25,10 +25,9 @@ import { IconPlus, IconTrash } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
 import { useMemo, useState, useTransition } from "react";
 import { updateTrialPricingSettings } from "@/app/(dashboard)/settings/actions";
-import { CancelButton, GhostButton, SaveButton } from "@/components/ui/buttons";
+import { GhostButton } from "@/components/ui/buttons";
 import { PageHeader } from "@/components/ui/PageHeader";
-import { FormSection } from "@/components/ui/shells";
-import { useIsMobile } from "@/hooks/useViewport";
+import { FormActions, FormSection } from "@/components/ui/shells";
 import {
   type CustomInputDef,
   type CustomInputType,
@@ -92,14 +91,12 @@ function SectionShell({
   isPending,
   onSave,
   onCancel,
-  isMobile,
   children,
 }: {
   title: string;
   isPending: boolean;
   onSave: () => void;
   onCancel: () => void;
-  isMobile: boolean;
   children: React.ReactNode;
 }) {
   return (
@@ -109,21 +106,7 @@ function SectionShell({
         title={title}
       />
       {children}
-      {isMobile ? (
-        <Stack gap="xs">
-          <SaveButton fullWidth loading={isPending} onClick={onSave}>
-            保存
-          </SaveButton>
-          <CancelButton fullWidth onClick={onCancel} />
-        </Stack>
-      ) : (
-        <Group justify="flex-end">
-          <CancelButton onClick={onCancel} />
-          <SaveButton loading={isPending} onClick={onSave}>
-            保存
-          </SaveButton>
-        </Group>
-      )}
+      <FormActions loading={isPending} onCancel={onCancel} onSave={onSave} />
     </Stack>
   );
 }
@@ -134,12 +117,10 @@ export function MaterialPolicyForm({
 }: {
   initial: TrialPricingSettings;
 }) {
-  const isMobile = useIsMobile();
   const { settings, patch, save, isPending, router } =
     useSectionSettings(initial);
   return (
     <SectionShell
-      isMobile={isMobile}
       isPending={isPending}
       onCancel={() => router.push(BASE)}
       onSave={() => save()}
@@ -196,7 +177,6 @@ export function CustomInputsForm({
 }: {
   initial: TrialPricingSettings;
 }) {
-  const isMobile = useIsMobile();
   const { settings, patch, save, isPending, router } =
     useSectionSettings(initial);
 
@@ -222,7 +202,6 @@ export function CustomInputsForm({
 
   return (
     <SectionShell
-      isMobile={isMobile}
       isPending={isPending}
       onCancel={() => router.push(BASE)}
       onSave={() => save(validate)}

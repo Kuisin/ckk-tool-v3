@@ -5,7 +5,7 @@
  *   依頼番号 DSG-YYYYMM-NNNNN は nextDocumentNumber("DESIGN") で採番し
  *   request_number に保存する（URL id も依頼番号）。
  *   トリガ: 見積時（QUOTE — 見積書 複合キー参照）/ 受注時（SALES_ORDER —
- *   注文請書 uuid 参照）。トリガと参照元は作成後変更不可。
+ *   注文明細 uuid 参照）。トリガと参照元は作成後変更不可。
  *
  * ここは pure / client-safe のみ。
  */
@@ -40,9 +40,9 @@ export interface DesignRequest {
   trigger: DesignRequestTrigger;
   /** 見積時: 見積元の見積書番号 QOT-…（導出）。受注時・未設定は null。 */
   quoteNumber: string | null;
-  /** 受注時: 参照する注文請書の uuid / 導出番号 ORD-…-NN。 */
-  salesOrderId: string | null;
-  salesOrderNumber: string | null;
+  /** 受注時: 参照する注文明細の uuid / 導出番号 ORD-…-NN。 */
+  orderLineId: string | null;
+  orderLineNumber: string | null;
   /** 製品の内部 id（連番）を文字列で保持 — SearchSelect の値と揃える。 */
   productId: string | null;
   productName: string | null;

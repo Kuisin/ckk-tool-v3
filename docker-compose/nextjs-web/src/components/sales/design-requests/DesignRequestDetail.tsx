@@ -3,7 +3,7 @@
 /**
  * DesignRequestDetail — 設計依頼書 詳細 (SA25, design.md §8.2).
  *
- * SummaryGrid（依頼番号 / トリガー / 見積書 or 注文請書リンク / 製品 / 状態 /
+ * SummaryGrid（依頼番号 / トリガー / 見積書 or 注文明細リンク / 製品 / 状態 /
  * 完了日）+ Tabs: 概要（依頼内容）/ ファイル（バージョン一覧 — アップロードは
  * 準備中）/ 履歴（HistoryPanel）。
  *
@@ -184,18 +184,16 @@ export function DesignRequestDetail({
           />
         ) : (
           <FieldValue
-            label="注文請書"
+            label="注文明細"
             value={
-              request.salesOrderNumber ? (
+              request.orderLineNumber ? (
                 <Anchor
                   onClick={() =>
-                    router.push(
-                      `/production/sales-orders/${request.salesOrderNumber}`,
-                    )
+                    router.push(`/sales/order-lines/${request.orderLineNumber}`)
                   }
                   size="sm"
                 >
-                  <DocNumber c="blue">{request.salesOrderNumber}</DocNumber>
+                  <DocNumber c="blue">{request.orderLineNumber}</DocNumber>
                 </Anchor>
               ) : (
                 "—"

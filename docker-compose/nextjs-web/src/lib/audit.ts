@@ -67,7 +67,8 @@ export const AUDIT_TABLE_LABELS: Record<string, string> = {
   inspection_templates: "検査表テンプレート",
   defect_types: "不良種類",
   approval_groups: "承認グループ",
-  sales_orders: "注文請書",
+  approval_flows: "承認フロー",
+  order_lines: "注文明細",
   work_orders: "指示書",
   shipping_orders: "出荷書",
   delivery_notes: "納品書",
@@ -79,7 +80,7 @@ export const AUDIT_TABLE_LABELS: Record<string, string> = {
   billing_closings: "締日処理",
   design_requests: "設計依頼書",
   approval_requests: "承認依頼",
-  order_acceptances: "受注請書",
+  order_acceptances: "注文請書",
   kiosk_cards: "QRカード",
   kiosk_devices: "キオスク端末",
   kiosk_floor_maps: "フロアマップ",
@@ -90,6 +91,8 @@ export const AUDIT_TABLE_LABELS: Record<string, string> = {
   work_location_groups: "作業場所グループ",
   work_locations: "作業場所",
   file_folder_grants: "ファイルフォルダ権限",
+  // テーブルではなく取込フォルダ（INTAKE_DIR）の操作 — SY0C の投入・再取込。
+  intake_folder: "注文書取込フォルダ",
   system: "システム",
 };
 

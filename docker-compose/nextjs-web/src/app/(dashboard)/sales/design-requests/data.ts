@@ -2,7 +2,7 @@
  * data.ts — 設計依頼書 (SA05) ページのサーバーサイド取得・マッピング。
  *
  * app.design_requests は uuid PK + request_number（DSG-YYYYMM-NNNNN、保存済み）。
- * URL id = request_number。参照元（見積書/注文請書）の表示番号はキーから導出する。
+ * URL id = request_number。参照元（見積書/注文明細）の表示番号はキーから導出する。
  */
 
 import type {
@@ -14,12 +14,12 @@ import { prisma } from "@/lib/db";
 import {
   formatProductNumber,
   formatQuoteNumber,
-  formatSalesOrderNumber,
+  orderLineNumberOf,
 } from "@/lib/doc-number";
 import { type LocalizedText, localized } from "@/lib/format";
 
 const DESIGN_REQUEST_INCLUDE = {
-  salesOrder: true,
+  orderLine: true,
   product: true,
   // ファイルタブ — 最新バージョンから順に。
   files: {
@@ -58,10 +58,8 @@ function mapDesignRequest(r: DesignRequestRow): DesignRequest {
       r.quoteYearMonth && r.quoteSeq != null
         ? formatQuoteNumber({ yearMonth: r.quoteYearMonth, seq: r.quoteSeq })
         : null,
-    salesOrderId: r.salesOrderId,
-    salesOrderNumber: r.salesOrder
-      ? formatSalesOrderNumber(r.salesOrder)
-      : null,
+    orderLineId: r.orderLineId,
+    orderLineNumber: r.orderLine ? orderLineNumberOf(r.orderLine) : null,
     productId: r.productId != null ? String(r.productId) : null,
     productName: r.product ? productLabel(r.product) : null,
     description: r.description,
@@ -106,7 +104,7 @@ export interface QuoteOption {
 
 /**
  * 見積書リンク用の options（新規フォームの 見積書 Select）。
- * 見積マスタは注文請書ほど大きくないため、直近 50 件をサーバーで読み込んで
+ * 見積マスタは注文明細ほど大きくないため、直近 50 件をサーバーで読み込んで
  * 通常の Select に渡す（value = 導出番号 QOT-YYYYMM-NNNNN）。
  */
 export async function fetchRecentQuoteOptions(): Promise<QuoteOption[]> {

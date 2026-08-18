@@ -69,6 +69,8 @@ model InvoiceItem {
   shippingOrderSeq       Int?    @map("shipping_order_seq")
   deliveryNoteYearMonth  String? @map("delivery_note_year_month") @db.Char(6)
   deliveryNoteSeq        Int?    @map("delivery_note_seq")
+  // 由来の注文明細（1 出荷書が複数明細を束ねるため、単価はこの行から取る）
+  orderLineId            String? @map("order_line_id") @db.Uuid
 
   description Json // { ja: '', en: '' }
   quantity    Int
@@ -76,9 +78,11 @@ model InvoiceItem {
   amount      Decimal @db.Decimal(12, 2)
   sortOrder   Int     @default(0) @map("sort_order")
 
-  invoice Invoice @relation(fields: [invoiceYearMonth, invoiceSeq], references: [yearMonth, seq], onDelete: Cascade)
+  invoice   Invoice    @relation(fields: [invoiceYearMonth, invoiceSeq], references: [yearMonth, seq], onDelete: Cascade)
+  orderLine OrderLine? @relation(fields: [orderLineId], references: [id])
 
   @@index([invoiceYearMonth, invoiceSeq])
+  @@index([orderLineId])
   @@map("invoice_items")
   @@schema("app")
 }

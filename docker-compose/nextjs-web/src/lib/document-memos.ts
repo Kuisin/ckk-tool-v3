@@ -58,7 +58,8 @@ export type MemoKind = "MEMO" | "COMMENT";
  */
 const MEMO_OWNERS: Record<string, { permission: string; kind: MemoKind }> = {
   quotes: { permission: "quote", kind: "MEMO" },
-  sales_orders: { permission: "work_order", kind: "MEMO" },
+  order_acceptances: { permission: "order_acceptance", kind: "MEMO" },
+  order_lines: { permission: "order_acceptance", kind: "MEMO" },
   work_orders: { permission: "work_order", kind: "MEMO" },
   shipping_orders: { permission: "shipping_order", kind: "MEMO" },
   invoices: { permission: "invoice", kind: "MEMO" },

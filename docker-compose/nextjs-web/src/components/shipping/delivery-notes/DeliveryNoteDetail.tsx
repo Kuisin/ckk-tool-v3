@@ -205,8 +205,16 @@ export function DeliveryNoteDetail({
           }
         />
         <FieldValue
-          label="注文請書番号"
-          value={<DocNumber>{note.salesOrderNumber}</DocNumber>}
+          label="注文明細番号"
+          value={
+            note.orderLineNumbers.length > 0 ? (
+              <Stack gap={2}>
+                {note.orderLineNumbers.map((n) => (
+                  <DocNumber key={n}>{n}</DocNumber>
+                ))}
+              </Stack>
+            ) : null
+          }
         />
         <FieldValue
           label="納品先"

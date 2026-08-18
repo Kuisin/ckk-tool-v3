@@ -8,7 +8,6 @@ DECLARE
   v_id uuid;
   v_first int;
   v_second int;
-  v_wf int;
   r record;
 BEGIN
   FOR r IN
@@ -29,14 +28,14 @@ BEGIN
       updated_at = now();
   END LOOP;
 
-  SELECT id INTO v_first  FROM app.approval_groups WHERE type = 'FIRST'  AND is_active LIMIT 1;
-  SELECT id INTO v_second FROM app.approval_groups WHERE type = 'SECOND' AND is_active LIMIT 1;
-  SELECT id INTO v_wf     FROM app.approval_groups WHERE type = 'WORKFLOW_CHANGE' AND is_active LIMIT 1;
+  -- グループは種別を持たない（何段目で使うかは承認フローが決める）ので、
+  -- manufacturing-demo-seed.sql が作る名前で引く。
+  SELECT id INTO v_first  FROM app.approval_groups WHERE name->>'ja' = '第一承認グループ（デモ）' AND is_active LIMIT 1;
+  SELECT id INTO v_second FROM app.approval_groups WHERE name->>'ja' = '第二承認グループ（デモ）' AND is_active LIMIT 1;
 
   SELECT id INTO v_id FROM app.users WHERE username = 'demo1';
   IF v_first  IS NOT NULL THEN INSERT INTO app.approval_group_members (group_id, user_id, is_active) VALUES (v_first,  v_id, true) ON CONFLICT DO NOTHING; END IF;
   IF v_second IS NOT NULL THEN INSERT INTO app.approval_group_members (group_id, user_id, is_active) VALUES (v_second, v_id, true) ON CONFLICT DO NOTHING; END IF;
-  IF v_wf     IS NOT NULL THEN INSERT INTO app.approval_group_members (group_id, user_id, is_active) VALUES (v_wf,     v_id, true) ON CONFLICT DO NOTHING; END IF;
 
   SELECT id INTO v_id FROM app.users WHERE username = 'demo3';
   IF v_first  IS NOT NULL THEN INSERT INTO app.approval_group_members (group_id, user_id, is_active) VALUES (v_first,  v_id, true) ON CONFLICT DO NOTHING; END IF;

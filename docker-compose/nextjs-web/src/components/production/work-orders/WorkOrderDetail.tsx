@@ -3,12 +3,13 @@
 /**
  * WorkOrderDetail — 指示書 詳細 (PD22) / 承認詳細 (PD23) (design.md §8.2)。
  *
+ * 最上部の WorkOrderApprovalCard（いまやること — 権限で色が変わる）+
  * サマリ + ApprovalStatusPanel (§12.4) + 工程ワークフロー表示 (§12.2) +
  * Tabs（概要 / 関連 / 履歴）。variant="approval" は承認管理 (PD03) から開く
  * 承認画面 — タイトル「承認」で ApprovalStatusPanel を最上部に出し、
  * 編集系アクションは出さない。
  *
- * アクション: 編集（DRAFT のみ）/ コピー（対象注文請書を選ぶモーダル。コピー元に
+ * アクション: 編集（DRAFT のみ）/ コピー（対象注文明細を選ぶモーダル。コピー元に
  * 新しい版があれば警告）/ キャンセル（DRAFT・承認待ちのみ）。
  */
 
@@ -18,14 +19,16 @@ import { IconAlertTriangle, IconCopy, IconX } from "@tabler/icons-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
-import { searchSalesOrderOptions } from "@/app/(dashboard)/_shared/option-search";
+import { searchOrderLineOptions } from "@/app/(dashboard)/_shared/option-search";
 import {
   cancelWorkOrder,
   copyWorkOrder,
 } from "@/app/(dashboard)/production/work-orders/actions";
+import type { ApprovalActionState } from "@/components/approvals/ApprovalActionCard";
 import {
   ApprovalStatusPanel,
   type ApprovalTrailView,
+  WorkOrderApprovalCard,
 } from "@/components/production/ApprovalStatusPanel";
 import { WorkOrderStepsPanel } from "@/components/production/WorkOrderStepsPanel";
 import { DocNumber } from "@/components/ui/DocNumber";
@@ -48,13 +51,12 @@ import { formatDateTime, workOrderNumberLabel } from "@/lib/format";
 import type { WorkOrderView } from "./model";
 
 const BASE_PATH = "/production/work-orders";
-const SALES_ORDERS_PATH = "/production/sales-orders";
+const SALES_ORDERS_PATH = "/sales/order-lines";
 
 export function WorkOrderDetail({
   workOrder,
   auditEntries,
-  canApproveFirst,
-  canApproveSecond,
+  approval,
   approvalTrail = [],
   catalogOptions = [],
   memos = [],
@@ -64,8 +66,7 @@ export function WorkOrderDetail({
   auditEntries: AuditEntry[];
   /** 社内メモ（document_memos 由来、メモタブ）。 */
   memos?: MemoView[];
-  canApproveFirst: boolean;
-  canApproveSecond: boolean;
+  approval: ApprovalActionState;
   /** 正規化された承認記録（approval_records — 代理承認マーカー付き）。 */
   approvalTrail?: ApprovalTrailView[];
   /** 分岐追加モーダル用の工程カタログ options（詳細画面のみ）。 */
@@ -79,7 +80,7 @@ export function WorkOrderDetail({
   const [isPending, startTransition] = useTransition();
   const [copyOpen, setCopyOpen] = useState(false);
   const [copyTargetSoId, setCopyTargetSoId] = useState<string | null>(
-    workOrder.salesOrderId,
+    workOrder.orderLineId,
   );
 
   const wo = workOrder;
@@ -143,35 +144,41 @@ export function WorkOrderDetail({
     });
   };
 
-  const approvalPanel = (
-    <ApprovalStatusPanel
-      approvalStatus={wo.approvalStatus}
-      canApproveFirst={canApproveFirst}
-      canApproveSecond={canApproveSecond}
-      history={wo.history}
+  // 状態別の操作は最上部のカードへ（承認権限の有無で色が変わる）。
+  const approvalCard = (
+    <WorkOrderApprovalCard
+      approval={approval}
       rejectReason={wo.rejectReason}
       status={wo.status}
-      trail={approvalTrail}
       workOrderNumber={wo.workOrderNumber}
+    />
+  );
+
+  const approvalPanel = (
+    <ApprovalStatusPanel
+      approval={approval}
+      history={wo.history}
+      rejectReason={wo.rejectReason}
+      trail={approvalTrail}
     />
   );
 
   const summary = (
     <SummaryGrid>
       <FieldValue
-        label="注文請書番号"
+        label="注文明細番号"
         value={
-          wo.salesOrderNumber != null ? (
+          wo.orderLineNumber != null ? (
             <Anchor
               component={Link}
-              href={`${SALES_ORDERS_PATH}/${wo.salesOrderNumber}`}
+              href={`${SALES_ORDERS_PATH}/${wo.orderLineNumber}`}
               size="sm"
             >
-              <DocNumber c="blue">{wo.salesOrderNumber}</DocNumber>
+              <DocNumber c="blue">{wo.orderLineNumber}</DocNumber>
             </Anchor>
           ) : (
             <Badge color="teal" size="sm" variant="light">
-              在庫向け（注文請書なし）
+              在庫向け（注文明細なし）
             </Badge>
           )
         }
@@ -287,7 +294,8 @@ export function WorkOrderDetail({
       title={isApproval ? `承認 ${woLabel}` : `指示書 ${woLabel}`}
       updatedAt={formatDateTime(wo.updatedAt)}
     >
-      {/* 承認画面は承認状況を最上部に */}
+      {/* 「いまやること」カードは常に最上部。承認画面は承認状況もサマリより上 */}
+      {approvalCard}
       {isApproval ? (
         <>
           {approvalPanel}
@@ -334,19 +342,19 @@ export function WorkOrderDetail({
           <Stack gap="md">
             <div>
               <Text c="dimmed" mb={4} size="xs">
-                注文請書
+                注文明細
               </Text>
-              {wo.salesOrderNumber != null ? (
+              {wo.orderLineNumber != null ? (
                 <Anchor
                   component={Link}
-                  href={`${SALES_ORDERS_PATH}/${wo.salesOrderNumber}`}
+                  href={`${SALES_ORDERS_PATH}/${wo.orderLineNumber}`}
                   size="sm"
                 >
-                  <DocNumber c="blue">{wo.salesOrderNumber}</DocNumber>
+                  <DocNumber c="blue">{wo.orderLineNumber}</DocNumber>
                 </Anchor>
               ) : (
                 <Text c="dimmed" size="sm">
-                  在庫向けの独立指示書（注文請書なし）
+                  在庫向けの独立指示書（注文明細なし）
                 </Text>
               )}
             </div>
@@ -431,24 +439,24 @@ export function WorkOrderDetail({
           )}
           <SearchSelect
             initialOption={
-              wo.salesOrderId != null
+              wo.orderLineId != null
                 ? {
-                    value: wo.salesOrderId,
-                    label: `${wo.salesOrderNumber} ${wo.productName}（${wo.salesOrderQuantity}）`,
+                    value: wo.orderLineId,
+                    label: `${wo.orderLineNumber} ${wo.productName}（${wo.orderLineQuantity}）`,
                   }
                 : null
             }
-            label="対象注文請書"
+            label="対象注文明細"
             onChange={setCopyTargetSoId}
-            onSearch={searchSalesOrderOptions}
-            placeholder="未選択 = 在庫向け（注文請書なし）としてコピー"
+            onSearch={searchOrderLineOptions}
+            placeholder="未選択 = 在庫向け（注文明細なし）としてコピー"
             storageKey="sales-order"
             value={copyTargetSoId}
           />
           <Text c="dimmed" size="xs">
             工程・実施場所・検査表を引き継いだ下書きを作成します。
-            注文請書を選ばない場合は在庫向けの独立指示書としてコピーします
-            （在庫分の指示書は注文請書が必要です）。
+            注文明細を選ばない場合は在庫向けの独立指示書としてコピーします
+            （在庫分の指示書は注文明細が必要です）。
           </Text>
         </Stack>
       </ModalShell>

@@ -7,7 +7,12 @@ import { defineConfig } from "vitest/config";
 
 export default defineConfig({
   resolve: {
-    alias: { "@": path.resolve(__dirname, "src") },
+    alias: {
+      "@": path.resolve(__dirname, "src"),
+      // `server-only` は Next のバンドラ用の印で実体が無い。server-only な
+      // モジュール（lib/intake-folder 等）を素の node で読めるよう空に差し替える。
+      "server-only": path.resolve(__dirname, "test/server-only-stub.ts"),
+    },
   },
   test: {
     environment: "node",

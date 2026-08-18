@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import { PurchaseRequestDetail } from "@/components/purchase/purchase-requests/PurchaseRequestDetail";
-import { fetchApprovalTrail, isApprover } from "@/lib/approvals";
+import { fetchApprovalState, fetchApprovalTrail } from "@/lib/approvals";
 import { fetchAuditEntries } from "@/lib/audit";
 import { requireAppRead } from "@/lib/authz-page";
 import { fetchPurchaseRequest, fetchSupplierOptions } from "../data";
@@ -30,11 +30,11 @@ export default async function PurchasePurchaseRequestsDetailPage({
   const { id } = await params;
   const requestNumber = decodeURIComponent(id);
 
-  const [purchaseRequest, auditEntries, canApprove, supplierOptions, trail] =
+  const [purchaseRequest, auditEntries, approval, supplierOptions, trail] =
     await Promise.all([
       fetchPurchaseRequest(requestNumber),
       fetchAuditEntries("purchase_requests", requestNumber),
-      isApprover("FIRST"),
+      fetchApprovalState("purchase_requests", requestNumber),
       fetchSupplierOptions(),
       fetchApprovalTrail("purchase_requests", requestNumber),
     ]);
@@ -42,9 +42,9 @@ export default async function PurchasePurchaseRequestsDetailPage({
 
   return (
     <PurchaseRequestDetail
+      approval={approval}
       approvalTrail={trail}
       auditEntries={auditEntries}
-      canApprove={canApprove}
       purchaseRequest={purchaseRequest}
       supplierOptions={supplierOptions}
     />

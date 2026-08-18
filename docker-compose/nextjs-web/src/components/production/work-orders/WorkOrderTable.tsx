@@ -3,7 +3,7 @@
 /**
  * WorkOrderTable — 指示書 一覧 (PD02) / 承認待ち一覧 (PD03) (design.md §8.1/§14).
  *
- * variant="workOrders": 指示書番号 / 注文請書番号 / 製品 / 種別 / 予定数量 /
+ * variant="workOrders": 指示書番号 / 注文明細番号 / 製品 / 種別 / 予定数量 /
  *   承認状態（NONE は非表示）/ 状態 / 更新日。行クリック → 指示書詳細。
  * variant="approvals": 承認状態が PENDING の行のみ（server 側で絞り込み済み）。
  *   状態・更新日の代わりに依頼日。行クリック → 承認詳細。
@@ -72,7 +72,7 @@ export function WorkOrderTable({
       !search ||
       String(r.workOrderNumber).includes(search) ||
       workOrderNumberLabel(r.workOrderNumber, r.createdAt).includes(search) ||
-      (r.salesOrderNumber ?? "").includes(search) ||
+      (r.orderLineNumber ?? "").includes(search) ||
       r.productName.includes(search);
     const matchesType = !type || r.type === type;
     const matchesStatus =
@@ -94,14 +94,14 @@ export function WorkOrderTable({
       ),
     },
     {
-      key: "salesOrderNumber",
-      header: "注文請書番号",
+      key: "orderLineNumber",
+      header: "注文明細番号",
       sortable: true,
       width: 190,
       render: (r) =>
-        r.salesOrderNumber ? (
+        r.orderLineNumber ? (
           <Text className="tabular-nums" ff="mono" size="sm">
-            {r.salesOrderNumber}
+            {r.orderLineNumber}
           </Text>
         ) : (
           <Badge color="teal" size="xs" variant="light">
@@ -207,7 +207,7 @@ export function WorkOrderTable({
             data={
               isApprovals
                 ? statusOptions("WorkOrderApproval").filter((o) =>
-                    ["PENDING_1ST", "PENDING_2ND"].includes(o.value),
+                    ["PENDING"].includes(o.value),
                   )
                 : statusOptions("WorkOrder")
             }
@@ -224,7 +224,7 @@ export function WorkOrderTable({
         <TextInput
           leftSection={<IconSearch size={14} />}
           onChange={(e) => setSearch(e.currentTarget.value)}
-          placeholder="指示書番号・注文請書番号・製品で検索"
+          placeholder="指示書番号・注文明細番号・製品で検索"
           value={search}
         />
       }
@@ -260,7 +260,7 @@ export function WorkOrderTable({
             <Stack className="min-w-0" gap={3}>
               <Text c="dimmed" ff="mono" size="xs">
                 {workOrderNumberLabel(r.workOrderNumber, r.createdAt)} ·{" "}
-                {r.salesOrderNumber ?? "在庫向け"}
+                {r.orderLineNumber ?? "在庫向け"}
               </Text>
               <Text fw={600} size="sm" truncate>
                 {r.productName}

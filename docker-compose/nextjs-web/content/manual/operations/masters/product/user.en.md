@@ -157,7 +157,7 @@ Every field on the product screen.
 
 ### Product code [#field-code]
 
-The product's reference number, used on quotes, sales orders, work orders and every other document.
+The product's reference number, used on quotes, order lines, work orders and every other document.
 
 ### Name [#field-name]
 

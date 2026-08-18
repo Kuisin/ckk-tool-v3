@@ -11,7 +11,7 @@ export const dynamic = "force-dynamic";
  *
  * 編集できるのは「未着手・進行中」のみ — 完了済みは詳細へリダイレクト
  * （サーバーアクション側でも同じガードを行う）。
- * トリガー・参照元（見積書/注文請書）は作成後変更不可。
+ * トリガー・参照元（見積書/注文明細）は作成後変更不可。
  */
 export default async function SalesDesignRequestsEditPage({
   params,

@@ -1,5 +1,5 @@
 /**
- * intake-core.ts — 受注請書抽出結果（po-extract /extract/order-request）の
+ * intake-core.ts — 注文請書抽出結果（po-extract /extract/order-request）の
  * 正規化純ロジック。Prisma I/O は lib/intake.ts。
  */
 
@@ -20,6 +20,45 @@ export interface NormalizedExtraction {
   orderDate: string | null; // yyyy-mm-dd
   items: ExtractedItem[];
   notes: string | null;
+}
+
+/**
+ * 取込フォルダのファイル名に焼き込む注文請書番号。
+ *
+ * 採番して行を作った時点で `ORD-YYYYMM-NNNNN-<元のファイル名>` に改名する。
+ * こうしておくと、失敗の再取込・孤児 .processing の回収でファイルがもう一度
+ * スキャン対象に戻ったとき、**どの行の続きなのか**が名前だけで分かる
+ * （分からないと採番からやり直して二重登録になる）。
+ */
+const INTAKE_NUMBER_RE = /^(ORD-(\d{6})-(\d{5}))-(.+)$/;
+
+export interface IntakeFileNumber {
+  /** ORD-YYYYMM-NNNNN */
+  number: string;
+  yearMonth: string;
+  seq: number;
+  /** 番号を除いた元のファイル名。 */
+  rest: string;
+}
+
+/** `ORD-YYYYMM-NNNNN-<元名>` を分解する。番号が無ければ null。 */
+export function parseIntakeFileNumber(name: string): IntakeFileNumber | null {
+  const m = INTAKE_NUMBER_RE.exec(name);
+  if (!m) return null;
+  return {
+    number: m[1],
+    yearMonth: m[2],
+    seq: Number(m[3]),
+    rest: m[4],
+  };
+}
+
+/**
+ * `ORD-YYYYMM-NNNNN-<元名>` を組み立てる。
+ * すでに番号付きの名前を渡しても二重に付かない（付け替える）。
+ */
+export function intakeFileName(number: string, original: string): string {
+  return `${number}-${parseIntakeFileNumber(original)?.rest ?? original}`;
 }
 
 const s = (v: unknown): string | null =>

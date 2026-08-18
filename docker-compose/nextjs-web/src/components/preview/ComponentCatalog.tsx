@@ -652,7 +652,7 @@ export function ComponentCatalog() {
           title="ステータス変更"
         >
           <Select
-            data={statusOptions("SalesOrder")}
+            data={statusOptions("OrderLine")}
             label="新しい状態"
             placeholder="状態を選択"
           />
@@ -670,7 +670,7 @@ export function ComponentCatalog() {
           }
           opened={confirmOpen}
           title="削除の確認"
-          warning="関連する受注請書がある場合は削除できません。"
+          warning="関連する注文請書がある場合は削除できません。"
         />
 
         <FormModal

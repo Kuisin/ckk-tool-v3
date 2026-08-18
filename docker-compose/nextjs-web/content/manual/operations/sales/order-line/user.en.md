@@ -1,0 +1,125 @@
+---
+title: "Order Lines — User Guide"
+description: "Track each confirmed order line across all order acceptances, reserve stock, and follow production and shipping progress."
+---
+When an order acceptance is confirmed, each of its detail rows becomes an **order line**. This app lists those order lines across all order acceptances so you can follow **how far stock reservation, production and shipping have progressed**. The operation code is `SA05`.
+
+> ⚠️ This app is still in preview. Screens and steps may change.
+
+## What you can do here
+
+- See confirmed order lines from every order acceptance in **one list**.
+- Check production, shipping and reservation progress for each line.
+- Check available stock and **reserve** it for the order.
+- Cancel a line when the order is withdrawn.
+
+**You cannot create or edit order lines here.** Both are done on the [order acceptance](/manual/en/operations/sales/order-acceptance/user) screen. See [When you need to change something](#when-you-need-to-change-something) below for why.
+
+## Terms used on this page
+
+- **Order acceptance** — one order received from a customer.
+- **Order line** — a single detail row of an order acceptance. That one row ("which product, how many") is what production and shipping work from.
+- **Confirmation** — the step that finalises an approved order acceptance and assigns numbers to its lines.
+- **Branch number** — the trailing `-01` in `ORD-202608-00012-01`. It says which row of the order acceptance this is.
+- **Reservation** — setting stock aside for this order so another order cannot take it.
+- **Lot number** — the serial number of a production batch. It is the same number as the work order.
+
+## Reading the number
+
+An order line number is the order acceptance number plus a branch number.
+
+```
+ORD-202608-00012-01
+└──────┬──────┘ └┬┘
+  acceptance no.  branch (which row)
+```
+
+Lines from the same order acceptance share the first part and differ only in the branch. A three-row order produces `-01`, `-02` and `-03`.
+
+**Rows with the same product are never merged.** If the customer's order lists a product on two separate rows, you get two order lines. Splitting one row into two is not possible either. **One row on the order = one order line**, always.
+
+## Reading the screen
+
+Opening the app shows a list of confirmed order lines.
+
+- **Order line number** — the `ORD-…-NN` number described above.
+- **Customer** — carried over from the order acceptance.
+- **Product / Quantity / Unit price / Amount** — the contents of the order.
+- **Delivery date** — the date promised to the customer.
+- **Status** — a coloured badge showing where the line is.
+
+Lines that have not been confirmed do not appear here, because they have no number yet. To see those, open the [order acceptance](/manual/en/operations/sales/order-acceptance/user).
+
+### What the statuses mean
+
+| Status | Meaning |
+| --- | --- |
+| Confirmed | The order is final and ready to move into production and shipping. |
+| In production | A work order has been approved and the factory has started. |
+| Partially shipped | Some, but not all, of the ordered quantity has shipped. |
+| Shipped | The full ordered quantity has shipped. |
+| Cancelled | The line has been withdrawn. |
+
+## What the detail screen offers
+
+Select a row to open its detail screen.
+
+### Check and reserve stock
+
+Press **Stock check** to look at stock for the product and **reserve whatever is available**.
+
+- Reserved quantity can no longer be taken by another order.
+- Anything missing is shown as a shortage. Cover it by creating a [work order](/manual/en/operations/production/work-order/user).
+- Stock check is only available **before production starts**. Once it has, quantities are managed on the work order instead.
+
+### Follow production
+
+The Work orders tab lists the work orders created from this line. **One order line can have any number of work orders** — split between stock and manufacture, added part-way through, and so on. The work order number is also the lot number.
+
+### Follow shipping
+
+The Shipping tab lists the shipping orders that include this line. The quantity shown is **only this line's share**. One shipping order can carry several order lines, so it may differ from the shipping order's total.
+
+As shipping progresses the status moves automatically to Partially shipped and then Shipped. **You cannot ship more than the ordered quantity.** An attempt to do so is stopped, and the screen names the order line that would be exceeded.
+
+### Cancel
+
+Press Cancel when an order is withdrawn. Two things happen automatically:
+
+- All reserved stock is **released**.
+- Unfinished work orders are **cancelled along with it** (completed ones are left alone).
+
+Lines that have already shipped, and lines already cancelled, cannot be cancelled.
+
+## When you need to change something
+
+**After confirmation, an order line cannot be changed** — not the quantity, not the price, not the product. An order line records what was agreed with the customer, so allowing later edits would mean losing the figures that production and invoicing were based on.
+
+While the order acceptance is still a draft, you can edit the rows freely on the [order acceptance](/manual/en/operations/sales/order-acceptance/user) screen. Think of confirmation as the step where you decide **"this will not change any more."**
+
+If the contents change after confirmation, talk to the person responsible.
+
+## Troubleshooting
+
+**A line is missing from the list**
+
+It may not be confirmed yet. Open the [order acceptance](/manual/en/operations/sales/order-acceptance/user) and check that its status is Completed. If approval and confirmation have not happened, do those first.
+
+**Stock check is not available**
+
+Production has already started on that line. Check quantities on the [work order](/manual/en/operations/production/work-order/user) instead.
+
+**Shipping says the ordered quantity would be exceeded**
+
+The quantity already shipped for that line plus this shipment is more than the ordered quantity. Reduce the shipment, or check that the right order line was selected.
+
+**The app is not in my launcher**
+
+It needs the same permission as order acceptances (`order_acceptance`). Contact an administrator.
+
+## Related screens
+
+- [Order acceptance](/manual/en/operations/sales/order-acceptance/user) — where order lines are created and edited
+- [Work order](/manual/en/operations/production/work-order/user) — production
+- [Shipping order](/manual/en/operations/shipping/shipping-order/user) — shipping
+- [Inventory](/manual/en/operations/production/product-inventory/user) — stock and reservations

@@ -1,10 +1,11 @@
 import { notFound } from "next/navigation";
 import { OrderAcceptanceDetail } from "@/components/sales/order-acceptances/OrderAcceptanceDetail";
-import { fetchApprovalTrail, isApprover } from "@/lib/approvals";
+import { fetchApprovalState, fetchApprovalTrail } from "@/lib/approvals";
 import { listAttachments } from "@/lib/attachments";
 import { fetchAuditEntries } from "@/lib/audit";
 import { requireAppRead } from "@/lib/authz-page";
 import { formatDocNumber, parseDocKey } from "@/lib/doc-number";
+import { listMemos } from "@/lib/document-memos";
 import { fetchOrderAcceptance } from "../data";
 import { checkAcceptancePrices } from "../price-check";
 
@@ -18,12 +19,12 @@ export async function generateMetadata({
 }) {
   const { id } = await params;
   return {
-    title: `受注請書 ${decodeURIComponent(id)} | CKK 業務管理システム`,
+    title: `注文請書 ${decodeURIComponent(id)} | CKK 業務管理システム`,
   };
 }
 
-/** 受注請書 詳細 (SA24). URL id = 表示番号（ORD-YYYYMM-NNNNN）. */
-export default async function SalesOrderAcceptancesDetailPage({
+/** 注文請書 詳細 (SA24). URL id = 表示番号（ORD-YYYYMM-NNNNN）. */
+export default async function OrderLineAcceptancesDetailPage({
   params,
 }: {
   params: Promise<{ id: string }>;
@@ -35,17 +36,24 @@ export default async function SalesOrderAcceptancesDetailPage({
   if (!key) notFound();
   const number = formatDocNumber("ORD", key);
 
-  const [acceptance, auditEntries, attachments, approvalTrail, canApprove] =
-    await Promise.all([
-      fetchOrderAcceptance(key),
-      fetchAuditEntries("order_acceptances", number),
-      listAttachments("order_acceptances", number),
-      fetchApprovalTrail("order_acceptances", number),
-      isApprover("FIRST"),
-    ]);
+  const [
+    acceptance,
+    auditEntries,
+    attachments,
+    memos,
+    approvalTrail,
+    approval,
+  ] = await Promise.all([
+    fetchOrderAcceptance(key),
+    fetchAuditEntries("order_acceptances", number),
+    listAttachments("order_acceptances", number),
+    listMemos("order_acceptances", number),
+    fetchApprovalTrail("order_acceptances", number),
+    fetchApprovalState("order_acceptances", number),
+  ]);
   if (!acceptance) notFound();
 
-  // §2 価格照合（P0-8）— 保存済み明細と価格表の差異。展開済み・アーカイブ
+  // §2 価格照合（P0-8）— 保存済み明細と価格表の差異。確定済み・アーカイブ
   // 済みは照合対象外（当時の価格表と現在の価格表のドリフトで誤警告するため）。
   const priceCheck = ["DRAFT", "REQUESTED", "APPROVED"].includes(
     acceptance.status,
@@ -56,10 +64,11 @@ export default async function SalesOrderAcceptancesDetailPage({
   return (
     <OrderAcceptanceDetail
       acceptance={acceptance}
+      approval={approval}
       approvalTrail={approvalTrail}
       attachments={attachments}
       auditEntries={auditEntries}
-      canApprove={canApprove}
+      memos={memos}
       priceCheck={priceCheck}
     />
   );

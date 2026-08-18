@@ -182,6 +182,30 @@ body {
     background-color: var(--mantine-color-dark-5);
   }
 
+  /*
+   * Form action bar (キャンセル / 保存) — pinned to the bottom of the viewport
+   * on desktop so the buttons stay reachable however long the form is.
+   * `bottom` clears the fixed AppShell footer (--app-shell-footer-offset), and
+   * the bar spans its own container — full width on a normal form page, the
+   * right pane only inside MasterDetailShell.
+   *
+   * Mobile keeps the plain stacked buttons (design.md §8.3): the on-screen
+   * keyboard already competes for the bottom of a phone screen.
+   */
+  @media (min-width: 768px) {
+    .form-actions {
+      position: sticky;
+      bottom: var(--app-shell-footer-offset, 0rem);
+      z-index: 2;
+      padding-block: var(--mantine-spacing-sm);
+      background-color: var(--mantine-color-gray-0);
+      border-top: 1px solid var(--mantine-color-default-border);
+    }
+    [data-mantine-color-scheme="dark"] .form-actions {
+      background-color: var(--mantine-color-dark-8);
+    }
+  }
+
   /* Form fields: in a grid row where fields differ in label/description height,
      keep labels at the top but push the input box to the bottom so the input
      boxes line up horizontally (the gap above a short field's input grows). */

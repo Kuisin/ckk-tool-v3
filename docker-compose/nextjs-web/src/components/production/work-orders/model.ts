@@ -15,6 +15,9 @@ export const WORK_ORDER_HISTORY_ACTION_LABEL: Record<string, string> = {
   COPY: "コピー作成",
   UPDATE: "更新",
   REQUEST_APPROVAL: "承認依頼",
+  APPROVE_STEP: "承認",
+  APPROVE_FINAL: "最終承認",
+  // 2 段固定だった頃の履歴行。過去データを読むために残す。
   APPROVE_1ST: "第一承認",
   APPROVE_2ND: "第二承認",
   REJECT: "差し戻し",
@@ -27,8 +30,8 @@ export interface WorkOrderRow {
   workOrderNumber: number;
   /** 表示番号 YYYYMMDD-XXXXX の日付部分（作成日）。 */
   createdAt: string;
-  /** null = 在庫向けの独立指示書（注文請書なし）。 */
-  salesOrderNumber: string | null;
+  /** null = 在庫向けの独立指示書（注文明細なし）。 */
+  orderLineNumber: string | null;
   productName: string;
   type: string; // WORK_ORDER_TYPE
   plannedQuantity: number;
@@ -108,23 +111,23 @@ export interface WorkOrderView {
   type: string;
   plannedQuantity: number;
   notes: string | null;
-  /** null = 在庫向けの独立指示書（注文請書なし・製品直接指定）。 */
-  salesOrderId: string | null;
-  salesOrderNumber: string | null;
-  salesOrderQuantity: number | null;
+  /** null = 在庫向けの独立指示書（注文明細なし・製品直接指定）。 */
+  orderLineId: string | null;
+  orderLineNumber: string | null;
+  orderLineQuantity: number | null;
   customerName: string | null;
   productName: string;
   materialId: number | null;
   materialCode: string | null;
   materialName: string | null;
-  /** 注文請書の対象製品（工程ルートのリンク先）。 */
+  /** 注文明細の対象製品（工程ルートのリンク先）。 */
   productId: number;
   /** 工程ルート出所（未使用 = null）。 */
   routeVersionId: string | null;
   routeId: number | null;
   routeName: string | null;
   routeVersion: number | null;
-  /** ロット番号 = 指示書番号（注文請書側の lot_number）。 */
+  /** ロット番号 = 指示書番号（注文明細側の lot_number）。 */
   lotNumber: number | null;
   sourceWorkOrderNumber: number | null;
   copies: WorkOrderCopyRef[];

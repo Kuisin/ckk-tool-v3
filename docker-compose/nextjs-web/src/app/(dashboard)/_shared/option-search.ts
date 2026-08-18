@@ -8,8 +8,9 @@
  * 値は内部 id（連番）の文字列、ラベルは表示コード + 名称。
  */
 
+import { bpMatchesQuery } from "@/lib/bp-search";
 import { prisma } from "@/lib/db";
-import { formatProductNumber } from "@/lib/doc-number";
+import { formatProductNumber, formatQuoteNumber } from "@/lib/doc-number";
 import { type LocalizedText, localized } from "@/lib/format";
 
 const LIMIT = 20;
@@ -56,33 +57,81 @@ export async function searchProductOptions(
   return rows.map((p) => ({ value: String(p.id), label: productLabel(p) }));
 }
 
+/**
+ * 見積書 — 注文請書から参照する見積を選ぶための検索。
+ *
+ * 値は表示番号（QOT-YYYYMM-NNNNN）。保存側はこの文字列を複合キーへ戻すので、
+ * 手入力していたときと同じ形のまま扱える。
+ *
+ * `customerBpId` を渡すと **その顧客の見積だけ**に絞る。注文請書では顧客が
+ * 先に決まっているので、関係ない見積を選んでしまう事故を防げる。
+ * 下書き（DRAFT）の見積も選べる — 受注が先に確定することがあるため。
+ */
+export async function searchQuoteOptions(
+  query: string,
+  customerBpId?: string | null,
+): Promise<SearchOption[]> {
+  const q = query.trim().toUpperCase();
+  const rows = await prisma.quote.findMany({
+    where: {
+      ...(customerBpId ? { customerBpId } : {}),
+      // 却下・期限切れは選ばせない（参照しても意味がないため）。
+      status: { notIn: ["REJECTED", "EXPIRED"] },
+    },
+    include: { customerBp: { select: { name: true } } },
+    orderBy: [{ yearMonth: "desc" }, { seq: "desc" }],
+    take: 200,
+  });
+  return rows
+    .map((r) => {
+      const number = formatQuoteNumber(r);
+      const customer = localized(r.customerBp?.name as LocalizedText | null);
+      return {
+        value: number,
+        label: customerBpId ? number : `${number} — ${customer}`,
+        haystack: `${number} ${customer}`.toUpperCase(),
+      };
+    })
+    .filter((o) => !q || o.haystack.includes(q))
+    .slice(0, LIMIT)
+    .map(({ value, label }) => ({ value, label }));
+}
+
 /** 顧客（トップレベル CUSTOMER ロール）— BPコード / 名称 / AI照合名。 */
 export async function searchCustomerOptions(
   query: string,
 ): Promise<SearchOption[]> {
   const q = query.trim();
+  // 照合キー（AI 用に貯めた表記ゆれ + フリガナ由来）でも探せるようにする。
+  // 配列の部分一致は Prisma の where で書けないので、候補を絞ってから
+  // lib/bp-search の共通判定でふるいにかける（件数が少ないマスタなので十分）。
   const rows = await prisma.businessPartner.findMany({
     where: {
       isActive: true,
       parentId: null,
       roleAssignments: { some: { role: "CUSTOMER", isActive: true } },
-      ...(q
-        ? {
-            OR: [
-              { bpCode: { contains: q, mode: "insensitive" } },
-              { name: { path: ["ja"], string_contains: q } },
-              { matchNames: { has: q } },
-            ],
-          }
-        : {}),
     },
     orderBy: { bpCode: "asc" },
-    take: LIMIT,
   });
-  return rows.map((r) => ({
-    value: r.id,
-    label: localized(r.name as LocalizedText | null),
-  }));
+  return rows
+    .filter((r) =>
+      bpMatchesQuery(
+        {
+          bpCode: r.bpCode,
+          nameJa: localized(r.name as LocalizedText | null),
+          nameKana: r.nameKana,
+          shortName: r.shortName,
+          matchNames: r.matchNames,
+          matchNamesAuto: r.matchNamesAuto,
+        },
+        q,
+      ),
+    )
+    .slice(0, LIMIT)
+    .map((r) => ({
+      value: r.id,
+      label: localized(r.name as LocalizedText | null),
+    }));
 }
 
 /** 変換済（コード構成あり）材種のみ — 素材ビルダーの親材種ピッカー用。 */
@@ -189,27 +238,33 @@ export async function f4SearchCustomers(
       parentId: null,
       roleAssignments: { some: { role: "CUSTOMER", isActive: true } },
       ...(code ? { bpCode: { contains: code, mode: "insensitive" } } : {}),
-      ...(name
-        ? {
-            OR: [
-              { name: { path: ["ja"], string_contains: name } },
-              { nameKana: { contains: name, mode: "insensitive" } },
-              { matchNames: { has: name } },
-            ],
-          }
-        : {}),
     },
     orderBy: { bpCode: "asc" },
-    take: F4_LIMIT,
   });
-  return rows.map((r) => {
-    const nameJa = localized(r.name as LocalizedText | null);
-    return {
-      value: r.id,
-      label: nameJa,
-      cells: [r.bpCode ?? "—", nameJa, r.nameKana ?? "—"],
-    };
-  });
+  // 名前欄は照合キー込みで判定する（読み・ローマ字・㈱ 表記でも当たる）。
+  return rows
+    .filter((r) =>
+      bpMatchesQuery(
+        {
+          nameJa: localized(r.name as LocalizedText | null),
+          nameEn: (r.name as { en?: string } | null)?.en ?? null,
+          nameKana: r.nameKana,
+          shortName: r.shortName,
+          matchNames: r.matchNames,
+          matchNamesAuto: r.matchNamesAuto,
+        },
+        name ?? "",
+      ),
+    )
+    .slice(0, F4_LIMIT)
+    .map((r) => {
+      const nameJa = localized(r.name as LocalizedText | null);
+      return {
+        value: r.id,
+        label: nameJa,
+        cells: [r.bpCode ?? "—", nameJa, r.nameKana ?? "—"],
+      };
+    });
 }
 
 /**
@@ -306,35 +361,49 @@ export async function searchUserOptions(
   }));
 }
 
-/** 注文請書検索（指示書ビルダー用）。value = uuid、label = 番号 + 製品 + 数量。 */
-export async function searchSalesOrderOptions(
+/** 注文明細検索（指示書ビルダー用）。value = uuid、label = 番号 + 製品 + 数量。 */
+export async function searchOrderLineOptions(
   query: string,
 ): Promise<SearchOption[]> {
   const q = query.trim();
-  const rows = await prisma.salesOrder.findMany({
+  const rows = await prisma.orderLine.findMany({
     where: {
-      // PARTIAL_SHIPPED を含める — 一部出荷済みの注文請書へ追加出荷できる
+      // 確定済み（枝番あり）のみ — 未確定の明細は公開番号を持たない
+      branch: { not: null },
+      // PARTIAL_SHIPPED を含める — 一部出荷済みの注文明細へ追加出荷できる
       status: {
         in: ["DRAFT", "CONFIRMED", "IN_PRODUCTION", "PARTIAL_SHIPPED"],
       },
       ...(q
         ? {
             OR: [
-              { customerOrderRef: { contains: q, mode: "insensitive" } },
+              {
+                acceptance: {
+                  customerOrderRef: { contains: q, mode: "insensitive" },
+                },
+              },
               { product: { name: { path: ["ja"], string_contains: q } } },
-              { customerBp: { name: { path: ["ja"], string_contains: q } } },
+              {
+                acceptance: {
+                  customerBp: { name: { path: ["ja"], string_contains: q } },
+                },
+              },
             ],
           }
         : {}),
     },
-    include: { product: true, customerBp: true },
-    orderBy: [{ yearMonth: "desc" }, { seq: "desc" }, { branch: "asc" }],
+    include: { product: true },
+    orderBy: [
+      { acceptanceYearMonth: "desc" },
+      { acceptanceSeq: "desc" },
+      { branch: "asc" },
+    ],
     take: LIMIT,
   });
-  const { formatSalesOrderNumber } = await import("@/lib/doc-number");
+  const { orderLineNumberOf } = await import("@/lib/doc-number");
   return rows.map((r) => ({
     value: r.id,
-    label: `${formatSalesOrderNumber(r)} ${localized(r.product.name as LocalizedText | null)}（${r.quantity}）`,
+    label: `${orderLineNumberOf(r) ?? "—"} ${localized(r.product?.name as LocalizedText | null)}（${r.quantity}）`,
   }));
 }
 

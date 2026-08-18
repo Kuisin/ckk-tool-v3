@@ -8,8 +8,13 @@
 --
 -- 公開セット: 販売フロント（試算・価格表・見積書）＋ 試算計算(設定) ＋
 --             参照マスタ（取引先・製品・材種・承認グループ）＋
---             システム管理アプリ（system 権限のみに表示 — 旧アバターメニュー
---             リンクの移行先: システム設定・アプリ管理・ファイル管理・操作履歴）。
+--             システム管理アプリ（system 権限のみに表示 — ユーザー管理・
+--             アプリ管理・ファイル管理・操作履歴・リンク管理）＋ QRカード管理。
+--
+-- キーは app-list.ts の `key` と一致していなければならない（一致しない行は
+-- どのアプリにも効かない死にデータ）。以前あった `app:system-settings:main` は
+-- システム設定ハブ廃止で該当アプリが無くなったため、後継の
+-- `app:user-management:main`（SY01）へ置き換えた。
 
 BEGIN;
 
@@ -26,16 +31,23 @@ INSERT INTO app.feature_flags (key, is_enabled, description, updated_at) VALUES
   ('app:master-approval-groups:main', true, '承認グループ 本番公開',    now()),
   ('app:docs:main',                   true, 'マニュアル 本番公開',      now()),
   ('app:internal-docs:main',          true, '社内ドキュメント 本番公開（閲覧は internal_docs 権限）', now()),
-  ('app:system-settings:main',        true, 'システム設定 本番公開',    now()),
+  ('app:user-management:main',        true, 'ユーザー管理 本番公開',    now()),
   ('app:app-management:main',         true, 'アプリ管理 本番公開',      now()),
   ('app:file-management:main',        true, 'ファイル管理 本番公開',    now()),
-  ('app:activity-log:main',           true, '操作履歴 本番公開',        now())
+  ('app:activity-log:main',           true, '操作履歴 本番公開',        now()),
+  ('app:links:main',                  true, 'リンク管理 本番公開',      now()),
+  ('app:kiosk-cards:main',            true, 'QRカード管理 本番公開',    now())
 ON CONFLICT (key) DO UPDATE
   SET is_enabled = EXCLUDED.is_enabled, updated_at = now();
 
--- キオスク管理アプリ（SY08/SY09）は dev 検証後に本番公開する。
+-- 端末管理（SY09）・キオスク設定（SY0A）は dev 検証後に本番公開する。
 -- 公開時にコメントを外して再適用:
---   ('app:kiosk-cards:main',   true, 'QRカード管理 本番公開', now()),
---   ('app:kiosk-devices:main', true, '端末管理 本番公開',     now())
+--   ('app:kiosk-devices:main',  true, '端末管理 本番公開',     now()),
+--   ('app:kiosk-settings:main', true, 'キオスク設定 本番公開', now())
+
+-- 注文書取込（SY0C）は取込フォルダ（INTAKE_DIR）が要る。main のアプリには
+-- まだ設定・マウントが無いため非公開のまま。公開時は先に INTAKE_DIR を
+-- 設定してフォルダをコンテナへマウントし、そのうえで:
+--   ('app:order-intake:main', true, '注文書取込 本番公開', now())
 
 COMMIT;

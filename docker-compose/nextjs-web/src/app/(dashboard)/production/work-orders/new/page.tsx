@@ -3,8 +3,8 @@ import { requireAppRead } from "@/lib/authz-page";
 import { loadCatalog } from "@/lib/workflow";
 import {
   fetchInspectionTemplateOptions,
+  fetchOrderLineRef,
   fetchPlantOptions,
-  fetchSalesOrderRef,
   fetchSupplierOptions,
 } from "../data";
 
@@ -13,12 +13,12 @@ export const dynamic = "force-dynamic";
 /**
  * 指示書 新規作成 (PD12).
  *
- * `?salesOrder={uuid}` で注文請書をプリセレクトできる（注文請書詳細からの起動用）。
+ * `?orderLine={uuid}` で注文明細をプリセレクトできる（注文明細詳細からの起動用）。
  */
 export default async function ProductionWorkOrdersNewPage({
   searchParams,
 }: {
-  searchParams: Promise<{ salesOrder?: string; type?: string; qty?: string }>;
+  searchParams: Promise<{ orderLine?: string; type?: string; qty?: string }>;
 }) {
   const denied = await requireAppRead("work-orders");
   if (denied) return denied;
@@ -29,7 +29,7 @@ export default async function ProductionWorkOrdersNewPage({
       fetchPlantOptions(),
       fetchInspectionTemplateOptions(),
       fetchSupplierOptions(),
-      sp.salesOrder ? fetchSalesOrderRef(sp.salesOrder) : null,
+      sp.orderLine ? fetchOrderLineRef(sp.orderLine) : null,
     ]);
 
   const initialType =
@@ -39,8 +39,8 @@ export default async function ProductionWorkOrdersNewPage({
   return (
     <WorkflowBuilder
       catalogSteps={catalog.steps}
+      initialOrderLine={soRef}
       initialQuantity={initialQty}
-      initialSalesOrder={soRef}
       initialType={initialType}
       mode="create"
       plantOptions={plantOptions}

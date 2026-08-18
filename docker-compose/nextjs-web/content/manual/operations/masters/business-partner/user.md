@@ -19,8 +19,8 @@ screenshots: [master-bp-list-01, master-bp-new-01, master-bp-roles-01, master-bp
 
 - お取引のある会社を、1 社 1 件で登録できます。
 - 会社に **ロール**（顧客 / 最終需要家 / 仕入先・外注先）を付けられます。1 社に複数付けられます。
-- 「顧客」を付けると、[価格表](/manual/ja/operations/sales/price-list/user) や [見積書](/manual/ja/operations/sales/quote/user)、[受注請書](/manual/ja/operations/sales/order-acceptance/user)、請求書の宛先として選べるようになります。
-- 「最終需要家」を付けると、[納品書](/manual/ja/operations/shipping/delivery-note/user) や注文請書の最終需要家として選べるようになります。
+- 「顧客」を付けると、[価格表](/manual/ja/operations/sales/price-list/user) や [見積書](/manual/ja/operations/sales/quote/user)、[注文請書](/manual/ja/operations/sales/order-acceptance/user)、請求書の宛先として選べるようになります。
+- 「最終需要家」を付けると、[納品書](/manual/ja/operations/shipping/delivery-note/user) や注文明細の最終需要家として選べるようになります。
 - 「仕入先・外注先」を付けると、[素材発注書](/manual/ja/operations/purchasing/purchase-order/user) や [外注依頼](/manual/ja/operations/purchasing/outsource-order/user)、指示書の工程の外注先として選べるようになります。
 - 会社の下に **支店** を登録できます。
 - 会社ごとに **担当者**（先方の窓口の方）を何人でも登録できます。
@@ -31,7 +31,7 @@ screenshots: [master-bp-list-01, master-bp-new-01, master-bp-roles-01, master-bp
 
 - **取引先** … お取引のある会社そのもののことです。1 社につき 1 件登録します。
 - **ロール** … その会社をどういう立場で使うかの印です。次の 3 つがあります。
-  - **顧客** … 注文をくれる会社です。見積書・受注請書・請求書の宛先になります。
+  - **顧客** … 注文をくれる会社です。見積書・注文請書・請求書の宛先になります。
   - **最終需要家** … つくった製品を実際に工場で使う会社です。商社を通して注文をいただくときなど、注文をくれる会社と使う会社が違う場合に使います。
   - **仕入先・外注先** … 素材を買う相手（仕入先）や、研磨・コーティングなど加工の一部をお願いする相手（外注先）です。
 - **外注種別** … 「仕入先・外注先」ロールの中の区分で、「**仕入先**」か「**外注先**」のどちらかを選びます。
@@ -47,7 +47,7 @@ screenshots: [master-bp-list-01, master-bp-new-01, master-bp-roles-01, master-bp
 
 特に先に用意しておくものはありません。この画面から登録を始められます。
 
-登録した取引先は、[価格表](/manual/ja/operations/sales/price-list/user) → [見積書](/manual/ja/operations/sales/quote/user) → [受注請書](/manual/ja/operations/sales/order-acceptance/user) や、[素材発注書](/manual/ja/operations/purchasing/purchase-order/user) → [外注依頼](/manual/ja/operations/purchasing/outsource-order/user) と、後の作業でずっと使われます。**会社名の書き方は最初にきちんと決めて登録してください。**
+登録した取引先は、[価格表](/manual/ja/operations/sales/price-list/user) → [見積書](/manual/ja/operations/sales/quote/user) → [注文請書](/manual/ja/operations/sales/order-acceptance/user) や、[素材発注書](/manual/ja/operations/purchasing/purchase-order/user) → [外注依頼](/manual/ja/operations/purchasing/outsource-order/user) と、後の作業でずっと使われます。**会社名の書き方は最初にきちんと決めて登録してください。**
 
 ## 画面の見かた
 
@@ -90,8 +90,8 @@ screenshots: [master-bp-list-01, master-bp-new-01, master-bp-roles-01, master-bp
 
 ![ロールの選択欄](../../../assets/screenshots/master-bp-roles-01.png)
 
-- **顧客** … 見積書・受注請書・請求書の宛先として選べるようになります。
-- **最終需要家** … 納品書・注文請書の最終需要家として選べるようになります。
+- **顧客** … 見積書・注文請書・請求書の宛先として選べるようになります。
+- **最終需要家** … 納品書・注文明細の最終需要家として選べるようになります。
 - **仕入先・外注先** … 素材発注書・外注依頼・工程の外注先として選べるようになります。
 
 チェックを入れると、その **ロール専用の入力欄が下に出てきます**。チェックを外すと、その入力欄は隠れます。

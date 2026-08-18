@@ -4,7 +4,7 @@
  * DeliveryNoteForm — 納品書 新規作成 / 編集 (SH02, design.md §8.3).
  *
  * 新規: 出荷書 Select（確定済み・出荷済みのみ、サーバーロードの候補一覧。
- * `?shippingOrder=SHP-…` でプリセレクト可）を選択すると、納品先（= 注文請書の
+ * `?shippingOrder=SHP-…` でプリセレクト可）を選択すると、納品先（= 注文明細の
  * 顧客 + 支店）・最終需要家・明細（出荷書明細 + 受注単価）が既定生成される。
  * 納品方法: 通常納品（価格記載 既定 ON）/ ユーザー直送（最終需要家 必須・
  * 価格記載 既定 OFF）。価格記載 OFF のときは単価・金額を保存しない。
@@ -109,7 +109,7 @@ const emptyItem = (
   notes: "",
 });
 
-/** 出荷書候補 → 明細の既定行（単価は注文請書の単価）。 */
+/** 出荷書候補 → 明細の既定行（単価は注文明細の単価）。 */
 function candidateItems(cand: ShippingOrderCandidate): ItemForm[] {
   if (cand.items.length === 0) return [emptyItem()];
   return cand.items.map((it) =>
@@ -359,7 +359,7 @@ export function DeliveryNoteForm({
               value={form.values.deliveryMethod}
             />
           </Input.Wrapper>
-          {/* 納品先 = 注文請書の顧客（+支店）。作成後変更不可。 */}
+          {/* 納品先 = 注文明細の顧客（+支店）。作成後変更不可。 */}
           <FieldValue label="納品先" value={recipientLabel} />
           {form.values.deliveryMethod === "DIRECT_TO_USER" && (
             <SearchSelect
@@ -400,7 +400,7 @@ export function DeliveryNoteForm({
       </FormSection>
 
       <FormSection
-        description="出荷書を選択すると明細が既定生成されます（単価は注文請書の単価）。価格記載 OFF のときは単価・金額を保存しません。"
+        description="出荷書を選択すると明細が既定生成されます（単価は注文明細の単価）。価格記載 OFF のときは単価・金額を保存しません。"
         title="明細"
       >
         <Group justify="flex-end" mb="xs">

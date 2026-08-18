@@ -1,7 +1,13 @@
+-- ⚠️ 注文明細（order_lines）統合により、このデモシードは未更新です。
+--    app.sales_orders は削除され、受注ラインは app.order_lines
+--    （注文請書 order_acceptances の明細行）に統合されました。
+--    実行すると "relation app.sales_orders does not exist" で失敗します。
+--    親の注文請書を作ったうえで order_lines を挿入する形へ書き換えが必要です。
+
 -- kiosk-steps-demo-seed.sql — キオスク工程実行アプリの表示確認用デモ投入（dev 専用・任意）。
 --
 -- demo1（田中 一郎）に「本日の担当工程」が見えるように、
---   受注（既存の受注請書に紐付く注文請書 branch=90）
+--   受注（既存の注文請書に紐付く注文請書 branch=90）
 --   → 指示書（承認済・切断 → 段加工 → 段加工検査 の 3 工程）
 --   → 検査表テンプレート（デモ・3 項目）を指示書へ紐付け
 --   → 本日分の作業計画（work_order_step_plans）を demo1 へ割り当て
@@ -48,7 +54,7 @@ BEGIN
     RAISE EXCEPTION 'no CUSTOMER business partner found (run import:legacy first)';
   END IF;
 
-  -- 受注請書: 最新の 1 件へ相乗り（branch=90 でアプリ採番と衝突しない）
+  -- 注文請書: 最新の 1 件へ相乗り（branch=90 でアプリ採番と衝突しない）
   SELECT year_month, seq INTO v_oa_ym, v_oa_seq
     FROM app.order_acceptances ORDER BY year_month DESC, seq DESC LIMIT 1;
   IF v_oa_ym IS NULL THEN

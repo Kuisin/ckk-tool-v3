@@ -32,7 +32,7 @@ import {
   SaveButton,
 } from "@/components/ui/buttons";
 import { openConfirm } from "@/components/ui/modals";
-import { FormSection } from "@/components/ui/shells";
+import { FormActions, FormSection } from "@/components/ui/shells";
 import {
   type Criterion,
   criterionAppliesTo,
@@ -233,19 +233,21 @@ export function ToolTypeEditForm({
         />
       </FormSection>
 
-      <Group justify="space-between" mt="xs">
-        {toolType.builtin ? (
-          <span />
-        ) : (
-          <DeleteButton disabled={!deletable} onClick={remove} />
-        )}
-        <Group gap="sm">
-          <CancelButton onClick={() => router.push(BASE)} />
-          <SaveButton loading={isPending} onClick={save}>
-            保存
-          </SaveButton>
+      <FormActions>
+        <Group justify="space-between">
+          {toolType.builtin ? (
+            <span />
+          ) : (
+            <DeleteButton disabled={!deletable} onClick={remove} />
+          )}
+          <Group gap="sm">
+            <CancelButton onClick={() => router.push(BASE)} />
+            <SaveButton loading={isPending} onClick={save}>
+              保存
+            </SaveButton>
+          </Group>
         </Group>
-      </Group>
+      </FormActions>
     </Stack>
   );
 }

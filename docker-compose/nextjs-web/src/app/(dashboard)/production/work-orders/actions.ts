@@ -7,7 +7,7 @@
  *   ブロッカー（AND 不足・排他違反）があれば保存を拒否する。工程の並びは
  *   defaultOrder（カタログ既定順）で採番する。
  * - 採番: nextSerialNumber("WORK_ORDER") — 指示書番号 = ロット番号（通し連番）。
- *   注文請書の lot_number が未採番なら同番号を書き込む。
+ *   注文明細の lot_number が未採番なら同番号を書き込む。
  * - 承認: approval_status + 遷移列 + history Json（MaterialPurchaseOrder と
  *   同型の row-workflow）を維持しつつ、承認依頼・記録を approval_requests /
  *   approval_records へ正規化する（§6 本実装 — PD03 横断表示・代理対応）。
@@ -18,10 +18,11 @@ import { type Access, rowInScope } from "@ckk/authz-core";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import {
-  actOnApprovalRequest,
+  actOnCurrentStep,
   appendHistory,
-  createApprovalRequest,
+  assertFlowConfigured,
   type HistoryEntry,
+  startApprovalFlow,
 } from "@/lib/approvals";
 import { type MaterialAtp, materialAtp } from "@/lib/atp";
 import { getCurrentActorId, recordAudit } from "@/lib/audit";
@@ -46,7 +47,7 @@ import {
   prismaErrorMessage,
 } from "@/lib/server-action";
 import { type OrderedStepCreate, validateAndOrderSteps } from "@/lib/workflow";
-import { fetchSalesOrderRef, type SalesOrderRef } from "./data";
+import { fetchOrderLineRef, type OrderLineRef } from "./data";
 
 const BASE_PATH = "/production/work-orders";
 const APPROVALS_PATH = "/production/approvals";
@@ -114,12 +115,12 @@ const routeInput = z.union(
   { message: "工程リストを選択するか、新しい工程リスト名を入力してください" },
 );
 
-// salesOrderId = null は在庫向けの独立指示書（在庫積み増し）。type は
+// orderLineId = null は在庫向けの独立指示書（在庫積み増し）。type は
 // MANUFACTURE のみ・製品を直接指定する。顧客注文分（FROM_STOCK 含む）は
-// 常に注文請書配下。
+// 常に注文明細配下。
 const workOrderInput = z
   .object({
-    salesOrderId: z.string().nullable(),
+    orderLineId: z.string().nullable(),
     productId: z.number().int().positive().nullable(),
     type: z.enum(["FROM_STOCK", "MANUFACTURE"]),
     plannedQuantity: z.number().int().min(1, "予定数量は1以上"),
@@ -130,7 +131,7 @@ const workOrderInput = z
     route: routeInput,
   })
   .superRefine((v, refCtx) => {
-    if (!v.salesOrderId) {
+    if (!v.orderLineId) {
       if (v.type !== "MANUFACTURE") {
         refCtx.addIssue({
           code: "custom",
@@ -149,19 +150,19 @@ const workOrderInput = z
 export type WorkOrderInput = z.infer<typeof workOrderInput>;
 
 /**
- * 保存対象の解決: 注文請書配下は SO の製品 + 在庫フロア検証、在庫向け
- * （salesOrderId = null）は製品を直接検証する。エラー時は文字列を返す。
+ * 保存対象の解決: 注文明細配下は SO の製品 + 在庫フロア検証、在庫向け
+ * （orderLineId = null）は製品を直接検証する。エラー時は文字列を返す。
  */
 async function resolveWorkOrderTarget(
   v: WorkOrderInput,
   excludeWorkOrderNumber?: number | null,
 ): Promise<{ productId: number } | string> {
-  if (v.salesOrderId) {
+  if (v.orderLineId) {
     const floorInfo = await stockFloorInfo(
-      v.salesOrderId,
+      v.orderLineId,
       excludeWorkOrderNumber,
     );
-    if (!floorInfo) return "対象の注文請書が見つかりません";
+    if (!floorInfo) return "対象の注文明細が見つかりません";
     // §4 在庫考慮: 製造分は「受注数量 − 引当済在庫 − 他の製造指示」以上を要求
     // （不良予備分の上乗せは常に可）。在庫分（FROM_STOCK）は対象外。
     if (v.type === "MANUFACTURE") {
@@ -214,18 +215,18 @@ function toHistoryJson(list: HistoryEntry[]): Record<string, string | null>[] {
  * 製造指示の予定数量を差し引いた最低予定数量。編集時は自分自身を除外する。
  */
 async function stockFloorInfo(
-  salesOrderId: string,
+  orderLineId: string,
   excludeWorkOrderNumber?: number | null,
 ): Promise<(StockFloorInfo & { productId: number }) | null> {
-  const so = await prisma.salesOrder.findUnique({
-    where: { id: salesOrderId },
+  const so = await prisma.orderLine.findUnique({
+    where: { id: orderLineId },
     select: { quantity: true, productId: true },
   });
   if (!so) return null;
   const [reservedAgg, otherAgg] = await Promise.all([
     prisma.inventoryReservation.aggregate({
       where: {
-        salesOrderId,
+        orderLineId,
         inventoryType: "PRODUCT",
         status: { in: ["RESERVED", "CONFIRMED"] },
       },
@@ -233,7 +234,7 @@ async function stockFloorInfo(
     }),
     prisma.workOrder.aggregate({
       where: {
-        salesOrderId,
+        orderLineId,
         type: "MANUFACTURE",
         status: { not: "CANCELLED" },
         ...(excludeWorkOrderNumber != null
@@ -254,7 +255,7 @@ async function stockFloorInfo(
       reservedForSo,
       otherManufacture,
     }),
-    productId: so.productId,
+    productId: so.productId as number,
   };
 }
 
@@ -308,7 +309,7 @@ export async function createWorkOrder(
       await tx.workOrder.create({
         data: {
           workOrderNumber,
-          salesOrderId: v.salesOrderId,
+          orderLineId: v.orderLineId,
           productId,
           type: v.type,
           plannedQuantity: v.plannedQuantity,
@@ -327,15 +328,15 @@ export async function createWorkOrder(
           },
         },
       });
-      // ロット番号 = 指示書番号。注文請書が未採番なら同番号を採用する。
-      if (v.salesOrderId) {
-        const so = await tx.salesOrder.findUnique({
-          where: { id: v.salesOrderId },
+      // ロット番号 = 指示書番号。注文明細が未採番なら同番号を採用する。
+      if (v.orderLineId) {
+        const so = await tx.orderLine.findUnique({
+          where: { id: v.orderLineId },
           select: { lotNumber: true },
         });
         if (so && so.lotNumber == null) {
-          await tx.salesOrder.update({
-            where: { id: v.salesOrderId },
+          await tx.orderLine.update({
+            where: { id: v.orderLineId },
             data: { lotNumber: workOrderNumber },
           });
         }
@@ -348,7 +349,7 @@ export async function createWorkOrder(
       tableName: "work_orders",
       recordId: String(workOrderNumber),
       after: {
-        salesOrderId: v.salesOrderId,
+        orderLineId: v.orderLineId,
         productId,
         type: v.type,
         plannedQuantity: v.plannedQuantity,
@@ -414,7 +415,7 @@ export async function updateWorkOrder(
       await tx.workOrder.update({
         where: { id: prior.id },
         data: {
-          salesOrderId: v.salesOrderId,
+          orderLineId: v.orderLineId,
           productId,
           type: v.type,
           plannedQuantity: v.plannedQuantity,
@@ -432,14 +433,14 @@ export async function updateWorkOrder(
           },
         },
       });
-      if (v.salesOrderId) {
-        const so = await tx.salesOrder.findUnique({
-          where: { id: v.salesOrderId },
+      if (v.orderLineId) {
+        const so = await tx.orderLine.findUnique({
+          where: { id: v.orderLineId },
           select: { lotNumber: true },
         });
         if (so && so.lotNumber == null) {
-          await tx.salesOrder.update({
-            where: { id: v.salesOrderId },
+          await tx.orderLine.update({
+            where: { id: v.orderLineId },
             data: { lotNumber: workOrderNumber },
           });
         }
@@ -452,14 +453,14 @@ export async function updateWorkOrder(
       tableName: "work_orders",
       recordId: String(workOrderNumber),
       before: {
-        salesOrderId: prior.salesOrderId,
+        orderLineId: prior.orderLineId,
         type: prior.type,
         plannedQuantity: prior.plannedQuantity,
         materialId: prior.materialId,
         routeVersionId: prior.routeVersionId,
       },
       after: {
-        salesOrderId: v.salesOrderId,
+        orderLineId: v.orderLineId,
         type: v.type,
         plannedQuantity: v.plannedQuantity,
         materialId,
@@ -478,14 +479,14 @@ export async function updateWorkOrder(
 }
 
 /**
- * コピー作成 — 工程・検査表を引き継いだ DRAFT を対象注文請書に作る。
+ * コピー作成 — 工程・検査表を引き継いだ DRAFT を対象注文明細に作る。
  * source_work_order_id にコピー元を記録する（バージョン警告用）。
- * 対象注文請書が未指定のときは在庫向けの独立指示書としてコピーする
- * （製品はコピー元を引き継ぐ。在庫分 FROM_STOCK は注文請書必須）。
+ * 対象注文明細が未指定のときは在庫向けの独立指示書としてコピーする
+ * （製品はコピー元を引き継ぐ。在庫分 FROM_STOCK は注文明細必須）。
  */
 export async function copyWorkOrder(
   sourceWorkOrderNumber: number,
-  targetSalesOrderId: string,
+  targetOrderLineId: string,
 ): Promise<ActionResult<{ workOrderNumber: number }>> {
   const authz = await checkPermission("work_order", "CREATE");
   if (!authz.ok) return actionError(authz.error);
@@ -503,19 +504,22 @@ export async function copyWorkOrder(
       },
     });
     if (!source) return actionError("コピー元の指示書が見つかりません");
-    if (!targetSalesOrderId && source.type === "FROM_STOCK") {
+    if (!targetOrderLineId && source.type === "FROM_STOCK") {
       return actionError(
-        "在庫分の指示書は注文請書配下でのみ作成できます（対象の注文請書を選択してください）",
+        "在庫分の指示書は注文明細配下でのみ作成できます（対象の注文明細を選択してください）",
       );
     }
-    // コピー先: 注文請書指定 = その SO の製品 / 未指定 = 在庫向け（製品引継ぎ）
+    // コピー先: 注文明細指定 = その SO の製品 / 未指定 = 在庫向け（製品引継ぎ）
     let productId = source.productId;
-    if (targetSalesOrderId) {
-      const targetSo = await prisma.salesOrder.findUnique({
-        where: { id: targetSalesOrderId },
+    if (targetOrderLineId) {
+      const targetSo = await prisma.orderLine.findUnique({
+        where: { id: targetOrderLineId },
         select: { productId: true },
       });
-      if (!targetSo) return actionError("対象の注文請書が見つかりません");
+      if (!targetSo) return actionError("対象の注文明細が見つかりません");
+      if (targetSo.productId == null) {
+        return actionError("製品未特定の注文明細には指示書を作成できません");
+      }
       productId = targetSo.productId;
     }
     const actor = await getCurrentActorId();
@@ -525,7 +529,7 @@ export async function copyWorkOrder(
       await tx.workOrder.create({
         data: {
           workOrderNumber,
-          salesOrderId: targetSalesOrderId || null,
+          orderLineId: targetOrderLineId || null,
           productId,
           type: source.type,
           plannedQuantity: source.plannedQuantity,
@@ -556,14 +560,14 @@ export async function copyWorkOrder(
           },
         },
       });
-      if (targetSalesOrderId) {
-        const so = await tx.salesOrder.findUnique({
-          where: { id: targetSalesOrderId },
+      if (targetOrderLineId) {
+        const so = await tx.orderLine.findUnique({
+          where: { id: targetOrderLineId },
           select: { lotNumber: true },
         });
         if (so && so.lotNumber == null) {
-          await tx.salesOrder.update({
-            where: { id: targetSalesOrderId },
+          await tx.orderLine.update({
+            where: { id: targetOrderLineId },
             data: { lotNumber: workOrderNumber },
           });
         }
@@ -575,7 +579,7 @@ export async function copyWorkOrder(
       tableName: "work_orders",
       recordId: String(workOrderNumber),
       after: {
-        salesOrderId: targetSalesOrderId,
+        orderLineId: targetOrderLineId,
         sourceWorkOrderNumber,
         type: source.type,
         plannedQuantity: source.plannedQuantity,
@@ -590,7 +594,7 @@ export async function copyWorkOrder(
   }
 }
 
-/** キャンセル — DRAFT / PENDING_APPROVAL のみ。注文請書ロックも解除する。 */
+/** キャンセル — DRAFT / PENDING_APPROVAL のみ。注文明細ロックも解除する。 */
 export async function cancelWorkOrder(
   workOrderNumber: number,
 ): Promise<ActionResult> {
@@ -619,10 +623,10 @@ export async function cancelWorkOrder(
           ),
         },
       }),
-      ...(prior.salesOrderId
+      ...(prior.orderLineId
         ? [
-            prisma.salesOrder.update({
-              where: { id: prior.salesOrderId },
+            prisma.orderLine.update({
+              where: { id: prior.orderLineId },
               data: { isLocked: false },
             }),
           ]
@@ -651,9 +655,9 @@ export async function cancelWorkOrder(
   }
 }
 
-// ── 承認フロー (§6 簡易版) ───────────────────────────────────────────────────
+// ── 承認フロー（段数は承認設定 MS0B が決める — lib/approvals） ──────────────
 
-/** 承認依頼 — DRAFT → PENDING_APPROVAL / PENDING_1ST。注文請書をロックする。 */
+/** 承認依頼 — DRAFT → PENDING_APPROVAL / PENDING。注文明細をロックする。 */
 export async function requestApproval(
   workOrderNumber: number,
 ): Promise<ActionResult> {
@@ -671,6 +675,9 @@ export async function requestApproval(
     if (prior.status !== "DRAFT") {
       return actionError("下書きの指示書のみ承認依頼できます");
     }
+    // フローが無いと依頼を出しても誰も承認できないので、状態を変える前に確かめる
+    const flowError = await assertFlowConfigured("work_orders");
+    if (flowError) return actionError(flowError);
     const actor = await getCurrentActorId();
     const now = new Date();
     await prisma.$transaction([
@@ -678,9 +685,9 @@ export async function requestApproval(
         where: { id: prior.id },
         data: {
           status: "PENDING_APPROVAL",
-          approvalStatus: "PENDING_1ST",
-          requested1stAt: now,
-          requested1stBy: actor,
+          approvalStatus: "PENDING",
+          requestedAt: now,
+          requestedBy: actor,
           rejectedAt: null,
           rejectedBy: null,
           rejectReason: null,
@@ -689,27 +696,28 @@ export async function requestApproval(
           ),
         },
       }),
-      ...(prior.salesOrderId
+      ...(prior.orderLineId
         ? [
-            prisma.salesOrder.update({
-              where: { id: prior.salesOrderId },
+            prisma.orderLine.update({
+              where: { id: prior.orderLineId },
               data: { isLocked: true },
             }),
           ]
         : []),
     ]);
-    // 正規化された承認依頼行（PD03 横断表示・承認記録の紐付け先）。
-    await createApprovalRequest({
+    // 1 段目の承認依頼を作る（PD03 横断表示・承認記録の紐付け先）。
+    const started = await startApprovalFlow({
       targetType: "work_orders",
       targetId: String(workOrderNumber),
-      step: "FIRST",
     });
+    if (!started.ok)
+      return actionError(started.error ?? "承認依頼に失敗しました");
     await recordAudit({
       action: "UPDATE",
       tableName: "work_orders",
       recordId: String(workOrderNumber),
       before: { status: prior.status, approvalStatus: prior.approvalStatus },
-      after: { status: "PENDING_APPROVAL", approvalStatus: "PENDING_1ST" },
+      after: { status: "PENDING_APPROVAL", approvalStatus: "PENDING" },
     });
     revalidate(workOrderNumber);
     return actionOk();
@@ -718,77 +726,21 @@ export async function requestApproval(
   }
 }
 
-/** 第一承認 — PENDING_1ST → (APPROVED_1ST →) PENDING_2ND。 */
-export async function approveFirst(
-  workOrderNumber: number,
-): Promise<ActionResult> {
-  // 権限チェックは追加ゲート — 実体の承認可否（本人/代理）は
-  // actOnApprovalRequest のグループ所属判定が引き続き行う。
-  const authz = await checkPermission("work_order", "APPROVE");
-  if (!authz.ok) return actionError(authz.error);
-  if (!(await workOrderInScope(authz.access, authz.userId, workOrderNumber))) {
-    return actionError(SCOPE_DENIED);
-  }
-  try {
-    const prior = await prisma.workOrder.findUnique({
-      where: { workOrderNumber },
-    });
-    if (!prior) return actionError("対象の指示書が見つかりません");
-    if (prior.approvalStatus !== "PENDING_1ST") {
-      return actionError("第一承認待ちの指示書ではありません");
-    }
-    // 承認権限（本人 or 代理）を検証しつつ承認記録を書き、依頼を確定する。
-    const acted = await actOnApprovalRequest({
-      targetType: "work_orders",
-      targetId: String(workOrderNumber),
-      step: "FIRST",
-      groupType: "FIRST",
-      action: "APPROVED",
-    });
-    if (!acted.ok) {
-      return actionError(acted.error ?? "第一承認の権限がありません");
-    }
-    const actor = await getCurrentActorId();
-    const now = new Date();
-    // 第一承認の完了と同時に第二承認待ちへ（APPROVED_1ST は経過状態）。
-    await prisma.workOrder.update({
-      where: { id: prior.id },
-      data: {
-        approvalStatus: "PENDING_2ND",
-        approved1stAt: now,
-        approved1stBy: actor,
-        history: toHistoryJson(
-          appendHistory(prior.history, entry("APPROVE_1ST", actor)),
-        ),
-      },
-    });
-    // 続けて第二承認の依頼行を作成する。
-    await createApprovalRequest({
-      targetType: "work_orders",
-      targetId: String(workOrderNumber),
-      step: "SECOND",
-    });
-    await recordAudit({
-      action: "UPDATE",
-      tableName: "work_orders",
-      recordId: String(workOrderNumber),
-      before: { approvalStatus: "PENDING_1ST" },
-      after: { approvalStatus: "PENDING_2ND" },
-    });
-    revalidate(workOrderNumber);
-    return actionOk();
-  } catch (e) {
-    return actionError(prismaErrorMessage(e, "第一承認に失敗しました"));
-  }
-}
-
 /**
- * 第二承認 — PENDING_2ND → APPROVED（指示書 status も APPROVED）。
- * 注文請書のロックを解除し、DRAFT/CONFIRMED の注文請書は IN_PRODUCTION へ進める。
+ * 承認 — 現在の段に承認を 1 件記録する。
+ *
+ * 段数は承認設定（MS0B）で決まるので、この関数は「何段目か」を知らない。
+ * 段が閉じてまだ後続があれば次段の依頼はエンジンが同一トランザクションで
+ * 作るので、ここは指示書側の副作用（最終承認のときだけ）を足すだけ。
+ *
+ * ALL 段でまだ全員そろっていないときは stepClosed=false で戻り、指示書の
+ * 状態は PENDING のまま据え置く。
  */
-export async function approveSecond(
+export async function approveWorkOrder(
   workOrderNumber: number,
-): Promise<ActionResult> {
+): Promise<ActionResult<{ remaining: number; completed: boolean }>> {
+  // 権限チェックは追加ゲート — 実体の承認可否（本人/代理）は
+  // actOnCurrentStep のグループ所属判定が引き続き行う。
   const authz = await checkPermission("work_order", "APPROVE");
   if (!authz.ok) return actionError(authz.error);
   if (!(await workOrderInScope(authz.access, authz.userId, workOrderNumber))) {
@@ -797,26 +749,58 @@ export async function approveSecond(
   try {
     const prior = await prisma.workOrder.findUnique({
       where: { workOrderNumber },
-      include: { salesOrder: { select: { status: true } } },
+      include: { orderLine: { select: { status: true } } },
     });
     if (!prior) return actionError("対象の指示書が見つかりません");
-    if (prior.approvalStatus !== "PENDING_2ND") {
-      return actionError("第二承認待ちの指示書ではありません");
+    if (prior.approvalStatus !== "PENDING") {
+      return actionError("承認待ちの指示書ではありません");
     }
-    // 承認権限（本人 or 代理）を検証しつつ承認記録を書き、依頼を確定する。
-    const acted = await actOnApprovalRequest({
+    // 承認権限（本人 or 代理）を検証しつつ承認記録を書き、段を進める。
+    const acted = await actOnCurrentStep({
       targetType: "work_orders",
       targetId: String(workOrderNumber),
-      step: "SECOND",
-      groupType: "SECOND",
       action: "APPROVED",
     });
-    if (!acted.ok) {
-      return actionError(acted.error ?? "第二承認の権限がありません");
-    }
+    if (!acted.ok) return actionError(acted.error ?? "承認の権限がありません");
+
     const actor = await getCurrentActorId();
+
+    // まだフローの途中 — 指示書の状態は動かさず履歴だけ足す
+    if (!acted.flowCompleted) {
+      await prisma.workOrder.update({
+        where: { id: prior.id },
+        data: {
+          history: toHistoryJson(
+            appendHistory(
+              prior.history,
+              entry(
+                "APPROVE_STEP",
+                actor,
+                acted.stepClosed
+                  ? undefined
+                  : `この段の残り ${acted.remaining} 名`,
+              ),
+            ),
+          ),
+        },
+      });
+      await recordAudit({
+        action: "UPDATE",
+        tableName: "work_orders",
+        recordId: String(workOrderNumber),
+        after: {
+          note: acted.stepClosed
+            ? "承認（次の段へ）"
+            : `承認（この段の残り ${acted.remaining} 名）`,
+        },
+      });
+      revalidate(workOrderNumber);
+      return actionOk({ remaining: acted.remaining, completed: false });
+    }
+
+    // ── 最終承認 — ここから先が指示書を動かす副作用 ──
     const now = new Date();
-    const soStatus = prior.salesOrder?.status ?? null;
+    const soStatus = prior.orderLine?.status ?? null;
     const moveToProduction = soStatus === "DRAFT" || soStatus === "CONFIRMED";
     await prisma.$transaction([
       prisma.workOrder.update({
@@ -824,18 +808,17 @@ export async function approveSecond(
         data: {
           status: "APPROVED",
           approvalStatus: "APPROVED",
-          approved2ndAt: now,
-          approved2ndBy: actor,
           approvedAt: now,
+          approvedBy: actor,
           history: toHistoryJson(
-            appendHistory(prior.history, entry("APPROVE_2ND", actor)),
+            appendHistory(prior.history, entry("APPROVE_FINAL", actor)),
           ),
         },
       }),
-      ...(prior.salesOrderId
+      ...(prior.orderLineId
         ? [
-            prisma.salesOrder.update({
-              where: { id: prior.salesOrderId },
+            prisma.orderLine.update({
+              where: { id: prior.orderLineId },
               data: {
                 isLocked: false,
                 ...(moveToProduction
@@ -878,7 +861,7 @@ export async function approveSecond(
               inventoryType: "MATERIAL",
               inventoryId: invId,
               workOrderId: prior.id,
-              salesOrderId: prior.salesOrderId,
+              orderLineId: prior.orderLineId,
               quantity: prior.plannedQuantity,
               status: "RESERVED",
               reservedAt: new Date(),
@@ -893,17 +876,17 @@ export async function approveSecond(
       action: "UPDATE",
       tableName: "work_orders",
       recordId: String(workOrderNumber),
-      before: { status: prior.status, approvalStatus: "PENDING_2ND" },
+      before: { status: prior.status, approvalStatus: "PENDING" },
       after: { status: "APPROVED", approvalStatus: "APPROVED" },
     });
     revalidate(workOrderNumber);
-    return actionOk();
+    return actionOk({ remaining: 0, completed: true });
   } catch (e) {
-    return actionError(prismaErrorMessage(e, "第二承認に失敗しました"));
+    return actionError(prismaErrorMessage(e, "承認に失敗しました"));
   }
 }
 
-/** 差し戻し — PENDING_1ST / PENDING_2ND → REJECTED（指示書は DRAFT へ戻す）。 */
+/** 差し戻し — PENDING → REJECTED（指示書は DRAFT へ戻す）。 */
 export async function rejectWorkOrder(
   workOrderNumber: number,
   reason: string,
@@ -920,21 +903,14 @@ export async function rejectWorkOrder(
       where: { workOrderNumber },
     });
     if (!prior) return actionError("対象の指示書が見つかりません");
-    if (
-      prior.approvalStatus !== "PENDING_1ST" &&
-      prior.approvalStatus !== "PENDING_2ND"
-    ) {
+    if (prior.approvalStatus !== "PENDING") {
       return actionError("承認待ちの指示書ではありません");
     }
-    // 現在承認待ちの段（FIRST / SECOND）に対して差し戻しを記録する。
-    // 権限（本人 or 代理）の検証は actOnApprovalRequest が行う。
-    const pendingStep =
-      prior.approvalStatus === "PENDING_1ST" ? "FIRST" : "SECOND";
-    const acted = await actOnApprovalRequest({
+    // 現在承認待ちの段に対して差し戻しを記録する。差し戻しは段数に依らず
+    // 1 件でフローを止める。権限（本人 or 代理）の検証は actOnCurrentStep が行う。
+    const acted = await actOnCurrentStep({
       targetType: "work_orders",
       targetId: String(workOrderNumber),
-      step: pendingStep,
-      groupType: pendingStep,
       action: "REJECTED",
       comment: trimmed,
     });
@@ -956,10 +932,10 @@ export async function rejectWorkOrder(
           ),
         },
       }),
-      ...(prior.salesOrderId
+      ...(prior.orderLineId
         ? [
-            prisma.salesOrder.update({
-              where: { id: prior.salesOrderId },
+            prisma.orderLine.update({
+              where: { id: prior.orderLineId },
               data: { isLocked: false },
             }),
           ]
@@ -985,12 +961,12 @@ export async function rejectWorkOrder(
 
 // ── ビルダー補助 ─────────────────────────────────────────────────────────────
 
-/** 注文請書選択時の情報取得（製品・数量表示 + 予定数量の既定値）。 */
-export async function getSalesOrderInfo(
-  salesOrderId: string,
-): Promise<SalesOrderRef | null> {
-  if (!salesOrderId) return null;
-  return fetchSalesOrderRef(salesOrderId);
+/** 注文明細選択時の情報取得（製品・数量表示 + 予定数量の既定値）。 */
+export async function getOrderLineInfo(
+  orderLineId: string,
+): Promise<OrderLineRef | null> {
+  if (!orderLineId) return null;
+  return fetchOrderLineRef(orderLineId);
 }
 
 /**
@@ -1009,19 +985,21 @@ export async function getMaterialAtp(
   }
 }
 
-/** 注文請書 → 対象製品の工程ルート一覧（ビルダーのルート選択用）。 */
-export async function getProductRoutesForSalesOrder(
-  salesOrderId: string,
+/** 注文明細 → 対象製品の工程ルート一覧（ビルダーのルート選択用）。 */
+export async function getProductRoutesForOrderLine(
+  orderLineId: string,
 ): Promise<{ productId: number; routes: RouteView[] } | null> {
-  if (!salesOrderId) return null;
-  const so = await prisma.salesOrder.findUnique({
-    where: { id: salesOrderId },
+  if (!orderLineId) return null;
+  const so = await prisma.orderLine.findUnique({
+    where: { id: orderLineId },
     select: { productId: true },
   });
-  if (!so) return null;
-  const routes = await listProductRoutes(so.productId);
+  // 確定前の明細（製品未特定）は指示書の対象にならない。
+  if (!so || so.productId == null) return null;
+  const productId = so.productId;
+  const routes = await listProductRoutes(productId);
   return {
-    productId: so.productId,
+    productId,
     routes: routes.filter((r) => r.isActive),
   };
 }
@@ -1053,11 +1031,11 @@ export async function getRouteVersionSteps(
  * NumberInput min 用。検証はサーバー側（create/update）が最終判定する。
  */
 export async function getStockFloorInfo(
-  salesOrderId: string,
+  orderLineId: string,
   excludeWorkOrderNumber?: number,
 ): Promise<StockFloorInfo | null> {
-  if (!salesOrderId) return null;
-  const info = await stockFloorInfo(salesOrderId, excludeWorkOrderNumber);
+  if (!orderLineId) return null;
+  const info = await stockFloorInfo(orderLineId, excludeWorkOrderNumber);
   if (!info) return null;
   const { productId: _productId, ...rest } = info;
   return rest;

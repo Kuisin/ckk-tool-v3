@@ -1,17 +1,23 @@
 "use client";
 
 /**
- * OrderAcceptanceDetail — 受注請書 詳細 (SA24, design.md §8.2)。
+ * OrderAcceptanceDetail — 注文請書 詳細 (SA24, design.md §8.2)。
  *
  * ライフサイクル: 取込（IMPORT）→ 下書き（DRAFT — インライン編集可）→
- * 承認依頼（REQUESTED）→ 承認（APPROVED）→ 伝票展開（COMPLETED）→
+ * 承認依頼（REQUESTED）→ 承認（APPROVED）→ 確定（COMPLETED）→
  * アーカイブ（ARCHIVED）。
  *
- * - IMPORT: 抽出失敗は赤 Alert + 再抽出。処理中は案内 Alert。
- * - DRAFT: 基本情報（顧客 SearchSelect）+ 明細エディタ + 保存 / 承認依頼。
- * - REQUESTED: 承認 / 差し戻し（第一承認グループ — 代理可）。
- * - APPROVED: 伝票展開（明細ごとに注文請書 ORD-…-NN を一括作成）。
- * - COMPLETED: 生成された注文請書リンク + アーカイブ。
+ * - IMPORT: 抽出失敗は原因・対処つきの Alert + 再抽出 / 手入力へ切り替え
+ *   （自動再試行の待機中は橙で「再試行中」）。処理中は案内 Alert。
+ * - DRAFT: **閲覧 / 編集の 2 モード**。既定は閲覧（サマリ + 明細表 + 承認依頼）で、
+ *   「編集」を押すと入力（基本情報 + 明細エディタ）に切り替わり、保存 /
+ *   キャンセルで閲覧へ戻る。編集中は承認依頼を出さない（未保存の編集が
+ *   消えるため）。
+ * - REQUESTED: 承認 / 差し戻し（承認設定 MS0B のフローに従う — 代理可）。
+ * - APPROVED: 確定（明細ごとに注文明細 ORD-…-NN を一括作成）。
+ * - COMPLETED: 生成された注文明細リンク + アーカイブ。
+ * 状態ごとの操作は最上部の ActionCard にまとめる（承認権限の有無で色が変わる
+ * — 権限が無いユーザーにはグレーの「承認待ち」カード）。
  * タブ: 添付（AttachmentsPanel）/ 履歴（HistoryPanel）。
  */
 
@@ -48,12 +54,15 @@ import {
 } from "@tabler/icons-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useState, useTransition } from "react";
-import { searchCustomerOptions } from "@/app/(dashboard)/_shared/option-search";
+import { type ReactNode, useEffect, useState, useTransition } from "react";
+import {
+  searchCustomerOptions,
+  searchQuoteOptions,
+} from "@/app/(dashboard)/_shared/option-search";
 import {
   approveAcceptance,
   archiveAcceptance,
-  deployToSalesOrders,
+  confirmOrderLines,
   rejectAcceptance,
   retryExtraction,
   saveDraft,
@@ -65,25 +74,25 @@ import type {
   AcceptancePriceCheckLine,
 } from "@/app/(dashboard)/sales/order-acceptances/price-check";
 import {
+  ApprovalActionCard,
+  type ApprovalActionState,
+} from "@/components/approvals/ApprovalActionCard";
+import {
   ApprovalTrailList,
   type ApprovalTrailView,
   countTrailRecords,
 } from "@/components/production/ApprovalStatusPanel";
+import { ActionCard } from "@/components/ui/ActionCard";
 import {
   AttachmentsPanel,
   type AttachmentView,
 } from "@/components/ui/AttachmentsPanel";
-import {
-  ApproveButton,
-  PrimaryButton,
-  RejectButton,
-  SaveButton,
-  SecondaryButton,
-} from "@/components/ui/buttons";
+import { PrimaryButton, SecondaryButton } from "@/components/ui/buttons";
 import { DocNumber } from "@/components/ui/DocNumber";
 import { FieldValue } from "@/components/ui/FieldValue";
 import { CUSTOMER_F4 } from "@/components/ui/f4-presets";
 import { HistoryPanel } from "@/components/ui/HistoryPanel";
+import { MemoPanel } from "@/components/ui/MemoPanel";
 import { MoneyText } from "@/components/ui/MoneyText";
 import { ModalShell } from "@/components/ui/modals";
 import { SearchSelect } from "@/components/ui/SearchSelect";
@@ -91,13 +100,20 @@ import { StatusBadge } from "@/components/ui/StatusBadge";
 import {
   type AuditEntry,
   DetailShell,
+  FormActions,
   FormSection,
   ResourceActions,
   SummaryGrid,
 } from "@/components/ui/shells";
 import { useTabParam } from "@/hooks/useUrlState";
+import type { MemoView } from "@/lib/document-memos";
 import { ORDER_TYPE_LABEL } from "@/lib/enum-labels";
 import { formatDate, formatDateTime, formatMoney } from "@/lib/format";
+import { parseExtractError } from "@/lib/intake-extract-error";
+import {
+  acceptanceReadiness,
+  readinessSummary,
+} from "@/lib/order-acceptance-readiness";
 import type { ActionResult } from "@/lib/server-action";
 import { IntakeDocumentPane } from "./IntakeDocumentPane";
 import { IntakeReviewPanel } from "./IntakeReviewPanel";
@@ -115,9 +131,9 @@ import {
 } from "./OrderAcceptanceItemsEditor";
 
 const BASE_PATH = "/sales/order-acceptances";
-const SALES_ORDERS_PATH = "/production/sales-orders";
+const SALES_ORDERS_PATH = "/sales/order-lines";
 
-/** status → Stepper の active index（取込 / 下書き / 承認 / 伝票展開）。 */
+/** status → Stepper の active index（取込 / 下書き / 承認 / 確定）。 */
 function stepperActive(status: string): number {
   switch (status) {
     case "IMPORT":
@@ -135,12 +151,24 @@ function stepperActive(status: string): number {
 
 const EMPTY_PRICE_CHECK: AcceptancePriceCheck = { lines: [], diffCount: 0 };
 
+/**
+ * 書類ライフサイクルの Stepper に出す「承認」段の説明。段数は承認設定 (MS0B)
+ * が決めるので、進行中は「2/3 部門承認」、それ以外は担当グループ名を出す。
+ */
+function approvalStepDescription(approval: ApprovalActionState): string {
+  if (approval.phase === "PENDING" && approval.stepCount > 1) {
+    return `${approval.stepNo}/${approval.stepCount} ${approval.stepLabel}`;
+  }
+  return approval.groupLabel || "承認グループ";
+}
+
 export function OrderAcceptanceDetail({
   acceptance,
   auditEntries,
   attachments,
+  memos,
   approvalTrail = [],
-  canApprove,
+  approval,
   priceCheck = EMPTY_PRICE_CHECK,
 }: {
   acceptance: OrderAcceptanceView;
@@ -148,10 +176,12 @@ export function OrderAcceptanceDetail({
   auditEntries: AuditEntry[];
   /** 添付（document_attachments 由来、添付タブ）。 */
   attachments: AttachmentView[];
+  /** 社内メモ（document_memos 由来、メモタブ）。 */
+  memos: MemoView[];
   /** 正規化された承認記録（approval_records — 代理承認マーカー付き）。 */
   approvalTrail?: ApprovalTrailView[];
-  /** 第一承認グループのメンバー（or 代理）か。 */
-  canApprove: boolean;
+  /** 承認フローの現在状態（承認 / 差し戻しのゲートと表示）。 */
+  approval: ApprovalActionState;
   /** §2 価格照合結果（保存済み明細 × 価格表 — サーバー側で計算）。 */
   priceCheck?: AcceptancePriceCheck;
 }) {
@@ -163,19 +193,42 @@ export function OrderAcceptanceDetail({
   const [rejectReason, setRejectReason] = useState("");
   const [deployOpen, setDeployOpen] = useState(false);
   const [archiveOpen, setArchiveOpen] = useState(false);
+  /**
+   * 下書きの表示モード。既定は**閲覧** — 開いた直後に入力欄が並んでいると、
+   * 何を確認すればよいのかが分からず、触るつもりのない値まで変わり得る。
+   * 「編集」で入力に切り替え、保存 / キャンセルで閲覧へ戻る。
+   * ただし明細がまだ 1 行も無い下書き（手入力で作った直後・抽出を待たずに
+   * 引き取った直後）は、閲覧しても空の表しかないので編集から始める。
+   */
+  const [editing, setEditing] = useState(
+    () => acceptance.status === "DRAFT" && acceptance.items.length === 0,
+  );
 
   const a = acceptance;
   const sourceDef = INTAKE_SOURCE_BADGE[a.source];
 
+  // 抽出失敗は分類済みの複数行メッセージ（lib/intake-extract-error）。
+  // 旧形式（1 行）もそのまま読める。
+  const failure = a.extractError ? parseExtractError(a.extractError) : null;
+
   // 抽出はバックグラウンドの列で走るので、待っている間は定期的に見に行く
   // （完了しても画面は自分では変わらないため）。一覧と同じ 30 秒間隔。
-  const awaitingExtraction = a.status === "IMPORT" && !a.extractError;
+  // 自動再試行の待機中も「まだ動いている」ので更新を続ける。
+  const awaitingExtraction =
+    a.status === "IMPORT" && (!failure || failure.retrying);
   useEffect(() => {
     if (!awaitingExtraction) return;
     const timer = setInterval(() => router.refresh(), 30_000);
     return () => clearInterval(timer);
   }, [awaitingExtraction, router]);
   const fileUrl = a.sourceFilename ? sourceFileUrl(a) : null;
+
+  // 承認依頼の可否 — 確定と同じ完成条件（サーバーの submitForApproval と
+  // 同じ関数）。足りない項目があるうちはボタンを押せなくし、理由をカードに出す。
+  const readiness = acceptanceReadiness({
+    customerBpId: a.customerBpId,
+    items: a.items,
+  });
 
   // §2 価格照合（P0-8）— 差異行と明細 id → 照合結果の索引。
   const diffLines = priceCheck.lines.filter((l) => l.diff);
@@ -189,7 +242,7 @@ export function OrderAcceptanceDetail({
       if (result.ok) {
         notifications.show({
           title: done,
-          message: `受注請書 ${a.number}`,
+          message: `注文請書 ${a.number}`,
           color: "green",
         });
         setRejectOpen(false);
@@ -207,14 +260,14 @@ export function OrderAcceptanceDetail({
     });
   };
 
-  /** 伝票展開 — 成功時は生成された注文請書番号を通知する。 */
+  /** 確定 — 成功時は生成された注文明細番号を通知する。 */
   const deploy = () => {
     startTransition(async () => {
-      const result = await deployToSalesOrders(a.number);
+      const result = await confirmOrderLines(a.number);
       if (result.ok) {
         notifications.show({
-          title: "伝票展開しました",
-          message: `注文請書 ${result.data.numbers.join(", ")} を作成しました`,
+          title: "確定しました",
+          message: `注文明細 ${result.data.numbers.join(", ")} を作成しました`,
           color: "green",
         });
         setDeployOpen(false);
@@ -260,10 +313,88 @@ export function OrderAcceptanceDetail({
     });
   };
 
+  /**
+   * 「いまやること」カード（最上部）。承認待ちは承認権限の有無で色が変わる
+   * — 権限あり = 緑 + 承認/差し戻し、権限なし = グレーの「承認待ち」表示。
+   */
+  let actionCard: ReactNode = null;
+  if (a.status === "DRAFT") {
+    actionCard = editing ? (
+      // 編集中は承認依頼を出さない — 押した瞬間に未保存の編集が消えるため。
+      // 保存 / キャンセル（画面下に貼り付く FormActions）に集中させる。
+      <ActionCard
+        description="変更したら保存してください。保存すると閲覧に戻ります"
+        icon={<IconPencil size={20} />}
+        title="編集中"
+        tone="action"
+      />
+    ) : (
+      <ActionCard
+        actions={
+          <PrimaryButton
+            disabled={!readiness.ok}
+            leftSection={<IconSend size={14} />}
+            loading={isPending}
+            onClick={requestApproval}
+          >
+            承認依頼
+          </PrimaryButton>
+        }
+        description={
+          readiness.ok
+            ? "書類と見比べて、直すところがあれば「編集」で直してください"
+            : `「編集」で直してください — ${readinessSummary(readiness.issues)}`
+        }
+        icon={<IconSend size={20} />}
+        title={
+          readiness.ok
+            ? "内容を確認して承認依頼してください"
+            : `承認依頼にはあと ${readiness.issues.length} 件の入力が必要です`
+        }
+        tone="action"
+      />
+    );
+  } else if (a.status === "REQUESTED") {
+    // 承認・差し戻しは 4 書類共通のカードに任せる（段数は承認設定 MS0B）。
+    // 依頼側（DRAFT）は完成条件・価格差異の確認があるので上の分岐が持つ。
+    actionCard = (
+      <ApprovalActionCard
+        approval={approval}
+        canRequest={false}
+        onApprove={() => approveAcceptance(a.number)}
+        onReject={(reason) => rejectAcceptance(a.number, reason)}
+        rejectReason={null}
+        subject={`注文請書 ${a.number}`}
+      />
+    );
+  } else if (a.status === "APPROVED") {
+    actionCard = (
+      <ActionCard
+        actions={
+          <PrimaryButton
+            leftSection={<IconTransform size={14} />}
+            loading={isPending}
+            onClick={() => setDeployOpen(true)}
+          >
+            確定
+          </PrimaryButton>
+        }
+        description="明細ごとに注文明細（ORD-…-NN）を一括作成します"
+        icon={<IconTransform size={20} />}
+        title="確定できます"
+        tone="action"
+      />
+    );
+  }
+  // 確定後（COMPLETED）は ActionCard を出さない — 確定はゴールであって
+  // 「次にやること」ではない。アーカイブは任意の片付け操作なので、
+  // 急かさないよう ResourceActions のメニューにだけ置く。
+
   return (
     <DetailShell
       actions={
         <ResourceActions
+          // 下書きの閲覧中だけ「編集」を出す（design.md §8.2 の定位置）。
           menuItems={
             a.status === "COMPLETED"
               ? [
@@ -275,9 +406,14 @@ export function OrderAcceptanceDetail({
                 ]
               : []
           }
+          onEdit={
+            a.status === "DRAFT" && !editing
+              ? () => setEditing(true)
+              : undefined
+          }
         />
       }
-      breadcrumbs={["販売", { label: "受注請書", href: BASE_PATH }, "詳細"]}
+      breadcrumbs={["販売", { label: "注文請書", href: BASE_PATH }, "詳細"]}
       createdAt={formatDateTime(a.createdAt)}
       status={<StatusBadge entity="OrderAcceptanceIntake" status={a.status} />}
       title={a.number}
@@ -287,6 +423,8 @@ export function OrderAcceptanceDetail({
         書類は **状態に関わらず常に** 左に出す（取込中・失敗中でも見たい）。
         右は状態ごとの中身。狭い画面では縦積み（書類は折りたたみ）。
       */}
+      {actionCard}
+
       <Grid gap="md">
         <Grid.Col span={{ base: 12, lg: 5 }}>
           <IntakeDocumentPane
@@ -299,15 +437,36 @@ export function OrderAcceptanceDetail({
           <Stack gap="md">
             {/* 取込中 / 抽出失敗（IMPORT） */}
             {a.status === "IMPORT" &&
-              (a.extractError ? (
+              (failure ? (
                 <Alert
-                  color="red"
-                  icon={<IconAlertTriangle size={16} />}
-                  title="自動抽出に失敗しました"
+                  color={failure.retrying ? "orange" : "red"}
+                  icon={
+                    failure.retrying ? (
+                      <IconRefresh size={16} />
+                    ) : (
+                      <IconAlertTriangle size={16} />
+                    )
+                  }
+                  title={failure.summary}
                   variant="light"
                 >
                   <Stack gap="xs">
-                    <Text size="sm">{a.extractError}</Text>
+                    {failure.cause && <Text size="sm">{failure.cause}</Text>}
+                    <Text fw={500} size="sm">
+                      {failure.hint}
+                    </Text>
+                    {failure.attempt && failure.maxAttempts ? (
+                      <Text c="dimmed" size="xs">
+                        {failure.retrying
+                          ? `自動再試行中（${failure.attempt}/${failure.maxAttempts} 回目が失敗）— まもなくもう一度実行します`
+                          : `自動再試行 ${failure.attempt}/${failure.maxAttempts} 回とも失敗しました`}
+                      </Text>
+                    ) : null}
+                    {failure.detail && (
+                      <Text c="dimmed" ff="mono" size="xs">
+                        {failure.detail}
+                      </Text>
+                    )}
                     <Group>
                       <SecondaryButton
                         leftSection={<IconRefresh size={14} />}
@@ -320,6 +479,18 @@ export function OrderAcceptanceDetail({
                         }
                       >
                         再抽出
+                      </SecondaryButton>
+                      <SecondaryButton
+                        leftSection={<IconPencil size={14} />}
+                        loading={isPending}
+                        onClick={() =>
+                          run(
+                            () => takeOverManually(a.number),
+                            "手入力に切り替えました",
+                          )
+                        }
+                      >
+                        手入力に切り替え
                       </SecondaryButton>
                     </Group>
                   </Stack>
@@ -375,10 +546,18 @@ export function OrderAcceptanceDetail({
               </Alert>
             )}
 
-            {a.status === "DRAFT" ? (
-              <DraftEditor acceptance={a} lineChecks={checkByItemId} />
+            {a.status === "DRAFT" && editing ? (
+              <DraftEditor
+                acceptance={a}
+                lineChecks={checkByItemId}
+                onClose={() => setEditing(false)}
+              />
             ) : (
               <>
+                {/* 下書きの閲覧モードでも AI 突合の結果は出す（直す前に読む） */}
+                {a.status === "DRAFT" && (
+                  <IntakeReviewPanel review={a.review} />
+                )}
                 <SummaryGrid>
                   <FieldValue
                     label="番号"
@@ -455,7 +634,8 @@ export function OrderAcceptanceDetail({
                     label="展開日時"
                     value={a.completedAt ? formatDateTime(a.completedAt) : "—"}
                   />
-                  <FieldValue label="備考" value={a.notes} />
+                  {/* 備考は 1 行まるごと使う — 3 列の枠だと読めない */}
+                  <FieldValue fullWidth label="備考" value={a.notes} />
                 </SummaryGrid>
 
                 {/* 明細（読み取り専用） */}
@@ -579,87 +759,35 @@ export function OrderAcceptanceDetail({
                   loading={a.status === "DRAFT"}
                 />
                 <Stepper.Step
-                  description="第一承認グループ"
+                  description={approvalStepDescription(approval)}
                   label="承認"
                   loading={a.status === "REQUESTED"}
                 />
                 <Stepper.Step
                   description={
-                    a.completedAt ? formatDate(a.completedAt) : "注文請書へ"
+                    a.completedAt ? formatDate(a.completedAt) : "注文明細へ"
                   }
-                  label="伝票展開"
+                  label="確定"
                   loading={a.status === "APPROVED"}
                 />
               </Stepper>
 
-              <Group gap="xs" mt="md">
-                {a.status === "DRAFT" && (
-                  <>
-                    <PrimaryButton
-                      leftSection={<IconSend size={14} />}
-                      loading={isPending}
-                      onClick={requestApproval}
-                    >
-                      承認依頼
-                    </PrimaryButton>
-                    <Text c="dimmed" size="xs">
-                      未保存の編集は承認依頼の前に保存してください
-                    </Text>
-                  </>
-                )}
-                {a.status === "REQUESTED" &&
-                  (canApprove ? (
-                    <>
-                      <ApproveButton
-                        loading={isPending}
-                        onClick={() =>
-                          run(() => approveAcceptance(a.number), "承認しました")
-                        }
-                      >
-                        承認
-                      </ApproveButton>
-                      <RejectButton onClick={() => setRejectOpen(true)} />
-                    </>
-                  ) : (
-                    <Text c="dimmed" size="xs">
-                      第一承認グループのメンバーのみ承認・差し戻しできます
-                    </Text>
-                  ))}
-                {a.status === "APPROVED" && (
-                  <PrimaryButton
-                    leftSection={<IconTransform size={14} />}
-                    loading={isPending}
-                    onClick={() => setDeployOpen(true)}
-                  >
-                    伝票展開
-                  </PrimaryButton>
-                )}
-                {a.status === "COMPLETED" && (
-                  <SecondaryButton
-                    leftSection={<IconArchive size={14} />}
-                    loading={isPending}
-                    onClick={() => setArchiveOpen(true)}
-                  >
-                    アーカイブ
-                  </SecondaryButton>
-                )}
-                {a.status === "ARCHIVED" && (
-                  <Text c="dimmed" size="xs">
-                    アーカイブ済み（{formatDateTime(a.archivedAt)}）
-                  </Text>
-                )}
-              </Group>
+              {a.status === "ARCHIVED" && (
+                <Text c="dimmed" mt="md" size="xs">
+                  アーカイブ済み（{formatDateTime(a.archivedAt)}）
+                </Text>
+              )}
 
-              {/* 伝票展開で生成された注文請書 */}
-              {a.salesOrderNumbers.length > 0 && (
+              {/* 確定で生成された注文明細 */}
+              {a.orderLineNumbers.length > 0 && (
                 <>
                   <Divider my="md" />
                   <Stack gap="xs">
                     <Text c="dimmed" fw={600} size="xs">
-                      生成された注文請書
+                      生成された注文明細
                     </Text>
                     <Group gap="sm">
-                      {a.salesOrderNumbers.map((n) => (
+                      {a.orderLineNumbers.map((n) => (
                         <Anchor
                           ff="mono"
                           href={`${SALES_ORDERS_PATH}/${n}`}
@@ -687,6 +815,7 @@ export function OrderAcceptanceDetail({
                 <Tabs.Tab value="attachments">
                   添付（{attachments.length}）
                 </Tabs.Tab>
+                <Tabs.Tab value="memo">メモ</Tabs.Tab>
                 <Tabs.Tab value="history">履歴</Tabs.Tab>
               </Tabs.List>
 
@@ -695,6 +824,16 @@ export function OrderAcceptanceDetail({
                   attachments={attachments}
                   canDelete={a.status !== "ARCHIVED"}
                   canUpload={a.status !== "ARCHIVED"}
+                  ownerId={a.number}
+                  ownerType="order_acceptances"
+                />
+              </Tabs.Panel>
+
+              {/* keepMounted={false}: エディタ（prosemirror）はタブを開くまで読み込まない。 */}
+              <Tabs.Panel keepMounted={false} pt="md" value="memo">
+                <MemoPanel
+                  memos={memos}
+                  mode="memo"
                   ownerId={a.number}
                   ownerType="order_acceptances"
                 />
@@ -740,7 +879,7 @@ export function OrderAcceptanceDetail({
         />
       </ModalShell>
 
-      {/* 伝票展開の確認 */}
+      {/* 確定の確認 */}
       <ModalShell
         confirmLabel="展開する"
         loading={isPending}
@@ -748,10 +887,10 @@ export function OrderAcceptanceDetail({
         onConfirm={deploy}
         opened={deployOpen}
         size="sm"
-        title="伝票展開の確認"
+        title="確定の確認"
       >
         <Text size="sm">
-          明細 {a.items.length} 件を注文請書（{a.number}-01〜-
+          明細 {a.items.length} 件を注文明細（{a.number}-01〜-
           {String(a.items.length).padStart(2, "0")}）として一括作成します。
           全明細が製品特定済み・単価入力済みであることが必要です。
         </Text>
@@ -770,7 +909,7 @@ export function OrderAcceptanceDetail({
         title="アーカイブの確認"
       >
         <Text size="sm">
-          受注請書 {a.number} をアーカイブします。以後の編集はできません。
+          注文請書 {a.number} をアーカイブします。以後の編集はできません。
         </Text>
       </ModalShell>
     </DetailShell>
@@ -778,16 +917,22 @@ export function OrderAcceptanceDetail({
 }
 
 /**
- * DraftEditor — DRAFT のインライン編集（基本情報 + 明細 + 保存）。
- * DRAFT のときだけマウントされるため、初期値は props から安全に取れる。
+ * DraftEditor — DRAFT の編集モード（基本情報 + 明細 + 保存 / キャンセル）。
+ *
+ * 編集モードのときだけマウントされるため、初期値は props から安全に取れる
+ * （＝閲覧に戻って入り直すと、必ず保存済みの値から始まる）。
+ * 保存もキャンセルも `onClose` で閲覧モードへ戻す。
  */
 function DraftEditor({
   acceptance,
   lineChecks,
+  onClose,
 }: {
   acceptance: OrderAcceptanceView;
   /** 保存済み明細 id → 価格照合結果（行バッジ表示用）。 */
   lineChecks: Map<string, AcceptancePriceCheckLine>;
+  /** 閲覧モードへ戻す（保存成功 / キャンセル）。 */
+  onClose: () => void;
 }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -805,6 +950,20 @@ function DraftEditor({
     a.items.length > 0 ? toItemRows(a.items) : [newItemRow()],
   );
 
+  /** 入力内容の指紋 — 変更の有無だけを見るので中身の意味は問わない。 */
+  const fingerprint = JSON.stringify([
+    customerId,
+    customerOrderRef,
+    quoteNumber,
+    orderDate,
+    notes,
+    items,
+  ]);
+  // マウント時の値（＝保存済みの内容）。編集モードは開き直すと再マウント
+  // されるので、これが常に「保存されている状態」になる。
+  const [initialFingerprint] = useState(fingerprint);
+  const isDirty = fingerprint !== initialFingerprint;
+
   const save = () => {
     startTransition(async () => {
       const result = await saveDraft(a.number, {
@@ -818,9 +977,10 @@ function DraftEditor({
       if (result.ok) {
         notifications.show({
           title: "保存しました",
-          message: `受注請書 ${a.number}`,
+          message: `注文請書 ${a.number}`,
           color: "green",
         });
+        onClose();
         router.refresh();
       } else {
         notifications.show({
@@ -829,6 +989,23 @@ function DraftEditor({
           color: "red",
         });
       }
+    });
+  };
+
+  /** キャンセル — 変更があるときだけ確認する（design.md §16.2）。 */
+  const cancel = () => {
+    if (!isDirty) {
+      onClose();
+      return;
+    }
+    modals.openConfirmModal({
+      title: "編集の取り消し",
+      children: (
+        <Text size="sm">保存していない変更は失われます。取り消しますか？</Text>
+      ),
+      labels: { confirm: "変更を破棄", cancel: "編集に戻る" },
+      confirmProps: { color: "red" },
+      onConfirm: onClose,
     });
   };
 
@@ -870,11 +1047,26 @@ function DraftEditor({
               placeholder="注文書の番号"
               value={customerOrderRef}
             />
-            <TextInput
-              label="見積書番号（任意）"
-              onChange={(e) => setQuoteNumber(e.currentTarget.value)}
-              placeholder="QOT-YYYYMM-NNNNN"
-              value={quoteNumber}
+            {/*
+              見積書は手入力（QOT-… を書き写す）ではなく検索して選ぶ。
+              顧客が決まっていればその顧客の見積だけに絞るので、
+              別の顧客の見積を紐付けてしまう事故が起きない。
+            */}
+            <SearchSelect
+              clearable
+              initialOption={
+                a.quoteNumber
+                  ? { value: a.quoteNumber, label: a.quoteNumber }
+                  : null
+              }
+              label="見積書（任意）"
+              onChange={(v) => setQuoteNumber(v ?? "")}
+              onSearch={(q) => searchQuoteOptions(q, customerId)}
+              placeholder={
+                customerId ? "見積書を検索" : "先に顧客を選ぶと絞り込めます"
+              }
+              storageKey="quote"
+              value={quoteNumber || null}
             />
             <DatePickerInput
               clearable
@@ -896,7 +1088,7 @@ function DraftEditor({
       </FormSection>
 
       <FormSection
-        description="製品が未特定の行は製品マスタと突合してください（伝票展開には全行の製品特定 + 単価が必要）。"
+        description="製品が未特定の行は製品マスタと突合してください（確定には全行の製品特定 + 単価が必要）。"
         title="明細"
       >
         <OrderAcceptanceItemsEditor
@@ -906,9 +1098,7 @@ function DraftEditor({
         />
       </FormSection>
 
-      <Group justify="flex-end">
-        <SaveButton loading={isPending} onClick={save} type="button" />
-      </Group>
+      <FormActions loading={isPending} onCancel={cancel} onSave={save} />
     </Stack>
   );
 }

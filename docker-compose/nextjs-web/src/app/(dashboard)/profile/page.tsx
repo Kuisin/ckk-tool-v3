@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { ProfileView } from "@/components/profile/ProfileView";
+import { effectiveMemberWhere } from "@/lib/approval-membership";
 import { avatarUrl } from "@/lib/avatar";
 import { prisma } from "@/lib/db";
 
@@ -23,9 +24,13 @@ export default async function ProfilePage() {
       group: true,
       passwordHash: true,
       lastLoginAt: true,
+      // 期間限定メンバーは期間内だけ「所属している」と出す
       approvalGroupMembers: {
-        where: { isActive: true, group: { isActive: true } },
-        select: { group: { select: { type: true, name: true } } },
+        where: {
+          group: { isActive: true },
+          ...effectiveMemberWhere(new Date()),
+        },
+        select: { group: { select: { id: true, name: true } } },
       },
       pushSubscriptions: {
         orderBy: { createdAt: "desc" },
@@ -50,7 +55,7 @@ export default async function ProfilePage() {
         hasPassword: Boolean(user.passwordHash),
         lastLoginAt: user.lastLoginAt?.toISOString() ?? null,
         approvalGroups: user.approvalGroupMembers.map((m) => ({
-          type: m.group.type,
+          id: m.group.id,
           name: m.group.name,
         })),
         devices: user.pushSubscriptions.map((s) => ({

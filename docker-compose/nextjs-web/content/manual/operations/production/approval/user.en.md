@@ -19,7 +19,7 @@ These are the documents that appear in the list.
 - **指示書** (work order) … first and second approval ([work order](/manual/en/operations/production/work-order/user) PD02)
 - **素材発注書** (material purchase order) … the approval before the order is placed ([material purchase order](/manual/en/operations/purchasing/purchase-order/user) PU02)
 - **購買依頼** (purchase request) … [purchase request](/manual/en/operations/purchasing/purchase-request/user) PU01
-- **受注請書** (order acceptance) … it appears in the list, but because there is no dedicated approval screen for it yet, clicking the row does not take you anywhere
+- **注文請書** (order acceptance) … it appears in the list, but because there is no dedicated approval screen for it yet, clicking the row does not take you anywhere
 
 ## Words used on this page
 
@@ -31,7 +31,7 @@ These are the documents that appear in the list.
 ## Before you start
 
 - To approve or send back, **you must be in the approval group for that stage**. If you are not, the buttons do not appear on the screen.
-- Being added to a group and setting up stand-ins is done in [approval group](/manual/en/operations/masters/approval-group/user). It is not something you set up yourself, so please ask an administrator when you need it.
+- Being added to a group and setting up stand-ins is done in [approval group](/manual/en/operations/masters/approval-setting/user). It is not something you set up yourself, so please ask an administrator when you need it.
 
 ## How to read the screen
 
@@ -39,7 +39,7 @@ When you open the app, the documents waiting for approval are listed.
 
 ![Approval management list](../../../assets/screenshots/approval-list-01.png)
 
-- **種別** (document type) … a coloured badge shows which of 「指示書」 (work order), 「素材発注書」 (material purchase order), 「購買依頼」 (purchase request), or 「受注請書」 (order acceptance) it is.
+- **種別** (document type) … a coloured badge shows which of 「指示書」 (work order), 「素材発注書」 (material purchase order), 「購買依頼」 (purchase request), or 「注文請書」 (order acceptance) it is.
 - **対象番号** (document number) … the number of that document.
 - **段階** (stage) … either 「**第一**」 (first) or 「**第二**」 (second). Everything except work orders is approved once.
 - **依頼者** (requester) … the person who asked for approval.
@@ -53,14 +53,14 @@ When you open the app, the documents waiting for approval are listed.
 
 1. Click a row in the list. The screen for that document opens.
 2. For a work order, 「**承認状況**」 (approval status) is near the top of the screen and shows which stage it is at.
-3. If it is your turn to approve, the 「**第一承認**」 (First approval) or 「**第二承認**」 (Second approval) button appears. On documents other than work orders, it is simply 「**承認**」 (Approve).
+3. If it is your turn to approve, the 「**承認**」 (Approve) button appears.
 4. Check the content and press the button.
 
 ![Approval status shown on the work order screen](../../../assets/screenshots/approval-panel-01.png)
 
 A work order goes through **first approval → second approval**, two stages. Once the second approval is done, the factory can start the work.
 
-> 💡 Only people in the approval group for that stage, and stand-ins within their period, can approve. If the button does not appear, the screen shows 「第一承認グループのメンバーのみ承認・差し戻しできます」 (Only members of the first approval group can approve or send back).
+> 💡 Only people in the approval group for that step, and stand-ins within their period, can approve. If the button does not appear, the screen shows 「◯◯ のメンバーのみ承認・差し戻しできます」 with the group name (Only members of that group can approve or send back).
 
 ## Sending back
 
@@ -110,7 +110,7 @@ A. There are no requests waiting for approval right now. Requests that have been
 A. You are not in the approval group for that stage. Please ask an administrator about being added to the approval group.
 
 **Q. Nothing happens when I click a row.**
-A. That row is of the type 「受注請書」 (order acceptance). There is no dedicated approval screen for this document yet, so it only appears in the list.
+A. That row is of the type 「注文請書」 (order acceptance). There is no dedicated approval screen for this document yet, so it only appears in the list.
 
 **Q. I pressed the send-back button and saw 「差し戻し理由を入力してください」 (Please enter a reason for sending back).**
 A. The reason is still empty. A reason is required, so please write it and press 「差し戻す」 (Send back) again.
@@ -119,4 +119,4 @@ A. The reason is still empty. A reason is required, so please write it and press
 A. Another person who can approve may have dealt with it first. Requests that have been dealt with disappear from this list automatically. You can still open the document itself from its own app.
 
 **Q. Approvals stop while I am away.**
-A. A stand-in can be set up for a set period. This is set in [approval group](/manual/en/operations/masters/approval-group/user), so please ask an administrator.
+A. A stand-in can be set up for a set period. This is set in [approval group](/manual/en/operations/masters/approval-setting/user), so please ask an administrator.
