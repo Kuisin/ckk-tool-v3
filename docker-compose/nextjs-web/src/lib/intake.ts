@@ -111,6 +111,18 @@ async function ingestFile(input: {
       createdBy: actor,
     },
   });
+  // 原本を添付としても残す（ロック付き — 削除・差し替え不可）。
+  // 抽出をやり直すときも、内容を確かめるときも、根拠はこの 1 枚しかない。
+  await prisma.documentAttachment.create({
+    data: {
+      ownerType: "order_acceptances",
+      ownerId: formatDocNumber("ORD", { yearMonth, seq }),
+      fileId: fileRow.id,
+      label: "取込元（原本）",
+      uploadedBy: actor,
+      isLocked: true,
+    },
+  });
   await recordAudit({
     action: "CREATE",
     tableName: "order_acceptances",
@@ -232,6 +244,16 @@ export async function runExtraction(key: {
         sortOrder: i,
       })),
     );
+
+    // 抽出中に人が「手入力に切り替え」を押していたら、その入力を上書きしない
+    // （裏で走る処理が、目の前の編集を消してしまうのが一番まずい）。
+    const current = await prisma.orderAcceptance.findUnique({
+      where: { yearMonth_seq: key },
+      select: { status: true },
+    });
+    if (current?.status !== "IMPORT") {
+      return { ...key, number, status: "DRAFT" };
+    }
 
     await prisma.$transaction(async (tx) => {
       await tx.orderAcceptanceItem.deleteMany({

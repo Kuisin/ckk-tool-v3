@@ -173,6 +173,50 @@ export async function retryExtraction(number: string): Promise<ActionResult> {
   }
 }
 
+/**
+ * 抽出を待たずに手入力へ切り替える（IMPORT → DRAFT）。
+ *
+ * 抽出は数分かかることがあり、失敗して止まることもある。待てないときや
+ * 内容が分かっているときは、人がその場で引き取れるようにする。
+ * 裏で走っている抽出は**結果を捨てる**（runExtraction が IMPORT 以外なら
+ * 書き込まない）ので、切り替えたあとの入力が消えることはない。
+ */
+export async function takeOverManually(number: string): Promise<ActionResult> {
+  const key = keyOf(number);
+  if (!key) return actionError("受注請書番号が不正です");
+  const authz = await checkPermission("order_acceptance", "UPDATE");
+  if (!authz.ok) return actionError(authz.error);
+  if (!(await acceptanceInScope(authz.access, authz.userId, key))) {
+    return actionError(SCOPE_DENIED);
+  }
+  try {
+    const prior = await prisma.orderAcceptance.findUnique({
+      where: { yearMonth_seq: key },
+      select: { status: true },
+    });
+    if (!prior) return actionError("対象の受注請書が見つかりません");
+    if (prior.status !== "IMPORT") {
+      return actionError("取込中の受注請書のみ手入力へ切り替えられます");
+    }
+    await prisma.orderAcceptance.update({
+      where: { yearMonth_seq: key },
+      // 抽出済みの値があればそれを残したまま編集させる（0 からとは限らない）。
+      data: { status: "DRAFT", extractError: null },
+    });
+    await recordAudit({
+      action: "UPDATE",
+      tableName: "order_acceptances",
+      recordId: number,
+      before: { status: "IMPORT" },
+      after: { status: "DRAFT", note: "自動抽出を待たず手入力へ切り替え" },
+    });
+    revalidate(number);
+    return actionOk();
+  } catch (e) {
+    return actionError(prismaErrorMessage(e, "切り替えに失敗しました"));
+  }
+}
+
 // ── 下書き保存（DRAFT のみ） ─────────────────────────────────────────────────
 
 /** ヘッダ + 明細（全置換）を保存する。DRAFT のみ。 */

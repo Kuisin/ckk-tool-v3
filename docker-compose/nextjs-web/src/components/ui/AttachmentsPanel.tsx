@@ -25,12 +25,14 @@ import {
   TextInput,
   ThemeIcon,
   Title,
+  Tooltip,
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import {
   IconFile,
   IconFileSpreadsheet,
   IconFileTypePdf,
+  IconLock,
   IconPaperclip,
   IconPhoto,
   IconTrash,
@@ -56,6 +58,8 @@ export interface AttachmentView {
   uploadedBy: string;
   /** ISO タイムスタンプ。 */
   createdAt: string;
+  /** システムが付けた添付（取込元の原本など）— 削除不可。 */
+  isLocked?: boolean;
 }
 
 /** アップロード可能な拡張子（lib/attachments.ts のホワイトリストと同一）。 */
@@ -281,15 +285,32 @@ export function AttachmentsPanel({
                       </Text>
                     </Stack>
                   </Group>
-                  {canDelete && (
-                    <ActionIcon
-                      aria-label={`${a.filename} を削除`}
-                      color="red"
-                      onClick={() => setDeleteTarget(a)}
-                      variant="subtle"
+                  {a.isLocked ? (
+                    // 取込元の原本など。消せない理由がその場で分かるようにする。
+                    <Tooltip
+                      label="取込元の原本のため削除できません"
+                      withinPortal
                     >
-                      <IconTrash size={16} />
-                    </ActionIcon>
+                      <ThemeIcon
+                        aria-label="ロック済み添付"
+                        color="gray"
+                        size="sm"
+                        variant="light"
+                      >
+                        <IconLock size={14} />
+                      </ThemeIcon>
+                    </Tooltip>
+                  ) : (
+                    canDelete && (
+                      <ActionIcon
+                        aria-label={`${a.filename} を削除`}
+                        color="red"
+                        onClick={() => setDeleteTarget(a)}
+                        variant="subtle"
+                      >
+                        <IconTrash size={16} />
+                      </ActionIcon>
+                    )
                   )}
                 </Group>
               </Paper>

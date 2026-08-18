@@ -14,6 +14,10 @@ STRUCT_MODEL = os.environ.get("STRUCT_MODEL", VISION_MODEL)
 MAX_PAGES = int(os.environ.get("MAX_PAGES", "5"))
 OCR_ENABLED = os.environ.get("OCR_ENABLED", "true").lower() != "false"
 RENDER_DPI = int(os.environ.get("RENDER_DPI", "200"))
+# 描画後の長辺の範囲（px）。A4 を 200dpi で描くと約 2339px なので、その辺りを
+# 基準に上下限だけ決める。大きすぎ＝入力肥大で不安定、小さすぎ＝文字が潰れる。
+MAX_EDGE = int(os.environ.get("MAX_EDGE", "2400"))
+MIN_EDGE = int(os.environ.get("MIN_EDGE", "1600"))
 KEEP_ALIVE = os.environ.get("OLLAMA_KEEP_ALIVE", "10m")
 # 自社名（注文書の「宛先」側）。顧客と取り違えないようプロンプトに埋める。
 # 表記ゆれは列挙してよい（そのまま文中に出る）。
@@ -196,20 +200,42 @@ def _safe_ocr(png: bytes) -> str:
 
 # ── Page rendering ───────────────────────────────────────────────────────
 def _pdf_pngs(data: bytes) -> list[bytes]:
+    """PDF → ページごとの PNG。長辺を一定の範囲に収めてから描画する。"""
     out, doc = [], fitz.open(stream=data, filetype="pdf")
-    mat = fitz.Matrix(RENDER_DPI / 72, RENDER_DPI / 72)
     for page in doc[:MAX_PAGES]:
-        out.append(page.get_pixmap(matrix=mat).tobytes("png"))
+        scale = RENDER_DPI / 72
+        # 大きすぎる原稿はモデルへの入力が肥大して不安定になり、小さすぎる原稿は
+        # 文字が潰れる。長辺が [MIN_EDGE, MAX_EDGE] に収まるよう倍率を調整する。
+        long_pt = max(page.rect.width, page.rect.height) or 1
+        scale = min(scale, MAX_EDGE / long_pt)
+        scale = max(scale, min(MIN_EDGE / long_pt, RENDER_DPI / 72))
+        pix = page.get_pixmap(matrix=fitz.Matrix(scale, scale), alpha=False)
+        out.append(pix.tobytes("png"))
     doc.close()
     return out
 
 def _page_pngs(file: UploadFile) -> list[bytes]:
+    """
+    入力を **1 つの形（アルファ無し PNG・一定サイズ）** に揃えてから処理へ渡す。
+
+    以前は PDF だけ描画し、画像はアップロードされたまま素通ししていた。
+    スマホ写真（4000px 超・EXIF 回転・JPEG）と 200dpi のスキャン PDF が同じ
+    パイプラインに混ざり、モデルが見るものが毎回違っていた（抽出が不安定に
+    なる原因）。画像も一度 PDF に通してから同じ描画経路に載せる。
+    """
     data = file.file.read()
     if not data:
         raise HTTPException(400, "empty file")
-    if (file.filename or "").lower().endswith(".pdf"):
+    name = (file.filename or "").lower()
+    if name.endswith(".pdf"):
         return _pdf_pngs(data)
-    return [data]
+    # 画像 → PDF → PNG。convert_to_pdf() が EXIF の向きも解決してくれる。
+    try:
+        with fitz.open(stream=data, filetype=name.rsplit(".", 1)[-1] or None) as img:
+            return _pdf_pngs(img.convert_to_pdf())
+    except Exception as e:  # 未知の形式は元のバイト列で試す（従来動作）
+        print(f"[normalize] image → pdf failed ({e}); passing through", flush=True)
+        return [data]
 
 # ── Ollama calls ─────────────────────────────────────────────────────────
 def _ollama(model: str, content: str, images: list[str] | None, fmt: dict | None):
