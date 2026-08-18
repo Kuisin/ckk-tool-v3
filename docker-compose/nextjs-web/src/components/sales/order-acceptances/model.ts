@@ -26,6 +26,8 @@ export const INTAKE_SOURCE_BADGE: Record<
   MANUAL: { label: "手入力", color: "gray" },
 };
 
+import type { FieldReview } from "@/lib/intake-review";
+
 /** 一覧（取込状況一覧）の 1 行。 */
 export interface OrderAcceptanceListRow {
   /** 表示番号 ORD-YYYYMM-NNNNN（URL id 兼用）。 */
@@ -57,12 +59,19 @@ export interface OrderAcceptanceItemView {
 
 /** 詳細 view。 */
 export interface OrderAcceptanceView {
+  /**
+   * 項目ごとの突合レビュー（lib/intake-review）。AI が何を読み取り、
+   * どれがマスタに引けなかったかを画面に出すためのもの。手入力は空配列。
+   */
+  review: FieldReview[];
   number: string;
   yearMonth: string;
   seq: number;
   status: OrderAcceptanceStatus;
   source: IntakeSource;
   sourceFilename: string | null;
+  /** 取込元の MIME（インライン表示の出し分け用）。 */
+  sourceMimeType: string | null;
   extractError: string | null;
   customerBpId: string | null;
   customerName: string | null;

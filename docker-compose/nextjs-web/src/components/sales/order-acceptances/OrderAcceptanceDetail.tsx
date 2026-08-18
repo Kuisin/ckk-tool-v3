@@ -20,6 +20,7 @@ import {
   Anchor,
   Badge,
   Divider,
+  Grid,
   Group,
   Paper,
   Stack,
@@ -96,6 +97,8 @@ import { useTabParam } from "@/hooks/useUrlState";
 import { ORDER_TYPE_LABEL } from "@/lib/enum-labels";
 import { formatDate, formatDateTime, formatMoney } from "@/lib/format";
 import type { ActionResult } from "@/lib/server-action";
+import { IntakeDocumentPane } from "./IntakeDocumentPane";
+import { IntakeReviewPanel } from "./IntakeReviewPanel";
 import {
   INTAKE_SOURCE_BADGE,
   type OrderAcceptanceView,
@@ -779,94 +782,95 @@ function DraftEditor({
   };
 
   return (
-    <>
-      <FormSection
-        description="AI 抽出結果を確認し、顧客・明細を修正して保存します。"
-        title="基本情報"
-      >
-        <Stack gap="sm">
-          <Group gap="md">
-            <Badge color={sourceDef.color} size="sm" variant="light">
-              {sourceDef.label}
-            </Badge>
-            {fileUrl && (
-              <Anchor
-                href={fileUrl}
-                rel="noopener noreferrer"
-                size="sm"
-                target="_blank"
-              >
-                <Group component="span" gap={4} wrap="nowrap">
-                  <IconFile size={14} />
-                  {a.sourceFilename}
-                </Group>
-              </Anchor>
-            )}
-          </Group>
-          <Group align="flex-end" gap="sm" grow preventGrowOverflow={false}>
-            <SearchSelect
-              description={
-                customerId ? undefined : "顧客未特定 — 承認依頼には必須です"
-              }
-              f4={CUSTOMER_F4}
-              initialOption={
-                a.customerBpId && a.customerName
-                  ? { value: a.customerBpId, label: a.customerName }
-                  : null
-              }
-              label="顧客"
-              onChange={(v) => setCustomerId(v)}
-              onSearch={searchCustomerOptions}
-              placeholder="顧客を検索"
-              storageKey="customer"
-              value={customerId}
-              withAsterisk
-            />
-            <TextInput
-              label="顧客注文書番号"
-              onChange={(e) => setCustomerOrderRef(e.currentTarget.value)}
-              placeholder="注文書の番号"
-              value={customerOrderRef}
-            />
-            <TextInput
-              label="見積書番号（任意）"
-              onChange={(e) => setQuoteNumber(e.currentTarget.value)}
-              placeholder="QOT-YYYYMM-NNNNN"
-              value={quoteNumber}
-            />
-            <DatePickerInput
-              clearable
-              label="注文日"
-              leftSection={<IconCalendar size={14} />}
-              onChange={setOrderDate}
-              placeholder="日付を選択"
-              value={orderDate}
-              valueFormat="YYYY/MM/DD"
-            />
-          </Group>
-          <TextInput
-            label="備考"
-            onChange={(e) => setNotes(e.currentTarget.value)}
-            placeholder="備考（任意）"
-            value={notes}
-          />
-        </Stack>
-      </FormSection>
-
-      <FormSection
-        description="製品が未特定の行は製品マスタと突合してください（伝票展開には全行の製品特定 + 単価が必要）。"
-        title="明細"
-      >
-        <OrderAcceptanceItemsEditor
-          items={items}
-          lineChecks={Object.fromEntries(lineChecks)}
-          onChange={setItems}
+    // 書類（左）と入力（右）を横に並べる — 確認は見比べる作業なので、
+    // 別タブへ行き来させない。狭い画面では縦に積む（書類は折りたたみ）。
+    <Grid gap="md">
+      <Grid.Col order={{ base: 1, lg: 1 }} span={{ base: 12, lg: 5 }}>
+        <IntakeDocumentPane
+          filename={a.sourceFilename}
+          fileUrl={fileUrl}
+          mimeType={a.sourceMimeType}
         />
-      </FormSection>
+      </Grid.Col>
+      <Grid.Col order={{ base: 2, lg: 2 }} span={{ base: 12, lg: 7 }}>
+        <Stack gap="md">
+          <IntakeReviewPanel review={a.review} />
+          <FormSection
+            description="AI 抽出結果を確認し、顧客・明細を修正して保存します。"
+            title="基本情報"
+          >
+            <Stack gap="sm">
+              <Group gap="md">
+                <Badge color={sourceDef.color} size="sm" variant="light">
+                  {sourceDef.label}
+                </Badge>
+              </Group>
+              <Group align="flex-end" gap="sm" grow preventGrowOverflow={false}>
+                <SearchSelect
+                  description={
+                    customerId ? undefined : "顧客未特定 — 承認依頼には必須です"
+                  }
+                  f4={CUSTOMER_F4}
+                  initialOption={
+                    a.customerBpId && a.customerName
+                      ? { value: a.customerBpId, label: a.customerName }
+                      : null
+                  }
+                  label="顧客"
+                  onChange={(v) => setCustomerId(v)}
+                  onSearch={searchCustomerOptions}
+                  placeholder="顧客を検索"
+                  storageKey="customer"
+                  value={customerId}
+                  withAsterisk
+                />
+                <TextInput
+                  label="顧客注文書番号"
+                  onChange={(e) => setCustomerOrderRef(e.currentTarget.value)}
+                  placeholder="注文書の番号"
+                  value={customerOrderRef}
+                />
+                <TextInput
+                  label="見積書番号（任意）"
+                  onChange={(e) => setQuoteNumber(e.currentTarget.value)}
+                  placeholder="QOT-YYYYMM-NNNNN"
+                  value={quoteNumber}
+                />
+                <DatePickerInput
+                  clearable
+                  label="注文日"
+                  leftSection={<IconCalendar size={14} />}
+                  onChange={setOrderDate}
+                  placeholder="日付を選択"
+                  value={orderDate}
+                  valueFormat="YYYY/MM/DD"
+                />
+              </Group>
+              <TextInput
+                label="備考"
+                onChange={(e) => setNotes(e.currentTarget.value)}
+                placeholder="備考（任意）"
+                value={notes}
+              />
+            </Stack>
+          </FormSection>
 
-      <Group justify="flex-end">
-        <SaveButton loading={isPending} onClick={save} type="button" />
-      </Group>
-    </>
+          <FormSection
+            description="製品が未特定の行は製品マスタと突合してください（伝票展開には全行の製品特定 + 単価が必要）。"
+            title="明細"
+          >
+            <OrderAcceptanceItemsEditor
+              items={items}
+              lineChecks={Object.fromEntries(lineChecks)}
+              onChange={setItems}
+            />
+          </FormSection>
+
+          <Group justify="flex-end">
+            <SaveButton loading={isPending} onClick={save} type="button" />
+          </Group>
+        </Stack>
+      </Grid.Col>
+    </Grid>
   );
 }
