@@ -23,7 +23,7 @@ import { fetchApprovalTrail, type HistoryEntry } from "@/lib/approvals";
 import { getCurrentActorId } from "@/lib/audit";
 import { checkPermission } from "@/lib/authz";
 import { type Prisma, prisma } from "@/lib/db";
-import { formatSalesOrderNumber } from "@/lib/doc-number";
+import { orderLineNumberOf } from "@/lib/doc-number";
 import { type LocalizedText, localized } from "@/lib/format";
 import {
   formatCounts,
@@ -63,7 +63,7 @@ function parseDefectReasons(value: unknown): StepDefectReasonView[] {
 }
 
 const WO_INCLUDE = {
-  salesOrder: { include: { customerBp: true } },
+  orderLine: { include: { acceptance: { include: { customerBp: true } } } },
   product: true,
   material: true,
   routeVersion: {
@@ -95,10 +95,10 @@ const iso = (d: Date | null | undefined) => d?.toISOString() ?? null;
 
 function mapRow(r: {
   workOrderNumber: number;
-  salesOrder: {
-    yearMonth: string;
-    seq: number;
-    branch: number;
+  orderLine: {
+    acceptanceYearMonth: string;
+    acceptanceSeq: number;
+    branch: number | null;
   } | null;
   product: { name: unknown };
   type: string;
@@ -112,9 +112,7 @@ function mapRow(r: {
   return {
     workOrderNumber: r.workOrderNumber,
     createdAt: r.createdAt.toISOString(),
-    salesOrderNumber: r.salesOrder
-      ? formatSalesOrderNumber(r.salesOrder)
-      : null,
+    orderLineNumber: r.orderLine ? orderLineNumberOf(r.orderLine) : null,
     productName: localized(r.product.name as LocalizedText | null),
     type: r.type,
     plannedQuantity: r.plannedQuantity,
@@ -159,7 +157,16 @@ export async function fetchWorkOrders(): Promise<WorkOrderRow[]> {
   const rows = await prisma.workOrder.findMany({
     take: LIST_FETCH_CAP,
     where: workOrderScopeWhere(authz.access, authz.userId),
-    include: { salesOrder: true, product: true },
+    include: {
+      orderLine: {
+        select: {
+          acceptanceYearMonth: true,
+          acceptanceSeq: true,
+          branch: true,
+        },
+      },
+      product: true,
+    },
     orderBy: { workOrderNumber: "desc" },
   });
   return rows.map(mapRow);
@@ -219,13 +226,13 @@ export async function fetchWorkOrder(
     type: r.type,
     plannedQuantity: r.plannedQuantity,
     notes: r.notes,
-    salesOrderId: r.salesOrderId,
-    salesOrderNumber: r.salesOrder
-      ? formatSalesOrderNumber(r.salesOrder)
-      : null,
-    salesOrderQuantity: r.salesOrder?.quantity ?? null,
-    customerName: r.salesOrder
-      ? localized(r.salesOrder.customerBp.name as LocalizedText | null)
+    orderLineId: r.orderLineId,
+    orderLineNumber: r.orderLine ? orderLineNumberOf(r.orderLine) : null,
+    orderLineQuantity: r.orderLine?.quantity ?? null,
+    customerName: r.orderLine
+      ? localized(
+          r.orderLine.acceptance.customerBp?.name as LocalizedText | null,
+        )
       : null,
     productName: localized(r.product.name as LocalizedText | null),
     materialId: r.materialId,
@@ -240,7 +247,7 @@ export async function fetchWorkOrder(
       ? localized(r.routeVersion.route.name as LocalizedText | null)
       : null,
     routeVersion: r.routeVersion?.version ?? null,
-    lotNumber: r.salesOrder?.lotNumber ?? null,
+    lotNumber: r.orderLine?.lotNumber ?? null,
     sourceWorkOrderNumber: r.sourceWorkOrder?.workOrderNumber ?? null,
     copies: r.copies.map((c) => ({
       workOrderNumber: c.workOrderNumber,
@@ -771,9 +778,9 @@ export async function fetchSupplierOptions(): Promise<Option[]> {
   }));
 }
 
-// ── 注文請書参照（?salesOrder= プリセレクト・ビルダーの選択情報） ────────────────
+// ── 受注明細参照（?orderLine= プリセレクト・ビルダーの選択情報） ────────────────
 
-export interface SalesOrderRef {
+export interface OrderLineRef {
   id: string;
   number: string;
   label: string;
@@ -784,23 +791,29 @@ export interface SalesOrderRef {
   status: string;
 }
 
-export async function fetchSalesOrderRef(
-  salesOrderId: string,
-): Promise<SalesOrderRef | null> {
-  const r = await prisma.salesOrder.findUnique({
-    where: { id: salesOrderId },
-    include: { customerBp: true, product: true },
+export async function fetchOrderLineRef(
+  orderLineId: string,
+): Promise<OrderLineRef | null> {
+  const r = await prisma.orderLine.findUnique({
+    where: { id: orderLineId },
+    include: {
+      acceptance: { include: { customerBp: true } },
+      product: true,
+    },
   });
   if (!r) return null;
-  const number = formatSalesOrderNumber(r);
-  const productName = localized(r.product.name as LocalizedText | null);
+  const number = orderLineNumberOf(r);
+  if (!number) return null; // 未確定の明細は指示書の対象にならない
+  const productName = localized(r.product?.name as LocalizedText | null);
   return {
     id: r.id,
     number,
     label: `${number} ${productName}（${r.quantity}）`,
-    customerName: localized(r.customerBp.name as LocalizedText | null),
+    customerName: localized(
+      r.acceptance.customerBp?.name as LocalizedText | null,
+    ),
     productName,
-    productId: r.productId,
+    productId: r.productId ?? 0,
     quantity: r.quantity,
     status: r.status,
   };

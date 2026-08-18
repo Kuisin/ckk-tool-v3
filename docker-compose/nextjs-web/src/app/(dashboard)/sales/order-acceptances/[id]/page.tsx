@@ -24,7 +24,7 @@ export async function generateMetadata({
 }
 
 /** 受注請書 詳細 (SA24). URL id = 表示番号（ORD-YYYYMM-NNNNN）. */
-export default async function SalesOrderAcceptancesDetailPage({
+export default async function OrderLineAcceptancesDetailPage({
   params,
 }: {
   params: Promise<{ id: string }>;

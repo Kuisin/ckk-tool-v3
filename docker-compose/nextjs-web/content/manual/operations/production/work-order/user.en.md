@@ -17,7 +17,7 @@ This app is for making the document (**指示書**, work order) that decides whi
 
 ## Words used on this page
 
-- **注文請書** (sales order) … an internal document that splits a customer's order by product and by quantity. You choose one of these to make a work order.
+- **受注明細** (sales order) … an internal document that splits a customer's order by product and by quantity. You choose one of these to make a work order.
 - **工程** (step) … one stage of the work, such as cutting, step machining, or inspection.
 - **工程リスト** (step list) … the order of the steps for making a product, registered in advance.
 - **ロット番号** (lot number) … the number given to a batch of products you made. The work order number becomes the lot number.
@@ -47,7 +47,7 @@ When you open the app, you see a list of the work orders made so far.
 ## Creating a work order
 
 1. Press 「**新規作成**」 (New) at the top right of the list screen. You can also open it from the sales order screen, in which case the sales order is already chosen.
-2. Click the 「**注文請書**」 (sales order) box and choose the sales order to base it on. You can search by sales order number, product, or customer.
+2. Click the 「**受注明細**」 (sales order) box and choose the sales order to base it on. You can search by sales order number, product, or customer.
 3. Once you choose it, the customer name, the product, and the ordered quantity appear below.
 4. In 「**種別**」 (type), choose 「在庫分」 (from stock) or 「製造分」 (to make).
 5. Enter how many pieces to make in 「**予定数量**」 (planned quantity).
@@ -185,7 +185,7 @@ Every field on the work order screen. The order of the steps themselves is set i
 
 | Field | Required | What to enter |
 |-------|----------|---------------|
-| [Sales order](#field-sales-order) | Optional | Which order this work order is for |
+| [Order line](#field-order-line) | Optional | Which order this work order is for |
 | [Product](#field-product) | Required | The product being made |
 | [Planned quantity](#field-planned-quantity) | Required | How many pieces |
 | [Material](#field-material) | Optional | The material used |
@@ -194,7 +194,7 @@ Every field on the work order screen. The order of the steps themselves is set i
 | [Inspection sheets](#field-inspection-templates) | Optional | Templates to use |
 | [Notes](#field-notes) | Optional | Notes |
 
-### Sales order [#field-sales-order]
+### Order line [#field-order-line]
 
 Which order the work order is for. **It can be left empty for work orders that only build stock** (standalone stock work orders).
 

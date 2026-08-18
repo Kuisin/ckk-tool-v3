@@ -30,6 +30,7 @@ import { systematicFileName } from "./file-naming";
 import { type NormalizedExtraction, normalizeExtraction } from "./intake-core";
 import { notifyGroup } from "./notifications";
 import { allocateDocumentKey } from "./numbering";
+import { linesReplaceBlockReason } from "./order-line-core";
 import { isOwnCompany } from "./own-company";
 import { putObject } from "./storage";
 import { createTaskQueue } from "./task-queue";
@@ -261,7 +262,14 @@ export async function runExtraction(key: {
     }
 
     await prisma.$transaction(async (tx) => {
-      await tx.orderAcceptanceItem.deleteMany({
+      // ラインチェック（多重防御）: 抽出はバックグラウンドで走り UI と競合する。
+      // 確定済みの明細が 1 行でもあれば作り直さない。
+      const existing = await tx.orderLine.findMany({
+        where: { acceptanceYearMonth: key.yearMonth, acceptanceSeq: key.seq },
+        select: { status: true, branch: true, isLocked: true },
+      });
+      if (linesReplaceBlockReason("IMPORT", existing)) return;
+      await tx.orderLine.deleteMany({
         where: { acceptanceYearMonth: key.yearMonth, acceptanceSeq: key.seq },
       });
       await tx.orderAcceptance.update({

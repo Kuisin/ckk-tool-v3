@@ -66,12 +66,11 @@ export async function fetchClosings(): Promise<BillingClosing[]> {
 // ── 請求対象出荷（SHIPPED × DISPATCH × 未請求）の収集 ────────────────────────
 
 const SHIPMENT_INCLUDE = {
-  salesOrder: {
-    include: { customerBp: { include: { customerAttrs: true } } },
-  },
+  // 顧客はヘッダが権威。単価は明細行が参照する受注明細ごとに異なり得る。
+  customerBp: { include: { customerAttrs: true } },
   items: {
     orderBy: { sortOrder: "asc" as const },
-    include: { product: true },
+    include: { product: true, orderLine: true },
   },
   deliveryNotes: {
     select: { yearMonth: true, seq: true },
@@ -119,13 +118,19 @@ export async function fetchBillableShipmentsForClosing(
   const gte = new Date(Date.UTC(year, month - 1, 1));
   const lt = addDays(closingDate, 1); // 締日当日を含む（排他的上限）
   const rows = await fetchUninvoicedShipments({ gte, lt });
-  return rows.filter((r) => r.salesOrder.customerBpId === customerBpId);
+  return rows.filter((r) => r.customerBpId === customerBpId);
 }
 
-/** 出荷書 1 件の請求金額 = Σ 明細数量 × 注文請書の単価。 */
+/**
+ * 出荷書 1 件の請求金額 = Σ（明細数量 × **その行の**受注明細の単価）。
+ * 1 出荷書が単価の異なる複数の受注明細を束ねられるので、出荷書単位の
+ * 単一単価では誤請求になる。
+ */
 export function shipmentAmount(s: BillableShipment): number {
-  const unitPrice = Number(s.salesOrder.unitPrice);
-  return s.items.reduce((sum, it) => sum + it.quantity * unitPrice, 0);
+  return s.items.reduce(
+    (sum, it) => sum + it.quantity * Number(it.orderLine?.unitPrice ?? 0),
+    0,
+  );
 }
 
 function mapShipmentRow(s: BillableShipment): ClosingShipmentRow {
@@ -240,7 +245,7 @@ export async function collectClosingCandidates(
 
   const byCustomer = new Map<string, CustomerClosingCandidate>();
   for (const s of shipments) {
-    const customer = s.salesOrder.customerBp;
+    const customer = s.customerBp;
     const closingDate = closingDateFor(
       year,
       month,

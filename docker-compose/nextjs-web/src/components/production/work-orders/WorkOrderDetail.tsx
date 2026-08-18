@@ -9,7 +9,7 @@
  * 承認画面 — タイトル「承認」で ApprovalStatusPanel を最上部に出し、
  * 編集系アクションは出さない。
  *
- * アクション: 編集（DRAFT のみ）/ コピー（対象注文請書を選ぶモーダル。コピー元に
+ * アクション: 編集（DRAFT のみ）/ コピー（対象受注明細を選ぶモーダル。コピー元に
  * 新しい版があれば警告）/ キャンセル（DRAFT・承認待ちのみ）。
  */
 
@@ -19,7 +19,7 @@ import { IconAlertTriangle, IconCopy, IconX } from "@tabler/icons-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
-import { searchSalesOrderOptions } from "@/app/(dashboard)/_shared/option-search";
+import { searchOrderLineOptions } from "@/app/(dashboard)/_shared/option-search";
 import {
   cancelWorkOrder,
   copyWorkOrder,
@@ -50,7 +50,7 @@ import { formatDateTime, workOrderNumberLabel } from "@/lib/format";
 import type { WorkOrderView } from "./model";
 
 const BASE_PATH = "/production/work-orders";
-const SALES_ORDERS_PATH = "/production/sales-orders";
+const SALES_ORDERS_PATH = "/sales/order-lines";
 
 export function WorkOrderDetail({
   workOrder,
@@ -81,7 +81,7 @@ export function WorkOrderDetail({
   const [isPending, startTransition] = useTransition();
   const [copyOpen, setCopyOpen] = useState(false);
   const [copyTargetSoId, setCopyTargetSoId] = useState<string | null>(
-    workOrder.salesOrderId,
+    workOrder.orderLineId,
   );
 
   const wo = workOrder;
@@ -169,19 +169,19 @@ export function WorkOrderDetail({
   const summary = (
     <SummaryGrid>
       <FieldValue
-        label="注文請書番号"
+        label="受注明細番号"
         value={
-          wo.salesOrderNumber != null ? (
+          wo.orderLineNumber != null ? (
             <Anchor
               component={Link}
-              href={`${SALES_ORDERS_PATH}/${wo.salesOrderNumber}`}
+              href={`${SALES_ORDERS_PATH}/${wo.orderLineNumber}`}
               size="sm"
             >
-              <DocNumber c="blue">{wo.salesOrderNumber}</DocNumber>
+              <DocNumber c="blue">{wo.orderLineNumber}</DocNumber>
             </Anchor>
           ) : (
             <Badge color="teal" size="sm" variant="light">
-              在庫向け（注文請書なし）
+              在庫向け（受注明細なし）
             </Badge>
           )
         }
@@ -345,19 +345,19 @@ export function WorkOrderDetail({
           <Stack gap="md">
             <div>
               <Text c="dimmed" mb={4} size="xs">
-                注文請書
+                受注明細
               </Text>
-              {wo.salesOrderNumber != null ? (
+              {wo.orderLineNumber != null ? (
                 <Anchor
                   component={Link}
-                  href={`${SALES_ORDERS_PATH}/${wo.salesOrderNumber}`}
+                  href={`${SALES_ORDERS_PATH}/${wo.orderLineNumber}`}
                   size="sm"
                 >
-                  <DocNumber c="blue">{wo.salesOrderNumber}</DocNumber>
+                  <DocNumber c="blue">{wo.orderLineNumber}</DocNumber>
                 </Anchor>
               ) : (
                 <Text c="dimmed" size="sm">
-                  在庫向けの独立指示書（注文請書なし）
+                  在庫向けの独立指示書（受注明細なし）
                 </Text>
               )}
             </div>
@@ -442,24 +442,24 @@ export function WorkOrderDetail({
           )}
           <SearchSelect
             initialOption={
-              wo.salesOrderId != null
+              wo.orderLineId != null
                 ? {
-                    value: wo.salesOrderId,
-                    label: `${wo.salesOrderNumber} ${wo.productName}（${wo.salesOrderQuantity}）`,
+                    value: wo.orderLineId,
+                    label: `${wo.orderLineNumber} ${wo.productName}（${wo.orderLineQuantity}）`,
                   }
                 : null
             }
-            label="対象注文請書"
+            label="対象受注明細"
             onChange={setCopyTargetSoId}
-            onSearch={searchSalesOrderOptions}
-            placeholder="未選択 = 在庫向け（注文請書なし）としてコピー"
+            onSearch={searchOrderLineOptions}
+            placeholder="未選択 = 在庫向け（受注明細なし）としてコピー"
             storageKey="sales-order"
             value={copyTargetSoId}
           />
           <Text c="dimmed" size="xs">
             工程・実施場所・検査表を引き継いだ下書きを作成します。
-            注文請書を選ばない場合は在庫向けの独立指示書としてコピーします
-            （在庫分の指示書は注文請書が必要です）。
+            受注明細を選ばない場合は在庫向けの独立指示書としてコピーします
+            （在庫分の指示書は受注明細が必要です）。
           </Text>
         </Stack>
       </ModalShell>

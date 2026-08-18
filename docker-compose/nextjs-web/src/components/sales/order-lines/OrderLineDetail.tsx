@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * SalesOrderDetail — 注文請書 詳細 (PD21, design.md §8.2).
+ * OrderLineDetail — 受注明細 詳細 (PD21, design.md §8.2).
  *
  * SummaryGrid（番号 / 顧客(+支店) / 顧客注文書番号 / 製品 / 注文種別 / 数量 /
  * 単価 / 金額 / 納期 / ロット番号 / 見積元）+ ロック中 Alert +
@@ -36,10 +36,9 @@ import {
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import {
-  cancelSalesOrder,
-  confirmSalesOrder,
+  cancelOrderLine,
   runStockCheck,
-} from "@/app/(dashboard)/production/sales-orders/actions";
+} from "@/app/(dashboard)/sales/order-lines/actions";
 import { EditButton, SecondaryButton } from "@/components/ui/buttons";
 import { DocNumber } from "@/components/ui/DocNumber";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -65,16 +64,17 @@ import {
 import { formatDate, formatDateTime } from "@/lib/format";
 // type-only import — lib/inventory は server-only（型はバンドルされない）。
 import type { StockCheckResult } from "@/lib/inventory";
-import { isCancellable, isEditable, type SalesOrder } from "./model";
+import { isLineStockCheckable } from "@/lib/order-line-core";
+import { isCancellable, type OrderLine } from "./model";
 
-const BASE_PATH = "/production/sales-orders";
+const BASE_PATH = "/sales/order-lines";
 
-export function SalesOrderDetail({
+export function OrderLineDetail({
   order,
   auditEntries,
   memos,
 }: {
-  order: SalesOrder;
+  order: OrderLine;
   /** 操作履歴（audit_logs 由来、履歴タブ）。 */
   auditEntries: AuditEntry[];
   /** 社内メモ（document_memos 由来、メモタブ）。 */
@@ -84,16 +84,12 @@ export function SalesOrderDetail({
   // アクティブタブを ?tab= に保持（URL 共有でタブまで再現）
   const [tab, setTab] = useTabParam("overview");
   const [isPending, startTransition] = useTransition();
-  const [confirmOpen, setConfirmOpen] = useState(false);
   const [cancelOpen, setCancelOpen] = useState(false);
   const [isChecking, startStockCheck] = useTransition();
   const [stockResult, setStockResult] = useState<StockCheckResult | null>(null);
 
-  const editable = isEditable(order);
-  const lockedDraft = order.status === "DRAFT" && order.isLocked;
-  // 在庫照合（§4）は下書き・確定のみ（製造中以降は指示書側で管理）。
-  const canStockCheck =
-    order.status === "DRAFT" || order.status === "CONFIRMED";
+  // 在庫照合（§4）は確定済み・製造前のみ（製造中以降は指示書側で管理）。
+  const canStockCheck = isLineStockCheckable(order);
 
   const runStock = () => {
     startStockCheck(async () => {
@@ -111,33 +107,13 @@ export function SalesOrderDetail({
     });
   };
 
-  const runConfirm = () => {
-    startTransition(async () => {
-      const result = await confirmSalesOrder(order.orderNumber);
-      if (result.ok) {
-        notifications.show({
-          title: "確定しました",
-          message: `注文請書 ${order.orderNumber} を確定しました`,
-          color: "green",
-        });
-        router.refresh();
-      } else {
-        notifications.show({
-          title: "エラー",
-          message: result.error,
-          color: "red",
-        });
-      }
-    });
-  };
-
   const runCancel = () => {
     startTransition(async () => {
-      const result = await cancelSalesOrder(order.orderNumber);
+      const result = await cancelOrderLine(order.orderNumber);
       if (result.ok) {
         notifications.show({
           title: "キャンセルしました",
-          message: `注文請書 ${order.orderNumber} をキャンセルしました`,
+          message: `受注明細 ${order.orderNumber} をキャンセルしました`,
           color: "green",
         });
         router.refresh();
@@ -165,25 +141,8 @@ export function SalesOrderDetail({
               在庫照合
             </SecondaryButton>
           )}
-          {/* 編集は DRAFT のみ — ロック中は無効化して理由を tooltip 表示。 */}
-          {lockedDraft && (
-            <Tooltip label="承認依頼中のためロックされています" withArrow>
-              <span>
-                <EditButton disabled />
-              </span>
-            </Tooltip>
-          )}
           <ResourceActions
             menuItems={[
-              ...(order.status === "DRAFT"
-                ? [
-                    {
-                      label: "確定",
-                      icon: <IconCheck size={14} />,
-                      onClick: () => setConfirmOpen(true),
-                    },
-                  ]
-                : []),
               ...(isCancellable(order)
                 ? [
                     {
@@ -196,17 +155,12 @@ export function SalesOrderDetail({
                   ]
                 : []),
             ]}
-            onEdit={
-              editable
-                ? () => router.push(`${BASE_PATH}/${order.id}/edit`)
-                : undefined
-            }
           />
         </Group>
       }
-      breadcrumbs={["販売", { label: "注文請書", href: BASE_PATH }, "詳細"]}
+      breadcrumbs={["販売", { label: "受注明細", href: BASE_PATH }, "詳細"]}
       createdAt={formatDateTime(order.createdAt)}
-      status={<StatusBadge entity="SalesOrder" status={order.status} />}
+      status={<StatusBadge entity="OrderLine" status={order.status} />}
       title={order.orderNumber}
       updatedAt={formatDateTime(order.updatedAt)}
     >
@@ -217,13 +171,13 @@ export function SalesOrderDetail({
           title="承認依頼中ロック"
           variant="light"
         >
-          この注文請書は承認依頼中のためロックされています。承認が完了するまで編集できません。
+          この受注明細は承認依頼中のためロックされています。承認が完了するまで編集できません。
         </Alert>
       )}
 
       <SummaryGrid>
         <FieldValue
-          label="注文請書番号"
+          label="受注明細番号"
           value={<DocNumber>{order.orderNumber}</DocNumber>}
         />
         <FieldValue
@@ -354,14 +308,14 @@ export function SalesOrderDetail({
             <EmptyState
               action={
                 <SecondaryButton
-                  href={`/production/work-orders/new?salesOrder=${order.uuid}`}
+                  href={`/production/work-orders/new?orderLine=${order.uuid}`}
                   leftSection={<IconClipboardList size={14} />}
                 >
                   指示書を作成
                 </SecondaryButton>
               }
               icon={<IconClipboardList size={24} />}
-              message="この注文請書の指示書はまだありません"
+              message="この受注明細の指示書はまだありません"
             />
           ) : (
             <Table.ScrollContainer minWidth={640}>
@@ -418,7 +372,7 @@ export function SalesOrderDetail({
           {order.shippingOrders.length === 0 ? (
             <EmptyState
               icon={<IconTruck size={24} />}
-              message="この注文請書の出荷書はまだありません"
+              message="この受注明細の出荷書はまだありません"
             />
           ) : (
             <Table.ScrollContainer minWidth={640}>
@@ -473,7 +427,7 @@ export function SalesOrderDetail({
             memos={memos}
             mode="memo"
             ownerId={order.orderNumber}
-            ownerType="sales_orders"
+            ownerType="order_lines"
           />
         </Tabs.Panel>
 
@@ -558,14 +512,14 @@ export function SalesOrderDetail({
                   <Group>
                     {stockResult.reservedNow > 0 && (
                       <SecondaryButton
-                        href={`/production/work-orders/new?salesOrder=${order.uuid}&type=FROM_STOCK&qty=${stockResult.reservedNow}`}
+                        href={`/production/work-orders/new?orderLine=${order.uuid}&type=FROM_STOCK&qty=${stockResult.reservedNow}`}
                         leftSection={<IconClipboardList size={14} />}
                       >
                         在庫分の指示書（{stockResult.reservedNow} 本）
                       </SecondaryButton>
                     )}
                     <SecondaryButton
-                      href={`/production/work-orders/new?salesOrder=${order.uuid}&type=MANUFACTURE&qty=${stockResult.shortage}`}
+                      href={`/production/work-orders/new?orderLine=${order.uuid}&type=MANUFACTURE&qty=${stockResult.shortage}`}
                       leftSection={<IconClipboardList size={14} />}
                     >
                       製造分の指示書（{stockResult.shortage} 本）
@@ -586,7 +540,7 @@ export function SalesOrderDetail({
                   {stockResult.reservedNow > 0 && (
                     <Group>
                       <SecondaryButton
-                        href={`/production/work-orders/new?salesOrder=${order.uuid}&type=FROM_STOCK&qty=${stockResult.reservedNow}`}
+                        href={`/production/work-orders/new?orderLine=${order.uuid}&type=FROM_STOCK&qty=${stockResult.reservedNow}`}
                         leftSection={<IconClipboardList size={14} />}
                       >
                         在庫分の指示書（{stockResult.reservedNow} 本）
@@ -601,19 +555,9 @@ export function SalesOrderDetail({
       </Modal>
 
       <ConfirmModal
-        confirmColor="blue"
-        confirmLabel="確定"
-        loading={isPending}
-        message={`注文請書 ${order.orderNumber} を確定します。確定後は編集できません。`}
-        onClose={() => setConfirmOpen(false)}
-        onConfirm={runConfirm}
-        opened={confirmOpen}
-        title="確定の確認"
-      />
-      <ConfirmModal
         confirmLabel="キャンセルする"
         loading={isPending}
-        message={`注文請書 ${order.orderNumber} をキャンセルします。この操作は取り消せません。`}
+        message={`受注明細 ${order.orderNumber} をキャンセルします。この操作は取り消せません。`}
         onClose={() => setCancelOpen(false)}
         onConfirm={runCancel}
         opened={cancelOpen}

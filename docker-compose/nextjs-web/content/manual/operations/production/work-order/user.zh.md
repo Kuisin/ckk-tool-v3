@@ -9,7 +9,7 @@ screenshots: [work-order-list-01, work-order-new-01, work-order-detail-01, work-
 
 ## 本应用能做什么
 
-- 可以根据客户的订单（注文請書＝销售订单）制作发给工厂的作业指示。
+- 可以根据客户的订单（受注明細＝销售订单）制作发给工厂的作业指示。
 - 可以把制作好的指示书交给上级，获得 **承認**（审批）。
 - 可以针对每一道作业（工序），记录 **开始了、结束了、做出了几根**。
 - 出现不良品时，可以留下数量和原因。
@@ -17,7 +17,7 @@ screenshots: [work-order-list-01, work-order-new-01, work-order-detail-01, work-
 
 ## 本页出现的词语
 
-- **注文請書**（销售订单）… 把客户的订单按产品、按数量拆分后的公司内部单据。指示书就是选择它来创建的。
+- **受注明細**（销售订单）… 把客户的订单按产品、按数量拆分后的公司内部单据。指示书就是选择它来创建的。
 - **工程**（工序）… 「切断」「段加工」「检查」等作业的一个步骤。
 - **工程リスト**（工序列表）… 事先登记好的、制造该产品时的工序排列。
 - **ロット番号**（批次号）… 给制造出来的一批产品的编号。指示书的编号会直接成为批次号。
@@ -26,7 +26,7 @@ screenshots: [work-order-list-01, work-order-new-01, work-order-detail-01, work-
 
 ## 开始之前
 
-- 首先需要有 **注文請書**（销售订单）。销售订单由[订单受理](/manual/zh/operations/sales/order-acceptance/user)的导入画面生成，可以在「注文請書」（销售订单）画面（操作码 `PD01`）中确认。
+- 首先需要有 **受注明細**（销售订单）。销售订单由[订单受理](/manual/zh/operations/sales/order-acceptance/user)的导入画面生成，可以在「受注明細」（销售订单）画面（操作码 `PD01`）中确认。
 - 在销售订单画面执行「**在庫照合**」（库存核对）后，已有的库存会被为该订单预留。不足的部分用本应用来制造。
 - 负责审批的人必须事先登记在[审批组](/manual/zh/operations/masters/approval-group/user)中。
 
@@ -47,7 +47,7 @@ screenshots: [work-order-list-01, work-order-new-01, work-order-detail-01, work-
 ## 创建制造指示书
 
 1. 点击列表画面右上角的「**新規作成**」（新建）（也可以从销售订单画面打开，那时销售订单已处于选中状态）。
-2. 点击「**注文請書**」（销售订单）栏，选择作为依据的销售订单。可以按销售订单编号、产品、客户搜索。
+2. 点击「**受注明細**」（销售订单）栏，选择作为依据的销售订单。可以按销售订单编号、产品、客户搜索。
 3. 选择后，下方会显示客户名称、产品、订购数量。
 4. 在「**種別**」（类别）中选择「在庫分」（库存分）或「製造分」（制造分）。
 5. 在「**予定数量**」（计划数量）中输入制造的根数。
@@ -185,7 +185,7 @@ screenshots: [work-order-list-01, work-order-new-01, work-order-detail-01, work-
 
 | 项目 | 必填 | 填什么 |
 |------|------|--------|
-| [订单请书](#field-sales-order) | 选填 | 针对哪笔受订的指示书 |
+| [受订明细](#field-order-line) | 选填 | 针对哪笔受订的指示书 |
 | [对象产品](#field-product) | 必填 | 制造的产品 |
 | [计划数量](#field-planned-quantity) | 必填 | 制造的数量 |
 | [使用材料](#field-material) | 选填 | 使用的材料 |
@@ -194,13 +194,13 @@ screenshots: [work-order-list-01, work-order-new-01, work-order-detail-01, work-
 | [检查表](#field-inspection-templates) | 选填 | 使用的检查表模板 |
 | [备注](#field-notes) | 选填 | 补充说明 |
 
-### 订单请书 [#field-sales-order]
+### 受订明细 [#field-order-line]
 
 针对哪笔受订的指示书。**仅为补充库存的指示书可以留空**（独立的库存用指示书）。
 
 ### 对象产品 [#field-product]
 
-制造的产品。选择订单请书后会带入该受订的产品。
+制造的产品。选择受订明细后会带入该受订的产品。
 
 ### 计划数量 [#field-planned-quantity]
 

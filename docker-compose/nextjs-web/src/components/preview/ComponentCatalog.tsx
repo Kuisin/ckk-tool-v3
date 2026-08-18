@@ -652,7 +652,7 @@ export function ComponentCatalog() {
           title="ステータス変更"
         >
           <Select
-            data={statusOptions("SalesOrder")}
+            data={statusOptions("OrderLine")}
             label="新しい状態"
             placeholder="状態を選択"
           />

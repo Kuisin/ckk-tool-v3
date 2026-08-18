@@ -178,7 +178,7 @@ export async function ensureMaterialInventory(
  * 全工程完了フック: 最終工程の良品をロット入庫、半製品バケット合計を半製品
  * 入庫。completeStepExecution から呼ぶ。
  * - MANUFACTURE: WO/SO の製品予約を CONFIRMED に（在庫向けの独立指示書 =
- *   salesOrderId null は予約なし — 入庫のみ）。
+ *   orderLineId null は予約なし — 入庫のみ）。
  * - FROM_STOCK（在庫分）: 受注へ引当済みの在庫ロットを消費（RELEASE + OUT）
  *   して自ロットの IN と相殺する（付け替え — 二重計上を防ぐ）。
  */
@@ -309,7 +309,7 @@ export async function onWorkOrderCompleted(workOrderId: string): Promise<void> {
       });
     }
 
-    if (wo.type === "FROM_STOCK" && wo.salesOrderId) {
+    if (wo.type === "FROM_STOCK" && wo.orderLineId) {
       // 在庫分（FROM_STOCK）: 受注へ引当済みの在庫ロットから受入数分を消費
       // （RELEASE + OUT）— 上の自ロット IN との付け替えで二重計上を防ぐ。
       // 引当/台帳が不足しても完了は止めない（警告のみ — 素材消費と同方針）。
@@ -317,7 +317,7 @@ export async function onWorkOrderCompleted(workOrderId: string): Promise<void> {
       let needed = head?.inputQuantity ?? wo.plannedQuantity;
       const productReservations = await tx.inventoryReservation.findMany({
         where: {
-          salesOrderId: wo.salesOrderId,
+          orderLineId: wo.orderLineId,
           inventoryType: "PRODUCT",
           status: "RESERVED",
         },
@@ -369,14 +369,14 @@ export async function onWorkOrderCompleted(workOrderId: string): Promise<void> {
         );
       }
     } else {
-      // 予約 → 確定（§7: 全工程完了時）。予約は salesOrderId で作られる
+      // 予約 → 確定（§7: 全工程完了時）。予約は orderLineId で作られる
       // （workOrderId は付かない）ため両方で照合 — 監査 P1-2 の修正。
-      // 在庫向けの独立指示書（salesOrderId null）は workOrderId 分のみ。
+      // 在庫向けの独立指示書（orderLineId null）は workOrderId 分のみ。
       await tx.inventoryReservation.updateMany({
         where: {
           OR: [
             { workOrderId: wo.id },
-            ...(wo.salesOrderId ? [{ salesOrderId: wo.salesOrderId }] : []),
+            ...(wo.orderLineId ? [{ orderLineId: wo.orderLineId }] : []),
           ],
           inventoryType: "PRODUCT",
           status: "RESERVED",
@@ -410,7 +410,7 @@ export async function onShippingShippedTx(
 ): Promise<void> {
   const so = await tx.shippingOrder.findUniqueOrThrow({
     where: { yearMonth_seq: key },
-    include: { items: true, salesOrder: true },
+    include: { items: true },
   });
   const ref = `SHP-${key.yearMonth}-${String(key.seq).padStart(5, "0")}`;
   for (const item of so.items) {
@@ -472,44 +472,58 @@ export async function onShippingShippedTx(
       });
     }
   }
-  // 出荷で SO の予約を解除（§4 予約 → 出荷 RELEASE）。
+  // 出荷で受注明細の予約を解除（§4 予約 → 出荷 RELEASE）。
   // 部分出荷では出荷数分だけ按分して解放する（全量解放すると未出荷分の
   // 引当が他受注に奪われる — 監査 P1-2/P1-7）。RELEASE 取引を積んで
   // キャッシュ reserved_quantity も戻す。
+  //
+  // 1 出荷書は複数の受注明細を束ねられるので、**明細行ごと**に集計して
+  // その明細の予約だけを解放する。出荷書単位で合算すると、他の受注明細の
+  // 引当まで巻き込んで解放してしまう。
   if (so.type === "DISPATCH") {
-    let remainingToRelease = so.items.reduce((sum, i) => sum + i.quantity, 0);
-    const reservations = await tx.inventoryReservation.findMany({
-      where: {
-        salesOrderId: so.salesOrderId,
-        status: { in: ["RESERVED", "CONFIRMED"] },
-      },
-      orderBy: { reservedAt: "asc" },
-    });
-    for (const r of reservations) {
-      if (remainingToRelease <= 0) break;
-      const release = Math.min(Number(r.quantity), remainingToRelease);
-      await applyTransaction(tx, {
-        inventoryType: r.inventoryType,
-        inventoryId: r.inventoryId,
-        transactionType: "RELEASE",
-        quantity: release,
-        referenceType: "shipping_order",
-        referenceId: ref,
-        notes: `出荷による予約解除 ${ref}`,
+    const shippedByLine = new Map<string, number>();
+    for (const item of so.items) {
+      if (!item.orderLineId) continue;
+      shippedByLine.set(
+        item.orderLineId,
+        (shippedByLine.get(item.orderLineId) ?? 0) + item.quantity,
+      );
+    }
+    for (const [orderLineId, shipped] of shippedByLine) {
+      let remainingToRelease = shipped;
+      const reservations = await tx.inventoryReservation.findMany({
+        where: {
+          orderLineId,
+          status: { in: ["RESERVED", "CONFIRMED"] },
+        },
+        orderBy: { reservedAt: "asc" },
       });
-      if (release >= Number(r.quantity)) {
-        await tx.inventoryReservation.update({
-          where: { id: r.id },
-          data: { status: "RELEASED", releasedAt: new Date() },
+      for (const r of reservations) {
+        if (remainingToRelease <= 0) break;
+        const release = Math.min(Number(r.quantity), remainingToRelease);
+        await applyTransaction(tx, {
+          inventoryType: r.inventoryType,
+          inventoryId: r.inventoryId,
+          transactionType: "RELEASE",
+          quantity: release,
+          referenceType: "shipping_order",
+          referenceId: ref,
+          notes: `出荷による予約解除 ${ref}`,
         });
-      } else {
-        // 部分解放: 残量を予約に残す
-        await tx.inventoryReservation.update({
-          where: { id: r.id },
-          data: { quantity: { decrement: release } },
-        });
+        if (release >= Number(r.quantity)) {
+          await tx.inventoryReservation.update({
+            where: { id: r.id },
+            data: { status: "RELEASED", releasedAt: new Date() },
+          });
+        } else {
+          // 部分解放: 残量を予約に残す
+          await tx.inventoryReservation.update({
+            where: { id: r.id },
+            data: { quantity: { decrement: release } },
+          });
+        }
+        remainingToRelease -= release;
       }
-      remainingToRelease -= release;
     }
   }
 }
@@ -518,13 +532,13 @@ export async function onShippingShippedTx(
  * 受注キャンセル時の予約解放（監査 P1-1）: SO の生きている予約を全量
  * RELEASE し、reserved_quantity キャッシュも戻す。tx 内で呼ぶ。
  */
-export async function releaseSalesOrderReservations(
+export async function releaseOrderLineReservations(
   tx: Tx,
-  salesOrderId: string,
+  orderLineId: string,
   reason: string,
 ): Promise<number> {
   const reservations = await tx.inventoryReservation.findMany({
-    where: { salesOrderId, status: { in: ["RESERVED", "CONFIRMED"] } },
+    where: { orderLineId, status: { in: ["RESERVED", "CONFIRMED"] } },
   });
   for (const r of reservations) {
     await applyTransaction(tx, {
@@ -532,8 +546,8 @@ export async function releaseSalesOrderReservations(
       inventoryId: r.inventoryId,
       transactionType: "RELEASE",
       quantity: Number(r.quantity),
-      referenceType: "sales_order",
-      referenceId: salesOrderId,
+      referenceType: "order_line",
+      referenceId: orderLineId,
       notes: reason,
     });
     await tx.inventoryReservation.update({
@@ -584,21 +598,26 @@ export interface StockCheckResult {
  * 指示書を作る（FROM_STOCK/MANUFACTURE の分割は指示書作成 UI 側）。
  */
 export async function reserveProductStock(
-  salesOrderId: string,
+  orderLineId: string,
 ): Promise<StockCheckResult> {
-  const so = await prisma.salesOrder.findUniqueOrThrow({
-    where: { id: salesOrderId },
+  const so = await prisma.orderLine.findUniqueOrThrow({
+    where: { id: orderLineId },
   });
+  // 確定前（枝番なし・製品未特定）の明細は引当対象にならない。
+  if (so.branch == null || so.productId == null) {
+    throw new Error("確定済みの受注明細のみ在庫照合できます");
+  }
+  const productId = so.productId;
 
   return prisma.$transaction(async (tx) => {
     // 対象行をロック（FOR UPDATE）— 同時照合による二重引当を防ぐ（監査 P1-3）。
     // ロック取得後に読む値が確定値になる。
     await tx.$queryRaw`
       SELECT id FROM app.product_inventory
-      WHERE product_id = ${so.productId} AND is_semi_finished = false
+      WHERE product_id = ${productId} AND is_semi_finished = false
       FOR UPDATE`;
     const rows = await tx.productInventory.findMany({
-      where: { productId: so.productId, isSemiFinished: false },
+      where: { productId, isSemiFinished: false },
       orderBy: { lotNumber: "asc" },
     });
     const hasRecord = rows.length > 0;
@@ -619,15 +638,15 @@ export async function reserveProductStock(
         inventoryId: row.id,
         transactionType: "RESERVE",
         quantity: take,
-        referenceType: "sales_order",
-        referenceId: salesOrderId,
+        referenceType: "order_line",
+        referenceId: orderLineId,
         notes: "§4 在庫照合による引当予約",
       });
       await tx.inventoryReservation.create({
         data: {
           inventoryType: "PRODUCT",
           inventoryId: row.id,
-          salesOrderId,
+          orderLineId,
           quantity: take,
           status: "RESERVED",
           reservedAt: new Date(),
@@ -639,8 +658,8 @@ export async function reserveProductStock(
 
     await recordAudit({
       action: "UPDATE",
-      tableName: "sales_orders",
-      recordId: `ORD-${so.yearMonth}-${String(so.seq).padStart(5, "0")}-${String(so.branch).padStart(2, "0")}`,
+      tableName: "order_lines",
+      recordId: `ORD-${so.acceptanceYearMonth}-${String(so.acceptanceSeq).padStart(5, "0")}-${String(so.branch).padStart(2, "0")}`,
       after: {
         note: `在庫照合: 引当 ${reservedNow} / 不足 ${remaining}`,
         available,

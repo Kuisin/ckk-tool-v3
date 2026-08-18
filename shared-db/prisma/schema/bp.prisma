@@ -84,9 +84,9 @@ model BusinessPartner {
   purchaseOrdersAsSupplier MaterialPurchaseOrder[] @relation("PoSupplier")
   receiptsAsSupplier       MaterialReceipt[]       @relation("ReceiptSupplier")
 
-  salesOrdersAsCustomer SalesOrder[]    @relation("SalesOrderCustomer")
-  salesOrdersAsBranch   SalesOrder[]    @relation("SalesOrderCustomerBranch")
-  salesOrdersAsEndUser  SalesOrder[]    @relation("SalesOrderEndUser")
+  orderLinesAsEndUser   OrderLine[]     @relation("OrderLineEndUser")
+  shippingOrdersAsCustomer ShippingOrder[] @relation("ShippingOrderCustomer")
+  shippingOrdersAsBranch   ShippingOrder[] @relation("ShippingOrderCustomerBranch")
   stepsAsSupplier       WorkOrderStep[] @relation("StepSupplier")
   routeStepsAsSupplier  ProductProcessRouteVersionStep[] @relation("RouteStepSupplier")
 

@@ -3,7 +3,7 @@
 /**
  * ShippingOrderTable — 出荷書 一覧 (SH01, design.md §8.1 / §14).
  *
- * Columns: 出荷書番号 / 注文請書番号 / 種別 / 数量合計 / 状態 / 出荷日。
+ * Columns: 出荷書番号 / 受注明細番号 / 種別 / 数量合計 / 状態 / 出荷日。
  * フィルタ: 検索（番号・顧客・製品）+ 種別 + 状態。行クリック → 詳細。
  */
 
@@ -50,9 +50,8 @@ export function ShippingOrderTable({ rows }: { rows: ShippingOrder[] }) {
     const matchesSearch =
       !search ||
       o.shippingNumber.includes(search) ||
-      o.salesOrderNumber.includes(search) ||
-      o.customerName.includes(search) ||
-      o.productName.includes(search);
+      o.orderLineNumbers.some((n) => n.includes(search)) ||
+      o.customerName.includes(search);
     const matchesType = !type || o.type === type;
     const matchesStatus = !status || o.status === status;
     return matchesSearch && matchesType && matchesStatus;
@@ -70,16 +69,14 @@ export function ShippingOrderTable({ rows }: { rows: ShippingOrder[] }) {
       ),
     },
     {
-      key: "salesOrderNumber",
-      header: "注文請書番号",
+      key: "customerName",
+      header: "顧客 / 受注明細",
       sortable: true,
       render: (o) => (
         <>
-          <Text ff="mono" size="sm">
-            {o.salesOrderNumber}
-          </Text>
-          <Text c="dimmed" size="xs">
-            {o.customerName}
+          <Text size="sm">{o.customerName}</Text>
+          <Text c="dimmed" ff="mono" size="xs">
+            {o.orderLineNumbers.join(", ") || "—"}
           </Text>
         </>
       ),
@@ -154,7 +151,7 @@ export function ShippingOrderTable({ rows }: { rows: ShippingOrder[] }) {
         <TextInput
           leftSection={<IconSearch size={14} />}
           onChange={(e) => setSearch(e.currentTarget.value)}
-          placeholder="出荷書番号・注文請書番号・顧客・製品で検索"
+          placeholder="出荷書番号・受注明細番号・顧客・製品で検索"
           value={search}
         />
       }
@@ -179,7 +176,7 @@ export function ShippingOrderTable({ rows }: { rows: ShippingOrder[] }) {
                 {o.customerName}
               </Text>
               <Text c="dimmed" size="xs" truncate>
-                {o.salesOrderNumber} · {o.productName}
+                {o.orderLineNumbers.join(", ") || "—"}
               </Text>
               <Group gap="md" mt={2}>
                 <ShippingTypeBadge type={o.type} />

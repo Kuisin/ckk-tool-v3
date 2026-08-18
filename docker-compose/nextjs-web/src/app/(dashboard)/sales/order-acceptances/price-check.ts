@@ -6,7 +6,7 @@
  * 期待単価・入力単価の両方が存在し、一致しない」ときのみ — 製品未特定や
  * 価格表なし（unpriced）は未解決であって差異ではない。
  *
- * 解決ロジックは見積書・注文請書と同一（quotes/model の pure 関数 +
+ * 解決ロジックは見積書・受注明細と同一（quotes/model の pure 関数 +
  * fetchEntriesForCustomer）。保存時点ではなく読み出し/依頼時に計算するため、
  * 手動編集後も常に最新の保存内容で照合される（lib/intake.ts は不変更）。
  * サーバー専用（prisma import）— actions.ts と詳細ページから呼ぶ。

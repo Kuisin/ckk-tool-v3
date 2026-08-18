@@ -7,11 +7,11 @@
  *   IMPORT（抽出失敗）→ 再抽出（retryExtraction — lib/intake の抽出キューへ積む）
  *   DRAFT → saveDraft（ヘッダ + 明細全置換）/ submitForApproval（→ REQUESTED）
  *   REQUESTED → approveAcceptance（→ APPROVED）/ rejectAcceptance（→ DRAFT）
- *   APPROVED → deployToSalesOrders（伝票展開 → COMPLETED）
+ *   APPROVED → deployToOrderLines（伝票展開 → COMPLETED）
  *   COMPLETED → archiveAcceptance（→ ARCHIVED）
  *
- * 伝票展開は受注請書と同じ (year_month, seq) の sales_orders 枝番 1..N を
- * $transaction で一括作成する（§2: 受注請書 1 → 注文請書 N）。承認は
+ * 伝票展開は受注請書と同じ (year_month, seq) の order_lines 枝番 1..N を
+ * $transaction で一括作成する（§2: 受注請書 1 → 受注明細 N）。承認は
  * lib/approvals（approval_requests / approval_records — FIRST 段のみ）。
  */
 
@@ -24,11 +24,12 @@ import { checkPermission } from "@/lib/authz";
 import { prisma } from "@/lib/db";
 import {
   type DocKey,
-  formatSalesOrderNumber,
+  formatOrderLineNumber,
   parseDocKey,
 } from "@/lib/doc-number";
 import { enqueueExtraction } from "@/lib/intake";
 import { allocateDocumentKey } from "@/lib/numbering";
+import { linesReplaceBlockReason, nextBranches } from "@/lib/order-line-core";
 import {
   type ActionResult,
   actionError,
@@ -38,7 +39,7 @@ import {
 import { checkAcceptancePrices, priceDiffSummary } from "./price-check";
 
 const BASE_PATH = "/sales/order-acceptances";
-const SALES_ORDERS_PATH = "/production/sales-orders";
+const SALES_ORDERS_PATH = "/sales/order-lines";
 const APPROVALS_PATH = "/production/approvals";
 
 function revalidate(number?: string) {
@@ -248,12 +249,18 @@ export async function saveDraft(
       },
     });
     if (!prior) return actionError("対象の受注請書が見つかりません");
-    if (prior.status !== "DRAFT") {
-      return actionError("下書きの受注請書のみ編集できます");
-    }
     const creates = buildItemCreates(v.items);
+    let blocked: string | null = null;
     await prisma.$transaction(async (tx) => {
-      await tx.orderAcceptanceItem.deleteMany({
+      // ラインチェック: 確定済みの明細は変更させない。tx 内で読むことで
+      // 判定と削除の間に確定が割り込むのを防ぐ（判定は order-line-core に集約）。
+      const lines = await tx.orderLine.findMany({
+        where: { acceptanceYearMonth: key.yearMonth, acceptanceSeq: key.seq },
+        select: { status: true, branch: true, isLocked: true },
+      });
+      blocked = linesReplaceBlockReason(prior.status, lines);
+      if (blocked) return;
+      await tx.orderLine.deleteMany({
         where: { acceptanceYearMonth: key.yearMonth, acceptanceSeq: key.seq },
       });
       await tx.orderAcceptance.update({
@@ -268,6 +275,7 @@ export async function saveDraft(
         },
       });
     });
+    if (blocked) return actionError(blocked);
     await recordAudit({
       action: "UPDATE",
       tableName: "order_acceptances",
@@ -471,11 +479,11 @@ export async function rejectAcceptance(
 // ── 伝票展開（APPROVED → COMPLETED） ────────────────────────────────────────
 
 /**
- * 伝票展開 — 明細ごとに注文請書（sales_orders）を作成する。
+ * 伝票展開 — 明細ごとに受注明細（order_lines）を作成する。
  * 受注請書と同じ (year_month, seq) を共有し、枝番 branch = 1..N。
  * 全明細が製品特定済み + 単価入力済みであることが必要。
  */
-export async function deployToSalesOrders(
+export async function confirmOrderLines(
   number: string,
 ): Promise<ActionResult<{ numbers: string[] }>> {
   const key = keyOf(number);
@@ -492,10 +500,10 @@ export async function deployToSalesOrders(
     });
     if (!prior) return actionError("対象の受注請書が見つかりません");
     if (prior.status !== "APPROVED") {
-      return actionError("承認済の受注請書のみ展開できます");
+      return actionError("承認済の受注請書のみ確定できます");
     }
     if (!prior.customerBpId) {
-      return actionError("顧客が未特定のため展開できません");
+      return actionError("顧客が未特定のため確定できません");
     }
     if (prior.items.length < 1) {
       return actionError("明細がありません");
@@ -507,7 +515,7 @@ export async function deployToSalesOrders(
     if (offending.length > 0) {
       const rows = offending.map((o) => `${o.row}`).join(", ");
       return actionError(
-        `明細 ${rows} 行目: 製品未特定または単価未入力のため展開できません`,
+        `明細 ${rows} 行目: 製品未特定または単価未入力のため確定できません`,
       );
     }
 
@@ -519,30 +527,20 @@ export async function deployToSalesOrders(
         data: { status: "COMPLETED", completedAt },
       });
       if (updated.count === 0) {
-        throw new Error("承認済の受注請書のみ展開できます");
+        throw new Error("承認済の受注請書のみ確定できます");
       }
+      // 明細行はすでに存在する — 確定は「枝番の採番 + 金額の凍結」だけ。
+      // sortOrder 順に 1..N。以後 branch は不変（公開番号 ORD-…-NN の一部）。
+      const branches = nextBranches(0, prior.items.length);
       for (const [i, it] of prior.items.entries()) {
-        await tx.salesOrder.create({
+        await tx.orderLine.update({
+          where: { id: it.id },
           data: {
-            yearMonth: key.yearMonth,
-            seq: key.seq,
-            branch: i + 1,
-            customerBpId: prior.customerBpId as string,
-            customerBranchBpId: prior.customerBranchBpId,
-            customerOrderRef: prior.customerOrderRef,
-            productId: it.productId as number,
-            orderType: it.orderType,
-            quantity: it.quantity,
-            unitPrice: it.unitPrice as NonNullable<typeof it.unitPrice>,
-            // 金額はサーバー側で計算。
-            amount: it.quantity * Number(it.unitPrice),
-            deliveryDate: it.deliveryDate,
+            branch: branches[i],
             status: "CONFIRMED",
-            // 見積 → 受注 → 注文請書のトレーサビリティ（監査 P2-2）
-            quoteYearMonth: prior.quoteYearMonth,
-            quoteSeq: prior.quoteSeq,
-            createdBy: authz.userId,
-            notes: it.notes,
+            confirmedAt: completedAt,
+            // 金額はサーバー側で計算し、この時点で凍結する。
+            amount: it.quantity * Number(it.unitPrice),
           },
         });
       }
@@ -560,15 +558,15 @@ export async function deployToSalesOrders(
     });
 
     const numbers = prior.items.map((_, i) =>
-      formatSalesOrderNumber({ ...key, branch: i + 1 }),
+      formatOrderLineNumber({ ...key, branch: i + 1 }),
     );
     for (const [i, it] of prior.items.entries()) {
       await recordAudit({
         action: "CREATE",
-        tableName: "sales_orders",
+        tableName: "order_lines",
         recordId: numbers[i],
         after: {
-          note: `受注請書 ${number} の伝票展開`,
+          note: `受注請書 ${number} の確定`,
           customerBpId: prior.customerBpId,
           productId: it.productId,
           orderType: it.orderType,
@@ -583,16 +581,16 @@ export async function deployToSalesOrders(
       tableName: "order_acceptances",
       recordId: number,
       before: { status: "APPROVED" },
-      after: { status: "COMPLETED", salesOrders: numbers },
+      after: { status: "COMPLETED", orderLines: numbers },
     });
     revalidate(number);
     revalidatePath(SALES_ORDERS_PATH);
     return actionOk({ numbers });
   } catch (e) {
-    if (e instanceof Error && e.message.includes("展開")) {
+    if (e instanceof Error && e.message.includes("確定")) {
       return actionError(e.message);
     }
-    return actionError(prismaErrorMessage(e, "伝票展開に失敗しました"));
+    return actionError(prismaErrorMessage(e, "受注確定に失敗しました"));
   }
 }
 

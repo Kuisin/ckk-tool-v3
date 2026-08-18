@@ -1,9 +1,9 @@
 "use client";
 
 /**
- * SalesOrderTable — 注文請書 一覧 (PD01, design.md §8.1 / §14).
+ * OrderLineTable — 受注明細 一覧 (PD01, design.md §8.1 / §14).
  *
- * Columns: 注文請書番号 / 顧客 / 製品 / 数量 / 金額 / 納期 / 状態。
+ * Columns: 受注明細番号 / 顧客 / 製品 / 数量 / 金額 / 納期 / 状態。
  * フィルタ: 検索（番号・顧客・製品）+ 状態 + 注文種別。行クリック → 詳細。
  */
 
@@ -19,11 +19,11 @@ import { useUrlSelectState, useUrlStringState } from "@/hooks/useUrlState";
 import { useIsMobile } from "@/hooks/useViewport";
 import { ORDER_TYPE_LABEL, ORDER_TYPE_OPTIONS } from "@/lib/enum-labels";
 import { formatDate } from "@/lib/format";
-import type { SalesOrder } from "./model";
+import type { OrderLine } from "./model";
 
-const BASE_PATH = "/production/sales-orders";
+const BASE_PATH = "/sales/order-lines";
 
-export function SalesOrderTable({ rows }: { rows: SalesOrder[] }) {
+export function OrderLineTable({ rows }: { rows: OrderLine[] }) {
   const router = useRouter();
   const isMobile = useIsMobile();
 
@@ -49,10 +49,10 @@ export function SalesOrderTable({ rows }: { rows: SalesOrder[] }) {
     return matchesSearch && matchesStatus && matchesType;
   });
 
-  const columns: Column<SalesOrder>[] = [
+  const columns: Column<OrderLine>[] = [
     {
       key: "orderNumber",
-      header: "注文請書番号",
+      header: "受注明細番号",
       sortable: true,
       render: (o) => (
         <Text ff="mono" size="sm">
@@ -96,7 +96,7 @@ export function SalesOrderTable({ rows }: { rows: SalesOrder[] }) {
       header: "金額",
       align: "right",
       width: 130,
-      sortValue: (o) => o.amount,
+      sortValue: (o) => o.amount ?? 0,
       render: (o) => <MoneyText value={o.amount} />,
     },
     {
@@ -115,19 +115,19 @@ export function SalesOrderTable({ rows }: { rows: SalesOrder[] }) {
       header: "状態",
       width: 100,
       sortValue: (o) => o.status,
-      render: (o) => <StatusBadge entity="SalesOrder" status={o.status} />,
+      render: (o) => <StatusBadge entity="OrderLine" status={o.status} />,
     },
   ];
 
   return (
     <ListShell
       action={<NewButton href={`${BASE_PATH}/new`} />}
-      breadcrumbs={["販売", "注文請書"]}
+      breadcrumbs={["販売", "受注明細"]}
       filters={
         <>
           <Select
             clearable
-            data={statusOptions("SalesOrder")}
+            data={statusOptions("OrderLine")}
             flex={isMobile ? 1 : undefined}
             onChange={setStatus}
             placeholder="状態"
@@ -150,11 +150,11 @@ export function SalesOrderTable({ rows }: { rows: SalesOrder[] }) {
         <TextInput
           leftSection={<IconSearch size={14} />}
           onChange={(e) => setSearch(e.currentTarget.value)}
-          placeholder="注文請書番号・顧客・製品で検索"
+          placeholder="受注明細番号・顧客・製品で検索"
           value={search}
         />
       }
-      title="注文請書"
+      title="受注明細"
     >
       <DataTable
         columns={columns}
@@ -162,7 +162,7 @@ export function SalesOrderTable({ rows }: { rows: SalesOrder[] }) {
         defaultSort={{ key: "orderNumber", dir: "desc" }}
         emptyAction={<NewButton href={`${BASE_PATH}/new`} />}
         emptyIcon={<IconClipboardList size={24} />}
-        emptyMessage="注文請書がありません"
+        emptyMessage="受注明細がありません"
         getRowId={(o) => o.id}
         onRowClick={(o) => router.push(`${BASE_PATH}/${o.id}`)}
         renderCard={(o) => (
@@ -187,7 +187,7 @@ export function SalesOrderTable({ rows }: { rows: SalesOrder[] }) {
               </Group>
             </Stack>
             <Stack align="flex-end" className="shrink-0" gap={4}>
-              <StatusBadge entity="SalesOrder" status={o.status} />
+              <StatusBadge entity="OrderLine" status={o.status} />
               <Text c="dimmed" size="xs">
                 {formatDate(o.deliveryDate)}
               </Text>

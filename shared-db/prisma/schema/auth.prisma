@@ -72,7 +72,6 @@ model User {
   systemSettingsUpdated   SystemSetting[]    @relation("SystemSettingUpdatedBy")
   featureFlagsUpdated     FeatureFlag[]      @relation("FeatureFlagUpdatedBy")
   approvalGroupMembers    ApprovalGroupMember[] @relation("ApprovalGroupMemberUser")
-  salesOrdersCreated      SalesOrder[]          @relation("SalesOrderCreatedBy")
   workOrdersCreated       WorkOrder[]           @relation("WorkOrderCreatedBy")
   routesCreated           ProductProcessRoute[]        @relation("RouteCreatedBy")
   routeVersionsCreated    ProductProcessRouteVersion[] @relation("RouteVersionCreatedBy")

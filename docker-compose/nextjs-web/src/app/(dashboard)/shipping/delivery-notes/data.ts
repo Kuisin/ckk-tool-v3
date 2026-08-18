@@ -19,7 +19,7 @@ import {
   type DocKey,
   formatDocNumber,
   formatProductNumber,
-  formatSalesOrderNumber,
+  orderLineNumberOf,
 } from "@/lib/doc-number";
 import { type LocalizedText, localized } from "@/lib/format";
 
@@ -28,8 +28,21 @@ import { type LocalizedText, localized } from "@/lib/format";
 const LIST_FETCH_CAP = 1000;
 
 const DELIVERY_NOTE_INCLUDE = {
+  // 1 出荷書は複数の受注明細を束ねられるので、明細行から番号を集める。
   shippingOrder: {
-    include: { salesOrder: true },
+    include: {
+      items: {
+        select: {
+          orderLine: {
+            select: {
+              acceptanceYearMonth: true,
+              acceptanceSeq: true,
+              branch: true,
+            },
+          },
+        },
+      },
+    },
   },
   recipientBp: true,
   recipientBranchBp: true,
@@ -81,7 +94,13 @@ function mapDeliveryNote(r: DeliveryNoteRow): DeliveryNote {
       yearMonth: r.shippingOrderYearMonth,
       seq: r.shippingOrderSeq,
     }),
-    salesOrderNumber: formatSalesOrderNumber(r.shippingOrder.salesOrder),
+    orderLineNumbers: [
+      ...new Set(
+        r.shippingOrder.items
+          .map((it) => (it.orderLine ? orderLineNumberOf(it.orderLine) : null))
+          .filter((n): n is string => n != null),
+      ),
+    ],
     deliveryMethod: r.deliveryMethod as DeliveryMethod,
     recipientId: r.recipientBpId,
     recipientName: localized(r.recipientBp.name as LocalizedText | null),
@@ -166,12 +185,11 @@ export async function fetchShippingOrderCandidates(): Promise<
       ) as Prisma.ShippingOrderWhereInput),
     },
     include: {
-      salesOrder: {
-        include: { customerBp: true, customerBranchBp: true, endUserBp: true },
-      },
+      customerBp: true,
+      customerBranchBp: true,
       items: {
         orderBy: { sortOrder: "asc" },
-        include: { product: true },
+        include: { product: true, orderLine: { include: { endUserBp: true } } },
       },
     },
     orderBy: [{ yearMonth: "desc" }, { seq: "desc" }],
@@ -182,27 +200,36 @@ export async function fetchShippingOrderCandidates(): Promise<
       yearMonth: r.yearMonth,
       seq: r.seq,
     });
-    const customerName = localized(
-      r.salesOrder.customerBp.name as LocalizedText | null,
-    );
+    // 顧客はヘッダが権威（1 出荷書 = 1 顧客）。
+    const customerName = localized(r.customerBp.name as LocalizedText | null);
     const totalQuantity = r.items.reduce((sum, it) => sum + it.quantity, 0);
+    // 最終需要家は受注明細ごとに異なり得る — 1 つに定まるときだけ既定値にする。
+    const endUsers = [
+      ...new Map(
+        r.items
+          .map((it) => it.orderLine?.endUserBp)
+          .filter((bp): bp is NonNullable<typeof bp> => Boolean(bp))
+          .map((bp) => [bp.id, bp] as const),
+      ).values(),
+    ];
+    const endUser = endUsers.length === 1 ? endUsers[0] : null;
     return {
       number,
       label: `${number}　${customerName}（${totalQuantity}）`,
       customerName,
-      customerBranchName: r.salesOrder.customerBranchBp
-        ? localized(r.salesOrder.customerBranchBp.name as LocalizedText | null)
+      customerBranchName: r.customerBranchBp
+        ? localized(r.customerBranchBp.name as LocalizedText | null)
         : null,
-      endUserBpId: r.salesOrder.endUserBpId,
-      endUserName: r.salesOrder.endUserBp
-        ? localized(r.salesOrder.endUserBp.name as LocalizedText | null)
+      endUserBpId: endUser?.id ?? null,
+      endUserName: endUser
+        ? localized(endUser.name as LocalizedText | null)
         : null,
       items: r.items.map((it) => ({
         productId: String(it.productId),
         productName: productLabel(it.product),
         quantity: it.quantity,
-        // 単価の既定値は注文請書の単価（価格記載ありのとき使用）。
-        unitPrice: Number(r.salesOrder.unitPrice),
+        // 単価の既定値はその行の受注明細の単価（価格記載ありのとき使用）。
+        unitPrice: Number(it.orderLine?.unitPrice ?? 0),
       })),
     };
   });

@@ -1,3 +1,9 @@
+-- ⚠️ 受注明細（order_lines）統合により、このデモシードは未更新です。
+--    app.sales_orders は削除され、受注ラインは app.order_lines
+--    （受注請書 order_acceptances の明細行）に統合されました。
+--    実行すると "relation app.sales_orders does not exist" で失敗します。
+--    親の受注請書を作ったうえで order_lines を挿入する形へ書き換えが必要です。
+
 -- production-demo-seed.sql — 生産アプリ（PD02 指示書 / PD03 承認管理 / PD04 在庫管理）
 -- のマニュアル撮影用デモデータ。
 --

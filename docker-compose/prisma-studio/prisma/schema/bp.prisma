@@ -57,6 +57,8 @@ model BusinessPartner {
   // AI 抽出（po-extract）が読み取った社名をこの BP に解決するための照合名リスト。
   // 表記ゆれ（全角/半角・㈱/株式会社・旧名など）をすべて登録する。
   matchNames  String[] @default([]) @map("match_names")
+  /// フリガナ等から自動生成した照合名（カタカナ/ひらがな/ローマ字）。UI では編集しない。
+  matchNamesAuto String[] @default([]) @map("match_names_auto")
   isActive    Boolean  @default(true) @map("is_active")
   notes       String?
   createdBy   String?  @map("created_by") @db.Uuid
@@ -82,9 +84,9 @@ model BusinessPartner {
   purchaseOrdersAsSupplier MaterialPurchaseOrder[] @relation("PoSupplier")
   receiptsAsSupplier       MaterialReceipt[]       @relation("ReceiptSupplier")
 
-  salesOrdersAsCustomer SalesOrder[]    @relation("SalesOrderCustomer")
-  salesOrdersAsBranch   SalesOrder[]    @relation("SalesOrderCustomerBranch")
-  salesOrdersAsEndUser  SalesOrder[]    @relation("SalesOrderEndUser")
+  orderLinesAsEndUser   OrderLine[]     @relation("OrderLineEndUser")
+  shippingOrdersAsCustomer ShippingOrder[] @relation("ShippingOrderCustomer")
+  shippingOrdersAsBranch   ShippingOrder[] @relation("ShippingOrderCustomerBranch")
   stepsAsSupplier       WorkOrderStep[] @relation("StepSupplier")
   routeStepsAsSupplier  ProductProcessRouteVersionStep[] @relation("RouteStepSupplier")
 

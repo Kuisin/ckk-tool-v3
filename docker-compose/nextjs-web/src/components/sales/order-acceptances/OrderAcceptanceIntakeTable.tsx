@@ -8,7 +8,7 @@
  * Columns: 番号 / 取込元 / ファイル名 / 顧客 / 明細数 / 状態 / エラー / 取込日時。
  *
  * ヘッダー: 「優先取込」FileButton（複数可 — 逐次 POST /api/intake/upload）+
- * 手入力新規 + 注文請書一覧（/production/sales-orders）へのリンク。
+ * 手入力新規 + 受注明細一覧（/sales/order-lines）へのリンク。
  * アップロードは保存までで即返り、**抽出はサーバー側の待ち行列**で 1 件ずつ
  * 走る（GPU が同時に 1 件しか捌けないため）。よってボタンのローディングは
  * 送信が終われば解除され、抽出を待たずに次のファイルを投げられる。
@@ -276,10 +276,10 @@ export function OrderAcceptanceIntakeTable({
         <Group gap="xs" wrap="nowrap">
           {!isMobile && (
             <SecondaryButton
-              href="/production/sales-orders"
+              href="/sales/order-lines"
               leftSection={<IconClipboardList size={14} />}
             >
-              注文請書一覧
+              受注明細一覧
             </SecondaryButton>
           )}
           <FileButton

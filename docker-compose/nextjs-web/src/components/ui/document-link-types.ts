@@ -12,7 +12,7 @@
 /** 選択できる文書種別。 */
 export const DOCUMENT_LINK_TYPES = [
   { value: "quote", label: "見積書" },
-  { value: "sales_order", label: "注文請書" },
+  { value: "order_line", label: "受注明細" },
   { value: "work_order", label: "指示書" },
   { value: "shipping_order", label: "出荷書" },
   { value: "invoice", label: "請求書" },
@@ -34,7 +34,7 @@ export interface DocumentHit {
 /** 種別 → 権限コード（各画面の actions.ts と揃える）。 */
 export const DOCUMENT_TYPE_PERMISSION: Record<DocumentLinkType, string> = {
   quote: "quote",
-  sales_order: "work_order",
+  order_line: "order_acceptance",
   work_order: "work_order",
   shipping_order: "shipping_order",
   invoice: "invoice",
