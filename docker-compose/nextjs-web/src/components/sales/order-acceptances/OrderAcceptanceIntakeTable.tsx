@@ -42,7 +42,42 @@ import { ListShell } from "@/components/ui/shells";
 import { useUrlSelectState, useUrlStringState } from "@/hooks/useUrlState";
 import { useIsMobile } from "@/hooks/useViewport";
 import { formatDateTime } from "@/lib/format";
+import { parseExtractError } from "@/lib/intake-extract-error";
 import { INTAKE_SOURCE_BADGE, type OrderAcceptanceListRow } from "./model";
+
+/** 抽出失敗の表示（分類済みメッセージ — 旧形式の 1 行もそのまま読める）。 */
+function ExtractErrorBadge({
+  stored,
+  size = "sm",
+}: {
+  stored: string;
+  size?: "xs" | "sm";
+}) {
+  const failure = parseExtractError(stored);
+  return (
+    <Tooltip
+      label={[
+        failure.summary,
+        failure.cause,
+        `対処: ${failure.hint}`,
+        failure.detail,
+      ]
+        .filter(Boolean)
+        .join("\n")}
+      multiline
+      w={340}
+      withinPortal
+    >
+      <Badge
+        color={failure.retrying ? "orange" : "red"}
+        size={size}
+        variant="light"
+      >
+        {failure.retrying ? "再試行中" : "抽出失敗"}
+      </Badge>
+    </Tooltip>
+  );
+}
 
 const BASE_PATH = "/sales/order-acceptances";
 const UPLOAD_ACCEPT = ".pdf,.png,.jpg,.jpeg,.webp";
@@ -73,9 +108,12 @@ export function OrderAcceptanceIntakeTable({
   const [status, setStatus] = useUrlSelectState("status");
   const [uploading, setUploading] = useState(false);
 
-  // 取込中（抽出待ち）の行がある間は 30 秒ごとに自動更新（進捗の可視化）。
+  // 取込中（抽出待ち・自動再試行の待機中）の行がある間は 30 秒ごとに
+  // 自動更新（進捗の可視化）。
   const hasImporting = rows.some(
-    (r) => r.status === "IMPORT" && !r.extractError,
+    (r) =>
+      r.status === "IMPORT" &&
+      (!r.extractError || parseExtractError(r.extractError).retrying),
   );
   useEffect(() => {
     if (!hasImporting) return;
@@ -245,11 +283,7 @@ export function OrderAcceptanceIntakeTable({
       sortValue: (r) => (r.extractError ? 1 : 0),
       render: (r) =>
         r.extractError ? (
-          <Tooltip label={r.extractError} multiline w={320} withinPortal>
-            <Badge color="red" size="sm" variant="light">
-              抽出失敗
-            </Badge>
-          </Tooltip>
+          <ExtractErrorBadge stored={r.extractError} />
         ) : (
           <Text c="dimmed" size="sm">
             —
@@ -372,9 +406,7 @@ export function OrderAcceptanceIntakeTable({
                       明細 {r.itemCount} 件
                     </Text>
                     {r.extractError && (
-                      <Badge color="red" size="xs" variant="light">
-                        抽出失敗
-                      </Badge>
+                      <ExtractErrorBadge size="xs" stored={r.extractError} />
                     )}
                   </Group>
                 </Stack>

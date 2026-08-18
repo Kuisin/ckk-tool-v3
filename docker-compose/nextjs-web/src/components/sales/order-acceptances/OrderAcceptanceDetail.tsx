@@ -7,7 +7,8 @@
  * 承認依頼（REQUESTED）→ 承認（APPROVED）→ 確定（COMPLETED）→
  * アーカイブ（ARCHIVED）。
  *
- * - IMPORT: 抽出失敗は赤 Alert + 再抽出。処理中は案内 Alert。
+ * - IMPORT: 抽出失敗は原因・対処つきの Alert + 再抽出 / 手入力へ切り替え
+ *   （自動再試行の待機中は橙で「再試行中」）。処理中は案内 Alert。
  * - DRAFT: 基本情報（顧客 SearchSelect）+ 明細エディタ + 保存 / 承認依頼。
  * - REQUESTED: 承認 / 差し戻し（第一承認グループ — 代理可）。
  * - APPROVED: 確定（明細ごとに注文明細 ORD-…-NN を一括作成）。
@@ -108,6 +109,7 @@ import { useTabParam } from "@/hooks/useUrlState";
 import type { MemoView } from "@/lib/document-memos";
 import { ORDER_TYPE_LABEL } from "@/lib/enum-labels";
 import { formatDate, formatDateTime, formatMoney } from "@/lib/format";
+import { parseExtractError } from "@/lib/intake-extract-error";
 import type { ActionResult } from "@/lib/server-action";
 import { IntakeDocumentPane } from "./IntakeDocumentPane";
 import { IntakeReviewPanel } from "./IntakeReviewPanel";
@@ -180,9 +182,15 @@ export function OrderAcceptanceDetail({
   const a = acceptance;
   const sourceDef = INTAKE_SOURCE_BADGE[a.source];
 
+  // 抽出失敗は分類済みの複数行メッセージ（lib/intake-extract-error）。
+  // 旧形式（1 行）もそのまま読める。
+  const failure = a.extractError ? parseExtractError(a.extractError) : null;
+
   // 抽出はバックグラウンドの列で走るので、待っている間は定期的に見に行く
   // （完了しても画面は自分では変わらないため）。一覧と同じ 30 秒間隔。
-  const awaitingExtraction = a.status === "IMPORT" && !a.extractError;
+  // 自動再試行の待機中も「まだ動いている」ので更新を続ける。
+  const awaitingExtraction =
+    a.status === "IMPORT" && (!failure || failure.retrying);
   useEffect(() => {
     if (!awaitingExtraction) return;
     const timer = setInterval(() => router.refresh(), 30_000);
@@ -389,15 +397,36 @@ export function OrderAcceptanceDetail({
           <Stack gap="md">
             {/* 取込中 / 抽出失敗（IMPORT） */}
             {a.status === "IMPORT" &&
-              (a.extractError ? (
+              (failure ? (
                 <Alert
-                  color="red"
-                  icon={<IconAlertTriangle size={16} />}
-                  title="自動抽出に失敗しました"
+                  color={failure.retrying ? "orange" : "red"}
+                  icon={
+                    failure.retrying ? (
+                      <IconRefresh size={16} />
+                    ) : (
+                      <IconAlertTriangle size={16} />
+                    )
+                  }
+                  title={failure.summary}
                   variant="light"
                 >
                   <Stack gap="xs">
-                    <Text size="sm">{a.extractError}</Text>
+                    {failure.cause && <Text size="sm">{failure.cause}</Text>}
+                    <Text fw={500} size="sm">
+                      {failure.hint}
+                    </Text>
+                    {failure.attempt && failure.maxAttempts ? (
+                      <Text c="dimmed" size="xs">
+                        {failure.retrying
+                          ? `自動再試行中（${failure.attempt}/${failure.maxAttempts} 回目が失敗）— まもなくもう一度実行します`
+                          : `自動再試行 ${failure.attempt}/${failure.maxAttempts} 回とも失敗しました`}
+                      </Text>
+                    ) : null}
+                    {failure.detail && (
+                      <Text c="dimmed" ff="mono" size="xs">
+                        {failure.detail}
+                      </Text>
+                    )}
                     <Group>
                       <SecondaryButton
                         leftSection={<IconRefresh size={14} />}
@@ -410,6 +439,18 @@ export function OrderAcceptanceDetail({
                         }
                       >
                         再抽出
+                      </SecondaryButton>
+                      <SecondaryButton
+                        leftSection={<IconPencil size={14} />}
+                        loading={isPending}
+                        onClick={() =>
+                          run(
+                            () => takeOverManually(a.number),
+                            "手入力に切り替えました",
+                          )
+                        }
+                      >
+                        手入力に切り替え
                       </SecondaryButton>
                     </Group>
                   </Stack>
