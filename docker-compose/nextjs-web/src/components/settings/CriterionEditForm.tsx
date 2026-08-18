@@ -34,7 +34,7 @@ import {
   SecondaryButton,
 } from "@/components/ui/buttons";
 import { openConfirm } from "@/components/ui/modals";
-import { FormSection } from "@/components/ui/shells";
+import { FormActions, FormSection } from "@/components/ui/shells";
 import { localized } from "@/lib/format";
 import type { ToolType, TrialInput } from "@/lib/trial-pricing";
 import type {
@@ -449,15 +449,17 @@ export function CriterionEditForm({
         </Stack>
       </FormSection>
 
-      <Group justify="space-between" mt="xs">
-        {isNew ? <span /> : <DeleteButton onClick={remove} />}
-        <Group gap="sm">
-          <CancelButton onClick={() => router.push(`${BASE}/criteria`)} />
-          <SaveButton loading={isPending} onClick={save}>
-            保存
-          </SaveButton>
+      <FormActions>
+        <Group justify="space-between">
+          {isNew ? <span /> : <DeleteButton onClick={remove} />}
+          <Group gap="sm">
+            <CancelButton onClick={() => router.push(`${BASE}/criteria`)} />
+            <SaveButton loading={isPending} onClick={save}>
+              保存
+            </SaveButton>
+          </Group>
         </Group>
-      </Group>
+      </FormActions>
     </Stack>
   );
 }

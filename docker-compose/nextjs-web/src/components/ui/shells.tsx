@@ -9,6 +9,7 @@
  *   ListShell   — header + NewButton + filter bar + <DataTable> (children)
  *   DetailShell — header + status + edit/pdf/menu actions + summary + panels + footer
  *   FormShell   — header + <form> + LoadingOverlay + sectioned body + actions
+ *   FormActions — bottom action row, sticky to the viewport on desktop
  *   FormSection — one Paper section (title + divider + fields)
  *   SummaryGrid — responsive FieldValue grid
  *   ResourceActions — edit / pdf / overflow menu (collapses to “…” on mobile)
@@ -319,23 +320,38 @@ export function FormShell({
         <LoadingOverlay visible={!!isPending} />
         <Stack gap="md">
           {children}
-          {isMobile ? (
-            <Stack gap="xs">
-              <SaveButton fullWidth loading={isPending}>
-                {submitLabel}
-              </SaveButton>
-              <CancelButton fullWidth onClick={onCancel} />
-            </Stack>
-          ) : (
-            <Group justify="flex-end" mt="md">
-              <CancelButton onClick={onCancel} />
-              <SaveButton loading={isPending}>{submitLabel}</SaveButton>
-            </Group>
-          )}
+          <FormActions>
+            {isMobile ? (
+              <Stack gap="xs">
+                <SaveButton fullWidth loading={isPending}>
+                  {submitLabel}
+                </SaveButton>
+                <CancelButton fullWidth onClick={onCancel} />
+              </Stack>
+            ) : (
+              <Group justify="flex-end">
+                <CancelButton onClick={onCancel} />
+                <SaveButton loading={isPending}>{submitLabel}</SaveButton>
+              </Group>
+            )}
+          </FormActions>
         </Stack>
       </Box>
     </Stack>
   );
+}
+
+// ── FormActions ─────────────────────────────────────────────────────────────
+/**
+ * フォーム下部のアクション行（キャンセル / 保存）。デスクトップでは画面下端に
+ * 固定され、フォームがどれだけ長くてもボタンが常に見える（globals.css
+ * `.form-actions`）。モバイルは従来どおり本文末尾に流す。
+ *
+ * `FormShell` は自動でこれを使う。`FormShell` を使わない独自フォームは、
+ * 既存のボタン行をこれで包むだけで同じ挙動になる。
+ */
+export function FormActions({ children }: { children: ReactNode }) {
+  return <Box className="form-actions">{children}</Box>;
 }
 
 // ── FormSection ─────────────────────────────────────────────────────────────

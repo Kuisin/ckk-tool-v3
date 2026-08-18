@@ -27,7 +27,7 @@ import { useMemo, useState, useTransition } from "react";
 import { updateTrialPricingSettings } from "@/app/(dashboard)/settings/actions";
 import { CancelButton, GhostButton, SaveButton } from "@/components/ui/buttons";
 import { PageHeader } from "@/components/ui/PageHeader";
-import { FormSection } from "@/components/ui/shells";
+import { FormActions, FormSection } from "@/components/ui/shells";
 import { useIsMobile } from "@/hooks/useViewport";
 import {
   type CustomInputDef,
@@ -109,21 +109,23 @@ function SectionShell({
         title={title}
       />
       {children}
-      {isMobile ? (
-        <Stack gap="xs">
-          <SaveButton fullWidth loading={isPending} onClick={onSave}>
-            保存
-          </SaveButton>
-          <CancelButton fullWidth onClick={onCancel} />
-        </Stack>
-      ) : (
-        <Group justify="flex-end">
-          <CancelButton onClick={onCancel} />
-          <SaveButton loading={isPending} onClick={onSave}>
-            保存
-          </SaveButton>
-        </Group>
-      )}
+      <FormActions>
+        {isMobile ? (
+          <Stack gap="xs">
+            <SaveButton fullWidth loading={isPending} onClick={onSave}>
+              保存
+            </SaveButton>
+            <CancelButton fullWidth onClick={onCancel} />
+          </Stack>
+        ) : (
+          <Group justify="flex-end">
+            <CancelButton onClick={onCancel} />
+            <SaveButton loading={isPending} onClick={onSave}>
+              保存
+            </SaveButton>
+          </Group>
+        )}
+      </FormActions>
     </Stack>
   );
 }

@@ -24,7 +24,7 @@ import { updateProductItemDefs } from "@/app/(dashboard)/settings/actions";
 import { CancelButton, GhostButton, SaveButton } from "@/components/ui/buttons";
 import { HelpLabel } from "@/components/ui/HelpLabel";
 import { PageHeader } from "@/components/ui/PageHeader";
-import { FormSection } from "@/components/ui/shells";
+import { FormActions, FormSection } from "@/components/ui/shells";
 import { useIsMobile } from "@/hooks/useViewport";
 import { fieldHelp } from "@/lib/field-help";
 import {
@@ -300,16 +300,21 @@ export function ItemDefEditForm({
         )}
       </FormSection>
 
-      <Group justify={isMobile ? "stretch" : "flex-end"}>
-        <CancelButton fullWidth={isMobile} onClick={() => router.push(BASE)} />
-        <SaveButton
-          fullWidth={isMobile}
-          loading={isPending}
-          onClick={handleSave}
-        >
-          保存
-        </SaveButton>
-      </Group>
+      <FormActions>
+        <Group justify={isMobile ? "stretch" : "flex-end"}>
+          <CancelButton
+            fullWidth={isMobile}
+            onClick={() => router.push(BASE)}
+          />
+          <SaveButton
+            fullWidth={isMobile}
+            loading={isPending}
+            onClick={handleSave}
+          >
+            保存
+          </SaveButton>
+        </Group>
+      </FormActions>
     </Stack>
   );
 }

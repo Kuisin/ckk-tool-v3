@@ -41,7 +41,11 @@ import {
 } from "@/components/ui/buttons";
 import { EditableCellTable } from "@/components/ui/EditableCellTable";
 import { openConfirm } from "@/components/ui/modals";
-import { FormSection, LocalizedTextInput } from "@/components/ui/shells";
+import {
+  FormActions,
+  FormSection,
+  LocalizedTextInput,
+} from "@/components/ui/shells";
 import { useIsMobile } from "@/hooks/useViewport";
 import { downloadCsv, parseCsv, toCsv } from "@/lib/csv";
 import { localized } from "@/lib/format";
@@ -422,20 +426,26 @@ export function LookupTableEditor({
         />
       </FormSection>
 
-      <Group justify={isMobile ? "stretch" : "space-between"}>
-        {!isNew ? (
-          <DeleteButton fullWidth={isMobile} onClick={remove} />
-        ) : (
-          <span />
-        )}
-        <Group gap="sm" justify="flex-end">
-          <CancelButton
-            fullWidth={isMobile}
-            onClick={() => router.push(LIST)}
-          />
-          <SaveButton fullWidth={isMobile} loading={isPending} onClick={save} />
+      <FormActions>
+        <Group justify={isMobile ? "stretch" : "space-between"}>
+          {!isNew ? (
+            <DeleteButton fullWidth={isMobile} onClick={remove} />
+          ) : (
+            <span />
+          )}
+          <Group gap="sm" justify="flex-end">
+            <CancelButton
+              fullWidth={isMobile}
+              onClick={() => router.push(LIST)}
+            />
+            <SaveButton
+              fullWidth={isMobile}
+              loading={isPending}
+              onClick={save}
+            />
+          </Group>
         </Group>
-      </Group>
+      </FormActions>
     </Stack>
   );
 }
