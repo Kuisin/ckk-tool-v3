@@ -25,8 +25,8 @@ import { useTransition } from "react";
 import { z } from "zod";
 import type { BpDetail } from "@/app/(dashboard)/master/_shared/bp-data";
 import { BP_BASE_PATH } from "@/app/(dashboard)/master/_shared/bp-paths";
+import type { BpInput } from "@/app/(dashboard)/master/_shared/bp-schema";
 import {
-  type BpInput,
   createBusinessPartner,
   updateBusinessPartner,
 } from "@/app/(dashboard)/master/business-partners/actions";
