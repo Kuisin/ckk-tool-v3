@@ -12,6 +12,8 @@
  * - REQUESTED: 承認 / 差し戻し（第一承認グループ — 代理可）。
  * - APPROVED: 伝票展開（明細ごとに注文請書 ORD-…-NN を一括作成）。
  * - COMPLETED: 生成された注文請書リンク + アーカイブ。
+ * 状態ごとの操作は最上部の ActionCard にまとめる（承認権限の有無で色が変わる
+ * — 権限が無いユーザーにはグレーの「承認待ち」カード）。
  * タブ: 添付（AttachmentsPanel）/ 履歴（HistoryPanel）。
  */
 
@@ -39,16 +41,18 @@ import {
   IconAlertTriangle,
   IconArchive,
   IconCalendar,
+  IconClock,
   IconFile,
   IconInfoCircle,
   IconPencil,
   IconRefresh,
   IconSend,
+  IconShieldCheck,
   IconTransform,
 } from "@tabler/icons-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useState, useTransition } from "react";
+import { type ReactNode, useEffect, useState, useTransition } from "react";
 import { searchCustomerOptions } from "@/app/(dashboard)/_shared/option-search";
 import {
   approveAcceptance,
@@ -69,6 +73,7 @@ import {
   type ApprovalTrailView,
   countTrailRecords,
 } from "@/components/production/ApprovalStatusPanel";
+import { ActionCard } from "@/components/ui/ActionCard";
 import {
   AttachmentsPanel,
   type AttachmentView,
@@ -260,6 +265,96 @@ export function OrderAcceptanceDetail({
     });
   };
 
+  /**
+   * 「いまやること」カード（最上部）。承認待ちは承認権限の有無で色が変わる
+   * — 権限あり = 緑 + 承認/差し戻し、権限なし = グレーの「承認待ち」表示。
+   */
+  let actionCard: ReactNode = null;
+  if (a.status === "DRAFT") {
+    actionCard = (
+      <ActionCard
+        actions={
+          <PrimaryButton
+            leftSection={<IconSend size={14} />}
+            loading={isPending}
+            onClick={requestApproval}
+          >
+            承認依頼
+          </PrimaryButton>
+        }
+        description="未保存の編集は承認依頼の前に保存してください"
+        icon={<IconSend size={20} />}
+        title="内容を確認して承認依頼してください"
+        tone="action"
+      />
+    );
+  } else if (a.status === "REQUESTED") {
+    actionCard = canApprove ? (
+      <ActionCard
+        actions={
+          <>
+            <ApproveButton
+              loading={isPending}
+              onClick={() =>
+                run(() => approveAcceptance(a.number), "承認しました")
+              }
+            >
+              承認
+            </ApproveButton>
+            <RejectButton onClick={() => setRejectOpen(true)} />
+          </>
+        }
+        description="第一承認グループの承認者としてこの受注請書を承認できます"
+        icon={<IconShieldCheck size={20} />}
+        title="承認してください"
+        tone="approve"
+      />
+    ) : (
+      <ActionCard
+        description="第一承認グループのメンバーのみ承認・差し戻しできます"
+        icon={<IconClock size={20} />}
+        title="承認待ち"
+        tone="wait"
+      />
+    );
+  } else if (a.status === "APPROVED") {
+    actionCard = (
+      <ActionCard
+        actions={
+          <PrimaryButton
+            leftSection={<IconTransform size={14} />}
+            loading={isPending}
+            onClick={() => setDeployOpen(true)}
+          >
+            伝票展開
+          </PrimaryButton>
+        }
+        description="明細ごとに注文請書（ORD-…-NN）を一括作成します"
+        icon={<IconTransform size={20} />}
+        title="伝票展開できます"
+        tone="action"
+      />
+    );
+  } else if (a.status === "COMPLETED") {
+    actionCard = (
+      <ActionCard
+        actions={
+          <SecondaryButton
+            leftSection={<IconArchive size={14} />}
+            loading={isPending}
+            onClick={() => setArchiveOpen(true)}
+          >
+            アーカイブ
+          </SecondaryButton>
+        }
+        description="注文請書を作成済みです。処理が終わったらアーカイブできます"
+        icon={<IconArchive size={20} />}
+        title="伝票展開が完了しました"
+        tone="action"
+      />
+    );
+  }
+
   return (
     <DetailShell
       actions={
@@ -287,6 +382,8 @@ export function OrderAcceptanceDetail({
         書類は **状態に関わらず常に** 左に出す（取込中・失敗中でも見たい）。
         右は状態ごとの中身。狭い画面では縦積み（書類は折りたたみ）。
       */}
+      {actionCard}
+
       <Grid gap="md">
         <Grid.Col span={{ base: 12, lg: 5 }}>
           <IntakeDocumentPane
@@ -592,63 +689,11 @@ export function OrderAcceptanceDetail({
                 />
               </Stepper>
 
-              <Group gap="xs" mt="md">
-                {a.status === "DRAFT" && (
-                  <>
-                    <PrimaryButton
-                      leftSection={<IconSend size={14} />}
-                      loading={isPending}
-                      onClick={requestApproval}
-                    >
-                      承認依頼
-                    </PrimaryButton>
-                    <Text c="dimmed" size="xs">
-                      未保存の編集は承認依頼の前に保存してください
-                    </Text>
-                  </>
-                )}
-                {a.status === "REQUESTED" &&
-                  (canApprove ? (
-                    <>
-                      <ApproveButton
-                        loading={isPending}
-                        onClick={() =>
-                          run(() => approveAcceptance(a.number), "承認しました")
-                        }
-                      >
-                        承認
-                      </ApproveButton>
-                      <RejectButton onClick={() => setRejectOpen(true)} />
-                    </>
-                  ) : (
-                    <Text c="dimmed" size="xs">
-                      第一承認グループのメンバーのみ承認・差し戻しできます
-                    </Text>
-                  ))}
-                {a.status === "APPROVED" && (
-                  <PrimaryButton
-                    leftSection={<IconTransform size={14} />}
-                    loading={isPending}
-                    onClick={() => setDeployOpen(true)}
-                  >
-                    伝票展開
-                  </PrimaryButton>
-                )}
-                {a.status === "COMPLETED" && (
-                  <SecondaryButton
-                    leftSection={<IconArchive size={14} />}
-                    loading={isPending}
-                    onClick={() => setArchiveOpen(true)}
-                  >
-                    アーカイブ
-                  </SecondaryButton>
-                )}
-                {a.status === "ARCHIVED" && (
-                  <Text c="dimmed" size="xs">
-                    アーカイブ済み（{formatDateTime(a.archivedAt)}）
-                  </Text>
-                )}
-              </Group>
+              {a.status === "ARCHIVED" && (
+                <Text c="dimmed" mt="md" size="xs">
+                  アーカイブ済み（{formatDateTime(a.archivedAt)}）
+                </Text>
+              )}
 
               {/* 伝票展開で生成された注文請書 */}
               {a.salesOrderNumbers.length > 0 && (

@@ -3,8 +3,9 @@
 /**
  * PurchaseRequestDetail — 購買依頼 詳細 (PU21, design.md §8.2)。
  *
- * SummaryGrid + 承認/変換パネル（線形 Stepper 依頼→承認→発注書へ変換 +
- * 状態別アクション）+ Tabs（明細 / 概要 / 履歴）。
+ * 最上部の ActionCard（いまやること — 権限で色が変わる）+ SummaryGrid +
+ * 承認/変換パネル（線形 Stepper 依頼→承認→発注書へ変換）+ Tabs
+ * （明細 / 概要 / 履歴）。
  *
  * 状態別アクション:
  *   DRAFT / REJECTED: 承認依頼 + 編集 / キャンセル
@@ -33,13 +34,15 @@ import { notifications } from "@mantine/notifications";
 import {
   IconAlertTriangle,
   IconArrowBackUp,
+  IconClock,
   IconSend,
+  IconShieldCheck,
   IconShoppingCart,
   IconX,
 } from "@tabler/icons-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { type ReactNode, useState, useTransition } from "react";
 import {
   approvePurchaseRequest,
   cancelPurchaseRequest,
@@ -52,6 +55,7 @@ import {
   type ApprovalTrailView,
   countTrailRecords,
 } from "@/components/production/ApprovalStatusPanel";
+import { ActionCard } from "@/components/ui/ActionCard";
 import {
   ApproveButton,
   PrimaryButton,
@@ -197,6 +201,98 @@ export function PurchaseRequestDetail({
   // 差し戻し中の表示用: 最新の REJECT エントリの理由
   const lastReject = records.find((h) => h.action === "REJECT");
 
+  /**
+   * 「いまやること」カード（最上部）。承認待ちは承認権限の有無で色が変わる
+   * — 権限あり = 緑 + 承認/差し戻し、権限なし = グレーの「承認待ち」表示。
+   */
+  let actionCard: ReactNode = null;
+  if (canRequestApproval(rq)) {
+    actionCard = (
+      <ActionCard
+        actions={
+          <PrimaryButton
+            leftSection={<IconSend size={14} />}
+            loading={isPending}
+            onClick={() =>
+              run(
+                () => requestPurchaseRequestApproval(rq.requestNumber),
+                "承認依頼しました",
+              )
+            }
+          >
+            承認依頼
+          </PrimaryButton>
+        }
+        description={
+          rq.status === "REJECTED"
+            ? `差し戻し理由: ${lastReject?.notes ?? "—"}（修正して再依頼できます）`
+            : "第一承認グループへ承認を依頼します"
+        }
+        icon={
+          rq.status === "REJECTED" ? (
+            <IconArrowBackUp size={20} />
+          ) : (
+            <IconSend size={20} />
+          )
+        }
+        title={
+          rq.status === "REJECTED" ? "差し戻されました" : "承認依頼が必要です"
+        }
+        tone={rq.status === "REJECTED" ? "alert" : "action"}
+      />
+    );
+  } else if (rq.status === "REQUESTED") {
+    actionCard = canApprove ? (
+      <ActionCard
+        actions={
+          <>
+            <ApproveButton
+              loading={isPending}
+              onClick={() =>
+                run(
+                  () => approvePurchaseRequest(rq.requestNumber),
+                  "承認しました",
+                )
+              }
+            >
+              承認
+            </ApproveButton>
+            <RejectButton onClick={() => setRejectOpen(true)} />
+          </>
+        }
+        description="第一承認グループの承認者としてこの依頼を承認できます"
+        icon={<IconShieldCheck size={20} />}
+        title="承認してください"
+        tone="approve"
+      />
+    ) : (
+      <ActionCard
+        description="第一承認グループのメンバーのみ承認・差し戻しできます"
+        icon={<IconClock size={20} />}
+        title="承認待ち"
+        tone="wait"
+      />
+    );
+  } else if (rq.status === "APPROVED") {
+    actionCard = (
+      <ActionCard
+        actions={
+          <PrimaryButton
+            leftSection={<IconShoppingCart size={14} />}
+            loading={isPending}
+            onClick={() => setConvertOpen(true)}
+          >
+            発注書へ変換
+          </PrimaryButton>
+        }
+        description="仕入先を指定すると素材発注書（下書き）を生成します"
+        icon={<IconShoppingCart size={20} />}
+        title="発注書へ変換できます"
+        tone="action"
+      />
+    );
+  }
+
   return (
     <DetailShell
       actions={
@@ -226,6 +322,8 @@ export function PurchaseRequestDetail({
       title={rq.requestNumber}
       updatedAt={formatDateTime(rq.updatedAt)}
     >
+      {actionCard}
+
       <SummaryGrid>
         <FieldValue
           label="依頼番号"
@@ -293,18 +391,6 @@ export function PurchaseRequestDetail({
           />
         </Stepper>
 
-        {rq.status === "REJECTED" && (
-          <Alert
-            color="orange"
-            icon={<IconArrowBackUp size={16} />}
-            mt="md"
-            title="差し戻されました"
-            variant="light"
-          >
-            {lastReject?.notes ?? "—"}（編集して再度承認依頼できます）
-          </Alert>
-        )}
-
         {rq.status === "CANCELLED" && (
           <Alert
             color="red"
@@ -318,50 +404,6 @@ export function PurchaseRequestDetail({
         )}
 
         <Group gap="xs" mt="md">
-          {canRequestApproval(rq) && (
-            <PrimaryButton
-              leftSection={<IconSend size={14} />}
-              loading={isPending}
-              onClick={() =>
-                run(
-                  () => requestPurchaseRequestApproval(rq.requestNumber),
-                  "承認依頼しました",
-                )
-              }
-            >
-              承認依頼
-            </PrimaryButton>
-          )}
-          {rq.status === "REQUESTED" &&
-            (canApprove ? (
-              <>
-                <ApproveButton
-                  loading={isPending}
-                  onClick={() =>
-                    run(
-                      () => approvePurchaseRequest(rq.requestNumber),
-                      "承認しました",
-                    )
-                  }
-                >
-                  承認
-                </ApproveButton>
-                <RejectButton onClick={() => setRejectOpen(true)} />
-              </>
-            ) : (
-              <Text c="dimmed" size="xs">
-                第一承認グループのメンバーのみ承認・差し戻しできます
-              </Text>
-            ))}
-          {rq.status === "APPROVED" && (
-            <PrimaryButton
-              leftSection={<IconShoppingCart size={14} />}
-              loading={isPending}
-              onClick={() => setConvertOpen(true)}
-            >
-              発注書へ変換
-            </PrimaryButton>
-          )}
           {rq.status === "ORDERED" && rq.purchaseOrderNumber && (
             <Anchor
               component={Link}
