@@ -1,0 +1,38 @@
+# legacy-db — 旧 macOS 版の業務 DB（`ckk_system`）。参照専用の置き場。
+#
+# FileMaker からの移行元データがそのまま残っている。移行スクリプト
+# （data-migration/）や、過去値を確かめたいときにだけ使う。**業務は
+# shared-db（PG17 + PGroonga）を見る** — こちらへ書かないこと。
+#
+# これまで compose を持たず `docker run` で立てられていて、どのスタックにも
+# 属さない唯一のコンテナだった（README「規則 1」）。データは元からの名前付き
+# ボリューム `ckk-legacy-data` をそのまま引き継ぐので、中身は変わらない。
+#
+# ホストポートは公開しない。使うときは同じネットワークから引くか、
+#   docker exec -it ckk-legacy-db psql -U ckk_admin ckk_system
+# で入る。
+
+services:
+  ckk-legacy-db:
+    image: postgres:17-alpine
+    container_name: ckk-legacy-db
+    restart: unless-stopped
+    environment:
+      - POSTGRES_USER=ckk_admin
+      # 実体はサーバー側の .env（git には置かない）。既存のデータディレクトリを
+      # 引き継ぐので、初期化時に作られた認証情報がそのまま有効。
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:?legacy-db/.env に POSTGRES_PASSWORD が要る}
+      - POSTGRES_DB=ckk_system
+    volumes:
+      - legacy-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ckk_admin -d ckk_system"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  # 既存のボリュームをそのまま使う（compose に作らせない ＝ 中身を失わない）。
+  legacy-data:
+    external: true
+    name: ckk-legacy-data
