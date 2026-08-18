@@ -30,6 +30,7 @@ import { effectiveMemberWhere } from "./approval-membership";
 import { APPROVAL_TARGET, type ApprovalTargetType } from "./approval-targets";
 import { getCurrentActorId } from "./audit";
 import { prisma } from "./db";
+import { parseDocKey } from "./doc-number";
 import { type LocalizedText, localized } from "./format";
 import { notify, notifyApprovalGroup } from "./notifications";
 
@@ -195,6 +196,71 @@ function snapshotSteps(snapshot: unknown) {
   }));
 }
 
+// ─── 書類の世代スコープ ─────────────────────────────────────────────────────
+//
+// approval_requests は書類を **表示番号の文字列**（targetId）で指す。FK では
+// ないので、書類が消えても依頼行は残る。採番をリセットして同じ番号が再利用
+// されると、新しい書類が前の（削除済み）書類の承認記録を引き継いで見えて
+// しまう（dev で実際に発生: 作成前の「第一承認」が新しい注文請書に出た）。
+//
+// 依頼は必ず書類より後に作られるので、「書類の作成日時より古い依頼」は
+// 別世代のもの。読み取り時にそこで切る。
+
+/** 対象書類の作成日時（見つからない・キーが解釈できない場合は null）。 */
+async function targetCreatedAt(
+  targetType: ApprovalTargetType,
+  targetId: string,
+): Promise<Date | null> {
+  switch (targetType) {
+    case "order_acceptances": {
+      const key = parseDocKey(targetId, "ORD");
+      if (!key) return null;
+      const row = await prisma.orderAcceptance.findUnique({
+        where: { yearMonth_seq: { yearMonth: key.yearMonth, seq: key.seq } },
+        select: { createdAt: true },
+      });
+      return row?.createdAt ?? null;
+    }
+    case "work_orders": {
+      const workOrderNumber = Number(targetId);
+      if (!Number.isInteger(workOrderNumber)) return null;
+      const row = await prisma.workOrder.findUnique({
+        where: { workOrderNumber },
+        select: { createdAt: true },
+      });
+      return row?.createdAt ?? null;
+    }
+    case "material_purchase_orders": {
+      const row = await prisma.materialPurchaseOrder.findUnique({
+        where: { poNumber: targetId },
+        select: { createdAt: true },
+      });
+      return row?.createdAt ?? null;
+    }
+    case "purchase_requests": {
+      const row = await prisma.purchaseRequest.findUnique({
+        where: { requestNumber: targetId },
+        select: { createdAt: true },
+      });
+      return row?.createdAt ?? null;
+    }
+  }
+}
+
+/**
+ * 「この書類の依頼」を選ぶ where 句。書類が引けなかったときは番号だけで
+ * 絞る（従来どおり）— 絞り込みを増やすだけで、正常系の見え方は変わらない。
+ */
+async function targetScope(
+  targetType: ApprovalTargetType,
+  targetId: string,
+): Promise<Prisma.ApprovalRequestWhereInput> {
+  const createdAt = await targetCreatedAt(targetType, targetId);
+  return createdAt
+    ? { targetType, targetId, requestedAt: { gte: createdAt } }
+    : { targetType, targetId };
+}
+
 /**
  * 対象の承認状態を組み立てる。PENDING の依頼が無ければ、最後に閉じた依頼
  * （承認済 / 差し戻し）から phase を決める。どちらも無ければ NONE。
@@ -205,8 +271,9 @@ export async function fetchApprovalState(
   userId?: string | null,
 ): Promise<ApprovalActionState> {
   const actor = userId ?? (await getCurrentActorId());
+  const scope = await targetScope(targetType, targetId);
   const pending = await prisma.approvalRequest.findFirst({
-    where: { targetType, targetId, status: "PENDING" },
+    where: { ...scope, status: "PENDING" },
     include: {
       approvers: {
         include: { user: { select: { displayName: true } } },
@@ -218,7 +285,7 @@ export async function fetchApprovalState(
   if (!pending) {
     // 閉じた依頼から局面を決める（最後の 1 件）
     const last = await prisma.approvalRequest.findFirst({
-      where: { targetType, targetId },
+      where: scope,
       orderBy: [{ stepNo: "desc" }, { requestedAt: "desc" }],
     });
     if (!last) return EMPTY_STATE;
@@ -369,15 +436,25 @@ export async function startApprovalFlow(input: {
   const actor = await getCurrentActorId();
   const snapshot = toSnapshot(flow);
 
+  // PENDING は番号ごとに 1 行（部分 unique index）。自分の世代のものなら
+  // 二重依頼なので成功として返す。前の（削除済み）書類が残した行だった場合は
+  // 作成が index で必ず落ちるので、黙って成功と言わずに理由を返す。
   const existing = await prisma.approvalRequest.findFirst({
     where: {
       targetType: input.targetType,
       targetId: input.targetId,
       status: "PENDING",
     },
-    select: { id: true },
+    select: { id: true, requestedAt: true },
   });
-  if (existing) return { ok: true };
+  if (existing) {
+    const createdAt = await targetCreatedAt(input.targetType, input.targetId);
+    if (!createdAt || existing.requestedAt >= createdAt) return { ok: true };
+    return {
+      ok: false,
+      error: `${input.targetId} には削除済み書類の承認依頼が残っています（番号の再利用）。管理者に連絡してください`,
+    };
+  }
 
   let created: { id: string };
   try {
@@ -654,7 +731,7 @@ export async function fetchApprovalTrail(
   targetId: string,
 ): Promise<ApprovalTrailEntry[]> {
   const rows = await prisma.approvalRequest.findMany({
-    where: { targetType, targetId },
+    where: await targetScope(targetType, targetId),
     include: {
       approvers: { select: { actedAt: true } },
       records: {

@@ -177,9 +177,9 @@ const nextConfig: NextConfig = {
       // 承認グループのマニュアルも 承認設定 へ改称。MANUAL_APP_CATEGORY は
       // カテゴリ移動用でスラッグの改称は見ないので、ここに個別に置く。
       {
-        source: "/manual/:lang(ja|en|zh)/operations/masters/approval-group/:path*",
-        destination:
-          "/manual/:lang/operations/masters/approval-setting/:path*",
+        source:
+          "/manual/:lang(ja|en|zh)/operations/masters/approval-group/:path*",
+        destination: "/manual/:lang/operations/masters/approval-setting/:path*",
         permanent: true,
       },
 

@@ -21,7 +21,6 @@ import {
   Table,
   Tabs,
   Text,
-  Tooltip,
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import {
@@ -39,7 +38,7 @@ import {
   cancelOrderLine,
   runStockCheck,
 } from "@/app/(dashboard)/sales/order-lines/actions";
-import { EditButton, SecondaryButton } from "@/components/ui/buttons";
+import { SecondaryButton } from "@/components/ui/buttons";
 import { DocNumber } from "@/components/ui/DocNumber";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { FieldValue } from "@/components/ui/FieldValue";
