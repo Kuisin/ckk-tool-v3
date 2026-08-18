@@ -2,22 +2,31 @@
 --
 -- 適用: cd shared-db && pnpm remote sh -c 'psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f sql/roles-seed.sql'
 --
--- 前提: rbac-seed.sql（permissions 16 コード + admin/staff ロール）適用済み。
+-- 前提: rbac-seed.sql（permissions 18 コード + admin/staff ロール）適用済み。
 -- 本番ではここで定義するロールを実ユーザーへ割り当てる（user_role_relation）。
 -- 承認（APPROVE）は権限に加えて承認グループ所属（approval_group_members）が
 -- 実ゲートである点に注意 — 権限はコード×アクションの門番のみ。
 --
+-- 管理系 2 コードは業務ロールに配らない:
+--   system — システム管理（SY01–SY0C）。admin のみ。
+--   kiosk  — 共有端末の管理（SY08–SY0A）。admin のみ（CLAUDE.md「admin-only」）。
+--            以前は「system 以外の全コード READ」の一括付与に kiosk が混ざり、
+--            管理職・部門長・閲覧ロールに QRカード/端末管理の READ が付いていた。
+--   internal_docs は一括付与の対象（DC02 社内ドキュメントは管理職も読む）。
+--
 -- マトリクス（R=READ C=CREATE U=UPDATE D=DELETE E=EXPORT A=APPROVE）:
 --   manager    : 全業務 R+E+A（承認者・閲覧横断）
---   sales (営業メンバー)  : 見積(quote)/価格表(price_list) C·R·U（自分=OWN）+ マスタ R
+--   sales (営業メンバー)  : 見積(quote)/価格表(price_list)/受注請書(order_acceptance)/
+--                           設計依頼(design_request) C·R·U（自分=OWN）+ マスタ R
 --   purchasing : 購買依頼・発注/入荷/外注 RCUDE(+発注 A)、在庫 R、他 R
---   production : 注文請書・指示書 RCUDEA（拠点スコープ）、在庫 RCUE（拠点スコープ）、外注 RU、他 R
+--   production : 指示書 RCUDEA（拠点スコープ）、在庫 RCUE（拠点スコープ）、
+--                受注明細 RU、外注 RU、他 R
 --   quality    : 指示書（検査記録・検査承認） RUA（拠点スコープ）、他 R
 --   shipping   : 出荷書/納品書 RCUDE（出荷書は拠点スコープ）、在庫 RU（拠点スコープ）、他 R
 --   accounting : 請求書/締日 RCUDE、販売・出荷 R、他 R
 --   viewer     : 全業務 R
---   sales_assistant (営業補佐) : 見積/価格表 R（全件=ALL）+ マスタ R。作成/編集/承認なし
---   sales_manager (営業部長)   : 見積/価格表 R·C·U·D·E·A（全件=ALL）+ マスタ/承認 R
+--   sales_assistant (営業補佐) : 営業 4 コード R（全件=ALL）+ マスタ R。作成/編集/承認なし
+--   sales_manager (営業部長)   : 営業 4 コード R·C·U·D·E·A（全件=ALL）+ マスタ/承認 R
 --   <division>_manager（×5・他部門長） : 自部門コード RCUDEA + 全業務 R
 --   （member = 既存の部門ロール。manager = 部門フル + 横断閲覧 + 承認）
 
@@ -26,21 +35,25 @@ BEGIN;
 -- ─── ロール ──────────────────────────────────────────────────────────────────
 INSERT INTO app.roles (is_system, rolename, display_name, description) VALUES
   (true, 'manager',    '{"ja":"管理職（承認者）","en":"Manager"}',      '{"ja":"全業務の閲覧・承認・エクスポート","en":""}'),
-  (true, 'sales',      '{"ja":"営業","en":"Sales"}',                    '{"ja":"見積・価格表・受注請書・設計依頼","en":""}'),
+  (true, 'sales',      '{"ja":"営業","en":"Sales"}',                    '{"ja":"見積・価格表・受注請書・設計依頼（自分のデータ）","en":""}'),
   (true, 'purchasing', '{"ja":"購買","en":"Purchasing"}',               '{"ja":"購買依頼・素材発注・入荷・外注","en":""}'),
-  (true, 'production', '{"ja":"製造・生産管理","en":"Production"}',     '{"ja":"注文請書・指示書・工程実行・在庫","en":""}'),
+  (true, 'production', '{"ja":"製造・生産管理","en":"Production"}',     '{"ja":"受注明細・指示書・工程実行・在庫","en":""}'),
   (true, 'quality',    '{"ja":"品質・検査","en":"Quality"}',            '{"ja":"検査記録・検査承認","en":""}'),
   (true, 'shipping',   '{"ja":"出荷","en":"Shipping"}',                 '{"ja":"出荷書・納品書","en":""}'),
   (true, 'accounting', '{"ja":"経理","en":"Accounting"}',               '{"ja":"請求書・締日処理・会計連携","en":""}'),
   (true, 'viewer',     '{"ja":"閲覧","en":"Viewer"}',                   '{"ja":"全業務の閲覧のみ","en":""}'),
-  (true, 'sales_assistant', '{"ja":"営業補佐","en":"Sales assistant"}',  '{"ja":"見積・受注・注文請書の作成/編集（承認不可）","en":""}'),
+  (true, 'sales_assistant', '{"ja":"営業補佐","en":"Sales assistant"}',  '{"ja":"営業データの閲覧のみ（作成・編集・承認は不可）","en":""}'),
   (true, 'sales_manager',      '{"ja":"営業部長","en":"Sales manager"}',      '{"ja":"営業部門フル + 全業務閲覧","en":""}'),
   (true, 'purchasing_manager', '{"ja":"購買部長","en":"Purchasing manager"}', '{"ja":"購買部門フル + 全業務閲覧","en":""}'),
   (true, 'production_manager', '{"ja":"製造部長","en":"Production manager"}', '{"ja":"製造部門フル + 全業務閲覧","en":""}'),
   (true, 'quality_manager',    '{"ja":"品質部長","en":"Quality manager"}',    '{"ja":"品質部門フル + 全業務閲覧","en":""}'),
   (true, 'shipping_manager',   '{"ja":"出荷部長","en":"Shipping manager"}',   '{"ja":"出荷部門フル + 全業務閲覧","en":""}'),
   (true, 'accounting_manager', '{"ja":"経理部長","en":"Accounting manager"}', '{"ja":"経理部門フル + 全業務閲覧","en":""}')
-ON CONFLICT (rolename) DO NOTHING;
+-- 表示名・説明は毎回上書きする。DO NOTHING のままだと、アプリの用語が変わっても
+-- （例: 注文請書 → 受注明細）DB のラベルが古いまま直せない。
+ON CONFLICT (rolename) DO UPDATE
+  SET display_name = EXCLUDED.display_name,
+      description  = EXCLUDED.description;
 
 -- ─── 権限グラント ────────────────────────────────────────────────────────────
 
@@ -63,31 +76,41 @@ SELECT r.id, p.code, a.action::app."ACTION", 'ALL'::app."SCOPE"
 FROM app.roles r
 CROSS JOIN app.permissions p
 CROSS JOIN (VALUES ('READ'),('EXPORT'),('APPROVE')) AS a(action)
-WHERE r.rolename = 'manager' AND p.code <> 'system'
+WHERE r.rolename = 'manager' AND p.code NOT IN ('system', 'kiosk')
 ON CONFLICT DO NOTHING;
 
 -- viewer: 全業務コード（system 以外）に R
 INSERT INTO app.role_permission_relation (role_id, permission_code, action, scope)
 SELECT r.id, p.code, 'READ'::app."ACTION", 'ALL'::app."SCOPE"
 FROM app.roles r CROSS JOIN app.permissions p
-WHERE r.rolename = 'viewer' AND p.code <> 'system'
+WHERE r.rolename = 'viewer' AND p.code NOT IN ('system', 'kiosk')
 ON CONFLICT DO NOTHING;
 
--- sales（営業メンバー）: 自分の 試算/見積(quote)・価格表(price_list) を作成・閲覧・
---   編集（scope OWN）。参照マスタは全件 READ。他者データ・削除・承認・エクスポートは不可。
---   ※ 本番公開アプリ（試算/価格表/見積書）に合わせて quote+price_list に限定。
+-- sales（営業メンバー）: 自分の 試算/見積(quote)・価格表(price_list)・受注請書
+--   (order_acceptance)・設計依頼(design_request) を作成・閲覧・編集（scope OWN）。
+--   参照マスタは全件 READ。他者データ・削除・承認・エクスポートは不可。
+--
+--   販売カテゴリの 6 アプリ（SA01 試算 / SA02 価格表 / SA03 見積書 / SA04 受注請書 /
+--   SA05 受注明細 / SA06 設計依頼書）は 4 コードで賄われる。以前は本番公開分
+--   （試算・価格表・見積書）に合わせて quote+price_list だけを配っていたが、
+--   受注請書・受注明細・設計依頼書が実装済みの今は、営業ロールがそれらを
+--   まったく使えない状態になっていた。**本番での見え方は feature_flags が
+--   別に決める**ので、ここで配っても未公開アプリが本番に出ることはない。
+--
 --   既存の権限を作り直すため DELETE してから INSERT（冪等・スコープ変更も反映）。
 DELETE FROM app.role_permission_relation
 WHERE role_id = (SELECT id FROM app.roles WHERE rolename = 'sales');
 INSERT INTO app.role_permission_relation (role_id, permission_code, action, scope)
-SELECT r.id, g.code, g.action::app."ACTION", g.scope::app."SCOPE"
+SELECT r.id, c.code, a.action::app."ACTION", 'OWN'::app."SCOPE"
 FROM app.roles r
-CROSS JOIN (VALUES
-  ('quote','READ','OWN'),('quote','CREATE','OWN'),('quote','UPDATE','OWN'),
-  ('price_list','READ','OWN'),('price_list','CREATE','OWN'),('price_list','UPDATE','OWN'),
-  ('master','READ','ALL')
-) AS g(code, action, scope)
+CROSS JOIN (VALUES ('quote'),('price_list'),('order_acceptance'),('design_request')) AS c(code)
+CROSS JOIN (VALUES ('READ'),('CREATE'),('UPDATE')) AS a(action)
 WHERE r.rolename = 'sales'
+ON CONFLICT DO NOTHING;
+
+INSERT INTO app.role_permission_relation (role_id, permission_code, action, scope)
+SELECT r.id, 'master', 'READ'::app."ACTION", 'ALL'::app."SCOPE"
+FROM app.roles r WHERE r.rolename = 'sales'
 ON CONFLICT DO NOTHING;
 
 -- purchasing
@@ -162,28 +185,32 @@ CROSS JOIN (VALUES
 WHERE r.rolename = 'accounting'
 ON CONFLICT DO NOTHING;
 
--- sales_assistant（営業補佐）: 営業データ（試算/見積・価格表）を全件 READ のみ。
---   参照マスタも READ。作成・編集・削除・承認は一切不可。
+-- sales_assistant（営業補佐）: 営業データ（試算/見積・価格表・受注請書・設計依頼）を
+--   全件 READ のみ。参照マスタも READ。作成・編集・削除・承認は一切不可。
 DELETE FROM app.role_permission_relation
 WHERE role_id = (SELECT id FROM app.roles WHERE rolename = 'sales_assistant');
 INSERT INTO app.role_permission_relation (role_id, permission_code, action, scope)
 SELECT r.id, g.code, 'READ'::app."ACTION", 'ALL'::app."SCOPE"
 FROM app.roles r
-CROSS JOIN (VALUES ('quote'),('price_list'),('master')) AS g(code)
+CROSS JOIN (VALUES
+  ('quote'),('price_list'),('order_acceptance'),('design_request'),('master')
+) AS g(code)
 WHERE r.rolename = 'sales_assistant'
 ON CONFLICT DO NOTHING;
 
 -- ─── 部門長ロール（member = 既存部門ロール / manager = 部門フル + 横断閲覧） ───
 
--- sales_manager（営業部長）: 営業データ（試算/見積・価格表）を全件フル
---   （R・C・U・D・E・APPROVE, scope ALL — 他者データの閲覧含む） + 参照マスタ READ +
---   承認閲覧。※ 本番公開アプリに合わせ quote+price_list に限定。
+-- sales_manager（営業部長）: 営業データ（試算/見積・価格表・受注請書・設計依頼）を
+--   全件フル（R・C・U・D・E・APPROVE, scope ALL — 他者データの閲覧含む） +
+--   参照マスタ READ + 承認閲覧。
 DELETE FROM app.role_permission_relation
 WHERE role_id = (SELECT id FROM app.roles WHERE rolename = 'sales_manager');
 INSERT INTO app.role_permission_relation (role_id, permission_code, action, scope)
 SELECT r.id, c.code, a.action::app."ACTION", 'ALL'::app."SCOPE"
 FROM app.roles r
-CROSS JOIN (VALUES ('quote'),('price_list')) AS c(code)
+CROSS JOIN (VALUES
+  ('quote'),('price_list'),('order_acceptance'),('design_request')
+) AS c(code)
 CROSS JOIN (VALUES ('READ'),('CREATE'),('UPDATE'),('DELETE'),('EXPORT'),('APPROVE')) AS a(action)
 WHERE r.rolename = 'sales_manager'
 ON CONFLICT DO NOTHING;
@@ -206,7 +233,7 @@ ON CONFLICT DO NOTHING;
 INSERT INTO app.role_permission_relation (role_id, permission_code, action, scope)
 SELECT r.id, p.code, 'READ'::app."ACTION", 'ALL'::app."SCOPE"
 FROM app.roles r CROSS JOIN app.permissions p
-WHERE r.rolename = 'purchasing_manager' AND p.code <> 'system'
+WHERE r.rolename = 'purchasing_manager' AND p.code NOT IN ('system', 'kiosk')
 ON CONFLICT DO NOTHING;
 
 -- production_manager: 自部門フル（RCUDEA） + 全業務 READ
@@ -221,7 +248,7 @@ ON CONFLICT DO NOTHING;
 INSERT INTO app.role_permission_relation (role_id, permission_code, action, scope)
 SELECT r.id, p.code, 'READ'::app."ACTION", 'ALL'::app."SCOPE"
 FROM app.roles r CROSS JOIN app.permissions p
-WHERE r.rolename = 'production_manager' AND p.code <> 'system'
+WHERE r.rolename = 'production_manager' AND p.code NOT IN ('system', 'kiosk')
 ON CONFLICT DO NOTHING;
 
 -- quality_manager: 自部門フル（RCUDEA） + 全業務 READ
@@ -236,7 +263,7 @@ ON CONFLICT DO NOTHING;
 INSERT INTO app.role_permission_relation (role_id, permission_code, action, scope)
 SELECT r.id, p.code, 'READ'::app."ACTION", 'ALL'::app."SCOPE"
 FROM app.roles r CROSS JOIN app.permissions p
-WHERE r.rolename = 'quality_manager' AND p.code <> 'system'
+WHERE r.rolename = 'quality_manager' AND p.code NOT IN ('system', 'kiosk')
 ON CONFLICT DO NOTHING;
 
 -- shipping_manager: 自部門フル（RCUDEA） + 全業務 READ
@@ -251,7 +278,7 @@ ON CONFLICT DO NOTHING;
 INSERT INTO app.role_permission_relation (role_id, permission_code, action, scope)
 SELECT r.id, p.code, 'READ'::app."ACTION", 'ALL'::app."SCOPE"
 FROM app.roles r CROSS JOIN app.permissions p
-WHERE r.rolename = 'shipping_manager' AND p.code <> 'system'
+WHERE r.rolename = 'shipping_manager' AND p.code NOT IN ('system', 'kiosk')
 ON CONFLICT DO NOTHING;
 
 -- accounting_manager: 自部門フル（RCUDEA） + 全業務 READ
@@ -266,7 +293,7 @@ ON CONFLICT DO NOTHING;
 INSERT INTO app.role_permission_relation (role_id, permission_code, action, scope)
 SELECT r.id, p.code, 'READ'::app."ACTION", 'ALL'::app."SCOPE"
 FROM app.roles r CROSS JOIN app.permissions p
-WHERE r.rolename = 'accounting_manager' AND p.code <> 'system'
+WHERE r.rolename = 'accounting_manager' AND p.code NOT IN ('system', 'kiosk')
 ON CONFLICT DO NOTHING;
 
 COMMIT;
