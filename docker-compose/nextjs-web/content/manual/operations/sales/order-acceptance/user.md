@@ -116,7 +116,7 @@ screenshots: [order-acceptance-list-01, order-acceptance-new-01, order-acceptanc
 
 見積書番号を入れていた場合、その[見積書](/manual/ja/operations/sales/quote/user)は自動で「受諾済」になります。
 
-作業が終わったら「**アーカイブ**」を押して片付けます。アーカイブしたものは、それ以降は編集できません。
+作業が終わったら、右上の「…」メニューから「**アーカイブ**」を押して片付けます（任意です）。アーカイブしたものは、それ以降は編集できません。
 
 ## 入力項目
 

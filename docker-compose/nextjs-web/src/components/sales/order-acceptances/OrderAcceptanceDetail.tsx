@@ -343,25 +343,10 @@ export function OrderAcceptanceDetail({
         tone="action"
       />
     );
-  } else if (a.status === "COMPLETED") {
-    actionCard = (
-      <ActionCard
-        actions={
-          <SecondaryButton
-            leftSection={<IconArchive size={14} />}
-            loading={isPending}
-            onClick={() => setArchiveOpen(true)}
-          >
-            アーカイブ
-          </SecondaryButton>
-        }
-        description="注文明細を作成済みです。処理が終わったらアーカイブできます"
-        icon={<IconArchive size={20} />}
-        title="確定が完了しました"
-        tone="action"
-      />
-    );
   }
+  // 確定後（COMPLETED）は ActionCard を出さない — 確定はゴールであって
+  // 「次にやること」ではない。アーカイブは任意の片付け操作なので、
+  // 急かさないよう ResourceActions のメニューにだけ置く。
 
   return (
     <DetailShell
