@@ -1,4 +1,29 @@
 ## Tables (Database)
+
+> **この文書はデータモデルの設計意図**であり、**実装の正ではない**。
+> 実装の正は `shared-db/prisma/schema/*.prisma`（PG スキーマごとに 1 ファイル）で、
+> マイグレーションも `shared-db` が持つ。列の型・既定値・索引を確かめるときは
+> 必ずスキーマを見ること。
+>
+> 以下は現在の差分（実装と突き合わせて確認済み）。
+>
+> **仕様にあるが実装されていない（3）** — 設計だけで作られていない:
+> `system_logs` / `ad_sync_logs` / `material_purchase_approvers`
+> （DB にも存在しない。使う前に作る必要がある）
+>
+> **実装にあるが本書に未記載（31）** — 後から足した機能の分:
+> - `directory.prisma`: `employee_directory` / `ldap_sync_log`
+> - `intake.prisma`: `order_acceptance_items`
+> - `inventory.prisma`: `storage_locations` / `storage_shelves`
+> - `kiosk.prisma`: `kiosk_cards` / `kiosk_device_locations` / `kiosk_device_logs` / `kiosk_devices` / `kiosk_floor_maps` / `kiosk_link_requests` / `kiosk_sessions`
+> - `notification.prisma`: `notifications` / `push_subscriptions` / `user_notification_settings`
+> - `product-routes.prisma`: `product_process_route_version_steps` / `product_process_route_versions` / `product_process_routes`
+> - `production-master.prisma`: `work_location_groups` / `work_locations`
+> - `production.prisma`: `work_order_step_actuals` / `work_order_step_plans`
+> - `purchase.prisma`: `purchase_request_items` / `purchase_requests`
+> - `sys.prisma`: `document_attachments` / `document_memo_revisions` / `document_memos` / `file_folder_grants` / `link_blacklist` / `link_index` / `user_home_settings`
+>
+> 追記する場合は、スキーマからコピーせず**設計意図だけ**を書くこと。
 ### Auth
 ```
 Table users {
@@ -1023,6 +1048,7 @@ Table material_purchase_order_items {
 }
 
 // 発注承認者（承認グループ or 個人）
+// ⚠️ 未実装 — 設計のみ（素材発注の承認者）。Prisma スキーマにも DB にも存在しない。
 Table material_purchase_approvers {
   id              uuid [pk]
   purchase_order_id uuid [not null, ref: > material_purchase_orders.id]
@@ -1473,6 +1499,7 @@ Table feature_flags {
 // -----------------------------
 // System Log（統合ログ）
 // -----------------------------
+// ⚠️ 未実装 — 設計のみ（システム操作ログ）。Prisma スキーマにも DB にも存在しない。
 Table system_logs {
   id              uuid [pk]
   user_id         uuid
@@ -1512,6 +1539,7 @@ Enum SYNC_STATUS {
   FAILED
 }
 
+// ⚠️ 未実装 — 設計のみ（AD 同期ログ）。Prisma スキーマにも DB にも存在しない。
 Table ad_sync_logs {
   id              serial      [pk]
   sync_type       varchar     [not null]           // full, delta, single

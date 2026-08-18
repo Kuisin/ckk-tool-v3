@@ -267,7 +267,9 @@ Operation codes provide keyboard-shortcut navigation. Format: `{CAT}{MODE}{IDX}`
 | MODE | 3 | `0`=list `1`=new `2`=detail |
 | IDX | 4 | `1`–`9`, `A`–`Z` |
 
-**Full table** (derived from `design-preview/designs/lib/operation-codes.ts`):
+**Full table** — 実装の正は `docker-compose/nextjs-web/src/lib/app-list.ts`
+（コードの組み立ては `src/lib/operation-codes.ts`）。`design-preview/` 配下は
+デザイン確認用の複製なので、参照しないこと。
 
 | Category | IDX | Base label | list | new | detail |
 |----------|-----|-----------|------|-----|--------|
@@ -313,6 +315,12 @@ Operation codes provide keyboard-shortcut navigation. Format: `{CAT}{MODE}{IDX}`
 | システム | 8 | QRカード管理 | SY08 | — | — |
 | システム | 9 | 端末管理 | SY09 | — | — |
 | システム | A | キオスク設定 | SY0A | — | — |
+| システム | B | リンク管理 | SY0B | — | — |
+
+> `CM00`（ダッシュボード）と `PD01`（注文請書）は**アプリ一覧
+> （`lib/app-list.ts`）には登録されていない** — 前者はホーム自体、後者は
+> 受注請書の取込一覧からリンクで開く画面。ランチャーに出るアプリの正は
+> 常に `lib/app-list.ts`。
 
 `OperationCodeJump` component (`src/components/layout/OperationCodeJump.tsx`) renders as a compact TextInput in the header center. Pressing Enter or clicking a result navigates to that screen.
 
@@ -576,9 +584,12 @@ Stack (gap="md")
 | Quote | ACCEPTED | green | 受諾済 |
 | Quote | REJECTED | red | 却下 |
 | Quote | EXPIRED | orange | 期限切れ |
-| OrderAcceptance | PENDING | yellow | 照合中 |
-| OrderAcceptance | PRICE_DIFF | orange | 価格差異 |
-| OrderAcceptance | CONFIRMED | green | 確定 |
+| OrderAcceptanceIntake | IMPORT | gray | 取込中 |
+| OrderAcceptanceIntake | DRAFT | blue | 下書き |
+| OrderAcceptanceIntake | REQUESTED | yellow | 承認依頼中 |
+| OrderAcceptanceIntake | APPROVED | green | 承認済 |
+| OrderAcceptanceIntake | COMPLETED | teal | 展開済 |
+| OrderAcceptanceIntake | ARCHIVED | dark | アーカイブ |
 | SalesOrder | DRAFT | gray | 下書き |
 | SalesOrder | CONFIRMED | blue | 確定 |
 | SalesOrder | IN_PRODUCTION | violet | 製造中 |
@@ -1256,6 +1267,13 @@ Respect `@media (prefers-reduced-motion: reduce)` — disable all CSS transition
 ### 17.1 Terminology Glossary
 
 Use these exact terms consistently across all UI strings, error messages, and notifications:
+
+> **未確認の用語（2026-08 時点）** — 「受注請書」「注文請書」は本仕様で定めた語で、
+> 業務側の文書 `_docs/business_flow.md` は同じものを **「注文受諾書」（§2）**
+> **「受注書」（§3）** と呼んでいる。利用者から「注文請書という語は聞いたことが
+> ない」との指摘があり、**現場の語彙と一致していない可能性が高い**。
+> 改称する場合は UI ラベル・マニュアル・本節をまとめて直すこと（DB のテーブル名
+> `order_acceptances` / `sales_orders` と操作コードは利用者に見えないので変えない）。
 
 | Concept | Japanese term | Abbreviation/code |
 |---------|---------------|-------------------|
