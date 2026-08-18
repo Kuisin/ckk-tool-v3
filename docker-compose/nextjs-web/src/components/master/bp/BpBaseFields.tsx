@@ -24,6 +24,7 @@ import { FormSection, LocalizedTextInput } from "@/components/ui/shells";
 import { useIsMobile } from "@/hooks/useViewport";
 import { COUNTRY_OPTIONS } from "@/lib/enum-labels";
 import { fieldHelp, fieldHelpTip } from "@/lib/field-help";
+import { MatchNameSuggestions } from "./MatchNameSuggestions";
 
 export const bpBaseFormSchema = z.object({
   nameJa: z.string().min(1, "名称（日本語）を入力してください"),
@@ -83,6 +84,12 @@ export function BpBaseFields<T extends BpBaseFormValues>({
   const isMobile = useIsMobile();
   // Field paths are shared with the extended form value types.
   const props = (path: string) => form.getInputProps(path);
+  // 同じ理由（T が BpBaseFormValues の拡張）で setFieldValue も narrow できない。
+  const setMatchNames = (values: string[]) =>
+    (form.setFieldValue as (path: string, value: string[]) => void)(
+      "matchNames",
+      values,
+    );
   return (
     <>
       <FormSection title="基本情報">
@@ -162,6 +169,19 @@ export function BpBaseFields<T extends BpBaseFormValues>({
           placeholder="社名の表記ゆれを入力して Enter"
           splitChars={[",", "、"]}
           {...form.getInputProps("matchNames")}
+        />
+        {/* 足りない字種の指摘 + 機械的に作れる候補（lib/company-aliases）。 */}
+        <MatchNameSuggestions
+          matchNames={form.values.matchNames ?? []}
+          nameEn={form.values.nameEn}
+          nameJa={form.values.nameJa ?? ""}
+          nameKana={form.values.nameKana}
+          onAdd={(values) =>
+            setMatchNames([
+              ...new Set([...(form.values.matchNames ?? []), ...values]),
+            ])
+          }
+          shortName={form.values.shortName}
         />
       </FormSection>
 
