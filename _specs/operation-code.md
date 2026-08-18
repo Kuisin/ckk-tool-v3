@@ -2,7 +2,9 @@
 
 キーボードから **4文字の操作コード** で任意の画面へ直接ジャンプする機能。
 
-実装: `design-preview/designs/lib/operation-codes.ts`（本番では `src/lib/operation-codes.ts` に移設）
+実装: `docker-compose/nextjs-web/src/lib/operation-codes.ts`（コード生成）と
+`src/lib/app-list.ts`（アプリと採番の対応 — **どのコードが実在するかの正**）。
+`design-preview/` 配下にも同名ファイルがあるが、デザイン確認用の複製。
 
 ---
 

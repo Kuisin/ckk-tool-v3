@@ -98,7 +98,11 @@ Date/Time:      date-fns v4（tree-shakeable）
 HTTP Client:    Ky
 File Storage:   SeaweedFS（Apache 2.0）
 Doc Intake:     imapflow（IMAP） + BullMQ（ファイル監視）
-OCR/Extraction: ローカルLLM（self-hosted）— ai-stack の po-extract API
+OCR/Extraction: ローカルLLM（self-hosted）— po-extract API
+                （**Coolify 管理・環境別**: po-extract-dev / po-extract-main。
+                 いずれも内部専用でホストポート非公開。ソースは
+                 docker-compose/ai-stack/extractor/。GPU の ollama は
+                 ai-stack に 1 台だけ置き両環境で共有）
                 （FastAPI /extract: PDF/画像 → 構造化JSON）。3段ハイブリッド:
                 ①OCR（PP-OCRモデルをONNXRuntime=RapidOCRで実行）+ ②Vision
                 転写（qwen2.5vl）→ ③LLMがJSON生成。外部API・キー不要。
