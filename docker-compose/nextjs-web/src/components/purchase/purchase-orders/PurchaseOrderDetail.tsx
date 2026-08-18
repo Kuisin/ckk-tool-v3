@@ -3,8 +3,9 @@
 /**
  * PurchaseOrderDetail — 素材発注書 詳細 (PU22, design.md §8.2)。
  *
- * SummaryGrid + 承認/遷移パネル（線形 Stepper 依頼→承認→発注→入荷完了 +
- * 状態別アクション）+ Tabs（明細 / 概要 / 履歴）。
+ * 最上部の ActionCard（いまやること — 権限で色が変わる）+ SummaryGrid +
+ * 承認/遷移パネル（線形 Stepper 依頼→承認→発注→入荷完了）+ Tabs
+ * （明細 / 概要 / 履歴）。
  *
  * 状態別アクション:
  *   DRAFT: 承認依頼 + 編集 / キャンセル
@@ -30,14 +31,16 @@ import {
 import { notifications } from "@mantine/notifications";
 import {
   IconAlertTriangle,
+  IconClock,
   IconPackageImport,
   IconSend,
+  IconShieldCheck,
   IconTruck,
   IconX,
 } from "@tabler/icons-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { type ReactNode, useState, useTransition } from "react";
 import {
   approvePurchaseOrder,
   cancelPurchaseOrder,
@@ -51,6 +54,7 @@ import {
   type ApprovalTrailView,
   countTrailRecords,
 } from "@/components/production/ApprovalStatusPanel";
+import { ActionCard } from "@/components/ui/ActionCard";
 import {
   AttachmentsPanel,
   type AttachmentView,
@@ -162,6 +166,101 @@ export function PurchaseOrderDetail({
   // 遷移履歴は新しい順で表示
   const records = [...po.history].reverse();
 
+  /**
+   * 「いまやること」カード（最上部）。承認待ちは承認権限の有無で色が変わる
+   * — 権限あり = 緑 + 承認/差し戻し、権限なし = グレーの「承認待ち」表示。
+   */
+  let actionCard: ReactNode = null;
+  if (po.status === "DRAFT") {
+    actionCard = (
+      <ActionCard
+        actions={
+          <PrimaryButton
+            leftSection={<IconSend size={14} />}
+            loading={isPending}
+            onClick={() =>
+              run(
+                () => requestPurchaseApproval(po.poNumber),
+                "承認依頼しました",
+              )
+            }
+          >
+            承認依頼
+          </PrimaryButton>
+        }
+        description="第一承認グループへ承認を依頼します"
+        icon={<IconSend size={20} />}
+        title="承認依頼が必要です"
+        tone="action"
+      />
+    );
+  } else if (po.status === "REQUESTED") {
+    actionCard = canApprove ? (
+      <ActionCard
+        actions={
+          <>
+            <ApproveButton
+              loading={isPending}
+              onClick={() =>
+                run(() => approvePurchaseOrder(po.poNumber), "承認しました")
+              }
+            >
+              承認
+            </ApproveButton>
+            <RejectButton onClick={() => setRejectOpen(true)} />
+          </>
+        }
+        description="第一承認グループの承認者としてこの発注書を承認できます"
+        icon={<IconShieldCheck size={20} />}
+        title="承認してください"
+        tone="approve"
+      />
+    ) : (
+      <ActionCard
+        description="第一承認グループのメンバーのみ承認・差し戻しできます"
+        icon={<IconClock size={20} />}
+        title="承認待ち"
+        tone="wait"
+      />
+    );
+  } else if (po.status === "APPROVED") {
+    actionCard = (
+      <ActionCard
+        actions={
+          <PrimaryButton
+            leftSection={<IconTruck size={14} />}
+            loading={isPending}
+            onClick={() => setOrderOpen(true)}
+          >
+            発注
+          </PrimaryButton>
+        }
+        description="発注すると明細が素材 ATP の入荷予定に反映されます"
+        icon={<IconTruck size={20} />}
+        title="発注できます"
+        tone="action"
+      />
+    );
+  } else if (po.status === "ORDERED") {
+    actionCard = (
+      <ActionCard
+        actions={
+          <ApproveButton
+            leftSection={<IconPackageImport size={14} />}
+            loading={isPending}
+            onClick={() => setCompleteOpen(true)}
+          >
+            入荷完了
+          </ApproveButton>
+        }
+        description="入荷完了で明細ごとに入荷を記録し、素材在庫へ入庫します"
+        icon={<IconPackageImport size={20} />}
+        title="入荷を待っています"
+        tone="action"
+      />
+    );
+  }
+
   return (
     <DetailShell
       actions={
@@ -191,6 +290,8 @@ export function PurchaseOrderDetail({
       title={po.poNumber}
       updatedAt={formatDateTime(po.updatedAt)}
     >
+      {actionCard}
+
       <SummaryGrid>
         <FieldValue
           label="発注番号"
@@ -272,59 +373,6 @@ export function PurchaseOrderDetail({
             {po.cancelReason ?? "—"}
           </Alert>
         )}
-
-        <Group gap="xs" mt="md">
-          {po.status === "DRAFT" && (
-            <PrimaryButton
-              leftSection={<IconSend size={14} />}
-              loading={isPending}
-              onClick={() =>
-                run(
-                  () => requestPurchaseApproval(po.poNumber),
-                  "承認依頼しました",
-                )
-              }
-            >
-              承認依頼
-            </PrimaryButton>
-          )}
-          {po.status === "REQUESTED" &&
-            (canApprove ? (
-              <>
-                <ApproveButton
-                  loading={isPending}
-                  onClick={() =>
-                    run(() => approvePurchaseOrder(po.poNumber), "承認しました")
-                  }
-                >
-                  承認
-                </ApproveButton>
-                <RejectButton onClick={() => setRejectOpen(true)} />
-              </>
-            ) : (
-              <Text c="dimmed" size="xs">
-                第一承認グループのメンバーのみ承認・差し戻しできます
-              </Text>
-            ))}
-          {po.status === "APPROVED" && (
-            <PrimaryButton
-              leftSection={<IconTruck size={14} />}
-              loading={isPending}
-              onClick={() => setOrderOpen(true)}
-            >
-              発注
-            </PrimaryButton>
-          )}
-          {po.status === "ORDERED" && (
-            <ApproveButton
-              leftSection={<IconPackageImport size={14} />}
-              loading={isPending}
-              onClick={() => setCompleteOpen(true)}
-            >
-              入荷完了
-            </ApproveButton>
-          )}
-        </Group>
 
         {/* 承認記録 — approval_records 由来（代理は「（代理: 原承認者）」付き） */}
         {countTrailRecords(approvalTrail) > 0 && (

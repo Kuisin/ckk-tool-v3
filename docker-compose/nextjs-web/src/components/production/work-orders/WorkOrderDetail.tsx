@@ -3,6 +3,7 @@
 /**
  * WorkOrderDetail — 指示書 詳細 (PD22) / 承認詳細 (PD23) (design.md §8.2)。
  *
+ * 最上部の WorkOrderApprovalCard（いまやること — 権限で色が変わる）+
  * サマリ + ApprovalStatusPanel (§12.4) + 工程ワークフロー表示 (§12.2) +
  * Tabs（概要 / 関連 / 履歴）。variant="approval" は承認管理 (PD03) から開く
  * 承認画面 — タイトル「承認」で ApprovalStatusPanel を最上部に出し、
@@ -26,6 +27,7 @@ import {
 import {
   ApprovalStatusPanel,
   type ApprovalTrailView,
+  WorkOrderApprovalCard,
 } from "@/components/production/ApprovalStatusPanel";
 import { WorkOrderStepsPanel } from "@/components/production/WorkOrderStepsPanel";
 import { DocNumber } from "@/components/ui/DocNumber";
@@ -143,16 +145,24 @@ export function WorkOrderDetail({
     });
   };
 
-  const approvalPanel = (
-    <ApprovalStatusPanel
+  // 状態別の操作は最上部のカードへ（承認権限の有無で色が変わる）。
+  const approvalCard = (
+    <WorkOrderApprovalCard
       approvalStatus={wo.approvalStatus}
       canApproveFirst={canApproveFirst}
       canApproveSecond={canApproveSecond}
-      history={wo.history}
       rejectReason={wo.rejectReason}
       status={wo.status}
-      trail={approvalTrail}
       workOrderNumber={wo.workOrderNumber}
+    />
+  );
+
+  const approvalPanel = (
+    <ApprovalStatusPanel
+      approvalStatus={wo.approvalStatus}
+      history={wo.history}
+      rejectReason={wo.rejectReason}
+      trail={approvalTrail}
     />
   );
 
@@ -287,7 +297,8 @@ export function WorkOrderDetail({
       title={isApproval ? `承認 ${woLabel}` : `指示書 ${woLabel}`}
       updatedAt={formatDateTime(wo.updatedAt)}
     >
-      {/* 承認画面は承認状況を最上部に */}
+      {/* 「いまやること」カードは常に最上部。承認画面は承認状況もサマリより上 */}
+      {approvalCard}
       {isApproval ? (
         <>
           {approvalPanel}

@@ -3,12 +3,18 @@
 /**
  * ApprovalStatusPanel — 指示書承認状況 (_specs/design.md §12.4)。
  *
- * Stepper（第一承認 → 第二承認）+ 状態別アクション:
- *   DRAFT: 承認依頼 / PENDING_1ST: 第一承認・差し戻し（FIRST グループ）/
- *   PENDING_2ND: 第二承認・差し戻し（SECOND グループ）。
- * REJECTED は差し戻し理由の Alert。操作履歴は history Json から表示し、
- * 正規化された承認記録（approval_records — 代理承認は「（代理: 原承認者）」
- * 付き）は trail prop（fetchApprovalTrail の結果）から表示する。
+ * このファイルは 2 つのコンポーネントを出す:
+ *
+ *   WorkOrderApprovalCard — 画面最上部の「いまやること」カード。状態別の操作
+ *     （DRAFT: 承認依頼 / PENDING_1ST: 第一承認・差し戻し（FIRST グループ）/
+ *     PENDING_2ND: 第二承認・差し戻し（SECOND グループ））を持つ。承認待ちの
+ *     色は承認権限で変わる — 権限あり = 緑、権限なし = グレーの「承認待ち」。
+ *   ApprovalStatusPanel — Stepper（第一承認 → 第二承認）と記録の表示のみ。
+ *     操作履歴は history Json から、正規化された承認記録（approval_records —
+ *     代理承認は「（代理: 原承認者）」付き）は trail prop から表示する。
+ *
+ * 以前は操作ボタンが Stepper の下にあり見落とされやすかったので、操作だけを
+ * 最上部のカードへ切り出している。
  */
 
 import {
@@ -24,15 +30,22 @@ import {
   Title,
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
-import { IconAlertTriangle, IconSend } from "@tabler/icons-react";
+import {
+  IconAlertTriangle,
+  IconArrowBackUp,
+  IconClock,
+  IconSend,
+  IconShieldCheck,
+} from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { type ReactNode, useState, useTransition } from "react";
 import {
   approveFirst,
   approveSecond,
   rejectWorkOrder,
   requestApproval,
 } from "@/app/(dashboard)/production/work-orders/actions";
+import { ActionCard } from "@/components/ui/ActionCard";
 import {
   ApproveButton,
   PrimaryButton,
@@ -153,25 +166,25 @@ function stepperActive(approvalStatus: string): number {
   }
 }
 
-export function ApprovalStatusPanel({
+/**
+ * WorkOrderApprovalCard — 指示書の「いまやること」カード（画面最上部）。
+ * 承認依頼 / 第一・第二承認 / 差し戻しの操作と差し戻しモーダルを持つ。
+ * 承認待ちの色は承認権限で変わる（権限なし = グレーの「承認待ち」）。
+ */
+export function WorkOrderApprovalCard({
   workOrderNumber,
   status,
   approvalStatus,
   rejectReason,
-  history,
   canApproveFirst,
   canApproveSecond,
-  trail = [],
 }: {
   workOrderNumber: number;
   status: string;
   approvalStatus: string;
   rejectReason: string | null;
-  history: WorkOrderHistoryView[];
   canApproveFirst: boolean;
   canApproveSecond: boolean;
-  /** 正規化された承認記録（fetchApprovalTrail の結果）。 */
-  trail?: ApprovalTrailView[];
 }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -204,6 +217,129 @@ export function ApprovalStatusPanel({
   const isPending2nd = approvalStatus === "PENDING_2ND";
   const canActHere =
     (isPending1st && canApproveFirst) || (isPending2nd && canApproveSecond);
+  const isRejected = approvalStatus === "REJECTED";
+  const stepLabel = isPending1st ? "第一" : "第二";
+
+  let card: ReactNode = null;
+  if (status === "DRAFT") {
+    card = (
+      <ActionCard
+        actions={
+          <PrimaryButton
+            leftSection={<IconSend size={14} />}
+            loading={isPending}
+            onClick={() =>
+              run(() => requestApproval(workOrderNumber), "承認依頼しました")
+            }
+          >
+            {isRejected ? "再承認依頼" : "承認依頼"}
+          </PrimaryButton>
+        }
+        description={
+          isRejected
+            ? `差し戻し理由: ${rejectReason ?? "—"}（修正して再依頼できます）`
+            : "第一承認グループへ承認を依頼します"
+        }
+        icon={
+          isRejected ? <IconArrowBackUp size={20} /> : <IconSend size={20} />
+        }
+        title={isRejected ? "差し戻されました" : "承認依頼が必要です"}
+        tone={isRejected ? "alert" : "action"}
+      />
+    );
+  } else if (isPending1st || isPending2nd) {
+    card = canActHere ? (
+      <ActionCard
+        actions={
+          <>
+            <ApproveButton
+              loading={isPending}
+              onClick={() =>
+                isPending1st
+                  ? run(() => approveFirst(workOrderNumber), "第一承認しました")
+                  : run(
+                      () => approveSecond(workOrderNumber),
+                      "第二承認しました",
+                    )
+              }
+            >
+              {stepLabel}承認
+            </ApproveButton>
+            <RejectButton onClick={() => setRejectOpen(true)} />
+          </>
+        }
+        description={`${stepLabel}承認グループの承認者としてこの指示書を承認できます`}
+        icon={<IconShieldCheck size={20} />}
+        title="承認してください"
+        tone="approve"
+      />
+    ) : (
+      <ActionCard
+        description={`${stepLabel}承認グループのメンバーのみ承認・差し戻しできます`}
+        icon={<IconClock size={20} />}
+        title={`${stepLabel}承認待ち`}
+        tone="wait"
+      />
+    );
+  }
+
+  if (!card) return null;
+
+  return (
+    <>
+      {card}
+      <ModalShell
+        confirmColor="red"
+        confirmLabel="差し戻す"
+        loading={isPending}
+        onClose={() => setRejectOpen(false)}
+        onConfirm={() => {
+          if (!reason.trim()) {
+            notifications.show({
+              title: "エラー",
+              message: "差し戻し理由を入力してください",
+              color: "red",
+            });
+            return;
+          }
+          run(() => rejectWorkOrder(workOrderNumber, reason), "差し戻しました");
+        }}
+        opened={rejectOpen}
+        size="sm"
+        title="差し戻しの確認"
+      >
+        <Textarea
+          autosize
+          label={<HelpLabel {...fieldHelp("approval", "rejectReason")} />}
+          minRows={3}
+          onChange={(e) => setReason(e.currentTarget.value)}
+          placeholder="理由を入力"
+          value={reason}
+          withAsterisk
+        />
+      </ModalShell>
+    </>
+  );
+}
+
+/**
+ * ApprovalStatusPanel — 承認フローの表示のみ（Stepper + 承認記録 + 操作履歴）。
+ * 操作ボタンは WorkOrderApprovalCard が持つ。
+ */
+export function ApprovalStatusPanel({
+  approvalStatus,
+  rejectReason,
+  history,
+  trail = [],
+}: {
+  approvalStatus: string;
+  rejectReason: string | null;
+  history: WorkOrderHistoryView[];
+  /** 正規化された承認記録（fetchApprovalTrail の結果）。 */
+  trail?: ApprovalTrailView[];
+}) {
+  const isPending1st = approvalStatus === "PENDING_1ST";
+  const isPending2nd = approvalStatus === "PENDING_2ND";
 
   // 承認記録は新しい順で表示
   const records = [...history].reverse();
@@ -239,44 +375,6 @@ export function ApprovalStatusPanel({
         </Alert>
       )}
 
-      <Group gap="xs" mt="md">
-        {status === "DRAFT" && (
-          <PrimaryButton
-            leftSection={<IconSend size={14} />}
-            loading={isPending}
-            onClick={() =>
-              run(() => requestApproval(workOrderNumber), "承認依頼しました")
-            }
-          >
-            {approvalStatus === "REJECTED" ? "再承認依頼" : "承認依頼"}
-          </PrimaryButton>
-        )}
-        {canActHere && (
-          <>
-            <ApproveButton
-              loading={isPending}
-              onClick={() =>
-                isPending1st
-                  ? run(() => approveFirst(workOrderNumber), "第一承認しました")
-                  : run(
-                      () => approveSecond(workOrderNumber),
-                      "第二承認しました",
-                    )
-              }
-            >
-              {isPending1st ? "第一承認" : "第二承認"}
-            </ApproveButton>
-            <RejectButton onClick={() => setRejectOpen(true)} />
-          </>
-        )}
-        {(isPending1st || isPending2nd) && !canActHere && (
-          <Text c="dimmed" size="xs">
-            {isPending1st ? "第一" : "第二"}
-            承認グループのメンバーのみ承認・差し戻しできます
-          </Text>
-        )}
-      </Group>
-
       {countTrailRecords(trail) > 0 && (
         <>
           <Divider my="md" />
@@ -307,37 +405,6 @@ export function ApprovalStatusPanel({
           </Stack>
         </>
       )}
-
-      <ModalShell
-        confirmColor="red"
-        confirmLabel="差し戻す"
-        loading={isPending}
-        onClose={() => setRejectOpen(false)}
-        onConfirm={() => {
-          if (!reason.trim()) {
-            notifications.show({
-              title: "エラー",
-              message: "差し戻し理由を入力してください",
-              color: "red",
-            });
-            return;
-          }
-          run(() => rejectWorkOrder(workOrderNumber, reason), "差し戻しました");
-        }}
-        opened={rejectOpen}
-        size="sm"
-        title="差し戻しの確認"
-      >
-        <Textarea
-          autosize
-          label={<HelpLabel {...fieldHelp("approval", "rejectReason")} />}
-          minRows={3}
-          onChange={(e) => setReason(e.currentTarget.value)}
-          placeholder="理由を入力"
-          value={reason}
-          withAsterisk
-        />
-      </ModalShell>
     </Paper>
   );
 }

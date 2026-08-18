@@ -487,6 +487,7 @@ Stack (gap="md")
 │   └── [mobile] Menu shadow="sm" position="bottom-end"
 │       ├── Menu.Target → Button variant="default" px="xs" size="sm" → <IconDotsVertical>
 │       └── Menu.Dropdown: 編集 / PDF / コピー / Divider / キャンセル(red)
+├── [if an action is pending] ActionCard (see §10.9) — ヘッダー直下・最上部
 ├── Paper (withBorder, p="md", radius="md") — summary card
 │   ├── SimpleGrid cols={isMobile ? 1 : 3} spacing="md"
 │   │   └── FieldValue[] (see §10.1)
@@ -546,10 +547,18 @@ Stack (gap="md")
 │   └── [mobile] Stack gap="xs" — full-width stacked buttons
 │       ├── Button type="submit" loading={isPending} fullWidth
 │       └── Button variant="default" fullWidth — キャンセル
-│   └── [desktop] Group justify="flex-end" mt="md"
+│   └── [desktop] FormActions — Group justify="flex-end"
 │       ├── Button variant="default" — キャンセル
 │       └── Button type="submit" loading={isPending} — 保存
 ```
+
+**Action row placement** — アクション行は `FormActions`（`shells.tsx`）で包む。
+デスクトップ（≥768px）では `position: sticky; bottom` で画面下端に貼り付き、
+フォームがどれだけ長くてもキャンセル / 保存が常に見える（globals.css
+`.form-actions`。`bottom` は固定 AppShell フッターぶんを
+`--app-shell-footer-offset` で避ける）。モバイルは従来どおり本文末尾に流す —
+ソフトキーボードが画面下を占有するため。`FormShell` は自動でこれを使うので、
+`FormShell` を使わない独自フォームだけ既存のボタン行を `FormActions` で包む。
 
 ---
 
@@ -753,6 +762,37 @@ const memos = await listMemos("quotes", formatQuoteNumber(key));
 平文射影・HTML 化は `src/lib/rich-text-core.ts`、読み書きは
 `src/lib/document-memos.ts`（`MEMO_OWNERS` が owner→権限コードの唯一の登録簿）。
 
+### 10.9 ActionCard
+
+`src/components/ui/ActionCard.tsx` — `'use client'`
+
+書類詳細の**最上部**（ヘッダー直下・サマリより上）に 1 枚だけ出す「いま何を
+すべきか」カード。承認フローの操作は以前 Stepper の下のボタン行にあり見落とさ
+れやすかったため、状態と操作をここへまとめる。フロー（Stepper）のパネルは
+表示専用に残る。
+
+```
+Paper (withBorder, p="md", radius="md")
+  style: borderLeft 4px solid {color}-filled / backgroundColor {color}-light
+└── Group (justify="space-between", wrap={isMobile ? "wrap" : "nowrap"})
+    ├── Group gap="sm"
+    │   ├── ThemeIcon (variant="light", color, size="lg", radius="md")
+    │   └── Stack gap={2} — Text fw={600} size="sm" (title)
+    │                     + Text c="dimmed" size="xs" (description)
+    └── Group gap="xs" — 操作ボタン（無い状態は省略可）
+```
+
+**tone — 色はログイン中ユーザーの権限で決まる**
+
+| tone | 色 | 意味 |
+|------|----|------|
+| `action` | blue | 自分で先へ進められる操作（承認依頼・伝票展開・発注・入荷完了 …） |
+| `approve` | green | 承認権限がある。承認 / 差し戻しできる |
+| `wait` | gray | 権限が無いので待つだけ。タイトルは「承認待ち」 |
+| `alert` | red | 差し戻しなど、対応が必要な状態 |
+
+搭載画面: 指示書 (`WorkOrderApprovalCard`) / 受注請書 / 素材発注書 / 購買依頼。
+
 ---
 
 ## 11. Components: Variants and States
@@ -927,9 +967,16 @@ Paper (withBorder, p="lg")
 // バリデーション: output_success + 不良合計 = input_quantity（不一致時はインライン警告）
 ```
 
-### 12.4 ApprovalStatusPanel
+### 12.4 ApprovalStatusPanel / WorkOrderApprovalCard
 
-`src/components/production/ApprovalStatusPanel.tsx`
+`src/components/production/ApprovalStatusPanel.tsx` — 2 つを出す。
+
+**WorkOrderApprovalCard** — 画面最上部の ActionCard (§10.9)。承認依頼 / 第一・
+第二承認 / 差し戻し（理由必須モーダル）を持つ唯一の場所。色は承認権限で決まる
+（権限あり = green + 承認・差し戻し、権限なし = gray の「第一（第二）承認待ち」、
+差し戻し中 = red + 再承認依頼）。操作が無い状態では何も描画しない。
+
+**ApprovalStatusPanel** — フローと記録の**表示のみ**（操作ボタンは持たない）。
 
 ```
 Paper (withBorder, p="md", radius="md")
@@ -937,9 +984,7 @@ Paper (withBorder, p="md", radius="md")
 ├── Stepper (active={stepIndex}, size="sm", orientation={isMobile ? "vertical" : "horizontal"})
 │   ├── Stepper.Step label="第一承認" description="工場長・部長クラス"
 │   └── Stepper.Step label="第二承認" description="部長クラス" loading={PENDING_2ND}
-├── [if current user is approver and PENDING] Group
-│   ├── Button color="green" — 承認
-│   └── Button color="red" variant="outline" — 差し戻し
+├── [if REJECTED] Alert color="red" — 差し戻し理由
 └── approval_records list
     └── Group — approver name + acted_at + action badge + comment
 ```
