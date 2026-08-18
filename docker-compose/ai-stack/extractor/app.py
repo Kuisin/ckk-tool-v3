@@ -19,6 +19,10 @@ RENDER_DPI = int(os.environ.get("RENDER_DPI", "200"))
 MAX_EDGE = int(os.environ.get("MAX_EDGE", "2400"))
 MIN_EDGE = int(os.environ.get("MIN_EDGE", "1600"))
 KEEP_ALIVE = os.environ.get("OLLAMA_KEEP_ALIVE", "10m")
+# デプロイ: このディレクトリ（docker-compose/ai-stack/extractor/**）への push で
+# Coolify が po-extract-dev（dev ブランチ）/ po-extract-main（main）を自動ビルドする。
+# 手動で流すときは coolify/deploy.sh po-extract-dev|po-extract-main。
+#
 # 自社名（注文書の「宛先」側）。顧客と取り違えないようプロンプトに埋める。
 # 表記ゆれは列挙してよい（そのまま文中に出る）。
 OWN_COMPANY = os.environ.get(
