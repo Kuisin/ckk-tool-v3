@@ -474,6 +474,17 @@ export const appList: AppEntry[] = [
     category: "システム",
     requiredPermission: "system",
   },
+  {
+    // 注文書取込 — 受注請書の監視フォルダ（INTAKE_DIR）へまとめて投入し、
+    // 待ち / 取込済 / 失敗を見る。取り込まれた中身は SA04 受注請書で見る。
+    key: "order-intake",
+    label: "注文書取込",
+    operationCode: "SY0C",
+    href: "/settings/order-intake",
+    icon: "IconFileImport",
+    category: "システム",
+    requiredPermission: "system",
+  },
 ];
 
 /** Home 絞り込み（工程）で使う URL パラメータのキー。 */
