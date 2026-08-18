@@ -19,7 +19,7 @@ const DOC_FORMATS = {
   SHP: { digits: 5 },
   DRN: { digits: 5 },
   INV: { digits: 5 },
-  ORD: { digits: 5 }, // 受注請書（注文請書の枝番なし基底番号）
+  ORD: { digits: 5 }, // 受注請書（受注明細の枝番なし基底番号）
 } as const;
 
 export type DocPrefix = keyof typeof DOC_FORMATS;
@@ -62,24 +62,52 @@ export function parseDocKey(id: string, prefix?: DocPrefix): DocKey | null {
   return { yearMonth: m[2], seq };
 }
 
-// ─── 注文請書番号（3 パート: ORD-YYYYMM-NNNNN-NN） ────────────────────────────
+// ─── 受注明細番号（3 パート: ORD-YYYYMM-NNNNN-NN） ────────────────────────────
 
-export interface SalesOrderKey {
+export interface OrderLineKey {
   yearMonth: string;
   seq: number;
   branch: number;
 }
 
 /** (yearMonth, seq, branch) → "ORD-202607-00001-01"。URL id にも使用。 */
-export function formatSalesOrderNumber(key: SalesOrderKey): string {
+export function formatOrderLineNumber(key: OrderLineKey): string {
   return `ORD-${key.yearMonth}-${String(key.seq).padStart(5, "0")}-${String(key.branch).padStart(2, "0")}`;
 }
 
-const SALES_ORDER_RE = /^(?:ORD-)?(\d{6})-(\d{1,6})-(\d{1,2})$/i;
+/**
+ * DB 行（受注請書キー + 枝番）→ 表示番号。枝番は確定時に採番されるため、
+ * 未確定の行は番号を持たない → null。
+ */
+export function orderLineNumberOf(row: {
+  acceptanceYearMonth: string;
+  acceptanceSeq: number;
+  branch: number | null;
+}): string | null {
+  if (row.branch == null) return null;
+  return formatOrderLineNumber({
+    yearMonth: row.acceptanceYearMonth,
+    seq: row.acceptanceSeq,
+    branch: row.branch,
+  });
+}
+
+/** 受注明細行 → Prisma の複合ユニークキー（確定済みのみ）。 */
+export function orderLineWhereKey(key: OrderLineKey) {
+  return {
+    acceptanceYearMonth_acceptanceSeq_branch: {
+      acceptanceYearMonth: key.yearMonth,
+      acceptanceSeq: key.seq,
+      branch: key.branch,
+    },
+  };
+}
+
+const ORDER_LINE_RE = /^(?:ORD-)?(\d{6})-(\d{1,6})-(\d{1,2})$/i;
 
 /** "ORD-202607-00001-01"（prefix 省略可）→ キー。不一致は null。 */
-export function parseSalesOrderKey(id: string): SalesOrderKey | null {
-  const m = SALES_ORDER_RE.exec(id.trim());
+export function parseOrderLineKey(id: string): OrderLineKey | null {
+  const m = ORDER_LINE_RE.exec(id.trim());
   if (!m) return null;
   const seq = Number(m[2]);
   const branch = Number(m[3]);

@@ -4,14 +4,14 @@
  * OrderAcceptanceDetail — 受注請書 詳細 (SA24, design.md §8.2)。
  *
  * ライフサイクル: 取込（IMPORT）→ 下書き（DRAFT — インライン編集可）→
- * 承認依頼（REQUESTED）→ 承認（APPROVED）→ 伝票展開（COMPLETED）→
+ * 承認依頼（REQUESTED）→ 承認（APPROVED）→ 確定（COMPLETED）→
  * アーカイブ（ARCHIVED）。
  *
  * - IMPORT: 抽出失敗は赤 Alert + 再抽出。処理中は案内 Alert。
  * - DRAFT: 基本情報（顧客 SearchSelect）+ 明細エディタ + 保存 / 承認依頼。
  * - REQUESTED: 承認 / 差し戻し（第一承認グループ — 代理可）。
- * - APPROVED: 伝票展開（明細ごとに注文請書 ORD-…-NN を一括作成）。
- * - COMPLETED: 生成された注文請書リンク + アーカイブ。
+ * - APPROVED: 確定（明細ごとに受注明細 ORD-…-NN を一括作成）。
+ * - COMPLETED: 生成された受注明細リンク + アーカイブ。
  * 状態ごとの操作は最上部の ActionCard にまとめる（承認権限の有無で色が変わる
  * — 権限が無いユーザーにはグレーの「承認待ち」カード）。
  * タブ: 添付（AttachmentsPanel）/ 履歴（HistoryPanel）。
@@ -60,7 +60,7 @@ import {
 import {
   approveAcceptance,
   archiveAcceptance,
-  deployToSalesOrders,
+  confirmOrderLines,
   rejectAcceptance,
   retryExtraction,
   saveDraft,
@@ -125,9 +125,9 @@ import {
 } from "./OrderAcceptanceItemsEditor";
 
 const BASE_PATH = "/sales/order-acceptances";
-const SALES_ORDERS_PATH = "/production/sales-orders";
+const SALES_ORDERS_PATH = "/sales/order-lines";
 
-/** status → Stepper の active index（取込 / 下書き / 承認 / 伝票展開）。 */
+/** status → Stepper の active index（取込 / 下書き / 承認 / 確定）。 */
 function stepperActive(status: string): number {
   switch (status) {
     case "IMPORT":
@@ -220,14 +220,14 @@ export function OrderAcceptanceDetail({
     });
   };
 
-  /** 伝票展開 — 成功時は生成された注文請書番号を通知する。 */
+  /** 確定 — 成功時は生成された受注明細番号を通知する。 */
   const deploy = () => {
     startTransition(async () => {
-      const result = await deployToSalesOrders(a.number);
+      const result = await confirmOrderLines(a.number);
       if (result.ok) {
         notifications.show({
-          title: "伝票展開しました",
-          message: `注文請書 ${result.data.numbers.join(", ")} を作成しました`,
+          title: "確定しました",
+          message: `受注明細 ${result.data.numbers.join(", ")} を作成しました`,
           color: "green",
         });
         setDeployOpen(false);
@@ -334,12 +334,12 @@ export function OrderAcceptanceDetail({
             loading={isPending}
             onClick={() => setDeployOpen(true)}
           >
-            伝票展開
+            確定
           </PrimaryButton>
         }
-        description="明細ごとに注文請書（ORD-…-NN）を一括作成します"
+        description="明細ごとに受注明細（ORD-…-NN）を一括作成します"
         icon={<IconTransform size={20} />}
-        title="伝票展開できます"
+        title="確定できます"
         tone="action"
       />
     );
@@ -355,9 +355,9 @@ export function OrderAcceptanceDetail({
             アーカイブ
           </SecondaryButton>
         }
-        description="注文請書を作成済みです。処理が終わったらアーカイブできます"
+        description="受注明細を作成済みです。処理が終わったらアーカイブできます"
         icon={<IconArchive size={20} />}
-        title="伝票展開が完了しました"
+        title="確定が完了しました"
         tone="action"
       />
     );
@@ -690,9 +690,9 @@ export function OrderAcceptanceDetail({
                 />
                 <Stepper.Step
                   description={
-                    a.completedAt ? formatDate(a.completedAt) : "注文請書へ"
+                    a.completedAt ? formatDate(a.completedAt) : "受注明細へ"
                   }
-                  label="伝票展開"
+                  label="確定"
                   loading={a.status === "APPROVED"}
                 />
               </Stepper>
@@ -703,16 +703,16 @@ export function OrderAcceptanceDetail({
                 </Text>
               )}
 
-              {/* 伝票展開で生成された注文請書 */}
-              {a.salesOrderNumbers.length > 0 && (
+              {/* 確定で生成された受注明細 */}
+              {a.orderLineNumbers.length > 0 && (
                 <>
                   <Divider my="md" />
                   <Stack gap="xs">
                     <Text c="dimmed" fw={600} size="xs">
-                      生成された注文請書
+                      生成された受注明細
                     </Text>
                     <Group gap="sm">
-                      {a.salesOrderNumbers.map((n) => (
+                      {a.orderLineNumbers.map((n) => (
                         <Anchor
                           ff="mono"
                           href={`${SALES_ORDERS_PATH}/${n}`}
@@ -804,7 +804,7 @@ export function OrderAcceptanceDetail({
         />
       </ModalShell>
 
-      {/* 伝票展開の確認 */}
+      {/* 確定の確認 */}
       <ModalShell
         confirmLabel="展開する"
         loading={isPending}
@@ -812,10 +812,10 @@ export function OrderAcceptanceDetail({
         onConfirm={deploy}
         opened={deployOpen}
         size="sm"
-        title="伝票展開の確認"
+        title="確定の確認"
       >
         <Text size="sm">
-          明細 {a.items.length} 件を注文請書（{a.number}-01〜-
+          明細 {a.items.length} 件を受注明細（{a.number}-01〜-
           {String(a.items.length).padStart(2, "0")}）として一括作成します。
           全明細が製品特定済み・単価入力済みであることが必要です。
         </Text>
@@ -975,7 +975,7 @@ function DraftEditor({
       </FormSection>
 
       <FormSection
-        description="製品が未特定の行は製品マスタと突合してください（伝票展開には全行の製品特定 + 単価が必要）。"
+        description="製品が未特定の行は製品マスタと突合してください（確定には全行の製品特定 + 単価が必要）。"
         title="明細"
       >
         <OrderAcceptanceItemsEditor

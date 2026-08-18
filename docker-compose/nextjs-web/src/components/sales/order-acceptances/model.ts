@@ -81,8 +81,8 @@ export interface OrderAcceptanceView {
   orderDate: string | null; // yyyy-mm-dd
   notes: string | null;
   items: OrderAcceptanceItemView[];
-  /** 伝票展開で生成された注文請書番号（ORD-…-NN、枝番順）。 */
-  salesOrderNumbers: string[];
+  /** 伝票展開で生成された受注明細番号（ORD-…-NN、枝番順）。 */
+  orderLineNumbers: string[];
   completedAt: string | null;
   archivedAt: string | null;
   createdAt: string;

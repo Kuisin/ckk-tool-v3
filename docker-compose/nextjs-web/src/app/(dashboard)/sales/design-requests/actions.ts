@@ -5,7 +5,7 @@
  *
  * 作成時に nextDocumentNumber("DESIGN") で依頼番号 DSG-YYYYMM-NNNNN を採番し
  * request_number に保存する（URL id も依頼番号）。
- * トリガ（見積時/受注時）と参照元（見積書/注文請書）は作成後変更不可。
+ * トリガ（見積時/受注時）と参照元（見積書/受注明細）は作成後変更不可。
  * 状態遷移: 着手 PENDING → IN_PROGRESS / 完了 IN_PROGRESS → COMPLETED
  * （completedAt 記録）/ 差し戻し COMPLETED → IN_PROGRESS（completedAt クリア）。
  * 遷移・更新は status を where に含めた updateMany で原子的にガードする。
@@ -33,8 +33,8 @@ const createInput = z.object({
   trigger: triggerEnum,
   /** 見積時: 見積書番号 QOT-YYYYMM-NNNNN（任意）。 */
   quoteNumber: z.string().nullable(),
-  /** 受注時: 注文請書 uuid（任意）。 */
-  salesOrderId: z.string().nullable(),
+  /** 受注時: 受注明細 uuid（任意）。 */
+  orderLineId: z.string().nullable(),
   productId: z.string().nullable(),
   description: z.string().nullable(),
 });
@@ -76,8 +76,8 @@ export async function createDesignRequest(
   if (quoteNumber && !quoteKey) {
     return actionError("見積書番号が不正です");
   }
-  const salesOrderId =
-    v.trigger === "SALES_ORDER" ? trimOrNull(v.salesOrderId) : null;
+  const orderLineId =
+    v.trigger === "SALES_ORDER" ? trimOrNull(v.orderLineId) : null;
 
   const authz = await checkPermission("design_request", "CREATE");
   if (!authz.ok) return actionError(authz.error);
@@ -89,7 +89,7 @@ export async function createDesignRequest(
         trigger: v.trigger,
         quoteYearMonth: quoteKey?.yearMonth ?? null,
         quoteSeq: quoteKey?.seq ?? null,
-        salesOrderId,
+        orderLineId,
         productId: v.productId ? Number(v.productId) : null,
         description: trimOrNull(v.description),
         status: "PENDING",
@@ -102,7 +102,7 @@ export async function createDesignRequest(
       after: {
         trigger: v.trigger,
         quoteNumber,
-        salesOrderId,
+        orderLineId,
         productId: v.productId ? Number(v.productId) : null,
         description: trimOrNull(v.description),
         status: "PENDING",

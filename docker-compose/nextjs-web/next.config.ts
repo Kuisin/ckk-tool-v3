@@ -135,6 +135,31 @@ const nextConfig: NextConfig = {
         permanent: true,
       })),
 
+      // 注文請書（PD01, /production/sales-orders）→ 受注明細（SA05,
+      // /sales/order-lines）。受注請書の明細に統合し、販売カテゴリへ移設した。
+      // 新規・編集画面は廃止（作成は受注請書の明細エディタ）なので、
+      // /new と /:id/edit は一覧・詳細へ寄せる。
+      {
+        source: "/production/sales-orders/new",
+        destination: "/sales/order-lines",
+        permanent: true,
+      },
+      {
+        source: "/production/sales-orders/:id/edit",
+        destination: "/sales/order-lines/:id",
+        permanent: true,
+      },
+      {
+        source: "/production/sales-orders/:path*",
+        destination: "/sales/order-lines/:path*",
+        permanent: true,
+      },
+      {
+        source: "/production/sales-orders",
+        destination: "/sales/order-lines",
+        permanent: true,
+      },
+
       // マニュアルも 1 ページに統合。
       ...(["customer", "end-user", "supplier"] as const).map((old) => ({
         source: `/manual/:lang(ja|en|zh)/operations/masters/${old}/:path*`,

@@ -1,0 +1,43 @@
+import { notFound } from "next/navigation";
+import { OrderLineDetail } from "@/components/sales/order-lines/OrderLineDetail";
+import { fetchAuditEntries } from "@/lib/audit";
+import { requireAppRead } from "@/lib/authz-page";
+import { formatOrderLineNumber, parseOrderLineKey } from "@/lib/doc-number";
+import { listMemos } from "@/lib/document-memos";
+import { fetchOrderLine } from "../data";
+
+export const dynamic = "force-dynamic";
+
+/** 未認証スクレイパ向けの汎用 OG（種別+番号のみ、業務データなし）。 */
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  const { id } = await params;
+  return { title: `受注明細 ${decodeURIComponent(id)} | CKK 業務管理システム` };
+}
+
+/** 受注明細 詳細 (PD21). URL id = 導出文書番号 ORD-YYYYMM-NNNNN-NN. */
+export default async function ProductionOrderLinesDetailPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  const denied = await requireAppRead("order-lines");
+  if (denied) return denied;
+  const { id } = await params;
+  const key = parseOrderLineKey(decodeURIComponent(id));
+  if (!key) notFound();
+
+  const [order, auditEntries, memos] = await Promise.all([
+    fetchOrderLine(key),
+    fetchAuditEntries("order_lines", formatOrderLineNumber(key)),
+    listMemos("order_lines", formatOrderLineNumber(key)),
+  ]);
+  if (!order) notFound();
+
+  return (
+    <OrderLineDetail auditEntries={auditEntries} memos={memos} order={order} />
+  );
+}

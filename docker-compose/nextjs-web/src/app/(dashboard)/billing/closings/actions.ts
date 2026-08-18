@@ -116,9 +116,11 @@ export async function processClosing(
     // 明細: 出荷書明細 1 行 = 請求明細 1 行（摘要 = 製品名 + ロット、由来キー付き）。
     let sortOrder = 0;
     const items = shipments.flatMap((s) => {
-      const unitPrice = Number(s.salesOrder.unitPrice);
       const deliveryNote = s.deliveryNotes[0] ?? null;
       return s.items.map((it) => {
+        // 単価は**その行の**受注明細から取る（1 出荷書に単価の異なる
+        // 複数明細が載り得るため、出荷書単位の単一単価では誤請求になる）。
+        const unitPrice = Number(it.orderLine?.unitPrice ?? 0);
         const name = it.product.name as LocalizedText | null;
         const ja =
           it.lotNumber != null
@@ -133,6 +135,8 @@ export async function processClosing(
           shippingOrderSeq: s.seq,
           deliveryNoteYearMonth: deliveryNote?.yearMonth ?? null,
           deliveryNoteSeq: deliveryNote?.seq ?? null,
+          // 受注明細 → 請求のトレーサビリティ（単価の出所）
+          orderLineId: it.orderLineId,
           description: { ja, en },
           quantity: it.quantity,
           unitPrice,
@@ -157,10 +161,8 @@ export async function processClosing(
       closingDate.getUTCMonth() + 1,
     );
     const dueDate = addDays(closingDate, paymentTermsDays);
-    // 支店: 対象出荷の注文請書に共通の支店があれば引き継ぐ。
-    const branchIds = new Set(
-      shipments.map((s) => s.salesOrder.customerBranchBpId ?? ""),
-    );
+    // 支店: 対象出荷に共通の支店があれば引き継ぐ。
+    const branchIds = new Set(shipments.map((s) => s.customerBranchBpId ?? ""));
     const customerBranchBpId =
       branchIds.size === 1 ? branchIds.values().next().value || null : null;
 

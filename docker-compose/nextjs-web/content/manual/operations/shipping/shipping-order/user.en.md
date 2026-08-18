@@ -19,7 +19,7 @@ The shipping order is an important document — it is the source used later when
 
 ## Words used on this page
 
-- **注文請書 (sales order)** … The document that decides "which customer, which product, how many pieces, by when". You look at this when you make a shipping order.
+- **受注明細 (sales order)** … The document that decides "which customer, which product, how many pieces, by when". You look at this when you make a shipping order.
 - **指示書 (work order)** … The document that tells the factory "please make this many of this product". You ship the pieces from work orders that are finished.
 - **Lot** … The number given to a batch of products made together. The work order number becomes the lot number.
 - **発送 / 在庫保管 (Dispatch / Keep in stock)** … "発送" means the pieces you send to the customer. "在庫保管" means the pieces you keep in-house instead of sending.
@@ -27,7 +27,7 @@ The shipping order is an important document — it is the source used later when
 
 ## Before you start
 
-- The **注文請書 (sales order)** for what you want to ship must already be registered.
+- The **受注明細 (sales order)** for what you want to ship must already be registered.
 - Check that the products are finished (the [work order](/manual/en/operations/production/work-order/user) is complete). Finished work orders are what gets filled into the lines for you.
 - You need shipping permission to make a shipping order or to ship. If you cannot use it, please ask your administrator.
 
@@ -47,7 +47,7 @@ When you open the app, you see a list of the shipping orders made so far.
 ## Making a shipping order
 
 1. Press 「**新規作成**」 (New) at the top right of the list screen.
-2. Click the 「**注文請書**」 (Sales order) box and pick the sales order you want to ship. Inside this box you search by the **customer name, product name, or the customer's order number** (unlike the search box on the list screen, you cannot search here by a sales order number starting with `ORD-`).
+2. Click the 「**受注明細**」 (Sales order) box and pick the sales order you want to ship. Inside this box you search by the **customer name, product name, or the customer's order number** (unlike the search box on the list screen, you cannot search here by a sales order number starting with `ORD-`).
 3. The finished work orders are **filled into the lines for you** (one row per work order). The quantity is the number of good pieces made by that work order (if nothing is recorded yet, it is the number that was planned).
 4. In 「**種別**」 (Type), choose 「**発送**」 (Dispatch) or 「**在庫保管**」 (Keep in stock). Normally you leave it as 「発送」.
 5. In 「**出荷元拠点**」 (Shipping site), choose where you are sending from.
@@ -126,7 +126,7 @@ Every field on the shipping order screen. The **?** next to a field in the app l
 
 | Field | Required | What to enter |
 |-------|----------|---------------|
-| [Sales order](#field-sales-order) | Required | Which order this shipment is for |
+| [Order line](#field-order-line) | Required | Which order this shipment is for |
 | [Type](#field-type) | Required | Dispatch, or stock storage |
 | [Shipping plant](#field-plant) | Required | Which plant it leaves from |
 | [Notes](#field-notes) | Optional | Notes for the whole shipping order |
@@ -134,7 +134,7 @@ Every field on the shipping order screen. The **?** next to a field in the app l
 | [Lot (stock)](#field-lot) | Required | Which production run it comes from |
 | [Quantity](#field-quantity) | Required | How many pieces go out |
 
-### Sales order [#field-sales-order]
+### Order line [#field-order-line]
 
 Which order this shipment is for. Choosing it shows that order's products and the quantity still outstanding.
 
@@ -167,7 +167,7 @@ How many pieces go out. It cannot exceed the lot's stock. To ship in parts, crea
 
 ## Questions and problems
 
-**Q. In the 「注文請書」 box on the new shipping order screen, I search but the sales order I want to ship does not appear.**
+**Q. In the 「受注明細」 box on the new shipping order screen, I search but the sales order I want to ship does not appear.**
 A. In this box, type the **customer name, product name, or the customer's order number**. Here you cannot find it by the sales order number starting with `ORD-` (this is a different box from the search box at the top of the list screen, where sales order numbers do work). If it still does not appear, that sales order may already be shipped or cancelled.
 
 **Q. I picked a sales order, but only one line was filled in.**

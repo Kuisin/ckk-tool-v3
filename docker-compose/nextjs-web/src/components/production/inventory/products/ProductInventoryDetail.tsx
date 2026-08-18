@@ -188,14 +188,14 @@ function ReservationsTable({ rows }: { rows: InventoryReservationRow[] }) {
                   </Badge>
                 </Table.Td>
                 <Table.Td>
-                  {r.salesOrderNumber ? (
+                  {r.orderLineNumber ? (
                     <Anchor
                       component={Link}
                       ff="mono"
-                      href={`/production/sales-orders/${r.salesOrderNumber}`}
+                      href={`/sales/order-lines/${r.orderLineNumber}`}
                       size="sm"
                     >
-                      {r.salesOrderNumber}
+                      {r.orderLineNumber}
                     </Anchor>
                   ) : r.workOrderNumber != null ? (
                     <Anchor

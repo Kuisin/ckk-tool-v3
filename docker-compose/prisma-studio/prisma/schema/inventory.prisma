@@ -144,7 +144,7 @@ model InventoryReservation {
   id            String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   inventoryType InventoryType     @map("inventory_type")
   inventoryId   String            @map("inventory_id") @db.Uuid
-  salesOrderId  String?           @map("sales_order_id") @db.Uuid
+  orderLineId   String?           @map("order_line_id") @db.Uuid
   workOrderId   String?           @map("work_order_id") @db.Uuid
   quantity      Decimal           @db.Decimal(12, 3)
   status        ReservationStatus @default(RESERVED)
@@ -152,11 +152,11 @@ model InventoryReservation {
   confirmedAt   DateTime?         @map("confirmed_at") @db.Timestamptz(6)
   releasedAt    DateTime?         @map("released_at") @db.Timestamptz(6)
 
-  salesOrder SalesOrder? @relation(fields: [salesOrderId], references: [id])
+  orderLine  OrderLine?  @relation(fields: [orderLineId], references: [id])
   workOrder  WorkOrder?  @relation(fields: [workOrderId], references: [id])
 
   @@index([inventoryType, inventoryId, status])
-  @@index([salesOrderId])
+  @@index([orderLineId])
   @@map("inventory_reservations")
   @@schema("app")
 }

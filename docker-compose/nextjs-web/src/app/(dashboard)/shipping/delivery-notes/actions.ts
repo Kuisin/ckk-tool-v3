@@ -5,7 +5,7 @@
  *
  * 作成は allocateDocumentKey("DELIVERY") で (yearMonth, seq) を1回採番し、
  * 明細を nested create で一括作成する。表示番号 DRN-YYYYMM-NNNNN は導出。
- * 納品先（recipient）は出荷書 → 注文請書の顧客（+支店）から自動確定する。
+ * 納品先（recipient）は出荷書 → 受注明細の顧客（+支店）から自動確定する。
  * DIRECT_TO_USER（ユーザー直送）は最終需要家が必須。価格記載
  * （includePrice=false）のときは単価・金額を保存しない（null）。
  *
@@ -212,10 +212,10 @@ export async function createDeliveryNote(
     return actionError("ユーザー直送では最終需要家を選択してください");
   }
   try {
-    // 納品先は出荷書 → 注文請書の顧客（+支店）から確定する。
+    // 納品先は出荷書ヘッダの顧客（+支店）から確定する。1 出荷書は複数の
+    // 受注明細を束ねられるので、顧客は明細側ではなくヘッダが権威。
     const shp = await prisma.shippingOrder.findUnique({
       where: { yearMonth_seq: shpKey },
-      include: { salesOrder: true },
     });
     if (!shp) return actionError("対象の出荷書が見つかりません");
     // スコープ行チェック（PLANT）: 対象出荷書の出荷元拠点がスコープ内であること。
@@ -239,8 +239,8 @@ export async function createDeliveryNote(
         shippingOrderYearMonth: shpKey.yearMonth,
         shippingOrderSeq: shpKey.seq,
         deliveryMethod: v.deliveryMethod,
-        recipientBpId: shp.salesOrder.customerBpId,
-        recipientBranchBpId: shp.salesOrder.customerBranchBpId,
+        recipientBpId: shp.customerBpId,
+        recipientBranchBpId: shp.customerBranchBpId,
         endUserBpId:
           v.deliveryMethod === "DIRECT_TO_USER" ? v.endUserBpId : null,
         includePrice: v.includePrice,
@@ -259,7 +259,7 @@ export async function createDeliveryNote(
       after: {
         shippingOrderNumber: v.shippingOrderNumber,
         deliveryMethod: v.deliveryMethod,
-        recipientBpId: shp.salesOrder.customerBpId,
+        recipientBpId: shp.customerBpId,
         endUserBpId:
           v.deliveryMethod === "DIRECT_TO_USER" ? v.endUserBpId : null,
         includePrice: v.includePrice,

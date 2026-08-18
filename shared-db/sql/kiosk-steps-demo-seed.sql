@@ -1,3 +1,9 @@
+-- ⚠️ 受注明細（order_lines）統合により、このデモシードは未更新です。
+--    app.sales_orders は削除され、受注ラインは app.order_lines
+--    （受注請書 order_acceptances の明細行）に統合されました。
+--    実行すると "relation app.sales_orders does not exist" で失敗します。
+--    親の受注請書を作ったうえで order_lines を挿入する形へ書き換えが必要です。
+
 -- kiosk-steps-demo-seed.sql — キオスク工程実行アプリの表示確認用デモ投入（dev 専用・任意）。
 --
 -- demo1（田中 一郎）に「本日の担当工程」が見えるように、

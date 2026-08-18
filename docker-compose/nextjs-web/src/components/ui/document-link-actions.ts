@@ -21,7 +21,7 @@ import {
   formatEstimateNumber,
   formatPriceListNumber,
   formatQuoteNumber,
-  formatSalesOrderNumber,
+  orderLineNumberOf,
 } from "@/lib/doc-number";
 import { type LocalizedText, localized } from "@/lib/format";
 import {
@@ -81,20 +81,35 @@ export async function searchDocuments(
           };
         });
       }
-      case "sales_order": {
-        const rows = await prisma.salesOrder.findMany({
-          where: seq ? { seq } : undefined,
-          orderBy: [{ yearMonth: "desc" }, { seq: "desc" }],
+      case "order_line": {
+        const rows = await prisma.orderLine.findMany({
+          // 確定済み（枝番あり）のみリンク可能 — 未確定は公開番号を持たない。
+          where: {
+            branch: { not: null },
+            ...(seq ? { acceptanceSeq: seq } : {}),
+          },
+          orderBy: [
+            { acceptanceYearMonth: "desc" },
+            { acceptanceSeq: "desc" },
+            { branch: "asc" },
+          ],
           take: LIMIT,
-          include: { customerBp: { select: { name: true } } },
+          include: {
+            acceptance: {
+              select: { customerBp: { select: { name: true } } },
+            },
+          },
         });
-        return rows.map((r) => {
-          const number = formatSalesOrderNumber(r);
-          return {
-            href: `/production/sales-orders/${encodeURIComponent(number)}`,
-            number,
-            detail: name(r.customerBp?.name),
-          };
+        return rows.flatMap((r) => {
+          const number = orderLineNumberOf(r);
+          if (!number) return [];
+          return [
+            {
+              href: `/sales/order-lines/${encodeURIComponent(number)}`,
+              number,
+              detail: name(r.acceptance.customerBp?.name),
+            },
+          ];
         });
       }
       case "work_order": {

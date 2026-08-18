@@ -18,7 +18,7 @@ import {
   type DocKey,
   formatDocNumber,
   formatProductNumber,
-  formatSalesOrderNumber,
+  orderLineNumberOf,
 } from "@/lib/doc-number";
 import { type LocalizedText, localized } from "@/lib/format";
 
@@ -27,18 +27,23 @@ import { type LocalizedText, localized } from "@/lib/format";
 const LIST_FETCH_CAP = 1000;
 
 const SHIPPING_ORDER_INCLUDE = {
-  salesOrder: {
-    include: {
-      customerBp: true,
-      customerBranchBp: true,
-      product: true,
-    },
-  },
+  // 顧客はヘッダが権威。受注明細は明細行ごとに紐付く。
+  customerBp: true,
+  customerBranchBp: true,
   workOrder: true,
   fromPlant: true,
   items: {
     orderBy: { sortOrder: "asc" as const },
-    include: { product: true },
+    include: {
+      product: true,
+      orderLine: {
+        select: {
+          acceptanceYearMonth: true,
+          acceptanceSeq: true,
+          branch: true,
+        },
+      },
+    },
   },
   deliveryNotes: {
     orderBy: [{ yearMonth: "asc" as const }, { seq: "asc" as const }],
@@ -74,16 +79,18 @@ function mapShippingOrder(r: ShippingOrderRow): ShippingOrder {
   return {
     id: number,
     shippingNumber: number,
-    salesOrderId: r.salesOrderId,
-    salesOrderNumber: formatSalesOrderNumber(r.salesOrder),
-    customerName: localized(
-      r.salesOrder.customerBp.name as LocalizedText | null,
-    ),
-    customerBranchName: r.salesOrder.customerBranchBp
-      ? localized(r.salesOrder.customerBranchBp.name as LocalizedText | null)
+    customerId: r.customerBpId,
+    customerName: localized(r.customerBp.name as LocalizedText | null),
+    customerBranchName: r.customerBranchBp
+      ? localized(r.customerBranchBp.name as LocalizedText | null)
       : null,
-    productName: productLabel(r.salesOrder.product),
-    salesOrderQuantity: r.salesOrder.quantity,
+    orderLineNumbers: [
+      ...new Set(
+        r.items
+          .map((it) => (it.orderLine ? orderLineNumberOf(it.orderLine) : null))
+          .filter((n): n is string => Boolean(n)),
+      ),
+    ],
     workOrderNumber: r.workOrder?.workOrderNumber ?? null,
     fromPlantId: r.fromPlantId != null ? String(r.fromPlantId) : null,
     fromPlantName: r.fromPlant
@@ -95,6 +102,8 @@ function mapShippingOrder(r: ShippingOrderRow): ShippingOrder {
     notes: r.notes,
     items: r.items.map((it) => ({
       id: it.id,
+      orderLineId: it.orderLineId,
+      orderLineNumber: it.orderLine ? orderLineNumberOf(it.orderLine) : null,
       productId: String(it.productId),
       productName: productLabel(it.product),
       lotNumber: it.lotNumber,

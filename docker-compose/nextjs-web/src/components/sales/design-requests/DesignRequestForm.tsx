@@ -4,12 +4,12 @@
  * DesignRequestForm — 設計依頼書 新規作成 / 編集 (SA05, design.md §8.3).
  *
  * 新規: トリガー SegmentedControl（見積時 / 受注時）→ トリガーに応じて
- * 見積書 Select（サーバー読込の直近見積）/ 注文請書 SearchSelect を切替、
+ * 見積書 Select（サーバー読込の直近見積）/ 受注明細 SearchSelect を切替、
  * 製品 SearchSelect（任意）+ 依頼内容 Textarea。
  * 保存は createDesignRequest が DSG-YYYYMM-NNNNN を採番し、詳細ページへ遷移。
  *
  * 編集: 製品・依頼内容のみ（未着手・進行中のみ、ガードはサーバー側でも実施）。
- * トリガー・参照元（見積書/注文請書）は作成後変更不可 — FieldValue 表示。
+ * トリガー・参照元（見積書/受注明細）は作成後変更不可 — FieldValue 表示。
  */
 
 import {
@@ -26,8 +26,8 @@ import { useRouter } from "next/navigation";
 import { useTransition } from "react";
 import { z } from "zod";
 import {
+  searchOrderLineOptions,
   searchProductOptions,
-  searchSalesOrderOptions,
 } from "@/app/(dashboard)/_shared/option-search";
 import {
   createDesignRequest,
@@ -53,7 +53,7 @@ type Trigger = (typeof TRIGGERS)[number];
 const schema = z.object({
   trigger: z.enum(TRIGGERS),
   quoteNumber: z.string().nullable(),
-  salesOrderId: z.string().nullable(),
+  orderLineId: z.string().nullable(),
   productId: z.string().nullable(),
   productName: z.string(),
   description: z.string(),
@@ -65,7 +65,7 @@ function toFormValues(request: DesignRequest): FormValues {
   return {
     trigger: request.trigger,
     quoteNumber: request.quoteNumber,
-    salesOrderId: request.salesOrderId,
+    orderLineId: request.orderLineId,
     productId: request.productId,
     productName: request.productName ?? "",
     description: request.description ?? "",
@@ -95,7 +95,7 @@ export function DesignRequestForm({
         : {
             trigger: "QUOTE",
             quoteNumber: null,
-            salesOrderId: null,
+            orderLineId: null,
             productId: null,
             productName: "",
             description: "",
@@ -106,7 +106,7 @@ export function DesignRequestForm({
   const onTriggerChange = (value: string) => {
     form.setFieldValue("trigger", value as Trigger);
     form.setFieldValue("quoteNumber", null);
-    form.setFieldValue("salesOrderId", null);
+    form.setFieldValue("orderLineId", null);
   };
 
   const handleSubmit = (values: FormValues) => {
@@ -120,7 +120,7 @@ export function DesignRequestForm({
           : await createDesignRequest({
               trigger: values.trigger,
               quoteNumber: values.quoteNumber,
-              salesOrderId: values.salesOrderId,
+              orderLineId: values.orderLineId,
               productId: values.productId,
               description: values.description || null,
             });
@@ -201,15 +201,15 @@ export function DesignRequestForm({
                 />
               ) : (
                 <SearchSelect
-                  description="§3 受注と並行して設計を依頼する場合の注文請書（任意）"
+                  description="§3 受注と並行して設計を依頼する場合の受注明細（任意）"
                   label={
-                    <HelpLabel {...fieldHelp("designRequest", "salesOrder")} />
+                    <HelpLabel {...fieldHelp("designRequest", "orderLine")} />
                   }
-                  onChange={(v) => form.setFieldValue("salesOrderId", v)}
-                  onSearch={searchSalesOrderOptions}
-                  placeholder="注文請書を検索"
+                  onChange={(v) => form.setFieldValue("orderLineId", v)}
+                  onSearch={searchOrderLineOptions}
+                  placeholder="受注明細を検索"
                   storageKey="sales-order"
-                  value={form.values.salesOrderId}
+                  value={form.values.orderLineId}
                 />
               )}
             </>
@@ -232,11 +232,11 @@ export function DesignRequestForm({
                 }
               />
               <FieldValue
-                label={request?.trigger === "QUOTE" ? "見積書" : "注文請書"}
+                label={request?.trigger === "QUOTE" ? "見積書" : "受注明細"}
                 value={
                   request?.trigger === "QUOTE"
                     ? (request?.quoteNumber ?? "—")
-                    : (request?.salesOrderNumber ?? "—")
+                    : (request?.orderLineNumber ?? "—")
                 }
               />
             </>

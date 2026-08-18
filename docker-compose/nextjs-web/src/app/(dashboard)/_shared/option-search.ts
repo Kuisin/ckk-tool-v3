@@ -361,35 +361,49 @@ export async function searchUserOptions(
   }));
 }
 
-/** 注文請書検索（指示書ビルダー用）。value = uuid、label = 番号 + 製品 + 数量。 */
-export async function searchSalesOrderOptions(
+/** 受注明細検索（指示書ビルダー用）。value = uuid、label = 番号 + 製品 + 数量。 */
+export async function searchOrderLineOptions(
   query: string,
 ): Promise<SearchOption[]> {
   const q = query.trim();
-  const rows = await prisma.salesOrder.findMany({
+  const rows = await prisma.orderLine.findMany({
     where: {
-      // PARTIAL_SHIPPED を含める — 一部出荷済みの注文請書へ追加出荷できる
+      // 確定済み（枝番あり）のみ — 未確定の明細は公開番号を持たない
+      branch: { not: null },
+      // PARTIAL_SHIPPED を含める — 一部出荷済みの受注明細へ追加出荷できる
       status: {
         in: ["DRAFT", "CONFIRMED", "IN_PRODUCTION", "PARTIAL_SHIPPED"],
       },
       ...(q
         ? {
             OR: [
-              { customerOrderRef: { contains: q, mode: "insensitive" } },
+              {
+                acceptance: {
+                  customerOrderRef: { contains: q, mode: "insensitive" },
+                },
+              },
               { product: { name: { path: ["ja"], string_contains: q } } },
-              { customerBp: { name: { path: ["ja"], string_contains: q } } },
+              {
+                acceptance: {
+                  customerBp: { name: { path: ["ja"], string_contains: q } },
+                },
+              },
             ],
           }
         : {}),
     },
-    include: { product: true, customerBp: true },
-    orderBy: [{ yearMonth: "desc" }, { seq: "desc" }, { branch: "asc" }],
+    include: { product: true },
+    orderBy: [
+      { acceptanceYearMonth: "desc" },
+      { acceptanceSeq: "desc" },
+      { branch: "asc" },
+    ],
     take: LIMIT,
   });
-  const { formatSalesOrderNumber } = await import("@/lib/doc-number");
+  const { orderLineNumberOf } = await import("@/lib/doc-number");
   return rows.map((r) => ({
     value: r.id,
-    label: `${formatSalesOrderNumber(r)} ${localized(r.product.name as LocalizedText | null)}（${r.quantity}）`,
+    label: `${orderLineNumberOf(r) ?? "—"} ${localized(r.product?.name as LocalizedText | null)}（${r.quantity}）`,
   }));
 }
 

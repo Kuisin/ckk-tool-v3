@@ -30,7 +30,7 @@ Use this when a customer asks about a special shape and a drawing is needed.
 
 - If the [product](/manual/en/operations/masters/product/user) the drawing is for is registered, the drawing can be kept as that product's newest drawing when the request is done. You can also make a request without choosing a product.
 - If you register it as 見積時 (at quotation), having the [quote](/manual/en/operations/sales/quote/user) first lets you link the request to it.
-- If you register it as 受注時 (at order), having the 注文請書 (sales order) first lets you link the request to it. Sales orders are made by 「伝票展開」(deploy) in [Order Acceptance](/manual/en/operations/sales/order-acceptance/user).
+- If you register it as 受注時 (at order), having the 受注明細 (sales order) first lets you link the request to it. Sales orders are made by 「伝票展開」(deploy) in [Order Acceptance](/manual/en/operations/sales/order-acceptance/user).
 - To finish a request, **at least one drawing file must be attached**.
 
 ## Reading the screen
@@ -50,7 +50,7 @@ When you open the app, the requests so far are shown as a list.
 1. Press「**新規作成**」(New) at the top right of the list screen.
 2. In「**トリガー**」(trigger), press「**見積時**」(at quotation) or「**受注時**」(at order) to choose it.
 3. If you chose 見積時, choose the quote it is based on in the「**見積書**」(quote) field. You can also leave it empty.
-4. If you chose 受注時, search for and choose the sales order it is based on in the「**注文請書**」(sales order) field. You can also leave it empty.
+4. If you chose 受注時, search for and choose the sales order it is based on in the「**受注明細**」(sales order) field. You can also leave it empty.
 5. Choose the product in the「**製品**」(product) field. You can also leave it empty.
 6. Write what you want designed in「**依頼内容**」(request details).
 7. Press「**保存**」(save).
@@ -106,7 +106,7 @@ Every field on the design request screen. The **?** next to a field in the app l
 |-------|----------|---------------|
 | [Trigger](#field-trigger) | Required | Raised at quoting time or after the order |
 | [Quote](#field-quote) | Conditional | The quote it relates to, when raised at quoting time |
-| [Sales order](#field-sales-order) | Conditional | The sales order it relates to, when raised after the order |
+| [Order line](#field-order-line) | Conditional | The sales order it relates to, when raised after the order |
 | [Product](#field-product) | Optional | The product the drawing is for |
 | [Request details](#field-description) | Required | What needs to be designed |
 
@@ -118,7 +118,7 @@ Whether the request is **for a quote** or **for a confirmed order**. Which one y
 
 Chosen when the trigger is quoting time. Recording which quote the design is for makes the history easy to follow later.
 
-### Sales order [#field-sales-order]
+### Order line [#field-order-line]
 
 Chosen when the trigger is after the order, recording which order the design is for.
 

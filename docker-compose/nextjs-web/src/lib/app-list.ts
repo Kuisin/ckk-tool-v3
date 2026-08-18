@@ -78,7 +78,7 @@ export const appList: AppEntry[] = [
   },
   {
     // 受注請書 intake（§2）— 監視フォルダ / 優先取込の取込状況一覧が本体。
-    // 展開後の注文請書管理（PD01）は /production/sales-orders
+    // 展開後の受注明細管理（PD01）は /sales/order-lines
     // （取込一覧のヘッダーからリンク）。
     key: "order-acceptances",
     label: "受注請書",
@@ -89,9 +89,21 @@ export const appList: AppEntry[] = [
     requiredPermission: "order_acceptance",
   },
   {
+    // 受注請書を確定すると明細ごとに ORD-…-NN が採番される。その明細を
+    // 受注請書をまたいで横断表示し、指示書・出荷・引当の進捗を追う画面。
+    // 作成・編集は受注請書 (SA04) の明細エディタが唯一の入口。
+    key: "order-lines",
+    label: "受注明細",
+    operationCode: "SA05",
+    href: "/sales/order-lines",
+    icon: "IconListDetails",
+    category: "販売",
+    requiredPermission: "order_acceptance",
+  },
+  {
     key: "design-requests",
     label: "設計依頼書",
-    operationCode: "SA05",
+    operationCode: "SA06",
     href: "/sales/design-requests",
     icon: "IconRuler2",
     category: "販売",
