@@ -29,6 +29,10 @@ import {
 } from "@/lib/doc-number";
 import { enqueueExtraction } from "@/lib/intake";
 import { allocateDocumentKey } from "@/lib/numbering";
+import {
+  acceptanceReadiness,
+  readinessSummary,
+} from "@/lib/order-acceptance-readiness";
 import { linesReplaceBlockReason, nextBranches } from "@/lib/order-line-core";
 import {
   type ActionResult,
@@ -304,7 +308,8 @@ export async function saveDraft(
 // ── 承認フロー ───────────────────────────────────────────────────────────────
 
 /**
- * 承認依頼 — DRAFT → REQUESTED（顧客特定 + 明細 1 件以上が必要）。
+ * 承認依頼 — DRAFT → REQUESTED（確定と同じ完成条件が要る: 顧客特定 +
+ * 明細 1 件以上 + 全行の製品特定・単価入力 — lib/order-acceptance-readiness）。
  *
  * §2 価格照合（監査 P0-8）: 明細単価を価格表と突合し、差異がある場合は
  * `acknowledgePriceDiff: true`（UI の確認モーダル経由）なしには依頼できない。
@@ -327,18 +332,30 @@ export async function submitForApproval(
       select: {
         status: true,
         customerBpId: true,
-        _count: { select: { items: true } },
+        items: {
+          orderBy: { sortOrder: "asc" },
+          select: { productId: true, unitPrice: true },
+        },
       },
     });
     if (!prior) return actionError("対象の注文請書が見つかりません");
     if (prior.status !== "DRAFT") {
       return actionError("下書きの注文請書のみ承認依頼できます");
     }
-    if (!prior.customerBpId) {
-      return actionError("顧客が未特定です。顧客を選択して保存してください");
-    }
-    if (prior._count.items < 1) {
-      return actionError("明細が1件もありません。明細を追加してください");
+    // 確定と同じ完成条件を入口で確かめる（lib/order-acceptance-readiness）。
+    // 画面のボタンも同じ判定で押せなくなっているので、ここに来るのは
+    // 古い画面からの依頼だけ。
+    const readiness = acceptanceReadiness({
+      customerBpId: prior.customerBpId,
+      items: prior.items.map((it) => ({
+        productId: it.productId,
+        unitPrice: it.unitPrice == null ? null : Number(it.unitPrice),
+      })),
+    });
+    if (!readiness.ok) {
+      return actionError(
+        `承認依頼できません: ${readinessSummary(readiness.issues)}`,
+      );
     }
     // 価格照合はサーバー側で必ず再計算する（クライアント表示値は信用しない）。
     const priceCheck = await checkAcceptancePrices(key);
@@ -502,20 +519,19 @@ export async function confirmOrderLines(
     if (prior.status !== "APPROVED") {
       return actionError("承認済の注文請書のみ確定できます");
     }
-    if (!prior.customerBpId) {
-      return actionError("顧客が未特定のため確定できません");
-    }
-    if (prior.items.length < 1) {
-      return actionError("明細がありません");
-    }
-    // 全明細の突合・単価を検証（不備行を列挙して返す）。
-    const offending = prior.items
-      .map((it, i) => ({ row: i + 1, it }))
-      .filter(({ it }) => it.productId == null || it.unitPrice == null);
-    if (offending.length > 0) {
-      const rows = offending.map((o) => `${o.row}`).join(", ");
+    // 承認依頼と同じ完成条件（lib/order-acceptance-readiness）。通常は
+    // 依頼の時点で満たされているが、承認中に明細が壊れる筋道が無いとは
+    // 言い切れないので確定の直前にも確かめる。
+    const readiness = acceptanceReadiness({
+      customerBpId: prior.customerBpId,
+      items: prior.items.map((it) => ({
+        productId: it.productId,
+        unitPrice: it.unitPrice == null ? null : Number(it.unitPrice),
+      })),
+    });
+    if (!readiness.ok) {
       return actionError(
-        `明細 ${rows} 行目: 製品未特定または単価未入力のため確定できません`,
+        `確定できません: ${readinessSummary(readiness.issues)}`,
       );
     }
 

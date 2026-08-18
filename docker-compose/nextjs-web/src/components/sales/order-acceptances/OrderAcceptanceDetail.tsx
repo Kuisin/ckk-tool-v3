@@ -113,6 +113,10 @@ import type { MemoView } from "@/lib/document-memos";
 import { ORDER_TYPE_LABEL } from "@/lib/enum-labels";
 import { formatDate, formatDateTime, formatMoney } from "@/lib/format";
 import { parseExtractError } from "@/lib/intake-extract-error";
+import {
+  acceptanceReadiness,
+  readinessSummary,
+} from "@/lib/order-acceptance-readiness";
 import type { ActionResult } from "@/lib/server-action";
 import { IntakeDocumentPane } from "./IntakeDocumentPane";
 import { IntakeReviewPanel } from "./IntakeReviewPanel";
@@ -210,6 +214,13 @@ export function OrderAcceptanceDetail({
     return () => clearInterval(timer);
   }, [awaitingExtraction, router]);
   const fileUrl = a.sourceFilename ? sourceFileUrl(a) : null;
+
+  // 承認依頼の可否 — 確定と同じ完成条件（サーバーの submitForApproval と
+  // 同じ関数）。足りない項目があるうちはボタンを押せなくし、理由をカードに出す。
+  const readiness = acceptanceReadiness({
+    customerBpId: a.customerBpId,
+    items: a.items,
+  });
 
   // §2 価格照合（P0-8）— 差異行と明細 id → 照合結果の索引。
   const diffLines = priceCheck.lines.filter((l) => l.diff);
@@ -312,25 +323,26 @@ export function OrderAcceptanceDetail({
     ) : (
       <ActionCard
         actions={
-          <>
-            <SecondaryButton
-              leftSection={<IconPencil size={14} />}
-              onClick={() => setEditing(true)}
-            >
-              編集
-            </SecondaryButton>
-            <PrimaryButton
-              leftSection={<IconSend size={14} />}
-              loading={isPending}
-              onClick={requestApproval}
-            >
-              承認依頼
-            </PrimaryButton>
-          </>
+          <PrimaryButton
+            disabled={!readiness.ok}
+            leftSection={<IconSend size={14} />}
+            loading={isPending}
+            onClick={requestApproval}
+          >
+            承認依頼
+          </PrimaryButton>
         }
-        description="書類と見比べて、直すところがあれば編集してください"
+        description={
+          readiness.ok
+            ? "書類と見比べて、直すところがあれば「編集」で直してください"
+            : `「編集」で直してください — ${readinessSummary(readiness.issues)}`
+        }
         icon={<IconSend size={20} />}
-        title="内容を確認して承認依頼してください"
+        title={
+          readiness.ok
+            ? "内容を確認して承認依頼してください"
+            : `承認依頼にはあと ${readiness.issues.length} 件の入力が必要です`
+        }
         tone="action"
       />
     );
@@ -630,7 +642,8 @@ export function OrderAcceptanceDetail({
                     label="展開日時"
                     value={a.completedAt ? formatDateTime(a.completedAt) : "—"}
                   />
-                  <FieldValue label="備考" value={a.notes} />
+                  {/* 備考は 1 行まるごと使う — 3 列の枠だと読めない */}
+                  <FieldValue fullWidth label="備考" value={a.notes} />
                 </SummaryGrid>
 
                 {/* 明細（読み取り専用） */}

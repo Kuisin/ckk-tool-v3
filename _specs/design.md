@@ -666,8 +666,10 @@ Stack (gap="md")
 `src/components/ui/FieldValue.tsx`
 
 ```tsx
-// props: label: string, value: ReactNode, span?: number
-<Stack gap={2}>
+// props: label: string, value: ReactNode, fullWidth?: boolean
+// fullWidth = SummaryGrid の 1 行を丸ごと使う（備考など長い値）。
+// 列数に依らず gridColumn: '1 / -1' なので、モバイルの 1 列でも崩れない。
+<Stack gap={2} style={fullWidth ? { gridColumn: '1 / -1' } : undefined}>
   <Text size="xs" c="dimmed">{label}</Text>
   <Text size="sm" fw={500}>{value ?? '—'}</Text>
 </Stack>
