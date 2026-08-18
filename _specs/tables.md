@@ -877,6 +877,14 @@ Table approval_delegates {
 // target_id = 業務キー — audit と同じ規約）。進行中は
 // (target_type, target_id) につき常に 1 行だけ PENDING（部分 unique index）。
 //
+// ★ 多態参照は FK ではないので、書類を消しても子行は残る。これを DB 側で
+//   強制するために各書類テーブルに AFTER DELETE トリガー
+//   purge_children_after_delete（関数 app.purge_document_children）を置き、
+//   承認依頼・メモ・メモ改訂・添付をまとめて消している
+//   （20260911090000_document_children_cascade）。Prisma スキーマには現れない
+//   ので、書類テーブルを追加したらトリガーも足すこと。監査ログ（audit_logs）は
+//   意図的に対象外 — 書類を消しても監査記録は残す。
+//
 // flow_snapshot は依頼時点のフロー全段のコピー
 // [{ stepNo, name, groupId, groupName, mode }]。これを持つことで
 // (a) 進行中の書類が後からのフロー編集に影響されず、(b) Stepper が 1 行
