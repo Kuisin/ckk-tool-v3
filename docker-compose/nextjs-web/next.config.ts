@@ -51,7 +51,7 @@ const nextConfig: NextConfig = {
     // アップロードは proxy.ts を通るので、**プロキシ側のボディ上限が実効上限**に
     // なる（既定 10MB）。超えた分は黙って切り捨てられ、サーバーログに
     // "Request body exceeded 10MB … Only the first 10MB will be available" が
-    // 出るだけ — 受け取ったファイルは壊れる。添付・受注請書取込が 20MB、
+    // 出るだけ — 受け取ったファイルは壊れる。添付・注文請書取込が 20MB、
     // フロアマップ図面が 10MB を許可しているため、multipart のオーバーヘッド
     // 込みで収まる値にしておく。個々の上限は各ハンドラ側で弾く。
     proxyClientMaxBodySize: "24mb",
@@ -135,9 +135,9 @@ const nextConfig: NextConfig = {
         permanent: true,
       })),
 
-      // 注文請書（PD01, /production/sales-orders）→ 受注明細（SA05,
-      // /sales/order-lines）。受注請書の明細に統合し、販売カテゴリへ移設した。
-      // 新規・編集画面は廃止（作成は受注請書の明細エディタ）なので、
+      // 注文請書（PD01, /production/sales-orders）→ 注文明細（SA05,
+      // /sales/order-lines）。注文請書の明細に統合し、販売カテゴリへ移設した。
+      // 新規・編集画面は廃止（作成は注文請書の明細エディタ）なので、
       // /new と /:id/edit は一覧・詳細へ寄せる。
       {
         source: "/production/sales-orders/new",

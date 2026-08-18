@@ -3,12 +3,12 @@
 /**
  * ShippingOrderDetail — 出荷書 詳細 (SH21, design.md §8.2).
  *
- * SummaryGrid（番号 / 受注明細番号 link / 顧客 / 種別 / 出荷元拠点 / 出荷日 …）+
+ * SummaryGrid（番号 / 注文明細番号 link / 顧客 / 種別 / 出荷元拠点 / 出荷日 …）+
  * 明細テーブル（製品 / ロット / 数量 / 備考）+
  * Tabs: 概要 / 納品書（DRN 一覧 + 作成ボタン）/ 履歴。
  *
  * Actions: 編集（DRAFT のみ）/ 確定（DRAFT → CONFIRMED）/
- * 出荷（CONFIRMED → SHIPPED + 受注明細の出荷状態再計算）/
+ * 出荷（CONFIRMED → SHIPPED + 注文明細の出荷状態再計算）/
  * キャンセル（DRAFT のみ hard delete, 確認モーダル・赤）。
  */
 
@@ -154,7 +154,7 @@ export function ShippingOrderDetail({
           value={<DocNumber>{order.shippingNumber}</DocNumber>}
         />
         <FieldValue
-          label="受注明細番号"
+          label="注文明細番号"
           value={
             order.orderLineNumbers.length > 0 ? (
               <Stack gap={2}>
@@ -393,8 +393,8 @@ export function ShippingOrderDetail({
         loading={isPending}
         message={
           order.type === "DISPATCH"
-            ? `出荷書 ${order.shippingNumber} を出荷済みにします。受注明細の出荷状態も再計算されます。`
-            : `出荷書 ${order.shippingNumber} を出荷済みにします（在庫保管のため受注明細の出荷状態は変わりません）。`
+            ? `出荷書 ${order.shippingNumber} を出荷済みにします。注文明細の出荷状態も再計算されます。`
+            : `出荷書 ${order.shippingNumber} を出荷済みにします（在庫保管のため注文明細の出荷状態は変わりません）。`
         }
         onClose={() => setShipOpen(false)}
         onConfirm={() =>

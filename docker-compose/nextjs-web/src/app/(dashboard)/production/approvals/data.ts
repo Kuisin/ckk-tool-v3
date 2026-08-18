@@ -1,7 +1,7 @@
 /**
  * data.ts — 承認管理 (PD03) の横断データソース。
  *
- * PENDING の approval_requests を対象種別（指示書 / 素材発注書 / 受注請書）
+ * PENDING の approval_requests を対象種別（指示書 / 素材発注書 / 注文請書）
  * 横断で一覧する。承認依頼行の正規化（§6 本実装）以前に承認待ちになった
  * 旧データ — 依頼行のない PENDING_1ST/2ND の指示書・REQUESTED の素材発注書 —
  * は行ワークフロー列から補完して合流させる（isLegacy = true、取りこぼし防止）。

@@ -38,7 +38,7 @@ Products and materials used to be separate apps, but now they are together in th
 Stock does not move on this screen; it moves automatically along with everyday work.
 
 - **In** … when all the steps of a [work order](/manual/en/operations/production/work-order/user) are finished, the good pieces go into stock with the lot number. Pieces marked as 「半製品」 (semi-finished) go into stock as semi-finished items.
-- **Set aside** … when you run 「**在庫照合**」 (Check stock) on the sales order screen, the stock you can use is reserved for that order.
+- **Set aside** … when you run 「**在庫照合**」 (Check stock) on the order line screen, the stock you can use is reserved for that order.
 - **Out** … when you ship with a [shipping order](/manual/en/operations/shipping/shipping-order/user), the stock goes out and the reservation is released.
 
 ## How to read the products tab
@@ -66,7 +66,7 @@ Near the top you see the product, site, lot number, category, stock quantity, re
 
 Below there are two tabs.
 
-- **予約** (reservations) … the list of orders that have set this stock aside. The status goes 「**予約中**」 (reserved) → 「**確定**」 (confirmed) → 「**解除**」 (released). You can also check the related sales order number and work order number.
+- **予約** (reservations) … the list of orders that have set this stock aside. The status goes 「**予約中**」 (reserved) → 「**確定**」 (confirmed) → 「**解除**」 (released). You can also check the related order line number and work order number.
 - **取引履歴** (transaction history) … the record of stock movements.
 
 ![Transaction history tab](../../../assets/screenshots/inventory-transactions-01.png)

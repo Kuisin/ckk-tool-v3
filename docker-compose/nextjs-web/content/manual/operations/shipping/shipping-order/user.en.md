@@ -10,7 +10,7 @@ This app creates a **shipping order** (出荷書) — a document that records **
 ## What you can do with this app
 
 - Make a shipping order that lists the products and the number of pieces you are sending.
-- Just pick a sales order, and **the lines for the finished work are filled in for you** (no need to type them again).
+- Just pick a order line, and **the lines for the finished work are filled in for you** (no need to type them again).
 - When you record a shipment, **the stock goes down automatically**.
 - Make a [delivery note](/manual/en/operations/shipping/delivery-note/user) from a shipping order.
 - Also record items you keep in-house instead of sending (for example, spare pieces you made).
@@ -19,7 +19,7 @@ The shipping order is an important document — it is the source used later when
 
 ## Words used on this page
 
-- **受注明細 (sales order)** … The document that decides "which customer, which product, how many pieces, by when". You look at this when you make a shipping order.
+- **注文明細 (order line)** … The document that decides "which customer, which product, how many pieces, by when". You look at this when you make a shipping order.
 - **指示書 (work order)** … The document that tells the factory "please make this many of this product". You ship the pieces from work orders that are finished.
 - **Lot** … The number given to a batch of products made together. The work order number becomes the lot number.
 - **発送 / 在庫保管 (Dispatch / Keep in stock)** … "発送" means the pieces you send to the customer. "在庫保管" means the pieces you keep in-house instead of sending.
@@ -27,7 +27,7 @@ The shipping order is an important document — it is the source used later when
 
 ## Before you start
 
-- The **受注明細 (sales order)** for what you want to ship must already be registered.
+- The **注文明細 (order line)** for what you want to ship must already be registered.
 - Check that the products are finished (the [work order](/manual/en/operations/production/work-order/user) is complete). Finished work orders are what gets filled into the lines for you.
 - You need shipping permission to make a shipping order or to ship. If you cannot use it, please ask your administrator.
 
@@ -40,14 +40,14 @@ When you open the app, you see a list of the shipping orders made so far.
 - **出荷書番号 (Shipping order number)** … A number that starts with `SHP-`. The system adds it for you.
 - **種別 (Type)** … A blue 「発送」 (Dispatch) means pieces sent to the customer. A grey 「在庫保管」 (Keep in stock) means pieces kept in-house.
 - **状態 (Status)** … Grey is 「下書き」 (Draft), blue is 「確定」 (Confirmed), green is 「出荷済」 (Shipped).
-- In the search box at the top you can type a shipping order number, a sales order number, a customer name, or a product name to narrow the list. This box is for **finding shipping orders you have already made**; it is a different box from the one for picking a sales order when you make a new shipping order.
+- In the search box at the top you can type a shipping order number, a order line number, a customer name, or a product name to narrow the list. This box is for **finding shipping orders you have already made**; it is a different box from the one for picking a order line when you make a new shipping order.
 - The list shows **shipping orders sent from the site you belong to**.
 - Click a row to open the detail screen for that shipping order.
 
 ## Making a shipping order
 
 1. Press 「**新規作成**」 (New) at the top right of the list screen.
-2. Click the 「**受注明細**」 (Sales order) box and pick the sales order you want to ship. Inside this box you search by the **customer name, product name, or the customer's order number** (unlike the search box on the list screen, you cannot search here by a sales order number starting with `ORD-`).
+2. Click the 「**注文明細**」 (Order line) box and pick the order line you want to ship. Inside this box you search by the **customer name, product name, or the customer's order number** (unlike the search box on the list screen, you cannot search here by a order line number starting with `ORD-`).
 3. The finished work orders are **filled into the lines for you** (one row per work order). The quantity is the number of good pieces made by that work order (if nothing is recorded yet, it is the number that was planned).
 4. In 「**種別**」 (Type), choose 「**発送**」 (Dispatch) or 「**在庫保管**」 (Keep in stock). Normally you leave it as 「発送」.
 5. In 「**出荷元拠点**」 (Shipping site), choose where you are sending from.
@@ -59,15 +59,15 @@ When you open the app, you see a list of the shipping orders made so far.
 
 After you save, it is registered as a 「**下書き**」 (Draft) and the detail screen opens.
 
-> 💡 When you pick a sales order, its contents (customer, product, ordered pieces, number of finished work orders) appear in a blue band. Please check that it is correct before going on.
+> 💡 When you pick a order line, its contents (customer, product, ordered pieces, number of finished work orders) appear in a blue band. Please check that it is correct before going on.
 
-> ⚠️ The sales order cannot be changed after you save. If you picked the wrong one, cancel that shipping order and make a new one.
+> ⚠️ The order line cannot be changed after you save. If you picked the wrong one, cancel that shipping order and make a new one.
 
 ## Checking the contents
 
 ![Shipping order detail screen](../../../assets/screenshots/shipping-order-detail-01.png)
 
-At the top you see the shipping order number, sales order number, customer, product, type, shipping site, quantity, and shipping date.
+At the top you see the shipping order number, order line number, customer, product, type, shipping site, quantity, and shipping date.
 
 - **数量合計 (Total quantity)** … Shown as "30 / 受注 50", so you can see the pieces being sent next to the pieces that were ordered.
 - The 「明細」 (Lines) area below shows the product, lot, quantity, and notes.
@@ -95,7 +95,7 @@ Once confirmed, **you can no longer edit it**, but you can now make a delivery n
 2. Choose 「**出荷**」 (Ship).
 3. 「出荷の確認」 (Ship check) appears. Press 「**出荷する**」 (Ship).
 
-When you ship, today's date is recorded as the **出荷日 (shipping date)** and the status becomes 「**出荷済**」 (Shipped). At the same time, the [product stock](/manual/en/operations/production/product-inventory/user) goes down by the pieces you sent, and the sales order changes by itself to "一部出荷" (Partly shipped) or "出荷済" (Shipped).
+When you ship, today's date is recorded as the **出荷日 (shipping date)** and the status becomes 「**出荷済**」 (Shipped). At the same time, the [product stock](/manual/en/operations/production/product-inventory/user) goes down by the pieces you sent, and the order line changes by itself to "一部出荷" (Partly shipped) or "出荷済" (Shipped).
 
 ### If you made a mistake (Cancel)
 
@@ -106,7 +106,7 @@ Only while it is a 「下書き」 (Draft) can you remove it, using 「**キャ�
 When you keep pieces in-house instead of sending them to the customer — for example spare pieces you made — choose 「**在庫保管**」 (Keep in stock) in 「**種別**」 (Type).
 
 - When you ship with 「在庫保管」, the products are **added** to the stock at the storing site.
-- They are not billed. The status of the sales order does not change either.
+- They are not billed. The status of the order line does not change either.
 
 When you choose 「在庫保管」 in Type, an explanation appears on the screen.
 
@@ -155,7 +155,7 @@ Notes about the shipping order as a whole. Notes about one line go in that line'
 
 ### Product [#field-product]
 
-The product going out, chosen from the products on the sales order.
+The product going out, chosen from the products on the order line.
 
 ### Lot (stock) [#field-lot]
 
@@ -167,14 +167,14 @@ How many pieces go out. It cannot exceed the lot's stock. To ship in parts, crea
 
 ## Questions and problems
 
-**Q. In the 「受注明細」 box on the new shipping order screen, I search but the sales order I want to ship does not appear.**
-A. In this box, type the **customer name, product name, or the customer's order number**. Here you cannot find it by the sales order number starting with `ORD-` (this is a different box from the search box at the top of the list screen, where sales order numbers do work). If it still does not appear, that sales order may already be shipped or cancelled.
+**Q. In the 「注文明細」 box on the new shipping order screen, I search but the order line I want to ship does not appear.**
+A. In this box, type the **customer name, product name, or the customer's order number**. Here you cannot find it by the order line number starting with `ORD-` (this is a different box from the search box at the top of the list screen, where order line numbers do work). If it still does not appear, that order line may already be shipped or cancelled.
 
-**Q. I picked a sales order, but only one line was filled in.**
+**Q. I picked a order line, but only one line was filled in.**
 A. When there are no finished work orders yet, only one empty row is added. Either make the shipping order again after the products are finished, or type the number of pieces yourself.
 
-**Q. I get 「受注数量 50 を超える出荷になります（累計 60）」 (This ships more than the ordered quantity of 50; total 60) and cannot ship.**
-A. You are trying to send more pieces than were ordered on the same sales order. Lower the quantity on this shipping order, or check what has already been shipped.
+**Q. I get 「ORD-202608-00012-01 の受注数量 50 を超える出荷になります（累計 60）」 (This ships more than the ordered quantity of 50; total 60) and cannot ship.**
+A. You are trying to send more pieces than were ordered on the same order line. Lower the quantity on this shipping order, or check what has already been shipped.
 
 **Q. I get 「在庫が不足」 (Not enough stock) and cannot ship.**
 A. The site you are sending from does not have enough stock for the pieces you want to send. Check the numbers in [product stock](/manual/en/operations/production/product-inventory/user) and try again.
@@ -182,5 +182,5 @@ A. The site you are sending from does not have enough stock for the pieces you w
 **Q. I made a mistake and want to fix it, but 「編集」 (Edit) does not appear.**
 A. You can only edit while it is a 「下書き」 (Draft). After it is confirmed it cannot be fixed, so leave that shipping order as it is and make a new one with the correct contents.
 
-**Q. I shipped, but the sales order does not become 「出荷済」 (Shipped).**
-A. Check whether the type is 「在庫保管」 (Keep in stock). That type is a record of pieces kept in-house, so the sales order status does not change. Also, if you sent only part of the ordered pieces, it becomes 「一部出荷」 (Partly shipped).
+**Q. I shipped, but the order line does not become 「出荷済」 (Shipped).**
+A. Check whether the type is 「在庫保管」 (Keep in stock). That type is a record of pieces kept in-house, so the order line status does not change. Also, if you sent only part of the ordered pieces, it becomes 「一部出荷」 (Partly shipped).

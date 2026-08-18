@@ -1,8 +1,8 @@
 /**
- * order-line-core.ts — 受注明細のラインチェック（pure / client-safe）。
+ * order-line-core.ts — 注文明細のラインチェック（pure / client-safe）。
  *
  * ルール: **承認 → 確定の後は明細を変更できない。**
- * 受注明細は受注請書の明細行そのもの（1 行 = 1 明細で固定、分割も統合もしない）
+ * 注文明細は注文請書の明細行そのもの（1 行 = 1 明細で固定、分割も統合もしない）
  * なので、「変更してよいか」の判定はここ 1 箇所に集約し、サーバーアクションは
  * 保存前に必ずこれを通す。UI も同じ関数で出し分ける — 判定が 2 箇所に分かれると
  * 画面では編集できるのに保存で弾かれる、という食い違いが必ず起きる。
@@ -19,7 +19,7 @@ export type OrderLineStatus =
   | "SHIPPED"
   | "CANCELLED";
 
-/** 受注請書ヘッダのステータス（明細の編集可否を左右する）。 */
+/** 注文請書ヘッダのステータス（明細の編集可否を左右する）。 */
 export type AcceptanceStatus =
   | "IMPORT"
   | "DRAFT"
@@ -55,14 +55,14 @@ export function isLineEditable(line: LineLockState): boolean {
 
 /** 編集不可の理由（UI 表示とエラー文言の唯一の出所）。可なら null。 */
 export function lineEditBlockReason(line: LineLockState): string | null {
-  if (line.branch != null) return "確定済みの受注明細は変更できません";
-  if (line.status !== "DRAFT") return "確定済みの受注明細は変更できません";
-  if (line.isLocked) return "承認依頼中の受注明細は変更できません";
+  if (line.branch != null) return "確定済みの注文明細は変更できません";
+  if (line.status !== "DRAFT") return "確定済みの注文明細は変更できません";
+  if (line.isLocked) return "承認依頼中の注文明細は変更できません";
   return null;
 }
 
 /**
- * 受注請書ヘッダ + 明細一式から、明細の全置換（下書き保存・再抽出）が
+ * 注文請書ヘッダ + 明細一式から、明細の全置換（下書き保存・再抽出）が
  * 許されるかを判定する。1 行でも確定済みなら理由を返す。
  */
 export function linesReplaceBlockReason(
@@ -70,7 +70,7 @@ export function linesReplaceBlockReason(
   lines: LineLockState[],
 ): string | null {
   if (!isAcceptanceEditable(acceptanceStatus)) {
-    return "下書きの受注請書のみ編集できます";
+    return "下書きの注文請書のみ編集できます";
   }
   for (const line of lines) {
     const reason = lineEditBlockReason(line);
@@ -107,7 +107,7 @@ export function lineShipStatus(
 
 /**
  * 確定時の枝番採番。既存の最大枝番の次から count 個。
- * max + n の形にしているのは、将来「確定済み受注請書に行を足す」フローが
+ * max + n の形にしているのは、将来「確定済み注文請書に行を足す」フローが
  * 増えても既存の番号を再発行しないため。
  */
 export function nextBranches(currentMax: number, count: number): number[] {

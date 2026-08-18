@@ -4,7 +4,7 @@
  * ApprovalRequestTable — 承認管理 一覧 (PD03, design.md §8.1/§14)。
  *
  * PENDING の承認依頼（approval_requests + 旧データ補完）を対象種別横断で表示:
- * 種別（指示書=violet / 素材発注書=teal / 受注請書=blue）/ 対象番号（mono、
+ * 種別（指示書=violet / 素材発注書=teal / 注文請書=blue）/ 対象番号（mono、
  * 対象詳細へリンク）/ 段階（第一/第二）/ 依頼者 / 依頼日時 / 備考。
  * 行クリックで対象書類の詳細（＝承認操作ができる画面）へ遷移する。
  */
@@ -22,7 +22,7 @@ import { formatDateTime } from "@/lib/format";
 const TARGET_TYPE_LABEL: Record<string, string> = {
   work_orders: "指示書",
   material_purchase_orders: "素材発注書",
-  order_acceptances: "受注請書",
+  order_acceptances: "注文請書",
   purchase_requests: "購買依頼",
 };
 

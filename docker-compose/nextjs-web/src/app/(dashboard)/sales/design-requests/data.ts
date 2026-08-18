@@ -2,7 +2,7 @@
  * data.ts — 設計依頼書 (SA05) ページのサーバーサイド取得・マッピング。
  *
  * app.design_requests は uuid PK + request_number（DSG-YYYYMM-NNNNN、保存済み）。
- * URL id = request_number。参照元（見積書/受注明細）の表示番号はキーから導出する。
+ * URL id = request_number。参照元（見積書/注文明細）の表示番号はキーから導出する。
  */
 
 import type {
@@ -104,7 +104,7 @@ export interface QuoteOption {
 
 /**
  * 見積書リンク用の options（新規フォームの 見積書 Select）。
- * 見積マスタは受注明細ほど大きくないため、直近 50 件をサーバーで読み込んで
+ * 見積マスタは注文明細ほど大きくないため、直近 50 件をサーバーで読み込んで
  * 通常の Select に渡す（value = 導出番号 QOT-YYYYMM-NNNNN）。
  */
 export async function fetchRecentQuoteOptions(): Promise<QuoteOption[]> {

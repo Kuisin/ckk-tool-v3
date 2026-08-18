@@ -472,13 +472,13 @@ export async function onShippingShippedTx(
       });
     }
   }
-  // 出荷で受注明細の予約を解除（§4 予約 → 出荷 RELEASE）。
+  // 出荷で注文明細の予約を解除（§4 予約 → 出荷 RELEASE）。
   // 部分出荷では出荷数分だけ按分して解放する（全量解放すると未出荷分の
   // 引当が他受注に奪われる — 監査 P1-2/P1-7）。RELEASE 取引を積んで
   // キャッシュ reserved_quantity も戻す。
   //
-  // 1 出荷書は複数の受注明細を束ねられるので、**明細行ごと**に集計して
-  // その明細の予約だけを解放する。出荷書単位で合算すると、他の受注明細の
+  // 1 出荷書は複数の注文明細を束ねられるので、**明細行ごと**に集計して
+  // その明細の予約だけを解放する。出荷書単位で合算すると、他の注文明細の
   // 引当まで巻き込んで解放してしまう。
   if (so.type === "DISPATCH") {
     const shippedByLine = new Map<string, number>();
@@ -605,7 +605,7 @@ export async function reserveProductStock(
   });
   // 確定前（枝番なし・製品未特定）の明細は引当対象にならない。
   if (so.branch == null || so.productId == null) {
-    throw new Error("確定済みの受注明細のみ在庫照合できます");
+    throw new Error("確定済みの注文明細のみ在庫照合できます");
   }
   const productId = so.productId;
 

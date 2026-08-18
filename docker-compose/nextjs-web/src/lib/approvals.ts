@@ -89,7 +89,7 @@ export type ApprovalStepKind = "FIRST" | "SECOND";
 const TARGET_LABELS: Record<ApprovalTargetType, string> = {
   work_orders: "指示書",
   material_purchase_orders: "素材発注書",
-  order_acceptances: "受注請書",
+  order_acceptances: "注文請書",
   purchase_requests: "購買依頼",
 };
 

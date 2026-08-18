@@ -37,7 +37,7 @@ const TABLE_ROUTES: Record<string, TableRoute> = {
     directDetail: true,
   },
   order_acceptances: {
-    appLabel: "受注請書",
+    appLabel: "注文請書",
     listPath: "/sales/order-acceptances",
     directDetail: true,
   },
@@ -48,7 +48,7 @@ const TABLE_ROUTES: Record<string, TableRoute> = {
   },
   // 生産
   order_lines: {
-    appLabel: "受注明細",
+    appLabel: "注文明細",
     listPath: "/sales/order-lines",
     directDetail: true,
   },

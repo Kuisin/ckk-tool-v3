@@ -20,7 +20,7 @@ A company with no role **does not appear as a choice** on screens such as the qu
 - You can register each company you do business with, one record per company.
 - You can give a company **roles** — 顧客 (Customer) / 最終需要家 (End User) / 仕入先・外注先 (Supplier / Outsourcing partner). One company can hold several roles.
 - With the 顧客 (Customer) role, the company can be chosen as the addressee on the [Price List](/manual/en/operations/sales/price-list/user), the [Quote](/manual/en/operations/sales/quote/user), the [Order Acceptance](/manual/en/operations/sales/order-acceptance/user) and the invoice.
-- With the 最終需要家 (End User) role, the company can be chosen as the end user on the [Delivery Note](/manual/en/operations/shipping/delivery-note/user) and the sales order.
+- With the 最終需要家 (End User) role, the company can be chosen as the end user on the [Delivery Note](/manual/en/operations/shipping/delivery-note/user) and the order line.
 - With the 仕入先・外注先 (Supplier / Outsourcing partner) role, the company can be chosen on the [Material Purchase Order](/manual/en/operations/purchasing/purchase-order/user), the [Outsource Order](/manual/en/operations/purchasing/outsource-order/user) and as the outsourcing partner of a work order step.
 - You can register **branches** under a company.
 - You can register any number of **contacts** (the people you talk to at that company) for each company.
@@ -91,7 +91,7 @@ In the 「**ロール**」 (Roles) area, tick the positions in which you use thi
 ![Role selection area](../../../assets/screenshots/master-bp-roles-01.png)
 
 - **顧客 (Customer)** … lets you choose the company as the addressee of quotes, order acceptances and invoices.
-- **最終需要家 (End user)** … lets you choose the company as the end user on delivery notes and sales orders.
+- **最終需要家 (End user)** … lets you choose the company as the end user on delivery notes and order lines.
 - **仕入先・外注先 (Supplier / Outsourcing partner)** … lets you choose the company on material purchase orders, outsource orders and as the outsourcing partner of a work order step.
 
 When you tick a role, **that role's own set of fields appears below**. When you untick it, those fields are hidden again.

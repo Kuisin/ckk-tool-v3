@@ -15,10 +15,10 @@ export async function generateMetadata({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  return { title: `受注明細 ${decodeURIComponent(id)} | CKK 業務管理システム` };
+  return { title: `注文明細 ${decodeURIComponent(id)} | CKK 業務管理システム` };
 }
 
-/** 受注明細 詳細 (PD21). URL id = 導出文書番号 ORD-YYYYMM-NNNNN-NN. */
+/** 注文明細 詳細 (PD21). URL id = 導出文書番号 ORD-YYYYMM-NNNNN-NN. */
 export default async function ProductionOrderLinesDetailPage({
   params,
 }: {

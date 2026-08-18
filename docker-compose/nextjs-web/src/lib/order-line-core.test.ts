@@ -58,16 +58,16 @@ describe("lineEditBlockReason", () => {
 
   it("確定済みは確定済みの理由を返す", () => {
     expect(lineEditBlockReason(line({ branch: 2 }))).toBe(
-      "確定済みの受注明細は変更できません",
+      "確定済みの注文明細は変更できません",
     );
     expect(lineEditBlockReason(line({ status: "IN_PRODUCTION" }))).toBe(
-      "確定済みの受注明細は変更できません",
+      "確定済みの注文明細は変更できません",
     );
   });
 
   it("ロック中はロックの理由を返す", () => {
     expect(lineEditBlockReason(line({ isLocked: true }))).toBe(
-      "承認依頼中の受注明細は変更できません",
+      "承認依頼中の注文明細は変更できません",
     );
   });
 });
@@ -90,7 +90,7 @@ describe("linesReplaceBlockReason", () => {
   it("承認以降のヘッダでは置換できない", () => {
     for (const status of lockedHeaders) {
       expect(linesReplaceBlockReason(status, [])).toBe(
-        "下書きの受注請書のみ編集できます",
+        "下書きの注文請書のみ編集できます",
       );
     }
   });
@@ -98,7 +98,7 @@ describe("linesReplaceBlockReason", () => {
   it("1 行でも確定済みなら置換できない", () => {
     expect(
       linesReplaceBlockReason("DRAFT", [line(), line({ branch: 1 })]),
-    ).toBe("確定済みの受注明細は変更できません");
+    ).toBe("確定済みの注文明細は変更できません");
   });
 
   it("明細ゼロの下書きは置換できる", () => {
@@ -143,7 +143,7 @@ describe("lineShipStatus", () => {
 });
 
 describe("nextBranches", () => {
-  it("新規受注請書は 1 から採番する", () => {
+  it("新規注文請書は 1 から採番する", () => {
     expect(nextBranches(0, 3)).toEqual([1, 2, 3]);
   });
 

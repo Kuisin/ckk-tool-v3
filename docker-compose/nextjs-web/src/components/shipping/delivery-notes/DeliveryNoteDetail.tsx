@@ -205,7 +205,7 @@ export function DeliveryNoteDetail({
           }
         />
         <FieldValue
-          label="受注明細番号"
+          label="注文明細番号"
           value={
             note.orderLineNumbers.length > 0 ? (
               <Stack gap={2}>

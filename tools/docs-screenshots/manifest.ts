@@ -190,7 +190,7 @@ export const shots: Shot[] = [
       await page.getByRole("tab", { name: "PDF" }).waitFor();
     },
   },
-  // ── 販売: 受注請書（SA04）──────────────────────────────────────────────────
+  // ── 販売: 注文請書（SA04）──────────────────────────────────────────────────
   {
     id: "order-acceptance-list-01",
     docPage: "operations/sales/order-acceptance/user",
@@ -1081,7 +1081,7 @@ export const shots: Shot[] = [
     path: "/master/business-partners/new",
     steps: async (page) => {
       await page.getByText("ロール").first().scrollIntoViewIfNeeded();
-      await page.getByText("見積書・受注請書・請求書の宛先").first().waitFor();
+      await page.getByText("見積書・注文請書・請求書の宛先").first().waitFor();
     },
   },
   {

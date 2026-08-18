@@ -101,7 +101,7 @@ export async function deleteBps(ids: string[]): Promise<ActionResult> {
           ],
         },
       }),
-      // 受注明細の顧客はヘッダ（受注請書）側で数えているので、ここは最終需要家のみ
+      // 注文明細の顧客はヘッダ（注文請書）側で数えているので、ここは最終需要家のみ
       prisma.orderLine.count({ where: { endUserBpId: { in: ids } } }),
       prisma.shippingOrder.count({
         where: {

@@ -96,8 +96,8 @@ type FormValues = z.infer<typeof bpFormSchema>;
 const ROLE_ORDER = ["CUSTOMER", "END_USER", "VENDOR"] as const;
 
 const ROLE_DESCRIPTION: Record<string, string> = {
-  CUSTOMER: "見積書・受注請書・請求書の宛先として選べるようになる",
-  END_USER: "納品書・受注明細の最終需要家として選べるようになる",
+  CUSTOMER: "見積書・注文請書・請求書の宛先として選べるようになる",
+  END_USER: "納品書・注文明細の最終需要家として選べるようになる",
   VENDOR: "素材発注書・外注依頼・工程の外注先として選べるようになる",
 };
 

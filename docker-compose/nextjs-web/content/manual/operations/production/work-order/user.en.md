@@ -9,7 +9,7 @@ This app is for making the document (**指示書**, work order) that decides whi
 
 ## What you can do with this app
 
-- You can make instructions for the factory, based on a customer's order (the sales order).
+- You can make instructions for the factory, based on a customer's order (the order line).
 - You can send the work order you made to your manager and get **承認** (approval).
 - For each piece of work (each step), you can record that it **started, finished, and how many pieces were made**.
 - When defects come up, you can record how many and why.
@@ -17,7 +17,7 @@ This app is for making the document (**指示書**, work order) that decides whi
 
 ## Words used on this page
 
-- **受注明細** (sales order) … an internal document that splits a customer's order by product and by quantity. You choose one of these to make a work order.
+- **注文明細** (order line) … an internal document that splits a customer's order by product and by quantity. You choose one of these to make a work order.
 - **工程** (step) … one stage of the work, such as cutting, step machining, or inspection.
 - **工程リスト** (step list) … the order of the steps for making a product, registered in advance.
 - **ロット番号** (lot number) … the number given to a batch of products you made. The work order number becomes the lot number.
@@ -26,8 +26,8 @@ This app is for making the document (**指示書**, work order) that decides whi
 
 ## Before you start
 
-- You need a **sales order** first. Sales orders are made from the import screen of [order acceptance](/manual/en/operations/sales/order-acceptance/user), and you can check them on the sales order screen (operation code `PD01`).
-- When you run 「**在庫照合**」 (Check stock) on the sales order screen, the stock you already have is set aside for that order. You make the missing amount with this app.
+- You need a **order line** first. Order lines are made from the import screen of [order acceptance](/manual/en/operations/sales/order-acceptance/user), and you can check them on the order line screen (operation code `PD01`).
+- When you run 「**在庫照合**」 (Check stock) on the order line screen, the stock you already have is set aside for that order. You make the missing amount with this app.
 - People who approve must be registered in an [approval group](/manual/en/operations/masters/approval-group/user) in advance.
 
 ## How to read the screen
@@ -41,13 +41,13 @@ When you open the app, you see a list of the work orders made so far.
 - **予定数量** (planned quantity) … how many pieces you plan to make.
 - **承認状態** (approval status) … a coloured badge shows how far the approval has gone: 「第一承認待ち」 (waiting for first approval), 「第一承認済」 (first approval done), 「第二承認待ち」 (waiting for second approval), 「承認済」 (approved), 「差し戻し」 (sent back), and so on.
 - **状態** (status) … one of 「下書き」 (draft), 「承認待ち」 (waiting for approval), 「承認済」 (approved), 「進行中」 (in progress), 「完了」 (finished), or 「キャンセル」 (cancelled).
-- Type a work order number, a sales order number, or a product name into the search box at the top to find one. You can also narrow it down with 「**種別**」 (type) and 「**状態**」 (status).
+- Type a work order number, a order line number, or a product name into the search box at the top to find one. You can also narrow it down with 「**種別**」 (type) and 「**状態**」 (status).
 - Click a row to open the detail screen for that work order.
 
 ## Creating a work order
 
-1. Press 「**新規作成**」 (New) at the top right of the list screen. You can also open it from the sales order screen, in which case the sales order is already chosen.
-2. Click the 「**受注明細**」 (sales order) box and choose the sales order to base it on. You can search by sales order number, product, or customer.
+1. Press 「**新規作成**」 (New) at the top right of the list screen. You can also open it from the order line screen, in which case the order line is already chosen.
+2. Click the 「**注文明細**」 (order line) box and choose the order line to base it on. You can search by order line number, product, or customer.
 3. Once you choose it, the customer name, the product, and the ordered quantity appear below.
 4. In 「**種別**」 (type), choose 「在庫分」 (from stock) or 「製造分」 (to make).
 5. Enter how many pieces to make in 「**予定数量**」 (planned quantity).
@@ -69,7 +69,7 @@ If there is not enough material, you see a note such as 「**素材在庫が 30 
 
 The order of the steps is registered per product as a 「工程リスト」 (step list).
 
-- When you choose a sales order, the step list for that product is chosen automatically and the steps are filled in.
+- When you choose a order line, the step list for that product is chosen automatically and the steps are filled in.
 - If you choose a different 「**バージョン**」 (version), you can use an earlier order of steps.
 - If the product has no step list yet, you see 「**この製品の工程リストは未登録です（下で新規作成）**」 (this product has no step list yet — create one below). Enter a 「**新しい工程リスト名**」 (new step list name), such as "standard steps", and saving registers it as a new list.
 - If you add or remove steps, you see a note saying the list will be saved as a new version. The contents of work orders you used before do not change.
@@ -83,7 +83,7 @@ After saving, the work order detail screen shows 「**工程ルート**」 (step
 Work cannot start on a work order until it is approved. Approval has **two stages**.
 
 1. On the work order screen, press 「**承認依頼**」 (Request approval) in the 「**承認状況**」 (approval status) area.
-2. The status changes to 「**承認待ち**」 (waiting for approval). From this point, the original sales order can no longer be edited.
+2. The status changes to 「**承認待ち**」 (waiting for approval). From this point, the original order line can no longer be edited.
 3. The person doing the first approval (factory manager or department manager level) presses 「**第一承認**」 (First approval).
 4. Then the person doing the second approval (department manager level) presses 「**第二承認**」 (Second approval).
 5. When both stages are done, the status becomes 「**承認済**」 (approved) and the work can start.
@@ -174,8 +174,8 @@ You can check stock in [inventory management](/manual/en/operations/production/p
 
 - **編集** (edit) … only while it is 「下書き」 (draft). Press 「**編集**」 (Edit) at the top right of the screen.
 - **キャンセル** (cancel) … only while it is 「下書き」 (draft) or 「承認待ち」 (waiting for approval). Choose 「**キャンセル**」 (Cancel) from the button with three dots at the top right.
-- **コピー** (copy) … choose 「**コピー**」 (Copy) from the button with three dots at the top right, then choose the sales order to use. You get a draft that keeps the steps, the places where they are done, and the inspection sheets. Where it was copied from stays on the detail screen as 「**コピー元**」 (copied from). If there is a newer version than the one you copied, a note suggests copying the latest version.
-- The tabs on the detail screen are 「**概要**」 (overview — steps and notes), 「**関連**」 (related — the original sales order and where it was copied from), and 「**履歴**」 (history — who changed what and when).
+- **コピー** (copy) … choose 「**コピー**」 (Copy) from the button with three dots at the top right, then choose the order line to use. You get a draft that keeps the steps, the places where they are done, and the inspection sheets. Where it was copied from stays on the detail screen as 「**コピー元**」 (copied from). If there is a newer version than the one you copied, a note suggests copying the latest version.
+- The tabs on the detail screen are 「**概要**」 (overview — steps and notes), 「**関連**」 (related — the original order line and where it was copied from), and 「**履歴**」 (history — who changed what and when).
 
 You need work order permission to use this app.
 
@@ -200,7 +200,7 @@ Which order the work order is for. **It can be left empty for work orders that o
 
 ### Product [#field-product]
 
-The product being made. Choosing a sales order fills in that order's product.
+The product being made. Choosing a order line fills in that order's product.
 
 ### Planned quantity [#field-planned-quantity]
 

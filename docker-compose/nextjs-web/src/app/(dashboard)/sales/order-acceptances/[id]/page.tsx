@@ -19,11 +19,11 @@ export async function generateMetadata({
 }) {
   const { id } = await params;
   return {
-    title: `受注請書 ${decodeURIComponent(id)} | CKK 業務管理システム`,
+    title: `注文請書 ${decodeURIComponent(id)} | CKK 業務管理システム`,
   };
 }
 
-/** 受注請書 詳細 (SA24). URL id = 表示番号（ORD-YYYYMM-NNNNN）. */
+/** 注文請書 詳細 (SA24). URL id = 表示番号（ORD-YYYYMM-NNNNN）. */
 export default async function OrderLineAcceptancesDetailPage({
   params,
 }: {

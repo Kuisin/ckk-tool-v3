@@ -1,5 +1,5 @@
 /**
- * intake.ts — 受注請書の自動取込パイプライン。server-only.
+ * intake.ts — 注文請書の自動取込パイプライン。server-only.
  *
  * 入口は 2 つ:
  *  - 監視フォルダ（INTAKE_DIR）: instrumentation.ts のポーラーが定期スキャン
@@ -297,7 +297,7 @@ export async function runExtraction(key: {
     // 取込結果を第一承認グループ（受注確認の担当者）へ通知 — ベストエフォート
     void notifyGroup("FIRST", {
       type: "INTAKE",
-      title: `受注請書 ${number} を自動取込しました`,
+      title: `注文請書 ${number} を自動取込しました`,
       message: `明細 ${items.length} 件・顧客${customerBpId ? "一致" : "未特定"} — 内容を確認してください`,
       linkPath: "/sales/order-acceptances",
     }).catch((err) => console.error("[intake] 取込通知に失敗:", err));
@@ -316,7 +316,7 @@ export async function runExtraction(key: {
     });
     void notifyGroup("FIRST", {
       type: "INTAKE",
-      title: `受注請書 ${number} の自動抽出に失敗しました`,
+      title: `注文請書 ${number} の自動抽出に失敗しました`,
       message: message.slice(0, 200),
       linkPath: "/sales/order-acceptances",
     }).catch((err) => console.error("[intake] 取込通知に失敗:", err));
