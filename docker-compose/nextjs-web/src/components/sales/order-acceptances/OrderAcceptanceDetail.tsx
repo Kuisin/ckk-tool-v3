@@ -53,7 +53,10 @@ import {
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { type ReactNode, useEffect, useState, useTransition } from "react";
-import { searchCustomerOptions } from "@/app/(dashboard)/_shared/option-search";
+import {
+  searchCustomerOptions,
+  searchQuoteOptions,
+} from "@/app/(dashboard)/_shared/option-search";
 import {
   approveAcceptance,
   archiveAcceptance,
@@ -89,6 +92,7 @@ import { DocNumber } from "@/components/ui/DocNumber";
 import { FieldValue } from "@/components/ui/FieldValue";
 import { CUSTOMER_F4 } from "@/components/ui/f4-presets";
 import { HistoryPanel } from "@/components/ui/HistoryPanel";
+import { MemoPanel } from "@/components/ui/MemoPanel";
 import { MoneyText } from "@/components/ui/MoneyText";
 import { ModalShell } from "@/components/ui/modals";
 import { SearchSelect } from "@/components/ui/SearchSelect";
@@ -101,6 +105,7 @@ import {
   SummaryGrid,
 } from "@/components/ui/shells";
 import { useTabParam } from "@/hooks/useUrlState";
+import type { MemoView } from "@/lib/document-memos";
 import { ORDER_TYPE_LABEL } from "@/lib/enum-labels";
 import { formatDate, formatDateTime, formatMoney } from "@/lib/format";
 import type { ActionResult } from "@/lib/server-action";
@@ -144,6 +149,7 @@ export function OrderAcceptanceDetail({
   acceptance,
   auditEntries,
   attachments,
+  memos,
   approvalTrail = [],
   canApprove,
   priceCheck = EMPTY_PRICE_CHECK,
@@ -153,6 +159,8 @@ export function OrderAcceptanceDetail({
   auditEntries: AuditEntry[];
   /** 添付（document_attachments 由来、添付タブ）。 */
   attachments: AttachmentView[];
+  /** 社内メモ（document_memos 由来、メモタブ）。 */
+  memos: MemoView[];
   /** 正規化された承認記録（approval_records — 代理承認マーカー付き）。 */
   approvalTrail?: ApprovalTrailView[];
   /** 第一承認グループのメンバー（or 代理）か。 */
@@ -732,6 +740,7 @@ export function OrderAcceptanceDetail({
                 <Tabs.Tab value="attachments">
                   添付（{attachments.length}）
                 </Tabs.Tab>
+                <Tabs.Tab value="memo">メモ</Tabs.Tab>
                 <Tabs.Tab value="history">履歴</Tabs.Tab>
               </Tabs.List>
 
@@ -740,6 +749,16 @@ export function OrderAcceptanceDetail({
                   attachments={attachments}
                   canDelete={a.status !== "ARCHIVED"}
                   canUpload={a.status !== "ARCHIVED"}
+                  ownerId={a.number}
+                  ownerType="order_acceptances"
+                />
+              </Tabs.Panel>
+
+              {/* keepMounted={false}: エディタ（prosemirror）はタブを開くまで読み込まない。 */}
+              <Tabs.Panel keepMounted={false} pt="md" value="memo">
+                <MemoPanel
+                  memos={memos}
+                  mode="memo"
                   ownerId={a.number}
                   ownerType="order_acceptances"
                 />
@@ -915,11 +934,26 @@ function DraftEditor({
               placeholder="注文書の番号"
               value={customerOrderRef}
             />
-            <TextInput
-              label="見積書番号（任意）"
-              onChange={(e) => setQuoteNumber(e.currentTarget.value)}
-              placeholder="QOT-YYYYMM-NNNNN"
-              value={quoteNumber}
+            {/*
+              見積書は手入力（QOT-… を書き写す）ではなく検索して選ぶ。
+              顧客が決まっていればその顧客の見積だけに絞るので、
+              別の顧客の見積を紐付けてしまう事故が起きない。
+            */}
+            <SearchSelect
+              clearable
+              initialOption={
+                a.quoteNumber
+                  ? { value: a.quoteNumber, label: a.quoteNumber }
+                  : null
+              }
+              label="見積書（任意）"
+              onChange={(v) => setQuoteNumber(v ?? "")}
+              onSearch={(q) => searchQuoteOptions(q, customerId)}
+              placeholder={
+                customerId ? "見積書を検索" : "先に顧客を選ぶと絞り込めます"
+              }
+              storageKey="quote"
+              value={quoteNumber || null}
             />
             <DatePickerInput
               clearable

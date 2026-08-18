@@ -10,7 +10,7 @@
 
 import { bpMatchesQuery } from "@/lib/bp-search";
 import { prisma } from "@/lib/db";
-import { formatProductNumber } from "@/lib/doc-number";
+import { formatProductNumber, formatQuoteNumber } from "@/lib/doc-number";
 import { type LocalizedText, localized } from "@/lib/format";
 
 const LIMIT = 20;
@@ -55,6 +55,46 @@ export async function searchProductOptions(
     take: LIMIT,
   });
   return rows.map((p) => ({ value: String(p.id), label: productLabel(p) }));
+}
+
+/**
+ * 見積書 — 受注請書から参照する見積を選ぶための検索。
+ *
+ * 値は表示番号（QOT-YYYYMM-NNNNN）。保存側はこの文字列を複合キーへ戻すので、
+ * 手入力していたときと同じ形のまま扱える。
+ *
+ * `customerBpId` を渡すと **その顧客の見積だけ**に絞る。受注請書では顧客が
+ * 先に決まっているので、関係ない見積を選んでしまう事故を防げる。
+ * 下書き（DRAFT）の見積も選べる — 受注が先に確定することがあるため。
+ */
+export async function searchQuoteOptions(
+  query: string,
+  customerBpId?: string | null,
+): Promise<SearchOption[]> {
+  const q = query.trim().toUpperCase();
+  const rows = await prisma.quote.findMany({
+    where: {
+      ...(customerBpId ? { customerBpId } : {}),
+      // 却下・期限切れは選ばせない（参照しても意味がないため）。
+      status: { notIn: ["REJECTED", "EXPIRED"] },
+    },
+    include: { customerBp: { select: { name: true } } },
+    orderBy: [{ yearMonth: "desc" }, { seq: "desc" }],
+    take: 200,
+  });
+  return rows
+    .map((r) => {
+      const number = formatQuoteNumber(r);
+      const customer = localized(r.customerBp?.name as LocalizedText | null);
+      return {
+        value: number,
+        label: customerBpId ? number : `${number} — ${customer}`,
+        haystack: `${number} ${customer}`.toUpperCase(),
+      };
+    })
+    .filter((o) => !q || o.haystack.includes(q))
+    .slice(0, LIMIT)
+    .map(({ value, label }) => ({ value, label }));
 }
 
 /** 顧客（トップレベル CUSTOMER ロール）— BPコード / 名称 / AI照合名。 */

@@ -13,7 +13,10 @@ import { notifications } from "@mantine/notifications";
 import { IconCalendar } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
-import { searchCustomerOptions } from "@/app/(dashboard)/_shared/option-search";
+import {
+  searchCustomerOptions,
+  searchQuoteOptions,
+} from "@/app/(dashboard)/_shared/option-search";
 import { createManualAcceptance } from "@/app/(dashboard)/sales/order-acceptances/actions";
 import { CUSTOMER_F4 } from "@/components/ui/f4-presets";
 import { HelpLabel } from "@/components/ui/HelpLabel";
@@ -133,17 +136,23 @@ export function OrderAcceptanceCreateForm() {
             placeholder="注文書の番号"
             value={customerOrderRef}
           />
-          <TextInput
+          {/* 手入力ではなく検索して選ぶ（顧客が決まっていればその顧客の見積だけ）。 */}
+          <SearchSelect
+            clearable
             label={
               <HelpLabel
                 {...fieldHelp("orderAcceptance", "quoteNumber", {
-                  label: "見積書番号（任意）",
+                  label: "見積書（任意）",
                 })}
               />
             }
-            onChange={(e) => setQuoteNumber(e.currentTarget.value)}
-            placeholder="QOT-YYYYMM-NNNNN"
-            value={quoteNumber}
+            onChange={(v) => setQuoteNumber(v ?? "")}
+            onSearch={(q) => searchQuoteOptions(q, customerId)}
+            placeholder={
+              customerId ? "見積書を検索" : "先に顧客を選ぶと絞り込めます"
+            }
+            storageKey="quote"
+            value={quoteNumber || null}
           />
           <DatePickerInput
             clearable
