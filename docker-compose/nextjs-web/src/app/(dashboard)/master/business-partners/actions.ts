@@ -39,7 +39,10 @@ import {
   vendorAttrsData,
 } from "../_shared/bp-schema";
 
-export type { BpInput };
+// NOTE: 型の re-export をここに置かないこと。"use server" ファイルは
+// **async 関数以外を export できない**（型 re-export が生成コードに残り、
+// 実行時に `ReferenceError: BpInput is not defined` で保存が失敗する）。
+// 型は定義元 ../_shared/bp-schema から直接 import する。
 
 const branchInput = bpBaseInput.extend({
   contactName: z.string().optional(),
