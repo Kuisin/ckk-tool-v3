@@ -173,7 +173,7 @@ The price shown on the note. It is not printed when "show prices" is off.
 A. You can only pick shipping orders that are 「確定」 (Confirmed) or 「出荷済」 (Shipped). If it is still a 「下書き」 (Draft), first confirm it on the [shipping order](/manual/en/operations/shipping/shipping-order/user) side.
 
 **Q. I want to change the delivery destination to another company, but I cannot choose it.**
-A. The delivery destination is decided by the customer on the sales order behind the shipping order, so it cannot be changed on this screen. If the receiver is different, make the delivery note again from the correct shipping order.
+A. The delivery destination is decided by the customer on the order line behind the shipping order, so it cannot be changed on this screen. If the receiver is different, make the delivery note again from the correct shipping order.
 
 **Q. I get 「…は出荷書に含まれていません」 (… is not included in the shipping order) and cannot save.**
 A. You have put a product on a line that is not on the shipping order. Delete that row, or change it to a product that is on the shipping order.

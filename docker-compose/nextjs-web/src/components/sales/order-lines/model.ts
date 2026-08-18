@@ -1,8 +1,8 @@
 /**
- * model.ts — 受注明細 (SA05) view-model types + pure helpers.
+ * model.ts — 注文明細 (SA05) view-model types + pure helpers.
  *
- * Model (app.order_lines — 受注請書キー + 枝番):
- *   受注明細 = 受注請書の明細行そのもの。受注請書 1 行 = 受注明細 1 行で固定
+ * Model (app.order_lines — 注文請書キー + 枝番):
+ *   注文明細 = 注文請書の明細行そのもの。注文請書 1 行 = 注文明細 1 行で固定
  *   （分割も統合もしない）。確定時に sortOrder 順で branch = 1..N を採番し、
  *   表示番号 ORD-YYYYMM-NNNNN-NN をキーから導出する（保存しない）。
  *   URL id も導出番号を使う。この画面が扱うのは確定済み行のみ。
@@ -39,7 +39,7 @@ export interface OrderLine {
   orderNumber: string;
   /** DB uuid — 指示書作成リンク（?orderLine=…）等の内部参照用。 */
   uuid: string;
-  /** 親の受注請書番号 ORD-YYYYMM-NNNNN。 */
+  /** 親の注文請書番号 ORD-YYYYMM-NNNNN。 */
   acceptanceNumber: string;
   customerId: string | null;
   customerName: string;
@@ -74,7 +74,7 @@ export interface OrderLine {
   updatedAt: string;
 }
 
-/** 受注明細配下の出荷書（出荷タブ・進捗表示用）。 */
+/** 注文明細配下の出荷書（出荷タブ・進捗表示用）。 */
 export interface OrderLineShippingRef {
   /** SHP-YYYYMM-NNNNN（URL id と同一）。 */
   number: string;
@@ -82,7 +82,7 @@ export interface OrderLineShippingRef {
   type: string;
   /** SHIPPING_STATUS。 */
   status: string;
-  /** この受注明細ぶんの出荷数量（出荷書全体ではない）。 */
+  /** この注文明細ぶんの出荷数量（出荷書全体ではない）。 */
   quantity: number;
   shippedAt: string | null;
 }

@@ -113,16 +113,16 @@ export const OPERATION_CODES: OperationCodeEntry[] = [
   },
 
   // ─── 販売 (SA) ───────────────────────────────────────────────────────────
-  // 業務フロー順: 試算 → 価格表 → 見積書 → 受注請書（設計依頼書は並行フロー）
+  // 業務フロー順: 試算 → 価格表 → 見積書 → 注文請書（設計依頼書は並行フロー）
   ...makeResource("販売", "SA", "1", "試算", "/sales/trial-estimates"),
   ...makeResource("販売", "SA", "2", "価格表", "/sales/price-lists"),
   ...makeResource("販売", "SA", "3", "見積書", "/sales/quotes"),
-  ...makeResource("販売", "SA", "4", "受注請書", "/sales/order-acceptances"),
-  // 受注明細は新規・編集画面を持たない（作成は受注請書の明細エディタ）ので
+  ...makeResource("販売", "SA", "4", "注文請書", "/sales/order-acceptances"),
+  // 注文明細は新規・編集画面を持たない（作成は注文請書の明細エディタ）ので
   // makeResource ではなく一覧・詳細だけを個別登録する。
   {
     code: "SA05",
-    label: "受注明細",
+    label: "注文明細",
     href: "/sales/order-lines",
     category: "販売",
     kind: "list",
@@ -132,7 +132,7 @@ export const OPERATION_CODES: OperationCodeEntry[] = [
   },
   {
     code: "SA25",
-    label: "受注明細 詳細",
+    label: "注文明細 詳細",
     href: "/sales/order-lines/_search",
     category: "販売",
     kind: "detail",
@@ -151,7 +151,7 @@ export const OPERATION_CODES: OperationCodeEntry[] = [
 
   // ─── 生産 (PD) ───────────────────────────────────────────────────────────
   // 業務フロー順: 指示書 → 承認管理 → 在庫管理。
-  // 受注明細は販売カテゴリ (SA05) へ移設したため PD01/PD11/PD21 は欠番。
+  // 注文明細は販売カテゴリ (SA05) へ移設したため PD01/PD11/PD21 は欠番。
   // PD22 詳細（ID無し→検索）が旧 PD20 工程実行 のエントリポイントを兼ねる
   ...makeResource("生産", "PD", "2", "指示書", "/production/work-orders"),
   ...makeResource("生産", "PD", "3", "承認管理", "/production/approvals"),

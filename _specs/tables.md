@@ -13,7 +13,7 @@
 >
 > **実装にあるが本書に未記載（31）** — 後から足した機能の分:
 > - `directory.prisma`: `employee_directory` / `ldap_sync_log`
-> - `intake.prisma`: `order_acceptance_items`
+> - `intake.prisma`: （`order_lines` は本書に記載済み）
 > - `inventory.prisma`: `storage_locations` / `storage_shelves`
 > - `kiosk.prisma`: `kiosk_cards` / `kiosk_device_locations` / `kiosk_device_logs` / `kiosk_devices` / `kiosk_floor_maps` / `kiosk_link_requests` / `kiosk_sessions`
 > - `notification.prisma`: `notifications` / `push_subscriptions` / `user_notification_settings`
@@ -536,7 +536,7 @@ Table quote_items {
 }
 
 // ===========================
-// 受注請書（§2）ORD-YYYYMM-NNNNN
+// 注文請書（§2）ORD-YYYYMM-NNNNN
 // ===========================
 
 Table order_acceptances {
@@ -547,7 +547,7 @@ Table order_acceptances {
   customer_branch_bp_id uuid [ref: > business_partners.id]
   customer_order_ref varchar               // 顧客注文書番号（FAX受取）
   status          ORDER_ACCEPTANCE_STATUS [not null, default: 'PENDING']
-  total_amount    numeric(12,2)            // 受注明細から自動計算
+  total_amount    numeric(12,2)            // 注文明細から自動計算
   order_doc_file_id uuid [ref: > files.id] // 受領した注文書 PDF
   notes           text
   created_by      uuid [ref: > users.id]
@@ -562,30 +562,55 @@ Enum ORDER_ACCEPTANCE_STATUS {
 }
 
 // ===========================
-// 受注明細（§3）ORD-YYYYMM-NNNNN-NN
+// 注文明細（§3）ORD-YYYYMM-NNNNN-NN
 // ===========================
 
-Table sales_orders {
+// 注文明細 = 注文請書（order_acceptances）の明細行そのもの。
+// 別テーブルではない — 旧 sales_orders は order_lines に統合済み。
+// 注文請書 1 行 = 注文明細 1 行で固定（分割も統合もしない）。
+// 確定前は branch / amount が null で status = DRAFT、確定時に sort_order 順で
+// branch 1..N を採番し金額を凍結する。以後 branch は不変。
+Table order_lines {
   id              uuid [pk]
-  sales_order_number varchar [unique, not null]
-  order_acceptance_id uuid [not null, ref: > order_acceptances.id]
-  product_id      varchar [not null, ref: > products.id]
-  lot_number      int [unique]             // 通し連番（指示書と共用）
+  acceptance_year_month char(6) [not null]
+  acceptance_seq  int [not null]
+  branch          int                      // 枝番。確定時に採番（未確定は null）
+  sort_order      int [not null, default: 0]
+
+  // 明細内容（抽出直後は product_text のみ。突合後に product_id）
+  product_id      int [ref: > products.id]
+  product_text    varchar
   order_type      ORDER_TYPE [not null]
   quantity        int [not null]
-  unit_price      numeric(12,2) [not null]
-  amount          numeric(12,2) [not null]
+  unit_price      numeric(12,2)
+  amount          numeric(12,2)            // 確定時に quantity * unit_price
   delivery_date   date
-  status          SALES_ORDER_STATUS [not null, default: 'DRAFT']
-  end_user_bp_id  uuid [ref: > business_partners.id]  // 任意
-  is_locked       boolean [not null, default: false]  // 承認依頼中のロック
   notes           text
-  created_by      uuid [ref: > users.id]
+
+  // 実行（旧 sales_orders 由来）
+  status          ORDER_LINE_STATUS [not null, default: 'DRAFT']
+  lot_number      int [unique]             // 通し連番（指示書と共用）
+  is_locked       boolean [not null, default: false]  // 承認依頼中のロック
+  end_user_bp_id  uuid [ref: > business_partners.id]  // 行ごとに異なり得る
+  confirmed_at    timestamp
+  cancelled_at    timestamp
   created_at      timestamp
   updated_at      timestamp
+
+  // 顧客・注文書番号・見積キー・作成者はヘッダ（order_acceptances）から読む。
+  // 行に複写すると乖離するため持たない。
+
+  indexes {
+    (acceptance_year_month, acceptance_seq, branch) [unique]
+  }
 }
 
-Enum SALES_ORDER_STATUS {
+Ref: order_lines.(acceptance_year_month, acceptance_seq) > order_acceptances.(year_month, seq)
+
+// 確定済み（DRAFT 以外）は公開番号と金額が揃っていること —
+// CHECK order_lines_confirmed_complete で DB 側にも置いている。
+
+Enum ORDER_LINE_STATUS {
   DRAFT
   CONFIRMED
   IN_PRODUCTION
@@ -601,7 +626,7 @@ Enum SALES_ORDER_STATUS {
 Table work_orders {
   id              uuid [pk]
   work_order_number int [unique, not null]  // 通し連番
-  sales_order_id  uuid [not null, ref: > sales_orders.id]
+  order_line_id   uuid [not null, ref: > order_lines.id]
   type            WORK_ORDER_TYPE [not null]
   planned_quantity int [not null]
   material_id     varchar [ref: > materials.id]
@@ -951,7 +976,7 @@ Table inventory_reservations {
   id              uuid [pk]
   inventory_type  INVENTORY_TYPE [not null]
   inventory_id    uuid [not null]
-  sales_order_id  uuid [ref: > sales_orders.id]
+  order_line_id   uuid [ref: > order_lines.id]
   work_order_id   uuid [ref: > work_orders.id]
   quantity        numeric(12,3) [not null]
   status          RESERVATION_STATUS [not null, default: 'RESERVED']
@@ -1082,7 +1107,7 @@ Table material_receipts {
 
 Table shipping_orders {
   id              uuid [pk]
-  sales_order_id  uuid [not null, ref: > sales_orders.id]
+  order_line_id   uuid [not null, ref: > order_lines.id]
   work_order_id   uuid [ref: > work_orders.id]
   from_plant_id uuid [ref: > plants.id]   // 出荷元拠点
   type            SHIPPING_TYPE [not null]
@@ -1229,7 +1254,7 @@ Table design_requests {
   request_number  varchar [unique, not null]
   trigger         DESIGN_TRIGGER [not null]
   quote_id        uuid [ref: > quotes.id]           // 見積時
-  sales_order_id  uuid [ref: > sales_orders.id]     // 受注時
+  order_line_id   uuid [ref: > order_lines.id]      // 受注時
   product_id      varchar [ref: > products.id]
   description     text
   status          DESIGN_STATUS [not null, default: 'PENDING']
@@ -1469,7 +1494,7 @@ Table files {
 //   EST-YYYYMM-NNNNN（試算）
 //   QOT-YYYYMM-NNNNN（見積書）
 //   ORD-YYYYMM-NNNNN（注文受取書）
-//   ORD-YYYYMM-NNNNN-NN（受注明細）
+//   ORD-YYYYMM-NNNNN-NN（注文明細）
 //   DRN-YYYYMM-NNNNN（納品書）
 //   INV-YYYYMM-NNNNN（請求書）
 //   指示書・ロット番号: 通し連番 (int)

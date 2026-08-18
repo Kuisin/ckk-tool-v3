@@ -58,12 +58,12 @@ export async function searchProductOptions(
 }
 
 /**
- * 見積書 — 受注請書から参照する見積を選ぶための検索。
+ * 見積書 — 注文請書から参照する見積を選ぶための検索。
  *
  * 値は表示番号（QOT-YYYYMM-NNNNN）。保存側はこの文字列を複合キーへ戻すので、
  * 手入力していたときと同じ形のまま扱える。
  *
- * `customerBpId` を渡すと **その顧客の見積だけ**に絞る。受注請書では顧客が
+ * `customerBpId` を渡すと **その顧客の見積だけ**に絞る。注文請書では顧客が
  * 先に決まっているので、関係ない見積を選んでしまう事故を防げる。
  * 下書き（DRAFT）の見積も選べる — 受注が先に確定することがあるため。
  */
@@ -361,7 +361,7 @@ export async function searchUserOptions(
   }));
 }
 
-/** 受注明細検索（指示書ビルダー用）。value = uuid、label = 番号 + 製品 + 数量。 */
+/** 注文明細検索（指示書ビルダー用）。value = uuid、label = 番号 + 製品 + 数量。 */
 export async function searchOrderLineOptions(
   query: string,
 ): Promise<SearchOption[]> {
@@ -370,7 +370,7 @@ export async function searchOrderLineOptions(
     where: {
       // 確定済み（枝番あり）のみ — 未確定の明細は公開番号を持たない
       branch: { not: null },
-      // PARTIAL_SHIPPED を含める — 一部出荷済みの受注明細へ追加出荷できる
+      // PARTIAL_SHIPPED を含める — 一部出荷済みの注文明細へ追加出荷できる
       status: {
         in: ["DRAFT", "CONFIRMED", "IN_PRODUCTION", "PARTIAL_SHIPPED"],
       },

@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * OrderAcceptanceDetail — 受注請書 詳細 (SA24, design.md §8.2)。
+ * OrderAcceptanceDetail — 注文請書 詳細 (SA24, design.md §8.2)。
  *
  * ライフサイクル: 取込（IMPORT）→ 下書き（DRAFT — インライン編集可）→
  * 承認依頼（REQUESTED）→ 承認（APPROVED）→ 確定（COMPLETED）→
@@ -10,8 +10,8 @@
  * - IMPORT: 抽出失敗は赤 Alert + 再抽出。処理中は案内 Alert。
  * - DRAFT: 基本情報（顧客 SearchSelect）+ 明細エディタ + 保存 / 承認依頼。
  * - REQUESTED: 承認 / 差し戻し（第一承認グループ — 代理可）。
- * - APPROVED: 確定（明細ごとに受注明細 ORD-…-NN を一括作成）。
- * - COMPLETED: 生成された受注明細リンク + アーカイブ。
+ * - APPROVED: 確定（明細ごとに注文明細 ORD-…-NN を一括作成）。
+ * - COMPLETED: 生成された注文明細リンク + アーカイブ。
  * 状態ごとの操作は最上部の ActionCard にまとめる（承認権限の有無で色が変わる
  * — 権限が無いユーザーにはグレーの「承認待ち」カード）。
  * タブ: 添付（AttachmentsPanel）/ 履歴（HistoryPanel）。
@@ -85,7 +85,6 @@ import {
   ApproveButton,
   PrimaryButton,
   RejectButton,
-  SaveButton,
   SecondaryButton,
 } from "@/components/ui/buttons";
 import { DocNumber } from "@/components/ui/DocNumber";
@@ -100,6 +99,7 @@ import { StatusBadge } from "@/components/ui/StatusBadge";
 import {
   type AuditEntry,
   DetailShell,
+  FormActions,
   FormSection,
   ResourceActions,
   SummaryGrid,
@@ -202,7 +202,7 @@ export function OrderAcceptanceDetail({
       if (result.ok) {
         notifications.show({
           title: done,
-          message: `受注請書 ${a.number}`,
+          message: `注文請書 ${a.number}`,
           color: "green",
         });
         setRejectOpen(false);
@@ -220,14 +220,14 @@ export function OrderAcceptanceDetail({
     });
   };
 
-  /** 確定 — 成功時は生成された受注明細番号を通知する。 */
+  /** 確定 — 成功時は生成された注文明細番号を通知する。 */
   const deploy = () => {
     startTransition(async () => {
       const result = await confirmOrderLines(a.number);
       if (result.ok) {
         notifications.show({
           title: "確定しました",
-          message: `受注明細 ${result.data.numbers.join(", ")} を作成しました`,
+          message: `注文明細 ${result.data.numbers.join(", ")} を作成しました`,
           color: "green",
         });
         setDeployOpen(false);
@@ -312,7 +312,7 @@ export function OrderAcceptanceDetail({
             <RejectButton onClick={() => setRejectOpen(true)} />
           </>
         }
-        description="第一承認グループの承認者としてこの受注請書を承認できます"
+        description="第一承認グループの承認者としてこの注文請書を承認できます"
         icon={<IconShieldCheck size={20} />}
         title="承認してください"
         tone="approve"
@@ -337,31 +337,16 @@ export function OrderAcceptanceDetail({
             確定
           </PrimaryButton>
         }
-        description="明細ごとに受注明細（ORD-…-NN）を一括作成します"
+        description="明細ごとに注文明細（ORD-…-NN）を一括作成します"
         icon={<IconTransform size={20} />}
         title="確定できます"
         tone="action"
       />
     );
-  } else if (a.status === "COMPLETED") {
-    actionCard = (
-      <ActionCard
-        actions={
-          <SecondaryButton
-            leftSection={<IconArchive size={14} />}
-            loading={isPending}
-            onClick={() => setArchiveOpen(true)}
-          >
-            アーカイブ
-          </SecondaryButton>
-        }
-        description="受注明細を作成済みです。処理が終わったらアーカイブできます"
-        icon={<IconArchive size={20} />}
-        title="確定が完了しました"
-        tone="action"
-      />
-    );
   }
+  // 確定後（COMPLETED）は ActionCard を出さない — 確定はゴールであって
+  // 「次にやること」ではない。アーカイブは任意の片付け操作なので、
+  // 急かさないよう ResourceActions のメニューにだけ置く。
 
   return (
     <DetailShell
@@ -380,7 +365,7 @@ export function OrderAcceptanceDetail({
           }
         />
       }
-      breadcrumbs={["販売", { label: "受注請書", href: BASE_PATH }, "詳細"]}
+      breadcrumbs={["販売", { label: "注文請書", href: BASE_PATH }, "詳細"]}
       createdAt={formatDateTime(a.createdAt)}
       status={<StatusBadge entity="OrderAcceptanceIntake" status={a.status} />}
       title={a.number}
@@ -690,7 +675,7 @@ export function OrderAcceptanceDetail({
                 />
                 <Stepper.Step
                   description={
-                    a.completedAt ? formatDate(a.completedAt) : "受注明細へ"
+                    a.completedAt ? formatDate(a.completedAt) : "注文明細へ"
                   }
                   label="確定"
                   loading={a.status === "APPROVED"}
@@ -703,13 +688,13 @@ export function OrderAcceptanceDetail({
                 </Text>
               )}
 
-              {/* 確定で生成された受注明細 */}
+              {/* 確定で生成された注文明細 */}
               {a.orderLineNumbers.length > 0 && (
                 <>
                   <Divider my="md" />
                   <Stack gap="xs">
                     <Text c="dimmed" fw={600} size="xs">
-                      生成された受注明細
+                      生成された注文明細
                     </Text>
                     <Group gap="sm">
                       {a.orderLineNumbers.map((n) => (
@@ -815,7 +800,7 @@ export function OrderAcceptanceDetail({
         title="確定の確認"
       >
         <Text size="sm">
-          明細 {a.items.length} 件を受注明細（{a.number}-01〜-
+          明細 {a.items.length} 件を注文明細（{a.number}-01〜-
           {String(a.items.length).padStart(2, "0")}）として一括作成します。
           全明細が製品特定済み・単価入力済みであることが必要です。
         </Text>
@@ -834,7 +819,7 @@ export function OrderAcceptanceDetail({
         title="アーカイブの確認"
       >
         <Text size="sm">
-          受注請書 {a.number} をアーカイブします。以後の編集はできません。
+          注文請書 {a.number} をアーカイブします。以後の編集はできません。
         </Text>
       </ModalShell>
     </DetailShell>
@@ -882,7 +867,7 @@ function DraftEditor({
       if (result.ok) {
         notifications.show({
           title: "保存しました",
-          message: `受注請書 ${a.number}`,
+          message: `注文請書 ${a.number}`,
           color: "green",
         });
         router.refresh();
@@ -985,9 +970,7 @@ function DraftEditor({
         />
       </FormSection>
 
-      <Group justify="flex-end">
-        <SaveButton loading={isPending} onClick={save} type="button" />
-      </Group>
+      <FormActions loading={isPending} onSave={save} />
     </Stack>
   );
 }

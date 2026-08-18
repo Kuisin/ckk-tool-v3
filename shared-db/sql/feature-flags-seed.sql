@@ -45,4 +45,9 @@ ON CONFLICT (key) DO UPDATE
 --   ('app:kiosk-devices:main',  true, '端末管理 本番公開',     now()),
 --   ('app:kiosk-settings:main', true, 'キオスク設定 本番公開', now())
 
+-- 注文書取込（SY0C）は取込フォルダ（INTAKE_DIR）が要る。main のアプリには
+-- まだ設定・マウントが無いため非公開のまま。公開時は先に INTAKE_DIR を
+-- 設定してフォルダをコンテナへマウントし、そのうえで:
+--   ('app:order-intake:main', true, '注文書取込 本番公開', now())
+
 COMMIT;

@@ -95,7 +95,7 @@ screenshots: [quote-list-01, quote-new-01, quote-detail-01, quote-issue-01, quot
    - 过了期限 → 「**期限切れ**」（已过期）
 3. 点击「**保存**」（保存）。
 
-> 💡 如果在[「受注請書」（订单受理）](/manual/zh/operations/sales/order-acceptance/user)的作业中指定了这份报价单的编号，状态会自动变成「受諾済」（已受理），不需要手动修改。
+> 💡 如果在[「订单请书」（订单请书）](/manual/zh/operations/sales/order-acceptance/user)的作业中指定了这份报价单的编号，状态会自动变成「受諾済」（已受理），不需要手动修改。
 
 ## 制作内容相似的报价单
 

@@ -19,7 +19,7 @@ Product kept in-house is recorded with the "stock storage" shipping type, and do
 
 | Stage | What happens | Who | App |
 |-------|--------------|-----|-----|
-| 1. Create the shipping order | Pick the sales order, the product and the lot | Shipping | [Shipping Order](/manual/en/operations/shipping/shipping-order/user) (`SH01`) |
+| 1. Create the shipping order | Pick the order line, the product and the lot | Shipping | [Shipping Order](/manual/en/operations/shipping/shipping-order/user) (`SH01`) |
 | 2. Confirm | Fix the contents, ready to ship | Shipping | [Shipping Order](/manual/en/operations/shipping/shipping-order/user) (`SH01`) |
 | 3. Ship | Send it out; stock falls | Shipping | [Shipping Order](/manual/en/operations/shipping/shipping-order/user) (`SH01`) |
 | 4. Create the delivery note | Decide the destination and whether prices appear | Shipping | [Delivery Note](/manual/en/operations/shipping/delivery-note/user) (`SH02`) |
@@ -29,14 +29,14 @@ Product kept in-house is recorded with the "stock storage" shipping type, and do
 
 ### 1–3. Shipping order
 
-Choose the sales order, then the product and the **lot**. The lot is the same number as the work order, so which production run went out stays on record. Choose the shipping plant too — **stock falls at that plant**.
+Choose the order line, then the product and the **lot**. The lot is the same number as the work order, so which production run went out stays on record. Choose the shipping plant too — **stock falls at that plant**.
 
 There are two types:
 
 - **Dispatch** — going to the customer; continues to the delivery note and billing
 - **Stock storage** — spare production kept in-house; does not continue to billing
 
-After confirming and shipping, stock falls and the sales order becomes partially shipped or shipped.
+After confirming and shipping, stock falls and the order line becomes partially shipped or shipped.
 
 ### 4–5. Delivery note
 

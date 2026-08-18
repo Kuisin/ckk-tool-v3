@@ -19,8 +19,8 @@ screenshots: [master-bp-list-01, master-bp-new-01, master-bp-roles-01, master-bp
 
 - 可以按「一家公司一条记录」的方式登记有业务往来的公司。
 - 可以给公司加 **角色**（顧客／最終需要家／仕入先・外注先）。一家公司可以加多个角色。
-- 加上「顧客」（客户）后，就可以在[价格表](/manual/zh/operations/sales/price-list/user)、[报价单](/manual/zh/operations/sales/quote/user)、[订单受理](/manual/zh/operations/sales/order-acceptance/user)以及发票中，作为对方单位来选择。
-- 加上「最終需要家」（最终需求方）后，就可以在[送货单](/manual/zh/operations/shipping/delivery-note/user)和订单请书中作为最终需求方来选择。
+- 加上「顧客」（客户）后，就可以在[价格表](/manual/zh/operations/sales/price-list/user)、[报价单](/manual/zh/operations/sales/quote/user)、[订单请书](/manual/zh/operations/sales/order-acceptance/user)以及发票中，作为对方单位来选择。
+- 加上「最終需要家」（最终需求方）后，就可以在[送货单](/manual/zh/operations/shipping/delivery-note/user)和订单明细中作为最终需求方来选择。
 - 加上「仕入先・外注先」（供应商・外协厂）后，就可以在[材料订购单](/manual/zh/operations/purchasing/purchase-order/user)、[外协委托](/manual/zh/operations/purchasing/outsource-order/user)以及制造指示书工序的外协厂中选择。
 - 可以在公司下面登记 **支店**（分店）。
 - 每家公司可以登记任意多位 **担当者**（对方的联系人）。
@@ -31,7 +31,7 @@ screenshots: [master-bp-list-01, master-bp-new-01, master-bp-roles-01, master-bp
 
 - **取引先（业务伙伴）** … 指有业务往来的公司本身。一家公司登记一条记录。
 - **ロール（角色）** … 表示以什么身份使用这家公司的标记，共有以下 3 种。
-  - **顧客（客户）** … 向您下单的公司。是报价单、订单受理书、发票的对方单位。
+  - **顧客（客户）** … 向您下单的公司。是报价单、订单请书、发票的对方单位。
   - **最終需要家（最终需求方）** … 在工厂里实际使用成品的公司。通过商社接单等「下单公司与使用公司不同」的情况会用到。
   - **仕入先・外注先（供应商・外协厂）** … 向其采购材料的公司（供应商），或委托研磨、涂层等部分加工的公司（外协厂）。
 - **外注種別（外协类别）** … 「仕入先・外注先」角色内部的区分，选择「**仕入先**」（供应商）或「**外注先**」（外协厂）之一。
@@ -47,7 +47,7 @@ screenshots: [master-bp-list-01, master-bp-new-01, master-bp-roles-01, master-bp
 
 除此之外没有需要事先准备的东西，可以直接从本画面开始登记。
 
-登记好的业务伙伴，会在之后的[价格表](/manual/zh/operations/sales/price-list/user) →[报价单](/manual/zh/operations/sales/quote/user) →[订单受理](/manual/zh/operations/sales/order-acceptance/user)，以及[材料订购单](/manual/zh/operations/purchasing/purchase-order/user) →[外协委托](/manual/zh/operations/purchasing/outsource-order/user)中一直使用。**公司名称的写法请在一开始就确定好，再进行登记。**
+登记好的业务伙伴，会在之后的[价格表](/manual/zh/operations/sales/price-list/user) →[报价单](/manual/zh/operations/sales/quote/user) →[订单请书](/manual/zh/operations/sales/order-acceptance/user)，以及[材料订购单](/manual/zh/operations/purchasing/purchase-order/user) →[外协委托](/manual/zh/operations/purchasing/outsource-order/user)中一直使用。**公司名称的写法请在一开始就确定好，再进行登记。**
 
 ## 界面说明
 
@@ -90,8 +90,8 @@ screenshots: [master-bp-list-01, master-bp-new-01, master-bp-roles-01, master-bp
 
 ![角色选择区域](../../../assets/screenshots/master-bp-roles-01.png)
 
-- **顧客（客户）** … 可以作为报价单、订单受理书、发票的对方单位来选择。
-- **最終需要家（最终需求方）** … 可以作为送货单、订单请书的最终需求方来选择。
+- **顧客（客户）** … 可以作为报价单、订单请书、发票的对方单位来选择。
+- **最終需要家（最终需求方）** … 可以作为送货单、订单明细的最终需求方来选择。
 - **仕入先・外注先（供应商・外协厂）** … 可以在材料订购单、外协委托以及工序的外协厂中选择。
 
 勾选后，**该角色专用的输入栏会出现在下方**。取消勾选后，这些输入栏会隐藏起来。

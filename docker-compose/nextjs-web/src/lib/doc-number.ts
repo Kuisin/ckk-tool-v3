@@ -19,7 +19,7 @@ const DOC_FORMATS = {
   SHP: { digits: 5 },
   DRN: { digits: 5 },
   INV: { digits: 5 },
-  ORD: { digits: 5 }, // 受注請書（受注明細の枝番なし基底番号）
+  ORD: { digits: 5 }, // 注文請書（注文明細の枝番なし基底番号）
 } as const;
 
 export type DocPrefix = keyof typeof DOC_FORMATS;
@@ -62,7 +62,7 @@ export function parseDocKey(id: string, prefix?: DocPrefix): DocKey | null {
   return { yearMonth: m[2], seq };
 }
 
-// ─── 受注明細番号（3 パート: ORD-YYYYMM-NNNNN-NN） ────────────────────────────
+// ─── 注文明細番号（3 パート: ORD-YYYYMM-NNNNN-NN） ────────────────────────────
 
 export interface OrderLineKey {
   yearMonth: string;
@@ -76,7 +76,7 @@ export function formatOrderLineNumber(key: OrderLineKey): string {
 }
 
 /**
- * DB 行（受注請書キー + 枝番）→ 表示番号。枝番は確定時に採番されるため、
+ * DB 行（注文請書キー + 枝番）→ 表示番号。枝番は確定時に採番されるため、
  * 未確定の行は番号を持たない → null。
  */
 export function orderLineNumberOf(row: {
@@ -92,7 +92,7 @@ export function orderLineNumberOf(row: {
   });
 }
 
-/** 受注明細行 → Prisma の複合ユニークキー（確定済みのみ）。 */
+/** 注文明細行 → Prisma の複合ユニークキー（確定済みのみ）。 */
 export function orderLineWhereKey(key: OrderLineKey) {
   return {
     acceptanceYearMonth_acceptanceSeq_branch: {

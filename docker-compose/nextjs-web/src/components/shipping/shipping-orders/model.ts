@@ -3,10 +3,10 @@
  *
  * Model (app.shipping_orders — 複合キー (year_month, seq)):
  *   表示番号 SHP-YYYYMM-NNNNN はキーから導出（保存しない）。URL id も導出番号。
- *   ヘッダは**顧客**（必須）+ 任意で指示書・出荷元拠点を持ち、受注明細への
- *   紐付けは**明細行**にある — 1 出荷書に複数の受注明細を全量・部分数量で
- *   載せられる。明細は 受注明細 × 製品 × ロット（= 指示書番号）× 数量。
- *   不変条件: 1 出荷書の明細はすべて同一顧客の受注明細であること。
+ *   ヘッダは**顧客**（必須）+ 任意で指示書・出荷元拠点を持ち、注文明細への
+ *   紐付けは**明細行**にある — 1 出荷書に複数の注文明細を全量・部分数量で
+ *   載せられる。明細は 注文明細 × 製品 × ロット（= 指示書番号）× 数量。
+ *   不変条件: 1 出荷書の明細はすべて同一顧客の注文明細であること。
  *
  * Decimal 列はサーバー境界で Number() 済み。ここは pure / client-safe のみ。
  */
@@ -18,7 +18,7 @@ export type ShippingType = "DISPATCH" | "STOCK_STORAGE";
 
 export interface ShippingOrderItem {
   id: string;
-  /** 出荷元の受注明細（DISPATCH では必須、在庫保管では null）。 */
+  /** 出荷元の注文明細（DISPATCH では必須、在庫保管では null）。 */
   orderLineId: string | null;
   /** 導出番号 ORD-YYYYMM-NNNNN-NN。 */
   orderLineNumber: string | null;
@@ -51,7 +51,7 @@ export interface ShippingOrder {
   customerId: string;
   customerName: string;
   customerBranchName: string | null;
-  /** 束ねている受注明細の番号（重複なし）。 */
+  /** 束ねている注文明細の番号（重複なし）。 */
   orderLineNumbers: string[];
   /** ヘッダ紐付けの指示書番号（任意）。 */
   workOrderNumber: number | null;

@@ -277,8 +277,8 @@ Operation codes provide keyboard-shortcut navigation. Format: `{CAT}{MODE}{IDX}`
 | 販売 | 1 | 試算 | SA01 | SA11 | SA21 |
 | 販売 | 2 | 価格表 | SA02 | SA12 | SA22 |
 | 販売 | 3 | 見積書 | SA03 | SA13 | SA23 |
-| 販売 | 4 | 受注請書 | SA04 | SA14 | SA24 |
-| 販売 | 5 | 受注明細 | SA05 | — | SA25 |
+| 販売 | 4 | 注文請書 | SA04 | SA14 | SA24 |
+| 販売 | 5 | 注文明細 | SA05 | — | SA25 |
 | 販売 | 6 | 設計依頼書 | SA06 | SA16 | SA26 |
 | 購買 | 1 | 購買依頼 | PU01 | PU11 | PU21 |
 | 購買 | 2 | 素材発注書 | PU02 | PU12 | PU22 |
@@ -316,14 +316,15 @@ Operation codes provide keyboard-shortcut navigation. Format: `{CAT}{MODE}{IDX}`
 | システム | 9 | 端末管理 | SY09 | — | — |
 | システム | A | キオスク設定 | SY0A | — | — |
 | システム | B | リンク管理 | SY0B | — | — |
+| システム | C | 注文書取込 | SY0C | — | — |
 
 > `CM00`（ダッシュボード）は**アプリ一覧（`lib/app-list.ts`）には登録されて
 > いない** — ホーム自体だから。ランチャーに出るアプリの正は常に
 > `lib/app-list.ts`。
 >
-> `PD01` / `PD11` / `PD21` は**欠番**。旧 注文請書 は受注請書の明細に統合され、
-> 受注明細（`SA05`）として販売カテゴリへ移った。受注明細は新規・編集画面を
-> 持たない（作成は受注請書の明細エディタ）ため `SA15` も欠番で、一覧 `SA05` と
+> `PD01` / `PD11` / `PD21` は**欠番**。旧 注文請書 は注文請書の明細に統合され、
+> 注文明細（`SA05`）として販売カテゴリへ移った。注文明細は新規・編集画面を
+> 持たない（作成は注文請書の明細エディタ）ため `SA15` も欠番で、一覧 `SA05` と
 > 詳細 `SA25` だけを登録する。
 
 `OperationCodeJump` component (`src/components/layout/OperationCodeJump.tsx`) renders as a compact TextInput in the header center. Pressing Enter or clicking a result navigates to that screen.
@@ -380,7 +381,7 @@ Stack (gap="xl", p="md", maw={1200})
 | 試算 | `IconCalculator` |
 | 価格表 | `IconCurrencyYen` |
 | 見積書 | `IconFileText` |
-| 受注請書 | `IconClipboardCheck` |
+| 注文請書 | `IconClipboardCheck` |
 | 設計依頼書 | `IconRuler2` |
 | 試算 | `IconCalculator` |
 | 素材入荷 | `IconPackageImport` |
@@ -412,6 +413,7 @@ Stack (gap="xl", p="md", maw={1200})
 | 操作履歴 | `IconHistory` |
 | QRカード管理 | `IconQrcode` |
 | 端末管理 | `IconDeviceTablet` |
+| 注文書取込 | `IconFileImport` |
 | マニュアル | `IconBook2` |
 
 ---
@@ -564,13 +566,25 @@ Stack (gap="md")
 │       └── Button type="submit" loading={isPending} — 保存
 ```
 
-**Action row placement** — アクション行は `FormActions`（`shells.tsx`）で包む。
+**Action row placement** — 保存 / キャンセルは **必ずフォーム下部の
+`FormActions`（`shells.tsx`）**。画面ヘッダー（`PageHeader` の `actions`）に
+保存ボタンを置いてはいけない — あの行は詳細画面の操作（編集 / PDF / ⋯）専用。
 デスクトップ（≥768px）では `position: sticky; bottom` で画面下端に貼り付き、
 フォームがどれだけ長くてもキャンセル / 保存が常に見える（globals.css
 `.form-actions`。`bottom` は固定 AppShell フッターぶんを
-`--app-shell-footer-offset` で避ける）。モバイルは従来どおり本文末尾に流す —
-ソフトキーボードが画面下を占有するため。`FormShell` は自動でこれを使うので、
-`FormShell` を使わない独自フォームだけ既存のボタン行を `FormActions` で包む。
+`--app-shell-footer-offset` で避ける）。モバイルは本文末尾に全幅で積む
+（保存が上）— ソフトキーボードが画面下を占有するため。
+
+`FormActions` はキャンセル / 保存の並びを自分で描画する:
+
+```tsx
+<FormActions loading={isPending} onCancel={back} onSave={save} />  // 独自フォーム（type="button"）
+<FormActions loading={isPending} onCancel={back} />                 // <form> 送信（type="submit"）
+```
+
+`FormShell` は自動でこれを使う。`FormShell` を使わない画面（試算 SA11 /
+受注請書ドラフト / 材種の既定単価 / キオスク設定 など）も同じ 1 行を置くこと。
+ボタン構成そのものが違うときだけ `children` を渡して差し替える。
 
 ---
 
@@ -757,7 +771,7 @@ new Intl.NumberFormat('ja-JP', { style: 'currency', currency: currency ?? 'JPY' 
 | `RichTextEditorField` | `src/components/ui/RichTextEditorField.tsx` | `@mantine/tiptap` ラッパ。太字 / 斜体 / 下線 / 打消 / コード / H3・H4 / 箇条書き / 番号付き / 引用 / コードブロック / 区切り線 / リンク |
 | `RichTextView` | `src/components/ui/RichTextView.tsx` | 読み取り専用表示。React 要素を組み立てる（`dangerouslySetInnerHTML` 不使用） |
 
-搭載画面: 見積書 / 受注明細 / 指示書 / 出荷書 / 請求書 = **メモ**、
+搭載画面: 見積書 / 注文明細 / 指示書 / 出荷書 / 請求書 = **メモ**、
 価格表 / 試算 = **コメント**。既存の 備考（`notes`）は平文のまま別物として残り、
 PDF 印字も従来どおり（メモ・コメントは社内限定で PDF に出ない）。
 
@@ -801,12 +815,12 @@ Paper (withBorder, p="md", radius="md")
 
 | tone | 色 | 意味 |
 |------|----|------|
-| `action` | blue | 自分で先へ進められる操作（承認依頼・受注確定・発注・入荷完了 …） |
+| `action` | blue | 自分で先へ進められる操作（承認依頼・注文確定・発注・入荷完了 …） |
 | `approve` | green | 承認権限がある。承認 / 差し戻しできる |
 | `wait` | gray | 権限が無いので待つだけ。タイトルは「承認待ち」 |
 | `alert` | red | 差し戻しなど、対応が必要な状態 |
 
-搭載画面: 指示書 (`WorkOrderApprovalCard`) / 受注請書 / 素材発注書 / 購買依頼。
+搭載画面: 指示書 (`WorkOrderApprovalCard`) / 注文請書 / 素材発注書 / 購買依頼。
 
 ---
 
@@ -1162,9 +1176,9 @@ Row click navigates to detail page.
 | PriceList | 顧客 / 製品 / 注文種別（バリアントのバッジ） / 段階 / 単価範囲 / 試算元 / 有効期間 / 状態 |
 | Quote | 見積番号 / 顧客 / 有効期限 / 状態 / 更新日 |
 | OrderAcceptance | 注文番号 / 顧客 / 顧客注文書番号 / 合計金額 / 状態 / 更新日 |
-| SalesOrder | 受注明細番号 / 顧客 / 製品 / 数量 / 金額 / 納期 / 状態 |
-| WorkOrder | 指示書番号 / 受注明細番号 / 種別 / 予定数量 / 承認状態 / 状態 / 更新日 |
-| ShippingOrder | 出荷書番号 / 受注明細番号 / 種別 / 状態 / 出荷日 |
+| SalesOrder | 注文明細番号 / 顧客 / 製品 / 数量 / 金額 / 納期 / 状態 |
+| WorkOrder | 指示書番号 / 注文明細番号 / 種別 / 予定数量 / 承認状態 / 状態 / 更新日 |
+| ShippingOrder | 出荷書番号 / 注文明細番号 / 種別 / 状態 / 出荷日 |
 | DeliveryNote | 納品番号 / 出荷書番号 / 納品先 / 方法 / 状態 / 納品日 |
 | Invoice | 請求番号 / 顧客 / 請求期間 / 合計金額 / 状態 / 発行日 |
 | BillingClosing | 顧客 / 締日 / 合計金額 / 状態 / 処理日 |
@@ -1232,7 +1246,7 @@ Do **not** use toast for:
 ### 16.2 Confirmation Modal
 
 Use `modals.openConfirmModal()` (see §10.4) for:
-- Cancelling a document (受注明細、指示書 etc.)
+- Cancelling a document (注文明細、指示書 etc.)
 - Deleting a master record
 - Rolling back a manufacturing step
 
@@ -1272,9 +1286,9 @@ Respect `@media (prefers-reduced-motion: reduce)` — disable all CSS transition
 
 Use these exact terms consistently across all UI strings, error messages, and notifications:
 
-> **未確認の用語（2026-08 時点）** — 「受注請書」「受注明細」は本仕様で定めた語で、
+> **未確認の用語（2026-08 時点）** — 「注文請書」「注文明細」は本仕様で定めた語で、
 > 業務側の文書 `_docs/business_flow.md` は同じものを **「注文受諾書」（§2）**
-> **「受注書」（§3）** と呼んでいる。利用者から「受注明細という語は聞いたことが
+> **「受注書」（§3）** と呼んでいる。利用者から「注文明細という語は聞いたことが
 > ない」との指摘があり、**現場の語彙と一致していない可能性が高い**。
 > 改称する場合は UI ラベル・マニュアル・本節をまとめて直すこと（DB のテーブル名
 > `order_acceptances` / `sales_orders` と操作コードは利用者に見えないので変えない）。
@@ -1284,8 +1298,8 @@ Use these exact terms consistently across all UI strings, error messages, and no
 | 試算 | 試算 | EST |
 | 価格表 | 価格表 | price_list |
 | 見積書 | 見積書 | QOT |
-| 受注請書 | 受注請書 | ORD |
-| 受注明細 | 受注明細 | ORD-...-NN |
+| 注文請書 | 注文請書 | ORD |
+| 注文明細 | 注文明細 | ORD-...-NN |
 | 指示書 | 指示書 | — (serial int) |
 | 出荷書 | 出荷書 | — |
 | 納品書 | 納品書 | DRN |
@@ -1311,7 +1325,7 @@ Use these exact terms consistently across all UI strings, error messages, and no
 | キャンセル | キャンセル | CANCELLED |
 | 差し戻し | 差し戻し | REJECTED |
 
-Do **not** use synonyms — e.g. never write "注文書" where "受注請書" is meant.
+Do **not** use synonyms — e.g. never write "注文書" where "注文請書" is meant.
 
 ### 17.2 敬語 / Tone
 

@@ -355,7 +355,7 @@ model ApprovalGroupMember {
 // ─── 承認フロー本実装（§6: 依頼・記録・代理） ───────────────────────────────
 //
 // 対象は多態（target_type = @@map 名 / target_id = 業務キー — audit と同じ規約:
-// 指示書 = work_order_number 文字列、発注書 = PO-…、受注請書 = ORD-…）。
+// 指示書 = work_order_number 文字列、発注書 = PO-…、注文請書 = ORD-…）。
 
 enum ApprovalStep {
   FIRST

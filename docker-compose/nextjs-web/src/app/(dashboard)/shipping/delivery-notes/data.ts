@@ -28,7 +28,7 @@ import { type LocalizedText, localized } from "@/lib/format";
 const LIST_FETCH_CAP = 1000;
 
 const DELIVERY_NOTE_INCLUDE = {
-  // 1 出荷書は複数の受注明細を束ねられるので、明細行から番号を集める。
+  // 1 出荷書は複数の注文明細を束ねられるので、明細行から番号を集める。
   shippingOrder: {
     include: {
       items: {
@@ -203,7 +203,7 @@ export async function fetchShippingOrderCandidates(): Promise<
     // 顧客はヘッダが権威（1 出荷書 = 1 顧客）。
     const customerName = localized(r.customerBp.name as LocalizedText | null);
     const totalQuantity = r.items.reduce((sum, it) => sum + it.quantity, 0);
-    // 最終需要家は受注明細ごとに異なり得る — 1 つに定まるときだけ既定値にする。
+    // 最終需要家は注文明細ごとに異なり得る — 1 つに定まるときだけ既定値にする。
     const endUsers = [
       ...new Map(
         r.items
@@ -228,7 +228,7 @@ export async function fetchShippingOrderCandidates(): Promise<
         productId: String(it.productId),
         productName: productLabel(it.product),
         quantity: it.quantity,
-        // 単価の既定値はその行の受注明細の単価（価格記載ありのとき使用）。
+        // 単価の既定値はその行の注文明細の単価（価格記載ありのとき使用）。
         unitPrice: Number(it.orderLine?.unitPrice ?? 0),
       })),
     };

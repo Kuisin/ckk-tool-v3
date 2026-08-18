@@ -9,7 +9,7 @@
  * 承認画面 — タイトル「承認」で ApprovalStatusPanel を最上部に出し、
  * 編集系アクションは出さない。
  *
- * アクション: 編集（DRAFT のみ）/ コピー（対象受注明細を選ぶモーダル。コピー元に
+ * アクション: 編集（DRAFT のみ）/ コピー（対象注文明細を選ぶモーダル。コピー元に
  * 新しい版があれば警告）/ キャンセル（DRAFT・承認待ちのみ）。
  */
 
@@ -169,7 +169,7 @@ export function WorkOrderDetail({
   const summary = (
     <SummaryGrid>
       <FieldValue
-        label="受注明細番号"
+        label="注文明細番号"
         value={
           wo.orderLineNumber != null ? (
             <Anchor
@@ -181,7 +181,7 @@ export function WorkOrderDetail({
             </Anchor>
           ) : (
             <Badge color="teal" size="sm" variant="light">
-              在庫向け（受注明細なし）
+              在庫向け（注文明細なし）
             </Badge>
           )
         }
@@ -345,7 +345,7 @@ export function WorkOrderDetail({
           <Stack gap="md">
             <div>
               <Text c="dimmed" mb={4} size="xs">
-                受注明細
+                注文明細
               </Text>
               {wo.orderLineNumber != null ? (
                 <Anchor
@@ -357,7 +357,7 @@ export function WorkOrderDetail({
                 </Anchor>
               ) : (
                 <Text c="dimmed" size="sm">
-                  在庫向けの独立指示書（受注明細なし）
+                  在庫向けの独立指示書（注文明細なし）
                 </Text>
               )}
             </div>
@@ -449,17 +449,17 @@ export function WorkOrderDetail({
                   }
                 : null
             }
-            label="対象受注明細"
+            label="対象注文明細"
             onChange={setCopyTargetSoId}
             onSearch={searchOrderLineOptions}
-            placeholder="未選択 = 在庫向け（受注明細なし）としてコピー"
+            placeholder="未選択 = 在庫向け（注文明細なし）としてコピー"
             storageKey="sales-order"
             value={copyTargetSoId}
           />
           <Text c="dimmed" size="xs">
             工程・実施場所・検査表を引き継いだ下書きを作成します。
-            受注明細を選ばない場合は在庫向けの独立指示書としてコピーします
-            （在庫分の指示書は受注明細が必要です）。
+            注文明細を選ばない場合は在庫向けの独立指示書としてコピーします
+            （在庫分の指示書は注文明細が必要です）。
           </Text>
         </Stack>
       </ModalShell>

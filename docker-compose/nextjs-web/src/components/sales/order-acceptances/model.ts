@@ -1,8 +1,8 @@
 /**
- * model.ts — 受注請書 intake (SA04) の client-safe view model と表示定数。
+ * model.ts — 注文請書 intake (SA04) の client-safe view model と表示定数。
  *
  * ライフサイクル: IMPORT（取込・抽出中/失敗）→ DRAFT（抽出済・編集可）→
- * REQUESTED（承認依頼）→ APPROVED → COMPLETED（伝票展開済）→ ARCHIVED。
+ * REQUESTED（承認依頼）→ APPROVED → COMPLETED（確定済）→ ARCHIVED。
  * サーバー側のマッピングは app/(dashboard)/sales/order-acceptances/data.ts。
  */
 
@@ -81,7 +81,7 @@ export interface OrderAcceptanceView {
   orderDate: string | null; // yyyy-mm-dd
   notes: string | null;
   items: OrderAcceptanceItemView[];
-  /** 伝票展開で生成された受注明細番号（ORD-…-NN、枝番順）。 */
+  /** 注文確定で生成された注文明細番号（ORD-…-NN、枝番順）。 */
   orderLineNumbers: string[];
   completedAt: string | null;
   archivedAt: string | null;

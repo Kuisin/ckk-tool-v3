@@ -1,12 +1,12 @@
 /**
- * data.ts — 受注明細 (SA05) ページのサーバーサイド取得・マッピング。
+ * data.ts — 注文明細 (SA05) ページのサーバーサイド取得・マッピング。
  *
- * app.order_lines は受注請書キー (acceptance_year_month, acceptance_seq) +
+ * app.order_lines は注文請書キー (acceptance_year_month, acceptance_seq) +
  * 枝番 branch の複合キー — 表示番号 ORD-YYYYMM-NNNNN-NN は導出（保存しない）で、
  * URL id を兼ねる。枝番は確定時に採番されるため、**この画面は確定済み
- * （branch != null）だけを扱う**。確定前の明細は受注請書 (SA04) の明細エディタ。
+ * （branch != null）だけを扱う**。確定前の明細は注文請書 (SA04) の明細エディタ。
  *
- * 顧客・注文書番号・見積キー・作成者は行に複写せず、受注請書ヘッダから読む。
+ * 顧客・注文書番号・見積キー・作成者は行に複写せず、注文請書ヘッダから読む。
  * Prisma Decimal はここで Number() へ変換してからクライアントへ渡す。
  */
 
@@ -47,8 +47,8 @@ const ORDER_LINE_INCLUDE = {
     where: { status: "RESERVED" as const },
     select: { quantity: true },
   },
-  // 出荷進捗（§8）— 出荷書は明細行経由で紐付く（1 出荷書に複数受注明細）。
-  // ここで拾えるのは「この受注明細ぶんの数量」だけで、出荷書全体ではない。
+  // 出荷進捗（§8）— 出荷書は明細行経由で紐付く（1 出荷書に複数注文明細）。
+  // ここで拾えるのは「この注文明細ぶんの数量」だけで、出荷書全体ではない。
   shippingItems: {
     select: {
       quantity: true,
@@ -138,7 +138,7 @@ function mapOrderLine(r: OrderLineRow): OrderLine {
     lotNumber: r.lotNumber,
     status: r.status as OrderLineStatus,
     isLocked: r.isLocked,
-    // 引当済み数 = この受注明細の予約中（RESERVED）予約の合計。
+    // 引当済み数 = この注文明細の予約中（RESERVED）予約の合計。
     reservedStockQuantity: r.reservations.reduce(
       (sum, rv) => sum + Number(rv.quantity),
       0,
@@ -175,8 +175,8 @@ function mapOrderLine(r: OrderLineRow): OrderLine {
 }
 
 /**
- * 受注明細のスコープ where 断片（PLANT = 配下指示書の工程実施拠点経由 ∪
- * OWN = 受注請書の作成者）。ALL は {} — 従来通り全件。
+ * 注文明細のスコープ where 断片（PLANT = 配下指示書の工程実施拠点経由 ∪
+ * OWN = 注文請書の作成者）。ALL は {} — 従来通り全件。
  */
 function orderLineScopeWhere(
   access: Access,
@@ -191,7 +191,7 @@ function orderLineScopeWhere(
     OR?: { createdBy?: string }[];
     createdBy?: string;
   };
-  // createdBy は行に無い — 受注請書ヘッダへ読み替える。
+  // createdBy は行に無い — 注文請書ヘッダへ読み替える。
   const remap = (c: Prisma.OrderLineWhereInput & { createdBy?: string }) =>
     c.createdBy === undefined
       ? c
@@ -204,7 +204,7 @@ function orderLineScopeWhere(
   return remap(w);
 }
 
-/** 取得済み受注明細行（workOrders.steps 付き）がスコープ内か。 */
+/** 取得済み注文明細行（workOrders.steps 付き）がスコープ内か。 */
 function orderLineRowInScope(
   access: Access,
   userId: string,

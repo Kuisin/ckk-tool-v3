@@ -5,7 +5,7 @@
  *
  * 作成は allocateDocumentKey("DELIVERY") で (yearMonth, seq) を1回採番し、
  * 明細を nested create で一括作成する。表示番号 DRN-YYYYMM-NNNNN は導出。
- * 納品先（recipient）は出荷書 → 受注明細の顧客（+支店）から自動確定する。
+ * 納品先（recipient）は出荷書 → 注文明細の顧客（+支店）から自動確定する。
  * DIRECT_TO_USER（ユーザー直送）は最終需要家が必須。価格記載
  * （includePrice=false）のときは単価・金額を保存しない（null）。
  *
@@ -213,7 +213,7 @@ export async function createDeliveryNote(
   }
   try {
     // 納品先は出荷書ヘッダの顧客（+支店）から確定する。1 出荷書は複数の
-    // 受注明細を束ねられるので、顧客は明細側ではなくヘッダが権威。
+    // 注文明細を束ねられるので、顧客は明細側ではなくヘッダが権威。
     const shp = await prisma.shippingOrder.findUnique({
       where: { yearMonth_seq: shpKey },
     });

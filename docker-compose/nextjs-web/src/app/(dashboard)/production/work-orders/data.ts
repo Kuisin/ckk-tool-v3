@@ -778,7 +778,7 @@ export async function fetchSupplierOptions(): Promise<Option[]> {
   }));
 }
 
-// ── 受注明細参照（?orderLine= プリセレクト・ビルダーの選択情報） ────────────────
+// ── 注文明細参照（?orderLine= プリセレクト・ビルダーの選択情報） ────────────────
 
 export interface OrderLineRef {
   id: string;

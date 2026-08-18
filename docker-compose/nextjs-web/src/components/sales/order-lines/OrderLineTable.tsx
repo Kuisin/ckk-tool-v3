@@ -1,18 +1,22 @@
 "use client";
 
 /**
- * OrderLineTable — 受注明細 一覧 (PD01, design.md §8.1 / §14).
+ * OrderLineTable — 注文明細 一覧 (PD01, design.md §8.1 / §14).
  *
- * Columns: 受注明細番号 / 顧客 / 製品 / 数量 / 金額 / 納期 / 状態。
+ * Columns: 注文明細番号 / 顧客 / 製品 / 数量 / 金額 / 納期 / 状態。
  * フィルタ: 検索（番号・顧客・製品）+ 状態 + 注文種別。行クリック → 詳細。
  */
 
 import { Group, Select, Stack, Text, TextInput } from "@mantine/core";
-import { IconClipboardList, IconSearch } from "@tabler/icons-react";
+import {
+  IconClipboardCheck,
+  IconClipboardList,
+  IconSearch,
+} from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
+import { SecondaryButton } from "@/components/ui/buttons";
 import { type Column, DataTable } from "@/components/ui/DataTable";
 import { MoneyText } from "@/components/ui/MoneyText";
-import { NewButton } from "@/components/ui/NewButton";
 import { StatusBadge, statusOptions } from "@/components/ui/StatusBadge";
 import { ListShell } from "@/components/ui/shells";
 import { useUrlSelectState, useUrlStringState } from "@/hooks/useUrlState";
@@ -52,7 +56,7 @@ export function OrderLineTable({ rows }: { rows: OrderLine[] }) {
   const columns: Column<OrderLine>[] = [
     {
       key: "orderNumber",
-      header: "受注明細番号",
+      header: "注文明細番号",
       sortable: true,
       render: (o) => (
         <Text ff="mono" size="sm">
@@ -121,8 +125,17 @@ export function OrderLineTable({ rows }: { rows: OrderLine[] }) {
 
   return (
     <ListShell
-      action={<NewButton href={`${BASE_PATH}/new`} />}
-      breadcrumbs={["販売", "受注明細"]}
+      // 注文明細は作成・編集を持たない（注文請書の明細エディタが唯一の入口）。
+      // 新規ボタンの代わりに親側の一覧へ渡す — 注文請書側にも対の導線がある。
+      action={
+        <SecondaryButton
+          href="/sales/order-acceptances"
+          leftSection={<IconClipboardCheck size={14} />}
+        >
+          注文請書一覧
+        </SecondaryButton>
+      }
+      breadcrumbs={["販売", "注文明細"]}
       filters={
         <>
           <Select
@@ -150,19 +163,26 @@ export function OrderLineTable({ rows }: { rows: OrderLine[] }) {
         <TextInput
           leftSection={<IconSearch size={14} />}
           onChange={(e) => setSearch(e.currentTarget.value)}
-          placeholder="受注明細番号・顧客・製品で検索"
+          placeholder="注文明細番号・顧客・製品で検索"
           value={search}
         />
       }
-      title="受注明細"
+      title="注文明細"
     >
       <DataTable
         columns={columns}
         data={filtered}
         defaultSort={{ key: "orderNumber", dir: "desc" }}
-        emptyAction={<NewButton href={`${BASE_PATH}/new`} />}
+        emptyAction={
+          <SecondaryButton
+            href="/sales/order-acceptances"
+            leftSection={<IconClipboardCheck size={14} />}
+          >
+            注文請書一覧
+          </SecondaryButton>
+        }
         emptyIcon={<IconClipboardList size={24} />}
-        emptyMessage="受注明細がありません"
+        emptyMessage="注文明細がありません（注文請書を確定すると作られます）"
         getRowId={(o) => o.id}
         onRowClick={(o) => router.push(`${BASE_PATH}/${o.id}`)}
         renderCard={(o) => (

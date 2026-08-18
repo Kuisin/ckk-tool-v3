@@ -19,11 +19,11 @@ export async function generateMetadata({
 }) {
   const { id } = await params;
   return {
-    title: `受注請書 ${decodeURIComponent(id)} | CKK 業務管理システム`,
+    title: `注文請書 ${decodeURIComponent(id)} | CKK 業務管理システム`,
   };
 }
 
-/** 受注請書 詳細 (SA24). URL id = 表示番号（ORD-YYYYMM-NNNNN）. */
+/** 注文請書 詳細 (SA24). URL id = 表示番号（ORD-YYYYMM-NNNNN）. */
 export default async function OrderLineAcceptancesDetailPage({
   params,
 }: {
@@ -53,7 +53,7 @@ export default async function OrderLineAcceptancesDetailPage({
   ]);
   if (!acceptance) notFound();
 
-  // §2 価格照合（P0-8）— 保存済み明細と価格表の差異。展開済み・アーカイブ
+  // §2 価格照合（P0-8）— 保存済み明細と価格表の差異。確定済み・アーカイブ
   // 済みは照合対象外（当時の価格表と現在の価格表のドリフトで誤警告するため）。
   const priceCheck = ["DRAFT", "REQUESTED", "APPROVED"].includes(
     acceptance.status,

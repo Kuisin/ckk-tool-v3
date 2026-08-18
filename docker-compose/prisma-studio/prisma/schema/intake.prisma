@@ -1,7 +1,7 @@
-// 受注請書 intake (_specs §2): 監視フォルダ / 優先アップロードから自動取込。
+// 注文請書 intake (_specs §2): 監視フォルダ / 優先アップロードから自動取込。
 //
 // キー: (year_month, seq) — ORDER シーケンス。表示番号 ORD-YYYYMM-NNNNN。
-// 明細は order_lines（受注明細）1 本で、取込〜承認までの下書き行であり、
+// 明細は order_lines（注文明細）1 本で、取込〜承認までの下書き行であり、
 // 確定後はそのまま実行アンカー（指示書 / 出荷書 / 引当 / 設計依頼の紐付け先）
 // になる。確定（COMPLETED）で枝番 1..N を採番し ORD-YYYYMM-NNNNN-NN になる。
 // 旧 sales_orders（注文請書）は order_lines に統合済み — 別テーブルは無い。
@@ -30,7 +30,7 @@ enum OrderAcceptanceStatus {
   @@schema("app")
 }
 
-// 受注明細のステータス（旧 SalesOrderStatus）。確定前は DRAFT。
+// 注文明細のステータス（旧 SalesOrderStatus）。確定前は DRAFT。
 enum OrderLineStatus {
   DRAFT
   CONFIRMED
@@ -80,16 +80,16 @@ model OrderAcceptance {
 
   @@id([yearMonth, seq])
   @@index([status])
-  // 受注明細の顧客絞り込みはヘッダ経由になるため必須
+  // 注文明細の顧客絞り込みはヘッダ経由になるため必須
   @@index([customerBpId])
   @@map("order_acceptances")
   @@schema("app")
 }
 
-// 受注明細（受注請書の明細行 = 実行の単位）。
+// 注文明細（注文請書の明細行 = 実行の単位）。
 //
-// 受注請書 1 行 = 受注明細 1 行で固定 — 分割も統合もしない（同じ製品が別々の
-// 明細にあれば別々の受注明細になる）。確定後は変更不可
+// 注文請書 1 行 = 注文明細 1 行で固定 — 分割も統合もしない（同じ製品が別々の
+// 明細にあれば別々の注文明細になる）。確定後は変更不可
 // （lib/order-line-check.ts が唯一の判定元）。
 //
 // 確定前: branch / amount は null、status = DRAFT、productId は突合前なら null。
@@ -103,7 +103,7 @@ model OrderLine {
   branch              Int?
   sortOrder           Int    @default(0) @map("sort_order")
 
-  // ── 明細内容（受注請書の行そのもの） ──
+  // ── 明細内容（注文請書の行そのもの） ──
   // 抽出直後は productText のみ。製品マスタ突合後に productId を持つ。
   productId    Int?      @map("product_id")
   productText  String?   @map("product_text") // 抽出された品名（生）

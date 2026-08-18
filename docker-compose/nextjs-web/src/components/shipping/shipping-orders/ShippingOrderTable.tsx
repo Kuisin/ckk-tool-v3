@@ -3,7 +3,7 @@
 /**
  * ShippingOrderTable — 出荷書 一覧 (SH01, design.md §8.1 / §14).
  *
- * Columns: 出荷書番号 / 受注明細番号 / 種別 / 数量合計 / 状態 / 出荷日。
+ * Columns: 出荷書番号 / 注文明細番号 / 種別 / 数量合計 / 状態 / 出荷日。
  * フィルタ: 検索（番号・顧客・製品）+ 種別 + 状態。行クリック → 詳細。
  */
 
@@ -70,7 +70,7 @@ export function ShippingOrderTable({ rows }: { rows: ShippingOrder[] }) {
     },
     {
       key: "customerName",
-      header: "顧客 / 受注明細",
+      header: "顧客 / 注文明細",
       sortable: true,
       render: (o) => (
         <>
@@ -151,7 +151,7 @@ export function ShippingOrderTable({ rows }: { rows: ShippingOrder[] }) {
         <TextInput
           leftSection={<IconSearch size={14} />}
           onChange={(e) => setSearch(e.currentTarget.value)}
-          placeholder="出荷書番号・受注明細番号・顧客・製品で検索"
+          placeholder="出荷書番号・注文明細番号・顧客・製品で検索"
           value={search}
         />
       }

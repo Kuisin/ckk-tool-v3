@@ -1,7 +1,7 @@
 /**
  * task-queue.ts — 同時実行数に上限を付けた小さなジョブ列。
  *
- * 用途は受注請書の自動抽出。抽出は po-extract → ollama へ行き、ollama は
+ * 用途は注文請書の自動抽出。抽出は po-extract → ollama へ行き、ollama は
  * `OLLAMA_NUM_PARALLEL`（ai-stack では 2）までなら**同じ常駐モデルへ並行に
  * 流せる**。上限なしに投げるとモデルの奪い合いで却って遅くなるので、
  * 「空いている分だけ並列」= 上限付きの列にする。

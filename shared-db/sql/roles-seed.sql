@@ -136,7 +136,7 @@ CROSS JOIN (VALUES
   ('inventory','READ'),('inventory','CREATE'),('inventory','UPDATE'),('inventory','EXPORT'),
   ('outsource_order','READ'),('outsource_order','UPDATE'),
   ('material_receipt','READ'),('purchase_order','READ'),
-  -- 受注明細（SA05）は order_acceptance 権限。在庫照合・キャンセルに UPDATE が要る。
+  -- 注文明細（SA05）は order_acceptance 権限。在庫照合・キャンセルに UPDATE が要る。
   ('order_acceptance','READ'),('order_acceptance','UPDATE'),
   ('shipping_order','READ'),
   ('master','READ'),('approve','READ')
@@ -151,7 +151,7 @@ SELECT r.id, g.code, g.action::app."ACTION",
 FROM app.roles r
 CROSS JOIN (VALUES
   ('work_order','READ'),('work_order','UPDATE'),('work_order','APPROVE'),
-  -- 受注明細（SA05）の参照。旧 work_order 権限で見えていたぶんを引き継ぐ。
+  -- 注文明細（SA05）の参照。旧 work_order 権限で見えていたぶんを引き継ぐ。
   ('order_acceptance','READ'),
   ('inventory','READ'),('master','READ'),('approve','READ')
 ) AS g(code, action)

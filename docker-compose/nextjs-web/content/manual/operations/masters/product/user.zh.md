@@ -157,7 +157,7 @@ screenshots: [master-product-list-01, master-product-new-01, master-product-deta
 
 ### 产品编码 [#field-code]
 
-产品的管理编号。报价单・订单请书・指示书等各类单据均使用该编号。
+产品的管理编号。报价单・订单明细・指示书等各类单据均使用该编号。
 
 ### 名称 [#field-name]
 
