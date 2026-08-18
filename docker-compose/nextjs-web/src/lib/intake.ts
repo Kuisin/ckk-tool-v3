@@ -3,9 +3,13 @@
  *
  * 入口は 2 つ:
  *  - 監視フォルダ（INTAKE_DIR）: instrumentation.ts のポーラーが定期スキャン
- *    → ingestAndExtract（結果を待ってファイルを processed/failed へ動かす）
+ *    → ingestIntakeFile + 抽出（結果を待ってファイルを processed/failed へ動かす）
  *  - 画面からの優先取込（UPLOAD）: ingestAndQueueExtraction —
  *    保存 + 採番だけ同期で行い、**抽出は待ち行列へ積んで即返す**
+ *
+ * **1 通の注文書 = 1 行**。採番した時点でファイル名に番号を焼き込み
+ * （`ORD-YYYYMM-NNNNN-<元名>`）、再取込・孤児回収でファイルが戻ってきても
+ * 採番からやり直さず、その行の抽出（metadata）だけを更新する。
  *
  * 抽出は po-extract → ollama へ行く。ollama は OLLAMA_NUM_PARALLEL（ai-stack
  * では 2）までなら同じ常駐モデルへ並行に流せるので、**空いている枠の分だけ
@@ -33,7 +37,12 @@ import { getCurrentActorId, recordAudit } from "./audit";
 import { prisma } from "./db";
 import { formatDocNumber } from "./doc-number";
 import { systematicFileName } from "./file-naming";
-import { type NormalizedExtraction, normalizeExtraction } from "./intake-core";
+import {
+  intakeFileName,
+  type NormalizedExtraction,
+  normalizeExtraction,
+  parseIntakeFileNumber,
+} from "./intake-core";
 import {
   classifyHttpFailure,
   classifyLocalFailure,
@@ -178,7 +187,12 @@ async function callPoExtract(file: {
   }
 }
 
-/** ファイルを保存し IMPORT 行を作る（抽出はまだ）。 */
+/**
+ * ファイルを保存し IMPORT 行を作る（抽出はまだ）。
+ *
+ * **ここを通るたびに新しい番号の行が増える** — 再取込・再抽出では絶対に
+ * 呼ばないこと（原本は 1 通につき 1 行。metadata だけ更新する）。
+ */
 async function ingestFile(input: {
   filename: string;
   bytes: Buffer;
@@ -619,18 +633,22 @@ export function extractionQueueStatus(): {
 }
 
 /**
- * 取込 + 抽出の一括実行（監視フォルダ用 — 抽出の完了まで待つ）。
- * フォルダ側は結果を見てファイルを processed/failed へ動かすため同期が必要。
- * 抽出自体はアップロードと同じ列を通るので、同時実行にはならない。
+ * 取込のみ（保存 + 採番）。抽出は呼び出し側が列へ積む。
+ * 監視フォルダは、採番できた時点でファイル名に番号を焼き込みたいので、
+ * 取込と抽出を分けて呼ぶ（scanIntakeFolder 参照）。
  */
-export async function ingestAndExtract(input: {
+export async function ingestIntakeFile(input: {
   filename: string;
   bytes: Buffer;
   contentType: string;
   source: "FOLDER" | "UPLOAD";
-}): Promise<IngestResult> {
+}): Promise<{ yearMonth: string; seq: number; number: string }> {
   const { yearMonth, seq } = await ingestFile(input);
-  return runExtractionSerialized({ yearMonth, seq });
+  return {
+    yearMonth,
+    seq,
+    number: formatDocNumber("ORD", { yearMonth, seq }),
+  };
 }
 
 /**
@@ -713,10 +731,43 @@ const MIME_BY_EXT: Record<string, string> = {
 
 let scanning = false;
 
+/** 名前に焼き込まれた番号から「続き」を判定した結果。 */
+type ScanTarget =
+  | { kind: "new" } // 新規取込（採番から）
+  | { kind: "resume"; key: ExtractionKey; name: string } // 既存行の抽出やり直し
+  | { kind: "done"; number: string }; // 既に人が引き取り済み — 触らない
+
+/**
+ * ファイル名 `ORD-YYYYMM-NNNNN-<元名>` から、その行の続きかどうかを見る。
+ *
+ * **二重登録を防ぐ唯一の関門** — 失敗の再取込（SY0C）や孤児 .processing の
+ * 回収でファイルは何度でも待ちへ戻ってくる。番号を見ずに取り込むと、そのたびに
+ * 採番・files 行・添付が増え、同じ注文書が別番号で何通も並ぶ。
+ * 行が実在するときだけ「続き」として扱い、原本は作り直さず抽出だけやり直す。
+ */
+async function scanTargetFor(name: string): Promise<ScanTarget> {
+  const parsed = parseIntakeFileNumber(name);
+  if (!parsed) return { kind: "new" };
+  const key = { yearMonth: parsed.yearMonth, seq: parsed.seq };
+  const row = await prisma.orderAcceptance.findUnique({
+    where: { yearMonth_seq: key },
+    select: { status: true, sourceFileId: true },
+  });
+  // 行が消えている / 原本を持たない行（手入力）→ 名前の番号は残骸。新規扱い。
+  if (!row || !row.sourceFileId) return { kind: "new" };
+  // IMPORT 以外は人が引き取ったあと（下書き・確定済み）。抽出は上書きしない。
+  if (row.status !== "IMPORT") return { kind: "done", number: parsed.number };
+  return { kind: "resume", key, name };
+}
+
 /**
  * INTAKE_DIR を 1 回スキャン: 対象拡張子のファイルを .processing に改名して
  * クレーム → 取込・抽出 → processed/（失敗は failed/）へ移動。
  * 逐次処理（GPU の抽出は 1 件ずつ）。再入は no-op。
+ *
+ * 採番したら**まずファイル名に番号を焼き込む**（`ORD-…-元名.processing`）。
+ * 抽出の途中でコンテナが落ちても、回収されたファイルは同じ行の続きとして
+ * 処理され、番号を採り直さない。
  */
 export async function scanIntakeFolder(): Promise<void> {
   const dir = process.env.INTAKE_DIR;
@@ -732,7 +783,9 @@ export async function scanIntakeFolder(): Promise<void> {
 
     // 孤児 .processing の回収（監査 P1-7: 抽出中にコンテナが差し替わると
     // クレームされたまま永久に放置される）。10 分より古いものは元の名前に
-    // 戻して再スキャン対象にする（取込自体は冪等 — 番号は再採番になる）。
+    // 戻して再スキャン対象にする。名前に番号が焼き込まれていれば
+    // （＝採番済み）scanTargetFor が同じ行の続きとして拾うので、
+    // 回収で番号が増えることはない。
     const ORPHAN_MS = 10 * 60_000;
     for (const name of entries) {
       if (!name.endsWith(".processing")) continue;
@@ -754,26 +807,59 @@ export async function scanIntakeFolder(): Promise<void> {
       // 書き込み途中のファイルを避ける（最終更新から 5 秒待つ）
       if (Date.now() - info.mtimeMs < 5_000) continue;
 
-      const claimed = `${full}.processing`;
+      let claimed = `${full}.processing`;
       try {
         await rename(full, claimed); // 原子的クレーム
       } catch {
         continue; // 他プロセスが先に取った
       }
+      // 移動先で使う名前（採番後は ORD-… 付き）。失敗時の退避にも使う。
+      let filed = name;
       try {
-        const bytes = await readFile(claimed);
-        const result = await ingestAndExtract({
-          filename: name,
-          bytes,
-          contentType: MIME_BY_EXT[ext] ?? "application/octet-stream",
-          source: "FOLDER",
-        });
+        const target = await scanTargetFor(name);
+        if (target.kind === "done") {
+          // 既に引き取られた注文請書。取り込み直すと二重になるので置くだけ。
+          await rename(claimed, path.join(processedDir, name));
+          console.log(
+            `[intake] ${name} → ${target.number} (取込済み・スキップ)`,
+          );
+          continue;
+        }
+
+        let key: ExtractionKey;
+        if (target.kind === "resume") {
+          key = target.key;
+        } else {
+          const bytes = await readFile(claimed);
+          const ingested = await ingestIntakeFile({
+            filename: name,
+            bytes,
+            contentType: MIME_BY_EXT[ext] ?? "application/octet-stream",
+            source: "FOLDER",
+          });
+          key = { yearMonth: ingested.yearMonth, seq: ingested.seq };
+          // 抽出の前に番号を名前へ焼き込む — ここで落ちても続きから再開できる。
+          const numbered = intakeFileName(ingested.number, name);
+          const renamed = path.join(dir, `${numbered}.processing`);
+          try {
+            await rename(claimed, renamed);
+            claimed = renamed;
+            filed = numbered;
+          } catch (err) {
+            // 改名できなくても取込は続ける。ただし番号が名前に乗らないので、
+            // この 1 件は孤児回収で新規として拾われ得る（要調査のため警告）。
+            console.warn(`[intake] 番号の焼き込みに失敗: ${name}`, err);
+          }
+        }
+
+        const result = await runExtractionSerialized(key);
         const dest = result.status === "DRAFT" ? processedDir : failedDir;
-        await rename(claimed, path.join(dest, `${result.number}-${name}`));
+        await rename(claimed, path.join(dest, filed));
         console.log(`[intake] ${name} → ${result.number} (${result.status})`);
       } catch (e) {
         console.error(`[intake] ${name} failed`, e);
-        await rename(claimed, path.join(failedDir, name)).catch(() => {});
+        // 番号付きの名前で退避する（再取込が同じ行の続きとして走るように）。
+        await rename(claimed, path.join(failedDir, filed)).catch(() => {});
       }
     }
   } finally {

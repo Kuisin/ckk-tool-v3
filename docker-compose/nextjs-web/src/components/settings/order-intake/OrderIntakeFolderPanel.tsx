@@ -276,7 +276,7 @@ export function OrderIntakeFolderPanel({
       {/* ── 失敗 ───────────────────────────────────────────────────────── */}
       <FolderSection
         color="red"
-        description="抽出に失敗したファイル。原因を直したら取込待ちへ戻せます（番号は採り直しになります）。"
+        description="抽出に失敗したファイル。原因を直したら取込待ちへ戻せます（採番済みの注文請書はそのまま、抽出だけやり直します）。"
         emptyMessage="失敗したファイルはありません"
         entries={status.failed}
         onRetry={retry}
