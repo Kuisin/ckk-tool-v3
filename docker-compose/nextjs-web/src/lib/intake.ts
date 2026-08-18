@@ -144,8 +144,13 @@ async function ingestFile(input: {
 async function matchCustomer(name: string | null): Promise<string | null> {
   if (!name) return null;
   if (isOwnCompany(name)) return null;
+  // 人が入れた照合名（match_names）と、フリガナから自動生成した分
+  // （match_names_auto — 画面には出さない）の両方を見る。
   const byMatch = await prisma.businessPartner.findFirst({
-    where: { isActive: true, matchNames: { has: name } },
+    where: {
+      isActive: true,
+      OR: [{ matchNames: { has: name } }, { matchNamesAuto: { has: name } }],
+    },
     select: { id: true },
   });
   if (byMatch) return byMatch.id;

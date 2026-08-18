@@ -309,17 +309,9 @@ export function generateAliases(src: AliasSource): string[] {
   push(src.nameEn);
   push(src.shortName);
 
-  // かなが分かるもの（フリガナ、またはかなだけで書かれた社名）→ 3 形式。
-  // **かなだけ**が条件 — 「NGKファインモールド」のような英字混じりを変換すると
-  // 「NGKふぁいんもーるど」という誰も書かない文字列になる。
-  const kanaSource =
-    clean(src.nameKana ?? "") || (isKanaOnly(core) ? core : "");
-  if (kanaSource && hasKana(kanaSource)) {
-    const kata = toKatakana(kanaSource.normalize("NFKC"));
-    push(kata);
-    push(toHiragana(kata));
-    push(kanaToRomaji(kata));
-  }
+  // かな・ローマ字は **ここでは作らない**。フリガナ由来の表記は
+  // autoMatchNames() が match_names_auto へ自動保存する（画面には出さない）。
+  // この関数が返すのは「AI照合名の欄に人が持つべき候補」だけ。
 
   const existing = new Set((src.existing ?? []).map(clean));
   return [...out].filter((v) => v !== ja && !existing.has(v));
@@ -330,9 +322,12 @@ export function generateAliases(src: AliasSource): string[] {
  * 「含まれている」= その字種で書かれた候補が 1 つでもあること。
  */
 export function missingKeywordFormats(src: AliasSource): MissingFormats {
+  // 自動生成分（match_names_auto）も「登録済み」として数える — 画面には
+  // 出ないが突合には効いているので、そこを「未登録」と言うと嘘になる。
   const all = [
     clean(src.nameJa ?? ""),
     ...(src.existing ?? []).map(clean),
+    ...autoMatchNames({ nameJa: src.nameJa, nameKana: src.nameKana }),
   ].filter(Boolean);
 
   const hasHiragana = all.some((v) => /[ぁ-ゖ]/.test(v.normalize("NFKC")));
@@ -349,4 +344,25 @@ export function missingKeywordFormats(src: AliasSource): MissingFormats {
     romaji: !hasRomaji,
     needsReading: !readingKnown,
   };
+}
+
+/**
+ * **フリガナ等から自動で作る照合名**（match_names_auto に保存する分）。
+ *
+ * 画面の「AI照合名」には出さない — 利用者が入れたものと機械が足したものが
+ * 混ざると、何を触ってよいか分からなくなるため。突合は両方の列を見る。
+ * 読みが分からない（フリガナが空で社名に漢字がある）場合は空配列。
+ */
+export function autoMatchNames(src: {
+  nameJa: string;
+  nameKana?: string | null;
+}): string[] {
+  const core = companyCore(clean(src.nameJa ?? ""));
+  const kanaSource =
+    clean(src.nameKana ?? "") || (isKanaOnly(core) ? core : "");
+  if (!kanaSource || !hasKana(kanaSource)) return [];
+  const kata = toKatakana(kanaSource.normalize("NFKC"));
+  return [...new Set([kata, toHiragana(kata), kanaToRomaji(kata)])].filter(
+    Boolean,
+  );
 }

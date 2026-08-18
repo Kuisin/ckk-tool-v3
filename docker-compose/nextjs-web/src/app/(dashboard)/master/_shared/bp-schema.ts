@@ -5,6 +5,7 @@
  */
 
 import { z } from "zod";
+import { autoMatchNames } from "@/lib/company-aliases";
 import { Prisma } from "@/lib/db";
 import { localizedInput, localizedInputOrNull } from "@/lib/server-action";
 
@@ -48,6 +49,12 @@ export function bpBaseData(v: BpBaseInput) {
     website: v.website?.trim() || null,
     taxNumber: v.taxNumber?.trim() || null,
     matchNames: [...new Set(v.matchNames.map((n) => n.trim()).filter(Boolean))],
+    // フリガナ由来のかな・ローマ字は **画面に出さず** ここで自動生成して保存する
+    // （AI照合名の欄には利用者が入れたものだけを残すため）。
+    matchNamesAuto: autoMatchNames({
+      nameJa: v.nameJa,
+      nameKana: v.nameKana,
+    }),
     isActive: v.isActive,
     notes: v.notes?.trim() || null,
   };
