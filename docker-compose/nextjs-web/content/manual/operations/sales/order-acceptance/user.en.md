@@ -43,7 +43,7 @@ When you open the app, you see the list of the order forms that have been import
 - **取込元 (source)** … how it was registered. It is one of 「監視フォルダ」(watched folder), 「優先取込」(priority import) or 「手入力」(typed in).
 - **顧客 (customer)** … rows with an orange 「未特定」(not identified) badge have no customer decided yet.
 - **状態 (status)** … a colored badge shows where it stands now.
-- **エラー (error)** … a red 「抽出失敗」(reading failed) badge means the reading did not work.
+- **エラー (error)** … a red 「抽出失敗」(reading failed) badge means the reading did not work. An orange 「再試行中」(retrying) badge means the system is reading it again by itself — just wait. Hover the badge to see the cause and what to do.
 - The 「監視フォルダ取込」(watched folder import) badge at the top of the screen tells you whether automatic importing is available.
 - While a row is still being read, the screen refreshes itself every 30 seconds.
 
@@ -187,8 +187,8 @@ Notes for that line only, such as a revision or custom content.
 
 ## Questions and problems
 
-**Q. A red message「自動抽出に失敗しました」(automatic reading failed) appeared.**
-A. Reading the order form did not work. Press「**再抽出**」(read again) inside that message to try once more. If it keeps failing, enter it from「**手入力で新規**」(new, typed in) in the list.
+**Q. A red failure message appeared.**
+A. Reading the order form did not work. The message states **what happened, the likely cause and what to do next** — read that first. Temporary failures (the reading server restarting, heavy load) are **retried automatically up to 3 times**; while that happens the badge turns orange 「再試行中」(retrying) and it may fix itself. After 3 failed tries it stops with the red message: press「**再抽出**」(read again) to try once more, or「**手入力に切り替え**」(switch to typing) to fill it in on the same screen. Failures that cannot fix themselves (a broken or oversized file) go red immediately, without retrying.
 
 **Q. The customer stays 「未特定」(not identified).**
 A. The company name on the order form could not be matched to the business partner master. On the draft screen, search for the customer, choose it, and press「保存」(save). For customers whose name is often written in different ways, register the other spellings in the [business partner master](/manual/en/operations/masters/business-partner/user) and they will be matched automatically next time.
