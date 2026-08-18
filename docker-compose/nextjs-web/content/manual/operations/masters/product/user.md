@@ -157,7 +157,7 @@ screenshots: [master-product-list-01, master-product-new-01, master-product-deta
 
 ### 製品コード [#field-code]
 
-製品の管理番号です。見積書・注文請書・指示書など、あらゆる書類でこの番号を使います。
+製品の管理番号です。見積書・受注明細・指示書など、あらゆる書類でこの番号を使います。
 
 ### 名称 [#field-name]
 

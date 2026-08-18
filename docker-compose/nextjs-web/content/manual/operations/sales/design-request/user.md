@@ -30,7 +30,7 @@ screenshots: [design-request-list-01, design-request-new-01, design-request-deta
 
 - 図面の対象になる[製品](/manual/ja/operations/masters/product/user)が登録されていると、完了時にその製品の最新図面として残せます（製品を選ばずに依頼することもできます）。
 - 「見積時」で登録する場合は、先に[見積書](/manual/ja/operations/sales/quote/user)があると、その見積と結び付けられます。
-- 「受注時」で登録する場合は、先に受注明細があると結び付けられます（受注明細は[受注請書](/manual/ja/operations/sales/order-acceptance/user)の「伝票展開」で作られます）。
+- 「受注時」で登録する場合は、先に受注明細があると結び付けられます（受注明細は[受注請書](/manual/ja/operations/sales/order-acceptance/user)の「受注確定」で作られます）。
 - 完了するには **図面ファイルの添付が 1 件以上必要** です。
 
 ## 画面の見かた
