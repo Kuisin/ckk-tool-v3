@@ -5,16 +5,19 @@
  *
  * やることは 3 つだけ:
  *   1. 複数ファイルを取込フォルダへ投入（1 件ずつ POST /api/intake/folder）
- *   2. 待ち / 処理中 / 取込済 / 失敗 の中身を見る
+ *   2. 取込待ち / 失敗 / 取込済 の中身を、**なった注文請書と並べて**見る
  *   3. 今すぐスキャン / 失敗の再取込
  *
  * 投入は「置くだけ」— 採番も抽出もサーバーのポーラーがやる。だから投入直後の
- * 画面は「取込待ち」に並ぶだけで、受注請書の番号はまだ付かない（付いたら
- * SA04 受注請書の一覧に出る）。待ちがある間は 30 秒ごとに自動更新する。
+ * 画面は「取込待ち・未採番」に並ぶだけで、番号はまだ付かない。採番されると
+ * ファイル名に番号が焼き込まれる（lib/intake.ts）ので、この画面はそれを読んで
+ * 注文請書（SA04）へリンクする — ファイル名の羅列で終わらせない。
+ * 取込待ちがある間は 30 秒ごとに自動更新する。
  */
 
 import {
   Alert,
+  Anchor,
   Badge,
   Code,
   FileButton,
@@ -24,6 +27,7 @@ import {
   Table,
   Text,
   Title,
+  Tooltip,
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import {
@@ -34,30 +38,48 @@ import {
   IconRefresh,
   IconUpload,
 } from "@tabler/icons-react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useTransition } from "react";
 import {
   retryFailedIntakeFile,
   scanIntakeFolderNow,
 } from "@/app/(dashboard)/settings/order-intake/actions";
+import type { IntakeDocRef } from "@/app/(dashboard)/settings/order-intake/data";
 import {
   GhostButton,
   PrimaryButton,
   SecondaryButton,
 } from "@/components/ui/buttons";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { StatusBadge } from "@/components/ui/StatusBadge";
 import { formatDateTime } from "@/lib/format";
+import { parseIntakeFileNumber } from "@/lib/intake-core";
+import { parseExtractError } from "@/lib/intake-extract-error";
 import type {
   IntakeFolderEntry,
   IntakeFolderStatus,
 } from "@/lib/intake-folder";
 
 const UPLOAD_ACCEPT = ".pdf,.png,.jpg,.jpeg,.webp";
+const ACCEPTANCES_PATH = "/sales/order-acceptances";
 
 interface UploadResponse {
   ok?: boolean;
   name?: string;
   error?: string;
+}
+
+/** 表示用に整えた 1 行（ファイル + それがなった注文請書）。 */
+interface FolderRow extends IntakeFolderEntry {
+  /** 番号を除いた元のファイル名（`.processing` も外す）。 */
+  label: string;
+  /** 焼き込まれていた注文請書番号（未採番なら null）。 */
+  number: string | null;
+  /** 番号から引けた注文請書（消された書類なら null）。 */
+  doc: IntakeDocRef | null;
+  /** 抽出中（`.processing` でクレーム済み）。 */
+  processing: boolean;
 }
 
 /** バイト数を人が読める形に（一覧の右端に出すだけなので概算で十分）。 */
@@ -67,10 +89,32 @@ function formatBytes(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
+/** フォルダの 1 件 → 表示用の行（番号を切り出して書類と突き合わせる）。 */
+function toRow(
+  entry: IntakeFolderEntry,
+  docs: Record<string, IntakeDocRef>,
+): FolderRow {
+  const processing = entry.name.endsWith(".processing");
+  const base = processing
+    ? entry.name.slice(0, -".processing".length)
+    : entry.name;
+  const parsed = parseIntakeFileNumber(base);
+  return {
+    ...entry,
+    label: parsed?.rest ?? base,
+    number: parsed?.number ?? null,
+    doc: parsed ? (docs[parsed.number] ?? null) : null,
+    processing,
+  };
+}
+
 export function OrderIntakeFolderPanel({
   status,
+  docs,
 }: {
   status: IntakeFolderStatus;
+  /** ORD 番号 → 注文請書（サーバーで解決済み）。 */
+  docs: Record<string, IntakeDocRef>;
 }) {
   const router = useRouter();
   const [uploading, setUploading] = useState(false);
@@ -156,7 +200,7 @@ export function OrderIntakeFolderPanel({
           ? {
               title: "スキャンを開始しました",
               message:
-                "取込は 1 件ずつ実行されます。結果は受注請書の一覧で確認できます",
+                "取込は順番に実行されます。結果はこの画面と注文請書（SA04）で確認できます",
               color: "green",
             }
           : { title: "エラー", message: result.error, color: "red" },
@@ -172,7 +216,7 @@ export function OrderIntakeFolderPanel({
         result.ok
           ? {
               title: "取込待ちに戻しました",
-              message: result.data.name,
+              message: "採番済みの注文請書はそのまま、抽出だけやり直します",
               color: "green",
             }
           : { title: "エラー", message: result.error, color: "red" },
@@ -196,18 +240,18 @@ export function OrderIntakeFolderPanel({
         <Stack gap="xs">
           <Text size="sm">
             {status.error ??
-              "この環境には監視フォルダ（環境変数 INTAKE_DIR）が設定されていません。設定すると、フォルダに置かれた注文書が自動で受注請書として取り込まれます。"}
+              "この環境には監視フォルダ（環境変数 INTAKE_DIR）が設定されていません。設定すると、フォルダに置かれた注文書が自動で注文請書として取り込まれます。"}
           </Text>
           <Text c="dimmed" size="xs">
-            フォルダを使わない場合でも、受注請書（SA04）の「優先取込」から 1
+            フォルダを使わない場合でも、注文請書（SA04）の「優先取込」から 1
             件ずつ取り込めます。
           </Text>
           <Group gap="xs">
             <SecondaryButton
-              href="/sales/order-acceptances"
+              href={ACCEPTANCES_PATH}
               leftSection={<IconClipboardList size={14} />}
             >
-              受注請書へ
+              注文請書へ
             </SecondaryButton>
           </Group>
         </Stack>
@@ -215,16 +259,36 @@ export function OrderIntakeFolderPanel({
     );
   }
 
+  const pendingRows = [
+    ...status.processing.map((e) => toRow(e, docs)),
+    ...status.pending.map((e) => toRow(e, docs)),
+  ];
+  const failedRows = status.failed.map((e) => toRow(e, docs));
+  const processedRows = status.processed.map((e) => toRow(e, docs));
+
   return (
     <Stack gap="md">
-      {/* ── 投入 ───────────────────────────────────────────────────────── */}
+      {/* ── 投入 + 現況 ─────────────────────────────────────────────────── */}
       <Paper p="md" radius="md" shadow="xs">
         <Stack gap="sm">
-          <Title order={4}>フォルダへ投入</Title>
+          <Group gap="xs" justify="space-between">
+            <Title order={4}>フォルダへ投入</Title>
+            <Group gap="xs">
+              <Badge color="blue" variant="light">
+                取込待ち {pendingRows.length}
+              </Badge>
+              <Badge color="red" variant="light">
+                失敗 {status.failedTotal}
+              </Badge>
+              <Badge color="green" variant="light">
+                取込済 {status.processedTotal}
+              </Badge>
+            </Group>
+          </Group>
           <Text c="dimmed" size="sm">
             受け取った注文書（PDF / PNG / JPG / WEBP、1 件 20MB
             まで）をまとめて選ぶと、取込フォルダにそのまま置かれます。共有フォルダへ
-            直接コピーしたときと同じ経路で、順番に受注請書へ取り込まれます。
+            直接コピーしたときと同じ経路で、順番に注文請書へ取り込まれます。
           </Text>
           <Group gap="xs">
             <FileButton accept={UPLOAD_ACCEPT} multiple onChange={handleImport}>
@@ -246,10 +310,10 @@ export function OrderIntakeFolderPanel({
               今すぐスキャン
             </SecondaryButton>
             <SecondaryButton
-              href="/sales/order-acceptances"
+              href={ACCEPTANCES_PATH}
               leftSection={<IconClipboardList size={14} />}
             >
-              受注請書へ
+              注文請書一覧へ
             </SecondaryButton>
           </Group>
           <Group gap="xs">
@@ -267,20 +331,20 @@ export function OrderIntakeFolderPanel({
       {/* ── 取込待ち ───────────────────────────────────────────────────── */}
       <FolderSection
         color="blue"
-        description="次のスキャンで取り込まれます。処理中の 1 件は抽出（約 30〜60 秒）が終わるまでここに残ります。"
+        description="次のスキャンで取り込まれます。抽出中の 1 件は終わる（約 1〜3 分）までここに残ります。"
         emptyMessage="取込待ちのファイルはありません"
-        entries={[...status.pending, ...status.processing]}
+        rows={pendingRows}
         title="取込待ち"
       />
 
       {/* ── 失敗 ───────────────────────────────────────────────────────── */}
       <FolderSection
         color="red"
-        description="抽出に失敗したファイル。原因を直したら取込待ちへ戻せます（採番済みの注文請書はそのまま、抽出だけやり直します）。"
+        description="抽出に失敗したファイル。原因を直したら取込待ちへ戻せます — 採番済みの注文請書はそのままで、抽出だけやり直します（二重には登録されません）。"
         emptyMessage="失敗したファイルはありません"
-        entries={status.failed}
         onRetry={retry}
         retryDisabled={isPending}
+        rows={failedRows}
         title="失敗"
         total={status.failedTotal}
       />
@@ -288,12 +352,87 @@ export function OrderIntakeFolderPanel({
       {/* ── 取込済 ─────────────────────────────────────────────────────── */}
       <FolderSection
         color="green"
-        description="受注請書として取り込み済み。中身は受注請書の一覧で確認できます。"
+        description="注文請書として取り込み済み。番号から書類を開いて内容を確認できます。"
         emptyMessage="取込済のファイルはありません"
-        entries={status.processed}
+        rows={processedRows}
         title="取込済"
         total={status.processedTotal}
       />
+    </Stack>
+  );
+}
+
+/** 「どの注文請書になったか」列。未採番・削除済みも同じ幅で見せる。 */
+function DocumentCell({ row }: { row: FolderRow }) {
+  if (!row.number) {
+    return (
+      <Group gap={6} wrap="nowrap">
+        <Text c="dimmed" size="xs">
+          未採番
+        </Text>
+        {row.processing && (
+          <Badge color="blue" size="xs" variant="light">
+            抽出中
+          </Badge>
+        )}
+      </Group>
+    );
+  }
+  const failure = row.doc?.extractError
+    ? parseExtractError(row.doc.extractError)
+    : null;
+  return (
+    <Stack gap={2}>
+      <Group gap={6} wrap="nowrap">
+        <Anchor
+          component={Link}
+          ff="mono"
+          href={`${ACCEPTANCES_PATH}/${row.number}`}
+          size="sm"
+        >
+          {row.number}
+        </Anchor>
+        {row.doc ? (
+          <StatusBadge entity="OrderAcceptanceIntake" status={row.doc.status} />
+        ) : (
+          <Badge color="gray" size="sm" variant="light">
+            書類なし
+          </Badge>
+        )}
+        {row.processing && (
+          <Badge color="blue" size="xs" variant="light">
+            抽出中
+          </Badge>
+        )}
+      </Group>
+      {row.doc && (
+        <Group gap={6} wrap="nowrap">
+          <Text c={row.doc.customerName ? "dimmed" : "orange"} size="xs">
+            {row.doc.customerName ?? "顧客未特定"}
+          </Text>
+          <Text c="dimmed" size="xs">
+            明細 {row.doc.itemCount} 件
+          </Text>
+          {failure && (
+            <Tooltip
+              label={[failure.summary, failure.cause, `対処: ${failure.hint}`]
+                .filter(Boolean)
+                .join("\n")}
+              multiline
+              w={320}
+              withinPortal
+            >
+              <Badge
+                color={failure.retrying ? "orange" : "red"}
+                size="xs"
+                variant="light"
+              >
+                {failure.retrying ? "再試行中" : "抽出失敗"}
+              </Badge>
+            </Tooltip>
+          )}
+        </Group>
+      )}
     </Stack>
   );
 }
@@ -303,7 +442,7 @@ function FolderSection({
   title,
   description,
   color,
-  entries,
+  rows,
   emptyMessage,
   total,
   onRetry,
@@ -312,14 +451,14 @@ function FolderSection({
   title: string;
   description: string;
   color: string;
-  entries: IntakeFolderEntry[];
+  rows: FolderRow[];
   emptyMessage: string;
   /** 切り詰め前の全件数（一覧は最大 50 件）。 */
   total?: number;
   onRetry?: (name: string) => void;
   retryDisabled?: boolean;
 }) {
-  const shown = entries.length;
+  const shown = rows.length;
   const all = total ?? shown;
   return (
     <Paper p="md" radius="md" shadow="xs">
@@ -340,32 +479,38 @@ function FolderSection({
           />
         ) : (
           <>
-            <Table.ScrollContainer minWidth={520}>
+            <Table.ScrollContainer minWidth={640}>
               <Table striped withTableBorder>
                 <Table.Thead>
                   <Table.Tr>
-                    <Table.Th>ファイル名</Table.Th>
-                    <Table.Th style={{ width: 110, textAlign: "right" }}>
+                    <Table.Th style={{ width: 260 }}>注文請書</Table.Th>
+                    <Table.Th>ファイル</Table.Th>
+                    <Table.Th style={{ width: 90, textAlign: "right" }}>
                       サイズ
                     </Table.Th>
-                    <Table.Th style={{ width: 160 }}>更新</Table.Th>
-                    {onRetry && <Table.Th style={{ width: 130 }} />}
+                    <Table.Th style={{ width: 150 }}>更新</Table.Th>
+                    {onRetry && <Table.Th style={{ width: 120 }} />}
                   </Table.Tr>
                 </Table.Thead>
                 <Table.Tbody>
-                  {entries.map((e) => (
-                    <Table.Tr key={e.name}>
+                  {rows.map((row) => (
+                    <Table.Tr key={row.name}>
                       <Table.Td>
-                        <Text size="sm">{e.name}</Text>
+                        <DocumentCell row={row} />
+                      </Table.Td>
+                      <Table.Td>
+                        <Text size="sm" title={row.name}>
+                          {row.label}
+                        </Text>
                       </Table.Td>
                       <Table.Td style={{ textAlign: "right" }}>
                         <Text c="dimmed" size="xs">
-                          {formatBytes(e.sizeBytes)}
+                          {formatBytes(row.sizeBytes)}
                         </Text>
                       </Table.Td>
                       <Table.Td>
                         <Text c="dimmed" size="xs">
-                          {formatDateTime(e.modifiedAt)}
+                          {formatDateTime(row.modifiedAt)}
                         </Text>
                       </Table.Td>
                       {onRetry && (
@@ -373,7 +518,7 @@ function FolderSection({
                           <GhostButton
                             disabled={retryDisabled}
                             leftSection={<IconArrowBackUp size={14} />}
-                            onClick={() => onRetry(e.name)}
+                            onClick={() => onRetry(row.name)}
                           >
                             再取込
                           </GhostButton>
