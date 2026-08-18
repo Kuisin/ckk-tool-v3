@@ -79,7 +79,7 @@ pnpm prisma db push                  # dev-only
 
 ## Key Patterns
 
-**RBAC** — Always query the `user_permissions` view (not the raw relation tables). It aggregates roles → permissions per user and returns only the highest `SCOPE` per `(user_id, action, permission_code)`.
+**RBAC** — Always query the `user_permissions` view (not the raw relation tables). It aggregates roles → permissions per user and returns only the highest `SCOPE` per `(user_id, action, permission_code)`. Roles and grants are owned by two idempotent seeds — `shared-db/sql/rbac-seed.sql` (the 18 permission codes + `admin`/`staff`) and `roles-seed.sql` (the 15 operational roles) — **not** by the app. `system` and `kiosk` are admin-only and deliberately excluded from every business role; a new app needing a new code must add it to `rbac-seed.sql` and to the roles that should have it. Two derived references are regenerated, never hand-edited: `_docs/rbac-role-matrix.xlsx` (`tools/rbac-matrix/build_rbac_xlsx.py`, reads the live DB + `app-list.ts`) and the DC02 internal doc「ロールと権限」(`content/internal/rbac/`). Launcher visibility is a separate axis — `feature_flags` (`feature-flags-seed.sql`) decides what is published on `main`, so a grant never publishes an app.
 
 **Auth** — Auth.js v5, DB session + short JWT. Identity sourced from Samba AD via LDAP/OAuth.
 
