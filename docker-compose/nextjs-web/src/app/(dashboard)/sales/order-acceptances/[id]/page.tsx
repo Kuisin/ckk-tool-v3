@@ -5,6 +5,7 @@ import { listAttachments } from "@/lib/attachments";
 import { fetchAuditEntries } from "@/lib/audit";
 import { requireAppRead } from "@/lib/authz-page";
 import { formatDocNumber, parseDocKey } from "@/lib/doc-number";
+import { listMemos } from "@/lib/document-memos";
 import { fetchOrderAcceptance } from "../data";
 import { checkAcceptancePrices } from "../price-check";
 
@@ -35,14 +36,21 @@ export default async function SalesOrderAcceptancesDetailPage({
   if (!key) notFound();
   const number = formatDocNumber("ORD", key);
 
-  const [acceptance, auditEntries, attachments, approvalTrail, canApprove] =
-    await Promise.all([
-      fetchOrderAcceptance(key),
-      fetchAuditEntries("order_acceptances", number),
-      listAttachments("order_acceptances", number),
-      fetchApprovalTrail("order_acceptances", number),
-      isApprover("FIRST"),
-    ]);
+  const [
+    acceptance,
+    auditEntries,
+    attachments,
+    memos,
+    approvalTrail,
+    canApprove,
+  ] = await Promise.all([
+    fetchOrderAcceptance(key),
+    fetchAuditEntries("order_acceptances", number),
+    listAttachments("order_acceptances", number),
+    listMemos("order_acceptances", number),
+    fetchApprovalTrail("order_acceptances", number),
+    isApprover("FIRST"),
+  ]);
   if (!acceptance) notFound();
 
   // §2 価格照合（P0-8）— 保存済み明細と価格表の差異。展開済み・アーカイブ
@@ -60,6 +68,7 @@ export default async function SalesOrderAcceptancesDetailPage({
       attachments={attachments}
       auditEntries={auditEntries}
       canApprove={canApprove}
+      memos={memos}
       priceCheck={priceCheck}
     />
   );
