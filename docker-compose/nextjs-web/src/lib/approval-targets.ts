@@ -28,6 +28,15 @@ export interface ApprovalTargetMeta {
   color: string;
   /** 詳細ページ。targetId は業務キーそのまま。 */
   href: (targetId: string) => string;
+  /**
+   * 詳細ページの READ ゲートに使う appList のキー。
+   *
+   * 承認グループの所属と書類の閲覧権限は**別の軸**で、承認者だからといって
+   * その書類を開けるとは限らない（例: purchasing ロールは approve:READ を
+   * 持つが order_acceptance:READ は持たない）。承認管理 (PD03) はこのキーで
+   * 「開けるか」を先に判定し、開けない行にバッジを出す。
+   */
+  appKey: string;
 }
 
 export const APPROVAL_TARGET: Record<ApprovalTargetType, ApprovalTargetMeta> = {
@@ -35,21 +44,25 @@ export const APPROVAL_TARGET: Record<ApprovalTargetType, ApprovalTargetMeta> = {
     label: "注文請書",
     color: "blue",
     href: (id) => `/sales/order-acceptances/${id}`,
+    appKey: "order-acceptances",
   },
   work_orders: {
     label: "指示書",
     color: "violet",
     href: (id) => `/production/work-orders/${id}`,
+    appKey: "work-orders",
   },
   material_purchase_orders: {
     label: "素材発注書",
     color: "teal",
     href: (id) => `/purchase/purchase-orders/${id}`,
+    appKey: "purchase-orders",
   },
   purchase_requests: {
     label: "購買依頼",
     color: "cyan",
     href: (id) => `/purchase/purchase-requests/${id}`,
+    appKey: "purchase-requests",
   },
 };
 

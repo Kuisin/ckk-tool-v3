@@ -7,10 +7,22 @@
  * リンク）/ 段階（「2/3 部門承認」— 段数は承認設定 MS0B が書類種別ごとに
  * 決める）/ 依頼者 / 依頼日時 / 備考。
  * 行クリックで対象書類の詳細（＝承認操作ができる画面）へ遷移する。
+ *
+ * 書類を開く権限が無い行には「閲覧権限なし」バッジを出す（遷移自体は止めない）
+ * — 承認グループの所属と書類の閲覧権限は別の軸で、承認者でも開けない場合が
+ * あるため。判定は data.ts の canReadTarget。
  */
 
-import { Badge, Group, Select, Stack, Text, TextInput } from "@mantine/core";
-import { IconSearch, IconShieldCheck } from "@tabler/icons-react";
+import {
+  Badge,
+  Group,
+  Select,
+  Stack,
+  Text,
+  TextInput,
+  Tooltip,
+} from "@mantine/core";
+import { IconLock, IconSearch, IconShieldCheck } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
 import type { ApprovalRequestRow } from "@/app/(dashboard)/production/approvals/data";
 import { type Column, DataTable } from "@/components/ui/DataTable";
@@ -47,6 +59,32 @@ function TargetTypeBadge({ targetType }: { targetType: string }) {
     <Badge color={meta?.color ?? "gray"} size="sm" variant="light">
       {meta?.label ?? targetType}
     </Badge>
+  );
+}
+
+/**
+ * 閲覧権限バッジ — 承認グループの所属と書類の閲覧権限は別の軸なので、
+ * 承認者でもその書類を開けないことがある（例: purchasing ロールは
+ * approve:READ を持つが order_acceptance:READ は持たない）。
+ * 遷移は止めず、押す前に分かるようにするだけ。
+ */
+function NoAccessBadge() {
+  return (
+    <Tooltip
+      label="この書類を開く権限がありません。承認は書類の詳細画面で行うため、管理者に権限の付与を依頼してください。"
+      multiline
+      w={260}
+      withinPortal
+    >
+      <Badge
+        color="gray"
+        leftSection={<IconLock size={11} />}
+        size="xs"
+        variant="outline"
+      >
+        閲覧権限なし
+      </Badge>
+    </Tooltip>
   );
 }
 
@@ -112,9 +150,12 @@ export function ApprovalRequestTable({ rows }: { rows: ApprovalRequestRow[] }) {
       width: 180,
       sortValue: (r) => r.targetId,
       render: (r) => (
-        <Text className="tabular-nums" ff="mono" size="sm">
-          {targetLabel(r)}
-        </Text>
+        <Group gap={6} wrap="nowrap">
+          <Text className="tabular-nums" ff="mono" size="sm">
+            {targetLabel(r)}
+          </Text>
+          {!r.canReadTarget && <NoAccessBadge />}
+        </Group>
       ),
     },
     {
@@ -193,9 +234,12 @@ export function ApprovalRequestTable({ rows }: { rows: ApprovalRequestRow[] }) {
         renderCard={(r) => (
           <Group align="flex-start" justify="space-between" wrap="nowrap">
             <Stack className="min-w-0" gap={3}>
-              <Text c="dimmed" ff="mono" size="xs">
-                {targetLabel(r)}
-              </Text>
+              <Group gap={6} wrap="nowrap">
+                <Text c="dimmed" ff="mono" size="xs">
+                  {targetLabel(r)}
+                </Text>
+                {!r.canReadTarget && <NoAccessBadge />}
+              </Group>
               <Group gap="xs" mt={2}>
                 <TargetTypeBadge targetType={r.targetType} />
                 <StepBadge row={r} />
