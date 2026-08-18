@@ -42,6 +42,19 @@ describe("reviewIntake", () => {
     expect(f?.hint).toContain("株式会社オーエムアイ");
   });
 
+  it("顧客に自社名が来たら「向きが逆」と分かる案内を出す", () => {
+    const rs = reviewIntake(
+      { customer_name: "シー・ケイ・ケー株式会社" },
+      saved(),
+    );
+    const f = find(rs, "customer");
+    expect(f?.status).toBe("unmatched");
+    expect(f?.read).toBe("シー・ケイ・ケー株式会社");
+    // 「マスタに無い」ではなく「宛先＝自社／発行元＝顧客」を案内する
+    expect(f?.hint).toContain("自社名");
+    expect(f?.hint).toContain("発行元");
+  });
+
   it("顧客: そもそも読めなかった → missing", () => {
     const rs = reviewIntake({}, saved());
     expect(find(rs, "customer")).toMatchObject({
