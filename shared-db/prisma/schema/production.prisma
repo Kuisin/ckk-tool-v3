@@ -1,7 +1,7 @@
 // 生産 (_specs/tables.md §Logic §3〜§7): 指示書 / 工程ステップ / 分岐合流。
 //
 // キー方針:
-//   - 受注の単位は order_lines（受注明細, intake.prisma）。旧 sales_orders
+//   - 受注の単位は order_lines（注文明細, intake.prisma）。旧 sales_orders
 //     （注文請書）はそこへ統合済みで、このファイルには存在しない。
 //   - work_orders: uuid PK + work_order_number（通し連番 int, unique）。
 //     ロット番号 = 指示書番号（共用, numbering_sequences の SERIAL）。
@@ -60,8 +60,8 @@ enum StepStatus {
 
 // 指示書（§3〜§7）— 通し連番。ロット番号と共用。
 // order_line_id は nullable — null = 在庫向けの独立指示書（type は
-// MANUFACTURE のみ。顧客注文分は常に受注明細配下）。product_id は常に保持
-// （受注明細配下は明細の製品から複写、独立指示書は直接指定）。
+// MANUFACTURE のみ。顧客注文分は常に注文明細配下）。product_id は常に保持
+// （注文明細配下は明細の製品から複写、独立指示書は直接指定）。
 model WorkOrder {
   id              String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   workOrderNumber Int     @unique @map("work_order_number")

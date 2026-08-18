@@ -3,7 +3,7 @@
 /**
  * AttachmentsPanel — 汎用証憑（document_attachments）パネル。
  *
- * 任意の業務レコード（素材発注書 / 素材入荷 / 受注請書 …）に紐付く添付
+ * 任意の業務レコード（素材発注書 / 素材入荷 / 注文請書 …）に紐付く添付
  * ファイルの一覧 + アップロード + 削除。データは server 側で
  * `lib/attachments.listAttachments` が用意し、mutation は
  * `/api/attachments/upload`（POST multipart）と `/api/attachments/[id]`

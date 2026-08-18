@@ -3,14 +3,14 @@
 /**
  * ShippingOrderForm — 出荷書 新規作成 / 編集 (SH01, design.md §8.3).
  *
- * 新規: 受注明細 SearchSelect（必須）を選択すると、サーバーアクション
- * fetchShippingSourceInfo で受注明細情報 + 完了済み指示書（ロット）を取得し、
+ * 新規: 注文明細 SearchSelect（必須）を選択すると、サーバーアクション
+ * fetchShippingSourceInfo で注文明細情報 + 完了済み指示書（ロット）を取得し、
  * 明細を「完了指示書 1 件 = 1 行」（製品 = 受注製品 / ロット = 指示書番号 /
  * 数量 = 最終工程の良品数）で既定生成する。行は追加・削除可能
  * （追加行の製品は受注製品を既定、ロットは手入力任意）。
  * 種別（発送 / 在庫保管）・出荷元拠点・備考をヘッダで指定する。
  *
- * 編集: 下書きのみ（ガードはサーバー側でも実施）。受注明細は作成後変更不可。
+ * 編集: 下書きのみ（ガードはサーバー側でも実施）。注文明細は作成後変更不可。
  */
 
 import {
@@ -63,7 +63,7 @@ const SHIPPING_TYPES = ["DISPATCH", "STOCK_STORAGE"] as const;
 
 const itemSchema = z.object({
   rowId: z.string(),
-  /** 出荷元の受注明細（1 出荷書に複数載せられる）。 */
+  /** 出荷元の注文明細（1 出荷書に複数載せられる）。 */
   orderLineId: z.string().nullable(),
   orderLineNumber: z.string().nullable(),
   productId: z.string().min(1, "製品を選択してください"),
@@ -75,7 +75,7 @@ const itemSchema = z.object({
 
 const schema = z.object({
   /** 顧客はヘッダが権威（1 出荷書 = 1 顧客）。 */
-  customerBpId: z.string().min(1, "受注明細を選択してください"),
+  customerBpId: z.string().min(1, "注文明細を選択してください"),
   type: z.enum(SHIPPING_TYPES),
   fromPlantId: z.string().nullable(),
   notes: z.string(),
@@ -140,12 +140,12 @@ export function ShippingOrderForm({
   const [isPending, startTransition] = useTransition();
   const orderId = mode === "edit" ? order?.id : undefined;
 
-  // 選択中受注明細の情報（完了指示書・在庫ロット・受注数量の案内表示用）。
+  // 選択中注文明細の情報（完了指示書・在庫ロット・受注数量の案内表示用）。
   const [soInfo, setSoInfo] = useState<ShippingSourceInfo | null>(null);
-  // 受注明細変更の競合ガード — 最後の要求のみ採用する。
+  // 注文明細変更の競合ガード — 最後の要求のみ採用する。
   const soToken = useRef(0);
 
-  // 現在ピッカーで選んでいる受注明細（明細行の追加元）。
+  // 現在ピッカーで選んでいる注文明細（明細行の追加元）。
   const [pickedLineId, setPickedLineId] = useState<string>("");
   // 編集時もロットピッカー用に在庫ロット情報をロードする。
   const editOrderLineId =
@@ -173,7 +173,7 @@ export function ShippingOrderForm({
   });
 
   /**
-   * 受注明細選択 → サーバーから受注情報 + 完了指示書を取得し、明細を
+   * 注文明細選択 → サーバーから受注情報 + 完了指示書を取得し、明細を
    * 「完了指示書 1 件 = 1 行」で既定生成する（完了指示書なしは空行1件）。
    */
   const onOrderLineChange = (orderLineId: string | null) => {
@@ -187,7 +187,7 @@ export function ShippingOrderForm({
       if (soToken.current !== token) return;
       setSoInfo(info);
       if (!info) return;
-      // 顧客はヘッダが権威 — 最初に選んだ受注明細の顧客で確定する。
+      // 顧客はヘッダが権威 — 最初に選んだ注文明細の顧客で確定する。
       if (!form.values.customerBpId && info.customerBpId) {
         form.setFieldValue("customerBpId", info.customerBpId);
       }
@@ -213,8 +213,8 @@ export function ShippingOrderForm({
                 info.orderLineNumber,
               ),
             ];
-      // 既に別の受注明細の行があるときは**置き換えず追記**する
-      // （1 出荷書に複数の受注明細を載せられるのがこの画面の要点）。
+      // 既に別の注文明細の行があるときは**置き換えず追記**する
+      // （1 出荷書に複数の注文明細を載せられるのがこの画面の要点）。
       const keep = form.values.items.filter(
         (it) => it.orderLineId && it.orderLineId !== info.orderLineId,
       );
@@ -293,14 +293,14 @@ export function ShippingOrderForm({
     >
       <FormSection title="基本情報">
         <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
-          {/* 受注明細ピッカー — 選ぶたびに明細行を**追記**する
-              （1 出荷書に複数の受注明細を全量・部分数量で載せられる）。 */}
+          {/* 注文明細ピッカー — 選ぶたびに明細行を**追記**する
+              （1 出荷書に複数の注文明細を全量・部分数量で載せられる）。 */}
           <SearchSelect
             error={form.errors.customerBpId}
             label={<HelpLabel {...fieldHelp("shippingOrder", "orderLine")} />}
             onChange={onOrderLineChange}
             onSearch={searchOrderLineOptions}
-            placeholder="受注明細を検索して明細を追加"
+            placeholder="注文明細を検索して明細を追加"
             storageKey="order-line"
             value={pickedLineId || null}
             withAsterisk={mode === "create"}
@@ -342,13 +342,13 @@ export function ShippingOrderForm({
             mt="sm"
             variant="light"
           >
-            在庫保管（予備製作分）は請求フロー外です。出荷しても受注明細の出荷状態は変わりません。
+            在庫保管（予備製作分）は請求フロー外です。出荷しても注文明細の出荷状態は変わりません。
           </Alert>
         )}
       </FormSection>
 
       <FormSection
-        description="受注明細を選択すると、完了済みの指示書（ロット）ごとに明細が既定生成されます（数量 = 残良品数、未記録は予定数量）。発送のロットは対象製品の在庫ロット（他の受注明細・在庫向け指示書の完成ロットを含む）から選択し、在庫数に対して検証されます。"
+        description="注文明細を選択すると、完了済みの指示書（ロット）ごとに明細が既定生成されます（数量 = 残良品数、未記録は予定数量）。発送のロットは対象製品の在庫ロット（他の注文明細・在庫向け指示書の完成ロットを含む）から選択し、在庫数に対して検証されます。"
         title="明細"
       >
         {soInfo && (

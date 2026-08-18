@@ -1,5 +1,5 @@
 /**
- * intake-core.ts — 受注請書抽出結果（po-extract /extract/order-request）の
+ * intake-core.ts — 注文請書抽出結果（po-extract /extract/order-request）の
  * 正規化純ロジック。Prisma I/O は lib/intake.ts。
  */
 

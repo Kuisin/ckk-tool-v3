@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * OrderLineDetail — 受注明細 詳細 (PD21, design.md §8.2).
+ * OrderLineDetail — 注文明細 詳細 (PD21, design.md §8.2).
  *
  * SummaryGrid（番号 / 顧客(+支店) / 顧客注文書番号 / 製品 / 注文種別 / 数量 /
  * 単価 / 金額 / 納期 / ロット番号 / 見積元）+ ロック中 Alert +
@@ -113,7 +113,7 @@ export function OrderLineDetail({
       if (result.ok) {
         notifications.show({
           title: "キャンセルしました",
-          message: `受注明細 ${order.orderNumber} をキャンセルしました`,
+          message: `注文明細 ${order.orderNumber} をキャンセルしました`,
           color: "green",
         });
         router.refresh();
@@ -158,7 +158,7 @@ export function OrderLineDetail({
           />
         </Group>
       }
-      breadcrumbs={["販売", { label: "受注明細", href: BASE_PATH }, "詳細"]}
+      breadcrumbs={["販売", { label: "注文明細", href: BASE_PATH }, "詳細"]}
       createdAt={formatDateTime(order.createdAt)}
       status={<StatusBadge entity="OrderLine" status={order.status} />}
       title={order.orderNumber}
@@ -171,13 +171,13 @@ export function OrderLineDetail({
           title="承認依頼中ロック"
           variant="light"
         >
-          この受注明細は承認依頼中のためロックされています。承認が完了するまで編集できません。
+          この注文明細は承認依頼中のためロックされています。承認が完了するまで編集できません。
         </Alert>
       )}
 
       <SummaryGrid>
         <FieldValue
-          label="受注明細番号"
+          label="注文明細番号"
           value={<DocNumber>{order.orderNumber}</DocNumber>}
         />
         <FieldValue
@@ -315,7 +315,7 @@ export function OrderLineDetail({
                 </SecondaryButton>
               }
               icon={<IconClipboardList size={24} />}
-              message="この受注明細の指示書はまだありません"
+              message="この注文明細の指示書はまだありません"
             />
           ) : (
             <Table.ScrollContainer minWidth={640}>
@@ -372,7 +372,7 @@ export function OrderLineDetail({
           {order.shippingOrders.length === 0 ? (
             <EmptyState
               icon={<IconTruck size={24} />}
-              message="この受注明細の出荷書はまだありません"
+              message="この注文明細の出荷書はまだありません"
             />
           ) : (
             <Table.ScrollContainer minWidth={640}>
@@ -557,7 +557,7 @@ export function OrderLineDetail({
       <ConfirmModal
         confirmLabel="キャンセルする"
         loading={isPending}
-        message={`受注明細 ${order.orderNumber} をキャンセルします。この操作は取り消せません。`}
+        message={`注文明細 ${order.orderNumber} をキャンセルします。この操作は取り消せません。`}
         onClose={() => setCancelOpen(false)}
         onConfirm={runCancel}
         opened={cancelOpen}

@@ -1,7 +1,7 @@
 /**
  * instrumentation.ts — サーバー起動時フック（Next.js instrumentation）。
  *
- * 受注請書の監視フォルダポーラーを起動する。INTAKE_DIR 未設定なら何もしない
+ * 注文請書の監視フォルダポーラーを起動する。INTAKE_DIR 未設定なら何もしない
  * （ローカル・ビルド時は安全に無効）。間隔は INTAKE_POLL_MS（既定 60 秒）。
  */
 

@@ -27,7 +27,7 @@ export interface WorkOrderRow {
   workOrderNumber: number;
   /** 表示番号 YYYYMMDD-XXXXX の日付部分（作成日）。 */
   createdAt: string;
-  /** null = 在庫向けの独立指示書（受注明細なし）。 */
+  /** null = 在庫向けの独立指示書（注文明細なし）。 */
   orderLineNumber: string | null;
   productName: string;
   type: string; // WORK_ORDER_TYPE
@@ -108,7 +108,7 @@ export interface WorkOrderView {
   type: string;
   plannedQuantity: number;
   notes: string | null;
-  /** null = 在庫向けの独立指示書（受注明細なし・製品直接指定）。 */
+  /** null = 在庫向けの独立指示書（注文明細なし・製品直接指定）。 */
   orderLineId: string | null;
   orderLineNumber: string | null;
   orderLineQuantity: number | null;
@@ -117,14 +117,14 @@ export interface WorkOrderView {
   materialId: number | null;
   materialCode: string | null;
   materialName: string | null;
-  /** 受注明細の対象製品（工程ルートのリンク先）。 */
+  /** 注文明細の対象製品（工程ルートのリンク先）。 */
   productId: number;
   /** 工程ルート出所（未使用 = null）。 */
   routeVersionId: string | null;
   routeId: number | null;
   routeName: string | null;
   routeVersion: number | null;
-  /** ロット番号 = 指示書番号（受注明細側の lot_number）。 */
+  /** ロット番号 = 指示書番号（注文明細側の lot_number）。 */
   lotNumber: number | null;
   sourceWorkOrderNumber: number | null;
   copies: WorkOrderCopyRef[];

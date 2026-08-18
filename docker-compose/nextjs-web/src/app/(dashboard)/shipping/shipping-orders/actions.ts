@@ -7,9 +7,9 @@
  * 明細を nested create で一括作成する。表示番号 SHP-YYYYMM-NNNNN は導出。
  *
  * ステータス遷移: DRAFT →(確定)→ CONFIRMED →(出荷)→ SHIPPED。
- * 出荷時（DISPATCH のみ）は受注明細の出荷進捗を再計算し、受注明細ステータスを
+ * 出荷時（DISPATCH のみ）は注文明細の出荷進捗を再計算し、注文明細ステータスを
  * PARTIAL_SHIPPED / SHIPPED へ更新する（STOCK_STORAGE は請求フロー外のため
- * 受注明細ステータスに影響しない）。削除（キャンセル）は下書きのみ hard delete。
+ * 注文明細ステータスに影響しない）。削除（キャンセル）は下書きのみ hard delete。
  */
 
 import { type Access, rowInScope } from "@ckk/authz-core";
@@ -57,7 +57,7 @@ async function shippingOrderInScope(
 }
 
 const itemInput = z.object({
-  /** 出荷元の受注明細。DISPATCH では必須（下の superRefine で強制）。 */
+  /** 出荷元の注文明細。DISPATCH では必須（下の superRefine で強制）。 */
   orderLineId: z.string().nullable(),
   productId: z.string().min(1, "製品を選択してください"),
   lotNumber: z.number().int().min(1).nullable(),
@@ -75,15 +75,15 @@ const createInput = z
     items: z.array(itemInput).min(1, "明細を1件以上追加してください"),
   })
   .superRefine((v, ctx) => {
-    // 発送は必ず受注明細に紐付く（請求の起点になるため）。在庫保管は
-    // 予備製作分なので受注明細を持たない行を許す。
+    // 発送は必ず注文明細に紐付く（請求の起点になるため）。在庫保管は
+    // 予備製作分なので注文明細を持たない行を許す。
     if (v.type !== "DISPATCH") return;
     v.items.forEach((it, i) => {
       if (!it.orderLineId) {
         ctx.addIssue({
           code: "custom",
           path: ["items", i, "orderLineId"],
-          message: `明細 ${i + 1} 行目: 発送には受注明細の指定が必要です`,
+          message: `明細 ${i + 1} 行目: 発送には注文明細の指定が必要です`,
         });
       }
     });
@@ -103,7 +103,7 @@ const updateInput = z
         ctx.addIssue({
           code: "custom",
           path: ["items", i, "orderLineId"],
-          message: `明細 ${i + 1} 行目: 発送には受注明細の指定が必要です`,
+          message: `明細 ${i + 1} 行目: 発送には注文明細の指定が必要です`,
         });
       }
     });
@@ -125,7 +125,7 @@ const trimOrNull = (v: string | null | undefined) => {
   return t || null;
 };
 
-// ── 受注明細情報（フォーム用ライブ取得） ──────────────────────────────────────
+// ── 注文明細情報（フォーム用ライブ取得） ──────────────────────────────────────
 
 /** 出荷書フォームの明細既定行（完了指示書 1 件 = 1 行）。 */
 export interface CompletedWorkOrderRef {
@@ -143,7 +143,7 @@ export interface StockLotRef {
   quantity: number;
   /** 予約中数量。 */
   reserved: number;
-  /** この受注明細配下の指示書のロットか（他 SO / 在庫向け指示書由来 = false）。 */
+  /** この注文明細配下の指示書のロットか（他 SO / 在庫向け指示書由来 = false）。 */
   fromThisOrderLine: boolean;
 }
 
@@ -155,7 +155,7 @@ export interface ShippingSourceInfo {
   customerName: string;
   /** 既に出荷済みの数量（残数の算出用）。 */
   shippedQuantity: number;
-  /** 受注明細の製品（明細の既定製品）。 */
+  /** 注文明細の製品（明細の既定製品）。 */
   productId: string;
   productName: string;
   quantity: number;
@@ -166,7 +166,7 @@ export interface ShippingSourceInfo {
 }
 
 /**
- * 受注明細選択時のライブ取得 — 受注明細情報 + 完了済み指示書（ロット）+
+ * 注文明細選択時のライブ取得 — 注文明細情報 + 完了済み指示書（ロット）+
  * 対象製品の在庫ロット一覧。明細の既定行（1 完了指示書 = 1 行、数量 =
  * グラフ終端集計の残良品）とロットピッカーの選択肢を組み立てる。
  */
@@ -319,7 +319,7 @@ async function validateDispatchLots(
 }
 
 /**
- * 1 出荷書 = 1 顧客の不変条件。明細の受注明細がヘッダの顧客と食い違うと、
+ * 1 出荷書 = 1 顧客の不変条件。明細の注文明細がヘッダの顧客と食い違うと、
  * 請求の顧客判定と納品書の宛先が壊れる。
  */
 async function validateSingleCustomer(
@@ -342,12 +342,12 @@ async function validateSingleCustomer(
     (l) => l.acceptance.customerBpId !== customerBpId,
   );
   return mismatched
-    ? "1 つの出荷書には同じ顧客の受注明細だけを載せられます"
+    ? "1 つの出荷書には同じ顧客の注文明細だけを載せられます"
     : null;
 }
 
 /**
- * ある受注明細の出荷済み数量（SHIPPED × DISPATCH の明細合計）。
+ * ある注文明細の出荷済み数量（SHIPPED × DISPATCH の明細合計）。
  * 過出荷ガードと残数表示の唯一の集計元。
  */
 async function shippedQuantityForLine(orderLineId: string): Promise<number> {
@@ -362,7 +362,7 @@ async function shippedQuantityForLine(orderLineId: string): Promise<number> {
 }
 
 /**
- * 明細が参照する受注明細の残数を超えていないか（作成・更新時の fail-fast）。
+ * 明細が参照する注文明細の残数を超えていないか（作成・更新時の fail-fast）。
  * 確定的なガードは shipShippingOrder 側（出荷時点で数え直す）。
  */
 async function validateLineRemaining(
@@ -385,7 +385,7 @@ async function validateLineRemaining(
       },
     });
     if (!line || line.branch == null) {
-      return "確定済みの受注明細を指定してください";
+      return "確定済みの注文明細を指定してください";
     }
     // 自分自身の未出荷ぶんは累計に含まれない（SHIPPED のみ数える）が、
     // 編集時に同じ出荷書の行を二重に数えないよう除外キーを見る。
@@ -655,9 +655,9 @@ export async function confirmShippingOrder(
 /**
  * 出荷 (CONFIRMED → SHIPPED + shippedAt=now)。
  *
- * DISPATCH（発送）の場合は受注明細の出荷進捗を再計算する: その受注明細の
+ * DISPATCH（発送）の場合は注文明細の出荷進捗を再計算する: その注文明細の
  * SHIPPED な DISPATCH 出荷書の明細数量合計 vs 受注数量 → PARTIAL_SHIPPED /
- * SHIPPED。STOCK_STORAGE（在庫保管）は受注明細ステータスを変更しない。
+ * SHIPPED。STOCK_STORAGE（在庫保管）は注文明細ステータスを変更しない。
  */
 export async function shipShippingOrder(number: string): Promise<ActionResult> {
   const authz = await checkPermission("shipping_order", "UPDATE");
@@ -677,8 +677,8 @@ export async function shipShippingOrder(number: string): Promise<ActionResult> {
     });
     if (!row) return actionError("対象の出荷書が見つかりません");
 
-    // 受注明細ステータス変更の監査用（トランザクション後に記録）。
-    // 1 出荷書が複数の受注明細を束ねるため、行ごとに 1 件ずつ積む。
+    // 注文明細ステータス変更の監査用（トランザクション後に記録）。
+    // 1 出荷書が複数の注文明細を束ねるため、行ごとに 1 件ずつ積む。
     const lineAudits: {
       number: string;
       before: string;
@@ -695,7 +695,7 @@ export async function shipShippingOrder(number: string): Promise<ActionResult> {
       }
       if (row.type !== "DISPATCH") return;
 
-      // この出荷書が触る受注明細ごとに、累計出荷を数え直して判定する。
+      // この出荷書が触る注文明細ごとに、累計出荷を数え直して判定する。
       // 出荷書単位で合算すると、複数明細を束ねた瞬間に別の受注の数量まで
       // 巻き込んで過出荷ガードが誤作動する。
       const lineIds = [
@@ -767,7 +767,7 @@ export async function shipShippingOrder(number: string): Promise<ActionResult> {
       after: { status: "SHIPPED" },
     });
     // 出荷完了のハンドオフ通知（受注担当へ・best-effort — 監査 P2-6）。
-    // 複数の受注明細を束ねられるので、担当者は重複排除して一斉に通知する。
+    // 複数の注文明細を束ねられるので、担当者は重複排除して一斉に通知する。
     try {
       const lineIds = [
         ...new Set(

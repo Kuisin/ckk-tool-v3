@@ -1,14 +1,14 @@
 "use client";
 
 /**
- * OrderAcceptanceIntakeTable — 受注請書 取込状況一覧 (SA04, design.md §8.1)。
+ * OrderAcceptanceIntakeTable — 注文請書 取込状況一覧 (SA04, design.md §8.1)。
  *
  * 監視フォルダ（FOLDER）/ 優先取込（UPLOAD）/ 手入力（MANUAL）で作成された
- * 受注請書の取込・承認・展開の進捗を一覧する。
+ * 注文請書の取込・承認・展開の進捗を一覧する。
  * Columns: 番号 / 取込元 / ファイル名 / 顧客 / 明細数 / 状態 / エラー / 取込日時。
  *
  * ヘッダー: 「優先取込」FileButton（複数可 — 逐次 POST /api/intake/upload）+
- * 手入力新規 + 受注明細一覧（/sales/order-lines）へのリンク。
+ * 手入力新規 + 注文明細一覧（/sales/order-lines）へのリンク。
  * アップロードは保存までで即返り、**抽出はサーバー側の待ち行列**で 1 件ずつ
  * 走る（GPU が同時に 1 件しか捌けないため）。よってボタンのローディングは
  * 送信が終われば解除され、抽出を待たずに次のファイルを投げられる。
@@ -279,7 +279,7 @@ export function OrderAcceptanceIntakeTable({
               href="/sales/order-lines"
               leftSection={<IconClipboardList size={14} />}
             >
-              受注明細一覧
+              注文明細一覧
             </SecondaryButton>
           )}
           <FileButton
@@ -300,7 +300,7 @@ export function OrderAcceptanceIntakeTable({
           <NewButton href={`${BASE_PATH}/new`} label="手入力で新規" />
         </Group>
       }
-      breadcrumbs={["販売", "受注請書"]}
+      breadcrumbs={["販売", "注文請書"]}
       filters={
         <Select
           clearable
@@ -321,7 +321,7 @@ export function OrderAcceptanceIntakeTable({
           value={search}
         />
       }
-      title="受注請書 取込状況"
+      title="注文請書 取込状況"
     >
       <Stack gap="xs">
         <Group gap="sm">
@@ -341,7 +341,7 @@ export function OrderAcceptanceIntakeTable({
           data={filtered}
           defaultSort={{ key: "number", dir: "desc" }}
           emptyIcon={<IconClipboardCheck size={24} />}
-          emptyMessage="取込された受注請書がありません"
+          emptyMessage="取込された注文請書がありません"
           getRowId={(r) => r.number}
           onRowClick={(r) => router.push(`${BASE_PATH}/${r.number}`)}
           renderCard={(r) => {

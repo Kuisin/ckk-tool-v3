@@ -118,7 +118,7 @@ export async function processClosing(
     const items = shipments.flatMap((s) => {
       const deliveryNote = s.deliveryNotes[0] ?? null;
       return s.items.map((it) => {
-        // 単価は**その行の**受注明細から取る（1 出荷書に単価の異なる
+        // 単価は**その行の**注文明細から取る（1 出荷書に単価の異なる
         // 複数明細が載り得るため、出荷書単位の単一単価では誤請求になる）。
         const unitPrice = Number(it.orderLine?.unitPrice ?? 0);
         const name = it.product.name as LocalizedText | null;
@@ -135,7 +135,7 @@ export async function processClosing(
           shippingOrderSeq: s.seq,
           deliveryNoteYearMonth: deliveryNote?.yearMonth ?? null,
           deliveryNoteSeq: deliveryNote?.seq ?? null,
-          // 受注明細 → 請求のトレーサビリティ（単価の出所）
+          // 注文明細 → 請求のトレーサビリティ（単価の出所）
           orderLineId: it.orderLineId,
           description: { ja, en },
           quantity: it.quantity,

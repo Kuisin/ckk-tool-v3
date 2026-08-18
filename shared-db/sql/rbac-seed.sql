@@ -13,7 +13,7 @@ BEGIN;
 INSERT INTO app.permissions (code, display_name, description) VALUES
   ('price_list',      '{"ja":"価格表","en":"Price list"}',            '{"ja":"","en":""}'),
   ('quote',           '{"ja":"見積書","en":"Quote"}',                 '{"ja":"","en":""}'),
-  ('order_acceptance','{"ja":"受注請書・受注明細","en":"Order acceptance"}', '{"ja":"","en":""}'),
+  ('order_acceptance','{"ja":"注文請書・注文明細","en":"Order acceptance"}', '{"ja":"","en":""}'),
   ('design_request',  '{"ja":"設計依頼","en":"Design request"}',      '{"ja":"","en":""}'),
   ('material_receipt','{"ja":"素材入荷","en":"Material receipt"}',    '{"ja":"","en":""}'),
   ('outsource_order', '{"ja":"外注依頼","en":"Outsource order"}',     '{"ja":"","en":""}'),

@@ -66,7 +66,7 @@ export async function fetchClosings(): Promise<BillingClosing[]> {
 // ── 請求対象出荷（SHIPPED × DISPATCH × 未請求）の収集 ────────────────────────
 
 const SHIPMENT_INCLUDE = {
-  // 顧客はヘッダが権威。単価は明細行が参照する受注明細ごとに異なり得る。
+  // 顧客はヘッダが権威。単価は明細行が参照する注文明細ごとに異なり得る。
   customerBp: { include: { customerAttrs: true } },
   items: {
     orderBy: { sortOrder: "asc" as const },
@@ -122,8 +122,8 @@ export async function fetchBillableShipmentsForClosing(
 }
 
 /**
- * 出荷書 1 件の請求金額 = Σ（明細数量 × **その行の**受注明細の単価）。
- * 1 出荷書が単価の異なる複数の受注明細を束ねられるので、出荷書単位の
+ * 出荷書 1 件の請求金額 = Σ（明細数量 × **その行の**注文明細の単価）。
+ * 1 出荷書が単価の異なる複数の注文明細を束ねられるので、出荷書単位の
  * 単一単価では誤請求になる。
  */
 export function shipmentAmount(s: BillableShipment): number {

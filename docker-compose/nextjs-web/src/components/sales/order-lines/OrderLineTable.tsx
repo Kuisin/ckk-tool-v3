@@ -1,9 +1,9 @@
 "use client";
 
 /**
- * OrderLineTable — 受注明細 一覧 (PD01, design.md §8.1 / §14).
+ * OrderLineTable — 注文明細 一覧 (PD01, design.md §8.1 / §14).
  *
- * Columns: 受注明細番号 / 顧客 / 製品 / 数量 / 金額 / 納期 / 状態。
+ * Columns: 注文明細番号 / 顧客 / 製品 / 数量 / 金額 / 納期 / 状態。
  * フィルタ: 検索（番号・顧客・製品）+ 状態 + 注文種別。行クリック → 詳細。
  */
 
@@ -52,7 +52,7 @@ export function OrderLineTable({ rows }: { rows: OrderLine[] }) {
   const columns: Column<OrderLine>[] = [
     {
       key: "orderNumber",
-      header: "受注明細番号",
+      header: "注文明細番号",
       sortable: true,
       render: (o) => (
         <Text ff="mono" size="sm">
@@ -122,7 +122,7 @@ export function OrderLineTable({ rows }: { rows: OrderLine[] }) {
   return (
     <ListShell
       action={<NewButton href={`${BASE_PATH}/new`} />}
-      breadcrumbs={["販売", "受注明細"]}
+      breadcrumbs={["販売", "注文明細"]}
       filters={
         <>
           <Select
@@ -150,11 +150,11 @@ export function OrderLineTable({ rows }: { rows: OrderLine[] }) {
         <TextInput
           leftSection={<IconSearch size={14} />}
           onChange={(e) => setSearch(e.currentTarget.value)}
-          placeholder="受注明細番号・顧客・製品で検索"
+          placeholder="注文明細番号・顧客・製品で検索"
           value={search}
         />
       }
-      title="受注明細"
+      title="注文明細"
     >
       <DataTable
         columns={columns}
@@ -162,7 +162,7 @@ export function OrderLineTable({ rows }: { rows: OrderLine[] }) {
         defaultSort={{ key: "orderNumber", dir: "desc" }}
         emptyAction={<NewButton href={`${BASE_PATH}/new`} />}
         emptyIcon={<IconClipboardList size={24} />}
-        emptyMessage="受注明細がありません"
+        emptyMessage="注文明細がありません"
         getRowId={(o) => o.id}
         onRowClick={(o) => router.push(`${BASE_PATH}/${o.id}`)}
         renderCard={(o) => (

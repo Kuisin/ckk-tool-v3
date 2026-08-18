@@ -12,7 +12,7 @@
 /** 選択できる文書種別。 */
 export const DOCUMENT_LINK_TYPES = [
   { value: "quote", label: "見積書" },
-  { value: "order_line", label: "受注明細" },
+  { value: "order_line", label: "注文明細" },
   { value: "work_order", label: "指示書" },
   { value: "shipping_order", label: "出荷書" },
   { value: "invoice", label: "請求書" },

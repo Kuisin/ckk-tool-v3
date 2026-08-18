@@ -14,7 +14,7 @@ const SEQUENCES = {
   ESTIMATE: { prefix: "EST", digits: 5 },
   QUOTE: { prefix: "QOT", digits: 5 },
   PRICE_LIST: { prefix: "PRC", digits: 5 },
-  ORDER: { prefix: "ORD", digits: 5 }, // 受注明細ベース（枝番は行側で 1..N）
+  ORDER: { prefix: "ORD", digits: 5 }, // 注文明細ベース（枝番は行側で 1..N）
   SHIPPING: { prefix: "SHP", digits: 5 }, // 出荷書
   DELIVERY: { prefix: "DRN", digits: 5 }, // 納品書
   PURCHASE: { prefix: "PO", digits: 5 }, // 素材発注書（po_number に文字列保存）

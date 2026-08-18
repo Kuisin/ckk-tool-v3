@@ -1,7 +1,7 @@
 "use server";
 
 /**
- * Server Actions — 受注請書 intake (app.order_acceptances, SA04)。
+ * Server Actions — 注文請書 intake (app.order_acceptances, SA04)。
  *
  * ライフサイクル遷移:
  *   IMPORT（抽出失敗）→ 再抽出（retryExtraction — lib/intake の抽出キューへ積む）
@@ -10,8 +10,8 @@
  *   APPROVED → deployToOrderLines（伝票展開 → COMPLETED）
  *   COMPLETED → archiveAcceptance（→ ARCHIVED）
  *
- * 伝票展開は受注請書と同じ (year_month, seq) の order_lines 枝番 1..N を
- * $transaction で一括作成する（§2: 受注請書 1 → 受注明細 N）。承認は
+ * 伝票展開は注文請書と同じ (year_month, seq) の order_lines 枝番 1..N を
+ * $transaction で一括作成する（§2: 注文請書 1 → 注文明細 N）。承認は
  * lib/approvals（approval_requests / approval_records — FIRST 段のみ）。
  */
 
@@ -61,7 +61,7 @@ function keyOf(number: string): DocKey | null {
 const SCOPE_DENIED = "この操作の権限がありません（対象範囲外）";
 
 /**
- * 対象受注請書がスコープ内か（OWN 行チェック）。ALL は素通し。
+ * 対象注文請書がスコープ内か（OWN 行チェック）。ALL は素通し。
  * 不存在は true — 既存の not-found 系エラー処理に委ねる。
  */
 async function acceptanceInScope(
@@ -146,7 +146,7 @@ function buildItemCreates(items: OrderAcceptanceDraftInput["items"]) {
  */
 export async function retryExtraction(number: string): Promise<ActionResult> {
   const key = keyOf(number);
-  if (!key) return actionError("受注請書番号が不正です");
+  if (!key) return actionError("注文請書番号が不正です");
   const authz = await checkPermission("order_acceptance", "UPDATE");
   if (!authz.ok) return actionError(authz.error);
   if (!(await acceptanceInScope(authz.access, authz.userId, key))) {
@@ -157,9 +157,9 @@ export async function retryExtraction(number: string): Promise<ActionResult> {
       where: { yearMonth_seq: key },
       select: { status: true },
     });
-    if (!prior) return actionError("対象の受注請書が見つかりません");
+    if (!prior) return actionError("対象の注文請書が見つかりません");
     if (prior.status !== "IMPORT") {
-      return actionError("取込中（未抽出）の受注請書のみ再抽出できます");
+      return actionError("取込中（未抽出）の注文請書のみ再抽出できます");
     }
     // 前回のエラー表示を消してから積む（画面上は「取込中」に戻る）。
     await prisma.orderAcceptance.update({
@@ -184,7 +184,7 @@ export async function retryExtraction(number: string): Promise<ActionResult> {
  */
 export async function takeOverManually(number: string): Promise<ActionResult> {
   const key = keyOf(number);
-  if (!key) return actionError("受注請書番号が不正です");
+  if (!key) return actionError("注文請書番号が不正です");
   const authz = await checkPermission("order_acceptance", "UPDATE");
   if (!authz.ok) return actionError(authz.error);
   if (!(await acceptanceInScope(authz.access, authz.userId, key))) {
@@ -195,9 +195,9 @@ export async function takeOverManually(number: string): Promise<ActionResult> {
       where: { yearMonth_seq: key },
       select: { status: true },
     });
-    if (!prior) return actionError("対象の受注請書が見つかりません");
+    if (!prior) return actionError("対象の注文請書が見つかりません");
     if (prior.status !== "IMPORT") {
-      return actionError("取込中の受注請書のみ手入力へ切り替えられます");
+      return actionError("取込中の注文請書のみ手入力へ切り替えられます");
     }
     await prisma.orderAcceptance.update({
       where: { yearMonth_seq: key },
@@ -226,7 +226,7 @@ export async function saveDraft(
   payload: OrderAcceptanceDraftInput,
 ): Promise<ActionResult> {
   const key = keyOf(number);
-  if (!key) return actionError("受注請書番号が不正です");
+  if (!key) return actionError("注文請書番号が不正です");
   const parsed = draftInput.safeParse(payload);
   if (!parsed.success) {
     return actionError(parsed.error.issues[0]?.message ?? "入力が不正です");
@@ -248,7 +248,7 @@ export async function saveDraft(
         notes: true,
       },
     });
-    if (!prior) return actionError("対象の受注請書が見つかりません");
+    if (!prior) return actionError("対象の注文請書が見つかりません");
     const creates = buildItemCreates(v.items);
     let blocked: string | null = null;
     await prisma.$transaction(async (tx) => {
@@ -297,7 +297,7 @@ export async function saveDraft(
     revalidate(number);
     return actionOk();
   } catch (e) {
-    return actionError(prismaErrorMessage(e, "受注請書の保存に失敗しました"));
+    return actionError(prismaErrorMessage(e, "注文請書の保存に失敗しました"));
   }
 }
 
@@ -315,7 +315,7 @@ export async function submitForApproval(
   acknowledgePriceDiff = false,
 ): Promise<ActionResult> {
   const key = keyOf(number);
-  if (!key) return actionError("受注請書番号が不正です");
+  if (!key) return actionError("注文請書番号が不正です");
   const authz = await checkPermission("order_acceptance", "UPDATE");
   if (!authz.ok) return actionError(authz.error);
   if (!(await acceptanceInScope(authz.access, authz.userId, key))) {
@@ -330,9 +330,9 @@ export async function submitForApproval(
         _count: { select: { items: true } },
       },
     });
-    if (!prior) return actionError("対象の受注請書が見つかりません");
+    if (!prior) return actionError("対象の注文請書が見つかりません");
     if (prior.status !== "DRAFT") {
-      return actionError("下書きの受注請書のみ承認依頼できます");
+      return actionError("下書きの注文請書のみ承認依頼できます");
     }
     if (!prior.customerBpId) {
       return actionError("顧客が未特定です。顧客を選択して保存してください");
@@ -383,7 +383,7 @@ export async function submitForApproval(
 /** 承認 — REQUESTED → APPROVED。第一承認グループのメンバー（or 代理）のみ。 */
 export async function approveAcceptance(number: string): Promise<ActionResult> {
   const key = keyOf(number);
-  if (!key) return actionError("受注請書番号が不正です");
+  if (!key) return actionError("注文請書番号が不正です");
   const authz = await checkPermission("order_acceptance", "APPROVE");
   if (!authz.ok) return actionError(authz.error);
   if (!(await acceptanceInScope(authz.access, authz.userId, key))) {
@@ -394,9 +394,9 @@ export async function approveAcceptance(number: string): Promise<ActionResult> {
       where: { yearMonth_seq: key },
       select: { status: true },
     });
-    if (!prior) return actionError("対象の受注請書が見つかりません");
+    if (!prior) return actionError("対象の注文請書が見つかりません");
     if (prior.status !== "REQUESTED") {
-      return actionError("承認依頼中の受注請書ではありません");
+      return actionError("承認依頼中の注文請書ではありません");
     }
     const acted = await actOnApprovalRequest({
       targetType: "order_acceptances",
@@ -430,7 +430,7 @@ export async function rejectAcceptance(
   reason: string,
 ): Promise<ActionResult> {
   const key = keyOf(number);
-  if (!key) return actionError("受注請書番号が不正です");
+  if (!key) return actionError("注文請書番号が不正です");
   const trimmed = reason.trim();
   if (!trimmed) return actionError("差し戻し理由を入力してください");
   const authz = await checkPermission("order_acceptance", "APPROVE");
@@ -443,9 +443,9 @@ export async function rejectAcceptance(
       where: { yearMonth_seq: key },
       select: { status: true },
     });
-    if (!prior) return actionError("対象の受注請書が見つかりません");
+    if (!prior) return actionError("対象の注文請書が見つかりません");
     if (prior.status !== "REQUESTED") {
-      return actionError("承認依頼中の受注請書ではありません");
+      return actionError("承認依頼中の注文請書ではありません");
     }
     const acted = await actOnApprovalRequest({
       targetType: "order_acceptances",
@@ -479,15 +479,15 @@ export async function rejectAcceptance(
 // ── 伝票展開（APPROVED → COMPLETED） ────────────────────────────────────────
 
 /**
- * 伝票展開 — 明細ごとに受注明細（order_lines）を作成する。
- * 受注請書と同じ (year_month, seq) を共有し、枝番 branch = 1..N。
+ * 伝票展開 — 明細ごとに注文明細（order_lines）を作成する。
+ * 注文請書と同じ (year_month, seq) を共有し、枝番 branch = 1..N。
  * 全明細が製品特定済み + 単価入力済みであることが必要。
  */
 export async function confirmOrderLines(
   number: string,
 ): Promise<ActionResult<{ numbers: string[] }>> {
   const key = keyOf(number);
-  if (!key) return actionError("受注請書番号が不正です");
+  if (!key) return actionError("注文請書番号が不正です");
   const authz = await checkPermission("order_acceptance", "CREATE");
   if (!authz.ok) return actionError(authz.error);
   if (!(await acceptanceInScope(authz.access, authz.userId, key))) {
@@ -498,9 +498,9 @@ export async function confirmOrderLines(
       where: { yearMonth_seq: key },
       include: { items: { orderBy: { sortOrder: "asc" } } },
     });
-    if (!prior) return actionError("対象の受注請書が見つかりません");
+    if (!prior) return actionError("対象の注文請書が見つかりません");
     if (prior.status !== "APPROVED") {
-      return actionError("承認済の受注請書のみ確定できます");
+      return actionError("承認済の注文請書のみ確定できます");
     }
     if (!prior.customerBpId) {
       return actionError("顧客が未特定のため確定できません");
@@ -527,7 +527,7 @@ export async function confirmOrderLines(
         data: { status: "COMPLETED", completedAt },
       });
       if (updated.count === 0) {
-        throw new Error("承認済の受注請書のみ確定できます");
+        throw new Error("承認済の注文請書のみ確定できます");
       }
       // 明細行はすでに存在する — 確定は「枝番の採番 + 金額の凍結」だけ。
       // sortOrder 順に 1..N。以後 branch は不変（公開番号 ORD-…-NN の一部）。
@@ -566,7 +566,7 @@ export async function confirmOrderLines(
         tableName: "order_lines",
         recordId: numbers[i],
         after: {
-          note: `受注請書 ${number} の確定`,
+          note: `注文請書 ${number} の確定`,
           customerBpId: prior.customerBpId,
           productId: it.productId,
           orderType: it.orderType,
@@ -590,14 +590,14 @@ export async function confirmOrderLines(
     if (e instanceof Error && e.message.includes("確定")) {
       return actionError(e.message);
     }
-    return actionError(prismaErrorMessage(e, "受注確定に失敗しました"));
+    return actionError(prismaErrorMessage(e, "注文確定に失敗しました"));
   }
 }
 
 /** アーカイブ — COMPLETED → ARCHIVED。 */
 export async function archiveAcceptance(number: string): Promise<ActionResult> {
   const key = keyOf(number);
-  if (!key) return actionError("受注請書番号が不正です");
+  if (!key) return actionError("注文請書番号が不正です");
   const authz = await checkPermission("order_acceptance", "UPDATE");
   if (!authz.ok) return actionError(authz.error);
   if (!(await acceptanceInScope(authz.access, authz.userId, key))) {
@@ -609,7 +609,7 @@ export async function archiveAcceptance(number: string): Promise<ActionResult> {
       data: { status: "ARCHIVED", archivedAt: new Date() },
     });
     if (updated.count === 0) {
-      return actionError("展開済の受注請書のみアーカイブできます");
+      return actionError("展開済の注文請書のみアーカイブできます");
     }
     await recordAudit({
       action: "UPDATE",
@@ -627,7 +627,7 @@ export async function archiveAcceptance(number: string): Promise<ActionResult> {
 
 // ── 手入力作成（MANUAL） ─────────────────────────────────────────────────────
 
-/** 手入力の受注請書を DRAFT で作成する（source = MANUAL）。 */
+/** 手入力の注文請書を DRAFT で作成する（source = MANUAL）。 */
 export async function createManualAcceptance(
   payload: OrderAcceptanceManualInput,
 ): Promise<ActionResult<{ number: string }>> {
@@ -671,6 +671,6 @@ export async function createManualAcceptance(
     revalidate(number);
     return actionOk({ number });
   } catch (e) {
-    return actionError(prismaErrorMessage(e, "受注請書の作成に失敗しました"));
+    return actionError(prismaErrorMessage(e, "注文請書の作成に失敗しました"));
   }
 }

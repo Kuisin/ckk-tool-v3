@@ -1,6 +1,6 @@
 /**
  * POST /api/extract/order-request — proxy an uploaded order PDF/scan to the
- * self-hosted `po-extract` API and return the structured 受注請書 JSON.
+ * self-hosted `po-extract` API and return the structured 注文請書 JSON.
  *
  * Keeps the extractor server-side (the browser never talks to it directly).
  * `PO_EXTRACT_URL` points at the extractor; in the deployed stack `nextjs-web`
@@ -18,7 +18,7 @@ const PO_EXTRACT_URL = (
 ).replace(/\/$/, "");
 
 export async function POST(request: Request): Promise<Response> {
-  // 受注請書取込の一部として実行される — order_acceptance:CREATE でゲート。
+  // 注文請書取込の一部として実行される — order_acceptance:CREATE でゲート。
   const denied = await requirePermissionResponse("order_acceptance", "CREATE");
   if (denied) return denied;
   const inForm = await request.formData();

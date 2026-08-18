@@ -38,7 +38,7 @@ screenshots: [inventory-products-01, inventory-product-detail-01, inventory-tran
 库存不是在这个画面变动，而是随着平时的业务操作自动变动。
 
 - **增加** … [制造指示书](/manual/zh/operations/production/work-order/user)的所有工序完成后，良品会带着批次号进入库存。划分为「半製品」（半成品）的部分会作为半成品进入库存。
-- **被预留** … 在销售订单画面执行「**在庫照合**」（库存核对）后，可用的库存会为该订单预留。
+- **被预留** … 在订单明细画面执行「**在庫照合**」（库存核对）后，可用的库存会为该订单预留。
 - **减少** … 通过[出货单](/manual/zh/operations/shipping/shipping-order/user)出货后，库存会减少，预留也会解除。
 
 ## 产品标签页的看法
@@ -66,7 +66,7 @@ screenshots: [inventory-products-01, inventory-product-detail-01, inventory-tran
 
 下方有 2 个标签页。
 
-- **予約**（预留）… 预留这批库存的订单一览。状态按「**予約中**」（预留中）→「**確定**」（确定）→「**解除**」（解除）推进。也可以确认相关的销售订单编号和指示书编号。
+- **予約**（预留）… 预留这批库存的订单一览。状态按「**予約中**」（预留中）→「**確定**」（确定）→「**解除**」（解除）推进。也可以确认相关的订单明细编号和指示书编号。
 - **取引履歴**（交易履历）… 库存变动的记录。
 
 ![交易履历标签页](../../../assets/screenshots/inventory-transactions-01.png)

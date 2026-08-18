@@ -9,7 +9,7 @@ screenshots: [price-list-list-01, price-list-new-01, price-list-detail-01, price
 
 - [お客様](/manual/ja/operations/masters/business-partner/user)ごとの製品の売値を登録できます。
 - 登録しておくと、[見積書](/manual/ja/operations/sales/quote/user)の金額が **自動で入ります**（見積書の画面で金額を手入力する必要はありません）。
-- [受注請書](/manual/ja/operations/sales/order-acceptance/user)では、お客様の注文書の単価とここの値段が **自動で見比べられ**、違っていれば知らせてくれます。
+- [注文請書](/manual/ja/operations/sales/order-acceptance/user)では、お客様の注文書の単価とここの値段が **自動で見比べられ**、違っていれば知らせてくれます。
 - 「**たくさん買うと 1 本あたりが安くなる**」という数量ごとの値段を設定できます。
 - 期間限定のキャンペーン値引きを登録しておけます。
 - この価格表からそのまま見積書をつくれます。

@@ -19,7 +19,7 @@ These are the documents that appear in the list.
 - **指示書** (work order) … first and second approval ([work order](/manual/en/operations/production/work-order/user) PD02)
 - **素材発注書** (material purchase order) … the approval before the order is placed ([material purchase order](/manual/en/operations/purchasing/purchase-order/user) PU02)
 - **購買依頼** (purchase request) … [purchase request](/manual/en/operations/purchasing/purchase-request/user) PU01
-- **受注請書** (order acceptance) … it appears in the list, but because there is no dedicated approval screen for it yet, clicking the row does not take you anywhere
+- **注文請書** (order acceptance) … it appears in the list, but because there is no dedicated approval screen for it yet, clicking the row does not take you anywhere
 
 ## Words used on this page
 
@@ -39,7 +39,7 @@ When you open the app, the documents waiting for approval are listed.
 
 ![Approval management list](../../../assets/screenshots/approval-list-01.png)
 
-- **種別** (document type) … a coloured badge shows which of 「指示書」 (work order), 「素材発注書」 (material purchase order), 「購買依頼」 (purchase request), or 「受注請書」 (order acceptance) it is.
+- **種別** (document type) … a coloured badge shows which of 「指示書」 (work order), 「素材発注書」 (material purchase order), 「購買依頼」 (purchase request), or 「注文請書」 (order acceptance) it is.
 - **対象番号** (document number) … the number of that document.
 - **段階** (stage) … either 「**第一**」 (first) or 「**第二**」 (second). Everything except work orders is approved once.
 - **依頼者** (requester) … the person who asked for approval.
@@ -110,7 +110,7 @@ A. There are no requests waiting for approval right now. Requests that have been
 A. You are not in the approval group for that stage. Please ask an administrator about being added to the approval group.
 
 **Q. Nothing happens when I click a row.**
-A. That row is of the type 「受注請書」 (order acceptance). There is no dedicated approval screen for this document yet, so it only appears in the list.
+A. That row is of the type 「注文請書」 (order acceptance). There is no dedicated approval screen for this document yet, so it only appears in the list.
 
 **Q. I pressed the send-back button and saw 「差し戻し理由を入力してください」 (Please enter a reason for sending back).**
 A. The reason is still empty. A reason is required, so please write it and press 「差し戻す」 (Send back) again.

@@ -94,7 +94,7 @@ never swaps mid-request (~48s/doc). Env: `MODEL`, `STRUCT_MODEL`, `OCR_ENABLED`,
 
 **Typed methods (built-in schemas)** — `POST /extract/<doc_type>` (multipart:
 `file` + optional `prompt`). No schema needed; each type's schema matches the v3
-data model. Types: `order-request` (受注請書 intake — primary), `quote`,
+data model. Types: `order-request` (注文請書 intake — primary), `quote`,
 `invoice`, `delivery-note`, `purchase-order`.
 
 Output guarantees: every schema key is always present (`required` +

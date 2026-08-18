@@ -1,10 +1,10 @@
 "use client";
 
 /**
- * OrderAcceptanceCreateForm — 受注請書 手入力作成 (SA14, design.md §8.3)。
+ * OrderAcceptanceCreateForm — 注文請書 手入力作成 (SA14, design.md §8.3)。
  *
  * AI 取込を使わない手入力ルート（source = MANUAL）。顧客 + 明細 1 件以上で
- * DRAFT の受注請書を直接作成し、詳細ページへ遷移する。
+ * DRAFT の注文請書を直接作成し、詳細ページへ遷移する。
  */
 
 import { SimpleGrid, TextInput } from "@mantine/core";
@@ -62,7 +62,7 @@ export function OrderAcceptanceCreateForm() {
       if (result.ok) {
         notifications.show({
           title: "作成しました",
-          message: `受注請書 ${result.data.number}（下書き）`,
+          message: `注文請書 ${result.data.number}（下書き）`,
           color: "green",
         });
         router.push(`${BASE_PATH}/${result.data.number}`);
@@ -97,7 +97,7 @@ export function OrderAcceptanceCreateForm() {
     <FormShell
       breadcrumbs={[
         "販売",
-        { label: "受注請書", href: BASE_PATH },
+        { label: "注文請書", href: BASE_PATH },
         "手入力で新規",
       ]}
       isDirty={isDirty}
@@ -105,10 +105,10 @@ export function OrderAcceptanceCreateForm() {
       onCancel={() => router.push(BASE_PATH)}
       onSubmit={handleSubmit}
       submitLabel="下書きを作成"
-      title="受注請書 手入力作成"
+      title="注文請書 手入力作成"
     >
       <FormSection
-        description="注文書の自動取込を使わずに受注請書を直接作成します（下書きとして保存）。"
+        description="注文書の自動取込を使わずに注文請書を直接作成します（下書きとして保存）。"
         title="基本情報"
       >
         <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">

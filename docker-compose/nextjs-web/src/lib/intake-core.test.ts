@@ -1,5 +1,5 @@
 /**
- * intake-core.test.ts — 受注請書抽出の正規化テスト。
+ * intake-core.test.ts — 注文請書抽出の正規化テスト。
  */
 
 import { describe, expect, it } from "vitest";

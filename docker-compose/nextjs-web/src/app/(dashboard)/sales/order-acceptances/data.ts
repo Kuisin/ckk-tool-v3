@@ -1,10 +1,10 @@
 /**
- * data.ts — 受注請書 intake (SA04) のサーバーサイド取得・マッピング。
+ * data.ts — 注文請書 intake (SA04) のサーバーサイド取得・マッピング。
  *
  * app.order_acceptances は (year_month, seq) の複合キー — 表示番号
  * ORD-YYYYMM-NNNNN は導出（保存しない）で、URL id を兼ねる。
  * 伝票展開後は同じ (year_month, seq) の order_lines 枝番 1..N を持つため、
- * 詳細では展開済み受注明細番号も併せて返す。
+ * 詳細では展開済み注文明細番号も併せて返す。
  * Prisma Decimal はここで Number() へ、日付は ISO 文字列へ変換して渡す。
  */
 
@@ -102,7 +102,7 @@ export async function fetchOrderAcceptance(
     return null;
   }
 
-  // 確定済みの受注明細（枝番 1..N）。未確定行は公開番号を持たない。
+  // 確定済みの注文明細（枝番 1..N）。未確定行は公開番号を持たない。
   const orderLines = await prisma.orderLine.findMany({
     where: {
       acceptanceYearMonth: key.yearMonth,

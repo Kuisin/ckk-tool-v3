@@ -3,13 +3,13 @@
 // 番号付き印刷文書 = Quote と同じ (year_month, seq) 複合キー。表示番号
 // SHP-YYYYMM-NNNNN / DRN-YYYYMM-NNNNN は導出（URL id にも使用）。
 //
-// 受注明細リンクは**明細行**にある（order_line_id）— 1 出荷書に複数の受注明細
+// 注文明細リンクは**明細行**にある（order_line_id）— 1 出荷書に複数の注文明細
 // を全量・部分数量で載せられる。ヘッダは顧客だけを持つ（請求の顧客判定と納品書
-// の宛先導出がここを見る）。不変条件: 1 出荷書の明細はすべて同一顧客の受注明細
+// の宛先導出がここを見る）。不変条件: 1 出荷書の明細はすべて同一顧客の注文明細
 // でなければならない（アプリで検証）。明細は製品×ロットで、複数指示書（ロット）
 // の成果を束ねられる。納品書は出荷書 1:1。
 // order_line_id は nullable — STOCK_STORAGE（予備製作分・請求フロー外）と
-// 独立在庫指示書由来の出荷には受注明細が無い。DISPATCH では必須（アプリで強制）。
+// 独立在庫指示書由来の出荷には注文明細が無い。DISPATCH では必須（アプリで強制）。
 
 enum ShippingType {
   STOCK_STORAGE // 在庫保管（予備製作分・請求フロー外）
@@ -49,7 +49,7 @@ model ShippingOrder {
   yearMonth String @map("year_month") @db.Char(6)
   seq       Int
 
-  // 顧客はヘッダ（明細をまたいで同一）。受注明細リンクは明細行側。
+  // 顧客はヘッダ（明細をまたいで同一）。注文明細リンクは明細行側。
   customerBpId       String  @map("customer_bp_id") @db.Uuid
   customerBranchBpId String? @map("customer_branch_bp_id") @db.Uuid
   // 明細が単一ロットに解決するときだけ張る表示・追跡用リンク
@@ -85,8 +85,8 @@ model ShippingOrderItem {
   shippingOrderYearMonth String @map("shipping_order_year_month") @db.Char(6)
   shippingOrderSeq       Int    @map("shipping_order_seq")
 
-  // 出荷元の受注明細。DISPATCH では必須（アプリで強制）、STOCK_STORAGE と
-  // 独立在庫指示書由来では null。1 出荷書に複数の受注明細を部分数量で載せる
+  // 出荷元の注文明細。DISPATCH では必須（アプリで強制）、STOCK_STORAGE と
+  // 独立在庫指示書由来では null。1 出荷書に複数の注文明細を部分数量で載せる
   // ための行レベルリンク。
   orderLineId String? @map("order_line_id") @db.Uuid
 

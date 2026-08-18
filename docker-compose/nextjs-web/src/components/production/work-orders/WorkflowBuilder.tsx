@@ -3,10 +3,10 @@
 /**
  * WorkflowBuilder — 指示書 新規作成 / 編集 (PD12 / PD22, design.md §8.3)。
  *
- * 受注明細・種別・予定数量・使用素材・検査表の基本情報と、工程構成エディタ
+ * 注文明細・種別・予定数量・使用素材・検査表の基本情報と、工程構成エディタ
  * （ProcessListEditor — 工程選択 + 実施場所、必須随伴工程の自動追加）で構成する。
  *
- * 工程ルート（製品の工程リスト）: 受注明細を選ぶと対象製品のルートを読み込み、
+ * 工程ルート（製品の工程リスト）: 注文明細を選ぶと対象製品のルートを読み込み、
  * ルート + バージョン（既定 = 最新）を選ぶと工程構成をプリフィルする。構成を
  * 変更すると保存時に新バージョンとして自動保存される（変更検知は
  * routeStepsEqual — server 側と同一基準）。ルートを使わない場合、ルート名を
@@ -94,9 +94,9 @@ interface Option {
 }
 
 const schema = z.object({
-  // 対象が受注明細のときのみ必須（handleSubmit で検証）
+  // 対象が注文明細のときのみ必須（handleSubmit で検証）
   orderLineId: z.string(),
-  // 在庫向け（受注明細なし）のときの対象製品
+  // 在庫向け（注文明細なし）のときの対象製品
   productId: z.string().nullable(),
   type: z.enum(["FROM_STOCK", "MANUFACTURE"]),
   plannedQuantity: z.number().int().min(1, "予定数量は1以上"),
@@ -108,7 +108,7 @@ const schema = z.object({
 
 type FormValues = z.infer<typeof schema>;
 
-/** 指示書の対象: 受注明細配下 / 在庫向け（受注明細なし・製品直接指定）。 */
+/** 指示書の対象: 注文明細配下 / 在庫向け（注文明細なし・製品直接指定）。 */
 type BuilderTarget = "SALES_ORDER" | "STOCK";
 
 function initialValues(
@@ -221,7 +221,7 @@ export function WorkflowBuilder({
   const [locations, setLocations] = useState<Record<number, StepLocation>>(
     initialLocations(workOrder),
   );
-  // 対象: 受注明細配下 / 在庫向け（編集時は既存指示書から導出）
+  // 対象: 注文明細配下 / 在庫向け（編集時は既存指示書から導出）
   const [target, setTarget] = useState<BuilderTarget>(
     workOrder && workOrder.orderLineId == null ? "STOCK" : "SALES_ORDER",
   );
@@ -300,7 +300,7 @@ export function WorkflowBuilder({
   const orderLineIdValue = form.values.orderLineId;
   const productIdValue = form.values.productId;
   useEffect(() => {
-    // 対象に応じてルートを解決: 受注明細 → SO の製品 / 在庫向け → 直接指定製品
+    // 対象に応じてルートを解決: 注文明細 → SO の製品 / 在庫向け → 直接指定製品
     const load =
       target === "SALES_ORDER"
         ? orderLineIdValue
@@ -322,7 +322,7 @@ export function WorkflowBuilder({
     };
   }, [target, orderLineIdValue, productIdValue]);
 
-  // 別製品の受注明細へ切り替えたらルート選択をリセット
+  // 別製品の注文明細へ切り替えたらルート選択をリセット
   useEffect(() => {
     if (routeSel == null || routesInfo == null) return;
     if (!routesInfo.routes.some((r) => String(r.id) === routeSel)) {
@@ -488,7 +488,7 @@ export function WorkflowBuilder({
       return;
     }
     if (target === "SALES_ORDER" && !values.orderLineId) {
-      form.setFieldError("orderLineId", "受注明細を選択してください");
+      form.setFieldError("orderLineId", "注文明細を選択してください");
       return;
     }
     if (target === "STOCK" && !values.productId) {
@@ -621,13 +621,13 @@ export function WorkflowBuilder({
           </Text>
           <SegmentedControl
             data={[
-              { value: "SALES_ORDER", label: "受注明細に紐づく" },
-              { value: "STOCK", label: "在庫向け（受注明細なし）" },
+              { value: "SALES_ORDER", label: "注文明細に紐づく" },
+              { value: "STOCK", label: "在庫向け（注文明細なし）" },
             ]}
             onChange={(v) => {
               const next = v as BuilderTarget;
               setTarget(next);
-              // 在庫向けは製造分のみ（顧客注文分は常に受注明細配下）
+              // 在庫向けは製造分のみ（顧客注文分は常に注文明細配下）
               if (next === "STOCK") form.setFieldValue("type", "MANUFACTURE");
             }}
             value={target}
@@ -644,7 +644,7 @@ export function WorkflowBuilder({
                 label={<HelpLabel {...fieldHelp("workOrder", "orderLine")} />}
                 onChange={onOrderLineChange}
                 onSearch={searchOrderLineOptions}
-                placeholder="受注明細番号・製品・顧客で検索"
+                placeholder="注文明細番号・製品・顧客で検索"
                 storageKey="sales-order"
                 value={form.values.orderLineId || null}
                 withAsterisk
@@ -677,7 +677,7 @@ export function WorkflowBuilder({
                 withAsterisk
               />
               <Text c="dimmed" size="xs">
-                完成品は指示書番号のロットで在庫入庫され、後日任意の受注明細の
+                完成品は指示書番号のロットで在庫入庫され、後日任意の注文明細の
                 出荷に充当できます
               </Text>
             </Stack>

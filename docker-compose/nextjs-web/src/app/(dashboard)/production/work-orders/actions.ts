@@ -7,7 +7,7 @@
  *   ブロッカー（AND 不足・排他違反）があれば保存を拒否する。工程の並びは
  *   defaultOrder（カタログ既定順）で採番する。
  * - 採番: nextSerialNumber("WORK_ORDER") — 指示書番号 = ロット番号（通し連番）。
- *   受注明細の lot_number が未採番なら同番号を書き込む。
+ *   注文明細の lot_number が未採番なら同番号を書き込む。
  * - 承認: approval_status + 遷移列 + history Json（MaterialPurchaseOrder と
  *   同型の row-workflow）を維持しつつ、承認依頼・記録を approval_requests /
  *   approval_records へ正規化する（§6 本実装 — PD03 横断表示・代理対応）。
@@ -116,7 +116,7 @@ const routeInput = z.union(
 
 // orderLineId = null は在庫向けの独立指示書（在庫積み増し）。type は
 // MANUFACTURE のみ・製品を直接指定する。顧客注文分（FROM_STOCK 含む）は
-// 常に受注明細配下。
+// 常に注文明細配下。
 const workOrderInput = z
   .object({
     orderLineId: z.string().nullable(),
@@ -149,7 +149,7 @@ const workOrderInput = z
 export type WorkOrderInput = z.infer<typeof workOrderInput>;
 
 /**
- * 保存対象の解決: 受注明細配下は SO の製品 + 在庫フロア検証、在庫向け
+ * 保存対象の解決: 注文明細配下は SO の製品 + 在庫フロア検証、在庫向け
  * （orderLineId = null）は製品を直接検証する。エラー時は文字列を返す。
  */
 async function resolveWorkOrderTarget(
@@ -161,7 +161,7 @@ async function resolveWorkOrderTarget(
       v.orderLineId,
       excludeWorkOrderNumber,
     );
-    if (!floorInfo) return "対象の受注明細が見つかりません";
+    if (!floorInfo) return "対象の注文明細が見つかりません";
     // §4 在庫考慮: 製造分は「受注数量 − 引当済在庫 − 他の製造指示」以上を要求
     // （不良予備分の上乗せは常に可）。在庫分（FROM_STOCK）は対象外。
     if (v.type === "MANUFACTURE") {
@@ -327,7 +327,7 @@ export async function createWorkOrder(
           },
         },
       });
-      // ロット番号 = 指示書番号。受注明細が未採番なら同番号を採用する。
+      // ロット番号 = 指示書番号。注文明細が未採番なら同番号を採用する。
       if (v.orderLineId) {
         const so = await tx.orderLine.findUnique({
           where: { id: v.orderLineId },
@@ -478,10 +478,10 @@ export async function updateWorkOrder(
 }
 
 /**
- * コピー作成 — 工程・検査表を引き継いだ DRAFT を対象受注明細に作る。
+ * コピー作成 — 工程・検査表を引き継いだ DRAFT を対象注文明細に作る。
  * source_work_order_id にコピー元を記録する（バージョン警告用）。
- * 対象受注明細が未指定のときは在庫向けの独立指示書としてコピーする
- * （製品はコピー元を引き継ぐ。在庫分 FROM_STOCK は受注明細必須）。
+ * 対象注文明細が未指定のときは在庫向けの独立指示書としてコピーする
+ * （製品はコピー元を引き継ぐ。在庫分 FROM_STOCK は注文明細必須）。
  */
 export async function copyWorkOrder(
   sourceWorkOrderNumber: number,
@@ -505,19 +505,19 @@ export async function copyWorkOrder(
     if (!source) return actionError("コピー元の指示書が見つかりません");
     if (!targetOrderLineId && source.type === "FROM_STOCK") {
       return actionError(
-        "在庫分の指示書は受注明細配下でのみ作成できます（対象の受注明細を選択してください）",
+        "在庫分の指示書は注文明細配下でのみ作成できます（対象の注文明細を選択してください）",
       );
     }
-    // コピー先: 受注明細指定 = その SO の製品 / 未指定 = 在庫向け（製品引継ぎ）
+    // コピー先: 注文明細指定 = その SO の製品 / 未指定 = 在庫向け（製品引継ぎ）
     let productId = source.productId;
     if (targetOrderLineId) {
       const targetSo = await prisma.orderLine.findUnique({
         where: { id: targetOrderLineId },
         select: { productId: true },
       });
-      if (!targetSo) return actionError("対象の受注明細が見つかりません");
+      if (!targetSo) return actionError("対象の注文明細が見つかりません");
       if (targetSo.productId == null) {
-        return actionError("製品未特定の受注明細には指示書を作成できません");
+        return actionError("製品未特定の注文明細には指示書を作成できません");
       }
       productId = targetSo.productId;
     }
@@ -593,7 +593,7 @@ export async function copyWorkOrder(
   }
 }
 
-/** キャンセル — DRAFT / PENDING_APPROVAL のみ。受注明細ロックも解除する。 */
+/** キャンセル — DRAFT / PENDING_APPROVAL のみ。注文明細ロックも解除する。 */
 export async function cancelWorkOrder(
   workOrderNumber: number,
 ): Promise<ActionResult> {
@@ -656,7 +656,7 @@ export async function cancelWorkOrder(
 
 // ── 承認フロー (§6 簡易版) ───────────────────────────────────────────────────
 
-/** 承認依頼 — DRAFT → PENDING_APPROVAL / PENDING_1ST。受注明細をロックする。 */
+/** 承認依頼 — DRAFT → PENDING_APPROVAL / PENDING_1ST。注文明細をロックする。 */
 export async function requestApproval(
   workOrderNumber: number,
 ): Promise<ActionResult> {
@@ -787,7 +787,7 @@ export async function approveFirst(
 
 /**
  * 第二承認 — PENDING_2ND → APPROVED（指示書 status も APPROVED）。
- * 受注明細のロックを解除し、DRAFT/CONFIRMED の受注明細は IN_PRODUCTION へ進める。
+ * 注文明細のロックを解除し、DRAFT/CONFIRMED の注文明細は IN_PRODUCTION へ進める。
  */
 export async function approveSecond(
   workOrderNumber: number,
@@ -988,7 +988,7 @@ export async function rejectWorkOrder(
 
 // ── ビルダー補助 ─────────────────────────────────────────────────────────────
 
-/** 受注明細選択時の情報取得（製品・数量表示 + 予定数量の既定値）。 */
+/** 注文明細選択時の情報取得（製品・数量表示 + 予定数量の既定値）。 */
 export async function getOrderLineInfo(
   orderLineId: string,
 ): Promise<OrderLineRef | null> {
@@ -1012,7 +1012,7 @@ export async function getMaterialAtp(
   }
 }
 
-/** 受注明細 → 対象製品の工程ルート一覧（ビルダーのルート選択用）。 */
+/** 注文明細 → 対象製品の工程ルート一覧（ビルダーのルート選択用）。 */
 export async function getProductRoutesForOrderLine(
   orderLineId: string,
 ): Promise<{ productId: number; routes: RouteView[] } | null> {

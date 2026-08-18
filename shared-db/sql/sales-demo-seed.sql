@@ -13,10 +13,10 @@ BEGIN;
 
 -- ── 撮影用フラグ ────────────────────────────────────────────────────────────
 -- 撮影は APP_ENV=main（本番相当の見た目）で行うため、main 未公開の販売アプリ
--- （受注請書・設計依頼書）を撮影 DB に限り明示有効化する。本番の
+-- （注文請書・設計依頼書）を撮影 DB に限り明示有効化する。本番の
 -- feature-flags-seed.sql には影響しない。
 INSERT INTO app.feature_flags (key, is_enabled, description, updated_at) VALUES
-  ('app:order-acceptances:main', true, '受注請書（マニュアル撮影用）', now()),
+  ('app:order-acceptances:main', true, '注文請書（マニュアル撮影用）', now()),
   ('app:design-requests:main',   true, '設計依頼書（マニュアル撮影用）', now())
 ON CONFLICT (key) DO UPDATE
   SET is_enabled = EXCLUDED.is_enabled, updated_at = now();
@@ -179,7 +179,7 @@ VALUES
    '設計図面_PRD-202607-0001_v2.pdf', 'application/pdf', 524288, '2026-07-06T15:00:00+09')
 ON CONFLICT (id) DO NOTHING;
 
--- ── 受注請書（ORD-202607-00001〜00003）──────────────────────────────────────
+-- ── 注文請書（ORD-202607-00001〜00003）──────────────────────────────────────
 INSERT INTO app.order_acceptances (year_month, seq, status, source, source_file_id,
   customer_bp_id, customer_order_ref, order_date, notes, created_by, created_at, updated_at)
 VALUES

@@ -3,7 +3,7 @@
  *
  * 取引履歴（inventory_transactions）の参照を表示用ラベルへ解決する:
  * - work_order (uuid)   → 指示書番号 #N
- * - order_line (uuid)  → 受注明細番号 ORD-YYYYMM-NNNNN-NN
+ * - order_line (uuid)  → 注文明細番号 ORD-YYYYMM-NNNNN-NN
  * - shipping_order      → 参照値そのまま（SHP-… 文字列で保存済み）
  * - その他              → 参照 id そのまま
  * Decimal はここで Number() へ変換してからクライアントへ渡す。

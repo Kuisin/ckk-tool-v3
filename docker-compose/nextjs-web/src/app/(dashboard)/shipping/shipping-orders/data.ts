@@ -27,7 +27,7 @@ import { type LocalizedText, localized } from "@/lib/format";
 const LIST_FETCH_CAP = 1000;
 
 const SHIPPING_ORDER_INCLUDE = {
-  // 顧客はヘッダが権威。受注明細は明細行ごとに紐付く。
+  // 顧客はヘッダが権威。注文明細は明細行ごとに紐付く。
   customerBp: true,
   customerBranchBp: true,
   workOrder: true,

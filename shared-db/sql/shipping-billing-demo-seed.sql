@@ -1,8 +1,8 @@
--- ⚠️ 受注明細（order_lines）統合により、このデモシードは未更新です。
+-- ⚠️ 注文明細（order_lines）統合により、このデモシードは未更新です。
 --    app.sales_orders は削除され、受注ラインは app.order_lines
---    （受注請書 order_acceptances の明細行）に統合されました。
+--    （注文請書 order_acceptances の明細行）に統合されました。
 --    実行すると "relation app.sales_orders does not exist" で失敗します。
---    親の受注請書を作ったうえで order_lines を挿入する形へ書き換えが必要です。
+--    親の注文請書を作ったうえで order_lines を挿入する形へ書き換えが必要です。
 
 -- shipping-billing-demo-seed.sql — 出荷・請求アプリ（SH01/SH02/BL01/BL02）のマニュアル撮影用デモデータ。
 --

@@ -23,7 +23,7 @@ deliberately **minimal**: 試算 (`app.estimates`), 価格表
 `materials` / `products`), business partners (`app.business_partners` + attrs),
 `app.files` / `numbering_sequences`, and RBAC (`app.users` / `roles` /
 `permissions`). Downstream domains (production / inventory / shipping / billing /
-design / log, 受注請書以降) are added table-by-table when their feature lands.
+design / log, 注文請書以降) are added table-by-table when their feature lands.
 
 Cross-schema FKs are real — notably `app.users.employee_id → directory.employee_directory.ldap_guid`
 (the app's identity link to the shared, AD-synced employee directory, keyed by
