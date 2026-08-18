@@ -41,6 +41,11 @@ services:
       # models most users run. @4 the 32b grows to 38GB and spans both cards.
       # Each slot is one KV-cache copy (slot KV = context).
       - OLLAMA_NUM_PARALLEL=2
+    networks:
+      - default   # ai-stack_default（open-webui / metabase-mcp 等）
+      # Coolify 上の po-extract-dev / -main が http://ollama:11434 で引くため。
+      # GPU は 1 セットなので ollama は**この 1 台だけ**を両環境で共有する。
+      - coolify
 
   open-webui:
     image: ghcr.io/open-webui/open-webui:main
@@ -105,19 +110,11 @@ services:
 
   # Document → JSON extraction API. Renders PDF pages to images and asks the
   # vision model (MODEL) to fill a caller-supplied JSON Schema. Source: ./extractor.
-  po-extract:
-    build: ./extractor
-    image: ai-stack-po-extract
-    container_name: po-extract
-    restart: unless-stopped
-    depends_on:
-      - ollama
-    environment:
-      - OLLAMA_URL=http://ollama:11434
-      - MODEL=qwen2.5vl
-    networks:
-      - default     # ai-stack_default (ollama)
-      - coolify     # Coolify-deployed nextjs-web apps → http://po-extract:8000
+  # po-extract（受注請書の抽出 API）は **Coolify 管理へ移した**:
+  #   po-extract-dev  / po-extract-main（dev・main ブランチ別ビルド、内部専用）
+  # ソースは docker-compose/ai-stack/extractor/ のまま。登録は
+  # coolify/add-po-extract-apps.sh、デプロイは coolify/deploy.sh po-extract-dev|-main。
+  # ここに残っていた同名サービスは、Coolify 側の別名と衝突するため削除した。
 
   # Metabase MCP server (read-only labor data) exposed to Open WebUI as an
   # OpenAPI tool server via mcpo. Replaces the hand-rolled metabase_labor tool.
