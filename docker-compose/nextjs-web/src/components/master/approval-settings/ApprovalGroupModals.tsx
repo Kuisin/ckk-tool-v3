@@ -5,8 +5,15 @@
  * メンバー・期間限定代理の追加・削除ポップアップ (MS0B, design.md §13.5)。
  */
 
-import { Select, Stack, Text, Textarea } from "@mantine/core";
-import { DatePickerInput } from "@mantine/dates";
+import {
+  Group,
+  SegmentedControl,
+  Select,
+  Stack,
+  Text,
+  Textarea,
+} from "@mantine/core";
+import { DatePickerInput, DateTimePicker } from "@mantine/dates";
 import { notifications } from "@mantine/notifications";
 import { IconCalendar } from "@tabler/icons-react";
 import { useState, useTransition } from "react";
@@ -18,13 +25,15 @@ import {
   removeDelegate,
   removeGroupMember,
   setApprovalGroupsActive,
-} from "@/app/(dashboard)/master/approval-groups/actions";
+  updateGroupMemberValidity,
+} from "@/app/(dashboard)/master/approval-settings/actions";
 import {
   ConfirmModal,
   type ModalBaseProps,
   ModalShell,
 } from "@/components/ui/modals";
 import { SearchSelect } from "@/components/ui/SearchSelect";
+import { validateMemberPeriod } from "@/lib/approval-membership";
 
 export interface ApprovalGroupModalTarget {
   id: number;
@@ -139,6 +148,129 @@ export interface ApprovalGroupMemberTarget {
 }
 
 /** メンバー追加 — ユーザーをサーバー検索で選択して追加する。 */
+// ── メンバーの在籍期間（常任 / 期間限定） ───────────────────────────────────
+//
+// 期間限定メンバーは「その期間だけグループの一員」。代理（下の
+// AddApprovalDelegateModal）とは別物で、代理は「本来の承認者の代わりに押す」
+// — 承認記録に原承認者が残る。取り違えやすいので画面でも書き分ける。
+
+export type MemberKind = "PERMANENT" | "TEMPORARY";
+
+export interface PeriodDraft {
+  validFrom: Date | null;
+  validUntil: Date | null;
+  note: string;
+}
+
+export const emptyPeriod: PeriodDraft = {
+  validFrom: null,
+  validUntil: null,
+  note: "",
+};
+
+/** 期間変更モーダルの対象。 */
+export interface MemberPeriodTarget {
+  userId: string;
+  displayName: string;
+  validFrom: string | null;
+  validUntil: string | null;
+  note: string | null;
+}
+
+/** 入力 → Server Action の引数（検証は lib/approval-membership と同じ関数）。 */
+export function periodPayload(
+  kind: MemberKind,
+  period: PeriodDraft,
+): {
+  value?: { validFrom: string; validUntil: string; note?: string };
+  error?: string;
+} {
+  if (kind === "PERMANENT") return {};
+  const error = validateMemberPeriod({
+    validFrom: period.validFrom ? period.validFrom.toISOString() : null,
+    validUntil: period.validUntil ? period.validUntil.toISOString() : null,
+  });
+  if (error) return { error };
+  return {
+    value: {
+      // biome-ignore lint/style/noNonNullAssertion: validateMemberPeriod で確認済み
+      validFrom: period.validFrom!.toISOString(),
+      // biome-ignore lint/style/noNonNullAssertion: validateMemberPeriod で確認済み
+      validUntil: period.validUntil!.toISOString(),
+      note: period.note.trim() || undefined,
+    },
+  };
+}
+
+function MemberPeriodFields({
+  kind,
+  onKindChange,
+  period,
+  onPeriodChange,
+}: {
+  kind: MemberKind;
+  onKindChange: (v: MemberKind) => void;
+  period: PeriodDraft;
+  onPeriodChange: (v: PeriodDraft) => void;
+}) {
+  return (
+    <Stack gap="sm" mt="sm">
+      <SegmentedControl
+        data={[
+          { value: "PERMANENT", label: "常任" },
+          { value: "TEMPORARY", label: "期間限定" },
+        ]}
+        onChange={(v) => onKindChange(v as MemberKind)}
+        value={kind}
+      />
+      {kind === "TEMPORARY" && (
+        <>
+          <Text c="dimmed" size="xs">
+            この期間だけこのグループの一員として承認できます。期間外は承認者に
+            出てきません。
+          </Text>
+          <Group grow>
+            <DateTimePicker
+              label="開始日時"
+              onChange={(v) =>
+                onPeriodChange({
+                  ...period,
+                  validFrom: v ? new Date(v) : null,
+                })
+              }
+              value={period.validFrom}
+              valueFormat="YYYY/MM/DD HH:mm"
+              withAsterisk
+            />
+            <DateTimePicker
+              label="終了日時"
+              onChange={(v) =>
+                onPeriodChange({
+                  ...period,
+                  validUntil: v ? new Date(v) : null,
+                })
+              }
+              value={period.validUntil}
+              valueFormat="YYYY/MM/DD HH:mm"
+              withAsterisk
+            />
+          </Group>
+          <Textarea
+            autosize
+            label="メモ"
+            minRows={2}
+            onChange={(e) =>
+              onPeriodChange({ ...period, note: e.currentTarget.value })
+            }
+            placeholder="期間限定にする理由（任意）"
+            value={period.note}
+          />
+        </>
+      )}
+    </Stack>
+  );
+}
+
 export function AddApprovalGroupMemberModal({
   opened,
   onClose,
@@ -151,10 +283,14 @@ export function AddApprovalGroupMemberModal({
   const [isPending, startTransition] = useTransition();
   const [userId, setUserId] = useState<string | null>(null);
   const [userLabel, setUserLabel] = useState("");
+  const [kind, setKind] = useState<MemberKind>("PERMANENT");
+  const [period, setPeriod] = useState<PeriodDraft>(emptyPeriod);
 
   const closeAndReset = () => {
     setUserId(null);
     setUserLabel("");
+    setKind("PERMANENT");
+    setPeriod(emptyPeriod);
     onClose();
   };
 
@@ -172,8 +308,17 @@ export function AddApprovalGroupMemberModal({
           });
           return;
         }
+        const payload = periodPayload(kind, period);
+        if (payload.error) {
+          notifications.show({
+            title: "エラー",
+            message: payload.error,
+            color: "red",
+          });
+          return;
+        }
         startTransition(async () => {
-          const result = await addGroupMember(groupId, userId);
+          const result = await addGroupMember(groupId, userId, payload.value);
           if (result.ok) {
             notifications.show({
               title: "追加しました",
@@ -206,6 +351,101 @@ export function AddApprovalGroupMemberModal({
         storageKey="approval-group-member"
         value={userId}
         withAsterisk
+      />
+      <MemberPeriodFields
+        kind={kind}
+        onKindChange={setKind}
+        onPeriodChange={setPeriod}
+        period={period}
+      />
+    </ModalShell>
+  );
+}
+
+/** メンバーの在籍期間の変更（常任 ⇄ 期間限定）。 */
+export function EditMemberPeriodModal({
+  opened,
+  onClose,
+  groupId,
+  target,
+  onDone,
+}: ModalBaseProps & {
+  groupId: number;
+  target: MemberPeriodTarget | null;
+  onDone?: () => void;
+}) {
+  const [isPending, startTransition] = useTransition();
+  const [kind, setKind] = useState<MemberKind>("PERMANENT");
+  const [period, setPeriod] = useState<PeriodDraft>(emptyPeriod);
+  const [loadedFor, setLoadedFor] = useState<string | null>(null);
+
+  // 対象が変わったら現在値を読み込む（モーダルを開くたびに初期化）
+  if (target && loadedFor !== target.userId) {
+    setLoadedFor(target.userId);
+    setKind(target.validFrom ? "TEMPORARY" : "PERMANENT");
+    setPeriod({
+      validFrom: target.validFrom ? new Date(target.validFrom) : null,
+      validUntil: target.validUntil ? new Date(target.validUntil) : null,
+      note: target.note ?? "",
+    });
+  }
+
+  const close = () => {
+    setLoadedFor(null);
+    onClose();
+  };
+
+  return (
+    <ModalShell
+      confirmLabel="保存"
+      loading={isPending}
+      onClose={close}
+      onConfirm={() => {
+        if (!target) return;
+        const payload = periodPayload(kind, period);
+        if (payload.error) {
+          notifications.show({
+            title: "エラー",
+            message: payload.error,
+            color: "red",
+          });
+          return;
+        }
+        startTransition(async () => {
+          const result = await updateGroupMemberValidity(
+            groupId,
+            target.userId,
+            payload.value,
+          );
+          if (result.ok) {
+            notifications.show({
+              title: "保存しました",
+              message: `「${target.displayName}」の在籍期間を更新しました`,
+              color: "green",
+            });
+            close();
+            onDone?.();
+          } else {
+            notifications.show({
+              title: "エラー",
+              message: result.error,
+              color: "red",
+            });
+          }
+        });
+      }}
+      opened={opened}
+      size="md"
+      title="在籍期間の変更"
+    >
+      <Text c="dimmed" mb="xs" size="xs">
+        {target?.displayName}
+      </Text>
+      <MemberPeriodFields
+        kind={kind}
+        onKindChange={setKind}
+        onPeriodChange={setPeriod}
+        period={period}
       />
     </ModalShell>
   );

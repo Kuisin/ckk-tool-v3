@@ -10,6 +10,7 @@
 
 import {
   ActionIcon,
+  Badge,
   Group,
   ScrollArea,
   Stack,
@@ -20,6 +21,7 @@ import {
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import {
+  IconCalendarClock,
   IconCircleMinus,
   IconPlus,
   IconTrash,
@@ -28,7 +30,7 @@ import {
 } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
-import { setGroupMemberActive } from "@/app/(dashboard)/master/approval-groups/actions";
+import { setGroupMemberActive } from "@/app/(dashboard)/master/approval-settings/actions";
 import { ActiveBadge } from "@/components/ui/ActiveBadge";
 import { GhostButton } from "@/components/ui/buttons";
 import { DocNumber } from "@/components/ui/DocNumber";
@@ -42,26 +44,37 @@ import {
   SummaryGrid,
 } from "@/components/ui/shells";
 import { useTabParam } from "@/hooks/useUrlState";
-import { formatDate } from "@/lib/format";
+import {
+  isMemberEffective,
+  MEMBER_PERIOD_STATE_COLOR,
+  MEMBER_PERIOD_STATE_LABEL,
+  memberPeriodState,
+} from "@/lib/approval-membership";
+import { formatDate, formatDateTime } from "@/lib/format";
 import {
   AddApprovalDelegateModal,
   AddApprovalGroupMemberModal,
   type ApprovalDelegateTarget,
   type ApprovalGroupMemberTarget,
   DeleteApprovalGroupModal,
+  EditMemberPeriodModal,
+  type MemberPeriodTarget,
   RemoveApprovalDelegateModal,
   RemoveApprovalGroupMemberModal,
   ToggleApprovalGroupActiveModal,
 } from "./ApprovalGroupModals";
-import { ApprovalGroupTypeBadge } from "./ApprovalGroupTable";
 
-const BASE_PATH = "/master/approval-groups";
+const BASE_PATH = "/master/approval-settings";
 
 export interface ApprovalGroupMemberRow {
   userId: string;
   displayName: string;
   username: string;
   isActive: boolean;
+  /** 期間限定メンバーの在籍期間（ISO）。常任は両方 null。 */
+  validFrom: string | null;
+  validUntil: string | null;
+  note: string | null;
 }
 
 /** 期間限定代理（approval_delegates）の 1 行。 */
@@ -78,12 +91,51 @@ export interface ApprovalGroupDelegateRow {
 
 export interface ApprovalGroupDetailData {
   id: number;
-  type: string;
   nameJa: string;
   nameEn: string;
   isActive: boolean;
   members: ApprovalGroupMemberRow[];
   delegates: ApprovalGroupDelegateRow[];
+}
+
+/** 在籍期間の表示（常任は「常任」）。 */
+function MemberPeriod({ member }: { member: ApprovalGroupMemberRow }) {
+  if (!member.validFrom || !member.validUntil) {
+    return (
+      <Text c="dimmed" size="sm">
+        常任
+      </Text>
+    );
+  }
+  return (
+    <Stack gap={0}>
+      <Text className="tabular-nums" size="xs">
+        {formatDateTime(member.validFrom)} 〜{" "}
+        {formatDateTime(member.validUntil)}
+      </Text>
+      {member.note && (
+        <Text c="dimmed" size="xs" truncate>
+          {member.note}
+        </Text>
+      )}
+    </Stack>
+  );
+}
+
+/** 常任 / 有効中 / 期間前 / 期間終了 / 無効。 */
+function MemberStateBadge({
+  member,
+  now,
+}: {
+  member: ApprovalGroupMemberRow;
+  now: Date;
+}) {
+  const state = memberPeriodState(member, now);
+  return (
+    <Badge color={MEMBER_PERIOD_STATE_COLOR[state]} size="sm" variant="light">
+      {MEMBER_PERIOD_STATE_LABEL[state]}
+    </Badge>
+  );
 }
 
 export function ApprovalGroupDetail({
@@ -101,6 +153,9 @@ export function ApprovalGroupDetail({
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [toggleOpen, setToggleOpen] = useState(false);
   const [addMemberOpen, setAddMemberOpen] = useState(false);
+  const [periodMember, setPeriodMember] = useState<MemberPeriodTarget | null>(
+    null,
+  );
   const [removeMember, setRemoveMember] =
     useState<ApprovalGroupMemberTarget | null>(null);
   const [addDelegateOpen, setAddDelegateOpen] = useState(false);
@@ -113,7 +168,11 @@ export function ApprovalGroupDetail({
     isActive: record.isActive,
   };
 
-  const activeCount = record.members.filter((m) => m.isActive).length;
+  // 「有効」は今この瞬間に承認できる人 — 期間限定メンバーの期間外は数えない。
+  const now = new Date();
+  const activeCount = record.members.filter((m) =>
+    isMemberEffective(m, now),
+  ).length;
 
   // メンバーの有効/無効切替（容易に戻せる操作なので確認モーダルなし）
   const toggleMemberActive = (member: ApprovalGroupMemberRow) => {
@@ -163,7 +222,7 @@ export function ApprovalGroupDetail({
       }
       breadcrumbs={[
         "マスタ",
-        { label: "承認グループ", href: BASE_PATH },
+        { label: "承認設定", href: BASE_PATH },
         record.nameJa,
       ]}
       status={<ActiveBadge active={record.isActive} />}
@@ -171,10 +230,6 @@ export function ApprovalGroupDetail({
     >
       <SummaryGrid>
         <FieldValue label="名称" value={record.nameJa} />
-        <FieldValue
-          label="種別"
-          value={<ApprovalGroupTypeBadge type={record.type} />}
-        />
         <FieldValue
           label="メンバー数"
           value={`${activeCount}名（有効） / ${record.members.length}名`}
@@ -197,10 +252,6 @@ export function ApprovalGroupDetail({
           <Stack gap="sm">
             <FieldValue label="名称（日本語）" value={record.nameJa} />
             <FieldValue label="名称（英語）" value={record.nameEn || "—"} />
-            <FieldValue
-              label="種別"
-              value={<ApprovalGroupTypeBadge type={record.type} />}
-            />
           </Stack>
         </Tabs.Panel>
 
@@ -225,9 +276,10 @@ export function ApprovalGroupDetail({
                   <Table.Thead>
                     <Table.Tr>
                       <Table.Th>氏名</Table.Th>
-                      <Table.Th w={200}>ユーザー名</Table.Th>
+                      <Table.Th w={180}>ユーザー名</Table.Th>
+                      <Table.Th w={230}>在籍期間</Table.Th>
                       <Table.Th w={90}>状態</Table.Th>
-                      <Table.Th w={80} />
+                      <Table.Th w={110} />
                     </Table.Tr>
                   </Table.Thead>
                   <Table.Tbody>
@@ -242,10 +294,22 @@ export function ApprovalGroupDetail({
                           <DocNumber c="dimmed">{m.username}</DocNumber>
                         </Table.Td>
                         <Table.Td>
-                          <ActiveBadge active={m.isActive} />
+                          <MemberPeriod member={m} />
+                        </Table.Td>
+                        <Table.Td>
+                          <MemberStateBadge member={m} now={now} />
                         </Table.Td>
                         <Table.Td>
                           <Group gap={4} justify="flex-end" wrap="nowrap">
+                            <Tooltip label="在籍期間を変更" withinPortal>
+                              <ActionIcon
+                                aria-label="在籍期間を変更"
+                                onClick={() => setPeriodMember(m)}
+                                variant="subtle"
+                              >
+                                <IconCalendarClock size={14} />
+                              </ActionIcon>
+                            </Tooltip>
                             <Tooltip
                               label={m.isActive ? "無効化" : "有効化"}
                               withinPortal
@@ -385,6 +449,13 @@ export function ApprovalGroupDetail({
         onDone={() => router.refresh()}
         opened={addMemberOpen}
       />
+      <EditMemberPeriodModal
+        groupId={record.id}
+        onClose={() => setPeriodMember(null)}
+        onDone={() => router.refresh()}
+        opened={!!periodMember}
+        target={periodMember}
+      />
       <RemoveApprovalGroupMemberModal
         groupId={record.id}
         member={removeMember}
@@ -395,7 +466,7 @@ export function ApprovalGroupDetail({
       <AddApprovalDelegateModal
         groupId={record.id}
         memberOptions={record.members
-          .filter((m) => m.isActive)
+          .filter((m) => isMemberEffective(m, now))
           .map((m) => ({
             value: m.userId,
             label: `${m.displayName}（${m.username}）`,

@@ -160,6 +160,20 @@ const nextConfig: NextConfig = {
         permanent: true,
       },
 
+      // 承認グループ (MS0B) → 承認設定。グループの箱を作るだけでなく、
+      // 書類種別ごとの承認ステップ（何段目にどのグループか）も持つようになった
+      // ため、旧パス名では中身と合わない。
+      {
+        source: "/master/approval-groups/:path*",
+        destination: "/master/approval-settings/:path*",
+        permanent: true,
+      },
+      {
+        source: "/master/approval-groups",
+        destination: "/master/approval-settings",
+        permanent: true,
+      },
+
       // マニュアルも 1 ページに統合。
       ...(["customer", "end-user", "supplier"] as const).map((old) => ({
         source: `/manual/:lang(ja|en|zh)/operations/masters/${old}/:path*`,

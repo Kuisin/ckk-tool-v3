@@ -1,4 +1,4 @@
-import { ApprovalGroupForm } from "@/components/master/approval-groups/ApprovalGroupForm";
+import { ApprovalGroupForm } from "@/components/master/approval-settings/ApprovalGroupForm";
 import { requireAppRead } from "@/lib/authz-page";
 
 export const dynamic = "force-dynamic";

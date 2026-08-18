@@ -41,7 +41,6 @@ import {
 } from "@/components/ui/ImageCropModal";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { UserAvatar } from "@/components/ui/UserAvatar";
-import { APPROVAL_GROUP_TYPE_LABEL } from "@/lib/enum-labels";
 import { type LocalizedText, localized } from "@/lib/format";
 
 export interface ProfileData {
@@ -55,7 +54,7 @@ export interface ProfileData {
   group: string;
   hasPassword: boolean;
   lastLoginAt: string | null;
-  approvalGroups: { type: string; name: unknown }[];
+  approvalGroups: { id: number; name: unknown }[];
   devices: { id: string; userAgent: string | null; createdAt: string }[];
 }
 
@@ -324,9 +323,8 @@ export function ProfileView({ user }: { user: ProfileData }) {
                   ) : (
                     <Group gap={4}>
                       {user.approvalGroups.map((g) => (
-                        <Badge key={g.type} size="sm" variant="light">
-                          {APPROVAL_GROUP_TYPE_LABEL[g.type] ??
-                            localized(g.name as LocalizedText)}
+                        <Badge key={g.id} size="sm" variant="light">
+                          {localized(g.name as LocalizedText)}
                         </Badge>
                       ))}
                     </Group>

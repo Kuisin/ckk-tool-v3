@@ -3,11 +3,11 @@
 /**
  * ApprovalGroupForm.tsx — 承認グループ 新規作成 / 編集フォーム (MS1B / MS2B).
  *
- * 種別（type）はグループの識別 — 作成時のみ選択でき、編集では変更不可。
+ * グループは承認者の集合。どの書類の何段目で使うかは承認フローが決める。
  * メンバーは詳細画面の「メンバー」タブで管理する（design.md §13.5）。
  */
 
-import { Select, SimpleGrid, Switch } from "@mantine/core";
+import { SimpleGrid, Switch } from "@mantine/core";
 import { useForm } from "@mantine/form";
 import { notifications } from "@mantine/notifications";
 import { useRouter } from "next/navigation";
@@ -16,7 +16,7 @@ import { z } from "zod";
 import {
   createApprovalGroup,
   updateApprovalGroup,
-} from "@/app/(dashboard)/master/approval-groups/actions";
+} from "@/app/(dashboard)/master/approval-settings/actions";
 import { ActiveBadge } from "@/components/ui/ActiveBadge";
 import { HelpLabel } from "@/components/ui/HelpLabel";
 import {
@@ -25,16 +25,12 @@ import {
   LocalizedTextInput,
 } from "@/components/ui/shells";
 import { useIsMobile } from "@/hooks/useViewport";
-import { APPROVAL_GROUP_TYPE_OPTIONS } from "@/lib/enum-labels";
 import { fieldHelp, fieldHelpTip } from "@/lib/field-help";
 import { zodResolver } from "@/lib/form";
 
-const BASE_PATH = "/master/approval-groups";
+const BASE_PATH = "/master/approval-settings";
 
 const groupSchema = z.object({
-  type: z.enum(["FIRST", "SECOND", "WORKFLOW_CHANGE"], {
-    message: "種別を選択してください",
-  }),
   nameJa: z.string().min(1, "名称（日本語）を入力してください"),
   nameEn: z.string(),
   isActive: z.boolean(),
@@ -44,7 +40,6 @@ type FormValues = z.infer<typeof groupSchema>;
 
 export interface ApprovalGroupFormInitial {
   id: number;
-  type: string;
   nameJa: string;
   nameEn: string;
   isActive: boolean;
@@ -56,14 +51,13 @@ export function ApprovalGroupForm({
   initial?: ApprovalGroupFormInitial;
 }) {
   const router = useRouter();
-  const isMobile = useIsMobile();
+  const _isMobile = useIsMobile();
   const [isPending, startTransition] = useTransition();
   const isEdit = !!initial;
 
   const form = useForm<FormValues>({
     validate: zodResolver(groupSchema),
     initialValues: {
-      type: (initial?.type as FormValues["type"]) ?? "FIRST",
       nameJa: initial?.nameJa ?? "",
       nameEn: initial?.nameEn ?? "",
       isActive: initial?.isActive ?? true,
@@ -79,7 +73,7 @@ export function ApprovalGroupForm({
       };
       const result = isEdit
         ? await updateApprovalGroup(initial.id, input)
-        : await createApprovalGroup({ ...input, type: values.type });
+        : await createApprovalGroup(input);
       if (result.ok) {
         notifications.show({
           title: "保存しました",
@@ -119,18 +113,11 @@ export function ApprovalGroupForm({
           : "承認グループ 新規作成"
       }
     >
-      <FormSection title="基本情報">
-        <SimpleGrid cols={isMobile ? 1 : 2} spacing="sm">
-          <Select
-            data={APPROVAL_GROUP_TYPE_OPTIONS}
-            description={isEdit ? "種別は作成後変更できません" : undefined}
-            disabled={isEdit}
-            label={<HelpLabel {...fieldHelp("approvalGroup", "type")} />}
-            withAsterisk={!isEdit}
-            {...form.getInputProps("type")}
-          />
-        </SimpleGrid>
-        <SimpleGrid cols={1} mt="sm" spacing="sm">
+      <FormSection
+        description="どの書類の何段目で使うかは「承認フロー」で決めます。"
+        title="基本情報"
+      >
+        <SimpleGrid cols={1} spacing="sm">
           <LocalizedTextInput
             enProps={form.getInputProps("nameEn")}
             help={fieldHelpTip("approvalGroup", "name")}

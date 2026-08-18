@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import { ApprovalGroupForm } from "@/components/master/approval-groups/ApprovalGroupForm";
+import { ApprovalGroupForm } from "@/components/master/approval-settings/ApprovalGroupForm";
 import { requireAppRead } from "@/lib/authz-page";
 import { prisma } from "@/lib/db";
 import type { LocalizedText } from "@/lib/format";
@@ -26,7 +26,6 @@ export default async function MasterApprovalGroupsEditPage({
     <ApprovalGroupForm
       initial={{
         id: r.id,
-        type: r.type,
         nameJa: name?.ja ?? "",
         nameEn: name?.en ?? "",
         isActive: r.isActive,

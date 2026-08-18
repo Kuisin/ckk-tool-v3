@@ -149,9 +149,13 @@ const TABLE_ROUTES: Record<string, TableRoute> = {
   },
   defect_types: { appLabel: "不良種類", listPath: "/master/defect-types" },
   approval_groups: {
-    appLabel: "承認グループ",
-    listPath: "/master/approval-groups",
+    appLabel: "承認設定",
+    listPath: "/master/approval-settings",
     directDetail: true,
+  },
+  approval_flows: {
+    appLabel: "承認設定",
+    listPath: "/master/approval-settings",
   },
   work_location_groups: {
     appLabel: "作業場所",

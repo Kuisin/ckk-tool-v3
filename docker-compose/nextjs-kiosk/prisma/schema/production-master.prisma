@@ -317,22 +317,12 @@ model DefectType {
 
 // ─── 承認グループ ────────────────────────────────────────────────────────────
 
-enum ApprovalGroupType {
-  FIRST // 第一承認（生産判断：工場長・部長クラス）
-  SECOND // 第二承認（部門承認：部長クラス）
-  WORKFLOW_CHANGE // 製造ワークフロー変更承認
-
-  @@map("APPROVAL_GROUP_TYPE")
-  @@schema("app")
-}
-
 // 承認グループ = 承認者の集合。「何段目か」は持たない — それは
 // approval_flow_steps が書類種別ごとに決める。
 model ApprovalGroup {
-  id       Int               @id @default(autoincrement())
-  type     ApprovalGroupType // 旧 2 段固定の名残 — M3 で削除
+  id       Int     @id @default(autoincrement())
   name     Json
-  isActive Boolean           @default(true) @map("is_active")
+  isActive Boolean @default(true) @map("is_active")
 
   members   ApprovalGroupMember[]
   delegates ApprovalDelegate[]
@@ -412,14 +402,6 @@ model ApprovalFlowStep {
 // 対象は多態（target_type = @@map 名 / target_id = 業務キー — audit と同じ規約:
 // 指示書 = work_order_number 文字列、発注書 = PO-…、注文請書 = ORD-…）。
 
-enum ApprovalStep {
-  FIRST
-  SECOND
-
-  @@map("APPROVAL_STEP")
-  @@schema("app")
-}
-
 enum ApprovalRequestStatus {
   PENDING
   APPROVED
@@ -450,7 +432,6 @@ model ApprovalRequest {
   id           String                @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   targetType   String                @map("target_type") // work_orders / material_purchase_orders / order_acceptances / purchase_requests
   targetId     String                @map("target_id") // 業務キー
-  step         ApprovalStep? // 旧 2 段固定の名残 — M3 で削除
   stepNo       Int                   @map("step_no") // 1..N
   stepCount    Int                   @map("step_count") // 依頼時点の総段数
   groupId      Int?                  @map("group_id") // 依頼時点の承認グループ
