@@ -13,6 +13,7 @@ import { SYSTEM_USER_ID } from "./audit";
 import { prisma } from "./db";
 import { sendNotificationMail } from "./mailer";
 import { sendPushToUser } from "./push";
+import { publishNotificationEvent } from "./realtime";
 
 export type NotificationType =
   | "APPROVAL_REQUEST" // 承認依頼 → 承認者へ
@@ -71,6 +72,10 @@ export async function notify(input: NotifyInput): Promise<void> {
       linkPath,
     })),
   });
+
+  // 開いているタブのベルを即時更新（SSE — lib/realtime.ts）。
+  // 失敗しても通知行は残るので、次のフォールバック取得で追いつく。
+  void publishNotificationEvent(userIds);
 
   // 外部チャネルは fire-and-forget（standalone Node ランタイム前提）
   void dispatchExternal(userIds, { ...input, linkPath }).catch((e) =>
@@ -255,21 +260,27 @@ export async function fetchNotificationsPage(
   };
 }
 
-/** 1 件既読化（本人の行のみ）。 */
+/**
+ * 1 件既読化（本人の行のみ）。
+ * 既読にできたときだけ配信する（同じ通知を 2 回押しても鳴らさない）。
+ */
 export async function markNotificationRead(
   userId: string,
   id: string,
 ): Promise<void> {
-  await prisma.notification.updateMany({
+  const { count } = await prisma.notification.updateMany({
     where: { id, userId, isRead: false },
     data: { isRead: true, readAt: new Date() },
   });
+  // 同じ人の他のタブ・端末のバッジも減らす。
+  if (count > 0) void publishNotificationEvent([userId]);
 }
 
 /** 全件既読化。 */
 export async function markAllNotificationsRead(userId: string): Promise<void> {
-  await prisma.notification.updateMany({
+  const { count } = await prisma.notification.updateMany({
     where: { userId, isRead: false },
     data: { isRead: true, readAt: new Date() },
   });
+  if (count > 0) void publishNotificationEvent([userId]);
 }

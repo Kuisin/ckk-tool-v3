@@ -33,6 +33,7 @@
 
 import { mkdir, readdir, readFile, rename, stat } from "node:fs/promises";
 import path from "node:path";
+import { APPROVAL_TARGET } from "./approval-targets";
 import { firstStepGroupId } from "./approvals";
 import { getCurrentActorId, recordAudit } from "./audit";
 import { prisma } from "./db";
@@ -440,7 +441,8 @@ export async function runExtraction(
       type: "INTAKE",
       title: `注文請書 ${number} を自動取込しました`,
       message: `明細 ${items.length} 件・顧客${customerBpId ? "一致" : "未特定"} — 内容を確認してください`,
-      linkPath: "/sales/order-acceptances",
+      // 取り込んだその 1 件を開く（一覧から探し直させない）
+      linkPath: APPROVAL_TARGET.order_acceptances.href(number),
     }).catch((err: unknown) => console.error("[intake] 取込通知に失敗:", err));
     return { ...key, number, status: "DRAFT" };
   } catch (e) {
@@ -517,7 +519,8 @@ async function recordExtractFailure(
       type: "INTAKE",
       title: `注文請書 ${number} の自動抽出に失敗しました`,
       message: [failure.summary, failure.hint].join(" / ").slice(0, 200),
-      linkPath: "/sales/order-acceptances",
+      // 失敗した 1 件を開く（詳細画面が extract_error を読み戻して表示する）
+      linkPath: APPROVAL_TARGET.order_acceptances.href(number),
     }).catch((err: unknown) => console.error("[intake] 取込通知に失敗:", err));
   }
   return {
