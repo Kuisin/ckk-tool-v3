@@ -6,7 +6,7 @@
  * PENDING の承認依頼（approval_requests + 旧データ補完）を対象種別横断で表示:
  * 種別（指示書=violet / 素材発注書=teal / 受注請書=blue）/ 対象番号（mono、
  * 対象詳細へリンク）/ 段階（第一/第二）/ 依頼者 / 依頼日時 / 備考。
- * 受注請書の承認画面は未実装のためリンクなし。
+ * 行クリックで対象書類の詳細（＝承認操作ができる画面）へ遷移する。
  */
 
 import { Badge, Group, Select, Stack, Text, TextInput } from "@mantine/core";
@@ -53,7 +53,7 @@ const STEP_OPTIONS = [
   { value: "SECOND", label: "第二承認" },
 ];
 
-/** 対象種別ごとの詳細画面パス（受注請書は未実装 = null）。 */
+/** 対象種別ごとの詳細画面パス（未知の種別のみ null）。 */
 function targetHref(row: ApprovalRequestRow): string | null {
   switch (row.targetType) {
     case "work_orders":
@@ -62,8 +62,10 @@ function targetHref(row: ApprovalRequestRow): string | null {
       return `/purchase/purchase-orders/${encodeURIComponent(row.targetId)}`;
     case "purchase_requests":
       return `/purchase/purchase-requests/${encodeURIComponent(row.targetId)}`;
+    case "order_acceptances":
+      return `/sales/order-acceptances/${encodeURIComponent(row.targetId)}`;
     default:
-      return null; // order_acceptances — 承認画面未実装
+      return null;
   }
 }
 
