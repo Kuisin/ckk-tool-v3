@@ -8,6 +8,7 @@
  * 値は内部 id（連番）の文字列、ラベルは表示コード + 名称。
  */
 
+import { bpMatchesQuery } from "@/lib/bp-search";
 import { prisma } from "@/lib/db";
 import { formatProductNumber } from "@/lib/doc-number";
 import { type LocalizedText, localized } from "@/lib/format";
@@ -61,28 +62,36 @@ export async function searchCustomerOptions(
   query: string,
 ): Promise<SearchOption[]> {
   const q = query.trim();
+  // 照合キー（AI 用に貯めた表記ゆれ + フリガナ由来）でも探せるようにする。
+  // 配列の部分一致は Prisma の where で書けないので、候補を絞ってから
+  // lib/bp-search の共通判定でふるいにかける（件数が少ないマスタなので十分）。
   const rows = await prisma.businessPartner.findMany({
     where: {
       isActive: true,
       parentId: null,
       roleAssignments: { some: { role: "CUSTOMER", isActive: true } },
-      ...(q
-        ? {
-            OR: [
-              { bpCode: { contains: q, mode: "insensitive" } },
-              { name: { path: ["ja"], string_contains: q } },
-              { matchNames: { has: q } },
-            ],
-          }
-        : {}),
     },
     orderBy: { bpCode: "asc" },
-    take: LIMIT,
   });
-  return rows.map((r) => ({
-    value: r.id,
-    label: localized(r.name as LocalizedText | null),
-  }));
+  return rows
+    .filter((r) =>
+      bpMatchesQuery(
+        {
+          bpCode: r.bpCode,
+          nameJa: localized(r.name as LocalizedText | null),
+          nameKana: r.nameKana,
+          shortName: r.shortName,
+          matchNames: r.matchNames,
+          matchNamesAuto: r.matchNamesAuto,
+        },
+        q,
+      ),
+    )
+    .slice(0, LIMIT)
+    .map((r) => ({
+      value: r.id,
+      label: localized(r.name as LocalizedText | null),
+    }));
 }
 
 /** 変換済（コード構成あり）材種のみ — 素材ビルダーの親材種ピッカー用。 */
@@ -189,27 +198,33 @@ export async function f4SearchCustomers(
       parentId: null,
       roleAssignments: { some: { role: "CUSTOMER", isActive: true } },
       ...(code ? { bpCode: { contains: code, mode: "insensitive" } } : {}),
-      ...(name
-        ? {
-            OR: [
-              { name: { path: ["ja"], string_contains: name } },
-              { nameKana: { contains: name, mode: "insensitive" } },
-              { matchNames: { has: name } },
-            ],
-          }
-        : {}),
     },
     orderBy: { bpCode: "asc" },
-    take: F4_LIMIT,
   });
-  return rows.map((r) => {
-    const nameJa = localized(r.name as LocalizedText | null);
-    return {
-      value: r.id,
-      label: nameJa,
-      cells: [r.bpCode ?? "—", nameJa, r.nameKana ?? "—"],
-    };
-  });
+  // 名前欄は照合キー込みで判定する（読み・ローマ字・㈱ 表記でも当たる）。
+  return rows
+    .filter((r) =>
+      bpMatchesQuery(
+        {
+          nameJa: localized(r.name as LocalizedText | null),
+          nameEn: (r.name as { en?: string } | null)?.en ?? null,
+          nameKana: r.nameKana,
+          shortName: r.shortName,
+          matchNames: r.matchNames,
+          matchNamesAuto: r.matchNamesAuto,
+        },
+        name ?? "",
+      ),
+    )
+    .slice(0, F4_LIMIT)
+    .map((r) => {
+      const nameJa = localized(r.name as LocalizedText | null);
+      return {
+        value: r.id,
+        label: nameJa,
+        cells: [r.bpCode ?? "—", nameJa, r.nameKana ?? "—"],
+      };
+    });
 }
 
 /**

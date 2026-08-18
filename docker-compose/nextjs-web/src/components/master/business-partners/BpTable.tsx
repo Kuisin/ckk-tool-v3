@@ -40,6 +40,7 @@ import { NewButton } from "@/components/ui/NewButton";
 import { ListShell } from "@/components/ui/shells";
 import { useUrlSelectState, useUrlStringState } from "@/hooks/useUrlState";
 import { useIsMobile } from "@/hooks/useViewport";
+import { bpMatchesQuery } from "@/lib/bp-search";
 import { BP_ROLE_OPTIONS } from "@/lib/enum-labels";
 import { formatDate } from "@/lib/format";
 
@@ -68,8 +69,11 @@ export function BpTable({ rows }: { rows: BpRow[] }) {
   };
 
   const filtered = rows.filter((r) => {
-    const matchesSearch =
-      !search || r.bpCode.includes(search) || r.name.includes(search);
+    // 社名だけでなく照合キー（フリガナ・ローマ字・表記ゆれ）でも当てる。
+    const matchesSearch = bpMatchesQuery(
+      { bpCode: r.bpCode, nameJa: r.name, matchNames: r.searchKeys },
+      search ?? "",
+    );
     const matchesRole =
       !roleFilter || r.roles.includes(roleFilter as BpRow["roles"][number]);
     const matchesStatus =
