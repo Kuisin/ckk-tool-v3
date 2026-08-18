@@ -77,7 +77,7 @@ When the reading finishes, the status becomes「**下書き**」(draft). This is
 A draft opens in **view mode** (read only). Switch to「**編集**」(edit) only when you need to change something.
 
 1. Click the row you want in the list. What was read is listed for you to compare against the original order form.
-2. To change anything, press「**編集**」(edit) — top right of the screen, or in the card at the top. The screen turns into input fields.
+2. To change anything, press「**編集**」(edit) at the top right of the screen. The screen turns into input fields.
 3. In「**基本情報**」(basic information), check the customer, the customer order form number and the order date.
 4. If no customer is set, search for one in the「**顧客**」(customer) field and choose it.
 5. If the order follows on from a quote, enter the quote number in「**見積書番号（任意）**」(quote number, optional).
@@ -95,7 +95,7 @@ Press the file name link to open the original order form in another tab and comp
 
 ## Asking for approval
 
-1. In view mode, press「**承認依頼**」(request approval) in the card at the very top of the screen. (The button is hidden while you are editing — save first.)
+1. In view mode, press「**承認依頼**」(request approval) in the card at the very top of the screen. (The button is hidden while you are editing — save first.) The button stays disabled while something is missing: the card lists what it is (for example「顧客が未特定です」— no customer —, or「明細 2 行目: 単価が未入力です」— no unit price on row 2). Fix it with「**編集**」(edit) first.
 2. If there is a price difference, a screen called「価格差異の確認」(check the price difference) appears. Check the contents and press「**差異を確認して依頼**」(confirm the difference and request).
 
 The status changes to「**承認依頼中**」(waiting for approval).
@@ -198,17 +198,17 @@ A. Reading the order form did not work. The message states **what happened, the 
 **Q. The customer stays 「未特定」(not identified).**
 A. The company name on the order form could not be matched to the business partner master. On the draft screen, search for the customer, choose it, and press「保存」(save). For customers whose name is often written in different ways, register the other spellings in the [business partner master](/manual/en/operations/masters/business-partner/user) and they will be matched automatically next time.
 
-**Q. It says「顧客が未特定です。顧客を選択して保存してください」(the customer is not identified; please choose a customer and save) and I cannot request approval.**
-A. No customer is set. Choose the「顧客」(customer), press「保存」(save), then press「承認依頼」(request approval) again.
+**Q. I cannot press「承認依頼」(request approval).**
+A. Requesting approval needs **a customer, at least one line item, and a product and a unit price on every row**. Whatever is missing is listed in the card at the very top of the screen (for example「顧客が未特定です / 明細 2 行目: 単価が未入力です」). Fix it with「**編集**」(edit) and press「**保存**」(save), and the button becomes available.
 
-**Q. It says「明細 2 行目: 製品未特定または単価未入力のため確定できません」(line item row 2 cannot be confirmed because the product is not identified or the unit price is empty).**
-A. The product or the unit price on the row shown is empty. It has to go back to a draft before approval, so ask the person who approved it to do「**差し戻し**」(send back), correct that row, and go on from there.
+**Q. On deploy it says「確定できません: 明細 2 行目: 製品が未特定です」(cannot deploy: the product on line item row 2 is not identified).**
+A. The product or the unit price on the row shown is empty. The same check runs when approval is requested, so this is rare — if it does happen, it has to go back to a draft, so ask the person who approved it to do「**差し戻し**」(send back), correct that row, and go on from there.
 
 **Q. The approve button does not appear.**
 A. Only people in the approval group can approve or send back. The screen shows 「第一承認グループのメンバーのみ承認・差し戻しできます」(only members of the first approval group can approve or send back). Please ask the person in charge.
 
 **Q. I cannot change the contents of a draft.**
-A. A draft opens read only — press「**編集**」(edit) first (top right of the screen, or in the card at the top). You can only change the contents while the status is 「下書き」(draft). You cannot change them while it is waiting for approval, approved or deployed. If you see 「下書きの注文請書のみ編集できます」(only draft order acceptances can be edited), ask for it to be sent back.
+A. A draft opens read only — press「**編集**」(edit) first (top right of the screen). You can only change the contents while the status is 「下書き」(draft). You cannot change them while it is waiting for approval, approved or deployed. If you see 「下書きの注文請書のみ編集できます」(only draft order acceptances can be edited), ask for it to be sent back.
 
 **Q. The import does not finish.**
 A. Reading takes about 30 to 60 seconds per file. When you choose several files, they are handled one after another, so it takes that much longer.
