@@ -9,7 +9,10 @@
  *
  * - IMPORT: 抽出失敗は原因・対処つきの Alert + 再抽出 / 手入力へ切り替え
  *   （自動再試行の待機中は橙で「再試行中」）。処理中は案内 Alert。
- * - DRAFT: 基本情報（顧客 SearchSelect）+ 明細エディタ + 保存 / 承認依頼。
+ * - DRAFT: **閲覧 / 編集の 2 モード**。既定は閲覧（サマリ + 明細表 + 承認依頼）で、
+ *   「編集」を押すと入力（基本情報 + 明細エディタ）に切り替わり、保存 /
+ *   キャンセルで閲覧へ戻る。編集中は承認依頼を出さない（未保存の編集が
+ *   消えるため）。
  * - REQUESTED: 承認 / 差し戻し（第一承認グループ — 代理可）。
  * - APPROVED: 確定（明細ごとに注文明細 ORD-…-NN を一括作成）。
  * - COMPLETED: 生成された注文明細リンク + アーカイブ。
@@ -178,6 +181,16 @@ export function OrderAcceptanceDetail({
   const [rejectReason, setRejectReason] = useState("");
   const [deployOpen, setDeployOpen] = useState(false);
   const [archiveOpen, setArchiveOpen] = useState(false);
+  /**
+   * 下書きの表示モード。既定は**閲覧** — 開いた直後に入力欄が並んでいると、
+   * 何を確認すればよいのかが分からず、触るつもりのない値まで変わり得る。
+   * 「編集」で入力に切り替え、保存 / キャンセルで閲覧へ戻る。
+   * ただし明細がまだ 1 行も無い下書き（手入力で作った直後・抽出を待たずに
+   * 引き取った直後）は、閲覧しても空の表しかないので編集から始める。
+   */
+  const [editing, setEditing] = useState(
+    () => acceptance.status === "DRAFT" && acceptance.items.length === 0,
+  );
 
   const a = acceptance;
   const sourceDef = INTAKE_SOURCE_BADGE[a.source];
@@ -287,18 +300,35 @@ export function OrderAcceptanceDetail({
    */
   let actionCard: ReactNode = null;
   if (a.status === "DRAFT") {
-    actionCard = (
+    actionCard = editing ? (
+      // 編集中は承認依頼を出さない — 押した瞬間に未保存の編集が消えるため。
+      // 保存 / キャンセル（画面下に貼り付く FormActions）に集中させる。
+      <ActionCard
+        description="変更したら保存してください。保存すると閲覧に戻ります"
+        icon={<IconPencil size={20} />}
+        title="編集中"
+        tone="action"
+      />
+    ) : (
       <ActionCard
         actions={
-          <PrimaryButton
-            leftSection={<IconSend size={14} />}
-            loading={isPending}
-            onClick={requestApproval}
-          >
-            承認依頼
-          </PrimaryButton>
+          <>
+            <SecondaryButton
+              leftSection={<IconPencil size={14} />}
+              onClick={() => setEditing(true)}
+            >
+              編集
+            </SecondaryButton>
+            <PrimaryButton
+              leftSection={<IconSend size={14} />}
+              loading={isPending}
+              onClick={requestApproval}
+            >
+              承認依頼
+            </PrimaryButton>
+          </>
         }
-        description="未保存の編集は承認依頼の前に保存してください"
+        description="書類と見比べて、直すところがあれば編集してください"
         icon={<IconSend size={20} />}
         title="内容を確認して承認依頼してください"
         tone="action"
@@ -360,6 +390,7 @@ export function OrderAcceptanceDetail({
     <DetailShell
       actions={
         <ResourceActions
+          // 下書きの閲覧中だけ「編集」を出す（design.md §8.2 の定位置）。
           menuItems={
             a.status === "COMPLETED"
               ? [
@@ -370,6 +401,11 @@ export function OrderAcceptanceDetail({
                   },
                 ]
               : []
+          }
+          onEdit={
+            a.status === "DRAFT" && !editing
+              ? () => setEditing(true)
+              : undefined
           }
         />
       }
@@ -506,10 +542,18 @@ export function OrderAcceptanceDetail({
               </Alert>
             )}
 
-            {a.status === "DRAFT" ? (
-              <DraftEditor acceptance={a} lineChecks={checkByItemId} />
+            {a.status === "DRAFT" && editing ? (
+              <DraftEditor
+                acceptance={a}
+                lineChecks={checkByItemId}
+                onClose={() => setEditing(false)}
+              />
             ) : (
               <>
+                {/* 下書きの閲覧モードでも AI 突合の結果は出す（直す前に読む） */}
+                {a.status === "DRAFT" && (
+                  <IntakeReviewPanel review={a.review} />
+                )}
                 <SummaryGrid>
                   <FieldValue
                     label="番号"
@@ -868,16 +912,22 @@ export function OrderAcceptanceDetail({
 }
 
 /**
- * DraftEditor — DRAFT のインライン編集（基本情報 + 明細 + 保存）。
- * DRAFT のときだけマウントされるため、初期値は props から安全に取れる。
+ * DraftEditor — DRAFT の編集モード（基本情報 + 明細 + 保存 / キャンセル）。
+ *
+ * 編集モードのときだけマウントされるため、初期値は props から安全に取れる
+ * （＝閲覧に戻って入り直すと、必ず保存済みの値から始まる）。
+ * 保存もキャンセルも `onClose` で閲覧モードへ戻す。
  */
 function DraftEditor({
   acceptance,
   lineChecks,
+  onClose,
 }: {
   acceptance: OrderAcceptanceView;
   /** 保存済み明細 id → 価格照合結果（行バッジ表示用）。 */
   lineChecks: Map<string, AcceptancePriceCheckLine>;
+  /** 閲覧モードへ戻す（保存成功 / キャンセル）。 */
+  onClose: () => void;
 }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -895,6 +945,20 @@ function DraftEditor({
     a.items.length > 0 ? toItemRows(a.items) : [newItemRow()],
   );
 
+  /** 入力内容の指紋 — 変更の有無だけを見るので中身の意味は問わない。 */
+  const fingerprint = JSON.stringify([
+    customerId,
+    customerOrderRef,
+    quoteNumber,
+    orderDate,
+    notes,
+    items,
+  ]);
+  // マウント時の値（＝保存済みの内容）。編集モードは開き直すと再マウント
+  // されるので、これが常に「保存されている状態」になる。
+  const [initialFingerprint] = useState(fingerprint);
+  const isDirty = fingerprint !== initialFingerprint;
+
   const save = () => {
     startTransition(async () => {
       const result = await saveDraft(a.number, {
@@ -911,6 +975,7 @@ function DraftEditor({
           message: `注文請書 ${a.number}`,
           color: "green",
         });
+        onClose();
         router.refresh();
       } else {
         notifications.show({
@@ -919,6 +984,23 @@ function DraftEditor({
           color: "red",
         });
       }
+    });
+  };
+
+  /** キャンセル — 変更があるときだけ確認する（design.md §16.2）。 */
+  const cancel = () => {
+    if (!isDirty) {
+      onClose();
+      return;
+    }
+    modals.openConfirmModal({
+      title: "編集の取り消し",
+      children: (
+        <Text size="sm">保存していない変更は失われます。取り消しますか？</Text>
+      ),
+      labels: { confirm: "変更を破棄", cancel: "編集に戻る" },
+      confirmProps: { color: "red" },
+      onConfirm: onClose,
     });
   };
 
@@ -1011,7 +1093,7 @@ function DraftEditor({
         />
       </FormSection>
 
-      <FormActions loading={isPending} onSave={save} />
+      <FormActions loading={isPending} onCancel={cancel} onSave={save} />
     </Stack>
   );
 }
