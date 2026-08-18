@@ -74,13 +74,18 @@ Put the file in the import folder on the server and it is imported automatically
 
 When the reading finishes, the status becomes「**下書き**」(draft). This is the only time you can change the contents.
 
-1. Click the row you want in the list.
-2. In「**基本情報**」(basic information), check the customer, the customer order form number and the order date.
-3. If no customer is set, search for one in the「**顧客**」(customer) field and choose it.
-4. If the order follows on from a quote, enter the quote number in「**見積書番号（任意）**」(quote number, optional).
-5. In「**明細**」(line items), check the product, type, quantity, unit price and delivery date.
-6. On a row with an orange「**製品未特定**」(product not identified) badge, choose the correct product in the「**製品**」(product) field.
-7. Press「**保存**」(save) at the very bottom of the screen.
+A draft opens in **view mode** (read only). Switch to「**編集**」(edit) only when you need to change something.
+
+1. Click the row you want in the list. What was read is listed for you to compare against the original order form.
+2. To change anything, press「**編集**」(edit) — top right of the screen, or in the card at the top. The screen turns into input fields.
+3. In「**基本情報**」(basic information), check the customer, the customer order form number and the order date.
+4. If no customer is set, search for one in the「**顧客**」(customer) field and choose it.
+5. If the order follows on from a quote, enter the quote number in「**見積書番号（任意）**」(quote number, optional).
+6. In「**明細**」(line items), check the product, type, quantity, unit price and delivery date.
+7. On a row with an orange「**製品未特定**」(product not identified) badge, choose the correct product in the「**製品**」(product) field.
+8. Press「**保存**」(save) at the very bottom of the screen. Saving returns you to view mode.
+
+To stop editing, press「**キャンセル**」(cancel); if you changed something you are asked to confirm, and「**変更を破棄**」(discard changes) returns you to view mode. A draft that has no line items yet (for example one you just created by hand) opens in edit mode straight away.
 
 ![Draft check screen with a price difference warning](../../../assets/screenshots/order-acceptance-detail-01.png)
 
@@ -90,7 +95,7 @@ Press the file name link to open the original order form in another tab and comp
 
 ## Asking for approval
 
-1. After saving the contents, press「**承認依頼**」(request approval) in the「**承認・確定状況**」(approval and deployment status) area.
+1. In view mode, press「**承認依頼**」(request approval) in the card at the very top of the screen. (The button is hidden while you are editing — save first.)
 2. If there is a price difference, a screen called「価格差異の確認」(check the price difference) appears. Check the contents and press「**差異を確認して依頼**」(confirm the difference and request).
 
 The status changes to「**承認依頼中**」(waiting for approval).
@@ -99,7 +104,7 @@ The status changes to「**承認依頼中**」(waiting for approval).
 
 The person who approves presses「**承認**」(approve) or「**差し戻し**」(send back) on this screen. To send it back, they enter a reason and then press「**差し戻す**」(send back). An order acceptance that is sent back returns to 「下書き」(draft), so you correct it and ask for approval again.
 
-> ⚠️ Changes you have not saved are not included in the approval request. Press「**保存**」(save) first.
+> ⚠️「**承認依頼**」(request approval) is not shown while you are editing. Press「**保存**」(save) to return to view mode, then request approval.
 
 ## Making the order lines (注文確定 / deploy)
 
@@ -203,7 +208,7 @@ A. The product or the unit price on the row shown is empty. It has to go back to
 A. Only people in the approval group can approve or send back. The screen shows 「第一承認グループのメンバーのみ承認・差し戻しできます」(only members of the first approval group can approve or send back). Please ask the person in charge.
 
 **Q. I cannot change the contents of a draft.**
-A. You can only change the contents while the status is 「下書き」(draft). You cannot change them while it is waiting for approval, approved or deployed. If you see 「下書きの注文請書のみ編集できます」(only draft order acceptances can be edited), ask for it to be sent back.
+A. A draft opens read only — press「**編集**」(edit) first (top right of the screen, or in the card at the top). You can only change the contents while the status is 「下書き」(draft). You cannot change them while it is waiting for approval, approved or deployed. If you see 「下書きの注文請書のみ編集できます」(only draft order acceptances can be edited), ask for it to be sent back.
 
 **Q. The import does not finish.**
 A. Reading takes about 30 to 60 seconds per file. When you choose several files, they are handled one after another, so it takes that much longer.
