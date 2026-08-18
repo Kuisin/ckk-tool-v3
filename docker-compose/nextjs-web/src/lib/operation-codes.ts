@@ -205,13 +205,7 @@ export const OPERATION_CODES: OperationCodeEntry[] = [
     "/master/inspection-templates",
   ),
   ...makeResource("マスタ", "MS", "A", "不良種類", "/master/defect-types"),
-  ...makeResource(
-    "マスタ",
-    "MS",
-    "B",
-    "承認グループ",
-    "/master/approval-groups",
-  ),
+  ...makeResource("マスタ", "MS", "B", "承認設定", "/master/approval-settings"),
   ...makeResource("マスタ", "MS", "C", "拠点", "/master/plants"),
   // 作業場所は単一管理画面（グループカード + モーダル）— list コードのみ
   {

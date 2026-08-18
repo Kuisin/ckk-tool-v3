@@ -13,7 +13,7 @@
  *   「編集」を押すと入力（基本情報 + 明細エディタ）に切り替わり、保存 /
  *   キャンセルで閲覧へ戻る。編集中は承認依頼を出さない（未保存の編集が
  *   消えるため）。
- * - REQUESTED: 承認 / 差し戻し（第一承認グループ — 代理可）。
+ * - REQUESTED: 承認 / 差し戻し（承認設定 MS0B のフローに従う — 代理可）。
  * - APPROVED: 確定（明細ごとに注文明細 ORD-…-NN を一括作成）。
  * - COMPLETED: 生成された注文明細リンク + アーカイブ。
  * 状態ごとの操作は最上部の ActionCard にまとめる（承認権限の有無で色が変わる
@@ -45,13 +45,11 @@ import {
   IconAlertTriangle,
   IconArchive,
   IconCalendar,
-  IconClock,
   IconFile,
   IconInfoCircle,
   IconPencil,
   IconRefresh,
   IconSend,
-  IconShieldCheck,
   IconTransform,
 } from "@tabler/icons-react";
 import Link from "next/link";
@@ -76,6 +74,10 @@ import type {
   AcceptancePriceCheckLine,
 } from "@/app/(dashboard)/sales/order-acceptances/price-check";
 import {
+  ApprovalActionCard,
+  type ApprovalActionState,
+} from "@/components/approvals/ApprovalActionCard";
+import {
   ApprovalTrailList,
   type ApprovalTrailView,
   countTrailRecords,
@@ -85,12 +87,7 @@ import {
   AttachmentsPanel,
   type AttachmentView,
 } from "@/components/ui/AttachmentsPanel";
-import {
-  ApproveButton,
-  PrimaryButton,
-  RejectButton,
-  SecondaryButton,
-} from "@/components/ui/buttons";
+import { PrimaryButton, SecondaryButton } from "@/components/ui/buttons";
 import { DocNumber } from "@/components/ui/DocNumber";
 import { FieldValue } from "@/components/ui/FieldValue";
 import { CUSTOMER_F4 } from "@/components/ui/f4-presets";
@@ -154,13 +151,24 @@ function stepperActive(status: string): number {
 
 const EMPTY_PRICE_CHECK: AcceptancePriceCheck = { lines: [], diffCount: 0 };
 
+/**
+ * 書類ライフサイクルの Stepper に出す「承認」段の説明。段数は承認設定 (MS0B)
+ * が決めるので、進行中は「2/3 部門承認」、それ以外は担当グループ名を出す。
+ */
+function approvalStepDescription(approval: ApprovalActionState): string {
+  if (approval.phase === "PENDING" && approval.stepCount > 1) {
+    return `${approval.stepNo}/${approval.stepCount} ${approval.stepLabel}`;
+  }
+  return approval.groupLabel || "承認グループ";
+}
+
 export function OrderAcceptanceDetail({
   acceptance,
   auditEntries,
   attachments,
   memos,
   approvalTrail = [],
-  canApprove,
+  approval,
   priceCheck = EMPTY_PRICE_CHECK,
 }: {
   acceptance: OrderAcceptanceView;
@@ -172,8 +180,8 @@ export function OrderAcceptanceDetail({
   memos: MemoView[];
   /** 正規化された承認記録（approval_records — 代理承認マーカー付き）。 */
   approvalTrail?: ApprovalTrailView[];
-  /** 第一承認グループのメンバー（or 代理）か。 */
-  canApprove: boolean;
+  /** 承認フローの現在状態（承認 / 差し戻しのゲートと表示）。 */
+  approval: ApprovalActionState;
   /** §2 価格照合結果（保存済み明細 × 価格表 — サーバー側で計算）。 */
   priceCheck?: AcceptancePriceCheck;
 }) {
@@ -347,32 +355,16 @@ export function OrderAcceptanceDetail({
       />
     );
   } else if (a.status === "REQUESTED") {
-    actionCard = canApprove ? (
-      <ActionCard
-        actions={
-          <>
-            <ApproveButton
-              loading={isPending}
-              onClick={() =>
-                run(() => approveAcceptance(a.number), "承認しました")
-              }
-            >
-              承認
-            </ApproveButton>
-            <RejectButton onClick={() => setRejectOpen(true)} />
-          </>
-        }
-        description="第一承認グループの承認者としてこの注文請書を承認できます"
-        icon={<IconShieldCheck size={20} />}
-        title="承認してください"
-        tone="approve"
-      />
-    ) : (
-      <ActionCard
-        description="第一承認グループのメンバーのみ承認・差し戻しできます"
-        icon={<IconClock size={20} />}
-        title="承認待ち"
-        tone="wait"
+    // 承認・差し戻しは 4 書類共通のカードに任せる（段数は承認設定 MS0B）。
+    // 依頼側（DRAFT）は完成条件・価格差異の確認があるので上の分岐が持つ。
+    actionCard = (
+      <ApprovalActionCard
+        approval={approval}
+        canRequest={false}
+        onApprove={() => approveAcceptance(a.number)}
+        onReject={(reason) => rejectAcceptance(a.number, reason)}
+        rejectReason={null}
+        subject={`注文請書 ${a.number}`}
       />
     );
   } else if (a.status === "APPROVED") {
@@ -767,7 +759,7 @@ export function OrderAcceptanceDetail({
                   loading={a.status === "DRAFT"}
                 />
                 <Stepper.Step
-                  description="第一承認グループ"
+                  description={approvalStepDescription(approval)}
                   label="承認"
                   loading={a.status === "REQUESTED"}
                 />

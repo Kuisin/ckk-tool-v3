@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import {
   ApprovalGroupDetail,
   type ApprovalGroupDetailData,
-} from "@/components/master/approval-groups/ApprovalGroupDetail";
+} from "@/components/master/approval-settings/ApprovalGroupDetail";
 import { fetchAuditEntries } from "@/lib/audit";
 import { requireAppRead } from "@/lib/authz-page";
 import { prisma } from "@/lib/db";
@@ -48,7 +48,6 @@ export default async function MasterApprovalGroupsDetailPage({
 
   const record: ApprovalGroupDetailData = {
     id: r.id,
-    type: r.type,
     nameJa: name?.ja ?? "",
     nameEn: name?.en ?? "",
     isActive: r.isActive,
@@ -57,6 +56,9 @@ export default async function MasterApprovalGroupsDetailPage({
       displayName: m.user.displayName,
       username: m.user.username,
       isActive: m.isActive,
+      validFrom: m.validFrom?.toISOString() ?? null,
+      validUntil: m.validUntil?.toISOString() ?? null,
+      note: m.note,
     })),
     delegates: r.delegates.map((d) => ({
       id: d.id,

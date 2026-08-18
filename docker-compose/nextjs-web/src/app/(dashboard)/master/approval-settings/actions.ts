@@ -1,17 +1,27 @@
 "use server";
 
 /**
- * Server Actions — 承認グループ (MS0B).
+ * Server Actions — 承認設定 (MS0B).
  *
- * グループ本体の CRUD と、メンバー（approval_group_members）の追加・削除・
- * 有効/無効切替（design.md §13.5 — メンバーはグループ詳細のタブで管理）、
- * および期間限定代理（approval_delegates）の追加・削除。
- * 種別（type）はグループの識別であり作成後変更不可。メンバー・代理操作の
- * 監査はグループ行（recordId = String(groupId)）に記録する。
+ * 2 つのものを扱う:
+ *   承認フロー（approval_flows / approval_flow_steps）— 書類種別ごとに
+ *     「何段目にどのグループが、どのモードで」を並べる。
+ *   承認グループ（approval_groups）— 承認者の集合。メンバーは常任と期間限定
+ *     （valid_from / valid_until）があり、さらに期間限定代理
+ *     （approval_delegates）を持てる。
+ *
+ * メンバー・代理操作の監査はグループ行（recordId = String(groupId)）に、
+ * フローの保存は approval_flows 行（recordId = target_type）に記録する。
  */
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
+import { validateFlowSteps } from "@/lib/approval-flow";
+import {
+  isMemberEffective,
+  validateMemberPeriod,
+} from "@/lib/approval-membership";
+import { APPROVAL_TARGET_TYPES } from "@/lib/approval-targets";
 import { getCurrentActorId, recordAudit } from "@/lib/audit";
 import { checkPermission } from "@/lib/authz";
 import { prisma } from "@/lib/db";
@@ -24,7 +34,7 @@ import {
   prismaErrorMessage,
 } from "@/lib/server-action";
 
-const BASE_PATH = "/master/approval-groups";
+const BASE_PATH = "/master/approval-settings";
 
 // 編集可能フィールド（type は識別 — 作成後不変）
 const groupUpdateInput = z.object({
@@ -33,11 +43,7 @@ const groupUpdateInput = z.object({
   isActive: z.boolean(),
 });
 
-const groupCreateInput = groupUpdateInput.extend({
-  type: z.enum(["FIRST", "SECOND", "WORKFLOW_CHANGE"], {
-    message: "種別を選択してください",
-  }),
-});
+const groupCreateInput = groupUpdateInput;
 
 export type ApprovalGroupUpdateInput = z.infer<typeof groupUpdateInput>;
 export type ApprovalGroupCreateInput = z.infer<typeof groupCreateInput>;
@@ -67,7 +73,6 @@ export async function createApprovalGroup(
   try {
     const created = await prisma.approvalGroup.create({
       data: {
-        type: v.type,
         name: localizedInput(v.nameJa, v.nameEn),
         isActive: v.isActive,
       },
@@ -77,7 +82,7 @@ export async function createApprovalGroup(
       action: "CREATE",
       tableName: "approval_groups",
       recordId: String(created.id),
-      after: { type: v.type, nameJa: v.nameJa, isActive: v.isActive },
+      after: { nameJa: v.nameJa, isActive: v.isActive },
     });
     revalidate(created.id);
     return actionOk({ id: created.id });
@@ -197,23 +202,46 @@ async function memberLabel(userId: string): Promise<string> {
   return user?.displayName ?? userId;
 }
 
+/**
+ * メンバーの追加。常任は period を省略、期間限定は開始・終了の日時を渡す。
+ *
+ * 期間限定メンバーは「その期間だけグループの一員」— 代理（addDelegate）とは
+ * 別物で、代理は「本来の承認者の代わりに押す」（承認記録に原承認者が残る）。
+ */
 export async function addGroupMember(
   groupId: number,
   userId: string,
+  period?: { validFrom: string; validUntil: string; note?: string },
 ): Promise<ActionResult> {
   // メンバー・代理の増減はグループ本体の編集扱い（監査も UPDATE で記録）。
   const authz = await checkPermission("master", "UPDATE");
   if (!authz.ok) return actionError(authz.error);
   if (!userId) return actionError("ユーザーを選択してください");
+  const periodError = validateMemberPeriod({
+    validFrom: period?.validFrom ?? null,
+    validUntil: period?.validUntil ?? null,
+  });
+  if (periodError) return actionError(periodError);
   try {
     await prisma.approvalGroupMember.create({
-      data: { groupId, userId, isActive: true },
+      data: {
+        groupId,
+        userId,
+        isActive: true,
+        validFrom: period ? new Date(period.validFrom) : null,
+        validUntil: period ? new Date(period.validUntil) : null,
+        note: period?.note?.trim() || null,
+      },
     });
     await recordAudit({
       action: "UPDATE",
       tableName: "approval_groups",
       recordId: String(groupId),
-      after: { note: `メンバー「${await memberLabel(userId)}」を追加` },
+      after: {
+        note: period
+          ? `期間限定メンバー「${await memberLabel(userId)}」を追加（${period.validFrom}〜${period.validUntil}）`
+          : `メンバー「${await memberLabel(userId)}」を追加`,
+      },
     });
     revalidate(groupId);
     return actionOk();
@@ -285,11 +313,13 @@ export async function addDelegate(
   }
   const v = parsed.data;
   try {
+    // 原承認者は「今この瞬間に承認できる人」であること（期間限定メンバーの
+    // 期間外は代理も立てられない）。
     const member = await prisma.approvalGroupMember.findUnique({
       where: { groupId_userId: { groupId, userId: v.delegatorId } },
-      select: { isActive: true },
+      select: { isActive: true, validFrom: true, validUntil: true },
     });
-    if (!member?.isActive) {
+    if (!member || !isMemberEffective(member, new Date())) {
       return actionError("原承認者はこのグループの有効なメンバーのみ選べます");
     }
     const actor = await getCurrentActorId();
@@ -377,5 +407,151 @@ export async function setGroupMemberActive(
     return actionError(
       prismaErrorMessage(e, "メンバー状態の更新に失敗しました"),
     );
+  }
+}
+
+// ── 承認フロー（書類種別ごとに 1 本） ───────────────────────────────────────
+
+const flowStepInput = z.object({
+  nameJa: z.string().min(1, "名称を入力してください"),
+  nameEn: z.string().optional(),
+  groupId: z.number().int().positive("承認グループを選択してください"),
+  mode: z.enum(["ANY", "ALL"]),
+});
+
+const flowInput = z.object({
+  targetType: z.enum(APPROVAL_TARGET_TYPES),
+  steps: z
+    .array(flowStepInput)
+    .min(1, "承認ステップを 1 段以上設定してください"),
+});
+
+export type ApprovalFlowStepInput = z.infer<typeof flowStepInput>;
+
+/**
+ * 承認フローの保存（全段を置き換える）。
+ *
+ * 並べ替えは delete-then-create にする — (target_type, step_no) に一意制約が
+ * あるので、途中の状態で衝突させないため。進行中の依頼は
+ * approval_flow_steps.id を参照していない（group_id と flow_snapshot を持つ）
+ * ので、作り直しても影響しない。
+ *
+ * 定義の変更が効くのは **次の承認依頼から**。進行中の書類は依頼時点の
+ * スナップショットのまま進む。
+ */
+export async function saveApprovalFlow(
+  targetType: string,
+  steps: ApprovalFlowStepInput[],
+): Promise<ActionResult> {
+  const authz = await checkPermission("master", "UPDATE");
+  if (!authz.ok) return actionError(authz.error);
+  const parsed = flowInput.safeParse({ targetType, steps });
+  if (!parsed.success) {
+    return actionError(parsed.error.issues[0]?.message ?? "入力が不正です");
+  }
+  const v = parsed.data;
+  // 画面と同じ検証をサーバー側でも通す（lib/approval-flow）
+  const issues = validateFlowSteps(
+    v.steps.map((s) => ({
+      nameJa: s.nameJa,
+      groupId: s.groupId,
+      mode: s.mode,
+    })),
+  );
+  if (issues.length > 0) return actionError(issues[0]);
+
+  try {
+    const actor = await getCurrentActorId();
+    const before = await prisma.approvalFlowStep.findMany({
+      where: { targetType: v.targetType },
+      orderBy: { stepNo: "asc" },
+      select: { stepNo: true, name: true, groupId: true, mode: true },
+    });
+    await prisma.$transaction(async (tx) => {
+      await tx.approvalFlow.upsert({
+        where: { targetType: v.targetType },
+        create: { targetType: v.targetType, updatedBy: actor },
+        update: { updatedBy: actor },
+      });
+      await tx.approvalFlowStep.deleteMany({
+        where: { targetType: v.targetType },
+      });
+      await tx.approvalFlowStep.createMany({
+        data: v.steps.map((s, i) => ({
+          targetType: v.targetType,
+          stepNo: i + 1,
+          name: localizedInput(s.nameJa, s.nameEn),
+          groupId: s.groupId,
+          mode: s.mode,
+        })),
+      });
+    });
+    await recordAudit({
+      action: "UPDATE",
+      tableName: "approval_flows",
+      recordId: v.targetType,
+      before: {
+        steps: before.map((s) => ({
+          stepNo: s.stepNo,
+          name: localized(s.name as LocalizedText | null),
+          groupId: s.groupId,
+          mode: s.mode,
+        })),
+      },
+      after: {
+        steps: v.steps.map((s, i) => ({
+          stepNo: i + 1,
+          name: s.nameJa,
+          groupId: s.groupId,
+          mode: s.mode,
+        })),
+      },
+    });
+    revalidatePath(BASE_PATH);
+    revalidatePath(`${BASE_PATH}/flows/${v.targetType}`);
+    return actionOk();
+  } catch (e) {
+    return actionError(prismaErrorMessage(e, "承認フローの保存に失敗しました"));
+  }
+}
+
+/**
+ * メンバーの在籍期間の変更。period を省略すると常任に戻す。
+ */
+export async function updateGroupMemberValidity(
+  groupId: number,
+  userId: string,
+  period?: { validFrom: string; validUntil: string; note?: string },
+): Promise<ActionResult> {
+  const authz = await checkPermission("master", "UPDATE");
+  if (!authz.ok) return actionError(authz.error);
+  const periodError = validateMemberPeriod({
+    validFrom: period?.validFrom ?? null,
+    validUntil: period?.validUntil ?? null,
+  });
+  if (periodError) return actionError(periodError);
+  try {
+    await prisma.approvalGroupMember.update({
+      where: { groupId_userId: { groupId, userId } },
+      data: {
+        validFrom: period ? new Date(period.validFrom) : null,
+        validUntil: period ? new Date(period.validUntil) : null,
+        note: period?.note?.trim() || null,
+      },
+    });
+    await recordAudit({
+      action: "UPDATE",
+      tableName: "approval_groups",
+      recordId: String(groupId),
+      after: {
+        note: period
+          ? `メンバー「${await memberLabel(userId)}」の期間を ${period.validFrom}〜${period.validUntil} に変更`
+          : `メンバー「${await memberLabel(userId)}」を常任に変更`,
+      },
+    });
+    revalidate(groupId);
+    return actionOk();
+  } catch (e) {
+    return actionError(prismaErrorMessage(e, "在籍期間の更新に失敗しました"));
   }
 }

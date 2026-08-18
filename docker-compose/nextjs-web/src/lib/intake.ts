@@ -33,6 +33,7 @@
 
 import { mkdir, readdir, readFile, rename, stat } from "node:fs/promises";
 import path from "node:path";
+import { firstStepGroupId } from "./approvals";
 import { getCurrentActorId, recordAudit } from "./audit";
 import { prisma } from "./db";
 import { formatDocNumber } from "./doc-number";
@@ -53,7 +54,7 @@ import {
   RETRY_PENDING_MARKER,
   retryPlan,
 } from "./intake-extract-error";
-import { notifyGroup } from "./notifications";
+import { notifyApprovalGroup } from "./notifications";
 import { allocateDocumentKey } from "./numbering";
 import { linesReplaceBlockReason } from "./order-line-core";
 import { isOwnCompany } from "./own-company";
@@ -63,6 +64,18 @@ import { createTaskQueue } from "./task-queue";
 const PO_EXTRACT_URL = (
   process.env.PO_EXTRACT_URL ?? "http://po-extract:8000"
 ).replace(/\/$/, "");
+
+/**
+ * 取込結果の通知先 — 注文請書フローの 1 段目の承認グループ。
+ * フロー未設定なら黙って何もしない（取込自体は成立させる）。
+ */
+async function notifyIntakeGroup(
+  input: Parameters<typeof notifyApprovalGroup>[1],
+): Promise<void> {
+  const groupId = await firstStepGroupId("order_acceptances");
+  if (groupId == null) return;
+  await notifyApprovalGroup(groupId, input);
+}
 
 /**
  * po-extract を待つ上限（既定 15 分 / PO_EXTRACT_TIMEOUT_MS で変更可）。
@@ -421,13 +434,14 @@ export async function runExtraction(
         note: `自動抽出完了（明細 ${items.length} 件・顧客${customerBpId ? "一致" : "未特定"}）`,
       },
     });
-    // 取込結果を第一承認グループ（受注確認の担当者）へ通知 — ベストエフォート
-    void notifyGroup("FIRST", {
+    // 取込結果を注文請書フローの 1 段目のグループ（受注確認の担当者）へ通知
+    // — ベストエフォート
+    void notifyIntakeGroup({
       type: "INTAKE",
       title: `注文請書 ${number} を自動取込しました`,
       message: `明細 ${items.length} 件・顧客${customerBpId ? "一致" : "未特定"} — 内容を確認してください`,
       linkPath: "/sales/order-acceptances",
-    }).catch((err) => console.error("[intake] 取込通知に失敗:", err));
+    }).catch((err: unknown) => console.error("[intake] 取込通知に失敗:", err));
     return { ...key, number, status: "DRAFT" };
   } catch (e) {
     const failure = asFailure(e);
@@ -499,12 +513,12 @@ async function recordExtractFailure(
     },
   });
   if (notify) {
-    void notifyGroup("FIRST", {
+    void notifyIntakeGroup({
       type: "INTAKE",
       title: `注文請書 ${number} の自動抽出に失敗しました`,
       message: [failure.summary, failure.hint].join(" / ").slice(0, 200),
       linkPath: "/sales/order-acceptances",
-    }).catch((err) => console.error("[intake] 取込通知に失敗:", err));
+    }).catch((err: unknown) => console.error("[intake] 取込通知に失敗:", err));
   }
   return {
     ...key,

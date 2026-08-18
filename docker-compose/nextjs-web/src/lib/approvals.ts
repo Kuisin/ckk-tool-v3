@@ -1,60 +1,41 @@
 /**
- * approvals.ts — 指示書承認の共通ヘルパ。server-only.
+ * approvals.ts — N 段承認エンジン。server-only.
  *
- * §6 の簡易版: 承認可否は approval_group_members のメンバーシップで判定し、
- * 遷移は work_orders の列 + history Json（MaterialPurchaseOrder と同型）に
- * 記録する。代理・承認依頼レコードは §6 本実装時に拡張。
+ * 承認フローは書類種別ごとに 1 本（approval_flow_steps、承認設定 MS0B で編集）。
+ * 依頼を出した時点で全段を approval_requests.flow_snapshot にコピーするので、
+ * 進行中の書類はあとからフロー定義を編集されても当時の段数のまま進む。
+ *
+ * 1 書類につき PENDING の依頼は常に 1 行だけ（部分 unique index が保証）。
+ * 段 N を閉じるのと段 N+1 を作るのは同一トランザクション。
+ *
+ * 承認できるかは 2 段構え:
+ *   RBAC（checkPermission）— 呼び出し側の Server Action が行う門番
+ *   グループ所属           — ここで判定する実ゲート（本人 or 期間内の代理）
+ *
+ * 判定そのもの（段が閉じるか・次は何段目か）は純ロジックの lib/approval-flow に
+ * 置いてあり、画面と共用する。
  */
 
-import type { ApprovalGroupType } from "../../generated/client/client";
+import type { Prisma } from "../../generated/client/client";
+import {
+  type ApprovalMode,
+  type ApprovalPhase,
+  decideAfterApproval,
+  type FlowStepSnapshot,
+  remainingApprovers,
+  stepFromSnapshot,
+  stepsFromSnapshot,
+} from "./approval-flow";
+import { effectiveMemberWhere } from "./approval-membership";
+import { APPROVAL_TARGET, type ApprovalTargetType } from "./approval-targets";
 import { getCurrentActorId } from "./audit";
 import { prisma } from "./db";
-import { notify, notifyGroup } from "./notifications";
+import { type LocalizedText, localized } from "./format";
+import { notify, notifyApprovalGroup } from "./notifications";
 
-/**
- * actor が type の承認権限を持つか（本人メンバー or 有効期間内の代理）。
- * 代理の場合は原承認者（delegateFor）を返す — approval_records の
- * delegate_for_id に記録する。
- */
-export async function resolveApprover(
-  type: ApprovalGroupType,
-  userId?: string | null,
-): Promise<{ ok: boolean; delegateForId: string | null }> {
-  const actor = userId ?? (await getCurrentActorId());
-  if (!actor) return { ok: false, delegateForId: null };
+export type { ApprovalTargetType } from "./approval-targets";
 
-  const direct = await prisma.approvalGroupMember.count({
-    where: { userId: actor, isActive: true, group: { type, isActive: true } },
-  });
-  if (direct > 0) return { ok: true, delegateForId: null };
-
-  // 期間限定代理: delegator がそのグループの有効メンバーであること
-  const now = new Date();
-  const delegation = await prisma.approvalDelegate.findFirst({
-    where: {
-      delegateId: actor,
-      validFrom: { lte: now },
-      validUntil: { gte: now },
-      group: { type, isActive: true },
-      delegator: {
-        approvalGroupMembers: {
-          some: { isActive: true, group: { type, isActive: true } },
-        },
-      },
-    },
-    select: { delegatorId: true },
-  });
-  if (delegation) return { ok: true, delegateForId: delegation.delegatorId };
-  return { ok: false, delegateForId: null };
-}
-
-/** actor が type の有効な承認グループのメンバー（or 代理）か。 */
-export async function isApprover(
-  type: ApprovalGroupType,
-  userId?: string | null,
-): Promise<boolean> {
-  return (await resolveApprover(type, userId)).ok;
-}
+// ─── 履歴 Json（行ワークフローの遷移記録。承認とは別軸で各書類が持つ） ──────
 
 export interface HistoryEntry {
   action: string;
@@ -72,189 +53,610 @@ export function appendHistory(
   return [...list, entry];
 }
 
-// ─── 承認依頼・記録（§6 本実装） ─────────────────────────────────────────────
-//
-// 対象は多態: targetType = @@map 名 / targetId = 業務キー（audit と同じ規約）。
-// 既存の行ワークフロー（work_orders / material_purchase_orders の遷移列）は
-// 維持し、依頼・記録をここに正規化して PD03 で横断表示する。
+// ─── フロー定義の照会 ───────────────────────────────────────────────────────
 
-export type ApprovalTargetType =
-  | "work_orders"
-  | "material_purchase_orders"
-  | "order_acceptances"
-  | "purchase_requests";
+export interface FlowStepDef {
+  stepNo: number;
+  name: LocalizedText;
+  groupId: number;
+  groupName: LocalizedText;
+  mode: ApprovalMode;
+}
 
-export type ApprovalStepKind = "FIRST" | "SECOND";
+/** 書類種別の承認フロー（stepNo 昇順）。未設定なら空配列。 */
+export async function getApprovalFlow(
+  targetType: ApprovalTargetType,
+): Promise<FlowStepDef[]> {
+  const rows = await prisma.approvalFlowStep.findMany({
+    where: { targetType },
+    include: { group: { select: { name: true } } },
+    orderBy: { stepNo: "asc" },
+  });
+  return rows.map((r) => ({
+    stepNo: r.stepNo,
+    name: (r.name ?? { ja: "", en: "" }) as LocalizedText,
+    groupId: r.groupId,
+    groupName: (r.group.name ?? { ja: "", en: "" }) as LocalizedText,
+    mode: r.mode as ApprovalMode,
+  }));
+}
 
-const TARGET_LABELS: Record<ApprovalTargetType, string> = {
-  work_orders: "指示書",
-  material_purchase_orders: "素材発注書",
-  order_acceptances: "注文請書",
-  purchase_requests: "購買依頼",
-};
+/** 依頼を出す前の確認。未設定ならエラー文言、設定済みなら null。 */
+export async function assertFlowConfigured(
+  targetType: ApprovalTargetType,
+): Promise<string | null> {
+  const count = await prisma.approvalFlowStep.count({ where: { targetType } });
+  return count > 0
+    ? null
+    : `${APPROVAL_TARGET[targetType].label}の承認フローが未設定です（承認設定 MS0B で設定してください）`;
+}
 
-const STEP_LABELS: Record<ApprovalStepKind, string> = {
-  FIRST: "第一承認",
-  SECOND: "第二承認",
-};
+/** フロー定義をスナップショット形に落とす。 */
+function toSnapshot(flow: FlowStepDef[]): FlowStepSnapshot[] {
+  return flow.map((s) => ({
+    stepNo: s.stepNo,
+    name: s.name,
+    groupId: s.groupId,
+    groupName: s.groupName,
+    mode: s.mode,
+  }));
+}
 
-/** 承認依頼を作成（同一対象・同一段の PENDING 重複は再利用）。 */
-export async function createApprovalRequest(input: {
-  targetType: ApprovalTargetType;
-  targetId: string;
-  step: ApprovalStepKind;
-  notes?: string;
-}): Promise<string> {
-  const actor = await getCurrentActorId();
-  const existing = await prisma.approvalRequest.findFirst({
+// ─── 権限 ───────────────────────────────────────────────────────────────────
+
+/**
+ * actor がそのグループで承認できるか（本人が実効メンバー、または実効メンバーの
+ * 期間内代理）。代理の場合は原承認者を返す — approval_records.delegate_for_id
+ * に記録する。
+ */
+export async function resolveApprover(
+  groupId: number | null | undefined,
+  userId?: string | null,
+): Promise<{ ok: boolean; delegateForId: string | null }> {
+  const actor = userId ?? (await getCurrentActorId());
+  if (!actor || groupId == null) return { ok: false, delegateForId: null };
+
+  const now = new Date();
+  const effective = effectiveMemberWhere(now);
+
+  const direct = await prisma.approvalGroupMember.count({
+    where: { groupId, userId: actor, group: { isActive: true }, ...effective },
+  });
+  if (direct > 0) return { ok: true, delegateForId: null };
+
+  // 期間限定代理: 原承認者が今も実効メンバーであること
+  const delegation = await prisma.approvalDelegate.findFirst({
     where: {
+      groupId,
+      delegateId: actor,
+      validFrom: { lte: now },
+      validUntil: { gte: now },
+      group: { isActive: true },
+      delegator: {
+        approvalGroupMembers: {
+          some: { groupId, group: { isActive: true }, ...effective },
+        },
+      },
+    },
+    select: { delegatorId: true },
+  });
+  if (delegation) return { ok: true, delegateForId: delegation.delegatorId };
+  return { ok: false, delegateForId: null };
+}
+
+// ─── 画面向けの状態 ─────────────────────────────────────────────────────────
+
+/**
+ * 詳細画面の ActionCard / Stepper が必要とするものすべて。
+ * 直列化可能な素の値だけ（Server Component から Client Component へ渡せる）。
+ */
+export interface ApprovalActionState {
+  phase: ApprovalPhase;
+  /** 現在の段（PENDING 以外は最後に進んでいた段）。 */
+  stepNo: number;
+  stepCount: number;
+  stepLabel: string;
+  groupLabel: string;
+  mode: ApprovalMode;
+  /** ログイン中のユーザーが今この段で承認・差し戻しできるか。 */
+  canAct: boolean;
+  /** ALL 段で、自分の枠は既に埋めたか。 */
+  alreadyActed: boolean;
+  /** ALL 段の未承認者（表示名）。 */
+  remaining: { userId: string; name: string }[];
+  /** フロー全段（Stepper 用）。 */
+  steps: {
+    stepNo: number;
+    label: string;
+    groupLabel: string;
+    mode: ApprovalMode;
+  }[];
+}
+
+const EMPTY_STATE: ApprovalActionState = {
+  phase: "NONE",
+  stepNo: 0,
+  stepCount: 0,
+  stepLabel: "",
+  groupLabel: "",
+  mode: "ANY",
+  canAct: false,
+  alreadyActed: false,
+  remaining: [],
+  steps: [],
+};
+
+function snapshotSteps(snapshot: unknown) {
+  return stepsFromSnapshot(snapshot).map((s) => ({
+    stepNo: s.stepNo,
+    label: localized(s.name),
+    groupLabel: localized(s.groupName),
+    mode: s.mode,
+  }));
+}
+
+/**
+ * 対象の承認状態を組み立てる。PENDING の依頼が無ければ、最後に閉じた依頼
+ * （承認済 / 差し戻し）から phase を決める。どちらも無ければ NONE。
+ */
+export async function fetchApprovalState(
+  targetType: ApprovalTargetType,
+  targetId: string,
+  userId?: string | null,
+): Promise<ApprovalActionState> {
+  const actor = userId ?? (await getCurrentActorId());
+  const pending = await prisma.approvalRequest.findFirst({
+    where: { targetType, targetId, status: "PENDING" },
+    include: {
+      approvers: {
+        include: { user: { select: { displayName: true } } },
+        orderBy: { userId: "asc" },
+      },
+    },
+  });
+
+  if (!pending) {
+    // 閉じた依頼から局面を決める（最後の 1 件）
+    const last = await prisma.approvalRequest.findFirst({
+      where: { targetType, targetId },
+      orderBy: [{ stepNo: "desc" }, { requestedAt: "desc" }],
+    });
+    if (!last) return EMPTY_STATE;
+    const steps = snapshotSteps(last.flowSnapshot);
+    const step = stepFromSnapshot(last.flowSnapshot, last.stepNo);
+    return {
+      ...EMPTY_STATE,
+      phase: last.status === "REJECTED" ? "REJECTED" : "APPROVED",
+      stepNo: last.stepNo,
+      stepCount: last.stepCount,
+      stepLabel: step ? localized(step.name) : "",
+      groupLabel: step ? localized(step.groupName) : "",
+      mode: last.mode as ApprovalMode,
+      steps,
+    };
+  }
+
+  const auth = await resolveApprover(pending.groupId, actor);
+  const step = stepFromSnapshot(pending.flowSnapshot, pending.stepNo);
+  const mode = pending.mode as ApprovalMode;
+  // ALL は「自分（or 代理元）の枠が空いているか」まで見る
+  const slotOwner = auth.delegateForId ?? actor;
+  const mySlot = pending.approvers.find((a) => a.userId === slotOwner);
+  const alreadyActed =
+    mode === "ALL" && mySlot != null && mySlot.actedAt != null;
+  const canAct =
+    auth.ok && (mode === "ANY" || (mySlot != null && mySlot.actedAt == null));
+
+  return {
+    phase: "PENDING",
+    stepNo: pending.stepNo,
+    stepCount: pending.stepCount,
+    stepLabel: step ? localized(step.name) : "",
+    groupLabel: step ? localized(step.groupName) : "",
+    mode,
+    canAct,
+    alreadyActed,
+    remaining:
+      mode === "ALL"
+        ? pending.approvers
+            .filter((a) => a.actedAt == null)
+            .map((a) => ({ userId: a.userId, name: a.user.displayName }))
+        : [],
+    steps: snapshotSteps(pending.flowSnapshot),
+  };
+}
+
+// ─── 遷移 ───────────────────────────────────────────────────────────────────
+
+/** 依頼行 + その段の承認枠をトランザクション内で作る。 */
+async function createStepRequest(
+  tx: Prisma.TransactionClient,
+  input: {
+    targetType: ApprovalTargetType;
+    targetId: string;
+    stepNo: number;
+    stepCount: number;
+    snapshot: FlowStepSnapshot[];
+    requestedBy: string | null;
+    notes?: string;
+  },
+): Promise<{ id: string; groupId: number | null; mode: ApprovalMode }> {
+  const step = input.snapshot.find((s) => s.stepNo === input.stepNo);
+  const row = await tx.approvalRequest.create({
+    data: {
       targetType: input.targetType,
       targetId: input.targetId,
-      step: input.step,
-      status: "PENDING",
+      stepNo: input.stepNo,
+      stepCount: input.stepCount,
+      groupId: step?.groupId ?? null,
+      mode: step?.mode ?? "ANY",
+      flowSnapshot: input.snapshot as unknown as Prisma.InputJsonValue,
+      requestedBy: input.requestedBy,
+      notes: input.notes,
     },
-    select: { id: true },
+    select: { id: true, groupId: true, mode: true },
   });
-  if (existing) return existing.id;
-  let row: { id: string };
-  try {
-    row = await prisma.approvalRequest.create({
-      data: {
-        targetType: input.targetType,
-        targetId: input.targetId,
-        step: input.step,
-        requestedBy: actor,
-        notes: input.notes,
+  // 依頼時点の実効メンバーを承認枠として張る。
+  // ANY では表示・通知用、ALL では必須チェックリストになる。
+  if (step) {
+    const members = await tx.approvalGroupMember.findMany({
+      where: {
+        groupId: step.groupId,
+        group: { isActive: true },
+        ...effectiveMemberWhere(new Date()),
       },
-      select: { id: true },
+      select: { userId: true },
     });
-  } catch (e) {
-    // 同時依頼の一意制約競合（approval_requests_pending_unique）→ 既存を再利用
-    if ((e as { code?: string }).code === "P2002") {
-      const again = await prisma.approvalRequest.findFirst({
-        where: {
-          targetType: input.targetType,
-          targetId: input.targetId,
-          step: input.step,
-          status: "PENDING",
-        },
-        select: { id: true },
+    if (members.length > 0) {
+      await tx.approvalRequestApprover.createMany({
+        data: members.map((m) => ({
+          approvalRequestId: row.id,
+          userId: m.userId,
+        })),
+        skipDuplicates: true,
       });
-      if (again) return again.id;
     }
-    throw e;
   }
-  // 承認グループ（本人 + 期間内代理）へ通知 — 失敗しても依頼は成立させる
+  return { ...row, mode: row.mode as ApprovalMode };
+}
+
+/** 承認者へ「承認してください」を送る（失敗しても業務処理は止めない）。 */
+async function notifyStepStart(
+  targetType: ApprovalTargetType,
+  targetId: string,
+  step: FlowStepSnapshot | undefined,
+  requestId: string,
+): Promise<void> {
+  if (!step) return;
   try {
-    await notifyGroup(input.step === "FIRST" ? "FIRST" : "SECOND", {
+    // ALL 段はまだ押していない対象者だけに送る
+    const userIds =
+      step.mode === "ALL"
+        ? (
+            await prisma.approvalRequestApprover.findMany({
+              where: { approvalRequestId: requestId, actedAt: null },
+              select: { userId: true },
+            })
+          ).map((a) => a.userId)
+        : undefined;
+    await notifyApprovalGroup(step.groupId, {
       type: "APPROVAL_REQUEST",
-      title: `${TARGET_LABELS[input.targetType]} ${input.targetId} の${STEP_LABELS[input.step]}依頼`,
-      message: input.notes ?? undefined,
+      title: `${APPROVAL_TARGET[targetType].label} ${targetId} の${localized(step.name)}依頼`,
       linkPath: "/production/approvals",
+      userIds,
     });
   } catch (e) {
     console.error("[approvals] 承認依頼通知に失敗:", e);
   }
-  return row.id;
 }
 
 /**
- * 承認依頼へ記録を付けて確定する（APPROVED / REJECTED）。
- * groupType の権限（本人 or 代理）を検証し、代理なら原承認者を記録。
+ * 承認フローを開始する（1 段目の依頼を作る）。
+ * 同一対象の PENDING が既にあれば何もしない（冪等 — 二重送信対策）。
  */
-export async function actOnApprovalRequest(input: {
+export async function startApprovalFlow(input: {
   targetType: ApprovalTargetType;
   targetId: string;
-  step: ApprovalStepKind;
-  groupType: ApprovalGroupType;
+  notes?: string;
+}): Promise<{ ok: boolean; error?: string }> {
+  const flow = await getApprovalFlow(input.targetType);
+  if (flow.length === 0) {
+    return {
+      ok: false,
+      error: `${APPROVAL_TARGET[input.targetType].label}の承認フローが未設定です（承認設定 MS0B で設定してください）`,
+    };
+  }
+  const actor = await getCurrentActorId();
+  const snapshot = toSnapshot(flow);
+
+  const existing = await prisma.approvalRequest.findFirst({
+    where: {
+      targetType: input.targetType,
+      targetId: input.targetId,
+      status: "PENDING",
+    },
+    select: { id: true },
+  });
+  if (existing) return { ok: true };
+
+  let created: { id: string };
+  try {
+    created = await prisma.$transaction((tx) =>
+      createStepRequest(tx, {
+        targetType: input.targetType,
+        targetId: input.targetId,
+        stepNo: 1,
+        stepCount: snapshot.length,
+        snapshot,
+        requestedBy: actor,
+        notes: input.notes,
+      }),
+    );
+  } catch (e) {
+    // 同時依頼が部分 unique index（approval_requests_pending_unique）で衝突
+    // → 相手の依頼が成立しているので成功として返す
+    if ((e as { code?: string }).code === "P2002") return { ok: true };
+    throw e;
+  }
+
+  await notifyStepStart(
+    input.targetType,
+    input.targetId,
+    snapshot[0],
+    created.id,
+  );
+  return { ok: true };
+}
+
+export interface ActOnStepResult {
+  ok: boolean;
+  error?: string;
+  /** この段が閉じたか（ALL で枠が残ると false）。 */
+  stepClosed: boolean;
+  /** フロー全段が終わったか。 */
+  flowCompleted: boolean;
+  /** ALL 段の残り人数（閉じていれば 0）。 */
+  remaining: number;
+}
+
+const ACT_FAILED = (error: string): ActOnStepResult => ({
+  ok: false,
+  error,
+  stepClosed: false,
+  flowCompleted: false,
+  remaining: 0,
+});
+
+/**
+ * 現在の段に対して承認 / 差し戻しを記録する。
+ *
+ * 差し戻しは 1 件で段を閉じる（モードに依らない）。承認は ANY なら 1 件、
+ * ALL なら全枠が埋まったときに閉じる。段が閉じてまだ後続があれば、同じ
+ * トランザクションで次段の依頼を作る — スナップショットは進行中の依頼から
+ * 引き継ぐので、途中でフロー定義が変わっても影響されない。
+ */
+export async function actOnCurrentStep(input: {
+  targetType: ApprovalTargetType;
+  targetId: string;
   action: "APPROVED" | "REJECTED";
   comment?: string;
-}): Promise<{ ok: boolean; error?: string }> {
+}): Promise<ActOnStepResult> {
   const actor = await getCurrentActorId();
-  const auth = await resolveApprover(input.groupType, actor);
-  if (!auth.ok || !actor) {
-    return { ok: false, error: "承認権限がありません（代理設定も未該当）" };
-  }
+  if (!actor) return ACT_FAILED("承認権限がありません");
+
   const request = await prisma.approvalRequest.findFirst({
     where: {
       targetType: input.targetType,
       targetId: input.targetId,
-      step: input.step,
       status: "PENDING",
     },
-    select: { id: true, requestedBy: true },
+    include: { approvers: { select: { userId: true, actedAt: true } } },
   });
-  // 依頼行が無い旧データは作ってから確定（後方互換）
-  const requestId =
-    request?.id ??
-    (await createApprovalRequest({
-      targetType: input.targetType,
-      targetId: input.targetId,
-      step: input.step,
-    }));
+  if (!request) return ACT_FAILED("承認待ちの依頼がありません");
 
-  // PENDING の依頼を条件付きで自分がクレームしてから記録を書く —
-  // 同時 承認/差し戻し はどちらか一方だけが成立する（監査 P0-7）。
-  const claimed = await prisma.$transaction(async (tx) => {
-    const res = await tx.approvalRequest.updateMany({
-      where: { id: requestId, status: "PENDING" },
-      data: { status: input.action },
-    });
-    if (res.count !== 1) return false;
+  const auth = await resolveApprover(request.groupId, actor);
+  if (!auth.ok) {
+    return ACT_FAILED("承認権限がありません（代理設定も未該当）");
+  }
+  const mode = request.mode as ApprovalMode;
+  const slotOwner = auth.delegateForId ?? actor;
+  const snapshot = stepsFromSnapshot(request.flowSnapshot);
+  const stepCount = request.stepCount;
+
+  // ALL は自分の枠が空いていることが前提
+  if (mode === "ALL" && input.action === "APPROVED") {
+    const mySlot = request.approvers.find((a) => a.userId === slotOwner);
+    if (!mySlot) {
+      return ACT_FAILED("この段の承認対象者ではありません");
+    }
+    if (mySlot.actedAt != null) {
+      return ACT_FAILED("この段はすでに承認済みです");
+    }
+  }
+
+  const outcome = await prisma.$transaction(async (tx) => {
+    if (input.action === "REJECTED") {
+      // 差し戻しは段を即座に閉じる。条件付き更新で同時実行を 1 件に絞る。
+      const res = await tx.approvalRequest.updateMany({
+        where: { id: request.id, status: "PENDING" },
+        data: { status: "REJECTED" },
+      });
+      if (res.count !== 1) return null;
+      await tx.approvalRecord.create({
+        data: {
+          approvalRequestId: request.id,
+          approverId: actor,
+          delegateForId: auth.delegateForId,
+          action: "REJECTED",
+          comment: input.comment,
+        },
+      });
+      await tx.approvalRequestApprover.updateMany({
+        where: { approvalRequestId: request.id, userId: slotOwner },
+        data: { actedAt: new Date(), actedBy: actor },
+      });
+      return { stepClosed: true, flowCompleted: false, remaining: 0 };
+    }
+
+    // ── 承認 ──
+    if (mode === "ALL") {
+      // 枠を 1 つだけ claim（同時押しはどちらか一方だけが成立）
+      const claimed = await tx.approvalRequestApprover.updateMany({
+        where: {
+          approvalRequestId: request.id,
+          userId: slotOwner,
+          actedAt: null,
+        },
+        data: { actedAt: new Date(), actedBy: actor },
+      });
+      if (claimed.count !== 1) return null;
+    } else {
+      // ANY は依頼行そのものを claim
+      const res = await tx.approvalRequest.updateMany({
+        where: { id: request.id, status: "PENDING" },
+        data: { status: "APPROVED" },
+      });
+      if (res.count !== 1) return null;
+      await tx.approvalRequestApprover.updateMany({
+        where: { approvalRequestId: request.id, userId: slotOwner },
+        data: { actedAt: new Date(), actedBy: actor },
+      });
+    }
+
     await tx.approvalRecord.create({
       data: {
-        approvalRequestId: requestId,
+        approvalRequestId: request.id,
         approverId: actor,
         delegateForId: auth.delegateForId,
-        action: input.action,
+        action: "APPROVED",
         comment: input.comment,
       },
     });
-    return true;
+
+    // トランザクション内で枠を読み直して判定する
+    const slots = await tx.approvalRequestApprover.findMany({
+      where: { approvalRequestId: request.id },
+      select: { userId: true, actedAt: true },
+    });
+    const decision = decideAfterApproval({
+      mode,
+      required: slots,
+      stepNo: request.stepNo,
+      stepCount,
+    });
+
+    if (mode === "ALL" && decision.stepClosed) {
+      await tx.approvalRequest.update({
+        where: { id: request.id },
+        data: { status: "APPROVED" },
+      });
+    }
+
+    let nextRequestId: string | null = null;
+    if (decision.nextStepNo != null) {
+      const next = await createStepRequest(tx, {
+        targetType: input.targetType,
+        targetId: input.targetId,
+        stepNo: decision.nextStepNo,
+        stepCount,
+        snapshot,
+        requestedBy: request.requestedBy,
+      });
+      nextRequestId = next.id;
+    }
+
+    return {
+      stepClosed: decision.stepClosed,
+      flowCompleted: decision.flowCompleted,
+      remaining: decision.stepClosed ? 0 : remainingApprovers(slots).length,
+      nextStepNo: decision.nextStepNo,
+      nextRequestId,
+    };
   });
-  if (!claimed) {
-    return { ok: false, error: "この依頼は既に処理されています" };
+
+  if (!outcome) return ACT_FAILED("この依頼は既に処理されています");
+
+  // ── 通知（tx 外・ベストエフォート） ──
+  const nextStepNo = "nextStepNo" in outcome ? outcome.nextStepNo : null;
+  const nextRequestId =
+    "nextRequestId" in outcome ? outcome.nextRequestId : null;
+  if (nextStepNo != null && nextRequestId) {
+    await notifyStepStart(
+      input.targetType,
+      input.targetId,
+      snapshot.find((s) => s.stepNo === nextStepNo),
+      nextRequestId,
+    );
   }
-  // 依頼者へ結果を通知（自己承認は通知しない）
-  if (request?.requestedBy && request.requestedBy !== actor) {
+  // 依頼者へ結果を伝えるのは、フローが終わった / 差し戻された ときだけ。
+  // 途中の段まで一々知らせると通知が埋まる。
+  const finished = input.action === "REJECTED" || outcome.flowCompleted;
+  if (finished && request.requestedBy && request.requestedBy !== actor) {
     try {
       await notify({
         userIds: [request.requestedBy],
         type: "APPROVAL_RESULT",
-        title: `${TARGET_LABELS[input.targetType]} ${input.targetId} が${
+        title: `${APPROVAL_TARGET[input.targetType].label} ${input.targetId} が${
           input.action === "APPROVED" ? "承認されました" : "差し戻されました"
-        }（${STEP_LABELS[input.step]}）`,
+        }`,
         message: input.comment ?? undefined,
-        linkPath: "/production/approvals",
+        linkPath: APPROVAL_TARGET[input.targetType].href(input.targetId),
       });
     } catch (e) {
       console.error("[approvals] 承認結果通知に失敗:", e);
     }
   }
-  return { ok: true };
+
+  return {
+    ok: true,
+    stepClosed: outcome.stepClosed,
+    flowCompleted: outcome.flowCompleted,
+    remaining: outcome.remaining,
+  };
 }
 
-/** 対象の承認記録（依頼 + 記録、承認者名解決済み）を取得。 */
+/** 進行中の承認を取り下げる（書類のキャンセル時）。承認枠は cascade で消える。 */
+export async function cancelApprovalFlow(input: {
+  targetType: ApprovalTargetType;
+  targetId: string;
+}): Promise<void> {
+  await prisma.approvalRequest.deleteMany({
+    where: {
+      targetType: input.targetType,
+      targetId: input.targetId,
+      status: "PENDING",
+    },
+  });
+}
+
+// ─── 履歴表示 ───────────────────────────────────────────────────────────────
+
+export interface ApprovalTrailEntry {
+  stepNo: number;
+  stepLabel: string;
+  status: string;
+  mode: ApprovalMode;
+  requestedAt: string;
+  /** ALL 段の進捗（ANY 段は null）。 */
+  progress: { approved: number; required: number } | null;
+  records: {
+    approver: string;
+    delegateFor: string | null;
+    action: string;
+    comment: string | null;
+    actedAt: string;
+  }[];
+}
+
+/** 対象の承認記録（依頼 + 記録、承認者名解決済み）を段の昇順で取得。 */
 export async function fetchApprovalTrail(
   targetType: ApprovalTargetType,
   targetId: string,
-): Promise<
-  {
-    step: ApprovalStepKind;
-    status: string;
-    requestedAt: string;
-    records: {
-      approver: string;
-      delegateFor: string | null;
-      action: string;
-      comment: string | null;
-      actedAt: string;
-    }[];
-  }[]
-> {
+): Promise<ApprovalTrailEntry[]> {
   const rows = await prisma.approvalRequest.findMany({
     where: { targetType, targetId },
     include: {
+      approvers: { select: { actedAt: true } },
       records: {
         include: {
           approver: { select: { displayName: true } },
@@ -263,18 +665,43 @@ export async function fetchApprovalTrail(
         orderBy: { actedAt: "asc" },
       },
     },
-    orderBy: { requestedAt: "asc" },
+    orderBy: [{ stepNo: "asc" }, { requestedAt: "asc" }],
   });
-  return rows.map((r) => ({
-    step: r.step,
-    status: r.status,
-    requestedAt: r.requestedAt.toISOString(),
-    records: r.records.map((rec) => ({
-      approver: rec.approver.displayName,
-      delegateFor: rec.delegateFor?.displayName ?? null,
-      action: rec.action,
-      comment: rec.comment,
-      actedAt: rec.actedAt.toISOString(),
-    })),
-  }));
+  return rows.map((r) => {
+    const step = stepFromSnapshot(r.flowSnapshot, r.stepNo);
+    const mode = r.mode as ApprovalMode;
+    return {
+      stepNo: r.stepNo,
+      stepLabel: step ? localized(step.name) : `${r.stepNo} 段目`,
+      status: r.status,
+      mode,
+      requestedAt: r.requestedAt.toISOString(),
+      progress:
+        mode === "ALL"
+          ? {
+              approved: r.approvers.filter((a) => a.actedAt != null).length,
+              required: r.approvers.length,
+            }
+          : null,
+      records: r.records.map((rec) => ({
+        approver: rec.approver.displayName,
+        delegateFor: rec.delegateFor?.displayName ?? null,
+        action: rec.action,
+        comment: rec.comment,
+        actedAt: rec.actedAt.toISOString(),
+      })),
+    };
+  });
+}
+
+/** 書類種別の 1 段目の承認グループ（フロー外からの通知宛先に使う）。 */
+export async function firstStepGroupId(
+  targetType: ApprovalTargetType,
+): Promise<number | null> {
+  const row = await prisma.approvalFlowStep.findFirst({
+    where: { targetType },
+    orderBy: { stepNo: "asc" },
+    select: { groupId: true },
+  });
+  return row?.groupId ?? null;
 }

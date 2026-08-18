@@ -4,7 +4,7 @@
 --
 -- 前提: rbac-seed.sql（permissions 18 コード + admin/staff ロール）適用済み。
 -- 本番ではここで定義するロールを実ユーザーへ割り当てる（user_role_relation）。
--- 承認（APPROVE）は権限に加えて承認グループ所属（approval_group_members）が
+-- 承認（APPROVE）は権限に加えて、その段の承認グループ所属（approval_group_members）が
 -- 実ゲートである点に注意 — 権限はコード×アクションの門番のみ。
 --
 -- 管理系 2 コードは業務ロールに配らない:

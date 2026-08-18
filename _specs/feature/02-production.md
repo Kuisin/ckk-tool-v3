@@ -82,27 +82,34 @@
 |------|------|
 | `/production/approvals` | 承認待ち一覧（自分が承認者のもの） |
 | `/production/approvals/[id]` | 承認詳細・承認操作 |
-| `/master/approval-groups` | 承認グループ一覧 |
-| `/master/approval-groups/new` | 承認グループ新規作成 |
-| `/master/approval-groups/[id]` | 承認グループ詳細 |
-| `/master/approval-groups/[id]/edit` | 承認グループ編集（代理設定含む） |
+| `/master/approval-settings` | 承認設定（承認フロー / 承認グループ のタブ） |
+| `/master/approval-settings/flows/[targetType]` | 書類種別ごとの承認フロー編集 |
+| `/master/approval-settings/new` | 承認グループ新規作成 |
+| `/master/approval-settings/[id]` | 承認グループ詳細 |
+| `/master/approval-settings/[id]/edit` | 承認グループ編集 |
 
 ### 主要機能
 
-- 第一承認: 工場長・部長クラス（負荷・日程・設備の判断）
-- 第二承認: 部長クラス（コスト・優先度の判断）
+- 承認フロー: 書類種別ごとに段を定義（`approval_flow_steps`）。段 = 名称 + 承認
+  グループ + 成立条件（`ANY` = いずれか 1 名 / `ALL` = 全員）。承認設定 MS0B で編集
+- 期間限定メンバー: `approval_group_members.valid_from/valid_until`
+  （両方 NULL = 常任）。代理とは別概念
 - 期間限定代理設定: `approval_delegates` テーブル
 - 承認依頼中のロック: 受注数量・製品品目を変更不可にする
 - リアルタイム通知: SSE + Valkey Pub/Sub（`app/api/sse/approvals/route.ts`）
 - 承認ログ記録: `approval_records` テーブル（承認者・日時・コメント）
-- 進行中の製造ワークフロー変更承認: 専用承認グループ（`WORKFLOW_CHANGE`）
 
 ### 業務ルール
 
-- 承認グループタイプ: `FIRST`（第一）/ `SECOND`（第二）/ `WORKFLOW_CHANGE`（製造変更）
-- 承認ステータス遷移: `NONE → PENDING_1ST → APPROVED_1ST → PENDING_2ND → APPROVED / REJECTED`
+- 承認グループは種別を持たない — 何段目で使うかは `approval_flow_steps` が決める
+- 承認ステータス遷移: `NONE → PENDING → APPROVED / REJECTED`（何段目かは
+  `approval_requests.step_no`）
+- 依頼時にフロー全段を `approval_requests.flow_snapshot` へ写す。**進行中の書類は
+  後からフロー定義を編集されても当時の段数のまま進む**
+- 1 書類につき `PENDING` の依頼は常に 1 行（部分 unique index）。段 N を閉じるのと
+  段 N+1 を作るのは同一トランザクション
 - 承認階層参考: 主任 → 係長 → 課長（工場長）→ 部長 → 社長
-- 製造ワークフロー変更は即時反映＋変更専用グループ承認が必要
+- 製造ワークフロー変更は即時反映（変更承認は未実装 — 監査記録のみ）
 
 ---
 

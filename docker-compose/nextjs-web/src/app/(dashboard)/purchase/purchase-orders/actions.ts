@@ -9,7 +9,7 @@
  *   指示書の承認と同型の row-workflow: 遷移列（at/by）+ history Json + audit。
  *   加えて承認依頼・記録を approval_requests / approval_records へ正規化する
  *   （§6 本実装 — PD03 横断表示・代理対応）。承認可否は actOnApprovalRequest
- *   内で判定（第一承認グループの本人メンバー or 有効期間内の代理）。
+ *   内で判定（その段の承認グループの本人メンバー or 有効期間内の代理）。
  * - ORDERED になった明細は lib/atp.ts が「入荷予定」として自動的に読む
  *   （追加の連携処理は不要）。
  * - COMPLETED 時は明細ごとに MaterialReceipt を全量入荷で作成し、
@@ -19,10 +19,11 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import {
-  actOnApprovalRequest,
+  actOnCurrentStep,
   appendHistory,
-  createApprovalRequest,
+  assertFlowConfigured,
   type HistoryEntry,
+  startApprovalFlow,
 } from "@/lib/approvals";
 import { getCurrentActorId, recordAudit } from "@/lib/audit";
 import { checkPermission } from "@/lib/authz";
@@ -247,6 +248,9 @@ export async function requestPurchaseApproval(
       return actionError("作成中の素材発注書のみ承認依頼できます");
     }
     const actor = await getCurrentActorId();
+    // フローが無いと依頼を出しても誰も承認できないので、状態を変える前に確かめる
+    const flowError = await assertFlowConfigured("material_purchase_orders");
+    if (flowError) return actionError(flowError);
     await prisma.materialPurchaseOrder.update({
       where: { id: prior.id },
       data: {
@@ -258,12 +262,13 @@ export async function requestPurchaseApproval(
         ),
       },
     });
-    // 正規化された承認依頼行（PD03 横断表示・承認記録の紐付け先）。
-    await createApprovalRequest({
+    // 1 段目の承認依頼を作る（PD03 横断表示・承認記録の紐付け先）。
+    const started = await startApprovalFlow({
       targetType: "material_purchase_orders",
       targetId: poNumber,
-      step: "FIRST",
     });
+    if (!started.ok)
+      return actionError(started.error ?? "承認依頼に失敗しました");
     await recordAudit({
       action: "UPDATE",
       tableName: "material_purchase_orders",
@@ -278,12 +283,12 @@ export async function requestPurchaseApproval(
   }
 }
 
-/** 承認 — REQUESTED → APPROVED。第一承認グループのメンバーのみ。 */
+/** 承認 — 現在の段に承認を記録し、全段通過で APPROVED。 */
 export async function approvePurchaseOrder(
   poNumber: string,
 ): Promise<ActionResult> {
   // 権限コード上の APPROVE に加え、承認グループ所属（本人 or 代理）は
-  // 引き続き actOnApprovalRequest 内で検証する。
+  // 引き続き actOnCurrentStep 内で検証する。
   const authz = await checkPermission("purchase_order", "APPROVE");
   if (!authz.ok) return actionError(authz.error);
   try {
@@ -295,15 +300,28 @@ export async function approvePurchaseOrder(
       return actionError("承認依頼中の素材発注書ではありません");
     }
     // 承認権限（本人 or 代理）を検証しつつ承認記録を書き、依頼を確定する。
-    const acted = await actOnApprovalRequest({
+    const acted = await actOnCurrentStep({
       targetType: "material_purchase_orders",
       targetId: poNumber,
-      step: "FIRST",
-      groupType: "FIRST",
       action: "APPROVED",
     });
     if (!acted.ok) return actionError(acted.error ?? "承認の権限がありません");
     const actor = await getCurrentActorId();
+    // 全段を通過して初めて APPROVED。途中の段は REQUESTED のまま進む。
+    if (!acted.flowCompleted) {
+      await recordAudit({
+        action: "UPDATE",
+        tableName: "material_purchase_orders",
+        recordId: poNumber,
+        after: {
+          note: acted.stepClosed
+            ? "承認（次の段へ）"
+            : `承認（この段の残り ${acted.remaining} 名）`,
+        },
+      });
+      revalidate(poNumber);
+      return actionOk();
+    }
     await prisma.materialPurchaseOrder.update({
       where: { id: prior.id },
       data: {
@@ -329,13 +347,13 @@ export async function approvePurchaseOrder(
   }
 }
 
-/** 差し戻し — REQUESTED → DRAFT（理由必須）。承認グループのメンバーのみ。 */
+/** 差し戻し — REQUESTED → DRAFT（理由必須）。現在の段の承認者のみ。 */
 export async function rejectPurchaseOrder(
   poNumber: string,
   reason: string,
 ): Promise<ActionResult> {
   // 権限コード上の APPROVE に加え、承認グループ所属（本人 or 代理）は
-  // 引き続き actOnApprovalRequest 内で検証する。
+  // 引き続き actOnCurrentStep 内で検証する。
   const authz = await checkPermission("purchase_order", "APPROVE");
   if (!authz.ok) return actionError(authz.error);
   const trimmed = reason.trim();
@@ -349,11 +367,9 @@ export async function rejectPurchaseOrder(
       return actionError("承認依頼中の素材発注書ではありません");
     }
     // 差し戻しを承認記録として書き、依頼を確定する（権限検証込み）。
-    const acted = await actOnApprovalRequest({
+    const acted = await actOnCurrentStep({
       targetType: "material_purchase_orders",
       targetId: poNumber,
-      step: "FIRST",
-      groupType: "FIRST",
       action: "REJECTED",
       comment: trimmed,
     });

@@ -7,15 +7,7 @@
  * 一括有効化・無効化・削除。
  */
 
-import {
-  Badge,
-  Group,
-  Paper,
-  Select,
-  Stack,
-  Text,
-  TextInput,
-} from "@mantine/core";
+import { Group, Paper, Select, Stack, Text, TextInput } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import {
   IconCheck,
@@ -30,7 +22,7 @@ import { useState, useTransition } from "react";
 import {
   deleteApprovalGroups,
   setApprovalGroupsActive,
-} from "@/app/(dashboard)/master/approval-groups/actions";
+} from "@/app/(dashboard)/master/approval-settings/actions";
 import { ActiveBadge } from "@/components/ui/ActiveBadge";
 import { type Column, DataTable } from "@/components/ui/DataTable";
 import { openConfirm } from "@/components/ui/modals";
@@ -39,36 +31,17 @@ import { ListShell } from "@/components/ui/shells";
 import { useUrlSelectState, useUrlStringState } from "@/hooks/useUrlState";
 import { useIsMobile } from "@/hooks/useViewport";
 import {
-  APPROVAL_GROUP_TYPE_LABEL,
-  APPROVAL_GROUP_TYPE_OPTIONS,
-} from "@/lib/enum-labels";
-import {
   type ApprovalGroupModalTarget,
   DeleteApprovalGroupModal,
   ToggleApprovalGroupActiveModal,
 } from "./ApprovalGroupModals";
 
-const BASE_PATH = "/master/approval-groups";
+const BASE_PATH = "/master/approval-settings";
 
 /** 種別バッジ（FIRST=blue / SECOND=violet / WORKFLOW_CHANGE=orange）。 */
-const TYPE_COLOR: Record<string, string> = {
-  FIRST: "blue",
-  SECOND: "violet",
-  WORKFLOW_CHANGE: "orange",
-};
-
-export function ApprovalGroupTypeBadge({ type }: { type: string }) {
-  return (
-    <Badge color={TYPE_COLOR[type] ?? "gray"} variant="light">
-      {APPROVAL_GROUP_TYPE_LABEL[type] ?? type}
-    </Badge>
-  );
-}
-
 export interface ApprovalGroupRow {
   id: number;
   name: string;
-  type: string;
   memberCount: number;
   isActive: boolean;
 }
@@ -78,14 +51,20 @@ const STATUS_OPTIONS = [
   { value: "inactive", label: "無効" },
 ];
 
-export function ApprovalGroupTable({ rows }: { rows: ApprovalGroupRow[] }) {
+export function ApprovalGroupTable({
+  rows,
+  /** タブの中で使うとき true — 画面ヘッダは親が 1 つだけ出す。 */
+  embedded = false,
+}: {
+  rows: ApprovalGroupRow[];
+  embedded?: boolean;
+}) {
   const router = useRouter();
   const isMobile = useIsMobile();
   const [, startTransition] = useTransition();
 
   // 検索・フィルタは URL search params に保持（design.md §8.1 / ページ共有）
   const [search, setSearch] = useUrlStringState("q");
-  const [typeFilter, setTypeFilter] = useUrlSelectState("type");
   const [statusFilter, setStatusFilter] = useUrlSelectState("status");
 
   const [deleteRow, setDeleteRow] = useState<ApprovalGroupModalTarget | null>(
@@ -97,16 +76,14 @@ export function ApprovalGroupTable({ rows }: { rows: ApprovalGroupRow[] }) {
 
   const reset = () => {
     setSearch(null);
-    setTypeFilter(null);
     setStatusFilter(null);
   };
 
   const filtered = rows.filter((r) => {
     const matchesSearch = !search || r.name.includes(search);
-    const matchesType = !typeFilter || r.type === typeFilter;
     const matchesStatus =
       !statusFilter || (statusFilter === "active" ? r.isActive : !r.isActive);
-    return matchesSearch && matchesType && matchesStatus;
+    return matchesSearch && matchesStatus;
   });
 
   const bulkSetActive = (targets: ApprovalGroupRow[], isActive: boolean) => {
@@ -168,14 +145,6 @@ export function ApprovalGroupTable({ rows }: { rows: ApprovalGroupRow[] }) {
       render: (r) => r.name,
     },
     {
-      key: "type",
-      header: "種別",
-      sortable: true,
-      width: 200,
-      sortValue: (r) => r.type,
-      render: (r) => <ApprovalGroupTypeBadge type={r.type} />,
-    },
-    {
       key: "memberCount",
       header: "メンバー数",
       sortable: true,
@@ -198,29 +167,17 @@ export function ApprovalGroupTable({ rows }: { rows: ApprovalGroupRow[] }) {
   return (
     <ListShell
       action={<NewButton href={`${BASE_PATH}/new`} />}
-      breadcrumbs={["マスタ", "承認グループ"]}
-      filters={
-        <>
-          <Select
-            clearable
-            data={APPROVAL_GROUP_TYPE_OPTIONS}
-            onChange={setTypeFilter}
-            placeholder="種別"
-            style={isMobile ? { flex: 1 } : undefined}
-            value={typeFilter}
-            w={isMobile ? undefined : 200}
-          />
-          <Select
-            clearable
-            data={STATUS_OPTIONS}
-            onChange={setStatusFilter}
-            placeholder="状態"
-            style={isMobile ? { flex: 1 } : undefined}
-            value={statusFilter}
-            w={isMobile ? undefined : 120}
-          />
-        </>
-      }
+      breadcrumbs={["マスタ", "承認設定"]}
+      embedded={embedded}
+      filters=<Select
+        clearable
+        data={STATUS_OPTIONS}
+        onChange={setStatusFilter}
+        placeholder="状態"
+        style={isMobile ? { flex: 1 } : undefined}
+        value={statusFilter}
+        w={isMobile ? undefined : 120}
+      />
       onReset={reset}
       search={
         <TextInput
@@ -230,7 +187,7 @@ export function ApprovalGroupTable({ rows }: { rows: ApprovalGroupRow[] }) {
           value={search}
         />
       }
-      title="承認グループ"
+      title="承認設定"
     >
       <DataTable
         bulkActions={[
@@ -268,12 +225,9 @@ export function ApprovalGroupTable({ rows }: { rows: ApprovalGroupRow[] }) {
                 <Text fw={600} size="sm" truncate>
                   {r.name}
                 </Text>
-                <Group gap="md" mt={2}>
-                  <ApprovalGroupTypeBadge type={r.type} />
-                  <Text c="dimmed" size="xs">
-                    {r.memberCount}名
-                  </Text>
-                </Group>
+                <Text c="dimmed" size="xs">
+                  {r.memberCount}名
+                </Text>
               </Stack>
               <ActiveBadge active={r.isActive} />
             </Group>

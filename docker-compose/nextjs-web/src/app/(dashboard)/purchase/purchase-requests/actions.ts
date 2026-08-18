@@ -18,10 +18,11 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import {
-  actOnApprovalRequest,
+  actOnCurrentStep,
   appendHistory,
-  createApprovalRequest,
+  assertFlowConfigured,
   type HistoryEntry,
+  startApprovalFlow,
 } from "@/lib/approvals";
 import { getCurrentActorId, recordAudit } from "@/lib/audit";
 import { checkPermission } from "@/lib/authz";
@@ -224,6 +225,9 @@ export async function requestPurchaseRequestApproval(
       return actionError("下書き・差し戻しの購買依頼のみ承認依頼できます");
     }
     const actor = await getCurrentActorId();
+    // フローが無いと依頼を出しても誰も承認できないので、状態を変える前に確かめる
+    const flowError = await assertFlowConfigured("purchase_requests");
+    if (flowError) return actionError(flowError);
     await prisma.purchaseRequest.update({
       where: { id: prior.id },
       data: {
@@ -235,13 +239,14 @@ export async function requestPurchaseRequestApproval(
         ),
       },
     });
-    // 正規化された承認依頼行（PD03 横断表示・承認記録の紐付け先 +
-    // 第一承認グループへの自動通知）。
-    await createApprovalRequest({
+    // 1 段目の承認依頼を作る（PD03 横断表示・承認記録の紐付け先 +
+    // その段の承認グループへの自動通知）。
+    const started = await startApprovalFlow({
       targetType: "purchase_requests",
       targetId: requestNumber,
-      step: "FIRST",
     });
+    if (!started.ok)
+      return actionError(started.error ?? "承認依頼に失敗しました");
     await recordAudit({
       action: "UPDATE",
       tableName: "purchase_requests",
@@ -256,12 +261,12 @@ export async function requestPurchaseRequestApproval(
   }
 }
 
-/** 承認 — REQUESTED → APPROVED。第一承認グループのメンバーのみ。 */
+/** 承認 — 現在の段に承認を記録し、全段通過で APPROVED。 */
 export async function approvePurchaseRequest(
   requestNumber: string,
 ): Promise<ActionResult> {
   // 権限コード上の APPROVE に加え、承認グループ所属（本人 or 代理）は
-  // 引き続き actOnApprovalRequest 内で検証する。
+  // 引き続き actOnCurrentStep 内で検証する。
   const authz = await checkPermission("purchase_order", "APPROVE");
   if (!authz.ok) return actionError(authz.error);
   try {
@@ -273,15 +278,28 @@ export async function approvePurchaseRequest(
       return actionError("承認依頼中の購買依頼ではありません");
     }
     // 承認権限（本人 or 代理）を検証しつつ承認記録を書き、依頼を確定する。
-    const acted = await actOnApprovalRequest({
+    const acted = await actOnCurrentStep({
       targetType: "purchase_requests",
       targetId: requestNumber,
-      step: "FIRST",
-      groupType: "FIRST",
       action: "APPROVED",
     });
     if (!acted.ok) return actionError(acted.error ?? "承認の権限がありません");
     const actor = await getCurrentActorId();
+    // 全段を通過して初めて APPROVED。途中の段は REQUESTED のまま進む。
+    if (!acted.flowCompleted) {
+      await recordAudit({
+        action: "UPDATE",
+        tableName: "purchase_requests",
+        recordId: requestNumber,
+        after: {
+          note: acted.stepClosed
+            ? "承認（次の段へ）"
+            : `承認（この段の残り ${acted.remaining} 名）`,
+        },
+      });
+      revalidate(requestNumber);
+      return actionOk();
+    }
     await prisma.purchaseRequest.update({
       where: { id: prior.id },
       data: {
@@ -313,7 +331,7 @@ export async function rejectPurchaseRequest(
   reason: string,
 ): Promise<ActionResult> {
   // 権限コード上の APPROVE に加え、承認グループ所属（本人 or 代理）は
-  // 引き続き actOnApprovalRequest 内で検証する。
+  // 引き続き actOnCurrentStep 内で検証する。
   const authz = await checkPermission("purchase_order", "APPROVE");
   if (!authz.ok) return actionError(authz.error);
   const trimmed = reason.trim();
@@ -327,11 +345,9 @@ export async function rejectPurchaseRequest(
       return actionError("承認依頼中の購買依頼ではありません");
     }
     // 差し戻しを承認記録として書き、依頼を確定する（権限検証込み）。
-    const acted = await actOnApprovalRequest({
+    const acted = await actOnCurrentStep({
       targetType: "purchase_requests",
       targetId: requestNumber,
-      step: "FIRST",
-      groupType: "FIRST",
       action: "REJECTED",
       comment: trimmed,
     });

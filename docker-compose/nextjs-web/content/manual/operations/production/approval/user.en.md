@@ -31,7 +31,7 @@ These are the documents that appear in the list.
 ## Before you start
 
 - To approve or send back, **you must be in the approval group for that stage**. If you are not, the buttons do not appear on the screen.
-- Being added to a group and setting up stand-ins is done in [approval group](/manual/en/operations/masters/approval-group/user). It is not something you set up yourself, so please ask an administrator when you need it.
+- Being added to a group and setting up stand-ins is done in [approval group](/manual/en/operations/masters/approval-setting/user). It is not something you set up yourself, so please ask an administrator when you need it.
 
 ## How to read the screen
 
@@ -53,14 +53,14 @@ When you open the app, the documents waiting for approval are listed.
 
 1. Click a row in the list. The screen for that document opens.
 2. For a work order, 「**承認状況**」 (approval status) is near the top of the screen and shows which stage it is at.
-3. If it is your turn to approve, the 「**第一承認**」 (First approval) or 「**第二承認**」 (Second approval) button appears. On documents other than work orders, it is simply 「**承認**」 (Approve).
+3. If it is your turn to approve, the 「**承認**」 (Approve) button appears.
 4. Check the content and press the button.
 
 ![Approval status shown on the work order screen](../../../assets/screenshots/approval-panel-01.png)
 
 A work order goes through **first approval → second approval**, two stages. Once the second approval is done, the factory can start the work.
 
-> 💡 Only people in the approval group for that stage, and stand-ins within their period, can approve. If the button does not appear, the screen shows 「第一承認グループのメンバーのみ承認・差し戻しできます」 (Only members of the first approval group can approve or send back).
+> 💡 Only people in the approval group for that step, and stand-ins within their period, can approve. If the button does not appear, the screen shows 「◯◯ のメンバーのみ承認・差し戻しできます」 with the group name (Only members of that group can approve or send back).
 
 ## Sending back
 
@@ -119,4 +119,4 @@ A. The reason is still empty. A reason is required, so please write it and press
 A. Another person who can approve may have dealt with it first. Requests that have been dealt with disappear from this list automatically. You can still open the document itself from its own app.
 
 **Q. Approvals stop while I am away.**
-A. A stand-in can be set up for a set period. This is set in [approval group](/manual/en/operations/masters/approval-group/user), so please ask an administrator.
+A. A stand-in can be set up for a set period. This is set in [approval group](/manual/en/operations/masters/approval-setting/user), so please ask an administrator.

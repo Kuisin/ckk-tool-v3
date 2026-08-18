@@ -178,6 +178,7 @@ export function ListShell({
   search,
   filters,
   onReset,
+  embedded = false,
   children,
 }: {
   breadcrumbs: Crumb[];
@@ -186,6 +187,8 @@ export function ListShell({
   search?: ReactNode;
   filters?: ReactNode;
   onReset?: () => void;
+  /** タブの中など、画面ヘッダを親が出すとき true（見出しだけ省く）。 */
+  embedded?: boolean;
   children: ReactNode;
 }) {
   const isMobile = useIsMobile();
@@ -193,7 +196,11 @@ export function ListShell({
 
   return (
     <Stack gap="md">
-      <PageHeader actions={action} breadcrumbs={breadcrumbs} title={title} />
+      {embedded ? (
+        action && <Group justify="flex-end">{action}</Group>
+      ) : (
+        <PageHeader actions={action} breadcrumbs={breadcrumbs} title={title} />
+      )}
       <Paper p="sm" shadow="xs">
         {hasFilters &&
           (isMobile ? (

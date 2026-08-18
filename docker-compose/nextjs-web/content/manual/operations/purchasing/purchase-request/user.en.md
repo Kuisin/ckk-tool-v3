@@ -175,7 +175,7 @@ Notes for that material only, such as asking for the same lot as last time.
 ## Questions and problems
 
 **Q. The 「承認」 (Approve) and 「差し戻し」 (Send back) buttons do not appear.**
-A. Only people in the first approval group (or a stand-in for them) can approve. Instead of the buttons, the screen shows 「**第一承認グループのメンバーのみ承認・差し戻しできます**」 (Only members of the first approval group can approve or send back).
+A. Only people in that step's approval group (or a stand-in for them) can approve. Instead of the buttons, the screen shows 「**◯◯ のメンバーのみ承認・差し戻しできます**」 with the group name (Only members of that group can approve or send back).
 
 **Q. The 「編集」 (Edit) button does not appear.**
 A. You can only change a request while it is 「下書き」 (draft) or 「差し戻し」 (sent back). You cannot change it while it is waiting for approval, approved, or ordered. If you try anyway, the screen shows 「**下書き・差し戻しの購買依頼のみ編集できます**」 (Only draft or sent-back purchase requests can be edited).

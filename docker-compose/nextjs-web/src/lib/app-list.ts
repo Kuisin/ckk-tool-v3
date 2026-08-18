@@ -298,10 +298,12 @@ export const appList: AppEntry[] = [
     requiredPermission: "master",
   },
   {
+    // key は feature_flags のキー（app:<key>:main）— 変えると main で
+    // アプリが消えるので、改称してもキーは据え置く。
     key: "master-approval-groups",
-    label: "承認グループ",
+    label: "承認設定",
     operationCode: "MS0B",
-    href: "/master/approval-groups",
+    href: "/master/approval-settings",
     icon: "IconUsersGroup",
     category: "マスタ",
     requiredPermission: "master",

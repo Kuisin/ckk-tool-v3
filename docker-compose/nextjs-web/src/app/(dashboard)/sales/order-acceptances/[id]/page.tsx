@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import { OrderAcceptanceDetail } from "@/components/sales/order-acceptances/OrderAcceptanceDetail";
-import { fetchApprovalTrail, isApprover } from "@/lib/approvals";
+import { fetchApprovalState, fetchApprovalTrail } from "@/lib/approvals";
 import { listAttachments } from "@/lib/attachments";
 import { fetchAuditEntries } from "@/lib/audit";
 import { requireAppRead } from "@/lib/authz-page";
@@ -42,14 +42,14 @@ export default async function OrderLineAcceptancesDetailPage({
     attachments,
     memos,
     approvalTrail,
-    canApprove,
+    approval,
   ] = await Promise.all([
     fetchOrderAcceptance(key),
     fetchAuditEntries("order_acceptances", number),
     listAttachments("order_acceptances", number),
     listMemos("order_acceptances", number),
     fetchApprovalTrail("order_acceptances", number),
-    isApprover("FIRST"),
+    fetchApprovalState("order_acceptances", number),
   ]);
   if (!acceptance) notFound();
 
@@ -64,10 +64,10 @@ export default async function OrderLineAcceptancesDetailPage({
   return (
     <OrderAcceptanceDetail
       acceptance={acceptance}
+      approval={approval}
       approvalTrail={approvalTrail}
       attachments={attachments}
       auditEntries={auditEntries}
-      canApprove={canApprove}
       memos={memos}
       priceCheck={priceCheck}
     />

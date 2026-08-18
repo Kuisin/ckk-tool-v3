@@ -207,7 +207,7 @@ export function WorkOrderTable({
             data={
               isApprovals
                 ? statusOptions("WorkOrderApproval").filter((o) =>
-                    ["PENDING_1ST", "PENDING_2ND"].includes(o.value),
+                    ["PENDING"].includes(o.value),
                   )
                 : statusOptions("WorkOrder")
             }

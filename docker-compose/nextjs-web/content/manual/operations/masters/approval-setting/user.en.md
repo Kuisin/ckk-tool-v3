@@ -1,0 +1,205 @@
+---
+title: "Approval Settings — User Manual"
+description: "An app for deciding how many approval steps each document goes through, and who can approve each step. You can also register a stand-in who approves for someone who is away, for a set period."
+screenshots: [master-approval-setting-list-01, master-approval-setting-new-01, master-approval-setting-members-01, master-approval-setting-member-add-01, master-approval-setting-delegate-add-01]
+---
+This app is for deciding **how many approval steps each document goes through** and **who can approve**. The operation code is `MS0B`.
+
+You line up the approval steps a document must pass before it can be confirmed, per document type. Each step names a group, and only the people in that group can approve it. **A person who is not in the group cannot approve.**
+
+## What you can do with this app
+
+- Set an **approval flow** per document (which group approves at which step).
+- Choose per step whether **any one person** is enough, or **everyone** must approve.
+- Make **groups** of people who approve.
+- Add and remove **members** in a group — permanent members, or members **for a set period**.
+- When the person in charge is away on a business trip or on holiday, register a **stand-in** (a person who approves instead) for a set period.
+- Stop a group you no longer use without deleting any records.
+
+## Words used on this page
+
+- **Approval** … checking the content and agreeing that it may go ahead.
+- **Approval flow** … the order of approvals a document passes before it is confirmed. One flow per document type.
+- **Step** … one approval in the flow. You can name it freely ("First approval", "Department approval", …).
+- **Group** … a set of people who can approve. An approval request goes to this group, not to a person.
+- **Member** … a person who can approve in that group. Only these people can approve.
+- **Fixed-term member** … a person who is part of the group, and can approve, only during a set period.
+- **Stand-in** … a person who approves **on behalf of** the real approver while they are away. The approval record keeps who they stood in for.
+
+> 💡 **A fixed-term member is not the same as a stand-in.** A fixed-term member is a member in their own right, just for that period. A stand-in presses the button for someone else, and the original approver's name stays in the record. Use a fixed-term member for a temporary transfer or extra help; use a stand-in to cover someone's absence.
+
+## Before you start
+
+- You need the **master** permission to use this app.
+- You can only add people who are already registered in the system. If a name does not appear, check that their company account has been created first.
+
+## How the screen is laid out
+
+Opening the app shows two tabs.
+
+- **Approval flows** … the approval steps per document (the tab that opens first).
+- **Approval groups** … the list of groups of people who can approve.
+
+## Setting an approval flow
+
+The **Approval flows** tab lists the four documents that need approval.
+
+> 📷 A screenshot of this screen will be added at the next capture run.
+
+- The four are **Order acknowledgement**, **Work order**, **Material purchase order** and **Purchase request**.
+- Each card lists its steps as "1 First approval · Plant manager · Any one person".
+- A document with no approval flow is shown with a red border and the note that **no approval can be requested for it**. In that state the request button will not take you anywhere, so be sure to set one up.
+
+To set it up, press **Edit** on the card (**Set up** when it is empty).
+
+1. Press **Add step** to add one approval step.
+2. Enter a **Name** for the step (for example First approval, Department approval).
+3. Choose the **Approval group** that approves that step.
+4. Choose **Any one person** or **Everyone**.
+   - **Any one person** … the step passes as soon as one person in the group approves.
+   - **Everyone** … the flow does not move on until every member of that group has approved.
+5. To change the order, swap steps with the **↑** and **↓** buttons. The step numbers are renumbered for you.
+6. Remove a step you do not need with the **bin** button.
+7. Press **Save**.
+
+> ⚠️ **Changing the settings does not affect documents that are already in approval.** A document in progress runs to the end with the settings as they were when the approval was requested. Changes apply to approval requests made from now on.
+
+## Making a group
+
+Open the **Approval groups** tab and press **New** at the top right.
+
+![Approval group list screen](../../../assets/screenshots/master-approval-setting-list-01.png)
+
+1. Enter the group's name in the Japanese field of **Name** (for example Plant manager, Manufacturing manager). English can be left empty.
+2. Press **Save**.
+
+![Approval group creation form](../../../assets/screenshots/master-approval-setting-new-01.png)
+
+Saving opens the detail screen. Add members there. The group you made can then be chosen for any step of any approval flow.
+
+> 💡 A group does not itself know "which step" it is. You can use the same group for several documents and several steps.
+
+## Adding members (adding people who can approve)
+
+1. On the group's detail screen, open the **Members** tab.
+2. Press **Add member**.
+3. Type a name in **Search by name or username** and pick the person to add.
+4. Leave **Permanent** selected if they should approve indefinitely. To set a period, choose **Fixed term** and enter **Start** and **End**. Add a **Note** with the reason if you like.
+5. Press **Add**.
+
+![Members tab of an approval group](../../../assets/screenshots/master-approval-setting-members-01.png)
+
+![Member add screen](../../../assets/screenshots/master-approval-setting-member-add-01.png)
+
+The member table shows **Name / Username / Term / State**. The state is one of:
+
+- **Permanent** … no period set; can always approve.
+- **Active** … fixed term, and currently inside the period. Can approve.
+- **Scheduled** … fixed term, but the start has not been reached. Cannot approve yet.
+- **Ended** … fixed term, and the end has passed. Can no longer approve.
+- **Disabled** … stopped by hand; cannot approve regardless of the period.
+
+The buttons on the right of each row let you **change the term**, stop that member temporarily (**Disable member**), or take them out of the group (**Remove member**).
+
+> 💡 Use "Disable" for stepping away from approvals for a while, "Remove" when the person is no longer involved, and "Fixed term" when the end is known in advance.
+
+## Registering a stand-in (cover for someone who is away)
+
+When an approver is away on a business trip or on holiday, you can hand approval to someone else for a set period.
+
+1. On the group's detail screen, open the **Stand-ins** tab.
+2. Press **Add stand-in**.
+3. Choose the real approver in **Original approver**. Only members who can currently approve in this group appear here.
+4. Choose the person who approves instead in **Stand-in**.
+5. Enter **Period (start)** and **Period (end)**.
+6. Add a **Reason** such as "business trip / holiday" if you like (it can be left empty).
+7. Press **Add**.
+
+![Stand-in add screen](../../../assets/screenshots/master-approval-setting-delegate-add-01.png)
+
+Once the registered period passes, the stand-in stops working automatically. You do not need to delete it by hand. To end it early, delete the row from the stand-in table.
+
+## Checking what is in a group
+
+The detail screen has four tabs.
+
+- **Group information** … check the name.
+- **Members** … the list of people who can approve, with their term and state.
+- **Stand-ins** … the stand-ins currently registered, with original approver, stand-in, period and reason.
+- **History** … a record of who changed members or stand-ins, and when.
+
+To correct the name, press **Edit** at the top right. The **…** button (three dots) next to it offers **Disable** and **Delete**.
+
+## Input fields
+
+The fields you enter on the approval flow and approval group screens.
+
+| Field | What to enter |
+|-------|---------------|
+| [Step name](#field-step-name) | What that approval step is called |
+| [Approval group](#field-group) | The group that approves that step |
+| [How the step passes](#field-mode) | Whether any one person is enough, or everyone must approve |
+| [Name](#field-name) | The name of the group |
+| [Active](#field-active) | Clear it and that group is no longer used for approvals |
+| [Start](#field-valid-from) | When a fixed-term member starts being able to approve |
+| [End](#field-valid-until) | When a fixed-term member stops being able to approve |
+
+### Step name [#field-step-name]
+
+What that approval step is called. Use wording that makes sense in your company, such as "First approval" or "Department approval". This name appears on the document screen and in the pending-approvals list.
+
+### Approval group [#field-group]
+
+The group that approves that step. Only members of the group you choose here (or their in-period stand-ins) can approve that step.
+
+### How the step passes [#field-mode]
+
+Whether any one person is enough, or everyone must approve. **Any one person** moves on to the next step as soon as one person in the group approves. **Everyone** does not move on until every member as of the moment the approval was requested has approved.
+
+### Name [#field-name]
+
+The name of the group. This is the name shown when choosing a group for a step of an approval flow.
+
+### Active [#field-active]
+
+Clear it and that group is no longer used for approvals. Members and stand-ins are set on the detail screen.
+
+### Start [#field-valid-from]
+
+When a fixed-term member starts being able to approve. It does not apply to permanent members. Before this moment they do not appear as an approver.
+
+### End [#field-valid-until]
+
+When a fixed-term member stops being able to approve. It does not apply to permanent members. Once it passes they can no longer approve automatically, so there is nothing to delete by hand.
+
+## Questions and problems
+
+**Q. It says no approval flow is set up, and I cannot request approval.**
+A. That document has no approval flow yet. Open its card on the **Approval flows** tab and set up at least one step.
+
+**Q. Someone who was asked to approve says they cannot.**
+A. First check which group that step uses on **Approval flows**, then check that the person is a member of that group. Even if they are, they cannot approve while the state is **Disabled**, **Scheduled** or **Ended**.
+
+**Q. A step set to "Everyone" does not move on after one person approves.**
+A. That is how it works. "Everyone" waits until every member as of the approval request has approved. The document screen shows "N remaining" with the names of those who have not approved yet.
+
+**Q. I added a step but the number of steps on a document in progress has not changed.**
+A. That is intended. A document in progress runs to the end with the settings as they were when the approval was requested. The new step count applies to approval requests made from now on.
+
+**Q. It says the person is already a member.**
+A. They are already in this group. Look for the name in the list on the **Members** tab. If it is disabled, the button on the row puts it back to active.
+
+**Q. It says a fixed-term member needs both a start and an end.**
+A. Only one of them was entered. Enter both, or switch to **Permanent**.
+
+**Q. It says the end must be later than the start.**
+A. The end is the same as, or earlier than, the start. Enter them again.
+
+**Q. It says the original approver must be an active member of this group.**
+A. The real approver you want covered is not a member of this group, or is disabled or outside their period. Add or re-activate them on the **Members** tab first.
+
+**Q. It says the original approver and the stand-in must be different users.**
+A. The same person is chosen for both. Choose someone else as the person who approves instead.
+
+**Q. I cannot delete a group.**
+A. It cannot be deleted while it is used by a step of an approval flow, or while approval requests that used it remain. Take it out of the approval flow first, or use **Disable** instead of deleting. Disabling stops it being used for new approvals and leaves the existing records as they are.

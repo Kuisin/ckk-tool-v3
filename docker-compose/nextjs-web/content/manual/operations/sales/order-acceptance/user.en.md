@@ -205,7 +205,7 @@ A. Requesting approval needs **a customer, at least one line item, and a product
 A. The product or the unit price on the row shown is empty. The same check runs when approval is requested, so this is rare — if it does happen, it has to go back to a draft, so ask the person who approved it to do「**差し戻し**」(send back), correct that row, and go on from there.
 
 **Q. The approve button does not appear.**
-A. Only people in the approval group can approve or send back. The screen shows 「第一承認グループのメンバーのみ承認・差し戻しできます」(only members of the first approval group can approve or send back). Please ask the person in charge.
+A. Only people in the approval group can approve or send back. The screen shows 「◯◯ のメンバーのみ承認・差し戻しできます」 with the name of that step's approval group (only members of that group can approve or send back). Please ask the person in charge.
 
 **Q. I cannot change the contents of a draft.**
 A. A draft opens read only — press「**編集**」(edit) first (top right of the screen). You can only change the contents while the status is 「下書き」(draft). You cannot change them while it is waiting for approval, approved or deployed. If you see 「下書きの注文請書のみ編集できます」(only draft order acceptances can be edited), ask for it to be sent back.

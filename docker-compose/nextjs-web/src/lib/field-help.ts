@@ -42,7 +42,8 @@ const APP_MANUAL_PATH = {
   processStep: "operations/masters/process-step/user",
   inspectionTemplate: "operations/masters/inspection-template/user",
   defectType: "operations/masters/defect-type/user",
-  approvalGroup: "operations/masters/approval-group/user",
+  approvalGroup: "operations/masters/approval-setting/user",
+  approvalFlow: "operations/masters/approval-setting/user",
   plant: "operations/masters/plant/user",
   materialNumbering: "operations/masters/material-numbering/user",
   workLocation: "operations/masters/work-location/user",
@@ -871,20 +872,42 @@ export const FIELD_HELP = {
     },
   },
   approvalGroup: {
-    type: {
-      label: "種別",
-      summary:
-        "第一承認（生産判断）・第二承認（部門承認）・ワークフロー変更承認のどれかです。指示書の承認はこの種別の順に進みます。",
-    },
     name: {
       label: "名称",
       summary:
-        "グループの名前です。承認者を選ぶときの一覧に、この名前で出ます。",
+        "グループの名前です。承認フローの段でグループを選ぶときの一覧に、この名前で出ます。",
     },
     active: {
       label: "有効",
       summary:
         "外すと、そのグループでの承認が行われなくなります。メンバーと代理の設定は詳細画面で行います。",
+    },
+    validFrom: {
+      label: "開始日時",
+      summary:
+        "期間限定メンバーが承認できるようになる日時です。常任のメンバーには入りません。この日時より前は、承認者の候補に出てきません。",
+    },
+    validUntil: {
+      label: "終了日時",
+      summary:
+        "期間限定メンバーが承認できなくなる日時です。常任のメンバーには入りません。この日時を過ぎると自動で承認できなくなるので、手で消す必要はありません。",
+    },
+  },
+  approvalFlow: {
+    stepName: {
+      label: "段の名称",
+      summary:
+        "その承認の段の呼び名です。「第一承認」「部門承認」など、社内で通じる言い方を入れてください。書類の画面や承認待ちの一覧に、この名前で出ます。",
+    },
+    group: {
+      label: "承認グループ",
+      summary:
+        "その段を承認するグループです。ここで選んだグループのメンバー（または期間内の代理）だけが、その段を承認できます。",
+    },
+    mode: {
+      label: "承認の成立条件",
+      summary:
+        "いずれか 1 名で通すか、全員の承認が必要かです。「いずれか1名」はグループの誰か 1 人が承認すれば次の段へ進みます。「全員」は承認依頼を出した時点のメンバー全員が承認するまで進みません。",
     },
   },
   plant: {

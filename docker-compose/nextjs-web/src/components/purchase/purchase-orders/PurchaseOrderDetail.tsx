@@ -31,10 +31,7 @@ import {
 import { notifications } from "@mantine/notifications";
 import {
   IconAlertTriangle,
-  IconClock,
   IconPackageImport,
-  IconSend,
-  IconShieldCheck,
   IconTruck,
   IconX,
 } from "@tabler/icons-react";
@@ -50,6 +47,10 @@ import {
   requestPurchaseApproval,
 } from "@/app/(dashboard)/purchase/purchase-orders/actions";
 import {
+  ApprovalActionCard,
+  type ApprovalActionState,
+} from "@/components/approvals/ApprovalActionCard";
+import {
   ApprovalTrailList,
   type ApprovalTrailView,
   countTrailRecords,
@@ -59,11 +60,7 @@ import {
   AttachmentsPanel,
   type AttachmentView,
 } from "@/components/ui/AttachmentsPanel";
-import {
-  ApproveButton,
-  PrimaryButton,
-  RejectButton,
-} from "@/components/ui/buttons";
+import { ApproveButton, PrimaryButton } from "@/components/ui/buttons";
 import { DocNumber } from "@/components/ui/DocNumber";
 import { FieldValue } from "@/components/ui/FieldValue";
 import { HistoryPanel } from "@/components/ui/HistoryPanel";
@@ -107,18 +104,29 @@ function stepperActive(status: string): number {
   }
 }
 
+/**
+ * 書類ライフサイクルの Stepper に出す「承認」段の説明。段数は承認設定 (MS0B)
+ * が決めるので、進行中は「2/3 部門承認」、それ以外は担当グループ名を出す。
+ */
+function approvalStepDescription(approval: ApprovalActionState): string {
+  if (approval.phase === "PENDING" && approval.stepCount > 1) {
+    return `${approval.stepNo}/${approval.stepCount} ${approval.stepLabel}`;
+  }
+  return approval.groupLabel || "承認グループ";
+}
+
 export function PurchaseOrderDetail({
   purchaseOrder,
   auditEntries,
-  canApprove,
+  approval,
   attachments,
   approvalTrail = [],
 }: {
   purchaseOrder: PurchaseOrderView;
   /** 操作履歴（audit_logs 由来、履歴タブ）。 */
   auditEntries: AuditEntry[];
-  /** 第一承認グループのメンバー（or 代理）か（承認 / 差し戻しのゲート）。 */
-  canApprove: boolean;
+  /** 承認フローの現在状態（承認 / 差し戻しのゲートと表示）。 */
+  approval: ApprovalActionState;
   /** 証憑（document_attachments 由来、証憑タブ）。 */
   attachments: AttachmentView[];
   /** 正規化された承認記録（approval_records — 代理承認マーカー付き）。 */
@@ -128,8 +136,6 @@ export function PurchaseOrderDetail({
   // アクティブタブを ?tab= に保持（URL 共有でタブまで再現）
   const [tab, setTab] = useTabParam("items");
   const [isPending, startTransition] = useTransition();
-  const [rejectOpen, setRejectOpen] = useState(false);
-  const [rejectReason, setRejectReason] = useState("");
   const [cancelOpen, setCancelOpen] = useState(false);
   const [cancelReason, setCancelReason] = useState("");
   const [orderOpen, setOrderOpen] = useState(false);
@@ -146,8 +152,6 @@ export function PurchaseOrderDetail({
           message: `素材発注書 ${po.poNumber}`,
           color: "green",
         });
-        setRejectOpen(false);
-        setRejectReason("");
         setCancelOpen(false);
         setCancelReason("");
         setOrderOpen(false);
@@ -171,56 +175,17 @@ export function PurchaseOrderDetail({
    * — 権限あり = 緑 + 承認/差し戻し、権限なし = グレーの「承認待ち」表示。
    */
   let actionCard: ReactNode = null;
-  if (po.status === "DRAFT") {
+  if (po.status === "DRAFT" || po.status === "REQUESTED") {
+    // 依頼・承認・差し戻しは 4 書類共通のカードに任せる（段数は承認設定 MS0B）
     actionCard = (
-      <ActionCard
-        actions={
-          <PrimaryButton
-            leftSection={<IconSend size={14} />}
-            loading={isPending}
-            onClick={() =>
-              run(
-                () => requestPurchaseApproval(po.poNumber),
-                "承認依頼しました",
-              )
-            }
-          >
-            承認依頼
-          </PrimaryButton>
-        }
-        description="第一承認グループへ承認を依頼します"
-        icon={<IconSend size={20} />}
-        title="承認依頼が必要です"
-        tone="action"
-      />
-    );
-  } else if (po.status === "REQUESTED") {
-    actionCard = canApprove ? (
-      <ActionCard
-        actions={
-          <>
-            <ApproveButton
-              loading={isPending}
-              onClick={() =>
-                run(() => approvePurchaseOrder(po.poNumber), "承認しました")
-              }
-            >
-              承認
-            </ApproveButton>
-            <RejectButton onClick={() => setRejectOpen(true)} />
-          </>
-        }
-        description="第一承認グループの承認者としてこの発注書を承認できます"
-        icon={<IconShieldCheck size={20} />}
-        title="承認してください"
-        tone="approve"
-      />
-    ) : (
-      <ActionCard
-        description="第一承認グループのメンバーのみ承認・差し戻しできます"
-        icon={<IconClock size={20} />}
-        title="承認待ち"
-        tone="wait"
+      <ApprovalActionCard
+        approval={approval}
+        canRequest={po.status === "DRAFT"}
+        onApprove={() => approvePurchaseOrder(po.poNumber)}
+        onReject={(reason) => rejectPurchaseOrder(po.poNumber, reason)}
+        onRequest={() => requestPurchaseApproval(po.poNumber)}
+        rejectReason={null}
+        subject={`素材発注書 ${po.poNumber}`}
       />
     );
   } else if (po.status === "APPROVED") {
@@ -343,7 +308,9 @@ export function PurchaseOrderDetail({
           />
           <Stepper.Step
             description={
-              po.approvedAt ? formatDate(po.approvedAt) : "第一承認グループ"
+              po.approvedAt
+                ? formatDate(po.approvedAt)
+                : approvalStepDescription(approval)
             }
             label="承認"
             loading={po.status === "REQUESTED"}
@@ -518,41 +485,6 @@ export function PurchaseOrderDetail({
           <HistoryPanel entries={auditEntries} />
         </Tabs.Panel>
       </Tabs>
-
-      {/* 差し戻し（理由必須 → DRAFT へ戻す） */}
-      <ModalShell
-        confirmColor="red"
-        confirmLabel="差し戻す"
-        loading={isPending}
-        onClose={() => setRejectOpen(false)}
-        onConfirm={() => {
-          if (!rejectReason.trim()) {
-            notifications.show({
-              title: "エラー",
-              message: "差し戻し理由を入力してください",
-              color: "red",
-            });
-            return;
-          }
-          run(
-            () => rejectPurchaseOrder(po.poNumber, rejectReason),
-            "差し戻しました",
-          );
-        }}
-        opened={rejectOpen}
-        size="sm"
-        title="差し戻しの確認"
-      >
-        <Textarea
-          autosize
-          label="差し戻し理由"
-          minRows={3}
-          onChange={(e) => setRejectReason(e.currentTarget.value)}
-          placeholder="理由を入力"
-          value={rejectReason}
-          withAsterisk
-        />
-      </ModalShell>
 
       {/* キャンセル（発注前のみ・理由必須） */}
       <ModalShell

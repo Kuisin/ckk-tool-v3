@@ -105,7 +105,7 @@ function mapRow(r: {
   plannedQuantity: number;
   approvalStatus: string;
   status: string;
-  requested1stAt: Date | null;
+  requestedAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
 }): WorkOrderRow {
@@ -118,7 +118,7 @@ function mapRow(r: {
     plannedQuantity: r.plannedQuantity,
     approvalStatus: r.approvalStatus,
     status: r.status,
-    requestedAt: iso(r.requested1stAt),
+    requestedAt: iso(r.requestedAt),
     updatedAt: r.updatedAt.toISOString(),
   };
 }

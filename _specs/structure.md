@@ -159,7 +159,7 @@ src/
 │   │       ├── material-numbering/                 # 採番構成（MS07 — 材種/素材コードの部品）
 │   │       ├── work-locations/                     # 作業場所（MS0D — 工程の実施場所）
 │   │       ├── storage-locations/                  # 保管場所（MS0E — 棚・フロアマップのピン）
-│   │       └── approval-groups/                    # 承認グループ・代理設定
+│   │       └── approval-settings/                  # 承認設定（承認フロー・グループ・代理）
 │   │           ├── page.tsx
 │   │           ├── new/page.tsx
 │   │           └── [id]/

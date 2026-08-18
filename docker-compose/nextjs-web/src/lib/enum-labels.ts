@@ -125,15 +125,15 @@ export const DEPENDENCY_RELATION_OPTIONS = Object.entries(
 ).map(([value, label]) => ({ value, label }));
 
 /** app.APPROVAL_GROUP_TYPE（承認グループ種別） */
-export const APPROVAL_GROUP_TYPE_LABEL: Record<string, string> = {
-  FIRST: "第一承認",
-  SECOND: "第二承認",
-  WORKFLOW_CHANGE: "ワークフロー変更承認",
+/** app.APPROVAL_MODE（承認ステップの成立条件） */
+export const APPROVAL_MODE_LABEL: Record<string, string> = {
+  ANY: "いずれか1名",
+  ALL: "全員",
 };
 
-export const APPROVAL_GROUP_TYPE_OPTIONS = Object.entries(
-  APPROVAL_GROUP_TYPE_LABEL,
-).map(([value, label]) => ({ value, label }));
+export const APPROVAL_MODE_OPTIONS = Object.entries(APPROVAL_MODE_LABEL).map(
+  ([value, label]) => ({ value, label }),
+);
 
 /** app.WORK_ORDER_TYPE（指示書種別） */
 export const WORK_ORDER_TYPE_LABEL: Record<string, string> = {

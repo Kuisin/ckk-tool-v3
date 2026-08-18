@@ -101,7 +101,7 @@ export async function fetchShareOptionsAction(): Promise<
     prisma.approvalGroup.findMany({
       where: { isActive: true },
       orderBy: { id: "asc" },
-      select: { id: true, name: true, type: true },
+      select: { id: true, name: true },
     }),
   ]);
   return actionOk({
@@ -115,8 +115,8 @@ export async function fetchShareOptionsAction(): Promise<
       value: String(g.id),
       label:
         typeof g.name === "object" && g.name !== null && "ja" in g.name
-          ? String((g.name as { ja?: string }).ja || g.type)
-          : g.type,
+          ? String((g.name as { ja?: string }).ja || `グループ #${g.id}`)
+          : `グループ #${g.id}`,
     })),
   });
 }
