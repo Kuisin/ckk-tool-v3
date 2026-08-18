@@ -57,5 +57,8 @@ if [ -n "$DRY" ]; then
 fi
 
 echo "→ docker compose up -d --build on $HOST"
-ssh "$HOST" "cd ~/stacks/$STACK && docker compose up -d --build"
+# BUILDX_CONFIG: Coolify がビルドすると ~/.docker/buildx/activity/default が root
+# 所有で作られ、以後この deploy が "permission denied" で止まる。ビルダーの
+# 状態ディレクトリを deploy 専用（ユーザー所有）に分けて、その衝突を避ける。
+ssh "$HOST" "cd ~/stacks/$STACK && BUILDX_CONFIG=\$HOME/.buildx-deploy docker compose up -d --build"
 echo "✓ $STACK deployed"
