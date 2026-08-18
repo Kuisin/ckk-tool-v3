@@ -11,9 +11,17 @@ scrape_configs:
     static_configs:
       - targets: ['node-exporter:9100']
 
-  - job_name: cadvisor       # per-container CPU / mem
+  # cAdvisor は cgroup 集計しか出せない（containerd イメージストアのため
+  # コンテナ単位のメタデータを解決できない）。ホスト全体の傾向にだけ使う。
+  - job_name: cadvisor
     static_configs:
       - targets: ['cadvisor:8080']
+
+  # コンテナ単位の CPU / メモリ / 通信 / ストレージ + ボリューム使用量
+  # （Docker API 直読みの自前エクスポーター。ラベルは Loki 側と同じ規則）
+  - job_name: docker
+    static_configs:
+      - targets: ['docker-exporter:9401']
 
   - job_name: amdgpu         # GPU util / VRAM / temp / power
     static_configs:

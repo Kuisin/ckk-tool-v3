@@ -58,6 +58,25 @@ services:
       - /sys:/sys:ro
     networks: [monitoring]
 
+  # コンテナ単位の CPU / メモリ / 通信 / ストレージ（+ ボリューム使用量）。
+  #
+  # cAdvisor の代わり。このホストの Docker は containerd イメージストア
+  # （Storage Driver = overlayfs）なので、cAdvisor は layerdb を読めずに
+  # **コンテナ単位の系列を 1 本も出せない**（cgroup 集計だけ残る）。こちらは
+  # Docker API を直接読み、ラベルを Loki 側（alloy）と揃える
+  # （container = Coolify のアプリ名 / deploy = 実コンテナ名 / environment）。
+  #
+  # docker.sock は読み取り専用でマウントするが、API 自体は強い権限を持つ
+  # （cadvisor / portainer と同じ前提）。外には出さない。
+  docker-exporter:
+    build: ./docker-exporter
+    image: ckk-docker-exporter
+    container_name: docker-exporter
+    restart: unless-stopped
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks: [monitoring]
+
   # Log store for container logs (collected by Alloy below).
   loki:
     image: grafana/loki:3.4.2
