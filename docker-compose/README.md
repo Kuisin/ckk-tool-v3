@@ -80,12 +80,35 @@ ollama は 1 プロセスで 1 枚しか使わないので**カードごとに 1
 
 | スタック | コンテナ | 役割 |
 |---|---|---|
-| `authentik` | server, worker, postgresql, redis | SSO（OIDC） |
+| `authentik` | server, worker, postgresql, redis | SSO（OIDC・VPN 越しの AD と連携） |
 | `vpn-ldap` | vpn-ldap, ldap-sync | Samba AD への到達（VPN）+ 社員同期 |
 | `mailrelay` | mailrelay | 送信メール中継 |
 | `kot-import` | kot-import | King of Time（勤怠）取込 |
 
 ---
+
+## Portainer に「名前の無いスタック」が並ぶ理由
+
+Coolify は compose のプロジェクト名に**アプリの UUID** を使う（デプロイやロール
+バックで衝突しないようにするため）。設定で変えられる項目は無い（`custom_labels` /
+`custom_network_aliases` はあるが、プロジェクト名は無い）。そのため Portainer の
+スタック一覧には UUID がそのまま並ぶ。読み替え表:
+
+| Portainer の表示 | 実体 |
+|---|---|
+| `x2a0qtm58nvvjp823rxlwalr` | nextjs-web-dev |
+| `k8dps5g9zxfhdabylqzoq4ux` | nextjs-web-main |
+| `iwl1ax5zzhu03jd35fhhlqqj` | nextjs-kiosk-dev |
+| `vsyoq6yzg60dz0louru59be5` | nextjs-kiosk-main |
+| `f110okf12c7iz5dglveg3qsh` | po-extract-dev |
+| `r9in9fuf5qjelamt8vfnpc8d` | po-extract-main |
+| `to29pl2a3e4mb0cy6w1c4dkc` | admintools-dev |
+| `t9p8tryrx2ciww0nt10bykbj` | admintools-main |
+
+UUID はアプリごとに固定なので、この表は再デプロイでは変わらない（変わるのは
+コンテナ名の末尾）。**Coolify のアプリは Coolify の画面で見る**のが本来で、
+Portainer は Dockge 由来のスタック（上のグループ 1〜7）を見るために使う。
+ログは Loki 側で読める名前に直してある（`monitoring/alloy/config.alloy`）。
 
 ## スタックをまたぐ接続
 
@@ -100,6 +123,15 @@ monitoring             ← 監視系のみ（ログ収集は Docker ソケット
 ```
 
 ---
+
+## ここにあるが「スタックではない」もの
+
+| ディレクトリ | 実態 |
+|---|---|
+| `admintools/` | **Coolify がビルドするアプリのソース**（`admintools-dev` / `-main`）。サーバーの `~/stacks/admintools` は移行前の複製で、コンテナも持たず残っていたので削除した |
+| `nextjs-kiosk/` | 同じく Coolify ビルド（リポジトリ root から）。サーバーにスタックは無い |
+| `ai-stack/extractor/` | 同じく Coolify ビルド（po-extract）。ai-stack の compose からはサービスを外してある |
+| `nextcloud-app/` | Nextcloud のアプリ（リンクプレビュー）のソース。compose スタックではない |
 
 ## 規則
 
