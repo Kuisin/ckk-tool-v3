@@ -45,7 +45,6 @@ import {
   updateShippingOrder,
 } from "@/app/(dashboard)/shipping/shipping-orders/actions";
 import { GhostButton } from "@/components/ui/buttons";
-import { FieldValue } from "@/components/ui/FieldValue";
 import { PRODUCT_F4 } from "@/components/ui/f4-presets";
 import { HelpLabel } from "@/components/ui/HelpLabel";
 import { SearchSelect } from "@/components/ui/SearchSelect";
