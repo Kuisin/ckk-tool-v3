@@ -28,7 +28,7 @@ Use this when an order form arrives from a customer by fax or email.
 
 ## Before you start
 
-- The customer must be registered in the [customer master](/manual/en/operations/masters/customer/user). Without it, the customer stays 「未特定」(not identified) even after reading the form.
+- The customer must be registered in the [business partner master](/manual/en/operations/masters/business-partner/user). Without it, the customer stays 「未特定」(not identified) even after reading the form.
 - The ordered [product](/manual/en/operations/masters/product/user) must be registered in the product master.
 - Having a [price list](/manual/en/operations/sales/price-list/user) makes checking the unit price easier, but you can go on without one.
 - Only people in the approval group can approve or send back.
@@ -118,13 +118,80 @@ If you entered a quote number, that [quote](/manual/en/operations/sales/quote/us
 
 When the work is finished, press「**アーカイブ**」(archive) to put it away. Archived records cannot be edited after that.
 
+## Input fields
+
+Every field on the order acceptance screen. What the AI read from the order lands in these fields too, so this is also **where you correct the reading**. The **?** next to a field in the app links straight to its description here.
+
+| Field | Required | What to enter |
+|-------|----------|---------------|
+| [Customer](#field-customer) | Required | The customer who ordered |
+| [Customer order no.](#field-customer-order-ref) | Optional | The number on the customer's own order |
+| [Quote number](#field-quote-number) | Optional | The quote it came from |
+| [Order date](#field-order-date) | Optional | The date the customer ordered |
+| [Notes](#field-notes) | Optional | Notes for the whole acceptance |
+| [Product](#field-product) | Required | The product ordered |
+| [Item name (as read)](#field-extracted-name) | — | The item name printed on the order |
+| [Order type](#field-order-type) | Required | Production, test and so on |
+| [Quantity](#field-quantity) | Required | The quantity ordered |
+| [Unit price](#field-unit-price) | Required | Price per piece |
+| [Delivery date](#field-delivery-date) | Optional | Delivery date for that line |
+| [Line notes](#field-item-notes) | Optional | Notes for that line only |
+
+### Customer [#field-customer]
+
+The customer who placed the order. This is detected from the imported order, but **detection can fail** — choose it here when it does. Prices cannot be checked until the customer is known.
+
+### Customer order no. [#field-customer-order-ref]
+
+The number printed on the customer's own order document. It is what you search by when they ask about it later.
+
+### Quote number [#field-quote-number]
+
+The quote this order came from. If it is set, that quote is marked accepted automatically when the order is accepted.
+
+### Order date [#field-order-date]
+
+The date the customer placed the order, as printed on their document.
+
+### Notes [#field-notes]
+
+Notes about the acceptance as a whole. Notes about one line go in that line's own notes.
+
+### Product [#field-product]
+
+The product ordered. **It is matched automatically from the item name, but matching can miss** — choose it by hand when it does. Lines whose product is unresolved cannot move on.
+
+### Item name (as read) [#field-extracted-name]
+
+The item name exactly as printed on the order. It is kept **as a record of what was read**, and is the clue for identifying the product.
+
+### Order type [#field-order-type]
+
+Production, test, sample or other. Prices differ by type.
+
+### Quantity [#field-quantity]
+
+The quantity ordered. Correct it if the reading was wrong.
+
+### Unit price [#field-unit-price]
+
+The price per piece. **If it differs from the price list, the difference is shown on the spot.** When it does, adjust the price on the quote first, then correct it here.
+
+### Delivery date [#field-delivery-date]
+
+The delivery date for that line. If a line has none, the header's requested date is used.
+
+### Line notes [#field-item-notes]
+
+Notes for that line only, such as a revision or custom content.
+
 ## Questions and problems
 
 **Q. A red message「自動抽出に失敗しました」(automatic reading failed) appeared.**
 A. Reading the order form did not work. Press「**再抽出**」(read again) inside that message to try once more. If it keeps failing, enter it from「**手入力で新規**」(new, typed in) in the list.
 
 **Q. The customer stays 「未特定」(not identified).**
-A. The company name on the order form could not be matched to the customer master. On the draft screen, search for the customer, choose it, and press「保存」(save). For customers whose name is often written in different ways, register the other spellings in the [customer master](/manual/en/operations/masters/customer/user) and they will be matched automatically next time.
+A. The company name on the order form could not be matched to the business partner master. On the draft screen, search for the customer, choose it, and press「保存」(save). For customers whose name is often written in different ways, register the other spellings in the [business partner master](/manual/en/operations/masters/business-partner/user) and they will be matched automatically next time.
 
 **Q. It says「顧客が未特定です。顧客を選択して保存してください」(the customer is not identified; please choose a customer and save) and I cannot request approval.**
 A. No customer is set. Choose the「顧客」(customer), press「保存」(save), then press「承認依頼」(request approval) again.

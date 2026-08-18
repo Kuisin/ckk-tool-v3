@@ -26,7 +26,7 @@ Every month, the billing work starts in this app.
 ## Before you start
 
 - Only [shipping orders](/manual/en/operations/shipping/shipping-order/user) that are **「出荷済」 (Shipped) and of type 「発送」 (Dispatch)** are added up. Shipping orders still at 「下書き」 (Draft) or 「確定」 (Confirmed) are not included. Please record the shipment first.
-- Each customer's cut-off date comes from the registered details of the [customer](/manual/en/operations/masters/customer/user). Customers with nothing set are gathered as **month-end**.
+- Each customer's cut-off date comes from the registered details of the [customer](/manual/en/operations/masters/business-partner/user). Customers with nothing set are gathered as **month-end**.
 - You need monthly billing close permission to run it. If you cannot use it, please ask your administrator.
 
 > ⚠️ Shipping orders of type 「**在庫保管**」 (Keep in stock) are pieces kept in-house, not sent to the customer, so they are not added up. They are not billed either.
@@ -91,6 +91,25 @@ The close row becomes 「**処理済**」 (Processed), and from the 「**生成�
 
 After this, recording the issue, the sending, and the payment — and making the file for the accounting software — is done in the [invoice](/manual/en/operations/billing/invoice/user) app.
 
+## Input fields
+
+This screen has no input boxes. What to close and for which dates follows **the closing day set per customer.**
+
+| Action | What happens |
+|--------|--------------|
+| [Close](#field-process) | Gathers the period's deliveries and creates invoices |
+| [Export to Yayoi](#field-export) | Writes the journal entries out as CSV |
+
+### Close [#field-process]
+
+Gathers what was delivered in the period and creates **one invoice per customer.**
+
+Before closing, check that every delivery in the period has been recorded. **A delivery added afterwards does not join a closed invoice** — it moves to the next period.
+
+### Export to Yayoi [#field-export]
+
+Writes the closed contents out as a CSV the accounting software can import. The export date is kept, which helps avoid importing twice.
+
 ## Questions and problems
 
 **Q. I get 「対象月に未請求の出荷がありません」 (There are no unbilled shipments in the target month).**
@@ -109,4 +128,4 @@ A. An invoice has already been made from that close. Open the invoice from the �
 A. There is no way to put a close row back to 「未処理」 (Not processed). Please talk to the accounting person in charge about what to do with the invoice that was made.
 
 **Q. The cut-off date looks wrong for one customer only.**
-A. Each customer's cut-off date comes from the registered details of the [customer](/manual/en/operations/masters/customer/user). Customers with nothing set become month-end. Fix the registered details and then run the monthly billing close again.
+A. Each customer's cut-off date comes from the registered details of the [customer](/manual/en/operations/masters/business-partner/user). Customers with nothing set become month-end. Fix the registered details and then run the monthly billing close again.

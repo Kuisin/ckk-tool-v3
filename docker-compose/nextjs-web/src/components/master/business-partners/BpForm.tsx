@@ -1,0 +1,507 @@
+"use client";
+
+/**
+ * BpForm.tsx — 取引先 新規作成 / 編集フォーム (MS11 / MS21).
+ *
+ * 法人基本情報（BpBaseFields 共通）+ ロール付与 + ロール別の情報。
+ * ロールのチェックを入れると、そのロールの入力セクションが現れる。外すと
+ * 割当は無効化されるが入力済みの内容は消えないので、付け直せば元に戻る。
+ * BP コードは保存時に自動採番（BP-NNNNN）。
+ */
+
+import {
+  Checkbox,
+  NumberInput,
+  Select,
+  SimpleGrid,
+  Stack,
+  Text,
+  TextInput,
+} from "@mantine/core";
+import { useForm } from "@mantine/form";
+import { notifications } from "@mantine/notifications";
+import { useRouter } from "next/navigation";
+import { useTransition } from "react";
+import { z } from "zod";
+import type { BpDetail } from "@/app/(dashboard)/master/_shared/bp-data";
+import { BP_BASE_PATH } from "@/app/(dashboard)/master/_shared/bp-paths";
+import {
+  type BpInput,
+  createBusinessPartner,
+  updateBusinessPartner,
+} from "@/app/(dashboard)/master/business-partners/actions";
+import {
+  BpBaseFields,
+  bpBaseFormSchema,
+  bpBaseInitialValues,
+} from "@/components/master/bp/BpBaseFields";
+import { ActiveBadge } from "@/components/ui/ActiveBadge";
+import { HelpLabel } from "@/components/ui/HelpLabel";
+import { FormSection, FormShell } from "@/components/ui/shells";
+import { useIsMobile } from "@/hooks/useViewport";
+import {
+  BANK_ACCOUNT_TYPE_OPTIONS,
+  BP_ROLE_LABEL,
+  INVOICE_METHOD_OPTIONS,
+  TAX_TYPE_OPTIONS,
+  VENDOR_TYPE_OPTIONS,
+} from "@/lib/enum-labels";
+import { fieldHelp } from "@/lib/field-help";
+import { zodResolver } from "@/lib/form";
+import type { Option } from "@/lib/mock";
+
+/** 空欄を許す数値入力（Mantine の NumberInput は "" を返す）。 */
+const optionalNumber = z.union([z.number(), z.literal("")]);
+
+const bpFormSchema = bpBaseFormSchema
+  .extend({
+    roles: z.array(z.string()),
+    customer: z.object({
+      customerCode: z.string(),
+      billingBpId: z.string().nullable(),
+      closingDay: optionalNumber,
+      paymentTermsDays: optionalNumber,
+      paymentDay: optionalNumber,
+      creditLimit: optionalNumber,
+      taxType: z.string(),
+      invoiceMethod: z.string(),
+      isConsignment: z.boolean(),
+    }),
+    endUser: z.object({ industry: z.string() }),
+    vendor: z.object({
+      vendorCode: z.string(),
+      vendorType: z.string(),
+      closingDay: optionalNumber,
+      paymentTermsDays: optionalNumber,
+      paymentDay: optionalNumber,
+      leadTimeDays: optionalNumber,
+      bankName: z.string(),
+      bankBranch: z.string(),
+      bankAccountType: z.string().nullable(),
+      bankAccountNumber: z.string(),
+    }),
+  })
+  .superRefine((v, ctx) => {
+    if (v.roles.includes("VENDOR") && !v.vendor.vendorType) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["vendor", "vendorType"],
+        message: "外注種別を選択してください",
+      });
+    }
+  });
+
+type FormValues = z.infer<typeof bpFormSchema>;
+
+const ROLE_ORDER = ["CUSTOMER", "END_USER", "VENDOR"] as const;
+
+const ROLE_DESCRIPTION: Record<string, string> = {
+  CUSTOMER: "見積書・受注請書・請求書の宛先として選べるようになる",
+  END_USER: "納品書・注文請書の最終需要家として選べるようになる",
+  VENDOR: "素材発注書・外注依頼・工程の外注先として選べるようになる",
+};
+
+const nullIfBlank = (v: number | "") => (v === "" ? null : v);
+
+export function BpForm({
+  initial,
+  billingOptions,
+}: {
+  initial?: BpDetail;
+  billingOptions: Option[];
+}) {
+  const router = useRouter();
+  const isMobile = useIsMobile();
+  const [isPending, startTransition] = useTransition();
+  const isEdit = !!initial;
+
+  const form = useForm<FormValues>({
+    validate: zodResolver(bpFormSchema),
+    initialValues: {
+      ...bpBaseInitialValues(initial),
+      roles: initial?.roles ?? [],
+      customer: {
+        customerCode: initial?.customer?.customerCode ?? "",
+        billingBpId: initial?.customer?.billingBpId ?? null,
+        closingDay: initial?.customer?.closingDay ?? "",
+        paymentTermsDays: initial?.customer?.paymentTermsDays ?? "",
+        paymentDay: initial?.customer?.paymentDay ?? "",
+        creditLimit: initial?.customer?.creditLimit ?? "",
+        taxType: initial?.customer?.taxType ?? "TAXABLE",
+        invoiceMethod: initial?.customer?.invoiceMethod ?? "EMAIL",
+        isConsignment: initial?.customer?.isConsignment ?? false,
+      },
+      endUser: { industry: initial?.endUser?.industry ?? "" },
+      vendor: {
+        vendorCode: initial?.vendor?.vendorCode ?? "",
+        vendorType: initial?.vendor?.vendorType ?? "OUTSOURCE",
+        closingDay: initial?.vendor?.closingDay ?? "",
+        paymentTermsDays: initial?.vendor?.paymentTermsDays ?? "",
+        paymentDay: initial?.vendor?.paymentDay ?? "",
+        leadTimeDays: initial?.vendor?.leadTimeDays ?? "",
+        bankName: initial?.vendor?.bankName ?? "",
+        bankBranch: initial?.vendor?.bankBranch ?? "",
+        bankAccountType: initial?.vendor?.bankAccountType ?? null,
+        bankAccountNumber: initial?.vendor?.bankAccountNumber ?? "",
+      },
+    },
+  });
+
+  const roles = form.values.roles;
+  const has = (role: string) => roles.includes(role);
+
+  const handleSubmit = (values: FormValues) => {
+    const input: BpInput = {
+      nameJa: values.nameJa,
+      nameEn: values.nameEn,
+      nameKana: values.nameKana,
+      shortName: values.shortName,
+      countryCode: values.countryCode,
+      postalCode: values.postalCode,
+      addressJa: values.addressJa,
+      addressEn: values.addressEn,
+      phone: values.phone,
+      fax: values.fax,
+      email: values.email,
+      website: values.website,
+      taxNumber: values.taxNumber,
+      matchNames: values.matchNames,
+      isActive: values.isActive,
+      notes: values.notes,
+      roles: values.roles as BpInput["roles"],
+      customer: values.roles.includes("CUSTOMER")
+        ? {
+            customerCode: values.customer.customerCode,
+            billingBpId: values.customer.billingBpId,
+            closingDay: nullIfBlank(values.customer.closingDay),
+            paymentTermsDays: nullIfBlank(values.customer.paymentTermsDays),
+            paymentDay: nullIfBlank(values.customer.paymentDay),
+            creditLimit: nullIfBlank(values.customer.creditLimit),
+            taxType: values.customer.taxType as NonNullable<
+              BpInput["customer"]
+            >["taxType"],
+            invoiceMethod: values.customer.invoiceMethod as NonNullable<
+              BpInput["customer"]
+            >["invoiceMethod"],
+            isConsignment: values.customer.isConsignment,
+          }
+        : null,
+      endUser: values.roles.includes("END_USER")
+        ? { industry: values.endUser.industry }
+        : null,
+      vendor: values.roles.includes("VENDOR")
+        ? {
+            vendorCode: values.vendor.vendorCode,
+            vendorType: values.vendor.vendorType as NonNullable<
+              BpInput["vendor"]
+            >["vendorType"],
+            closingDay: nullIfBlank(values.vendor.closingDay),
+            paymentTermsDays: nullIfBlank(values.vendor.paymentTermsDays),
+            paymentDay: nullIfBlank(values.vendor.paymentDay),
+            leadTimeDays: nullIfBlank(values.vendor.leadTimeDays),
+            bankName: values.vendor.bankName,
+            bankBranch: values.vendor.bankBranch,
+            bankAccountType: values.vendor.bankAccountType,
+            bankAccountNumber: values.vendor.bankAccountNumber,
+          }
+        : null,
+    };
+    startTransition(async () => {
+      const result = isEdit
+        ? await updateBusinessPartner(initial.id, input)
+        : await createBusinessPartner(input);
+      if (result.ok) {
+        notifications.show({
+          title: "保存しました",
+          message: isEdit ? "取引先を更新しました" : "取引先を作成しました",
+          color: "green",
+        });
+        router.push(`${BP_BASE_PATH}/${result.data.id}`);
+      } else {
+        notifications.show({
+          title: "エラー",
+          message: result.error,
+          color: "red",
+        });
+      }
+    });
+  };
+
+  return (
+    <FormShell
+      breadcrumbs={[
+        "マスタ",
+        { label: "取引先", href: BP_BASE_PATH },
+        isEdit ? "編集" : "新規作成",
+      ]}
+      isDirty={form.isDirty()}
+      isPending={isPending}
+      onCancel={() =>
+        router.push(isEdit ? `${BP_BASE_PATH}/${initial.id}` : BP_BASE_PATH)
+      }
+      onSubmit={form.onSubmit(handleSubmit)}
+      status={isEdit ? <ActiveBadge active={initial.isActive} /> : undefined}
+      title={isEdit ? `取引先 編集 — ${initial.bpCode}` : "取引先 新規作成"}
+    >
+      <BpBaseFields
+        bpCode={initial?.bpCode}
+        codeDescription="形式: BP-NNNNN（自動採番）"
+        form={form}
+      />
+
+      <FormSection
+        description="この取引先をどの立場で使うかを選ぶ（bp_role_assignments）。複数選択でき、後から付け外しできる。"
+        title="ロール"
+      >
+        <Checkbox.Group {...form.getInputProps("roles")}>
+          <Stack gap="xs">
+            {ROLE_ORDER.map((role) => (
+              <Checkbox
+                description={ROLE_DESCRIPTION[role]}
+                key={role}
+                label={BP_ROLE_LABEL[role]}
+                value={role}
+              />
+            ))}
+          </Stack>
+        </Checkbox.Group>
+        {roles.length === 0 && (
+          <Text c="dimmed" mt="sm" size="xs">
+            ロール未設定でも登録できます。書類で選べるようにするには、あとで
+            ロールを付けてください。
+          </Text>
+        )}
+      </FormSection>
+
+      {has("CUSTOMER") && (
+        <FormSection
+          description="締日・支払条件・請求方法（bp_customer_attrs）。"
+          title="顧客情報"
+        >
+          <SimpleGrid cols={isMobile ? 1 : 2} spacing="sm">
+            <TextInput
+              label="旧システムコード"
+              placeholder="旧顧客コード（任意）"
+              {...form.getInputProps("customer.customerCode")}
+            />
+            <Select
+              clearable
+              data={billingOptions}
+              label={
+                <HelpLabel {...fieldHelp("businessPartner", "billingBp")} />
+              }
+              placeholder="この取引先自身に請求"
+              searchable
+              {...form.getInputProps("customer.billingBpId")}
+            />
+            <NumberInput
+              description="31 = 月末"
+              label={
+                <HelpLabel
+                  {...fieldHelp("businessPartner", "paymentTerms", {
+                    label: "締日",
+                  })}
+                />
+              }
+              max={31}
+              min={1}
+              {...form.getInputProps("customer.closingDay")}
+            />
+            <NumberInput
+              label={
+                <HelpLabel
+                  {...fieldHelp("businessPartner", "paymentTerms", {
+                    label: "支払サイト（日数）",
+                  })}
+                />
+              }
+              min={0}
+              {...form.getInputProps("customer.paymentTermsDays")}
+            />
+            <NumberInput
+              label={
+                <HelpLabel
+                  {...fieldHelp("businessPartner", "paymentTerms", {
+                    label: "支払日",
+                  })}
+                />
+              }
+              max={31}
+              min={1}
+              {...form.getInputProps("customer.paymentDay")}
+            />
+            <NumberInput
+              label={
+                <HelpLabel {...fieldHelp("businessPartner", "creditLimit")} />
+              }
+              min={0}
+              prefix="¥"
+              thousandSeparator=","
+              {...form.getInputProps("customer.creditLimit")}
+            />
+            <Select
+              data={TAX_TYPE_OPTIONS}
+              label={<HelpLabel {...fieldHelp("businessPartner", "taxType")} />}
+              {...form.getInputProps("customer.taxType")}
+            />
+            <Select
+              data={INVOICE_METHOD_OPTIONS}
+              label={
+                <HelpLabel {...fieldHelp("businessPartner", "invoiceMethod")} />
+              }
+              {...form.getInputProps("customer.invoiceMethod")}
+            />
+          </SimpleGrid>
+          <Checkbox
+            label={
+              <HelpLabel
+                {...fieldHelp("businessPartner", "consignment", {
+                  label: "委託先（委託販売の対象）",
+                })}
+              />
+            }
+            mt="sm"
+            {...form.getInputProps("customer.isConsignment", {
+              type: "checkbox",
+            })}
+          />
+        </FormSection>
+      )}
+
+      {has("END_USER") && (
+        <FormSection
+          description="需要家固有属性（bp_end_user_attrs）。"
+          title="最終需要家情報"
+        >
+          <SimpleGrid cols={isMobile ? 1 : 2} spacing="sm">
+            <TextInput
+              label={
+                <HelpLabel {...fieldHelp("businessPartner", "industry")} />
+              }
+              placeholder="自動車部品"
+              {...form.getInputProps("endUser.industry")}
+            />
+          </SimpleGrid>
+        </FormSection>
+      )}
+
+      {has("VENDOR") && (
+        <>
+          <FormSection
+            description="種別・支払条件・標準リードタイム（bp_vendor_attrs）。"
+            title="仕入先・外注先情報"
+          >
+            <SimpleGrid cols={isMobile ? 1 : 2} spacing="sm">
+              <Select
+                data={VENDOR_TYPE_OPTIONS}
+                label={
+                  <HelpLabel {...fieldHelp("businessPartner", "vendorType")} />
+                }
+                withAsterisk
+                {...form.getInputProps("vendor.vendorType")}
+              />
+              <TextInput
+                label="旧システムコード"
+                placeholder="旧仕入先コード（任意）"
+                {...form.getInputProps("vendor.vendorCode")}
+              />
+              <NumberInput
+                description="31 = 月末"
+                label={
+                  <HelpLabel
+                    {...fieldHelp("businessPartner", "paymentTerms", {
+                      label: "締日",
+                    })}
+                  />
+                }
+                max={31}
+                min={1}
+                {...form.getInputProps("vendor.closingDay")}
+              />
+              <NumberInput
+                label={
+                  <HelpLabel
+                    {...fieldHelp("businessPartner", "paymentTerms", {
+                      label: "支払サイト（日数）",
+                    })}
+                  />
+                }
+                min={0}
+                {...form.getInputProps("vendor.paymentTermsDays")}
+              />
+              <NumberInput
+                label={
+                  <HelpLabel
+                    {...fieldHelp("businessPartner", "paymentTerms", {
+                      label: "支払日",
+                    })}
+                  />
+                }
+                max={31}
+                min={1}
+                {...form.getInputProps("vendor.paymentDay")}
+              />
+              <NumberInput
+                label={
+                  <HelpLabel {...fieldHelp("businessPartner", "leadTime")} />
+                }
+                min={0}
+                {...form.getInputProps("vendor.leadTimeDays")}
+              />
+            </SimpleGrid>
+          </FormSection>
+
+          <FormSection description="支払振込先の口座情報。" title="振込先">
+            <SimpleGrid cols={isMobile ? 1 : 2} spacing="sm">
+              <TextInput
+                label={
+                  <HelpLabel
+                    {...fieldHelp("businessPartner", "bank", {
+                      label: "銀行名",
+                    })}
+                  />
+                }
+                placeholder="〇〇銀行"
+                {...form.getInputProps("vendor.bankName")}
+              />
+              <TextInput
+                label={
+                  <HelpLabel
+                    {...fieldHelp("businessPartner", "bank", {
+                      label: "支店名",
+                    })}
+                  />
+                }
+                placeholder="〇〇支店"
+                {...form.getInputProps("vendor.bankBranch")}
+              />
+              <Select
+                clearable
+                data={BANK_ACCOUNT_TYPE_OPTIONS}
+                label={
+                  <HelpLabel
+                    {...fieldHelp("businessPartner", "bank", {
+                      label: "口座種別",
+                    })}
+                  />
+                }
+                {...form.getInputProps("vendor.bankAccountType")}
+              />
+              <TextInput
+                label={
+                  <HelpLabel
+                    {...fieldHelp("businessPartner", "bank", {
+                      label: "口座番号",
+                    })}
+                  />
+                }
+                placeholder="1234567"
+                {...form.getInputProps("vendor.bankAccountNumber")}
+              />
+            </SimpleGrid>
+          </FormSection>
+        </>
+      )}
+    </FormShell>
+  );
+}

@@ -68,6 +68,31 @@ Choose 「**工程実行**」 (Run step) from the app list to open the list of y
 
 > ⚠️ This is a shared tablet. Please **log out when your work is done**. If you stay logged in, the next person's work is recorded under your name.
 
+## Input fields
+
+| Field | Required | What to enter |
+|-------|----------|---------------|
+| [QR card](#field-card) | Required | Hold up your own card |
+| [PIN](#field-pin) | Conditional | The number you chose |
+| [Language](#field-language) | — | The language on screen |
+
+### QR card [#field-card]
+
+Hold your own card up to the tablet's camera. Cards are issued **per person**. Do not use someone else's — the record is kept under their name.
+
+### PIN [#field-pin]
+
+The number you chose. You are always asked for it when:
+
+- you use the card on **that tablet for the first time**
+- **two weeks** have passed since you last entered it
+
+Otherwise, holding up the card is enough. **Five wrong tries in a row locks it for 15 minutes.** If you forget it, ask an administrator to reset it.
+
+### Language [#field-language]
+
+The language shown on screen — Japanese, English or Chinese.
+
 ## Questions and problems
 
 **Q. Nothing happens when I hold up my card.**

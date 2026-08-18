@@ -81,6 +81,48 @@ On inspection steps, you enter the inspection record before you finish.
 3. For items that cannot be judged automatically, choose 「合格」 (pass) or 「不合格」 (fail) yourself.
 4. Press 「**検査記録を保存**」 (Save inspection record).
 
+## Input fields
+
+Which quantities you are asked for depends on the step. Steps that do not track quantity only have start and complete.
+
+| Field | Required | What to enter |
+|-------|----------|---------------|
+| [Received / inspected](#field-input) | Required | How many arrived in your hands |
+| [Good / passed](#field-success) | Required | How many go on to the next step |
+| [Defect breakdown](#field-defects) | Conditional | Semi-finished, scrapped, branched |
+| [Defect reasons](#field-reasons) | Optional | Counts per defect type |
+| [Inspection record](#field-inspection) | Conditional | Measured values on the sheet |
+
+### Received / inspected [#field-input]
+
+Entered **when starting** the step: how many actually arrived. The previous step's good count is filled in for you. If what arrived differs, **change it to what arrived.**
+
+### Good / passed [#field-success]
+
+Entered **when completing** the step: how many can go on to the next step.
+
+### Defect breakdown [#field-defects]
+
+What became of the rest.
+
+- **Semi-finished** — not a product, but kept as stock
+- **Scrapped** — thrown away
+- **Branched** — sent to another step, such as rework
+
+**Received must equal good plus all defects.** The screen warns you when it does not.
+
+### Defect reasons [#field-reasons]
+
+Counts per defect type. They **do not affect stock** — they are a side record for looking back at causes.
+
+### Inspection record [#field-inspection]
+
+On inspection steps, enter a measured value per item on the sheet. **Anything outside the tolerance fails automatically.** For sampling inspections, the required sample count is shown on screen.
+
+---
+
+Pausing records the time worked so far and releases the step so someone else can take it over. Resuming starts recording again under your name.
+
 ## Questions and problems
 
 **Q. Nothing appears in the list.**

@@ -7,7 +7,7 @@ screenshots: [price-list-list-01, price-list-new-01, price-list-detail-01, price
 
 ## 本应用能做什么
 
-- 可以按[客户](/manual/zh/operations/masters/customer/user)登记每个产品的售价。
+- 可以按[客户](/manual/zh/operations/masters/business-partner/user)登记每个产品的售价。
 - 登记之后，[报价单](/manual/zh/operations/sales/quote/user)的金额会 **自动带入**（在报价单画面不需要手动输入金额）。
 - 在[受注請書](/manual/zh/operations/sales/order-acceptance/user)（订单受理）中，客户订单上的单价会与这里的价格 **自动比对**，不一致时会提示。
 - 可以设定「**买得越多，每支越便宜**」这种按数量的价格。
@@ -27,7 +27,7 @@ screenshots: [price-list-list-01, price-list-new-01, price-list-detail-01, price
 
 ## 开始之前
 
-- 需要先登记好对象[客户](/manual/zh/operations/masters/customer/user)和[产品](/manual/zh/operations/masters/product/user)。
+- 需要先登记好对象[客户](/manual/zh/operations/masters/business-partner/user)和[产品](/manual/zh/operations/masters/product/user)。
 - 如果有作为价格来源的[试算](/manual/zh/operations/sales/trial-estimate/user)会很方便。在试算中指定产品并设为「確定」（确定）后，在这个画面就能选到，金额也会自动带入。
 - 没有试算时，也可以手动输入价格来登记。
 
@@ -130,6 +130,63 @@ screenshots: [price-list-list-01, price-list-new-01, price-list-detail-01, price
 - **「削除」（删除）** … 删除该价格表。无法撤销。
 
 在列表中，也可以用各行左侧的复选框选中多条，然后使用「**有効化**」（启用）、「**無効化**」（停用）、「**一括削除**」（批量删除）。
+
+## 输入项
+
+价格表画面的输入项一览。应用中输入栏旁边的 **?** 也可直接跳转到对应说明。
+
+| 项目 | 必填 | 填什么 |
+|------|------|--------|
+| [客户](#field-customer) | 必填 | 为谁定价 |
+| [产品](#field-product) | 必填 | 为哪个产品定价 |
+| [有效（整份价格表）](#field-active) | — | 是否启用该价格表 |
+| [订单类别](#field-order-type) | 必填 | 正式・测试等区分 |
+| [价格来源（试算）](#field-estimate) | 选填 | 基准单价的来源试算 |
+| [基准单价](#field-base-price) | 必填 | 数量阶梯的计算基础 |
+| [生效开始日](#field-valid-from) | 必填 | 该价格开始适用的日期 |
+| [生效结束日](#field-valid-until) | 选填 | 该价格结束适用的日期 |
+| [倍率](#field-multiplier) | 必填 | 各数量阶梯的系数 |
+| [自定义单价](#field-custom-price) | 选填 | 手动指定某一阶梯的单价 |
+
+### 客户 [#field-customer]
+
+为谁定价。**客户与产品的组合构成 1 份价格表**，创建后无法更改；若选错请重新创建。
+
+### 产品 [#field-product]
+
+为哪个产品定价。与客户相同，创建后无法更改。
+
+### 有效（整份价格表）[#field-active]
+
+是否启用该价格表。**取消后报价单将无法带出单价。** 适用于保留但停用不再使用的价格表。
+
+### 订单类别 [#field-order-type]
+
+正式・测试・样品・其他的区分。**即使客户与产品相同，也可按类别持有不同价格。** 样品按金额 0 处理。
+
+### 价格来源（试算）[#field-estimate]
+
+基准单价的来源试算。**只能选择已确定的试算。** 选择后会将该试算的报价单价填入基准单价，并将试算锁定为「已登记到价格表」，以免过去的价格事后变动。若想手动输入，可不选择。
+
+### 基准单价 [#field-base-price]
+
+数量阶梯的计算基础。各阶梯的单价由该单价乘以倍率决定。
+
+### 生效开始日 [#field-valid-from]
+
+该价格开始适用的日期。制作报价单时会使用**当时有效的价格**。
+
+### 生效结束日 [#field-valid-until]
+
+该价格结束适用的日期。留空则无期限。**测试・样品的价格通常会设定结束日。**
+
+### 倍率 [#field-multiplier]
+
+各数量区间的系数。希望买得越多单价越低时，填入小于 1 的值。
+
+### 自定义单价 [#field-custom-price]
+
+需要手动指定某一阶梯的单价时使用。填入后优先于倍率计算。
 
 ## 常见问题与困扰
 

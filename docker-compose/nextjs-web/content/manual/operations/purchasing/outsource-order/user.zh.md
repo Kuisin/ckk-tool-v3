@@ -29,7 +29,7 @@ screenshots: [outsource-order-list-01, outsource-order-list-02, outsource-order-
 
 本应用是 **只能查看的画面**，无法从这里新增外协。
 
-要让外协出现在这个列表中，请在[制造指示书](/manual/zh/operations/production/work-order/user)的工序中，把实施地点选为「**外注**」（外协），并指定外协厂。外协厂在[外协企业主数据](/manual/zh/operations/masters/supplier/user)中登记。
+要让外协出现在这个列表中，请在[制造指示书](/manual/zh/operations/production/work-order/user)的工序中，把实施地点选为「**外注**」（外协），并指定外协厂。外协厂在[业务伙伴主数据](/manual/zh/operations/masters/business-partner/user)中登记。
 
 查看需要外协委托权限。画面打不开时请咨询公司内的负责人。
 
@@ -74,6 +74,30 @@ screenshots: [outsource-order-list-01, outsource-order-list-02, outsource-order-
 ![工序作业画面上的「外注日程」框](../../../assets/screenshots/outsource-order-step-01.png)
 
 保存后，这些日期也会反映到外协委托列表中。
+
+## 输入项
+
+本画面没有输入框，是**用于一览已委外工序的画面**。
+
+委外的内容（外协企业・委托日・预计入库日・入库日）在**指示书的工序**中输入，本画面仅汇总显示其结果。
+
+| 筛选 | 会改变什么 |
+|------|-----------|
+| [外协企业](#field-supplier) | 查看委托给哪家公司的部分 |
+| [状态](#field-status) | 按委托中・已入库等筛选 |
+| [搜索](#field-search) | 按指示书编号・产品・工序・外协企业查找 |
+
+### 外协企业 [#field-supplier]
+
+查看委托给哪家公司的部分。
+
+### 状态 [#field-status]
+
+按委托中・已入库等状态筛选。可用于查找**已过预计入库日却仍未入库**的部分。
+
+### 搜索 [#field-search]
+
+可按指示书编号・产品・工序・外协企业查找。点击行可跳转至含该工序的指示书。
 
 ## 常见问题・遇到困难时
 

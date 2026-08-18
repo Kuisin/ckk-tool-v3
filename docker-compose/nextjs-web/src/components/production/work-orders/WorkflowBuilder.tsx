@@ -66,12 +66,14 @@ import {
   type StepLocation,
   toStepSnapshots,
 } from "@/components/production/ProcessListEditor";
+import { HelpLabel } from "@/components/ui/HelpLabel";
 import { SearchSelect } from "@/components/ui/SearchSelect";
 import { FormSection, FormShell } from "@/components/ui/shells";
 import { useIsMobile } from "@/hooks/useViewport";
 // type-only import — lib/atp は server-only（型はバンドルされない）。
 import type { MaterialAtp } from "@/lib/atp";
 import { WORK_ORDER_TYPE_OPTIONS } from "@/lib/enum-labels";
+import { fieldHelp } from "@/lib/field-help";
 import { zodResolver } from "@/lib/form";
 import { formatDate, workOrderNumberLabel } from "@/lib/format";
 import type {
@@ -639,7 +641,7 @@ export function WorkflowBuilder({
                 initialOption={
                   soInfo ? { value: soInfo.id, label: soInfo.label } : null
                 }
-                label="注文請書"
+                label={<HelpLabel {...fieldHelp("workOrder", "salesOrder")} />}
                 onChange={onSalesOrderChange}
                 onSearch={searchSalesOrderOptions}
                 placeholder="注文請書番号・製品・顧客で検索"
@@ -666,7 +668,7 @@ export function WorkflowBuilder({
                       }
                     : null
                 }
-                label="対象製品"
+                label={<HelpLabel {...fieldHelp("workOrder", "product")} />}
                 onChange={(v) => form.setFieldValue("productId", v)}
                 onSearch={searchProductOptions}
                 placeholder="製品コード・名称で検索"
@@ -701,7 +703,7 @@ export function WorkflowBuilder({
             description={
               floor > 0 ? `最低 ${floor}（不良予備分は上乗せ可）` : undefined
             }
-            label="予定数量"
+            label={<HelpLabel {...fieldHelp("workOrder", "plannedQuantity")} />}
             min={Math.max(1, floor)}
             withAsterisk
             {...form.getInputProps("plannedQuantity")}
@@ -716,7 +718,7 @@ export function WorkflowBuilder({
                     }
                   : null
               }
-              label="使用素材"
+              label={<HelpLabel {...fieldHelp("workOrder", "material")} />}
               onChange={(v) => form.setFieldValue("materialId", v)}
               onSearch={searchMaterialOptions}
               placeholder="素材コード・名称で検索"
@@ -727,7 +729,9 @@ export function WorkflowBuilder({
           <MultiSelect
             clearable
             data={templateSelectData}
-            label="検査表"
+            label={
+              <HelpLabel {...fieldHelp("workOrder", "inspectionTemplates")} />
+            }
             placeholder={
               form.values.inspectionTemplateIds.length
                 ? undefined
@@ -785,7 +789,9 @@ export function WorkflowBuilder({
             ) : (
               <TextInput
                 description="この工程構成を製品の工程リスト v1 として保存します"
-                label="新しい工程リスト名"
+                label={
+                  <HelpLabel {...fieldHelp("workOrder", "newRouteName")} />
+                }
                 onChange={(e) => setNewRouteName(e.currentTarget.value)}
                 placeholder="例: 標準工程"
                 value={newRouteName}
@@ -827,7 +833,7 @@ export function WorkflowBuilder({
 
       <Textarea
         autosize
-        label="備考"
+        label={<HelpLabel {...fieldHelp("workOrder", "notes")} />}
         minRows={2}
         {...form.getInputProps("notes")}
       />

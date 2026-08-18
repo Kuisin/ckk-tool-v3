@@ -87,6 +87,20 @@ When you approve or send back, an **approval record** stays under 「承認状�
 
 You need approval permission to use this app.
 
+## Input fields
+
+The only thing you type here is the reason when sending something back. Approving just takes a click.
+
+| Field | Required | What to enter |
+|-------|----------|---------------|
+| [Rejection reason](#field-reject-reason) | Required | Why you are not approving |
+
+### Rejection reason [#field-reject-reason]
+
+Why you are sending it back. **The requester sees it as written**, so phrase it so they know **what to fix** — "the quantity differs from the order", "no material is specified".
+
+Sending it back returns the work order to draft so the requester can correct and resubmit. The reason stays in the history, so it can be traced later.
+
 ## Questions and problems
 
 **Q. Nothing appears in the list.**

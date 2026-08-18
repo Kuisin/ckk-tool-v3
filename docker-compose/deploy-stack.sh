@@ -13,6 +13,12 @@
 #   - The server .env holds secrets and lives only on the server — it is always
 #     excluded so a deploy never overwrites or deletes it.
 #   - No --delete: server-only files (certs, data dirs) are left untouched.
+#   - Files a container rewrites at runtime are owned by that container's uid, so
+#     rsync cannot replace them as our SSH user (Permission denied) and the whole
+#     deploy aborts (rsync cannot even set the directory's mtime). Such paths are
+#     excluded for the same reason as .env — the server copy is the live one.
+#     Currently: ai-stack/searxng/ (searxng rewrites settings.yml as uid 977 on
+#     first boot). To change that config, edit it on the server.
 #   - Server host override: DEPLOY_HOST (default 192.168.50.15).
 
 set -euo pipefail
@@ -39,6 +45,7 @@ SRC="$SRC_ROOT/$STACK"
 RSYNC_EXCLUDES=(
   --exclude .env --exclude .git --exclude .DS_Store --exclude .vscode
   --exclude node_modules --exclude .next --exclude '*.tsbuildinfo'
+  --exclude 'searxng/'
 )
 
 echo "→ rsync $STACK → $HOST:~/stacks/$STACK/ ${DRY:+(dry-run)}"
@@ -50,5 +57,8 @@ if [ -n "$DRY" ]; then
 fi
 
 echo "→ docker compose up -d --build on $HOST"
-ssh "$HOST" "cd ~/stacks/$STACK && docker compose up -d --build"
+# BUILDX_CONFIG: Coolify がビルドすると ~/.docker/buildx/activity/default が root
+# 所有で作られ、以後この deploy が "permission denied" で止まる。ビルダーの
+# 状態ディレクトリを deploy 専用（ユーザー所有）に分けて、その衝突を避ける。
+ssh "$HOST" "cd ~/stacks/$STACK && BUILDX_CONFIG=\$HOME/.buildx-deploy docker compose up -d --build"
 echo "✓ $STACK deployed"

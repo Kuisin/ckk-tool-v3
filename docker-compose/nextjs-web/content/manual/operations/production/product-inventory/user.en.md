@@ -114,6 +114,33 @@ Storage places and shelves themselves are registered in [storage location](/manu
 
 You need inventory permission to use this app.
 
+## Input fields
+
+Inventory is mostly a **screen for looking things up**; the only input is when moving stock somewhere else.
+
+| Field | Required | What to enter |
+|-------|----------|---------------|
+| [Destination plant](#field-plant) | Required | Where it moves to |
+| [Storage location / shelf](#field-location) | Optional | Where within that plant |
+| [Quantity](#field-quantity) | Required | How much moves |
+| [Notes](#field-notes) | Optional | Why it moved |
+
+### Destination plant [#field-plant]
+
+Which plant it moves to. **Stock falls at the source and rises at the destination.**
+
+### Storage location / shelf [#field-location]
+
+Where within the destination plant it is put. Setting it makes the physical item easier to find later.
+
+### Quantity [#field-quantity]
+
+How much moves. It cannot exceed what is at the source.
+
+### Notes [#field-notes]
+
+Why it moved. The movement itself is kept in the history.
+
 ## Questions and problems
 
 **Q. I want to correct a stock number by hand.**

@@ -34,6 +34,7 @@ import {
 } from "@/app/(dashboard)/master/products/actions";
 import { ActiveBadge } from "@/components/ui/ActiveBadge";
 import { GhostButton } from "@/components/ui/buttons";
+import { HelpLabel } from "@/components/ui/HelpLabel";
 import { SearchSelect } from "@/components/ui/SearchSelect";
 import {
   FormSection,
@@ -42,6 +43,7 @@ import {
 } from "@/components/ui/shells";
 import { useIsMobile } from "@/hooks/useViewport";
 import { UNIT_OPTIONS } from "@/lib/enum-labels";
+import { fieldHelp, fieldHelpTip } from "@/lib/field-help";
 import { zodResolver } from "@/lib/form";
 import { diameterCodeFromMm, lengthCodeFromMm } from "@/lib/material-code";
 import {
@@ -353,7 +355,7 @@ export function ProductForm({
           <TextInput
             description="形式: PRD-YYYYMM-NNNN（自動採番）"
             disabled
-            label="製品コード"
+            label={<HelpLabel {...fieldHelp("product", "code")} />}
             placeholder="保存時に自動採番"
             // 内部 ID ではなく採番済みの製品コードを表示する
             // （レガシー取込の製品はコード未採番なので空欄）。
@@ -361,7 +363,7 @@ export function ProductForm({
           />
           <Select
             data={UNIT_OPTIONS}
-            label="単位"
+            label={<HelpLabel {...fieldHelp("product", "unit")} />}
             withAsterisk
             {...form.getInputProps("unit")}
           />
@@ -369,17 +371,18 @@ export function ProductForm({
         <Stack gap="sm" mt="sm">
           <LocalizedTextInput
             enProps={form.getInputProps("nameEn")}
+            help={fieldHelpTip("product", "name")}
             jaProps={form.getInputProps("nameJa")}
             label="名称"
             required
           />
           <Switch
-            label="有効"
+            label={<HelpLabel {...fieldHelp("product", "active")} />}
             {...form.getInputProps("isActive", { type: "checkbox" })}
           />
         </Stack>
         <Textarea
-          label="備考"
+          label={<HelpLabel {...fieldHelp("product", "notes")} />}
           mt="sm"
           placeholder="備考・特記事項"
           rows={3}
@@ -393,7 +396,7 @@ export function ProductForm({
       >
         <SearchSelect
           description="変換済（コード構成あり）の材種のみ選択できます"
-          label="材種"
+          label={<HelpLabel {...fieldHelp("product", "materialType")} />}
           onChange={(value, option) => {
             form.setFieldValue("materialTypeId", value);
             form.setFieldValue("materialTypeLabel", option?.label ?? "");
@@ -414,7 +417,11 @@ export function ProductForm({
                 : "—"
             }（径×10）`}
             error={form.errors.diameterMm}
-            label="直径 (mm)"
+            label={
+              <HelpLabel
+                {...fieldHelp("product", "dimensions", { label: "直径 (mm)" })}
+              />
+            }
             max={DIAMETER_MAX}
             min={DIAMETER_MIN}
             onChange={(val) =>
@@ -435,7 +442,11 @@ export function ProductForm({
                 : "—"
             }`}
             error={form.errors.lengthMm}
-            label="全長 (mm)"
+            label={
+              <HelpLabel
+                {...fieldHelp("product", "dimensions", { label: "全長 (mm)" })}
+              />
+            }
             max={LENGTH_MAX}
             min={LENGTH_MIN}
             onChange={(val) =>
@@ -458,7 +469,7 @@ export function ProductForm({
             clearable
             data={typeOptions}
             description={selectedType?.description || "種別を選択（任意）"}
-            label="製品種別"
+            label={<HelpLabel {...fieldHelp("product", "productType")} />}
             onChange={onTypeChange}
             placeholder="種別を選択"
             value={typeId}

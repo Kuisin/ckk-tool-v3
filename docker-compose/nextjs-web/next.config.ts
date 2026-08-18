@@ -47,16 +47,29 @@ const nextConfig: NextConfig = {
   outputFileTracingIncludes: {
     "/api/pdf/**": ["src/pdf-templates/**/*"],
   },
-  // メモリの少ないビルドホスト（例: 8GB の Docker Desktop VM）では Turbopack の
-  // 並列コンパイル + MDX ローダ子プロセスがスラッシングして IPC タイムアウトに
-  // なることがある。TURBOPACK_MEMORY_LIMIT（バイト）でキャッシュ目標を絞れる。
-  // 未設定（Coolify 等）では無効 — 従来どおり。
-  ...(process.env.TURBOPACK_MEMORY_LIMIT
-    ? {
-        experimental: {
-          turbopackMemoryLimit: Number(process.env.TURBOPACK_MEMORY_LIMIT),
-        },
-      }
+  experimental: {
+    // アップロードは proxy.ts を通るので、**プロキシ側のボディ上限が実効上限**に
+    // なる（既定 10MB）。超えた分は黙って切り捨てられ、サーバーログに
+    // "Request body exceeded 10MB … Only the first 10MB will be available" が
+    // 出るだけ — 受け取ったファイルは壊れる。添付・受注請書取込が 20MB、
+    // フロアマップ図面が 10MB を許可しているため、multipart のオーバーヘッド
+    // 込みで収まる値にしておく。個々の上限は各ハンドラ側で弾く。
+    proxyClientMaxBodySize: "24mb",
+    // メモリの少ないビルドホスト（例: 8GB の Docker Desktop VM）では Turbopack の
+    // 並列コンパイル + MDX ローダ子プロセスがスラッシングして IPC タイムアウトに
+    // なることがある。TURBOPACK_MEMORY_LIMIT（バイト）でキャッシュ目標を絞れる。
+    // 未設定（Coolify 等）では無効 — 従来どおり。
+    ...(process.env.TURBOPACK_MEMORY_LIMIT
+      ? { turbopackMemoryLimit: Number(process.env.TURBOPACK_MEMORY_LIMIT) }
+      : {}),
+  },
+  // デプロイ（Docker/Coolify）ビルドでは next build 内の型チェックを省く。
+  // 同じ検証は PR の CI が `pnpm build`（型チェック有効）で必ず実施しており、
+  // dev/main へは PR 経由でしか入らないため二重実行になっている。
+  // 計測: このステップだけで約 17 秒（デプロイ全体 約 112 秒のうち）。
+  // ローカル / CI では未設定 = 従来どおり型チェックする。
+  ...(process.env.NEXT_SKIP_TYPE_CHECK === "1"
+    ? { typescript: { ignoreBuildErrors: true } }
     : {}),
   async redirects() {
     return [
@@ -107,6 +120,27 @@ const nextConfig: NextConfig = {
         destination: "/internal-docs/ja",
         permanent: true,
       },
+
+      // 顧客(MS01) / 最終需要家(MS02) / 外注企業(MS03) → 取引先マスタ(MS01)。
+      // 3 アプリを 1 台帳 + ロール付与に統合したので、旧パスは id ごと引き継ぐ
+      // （BP の id はそのまま。支店パスも同形なので :path* で足りる）。
+      ...(["customers", "end-users", "suppliers"] as const).map((old) => ({
+        source: `/master/${old}/:path*`,
+        destination: "/master/business-partners/:path*",
+        permanent: true,
+      })),
+      ...(["customers", "end-users", "suppliers"] as const).map((old) => ({
+        source: `/master/${old}`,
+        destination: "/master/business-partners",
+        permanent: true,
+      })),
+
+      // マニュアルも 1 ページに統合。
+      ...(["customer", "end-user", "supplier"] as const).map((old) => ({
+        source: `/manual/:lang(ja|en|zh)/operations/masters/${old}/:path*`,
+        destination: "/manual/:lang/operations/masters/business-partner/:path*",
+        permanent: true,
+      })),
     ];
   },
   async rewrites() {

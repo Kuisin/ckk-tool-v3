@@ -113,6 +113,38 @@ Below, under 「**付与済み**」 (Granted), you will see what is currently al
 
 When no one has been allowed anything yet, you will see 「**個別付与はありません**」 (No individual grants).
 
+## Input fields
+
+You only type something when creating a folder or granting access.
+
+| Field | Required | What to enter |
+|-------|----------|---------------|
+| [Folder name](#field-folder-name) | Required | Name of the new folder |
+| [Show system files](#field-show-system-files) | — | Whether leftover files appear |
+| [Folder (path prefix)](#field-grant-folder) | Required | The folder being granted |
+| [User](#field-grant-user) | Required | Who is granted access |
+| [Allow writing too](#field-grant-write) | — | Whether they may add and delete |
+
+### Folder name [#field-folder-name]
+
+The name of the new folder. Files are not really in folders — they are **sorted by how they are named** — so the folder name is what marks where they go.
+
+### Show system files [#field-show-system-files]
+
+Whether **leftover files** that the OS or a tool created by itself (".DS_Store", "\*.tmp") are shown. Keep it off day to day and turn it on only when tidying up. **Business files such as PDFs are not counted as these.**
+
+### Folder (path prefix) [#field-grant-folder]
+
+The folder being granted. It is a **prefix match**, so everything underneath that folder is included.
+
+### User [#field-grant-user]
+
+Who may see that folder.
+
+### Allow writing too [#field-grant-write]
+
+Turning it on lets them **add and delete files**, not just look. Grant it only to those who need it.
+
 ## Questions and problems
 
 **Q. A red box at the top of the screen says 「ストレージ（SeaweedFS）に接続できません。SEAWEED_FILER_URL とコンテナの稼働状況をご確認ください。」 (Cannot connect to storage (SeaweedFS). Please check SEAWEED_FILER_URL and whether the container is running.)**

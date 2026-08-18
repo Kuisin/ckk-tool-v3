@@ -60,12 +60,14 @@ import {
   DataTable,
   type RowAction,
 } from "@/components/ui/DataTable";
+import { HelpLabel } from "@/components/ui/HelpLabel";
 import { ConfirmModal, ModalShell } from "@/components/ui/modals";
 import { StatusBadge, statusOptions } from "@/components/ui/StatusBadge";
 import { ListShell } from "@/components/ui/shells";
 import { useUrlSelectState, useUrlStringState } from "@/hooks/useUrlState";
 import { useIsMobile } from "@/hooks/useViewport";
 import { formatCode, normalizeCode } from "@/lib/crockford";
+import { fieldHelp } from "@/lib/field-help";
 import { formatDateTime } from "@/lib/format";
 import type { KioskDeviceRow, KioskPlantOption } from "@/lib/kiosk-admin";
 import type { ActionResult } from "@/lib/server-action";
@@ -838,7 +840,13 @@ export function KioskDevicesTable({
           </Alert>
           <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
             <TextInput
-              label="端末名（日本語）"
+              label={
+                <HelpLabel
+                  {...fieldHelp("kioskDevice", "name", {
+                    label: "端末名（日本語）",
+                  })}
+                />
+              }
               onChange={(e) => {
                 const nameJa = e.currentTarget.value;
                 setCreateForm((s) => ({ ...s, nameJa }));
@@ -849,7 +857,13 @@ export function KioskDevicesTable({
             />
             <TextInput
               description="未入力なら日本語名を使います"
-              label="端末名（English）"
+              label={
+                <HelpLabel
+                  {...fieldHelp("kioskDevice", "name", {
+                    label: "端末名（English）",
+                  })}
+                />
+              }
               onChange={(e) => {
                 const nameEn = e.currentTarget.value;
                 setCreateForm((s) => ({ ...s, nameEn }));
@@ -860,7 +874,7 @@ export function KioskDevicesTable({
           </SimpleGrid>
           <Select
             data={plantOptions}
-            label="拠点"
+            label={<HelpLabel {...fieldHelp("kioskDevice", "plant")} />}
             onChange={(v) => setCreateForm((s) => ({ ...s, plantId: v }))}
             placeholder="拠点を選択"
             searchable
@@ -868,7 +882,7 @@ export function KioskDevicesTable({
             withAsterisk
           />
           <TextInput
-            label="場所"
+            label={<HelpLabel {...fieldHelp("kioskDevice", "location")} />}
             onChange={(e) => {
               const location = e.currentTarget.value;
               setCreateForm((s) => ({ ...s, location }));
@@ -899,7 +913,7 @@ export function KioskDevicesTable({
             リンク後、この画面から有効化できます。
           </Alert>
           <TextInput
-            label="リンクコード"
+            label={<HelpLabel {...fieldHelp("kioskDevice", "linkCode")} />}
             onChange={(e) =>
               setLinkCode(normalizeCode(e.currentTarget.value).slice(0, 12))
             }
@@ -927,7 +941,13 @@ export function KioskDevicesTable({
         <Stack gap="sm">
           <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
             <TextInput
-              label="端末名（日本語）"
+              label={
+                <HelpLabel
+                  {...fieldHelp("kioskDevice", "name", {
+                    label: "端末名（日本語）",
+                  })}
+                />
+              }
               onChange={(e) => {
                 const nameJa = e.currentTarget.value;
                 setEditForm((s) => ({ ...s, nameJa }));
@@ -937,7 +957,13 @@ export function KioskDevicesTable({
             />
             <TextInput
               description="未入力なら日本語名を使います"
-              label="端末名（English）"
+              label={
+                <HelpLabel
+                  {...fieldHelp("kioskDevice", "name", {
+                    label: "端末名（English）",
+                  })}
+                />
+              }
               onChange={(e) => {
                 const nameEn = e.currentTarget.value;
                 setEditForm((s) => ({ ...s, nameEn }));
@@ -947,14 +973,14 @@ export function KioskDevicesTable({
           </SimpleGrid>
           <Select
             data={plantOptions}
-            label="拠点"
+            label={<HelpLabel {...fieldHelp("kioskDevice", "plant")} />}
             onChange={(v) => setEditForm((s) => ({ ...s, plantId: v }))}
             searchable
             value={editForm.plantId}
             withAsterisk
           />
           <TextInput
-            label="場所"
+            label={<HelpLabel {...fieldHelp("kioskDevice", "location")} />}
             onChange={(e) => {
               const location = e.currentTarget.value;
               setEditForm((s) => ({ ...s, location }));

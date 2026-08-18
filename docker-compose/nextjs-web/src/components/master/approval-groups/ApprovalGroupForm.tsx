@@ -18,6 +18,7 @@ import {
   updateApprovalGroup,
 } from "@/app/(dashboard)/master/approval-groups/actions";
 import { ActiveBadge } from "@/components/ui/ActiveBadge";
+import { HelpLabel } from "@/components/ui/HelpLabel";
 import {
   FormSection,
   FormShell,
@@ -25,6 +26,7 @@ import {
 } from "@/components/ui/shells";
 import { useIsMobile } from "@/hooks/useViewport";
 import { APPROVAL_GROUP_TYPE_OPTIONS } from "@/lib/enum-labels";
+import { fieldHelp, fieldHelpTip } from "@/lib/field-help";
 import { zodResolver } from "@/lib/form";
 
 const BASE_PATH = "/master/approval-groups";
@@ -123,7 +125,7 @@ export function ApprovalGroupForm({
             data={APPROVAL_GROUP_TYPE_OPTIONS}
             description={isEdit ? "種別は作成後変更できません" : undefined}
             disabled={isEdit}
-            label="種別"
+            label={<HelpLabel {...fieldHelp("approvalGroup", "type")} />}
             withAsterisk={!isEdit}
             {...form.getInputProps("type")}
           />
@@ -131,12 +133,13 @@ export function ApprovalGroupForm({
         <SimpleGrid cols={1} mt="sm" spacing="sm">
           <LocalizedTextInput
             enProps={form.getInputProps("nameEn")}
+            help={fieldHelpTip("approvalGroup", "name")}
             jaProps={form.getInputProps("nameJa")}
             label="名称"
             required
           />
           <Switch
-            label="有効"
+            label={<HelpLabel {...fieldHelp("approvalGroup", "active")} />}
             {...form.getInputProps("isActive", { type: "checkbox" })}
           />
         </SimpleGrid>

@@ -110,6 +110,30 @@ You can download a file for the accounting team to read into the accounting soft
 
 After you make it, the date and time appear in the 「**弥生エクスポート**」 (Yayoi export) box on the detail screen.
 
+## Input fields
+
+This screen has no input boxes. Invoices are **created together by the closing run**, so amounts and lines are never typed by hand.
+
+| Action | What happens |
+|--------|--------------|
+| [Issue](#field-issue) | The invoice is fixed and given a number |
+| [Mark as sent](#field-sent) | Records that it went to the customer |
+| [Mark as paid](#field-paid) | Records that payment arrived |
+
+### Issue [#field-issue]
+
+Fixes the invoice after you have checked it. **Issuing gives it a number and locks the contents.** If you spot a mistake, go back to the delivery or the closing run to correct it.
+
+### Mark as sent [#field-sent]
+
+Records that it went to the customer. How it is sent (email, fax, post) is set per customer.
+
+### Mark as paid [#field-paid]
+
+Records that payment arrived, so unpaid invoices can be found.
+
+The amounts are **collected automatically from delivery notes**. If something does not add up, check the delivery side rather than this screen.
+
 ## Questions and problems
 
 **Q. I cannot find a 「新規作成」 (New) button.**
@@ -125,7 +149,7 @@ A. That invoice has already been issued. Close the screen and open it again to s
 A. A step has been skipped. Please go in order: issue → mark as sent → mark as paid.
 
 **Q. The consumption tax does not look like it was worked out at 10%.**
-A. The tax is worked out with the rule set for each customer. Customers on the reduced rate are 8%, and tax-free customers are 0%. To change the rule, fix the registered details of the [customer](/manual/en/operations/masters/customer/user).
+A. The tax is worked out with the rule set for each customer. Customers on the reduced rate are 8%, and tax-free customers are 0%. To change the rule, fix the registered details of the [customer](/manual/en/operations/masters/business-partner/user).
 
 **Q. I press 「弥生会計CSV」 but no file comes out.**
 A. You may not have the export permission. Please ask your administrator.

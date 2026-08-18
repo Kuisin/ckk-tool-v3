@@ -29,7 +29,7 @@ screenshots: [outsource-order-list-01, outsource-order-list-02, outsource-order-
 
 このアプリは **見るだけの画面** です。ここから新しく外注を追加することはできません。
 
-外注をこの一覧に載せるには、[指示書](/manual/ja/operations/production/work-order/user)の工程で実施場所に「**外注**」を選び、外注先の会社を指定します。外注先の会社は[外注企業マスタ](/manual/ja/operations/masters/supplier/user)で登録します。
+外注をこの一覧に載せるには、[指示書](/manual/ja/operations/production/work-order/user)の工程で実施場所に「**外注**」を選び、外注先の会社を指定します。外注先の会社は[取引先マスタ](/manual/ja/operations/masters/business-partner/user)で登録します。
 
 閲覧には外注依頼の権限が必要です。画面が開かないときは社内の担当者にご確認ください。
 
@@ -74,6 +74,30 @@ screenshots: [outsource-order-list-01, outsource-order-list-02, outsource-order-
 ![工程の作業画面の「外注日程」](../../../assets/screenshots/outsource-order-step-01.png)
 
 保存すると、外注依頼の一覧にもその日付が反映されます。
+
+## 入力項目
+
+この画面に入力欄はありません。**外注に出した工程を一覧で見るための画面**です。
+
+外注の内容（外注先・依頼日・入荷予定日・入荷日）は、**指示書の工程**で入力します。この画面には、その結果が集まって表示されます。
+
+| 絞り込み | 何が変わるか |
+|----------|-------------|
+| [外注先](#field-supplier) | どの会社に出した分を見るか |
+| [状態](#field-status) | 依頼中・入荷済みなどで絞る |
+| [検索](#field-search) | 指示書番号・製品・工程・外注先で探す |
+
+### 外注先 [#field-supplier]
+
+どの会社に出した分を見るかです。
+
+### 状態 [#field-status]
+
+依頼中・入荷済みといった状態で絞り込みます。**入荷予定日を過ぎているのに入荷していない分**を探すときに使ってください。
+
+### 検索 [#field-search]
+
+指示書番号・製品・工程・外注先で探せます。行をクリックすると、その工程を持つ指示書へ移動します。
 
 ## よくある質問・困ったとき
 

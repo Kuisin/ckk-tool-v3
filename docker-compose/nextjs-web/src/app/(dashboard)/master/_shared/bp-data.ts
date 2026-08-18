@@ -1,46 +1,87 @@
 /**
- * bp-data.ts — server-side fetch/mapping shared by the BP master screens
- * (顧客 MS01 / 最終需要家 MS02 / 外注企業 MS03).
+ * bp-data.ts — server-side fetch/mapping for the 取引先マスタ (MS01).
  *
- * One bp.business_partners row per 法人（支店は parent_id 参照の子 BP）;
- * role-specific attrs live in bp_customer_attrs / bp_vendor_attrs /
- * bp_end_user_attrs. Underscore folder → not routable.
+ * One bp.business_partners row per 法人（支店は parent_id 参照の子 BP）。
+ * 顧客 / 最終需要家 / 仕入先・外注先 は同じ 1 行にロール（bp_role_assignments）
+ * を付与して表現し、ロール固有の属性は bp_customer_attrs / bp_end_user_attrs /
+ * bp_vendor_attrs に持つ。Underscore folder → not routable.
  */
 
 import { prisma } from "@/lib/db";
 import { formatQuoteNumber } from "@/lib/doc-number";
 import { type LocalizedText, localized } from "@/lib/format";
+import { BP_ROLES, type BpRoleValue } from "./bp-schema";
 
 const ja = (v: unknown) => (v as LocalizedText | null)?.ja ?? "";
 const en = (v: unknown) => (v as LocalizedText | null)?.en ?? "";
 
-// ── 顧客 ─────────────────────────────────────────────────────────────────────
+/**
+ * 有効なロール割当だけを拾う（解除済みは isActive=false の行として残る）。
+ * 並びは BP_ROLES 固定 — DB の挿入順でバッジの順が揺れないように。
+ */
+type RoleAssignmentLike = { role: string; isActive: boolean };
 
-export interface CustomerRow {
+function activeRoles(assignments: RoleAssignmentLike[]): BpRoleValue[] {
+  const active = new Set(
+    assignments.filter((a) => a.isActive).map((a) => a.role),
+  );
+  return BP_ROLES.filter((role) => active.has(role));
+}
+
+// ── 取引先 一覧 ───────────────────────────────────────────────────────────────
+
+export interface BpRow {
   id: string;
   bpCode: string;
   name: string;
+  roles: BpRoleValue[];
+  vendorType: string | null;
   branchCount: number;
   isActive: boolean;
   updatedAt: string;
 }
 
-export async function fetchCustomers(): Promise<CustomerRow[]> {
+export async function fetchBusinessPartners(): Promise<BpRow[]> {
   const rows = await prisma.businessPartner.findMany({
-    where: {
-      parentId: null,
-      roleAssignments: { some: { role: "CUSTOMER" } },
+    where: { parentId: null },
+    include: {
+      roleAssignments: true,
+      vendorAttrs: { select: { vendorType: true } },
+      _count: { select: { branches: true } },
     },
-    include: { _count: { select: { branches: true } } },
     orderBy: { bpCode: "asc" },
   });
   return rows.map((r) => ({
     id: r.id,
     bpCode: r.bpCode ?? "—",
     name: localized(r.name as LocalizedText | null),
+    roles: activeRoles(r.roleAssignments),
+    vendorType: r.vendorAttrs?.vendorType ?? null,
     branchCount: r._count.branches,
     isActive: r.isActive,
     updatedAt: r.updatedAt.toISOString(),
+  }));
+}
+
+/**
+ * 請求先セレクトの候補 — 顧客ロールを持つトップレベル BP（自分自身は除く）。
+ */
+export async function fetchBillingOptions(
+  excludeId?: string,
+): Promise<{ value: string; label: string }[]> {
+  const rows = await prisma.businessPartner.findMany({
+    where: {
+      parentId: null,
+      isActive: true,
+      roleAssignments: { some: { role: "CUSTOMER", isActive: true } },
+      ...(excludeId ? { id: { not: excludeId } } : {}),
+    },
+    select: { id: true, name: true, bpCode: true },
+    orderBy: { bpCode: "asc" },
+  });
+  return rows.map((r) => ({
+    value: r.id,
+    label: `${localized(r.name as LocalizedText | null)}（${r.bpCode ?? "—"}）`,
   }));
 }
 
@@ -156,20 +197,46 @@ export interface DocHistoryRow {
   date: string;
 }
 
-export interface CustomerDetail extends BpBaseDetail {
-  attrs: CustomerAttrs;
+export interface EndUserAttrs {
+  industry: string;
+}
+
+export interface VendorAttrs {
+  vendorCode: string;
+  vendorType: string;
+  closingDay: number | null;
+  paymentTermsDays: number | null;
+  paymentDay: number | null;
+  bankName: string;
+  bankBranch: string;
+  bankAccountType: string | null;
+  bankAccountNumber: string;
+  leadTimeDays: number | null;
+}
+
+/**
+ * 取引先 詳細 — 付与ロールと、ロール別属性をすべて載せる。
+ * `roles` に含まれないロールの属性も（過去に付与していれば）残るので、
+ * 再付与したときに前の内容が戻る。
+ */
+export interface BpDetail extends BpBaseDetail {
+  roles: BpRoleValue[];
+  customer: CustomerAttrs | null;
+  endUser: EndUserAttrs | null;
+  vendor: VendorAttrs | null;
   contacts: ContactRow[];
   branches: BranchRow[];
   history: DocHistoryRow[];
 }
 
-export async function fetchCustomerDetail(
-  id: string,
-): Promise<CustomerDetail | null> {
+export async function fetchBpDetail(id: string): Promise<BpDetail | null> {
   const r = await prisma.businessPartner.findUnique({
     where: { id },
     include: {
+      roleAssignments: true,
       customerAttrs: { include: { billingBp: true } },
+      endUserAttrs: true,
+      vendorAttrs: true,
       contacts: { orderBy: [{ isPrimary: "desc" }, { createdAt: "asc" }] },
       branches: {
         orderBy: { bpCode: "asc" },
@@ -185,32 +252,53 @@ export async function fetchCustomerDetail(
     },
   });
   if (!r) return null;
-  const a = r.customerAttrs;
+  const c = r.customerAttrs;
+  const v = r.vendorAttrs;
   return {
     ...mapBpBase(r),
-    attrs: {
-      customerCode: a?.customerCode ?? "",
-      billingBpId: a?.billingBpId ?? null,
-      billingName: a?.billingBp
-        ? localized(a.billingBp.name as LocalizedText | null)
-        : "—（自社）",
-      closingDay: a?.closingDay ?? null,
-      paymentTermsDays: a?.paymentTermsDays ?? null,
-      paymentDay: a?.paymentDay ?? null,
-      creditLimit: a?.creditLimit != null ? Number(a.creditLimit) : null,
-      taxType: a?.taxType ?? "TAXABLE",
-      invoiceMethod: a?.invoiceMethod ?? "EMAIL",
-      isConsignment: a?.isConsignment ?? false,
-    },
-    contacts: r.contacts.map((c) => ({
-      id: c.id,
-      name: c.name,
-      nameKana: c.nameKana ?? "",
-      department: c.department ?? "",
-      title: c.title ?? "",
-      email: c.email ?? "",
-      phone: c.phone ?? "",
-      isPrimary: c.isPrimary,
+    roles: activeRoles(r.roleAssignments),
+    customer: c
+      ? {
+          customerCode: c.customerCode ?? "",
+          billingBpId: c.billingBpId ?? null,
+          billingName: c.billingBp
+            ? localized(c.billingBp.name as LocalizedText | null)
+            : "—（自社）",
+          closingDay: c.closingDay ?? null,
+          paymentTermsDays: c.paymentTermsDays ?? null,
+          paymentDay: c.paymentDay ?? null,
+          creditLimit: c.creditLimit != null ? Number(c.creditLimit) : null,
+          taxType: c.taxType,
+          invoiceMethod: c.invoiceMethod,
+          isConsignment: c.isConsignment,
+        }
+      : null,
+    endUser: r.endUserAttrs
+      ? { industry: r.endUserAttrs.industry ?? "" }
+      : null,
+    vendor: v
+      ? {
+          vendorCode: v.vendorCode ?? "",
+          vendorType: v.vendorType,
+          closingDay: v.closingDay ?? null,
+          paymentTermsDays: v.paymentTermsDays ?? null,
+          paymentDay: v.paymentDay ?? null,
+          bankName: v.bankName ?? "",
+          bankBranch: v.bankBranch ?? "",
+          bankAccountType: v.bankAccountType ?? null,
+          bankAccountNumber: v.bankAccountNumber ?? "",
+          leadTimeDays: v.leadTimeDays ?? null,
+        }
+      : null,
+    contacts: r.contacts.map((c2) => ({
+      id: c2.id,
+      name: c2.name,
+      nameKana: c2.nameKana ?? "",
+      department: c2.department ?? "",
+      title: c2.title ?? "",
+      email: c2.email ?? "",
+      phone: c2.phone ?? "",
+      isPrimary: c2.isPrimary,
     })),
     branches: r.branches.map((b) => ({
       id: b.id,
@@ -262,120 +350,5 @@ export async function fetchBranchDetail(
       phone: c.phone ?? "",
       isPrimary: c.isPrimary,
     })),
-  };
-}
-
-// ── 最終需要家 ────────────────────────────────────────────────────────────────
-
-export interface EndUserRow {
-  id: string;
-  bpCode: string;
-  name: string;
-  industry: string;
-  isActive: boolean;
-}
-
-export async function fetchEndUsers(): Promise<EndUserRow[]> {
-  const rows = await prisma.businessPartner.findMany({
-    where: { roleAssignments: { some: { role: "END_USER" } } },
-    include: { endUserAttrs: true },
-    orderBy: { bpCode: "asc" },
-  });
-  return rows.map((r) => ({
-    id: r.id,
-    bpCode: r.bpCode ?? "—",
-    name: localized(r.name as LocalizedText | null),
-    industry: r.endUserAttrs?.industry ?? "—",
-    isActive: r.isActive,
-  }));
-}
-
-export interface EndUserDetail extends BpBaseDetail {
-  industry: string;
-  attrNotes: string;
-}
-
-export async function fetchEndUserDetail(
-  id: string,
-): Promise<EndUserDetail | null> {
-  const r = await prisma.businessPartner.findUnique({
-    where: { id },
-    include: { endUserAttrs: true },
-  });
-  if (!r) return null;
-  return {
-    ...mapBpBase(r),
-    industry: r.endUserAttrs?.industry ?? "",
-    attrNotes: r.endUserAttrs?.notes ?? "",
-  };
-}
-
-// ── 外注企業（仕入先・外注先） ────────────────────────────────────────────────
-
-export interface SupplierRow {
-  id: string;
-  bpCode: string;
-  name: string;
-  vendorType: string;
-  leadTimeDays: number | null;
-  isActive: boolean;
-}
-
-export async function fetchSuppliers(): Promise<SupplierRow[]> {
-  const rows = await prisma.businessPartner.findMany({
-    where: { roleAssignments: { some: { role: "VENDOR" } } },
-    include: { vendorAttrs: true },
-    orderBy: { bpCode: "asc" },
-  });
-  return rows.map((r) => ({
-    id: r.id,
-    bpCode: r.bpCode ?? "—",
-    name: localized(r.name as LocalizedText | null),
-    vendorType: r.vendorAttrs?.vendorType ?? "OUTSOURCE",
-    leadTimeDays: r.vendorAttrs?.leadTimeDays ?? null,
-    isActive: r.isActive,
-  }));
-}
-
-export interface SupplierAttrs {
-  vendorCode: string;
-  vendorType: string;
-  closingDay: number | null;
-  paymentTermsDays: number | null;
-  paymentDay: number | null;
-  bankName: string;
-  bankBranch: string;
-  bankAccountType: string | null;
-  bankAccountNumber: string;
-  leadTimeDays: number | null;
-}
-
-export interface SupplierDetail extends BpBaseDetail {
-  attrs: SupplierAttrs;
-}
-
-export async function fetchSupplierDetail(
-  id: string,
-): Promise<SupplierDetail | null> {
-  const r = await prisma.businessPartner.findUnique({
-    where: { id },
-    include: { vendorAttrs: true },
-  });
-  if (!r) return null;
-  const a = r.vendorAttrs;
-  return {
-    ...mapBpBase(r),
-    attrs: {
-      vendorCode: a?.vendorCode ?? "",
-      vendorType: a?.vendorType ?? "OUTSOURCE",
-      closingDay: a?.closingDay ?? null,
-      paymentTermsDays: a?.paymentTermsDays ?? null,
-      paymentDay: a?.paymentDay ?? null,
-      bankName: a?.bankName ?? "",
-      bankBranch: a?.bankBranch ?? "",
-      bankAccountType: a?.bankAccountType ?? null,
-      bankAccountNumber: a?.bankAccountNumber ?? "",
-      leadTimeDays: a?.leadTimeDays ?? null,
-    },
   };
 }

@@ -4,7 +4,7 @@
  * Server Actions — 受注請書 intake (app.order_acceptances, SA04)。
  *
  * ライフサイクル遷移:
- *   IMPORT（抽出失敗）→ 再抽出（retryExtraction — lib/intake.runExtraction）
+ *   IMPORT（抽出失敗）→ 再抽出（retryExtraction — lib/intake の抽出キューへ積む）
  *   DRAFT → saveDraft（ヘッダ + 明細全置換）/ submitForApproval（→ REQUESTED）
  *   REQUESTED → approveAcceptance（→ APPROVED）/ rejectAcceptance（→ DRAFT）
  *   APPROVED → deployToSalesOrders（伝票展開 → COMPLETED）
@@ -27,7 +27,7 @@ import {
   formatSalesOrderNumber,
   parseDocKey,
 } from "@/lib/doc-number";
-import { runExtraction } from "@/lib/intake";
+import { enqueueExtraction } from "@/lib/intake";
 import { allocateDocumentKey } from "@/lib/numbering";
 import {
   type ActionResult,
@@ -136,7 +136,13 @@ function buildItemCreates(items: OrderAcceptanceDraftInput["items"]) {
 
 // ── 再抽出（IMPORT のみ） ────────────────────────────────────────────────────
 
-/** 抽出失敗した IMPORT 行の再抽出。成功で DRAFT へ（数十秒かかる）。 */
+/**
+ * 抽出失敗した IMPORT 行の再抽出。
+ *
+ * **待ち行列へ積んで即戻る** — 抽出は数分かかることがあり、Server Action で
+ * 待つと画面が固まるうえ、優先取込の抽出と同時に po-extract を叩いてしまう
+ * （GPU は 1 件ずつ）。結果は行の状態（取込中 → 下書き / 抽出失敗）で見る。
+ */
 export async function retryExtraction(number: string): Promise<ActionResult> {
   const key = keyOf(number);
   if (!key) return actionError("受注請書番号が不正です");
@@ -154,14 +160,60 @@ export async function retryExtraction(number: string): Promise<ActionResult> {
     if (prior.status !== "IMPORT") {
       return actionError("取込中（未抽出）の受注請書のみ再抽出できます");
     }
-    const result = await runExtraction(key);
+    // 前回のエラー表示を消してから積む（画面上は「取込中」に戻る）。
+    await prisma.orderAcceptance.update({
+      where: { yearMonth_seq: key },
+      data: { extractError: null },
+    });
+    enqueueExtraction(key);
     revalidate(number);
-    if (result.status !== "DRAFT") {
-      return actionError(result.error ?? "抽出に失敗しました");
-    }
     return actionOk();
   } catch (e) {
     return actionError(prismaErrorMessage(e, "再抽出に失敗しました"));
+  }
+}
+
+/**
+ * 抽出を待たずに手入力へ切り替える（IMPORT → DRAFT）。
+ *
+ * 抽出は数分かかることがあり、失敗して止まることもある。待てないときや
+ * 内容が分かっているときは、人がその場で引き取れるようにする。
+ * 裏で走っている抽出は**結果を捨てる**（runExtraction が IMPORT 以外なら
+ * 書き込まない）ので、切り替えたあとの入力が消えることはない。
+ */
+export async function takeOverManually(number: string): Promise<ActionResult> {
+  const key = keyOf(number);
+  if (!key) return actionError("受注請書番号が不正です");
+  const authz = await checkPermission("order_acceptance", "UPDATE");
+  if (!authz.ok) return actionError(authz.error);
+  if (!(await acceptanceInScope(authz.access, authz.userId, key))) {
+    return actionError(SCOPE_DENIED);
+  }
+  try {
+    const prior = await prisma.orderAcceptance.findUnique({
+      where: { yearMonth_seq: key },
+      select: { status: true },
+    });
+    if (!prior) return actionError("対象の受注請書が見つかりません");
+    if (prior.status !== "IMPORT") {
+      return actionError("取込中の受注請書のみ手入力へ切り替えられます");
+    }
+    await prisma.orderAcceptance.update({
+      where: { yearMonth_seq: key },
+      // 抽出済みの値があればそれを残したまま編集させる（0 からとは限らない）。
+      data: { status: "DRAFT", extractError: null },
+    });
+    await recordAudit({
+      action: "UPDATE",
+      tableName: "order_acceptances",
+      recordId: number,
+      before: { status: "IMPORT" },
+      after: { status: "DRAFT", note: "自動抽出を待たず手入力へ切り替え" },
+    });
+    revalidate(number);
+    return actionOk();
+  } catch (e) {
+    return actionError(prismaErrorMessage(e, "切り替えに失敗しました"));
   }
 }
 

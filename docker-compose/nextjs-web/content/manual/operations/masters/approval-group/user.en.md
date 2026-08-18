@@ -102,6 +102,28 @@ The detail screen is split into four tabs.
 
 To correct the name, press 「**編集**」 (Edit) at the top right. From the 「**…**」 (the three-dot button) to its right, you can use **無効化** (Deactivate) and **削除** (Delete).
 
+## Input fields
+
+Every field on the Approval group screen.
+
+| Field | What to enter |
+|-------|---------------|
+| [Type](#field-type) | First approval (production decision), second approval (departmental), or workflow change |
+| [Name](#field-name) | The group name |
+| [Active](#field-active) | Turning it off stops approvals running through this group |
+
+### Type [#field-type]
+
+First approval (production decision), second approval (departmental), or workflow change. **Work order approval follows this order.**
+
+### Name [#field-name]
+
+The group name. This is the name shown when choosing approvers.
+
+### Active [#field-active]
+
+Turning it off stops approvals running through this group. Members and delegates are set on the detail screen.
+
 ## Questions and problems
 
 **Q. Someone was asked to approve, but says they cannot.**

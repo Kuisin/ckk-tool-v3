@@ -7,7 +7,7 @@ screenshots: [price-list-list-01, price-list-new-01, price-list-detail-01, price
 
 ## このアプリでできること
 
-- [お客様](/manual/ja/operations/masters/customer/user)ごとの製品の売値を登録できます。
+- [お客様](/manual/ja/operations/masters/business-partner/user)ごとの製品の売値を登録できます。
 - 登録しておくと、[見積書](/manual/ja/operations/sales/quote/user)の金額が **自動で入ります**（見積書の画面で金額を手入力する必要はありません）。
 - [受注請書](/manual/ja/operations/sales/order-acceptance/user)では、お客様の注文書の単価とここの値段が **自動で見比べられ**、違っていれば知らせてくれます。
 - 「**たくさん買うと 1 本あたりが安くなる**」という数量ごとの値段を設定できます。
@@ -27,7 +27,7 @@ screenshots: [price-list-list-01, price-list-new-01, price-list-detail-01, price
 
 ## はじめる前に
 
-- 対象の[お客様](/manual/ja/operations/masters/customer/user)と[製品](/manual/ja/operations/masters/product/user)が登録されている必要があります。
+- 対象の[お客様](/manual/ja/operations/masters/business-partner/user)と[製品](/manual/ja/operations/masters/product/user)が登録されている必要があります。
 - 値段のもとにする[試算](/manual/ja/operations/sales/trial-estimate/user)があると便利です。試算に製品を指定して「確定」しておくと、この画面で選べるようになり、金額が自動で入ります。
 - 試算がなくても、値段を手で入力して登録できます。
 
@@ -130,6 +130,63 @@ screenshots: [price-list-list-01, price-list-new-01, price-list-detail-01, price
 - **削除** … その価格表を消します。取り消せません。
 
 一覧では、行の左のチェックボックスで複数選んでから「**有効化**」「**無効化**」「**一括削除**」もできます。
+
+## 入力項目
+
+価格表の画面で入力する項目の一覧です。アプリの入力欄の横にある「?」からも、その項目の説明へ直接来られます。
+
+| 項目 | 必須 | 何を入れるか |
+|------|------|-------------|
+| [顧客](#field-customer) | 必須 | 価格を決める相手 |
+| [製品](#field-product) | 必須 | 価格を決める製品 |
+| [有効（価格表全体）](#field-active) | — | この価格表を使うかどうか |
+| [注文種別](#field-order-type) | 必須 | 本番・テストなどの区分 |
+| [価格ソース（試算）](#field-estimate) | 任意 | 基準単価のもとにする試算 |
+| [基準単価](#field-base-price) | 必須 | 数量段階のもとになる単価 |
+| [有効開始日](#field-valid-from) | 必須 | この価格を使い始める日 |
+| [有効終了日](#field-valid-until) | 任意 | この価格を使い終わる日 |
+| [倍率](#field-multiplier) | 必須 | 数量段階ごとの掛け率 |
+| [カスタム単価](#field-custom-price) | 任意 | 段階ごとに単価を手で決める |
+
+### 顧客 [#field-customer]
+
+価格を決める相手です。**顧客と製品の組み合わせで 1 つの価格表**になり、作った後は変えられません。相手を間違えたときは、作り直してください。
+
+### 製品 [#field-product]
+
+価格を決める製品です。顧客と同じく、作った後は変えられません。
+
+### 有効（価格表全体）[#field-active]
+
+この価格表を使うかどうかです。**外すと見積書で単価が引けなくなります。** 使わなくなった価格表を残したまま止めたいときに使います。
+
+### 注文種別 [#field-order-type]
+
+本番・テスト・サンプル・その他の区分です。**同じ顧客・製品でも、種別ごとに違う価格を持てます。** サンプルは金額 0 で扱います。
+
+### 価格ソース（試算）[#field-estimate]
+
+基準単価のもとにする試算です。**確定した試算だけ選べます。** 選ぶとその試算の見積単価が基準単価に入り、試算は「価格表登録済」になって編集できなくなります（過去の価格が後から変わらないようにするためです）。手で入れたい場合は選ばなくても構いません。
+
+### 基準単価 [#field-base-price]
+
+数量段階のもとになる単価です。段階ごとの単価は、この単価に倍率を掛けて決まります。
+
+### 有効開始日 [#field-valid-from]
+
+この価格を使い始める日です。見積書を作るとき、**その時点で有効な価格**が使われます。
+
+### 有効終了日 [#field-valid-until]
+
+この価格を使い終わる日です。空にすると期限なしになります。**テスト・サンプルの価格は終了日を入れる運用**です。
+
+### 倍率 [#field-multiplier]
+
+数量の範囲ごとの掛け率です。たくさん買うほど単価を下げたいときに、1 より小さい値を入れます。
+
+### カスタム単価 [#field-custom-price]
+
+その段階だけ単価を手で決めたいときに使います。入れると倍率での計算より優先されます。
 
 ## よくある質問・困ったとき
 

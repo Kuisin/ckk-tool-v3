@@ -111,6 +111,87 @@ You can also add input boxes that are not in the template, by choosing them unde
 
 If a value you entered does not match its type, you are told when you try to save; fix it and save again.
 
+## Input fields
+
+This screen has two halves: **product items** (the fields themselves) and **product types** (which fields appear on which products).
+
+### Product item fields
+
+| Field | Required | What to enter |
+|-------|----------|---------------|
+| [Item name (Japanese / English)](#field-item-name) | Required | The field name shown on products |
+| [Key (identifier)](#field-key) | Required | The alphanumeric name used to store it |
+| [Type](#field-type) | Required | Text, number, and so on |
+| [Default value (base)](#field-default) | Optional | Used when nothing is entered |
+| [Placeholder](#field-placeholder) | Optional | Faint example inside the box |
+| [Make it required](#field-required) | — | Whether it may be left empty |
+| [Pattern (regular expression)](#field-pattern) | Optional | The shape the text must have |
+| [Minimum / maximum](#field-range) | Optional | The numeric range |
+
+### Item name (Japanese / English) [#field-item-name]
+
+The field name shown on the product screen. Fill in both Japanese and English.
+
+### Key (identifier) [#field-key]
+
+The alphanumeric name used to store the field. **Changing it later disconnects the values already entered**, so decide it at registration.
+
+### Type [#field-type]
+
+Text, number, and so on. The type decides **which of the settings below apply** — minimum and maximum for numbers, pattern for text.
+
+### Default value (base) [#field-default]
+
+What goes in when nothing is entered. Setting a common value saves typing.
+
+### Placeholder [#field-placeholder]
+
+A faint example inside the box. It is not saved as a value.
+
+### Make it required [#field-required]
+
+Turning it on stops the product from being saved while the field is empty.
+
+### Pattern (regular expression) [#field-pattern]
+
+The shape the text must have. Use it only when a fixed way of writing is needed.
+
+### Minimum / maximum [#field-range]
+
+For numeric items, the range that can be entered.
+
+---
+
+### Product type fields
+
+| Field | Required | What to enter |
+|-------|----------|---------------|
+| [Type name (Japanese / English)](#field-type-name) | Required | The name picked when creating a product |
+| [Description](#field-type-description) | Optional | What kind of product it is for |
+| [Active](#field-type-active) | — | Whether it appears when creating products |
+| [Items](#field-type-items) | Optional | The product items this type uses |
+| [Default value (override)](#field-type-default) | Optional | A default just for this type |
+
+### Type name (Japanese / English) [#field-type-name]
+
+The name picked when creating a product.
+
+### Description [#field-type-description]
+
+A note on what kind of product the type is for.
+
+### Active [#field-type-active]
+
+Turning it off removes it from the choices when creating products. **Products already made with it stay as they are.**
+
+### Items [#field-type-items]
+
+The fields shown on the product screen when this type is chosen, picked from the product items above.
+
+### Default value (override) [#field-type-default]
+
+Use it when an item's default should differ **only for this type**. If empty, the product item's own default is used.
+
 ## Questions and problems
 
 **Q. On the product registration screen, I cannot choose a template I made.**

@@ -210,30 +210,15 @@ export const appList: AppEntry[] = [
   },
 
   // ─── マスタ ────────────────────────────────────────────────────────────────
+  // 顧客 (旧 MS01) / 最終需要家 (旧 MS02) / 外注企業 (旧 MS03) は 1 つの
+  // 取引先マスタに統合済み — 1 法人 1 レコード + ロール付与で使い分ける。
+  // MS02 / MS03 は欠番（他マスタの操作コードは据え置き）。
   {
-    key: "master-customers",
-    label: "顧客",
+    key: "master-business-partners",
+    label: "取引先",
     operationCode: "MS01",
-    href: "/master/customers",
+    href: "/master/business-partners",
     icon: "IconBuilding",
-    category: "マスタ",
-    requiredPermission: "master",
-  },
-  {
-    key: "master-end-users",
-    label: "最終需要家",
-    operationCode: "MS02",
-    href: "/master/end-users",
-    icon: "IconUsers",
-    category: "マスタ",
-    requiredPermission: "master",
-  },
-  {
-    key: "master-suppliers",
-    label: "外注企業",
-    operationCode: "MS03",
-    href: "/master/suppliers",
-    icon: "IconBuildingFactory2",
     category: "マスタ",
     requiredPermission: "master",
   },

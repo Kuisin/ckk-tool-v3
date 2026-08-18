@@ -20,12 +20,14 @@ import { useRouter } from "next/navigation";
 import { useTransition } from "react";
 import { z } from "zod";
 import { createDefectType } from "@/app/(dashboard)/master/defect-types/actions";
+import { HelpLabel } from "@/components/ui/HelpLabel";
 import {
   FormSection,
   FormShell,
   LocalizedTextInput,
 } from "@/components/ui/shells";
 import { useIsMobile } from "@/hooks/useViewport";
+import { fieldHelp, fieldHelpTip } from "@/lib/field-help";
 import { zodResolver } from "@/lib/form";
 
 const BASE_PATH = "/master/defect-types";
@@ -94,7 +96,11 @@ export function DefectTypeForm() {
         <SimpleGrid cols={isMobile ? 1 : 2} spacing="sm">
           <TextInput
             description="不良種類を識別する一意のコード"
-            label="コード"
+            label={
+              <HelpLabel
+                {...fieldHelp("defectType", "code", { label: "コード" })}
+              />
+            }
             placeholder="例: SCRATCH"
             withAsterisk
             {...form.getInputProps("code")}
@@ -102,7 +108,7 @@ export function DefectTypeForm() {
           <NumberInput
             allowDecimal={false}
             description="一覧・不良入力での並び順"
-            label="表示順"
+            label={<HelpLabel {...fieldHelp("defectType", "sortOrder")} />}
             min={0}
             {...form.getInputProps("sortOrder")}
           />
@@ -110,12 +116,13 @@ export function DefectTypeForm() {
         <Stack gap="sm" mt="sm">
           <LocalizedTextInput
             enProps={form.getInputProps("nameEn")}
+            help={fieldHelpTip("defectType", "code")}
             jaProps={form.getInputProps("nameJa")}
             label="名称"
             required
           />
           <Switch
-            label="有効"
+            label={<HelpLabel {...fieldHelp("defectType", "active")} />}
             {...form.getInputProps("isActive", { type: "checkbox" })}
           />
         </Stack>

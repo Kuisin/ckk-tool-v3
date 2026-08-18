@@ -159,9 +159,9 @@ export const OPERATION_CODES: OperationCodeEntry[] = [
   // ─── マスタ (MS) ─────────────────────────────────────────────────────────
   // グループ順: 取引先系 (01–03) → 製品・素材系 (04–07) → 製造定義系 (08–0A)
   //           → 組織・拠点系 (0B–0E)。10件目以降は IDX に英字 A– を使用。
-  ...makeResource("マスタ", "MS", "1", "顧客", "/master/customers"),
-  ...makeResource("マスタ", "MS", "2", "最終需要家", "/master/end-users"),
-  ...makeResource("マスタ", "MS", "3", "外注企業", "/master/suppliers"),
+  // 旧 顧客(MS01) / 最終需要家(MS02) / 外注企業(MS03) は取引先マスタへ統合。
+  // MS02・MS03 は欠番（他マスタの番号を動かさないため再利用しない）。
+  ...makeResource("マスタ", "MS", "1", "取引先", "/master/business-partners"),
   ...makeResource("マスタ", "MS", "4", "製品", "/master/products"),
   ...makeResource("マスタ", "MS", "5", "材種", "/master/material-types"),
   ...makeResource("マスタ", "MS", "6", "素材", "/master/materials"),

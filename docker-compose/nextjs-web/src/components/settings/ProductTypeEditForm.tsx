@@ -29,9 +29,11 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { updateProductTypes } from "@/app/(dashboard)/settings/actions";
 import { CancelButton, GhostButton, SaveButton } from "@/components/ui/buttons";
+import { HelpLabel } from "@/components/ui/HelpLabel";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { FormSection } from "@/components/ui/shells";
 import { useIsMobile } from "@/hooks/useViewport";
+import { fieldHelp } from "@/lib/field-help";
 import {
   PRODUCT_FIELD_TYPES,
   type ProductItemDef,
@@ -159,7 +161,13 @@ export function ProductTypeEditForm({
       <FormSection title="種別情報">
         <SimpleGrid cols={isMobile ? 1 : 2} spacing="sm">
           <TextInput
-            label="種別名（日本語）"
+            label={
+              <HelpLabel
+                {...fieldHelp("productType", "typeName", {
+                  label: "種別名（日本語）",
+                })}
+              />
+            }
             onChange={(e) =>
               patch({ name: { ...type.name, ja: e.currentTarget.value } })
             }
@@ -168,7 +176,13 @@ export function ProductTypeEditForm({
             withAsterisk
           />
           <TextInput
-            label="種別名（英語）"
+            label={
+              <HelpLabel
+                {...fieldHelp("productType", "typeName", {
+                  label: "種別名（英語）",
+                })}
+              />
+            }
             onChange={(e) =>
               patch({ name: { ...type.name, en: e.currentTarget.value } })
             }
@@ -177,7 +191,7 @@ export function ProductTypeEditForm({
           />
         </SimpleGrid>
         <Textarea
-          label="説明"
+          label={<HelpLabel {...fieldHelp("productType", "typeDescription")} />}
           mt="sm"
           onChange={(e) => patch({ description: e.currentTarget.value })}
           placeholder="この種別の用途など（任意）"
@@ -186,7 +200,13 @@ export function ProductTypeEditForm({
         />
         <Switch
           checked={type.enabled}
-          label="有効（製品作成の選択肢に出す）"
+          label={
+            <HelpLabel
+              {...fieldHelp("productType", "typeActive", {
+                label: "有効（製品作成の選択肢に出す）",
+              })}
+            />
+          }
           mt="sm"
           onChange={(e) => patch({ enabled: e.currentTarget.checked })}
         />
@@ -210,7 +230,9 @@ export function ProductTypeEditForm({
                 <Group align="flex-end" gap="sm" wrap="nowrap">
                   <Select
                     data={defOptions}
-                    label="項目"
+                    label={
+                      <HelpLabel {...fieldHelp("productType", "typeItems")} />
+                    }
                     onChange={(v) => patchAssign(i, { itemKey: v ?? "" })}
                     placeholder="項目を選択"
                     searchable
@@ -225,7 +247,11 @@ export function ProductTypeEditForm({
                         label: o.label,
                       }))}
                       description="既定値（上書き・任意）"
-                      label="既定値（上書き）"
+                      label={
+                        <HelpLabel
+                          {...fieldHelp("productType", "typeDefault")}
+                        />
+                      }
                       onChange={(v) =>
                         patchAssign(i, { defaultValue: v || undefined })
                       }
@@ -238,7 +264,11 @@ export function ProductTypeEditForm({
                       description={
                         def?.default ? `未入力なら "${def.default}"` : "任意"
                       }
-                      label="既定値（上書き）"
+                      label={
+                        <HelpLabel
+                          {...fieldHelp("productType", "typeDefault")}
+                        />
+                      }
                       onChange={(e) =>
                         patchAssign(i, {
                           defaultValue: e.currentTarget.value || undefined,

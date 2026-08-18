@@ -26,7 +26,7 @@ This app makes the **delivery note** (納品書) that goes together with the pro
 ## Before you start
 
 - You need a [shipping order](/manual/en/operations/shipping/shipping-order/user) first. It must also be 「**確定**」 (Confirmed) or 「**出荷済**」 (Shipped). You cannot make a delivery note from a 「下書き」 (Draft) shipping order.
-- If you deliver direct to the end user, the receiving company must be registered as an [end user](/manual/en/operations/masters/end-user/user).
+- If you deliver direct to the end user, the receiving company must be registered as a [business partner](/manual/en/operations/masters/business-partner/user) with the 最終需要家 (End user) role.
 - You need delivery note permission to make one. If you cannot use it, please ask your administrator.
 
 ## How to read the screen
@@ -113,6 +113,59 @@ Press 「**PDF**」 at the top right of the screen and the delivery note PDF ope
 ![Delivery note detail screen](../../../assets/screenshots/delivery-note-detail-01.png)
 
 > ⚠️ There is no delete action for delivery notes. Once made, a delivery note cannot be removed, so please check the contents carefully **while it is still a draft**.
+
+## Input fields
+
+Every field on the delivery note screen. The **?** next to a field in the app links straight to its description here.
+
+| Field | Required | What to enter |
+|-------|----------|---------------|
+| [Shipping order](#field-shipping-order) | Required | The shipping order it is based on |
+| [Delivery method](#field-delivery-method) | Required | To the customer, or direct to the end user |
+| [Deliver to](#field-recipient) | Required | Who the note is addressed to |
+| [End user](#field-end-user) | Optional | The destination for a direct delivery |
+| [Show prices](#field-include-price) | — | Whether prices and amounts appear |
+| [Notes](#field-notes) | Optional | Notes on the delivery note |
+| [Product](#field-product) | Required | The product being delivered |
+| [Quantity](#field-quantity) | Required | How many pieces |
+| [Unit price](#field-unit-price) | Optional | The price shown on the note |
+
+### Shipping order [#field-shipping-order]
+
+The shipping order this note is based on. Choosing it carries over that shipment's products and quantities.
+
+### Delivery method [#field-delivery-method]
+
+- **Normal** — delivered to the customer who ordered, with the note enclosed with the goods
+- **Direct to end user** — sent straight to the end user. **The note is sent separately**, and prices are normally hidden
+
+### Deliver to [#field-recipient]
+
+Who the note is addressed to: usually the ordering customer, or the destination for a direct delivery.
+
+### End user [#field-end-user]
+
+The actual destination for a direct delivery. Only major customers are registered as end users.
+
+### Show prices [#field-include-price]
+
+Whether unit prices and amounts appear on the note. **For direct-to-end-user delivery this is normally turned off**, so the end user does not see the trade price.
+
+### Notes [#field-notes]
+
+Notes to appear on the delivery note. **It appears on the delivery note PDF.** Keep internal remarks on the memo tab instead.
+
+### Product [#field-product]
+
+The product being delivered, carried over from the shipping order.
+
+### Quantity [#field-quantity]
+
+How many pieces are delivered. The shipping order's quantity is filled in for you. When delivering in parts, change it to what is actually delivered.
+
+### Unit price [#field-unit-price]
+
+The price shown on the note. It is not printed when "show prices" is off.
 
 ## Questions and problems
 

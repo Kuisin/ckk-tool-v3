@@ -9,12 +9,14 @@
 #   ./deploy.sh admin-main <sha> pin/rollback admintools prod to a commit
 #   ./deploy.sh kiosk-dev        deploy nextjs-kiosk dev  (ckk-kiosk-dev.kai-lab.net:3006)
 #   ./deploy.sh kiosk-main       deploy nextjs-kiosk prod (ckk-kiosk.kai-lab.net:3007)
+#   ./deploy.sh po-extract-dev   deploy po-extract dev  (internal only — 公開ポート無し)
+#   ./deploy.sh po-extract-main  deploy po-extract prod (internal only — 公開ポート無し)
 #
 # Uses the server-side API token; nothing secret leaves the server.
 
 set -euo pipefail
 
-TARGET=${1:?usage: deploy.sh dev|main|admin-dev|admin-main|kiosk-dev|kiosk-main [git-sha]}
+TARGET=${1:?usage: deploy.sh dev|main|admin-dev|admin-main|kiosk-dev|kiosk-main|po-extract-dev|po-extract-main [git-sha]}
 SHA=${2:-}
 case "$TARGET" in
   dev)                    APP_NAME=nextjs-web-dev ;;
@@ -23,7 +25,9 @@ case "$TARGET" in
   admin-main|admintools-main) APP_NAME=admintools-main ;;
   kiosk-dev)              APP_NAME=nextjs-kiosk-dev ;;
   kiosk-main)             APP_NAME=nextjs-kiosk-main ;;
-  *) echo "unknown target: $TARGET (dev|main|admin-dev|admin-main|kiosk-dev|kiosk-main)"; exit 1 ;;
+  po-extract-dev)         APP_NAME=po-extract-dev ;;
+  po-extract-main)        APP_NAME=po-extract-main ;;
+  *) echo "unknown target: $TARGET (dev|main|admin-dev|admin-main|kiosk-dev|kiosk-main|po-extract-dev|po-extract-main)"; exit 1 ;;
 esac
 
 ssh 192.168.50.15 bash -s -- "$APP_NAME" "$SHA" <<'EOS'

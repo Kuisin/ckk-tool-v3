@@ -289,9 +289,7 @@ Operation codes provide keyboard-shortcut navigation. Format: `{CAT}{MODE}{IDX}`
 | 出荷 | 2 | 納品書 | SH02 | SH12 | SH22 |
 | 請求 | 1 | 請求書 | BL01 | BL11 | BL21 |
 | 請求 | 2 | 締日処理 | BL02 | BL12 | BL22 |
-| マスタ | 1 | 顧客 | MS01 | MS11 | MS21 |
-| マスタ | 2 | 最終需要家 | MS02 | MS12 | MS22 |
-| マスタ | 3 | 外注企業 | MS03 | MS13 | MS23 |
+| マスタ | 1 | 取引先 | MS01 | MS11 | MS21 |
 | マスタ | 4 | 製品 | MS04 | MS14 | MS24 |
 | マスタ | 5 | 材種 | MS05 | MS15 | MS25 |
 | マスタ | 6 | 素材 | MS06 | MS16 | MS26 |
@@ -384,12 +382,10 @@ Stack (gap="xl", p="md", maw={1200})
 | 納品書 | `IconReceipt` |
 | 請求書 | `IconFileInvoice` |
 | 締日処理 | `IconCalendarDue` |
-| 顧客 | `IconBuilding` |
-| 最終需要家 | `IconUsers` |
+| 取引先 | `IconBuilding` |
 | 製品 | `IconCylinder` |
 | 材種 | `IconAtom` |
 | 素材 | `IconBolt` |
-| 外注企業 | `IconBuildingFactory2` |
 | 工程マスタ | `IconGitBranch` |
 | 検査表テンプレート | `IconListCheck` |
 | 不良種類 | `IconAlertTriangle` |
@@ -1026,13 +1022,29 @@ Group align="flex-end"
 
 All master data entities follow the standard list + detail + form pattern (§8).
 
-### 13.1 Customers
+### 13.1 Business Partners (取引先)
 
-**List columns**: コード / 名称（ja） / 支店数 / 状態 / 更新日
+顧客 / 最終需要家 / 仕入先・外注先 は **1 つの取引先マスタ**（`MS01`,
+`/master/business-partners`）に統合されている。1 法人 = `business_partners` 1 行で、
+使い道は `bp_role_assignments` の **ロール付与**（CUSTOMER / END_USER / VENDOR）で
+決まる。旧 `MS02` 最終需要家 / `MS03` 外注企業 は廃止（欠番、旧パスは 308 リダイレクト）。
 
-**Detail tabs**: 概要 / 支店一覧 / 見積・受注履歴
+**List columns**: BPコード / 名称 / ロール / 支店数 / 状態 / 更新日
+（フィルタ: 検索 + ロール + 状態）
 
-**Customer Branch**: nested under `/master/customers/[id]/branches/`. List shown in customer detail tabs.
+**Detail tabs**: 概要 / 担当者 / 支店一覧 / 見積・受注履歴 / 履歴
+
+概要は Paper セクションの縦積み — **一般**（備考など、ロールに依らない情報）→
+付与されているロールの分だけ（顧客 / 最終需要家 / 仕入先・外注先）。ロール
+セクションの見出しには一覧バッジと同色のドットを付ける。担当者はロール非依存
+だが行数で伸びるため独立タブ（`ContactsTable` は `hideHeading` で使う）。
+
+**Form**: 基本情報 → 住所・連絡先 → ロール（チェックボックス）→ チェックしたロールの
+セクションだけが出る（顧客情報 / 最終需要家情報 / 仕入先・外注先情報 + 振込先）。
+ロールを外すと割当は `is_active=false` に落ちるだけで属性行は残る（付け直すと復帰）。
+
+**Branch**: nested under `/master/business-partners/[id]/branches/`. List shown in the
+取引先 detail tabs.
 
 ### 13.2 Products
 
@@ -1100,13 +1112,11 @@ Row click navigates to detail page.
 | MaterialPurchaseOrder | 発注番号 / 仕入先 / 入荷先拠点 / 合計金額 / 状態 / 発注日 |
 | MaterialReceipt | 素材 / 仕入先 / 入荷拠点 / 数量 / 入荷日 |
 | OutsourceOrder | 外注先 / 工程 / 依頼日 / 入荷予定日 / 入荷日 / 状態 |
-| Customer | BPコード / 名称 / 支店数 / 状態 / 更新日 |
-| EndUser | BPコード / 名称 / 業種 / 状態 |
+| BusinessPartner | BPコード / 名称 / ロール / 支店数 / 状態 / 更新日 |
 | Plant | コード / 名称 / 国 / 状態 / 更新日 |
 | Product | 製品コード / 名称 / 材種（+ φ直径×全長） / 単位 / 状態 |
 | MaterialType | 材種コード / メーカー / 形状 / 名称 / 状態 |
 | Material | 素材コード / 材種 / 直径 / 全長 / 黒皮研磨 / 状態 |
-| Supplier | BPコード / 名称 / 外注種別 / 標準リードタイム / 状態 |
 | ProcessStep | コード / 名称 / カテゴリ / 実施場所 / 同期可 / 検査 / 承認 |
 | InspectionTemplate | コード / 名称 / 関連工程 / 状態 |
 | DefectType | コード / 名称 / 状態 |

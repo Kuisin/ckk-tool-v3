@@ -26,7 +26,7 @@ screenshots: [delivery-note-list-01, delivery-note-new-01, delivery-note-detail-
 ## 开始之前
 
 - 需要先有[出货单](/manual/zh/operations/shipping/shipping-order/user)，而且这张出货单必须是「**確定**」（确定）或「**出荷済**」（已发货）。「下書き」（草稿）状态的出货单做不了送货单。
-- 要直送最终需求方时，收货公司必须已经登记为[最终需求方](/manual/zh/operations/masters/end-user/user)。
+- 要直送最终需求方时，收货公司必须已经登记为[业务伙伴](/manual/zh/operations/masters/business-partner/user)，并且加上了「最終需要家」（最终需求方）角色。
 - 做送货单需要送货单权限。如果不能用，请联系管理员。
 
 ## 界面怎么看
@@ -113,6 +113,59 @@ screenshots: [delivery-note-list-01, delivery-note-new-01, delivery-note-detail-
 ![送货单详细界面](../../../assets/screenshots/delivery-note-detail-01.png)
 
 > ⚠️ 送货单没有删除操作。做出来的送货单删不掉，所以请 **趁还是草稿的时候** 仔细确认内容。
+
+## 输入项
+
+送货单画面的输入项一览。应用中输入栏旁边的 **?** 也可直接跳转到对应说明。
+
+| 项目 | 必填 | 填什么 |
+|------|------|--------|
+| [发货单](#field-shipping-order) | 必填 | 作为依据的发货单 |
+| [交付方式](#field-delivery-method) | 必填 | 交付受订客户或直送 |
+| [送达方](#field-recipient) | 必填 | 送货单的抬头 |
+| [最终需求方](#field-end-user) | 选填 | 直送时的收货方 |
+| [记载价格](#field-include-price) | — | 是否记载单价与金额 |
+| [备注](#field-notes) | 选填 | 送货单的补充 |
+| [产品](#field-product) | 必填 | 交付的产品 |
+| [数量](#field-quantity) | 必填 | 交付的数量 |
+| [单价](#field-unit-price) | 选填 | 送货单上记载的单价 |
+
+### 发货单 [#field-shipping-order]
+
+作为依据的发货单。选择后会沿用该次发货的产品与数量。
+
+### 交付方式 [#field-delivery-method]
+
+- **通常** … 交付给受订客户，送货单随货附带
+- **直送最终需求方** … 直接送交最终需求方。**送货单另行寄送**，通常不记载价格
+
+### 送达方 [#field-recipient]
+
+送货单的抬头。通常为受订客户；直送时按收货方指定。
+
+### 最终需求方 [#field-end-user]
+
+直送时的实际收货方。仅大客户会被登记。
+
+### 记载价格 [#field-include-price]
+
+是否在送货单上记载单价与金额。**直送最终需求方时通常取消**（避免让最终需求方看到交易价格）。
+
+### 备注 [#field-notes]
+
+送货单上的补充说明。**会显示在交货单 PDF 上。** 面向内部的备忘请写在备忘录标签页。
+
+### 产品 [#field-product]
+
+交付的产品。由发货单沿用。
+
+### 数量 [#field-quantity]
+
+交付的数量。系统会预填出货单的数量。分批交货时，请改为实际交付的数量。
+
+### 单价 [#field-unit-price]
+
+送货单上记载的单价。取消「记载价格」时不会打印。
 
 ## 常见问题与困扰
 

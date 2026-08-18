@@ -23,6 +23,7 @@ import {
   formatSalesOrderNumber,
 } from "@/lib/doc-number";
 import { type LocalizedText, localized } from "@/lib/format";
+import { reviewIntake } from "@/lib/intake-review";
 
 // 一覧クエリの取得上限（監査 P2-8 — 全件フェッチのデータ増加対策）。
 // DataTable はクライアントページングのため、最新分のみで実用上十分。
@@ -84,7 +85,7 @@ export async function fetchOrderAcceptance(
   const r = await prisma.orderAcceptance.findUnique({
     where: { yearMonth_seq: key },
     include: {
-      sourceFile: { select: { filename: true } },
+      sourceFile: { select: { filename: true, mimeType: true } },
       customerBp: { select: { name: true } },
       customerBranchBp: { select: { name: true } },
       items: {
@@ -121,12 +122,26 @@ export async function fetchOrderAcceptance(
   }));
 
   return {
+    // 「何を読み取って、どれが引けなかったか」は保存済みの行と抽出 JSON から
+    // その場で導く（別テーブルを持たない — 直せば指摘も自然に消える）。
+    review: reviewIntake(r.extracted, {
+      customerBpId: r.customerBpId,
+      customerOrderRef: r.customerOrderRef,
+      orderDate: r.orderDate?.toISOString().slice(0, 10) ?? null,
+      items: items.map((it) => ({
+        productId: it.productId,
+        productText: it.productText,
+        quantity: it.quantity,
+        unitPrice: it.unitPrice,
+      })),
+    }),
     number: formatDocNumber("ORD", r),
     yearMonth: r.yearMonth,
     seq: r.seq,
     status: r.status,
     source: r.source,
     sourceFilename: r.sourceFile?.filename ?? null,
+    sourceMimeType: r.sourceFile?.mimeType ?? null,
     extractError: r.extractError,
     customerBpId: r.customerBpId,
     customerName: r.customerBp

@@ -54,6 +54,7 @@ import { HelpLabel } from "@/components/ui/HelpLabel";
 import { openConfirm } from "@/components/ui/modals";
 import { SearchSelect } from "@/components/ui/SearchSelect";
 import { FormSection, FormShell } from "@/components/ui/shells";
+import { fieldHelp } from "@/lib/field-help";
 import { zodResolver } from "@/lib/form";
 import { formatMoney } from "@/lib/format";
 import type { Option } from "@/lib/mock";
@@ -405,7 +406,7 @@ export function PriceListTypeForm({
               error={form.errors.customerId}
               f4={CUSTOMER_F4}
               initialOption={customerOption}
-              label="顧客"
+              label={<HelpLabel {...fieldHelp("priceList", "customer")} />}
               onChange={(v) => form.setFieldValue("customerId", v ?? "")}
               onSearch={searchCustomerOptions}
               placeholder="顧客を検索"
@@ -424,7 +425,7 @@ export function PriceListTypeForm({
               error={form.errors.productId}
               f4={PRODUCT_F4}
               initialOption={productOption}
-              label="製品"
+              label={<HelpLabel {...fieldHelp("priceList", "product")} />}
               onChange={(v) => form.setFieldValue("productId", v ?? "")}
               onSearch={searchProductOptions}
               placeholder="製品を検索"
@@ -488,7 +489,7 @@ export function PriceListTypeForm({
               ) : (
                 <Select
                   data={ORDER_TYPE_OPTIONS}
-                  label="注文種別"
+                  label={<HelpLabel {...fieldHelp("priceList", "orderType")} />}
                   withAsterisk
                   {...form.getInputProps(`variants.${vi}.orderType`)}
                 />
@@ -504,7 +505,13 @@ export function PriceListTypeForm({
                   data={sourceOptions}
                   description="製品にリンクされた確定済み試算"
                   disabled={sourceOptions.length === 0}
-                  label="価格ソース（試算）"
+                  label={
+                    <HelpLabel
+                      {...fieldHelp("priceList", "basePrice", {
+                        label: "価格ソース（試算）",
+                      })}
+                    />
+                  }
                   onChange={(v) => {
                     form.setFieldValue(`variants.${vi}.sourceEstimate`, v);
                     const src = sources.find((s) => s.number === v);
@@ -594,7 +601,9 @@ export function PriceListTypeForm({
                 label={
                   <HelpLabel
                     help="価格表の基準になる単価。既定は試算の見積単価。各数量帯の単価 = 基準単価 × 倍率。"
-                    label="基準単価"
+                    label={
+                      <HelpLabel {...fieldHelp("priceList", "basePrice")} />
+                    }
                   />
                 }
                 min={0}
@@ -607,7 +616,7 @@ export function PriceListTypeForm({
 
             <SimpleGrid cols={{ base: 1, sm: 3 }} mt="sm" spacing="sm">
               <DatePickerInput
-                label="有効開始日"
+                label={<HelpLabel {...fieldHelp("priceList", "validFrom")} />}
                 leftSection={<IconCalendar size={14} />}
                 placeholder="日付を選択"
                 valueFormat="YYYY/MM/DD"
@@ -621,7 +630,7 @@ export function PriceListTypeForm({
                     ? "テスト・サンプルは終了日が必須"
                     : undefined
                 }
-                label="有効終了日"
+                label={<HelpLabel {...fieldHelp("priceList", "validUntil")} />}
                 leftSection={<IconCalendar size={14} />}
                 placeholder={
                   requiresEndDate(variant.orderType)
@@ -642,7 +651,9 @@ export function PriceListTypeForm({
                   <Table.Th>
                     <HelpLabel
                       help="数量帯ごとの掛け率（例 ×1.05 = 基準単価の5%増し）。単価 = 基準単価 × 倍率。"
-                      label="倍率"
+                      label={
+                        <HelpLabel {...fieldHelp("priceList", "multiplier")} />
+                      }
                     />
                   </Table.Th>
                   <Table.Th ta="right">
@@ -654,7 +665,9 @@ export function PriceListTypeForm({
                   <Table.Th>
                     <HelpLabel
                       help="チェックすると自動計算を使わず、この数量帯だけ手動の固定単価にできます（確認あり）。"
-                      label="カスタム単価"
+                      label={
+                        <HelpLabel {...fieldHelp("priceList", "customPrice")} />
+                      }
                     />
                   </Table.Th>
                   <Table.Th ta="right">採用単価</Table.Th>

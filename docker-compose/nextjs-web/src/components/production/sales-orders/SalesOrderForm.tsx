@@ -45,10 +45,12 @@ import {
 import { GhostButton } from "@/components/ui/buttons";
 import { FieldValue } from "@/components/ui/FieldValue";
 import { CUSTOMER_F4, PRODUCT_F4 } from "@/components/ui/f4-presets";
+import { HelpLabel } from "@/components/ui/HelpLabel";
 import { SearchSelect } from "@/components/ui/SearchSelect";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { FormSection, FormShell } from "@/components/ui/shells";
 import { ORDER_TYPE_OPTIONS } from "@/lib/enum-labels";
+import { fieldHelp } from "@/lib/field-help";
 import { zodResolver } from "@/lib/form";
 import { formatMoney } from "@/lib/format";
 import type { Option } from "@/lib/mock";
@@ -308,7 +310,9 @@ export function SalesOrderForm({
               <SearchSelect
                 error={form.errors.customerId}
                 f4={CUSTOMER_F4}
-                label="顧客"
+                label={
+                  <HelpLabel {...fieldHelp("orderAcceptance", "customer")} />
+                }
                 onChange={(v) => onCustomerChange(v ?? "")}
                 onSearch={searchCustomerOptions}
                 placeholder="顧客を検索"
@@ -334,7 +338,11 @@ export function SalesOrderForm({
             </>
           )}
           <TextInput
-            label="顧客注文書番号"
+            label={
+              <HelpLabel
+                {...fieldHelp("orderAcceptance", "customerOrderRef")}
+              />
+            }
             placeholder="例: FAX受領の注文書番号"
             {...form.getInputProps("customerOrderRef")}
           />
@@ -342,7 +350,13 @@ export function SalesOrderForm({
             <DatePickerInput
               clearable
               description="行納期が空の明細に適用されます"
-              label="納期（既定）"
+              label={
+                <HelpLabel
+                  {...fieldHelp("orderAcceptance", "deliveryDate", {
+                    label: "納期（既定）",
+                  })}
+                />
+              }
               leftSection={<IconCalendar size={14} />}
               placeholder="日付を選択"
               valueFormat="YYYY/MM/DD"
@@ -382,7 +396,9 @@ export function SalesOrderForm({
                         ? { value: line.productId, label: line.productName }
                         : null
                     }
-                    label="製品"
+                    label={
+                      <HelpLabel {...fieldHelp("orderAcceptance", "product")} />
+                    }
                     onChange={(v, opt) =>
                       patchLineAndResolve(ri, {
                         productId: v ?? "",
@@ -397,7 +413,13 @@ export function SalesOrderForm({
                   />
                   <Select
                     data={ORDER_TYPE_OPTIONS}
-                    label="注文種別"
+                    label={
+                      <HelpLabel
+                        {...fieldHelp("orderAcceptance", "orderType", {
+                          label: "注文種別",
+                        })}
+                      />
+                    }
                     maw={140}
                     onChange={(v) =>
                       patchLineAndResolve(ri, {
@@ -409,7 +431,11 @@ export function SalesOrderForm({
                   />
                   <NumberInput
                     error={form.errors[`lines.${ri}.quantity`]}
-                    label="数量"
+                    label={
+                      <HelpLabel
+                        {...fieldHelp("orderAcceptance", "quantity")}
+                      />
+                    }
                     maw={110}
                     min={1}
                     onChange={(v) =>
@@ -430,7 +456,11 @@ export function SalesOrderForm({
                           : " "
                     }
                     error={form.errors[`lines.${ri}.unitPrice`]}
-                    label="単価"
+                    label={
+                      <HelpLabel
+                        {...fieldHelp("orderAcceptance", "unitPrice")}
+                      />
+                    }
                     maw={160}
                     min={0}
                     onChange={(v) =>
@@ -459,7 +489,13 @@ export function SalesOrderForm({
             <Group align="flex-end" gap="sm" mt="xs">
               <DatePickerInput
                 clearable
-                label="行納期"
+                label={
+                  <HelpLabel
+                    {...fieldHelp("orderAcceptance", "deliveryDate", {
+                      label: "行納期",
+                    })}
+                  />
+                }
                 leftSection={<IconCalendar size={14} />}
                 maw={200}
                 placeholder={
@@ -470,7 +506,7 @@ export function SalesOrderForm({
               />
               <TextInput
                 flex={1}
-                label="備考"
+                label={<HelpLabel {...fieldHelp("orderAcceptance", "notes")} />}
                 placeholder="行の備考（任意）"
                 {...form.getInputProps(`lines.${ri}.notes`)}
               />

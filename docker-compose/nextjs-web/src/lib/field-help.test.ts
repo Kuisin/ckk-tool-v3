@@ -33,22 +33,27 @@ describe("field-help", () => {
 
   it("登録した全項目の見出しがマニュアルに実在する（3 言語とも）", () => {
     const missing: string[] = [];
-    for (const { app, field, anchor, manualDir } of listFieldHelp()) {
+    for (const { app, field, anchor, manualPage } of listFieldHelp()) {
       for (const locale of LOCALES) {
-        const page = join(MANUAL, manualDir, `user${locale}.md`);
+        // manualPage は operations/<カテゴリ>/<アプリ>/<ページ名>（末尾は user とは限らない）
+        const page = join(MANUAL, `${manualPage}${locale}.md`);
         if (!existsSync(page)) {
           missing.push(`${page}（ページが無い）`);
           continue;
         }
         // 明示 ID 記法: `### 見出し [#field-xxx]`
         if (!readFileSync(page, "utf8").includes(`[#${anchor}]`)) {
-          missing.push(
-            `${app}.${field} → ${manualDir}/user${locale}.md#${anchor}`,
-          );
+          missing.push(`${app}.${field} → ${manualPage}${locale}.md#${anchor}`);
         }
       }
     }
     expect(missing).toEqual([]);
+  });
+
+  it("全アプリ・全項目が登録されている（登録漏れを数で気づけるように）", () => {
+    const apps = new Set(listFieldHelp().map((f) => f.app));
+    expect(apps.size).toBeGreaterThanOrEqual(31);
+    expect(listFieldHelp().length).toBeGreaterThanOrEqual(200);
   });
 
   it("要約は空でない（? を出すのに中身が無い状態を防ぐ）", () => {

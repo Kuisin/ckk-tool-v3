@@ -26,7 +26,7 @@ screenshots: [billing-closing-list-01, billing-closing-run-01, billing-closing-d
 ## 开始之前
 
 - 被汇总的，只有 **状态是「出荷済」（已发货）、类别是「発送」（发送）的**[出货单](/manual/zh/operations/shipping/shipping-order/user)。还停在「下書き」（草稿）「確定」（确定）的出货单不会算进去。请先完成发货记录。
-- 每个客户的结算截止日，由[客户](/manual/zh/operations/masters/customer/user)的登记内容决定。没有设定的客户，按 **月末** 汇总。
+- 每个客户的结算截止日，由[客户](/manual/zh/operations/masters/business-partner/user)的登记内容决定。没有设定的客户，按 **月末** 汇总。
 - 做结算截止处理需要相应权限。如果不能用，请联系管理员。
 
 > ⚠️ 类别是「**在庫保管**」（留库保管）的出货单，是没有发给客户、留在公司保管的部分，不会算进汇总，也不会请款。
@@ -91,6 +91,25 @@ screenshots: [billing-closing-list-01, billing-closing-run-01, billing-closing-d
 
 之后的发行、寄送、收款记录，以及做出会计软件用的文件，都在[发票](/manual/zh/operations/billing/invoice/user)应用里进行。
 
+## 输入项
+
+本画面没有输入框。结算对象与日期**根据各客户设定的结算日自动确定。**
+
+| 操作 | 会发生什么 |
+|------|-----------|
+| [结算](#field-process) | 汇总该期间的交货并生成请求书 |
+| [导出至弥生会计](#field-export) | 将分录导出为 CSV |
+
+### 结算 [#field-process]
+
+汇总该期间已交货的部分，**按客户各生成 1 份请求书。**
+
+结算前请确认该期间的交货是否已全部记录。**事后追加的交货不会计入已结算的请求书** — 将顺延至下一期间。
+
+### 导出至弥生会计 [#field-export]
+
+将结算内容导出为会计软件可导入的 CSV。导出日期会被保留，有助于避免重复导入。
+
 ## 常见问题与困扰
 
 **Q. 出现「対象月に未請求の出荷がありません」（目标月份没有未请款的出货）。**
@@ -109,4 +128,4 @@ A. 这次结算已经做过发票了。请从「生成請求書」（生成的�
 A. 没有把结算的行退回「未処理」（未处理）的操作。做出来的发票怎么处理，请联系财务的负责人。
 
 **Q. 只有某个客户的结算截止日不对。**
-A. 每个客户的结算截止日，由[客户](/manual/zh/operations/masters/customer/user)的登记内容决定。没有设定的客户会按月末处理。请修改登记内容后，再执行一次结算截止处理。
+A. 每个客户的结算截止日，由[客户](/manual/zh/operations/masters/business-partner/user)的登记内容决定。没有设定的客户会按月末处理。请修改登记内容后，再执行一次结算截止处理。

@@ -29,7 +29,7 @@ This is the **外注依頼** (outsourcing orders) app, where you check in one li
 
 This app is a **view-only screen**. You cannot add new outsourcing from here.
 
-To make outsourcing appear in this list, open a step in a [work order](/manual/en/operations/production/work-order/user), choose 「**外注**」 (outsourced) as the place where it is done, and name the outsourcing partner. Partner companies are registered in the [supplier master](/manual/en/operations/masters/supplier/user).
+To make outsourcing appear in this list, open a step in a [work order](/manual/en/operations/production/work-order/user), choose 「**外注**」 (outsourced) as the place where it is done, and name the outsourcing partner. Partner companies are registered in the [business partner master](/manual/en/operations/masters/business-partner/user).
 
 You need outsourcing order permission to view this screen. If the screen does not open, please ask the person in charge at your company.
 
@@ -74,6 +74,30 @@ You cannot enter the sent date, expected return date, or return date in this lis
 ![The 「外注日程」 box on the step work screen](../../../assets/screenshots/outsource-order-step-01.png)
 
 Once you save, the dates also appear in the outsourcing order list.
+
+## Input fields
+
+This screen has no input boxes. It is **a list for seeing the steps that were sent out to a supplier**.
+
+The details (supplier, request date, expected date, received date) are entered on **the step inside the work order**. This screen simply gathers the result.
+
+| Filter | What it changes |
+|--------|-----------------|
+| [Supplier](#field-supplier) | Which company's work is shown |
+| [Status](#field-status) | Narrow by requested, received, and so on |
+| [Search](#field-search) | Find by work order number, product, step or supplier |
+
+### Supplier [#field-supplier]
+
+Which company's work is shown.
+
+### Status [#field-status]
+
+Narrows by status such as requested or received. Use it to find **work that is past its expected date but has not come back.**
+
+### Search [#field-search]
+
+Finds by work order number, product, step or supplier. Clicking a row opens the work order that holds the step.
 
 ## Questions and problems
 

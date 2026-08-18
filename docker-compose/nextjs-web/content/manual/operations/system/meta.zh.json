@@ -3,6 +3,7 @@
   "pages": [
     "user-management",
     "app-management",
+    "product-type",
     "file-management",
     "activity-log",
     "kiosk-card",

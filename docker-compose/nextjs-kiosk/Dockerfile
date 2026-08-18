@@ -35,13 +35,23 @@ FROM base AS builder
 WORKDIR /app
 COPY --from=deps /app ./
 COPY packages ./packages
+# Prisma Client はスキーマ（shared-db から同期した prisma/）だけに依存するので
+# アプリソースより前に生成する — ソース変更だけのデプロイではこの層が
+# 丸ごとキャッシュヒットする。
+COPY docker-compose/nextjs-kiosk/package.json docker-compose/nextjs-kiosk/prisma.config.ts ./docker-compose/nextjs-kiosk/
+COPY docker-compose/nextjs-kiosk/prisma ./docker-compose/nextjs-kiosk/prisma
+WORKDIR /app/docker-compose/nextjs-kiosk
+RUN pnpm exec prisma generate
+WORKDIR /app
 COPY docker-compose/nextjs-kiosk ./docker-compose/nextjs-kiosk
 WORKDIR /app/docker-compose/nextjs-kiosk
 ENV NEXT_TELEMETRY_DISABLED=1
 ARG NEXT_PUBLIC_APP_VERSION=0.1.0
 ENV NEXT_PUBLIC_APP_VERSION=$NEXT_PUBLIC_APP_VERSION
-# Prisma Client from the synced shared-db schema (prisma/schema).
-RUN pnpm exec prisma generate
+# デプロイビルドは next build 内の型チェックを省く（PR の CI が検証済み。
+# build:server の tsc は従来どおり走る）。0 を渡せば従来どおり。
+ARG NEXT_SKIP_TYPE_CHECK=1
+ENV NEXT_SKIP_TYPE_CHECK=$NEXT_SKIP_TYPE_CHECK
 RUN pnpm build
 
 # --- runtime ----------------------------------------------------------------

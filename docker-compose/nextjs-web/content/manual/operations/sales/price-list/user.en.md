@@ -7,7 +7,7 @@ A register where you record "this [product](/manual/en/operations/masters/produc
 
 ## What you can do with this app
 
-- You can record the selling price of a product for each [customer](/manual/en/operations/masters/customer/user).
+- You can record the selling price of a product for each [customer](/manual/en/operations/masters/business-partner/user).
 - Once recorded, the amounts on a [quote](/manual/en/operations/sales/quote/user) **fill in automatically** (you never have to type an amount on the quote screen).
 - On an [order acceptance](/manual/en/operations/sales/order-acceptance/user), the unit price on the customer's order form is **compared with the price here automatically**, and you are told if they differ.
 - You can set prices per quantity, so that **each piece becomes cheaper when the customer buys more**.
@@ -27,7 +27,7 @@ Register a price here when you and the customer have agreed a price. From then o
 
 ## Before you start
 
-- The [customer](/manual/en/operations/masters/customer/user) and the [product](/manual/en/operations/masters/product/user) must already be registered.
+- The [customer](/manual/en/operations/masters/business-partner/user) and the [product](/manual/en/operations/masters/product/user) must already be registered.
 - It helps to have a [trial estimate](/manual/en/operations/sales/trial-estimate/user) to base the price on. If you set a product on the estimate and set it to 確定 (confirmed), you can choose it on this screen and the amount fills in automatically.
 - You can still register a price list without an estimate by typing the price in by hand.
 
@@ -130,6 +130,63 @@ From「**…**」at the top right of the price list screen, you can also do the 
 - **削除 (delete)** … deletes that price list. This cannot be undone.
 
 In the list, you can also tick the checkboxes on the left of several rows and then use「**有効化**」(activate),「**無効化**」(deactivate) or「**一括削除**」(delete all selected).
+
+## Input fields
+
+Every field on the price list screen. The **?** next to a field in the app links straight to its description here.
+
+| Field | Required | What to enter |
+|-------|----------|---------------|
+| [Customer](#field-customer) | Required | Who the price is for |
+| [Product](#field-product) | Required | Which product the price is for |
+| [Active (whole list)](#field-active) | — | Whether this price list is in use |
+| [Order type](#field-order-type) | Required | Production, test and so on |
+| [Price source (trial estimate)](#field-estimate) | Optional | The estimate the base price comes from |
+| [Base price](#field-base-price) | Required | The price the quantity tiers work from |
+| [Valid from](#field-valid-from) | Required | When this price starts to apply |
+| [Valid until](#field-valid-until) | Optional | When it stops applying |
+| [Multiplier](#field-multiplier) | Required | The factor for each quantity tier |
+| [Custom price](#field-custom-price) | Optional | Set a tier's price by hand |
+
+### Customer [#field-customer]
+
+Who the price is for. **One price list covers one customer and one product**, and this cannot be changed after creation — recreate the list if it is wrong.
+
+### Product [#field-product]
+
+Which product the price is for. Like the customer, it cannot be changed after creation.
+
+### Active (whole list) [#field-active]
+
+Whether this price list is in use. **Turning it off means quotes can no longer resolve a price** from it. Use it to retire a list without deleting it.
+
+### Order type [#field-order-type]
+
+Production, test, sample or other. **The same customer and product can hold a different price per type.** Samples are handled at zero value.
+
+### Price source (trial estimate) [#field-estimate]
+
+The trial estimate the base price comes from. **Only confirmed estimates can be chosen.** Choosing one copies its quoted unit price into the base price and locks that estimate as registered, so past prices cannot change afterwards. Leave it unset to enter the price by hand.
+
+### Base price [#field-base-price]
+
+The price the quantity tiers work from. Each tier's price is this price times its multiplier.
+
+### Valid from [#field-valid-from]
+
+When this price starts to apply. A quote uses **the price that is valid at that moment**.
+
+### Valid until [#field-valid-until]
+
+When it stops applying. Leave it empty for no end date. **Test and sample prices are normally given an end date.**
+
+### Multiplier [#field-multiplier]
+
+The factor for each quantity range. Use a value below 1 where buying more should cost less per piece.
+
+### Custom price [#field-custom-price]
+
+Sets one tier's price by hand. When set, it takes precedence over the multiplier calculation.
 
 ## Questions and problems
 

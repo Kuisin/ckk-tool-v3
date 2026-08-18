@@ -19,9 +19,12 @@ import {
 import type { UseFormReturnType } from "@mantine/form";
 import { z } from "zod";
 import type { BpBaseDetail } from "@/app/(dashboard)/master/_shared/bp-data";
+import { HelpLabel } from "@/components/ui/HelpLabel";
 import { FormSection, LocalizedTextInput } from "@/components/ui/shells";
 import { useIsMobile } from "@/hooks/useViewport";
 import { COUNTRY_OPTIONS } from "@/lib/enum-labels";
+import { fieldHelp, fieldHelpTip } from "@/lib/field-help";
+import { MatchNameSuggestions } from "./MatchNameSuggestions";
 
 export const bpBaseFormSchema = z.object({
   nameJa: z.string().min(1, "名称（日本語）を入力してください"),
@@ -81,6 +84,12 @@ export function BpBaseFields<T extends BpBaseFormValues>({
   const isMobile = useIsMobile();
   // Field paths are shared with the extended form value types.
   const props = (path: string) => form.getInputProps(path);
+  // 同じ理由（T が BpBaseFormValues の拡張）で setFieldValue も narrow できない。
+  const setMatchNames = (values: string[]) =>
+    (form.setFieldValue as (path: string, value: string[]) => void)(
+      "matchNames",
+      values,
+    );
   return (
     <>
       <FormSection title="基本情報">
@@ -88,14 +97,20 @@ export function BpBaseFields<T extends BpBaseFormValues>({
           <TextInput
             description={codeDescription}
             disabled
-            label="BPコード"
+            label={
+              <HelpLabel
+                {...fieldHelp("businessPartner", "bpCode", {
+                  label: "BPコード",
+                })}
+              />
+            }
             placeholder="保存時に自動採番"
             value={bpCode ?? ""}
           />
           <Select
             clearable
             data={COUNTRY_OPTIONS}
-            label="国"
+            label={<HelpLabel {...fieldHelp("businessPartner", "country")} />}
             placeholder="国を選択"
             {...props("countryCode")}
           />
@@ -103,6 +118,7 @@ export function BpBaseFields<T extends BpBaseFormValues>({
         <Stack gap="sm" mt="sm">
           <LocalizedTextInput
             enProps={props("nameEn")}
+            help={fieldHelpTip("businessPartner", "name")}
             jaProps={props("nameJa")}
             label="名称"
             required
@@ -110,36 +126,75 @@ export function BpBaseFields<T extends BpBaseFormValues>({
         </Stack>
         <SimpleGrid cols={isMobile ? 1 : 2} mt="sm" spacing="sm">
           <TextInput
-            label="フリガナ"
+            label={
+              <HelpLabel
+                {...fieldHelp("businessPartner", "nameKana", {
+                  label: "フリガナ",
+                })}
+              />
+            }
             placeholder="エービーシーセイサクショ"
             {...props("nameKana")}
           />
-          <TextInput label="略称" placeholder="ABC" {...props("shortName")} />
           <TextInput
-            label="法人番号"
+            label={
+              <HelpLabel
+                {...fieldHelp("businessPartner", "nameKana", { label: "略称" })}
+              />
+            }
+            placeholder="ABC"
+            {...props("shortName")}
+          />
+          <TextInput
+            label={<HelpLabel {...fieldHelp("businessPartner", "taxNumber")} />}
             placeholder="1234567890123"
             {...props("taxNumber")}
           />
           <Switch
-            label="有効"
+            label={<HelpLabel {...fieldHelp("businessPartner", "active")} />}
             mt={isMobile ? 0 : "xl"}
             {...form.getInputProps("isActive", { type: "checkbox" })}
           />
         </SimpleGrid>
         <TagsInput
           description="AI 抽出（注文書の読み取り）がこの取引先へ社名を解決するための照合リスト。表記ゆれ（㈱/株式会社・全角半角・旧社名など）を Enter 区切りで登録"
-          label="AI照合名"
+          label={
+            <HelpLabel
+              {...fieldHelp("businessPartner", "matchNames", {
+                label: "AI照合名",
+              })}
+            />
+          }
           mt="sm"
           placeholder="社名の表記ゆれを入力して Enter"
           splitChars={[",", "、"]}
           {...form.getInputProps("matchNames")}
+        />
+        {/* 足りない字種の指摘 + 機械的に作れる候補（lib/company-aliases）。 */}
+        <MatchNameSuggestions
+          matchNames={form.values.matchNames ?? []}
+          nameEn={form.values.nameEn}
+          nameJa={form.values.nameJa ?? ""}
+          nameKana={form.values.nameKana}
+          onAdd={(values) =>
+            setMatchNames([
+              ...new Set([...(form.values.matchNames ?? []), ...values]),
+            ])
+          }
+          shortName={form.values.shortName}
         />
       </FormSection>
 
       <FormSection title="住所・連絡先">
         <SimpleGrid cols={isMobile ? 1 : 2} spacing="sm">
           <TextInput
-            label="郵便番号"
+            label={
+              <HelpLabel
+                {...fieldHelp("businessPartner", "address", {
+                  label: "郵便番号",
+                })}
+              />
+            }
             placeholder="100-0001"
             {...props("postalCode")}
           />
@@ -147,30 +202,57 @@ export function BpBaseFields<T extends BpBaseFormValues>({
         <Stack gap="sm" mt="sm">
           <LocalizedTextInput
             enProps={props("addressEn")}
+            help={fieldHelpTip("businessPartner", "address")}
             jaProps={props("addressJa")}
             label="住所"
           />
         </Stack>
         <SimpleGrid cols={isMobile ? 1 : 2} mt="sm" spacing="sm">
           <TextInput
-            label="電話番号"
+            label={
+              <HelpLabel
+                {...fieldHelp("businessPartner", "contact", {
+                  label: "電話番号",
+                })}
+              />
+            }
             placeholder="03-1234-5678"
             {...props("phone")}
           />
-          <TextInput label="FAX" placeholder="03-1234-5679" {...props("fax")} />
           <TextInput
-            label="メールアドレス"
+            label={
+              <HelpLabel
+                {...fieldHelp("businessPartner", "contact", { label: "FAX" })}
+              />
+            }
+            placeholder="03-1234-5679"
+            {...props("fax")}
+          />
+          <TextInput
+            label={
+              <HelpLabel
+                {...fieldHelp("businessPartner", "contact", {
+                  label: "メールアドレス",
+                })}
+              />
+            }
             placeholder="info@example.co.jp"
             {...props("email")}
           />
           <TextInput
-            label="Webサイト"
+            label={
+              <HelpLabel
+                {...fieldHelp("businessPartner", "contact", {
+                  label: "Webサイト",
+                })}
+              />
+            }
             placeholder="https://example.co.jp"
             {...props("website")}
           />
         </SimpleGrid>
         <Textarea
-          label="備考"
+          label={<HelpLabel {...fieldHelp("businessPartner", "notes")} />}
           mt="sm"
           placeholder="備考・特記事項"
           rows={3}

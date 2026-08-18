@@ -22,6 +22,8 @@ import { IconArrowsExchange } from "@tabler/icons-react";
 import { useMemo, useState, useTransition } from "react";
 import { transferStock } from "@/app/(dashboard)/production/inventory/actions";
 import { CancelButton, PrimaryButton } from "@/components/ui/buttons";
+import { HelpLabel } from "@/components/ui/HelpLabel";
+import { fieldHelp } from "@/lib/field-help";
 
 /** 移動先の選択肢（拠点 → 保管場所 → 棚。サーバーで有効行のみに整形済み）。 */
 export interface TransferPlantOption {
@@ -163,7 +165,7 @@ export function StockTransferModal({
             value: String(f.id),
             label: f.name,
           }))}
-          label="移動先の拠点"
+          label={<HelpLabel {...fieldHelp("productInventory", "plant")} />}
           onChange={(v) => {
             setPlantId(v);
             setLocationId(null);
@@ -178,7 +180,13 @@ export function StockTransferModal({
           clearable
           data={locationOptions}
           disabled={!plant}
-          label="保管場所"
+          label={
+            <HelpLabel
+              {...fieldHelp("productInventory", "location", {
+                label: "保管場所",
+              })}
+            />
+          }
           onChange={(v) => {
             setLocationId(v);
             setShelfId(null);
@@ -194,7 +202,11 @@ export function StockTransferModal({
           clearable
           data={shelfOptions}
           disabled={!location || shelfOptions.length === 0}
-          label="棚"
+          label={
+            <HelpLabel
+              {...fieldHelp("productInventory", "location", { label: "棚" })}
+            />
+          }
           onChange={setShelfId}
           placeholder={
             location && shelfOptions.length === 0 ? "棚なし" : "棚未割当"
@@ -211,7 +223,13 @@ export function StockTransferModal({
           withAsterisk
         />
         <Textarea
-          label="備考（任意）"
+          label={
+            <HelpLabel
+              {...fieldHelp("productInventory", "notes", {
+                label: "備考（任意）",
+              })}
+            />
+          }
           onChange={(e) => setNotes(e.currentTarget.value)}
           rows={2}
           value={notes}
