@@ -24,6 +24,7 @@ import "server-only";
 import { mkdir, readdir, rename, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { systematicFileName } from "./file-naming";
+import { parseIntakeFileNumber } from "./intake-core";
 
 /** 取込対象の拡張子（lib/intake.ts の許可リストと同一）。 */
 export const INTAKE_FOLDER_EXT = [".pdf", ".png", ".jpg", ".jpeg", ".webp"];
@@ -171,8 +172,11 @@ export async function saveToIntakeFolder(input: {
 }
 
 /**
- * failed/ の 1 件を待ちへ戻す（再取込）。取込は冪等ではない（番号は採り直し）
- * ので、戻すのは人の判断に任せる。
+ * failed/ の 1 件を待ちへ戻す（再取込）。
+ *
+ * 失敗したファイルは `ORD-YYYYMM-NNNNN-<元名>` で退避してある。この番号が
+ * **同じ行の続き**であることの目印なので、名前を作り直すときも先頭に残す
+ * （消すと次のスキャンが採番からやり直し、同じ注文書が二重に登録される）。
  *
  * 名前は一覧に出したものがそのまま返ってくる前提なので **加工しない** —
  * `sanitizeFileName` を通すと空白入りの実ファイル名と一致しなくなる。
@@ -194,7 +198,11 @@ export async function retryFailedIntake(fileName: string): Promise<string> {
     () => true,
     () => false,
   );
-  const to = taken ? path.join(dir, systematicFileName(base)) : keep;
+  const parsed = parseIntakeFileNumber(base);
+  const unique = parsed
+    ? `${parsed.number}-${systematicFileName(parsed.rest)}`
+    : systematicFileName(base);
+  const to = taken ? path.join(dir, unique) : keep;
   await rename(from, to);
   return path.basename(to);
 }

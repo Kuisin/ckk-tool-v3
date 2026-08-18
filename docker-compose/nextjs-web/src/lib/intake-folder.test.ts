@@ -167,6 +167,18 @@ describe("retryFailedIntake", () => {
     expect(status.pending).toHaveLength(2);
   });
 
+  it("一意化しても注文請書番号は先頭に残す（同じ行の続きとして再開させる）", async () => {
+    const name = "ORD-202608-00003-注文書.pdf";
+    await writeFile(path.join(dir, name), "pending");
+    await mkdir(path.join(dir, "failed"), { recursive: true });
+    await writeFile(path.join(dir, "failed", name), "failed");
+
+    const moved = await retryFailedIntake(name);
+    expect(moved).not.toBe(name);
+    expect(moved.startsWith("ORD-202608-00003-")).toBe(true);
+    expect(moved).toContain("注文書.pdf");
+  });
+
   it("フォルダ外を指す名前は拒否する", async () => {
     await writeFile(path.join(dir, "outside.pdf"), "x");
     // basename で失敗フォルダ直下に閉じ込めるので、待ちのファイルは動かない。

@@ -355,7 +355,7 @@ export function OrderAcceptanceIntakeTable({
           value={search}
         />
       }
-      title="注文請書 取込状況"
+      title="注文請書"
     >
       <Stack gap="xs">
         <Group gap="sm">
@@ -375,7 +375,7 @@ export function OrderAcceptanceIntakeTable({
           data={filtered}
           defaultSort={{ key: "number", dir: "desc" }}
           emptyIcon={<IconClipboardCheck size={24} />}
-          emptyMessage="取込された注文請書がありません"
+          emptyMessage="注文請書がありません"
           getRowId={(r) => r.number}
           onRowClick={(r) => router.push(`${BASE_PATH}/${r.number}`)}
           renderCard={(r) => {
