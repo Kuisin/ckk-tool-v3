@@ -37,13 +37,13 @@ export const STATUS_MAPS = {
     PRICE_DIFF: { label: "価格差異", color: "orange" },
     CONFIRMED: { label: "確定", color: "green" },
   },
-  /** 注文請書 intake（app.order_acceptances — 取込→下書き→承認→展開）。 */
+  /** 注文請書 intake（app.order_acceptances — 取込→下書き→承認→確定）。 */
   OrderAcceptanceIntake: {
     IMPORT: { label: "取込中", color: "gray" },
     DRAFT: { label: "下書き", color: "blue" },
     REQUESTED: { label: "承認依頼中", color: "yellow" },
     APPROVED: { label: "承認済", color: "green" },
-    COMPLETED: { label: "展開済", color: "teal" },
+    COMPLETED: { label: "確定", color: "teal" },
     ARCHIVED: { label: "アーカイブ", color: "dark" },
   },
   MaterialPurchaseOrder: {

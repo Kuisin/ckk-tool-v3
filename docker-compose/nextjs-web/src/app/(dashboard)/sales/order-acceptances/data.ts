@@ -3,8 +3,8 @@
  *
  * app.order_acceptances は (year_month, seq) の複合キー — 表示番号
  * ORD-YYYYMM-NNNNN は導出（保存しない）で、URL id を兼ねる。
- * 伝票展開後は同じ (year_month, seq) の order_lines 枝番 1..N を持つため、
- * 詳細では展開済み注文明細番号も併せて返す。
+ * 注文確定後は同じ (year_month, seq) の order_lines 枝番 1..N を持つため、
+ * 詳細では確定済み注文明細番号も併せて返す。
  * Prisma Decimal はここで Number() へ、日付は ISO 文字列へ変換して渡す。
  */
 
