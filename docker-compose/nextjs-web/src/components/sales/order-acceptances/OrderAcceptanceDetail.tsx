@@ -41,6 +41,7 @@ import {
   IconCalendar,
   IconFile,
   IconInfoCircle,
+  IconPencil,
   IconRefresh,
   IconSend,
   IconTransform,
@@ -57,6 +58,7 @@ import {
   retryExtraction,
   saveDraft,
   submitForApproval,
+  takeOverManually,
 } from "@/app/(dashboard)/sales/order-acceptances/actions";
 import type {
   AcceptancePriceCheck,
@@ -281,379 +283,430 @@ export function OrderAcceptanceDetail({
       title={a.number}
       updatedAt={formatDateTime(a.updatedAt)}
     >
-      {/* 取込中 / 抽出失敗（IMPORT） */}
-      {a.status === "IMPORT" &&
-        (a.extractError ? (
-          <Alert
-            color="red"
-            icon={<IconAlertTriangle size={16} />}
-            title="自動抽出に失敗しました"
-            variant="light"
-          >
-            <Stack gap="xs">
-              <Text size="sm">{a.extractError}</Text>
-              <Group>
-                <SecondaryButton
-                  leftSection={<IconRefresh size={14} />}
-                  loading={isPending}
-                  onClick={() =>
-                    run(
-                      () => retryExtraction(a.number),
-                      "再抽出を受け付けました（順番に実行されます）",
-                    )
-                  }
+      {/*
+        書類は **状態に関わらず常に** 左に出す（取込中・失敗中でも見たい）。
+        右は状態ごとの中身。狭い画面では縦積み（書類は折りたたみ）。
+      */}
+      <Grid gap="md">
+        <Grid.Col span={{ base: 12, lg: 5 }}>
+          <IntakeDocumentPane
+            filename={a.sourceFilename}
+            fileUrl={fileUrl}
+            mimeType={a.sourceMimeType}
+          />
+        </Grid.Col>
+        <Grid.Col span={{ base: 12, lg: 7 }}>
+          <Stack gap="md">
+            {/* 取込中 / 抽出失敗（IMPORT） */}
+            {a.status === "IMPORT" &&
+              (a.extractError ? (
+                <Alert
+                  color="red"
+                  icon={<IconAlertTriangle size={16} />}
+                  title="自動抽出に失敗しました"
+                  variant="light"
                 >
-                  再抽出
-                </SecondaryButton>
-              </Group>
-            </Stack>
-          </Alert>
-        ) : (
-          <Alert
-            color="blue"
-            icon={<IconInfoCircle size={16} />}
-            title="抽出処理中"
-            variant="light"
-          >
-            自動抽出の順番待ち・実行中です（1件あたり約1〜3分）。完了すると下書きになります。この画面を閉じても処理は続きます。
-          </Alert>
-        ))}
-
-      {/* §2 価格差異サマリ（design.md §16.3 — ページ滞在中は常時表示） */}
-      {priceCheck.diffCount > 0 && (
-        <Alert
-          color="orange"
-          icon={<IconAlertTriangle size={16} />}
-          title={`価格差異 ${priceCheck.diffCount} 件`}
-          variant="light"
-        >
-          <Stack gap={4}>
-            <Text size="sm">
-              明細の単価が価格表と一致しません。承認依頼には差異の確認が必要です。
-            </Text>
-            {diffLines.map((l) => (
-              <Text key={l.itemId} size="sm">
-                行{l.row}: {formatMoney(l.actual)} ≠ 価格表{" "}
-                {formatMoney(l.expected)}
-              </Text>
-            ))}
-          </Stack>
-        </Alert>
-      )}
-
-      {a.status === "DRAFT" ? (
-        <DraftEditor
-          acceptance={a}
-          fileUrl={fileUrl}
-          lineChecks={checkByItemId}
-        />
-      ) : (
-        <>
-          <SummaryGrid>
-            <FieldValue
-              label="番号"
-              value={<DocNumber>{a.number}</DocNumber>}
-            />
-            <FieldValue
-              label="取込元"
-              value={
-                <Badge color={sourceDef.color} size="sm" variant="light">
-                  {sourceDef.label}
-                </Badge>
-              }
-            />
-            <FieldValue
-              label="取込元ファイル"
-              value={
-                fileUrl ? (
-                  <Anchor
-                    href={fileUrl}
-                    rel="noopener noreferrer"
-                    size="sm"
-                    target="_blank"
-                  >
-                    <Group component="span" gap={4} wrap="nowrap">
-                      <IconFile size={14} />
-                      {a.sourceFilename}
+                  <Stack gap="xs">
+                    <Text size="sm">{a.extractError}</Text>
+                    <Group>
+                      <SecondaryButton
+                        leftSection={<IconRefresh size={14} />}
+                        loading={isPending}
+                        onClick={() =>
+                          run(
+                            () => retryExtraction(a.number),
+                            "再抽出を受け付けました（順番に実行されます）",
+                          )
+                        }
+                      >
+                        再抽出
+                      </SecondaryButton>
                     </Group>
-                  </Anchor>
-                ) : (
-                  "—"
-                )
-              }
-            />
-            <FieldValue
-              label="顧客"
-              value={
-                a.customerName ?? (
-                  <Badge color="orange" size="sm" variant="light">
-                    未特定
-                  </Badge>
-                )
-              }
-            />
-            <FieldValue label="顧客注文書番号" value={a.customerOrderRef} />
-            <FieldValue
-              label="見積書"
-              value={
-                a.quoteNumber ? (
-                  <Anchor
-                    component={Link}
-                    href={`/sales/quotes/${encodeURIComponent(a.quoteNumber)}`}
-                    size="sm"
-                  >
-                    <DocNumber>{a.quoteNumber}</DocNumber>
-                  </Anchor>
-                ) : (
-                  "—"
-                )
-              }
-            />
-            <FieldValue label="注文日" value={formatDate(a.orderDate)} />
-            <FieldValue
-              label="明細数"
-              value={
-                <Text className="tabular-nums" size="sm" span>
-                  {a.items.length} 件
-                </Text>
-              }
-            />
-            <FieldValue
-              label="展開日時"
-              value={a.completedAt ? formatDateTime(a.completedAt) : "—"}
-            />
-            <FieldValue label="備考" value={a.notes} />
-          </SummaryGrid>
-
-          {/* 明細（読み取り専用） */}
-          <Paper p="md" radius="md" withBorder>
-            <Title mb="sm" order={5}>
-              明細（{a.items.length}）
-            </Title>
-            <Table.ScrollContainer minWidth={760}>
-              <Table highlightOnHover striped>
-                <Table.Thead>
-                  <Table.Tr>
-                    <Table.Th>製品</Table.Th>
-                    <Table.Th>品名（抽出）</Table.Th>
-                    <Table.Th>種別</Table.Th>
-                    <Table.Th ta="right">数量</Table.Th>
-                    <Table.Th ta="right">単価</Table.Th>
-                    <Table.Th ta="right">金額</Table.Th>
-                    <Table.Th>納期</Table.Th>
-                    <Table.Th>備考</Table.Th>
-                  </Table.Tr>
-                </Table.Thead>
-                <Table.Tbody>
-                  {a.items.map((it) => {
-                    const lc = checkByItemId.get(it.id);
-                    return (
-                      <Table.Tr key={it.id}>
-                        <Table.Td>
-                          {it.productLabel ?? (
-                            <Badge color="orange" size="sm" variant="light">
-                              製品未特定
-                            </Badge>
-                          )}
-                        </Table.Td>
-                        <Table.Td>
-                          <Text c="dimmed" size="sm">
-                            {it.productText ?? "—"}
-                          </Text>
-                        </Table.Td>
-                        <Table.Td>
-                          {ORDER_TYPE_LABEL[it.orderType] ?? it.orderType}
-                        </Table.Td>
-                        <Table.Td className="tabular-nums" ta="right">
-                          {it.quantity}
-                        </Table.Td>
-                        <Table.Td ta="right">
-                          <Stack align="flex-end" gap={2}>
-                            {it.unitPrice != null ? (
-                              <MoneyText value={it.unitPrice} />
-                            ) : (
-                              <Text c="dimmed" size="sm">
-                                未入力
-                              </Text>
-                            )}
-                            {lc?.diff && (
-                              <Badge color="orange" size="xs" variant="light">
-                                価格差異（価格表 {formatMoney(lc.expected)}）
-                              </Badge>
-                            )}
-                            {lc?.unpriced && (
-                              <Badge color="gray" size="xs" variant="light">
-                                価格表なし
-                              </Badge>
-                            )}
-                          </Stack>
-                        </Table.Td>
-                        <Table.Td ta="right">
-                          {it.unitPrice != null ? (
-                            <MoneyText value={it.unitPrice * it.quantity} />
-                          ) : (
-                            "—"
-                          )}
-                        </Table.Td>
-                        <Table.Td className="tabular-nums">
-                          {formatDate(it.deliveryDate)}
-                        </Table.Td>
-                        <Table.Td>
-                          <Text c="dimmed" size="xs">
-                            {it.notes ?? "—"}
-                          </Text>
-                        </Table.Td>
-                      </Table.Tr>
-                    );
-                  })}
-                </Table.Tbody>
-              </Table>
-            </Table.ScrollContainer>
-          </Paper>
-        </>
-      )}
-
-      {/* 承認・展開状況パネル */}
-      <Paper p="md" radius="md" withBorder>
-        <Title mb="md" order={5}>
-          承認・展開状況
-        </Title>
-
-        <Stepper active={stepperActive(a.status)} size="sm">
-          <Stepper.Step
-            description={sourceDef.label}
-            label="取込"
-            loading={a.status === "IMPORT"}
-          />
-          <Stepper.Step
-            description="内容確認・編集"
-            label="下書き"
-            loading={a.status === "DRAFT"}
-          />
-          <Stepper.Step
-            description="第一承認グループ"
-            label="承認"
-            loading={a.status === "REQUESTED"}
-          />
-          <Stepper.Step
-            description={
-              a.completedAt ? formatDate(a.completedAt) : "注文請書へ"
-            }
-            label="伝票展開"
-            loading={a.status === "APPROVED"}
-          />
-        </Stepper>
-
-        <Group gap="xs" mt="md">
-          {a.status === "DRAFT" && (
-            <>
-              <PrimaryButton
-                leftSection={<IconSend size={14} />}
-                loading={isPending}
-                onClick={requestApproval}
-              >
-                承認依頼
-              </PrimaryButton>
-              <Text c="dimmed" size="xs">
-                未保存の編集は承認依頼の前に保存してください
-              </Text>
-            </>
-          )}
-          {a.status === "REQUESTED" &&
-            (canApprove ? (
-              <>
-                <ApproveButton
-                  loading={isPending}
-                  onClick={() =>
-                    run(() => approveAcceptance(a.number), "承認しました")
-                  }
+                  </Stack>
+                </Alert>
+              ) : (
+                <Alert
+                  color="blue"
+                  icon={<IconInfoCircle size={16} />}
+                  title="抽出処理中"
+                  variant="light"
                 >
-                  承認
-                </ApproveButton>
-                <RejectButton onClick={() => setRejectOpen(true)} />
-              </>
+                  <Stack gap="xs">
+                    <Text size="sm">
+                      自動抽出の順番待ち・実行中です（1件あたり約1〜3分）。完了すると下書きになります。この画面を閉じても処理は続きます。
+                    </Text>
+                    <Group>
+                      <SecondaryButton
+                        leftSection={<IconPencil size={14} />}
+                        loading={isPending}
+                        onClick={() =>
+                          run(
+                            () => takeOverManually(a.number),
+                            "手入力に切り替えました",
+                          )
+                        }
+                      >
+                        待たずに手入力する
+                      </SecondaryButton>
+                    </Group>
+                  </Stack>
+                </Alert>
+              ))}
+
+            {/* §2 価格差異サマリ（design.md §16.3 — ページ滞在中は常時表示） */}
+            {priceCheck.diffCount > 0 && (
+              <Alert
+                color="orange"
+                icon={<IconAlertTriangle size={16} />}
+                title={`価格差異 ${priceCheck.diffCount} 件`}
+                variant="light"
+              >
+                <Stack gap={4}>
+                  <Text size="sm">
+                    明細の単価が価格表と一致しません。承認依頼には差異の確認が必要です。
+                  </Text>
+                  {diffLines.map((l) => (
+                    <Text key={l.itemId} size="sm">
+                      行{l.row}: {formatMoney(l.actual)} ≠ 価格表{" "}
+                      {formatMoney(l.expected)}
+                    </Text>
+                  ))}
+                </Stack>
+              </Alert>
+            )}
+
+            {a.status === "DRAFT" ? (
+              <DraftEditor acceptance={a} lineChecks={checkByItemId} />
             ) : (
-              <Text c="dimmed" size="xs">
-                第一承認グループのメンバーのみ承認・差し戻しできます
-              </Text>
-            ))}
-          {a.status === "APPROVED" && (
-            <PrimaryButton
-              leftSection={<IconTransform size={14} />}
-              loading={isPending}
-              onClick={() => setDeployOpen(true)}
-            >
-              伝票展開
-            </PrimaryButton>
-          )}
-          {a.status === "COMPLETED" && (
-            <SecondaryButton
-              leftSection={<IconArchive size={14} />}
-              loading={isPending}
-              onClick={() => setArchiveOpen(true)}
-            >
-              アーカイブ
-            </SecondaryButton>
-          )}
-          {a.status === "ARCHIVED" && (
-            <Text c="dimmed" size="xs">
-              アーカイブ済み（{formatDateTime(a.archivedAt)}）
-            </Text>
-          )}
-        </Group>
+              <>
+                <SummaryGrid>
+                  <FieldValue
+                    label="番号"
+                    value={<DocNumber>{a.number}</DocNumber>}
+                  />
+                  <FieldValue
+                    label="取込元"
+                    value={
+                      <Badge color={sourceDef.color} size="sm" variant="light">
+                        {sourceDef.label}
+                      </Badge>
+                    }
+                  />
+                  <FieldValue
+                    label="取込元ファイル"
+                    value={
+                      fileUrl ? (
+                        <Anchor
+                          href={fileUrl}
+                          rel="noopener noreferrer"
+                          size="sm"
+                          target="_blank"
+                        >
+                          <Group component="span" gap={4} wrap="nowrap">
+                            <IconFile size={14} />
+                            {a.sourceFilename}
+                          </Group>
+                        </Anchor>
+                      ) : (
+                        "—"
+                      )
+                    }
+                  />
+                  <FieldValue
+                    label="顧客"
+                    value={
+                      a.customerName ?? (
+                        <Badge color="orange" size="sm" variant="light">
+                          未特定
+                        </Badge>
+                      )
+                    }
+                  />
+                  <FieldValue
+                    label="顧客注文書番号"
+                    value={a.customerOrderRef}
+                  />
+                  <FieldValue
+                    label="見積書"
+                    value={
+                      a.quoteNumber ? (
+                        <Anchor
+                          component={Link}
+                          href={`/sales/quotes/${encodeURIComponent(a.quoteNumber)}`}
+                          size="sm"
+                        >
+                          <DocNumber>{a.quoteNumber}</DocNumber>
+                        </Anchor>
+                      ) : (
+                        "—"
+                      )
+                    }
+                  />
+                  <FieldValue label="注文日" value={formatDate(a.orderDate)} />
+                  <FieldValue
+                    label="明細数"
+                    value={
+                      <Text className="tabular-nums" size="sm" span>
+                        {a.items.length} 件
+                      </Text>
+                    }
+                  />
+                  <FieldValue
+                    label="展開日時"
+                    value={a.completedAt ? formatDateTime(a.completedAt) : "—"}
+                  />
+                  <FieldValue label="備考" value={a.notes} />
+                </SummaryGrid>
 
-        {/* 伝票展開で生成された注文請書 */}
-        {a.salesOrderNumbers.length > 0 && (
-          <>
-            <Divider my="md" />
-            <Stack gap="xs">
-              <Text c="dimmed" fw={600} size="xs">
-                生成された注文請書
-              </Text>
-              <Group gap="sm">
-                {a.salesOrderNumbers.map((n) => (
-                  <Anchor
-                    ff="mono"
-                    href={`${SALES_ORDERS_PATH}/${n}`}
-                    key={n}
-                    size="sm"
+                {/* 明細（読み取り専用） */}
+                <Paper p="md" radius="md" withBorder>
+                  <Title mb="sm" order={5}>
+                    明細（{a.items.length}）
+                  </Title>
+                  <Table.ScrollContainer minWidth={760}>
+                    <Table highlightOnHover striped>
+                      <Table.Thead>
+                        <Table.Tr>
+                          <Table.Th>製品</Table.Th>
+                          <Table.Th>品名（抽出）</Table.Th>
+                          <Table.Th>種別</Table.Th>
+                          <Table.Th ta="right">数量</Table.Th>
+                          <Table.Th ta="right">単価</Table.Th>
+                          <Table.Th ta="right">金額</Table.Th>
+                          <Table.Th>納期</Table.Th>
+                          <Table.Th>備考</Table.Th>
+                        </Table.Tr>
+                      </Table.Thead>
+                      <Table.Tbody>
+                        {a.items.map((it) => {
+                          const lc = checkByItemId.get(it.id);
+                          return (
+                            <Table.Tr key={it.id}>
+                              <Table.Td>
+                                {it.productLabel ?? (
+                                  <Badge
+                                    color="orange"
+                                    size="sm"
+                                    variant="light"
+                                  >
+                                    製品未特定
+                                  </Badge>
+                                )}
+                              </Table.Td>
+                              <Table.Td>
+                                <Text c="dimmed" size="sm">
+                                  {it.productText ?? "—"}
+                                </Text>
+                              </Table.Td>
+                              <Table.Td>
+                                {ORDER_TYPE_LABEL[it.orderType] ?? it.orderType}
+                              </Table.Td>
+                              <Table.Td className="tabular-nums" ta="right">
+                                {it.quantity}
+                              </Table.Td>
+                              <Table.Td ta="right">
+                                <Stack align="flex-end" gap={2}>
+                                  {it.unitPrice != null ? (
+                                    <MoneyText value={it.unitPrice} />
+                                  ) : (
+                                    <Text c="dimmed" size="sm">
+                                      未入力
+                                    </Text>
+                                  )}
+                                  {lc?.diff && (
+                                    <Badge
+                                      color="orange"
+                                      size="xs"
+                                      variant="light"
+                                    >
+                                      価格差異（価格表{" "}
+                                      {formatMoney(lc.expected)}）
+                                    </Badge>
+                                  )}
+                                  {lc?.unpriced && (
+                                    <Badge
+                                      color="gray"
+                                      size="xs"
+                                      variant="light"
+                                    >
+                                      価格表なし
+                                    </Badge>
+                                  )}
+                                </Stack>
+                              </Table.Td>
+                              <Table.Td ta="right">
+                                {it.unitPrice != null ? (
+                                  <MoneyText
+                                    value={it.unitPrice * it.quantity}
+                                  />
+                                ) : (
+                                  "—"
+                                )}
+                              </Table.Td>
+                              <Table.Td className="tabular-nums">
+                                {formatDate(it.deliveryDate)}
+                              </Table.Td>
+                              <Table.Td>
+                                <Text c="dimmed" size="xs">
+                                  {it.notes ?? "—"}
+                                </Text>
+                              </Table.Td>
+                            </Table.Tr>
+                          );
+                        })}
+                      </Table.Tbody>
+                    </Table>
+                  </Table.ScrollContainer>
+                </Paper>
+              </>
+            )}
+
+            {/* 承認・展開状況パネル */}
+            <Paper p="md" radius="md" withBorder>
+              <Title mb="md" order={5}>
+                承認・展開状況
+              </Title>
+
+              <Stepper active={stepperActive(a.status)} size="sm">
+                <Stepper.Step
+                  description={sourceDef.label}
+                  label="取込"
+                  loading={a.status === "IMPORT"}
+                />
+                <Stepper.Step
+                  description="内容確認・編集"
+                  label="下書き"
+                  loading={a.status === "DRAFT"}
+                />
+                <Stepper.Step
+                  description="第一承認グループ"
+                  label="承認"
+                  loading={a.status === "REQUESTED"}
+                />
+                <Stepper.Step
+                  description={
+                    a.completedAt ? formatDate(a.completedAt) : "注文請書へ"
+                  }
+                  label="伝票展開"
+                  loading={a.status === "APPROVED"}
+                />
+              </Stepper>
+
+              <Group gap="xs" mt="md">
+                {a.status === "DRAFT" && (
+                  <>
+                    <PrimaryButton
+                      leftSection={<IconSend size={14} />}
+                      loading={isPending}
+                      onClick={requestApproval}
+                    >
+                      承認依頼
+                    </PrimaryButton>
+                    <Text c="dimmed" size="xs">
+                      未保存の編集は承認依頼の前に保存してください
+                    </Text>
+                  </>
+                )}
+                {a.status === "REQUESTED" &&
+                  (canApprove ? (
+                    <>
+                      <ApproveButton
+                        loading={isPending}
+                        onClick={() =>
+                          run(() => approveAcceptance(a.number), "承認しました")
+                        }
+                      >
+                        承認
+                      </ApproveButton>
+                      <RejectButton onClick={() => setRejectOpen(true)} />
+                    </>
+                  ) : (
+                    <Text c="dimmed" size="xs">
+                      第一承認グループのメンバーのみ承認・差し戻しできます
+                    </Text>
+                  ))}
+                {a.status === "APPROVED" && (
+                  <PrimaryButton
+                    leftSection={<IconTransform size={14} />}
+                    loading={isPending}
+                    onClick={() => setDeployOpen(true)}
                   >
-                    {n}
-                  </Anchor>
-                ))}
+                    伝票展開
+                  </PrimaryButton>
+                )}
+                {a.status === "COMPLETED" && (
+                  <SecondaryButton
+                    leftSection={<IconArchive size={14} />}
+                    loading={isPending}
+                    onClick={() => setArchiveOpen(true)}
+                  >
+                    アーカイブ
+                  </SecondaryButton>
+                )}
+                {a.status === "ARCHIVED" && (
+                  <Text c="dimmed" size="xs">
+                    アーカイブ済み（{formatDateTime(a.archivedAt)}）
+                  </Text>
+                )}
               </Group>
-            </Stack>
-          </>
-        )}
 
-        {countTrailRecords(approvalTrail) > 0 && (
-          <>
-            <Divider my="md" />
-            <ApprovalTrailList trail={approvalTrail} />
-          </>
-        )}
-      </Paper>
+              {/* 伝票展開で生成された注文請書 */}
+              {a.salesOrderNumbers.length > 0 && (
+                <>
+                  <Divider my="md" />
+                  <Stack gap="xs">
+                    <Text c="dimmed" fw={600} size="xs">
+                      生成された注文請書
+                    </Text>
+                    <Group gap="sm">
+                      {a.salesOrderNumbers.map((n) => (
+                        <Anchor
+                          ff="mono"
+                          href={`${SALES_ORDERS_PATH}/${n}`}
+                          key={n}
+                          size="sm"
+                        >
+                          {n}
+                        </Anchor>
+                      ))}
+                    </Group>
+                  </Stack>
+                </>
+              )}
 
-      <Tabs onChange={setTab} value={tab}>
-        <Tabs.List>
-          <Tabs.Tab value="attachments">添付（{attachments.length}）</Tabs.Tab>
-          <Tabs.Tab value="history">履歴</Tabs.Tab>
-        </Tabs.List>
+              {countTrailRecords(approvalTrail) > 0 && (
+                <>
+                  <Divider my="md" />
+                  <ApprovalTrailList trail={approvalTrail} />
+                </>
+              )}
+            </Paper>
 
-        <Tabs.Panel pt="md" value="attachments">
-          <AttachmentsPanel
-            attachments={attachments}
-            canDelete={a.status !== "ARCHIVED"}
-            canUpload={a.status !== "ARCHIVED"}
-            ownerId={a.number}
-            ownerType="order_acceptances"
-          />
-        </Tabs.Panel>
+            <Tabs onChange={setTab} value={tab}>
+              <Tabs.List>
+                <Tabs.Tab value="attachments">
+                  添付（{attachments.length}）
+                </Tabs.Tab>
+                <Tabs.Tab value="history">履歴</Tabs.Tab>
+              </Tabs.List>
 
-        <Tabs.Panel pt="md" value="history">
-          <HistoryPanel entries={auditEntries} />
-        </Tabs.Panel>
-      </Tabs>
+              <Tabs.Panel pt="md" value="attachments">
+                <AttachmentsPanel
+                  attachments={attachments}
+                  canDelete={a.status !== "ARCHIVED"}
+                  canUpload={a.status !== "ARCHIVED"}
+                  ownerId={a.number}
+                  ownerType="order_acceptances"
+                />
+              </Tabs.Panel>
+
+              <Tabs.Panel pt="md" value="history">
+                <HistoryPanel entries={auditEntries} />
+              </Tabs.Panel>
+            </Tabs>
+          </Stack>
+        </Grid.Col>
+      </Grid>
 
       {/* 差し戻し（理由必須 → DRAFT へ戻す） */}
       <ModalShell
@@ -730,11 +783,9 @@ export function OrderAcceptanceDetail({
  */
 function DraftEditor({
   acceptance,
-  fileUrl,
   lineChecks,
 }: {
   acceptance: OrderAcceptanceView;
-  fileUrl: string | null;
   /** 保存済み明細 id → 価格照合結果（行バッジ表示用）。 */
   lineChecks: Map<string, AcceptancePriceCheckLine>;
 }) {
@@ -782,95 +833,82 @@ function DraftEditor({
   };
 
   return (
-    // 書類（左）と入力（右）を横に並べる — 確認は見比べる作業なので、
-    // 別タブへ行き来させない。狭い画面では縦に積む（書類は折りたたみ）。
-    <Grid gap="md">
-      <Grid.Col order={{ base: 1, lg: 1 }} span={{ base: 12, lg: 5 }}>
-        <IntakeDocumentPane
-          filename={a.sourceFilename}
-          fileUrl={fileUrl}
-          mimeType={a.sourceMimeType}
-        />
-      </Grid.Col>
-      <Grid.Col order={{ base: 2, lg: 2 }} span={{ base: 12, lg: 7 }}>
-        <Stack gap="md">
-          <IntakeReviewPanel review={a.review} />
-          <FormSection
-            description="AI 抽出結果を確認し、顧客・明細を修正して保存します。"
-            title="基本情報"
-          >
-            <Stack gap="sm">
-              <Group gap="md">
-                <Badge color={sourceDef.color} size="sm" variant="light">
-                  {sourceDef.label}
-                </Badge>
-              </Group>
-              <Group align="flex-end" gap="sm" grow preventGrowOverflow={false}>
-                <SearchSelect
-                  description={
-                    customerId ? undefined : "顧客未特定 — 承認依頼には必須です"
-                  }
-                  f4={CUSTOMER_F4}
-                  initialOption={
-                    a.customerBpId && a.customerName
-                      ? { value: a.customerBpId, label: a.customerName }
-                      : null
-                  }
-                  label="顧客"
-                  onChange={(v) => setCustomerId(v)}
-                  onSearch={searchCustomerOptions}
-                  placeholder="顧客を検索"
-                  storageKey="customer"
-                  value={customerId}
-                  withAsterisk
-                />
-                <TextInput
-                  label="顧客注文書番号"
-                  onChange={(e) => setCustomerOrderRef(e.currentTarget.value)}
-                  placeholder="注文書の番号"
-                  value={customerOrderRef}
-                />
-                <TextInput
-                  label="見積書番号（任意）"
-                  onChange={(e) => setQuoteNumber(e.currentTarget.value)}
-                  placeholder="QOT-YYYYMM-NNNNN"
-                  value={quoteNumber}
-                />
-                <DatePickerInput
-                  clearable
-                  label="注文日"
-                  leftSection={<IconCalendar size={14} />}
-                  onChange={setOrderDate}
-                  placeholder="日付を選択"
-                  value={orderDate}
-                  valueFormat="YYYY/MM/DD"
-                />
-              </Group>
-              <TextInput
-                label="備考"
-                onChange={(e) => setNotes(e.currentTarget.value)}
-                placeholder="備考（任意）"
-                value={notes}
-              />
-            </Stack>
-          </FormSection>
-
-          <FormSection
-            description="製品が未特定の行は製品マスタと突合してください（伝票展開には全行の製品特定 + 単価が必要）。"
-            title="明細"
-          >
-            <OrderAcceptanceItemsEditor
-              items={items}
-              lineChecks={Object.fromEntries(lineChecks)}
-              onChange={setItems}
-            />
-          </FormSection>
-
-          <Group justify="flex-end">
-            <SaveButton loading={isPending} onClick={save} type="button" />
+    <Stack gap="md">
+      <IntakeReviewPanel review={a.review} />
+      <FormSection
+        description="AI 抽出結果を確認し、顧客・明細を修正して保存します。"
+        title="基本情報"
+      >
+        <Stack gap="sm">
+          <Group gap="md">
+            <Badge color={sourceDef.color} size="sm" variant="light">
+              {sourceDef.label}
+            </Badge>
           </Group>
+          <Group align="flex-end" gap="sm" grow preventGrowOverflow={false}>
+            <SearchSelect
+              description={
+                customerId ? undefined : "顧客未特定 — 承認依頼には必須です"
+              }
+              f4={CUSTOMER_F4}
+              initialOption={
+                a.customerBpId && a.customerName
+                  ? { value: a.customerBpId, label: a.customerName }
+                  : null
+              }
+              label="顧客"
+              onChange={(v) => setCustomerId(v)}
+              onSearch={searchCustomerOptions}
+              placeholder="顧客を検索"
+              storageKey="customer"
+              value={customerId}
+              withAsterisk
+            />
+            <TextInput
+              label="顧客注文書番号"
+              onChange={(e) => setCustomerOrderRef(e.currentTarget.value)}
+              placeholder="注文書の番号"
+              value={customerOrderRef}
+            />
+            <TextInput
+              label="見積書番号（任意）"
+              onChange={(e) => setQuoteNumber(e.currentTarget.value)}
+              placeholder="QOT-YYYYMM-NNNNN"
+              value={quoteNumber}
+            />
+            <DatePickerInput
+              clearable
+              label="注文日"
+              leftSection={<IconCalendar size={14} />}
+              onChange={setOrderDate}
+              placeholder="日付を選択"
+              value={orderDate}
+              valueFormat="YYYY/MM/DD"
+            />
+          </Group>
+          <TextInput
+            label="備考"
+            onChange={(e) => setNotes(e.currentTarget.value)}
+            placeholder="備考（任意）"
+            value={notes}
+          />
         </Stack>
-      </Grid.Col>
-    </Grid>
+      </FormSection>
+
+      <FormSection
+        description="製品が未特定の行は製品マスタと突合してください（伝票展開には全行の製品特定 + 単価が必要）。"
+        title="明細"
+      >
+        <OrderAcceptanceItemsEditor
+          items={items}
+          lineChecks={Object.fromEntries(lineChecks)}
+          onChange={setItems}
+        />
+      </FormSection>
+
+      <Group justify="flex-end">
+        <SaveButton loading={isPending} onClick={save} type="button" />
+      </Group>
+    </Stack>
   );
 }

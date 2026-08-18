@@ -145,6 +145,8 @@ model DocumentAttachment {
   ownerId    String   @map("owner_id") // 業務キー（PO-… / uuid / ORD-…）
   fileId     String   @map("file_id") @db.Uuid
   label      String? // 表示名・区分（注文書控え 等）
+  /// システムが付けた添付（取込元の原本など）。削除・差し替え不可。
+  isLocked   Boolean  @default(false) @map("is_locked")
   uploadedBy String?  @map("uploaded_by") @db.Uuid
   createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 

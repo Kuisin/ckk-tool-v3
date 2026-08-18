@@ -106,6 +106,7 @@ export async function listAttachments(
       fileId: r.fileId,
       filename: r.file.filename,
       label: r.label,
+      isLocked: r.isLocked,
       mimeType: r.file.mimeType,
       sizeBytes: Number(r.file.sizeBytes ?? 0),
       uploadedBy: r.uploadedByUser?.displayName ?? "システム",
@@ -213,6 +214,12 @@ export async function deleteAttachment(id: string): Promise<ActionResult> {
       include: { file: true },
     });
     if (!row) return actionError("添付ファイルが見つかりません");
+    // 取込元の原本など、システムが付けた添付は消させない（内容を確かめる唯一の根拠）。
+    if (row.isLocked) {
+      return actionError(
+        "この添付は削除できません（取込元の原本としてロックされています）",
+      );
+    }
 
     await prisma.documentAttachment.delete({ where: { id } });
     // files 行は添付専用のはずだが、他参照が残る場合（FK）は行とオブジェクトを温存。
