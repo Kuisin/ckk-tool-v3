@@ -21,7 +21,8 @@
  * 流れ: ファイルを SeaweedFS へ保存 + files 行 → order_acceptances を
  * IMPORT で採番作成（ORDER シーケンス — 番号 ORD-YYYYMM-NNNNN）→ po-extract
  * /extract/order-request で構造化 → 正規化（intake-core）→ 顧客
- * （match_names）・製品（コード/名称）を突合 → DRAFT + 明細。
+ * （照合名・表記ゆれを吸収 — lib/bp-match）・製品（コード/名称）を突合
+ * → DRAFT + 明細。
  *
  * 失敗時は IMPORT のまま extract_error を記録する。メッセージは
  * lib/intake-extract-error で**分類**して「何が起きたか / 原因 / 対処 / 詳細」
@@ -36,9 +37,15 @@ import path from "node:path";
 import { APPROVAL_TARGET } from "./approval-targets";
 import { firstStepGroupId } from "./approvals";
 import { getCurrentActorId, recordAudit } from "./audit";
+import {
+  type BpMatchable,
+  type BpMatchResult,
+  matchBusinessPartnerName,
+} from "./bp-match";
 import { prisma } from "./db";
 import { formatDocNumber } from "./doc-number";
 import { systematicFileName } from "./file-naming";
+import { type LocalizedText, localized } from "./format";
 import {
   intakeFileName,
   type NormalizedExtraction,
@@ -266,30 +273,55 @@ async function ingestFile(input: {
 }
 
 /**
- * 顧客突合: match_names 完全一致 → 名称 ja 一致。
+ * 突合の対象になる取引先（有効・トップレベル）を全部読む。
+ *
+ * 配列列（match_names）の**部分一致は Prisma の where で書けない**し、
+ * 表記ゆれの吸収は SQL より JS の方が素直に書ける。有効な取引先は数百件なので、
+ * 1 通の取込につき 1 回この全件読みで十分（顧客ピッカーも同じやり方）。
+ */
+export async function loadBpMatchPool(): Promise<BpMatchable[]> {
+  const rows = await prisma.businessPartner.findMany({
+    where: { isActive: true, parentId: null },
+    select: {
+      id: true,
+      bpCode: true,
+      name: true,
+      nameKana: true,
+      shortName: true,
+      matchNames: true,
+      matchNamesAuto: true,
+      roleAssignments: {
+        where: { role: "CUSTOMER", isActive: true },
+        select: { role: true },
+      },
+    },
+  });
+  return rows.map((r) => ({
+    id: r.id,
+    label: localized(r.name as LocalizedText | null),
+    bpCode: r.bpCode,
+    nameJa: localized(r.name as LocalizedText | null),
+    nameKana: r.nameKana,
+    shortName: r.shortName,
+    matchNames: r.matchNames,
+    matchNamesAuto: r.matchNamesAuto,
+    isCustomer: r.roleAssignments.length > 0,
+  }));
+}
+
+/**
+ * 顧客突合。判定規則そのものは lib/bp-match（純ロジック・テスト付き）。
  *
  * 注文書は相手の視点で書かれているため、AI が向きを取り違えると**自社名**が
  * 顧客として来る。自社は顧客になり得ないので、突合そのものを行わない
  * （画面側は「向きが逆」の案内を出す — lib/intake-review）。
  */
-async function matchCustomer(name: string | null): Promise<string | null> {
-  if (!name) return null;
-  if (isOwnCompany(name)) return null;
-  // 人が入れた照合名（match_names）と、フリガナから自動生成した分
-  // （match_names_auto — 画面には出さない）の両方を見る。
-  const byMatch = await prisma.businessPartner.findFirst({
-    where: {
-      isActive: true,
-      OR: [{ matchNames: { has: name } }, { matchNamesAuto: { has: name } }],
-    },
-    select: { id: true },
-  });
-  if (byMatch) return byMatch.id;
-  const byName = await prisma.businessPartner.findFirst({
-    where: { isActive: true, name: { path: ["ja"], equals: name } },
-    select: { id: true },
-  });
-  return byName?.id ?? null;
+export async function matchCustomer(
+  name: string | null,
+): Promise<BpMatchResult> {
+  const empty: BpMatchResult = { matched: null, candidates: [] };
+  if (!name || isOwnCompany(name)) return empty;
+  return matchBusinessPartnerName(name, await loadBpMatchPool());
 }
 
 /** 製品突合: PRD コード一致 → 名称 ja 完全一致。 */
@@ -378,7 +410,10 @@ export async function runExtraction(
       throw new ExtractFailureError(classifyLocalFailure(e, "normalize"));
     }
 
-    const customerBpId = await matchCustomer(norm.customerName);
+    // 候補止まり（略称など複数当たり）のときは顧客を入れない — 画面が候補を
+    // 出し直すので、黙って 1 件に決めてしまうより人に選ばせる。
+    const customerBpId =
+      (await matchCustomer(norm.customerName)).matched?.id ?? null;
     const items = await Promise.all(
       norm.items.map(async (it, i) => ({
         productId: await matchProduct(it.productCode, it.productText),

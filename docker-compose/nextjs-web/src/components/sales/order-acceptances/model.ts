@@ -57,6 +57,14 @@ export interface OrderAcceptanceItemView {
   notes: string | null;
 }
 
+/** 顧客の候補 1 件（AI が読み取った社名に近い取引先）。 */
+export interface CustomerSuggestion {
+  id: string;
+  label: string;
+  /** 当たった照合名（なぜこれが候補なのかを画面に出す）。 */
+  matchedKey: string;
+}
+
 /** 詳細 view。 */
 export interface OrderAcceptanceView {
   /**
@@ -76,6 +84,12 @@ export interface OrderAcceptanceView {
   customerBpId: string | null;
   customerName: string | null;
   customerBranchName: string | null;
+  /**
+   * 顧客を 1 件に絞れなかったときの候補（lib/bp-match）。編集画面の顧客欄に
+   * 「もしかして」として出し、1 クリックで選べるようにする。
+   * 顧客が決まっている / 候補も無い場合は空配列。
+   */
+  customerSuggestions: CustomerSuggestion[];
   customerOrderRef: string | null;
   /** 営業担当（作成時に顧客の主担当を複写したスナップショット）。 */
   salesRepId: string | null;

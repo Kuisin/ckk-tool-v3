@@ -42,6 +42,12 @@ export interface SavedForReview {
   customerBpId: string | null;
   customerOrderRef: string | null;
   orderDate: string | null;
+  /**
+   * 顧客を 1 件に絞れなかったときの候補数（lib/bp-match）。
+   * 「候補はあるが決められなかった」のと「そもそも当たらない」のでは
+   * 次にやることが違う（前者は選ぶだけ、後者はマスタ登録）。
+   */
+  customerCandidateCount?: number;
   items: {
     productId: string | null;
     productText: string | null;
@@ -86,12 +92,16 @@ export function reviewIntake(
       hint: `自社名「${norm.customerName}」を顧客として読み取っています（書類の宛先＝自社）。発行元・社判のある側が顧客です — 書類を見て選び直してください`,
     });
   } else if (has(norm.customerName)) {
+    const count = saved.customerCandidateCount ?? 0;
     out.push({
       key: "customer",
       label: "顧客",
       status: "unmatched",
       read: norm.customerName,
-      hint: `「${norm.customerName}」に一致する取引先がありません。取引先を選び直すか、マスタに登録（表記ゆれは AI 照合名に追加）してください`,
+      hint:
+        count > 0
+          ? `「${norm.customerName}」に近い取引先が ${count} 件あります。編集画面の顧客欄に候補が出るので、正しいものを選んでください`
+          : `「${norm.customerName}」に一致する取引先がありません。取引先を選び直すか、マスタに登録（表記ゆれは AI 照合名に追加）してください`,
     });
   } else {
     out.push({

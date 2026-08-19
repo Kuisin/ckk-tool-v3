@@ -116,6 +116,7 @@ import {
   readinessSummary,
 } from "@/lib/order-acceptance-readiness";
 import type { ActionResult } from "@/lib/server-action";
+import { CustomerSuggestions } from "./CustomerSuggestions";
 import { IntakeDocumentPane } from "./IntakeDocumentPane";
 import { IntakeReviewPanel } from "./IntakeReviewPanel";
 import {
@@ -943,6 +944,16 @@ function DraftEditor({
   const sourceDef = INTAKE_SOURCE_BADGE[a.source];
 
   const [customerId, setCustomerId] = useState<string | null>(a.customerBpId);
+  // 顧客ピッカーに出すラベル。候補ボタンで選んだときも表示が追随するよう、
+  // id だけでなく {value,label} で持つ。
+  const [customerOption, setCustomerOption] = useState<{
+    value: string;
+    label: string;
+  } | null>(
+    a.customerBpId && a.customerName
+      ? { value: a.customerBpId, label: a.customerName }
+      : null,
+  );
   const [salesRepId, setSalesRepId] = useState<string | null>(a.salesRepId);
   const [customerOrderRef, setCustomerOrderRef] = useState(
     a.customerOrderRef ?? "",
@@ -1034,13 +1045,14 @@ function DraftEditor({
                 customerId ? undefined : "顧客未特定 — 承認依頼には必須です"
               }
               f4={CUSTOMER_F4}
-              initialOption={
-                a.customerBpId && a.customerName
-                  ? { value: a.customerBpId, label: a.customerName }
-                  : null
-              }
+              initialOption={customerOption}
               label="顧客"
-              onChange={(v) => setCustomerId(v)}
+              onChange={(v, option) => {
+                setCustomerId(v);
+                setCustomerOption(
+                  v && option ? { value: v, label: option.label } : null,
+                );
+              }}
               onSearch={searchCustomerOptions}
               placeholder="顧客を検索"
               storageKey="customer"
@@ -1094,6 +1106,23 @@ function DraftEditor({
               valueFormat="YYYY/MM/DD"
             />
           </Group>
+          {/*
+            突合が 1 件に絞れなかったときの候補。顧客が決まったら消える。
+            打ち直させない — AI が読んだ社名とマスタの表記がずれているから
+            こそ突合が外れており、そのずれた社名では検索しても出てこない。
+          */}
+          {!customerId && (
+            <CustomerSuggestions
+              onPick={(id) => {
+                const picked = a.customerSuggestions.find((s) => s.id === id);
+                setCustomerId(id);
+                setCustomerOption(
+                  picked ? { value: picked.id, label: picked.label } : null,
+                );
+              }}
+              suggestions={a.customerSuggestions}
+            />
+          )}
           <TextInput
             label="備考"
             onChange={(e) => setNotes(e.currentTarget.value)}

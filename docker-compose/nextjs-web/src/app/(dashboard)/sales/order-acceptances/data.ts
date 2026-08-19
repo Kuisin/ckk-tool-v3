@@ -23,6 +23,8 @@ import {
   formatProductNumber,
 } from "@/lib/doc-number";
 import { type LocalizedText, localized } from "@/lib/format";
+import { matchCustomer } from "@/lib/intake";
+import { normalizeExtraction } from "@/lib/intake-core";
 import { reviewIntake } from "@/lib/intake-review";
 
 // 一覧クエリの取得上限（監査 P2-8 — 全件フェッチのデータ増加対策）。
@@ -127,12 +129,26 @@ export async function fetchOrderAcceptance(
     notes: it.notes,
   }));
 
+  // 顧客が決まっていない取込は、その場でもう一度突合して**候補**を出す
+  // （保存はしない — 選ぶのは人）。抽出 JSON は残っているので導出できる。
+  const customerSuggestions =
+    r.customerBpId || !r.extracted
+      ? []
+      : (
+          await matchCustomer(
+            normalizeExtraction(
+              (r.extracted as { data?: unknown })?.data ?? r.extracted,
+            ).customerName,
+          )
+        ).candidates;
+
   return {
     // 「何を読み取って、どれが引けなかったか」は保存済みの行と抽出 JSON から
     // その場で導く（別テーブルを持たない — 直せば指摘も自然に消える）。
     review: reviewIntake(r.extracted, {
       customerBpId: r.customerBpId,
       customerOrderRef: r.customerOrderRef,
+      customerCandidateCount: customerSuggestions.length,
       orderDate: r.orderDate?.toISOString().slice(0, 10) ?? null,
       items: items.map((it) => ({
         productId: it.productId,
@@ -156,6 +172,11 @@ export async function fetchOrderAcceptance(
     customerBranchName: r.customerBranchBp
       ? localized(r.customerBranchBp.name as LocalizedText | null)
       : null,
+    customerSuggestions: customerSuggestions.map((c) => ({
+      id: c.id,
+      label: c.label,
+      matchedKey: c.matchedKey,
+    })),
     salesRepId: r.salesRep?.id ?? null,
     salesRepName: r.salesRep?.displayName ?? null,
     createdByName: r.createdByUser?.displayName ?? null,
