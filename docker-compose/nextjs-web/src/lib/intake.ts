@@ -67,6 +67,7 @@ import { notifyApprovalGroup } from "./notifications";
 import { allocateDocumentKey } from "./numbering";
 import { linesReplaceBlockReason } from "./order-line-core";
 import { isOwnCompany } from "./own-company";
+import { PO_EXTRACT_URL } from "./po-extract";
 import {
   matchProductName,
   type ProductMatchable,
@@ -76,10 +77,6 @@ import {
 } from "./product-match";
 import { putObject } from "./storage";
 import { createTaskQueue } from "./task-queue";
-
-const PO_EXTRACT_URL = (
-  process.env.PO_EXTRACT_URL ?? "http://po-extract:8000"
-).replace(/\/$/, "");
 
 /**
  * 取込結果の通知先 — 注文請書フローの 1 段目の承認グループ。
@@ -346,6 +343,7 @@ type ProductRow = {
   seq: number | null;
   name: unknown;
   legacyKey: string | null;
+  matchNames: string[];
 };
 
 const toMatchable = (r: ProductRow): ProductMatchable => {
@@ -357,8 +355,35 @@ const toMatchable = (r: ProductRow): ProductMatchable => {
     nameJa,
     code,
     legacyKey: r.legacyKey,
+    keywords: r.matchNames,
   };
 };
+
+/**
+ * キーワード（match_names）に probe を含む製品 id。
+ *
+ * 名称は 1 つしか持てないので、相手の呼び方はマスタ MS04 の「キーワード」に
+ * 貯める（取引先の match_names と同じ考え方）。配列列は Prisma の where で
+ * 部分一致を書けないため、`unnest + ILIKE` の生 SQL で id だけ引き、
+ * 名称の probe と OR で足す。当たり方の判定はプールに入れたあと
+ * lib/product-match が行う — キーワードも名称と同じ段階（完全 → 正規化 →
+ * 頭から → 一部）で評価される。
+ */
+async function productIdsByKeyword(
+  probe: string,
+  limit: number,
+): Promise<number[]> {
+  const q = probe.trim();
+  if (!q) return [];
+  const like = `%${q.replace(/[\\%_]/g, (c) => `\\${c}`)}%`;
+  const rows = await prisma.$queryRaw<{ id: number }[]>`
+    SELECT id FROM app.products
+    WHERE is_active
+      AND EXISTS (SELECT 1 FROM unnest(match_names) AS k WHERE k ILIKE ${like})
+    ORDER BY id
+    LIMIT ${limit}`;
+  return rows.map((r) => r.id);
+}
 
 /**
  * 製品突合。**製品マスタは大きい**（数万件を見込む）ので、取引先のように全件を
@@ -367,6 +392,9 @@ const toMatchable = (r: ProductRow): ProductMatchable => {
  *
  *   1. PRD コード / 旧品番 の直接照合（あれば 1 発で決まる）
  *   2. probe で候補を取り、段階的突合（lib/text-match）にかける
+ *
+ * probe は名称（name.ja）とキーワード（match_names）の両方に当てる。相手の
+ * 呼び方は名称と違うのが普通で、そのためにキーワード欄がある。
  *
  * 1 件に絞れなければ**候補**を返す。画面が明細行の下に出して人が選ぶ。
  */
@@ -381,6 +409,7 @@ export async function matchProduct(
     seq: true,
     name: true,
     legacyKey: true,
+    matchNames: true,
   } as const;
 
   // 1. コードで直接引く — 製品コード（PRD-YYYYMM-NNNN）と旧品番。
@@ -418,8 +447,15 @@ export async function matchProduct(
   const pool = new Map<string, ProductMatchable>();
   let last: ProductMatchResult = empty;
   for (const probe of searchProbes(text)) {
+    const keywordIds = await productIdsByKeyword(probe, PRODUCT_PROBE_LIMIT);
     const rows = await prisma.product.findMany({
-      where: { isActive: true, name: { path: ["ja"], string_contains: probe } },
+      where: {
+        isActive: true,
+        OR: [
+          { name: { path: ["ja"], string_contains: probe } },
+          ...(keywordIds.length > 0 ? [{ id: { in: keywordIds } }] : []),
+        ],
+      },
       orderBy: { id: "asc" },
       take: PRODUCT_PROBE_LIMIT,
       select,
@@ -461,12 +497,28 @@ export async function suggestProducts(
   if (wanted.length === 0) return out;
 
   const probes = [...new Set(wanted.flatMap(searchProbes))];
+  // キーワード側も 1 クエリでまとめて引く（生 SQL は probe ごとなので、
+  // 画面 1 回ぶんの本数に収まるよう上限を全体で分け合う）。
+  const keywordIds = [
+    ...new Set(
+      (
+        await Promise.all(
+          probes.map((probe) =>
+            productIdsByKeyword(probe, PRODUCT_PROBE_LIMIT),
+          ),
+        )
+      ).flat(),
+    ),
+  ];
   const rows = await prisma.product.findMany({
     where: {
       isActive: true,
-      OR: probes.map((probe) => ({
-        name: { path: ["ja"], string_contains: probe },
-      })),
+      OR: [
+        ...probes.map((probe) => ({
+          name: { path: ["ja"], string_contains: probe } as const,
+        })),
+        ...(keywordIds.length > 0 ? [{ id: { in: keywordIds } }] : []),
+      ],
     },
     orderBy: { id: "asc" },
     take: PRODUCT_CANDIDATE_LIMIT,
@@ -476,6 +528,7 @@ export async function suggestProducts(
       seq: true,
       name: true,
       legacyKey: true,
+      matchNames: true,
     },
   });
   const pool = rows.map(toMatchable);

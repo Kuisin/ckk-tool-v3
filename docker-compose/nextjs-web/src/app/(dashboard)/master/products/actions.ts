@@ -13,6 +13,7 @@ import { recordAudit } from "@/lib/audit";
 import { checkPermission } from "@/lib/authz";
 import { Prisma, prisma } from "@/lib/db";
 import { formatProductNumber } from "@/lib/doc-number";
+import { normalizeKeywords } from "@/lib/master-keywords";
 import { allocateDocumentKey } from "@/lib/numbering";
 import {
   getProductItemDefs,
@@ -48,6 +49,8 @@ const productInput = z
     diameterMm: z.number().nullable(),
     lengthMm: z.number().nullable(),
     unit: z.string().min(1, "単位を選択してください"),
+    /** 検索・AI 突合用のキーワード（match_names）。保存時に整形する。 */
+    matchNames: z.array(z.string()).default([]),
     isActive: z.boolean(),
     notes: z.string().optional(),
     spec: z.array(z.object({ key: z.string(), value: z.string() })),
@@ -162,6 +165,7 @@ export async function createProduct(
         diameterMm: spec.diameterMm,
         lengthMm: spec.lengthMm,
         unit: v.unit,
+        matchNames: normalizeKeywords(v.matchNames),
         spec: specJson(v.spec) ?? undefined,
         isActive: v.isActive,
         notes: v.notes?.trim() || null,
@@ -180,6 +184,7 @@ export async function createProduct(
         diameterMm: spec.diameterMm,
         lengthMm: spec.lengthMm,
         unit: v.unit,
+        matchNames: normalizeKeywords(v.matchNames),
         isActive: v.isActive,
         notes: v.notes?.trim() || null,
       },
@@ -212,6 +217,7 @@ export async function updateProduct(
         diameterMm: true,
         lengthMm: true,
         unit: true,
+        matchNames: true,
         isActive: true,
         notes: true,
       },
@@ -225,6 +231,7 @@ export async function updateProduct(
         diameterMm: spec.diameterMm,
         lengthMm: spec.lengthMm,
         unit: v.unit,
+        matchNames: normalizeKeywords(v.matchNames),
         spec: specJson(v.spec) ?? Prisma.DbNull,
         isActive: v.isActive,
         notes: v.notes?.trim() || null,
@@ -240,6 +247,7 @@ export async function updateProduct(
             diameterMm: prior.diameterMm ? Number(prior.diameterMm) : null,
             lengthMm: prior.lengthMm ? Number(prior.lengthMm) : null,
             unit: prior.unit,
+            matchNames: prior.matchNames,
             isActive: prior.isActive,
             notes: prior.notes,
           }
@@ -250,6 +258,7 @@ export async function updateProduct(
         diameterMm: spec.diameterMm,
         lengthMm: spec.lengthMm,
         unit: v.unit,
+        matchNames: normalizeKeywords(v.matchNames),
         isActive: v.isActive,
         notes: v.notes?.trim() || null,
       },

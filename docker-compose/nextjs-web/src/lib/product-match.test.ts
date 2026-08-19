@@ -70,6 +70,22 @@ describe("matchProductName", () => {
     expect(r.candidates[0].confidence).toBe("partial");
   });
 
+  it("**キーワード（MS04 の別名）でも当たる**", () => {
+    // 相手の呼び方はマスタ名称と違うのが普通。名称に入れられない表記は
+    // キーワード欄（products.match_names）に貯め、名称と同じ段で評価する。
+    const pool = [
+      ...POOL,
+      p("5", "OH付超硬ソリッドリーマ", {
+        keywords: ["OHリーマ", "OH REAMER"],
+      }),
+    ];
+    expect(matchProductName("OHリーマ", pool).matched?.id).toBe("5");
+    // 表記ゆれ（全角・大文字小文字）はキーワードでも吸収される。
+    expect(matchProductName("ｏｈ　ｒｅａｍｅｒ", pool).matched?.id).toBe("5");
+    // 寸法が後ろに続く印字も、キーワードの頭から一致で拾える。
+    expect(matchProductName("OHリーマ φ8.3×330", pool).matched?.id).toBe("5");
+  });
+
   it("当たらないときは空", () => {
     expect(matchProductName("該当なし工具", POOL)).toEqual({
       matched: null,

@@ -339,6 +339,10 @@ Table materials {
   nominal_diameter_mm numeric(8,3)        // 呼び径 (mm)
   name            json [not null]         // { ja: '', en: '' }
   unit            varchar [not null]      // 本, kg, m など
+  // 検索・AI 突合用のキーワード（別名・略称・読み・英字表記）。
+  // business_partners.match_names と同じ役割。候補は po-extract の
+  // /generate/keywords に作らせ、人が採用したものだけが入る。
+  match_names     "text[]"    [default: '{}']
   is_active       boolean [default: true]
   notes           text                    // 備考
   created_at      timestamp
@@ -361,6 +365,9 @@ Table products {
   material_id     varchar [ref: > materials.id]  // 廃止予定（旧: 特定素材参照。現在は未使用）
   unit            varchar [not null, default: '本']
   spec            json                    // 仕様（フリー構造）
+  // 検索・AI 突合用のキーワード（別名・略称・読み・英字表記）。注文書の品名が
+  // 名称と一致しないときの突合キー（lib/intake matchProduct）でもある。
+  match_names     "text[]"    [default: '{}']
   design_file_id  uuid [ref: > design_files.id]
   is_active       boolean [default: true]
   notes           text

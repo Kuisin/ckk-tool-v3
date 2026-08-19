@@ -17,6 +17,10 @@
  * `超硬ソリッド…` のように長い共通部分を持つ同族が多く、短い一致で自動確定
  * させると別の製品を掴むため。誤った製品は誤った顧客より下流（指示書・出荷）
  * まで響く。
+ *
+ * 照合の材料は名称だけではない。**キーワード**（products.match_names — マスタ
+ * MS04 の「キーワード」欄）も同じ段階で当てる。名称は 1 つしか持てないのに
+ * 相手はいろいろな呼び方で書いてくるので、そのための欄がある。
  */
 
 import { searchKey } from "./bp-search";
@@ -39,6 +43,12 @@ export interface ProductMatchable {
   code?: string | null;
   /** 旧システムの識別子。注文書に相手の品番として印字されることがある。 */
   legacyKey?: string | null;
+  /**
+   * キーワード（products.match_names — マスタ MS04 の「キーワード」欄）。
+   * 相手の呼び方・略称・英字表記など、**名称欄には入れられない別表記**。
+   * 名称と同じ段階（完全 → 正規化 → 頭から → 一部）で評価する。
+   */
+  keywords?: readonly string[] | null;
 }
 
 export interface ProductMatchCandidate {
@@ -112,9 +122,13 @@ export function searchProbes(read: string): string[] {
 
 /** 突合に使う表記。 */
 function productKeys(p: ProductMatchable): string[] {
-  return [p.nameJa, p.nameEn, p.code, p.legacyKey].filter(
-    (v): v is string => !!v,
-  );
+  return [
+    p.nameJa,
+    p.nameEn,
+    p.code,
+    p.legacyKey,
+    ...(p.keywords ?? []),
+  ].filter((v): v is string => !!v);
 }
 
 /**

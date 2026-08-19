@@ -57,7 +57,8 @@ Put the file in the import folder on the server and it is imported automatically
 
 1. Press「**優先取込**」(priority import) at the top right of the list screen.
 2. Choose the order form file (PDF, PNG, JPG or WebP; you can choose several at once).
-3. The progress is shown at the top right of the screen. It takes about **30 to 60 seconds** per file.
+3. **All** the chosen files are added to the list first (status 「取込中」/ importing). Only once they are all listed does the reading (AI extraction) start, one after another.
+4. The progress is shown at the top right of the screen. Reading takes about **30 to 60 seconds** per file.
 
 **3. Type it in by hand**
 
@@ -167,6 +168,8 @@ Notes about the acceptance as a whole. Notes about one line go in that line's ow
 The product ordered. **It is matched automatically from the item name, but matching can miss** — choose it by hand when it does. Lines whose product is unresolved cannot move on.
 
 Dimensions or specifications following the item name do not prevent a match. But when all that could be read is a word **several products share** (for example `超硬ソリッド`), no single one is chosen — candidates are offered under「**もしかして**」(did you mean) instead, because letting you choose is safer than silently picking a different product.
+
+When an item name arrives written the same way every time but never matches, register that spelling under 「**キーワード**」 (keywords) in the [product master](/manual/en/operations/masters/product/user#field-keywords) — a customer's own wording or abbreviation — and it will match from then on.
 
 ### Item name (as read) [#field-extracted-name]
 

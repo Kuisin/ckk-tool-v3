@@ -51,6 +51,7 @@ export default async function MasterMaterialsDetailPage({
     nameJa: name?.ja ?? "",
     nameEn: name?.en ?? "",
     unit: r.unit,
+    matchNames: r.matchNames,
     isActive: r.isActive,
     notes: r.notes ?? "",
     createdAt: r.createdAt.toISOString(),

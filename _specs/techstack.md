@@ -106,6 +106,11 @@ OCR/Extraction: ローカルLLM（self-hosted）— po-extract API
                 （FastAPI /extract: PDF/画像 → 構造化JSON）。3段ハイブリッド:
                 ①OCR（PP-OCRモデルをONNXRuntime=RapidOCRで実行）+ ②Vision
                 転写（qwen2.5vl）→ ③LLMがJSON生成。外部API・キー不要。
+AI補助タスク:    同じ po-extract の /generate/<task>（紙なし・LLM 1回・数秒）。
+                アプリ内の道具から呼ぶ汎用口で、第1号は keywords
+                （製品・素材マスタのキーワード候補生成 — MS04/MS06）。
+                自前スキーマを渡す /generate も可。アプリ側は
+                nextjs-web の lib/po-extract.ts 経由。
 Notification:   nodemailer + Nextcloud API + SSE
 Job Runner:     BullMQ
 Cache:          Valkey

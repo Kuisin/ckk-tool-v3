@@ -92,7 +92,12 @@ pnpm prisma db push                  # dev-only
 **Doc intake / OCR** — Customer order PDFs (incl. scans) are imported via email (imapflow), a watched folder, or upload, then extracted to structured JSON by the **self-hosted** `po-extract` API (no external API/keys). po-extract is **Coolify-managed, one instance per environment** — `po-extract-dev` (branch `dev`) and `po-extract-main` (branch `main`), both **internal only** (no host port, no domain; reachable on the `coolify` network via the stable aliases `po-extract-dev` / `po-extract-main`). Source stays at `docker-compose/ai-stack/extractor/`; register with `coolify/add-po-extract-apps.sh`, deploy with `coolify/deploy.sh po-extract-dev|po-extract-main`. The GPU service `ollama` stays in `ai-stack` and is **shared by both environments** (one GPU set). It runs a **3-stage hybrid pipeline** for accuracy: (1) an **OCR** text layer from PaddleOCR's PP-OCR models on **ONNXRuntime** (RapidOCR — PaddlePaddle's native inference SIGSEGVs on this Xeon host, so the same models run via ONNX), (2) a **vision-model** transcription (`qwen2.5vl`), then (3) an **LLM** that cross-checks both readings and emits the schema JSON (+ non-destructive numeric reconciliation). Both model stages default to one resident model so the GPU never swaps mid-request (~48s/doc). Endpoints:
 - `POST /extract/<doc_type>` (multipart: `file` + optional `prompt`) — uses a **built-in schema** per type. Types: `order-request` (注文請書 intake — the primary one), `quote`, `invoice`, `delivery-note`, `purchase-order`. Each schema matches the v3 data model.
 - `POST /extract` — same, but the caller supplies its own `schema` (JSON Schema string) for ad-hoc shapes.
-- `GET /healthz` (status + model + types), `GET /schemas` (the built-in schemas).
+- `GET /healthz` (status + model + types + tasks), `GET /schemas` (the built-in schemas).
+
+It also exposes a **paper-free** side for in-app AI tools — no OCR, no vision, one LLM call (seconds, not minutes), JSON body `{ input, prompt? }`:
+- `POST /generate/<task>` — built-in task schema + prompt. Tasks: `keywords` (製品・素材マスタのキーワード候補 — MS04 / MS06 の「AI で候補を出す」). `GET /tasks` lists them.
+- `POST /generate` — caller supplies `prompt` + `schema` for one-off shapes.
+- App side goes through `lib/po-extract.ts` (`generateJson`), never `fetch` directly; a new tool = one entry in `TASK_SCHEMAS`/`TASK_PROMPTS` + one route handler (see `/api/ai/keywords`).
 
 Powers the AI-first 注文請書 intake (scan image + auto-filled form → user confirms; on extraction failure, the user enters every field from scratch). Source: `docker-compose/ai-stack/extractor/app.py`.
 
