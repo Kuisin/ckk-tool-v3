@@ -32,6 +32,7 @@ import {
   createProduct,
   updateProduct,
 } from "@/app/(dashboard)/master/products/actions";
+import { MasterKeywordsField } from "@/components/master/MasterKeywordsField";
 import { ActiveBadge } from "@/components/ui/ActiveBadge";
 import { GhostButton } from "@/components/ui/buttons";
 import { HelpLabel } from "@/components/ui/HelpLabel";
@@ -71,6 +72,7 @@ const productSchema = z
     diameterMm: z.number().nullable(),
     lengthMm: z.number().nullable(),
     unit: z.string().min(1, "単位を選択してください"),
+    matchNames: z.array(z.string()),
     isActive: z.boolean(),
     notes: z.string(),
     spec: z.array(z.object({ key: z.string(), value: z.string() })),
@@ -113,6 +115,7 @@ export interface ProductFormInitial {
   diameterMm: number | null;
   lengthMm: number | null;
   unit: string;
+  matchNames: string[];
   isActive: boolean;
   notes: string;
   spec: { key: string; value: string }[];
@@ -209,6 +212,7 @@ export function ProductForm({
       diameterMm: initial?.diameterMm ?? null,
       lengthMm: initial?.lengthMm ?? null,
       unit: initial?.unit ?? "本",
+      matchNames: initial?.matchNames ?? [],
       isActive: initial?.isActive ?? true,
       notes: initial?.notes ?? "",
       spec: [],
@@ -256,6 +260,37 @@ export function ProductForm({
       const { [key]: _drop, ...rest } = e;
       return rest;
     });
+  };
+
+  // キーワード生成に渡す「いま画面に出ている製品の姿」。名称だけでは
+  // 材質も寸法も分からず当たり障りのない語しか返ってこないので、種別項目まで含める。
+  const keywordSubject = {
+    name: form.values.nameJa || form.values.nameEn,
+    code: initial?.code ?? null,
+    attributes: [
+      { label: "英語名", value: form.values.nameEn },
+      { label: "材種", value: form.values.materialTypeLabel },
+      {
+        label: "直径 (mm)",
+        value:
+          form.values.diameterMm != null ? String(form.values.diameterMm) : "",
+      },
+      {
+        label: "全長 (mm)",
+        value: form.values.lengthMm != null ? String(form.values.lengthMm) : "",
+      },
+      { label: "単位", value: form.values.unit },
+      { label: "製品種別", value: selectedType ? typeLabel(selectedType) : "" },
+      ...(selectedType?.items ?? []).map((it) => ({
+        label: it.label.ja || it.key,
+        value: typeValues[it.key] ?? "",
+      })),
+      ...extraKeys.map((key) => ({
+        label: defByKey.get(key)?.label.ja || key,
+        value: extraValues[key] ?? "",
+      })),
+      { label: "備考", value: form.values.notes },
+    ].filter((a) => a.value.trim() !== ""),
   };
 
   const handleSubmit = (values: FormValues) => {
@@ -387,6 +422,14 @@ export function ProductForm({
           placeholder="備考・特記事項"
           rows={3}
           {...form.getInputProps("notes")}
+        />
+        {/* 検索・AI 突合用の別名。候補は AI に作らせ、採用は人が決める。 */}
+        <MasterKeywordsField
+          kind="product"
+          label={<HelpLabel {...fieldHelp("product", "keywords")} />}
+          onChange={(v) => form.setFieldValue("matchNames", v)}
+          subject={keywordSubject}
+          value={form.values.matchNames}
         />
       </FormSection>
 

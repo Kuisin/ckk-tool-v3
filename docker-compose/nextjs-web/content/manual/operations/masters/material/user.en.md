@@ -132,6 +132,7 @@ Every field on the material screen. The material code is **assembled automatical
 | [Name](#field-name) | Required | The material name |
 | [Unit](#field-unit) | Required | Pieces, kg and so on |
 | [Manufacturer model / nominal dia.](#field-model) | Optional | Manufacturer's model and nominal diameter |
+| [キーワード (keywords)](#field-keywords) | Optional | Other ways this material is written (search + AI intake) |
 | [Active](#field-active) | — | Whether it appears in pick lists |
 | [Notes](#field-notes) | Optional | Notes |
 
@@ -166,6 +167,19 @@ How it is counted; becomes the default unit on orders and receipts.
 ### Manufacturer model / nominal diameter (mm) [#field-model]
 
 The manufacturer's model and nominal diameter, recorded to quote back when ordering.
+
+### キーワード (keywords) [#field-keywords]
+
+Other ways this material is written: abbreviations, readings (hiragana / katakana), English, and other notations of the size (φ8.3 / 8.3mm) — anything that differs from the registered name.
+
+Registering them does two things.
+
+1. **You can find it** — typing any of those words in the list's search box finds this material.
+2. **The AI can find it** — when a received document is read, a name printed on it can be resolved to this material.
+
+Press 「**AI で候補を出す**」 (suggest with AI) and candidates are generated from what is currently entered (name, material type, dimensions, maker model …). **Only the ones you click are added, and nothing is registered until you save** — look at them and pick the ones that fit.
+
+If the same word is put on two materials, neither can be chosen. Use words that point at **this material only**.
 
 ### Active [#field-active]
 

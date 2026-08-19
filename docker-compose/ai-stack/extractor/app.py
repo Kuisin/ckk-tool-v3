@@ -2,7 +2,7 @@ import base64, io, json, os, re
 from datetime import date
 import fitz  # PyMuPDF
 import httpx
-from fastapi import FastAPI, UploadFile, File, Form, HTTPException
+from fastapi import Body, FastAPI, UploadFile, File, Form, HTTPException
 
 OLLAMA_URL = os.environ.get("OLLAMA_URL", "http://ollama:11434")
 # Stage 2: vision model reads the page image. Stage 3: LLM builds the JSON.
@@ -159,7 +159,45 @@ PROMPTS = {
     "purchase-order": "This is a material purchase order (発注書).",
 }
 
-app = FastAPI(title="Document → JSON")
+# ── Text tasks (no document) ─────────────────────────────────────────────
+#
+# /extract* は「紙 → JSON」。こちらは **紙が無い** 補助タスクの口で、アプリ側の
+# 道具（マスタのキーワード生成など）が使う。OCR も vision も通らず、構造化 LLM
+# （STRUCT_MODEL）を 1 回叩くだけなので速い（数秒）。入力は JSON をそのまま
+# プロンプトへ載せる。新しい道具を足すときは TASK_SCHEMAS / TASK_PROMPTS に
+# 1 組を追加する（呼び出し側が自前のスキーマを持つなら POST /generate でよい）。
+
+STR_LIST = {"type": "array", "items": {"type": "string"}}
+
+TASK_SCHEMAS = {
+    "keywords": OBJ(keywords=STR_LIST),
+}
+
+TASK_PROMPTS = {
+    "keywords": (
+        "You generate search keywords (検索キーワード) for ONE master-data record "
+        "in a Japanese manufacturing company's system (carbide cutting tools and "
+        "the bar stock they are made from).\n"
+        "The input JSON describes the record: `kind` (product / material), `name`, "
+        "`code`, `attributes` (label/value pairs) and `existing` (keywords already "
+        "registered).\n"
+        "The keywords are used two ways: staff type them into a search box, and the "
+        "document AI uses them to resolve a name printed on a customer's order to "
+        "this record. So return the ways THIS item is actually written or called:\n"
+        "- readings of the kanji (ひらがな / カタカナ) and romaji\n"
+        "- the Japanese and English word for the same thing\n"
+        "- common abbreviations and shop-floor shorthand\n"
+        "- other notations of the code and the dimensions (φ8.3, 8.3mm, Φ８．３)\n"
+        "- meaningful fragments of the code or model number\n"
+        "Rules: only forms that plausibly refer to THIS record — never invent specs, "
+        "materials, makers or model numbers that are not in the input. No duplicates, "
+        "nothing already in `existing`, and no bare generic word that would match "
+        "thousands of records (「製品」「材料」 alone). 1–32 characters each, 5–15 "
+        "keywords, most useful first. Respond with JSON only."
+    ),
+}
+
+app = FastAPI(title="Document / text → JSON")
 
 # ── Stage 1: OCR — PaddleOCR's PP-OCR models on ONNXRuntime (RapidOCR) ─────
 # (PaddlePaddle's native inference SIGSEGVs on this host; RapidOCR runs the same
@@ -354,17 +392,47 @@ def _pipeline(file: UploadFile, fmt: dict, hint: str):
     except json.JSONDecodeError:
         raise HTTPException(502, "structuring model did not return valid JSON")
 
+# ── Text-only pipeline: LLM builds JSON from a JSON input ────────────────
+#
+# 抽出側の _normalize は使わない。あちらは紙から読んだ字を整える（全角→半角）
+# のが仕事だが、ここで作るのは**キーワードのような表記そのもの**で、全角と
+# 半角の違いに意味がある。空文字を落とし前後の空白を取るだけに留める。
+def _clean(obj):
+    if isinstance(obj, dict):
+        return {k: _clean(v) for k, v in obj.items()}
+    if isinstance(obj, list):
+        cleaned = [_clean(v) for v in obj]
+        return [v for v in cleaned if v not in (None, "")]
+    if isinstance(obj, str):
+        return obj.strip()
+    return obj
+
+def _text_task(fmt: dict, prompt: str, payload):
+    content = prompt + "\n\n=== input ===\n" + json.dumps(
+        payload, ensure_ascii=False, indent=2, default=str
+    )
+    out = _ollama(STRUCT_MODEL, content, None, fmt)
+    try:
+        return _clean(json.loads(out))
+    except json.JSONDecodeError:
+        raise HTTPException(502, "generation model did not return valid JSON")
+
 # ── Routes ───────────────────────────────────────────────────────────────
 @app.get("/healthz")
 def healthz():
     return {"status": "ok", "vision_model": VISION_MODEL,
             "struct_model": STRUCT_MODEL, "ocr": OCR_ENABLED,
             "ocr_engine": "rapidocr-onnxruntime (PP-OCR)",
-            "document_types": sorted(SCHEMAS)}
+            "document_types": sorted(SCHEMAS),
+            "tasks": sorted(TASK_SCHEMAS)}
 
 @app.get("/schemas")
 def schemas():
     return SCHEMAS
+
+@app.get("/tasks")
+def tasks():
+    return TASK_SCHEMAS
 
 @app.post("/extract")
 def extract(
@@ -388,3 +456,30 @@ def extract_typed(
     if fmt is None:
         raise HTTPException(404, f"unknown document type '{doc_type}'; available: {sorted(SCHEMAS)}")
     return _pipeline(file, fmt, prompt or PROMPTS.get(doc_type, ""))
+
+# 紙のない補助タスク（アプリの道具から呼ぶ）。JSON body:
+#   { "input": <任意の JSON>, "prompt": "<追加指示・任意>" }
+@app.post("/generate/{task}")
+def generate_task(task: str, body: dict = Body(default={})):
+    fmt = TASK_SCHEMAS.get(task)
+    if fmt is None:
+        raise HTTPException(404, f"unknown task '{task}'; available: {sorted(TASK_SCHEMAS)}")
+    prompt = TASK_PROMPTS.get(task, "")
+    extra = body.get("prompt")
+    if isinstance(extra, str) and extra.strip():
+        prompt = f"{prompt}\n{extra.strip()}"
+    # input を省いたら body 全体を入力とみなす（呼び出し側の手間を減らす）。
+    payload = body.get("input", {k: v for k, v in body.items() if k != "prompt"})
+    return _text_task(fmt, prompt, payload)
+
+# 呼び出し側が自前のスキーマを持つ場合。JSON body:
+#   { "prompt": "<指示>", "schema": <JSON Schema>, "input": <任意の JSON・任意> }
+@app.post("/generate")
+def generate(body: dict = Body(...)):
+    fmt = body.get("schema")
+    if not isinstance(fmt, dict):
+        raise HTTPException(400, "schema must be a JSON Schema object")
+    prompt = body.get("prompt")
+    if not isinstance(prompt, str) or not prompt.strip():
+        raise HTTPException(400, "prompt is required")
+    return _text_task(fmt, prompt.strip(), body.get("input"))

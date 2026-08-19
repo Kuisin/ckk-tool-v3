@@ -11,6 +11,7 @@ import { Stack, Tabs, Text } from "@mantine/core";
 import { IconCircleMinus, IconTrash } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { KeywordBadges } from "@/components/master/MasterKeywordsField";
 import { ActiveBadge } from "@/components/ui/ActiveBadge";
 import { DocNumber } from "@/components/ui/DocNumber";
 import { FieldValue } from "@/components/ui/FieldValue";
@@ -45,6 +46,8 @@ export interface MaterialDetailData {
   nameJa: string;
   nameEn: string;
   unit: string;
+  /** 検索・AI 突合用のキーワード（match_names）。 */
+  matchNames: string[];
   isActive: boolean;
   notes: string;
   createdAt: string;
@@ -146,6 +149,10 @@ export function MaterialDetail({
           <Stack gap="sm">
             <FieldValue label="名称（日本語）" value={record.nameJa} />
             <FieldValue label="名称（英語）" value={record.nameEn || "—"} />
+            <FieldValue
+              label="キーワード"
+              value={<KeywordBadges values={record.matchNames} />}
+            />
             <FieldValue label="備考" value={record.notes || "—"} />
           </Stack>
         </Tabs.Panel>

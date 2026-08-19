@@ -13,6 +13,7 @@ import { Badge, Stack, Table, Tabs, Text } from "@mantine/core";
 import { IconCircleMinus, IconCopy, IconTrash } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { KeywordBadges } from "@/components/master/MasterKeywordsField";
 import { ActiveBadge } from "@/components/ui/ActiveBadge";
 import { DocNumber } from "@/components/ui/DocNumber";
 import { FieldValue } from "@/components/ui/FieldValue";
@@ -49,6 +50,8 @@ export interface ProductDetailData {
   diameterMm: number | null;
   lengthMm: number | null;
   unit: string;
+  /** 検索・AI 突合用のキーワード（match_names）。 */
+  matchNames: string[];
   isActive: boolean;
   notes: string;
   spec: { key: string; value: string }[];
@@ -211,6 +214,10 @@ export function ProductDetail({
                 );
               })()}
             </Stack>
+            <FieldValue
+              label="キーワード"
+              value={<KeywordBadges values={record.matchNames} />}
+            />
             <FieldValue label="備考" value={record.notes || "—"} />
           </Stack>
         </Tabs.Panel>

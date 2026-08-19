@@ -59,12 +59,9 @@ import { notifyApprovalGroup } from "./notifications";
 import { allocateDocumentKey } from "./numbering";
 import { linesReplaceBlockReason } from "./order-line-core";
 import { isOwnCompany } from "./own-company";
+import { PO_EXTRACT_URL } from "./po-extract";
 import { putObject } from "./storage";
 import { createTaskQueue } from "./task-queue";
-
-const PO_EXTRACT_URL = (
-  process.env.PO_EXTRACT_URL ?? "http://po-extract:8000"
-).replace(/\/$/, "");
 
 /**
  * 取込結果の通知先 — 注文請書フローの 1 段目の承認グループ。
@@ -292,7 +289,13 @@ async function matchCustomer(name: string | null): Promise<string | null> {
   return byName?.id ?? null;
 }
 
-/** 製品突合: PRD コード一致 → 名称 ja 完全一致。 */
+/**
+ * 製品突合: PRD コード一致 → 名称 ja 完全一致 → キーワード（match_names）一致。
+ *
+ * 顧客の注文書に載る品名は、こちらのマスタ名称とは限らない（先方の呼び方・
+ * 略称・英字）。取引先を match_names で解決しているのと同じ理屈で、製品にも
+ * キーワードを持たせてある（マスタ MS04 の「キーワード」欄）。
+ */
 async function matchProduct(
   code: string | null,
   text: string | null,
@@ -313,6 +316,11 @@ async function matchProduct(
       select: { id: true },
     });
     if (p) return p.id;
+    const byKeyword = await prisma.product.findFirst({
+      where: { isActive: true, matchNames: { has: text } },
+      select: { id: true },
+    });
+    if (byKeyword) return byKeyword.id;
   }
   return null;
 }
