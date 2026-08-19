@@ -8,6 +8,7 @@
  * 値は内部 id（連番）の文字列、ラベルは表示コード + 名称。
  */
 
+import { checkPermission } from "@/lib/authz";
 import { bpMatchesQuery } from "@/lib/bp-search";
 import { prisma } from "@/lib/db";
 import { formatProductNumber, formatQuoteNumber } from "@/lib/doc-number";
@@ -98,6 +99,22 @@ export async function searchQuoteOptions(
     .map(({ value, label }) => ({ value, label }));
 }
 
+/** 営業担当セレクトが 1 往復で必要とするもの。 */
+export interface SalesRepPicker {
+  /** 顧客に登録されている担当者（並びは 主担当 → sortOrder）。 */
+  options: SearchOption[];
+  /**
+   * 取引先マスタを開けるか（master:READ）。閲覧だけの人にも「誰が担当か
+   * 見に行く」導線は出す — 開けない画面へのリンクを出さないための判定。
+   */
+  canView: boolean;
+  /**
+   * 営業担当を登録できるか（master:UPDATE）。編集画面へ送ってよいか、
+   * つまり「登録しに行く」導線を出せるかの判定。
+   */
+  canManage: boolean;
+}
+
 /**
  * 営業担当 — 指定した顧客に登録されている担当者（app.bp_sales_reps）。
  *
@@ -105,10 +122,17 @@ export async function searchQuoteOptions(
  * 直したときにフォームがこれを呼び、候補と既定値を入れ替える。
  * 顧客未選択・担当未登録なら空配列。
  */
-export async function fetchSalesRepOptions(
+export async function fetchSalesRepPicker(
   customerBpId: string | null,
-): Promise<SearchOption[]> {
-  return await listCustomerSalesReps(customerBpId);
+): Promise<SalesRepPicker> {
+  // READ / UPDATE を 2 回引いても、権限セットは React cache() 済みなので
+  // DB は 1 往復（lib/authz permissionSetFor）。
+  const [options, read, update] = await Promise.all([
+    listCustomerSalesReps(customerBpId),
+    checkPermission("master", "READ"),
+    checkPermission("master", "UPDATE"),
+  ]);
+  return { options, canView: read.ok, canManage: update.ok };
 }
 
 /** 顧客（トップレベル CUSTOMER ロール）— BPコード / 名称 / AI照合名。 */
