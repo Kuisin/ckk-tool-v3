@@ -6,9 +6,9 @@
  */
 
 import {
-  Group,
   SegmentedControl,
   Select,
+  SimpleGrid,
   Stack,
   Text,
   Textarea,
@@ -34,6 +34,7 @@ import {
   ModalShell,
 } from "@/components/ui/modals";
 import { SearchSelect } from "@/components/ui/SearchSelect";
+import { useIsMobile } from "@/hooks/useViewport";
 import { validateMemberPeriod } from "@/lib/approval-membership";
 import { fieldHelp } from "@/lib/field-help";
 
@@ -215,6 +216,7 @@ function MemberPeriodFields({
   period: PeriodDraft;
   onPeriodChange: (v: PeriodDraft) => void;
 }) {
+  const isMobile = useIsMobile();
   return (
     <Stack gap="sm" mt="sm">
       <SegmentedControl
@@ -222,6 +224,7 @@ function MemberPeriodFields({
           { value: "PERMANENT", label: "常任" },
           { value: "TEMPORARY", label: "期間限定" },
         ]}
+        fullWidth={isMobile}
         onChange={(v) => onKindChange(v as MemberKind)}
         value={kind}
       />
@@ -231,7 +234,9 @@ function MemberPeriodFields({
             この期間だけこのグループの一員として承認できます。期間外は承認者に
             出てきません。
           </Text>
-          <Group grow>
+          {/* モバイルは縦積み（SimpleGrid 1 列）— 横 2 分割だと日時
+              （YYYY/MM/DD HH:mm）が入力欄に収まらない。 */}
+          <SimpleGrid cols={isMobile ? 1 : 2} spacing="sm">
             <DateTimePicker
               label={<HelpLabel {...fieldHelp("approvalGroup", "validFrom")} />}
               onChange={(v) =>
@@ -258,7 +263,7 @@ function MemberPeriodFields({
               valueFormat="YYYY/MM/DD HH:mm"
               withAsterisk
             />
-          </Group>
+          </SimpleGrid>
           <Textarea
             autosize
             label="メモ"
