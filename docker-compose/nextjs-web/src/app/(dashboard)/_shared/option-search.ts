@@ -104,9 +104,13 @@ export interface SalesRepPicker {
   /** 顧客に登録されている担当者（並びは 主担当 → sortOrder）。 */
   options: SearchOption[];
   /**
-   * 取引先マスタで営業担当を編集できるか。未登録の顧客に「登録しに行く」
-   * 導線を出してよいかの判定に使う — 権限が無い人に開けない画面への
-   * リンクを見せないため。
+   * 取引先マスタを開けるか（master:READ）。閲覧だけの人にも「誰が担当か
+   * 見に行く」導線は出す — 開けない画面へのリンクを出さないための判定。
+   */
+  canView: boolean;
+  /**
+   * 営業担当を登録できるか（master:UPDATE）。編集画面へ送ってよいか、
+   * つまり「登録しに行く」導線を出せるかの判定。
    */
   canManage: boolean;
 }
@@ -121,11 +125,14 @@ export interface SalesRepPicker {
 export async function fetchSalesRepPicker(
   customerBpId: string | null,
 ): Promise<SalesRepPicker> {
-  const [options, authz] = await Promise.all([
+  // READ / UPDATE を 2 回引いても、権限セットは React cache() 済みなので
+  // DB は 1 往復（lib/authz permissionSetFor）。
+  const [options, read, update] = await Promise.all([
     listCustomerSalesReps(customerBpId),
+    checkPermission("master", "READ"),
     checkPermission("master", "UPDATE"),
   ]);
-  return { options, canManage: authz.ok };
+  return { options, canView: read.ok, canManage: update.ok };
 }
 
 /** 顧客（トップレベル CUSTOMER ロール）— BPコード / 名称 / AI照合名。 */

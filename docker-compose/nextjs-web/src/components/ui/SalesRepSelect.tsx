@@ -15,7 +15,8 @@
  * 顧客に担当が 1 人も登録されていないと、ここで選べるものが無く手が止まる。
  * そのため未登録のときだけ取引先マスタへの導線を出す（**別タブ** — 書きかけ
  * の書類を失わないため）。戻ってきたらウィンドウのフォーカスで候補を取り
- * 直すので、登録した担当がそのまま選べる。
+ * 直すので、登録した担当がそのまま選べる。行き先は権限で変える —
+ * 登録できる人（master:UPDATE）は編集画面、閲覧だけ（master:READ）は詳細。
  */
 
 import { Anchor, Select } from "@mantine/core";
@@ -39,7 +40,7 @@ export function useSalesRepOptions(
   const [options, setOptions] = useState<Option[]>(() =>
     initial ? [{ value: initial.id, label: initial.name }] : [],
   );
-  const [canManage, setCanManage] = useState(false);
+  const [access, setAccess] = useState({ canView: false, canManage: false });
   // 初回は保存済みの値を尊重する（顧客が既に入っている編集画面で、
   // 候補を取り直した拍子に主担当へ書き換えてしまわないように）。
   const firstLoad = useRef(true);
@@ -55,7 +56,7 @@ export function useSalesRepOptions(
     let cancelled = false;
     if (!customerBpId) {
       setOptions([]);
-      setCanManage(false);
+      setAccess({ canView: false, canManage: false });
       if (!firstLoad.current) latest.current.onChange(null);
       firstLoad.current = false;
       return;
@@ -63,7 +64,7 @@ export function useSalesRepOptions(
     void fetchSalesRepPicker(customerBpId).then((picker) => {
       if (cancelled) return;
       setOptions(picker.options);
-      setCanManage(picker.canManage);
+      setAccess({ canView: picker.canView, canManage: picker.canManage });
       const wasFirst = firstLoad.current;
       firstLoad.current = false;
       if (wasFirst) return;
@@ -91,7 +92,7 @@ export function useSalesRepOptions(
         if (cancelled) return;
         const hadNone = known.current.length === 0;
         setOptions(picker.options);
-        setCanManage(picker.canManage);
+        setAccess({ canView: picker.canView, canManage: picker.canManage });
         // 自動で入れるのは「未登録だった顧客に**初めて**担当を登録した」
         // ときだけ。候補があったのに空 = 利用者が意図的に外したので戻さない。
         if (hadNone && !latest.current.value && picker.options[0]) {
@@ -118,7 +119,7 @@ export function useSalesRepOptions(
         ]
       : options;
 
-  return { options: withCurrent, hasCandidates: options.length > 0, canManage };
+  return { options: withCurrent, hasCandidates: options.length > 0, ...access };
 }
 
 export function SalesRepSelect({
@@ -137,7 +138,7 @@ export function SalesRepSelect({
   label?: string;
   disabled?: boolean;
 }) {
-  const { options, hasCandidates, canManage } = useSalesRepOptions(
+  const { options, hasCandidates, canView, canManage } = useSalesRepOptions(
     customerBpId,
     value,
     onChange,
@@ -145,22 +146,29 @@ export function SalesRepSelect({
   );
 
   /**
-   * 候補ゼロで手が止まるときだけ出す導線。`master:UPDATE` が無い人には
-   * 開けない画面なので出さない（代わりに誰に頼めばよいかを書く）。
+   * 候補ゼロで手が止まるときだけ出す導線。**閲覧（master:READ）以上**があれば
+   * 出し、行き先は権限で変える — 登録できる人（master:UPDATE）は編集画面へ、
+   * 閲覧だけの人は詳細へ（開けない画面には送らない）。どちらも無い人には
+   * リンクを出さず、誰に頼めばよいかだけを書く。
+   *
    * Input.Description は `<p>` なので、中に置けるのはインライン要素だけ
    * （Group/Stack を入れると <div> in <p> になる）。
    */
   const description =
     customerBpId && !hasCandidates ? (
-      canManage ? (
+      canView || canManage ? (
         <>
           この顧客に営業担当が未登録です。
           <Anchor
-            href={`/master/business-partners/${customerBpId}/edit`}
+            href={
+              canManage
+                ? `/master/business-partners/${customerBpId}/edit`
+                : `/master/business-partners/${customerBpId}`
+            }
             rel="noopener noreferrer"
             target="_blank"
           >
-            取引先マスタで登録
+            {canManage ? "取引先マスタで登録" : "取引先マスタで確認"}
             <IconExternalLink
               size={11}
               style={{ marginLeft: 2, verticalAlign: "-1px" }}
