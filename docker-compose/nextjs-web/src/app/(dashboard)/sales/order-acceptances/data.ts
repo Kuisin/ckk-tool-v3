@@ -23,7 +23,7 @@ import {
   formatProductNumber,
 } from "@/lib/doc-number";
 import { type LocalizedText, localized } from "@/lib/format";
-import { matchCustomer } from "@/lib/intake";
+import { matchCustomer, suggestProducts } from "@/lib/intake";
 import { normalizeExtraction } from "@/lib/intake-core";
 import { reviewIntake } from "@/lib/intake-review";
 
@@ -117,11 +117,22 @@ export async function fetchOrderAcceptance(
     select: { branch: true },
   });
 
+  // 製品が決まっていない行は、読み取った品名から候補を出す（1 クエリでまとめて）。
+  const productSuggestions = await suggestProducts(
+    r.items
+      .filter((it) => it.productId == null && it.productText)
+      .map((it) => it.productText as string),
+  );
+
   const items: OrderAcceptanceItemView[] = r.items.map((it) => ({
     id: it.id,
     productId: it.productId != null ? String(it.productId) : null,
     productLabel: it.product ? productLabel(it.product) : null,
     productText: it.productText,
+    productSuggestions:
+      (it.productId == null && it.productText
+        ? productSuggestions.get(it.productText.trim())
+        : null) ?? [],
     orderType: it.orderType,
     quantity: it.quantity,
     unitPrice: it.unitPrice != null ? Number(it.unitPrice) : null,
@@ -153,6 +164,7 @@ export async function fetchOrderAcceptance(
       items: items.map((it) => ({
         productId: it.productId,
         productText: it.productText,
+        productCandidateCount: it.productSuggestions.length,
         quantity: it.quantity,
         unitPrice: it.unitPrice,
       })),

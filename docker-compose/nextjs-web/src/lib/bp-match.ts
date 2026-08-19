@@ -12,43 +12,23 @@
  *
  * 以前はここが配列の**完全一致**（`match_names has ?`）だったため、上のどれも
  * 外れて「一致する取引先がありません」になっていた。照合名は貯まっているのに
- * 引けない、という状態だったので、段階的な突合に置き換える。
+ * 引けない、という状態だったので、段階的な突合（lib/text-match）に置き換える。
  *
- * 段階（上から順に試し、当たった段で止める）:
- *   1. exact      — 生の文字列が照合名と完全一致
- *   2. normalized — 正規化キー（bp-search searchKey + カタカナ寄せ）が一致
- *   3. prefix     — 法人格を外すと、照合名が読み取り文字列の**頭から**一致
- *                   （法人格が前後どちらに付いても、支店名が後ろに続いてもよい）
- *   4. partial    — 読み取り文字列が照合名の一部（略称で書かれている）
- *
- * 1〜3 は 1 件に絞れたときだけ自動確定する。4 は当たりが広いので**候補**止まり
- * （画面で 1 クリックで選ぶ）。誤った顧客を黙って結び付けるより、選ばせる方が安い。
- *
- * 3 を「頭から」に限るのは、社名が [核][法人格][支店・部署] の順で印字されるため。
- * 途中の一致まで許すと `武蔵精密工業株式会社` に別会社の `精密工業株式会社` が
- * 当たってしまう（しかも長い方が勝つので、黙って間違える）。
+ * ここが持つのは**取引先に固有の規則**だけ — 法人格の開き方・落とし方と、
+ * 宛名の敬称。段の定義と自動確定の可否は lib/text-match が持つ。
  */
 
-import { type BpSearchable, bpSearchKeys, searchKey } from "./bp-search";
+import { type BpSearchable, searchKey } from "./bp-search";
 import { toKatakana } from "./company-aliases";
+import {
+  type MatchTarget,
+  type MatchTier,
+  matchText,
+  type TextMatchRules,
+} from "./text-match";
 
-/** 突合の当たり方。画面の言い回しと自動確定の可否を決める。 */
-export type BpMatchConfidence =
-  /** 照合名と完全一致。 */
-  | "exact"
-  /** 表記ゆれを吸収したら一致。 */
-  | "normalized"
-  /** 法人格を外すと頭から一致（法人格・支店などが付いた形）。 */
-  | "prefix"
-  /** 読み取り文字列が照合名に含まれる（略称）。自動確定はしない。 */
-  | "partial";
-
-/** 自動確定してよい当たり方（partial は人が選ぶ）。 */
-const AUTO_CONFIRMABLE: ReadonlySet<BpMatchConfidence> = new Set([
-  "exact",
-  "normalized",
-  "prefix",
-]);
+/** 突合の当たり方（lib/text-match の段）。 */
+export type BpMatchConfidence = MatchTier;
 
 /** 突合対象の取引先 1 件。 */
 export interface BpMatchable extends BpSearchable {
@@ -86,11 +66,6 @@ export const SUGGESTION_LIMIT = 5;
  * 効くので、短い核が広く当たっても勝ち残らない。
  */
 const MIN_PREFIX_LEN = 2;
-
-/**
- * 一部一致（略称）に使ってよい最小長。途中一致は当たりが広いので 3 文字から。
- */
-const MIN_PARTIAL_LEN = 3;
 
 /** 宛名の敬称。書類には社名の後ろに必ず付いてくるので落とす。 */
 const HONORIFICS = /(御中|様|殿|各位)\s*$/u;
@@ -138,31 +113,28 @@ export function bpMatchKey(raw: string): string {
   return toKatakana(searchKey(expandLegalMarks(raw)));
 }
 
-/** 読み取り文字列から敬称を落とした変種（元の形も含む）。 */
-function readVariants(read: string): string[] {
-  const base = read.trim();
-  const stripped = base.replace(HONORIFICS, "").trim();
-  return base === stripped ? [base] : [base, stripped];
-}
+const BP_RULES: TextMatchRules = {
+  normalize: bpMatchKey,
+  core: bpCoreKey,
+  variants: (read) => {
+    const base = read.trim();
+    return [base, base.replace(HONORIFICS, "").trim()];
+  },
+  minPrefixLen: MIN_PREFIX_LEN,
+  limit: SUGGESTION_LIMIT,
+};
 
-/** 取引先 1 件の照合名（生の形）— 一致した「元の表記」を画面に出すために生で持つ。 */
-function rawKeys(bp: BpMatchable): string[] {
-  const parts = [
+/** 突合に使う表記（別名・読み・コードまで全部）。 */
+function bpKeys(bp: BpMatchable): string[] {
+  return [
     bp.nameJa,
     bp.nameEn,
     bp.nameKana,
     bp.shortName,
+    bp.bpCode,
     ...(bp.matchNames ?? []),
     ...(bp.matchNamesAuto ?? []),
-  ];
-  return [...new Set(parts.map((p) => (p ?? "").trim()).filter(Boolean))];
-}
-
-interface Hit {
-  bp: BpMatchable;
-  matchedKey: string;
-  /** 絞り込み用の重み。長く当たったものほど具体的。 */
-  score: number;
+  ].filter((v): v is string => !!v);
 }
 
 /**
@@ -173,125 +145,26 @@ export function matchBusinessPartnerName(
   read: string | null | undefined,
   pool: BpMatchable[],
 ): BpMatchResult {
-  const empty: BpMatchResult = { matched: null, candidates: [] };
-  if (!read || !read.trim()) return empty;
-
-  const variants = readVariants(read);
-  const variantKeys = variants.map(bpMatchKey).filter(Boolean);
-  if (variantKeys.length === 0) return empty;
-
-  // 段ごとに当たりを集め、最初に当たった段だけを使う。
-  // （下の段は必ず上の段を含むので、混ぜると弱い当たりで薄まる）
-  const tiers: { confidence: BpMatchConfidence; hits: Hit[] }[] = [
-    { confidence: "exact", hits: [] },
-    { confidence: "normalized", hits: [] },
-    { confidence: "prefix", hits: [] },
-    { confidence: "partial", hits: [] },
-  ];
-  const push = (c: BpMatchConfidence, hit: Hit) => {
-    const tier = tiers.find((t) => t.confidence === c);
-    // 同じ取引先は、その段でいちばん長く当たったものだけ残す。
-    const prev = tier?.hits.find((h) => h.bp.id === hit.bp.id);
-    if (!prev) tier?.hits.push(hit);
-    else if (hit.score > prev.score) {
-      prev.matchedKey = hit.matchedKey;
-      prev.score = hit.score;
-    }
+  const targets: MatchTarget[] = pool.map((bp) => ({
+    id: bp.id,
+    label: bp.label,
+    keys: bpKeys(bp),
+    autoConfirmable: bp.isCustomer !== false,
+  }));
+  const r = matchText(read, targets, BP_RULES);
+  const toCandidate = (h: {
+    id: string;
+    label: string;
+    matchedKey: string;
+    tier: MatchTier;
+  }): BpMatchCandidate => ({
+    id: h.id,
+    label: h.label,
+    matchedKey: h.matchedKey,
+    confidence: h.tier,
+  });
+  return {
+    matched: r.matched ? toCandidate(r.matched) : null,
+    candidates: r.candidates.map(toCandidate),
   };
-
-  for (const bp of pool) {
-    const raws = rawKeys(bp);
-    // 正規化キーは bp-search と同じ組み立て（bpCode も含む）にかな寄せを足す。
-    const keyed = [
-      ...new Set([
-        ...raws.map((r) => bpMatchKey(r)),
-        ...bpSearchKeys(bp).map((k) => toKatakana(k)),
-      ]),
-    ].filter(Boolean);
-
-    for (const variant of variants) {
-      if (raws.some((r) => r === variant)) {
-        push("exact", { bp, matchedKey: variant, score: variant.length });
-      }
-    }
-    for (const vk of variantKeys) {
-      const vCore = bpCoreKey(vk);
-      const hit = keyed.find((k) => k === vk);
-      if (hit) {
-        push("normalized", {
-          bp,
-          matchedKey: labelForKey(raws, hit) ?? hit,
-          score: bpCoreKey(hit).length,
-        });
-      }
-      for (const k of keyed) {
-        const kCore = bpCoreKey(k);
-        if (kCore.length < MIN_PREFIX_LEN) continue;
-        // 頭から一致 — 読み取り側に法人格や支店名が付いていても当たる。
-        if (k !== vk && vCore.startsWith(kCore)) {
-          push("prefix", {
-            bp,
-            matchedKey: labelForKey(raws, k) ?? k,
-            score: kCore.length,
-          });
-        }
-        // 読み取りが照合名の一部（略称）。当たりが広いので候補止まり。
-        if (
-          k !== vk &&
-          kCore.length >= MIN_PARTIAL_LEN &&
-          vCore.length >= MIN_PARTIAL_LEN &&
-          kCore.includes(vCore)
-        ) {
-          push("partial", {
-            bp,
-            matchedKey: labelForKey(raws, k) ?? k,
-            score: vCore.length,
-          });
-        }
-      }
-    }
-  }
-
-  for (const tier of tiers) {
-    if (tier.hits.length === 0) continue;
-    const ranked = rank(tier.hits);
-    const best = ranked[0];
-    // 最高スコアが 1 件だけ = ほかより具体的に当たっている、と見なす。
-    const topScoreCount = ranked.filter((h) => h.score === best.score).length;
-    const decisive =
-      topScoreCount === 1 && AUTO_CONFIRMABLE.has(tier.confidence);
-    if (decisive && best.bp.isCustomer !== false) {
-      return {
-        matched: {
-          id: best.bp.id,
-          label: best.bp.label,
-          matchedKey: best.matchedKey,
-          confidence: tier.confidence,
-        },
-        candidates: [],
-      };
-    }
-    return {
-      matched: null,
-      candidates: ranked.slice(0, SUGGESTION_LIMIT).map((h) => ({
-        id: h.bp.id,
-        label: h.bp.label,
-        matchedKey: h.matchedKey,
-        confidence: tier.confidence,
-      })),
-    };
-  }
-  return empty;
-}
-
-/** 正規化キーから、それを生んだ生の表記を探す（画面に出すのは人が読める方）。 */
-function labelForKey(raws: string[], key: string): string | null {
-  return raws.find((r) => bpMatchKey(r) === key) ?? null;
-}
-
-/** 長く当たった順 → 名称順（同点の並びを安定させる）。 */
-function rank(hits: Hit[]): Hit[] {
-  return [...hits].sort(
-    (a, b) => b.score - a.score || a.bp.label.localeCompare(b.bp.label, "ja"),
-  );
 }

@@ -51,6 +51,8 @@ export interface SavedForReview {
   items: {
     productId: string | null;
     productText: string | null;
+    /** 製品を絞れなかったときの候補数（顧客と同じ — 選ぶだけか、登録が要るか）。 */
+    productCandidateCount?: number;
     quantity: number;
     unitPrice: number | null;
   }[];
@@ -148,15 +150,18 @@ export function reviewIntake(
   saved.items.forEach((item, i) => {
     const row = i + 1;
     if (!item.productId) {
+      const count = item.productCandidateCount ?? 0;
       out.push({
         key: `item-${row}-product`,
         label: `明細 ${row} 行目: 製品`,
         status: has(item.productText) ? "unmatched" : "missing",
         read: item.productText,
         row,
-        hint: has(item.productText)
-          ? `「${item.productText}」に一致する製品がありません。製品を選び直すか、製品マスタに登録してください`
-          : "品名を読み取れませんでした。書類を見て製品を選んでください",
+        hint: !has(item.productText)
+          ? "品名を読み取れませんでした。書類を見て製品を選んでください"
+          : count > 0
+            ? `「${item.productText}」に近い製品が ${count} 件あります。編集画面のこの行に候補が出るので、正しいものを選んでください`
+            : `「${item.productText}」に一致する製品がありません。製品を選び直すか、製品マスタに登録してください`,
       });
     }
     if (item.unitPrice == null) {

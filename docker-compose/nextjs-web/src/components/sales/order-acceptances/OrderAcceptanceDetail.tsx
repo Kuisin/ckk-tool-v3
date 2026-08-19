@@ -116,9 +116,9 @@ import {
   readinessSummary,
 } from "@/lib/order-acceptance-readiness";
 import type { ActionResult } from "@/lib/server-action";
-import { CustomerSuggestions } from "./CustomerSuggestions";
 import { IntakeDocumentPane } from "./IntakeDocumentPane";
 import { IntakeReviewPanel } from "./IntakeReviewPanel";
+import { MatchSuggestions } from "./MatchSuggestions";
 import {
   INTAKE_SOURCE_BADGE,
   type OrderAcceptanceView,
@@ -1112,13 +1112,10 @@ function DraftEditor({
             こそ突合が外れており、そのずれた社名では検索しても出てこない。
           */}
           {!customerId && (
-            <CustomerSuggestions
-              onPick={(id) => {
-                const picked = a.customerSuggestions.find((s) => s.id === id);
-                setCustomerId(id);
-                setCustomerOption(
-                  picked ? { value: picked.id, label: picked.label } : null,
-                );
+            <MatchSuggestions
+              onPick={(s) => {
+                setCustomerId(s.id);
+                setCustomerOption({ value: s.id, label: s.label });
               }}
               suggestions={a.customerSuggestions}
             />

@@ -101,6 +101,26 @@ describe("reviewIntake", () => {
     expect(f?.row).toBe(1);
   });
 
+  it("製品: 候補があるときは「選ぶだけ」と分かる案内にする", () => {
+    const rs = reviewIntake(
+      { items: [{ product_name: "特殊ドリル", quantity: 5 }] },
+      saved({
+        items: [
+          {
+            productId: null,
+            productText: "特殊ドリル",
+            productCandidateCount: 3,
+            quantity: 5,
+            unitPrice: 100,
+          },
+        ],
+      }),
+    );
+    const f = find(rs, "item-1-product");
+    expect(f?.hint).toContain("3 件");
+    expect(f?.hint).toContain("候補");
+  });
+
   it("製品: 突合済みなら明細の指摘は出ない", () => {
     const rs = reviewIntake(
       { items: [{ product_name: "P", quantity: 1 }] },

@@ -82,7 +82,7 @@ A draft opens in **view mode** (read only). Switch to「**編集**」(edit) only
 4. If no customer is set, search for one in the「**顧客**」(customer) field and choose it.
 5. If the order follows on from a quote, enter the quote number in「**見積書番号（任意）**」(quote number, optional).
 6. In「**明細**」(line items), check the product, type, quantity, unit price and delivery date.
-7. On a row with an orange「**製品未特定**」(product not identified) badge, choose the correct product in the「**製品**」(product) field.
+7. On a row with an orange「**製品未特定**」(product not identified) badge, choose the correct product in the「**製品**」(product) field. If candidates are offered under the field as「**もしかして**」(did you mean), one press fills it.
 8. Press「**保存**」(save) at the very bottom of the screen. Saving returns you to view mode.
 
 To stop editing, press「**キャンセル**」(cancel); if you changed something you are asked to confirm, and「**変更を破棄**」(discard changes) returns you to view mode. A draft that has no line items yet (for example one you just created by hand) opens in edit mode straight away.
@@ -165,6 +165,8 @@ Notes about the acceptance as a whole. Notes about one line go in that line's ow
 ### Product [#field-product]
 
 The product ordered. **It is matched automatically from the item name, but matching can miss** — choose it by hand when it does. Lines whose product is unresolved cannot move on.
+
+Dimensions or specifications following the item name do not prevent a match. But when all that could be read is a word **several products share** (for example `超硬ソリッド`), no single one is chosen — candidates are offered under「**もしかして**」(did you mean) instead, because letting you choose is safer than silently picking a different product.
 
 ### Item name (as read) [#field-extracted-name]
 
