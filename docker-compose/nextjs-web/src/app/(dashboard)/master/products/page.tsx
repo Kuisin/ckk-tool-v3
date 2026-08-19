@@ -31,6 +31,7 @@ export default async function MasterProductsPage() {
       materialTypeLabel: r.materialType
         ? `${r.materialType.code ?? ""}${mtName ? ` — ${mtName}` : ""}`
         : "",
+      matchNames: r.matchNames,
       diameterMm: r.diameterMm != null ? Number(r.diameterMm) : null,
       lengthMm: r.lengthMm != null ? Number(r.lengthMm) : null,
       unit: r.unit,

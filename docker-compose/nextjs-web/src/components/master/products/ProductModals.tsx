@@ -177,6 +177,9 @@ export function DuplicateProductModal({
         diameterMm: source?.diameterMm ?? null,
         lengthMm: source?.lengthMm ?? null,
         unit,
+        // キーワードは複製しない — 同じ語が 2 つの製品を指すと、AI 突合が
+        // どちらか決められなくなる。複製先で改めて付ける。
+        matchNames: [],
         isActive: true,
         notes: "",
         spec: [],

@@ -16,6 +16,7 @@ import { recordAudit } from "@/lib/audit";
 import { checkPermission } from "@/lib/authz";
 import { prisma } from "@/lib/db";
 import { type LocalizedText, localized } from "@/lib/format";
+import { normalizeKeywords } from "@/lib/master-keywords";
 import {
   composeMaterialCode,
   diameterCodeFromMm,
@@ -38,6 +39,8 @@ const materialUpdateInput = z.object({
   unit: z.string().min(1, "単位を選択してください"),
   manufacturerModel: z.string().optional(),
   nominalDiameterMm: z.number().min(0).nullable(),
+  /** 検索・AI 突合用のキーワード（match_names）。保存時に整形する。 */
+  matchNames: z.array(z.string()).default([]),
   isActive: z.boolean(),
   notes: z.string().optional(),
 });
@@ -184,6 +187,7 @@ export async function createMaterial(
           nominalDiameterMm: v.nominalDiameterMm,
           name: localizedInput(v.nameJa, v.nameEn),
           unit: v.unit,
+          matchNames: normalizeKeywords(v.matchNames),
           isActive: v.isActive,
           notes: v.notes?.trim() || null,
         },
@@ -203,6 +207,7 @@ export async function createMaterial(
         kindCode: v.kindCode,
         nameJa: v.nameJa,
         unit: v.unit,
+        matchNames: normalizeKeywords(v.matchNames),
         isActive: v.isActive,
       },
     });
@@ -240,6 +245,7 @@ export async function updateMaterial(
         unit: true,
         manufacturerModel: true,
         nominalDiameterMm: true,
+        matchNames: true,
         isActive: true,
         notes: true,
       },
@@ -251,6 +257,7 @@ export async function updateMaterial(
         unit: v.unit,
         manufacturerModel: v.manufacturerModel?.trim() || null,
         nominalDiameterMm: v.nominalDiameterMm,
+        matchNames: normalizeKeywords(v.matchNames),
         isActive: v.isActive,
         notes: v.notes?.trim() || null,
       },
@@ -266,6 +273,7 @@ export async function updateMaterial(
             nominalDiameterMm: prior.nominalDiameterMm
               ? Number(prior.nominalDiameterMm)
               : null,
+            matchNames: prior.matchNames,
             isActive: prior.isActive,
             notes: prior.notes,
           }
@@ -275,6 +283,7 @@ export async function updateMaterial(
         unit: v.unit,
         manufacturerModel: v.manufacturerModel?.trim() || null,
         nominalDiameterMm: v.nominalDiameterMm,
+        matchNames: normalizeKeywords(v.matchNames),
         isActive: v.isActive,
         notes: v.notes?.trim() || null,
       },

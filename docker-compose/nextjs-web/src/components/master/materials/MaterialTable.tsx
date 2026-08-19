@@ -31,6 +31,7 @@ import { NewButton } from "@/components/ui/NewButton";
 import { ListShell } from "@/components/ui/shells";
 import { useUrlSelectState, useUrlStringState } from "@/hooks/useUrlState";
 import { useIsMobile } from "@/hooks/useViewport";
+import { matchesKeywordQuery } from "@/lib/master-keywords";
 import {
   DeleteMaterialModal,
   type MaterialModalTarget,
@@ -49,6 +50,8 @@ export interface MaterialRow {
   lengthMm: number;
   surfaceFinish: string;
   unit: string;
+  /** 検索・AI 突合用のキーワード（match_names）。検索の当たり判定に混ぜる。 */
+  matchNames: string[];
   isActive: boolean;
 }
 
@@ -98,8 +101,18 @@ export function MaterialTable({ rows }: { rows: MaterialRow[] }) {
   };
 
   const filtered = rows.filter((r) => {
+    // キーワード（match_names）も検索対象 — 略称・読み・英字で辿り着ける。
     const matchesSearch =
-      !search || r.code.includes(search) || r.name.includes(search);
+      !search ||
+      matchesKeywordQuery(
+        {
+          code: r.code,
+          name: r.name,
+          keywords: r.matchNames,
+          extra: [r.materialTypeCode, r.materialTypeName],
+        },
+        search,
+      );
     const matchesType = !typeFilter || r.materialTypeCode === typeFilter;
     const matchesFinish = !finishFilter || r.surfaceFinish === finishFilter;
     const matchesStatus =
@@ -258,7 +271,7 @@ export function MaterialTable({ rows }: { rows: MaterialRow[] }) {
         <TextInput
           leftSection={<IconSearch size={14} />}
           onChange={(e) => setSearch(e.currentTarget.value)}
-          placeholder="素材コード・名称で検索"
+          placeholder="素材コード・名称・キーワードで検索"
           value={search}
         />
       }

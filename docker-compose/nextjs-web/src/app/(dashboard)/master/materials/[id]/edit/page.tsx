@@ -46,6 +46,7 @@ export default async function MasterMaterialsEditPage({
         manufacturerModel: r.manufacturerModel ?? "",
         nominalDiameterMm:
           r.nominalDiameterMm != null ? Number(r.nominalDiameterMm) : null,
+        matchNames: r.matchNames,
         isActive: r.isActive,
         notes: r.notes ?? "",
       }}

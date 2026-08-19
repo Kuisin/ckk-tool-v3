@@ -40,6 +40,7 @@ import { NewButton } from "@/components/ui/NewButton";
 import { ListShell } from "@/components/ui/shells";
 import { useUrlSelectState, useUrlStringState } from "@/hooks/useUrlState";
 import { useIsMobile } from "@/hooks/useViewport";
+import { matchesKeywordQuery } from "@/lib/master-keywords";
 import {
   DeleteProductModal,
   DuplicateProductModal,
@@ -57,6 +58,8 @@ export interface ProductRow {
   /** 素材仕様 = 材種 + 直径 + 全長（特定素材には紐付けない）。 */
   materialTypeId: string | null;
   materialTypeLabel: string;
+  /** 検索・AI 突合用のキーワード（match_names）。検索の当たり判定に混ぜる。 */
+  matchNames: string[];
   diameterMm: number | null;
   lengthMm: number | null;
   unit: string;
@@ -104,11 +107,18 @@ export function ProductTable({ rows }: { rows: ProductRow[] }) {
   };
 
   const filtered = rows.filter((r) => {
+    // キーワード（match_names）も検索対象 — 略称・読み・英字で辿り着ける。
     const matchesSearch =
       !search ||
-      (r.code ?? "").includes(search) ||
-      r.name.includes(search) ||
-      r.materialTypeLabel.includes(search);
+      matchesKeywordQuery(
+        {
+          code: r.code,
+          name: r.name,
+          keywords: r.matchNames,
+          extra: [r.materialTypeLabel],
+        },
+        search,
+      );
     const matchesStatus =
       !statusFilter || (statusFilter === "active" ? r.isActive : !r.isActive);
     return matchesSearch && matchesStatus;
@@ -233,7 +243,7 @@ export function ProductTable({ rows }: { rows: ProductRow[] }) {
         <TextInput
           leftSection={<IconSearch size={14} />}
           onChange={(e) => setSearch(e.currentTarget.value)}
-          placeholder="製品コード・名称・材種で検索"
+          placeholder="製品コード・名称・材種・キーワードで検索"
           value={search}
         />
       }

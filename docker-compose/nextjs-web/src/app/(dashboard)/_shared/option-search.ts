@@ -32,6 +32,54 @@ export interface F4SearchRow {
 
 const s = (v: unknown): string => (typeof v === "string" ? v.trim() : "");
 
+/**
+ * キーワード（match_names）に部分一致する行の id。
+ *
+ * 配列列なので Prisma の where では「完全一致（has）」しか書けない。人は語の
+ * 一部しか打たないので、`unnest + ILIKE` で舐める生 SQL を 1 本足し、その id を
+ * 本体のクエリへ OR で混ぜる（製品は 4 万件超あるので、取引先のように全件
+ * 取って JS で絞る手は使えない）。
+ *
+ * 画面側の絞り込み（lib/master-keywords）は全角・記号まで吸収するが、SQL 側は
+ * ILIKE の大文字小文字だけ — ここは「打った語がそのまま含まれる」だけを見る。
+ */
+const likeEscape = (q: string) => q.replace(/[\\%_]/g, (c) => `\\${c}`);
+
+async function productIdsByKeyword(
+  q: string,
+  limit: number,
+): Promise<number[]> {
+  if (!q) return [];
+  const rows = await prisma.$queryRaw<{ id: number }[]>`
+    SELECT id FROM app.products
+    WHERE is_active
+      AND EXISTS (
+        SELECT 1 FROM unnest(match_names) AS k WHERE k ILIKE ${`%${likeEscape(q)}%`}
+      )
+    ORDER BY id
+    LIMIT ${limit}`;
+  return rows.map((r) => r.id);
+}
+
+async function materialIdsByKeyword(
+  q: string,
+  limit: number,
+): Promise<number[]> {
+  if (!q) return [];
+  const rows = await prisma.$queryRaw<{ id: number }[]>`
+    SELECT id FROM app.materials
+    WHERE is_active
+      AND EXISTS (
+        SELECT 1 FROM unnest(match_names) AS k WHERE k ILIKE ${`%${likeEscape(q)}%`}
+      )
+    ORDER BY code
+    LIMIT ${limit}`;
+  return rows.map((r) => r.id);
+}
+
+/** id 集合を Prisma の OR 条件へ（空なら条件を足さない）。 */
+const byIds = (ids: number[]) => (ids.length > 0 ? [{ id: { in: ids } }] : []);
+
 function productLabel(p: {
   id: number;
   name: unknown;
@@ -43,15 +91,26 @@ function productLabel(p: {
   return code ? `${name} ${code}` : name;
 }
 
-/** 製品 — 名称(ja) の部分一致（コードは未採番のレガシーが大半のため名称主体）。 */
+/**
+ * 製品 — 名称(ja) またはキーワード（match_names）の部分一致
+ * （コードは未採番のレガシーが大半のため名称主体）。
+ */
 export async function searchProductOptions(
   query: string,
 ): Promise<SearchOption[]> {
   const q = query.trim();
+  const keywordIds = await productIdsByKeyword(q, LIMIT);
   const rows = await prisma.product.findMany({
     where: {
       isActive: true,
-      ...(q ? { name: { path: ["ja"], string_contains: q } } : {}),
+      ...(q
+        ? {
+            OR: [
+              { name: { path: ["ja"], string_contains: q } },
+              ...byIds(keywordIds),
+            ],
+          }
+        : {}),
     },
     orderBy: { id: "asc" },
     take: LIMIT,
@@ -233,10 +292,19 @@ export async function f4SearchProducts(
 ): Promise<F4SearchRow[]> {
   const name = s(filters.name);
   const materialType = s(filters.materialType);
+  // 名称欄はキーワード（match_names）込みで判定する（略称・英字でも当たる）。
+  const keywordIds = await productIdsByKeyword(name, F4_LIMIT);
   const rows = await prisma.product.findMany({
     where: {
       isActive: true,
-      ...(name ? { name: { path: ["ja"], string_contains: name } } : {}),
+      ...(name
+        ? {
+            OR: [
+              { name: { path: ["ja"], string_contains: name } },
+              ...byIds(keywordIds),
+            ],
+          }
+        : {}),
       ...(materialType
         ? {
             materialType: {
@@ -450,6 +518,7 @@ export async function searchMaterialOptions(
   query: string,
 ): Promise<SearchOption[]> {
   const q = query.trim();
+  const keywordIds = await materialIdsByKeyword(q, LIMIT);
   const rows = await prisma.material.findMany({
     where: {
       isActive: true,
@@ -458,6 +527,7 @@ export async function searchMaterialOptions(
             OR: [
               { code: { contains: q, mode: "insensitive" } },
               { name: { path: ["ja"], string_contains: q } },
+              ...byIds(keywordIds),
             ],
           }
         : {}),

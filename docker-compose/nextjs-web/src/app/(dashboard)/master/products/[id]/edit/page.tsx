@@ -58,6 +58,7 @@ export default async function MasterProductsEditPage({
         diameterMm: r.diameterMm != null ? Number(r.diameterMm) : null,
         lengthMm: r.lengthMm != null ? Number(r.lengthMm) : null,
         unit: r.unit,
+        matchNames: r.matchNames,
         isActive: r.isActive,
         notes: r.notes ?? "",
         spec,
