@@ -8,6 +8,7 @@
  * 値は内部 id（連番）の文字列、ラベルは表示コード + 名称。
  */
 
+import { checkPermission } from "@/lib/authz";
 import { bpMatchesQuery } from "@/lib/bp-search";
 import { prisma } from "@/lib/db";
 import { formatProductNumber, formatQuoteNumber } from "@/lib/doc-number";
@@ -98,6 +99,18 @@ export async function searchQuoteOptions(
     .map(({ value, label }) => ({ value, label }));
 }
 
+/** 営業担当セレクトが 1 往復で必要とするもの。 */
+export interface SalesRepPicker {
+  /** 顧客に登録されている担当者（並びは 主担当 → sortOrder）。 */
+  options: SearchOption[];
+  /**
+   * 取引先マスタで営業担当を編集できるか。未登録の顧客に「登録しに行く」
+   * 導線を出してよいかの判定に使う — 権限が無い人に開けない画面への
+   * リンクを見せないため。
+   */
+  canManage: boolean;
+}
+
 /**
  * 営業担当 — 指定した顧客に登録されている担当者（app.bp_sales_reps）。
  *
@@ -105,10 +118,14 @@ export async function searchQuoteOptions(
  * 直したときにフォームがこれを呼び、候補と既定値を入れ替える。
  * 顧客未選択・担当未登録なら空配列。
  */
-export async function fetchSalesRepOptions(
+export async function fetchSalesRepPicker(
   customerBpId: string | null,
-): Promise<SearchOption[]> {
-  return await listCustomerSalesReps(customerBpId);
+): Promise<SalesRepPicker> {
+  const [options, authz] = await Promise.all([
+    listCustomerSalesReps(customerBpId),
+    checkPermission("master", "UPDATE"),
+  ]);
+  return { options, canManage: authz.ok };
 }
 
 /** 顧客（トップレベル CUSTOMER ロール）— BPコード / 名称 / AI照合名。 */

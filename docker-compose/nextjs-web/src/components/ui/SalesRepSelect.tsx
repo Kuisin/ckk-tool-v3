@@ -6,15 +6,22 @@
  * 候補は **選択中の顧客に登録された営業担当**（取引先マスタ MS01 の顧客情報
  * → 営業担当）。顧客を選び直すと候補を取り直し、まだ担当が入っていなければ
  * その顧客の主担当（候補の先頭）を自動で入れる — サーバー側の保存処理
- * （resolveSalesRep 相当）と同じ既定値なので、画面と保存結果がずれない。
+ * （lib/sales-rep resolveSalesRepId）と同じ既定値なので、画面と保存結果が
+ * ずれない。
  *
  * 保存済みの担当が候補から外れていても選択肢に残す。顧客マスタから担当を
  * 外したときに、既存書類の担当が黙って空欄に化けるのを防ぐため。
+ *
+ * 顧客に担当が 1 人も登録されていないと、ここで選べるものが無く手が止まる。
+ * そのため未登録のときだけ取引先マスタへの導線を出す（**別タブ** — 書きかけ
+ * の書類を失わないため）。戻ってきたらウィンドウのフォーカスで候補を取り
+ * 直すので、登録した担当がそのまま選べる。
  */
 
-import { Select } from "@mantine/core";
+import { Anchor, Select } from "@mantine/core";
+import { IconExternalLink } from "@tabler/icons-react";
 import { useEffect, useRef, useState } from "react";
-import { fetchSalesRepOptions } from "@/app/(dashboard)/_shared/option-search";
+import { fetchSalesRepPicker } from "@/app/(dashboard)/_shared/option-search";
 import type { Option } from "@/lib/mock";
 
 /**
@@ -32,6 +39,7 @@ export function useSalesRepOptions(
   const [options, setOptions] = useState<Option[]>(() =>
     initial ? [{ value: initial.id, label: initial.name }] : [],
   );
+  const [canManage, setCanManage] = useState(false);
   // 初回は保存済みの値を尊重する（顧客が既に入っている編集画面で、
   // 候補を取り直した拍子に主担当へ書き換えてしまわないように）。
   const firstLoad = useRef(true);
@@ -39,28 +47,62 @@ export function useSalesRepOptions(
   // 入れると、担当を選ぶたびに候補を取り直して既定値で上書きしてしまう。
   const latest = useRef({ value, onChange });
   latest.current = { value, onChange };
+  // 再取得時に「さっきまで候補ゼロだったか」を見るための控え。
+  const known = useRef(options);
+  known.current = options;
 
   useEffect(() => {
     let cancelled = false;
     if (!customerBpId) {
       setOptions([]);
+      setCanManage(false);
       if (!firstLoad.current) latest.current.onChange(null);
       firstLoad.current = false;
       return;
     }
-    void fetchSalesRepOptions(customerBpId).then((next) => {
+    void fetchSalesRepPicker(customerBpId).then((picker) => {
       if (cancelled) return;
-      setOptions(next);
+      setOptions(picker.options);
+      setCanManage(picker.canManage);
       const wasFirst = firstLoad.current;
       firstLoad.current = false;
       if (wasFirst) return;
       // 顧客が変わった: 候補外になった担当は外し、未設定なら主担当を入れる。
       const current = latest.current.value;
-      const stillValid = current && next.some((o) => o.value === current);
-      if (!stillValid) latest.current.onChange(next[0]?.value ?? null);
+      const stillValid =
+        current && picker.options.some((o) => o.value === current);
+      if (!stillValid)
+        latest.current.onChange(picker.options[0]?.value ?? null);
     });
     return () => {
       cancelled = true;
+    };
+  }, [customerBpId]);
+
+  /**
+   * 取引先マスタを別タブで開いて担当を登録し、戻ってきたときのための再取得。
+   * 画面を読み込み直さずに候補へ反映する。
+   */
+  useEffect(() => {
+    if (!customerBpId) return;
+    let cancelled = false;
+    const refresh = () => {
+      void fetchSalesRepPicker(customerBpId).then((picker) => {
+        if (cancelled) return;
+        const hadNone = known.current.length === 0;
+        setOptions(picker.options);
+        setCanManage(picker.canManage);
+        // 自動で入れるのは「未登録だった顧客に**初めて**担当を登録した」
+        // ときだけ。候補があったのに空 = 利用者が意図的に外したので戻さない。
+        if (hadNone && !latest.current.value && picker.options[0]) {
+          latest.current.onChange(picker.options[0].value);
+        }
+      });
+    };
+    window.addEventListener("focus", refresh);
+    return () => {
+      cancelled = true;
+      window.removeEventListener("focus", refresh);
     };
   }, [customerBpId]);
 
@@ -76,7 +118,7 @@ export function useSalesRepOptions(
         ]
       : options;
 
-  return { options: withCurrent, hasCandidates: options.length > 0 };
+  return { options: withCurrent, hasCandidates: options.length > 0, canManage };
 }
 
 export function SalesRepSelect({
@@ -95,21 +137,46 @@ export function SalesRepSelect({
   label?: string;
   disabled?: boolean;
 }) {
-  const { options, hasCandidates } = useSalesRepOptions(
+  const { options, hasCandidates, canManage } = useSalesRepOptions(
     customerBpId,
     value,
     onChange,
     initial,
   );
+
+  /**
+   * 候補ゼロで手が止まるときだけ出す導線。`master:UPDATE` が無い人には
+   * 開けない画面なので出さない（代わりに誰に頼めばよいかを書く）。
+   * Input.Description は `<p>` なので、中に置けるのはインライン要素だけ
+   * （Group/Stack を入れると <div> in <p> になる）。
+   */
+  const description =
+    customerBpId && !hasCandidates ? (
+      canManage ? (
+        <>
+          この顧客に営業担当が未登録です。
+          <Anchor
+            href={`/master/business-partners/${customerBpId}/edit`}
+            rel="noopener noreferrer"
+            target="_blank"
+          >
+            取引先マスタで登録
+            <IconExternalLink
+              size={11}
+              style={{ marginLeft: 2, verticalAlign: "-1px" }}
+            />
+          </Anchor>
+        </>
+      ) : (
+        "この顧客に営業担当が未登録です（取引先マスタの管理者に登録を依頼）"
+      )
+    ) : undefined;
+
   return (
     <Select
       clearable
       data={options}
-      description={
-        customerBpId && !hasCandidates
-          ? "この顧客に営業担当が未登録です（取引先マスタで登録）"
-          : undefined
-      }
+      description={description}
       disabled={disabled}
       label={label}
       onChange={onChange}
