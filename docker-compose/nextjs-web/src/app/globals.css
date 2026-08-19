@@ -58,6 +58,19 @@ body {
   font-family: var(--mantine-font-family, "Noto Sans JP", system-ui, sans-serif);
 }
 
+/*
+ * ホーム画面 PWA（スタンドアロン起動）では、最上部より上への overscroll を
+ * 止める — iOS のバウンドが自前の「引き下げて更新」
+ * (components/layout/PullToRefresh.tsx) と競合するため。ブラウザのタブで
+ * 開いているときは触らない（ブラウザ標準の pull-to-refresh を残す）。
+ */
+@media (display-mode: standalone), (display-mode: fullscreen) {
+  html,
+  body {
+    overscroll-behavior-y: contain;
+  }
+}
+
 /* ─────────────────────────────────────────────────────────────────────────
  * §3  Component classes — vanilla CSS for anything needing CSS logic.
  *
@@ -163,6 +176,58 @@ body {
   [data-mantine-color-scheme="dark"] .app-shell-main {
     background-color: var(--mantine-color-dark-8);
     box-shadow: 0 0 5px 0 rgba(0, 0, 0, 0.5);
+  }
+
+  /*
+   * 「引き下げて更新」インジケータ（PullToRefresh.tsx）。
+   * 画面上端の外に待機し、引き下げ量 (--ptr-y) だけ降りてくる。位置と回転は
+   * JS が CSS 変数で与え、transition はドラッグ中は切って（指に完全追従）
+   * 指を離した後だけ効かせる（[data-settling]）。
+   * z-index はヘッダー（AppShell = 200）より上、Popover（300）より下。
+   */
+  .ptr-indicator {
+    position: fixed;
+    top: 0;
+    left: 50%;
+    z-index: 250;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border-radius: 9999px;
+    background-color: var(--mantine-color-body);
+    box-shadow: var(--mantine-shadow-md);
+    color: var(--mantine-color-gray-6);
+    pointer-events: none;
+    opacity: var(--ptr-opacity, 0);
+    transform: translate(-50%, calc(var(--ptr-y, 0px) - 48px));
+    will-change: transform, opacity;
+  }
+  [data-mantine-color-scheme="dark"] .ptr-indicator {
+    background-color: var(--mantine-color-dark-6);
+  }
+  /* しきい値を超えた = 離せば更新される、を色で示す。 */
+  .ptr-indicator[data-ready],
+  .ptr-indicator[data-spinning] {
+    color: var(--mantine-color-blue-6);
+  }
+  .ptr-indicator[data-settling] {
+    transition:
+      transform 220ms ease,
+      opacity 220ms ease;
+  }
+  .ptr-icon {
+    display: flex;
+    transform: rotate(var(--ptr-rotate, 0deg));
+  }
+  .ptr-indicator[data-spinning] .ptr-icon {
+    animation: ptr-spin 800ms linear infinite;
+  }
+  @keyframes ptr-spin {
+    to {
+      transform: rotate(360deg);
+    }
   }
 
   /* Notification row — base = read; [data-unread] adds the blue accent. */
