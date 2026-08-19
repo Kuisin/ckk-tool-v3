@@ -116,6 +116,8 @@ export interface WorkOrderView {
   orderLineNumber: string | null;
   orderLineQuantity: number | null;
   customerName: string | null;
+  /** 作成者の表示名（システム作成は null）。 */
+  createdByName: string | null;
   productName: string;
   materialId: number | null;
   materialCode: string | null;

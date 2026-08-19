@@ -50,6 +50,10 @@ export interface TrialEstimateRecord {
   isCustomPrice: boolean;
   /** 価格表登録日時（REGISTERED のみ）. */
   registeredAt: string | null;
+  /** 営業担当（作成時に顧客の主担当を複写したスナップショット）。 */
+  salesRepId: string | null;
+  salesRepName: string | null;
+  /** 作成者の表示名（未設定・システム作成は "—"）。 */
   createdBy: string;
   createdAt: string;
   updatedAt: string;

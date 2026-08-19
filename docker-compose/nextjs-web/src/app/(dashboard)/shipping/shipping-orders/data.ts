@@ -30,6 +30,8 @@ const SHIPPING_ORDER_INCLUDE = {
   // 顧客はヘッダが権威。注文明細は明細行ごとに紐付く。
   customerBp: true,
   customerBranchBp: true,
+  salesRep: { select: { id: true, displayName: true } },
+  createdByUser: { select: { displayName: true } },
   workOrder: true,
   fromPlant: true,
   items: {
@@ -84,6 +86,9 @@ function mapShippingOrder(r: ShippingOrderRow): ShippingOrder {
     customerBranchName: r.customerBranchBp
       ? localized(r.customerBranchBp.name as LocalizedText | null)
       : null,
+    salesRepId: r.salesRep?.id ?? null,
+    salesRepName: r.salesRep?.displayName ?? null,
+    createdByName: r.createdByUser?.displayName ?? null,
     orderLineNumbers: [
       ...new Set(
         r.items

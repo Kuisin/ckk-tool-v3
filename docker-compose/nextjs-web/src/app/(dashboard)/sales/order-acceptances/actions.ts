@@ -38,6 +38,7 @@ import {
   readinessSummary,
 } from "@/lib/order-acceptance-readiness";
 import { linesReplaceBlockReason, nextBranches } from "@/lib/order-line-core";
+import { resolveSalesRepId } from "@/lib/sales-rep";
 import {
   type ActionResult,
   actionError,
@@ -103,6 +104,9 @@ const itemInput = z.object({
 
 const draftInput = z.object({
   customerBpId: z.string().nullable(),
+  // 営業担当 — 顧客の担当一覧（bp_sales_reps）から選ぶ。未指定のまま顧客を
+  // 変えたときは、その顧客の主担当を既定として入れる（lib/sales-rep）。
+  salesRepId: z.string().nullable().optional(),
   customerOrderRef: z.string().nullable(),
   // 参照する見積書番号 QOT-YYYYMM-NNNNN（任意 — P2-2 トレーサビリティ）
   quoteNumber: z.string().nullable().optional(),
@@ -251,6 +255,7 @@ export async function saveDraft(
       select: {
         status: true,
         customerBpId: true,
+        salesRepId: true,
         customerOrderRef: true,
         orderDate: true,
         notes: true,
@@ -258,6 +263,12 @@ export async function saveDraft(
     });
     if (!prior) return actionError("対象の注文請書が見つかりません");
     const creates = buildItemCreates(v.items);
+    const customerBpId = trimOrNull(v.customerBpId);
+    const salesRepId = await resolveSalesRepId(
+      v.salesRepId,
+      customerBpId,
+      prior.customerBpId,
+    );
     let blocked: string | null = null;
     await prisma.$transaction(async (tx) => {
       // ラインチェック: 確定済みの明細は変更させない。tx 内で読むことで
@@ -274,7 +285,8 @@ export async function saveDraft(
       await tx.orderAcceptance.update({
         where: { yearMonth_seq: key },
         data: {
-          customerBpId: trimOrNull(v.customerBpId),
+          customerBpId,
+          salesRepId,
           customerOrderRef: trimOrNull(v.customerOrderRef),
           ...quoteKeyOf(v.quoteNumber),
           orderDate: v.orderDate ? new Date(v.orderDate) : null,
@@ -290,12 +302,14 @@ export async function saveDraft(
       recordId: number,
       before: {
         customerBpId: prior.customerBpId,
+        salesRepId: prior.salesRepId,
         customerOrderRef: prior.customerOrderRef,
         orderDate: prior.orderDate?.toISOString().slice(0, 10) ?? null,
         notes: prior.notes,
       },
       after: {
-        customerBpId: trimOrNull(v.customerBpId),
+        customerBpId,
+        salesRepId,
         customerOrderRef: trimOrNull(v.customerOrderRef),
         orderDate: v.orderDate,
         notes: trimOrNull(v.notes),
@@ -677,6 +691,12 @@ export async function createManualAcceptance(
     const actor = await getCurrentActorId();
     const { yearMonth, seq } = await allocateDocumentKey("ORDER");
     const number = `ORD-${yearMonth}-${String(seq).padStart(5, "0")}`;
+    // 新規は必ず顧客が変わる（prior = null）ので、未指定なら主担当が入る。
+    const salesRepId = await resolveSalesRepId(
+      v.salesRepId,
+      v.customerBpId,
+      null,
+    );
     await prisma.orderAcceptance.create({
       data: {
         yearMonth,
@@ -684,6 +704,7 @@ export async function createManualAcceptance(
         status: "DRAFT",
         source: "MANUAL",
         customerBpId: v.customerBpId,
+        salesRepId,
         customerOrderRef: trimOrNull(v.customerOrderRef),
         ...quoteKeyOf(v.quoteNumber),
         orderDate: v.orderDate ? new Date(v.orderDate) : null,
@@ -699,6 +720,7 @@ export async function createManualAcceptance(
       after: {
         note: "手入力で作成",
         customerBpId: v.customerBpId,
+        salesRepId,
         itemCount: v.items.length,
         status: "DRAFT",
       },

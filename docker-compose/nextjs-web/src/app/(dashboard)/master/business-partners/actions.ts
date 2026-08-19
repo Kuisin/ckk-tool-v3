@@ -20,6 +20,7 @@ import { recordAudit } from "@/lib/audit";
 import { checkPermission } from "@/lib/authz";
 import { prisma } from "@/lib/db";
 import { nextSerialCode } from "@/lib/numbering";
+import { syncCustomerSalesReps } from "@/lib/sales-rep";
 import {
   type ActionResult,
   actionError,
@@ -91,6 +92,8 @@ async function syncRoleAttrs(tx: Tx, bpId: string, v: BpInput) {
       create: { bpId, ...data },
       update: data,
     });
+    // 営業担当は属性行ではなく bp_sales_reps（複数可）。
+    await syncCustomerSalesReps(tx, bpId, v.customer.salesReps);
   }
   if (v.roles.includes("END_USER") && v.endUser) {
     const data = endUserAttrsData(v.endUser);

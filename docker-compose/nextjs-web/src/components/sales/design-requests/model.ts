@@ -49,6 +49,8 @@ export interface DesignRequest {
   /** 依頼内容。 */
   description: string | null;
   status: DesignRequestStatus;
+  /** 作成者の表示名（システム作成は null）。 */
+  createdByName: string | null;
   completedAt: string | null;
   files: DesignRequestFile[];
   createdAt: string;

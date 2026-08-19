@@ -88,6 +88,8 @@ export async function fetchOrderAcceptance(
       sourceFile: { select: { filename: true, mimeType: true } },
       customerBp: { select: { name: true } },
       customerBranchBp: { select: { name: true } },
+      salesRep: { select: { id: true, displayName: true } },
+      createdByUser: { select: { displayName: true } },
       items: {
         orderBy: { sortOrder: "asc" },
         include: {
@@ -154,6 +156,9 @@ export async function fetchOrderAcceptance(
     customerBranchName: r.customerBranchBp
       ? localized(r.customerBranchBp.name as LocalizedText | null)
       : null,
+    salesRepId: r.salesRep?.id ?? null,
+    salesRepName: r.salesRep?.displayName ?? null,
+    createdByName: r.createdByUser?.displayName ?? null,
     customerOrderRef: r.customerOrderRef,
     quoteNumber:
       r.quoteYearMonth && r.quoteSeq != null

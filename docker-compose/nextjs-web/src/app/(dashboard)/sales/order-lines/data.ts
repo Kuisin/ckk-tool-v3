@@ -33,7 +33,13 @@ const LIST_FETCH_CAP = 1000;
 const ORDER_LINE_INCLUDE = {
   // 顧客・注文書番号・見積キー・作成者はヘッダから
   acceptance: {
-    include: { customerBp: true, customerBranchBp: true },
+    include: {
+      customerBp: true,
+      customerBranchBp: true,
+      // 営業担当・作成者は行に複写せずヘッダから読む（顧客と同じ扱い）。
+      salesRep: { select: { displayName: true } },
+      createdByUser: { select: { displayName: true } },
+    },
   },
   endUserBp: true,
   product: true,
@@ -117,6 +123,8 @@ function mapOrderLine(r: OrderLineRow): OrderLine {
     customerBranchName: acc.customerBranchBp
       ? localized(acc.customerBranchBp.name as LocalizedText | null)
       : null,
+    salesRepName: acc.salesRep?.displayName ?? null,
+    createdByName: acc.createdByUser?.displayName ?? null,
     endUserName: r.endUserBp
       ? localized(r.endUserBp.name as LocalizedText | null)
       : null,

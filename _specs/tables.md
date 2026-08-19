@@ -24,6 +24,18 @@
 > - `sys.prisma`: `document_attachments` / `document_memo_revisions` / `document_memos` / `file_folder_grants` / `link_blacklist` / `link_index` / `user_home_settings`
 >
 > 追記する場合は、スキーマからコピーせず**設計意図だけ**を書くこと。
+
+**営業担当（sales_rep_id）は書類ごとのスナップショット** — 顧客が持つ担当候補は
+`bp_sales_reps`（CUSTOMER ロール固有・複数可・主担当 1 名）で、書類側は
+`sales_rep_id` に**作成時点の 1 名を複写**する（`estimates` / `price_list_entries` /
+`quotes` / `order_acceptances` / `shipping_orders` / `delivery_notes` / `invoices`）。
+顧客マスタの担当が替わっても過去書類の担当は動かない。既定値の決め方は
+`lib/sales-rep.ts` `resolveSalesRepId()` が唯一の定義 — 明示指定が最優先、無ければ
+**顧客が変わったときだけ**その顧客の主担当を入れる（顧客据え置きで空 =
+利用者が意図的に外した、とみなして戻さない）。注文明細（`order_lines`）は列を持たず
+注文請書ヘッダから読む（顧客・作成者と同じ扱い）。納品書は出荷書の担当を、請求書は
+対象出荷の担当が 1 人に定まればそれを引き継ぐ。
+
 ### Auth
 ```
 Table users {
@@ -1493,6 +1505,23 @@ Table bp_customer_attrs {
   invoice_method      INVOICE_METHOD  [default: 'EMAIL']
   is_consignment      boolean         [default: false]  // 委託先フラグ
   notes               text
+}
+
+// ─── 営業担当（CKK 側の担当者）───────────────────
+// CUSTOMER ロール固有。1 顧客に複数登録でき、書類（見積書・注文請書・
+// 出荷書・納品書・請求書・価格表・試算）の営業担当はこの一覧から選ぶ。
+// is_primary の 1 名が新規書類の既定値（部分 unique index で顧客あたり 1 名）。
+// 顧客側の担当者（bp_contacts）とは別物 — こちらは自社の営業。
+Table bp_sales_reps {
+  bp_id           uuid    [not null, ref: > business_partners.id]
+  user_id         uuid    [not null, ref: > users.id]
+  is_primary      boolean [default: false]
+  sort_order      int     [default: 0]
+  created_at      timestamp
+
+  indexes {
+    (bp_id, user_id) [pk]
+  }
 }
 
 // ─── 仕入先・外注先固有属性 ───────────────────

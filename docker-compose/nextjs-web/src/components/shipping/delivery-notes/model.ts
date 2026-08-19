@@ -44,6 +44,11 @@ export interface DeliveryNote {
   /** ユーザー直送時の届け先（最終需要家）。 */
   endUserId: string | null;
   endUserName: string | null;
+  /** 営業担当（作成時に納品先の主担当を複写したスナップショット）。 */
+  salesRepId: string | null;
+  salesRepName: string | null;
+  /** 作成者の表示名。 */
+  createdByName: string | null;
   includePrice: boolean;
   status: DeliveryNoteStatus;
   deliveredAt: string | null;
@@ -66,8 +71,12 @@ export interface ShippingOrderCandidate {
   /** 導出番号 SHP-YYYYMM-NNNNN（Select の値）。 */
   number: string;
   label: string;
+  /** 納品先 = 出荷書の顧客（営業担当の候補を引くキー）。 */
+  customerBpId: string;
   customerName: string;
   customerBranchName: string | null;
+  /** 出荷書の営業担当（納品書の既定値）。 */
+  salesRepId: string | null;
   /** 注文明細の最終需要家（ユーザー直送時の届け先既定値）。 */
   endUserBpId: string | null;
   endUserName: string | null;

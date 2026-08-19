@@ -223,6 +223,8 @@ export function InvoiceDetail({
               : invoice.customerName
           }
         />
+        <FieldValue label="営業担当" value={invoice.salesRepName} />
+        <FieldValue label="作成者" value={invoice.createdByName} />
         <FieldValue
           label="請求期間"
           value={`${formatDate(invoice.billingPeriodFrom)} 〜 ${formatDate(invoice.billingPeriodTo)}`}

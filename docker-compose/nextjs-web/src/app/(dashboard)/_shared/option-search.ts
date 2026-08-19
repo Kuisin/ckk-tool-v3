@@ -12,6 +12,7 @@ import { bpMatchesQuery } from "@/lib/bp-search";
 import { prisma } from "@/lib/db";
 import { formatProductNumber, formatQuoteNumber } from "@/lib/doc-number";
 import { type LocalizedText, localized } from "@/lib/format";
+import { listCustomerSalesReps } from "@/lib/sales-rep";
 
 const LIMIT = 20;
 const F4_LIMIT = 50;
@@ -95,6 +96,19 @@ export async function searchQuoteOptions(
     .filter((o) => !q || o.haystack.includes(q))
     .slice(0, LIMIT)
     .map(({ value, label }) => ({ value, label }));
+}
+
+/**
+ * 営業担当 — 指定した顧客に登録されている担当者（app.bp_sales_reps）。
+ *
+ * 並びは 主担当 → sortOrder なので、**先頭が新規書類の既定値**。顧客を選び
+ * 直したときにフォームがこれを呼び、候補と既定値を入れ替える。
+ * 顧客未選択・担当未登録なら空配列。
+ */
+export async function fetchSalesRepOptions(
+  customerBpId: string | null,
+): Promise<SearchOption[]> {
+  return await listCustomerSalesReps(customerBpId);
 }
 
 /** 顧客（トップレベル CUSTOMER ロール）— BPコード / 名称 / AI照合名。 */

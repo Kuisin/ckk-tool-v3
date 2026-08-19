@@ -202,6 +202,7 @@ export function DesignRequestDetail({
           />
         )}
         <FieldValue label="製品" value={request.productName ?? "—"} />
+        <FieldValue label="作成者" value={request.createdByName} />
         <FieldValue
           label="状態"
           value={<StatusBadge entity="DesignRequest" status={request.status} />}

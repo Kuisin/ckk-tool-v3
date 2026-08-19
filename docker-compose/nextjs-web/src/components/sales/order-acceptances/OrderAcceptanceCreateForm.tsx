@@ -20,6 +20,7 @@ import {
 import { createManualAcceptance } from "@/app/(dashboard)/sales/order-acceptances/actions";
 import { CUSTOMER_F4 } from "@/components/ui/f4-presets";
 import { HelpLabel } from "@/components/ui/HelpLabel";
+import { SalesRepSelect } from "@/components/ui/SalesRepSelect";
 import { SearchSelect } from "@/components/ui/SearchSelect";
 import { FormSection, FormShell } from "@/components/ui/shells";
 import { fieldHelp } from "@/lib/field-help";
@@ -37,6 +38,7 @@ export function OrderAcceptanceCreateForm() {
   const [isPending, startTransition] = useTransition();
 
   const [customerId, setCustomerId] = useState<string | null>(null);
+  const [salesRepId, setSalesRepId] = useState<string | null>(null);
   const [customerError, setCustomerError] = useState<string | null>(null);
   const [customerOrderRef, setCustomerOrderRef] = useState("");
   const [quoteNumber, setQuoteNumber] = useState("");
@@ -53,6 +55,7 @@ export function OrderAcceptanceCreateForm() {
     startTransition(async () => {
       const result = await createManualAcceptance({
         customerBpId: customerId,
+        salesRepId,
         customerOrderRef: customerOrderRef || null,
         quoteNumber: quoteNumber || null,
         orderDate,
@@ -79,7 +82,12 @@ export function OrderAcceptanceCreateForm() {
   // 初期状態（空のスカラー + 既定値の 1 行）から変化していれば未保存とみなす。
   const isDirty =
     Boolean(
-      customerId || customerOrderRef || quoteNumber || orderDate || notes,
+      customerId ||
+        salesRepId ||
+        customerOrderRef ||
+        quoteNumber ||
+        orderDate ||
+        notes,
     ) ||
     items.length > 1 ||
     items.some(
@@ -125,6 +133,11 @@ export function OrderAcceptanceCreateForm() {
             storageKey="customer"
             value={customerId}
             withAsterisk
+          />
+          <SalesRepSelect
+            customerBpId={customerId}
+            onChange={setSalesRepId}
+            value={salesRepId}
           />
           <TextInput
             label={

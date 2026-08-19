@@ -41,10 +41,13 @@ model Invoice {
   pdfFileId           String?   @map("pdf_file_id") @db.Uuid
   yayoiExportedAt     DateTime? @map("yayoi_exported_at") @db.Timestamptz(6)
   notes               String?
+  // 営業担当（作成時に顧客の主担当を複写したスナップショット）。
+  salesRepId          String?   @map("sales_rep_id") @db.Uuid
   createdBy           String?   @map("created_by") @db.Uuid
   createdAt           DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt           DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
 
+  salesRep         User?           @relation("InvoiceSalesRep", fields: [salesRepId], references: [id])
   customerBp       BusinessPartner @relation("InvoiceCustomer", fields: [customerBpId], references: [id])
   customerBranchBp BusinessPartner? @relation("InvoiceCustomerBranch", fields: [customerBranchBpId], references: [id])
   pdfFile          File?            @relation("InvoicePdf", fields: [pdfFileId], references: [id])

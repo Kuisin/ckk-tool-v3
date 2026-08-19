@@ -52,6 +52,7 @@ import { FieldValue } from "@/components/ui/FieldValue";
 import { CUSTOMER_F4, PRODUCT_F4 } from "@/components/ui/f4-presets";
 import { HelpLabel } from "@/components/ui/HelpLabel";
 import { openConfirm } from "@/components/ui/modals";
+import { SalesRepSelect } from "@/components/ui/SalesRepSelect";
 import { SearchSelect } from "@/components/ui/SearchSelect";
 import { FormSection, FormShell } from "@/components/ui/shells";
 import { fieldHelp } from "@/lib/field-help";
@@ -93,6 +94,8 @@ const schema = z
   .object({
     customerId: z.string().min(1, "顧客を選択してください"),
     productId: z.string().min(1, "製品を選択してください"),
+    /** 営業担当 — 顧客の担当一覧から選ぶ（未設定なら主担当が既定で入る）。 */
+    salesRepId: z.string().nullable(),
     isActive: z.boolean(),
     variants: z
       .array(variantFormSchema)
@@ -155,6 +158,7 @@ function buildInitial(args: {
     return {
       customerId: entry.customerId,
       productId: entry.productId,
+      salesRepId: entry.salesRepId,
       isActive: entry.isActive,
       variants: entry.variants.map((v) => {
         const base = v.estimateNumber
@@ -182,6 +186,7 @@ function buildInitial(args: {
   return {
     customerId: args.lockedCustomerId ?? "",
     productId: args.lockedProductId ?? "",
+    salesRepId: null,
     isActive: true,
     variants: [emptyVariant("PRODUCTION")],
   };
@@ -329,6 +334,7 @@ export function PriceListTypeForm({
           ? await updatePriceEntry({
               entryNumber: entryId,
               isActive: raw.isActive,
+              salesRepId: raw.salesRepId,
               variants,
             })
           : await createPriceEntry({
@@ -336,6 +342,7 @@ export function PriceListTypeForm({
                 customerBpId: raw.customerId,
                 productId: raw.productId,
               },
+              salesRepId: raw.salesRepId,
               variants,
             });
       if (result.ok) {
@@ -434,6 +441,16 @@ export function PriceListTypeForm({
               withAsterisk
             />
           )}
+          <SalesRepSelect
+            customerBpId={form.values.customerId || null}
+            initial={
+              entry?.salesRepId && entry.salesRepName
+                ? { id: entry.salesRepId, name: entry.salesRepName }
+                : null
+            }
+            onChange={(v) => form.setFieldValue("salesRepId", v)}
+            value={form.values.salesRepId}
+          />
           {mode === "edit" && (
             <Switch
               label="有効（価格表全体）"

@@ -27,6 +27,7 @@ import {
 import { type LocalizedText, localized } from "@/lib/format";
 import { allocateDocumentKey } from "@/lib/numbering";
 import { lineShipStatus } from "@/lib/order-line-core";
+import { resolveSalesRepId } from "@/lib/sales-rep";
 import {
   type ActionResult,
   actionError,
@@ -69,6 +70,8 @@ const createInput = z
   .object({
     customerBpId: z.string().min(1, "顧客を選択してください"),
     customerBranchBpId: z.string().nullable(),
+    /** 営業担当 — 未指定なら顧客の主担当が入る（lib/sales-rep）。 */
+    salesRepId: z.string().nullable().optional(),
     type: z.enum(["DISPATCH", "STOCK_STORAGE"]),
     fromPlantId: z.string().nullable(),
     notes: z.string().nullable(),
@@ -91,6 +94,8 @@ const createInput = z
 
 const updateInput = z
   .object({
+    /** 営業担当。顧客は作成後不変なので選ばれた値をそのまま保存する。 */
+    salesRepId: z.string().nullable().optional(),
     type: z.enum(["DISPATCH", "STOCK_STORAGE"]),
     fromPlantId: z.string().nullable(),
     notes: z.string().nullable(),
@@ -478,12 +483,18 @@ export async function createShippingOrder(
     }
     const workOrderId = await resolveHeaderWorkOrderId(v.items);
     const { yearMonth, seq } = await allocateDocumentKey("SHIPPING");
+    const salesRepId = await resolveSalesRepId(
+      v.salesRepId,
+      v.customerBpId,
+      null,
+    );
     await prisma.shippingOrder.create({
       data: {
         yearMonth,
         seq,
         customerBpId: v.customerBpId,
         customerBranchBpId: v.customerBranchBpId,
+        salesRepId,
         workOrderId,
         type: v.type,
         fromPlantId: v.fromPlantId ? Number(v.fromPlantId) : null,
@@ -508,6 +519,7 @@ export async function createShippingOrder(
       recordId: number,
       after: {
         customerBpId: v.customerBpId,
+        salesRepId,
         type: v.type,
         fromPlantId: v.fromPlantId,
         status: "DRAFT",
@@ -544,6 +556,7 @@ export async function updateShippingOrder(
       where: { yearMonth_seq: key },
       select: {
         type: true,
+        salesRepId: true,
         fromPlantId: true,
         notes: true,
         items: {
@@ -570,6 +583,7 @@ export async function updateShippingOrder(
         data: {
           type: v.type,
           workOrderId,
+          salesRepId: v.salesRepId?.trim() || null,
           fromPlantId: v.fromPlantId ? Number(v.fromPlantId) : null,
           notes: trimOrNull(v.notes),
         },
@@ -604,6 +618,7 @@ export async function updateShippingOrder(
       before: prior ?? undefined,
       after: {
         type: v.type,
+        salesRepId: v.salesRepId?.trim() || null,
         fromPlantId: v.fromPlantId ? Number(v.fromPlantId) : null,
         notes: trimOrNull(v.notes),
         items: v.items,

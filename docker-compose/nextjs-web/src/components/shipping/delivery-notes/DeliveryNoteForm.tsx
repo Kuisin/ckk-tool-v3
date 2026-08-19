@@ -43,6 +43,7 @@ import { GhostButton } from "@/components/ui/buttons";
 import { FieldValue } from "@/components/ui/FieldValue";
 import { PRODUCT_F4 } from "@/components/ui/f4-presets";
 import { HelpLabel } from "@/components/ui/HelpLabel";
+import { SalesRepSelect } from "@/components/ui/SalesRepSelect";
 import { SearchSelect } from "@/components/ui/SearchSelect";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { FormSection, FormShell } from "@/components/ui/shells";
@@ -72,6 +73,7 @@ const itemSchema = z.object({
 const schema = z
   .object({
     shippingOrderNumber: z.string().min(1, "出荷書を選択してください"),
+    salesRepId: z.string().nullable(),
     deliveryMethod: z.enum(DELIVERY_METHODS),
     endUserBpId: z.string().nullable(),
     includePrice: z.boolean(),
@@ -120,6 +122,7 @@ function candidateItems(cand: ShippingOrderCandidate): ItemForm[] {
 function fromCandidate(cand: ShippingOrderCandidate): FormValues {
   return {
     shippingOrderNumber: cand.number,
+    salesRepId: cand.salesRepId,
     deliveryMethod: "NORMAL",
     endUserBpId: cand.endUserBpId,
     includePrice: true,
@@ -131,6 +134,7 @@ function fromCandidate(cand: ShippingOrderCandidate): FormValues {
 function toFormValues(note: DeliveryNote): FormValues {
   return {
     shippingOrderNumber: note.shippingOrderNumber,
+    salesRepId: note.salesRepId,
     deliveryMethod: note.deliveryMethod,
     endUserBpId: note.endUserId,
     includePrice: note.includePrice,
@@ -178,6 +182,7 @@ export function DeliveryNoteForm({
           ? fromCandidate(preselected)
           : {
               shippingOrderNumber: "",
+              salesRepId: null,
               deliveryMethod: "NORMAL",
               endUserBpId: null,
               includePrice: true,
@@ -203,6 +208,12 @@ export function DeliveryNoteForm({
           ? `${selectedCandidate.customerName} / ${selectedCandidate.customerBranchName}`
           : selectedCandidate.customerName
         : "—";
+
+  // 納品先の BP id — 営業担当の候補を引くキー（納品先と同じく作成後不変）。
+  const recipientBpId =
+    mode === "edit" && note
+      ? note.recipientId
+      : (selectedCandidate?.customerBpId ?? null);
 
   // 最終需要家の初期ラベル（SearchSelect の initialOption 用）。
   const endUserInitialOption = (() => {
@@ -232,6 +243,9 @@ export function DeliveryNoteForm({
     form.setValues((prev) => ({
       ...prev,
       shippingOrderNumber: cand.number,
+      // 営業担当は出荷書のものを引き継ぐ（未設定なら SalesRepSelect が
+      // 納品先の主担当を入れる）。
+      salesRepId: cand.salesRepId,
       endUserBpId: cand.endUserBpId,
       items: candidateItems(cand),
     }));
@@ -258,6 +272,7 @@ export function DeliveryNoteForm({
   const handleSubmit = (values: FormValues) => {
     startTransition(async () => {
       const payload = {
+        salesRepId: values.salesRepId,
         deliveryMethod: values.deliveryMethod,
         endUserBpId:
           values.deliveryMethod === "DIRECT_TO_USER"
@@ -361,6 +376,16 @@ export function DeliveryNoteForm({
           </Input.Wrapper>
           {/* 納品先 = 注文明細の顧客（+支店）。作成後変更不可。 */}
           <FieldValue label="納品先" value={recipientLabel} />
+          <SalesRepSelect
+            customerBpId={recipientBpId}
+            initial={
+              note?.salesRepId && note.salesRepName
+                ? { id: note.salesRepId, name: note.salesRepName }
+                : null
+            }
+            onChange={(v) => form.setFieldValue("salesRepId", v)}
+            value={form.values.salesRepId}
+          />
           {form.values.deliveryMethod === "DIRECT_TO_USER" && (
             <SearchSelect
               description="ユーザー直送の届け先（配送完了書に価格なし・納品書別送）"

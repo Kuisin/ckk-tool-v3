@@ -78,10 +78,14 @@ model Estimate {
   result              Json?
   registeredAt        DateTime?      @map("registered_at") @db.Timestamptz(6)
   notes               String?
+  // 営業担当 — 作成時に顧客の主担当（bp_sales_reps.is_primary）を複写した
+  // スナップショット。顧客側の担当が替わっても過去書類は動かない。
+  salesRepId          String?        @map("sales_rep_id") @db.Uuid
   createdBy           String?        @map("created_by") @db.Uuid
   createdAt           DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt           DateTime       @updatedAt @map("updated_at") @db.Timestamptz(6)
 
+  salesRep      User?                  @relation("EstimateSalesRep", fields: [salesRepId], references: [id])
   customerBp    BusinessPartner?       @relation("EstimateCustomer", fields: [customerBpId], references: [id])
   product       Product?               @relation(fields: [productId], references: [id])
   materialType  MaterialType?          @relation(fields: [materialTypeId], references: [id])
@@ -109,10 +113,13 @@ model PriceListEntry {
 
   currency  String   @default("JPY")
   isActive  Boolean  @default(true) @map("is_active")
+  // 営業担当（作成時に顧客の主担当を複写したスナップショット）。
+  salesRepId String? @map("sales_rep_id") @db.Uuid
   createdBy String?  @map("created_by") @db.Uuid
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
+  salesRep      User?              @relation("PriceListEntrySalesRep", fields: [salesRepId], references: [id])
   customerBp    BusinessPartner    @relation("PriceListEntryCustomer", fields: [customerBpId], references: [id])
   product       Product            @relation(fields: [productId], references: [id])
   createdByUser User?              @relation("PriceListEntryCreatedBy", fields: [createdBy], references: [id])
@@ -208,10 +215,13 @@ model Quote {
   validUntil         DateTime?   @map("valid_until") @db.Date
   notes              String?
   pdfFileId          String?     @map("pdf_file_id") @db.Uuid
+  // 営業担当（作成時に顧客の主担当を複写したスナップショット）。
+  salesRepId         String?     @map("sales_rep_id") @db.Uuid
   createdBy          String?     @map("created_by") @db.Uuid
   createdAt          DateTime    @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt          DateTime    @updatedAt @map("updated_at") @db.Timestamptz(6)
 
+  salesRep         User?            @relation("QuoteSalesRep", fields: [salesRepId], references: [id])
   customerBp       BusinessPartner  @relation("QuoteCustomer", fields: [customerBpId], references: [id])
   customerBranchBp BusinessPartner? @relation("QuoteCustomerBranch", fields: [customerBranchBpId], references: [id])
   pdfFile          File?            @relation("QuotePdf", fields: [pdfFileId], references: [id])

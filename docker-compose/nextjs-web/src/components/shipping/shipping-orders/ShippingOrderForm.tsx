@@ -47,6 +47,7 @@ import {
 import { GhostButton } from "@/components/ui/buttons";
 import { PRODUCT_F4 } from "@/components/ui/f4-presets";
 import { HelpLabel } from "@/components/ui/HelpLabel";
+import { SalesRepSelect } from "@/components/ui/SalesRepSelect";
 import { SearchSelect } from "@/components/ui/SearchSelect";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { FormSection, FormShell } from "@/components/ui/shells";
@@ -75,6 +76,8 @@ const itemSchema = z.object({
 const schema = z.object({
   /** 顧客はヘッダが権威（1 出荷書 = 1 顧客）。 */
   customerBpId: z.string().min(1, "注文明細を選択してください"),
+  /** 営業担当 — 顧客の担当一覧から選ぶ（未設定なら主担当が既定で入る）。 */
+  salesRepId: z.string().nullable(),
   type: z.enum(SHIPPING_TYPES),
   fromPlantId: z.string().nullable(),
   notes: z.string(),
@@ -108,6 +111,7 @@ const emptyItem = (
 function toFormValues(order: ShippingOrder): FormValues {
   return {
     customerBpId: order.customerId,
+    salesRepId: order.salesRepId,
     type: order.type,
     fromPlantId: order.fromPlantId,
     notes: order.notes ?? "",
@@ -164,6 +168,7 @@ export function ShippingOrderForm({
         ? toFormValues(order)
         : {
             customerBpId: "",
+            salesRepId: null,
             type: "DISPATCH",
             fromPlantId: null,
             notes: "",
@@ -230,6 +235,7 @@ export function ShippingOrderForm({
     startTransition(async () => {
       const payload = {
         type: values.type,
+        salesRepId: values.salesRepId,
         fromPlantId: values.fromPlantId,
         notes: values.notes || null,
         items: values.items.map((it) => ({
@@ -318,6 +324,16 @@ export function ShippingOrderForm({
               value={form.values.type}
             />
           </Input.Wrapper>
+          <SalesRepSelect
+            customerBpId={form.values.customerBpId || null}
+            initial={
+              order?.salesRepId && order.salesRepName
+                ? { id: order.salesRepId, name: order.salesRepName }
+                : null
+            }
+            onChange={(v) => form.setFieldValue("salesRepId", v)}
+            value={form.values.salesRepId}
+          />
           <Select
             clearable
             data={plantOptions}

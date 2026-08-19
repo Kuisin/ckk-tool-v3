@@ -51,6 +51,11 @@ export interface ShippingOrder {
   customerId: string;
   customerName: string;
   customerBranchName: string | null;
+  /** 営業担当（作成時に顧客の主担当を複写したスナップショット）。 */
+  salesRepId: string | null;
+  salesRepName: string | null;
+  /** 作成者の表示名。 */
+  createdByName: string | null;
   /** 束ねている注文明細の番号（重複なし）。 */
   orderLineNumbers: string[];
   /** ヘッダ紐付けの指示書番号（任意）。 */

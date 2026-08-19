@@ -153,6 +153,7 @@ export function QuoteDetail({
       <SummaryGrid>
         <FieldValue label="顧客" value={quote.customerName} />
         <FieldValue label="支店" value={quote.customerBranchName} />
+        <FieldValue label="営業担当" value={quote.salesRepName} />
         <FieldValue label="作成者" value={quote.createdBy} />
         <FieldValue label="有効期限" value={formatDate(quote.validUntil)} />
         <FieldValue label="明細数" value={`${quote.items.length}件`} />

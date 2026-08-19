@@ -1,5 +1,6 @@
 import { BpForm } from "@/components/master/business-partners/BpForm";
 import { requireAppRead } from "@/lib/authz-page";
+import { listSalesRepCandidates } from "@/lib/sales-rep";
 import { fetchBillingOptions } from "../../_shared/bp-data";
 
 export const dynamic = "force-dynamic";
@@ -8,6 +9,11 @@ export const dynamic = "force-dynamic";
 export default async function MasterBusinessPartnersNewPage() {
   const denied = await requireAppRead("master-business-partners");
   if (denied) return denied;
-  const billingOptions = await fetchBillingOptions();
-  return <BpForm billingOptions={billingOptions} />;
+  const [billingOptions, salesRepOptions] = await Promise.all([
+    fetchBillingOptions(),
+    listSalesRepCandidates(),
+  ]);
+  return (
+    <BpForm billingOptions={billingOptions} salesRepOptions={salesRepOptions} />
+  );
 }

@@ -263,6 +263,7 @@ export function PurchaseOrderDetail({
           value={<DocNumber>{po.poNumber}</DocNumber>}
         />
         <FieldValue label="仕入先" value={po.supplierName} />
+        <FieldValue label="作成者" value={po.createdByName} />
         <FieldValue label="発注日" value={formatDate(po.purchaseDate)} />
         <FieldValue
           label="合計金額"

@@ -102,6 +102,16 @@ model User {
   delegationsCreated      ApprovalDelegate[]    @relation("DelegateCreatedBy")
   acceptancesCreated      OrderAcceptance[]     @relation("AcceptanceCreatedBy")
 
+  // 営業担当 — 顧客マスタの候補一覧（bp_sales_reps）と、各書類のスナップショット。
+  bpSalesRepOf            BpSalesRep[]      @relation("BpSalesRepUser")
+  estimatesAsSalesRep     Estimate[]        @relation("EstimateSalesRep")
+  priceListsAsSalesRep    PriceListEntry[]  @relation("PriceListEntrySalesRep")
+  quotesAsSalesRep        Quote[]           @relation("QuoteSalesRep")
+  acceptancesAsSalesRep   OrderAcceptance[] @relation("AcceptanceSalesRep")
+  shippingOrdersAsSalesRep ShippingOrder[]  @relation("ShippingOrderSalesRep")
+  deliveryNotesAsSalesRep DeliveryNote[]    @relation("DeliveryNoteSalesRep")
+  invoicesAsSalesRep      Invoice[]         @relation("InvoiceSalesRep")
+
   posRequested MaterialPurchaseOrder[] @relation("PoRequestedBy")
   posApproved  MaterialPurchaseOrder[] @relation("PoApprovedBy")
   posOrdered   MaterialPurchaseOrder[] @relation("PoOrderedBy")
