@@ -8,7 +8,8 @@
  * アーカイブ（ARCHIVED）。
  *
  * - IMPORT: 抽出失敗は原因・対処つきの Alert + 再抽出 / 手入力へ切り替え
- *   （自動再試行の待機中は橙で「再試行中」）。処理中は案内 Alert。
+ *   （自動再試行の待機中は橙で「再試行中」）。処理中は案内 Alert +
+ *   抽出を実行（待ち行列に積まれ損ねた行を流し直す口）/ 手入力へ切り替え。
  * - DRAFT: **閲覧 / 編集の 2 モード**。既定は閲覧（サマリ + 明細表 + 承認依頼）で、
  *   「編集」を押すと入力（基本情報 + 明細エディタ）に切り替わり、保存 /
  *   キャンセルで閲覧へ戻る。編集中は承認依頼を出さない（未保存の編集が
@@ -508,6 +509,20 @@ export function OrderAcceptanceDetail({
                       自動抽出の順番待ち・実行中です（1件あたり約1〜3分）。完了すると下書きになります。この画面を閉じても処理は続きます。
                     </Text>
                     <Group>
+                      {/* 待ち行列はプロセス内 — 取込直後にブラウザやサーバーが
+                          落ちて積まれ損ねた行を、その場で流し直せるようにする。 */}
+                      <SecondaryButton
+                        leftSection={<IconRefresh size={14} />}
+                        loading={isPending}
+                        onClick={() =>
+                          run(
+                            () => retryExtraction(a.number),
+                            "抽出を受け付けました（順番に実行されます）",
+                          )
+                        }
+                      >
+                        抽出を実行
+                      </SecondaryButton>
                       <SecondaryButton
                         leftSection={<IconPencil size={14} />}
                         loading={isPending}
