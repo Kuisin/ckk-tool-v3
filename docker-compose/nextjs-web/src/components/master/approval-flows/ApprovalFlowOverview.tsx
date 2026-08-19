@@ -6,11 +6,15 @@
  * 1 書類 = 1 枚のカード。段を「1 第一承認 · 工場長 · いずれか1名」の形で並べ、
  * 編集は種別ごとの編集ページへ。未設定の書類は赤いカードで出す — 未設定のまま
  * だと承認依頼そのものが出せないため、放置に気づける必要がある。
+ *
+ * モバイルでは編集ボタンを次の行へ落として全幅にする（design.md §20.2）。
+ * 横に並べたままだと段の列が数十 px まで潰れて読めなくなるため。
  */
 
 import { Badge, Group, Paper, Stack, Text } from "@mantine/core";
 import { IconAlertTriangle, IconArrowRight } from "@tabler/icons-react";
 import { EditButton } from "@/components/ui/buttons";
+import { useIsMobile } from "@/hooks/useViewport";
 import {
   APPROVAL_TARGET,
   type ApprovalTargetType,
@@ -32,6 +36,7 @@ export interface FlowOverviewRow {
 }
 
 export function ApprovalFlowOverview({ rows }: { rows: FlowOverviewRow[] }) {
+  const isMobile = useIsMobile();
   return (
     <Stack gap="sm">
       <Text c="dimmed" size="sm">
@@ -55,8 +60,12 @@ export function ApprovalFlowOverview({ rows }: { rows: FlowOverviewRow[] }) {
             }
             withBorder
           >
-            <Group align="flex-start" justify="space-between" wrap="nowrap">
-              <Stack className="min-w-0" gap="xs">
+            <Group
+              align="flex-start"
+              justify="space-between"
+              wrap={isMobile ? "wrap" : "nowrap"}
+            >
+              <Stack className="min-w-0 flex-1" gap="xs">
                 <Group gap="xs">
                   <Badge color={meta.color} size="sm" variant="light">
                     {meta.label}
@@ -95,7 +104,10 @@ export function ApprovalFlowOverview({ rows }: { rows: FlowOverviewRow[] }) {
                   </Group>
                 )}
               </Stack>
-              <EditButton href={`${BASE_PATH}/flows/${r.targetType}`}>
+              <EditButton
+                fullWidth={isMobile}
+                href={`${BASE_PATH}/flows/${r.targetType}`}
+              >
                 {empty ? "設定" : "編集"}
               </EditButton>
             </Group>

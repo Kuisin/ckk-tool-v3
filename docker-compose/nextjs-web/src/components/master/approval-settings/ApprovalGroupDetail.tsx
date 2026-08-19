@@ -6,6 +6,10 @@
  * サマリ（名称・種別・状態）+ タブ: グループ情報 / メンバー / 代理設定 / 履歴。
  * メンバーはタブ内でインライン追加・削除・有効/無効切替する。
  * 代理設定（approval_delegates — 期間限定代理）はタブ内で追加・削除する。
+ *
+ * モバイル（design.md §20.2）: 表の副次列は畳んで氏名の下に積む
+ * （bp/ContactsTable と同じ手）。5 列のまま横スクロールさせると、
+ * 操作アイコンが画面外に出て「押せない」状態になるため。
  */
 
 import {
@@ -44,6 +48,7 @@ import {
   SummaryGrid,
 } from "@/components/ui/shells";
 import { useTabParam } from "@/hooks/useUrlState";
+import { useIsMobile } from "@/hooks/useViewport";
 import {
   isMemberEffective,
   MEMBER_PERIOD_STATE_COLOR,
@@ -146,6 +151,7 @@ export function ApprovalGroupDetail({
   auditEntries: AuditEntry[];
 }) {
   const router = useRouter();
+  const isMobile = useIsMobile();
   const [, startTransition] = useTransition();
   // アクティブタブを ?tab= に保持（URL 共有でタブまで再現）
   const [tab, setTab] = useTabParam("info");
@@ -259,6 +265,7 @@ export function ApprovalGroupDetail({
           <Stack gap="sm">
             <Group justify="flex-end">
               <GhostButton
+                fullWidth={isMobile}
                 leftSection={<IconPlus size={14} />}
                 onClick={() => setAddMemberOpen(true)}
               >
@@ -276,9 +283,9 @@ export function ApprovalGroupDetail({
                   <Table.Thead>
                     <Table.Tr>
                       <Table.Th>氏名</Table.Th>
-                      <Table.Th w={180}>ユーザー名</Table.Th>
-                      <Table.Th w={230}>在籍期間</Table.Th>
-                      <Table.Th w={90}>状態</Table.Th>
+                      {!isMobile && <Table.Th w={180}>ユーザー名</Table.Th>}
+                      {!isMobile && <Table.Th w={230}>在籍期間</Table.Th>}
+                      {!isMobile && <Table.Th w={90}>状態</Table.Th>}
                       <Table.Th w={110} />
                     </Table.Tr>
                   </Table.Thead>
@@ -289,16 +296,31 @@ export function ApprovalGroupDetail({
                           <Text fw={500} size="sm">
                             {m.displayName}
                           </Text>
+                          {/* 畳んだ列はここへ積む（モバイルのみ）。状態バッジも
+                              ここに入れる — 列に残すと氏名の幅が足りなくなる。 */}
+                          {isMobile && (
+                            <Stack align="flex-start" gap={2} mt={4}>
+                              <MemberStateBadge member={m} now={now} />
+                              <DocNumber c="dimmed">{m.username}</DocNumber>
+                              <MemberPeriod member={m} />
+                            </Stack>
+                          )}
                         </Table.Td>
-                        <Table.Td>
-                          <DocNumber c="dimmed">{m.username}</DocNumber>
-                        </Table.Td>
-                        <Table.Td>
-                          <MemberPeriod member={m} />
-                        </Table.Td>
-                        <Table.Td>
-                          <MemberStateBadge member={m} now={now} />
-                        </Table.Td>
+                        {!isMobile && (
+                          <Table.Td>
+                            <DocNumber c="dimmed">{m.username}</DocNumber>
+                          </Table.Td>
+                        )}
+                        {!isMobile && (
+                          <Table.Td>
+                            <MemberPeriod member={m} />
+                          </Table.Td>
+                        )}
+                        {!isMobile && (
+                          <Table.Td>
+                            <MemberStateBadge member={m} now={now} />
+                          </Table.Td>
+                        )}
                         <Table.Td>
                           <Group gap={4} justify="flex-end" wrap="nowrap">
                             <Tooltip label="在籍期間を変更" withinPortal>
@@ -352,6 +374,7 @@ export function ApprovalGroupDetail({
           <Stack gap="sm">
             <Group justify="flex-end">
               <GhostButton
+                fullWidth={isMobile}
                 leftSection={<IconPlus size={14} />}
                 onClick={() => setAddDelegateOpen(true)}
               >
@@ -369,9 +392,9 @@ export function ApprovalGroupDetail({
                   <Table.Thead>
                     <Table.Tr>
                       <Table.Th>代理人</Table.Th>
-                      <Table.Th>原承認者</Table.Th>
-                      <Table.Th w={220}>期間</Table.Th>
-                      <Table.Th>理由</Table.Th>
+                      {!isMobile && <Table.Th>原承認者</Table.Th>}
+                      {!isMobile && <Table.Th w={220}>期間</Table.Th>}
+                      {!isMobile && <Table.Th>理由</Table.Th>}
                       <Table.Th w={60} />
                     </Table.Tr>
                   </Table.Thead>
@@ -382,21 +405,49 @@ export function ApprovalGroupDetail({
                           <Text fw={500} size="sm">
                             {d.delegateName}
                           </Text>
+                          {/* 畳んだ列はここへ積む（モバイルのみ）。「誰の代理で
+                              いつまでか」は代理設定の意味そのものなので省けない。 */}
+                          {isMobile && (
+                            <Stack gap={2} mt={4}>
+                              <Text c="dimmed" size="xs">
+                                {d.delegatorName} の代理
+                              </Text>
+                              <Text
+                                c="dimmed"
+                                className="tabular-nums"
+                                size="xs"
+                              >
+                                {formatDate(d.validFrom)}〜
+                                {formatDate(d.validUntil)}
+                              </Text>
+                              {d.reason && (
+                                <Text c="dimmed" size="xs">
+                                  {d.reason}
+                                </Text>
+                              )}
+                            </Stack>
+                          )}
                         </Table.Td>
-                        <Table.Td>
-                          <Text size="sm">{d.delegatorName}</Text>
-                        </Table.Td>
-                        <Table.Td>
-                          <Text className="tabular-nums" size="sm">
-                            {formatDate(d.validFrom)}〜
-                            {formatDate(d.validUntil)}
-                          </Text>
-                        </Table.Td>
-                        <Table.Td>
-                          <Text c="dimmed" size="xs">
-                            {d.reason ?? "—"}
-                          </Text>
-                        </Table.Td>
+                        {!isMobile && (
+                          <Table.Td>
+                            <Text size="sm">{d.delegatorName}</Text>
+                          </Table.Td>
+                        )}
+                        {!isMobile && (
+                          <Table.Td>
+                            <Text className="tabular-nums" size="sm">
+                              {formatDate(d.validFrom)}〜
+                              {formatDate(d.validUntil)}
+                            </Text>
+                          </Table.Td>
+                        )}
+                        {!isMobile && (
+                          <Table.Td>
+                            <Text c="dimmed" size="xs">
+                              {d.reason ?? "—"}
+                            </Text>
+                          </Table.Td>
+                        )}
                         <Table.Td>
                           <Group gap={4} justify="flex-end" wrap="nowrap">
                             <Tooltip label="削除" withinPortal>
