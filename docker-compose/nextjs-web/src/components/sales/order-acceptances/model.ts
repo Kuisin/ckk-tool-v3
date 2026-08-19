@@ -77,6 +77,11 @@ export interface OrderAcceptanceView {
   customerName: string | null;
   customerBranchName: string | null;
   customerOrderRef: string | null;
+  /** 営業担当（作成時に顧客の主担当を複写したスナップショット）。 */
+  salesRepId: string | null;
+  salesRepName: string | null;
+  /** 作成者（app.users.display_name）。 */
+  createdByName: string | null;
   quoteNumber: string | null;
   orderDate: string | null; // yyyy-mm-dd
   notes: string | null;

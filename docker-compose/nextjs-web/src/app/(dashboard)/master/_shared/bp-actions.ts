@@ -173,6 +173,8 @@ export async function deleteBps(ids: string[]): Promise<ActionResult> {
       prisma.bpContact.deleteMany({ where: { bpId: { in: ids } } }),
       prisma.bpRoleAssignment.deleteMany({ where: { bpId: { in: ids } } }),
       prisma.bpCustomerAttrs.deleteMany({ where: { bpId: { in: ids } } }),
+      // FK は ON DELETE CASCADE だが、他の子行と同じく明示的に消す。
+      prisma.bpSalesRep.deleteMany({ where: { bpId: { in: ids } } }),
       prisma.bpVendorAttrs.deleteMany({ where: { bpId: { in: ids } } }),
       prisma.bpEndUserAttrs.deleteMany({ where: { bpId: { in: ids } } }),
       prisma.businessPartner.deleteMany({ where: { id: { in: ids } } }),

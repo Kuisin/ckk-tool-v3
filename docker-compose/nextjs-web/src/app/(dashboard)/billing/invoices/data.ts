@@ -24,6 +24,8 @@ const INVOICE_INCLUDE = {
   // customerAttrs.taxType は消費税ラベル（10% / 8% / 非課税）の表示に使う。
   customerBp: { include: { customerAttrs: true } },
   customerBranchBp: true,
+  salesRep: { select: { id: true, displayName: true } },
+  createdByUser: { select: { displayName: true } },
   items: { orderBy: { sortOrder: "asc" as const } },
 };
 
@@ -73,6 +75,9 @@ function mapInvoice(r: InvoiceRow): Invoice {
     customerBranchName: r.customerBranchBp
       ? localized(r.customerBranchBp.name as LocalizedText | null)
       : null,
+    salesRepId: r.salesRep?.id ?? null,
+    salesRepName: r.salesRep?.displayName ?? null,
+    createdByName: r.createdByUser?.displayName ?? null,
     billingPeriodFrom: r.billingPeriodFrom.toISOString(),
     billingPeriodTo: r.billingPeriodTo.toISOString(),
     subtotal: Number(r.subtotal),

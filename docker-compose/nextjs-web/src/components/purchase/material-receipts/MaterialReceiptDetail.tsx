@@ -72,6 +72,7 @@ export function MaterialReceiptDetail({
           }
         />
         <FieldValue label="入荷日" value={formatDate(r.receivedAt)} />
+        <FieldValue label="作成者" value={r.createdByName} />
         <FieldValue
           label="発注明細"
           value={

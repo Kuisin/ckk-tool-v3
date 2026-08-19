@@ -184,6 +184,7 @@ export function WorkOrderDetail({
         }
       />
       <FieldValue label="顧客" value={wo.customerName ?? "—"} />
+      <FieldValue label="作成者" value={wo.createdByName} />
       <FieldValue label="製品" value={wo.productName} />
       <FieldValue
         label="種別"

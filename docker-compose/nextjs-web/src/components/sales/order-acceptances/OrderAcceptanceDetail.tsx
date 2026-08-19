@@ -95,6 +95,7 @@ import { HistoryPanel } from "@/components/ui/HistoryPanel";
 import { MemoPanel } from "@/components/ui/MemoPanel";
 import { MoneyText } from "@/components/ui/MoneyText";
 import { ModalShell } from "@/components/ui/modals";
+import { SalesRepSelect } from "@/components/ui/SalesRepSelect";
 import { SearchSelect } from "@/components/ui/SearchSelect";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import {
@@ -601,6 +602,7 @@ export function OrderAcceptanceDetail({
                       )
                     }
                   />
+                  <FieldValue label="営業担当" value={a.salesRepName} />
                   <FieldValue
                     label="顧客注文書番号"
                     value={a.customerOrderRef}
@@ -630,6 +632,7 @@ export function OrderAcceptanceDetail({
                       </Text>
                     }
                   />
+                  <FieldValue label="作成者" value={a.createdByName} />
                   <FieldValue
                     label="展開日時"
                     value={a.completedAt ? formatDateTime(a.completedAt) : "—"}
@@ -940,6 +943,7 @@ function DraftEditor({
   const sourceDef = INTAKE_SOURCE_BADGE[a.source];
 
   const [customerId, setCustomerId] = useState<string | null>(a.customerBpId);
+  const [salesRepId, setSalesRepId] = useState<string | null>(a.salesRepId);
   const [customerOrderRef, setCustomerOrderRef] = useState(
     a.customerOrderRef ?? "",
   );
@@ -953,6 +957,7 @@ function DraftEditor({
   /** 入力内容の指紋 — 変更の有無だけを見るので中身の意味は問わない。 */
   const fingerprint = JSON.stringify([
     customerId,
+    salesRepId,
     customerOrderRef,
     quoteNumber,
     orderDate,
@@ -968,6 +973,7 @@ function DraftEditor({
     startTransition(async () => {
       const result = await saveDraft(a.number, {
         customerBpId: customerId,
+        salesRepId,
         customerOrderRef: customerOrderRef || null,
         quoteNumber: quoteNumber || null,
         orderDate,
@@ -1040,6 +1046,16 @@ function DraftEditor({
               storageKey="customer"
               value={customerId}
               withAsterisk
+            />
+            <SalesRepSelect
+              customerBpId={customerId}
+              initial={
+                a.salesRepId && a.salesRepName
+                  ? { id: a.salesRepId, name: a.salesRepName }
+                  : null
+              }
+              onChange={setSalesRepId}
+              value={salesRepId}
             />
             <TextInput
               label="顧客注文書番号"

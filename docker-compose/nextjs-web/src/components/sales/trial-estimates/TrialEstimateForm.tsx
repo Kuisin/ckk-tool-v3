@@ -46,6 +46,7 @@ import { HelpLabel } from "@/components/ui/HelpLabel";
 import { MoneyText } from "@/components/ui/MoneyText";
 import { openConfirm } from "@/components/ui/modals";
 import { PageHeader } from "@/components/ui/PageHeader";
+import { SalesRepSelect } from "@/components/ui/SalesRepSelect";
 import { SearchSelect } from "@/components/ui/SearchSelect";
 import { FormActions, FormSection } from "@/components/ui/shells";
 import { fieldHelp } from "@/lib/field-help";
@@ -116,6 +117,9 @@ export function TrialEstimateForm({
   const [name, setName] = useState(source ? `${source.name}（再試算）` : "");
   const [customerId, setCustomerId] = useState<string | null>(
     source?.customerId ?? null,
+  );
+  const [salesRepId, setSalesRepId] = useState<string | null>(
+    source?.salesRepId ?? null,
   );
   // 対象製品（任意）— 価格表作成時の基準単価ソース候補になる。
   const [productId, setProductId] = useState<string | null>(
@@ -305,6 +309,7 @@ export function TrialEstimateForm({
     }
     startTransition(async () => {
       const res = await createTrialEstimate({
+        salesRepId,
         name: name.trim(),
         customerBpId: customerId,
         productId,
@@ -385,6 +390,16 @@ export function TrialEstimateForm({
                     placeholder="顧客"
                     searchable
                     value={customerId}
+                  />
+                  <SalesRepSelect
+                    customerBpId={customerId}
+                    initial={
+                      source?.salesRepId && source.salesRepName
+                        ? { id: source.salesRepId, name: source.salesRepName }
+                        : null
+                    }
+                    onChange={setSalesRepId}
+                    value={salesRepId}
                   />
                   <SearchSelect
                     f4={PRODUCT_F4}

@@ -38,6 +38,7 @@ import {
 } from "@/components/sales/ProductPriceResolverInput";
 import { GhostButton } from "@/components/ui/buttons";
 import { HelpLabel } from "@/components/ui/HelpLabel";
+import { SalesRepSelect } from "@/components/ui/SalesRepSelect";
 import { StatusBadge, statusOptions } from "@/components/ui/StatusBadge";
 import { FormSection, FormShell } from "@/components/ui/shells";
 import { fieldHelp } from "@/lib/field-help";
@@ -69,6 +70,8 @@ const itemSchema = z
 const schema = z.object({
   customerId: z.string().min(1, "顧客を選択してください"),
   customerBranchId: z.string().nullable(),
+  /** 営業担当 — 顧客の担当一覧から選ぶ（未設定なら主担当が既定で入る）。 */
+  salesRepId: z.string().nullable(),
   status: z.enum(["DRAFT", "ISSUED", "ACCEPTED", "REJECTED", "EXPIRED"]),
   validUntil: z.string().nullable(),
   notes: z.string(),
@@ -110,6 +113,7 @@ function buildInitial(
   const base: QuoteFormValues = {
     customerId: prefill?.customerId ?? "",
     customerBranchId: null,
+    salesRepId: null,
     status: "DRAFT",
     validUntil: null,
     notes: "",
@@ -150,6 +154,7 @@ function toFormValues(q: Quote): QuoteFormValues {
   return {
     customerId: q.customerId,
     customerBranchId: q.customerBranchId,
+    salesRepId: q.salesRepId,
     status: q.status,
     validUntil: q.validUntil,
     notes: q.notes ?? "",
@@ -235,6 +240,7 @@ export function QuoteForm({
     const payload = {
       customerBpId: values.customerId,
       customerBranchBpId: values.customerBranchId,
+      salesRepId: values.salesRepId,
       status: values.status,
       validUntil: values.validUntil,
       notes: values.notes,
@@ -309,6 +315,16 @@ export function QuoteForm({
             label={<HelpLabel {...fieldHelp("quote", "customerBranch")} />}
             placeholder={branches.length ? "支店を選択" : "支店なし"}
             {...form.getInputProps("customerBranchId")}
+          />
+          <SalesRepSelect
+            customerBpId={form.values.customerId || null}
+            initial={
+              quote?.salesRepId && quote.salesRepName
+                ? { id: quote.salesRepId, name: quote.salesRepName }
+                : null
+            }
+            onChange={(v) => form.setFieldValue("salesRepId", v)}
+            value={form.values.salesRepId}
           />
           <DatePickerInput
             clearable

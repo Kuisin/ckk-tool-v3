@@ -24,6 +24,7 @@ const RECEIPT_INCLUDE = {
   material: true,
   plant: true,
   supplierBp: true,
+  createdByUser: { select: { displayName: true } },
   purchaseOrderItem: {
     include: { purchaseOrder: { select: { poNumber: true } } },
   },
@@ -54,6 +55,7 @@ function mapReceipt(r: ReceiptRow): MaterialReceiptView {
     unit: r.unit,
     receivedAt: r.receivedAt.toISOString().slice(0, 10),
     poNumber: r.purchaseOrderItem?.purchaseOrder.poNumber ?? null,
+    createdByName: r.createdByUser?.displayName ?? null,
     notes: r.notes,
     createdAt: r.createdAt.toISOString(),
   };

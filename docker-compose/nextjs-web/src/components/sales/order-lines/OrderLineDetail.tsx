@@ -247,6 +247,9 @@ export function OrderLineDetail({
           }
         />
         <FieldValue label="最終需要家" value={order.endUserName ?? "—"} />
+        {/* 営業担当・作成者は注文請書ヘッダの値（行では編集しない）。 */}
+        <FieldValue label="営業担当" value={order.salesRepName} />
+        <FieldValue label="作成者" value={order.createdByName} />
         <FieldValue
           label="引当済み在庫"
           value={

@@ -64,6 +64,7 @@ function parseDefectReasons(value: unknown): StepDefectReasonView[] {
 
 const WO_INCLUDE = {
   orderLine: { include: { acceptance: { include: { customerBp: true } } } },
+  createdByUser: { select: { displayName: true } },
   product: true,
   material: true,
   routeVersion: {
@@ -234,6 +235,7 @@ export async function fetchWorkOrder(
           r.orderLine.acceptance.customerBp?.name as LocalizedText | null,
         )
       : null,
+    createdByName: r.createdByUser?.displayName ?? null,
     productName: localized(r.product.name as LocalizedText | null),
     materialId: r.materialId,
     materialCode: r.material?.code ?? null,

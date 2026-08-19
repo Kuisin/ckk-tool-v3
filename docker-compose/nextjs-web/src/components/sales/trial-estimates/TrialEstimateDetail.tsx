@@ -238,6 +238,8 @@ export function TrialEstimateDetail({
           value={<DocNumber>{record.estimateNumber}</DocNumber>}
         />
         <FieldValue label="見積り先" value={record.customerName ?? "—"} />
+        <FieldValue label="営業担当" value={record.salesRepName} />
+        <FieldValue label="作成者" value={record.createdBy} />
         <FieldValue label="製品" value={record.productName ?? "—"} />
         <FieldValue label="工具種" value={toolLabel(record.input.toolType)} />
         <FieldValue label="素材" value={record.materialLabel} />

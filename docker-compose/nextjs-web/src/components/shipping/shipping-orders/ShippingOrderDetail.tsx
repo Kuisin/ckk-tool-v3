@@ -183,6 +183,8 @@ export function ShippingOrderDetail({
               : order.customerName
           }
         />
+        <FieldValue label="営業担当" value={order.salesRepName} />
+        <FieldValue label="作成者" value={order.createdByName} />
         <FieldValue
           label="種別"
           value={<ShippingTypeBadge type={order.type} />}

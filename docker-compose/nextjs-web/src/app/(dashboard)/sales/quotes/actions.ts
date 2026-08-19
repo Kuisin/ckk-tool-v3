@@ -17,6 +17,7 @@ import { checkPermission } from "@/lib/authz";
 import { prisma } from "@/lib/db";
 import { formatQuoteNumber, parseDocKey } from "@/lib/doc-number";
 import { allocateDocumentKey } from "@/lib/numbering";
+import { resolveSalesRepId } from "@/lib/sales-rep";
 import {
   type ActionResult,
   actionError,
@@ -57,6 +58,9 @@ const itemInput = z.object({
 const quoteInput = z.object({
   customerBpId: z.string().min(1, "顧客を選択してください"),
   customerBranchBpId: z.string().nullable(),
+  // 営業担当 — 顧客の担当一覧（bp_sales_reps）から選ぶ。未指定で顧客が
+  // 変わったときは主担当が既定で入る（lib/sales-rep resolveSalesRepId）。
+  salesRepId: z.string().nullable().optional(),
   status: z.enum(["DRAFT", "ISSUED", "ACCEPTED", "REJECTED", "EXPIRED"]),
   validUntil: z.string().nullable(),
   notes: z.string(),
@@ -122,12 +126,19 @@ export async function createQuote(
   try {
     const items = await resolveItems(v);
     const { yearMonth, seq } = await allocateDocumentKey("QUOTE");
+    // 新規は prior 顧客が無いので、未指定なら顧客の主担当が入る。
+    const salesRepId = await resolveSalesRepId(
+      v.salesRepId,
+      v.customerBpId,
+      null,
+    );
     await prisma.quote.create({
       data: {
         yearMonth,
         seq,
         customerBpId: v.customerBpId,
         customerBranchBpId: v.customerBranchBpId,
+        salesRepId,
         status: v.status,
         validUntil: v.validUntil ? new Date(v.validUntil) : null,
         notes: v.notes.trim() || null,
@@ -142,6 +153,7 @@ export async function createQuote(
       recordId: number,
       after: {
         customerBpId: v.customerBpId,
+        salesRepId,
         status: v.status,
         validUntil: v.validUntil,
         notes: v.notes.trim() || null,
@@ -180,11 +192,17 @@ export async function updateQuote(
       where: { yearMonth_seq: { yearMonth: key.yearMonth, seq: key.seq } },
       select: {
         customerBpId: true,
+        salesRepId: true,
         status: true,
         validUntil: true,
         notes: true,
       },
     });
+    const salesRepId = await resolveSalesRepId(
+      v.salesRepId,
+      v.customerBpId,
+      prior?.customerBpId ?? null,
+    );
     await prisma.$transaction([
       prisma.quoteItem.deleteMany({
         where: { quoteYearMonth: key.yearMonth, quoteSeq: key.seq },
@@ -194,6 +212,7 @@ export async function updateQuote(
         data: {
           customerBpId: v.customerBpId,
           customerBranchBpId: v.customerBranchBpId,
+          salesRepId,
           status: v.status,
           validUntil: v.validUntil ? new Date(v.validUntil) : null,
           notes: v.notes.trim() || null,
@@ -208,6 +227,7 @@ export async function updateQuote(
       before: prior
         ? {
             customerBpId: prior.customerBpId,
+            salesRepId: prior.salesRepId,
             status: prior.status,
             validUntil: prior.validUntil
               ? prior.validUntil.toISOString().slice(0, 10)
@@ -217,6 +237,7 @@ export async function updateQuote(
         : undefined,
       after: {
         customerBpId: v.customerBpId,
+        salesRepId,
         status: v.status,
         validUntil: v.validUntil,
         notes: v.notes.trim() || null,

@@ -53,6 +53,8 @@ function fetchEstimateRowByKey(yearMonth: string, seq: number) {
       materialType: true,
       diameter: true,
       surfaceFinish: true,
+      salesRep: { select: { id: true, displayName: true } },
+      createdByUser: { select: { displayName: true } },
     },
   });
 }
@@ -101,7 +103,9 @@ export function mapEstimate(r: EstimateRow): TrialEstimateRecord {
     referenceDate: r.referenceDate?.toISOString().slice(0, 10) ?? "",
     isCustomPrice: r.referenceOverridden,
     registeredAt: r.registeredAt?.toISOString() ?? null,
-    createdBy: "—",
+    salesRepId: r.salesRep?.id ?? null,
+    salesRepName: r.salesRep?.displayName ?? null,
+    createdBy: r.createdByUser?.displayName ?? "—",
     createdAt: r.createdAt.toISOString(),
     updatedAt: r.updatedAt.toISOString(),
   };
@@ -124,6 +128,8 @@ export async function fetchTrialEstimates(): Promise<TrialEstimateRecord[]> {
       materialType: true,
       diameter: true,
       surfaceFinish: true,
+      salesRep: { select: { id: true, displayName: true } },
+      createdByUser: { select: { displayName: true } },
     },
     orderBy: { updatedAt: "desc" },
   });

@@ -232,6 +232,8 @@ export function DeliveryNoteDetail({
               : "—"
           }
         />
+        <FieldValue label="営業担当" value={note.salesRepName} />
+        <FieldValue label="作成者" value={note.createdByName} />
         <FieldValue
           label="納品方法"
           value={<DeliveryMethodBadge method={note.deliveryMethod} />}

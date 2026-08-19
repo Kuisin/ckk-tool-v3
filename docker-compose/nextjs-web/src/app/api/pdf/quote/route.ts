@@ -86,7 +86,8 @@ export async function GET(request: Request): Promise<Response> {
       number: quote.quoteNumber,
       issued_date: formatDate(quote.createdAt),
       valid_until: formatDate(quote.validUntil),
-      sales_rep: quote.createdBy,
+      // 営業担当が未設定の見積は作成者を出す（従来の挙動へのフォールバック）。
+      sales_rep: quote.salesRepName ?? quote.createdBy,
     },
     items: quote.items.map((it) => ({
       name: it.productName,

@@ -45,6 +45,11 @@ export interface OrderLine {
   customerName: string;
   customerBranchId: string | null;
   customerBranchName: string | null;
+  /**
+   * 営業担当・作成者は注文請書ヘッダの値（行に複写しない — 顧客と同じ扱い）。
+   */
+  salesRepName: string | null;
+  createdByName: string | null;
   endUserName: string | null;
   /** 顧客注文書番号（FAX 等で受領した注文書の番号）。 */
   customerOrderRef: string | null;

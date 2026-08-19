@@ -26,6 +26,7 @@ import {
   parseDocKey,
 } from "@/lib/doc-number";
 import { allocateDocumentKey } from "@/lib/numbering";
+import { resolveSalesRepId } from "@/lib/sales-rep";
 import {
   type ActionResult,
   actionError,
@@ -189,6 +190,8 @@ export async function fetchEstimateSources(
 
 const createInput = z.object({
   identity: identitySchema,
+  /** 営業担当 — 未指定なら顧客の主担当が入る（lib/sales-rep）。 */
+  salesRepId: z.string().nullable().optional(),
   variants: z
     .array(variantSchema)
     .min(1, "注文種別の価格を1件以上追加してください"),
@@ -222,12 +225,18 @@ export async function createPriceEntry(
       }
     }
     const key = await allocateDocumentKey("PRICE_LIST");
+    const salesRepId = await resolveSalesRepId(
+      v.salesRepId,
+      v.identity.customerBpId,
+      null,
+    );
     await prisma.$transaction([
       prisma.priceListEntry.create({
         data: {
           yearMonth: key.yearMonth,
           seq: key.seq,
           ...v.identity,
+          salesRepId,
           createdBy: authz.userId,
           variants: {
             create: v.variants.map((variant) => {
@@ -303,6 +312,8 @@ export async function createPriceEntry(
 const updateInput = z.object({
   entryNumber: z.string().min(1),
   isActive: z.boolean(),
+  /** 営業担当。顧客は作成後不変なので、ここは選ばれた値をそのまま保存する。 */
+  salesRepId: z.string().nullable().optional(),
   variants: z
     .array(variantSchema)
     .min(1, "注文種別の価格を1件以上追加してください"),
@@ -357,7 +368,10 @@ export async function updatePriceEntry(
     await prisma.$transaction([
       prisma.priceListEntry.update({
         where: whereKey(key),
-        data: { isActive: v.isActive },
+        data: {
+          isActive: v.isActive,
+          salesRepId: v.salesRepId?.trim() || null,
+        },
       }),
       // 削除されたバリアント（値引き → tier → 本体の順）。
       ...(removedIds.length

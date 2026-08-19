@@ -31,6 +31,7 @@ import {
   type ReferencePriceResult,
 } from "@/lib/material-pricing-core";
 import { allocateDocumentKey } from "@/lib/numbering";
+import { resolveSalesRepId } from "@/lib/sales-rep";
 import {
   type ActionResult,
   actionError,
@@ -118,6 +119,8 @@ const trialInputSchema = z.looseObject({
 const createInput = z.object({
   name: z.string().min(1, "試算名を入力してください"),
   customerBpId: z.string().nullable(),
+  /** 営業担当 — 未指定なら顧客の主担当が入る（lib/sales-rep）。 */
+  salesRepId: z.string().nullable().optional(),
   /** 対象製品（任意）— 価格表作成時の基準単価ソース候補になる。 */
   productId: z.string().nullable(),
   materialTypeId: z.string().nullable(),
@@ -183,6 +186,11 @@ export async function createTrialEstimate(
       return actionError(`工具種「${v.input.toolType}」は定義されていません`);
     }
     const { yearMonth, seq } = await allocateDocumentKey("ESTIMATE");
+    const salesRepId = await resolveSalesRepId(
+      v.salesRepId,
+      v.customerBpId,
+      null,
+    );
     await prisma.estimate.create({
       data: {
         yearMonth,
@@ -191,6 +199,7 @@ export async function createTrialEstimate(
         toolType: v.input.toolType,
         status: "DRAFT",
         customerBpId: v.customerBpId,
+        salesRepId,
         productId: v.productId ? Number(v.productId) : null,
         materialTypeId: v.materialTypeId ? Number(v.materialTypeId) : null,
         diameterCode: v.diameterCode || null,
@@ -217,6 +226,7 @@ export async function createTrialEstimate(
         diameterCode: v.diameterCode,
         surfaceFinishCode: v.surfaceFinishCode,
         customerBpId: v.customerBpId,
+        salesRepId,
         status: "DRAFT",
       },
     });

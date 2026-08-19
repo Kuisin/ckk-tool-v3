@@ -236,6 +236,29 @@ export function BpDetail({
                   mt="sm"
                   readOnly
                 />
+                <Box mt="sm">
+                  <FieldValue
+                    label="営業担当"
+                    value={
+                      customer.salesReps.length > 0 ? (
+                        <Group gap="xs" wrap="wrap">
+                          {customer.salesReps.map((rep) => (
+                            <Badge
+                              color={rep.isPrimary ? "blue" : "gray"}
+                              key={rep.userId}
+                              variant="light"
+                            >
+                              {rep.name}
+                              {rep.isPrimary ? "（主担当）" : ""}
+                            </Badge>
+                          ))}
+                        </Group>
+                      ) : (
+                        "—"
+                      )
+                    }
+                  />
+                </Box>
               </OverviewSection>
             )}
 

@@ -238,6 +238,7 @@ export function PriceListDetail({
           label="単価範囲"
           value={priceRangeLabel(summary.minPrice, summary.maxPrice)}
         />
+        <FieldValue label="営業担当" value={entry.salesRepName} />
         <FieldValue label="作成者" value={entry.createdBy} />
       </SummaryGrid>
 

@@ -67,6 +67,10 @@ model OrderAcceptance {
   notes       String?
   completedAt DateTime? @map("completed_at") @db.Timestamptz(6)
   archivedAt  DateTime? @map("archived_at") @db.Timestamptz(6)
+  // 営業担当 — 作成時に顧客の主担当（bp_sales_reps.is_primary）を複写した
+  // スナップショット。顧客側の担当が替わっても過去書類は動かない。
+  // 注文明細（order_lines）は行に複写せずここから読む。
+  salesRepId  String?   @map("sales_rep_id") @db.Uuid
   createdBy   String?   @map("created_by") @db.Uuid
   createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt   DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
@@ -75,6 +79,7 @@ model OrderAcceptance {
   customerBp       BusinessPartner? @relation("AcceptanceCustomer", fields: [customerBpId], references: [id])
   customerBranchBp BusinessPartner? @relation("AcceptanceCustomerBranch", fields: [customerBranchBpId], references: [id])
   createdByUser    User?            @relation("AcceptanceCreatedBy", fields: [createdBy], references: [id])
+  salesRep         User?            @relation("AcceptanceSalesRep", fields: [salesRepId], references: [id])
 
   items OrderLine[]
 
