@@ -46,7 +46,11 @@ export interface SearchSelectProps
   onSearch: (query: string) => Promise<RecentOption[]>;
   /** 最近使用の localStorage キー（例: "product", "customer"）。 */
   storageKey: string;
-  /** 編集フォームで既存値のラベルを出すための option。 */
+  /**
+   * 選択中の値のラベルを出すための option（編集フォームの既存値など）。
+   * **後から差し替えてもよい** — 呼び出し側が value を外から動かしたとき
+   * （候補ボタンで選ばせる等）に、同じ option を渡せば表示も追随する。
+   */
   initialOption?: RecentOption | null;
   /** SAP F4 風の詳細検索ポップアップ（フィルタ + 結果テーブル）。 */
   f4?: F4Config;
@@ -77,6 +81,17 @@ export function SearchSelect({
   useEffect(() => {
     setRecents(readRecents(storageKey));
   }, [storageKey]);
+
+  // 外から選択値が差し替わったとき（候補ボタンなど）にラベルを追随させる。
+  // 取り込むのは **いま選ばれている値のラベル** だけ（option.value === value）—
+  // 利用者がクリアしたのに古いラベルが戻る、という動きを避けるため。
+  // 値が同じ間は何もしないので、毎レンダー新しいオブジェクトを渡しても回らない。
+  const initialValue = initialOption?.value;
+  useEffect(() => {
+    if (initialOption && initialValue === value && value !== selected?.value) {
+      setSelected(initialOption);
+    }
+  }, [initialOption, initialValue, value, selected?.value]);
 
   // デバウンス付きサーバー検索。空クエリも投げる（先頭 N 件フォールバック用）
   useEffect(() => {

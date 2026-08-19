@@ -50,11 +50,27 @@ export interface OrderAcceptanceItemView {
   productLabel: string | null;
   /** 抽出された品名（生テキスト）。 */
   productText: string | null;
+  /**
+   * 製品を 1 件に絞れなかったときの候補（lib/product-match）。
+   * 編集画面の製品欄の下に「もしかして」として出す。突合済みなら空配列。
+   */
+  productSuggestions: MatchSuggestion[];
   orderType: string;
   quantity: number;
   unitPrice: number | null;
   deliveryDate: string | null; // yyyy-mm-dd
   notes: string | null;
+}
+
+/**
+ * 突合の候補 1 件（AI が読み取った文字列に近いマスタ）。
+ * 顧客（lib/bp-match）・製品（lib/product-match）で同じ形。
+ */
+export interface MatchSuggestion {
+  id: string;
+  label: string;
+  /** 当たった登録側の表記（なぜこれが候補なのかを画面に出す）。 */
+  matchedKey: string;
 }
 
 /** 詳細 view。 */
@@ -76,6 +92,12 @@ export interface OrderAcceptanceView {
   customerBpId: string | null;
   customerName: string | null;
   customerBranchName: string | null;
+  /**
+   * 顧客を 1 件に絞れなかったときの候補（lib/bp-match）。編集画面の顧客欄に
+   * 「もしかして」として出し、1 クリックで選べるようにする。
+   * 顧客が決まっている / 候補も無い場合は空配列。
+   */
+  customerSuggestions: MatchSuggestion[];
   customerOrderRef: string | null;
   /** 営業担当（作成時に顧客の主担当を複写したスナップショット）。 */
   salesRepId: string | null;

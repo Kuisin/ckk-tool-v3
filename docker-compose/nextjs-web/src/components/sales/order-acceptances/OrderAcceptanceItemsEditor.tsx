@@ -30,7 +30,8 @@ import { PRODUCT_F4 } from "@/components/ui/f4-presets";
 import { SearchSelect } from "@/components/ui/SearchSelect";
 import { ORDER_TYPE_OPTIONS } from "@/lib/enum-labels";
 import { formatMoney } from "@/lib/format";
-import type { OrderAcceptanceItemView } from "./model";
+import { MatchSuggestions } from "./MatchSuggestions";
+import type { MatchSuggestion, OrderAcceptanceItemView } from "./model";
 
 const ORDER_TYPES = ["PRODUCTION", "TEST", "SAMPLE", "OTHER"] as const;
 type OrderType = (typeof ORDER_TYPES)[number];
@@ -57,6 +58,8 @@ export interface ItemRowForm {
   /** SearchSelect の初期表示用ラベル（突合済みのとき）。 */
   productLabel: string | null;
   productText: string;
+  /** 未突合のときの候補（lib/product-match）。手で足した行は空。 */
+  productSuggestions: MatchSuggestion[];
   orderType: OrderType;
   quantity: number;
   unitPrice: number | null;
@@ -73,6 +76,7 @@ export const newItemRow = (): ItemRowForm => ({
   productId: null,
   productLabel: null,
   productText: "",
+  productSuggestions: [],
   orderType: "PRODUCTION",
   quantity: 1,
   unitPrice: null,
@@ -88,6 +92,7 @@ export function toItemRows(items: OrderAcceptanceItemView[]): ItemRowForm[] {
     productId: it.productId,
     productLabel: it.productLabel,
     productText: it.productText ?? "",
+    productSuggestions: it.productSuggestions,
     orderType: (ORDER_TYPES as readonly string[]).includes(it.orderType)
       ? (it.orderType as OrderType)
       : "PRODUCTION",
@@ -226,6 +231,20 @@ export function OrderAcceptanceItemsEditor({
                     value={row.unitPrice ?? ""}
                   />
                 </Group>
+                {/*
+                  突合が 1 件に絞れなかったときの候補。製品が決まったら消える。
+                  品名がずれているからこそ突合が外れているので、打ち直しはさせない。
+                */}
+                {!row.productId && (
+                  <Box mt="xs">
+                    <MatchSuggestions
+                      onPick={(s) =>
+                        patch(ri, { productId: s.id, productLabel: s.label })
+                      }
+                      suggestions={row.productSuggestions}
+                    />
+                  </Box>
+                )}
               </Box>
               <ActionIcon
                 aria-label="明細を削除"

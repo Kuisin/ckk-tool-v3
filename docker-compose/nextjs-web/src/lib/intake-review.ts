@@ -42,9 +42,17 @@ export interface SavedForReview {
   customerBpId: string | null;
   customerOrderRef: string | null;
   orderDate: string | null;
+  /**
+   * 顧客を 1 件に絞れなかったときの候補数（lib/bp-match）。
+   * 「候補はあるが決められなかった」のと「そもそも当たらない」のでは
+   * 次にやることが違う（前者は選ぶだけ、後者はマスタ登録）。
+   */
+  customerCandidateCount?: number;
   items: {
     productId: string | null;
     productText: string | null;
+    /** 製品を絞れなかったときの候補数（顧客と同じ — 選ぶだけか、登録が要るか）。 */
+    productCandidateCount?: number;
     quantity: number;
     unitPrice: number | null;
   }[];
@@ -86,12 +94,16 @@ export function reviewIntake(
       hint: `自社名「${norm.customerName}」を顧客として読み取っています（書類の宛先＝自社）。発行元・社判のある側が顧客です — 書類を見て選び直してください`,
     });
   } else if (has(norm.customerName)) {
+    const count = saved.customerCandidateCount ?? 0;
     out.push({
       key: "customer",
       label: "顧客",
       status: "unmatched",
       read: norm.customerName,
-      hint: `「${norm.customerName}」に一致する取引先がありません。取引先を選び直すか、マスタに登録（表記ゆれは AI 照合名に追加）してください`,
+      hint:
+        count > 0
+          ? `「${norm.customerName}」に近い取引先が ${count} 件あります。編集画面の顧客欄に候補が出るので、正しいものを選んでください`
+          : `「${norm.customerName}」に一致する取引先がありません。取引先を選び直すか、マスタに登録（表記ゆれは AI 照合名に追加）してください`,
     });
   } else {
     out.push({
@@ -138,15 +150,18 @@ export function reviewIntake(
   saved.items.forEach((item, i) => {
     const row = i + 1;
     if (!item.productId) {
+      const count = item.productCandidateCount ?? 0;
       out.push({
         key: `item-${row}-product`,
         label: `明細 ${row} 行目: 製品`,
         status: has(item.productText) ? "unmatched" : "missing",
         read: item.productText,
         row,
-        hint: has(item.productText)
-          ? `「${item.productText}」に一致する製品がありません。製品を選び直すか、製品マスタに登録してください`
-          : "品名を読み取れませんでした。書類を見て製品を選んでください",
+        hint: !has(item.productText)
+          ? "品名を読み取れませんでした。書類を見て製品を選んでください"
+          : count > 0
+            ? `「${item.productText}」に近い製品が ${count} 件あります。編集画面のこの行に候補が出るので、正しいものを選んでください`
+            : `「${item.productText}」に一致する製品がありません。製品を選び直すか、製品マスタに登録してください`,
       });
     }
     if (item.unitPrice == null) {
