@@ -7,11 +7,16 @@
  * 注文請書の取込・承認・展開の進捗を一覧する。
  * Columns: 番号 / 取込元 / ファイル名 / 顧客 / 明細数 / 状態 / エラー / 取込日時。
  *
- * ヘッダー: 「優先取込」FileButton（複数可 — 逐次 POST /api/intake/upload）+
- * 手入力新規 + 注文明細一覧（/sales/order-lines）へのリンク。
- * アップロードは保存までで即返り、**抽出はサーバー側の待ち行列**で 1 件ずつ
- * 走る（GPU が同時に 1 件しか捌けないため）。よってボタンのローディングは
- * 送信が終われば解除され、抽出を待たずに次のファイルを投げられる。
+ * ヘッダー: 「優先取込」FileButton（複数可）+ 手入力新規 +
+ * 注文明細一覧（/sales/order-lines）へのリンク。
+ *
+ * 優先取込は **2 段階**:
+ *   1. 選んだファイルを 1 件ずつ POST /api/intake/upload（`defer=1`）—
+ *      保存 + 採番だけ。この時点で**全件が一覧に並ぶ**。
+ *   2. 採番された番号をまとめて POST /api/intake/queue — ここで抽出が始まる。
+ * 先に送った 1 枚だけ抽出が走って残りがまだ一覧に無い、という見え方を
+ * 避けるため。抽出自体はサーバー側の待ち行列が同時実行数を守って流すので、
+ * ボタンのローディングは 2 段目の受付で解除され、抽出は待たない。
  * 取込中（IMPORT・未エラー）の行がある間は 30 秒ごとに自動更新する。
  */
 
@@ -82,12 +87,23 @@ function ExtractErrorBadge({
 const BASE_PATH = "/sales/order-acceptances";
 const UPLOAD_ACCEPT = ".pdf,.png,.jpg,.jpeg,.webp";
 
-/** アップロード API の応答（保存まで — 抽出はサーバー側の列で走る）。 */
+/** アップロード API の応答（保存 + 採番まで — 抽出はまだ積まれていない）。 */
 interface UploadResult {
   ok?: boolean;
+  /** 採番された注文請書番号（ORD-YYYYMM-NNNNN）。 */
   number?: string;
   status?: string;
-  /** 抽出待ちの件数（この 1 件を含む）。 */
+  error?: string;
+}
+
+/** 抽出キュー API の応答。 */
+interface QueueResult {
+  ok?: boolean;
+  /** 実際に積んだ件数。 */
+  queued?: number;
+  /** 対象外だった番号（抽出済み・原本なし など）。 */
+  skipped?: string[];
+  /** 抽出待ちの件数（積んだ分を含む）。 */
   pending?: number;
   error?: string;
 }
@@ -137,10 +153,13 @@ export function OrderAcceptanceIntakeTable({
   });
 
   /**
-   * 優先取込 — ファイルを送るところまでを待つ（1 件あたり数百 ms）。
-   * 抽出はサーバー側の待ち行列で 1 件ずつ走る（GPU は同時に 1 件しか捌けない）
-   * ので、**ボタンはアップロードが終わった時点で戻る** — 抽出の完了を待たずに
-   * 続けて次のファイルを投げられる。進捗は一覧の状態（取込中 → 下書き）で見る。
+   * 優先取込 — まず**選んだファイルを全部**一覧に載せ（保存 + 採番のみ）、
+   * それが済んでから採番された番号をまとめて抽出キューへ積む。
+   *
+   * 1 段目で抽出まで積んでしまうと、1 枚目の抽出が走っている間 2 枚目以降が
+   * まだ一覧に無い、という見え方になる。抽出はサーバー側の待ち行列が
+   * 同時実行数を守って流すので、**ボタンは 2 段目の受付で戻る** — 抽出の完了は
+   * 待たない。進捗は一覧の状態（取込中 → 下書き）で見る。
    */
   const handlePriorityIntake = async (files: File[]) => {
     if (files.length === 0 || uploading) return;
@@ -151,12 +170,12 @@ export function OrderAcceptanceIntakeTable({
       autoClose: false,
       color: "blue",
       loading: true,
-      message: `${files.length} 件を送信しています…`,
+      message: `${files.length} 件を一覧に追加しています…`,
       title: "優先取込",
       withCloseButton: false,
     });
-    let okCount = 0;
-    let pending = 0;
+    // 1 段目: 保存 + 採番だけ（defer=1）。ここでは抽出を積まない。
+    const numbers: string[] = [];
     const failures: string[] = [];
     for (const [i, file] of files.entries()) {
       notifications.update({
@@ -164,20 +183,20 @@ export function OrderAcceptanceIntakeTable({
         autoClose: false,
         color: "blue",
         loading: true,
-        message: `${i + 1} / ${files.length} 件目: ${file.name} を送信中…`,
+        message: `${i + 1} / ${files.length} 件目: ${file.name} を追加中…`,
         title: "優先取込",
         withCloseButton: false,
       });
       try {
         const body = new FormData();
         body.set("file", file);
+        body.set("defer", "1");
         const res = await fetch("/api/intake/upload", { method: "POST", body });
         const json = (await res
           .json()
           .catch(() => null)) as UploadResult | null;
-        if (res.ok && json?.ok) {
-          okCount += 1;
-          pending = json.pending ?? pending;
+        if (res.ok && json?.ok && json.number) {
+          numbers.push(json.number);
         } else {
           failures.push(`${file.name}: ${json?.error ?? "取込に失敗しました"}`);
         }
@@ -185,18 +204,55 @@ export function OrderAcceptanceIntakeTable({
         failures.push(`${file.name}: 通信エラー`);
       }
     }
+    // 全件が一覧に並んだ状態を先に見せてから抽出を始める。
+    router.refresh();
+
+    // 2 段目: 追加できた分をまとめて抽出キューへ。
+    let pending = 0;
+    let queueError: string | null = null;
+    if (numbers.length > 0) {
+      notifications.update({
+        id: nid,
+        autoClose: false,
+        color: "blue",
+        loading: true,
+        message: `${numbers.length} 件をAI抽出の待ち行列に入れています…`,
+        title: "優先取込",
+        withCloseButton: false,
+      });
+      try {
+        const res = await fetch("/api/intake/queue", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ numbers }),
+        });
+        const json = (await res.json().catch(() => null)) as QueueResult | null;
+        if (res.ok && json?.ok) {
+          pending = json.pending ?? 0;
+          if (json.skipped && json.skipped.length > 0) {
+            queueError = `抽出を開始できなかった書類: ${json.skipped.join(" ・ ")}`;
+          }
+        } else {
+          queueError = json?.error ?? "AI抽出の開始に失敗しました";
+        }
+      } catch {
+        queueError = "AI抽出の開始に失敗しました（通信エラー）";
+      }
+    }
+
+    const problems = [...failures, ...(queueError ? [queueError] : [])];
     notifications.update({
       id: nid,
       autoClose: 8000,
-      color: failures.length > 0 ? "orange" : "green",
+      color: problems.length > 0 ? "orange" : "green",
       loading: false,
       message:
-        failures.length > 0
-          ? `${okCount} 件を受け付けました / 失敗: ${failures.join(" ・ ")}`
-          : `${okCount} 件を受け付けました。抽出はこのあと順番に実行されます` +
+        problems.length > 0
+          ? `${numbers.length} 件を一覧に追加しました / ${problems.join(" ・ ")}`
+          : `${numbers.length} 件を一覧に追加しました。AI抽出はこのあと順番に実行されます` +
             `${pending > 1 ? `（抽出待ち ${pending} 件）` : ""}`,
       title:
-        failures.length > 0 ? "優先取込 受付（一部失敗）" : "優先取込 受付",
+        problems.length > 0 ? "優先取込 受付（一部失敗）" : "優先取込 受付",
       withCloseButton: true,
     });
     // ボタンはここで戻る — 抽出の完了は待たない。
@@ -367,7 +423,7 @@ export function OrderAcceptanceIntakeTable({
             監視フォルダ取込: {intakeDirConfigured ? "有効" : "未設定"}
           </Badge>
           <Text c="dimmed" size="xs">
-            抽出はバックグラウンドで1件ずつ実行します（1件あたり約1〜3分）。アップロード後すぐ次のファイルを追加できます。取込中の行がある間は30秒ごとに自動更新します。
+            優先取込は選んだファイルを先にすべて一覧へ追加し、そのあとAI抽出をまとめて待ち行列に入れます。抽出はバックグラウンドで順に実行します（1件あたり約1〜3分）。取込中の行がある間は30秒ごとに自動更新します。
           </Text>
         </Group>
         <DataTable

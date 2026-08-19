@@ -57,7 +57,8 @@ Put the file in the import folder on the server and it is imported automatically
 
 1. Press「**優先取込**」(priority import) at the top right of the list screen.
 2. Choose the order form file (PDF, PNG, JPG or WebP; you can choose several at once).
-3. The progress is shown at the top right of the screen. It takes about **30 to 60 seconds** per file.
+3. **All** the chosen files are added to the list first (status 「取込中」/ importing). Only once they are all listed does the reading (AI extraction) start, one after another.
+4. The progress is shown at the top right of the screen. Reading takes about **30 to 60 seconds** per file.
 
 **3. Type it in by hand**
 
