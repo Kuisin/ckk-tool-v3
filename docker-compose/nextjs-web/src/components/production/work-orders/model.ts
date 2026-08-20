@@ -51,6 +51,14 @@ export interface StepLinkView {
   routedQuantity: number;
 }
 
+/** 工程の担当者（作業計画 work_order_step_plans の割当ユーザー）。 */
+export interface StepAssigneeView {
+  userId: string;
+  name: string;
+  /** プロフィール写真（小）の URL。無ければ null → イニシャル表示。 */
+  avatarUrl: string | null;
+}
+
 export interface WorkOrderStepView {
   id: string;
   processStepId: number;
@@ -85,6 +93,10 @@ export interface WorkOrderStepView {
   /** 作業計画 / 実績の件数（工程実行ページで記録）。 */
   planCount: number;
   actualCount: number;
+  /** 作業計画で割り当てられた担当者（重複排除・計画日順）。 */
+  assignees: StepAssigneeView[];
+  /** 実働時間 (h) — 実績の開始〜終了の累計。null = 数えられる実績なし。 */
+  actualWorkHours: number | null;
   /** サーバーで canStartStep により算出（PENDING で依存充足なら true）。 */
   canStart: boolean;
 }

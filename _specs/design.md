@@ -927,9 +927,37 @@ Paper (withBorder, p="md", radius="md")
             zoomOnScroll=false / preventScrolling=false。工程の増減時のみ
             fitView で測り直す（数量だけの更新では視点を動かさない）。
             ノード本体は `WorkflowStepNode.tsx` = Mantine の HTML ノード
-            （状態 ThemeIcon + 工程名 lineClamp 2 + 外注バッジ + 数量バッジ。
-            StepCard と STEP_STATUS_ICON を共有）
+            （工程名 lineClamp 2 + 種別バッジ + 外注バッジ + 数量バッジ。
+            アイコンは StepCard と STEP_STATUS_ICON を共有）
 ```
+
+**ノードの色は「工程種別」、状態はアイコンとバッジ** — フロー図を見て最初に
+知りたいのは「何の工程か」なので、ノードの色（左 4px アクセント + 種別バッジ +
+アイコン地色）は `PROCESS_CATEGORY_COLOR`（`lib/enum-labels.ts`）で決める:
+
+| 工程種別 | 色 |
+|----------|----|
+| 材料準備 MATERIAL_PREP | `teal` |
+| 加工 MACHINING | `indigo` |
+| コーティング COATING | `grape` |
+| 検査 INSPECTION | `cyan` |
+| 検査承認 APPROVAL | `violet` |
+| 出荷 SHIPPING | `pink` |
+
+状態色（§9 StepStatus の gray / blue / green / red）とぶつからないよう、その 4 色は
+種別に使わない。**状態**はアイコン（時計 / スピナー / チェック / ✗）と、進行を
+止めている状態のバッジだけで示す:
+
+| 状態 | ノードの表示 |
+|------|--------------|
+| PENDING かつ開始可能（`canStart`） | 緑 `filled` バッジ「開始可」= いま着手できる |
+| PENDING で依存未達 | 灰の小文字「未着手」 |
+| IN_PROGRESS | 数量バッジ（受入 …）+ 流入エッジが animated |
+| COMPLETED | 数量バッジ（受入 / 良品 / 不良内訳） |
+| CANCELLED | 赤 `light` バッジ「キャンセル」 |
+
+`canStart` はサーバーが `canStartStep`（`lib/workflow-core.ts`）で算出した値を
+そのまま使う — 実行可否の判定をクライアントに持たせない。
 
 **StepCard** (`src/components/production/StepCard.tsx`)
 
@@ -947,6 +975,15 @@ Paper (withBorder, p="sm", radius="sm")
 │   │       text: "外注" | "社内"
 │   └── [desktop, if OUTSOURCE] Text size="xs" c="dimmed" — supplier name
 ├── [mobile, if OUTSOURCE] Text size="xs" c="dimmed" mt={4} pl={28} — supplier name
+├── [if 担当者 or 作業時間] Group gap="md" mt="xs" pl={28} wrap="wrap"
+│   ├── [担当者] Group gap={6} — Text c="dimmed" "担当" +
+│   │   最大 3 名 × (UserAvatar size={18} + Text size="xs" 氏名) + "ほか N 名"
+│   │   担当者 = 作業計画（work_order_step_plans）の割当ユーザー（重複排除・計画日順）
+│   └── [作業時間] Text size="xs" c="dimmed" tabular-nums
+│       "予定 {planned_work_hours}h / 実績 {actual_work_hours}h"
+│       実績 = 実績行（work_order_step_actuals）の開始〜終了の累計
+│       （lib/step-work-hours.ts sumActualWorkHours — 休止時間は入らない。
+│        数えられる行が無ければ null なので、その場合は「予定」だけを出す）
 ├── [if OUTSOURCE] Group gap="xl" mt="xs" pl={28}
 │   ├── Text size="xs" c="dimmed" "依頼: {outsource_requested_at}"
 │   └── Text size="xs" c="dimmed" "入荷予定: {outsource_expected_at}"

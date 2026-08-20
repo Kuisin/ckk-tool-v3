@@ -26,7 +26,11 @@ import {
 } from "@tabler/icons-react";
 import { useFormat } from "@/components/layout/PreferencesProvider";
 import { PrimaryButton, SecondaryButton } from "@/components/ui/buttons";
+import { UserAvatar } from "@/components/ui/UserAvatar";
 import type { WorkOrderStepView } from "./work-orders/model";
+
+/** 担当者を顔写真つきで並べる上限（超えた分は「ほか N 名」）。 */
+const MAX_SHOWN_ASSIGNEES = 3;
 
 /** 工程状態 → 色 + アイコン。フロー図のノード（WorkflowStepNode）と共有する。 */
 export const STEP_STATUS_ICON: Record<
@@ -61,6 +65,8 @@ export function StepCard({
   const isOutsource = step.executionLocation === "OUTSOURCE";
   const locationName = isOutsource ? step.supplierName : step.plantName;
   const hasQuantities = step.inputQuantity != null;
+  const hasWorkHours =
+    step.plannedWorkHours != null || step.actualWorkHours != null;
 
   // 状態別の実行ボタン（PENDING=開始 / IN_PROGRESS=実行 / COMPLETED=詳細）。
   // 指示書が操作不可のときは、どの状態でも「詳細」（閲覧）に倒す。
@@ -124,11 +130,6 @@ export function StepCard({
           )}
         </Group>
         <Group gap="xs" wrap="nowrap">
-          {step.plannedWorkHours != null && (
-            <Text c="dimmed" className="tabular-nums" size="xs">
-              予定 {step.plannedWorkHours}h
-            </Text>
-          )}
           {locationName && (
             <Text c="dimmed" size="xs" truncate>
               {locationName}
@@ -158,6 +159,39 @@ export function StepCard({
           )}
         </Group>
       </Group>
+
+      {(step.assignees.length > 0 || hasWorkHours) && (
+        <Group gap="md" mt="xs" pl={28} wrap="wrap">
+          {step.assignees.length > 0 && (
+            <Group gap={6} wrap="wrap">
+              <Text c="dimmed" size="xs">
+                担当
+              </Text>
+              {step.assignees.slice(0, MAX_SHOWN_ASSIGNEES).map((a) => (
+                <Group gap={4} key={a.userId} wrap="nowrap">
+                  <UserAvatar name={a.name} size={18} thumbSrc={a.avatarUrl} />
+                  <Text size="xs">{a.name}</Text>
+                </Group>
+              ))}
+              {step.assignees.length > MAX_SHOWN_ASSIGNEES && (
+                <Text c="dimmed" size="xs">
+                  ほか {step.assignees.length - MAX_SHOWN_ASSIGNEES} 名
+                </Text>
+              )}
+            </Group>
+          )}
+          {hasWorkHours && (
+            <Text c="dimmed" className="tabular-nums" size="xs">
+              {step.plannedWorkHours != null &&
+                `予定 ${step.plannedWorkHours}h`}
+              {step.plannedWorkHours != null &&
+                step.actualWorkHours != null &&
+                " / "}
+              {step.actualWorkHours != null && `実績 ${step.actualWorkHours}h`}
+            </Text>
+          )}
+        </Group>
+      )}
 
       {isOutsource && (
         <Group gap="xl" mt="xs" pl={28}>

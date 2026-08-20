@@ -93,6 +93,20 @@ export const PROCESS_CATEGORY_OPTIONS = Object.entries(
   PROCESS_CATEGORY_LABEL,
 ).map(([value, label]) => ({ value, label }));
 
+/**
+ * 工程種別 → 色（_specs/design.md §12.2）。工程フロー図のノードはこの色で
+ * 塗る（= 何の工程かが一目で判る）。工程の**状態**の色（gray/blue/green/red —
+ * §9 StepStatus）とぶつからないよう、その 4 色は避けて選んである。
+ */
+export const PROCESS_CATEGORY_COLOR: Record<string, string> = {
+  MATERIAL_PREP: "teal",
+  MACHINING: "indigo",
+  COATING: "grape",
+  INSPECTION: "cyan",
+  APPROVAL: "violet",
+  SHIPPING: "pink",
+};
+
 /** app.PROCESS_EXECUTION（工程の実施場所） */
 export const PROCESS_EXECUTION_LABEL: Record<string, string> = {
   INTERNAL: "社内のみ",
