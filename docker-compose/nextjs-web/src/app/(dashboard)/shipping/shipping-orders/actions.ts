@@ -34,7 +34,12 @@ import {
   actionOk,
   prismaErrorMessage,
 } from "@/lib/server-action";
-import { computeFinishedQuantity } from "@/lib/workflow-core";
+import {
+  computeFinishedQuantity,
+  STEP_LINK_STATE_SELECT,
+  STEP_STATE_SELECT,
+  toStepState,
+} from "@/lib/workflow-core";
 
 const BASE_PATH = "/shipping/shipping-orders";
 const SCOPE_DENIED = "この操作の権限がありません（対象範囲外）";
@@ -193,7 +198,14 @@ export async function fetchShippingSourceInfo(
     const [workOrders, inventories] = await Promise.all([
       prisma.workOrder.findMany({
         where: { orderLineId, status: "COMPLETED" },
-        include: { steps: true, stepLinks: true },
+        // エンジンが読む列だけ（STEP_STATE_SELECT — workflow-core 参照）。
+        // 全列 SELECT は列追加のたび migration 前の DB で P2022 に落ちる。
+        select: {
+          workOrderNumber: true,
+          plannedQuantity: true,
+          steps: { select: STEP_STATE_SELECT },
+          stepLinks: { select: STEP_LINK_STATE_SELECT },
+        },
         orderBy: { workOrderNumber: "asc" },
       }),
       // 対象製品の在庫ロット（非半製品・ロット番号あり）— 他 SO / 在庫向け
@@ -250,25 +262,12 @@ export async function fetchShippingSourceInfo(
       quantity: so.quantity,
       status: so.status,
       completedWorkOrders: workOrders.map((wo) => {
-        // 出来高 = グラフ終端集計（分岐合流 DAG でも正しい残良品）
+        // 出来高 = グラフ終端集計（分岐合流 DAG でも正しい残良品）。
+        // toStepState 経由なので branchStock も渡り、半製品在庫で終わる
+        // 分岐終端を出荷可能数に数えない。
         const finished = computeFinishedQuantity(
-          wo.steps.map((s) => ({
-            id: s.id,
-            processStepId: s.processStepId,
-            status: s.status,
-            sortOrder: s.sortOrder,
-            inputQuantity: s.inputQuantity,
-            outputSuccess: s.outputSuccessQuantity,
-            defectSemiFinished: s.outputDefectSemiFinished,
-            defectScrap: s.outputDefectScrap,
-            defectRework: s.outputDefectRework,
-            sessionLockedBy: s.sessionLockedBy,
-          })),
-          wo.stepLinks.map((l) => ({
-            sourceStepId: l.sourceStepId,
-            targetStepId: l.targetStepId,
-            routedQuantity: l.routedQuantity,
-          })),
+          wo.steps.map(toStepState),
+          wo.stepLinks,
         );
         return {
           workOrderNumber: wo.workOrderNumber,

@@ -19,7 +19,12 @@ import { checkPermission } from "@/lib/authz";
 import { prisma } from "@/lib/db";
 import { formatOrderLineNumber, formatProductNumber } from "@/lib/doc-number";
 import { type LocalizedText, localized } from "@/lib/format";
-import { computeFinishedQuantity } from "@/lib/workflow-core";
+import {
+  computeFinishedQuantity,
+  STEP_LINK_STATE_SELECT,
+  STEP_STATE_SELECT,
+  toStepState,
+} from "@/lib/workflow-core";
 import { orderLineScopeWhere } from "../../sales/order-lines/data";
 import { fetchShippingOrders } from "../shipping-orders/data";
 
@@ -82,7 +87,13 @@ export async function fetchUnshippedOrderLines(): Promise<
       product: true,
       workOrders: {
         where: { status: "COMPLETED" },
-        include: { steps: true, stepLinks: true },
+        // エンジンが読む列だけ（STEP_STATE_SELECT — workflow-core 参照）。
+        // 全列 SELECT は列追加のたび migration 前の DB で P2022 に落ちる。
+        select: {
+          workOrderNumber: true,
+          steps: { select: STEP_STATE_SELECT },
+          stepLinks: { select: STEP_LINK_STATE_SELECT },
+        },
         orderBy: { workOrderNumber: "asc" },
       },
       // 出荷書に載っている数量（下書きも「もう手配済み」として数える）。
@@ -100,26 +111,7 @@ export async function fetchUnshippedOrderLines(): Promise<
     if (r.branch == null) continue;
     const finishedQuantity = r.workOrders.reduce(
       (sum, wo) =>
-        sum +
-        computeFinishedQuantity(
-          wo.steps.map((s) => ({
-            id: s.id,
-            processStepId: s.processStepId,
-            status: s.status,
-            sortOrder: s.sortOrder,
-            inputQuantity: s.inputQuantity,
-            outputSuccess: s.outputSuccessQuantity,
-            defectSemiFinished: s.outputDefectSemiFinished,
-            defectScrap: s.outputDefectScrap,
-            defectRework: s.outputDefectRework,
-            sessionLockedBy: s.sessionLockedBy,
-          })),
-          wo.stepLinks.map((l) => ({
-            sourceStepId: l.sourceStepId,
-            targetStepId: l.targetStepId,
-            routedQuantity: l.routedQuantity,
-          })),
-        ),
+        sum + computeFinishedQuantity(wo.steps.map(toStepState), wo.stepLinks),
       0,
     );
     const shippedQuantity = r.shippingItems.reduce(

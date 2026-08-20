@@ -227,6 +227,70 @@ export interface StepLinkState {
   routedQuantity: number;
 }
 
+// ── DB 行 → StepState（サーバー側 ctx ビルダー共用） ─────────────────────────
+//
+// エンジンに渡す work_order_steps は必ずこの select + mapper を通すこと。
+// `steps: true`（全列 SELECT）にすると 2 つの事故が起きる:
+//   1. 列が増えるたび、migration がまだの DB に対して P2022 で落ちる
+//      （Coolify のデプロイに migration は含まれず手動 — この窓は実際に開く。
+//      dev で branch_stock_disposition 追加時に SH03 が 500 になった）。
+//   2. 手書きのフィールド写しが増え、branchStock のような後付け列の
+//      写し忘れで完成数の計算が黙って狂う（半製品行きの分岐終端を
+//      完成品として数える）。
+
+/** エンジンが読む work_order_steps の列（Prisma の select にそのまま渡す）。 */
+export const STEP_STATE_SELECT = {
+  id: true,
+  processStepId: true,
+  status: true,
+  sortOrder: true,
+  inputQuantity: true,
+  outputSuccessQuantity: true,
+  outputDefectSemiFinished: true,
+  outputDefectScrap: true,
+  outputDefectRework: true,
+  sessionLockedBy: true,
+  branchStockDisposition: true,
+} as const;
+
+/** エンジンが読む work_order_step_links の列。 */
+export const STEP_LINK_STATE_SELECT = {
+  sourceStepId: true,
+  targetStepId: true,
+  routedQuantity: true,
+} as const;
+
+/** STEP_STATE_SELECT で取れる行（Prisma の生成型に依存しない構造型）。 */
+export interface StepStateRow {
+  id: string;
+  processStepId: number;
+  status: StepRunStatus;
+  sortOrder: number;
+  inputQuantity: number | null;
+  outputSuccessQuantity: number | null;
+  outputDefectSemiFinished: number | null;
+  outputDefectScrap: number | null;
+  outputDefectRework: number | null;
+  sessionLockedBy: string | null;
+  branchStockDisposition: BranchStockDisposition | null;
+}
+
+export function toStepState(row: StepStateRow): StepState {
+  return {
+    id: row.id,
+    processStepId: row.processStepId,
+    status: row.status,
+    sortOrder: row.sortOrder,
+    inputQuantity: row.inputQuantity,
+    outputSuccess: row.outputSuccessQuantity,
+    defectSemiFinished: row.outputDefectSemiFinished,
+    defectScrap: row.outputDefectScrap,
+    defectRework: row.outputDefectRework,
+    sessionLockedBy: row.sessionLockedBy,
+    branchStock: row.branchStockDisposition,
+  };
+}
+
 export interface WorkflowCtx {
   plannedQuantity: number;
   steps: StepState[];

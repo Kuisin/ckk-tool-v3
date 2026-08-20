@@ -27,8 +27,11 @@ import {
   canStartStep,
   expectedInput,
   isWorkOrderComplete,
+  STEP_LINK_STATE_SELECT,
+  STEP_STATE_SELECT,
   type StepLinkState,
   type StepState,
+  toStepState,
   validateQuantities,
   validateRouting,
   type WorkflowCtx,
@@ -87,26 +90,16 @@ export async function fetchWorkflowCtx(workOrderId: string): Promise<{
 }> {
   const wo = await prisma.workOrder.findUniqueOrThrow({
     where: { id: workOrderId },
-    include: { steps: true, stepLinks: true },
+    // エンジンが読む列だけ（STEP_STATE_SELECT — workflow-core 参照）。
+    // 全列 SELECT は列追加のたび migration 前の DB で P2022 に落ちる。
+    include: {
+      steps: { select: STEP_STATE_SELECT },
+      stepLinks: { select: STEP_LINK_STATE_SELECT },
+    },
   });
   const execDeps = await prisma.processStepExecDependency.findMany();
-  const steps: StepState[] = wo.steps.map((s) => ({
-    id: s.id,
-    processStepId: s.processStepId,
-    status: s.status,
-    sortOrder: s.sortOrder,
-    inputQuantity: s.inputQuantity,
-    outputSuccess: s.outputSuccessQuantity,
-    defectSemiFinished: s.outputDefectSemiFinished,
-    defectScrap: s.outputDefectScrap,
-    defectRework: s.outputDefectRework,
-    sessionLockedBy: s.sessionLockedBy,
-  }));
-  const links: StepLinkState[] = wo.stepLinks.map((l) => ({
-    sourceStepId: l.sourceStepId,
-    targetStepId: l.targetStepId,
-    routedQuantity: l.routedQuantity,
-  }));
+  const steps: StepState[] = wo.steps.map(toStepState);
+  const links: StepLinkState[] = wo.stepLinks;
   return {
     ctx: {
       plannedQuantity: wo.plannedQuantity,

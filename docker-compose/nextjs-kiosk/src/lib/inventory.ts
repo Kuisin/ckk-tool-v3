@@ -16,6 +16,9 @@ import { prisma } from "./db";
 import {
   computeBranchSemiFinishedQuantity,
   computeFinishedQuantity,
+  STEP_LINK_STATE_SELECT,
+  STEP_STATE_SELECT,
+  toStepState,
 } from "./workflow-core";
 
 type Tx = PrismaNS.TransactionClient;
@@ -188,33 +191,23 @@ export async function ensureMaterialInventory(
 export async function onWorkOrderCompleted(workOrderId: string): Promise<void> {
   const wo = await prisma.workOrder.findUniqueOrThrow({
     where: { id: workOrderId },
+    // 工程はエンジンが読む列 + 入庫先の解決に使う plantId だけ
+    // （STEP_STATE_SELECT — workflow-core 参照）。全列 SELECT は列追加のたび
+    // migration 前の DB で P2022 に落ちる。
     include: {
-      steps: { orderBy: { sortOrder: "asc" } },
-      stepLinks: true,
+      steps: {
+        select: { ...STEP_STATE_SELECT, plantId: true },
+        orderBy: { sortOrder: "asc" },
+      },
+      stepLinks: { select: STEP_LINK_STATE_SELECT },
     },
   });
   // 完成数 = 良品がどこにも流れない COMPLETED 工程の残良品合計。
   // sortOrder 最大では分岐合流 DAG（合流先が手前に並ぶ場合）で誤るため、
   // グラフ集計の純関数（workflow-core computeFinishedQuantity）で判定する
   // （監査 #15。終端工程から分岐した場合の残良品もここで拾う）。
-  const engineSteps = wo.steps.map((s) => ({
-    id: s.id,
-    processStepId: s.processStepId,
-    status: s.status,
-    sortOrder: s.sortOrder,
-    inputQuantity: s.inputQuantity,
-    outputSuccess: s.outputSuccessQuantity,
-    defectSemiFinished: s.outputDefectSemiFinished,
-    defectScrap: s.outputDefectScrap,
-    defectRework: s.outputDefectRework,
-    sessionLockedBy: s.sessionLockedBy,
-    branchStock: s.branchStockDisposition,
-  }));
-  const engineLinks = wo.stepLinks.map((l) => ({
-    sourceStepId: l.sourceStepId,
-    targetStepId: l.targetStepId,
-    routedQuantity: l.routedQuantity,
-  }));
+  const engineSteps = wo.steps.map(toStepState);
+  const engineLinks = wo.stepLinks;
   const finishedQty = computeFinishedQuantity(engineSteps, engineLinks);
   // 半製品 = 全工程の半製品バケット合計 + 「半製品在庫で終わる分岐」の終端良品。
   // 後者は完成数に入らない（computeFinishedQuantity が除外している）ので、

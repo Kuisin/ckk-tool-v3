@@ -135,8 +135,12 @@ import {
   expectedInput,
   isOffMainline,
   isWorkOrderComplete,
+  STEP_LINK_STATE_SELECT,
+  STEP_STATE_SELECT,
   type StepLinkState,
   type StepState,
+  type StepStateRow,
+  toStepState,
   validateDagShape,
   validateQuantities,
   validateRouting,
@@ -170,26 +174,15 @@ export async function fetchWorkflowCtx(workOrderId: string): Promise<{
 }> {
   const wo = await prisma.workOrder.findUniqueOrThrow({
     where: { id: workOrderId },
-    include: { steps: true, stepLinks: true },
+    // エンジンが読む列だけ（STEP_STATE_SELECT — workflow-core 参照）。
+    include: {
+      steps: { select: STEP_STATE_SELECT },
+      stepLinks: { select: STEP_LINK_STATE_SELECT },
+    },
   });
   const execDeps = await prisma.processStepExecDependency.findMany();
-  const steps: StepState[] = wo.steps.map((s) => ({
-    id: s.id,
-    processStepId: s.processStepId,
-    status: s.status,
-    sortOrder: s.sortOrder,
-    inputQuantity: s.inputQuantity,
-    outputSuccess: s.outputSuccessQuantity,
-    defectSemiFinished: s.outputDefectSemiFinished,
-    defectScrap: s.outputDefectScrap,
-    defectRework: s.outputDefectRework,
-    sessionLockedBy: s.sessionLockedBy,
-  }));
-  const links: StepLinkState[] = wo.stepLinks.map((l) => ({
-    sourceStepId: l.sourceStepId,
-    targetStepId: l.targetStepId,
-    routedQuantity: l.routedQuantity,
-  }));
+  const steps: StepState[] = wo.steps.map(toStepState);
+  const links: StepLinkState[] = wo.stepLinks;
   return {
     ctx: {
       plannedQuantity: wo.plannedQuantity,
@@ -529,41 +522,20 @@ export async function rollbackStepExecution(
   return { ok: true };
 }
 
-/** 読み込んだ指示書行 → engine コンテキスト（分岐系の純ロジック検証用）。 */
+/**
+ * 読み込んだ指示書行 → engine コンテキスト（分岐系の純ロジック検証用）。
+ * mapper は workflow-core の toStepState 一択 — 手書きの写しにすると
+ * branchStock のような後付け列を落とし、branchSeriesList の終端判定
+ * （在庫行きの系列を「終端未設定」と誤る）や完成数計算が黙って狂う。
+ */
 function ctxFromWorkOrder(wo: {
   plannedQuantity: number;
-  steps: {
-    id: string;
-    processStepId: number;
-    status: StepState["status"];
-    sortOrder: number;
-    inputQuantity: number | null;
-    outputSuccessQuantity: number | null;
-    outputDefectSemiFinished: number | null;
-    outputDefectScrap: number | null;
-    outputDefectRework: number | null;
-    sessionLockedBy: string | null;
-  }[];
-  stepLinks: {
-    sourceStepId: string;
-    targetStepId: string;
-    routedQuantity: number;
-  }[];
+  steps: StepStateRow[];
+  stepLinks: StepLinkState[];
 }): WorkflowCtx {
   return {
     plannedQuantity: wo.plannedQuantity,
-    steps: wo.steps.map((s) => ({
-      id: s.id,
-      processStepId: s.processStepId,
-      status: s.status,
-      sortOrder: s.sortOrder,
-      inputQuantity: s.inputQuantity,
-      outputSuccess: s.outputSuccessQuantity,
-      defectSemiFinished: s.outputDefectSemiFinished,
-      defectScrap: s.outputDefectScrap,
-      defectRework: s.outputDefectRework,
-      sessionLockedBy: s.sessionLockedBy,
-    })),
+    steps: wo.steps.map(toStepState),
     links: wo.stepLinks.map((l) => ({
       sourceStepId: l.sourceStepId,
       targetStepId: l.targetStepId,
@@ -603,7 +575,10 @@ export async function addBranchSeries(input: {
 
   const wo = await prisma.workOrder.findUniqueOrThrow({
     where: { id: workOrderId },
-    include: { steps: true, stepLinks: true },
+    include: {
+      steps: { select: STEP_STATE_SELECT },
+      stepLinks: { select: STEP_LINK_STATE_SELECT },
+    },
   });
   const ctx = ctxFromWorkOrder(wo);
   const source = wo.steps.find((s) => s.id === sourceStepId);
@@ -732,7 +707,11 @@ export async function updateBranchSeries(input: {
 }): Promise<StepActionResult> {
   const wo = await prisma.workOrder.findUniqueOrThrow({
     where: { id: input.workOrderId },
-    include: { steps: true, stepLinks: true },
+    include: {
+      steps: { select: STEP_STATE_SELECT },
+      // 合流エッジの張り替え（update/deleteMany）にリンク行の id も要る。
+      stepLinks: { select: { id: true, ...STEP_LINK_STATE_SELECT } },
+    },
   });
   const ctx = ctxFromWorkOrder(wo);
   const series = branchSeriesList(ctx).find(
@@ -860,7 +839,10 @@ export async function removeBranchSeries(input: {
 }): Promise<StepActionResult> {
   const wo = await prisma.workOrder.findUniqueOrThrow({
     where: { id: input.workOrderId },
-    include: { steps: true, stepLinks: true },
+    include: {
+      steps: { select: STEP_STATE_SELECT },
+      stepLinks: { select: STEP_LINK_STATE_SELECT },
+    },
   });
   const ctx = ctxFromWorkOrder(wo);
   const head = wo.steps.find((s) => s.id === input.headStepId);
