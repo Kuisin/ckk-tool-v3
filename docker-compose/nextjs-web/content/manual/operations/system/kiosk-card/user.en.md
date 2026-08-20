@@ -90,9 +90,11 @@ The card can be used **through the whole of the end date**. Login is blocked out
 1. In the list, tick the checkbox at the left of each card you want to print. You can select any number of them.
 2. Press 「**選択したカードを印刷**」 (Print selected cards) at the bottom of the screen.
 3. A PDF for printing opens in another tab.
-4. Print it on A4 paper.
+4. Print it on A4 **business-card stock (10 per sheet)**. Plain A4 paper you cut yourself works too.
 
 One sheet holds **10 cards** (2 columns × 5 rows) at business-card size (91×55 mm). Cutting along the small cross marks in the corners gives a clean finish.
+
+The PDF is built to print **at actual size (100%)**. Do not switch the print dialog to "Fit to page" or any zoom setting — that shrinks the cards and they no longer line up with the perforations. Measuring the first card (it must be 91×55 mm) is a quick way to confirm.
 
 To print just one card, choose 「**印刷**」 (Print) from the 「**…**」 menu on that row.
 

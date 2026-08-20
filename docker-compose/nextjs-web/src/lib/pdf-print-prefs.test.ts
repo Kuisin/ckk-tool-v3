@@ -82,6 +82,15 @@ describe("withPrintPreferences", () => {
     expect(appended.match(/\/PrintScaling/g)).toHaveLength(1);
   });
 
+  it("pickTrayByPdfSize: false で /PickTrayByPDFSize false を書く", () => {
+    const src = minimalPdf();
+    const out = toStr(
+      withPrintPreferences(toArrayBuffer(src), { pickTrayByPdfSize: false }),
+    );
+    // 原寸固定は維持しつつ、用紙はプリンタ既定（A4）に任せる
+    expect(out).toContain("/PrintScaling/None/PickTrayByPDFSize false");
+  });
+
   it("既に /PrintScaling を持つ PDF はそのまま返す", () => {
     const src = minimalPdf().replace(
       "<</Type /Catalog /Pages 2 0 R>>",

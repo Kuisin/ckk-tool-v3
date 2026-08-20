@@ -2,10 +2,14 @@
  * GET /api/pdf/kiosk-cards?ids=...&download=1 — QR カード印刷シート PDF (SY08)。
  *
  * ブラウザ印刷（window.print）ではなく Gotenberg で PDF を生成して返す。
- * 用紙: A4 縦 210×297mm、余白 上下 11mm / 左右 14mm、日本名刺サイズ
- * 91×55mm を隙間なしで 2 列 × 5 行 = 10 枚/頁。断裁ガイドは各カード四隅の
- * トリム線交点を中心にした十字線（カード面へ重ねる）— テンプレートは
+ * 用紙は **A4 名刺用紙 10 面**（エーワン等）。カードは日本名刺サイズ
+ * 91×55mm を隙間なしで 2 列 × 5 行 = 10 枚/頁、A4 上の位置は 10 面
+ * マルチカードの定位置（上下 11mm / 左右 14mm）。断裁ガイドは各カード四隅の
+ * トリム線交点を中心にした十字線 — テンプレートは
  * src/pdf-templates/kiosk-cards.html。
+ *
+ * ★ 原寸（91×55mm）を絶対に崩さないための geometry は下の SHEET が唯一の
+ *   定義で、Gotenberg のページサイズとテンプレート CSS の両方へ流し込む。
  *
  * 選択に依存する一時ドキュメントのため SeaweedFS へはキャッシュしない
  * （帳票 PDF と違い保存キーが定まらない + 氏名入りで使い捨て）。
@@ -18,13 +22,18 @@ import {
   fetchKioskCardsForPrint,
   type KioskCardPrintRow,
 } from "@/lib/kiosk-admin";
+import {
+  CARD_SHEET_PAGE,
+  CARDS_PER_PAGE,
+  cardSheetTemplateVars,
+} from "@/lib/kiosk-card-sheet";
 import { renderPdf } from "@/lib/pdf";
 import { withPrintPreferences } from "@/lib/pdf-print-prefs";
 import { qrSvg } from "@/lib/qr";
 
 export const dynamic = "force-dynamic";
 
-const CARDS_PER_PAGE = 10; // 2 列 × 5 行
+// 寸法（原寸印刷の要）は lib/kiosk-card-sheet.ts が唯一の定義。
 
 /** カード 1 枚分のセル（十字トンボ + QR + 社名 + 氏名/記名線 + No.）。 */
 function cardCell(card: KioskCardPrintRow): string {
@@ -104,14 +113,19 @@ export async function GET(request: Request): Promise<Response> {
   let pdf: ArrayBuffer;
   try {
     // 余白 0 でミリ単位のレイアウトをテンプレート CSS に完全委譲する。
+    // ページサイズは SHEET から算出した値を Gotenberg と CSS の両方へ渡す。
     pdf = await renderPdf(
       "kiosk-cards.html",
-      { pages: pagesHtml(cards) },
-      { margins: "0" },
+      { pages: pagesHtml(cards), ...cardSheetTemplateVars() },
+      {
+        margins: "0",
+        paperWidth: `${CARD_SHEET_PAGE.width}mm`,
+        paperHeight: `${CARD_SHEET_PAGE.height}mm`,
+      },
     );
-    // 印刷ダイアログの既定を「原寸（100%）・用紙は PDF サイズ = A4」に固定する
-    // （フチなし前提のカード位置が「用紙に合わせて縮小」でずれるのを防ぐ）。
-    pdf = withPrintPreferences(pdf);
+    // 印刷ダイアログの既定を「原寸（100%）」に固定する。用紙はプリンタ既定
+    // （日本なら A4）に載せたいので、実在しないページサイズでトレイを選ばせない。
+    pdf = withPrintPreferences(pdf, { pickTrayByPdfSize: false });
   } catch (err) {
     console.error("[pdf/kiosk-cards]", err);
     return Response.json({ error: "PDF generation failed" }, { status: 502 });

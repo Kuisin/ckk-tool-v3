@@ -27,7 +27,7 @@ Operation code **SY08**. Issues and manages the **QR cards** employees use to lo
 
 1. Click **カードを発行** (Issue cards) and enter a count (1–100). Cards are created as unassigned.
 2. From the row menu, choose **ユーザーに割当** (Assign to user). Only active users can be selected, and each user can hold **only one card**.
-3. Check the cards and click **選択したカードを印刷** (Print selected cards) — or use **印刷** (Print) in the row menu. A print sheet opens in a new tab: business-card size (91×55mm), 8 cards per A4 portrait page, with corner crop marks for cutting.
+3. Check the cards and click **選択したカードを印刷** (Print selected cards) — or use **印刷** (Print) in the row menu. A print sheet opens in a new tab: business-card size (91×55mm), 10 cards per A4 portrait page (2 × 5), positioned for A4 business-card stock (10 per sheet), with corner crop marks for cutting. The PDF page box is deliberately a little smaller than A4 so that a viewer's "fit to printable area" never kicks in — it always prints **at actual size (100%)**. Do not override the scale in the print dialog.
 4. Hand the printed card to the employee. They hold the QR up to the tablet and set a **PIN** (4–6 digits) on first login.
 
 For security, the list shows only the **last 8 characters** of each card ID. The full ID exists only inside the QR on the print sheet.
