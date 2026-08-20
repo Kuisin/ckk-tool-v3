@@ -5,14 +5,26 @@
   <title>QRカード印刷</title>
   <style>
     /*
-     * QR カードシート（SY08）— A4 縦 210×297mm。
-     * 余白: 上下 11mm / 左右 14mm（Gotenberg 側余白は 0 — .sheet の padding で確保）。
-     * カード = 日本名刺サイズ 91×55mm を隙間なしで 2 列 × 5 行 = 10 枚/頁
-     * （210 − 14×2 = 182 = 91×2、297 − 11×2 = 275 = 55×5 でぴったり収まる）。
+     * QR カードシート（SY08）— A4 名刺用紙 10 面（エーワン等）に原寸で刷る。
+     *
+     * カード = 日本名刺サイズ 91×55mm を隙間なしで 2 列 × 5 行 = 10 枚/頁。
+     * A4 上の位置は 10 面マルチカードの定位置（上下 11mm / 左右 14mm、
+     * 210 − 14×2 = 182 = 91×2、297 − 11×2 = 275 = 55×5）。
+     *
+     * ★ ページボックスは A4 ではなく A4 から四方 {{safeInset}}mm 内側の
+     *   {{pageWidth}}×{{pageHeight}}mm。ビューア（Chrome PDF ビューア等）の既定
+     *   「印刷可能領域に合わせる」はページボックスが印刷可能領域より大きい
+     *   ときだけ縮小するため、A4 ページボックスのままだと必ず ≈96% に縮み、
+     *   下段ほどミシン目からずれる。一回り小さく取ることで倍率は 1.0 に
+     *   固定される（＝常に原寸 91×55mm）。ページは用紙中央に置かれ、
+     *   10 面の余白が上下・左右とも対称なので、内側に取った分だけ padding を
+     *   減らせばカードは定位置に戻る（padding {{padX}}mm / {{padY}}mm）。
+     *   寸法は route.ts の SHEET が唯一の定義で、ここへ差し込まれる。
+     *
      * 断裁ガイド: 各カードの四隅にトリム線交点を中心とした十字線
      * （カード面へ 3mm 重なり、外側へ 3mm 延長）。
      */
-    @page { size: A4 portrait; margin: 0; }
+    @page { size: {{pageWidth}}mm {{pageHeight}}mm; margin: 0; }
     * { margin: 0; padding: 0; box-sizing: border-box; }
     html, body { background: #ffffff; color: #000000; }
     body {
@@ -21,22 +33,22 @@
       print-color-adjust: exact;
     }
     .sheet {
-      width: 210mm;
-      height: 297mm;
-      padding: 11mm 14mm;
+      width: {{pageWidth}}mm;
+      height: {{pageHeight}}mm;
+      padding: {{padY}}mm {{padX}}mm;
       overflow: hidden;
       position: relative;
     }
     .sheet + .sheet { page-break-before: always; }
     .grid {
       display: grid;
-      grid-template-columns: repeat(2, 91mm);
-      grid-auto-rows: 55mm;
+      grid-template-columns: repeat({{cols}}, {{cardWidth}}mm);
+      grid-auto-rows: {{cardHeight}}mm;
     }
     .cell {
       position: relative;
-      width: 91mm;
-      height: 55mm;
+      width: {{cardWidth}}mm;
+      height: {{cardHeight}}mm;
     }
     .card {
       width: 100%;
@@ -63,9 +75,9 @@
     .crop::before { width: 6mm; height: 0.2mm; left: -3mm; top: -0.1mm; }
     .crop::after { width: 0.2mm; height: 6mm; left: -0.1mm; top: -3mm; }
     .crop-tl { top: 0; left: 0; }
-    .crop-tr { top: 0; left: 91mm; }
-    .crop-bl { top: 55mm; left: 0; }
-    .crop-br { top: 55mm; left: 91mm; }
+    .crop-tr { top: 0; left: {{cardWidth}}mm; }
+    .crop-bl { top: {{cardHeight}}mm; left: 0; }
+    .crop-br { top: {{cardHeight}}mm; left: {{cardWidth}}mm; }
     .qr { flex-shrink: 0; }
     .qr svg { width: 36mm; height: 36mm; display: block; }
     .head {

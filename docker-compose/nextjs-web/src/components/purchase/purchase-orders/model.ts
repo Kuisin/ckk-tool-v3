@@ -65,6 +65,8 @@ export interface PurchaseOrderView {
   poNumber: string;
   supplierBpId: string;
   supplierName: string;
+  /** 作成者の表示名（システム作成は null）。 */
+  createdByName: string | null;
   /** 変換元の購買依頼番号（PU01 から作成された場合のみ）。 */
   sourceRequestNumber: string | null;
   status: PurchaseStatus;

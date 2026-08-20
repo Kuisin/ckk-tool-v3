@@ -26,6 +26,8 @@ import { toTrialPricingOptions } from "@/lib/trial-pricing-settings";
 export const ENTRY_INCLUDE = {
   customerBp: true,
   product: true,
+  salesRep: { select: { id: true, displayName: true } },
+  createdByUser: { select: { displayName: true } },
   variants: {
     orderBy: { orderType: "asc" as const },
     include: {
@@ -102,7 +104,9 @@ export function mapEntry(r: EntryRow): PriceListEntry {
         estimateNumber,
       };
     }),
-    createdBy: "—",
+    salesRepId: r.salesRep?.id ?? null,
+    salesRepName: r.salesRep?.displayName ?? null,
+    createdBy: r.createdByUser?.displayName ?? "—",
     createdAt: r.createdAt.toISOString(),
     updatedAt: r.updatedAt.toISOString(),
   };

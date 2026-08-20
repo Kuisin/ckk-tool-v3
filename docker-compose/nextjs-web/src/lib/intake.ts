@@ -21,7 +21,14 @@
  * 流れ: ファイルを SeaweedFS へ保存 + files 行 → order_acceptances を
  * IMPORT で採番作成（ORDER シーケンス — 番号 ORD-YYYYMM-NNNNN）→ po-extract
  * /extract/order-request で構造化 → 正規化（intake-core）→ 顧客
- * （match_names）・製品（コード/名称）を突合 → DRAFT + 明細。
+ * （lib/bp-match）・製品（lib/product-match）を**表記ゆれを吸収して**突合
+ * → DRAFT + 明細。どちらも 1 件に絞れたときだけ入れ、絞れなければ候補を
+ * 画面に出して人に選ばせる。
+ *
+ * 突合は**学習済みの表記が最優先**（app.match_aliases / lib/match-aliases）。
+ * 人が画面で結び付けた「この表記はこのマスタ」は 1 表記 = 1 マスタで貯まって
+ * いるので、推測（表記ゆれの段階的突合）より先に見る。人が一度決めたものを
+ * 機械が上書きしない、という順序。
  *
  * 失敗時は IMPORT のまま extract_error を記録する。メッセージは
  * lib/intake-extract-error で**分類**して「何が起きたか / 原因 / 対処 / 詳細」
@@ -33,11 +40,18 @@
 
 import { mkdir, readdir, readFile, rename, stat } from "node:fs/promises";
 import path from "node:path";
+import { APPROVAL_TARGET } from "./approval-targets";
 import { firstStepGroupId } from "./approvals";
 import { getCurrentActorId, recordAudit } from "./audit";
+import {
+  type BpMatchable,
+  type BpMatchResult,
+  matchBusinessPartnerName,
+} from "./bp-match";
 import { prisma } from "./db";
-import { formatDocNumber } from "./doc-number";
+import { formatDocNumber, formatProductNumber } from "./doc-number";
 import { systematicFileName } from "./file-naming";
+import { type LocalizedText, localized } from "./format";
 import {
   intakeFileName,
   type NormalizedExtraction,
@@ -54,16 +68,22 @@ import {
   RETRY_PENDING_MARKER,
   retryPlan,
 } from "./intake-extract-error";
+import { aliasKeyFor } from "./match-alias-core";
+import { aliasesByTarget, findAlias, noteAliasHit } from "./match-aliases";
 import { notifyApprovalGroup } from "./notifications";
 import { allocateDocumentKey } from "./numbering";
 import { linesReplaceBlockReason } from "./order-line-core";
 import { isOwnCompany } from "./own-company";
+import { PO_EXTRACT_URL } from "./po-extract";
+import {
+  matchProductName,
+  type ProductMatchable,
+  type ProductMatchCandidate,
+  type ProductMatchResult,
+  searchProbes,
+} from "./product-match";
 import { putObject } from "./storage";
 import { createTaskQueue } from "./task-queue";
-
-const PO_EXTRACT_URL = (
-  process.env.PO_EXTRACT_URL ?? "http://po-extract:8000"
-).replace(/\/$/, "");
 
 /**
  * 取込結果の通知先 — 注文請書フローの 1 段目の承認グループ。
@@ -265,55 +285,324 @@ async function ingestFile(input: {
 }
 
 /**
- * 顧客突合: match_names 完全一致 → 名称 ja 一致。
+ * 突合の対象になる取引先（有効・トップレベル）を全部読む。
+ *
+ * 配列列（match_names）の**部分一致は Prisma の where で書けない**し、
+ * 表記ゆれの吸収は SQL より JS の方が素直に書ける。有効な取引先は数百件なので、
+ * 1 通の取込につき 1 回この全件読みで十分（顧客ピッカーも同じやり方）。
+ */
+export async function loadBpMatchPool(): Promise<BpMatchable[]> {
+  // 学習した表記（人が結び付けた実績）も照合キーに混ぜる。取引先は数百件
+  // なので、まとめて 1 回引いて突き合わせる。
+  const learned = await aliasesByTarget("business_partners");
+  const rows = await prisma.businessPartner.findMany({
+    where: { isActive: true, parentId: null },
+    select: {
+      id: true,
+      bpCode: true,
+      name: true,
+      nameKana: true,
+      shortName: true,
+      matchNames: true,
+      matchNamesAuto: true,
+      roleAssignments: {
+        where: { role: "CUSTOMER", isActive: true },
+        select: { role: true },
+      },
+    },
+  });
+  return rows.map((r) => ({
+    id: r.id,
+    label: localized(r.name as LocalizedText | null),
+    bpCode: r.bpCode,
+    nameJa: localized(r.name as LocalizedText | null),
+    nameKana: r.nameKana,
+    shortName: r.shortName,
+    // 人が登録した別名 + 学習した表記。どちらも「この会社の書かれ方」。
+    matchNames: [...r.matchNames, ...(learned.get(r.id) ?? [])],
+    matchNamesAuto: r.matchNamesAuto,
+    isCustomer: r.roleAssignments.length > 0,
+  }));
+}
+
+/**
+ * 顧客突合。判定規則そのものは lib/bp-match（純ロジック・テスト付き）。
  *
  * 注文書は相手の視点で書かれているため、AI が向きを取り違えると**自社名**が
  * 顧客として来る。自社は顧客になり得ないので、突合そのものを行わない
  * （画面側は「向きが逆」の案内を出す — lib/intake-review）。
  */
-async function matchCustomer(name: string | null): Promise<string | null> {
-  if (!name) return null;
-  if (isOwnCompany(name)) return null;
-  // 人が入れた照合名（match_names）と、フリガナから自動生成した分
-  // （match_names_auto — 画面には出さない）の両方を見る。
-  const byMatch = await prisma.businessPartner.findFirst({
-    where: {
-      isActive: true,
-      OR: [{ matchNames: { has: name } }, { matchNamesAuto: { has: name } }],
-    },
-    select: { id: true },
-  });
-  if (byMatch) return byMatch.id;
-  const byName = await prisma.businessPartner.findFirst({
-    where: { isActive: true, name: { path: ["ja"], equals: name } },
-    select: { id: true },
-  });
-  return byName?.id ?? null;
+export async function matchCustomer(
+  name: string | null,
+): Promise<BpMatchResult> {
+  const empty: BpMatchResult = { matched: null, candidates: [] };
+  if (!name || isOwnCompany(name)) return empty;
+
+  // 1. 学習済み（人がこの表記をこの取引先へ結び付けた実績）— 1 表記 = 1 社
+  //    なので迷う余地が無い。推測より人の判断を優先する。
+  const learned = await findAlias("business_partners", name);
+  if (learned) {
+    const bp = await prisma.businessPartner.findFirst({
+      where: { id: learned.targetId, isActive: true },
+      select: { id: true, name: true },
+    });
+    if (bp) {
+      void noteAliasHit(
+        "business_partners",
+        aliasKeyFor("business_partners", name),
+      );
+      return {
+        matched: {
+          id: bp.id,
+          label: localized(bp.name as LocalizedText | null),
+          matchedKey: learned.alias,
+          confidence: "exact",
+        },
+        candidates: [],
+      };
+    }
+    // マスタが消えている / 無効になった学習は無視して推測へ落とす。
+  }
+
+  // 2. 表記ゆれを吸収した段階的突合（lib/bp-match）。
+  return matchBusinessPartnerName(name, await loadBpMatchPool());
 }
 
-/** 製品突合: PRD コード一致 → 名称 ja 完全一致。 */
-async function matchProduct(
+/**
+ * 1 回の probe で DB から取る候補の上限。
+ * 緩い probe（先頭数文字）は大きなマスタで大量に当たるので、必ず頭を押さえる。
+ */
+const PRODUCT_PROBE_LIMIT = 40;
+/** probe をまたいで貯める候補の総上限。 */
+const PRODUCT_CANDIDATE_LIMIT = 120;
+
+type ProductRow = {
+  id: number;
+  yearMonth: string | null;
+  seq: number | null;
+  name: unknown;
+  legacyKey: string | null;
+  matchNames: string[];
+};
+
+const toMatchable = (r: ProductRow): ProductMatchable => {
+  const code = formatProductNumber(r.yearMonth, r.seq);
+  const nameJa = localized(r.name as LocalizedText | null);
+  return {
+    id: String(r.id),
+    label: code ? `${nameJa} ${code}` : nameJa,
+    nameJa,
+    code,
+    legacyKey: r.legacyKey,
+    keywords: r.matchNames,
+  };
+};
+
+/**
+ * キーワード（match_names）に probe を含む製品 id。
+ *
+ * 名称は 1 つしか持てないので、相手の呼び方はマスタ MS04 の「キーワード」に
+ * 貯める（取引先の match_names と同じ考え方）。配列列は Prisma の where で
+ * 部分一致を書けないため、`unnest + ILIKE` の生 SQL で id だけ引き、
+ * 名称の probe と OR で足す。当たり方の判定はプールに入れたあと
+ * lib/product-match が行う — キーワードも名称と同じ段階（完全 → 正規化 →
+ * 頭から → 一部）で評価される。
+ */
+async function productIdsByKeyword(
+  probe: string,
+  limit: number,
+): Promise<number[]> {
+  const q = probe.trim();
+  if (!q) return [];
+  const like = `%${q.replace(/[\\%_]/g, (c) => `\\${c}`)}%`;
+  const rows = await prisma.$queryRaw<{ id: number }[]>`
+    SELECT id FROM app.products
+    WHERE is_active
+      AND EXISTS (SELECT 1 FROM unnest(match_names) AS k WHERE k ILIKE ${like})
+    ORDER BY id
+    LIMIT ${limit}`;
+  return rows.map((r) => r.id);
+}
+
+/**
+ * 製品突合。**製品マスタは大きい**（数万件を見込む）ので、取引先のように全件を
+ * 読んで突合することはできない。lib/product-match の probe を**具体的な順に
+ * 1 つずつ**引き、決まった時点で止める（＝広い probe は必要になるまで投げない）。
+ *
+ *   1. PRD コード / 旧品番 の直接照合（あれば 1 発で決まる）
+ *   2. 学習済みの表記（app.match_aliases — 人が結び付けた実績）
+ *   3. probe で候補を取り、段階的突合（lib/text-match）にかける
+ *
+ * probe は名称（name.ja）とキーワード（match_names）の両方に当てる。相手の
+ * 呼び方は名称と違うのが普通で、そのためにキーワード欄がある。
+ *
+ * 1 件に絞れなければ**候補**を返す。画面が明細行の下に出して人が選ぶ。
+ */
+export async function matchProduct(
   code: string | null,
   text: string | null,
-): Promise<number | null> {
-  if (code) {
-    const m = /^PRD-?(\d{6})-?(\d{1,4})$/i.exec(code.trim());
-    if (m) {
-      const p = await prisma.product.findFirst({
-        where: { yearMonth: m[1], seq: Number(m[2]) },
-        select: { id: true },
-      });
-      if (p) return p.id;
+): Promise<ProductMatchResult> {
+  const empty: ProductMatchResult = { matched: null, candidates: [] };
+  const select = {
+    id: true,
+    yearMonth: true,
+    seq: true,
+    name: true,
+    legacyKey: true,
+    matchNames: true,
+  } as const;
+
+  // 1. コードで直接引く — 製品コード（PRD-YYYYMM-NNNN）と旧品番。
+  //    旧品番は注文書に相手の品番として印字されることがある。
+  for (const raw of [code, text]) {
+    const key = raw?.trim();
+    if (!key) continue;
+    const m = /^PRD-?(\d{6})-?(\d{1,4})$/i.exec(key);
+    const row = m
+      ? await prisma.product.findFirst({
+          where: { yearMonth: m[1], seq: Number(m[2]) },
+          select,
+        })
+      : await prisma.product.findFirst({
+          where: { isActive: true, legacyKey: key },
+          select,
+        });
+    if (row) {
+      const hit = toMatchable(row);
+      return {
+        matched: {
+          id: hit.id,
+          label: hit.label,
+          matchedKey: m ? (hit.code ?? key) : key,
+          confidence: "exact",
+        },
+        candidates: [],
+      };
     }
   }
-  if (text) {
-    const p = await prisma.product.findFirst({
-      where: { isActive: true, name: { path: ["ja"], equals: text } },
-      select: { id: true },
+
+  if (!text?.trim()) return empty;
+
+  // 2. 学習済み（人がこの品名をこの製品へ結び付けた実績）を先に見る。
+  //    製品マスタは大きく、推測は同族に弱い — 人が一度決めたものが最も確か。
+  const learned = await findAlias("products", text);
+  if (learned) {
+    const row = await prisma.product.findFirst({
+      where: { id: Number(learned.targetId), isActive: true },
+      select,
     });
-    if (p) return p.id;
+    if (row) {
+      void noteAliasHit("products", aliasKeyFor("products", text));
+      const hit = toMatchable(row);
+      return {
+        matched: {
+          id: hit.id,
+          label: hit.label,
+          matchedKey: learned.alias,
+          confidence: "exact",
+        },
+        candidates: [],
+      };
+    }
+    // マスタが消えている / 無効になった学習は無視して推測へ落とす。
   }
-  return null;
+
+  // 3. probe を具体的な順に投げ、決まったら止める。
+  const pool = new Map<string, ProductMatchable>();
+  let last: ProductMatchResult = empty;
+  for (const probe of searchProbes(text)) {
+    const keywordIds = await productIdsByKeyword(probe, PRODUCT_PROBE_LIMIT);
+    const rows = await prisma.product.findMany({
+      where: {
+        isActive: true,
+        OR: [
+          { name: { path: ["ja"], string_contains: probe } },
+          ...(keywordIds.length > 0 ? [{ id: { in: keywordIds } }] : []),
+        ],
+      },
+      orderBy: { id: "asc" },
+      take: PRODUCT_PROBE_LIMIT,
+      select,
+    });
+    for (const r of rows) {
+      const m = toMatchable(r);
+      if (!pool.has(m.id)) pool.set(m.id, m);
+    }
+    if (rows.length === 0) continue;
+    last = matchProductName(text, [...pool.values()]);
+
+    // probe が上限まで埋まった = **広すぎて切り捨てが起きている**。
+    // 切り捨てられた行の中に同じくらい当たるものが居たかもしれないので、
+    // 「1 件に絞れた」とは言えない。自動確定はやめ、候補として出す。
+    if (rows.length >= PRODUCT_PROBE_LIMIT) {
+      return last.matched
+        ? { matched: null, candidates: [last.matched] }
+        : last;
+    }
+    if (last.matched) return last;
+    if (pool.size >= PRODUCT_CANDIDATE_LIMIT) break;
+  }
+  return last;
+}
+
+/**
+ * 未突合の品名たちに対する**候補だけ**をまとめて出す（画面用）。
+ *
+ * matchProduct の probe 梯子は 1 品名あたり数クエリ投げる。取込は 1 書類 1 回
+ * なのでそれでよいが、詳細画面は開くたびに明細の行数ぶん走ることになり、
+ * 大きな製品マスタでは重い。こちらは**全行の probe をまとめて 1 クエリ**にし、
+ * 得られた 1 つのプールに対して各行を突合する。
+ */
+export async function suggestProducts(
+  texts: string[],
+): Promise<Map<string, ProductMatchCandidate[]>> {
+  const wanted = [...new Set(texts.map((t) => t.trim()).filter(Boolean))];
+  const out = new Map<string, ProductMatchCandidate[]>();
+  if (wanted.length === 0) return out;
+
+  const probes = [...new Set(wanted.flatMap(searchProbes))];
+  // キーワード側も 1 クエリでまとめて引く（生 SQL は probe ごとなので、
+  // 画面 1 回ぶんの本数に収まるよう上限を全体で分け合う）。
+  const keywordIds = [
+    ...new Set(
+      (
+        await Promise.all(
+          probes.map((probe) =>
+            productIdsByKeyword(probe, PRODUCT_PROBE_LIMIT),
+          ),
+        )
+      ).flat(),
+    ),
+  ];
+  const rows = await prisma.product.findMany({
+    where: {
+      isActive: true,
+      OR: [
+        ...probes.map((probe) => ({
+          name: { path: ["ja"], string_contains: probe } as const,
+        })),
+        ...(keywordIds.length > 0 ? [{ id: { in: keywordIds } }] : []),
+      ],
+    },
+    orderBy: { id: "asc" },
+    take: PRODUCT_CANDIDATE_LIMIT,
+    select: {
+      id: true,
+      yearMonth: true,
+      seq: true,
+      name: true,
+      legacyKey: true,
+      matchNames: true,
+    },
+  });
+  const pool = rows.map(toMatchable);
+  for (const text of wanted) {
+    const r = matchProductName(text, pool);
+    // matched は「絞れた」ということなので候補は出さない（画面は突合済みの
+    // 行に何も出さない）。ここで拾うのは絞れなかった分だけ。
+    out.set(text, r.matched ? [] : r.candidates);
+  }
+  return out;
 }
 
 /**
@@ -377,18 +666,25 @@ export async function runExtraction(
       throw new ExtractFailureError(classifyLocalFailure(e, "normalize"));
     }
 
-    const customerBpId = await matchCustomer(norm.customerName);
+    // 候補止まり（略称など複数当たり）のときは顧客を入れない — 画面が候補を
+    // 出し直すので、黙って 1 件に決めてしまうより人に選ばせる。
+    const customerBpId =
+      (await matchCustomer(norm.customerName)).matched?.id ?? null;
     const items = await Promise.all(
-      norm.items.map(async (it, i) => ({
-        productId: await matchProduct(it.productCode, it.productText),
-        productText: it.productText ?? it.productCode,
-        orderType: it.orderType,
-        quantity: it.quantity,
-        unitPrice: it.unitPrice,
-        deliveryDate: it.deliveryDate ? new Date(it.deliveryDate) : null,
-        notes: it.notes,
-        sortOrder: i,
-      })),
+      norm.items.map(async (it, i) => {
+        // 製品も同じ考え方 — 候補止まりなら入れず、画面で選ばせる。
+        const product = await matchProduct(it.productCode, it.productText);
+        return {
+          productId: product.matched ? Number(product.matched.id) : null,
+          productText: it.productText ?? it.productCode,
+          orderType: it.orderType,
+          quantity: it.quantity,
+          unitPrice: it.unitPrice,
+          deliveryDate: it.deliveryDate ? new Date(it.deliveryDate) : null,
+          notes: it.notes,
+          sortOrder: i,
+        };
+      }),
     );
 
     // 抽出中に人が「手入力に切り替え」を押していたら、その入力を上書きしない
@@ -440,7 +736,8 @@ export async function runExtraction(
       type: "INTAKE",
       title: `注文請書 ${number} を自動取込しました`,
       message: `明細 ${items.length} 件・顧客${customerBpId ? "一致" : "未特定"} — 内容を確認してください`,
-      linkPath: "/sales/order-acceptances",
+      // 取り込んだその 1 件を開く（一覧から探し直させない）
+      linkPath: APPROVAL_TARGET.order_acceptances.href(number),
     }).catch((err: unknown) => console.error("[intake] 取込通知に失敗:", err));
     return { ...key, number, status: "DRAFT" };
   } catch (e) {
@@ -517,7 +814,8 @@ async function recordExtractFailure(
       type: "INTAKE",
       title: `注文請書 ${number} の自動抽出に失敗しました`,
       message: [failure.summary, failure.hint].join(" / ").slice(0, 200),
-      linkPath: "/sales/order-acceptances",
+      // 失敗した 1 件を開く（詳細画面が extract_error を読み戻して表示する）
+      linkPath: APPROVAL_TARGET.order_acceptances.href(number),
     }).catch((err: unknown) => console.error("[intake] 取込通知に失敗:", err));
   }
   return {

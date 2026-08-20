@@ -45,9 +45,9 @@ import {
   updateShippingOrder,
 } from "@/app/(dashboard)/shipping/shipping-orders/actions";
 import { GhostButton } from "@/components/ui/buttons";
-import { FieldValue } from "@/components/ui/FieldValue";
 import { PRODUCT_F4 } from "@/components/ui/f4-presets";
 import { HelpLabel } from "@/components/ui/HelpLabel";
+import { SalesRepSelect } from "@/components/ui/SalesRepSelect";
 import { SearchSelect } from "@/components/ui/SearchSelect";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { FormSection, FormShell } from "@/components/ui/shells";
@@ -76,6 +76,8 @@ const itemSchema = z.object({
 const schema = z.object({
   /** 顧客はヘッダが権威（1 出荷書 = 1 顧客）。 */
   customerBpId: z.string().min(1, "注文明細を選択してください"),
+  /** 営業担当 — 顧客の担当一覧から選ぶ（未設定なら主担当が既定で入る）。 */
+  salesRepId: z.string().nullable(),
   type: z.enum(SHIPPING_TYPES),
   fromPlantId: z.string().nullable(),
   notes: z.string(),
@@ -109,6 +111,7 @@ const emptyItem = (
 function toFormValues(order: ShippingOrder): FormValues {
   return {
     customerBpId: order.customerId,
+    salesRepId: order.salesRepId,
     type: order.type,
     fromPlantId: order.fromPlantId,
     notes: order.notes ?? "",
@@ -129,12 +132,18 @@ export function ShippingOrderForm({
   mode,
   order,
   plantOptions,
+  initialOrderLine,
 }: {
   mode: "create" | "edit";
   /** 編集時: 対象出荷書（サーバー取得の view-model）。 */
   order?: ShippingOrder | null;
   /** 出荷元拠点 options（サーバーロード）。value = String(内部 id)。 */
   plantOptions: Option[];
+  /**
+   * 新規時に `?orderLine=` でプリセレクトする注文明細（未処理出荷書 SH03 の
+   * 「出荷書作成」から来たとき）。ピッカーで選んだのと同じ経路を通す。
+   */
+  initialOrderLine?: { id: string; label: string } | null;
 }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -146,7 +155,9 @@ export function ShippingOrderForm({
   const soToken = useRef(0);
 
   // 現在ピッカーで選んでいる注文明細（明細行の追加元）。
-  const [pickedLineId, setPickedLineId] = useState<string>("");
+  const [pickedLineId, setPickedLineId] = useState<string>(
+    mode === "create" ? (initialOrderLine?.id ?? "") : "",
+  );
   // 編集時もロットピッカー用に在庫ロット情報をロードする。
   const editOrderLineId =
     mode === "edit" ? (order?.items[0]?.orderLineId ?? "") : "";
@@ -165,6 +176,7 @@ export function ShippingOrderForm({
         ? toFormValues(order)
         : {
             customerBpId: "",
+            salesRepId: null,
             type: "DISPATCH",
             fromPlantId: null,
             notes: "",
@@ -222,6 +234,16 @@ export function ShippingOrderForm({
     });
   };
 
+  // 新規 + `?orderLine=` — ピッカーで選んだのと同じ初期化を 1 度だけ走らせる。
+  // 依存配列を持たない（毎レンダー実行）代わりに ref で 1 回に絞る — form も
+  // onOrderLineChange も毎レンダー作り直されるので依存に載せられないため。
+  const seeded = useRef(false);
+  useEffect(() => {
+    if (mode !== "create" || !initialOrderLine || seeded.current) return;
+    seeded.current = true;
+    onOrderLineChange(initialOrderLine.id);
+  });
+
   const totalQuantity = form.values.items.reduce(
     (sum, it) => sum + it.quantity,
     0,
@@ -231,6 +253,7 @@ export function ShippingOrderForm({
     startTransition(async () => {
       const payload = {
         type: values.type,
+        salesRepId: values.salesRepId,
         fromPlantId: values.fromPlantId,
         notes: values.notes || null,
         items: values.items.map((it) => ({
@@ -297,6 +320,14 @@ export function ShippingOrderForm({
               （1 出荷書に複数の注文明細を全量・部分数量で載せられる）。 */}
           <SearchSelect
             error={form.errors.customerBpId}
+            initialOption={
+              mode === "create" && initialOrderLine
+                ? {
+                    value: initialOrderLine.id,
+                    label: initialOrderLine.label,
+                  }
+                : undefined
+            }
             label={<HelpLabel {...fieldHelp("shippingOrder", "orderLine")} />}
             onChange={onOrderLineChange}
             onSearch={searchOrderLineOptions}
@@ -319,6 +350,16 @@ export function ShippingOrderForm({
               value={form.values.type}
             />
           </Input.Wrapper>
+          <SalesRepSelect
+            customerBpId={form.values.customerBpId || null}
+            initial={
+              order?.salesRepId && order.salesRepName
+                ? { id: order.salesRepId, name: order.salesRepName }
+                : null
+            }
+            onChange={(v) => form.setFieldValue("salesRepId", v)}
+            value={form.values.salesRepId}
+          />
           <Select
             clearable
             data={plantOptions}

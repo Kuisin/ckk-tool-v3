@@ -21,6 +21,7 @@ import { type LocalizedText, localized } from "@/lib/format";
 const DESIGN_REQUEST_INCLUDE = {
   orderLine: true,
   product: true,
+  createdByUser: { select: { displayName: true } },
   // ファイルタブ — 最新バージョンから順に。
   files: {
     include: { file: true },
@@ -64,6 +65,7 @@ function mapDesignRequest(r: DesignRequestRow): DesignRequest {
     productName: r.product ? productLabel(r.product) : null,
     description: r.description,
     status: r.status as DesignRequestStatus,
+    createdByName: r.createdByUser?.displayName ?? null,
     completedAt: r.completedAt?.toISOString() ?? null,
     files: r.files.map((f) => ({
       id: f.id,

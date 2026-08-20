@@ -33,11 +33,11 @@ import {
   IconRefresh,
 } from "@tabler/icons-react";
 import type { ReactNode } from "react";
+import { useFormat } from "@/components/layout/PreferencesProvider";
 import { GhostButton, SecondaryButton } from "@/components/ui/buttons";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { useIsMobile } from "@/hooks/useViewport";
 import { downloadFile } from "@/lib/download";
-import { formatDateTime } from "@/lib/format";
 
 /** 保管済み PDF のメタ（SeaweedFS の stat 由来 — メタバーに表示）。 */
 export interface PdfFileMeta {
@@ -95,6 +95,7 @@ export function PdfAttachmentPanel({
   onDownload?: () => void;
   onRegenerate?: () => void;
 }) {
+  const fmt = useFormat();
   const isMobile = useIsMobile();
 
   if (!previewSrc) {
@@ -138,7 +139,7 @@ export function PdfAttachmentPanel({
               </Group>
               <Text c="dimmed" size="xs">
                 {file?.generatedAt
-                  ? `生成: ${formatDateTime(file.generatedAt)}${
+                  ? `生成: ${fmt.dateTime(file.generatedAt)}${
                       file.generatedBy ? `（${file.generatedBy}）` : ""
                     }`
                   : "生成: 表示時に生成されます"}

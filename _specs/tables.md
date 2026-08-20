@@ -19,11 +19,23 @@
 > - `notification.prisma`: `notifications` / `push_subscriptions` / `user_notification_settings`
 > - `product-routes.prisma`: `product_process_route_version_steps` / `product_process_route_versions` / `product_process_routes`
 > - `production-master.prisma`: `work_location_groups` / `work_locations`
-> - `production.prisma`: `work_order_step_actuals` / `work_order_step_plans`
+> - `production.prisma`: `work_order_step_actuals` / `work_order_step_plans`（`work_order_order_lines` は本書に記載済み）
 > - `purchase.prisma`: `purchase_request_items` / `purchase_requests`
 > - `sys.prisma`: `document_attachments` / `document_memo_revisions` / `document_memos` / `file_folder_grants` / `link_blacklist` / `link_index` / `user_home_settings`
 >
 > 追記する場合は、スキーマからコピーせず**設計意図だけ**を書くこと。
+
+**営業担当（sales_rep_id）は書類ごとのスナップショット** — 顧客が持つ担当候補は
+`bp_sales_reps`（CUSTOMER ロール固有・複数可・主担当 1 名）で、書類側は
+`sales_rep_id` に**作成時点の 1 名を複写**する（`estimates` / `price_list_entries` /
+`quotes` / `order_acceptances` / `shipping_orders` / `delivery_notes` / `invoices`）。
+顧客マスタの担当が替わっても過去書類の担当は動かない。既定値の決め方は
+`lib/sales-rep.ts` `resolveSalesRepId()` が唯一の定義 — 明示指定が最優先、無ければ
+**顧客が変わったときだけ**その顧客の主担当を入れる（顧客据え置きで空 =
+利用者が意図的に外した、とみなして戻さない）。注文明細（`order_lines`）は列を持たず
+注文請書ヘッダから読む（顧客・作成者と同じ扱い）。納品書は出荷書の担当を、請求書は
+対象出荷の担当が 1 人に定まればそれを引き継ぐ。
+
 ### Auth
 ```
 Table users {
@@ -327,6 +339,10 @@ Table materials {
   nominal_diameter_mm numeric(8,3)        // 呼び径 (mm)
   name            json [not null]         // { ja: '', en: '' }
   unit            varchar [not null]      // 本, kg, m など
+  // 検索・AI 突合用のキーワード（別名・略称・読み・英字表記）。
+  // business_partners.match_names と同じ役割。候補は po-extract の
+  // /generate/keywords に作らせ、人が採用したものだけが入る。
+  match_names     "text[]"    [default: '{}']
   is_active       boolean [default: true]
   notes           text                    // 備考
   created_at      timestamp
@@ -349,6 +365,9 @@ Table products {
   material_id     varchar [ref: > materials.id]  // 廃止予定（旧: 特定素材参照。現在は未使用）
   unit            varchar [not null, default: '本']
   spec            json                    // 仕様（フリー構造）
+  // 検索・AI 突合用のキーワード（別名・略称・読み・英字表記）。注文書の品名が
+  // 名称と一致しないときの突合キー（lib/intake matchProduct）でもある。
+  match_names     "text[]"    [default: '{}']
   design_file_id  uuid [ref: > design_files.id]
   is_active       boolean [default: true]
   notes           text
@@ -545,6 +564,9 @@ Table order_acceptances {
   quote_id        uuid [ref: > quotes.id]
   customer_bp_id  uuid [not null, ref: > business_partners.id]
   customer_branch_bp_id uuid [ref: > business_partners.id]
+  ship_to_bp_id   uuid [ref: > business_partners.id]  // 出荷先（顧客本体と別法人・支店でもよい。null = 顧客へ）
+  assigned_plant_id int [ref: > plants.id]            // 担当拠点（この注文を処理する拠点）
+  shipping_work_location_id int [ref: > work_locations.id]  // 出荷作業場所（作業場所マスタ MS0D）
   customer_order_ref varchar               // 顧客注文書番号（FAX受取）
   status          ORDER_ACCEPTANCE_STATUS [not null, default: 'PENDING']
   total_amount    numeric(12,2)            // 注文明細から自動計算
@@ -567,7 +589,8 @@ Enum ORDER_ACCEPTANCE_STATUS {
 
 // 注文明細 = 注文請書（order_acceptances）の明細行そのもの。
 // 別テーブルではない — 旧 sales_orders は order_lines に統合済み。
-// 注文請書 1 行 = 注文明細 1 行で固定（分割も統合もしない）。
+// 注文請書 1 行 = 注文明細 1 行で固定（明細自体は分割も統合もしない —
+// 生産側の分割・統合は 指示書への割当 work_order_order_lines が担う）。
 // 確定前は branch / amount が null で status = DRAFT、確定時に sort_order 順で
 // branch 1..N を採番し金額を凍結する。以後 branch は不変。
 Table order_lines {
@@ -589,7 +612,7 @@ Table order_lines {
 
   // 実行（旧 sales_orders 由来）
   status          ORDER_LINE_STATUS [not null, default: 'DRAFT']
-  lot_number      int [unique]             // 通し連番（指示書と共用）
+  lot_number      int                      // 通し連番（指示書番号と共用。統合ロットでは複数明細が共有するため unique ではない）
   is_locked       boolean [not null, default: false]  // 承認依頼中のロック
   end_user_bp_id  uuid [ref: > business_partners.id]  // 行ごとに異なり得る
   confirmed_at    timestamp
@@ -623,13 +646,17 @@ Enum ORDER_LINE_STATUS {
 // 指示書（§3〜§7）通し連番
 // ===========================
 
+// 注文明細との紐付けは work_order_order_lines（m:n の割当）— 1 明細を複数
+// 指示書に分けて部分手配（分割）でき、同一製品の複数明細を 1 指示書 =
+// 1 ロットで作る（統合）こともできる。割当ゼロ = 在庫向けの独立指示書。
 Table work_orders {
   id              uuid [pk]
   work_order_number int [unique, not null]  // 通し連番
-  order_line_id   uuid [not null, ref: > order_lines.id]
+  product_id      int [not null, ref: > products.id]  // 常に保持（明細から複写 or 直接指定）
   type            WORK_ORDER_TYPE [not null]
-  planned_quantity int [not null]
+  planned_quantity int [not null]           // ≥ Σ割当（不良予備分の上乗せは自由）
   material_id     varchar [ref: > materials.id]
+  storage_location_id int [ref: > storage_locations.id]  // 完成品の保管場所（MS0E）
   status          WORK_ORDER_STATUS [not null, default: 'DRAFT']
   approval_status WORK_ORDER_APPROVAL_STATUS [not null, default: 'NONE']
   source_work_order_id uuid [ref: > work_orders.id]  // コピー元（バージョン警告用）
@@ -640,6 +667,22 @@ Table work_orders {
   created_by      uuid [ref: > users.id]
   created_at      timestamp
   updated_at      timestamp
+}
+
+// 指示書 ↔ 注文明細の割当（m:n）。quantity = その指示書がその明細のために
+// 充当する数量。不変条件（アプリ側 lib/work-order-alloc-core.ts が唯一の
+// 判定元）: 明細ごと Σquantity ≤ 受注数量 / 指示書ごと planned_quantity ≥
+// Σquantity / 割当明細は同一製品 / FROM_STOCK は割当 1 件のみ。
+Table work_order_order_lines {
+  work_order_id   uuid [not null, ref: > work_orders.id]
+  order_line_id   uuid [not null, ref: > order_lines.id]
+  quantity        int [not null]
+  sort_order      int [not null, default: 0]
+  created_at      timestamp
+
+  indexes {
+    (work_order_id, order_line_id) [pk]
+  }
 }
 
 Enum WORK_ORDER_TYPE {
@@ -876,6 +919,14 @@ Table approval_delegates {
 // 1 行 = 1 段の承認依頼。対象は多態（target_type = テーブル名 /
 // target_id = 業務キー — audit と同じ規約）。進行中は
 // (target_type, target_id) につき常に 1 行だけ PENDING（部分 unique index）。
+//
+// ★ 多態参照は FK ではないので、書類を消しても子行は残る。これを DB 側で
+//   強制するために各書類テーブルに AFTER DELETE トリガー
+//   purge_children_after_delete（関数 app.purge_document_children）を置き、
+//   承認依頼・メモ・メモ改訂・添付をまとめて消している
+//   （20260911090000_document_children_cascade）。Prisma スキーマには現れない
+//   ので、書類テーブルを追加したらトリガーも足すこと。監査ログ（audit_logs）は
+//   意図的に対象外 — 書類を消しても監査記録は残す。
 //
 // flow_snapshot は依頼時点のフロー全段のコピー
 // [{ stepNo, name, groupId, groupName, mode }]。これを持つことで
@@ -1487,6 +1538,23 @@ Table bp_customer_attrs {
   notes               text
 }
 
+// ─── 営業担当（CKK 側の担当者）───────────────────
+// CUSTOMER ロール固有。1 顧客に複数登録でき、書類（見積書・注文請書・
+// 出荷書・納品書・請求書・価格表・試算）の営業担当はこの一覧から選ぶ。
+// is_primary の 1 名が新規書類の既定値（部分 unique index で顧客あたり 1 名）。
+// 顧客側の担当者（bp_contacts）とは別物 — こちらは自社の営業。
+Table bp_sales_reps {
+  bp_id           uuid    [not null, ref: > business_partners.id]
+  user_id         uuid    [not null, ref: > users.id]
+  is_primary      boolean [default: false]
+  sort_order      int     [default: 0]
+  created_at      timestamp
+
+  indexes {
+    (bp_id, user_id) [pk]
+  }
+}
+
 // ─── 仕入先・外注先固有属性 ───────────────────
 // VENDOR ロールを持つ BP にのみ存在
 // vendor_type で仕入先（素材調達）と外注先（工程委託）を区別
@@ -1537,6 +1605,43 @@ Table bp_contacts {
 
 ### Other
 ```
+// ===========================
+// 学習した照合名（AI 突合）
+// ===========================
+//
+// 取込の突合が外れると人が画面で正しい取引先・製品を選ぶ。その判断は
+// 1 回きりで捨てられていて、同じ書式の注文書が来るたびに同じ直しをしていた。
+// ここに貯めて次から自動で当てる。
+//
+// **1 表記 = 1 マスタ**（unique(target_type, alias_key)）。別のマスタへ結び
+// 直すと行が移る（最後の訂正が勝つ）ので曖昧さが残らず、突合側は当たった
+// 時点で自動確定してよい。突合の順序は 学習済み → 推測（表記ゆれの段階的
+// 突合）— 人が決めたものを機械が上書きしない。
+//
+// マスタ側の match_names（人が先回りして登録する別名）とは役割が違う:
+//   match_names   = 「こう書かれるはず」と予想して登録する
+//   match_aliases = 「こう書かれていた」を実績から貯める
+//
+// target_type はテーブル名（audit_logs と同じ多態規約）。FK は張れないので
+// マスタを消しても行は残る — 突合時に存在しない target_id は無視する。
+Table match_aliases {
+  id              serial [pk]
+  target_type     varchar [not null]   // business_partners | products
+  target_id       varchar [not null]   // マスタ行の内部 id（文字列）
+  alias           varchar [not null]   // 書類に印字されていた表記（そのまま）
+  alias_key       varchar [not null]   // 突合用の正規化キー（アプリ側で作る）
+  hit_count       int [not null, default: 0]  // この表記で自動確定した回数
+  last_seen_at    timestamp
+  created_by      uuid [ref: > users.id]
+  created_at      timestamp
+  updated_at      timestamp
+
+  indexes {
+    (target_type, alias_key) [unique]
+    (target_type, target_id)
+  }
+}
+
 // ===========================
 // ファイルストレージ（SeaweedFS）
 // ===========================

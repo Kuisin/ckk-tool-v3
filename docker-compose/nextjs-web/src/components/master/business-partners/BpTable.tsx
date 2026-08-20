@@ -26,6 +26,7 @@ import {
 } from "@/app/(dashboard)/master/_shared/bp-actions";
 import type { BpRow } from "@/app/(dashboard)/master/_shared/bp-data";
 import { BP_BASE_PATH } from "@/app/(dashboard)/master/_shared/bp-paths";
+import { useFormat } from "@/components/layout/PreferencesProvider";
 import {
   type BpModalTarget,
   DeleteBpModal,
@@ -42,7 +43,6 @@ import { useUrlSelectState, useUrlStringState } from "@/hooks/useUrlState";
 import { useIsMobile } from "@/hooks/useViewport";
 import { bpMatchesQuery } from "@/lib/bp-search";
 import { BP_ROLE_OPTIONS } from "@/lib/enum-labels";
-import { formatDate } from "@/lib/format";
 
 const STATUS_OPTIONS = [
   { value: "active", label: "有効" },
@@ -50,6 +50,7 @@ const STATUS_OPTIONS = [
 ];
 
 export function BpTable({ rows }: { rows: BpRow[] }) {
+  const fmt = useFormat();
   const router = useRouter();
   const isMobile = useIsMobile();
   const [, startTransition] = useTransition();
@@ -176,7 +177,7 @@ export function BpTable({ rows }: { rows: BpRow[] }) {
       hideable: true,
       width: 120,
       sortValue: (r) => r.updatedAt,
-      render: (r) => formatDate(r.updatedAt),
+      render: (r) => fmt.date(r.updatedAt),
     },
   ];
 
@@ -258,7 +259,7 @@ export function BpTable({ rows }: { rows: BpRow[] }) {
                     {r.branchCount > 0 ? `${r.branchCount} 支店` : "支店なし"}
                   </Text>
                   <Text c="dimmed" size="xs">
-                    {formatDate(r.updatedAt)}
+                    {fmt.date(r.updatedAt)}
                   </Text>
                 </Group>
               </Stack>

@@ -59,6 +59,7 @@ model Plant {
   workLocationGroups WorkLocationGroup[] @relation("WorkLocationGroupPlant")
   storageLocations   StorageLocation[]   @relation("StorageLocationPlant")
   userPlants         UserPlant[]         @relation("PlantUsers")
+  orderAcceptances   OrderAcceptance[]   @relation("AcceptancePlant")
 
   @@index([regionId])
   @@map("plants")
@@ -106,6 +107,7 @@ model WorkLocation {
 
   group     WorkLocationGroup   @relation(fields: [groupId], references: [id], onDelete: Cascade)
   stepPlans WorkOrderStepPlan[] @relation("StepPlanWorkLocation")
+  orderAcceptances OrderAcceptance[] @relation("AcceptanceShippingWorkLocation")
 
   @@index([groupId, sortOrder])
   @@map("work_locations")

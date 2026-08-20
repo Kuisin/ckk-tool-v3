@@ -42,6 +42,19 @@ describe("reviewIntake", () => {
     expect(f?.hint).toContain("株式会社オーエムアイ");
   });
 
+  it("顧客: 候補があるときは「選ぶだけ」と分かる案内にする", () => {
+    // 候補ゼロ（＝マスタに無い）と、候補はあるが 1 件に絞れない、では
+    // 次にやることが違う（登録する / 選ぶ）。
+    const rs = reviewIntake(
+      { customer_name: "株式会社オーエムアイ" },
+      saved({ customerCandidateCount: 2 }),
+    );
+    const f = find(rs, "customer");
+    expect(f?.status).toBe("unmatched");
+    expect(f?.hint).toContain("2 件");
+    expect(f?.hint).toContain("候補");
+  });
+
   it("顧客に自社名が来たら「向きが逆」と分かる案内を出す", () => {
     const rs = reviewIntake(
       { customer_name: "シー・ケイ・ケー株式会社" },
@@ -86,6 +99,26 @@ describe("reviewIntake", () => {
     expect(f?.status).toBe("unmatched");
     expect(f?.read).toBe("特殊ドリル A");
     expect(f?.row).toBe(1);
+  });
+
+  it("製品: 候補があるときは「選ぶだけ」と分かる案内にする", () => {
+    const rs = reviewIntake(
+      { items: [{ product_name: "特殊ドリル", quantity: 5 }] },
+      saved({
+        items: [
+          {
+            productId: null,
+            productText: "特殊ドリル",
+            productCandidateCount: 3,
+            quantity: 5,
+            unitPrice: 100,
+          },
+        ],
+      }),
+    );
+    const f = find(rs, "item-1-product");
+    expect(f?.hint).toContain("3 件");
+    expect(f?.hint).toContain("候補");
   });
 
   it("製品: 突合済みなら明細の指摘は出ない", () => {

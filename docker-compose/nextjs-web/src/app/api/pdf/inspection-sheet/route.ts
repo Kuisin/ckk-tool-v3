@@ -17,6 +17,8 @@ import {
   sheetTemplateHead,
 } from "@/lib/inspection-sheet-pdf";
 import { renderPdf } from "@/lib/pdf";
+import { documentQrSvg } from "@/lib/pdf-qr";
+import { QR_KINDS } from "@/lib/qr-payload";
 
 export const dynamic = "force-dynamic";
 
@@ -69,6 +71,9 @@ export async function GET(request: Request): Promise<Response> {
   const lotQuantity = wo?.plannedQuantity ?? null;
 
   const pdf = await renderPdf("inspection-sheet.html", {
+    // 検査表は指示書に属する紙なので QR は指示書番号（CKK:WO:<番号>）。
+    // 指示書の無い白紙（マスタ印刷）では空 = QR を描かない。
+    doc_qr: documentQrSvg(QR_KINDS.WO, workOrderNumber),
     template: sheetTemplateHead(template, lotQuantity),
     meta: {
       work_order: workOrderNumber != null ? `#${workOrderNumber}` : BLANK_LINE,

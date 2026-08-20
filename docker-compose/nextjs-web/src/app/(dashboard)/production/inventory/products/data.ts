@@ -21,8 +21,11 @@ import { formatProductNumber, orderLineNumberOf } from "@/lib/doc-number";
 import { type LocalizedText, localized } from "@/lib/format";
 import {
   computeWipByStep,
+  STEP_LINK_STATE_SELECT,
+  STEP_STATE_SELECT,
   type StepLinkState,
   type StepState,
+  toStepState,
   type WorkflowCtx,
 } from "@/lib/workflow-core";
 import { fetchInventoryTransactions } from "../shared";
@@ -104,8 +107,10 @@ export async function fetchWipRows(): Promise<WipRow[]> {
     prisma.workOrder.findMany({
       where: { status: "IN_PROGRESS", ...plantFilter },
       include: {
-        steps: true,
-        stepLinks: true,
+        // エンジンが読む列だけ（STEP_STATE_SELECT — workflow-core 参照）。
+        // 全列 SELECT は列追加のたび migration 前の DB で P2022 に落ちる。
+        steps: { select: STEP_STATE_SELECT },
+        stepLinks: { select: STEP_LINK_STATE_SELECT },
         product: true,
       },
       orderBy: { workOrderNumber: "asc" },
@@ -125,23 +130,8 @@ export async function fetchWipRows(): Promise<WipRow[]> {
 
   const rows: WipRow[] = [];
   for (const wo of workOrders) {
-    const steps: StepState[] = wo.steps.map((s) => ({
-      id: s.id,
-      processStepId: s.processStepId,
-      status: s.status,
-      sortOrder: s.sortOrder,
-      inputQuantity: s.inputQuantity,
-      outputSuccess: s.outputSuccessQuantity,
-      defectSemiFinished: s.outputDefectSemiFinished,
-      defectScrap: s.outputDefectScrap,
-      defectRework: s.outputDefectRework,
-      sessionLockedBy: s.sessionLockedBy,
-    }));
-    const links: StepLinkState[] = wo.stepLinks.map((l) => ({
-      sourceStepId: l.sourceStepId,
-      targetStepId: l.targetStepId,
-      routedQuantity: l.routedQuantity,
-    }));
+    const steps: StepState[] = wo.steps.map(toStepState);
+    const links: StepLinkState[] = wo.stepLinks;
     const ctx: WorkflowCtx = {
       plannedQuantity: wo.plannedQuantity,
       steps,

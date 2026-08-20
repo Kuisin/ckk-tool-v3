@@ -27,13 +27,20 @@ import {
 import { type LocalizedText, localized } from "@/lib/format";
 import { allocateDocumentKey } from "@/lib/numbering";
 import { lineShipStatus } from "@/lib/order-line-core";
+import { resolveSalesRepId } from "@/lib/sales-rep";
 import {
   type ActionResult,
   actionError,
   actionOk,
   prismaErrorMessage,
 } from "@/lib/server-action";
-import { computeFinishedQuantity } from "@/lib/workflow-core";
+import { distributeFinished } from "@/lib/work-order-alloc-core";
+import {
+  computeFinishedQuantity,
+  STEP_LINK_STATE_SELECT,
+  STEP_STATE_SELECT,
+  toStepState,
+} from "@/lib/workflow-core";
 
 const BASE_PATH = "/shipping/shipping-orders";
 const SCOPE_DENIED = "この操作の権限がありません（対象範囲外）";
@@ -69,6 +76,8 @@ const createInput = z
   .object({
     customerBpId: z.string().min(1, "顧客を選択してください"),
     customerBranchBpId: z.string().nullable(),
+    /** 営業担当 — 未指定なら顧客の主担当が入る（lib/sales-rep）。 */
+    salesRepId: z.string().nullable().optional(),
     type: z.enum(["DISPATCH", "STOCK_STORAGE"]),
     fromPlantId: z.string().nullable(),
     notes: z.string().nullable(),
@@ -91,6 +100,8 @@ const createInput = z
 
 const updateInput = z
   .object({
+    /** 営業担当。顧客は作成後不変なので選ばれた値をそのまま保存する。 */
+    salesRepId: z.string().nullable().optional(),
     type: z.enum(["DISPATCH", "STOCK_STORAGE"]),
     fromPlantId: z.string().nullable(),
     notes: z.string().nullable(),
@@ -187,8 +198,23 @@ export async function fetchShippingSourceInfo(
     const productId = so.productId;
     const [workOrders, inventories] = await Promise.all([
       prisma.workOrder.findMany({
-        where: { orderLineId, status: "COMPLETED" },
-        include: { steps: true, stepLinks: true },
+        where: {
+          orderLineLinks: { some: { orderLineId } },
+          status: "COMPLETED",
+        },
+        // エンジンが読む列だけ（STEP_STATE_SELECT — workflow-core 参照）。
+        // 全列 SELECT は列追加のたび migration 前の DB で P2022 に落ちる。
+        select: {
+          workOrderNumber: true,
+          plannedQuantity: true,
+          steps: { select: STEP_STATE_SELECT },
+          stepLinks: { select: STEP_LINK_STATE_SELECT },
+          // 統合ロットの出来高配分（distributeFinished）に使う
+          orderLineLinks: {
+            select: { orderLineId: true, quantity: true },
+            orderBy: { sortOrder: "asc" },
+          },
+        },
         orderBy: { workOrderNumber: "asc" },
       }),
       // 対象製品の在庫ロット（非半製品・ロット番号あり）— 他 SO / 在庫向け
@@ -245,29 +271,25 @@ export async function fetchShippingSourceInfo(
       quantity: so.quantity,
       status: so.status,
       completedWorkOrders: workOrders.map((wo) => {
-        // 出来高 = グラフ終端集計（分岐合流 DAG でも正しい残良品）
+        // 出来高 = グラフ終端集計（分岐合流 DAG でも正しい残良品）。
+        // toStepState 経由なので branchStock も渡り、半製品在庫で終わる
+        // 分岐終端を出荷可能数に数えない。統合ロットでは完成数を割当順に
+        // 配分し、この明細ぶんだけを既定数量にする。
         const finished = computeFinishedQuantity(
-          wo.steps.map((s) => ({
-            id: s.id,
-            processStepId: s.processStepId,
-            status: s.status,
-            sortOrder: s.sortOrder,
-            inputQuantity: s.inputQuantity,
-            outputSuccess: s.outputSuccessQuantity,
-            defectSemiFinished: s.outputDefectSemiFinished,
-            defectScrap: s.outputDefectScrap,
-            defectRework: s.outputDefectRework,
-            sessionLockedBy: s.sessionLockedBy,
-          })),
-          wo.stepLinks.map((l) => ({
-            sourceStepId: l.sourceStepId,
-            targetStepId: l.targetStepId,
-            routedQuantity: l.routedQuantity,
-          })),
+          wo.steps.map(toStepState),
+          wo.stepLinks,
         );
+        const share =
+          distributeFinished(
+            wo.orderLineLinks,
+            finished > 0 ? finished : wo.plannedQuantity,
+          ).get(orderLineId) ?? 0;
+        const ownAlloc =
+          wo.orderLineLinks.find((l) => l.orderLineId === orderLineId)
+            ?.quantity ?? 0;
         return {
           workOrderNumber: wo.workOrderNumber,
-          outputQuantity: finished > 0 ? finished : wo.plannedQuantity,
+          outputQuantity: share > 0 ? share : ownAlloc,
         };
       }),
       stockLots,
@@ -478,12 +500,18 @@ export async function createShippingOrder(
     }
     const workOrderId = await resolveHeaderWorkOrderId(v.items);
     const { yearMonth, seq } = await allocateDocumentKey("SHIPPING");
+    const salesRepId = await resolveSalesRepId(
+      v.salesRepId,
+      v.customerBpId,
+      null,
+    );
     await prisma.shippingOrder.create({
       data: {
         yearMonth,
         seq,
         customerBpId: v.customerBpId,
         customerBranchBpId: v.customerBranchBpId,
+        salesRepId,
         workOrderId,
         type: v.type,
         fromPlantId: v.fromPlantId ? Number(v.fromPlantId) : null,
@@ -508,6 +536,7 @@ export async function createShippingOrder(
       recordId: number,
       after: {
         customerBpId: v.customerBpId,
+        salesRepId,
         type: v.type,
         fromPlantId: v.fromPlantId,
         status: "DRAFT",
@@ -544,6 +573,7 @@ export async function updateShippingOrder(
       where: { yearMonth_seq: key },
       select: {
         type: true,
+        salesRepId: true,
         fromPlantId: true,
         notes: true,
         items: {
@@ -570,6 +600,7 @@ export async function updateShippingOrder(
         data: {
           type: v.type,
           workOrderId,
+          salesRepId: v.salesRepId?.trim() || null,
           fromPlantId: v.fromPlantId ? Number(v.fromPlantId) : null,
           notes: trimOrNull(v.notes),
         },
@@ -604,6 +635,7 @@ export async function updateShippingOrder(
       before: prior ?? undefined,
       after: {
         type: v.type,
+        salesRepId: v.salesRepId?.trim() || null,
         fromPlantId: v.fromPlantId ? Number(v.fromPlantId) : null,
         notes: trimOrNull(v.notes),
         items: v.items,

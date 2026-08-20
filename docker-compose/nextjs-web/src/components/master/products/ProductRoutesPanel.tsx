@@ -29,6 +29,7 @@ import {
   deleteProductRoute,
   updateProductRoute,
 } from "@/app/(dashboard)/master/products/route-actions";
+import { useFormat } from "@/components/layout/PreferencesProvider";
 import { ActiveBadge } from "@/components/ui/ActiveBadge";
 import {
   DangerButton,
@@ -39,7 +40,6 @@ import {
 import { EmptyState } from "@/components/ui/EmptyState";
 import { useIsMobile } from "@/hooks/useViewport";
 import { PROCESS_CATEGORY_LABEL } from "@/lib/enum-labels";
-import { formatDate } from "@/lib/format";
 import type { RouteView } from "@/lib/product-routes-core";
 
 export function ProductRoutesPanel({
@@ -87,6 +87,7 @@ function RouteCard({
   productId: number;
   route: RouteView;
 }) {
+  const fmt = useFormat();
   const router = useRouter();
   const isMobile = useIsMobile();
   const latest = route.versions[0] ?? null;
@@ -139,7 +140,7 @@ function RouteCard({
             allowDeselect={false}
             data={route.versions.map((v) => ({
               value: v.id,
-              label: `v${v.version}（${formatDate(v.createdAt)}）`,
+              label: `v${v.version}（${fmt.date(v.createdAt)}）`,
             }))}
             onChange={setVersionId}
             size="xs"

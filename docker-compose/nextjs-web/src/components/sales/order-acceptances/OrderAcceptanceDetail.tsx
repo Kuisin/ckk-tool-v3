@@ -8,7 +8,8 @@
  * アーカイブ（ARCHIVED）。
  *
  * - IMPORT: 抽出失敗は原因・対処つきの Alert + 再抽出 / 手入力へ切り替え
- *   （自動再試行の待機中は橙で「再試行中」）。処理中は案内 Alert。
+ *   （自動再試行の待機中は橙で「再試行中」）。処理中は案内 Alert +
+ *   抽出を実行（待ち行列に積まれ損ねた行を流し直す口）/ 手入力へ切り替え。
  * - DRAFT: **閲覧 / 編集の 2 モード**。既定は閲覧（サマリ + 明細表 + 承認依頼）で、
  *   「編集」を押すと入力（基本情報 + 明細エディタ）に切り替わり、保存 /
  *   キャンセルで閲覧へ戻る。編集中は承認依頼を出さない（未保存の編集が
@@ -29,6 +30,7 @@ import {
   Grid,
   Group,
   Paper,
+  Select,
   Stack,
   Stepper,
   Table,
@@ -37,6 +39,7 @@ import {
   Textarea,
   TextInput,
   Title,
+  Tooltip,
 } from "@mantine/core";
 import { DatePickerInput } from "@mantine/dates";
 import { modals } from "@mantine/modals";
@@ -58,6 +61,7 @@ import { type ReactNode, useEffect, useState, useTransition } from "react";
 import {
   searchCustomerOptions,
   searchQuoteOptions,
+  searchShipToOptions,
 } from "@/app/(dashboard)/_shared/option-search";
 import {
   approveAcceptance,
@@ -77,6 +81,7 @@ import {
   ApprovalActionCard,
   type ApprovalActionState,
 } from "@/components/approvals/ApprovalActionCard";
+import { useFormat } from "@/components/layout/PreferencesProvider";
 import {
   ApprovalTrailList,
   type ApprovalTrailView,
@@ -95,6 +100,7 @@ import { HistoryPanel } from "@/components/ui/HistoryPanel";
 import { MemoPanel } from "@/components/ui/MemoPanel";
 import { MoneyText } from "@/components/ui/MoneyText";
 import { ModalShell } from "@/components/ui/modals";
+import { SalesRepSelect } from "@/components/ui/SalesRepSelect";
 import { SearchSelect } from "@/components/ui/SearchSelect";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import {
@@ -108,15 +114,20 @@ import {
 import { useTabParam } from "@/hooks/useUrlState";
 import type { MemoView } from "@/lib/document-memos";
 import { ORDER_TYPE_LABEL } from "@/lib/enum-labels";
-import { formatDate, formatDateTime, formatMoney } from "@/lib/format";
+import { formatMoney } from "@/lib/format";
 import { parseExtractError } from "@/lib/intake-extract-error";
 import {
   acceptanceReadiness,
   readinessSummary,
 } from "@/lib/order-acceptance-readiness";
+import {
+  acceptanceTotals,
+  productSummary,
+} from "@/lib/order-acceptance-totals";
 import type { ActionResult } from "@/lib/server-action";
 import { IntakeDocumentPane } from "./IntakeDocumentPane";
 import { IntakeReviewPanel } from "./IntakeReviewPanel";
+import { MatchSuggestions } from "./MatchSuggestions";
 import {
   INTAKE_SOURCE_BADGE,
   type OrderAcceptanceView,
@@ -170,6 +181,8 @@ export function OrderAcceptanceDetail({
   approvalTrail = [],
   approval,
   priceCheck = EMPTY_PRICE_CHECK,
+  plantOptions,
+  workLocationOptions,
 }: {
   acceptance: OrderAcceptanceView;
   /** 操作履歴（audit_logs 由来、履歴タブ）。 */
@@ -184,7 +197,12 @@ export function OrderAcceptanceDetail({
   approval: ApprovalActionState;
   /** §2 価格照合結果（保存済み明細 × 価格表 — サーバー側で計算）。 */
   priceCheck?: AcceptancePriceCheck;
+  /** 担当拠点の選択肢（DraftEditor 用 — サーバーで取得して渡す）。 */
+  plantOptions: { value: string; label: string }[];
+  /** 出荷作業場所の選択肢（lib/work-locations fetchWorkLocationOptions）。 */
+  workLocationOptions: { value: string; label: string }[];
 }) {
+  const fmt = useFormat();
   const router = useRouter();
   // アクティブタブを ?tab= に保持（URL 共有でタブまで再現）
   const [tab, setTab] = useTabParam("attachments");
@@ -229,6 +247,10 @@ export function OrderAcceptanceDetail({
     customerBpId: a.customerBpId,
     items: a.items,
   });
+
+  // 明細の合計（ヘッダ要約と明細表の合計行で同じ数字を出す — lib で 1 本化）。
+  const totals = acceptanceTotals(a.items);
+  const products = productSummary(a.items);
 
   // §2 価格照合（P0-8）— 差異行と明細 id → 照合結果の索引。
   const diffLines = priceCheck.lines.filter((l) => l.diff);
@@ -414,10 +436,10 @@ export function OrderAcceptanceDetail({
         />
       }
       breadcrumbs={["販売", { label: "注文請書", href: BASE_PATH }, "詳細"]}
-      createdAt={formatDateTime(a.createdAt)}
+      createdAt={fmt.dateTime(a.createdAt)}
       status={<StatusBadge entity="OrderAcceptanceIntake" status={a.status} />}
       title={a.number}
-      updatedAt={formatDateTime(a.updatedAt)}
+      updatedAt={fmt.dateTime(a.updatedAt)}
     >
       {/*
         書類は **状態に関わらず常に** 左に出す（取込中・失敗中でも見たい）。
@@ -507,6 +529,20 @@ export function OrderAcceptanceDetail({
                       自動抽出の順番待ち・実行中です（1件あたり約1〜3分）。完了すると下書きになります。この画面を閉じても処理は続きます。
                     </Text>
                     <Group>
+                      {/* 待ち行列はプロセス内 — 取込直後にブラウザやサーバーが
+                          落ちて積まれ損ねた行を、その場で流し直せるようにする。 */}
+                      <SecondaryButton
+                        leftSection={<IconRefresh size={14} />}
+                        loading={isPending}
+                        onClick={() =>
+                          run(
+                            () => retryExtraction(a.number),
+                            "抽出を受け付けました（順番に実行されます）",
+                          )
+                        }
+                      >
+                        抽出を実行
+                      </SecondaryButton>
                       <SecondaryButton
                         leftSection={<IconPencil size={14} />}
                         loading={isPending}
@@ -551,6 +587,8 @@ export function OrderAcceptanceDetail({
                 acceptance={a}
                 lineChecks={checkByItemId}
                 onClose={() => setEditing(false)}
+                plantOptions={plantOptions}
+                workLocationOptions={workLocationOptions}
               />
             ) : (
               <>
@@ -601,6 +639,13 @@ export function OrderAcceptanceDetail({
                       )
                     }
                   />
+                  <FieldValue label="営業担当" value={a.salesRepName} />
+                  <FieldValue label="出荷先" value={a.shipToName} />
+                  <FieldValue label="担当拠点" value={a.assignedPlantName} />
+                  <FieldValue
+                    label="出荷作業場所"
+                    value={a.shippingWorkLocationName}
+                  />
                   <FieldValue
                     label="顧客注文書番号"
                     value={a.customerOrderRef}
@@ -621,18 +666,57 @@ export function OrderAcceptanceDetail({
                       )
                     }
                   />
-                  <FieldValue label="注文日" value={formatDate(a.orderDate)} />
+                  <FieldValue label="注文日" value={fmt.date(a.orderDate)} />
+                  {/*
+                    何を・どれだけ・いくらで受けた書類なのかは、これまで明細表を
+                    開かないと分からなかった。ヘッダの 3 項目で足りるようにする。
+                  */}
                   <FieldValue
-                    label="明細数"
+                    label="製品"
+                    value={
+                      products.names.length > 1 ? (
+                        <Tooltip
+                          label={products.names.join(" / ")}
+                          multiline
+                          w={320}
+                          withinPortal
+                        >
+                          <Text size="sm" span>
+                            {products.label}
+                          </Text>
+                        </Tooltip>
+                      ) : (
+                        products.label
+                      )
+                    }
+                  />
+                  <FieldValue
+                    label="明細数 / 合計数量"
                     value={
                       <Text className="tabular-nums" size="sm" span>
-                        {a.items.length} 件
+                        {totals.lineCount} 件 /{" "}
+                        {totals.quantity.toLocaleString("ja-JP")}
                       </Text>
                     }
                   />
                   <FieldValue
+                    label="合計金額"
+                    value={
+                      <Group gap="xs" wrap="wrap">
+                        <MoneyText value={totals.amount} />
+                        {/* 単価未入力の行は足せていない — 総額と読まれないように。 */}
+                        {totals.unpricedCount > 0 && (
+                          <Badge color="orange" size="xs" variant="light">
+                            単価未入力 {totals.unpricedCount} 件を除く
+                          </Badge>
+                        )}
+                      </Group>
+                    }
+                  />
+                  <FieldValue label="作成者" value={a.createdByName} />
+                  <FieldValue
                     label="展開日時"
-                    value={a.completedAt ? formatDateTime(a.completedAt) : "—"}
+                    value={a.completedAt ? fmt.dateTime(a.completedAt) : "—"}
                   />
                   {/* 備考は 1 行まるごと使う — 3 列の枠だと読めない */}
                   <FieldValue fullWidth label="備考" value={a.notes} />
@@ -724,7 +808,7 @@ export function OrderAcceptanceDetail({
                                 )}
                               </Table.Td>
                               <Table.Td className="tabular-nums">
-                                {formatDate(it.deliveryDate)}
+                                {fmt.date(it.deliveryDate)}
                               </Table.Td>
                               <Table.Td>
                                 <Text c="dimmed" size="xs">
@@ -735,6 +819,33 @@ export function OrderAcceptanceDetail({
                           );
                         })}
                       </Table.Tbody>
+                      {/*
+                        合計行。単価未入力の行は金額に足せないので、その件数を
+                        添える（少ない金額を総額と読まれるのを防ぐ）。
+                      */}
+                      {a.items.length > 0 && (
+                        <Table.Tfoot>
+                          <Table.Tr>
+                            <Table.Th colSpan={3} ta="right">
+                              合計
+                            </Table.Th>
+                            <Table.Th className="tabular-nums" ta="right">
+                              {totals.quantity.toLocaleString("ja-JP")}
+                            </Table.Th>
+                            <Table.Th ta="right">
+                              {totals.unpricedCount > 0 && (
+                                <Text c="dimmed" fw={400} size="xs">
+                                  未入力 {totals.unpricedCount} 件
+                                </Text>
+                              )}
+                            </Table.Th>
+                            <Table.Th ta="right">
+                              <MoneyText fw={700} value={totals.amount} />
+                            </Table.Th>
+                            <Table.Th colSpan={2} />
+                          </Table.Tr>
+                        </Table.Tfoot>
+                      )}
                     </Table>
                   </Table.ScrollContainer>
                 </Paper>
@@ -765,7 +876,7 @@ export function OrderAcceptanceDetail({
                 />
                 <Stepper.Step
                   description={
-                    a.completedAt ? formatDate(a.completedAt) : "注文明細へ"
+                    a.completedAt ? fmt.date(a.completedAt) : "注文明細へ"
                   }
                   label="確定"
                   loading={a.status === "APPROVED"}
@@ -774,7 +885,7 @@ export function OrderAcceptanceDetail({
 
               {a.status === "ARCHIVED" && (
                 <Text c="dimmed" mt="md" size="xs">
-                  アーカイブ済み（{formatDateTime(a.archivedAt)}）
+                  アーカイブ済み（{fmt.dateTime(a.archivedAt)}）
                 </Text>
               )}
 
@@ -927,12 +1038,18 @@ function DraftEditor({
   acceptance,
   lineChecks,
   onClose,
+  plantOptions,
+  workLocationOptions,
 }: {
   acceptance: OrderAcceptanceView;
   /** 保存済み明細 id → 価格照合結果（行バッジ表示用）。 */
   lineChecks: Map<string, AcceptancePriceCheckLine>;
   /** 閲覧モードへ戻す（保存成功 / キャンセル）。 */
   onClose: () => void;
+  /** 担当拠点の選択肢（有効のみ）。 */
+  plantOptions: { value: string; label: string }[];
+  /** 出荷作業場所の選択肢（グループ / 場所）。 */
+  workLocationOptions: { value: string; label: string }[];
 }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -940,6 +1057,24 @@ function DraftEditor({
   const sourceDef = INTAKE_SOURCE_BADGE[a.source];
 
   const [customerId, setCustomerId] = useState<string | null>(a.customerBpId);
+  // 顧客ピッカーに出すラベル。候補ボタンで選んだときも表示が追随するよう、
+  // id だけでなく {value,label} で持つ。
+  const [customerOption, setCustomerOption] = useState<{
+    value: string;
+    label: string;
+  } | null>(
+    a.customerBpId && a.customerName
+      ? { value: a.customerBpId, label: a.customerName }
+      : null,
+  );
+  const [salesRepId, setSalesRepId] = useState<string | null>(a.salesRepId);
+  const [shipToBpId, setShipToBpId] = useState<string | null>(a.shipToBpId);
+  const [assignedPlantId, setAssignedPlantId] = useState<string | null>(
+    a.assignedPlantId,
+  );
+  const [shippingWorkLocationId, setShippingWorkLocationId] = useState<
+    string | null
+  >(a.shippingWorkLocationId);
   const [customerOrderRef, setCustomerOrderRef] = useState(
     a.customerOrderRef ?? "",
   );
@@ -953,6 +1088,10 @@ function DraftEditor({
   /** 入力内容の指紋 — 変更の有無だけを見るので中身の意味は問わない。 */
   const fingerprint = JSON.stringify([
     customerId,
+    salesRepId,
+    shipToBpId,
+    assignedPlantId,
+    shippingWorkLocationId,
     customerOrderRef,
     quoteNumber,
     orderDate,
@@ -968,6 +1107,12 @@ function DraftEditor({
     startTransition(async () => {
       const result = await saveDraft(a.number, {
         customerBpId: customerId,
+        salesRepId,
+        shipToBpId,
+        assignedPlantId: assignedPlantId ? Number(assignedPlantId) : null,
+        shippingWorkLocationId: shippingWorkLocationId
+          ? Number(shippingWorkLocationId)
+          : null,
         customerOrderRef: customerOrderRef || null,
         quoteNumber: quoteNumber || null,
         orderDate,
@@ -1028,18 +1173,29 @@ function DraftEditor({
                 customerId ? undefined : "顧客未特定 — 承認依頼には必須です"
               }
               f4={CUSTOMER_F4}
-              initialOption={
-                a.customerBpId && a.customerName
-                  ? { value: a.customerBpId, label: a.customerName }
-                  : null
-              }
+              initialOption={customerOption}
               label="顧客"
-              onChange={(v) => setCustomerId(v)}
+              onChange={(v, option) => {
+                setCustomerId(v);
+                setCustomerOption(
+                  v && option ? { value: v, label: option.label } : null,
+                );
+              }}
               onSearch={searchCustomerOptions}
               placeholder="顧客を検索"
               storageKey="customer"
               value={customerId}
               withAsterisk
+            />
+            <SalesRepSelect
+              customerBpId={customerId}
+              initial={
+                a.salesRepId && a.salesRepName
+                  ? { id: a.salesRepId, name: a.salesRepName }
+                  : null
+              }
+              onChange={setSalesRepId}
+              value={salesRepId}
             />
             <TextInput
               label="顧客注文書番号"
@@ -1078,6 +1234,55 @@ function DraftEditor({
               valueFormat="YYYY/MM/DD"
             />
           </Group>
+          <Group align="flex-end" gap="sm" grow preventGrowOverflow={false}>
+            {/* 出荷先は顧客と異なり得る（直送・支店渡しなど）— 任意。 */}
+            <SearchSelect
+              clearable
+              initialOption={
+                a.shipToBpId && a.shipToName
+                  ? { value: a.shipToBpId, label: a.shipToName }
+                  : null
+              }
+              label="出荷先"
+              onChange={setShipToBpId}
+              onSearch={searchShipToOptions}
+              placeholder="出荷先を検索（任意）"
+              storageKey="ship-to"
+              value={shipToBpId}
+            />
+            <Select
+              clearable
+              data={plantOptions}
+              label="担当拠点"
+              onChange={setAssignedPlantId}
+              placeholder="拠点を選択（任意）"
+              searchable
+              value={assignedPlantId}
+            />
+            <Select
+              clearable
+              data={workLocationOptions}
+              label="出荷作業場所"
+              onChange={setShippingWorkLocationId}
+              placeholder="作業場所を選択（任意）"
+              searchable
+              value={shippingWorkLocationId}
+            />
+          </Group>
+          {/*
+            突合が 1 件に絞れなかったときの候補。顧客が決まったら消える。
+            打ち直させない — AI が読んだ社名とマスタの表記がずれているから
+            こそ突合が外れており、そのずれた社名では検索しても出てこない。
+          */}
+          {!customerId && (
+            <MatchSuggestions
+              onPick={(s) => {
+                setCustomerId(s.id);
+                setCustomerOption({ value: s.id, label: s.label });
+              }}
+              suggestions={a.customerSuggestions}
+            />
+          )}
           <TextInput
             label="備考"
             onChange={(e) => setNotes(e.currentTarget.value)}

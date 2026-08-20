@@ -16,11 +16,11 @@ import {
   type ComponentTableKind,
   setComponentActive,
 } from "@/app/(dashboard)/master/material-numbering/actions";
+import { useFormat } from "@/components/layout/PreferencesProvider";
 import { ActiveBadge } from "@/components/ui/ActiveBadge";
 import { type Column, DataTable } from "@/components/ui/DataTable";
 import { DocNumber } from "@/components/ui/DocNumber";
 import { openConfirm } from "@/components/ui/modals";
-import { formatDate } from "@/lib/format";
 
 export interface ComponentRow {
   code: string;
@@ -46,6 +46,7 @@ export function ComponentTable({
   /** 追加列の見出し（直径=φmm, 全長=mm など）。 */
   extraHeader?: string;
 }) {
+  const fmt = useFormat();
   const router = useRouter();
   const [, startTransition] = useTransition();
 
@@ -137,7 +138,7 @@ export function ComponentTable({
       sortable: true,
       hideable: true,
       width: 110,
-      render: (r) => formatDate(r.updatedAt),
+      render: (r) => fmt.date(r.updatedAt),
     },
   ];
 

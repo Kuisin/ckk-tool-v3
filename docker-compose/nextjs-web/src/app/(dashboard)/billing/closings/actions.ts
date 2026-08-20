@@ -27,6 +27,7 @@ import { prisma } from "@/lib/db";
 import { formatDocNumber } from "@/lib/doc-number";
 import { type LocalizedText, localized } from "@/lib/format";
 import { allocateDocumentKey } from "@/lib/numbering";
+import { resolveSalesRepId } from "@/lib/sales-rep";
 import {
   type ActionResult,
   actionError,
@@ -165,6 +166,17 @@ export async function processClosing(
     const branchIds = new Set(shipments.map((s) => s.customerBranchBpId ?? ""));
     const customerBranchBpId =
       branchIds.size === 1 ? branchIds.values().next().value || null : null;
+    // 営業担当も同じ考え方 — 対象出荷の担当が 1 人に定まればそれを引き継ぎ、
+    // ばらけていれば顧客の主担当を入れる（請求書に編集フォームは無いので、
+    // ここで決めた値がそのまま残る）。
+    const repIds = new Set(shipments.map((s) => s.salesRepId ?? ""));
+    const inheritedSalesRepId =
+      repIds.size === 1 ? repIds.values().next().value || null : null;
+    const salesRepId = await resolveSalesRepId(
+      inheritedSalesRepId,
+      closing.customerBpId,
+      null,
+    );
 
     const actorId = await getCurrentActorId();
     const { yearMonth, seq } = await allocateDocumentKey("INVOICE");
@@ -177,6 +189,7 @@ export async function processClosing(
           seq,
           customerBpId: closing.customerBpId,
           customerBranchBpId,
+          salesRepId,
           billingPeriodFrom: periodFrom,
           billingPeriodTo: closingDate,
           subtotal,

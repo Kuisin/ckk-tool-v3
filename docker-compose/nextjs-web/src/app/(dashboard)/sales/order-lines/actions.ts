@@ -53,14 +53,20 @@ async function orderLineInScope(
     where,
     select: {
       acceptance: { select: { createdBy: true } },
-      workOrders: { select: { steps: { select: { plantId: true } } } },
+      workOrderLinks: {
+        select: {
+          workOrder: { select: { steps: { select: { plantId: true } } } },
+        },
+      },
     },
   });
   if (!row) return true;
   return rowInScope(
     access,
     {
-      plantIds: row.workOrders.flatMap((w) => w.steps.map((s) => s.plantId)),
+      plantIds: row.workOrderLinks.flatMap((l) =>
+        l.workOrder.steps.map((s) => s.plantId),
+      ),
       createdBy: row.acceptance.createdBy,
     },
     userId,
@@ -174,15 +180,32 @@ export async function cancelOrderLine(number: string): Promise<ActionResult> {
         line.id,
         `注文明細 ${number} キャンセルによる予約解放`,
       );
-      // 未完了の子指示書を連鎖キャンセル（完了済みは在庫計上済みのため対象外）
+      // 未完了の子指示書を連鎖キャンセル（完了済みは在庫計上済みのため対象外）。
+      // 統合ロット — 他の有効な明細も束ねている指示書 — は残す（他明細の
+      // 生産を止めない。割当行は監査のため残る）。
       const childWos = await tx.workOrder.findMany({
         where: {
-          orderLineId: line.id,
+          orderLineLinks: { some: { orderLineId: line.id } },
           status: { notIn: ["COMPLETED", "CANCELLED"] },
         },
-        select: { id: true, workOrderNumber: true },
+        select: {
+          id: true,
+          workOrderNumber: true,
+          orderLineLinks: {
+            select: {
+              orderLineId: true,
+              orderLine: { select: { status: true } },
+            },
+          },
+        },
       });
+      const cancelledWos: number[] = [];
       for (const wo of childWos) {
+        const hasOtherActiveLine = wo.orderLineLinks.some(
+          (l) =>
+            l.orderLineId !== line.id && l.orderLine.status !== "CANCELLED",
+        );
+        if (hasOtherActiveLine) continue;
         await tx.workOrder.update({
           where: { id: wo.id },
           data: { status: "CANCELLED" },
@@ -198,11 +221,12 @@ export async function cancelOrderLine(number: string): Promise<ActionResult> {
             cancelReason: `注文明細 ${number} キャンセルに伴う連鎖キャンセル`,
           },
         });
+        cancelledWos.push(wo.workOrderNumber);
       }
       return {
         cancelled: true as const,
         released,
-        cancelledWos: childWos.map((w) => w.workOrderNumber),
+        cancelledWos,
       };
     });
     if (!result.cancelled) {

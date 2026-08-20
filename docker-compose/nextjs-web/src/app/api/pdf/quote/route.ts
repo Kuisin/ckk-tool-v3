@@ -13,8 +13,10 @@ import { orderTypeLabel, quoteTotals } from "@/components/sales/quotes/model";
 import { requirePermissionResponse } from "@/lib/authz";
 import { parseDocKey } from "@/lib/doc-number";
 import { isIssued, notIssuedResponse, pdfStorageKey } from "@/lib/document-pdf";
-import { formatDate } from "@/lib/format";
+import { documentFormatters } from "@/lib/format";
 import { renderPdf } from "@/lib/pdf";
+import { documentQrSvg } from "@/lib/pdf-qr";
+import { QR_KINDS } from "@/lib/qr-payload";
 import { getObject, putObject } from "@/lib/storage";
 
 // Reads request query params → always rendered at request time.
@@ -82,11 +84,14 @@ export async function GET(request: Request): Promise<Response> {
         : "ご担当者 様",
       address: "",
     },
+    // 書類 QR（CKK:QOT:<番号>）。URL は入れない。
+    doc_qr: documentQrSvg(QR_KINDS.QUOTE, quote.quoteNumber),
     doc: {
       number: quote.quoteNumber,
-      issued_date: formatDate(quote.createdAt),
-      valid_until: formatDate(quote.validUntil),
-      sales_rep: quote.createdBy,
+      issued_date: documentFormatters.date(quote.createdAt),
+      valid_until: documentFormatters.date(quote.validUntil),
+      // 営業担当が未設定の見積は作成者を出す（従来の挙動へのフォールバック）。
+      sales_rep: quote.salesRepName ?? quote.createdBy,
     },
     items: quote.items.map((it) => ({
       name: it.productName,
@@ -95,7 +100,7 @@ export async function GET(request: Request): Promise<Response> {
       quantity: yen(it.quantity),
       unit_price: yen(it.unitPrice),
       amount: yen(it.amount),
-      delivery_date: formatDate(it.deliveryDate),
+      delivery_date: documentFormatters.date(it.deliveryDate),
     })),
     totals: {
       subtotal: yen(totals.subtotal),

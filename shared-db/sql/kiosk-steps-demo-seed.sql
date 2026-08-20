@@ -1,9 +1,3 @@
--- ⚠️ 注文明細（order_lines）統合により、このデモシードは未更新です。
---    app.sales_orders は削除され、受注ラインは app.order_lines
---    （注文請書 order_acceptances の明細行）に統合されました。
---    実行すると "relation app.sales_orders does not exist" で失敗します。
---    親の注文請書を作ったうえで order_lines を挿入する形へ書き換えが必要です。
-
 -- kiosk-steps-demo-seed.sql — キオスク工程実行アプリの表示確認用デモ投入（dev 専用・任意）。
 --
 -- demo1（田中 一郎）に「本日の担当工程」が見えるように、
@@ -61,15 +55,16 @@ BEGIN
     RAISE EXCEPTION 'no order_acceptances found';
   END IF;
 
-  -- 注文請書（製品 1 = テスト製品１・数量 50）
-  INSERT INTO app.sales_orders
-    (id, year_month, seq, branch, customer_bp_id, product_id, order_type,
-     quantity, unit_price, amount, delivery_date, status, is_locked,
-     notes, created_by, created_at, updated_at)
+  -- 注文明細（既存注文請書の branch=90 行。製品 1 = テスト製品１・数量 50）
+  -- 顧客・作成者はヘッダ（order_acceptances）から読むため行には持たない。
+  INSERT INTO app.order_lines
+    (id, acceptance_year_month, acceptance_seq, branch, sort_order, product_id,
+     order_type, quantity, unit_price, amount, delivery_date, status, is_locked,
+     notes, confirmed_at, created_at, updated_at)
   VALUES
-    (gen_random_uuid(), v_oa_ym, v_oa_seq, 90, v_customer, 1, 'PRODUCTION',
+    (gen_random_uuid(), v_oa_ym, v_oa_seq, 90, 90, 1, 'PRODUCTION',
      50, 1200, 60000, v_today + 14, 'CONFIRMED', false,
-     'kiosk-demo-seed', v_sys, now(), now())
+     'kiosk-demo-seed', now(), now(), now())
   RETURNING id INTO v_so;
 
   -- 指示書番号: nextSerialNumber("WORK_ORDER") と同じ upsert
@@ -82,11 +77,11 @@ BEGIN
 
   -- 指示書（承認済 — キオスクから開始できる状態）
   INSERT INTO app.work_orders
-    (id, work_order_number, sales_order_id, type, planned_quantity,
+    (id, work_order_number, product_id, type, planned_quantity,
      status, approval_status, approved_at, history, notes,
      created_by, created_at, updated_at)
   VALUES
-    (gen_random_uuid(), v_wo_number, v_so, 'MANUFACTURE', 50,
+    (gen_random_uuid(), v_wo_number, 1, 'MANUFACTURE', 50,
      'APPROVED', 'APPROVED', now(),
      jsonb_build_array(jsonb_build_object(
        'action', 'CREATE', 'user', v_sys::text, 'at', now()::text,
@@ -94,8 +89,12 @@ BEGIN
      'kiosk-demo-seed', v_sys, now(), now())
   RETURNING id INTO v_wo;
 
+  -- 指示書 ↔ 注文明細の割当（m:n — 全量をこの明細へ充当）
+  INSERT INTO app.work_order_order_lines (work_order_id, order_line_id, quantity, sort_order)
+  VALUES (v_wo, v_so, 50, 0);
+
   -- ロット番号 = 指示書番号（アプリの作成ロジックと同じ）
-  UPDATE app.sales_orders SET lot_number = v_wo_number WHERE id = v_so AND lot_number IS NULL;
+  UPDATE app.order_lines SET lot_number = v_wo_number WHERE id = v_so AND lot_number IS NULL;
 
   -- 工程: 切断(5) → 段加工(13) → 段加工検査(14)。
   -- 段加工検査は exec 依存（14 AND 13）により段加工完了まで開始不可。

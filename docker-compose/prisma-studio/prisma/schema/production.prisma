@@ -28,11 +28,10 @@ enum WorkOrderStatus {
   @@schema("app")
 }
 
+// 段数非依存 — 何段目まで進んでいるかは approval_requests.step_no が持つ。
 enum WorkOrderApprovalStatus {
   NONE
-  PENDING_1ST
-  APPROVED_1ST
-  PENDING_2ND
+  PENDING // 承認フロー進行中
   APPROVED
   REJECTED
 
@@ -58,18 +57,32 @@ enum StepStatus {
   @@schema("app")
 }
 
+/// 分岐系列の終端で良品を入れる在庫（§7）。合流する分岐では使わない。
+enum BranchStockDisposition {
+  /// 半製品在庫へ（再投入待ちの中間品）
+  SEMI_FINISHED
+  /// 製品在庫へ（ロット付きの完成品として）
+  PRODUCT
+
+  @@map("BRANCH_STOCK_DISPOSITION")
+  @@schema("app")
+}
+
 // 指示書（§3〜§7）— 通し連番。ロット番号と共用。
-// order_line_id は nullable — null = 在庫向けの独立指示書（type は
-// MANUFACTURE のみ。顧客注文分は常に注文明細配下）。product_id は常に保持
-// （注文明細配下は明細の製品から複写、独立指示書は直接指定）。
+// 注文明細との紐付けは work_order_order_lines（m:n の割当）— 1 指示書が
+// 複数明細を束ねる（統合ロット）ことも、1 明細を複数指示書に分ける（分割）
+// こともできる。割当ゼロ = 在庫向けの独立指示書（type は MANUFACTURE のみ。
+// 顧客注文分は常に割当を持つ）。product_id は常に保持
+// （明細配下は明細の製品から複写、独立指示書は直接指定）。
 model WorkOrder {
   id              String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   workOrderNumber Int     @unique @map("work_order_number")
-  orderLineId     String? @map("order_line_id") @db.Uuid
   productId       Int     @map("product_id")
   type            WorkOrderType
   plannedQuantity Int     @map("planned_quantity")
   materialId      Int?    @map("material_id")
+  // 完成品の保管場所（保管場所マスタ MS0E。null = 未指定）
+  storageLocationId Int? @map("storage_location_id")
 
   status         WorkOrderStatus         @default(DRAFT)
   approvalStatus WorkOrderApprovalStatus @default(NONE) @map("approval_status")
@@ -81,19 +94,17 @@ model WorkOrder {
   // 工程は work_order_steps に実体化済みで、出所リンクだけが外れる。
   routeVersionId String? @map("route_version_id") @db.Uuid
 
-  // 承認遷移（MaterialPurchaseOrder と同型の row-workflow）
-  requested1stAt DateTime? @map("requested_1st_at") @db.Timestamptz(6)
-  requested1stBy String?   @map("requested_1st_by") @db.Uuid
-  approved1stAt  DateTime? @map("approved_1st_at") @db.Timestamptz(6)
-  approved1stBy  String?   @map("approved_1st_by") @db.Uuid
-  approved2ndAt  DateTime? @map("approved_2nd_at") @db.Timestamptz(6)
-  approved2ndBy  String?   @map("approved_2nd_by") @db.Uuid
-  rejectedAt     DateTime? @map("rejected_at") @db.Timestamptz(6)
-  rejectedBy     String?   @map("rejected_by") @db.Uuid
-  rejectReason   String?   @map("reject_reason")
-  history        Json? // 状態遷移履歴 [{ action, user, at, notes }]
+  // 承認遷移（MaterialPurchaseOrder と同型の row-workflow）。
+  // 段ごとの日時・承認者は approval_requests / approval_records が持つ。
+  requestedAt  DateTime? @map("requested_at") @db.Timestamptz(6)
+  requestedBy  String?   @map("requested_by") @db.Uuid
+  rejectedAt   DateTime? @map("rejected_at") @db.Timestamptz(6)
+  rejectedBy   String?   @map("rejected_by") @db.Uuid
+  rejectReason String?   @map("reject_reason")
+  history      Json? // 状態遷移履歴 [{ action, user, at, notes }]
 
   approvedAt  DateTime? @map("approved_at") @db.Timestamptz(6)
+  approvedBy  String?   @map("approved_by") @db.Uuid
   startedAt   DateTime? @map("started_at") @db.Timestamptz(6)
   completedAt DateTime? @map("completed_at") @db.Timestamptz(6)
   notes       String?
@@ -101,26 +112,87 @@ model WorkOrder {
   createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt   DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  orderLine       OrderLine?  @relation(fields: [orderLineId], references: [id])
   product         Product     @relation(fields: [productId], references: [id])
   material        Material?   @relation(fields: [materialId], references: [id])
+  storageLocation StorageLocation? @relation("WorkOrderStorageLocation", fields: [storageLocationId], references: [id])
   sourceWorkOrder WorkOrder? @relation("WorkOrderCopySource", fields: [sourceWorkOrderId], references: [id])
   copies          WorkOrder[] @relation("WorkOrderCopySource")
   routeVersion    ProductProcessRouteVersion? @relation(fields: [routeVersionId], references: [id], onDelete: SetNull)
   createdByUser   User?      @relation("WorkOrderCreatedBy", fields: [createdBy], references: [id])
 
+  orderLineLinks      WorkOrderOrderLine[]
   steps               WorkOrderStep[]
   stepLinks           WorkOrderStepLink[]
+  flowChanges         WorkOrderFlowChange[]
   inspectionTemplates WorkOrderInspectionTemplate[]
   shippingOrders      ShippingOrder[]
   reservations        InventoryReservation[]
 
-  @@index([orderLineId])
   @@index([productId])
   @@index([status])
   @@index([approvalStatus])
   @@index([routeVersionId])
+  @@index([storageLocationId])
   @@map("work_orders")
+  @@schema("app")
+}
+
+// 指示書 ↔ 注文明細 の割当（m:n）。
+//   分割: 1 明細を複数指示書に分けて手配する（部分手配可）。
+//   統合: 同一製品の複数明細を 1 指示書（1 ロット）で作る。
+// quantity = この指示書がこの明細のために充当する数量。
+// 不変条件（アプリ側 lib/work-order-alloc-core.ts が唯一の判定元）:
+//   - 明細ごと: Σ quantity（キャンセル済み指示書を除く）≤ order_lines.quantity
+//   - 指示書ごと: planned_quantity ≥ Σ quantity（不良予備分の上乗せは自由）
+//   - 割当明細の製品 = 指示書の product_id
+//   - FROM_STOCK は割当 1 件のみ（在庫引当の消費先が一意である必要）
+model WorkOrderOrderLine {
+  workOrderId String @map("work_order_id") @db.Uuid
+  orderLineId String @map("order_line_id") @db.Uuid
+  quantity    Int
+  sortOrder   Int    @default(0) @map("sort_order")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  workOrder WorkOrder @relation(fields: [workOrderId], references: [id], onDelete: Cascade)
+  orderLine OrderLine @relation(fields: [orderLineId], references: [id], onDelete: Restrict)
+
+  @@id([workOrderId, orderLineId])
+  @@index([orderLineId])
+  @@map("work_order_order_lines")
+  @@schema("app")
+}
+
+// 承認されるまで適用しない工程フロー変更（§6 / §7）。
+//
+// 承認済み・進行中の指示書で分岐を足す/直す/消す操作は、承認設定（MS0B）で
+// 「工程フロー変更」のフローが 1 段でも設定されていれば、この行として保留され
+// 最終承認で初めて適用される。1 段も無ければ行は作られず即適用（素通し）。
+//
+// 承認依頼は業務キー文字列（= id）で指すため FK は無い → 削除時の掃除は
+// AFTER DELETE トリガー purge_children_after_delete が行う
+// （migration 20260917090000）。
+model WorkOrderFlowChange {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  workOrderId String   @map("work_order_id") @db.Uuid
+  /// ADD_BRANCH | UPDATE_BRANCH | REMOVE_BRANCH（DB 側 CHECK）
+  kind        String
+  /// 操作の入力そのもの。適用時にサーバーで再検証する。
+  payload     Json
+  /// PENDING | APPLIED | REJECTED | CANCELLED | FAILED（DB 側 CHECK）
+  status      String   @default("PENDING")
+  /// 適用に失敗した理由（数量が足りなくなった等）。承認後に出る。
+  error       String?
+  requestedBy String?  @map("requested_by") @db.Uuid
+  requestedAt DateTime @default(now()) @map("requested_at") @db.Timestamptz(6)
+  resolvedBy  String?  @map("resolved_by") @db.Uuid
+  resolvedAt  DateTime? @map("resolved_at") @db.Timestamptz(6)
+
+  workOrder       WorkOrder @relation(fields: [workOrderId], references: [id], onDelete: Cascade)
+  requestedByUser User?     @relation("FlowChangeRequestedBy", fields: [requestedBy], references: [id])
+  resolvedByUser  User?     @relation("FlowChangeResolvedBy", fields: [resolvedBy], references: [id])
+
+  @@index([workOrderId, status])
+  @@map("work_order_flow_changes")
   @@schema("app")
 }
 
@@ -166,6 +238,12 @@ model WorkOrderStep {
   // 形: [{ reason: string, count: int }]（理由=不良種類名など・count=本数）。
   // 在庫連携には使わない（区分 semi/scrap/rework が数量の権威）。
   defectReasons Json? @map("defect_reasons")
+
+  // 分岐系列の終端処理（§7 分岐は必ず「合流」か「在庫」で終わる）。
+  // null = 合流する（終端から本流へのリンクが張られている）か、そもそも
+  // 分岐系列の工程ではない。値が入っていればここで系列が終わり、この工程の
+  // 良品数が指定の在庫へ入る（onWorkOrderCompleted が入庫する）。
+  branchStockDisposition BranchStockDisposition? @map("branch_stock_disposition")
 
   sessionLockedBy String?   @map("session_locked_by") @db.Uuid
   sessionLockedAt DateTime? @map("session_locked_at") @db.Timestamptz(6)

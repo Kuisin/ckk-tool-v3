@@ -1,6 +1,7 @@
 import path from "node:path";
 import { createMDX } from "fumadocs-mdx/next";
 import type { NextConfig } from "next";
+import createNextIntlPlugin from "next-intl/plugin";
 
 /**
  * マニュアル再編前の `apps/<アプリ>` → 再編後の `operations/<カテゴリ>/<アプリ>`。
@@ -177,9 +178,9 @@ const nextConfig: NextConfig = {
       // 承認グループのマニュアルも 承認設定 へ改称。MANUAL_APP_CATEGORY は
       // カテゴリ移動用でスラッグの改称は見ないので、ここに個別に置く。
       {
-        source: "/manual/:lang(ja|en|zh)/operations/masters/approval-group/:path*",
-        destination:
-          "/manual/:lang/operations/masters/approval-setting/:path*",
+        source:
+          "/manual/:lang(ja|en|zh)/operations/masters/approval-group/:path*",
+        destination: "/manual/:lang/operations/masters/approval-setting/:path*",
         permanent: true,
       },
 
@@ -200,5 +201,7 @@ const nextConfig: NextConfig = {
 };
 
 const withMDX = createMDX();
+// 言語は URL ではなくユーザー設定で決まる（src/i18n/request.ts 参照）。
+const withNextIntl = createNextIntlPlugin("./src/i18n/request.ts");
 
-export default withMDX(nextConfig);
+export default withNextIntl(withMDX(nextConfig));

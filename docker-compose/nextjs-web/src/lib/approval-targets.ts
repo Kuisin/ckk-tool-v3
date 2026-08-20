@@ -17,6 +17,7 @@ export const APPROVAL_TARGET_TYPES = [
   "work_orders",
   "material_purchase_orders",
   "purchase_requests",
+  "work_order_flow_changes",
 ] as const;
 
 export type ApprovalTargetType = (typeof APPROVAL_TARGET_TYPES)[number];
@@ -28,28 +29,71 @@ export interface ApprovalTargetMeta {
   color: string;
   /** 詳細ページ。targetId は業務キーそのまま。 */
   href: (targetId: string) => string;
+  /**
+   * 詳細ページの READ ゲートに使う appList のキー。
+   *
+   * 承認グループの所属と書類の閲覧権限は**別の軸**で、承認者だからといって
+   * その書類を開けるとは限らない（例: purchasing ロールは approve:READ を
+   * 持つが order_acceptance:READ は持たない）。承認管理 (PD03) はこのキーで
+   * 「開けるか」を先に判定し、開けない行にバッジを出す。
+   */
+  appKey: string;
+  /**
+   * 承認 / 差し戻しを押すのに必要な権限コード。ACTION は常に APPROVE
+   * （`checkPermission(code, "APPROVE")` — 各書類の approve* Server Action）。
+   *
+   * これは**追加ゲート**で、実際に押せるかは
+   *   ① この権限（code:APPROVE。code:ADMIN と system:ADMIN も内包）
+   *   ② 承認グループの所属（本人 or 代理 — actOnCurrentStep）
+   *   ③ 書類のスコープ（拠点 — *InScope。ALL 以外の grant は書類ごとに変わる）
+   * の **すべて**を満たしたときだけ。承認設定 (MS0B) はこのコードを画面に出し、
+   * 各段のメンバーが ① を持っているかを突き合わせる。
+   */
+  approvePermission: string;
 }
+
+/** 承認操作の ACTION（書類種別に依らず APPROVE 固定）。 */
+export const APPROVAL_ACTION = "APPROVE" as const;
 
 export const APPROVAL_TARGET: Record<ApprovalTargetType, ApprovalTargetMeta> = {
   order_acceptances: {
     label: "注文請書",
     color: "blue",
     href: (id) => `/sales/order-acceptances/${id}`,
+    appKey: "order-acceptances",
+    approvePermission: "order_acceptance",
   },
   work_orders: {
     label: "指示書",
     color: "violet",
     href: (id) => `/production/work-orders/${id}`,
+    appKey: "work-orders",
+    approvePermission: "work_order",
   },
   material_purchase_orders: {
     label: "素材発注書",
     color: "teal",
     href: (id) => `/purchase/purchase-orders/${id}`,
+    appKey: "purchase-orders",
+    approvePermission: "purchase_order",
+  },
+  work_order_flow_changes: {
+    label: "工程フロー変更",
+    color: "grape",
+    // 対象は変更そのもの（uuid）だが、人が見たいのは指示書 — 保留中の変更は
+    // 指示書詳細にカードで出る。この URL は指示書番号へ読み替えて 302 する
+    // だけの中継ページ（承認管理の行から 1 クリックで着ける）。
+    href: (id) => `/production/work-orders/flow-changes/${id}`,
+    appKey: "work-orders",
+    approvePermission: "work_order",
   },
   purchase_requests: {
     label: "購買依頼",
     color: "cyan",
     href: (id) => `/purchase/purchase-requests/${id}`,
+    appKey: "purchase-requests",
+    // 購買依頼は素材発注と同じ権限コード（購買一式で 1 コード）。
+    approvePermission: "purchase_order",
   },
 };
 
@@ -71,5 +115,12 @@ export function approvalTargetHref(
 ): string | null {
   return isApprovalTargetType(targetType)
     ? APPROVAL_TARGET[targetType].href(targetId)
+    : null;
+}
+
+/** 承認に必要な権限コード（未知の種別は null）。 */
+export function approvePermissionCode(targetType: string): string | null {
+  return isApprovalTargetType(targetType)
+    ? APPROVAL_TARGET[targetType].approvePermission
     : null;
 }

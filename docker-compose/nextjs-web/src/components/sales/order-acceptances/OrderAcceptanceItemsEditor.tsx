@@ -30,7 +30,9 @@ import { PRODUCT_F4 } from "@/components/ui/f4-presets";
 import { SearchSelect } from "@/components/ui/SearchSelect";
 import { ORDER_TYPE_OPTIONS } from "@/lib/enum-labels";
 import { formatMoney } from "@/lib/format";
-import type { OrderAcceptanceItemView } from "./model";
+import { acceptanceTotals } from "@/lib/order-acceptance-totals";
+import { MatchSuggestions } from "./MatchSuggestions";
+import type { MatchSuggestion, OrderAcceptanceItemView } from "./model";
 
 const ORDER_TYPES = ["PRODUCTION", "TEST", "SAMPLE", "OTHER"] as const;
 type OrderType = (typeof ORDER_TYPES)[number];
@@ -57,6 +59,8 @@ export interface ItemRowForm {
   /** SearchSelect の初期表示用ラベル（突合済みのとき）。 */
   productLabel: string | null;
   productText: string;
+  /** 未突合のときの候補（lib/product-match）。手で足した行は空。 */
+  productSuggestions: MatchSuggestion[];
   orderType: OrderType;
   quantity: number;
   unitPrice: number | null;
@@ -73,6 +77,7 @@ export const newItemRow = (): ItemRowForm => ({
   productId: null,
   productLabel: null,
   productText: "",
+  productSuggestions: [],
   orderType: "PRODUCTION",
   quantity: 1,
   unitPrice: null,
@@ -88,6 +93,7 @@ export function toItemRows(items: OrderAcceptanceItemView[]): ItemRowForm[] {
     productId: it.productId,
     productLabel: it.productLabel,
     productText: it.productText ?? "",
+    productSuggestions: it.productSuggestions,
     orderType: (ORDER_TYPES as readonly string[]).includes(it.orderType)
       ? (it.orderType as OrderType)
       : "PRODUCTION",
@@ -126,6 +132,9 @@ export function OrderAcceptanceItemsEditor({
   const patch = (ri: number, p: Partial<ItemRowForm>) => {
     onChange(items.map((r, i) => (i === ri ? { ...r, ...p } : r)));
   };
+
+  // 合計は詳細画面と同じ数え方（lib/order-acceptance-totals）。
+  const totals = acceptanceTotals(items);
 
   return (
     <Box>
@@ -226,6 +235,20 @@ export function OrderAcceptanceItemsEditor({
                     value={row.unitPrice ?? ""}
                   />
                 </Group>
+                {/*
+                  突合が 1 件に絞れなかったときの候補。製品が決まったら消える。
+                  品名がずれているからこそ突合が外れているので、打ち直しはさせない。
+                */}
+                {!row.productId && (
+                  <Box mt="xs">
+                    <MatchSuggestions
+                      onPick={(s) =>
+                        patch(ri, { productId: s.id, productLabel: s.label })
+                      }
+                      suggestions={row.productSuggestions}
+                    />
+                  </Box>
+                )}
               </Box>
               <ActionIcon
                 aria-label="明細を削除"
@@ -281,6 +304,34 @@ export function OrderAcceptanceItemsEditor({
       >
         明細を追加
       </GhostButton>
+
+      {/*
+        合計（design.md §8.3 — 明細セクションの末尾）。入力しながら総額が
+        見えないと、金額の桁違いに保存まで気づけない。単価未入力の行は
+        足せないので、その件数を添える。
+      */}
+      <Divider mt="md" />
+      <Group gap="md" justify="flex-end" mt="sm">
+        <Text c="dimmed" size="xs">
+          明細 {totals.lineCount} 件 / 合計数量{" "}
+          <span className="tabular-nums">
+            {totals.quantity.toLocaleString("ja-JP")}
+          </span>
+        </Text>
+        {totals.unpricedCount > 0 && (
+          <Badge color="orange" size="xs" variant="light">
+            単価未入力 {totals.unpricedCount} 件を除く
+          </Badge>
+        )}
+        <Group gap="xs">
+          <Text fw={600} size="sm">
+            合計金額
+          </Text>
+          <Text className="tabular-nums" ff="mono" fw={700} size="sm">
+            {formatMoney(totals.amount)}
+          </Text>
+        </Group>
+      </Group>
     </Box>
   );
 }

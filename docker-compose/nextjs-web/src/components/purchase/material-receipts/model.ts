@@ -23,6 +23,8 @@ export interface MaterialReceiptView {
   receivedAt: string;
   /** 紐付く素材発注書番号（発注入荷のみ。直接調達は null）。 */
   poNumber: string | null;
+  /** 作成者の表示名（システム作成は null）。 */
+  createdByName: string | null;
   notes: string | null;
   createdAt: string;
 }

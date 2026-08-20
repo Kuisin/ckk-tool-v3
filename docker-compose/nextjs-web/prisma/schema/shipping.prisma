@@ -60,10 +60,13 @@ model ShippingOrder {
   status    ShippingStatus @default(DRAFT)
   shippedAt DateTime?      @map("shipped_at") @db.Timestamptz(6)
   notes     String?
+  // 営業担当（作成時に顧客の主担当を複写したスナップショット）。
+  salesRepId String?       @map("sales_rep_id") @db.Uuid
   createdBy String?        @map("created_by") @db.Uuid
   createdAt DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt DateTime       @updatedAt @map("updated_at") @db.Timestamptz(6)
 
+  salesRep         User?            @relation("ShippingOrderSalesRep", fields: [salesRepId], references: [id])
   customerBp       BusinessPartner  @relation("ShippingOrderCustomer", fields: [customerBpId], references: [id])
   customerBranchBp BusinessPartner? @relation("ShippingOrderCustomerBranch", fields: [customerBranchBpId], references: [id])
   workOrder     WorkOrder? @relation(fields: [workOrderId], references: [id])
@@ -123,10 +126,13 @@ model DeliveryNote {
   status               DeliveryStatus @default(DRAFT)
   deliveredAt          DateTime?      @map("delivered_at") @db.Timestamptz(6)
   notes                String?
+  // 営業担当（作成時に納品先の主担当を複写したスナップショット）。
+  salesRepId           String?        @map("sales_rep_id") @db.Uuid
   createdBy            String?        @map("created_by") @db.Uuid
   createdAt            DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt            DateTime       @updatedAt @map("updated_at") @db.Timestamptz(6)
 
+  salesRep          User?            @relation("DeliveryNoteSalesRep", fields: [salesRepId], references: [id])
   shippingOrder     ShippingOrder    @relation(fields: [shippingOrderYearMonth, shippingOrderSeq], references: [yearMonth, seq])
   recipientBp       BusinessPartner  @relation("DeliveryNoteRecipient", fields: [recipientBpId], references: [id])
   recipientBranchBp BusinessPartner? @relation("DeliveryNoteRecipientBranch", fields: [recipientBranchBpId], references: [id])

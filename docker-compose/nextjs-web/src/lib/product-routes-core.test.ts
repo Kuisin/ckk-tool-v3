@@ -1,14 +1,9 @@
 /**
- * product-routes-core.test.ts — 工程ルートスナップショット比較・在庫フロアの
- * ユニットテスト。
+ * product-routes-core.test.ts — 工程ルートスナップショット比較のユニットテスト。
  */
 
 import { describe, expect, it } from "vitest";
-import {
-  computePlannedFloor,
-  type RouteStepSnapshot,
-  routeStepsEqual,
-} from "./product-routes-core";
+import { type RouteStepSnapshot, routeStepsEqual } from "./product-routes-core";
 
 const step = (
   processStepId: number,
@@ -82,44 +77,5 @@ describe("routeStepsEqual", () => {
 
   it("空 vs 空は true", () => {
     expect(routeStepsEqual([], [])).toBe(true);
-  });
-});
-
-describe("computePlannedFloor", () => {
-  it("在庫引当なし → 受注数量が下限", () => {
-    expect(
-      computePlannedFloor({
-        soQuantity: 100,
-        reservedForSo: 0,
-        otherManufacture: 0,
-      }),
-    ).toBe(100);
-  });
-
-  it("引当済み分と他の製造指示分を差し引く", () => {
-    expect(
-      computePlannedFloor({
-        soQuantity: 100,
-        reservedForSo: 30,
-        otherManufacture: 50,
-      }),
-    ).toBe(20);
-  });
-
-  it("過剰引当・分割済みは 0（下限なし）", () => {
-    expect(
-      computePlannedFloor({
-        soQuantity: 100,
-        reservedForSo: 120,
-        otherManufacture: 0,
-      }),
-    ).toBe(0);
-    expect(
-      computePlannedFloor({
-        soQuantity: 100,
-        reservedForSo: 40,
-        otherManufacture: 80,
-      }),
-    ).toBe(0);
   });
 });

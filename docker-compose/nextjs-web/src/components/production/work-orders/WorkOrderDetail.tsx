@@ -13,9 +13,14 @@
  * 新しい版があれば警告）/ キャンセル（DRAFT・承認待ちのみ）。
  */
 
-import { Alert, Anchor, Badge, Stack, Tabs, Text } from "@mantine/core";
+import { Alert, Anchor, Badge, Group, Stack, Tabs, Text } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
-import { IconAlertTriangle, IconCopy, IconX } from "@tabler/icons-react";
+import {
+  IconAlertTriangle,
+  IconCopy,
+  IconPrinter,
+  IconX,
+} from "@tabler/icons-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
@@ -25,6 +30,7 @@ import {
   copyWorkOrder,
 } from "@/app/(dashboard)/production/work-orders/actions";
 import type { ApprovalActionState } from "@/components/approvals/ApprovalActionCard";
+import { useFormat } from "@/components/layout/PreferencesProvider";
 import {
   ApprovalStatusPanel,
   type ApprovalTrailView,
@@ -47,7 +53,7 @@ import {
 import { useTabParam } from "@/hooks/useUrlState";
 import type { MemoView } from "@/lib/document-memos";
 import { WORK_ORDER_TYPE_LABEL } from "@/lib/enum-labels";
-import { formatDateTime, workOrderNumberLabel } from "@/lib/format";
+import { FlowChangeCard, type PendingFlowChangeView } from "./FlowChangeCard";
 import type { WorkOrderView } from "./model";
 
 const BASE_PATH = "/production/work-orders";
@@ -60,6 +66,8 @@ export function WorkOrderDetail({
   approvalTrail = [],
   catalogOptions = [],
   memos = [],
+  flowChange = null,
+  flowChangeApproval = null,
   variant = "default",
 }: {
   workOrder: WorkOrderView;
@@ -71,21 +79,26 @@ export function WorkOrderDetail({
   approvalTrail?: ApprovalTrailView[];
   /** 分岐追加モーダル用の工程カタログ options（詳細画面のみ）。 */
   catalogOptions?: { value: string; label: string }[];
+  /** 承認待ちの工程フロー変更（承認設定が未設定なら常に null = 即適用）。 */
+  flowChange?: PendingFlowChangeView | null;
+  /** 上の変更そのものの承認状態（指示書の承認とは別物）。 */
+  flowChangeApproval?: ApprovalActionState | null;
   /** "approval" = 承認管理 (PD03) からの承認画面。 */
   variant?: "default" | "approval";
 }) {
+  const fmt = useFormat();
   const router = useRouter();
   // アクティブタブを ?tab= に保持（URL 共有でタブまで再現）
   const [tab, setTab] = useTabParam("overview");
   const [isPending, startTransition] = useTransition();
   const [copyOpen, setCopyOpen] = useState(false);
   const [copyTargetSoId, setCopyTargetSoId] = useState<string | null>(
-    workOrder.orderLineId,
+    workOrder.orderLines[0]?.orderLineId ?? null,
   );
 
   const wo = workOrder;
   // 表示番号 YYYYMMDD-XXXXX（保存側は従来どおり通し連番の int）。
-  const woLabel = workOrderNumberLabel(wo.workOrderNumber, wo.createdAt);
+  const woLabel = fmt.workOrderNumberLabel(wo.workOrderNumber, wo.createdAt);
   const isApproval = variant === "approval";
   const canEdit = wo.status === "DRAFT";
   const canCancel = wo.status === "DRAFT" || wo.status === "PENDING_APPROVAL";
@@ -99,7 +112,7 @@ export function WorkOrderDetail({
       if (result.ok) {
         notifications.show({
           title: "コピーしました",
-          message: `指示書 ${workOrderNumberLabel(
+          message: `指示書 ${fmt.workOrderNumberLabel(
             result.data.workOrderNumber,
             new Date(),
           )} を作成しました`,
@@ -166,16 +179,25 @@ export function WorkOrderDetail({
   const summary = (
     <SummaryGrid>
       <FieldValue
-        label="注文明細番号"
+        label="注文明細（割当）"
         value={
-          wo.orderLineNumber != null ? (
-            <Anchor
-              component={Link}
-              href={`${SALES_ORDERS_PATH}/${wo.orderLineNumber}`}
-              size="sm"
-            >
-              <DocNumber c="blue">{wo.orderLineNumber}</DocNumber>
-            </Anchor>
+          wo.orderLines.length > 0 ? (
+            <Stack gap={2}>
+              {wo.orderLines.map((l) => (
+                <Group gap={6} key={l.orderLineId} wrap="nowrap">
+                  <Anchor
+                    component={Link}
+                    href={`${SALES_ORDERS_PATH}/${l.number}`}
+                    size="sm"
+                  >
+                    <DocNumber c="blue">{l.number}</DocNumber>
+                  </Anchor>
+                  <Text c="dimmed" size="xs">
+                    割当 {l.allocatedQuantity} / 受注 {l.lineQuantity}
+                  </Text>
+                </Group>
+              ))}
+            </Stack>
           ) : (
             <Badge color="teal" size="sm" variant="light">
               在庫向け（注文明細なし）
@@ -183,7 +205,21 @@ export function WorkOrderDetail({
           )
         }
       />
-      <FieldValue label="顧客" value={wo.customerName ?? "—"} />
+      <FieldValue
+        label="顧客"
+        value={
+          wo.orderLines.length > 0
+            ? [
+                ...new Set(
+                  wo.orderLines
+                    .map((l) => l.customerName)
+                    .filter((n): n is string => !!n),
+                ),
+              ].join(" / ") || "—"
+            : "—"
+        }
+      />
+      <FieldValue label="作成者" value={wo.createdByName} />
       <FieldValue label="製品" value={wo.productName} />
       <FieldValue
         label="種別"
@@ -200,6 +236,7 @@ export function WorkOrderDetail({
         label="ロット番号"
         value={<DocNumber>{wo.lotNumber ?? wo.workOrderNumber}</DocNumber>}
       />
+      <FieldValue label="保管場所" value={wo.storageLocationName} />
       <FieldValue
         label="工程ルート"
         value={
@@ -250,6 +287,13 @@ export function WorkOrderDetail({
                 icon: <IconCopy size={14} />,
                 onClick: () => setCopyOpen(true),
               },
+              {
+                // 帯（最小要約 + QR）を別タブで開いてブラウザ印刷する。
+                // QR は CKK:WO:<番号> — 将来キオスクで読んで工程へ飛ぶ。
+                label: "ストリップ印刷",
+                icon: <IconPrinter size={14} />,
+                href: `${BASE_PATH}/print?ids=${wo.workOrderNumber}`,
+              },
               ...(canCancel
                 ? [
                     {
@@ -279,7 +323,7 @@ export function WorkOrderDetail({
             ]
           : ["生産", { label: "指示書", href: BASE_PATH }, woLabel]
       }
-      createdAt={formatDateTime(wo.createdAt)}
+      createdAt={fmt.dateTime(wo.createdAt)}
       status={
         <>
           <StatusBadge entity="WorkOrder" status={wo.status} />
@@ -292,10 +336,14 @@ export function WorkOrderDetail({
         </>
       }
       title={isApproval ? `承認 ${woLabel}` : `指示書 ${woLabel}`}
-      updatedAt={formatDateTime(wo.updatedAt)}
+      updatedAt={fmt.dateTime(wo.updatedAt)}
     >
       {/* 「いまやること」カードは常に最上部。承認画面は承認状況もサマリより上 */}
       {approvalCard}
+      {/* 承認待ちの工程フロー変更（承認設定が未設定なら出ない = 即適用） */}
+      {flowChange && flowChangeApproval && (
+        <FlowChangeCard approval={flowChangeApproval} change={flowChange} />
+      )}
       {isApproval ? (
         <>
           {approvalPanel}
@@ -344,14 +392,24 @@ export function WorkOrderDetail({
               <Text c="dimmed" mb={4} size="xs">
                 注文明細
               </Text>
-              {wo.orderLineNumber != null ? (
-                <Anchor
-                  component={Link}
-                  href={`${SALES_ORDERS_PATH}/${wo.orderLineNumber}`}
-                  size="sm"
-                >
-                  <DocNumber c="blue">{wo.orderLineNumber}</DocNumber>
-                </Anchor>
+              {wo.orderLines.length > 0 ? (
+                <Stack gap={4}>
+                  {wo.orderLines.map((l) => (
+                    <Group gap={6} key={l.orderLineId} wrap="nowrap">
+                      <Anchor
+                        component={Link}
+                        href={`${SALES_ORDERS_PATH}/${l.number}`}
+                        size="sm"
+                      >
+                        <DocNumber c="blue">{l.number}</DocNumber>
+                      </Anchor>
+                      <Text c="dimmed" size="xs">
+                        割当 {l.allocatedQuantity} / 受注 {l.lineQuantity}
+                        {l.customerName ? ` / ${l.customerName}` : ""}
+                      </Text>
+                    </Group>
+                  ))}
+                </Stack>
               ) : (
                 <Text c="dimmed" size="sm">
                   在庫向けの独立指示書（注文明細なし）
@@ -372,8 +430,11 @@ export function WorkOrderDetail({
                       size="sm"
                     >
                       <DocNumber c="blue">
-                        {workOrderNumberLabel(c.workOrderNumber, c.createdAt)}（
-                        {formatDateTime(c.createdAt)}）
+                        {fmt.workOrderNumberLabel(
+                          c.workOrderNumber,
+                          c.createdAt,
+                        )}
+                        （{fmt.dateTime(c.createdAt)}）
                       </DocNumber>
                     </Anchor>
                   ))}
@@ -439,10 +500,10 @@ export function WorkOrderDetail({
           )}
           <SearchSelect
             initialOption={
-              wo.orderLineId != null
+              wo.orderLines.length > 0
                 ? {
-                    value: wo.orderLineId,
-                    label: `${wo.orderLineNumber} ${wo.productName}（${wo.orderLineQuantity}）`,
+                    value: wo.orderLines[0].orderLineId,
+                    label: `${wo.orderLines[0].number} ${wo.productName}（${wo.orderLines[0].lineQuantity}）`,
                   }
                 : null
             }

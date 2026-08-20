@@ -8,6 +8,7 @@
  */
 
 import { describe, expect, it } from "vitest";
+import { documentFormatters } from "@/lib/format";
 import {
   entrySummary,
   findApplicableDiscount,
@@ -226,7 +227,9 @@ describe("entry summary & labels", () => {
     // single value when min === max, range with 〜 otherwise
     expect(priceRangeLabel(5000, 5000)).not.toContain("〜");
     expect(priceRangeLabel(5000, 8000)).toContain("〜");
-    expect(validPeriod("2026-01-01", null)).toContain("無期限");
+    expect(validPeriod(documentFormatters, "2026-01-01", null)).toContain(
+      "無期限",
+    );
   });
 
   it("requiresEndDate — テスト・サンプルのみ終了日必須", () => {

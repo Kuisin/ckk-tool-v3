@@ -47,6 +47,8 @@ const DELIVERY_NOTE_INCLUDE = {
   recipientBp: true,
   recipientBranchBp: true,
   endUserBp: true,
+  salesRep: { select: { id: true, displayName: true } },
+  createdByUser: { select: { displayName: true } },
   items: {
     orderBy: { sortOrder: "asc" as const },
     include: { product: true },
@@ -112,6 +114,9 @@ function mapDeliveryNote(r: DeliveryNoteRow): DeliveryNote {
     endUserName: r.endUserBp
       ? localized(r.endUserBp.name as LocalizedText | null)
       : null,
+    salesRepId: r.salesRep?.id ?? null,
+    salesRepName: r.salesRep?.displayName ?? null,
+    createdByName: r.createdByUser?.displayName ?? null,
     includePrice: r.includePrice,
     status: r.status as DeliveryNoteStatus,
     deliveredAt: r.deliveredAt?.toISOString() ?? null,
@@ -216,7 +221,10 @@ export async function fetchShippingOrderCandidates(): Promise<
     return {
       number,
       label: `${number}　${customerName}（${totalQuantity}）`,
+      customerBpId: r.customerBpId,
       customerName,
+      // 出荷書に営業担当が入っていれば納品書もそれを引き継ぐ。
+      salesRepId: r.salesRepId,
       customerBranchName: r.customerBranchBp
         ? localized(r.customerBranchBp.name as LocalizedText | null)
         : null,

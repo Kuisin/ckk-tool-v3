@@ -12,6 +12,7 @@ import { Stack, Tabs } from "@mantine/core";
 import { IconCircleMinus, IconTrash } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { useFormat } from "@/components/layout/PreferencesProvider";
 import { ActiveBadge } from "@/components/ui/ActiveBadge";
 import { DocNumber } from "@/components/ui/DocNumber";
 import { FieldValue } from "@/components/ui/FieldValue";
@@ -22,7 +23,6 @@ import {
 } from "@/components/ui/shells";
 import { useTabParam } from "@/hooks/useUrlState";
 import { COUNTRY_LABEL } from "@/lib/enum-labels";
-import { formatDateTime } from "@/lib/format";
 import { FloorMapsPanel, type PlantFloorMapRef } from "./FloorMapsPanel";
 import { DeletePlantModal, TogglePlantActiveModal } from "./PlantModals";
 
@@ -54,6 +54,7 @@ export function PlantDetail({
   record: PlantDetailData;
   floorMaps: PlantFloorMapRef[];
 }) {
+  const fmt = useFormat();
   const router = useRouter();
   // アクティブタブを ?tab= に保持（URL 共有でタブまで再現）
   const [tab, setTab] = useTabParam("overview");
@@ -90,10 +91,10 @@ export function PlantDetail({
         />
       }
       breadcrumbs={["マスタ", { label: "拠点", href: BASE_PATH }, record.code]}
-      createdAt={formatDateTime(record.createdAt)}
+      createdAt={fmt.dateTime(record.createdAt)}
       status={<ActiveBadge active={record.isActive} />}
       title={record.nameJa}
-      updatedAt={formatDateTime(record.updatedAt)}
+      updatedAt={fmt.dateTime(record.updatedAt)}
     >
       <SummaryGrid>
         <FieldValue

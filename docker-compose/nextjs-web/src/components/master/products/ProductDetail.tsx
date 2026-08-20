@@ -13,6 +13,8 @@ import { Badge, Stack, Table, Tabs, Text } from "@mantine/core";
 import { IconCircleMinus, IconCopy, IconTrash } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { useFormat } from "@/components/layout/PreferencesProvider";
+import { KeywordBadges } from "@/components/master/MasterKeywordsField";
 import { ActiveBadge } from "@/components/ui/ActiveBadge";
 import { DocNumber } from "@/components/ui/DocNumber";
 import { FieldValue } from "@/components/ui/FieldValue";
@@ -25,7 +27,6 @@ import {
 } from "@/components/ui/shells";
 import { useTabParam } from "@/hooks/useUrlState";
 import { useIsMobile } from "@/hooks/useViewport";
-import { formatDate, formatDateTime } from "@/lib/format";
 import type { RouteView } from "@/lib/product-routes-core";
 import { isReservedSpecKey } from "@/lib/product-types";
 import {
@@ -49,6 +50,8 @@ export interface ProductDetailData {
   diameterMm: number | null;
   lengthMm: number | null;
   unit: string;
+  /** 検索・AI 突合用のキーワード（match_names）。 */
+  matchNames: string[];
   isActive: boolean;
   notes: string;
   spec: { key: string; value: string }[];
@@ -83,6 +86,7 @@ export function ProductDetail({
   /** 工程リスト（ルート）— 工程タブ。 */
   routes: RouteView[];
 }) {
+  const fmt = useFormat();
   const router = useRouter();
   const isMobile = useIsMobile();
   // アクティブタブを ?tab= に保持（URL 共有でタブまで再現）
@@ -139,10 +143,10 @@ export function ProductDetail({
         { label: "製品", href: BASE_PATH },
         record.code ?? record.nameJa,
       ]}
-      createdAt={formatDateTime(record.createdAt)}
+      createdAt={fmt.dateTime(record.createdAt)}
       status={<ActiveBadge active={record.isActive} />}
       title={record.nameJa}
-      updatedAt={formatDateTime(record.updatedAt)}
+      updatedAt={fmt.dateTime(record.updatedAt)}
     >
       <SummaryGrid>
         <FieldValue
@@ -211,6 +215,10 @@ export function ProductDetail({
                 );
               })()}
             </Stack>
+            <FieldValue
+              label="キーワード"
+              value={<KeywordBadges values={record.matchNames} />}
+            />
             <FieldValue label="備考" value={record.notes || "—"} />
           </Stack>
         </Tabs.Panel>
@@ -253,8 +261,8 @@ export function ProductDetail({
                       </Table.Td>
                       {!isMobile && (
                         <Table.Td>
-                          {formatDate(e.validFrom)} 〜{" "}
-                          {e.validUntil ? formatDate(e.validUntil) : "無期限"}
+                          {fmt.date(e.validFrom)} 〜{" "}
+                          {e.validUntil ? fmt.date(e.validUntil) : "無期限"}
                         </Table.Td>
                       )}
                       <Table.Td>

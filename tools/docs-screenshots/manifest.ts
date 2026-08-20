@@ -212,7 +212,8 @@ export const shots: Shot[] = [
     docPage: "operations/sales/order-acceptance/user",
     path: "/sales/order-acceptances/ORD-202607-00002",
     steps: async (page) => {
-      await page.getByRole("button", { name: "伝票展開" }).first().waitFor();
+      // 「伝票展開」→「確定」に改称。
+      await page.getByRole("button", { name: "確定" }).first().waitFor();
     },
   },
   // ── 販売: 設計依頼書（SA05）────────────────────────────────────────────────
@@ -318,8 +319,9 @@ export const shots: Shot[] = [
     docPage: "operations/sales/order-acceptance/user",
     path: "/sales/order-acceptances/ORD-202607-00002",
     steps: async (page) => {
-      await page.getByRole("button", { name: "伝票展開", exact: true }).click();
-      await page.getByText("伝票展開の確認").first().waitFor();
+      // 「伝票展開」→「確定」に改称（確認モーダルは「確定の確認」）。
+      await page.getByRole("button", { name: "確定", exact: true }).click();
+      await page.getByText("確定の確認").first().waitFor();
     },
   },
   {
@@ -537,9 +539,10 @@ export const shots: Shot[] = [
   {
     id: "work-order-new-01",
     docPage: "operations/production/work-order/user",
-    path: "/production/work-orders/new?salesOrder=e0000000-0000-4000-8000-000000000002",
+    // プリセレクトのクエリは注文明細統合で ?salesOrder → ?orderLine に変わった。
+    path: "/production/work-orders/new?orderLine=e0000000-0000-4000-8000-000000000002",
     steps: async (page) => {
-      await page.getByText("工程リスト").first().waitFor();
+      await page.getByText("工程").first().waitFor();
     },
   },
   // ── 生産: 承認管理（PD03）──────────────────────────────────────────────────
@@ -761,7 +764,8 @@ export const shots: Shot[] = [
     docPage: "operations/shipping/shipping-order/user",
     path: "/shipping/shipping-orders/new",
     steps: async (page) => {
-      await page.getByText("注文請書").first().waitFor();
+      // 出荷元は「注文請書」ではなく「注文明細」を選ぶ形に変わった。
+      await page.getByText("注文明細").first().waitFor();
     },
   },
   {
@@ -1043,7 +1047,13 @@ export const shots: Shot[] = [
     docPage: "operations/masters/approval-setting/user",
     path: "/master/approval-settings?tab=groups",
     steps: async (page) => {
-      await page.getByText("第一承認グループ").first().waitFor();
+      // 同じ文字列がモバイル用の非表示ブロックにも居るので、可視のものを待つ
+      // （first() だと隠れている方を掴んでタイムアウトする）。
+      await page
+        .getByText("第一承認グループ")
+        .filter({ visible: true })
+        .first()
+        .waitFor();
     },
   },
   // ── マスタ: 拠点（MS0C）────────────────────────────────────────────────────
@@ -1293,6 +1303,20 @@ export const shots: Shot[] = [
     steps: async (page) => {
       await page.getByText("お気に入り").first().waitFor();
     },
+  },
+  {
+    id: "profile-preferences-01",
+    docPage: "user-settings",
+    path: "/profile/preferences",
+    steps: async (page) => {
+      // プレビュー（固定日時 2026/03/05 のサンプル）が出たら撮る。
+      await page.getByText("プレビュー").first().waitFor();
+    },
+    /*
+     * 揮発物なし: タイムゾーンの「その地域のいまの時刻」は開いた一覧にだけ出て、
+     * 閉じた入力欄はゾーン名だけ（DisplayPreferencesForm 参照）。プレビューは
+     * 固定サンプル時刻なので、mask/clip 無しで決定的に撮れる。
+     */
   },
   // ── 設定: 試算計算（SY02, 管理者）──────────────────────────────────────────
   {

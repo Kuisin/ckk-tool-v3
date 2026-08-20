@@ -57,7 +57,8 @@ Put the file in the import folder on the server and it is imported automatically
 
 1. Press「**優先取込**」(priority import) at the top right of the list screen.
 2. Choose the order form file (PDF, PNG, JPG or WebP; you can choose several at once).
-3. The progress is shown at the top right of the screen. It takes about **30 to 60 seconds** per file.
+3. **All** the chosen files are added to the list first (status 「取込中」/ importing). Only once they are all listed does the reading (AI extraction) start, one after another.
+4. The progress is shown at the top right of the screen. Reading takes about **30 to 60 seconds** per file.
 
 **3. Type it in by hand**
 
@@ -82,7 +83,7 @@ A draft opens in **view mode** (read only). Switch to「**編集**」(edit) only
 4. If no customer is set, search for one in the「**顧客**」(customer) field and choose it.
 5. If the order follows on from a quote, enter the quote number in「**見積書番号（任意）**」(quote number, optional).
 6. In「**明細**」(line items), check the product, type, quantity, unit price and delivery date.
-7. On a row with an orange「**製品未特定**」(product not identified) badge, choose the correct product in the「**製品**」(product) field.
+7. On a row with an orange「**製品未特定**」(product not identified) badge, choose the correct product in the「**製品**」(product) field. If candidates are offered under the field as「**もしかして**」(did you mean), one press fills it.
 8. Press「**保存**」(save) at the very bottom of the screen. Saving returns you to view mode.
 
 To stop editing, press「**キャンセル**」(cancel); if you changed something you are asked to confirm, and「**変更を破棄**」(discard changes) returns you to view mode. A draft that has no line items yet (for example one you just created by hand) opens in edit mode straight away.
@@ -90,6 +91,10 @@ To stop editing, press「**キャンセル**」(cancel); if you changed somethin
 ![Draft check screen with a price difference warning](../../../assets/screenshots/order-acceptance-detail-01.png)
 
 Press the file name link to open the original order form in another tab and compare it side by side.
+
+At the top of the screen, 「**製品**」 (products), 「**明細数 / 合計数量**」 (lines / total quantity) and 「**合計金額**」 (total amount) tell you **what, how much and for how much** was ordered without opening the item table. With two or more products it reads 「〇〇 ほか 2 種」 (X and 2 more kinds); hover to read every name. The item table also ends with a **合計** (total) row.
+
+> ⚠️ The total amount adds up **only the lines that have a unit price**. When some lines are still empty it says 「**単価未入力 N 件を除く**」 (excluding N lines with no unit price) — fill those in and it becomes the full amount.
 
 > 💡 A row whose unit price differs from the price list shows an orange「**価格差異**」(price difference) badge together with the correct price. A gray「**価格表なし**」(no price list) badge only means there is no price list yet for that customer and product — it is not a mistake.
 
@@ -166,6 +171,10 @@ Notes about the acceptance as a whole. Notes about one line go in that line's ow
 
 The product ordered. **It is matched automatically from the item name, but matching can miss** — choose it by hand when it does. Lines whose product is unresolved cannot move on.
 
+Dimensions or specifications following the item name do not prevent a match. But when all that could be read is a word **several products share** (for example `超硬ソリッド`), no single one is chosen — candidates are offered under「**もしかして**」(did you mean) instead, because letting you choose is safer than silently picking a different product.
+
+When an item name arrives written the same way every time but never matches, register that spelling under 「**キーワード**」 (keywords) in the [product master](/manual/en/operations/masters/product/user#field-keywords) — a customer's own wording or abbreviation — and it will match from then on.
+
 ### Item name (as read) [#field-extracted-name]
 
 The item name exactly as printed on the order. It is kept **as a record of what was read**, and is the clue for identifying the product.
@@ -196,7 +205,9 @@ Notes for that line only, such as a revision or custom content.
 A. Reading the order form did not work. The message states **what happened, the likely cause and what to do next** — read that first. Temporary failures (the reading server restarting, heavy load) are **retried automatically up to 3 times**; while that happens the badge turns orange 「再試行中」(retrying) and it may fix itself. After 3 failed tries it stops with the red message: press「**再抽出**」(read again) to try once more, or「**手入力に切り替え**」(switch to typing) to fill it in on the same screen. Failures that cannot fix themselves (a broken or oversized file) go red immediately, without retrying.
 
 **Q. The customer stays 「未特定」(not identified).**
-A. The company name on the order form could not be matched to the business partner master. On the draft screen, search for the customer, choose it, and press「保存」(save). For customers whose name is often written in different ways, register the other spellings in the [business partner master](/manual/en/operations/masters/business-partner/user) and they will be matched automatically next time.
+A. The company name on the order form could not be matched to the business partner master. Differences in **how the name is written** — 「(株)」 versus 「株式会社」, full-width versus half-width, a branch name or 「御中」 following the company name — are absorbed automatically, so this only appears when the company is *not registered* or when *several candidates match and none can be singled out*. In edit mode, look under the「**顧客**」(customer) field: if candidates are offered under「**もしかして**」(did you mean), one press fills the field. Otherwise search for the customer, choose it, and press「保存」(save). For customers whose name is often written in different ways, register the other spellings in the [business partner master](/manual/en/operations/masters/business-partner/user) and they will be matched automatically next time.
+
+> 💡 **Your correction is remembered.** When you pick a customer (or a product) by hand and save, the system records "this wording on the order form means this record" and **matches it automatically the next time the same wording arrives**. For a customer who sends the same format every month, you only fix it once. Pick a different record later and it re-learns that one instead.
 
 **Q. I cannot press「承認依頼」(request approval).**
 A. Requesting approval needs **a customer, at least one line item, and a product and a unit price on every row**. Whatever is missing is listed in the card at the very top of the screen (for example「顧客が未特定です / 明細 2 行目: 単価が未入力です」). Fix it with「**編集**」(edit) and press「**保存**」(save), and the button becomes available.

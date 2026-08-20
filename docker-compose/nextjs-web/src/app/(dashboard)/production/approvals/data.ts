@@ -9,7 +9,10 @@
  * 実体の依頼行を作るため。
  */
 
+import { appList } from "@/lib/app-list";
 import { stepFromSnapshot } from "@/lib/approval-flow";
+import { APPROVAL_TARGET, isApprovalTargetType } from "@/lib/approval-targets";
+import { checkPermission } from "@/lib/authz";
 import { prisma } from "@/lib/db";
 import { localized } from "@/lib/format";
 
@@ -30,6 +33,46 @@ export interface ApprovalRequestRow {
   requestedBy: string; // displayName 解決済み
   requestedAt: string | null;
   notes: string | null;
+  /**
+   * 対象書類を開く READ 権限があるか。false = 開いても AccessDenied になる。
+   * 遷移は止めず（承認そのものは別途 書類詳細で行う）、一覧にバッジを出して
+   * 「押しても見られない」ことを先に知らせるためだけに使う。
+   * 判定不能な未知の種別は true（根拠なく警告を出さない）。
+   */
+  canReadTarget: boolean;
+}
+
+/**
+ * 対象種別ごとに「その書類を開けるか」を判定する（種別ごとに 1 回）。
+ *
+ * 判定は書類ページのゲート requireAppRead と**同じ経路**
+ * （appList.requiredPermission → checkPermission(code, "READ")）を通す。
+ * ここだけ独自に判定すると、バッジとゲートの答えが食い違って嘘をつく。
+ *
+ * checkPermission の権限集合はリクエスト単位でメモ化されている（lib/authz）
+ * ため、種別が 4 つでも追加のクエリは発生しない。
+ */
+async function readableTargetTypes(
+  targetTypes: Iterable<string>,
+): Promise<Set<string>> {
+  const readable = new Set<string>();
+  await Promise.all(
+    [...new Set(targetTypes)].map(async (targetType) => {
+      if (!isApprovalTargetType(targetType)) return;
+      const app = appList.find(
+        (a) => a.key === APPROVAL_TARGET[targetType].appKey,
+      );
+      // 権限不要アプリ（requiredPermission === null）はログインだけで開ける。
+      if (!app) return;
+      if (app.requiredPermission === null) {
+        readable.add(targetType);
+        return;
+      }
+      const authz = await checkPermission(app.requiredPermission, "READ");
+      if (authz.ok) readable.add(targetType);
+    }),
+  );
+  return readable;
 }
 
 /** 承認待ち一覧 (PD03) — PENDING の承認依頼。依頼日時の昇順。 */
@@ -44,6 +87,8 @@ export async function fetchPendingApprovalRequests(): Promise<
     },
     orderBy: { requestedAt: "asc" },
   });
+
+  const readable = await readableTargetTypes(requests.map((r) => r.targetType));
 
   return requests.map((r) => {
     const step = stepFromSnapshot(r.flowSnapshot, r.stepNo);
@@ -64,6 +109,8 @@ export async function fetchPendingApprovalRequests(): Promise<
       requestedBy: r.requestedByUser?.displayName ?? "システム",
       requestedAt: r.requestedAt.toISOString(),
       notes: r.notes,
+      canReadTarget:
+        !isApprovalTargetType(r.targetType) || readable.has(r.targetType),
     };
   });
 }

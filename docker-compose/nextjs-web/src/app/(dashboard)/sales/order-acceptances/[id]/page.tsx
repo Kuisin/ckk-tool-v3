@@ -6,7 +6,8 @@ import { fetchAuditEntries } from "@/lib/audit";
 import { requireAppRead } from "@/lib/authz-page";
 import { formatDocNumber, parseDocKey } from "@/lib/doc-number";
 import { listMemos } from "@/lib/document-memos";
-import { fetchOrderAcceptance } from "../data";
+import { fetchWorkLocationOptions } from "@/lib/work-locations";
+import { fetchOrderAcceptance, fetchPlantOptions } from "../data";
 import { checkAcceptancePrices } from "../price-check";
 
 export const dynamic = "force-dynamic";
@@ -43,6 +44,8 @@ export default async function OrderLineAcceptancesDetailPage({
     memos,
     approvalTrail,
     approval,
+    plantOptions,
+    workLocationOptions,
   ] = await Promise.all([
     fetchOrderAcceptance(key),
     fetchAuditEntries("order_acceptances", number),
@@ -50,6 +53,8 @@ export default async function OrderLineAcceptancesDetailPage({
     listMemos("order_acceptances", number),
     fetchApprovalTrail("order_acceptances", number),
     fetchApprovalState("order_acceptances", number),
+    fetchPlantOptions(),
+    fetchWorkLocationOptions(),
   ]);
   if (!acceptance) notFound();
 
@@ -69,7 +74,9 @@ export default async function OrderLineAcceptancesDetailPage({
       attachments={attachments}
       auditEntries={auditEntries}
       memos={memos}
+      plantOptions={plantOptions}
       priceCheck={priceCheck}
+      workLocationOptions={workLocationOptions}
     />
   );
 }

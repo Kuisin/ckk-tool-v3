@@ -197,6 +197,8 @@ model Material {
   nominalDiameterMm Decimal? @map("nominal_diameter_mm") @db.Decimal(8, 3)
   name              Json
   unit              String
+  /// 検索・AI 突合用のキーワード（別名・略称・読み・英字表記）。business_partners.match_names と同じ役割。
+  matchNames        String[] @default([]) @map("match_names")
   isActive          Boolean  @default(true) @map("is_active")
   notes             String?
   createdAt         DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
@@ -234,6 +236,8 @@ model Product {
   lengthMm       Decimal? @map("length_mm") @db.Decimal(10, 3)
   unit       String   @default("本")
   spec       Json?
+  /// 検索・AI 突合用のキーワード（別名・略称・読み・英字表記）。business_partners.match_names と同じ役割。
+  matchNames String[] @default([]) @map("match_names")
   isActive   Boolean  @default(true) @map("is_active")
   notes      String?
   createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)

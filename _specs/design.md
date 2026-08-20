@@ -287,8 +287,10 @@ Operation codes provide keyboard-shortcut navigation. Format: `{CAT}{MODE}{IDX}`
 | 生産 | 2 | 指示書 | PD02 | PD12 | PD22 |
 | 生産 | 3 | 承認管理 | PD03 | PD13 | PD23 |
 | 生産 | 4 | 在庫管理 | PD04 | — | — |
+| 生産 | 5 | 未処理指示書 | PD05 | — | — |
 | 出荷 | 1 | 出荷書 | SH01 | SH11 | SH21 |
 | 出荷 | 2 | 納品書 | SH02 | SH12 | SH22 |
+| 出荷 | 3 | 未処理出荷書 | SH03 | — | — |
 | 請求 | 1 | 請求書 | BL01 | BL11 | BL21 |
 | 請求 | 2 | 締日処理 | BL02 | BL12 | BL22 |
 | マスタ | 1 | 取引先 | MS01 | MS11 | MS21 |
@@ -388,10 +390,12 @@ Stack (gap="xl", p="md", maw={1200})
 | 外注依頼 | `IconTruckDelivery` |
 | 素材発注書 | `IconShoppingCart` |
 | 指示書 | `IconSettings2` |
+| 未処理指示書 | `IconProgress` |
 | 承認管理 | `IconShieldCheck` |
 | 製品在庫 | `IconBoxSeam` |
 | 素材在庫 | `IconStack2` |
 | 出荷書 | `IconTruck` |
+| 未処理出荷書 | `IconTruckLoading` |
 | 納品書 | `IconReceipt` |
 | 請求書 | `IconFileInvoice` |
 | 締日処理 | `IconCalendarDue` |
@@ -912,13 +916,52 @@ Paper (withBorder, p="md", radius="md")
     │           │   └── [全工程 PENDING かつ実行可能] ActionIcon(red) 削除 → openConfirm → removeBranch
     │           └── Stack gap="xs" — 系列内 StepCard（分岐 off 分岐は再帰ネスト）
     └── Grid.Col span={{ base: 12, lg: 5 }} visibleFrom="lg" — フロー図（sticky top:76）
-        └── WorkflowGraph — 縦型 SVG キャンバス（直列でも常時表示）
-            `src/components/production/WorkflowGraph.tsx` — layer→Y（フロー方向）、
-            レーン→X（メインライン=0 / 分岐系列=1..）。メインラインの暗黙フロー
-            （kind:"flow"）は灰色実線・無ラベル、分岐/合流エッジ（kind:"link"）は
-            橙の破線 + 数量ラベル（動的エッジは解決値 or「全量」）。ノードクリックで
-            リスト側の StepCard を選択・スクロール同期（selected = blue 強調枠）
+        └── WorkflowGraph — 縦型フローキャンバス（直列でも常時表示）
+            `src/components/production/WorkflowGraph.tsx`（next/dynamic + ssr:false の
+            薄い入口）→ `WorkflowGraphCanvas.tsx`（React Flow / @xyflow/react）。
+            layer→Y（フロー方向）、レーン→X（メインライン=0 / 分岐系列=1..）。
+            **座標は lib/workflow-core.ts の layoutWorkflowGraph が決める** —
+            ライブラリにレイアウトも妥当性判定もさせない（描画層に留める）。
+            メインラインの暗黙フロー（kind:"flow"）は灰色実線・無ラベル、
+            分岐/合流エッジ（kind:"link"）は橙の破線 + 数量ラベル（動的エッジは
+            解決値 or「全量」）。進行中工程へ入るエッジのみ animated。
+            ノードクリックでリスト側の StepCard を選択・スクロール同期
+            （highlighted = blue 強調枠）。Controls（拡大縮小・全体表示）+
+            MiniMap（top-right・状態色）付き。ページのスクロールを奪わないよう
+            zoomOnScroll=false / preventScrolling=false。工程の増減時のみ
+            fitView で測り直す（数量だけの更新では視点を動かさない）。
+            ノード本体は `WorkflowStepNode.tsx` = Mantine の HTML ノード
+            （工程名 lineClamp 2 + 種別バッジ + 外注バッジ + 数量バッジ。
+            アイコンは StepCard と STEP_STATUS_ICON を共有）
 ```
+
+**ノードの色は「工程種別」、状態はアイコンとバッジ** — フロー図を見て最初に
+知りたいのは「何の工程か」なので、ノードの色（左 4px アクセント + 種別バッジ +
+アイコン地色）は `PROCESS_CATEGORY_COLOR`（`lib/enum-labels.ts`）で決める:
+
+| 工程種別 | 色 |
+|----------|----|
+| 材料準備 MATERIAL_PREP | `teal` |
+| 加工 MACHINING | `indigo` |
+| コーティング COATING | `grape` |
+| 検査 INSPECTION | `cyan` |
+| 検査承認 APPROVAL | `violet` |
+| 出荷 SHIPPING | `pink` |
+
+状態色（§9 StepStatus の gray / blue / green / red）とぶつからないよう、その 4 色は
+種別に使わない。**状態**はアイコン（時計 / スピナー / チェック / ✗）と、進行を
+止めている状態のバッジだけで示す:
+
+| 状態 | ノードの表示 |
+|------|--------------|
+| PENDING かつ開始可能（`canStart`） | 緑 `filled` バッジ「開始可」= いま着手できる |
+| PENDING で依存未達 | 灰の小文字「未着手」 |
+| IN_PROGRESS | 数量バッジ（受入 …）+ 流入エッジが animated |
+| COMPLETED | 数量バッジ（受入 / 良品 / 不良内訳） |
+| CANCELLED | 赤 `light` バッジ「キャンセル」 |
+
+`canStart` はサーバーが `canStartStep`（`lib/workflow-core.ts`）で算出した値を
+そのまま使う — 実行可否の判定をクライアントに持たせない。
 
 **StepCard** (`src/components/production/StepCard.tsx`)
 
@@ -936,6 +979,15 @@ Paper (withBorder, p="sm", radius="sm")
 │   │       text: "外注" | "社内"
 │   └── [desktop, if OUTSOURCE] Text size="xs" c="dimmed" — supplier name
 ├── [mobile, if OUTSOURCE] Text size="xs" c="dimmed" mt={4} pl={28} — supplier name
+├── [if 担当者 or 作業時間] Group gap="md" mt="xs" pl={28} wrap="wrap"
+│   ├── [担当者] Group gap={6} — Text c="dimmed" "担当" +
+│   │   最大 3 名 × (UserAvatar size={18} + Text size="xs" 氏名) + "ほか N 名"
+│   │   担当者 = 作業計画（work_order_step_plans）の割当ユーザー（重複排除・計画日順）
+│   └── [作業時間] Text size="xs" c="dimmed" tabular-nums
+│       "予定 {planned_work_hours}h / 実績 {actual_work_hours}h"
+│       実績 = 実績行（work_order_step_actuals）の開始〜終了の累計
+│       （lib/step-work-hours.ts sumActualWorkHours — 休止時間は入らない。
+│        数えられる行が無ければ null なので、その場合は「予定」だけを出す）
 ├── [if OUTSOURCE] Group gap="xl" mt="xs" pl={28}
 │   ├── Text size="xs" c="dimmed" "依頼: {outsource_requested_at}"
 │   └── Text size="xs" c="dimmed" "入荷予定: {outsource_expected_at}"
@@ -955,6 +1007,35 @@ dynamic (carries the source's full 良品数 — chain and merge edges), so in-s
 defects propagate automatically. Branch quantity is capped at the source's
 unallocated 工程分岐数 (良品+工程分岐 for terminal steps) — `branchableQuantity` in
 `lib/workflow-core.ts`, enforced server-side and reflected in AddBranchModal.
+
+**分岐は必ず「合流」か「在庫」で終わる（§7）** — 良品の行き先が無い分岐を
+作らせない。終端の選び方は 2 つだけで、AddBranchModal は片方が決まるまで
+確定できない（`confirmDisabled`）:
+
+| 終端 | 表し方 | 完了時の入庫 |
+|------|--------|--------------|
+| 本流へ合流 | 終端工程 → 本流工程 の動的リンク（`routed_quantity = 0`） | 合流先へ流れる（入庫しない） |
+| 在庫へ（半製品） | 終端工程の `branch_stock_disposition = SEMI_FINISHED` | 半製品在庫（`computeBranchSemiFinishedQuantity`） |
+| 在庫へ（製品） | 終端工程の `branch_stock_disposition = PRODUCT` | 完成数に加算 → 製品在庫（ロット付き） |
+
+分岐系列のヘッダには行き先バッジを出す（合流 → 工程名 / 半製品在庫へ /
+製品在庫へ）。どちらも無い旧データは橙の**「行き先未設定」**で、直すまで
+良品が完成数へ素通しされることが判るようにする。
+
+**工程フロー変更の承認（§6）** — 承認済み・進行中の指示書で分岐を足す/直す/
+消すと、承認設定（MS0B）の「工程フロー変更」フローに段が 1 つでもあれば
+**工程を触らずに保留**され（`work_order_flow_changes`）、最終承認で初めて適用
+される。1 段も無ければ保留せず即適用（**未設定 = 素通し**）。保留中は指示書
+詳細の最上部に `FlowChangeCard`（§10.9 ActionCard。承認できる人は green +
+承認/差し戻し、それ以外は gray の「承認待ち」）。差し戻すと適用されずに閉じ、
+工程はそのまま。適用は承認後に通常の関数（addBranchSeries 等）を通すので、
+待っている間に前提が崩れていれば FAILED として残る（古い前提のまま当てない）。
+
+**作成後の編集** — 分岐系列ヘッダの鉛筆アイコンから、**分岐数量**（系列が
+全て未着手のときのみ）と**終端**（終端工程が未着手のときのみ）を付け替えられる
+（`updateBranch` → `updateBranchSeries`）。工程の入れ替えは削除して作り直す
+（実績・計画の消え方が見える操作に寄せるため）。判定は
+`branchSeriesList` / `danglingBranches`（`lib/workflow-core.ts` — kiosk と双子）。
 
 ### 12.3 WorkOrderStepExecutionPage
 
@@ -1179,6 +1260,8 @@ Row click navigates to detail page.
 | SalesOrder | 注文明細番号 / 顧客 / 製品 / 数量 / 金額 / 納期 / 状態 |
 | WorkOrder | 指示書番号 / 注文明細番号 / 種別 / 予定数量 / 承認状態 / 状態 / 更新日 |
 | ShippingOrder | 出荷書番号 / 注文明細番号 / 種別 / 状態 / 出荷日 |
+| UnplannedOrderLine (PD05 未手配) | 注文明細番号 / 顧客 / 製品 / 受注数 / 手配済 / 未手配 / 在庫引当 / 納期 / 状態 |
+| UnshippedOrderLine (SH03 未手配) | 注文明細番号 / 顧客 / 製品 / 完了ロット / 完成数 / 出荷手配済 / 未手配 / 納期 / 状態 |
 | DeliveryNote | 納品番号 / 出荷書番号 / 納品先 / 方法 / 状態 / 納品日 |
 | Invoice | 請求番号 / 顧客 / 請求期間 / 合計金額 / 状態 / 発行日 |
 | BillingClosing | 顧客 / 締日 / 合計金額 / 状態 / 処理日 |

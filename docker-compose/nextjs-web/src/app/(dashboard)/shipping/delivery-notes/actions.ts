@@ -26,6 +26,7 @@ import {
 } from "@/lib/doc-number";
 import { type LocalizedText, localized } from "@/lib/format";
 import { allocateDocumentKey } from "@/lib/numbering";
+import { resolveSalesRepId } from "@/lib/sales-rep";
 import {
   type ActionResult,
   actionError,
@@ -69,6 +70,11 @@ const itemInput = z.object({
 });
 
 const baseInput = z.object({
+  /**
+   * 営業担当。未指定なら出荷書の担当を引き継ぎ、それも無ければ納品先の
+   * 主担当が入る（lib/sales-rep）。納品先は作成後不変。
+   */
+  salesRepId: z.string().nullable().optional(),
   deliveryMethod: z.enum(["NORMAL", "DIRECT_TO_USER"]),
   endUserBpId: z.string().nullable(),
   includePrice: z.boolean(),
@@ -232,6 +238,12 @@ export async function createDeliveryNote(
     if (itemsError) return actionError(itemsError);
 
     const { yearMonth, seq } = await allocateDocumentKey("DELIVERY");
+    // 出荷書の営業担当をそのまま引き継ぐ（無ければ納品先の主担当）。
+    const salesRepId = await resolveSalesRepId(
+      v.salesRepId ?? shp.salesRepId,
+      shp.customerBpId,
+      null,
+    );
     await prisma.deliveryNote.create({
       data: {
         yearMonth,
@@ -241,6 +253,7 @@ export async function createDeliveryNote(
         deliveryMethod: v.deliveryMethod,
         recipientBpId: shp.customerBpId,
         recipientBranchBpId: shp.customerBranchBpId,
+        salesRepId,
         endUserBpId:
           v.deliveryMethod === "DIRECT_TO_USER" ? v.endUserBpId : null,
         includePrice: v.includePrice,
@@ -260,6 +273,7 @@ export async function createDeliveryNote(
         shippingOrderNumber: v.shippingOrderNumber,
         deliveryMethod: v.deliveryMethod,
         recipientBpId: shp.customerBpId,
+        salesRepId,
         endUserBpId:
           v.deliveryMethod === "DIRECT_TO_USER" ? v.endUserBpId : null,
         includePrice: v.includePrice,
@@ -301,6 +315,7 @@ export async function updateDeliveryNote(
       where: { yearMonth_seq: key },
       select: {
         deliveryMethod: true,
+        salesRepId: true,
         endUserBpId: true,
         includePrice: true,
         notes: true,
@@ -328,6 +343,7 @@ export async function updateDeliveryNote(
         where: { ...key, status: "DRAFT" },
         data: {
           deliveryMethod: v.deliveryMethod,
+          salesRepId: v.salesRepId?.trim() || null,
           endUserBpId:
             v.deliveryMethod === "DIRECT_TO_USER" ? v.endUserBpId : null,
           includePrice: v.includePrice,
@@ -359,6 +375,7 @@ export async function updateDeliveryNote(
       before: prior ?? undefined,
       after: {
         deliveryMethod: v.deliveryMethod,
+        salesRepId: v.salesRepId?.trim() || null,
         endUserBpId:
           v.deliveryMethod === "DIRECT_TO_USER" ? v.endUserBpId : null,
         includePrice: v.includePrice,

@@ -31,6 +31,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import type { BpDetail as BpDetailData } from "@/app/(dashboard)/master/_shared/bp-data";
 import { BP_BASE_PATH } from "@/app/(dashboard)/master/_shared/bp-paths";
+import { useFormat } from "@/components/layout/PreferencesProvider";
 import { BpBaseSummary } from "@/components/master/bp/BpBaseSummary";
 import {
   DeleteBpModal,
@@ -58,7 +59,7 @@ import {
   TAX_TYPE_LABEL,
   VENDOR_TYPE_LABEL,
 } from "@/lib/enum-labels";
-import { formatDate, formatDateTime, formatMoney } from "@/lib/format";
+import { formatMoney } from "@/lib/format";
 
 const day = (v: number | null) =>
   v == null ? "—" : v === 31 ? "月末" : `${v}日`;
@@ -105,6 +106,7 @@ export function BpDetail({
   record: BpDetailData;
   auditEntries: AuditEntry[];
 }) {
+  const fmt = useFormat();
   const router = useRouter();
   const isMobile = useIsMobile();
   // アクティブタブを ?tab= に保持（URL 共有でタブまで再現）
@@ -150,10 +152,10 @@ export function BpDetail({
         { label: "取引先", href: BP_BASE_PATH },
         record.bpCode,
       ]}
-      createdAt={formatDateTime(record.createdAt)}
+      createdAt={fmt.dateTime(record.createdAt)}
       status={<ActiveBadge active={record.isActive} />}
       title={record.nameJa}
-      updatedAt={formatDateTime(record.updatedAt)}
+      updatedAt={fmt.dateTime(record.updatedAt)}
     >
       <BpBaseSummary
         extra={
@@ -236,6 +238,29 @@ export function BpDetail({
                   mt="sm"
                   readOnly
                 />
+                <Box mt="sm">
+                  <FieldValue
+                    label="営業担当"
+                    value={
+                      customer.salesReps.length > 0 ? (
+                        <Group gap="xs" wrap="wrap">
+                          {customer.salesReps.map((rep) => (
+                            <Badge
+                              color={rep.isPrimary ? "blue" : "gray"}
+                              key={rep.userId}
+                              variant="light"
+                            >
+                              {rep.name}
+                              {rep.isPrimary ? "（主担当）" : ""}
+                            </Badge>
+                          ))}
+                        </Group>
+                      ) : (
+                        "—"
+                      )
+                    }
+                  />
+                </Box>
               </OverviewSection>
             )}
 
@@ -392,7 +417,7 @@ export function BpDetail({
                         status={h.status.value}
                       />
                     </Table.Td>
-                    {!isMobile && <Table.Td>{formatDate(h.date)}</Table.Td>}
+                    {!isMobile && <Table.Td>{fmt.date(h.date)}</Table.Td>}
                   </Table.Tr>
                 ))}
               </Table.Tbody>

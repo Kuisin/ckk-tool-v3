@@ -82,6 +82,14 @@ export interface RenderPdfOptions {
    * シート）は `"0"` を渡し、余白をテンプレート内の padding で持つ。
    */
   margins?: string;
+  /**
+   * ページボックスの寸法（既定 A4 縦 210mm × 297mm）。原寸印刷が必須の帳票
+   * （QR カードシート）は、ビューアの「用紙（印刷可能領域）に合わせる」が
+   * 縮小として働かないよう A4 より一回り小さいページボックスを渡す。
+   * テンプレート CSS の `@page { size }` と必ず一致させること。
+   */
+  paperWidth?: string;
+  paperHeight?: string;
 }
 
 /** Render `<template>.html` with `data` and convert it to a PDF via Gotenberg. */
@@ -108,8 +116,8 @@ export async function renderPdf(
     form.append("files", new Blob([svg], { type: "image/svg+xml" }), asset);
   }
   // A4 (210mm × 297mm); Gotenberg otherwise defaults to US Letter.
-  form.append("paperWidth", "210mm");
-  form.append("paperHeight", "297mm");
+  form.append("paperWidth", options.paperWidth ?? "210mm");
+  form.append("paperHeight", options.paperHeight ?? "297mm");
   form.append("printBackground", "true");
   if (options.margins != null) {
     form.append("marginTop", options.margins);

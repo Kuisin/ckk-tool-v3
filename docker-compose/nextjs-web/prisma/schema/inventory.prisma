@@ -62,6 +62,7 @@ model StorageLocation {
 
   productInventory  ProductInventory[]
   materialInventory MaterialInventory[]
+  workOrders        WorkOrder[]         @relation("WorkOrderStorageLocation")
 
   @@index([plantId])
   @@map("storage_locations")

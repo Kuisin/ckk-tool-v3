@@ -14,6 +14,7 @@ import {
   IconSearch,
 } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
+import { useFormat } from "@/components/layout/PreferencesProvider";
 import { SecondaryButton } from "@/components/ui/buttons";
 import { type Column, DataTable } from "@/components/ui/DataTable";
 import { MoneyText } from "@/components/ui/MoneyText";
@@ -22,12 +23,12 @@ import { ListShell } from "@/components/ui/shells";
 import { useUrlSelectState, useUrlStringState } from "@/hooks/useUrlState";
 import { useIsMobile } from "@/hooks/useViewport";
 import { ORDER_TYPE_LABEL, ORDER_TYPE_OPTIONS } from "@/lib/enum-labels";
-import { formatDate } from "@/lib/format";
 import type { OrderLine } from "./model";
 
 const BASE_PATH = "/sales/order-lines";
 
 export function OrderLineTable({ rows }: { rows: OrderLine[] }) {
+  const fmt = useFormat();
   const router = useRouter();
   const isMobile = useIsMobile();
 
@@ -110,7 +111,7 @@ export function OrderLineTable({ rows }: { rows: OrderLine[] }) {
       sortValue: (o) => o.deliveryDate ?? "",
       render: (o) => (
         <Text className="tabular-nums" size="sm">
-          {formatDate(o.deliveryDate)}
+          {fmt.date(o.deliveryDate)}
         </Text>
       ),
     },
@@ -209,7 +210,7 @@ export function OrderLineTable({ rows }: { rows: OrderLine[] }) {
             <Stack align="flex-end" className="shrink-0" gap={4}>
               <StatusBadge entity="OrderLine" status={o.status} />
               <Text c="dimmed" size="xs">
-                {formatDate(o.deliveryDate)}
+                {fmt.date(o.deliveryDate)}
               </Text>
             </Stack>
           </Group>

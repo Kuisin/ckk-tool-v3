@@ -21,10 +21,11 @@ import {
 import { IconHistory } from "@tabler/icons-react";
 import { useEffect, useState, useTransition } from "react";
 import { fetchDeviceSessions } from "@/app/(dashboard)/settings/kiosk-devices/actions";
+import { useFormat } from "@/components/layout/PreferencesProvider";
 import { SecondaryButton } from "@/components/ui/buttons";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { ModalShell } from "@/components/ui/modals";
-import { formatDate, formatDateTime, formatTime } from "@/lib/format";
+import type { Formatters } from "@/lib/format";
 import type { KioskDeviceSessionRow } from "@/lib/kiosk-admin";
 
 function formatDuration(startIso: string, endIso: string): string {
@@ -38,11 +39,11 @@ function formatDuration(startIso: string, endIso: string): string {
   return `${Math.floor(mins / 60)}時間${mins % 60 > 0 ? `${mins % 60}分` : ""}`;
 }
 
-/** 終了時刻: 同日（JST）なら時刻のみ（行を短く保つ）。 */
-function formatEnd(startIso: string, endIso: string): string {
-  return formatDate(startIso) === formatDate(endIso)
-    ? formatTime(endIso)
-    : formatDateTime(endIso);
+/** 終了時刻: 同じ日（表示タイムゾーン基準）なら時刻のみ（行を短く保つ）。 */
+function formatEnd(fmt: Formatters, startIso: string, endIso: string): string {
+  return fmt.date(startIso) === fmt.date(endIso)
+    ? fmt.time(endIso)
+    : fmt.dateTime(endIso);
 }
 
 /**
@@ -50,6 +51,7 @@ function formatEnd(startIso: string, endIso: string): string {
  * モーダルと端末詳細ページの両方から使う。
  */
 export function DeviceLogList({ deviceId }: { deviceId: string }) {
+  const fmt = useFormat();
   const [rows, setRows] = useState<KioskDeviceSessionRow[]>([]);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -125,8 +127,10 @@ export function DeviceLogList({ deviceId }: { deviceId: string }) {
             </Group>
             <Stack align="flex-end" gap={0} style={{ flexShrink: 0 }}>
               <Text c="dimmed" size="sm">
-                {formatDateTime(r.startedAt)}
-                {r.endedAt ? ` → ${formatEnd(r.startedAt, r.endedAt)}` : " →"}
+                {fmt.dateTime(r.startedAt)}
+                {r.endedAt
+                  ? ` → ${formatEnd(fmt, r.startedAt, r.endedAt)}`
+                  : " →"}
               </Text>
               <Text c="dimmed" size="xs">
                 {r.endedAt

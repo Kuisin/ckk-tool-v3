@@ -16,12 +16,14 @@ import type {
   StepPlanView,
 } from "@/components/production/step-execution/model";
 import type {
+  StepAssigneeView,
   WorkOrderRow,
   WorkOrderView,
 } from "@/components/production/work-orders/model";
 import { fetchApprovalTrail, type HistoryEntry } from "@/lib/approvals";
 import { getCurrentActorId } from "@/lib/audit";
 import { checkPermission } from "@/lib/authz";
+import { avatarUrl } from "@/lib/avatar";
 import { type Prisma, prisma } from "@/lib/db";
 import { orderLineNumberOf } from "@/lib/doc-number";
 import { type LocalizedText, localized } from "@/lib/format";
@@ -33,6 +35,7 @@ import {
   parseStoredSamples,
   samplingSpecFromRow,
 } from "@/lib/inspection-core";
+import { sumActualWorkHours } from "@/lib/step-work-hours";
 import { fetchWorkLocationOptions } from "@/lib/work-locations";
 import { fetchWorkflowCtx, loadCatalog } from "@/lib/workflow";
 import { canStartStep, expectedInput } from "@/lib/workflow-core";
@@ -63,9 +66,18 @@ function parseDefectReasons(value: unknown): StepDefectReasonView[] {
 }
 
 const WO_INCLUDE = {
-  orderLine: { include: { acceptance: { include: { customerBp: true } } } },
+  orderLineLinks: {
+    include: {
+      orderLine: { include: { acceptance: { include: { customerBp: true } } } },
+    },
+    orderBy: { sortOrder: "asc" as const },
+  },
+  createdByUser: { select: { displayName: true } },
   product: true,
   material: true,
+  storageLocation: {
+    select: { id: true, name: true, plant: { select: { name: true } } },
+  },
   routeVersion: {
     select: {
       id: true,
@@ -83,6 +95,23 @@ const WO_INCLUDE = {
       processStep: true,
       plant: true,
       supplierBp: true,
+      // 担当者（工程リストの「担当」）— 計画の割当ユーザー。写真は小サイズ。
+      plans: {
+        select: {
+          userId: true,
+          user: {
+            select: {
+              id: true,
+              displayName: true,
+              avatarFileId: true,
+              avatarThumbFileId: true,
+            },
+          },
+        },
+        orderBy: { plannedDate: "asc" as const },
+      },
+      // 実働時間の積算に使う（1 行 = 1 作業セッション）。
+      actuals: { select: { startedAt: true, endedAt: true } },
       _count: { select: { plans: true, actuals: true } },
     },
     orderBy: { sortOrder: "asc" as const },
@@ -93,13 +122,66 @@ const WO_INCLUDE = {
 
 const iso = (d: Date | null | undefined) => d?.toISOString() ?? null;
 
+/**
+ * 作業計画の割当ユーザー → 担当者一覧（重複排除・計画日順）。
+ * 同じ人が複数日に割り当てられていても 1 人として出す。
+ */
+function stepAssignees(
+  plans: readonly {
+    user: {
+      id: string;
+      displayName: string | null;
+      avatarFileId: string | null;
+      avatarThumbFileId: string | null;
+    };
+  }[],
+): StepAssigneeView[] {
+  const seen = new Set<string>();
+  const out: StepAssigneeView[] = [];
+  for (const p of plans) {
+    if (seen.has(p.user.id)) continue;
+    seen.add(p.user.id);
+    const fileId = p.user.avatarThumbFileId ?? p.user.avatarFileId;
+    out.push({
+      userId: p.user.id,
+      name: p.user.displayName ?? "—",
+      avatarUrl: fileId
+        ? avatarUrl(
+            p.user.id,
+            fileId,
+            p.user.avatarThumbFileId ? "thumb" : "full",
+          )
+        : null,
+    });
+  }
+  return out;
+}
+
+/** 複数割当の一覧表示ラベル（先頭の明細番号 + ほか n 件）。 */
+function orderLineListLabel(
+  links: readonly {
+    orderLine: {
+      acceptanceYearMonth: string;
+      acceptanceSeq: number;
+      branch: number | null;
+    };
+  }[],
+): string | null {
+  if (links.length === 0) return null;
+  const first = orderLineNumberOf(links[0].orderLine);
+  if (!first) return null;
+  return links.length > 1 ? `${first} ほか${links.length - 1}件` : first;
+}
+
 function mapRow(r: {
   workOrderNumber: number;
-  orderLine: {
-    acceptanceYearMonth: string;
-    acceptanceSeq: number;
-    branch: number | null;
-  } | null;
+  orderLineLinks: {
+    orderLine: {
+      acceptanceYearMonth: string;
+      acceptanceSeq: number;
+      branch: number | null;
+    };
+  }[];
   product: { name: unknown };
   type: string;
   plannedQuantity: number;
@@ -112,7 +194,7 @@ function mapRow(r: {
   return {
     workOrderNumber: r.workOrderNumber,
     createdAt: r.createdAt.toISOString(),
-    orderLineNumber: r.orderLine ? orderLineNumberOf(r.orderLine) : null,
+    orderLineNumber: orderLineListLabel(r.orderLineLinks),
     productName: localized(r.product.name as LocalizedText | null),
     type: r.type,
     plannedQuantity: r.plannedQuantity,
@@ -150,26 +232,126 @@ function workOrderRowInScope(
   );
 }
 
-/** 指示書一覧 (PD02)。 */
-export async function fetchWorkOrders(): Promise<WorkOrderRow[]> {
+/**
+ * 指示書一覧 (PD02)。
+ *
+ * `extraWhere` は未処理指示書 (PD05) の「進行中」タブが未完了だけを引くための
+ * 追加条件。スコープ条件と AND で合成する（キー衝突を避けるため spread しない）。
+ */
+export async function fetchWorkOrders(
+  extraWhere?: Prisma.WorkOrderWhereInput,
+): Promise<WorkOrderRow[]> {
   const authz = await checkPermission("work_order", "READ");
   if (!authz.ok) return [];
+  const scope = workOrderScopeWhere(authz.access, authz.userId);
   const rows = await prisma.workOrder.findMany({
     take: LIST_FETCH_CAP,
-    where: workOrderScopeWhere(authz.access, authz.userId),
+    where: extraWhere ? { AND: [scope, extraWhere] } : scope,
     include: {
-      orderLine: {
+      orderLineLinks: {
         select: {
-          acceptanceYearMonth: true,
-          acceptanceSeq: true,
-          branch: true,
+          orderLine: {
+            select: {
+              acceptanceYearMonth: true,
+              acceptanceSeq: true,
+              branch: true,
+            },
+          },
         },
+        orderBy: { sortOrder: "asc" },
       },
       product: true,
     },
     orderBy: { workOrderNumber: "desc" },
   });
   return rows.map(mapRow);
+}
+
+/** ストリップ印刷（帯）の 1 件ぶん — 最小限の要約だけ。 */
+export interface WorkOrderStripView {
+  workOrderNumber: number;
+  productName: string;
+  /** 注文明細番号（在庫向けの独立指示書は null）。 */
+  orderLineNumber: string | null;
+  customerName: string | null;
+  type: string;
+  plannedQuantity: number;
+  materialCode: string | null;
+  createdAt: string;
+}
+
+/**
+ * ストリップ印刷用の取得（指示書番号の配列）。詳細 view と違い工程は引かない
+ * — 帯に出すのは番号・製品・数量・注文明細だけ。
+ * 見えない指示書（スコープ外）は黙って落とす。
+ */
+export async function fetchWorkOrderStrips(
+  numbers: number[],
+): Promise<WorkOrderStripView[]> {
+  const authz = await checkPermission("work_order", "READ");
+  if (!authz.ok || numbers.length === 0) return [];
+  const rows = await prisma.workOrder.findMany({
+    where: {
+      workOrderNumber: { in: numbers },
+      ...workOrderScopeWhere(authz.access, authz.userId),
+    },
+    include: {
+      product: true,
+      material: { select: { code: true } },
+      orderLineLinks: {
+        select: {
+          orderLine: {
+            select: {
+              acceptanceYearMonth: true,
+              acceptanceSeq: true,
+              branch: true,
+              acceptance: {
+                select: { customerBp: { select: { name: true } } },
+              },
+            },
+          },
+        },
+        orderBy: { sortOrder: "asc" },
+      },
+    },
+  });
+  // 指定された並び（一覧で選んだ順）を保つ。
+  const order = new Map(numbers.map((n, i) => [n, i]));
+  return rows
+    .sort(
+      (a, b) =>
+        (order.get(a.workOrderNumber) ?? 0) -
+        (order.get(b.workOrderNumber) ?? 0),
+    )
+    .map((r) => {
+      // 統合ロットは顧客も複数になり得る — 帯には先頭 + ほか n 社で出す。
+      const customers = [
+        ...new Set(
+          r.orderLineLinks
+            .map((l) =>
+              localized(
+                l.orderLine.acceptance.customerBp?.name as LocalizedText | null,
+              ),
+            )
+            .filter((n) => n && n !== "—"),
+        ),
+      ];
+      return {
+        workOrderNumber: r.workOrderNumber,
+        productName: localized(r.product.name as LocalizedText | null),
+        orderLineNumber: orderLineListLabel(r.orderLineLinks),
+        customerName:
+          customers.length === 0
+            ? null
+            : customers.length > 1
+              ? `${customers[0]} ほか${customers.length - 1}社`
+              : customers[0],
+        type: r.type,
+        plannedQuantity: r.plannedQuantity,
+        materialCode: r.material?.code ?? null,
+        createdAt: r.createdAt.toISOString(),
+      };
+    });
 }
 
 /**
@@ -226,19 +408,29 @@ export async function fetchWorkOrder(
     type: r.type,
     plannedQuantity: r.plannedQuantity,
     notes: r.notes,
-    orderLineId: r.orderLineId,
-    orderLineNumber: r.orderLine ? orderLineNumberOf(r.orderLine) : null,
-    orderLineQuantity: r.orderLine?.quantity ?? null,
-    customerName: r.orderLine
-      ? localized(
-          r.orderLine.acceptance.customerBp?.name as LocalizedText | null,
-        )
-      : null,
+    orderLines: r.orderLineLinks.map((l) => ({
+      orderLineId: l.orderLine.id,
+      number: orderLineNumberOf(l.orderLine) ?? "—",
+      allocatedQuantity: l.quantity,
+      lineQuantity: l.orderLine.quantity,
+      customerName: localized(
+        l.orderLine.acceptance.customerBp?.name as LocalizedText | null,
+      ),
+      status: l.orderLine.status,
+      lotNumber: l.orderLine.lotNumber,
+    })),
+    createdByName: r.createdByUser?.displayName ?? null,
     productName: localized(r.product.name as LocalizedText | null),
     materialId: r.materialId,
     materialCode: r.material?.code ?? null,
     materialName: r.material
       ? localized(r.material.name as LocalizedText | null)
+      : null,
+    storageLocationId: r.storageLocationId,
+    storageLocationName: r.storageLocation
+      ? `${localized(r.storageLocation.plant.name as LocalizedText | null)} / ${localized(
+          r.storageLocation.name as LocalizedText | null,
+        )}`
       : null,
     productId: r.productId,
     routeVersionId: r.routeVersion?.id ?? null,
@@ -247,7 +439,7 @@ export async function fetchWorkOrder(
       ? localized(r.routeVersion.route.name as LocalizedText | null)
       : null,
     routeVersion: r.routeVersion?.version ?? null,
-    lotNumber: r.orderLine?.lotNumber ?? null,
+    lotNumber: r.orderLineLinks[0]?.orderLine.lotNumber ?? null,
     sourceWorkOrderNumber: r.sourceWorkOrder?.workOrderNumber ?? null,
     copies: r.copies.map((c) => ({
       workOrderNumber: c.workOrderNumber,
@@ -294,6 +486,9 @@ export async function fetchWorkOrder(
       completedByName: s.completedBy ? nameOf(s.completedBy) : null,
       planCount: s._count.plans,
       actualCount: s._count.actuals,
+      branchStockDisposition: s.branchStockDisposition,
+      assignees: stepAssignees(s.plans),
+      actualWorkHours: sumActualWorkHours(s.actuals),
       canStart: canStartStep(s.id, ctx, actorId).ok,
     })),
     stepLinks: r.stepLinks.map((l) => ({
@@ -732,6 +927,24 @@ export async function fetchPlantOptions(): Promise<Option[]> {
   }));
 }
 
+/**
+ * 保管場所（有効のみ・拠点名付き）— 完成品の保管場所 Select。
+ * value = String(内部 id)、label = 「拠点名 / 保管場所名」。
+ */
+export async function fetchStorageLocationOptions(): Promise<Option[]> {
+  const rows = await prisma.storageLocation.findMany({
+    where: { isActive: true, plant: { isActive: true } },
+    include: { plant: { select: { name: true, code: true } } },
+    orderBy: [{ plantId: "asc" }, { sortOrder: "asc" }, { id: "asc" }],
+  });
+  return rows.map((r) => ({
+    value: String(r.id),
+    label: `${localized(r.plant.name as LocalizedText | null)} / ${localized(
+      r.name as LocalizedText | null,
+    )}`,
+  }));
+}
+
 /** 検査表テンプレートの選択肢（関連工程の自動選択に使う）。 */
 export interface InspectionTemplateOption {
   value: string; // String(内部 id)
@@ -789,6 +1002,10 @@ export interface OrderLineRef {
   productId: number;
   quantity: number;
   status: string;
+  /** 他の指示書（キャンセル除く）の割当合計。 */
+  allocatedQuantity: number;
+  /** まだ割り当てられる数量（受注数量 − 手配済）。 */
+  remainingQuantity: number;
 }
 
 export async function fetchOrderLineRef(
@@ -799,12 +1016,20 @@ export async function fetchOrderLineRef(
     include: {
       acceptance: { include: { customerBp: true } },
       product: true,
+      workOrderLinks: {
+        where: { workOrder: { status: { not: "CANCELLED" } } },
+        select: { quantity: true },
+      },
     },
   });
   if (!r) return null;
   const number = orderLineNumberOf(r);
   if (!number) return null; // 未確定の明細は指示書の対象にならない
   const productName = localized(r.product?.name as LocalizedText | null);
+  const allocatedQuantity = r.workOrderLinks.reduce(
+    (sum, l) => sum + l.quantity,
+    0,
+  );
   return {
     id: r.id,
     number,
@@ -816,5 +1041,7 @@ export async function fetchOrderLineRef(
     productId: r.productId ?? 0,
     quantity: r.quantity,
     status: r.status,
+    allocatedQuantity,
+    remainingQuantity: Math.max(0, r.quantity - allocatedQuantity),
   };
 }

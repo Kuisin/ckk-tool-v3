@@ -40,10 +40,10 @@ import {
 } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { useFormat } from "@/components/layout/PreferencesProvider";
 import { SecondaryButton } from "@/components/ui/buttons";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { ModalShell } from "@/components/ui/modals";
-import { formatDateTime } from "@/lib/format";
 
 /** 一覧 1 行の view model（server 側 listAttachments が生成）。 */
 export interface AttachmentView {
@@ -108,6 +108,7 @@ export function AttachmentsPanel({
   canDelete?: boolean;
   title?: string;
 }) {
+  const fmt = useFormat();
   const router = useRouter();
   const [pendingFile, setPendingFile] = useState<File | null>(null);
   const [label, setLabel] = useState("");
@@ -281,7 +282,7 @@ export function AttachmentsPanel({
                       </Group>
                       <Text c="dimmed" size="xs">
                         {formatBytes(a.sizeBytes)} ・{" "}
-                        {formatDateTime(a.createdAt)}（{a.uploadedBy}）
+                        {fmt.dateTime(a.createdAt)}（{a.uploadedBy}）
                       </Text>
                     </Stack>
                   </Group>

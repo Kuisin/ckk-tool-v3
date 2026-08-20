@@ -5,6 +5,7 @@ import {
   fetchInspectionTemplateOptions,
   fetchOrderLineRef,
   fetchPlantOptions,
+  fetchStorageLocationOptions,
   fetchSupplierOptions,
 } from "../data";
 
@@ -23,14 +24,21 @@ export default async function ProductionWorkOrdersNewPage({
   const denied = await requireAppRead("work-orders");
   if (denied) return denied;
   const sp = await searchParams;
-  const [catalog, plantOptions, templateOptions, supplierOptions, soRef] =
-    await Promise.all([
-      loadCatalog(),
-      fetchPlantOptions(),
-      fetchInspectionTemplateOptions(),
-      fetchSupplierOptions(),
-      sp.orderLine ? fetchOrderLineRef(sp.orderLine) : null,
-    ]);
+  const [
+    catalog,
+    plantOptions,
+    templateOptions,
+    supplierOptions,
+    storageLocationOptions,
+    soRef,
+  ] = await Promise.all([
+    loadCatalog(),
+    fetchPlantOptions(),
+    fetchInspectionTemplateOptions(),
+    fetchSupplierOptions(),
+    fetchStorageLocationOptions(),
+    sp.orderLine ? fetchOrderLineRef(sp.orderLine) : null,
+  ]);
 
   const initialType =
     sp.type === "FROM_STOCK" || sp.type === "MANUFACTURE" ? sp.type : null;
@@ -44,6 +52,7 @@ export default async function ProductionWorkOrdersNewPage({
       initialType={initialType}
       mode="create"
       plantOptions={plantOptions}
+      storageLocationOptions={storageLocationOptions}
       supplierOptions={supplierOptions}
       templateOptions={templateOptions}
       useDeps={catalog.useDeps}

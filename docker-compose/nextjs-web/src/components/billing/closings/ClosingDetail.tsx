@@ -26,6 +26,7 @@ import { IconFileInvoice, IconTruck } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { processClosing } from "@/app/(dashboard)/billing/closings/actions";
+import { useFormat } from "@/components/layout/PreferencesProvider";
 import { PrimaryButton } from "@/components/ui/buttons";
 import { DocNumber } from "@/components/ui/DocNumber";
 import { FieldValue } from "@/components/ui/FieldValue";
@@ -39,7 +40,6 @@ import {
   SummaryGrid,
 } from "@/components/ui/shells";
 import { useTabParam } from "@/hooks/useUrlState";
-import { formatDate, formatDateTime } from "@/lib/format";
 import { type BillingClosingDetail, isProcessable } from "./model";
 
 const BASE_PATH = "/billing/closings";
@@ -53,6 +53,7 @@ export function ClosingDetail({
   /** 操作履歴（audit_logs 由来、履歴タブ）。 */
   auditEntries: AuditEntry[];
 }) {
+  const fmt = useFormat();
   const router = useRouter();
   // アクティブタブを ?tab= に保持（URL 共有でタブまで再現）
   const [tab, setTab] = useTabParam("overview");
@@ -99,13 +100,13 @@ export function ClosingDetail({
         ) : undefined
       }
       breadcrumbs={["請求", { label: "締日処理", href: BASE_PATH }, "詳細"]}
-      createdAt={formatDateTime(closing.createdAt)}
+      createdAt={fmt.dateTime(closing.createdAt)}
       status={<StatusBadge entity="BillingClosing" status={closing.status} />}
-      title={`${closing.customerName}（${formatDate(closing.closingDate)} 締め）`}
+      title={`${closing.customerName}（${fmt.date(closing.closingDate)} 締め）`}
     >
       <SummaryGrid>
         <FieldValue label="顧客" value={closing.customerName} />
-        <FieldValue label="締日" value={formatDate(closing.closingDate)} />
+        <FieldValue label="締日" value={fmt.date(closing.closingDate)} />
         <FieldValue
           label="合計金額（税抜）"
           value={<MoneyText ta="left" value={closing.totalAmount} />}
@@ -133,10 +134,7 @@ export function ClosingDetail({
             )
           }
         />
-        <FieldValue
-          label="処理日"
-          value={formatDateTime(closing.processedAt)}
-        />
+        <FieldValue label="処理日" value={fmt.dateTime(closing.processedAt)} />
       </SummaryGrid>
 
       <Paper p="md" radius="md" withBorder>
@@ -177,7 +175,7 @@ export function ClosingDetail({
                       </Anchor>
                     </Table.Td>
                     <Table.Td className="tabular-nums">
-                      {formatDate(s.shippedAt)}
+                      {fmt.date(s.shippedAt)}
                     </Table.Td>
                     <Table.Td className="tabular-nums" ta="right">
                       {s.quantity}
@@ -233,7 +231,7 @@ export function ClosingDetail({
         confirmColor="blue"
         confirmLabel="請求書を生成"
         loading={isPending}
-        message={`${closing.customerName} の ${formatDate(closing.closingDate)} 締め分から請求書（下書き）を生成します。対象出荷 ${closing.shipments.length} 件が明細になります。`}
+        message={`${closing.customerName} の ${fmt.date(closing.closingDate)} 締め分から請求書（下書き）を生成します。対象出荷 ${closing.shipments.length} 件が明細になります。`}
         onClose={() => setProcessOpen(false)}
         onConfirm={process}
         opened={processOpen}

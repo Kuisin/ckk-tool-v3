@@ -5,9 +5,14 @@
  * 選ぶことがあり、QR カードのようなミリ単位レイアウトでは位置・サイズが
  * ずれる。PDF 仕様の ViewerPreferences で
  *   - /PrintScaling /None      … 原寸（100%）で印刷（フチなし前提の配置を維持）
- *   - /PickTrayByPDFSize true  … 用紙サイズを PDF のページサイズ（A4）から選択
+ *   - /PickTrayByPDFSize       … 用紙サイズを PDF のページサイズから選択
  * を宣言すると、対応ビューア（Acrobat / Chromium / macOS プレビュー等）の
  * 印刷ダイアログ既定値がそれに従う。
+ *
+ * `pickTrayByPdfSize` はページボックスが実在の用紙サイズと一致する帳票でのみ
+ * true にする。QR カードシートのようにページボックスを用紙より小さく取る
+ * （＝縮小を封じる）帳票は **false** — 存在しない用紙を探させず、プリンタの
+ * 既定用紙（日本なら A4）にそのまま原寸で載せる。
  *
  * Gotenberg（Chromium/Skia）の出力は PDF 1.4 + 平文カタログ + 旧式 xref
  * テーブルなので、既存バイトを一切変更しない「増分更新」（updated catalog +
@@ -36,12 +41,20 @@ function extractDict(s: string, start: number): string | null {
   return null;
 }
 
+export interface PrintPreferencesOptions {
+  /** /PickTrayByPDFSize の値（既定 true）。上のコメント参照。 */
+  pickTrayByPdfSize?: boolean;
+}
+
 /**
- * ViewerPreferences（/PrintScaling /None + /PickTrayByPDFSize true）を
+ * ViewerPreferences（/PrintScaling /None + /PickTrayByPDFSize）を
  * 増分更新で追記した PDF を返す。解析できない構造（xref ストリーム等）や
  * 既に ViewerPreferences を持つ PDF は元のバイト列をそのまま返す。
  */
-export function withPrintPreferences(pdf: ArrayBuffer): ArrayBuffer {
+export function withPrintPreferences(
+  pdf: ArrayBuffer,
+  options: PrintPreferencesOptions = {},
+): ArrayBuffer {
   const original = Buffer.from(pdf);
   const s = original.toString("latin1");
 
@@ -74,7 +87,8 @@ export function withPrintPreferences(pdf: ArrayBuffer): ArrayBuffer {
   if (!catDict || !catDict.includes("/Catalog")) return pdf;
   if (catDict.includes("/PrintScaling")) return pdf; // 既に設定済み
 
-  const PREFS = "/PrintScaling/None/PickTrayByPDFSize true";
+  const pickTray = options.pickTrayByPdfSize ?? true;
+  const PREFS = `/PrintScaling/None/PickTrayByPDFSize ${pickTray}`;
   let updatedCatalog: string;
   const vpKeyAt = catDict.indexOf("/ViewerPreferences");
   if (vpKeyAt >= 0) {

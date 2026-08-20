@@ -4,9 +4,9 @@
  * KioskCardsTable — QRカード管理（SY08, /settings/kiosk-cards）の一覧。
  *
  * キオスクログイン用 QR カードの発行・割当・停止・取り消し・PIN 管理。
- * カード ID は前半をマスクし末尾 8 文字のみ表示（フル ID は印刷 PDF でのみ
- * QR 化される）。選択 → 印刷で PDF（/api/pdf/kiosk-cards — A4 縦 名刺
- * 10 面付け・十字トンボ）を新規タブに開く。
+ * カード ID は前半をマスクし末尾 8 文字のみ表示（フル ID は印刷シートでのみ
+ * QR 化される）。選択 → 印刷で印刷ページ（/settings/kiosk-cards/print —
+ * A4 名刺用紙 10 面・原寸 91×55mm・十字トンボ）を新規タブに開く。
  */
 
 import {
@@ -31,6 +31,7 @@ import {
   suspendCard,
   unlockPin,
 } from "@/app/(dashboard)/settings/kiosk-cards/actions";
+import { useFormat } from "@/components/layout/PreferencesProvider";
 import { CreateButton } from "@/components/ui/buttons";
 import {
   type Column,
@@ -45,11 +46,11 @@ import { useUrlSelectState, useUrlStringState } from "@/hooks/useUrlState";
 import { useIsMobile } from "@/hooks/useViewport";
 import { formatCode } from "@/lib/crockford";
 import { fieldHelp } from "@/lib/field-help";
-import { formatDate, formatDateTime } from "@/lib/format";
+import type { Formatters } from "@/lib/format";
 import type { KioskCardRow, KioskUserOption } from "@/lib/kiosk-admin";
 import type { ActionResult } from "@/lib/server-action";
 
-const PRINT_PDF_PATH = "/api/pdf/kiosk-cards";
+const PRINT_PATH = "/settings/kiosk-cards/print";
 
 /** カード ID の表示: 前半 8 文字をマスクし末尾 8 文字のみ見せる。 */
 export function maskCardId(id: string): string {
@@ -57,12 +58,17 @@ export function maskCardId(id: string): string {
 }
 
 /**
- * 印刷 PDF を新規タブで開く（ブラウザの PDF ビューアから印刷/保存）。
+ * 印刷シートを新規タブで開く（そこからブラウザ印刷 / PDF 保存）。
+ *
+ * PDF ではなく HTML の印刷ページを開くのは原寸のため — CSS の
+ * `@page { size: <length>{2} }` は絶対ページボックスで UA が縮小できない
+ * のに対し、PDF はビューアの「印刷可能領域に合わせる」で縮んでしまう。
+ *
  * `window.open` ではなく実アンカーをクリックする — ホーム画面に追加した PWA
  * （standalone）でもアプリ内ブラウザで開けるようにするため。
  */
 export function openPrintSheet(ids: string[]) {
-  const url = `${PRINT_PDF_PATH}?ids=${encodeURIComponent(ids.join(","))}`;
+  const url = `${PRINT_PATH}?ids=${encodeURIComponent(ids.join(","))}`;
   const a = document.createElement("a");
   a.href = url;
   a.target = "_blank";
@@ -87,13 +93,14 @@ export function resolveCardValidity(
   return "ACTIVE";
 }
 
-/** 有効期間の表示（yyyy/MM/dd 〜 yyyy/MM/dd。無期限は「無期限」）。 */
+/** 有効期間の表示（日付形式はユーザーの表示設定。無期限は「無期限」）。 */
 export function formatValidityRange(
+  fmt: Formatters,
   r: Pick<KioskCardRow, "validFrom" | "validUntil">,
 ): string {
   if (!r.validFrom && !r.validUntil) return "無期限";
-  const from = r.validFrom ? formatDate(r.validFrom) : "";
-  const until = r.validUntil ? formatDate(r.validUntil) : "";
+  const from = r.validFrom ? fmt.date(r.validFrom) : "";
+  const until = r.validUntil ? fmt.date(r.validUntil) : "";
   return `${from} 〜 ${until}`;
 }
 
@@ -123,6 +130,7 @@ export function KioskCardsTable({
   rows: KioskCardRow[];
   userOptions: KioskUserOption[];
 }) {
+  const fmt = useFormat();
   const [isPending, startTransition] = useTransition();
   const isMobile = useIsMobile();
   const router = useRouter();
@@ -311,7 +319,7 @@ export function KioskCardsTable({
             c={r.validFrom || r.validUntil ? undefined : "dimmed"}
             size="sm"
           >
-            {formatValidityRange(r)}
+            {formatValidityRange(fmt, r)}
           </Text>
           <ValidityBadge validity={resolveCardValidity(now, r)} />
         </Group>
@@ -325,7 +333,7 @@ export function KioskCardsTable({
       sortable: true,
       render: (r) => (
         <Text c="dimmed" size="sm">
-          {r.lastUsedAt ? formatDateTime(r.lastUsedAt) : "—"}
+          {r.lastUsedAt ? fmt.dateTime(r.lastUsedAt) : "—"}
         </Text>
       ),
       sortValue: (r) => r.lastUsedAt ?? "",
@@ -488,12 +496,12 @@ export function KioskCardsTable({
             </Group>
             {(r.validFrom || r.validUntil) && (
               <Text c="dimmed" size="xs">
-                有効期間 {formatValidityRange(r)}
+                有効期間 {formatValidityRange(fmt, r)}
               </Text>
             )}
             <Group gap="md" mt={2}>
               <Text c="dimmed" size="xs">
-                最終使用 {r.lastUsedAt ? formatDateTime(r.lastUsedAt) : "—"}
+                最終使用 {r.lastUsedAt ? fmt.dateTime(r.lastUsedAt) : "—"}
               </Text>
               <Text c="dimmed" size="xs">
                 {r.useCount} 回

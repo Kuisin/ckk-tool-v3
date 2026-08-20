@@ -33,13 +33,13 @@ import {
   deleteStepPlan,
   type StepPlanInput,
 } from "@/app/(dashboard)/production/work-orders/[id]/steps/[stepId]/actions";
+import { useFormat } from "@/components/layout/PreferencesProvider";
 import type {
   StepActualView,
   StepPlanView,
 } from "@/components/production/step-execution/model";
 import { PrimaryButton } from "@/components/ui/buttons";
 import { SearchSelect } from "@/components/ui/SearchSelect";
-import { formatDate } from "@/lib/format";
 
 function RecordTable({
   rows,
@@ -55,6 +55,7 @@ function RecordTable({
   /** 作業場所列（計画のみ）。 */
   showLocation?: boolean;
 }) {
+  const fmt = useFormat();
   if (rows.length === 0) {
     return (
       <Text c="dimmed" size="sm">
@@ -84,7 +85,7 @@ function RecordTable({
               <Text size="sm">{r.userName}</Text>
             </Table.Td>
             <Table.Td>
-              <Text size="sm">{formatDate(r.date)}</Text>
+              <Text size="sm">{fmt.date(r.date)}</Text>
             </Table.Td>
             <Table.Td>
               <Text size="sm">

@@ -46,23 +46,6 @@ export function routeStepsEqual(
   });
 }
 
-/**
- * 製造分（MANUFACTURE）指示書の予定数量の下限（§4 在庫考慮）。
- * 受注数量 − この受注へ引当済みの製品在庫 − 同じ受注の他の製造指示の予定数量。
- * 不良予備分として下限より多く設定するのは常に許容（上限なし）。
- * 過剰引当・分割済みで 0 以下になる場合は下限なし（0）。
- */
-export function computePlannedFloor(input: {
-  soQuantity: number;
-  reservedForSo: number;
-  otherManufacture: number;
-}): number {
-  return Math.max(
-    0,
-    input.soQuantity - input.reservedForSo - input.otherManufacture,
-  );
-}
-
 // ── client-safe view 型（server の listProductRoutes → client panel/builder） ──
 
 export interface RouteVersionStepView {
@@ -93,12 +76,4 @@ export interface RouteView {
   updatedAt: string;
   /** version 降順（先頭 = 最新）。 */
   versions: RouteVersionView[];
-}
-
-/** 指示書ビルダーの在庫フロア表示・下限検証用。 */
-export interface StockFloorInfo {
-  soQuantity: number;
-  reservedForSo: number;
-  otherManufacture: number;
-  floor: number;
 }

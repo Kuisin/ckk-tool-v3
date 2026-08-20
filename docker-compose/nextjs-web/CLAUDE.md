@@ -37,7 +37,21 @@ Sanctioned exception (explicit sign-off): the docs stack — `fumadocs-ui` /
 `/manual` + `/internal-docs`. Second sanctioned exception: the rich-text stack —
 `@mantine/tiptap` (version-pinned **exactly** to `@mantine/core`) + `@tiptap/react`
 / `@tiptap/pm` / `@tiptap/starter-kit` / `@tiptap/extension-link` for the 文書メモ
-/ コメント (`ui/MemoPanel.tsx`).
+/ コメント (`ui/MemoPanel.tsx`). Third sanctioned exception: **`next-intl`** for UI
+translations — the stack `_specs/techstack.md` always named, adopted on explicit
+sign-off (see §i18n below). Fourth sanctioned exception: **`@xyflow/react`**
+(React Flow, MIT, pinned exactly) for the 工程ワークフロー flow graph
+(`components/production/WorkflowGraphCanvas.tsx`) — chosen over X6 / JointJS /
+rete on explicit sign-off because it is React-native, renders HTML (Mantine)
+nodes so Japanese step names need no truncation, and accepts our own layout.
+**It is a rendering layer only**: `lib/workflow-core.ts` `layoutWorkflowGraph`
+keeps owning layer/lane, and `branchableQuantity` / `canStartStep` /
+`validateComposition` keep owning validity — never move that logic into the
+library, or the kiosk twin file (`workflow-core.ts`) silently diverges. Loaded
+through `next/dynamic` + `ssr:false`; the React Flow attribution mark is hidden
+(`proOptions={{ hideAttribution: true }}`) — permitted under MIT, though the
+maintainers ask for a paid Pro plan in return. Not added to the kiosk — it has
+no flow graph.
 
 ## Layout
 
@@ -73,6 +87,24 @@ Rules: `checkPermission` first · zod-validate · `localizedInput`/`localizedInp
 for `{ ja, en }` JSON columns · `recordAudit` before/after · `revalidatePath` ·
 map DB errors with `prismaErrorMessage`. The client branches on `result.ok` and
 shows `@mantine/notifications`.
+
+## 印刷する QR（統一フォーマット）
+
+社内で刷る QR は**全て** `CKK:<KIND>:<KEY>` の 1 形式（`lib/qr-payload.ts` —
+kiosk との twin ファイル）。1 つのリーダー（キオスクのスキャナ）が種別を見て
+画面を振り分けられるようにするため。
+
+- **URL は入れない** — 長い URL は QR を細かくして現場の読み取りを落とすし、
+  紙が外に出たときにホスト名を晒す。KEY は書類の**表示番号**だけにする。
+- 種別は `QR_KINDS`（CARD / WO / QOT / ORD / PO / DRN / INV / INSP）。
+  増やすときはキオスク側の振り分けも一緒に見ること。
+- キオスクのログイン読み取りは `extractCardId`（`nextjs-kiosk/src/lib/
+  kiosk-auth-core.ts`）が 3 形式を受ける: 統一形式 / **配布済みの素の 16 桁
+  カード**（後方互換 — 刷り直さない）/ 旧 URL 形式。CARD 以外の統一 QR は
+  空文字を返す = ログインには使えない。
+- 原寸印刷は `@page` を**長さ**で書く（キーワードは縮小されうる）。
+  寸法定義: `lib/kiosk-card-sheet.ts`（QRカード）/ `lib/work-order-strip-sheet.ts`
+  （指示書ストリップ 180×40mm × 6/A4）。
 
 ## RBAC
 
@@ -141,6 +173,44 @@ side must use **explicit heading ids** because auto ids derive from Japanese
 heading text and break easily. `lib/field-help.test.ts` reads the real markdown and
 fails if any registered anchor is missing in ja/en/zh, which is what keeps these
 links from rotting (`docs:lint` is not in CI).
+
+## i18n & 表示設定（言語 / 日付 / 時刻 / タイムゾーン）
+
+Per-user display settings live on **`app.users`** — `locale` (shared with the
+kiosk, which writes the same column) plus `date_format` / `time_format` /
+`time_zone`. Edited at `/profile/preferences`; read via
+`lib/user-preferences.ts` (`getCurrentPreferences()`, `cache()`d per request).
+Timestamps stay **UTC in the DB** — `time_zone` only changes how they are read
+back for display.
+
+**UI strings — `next-intl`, without i18n routing.** The language comes from the
+user's DB setting, not the URL. `src/i18n/request.ts` (`getRequestConfig`) reads
+the preferences and returns `locale` / `messages` / `timeZone`;
+`next.config.ts` wires it with `createNextIntlPlugin`. Catalogs are
+`messages/{ja,en,zh}.json` — **ja is the source of truth**, and `src/global.d.ts`
+augments `AppConfig["Messages"]` with `typeof ja` so a wrong key fails the build.
+Server: `await getTranslations("shell")`. Client: `useTranslations("shell")`.
+`NextIntlClientProvider` is mounted in the **`(dashboard)` layout only** — do not
+move it to the root layout, or the public `/manual` pages lose static rendering
+(the request config touches the session).
+
+**Migration status: most screens still have Japanese hard-coded in JSX**, and
+that's fine — they render Japanese regardless of the setting. Move strings into
+`messages/*.json` as you touch a screen; keep `messages/*.json` key-identical
+across the three languages (`lib/user-preferences-core.test.ts` enforces it).
+
+**Dates/times are NOT next-intl's job here.** The user picks an explicit order
+(`YYYY/MM/DD` … `MM/DD/YYYY`) which no `Intl` option expresses, so `lib/format.ts`
+owns it: `createFormatters(prefs)` → `useFormat()` (client) /
+`getServerFormatters()` (server); plain helpers take `Formatters` as an argument.
+Never keep "current user" in module state — on the server that leaks across
+requests. **PDFs and mail use `documentFormatters`** (JST + Japanese, fixed): a
+finished document must not change with whoever opens it.
+
+`lib/i18n/index.ts` keeps only locale identity (`LOCALES`, `normalizeLocale`,
+`INTL_LOCALES`) — no messages; those belong to next-intl. The kiosk app keeps its
+own tiny in-house dictionary (`nextjs-kiosk/src/lib/i18n`) — it is not worth a
+dependency there, so the two apps deliberately differ.
 
 ## Prisma / DB
 

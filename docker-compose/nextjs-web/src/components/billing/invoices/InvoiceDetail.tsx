@@ -37,6 +37,7 @@ import {
   markPaid,
   markSent,
 } from "@/app/(dashboard)/billing/invoices/actions";
+import { useFormat } from "@/components/layout/PreferencesProvider";
 import { PrimaryButton } from "@/components/ui/buttons";
 import { DocNumber } from "@/components/ui/DocNumber";
 import { FieldValue } from "@/components/ui/FieldValue";
@@ -58,7 +59,6 @@ import {
 import { useTabParam } from "@/hooks/useUrlState";
 import type { MemoView } from "@/lib/document-memos";
 import { downloadFile } from "@/lib/download";
-import { formatDate, formatDateTime } from "@/lib/format";
 import type { ActionResult } from "@/lib/server-action";
 import {
   canIssue,
@@ -84,6 +84,7 @@ export function InvoiceDetail({
   /** 社内メモ（document_memos 由来、メモタブ）。 */
   memos: MemoView[];
 }) {
+  const fmt = useFormat();
   const router = useRouter();
   // アクティブタブを ?tab= に保持（URL 共有でタブまで再現）
   const [tab, setTab] = useTabParam("overview");
@@ -205,10 +206,10 @@ export function InvoiceDetail({
         />
       }
       breadcrumbs={["請求", { label: "請求書", href: BASE_PATH }, "詳細"]}
-      createdAt={formatDateTime(invoice.createdAt)}
+      createdAt={fmt.dateTime(invoice.createdAt)}
       status={<StatusBadge entity="Invoice" status={invoice.status} />}
       title={invoice.invoiceNumber}
-      updatedAt={formatDateTime(invoice.updatedAt)}
+      updatedAt={fmt.dateTime(invoice.updatedAt)}
     >
       <SummaryGrid>
         <FieldValue
@@ -223,9 +224,11 @@ export function InvoiceDetail({
               : invoice.customerName
           }
         />
+        <FieldValue label="営業担当" value={invoice.salesRepName} />
+        <FieldValue label="作成者" value={invoice.createdByName} />
         <FieldValue
           label="請求期間"
-          value={`${formatDate(invoice.billingPeriodFrom)} 〜 ${formatDate(invoice.billingPeriodTo)}`}
+          value={`${fmt.date(invoice.billingPeriodFrom)} 〜 ${fmt.date(invoice.billingPeriodTo)}`}
         />
         <FieldValue
           label="小計"
@@ -239,13 +242,13 @@ export function InvoiceDetail({
           label="合計金額（税込）"
           value={<MoneyText ta="left" value={invoice.totalAmount} />}
         />
-        <FieldValue label="支払期限" value={formatDate(invoice.dueDate)} />
-        <FieldValue label="発行日" value={formatDate(invoice.issuedAt)} />
+        <FieldValue label="支払期限" value={fmt.date(invoice.dueDate)} />
+        <FieldValue label="発行日" value={fmt.date(invoice.issuedAt)} />
         <FieldValue
           label="弥生エクスポート"
           value={
             invoice.yayoiExportedAt
-              ? formatDateTime(invoice.yayoiExportedAt)
+              ? fmt.dateTime(invoice.yayoiExportedAt)
               : "未エクスポート"
           }
         />
@@ -368,7 +371,7 @@ export function InvoiceDetail({
               <Text c="dimmed" mb={4} size="xs">
                 送付日時
               </Text>
-              <Text size="sm">{formatDateTime(invoice.sentAt)}</Text>
+              <Text size="sm">{fmt.dateTime(invoice.sentAt)}</Text>
             </div>
             <div>
               <Text c="dimmed" mb={4} size="xs">

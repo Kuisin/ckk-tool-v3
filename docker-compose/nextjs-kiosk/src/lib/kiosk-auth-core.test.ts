@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { formatCode, generateCode, normalizeCode } from "./crockford";
 import {
+  extractCardId,
   IDLE_TIMEOUT_MS,
   idleRemainingMs,
   isCardWithinValidPeriod,
@@ -134,5 +135,34 @@ describe("crockford codes", () => {
   it("format は 4 文字区切り", () => {
     expect(formatCode("ABCDEFGHJKLM")).toBe("ABCD-EFGH-JKLM");
     expect(formatCode("ABCDEFGHJKLMNPQR")).toBe("ABCD-EFGH-JKLM-NPQR");
+  });
+});
+
+describe("extractCardId — QR ペイロードからカード ID", () => {
+  it("統一形式 CKK:CARD:… を読む（ダッシュは正規化で落ちる）", () => {
+    expect(extractCardId("CKK:CARD:ABCD-EFGH-JKLM-NPQR")).toBe(
+      "ABCDEFGHJKLMNPQR",
+    );
+  });
+
+  it("配布済みの素のカード ID も従来どおり読む（後方互換）", () => {
+    expect(extractCardId("ABCD-EFGH-JKLM-NPQR")).toBe("ABCDEFGHJKLMNPQR");
+    expect(extractCardId("abcdefghjklmnpqr")).toBe("ABCDEFGHJKLMNPQR");
+  });
+
+  it("カード以外の統一 QR（指示書ストリップ等）は空 = ログインに使えない", () => {
+    expect(extractCardId("CKK:WO:1234")).toBe("");
+    expect(extractCardId("CKK:INV:INV-202608-00001")).toBe("");
+  });
+
+  it("URL 形式（旧実装の名残）も読む", () => {
+    expect(extractCardId("https://example.test/login?secret=ABCD-EFGH")).toBe(
+      "ABCDEFGH",
+    );
+    expect(extractCardId("https://example.test/c/ABCDEFGH")).toBe("ABCDEFGH");
+  });
+
+  it("空・空白は空文字", () => {
+    expect(extractCardId("   ")).toBe("");
   });
 });

@@ -51,39 +51,48 @@ ON CONFLICT (key) DO UPDATE
 -- SHP-202607-00002: 確定（発送・F01）— 納品書作成可の実例 + DRN-2（直送）の元
 -- SHP-202607-00003: 下書き（在庫保管・F02）— 在庫保管バッジ + 下書き編集の実例
 -- SHP-202606-00001: 出荷済（6月）— INV-202606-00001 の由来（請求済み → 7月締めから除外）
-INSERT INTO app.shipping_orders (year_month, seq, sales_order_id, work_order_id, from_plant_id,
+-- ヘッダは顧客を持ち（明細をまたいで同一）、**注文明細へのリンクは明細行側**に
+-- 移った（旧 shipping_orders.sales_order_id は廃止）。顧客はデモ商事。
+INSERT INTO app.shipping_orders (year_month, seq, customer_bp_id, work_order_id, from_plant_id,
   type, status, shipped_at, notes, created_by, created_at, updated_at)
 VALUES
-  ('202607', 1, 'e0000000-0000-4000-8000-000000000001'::uuid, NULL,
+  ('202607', 1, 'd0000000-0000-4000-8000-000000000001'::uuid, NULL,
    (SELECT id FROM app.plants WHERE code = 'F01'),
    'DISPATCH'::app."SHIPPING_TYPE", 'SHIPPED'::app."SHIPPING_STATUS",
    '2026-07-10T10:30:00+09', NULL,
    'a0b1c2d3-0000-4000-8000-000000005107'::uuid, '2026-07-09T09:00:00+09', '2026-07-10T10:30:00+09'),
-  ('202607', 2, 'e0000000-0000-4000-8000-000000000001'::uuid, NULL,
+  ('202607', 2, 'd0000000-0000-4000-8000-000000000001'::uuid, NULL,
    (SELECT id FROM app.plants WHERE code = 'F01'),
    'DISPATCH'::app."SHIPPING_TYPE", 'CONFIRMED'::app."SHIPPING_STATUS",
    NULL, NULL,
    'a0b1c2d3-0000-4000-8000-000000005107'::uuid, '2026-07-13T11:00:00+09', '2026-07-13T14:00:00+09'),
-  ('202607', 3, 'e0000000-0000-4000-8000-000000000002'::uuid, NULL,
+  ('202607', 3, 'd0000000-0000-4000-8000-000000000001'::uuid, NULL,
    (SELECT id FROM app.plants WHERE code = 'F02'),
    'STOCK_STORAGE'::app."SHIPPING_TYPE", 'DRAFT'::app."SHIPPING_STATUS",
    NULL, '予備製作分の在庫保管（請求フロー外）',
    'a0b1c2d3-0000-4000-8000-000000005107'::uuid, '2026-07-14T15:00:00+09', '2026-07-14T15:00:00+09'),
-  ('202606', 1, 'e0000000-0000-4000-8000-000000000001'::uuid, NULL,
+  ('202606', 1, 'd0000000-0000-4000-8000-000000000001'::uuid, NULL,
    (SELECT id FROM app.plants WHERE code = 'F01'),
    'DISPATCH'::app."SHIPPING_TYPE", 'SHIPPED'::app."SHIPPING_STATUS",
    '2026-06-20T14:00:00+09', NULL,
    'a0b1c2d3-0000-4000-8000-000000005107'::uuid, '2026-06-19T09:00:00+09', '2026-06-20T14:00:00+09')
 ON CONFLICT (year_month, seq) DO NOTHING;
 
--- 明細（ロット = 指示書番号。SHP-1 は完了指示書 9004 のロットを出荷する想定）
+-- 明細（ロット = 指示書番号。SHP-1 は完了指示書 9004 のロットを出荷する想定）。
+-- どの注文明細を出荷したかは order_line_id で行ごとに持つ:
+--   -01（製品 9001）… SHP-1 / SHP-2 / SHP-202606-1
+--   -02（製品 9002）… SHP-3（在庫保管）
 INSERT INTO app.shipping_order_items (id, shipping_order_year_month, shipping_order_seq,
-  product_id, lot_number, quantity, notes, sort_order)
+  order_line_id, product_id, lot_number, quantity, notes, sort_order)
 VALUES
-  ('dd000000-0000-4000-8000-000000000011'::uuid, '202607', 1, 9001, 9004, 30, NULL, 0),
-  ('dd000000-0000-4000-8000-000000000012'::uuid, '202607', 2, 9001, NULL, 20, NULL, 0),
-  ('dd000000-0000-4000-8000-000000000013'::uuid, '202607', 3, 9002, NULL, 50, NULL, 0),
-  ('dd000000-0000-4000-8000-000000000014'::uuid, '202606', 1, 9001, NULL, 50, NULL, 0)
+  ('dd000000-0000-4000-8000-000000000011'::uuid, '202607', 1,
+   'e0000000-0000-4000-8000-000000000001'::uuid, 9001, 9004, 30, NULL, 0),
+  ('dd000000-0000-4000-8000-000000000012'::uuid, '202607', 2,
+   'e0000000-0000-4000-8000-000000000001'::uuid, 9001, NULL, 20, NULL, 0),
+  ('dd000000-0000-4000-8000-000000000013'::uuid, '202607', 3,
+   'e0000000-0000-4000-8000-000000000002'::uuid, 9002, NULL, 50, NULL, 0),
+  ('dd000000-0000-4000-8000-000000000014'::uuid, '202606', 1,
+   'e0000000-0000-4000-8000-000000000001'::uuid, 9001, NULL, 50, NULL, 0)
 ON CONFLICT (id) DO NOTHING;
 
 -- ── 納品書（DRN-202607-00001〜00002）────────────────────────────────────────

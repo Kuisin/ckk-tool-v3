@@ -18,6 +18,7 @@ import {
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { runClosing } from "@/app/(dashboard)/billing/closings/actions";
+import { useFormat } from "@/components/layout/PreferencesProvider";
 import { PrimaryButton } from "@/components/ui/buttons";
 import { type Column, DataTable } from "@/components/ui/DataTable";
 import { MoneyText } from "@/components/ui/MoneyText";
@@ -26,7 +27,6 @@ import { StatusBadge, statusOptions } from "@/components/ui/StatusBadge";
 import { ListShell } from "@/components/ui/shells";
 import { useUrlSelectState, useUrlStringState } from "@/hooks/useUrlState";
 import { useIsMobile } from "@/hooks/useViewport";
-import { formatDate } from "@/lib/format";
 import type { BillingClosing } from "./model";
 
 const BASE_PATH = "/billing/closings";
@@ -119,6 +119,7 @@ function RunClosingModal({
 }
 
 export function ClosingTable({ rows }: { rows: BillingClosing[] }) {
+  const fmt = useFormat();
   const router = useRouter();
   const isMobile = useIsMobile();
 
@@ -153,7 +154,7 @@ export function ClosingTable({ rows }: { rows: BillingClosing[] }) {
       sortValue: (c) => c.closingDate,
       render: (c) => (
         <Text className="tabular-nums" size="sm">
-          {formatDate(c.closingDate)}
+          {fmt.date(c.closingDate)}
         </Text>
       ),
     },
@@ -179,7 +180,7 @@ export function ClosingTable({ rows }: { rows: BillingClosing[] }) {
       sortValue: (c) => c.processedAt ?? "",
       render: (c) => (
         <Text className="tabular-nums" size="sm">
-          {formatDate(c.processedAt)}
+          {fmt.date(c.processedAt)}
         </Text>
       ),
     },
@@ -234,7 +235,7 @@ export function ClosingTable({ rows }: { rows: BillingClosing[] }) {
                 {c.customerName}
               </Text>
               <Text c="dimmed" size="xs">
-                締日: {formatDate(c.closingDate)}
+                締日: {fmt.date(c.closingDate)}
               </Text>
               <Group gap="md" mt={2}>
                 <MoneyText ta="left" value={c.totalAmount} />
@@ -243,7 +244,7 @@ export function ClosingTable({ rows }: { rows: BillingClosing[] }) {
             <Stack align="flex-end" className="shrink-0" gap={4}>
               <StatusBadge entity="BillingClosing" status={c.status} />
               <Text c="dimmed" size="xs">
-                {formatDate(c.processedAt)}
+                {fmt.date(c.processedAt)}
               </Text>
             </Stack>
           </Group>

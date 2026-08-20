@@ -31,6 +31,7 @@ import {
   fetchStructuredMaterialType,
   updateMaterial,
 } from "@/app/(dashboard)/master/materials/actions";
+import { MasterKeywordsField } from "@/components/master/MasterKeywordsField";
 import { ActiveBadge } from "@/components/ui/ActiveBadge";
 import { DocNumber } from "@/components/ui/DocNumber";
 import { materialTypeF4 } from "@/components/ui/f4-presets";
@@ -77,6 +78,7 @@ const materialSchema = (isEdit: boolean) =>
     unit: z.string().min(1, "単位を選択してください"),
     manufacturerModel: z.string(),
     nominalDiameterMm: z.union([z.number(), z.literal("")]),
+    matchNames: z.array(z.string()),
     isActive: z.boolean(),
     notes: z.string(),
   });
@@ -99,6 +101,7 @@ export interface MaterialFormInitial {
   unit: string;
   manufacturerModel: string;
   nominalDiameterMm: number | null;
+  matchNames: string[];
   isActive: boolean;
   notes: string;
 }
@@ -141,6 +144,7 @@ export function MaterialForm({
       unit: initial?.unit ?? "本",
       manufacturerModel: initial?.manufacturerModel ?? "",
       nominalDiameterMm: initial?.nominalDiameterMm ?? "",
+      matchNames: initial?.matchNames ?? [],
       isActive: initial?.isActive ?? true,
       notes: initial?.notes ?? "",
     },
@@ -216,6 +220,45 @@ export function MaterialForm({
     }
   })();
 
+  // キーワード生成に渡す「いま画面に出ている素材の姿」。素材は名称が
+  // 「K40UF φ3×330」のような機械的な文字列なので、材種・寸法・型式まで渡さないと
+  // 呼び方の候補が出ない。
+  const keywordSubject = {
+    name: form.values.nameJa || form.values.nameEn,
+    code: isEdit ? initial.code : preview,
+    attributes: [
+      { label: "英語名", value: form.values.nameEn },
+      {
+        label: "材種",
+        value: isEdit
+          ? initial.materialTypeLabel
+          : [typeCode, typeNameJa].filter(Boolean).join(" — "),
+      },
+      {
+        label: "黒皮・研磨",
+        value: isEdit
+          ? initial.surfaceFinishLabel
+          : form.values.surfaceFinishCode,
+      },
+      { label: "直径 (mm)", value: String(form.values.diameterMm ?? "") },
+      { label: "全長 (mm)", value: String(form.values.lengthMm ?? "") },
+      {
+        label: "種類",
+        value: isEdit ? initial.kindLabel : form.values.kindCode,
+      },
+      { label: "単位", value: form.values.unit },
+      { label: "メーカ型式", value: form.values.manufacturerModel },
+      {
+        label: "呼び径 (mm)",
+        value:
+          form.values.nominalDiameterMm === ""
+            ? ""
+            : String(form.values.nominalDiameterMm),
+      },
+      { label: "備考", value: form.values.notes },
+    ].filter((a) => a.value.trim() !== ""),
+  };
+
   const handleSubmit = (values: FormValues) => {
     startTransition(async () => {
       const editable = {
@@ -225,6 +268,7 @@ export function MaterialForm({
         manufacturerModel: values.manufacturerModel,
         nominalDiameterMm:
           values.nominalDiameterMm === "" ? null : values.nominalDiameterMm,
+        matchNames: values.matchNames,
         isActive: values.isActive,
         notes: values.notes,
       };
@@ -461,6 +505,14 @@ export function MaterialForm({
           placeholder="備考・特記事項"
           rows={3}
           {...form.getInputProps("notes")}
+        />
+        {/* 検索・AI 突合用の別名。候補は AI に作らせ、採用は人が決める。 */}
+        <MasterKeywordsField
+          kind="material"
+          label={<HelpLabel {...fieldHelp("material", "keywords")} />}
+          onChange={(v) => form.setFieldValue("matchNames", v)}
+          subject={keywordSubject}
+          value={form.values.matchNames}
         />
       </FormSection>
     </FormShell>

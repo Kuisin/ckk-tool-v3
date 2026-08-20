@@ -14,11 +14,30 @@
 ```bash
 cd tools/docs-screenshots
 pnpm docs:shots              # 全撮影: DB 起動→シード→build→撮影→lint→破棄
-pnpm docs:shots:one -- --only login-01   # 1 枚だけ撮り直し
 pnpm docs:verify             # 決定性確認: 撮り直して pixelmatch (diff < 0.1%)
 pnpm docs:lint               # マニュアル ↔ manifest ↔ PNG の整合性チェックのみ
 pnpm docs:seed               # DB 起動 + シードだけして残す（手動確認用）
+
+# 1 枚だけ撮り直す（ラッパ経由だと -- の扱いで引数がずれるので直に呼ぶ）
+pnpm exec tsx scripts/orchestrate.ts --only login-01
 ```
+
+### データモデルに追随していないシードがあるとき
+
+`--skip-seed <file[,file]>` で特定のデモシードを飛ばせる（部分名一致）。
+**既定では全部流す** — 飛ばしたシードに依存する画面は当然撮れないので、
+それに依存しない画面を撮り直すときの逃げ道として使う。
+
+```bash
+pnpm exec tsx scripts/orchestrate.ts --only profile-preferences-01 \
+  --skip-seed production-demo-seed.sql
+```
+
+> スキーマやテーブル名が変わったら、**シードとマニフェストの両方**が置き去りに
+> なる。シードは psql のエラーですぐ分かるが、マニフェストの `steps`（ラベル待ち・
+> クエリパラメータ）は 60 秒タイムアウトで初めて気づくので、UI 文言を変えたら
+> `pnpm docs:shots` を通しておくこと。過去に order_lines 統合と承認フロー刷新で
+> 両方が同時に腐り、しばらく撮影自体ができなくなっていた。
 
 PNG は `docker-compose/nextjs-web/content/manual/assets/screenshots/<id>.png` に
 出力され、**マニュアルと一緒にコミットする**。

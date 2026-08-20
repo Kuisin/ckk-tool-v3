@@ -33,14 +33,23 @@ const LIST_FETCH_CAP = 1000;
 const ORDER_LINE_INCLUDE = {
   // 顧客・注文書番号・見積キー・作成者はヘッダから
   acceptance: {
-    include: { customerBp: true, customerBranchBp: true },
+    include: {
+      customerBp: true,
+      customerBranchBp: true,
+      // 営業担当・作成者は行に複写せずヘッダから読む（顧客と同じ扱い）。
+      salesRep: { select: { displayName: true } },
+      createdByUser: { select: { displayName: true } },
+    },
   },
   endUserBp: true,
   product: true,
-  workOrders: {
-    orderBy: { workOrderNumber: "asc" as const },
-    // スコープ判定（PLANT = 配下指示書の工程実施拠点）にも使う。
-    include: { steps: { select: { plantId: true } } },
+  // 指示書は割当（work_order_order_lines）経由 — 分割・統合の両対応。
+  workOrderLinks: {
+    orderBy: { workOrder: { workOrderNumber: "asc" as const } },
+    include: {
+      // スコープ判定（PLANT = 配下指示書の工程実施拠点）にも使う。
+      workOrder: { include: { steps: { select: { plantId: true } } } },
+    },
   },
   // §4 在庫照合の引当済みサマリ用（予約中のみ — 確定/解除は数えない）。
   reservations: {
@@ -117,6 +126,8 @@ function mapOrderLine(r: OrderLineRow): OrderLine {
     customerBranchName: acc.customerBranchBp
       ? localized(acc.customerBranchBp.name as LocalizedText | null)
       : null,
+    salesRepName: acc.salesRep?.displayName ?? null,
+    createdByName: acc.createdByUser?.displayName ?? null,
     endUserName: r.endUserBp
       ? localized(r.endUserBp.name as LocalizedText | null)
       : null,
@@ -144,12 +155,13 @@ function mapOrderLine(r: OrderLineRow): OrderLine {
       0,
     ),
     notes: r.notes,
-    workOrders: r.workOrders.map((w) => ({
-      workOrderNumber: w.workOrderNumber,
-      type: w.type,
-      plannedQuantity: w.plannedQuantity,
-      approvalStatus: w.approvalStatus,
-      status: w.status,
+    workOrders: r.workOrderLinks.map((l) => ({
+      workOrderNumber: l.workOrder.workOrderNumber,
+      type: l.workOrder.type,
+      plannedQuantity: l.workOrder.plannedQuantity,
+      allocatedQuantity: l.quantity,
+      approvalStatus: l.workOrder.approvalStatus,
+      status: l.workOrder.status,
     })),
     // 出荷済み数量 = SHIPPED な発送（DISPATCH）出荷書における**この明細ぶん**の合計
     shippedQuantity: r.shippingItems
@@ -177,14 +189,19 @@ function mapOrderLine(r: OrderLineRow): OrderLine {
 /**
  * 注文明細のスコープ where 断片（PLANT = 配下指示書の工程実施拠点経由 ∪
  * OWN = 注文請書の作成者）。ALL は {} — 従来通り全件。
+ *
+ * 未処理キュー（PD05 / SH03）も同じ断片を使う — 注文明細の可視範囲は
+ * どの画面から見ても 1 つであるべきなので、キュー側で別解釈をしない。
  */
-function orderLineScopeWhere(
+export function orderLineScopeWhere(
   access: Access,
   userId: string,
 ): Prisma.OrderLineWhereInput {
   const w = ownOrPlantWhere(access, userId, {
     plantClause: (ids) => ({
-      workOrders: { some: { steps: { some: { plantId: { in: ids } } } } },
+      workOrderLinks: {
+        some: { workOrder: { steps: { some: { plantId: { in: ids } } } } },
+      },
     }),
     ownColumn: "createdBy",
   }) as Prisma.OrderLineWhereInput & {
@@ -204,19 +221,21 @@ function orderLineScopeWhere(
   return remap(w);
 }
 
-/** 取得済み注文明細行（workOrders.steps 付き）がスコープ内か。 */
+/** 取得済み注文明細行（workOrderLinks.workOrder.steps 付き）がスコープ内か。 */
 function orderLineRowInScope(
   access: Access,
   userId: string,
   row: {
     acceptance: { createdBy: string | null };
-    workOrders: { steps: { plantId: number | null }[] }[];
+    workOrderLinks: { workOrder: { steps: { plantId: number | null }[] } }[];
   },
 ): boolean {
   return rowInScope(
     access,
     {
-      plantIds: row.workOrders.flatMap((w) => w.steps.map((s) => s.plantId)),
+      plantIds: row.workOrderLinks.flatMap((l) =>
+        l.workOrder.steps.map((s) => s.plantId),
+      ),
       createdBy: row.acceptance.createdBy,
     },
     userId,

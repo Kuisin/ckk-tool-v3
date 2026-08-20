@@ -34,6 +34,7 @@ import {
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { useFormat } from "@/components/layout/PreferencesProvider";
 import { ActiveBadge } from "@/components/ui/ActiveBadge";
 import { GhostButton } from "@/components/ui/buttons";
 import { DocNumber } from "@/components/ui/DocNumber";
@@ -48,7 +49,6 @@ import {
 } from "@/components/ui/shells";
 import { useTabParam } from "@/hooks/useUrlState";
 import { INSPECTION_ITEM_TYPE_LABEL } from "@/lib/enum-labels";
-import { formatDateTime } from "@/lib/format";
 import {
   acceptLabel,
   goalLabel,
@@ -135,6 +135,7 @@ export function InspectionTemplateDetail({
   record: InspectionTemplateDetailData;
   auditEntries: AuditEntry[];
 }) {
+  const fmt = useFormat();
   const router = useRouter();
   // アクティブタブを ?tab= に保持（URL 共有でタブまで再現）
   const [tab, setTab] = useTabParam("info");
@@ -202,7 +203,7 @@ export function InspectionTemplateDetail({
         { label: "検査表テンプレート", href: BASE_PATH },
         `${record.code} v${record.version}`,
       ]}
-      createdAt={formatDateTime(record.createdAt)}
+      createdAt={fmt.dateTime(record.createdAt)}
       status={
         <Group gap="xs" wrap="nowrap">
           <Badge color="gray" variant="outline">
@@ -212,7 +213,7 @@ export function InspectionTemplateDetail({
         </Group>
       }
       title={record.nameJa}
-      updatedAt={formatDateTime(record.updatedAt)}
+      updatedAt={fmt.dateTime(record.updatedAt)}
     >
       {record.isLocked && (
         <Alert color="blue" icon={<IconLock size={16} />}>
@@ -473,7 +474,7 @@ export function InspectionTemplateDetail({
                       </Table.Td>
                       <Table.Td>
                         <Text c="dimmed" size="sm">
-                          {formatDateTime(v.updatedAt)}
+                          {fmt.dateTime(v.updatedAt)}
                         </Text>
                       </Table.Td>
                     </Table.Tr>

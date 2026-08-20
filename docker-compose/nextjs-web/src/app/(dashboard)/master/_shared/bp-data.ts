@@ -192,6 +192,13 @@ export interface BranchRow {
   contact: string;
 }
 
+/** 顧客に登録された営業担当 1 名（bp_sales_reps）。並びは主担当 → sortOrder。 */
+export interface SalesRepRow {
+  userId: string;
+  name: string;
+  isPrimary: boolean;
+}
+
 export interface CustomerAttrs {
   customerCode: string;
   billingBpId: string | null;
@@ -203,6 +210,8 @@ export interface CustomerAttrs {
   taxType: string;
   invoiceMethod: string;
   isConsignment: boolean;
+  /** 営業担当（複数可）。書類の営業担当はこの一覧から選ぶ。 */
+  salesReps: SalesRepRow[];
 }
 
 export interface DocHistoryRow {
@@ -253,6 +262,10 @@ export async function fetchBpDetail(id: string): Promise<BpDetail | null> {
       customerAttrs: { include: { billingBp: true } },
       endUserAttrs: true,
       vendorAttrs: true,
+      salesReps: {
+        include: { user: { select: { id: true, displayName: true } } },
+        orderBy: [{ isPrimary: "desc" }, { sortOrder: "asc" }],
+      },
       contacts: { orderBy: [{ isPrimary: "desc" }, { createdAt: "asc" }] },
       branches: {
         orderBy: { bpCode: "asc" },
@@ -287,6 +300,11 @@ export async function fetchBpDetail(id: string): Promise<BpDetail | null> {
           taxType: c.taxType,
           invoiceMethod: c.invoiceMethod,
           isConsignment: c.isConsignment,
+          salesReps: r.salesReps.map((s) => ({
+            userId: s.user.id,
+            name: s.user.displayName,
+            isPrimary: s.isPrimary,
+          })),
         }
       : null,
     endUser: r.endUserAttrs

@@ -9,13 +9,15 @@
 
 import { requirePermissionResponse } from "@/lib/authz";
 import { prisma } from "@/lib/db";
-import { formatDateTime } from "@/lib/format";
+import { documentFormatters } from "@/lib/format";
 import {
   esc,
   filledSheetItems,
   sheetTemplateHead,
 } from "@/lib/inspection-sheet-pdf";
 import { renderPdf } from "@/lib/pdf";
+import { documentQrSvg } from "@/lib/pdf-qr";
+import { QR_KINDS } from "@/lib/qr-payload";
 
 export const dynamic = "force-dynamic";
 
@@ -76,17 +78,19 @@ export async function GET(request: Request): Promise<Response> {
     record.step.inputQuantity ?? record.step.workOrder.plannedQuantity;
 
   const pdf = await renderPdf("inspection-sheet.html", {
+    // 検査表は指示書に属する紙なので QR は指示書番号（CKK:WO:<番号>）。
+    doc_qr: documentQrSvg(QR_KINDS.WO, record.step.workOrder.workOrderNumber),
     template: sheetTemplateHead(record.template, lotQuantity),
     meta: {
       work_order: `#${record.step.workOrder.workOrderNumber}`,
       lot_quantity: `${lotQuantity} 本`,
       inspected_at: record.recordedAt
-        ? esc(formatDateTime(record.recordedAt.toISOString()))
+        ? esc(documentFormatters.dateTime(record.recordedAt.toISOString()))
         : "—",
       recorded_by: esc(nameOf(record.recordedBy)),
       approved: record.approvedAt
         ? esc(
-            `${nameOf(record.approvedBy)}（${formatDateTime(record.approvedAt.toISOString())}）`,
+            `${nameOf(record.approvedBy)}（${documentFormatters.dateTime(record.approvedAt.toISOString())}）`,
           )
         : "—",
     },

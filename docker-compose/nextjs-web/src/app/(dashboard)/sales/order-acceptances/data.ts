@@ -23,6 +23,8 @@ import {
   formatProductNumber,
 } from "@/lib/doc-number";
 import { type LocalizedText, localized } from "@/lib/format";
+import { matchCustomer, suggestProducts } from "@/lib/intake";
+import { normalizeExtraction } from "@/lib/intake-core";
 import { reviewIntake } from "@/lib/intake-review";
 
 // 一覧クエリの取得上限（監査 P2-8 — 全件フェッチのデータ増加対策）。
@@ -88,6 +90,13 @@ export async function fetchOrderAcceptance(
       sourceFile: { select: { filename: true, mimeType: true } },
       customerBp: { select: { name: true } },
       customerBranchBp: { select: { name: true } },
+      shipToBp: { select: { name: true } },
+      assignedPlant: { select: { code: true, name: true } },
+      shippingWorkLocation: {
+        select: { name: true, group: { select: { name: true } } },
+      },
+      salesRep: { select: { id: true, displayName: true } },
+      createdByUser: { select: { displayName: true } },
       items: {
         orderBy: { sortOrder: "asc" },
         include: {
@@ -113,11 +122,25 @@ export async function fetchOrderAcceptance(
     select: { branch: true },
   });
 
+  // 製品が決まっていない行は、読み取った品名から候補を出す（1 クエリでまとめて）。
+  const productSuggestions = await suggestProducts(
+    r.items
+      .filter((it) => it.productId == null && it.productText)
+      .map((it) => it.productText as string),
+  );
+
   const items: OrderAcceptanceItemView[] = r.items.map((it) => ({
     id: it.id,
     productId: it.productId != null ? String(it.productId) : null,
     productLabel: it.product ? productLabel(it.product) : null,
+    productName: it.product
+      ? localized(it.product.name as LocalizedText | null)
+      : null,
     productText: it.productText,
+    productSuggestions:
+      (it.productId == null && it.productText
+        ? productSuggestions.get(it.productText.trim())
+        : null) ?? [],
     orderType: it.orderType,
     quantity: it.quantity,
     unitPrice: it.unitPrice != null ? Number(it.unitPrice) : null,
@@ -125,16 +148,31 @@ export async function fetchOrderAcceptance(
     notes: it.notes,
   }));
 
+  // 顧客が決まっていない取込は、その場でもう一度突合して**候補**を出す
+  // （保存はしない — 選ぶのは人）。抽出 JSON は残っているので導出できる。
+  const customerSuggestions =
+    r.customerBpId || !r.extracted
+      ? []
+      : (
+          await matchCustomer(
+            normalizeExtraction(
+              (r.extracted as { data?: unknown })?.data ?? r.extracted,
+            ).customerName,
+          )
+        ).candidates;
+
   return {
     // 「何を読み取って、どれが引けなかったか」は保存済みの行と抽出 JSON から
     // その場で導く（別テーブルを持たない — 直せば指摘も自然に消える）。
     review: reviewIntake(r.extracted, {
       customerBpId: r.customerBpId,
       customerOrderRef: r.customerOrderRef,
+      customerCandidateCount: customerSuggestions.length,
       orderDate: r.orderDate?.toISOString().slice(0, 10) ?? null,
       items: items.map((it) => ({
         productId: it.productId,
         productText: it.productText,
+        productCandidateCount: it.productSuggestions.length,
         quantity: it.quantity,
         unitPrice: it.unitPrice,
       })),
@@ -154,6 +192,30 @@ export async function fetchOrderAcceptance(
     customerBranchName: r.customerBranchBp
       ? localized(r.customerBranchBp.name as LocalizedText | null)
       : null,
+    shipToBpId: r.shipToBpId,
+    shipToName: r.shipToBp
+      ? localized(r.shipToBp.name as LocalizedText | null)
+      : null,
+    assignedPlantId:
+      r.assignedPlantId != null ? String(r.assignedPlantId) : null,
+    assignedPlantName: r.assignedPlant
+      ? `${r.assignedPlant.code} ${localized(r.assignedPlant.name as LocalizedText | null)}`
+      : null,
+    shippingWorkLocationId:
+      r.shippingWorkLocationId != null
+        ? String(r.shippingWorkLocationId)
+        : null,
+    shippingWorkLocationName: r.shippingWorkLocation
+      ? `${localized(r.shippingWorkLocation.group.name as LocalizedText | null)} / ${localized(r.shippingWorkLocation.name as LocalizedText | null)}`
+      : null,
+    customerSuggestions: customerSuggestions.map((c) => ({
+      id: c.id,
+      label: c.label,
+      matchedKey: c.matchedKey,
+    })),
+    salesRepId: r.salesRep?.id ?? null,
+    salesRepName: r.salesRep?.displayName ?? null,
+    createdByName: r.createdByUser?.displayName ?? null,
     customerOrderRef: r.customerOrderRef,
     quoteNumber:
       r.quoteYearMonth && r.quoteSeq != null
@@ -173,4 +235,22 @@ export async function fetchOrderAcceptance(
     createdAt: r.createdAt.toISOString(),
     updatedAt: r.updatedAt.toISOString(),
   };
+}
+
+/**
+ * 担当拠点 Select 用（有効のみ、`コード 名称` ラベル）。
+ * production/work-orders/data.ts の同名ヘルパと同じ形だが、
+ * 画面系統が別（並行改修中）のため import せずローカルに持つ。
+ */
+export async function fetchPlantOptions(): Promise<
+  { value: string; label: string }[]
+> {
+  const rows = await prisma.plant.findMany({
+    where: { isActive: true },
+    orderBy: { code: "asc" },
+  });
+  return rows.map((r) => ({
+    value: String(r.id),
+    label: `${r.code} ${localized(r.name as LocalizedText | null)}`,
+  }));
 }

@@ -12,6 +12,7 @@ import {
   IconSettings,
 } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
+import { useFormat } from "@/components/layout/PreferencesProvider";
 import { SecondaryButton } from "@/components/ui/buttons";
 import { type Column, DataTable } from "@/components/ui/DataTable";
 import { DocNumber } from "@/components/ui/DocNumber";
@@ -21,7 +22,6 @@ import { StatusBadge, statusOptions } from "@/components/ui/StatusBadge";
 import { ListShell } from "@/components/ui/shells";
 import { useUrlSelectState, useUrlStringState } from "@/hooks/useUrlState";
 import { useIsMobile } from "@/hooks/useViewport";
-import { formatDateTime } from "@/lib/format";
 import {
   calcTrialPricing,
   TOOL_TYPE_OPTIONS,
@@ -47,6 +47,7 @@ export function TrialEstimateTable({
   /** 工具種の選択肢（管理者定義。未指定は組み込み 3 種）. */
   toolTypeOptions?: { value: string; label: string }[];
 }) {
+  const fmt = useFormat();
   const toolLabel = (v: string) =>
     toolTypeOptions.find((o) => o.value === v)?.label ?? v;
   const router = useRouter();
@@ -138,7 +139,7 @@ export function TrialEstimateTable({
       sortValue: (r) => r.updatedAt,
       render: (r) => (
         <Text c="dimmed" className="tabular-nums" size="xs">
-          {formatDateTime(r.updatedAt)}
+          {fmt.dateTime(r.updatedAt)}
         </Text>
       ),
     },
@@ -233,7 +234,7 @@ export function TrialEstimateTable({
                 <MoneyText value={headlinePrice(r, pricingOptions)} />
               </Text>
               <Text c="dimmed" size="xs">
-                {formatDateTime(r.updatedAt)}
+                {fmt.dateTime(r.updatedAt)}
               </Text>
             </Stack>
           </Group>

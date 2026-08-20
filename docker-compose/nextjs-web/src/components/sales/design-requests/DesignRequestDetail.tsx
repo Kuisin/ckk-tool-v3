@@ -27,6 +27,7 @@ import {
   reopenDesign,
   startDesign,
 } from "@/app/(dashboard)/sales/design-requests/actions";
+import { useFormat } from "@/components/layout/PreferencesProvider";
 import {
   AttachmentsPanel,
   type AttachmentView,
@@ -46,7 +47,6 @@ import {
 } from "@/components/ui/shells";
 import { useTabParam } from "@/hooks/useUrlState";
 import { DESIGN_TRIGGER_LABEL } from "@/lib/enum-labels";
-import { formatDateTime } from "@/lib/format";
 import type { ActionResult } from "@/lib/server-action";
 import { DESIGN_TRIGGER_COLOR, type DesignRequest, isEditable } from "./model";
 
@@ -63,6 +63,7 @@ export function DesignRequestDetail({
   /** 設計ファイル添付（design_requests ownerType）。 */
   attachments: AttachmentView[];
 }) {
+  const fmt = useFormat();
   const router = useRouter();
   // アクティブタブを ?tab= に保持（URL 共有でタブまで再現）
   const [tab, setTab] = useTabParam("overview");
@@ -143,10 +144,10 @@ export function DesignRequestDetail({
         </Group>
       }
       breadcrumbs={["販売", { label: "設計依頼書", href: BASE_PATH }, "詳細"]}
-      createdAt={formatDateTime(request.createdAt)}
+      createdAt={fmt.dateTime(request.createdAt)}
       status={<StatusBadge entity="DesignRequest" status={request.status} />}
       title={request.requestNumber}
-      updatedAt={formatDateTime(request.updatedAt)}
+      updatedAt={fmt.dateTime(request.updatedAt)}
     >
       <SummaryGrid>
         <FieldValue
@@ -202,15 +203,14 @@ export function DesignRequestDetail({
           />
         )}
         <FieldValue label="製品" value={request.productName ?? "—"} />
+        <FieldValue label="作成者" value={request.createdByName} />
         <FieldValue
           label="状態"
           value={<StatusBadge entity="DesignRequest" status={request.status} />}
         />
         <FieldValue
           label="完了日"
-          value={
-            request.completedAt ? formatDateTime(request.completedAt) : "—"
-          }
+          value={request.completedAt ? fmt.dateTime(request.completedAt) : "—"}
         />
       </SummaryGrid>
 
@@ -288,7 +288,7 @@ export function DesignRequestDetail({
                           </Text>
                         </Table.Td>
                         <Table.Td className="tabular-nums">
-                          {formatDateTime(f.createdAt)}
+                          {fmt.dateTime(f.createdAt)}
                         </Table.Td>
                       </Table.Tr>
                     ))}

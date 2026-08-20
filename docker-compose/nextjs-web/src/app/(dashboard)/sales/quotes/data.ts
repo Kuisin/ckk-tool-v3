@@ -25,6 +25,8 @@ const LIST_FETCH_CAP = 1000;
 const QUOTE_INCLUDE = {
   customerBp: true,
   customerBranchBp: true,
+  salesRep: { select: { id: true, displayName: true } },
+  createdByUser: { select: { displayName: true } },
   items: {
     orderBy: { sortOrder: "asc" as const },
     include: { product: true },
@@ -72,7 +74,9 @@ export function mapQuote(r: QuoteRow): Quote {
       deliveryDate: it.deliveryDate?.toISOString().slice(0, 10) ?? null,
       notes: it.notes,
     })),
-    createdBy: "—",
+    salesRepId: r.salesRep?.id ?? null,
+    salesRepName: r.salesRep?.displayName ?? null,
+    createdBy: r.createdByUser?.displayName ?? "—",
     createdAt: r.createdAt.toISOString(),
     updatedAt: r.updatedAt.toISOString(),
   };

@@ -32,12 +32,16 @@ import {
   parseDocKey,
 } from "@/lib/doc-number";
 import { enqueueExtraction } from "@/lib/intake";
+import { normalizeExtraction } from "@/lib/intake-core";
+import { aliasLearnings } from "@/lib/match-alias-core";
+import { saveAliasLearnings } from "@/lib/match-aliases";
 import { allocateDocumentKey } from "@/lib/numbering";
 import {
   acceptanceReadiness,
   readinessSummary,
 } from "@/lib/order-acceptance-readiness";
 import { linesReplaceBlockReason, nextBranches } from "@/lib/order-line-core";
+import { resolveSalesRepId } from "@/lib/sales-rep";
 import {
   type ActionResult,
   actionError,
@@ -103,6 +107,15 @@ const itemInput = z.object({
 
 const draftInput = z.object({
   customerBpId: z.string().nullable(),
+  // 営業担当 — 顧客の担当一覧（bp_sales_reps）から選ぶ。未指定のまま顧客を
+  // 変えたときは、その顧客の主担当を既定として入れる（lib/sales-rep）。
+  salesRepId: z.string().nullable().optional(),
+  // 出荷先（顧客と異なり得る取引先。任意）
+  shipToBpId: z.string().nullable().optional(),
+  // 担当拠点（任意）
+  assignedPlantId: z.number().int().positive().nullable().optional(),
+  // 出荷作業場所（作業場所マスタ MS0D。任意）
+  shippingWorkLocationId: z.number().int().positive().nullable().optional(),
   customerOrderRef: z.string().nullable(),
   // 参照する見積書番号 QOT-YYYYMM-NNNNN（任意 — P2-2 トレーサビリティ）
   quoteNumber: z.string().nullable().optional(),
@@ -127,6 +140,43 @@ function quoteKeyOf(quoteNumber: string | null | undefined) {
   return k
     ? { quoteYearMonth: k.yearMonth, quoteSeq: k.seq }
     : { quoteYearMonth: null, quoteSeq: null };
+}
+
+/**
+ * ヘッダ参照（出荷先 / 担当拠点 / 出荷作業場所）の存在・有効チェック。
+ * いずれも任意項目 — 指定されているものだけを検証し、問題があれば
+ * エラーメッセージを返す（null = OK）。
+ */
+async function headerRefsError(v: {
+  shipToBpId?: string | null;
+  assignedPlantId?: number | null;
+  shippingWorkLocationId?: number | null;
+}): Promise<string | null> {
+  const shipToBpId = trimOrNull(v.shipToBpId);
+  if (shipToBpId) {
+    const bp = await prisma.businessPartner.findUnique({
+      where: { id: shipToBpId },
+      select: { isActive: true },
+    });
+    if (!bp?.isActive) return "出荷先の取引先が存在しないか無効です";
+  }
+  if (v.assignedPlantId != null) {
+    const plant = await prisma.plant.findUnique({
+      where: { id: v.assignedPlantId },
+      select: { isActive: true },
+    });
+    if (!plant?.isActive) return "担当拠点が存在しないか無効です";
+  }
+  if (v.shippingWorkLocationId != null) {
+    const loc = await prisma.workLocation.findUnique({
+      where: { id: v.shippingWorkLocationId },
+      include: { group: { select: { isActive: true } } },
+    });
+    if (!loc?.isActive || !loc.group.isActive) {
+      return "出荷作業場所が存在しないか無効です";
+    }
+  }
+  return null;
 }
 
 /** 明細入力 → create データ。 */
@@ -251,13 +301,31 @@ export async function saveDraft(
       select: {
         status: true,
         customerBpId: true,
+        salesRepId: true,
+        shipToBpId: true,
+        assignedPlantId: true,
+        shippingWorkLocationId: true,
         customerOrderRef: true,
         orderDate: true,
         notes: true,
+        // 学習（match_aliases）に使う: 抽出された社名と、保存前の突合状態。
+        extracted: true,
+        items: { select: { productId: true, productText: true } },
       },
     });
     if (!prior) return actionError("対象の注文請書が見つかりません");
+    const refsError = await headerRefsError(v);
+    if (refsError) return actionError(refsError);
     const creates = buildItemCreates(v.items);
+    const customerBpId = trimOrNull(v.customerBpId);
+    const shipToBpId = trimOrNull(v.shipToBpId);
+    const assignedPlantId = v.assignedPlantId ?? null;
+    const shippingWorkLocationId = v.shippingWorkLocationId ?? null;
+    const salesRepId = await resolveSalesRepId(
+      v.salesRepId,
+      customerBpId,
+      prior.customerBpId,
+    );
     let blocked: string | null = null;
     await prisma.$transaction(async (tx) => {
       // ラインチェック: 確定済みの明細は変更させない。tx 内で読むことで
@@ -274,7 +342,11 @@ export async function saveDraft(
       await tx.orderAcceptance.update({
         where: { yearMonth_seq: key },
         data: {
-          customerBpId: trimOrNull(v.customerBpId),
+          customerBpId,
+          salesRepId,
+          shipToBpId,
+          assignedPlantId,
+          shippingWorkLocationId,
           customerOrderRef: trimOrNull(v.customerOrderRef),
           ...quoteKeyOf(v.quoteNumber),
           orderDate: v.orderDate ? new Date(v.orderDate) : null,
@@ -290,18 +362,48 @@ export async function saveDraft(
       recordId: number,
       before: {
         customerBpId: prior.customerBpId,
+        salesRepId: prior.salesRepId,
+        shipToBpId: prior.shipToBpId,
+        assignedPlantId: prior.assignedPlantId,
+        shippingWorkLocationId: prior.shippingWorkLocationId,
         customerOrderRef: prior.customerOrderRef,
         orderDate: prior.orderDate?.toISOString().slice(0, 10) ?? null,
         notes: prior.notes,
       },
       after: {
-        customerBpId: trimOrNull(v.customerBpId),
+        customerBpId,
+        salesRepId,
+        shipToBpId,
+        assignedPlantId,
+        shippingWorkLocationId,
         customerOrderRef: trimOrNull(v.customerOrderRef),
         orderDate: v.orderDate,
         notes: trimOrNull(v.notes),
         itemCount: creates.length,
       },
     });
+
+    // 人が手で結び付けた「印字された表記 → マスタ」を覚える（次の取込で効く）。
+    // 保存そのものは終わっている — 学習で失敗しても書類は保存済みのまま。
+    await saveAliasLearnings(
+      aliasLearnings({
+        extractedCustomerName: normalizeExtraction(prior.extracted)
+          .customerName,
+        customer: { before: prior.customerBpId, after: customerBpId },
+        items: {
+          before: prior.items.map((it) => ({
+            productText: it.productText,
+            productId: it.productId != null ? String(it.productId) : null,
+          })),
+          after: v.items.map((it) => ({
+            productText: it.productText,
+            productId: trimOrNull(it.productId),
+          })),
+        },
+      }),
+      authz.userId,
+    );
+
     revalidate(number);
     return actionOk();
   } catch (e) {
@@ -674,9 +776,20 @@ export async function createManualAcceptance(
   if (!authz.ok) return actionError(authz.error);
   const v = parsed.data;
   try {
+    const refsError = await headerRefsError(v);
+    if (refsError) return actionError(refsError);
+    const shipToBpId = trimOrNull(v.shipToBpId);
+    const assignedPlantId = v.assignedPlantId ?? null;
+    const shippingWorkLocationId = v.shippingWorkLocationId ?? null;
     const actor = await getCurrentActorId();
     const { yearMonth, seq } = await allocateDocumentKey("ORDER");
     const number = `ORD-${yearMonth}-${String(seq).padStart(5, "0")}`;
+    // 新規は必ず顧客が変わる（prior = null）ので、未指定なら主担当が入る。
+    const salesRepId = await resolveSalesRepId(
+      v.salesRepId,
+      v.customerBpId,
+      null,
+    );
     await prisma.orderAcceptance.create({
       data: {
         yearMonth,
@@ -684,6 +797,10 @@ export async function createManualAcceptance(
         status: "DRAFT",
         source: "MANUAL",
         customerBpId: v.customerBpId,
+        salesRepId,
+        shipToBpId,
+        assignedPlantId,
+        shippingWorkLocationId,
         customerOrderRef: trimOrNull(v.customerOrderRef),
         ...quoteKeyOf(v.quoteNumber),
         orderDate: v.orderDate ? new Date(v.orderDate) : null,
@@ -699,6 +816,10 @@ export async function createManualAcceptance(
       after: {
         note: "手入力で作成",
         customerBpId: v.customerBpId,
+        salesRepId,
+        shipToBpId,
+        assignedPlantId,
+        shippingWorkLocationId,
         itemCount: v.items.length,
         status: "DRAFT",
       },

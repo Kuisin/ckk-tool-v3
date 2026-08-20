@@ -76,6 +76,8 @@ describe("試算 → 価格表 → 見積書 (constructed entry)", () => {
     currency: "JPY",
     isActive: true,
     variants: [variant],
+    salesRepId: null,
+    salesRepName: null,
     createdBy: "t",
     createdAt: "2026-04-01 00:00",
     updatedAt: "2026-04-01 00:00",

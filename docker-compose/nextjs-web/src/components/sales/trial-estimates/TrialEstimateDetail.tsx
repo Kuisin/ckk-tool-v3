@@ -39,6 +39,7 @@ import {
   confirmTrialEstimate,
   linkTrialEstimateProduct,
 } from "@/app/(dashboard)/sales/trial-estimates/actions";
+import { useFormat } from "@/components/layout/PreferencesProvider";
 import { DocNumber } from "@/components/ui/DocNumber";
 import { FieldValue } from "@/components/ui/FieldValue";
 import { PRODUCT_F4 } from "@/components/ui/f4-presets";
@@ -56,7 +57,6 @@ import {
 } from "@/components/ui/shells";
 import { useTabParam } from "@/hooks/useUrlState";
 import type { MemoView } from "@/lib/document-memos";
-import { formatDateTime } from "@/lib/format";
 import type { MaterialPricePoint } from "@/lib/material-pricing-core";
 import { ORDER_TYPE_LABEL } from "@/lib/mock";
 import {
@@ -102,6 +102,7 @@ export function TrialEstimateDetail({
   /** 工具種の選択肢（管理者定義。未指定は組み込み 3 種）. */
   toolTypeOptions?: { value: string; label: string }[];
 }) {
+  const fmt = useFormat();
   const toolLabel = (v: string) =>
     toolTypeOptions.find((o) => o.value === v)?.label ?? v;
   const router = useRouter();
@@ -204,7 +205,7 @@ export function TrialEstimateDetail({
         />
       }
       breadcrumbs={["販売", { label: "試算", href: BASE_PATH }, "詳細"]}
-      createdAt={formatDateTime(record.createdAt)}
+      createdAt={fmt.dateTime(record.createdAt)}
       status={
         <Group gap="xs">
           <StatusBadge entity="Estimate" status={status} />
@@ -219,7 +220,7 @@ export function TrialEstimateDetail({
         </Group>
       }
       title={record.name}
-      updatedAt={formatDateTime(record.updatedAt)}
+      updatedAt={fmt.dateTime(record.updatedAt)}
     >
       {status === "REGISTERED" && (
         <Alert color="blue" icon={<IconInfoCircle size={16} />} variant="light">
@@ -238,6 +239,8 @@ export function TrialEstimateDetail({
           value={<DocNumber>{record.estimateNumber}</DocNumber>}
         />
         <FieldValue label="見積り先" value={record.customerName ?? "—"} />
+        <FieldValue label="営業担当" value={record.salesRepName} />
+        <FieldValue label="作成者" value={record.createdBy} />
         <FieldValue label="製品" value={record.productName ?? "—"} />
         <FieldValue label="工具種" value={toolLabel(record.input.toolType)} />
         <FieldValue label="素材" value={record.materialLabel} />

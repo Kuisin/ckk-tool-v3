@@ -8,10 +8,12 @@
  * 値は内部 id（連番）の文字列、ラベルは表示コード + 名称。
  */
 
+import { checkPermission } from "@/lib/authz";
 import { bpMatchesQuery } from "@/lib/bp-search";
 import { prisma } from "@/lib/db";
 import { formatProductNumber, formatQuoteNumber } from "@/lib/doc-number";
 import { type LocalizedText, localized } from "@/lib/format";
+import { listCustomerSalesReps } from "@/lib/sales-rep";
 
 const LIMIT = 20;
 const F4_LIMIT = 50;
@@ -30,6 +32,54 @@ export interface F4SearchRow {
 
 const s = (v: unknown): string => (typeof v === "string" ? v.trim() : "");
 
+/**
+ * キーワード（match_names）に部分一致する行の id。
+ *
+ * 配列列なので Prisma の where では「完全一致（has）」しか書けない。人は語の
+ * 一部しか打たないので、`unnest + ILIKE` で舐める生 SQL を 1 本足し、その id を
+ * 本体のクエリへ OR で混ぜる（製品は 4 万件超あるので、取引先のように全件
+ * 取って JS で絞る手は使えない）。
+ *
+ * 画面側の絞り込み（lib/master-keywords）は全角・記号まで吸収するが、SQL 側は
+ * ILIKE の大文字小文字だけ — ここは「打った語がそのまま含まれる」だけを見る。
+ */
+const likeEscape = (q: string) => q.replace(/[\\%_]/g, (c) => `\\${c}`);
+
+async function productIdsByKeyword(
+  q: string,
+  limit: number,
+): Promise<number[]> {
+  if (!q) return [];
+  const rows = await prisma.$queryRaw<{ id: number }[]>`
+    SELECT id FROM app.products
+    WHERE is_active
+      AND EXISTS (
+        SELECT 1 FROM unnest(match_names) AS k WHERE k ILIKE ${`%${likeEscape(q)}%`}
+      )
+    ORDER BY id
+    LIMIT ${limit}`;
+  return rows.map((r) => r.id);
+}
+
+async function materialIdsByKeyword(
+  q: string,
+  limit: number,
+): Promise<number[]> {
+  if (!q) return [];
+  const rows = await prisma.$queryRaw<{ id: number }[]>`
+    SELECT id FROM app.materials
+    WHERE is_active
+      AND EXISTS (
+        SELECT 1 FROM unnest(match_names) AS k WHERE k ILIKE ${`%${likeEscape(q)}%`}
+      )
+    ORDER BY code
+    LIMIT ${limit}`;
+  return rows.map((r) => r.id);
+}
+
+/** id 集合を Prisma の OR 条件へ（空なら条件を足さない）。 */
+const byIds = (ids: number[]) => (ids.length > 0 ? [{ id: { in: ids } }] : []);
+
 function productLabel(p: {
   id: number;
   name: unknown;
@@ -41,15 +91,26 @@ function productLabel(p: {
   return code ? `${name} ${code}` : name;
 }
 
-/** 製品 — 名称(ja) の部分一致（コードは未採番のレガシーが大半のため名称主体）。 */
+/**
+ * 製品 — 名称(ja) またはキーワード（match_names）の部分一致
+ * （コードは未採番のレガシーが大半のため名称主体）。
+ */
 export async function searchProductOptions(
   query: string,
 ): Promise<SearchOption[]> {
   const q = query.trim();
+  const keywordIds = await productIdsByKeyword(q, LIMIT);
   const rows = await prisma.product.findMany({
     where: {
       isActive: true,
-      ...(q ? { name: { path: ["ja"], string_contains: q } } : {}),
+      ...(q
+        ? {
+            OR: [
+              { name: { path: ["ja"], string_contains: q } },
+              ...byIds(keywordIds),
+            ],
+          }
+        : {}),
     },
     orderBy: { id: "asc" },
     take: LIMIT,
@@ -97,6 +158,42 @@ export async function searchQuoteOptions(
     .map(({ value, label }) => ({ value, label }));
 }
 
+/** 営業担当セレクトが 1 往復で必要とするもの。 */
+export interface SalesRepPicker {
+  /** 顧客に登録されている担当者（並びは 主担当 → sortOrder）。 */
+  options: SearchOption[];
+  /**
+   * 取引先マスタを開けるか（master:READ）。閲覧だけの人にも「誰が担当か
+   * 見に行く」導線は出す — 開けない画面へのリンクを出さないための判定。
+   */
+  canView: boolean;
+  /**
+   * 営業担当を登録できるか（master:UPDATE）。編集画面へ送ってよいか、
+   * つまり「登録しに行く」導線を出せるかの判定。
+   */
+  canManage: boolean;
+}
+
+/**
+ * 営業担当 — 指定した顧客に登録されている担当者（app.bp_sales_reps）。
+ *
+ * 並びは 主担当 → sortOrder なので、**先頭が新規書類の既定値**。顧客を選び
+ * 直したときにフォームがこれを呼び、候補と既定値を入れ替える。
+ * 顧客未選択・担当未登録なら空配列。
+ */
+export async function fetchSalesRepPicker(
+  customerBpId: string | null,
+): Promise<SalesRepPicker> {
+  // READ / UPDATE を 2 回引いても、権限セットは React cache() 済みなので
+  // DB は 1 往復（lib/authz permissionSetFor）。
+  const [options, read, update] = await Promise.all([
+    listCustomerSalesReps(customerBpId),
+    checkPermission("master", "READ"),
+    checkPermission("master", "UPDATE"),
+  ]);
+  return { options, canView: read.ok, canManage: update.ok };
+}
+
 /** 顧客（トップレベル CUSTOMER ロール）— BPコード / 名称 / AI照合名。 */
 export async function searchCustomerOptions(
   query: string,
@@ -111,6 +208,40 @@ export async function searchCustomerOptions(
       parentId: null,
       roleAssignments: { some: { role: "CUSTOMER", isActive: true } },
     },
+    orderBy: { bpCode: "asc" },
+  });
+  return rows
+    .filter((r) =>
+      bpMatchesQuery(
+        {
+          bpCode: r.bpCode,
+          nameJa: localized(r.name as LocalizedText | null),
+          nameKana: r.nameKana,
+          shortName: r.shortName,
+          matchNames: r.matchNames,
+          matchNamesAuto: r.matchNamesAuto,
+        },
+        q,
+      ),
+    )
+    .slice(0, LIMIT)
+    .map((r) => ({
+      value: r.id,
+      label: localized(r.name as LocalizedText | null),
+    }));
+}
+
+/**
+ * 出荷先 — ロールを問わない有効な取引先（支店含む）。
+ * 注文請書の出荷先は顧客と異なり得る（直送・支店渡しなど）ため、
+ * searchCustomerOptions と違い CUSTOMER ロール・トップレベルでは絞らない。
+ */
+export async function searchShipToOptions(
+  query: string,
+): Promise<SearchOption[]> {
+  const q = query.trim();
+  const rows = await prisma.businessPartner.findMany({
+    where: { isActive: true },
     orderBy: { bpCode: "asc" },
   });
   return rows
@@ -195,10 +326,19 @@ export async function f4SearchProducts(
 ): Promise<F4SearchRow[]> {
   const name = s(filters.name);
   const materialType = s(filters.materialType);
+  // 名称欄はキーワード（match_names）込みで判定する（略称・英字でも当たる）。
+  const keywordIds = await productIdsByKeyword(name, F4_LIMIT);
   const rows = await prisma.product.findMany({
     where: {
       isActive: true,
-      ...(name ? { name: { path: ["ja"], string_contains: name } } : {}),
+      ...(name
+        ? {
+            OR: [
+              { name: { path: ["ja"], string_contains: name } },
+              ...byIds(keywordIds),
+            ],
+          }
+        : {}),
       ...(materialType
         ? {
             materialType: {
@@ -412,6 +552,7 @@ export async function searchMaterialOptions(
   query: string,
 ): Promise<SearchOption[]> {
   const q = query.trim();
+  const keywordIds = await materialIdsByKeyword(q, LIMIT);
   const rows = await prisma.material.findMany({
     where: {
       isActive: true,
@@ -420,6 +561,7 @@ export async function searchMaterialOptions(
             OR: [
               { code: { contains: q, mode: "insensitive" } },
               { name: { path: ["ja"], string_contains: q } },
+              ...byIds(keywordIds),
             ],
           }
         : {}),

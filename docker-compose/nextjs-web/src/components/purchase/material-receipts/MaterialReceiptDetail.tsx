@@ -10,6 +10,7 @@
 
 import { Anchor, Badge, Paper, Text } from "@mantine/core";
 import Link from "next/link";
+import { useFormat } from "@/components/layout/PreferencesProvider";
 import {
   AttachmentsPanel,
   type AttachmentView,
@@ -18,7 +19,6 @@ import { DocNumber } from "@/components/ui/DocNumber";
 import { FieldValue } from "@/components/ui/FieldValue";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { DetailShell, SummaryGrid } from "@/components/ui/shells";
-import { formatDate, formatDateTime } from "@/lib/format";
 import type { MaterialReceiptView } from "./model";
 
 const BASE_PATH = "/purchase/material-receipts";
@@ -32,11 +32,12 @@ export function MaterialReceiptDetail({
   /** 証憑（document_attachments 由来）。 */
   attachments: AttachmentView[];
 }) {
+  const fmt = useFormat();
   const r = receipt;
   return (
     <DetailShell
       breadcrumbs={["購買", { label: "素材入荷", href: BASE_PATH }, "詳細"]}
-      createdAt={formatDateTime(r.createdAt)}
+      createdAt={fmt.dateTime(r.createdAt)}
       status={
         r.poNumber ? (
           // 発注入荷 = 入荷完了した発注書由来（MaterialPurchaseOrder の完了色）。
@@ -71,7 +72,8 @@ export function MaterialReceiptDetail({
             </Text>
           }
         />
-        <FieldValue label="入荷日" value={formatDate(r.receivedAt)} />
+        <FieldValue label="入荷日" value={fmt.date(r.receivedAt)} />
+        <FieldValue label="作成者" value={r.createdByName} />
         <FieldValue
           label="発注明細"
           value={

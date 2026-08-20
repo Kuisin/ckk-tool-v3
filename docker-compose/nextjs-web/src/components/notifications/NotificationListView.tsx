@@ -6,6 +6,9 @@
  * フィルタ（未読のみ・種別）とページはすべて URL search params に保持 —
  * ブラウザバック・リロード・URL 共有で状態が再現される。
  * 行クリック = 既読化 + linkPath へ遷移。
+ *
+ * 行はサーバーコンポーネントが渡す。新着はヘッダーのベルと同じ合図
+ * （/api/sse/notifications）で router.refresh() し、開いたままでも増える。
  */
 
 import {
@@ -28,7 +31,11 @@ import {
 import { GhostButton } from "@/components/ui/buttons";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { PageHeader } from "@/components/ui/PageHeader";
-import { type NotificationItem, relativeTime } from "@/hooks/useNotifications";
+import {
+  type NotificationItem,
+  relativeTime,
+  useNotificationSignal,
+} from "@/hooks/useNotifications";
 import {
   NOTIFICATION_TYPE_LABEL,
   NOTIFICATION_TYPE_OPTIONS,
@@ -54,6 +61,10 @@ export function NotificationListView({
   const router = useRouter();
   const searchParams = useSearchParams();
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
+
+  // 新着・既読の合図でサーバーコンポーネントを取り直す。フィルタもページも
+  // URL にあるので、refresh しても今見ている条件のまま中身だけ新しくなる。
+  useNotificationSignal(() => router.refresh());
 
   /** search params を差分更新して遷移（フィルタ変更時は 1 ページ目へ）。 */
   const updateParams = (

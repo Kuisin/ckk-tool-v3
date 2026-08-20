@@ -51,5 +51,6 @@ The detail page has three blocks.
 - **I want to add or edit a user** — not possible on this screen. User records are managed via synchronization with the company directory (AD) and by system administrators.
 - **I want to change roles** — this screen is for review only. Role assignment changes are made by a system administrator.
 - **Permissions look wrong** — check "Effective permissions" on the detail page. Multiple roles are aggregated and only the highest scope per action applies.
+- **I want to change someone else's language or date display** — not possible from this screen. Language, date/time format and time zone are personal settings that **only the user themselves** can change, from **Display Settings** in the avatar menu (web) or the kiosk launcher (tablet). The language setting is shared between the web app and the kiosk.
 - To see who changed what and when, use the [Activity Log](/internal-docs/en/system/activity-log).
 - For app visibility ON/OFF, see [App Management](/internal-docs/en/system/app-management).

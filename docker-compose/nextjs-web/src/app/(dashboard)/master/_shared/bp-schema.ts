@@ -60,6 +60,17 @@ export function bpBaseData(v: BpBaseInput) {
   };
 }
 
+/**
+ * 顧客の営業担当 1 件（app.bp_sales_reps）。1 顧客に複数登録でき、書類の
+ * 営業担当はこの一覧から選ぶ。主担当は 0 or 1 名 — 新規書類の既定値になる。
+ */
+export const salesRepAssignmentInput = z.object({
+  userId: z.string().min(1, "担当者を選択してください"),
+  isPrimary: z.boolean(),
+});
+
+export type SalesRepAssignmentInput = z.infer<typeof salesRepAssignmentInput>;
+
 export const customerAttrsInput = z.object({
   customerCode: z.string().optional(),
   billingBpId: z.string().nullable(),
@@ -70,6 +81,9 @@ export const customerAttrsInput = z.object({
   taxType: z.enum(["TAXABLE", "EXEMPT", "REDUCED"]),
   invoiceMethod: z.enum(["EMAIL", "FAX", "POST", "PORTAL"]),
   isConsignment: z.boolean(),
+  // 属性行（bp_customer_attrs）ではなく別テーブルに書くので
+  // customerAttrsData には含めない（syncCustomerSalesReps が受け持つ）。
+  salesReps: z.array(salesRepAssignmentInput).default([]),
 });
 
 export type CustomerAttrsInput = z.infer<typeof customerAttrsInput>;

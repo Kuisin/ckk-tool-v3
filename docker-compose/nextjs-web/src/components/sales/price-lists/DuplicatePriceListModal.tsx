@@ -15,6 +15,7 @@ import { notifications } from "@mantine/notifications";
 import { IconCalendar, IconInfoCircle } from "@tabler/icons-react";
 import { useEffect, useState, useTransition } from "react";
 import { changePriceEntryPeriod } from "@/app/(dashboard)/sales/price-lists/actions";
+import { useFormat } from "@/components/layout/PreferencesProvider";
 import { FieldValue } from "@/components/ui/FieldValue";
 import { MoneyText } from "@/components/ui/MoneyText";
 import { FormModal, type ModalBaseProps } from "@/components/ui/modals";
@@ -36,6 +37,7 @@ export function DuplicatePriceListModal({
   source: PriceListEntry | null;
   onDone?: () => void;
 }) {
+  const fmt = useFormat();
   const [isPending, startTransition] = useTransition();
   const [variantId, setVariantId] = useState<string | null>(null);
   const [validFrom, setValidFrom] = useState<string | null>(null);
@@ -131,7 +133,7 @@ export function DuplicatePriceListModal({
         label="現在の有効期間"
         value={
           variant
-            ? validPeriod(variant.validFrom, variant.validUntil)
+            ? validPeriod(fmt, variant.validFrom, variant.validUntil)
             : undefined
         }
       />

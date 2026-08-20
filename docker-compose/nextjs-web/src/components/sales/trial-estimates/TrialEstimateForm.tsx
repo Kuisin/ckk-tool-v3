@@ -40,16 +40,17 @@ import {
   fetchMaterialPricing,
   type MaterialPricing,
 } from "@/app/(dashboard)/sales/trial-estimates/actions";
+import { useFormat } from "@/components/layout/PreferencesProvider";
 import { EditButton } from "@/components/ui/buttons";
 import { PRODUCT_F4 } from "@/components/ui/f4-presets";
 import { HelpLabel } from "@/components/ui/HelpLabel";
 import { MoneyText } from "@/components/ui/MoneyText";
 import { openConfirm } from "@/components/ui/modals";
 import { PageHeader } from "@/components/ui/PageHeader";
+import { SalesRepSelect } from "@/components/ui/SalesRepSelect";
 import { SearchSelect } from "@/components/ui/SearchSelect";
 import { FormActions, FormSection } from "@/components/ui/shells";
 import { fieldHelp } from "@/lib/field-help";
-import { formatDate } from "@/lib/format";
 import type { Option } from "@/lib/mock";
 import {
   type CostBreakdown,
@@ -103,6 +104,7 @@ export function TrialEstimateForm({
   initialPricing: MaterialPricing;
   source?: TrialEstimateRecord | null;
 }) {
+  const fmt = useFormat();
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [isPricingLoading, startPricingTransition] = useTransition();
@@ -116,6 +118,9 @@ export function TrialEstimateForm({
   const [name, setName] = useState(source ? `${source.name}（再試算）` : "");
   const [customerId, setCustomerId] = useState<string | null>(
     source?.customerId ?? null,
+  );
+  const [salesRepId, setSalesRepId] = useState<string | null>(
+    source?.salesRepId ?? null,
   );
   // 対象製品（任意）— 価格表作成時の基準単価ソース候補になる。
   const [productId, setProductId] = useState<string | null>(
@@ -305,6 +310,7 @@ export function TrialEstimateForm({
     }
     startTransition(async () => {
       const res = await createTrialEstimate({
+        salesRepId,
         name: name.trim(),
         customerBpId: customerId,
         productId,
@@ -385,6 +391,16 @@ export function TrialEstimateForm({
                     placeholder="顧客"
                     searchable
                     value={customerId}
+                  />
+                  <SalesRepSelect
+                    customerBpId={customerId}
+                    initial={
+                      source?.salesRepId && source.salesRepName
+                        ? { id: source.salesRepId, name: source.salesRepName }
+                        : null
+                    }
+                    onChange={setSalesRepId}
+                    value={salesRepId}
                   />
                   <SearchSelect
                     f4={PRODUCT_F4}
@@ -540,7 +556,7 @@ export function TrialEstimateForm({
                             ? "カスタム"
                             : policyRef.usedDefault
                               ? "既定価格"
-                              : `参照価格 ${referenceDate ? formatDate(referenceDate) : "—"}`}
+                              : `参照価格 ${referenceDate ? fmt.date(referenceDate) : "—"}`}
                         </Badge>
                       </Group>
                     }

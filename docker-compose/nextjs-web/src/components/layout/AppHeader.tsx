@@ -32,6 +32,7 @@ import {
   IconBell,
   IconBug,
   IconChevronLeft,
+  IconLanguage,
   IconLayoutDashboard,
   IconLogout,
   IconShare2,
@@ -40,6 +41,7 @@ import {
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { signOut } from "next-auth/react";
+import { useTranslations } from "next-intl";
 import { useEffect, useRef, useState } from "react";
 import { UserAvatar } from "@/components/ui/UserAvatar";
 import { relativeTime, useNotifications } from "@/hooks/useNotifications";
@@ -51,10 +53,16 @@ import { BugReportModal } from "./BugReportModal";
 import { useNavigationGuard } from "./NavigationGuard";
 import { markAllReadAction, markReadAction } from "./notification-actions";
 import { OperationCodeJump } from "./OperationCodeJump";
+
 import { SharePageModal } from "./SharePageModal";
 
 const NOTIFICATION_POPUP_WIDTH = 280;
-const PROFILE_MENU_WIDTH = 180;
+/**
+ * アバターメニューの幅。項目名（ホーム画面設定 / 通知設定 …）とアイコン・
+ * 余白が 1 行に収まる幅を取る — 折り返すと行の高さが揃わず読みにくい。
+ * 英語の "Notification settings" が最長なのでそれに合わせている。
+ */
+const PROFILE_MENU_WIDTH = 260;
 
 /** 開発環境バーの高さ（dev のみ表示。ヘッダー最上部に重ねる）。 */
 export const DEV_BAR_HEIGHT = 28;
@@ -114,6 +122,7 @@ export function AppHeader({
         avatarThumbUrl: user.avatarThumbUrl,
       }
     : GUEST_USER;
+  const t = useTranslations("shell");
   const [launcherOpen, setLauncherOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
@@ -350,7 +359,7 @@ export function AppHeader({
           >
             <Popover.Target>
               <ActionIcon
-                aria-label="通知"
+                aria-label={t("notifications")}
                 color="gray"
                 onClick={() => setNotifOpen((o) => !o)}
                 size="lg"
@@ -373,7 +382,7 @@ export function AppHeader({
             </Popover.Target>
             <Popover.Dropdown p={0}>
               <Group justify="space-between" px="xs" py="5px">
-                <Title order={6}>通知</Title>
+                <Title order={6}>{t("notifications")}</Title>
                 <Text
                   c="blue"
                   className="cursor-pointer border-0 bg-transparent p-0"
@@ -382,7 +391,7 @@ export function AppHeader({
                   size="xs"
                   type="button"
                 >
-                  すべて既読
+                  {t("markAllRead")}
                 </Text>
               </Group>
               <Divider />
@@ -390,7 +399,7 @@ export function AppHeader({
                 <Stack gap={0}>
                   {notifications.length === 0 && (
                     <Text c="dimmed" px="sm" py="md" size="xs" ta="center">
-                      通知はありません
+                      {t("noNotifications")}
                     </Text>
                   )}
                   {notifications.map((notif) => (
@@ -468,11 +477,12 @@ export function AppHeader({
                     src={sessionUser.avatarUrl}
                     thumbSrc={sessionUser.avatarThumbUrl}
                   />
-                  <Stack gap={0}>
-                    <Text fw={600} size="sm">
+                  {/* 長い氏名・所属でも折り返さない（幅で足りない分は省略）。 */}
+                  <Stack className="min-w-0" gap={0}>
+                    <Text fw={600} size="sm" truncate>
                       {sessionUser.displayName}
                     </Text>
-                    <Text c="dimmed" size="xs">
+                    <Text c="dimmed" size="xs" truncate>
                       {sessionUser.department}
                     </Text>
                   </Stack>
@@ -485,7 +495,7 @@ export function AppHeader({
                 leftSection={<IconUser size={14} />}
                 py={{ base: "sm", md: "xs" }}
               >
-                プロフィール
+                {t("profile")}
               </Menu.Item>
               <Menu.Item
                 component={Link}
@@ -493,7 +503,7 @@ export function AppHeader({
                 leftSection={<IconBell size={14} />}
                 py={{ base: "sm", md: "xs" }}
               >
-                通知設定
+                {t("notificationSettings")}
               </Menu.Item>
               <Menu.Item
                 component={Link}
@@ -501,7 +511,15 @@ export function AppHeader({
                 leftSection={<IconLayoutDashboard size={14} />}
                 py={{ base: "sm", md: "xs" }}
               >
-                ホーム画面設定
+                {t("homeSettings")}
+              </Menu.Item>
+              <Menu.Item
+                component={Link}
+                href="/profile/preferences"
+                leftSection={<IconLanguage size={14} />}
+                py={{ base: "sm", md: "xs" }}
+              >
+                {t("preferences")}
               </Menu.Item>
               <Divider my="5px" />
               <Menu.Item
@@ -510,7 +528,7 @@ export function AppHeader({
                 onClick={() => signOut({ callbackUrl: "/login" })}
                 py={{ base: "sm", md: "xs" }}
               >
-                ログアウト
+                {t("logout")}
               </Menu.Item>
             </Menu.Dropdown>
           </Menu>

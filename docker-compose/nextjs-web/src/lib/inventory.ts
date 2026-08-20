@@ -13,7 +13,13 @@
 import type { Prisma as PrismaNS } from "../../generated/client/client";
 import { getCurrentActorId, recordAudit } from "./audit";
 import { prisma } from "./db";
-import { computeFinishedQuantity } from "./workflow-core";
+import {
+  computeBranchSemiFinishedQuantity,
+  computeFinishedQuantity,
+  STEP_LINK_STATE_SELECT,
+  STEP_STATE_SELECT,
+  toStepState,
+} from "./workflow-core";
 
 type Tx = PrismaNS.TransactionClient;
 
@@ -177,47 +183,44 @@ export async function ensureMaterialInventory(
 /**
  * 全工程完了フック: 最終工程の良品をロット入庫、半製品バケット合計を半製品
  * 入庫。completeStepExecution から呼ぶ。
- * - MANUFACTURE: WO/SO の製品予約を CONFIRMED に（在庫向けの独立指示書 =
- *   orderLineId null は予約なし — 入庫のみ）。
+ * - MANUFACTURE: WO/割当明細の製品予約を CONFIRMED に（在庫向けの独立指示書 =
+ *   割当なしは予約なし — 入庫のみ）。
  * - FROM_STOCK（在庫分）: 受注へ引当済みの在庫ロットを消費（RELEASE + OUT）
  *   して自ロットの IN と相殺する（付け替え — 二重計上を防ぐ）。
+ *   在庫分は割当 1 件のみ（work-order-alloc-core の不変条件）。
  */
 export async function onWorkOrderCompleted(workOrderId: string): Promise<void> {
   const wo = await prisma.workOrder.findUniqueOrThrow({
     where: { id: workOrderId },
+    // 工程はエンジンが読む列 + 入庫先の解決に使う plantId だけ
+    // （STEP_STATE_SELECT — workflow-core 参照）。全列 SELECT は列追加のたび
+    // migration 前の DB で P2022 に落ちる。
     include: {
-      steps: { orderBy: { sortOrder: "asc" } },
-      stepLinks: true,
+      steps: {
+        select: { ...STEP_STATE_SELECT, plantId: true },
+        orderBy: { sortOrder: "asc" },
+      },
+      stepLinks: { select: STEP_LINK_STATE_SELECT },
+      orderLineLinks: {
+        select: { orderLineId: true },
+        orderBy: { sortOrder: "asc" },
+      },
     },
   });
+  const linkedLineIds = wo.orderLineLinks.map((l) => l.orderLineId);
   // 完成数 = 良品がどこにも流れない COMPLETED 工程の残良品合計。
   // sortOrder 最大では分岐合流 DAG（合流先が手前に並ぶ場合）で誤るため、
   // グラフ集計の純関数（workflow-core computeFinishedQuantity）で判定する
   // （監査 #15。終端工程から分岐した場合の残良品もここで拾う）。
-  const finishedQty = computeFinishedQuantity(
-    wo.steps.map((s) => ({
-      id: s.id,
-      processStepId: s.processStepId,
-      status: s.status,
-      sortOrder: s.sortOrder,
-      inputQuantity: s.inputQuantity,
-      outputSuccess: s.outputSuccessQuantity,
-      defectSemiFinished: s.outputDefectSemiFinished,
-      defectScrap: s.outputDefectScrap,
-      defectRework: s.outputDefectRework,
-      sessionLockedBy: s.sessionLockedBy,
-    })),
-    wo.stepLinks.map((l) => ({
-      sourceStepId: l.sourceStepId,
-      targetStepId: l.targetStepId,
-      routedQuantity: l.routedQuantity,
-    })),
-  );
-  // 半製品 = 全工程の半製品バケット合計
-  const semiTotal = wo.steps.reduce(
-    (sum, s) => sum + (s.outputDefectSemiFinished ?? 0),
-    0,
-  );
+  const engineSteps = wo.steps.map(toStepState);
+  const engineLinks = wo.stepLinks;
+  const finishedQty = computeFinishedQuantity(engineSteps, engineLinks);
+  // 半製品 = 全工程の半製品バケット合計 + 「半製品在庫で終わる分岐」の終端良品。
+  // 後者は完成数に入らない（computeFinishedQuantity が除外している）ので、
+  // ここで拾わないと行き場を失う。
+  const semiTotal =
+    wo.steps.reduce((sum, s) => sum + (s.outputDefectSemiFinished ?? 0), 0) +
+    computeBranchSemiFinishedQuantity(engineSteps, engineLinks);
   const plantId = wo.steps.find((s) => s.plantId != null)?.plantId ?? null;
 
   await prisma.$transaction(async (tx) => {
@@ -239,9 +242,9 @@ export async function onWorkOrderCompleted(workOrderId: string): Promise<void> {
       });
     }
     if (semiTotal > 0) {
-      const semiStep = wo.steps.find(
-        (s) => (s.outputDefectSemiFinished ?? 0) > 0,
-      );
+      const semiStep =
+        wo.steps.find((s) => (s.outputDefectSemiFinished ?? 0) > 0) ??
+        wo.steps.find((s) => s.branchStockDisposition === "SEMI_FINISHED");
       const invId = await ensureProductInventory(tx, {
         productId: wo.productId,
         plantId,
@@ -309,15 +312,16 @@ export async function onWorkOrderCompleted(workOrderId: string): Promise<void> {
       });
     }
 
-    if (wo.type === "FROM_STOCK" && wo.orderLineId) {
+    if (wo.type === "FROM_STOCK" && linkedLineIds.length > 0) {
       // 在庫分（FROM_STOCK）: 受注へ引当済みの在庫ロットから受入数分を消費
       // （RELEASE + OUT）— 上の自ロット IN との付け替えで二重計上を防ぐ。
       // 引当/台帳が不足しても完了は止めない（警告のみ — 素材消費と同方針）。
+      // 在庫分は割当 1 件のみなので linkedLineIds[0] がその明細。
       const head = wo.steps.find((s) => s.status !== "CANCELLED");
       let needed = head?.inputQuantity ?? wo.plannedQuantity;
       const productReservations = await tx.inventoryReservation.findMany({
         where: {
-          orderLineId: wo.orderLineId,
+          orderLineId: linkedLineIds[0],
           inventoryType: "PRODUCT",
           status: "RESERVED",
         },
@@ -371,12 +375,14 @@ export async function onWorkOrderCompleted(workOrderId: string): Promise<void> {
     } else {
       // 予約 → 確定（§7: 全工程完了時）。予約は orderLineId で作られる
       // （workOrderId は付かない）ため両方で照合 — 監査 P1-2 の修正。
-      // 在庫向けの独立指示書（orderLineId null）は workOrderId 分のみ。
+      // 在庫向けの独立指示書（割当なし）は workOrderId 分のみ。
       await tx.inventoryReservation.updateMany({
         where: {
           OR: [
             { workOrderId: wo.id },
-            ...(wo.orderLineId ? [{ orderLineId: wo.orderLineId }] : []),
+            ...(linkedLineIds.length > 0
+              ? [{ orderLineId: { in: linkedLineIds } }]
+              : []),
           ],
           inventoryType: "PRODUCT",
           status: "RESERVED",

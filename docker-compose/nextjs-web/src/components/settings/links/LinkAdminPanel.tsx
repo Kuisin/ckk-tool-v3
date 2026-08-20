@@ -38,10 +38,10 @@ import {
   deleteBlacklistAction,
   setBlacklistActiveAction,
 } from "@/app/(dashboard)/settings/links/actions";
+import { useFormat } from "@/components/layout/PreferencesProvider";
 import { PrimaryButton } from "@/components/ui/buttons";
 import { type Column, DataTable } from "@/components/ui/DataTable";
 import { openConfirm } from "@/components/ui/modals";
-import { formatDateTime } from "@/lib/format";
 import type { BlacklistRow, LinkIndexRow } from "@/lib/link-index";
 
 export function LinkAdminPanel({
@@ -51,6 +51,7 @@ export function LinkAdminPanel({
   links: LinkIndexRow[];
   blacklist: BlacklistRow[];
 }) {
+  const fmt = useFormat();
   const router = useRouter();
   const [tab, setTab] = useState<string | null>("index");
   const [pattern, setPattern] = useState("");
@@ -149,7 +150,7 @@ export function LinkAdminPanel({
       width: 150,
       render: (r) => (
         <Text c="dimmed" size="xs">
-          {r.lastUsedAt ? formatDateTime(r.lastUsedAt) : "—"}
+          {r.lastUsedAt ? fmt.dateTime(r.lastUsedAt) : "—"}
         </Text>
       ),
     },
@@ -202,7 +203,7 @@ export function LinkAdminPanel({
       width: 170,
       render: (r) => (
         <Text c="dimmed" size="xs">
-          {formatDateTime(r.createdAt)}（{r.createdBy}）
+          {fmt.dateTime(r.createdAt)}（{r.createdBy}）
         </Text>
       ),
     },

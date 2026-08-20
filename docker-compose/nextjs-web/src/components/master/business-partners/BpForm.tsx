@@ -35,6 +35,7 @@ import {
   bpBaseFormSchema,
   bpBaseInitialValues,
 } from "@/components/master/bp/BpBaseFields";
+import { SalesRepsEditor } from "@/components/master/bp/SalesRepsEditor";
 import { ActiveBadge } from "@/components/ui/ActiveBadge";
 import { HelpLabel } from "@/components/ui/HelpLabel";
 import { FormSection, FormShell } from "@/components/ui/shells";
@@ -66,6 +67,9 @@ const bpFormSchema = bpBaseFormSchema
       taxType: z.string(),
       invoiceMethod: z.string(),
       isConsignment: z.boolean(),
+      salesReps: z.array(
+        z.object({ userId: z.string(), isPrimary: z.boolean() }),
+      ),
     }),
     endUser: z.object({ industry: z.string() }),
     vendor: z.object({
@@ -89,6 +93,21 @@ const bpFormSchema = bpBaseFormSchema
         message: "外注種別を選択してください",
       });
     }
+    if (!v.roles.includes("CUSTOMER")) return;
+    const ids = v.customer.salesReps.map((r) => r.userId);
+    if (ids.some((id) => !id)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["customer", "salesReps"],
+        message: "営業担当の担当者を選択してください（空の行は削除）",
+      });
+    } else if (new Set(ids).size !== ids.length) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["customer", "salesReps"],
+        message: "同じ担当者が重複しています",
+      });
+    }
   });
 
 type FormValues = z.infer<typeof bpFormSchema>;
@@ -106,9 +125,12 @@ const nullIfBlank = (v: number | "") => (v === "" ? null : v);
 export function BpForm({
   initial,
   billingOptions,
+  salesRepOptions,
 }: {
   initial?: BpDetail;
   billingOptions: Option[];
+  /** 営業担当に選べるユーザー（有効な社員アカウント）。 */
+  salesRepOptions: Option[];
 }) {
   const router = useRouter();
   const isMobile = useIsMobile();
@@ -130,6 +152,11 @@ export function BpForm({
         taxType: initial?.customer?.taxType ?? "TAXABLE",
         invoiceMethod: initial?.customer?.invoiceMethod ?? "EMAIL",
         isConsignment: initial?.customer?.isConsignment ?? false,
+        salesReps:
+          initial?.customer?.salesReps.map((r) => ({
+            userId: r.userId,
+            isPrimary: r.isPrimary,
+          })) ?? [],
       },
       endUser: { industry: initial?.endUser?.industry ?? "" },
       vendor: {
@@ -184,6 +211,7 @@ export function BpForm({
               BpInput["customer"]
             >["invoiceMethod"],
             isConsignment: values.customer.isConsignment,
+            salesReps: values.customer.salesReps,
           }
         : null,
       endUser: values.roles.includes("END_USER")
@@ -364,6 +392,20 @@ export function BpForm({
             {...form.getInputProps("customer.isConsignment", {
               type: "checkbox",
             })}
+          />
+        </FormSection>
+      )}
+
+      {has("CUSTOMER") && (
+        <FormSection
+          description="この顧客を担当する営業（bp_sales_reps）。複数登録でき、見積書・注文請書などの営業担当はこの一覧から選ぶ。主担当が新規書類の既定値になる。"
+          title="営業担当"
+        >
+          <SalesRepsEditor
+            error={form.errors["customer.salesReps"] as string | undefined}
+            onChange={(rows) => form.setFieldValue("customer.salesReps", rows)}
+            options={salesRepOptions}
+            value={form.values.customer.salesReps}
           />
         </FormSection>
       )}

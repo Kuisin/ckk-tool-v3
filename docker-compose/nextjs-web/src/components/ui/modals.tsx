@@ -60,6 +60,7 @@ export function ModalShell({
   onConfirm,
   confirmLabel = "実行",
   confirmColor,
+  confirmDisabled,
   cancelLabel = "キャンセル",
   loading,
   size = "md",
@@ -70,6 +71,8 @@ export function ModalShell({
   onConfirm?: () => void;
   confirmLabel?: string;
   confirmColor?: string;
+  /** 入力が揃うまで確定させない（例: 分岐の終端が未選択）。 */
+  confirmDisabled?: boolean;
   cancelLabel?: string;
   loading?: boolean;
   size?: ModalSize;
@@ -92,6 +95,7 @@ export function ModalShell({
             {onConfirm && (
               <PrimaryButton
                 color={confirmColor}
+                disabled={confirmDisabled}
                 loading={loading}
                 onClick={onConfirm}
               >

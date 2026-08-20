@@ -28,6 +28,7 @@ export {
 
 const PO_INCLUDE = {
   supplierBp: true,
+  createdByUser: { select: { displayName: true } },
   sourceRequest: { select: { requestNumber: true } },
   items: {
     include: { material: true, plant: true },
@@ -90,6 +91,7 @@ export async function fetchPurchaseOrder(
     poNumber: r.poNumber,
     supplierBpId: r.supplierBpId,
     supplierName: localized(r.supplierBp.name as LocalizedText | null),
+    createdByName: r.createdByUser?.displayName ?? null,
     sourceRequestNumber: r.sourceRequest?.requestNumber ?? null,
     status: r.status as PurchaseStatus,
     totalAmount: Number(r.totalAmount),

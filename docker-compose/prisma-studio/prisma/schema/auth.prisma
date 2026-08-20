@@ -69,10 +69,13 @@ model User {
   fileFolderGrants        FileFolderGrant[]  @relation("FileFolderGrantUser")
   fileFolderGrantsCreated FileFolderGrant[]  @relation("FileFolderGrantCreatedBy")
   auditLogs               AuditLog[]         @relation("AuditLogUser")
+  matchAliasesCreated     MatchAlias[]       @relation("MatchAliasCreatedBy")
   systemSettingsUpdated   SystemSetting[]    @relation("SystemSettingUpdatedBy")
   featureFlagsUpdated     FeatureFlag[]      @relation("FeatureFlagUpdatedBy")
   approvalGroupMembers    ApprovalGroupMember[] @relation("ApprovalGroupMemberUser")
   workOrdersCreated       WorkOrder[]           @relation("WorkOrderCreatedBy")
+  flowChangesRequested    WorkOrderFlowChange[] @relation("FlowChangeRequestedBy")
+  flowChangesResolved     WorkOrderFlowChange[] @relation("FlowChangeResolvedBy")
   routesCreated           ProductProcessRoute[]        @relation("RouteCreatedBy")
   routeVersionsCreated    ProductProcessRouteVersion[] @relation("RouteVersionCreatedBy")
   stepPlansAssigned       WorkOrderStepPlan[]          @relation("StepPlanUser")
@@ -92,12 +95,25 @@ model User {
   linkIndexCreated        LinkIndex[]           @relation("LinkIndexCreatedBy")
   linkBlacklistCreated    LinkBlacklist[]       @relation("LinkBlacklistCreatedBy")
   approvalRequestsMade    ApprovalRequest[]     @relation("ApprovalRequestedBy")
+  approvalSlots           ApprovalRequestApprover[] @relation("ApprovalRequestApproverUser")
+  approvalSlotsActed      ApprovalRequestApprover[] @relation("ApprovalRequestApproverActedBy")
+  approvalFlowsUpdated    ApprovalFlow[]        @relation("ApprovalFlowUpdatedBy")
   approvalRecords         ApprovalRecord[]      @relation("ApprovalRecordApprover")
   approvalRecordsAsOrig   ApprovalRecord[]      @relation("ApprovalRecordDelegateFor")
   delegationsGiven        ApprovalDelegate[]    @relation("DelegateDelegator")
   delegationsReceived     ApprovalDelegate[]    @relation("DelegateDelegate")
   delegationsCreated      ApprovalDelegate[]    @relation("DelegateCreatedBy")
   acceptancesCreated      OrderAcceptance[]     @relation("AcceptanceCreatedBy")
+
+  // 営業担当 — 顧客マスタの候補一覧（bp_sales_reps）と、各書類のスナップショット。
+  bpSalesRepOf            BpSalesRep[]      @relation("BpSalesRepUser")
+  estimatesAsSalesRep     Estimate[]        @relation("EstimateSalesRep")
+  priceListsAsSalesRep    PriceListEntry[]  @relation("PriceListEntrySalesRep")
+  quotesAsSalesRep        Quote[]           @relation("QuoteSalesRep")
+  acceptancesAsSalesRep   OrderAcceptance[] @relation("AcceptanceSalesRep")
+  shippingOrdersAsSalesRep ShippingOrder[]  @relation("ShippingOrderSalesRep")
+  deliveryNotesAsSalesRep DeliveryNote[]    @relation("DeliveryNoteSalesRep")
+  invoicesAsSalesRep      Invoice[]         @relation("InvoiceSalesRep")
 
   posRequested MaterialPurchaseOrder[] @relation("PoRequestedBy")
   posApproved  MaterialPurchaseOrder[] @relation("PoApprovedBy")
@@ -128,9 +144,19 @@ model User {
   kioskSessions         KioskSession[] @relation("KioskSessionUser")
   kioskDeviceLogs       KioskDeviceLog[] @relation("KioskDeviceLogUser")
 
+  // 表示設定（本人が /profile/preferences で変更する。AD 由来ではない）。
+  //
   // UI 言語（"ja" | "en" | "zh" — docs の DOCS_LANGS と同じ集合）。
-  // キオスクの QR ログイン後 UI が参照し、ランチャーの切替で本人が更新する。
+  // キオスクの QR ログイン後 UI とアプリ本体が参照し、本人が切り替える。
   locale String @default("ja")
+  // 日付の並び。値は表示パターンそのもの（"YYYY/MM/DD" | "YYYY-MM-DD" |
+  // "DD/MM/YYYY" | "MM/DD/YYYY"）。既定は日本の慣習。
+  dateFormat String @default("YYYY/MM/DD") @map("date_format")
+  // 時刻表記（"24h" | "12h"）。
+  timeFormat String @default("24h") @map("time_format")
+  // 表示タイムゾーン（IANA 名。例 "Asia/Tokyo"）。保存は常に UTC で、
+  // ここは「画面に出すときどこの時刻で読むか」だけを決める。
+  timeZone String @default("Asia/Tokyo") @map("time_zone")
 
   // Employees link to the shared directory by AD objectGUID (stable across
   // username/attribute changes). Null for SYSTEM / GUEST users.

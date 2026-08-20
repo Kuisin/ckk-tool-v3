@@ -20,13 +20,15 @@ export type OrderLineStatus =
   | "SHIPPED"
   | "CANCELLED";
 
-/** 詳細「指示書」タブの1行（work_orders の抜粋）。 */
+/** 詳細「指示書」タブの1行（work_order_order_lines 経由の抜粋）。 */
 export interface OrderLineWorkOrderRef {
   /** 指示書番号 = ロット番号（通し連番 int）。 */
   workOrderNumber: number;
   /** WORK_ORDER_TYPE（在庫分 / 製造分）。 */
   type: string;
   plannedQuantity: number;
+  /** この明細への割当数量（統合ロットでは予定数量より小さくなり得る）。 */
+  allocatedQuantity: number;
   /** WORK_ORDER_APPROVAL_STATUS。 */
   approvalStatus: string;
   /** WORK_ORDER_STATUS。 */
@@ -45,6 +47,11 @@ export interface OrderLine {
   customerName: string;
   customerBranchId: string | null;
   customerBranchName: string | null;
+  /**
+   * 営業担当・作成者は注文請書ヘッダの値（行に複写しない — 顧客と同じ扱い）。
+   */
+  salesRepName: string | null;
+  createdByName: string | null;
   endUserName: string | null;
   /** 顧客注文書番号（FAX 等で受領した注文書の番号）。 */
   customerOrderRef: string | null;

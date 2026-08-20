@@ -127,14 +127,20 @@ export async function validateAndOrderSteps(
 
 import { getCurrentActorId, recordAudit } from "./audit";
 import {
+  type BranchStockDisposition,
   branchableQuantity,
+  branchSeriesList,
   canStartStep,
   downstreamStepIds,
   expectedInput,
   isOffMainline,
   isWorkOrderComplete,
+  STEP_LINK_STATE_SELECT,
+  STEP_STATE_SELECT,
   type StepLinkState,
   type StepState,
+  type StepStateRow,
+  toStepState,
   validateDagShape,
   validateQuantities,
   validateRouting,
@@ -168,26 +174,15 @@ export async function fetchWorkflowCtx(workOrderId: string): Promise<{
 }> {
   const wo = await prisma.workOrder.findUniqueOrThrow({
     where: { id: workOrderId },
-    include: { steps: true, stepLinks: true },
+    // エンジンが読む列だけ（STEP_STATE_SELECT — workflow-core 参照）。
+    include: {
+      steps: { select: STEP_STATE_SELECT },
+      stepLinks: { select: STEP_LINK_STATE_SELECT },
+    },
   });
   const execDeps = await prisma.processStepExecDependency.findMany();
-  const steps: StepState[] = wo.steps.map((s) => ({
-    id: s.id,
-    processStepId: s.processStepId,
-    status: s.status,
-    sortOrder: s.sortOrder,
-    inputQuantity: s.inputQuantity,
-    outputSuccess: s.outputSuccessQuantity,
-    defectSemiFinished: s.outputDefectSemiFinished,
-    defectScrap: s.outputDefectScrap,
-    defectRework: s.outputDefectRework,
-    sessionLockedBy: s.sessionLockedBy,
-  }));
-  const links: StepLinkState[] = wo.stepLinks.map((l) => ({
-    sourceStepId: l.sourceStepId,
-    targetStepId: l.targetStepId,
-    routedQuantity: l.routedQuantity,
-  }));
+  const steps: StepState[] = wo.steps.map(toStepState);
+  const links: StepLinkState[] = wo.stepLinks;
   return {
     ctx: {
       plannedQuantity: wo.plannedQuantity,
@@ -527,41 +522,20 @@ export async function rollbackStepExecution(
   return { ok: true };
 }
 
-/** 読み込んだ指示書行 → engine コンテキスト（分岐系の純ロジック検証用）。 */
+/**
+ * 読み込んだ指示書行 → engine コンテキスト（分岐系の純ロジック検証用）。
+ * mapper は workflow-core の toStepState 一択 — 手書きの写しにすると
+ * branchStock のような後付け列を落とし、branchSeriesList の終端判定
+ * （在庫行きの系列を「終端未設定」と誤る）や完成数計算が黙って狂う。
+ */
 function ctxFromWorkOrder(wo: {
   plannedQuantity: number;
-  steps: {
-    id: string;
-    processStepId: number;
-    status: StepState["status"];
-    sortOrder: number;
-    inputQuantity: number | null;
-    outputSuccessQuantity: number | null;
-    outputDefectSemiFinished: number | null;
-    outputDefectScrap: number | null;
-    outputDefectRework: number | null;
-    sessionLockedBy: string | null;
-  }[];
-  stepLinks: {
-    sourceStepId: string;
-    targetStepId: string;
-    routedQuantity: number;
-  }[];
+  steps: StepStateRow[];
+  stepLinks: StepLinkState[];
 }): WorkflowCtx {
   return {
     plannedQuantity: wo.plannedQuantity,
-    steps: wo.steps.map((s) => ({
-      id: s.id,
-      processStepId: s.processStepId,
-      status: s.status,
-      sortOrder: s.sortOrder,
-      inputQuantity: s.inputQuantity,
-      outputSuccess: s.outputSuccessQuantity,
-      defectSemiFinished: s.outputDefectSemiFinished,
-      defectScrap: s.outputDefectScrap,
-      defectRework: s.outputDefectRework,
-      sessionLockedBy: s.sessionLockedBy,
-    })),
+    steps: wo.steps.map(toStepState),
     links: wo.stepLinks.map((l) => ({
       sourceStepId: l.sourceStepId,
       targetStepId: l.targetStepId,
@@ -578,12 +552,20 @@ function ctxFromWorkOrder(wo: {
  * 分岐数量は分岐可能数（branchableQuantity — 基本は工程分岐の未割当分）まで。
  * ワークフロー変更承認（WORKFLOW_CHANGE）は §6 本実装まで監査記録のみ。
  */
+/**
+ * 分岐系列の終端（§7 分岐は必ずどちらかで終わる）。
+ * MERGE = 本流の工程へ合流 / STOCK = 在庫へ入れて系列を終える。
+ */
+export type BranchTermination =
+  | { kind: "MERGE"; mergeTargetStepId: string }
+  | { kind: "STOCK"; disposition: BranchStockDisposition };
+
 export async function addBranchSeries(input: {
   workOrderId: string;
   sourceStepId: string;
   catalogStepIds: number[];
   routedQuantity: number;
-  mergeTargetStepId?: string | null;
+  termination: BranchTermination;
 }): Promise<StepActionResult> {
   const { workOrderId, sourceStepId, catalogStepIds, routedQuantity } = input;
   if (catalogStepIds.length === 0)
@@ -593,7 +575,10 @@ export async function addBranchSeries(input: {
 
   const wo = await prisma.workOrder.findUniqueOrThrow({
     where: { id: workOrderId },
-    include: { steps: true, stepLinks: true },
+    include: {
+      steps: { select: STEP_STATE_SELECT },
+      stepLinks: { select: STEP_LINK_STATE_SELECT },
+    },
   });
   const ctx = ctxFromWorkOrder(wo);
   const source = wo.steps.find((s) => s.id === sourceStepId);
@@ -609,8 +594,9 @@ export async function addBranchSeries(input: {
       ],
     };
   }
-  if (input.mergeTargetStepId) {
-    const merge = wo.steps.find((s) => s.id === input.mergeTargetStepId);
+  if (input.termination.kind === "MERGE") {
+    const mergeTargetStepId = input.termination.mergeTargetStepId;
+    const merge = wo.steps.find((s) => s.id === mergeTargetStepId);
     if (!merge) return { ok: false, errors: ["合流先の工程が見つかりません"] };
     if (merge.status !== "PENDING")
       return { ok: false, errors: ["合流先が未着手ではありません"] };
@@ -627,6 +613,7 @@ export async function addBranchSeries(input: {
   const result = await prisma.$transaction(async (tx) => {
     const created: string[] = [];
     for (let i = 0; i < catalogStepIds.length; i++) {
+      const isTerminal = i === catalogStepIds.length - 1;
       const row = await tx.workOrderStep.create({
         data: {
           workOrderId,
@@ -634,6 +621,11 @@ export async function addBranchSeries(input: {
           sortOrder: maxSort + 10 * (i + 1),
           executionLocation: "INTERNAL",
           inputQuantity: i === 0 ? routedQuantity : null,
+          // 在庫で終わる系列は、終端工程に行き先を記録する（合流リンクの代わり）。
+          branchStockDisposition:
+            isTerminal && input.termination.kind === "STOCK"
+              ? input.termination.disposition
+              : null,
         },
         select: { id: true },
       });
@@ -647,11 +639,11 @@ export async function addBranchSeries(input: {
         targetStepId: created[i + 1],
         routedQuantity: 0,
       })),
-      ...(input.mergeTargetStepId
+      ...(input.termination.kind === "MERGE"
         ? [
             {
               sourceStepId: created[created.length - 1],
-              targetStepId: input.mergeTargetStepId,
+              targetStepId: input.termination.mergeTargetStepId,
               routedQuantity: 0,
             },
           ]
@@ -685,7 +677,152 @@ export async function addBranchSeries(input: {
     tableName: "work_orders",
     recordId: String(wo.workOrderNumber),
     after: {
-      note: `分岐を追加（${result.length} 工程, 数量 ${routedQuantity}${input.mergeTargetStepId ? ", 合流あり" : ""}）— ワークフロー変更承認は §6 本実装まで記録のみ`,
+      note: `分岐を追加（${result.length} 工程, 数量 ${routedQuantity}, ${describeTermination(input.termination)}）`,
+    },
+  });
+  return { ok: true };
+}
+
+/** 終端の説明（監査メモ用）。 */
+function describeTermination(t: BranchTermination): string {
+  if (t.kind === "MERGE") return "合流あり";
+  return t.disposition === "SEMI_FINISHED" ? "半製品在庫へ" : "製品在庫へ";
+}
+
+/**
+ * 分岐系列の更新（作成後の手直し）。変えられるのは **分岐数量** と **終端**
+ * （合流先 / 在庫）の 2 つ。工程の入れ替えは削除して作り直す
+ * （実績・計画の扱いが変わるため、消えることが見えている操作に寄せる）。
+ *
+ * ガード:
+ * - 数量は系列の全工程が未着手のときだけ（流し始めた後に受入数は動かさない）。
+ * - 終端は終端工程が未着手のときだけ（完了後に行き先を変えると入庫が狂う）。
+ */
+export async function updateBranchSeries(input: {
+  workOrderId: string;
+  headStepId: string;
+  /** 未指定 = 数量は変えない。 */
+  routedQuantity?: number;
+  termination: BranchTermination;
+}): Promise<StepActionResult> {
+  const wo = await prisma.workOrder.findUniqueOrThrow({
+    where: { id: input.workOrderId },
+    include: {
+      steps: { select: STEP_STATE_SELECT },
+      // 合流エッジの張り替え（update/deleteMany）にリンク行の id も要る。
+      stepLinks: { select: { id: true, ...STEP_LINK_STATE_SELECT } },
+    },
+  });
+  const ctx = ctxFromWorkOrder(wo);
+  const series = branchSeriesList(ctx).find(
+    (b) => b.headId === input.headStepId,
+  );
+  if (!series) return { ok: false, errors: ["分岐系列が見つかりません"] };
+
+  const stepById = new Map(wo.steps.map((s) => [s.id, s]));
+  const seriesSteps = series.stepIds
+    .map((id) => stepById.get(id))
+    .filter((s): s is NonNullable<typeof s> => s != null);
+  const terminal = stepById.get(series.terminalId);
+  if (!terminal)
+    return { ok: false, errors: ["分岐の終端工程が見つかりません"] };
+
+  const errors: string[] = [];
+
+  // 数量: 変更があるときだけ検証（同じ値の再送は素通し）
+  const headLink = wo.stepLinks.find(
+    (l) =>
+      l.targetStepId === series.headId && l.sourceStepId === series.sourceId,
+  );
+  const currentQuantity = headLink?.routedQuantity ?? 0;
+  const nextQuantity = input.routedQuantity ?? currentQuantity;
+  if (nextQuantity !== currentQuantity) {
+    if (!seriesSteps.every((s) => s.status === "PENDING"))
+      errors.push("着手済みの分岐は数量を変更できません");
+    if (nextQuantity <= 0) errors.push("分岐数量は 1 以上で入力してください");
+    if (series.sourceId) {
+      // 分岐可能数は「現在の分岐分」を戻した上で見る（自分自身は差し引かない）。
+      const available = branchableQuantity(series.sourceId, ctx);
+      const room = (available ?? 0) + currentQuantity;
+      if (nextQuantity > room)
+        errors.push(
+          `分岐数量（${nextQuantity}）が分岐可能数（${room}）を超えています`,
+        );
+    }
+  }
+
+  // 終端: 変更があるときだけ検証
+  const sameTermination =
+    input.termination.kind === "MERGE"
+      ? series.mergeTargetId === input.termination.mergeTargetStepId
+      : series.stockDisposition === input.termination.disposition &&
+        series.mergeTargetId == null;
+  if (!sameTermination && terminal.status !== "PENDING")
+    errors.push("終端工程が未着手のときだけ行き先を変更できます");
+  if (input.termination.kind === "MERGE") {
+    const merge = stepById.get(input.termination.mergeTargetStepId);
+    if (!merge) errors.push("合流先の工程が見つかりません");
+    else {
+      if (merge.status !== "PENDING")
+        errors.push("合流先が未着手ではありません");
+      if (isOffMainline(merge.id, ctx))
+        errors.push("合流先に分岐系列の工程は指定できません");
+    }
+  }
+  if (errors.length > 0) return { ok: false, errors };
+
+  await prisma.$transaction(async (tx) => {
+    if (nextQuantity !== currentQuantity) {
+      if (headLink) {
+        await tx.workOrderStepLink.update({
+          where: { id: headLink.id },
+          data: { routedQuantity: nextQuantity },
+        });
+      }
+      await tx.workOrderStep.update({
+        where: { id: series.headId },
+        data: { inputQuantity: nextQuantity },
+      });
+    }
+
+    // 旧・合流エッジ（終端 → 本流）を落としてから張り直す。
+    const oldMergeLinks = wo.stepLinks.filter(
+      (l) =>
+        l.sourceStepId === series.terminalId &&
+        !series.stepIds.includes(l.targetStepId),
+    );
+    if (oldMergeLinks.length > 0) {
+      await tx.workOrderStepLink.deleteMany({
+        where: { id: { in: oldMergeLinks.map((l) => l.id) } },
+      });
+    }
+    if (input.termination.kind === "MERGE") {
+      await tx.workOrderStepLink.create({
+        data: {
+          workOrderId: input.workOrderId,
+          sourceStepId: series.terminalId,
+          targetStepId: input.termination.mergeTargetStepId,
+          routedQuantity: 0,
+        },
+      });
+    }
+    await tx.workOrderStep.update({
+      where: { id: series.terminalId },
+      data: {
+        branchStockDisposition:
+          input.termination.kind === "STOCK"
+            ? input.termination.disposition
+            : null,
+      },
+    });
+  });
+
+  await recordAudit({
+    action: "UPDATE",
+    tableName: "work_orders",
+    recordId: String(wo.workOrderNumber),
+    after: {
+      note: `分岐を更新（数量 ${nextQuantity}, ${describeTermination(input.termination)}）`,
     },
   });
   return { ok: true };
@@ -702,7 +839,10 @@ export async function removeBranchSeries(input: {
 }): Promise<StepActionResult> {
   const wo = await prisma.workOrder.findUniqueOrThrow({
     where: { id: input.workOrderId },
-    include: { steps: true, stepLinks: true },
+    include: {
+      steps: { select: STEP_STATE_SELECT },
+      stepLinks: { select: STEP_LINK_STATE_SELECT },
+    },
   });
   const ctx = ctxFromWorkOrder(wo);
   const head = wo.steps.find((s) => s.id === input.headStepId);
