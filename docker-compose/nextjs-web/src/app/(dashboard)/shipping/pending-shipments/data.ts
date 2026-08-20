@@ -19,7 +19,12 @@ import { checkPermission } from "@/lib/authz";
 import { prisma } from "@/lib/db";
 import { formatOrderLineNumber, formatProductNumber } from "@/lib/doc-number";
 import { type LocalizedText, localized } from "@/lib/format";
-import { computeFinishedQuantity } from "@/lib/workflow-core";
+import {
+  computeFinishedQuantity,
+  STEP_LINK_STATE_SELECT,
+  STEP_STATE_SELECT,
+  toStepState,
+} from "@/lib/workflow-core";
 import { orderLineScopeWhere } from "../../sales/order-lines/data";
 import { fetchShippingOrders } from "../shipping-orders/data";
 
@@ -82,33 +87,12 @@ export async function fetchUnshippedOrderLines(): Promise<
       product: true,
       workOrders: {
         where: { status: "COMPLETED" },
-        // computeFinishedQuantity が読む列だけを取る。`steps: true`（全列）に
-        // すると work_order_steps に列が増えるたび、その列がまだ無い DB に
-        // 対してこの画面が**真っ先に** P2022 で落ちる（migration は Coolify の
-        // デプロイに含まれず手動なので、その窓が実際に開く）。
+        // エンジンが読む列だけ（STEP_STATE_SELECT — workflow-core 参照）。
+        // 全列 SELECT は列追加のたび migration 前の DB で P2022 に落ちる。
         select: {
           workOrderNumber: true,
-          steps: {
-            select: {
-              id: true,
-              processStepId: true,
-              status: true,
-              sortOrder: true,
-              inputQuantity: true,
-              outputSuccessQuantity: true,
-              outputDefectSemiFinished: true,
-              outputDefectScrap: true,
-              outputDefectRework: true,
-              sessionLockedBy: true,
-            },
-          },
-          stepLinks: {
-            select: {
-              sourceStepId: true,
-              targetStepId: true,
-              routedQuantity: true,
-            },
-          },
+          steps: { select: STEP_STATE_SELECT },
+          stepLinks: { select: STEP_LINK_STATE_SELECT },
         },
         orderBy: { workOrderNumber: "asc" },
       },
@@ -127,26 +111,7 @@ export async function fetchUnshippedOrderLines(): Promise<
     if (r.branch == null) continue;
     const finishedQuantity = r.workOrders.reduce(
       (sum, wo) =>
-        sum +
-        computeFinishedQuantity(
-          wo.steps.map((s) => ({
-            id: s.id,
-            processStepId: s.processStepId,
-            status: s.status,
-            sortOrder: s.sortOrder,
-            inputQuantity: s.inputQuantity,
-            outputSuccess: s.outputSuccessQuantity,
-            defectSemiFinished: s.outputDefectSemiFinished,
-            defectScrap: s.outputDefectScrap,
-            defectRework: s.outputDefectRework,
-            sessionLockedBy: s.sessionLockedBy,
-          })),
-          wo.stepLinks.map((l) => ({
-            sourceStepId: l.sourceStepId,
-            targetStepId: l.targetStepId,
-            routedQuantity: l.routedQuantity,
-          })),
-        ),
+        sum + computeFinishedQuantity(wo.steps.map(toStepState), wo.stepLinks),
       0,
     );
     const shippedQuantity = r.shippingItems.reduce(
