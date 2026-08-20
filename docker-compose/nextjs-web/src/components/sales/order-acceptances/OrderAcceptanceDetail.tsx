@@ -38,6 +38,7 @@ import {
   Textarea,
   TextInput,
   Title,
+  Tooltip,
 } from "@mantine/core";
 import { DatePickerInput } from "@mantine/dates";
 import { modals } from "@mantine/modals";
@@ -116,6 +117,10 @@ import {
   acceptanceReadiness,
   readinessSummary,
 } from "@/lib/order-acceptance-readiness";
+import {
+  acceptanceTotals,
+  productSummary,
+} from "@/lib/order-acceptance-totals";
 import type { ActionResult } from "@/lib/server-action";
 import { IntakeDocumentPane } from "./IntakeDocumentPane";
 import { IntakeReviewPanel } from "./IntakeReviewPanel";
@@ -232,6 +237,10 @@ export function OrderAcceptanceDetail({
     customerBpId: a.customerBpId,
     items: a.items,
   });
+
+  // 明細の合計（ヘッダ要約と明細表の合計行で同じ数字を出す — lib で 1 本化）。
+  const totals = acceptanceTotals(a.items);
+  const products = productSummary(a.items);
 
   // §2 価格照合（P0-8）— 差異行と明細 id → 照合結果の索引。
   const diffLines = priceCheck.lines.filter((l) => l.diff);
@@ -640,12 +649,50 @@ export function OrderAcceptanceDetail({
                     }
                   />
                   <FieldValue label="注文日" value={formatDate(a.orderDate)} />
+                  {/*
+                    何を・どれだけ・いくらで受けた書類なのかは、これまで明細表を
+                    開かないと分からなかった。ヘッダの 3 項目で足りるようにする。
+                  */}
                   <FieldValue
-                    label="明細数"
+                    label="製品"
+                    value={
+                      products.names.length > 1 ? (
+                        <Tooltip
+                          label={products.names.join(" / ")}
+                          multiline
+                          w={320}
+                          withinPortal
+                        >
+                          <Text size="sm" span>
+                            {products.label}
+                          </Text>
+                        </Tooltip>
+                      ) : (
+                        products.label
+                      )
+                    }
+                  />
+                  <FieldValue
+                    label="明細数 / 合計数量"
                     value={
                       <Text className="tabular-nums" size="sm" span>
-                        {a.items.length} 件
+                        {totals.lineCount} 件 /{" "}
+                        {totals.quantity.toLocaleString("ja-JP")}
                       </Text>
+                    }
+                  />
+                  <FieldValue
+                    label="合計金額"
+                    value={
+                      <Group gap="xs" wrap="wrap">
+                        <MoneyText value={totals.amount} />
+                        {/* 単価未入力の行は足せていない — 総額と読まれないように。 */}
+                        {totals.unpricedCount > 0 && (
+                          <Badge color="orange" size="xs" variant="light">
+                            単価未入力 {totals.unpricedCount} 件を除く
+                          </Badge>
+                        )}
+                      </Group>
                     }
                   />
                   <FieldValue label="作成者" value={a.createdByName} />
@@ -754,6 +801,33 @@ export function OrderAcceptanceDetail({
                           );
                         })}
                       </Table.Tbody>
+                      {/*
+                        合計行。単価未入力の行は金額に足せないので、その件数を
+                        添える（少ない金額を総額と読まれるのを防ぐ）。
+                      */}
+                      {a.items.length > 0 && (
+                        <Table.Tfoot>
+                          <Table.Tr>
+                            <Table.Th colSpan={3} ta="right">
+                              合計
+                            </Table.Th>
+                            <Table.Th className="tabular-nums" ta="right">
+                              {totals.quantity.toLocaleString("ja-JP")}
+                            </Table.Th>
+                            <Table.Th ta="right">
+                              {totals.unpricedCount > 0 && (
+                                <Text c="dimmed" fw={400} size="xs">
+                                  未入力 {totals.unpricedCount} 件
+                                </Text>
+                              )}
+                            </Table.Th>
+                            <Table.Th ta="right">
+                              <MoneyText fw={700} value={totals.amount} />
+                            </Table.Th>
+                            <Table.Th colSpan={2} />
+                          </Table.Tr>
+                        </Table.Tfoot>
+                      )}
                     </Table>
                   </Table.ScrollContainer>
                 </Paper>

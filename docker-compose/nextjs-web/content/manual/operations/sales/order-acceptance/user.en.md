@@ -92,6 +92,10 @@ To stop editing, press「**キャンセル**」(cancel); if you changed somethin
 
 Press the file name link to open the original order form in another tab and compare it side by side.
 
+At the top of the screen, 「**製品**」 (products), 「**明細数 / 合計数量**」 (lines / total quantity) and 「**合計金額**」 (total amount) tell you **what, how much and for how much** was ordered without opening the item table. With two or more products it reads 「〇〇 ほか 2 種」 (X and 2 more kinds); hover to read every name. The item table also ends with a **合計** (total) row.
+
+> ⚠️ The total amount adds up **only the lines that have a unit price**. When some lines are still empty it says 「**単価未入力 N 件を除く**」 (excluding N lines with no unit price) — fill those in and it becomes the full amount.
+
 > 💡 A row whose unit price differs from the price list shows an orange「**価格差異**」(price difference) badge together with the correct price. A gray「**価格表なし**」(no price list) badge only means there is no price list yet for that customer and product — it is not a mistake.
 
 ## Asking for approval
