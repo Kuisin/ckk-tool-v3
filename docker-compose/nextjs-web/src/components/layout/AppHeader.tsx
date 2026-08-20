@@ -41,6 +41,7 @@ import {
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { signOut } from "next-auth/react";
+import { useTranslations } from "next-intl";
 import { useEffect, useRef, useState } from "react";
 import { UserAvatar } from "@/components/ui/UserAvatar";
 import { relativeTime, useNotifications } from "@/hooks/useNotifications";
@@ -52,7 +53,7 @@ import { BugReportModal } from "./BugReportModal";
 import { useNavigationGuard } from "./NavigationGuard";
 import { markAllReadAction, markReadAction } from "./notification-actions";
 import { OperationCodeJump } from "./OperationCodeJump";
-import { useI18n } from "./PreferencesProvider";
+
 import { SharePageModal } from "./SharePageModal";
 
 const NOTIFICATION_POPUP_WIDTH = 280;
@@ -116,7 +117,7 @@ export function AppHeader({
         avatarThumbUrl: user.avatarThumbUrl,
       }
     : GUEST_USER;
-  const { m } = useI18n();
+  const t = useTranslations("shell");
   const [launcherOpen, setLauncherOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
@@ -353,7 +354,7 @@ export function AppHeader({
           >
             <Popover.Target>
               <ActionIcon
-                aria-label={m.shell.notifications}
+                aria-label={t("notifications")}
                 color="gray"
                 onClick={() => setNotifOpen((o) => !o)}
                 size="lg"
@@ -376,7 +377,7 @@ export function AppHeader({
             </Popover.Target>
             <Popover.Dropdown p={0}>
               <Group justify="space-between" px="xs" py="5px">
-                <Title order={6}>{m.shell.notifications}</Title>
+                <Title order={6}>{t("notifications")}</Title>
                 <Text
                   c="blue"
                   className="cursor-pointer border-0 bg-transparent p-0"
@@ -385,7 +386,7 @@ export function AppHeader({
                   size="xs"
                   type="button"
                 >
-                  {m.shell.markAllRead}
+                  {t("markAllRead")}
                 </Text>
               </Group>
               <Divider />
@@ -393,7 +394,7 @@ export function AppHeader({
                 <Stack gap={0}>
                   {notifications.length === 0 && (
                     <Text c="dimmed" px="sm" py="md" size="xs" ta="center">
-                      {m.shell.noNotifications}
+                      {t("noNotifications")}
                     </Text>
                   )}
                   {notifications.map((notif) => (
@@ -488,7 +489,7 @@ export function AppHeader({
                 leftSection={<IconUser size={14} />}
                 py={{ base: "sm", md: "xs" }}
               >
-                {m.shell.profile}
+                {t("profile")}
               </Menu.Item>
               <Menu.Item
                 component={Link}
@@ -496,7 +497,7 @@ export function AppHeader({
                 leftSection={<IconBell size={14} />}
                 py={{ base: "sm", md: "xs" }}
               >
-                {m.shell.notificationSettings}
+                {t("notificationSettings")}
               </Menu.Item>
               <Menu.Item
                 component={Link}
@@ -504,7 +505,7 @@ export function AppHeader({
                 leftSection={<IconLayoutDashboard size={14} />}
                 py={{ base: "sm", md: "xs" }}
               >
-                {m.shell.homeSettings}
+                {t("homeSettings")}
               </Menu.Item>
               <Menu.Item
                 component={Link}
@@ -512,7 +513,7 @@ export function AppHeader({
                 leftSection={<IconLanguage size={14} />}
                 py={{ base: "sm", md: "xs" }}
               >
-                {m.shell.preferences}
+                {t("preferences")}
               </Menu.Item>
               <Divider my="5px" />
               <Menu.Item
@@ -521,7 +522,7 @@ export function AppHeader({
                 onClick={() => signOut({ callbackUrl: "/login" })}
                 py={{ base: "sm", md: "xs" }}
               >
-                {m.shell.logout}
+                {t("logout")}
               </Menu.Item>
             </Menu.Dropdown>
           </Menu>

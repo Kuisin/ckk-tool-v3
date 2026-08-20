@@ -1,28 +1,20 @@
 /**
- * i18n/index.ts — アプリ本体の in-house 多言語辞書（依存なし・isomorphic）。
+ * i18n/index.ts — 対応言語の定義（isomorphic・依存なし）。
  *
- * キオスク（nextjs-kiosk/src/lib/i18n）と同じ作りで、外部 i18n ライブラリは
- * 使わない（lockfile 凍結。next-intl は未導入）。対応言語は docs・キオスクと
- * 同じ ja/en/zh。
+ * **文言そのものは next-intl が持つ**（messages/<locale>.json + src/i18n/request.ts）。
+ * ここに残すのは「どの言語があるか」「DB の値をどう正規化するか」「Intl に
+ * 渡すタグは何か」だけ — これらは lib/format.ts や表示設定の正規化からも
+ * 使うため、next-intl に依存しない素の値として置いておく。
  *
- * ユーザーの言語は **app.users.locale**（キオスクと共有の 1 列）に入る。
- * つまり同じ人が Web でもタブレットでも同じ言語で使える。変更は
+ * 対応言語は docs・キオスクと同じ ja/en/zh。ユーザーの言語は
+ * **app.users.locale**（キオスクと共有の 1 列）に入る。変更は
  * /profile/preferences（Web）またはキオスクのランチャー。
  *
- * 使い方:
- *   - サーバー: `const m = await getServerMessages()`
- *   - クライアント: `const { m, locale } = useI18n()`
- *     （PreferencesProvider がダッシュボード全体を包んでいる）
- *
- * 文言を足すときは **ja.ts に足してから** en/zh を埋める。`WebMessages` は
- * `typeof ja` なので、埋め忘れはコンパイルエラーになる。
+ * 使い方（next-intl）:
+ *   - サーバー: `const t = await getTranslations("shell")`
+ *   - クライアント: `const t = useTranslations("shell")`
+ * まだ移していない画面は日本語の直書きのまま動く（壊れない）。
  */
-
-import { en } from "./messages/en";
-import { ja, type WebMessages } from "./messages/ja";
-import { zh } from "./messages/zh";
-
-export type { WebMessages };
 
 export const LOCALES = ["ja", "en", "zh"] as const;
 export type Locale = (typeof LOCALES)[number];
@@ -33,12 +25,6 @@ export const LOCALE_LABELS: Record<Locale, string> = {
   en: "English",
   zh: "中文",
 };
-
-const MESSAGES: Record<Locale, WebMessages> = { ja, en, zh };
-
-export function getMessages(locale: Locale): WebMessages {
-  return MESSAGES[locale] ?? ja;
-}
 
 /** DB 値など未検証の文字列を Locale に正規化（不明値は ja）。 */
 export function normalizeLocale(value: string | null | undefined): Locale {

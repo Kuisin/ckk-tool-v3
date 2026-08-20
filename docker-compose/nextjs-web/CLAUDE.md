@@ -37,7 +37,9 @@ Sanctioned exception (explicit sign-off): the docs stack — `fumadocs-ui` /
 `/manual` + `/internal-docs`. Second sanctioned exception: the rich-text stack —
 `@mantine/tiptap` (version-pinned **exactly** to `@mantine/core`) + `@tiptap/react`
 / `@tiptap/pm` / `@tiptap/starter-kit` / `@tiptap/extension-link` for the 文書メモ
-/ コメント (`ui/MemoPanel.tsx`).
+/ コメント (`ui/MemoPanel.tsx`). Third sanctioned exception: **`next-intl`** for UI
+translations — the stack `_specs/techstack.md` always named, adopted on explicit
+sign-off (see §i18n below).
 
 ## Layout
 
@@ -141,6 +143,44 @@ side must use **explicit heading ids** because auto ids derive from Japanese
 heading text and break easily. `lib/field-help.test.ts` reads the real markdown and
 fails if any registered anchor is missing in ja/en/zh, which is what keeps these
 links from rotting (`docs:lint` is not in CI).
+
+## i18n & 表示設定（言語 / 日付 / 時刻 / タイムゾーン）
+
+Per-user display settings live on **`app.users`** — `locale` (shared with the
+kiosk, which writes the same column) plus `date_format` / `time_format` /
+`time_zone`. Edited at `/profile/preferences`; read via
+`lib/user-preferences.ts` (`getCurrentPreferences()`, `cache()`d per request).
+Timestamps stay **UTC in the DB** — `time_zone` only changes how they are read
+back for display.
+
+**UI strings — `next-intl`, without i18n routing.** The language comes from the
+user's DB setting, not the URL. `src/i18n/request.ts` (`getRequestConfig`) reads
+the preferences and returns `locale` / `messages` / `timeZone`;
+`next.config.ts` wires it with `createNextIntlPlugin`. Catalogs are
+`messages/{ja,en,zh}.json` — **ja is the source of truth**, and `src/global.d.ts`
+augments `AppConfig["Messages"]` with `typeof ja` so a wrong key fails the build.
+Server: `await getTranslations("shell")`. Client: `useTranslations("shell")`.
+`NextIntlClientProvider` is mounted in the **`(dashboard)` layout only** — do not
+move it to the root layout, or the public `/manual` pages lose static rendering
+(the request config touches the session).
+
+**Migration status: most screens still have Japanese hard-coded in JSX**, and
+that's fine — they render Japanese regardless of the setting. Move strings into
+`messages/*.json` as you touch a screen; keep `messages/*.json` key-identical
+across the three languages (`lib/user-preferences-core.test.ts` enforces it).
+
+**Dates/times are NOT next-intl's job here.** The user picks an explicit order
+(`YYYY/MM/DD` … `MM/DD/YYYY`) which no `Intl` option expresses, so `lib/format.ts`
+owns it: `createFormatters(prefs)` → `useFormat()` (client) /
+`getServerFormatters()` (server); plain helpers take `Formatters` as an argument.
+Never keep "current user" in module state — on the server that leaks across
+requests. **PDFs and mail use `documentFormatters`** (JST + Japanese, fixed): a
+finished document must not change with whoever opens it.
+
+`lib/i18n/index.ts` keeps only locale identity (`LOCALES`, `normalizeLocale`,
+`INTL_LOCALES`) — no messages; those belong to next-intl. The kiosk app keeps its
+own tiny in-house dictionary (`nextjs-kiosk/src/lib/i18n`) — it is not worth a
+dependency there, so the two apps deliberately differ.
 
 ## Prisma / DB
 

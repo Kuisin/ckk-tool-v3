@@ -6,7 +6,10 @@
  */
 
 import { describe, expect, it } from "vitest";
-import { getMessages, LOCALES } from "./i18n";
+import en from "../../messages/en.json";
+import ja from "../../messages/ja.json";
+import zh from "../../messages/zh.json";
+import { LOCALES } from "./i18n";
 import {
   COMMON_TIME_ZONES,
   DATE_FORMATS,
@@ -104,22 +107,43 @@ describe("dateFormatExample", () => {
   });
 });
 
-describe("辞書", () => {
+/**
+ * 文言そのものは next-intl（messages/*.json）が持つ。ここでは翻訳漏れ
+ * （キーの抜け）だけを見る — ja が正で、en/zh に同じキーが揃っていること。
+ */
+describe("messages/*.json", () => {
+  const keysOf = (o: object): string[] =>
+    Object.entries(o)
+      .flatMap(([k, v]) =>
+        v && typeof v === "object" ? keysOf(v).map((s) => `${k}.${s}`) : [k],
+      )
+      .sort();
+
   it("全言語が同じキー構造を持つ（ja が正）", () => {
-    const keysOf = (o: object): string[] =>
-      Object.entries(o)
-        .flatMap(([k, v]) =>
-          v && typeof v === "object" ? keysOf(v).map((s) => `${k}.${s}`) : [k],
-        )
-        .sort();
-    const ja = keysOf(getMessages("ja"));
-    for (const locale of LOCALES) {
-      expect(keysOf(getMessages(locale)), locale).toEqual(ja);
+    const expected = keysOf(ja);
+    expect(keysOf(en), "en").toEqual(expected);
+    expect(keysOf(zh), "zh").toEqual(expected);
+  });
+
+  it("空文字の翻訳が無い（未翻訳の取りこぼし検出）", () => {
+    const empties = (o: object, prefix = ""): string[] =>
+      Object.entries(o).flatMap(([k, v]) =>
+        v && typeof v === "object"
+          ? empties(v, `${prefix}${k}.`)
+          : typeof v === "string" && v.trim() === ""
+            ? [`${prefix}${k}`]
+            : [],
+      );
+    for (const [locale, messages] of [
+      ["ja", ja],
+      ["en", en],
+      ["zh", zh],
+    ] as const) {
+      expect(empties(messages), locale).toEqual([]);
     }
   });
 
-  it("未知の言語コードは日本語辞書へ倒れる", () => {
-    // getMessages は Locale 型を取るが、DB から来た未検証値も想定する。
-    expect(getMessages("xx" as never)).toBe(getMessages("ja"));
+  it("対応言語ぶんの辞書が揃っている", () => {
+    expect(LOCALES).toEqual(["ja", "en", "zh"]);
   });
 });

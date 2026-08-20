@@ -1,3 +1,4 @@
+import { NextIntlClientProvider } from "next-intl";
 import type { ReactNode } from "react";
 import {
   AppAvailabilityGuard,
@@ -59,13 +60,23 @@ export default async function DashboardLayout({
       unreleasedKeys={unreleasedKeys}
     >
       <PwaRegister />
-      <PreferencesProvider prefs={prefs}>
-        <NavigationGuardProvider>
-          <DashboardShell isDev={isDevEnv} user={headerUser}>
-            <AppAvailabilityGuard>{children}</AppAvailabilityGuard>
-          </DashboardShell>
-        </NavigationGuardProvider>
-      </PreferencesProvider>
+      {/*
+        文言（next-intl）と日時整形（PreferencesProvider）の 2 段。どちらも
+        同じ app.users の設定を見る（src/i18n/request.ts / getCurrentPreferences）。
+        NextIntlClientProvider はサーバーで描画されるとリクエストの locale /
+        messages / timeZone をそのまま引き継ぐので、props は要らない。
+        ダッシュボード配下だけに掛ける — 公開マニュアルは翻訳対象外で、
+        ここで包むと静的化を落としてしまうため。
+      */}
+      <NextIntlClientProvider>
+        <PreferencesProvider prefs={prefs}>
+          <NavigationGuardProvider>
+            <DashboardShell isDev={isDevEnv} user={headerUser}>
+              <AppAvailabilityGuard>{children}</AppAvailabilityGuard>
+            </DashboardShell>
+          </NavigationGuardProvider>
+        </PreferencesProvider>
+      </NextIntlClientProvider>
     </AppFlagsProvider>
   );
 }

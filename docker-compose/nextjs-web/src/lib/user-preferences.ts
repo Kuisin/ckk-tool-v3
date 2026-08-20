@@ -8,16 +8,17 @@ import "server-only";
  * 表示にも効く。純ロジック（型・既定値・正規化）は user-preferences-core.ts。
  *
  * サーバーコンポーネントでの使い方:
- *   const fmt = await getServerFormatters();   // 日時整形
- *   const m   = await getServerMessages();     // UI 文言
- * どちらも `cache()` 済みなので 1 リクエスト内で何度呼んでも DB は 1 回。
+ *   const fmt = await getServerFormatters();      // 日時整形
+ *   const t   = await getTranslations("shell");   // UI 文言（next-intl）
+ * 前者は `cache()` 済みなので 1 リクエスト内で何度呼んでも DB は 1 回。
+ * next-intl 側も同じ設定を見る（src/i18n/request.ts がここを読む）。
  */
 
 import { cache } from "react";
 import { auth } from "@/auth";
 import { prisma } from "./db";
 import { createFormatters, type Formatters } from "./format";
-import { getMessages, type Locale, type WebMessages } from "./i18n";
+import type { Locale } from "./i18n";
 import {
   DEFAULT_PREFERENCES,
   type DisplayPreferences,
@@ -56,12 +57,11 @@ export async function getServerFormatters(): Promise<Formatters> {
   return createFormatters(await getCurrentPreferences());
 }
 
-/** サーバーコンポーネント用の UI 文言（ユーザー言語）。 */
-export async function getServerMessages(): Promise<WebMessages> {
-  return getMessages((await getCurrentPreferences()).locale);
-}
-
-/** サーバーコンポーネント用の言語だけが欲しいとき。 */
+/**
+ * サーバーコンポーネント用の言語だけが欲しいとき。
+ * 文言は next-intl の `getTranslations()` を使うこと（この値は
+ * src/i18n/request.ts 経由で next-intl 側にも渡っている）。
+ */
 export async function getServerLocale(): Promise<Locale> {
   return (await getCurrentPreferences()).locale;
 }
