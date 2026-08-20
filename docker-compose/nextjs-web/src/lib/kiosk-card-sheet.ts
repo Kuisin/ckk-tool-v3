@@ -1,12 +1,26 @@
 /**
  * kiosk-card-sheet.ts — QR カード印刷シート（SY08）の寸法（mm）。
  *
- * ここが原寸印刷の唯一の定義。Gotenberg へ渡す用紙サイズと、テンプレート
- * src/pdf-templates/kiosk-cards.html の CSS に差し込む値の両方をここから作る
- * （両者がずれるとページボックスとレイアウトが食い違い、原寸が崩れる）。
+ * ここが原寸印刷の唯一の定義。印刷ページ（HTML）の CSS、Gotenberg へ渡す
+ * 用紙サイズ、テンプレート src/pdf-templates/kiosk-cards.html の CSS を
+ * すべてここから作る（ずれるとページボックスとレイアウトが食い違い、原寸が
+ * 崩れる）。
  *
  * カードは日本名刺サイズ 91×55mm 固定。A4 名刺用紙 10 面の定位置は左右 14mm /
  * 上下 11mm の余白（182 = 91×2、275 = 55×5）。
+ *
+ * ★ 印刷経路は 2 つあり、原寸の担保の仕方が違う。
+ *
+ * 1. **ブラウザ印刷（主経路）** — /settings/kiosk-cards/print。CSS の
+ *    `@page { size: <length>{2} }` は **絶対ページボックス**で、UA は用紙に
+ *    合わせて拡大縮小してはならない（`A4` などのキーワード指定は逆に
+ *    "scalable" ＝ 縮小されうる。旧実装はこれで縮んでいた）。
+ *    したがってページボックスは A4 実寸をそのまま mm で宣言する。
+ *
+ * 2. **PDF（保存・配布用）** — /api/pdf/kiosk-cards。PDF になった時点で CSS の
+ *    絶対指定は効かず、ビューアの「印刷可能領域に合わせる」が支配する。
+ *    そちらは CARD_SHEET_PAGE のとおりページボックスを一回り小さく取って
+ *    縮小そのものを起こさせない（下記）。
  *
  * ★ ページボックスは A4 そのものではなく、A4 から四方 `safeInset` mm 内側に
  *   取る。PDF ビューアの既定「印刷可能領域に合わせる」（Chrome の PDF ビューア
@@ -26,6 +40,9 @@
  * （1% 未満）に留まる。
  */
 
+/** A4 実寸（mm）。`@page` へは必ずこの数値を length で書く（キーワード不可）。 */
+export const A4 = { width: 210, height: 297 } as const;
+
 export const CARD_SHEET = {
   cardWidth: 91, // 日本名刺（変更しない）
   cardHeight: 55,
@@ -36,10 +53,10 @@ export const CARD_SHEET = {
   safeInset: 6,
 } as const;
 
-/** A4 用紙 (210×297mm) から safeInset ぶん内側のページボックス。 */
+/** PDF 用: A4 から safeInset ぶん内側のページボックス（ビューアの縮小対策）。 */
 export const CARD_SHEET_PAGE = {
-  width: 210 - CARD_SHEET.safeInset * 2, // 198mm
-  height: 297 - CARD_SHEET.safeInset * 2, // 285mm
+  width: A4.width - CARD_SHEET.safeInset * 2, // 198mm
+  height: A4.height - CARD_SHEET.safeInset * 2, // 285mm
   padX: CARD_SHEET.marginX - CARD_SHEET.safeInset, // 8mm
   padY: CARD_SHEET.marginY - CARD_SHEET.safeInset, // 5mm
 } as const;
