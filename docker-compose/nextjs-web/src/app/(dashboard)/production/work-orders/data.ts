@@ -236,6 +236,71 @@ export async function fetchWorkOrders(
   return rows.map(mapRow);
 }
 
+/** ストリップ印刷（帯）の 1 件ぶん — 最小限の要約だけ。 */
+export interface WorkOrderStripView {
+  workOrderNumber: number;
+  productName: string;
+  /** 注文明細番号（在庫向けの独立指示書は null）。 */
+  orderLineNumber: string | null;
+  customerName: string | null;
+  type: string;
+  plannedQuantity: number;
+  materialCode: string | null;
+  createdAt: string;
+}
+
+/**
+ * ストリップ印刷用の取得（指示書番号の配列）。詳細 view と違い工程は引かない
+ * — 帯に出すのは番号・製品・数量・注文明細だけ。
+ * 見えない指示書（スコープ外）は黙って落とす。
+ */
+export async function fetchWorkOrderStrips(
+  numbers: number[],
+): Promise<WorkOrderStripView[]> {
+  const authz = await checkPermission("work_order", "READ");
+  if (!authz.ok || numbers.length === 0) return [];
+  const rows = await prisma.workOrder.findMany({
+    where: {
+      workOrderNumber: { in: numbers },
+      ...workOrderScopeWhere(authz.access, authz.userId),
+    },
+    include: {
+      product: true,
+      material: { select: { code: true } },
+      orderLine: {
+        select: {
+          acceptanceYearMonth: true,
+          acceptanceSeq: true,
+          branch: true,
+          acceptance: { select: { customerBp: { select: { name: true } } } },
+        },
+      },
+    },
+  });
+  // 指定された並び（一覧で選んだ順）を保つ。
+  const order = new Map(numbers.map((n, i) => [n, i]));
+  return rows
+    .sort(
+      (a, b) =>
+        (order.get(a.workOrderNumber) ?? 0) -
+        (order.get(b.workOrderNumber) ?? 0),
+    )
+    .map((r) => ({
+      workOrderNumber: r.workOrderNumber,
+      productName: localized(r.product.name as LocalizedText | null),
+      orderLineNumber: r.orderLine ? orderLineNumberOf(r.orderLine) : null,
+      customerName: r.orderLine
+        ? localized(
+            r.orderLine.acceptance.customerBp?.name as LocalizedText | null,
+          )
+        : null,
+      type: r.type,
+      plannedQuantity: r.plannedQuantity,
+      materialCode: r.material?.code ?? null,
+      createdAt: r.createdAt.toISOString(),
+    }));
+}
+
 /**
  * 指示書の承認記録（approval_requests / approval_records — 承認者名解決済み、
  * client-safe）。ApprovalStatusPanel の trail へ渡す。

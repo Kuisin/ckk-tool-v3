@@ -3,6 +3,9 @@
  * DB / Cookie に触れない純関数のみ — vitest で単体テスト（kiosk-auth-core.test.ts）。
  */
 
+import { normalizeCode } from "./crockford";
+import { parseQrPayload, QR_KINDS } from "./qr-payload";
+
 export const DEVICE_TOKEN_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 端末トークン 30日
 export const SESSION_TTL_MS = 8 * 60 * 60 * 1000; // 人セッション 8h ハード
 export const IDLE_TIMEOUT_MS = 5 * 60 * 1000; // アイドル 5分で失効
@@ -119,4 +122,31 @@ export function isRegistrationAlive(
 /** PIN 形式: 4〜6 桁の数字。 */
 export function isValidPin(pin: string): boolean {
   return /^[0-9]{4,6}$/.test(pin);
+}
+
+/**
+ * 読み取った QR ペイロードからカード ID を取り出す。受け付ける形は 3 つ:
+ *
+ * 1. **統一形式** `CKK:CARD:ABCD-EFGH-JKLM-NPQR`（lib/qr-payload.ts）= 現行の印刷。
+ *    CARD 以外の種別（指示書ストリップ `CKK:WO:…` など）は空文字を返す —
+ *    ログイン画面に別の QR をかざしても人として認証されない。
+ * 2. 素のカード ID（プレフィクス無し）— **既に配ってあるカード**の後方互換。
+ * 3. URL 形式（`?secret=` / 末尾セグメント）— 旧実装の名残。
+ */
+export function extractCardId(payload: string): string {
+  const trimmed = String(payload ?? "").trim();
+
+  const unified = parseQrPayload(trimmed);
+  if (unified) {
+    return unified.kind === QR_KINDS.CARD ? normalizeCode(unified.key) : "";
+  }
+
+  try {
+    const url = new URL(trimmed);
+    const secret =
+      url.searchParams.get("secret") ?? url.pathname.split("/").pop() ?? "";
+    return normalizeCode(secret);
+  } catch {
+    return normalizeCode(trimmed);
+  }
 }

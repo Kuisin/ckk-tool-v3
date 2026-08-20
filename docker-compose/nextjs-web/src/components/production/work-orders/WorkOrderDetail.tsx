@@ -15,7 +15,12 @@
 
 import { Alert, Anchor, Badge, Stack, Tabs, Text } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
-import { IconAlertTriangle, IconCopy, IconX } from "@tabler/icons-react";
+import {
+  IconAlertTriangle,
+  IconCopy,
+  IconPrinter,
+  IconX,
+} from "@tabler/icons-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
@@ -251,6 +256,13 @@ export function WorkOrderDetail({
                 label: "コピー",
                 icon: <IconCopy size={14} />,
                 onClick: () => setCopyOpen(true),
+              },
+              {
+                // 帯（最小要約 + QR）を別タブで開いてブラウザ印刷する。
+                // QR は CKK:WO:<番号> — 将来キオスクで読んで工程へ飛ぶ。
+                label: "ストリップ印刷",
+                icon: <IconPrinter size={14} />,
+                href: `${BASE_PATH}/print?ids=${wo.workOrderNumber}`,
               },
               ...(canCancel
                 ? [

@@ -5,6 +5,7 @@ import { formatCode } from "@/lib/crockford";
 import { fetchKioskCardsForPrint } from "@/lib/kiosk-admin";
 import { A4, CARD_SHEET, CARDS_PER_PAGE } from "@/lib/kiosk-card-sheet";
 import { qrSvg } from "@/lib/qr";
+import { encodeQrPayload, QR_KINDS } from "@/lib/qr-payload";
 import { PrintToolbar } from "./print-toolbar";
 
 export const dynamic = "force-dynamic";
@@ -22,8 +23,10 @@ export function generateMetadata() {
  * QRカード印刷シート（SY08, /settings/kiosk-cards/print?ids=...）。
  *
  * (print) ルートグループ配下 — ダッシュボードシェル（ヘッダー/フッター）無しで
- * 印刷用のカード面のみを描画する。QR ペイロードは 4 文字区切りのカード ID
- * （キオスクのログイン読み取りは英数字抽出 → 正規化するのでダッシュ可）。
+ * 印刷用のカード面のみを描画する。QR ペイロードは統一形式
+ * `CKK:CARD:ABCD-EFGH-JKLM-NPQR`（lib/qr-payload.ts）— 1 つのリーダーで
+ * 指示書ストリップなど他の QR と見分けられるようにするため。既に配ってある
+ * 素の 16 桁カードもキオスク側が従来解釈で受け付ける（後方互換）。
  *
  * ★ 原寸（91×55mm）の担保 —
  *   `@page { size: 210mm 297mm }` のように **長さで書いたページサイズは
@@ -100,7 +103,10 @@ export default async function KioskCardsPrintPage({
                       className="kiosk-print-qr"
                       // biome-ignore lint/security/noDangerouslySetInnerHtml: 自前生成の静的 SVG（lib/qr.ts）
                       dangerouslySetInnerHTML={{
-                        __html: qrSvg(formatCode(card.id), { margin: 2 }),
+                        __html: qrSvg(
+                          encodeQrPayload(QR_KINDS.CARD, formatCode(card.id)),
+                          { margin: 2 },
+                        ),
                       }}
                     />
                     <div className="kiosk-print-card-head">

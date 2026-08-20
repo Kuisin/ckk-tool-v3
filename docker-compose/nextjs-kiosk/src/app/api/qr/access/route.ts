@@ -20,11 +20,11 @@
 
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { normalizeCode } from "@/lib/crockford";
 import { prisma } from "@/lib/db";
 import { createSession, getDevice } from "@/lib/kiosk-auth";
 import {
   CARD_ID_LENGTH,
+  extractCardId,
   isCardWithinValidPeriod,
   isPinLocked,
   needsPinVerify,
@@ -33,19 +33,6 @@ import { issueTicket } from "@/lib/tickets";
 import { wsBridge } from "@/lib/ws-bridge";
 
 const bodySchema = z.object({ cardId: z.string().min(1).max(200) });
-
-/** QR ペイロード（カード ID そのもの / URL 形式の ?secret= / 末尾セグメント）からカード ID を抽出。 */
-function extractCardId(payload: string): string {
-  const trimmed = payload.trim();
-  try {
-    const url = new URL(trimmed);
-    const secret =
-      url.searchParams.get("secret") ?? url.pathname.split("/").pop() ?? "";
-    return normalizeCode(secret);
-  } catch {
-    return normalizeCode(trimmed);
-  }
-}
 
 export async function POST(req: Request) {
   const device = await getDevice();
