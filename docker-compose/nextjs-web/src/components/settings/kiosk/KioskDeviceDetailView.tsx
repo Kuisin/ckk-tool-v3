@@ -31,6 +31,7 @@ import {
   regenerateSettingsCode,
   revealKioskPin,
 } from "@/app/(dashboard)/settings/kiosk-devices/actions";
+import { useFormat } from "@/components/layout/PreferencesProvider";
 import { SecondaryButton } from "@/components/ui/buttons";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { FieldValue } from "@/components/ui/FieldValue";
@@ -38,7 +39,6 @@ import { ConfirmModal } from "@/components/ui/modals";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { UserAvatar } from "@/components/ui/UserAvatar";
-import { formatDateTime } from "@/lib/format";
 import type { KioskDeviceRecentUser, KioskDeviceRow } from "@/lib/kiosk-admin";
 import { DeviceLogList } from "./KioskDeviceLogsModal";
 import {
@@ -56,6 +56,7 @@ export function KioskDeviceDetailView({
   device: KioskDeviceRow;
   recentUsers: KioskDeviceRecentUser[];
 }) {
+  const fmt = useFormat();
   const { presence, live, transport } = useKioskPresence();
   const [isPending, startTransition] = useTransition();
   // PIN 開示（表示前に確認 → サーバーで監査ログ記録 → 60 秒後に自動で隠す）
@@ -152,19 +153,19 @@ export function KioskDeviceDetailView({
           <FieldValue label="利用者" value={currentUser ?? "—"} />
           <FieldValue
             label="最終アクティビティ"
-            value={liveActivity ? formatDateTime(liveActivity) : "—"}
+            value={liveActivity ? fmt.dateTime(liveActivity) : "—"}
           />
           <FieldValue label="拠点" value={device.plantLabel ?? "—"} />
           <FieldValue label="場所" value={device.location ?? "—"} />
           <FieldValue
             label="リンク日時"
-            value={device.linkedAt ? formatDateTime(device.linkedAt) : "—"}
+            value={device.linkedAt ? fmt.dateTime(device.linkedAt) : "—"}
           />
           <FieldValue
             label="有効化"
             value={
               device.activatedAt
-                ? `${formatDateTime(device.activatedAt)}${
+                ? `${fmt.dateTime(device.activatedAt)}${
                     device.activatedByName
                       ? `（${device.activatedByName}）`
                       : ""
@@ -186,7 +187,7 @@ export function KioskDeviceDetailView({
           />
           <FieldValue
             label="作成日時"
-            value={device.createdAt ? formatDateTime(device.createdAt) : "—"}
+            value={device.createdAt ? fmt.dateTime(device.createdAt) : "—"}
           />
           <FieldValue
             label="GPS 位置（最新）"
@@ -211,7 +212,7 @@ export function KioskDeviceDetailView({
                       ` (±${Math.round(device.latestLocation.accuracyM)}m)`}
                   </Anchor>
                   <Text c="dimmed" size="xs">
-                    {formatDateTime(device.latestLocation.recordedAt)} 時点
+                    {fmt.dateTime(device.latestLocation.recordedAt)} 時点
                   </Text>
                 </Stack>
               ) : (
@@ -319,7 +320,7 @@ export function KioskDeviceDetailView({
                     </Group>
                     <div style={{ flexShrink: 0, textAlign: "right" }}>
                       <Text c="dimmed" size="xs">
-                        {formatDateTime(u.lastLoginAt)}
+                        {fmt.dateTime(u.lastLoginAt)}
                       </Text>
                       <Text c="dimmed" size="xs">
                         {u.loginCount} 回

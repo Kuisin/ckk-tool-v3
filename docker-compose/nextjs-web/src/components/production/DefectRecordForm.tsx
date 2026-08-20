@@ -24,8 +24,8 @@ import { IconPlus, IconTrash } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { saveDefectRecords } from "@/app/(dashboard)/production/work-orders/[id]/steps/[stepId]/actions";
+import { useFormat } from "@/components/layout/PreferencesProvider";
 import { GhostButton, PrimaryButton } from "@/components/ui/buttons";
-import { formatDateTime } from "@/lib/format";
 import type {
   SelectOption,
   StepDefectRecordView,
@@ -51,6 +51,7 @@ export function DefectRecordForm({
   records: StepDefectRecordView[];
   canRecord: boolean;
 }) {
+  const fmt = useFormat();
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [nextKey, setNextKey] = useState(1);
@@ -125,7 +126,7 @@ export function DefectRecordForm({
                     {r.defectTypeName}
                   </Text>
                   <Text c="dimmed" size="xs">
-                    {formatDateTime(r.recordedAt)}
+                    {fmt.dateTime(r.recordedAt)}
                     {r.recordedByName ? `（${r.recordedByName}）` : ""}
                   </Text>
                 </Group>

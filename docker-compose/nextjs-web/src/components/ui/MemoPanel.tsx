@@ -49,6 +49,7 @@ import {
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
+import { useFormat } from "@/components/layout/PreferencesProvider";
 import { PrimaryButton, SecondaryButton } from "@/components/ui/buttons";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { MemoHistoryModal } from "@/components/ui/MemoHistoryModal";
@@ -56,7 +57,6 @@ import { openConfirm } from "@/components/ui/modals";
 import { RichTextView } from "@/components/ui/RichTextView";
 import { UserAvatar } from "@/components/ui/UserAvatar";
 import type { MemoView } from "@/lib/document-memos";
-import { formatDateTime } from "@/lib/format";
 import { emptyDoc, isEmptyDoc, type RichTextDoc } from "@/lib/rich-text-core";
 import {
   deleteMemoAction,
@@ -109,6 +109,7 @@ function notifyResult(
 // ── 共有メモ（1 文書 1 件） ─────────────────────────────────────────────
 
 function MemoBlock({ ownerType, ownerId, memos }: MemoPanelProps) {
+  const fmt = useFormat();
   const router = useRouter();
   const existing = memos[0];
   const [editing, setEditing] = useState(false);
@@ -211,7 +212,7 @@ function MemoBlock({ ownerType, ownerId, memos }: MemoPanelProps) {
               linkTargets={existing.linkTargets}
             />
             <Text c="dimmed" size="xs">
-              最終更新: {formatDateTime(existing.updatedAt)}（
+              最終更新: {fmt.dateTime(existing.updatedAt)}（
               {existing.editorName ?? existing.authorName}）
             </Text>
           </Stack>
@@ -386,6 +387,7 @@ function CommentRow({
   onToggleArchive: () => void;
   onDelete: () => void;
 }) {
+  const fmt = useFormat();
   const archived = memo.archivedAt !== null;
   // アーカイブ済みは既定で畳む。展開状態は行ごとに保持する。
   const [open, setOpen] = useState(!archived);
@@ -419,7 +421,7 @@ function CommentRow({
             {memo.authorName}
           </Text>
           <Text c="dimmed" size="xs" style={{ whiteSpace: "nowrap" }}>
-            {formatDateTime(memo.createdAt)}
+            {fmt.dateTime(memo.createdAt)}
             {memo.updatedAt !== memo.createdAt && "（編集済み）"}
           </Text>
           {archived && (

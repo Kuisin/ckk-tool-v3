@@ -9,12 +9,12 @@
  */
 
 import { Table, Tabs, Text } from "@mantine/core";
+import { useFormat } from "@/components/layout/PreferencesProvider";
 import { InventoryBadge } from "@/components/production/InventoryBadge";
 import { DocNumber } from "@/components/ui/DocNumber";
 import { FieldValue } from "@/components/ui/FieldValue";
 import { DetailShell, SummaryGrid } from "@/components/ui/shells";
 import { useTabParam } from "@/hooks/useUrlState";
-import { formatDate, formatDateTime } from "@/lib/format";
 import { InventoryTransactionsTable } from "../InventoryTransactionsTable";
 import type { MaterialInventoryDetailData } from "./model";
 
@@ -28,13 +28,14 @@ export function MaterialInventoryDetail({
 }: {
   record: MaterialInventoryDetailData;
 }) {
+  const fmt = useFormat();
   // アクティブタブを ?tab= に保持（URL 共有でタブまで再現）
   const [tab, setTab] = useTabParam("atp");
   return (
     <DetailShell
       breadcrumbs={["生産", { label: "在庫管理", href: BASE_PATH }, "詳細"]}
       title={record.materialCode}
-      updatedAt={formatDateTime(record.updatedAt)}
+      updatedAt={fmt.dateTime(record.updatedAt)}
     >
       <SummaryGrid>
         <FieldValue
@@ -79,7 +80,7 @@ export function MaterialInventoryDetail({
           label="次回入荷"
           value={
             record.atp.nextReceiptDate
-              ? formatDate(record.atp.nextReceiptDate)
+              ? fmt.date(record.atp.nextReceiptDate)
               : "—"
           }
         />
@@ -115,6 +116,7 @@ export function MaterialInventoryDetail({
 
 /** ATP タイムライン — 時点 / 入荷量 / 累積利用可能 / 参照発注番号。 */
 function AtpTimelineTable({ record }: { record: MaterialInventoryDetailData }) {
+  const fmt = useFormat();
   return (
     <Table.ScrollContainer minWidth={560}>
       <Table>
@@ -137,7 +139,7 @@ function AtpTimelineTable({ record }: { record: MaterialInventoryDetailData }) {
                 ? "現時点"
                 : p.date === UNDATED_MARKER
                   ? "未定"
-                  : formatDate(p.date);
+                  : fmt.date(p.date);
             return (
               <Table.Tr key={p.date ?? "now"}>
                 <Table.Td>

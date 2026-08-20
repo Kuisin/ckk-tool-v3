@@ -45,6 +45,7 @@ import {
   approveInspectionRecord,
   saveInspectionRecord,
 } from "@/app/(dashboard)/production/work-orders/[id]/steps/[stepId]/actions";
+import { useFormat } from "@/components/layout/PreferencesProvider";
 import {
   ApproveButton,
   GhostButton,
@@ -53,7 +54,6 @@ import {
 } from "@/components/ui/buttons";
 import { PdfButton } from "@/components/ui/PdfButton";
 import { StatusBadge } from "@/components/ui/StatusBadge";
-import { formatDateTime } from "@/lib/format";
 import {
   acceptLabel,
   evaluateEntry,
@@ -80,6 +80,7 @@ const BOOL_SEGMENT = [
 
 /** 既存の検査記録 1 件の読み取り専用表示。 */
 function RecordSummary({ record }: { record: InspectionRecordView }) {
+  const fmt = useFormat();
   return (
     <Paper p="sm" radius="sm" withBorder>
       <Group gap="sm" wrap="wrap">
@@ -91,12 +92,12 @@ function RecordSummary({ record }: { record: InspectionRecordView }) {
         <Text size="sm">{record.templateName}</Text>
         <StatusBadge entity="InspectionRecord" status={record.status} />
         <Text c="dimmed" size="xs">
-          記録: {formatDateTime(record.recordedAt)}
+          記録: {fmt.dateTime(record.recordedAt)}
           {record.recordedByName ? `（${record.recordedByName}）` : ""}
         </Text>
         {record.approvedAt && (
           <Text c="dimmed" size="xs">
-            承認: {formatDateTime(record.approvedAt)}
+            承認: {fmt.dateTime(record.approvedAt)}
             {record.approvedByName ? `（${record.approvedByName}）` : ""}
           </Text>
         )}

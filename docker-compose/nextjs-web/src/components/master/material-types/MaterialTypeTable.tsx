@@ -32,6 +32,7 @@ import {
   deleteMaterialTypes,
   setMaterialTypesActive,
 } from "@/app/(dashboard)/master/material-types/actions";
+import { useFormat } from "@/components/layout/PreferencesProvider";
 import { ActiveBadge } from "@/components/ui/ActiveBadge";
 import { type Column, DataTable } from "@/components/ui/DataTable";
 import { DocNumber } from "@/components/ui/DocNumber";
@@ -40,7 +41,6 @@ import { NewButton } from "@/components/ui/NewButton";
 import { ListShell } from "@/components/ui/shells";
 import { useUrlSelectState, useUrlStringState } from "@/hooks/useUrlState";
 import { useIsMobile } from "@/hooks/useViewport";
-import { formatDate } from "@/lib/format";
 import {
   DeleteMaterialTypeModal,
   type MaterialTypeModalTarget,
@@ -73,6 +73,7 @@ const STRUCTURED_OPTIONS = [
 ];
 
 export function MaterialTypeTable({ rows }: { rows: MaterialTypeRow[] }) {
+  const fmt = useFormat();
   const router = useRouter();
   const isMobile = useIsMobile();
   const [, startTransition] = useTransition();
@@ -210,7 +211,7 @@ export function MaterialTypeTable({ rows }: { rows: MaterialTypeRow[] }) {
       sortable: true,
       hideable: true,
       width: 120,
-      render: (r) => formatDate(r.updatedAt),
+      render: (r) => fmt.date(r.updatedAt),
     },
   ];
 
@@ -289,7 +290,7 @@ export function MaterialTypeTable({ rows }: { rows: MaterialTypeRow[] }) {
                   {r.name}
                 </Text>
                 <Text c="dimmed" size="xs">
-                  更新: {formatDate(r.updatedAt)}
+                  更新: {fmt.date(r.updatedAt)}
                 </Text>
               </Stack>
               <ActiveBadge active={r.isActive} />

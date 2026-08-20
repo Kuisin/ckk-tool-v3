@@ -22,6 +22,7 @@ import { notifications } from "@mantine/notifications";
 import { useRouter } from "next/navigation";
 import { useMemo, useState, useTransition } from "react";
 import { updateUserPlants } from "@/app/(dashboard)/settings/users/actions";
+import { useFormat } from "@/components/layout/PreferencesProvider";
 import {
   UserActiveBadge,
   UserGroupBadge,
@@ -30,7 +31,7 @@ import { SaveButton } from "@/components/ui/buttons";
 import { FieldValue } from "@/components/ui/FieldValue";
 import { DetailShell, SummaryGrid } from "@/components/ui/shells";
 import { permissionActionLabel, permissionScopeLabel } from "@/lib/enum-labels";
-import { formatDateTime, localized } from "@/lib/format";
+import { localized } from "@/lib/format";
 import type { AdminUserDetail, AdminUserPlant } from "@/lib/users-admin";
 
 function roleLabel(role: {
@@ -159,16 +160,17 @@ export function UserDetail({
   plantOptions: AdminUserPlant[];
   canEditPlants: boolean;
 }) {
+  const fmt = useFormat();
   return (
     <DetailShell
       breadcrumbs={[
         "システム",
         { label: "ユーザー管理", href: "/settings/users" },
       ]}
-      createdAt={user.createdAt ? formatDateTime(user.createdAt) : undefined}
+      createdAt={user.createdAt ? fmt.dateTime(user.createdAt) : undefined}
       status={<UserActiveBadge isActive={user.isActive} />}
       title={user.displayName}
-      updatedAt={user.updatedAt ? formatDateTime(user.updatedAt) : undefined}
+      updatedAt={user.updatedAt ? fmt.dateTime(user.updatedAt) : undefined}
     >
       <SummaryGrid>
         <FieldValue
@@ -186,7 +188,7 @@ export function UserDetail({
         />
         <FieldValue
           label="最終ログイン"
-          value={user.lastLoginAt ? formatDateTime(user.lastLoginAt) : "—"}
+          value={user.lastLoginAt ? fmt.dateTime(user.lastLoginAt) : "—"}
         />
         <FieldValue
           label="社員 ID"
@@ -234,12 +236,12 @@ export function UserDetail({
                     </Table.Td>
                     <Table.Td>
                       <Text c="dimmed" size="sm">
-                        {a.assignedAt ? formatDateTime(a.assignedAt) : "—"}
+                        {a.assignedAt ? fmt.dateTime(a.assignedAt) : "—"}
                       </Text>
                     </Table.Td>
                     <Table.Td>
                       <Text c="dimmed" size="sm">
-                        {a.deactivateAt ? formatDateTime(a.deactivateAt) : "—"}
+                        {a.deactivateAt ? fmt.dateTime(a.deactivateAt) : "—"}
                       </Text>
                     </Table.Td>
                   </Table.Tr>

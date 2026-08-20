@@ -20,12 +20,12 @@ import {
 import { IconPackageImport, IconSearch } from "@tabler/icons-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useFormat } from "@/components/layout/PreferencesProvider";
 import { type Column, DataTable } from "@/components/ui/DataTable";
 import { NewButton } from "@/components/ui/NewButton";
 import { ListShell } from "@/components/ui/shells";
 import { useUrlSelectState, useUrlStringState } from "@/hooks/useUrlState";
 import { useIsMobile } from "@/hooks/useViewport";
-import { formatDate } from "@/lib/format";
 import type { MaterialReceiptView } from "./model";
 
 const BASE_PATH = "/purchase/material-receipts";
@@ -41,6 +41,7 @@ export function MaterialReceiptTable({
 }: {
   rows: MaterialReceiptView[];
 }) {
+  const fmt = useFormat();
   const router = useRouter();
   const isMobile = useIsMobile();
 
@@ -115,7 +116,7 @@ export function MaterialReceiptTable({
       sortValue: (r) => r.receivedAt,
       render: (r) => (
         <Text className="tabular-nums" size="sm">
-          {formatDate(r.receivedAt)}
+          {fmt.date(r.receivedAt)}
         </Text>
       ),
     },
@@ -209,7 +210,7 @@ export function MaterialReceiptTable({
                 </Badge>
               )}
               <Text c="dimmed" size="xs">
-                {formatDate(r.receivedAt)}
+                {fmt.date(r.receivedAt)}
               </Text>
             </Stack>
           </Group>

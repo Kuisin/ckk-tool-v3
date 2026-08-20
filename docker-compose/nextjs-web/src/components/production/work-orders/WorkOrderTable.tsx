@@ -16,6 +16,7 @@ import {
   IconShieldCheck,
 } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
+import { useFormat } from "@/components/layout/PreferencesProvider";
 import { type Column, DataTable } from "@/components/ui/DataTable";
 import { NewButton } from "@/components/ui/NewButton";
 import { StatusBadge, statusOptions } from "@/components/ui/StatusBadge";
@@ -26,7 +27,6 @@ import {
   WORK_ORDER_TYPE_LABEL,
   WORK_ORDER_TYPE_OPTIONS,
 } from "@/lib/enum-labels";
-import { formatDate, formatDateTime, workOrderNumberLabel } from "@/lib/format";
 import type { WorkOrderRow } from "./model";
 
 const WORK_ORDERS_PATH = "/production/work-orders";
@@ -51,6 +51,7 @@ export function WorkOrderTable({
   rows: WorkOrderRow[];
   variant?: "workOrders" | "approvals";
 }) {
+  const fmt = useFormat();
   const router = useRouter();
   const isMobile = useIsMobile();
   const isApprovals = variant === "approvals";
@@ -71,7 +72,9 @@ export function WorkOrderTable({
     const matchesSearch =
       !search ||
       String(r.workOrderNumber).includes(search) ||
-      workOrderNumberLabel(r.workOrderNumber, r.createdAt).includes(search) ||
+      fmt
+        .workOrderNumberLabel(r.workOrderNumber, r.createdAt)
+        .includes(search) ||
       (r.orderLineNumber ?? "").includes(search) ||
       r.productName.includes(search);
     const matchesType = !type || r.type === type;
@@ -89,7 +92,7 @@ export function WorkOrderTable({
       sortValue: (r) => r.workOrderNumber,
       render: (r) => (
         <Text className="tabular-nums" ff="mono" size="sm">
-          {workOrderNumberLabel(r.workOrderNumber, r.createdAt)}
+          {fmt.workOrderNumberLabel(r.workOrderNumber, r.createdAt)}
         </Text>
       ),
     },
@@ -157,7 +160,7 @@ export function WorkOrderTable({
             sortValue: (r) => r.requestedAt ?? "",
             render: (r) => (
               <Text className="tabular-nums" size="sm">
-                {formatDate(r.requestedAt)}
+                {fmt.date(r.requestedAt)}
               </Text>
             ),
           } satisfies Column<WorkOrderRow>,
@@ -178,7 +181,7 @@ export function WorkOrderTable({
             sortValue: (r) => r.updatedAt,
             render: (r) => (
               <Text c="dimmed" className="tabular-nums" size="xs">
-                {formatDateTime(r.updatedAt)}
+                {fmt.dateTime(r.updatedAt)}
               </Text>
             ),
           } satisfies Column<WorkOrderRow>,
@@ -259,7 +262,7 @@ export function WorkOrderTable({
           <Group align="flex-start" justify="space-between" wrap="nowrap">
             <Stack className="min-w-0" gap={3}>
               <Text c="dimmed" ff="mono" size="xs">
-                {workOrderNumberLabel(r.workOrderNumber, r.createdAt)} ·{" "}
+                {fmt.workOrderNumberLabel(r.workOrderNumber, r.createdAt)} ·{" "}
                 {r.orderLineNumber ?? "在庫向け"}
               </Text>
               <Text fw={600} size="sm" truncate>
@@ -280,7 +283,7 @@ export function WorkOrderTable({
                     status={r.approvalStatus}
                   />
                   <Text c="dimmed" size="xs">
-                    依頼 {formatDate(r.requestedAt)}
+                    依頼 {fmt.date(r.requestedAt)}
                   </Text>
                 </>
               ) : (

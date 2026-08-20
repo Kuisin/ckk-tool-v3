@@ -40,6 +40,7 @@ import {
   updateCardSessionLimit,
   updateCardValidity,
 } from "@/app/(dashboard)/settings/kiosk-cards/actions";
+import { useFormat } from "@/components/layout/PreferencesProvider";
 import {
   DangerButton,
   EditButton,
@@ -51,7 +52,6 @@ import { FieldValue } from "@/components/ui/FieldValue";
 import { ConfirmModal, ModalShell } from "@/components/ui/modals";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { StatusBadge } from "@/components/ui/StatusBadge";
-import { formatDateTime } from "@/lib/format";
 import type {
   KioskCardDetail,
   KioskCardSessionRow,
@@ -91,6 +91,7 @@ export function KioskCardDetailView({
   sessions: KioskCardSessionRow[];
   userOptions: KioskUserOption[];
 }) {
+  const fmt = useFormat();
   const [isPending, startTransition] = useTransition();
   const now = Date.now();
   const validity = resolveCardValidity(now, card);
@@ -308,7 +309,7 @@ export function KioskCardDetailView({
             value={
               <Group gap={6} wrap="nowrap">
                 <Text fw={500} size="sm">
-                  {formatValidityRange(card)}
+                  {formatValidityRange(fmt, card)}
                 </Text>
                 <ValidityBadge validity={validity} />
               </Group>
@@ -335,14 +336,14 @@ export function KioskCardDetailView({
           />
           <FieldValue
             label="最終使用"
-            value={card.lastUsedAt ? formatDateTime(card.lastUsedAt) : "—"}
+            value={card.lastUsedAt ? fmt.dateTime(card.lastUsedAt) : "—"}
           />
           <FieldValue label="使用回数" value={`${card.useCount} 回`} />
           <FieldValue
             label="PIN 最終確認"
             value={
               card.pinLastVerifiedAt
-                ? formatDateTime(card.pinLastVerifiedAt)
+                ? fmt.dateTime(card.pinLastVerifiedAt)
                 : "—"
             }
           />
@@ -350,7 +351,7 @@ export function KioskCardDetailView({
             label="割当"
             value={
               card.assignedAt
-                ? `${formatDateTime(card.assignedAt)}${
+                ? `${fmt.dateTime(card.assignedAt)}${
                     card.assignedByName ? `（${card.assignedByName}）` : ""
                   }`
                 : "—"
@@ -359,14 +360,14 @@ export function KioskCardDetailView({
           {card.revokedAt && (
             <FieldValue
               label="取り消し"
-              value={`${formatDateTime(card.revokedAt)}${
+              value={`${fmt.dateTime(card.revokedAt)}${
                 card.revokedByName ? `（${card.revokedByName}）` : ""
               }`}
             />
           )}
           <FieldValue
             label="発行日時"
-            value={card.createdAt ? formatDateTime(card.createdAt) : "—"}
+            value={card.createdAt ? fmt.dateTime(card.createdAt) : "—"}
           />
         </SimpleGrid>
       </Paper>
@@ -504,8 +505,8 @@ export function KioskCardDetailView({
                   <Table.Tr key={s.id}>
                     <Table.Td>{s.deviceName ?? "（名称未設定）"}</Table.Td>
                     <Table.Td>{s.plantLabel ?? "—"}</Table.Td>
-                    <Table.Td>{formatDateTime(s.createdAt)}</Table.Td>
-                    <Table.Td>{formatDateTime(s.lastActivityAt)}</Table.Td>
+                    <Table.Td>{fmt.dateTime(s.createdAt)}</Table.Td>
+                    <Table.Td>{fmt.dateTime(s.lastActivityAt)}</Table.Td>
                   </Table.Tr>
                 ))}
               </Table.Tbody>

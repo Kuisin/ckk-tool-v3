@@ -10,6 +10,7 @@
 import { Badge, Group, Select, Stack, Text, TextInput } from "@mantine/core";
 import { IconRuler2, IconSearch } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
+import { useFormat } from "@/components/layout/PreferencesProvider";
 import { type Column, DataTable } from "@/components/ui/DataTable";
 import { NewButton } from "@/components/ui/NewButton";
 import { StatusBadge, statusOptions } from "@/components/ui/StatusBadge";
@@ -20,7 +21,6 @@ import {
   DESIGN_TRIGGER_LABEL,
   DESIGN_TRIGGER_OPTIONS,
 } from "@/lib/enum-labels";
-import { formatDate } from "@/lib/format";
 import { DESIGN_TRIGGER_COLOR, type DesignRequest } from "./model";
 
 const BASE_PATH = "/sales/design-requests";
@@ -34,6 +34,7 @@ function TriggerBadge({ trigger }: { trigger: DesignRequest["trigger"] }) {
 }
 
 export function DesignRequestTable({ rows }: { rows: DesignRequest[] }) {
+  const fmt = useFormat();
   const router = useRouter();
   const isMobile = useIsMobile();
 
@@ -105,7 +106,7 @@ export function DesignRequestTable({ rows }: { rows: DesignRequest[] }) {
       sortValue: (r) => r.updatedAt,
       render: (r) => (
         <Text className="tabular-nums" size="sm">
-          {formatDate(r.updatedAt)}
+          {fmt.date(r.updatedAt)}
         </Text>
       ),
     },
@@ -178,7 +179,7 @@ export function DesignRequestTable({ rows }: { rows: DesignRequest[] }) {
             <Stack align="flex-end" className="shrink-0" gap={4}>
               <StatusBadge entity="DesignRequest" status={r.status} />
               <Text c="dimmed" size="xs">
-                {formatDate(r.updatedAt)}
+                {fmt.date(r.updatedAt)}
               </Text>
             </Stack>
           </Group>

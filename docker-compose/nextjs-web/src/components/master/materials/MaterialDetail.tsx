@@ -11,6 +11,7 @@ import { Stack, Tabs, Text } from "@mantine/core";
 import { IconCircleMinus, IconTrash } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { useFormat } from "@/components/layout/PreferencesProvider";
 import { KeywordBadges } from "@/components/master/MasterKeywordsField";
 import { ActiveBadge } from "@/components/ui/ActiveBadge";
 import { DocNumber } from "@/components/ui/DocNumber";
@@ -23,7 +24,6 @@ import {
   SummaryGrid,
 } from "@/components/ui/shells";
 import { useTabParam } from "@/hooks/useUrlState";
-import { formatDateTime } from "@/lib/format";
 import {
   DeleteMaterialModal,
   ToggleMaterialActiveModal,
@@ -61,6 +61,7 @@ export function MaterialDetail({
   record: MaterialDetailData;
   auditEntries: AuditEntry[];
 }) {
+  const fmt = useFormat();
   const router = useRouter();
   // アクティブタブを ?tab= に保持（URL 共有でタブまで再現）
   const [tab, setTab] = useTabParam("overview");
@@ -97,10 +98,10 @@ export function MaterialDetail({
         />
       }
       breadcrumbs={["マスタ", { label: "素材", href: BASE_PATH }, record.code]}
-      createdAt={formatDateTime(record.createdAt)}
+      createdAt={fmt.dateTime(record.createdAt)}
       status={<ActiveBadge active={record.isActive} />}
       title={record.nameJa}
-      updatedAt={formatDateTime(record.updatedAt)}
+      updatedAt={fmt.dateTime(record.updatedAt)}
     >
       <SummaryGrid>
         <FieldValue

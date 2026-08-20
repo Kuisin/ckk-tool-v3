@@ -36,6 +36,7 @@ import {
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useRef, useState } from "react";
+import { useFormat } from "@/components/layout/PreferencesProvider";
 import { InventoryBadge } from "@/components/production/InventoryBadge";
 import { GhostButton } from "@/components/ui/buttons";
 import { type Column, DataTable } from "@/components/ui/DataTable";
@@ -48,7 +49,6 @@ import {
   useUrlStringState,
 } from "@/hooks/useUrlState";
 import { useIsMobile } from "@/hooks/useViewport";
-import { formatDate } from "@/lib/format";
 import type { MaterialInventoryRow } from "./materials/model";
 import type { ProductInventoryRow, WipRow } from "./products/model";
 import {
@@ -84,6 +84,7 @@ export function UnifiedInventory({
   wipRows: WipRow[];
   plants: TransferPlantOption[];
 }) {
+  const fmt = useFormat();
   const router = useRouter();
   const isMobile = useIsMobile();
 
@@ -253,7 +254,7 @@ export function UnifiedInventory({
       sortValue: (r) => r.updatedAt,
       render: (r) => (
         <Text className="tabular-nums" size="sm">
-          {formatDate(r.updatedAt)}
+          {fmt.date(r.updatedAt)}
         </Text>
       ),
     },
@@ -351,7 +352,7 @@ export function UnifiedInventory({
       render: (r) =>
         r.nextReceiptDate ? (
           <Text className="tabular-nums" size="sm">
-            {formatDate(r.nextReceiptDate)}
+            {fmt.date(r.nextReceiptDate)}
           </Text>
         ) : (
           "—"
@@ -365,7 +366,7 @@ export function UnifiedInventory({
       sortValue: (r) => r.updatedAt,
       render: (r) => (
         <Text className="tabular-nums" size="sm">
-          {formatDate(r.updatedAt)}
+          {fmt.date(r.updatedAt)}
         </Text>
       ),
     },
@@ -494,7 +495,7 @@ export function UnifiedInventory({
                     </Badge>
                   )}
                   <Text c="dimmed" size="xs">
-                    {formatDate(r.updatedAt)}
+                    {fmt.date(r.updatedAt)}
                   </Text>
                 </Stack>
               </Group>
@@ -532,7 +533,7 @@ export function UnifiedInventory({
                   </Text>
                 </Stack>
                 <Text c="dimmed" className="shrink-0" size="xs">
-                  {formatDate(r.updatedAt)}
+                  {fmt.date(r.updatedAt)}
                 </Text>
               </Group>
             )}

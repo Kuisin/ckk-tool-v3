@@ -12,7 +12,8 @@
 import type { AuditEntry } from "@/components/ui/shells";
 import { avatarUrl } from "@/lib/avatar";
 import { prisma } from "@/lib/db";
-import { deviceName, formatDateTime } from "@/lib/format";
+import type { Formatters } from "@/lib/format";
+import { getServerFormatters } from "@/lib/user-preferences";
 
 export type AuditAction =
   | "CREATE"
@@ -250,7 +251,11 @@ type AuditRow = {
   kioskDevice: { id: string; name: unknown } | null;
 };
 
-function mapAudit(row: AuditRow): AuditEntry {
+/**
+ * 履歴 1 行 → 表示用。日時はここで文字列にするので、閲覧者の表示設定
+ * （タイムゾーン・日付形式・言語）を渡してもらう。
+ */
+function mapAudit(fmt: Formatters, row: AuditRow): AuditEntry {
   return {
     id: row.id.toString(),
     action: ACTION_LABEL[row.action] ?? row.action,
@@ -264,8 +269,8 @@ function mapAudit(row: AuditRow): AuditEntry {
     // 操作者の顔写真（小）。未設定・システム操作ならイニシャル表示になる。
     avatarUrl: row.user ? actorAvatarUrl(row.user) : null,
     // 操作元の共有タブレット（Web からの操作は null → バッジを出さない）。
-    device: row.kioskDevice ? deviceName(row.kioskDevice.name) : null,
-    at: formatDateTime(row.createdAt),
+    device: row.kioskDevice ? fmt.deviceName(row.kioskDevice.name) : null,
+    at: fmt.dateTime(row.createdAt),
     detail: describeChange(row.action, row.beforeData, row.afterData),
   };
 }
@@ -292,6 +297,7 @@ export async function fetchAuditEntries(
   recordId: string,
 ): Promise<AuditEntry[]> {
   try {
+    const fmt = await getServerFormatters();
     const rows = await prisma.auditLog.findMany({
       where: { tableName, recordId },
       orderBy: { createdAt: "desc" },
@@ -308,7 +314,7 @@ export async function fetchAuditEntries(
       },
       take: 100,
     });
-    return rows.map(mapAudit);
+    return rows.map((row) => mapAudit(fmt, row));
   } catch (e) {
     console.error("fetchAuditEntries failed", e);
     return [];
@@ -342,6 +348,7 @@ export async function getActivityEntry(
     return null;
   }
   try {
+    const fmt = await getServerFormatters();
     const row = await prisma.auditLog.findUnique({
       where: { id: key },
       include: {
@@ -358,7 +365,7 @@ export async function getActivityEntry(
     });
     if (!row) return null;
     return {
-      ...mapAudit(row),
+      ...mapAudit(fmt, row),
       tableName: row.tableName,
       tableLabel: auditTableLabel(row.tableName),
       recordId: row.recordId,
@@ -379,6 +386,7 @@ export async function listAuditEntries(
 ): Promise<ActivityEntry[]> {
   const { take = 200, skip = 0 } = opts;
   try {
+    const fmt = await getServerFormatters();
     const rows = await prisma.auditLog.findMany({
       orderBy: { createdAt: "desc" },
       include: {
@@ -396,7 +404,7 @@ export async function listAuditEntries(
       skip,
     });
     return rows.map((row) => ({
-      ...mapAudit(row),
+      ...mapAudit(fmt, row),
       tableName: row.tableName,
       tableLabel: auditTableLabel(row.tableName),
       recordId: row.recordId,

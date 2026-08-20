@@ -37,6 +37,7 @@ import {
   saveDiscountRule,
 } from "@/app/(dashboard)/sales/price-lists/actions";
 import type { RelatedQuoteRow } from "@/app/(dashboard)/sales/price-lists/data";
+import { useFormat } from "@/components/layout/PreferencesProvider";
 import { ActiveBadge } from "@/components/ui/ActiveBadge";
 import { SecondaryButton } from "@/components/ui/buttons";
 import { DocNumber } from "@/components/ui/DocNumber";
@@ -54,7 +55,6 @@ import {
 } from "@/components/ui/shells";
 import { useTabParam } from "@/hooks/useUrlState";
 import type { MemoView } from "@/lib/document-memos";
-import { formatDate, formatDateTime } from "@/lib/format";
 import type { Option } from "@/lib/mock";
 import { ORDER_TYPE_LABEL } from "@/lib/mock";
 import { CopyPriceListModal } from "./CopyPriceListModal";
@@ -94,6 +94,7 @@ export function PriceListDetail({
   /** 社内コメント（document_memos 由来、コメントタブ）。 */
   memos: MemoView[];
 }) {
+  const fmt = useFormat();
   const router = useRouter();
   const [, startTransition] = useTransition();
   // アクティブタブを ?tab= に保持（URL 共有でタブまで再現）
@@ -176,7 +177,7 @@ export function PriceListDetail({
       </Badge>
       <ActiveBadge active={variant.isActive} />
       <Text c="dimmed" className="tabular-nums" size="xs">
-        {validPeriod(variant.validFrom, variant.validUntil)}
+        {validPeriod(fmt, variant.validFrom, variant.validUntil)}
       </Text>
     </Group>
   );
@@ -213,10 +214,10 @@ export function PriceListDetail({
         />
       }
       breadcrumbs={["販売", { label: "価格表", href: BASE_PATH }, "詳細"]}
-      createdAt={formatDateTime(entry.createdAt)}
+      createdAt={fmt.dateTime(entry.createdAt)}
       status={<ActiveBadge active={entry.isActive} />}
       title="価格表 詳細"
-      updatedAt={formatDateTime(entry.updatedAt)}
+      updatedAt={fmt.dateTime(entry.updatedAt)}
     >
       <SummaryGrid>
         <FieldValue label="顧客" value={entry.customerName} />
@@ -391,7 +392,7 @@ export function PriceListDetail({
                                 className="tabular-nums"
                                 size="xs"
                               >
-                                {validPeriod(d.validFrom, d.validUntil)}
+                                {validPeriod(fmt, d.validFrom, d.validUntil)}
                               </Text>
                             </Table.Td>
                             <Table.Td>
@@ -504,7 +505,7 @@ export function PriceListDetail({
                           </Table.Td>
                           <Table.Td>
                             <Text c="dimmed" className="tabular-nums" size="xs">
-                              {formatDate(q.createdAt)}
+                              {fmt.date(q.createdAt)}
                             </Text>
                           </Table.Td>
                         </Table.Tr>

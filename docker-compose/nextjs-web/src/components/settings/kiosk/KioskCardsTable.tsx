@@ -31,6 +31,7 @@ import {
   suspendCard,
   unlockPin,
 } from "@/app/(dashboard)/settings/kiosk-cards/actions";
+import { useFormat } from "@/components/layout/PreferencesProvider";
 import { CreateButton } from "@/components/ui/buttons";
 import {
   type Column,
@@ -45,7 +46,7 @@ import { useUrlSelectState, useUrlStringState } from "@/hooks/useUrlState";
 import { useIsMobile } from "@/hooks/useViewport";
 import { formatCode } from "@/lib/crockford";
 import { fieldHelp } from "@/lib/field-help";
-import { formatDate, formatDateTime } from "@/lib/format";
+import type { Formatters } from "@/lib/format";
 import type { KioskCardRow, KioskUserOption } from "@/lib/kiosk-admin";
 import type { ActionResult } from "@/lib/server-action";
 
@@ -92,13 +93,14 @@ export function resolveCardValidity(
   return "ACTIVE";
 }
 
-/** 有効期間の表示（yyyy/MM/dd 〜 yyyy/MM/dd。無期限は「無期限」）。 */
+/** 有効期間の表示（日付形式はユーザーの表示設定。無期限は「無期限」）。 */
 export function formatValidityRange(
+  fmt: Formatters,
   r: Pick<KioskCardRow, "validFrom" | "validUntil">,
 ): string {
   if (!r.validFrom && !r.validUntil) return "無期限";
-  const from = r.validFrom ? formatDate(r.validFrom) : "";
-  const until = r.validUntil ? formatDate(r.validUntil) : "";
+  const from = r.validFrom ? fmt.date(r.validFrom) : "";
+  const until = r.validUntil ? fmt.date(r.validUntil) : "";
   return `${from} 〜 ${until}`;
 }
 
@@ -128,6 +130,7 @@ export function KioskCardsTable({
   rows: KioskCardRow[];
   userOptions: KioskUserOption[];
 }) {
+  const fmt = useFormat();
   const [isPending, startTransition] = useTransition();
   const isMobile = useIsMobile();
   const router = useRouter();
@@ -316,7 +319,7 @@ export function KioskCardsTable({
             c={r.validFrom || r.validUntil ? undefined : "dimmed"}
             size="sm"
           >
-            {formatValidityRange(r)}
+            {formatValidityRange(fmt, r)}
           </Text>
           <ValidityBadge validity={resolveCardValidity(now, r)} />
         </Group>
@@ -330,7 +333,7 @@ export function KioskCardsTable({
       sortable: true,
       render: (r) => (
         <Text c="dimmed" size="sm">
-          {r.lastUsedAt ? formatDateTime(r.lastUsedAt) : "—"}
+          {r.lastUsedAt ? fmt.dateTime(r.lastUsedAt) : "—"}
         </Text>
       ),
       sortValue: (r) => r.lastUsedAt ?? "",
@@ -493,12 +496,12 @@ export function KioskCardsTable({
             </Group>
             {(r.validFrom || r.validUntil) && (
               <Text c="dimmed" size="xs">
-                有効期間 {formatValidityRange(r)}
+                有効期間 {formatValidityRange(fmt, r)}
               </Text>
             )}
             <Group gap="md" mt={2}>
               <Text c="dimmed" size="xs">
-                最終使用 {r.lastUsedAt ? formatDateTime(r.lastUsedAt) : "—"}
+                最終使用 {r.lastUsedAt ? fmt.dateTime(r.lastUsedAt) : "—"}
               </Text>
               <Text c="dimmed" size="xs">
                 {r.useCount} 回

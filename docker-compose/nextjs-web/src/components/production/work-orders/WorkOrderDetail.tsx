@@ -25,6 +25,7 @@ import {
   copyWorkOrder,
 } from "@/app/(dashboard)/production/work-orders/actions";
 import type { ApprovalActionState } from "@/components/approvals/ApprovalActionCard";
+import { useFormat } from "@/components/layout/PreferencesProvider";
 import {
   ApprovalStatusPanel,
   type ApprovalTrailView,
@@ -47,7 +48,6 @@ import {
 import { useTabParam } from "@/hooks/useUrlState";
 import type { MemoView } from "@/lib/document-memos";
 import { WORK_ORDER_TYPE_LABEL } from "@/lib/enum-labels";
-import { formatDateTime, workOrderNumberLabel } from "@/lib/format";
 import type { WorkOrderView } from "./model";
 
 const BASE_PATH = "/production/work-orders";
@@ -74,6 +74,7 @@ export function WorkOrderDetail({
   /** "approval" = 承認管理 (PD03) からの承認画面。 */
   variant?: "default" | "approval";
 }) {
+  const fmt = useFormat();
   const router = useRouter();
   // アクティブタブを ?tab= に保持（URL 共有でタブまで再現）
   const [tab, setTab] = useTabParam("overview");
@@ -85,7 +86,7 @@ export function WorkOrderDetail({
 
   const wo = workOrder;
   // 表示番号 YYYYMMDD-XXXXX（保存側は従来どおり通し連番の int）。
-  const woLabel = workOrderNumberLabel(wo.workOrderNumber, wo.createdAt);
+  const woLabel = fmt.workOrderNumberLabel(wo.workOrderNumber, wo.createdAt);
   const isApproval = variant === "approval";
   const canEdit = wo.status === "DRAFT";
   const canCancel = wo.status === "DRAFT" || wo.status === "PENDING_APPROVAL";
@@ -99,7 +100,7 @@ export function WorkOrderDetail({
       if (result.ok) {
         notifications.show({
           title: "コピーしました",
-          message: `指示書 ${workOrderNumberLabel(
+          message: `指示書 ${fmt.workOrderNumberLabel(
             result.data.workOrderNumber,
             new Date(),
           )} を作成しました`,
@@ -280,7 +281,7 @@ export function WorkOrderDetail({
             ]
           : ["生産", { label: "指示書", href: BASE_PATH }, woLabel]
       }
-      createdAt={formatDateTime(wo.createdAt)}
+      createdAt={fmt.dateTime(wo.createdAt)}
       status={
         <>
           <StatusBadge entity="WorkOrder" status={wo.status} />
@@ -293,7 +294,7 @@ export function WorkOrderDetail({
         </>
       }
       title={isApproval ? `承認 ${woLabel}` : `指示書 ${woLabel}`}
-      updatedAt={formatDateTime(wo.updatedAt)}
+      updatedAt={fmt.dateTime(wo.updatedAt)}
     >
       {/* 「いまやること」カードは常に最上部。承認画面は承認状況もサマリより上 */}
       {approvalCard}
@@ -373,8 +374,11 @@ export function WorkOrderDetail({
                       size="sm"
                     >
                       <DocNumber c="blue">
-                        {workOrderNumberLabel(c.workOrderNumber, c.createdAt)}（
-                        {formatDateTime(c.createdAt)}）
+                        {fmt.workOrderNumberLabel(
+                          c.workOrderNumber,
+                          c.createdAt,
+                        )}
+                        （{fmt.dateTime(c.createdAt)}）
                       </DocNumber>
                     </Anchor>
                   ))}

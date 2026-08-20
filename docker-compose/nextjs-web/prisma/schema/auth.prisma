@@ -142,9 +142,19 @@ model User {
   kioskSessions         KioskSession[] @relation("KioskSessionUser")
   kioskDeviceLogs       KioskDeviceLog[] @relation("KioskDeviceLogUser")
 
+  // 表示設定（本人が /profile/preferences で変更する。AD 由来ではない）。
+  //
   // UI 言語（"ja" | "en" | "zh" — docs の DOCS_LANGS と同じ集合）。
-  // キオスクの QR ログイン後 UI が参照し、ランチャーの切替で本人が更新する。
+  // キオスクの QR ログイン後 UI とアプリ本体が参照し、本人が切り替える。
   locale String @default("ja")
+  // 日付の並び。値は表示パターンそのもの（"YYYY/MM/DD" | "YYYY-MM-DD" |
+  // "DD/MM/YYYY" | "MM/DD/YYYY"）。既定は日本の慣習。
+  dateFormat String @default("YYYY/MM/DD") @map("date_format")
+  // 時刻表記（"24h" | "12h"）。
+  timeFormat String @default("24h") @map("time_format")
+  // 表示タイムゾーン（IANA 名。例 "Asia/Tokyo"）。保存は常に UTC で、
+  // ここは「画面に出すときどこの時刻で読むか」だけを決める。
+  timeZone String @default("Asia/Tokyo") @map("time_zone")
 
   // Employees link to the shared directory by AD objectGUID (stable across
   // username/attribute changes). Null for SYSTEM / GUEST users.

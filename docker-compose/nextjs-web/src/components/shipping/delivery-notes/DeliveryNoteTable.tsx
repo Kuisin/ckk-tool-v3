@@ -10,6 +10,7 @@
 import { Badge, Group, Select, Stack, Text, TextInput } from "@mantine/core";
 import { IconReceipt, IconSearch } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
+import { useFormat } from "@/components/layout/PreferencesProvider";
 import { type Column, DataTable } from "@/components/ui/DataTable";
 import { NewButton } from "@/components/ui/NewButton";
 import { StatusBadge, statusOptions } from "@/components/ui/StatusBadge";
@@ -20,7 +21,6 @@ import {
   DELIVERY_METHOD_LABEL,
   DELIVERY_METHOD_OPTIONS,
 } from "@/lib/enum-labels";
-import { formatDate } from "@/lib/format";
 import type { DeliveryNote } from "./model";
 
 const BASE_PATH = "/shipping/delivery-notes";
@@ -38,6 +38,7 @@ export function DeliveryMethodBadge({ method }: { method: string }) {
 }
 
 export function DeliveryNoteTable({ rows }: { rows: DeliveryNote[] }) {
+  const fmt = useFormat();
   const router = useRouter();
   const isMobile = useIsMobile();
 
@@ -125,7 +126,7 @@ export function DeliveryNoteTable({ rows }: { rows: DeliveryNote[] }) {
       sortValue: (n) => n.deliveredAt ?? "",
       render: (n) => (
         <Text className="tabular-nums" size="sm">
-          {formatDate(n.deliveredAt)}
+          {fmt.date(n.deliveredAt)}
         </Text>
       ),
     },
@@ -197,7 +198,7 @@ export function DeliveryNoteTable({ rows }: { rows: DeliveryNote[] }) {
             <Stack align="flex-end" className="shrink-0" gap={4}>
               <StatusBadge entity="DeliveryNote" status={n.status} />
               <Text c="dimmed" size="xs">
-                {formatDate(n.deliveredAt)}
+                {fmt.date(n.deliveredAt)}
               </Text>
             </Stack>
           </Group>

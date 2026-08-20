@@ -17,7 +17,7 @@
  * everything here is pure and client-safe.
  */
 
-import { formatDate, formatMoney } from "@/lib/format";
+import { type Formatters, formatMoney } from "@/lib/format";
 
 /**
  * One quantity tier: 数量範囲 → 倍率。
@@ -180,9 +180,13 @@ export function priceRangeLabel(min: number, max: number): string {
     : `${formatMoney(min)}〜${formatMoney(max)}`;
 }
 
-/** "2026/01/01 〜 無期限" */
-export function validPeriod(from: string, until: string | null): string {
-  return `${formatDate(from)} 〜 ${until ? formatDate(until) : "無期限"}`;
+/** "2026/01/01 〜 無期限"（日付形式はユーザーの表示設定）。 */
+export function validPeriod(
+  fmt: Formatters,
+  from: string,
+  until: string | null,
+): string {
+  return `${fmt.date(from)} 〜 ${until ? fmt.date(until) : "無期限"}`;
 }
 
 // ── 値引きルール解決 ──────────────────────────────────────────────────────────

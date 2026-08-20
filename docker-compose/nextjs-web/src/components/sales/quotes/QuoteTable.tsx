@@ -11,6 +11,7 @@
 import { Group, Select, Stack, Text, TextInput } from "@mantine/core";
 import { IconFileText, IconSearch } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
+import { useFormat } from "@/components/layout/PreferencesProvider";
 import { type Column, DataTable } from "@/components/ui/DataTable";
 import { MoneyText } from "@/components/ui/MoneyText";
 import { NewButton } from "@/components/ui/NewButton";
@@ -18,7 +19,6 @@ import { StatusBadge, statusOptions } from "@/components/ui/StatusBadge";
 import { ListShell } from "@/components/ui/shells";
 import { useUrlSelectState, useUrlStringState } from "@/hooks/useUrlState";
 import { useIsMobile } from "@/hooks/useViewport";
-import { formatDate, formatDateTime } from "@/lib/format";
 import type { Option } from "@/lib/mock";
 import { type Quote, quoteTotals } from "./model";
 
@@ -31,6 +31,7 @@ export function QuoteTable({
   rows: Quote[];
   customerOptions: Option[];
 }) {
+  const fmt = useFormat();
   const router = useRouter();
   const isMobile = useIsMobile();
 
@@ -79,7 +80,7 @@ export function QuoteTable({
       sortValue: (q) => q.validUntil ?? "",
       render: (q) => (
         <Text className="tabular-nums" size="sm">
-          {formatDate(q.validUntil)}
+          {fmt.date(q.validUntil)}
         </Text>
       ),
     },
@@ -107,7 +108,7 @@ export function QuoteTable({
       sortValue: (q) => q.updatedAt,
       render: (q) => (
         <Text c="dimmed" className="tabular-nums" size="xs">
-          {formatDateTime(q.updatedAt)}
+          {fmt.dateTime(q.updatedAt)}
         </Text>
       ),
     },
@@ -170,7 +171,7 @@ export function QuoteTable({
                 {q.customerName}
               </Text>
               <Text c="dimmed" size="xs">
-                有効期限 {formatDate(q.validUntil)}
+                有効期限 {fmt.date(q.validUntil)}
               </Text>
             </Stack>
             <Stack align="flex-end" className="shrink-0" gap={4}>

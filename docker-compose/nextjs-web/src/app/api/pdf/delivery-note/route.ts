@@ -18,7 +18,7 @@ import { requirePermissionResponse } from "@/lib/authz";
 import { parseDocKey } from "@/lib/doc-number";
 import { isIssued, notIssuedResponse, pdfStorageKey } from "@/lib/document-pdf";
 import { DELIVERY_METHOD_LABEL } from "@/lib/enum-labels";
-import { formatDate } from "@/lib/format";
+import { documentFormatters } from "@/lib/format";
 import { renderPdf } from "@/lib/pdf";
 import { getObject, putObject } from "@/lib/storage";
 
@@ -96,7 +96,7 @@ export async function GET(request: Request): Promise<Response> {
     },
     doc: {
       number: note.deliveryNumber,
-      issued_date: formatDate(note.createdAt),
+      issued_date: documentFormatters.date(note.createdAt),
       shipping_number: note.shippingOrderNumber,
       method: DELIVERY_METHOD_LABEL[note.deliveryMethod] ?? note.deliveryMethod,
     },

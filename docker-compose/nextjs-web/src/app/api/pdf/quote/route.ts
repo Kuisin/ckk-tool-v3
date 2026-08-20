@@ -13,7 +13,7 @@ import { orderTypeLabel, quoteTotals } from "@/components/sales/quotes/model";
 import { requirePermissionResponse } from "@/lib/authz";
 import { parseDocKey } from "@/lib/doc-number";
 import { isIssued, notIssuedResponse, pdfStorageKey } from "@/lib/document-pdf";
-import { formatDate } from "@/lib/format";
+import { documentFormatters } from "@/lib/format";
 import { renderPdf } from "@/lib/pdf";
 import { getObject, putObject } from "@/lib/storage";
 
@@ -84,8 +84,8 @@ export async function GET(request: Request): Promise<Response> {
     },
     doc: {
       number: quote.quoteNumber,
-      issued_date: formatDate(quote.createdAt),
-      valid_until: formatDate(quote.validUntil),
+      issued_date: documentFormatters.date(quote.createdAt),
+      valid_until: documentFormatters.date(quote.validUntil),
       // 営業担当が未設定の見積は作成者を出す（従来の挙動へのフォールバック）。
       sales_rep: quote.salesRepName ?? quote.createdBy,
     },
@@ -96,7 +96,7 @@ export async function GET(request: Request): Promise<Response> {
       quantity: yen(it.quantity),
       unit_price: yen(it.unitPrice),
       amount: yen(it.amount),
-      delivery_date: formatDate(it.deliveryDate),
+      delivery_date: documentFormatters.date(it.deliveryDate),
     })),
     totals: {
       subtotal: yen(totals.subtotal),

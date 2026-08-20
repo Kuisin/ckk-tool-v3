@@ -45,6 +45,7 @@ import {
   saveNotificationSettingAction,
   savePushSubscriptionAction,
 } from "@/components/layout/notification-actions";
+import { useFormat } from "@/components/layout/PreferencesProvider";
 import {
   PrimaryButton,
   SaveButton,
@@ -52,7 +53,6 @@ import {
 } from "@/components/ui/buttons";
 import { openConfirm } from "@/components/ui/modals";
 import { PageHeader } from "@/components/ui/PageHeader";
-import { formatDateTime } from "@/lib/format";
 
 interface ChannelSettings {
   emailEnabled: boolean;
@@ -129,6 +129,7 @@ export function NotificationSettingsForm({
   vapidPublicKey: string | null;
   devices: PushDevice[];
 }) {
+  const fmt = useFormat();
   const router = useRouter();
   const [settings, setSettings] = useState(initial);
   const [isPending, startTransition] = useTransition();
@@ -507,7 +508,7 @@ export function NotificationSettingsForm({
                       </Table.Td>
                       <Table.Td>
                         <Text c="dimmed" className="tabular-nums" size="xs">
-                          {formatDateTime(d.createdAt)}
+                          {fmt.dateTime(d.createdAt)}
                         </Text>
                       </Table.Td>
                       <Table.Td>

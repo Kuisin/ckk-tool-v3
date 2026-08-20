@@ -50,6 +50,7 @@ import {
   ApprovalActionCard,
   type ApprovalActionState,
 } from "@/components/approvals/ApprovalActionCard";
+import { useFormat } from "@/components/layout/PreferencesProvider";
 import {
   ApprovalTrailList,
   type ApprovalTrailView,
@@ -74,7 +75,6 @@ import {
   SummaryGrid,
 } from "@/components/ui/shells";
 import { useTabParam } from "@/hooks/useUrlState";
-import { formatDate, formatDateTime } from "@/lib/format";
 import type { ActionResult } from "@/lib/server-action";
 import {
   canAttachEvidence,
@@ -132,6 +132,7 @@ export function PurchaseOrderDetail({
   /** 正規化された承認記録（approval_records — 代理承認マーカー付き）。 */
   approvalTrail?: ApprovalTrailView[];
 }) {
+  const fmt = useFormat();
   const router = useRouter();
   // アクティブタブを ?tab= に保持（URL 共有でタブまで再現）
   const [tab, setTab] = useTabParam("items");
@@ -250,10 +251,10 @@ export function PurchaseOrderDetail({
         />
       }
       breadcrumbs={["購買", { label: "素材発注書", href: BASE_PATH }, "詳細"]}
-      createdAt={formatDateTime(po.createdAt)}
+      createdAt={fmt.dateTime(po.createdAt)}
       status={<StatusBadge entity="MaterialPurchaseOrder" status={po.status} />}
       title={po.poNumber}
-      updatedAt={formatDateTime(po.updatedAt)}
+      updatedAt={fmt.dateTime(po.updatedAt)}
     >
       {actionCard}
 
@@ -264,7 +265,7 @@ export function PurchaseOrderDetail({
         />
         <FieldValue label="仕入先" value={po.supplierName} />
         <FieldValue label="作成者" value={po.createdByName} />
-        <FieldValue label="発注日" value={formatDate(po.purchaseDate)} />
+        <FieldValue label="発注日" value={fmt.date(po.purchaseDate)} />
         <FieldValue
           label="合計金額"
           value={<MoneyText ta="left" value={po.totalAmount} />}
@@ -279,7 +280,7 @@ export function PurchaseOrderDetail({
         />
         <FieldValue
           label="入荷完了日"
-          value={po.completedAt ? formatDateTime(po.completedAt) : "—"}
+          value={po.completedAt ? fmt.dateTime(po.completedAt) : "—"}
         />
         {po.sourceRequestNumber && (
           <FieldValue
@@ -303,28 +304,26 @@ export function PurchaseOrderDetail({
 
         <Stepper active={stepperActive(po.status)} size="sm">
           <Stepper.Step
-            description={po.requestedAt ? formatDate(po.requestedAt) : "作成中"}
+            description={po.requestedAt ? fmt.date(po.requestedAt) : "作成中"}
             label="依頼"
             loading={po.status === "DRAFT"}
           />
           <Stepper.Step
             description={
               po.approvedAt
-                ? formatDate(po.approvedAt)
+                ? fmt.date(po.approvedAt)
                 : approvalStepDescription(approval)
             }
             label="承認"
             loading={po.status === "REQUESTED"}
           />
           <Stepper.Step
-            description={po.orderedAt ? formatDate(po.orderedAt) : "入荷予定へ"}
+            description={po.orderedAt ? fmt.date(po.orderedAt) : "入荷予定へ"}
             label="発注"
             loading={po.status === "APPROVED"}
           />
           <Stepper.Step
-            description={
-              po.completedAt ? formatDate(po.completedAt) : "在庫入庫"
-            }
+            description={po.completedAt ? fmt.date(po.completedAt) : "在庫入庫"}
             label="入荷完了"
             loading={po.status === "ORDERED"}
           />
@@ -361,7 +360,7 @@ export function PurchaseOrderDetail({
                   </Badge>
                   <Text size="xs">{h.user}</Text>
                   <Text c="dimmed" className="tabular-nums" size="xs">
-                    {formatDateTime(h.at)}
+                    {fmt.dateTime(h.at)}
                   </Text>
                   {h.notes && (
                     <Text c="dimmed" size="xs" truncate>
@@ -431,7 +430,7 @@ export function PurchaseOrderDetail({
                       <MoneyText value={it.amount} />
                     </Table.Td>
                     <Table.Td className="tabular-nums">
-                      {formatDate(it.expectedAt)}
+                      {fmt.date(it.expectedAt)}
                     </Table.Td>
                     <Table.Td>
                       <Text c="dimmed" size="xs">

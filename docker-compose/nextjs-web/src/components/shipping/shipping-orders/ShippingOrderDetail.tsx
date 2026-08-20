@@ -31,6 +31,7 @@ import {
   deleteShippingOrder,
   shipShippingOrder,
 } from "@/app/(dashboard)/shipping/shipping-orders/actions";
+import { useFormat } from "@/components/layout/PreferencesProvider";
 import { SecondaryButton } from "@/components/ui/buttons";
 import { DocNumber } from "@/components/ui/DocNumber";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -48,7 +49,6 @@ import {
 import { useTabParam } from "@/hooks/useUrlState";
 import type { MemoView } from "@/lib/document-memos";
 import { DELIVERY_METHOD_LABEL } from "@/lib/enum-labels";
-import { formatDate, formatDateTime } from "@/lib/format";
 import type { ActionResult } from "@/lib/server-action";
 import { canCreateDeliveryNote, isEditable, type ShippingOrder } from "./model";
 import { ShippingTypeBadge } from "./ShippingOrderTable";
@@ -66,6 +66,7 @@ export function ShippingOrderDetail({
   /** 社内メモ（document_memos 由来、メモタブ）。 */
   memos: MemoView[];
 }) {
+  const fmt = useFormat();
   const router = useRouter();
   // アクティブタブを ?tab= に保持（URL 共有でタブまで再現）
   const [tab, setTab] = useTabParam("overview");
@@ -143,10 +144,10 @@ export function ShippingOrderDetail({
         />
       }
       breadcrumbs={["出荷", { label: "出荷書", href: BASE_PATH }, "詳細"]}
-      createdAt={formatDateTime(order.createdAt)}
+      createdAt={fmt.dateTime(order.createdAt)}
       status={<StatusBadge entity="ShippingOrder" status={order.status} />}
       title={order.shippingNumber}
-      updatedAt={formatDateTime(order.updatedAt)}
+      updatedAt={fmt.dateTime(order.updatedAt)}
     >
       <SummaryGrid>
         <FieldValue
@@ -198,7 +199,7 @@ export function ShippingOrderDetail({
             </Text>
           }
         />
-        <FieldValue label="出荷日" value={formatDate(order.shippedAt)} />
+        <FieldValue label="出荷日" value={fmt.date(order.shippedAt)} />
         <FieldValue
           label="指示書（ヘッダ紐付け）"
           value={
@@ -347,7 +348,7 @@ export function ShippingOrderDetail({
                           />
                         </Table.Td>
                         <Table.Td className="tabular-nums">
-                          {formatDate(dn.deliveredAt)}
+                          {fmt.date(dn.deliveredAt)}
                         </Table.Td>
                       </Table.Tr>
                     ))}

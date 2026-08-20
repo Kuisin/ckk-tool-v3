@@ -9,7 +9,7 @@
 
 import { requirePermissionResponse } from "@/lib/authz";
 import { prisma } from "@/lib/db";
-import { formatDateTime } from "@/lib/format";
+import { documentFormatters } from "@/lib/format";
 import {
   esc,
   filledSheetItems,
@@ -81,12 +81,12 @@ export async function GET(request: Request): Promise<Response> {
       work_order: `#${record.step.workOrder.workOrderNumber}`,
       lot_quantity: `${lotQuantity} 本`,
       inspected_at: record.recordedAt
-        ? esc(formatDateTime(record.recordedAt.toISOString()))
+        ? esc(documentFormatters.dateTime(record.recordedAt.toISOString()))
         : "—",
       recorded_by: esc(nameOf(record.recordedBy)),
       approved: record.approvedAt
         ? esc(
-            `${nameOf(record.approvedBy)}（${formatDateTime(record.approvedAt.toISOString())}）`,
+            `${nameOf(record.approvedBy)}（${documentFormatters.dateTime(record.approvedAt.toISOString())}）`,
           )
         : "—",
     },

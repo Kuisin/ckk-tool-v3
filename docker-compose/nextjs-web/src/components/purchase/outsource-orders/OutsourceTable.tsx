@@ -15,17 +15,18 @@ import { IconSearch, IconTruckDelivery } from "@tabler/icons-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo } from "react";
+import { useFormat } from "@/components/layout/PreferencesProvider";
 import { type Column, DataTable } from "@/components/ui/DataTable";
 import { StatusBadge, statusOptions } from "@/components/ui/StatusBadge";
 import { ListShell } from "@/components/ui/shells";
 import { useUrlSelectState, useUrlStringState } from "@/hooks/useUrlState";
 import { useIsMobile } from "@/hooks/useViewport";
-import { formatDate } from "@/lib/format";
 import type { OutsourceStepRow } from "./model";
 
 const WORK_ORDERS_PATH = "/production/work-orders";
 
 export function OutsourceTable({ rows }: { rows: OutsourceStepRow[] }) {
+  const fmt = useFormat();
   const router = useRouter();
   const isMobile = useIsMobile();
 
@@ -110,7 +111,7 @@ export function OutsourceTable({ rows }: { rows: OutsourceStepRow[] }) {
       sortValue: (r) => r.requestedAt ?? "",
       render: (r) => (
         <Text className="tabular-nums" size="sm">
-          {formatDate(r.requestedAt)}
+          {fmt.date(r.requestedAt)}
         </Text>
       ),
     },
@@ -122,7 +123,7 @@ export function OutsourceTable({ rows }: { rows: OutsourceStepRow[] }) {
       sortValue: (r) => r.expectedAt ?? "",
       render: (r) => (
         <Text className="tabular-nums" size="sm">
-          {formatDate(r.expectedAt)}
+          {fmt.date(r.expectedAt)}
         </Text>
       ),
     },
@@ -134,7 +135,7 @@ export function OutsourceTable({ rows }: { rows: OutsourceStepRow[] }) {
       sortValue: (r) => r.receivedAt ?? "",
       render: (r) => (
         <Text className="tabular-nums" size="sm">
-          {formatDate(r.receivedAt)}
+          {fmt.date(r.receivedAt)}
         </Text>
       ),
     },
@@ -215,7 +216,7 @@ export function OutsourceTable({ rows }: { rows: OutsourceStepRow[] }) {
             <Stack align="flex-end" className="shrink-0" gap={4}>
               <StatusBadge entity="Step" status={r.status} />
               <Text c="dimmed" size="xs">
-                予定 {formatDate(r.expectedAt)}
+                予定 {fmt.date(r.expectedAt)}
               </Text>
             </Stack>
           </Group>

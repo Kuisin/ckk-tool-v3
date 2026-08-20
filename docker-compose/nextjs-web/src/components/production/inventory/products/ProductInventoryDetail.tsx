@@ -10,13 +10,13 @@
 import { Anchor, Badge, Table, Tabs, Text } from "@mantine/core";
 import { IconBookmark } from "@tabler/icons-react";
 import Link from "next/link";
+import { useFormat } from "@/components/layout/PreferencesProvider";
 import { InventoryBadge } from "@/components/production/InventoryBadge";
 import { DocNumber } from "@/components/ui/DocNumber";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { FieldValue } from "@/components/ui/FieldValue";
 import { DetailShell, SummaryGrid } from "@/components/ui/shells";
 import { useTabParam } from "@/hooks/useUrlState";
-import { formatDateTime } from "@/lib/format";
 import { InventoryTransactionsTable } from "../InventoryTransactionsTable";
 import {
   type InventoryReservationRow,
@@ -31,6 +31,7 @@ export function ProductInventoryDetail({
 }: {
   record: ProductInventoryDetailData;
 }) {
+  const fmt = useFormat();
   // アクティブタブを ?tab= に保持（URL 共有でタブまで再現）
   const [tab, setTab] = useTabParam("reservations");
   return (
@@ -48,7 +49,7 @@ export function ProductInventoryDetail({
         )
       }
       title={record.productName}
-      updatedAt={formatDateTime(record.updatedAt)}
+      updatedAt={fmt.dateTime(record.updatedAt)}
     >
       <SummaryGrid>
         <FieldValue
@@ -148,6 +149,7 @@ export function ProductInventoryDetail({
 
 /** 引当予約テーブル — 数量 / 状態 / 関連文書 / 日時。 */
 function ReservationsTable({ rows }: { rows: InventoryReservationRow[] }) {
+  const fmt = useFormat();
   if (rows.length === 0) {
     return (
       <EmptyState
@@ -214,12 +216,12 @@ function ReservationsTable({ rows }: { rows: InventoryReservationRow[] }) {
                 </Table.Td>
                 <Table.Td>
                   <Text className="tabular-nums" size="sm">
-                    {formatDateTime(r.reservedAt)}
+                    {fmt.dateTime(r.reservedAt)}
                   </Text>
                 </Table.Td>
                 <Table.Td>
                   <Text className="tabular-nums" size="sm">
-                    {formatDateTime(r.confirmedAt ?? r.releasedAt)}
+                    {fmt.dateTime(r.confirmedAt ?? r.releasedAt)}
                   </Text>
                 </Table.Td>
               </Table.Tr>

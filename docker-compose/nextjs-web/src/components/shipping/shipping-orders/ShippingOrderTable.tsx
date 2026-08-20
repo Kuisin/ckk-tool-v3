@@ -10,6 +10,7 @@
 import { Badge, Group, Select, Stack, Text, TextInput } from "@mantine/core";
 import { IconSearch, IconTruck } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
+import { useFormat } from "@/components/layout/PreferencesProvider";
 import { type Column, DataTable } from "@/components/ui/DataTable";
 import { NewButton } from "@/components/ui/NewButton";
 import { StatusBadge, statusOptions } from "@/components/ui/StatusBadge";
@@ -17,7 +18,6 @@ import { ListShell } from "@/components/ui/shells";
 import { useUrlSelectState, useUrlStringState } from "@/hooks/useUrlState";
 import { useIsMobile } from "@/hooks/useViewport";
 import { SHIPPING_TYPE_LABEL, SHIPPING_TYPE_OPTIONS } from "@/lib/enum-labels";
-import { formatDate } from "@/lib/format";
 import type { ShippingOrder } from "./model";
 
 const BASE_PATH = "/shipping/shipping-orders";
@@ -32,6 +32,7 @@ export function ShippingTypeBadge({ type }: { type: string }) {
 }
 
 export function ShippingOrderTable({ rows }: { rows: ShippingOrder[] }) {
+  const fmt = useFormat();
   const router = useRouter();
   const isMobile = useIsMobile();
 
@@ -114,7 +115,7 @@ export function ShippingOrderTable({ rows }: { rows: ShippingOrder[] }) {
       sortValue: (o) => o.shippedAt ?? "",
       render: (o) => (
         <Text className="tabular-nums" size="sm">
-          {formatDate(o.shippedAt)}
+          {fmt.date(o.shippedAt)}
         </Text>
       ),
     },
@@ -188,7 +189,7 @@ export function ShippingOrderTable({ rows }: { rows: ShippingOrder[] }) {
             <Stack align="flex-end" className="shrink-0" gap={4}>
               <StatusBadge entity="ShippingOrder" status={o.status} />
               <Text c="dimmed" size="xs">
-                {formatDate(o.shippedAt)}
+                {fmt.date(o.shippedAt)}
               </Text>
             </Stack>
           </Group>

@@ -32,6 +32,7 @@ import {
   IconBell,
   IconBug,
   IconChevronLeft,
+  IconLanguage,
   IconLayoutDashboard,
   IconLogout,
   IconShare2,
@@ -51,6 +52,7 @@ import { BugReportModal } from "./BugReportModal";
 import { useNavigationGuard } from "./NavigationGuard";
 import { markAllReadAction, markReadAction } from "./notification-actions";
 import { OperationCodeJump } from "./OperationCodeJump";
+import { useI18n } from "./PreferencesProvider";
 import { SharePageModal } from "./SharePageModal";
 
 const NOTIFICATION_POPUP_WIDTH = 280;
@@ -114,6 +116,7 @@ export function AppHeader({
         avatarThumbUrl: user.avatarThumbUrl,
       }
     : GUEST_USER;
+  const { m } = useI18n();
   const [launcherOpen, setLauncherOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
@@ -350,7 +353,7 @@ export function AppHeader({
           >
             <Popover.Target>
               <ActionIcon
-                aria-label="通知"
+                aria-label={m.shell.notifications}
                 color="gray"
                 onClick={() => setNotifOpen((o) => !o)}
                 size="lg"
@@ -373,7 +376,7 @@ export function AppHeader({
             </Popover.Target>
             <Popover.Dropdown p={0}>
               <Group justify="space-between" px="xs" py="5px">
-                <Title order={6}>通知</Title>
+                <Title order={6}>{m.shell.notifications}</Title>
                 <Text
                   c="blue"
                   className="cursor-pointer border-0 bg-transparent p-0"
@@ -382,7 +385,7 @@ export function AppHeader({
                   size="xs"
                   type="button"
                 >
-                  すべて既読
+                  {m.shell.markAllRead}
                 </Text>
               </Group>
               <Divider />
@@ -390,7 +393,7 @@ export function AppHeader({
                 <Stack gap={0}>
                   {notifications.length === 0 && (
                     <Text c="dimmed" px="sm" py="md" size="xs" ta="center">
-                      通知はありません
+                      {m.shell.noNotifications}
                     </Text>
                   )}
                   {notifications.map((notif) => (
@@ -485,7 +488,7 @@ export function AppHeader({
                 leftSection={<IconUser size={14} />}
                 py={{ base: "sm", md: "xs" }}
               >
-                プロフィール
+                {m.shell.profile}
               </Menu.Item>
               <Menu.Item
                 component={Link}
@@ -493,7 +496,7 @@ export function AppHeader({
                 leftSection={<IconBell size={14} />}
                 py={{ base: "sm", md: "xs" }}
               >
-                通知設定
+                {m.shell.notificationSettings}
               </Menu.Item>
               <Menu.Item
                 component={Link}
@@ -501,7 +504,15 @@ export function AppHeader({
                 leftSection={<IconLayoutDashboard size={14} />}
                 py={{ base: "sm", md: "xs" }}
               >
-                ホーム画面設定
+                {m.shell.homeSettings}
+              </Menu.Item>
+              <Menu.Item
+                component={Link}
+                href="/profile/preferences"
+                leftSection={<IconLanguage size={14} />}
+                py={{ base: "sm", md: "xs" }}
+              >
+                {m.shell.preferences}
               </Menu.Item>
               <Divider my="5px" />
               <Menu.Item
@@ -510,7 +521,7 @@ export function AppHeader({
                 onClick={() => signOut({ callbackUrl: "/login" })}
                 py={{ base: "sm", md: "xs" }}
               >
-                ログアウト
+                {m.shell.logout}
               </Menu.Item>
             </Menu.Dropdown>
           </Menu>
