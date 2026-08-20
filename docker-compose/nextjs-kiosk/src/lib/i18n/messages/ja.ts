@@ -11,6 +11,7 @@ export const ja = {
   /** ランチャーに並ぶアプリ名（app-list.ts の labelKey と対応）。 */
   apps: {
     stepExecution: "工程実行",
+    woScan: "指示書スキャン",
   },
   launcher: {
     greeting: (name: string) => `${name} さん`,
@@ -22,6 +23,36 @@ export const ja = {
   activity: {
     /** 例: あと 2:30 で自動ログアウト（time = "m:ss"） */
     autoLogout: (time: string) => `あと ${time} で自動ログアウト`,
+  },
+  woScan: {
+    title: "指示書スキャン",
+    back: "アプリ一覧へ",
+    scanHint: "指示書の QR コードをスキャンしてください",
+    invalidQr: "指示書の QR コードではありません",
+    manualTitle: "番号で開く",
+    manualPlaceholder: "指示書番号",
+    open: "開く",
+    invalidNumber: "指示書番号を入力してください",
+    notFound: (n: number) => `指示書 #${n} が見つかりません`,
+    rescan: "もう一度スキャン",
+    workOrder: (n: number) => `指示書 #${n}`,
+    plannedQty: (n: number) => `予定数量 ${n} 本`,
+    stepsTitle: "工程",
+    noSteps: "この指示書に工程はありません",
+    assignees: (names: string) => `担当: ${names}`,
+    unplanned: "担当未設定",
+    plannedForOthers: "他の担当者の工程です",
+    notExecutable:
+      "この指示書は承認済み/進行中ではないため、工程は操作できません",
+    backToWorkOrder: "指示書へ",
+    status: {
+      DRAFT: "下書き",
+      PENDING_APPROVAL: "承認待ち",
+      APPROVED: "承認済",
+      IN_PROGRESS: "進行中",
+      COMPLETED: "完了",
+      CANCELLED: "キャンセル",
+    },
   },
   steps: {
     title: "工程実行",

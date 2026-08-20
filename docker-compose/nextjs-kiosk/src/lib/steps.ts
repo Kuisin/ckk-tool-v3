@@ -449,8 +449,12 @@ export async function listMySteps(
 }
 
 /**
- * 単一工程の詳細。割り当てゲートを兼ねる — 自分の工程でなければ null。
+ * 単一工程の詳細。割り当てゲートを兼ねる — 操作できない工程は null。
  * （URL 直叩きで他人の工程を開けないようにする）
+ *
+ * 開けるのは step-execution.ts `canOperateStep` と同じ 3 条件:
+ * 自分の計画がある / 自分がロック保持 / 計画が 1 行も無い（未計画は
+ * 指示書スキャン /wo-scan の運用対象として開放）。
  */
 export async function getMyStep(
   userId: string,
@@ -476,7 +480,14 @@ export async function getMyStep(
       select: { id: true },
     }),
   ]);
-  if (!plan && !locked) return null;
+  if (!plan && !locked) {
+    // 未計画の工程だけ開放（誰かの計画がある工程は担当者のみ）
+    const anyPlan = await prisma.workOrderStepPlan.findFirst({
+      where: { stepId },
+      select: { id: true },
+    });
+    if (anyPlan) return null;
+  }
 
   const plansByStep = new Map<string, PlanRow>();
   if (plan) plansByStep.set(plan.stepId, plan);
@@ -488,4 +499,111 @@ export async function getMyStep(
     jstDateString(now),
   );
   return views[0] ?? null;
+}
+
+/** 指示書スキャン（/wo-scan）: 指示書ビューの 1 工程。 */
+export interface WorkOrderStepItem {
+  step: MyStepView;
+  /** 計画で割り当てられている担当者名（重複除去・計画順）。空 = 未計画。 */
+  assigneeNames: string[];
+  /**
+   * 行レベルゲート（step-execution.ts canOperateStep）を通るか —
+   * 自分の計画がある / 計画が 1 行も無い（未計画は開放）。
+   */
+  canOperate: boolean;
+}
+
+/** 指示書スキャン（/wo-scan）: 指示書ヘッダ + 全工程。 */
+export interface WorkOrderOverview {
+  workOrderNumber: number;
+  /** WORK_ORDER_STATUS（DRAFT..CANCELLED）。 */
+  status: string;
+  productName: string;
+  plannedQuantity: number;
+  steps: WorkOrderStepItem[];
+}
+
+/**
+ * 指示書番号 → 指示書ビュー（QR スキャン後の画面）。存在しなければ null。
+ *
+ * 一覧（listMySteps）と違い**全工程**を工程順で返す — 紙の指示書と
+ * 突き合わせて全体の進み具合を見る画面のため。操作可否は工程ごとの
+ * canOperate（+ sessionState）が持つ。
+ */
+export async function getWorkOrderOverview(
+  workOrderNumber: number,
+  userId: string,
+  locale: Locale,
+): Promise<WorkOrderOverview | null> {
+  const wo = await prisma.workOrder.findUnique({
+    where: { workOrderNumber },
+    select: {
+      id: true,
+      workOrderNumber: true,
+      status: true,
+      plannedQuantity: true,
+      product: { select: { name: true } },
+      steps: { select: { id: true } },
+    },
+  });
+  if (!wo) return null;
+
+  const stepIds = wo.steps.map((s) => s.id);
+  const plans =
+    stepIds.length > 0
+      ? await prisma.workOrderStepPlan.findMany({
+          where: { stepId: { in: stepIds } },
+          select: {
+            stepId: true,
+            userId: true,
+            plannedDate: true,
+            plannedStartAt: true,
+            plannedEndAt: true,
+            quantity: true,
+            workLocation: { select: { name: true } },
+            user: { select: { displayName: true } },
+          },
+          orderBy: [{ plannedDate: "asc" }, { plannedStartAt: "asc" }],
+        })
+      : [];
+
+  // 自分の計画（最も早い 1 行）だけを hydrate に渡す — 一覧と同じ表示規則
+  const myPlansByStep = new Map<string, PlanRow>();
+  const assigneesByStep = new Map<string, string[]>();
+  const myPlannedSteps = new Set<string>();
+  for (const p of plans) {
+    if (p.userId === userId) {
+      myPlannedSteps.add(p.stepId);
+      if (!myPlansByStep.has(p.stepId)) myPlansByStep.set(p.stepId, p);
+    }
+    const names = assigneesByStep.get(p.stepId) ?? [];
+    if (!names.includes(p.user.displayName)) names.push(p.user.displayName);
+    assigneesByStep.set(p.stepId, names);
+  }
+
+  const views = await hydrateSteps(
+    stepIds,
+    userId,
+    locale,
+    myPlansByStep,
+    jstDateString(new Date()),
+  );
+  // hydrateSteps は担当一覧向けの並び（compareSteps）— 指示書ビューは
+  // 紙と同じ工程順（sortOrder）に直す
+  const items = views
+    .sort((a, b) => a.sortOrder - b.sortOrder)
+    .map((v) => ({
+      step: v,
+      assigneeNames: assigneesByStep.get(v.stepId) ?? [],
+      canOperate:
+        myPlannedSteps.has(v.stepId) || !assigneesByStep.has(v.stepId),
+    }));
+
+  return {
+    workOrderNumber: wo.workOrderNumber,
+    status: wo.status,
+    productName: localized(asText(wo.product.name), locale),
+    plannedQuantity: wo.plannedQuantity,
+    steps: items,
+  };
 }

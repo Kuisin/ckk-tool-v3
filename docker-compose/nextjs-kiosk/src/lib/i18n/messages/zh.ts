@@ -3,6 +3,7 @@ import type { KioskMessages } from "./ja";
 export const zh: KioskMessages = {
   apps: {
     stepExecution: "工序执行",
+    woScan: "工单扫码",
   },
   launcher: {
     greeting: (name: string) => name,
@@ -13,6 +14,35 @@ export const zh: KioskMessages = {
   },
   activity: {
     autoLogout: (time: string) => `${time} 后自动退出`,
+  },
+  woScan: {
+    title: "工单扫码",
+    back: "返回应用",
+    scanHint: "请扫描指示书（工单）上的二维码",
+    invalidQr: "这不是工单二维码",
+    manualTitle: "按编号打开",
+    manualPlaceholder: "工单编号",
+    open: "打开",
+    invalidNumber: "请输入工单编号",
+    notFound: (n: number) => `未找到工单 #${n}`,
+    rescan: "重新扫描",
+    workOrder: (n: number) => `工单 #${n}`,
+    plannedQty: (n: number) => `计划数量 ${n} 支`,
+    stepsTitle: "工序",
+    noSteps: "该工单没有工序",
+    assignees: (names: string) => `负责人: ${names}`,
+    unplanned: "未分配",
+    plannedForOthers: "该工序已分配给其他人",
+    notExecutable: "该工单未处于已批准/进行中状态，无法操作工序",
+    backToWorkOrder: "返回工单",
+    status: {
+      DRAFT: "草稿",
+      PENDING_APPROVAL: "待批准",
+      APPROVED: "已批准",
+      IN_PROGRESS: "进行中",
+      COMPLETED: "已完成",
+      CANCELLED: "已取消",
+    },
   },
   steps: {
     title: "工序执行",

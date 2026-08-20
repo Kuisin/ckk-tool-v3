@@ -6,7 +6,7 @@
  * 門は 4 段で、すべて fail-closed:
  *   1. セッション（proxy は Cookie の有無しか見ないので必ず本検証する）
  *   2. RBAC: work_order:UPDATE（app.user_permissions ビュー）
- *   3. 行レベルの割り当て: 自分の計画がある or 自分がロック保持
+ *   3. 行レベルの割り当て: 自分の計画がある / 自分がロック保持 / 未計画（開放）
  *   4. 業務ルール: step-execution.ts（依存・保存則・原子的クレーム）
  *
  * 業務エラーは HTTP 200 + { ok:false, codes } で返す（通信エラーと区別するため）。
@@ -18,8 +18,8 @@ import { runWithActor } from "@/lib/audit";
 import { hasPermission } from "@/lib/authz";
 import { getSession } from "@/lib/kiosk-auth";
 import {
+  canOperateStep,
   completeStepExecution,
-  isAssignedToUser,
   pauseStepExecution,
   resumeStepExecution,
   type StepActionResult,
@@ -115,8 +115,8 @@ export async function POST(
     );
   }
 
-  // 行レベル: 他人の工程は permission があっても操作させない
-  if (!(await isAssignedToUser(stepId, session.userId))) {
+  // 行レベル: 他人に計画された工程は permission があっても操作させない
+  if (!(await canOperateStep(stepId, session.userId))) {
     return NextResponse.json(
       { ok: false, codes: ["NOT_ASSIGNED"] },
       { status: 403 },
