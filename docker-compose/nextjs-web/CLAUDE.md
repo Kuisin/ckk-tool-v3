@@ -88,6 +88,24 @@ for `{ ja, en }` JSON columns · `recordAudit` before/after · `revalidatePath` 
 map DB errors with `prismaErrorMessage`. The client branches on `result.ok` and
 shows `@mantine/notifications`.
 
+## 印刷する QR（統一フォーマット）
+
+社内で刷る QR は**全て** `CKK:<KIND>:<KEY>` の 1 形式（`lib/qr-payload.ts` —
+kiosk との twin ファイル）。1 つのリーダー（キオスクのスキャナ）が種別を見て
+画面を振り分けられるようにするため。
+
+- **URL は入れない** — 長い URL は QR を細かくして現場の読み取りを落とすし、
+  紙が外に出たときにホスト名を晒す。KEY は書類の**表示番号**だけにする。
+- 種別は `QR_KINDS`（CARD / WO / QOT / ORD / PO / DRN / INV / INSP）。
+  増やすときはキオスク側の振り分けも一緒に見ること。
+- キオスクのログイン読み取りは `extractCardId`（`nextjs-kiosk/src/lib/
+  kiosk-auth-core.ts`）が 3 形式を受ける: 統一形式 / **配布済みの素の 16 桁
+  カード**（後方互換 — 刷り直さない）/ 旧 URL 形式。CARD 以外の統一 QR は
+  空文字を返す = ログインには使えない。
+- 原寸印刷は `@page` を**長さ**で書く（キーワードは縮小されうる）。
+  寸法定義: `lib/kiosk-card-sheet.ts`（QRカード）/ `lib/work-order-strip-sheet.ts`
+  （指示書ストリップ 180×40mm × 6/A4）。
+
 ## RBAC
 
 Server-enforced via `checkPermission(code, action)` (`lib/authz.ts`) — it reads the
