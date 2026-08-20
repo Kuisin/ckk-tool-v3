@@ -28,7 +28,12 @@ import {
   Title,
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
-import { IconArrowsSplit, IconSitemap, IconTrash } from "@tabler/icons-react";
+import {
+  IconArrowsSplit,
+  IconPencil,
+  IconSitemap,
+  IconTrash,
+} from "@tabler/icons-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -48,7 +53,7 @@ import {
   type StepState,
   type WorkflowCtx,
 } from "@/lib/workflow-core";
-import { AddBranchModal } from "./AddBranchModal";
+import { AddBranchModal, type BranchEditTarget } from "./AddBranchModal";
 import { StepCard } from "./StepCard";
 import { WorkflowGraph } from "./WorkflowGraph";
 import type { StepLinkView, WorkOrderStepView } from "./work-orders/model";
@@ -62,8 +67,12 @@ interface BranchGroup {
   routedQuantity: number;
   mergeTargetId: string | null;
   steps: WorkOrderStepView[];
-  /** 全工程が PENDING（= 削除可能）。 */
+  /** 全工程が PENDING（= 削除可能・数量変更可能）。 */
   deletable: boolean;
+  /** 終端が在庫のときの行き先（合流する系列は null）。 */
+  stockDisposition: "SEMI_FINISHED" | "PRODUCT" | null;
+  /** 終端工程が PENDING（= 行き先を変更できる）。 */
+  terminationEditable: boolean;
 }
 
 export function WorkOrderStepsPanel({
@@ -85,6 +94,7 @@ export function WorkOrderStepsPanel({
   const [branchSource, setBranchSource] = useState<WorkOrderStepView | null>(
     null,
   );
+  const [branchEdit, setBranchEdit] = useState<BranchEditTarget | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [graphOpen, setGraphOpen] = useState(false);
   const cardRefs = useRef(new Map<string, HTMLDivElement>());
@@ -175,6 +185,7 @@ export function WorkOrderStepsPanel({
           }
         }
       }
+      const terminal = series[series.length - 1];
       groups.push({
         sourceId: headLink?.sourceStepId ?? "",
         headId: s.id,
@@ -182,6 +193,8 @@ export function WorkOrderStepsPanel({
         mergeTargetId,
         steps: series,
         deletable: series.every((x) => x.status === "PENDING"),
+        stockDisposition: terminal?.branchStockDisposition ?? null,
+        terminationEditable: terminal?.status === "PENDING",
       });
     }
     const bySource = new Map<string, BranchGroup[]>();
@@ -204,6 +217,18 @@ export function WorkOrderStepsPanel({
     cardRefs.current
       .get(id)
       ?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  };
+
+  const openBranchEdit = (group: BranchGroup) => {
+    setBranchEdit({
+      headId: group.headId,
+      routedQuantity: group.routedQuantity,
+      mergeTargetId: group.mergeTargetId,
+      stockDisposition: group.stockDisposition,
+      stepNames: group.steps.map((s) => s.name),
+      canEditQuantity: group.deletable,
+      canEditTermination: group.terminationEditable,
+    });
   };
 
   const handleDeleteBranch = (group: BranchGroup) => {
@@ -281,23 +306,47 @@ export function WorkOrderStepsPanel({
             <Badge color="orange" size="xs" variant="light">
               数量 {group.routedQuantity}
             </Badge>
-            {mergeName && (
+            {mergeName ? (
               <Badge color="gray" size="xs" variant="light">
                 合流 → {mergeName}
               </Badge>
+            ) : group.stockDisposition ? (
+              <Badge color="teal" size="xs" variant="light">
+                {group.stockDisposition === "SEMI_FINISHED"
+                  ? "半製品在庫へ"
+                  : "製品在庫へ"}
+              </Badge>
+            ) : (
+              // 合流も在庫も無い = 良品の行き先が決まっていない（旧データ）。
+              <Badge color="orange" size="xs" variant="light">
+                行き先未設定
+              </Badge>
             )}
           </Group>
-          {group.deletable && isExecutable && (
-            <ActionIcon
-              aria-label="分岐を削除"
-              color="red"
-              onClick={() => handleDeleteBranch(group)}
-              size="sm"
-              variant="subtle"
-            >
-              <IconTrash size={14} />
-            </ActionIcon>
-          )}
+          <Group gap={4} wrap="nowrap">
+            {isExecutable && (group.deletable || group.terminationEditable) && (
+              <ActionIcon
+                aria-label="分岐を編集"
+                color="gray"
+                onClick={() => openBranchEdit(group)}
+                size="sm"
+                variant="subtle"
+              >
+                <IconPencil size={14} />
+              </ActionIcon>
+            )}
+            {group.deletable && isExecutable && (
+              <ActionIcon
+                aria-label="分岐を削除"
+                color="red"
+                onClick={() => handleDeleteBranch(group)}
+                size="sm"
+                variant="subtle"
+              >
+                <IconTrash size={14} />
+              </ActionIcon>
+            )}
+          </Group>
         </Group>
         <Stack gap="xs" mt="xs">
           {group.steps.map((s) => renderStep(s))}
@@ -396,14 +445,18 @@ export function WorkOrderStepsPanel({
       {workOrderNumber != null && (
         <AddBranchModal
           catalogOptions={catalogOptions}
+          editTarget={branchEdit}
           maxQuantity={
             branchSource ? branchableQuantity(branchSource.id, ctx) : null
           }
           mergeTargets={steps.filter(
             (s) => s.status === "PENDING" && !isOffMainline(s.id, ctx),
           )}
-          onClose={() => setBranchSource(null)}
-          opened={branchSource != null}
+          onClose={() => {
+            setBranchSource(null);
+            setBranchEdit(null);
+          }}
+          opened={branchSource != null || branchEdit != null}
           sourceStep={branchSource}
           workOrderNumber={workOrderNumber}
         />

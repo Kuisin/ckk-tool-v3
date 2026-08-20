@@ -128,9 +128,12 @@ describe("defaultOrder", () => {
 
 import {
   branchableQuantity,
+  branchSeriesList,
   canStartStep,
+  computeBranchSemiFinishedQuantity,
   computeFinishedQuantity,
   computeWipByStep,
+  danglingBranches,
   downstreamStepIds,
   type ExecDep,
   expectedInput,
@@ -734,5 +737,78 @@ describe("layoutWorkflowGraph — レーンと暗黙フロー", () => {
     ).toBe(true);
     expect(byId.get("r")?.layer).toBeGreaterThan(byId.get("a")?.layer ?? 99);
     expect(byId.get("b")?.layer).toBeGreaterThan(byId.get("r")?.layer ?? 99);
+  });
+});
+
+describe("分岐の終端（合流 or 在庫）", () => {
+  // a（本流・完了 10 → 良品 8 / 工程分岐 2）→ 分岐 r → 合流 or 在庫
+  const mainA = step("a", 100, 10, "COMPLETED", {
+    inputQuantity: 10,
+    outputSuccess: 8,
+    defectRework: 2,
+  });
+  const mainB = step("b", 200, 20);
+  const branchR = (q: Partial<StepState> = {}) =>
+    step("r", 300, 30, "COMPLETED", {
+      inputQuantity: 2,
+      outputSuccess: 2,
+      ...q,
+    });
+  const branchIn: StepLinkState = {
+    sourceStepId: "a",
+    targetStepId: "r",
+    routedQuantity: 2,
+  };
+  const mergeOut: StepLinkState = {
+    sourceStepId: "r",
+    targetStepId: "b",
+    routedQuantity: 0,
+  };
+  const ctxOf = (steps: StepState[], links: StepLinkState[]): WorkflowCtx => ({
+    plannedQuantity: 10,
+    steps,
+    links,
+    execDeps: [],
+  });
+
+  it("合流する分岐は dangling ではない", () => {
+    const ctx = ctxOf([mainA, mainB, branchR()], [branchIn, mergeOut]);
+    expect(danglingBranches(ctx)).toHaveLength(0);
+    const series = branchSeriesList(ctx);
+    expect(series).toHaveLength(1);
+    expect(series[0].sourceId).toBe("a");
+    expect(series[0].terminalId).toBe("r");
+    expect(series[0].mergeTargetId).toBe("b");
+  });
+
+  it("在庫で終わる分岐は dangling ではない", () => {
+    const ctx = ctxOf(
+      [mainA, mainB, branchR({ branchStock: "SEMI_FINISHED" })],
+      [branchIn],
+    );
+    expect(danglingBranches(ctx)).toHaveLength(0);
+    expect(branchSeriesList(ctx)[0].stockDisposition).toBe("SEMI_FINISHED");
+  });
+
+  it("合流も在庫も無い分岐は dangling として拾う", () => {
+    const ctx = ctxOf([mainA, mainB, branchR()], [branchIn]);
+    const dangling = danglingBranches(ctx);
+    expect(dangling).toHaveLength(1);
+    expect(dangling[0].headId).toBe("r");
+  });
+
+  it("半製品で終わる分岐の良品は完成数に入らず、半製品数に入る", () => {
+    const steps = [mainA, branchR({ branchStock: "SEMI_FINISHED" })];
+    const links = [branchIn];
+    // a は工程分岐 2 を r へ静的に流したので残良品 8、r の 2 は半製品へ。
+    expect(computeFinishedQuantity(steps, links)).toBe(8);
+    expect(computeBranchSemiFinishedQuantity(steps, links)).toBe(2);
+  });
+
+  it("製品で終わる分岐の良品は完成数に入る（従来どおり）", () => {
+    const steps = [mainA, branchR({ branchStock: "PRODUCT" })];
+    const links = [branchIn];
+    expect(computeFinishedQuantity(steps, links)).toBe(10);
+    expect(computeBranchSemiFinishedQuantity(steps, links)).toBe(0);
   });
 });

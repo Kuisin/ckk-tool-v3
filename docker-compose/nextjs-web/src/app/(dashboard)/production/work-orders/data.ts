@@ -351,6 +351,7 @@ export async function fetchWorkOrder(
       completedByName: s.completedBy ? nameOf(s.completedBy) : null,
       planCount: s._count.plans,
       actualCount: s._count.actuals,
+      branchStockDisposition: s.branchStockDisposition,
       assignees: stepAssignees(s.plans),
       actualWorkHours: sumActualWorkHours(s.actuals),
       canStart: canStartStep(s.id, ctx, actorId).ok,

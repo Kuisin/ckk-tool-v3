@@ -57,6 +57,17 @@ enum StepStatus {
   @@schema("app")
 }
 
+/// 分岐系列の終端で良品を入れる在庫（§7）。合流する分岐では使わない。
+enum BranchStockDisposition {
+  /// 半製品在庫へ（再投入待ちの中間品）
+  SEMI_FINISHED
+  /// 製品在庫へ（ロット付きの完成品として）
+  PRODUCT
+
+  @@map("BRANCH_STOCK_DISPOSITION")
+  @@schema("app")
+}
+
 // 指示書（§3〜§7）— 通し連番。ロット番号と共用。
 // order_line_id は nullable — null = 在庫向けの独立指示書（type は
 // MANUFACTURE のみ。顧客注文分は常に注文明細配下）。product_id は常に保持
@@ -163,6 +174,12 @@ model WorkOrderStep {
   // 形: [{ reason: string, count: int }]（理由=不良種類名など・count=本数）。
   // 在庫連携には使わない（区分 semi/scrap/rework が数量の権威）。
   defectReasons Json? @map("defect_reasons")
+
+  // 分岐系列の終端処理（§7 分岐は必ず「合流」か「在庫」で終わる）。
+  // null = 合流する（終端から本流へのリンクが張られている）か、そもそも
+  // 分岐系列の工程ではない。値が入っていればここで系列が終わり、この工程の
+  // 良品数が指定の在庫へ入る（onWorkOrderCompleted が入庫する）。
+  branchStockDisposition BranchStockDisposition? @map("branch_stock_disposition")
 
   sessionLockedBy String?   @map("session_locked_by") @db.Uuid
   sessionLockedAt DateTime? @map("session_locked_at") @db.Timestamptz(6)

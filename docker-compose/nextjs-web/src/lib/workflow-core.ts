@@ -197,6 +197,12 @@ export type StepRunStatus =
   | "COMPLETED"
   | "CANCELLED";
 
+/**
+ * 分岐系列の終端で良品を入れる在庫（work_order_steps.branch_stock_disposition）。
+ * 合流する分岐では null。
+ */
+export type BranchStockDisposition = "SEMI_FINISHED" | "PRODUCT";
+
 export interface StepState {
   id: string; // work_order_steps.id (uuid)
   processStepId: number; // カタログ id（実行依存の解決キー）
@@ -208,6 +214,11 @@ export interface StepState {
   defectScrap: number | null;
   defectRework: number | null;
   sessionLockedBy: string | null;
+  /**
+   * 分岐系列の終端処理。値があれば「ここで系列が終わり、良品はこの在庫へ入る」。
+   * null = 合流する（終端から本流へリンクがある）か、分岐系列ではない工程。
+   */
+  branchStock?: BranchStockDisposition | null;
 }
 
 export interface StepLinkState {
@@ -412,6 +423,40 @@ export function computeFinishedQuantity(
   steps: readonly StepState[],
   links: readonly StepLinkState[],
 ): number {
+  // 半製品在庫で終わる分岐の終端は完成数に数えない（半製品として入庫する）。
+  return sumUnroutedGood(
+    steps,
+    links,
+    (s) => s.branchStock !== "SEMI_FINISHED",
+  );
+}
+
+/**
+ * 半製品在庫へ入る分岐終端の良品合計（指示書完了時の半製品入庫に足す分）。
+ * 工程ごとの半製品バケット（defectSemiFinished）とは別の経路で、
+ * 「分岐系列を最後まで流して半製品として置いておく」分がこれにあたる。
+ */
+export function computeBranchSemiFinishedQuantity(
+  steps: readonly StepState[],
+  links: readonly StepLinkState[],
+): number {
+  return sumUnroutedGood(
+    steps,
+    links,
+    (s) => s.branchStock === "SEMI_FINISHED",
+  );
+}
+
+/**
+ * 「良品がどこにも流れない COMPLETED 工程の残良品」を、条件に合う工程だけ
+ * 合計する。動的流出エッジ or メインライン後続を持つ工程は 0（次工程へ流れる）。
+ * 静的流出は工程分岐から優先して引き当て、良品から流出した分だけ差し引く。
+ */
+function sumUnroutedGood(
+  steps: readonly StepState[],
+  links: readonly StepLinkState[],
+  include: (s: StepState) => boolean,
+): number {
   const ctx: WorkflowCtx = {
     plannedQuantity: 0,
     steps: [...steps],
@@ -421,6 +466,7 @@ export function computeFinishedQuantity(
   let total = 0;
   for (const s of steps) {
     if (s.status !== "COMPLETED") continue;
+    if (!include(s)) continue;
     const outgoing = links.filter((l) => l.sourceStepId === s.id);
     if (outgoing.some((l) => l.routedQuantity <= 0)) continue; // 動的流出あり
     if (hasMainlineSuccessor(s, ctx)) continue; // 良品は次工程へ
@@ -430,6 +476,103 @@ export function computeFinishedQuantity(
     total += Math.max(0, success - Math.max(0, staticOut - rework));
   }
   return total;
+}
+
+/** 分岐系列 1 本（分岐元 → 系列の工程列 → 終端の行き先）。 */
+export interface BranchSeries {
+  /** 分岐元（本流側の工程）。見つからなければ null。 */
+  sourceId: string | null;
+  /** 系列の先頭工程。 */
+  headId: string;
+  /** 系列の工程（先頭から終端まで、たどった順）。 */
+  stepIds: string[];
+  /** 系列の終端工程。 */
+  terminalId: string;
+  /** 合流先（本流の工程）。在庫で終わる系列では null。 */
+  mergeTargetId: string | null;
+  /** 在庫で終わる場合の行き先。合流する系列では null。 */
+  stockDisposition: BranchStockDisposition | null;
+}
+
+/**
+ * 分岐系列の一覧。オフメインライン工程を、動的エッジ優先で辿って 1 本にまとめる
+ * （WorkOrderStepsPanel のネスト表示と同じ辿り方）。
+ */
+export function branchSeriesList(ctx: WorkflowCtx): BranchSeries[] {
+  const ordered = [...ctx.steps].sort(
+    (a, b) => a.sortOrder - b.sortOrder || a.id.localeCompare(b.id),
+  );
+  const offIds = new Set(
+    ordered.filter((s) => isOffMainline(s.id, ctx)).map((s) => s.id),
+  );
+  const assigned = new Set<string>();
+  const out: BranchSeries[] = [];
+  for (const s of ordered) {
+    if (!offIds.has(s.id) || assigned.has(s.id)) continue;
+    const headLink = ctx.links.find((l) => {
+      if (l.targetStepId !== s.id) return false;
+      const src = ordered.find((t) => t.id === l.sourceStepId);
+      return (
+        !!src &&
+        (src.sortOrder < s.sortOrder ||
+          (src.sortOrder === s.sortOrder && src.id.localeCompare(s.id) < 0))
+      );
+    });
+    const stepIds: string[] = [];
+    let mergeTargetId: string | null = null;
+    let cur: StepState | undefined = s;
+    let terminalId = s.id;
+    while (cur && !assigned.has(cur.id)) {
+      assigned.add(cur.id);
+      stepIds.push(cur.id);
+      terminalId = cur.id;
+      const currentId: string = cur.id;
+      const outs: StepLinkState[] = ctx.links.filter(
+        (l) => l.sourceStepId === currentId,
+      );
+      // チェーン継続は動的エッジ（0）優先。本流に着いたらそれが合流先。
+      const orderedOuts: StepLinkState[] = [
+        ...outs.filter((l) => l.routedQuantity <= 0),
+        ...outs.filter((l) => l.routedQuantity > 0),
+      ];
+      cur = undefined;
+      for (const l of orderedOuts) {
+        if (!offIds.has(l.targetStepId)) {
+          mergeTargetId = l.targetStepId;
+          continue;
+        }
+        if (!assigned.has(l.targetStepId)) {
+          cur = ordered.find((t) => t.id === l.targetStepId);
+          break;
+        }
+      }
+    }
+    const terminal = ordered.find((t) => t.id === terminalId);
+    out.push({
+      sourceId: headLink?.sourceStepId ?? null,
+      headId: s.id,
+      stepIds,
+      terminalId,
+      mergeTargetId,
+      stockDisposition: terminal?.branchStock ?? null,
+    });
+  }
+  return out;
+}
+
+/**
+ * 分岐は必ず「本流へ合流」か「在庫へ」で終わる（§7）。どちらでもない系列を
+ * 返す — 空配列なら OK。画面はボタンを止めるために、サーバーは保存を弾く
+ * ために同じものを使う。
+ *
+ * 既存データには終端未設定の系列が残りうるので、**保存時の入力検証**として
+ * 使い、既存行を読むだけの画面では警告表示に留める（勝手に直さない —
+ * 半製品か製品か、合流かは業務判断のため）。
+ */
+export function danglingBranches(ctx: WorkflowCtx): BranchSeries[] {
+  return branchSeriesList(ctx).filter(
+    (b) => b.mergeTargetId == null && b.stockDisposition == null,
+  );
 }
 
 /**
