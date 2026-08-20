@@ -39,7 +39,18 @@ Sanctioned exception (explicit sign-off): the docs stack — `fumadocs-ui` /
 / `@tiptap/pm` / `@tiptap/starter-kit` / `@tiptap/extension-link` for the 文書メモ
 / コメント (`ui/MemoPanel.tsx`). Third sanctioned exception: **`next-intl`** for UI
 translations — the stack `_specs/techstack.md` always named, adopted on explicit
-sign-off (see §i18n below).
+sign-off (see §i18n below). Fourth sanctioned exception: **`@xyflow/react`**
+(React Flow, MIT, pinned exactly) for the 工程ワークフロー flow graph
+(`components/production/WorkflowGraphCanvas.tsx`) — chosen over X6 / JointJS /
+rete on explicit sign-off because it is React-native, renders HTML (Mantine)
+nodes so Japanese step names need no truncation, and accepts our own layout.
+**It is a rendering layer only**: `lib/workflow-core.ts` `layoutWorkflowGraph`
+keeps owning layer/lane, and `branchableQuantity` / `canStartStep` /
+`validateComposition` keep owning validity — never move that logic into the
+library, or the kiosk twin file (`workflow-core.ts`) silently diverges. Loaded
+through `next/dynamic` + `ssr:false`; the React Flow attribution mark is left in
+place (removing it is legal under MIT but the maintainers ask for a paid Pro
+plan). Not added to the kiosk — it has no flow graph.
 
 ## Layout
 
