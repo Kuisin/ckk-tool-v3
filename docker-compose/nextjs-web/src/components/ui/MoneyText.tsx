@@ -9,13 +9,16 @@ export function MoneyText({
   value,
   currency,
   ta = "right",
+  fw,
 }: {
   value: number | null | undefined;
   currency?: string;
   ta?: "left" | "right";
+  /** 合計行など、金額そのものを強調したいときだけ（既定は本文と同じ太さ）。 */
+  fw?: number;
 }) {
   return (
-    <Text className="tabular-nums" ff="mono" size="sm" span ta={ta}>
+    <Text className="tabular-nums" ff="mono" fw={fw} size="sm" span ta={ta}>
       {formatMoney(value, currency)}
     </Text>
   );

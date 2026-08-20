@@ -47,7 +47,13 @@ export interface OrderAcceptanceItemView {
   id: string;
   /** 製品マスタ突合済みの内部 id（文字列化）。null = 製品未特定。 */
   productId: string | null;
+  /** 名称 + 製品コード（表・ピッカーの表示用）。 */
   productLabel: string | null;
+  /**
+   * 製品名だけ（コードなし）。ヘッダの要約のように**並べて読む**場所で使う
+   * — コードまで付くと 1 行に収まらない。
+   */
+  productName: string | null;
   /** 抽出された品名（生テキスト）。 */
   productText: string | null;
   /**

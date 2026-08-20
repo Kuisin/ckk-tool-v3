@@ -128,6 +128,9 @@ export async function fetchOrderAcceptance(
     id: it.id,
     productId: it.productId != null ? String(it.productId) : null,
     productLabel: it.product ? productLabel(it.product) : null,
+    productName: it.product
+      ? localized(it.product.name as LocalizedText | null)
+      : null,
     productText: it.productText,
     productSuggestions:
       (it.productId == null && it.productText
