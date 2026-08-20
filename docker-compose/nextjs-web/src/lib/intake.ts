@@ -25,6 +25,11 @@
  * → DRAFT + 明細。どちらも 1 件に絞れたときだけ入れ、絞れなければ候補を
  * 画面に出して人に選ばせる。
  *
+ * 突合は**学習済みの表記が最優先**（app.match_aliases / lib/match-aliases）。
+ * 人が画面で結び付けた「この表記はこのマスタ」は 1 表記 = 1 マスタで貯まって
+ * いるので、推測（表記ゆれの段階的突合）より先に見る。人が一度決めたものを
+ * 機械が上書きしない、という順序。
+ *
  * 失敗時は IMPORT のまま extract_error を記録する。メッセージは
  * lib/intake-extract-error で**分類**して「何が起きたか / 原因 / 対処 / 詳細」
  * の形にする（以前は「po-extract HTTP 502」だけで、原因も対処も分からなかった）。
@@ -63,6 +68,8 @@ import {
   RETRY_PENDING_MARKER,
   retryPlan,
 } from "./intake-extract-error";
+import { aliasKeyFor } from "./match-alias-core";
+import { aliasesByTarget, findAlias, noteAliasHit } from "./match-aliases";
 import { notifyApprovalGroup } from "./notifications";
 import { allocateDocumentKey } from "./numbering";
 import { linesReplaceBlockReason } from "./order-line-core";
@@ -285,6 +292,9 @@ async function ingestFile(input: {
  * 1 通の取込につき 1 回この全件読みで十分（顧客ピッカーも同じやり方）。
  */
 export async function loadBpMatchPool(): Promise<BpMatchable[]> {
+  // 学習した表記（人が結び付けた実績）も照合キーに混ぜる。取引先は数百件
+  // なので、まとめて 1 回引いて突き合わせる。
+  const learned = await aliasesByTarget("business_partners");
   const rows = await prisma.businessPartner.findMany({
     where: { isActive: true, parentId: null },
     select: {
@@ -308,7 +318,8 @@ export async function loadBpMatchPool(): Promise<BpMatchable[]> {
     nameJa: localized(r.name as LocalizedText | null),
     nameKana: r.nameKana,
     shortName: r.shortName,
-    matchNames: r.matchNames,
+    // 人が登録した別名 + 学習した表記。どちらも「この会社の書かれ方」。
+    matchNames: [...r.matchNames, ...(learned.get(r.id) ?? [])],
     matchNamesAuto: r.matchNamesAuto,
     isCustomer: r.roleAssignments.length > 0,
   }));
@@ -326,6 +337,34 @@ export async function matchCustomer(
 ): Promise<BpMatchResult> {
   const empty: BpMatchResult = { matched: null, candidates: [] };
   if (!name || isOwnCompany(name)) return empty;
+
+  // 1. 学習済み（人がこの表記をこの取引先へ結び付けた実績）— 1 表記 = 1 社
+  //    なので迷う余地が無い。推測より人の判断を優先する。
+  const learned = await findAlias("business_partners", name);
+  if (learned) {
+    const bp = await prisma.businessPartner.findFirst({
+      where: { id: learned.targetId, isActive: true },
+      select: { id: true, name: true },
+    });
+    if (bp) {
+      void noteAliasHit(
+        "business_partners",
+        aliasKeyFor("business_partners", name),
+      );
+      return {
+        matched: {
+          id: bp.id,
+          label: localized(bp.name as LocalizedText | null),
+          matchedKey: learned.alias,
+          confidence: "exact",
+        },
+        candidates: [],
+      };
+    }
+    // マスタが消えている / 無効になった学習は無視して推測へ落とす。
+  }
+
+  // 2. 表記ゆれを吸収した段階的突合（lib/bp-match）。
   return matchBusinessPartnerName(name, await loadBpMatchPool());
 }
 
@@ -391,7 +430,8 @@ async function productIdsByKeyword(
  * 1 つずつ**引き、決まった時点で止める（＝広い probe は必要になるまで投げない）。
  *
  *   1. PRD コード / 旧品番 の直接照合（あれば 1 発で決まる）
- *   2. probe で候補を取り、段階的突合（lib/text-match）にかける
+ *   2. 学習済みの表記（app.match_aliases — 人が結び付けた実績）
+ *   3. probe で候補を取り、段階的突合（lib/text-match）にかける
  *
  * probe は名称（name.ja）とキーワード（match_names）の両方に当てる。相手の
  * 呼び方は名称と違うのが普通で、そのためにキーワード欄がある。
@@ -443,7 +483,31 @@ export async function matchProduct(
 
   if (!text?.trim()) return empty;
 
-  // 2. probe を具体的な順に投げ、決まったら止める。
+  // 2. 学習済み（人がこの品名をこの製品へ結び付けた実績）を先に見る。
+  //    製品マスタは大きく、推測は同族に弱い — 人が一度決めたものが最も確か。
+  const learned = await findAlias("products", text);
+  if (learned) {
+    const row = await prisma.product.findFirst({
+      where: { id: Number(learned.targetId), isActive: true },
+      select,
+    });
+    if (row) {
+      void noteAliasHit("products", aliasKeyFor("products", text));
+      const hit = toMatchable(row);
+      return {
+        matched: {
+          id: hit.id,
+          label: hit.label,
+          matchedKey: learned.alias,
+          confidence: "exact",
+        },
+        candidates: [],
+      };
+    }
+    // マスタが消えている / 無効になった学習は無視して推測へ落とす。
+  }
+
+  // 3. probe を具体的な順に投げ、決まったら止める。
   const pool = new Map<string, ProductMatchable>();
   let last: ProductMatchResult = empty;
   for (const probe of searchProbes(text)) {
