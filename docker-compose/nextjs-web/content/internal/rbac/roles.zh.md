@@ -16,8 +16,8 @@ description: "系统中所有角色与权限代码的一览：谁能做什么，
 
 - **权限代码** … 一个业务领域，未必等于一个应用（`master` 覆盖 12 个主数据应用，
   `order_acceptance` 同时覆盖 SA04 与 SA05）。
-- **动作** … R=查看 / C=新建 / U=修改 / D=删除 / E=导出 / A=审批 /
-  ◎=ADMIN（该代码的全部动作）。
+- **动作** … R=查看 / C=新建 / U=修改 / D=删除 / E=导出 /
+  ◎=ADMIN（该代码的全部动作）。审批不属于权限（详见下文）。
 - **作用域** … 操作可及的范围。留空表示 **ALL（全部数据）**。
   - **OWN** … 仅本人创建的数据
   - **PLANT** … 仅本人所属基地的数据（在 SY01 中设置所属基地）
@@ -30,10 +30,10 @@ description: "系统中所有角色与权限代码的一览：谁能做什么，
 | 角色 | rolename | 用途 |
 |---|---|---|
 | 管理员 | `admin` | 全部权限。唯一可以使用系统管理（SY01～）与终端管理（SY08～）的角色 |
-| 管理层（审批人） | `manager` | 全业务的查看・导出・审批，面向跨部门审批者 |
+| 管理层（审批人） | `manager` | 全业务的查看・导出，面向跨部门审批者（能否审批由审批组决定） |
 | 销售部长 | `sales_manager` | 销售数据全量完整操作 + 全业务查看 |
 | 销售 | `sales` | 销售数据 **仅限本人创建的部分** 新建・修改（OWN） |
-| 销售助理 | `sales_assistant` | 销售数据仅查看，不可新建・修改・审批 |
+| 销售助理 | `sales_assistant` | 销售数据仅查看，不可新建・修改 |
 | 采购部长 | `purchasing_manager` | 采购数据全量完整操作 + 全业务查看 |
 | 采购 | `purchasing` | 采购申请・材料订购・入库・外协的日常操作 |
 | 制造部长 | `production_manager` | 制造数据全量完整操作 + 全业务查看 |
@@ -75,13 +75,13 @@ description: "系统中所有角色与权限代码的一览：谁能做什么，
 | 角色 | 价格表 | 报价单 | 订单受理 | 设计委托 | 采购 | 入库 | 外协 |
 |---|---|---|---|---|---|---|---|
 | **管理员**<br/>`admin` | ◎ | ◎ | ◎ | ◎ | ◎ | ◎ | ◎ |
-| **管理层（审批人）**<br/>`manager` | REA | REA | REA | REA | REA | REA | REA |
-| **销售部长**<br/>`sales_manager` | RCUDEA | RCUDEA | RCUDEA | RCUDEA | — | — | — |
+| **管理层（审批人）**<br/>`manager` | RE | RE | RE | RE | RE | RE | RE |
+| **销售部长**<br/>`sales_manager` | RCUDE | RCUDE | RCUDE | RCUDE | — | — | — |
 | **销售**<br/>`sales` | RCU<br/>OWN | RCU<br/>OWN | RCU<br/>OWN | RCU<br/>OWN | — | — | — |
 | **销售助理**<br/>`sales_assistant` | R | R | R | R | — | — | — |
-| **采购部长**<br/>`purchasing_manager` | R | R | R | R | RCUDEA | RCUDEA | RCUDEA |
-| **采购**<br/>`purchasing` | — | — | — | — | RCUDEA | RCUDE | RCUD |
-| **制造部长**<br/>`production_manager` | R | R | R | R | R | R | RCUDEA |
+| **采购部长**<br/>`purchasing_manager` | R | R | R | R | RCUDE | RCUDE | RCUDE |
+| **采购**<br/>`purchasing` | — | — | — | — | RCUDE | RCUDE | RCUD |
+| **制造部长**<br/>`production_manager` | R | R | R | R | R | R | RCUDE |
 | **制造・生产管理**<br/>`production` | — | — | RU | — | R | R | RU |
 | **品质部长**<br/>`quality_manager` | R | R | R | R | R | R | R |
 | **品质・检查**<br/>`quality` | — | — | R | — | — | — | — |
@@ -90,36 +90,40 @@ description: "系统中所有角色与权限代码的一览：谁能做什么，
 | **会计部长**<br/>`accounting_manager` | R | R | R | R | R | R | R |
 | **会计**<br/>`accounting` | R | R | R | — | — | — | — |
 | **只读**<br/>`viewer` | R | R | R | R | R | R | R |
-| **通用**<br/>`staff` | RCUDEA | RCUDEA | RCUDEA | RCUDEA | RCUDEA | RCUDEA | RCUDEA |
+| **通用**<br/>`staff` | RCUDE | RCUDE | RCUDE | RCUDE | RCUDE | RCUDE | RCUDE |
 
 ## 权限矩阵（生产・出货・结算・管理）
 
 | 角色 | 工单 | 审批管理 | 库存 | 出货单 | 送货单 | 发票 | 结算 | 主数据 | 内部文档 | 终端 | 系统 |
 |---|---|---|---|---|---|---|---|---|---|---|---|
 | **管理员**<br/>`admin` | ◎ | ◎ | ◎ | ◎ | ◎ | ◎ | ◎ | ◎ | ◎ | ◎ | ◎ |
-| **管理层（审批人）**<br/>`manager` | REA | REA | REA | REA | REA | REA | REA | REA | REA | — | — |
+| **管理层（审批人）**<br/>`manager` | RE | RE | RE | RE | RE | RE | RE | RE | RE | — | — |
 | **销售部长**<br/>`sales_manager` | — | R | — | — | — | — | — | R | — | — | — |
 | **销售**<br/>`sales` | — | — | — | — | — | — | — | R | — | — | — |
 | **销售助理**<br/>`sales_assistant` | — | — | — | — | — | — | — | R | — | — | — |
 | **采购部长**<br/>`purchasing_manager` | R | R | R | R | R | R | R | R | R | — | — |
 | **采购**<br/>`purchasing` | R | R | R | — | — | — | — | R | — | — | — |
-| **制造部长**<br/>`production_manager` | RCUDEA | R | RCUDEA | R | R | R | R | R | R | — | — |
-| **制造・生产管理**<br/>`production` | RCUDEA<br/>PLANT | R | RCUE<br/>PLANT | R | — | — | — | R | — | — | — |
-| **品质部长**<br/>`quality_manager` | RCUDEA | R | R | R | R | R | R | R | R | — | — |
-| **品质・检查**<br/>`quality` | RUA<br/>PLANT | R | R | — | — | — | — | R | — | — | — |
-| **出货部长**<br/>`shipping_manager` | R | R | RCUDEA | RCUDEA | RCUDEA | R | R | R | R | — | — |
+| **制造部长**<br/>`production_manager` | RCUDE | R | RCUDE | R | R | R | R | R | R | — | — |
+| **制造・生产管理**<br/>`production` | RCUDE<br/>PLANT | R | RCUE<br/>PLANT | R | — | — | — | R | — | — | — |
+| **品质部长**<br/>`quality_manager` | RCUDE | R | R | R | R | R | R | R | R | — | — |
+| **品质・检查**<br/>`quality` | RU<br/>PLANT | R | R | — | — | — | — | R | — | — | — |
+| **出货部长**<br/>`shipping_manager` | R | R | RCUDE | RCUDE | RCUDE | R | R | R | R | — | — |
 | **出货**<br/>`shipping` | R | — | RU<br/>PLANT | RCUDE<br/>PLANT | RCUDE | — | — | R | — | — | — |
-| **会计部长**<br/>`accounting_manager` | R | R | R | R | R | RCUDEA | RCUDEA | R | R | — | — |
+| **会计部长**<br/>`accounting_manager` | R | R | R | R | R | RCUDE | RCUDE | R | R | — | — |
 | **会计**<br/>`accounting` | — | — | — | R | R | RCUDE | RCUE | R | — | — | — |
 | **只读**<br/>`viewer` | R | R | R | R | R | R | R | R | R | — | — |
-| **通用**<br/>`staff` | RCUDEA | RCUDEA | RCUDEA | RCUDEA | RCUDEA | RCUDEA | RCUDEA | RCUDEA | — | — | — |
+| **通用**<br/>`staff` | RCUDE | RCUDE | RCUDE | RCUDE | RCUDE | RCUDE | RCUDE | RCUDE | — | — | — |
 
 ## 阅读时的注意事项
 
-### 仅有审批权限（A）还不够
+### 审批不由权限决定
 
-即使拥有审批动作，若不是相应 **审批组**（MS0B）的成员，审批按钮仍不会生效。
-权限只决定能否进入审批画面，实际需要谁审批由审批组决定。
+能够审批・退回的只有该级别 **审批组**（MS0B 审批设定）的成员（以及期间内的
+代理人）。过去权限侧也有「审批（A）」这一动作，现已 **废止**。无论追加多少
+角色都不会因此可以审批；反之只要是审批组成员，就不需要额外权限。需要增加
+审批人时，请在 MS0B 的审批组中添加成员，而不是修改角色。
+
+单据本身的 **查看权限（R）仍然必要**（看不到的单据也无法打开审批画面）。
 
 ### 「能做」与「能看到」是两回事
 

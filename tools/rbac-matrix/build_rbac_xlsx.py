@@ -89,10 +89,12 @@ ACTION_LETTER = {
     "UPDATE": "U",
     "DELETE": "D",
     "EXPORT": "E",
+    # APPROVE は廃止（承認の可否は承認管理＝承認フロー + 承認グループが決める）。
+    # 旧データが残っている環境でも読めるよう字は残す。
     "APPROVE": "A",
     "ADMIN": "◎",
 }
-# 表示順（RCUDEA）。集合を並べ替えるのに使う。
+# 表示順（RCUDE）。集合を並べ替えるのに使う。
 LETTER_ORDER = "RCUDEA◎"
 
 HEAD_FILL = PatternFill("solid", fgColor="1F3864")
@@ -221,12 +223,13 @@ def main() -> None:
         ("  cd shared-db && ./scripts/remote-db.sh python3 ../tools/rbac-matrix/build_rbac_xlsx.py", False),
         ("シードの正: shared-db/sql/rbac-seed.sql（権限コード・admin/staff）+ roles-seed.sql（運用ロール）", False),
         ("", False),
-        ("記号: R=閲覧 C=作成 U=更新 D=削除 E=エクスポート A=承認 ◎=ADMIN（全アクション）", True),
+        ("記号: R=閲覧 C=作成 U=更新 D=削除 E=エクスポート ◎=ADMIN（全アクション）", True),
         ("スコープ: 無印=ALL（全件） / OWN=自分が作成した行のみ / PLANT=所属拠点 / REGION=所属地域", False),
         ("  スコープの解決は packages/authz-core の decide()。ALL 行が 1 本でもあれば無制限。", False),
         ("", False),
-        ("重要: 承認（A）は権限に加えて『承認グループ』（MS0B 画面）への所属が実際のゲートです。", True),
-        ("部長ロールに A があっても、承認グループのメンバーでなければ承認ボタンは通りません。", False),
+        ("重要: 承認・差し戻しは権限（このシート）では決まりません。承認管理＝承認フローと", True),
+        ("承認グループ（MS0B 承認設定）だけが決めます。部長ロールを付けても、承認グループの", False),
+        ("メンバーでなければ承認ボタンは通りません（逆に、メンバーなら権限の追加は不要です）。", False),
         ("", False),
         ("重要: このブックは『何ができるか』であって『何が見えるか』ではありません。", True),
         ("本番（main）のランチャー表示は feature_flags が別に決めます（shared-db/sql/feature-flags-seed.sql）。", False),

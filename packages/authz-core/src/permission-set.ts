@@ -190,6 +190,5 @@ export const PERMISSION_ACTIONS: readonly PermissionAction[] = [
   "UPDATE",
   "DELETE",
   "EXPORT",
-  "APPROVE",
   "ADMIN",
 ];

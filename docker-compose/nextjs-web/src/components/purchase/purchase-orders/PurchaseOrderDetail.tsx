@@ -171,7 +171,7 @@ export function PurchaseOrderDetail({
   const records = [...po.history].reverse();
 
   /**
-   * 「いまやること」カード（最上部）。承認待ちは承認権限の有無で色が変わる
+   * 「いまやること」カード（最上部）。承認待ちは承認できる人かどうかで色が変わる
    * — 権限あり = 緑 + 承認/差し戻し、権限なし = グレーの「承認待ち」表示。
    */
   let actionCard: ReactNode = null;

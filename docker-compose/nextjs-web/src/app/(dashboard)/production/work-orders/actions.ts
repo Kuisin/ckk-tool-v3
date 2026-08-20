@@ -739,9 +739,9 @@ export async function requestApproval(
 export async function approveWorkOrder(
   workOrderNumber: number,
 ): Promise<ActionResult<{ remaining: number; completed: boolean }>> {
-  // 権限チェックは追加ゲート — 実体の承認可否（本人/代理）は
-  // actOnCurrentStep のグループ所属判定が引き続き行う。
-  const authz = await checkPermission("work_order", "APPROVE");
+  // 承認できるかどうかは**承認グループの所属だけ**が決める（actOnCurrentStep）。
+  // ここで見るのは書類の可視性 — 見えない指示書は触れない、という既存の線。
+  const authz = await checkPermission("work_order", "READ");
   if (!authz.ok) return actionError(authz.error);
   if (!(await workOrderInScope(authz.access, authz.userId, workOrderNumber))) {
     return actionError(SCOPE_DENIED);
@@ -755,13 +755,14 @@ export async function approveWorkOrder(
     if (prior.approvalStatus !== "PENDING") {
       return actionError("承認待ちの指示書ではありません");
     }
-    // 承認権限（本人 or 代理）を検証しつつ承認記録を書き、段を進める。
+    // 承認グループの所属（本人 or 代理）を検証しつつ承認記録を書き、段を進める。
     const acted = await actOnCurrentStep({
       targetType: "work_orders",
       targetId: String(workOrderNumber),
       action: "APPROVED",
     });
-    if (!acted.ok) return actionError(acted.error ?? "承認の権限がありません");
+    if (!acted.ok)
+      return actionError(acted.error ?? "この段の承認者ではありません");
 
     const actor = await getCurrentActorId();
 
@@ -891,7 +892,8 @@ export async function rejectWorkOrder(
   workOrderNumber: number,
   reason: string,
 ): Promise<ActionResult> {
-  const authz = await checkPermission("work_order", "APPROVE");
+  // 差し戻しの可否も承認グループの所属だけ（actOnCurrentStep）。READ は可視性。
+  const authz = await checkPermission("work_order", "READ");
   if (!authz.ok) return actionError(authz.error);
   const trimmed = reason.trim();
   if (!trimmed) return actionError("差し戻し理由を入力してください");
@@ -915,7 +917,7 @@ export async function rejectWorkOrder(
       comment: trimmed,
     });
     if (!acted.ok) {
-      return actionError(acted.error ?? "差し戻しの権限がありません");
+      return actionError(acted.error ?? "この段の承認者ではありません");
     }
     const actor = await getCurrentActorId();
     await prisma.$transaction([

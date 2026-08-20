@@ -65,7 +65,6 @@ describe("decide — 基本規則", () => {
       "UPDATE",
       "DELETE",
       "EXPORT",
-      "APPROVE",
     ] as const) {
       expect(decide(set, ctx([]), "quote", action).allowed).toBe(true);
     }

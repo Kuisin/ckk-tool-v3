@@ -262,7 +262,9 @@ export const PERMISSION_ACTION_LABEL: Record<string, string> = {
   UPDATE: "更新",
   DELETE: "削除",
   EXPORT: "書き出し",
-  APPROVE: "承認",
+  // APPROVE は廃止（承認の可否は承認管理＝承認フロー + 承認グループが決める）。
+  // シード適用前の環境に残っている旧データが英字で出ないよう、ラベルは残す。
+  APPROVE: "承認（廃止）",
   ADMIN: "管理",
 };
 

@@ -11,9 +11,9 @@
  * 変更が効くのは次の承認依頼から — 進行中の書類は依頼時点のスナップショットの
  * まま進む。画面にもそう書いておく。
  *
- * 段ごとに、選んだ承認グループのメンバーがこの書類の承認権限
- * （<code>:APPROVE）を持っているかを出す。グループに入れただけでは承認
- * できないので、保存する前にここで気づけるようにする。
+ * 段ごとに、選んだ承認グループで「今この段を承認できる人」を出す。承認の
+ * 可否は承認グループの所属だけで決まる（RBAC の権限は関係しない）ので、
+ * 保存する前に「その段を押せる人がいるか」をここで確かめられる。
  *
  * レイアウト（design.md §20.2）: デスクトップは 1 段 = 1 行。モバイルは
  * 同じものを縦に積む — 入力 3 つ + 操作 3 つを 1 行に並べると 375px では
@@ -38,7 +38,6 @@ import {
   IconArrowDown,
   IconArrowUp,
   IconInfoCircle,
-  IconShieldCheck,
   IconTrash,
 } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
@@ -50,13 +49,9 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { FormActions, FormSection } from "@/components/ui/shells";
 import { useIsMobile } from "@/hooks/useViewport";
 import { type ApprovalMode, validateFlowSteps } from "@/lib/approval-flow";
-import { APPROVAL_ACTION } from "@/lib/approval-targets";
 import { APPROVAL_MODE_OPTIONS } from "@/lib/enum-labels";
 import { fieldHelp } from "@/lib/field-help";
-import {
-  ApproverPermissionBadge,
-  type FlowApprover,
-} from "./ApproverPermissionBadge";
+import { type StepApprover, StepApproverBadge } from "./StepApproverBadge";
 
 const BASE_PATH = "/master/approval-settings";
 
@@ -83,18 +78,13 @@ export function ApprovalFlowEditor({
   initialSteps,
   groupOptions,
   approversByGroup,
-  permissionCode,
-  permissionLabel,
 }: {
   targetType: string;
   targetLabel: string;
   initialSteps: Omit<FlowEditorStep, "key">[];
   groupOptions: GroupOption[];
-  /** グループ id（文字列）→ 今そのグループで承認できる人 + 権限の有無。 */
-  approversByGroup: Record<string, FlowApprover[]>;
-  /** この書類の承認に必要な権限コード。 */
-  permissionCode: string;
-  permissionLabel: string;
+  /** グループ id（文字列）→ 今そのグループで承認できる人。 */
+  approversByGroup: Record<string, StepApprover[]>;
 }) {
   const router = useRouter();
   const isMobile = useIsMobile();
@@ -188,21 +178,7 @@ export function ApprovalFlowEditor({
       />
       <Alert color="blue" icon={<IconInfoCircle size={16} />} variant="light">
         変更は今後の承認依頼から適用されます。進行中の書類は依頼した時点の設定のまま進みます。
-      </Alert>
-      <Alert
-        color="gray"
-        icon={<IconShieldCheck size={16} />}
-        title="承認に必要な権限"
-        variant="light"
-      >
-        <Text size="sm">
-          {targetLabel}の承認・差し戻しには「{permissionLabel}」の承認権限（
-          <Text component="span" ff="mono" size="sm">
-            {permissionCode}:{APPROVAL_ACTION}
-          </Text>
-          ）が要ります。権限が無い人は、承認グループに入れても承認できません
-          （権限はユーザー管理 SY01 のロールで決まります）。
-        </Text>
+        承認できるのは、段に選んだ承認グループのメンバー（と期間内の代理）だけです。
       </Alert>
 
       <FormSection title="承認ステップ">
@@ -267,7 +243,7 @@ export function ApprovalFlowEditor({
                 <Text c="dimmed" size="xs">
                   この段を承認できる人
                 </Text>
-                <ApproverPermissionBadge approvers={approvers} />
+                <StepApproverBadge approvers={approvers} />
                 {approvers.length > 0 && (
                   <Text c="dimmed" size="xs">
                     {approvers.map((a) => a.displayName).join("、")}

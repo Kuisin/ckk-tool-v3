@@ -521,7 +521,7 @@ export async function actOnCurrentStep(input: {
   comment?: string;
 }): Promise<ActOnStepResult> {
   const actor = await getCurrentActorId();
-  if (!actor) return ACT_FAILED("承認権限がありません");
+  if (!actor) return ACT_FAILED("ログインが必要です");
 
   const request = await prisma.approvalRequest.findFirst({
     where: {
@@ -535,7 +535,9 @@ export async function actOnCurrentStep(input: {
 
   const auth = await resolveApprover(request.groupId, actor);
   if (!auth.ok) {
-    return ACT_FAILED("承認権限がありません（代理設定も未該当）");
+    return ACT_FAILED(
+      "この段の承認グループのメンバーではありません（代理設定も未該当）",
+    );
   }
   const mode = request.mode as ApprovalMode;
   const slotOwner = auth.delegateForId ?? actor;

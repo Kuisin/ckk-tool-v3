@@ -48,14 +48,22 @@ FROM app.roles r CROSS JOIN app.permissions p
 WHERE r.rolename = 'admin'
 ON CONFLICT DO NOTHING;
 
--- staff: system / kiosk 以外の業務コードに実務アクション（APPROVE は承認グループ所属が実ゲート）
+-- staff: system / kiosk 以外の業務コードに実務アクション
+-- （承認・差し戻しはここに無い — 可否は承認管理＝承認フロー + 承認グループが決める）
 INSERT INTO app.role_permission_relation (role_id, permission_code, action, scope)
 SELECT r.id, p.code, a.action::app."ACTION", 'ALL'::app."SCOPE"
 FROM app.roles r
 CROSS JOIN app.permissions p
-CROSS JOIN (VALUES ('READ'),('CREATE'),('UPDATE'),('DELETE'),('EXPORT'),('APPROVE')) AS a(action)
+CROSS JOIN (VALUES ('READ'),('CREATE'),('UPDATE'),('DELETE'),('EXPORT')) AS a(action)
 WHERE r.rolename = 'staff' AND p.code NOT IN ('system', 'kiosk', 'internal_docs')
 ON CONFLICT DO NOTHING;
+
+-- ─── 廃止した APPROVE 付与の後始末 ──────────────────────────────────────────
+-- 承認・差し戻しの可否は承認管理（承認フロー + 承認グループ）だけが決めるので、
+-- RBAC 側の APPROVE 付与は廃止した。過去に配った行が残っていると SY01 の実効
+-- 権限に「承認」が並び、権限で承認できるかのように読めてしまうため毎回消す。
+-- app."ACTION" enum の値そのものは残る（Postgres は enum 値を削除できない）。
+DELETE FROM app.role_permission_relation WHERE action = 'APPROVE'::app."ACTION";
 
 -- ─── demo ユーザーへのロール割当 ─────────────────────────────────────────────
 INSERT INTO app.user_role_relation (user_id, role_id, is_active, assigned_at)

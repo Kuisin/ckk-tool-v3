@@ -1,8 +1,8 @@
 import { notFound } from "next/navigation";
 import { ApprovalFlowEditor } from "@/components/master/approval-flows/ApprovalFlowEditor";
-import type { FlowApprover } from "@/components/master/approval-flows/ApproverPermissionBadge";
+import type { StepApprover } from "@/components/master/approval-flows/StepApproverBadge";
+import { loadGroupApprovers } from "@/lib/approval-approvers";
 import type { ApprovalMode } from "@/lib/approval-flow";
-import { loadGroupApprovers } from "@/lib/approval-permissions";
 import { APPROVAL_TARGET, isApprovalTargetType } from "@/lib/approval-targets";
 import { requireAppRead } from "@/lib/authz-page";
 import { prisma } from "@/lib/db";
@@ -21,8 +21,7 @@ export default async function ApprovalFlowEditPage({
   const { targetType } = await params;
   if (!isApprovalTargetType(targetType)) notFound();
 
-  const permissionCode = APPROVAL_TARGET[targetType].approvePermission;
-  const [steps, groups, permission] = await Promise.all([
+  const [steps, groups] = await Promise.all([
     prisma.approvalFlowStep.findMany({
       where: { targetType },
       orderBy: { stepNo: "asc" },
@@ -32,26 +31,16 @@ export default async function ApprovalFlowEditPage({
       orderBy: { id: "asc" },
       select: { id: true, name: true },
     }),
-    prisma.permission.findUnique({
-      where: { code: permissionCode },
-      select: { displayName: true },
-    }),
   ]);
 
   // 選択肢に出る全グループぶん引く — 段のグループを付け替えた瞬間に
-  // 「その人たちは承認できるのか」を出せるようにするため。
-  const approvers = await loadGroupApprovers(
-    groups.map((g) => g.id),
-    [permissionCode],
-  );
-  const approversByGroup: Record<string, FlowApprover[]> = {};
+  // 「その段を承認できる人」を出せるようにするため。
+  const approvers = await loadGroupApprovers(groups.map((g) => g.id));
+  const approversByGroup: Record<string, StepApprover[]> = {};
   for (const [groupId, members] of approvers) {
     approversByGroup[String(groupId)] = members.map((m) => ({
       userId: m.userId,
       displayName: m.displayName,
-      allowed: m.capabilities[permissionCode]?.allowed ?? false,
-      unrestricted: m.capabilities[permissionCode]?.unrestricted ?? false,
-      scopes: m.capabilities[permissionCode]?.scopes ?? [],
     }));
   }
 
@@ -73,13 +62,6 @@ export default async function ApprovalFlowEditPage({
           mode: s.mode as ApprovalMode,
         };
       })}
-      permissionCode={permissionCode}
-      // 権限マスタが未投入でもコードだけは出す（画面が空欄になるより読める）。
-      permissionLabel={
-        permission
-          ? localized(permission.displayName as LocalizedText | null)
-          : permissionCode
-      }
       targetLabel={targetLabel}
       targetType={targetType}
     />

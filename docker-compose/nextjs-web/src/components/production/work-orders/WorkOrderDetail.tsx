@@ -144,7 +144,7 @@ export function WorkOrderDetail({
     });
   };
 
-  // 状態別の操作は最上部のカードへ（承認権限の有無で色が変わる）。
+  // 状態別の操作は最上部のカードへ（承認できる人かどうかで色が変わる）。
   const approvalCard = (
     <WorkOrderApprovalCard
       approval={approval}

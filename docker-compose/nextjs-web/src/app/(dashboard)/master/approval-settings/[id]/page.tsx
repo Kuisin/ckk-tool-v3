@@ -4,7 +4,6 @@ import {
   type ApprovalGroupDetailData,
   type GroupFlowUsage,
 } from "@/components/master/approval-settings/ApprovalGroupDetail";
-import { loadApproveCapabilities } from "@/lib/approval-permissions";
 import {
   APPROVAL_TARGET,
   type ApprovalTargetType,
@@ -73,37 +72,11 @@ export default async function MasterApprovalGroupsDetailPage({
         targetType: s.targetType,
         label: meta.label,
         color: meta.color,
-        permissionCode: meta.approvePermission,
         steps: [stepLabel],
       });
     }
   }
   const usages = [...usageByTarget.values()];
-
-  // メンバーが「その書類の承認権限」を持っているか。承認グループに入れただけ
-  // では押せない（権限・所属・スコープの 3 つが要る）ので、ここで突き合わせる。
-  // 代理人も「自分の権限」で押す（承認記録には原承認者が残るだけ）ので、
-  // 代理設定の相手も同じように突き合わせる。
-  const capabilities = await loadApproveCapabilities(
-    [
-      ...r.members.map((m) => m.userId),
-      ...r.delegates.map((d) => d.delegateId),
-    ],
-    usages.map((u) => u.permissionCode),
-  );
-
-  const approvalsFor = (userId: string) =>
-    usages.map((u) => {
-      const cap = capabilities.get(userId)?.get(u.permissionCode);
-      return {
-        targetType: u.targetType,
-        label: u.label,
-        permissionCode: u.permissionCode,
-        allowed: cap?.allowed ?? false,
-        unrestricted: cap?.unrestricted ?? false,
-        scopes: cap?.scopes ?? [],
-      };
-    });
 
   const record: ApprovalGroupDetailData = {
     id: r.id,
@@ -119,7 +92,6 @@ export default async function MasterApprovalGroupsDetailPage({
       validFrom: m.validFrom?.toISOString() ?? null,
       validUntil: m.validUntil?.toISOString() ?? null,
       note: m.note,
-      approvals: approvalsFor(m.userId),
     })),
     delegates: r.delegates.map((d) => ({
       id: d.id,
@@ -130,7 +102,6 @@ export default async function MasterApprovalGroupsDetailPage({
       validFrom: d.validFrom.toISOString(),
       validUntil: d.validUntil.toISOString(),
       reason: d.reason,
-      approvals: approvalsFor(d.delegateId),
     })),
   };
 

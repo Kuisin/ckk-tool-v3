@@ -451,7 +451,9 @@ export async function submitForApproval(
 export async function approveAcceptance(number: string): Promise<ActionResult> {
   const key = keyOf(number);
   if (!key) return actionError("注文請書番号が不正です");
-  const authz = await checkPermission("order_acceptance", "APPROVE");
+  // 承認できるかどうかは**承認グループの所属だけ**が決める（actOnCurrentStep）。
+  // ここで見るのは書類の可視性 — 見えない注文請書は触れない、という既存の線。
+  const authz = await checkPermission("order_acceptance", "READ");
   if (!authz.ok) return actionError(authz.error);
   if (!(await acceptanceInScope(authz.access, authz.userId, key))) {
     return actionError(SCOPE_DENIED);
@@ -470,7 +472,8 @@ export async function approveAcceptance(number: string): Promise<ActionResult> {
       targetId: number,
       action: "APPROVED",
     });
-    if (!acted.ok) return actionError(acted.error ?? "承認の権限がありません");
+    if (!acted.ok)
+      return actionError(acted.error ?? "この段の承認者ではありません");
     // 全段を通過して初めて APPROVED。途中の段は REQUESTED のまま進む。
     if (!acted.flowCompleted) {
       await recordAudit({
@@ -513,7 +516,9 @@ export async function rejectAcceptance(
   if (!key) return actionError("注文請書番号が不正です");
   const trimmed = reason.trim();
   if (!trimmed) return actionError("差し戻し理由を入力してください");
-  const authz = await checkPermission("order_acceptance", "APPROVE");
+  // 承認できるかどうかは**承認グループの所属だけ**が決める（actOnCurrentStep）。
+  // ここで見るのは書類の可視性 — 見えない注文請書は触れない、という既存の線。
+  const authz = await checkPermission("order_acceptance", "READ");
   if (!authz.ok) return actionError(authz.error);
   if (!(await acceptanceInScope(authz.access, authz.userId, key))) {
     return actionError(SCOPE_DENIED);
@@ -534,7 +539,7 @@ export async function rejectAcceptance(
       comment: trimmed,
     });
     if (!acted.ok) {
-      return actionError(acted.error ?? "差し戻しの権限がありません");
+      return actionError(acted.error ?? "この段の承認者ではありません");
     }
     await prisma.orderAcceptance.update({
       where: { yearMonth_seq: key },

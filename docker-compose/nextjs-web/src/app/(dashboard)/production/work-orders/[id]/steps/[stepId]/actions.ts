@@ -421,9 +421,10 @@ export async function approveInspectionRecord(
   stepId: string,
   recordId: string,
 ): Promise<StepActionResult> {
-  // 検査承認 — approve* の規約に従い ACTION=APPROVE（コードは工程実行の
-  // 文脈なので "work_order" のまま。承認グループとは別系統 — 判断メモ）。
-  const denied = await deniedStepPermission("APPROVE");
+  // 検査承認は承認フロー（承認グループ）とは別系統で、工程を回す人がその場で
+  // 押す。RBAC の APPROVE 付与は廃止したので、工程実行と同じ work_order:UPDATE
+  // で見る（検査工程を実行できる人 = 検査記録を承認できる人）。
+  const denied = await deniedStepPermission("UPDATE");
   if (denied) return denied;
   try {
     const record = await prisma.inspectionRecord.findFirst({

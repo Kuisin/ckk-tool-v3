@@ -128,6 +128,10 @@ Enum ACTION {
 
   // Extended
   EXPORT,
+  // APPROVE は廃止 — 承認・差し戻しの可否は RBAC ではなく承認管理
+  // （approval_flows / approval_flow_steps / approval_group_members + 代理）
+  // だけが決める。付与は rbac-seed.sql が毎回削除する。enum 値そのものは
+  // 過去データのために残っている（Postgres は enum 値を削除できない）。
   APPROVE,
   ADMIN
 }

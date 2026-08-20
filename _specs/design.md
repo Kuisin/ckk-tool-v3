@@ -816,8 +816,8 @@ Paper (withBorder, p="md", radius="md")
 | tone | 色 | 意味 |
 |------|----|------|
 | `action` | blue | 自分で先へ進められる操作（承認依頼・注文確定・発注・入荷完了 …） |
-| `approve` | green | 承認権限がある。承認 / 差し戻しできる |
-| `wait` | gray | 権限が無いので待つだけ。タイトルは「承認待ち」 |
+| `approve` | green | 承認できる人（その段の承認グループのメンバー or 期間内の代理）。承認 / 差し戻しできる |
+| `wait` | gray | 自分は承認できない（その段のグループに入っていない）ので待つだけ。タイトルは「承認待ち」 |
 | `alert` | red | 差し戻しなど、対応が必要な状態 |
 
 搭載画面: 指示書 (`WorkOrderApprovalCard`) / 注文請書 / 素材発注書 / 購買依頼。
@@ -1001,7 +1001,7 @@ Paper (withBorder, p="lg")
 `src/components/production/ApprovalStatusPanel.tsx` — 2 つを出す。
 
 **WorkOrderApprovalCard** — 画面最上部の ActionCard (§10.9)。承認依頼 / 第一・
-承認 / 差し戻し（理由必須モーダル）を持つ唯一の場所。色は承認権限で決まる
+承認 / 差し戻し（理由必須モーダル）を持つ唯一の場所。色は承認グループの所属で決まる
 （権限あり = green + 承認・差し戻し、権限なし = gray の「第一（第二）承認待ち」、
 差し戻し中 = red + 再承認依頼）。操作が無い状態では何も描画しない。
 

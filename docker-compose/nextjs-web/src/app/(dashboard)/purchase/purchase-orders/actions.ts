@@ -287,9 +287,9 @@ export async function requestPurchaseApproval(
 export async function approvePurchaseOrder(
   poNumber: string,
 ): Promise<ActionResult> {
-  // 権限コード上の APPROVE に加え、承認グループ所属（本人 or 代理）は
-  // 引き続き actOnCurrentStep 内で検証する。
-  const authz = await checkPermission("purchase_order", "APPROVE");
+  // 承認できるかどうかは**承認グループの所属だけ**が決める（actOnCurrentStep）。
+  // ここで見るのは書類の可視性 — 見えない素材発注書は触れない、という既存の線。
+  const authz = await checkPermission("purchase_order", "READ");
   if (!authz.ok) return actionError(authz.error);
   try {
     const prior = await prisma.materialPurchaseOrder.findUnique({
@@ -299,13 +299,14 @@ export async function approvePurchaseOrder(
     if (prior.status !== "REQUESTED") {
       return actionError("承認依頼中の素材発注書ではありません");
     }
-    // 承認権限（本人 or 代理）を検証しつつ承認記録を書き、依頼を確定する。
+    // 承認グループの所属（本人 or 代理）を検証しつつ承認記録を書き、依頼を確定する。
     const acted = await actOnCurrentStep({
       targetType: "material_purchase_orders",
       targetId: poNumber,
       action: "APPROVED",
     });
-    if (!acted.ok) return actionError(acted.error ?? "承認の権限がありません");
+    if (!acted.ok)
+      return actionError(acted.error ?? "この段の承認者ではありません");
     const actor = await getCurrentActorId();
     // 全段を通過して初めて APPROVED。途中の段は REQUESTED のまま進む。
     if (!acted.flowCompleted) {
@@ -352,9 +353,9 @@ export async function rejectPurchaseOrder(
   poNumber: string,
   reason: string,
 ): Promise<ActionResult> {
-  // 権限コード上の APPROVE に加え、承認グループ所属（本人 or 代理）は
-  // 引き続き actOnCurrentStep 内で検証する。
-  const authz = await checkPermission("purchase_order", "APPROVE");
+  // 承認できるかどうかは**承認グループの所属だけ**が決める（actOnCurrentStep）。
+  // ここで見るのは書類の可視性 — 見えない素材発注書は触れない、という既存の線。
+  const authz = await checkPermission("purchase_order", "READ");
   if (!authz.ok) return actionError(authz.error);
   const trimmed = reason.trim();
   if (!trimmed) return actionError("差し戻し理由を入力してください");
@@ -374,7 +375,7 @@ export async function rejectPurchaseOrder(
       comment: trimmed,
     });
     if (!acted.ok) {
-      return actionError(acted.error ?? "差し戻しの権限がありません");
+      return actionError(acted.error ?? "この段の承認者ではありません");
     }
     const actor = await getCurrentActorId();
     await prisma.materialPurchaseOrder.update({

@@ -6,14 +6,20 @@
 //   scope_values: text[] — PLANT/REGION スコープの対象コード。'*' = ワイルド
 //   カード（PLANT: 所属拠点すべて / REGION: 所属拠点の地域すべて）。
 
-/** role_permission_relation.action（ADMIN は同一コードの全アクションを内包） */
+/**
+ * role_permission_relation.action（ADMIN は同一コードの全アクションを内包）
+ *
+ * APPROVE は**廃止**。承認・差し戻しの可否は RBAC ではなく承認管理
+ * （承認フロー + 承認グループ）だけが決める。DB の app."ACTION" enum には
+ * 値が残っている（Postgres は enum 値を落とせない）が、付与は
+ * rbac-seed.sql が毎回削除し、アプリはどこからも要求しない。
+ */
 export type PermissionAction =
   | "READ"
   | "CREATE"
   | "UPDATE"
   | "DELETE"
   | "EXPORT"
-  | "APPROVE"
   | "ADMIN";
 
 /** SCOPE enum。PLANT/OWN/REGION/ALL のみ現行実装 — 残りは定義のみ（fail-closed） */
