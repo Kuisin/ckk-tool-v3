@@ -1008,6 +1008,26 @@ defects propagate automatically. Branch quantity is capped at the source's
 unallocated 工程分岐数 (良品+工程分岐 for terminal steps) — `branchableQuantity` in
 `lib/workflow-core.ts`, enforced server-side and reflected in AddBranchModal.
 
+**分岐は必ず「合流」か「在庫」で終わる（§7）** — 良品の行き先が無い分岐を
+作らせない。終端の選び方は 2 つだけで、AddBranchModal は片方が決まるまで
+確定できない（`confirmDisabled`）:
+
+| 終端 | 表し方 | 完了時の入庫 |
+|------|--------|--------------|
+| 本流へ合流 | 終端工程 → 本流工程 の動的リンク（`routed_quantity = 0`） | 合流先へ流れる（入庫しない） |
+| 在庫へ（半製品） | 終端工程の `branch_stock_disposition = SEMI_FINISHED` | 半製品在庫（`computeBranchSemiFinishedQuantity`） |
+| 在庫へ（製品） | 終端工程の `branch_stock_disposition = PRODUCT` | 完成数に加算 → 製品在庫（ロット付き） |
+
+分岐系列のヘッダには行き先バッジを出す（合流 → 工程名 / 半製品在庫へ /
+製品在庫へ）。どちらも無い旧データは橙の**「行き先未設定」**で、直すまで
+良品が完成数へ素通しされることが判るようにする。
+
+**作成後の編集** — 分岐系列ヘッダの鉛筆アイコンから、**分岐数量**（系列が
+全て未着手のときのみ）と**終端**（終端工程が未着手のときのみ）を付け替えられる
+（`updateBranch` → `updateBranchSeries`）。工程の入れ替えは削除して作り直す
+（実績・計画の消え方が見える操作に寄せるため）。判定は
+`branchSeriesList` / `danglingBranches`（`lib/workflow-core.ts` — kiosk と双子）。
+
 ### 12.3 WorkOrderStepExecutionPage
 
 `src/app/(dashboard)/production/work-orders/[id]/steps/[stepId]/page.tsx`

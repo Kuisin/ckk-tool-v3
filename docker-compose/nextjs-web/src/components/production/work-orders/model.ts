@@ -93,6 +93,11 @@ export interface WorkOrderStepView {
   /** 作業計画 / 実績の件数（工程実行ページで記録）。 */
   planCount: number;
   actualCount: number;
+  /**
+   * 分岐系列の終端処理（§7）。値があれば「この工程で系列が終わり、良品は
+   * この在庫へ入る」。null = 合流する / 分岐系列ではない。
+   */
+  branchStockDisposition: "SEMI_FINISHED" | "PRODUCT" | null;
   /** 作業計画で割り当てられた担当者（重複排除・計画日順）。 */
   assignees: StepAssigneeView[];
   /** 実働時間 (h) — 実績の開始〜終了の累計。null = 数えられる実績なし。 */

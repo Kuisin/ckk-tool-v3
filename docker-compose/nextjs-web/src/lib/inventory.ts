@@ -13,7 +13,10 @@
 import type { Prisma as PrismaNS } from "../../generated/client/client";
 import { getCurrentActorId, recordAudit } from "./audit";
 import { prisma } from "./db";
-import { computeFinishedQuantity } from "./workflow-core";
+import {
+  computeBranchSemiFinishedQuantity,
+  computeFinishedQuantity,
+} from "./workflow-core";
 
 type Tx = PrismaNS.TransactionClient;
 
@@ -194,30 +197,31 @@ export async function onWorkOrderCompleted(workOrderId: string): Promise<void> {
   // sortOrder 最大では分岐合流 DAG（合流先が手前に並ぶ場合）で誤るため、
   // グラフ集計の純関数（workflow-core computeFinishedQuantity）で判定する
   // （監査 #15。終端工程から分岐した場合の残良品もここで拾う）。
-  const finishedQty = computeFinishedQuantity(
-    wo.steps.map((s) => ({
-      id: s.id,
-      processStepId: s.processStepId,
-      status: s.status,
-      sortOrder: s.sortOrder,
-      inputQuantity: s.inputQuantity,
-      outputSuccess: s.outputSuccessQuantity,
-      defectSemiFinished: s.outputDefectSemiFinished,
-      defectScrap: s.outputDefectScrap,
-      defectRework: s.outputDefectRework,
-      sessionLockedBy: s.sessionLockedBy,
-    })),
-    wo.stepLinks.map((l) => ({
-      sourceStepId: l.sourceStepId,
-      targetStepId: l.targetStepId,
-      routedQuantity: l.routedQuantity,
-    })),
-  );
-  // 半製品 = 全工程の半製品バケット合計
-  const semiTotal = wo.steps.reduce(
-    (sum, s) => sum + (s.outputDefectSemiFinished ?? 0),
-    0,
-  );
+  const engineSteps = wo.steps.map((s) => ({
+    id: s.id,
+    processStepId: s.processStepId,
+    status: s.status,
+    sortOrder: s.sortOrder,
+    inputQuantity: s.inputQuantity,
+    outputSuccess: s.outputSuccessQuantity,
+    defectSemiFinished: s.outputDefectSemiFinished,
+    defectScrap: s.outputDefectScrap,
+    defectRework: s.outputDefectRework,
+    sessionLockedBy: s.sessionLockedBy,
+    branchStock: s.branchStockDisposition,
+  }));
+  const engineLinks = wo.stepLinks.map((l) => ({
+    sourceStepId: l.sourceStepId,
+    targetStepId: l.targetStepId,
+    routedQuantity: l.routedQuantity,
+  }));
+  const finishedQty = computeFinishedQuantity(engineSteps, engineLinks);
+  // 半製品 = 全工程の半製品バケット合計 + 「半製品在庫で終わる分岐」の終端良品。
+  // 後者は完成数に入らない（computeFinishedQuantity が除外している）ので、
+  // ここで拾わないと行き場を失う。
+  const semiTotal =
+    wo.steps.reduce((sum, s) => sum + (s.outputDefectSemiFinished ?? 0), 0) +
+    computeBranchSemiFinishedQuantity(engineSteps, engineLinks);
   const plantId = wo.steps.find((s) => s.plantId != null)?.plantId ?? null;
 
   await prisma.$transaction(async (tx) => {
@@ -239,9 +243,9 @@ export async function onWorkOrderCompleted(workOrderId: string): Promise<void> {
       });
     }
     if (semiTotal > 0) {
-      const semiStep = wo.steps.find(
-        (s) => (s.outputDefectSemiFinished ?? 0) > 0,
-      );
+      const semiStep =
+        wo.steps.find((s) => (s.outputDefectSemiFinished ?? 0) > 0) ??
+        wo.steps.find((s) => s.branchStockDisposition === "SEMI_FINISHED");
       const invId = await ensureProductInventory(tx, {
         productId: wo.productId,
         plantId,

@@ -27,6 +27,7 @@ import {
   rollbackStepExecution,
   type StepActionResult,
   startStepExecution,
+  updateBranchSeries,
 } from "@/lib/workflow";
 
 const BASE_PATH = "/production/work-orders";
@@ -177,6 +178,18 @@ export async function rollbackStep(
 
 // ── 分岐追加（指示書詳細の分岐追加モーダルから） ─────────────────────────────
 
+/**
+ * 分岐の終端（§7 分岐は必ず「合流」か「在庫」で終わる）。
+ * 画面はどちらかを選ばないと保存できない — 行き場の無い分岐を作らせない。
+ */
+const branchTermination = z.discriminatedUnion("kind", [
+  z.object({ kind: z.literal("MERGE"), mergeTargetStepId: z.string().min(1) }),
+  z.object({
+    kind: z.literal("STOCK"),
+    disposition: z.enum(["SEMI_FINISHED", "PRODUCT"]),
+  }),
+]);
+
 const addBranchInput = z.object({
   workOrderNumber: z.number().int().positive(),
   sourceStepId: z.string().min(1),
@@ -187,7 +200,7 @@ const addBranchInput = z.object({
     .number()
     .int()
     .min(1, "分岐数量は 1 以上で入力してください"),
-  mergeTargetStepId: z.string().nullable(),
+  termination: branchTermination,
 });
 
 export type AddBranchInput = z.infer<typeof addBranchInput>;
@@ -218,12 +231,58 @@ export async function addBranch(
       sourceStepId: v.sourceStepId,
       catalogStepIds: v.catalogStepIds,
       routedQuantity: v.routedQuantity,
-      mergeTargetStepId: v.mergeTargetStepId,
+      termination: v.termination,
     });
     if (result.ok) revalidate(v.workOrderNumber);
     return result;
   } catch (e) {
     return failed(e, "分岐の追加に失敗しました");
+  }
+}
+
+const updateBranchInput = z.object({
+  workOrderNumber: z.number().int().positive(),
+  headStepId: z.string().min(1),
+  routedQuantity: z
+    .number()
+    .int()
+    .min(1, "分岐数量は 1 以上で入力してください")
+    .optional(),
+  termination: branchTermination,
+});
+
+export type UpdateBranchInput = z.infer<typeof updateBranchInput>;
+
+/** 分岐系列の更新（分岐数量 / 終端の付け替え）。 */
+export async function updateBranch(
+  payload: UpdateBranchInput,
+): Promise<StepActionResult> {
+  const denied = await deniedStepPermission("UPDATE");
+  if (denied) return denied;
+  const parsed = updateBranchInput.safeParse(payload);
+  if (!parsed.success) {
+    return {
+      ok: false,
+      errors: [parsed.error.issues[0]?.message ?? "入力が不正です"],
+    };
+  }
+  const v = parsed.data;
+  try {
+    const wo = await prisma.workOrder.findUnique({
+      where: { workOrderNumber: v.workOrderNumber },
+      select: { id: true },
+    });
+    if (!wo) return { ok: false, errors: ["指示書が見つかりません"] };
+    const result = await updateBranchSeries({
+      workOrderId: wo.id,
+      headStepId: v.headStepId,
+      routedQuantity: v.routedQuantity,
+      termination: v.termination,
+    });
+    if (result.ok) revalidate(v.workOrderNumber);
+    return result;
+  } catch (e) {
+    return failed(e, "分岐の更新に失敗しました");
   }
 }
 
