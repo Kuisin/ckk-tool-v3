@@ -27,7 +27,7 @@ These three connect in order: **Trial Estimate → Price List → Quote** (see "
 
 - Click the **logo (top left)** → the app launcher opens.
 - **Center search box** — type an app name or an "operation code" (e.g. `SA01`) and press Enter to jump straight to that screen.
-- **Bell (top right)** — notifications. **Avatar** — Profile, Notification Settings, Home Screen Settings, Sign out.
+- **Bell (top right)** — notifications. **Avatar** — Profile, Notification Settings, Home Screen Settings, Display Settings, Sign out.
 - **Home** — available apps grouped by category. Apps you lack permission for are hidden, and the set of published apps also differs per environment (production / development).
 
 ![App launcher](./assets/screenshots/launcher-01.png)
@@ -57,7 +57,7 @@ For detailed steps and what each input field means, open **Operations** in the s
 
 - **Can't find a screen** — you may lack the required permission; ask an administrator.
 - **Got a notification** — review it from the bell (top right).
-- **Change your own settings** — use **Profile** in the top-right avatar menu to update your notification email or password, and **Home Screen Settings** for favorite apps and display mode (see the [User Settings Manual](/manual/en/user-settings)).
+- **Change your own settings** — they all live in the top-right avatar menu: **Profile** for your notification email and password, **Home Screen Settings** for favorite apps and display mode, and **Display Settings** for the interface language, date/time format and time zone (see the [User Settings Manual](/manual/en/user-settings)).
 
 ## Glossary
 
