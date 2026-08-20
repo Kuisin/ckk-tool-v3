@@ -96,6 +96,7 @@ import { PrimaryButton, SecondaryButton } from "@/components/ui/buttons";
 import { DocNumber } from "@/components/ui/DocNumber";
 import { FieldValue } from "@/components/ui/FieldValue";
 import { CUSTOMER_F4 } from "@/components/ui/f4-presets";
+import { HelpLabel } from "@/components/ui/HelpLabel";
 import { HistoryPanel } from "@/components/ui/HistoryPanel";
 import { MemoPanel } from "@/components/ui/MemoPanel";
 import { MoneyText } from "@/components/ui/MoneyText";
@@ -114,6 +115,7 @@ import {
 import { useTabParam } from "@/hooks/useUrlState";
 import type { MemoView } from "@/lib/document-memos";
 import { ORDER_TYPE_LABEL } from "@/lib/enum-labels";
+import { fieldHelp } from "@/lib/field-help";
 import { formatMoney } from "@/lib/format";
 import { parseExtractError } from "@/lib/intake-extract-error";
 import {
@@ -1243,7 +1245,7 @@ function DraftEditor({
                   ? { value: a.shipToBpId, label: a.shipToName }
                   : null
               }
-              label="出荷先"
+              label={<HelpLabel {...fieldHelp("orderAcceptance", "shipTo")} />}
               onChange={setShipToBpId}
               onSearch={searchShipToOptions}
               placeholder="出荷先を検索（任意）"
@@ -1253,7 +1255,9 @@ function DraftEditor({
             <Select
               clearable
               data={plantOptions}
-              label="担当拠点"
+              label={
+                <HelpLabel {...fieldHelp("orderAcceptance", "assignedPlant")} />
+              }
               onChange={setAssignedPlantId}
               placeholder="拠点を選択（任意）"
               searchable
@@ -1262,7 +1266,11 @@ function DraftEditor({
             <Select
               clearable
               data={workLocationOptions}
-              label="出荷作業場所"
+              label={
+                <HelpLabel
+                  {...fieldHelp("orderAcceptance", "shippingWorkLocation")}
+                />
+              }
               onChange={setShippingWorkLocationId}
               placeholder="作業場所を選択（任意）"
               searchable
