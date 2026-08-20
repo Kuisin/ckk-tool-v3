@@ -82,7 +82,34 @@ export async function fetchUnshippedOrderLines(): Promise<
       product: true,
       workOrders: {
         where: { status: "COMPLETED" },
-        include: { steps: true, stepLinks: true },
+        // computeFinishedQuantity が読む列だけを取る。`steps: true`（全列）に
+        // すると work_order_steps に列が増えるたび、その列がまだ無い DB に
+        // 対してこの画面が**真っ先に** P2022 で落ちる（migration は Coolify の
+        // デプロイに含まれず手動なので、その窓が実際に開く）。
+        select: {
+          workOrderNumber: true,
+          steps: {
+            select: {
+              id: true,
+              processStepId: true,
+              status: true,
+              sortOrder: true,
+              inputQuantity: true,
+              outputSuccessQuantity: true,
+              outputDefectSemiFinished: true,
+              outputDefectScrap: true,
+              outputDefectRework: true,
+              sessionLockedBy: true,
+            },
+          },
+          stepLinks: {
+            select: {
+              sourceStepId: true,
+              targetStepId: true,
+              routedQuantity: true,
+            },
+          },
+        },
         orderBy: { workOrderNumber: "asc" },
       },
       // 出荷書に載っている数量（下書きも「もう手配済み」として数える）。
