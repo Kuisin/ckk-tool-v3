@@ -16,6 +16,8 @@ import {
   sheetTemplateHead,
 } from "@/lib/inspection-sheet-pdf";
 import { renderPdf } from "@/lib/pdf";
+import { documentQrSvg } from "@/lib/pdf-qr";
+import { QR_KINDS } from "@/lib/qr-payload";
 
 export const dynamic = "force-dynamic";
 
@@ -76,6 +78,8 @@ export async function GET(request: Request): Promise<Response> {
     record.step.inputQuantity ?? record.step.workOrder.plannedQuantity;
 
   const pdf = await renderPdf("inspection-sheet.html", {
+    // 検査表は指示書に属する紙なので QR は指示書番号（CKK:WO:<番号>）。
+    doc_qr: documentQrSvg(QR_KINDS.WO, record.step.workOrder.workOrderNumber),
     template: sheetTemplateHead(record.template, lotQuantity),
     meta: {
       work_order: `#${record.step.workOrder.workOrderNumber}`,

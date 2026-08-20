@@ -18,6 +18,8 @@ import { parseDocKey } from "@/lib/doc-number";
 import { isIssued, notIssuedResponse, pdfStorageKey } from "@/lib/document-pdf";
 import { documentFormatters } from "@/lib/format";
 import { renderPdf } from "@/lib/pdf";
+import { documentQrSvg } from "@/lib/pdf-qr";
+import { QR_KINDS } from "@/lib/qr-payload";
 import { getObject, putObject } from "@/lib/storage";
 
 // Reads request query params → always rendered at request time.
@@ -88,6 +90,8 @@ export async function GET(request: Request): Promise<Response> {
       name: invoice.customerName,
       meta: metaLines.join("<br>"),
     },
+    // 書類 QR（CKK:INV:<番号>）。URL は入れない。
+    doc_qr: documentQrSvg(QR_KINDS.INVOICE, invoice.invoiceNumber),
     doc: {
       number: invoice.invoiceNumber,
       issued_date: documentFormatters.date(

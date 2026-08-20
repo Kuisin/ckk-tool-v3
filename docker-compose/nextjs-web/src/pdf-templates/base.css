@@ -496,3 +496,24 @@ body {
   padding: 6pt 0;
   border-top: 1pt solid #eee;
 }
+
+/*
+ * 書類 QR — 中身は統一形式 CKK:<KIND>:<KEY>（URL は入れない）。
+ * 20mm 角。Gotenberg(Chromium) は SVG をそのまま描くので、印刷解像度でも
+ * にじまない。空文字が差し込まれたときは枠ごと潰れる（白紙シート等）。
+ */
+.doc-qr {
+  width: 20mm;
+  height: 20mm;
+  margin-top: 6pt;
+}
+
+.doc-qr:empty {
+  display: none;
+}
+
+.doc-qr svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
