@@ -1,9 +1,11 @@
 ---
 title: "User Settings Manual"
-description: "Settings for your own account. Open them from the avatar menu (top right) → Profile / Notification Settings / Home Screen Settings."
+description: "Settings for your own account. Open them from the avatar menu (top right) → Profile / Notification Settings / Home Screen Settings / Display Settings."
 screenshots: [profile-home-01]
 ---
-Settings for your own account. Open them from the avatar menu (top right) → **Profile** / **Notification Settings** / **Home Screen Settings**.
+Settings for your own account. Open them from the avatar menu (top right) → **Profile** / **Notification Settings** / **Home Screen Settings** / **Display Settings**.
+
+> 💡 All of your personal settings live in that avatar menu. There is no settings button on the home screen.
 
 ## Profile
 
@@ -42,6 +44,27 @@ Use **Home Screen Settings** in the avatar menu to customize your home screen la
 
 ![Home screen settings](./assets/screenshots/profile-home-01.png)
 
-## Language
+## Display settings
 
-- The manuals (/manual) can be switched between 日本語 / English / 中文 using the language links at the top right.
+Use **Display Settings** in the avatar menu to change the language and how dates and times are shown. These apply to **your account only**, on both the web app and the shop-floor tablets (kiosk).
+
+- **Language** — 日本語 / English / 中文.
+- **Date format** — `2026/03/05`, `2026-03-05`, `05/03/2026` or `03/05/2026`.
+- **Time format** — 24-hour (14:30) or 12-hour (2:30 PM).
+- **Time zone** — which region's clock dates and times are shown in; set it when working from an overseas site or on a trip. Each option shows the **current time** in that zone, so you can see the offset at a glance.
+
+Your choices appear immediately in the **Preview** below, so you can check them before saving. Once saved they apply **everywhere a date or time appears** — lists, detail pages, history.
+
+> 💡 **Changing the time zone does not change the recorded timestamps.** It only changes which region's clock you read them by.
+
+### Some screens are still in Japanese
+
+Even with English or 中文 selected, **screens that are not translated yet stay in Japanese** — this is expected, not a fault. Today the top-right menu, the notification panel and this display-settings screen switch. The date, time and time-zone settings apply to every screen from the start.
+
+### PDFs do not follow these settings
+
+Quotes, delivery notes, invoices and other PDFs are always printed with **Japan time and the same format for everyone**, so a finished document never shows different dates depending on who opens it.
+
+## Manual language
+
+- The manuals (/manual) can be switched between 日本語 / English / 中文 using the language links at the top right. The language of the app itself is changed in **Display Settings** above.

@@ -57,7 +57,12 @@ import { OperationCodeJump } from "./OperationCodeJump";
 import { SharePageModal } from "./SharePageModal";
 
 const NOTIFICATION_POPUP_WIDTH = 280;
-const PROFILE_MENU_WIDTH = 180;
+/**
+ * アバターメニューの幅。項目名（ホーム画面設定 / 通知設定 …）とアイコン・
+ * 余白が 1 行に収まる幅を取る — 折り返すと行の高さが揃わず読みにくい。
+ * 英語の "Notification settings" が最長なのでそれに合わせている。
+ */
+const PROFILE_MENU_WIDTH = 260;
 
 /** 開発環境バーの高さ（dev のみ表示。ヘッダー最上部に重ねる）。 */
 export const DEV_BAR_HEIGHT = 28;
@@ -472,11 +477,12 @@ export function AppHeader({
                     src={sessionUser.avatarUrl}
                     thumbSrc={sessionUser.avatarThumbUrl}
                   />
-                  <Stack gap={0}>
-                    <Text fw={600} size="sm">
+                  {/* 長い氏名・所属でも折り返さない（幅で足りない分は省略）。 */}
+                  <Stack className="min-w-0" gap={0}>
+                    <Text fw={600} size="sm" truncate>
                       {sessionUser.displayName}
                     </Text>
-                    <Text c="dimmed" size="xs">
+                    <Text c="dimmed" size="xs" truncate>
                       {sessionUser.department}
                     </Text>
                   </Stack>

@@ -29,7 +29,6 @@ import { IconLayoutDashboard, IconStarFilled } from "@tabler/icons-react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useHiddenApps, useUnreleasedApps } from "@/components/layout/AppFlags";
-import { GhostButton } from "@/components/ui/buttons";
 import { UserAvatar } from "@/components/ui/UserAvatar";
 import { useIsMobile } from "@/hooks/useViewport";
 import {
@@ -218,35 +217,27 @@ export function HomeApps({
         </Group>
       </Card>
 
-      {/* ── 工程での絞り込み表示（パンくずの工程リンクから）/ 設定リンク ──── */}
-      <Group gap="xs" justify={workprocess ? "space-between" : "flex-end"}>
-        {workprocess && (
-          <Group gap="xs" wrap="nowrap">
-            <Text c="dimmed" size="sm">
-              工程で絞り込み中:
-            </Text>
-            <Badge
-              color={CATEGORY_COLORS[workprocess]}
-              size="lg"
-              variant="light"
-            >
-              {workprocess}
-            </Badge>
-            <CloseButton
-              aria-label="絞り込みを解除"
-              component={Link}
-              href="/"
-              size="sm"
-            />
-          </Group>
-        )}
-        <GhostButton
-          href="/profile/home"
-          leftSection={<IconLayoutDashboard size={16} />}
-        >
-          ホーム画面設定
-        </GhostButton>
-      </Group>
+      {/*
+        工程での絞り込み表示（パンくずの工程リンクから）。絞り込み中だけ出す。
+        ホーム画面設定への導線はここには置かない — 設定系はアバターメニューに
+        まとめてあり、ホームはアプリを選ぶ場所に徹する。
+      */}
+      {workprocess && (
+        <Group gap="xs" wrap="nowrap">
+          <Text c="dimmed" size="sm">
+            工程で絞り込み中:
+          </Text>
+          <Badge color={CATEGORY_COLORS[workprocess]} size="lg" variant="light">
+            {workprocess}
+          </Badge>
+          <CloseButton
+            aria-label="絞り込みを解除"
+            component={Link}
+            href="/"
+            size="sm"
+          />
+        </Group>
+      )}
 
       {/* ── お気に入り（ホーム画面設定で選択・上部固定） ─────────────────── */}
       {organized.starred.length > 0 && (
