@@ -119,6 +119,7 @@ model WorkOrder {
 
   steps               WorkOrderStep[]
   stepLinks           WorkOrderStepLink[]
+  flowChanges         WorkOrderFlowChange[]
   inspectionTemplates WorkOrderInspectionTemplate[]
   shippingOrders      ShippingOrder[]
   reservations        InventoryReservation[]
@@ -129,6 +130,40 @@ model WorkOrder {
   @@index([approvalStatus])
   @@index([routeVersionId])
   @@map("work_orders")
+  @@schema("app")
+}
+
+// 承認されるまで適用しない工程フロー変更（§6 / §7）。
+//
+// 承認済み・進行中の指示書で分岐を足す/直す/消す操作は、承認設定（MS0B）で
+// 「工程フロー変更」のフローが 1 段でも設定されていれば、この行として保留され
+// 最終承認で初めて適用される。1 段も無ければ行は作られず即適用（素通し）。
+//
+// 承認依頼は業務キー文字列（= id）で指すため FK は無い → 削除時の掃除は
+// AFTER DELETE トリガー purge_children_after_delete が行う
+// （migration 20260917090000）。
+model WorkOrderFlowChange {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  workOrderId String   @map("work_order_id") @db.Uuid
+  /// ADD_BRANCH | UPDATE_BRANCH | REMOVE_BRANCH（DB 側 CHECK）
+  kind        String
+  /// 操作の入力そのもの。適用時にサーバーで再検証する。
+  payload     Json
+  /// PENDING | APPLIED | REJECTED | CANCELLED | FAILED（DB 側 CHECK）
+  status      String   @default("PENDING")
+  /// 適用に失敗した理由（数量が足りなくなった等）。承認後に出る。
+  error       String?
+  requestedBy String?  @map("requested_by") @db.Uuid
+  requestedAt DateTime @default(now()) @map("requested_at") @db.Timestamptz(6)
+  resolvedBy  String?  @map("resolved_by") @db.Uuid
+  resolvedAt  DateTime? @map("resolved_at") @db.Timestamptz(6)
+
+  workOrder       WorkOrder @relation(fields: [workOrderId], references: [id], onDelete: Cascade)
+  requestedByUser User?     @relation("FlowChangeRequestedBy", fields: [requestedBy], references: [id])
+  resolvedByUser  User?     @relation("FlowChangeResolvedBy", fields: [resolvedBy], references: [id])
+
+  @@index([workOrderId, status])
+  @@map("work_order_flow_changes")
   @@schema("app")
 }
 

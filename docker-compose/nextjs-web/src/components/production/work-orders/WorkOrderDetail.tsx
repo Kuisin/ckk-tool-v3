@@ -53,6 +53,7 @@ import {
 import { useTabParam } from "@/hooks/useUrlState";
 import type { MemoView } from "@/lib/document-memos";
 import { WORK_ORDER_TYPE_LABEL } from "@/lib/enum-labels";
+import { FlowChangeCard, type PendingFlowChangeView } from "./FlowChangeCard";
 import type { WorkOrderView } from "./model";
 
 const BASE_PATH = "/production/work-orders";
@@ -65,6 +66,8 @@ export function WorkOrderDetail({
   approvalTrail = [],
   catalogOptions = [],
   memos = [],
+  flowChange = null,
+  flowChangeApproval = null,
   variant = "default",
 }: {
   workOrder: WorkOrderView;
@@ -76,6 +79,10 @@ export function WorkOrderDetail({
   approvalTrail?: ApprovalTrailView[];
   /** 分岐追加モーダル用の工程カタログ options（詳細画面のみ）。 */
   catalogOptions?: { value: string; label: string }[];
+  /** 承認待ちの工程フロー変更（承認設定が未設定なら常に null = 即適用）。 */
+  flowChange?: PendingFlowChangeView | null;
+  /** 上の変更そのものの承認状態（指示書の承認とは別物）。 */
+  flowChangeApproval?: ApprovalActionState | null;
   /** "approval" = 承認管理 (PD03) からの承認画面。 */
   variant?: "default" | "approval";
 }) {
@@ -310,6 +317,10 @@ export function WorkOrderDetail({
     >
       {/* 「いまやること」カードは常に最上部。承認画面は承認状況もサマリより上 */}
       {approvalCard}
+      {/* 承認待ちの工程フロー変更（承認設定が未設定なら出ない = 即適用） */}
+      {flowChange && flowChangeApproval && (
+        <FlowChangeCard approval={flowChangeApproval} change={flowChange} />
+      )}
       {isApproval ? (
         <>
           {approvalPanel}
