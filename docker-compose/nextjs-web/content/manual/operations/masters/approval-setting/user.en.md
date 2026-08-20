@@ -49,6 +49,13 @@ The **Approval flows** tab lists the four documents that need approval.
 - The four are **Order acknowledgement**, **Work order**, **Material purchase order** and **Purchase request**.
 - Each card lists its steps as "1 First approval · Plant manager · Any one person".
 - A document with no approval flow is shown with a red border and the note that **no approval can be requested for it**. In that state the request button will not take you anywhere, so be sure to set one up.
+- Each card also shows the **permission needed to approve** it (for example, an order acknowledgement needs approval rights for "Order acceptance"). **Someone without that permission cannot approve, even when they are in the approval group.**
+- Every step carries a badge for the people who can approve it right now.
+  - **N can approve** (green) … everyone in the step has the permission.
+  - **N of N without permission** (red) … those people are turned away when they press Approve. Hover the badge to see their names.
+  - **No members** (red) … nobody can approve that step at the moment, so a request would stall there.
+  - **N can approve (N limited)** (yellow) … they have the permission, but only for their own plants, so documents outside that range cannot be approved by them.
+- A card with any of these problems is bordered in red, the same as an unconfigured one.
 
 To set it up, press **Edit** on the card (**Set up** when it is empty).
 
@@ -61,6 +68,8 @@ To set it up, press **Edit** on the card (**Set up** when it is empty).
 5. To change the order, swap steps with the **↑** and **↓** buttons. The step numbers are renumbered for you.
 6. Remove a step you do not need with the **bin** button.
 7. Press **Save**.
+
+Once a group is chosen, the same badge and the member names appear below it as **people who can approve this step** — so you can check before saving that the group you picked really can approve.
 
 > ⚠️ **Changing the settings does not affect documents that are already in approval.** A document in progress runs to the end with the settings as they were when the approval was requested. Changes apply to approval requests made from now on.
 
@@ -91,13 +100,19 @@ Saving opens the detail screen. Add members there. The group you made can then b
 
 ![Member add screen](../../../assets/screenshots/master-approval-setting-member-add-01.png)
 
-The member table shows **Name / Username / Term / State**. The state is one of:
+Above the member table you can see **which documents this group approves and the permission that requires**. A group that is not used in any approval flow says so (adding members to it does nothing).
+
+The member table shows **Name / Username / Term / State / Approval permission**. The state is one of:
 
 - **Permanent** … no period set; can always approve.
 - **Active** … fixed term, and currently inside the period. Can approve.
 - **Scheduled** … fixed term, but the start has not been reached. Cannot approve yet.
 - **Ended** … fixed term, and the end has passed. Can no longer approve.
 - **Disabled** … stopped by hand; cannot approve regardless of the period.
+
+The **Approval permission** column shows one badge per document this group approves. **Green** … they can approve. **Yellow** … they have the permission but only within their own plants. **Red** … they lack the permission for that document and are turned away when they press Approve. Permissions come from **roles in User management (SY01)**, not from this app.
+
+> 💡 The same column appears for stand-ins on the **Stand-ins** tab. A stand-in approves with **their own** permission, so they also need approval rights for the document.
 
 The buttons on the right of each row let you **change the term**, stop that member temporarily (**Disable member**), or take them out of the group (**Remove member**).
 
@@ -178,7 +193,13 @@ When a fixed-term member stops being able to approve. It does not apply to perma
 A. That document has no approval flow yet. Open its card on the **Approval flows** tab and set up at least one step.
 
 **Q. Someone who was asked to approve says they cannot.**
-A. First check which group that step uses on **Approval flows**, then check that the person is a member of that group. Even if they are, they cannot approve while the state is **Disabled**, **Scheduled** or **Ended**.
+A. Three things must line up: (1) they hold the **approval permission** for that document (green in the Approval permission column), (2) they are a **member of the group** for that step, and (3) their state is **Permanent** or **Active** (**Disabled**, **Scheduled** and **Expired** cannot approve). Check the step's group on the Approval flows tab, then check all three on that group's Members tab.
+
+**Q. A member's approval permission is red (no permission).**
+A. They do not hold the approval permission for that document. Permissions come from roles, so check that person in **User management (SY01)** — this app cannot change them. Pass on the permission name shown on the card or badge.
+
+**Q. It says "N limited" in yellow.**
+A. They have the permission, but only within their own plants. They can approve documents inside that range and not outside it. If they need to approve company-wide, review the scope of their permission in User management (SY01).
 
 **Q. A step set to "Everyone" does not move on after one person approves.**
 A. That is how it works. "Everyone" waits until every member as of the approval request has approved. The document screen shows "N remaining" with the names of those who have not approved yet.
