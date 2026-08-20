@@ -1,6 +1,7 @@
 import path from "node:path";
 import { createMDX } from "fumadocs-mdx/next";
 import type { NextConfig } from "next";
+import createNextIntlPlugin from "next-intl/plugin";
 
 /**
  * マニュアル再編前の `apps/<アプリ>` → 再編後の `operations/<カテゴリ>/<アプリ>`。
@@ -200,5 +201,7 @@ const nextConfig: NextConfig = {
 };
 
 const withMDX = createMDX();
+// 言語は URL ではなくユーザー設定で決まる（src/i18n/request.ts 参照）。
+const withNextIntl = createNextIntlPlugin("./src/i18n/request.ts");
 
-export default withMDX(nextConfig);
+export default withNextIntl(withMDX(nextConfig));

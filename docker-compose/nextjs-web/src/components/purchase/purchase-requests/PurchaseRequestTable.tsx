@@ -10,13 +10,13 @@
 import { Group, Select, Stack, Text, TextInput } from "@mantine/core";
 import { IconClipboardList, IconSearch } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
+import { useFormat } from "@/components/layout/PreferencesProvider";
 import { type Column, DataTable } from "@/components/ui/DataTable";
 import { NewButton } from "@/components/ui/NewButton";
 import { StatusBadge, statusOptions } from "@/components/ui/StatusBadge";
 import { ListShell } from "@/components/ui/shells";
 import { useUrlSelectState, useUrlStringState } from "@/hooks/useUrlState";
 import { useIsMobile } from "@/hooks/useViewport";
-import { formatDate, formatDateTime } from "@/lib/format";
 import type { PurchaseRequestRow } from "./model";
 
 const BASE_PATH = "/purchase/purchase-requests";
@@ -30,6 +30,7 @@ function materialSummary(r: PurchaseRequestRow): string {
 }
 
 export function PurchaseRequestTable({ rows }: { rows: PurchaseRequestRow[] }) {
+  const fmt = useFormat();
   const router = useRouter();
   const isMobile = useIsMobile();
 
@@ -105,7 +106,7 @@ export function PurchaseRequestTable({ rows }: { rows: PurchaseRequestRow[] }) {
       sortValue: (r) => r.desiredAt ?? "",
       render: (r) => (
         <Text className="tabular-nums" size="sm">
-          {formatDate(r.desiredAt)}
+          {fmt.date(r.desiredAt)}
         </Text>
       ),
     },
@@ -116,7 +117,7 @@ export function PurchaseRequestTable({ rows }: { rows: PurchaseRequestRow[] }) {
       sortValue: (r) => r.updatedAt,
       render: (r) => (
         <Text className="tabular-nums" size="sm">
-          {formatDateTime(r.updatedAt)}
+          {fmt.dateTime(r.updatedAt)}
         </Text>
       ),
     },
@@ -178,7 +179,7 @@ export function PurchaseRequestTable({ rows }: { rows: PurchaseRequestRow[] }) {
             <Stack align="flex-end" className="shrink-0" gap={4}>
               <StatusBadge entity="PurchaseRequest" status={r.status} />
               <Text c="dimmed" size="xs">
-                {formatDate(r.desiredAt)}
+                {fmt.date(r.desiredAt)}
               </Text>
             </Stack>
           </Group>

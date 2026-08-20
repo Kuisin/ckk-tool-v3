@@ -54,6 +54,7 @@ import {
   unlinkDevice,
   updateDevice,
 } from "@/app/(dashboard)/settings/kiosk-devices/actions";
+import { useFormat } from "@/components/layout/PreferencesProvider";
 import { CreateButton, SecondaryButton } from "@/components/ui/buttons";
 import {
   type Column,
@@ -68,7 +69,6 @@ import { useUrlSelectState, useUrlStringState } from "@/hooks/useUrlState";
 import { useIsMobile } from "@/hooks/useViewport";
 import { formatCode, normalizeCode } from "@/lib/crockford";
 import { fieldHelp } from "@/lib/field-help";
-import { formatDateTime } from "@/lib/format";
 import type { KioskDeviceRow, KioskPlantOption } from "@/lib/kiosk-admin";
 import type { ActionResult } from "@/lib/server-action";
 import { KioskDeviceLogsModal } from "./KioskDeviceLogsModal";
@@ -280,6 +280,7 @@ export function KioskDevicesTable({
   rows: KioskDeviceRow[];
   plantOptions: KioskPlantOption[];
 }) {
+  const fmt = useFormat();
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const isMobile = useIsMobile();
@@ -545,7 +546,7 @@ export function KioskDevicesTable({
         }
         return (
           <Text c="dimmed" size="xs">
-            {r.linkedAt ? formatDateTime(r.linkedAt) : "—"}
+            {r.linkedAt ? fmt.dateTime(r.linkedAt) : "—"}
           </Text>
         );
       },
@@ -595,7 +596,7 @@ export function KioskDevicesTable({
         const at = liveEntry?.lastActivityAt ?? r.lastActivityAt;
         return (
           <Text c="dimmed" size="sm">
-            {at ? formatDateTime(at) : "—"}
+            {at ? fmt.dateTime(at) : "—"}
           </Text>
         );
       },
@@ -629,7 +630,7 @@ export function KioskDevicesTable({
           setConfirm({
             title: "有効化の確認",
             message: `この端末を有効化します（タブレットとのリンク: ${
-              r.linkedAt ? formatDateTime(r.linkedAt) : "—"
+              r.linkedAt ? fmt.dateTime(r.linkedAt) : "—"
             }）。有効化するとタブレットが自動でキオスクとして使用可能になります。`,
             confirmLabel: "有効化",
             confirmColor: "green",
@@ -813,7 +814,7 @@ export function KioskDevicesTable({
                 )}
               </Group>
               <Text c="dimmed" size="xs">
-                最終アクティビティ {lastAt ? formatDateTime(lastAt) : "—"}
+                最終アクティビティ {lastAt ? fmt.dateTime(lastAt) : "—"}
               </Text>
             </Stack>
           );

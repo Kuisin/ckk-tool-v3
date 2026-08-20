@@ -1,17 +1,22 @@
+"use client";
+
 /**
  * JsonLocalizedText.tsx — { ja, en } DB JSON field renderer
  * (_specs/design.md §10.6 / §17.4).
  *
- * TODO(i18n): wire to next-intl `useLocale()` once i18n is configured.
- * Until then the app locale is fixed to `ja` with the spec's ja fallback.
+ * 言語はユーザーの表示設定（app.users.locale）に従う。DB 側は ja/en の
+ * 2 言語しか持たないので、中国語のユーザーには英語を出す（日本語より
+ * 読める可能性が高い）— この読み替えは lib/format.ts の Formatters が持つ。
  */
 
-import { type LocalizedText, localized } from "@/lib/format";
+import { useFormat } from "@/components/layout/PreferencesProvider";
+import type { LocalizedText } from "@/lib/format";
 
 export function JsonLocalizedText({
   value,
 }: {
   value: LocalizedText | null | undefined;
 }) {
-  return <>{localized(value)}</>;
+  const fmt = useFormat();
+  return <>{fmt.localized(value)}</>;
 }

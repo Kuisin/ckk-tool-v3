@@ -38,6 +38,7 @@ import {
   cancelOrderLine,
   runStockCheck,
 } from "@/app/(dashboard)/sales/order-lines/actions";
+import { useFormat } from "@/components/layout/PreferencesProvider";
 import { SecondaryButton } from "@/components/ui/buttons";
 import { DocNumber } from "@/components/ui/DocNumber";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -60,7 +61,6 @@ import {
   SHIPPING_TYPE_LABEL,
   WORK_ORDER_TYPE_LABEL,
 } from "@/lib/enum-labels";
-import { formatDate, formatDateTime } from "@/lib/format";
 // type-only import — lib/inventory は server-only（型はバンドルされない）。
 import type { StockCheckResult } from "@/lib/inventory";
 import { isLineStockCheckable } from "@/lib/order-line-core";
@@ -79,6 +79,7 @@ export function OrderLineDetail({
   /** 社内メモ（document_memos 由来、メモタブ）。 */
   memos: MemoView[];
 }) {
+  const fmt = useFormat();
   const router = useRouter();
   // アクティブタブを ?tab= に保持（URL 共有でタブまで再現）
   const [tab, setTab] = useTabParam("overview");
@@ -158,10 +159,10 @@ export function OrderLineDetail({
         </Group>
       }
       breadcrumbs={["販売", { label: "注文明細", href: BASE_PATH }, "詳細"]}
-      createdAt={formatDateTime(order.createdAt)}
+      createdAt={fmt.dateTime(order.createdAt)}
       status={<StatusBadge entity="OrderLine" status={order.status} />}
       title={order.orderNumber}
-      updatedAt={formatDateTime(order.updatedAt)}
+      updatedAt={fmt.dateTime(order.updatedAt)}
     >
       {order.isLocked && (
         <Alert
@@ -216,7 +217,7 @@ export function OrderLineDetail({
           label="金額"
           value={<MoneyText ta="left" value={order.amount} />}
         />
-        <FieldValue label="納期" value={formatDate(order.deliveryDate)} />
+        <FieldValue label="納期" value={fmt.date(order.deliveryDate)} />
         <FieldValue
           label="ロット番号"
           value={
@@ -414,7 +415,7 @@ export function OrderLineDetail({
                       <Table.Td>
                         <StatusBadge entity="ShippingOrder" status={s.status} />
                       </Table.Td>
-                      <Table.Td>{formatDate(s.shippedAt)}</Table.Td>
+                      <Table.Td>{fmt.date(s.shippedAt)}</Table.Td>
                     </Table.Tr>
                   ))}
                 </Table.Tbody>

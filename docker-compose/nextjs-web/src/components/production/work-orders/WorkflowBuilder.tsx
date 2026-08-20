@@ -61,6 +61,7 @@ import type {
   InspectionTemplateOption,
   OrderLineRef,
 } from "@/app/(dashboard)/production/work-orders/data";
+import { useFormat } from "@/components/layout/PreferencesProvider";
 import {
   ProcessListEditor,
   type StepLocation,
@@ -75,7 +76,6 @@ import type { MaterialAtp } from "@/lib/atp";
 import { WORK_ORDER_TYPE_OPTIONS } from "@/lib/enum-labels";
 import { fieldHelp } from "@/lib/field-help";
 import { zodResolver } from "@/lib/form";
-import { formatDate, workOrderNumberLabel } from "@/lib/format";
 import type {
   RouteStepSnapshot,
   RouteView,
@@ -200,6 +200,7 @@ export function WorkflowBuilder({
   /** 外注先（VENDOR ロールの有効 BP）— サーバーで全件ロード。 */
   supplierOptions: Option[];
 }) {
+  const fmt = useFormat();
   const router = useRouter();
   const isMobile = useIsMobile();
   const [isPending, startTransition] = useTransition();
@@ -560,11 +561,11 @@ export function WorkflowBuilder({
           title: "保存しました",
           message:
             mode === "edit"
-              ? `指示書 ${workOrderNumberLabel(
+              ? `指示書 ${fmt.workOrderNumberLabel(
                   result.data.workOrderNumber,
                   workOrder?.createdAt ?? new Date(),
                 )} を更新しました`
-              : `指示書 ${workOrderNumberLabel(
+              : `指示書 ${fmt.workOrderNumberLabel(
                   result.data.workOrderNumber,
                   new Date(),
                 )} を作成しました`,
@@ -587,7 +588,7 @@ export function WorkflowBuilder({
   const versionOptions: Option[] =
     selectedRoute?.versions.map((v) => ({
       value: v.id,
-      label: `v${v.version}（${formatDate(v.createdAt)}）`,
+      label: `v${v.version}（${fmt.date(v.createdAt)}）`,
     })) ?? [];
 
   return (
@@ -607,7 +608,7 @@ export function WorkflowBuilder({
       onSubmit={form.onSubmit(handleSubmit)}
       title={
         mode === "edit"
-          ? `指示書 ${workOrderNumberLabel(
+          ? `指示書 ${fmt.workOrderNumberLabel(
               workOrder?.workOrderNumber,
               workOrder?.createdAt,
             )} 編集`
@@ -902,6 +903,7 @@ function MaterialAtpAlert({
   atp: MaterialAtp;
   plannedQuantity: number;
 }) {
+  const fmt = useFormat();
   const planned = Number.isFinite(plannedQuantity) ? plannedQuantity : 0;
   const shortage = planned - atp.availableNow;
 
@@ -932,7 +934,7 @@ function MaterialAtpAlert({
         素材在庫が {shortage.toLocaleString("ja-JP")} 不足しています
         （現在利用可能 {atp.availableNow.toLocaleString("ja-JP")} / 予定数量{" "}
         {planned.toLocaleString("ja-JP")}）— 次回入荷予定:{" "}
-        {formatDate(atp.nextReceiptDate)}
+        {fmt.date(atp.nextReceiptDate)}
       </Alert>
     );
   }

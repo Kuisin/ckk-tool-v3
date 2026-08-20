@@ -44,6 +44,7 @@ import {
   saveOutsourceDates,
   startStep,
 } from "@/app/(dashboard)/production/work-orders/[id]/steps/[stepId]/actions";
+import { useFormat } from "@/components/layout/PreferencesProvider";
 import { DefectRecordForm } from "@/components/production/DefectRecordForm";
 import {
   InspectionApprovalPanel,
@@ -56,18 +57,18 @@ import { DocNumber } from "@/components/ui/DocNumber";
 import { FieldValue } from "@/components/ui/FieldValue";
 import { ModalShell } from "@/components/ui/modals";
 import { StatusBadge } from "@/components/ui/StatusBadge";
-import { formatDateTime, workOrderNumberLabel } from "@/lib/format";
 import { QUANTITY_LABELS } from "@/lib/workflow-core";
 import type { StepExecutionData } from "./model";
 
 const BASE_PATH = "/production/work-orders";
 
 export function StepExecutionView({ data }: { data: StepExecutionData }) {
+  const fmt = useFormat();
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const { step, workOrderNumber } = data;
   // 表示番号 YYYYMMDD-XXXXX（内部キーは通し連番の int のまま）。
-  const woLabel = workOrderNumberLabel(
+  const woLabel = fmt.workOrderNumberLabel(
     workOrderNumber,
     data.workOrderCreatedAt,
   );
@@ -228,13 +229,13 @@ export function StepExecutionView({ data }: { data: StepExecutionData }) {
             )}
             {step.startedAt && (
               <Text c="dimmed" size="sm">
-                開始: {formatDateTime(step.startedAt)}
+                開始: {fmt.dateTime(step.startedAt)}
                 {step.startedByName ? `（${step.startedByName}）` : ""}
               </Text>
             )}
             {step.completedAt && (
               <Text c="dimmed" size="sm">
-                完了: {formatDateTime(step.completedAt)}
+                完了: {fmt.dateTime(step.completedAt)}
                 {step.completedByName ? `（${step.completedByName}）` : ""}
               </Text>
             )}

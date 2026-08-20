@@ -40,6 +40,7 @@ import {
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { setGroupMemberActive } from "@/app/(dashboard)/master/approval-settings/actions";
+import { useFormat } from "@/components/layout/PreferencesProvider";
 import { ActiveBadge } from "@/components/ui/ActiveBadge";
 import { GhostButton } from "@/components/ui/buttons";
 import { DocNumber } from "@/components/ui/DocNumber";
@@ -61,7 +62,6 @@ import {
   memberPeriodState,
 } from "@/lib/approval-membership";
 import { permissionScopeLabel } from "@/lib/enum-labels";
-import { formatDate, formatDateTime } from "@/lib/format";
 import {
   AddApprovalDelegateModal,
   AddApprovalGroupMemberModal,
@@ -142,6 +142,7 @@ export interface ApprovalGroupDetailData {
 
 /** 在籍期間の表示（常任は「常任」）。 */
 function MemberPeriod({ member }: { member: ApprovalGroupMemberRow }) {
+  const fmt = useFormat();
   if (!member.validFrom || !member.validUntil) {
     return (
       <Text c="dimmed" size="sm">
@@ -152,8 +153,7 @@ function MemberPeriod({ member }: { member: ApprovalGroupMemberRow }) {
   return (
     <Stack gap={0}>
       <Text className="tabular-nums" size="xs">
-        {formatDateTime(member.validFrom)} 〜{" "}
-        {formatDateTime(member.validUntil)}
+        {fmt.dateTime(member.validFrom)} 〜 {fmt.dateTime(member.validUntil)}
       </Text>
       {member.note && (
         <Text c="dimmed" size="xs" truncate>
@@ -266,6 +266,7 @@ export function ApprovalGroupDetail({
   record: ApprovalGroupDetailData;
   auditEntries: AuditEntry[];
 }) {
+  const fmt = useFormat();
   const router = useRouter();
   const isMobile = useIsMobile();
   const [, startTransition] = useTransition();
@@ -542,8 +543,8 @@ export function ApprovalGroupDetail({
                                 className="tabular-nums"
                                 size="xs"
                               >
-                                {formatDate(d.validFrom)}〜
-                                {formatDate(d.validUntil)}
+                                {fmt.date(d.validFrom)}〜
+                                {fmt.date(d.validUntil)}
                               </Text>
                               {d.reason && (
                                 <Text c="dimmed" size="xs">
@@ -562,8 +563,7 @@ export function ApprovalGroupDetail({
                         {!isMobile && (
                           <Table.Td>
                             <Text className="tabular-nums" size="sm">
-                              {formatDate(d.validFrom)}〜
-                              {formatDate(d.validUntil)}
+                              {fmt.date(d.validFrom)}〜{fmt.date(d.validUntil)}
                             </Text>
                           </Table.Td>
                         )}

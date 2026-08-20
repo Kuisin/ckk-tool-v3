@@ -9,7 +9,8 @@
  */
 
 import { Badge, Box, Group, Stack, Text } from "@mantine/core";
-import { formatDate, formatMoney } from "@/lib/format";
+import { useFormat } from "@/components/layout/PreferencesProvider";
+import { formatMoney } from "@/lib/format";
 import type { MaterialPricePoint } from "@/lib/material-pricing-core";
 
 const W = 640;
@@ -29,6 +30,7 @@ export function MaterialPriceChart({
   windowDates?: string[];
   onSelect?: (p: MaterialPricePoint) => void;
 }) {
+  const fmt = useFormat();
   if (points.length === 0) {
     return (
       <Text c="dimmed" size="sm">
@@ -177,7 +179,7 @@ export function MaterialPriceChart({
             参照価格 {formatMoney(selected.unitPrice)}
           </Badge>
           <Text c="dimmed" size="xs">
-            {formatDate(selected.date)} ・ {selected.supplier} ・{" "}
+            {fmt.date(selected.date)} ・ {selected.supplier} ・{" "}
             {selected.poNumber}
           </Text>
         </Group>

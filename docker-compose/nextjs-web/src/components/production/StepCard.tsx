@@ -24,8 +24,8 @@ import {
   IconLoader,
   IconX,
 } from "@tabler/icons-react";
+import { useFormat } from "@/components/layout/PreferencesProvider";
 import { PrimaryButton, SecondaryButton } from "@/components/ui/buttons";
-import { formatDate, formatDateTime } from "@/lib/format";
 import type { WorkOrderStepView } from "./work-orders/model";
 
 const STATUS_ICON: Record<string, { color: string; icon: React.ReactNode }> = {
@@ -52,6 +52,7 @@ export function StepCard({
   /** フロー図側で選択中（強調枠で表示）。 */
   selected?: boolean;
 }) {
+  const fmt = useFormat();
   const icon = STATUS_ICON[step.status] ?? STATUS_ICON.PENDING;
   const isOutsource = step.executionLocation === "OUTSOURCE";
   const locationName = isOutsource ? step.supplierName : step.plantName;
@@ -157,10 +158,10 @@ export function StepCard({
       {isOutsource && (
         <Group gap="xl" mt="xs" pl={28}>
           <Text c="dimmed" size="xs">
-            依頼: {formatDate(step.outsourceRequestedAt)}
+            依頼: {fmt.date(step.outsourceRequestedAt)}
           </Text>
           <Text c="dimmed" size="xs">
-            入荷予定: {formatDate(step.outsourceExpectedAt)}
+            入荷予定: {fmt.date(step.outsourceExpectedAt)}
           </Text>
         </Group>
       )}
@@ -168,7 +169,7 @@ export function StepCard({
       {step.status === "COMPLETED" && (
         <Group gap="xl" mt="xs" pl={28}>
           <Text c="dimmed" size="xs">
-            完了: {formatDateTime(step.completedAt)}
+            完了: {fmt.dateTime(step.completedAt)}
             {step.completedByName ? `（${step.completedByName}）` : ""}
           </Text>
         </Group>

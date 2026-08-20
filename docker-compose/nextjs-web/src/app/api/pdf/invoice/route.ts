@@ -16,7 +16,7 @@ import { taxLabel } from "@/components/billing/invoices/model";
 import { requirePermissionResponse } from "@/lib/authz";
 import { parseDocKey } from "@/lib/doc-number";
 import { isIssued, notIssuedResponse, pdfStorageKey } from "@/lib/document-pdf";
-import { formatDate } from "@/lib/format";
+import { documentFormatters } from "@/lib/format";
 import { renderPdf } from "@/lib/pdf";
 import { getObject, putObject } from "@/lib/storage";
 
@@ -90,9 +90,11 @@ export async function GET(request: Request): Promise<Response> {
     },
     doc: {
       number: invoice.invoiceNumber,
-      issued_date: formatDate(invoice.issuedAt ?? invoice.createdAt),
-      period: `${formatDate(invoice.billingPeriodFrom)} 〜 ${formatDate(invoice.billingPeriodTo)}`,
-      due_date: formatDate(invoice.dueDate),
+      issued_date: documentFormatters.date(
+        invoice.issuedAt ?? invoice.createdAt,
+      ),
+      period: `${documentFormatters.date(invoice.billingPeriodFrom)} 〜 ${documentFormatters.date(invoice.billingPeriodTo)}`,
+      due_date: documentFormatters.date(invoice.dueDate),
     },
     items: invoice.items.map((it) => ({
       name: it.description,

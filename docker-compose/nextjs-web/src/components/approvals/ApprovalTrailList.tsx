@@ -10,7 +10,7 @@
  */
 
 import { Badge, Group, Stack, Text } from "@mantine/core";
-import { formatDateTime } from "@/lib/format";
+import { useFormat } from "@/components/layout/PreferencesProvider";
 
 /** 承認記録 1 件（lib/approvals fetchApprovalTrail の records と同形）。 */
 export interface ApprovalTrailRecordView {
@@ -45,6 +45,7 @@ export function countTrailRecords(trail: ApprovalTrailView[]): number {
 }
 
 export function ApprovalTrailList({ trail }: { trail: ApprovalTrailView[] }) {
+  const fmt = useFormat();
   const records = trail
     .flatMap((req) =>
       req.records.map((rec, i) => ({
@@ -85,7 +86,7 @@ export function ApprovalTrailList({ trail }: { trail: ApprovalTrailView[] }) {
             )}
           </Text>
           <Text c="dimmed" className="tabular-nums" size="xs">
-            {formatDateTime(r.actedAt)}
+            {fmt.dateTime(r.actedAt)}
           </Text>
           {r.comment && (
             <Text c="dimmed" size="xs" truncate>

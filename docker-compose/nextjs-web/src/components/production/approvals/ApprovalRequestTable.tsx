@@ -25,6 +25,7 @@ import {
 import { IconLock, IconSearch, IconShieldCheck } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
 import type { ApprovalRequestRow } from "@/app/(dashboard)/production/approvals/data";
+import { useFormat } from "@/components/layout/PreferencesProvider";
 import { type Column, DataTable } from "@/components/ui/DataTable";
 import { ListShell } from "@/components/ui/shells";
 import { useUrlSelectState, useUrlStringState } from "@/hooks/useUrlState";
@@ -35,7 +36,6 @@ import {
   approvalTargetHref,
   isApprovalTargetType,
 } from "@/lib/approval-targets";
-import { formatDateTime } from "@/lib/format";
 
 const TARGET_TYPE_OPTIONS = APPROVAL_TARGET_TYPES.map((value) => ({
   value,
@@ -112,6 +112,7 @@ function StepBadge({ row }: { row: ApprovalRequestRow }) {
 }
 
 export function ApprovalRequestTable({ rows }: { rows: ApprovalRequestRow[] }) {
+  const fmt = useFormat();
   const router = useRouter();
   const isMobile = useIsMobile();
 
@@ -181,7 +182,7 @@ export function ApprovalRequestTable({ rows }: { rows: ApprovalRequestRow[] }) {
       sortValue: (r) => r.requestedAt ?? "",
       render: (r) => (
         <Text className="tabular-nums" size="sm">
-          {r.requestedAt ? formatDateTime(r.requestedAt) : "—"}
+          {r.requestedAt ? fmt.dateTime(r.requestedAt) : "—"}
         </Text>
       ),
     },
@@ -250,7 +251,7 @@ export function ApprovalRequestTable({ rows }: { rows: ApprovalRequestRow[] }) {
             </Stack>
             <Stack align="flex-end" className="shrink-0" gap={4}>
               <Text c="dimmed" size="xs">
-                {r.requestedAt ? formatDateTime(r.requestedAt) : "—"}
+                {r.requestedAt ? fmt.dateTime(r.requestedAt) : "—"}
               </Text>
             </Stack>
           </Group>

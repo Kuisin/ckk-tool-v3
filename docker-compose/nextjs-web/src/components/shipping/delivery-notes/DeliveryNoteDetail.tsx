@@ -33,6 +33,7 @@ import {
   issueDeliveryNote,
   markDelivered,
 } from "@/app/(dashboard)/shipping/delivery-notes/actions";
+import { useFormat } from "@/components/layout/PreferencesProvider";
 import { PrimaryButton } from "@/components/ui/buttons";
 import { DocNumber } from "@/components/ui/DocNumber";
 import { FieldValue } from "@/components/ui/FieldValue";
@@ -52,7 +53,6 @@ import {
 } from "@/components/ui/shells";
 import { useTabParam } from "@/hooks/useUrlState";
 import { downloadFile } from "@/lib/download";
-import { formatDate, formatDateTime } from "@/lib/format";
 import type { ActionResult } from "@/lib/server-action";
 import { DeliveryMethodBadge } from "./DeliveryNoteTable";
 import { type DeliveryNote, isEditable } from "./model";
@@ -70,6 +70,7 @@ export function DeliveryNoteDetail({
   /** 操作履歴（audit_logs 由来、履歴タブ）。 */
   auditEntries: AuditEntry[];
 }) {
+  const fmt = useFormat();
   const router = useRouter();
   // アクティブタブを ?tab= に保持（URL 共有でタブまで再現）
   const [tab, setTab] = useTabParam("overview");
@@ -179,10 +180,10 @@ export function DeliveryNoteDetail({
         />
       }
       breadcrumbs={["出荷", { label: "納品書", href: BASE_PATH }, "詳細"]}
-      createdAt={formatDateTime(note.createdAt)}
+      createdAt={fmt.dateTime(note.createdAt)}
       status={<StatusBadge entity="DeliveryNote" status={note.status} />}
       title={note.deliveryNumber}
-      updatedAt={formatDateTime(note.updatedAt)}
+      updatedAt={fmt.dateTime(note.updatedAt)}
     >
       <SummaryGrid>
         <FieldValue
@@ -246,7 +247,7 @@ export function DeliveryNoteDetail({
             </Badge>
           }
         />
-        <FieldValue label="納品日" value={formatDate(note.deliveredAt)} />
+        <FieldValue label="納品日" value={fmt.date(note.deliveredAt)} />
         <FieldValue
           label="合計金額"
           value={

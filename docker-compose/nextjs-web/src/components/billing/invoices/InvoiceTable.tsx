@@ -11,23 +11,25 @@
 import { Group, Select, Stack, Text, TextInput } from "@mantine/core";
 import { IconFileInvoice, IconSearch } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
+import { useFormat } from "@/components/layout/PreferencesProvider";
 import { type Column, DataTable } from "@/components/ui/DataTable";
 import { MoneyText } from "@/components/ui/MoneyText";
 import { StatusBadge, statusOptions } from "@/components/ui/StatusBadge";
 import { ListShell } from "@/components/ui/shells";
 import { useUrlSelectState, useUrlStringState } from "@/hooks/useUrlState";
 import { useIsMobile } from "@/hooks/useViewport";
-import { formatDate } from "@/lib/format";
+import type { Formatters } from "@/lib/format";
 import type { Invoice } from "./model";
 
 const BASE_PATH = "/billing/invoices";
 
-/** 請求期間 `yyyy/MM/dd 〜 yyyy/MM/dd`。 */
-function periodLabel(inv: Invoice): string {
-  return `${formatDate(inv.billingPeriodFrom)} 〜 ${formatDate(inv.billingPeriodTo)}`;
+/** 請求期間 `yyyy/MM/dd 〜 yyyy/MM/dd`（日付形式はユーザーの表示設定）。 */
+function periodLabel(fmt: Formatters, inv: Invoice): string {
+  return `${fmt.date(inv.billingPeriodFrom)} 〜 ${fmt.date(inv.billingPeriodTo)}`;
 }
 
 export function InvoiceTable({ rows }: { rows: Invoice[] }) {
+  const fmt = useFormat();
   const router = useRouter();
   const isMobile = useIsMobile();
 
@@ -82,7 +84,7 @@ export function InvoiceTable({ rows }: { rows: Invoice[] }) {
       sortValue: (inv) => inv.billingPeriodTo,
       render: (inv) => (
         <Text className="tabular-nums" size="sm">
-          {periodLabel(inv)}
+          {periodLabel(fmt, inv)}
         </Text>
       ),
     },
@@ -109,7 +111,7 @@ export function InvoiceTable({ rows }: { rows: Invoice[] }) {
       sortValue: (inv) => inv.issuedAt ?? "",
       render: (inv) => (
         <Text className="tabular-nums" size="sm">
-          {formatDate(inv.issuedAt)}
+          {fmt.date(inv.issuedAt)}
         </Text>
       ),
     },
@@ -158,7 +160,7 @@ export function InvoiceTable({ rows }: { rows: Invoice[] }) {
                 {inv.customerName}
               </Text>
               <Text c="dimmed" size="xs" truncate>
-                {periodLabel(inv)}
+                {periodLabel(fmt, inv)}
               </Text>
               <Group gap="md" mt={2}>
                 <MoneyText ta="left" value={inv.totalAmount} />
@@ -167,7 +169,7 @@ export function InvoiceTable({ rows }: { rows: Invoice[] }) {
             <Stack align="flex-end" className="shrink-0" gap={4}>
               <StatusBadge entity="Invoice" status={inv.status} />
               <Text c="dimmed" size="xs">
-                {formatDate(inv.issuedAt)}
+                {fmt.date(inv.issuedAt)}
               </Text>
             </Stack>
           </Group>

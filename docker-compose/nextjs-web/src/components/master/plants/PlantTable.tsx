@@ -23,6 +23,7 @@ import {
   deletePlants,
   setPlantsActive,
 } from "@/app/(dashboard)/master/plants/actions";
+import { useFormat } from "@/components/layout/PreferencesProvider";
 import { ActiveBadge } from "@/components/ui/ActiveBadge";
 import { SecondaryButton } from "@/components/ui/buttons";
 import { type Column, DataTable } from "@/components/ui/DataTable";
@@ -33,7 +34,6 @@ import { ListShell } from "@/components/ui/shells";
 import { useUrlSelectState, useUrlStringState } from "@/hooks/useUrlState";
 import { useIsMobile } from "@/hooks/useViewport";
 import { COUNTRY_LABEL } from "@/lib/enum-labels";
-import { formatDate } from "@/lib/format";
 import {
   DeletePlantModal,
   type PlantModalTarget,
@@ -65,6 +65,7 @@ const STATUS_OPTIONS = [
 ];
 
 export function PlantTable({ rows }: { rows: PlantRow[] }) {
+  const fmt = useFormat();
   const router = useRouter();
   const isMobile = useIsMobile();
   const [, startTransition] = useTransition();
@@ -188,7 +189,7 @@ export function PlantTable({ rows }: { rows: PlantRow[] }) {
       hideable: true,
       width: 120,
       sortValue: (r) => r.updatedAt,
-      render: (r) => formatDate(r.updatedAt),
+      render: (r) => fmt.date(r.updatedAt),
     },
   ];
 
@@ -266,7 +267,7 @@ export function PlantTable({ rows }: { rows: PlantRow[] }) {
                     {countryLabel(r.countryCode)}
                   </Text>
                   <Text c="dimmed" size="xs">
-                    {formatDate(r.updatedAt)}
+                    {fmt.date(r.updatedAt)}
                   </Text>
                 </Group>
               </Stack>

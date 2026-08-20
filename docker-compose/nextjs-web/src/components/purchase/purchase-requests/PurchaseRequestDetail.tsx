@@ -50,6 +50,7 @@ import {
   ApprovalActionCard,
   type ApprovalActionState,
 } from "@/components/approvals/ApprovalActionCard";
+import { useFormat } from "@/components/layout/PreferencesProvider";
 import {
   ApprovalTrailList,
   type ApprovalTrailView,
@@ -69,7 +70,6 @@ import {
   SummaryGrid,
 } from "@/components/ui/shells";
 import { useTabParam } from "@/hooks/useUrlState";
-import { formatDate, formatDateTime } from "@/lib/format";
 import type { ActionResult } from "@/lib/server-action";
 import {
   canRequestApproval,
@@ -132,6 +132,7 @@ export function PurchaseRequestDetail({
   /** 正規化された承認記録（approval_records — 代理承認マーカー付き）。 */
   approvalTrail?: ApprovalTrailView[];
 }) {
+  const fmt = useFormat();
   const router = useRouter();
   // アクティブタブを ?tab= に保持（URL 共有でタブまで再現）
   const [tab, setTab] = useTabParam("items");
@@ -266,10 +267,10 @@ export function PurchaseRequestDetail({
         />
       }
       breadcrumbs={["購買", { label: "購買依頼", href: BASE_PATH }, "詳細"]}
-      createdAt={formatDateTime(rq.createdAt)}
+      createdAt={fmt.dateTime(rq.createdAt)}
       status={<StatusBadge entity="PurchaseRequest" status={rq.status} />}
       title={rq.requestNumber}
-      updatedAt={formatDateTime(rq.updatedAt)}
+      updatedAt={fmt.dateTime(rq.updatedAt)}
     >
       {actionCard}
 
@@ -290,11 +291,11 @@ export function PurchaseRequestDetail({
         <FieldValue label="依頼理由" value={rq.purpose ?? "—"} />
         <FieldValue
           label="依頼日時"
-          value={rq.requestedAt ? formatDateTime(rq.requestedAt) : "—"}
+          value={rq.requestedAt ? fmt.dateTime(rq.requestedAt) : "—"}
         />
         <FieldValue
           label="承認日時"
-          value={rq.approvedAt ? formatDateTime(rq.approvedAt) : "—"}
+          value={rq.approvedAt ? fmt.dateTime(rq.approvedAt) : "—"}
         />
         {rq.purchaseOrderNumber && (
           <FieldValue
@@ -320,23 +321,21 @@ export function PurchaseRequestDetail({
 
         <Stepper active={stepperActive(rq.status)} size="sm">
           <Stepper.Step
-            description={rq.requestedAt ? formatDate(rq.requestedAt) : "作成中"}
+            description={rq.requestedAt ? fmt.date(rq.requestedAt) : "作成中"}
             label="依頼"
             loading={rq.status === "DRAFT" || rq.status === "REJECTED"}
           />
           <Stepper.Step
             description={
               rq.approvedAt
-                ? formatDate(rq.approvedAt)
+                ? fmt.date(rq.approvedAt)
                 : approvalStepDescription(approval)
             }
             label="承認"
             loading={rq.status === "REQUESTED"}
           />
           <Stepper.Step
-            description={
-              rq.orderedAt ? formatDate(rq.orderedAt) : "仕入先を指定"
-            }
+            description={rq.orderedAt ? fmt.date(rq.orderedAt) : "仕入先を指定"}
             label="発注書へ変換"
             loading={rq.status === "APPROVED"}
           />
@@ -389,7 +388,7 @@ export function PurchaseRequestDetail({
                   </Badge>
                   <Text size="xs">{h.user}</Text>
                   <Text c="dimmed" className="tabular-nums" size="xs">
-                    {formatDateTime(h.at)}
+                    {fmt.dateTime(h.at)}
                   </Text>
                   {h.notes && (
                     <Text c="dimmed" size="xs" truncate>
@@ -438,7 +437,7 @@ export function PurchaseRequestDetail({
                       {it.quantity} {it.unit}
                     </Table.Td>
                     <Table.Td className="tabular-nums">
-                      {formatDate(it.desiredAt)}
+                      {fmt.date(it.desiredAt)}
                     </Table.Td>
                     <Table.Td>
                       <Text c="dimmed" size="xs">

@@ -9,8 +9,8 @@
 
 import { Badge, Table, Text } from "@mantine/core";
 import { IconArrowsExchange } from "@tabler/icons-react";
+import { useFormat } from "@/components/layout/PreferencesProvider";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { formatDateTime } from "@/lib/format";
 import { type InventoryTransactionRow, TRANSACTION_TYPE_BADGE } from "./model";
 
 export function InventoryTransactionsTable({
@@ -21,6 +21,7 @@ export function InventoryTransactionsTable({
   /** 数量の単位表示（製品は「本」等）。 */
   unit: string;
 }) {
+  const fmt = useFormat();
   if (rows.length === 0) {
     return (
       <EmptyState
@@ -54,7 +55,7 @@ export function InventoryTransactionsTable({
               <Table.Tr key={t.id}>
                 <Table.Td>
                   <Text className="tabular-nums" size="sm">
-                    {formatDateTime(t.createdAt)}
+                    {fmt.dateTime(t.createdAt)}
                   </Text>
                 </Table.Td>
                 <Table.Td>

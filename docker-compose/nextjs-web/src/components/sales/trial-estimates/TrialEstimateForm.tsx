@@ -40,6 +40,7 @@ import {
   fetchMaterialPricing,
   type MaterialPricing,
 } from "@/app/(dashboard)/sales/trial-estimates/actions";
+import { useFormat } from "@/components/layout/PreferencesProvider";
 import { EditButton } from "@/components/ui/buttons";
 import { PRODUCT_F4 } from "@/components/ui/f4-presets";
 import { HelpLabel } from "@/components/ui/HelpLabel";
@@ -50,7 +51,6 @@ import { SalesRepSelect } from "@/components/ui/SalesRepSelect";
 import { SearchSelect } from "@/components/ui/SearchSelect";
 import { FormActions, FormSection } from "@/components/ui/shells";
 import { fieldHelp } from "@/lib/field-help";
-import { formatDate } from "@/lib/format";
 import type { Option } from "@/lib/mock";
 import {
   type CostBreakdown,
@@ -104,6 +104,7 @@ export function TrialEstimateForm({
   initialPricing: MaterialPricing;
   source?: TrialEstimateRecord | null;
 }) {
+  const fmt = useFormat();
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [isPricingLoading, startPricingTransition] = useTransition();
@@ -555,7 +556,7 @@ export function TrialEstimateForm({
                             ? "カスタム"
                             : policyRef.usedDefault
                               ? "既定価格"
-                              : `参照価格 ${referenceDate ? formatDate(referenceDate) : "—"}`}
+                              : `参照価格 ${referenceDate ? fmt.date(referenceDate) : "—"}`}
                         </Badge>
                       </Group>
                     }

@@ -46,6 +46,7 @@ import {
   scanIntakeFolderNow,
 } from "@/app/(dashboard)/settings/order-intake/actions";
 import type { IntakeDocRef } from "@/app/(dashboard)/settings/order-intake/data";
+import { useFormat } from "@/components/layout/PreferencesProvider";
 import {
   GhostButton,
   PrimaryButton,
@@ -53,7 +54,6 @@ import {
 } from "@/components/ui/buttons";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { StatusBadge } from "@/components/ui/StatusBadge";
-import { formatDateTime } from "@/lib/format";
 import { parseIntakeFileNumber } from "@/lib/intake-core";
 import { parseExtractError } from "@/lib/intake-extract-error";
 import type {
@@ -458,6 +458,7 @@ function FolderSection({
   onRetry?: (name: string) => void;
   retryDisabled?: boolean;
 }) {
+  const fmt = useFormat();
   const shown = rows.length;
   const all = total ?? shown;
   return (
@@ -510,7 +511,7 @@ function FolderSection({
                       </Table.Td>
                       <Table.Td>
                         <Text c="dimmed" size="xs">
-                          {formatDateTime(row.modifiedAt)}
+                          {fmt.dateTime(row.modifiedAt)}
                         </Text>
                       </Table.Td>
                       {onRetry && (

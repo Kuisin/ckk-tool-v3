@@ -41,7 +41,7 @@ import {
   type ApprovalTrailView,
   countTrailRecords,
 } from "@/components/approvals/ApprovalTrailList";
-import { formatDateTime } from "@/lib/format";
+import { useFormat } from "@/components/layout/PreferencesProvider";
 import {
   WORK_ORDER_HISTORY_ACTION_LABEL,
   type WorkOrderHistoryView,
@@ -102,6 +102,7 @@ export function ApprovalStatusPanel({
   /** 正規化された承認記録（fetchApprovalTrail の結果）。 */
   trail?: ApprovalTrailView[];
 }) {
+  const fmt = useFormat();
   // 操作履歴は新しい順で表示
   const records = [...history].reverse();
 
@@ -147,7 +148,7 @@ export function ApprovalStatusPanel({
                 </Badge>
                 <Text size="xs">{h.user}</Text>
                 <Text c="dimmed" className="tabular-nums" size="xs">
-                  {formatDateTime(h.at)}
+                  {fmt.dateTime(h.at)}
                 </Text>
                 {h.notes && (
                   <Text c="dimmed" size="xs" truncate>

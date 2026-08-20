@@ -79,6 +79,7 @@ import {
   ApprovalActionCard,
   type ApprovalActionState,
 } from "@/components/approvals/ApprovalActionCard";
+import { useFormat } from "@/components/layout/PreferencesProvider";
 import {
   ApprovalTrailList,
   type ApprovalTrailView,
@@ -111,7 +112,7 @@ import {
 import { useTabParam } from "@/hooks/useUrlState";
 import type { MemoView } from "@/lib/document-memos";
 import { ORDER_TYPE_LABEL } from "@/lib/enum-labels";
-import { formatDate, formatDateTime, formatMoney } from "@/lib/format";
+import { formatMoney } from "@/lib/format";
 import { parseExtractError } from "@/lib/intake-extract-error";
 import {
   acceptanceReadiness,
@@ -193,6 +194,7 @@ export function OrderAcceptanceDetail({
   /** §2 価格照合結果（保存済み明細 × 価格表 — サーバー側で計算）。 */
   priceCheck?: AcceptancePriceCheck;
 }) {
+  const fmt = useFormat();
   const router = useRouter();
   // アクティブタブを ?tab= に保持（URL 共有でタブまで再現）
   const [tab, setTab] = useTabParam("attachments");
@@ -426,10 +428,10 @@ export function OrderAcceptanceDetail({
         />
       }
       breadcrumbs={["販売", { label: "注文請書", href: BASE_PATH }, "詳細"]}
-      createdAt={formatDateTime(a.createdAt)}
+      createdAt={fmt.dateTime(a.createdAt)}
       status={<StatusBadge entity="OrderAcceptanceIntake" status={a.status} />}
       title={a.number}
-      updatedAt={formatDateTime(a.updatedAt)}
+      updatedAt={fmt.dateTime(a.updatedAt)}
     >
       {/*
         書類は **状態に関わらず常に** 左に出す（取込中・失敗中でも見たい）。
@@ -648,7 +650,7 @@ export function OrderAcceptanceDetail({
                       )
                     }
                   />
-                  <FieldValue label="注文日" value={formatDate(a.orderDate)} />
+                  <FieldValue label="注文日" value={fmt.date(a.orderDate)} />
                   {/*
                     何を・どれだけ・いくらで受けた書類なのかは、これまで明細表を
                     開かないと分からなかった。ヘッダの 3 項目で足りるようにする。
@@ -698,7 +700,7 @@ export function OrderAcceptanceDetail({
                   <FieldValue label="作成者" value={a.createdByName} />
                   <FieldValue
                     label="展開日時"
-                    value={a.completedAt ? formatDateTime(a.completedAt) : "—"}
+                    value={a.completedAt ? fmt.dateTime(a.completedAt) : "—"}
                   />
                   {/* 備考は 1 行まるごと使う — 3 列の枠だと読めない */}
                   <FieldValue fullWidth label="備考" value={a.notes} />
@@ -790,7 +792,7 @@ export function OrderAcceptanceDetail({
                                 )}
                               </Table.Td>
                               <Table.Td className="tabular-nums">
-                                {formatDate(it.deliveryDate)}
+                                {fmt.date(it.deliveryDate)}
                               </Table.Td>
                               <Table.Td>
                                 <Text c="dimmed" size="xs">
@@ -858,7 +860,7 @@ export function OrderAcceptanceDetail({
                 />
                 <Stepper.Step
                   description={
-                    a.completedAt ? formatDate(a.completedAt) : "注文明細へ"
+                    a.completedAt ? fmt.date(a.completedAt) : "注文明細へ"
                   }
                   label="確定"
                   loading={a.status === "APPROVED"}
@@ -867,7 +869,7 @@ export function OrderAcceptanceDetail({
 
               {a.status === "ARCHIVED" && (
                 <Text c="dimmed" mt="md" size="xs">
-                  アーカイブ済み（{formatDateTime(a.archivedAt)}）
+                  アーカイブ済み（{fmt.dateTime(a.archivedAt)}）
                 </Text>
               )}
 

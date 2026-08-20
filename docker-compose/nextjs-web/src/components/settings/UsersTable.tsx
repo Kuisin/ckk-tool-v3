@@ -10,10 +10,11 @@
 import { Badge, Group, Select, Text, TextInput } from "@mantine/core";
 import { IconSearch, IconUserCog } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
+import { useFormat } from "@/components/layout/PreferencesProvider";
 import { type Column, DataTable } from "@/components/ui/DataTable";
 import { ListShell } from "@/components/ui/shells";
 import { useUrlSelectState, useUrlStringState } from "@/hooks/useUrlState";
-import { formatDateTime, localized } from "@/lib/format";
+import { localized } from "@/lib/format";
 import type { AdminUserRow } from "@/lib/users-admin";
 
 export const USER_GROUP_LABELS: Record<AdminUserRow["group"], string> = {
@@ -45,6 +46,7 @@ export function UserActiveBadge({ isActive }: { isActive: boolean }) {
 }
 
 export function UsersTable({ rows }: { rows: AdminUserRow[] }) {
+  const fmt = useFormat();
   const router = useRouter();
 
   const [search, setSearch] = useUrlStringState("q");
@@ -147,7 +149,7 @@ export function UsersTable({ rows }: { rows: AdminUserRow[] }) {
       sortable: true,
       render: (r) => (
         <Text c="dimmed" size="sm">
-          {r.lastLoginAt ? formatDateTime(r.lastLoginAt) : "—"}
+          {r.lastLoginAt ? fmt.dateTime(r.lastLoginAt) : "—"}
         </Text>
       ),
       sortValue: (r) => r.lastLoginAt ?? "",

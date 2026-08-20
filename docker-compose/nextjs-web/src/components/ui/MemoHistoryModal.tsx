@@ -13,12 +13,12 @@
 import { Badge, Group, Loader, Stack, Text, Timeline } from "@mantine/core";
 import { IconHistory } from "@tabler/icons-react";
 import { useEffect, useState, useTransition } from "react";
+import { useFormat } from "@/components/layout/PreferencesProvider";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { ModalShell } from "@/components/ui/modals";
 import { RichTextView } from "@/components/ui/RichTextView";
 import { UserAvatar } from "@/components/ui/UserAvatar";
 import type { MemoRevisionView } from "@/lib/document-memos";
-import { formatDateTime } from "@/lib/format";
 import { listMemoRevisionsAction } from "./memo-actions";
 
 /** 操作 → 表示ラベルと色。 */
@@ -44,6 +44,7 @@ export function MemoHistoryModal({
   ownerType: string;
   memoId: string;
 }) {
+  const fmt = useFormat();
   const [revisions, setRevisions] = useState<MemoRevisionView[] | null>(null);
   const [pending, start] = useTransition();
 
@@ -92,7 +93,7 @@ export function MemoHistoryModal({
                       {rev.editorName}
                     </Text>
                     <Text c="dimmed" size="xs">
-                      {formatDateTime(rev.editedAt)}
+                      {fmt.dateTime(rev.editedAt)}
                     </Text>
                   </Group>
                 }

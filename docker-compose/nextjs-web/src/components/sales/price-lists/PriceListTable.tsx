@@ -26,6 +26,7 @@ import {
   deletePriceEntries,
   setPriceEntriesActive,
 } from "@/app/(dashboard)/sales/price-lists/actions";
+import { useFormat } from "@/components/layout/PreferencesProvider";
 import { ActiveBadge } from "@/components/ui/ActiveBadge";
 import { CreateButton } from "@/components/ui/buttons";
 import { type Column, DataTable } from "@/components/ui/DataTable";
@@ -58,6 +59,7 @@ export function PriceListTable({
   customerOptions: Option[];
   productOptions: Option[];
 }) {
+  const fmt = useFormat();
   const router = useRouter();
   const isMobile = useIsMobile();
 
@@ -258,7 +260,11 @@ export function PriceListTable({
       render: (e) =>
         e.variants.length === 1 ? (
           <Text c="dimmed" className="tabular-nums" size="xs">
-            {validPeriod(e.variants[0].validFrom, e.variants[0].validUntil)}
+            {validPeriod(
+              fmt,
+              e.variants[0].validFrom,
+              e.variants[0].validUntil,
+            )}
           </Text>
         ) : (
           <Text c="dimmed" size="xs">

@@ -17,6 +17,7 @@ import { IconCopy, IconDownload, IconSend } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { issueQuote } from "@/app/(dashboard)/sales/quotes/actions";
+import { useFormat } from "@/components/layout/PreferencesProvider";
 import { PrimaryButton } from "@/components/ui/buttons";
 import { DocNumber } from "@/components/ui/DocNumber";
 import { FieldValue } from "@/components/ui/FieldValue";
@@ -37,7 +38,6 @@ import {
 import { useTabParam } from "@/hooks/useUrlState";
 import type { MemoView } from "@/lib/document-memos";
 import { downloadFile } from "@/lib/download";
-import { formatDate, formatDateTime } from "@/lib/format";
 import { ORDER_TYPE_LABEL } from "@/lib/mock";
 import { entrySummary, type PriceListEntry } from "../price-lists/model";
 import { IssueQuoteModal } from "./IssueQuoteModal";
@@ -67,6 +67,7 @@ export function QuoteDetail({
   /** 社内メモ（document_memos 由来、メモタブ）。 */
   memos: MemoView[];
 }) {
+  const fmt = useFormat();
   const router = useRouter();
   // アクティブタブを ?tab= に保持（URL 共有でタブまで再現）
   const [tab, setTab] = useTabParam("items");
@@ -145,17 +146,17 @@ export function QuoteDetail({
         />
       }
       breadcrumbs={["販売", { label: "見積書", href: BASE_PATH }, "詳細"]}
-      createdAt={formatDateTime(quote.createdAt)}
+      createdAt={fmt.dateTime(quote.createdAt)}
       status={<StatusBadge entity="Quote" status={status} />}
       title={quote.quoteNumber}
-      updatedAt={formatDateTime(quote.updatedAt)}
+      updatedAt={fmt.dateTime(quote.updatedAt)}
     >
       <SummaryGrid>
         <FieldValue label="顧客" value={quote.customerName} />
         <FieldValue label="支店" value={quote.customerBranchName} />
         <FieldValue label="営業担当" value={quote.salesRepName} />
         <FieldValue label="作成者" value={quote.createdBy} />
-        <FieldValue label="有効期限" value={formatDate(quote.validUntil)} />
+        <FieldValue label="有効期限" value={fmt.date(quote.validUntil)} />
         <FieldValue label="明細数" value={`${quote.items.length}件`} />
         <FieldValue
           label="合計金額（税込）"
@@ -236,7 +237,7 @@ export function QuoteDetail({
                       <Table.Td ta="right">
                         <MoneyText value={it.amount} />
                       </Table.Td>
-                      <Table.Td>{formatDate(it.deliveryDate)}</Table.Td>
+                      <Table.Td>{fmt.date(it.deliveryDate)}</Table.Td>
                       <Table.Td>
                         {tierRef ? (
                           <Text className="tabular-nums" ff="mono" size="xs">

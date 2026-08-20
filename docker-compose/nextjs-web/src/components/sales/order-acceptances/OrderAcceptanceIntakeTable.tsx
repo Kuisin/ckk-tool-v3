@@ -39,6 +39,7 @@ import {
 } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { useFormat } from "@/components/layout/PreferencesProvider";
 import { PrimaryButton, SecondaryButton } from "@/components/ui/buttons";
 import { type Column, DataTable } from "@/components/ui/DataTable";
 import { NewButton } from "@/components/ui/NewButton";
@@ -46,7 +47,6 @@ import { StatusBadge, statusOptions } from "@/components/ui/StatusBadge";
 import { ListShell } from "@/components/ui/shells";
 import { useUrlSelectState, useUrlStringState } from "@/hooks/useUrlState";
 import { useIsMobile } from "@/hooks/useViewport";
-import { formatDateTime } from "@/lib/format";
 import { parseExtractError } from "@/lib/intake-extract-error";
 import { INTAKE_SOURCE_BADGE, type OrderAcceptanceListRow } from "./model";
 
@@ -116,6 +116,7 @@ export function OrderAcceptanceIntakeTable({
   /** INTAKE_DIR（監視フォルダ）が設定されているか（サーバーから渡す）。 */
   intakeDirConfigured: boolean;
 }) {
+  const fmt = useFormat();
   const router = useRouter();
   const isMobile = useIsMobile();
 
@@ -354,7 +355,7 @@ export function OrderAcceptanceIntakeTable({
       sortValue: (r) => r.createdAt,
       render: (r) => (
         <Text className="tabular-nums" size="sm">
-          {formatDateTime(r.createdAt)}
+          {fmt.dateTime(r.createdAt)}
         </Text>
       ),
     },
@@ -472,7 +473,7 @@ export function OrderAcceptanceIntakeTable({
                     status={r.status}
                   />
                   <Text c="dimmed" size="xs">
-                    {formatDateTime(r.createdAt)}
+                    {fmt.dateTime(r.createdAt)}
                   </Text>
                 </Stack>
               </Group>

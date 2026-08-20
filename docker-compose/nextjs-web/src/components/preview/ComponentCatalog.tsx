@@ -38,6 +38,7 @@ import Link from "next/link";
 import { type ReactNode, useState } from "react";
 import { AppLauncher } from "@/components/layout/AppLauncher";
 import { OperationCodeJump } from "@/components/layout/OperationCodeJump";
+import { useFormat } from "@/components/layout/PreferencesProvider";
 import { ActiveBadge } from "@/components/ui/ActiveBadge";
 import { type Column, DataTable } from "@/components/ui/DataTable";
 import { DocNumber } from "@/components/ui/DocNumber";
@@ -67,7 +68,7 @@ import {
   ResourceActions,
   SummaryGrid,
 } from "@/components/ui/shells";
-import { formatDate, formatDateTime, formatMoney } from "@/lib/format";
+import { formatMoney } from "@/lib/format";
 import { CUSTOMERS, ORDER_TYPE_LABEL } from "@/lib/mock";
 
 // ── Demo data ────────────────────────────────────────────────────────────────
@@ -204,6 +205,7 @@ function DemoSection({
 // ── Catalog ──────────────────────────────────────────────────────────────────
 
 export function ComponentCatalog() {
+  const fmt = useFormat();
   const [modalShellOpen, setModalShellOpen] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [formModalOpen, setFormModalOpen] = useState(false);
@@ -250,7 +252,7 @@ export function ComponentCatalog() {
     {
       key: "updatedAt",
       header: "更新日",
-      render: (r) => formatDate(r.updatedAt),
+      render: (r) => fmt.date(r.updatedAt),
       sortable: true,
       sortValue: (r) => r.updatedAt,
       hideable: true,
@@ -322,7 +324,7 @@ export function ComponentCatalog() {
             label="状態"
             value={<StatusBadge entity="Quote" status="ISSUED" />}
           />
-          <FieldValue label="有効期限" value={formatDate("2026-07-10")} />
+          <FieldValue label="有効期限" value={fmt.date("2026-07-10")} />
           <FieldValue
             label="合計金額"
             value={<MoneyText ta="left" value={250000} />}
@@ -365,10 +367,10 @@ export function ComponentCatalog() {
               <Table.Td>
                 <Code>formatDate</Code>
               </Table.Td>
-              <Table.Td>{formatDate("2026-06-04")}</Table.Td>
+              <Table.Td>{fmt.date("2026-06-04")}</Table.Td>
               <Table.Td>
                 <Code>formatDateTime</Code> →{" "}
-                {formatDateTime("2026-06-04T14:30:00")}
+                {fmt.dateTime("2026-06-04T14:30:00")}
               </Table.Td>
             </Table.Tr>
           </Table.Tbody>

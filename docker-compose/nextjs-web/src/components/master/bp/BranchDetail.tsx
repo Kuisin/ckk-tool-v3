@@ -12,6 +12,7 @@ import { useTransition } from "react";
 import type { BranchDetail as BranchDetailData } from "@/app/(dashboard)/master/_shared/bp-data";
 import { BP_BASE_PATH } from "@/app/(dashboard)/master/_shared/bp-paths";
 import { deleteBranch } from "@/app/(dashboard)/master/business-partners/actions";
+import { useFormat } from "@/components/layout/PreferencesProvider";
 import { BpBaseSummary } from "@/components/master/bp/BpBaseSummary";
 import { ContactsTable } from "@/components/master/bp/ContactsTable";
 import { ActiveBadge } from "@/components/ui/ActiveBadge";
@@ -19,9 +20,9 @@ import { DocNumber } from "@/components/ui/DocNumber";
 import { FieldValue } from "@/components/ui/FieldValue";
 import { openConfirm } from "@/components/ui/modals";
 import { DetailShell, ResourceActions } from "@/components/ui/shells";
-import { formatDateTime } from "@/lib/format";
 
 export function BranchDetail({ record }: { record: BranchDetailData }) {
+  const fmt = useFormat();
   const router = useRouter();
   const [, startTransition] = useTransition();
   const parentPath = `${BP_BASE_PATH}/${record.parentId}`;
@@ -74,10 +75,10 @@ export function BranchDetail({ record }: { record: BranchDetailData }) {
         { label: record.parentName, href: parentPath },
         record.bpCode,
       ]}
-      createdAt={formatDateTime(record.createdAt)}
+      createdAt={fmt.dateTime(record.createdAt)}
       status={<ActiveBadge active={record.isActive} />}
       title={record.nameJa}
-      updatedAt={formatDateTime(record.updatedAt)}
+      updatedAt={fmt.dateTime(record.updatedAt)}
     >
       <BpBaseSummary
         extra={

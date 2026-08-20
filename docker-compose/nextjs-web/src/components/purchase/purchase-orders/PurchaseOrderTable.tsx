@@ -10,6 +10,7 @@
 import { Group, Select, Stack, Text, TextInput } from "@mantine/core";
 import { IconSearch, IconShoppingCart } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
+import { useFormat } from "@/components/layout/PreferencesProvider";
 import { type Column, DataTable } from "@/components/ui/DataTable";
 import { MoneyText } from "@/components/ui/MoneyText";
 import { NewButton } from "@/components/ui/NewButton";
@@ -17,12 +18,12 @@ import { StatusBadge, statusOptions } from "@/components/ui/StatusBadge";
 import { ListShell } from "@/components/ui/shells";
 import { useUrlSelectState, useUrlStringState } from "@/hooks/useUrlState";
 import { useIsMobile } from "@/hooks/useViewport";
-import { formatDate } from "@/lib/format";
 import type { PurchaseOrderRow } from "./model";
 
 const BASE_PATH = "/purchase/purchase-orders";
 
 export function PurchaseOrderTable({ rows }: { rows: PurchaseOrderRow[] }) {
+  const fmt = useFormat();
   const router = useRouter();
   const isMobile = useIsMobile();
 
@@ -95,7 +96,7 @@ export function PurchaseOrderTable({ rows }: { rows: PurchaseOrderRow[] }) {
       sortValue: (o) => o.purchaseDate ?? "",
       render: (o) => (
         <Text className="tabular-nums" size="sm">
-          {formatDate(o.purchaseDate)}
+          {fmt.date(o.purchaseDate)}
         </Text>
       ),
     },
@@ -157,7 +158,7 @@ export function PurchaseOrderTable({ rows }: { rows: PurchaseOrderRow[] }) {
             <Stack align="flex-end" className="shrink-0" gap={4}>
               <StatusBadge entity="MaterialPurchaseOrder" status={o.status} />
               <Text c="dimmed" size="xs">
-                {formatDate(o.purchaseDate)}
+                {fmt.date(o.purchaseDate)}
               </Text>
             </Stack>
           </Group>

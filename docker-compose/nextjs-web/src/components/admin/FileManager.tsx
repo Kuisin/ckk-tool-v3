@@ -57,11 +57,11 @@ import {
 } from "@tabler/icons-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { FolderGrantsModal } from "@/components/admin/FolderGrantsModal";
+import { useFormat } from "@/components/layout/PreferencesProvider";
 import { GhostButton, PrimaryButton } from "@/components/ui/buttons";
 import { openConfirm } from "@/components/ui/modals";
 import { ListShell } from "@/components/ui/shells";
 import { downloadFile } from "@/lib/download";
-import { formatDateTime } from "@/lib/format";
 import { isSystemFileKey } from "@/lib/system-files";
 
 interface StoredFile {
@@ -135,6 +135,7 @@ const rawHref = (key: string, download = false) =>
   `/api/admin/files/raw?key=${encodeURIComponent(key)}${download ? "&download=1" : ""}`;
 
 export function FileManager() {
+  const fmt = useFormat();
   const inputRef = useRef<HTMLInputElement>(null);
   const [files, setFiles] = useState<StoredFile[]>([]);
   const [storageOk, setStorageOk] = useState(true);
@@ -394,7 +395,7 @@ export function FileManager() {
             </Table.Td>
             <Table.Td>
               <Text c="dimmed" size="sm">
-                {formatDateTime(f.mtime)}
+                {fmt.dateTime(f.mtime)}
               </Text>
             </Table.Td>
           </Table.Tr>
@@ -618,7 +619,7 @@ export function FileManager() {
             <Text c="dimmed" size="xs">
               更新日時
             </Text>
-            <Text size="xs">{formatDateTime(selectedFile.mtime)}</Text>
+            <Text size="xs">{fmt.dateTime(selectedFile.mtime)}</Text>
           </Group>
           <Group gap="xs" justify="space-between">
             <Text c="dimmed" size="xs">
