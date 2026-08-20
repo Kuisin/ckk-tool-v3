@@ -37,7 +37,22 @@ export interface ApprovalTargetMeta {
    * 「開けるか」を先に判定し、開けない行にバッジを出す。
    */
   appKey: string;
+  /**
+   * 承認 / 差し戻しを押すのに必要な権限コード。ACTION は常に APPROVE
+   * （`checkPermission(code, "APPROVE")` — 各書類の approve* Server Action）。
+   *
+   * これは**追加ゲート**で、実際に押せるかは
+   *   ① この権限（code:APPROVE。code:ADMIN と system:ADMIN も内包）
+   *   ② 承認グループの所属（本人 or 代理 — actOnCurrentStep）
+   *   ③ 書類のスコープ（拠点 — *InScope。ALL 以外の grant は書類ごとに変わる）
+   * の **すべて**を満たしたときだけ。承認設定 (MS0B) はこのコードを画面に出し、
+   * 各段のメンバーが ① を持っているかを突き合わせる。
+   */
+  approvePermission: string;
 }
+
+/** 承認操作の ACTION（書類種別に依らず APPROVE 固定）。 */
+export const APPROVAL_ACTION = "APPROVE" as const;
 
 export const APPROVAL_TARGET: Record<ApprovalTargetType, ApprovalTargetMeta> = {
   order_acceptances: {
@@ -45,24 +60,29 @@ export const APPROVAL_TARGET: Record<ApprovalTargetType, ApprovalTargetMeta> = {
     color: "blue",
     href: (id) => `/sales/order-acceptances/${id}`,
     appKey: "order-acceptances",
+    approvePermission: "order_acceptance",
   },
   work_orders: {
     label: "指示書",
     color: "violet",
     href: (id) => `/production/work-orders/${id}`,
     appKey: "work-orders",
+    approvePermission: "work_order",
   },
   material_purchase_orders: {
     label: "素材発注書",
     color: "teal",
     href: (id) => `/purchase/purchase-orders/${id}`,
     appKey: "purchase-orders",
+    approvePermission: "purchase_order",
   },
   purchase_requests: {
     label: "購買依頼",
     color: "cyan",
     href: (id) => `/purchase/purchase-requests/${id}`,
     appKey: "purchase-requests",
+    // 購買依頼は素材発注と同じ権限コード（購買一式で 1 コード）。
+    approvePermission: "purchase_order",
   },
 };
 
@@ -84,5 +104,12 @@ export function approvalTargetHref(
 ): string | null {
   return isApprovalTargetType(targetType)
     ? APPROVAL_TARGET[targetType].href(targetId)
+    : null;
+}
+
+/** 承認に必要な権限コード（未知の種別は null）。 */
+export function approvePermissionCode(targetType: string): string | null {
+  return isApprovalTargetType(targetType)
+    ? APPROVAL_TARGET[targetType].approvePermission
     : null;
 }

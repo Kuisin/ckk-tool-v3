@@ -11,6 +11,10 @@
  * 変更が効くのは次の承認依頼から — 進行中の書類は依頼時点のスナップショットの
  * まま進む。画面にもそう書いておく。
  *
+ * 段ごとに、選んだ承認グループのメンバーがこの書類の承認権限
+ * （<code>:APPROVE）を持っているかを出す。グループに入れただけでは承認
+ * できないので、保存する前にここで気づけるようにする。
+ *
  * レイアウト（design.md §20.2）: デスクトップは 1 段 = 1 行。モバイルは
  * 同じものを縦に積む — 入力 3 つ + 操作 3 つを 1 行に並べると 375px では
  * 収まらず、横スクロールか潰れた入力欄になるため。段番号と並べ替え・削除は
@@ -34,6 +38,7 @@ import {
   IconArrowDown,
   IconArrowUp,
   IconInfoCircle,
+  IconShieldCheck,
   IconTrash,
 } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
@@ -45,8 +50,13 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { FormActions, FormSection } from "@/components/ui/shells";
 import { useIsMobile } from "@/hooks/useViewport";
 import { type ApprovalMode, validateFlowSteps } from "@/lib/approval-flow";
+import { APPROVAL_ACTION } from "@/lib/approval-targets";
 import { APPROVAL_MODE_OPTIONS } from "@/lib/enum-labels";
 import { fieldHelp } from "@/lib/field-help";
+import {
+  ApproverPermissionBadge,
+  type FlowApprover,
+} from "./ApproverPermissionBadge";
 
 const BASE_PATH = "/master/approval-settings";
 
@@ -72,11 +82,19 @@ export function ApprovalFlowEditor({
   targetLabel,
   initialSteps,
   groupOptions,
+  approversByGroup,
+  permissionCode,
+  permissionLabel,
 }: {
   targetType: string;
   targetLabel: string;
   initialSteps: Omit<FlowEditorStep, "key">[];
   groupOptions: GroupOption[];
+  /** グループ id（文字列）→ 今そのグループで承認できる人 + 権限の有無。 */
+  approversByGroup: Record<string, FlowApprover[]>;
+  /** この書類の承認に必要な権限コード。 */
+  permissionCode: string;
+  permissionLabel: string;
 }) {
   const router = useRouter();
   const isMobile = useIsMobile();
@@ -171,6 +189,21 @@ export function ApprovalFlowEditor({
       <Alert color="blue" icon={<IconInfoCircle size={16} />} variant="light">
         変更は今後の承認依頼から適用されます。進行中の書類は依頼した時点の設定のまま進みます。
       </Alert>
+      <Alert
+        color="gray"
+        icon={<IconShieldCheck size={16} />}
+        title="承認に必要な権限"
+        variant="light"
+      >
+        <Text size="sm">
+          {targetLabel}の承認・差し戻しには「{permissionLabel}」の承認権限（
+          <Text component="span" ff="mono" size="sm">
+            {permissionCode}:{APPROVAL_ACTION}
+          </Text>
+          ）が要ります。権限が無い人は、承認グループに入れても承認できません
+          （権限はユーザー管理 SY01 のロールで決まります）。
+        </Text>
+      </Alert>
 
       <FormSection title="承認ステップ">
         <Stack gap="sm">
@@ -224,6 +257,24 @@ export function ApprovalFlowEditor({
                 value={s.mode}
               />
             );
+            // 選んだグループの「今この瞬間に承認できる人」と、その権限の有無。
+            // 入力行の下に置く — 行の中に入れると入力欄の高さが揃わなくなる。
+            const approvers = s.groupId
+              ? (approversByGroup[s.groupId] ?? [])
+              : null;
+            const approverRow = approvers && (
+              <Group gap="xs" wrap="wrap">
+                <Text c="dimmed" size="xs">
+                  この段を承認できる人
+                </Text>
+                <ApproverPermissionBadge approvers={approvers} />
+                {approvers.length > 0 && (
+                  <Text c="dimmed" size="xs">
+                    {approvers.map((a) => a.displayName).join("、")}
+                  </Text>
+                )}
+              </Group>
+            );
             const controls = (
               <Group gap={4} wrap="nowrap">
                 <ActionIcon
@@ -268,15 +319,19 @@ export function ApprovalFlowEditor({
                     {nameField}
                     {groupField}
                     {modeField}
+                    {approverRow}
                   </Stack>
                 ) : (
-                  <Group align="flex-end" gap="sm" wrap="nowrap">
-                    {stepBadge}
-                    {nameField}
-                    {groupField}
-                    {modeField}
-                    {controls}
-                  </Group>
+                  <Stack gap="xs">
+                    <Group align="flex-end" gap="sm" wrap="nowrap">
+                      {stepBadge}
+                      {nameField}
+                      {groupField}
+                      {modeField}
+                      {controls}
+                    </Group>
+                    {approverRow}
+                  </Stack>
                 )}
               </Paper>
             );

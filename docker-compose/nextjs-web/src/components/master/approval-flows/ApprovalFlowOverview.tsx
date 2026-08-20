@@ -7,31 +7,54 @@
  * 編集は種別ごとの編集ページへ。未設定の書類は赤いカードで出す — 未設定のまま
  * だと承認依頼そのものが出せないため、放置に気づける必要がある。
  *
+ * 各カードには「承認に必要な権限」（<code>:APPROVE）を出し、段ごとに
+ * 承認グループのメンバーがその権限を持っているかを突き合わせて出す。
+ * 権限が無い人は承認画面のボタンを押しても弾かれる（承認グループに入れた
+ * だけでは承認できない）ので、設定画面で先に気づけるようにする。
+ *
  * モバイルでは編集ボタンを次の行へ落として全幅にする（design.md §20.2）。
  * 横に並べたままだと段の列が数十 px まで潰れて読めなくなるため。
  */
 
 import { Badge, Group, Paper, Stack, Text } from "@mantine/core";
-import { IconAlertTriangle, IconArrowRight } from "@tabler/icons-react";
+import {
+  IconAlertTriangle,
+  IconArrowRight,
+  IconShieldCheck,
+} from "@tabler/icons-react";
 import { EditButton } from "@/components/ui/buttons";
 import { useIsMobile } from "@/hooks/useViewport";
 import {
+  APPROVAL_ACTION,
   APPROVAL_TARGET,
   type ApprovalTargetType,
 } from "@/lib/approval-targets";
 import { APPROVAL_MODE_LABEL } from "@/lib/enum-labels";
+import {
+  ApproverPermissionBadge,
+  type FlowApprover,
+  hasApproverGap,
+} from "./ApproverPermissionBadge";
 
 const BASE_PATH = "/master/approval-settings";
+
+export type { FlowApprover };
 
 export interface FlowOverviewStep {
   stepNo: number;
   label: string;
   groupLabel: string;
   mode: "ANY" | "ALL";
+  /** 今この瞬間に承認できるメンバー（期間外・無効は除く）。 */
+  approvers: FlowApprover[];
 }
 
 export interface FlowOverviewRow {
   targetType: ApprovalTargetType;
+  /** 承認に必要な権限コード（ACTION は APPROVE 固定）。 */
+  permissionCode: string;
+  /** 権限コードの表示名（app.permissions.display_name）。 */
+  permissionLabel: string;
   steps: FlowOverviewStep[];
 }
 
@@ -43,19 +66,26 @@ export function ApprovalFlowOverview({ rows }: { rows: FlowOverviewRow[] }) {
         書類ごとに、確定の前に通す承認の段を並べます。変更は今後の承認依頼から
         適用され、進行中の書類は依頼した時点の設定のまま進みます。
       </Text>
+      <Text c="dimmed" size="sm">
+        承認を押すには「承認グループに入っていること」に加えて、書類ごとの
+        承認権限が要ります。段のバッジは、今その段にいるメンバーが権限を
+        持っているかを表します。
+      </Text>
       {rows.map((r) => {
         const meta = APPROVAL_TARGET[r.targetType];
         const empty = r.steps.length === 0;
+        // 段のどれかに「押せない人」がいれば、カードごと目立たせる
+        // （段のバッジは横に流れるので、一覧では見落とすため）。
+        const blocked =
+          empty || r.steps.some((s) => hasApproverGap(s.approvers));
         return (
           <Paper
             key={r.targetType}
             p="md"
             radius="md"
             style={
-              empty
-                ? {
-                    borderLeft: "4px solid var(--mantine-color-red-filled)",
-                  }
+              blocked
+                ? { borderLeft: "4px solid var(--mantine-color-red-filled)" }
                 : undefined
             }
             withBorder
@@ -79,6 +109,15 @@ export function ApprovalFlowOverview({ rows }: { rows: FlowOverviewRow[] }) {
                     </Group>
                   )}
                 </Group>
+                <Group c="dimmed" gap={6} wrap="nowrap">
+                  <IconShieldCheck size={14} />
+                  <Text size="xs">
+                    承認に必要な権限: {r.permissionLabel} の承認
+                  </Text>
+                  <Text ff="mono" size="xs">
+                    {r.permissionCode}:{APPROVAL_ACTION}
+                  </Text>
+                </Group>
                 {!empty && (
                   <Group gap="xs" wrap="wrap">
                     {r.steps.map((s, i) => (
@@ -99,6 +138,7 @@ export function ApprovalFlowOverview({ rows }: { rows: FlowOverviewRow[] }) {
                           {s.groupLabel} ·{" "}
                           {APPROVAL_MODE_LABEL[s.mode] ?? s.mode}
                         </Text>
+                        <ApproverPermissionBadge approvers={s.approvers} />
                       </Group>
                     ))}
                   </Group>

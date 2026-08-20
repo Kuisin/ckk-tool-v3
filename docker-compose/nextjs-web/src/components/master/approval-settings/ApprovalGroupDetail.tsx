@@ -4,6 +4,9 @@
  * ApprovalGroupDetail.tsx — 承認グループ 詳細 (MS2B, design.md §8.2 / §13.5).
  *
  * サマリ（名称・種別・状態）+ タブ: グループ情報 / メンバー / 代理設定 / 履歴。
+ * メンバー・代理人には「この書類の承認権限を持っているか」を並べる — 承認
+ * グループに入れただけでは押せず、書類ごとの `<code>:APPROVE` が要るため
+ * （lib/approval-permissions.ts）。
  * メンバーはタブ内でインライン追加・削除・有効/無効切替する。
  * 代理設定（approval_delegates — 期間限定代理）はタブ内で追加・削除する。
  *
@@ -14,6 +17,7 @@
 
 import {
   ActionIcon,
+  Alert,
   Badge,
   Group,
   ScrollArea,
@@ -28,6 +32,7 @@ import {
   IconCalendarClock,
   IconCircleMinus,
   IconPlus,
+  IconShieldCheck,
   IconTrash,
   IconUserShield,
   IconUsers,
@@ -56,6 +61,7 @@ import {
   MEMBER_PERIOD_STATE_LABEL,
   memberPeriodState,
 } from "@/lib/approval-membership";
+import { permissionScopeLabel } from "@/lib/enum-labels";
 import {
   AddApprovalDelegateModal,
   AddApprovalGroupMemberModal,
@@ -71,6 +77,31 @@ import {
 
 const BASE_PATH = "/master/approval-settings";
 
+/** このグループが承認を任されている書類 1 つぶん。 */
+export interface GroupFlowUsage {
+  targetType: string;
+  /** 書類名（注文請書 …）。 */
+  label: string;
+  /** バッジ色（APPROVAL_TARGET の色）。 */
+  color: string;
+  /** 承認に必要な権限コード（ACTION は APPROVE 固定）。 */
+  permissionCode: string;
+  /** この書類で任されている段（「1. 第一承認」）。 */
+  steps: string[];
+}
+
+/** 1 人 × 1 書類の承認権限。 */
+export interface MemberApproval {
+  targetType: string;
+  label: string;
+  permissionCode: string;
+  /** `<code>:APPROVE` を持つか。false = 承認ボタンを押しても弾かれる。 */
+  allowed: boolean;
+  /** 全社スコープか。false = 拠点等に限定され、書類によっては押せない。 */
+  unrestricted: boolean;
+  scopes: string[];
+}
+
 export interface ApprovalGroupMemberRow {
   userId: string;
   displayName: string;
@@ -80,6 +111,8 @@ export interface ApprovalGroupMemberRow {
   validFrom: string | null;
   validUntil: string | null;
   note: string | null;
+  /** このグループが任されている書類ごとの承認権限。 */
+  approvals: MemberApproval[];
 }
 
 /** 期間限定代理（approval_delegates）の 1 行。 */
@@ -92,6 +125,8 @@ export interface ApprovalGroupDelegateRow {
   validFrom: string; // ISO
   validUntil: string; // ISO
   reason: string | null;
+  /** 代理人自身の承認権限（代理でも押すのは本人の権限）。 */
+  approvals: MemberApproval[];
 }
 
 export interface ApprovalGroupDetailData {
@@ -99,6 +134,8 @@ export interface ApprovalGroupDetailData {
   nameJa: string;
   nameEn: string;
   isActive: boolean;
+  /** このグループが承認を任されている書類（承認フローの段）。 */
+  usages: GroupFlowUsage[];
   members: ApprovalGroupMemberRow[];
   delegates: ApprovalGroupDelegateRow[];
 }
@@ -124,6 +161,85 @@ function MemberPeriod({ member }: { member: ApprovalGroupMemberRow }) {
         </Text>
       )}
     </Stack>
+  );
+}
+
+/**
+ * このグループが承認を任されている書類と、そのために要る権限。
+ * どこにも使われていないグループは、その旨を出す（メンバーを入れても
+ * 何も起きないため）。
+ */
+function GroupUsageNote({ usages }: { usages: GroupFlowUsage[] }) {
+  if (usages.length === 0) {
+    return (
+      <Alert color="gray" icon={<IconShieldCheck size={16} />} variant="light">
+        このグループはどの承認フローにも使われていません（承認設定の「承認フロー」で段に割り当てます）。
+      </Alert>
+    );
+  }
+  return (
+    <Alert
+      color="gray"
+      icon={<IconShieldCheck size={16} />}
+      title="このグループが承認する書類と、必要な権限"
+      variant="light"
+    >
+      <Stack gap={4}>
+        {usages.map((u) => (
+          <Group gap="xs" key={u.targetType} wrap="wrap">
+            <Badge color={u.color} size="sm" variant="light">
+              {u.label}
+            </Badge>
+            <Text c="dimmed" size="xs">
+              {u.steps.join(" / ")}
+            </Text>
+            <Text ff="mono" size="xs">
+              {u.permissionCode}:APPROVE
+            </Text>
+          </Group>
+        ))}
+        <Text c="dimmed" size="xs">
+          メンバーがこの権限を持っていないと、承認ボタンを押しても弾かれます。
+          権限はユーザー管理 (SY01) のロールで決まります。
+        </Text>
+      </Stack>
+    </Alert>
+  );
+}
+
+/** 1 人ぶんの承認権限バッジ列（書類ごとに 1 枚）。 */
+function ApprovalPermissionCell({
+  approvals,
+}: {
+  approvals: MemberApproval[];
+}) {
+  if (approvals.length === 0) {
+    return (
+      <Text c="dimmed" size="xs">
+        —
+      </Text>
+    );
+  }
+  return (
+    <Group gap={4} wrap="wrap">
+      {approvals.map((a) => {
+        const color = a.allowed ? (a.unrestricted ? "green" : "yellow") : "red";
+        const label = a.allowed
+          ? a.unrestricted
+            ? `${a.label}を承認できます`
+            : `${a.label}を承認できますが、権限の範囲が${a.scopes
+                .map(permissionScopeLabel)
+                .join("・")}に限定されています（範囲外の書類は承認できません）`
+          : `${a.label}の承認権限（${a.permissionCode}:APPROVE）がありません — 承認ボタンを押しても弾かれます`;
+        return (
+          <Tooltip key={a.targetType} label={label} withinPortal>
+            <Badge color={color} size="sm" variant="light">
+              {a.label}
+            </Badge>
+          </Tooltip>
+        );
+      })}
+    </Group>
   );
 }
 
@@ -264,6 +380,7 @@ export function ApprovalGroupDetail({
 
         <Tabs.Panel pt="md" value="members">
           <Stack gap="sm">
+            <GroupUsageNote usages={record.usages} />
             <Group justify="flex-end">
               <GhostButton
                 fullWidth={isMobile}
@@ -285,8 +402,9 @@ export function ApprovalGroupDetail({
                     <Table.Tr>
                       <Table.Th>氏名</Table.Th>
                       {!isMobile && <Table.Th w={180}>ユーザー名</Table.Th>}
-                      {!isMobile && <Table.Th w={230}>在籍期間</Table.Th>}
+                      {!isMobile && <Table.Th w={200}>在籍期間</Table.Th>}
                       {!isMobile && <Table.Th w={90}>状態</Table.Th>}
+                      {!isMobile && <Table.Th w={200}>承認権限</Table.Th>}
                       <Table.Th w={110} />
                     </Table.Tr>
                   </Table.Thead>
@@ -304,6 +422,7 @@ export function ApprovalGroupDetail({
                               <MemberStateBadge member={m} now={now} />
                               <DocNumber c="dimmed">{m.username}</DocNumber>
                               <MemberPeriod member={m} />
+                              <ApprovalPermissionCell approvals={m.approvals} />
                             </Stack>
                           )}
                         </Table.Td>
@@ -320,6 +439,11 @@ export function ApprovalGroupDetail({
                         {!isMobile && (
                           <Table.Td>
                             <MemberStateBadge member={m} now={now} />
+                          </Table.Td>
+                        )}
+                        {!isMobile && (
+                          <Table.Td>
+                            <ApprovalPermissionCell approvals={m.approvals} />
                           </Table.Td>
                         )}
                         <Table.Td>
@@ -394,7 +518,8 @@ export function ApprovalGroupDetail({
                     <Table.Tr>
                       <Table.Th>代理人</Table.Th>
                       {!isMobile && <Table.Th>原承認者</Table.Th>}
-                      {!isMobile && <Table.Th w={220}>期間</Table.Th>}
+                      {!isMobile && <Table.Th w={200}>期間</Table.Th>}
+                      {!isMobile && <Table.Th w={180}>承認権限</Table.Th>}
                       {!isMobile && <Table.Th>理由</Table.Th>}
                       <Table.Th w={60} />
                     </Table.Tr>
@@ -426,6 +551,7 @@ export function ApprovalGroupDetail({
                                   {d.reason}
                                 </Text>
                               )}
+                              <ApprovalPermissionCell approvals={d.approvals} />
                             </Stack>
                           )}
                         </Table.Td>
@@ -439,6 +565,11 @@ export function ApprovalGroupDetail({
                             <Text className="tabular-nums" size="sm">
                               {fmt.date(d.validFrom)}〜{fmt.date(d.validUntil)}
                             </Text>
+                          </Table.Td>
+                        )}
+                        {!isMobile && (
+                          <Table.Td>
+                            <ApprovalPermissionCell approvals={d.approvals} />
                           </Table.Td>
                         )}
                         {!isMobile && (
