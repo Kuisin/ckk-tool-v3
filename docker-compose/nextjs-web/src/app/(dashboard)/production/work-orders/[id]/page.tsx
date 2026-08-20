@@ -4,6 +4,7 @@ import { fetchApprovalState } from "@/lib/approvals";
 import { fetchAuditEntries } from "@/lib/audit";
 import { requireAppRead } from "@/lib/authz-page";
 import { listMemos } from "@/lib/document-memos";
+import { fetchPendingFlowChange } from "@/lib/work-order-flow-changes";
 import {
   fetchCatalogStepOptions,
   fetchWorkOrder,
@@ -51,12 +52,21 @@ export default async function ProductionWorkOrdersDetailPage({
   ]);
   if (!workOrder) notFound();
 
+  // 承認待ちの工程フロー変更（承認設定が未設定の環境では常に null）。
+  // 承認状態は「指示書」ではなく「変更そのもの」に付くので別で引く。
+  const pendingFlowChange = await fetchPendingFlowChange(workOrder.id);
+  const flowChangeApproval = pendingFlowChange
+    ? await fetchApprovalState("work_order_flow_changes", pendingFlowChange.id)
+    : null;
+
   return (
     <WorkOrderDetail
       approval={approval}
       approvalTrail={approvalTrail}
       auditEntries={auditEntries}
       catalogOptions={catalogOptions}
+      flowChange={pendingFlowChange}
+      flowChangeApproval={flowChangeApproval}
       memos={memos}
       workOrder={workOrder}
     />

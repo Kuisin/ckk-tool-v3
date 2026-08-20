@@ -46,6 +46,10 @@ import {
   actionOk,
   prismaErrorMessage,
 } from "@/lib/server-action";
+import {
+  applyApprovedFlowChange,
+  closeFlowChange,
+} from "@/lib/work-order-flow-changes";
 import { type OrderedStepCreate, validateAndOrderSteps } from "@/lib/workflow";
 import { fetchOrderLineRef, type OrderLineRef } from "./data";
 
@@ -1039,4 +1043,116 @@ export async function getStockFloorInfo(
   if (!info) return null;
   const { productId: _productId, ...rest } = info;
   return rest;
+}
+
+// ── 工程フロー変更の承認 ─────────────────────────────────────────────────────
+//
+// 対象は指示書ではなく「保留中の変更」（work_order_flow_changes の id）。
+// 段数・承認者は承認設定（MS0B）の「工程フロー変更」フローが決めるので、
+// ここは最終承認のときに実際の適用を呼ぶだけ。差し戻しは適用せずに閉じる。
+
+/** 工程フロー変更を承認する。最終承認なら、その場で工程へ適用する。 */
+export async function approveFlowChange(
+  flowChangeId: string,
+): Promise<ActionResult<{ completed: boolean; applied: boolean }>> {
+  const authz = await checkPermission("work_order", "APPROVE");
+  if (!authz.ok) return actionError(authz.error);
+  const change = await prisma.workOrderFlowChange.findUnique({
+    where: { id: flowChangeId },
+    select: {
+      status: true,
+      workOrder: { select: { workOrderNumber: true } },
+    },
+  });
+  if (!change) return actionError("対象の変更が見つかりません");
+  if (change.status !== "PENDING") {
+    return actionError("承認待ちの変更ではありません");
+  }
+  if (
+    !(await workOrderInScope(
+      authz.access,
+      authz.userId,
+      change.workOrder.workOrderNumber,
+    ))
+  ) {
+    return actionError(SCOPE_DENIED);
+  }
+  try {
+    const acted = await actOnCurrentStep({
+      targetType: "work_order_flow_changes",
+      targetId: flowChangeId,
+      action: "APPROVED",
+    });
+    if (!acted.ok) return actionError(acted.error ?? "承認の権限がありません");
+
+    // まだ途中の段 — 工程は触らない。
+    if (!acted.flowCompleted) {
+      revalidate(change.workOrder.workOrderNumber);
+      return actionOk({ completed: false, applied: false });
+    }
+
+    // 最終承認 — ここで初めて工程へ当てる（承認待ちの間に前提が変わって
+    // いれば通常の検証で弾かれ、FAILED として残る）。
+    const applied = await applyApprovedFlowChange(flowChangeId);
+    revalidate(change.workOrder.workOrderNumber);
+    if (!applied.ok) {
+      return actionError(
+        applied.errors?.join(" / ") ?? "変更の適用に失敗しました",
+      );
+    }
+    return actionOk({ completed: true, applied: true });
+  } catch (e) {
+    return actionError(prismaErrorMessage(e, "承認に失敗しました"));
+  }
+}
+
+/** 工程フロー変更を差し戻す（工程は変わらないまま閉じる）。 */
+export async function rejectFlowChange(
+  flowChangeId: string,
+  reason: string,
+): Promise<ActionResult> {
+  const authz = await checkPermission("work_order", "APPROVE");
+  if (!authz.ok) return actionError(authz.error);
+  if (!reason.trim()) return actionError("差し戻し理由を入力してください");
+  const change = await prisma.workOrderFlowChange.findUnique({
+    where: { id: flowChangeId },
+    select: {
+      status: true,
+      workOrder: { select: { workOrderNumber: true } },
+    },
+  });
+  if (!change) return actionError("対象の変更が見つかりません");
+  if (change.status !== "PENDING") {
+    return actionError("承認待ちの変更ではありません");
+  }
+  if (
+    !(await workOrderInScope(
+      authz.access,
+      authz.userId,
+      change.workOrder.workOrderNumber,
+    ))
+  ) {
+    return actionError(SCOPE_DENIED);
+  }
+  try {
+    const acted = await actOnCurrentStep({
+      targetType: "work_order_flow_changes",
+      targetId: flowChangeId,
+      action: "REJECTED",
+      comment: reason,
+    });
+    if (!acted.ok)
+      return actionError(acted.error ?? "差し戻しの権限がありません");
+    await closeFlowChange(flowChangeId, "REJECTED");
+    await recordAudit({
+      action: "UPDATE",
+      tableName: "work_orders",
+      recordId: String(change.workOrder.workOrderNumber),
+      after: { note: `工程フロー変更を差し戻し（${reason}）` },
+    });
+    revalidate(change.workOrder.workOrderNumber);
+    return actionOk();
+  } catch (e) {
+    return actionError(prismaErrorMessage(e, "差し戻しに失敗しました"));
+  }
 }

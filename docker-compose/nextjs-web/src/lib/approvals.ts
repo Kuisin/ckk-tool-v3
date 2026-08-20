@@ -244,6 +244,15 @@ async function targetCreatedAt(
       });
       return row?.createdAt ?? null;
     }
+    case "work_order_flow_changes": {
+      // targetId は uuid（採番の再利用が無いので世代の混同は起きないが、
+      // 判定の形は他書類とそろえておく）。
+      const row = await prisma.workOrderFlowChange.findUnique({
+        where: { id: targetId },
+        select: { requestedAt: true },
+      });
+      return row?.requestedAt ?? null;
+    }
   }
 }
 

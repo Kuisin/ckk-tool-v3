@@ -19,15 +19,13 @@ import {
   itemSpecFromRow,
   resolveItemPass,
 } from "@/lib/inspection-core";
+import { submitFlowChange } from "@/lib/work-order-flow-changes";
 import {
   abortStepExecution,
-  addBranchSeries,
   completeStepExecution,
-  removeBranchSeries,
   rollbackStepExecution,
   type StepActionResult,
   startStepExecution,
-  updateBranchSeries,
 } from "@/lib/workflow";
 
 const BASE_PATH = "/production/work-orders";
@@ -223,15 +221,22 @@ export async function addBranch(
   try {
     const wo = await prisma.workOrder.findUnique({
       where: { workOrderNumber: v.workOrderNumber },
-      select: { id: true },
+      select: { id: true, status: true },
     });
     if (!wo) return { ok: false, errors: ["指示書が見つかりません"] };
-    const result = await addBranchSeries({
+    // 承認設定に「工程フロー変更」の段があれば保留 → 最終承認で適用。
+    // 1 段も無ければここで即適用（未設定 = 素通し）。
+    const result = await submitFlowChange({
       workOrderId: wo.id,
-      sourceStepId: v.sourceStepId,
-      catalogStepIds: v.catalogStepIds,
-      routedQuantity: v.routedQuantity,
-      termination: v.termination,
+      workOrderNumber: v.workOrderNumber,
+      workOrderStatus: wo.status,
+      payload: {
+        kind: "ADD_BRANCH",
+        sourceStepId: v.sourceStepId,
+        catalogStepIds: v.catalogStepIds,
+        routedQuantity: v.routedQuantity,
+        termination: v.termination,
+      },
     });
     if (result.ok) revalidate(v.workOrderNumber);
     return result;
@@ -270,14 +275,19 @@ export async function updateBranch(
   try {
     const wo = await prisma.workOrder.findUnique({
       where: { workOrderNumber: v.workOrderNumber },
-      select: { id: true },
+      select: { id: true, status: true },
     });
     if (!wo) return { ok: false, errors: ["指示書が見つかりません"] };
-    const result = await updateBranchSeries({
+    const result = await submitFlowChange({
       workOrderId: wo.id,
-      headStepId: v.headStepId,
-      routedQuantity: v.routedQuantity,
-      termination: v.termination,
+      workOrderNumber: v.workOrderNumber,
+      workOrderStatus: wo.status,
+      payload: {
+        kind: "UPDATE_BRANCH",
+        headStepId: v.headStepId,
+        routedQuantity: v.routedQuantity,
+        termination: v.termination,
+      },
     });
     if (result.ok) revalidate(v.workOrderNumber);
     return result;
@@ -307,12 +317,14 @@ export async function removeBranch(
   try {
     const wo = await prisma.workOrder.findUnique({
       where: { workOrderNumber: v.workOrderNumber },
-      select: { id: true },
+      select: { id: true, status: true },
     });
     if (!wo) return { ok: false, errors: ["指示書が見つかりません"] };
-    const result = await removeBranchSeries({
+    const result = await submitFlowChange({
       workOrderId: wo.id,
-      headStepId: v.headStepId,
+      workOrderNumber: v.workOrderNumber,
+      workOrderStatus: wo.status,
+      payload: { kind: "REMOVE_BRANCH", headStepId: v.headStepId },
     });
     if (result.ok) revalidate(v.workOrderNumber);
     return result;

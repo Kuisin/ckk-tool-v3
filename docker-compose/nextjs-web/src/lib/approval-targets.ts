@@ -17,6 +17,7 @@ export const APPROVAL_TARGET_TYPES = [
   "work_orders",
   "material_purchase_orders",
   "purchase_requests",
+  "work_order_flow_changes",
 ] as const;
 
 export type ApprovalTargetType = (typeof APPROVAL_TARGET_TYPES)[number];
@@ -75,6 +76,16 @@ export const APPROVAL_TARGET: Record<ApprovalTargetType, ApprovalTargetMeta> = {
     href: (id) => `/purchase/purchase-orders/${id}`,
     appKey: "purchase-orders",
     approvePermission: "purchase_order",
+  },
+  work_order_flow_changes: {
+    label: "工程フロー変更",
+    color: "grape",
+    // 対象は変更そのもの（uuid）だが、人が見たいのは指示書 — 保留中の変更は
+    // 指示書詳細にカードで出る。この URL は指示書番号へ読み替えて 302 する
+    // だけの中継ページ（承認管理の行から 1 クリックで着ける）。
+    href: (id) => `/production/work-orders/flow-changes/${id}`,
+    appKey: "work-orders",
+    approvePermission: "work_order",
   },
   purchase_requests: {
     label: "購買依頼",
