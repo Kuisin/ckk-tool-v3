@@ -18,9 +18,11 @@
 import { type Access, rowInScope } from "@ckk/authz-core";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
+import { approvalCompletionMessage } from "@/lib/approval-flow";
 import {
   actOnCurrentStep,
   assertFlowConfigured,
+  fetchApprovalCompletion,
   startApprovalFlow,
 } from "@/lib/approvals";
 import { getCurrentActorId, recordAudit } from "@/lib/audit";
@@ -584,6 +586,18 @@ export async function confirmOrderLines(
     if (!prior) return actionError("対象の注文請書が見つかりません");
     if (prior.status !== "APPROVED") {
       return actionError("承認済の注文請書のみ確定できます");
+    }
+    // 状態列だけでなく**承認の記録**を確かめる。列は承認と同時に書く派生値で、
+    // 復旧・移行で直接 DB を触れば作れてしまうため、後戻りできない確定の前に
+    // approval_requests 側で全段通ったことを見る。
+    const completion = await fetchApprovalCompletion(
+      "order_acceptances",
+      number,
+    );
+    if (!completion.ok) {
+      return actionError(
+        `確定できません: ${approvalCompletionMessage(completion)}`,
+      );
     }
     // 承認依頼と同じ完成条件（lib/order-acceptance-readiness）。通常は
     // 依頼の時点で満たされているが、承認中に明細が壊れる筋道が無いとは

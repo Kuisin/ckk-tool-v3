@@ -18,10 +18,12 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
+import { approvalCompletionMessage } from "@/lib/approval-flow";
 import {
   actOnCurrentStep,
   appendHistory,
   assertFlowConfigured,
+  fetchApprovalCompletion,
   type HistoryEntry,
   startApprovalFlow,
 } from "@/lib/approvals";
@@ -420,10 +422,23 @@ export async function orderPurchaseOrder(
     if (prior.status !== "APPROVED") {
       return actionError("承認済の素材発注書のみ発注できます");
     }
+    // 状態列だけでなく**承認の記録**を確かめる（列は派生値で、直接 DB を
+    // 触れば作れてしまう）。発注は素材 ATP に入荷予定として効く一歩なので、
+    // approval_requests 側で全段通ったことを見てから進める。
+    const completion = await fetchApprovalCompletion(
+      "material_purchase_orders",
+      poNumber,
+    );
+    if (!completion.ok) {
+      return actionError(
+        `発注できません: ${approvalCompletionMessage(completion)}`,
+      );
+    }
     const actor = await getCurrentActorId();
     const now = new Date();
-    await prisma.materialPurchaseOrder.update({
-      where: { id: prior.id },
+    // 二重発注ガード — APPROVED の行だけを原子的に ORDERED へ。
+    const updated = await prisma.materialPurchaseOrder.updateMany({
+      where: { id: prior.id, status: "APPROVED" },
       data: {
         status: "ORDERED",
         orderedAt: now,
@@ -435,6 +450,9 @@ export async function orderPurchaseOrder(
         ),
       },
     });
+    if (updated.count === 0) {
+      return actionError("承認済の素材発注書のみ発注できます");
+    }
     await recordAudit({
       action: "UPDATE",
       tableName: "material_purchase_orders",

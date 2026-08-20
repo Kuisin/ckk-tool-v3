@@ -8,9 +8,13 @@
  * 1 書類につき PENDING の依頼は常に 1 行だけ（部分 unique index が保証）。
  * 段 N を閉じるのと段 N+1 を作るのは同一トランザクション。
  *
- * 承認できるかは 2 段構え:
- *   RBAC（checkPermission）— 呼び出し側の Server Action が行う門番
- *   グループ所属           — ここで判定する実ゲート（本人 or 期間内の代理）
+ * 承認できるかを決めるのは**承認グループの所属だけ**（本人 or 期間内の代理）。
+ * RBAC の APPROVE 付与は廃止した — 呼び出し側の Server Action が見るのは
+ * 書類の可視性（READ + 拠点スコープ）まで。
+ *
+ * 確定など「承認が通ったあと」の一歩は fetchApprovalCompletion で承認の
+ * **記録**を確かめる。書類の status 列は派生値で、直接 DB を触れば作れて
+ * しまうため、それだけを信じない。
  *
  * 判定そのもの（段が閉じるか・次は何段目か）は純ロジックの lib/approval-flow に
  * 置いてあり、画面と共用する。
@@ -18,9 +22,11 @@
 
 import type { Prisma } from "../../generated/client/client";
 import {
+  type ApprovalCompletion,
   type ApprovalMode,
   type ApprovalPhase,
   decideAfterApproval,
+  decideApprovalCompletion,
   type FlowStepSnapshot,
   remainingApprovers,
   stepFromSnapshot,
@@ -259,6 +265,26 @@ async function targetScope(
   return createdAt
     ? { targetType, targetId, requestedAt: { gte: createdAt } }
     : { targetType, targetId };
+}
+
+/**
+ * 承認フローが**実際に**最後まで通ったかを、承認の記録から確かめる。
+ *
+ * 書類の status 列（APPROVED 等）は承認と同時に書く派生値でしかない。復旧・
+ * 移行で psql から直接書き換えることは実際にあるので、確定のように後戻り
+ * できない操作は列ではなくこの関数で判断する（判定規則は純ロジックの
+ * decideApprovalCompletion、世代スコープは他の読み取りと同じ targetScope）。
+ */
+export async function fetchApprovalCompletion(
+  targetType: ApprovalTargetType,
+  targetId: string,
+): Promise<ApprovalCompletion> {
+  const scope = await targetScope(targetType, targetId);
+  const rows = await prisma.approvalRequest.findMany({
+    where: scope,
+    select: { stepNo: true, stepCount: true, status: true, requestedAt: true },
+  });
+  return decideApprovalCompletion(rows);
 }
 
 /**

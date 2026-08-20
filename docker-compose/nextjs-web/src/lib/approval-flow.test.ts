@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   decideAfterApproval,
+  decideApprovalCompletion,
   isStepComplete,
   type RequiredApproverState,
   remainingApprovers,
@@ -164,5 +165,118 @@ describe("snapshot readers", () => {
     expect(stepFromSnapshot(null, 1)).toBeNull();
     expect(stepsFromSnapshot("nope")).toEqual([]);
     expect(stepsFromSnapshot([null, { stepNo: 1 }])).toHaveLength(1);
+  });
+});
+
+describe("decideApprovalCompletion", () => {
+  // 実データの並び（dev の ORD-202608-00002）を模した形。差し戻し → 再依頼で
+  // 同じ段の行が増えるので、「最後の 1 件」を段番号で選ぶと誤判定する。
+  const at = (iso: string) => new Date(iso);
+
+  it("記録が無ければ確定させない（列だけ APPROVED の書類を弾く）", () => {
+    const c = decideApprovalCompletion([]);
+    expect(c.ok).toBe(false);
+    expect(c.reason).toBe("NO_REQUEST");
+  });
+
+  it("承認待ちの段が残っていれば未完了", () => {
+    const c = decideApprovalCompletion([
+      {
+        stepNo: 1,
+        stepCount: 2,
+        status: "APPROVED",
+        requestedAt: at("2026-08-19T01:00:00Z"),
+      },
+      {
+        stepNo: 2,
+        stepCount: 2,
+        status: "PENDING",
+        requestedAt: at("2026-08-19T01:10:00Z"),
+      },
+    ]);
+    expect(c.ok).toBe(false);
+    expect(c.reason).toBe("PENDING");
+    expect(c.stepNo).toBe(2);
+  });
+
+  it("最終段まで承認されていれば完了", () => {
+    const c = decideApprovalCompletion([
+      {
+        stepNo: 1,
+        stepCount: 2,
+        status: "APPROVED",
+        requestedAt: at("2026-08-19T01:00:00Z"),
+      },
+      {
+        stepNo: 2,
+        stepCount: 2,
+        status: "APPROVED",
+        requestedAt: at("2026-08-19T01:10:00Z"),
+      },
+    ]);
+    expect(c.ok).toBe(true);
+    expect(c.stepNo).toBe(2);
+  });
+
+  it("差し戻されたままなら未完了", () => {
+    const c = decideApprovalCompletion([
+      {
+        stepNo: 1,
+        stepCount: 2,
+        status: "APPROVED",
+        requestedAt: at("2026-08-18T16:35:00Z"),
+      },
+      {
+        stepNo: 2,
+        stepCount: 2,
+        status: "REJECTED",
+        requestedAt: at("2026-08-18T23:57:00Z"),
+      },
+    ]);
+    expect(c.ok).toBe(false);
+    expect(c.reason).toBe("REJECTED");
+  });
+
+  it("差し戻し後に再依頼して全段通れば完了（古い REJECTED に引きずられない）", () => {
+    const c = decideApprovalCompletion([
+      {
+        stepNo: 1,
+        stepCount: 2,
+        status: "APPROVED",
+        requestedAt: at("2026-08-18T16:35:00Z"),
+      },
+      {
+        stepNo: 2,
+        stepCount: 2,
+        status: "REJECTED",
+        requestedAt: at("2026-08-18T23:57:00Z"),
+      },
+      {
+        stepNo: 1,
+        stepCount: 2,
+        status: "APPROVED",
+        requestedAt: at("2026-08-19T01:16:30Z"),
+      },
+      {
+        stepNo: 2,
+        stepCount: 2,
+        status: "APPROVED",
+        requestedAt: at("2026-08-19T01:16:45Z"),
+      },
+    ]);
+    expect(c.ok).toBe(true);
+  });
+
+  it("段が残っているのに閉じている（途中まで）なら未完了", () => {
+    const c = decideApprovalCompletion([
+      {
+        stepNo: 1,
+        stepCount: 3,
+        status: "APPROVED",
+        requestedAt: at("2026-08-19T01:00:00Z"),
+      },
+    ]);
+    expect(c.ok).toBe(false);
+    expect(c.reason).toBe("INCOMPLETE");
   });
 });

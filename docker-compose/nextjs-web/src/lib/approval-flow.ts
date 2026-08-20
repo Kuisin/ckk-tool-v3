@@ -131,6 +131,101 @@ export function validateFlowSteps(steps: FlowStepDraft[]): string[] {
   return issues;
 }
 
+// ─── 承認が本当に通ったか（確定の前提） ─────────────────────────────────────
+//
+// 書類の status 列（APPROVED 等）は承認時に併せて書く**派生値**でしかない。
+// 実運用では psql やスクリプトで直接 DB を触ることがある（復旧・移行）ので、
+// 列だけを見て確定すると「承認を通っていない書類が確定できる」道が残る。
+// 確定のような後戻りできない一歩は、承認の**記録**（approval_requests）を
+// 読んでここで判定する。
+
+/** 承認が完了していない理由。 */
+export type ApprovalIncompleteReason =
+  | "NO_REQUEST" // 承認依頼の記録が無い（承認を通っていない）
+  | "PENDING" // まだ承認待ちの段がある
+  | "REJECTED" // 差し戻されたまま
+  | "INCOMPLETE"; // 途中の段で止まっている（最終段まで届いていない）
+
+/** 判定に要る依頼 1 件（DB の行でもテストの値でも渡せる形）。 */
+export interface ApprovalRequestState {
+  stepNo: number;
+  stepCount: number;
+  status: "PENDING" | "APPROVED" | "REJECTED";
+}
+
+export interface ApprovalCompletion {
+  ok: boolean;
+  reason?: ApprovalIncompleteReason;
+  /** 到達している段 / 全段数（メッセージ用。記録が無ければ 0）。 */
+  stepNo: number;
+  stepCount: number;
+}
+
+/**
+ * 承認の記録から「全段通ったか」を決める。
+ *
+ * 渡すのはその書類（世代）の依頼行**すべて**で、順序は問わない。
+ * 差し戻し → 再依頼で同じ段の行が何度も増えるので、最後の 1 件は
+ * **段番号ではなく依頼日時**で決める（古い段 2 の差し戻しが、新しい段 1 の
+ * 承認より後ろに来てしまうのを避ける）。
+ */
+export function decideApprovalCompletion(
+  rows: readonly (ApprovalRequestState & {
+    requestedAt: Date | string | null;
+  })[],
+): ApprovalCompletion {
+  if (rows.length === 0) {
+    return { ok: false, reason: "NO_REQUEST", stepNo: 0, stepCount: 0 };
+  }
+  const pending = rows.find((r) => r.status === "PENDING");
+  if (pending) {
+    return {
+      ok: false,
+      reason: "PENDING",
+      stepNo: pending.stepNo,
+      stepCount: pending.stepCount,
+    };
+  }
+  const time = (v: Date | string | null) =>
+    v == null ? 0 : v instanceof Date ? v.getTime() : new Date(v).getTime();
+  const last = [...rows].sort(
+    (a, b) => time(b.requestedAt) - time(a.requestedAt) || b.stepNo - a.stepNo,
+  )[0];
+  if (last.status === "REJECTED") {
+    return {
+      ok: false,
+      reason: "REJECTED",
+      stepNo: last.stepNo,
+      stepCount: last.stepCount,
+    };
+  }
+  if (last.stepNo < last.stepCount) {
+    return {
+      ok: false,
+      reason: "INCOMPLETE",
+      stepNo: last.stepNo,
+      stepCount: last.stepCount,
+    };
+  }
+  return { ok: true, stepNo: last.stepNo, stepCount: last.stepCount };
+}
+
+/** 確定を止めるときに出す一行（画面にそのまま出す）。 */
+export function approvalCompletionMessage(c: ApprovalCompletion): string {
+  switch (c.reason) {
+    case "NO_REQUEST":
+      return "承認の記録がありません（承認依頼から進めてください）";
+    case "PENDING":
+      return `承認が完了していません（${c.stepNo}/${c.stepCount} 段目が承認待ちです）`;
+    case "REJECTED":
+      return "差し戻されています（もう一度承認を通してください）";
+    case "INCOMPLETE":
+      return `承認が完了していません（${c.stepNo}/${c.stepCount} 段までしか進んでいません）`;
+    default:
+      return "承認が完了していません";
+  }
+}
+
 /** flow_snapshot（Json）から 1 段を取り出す。範囲外・壊れた値は null。 */
 export function stepFromSnapshot(
   snapshot: unknown,

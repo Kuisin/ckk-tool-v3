@@ -17,10 +17,12 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
+import { approvalCompletionMessage } from "@/lib/approval-flow";
 import {
   actOnCurrentStep,
   appendHistory,
   assertFlowConfigured,
+  fetchApprovalCompletion,
   type HistoryEntry,
   startApprovalFlow,
 } from "@/lib/approvals";
@@ -463,6 +465,18 @@ export async function convertToPurchaseOrder(
     if (prior.status !== "APPROVED") {
       return actionError("承認済の購買依頼のみ発注書へ変換できます");
     }
+    // 状態列だけでなく**承認の記録**を確かめる（列は派生値で、直接 DB を
+    // 触れば作れてしまう）。変換は発注書を 1 通作る一歩なので、
+    // approval_requests 側で全段通ったことを見てから進める。
+    const completion = await fetchApprovalCompletion(
+      "purchase_requests",
+      requestNumber,
+    );
+    if (!completion.ok) {
+      return actionError(
+        `変換できません: ${approvalCompletionMessage(completion)}`,
+      );
+    }
     if (prior.items.length === 0) {
       return actionError("明細のない購買依頼は変換できません");
     }
@@ -498,8 +512,10 @@ export async function convertToPurchaseOrder(
         },
         select: { id: true },
       });
-      await tx.purchaseRequest.update({
-        where: { id: prior.id },
+      // 二重変換ガード — APPROVED の行だけを原子的に ORDERED へ。
+      // 外れたら同 tx で作った発注書ごと巻き戻す（先着 1 件だけ通す）。
+      const updated = await tx.purchaseRequest.updateMany({
+        where: { id: prior.id, status: "APPROVED" },
         data: {
           status: "ORDERED",
           orderedAt: now,
@@ -510,6 +526,9 @@ export async function convertToPurchaseOrder(
           ),
         },
       });
+      if (updated.count === 0) {
+        throw new Error("承認済の購買依頼のみ発注書へ変換できます");
+      }
     });
 
     await recordAudit({
