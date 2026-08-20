@@ -13,7 +13,7 @@
  * 新しい版があれば警告）/ キャンセル（DRAFT・承認待ちのみ）。
  */
 
-import { Alert, Anchor, Badge, Stack, Tabs, Text } from "@mantine/core";
+import { Alert, Anchor, Badge, Group, Stack, Tabs, Text } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import {
   IconAlertTriangle,
@@ -93,7 +93,7 @@ export function WorkOrderDetail({
   const [isPending, startTransition] = useTransition();
   const [copyOpen, setCopyOpen] = useState(false);
   const [copyTargetSoId, setCopyTargetSoId] = useState<string | null>(
-    workOrder.orderLineId,
+    workOrder.orderLines[0]?.orderLineId ?? null,
   );
 
   const wo = workOrder;
@@ -179,16 +179,25 @@ export function WorkOrderDetail({
   const summary = (
     <SummaryGrid>
       <FieldValue
-        label="注文明細番号"
+        label="注文明細（割当）"
         value={
-          wo.orderLineNumber != null ? (
-            <Anchor
-              component={Link}
-              href={`${SALES_ORDERS_PATH}/${wo.orderLineNumber}`}
-              size="sm"
-            >
-              <DocNumber c="blue">{wo.orderLineNumber}</DocNumber>
-            </Anchor>
+          wo.orderLines.length > 0 ? (
+            <Stack gap={2}>
+              {wo.orderLines.map((l) => (
+                <Group gap={6} key={l.orderLineId} wrap="nowrap">
+                  <Anchor
+                    component={Link}
+                    href={`${SALES_ORDERS_PATH}/${l.number}`}
+                    size="sm"
+                  >
+                    <DocNumber c="blue">{l.number}</DocNumber>
+                  </Anchor>
+                  <Text c="dimmed" size="xs">
+                    割当 {l.allocatedQuantity} / 受注 {l.lineQuantity}
+                  </Text>
+                </Group>
+              ))}
+            </Stack>
           ) : (
             <Badge color="teal" size="sm" variant="light">
               在庫向け（注文明細なし）
@@ -196,7 +205,20 @@ export function WorkOrderDetail({
           )
         }
       />
-      <FieldValue label="顧客" value={wo.customerName ?? "—"} />
+      <FieldValue
+        label="顧客"
+        value={
+          wo.orderLines.length > 0
+            ? [
+                ...new Set(
+                  wo.orderLines
+                    .map((l) => l.customerName)
+                    .filter((n): n is string => !!n),
+                ),
+              ].join(" / ") || "—"
+            : "—"
+        }
+      />
       <FieldValue label="作成者" value={wo.createdByName} />
       <FieldValue label="製品" value={wo.productName} />
       <FieldValue
@@ -214,6 +236,7 @@ export function WorkOrderDetail({
         label="ロット番号"
         value={<DocNumber>{wo.lotNumber ?? wo.workOrderNumber}</DocNumber>}
       />
+      <FieldValue label="保管場所" value={wo.storageLocationName} />
       <FieldValue
         label="工程ルート"
         value={
@@ -369,14 +392,24 @@ export function WorkOrderDetail({
               <Text c="dimmed" mb={4} size="xs">
                 注文明細
               </Text>
-              {wo.orderLineNumber != null ? (
-                <Anchor
-                  component={Link}
-                  href={`${SALES_ORDERS_PATH}/${wo.orderLineNumber}`}
-                  size="sm"
-                >
-                  <DocNumber c="blue">{wo.orderLineNumber}</DocNumber>
-                </Anchor>
+              {wo.orderLines.length > 0 ? (
+                <Stack gap={4}>
+                  {wo.orderLines.map((l) => (
+                    <Group gap={6} key={l.orderLineId} wrap="nowrap">
+                      <Anchor
+                        component={Link}
+                        href={`${SALES_ORDERS_PATH}/${l.number}`}
+                        size="sm"
+                      >
+                        <DocNumber c="blue">{l.number}</DocNumber>
+                      </Anchor>
+                      <Text c="dimmed" size="xs">
+                        割当 {l.allocatedQuantity} / 受注 {l.lineQuantity}
+                        {l.customerName ? ` / ${l.customerName}` : ""}
+                      </Text>
+                    </Group>
+                  ))}
+                </Stack>
               ) : (
                 <Text c="dimmed" size="sm">
                   在庫向けの独立指示書（注文明細なし）
@@ -467,10 +500,10 @@ export function WorkOrderDetail({
           )}
           <SearchSelect
             initialOption={
-              wo.orderLineId != null
+              wo.orderLines.length > 0
                 ? {
-                    value: wo.orderLineId,
-                    label: `${wo.orderLineNumber} ${wo.productName}（${wo.orderLineQuantity}）`,
+                    value: wo.orderLines[0].orderLineId,
+                    label: `${wo.orderLines[0].number} ${wo.productName}（${wo.orderLines[0].lineQuantity}）`,
                   }
                 : null
             }

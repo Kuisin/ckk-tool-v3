@@ -3,23 +3,29 @@
 /**
  * WorkflowBuilder — 指示書 新規作成 / 編集 (PD12 / PD22, design.md §8.3)。
  *
- * 注文明細・種別・予定数量・使用素材・検査表の基本情報と、工程構成エディタ
- * （ProcessListEditor — 工程選択 + 実施場所、必須随伴工程の自動追加）で構成する。
+ * 注文明細の割当・種別・予定数量・使用素材・保管場所・検査表の基本情報と、
+ * 工程構成エディタ（ProcessListEditor — 工程選択 + 実施場所、必須随伴工程の
+ * 自動追加）で構成する。
+ *
+ * 割当（分割・統合 — lib/work-order-alloc-core）: 1 指示書に複数の注文明細を
+ * 割り当てられ（統合ロット・同一製品のみ）、1 明細を複数指示書に分けて部分
+ * 手配することもできる。明細ごとの受注残（受注数量 − 手配済）を上限に割当数を
+ * 入力し、予定数量は割当合計以上（不良予備分の上乗せは自由）。
  *
  * 工程ルート（製品の工程リスト）: 注文明細を選ぶと対象製品のルートを読み込み、
  * ルート + バージョン（既定 = 最新）を選ぶと工程構成をプリフィルする。構成を
  * 変更すると保存時に新バージョンとして自動保存される（変更検知は
  * routeStepsEqual — server 側と同一基準）。ルートを使わない場合、ルート名を
  * 入力すればその構成を新ルート v1 として保存できる。
- *
- * 在庫フロア（§4 在庫考慮）: 製造分は「受注数量 − 引当済在庫 − 他の製造指示」
- * を予定数量の下限として表示・検証する（不良予備分の上乗せは自由）。
  */
 
 import {
+  ActionIcon,
   Alert,
+  Group,
   MultiSelect,
   NumberInput,
+  Paper,
   SegmentedControl,
   Select,
   SimpleGrid,
@@ -30,7 +36,12 @@ import {
 } from "@mantine/core";
 import { useForm } from "@mantine/form";
 import { notifications } from "@mantine/notifications";
-import { IconAlertTriangle, IconInfoCircle } from "@tabler/icons-react";
+import {
+  IconAlertTriangle,
+  IconInfoCircle,
+  IconPlus,
+  IconTrash,
+} from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
 import {
   useCallback,
@@ -53,7 +64,6 @@ import {
   getProductRoutesForOrderLine,
   getProductRoutesForProduct,
   getRouteVersionSteps,
-  getStockFloorInfo,
   updateWorkOrder,
   type WorkOrderInput,
 } from "@/app/(dashboard)/production/work-orders/actions";
@@ -67,6 +77,7 @@ import {
   type StepLocation,
   toStepSnapshots,
 } from "@/components/production/ProcessListEditor";
+import { GhostButton } from "@/components/ui/buttons";
 import { HelpLabel } from "@/components/ui/HelpLabel";
 import { SearchSelect } from "@/components/ui/SearchSelect";
 import { FormSection, FormShell } from "@/components/ui/shells";
@@ -76,11 +87,7 @@ import type { MaterialAtp } from "@/lib/atp";
 import { WORK_ORDER_TYPE_OPTIONS } from "@/lib/enum-labels";
 import { fieldHelp } from "@/lib/field-help";
 import { zodResolver } from "@/lib/form";
-import type {
-  RouteStepSnapshot,
-  RouteView,
-  StockFloorInfo,
-} from "@/lib/product-routes-core";
+import type { RouteStepSnapshot, RouteView } from "@/lib/product-routes-core";
 import { routeStepsEqual } from "@/lib/product-routes-core";
 import type { CatalogStep, UseDep } from "@/lib/workflow-core";
 import { isBlockingIssue, validateComposition } from "@/lib/workflow-core";
@@ -94,13 +101,12 @@ interface Option {
 }
 
 const schema = z.object({
-  // 対象が注文明細のときのみ必須（handleSubmit で検証）
-  orderLineId: z.string(),
   // 在庫向け（注文明細なし）のときの対象製品
   productId: z.string().nullable(),
   type: z.enum(["FROM_STOCK", "MANUFACTURE"]),
   plannedQuantity: z.number().int().min(1, "予定数量は1以上"),
   materialId: z.string().nullable(),
+  storageLocationId: z.string().nullable(),
   inspectionTemplateIds: z.array(z.string()),
   notes: z.string(),
   selectedStepIds: z.array(z.number()).min(1, "工程を1つ以上選択してください"),
@@ -111,35 +117,89 @@ type FormValues = z.infer<typeof schema>;
 /** 指示書の対象: 注文明細配下 / 在庫向け（注文明細なし・製品直接指定）。 */
 type BuilderTarget = "SALES_ORDER" | "STOCK";
 
+/** 割当エディタの 1 行（注文明細 + 割当数量）。 */
+interface AllocRow {
+  key: number;
+  orderLineId: string | null;
+  quantity: number;
+  info: OrderLineRef | null;
+}
+
 function initialValues(
   workOrder: WorkOrderView | null | undefined,
 ): FormValues {
   if (!workOrder) {
     return {
-      orderLineId: "",
       productId: null,
       type: "MANUFACTURE",
       plannedQuantity: 1,
       materialId: null,
+      storageLocationId: null,
       inspectionTemplateIds: [],
       notes: "",
       selectedStepIds: [],
     };
   }
   return {
-    orderLineId: workOrder.orderLineId ?? "",
     productId:
-      workOrder.orderLineId == null ? String(workOrder.productId) : null,
+      workOrder.orderLines.length === 0 ? String(workOrder.productId) : null,
     type: workOrder.type as FormValues["type"],
     plannedQuantity: workOrder.plannedQuantity,
     materialId:
       workOrder.materialId != null ? String(workOrder.materialId) : null,
+    storageLocationId:
+      workOrder.storageLocationId != null
+        ? String(workOrder.storageLocationId)
+        : null,
     inspectionTemplateIds: workOrder.inspectionTemplates.map((t) =>
       String(t.id),
     ),
     notes: workOrder.notes ?? "",
     selectedStepIds: workOrder.steps.map((s) => s.processStepId),
   };
+}
+
+/** 編集時の初期割当行（既存の割当 → AllocRow。info は表示用に合成）。 */
+function initialAllocRows(
+  workOrder: WorkOrderView | null | undefined,
+  initialOrderLine: OrderLineRef | null | undefined,
+  initialQuantity: number | null,
+): AllocRow[] {
+  if (workOrder && workOrder.orderLines.length > 0) {
+    return workOrder.orderLines.map((l, i) => ({
+      key: i,
+      orderLineId: l.orderLineId,
+      quantity: l.allocatedQuantity,
+      info: {
+        id: l.orderLineId,
+        number: l.number,
+        label: `${l.number} ${workOrder.productName}（${l.lineQuantity}）`,
+        customerName: l.customerName ?? "",
+        productName: workOrder.productName,
+        productId: workOrder.productId,
+        quantity: l.lineQuantity,
+        status: l.status,
+        // 表示用の暫定値 — 選び直したときにサーバー値で更新される
+        allocatedQuantity: 0,
+        remainingQuantity: l.lineQuantity,
+      },
+    }));
+  }
+  if (initialOrderLine) {
+    return [
+      {
+        key: 0,
+        orderLineId: initialOrderLine.id,
+        quantity:
+          initialQuantity ??
+          (initialOrderLine.remainingQuantity > 0
+            ? initialOrderLine.remainingQuantity
+            : initialOrderLine.quantity),
+        info: initialOrderLine,
+      },
+    ];
+  }
+  return [{ key: 0, orderLineId: null, quantity: 1, info: null }];
 }
 
 function initialLocations(
@@ -182,6 +242,7 @@ export function WorkflowBuilder({
   plantOptions,
   templateOptions,
   supplierOptions,
+  storageLocationOptions,
   initialType = null,
   initialQuantity = null,
 }: {
@@ -199,6 +260,8 @@ export function WorkflowBuilder({
   templateOptions: InspectionTemplateOption[];
   /** 外注先（VENDOR ロールの有効 BP）— サーバーで全件ロード。 */
   supplierOptions: Option[];
+  /** 保管場所（有効のみ・拠点名付き）— 完成品の保管先。 */
+  storageLocationOptions: Option[];
 }) {
   const fmt = useFormat();
   const router = useRouter();
@@ -211,8 +274,11 @@ export function WorkflowBuilder({
       ...initialValues(workOrder),
       ...(mode === "create" && initialOrderLine
         ? {
-            orderLineId: initialOrderLine.id,
-            plannedQuantity: initialQuantity ?? initialOrderLine.quantity,
+            plannedQuantity:
+              initialQuantity ??
+              (initialOrderLine.remainingQuantity > 0
+                ? initialOrderLine.remainingQuantity
+                : initialOrderLine.quantity),
           }
         : {}),
       ...(mode === "create" && initialType ? { type: initialType } : {}),
@@ -224,25 +290,21 @@ export function WorkflowBuilder({
   );
   // 対象: 注文明細配下 / 在庫向け（編集時は既存指示書から導出）
   const [target, setTarget] = useState<BuilderTarget>(
-    workOrder && workOrder.orderLineId == null ? "STOCK" : "SALES_ORDER",
+    workOrder && workOrder.orderLines.length === 0 ? "STOCK" : "SALES_ORDER",
   );
-  const [soInfo, setSoInfo] = useState<OrderLineRef | null>(
-    initialOrderLine ??
-      (workOrder?.orderLineId != null &&
-      workOrder.orderLineNumber != null &&
-      workOrder.orderLineQuantity != null
-        ? {
-            id: workOrder.orderLineId,
-            number: workOrder.orderLineNumber,
-            label: `${workOrder.orderLineNumber} ${workOrder.productName}（${workOrder.orderLineQuantity}）`,
-            customerName: workOrder.customerName ?? "",
-            productName: workOrder.productName,
-            productId: workOrder.productId,
-            quantity: workOrder.orderLineQuantity,
-            status: "",
-          }
-        : null),
+  // 割当行（分割・統合エディタ）。STOCK では使わない。
+  const [allocRows, setAllocRows] = useState<AllocRow[]>(() =>
+    initialAllocRows(workOrder, initialOrderLine, initialQuantity),
   );
+  const nextRowKey = useRef(allocRows.length);
+  // 編集時: 自分の既存割当（残数表示の戻し分 — サーバー検証は自分を除外する）
+  const ownAllocations = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const l of workOrder?.orderLines ?? []) {
+      map.set(l.orderLineId, l.allocatedQuantity);
+    }
+    return map;
+  }, [workOrder]);
 
   const selected = form.values.selectedStepIds;
 
@@ -298,14 +360,16 @@ export function WorkflowBuilder({
   /** ルートを使わない構成を保存する場合の新ルート名（空 = 保存しない）。 */
   const [newRouteName, setNewRouteName] = useState("");
 
-  const orderLineIdValue = form.values.orderLineId;
+  // 割当先頭の明細（工程ルート解決・素材 ATP の基準）
+  const firstOrderLineId =
+    allocRows.find((r) => r.orderLineId != null)?.orderLineId ?? null;
   const productIdValue = form.values.productId;
   useEffect(() => {
-    // 対象に応じてルートを解決: 注文明細 → SO の製品 / 在庫向け → 直接指定製品
+    // 対象に応じてルートを解決: 注文明細 → 明細の製品 / 在庫向け → 直接指定製品
     const load =
       target === "SALES_ORDER"
-        ? orderLineIdValue
-          ? () => getProductRoutesForOrderLine(orderLineIdValue)
+        ? firstOrderLineId
+          ? () => getProductRoutesForOrderLine(firstOrderLineId)
           : null
         : productIdValue
           ? () => getProductRoutesForProduct(Number(productIdValue))
@@ -321,7 +385,7 @@ export function WorkflowBuilder({
     return () => {
       cancelled = true;
     };
-  }, [target, orderLineIdValue, productIdValue]);
+  }, [target, firstOrderLineId, productIdValue]);
 
   // 別製品の注文明細へ切り替えたらルート選択をリセット
   useEffect(() => {
@@ -417,29 +481,110 @@ export function WorkflowBuilder({
     !routeStepsEqual(baseSteps, currentSnapshots);
   const latestVersionOfRoute = selectedRoute?.versions[0]?.version ?? 0;
 
-  // ── 在庫フロア（§4 在庫考慮 — 製造分の最低予定数量） ────────────────────────
-  const [stockFloor, setStockFloor] = useState<StockFloorInfo | null>(null);
+  // ── 割当（分割・統合） ─────────────────────────────────────────────────────
+  /** 行の残数表示（編集時は自分の既存割当分を戻す — サーバーも自分を除外）。 */
+  const rowRemaining = useCallback(
+    (row: AllocRow): number | null => {
+      if (!row.info || !row.orderLineId) return null;
+      return (
+        row.info.remainingQuantity + (ownAllocations.get(row.orderLineId) ?? 0)
+      );
+    },
+    [ownAllocations],
+  );
+
+  const allocTotal = useMemo(
+    () =>
+      allocRows.reduce(
+        (sum, r) => sum + (r.orderLineId != null ? r.quantity : 0),
+        0,
+      ),
+    [allocRows],
+  );
+
+  // 予定数量は割当合計以上（在庫分は一致）。合計の変動に追従して自動補正する。
+  const plannedQuantityValue = form.values.plannedQuantity;
+  const typeValue = form.values.type;
   useEffect(() => {
-    if (target !== "SALES_ORDER" || !orderLineIdValue) {
-      setStockFloor(null);
+    if (target !== "SALES_ORDER" || allocTotal <= 0) return;
+    if (typeValue === "FROM_STOCK") {
+      if (plannedQuantityValue !== allocTotal) {
+        form.setFieldValue("plannedQuantity", allocTotal);
+      }
+    } else if (plannedQuantityValue < allocTotal) {
+      form.setFieldValue("plannedQuantity", allocTotal);
+    }
+  }, [target, allocTotal, typeValue, plannedQuantityValue, form]);
+
+  // 割当明細の製品が混在していないか（統合ロットは同一製品のみ）
+  const productMismatch = useMemo(() => {
+    const ids = new Set(
+      allocRows
+        .filter((r) => r.info && r.orderLineId)
+        .map((r) => r.info?.productId ?? 0),
+    );
+    return ids.size > 1;
+  }, [allocRows]);
+
+  const updateAllocRow = (key: number, patch: Partial<AllocRow>) => {
+    setAllocRows((rows) =>
+      rows.map((r) => (r.key === key ? { ...r, ...patch } : r)),
+    );
+  };
+
+  const onRowLineChange = (key: number, value: string | null) => {
+    if (!value) {
+      updateAllocRow(key, { orderLineId: null, info: null });
       return;
     }
-    let cancelled = false;
-    getStockFloorInfo(
-      orderLineIdValue,
-      mode === "edit" ? workOrder?.workOrderNumber : undefined,
-    ).then((info) => {
-      if (!cancelled) setStockFloor(info);
+    if (allocRows.some((r) => r.key !== key && r.orderLineId === value)) {
+      notifications.show({
+        title: "既に割り当て済みです",
+        message: "同じ注文明細を複数行に割り当てることはできません",
+        color: "yellow",
+      });
+      return;
+    }
+    updateAllocRow(key, { orderLineId: value });
+    getOrderLineInfo(value).then((info) => {
+      if (!info) return;
+      const own = ownAllocations.get(value) ?? 0;
+      const remaining = info.remainingQuantity + own;
+      setAllocRows((rows) =>
+        rows.map((r) =>
+          r.key === key
+            ? {
+                ...r,
+                info,
+                quantity: remaining > 0 ? remaining : Math.max(1, r.quantity),
+              }
+            : r,
+        ),
+      );
     });
-    return () => {
-      cancelled = true;
-    };
-  }, [target, orderLineIdValue, mode, workOrder?.workOrderNumber]);
+  };
 
-  const floor =
-    target === "SALES_ORDER" && form.values.type === "MANUFACTURE"
-      ? (stockFloor?.floor ?? 0)
-      : 0;
+  const addAllocRow = () => {
+    setAllocRows((rows) => [
+      ...rows,
+      { key: nextRowKey.current++, orderLineId: null, quantity: 1, info: null },
+    ]);
+  };
+
+  const removeAllocRow = (key: number) => {
+    setAllocRows((rows) =>
+      rows.length > 1
+        ? rows.filter((r) => r.key !== key)
+        : [
+            {
+              key: nextRowKey.current++,
+              orderLineId: null,
+              quantity: 1,
+              info: null,
+            },
+          ],
+    );
+  };
 
   // ── 素材 ATP（§5 充足チェック — 警告のみ、保存はブロックしない） ─────────────
   const [materialAtpInfo, setMaterialAtpInfo] = useState<MaterialAtp | null>(
@@ -467,18 +612,6 @@ export function WorkflowBuilder({
     [selected, useDeps],
   );
 
-  const onOrderLineChange = (value: string | null) => {
-    form.setFieldValue("orderLineId", value ?? "");
-    if (!value) {
-      setSoInfo(null);
-      return;
-    }
-    getOrderLineInfo(value).then((info) => {
-      setSoInfo(info);
-      if (info) form.setFieldValue("plannedQuantity", info.quantity);
-    });
-  };
-
   const handleSubmit = (values: FormValues) => {
     if (blockers.length > 0) {
       notifications.show({
@@ -488,8 +621,26 @@ export function WorkflowBuilder({
       });
       return;
     }
-    if (target === "SALES_ORDER" && !values.orderLineId) {
-      form.setFieldError("orderLineId", "注文明細を選択してください");
+    const allocations = allocRows
+      .filter((r) => r.orderLineId != null)
+      .map((r) => ({
+        orderLineId: r.orderLineId as string,
+        quantity: r.quantity,
+      }));
+    if (target === "SALES_ORDER" && allocations.length === 0) {
+      notifications.show({
+        title: "注文明細が必要です",
+        message: "指示書に割り当てる注文明細を選択してください",
+        color: "red",
+      });
+      return;
+    }
+    if (target === "SALES_ORDER" && productMismatch) {
+      notifications.show({
+        title: "製品が混在しています",
+        message: "1 つの指示書に割り当てる注文明細は同一製品にしてください",
+        color: "red",
+      });
       return;
     }
     if (target === "STOCK" && !values.productId) {
@@ -498,13 +649,11 @@ export function WorkflowBuilder({
     }
     if (
       target === "SALES_ORDER" &&
-      values.type === "MANUFACTURE" &&
-      floor > 0 &&
-      values.plannedQuantity < floor
+      values.plannedQuantity < allocations.reduce((s, a) => s + a.quantity, 0)
     ) {
       form.setFieldError(
         "plannedQuantity",
-        `在庫引当を除いた必要数量 ${floor} 以上で入力してください`,
+        "予定数量は割当合計以上で入力してください",
       );
       return;
     }
@@ -529,7 +678,7 @@ export function WorkflowBuilder({
       return;
     }
     const payload: WorkOrderInput = {
-      orderLineId: target === "SALES_ORDER" ? values.orderLineId : null,
+      allocations: target === "SALES_ORDER" ? allocations : [],
       productId:
         target === "STOCK" && values.productId
           ? Number(values.productId)
@@ -540,6 +689,9 @@ export function WorkflowBuilder({
         values.type === "MANUFACTURE" && values.materialId
           ? Number(values.materialId)
           : null,
+      storageLocationId: values.storageLocationId
+        ? Number(values.storageLocationId)
+        : null,
       inspectionTemplateIds: values.inspectionTemplateIds.map(Number),
       notes: values.notes,
       steps: currentSnapshots.map((s) => ({
@@ -634,35 +786,110 @@ export function WorkflowBuilder({
             value={target}
           />
         </Stack>
+        {target === "SALES_ORDER" && (
+          <Stack gap="xs" mb="sm">
+            <Text fw={500} size="sm">
+              注文明細の割当
+            </Text>
+            <Text c="dimmed" size="xs">
+              1 つの明細を複数の指示書に分けて手配（分割）することも、同一製品の
+              複数明細を 1 つの指示書にまとめる（統合ロット）こともできます。
+              割当数は明細ごとの受注残が上限です
+            </Text>
+            {allocRows.map((row) => {
+              const remaining = rowRemaining(row);
+              return (
+                <Paper key={row.key} p="sm" radius="sm" withBorder>
+                  <Group
+                    align="flex-end"
+                    gap="sm"
+                    wrap={isMobile ? "wrap" : "nowrap"}
+                  >
+                    <div style={{ flex: 1, minWidth: 220 }}>
+                      <SearchSelect
+                        initialOption={
+                          row.info
+                            ? { value: row.info.id, label: row.info.label }
+                            : null
+                        }
+                        label={
+                          <HelpLabel {...fieldHelp("workOrder", "orderLine")} />
+                        }
+                        onChange={(v) => onRowLineChange(row.key, v)}
+                        onSearch={searchOrderLineOptions}
+                        placeholder="注文明細番号・製品・顧客で検索"
+                        storageKey="sales-order"
+                        value={row.orderLineId}
+                        withAsterisk
+                      />
+                    </div>
+                    <NumberInput
+                      allowDecimal={false}
+                      label="割当数量"
+                      max={
+                        remaining != null && remaining > 0
+                          ? remaining
+                          : undefined
+                      }
+                      min={1}
+                      onChange={(v) =>
+                        updateAllocRow(row.key, {
+                          quantity: typeof v === "number" ? v : 1,
+                        })
+                      }
+                      style={{ width: isMobile ? "100%" : 140 }}
+                      value={row.quantity}
+                      withAsterisk
+                    />
+                    <ActionIcon
+                      aria-label="割当行を削除"
+                      color="red"
+                      mb={4}
+                      onClick={() => removeAllocRow(row.key)}
+                      variant="subtle"
+                    >
+                      <IconTrash size={16} />
+                    </ActionIcon>
+                  </Group>
+                  {row.info && (
+                    <Text c="dimmed" mt={4} size="xs">
+                      {row.info.customerName} / {row.info.productName} /
+                      受注数量 {row.info.quantity}
+                      {remaining != null && ` / 割当可能残 ${remaining}`}
+                    </Text>
+                  )}
+                </Paper>
+              );
+            })}
+            {productMismatch && (
+              <Alert
+                color="red"
+                icon={<IconAlertTriangle size={16} />}
+                p="xs"
+                variant="light"
+              >
+                割当明細の製品が混在しています — 1
+                つの指示書に割り当てる注文明細は同一製品にしてください
+              </Alert>
+            )}
+            {form.values.type !== "FROM_STOCK" && (
+              <GhostButton
+                leftSection={<IconPlus size={14} />}
+                onClick={addAllocRow}
+                style={{ alignSelf: "flex-start" }}
+              >
+                明細を追加（統合ロット）
+              </GhostButton>
+            )}
+          </Stack>
+        )}
         <SimpleGrid cols={isMobile ? 1 : 2} spacing="sm">
-          {target === "SALES_ORDER" ? (
-            <Stack gap={4}>
-              <SearchSelect
-                error={form.errors.orderLineId}
-                initialOption={
-                  soInfo ? { value: soInfo.id, label: soInfo.label } : null
-                }
-                label={<HelpLabel {...fieldHelp("workOrder", "orderLine")} />}
-                onChange={onOrderLineChange}
-                onSearch={searchOrderLineOptions}
-                placeholder="注文明細番号・製品・顧客で検索"
-                storageKey="sales-order"
-                value={form.values.orderLineId || null}
-                withAsterisk
-              />
-              {soInfo && (
-                <Text c="dimmed" size="xs">
-                  {soInfo.customerName} / {soInfo.productName} / 受注数量{" "}
-                  {soInfo.quantity}
-                </Text>
-              )}
-            </Stack>
-          ) : (
+          {target === "STOCK" && (
             <Stack gap={4}>
               <SearchSelect
                 error={form.errors.productId}
                 initialOption={
-                  workOrder && workOrder.orderLineId == null
+                  workOrder && workOrder.orderLines.length === 0
                     ? {
                         value: String(workOrder.productId),
                         label: workOrder.productName,
@@ -694,7 +921,15 @@ export function WorkflowBuilder({
               }))}
               onChange={(v) => {
                 form.setFieldValue("type", v as FormValues["type"]);
-                if (v === "FROM_STOCK") form.setFieldValue("materialId", null);
+                if (v === "FROM_STOCK") {
+                  form.setFieldValue("materialId", null);
+                  // 在庫分は割当 1 件のみ — 先頭の有効行だけ残す
+                  setAllocRows((rows) => {
+                    const first =
+                      rows.find((r) => r.orderLineId != null) ?? rows[0];
+                    return [first];
+                  });
+                }
               }}
               value={form.values.type}
             />
@@ -702,10 +937,14 @@ export function WorkflowBuilder({
           <NumberInput
             allowDecimal={false}
             description={
-              floor > 0 ? `最低 ${floor}（不良予備分は上乗せ可）` : undefined
+              target === "SALES_ORDER" && allocTotal > 0
+                ? form.values.type === "FROM_STOCK"
+                  ? "在庫分は割当合計と一致します"
+                  : `割当合計 ${allocTotal} 以上（不良予備分は上乗せ可）`
+                : undefined
             }
             label={<HelpLabel {...fieldHelp("workOrder", "plannedQuantity")} />}
-            min={Math.max(1, floor)}
+            min={Math.max(1, target === "SALES_ORDER" ? allocTotal : 1)}
             withAsterisk
             {...form.getInputProps("plannedQuantity")}
           />
@@ -727,6 +966,14 @@ export function WorkflowBuilder({
               value={form.values.materialId}
             />
           )}
+          <Select
+            clearable
+            data={storageLocationOptions}
+            label="保管場所"
+            placeholder="完成品の保管場所を選択"
+            searchable={storageLocationOptions.length > 5}
+            {...form.getInputProps("storageLocationId")}
+          />
           <MultiSelect
             clearable
             data={templateSelectData}
@@ -742,13 +989,6 @@ export function WorkflowBuilder({
             {...form.getInputProps("inspectionTemplateIds")}
           />
         </SimpleGrid>
-        {/* 在庫フロア（§4 在庫考慮）— 製造分のみ。下限はサーバーでも検証する。 */}
-        {form.values.type === "MANUFACTURE" && stockFloor && (
-          <StockFloorAlert
-            info={stockFloor}
-            plannedQuantity={form.values.plannedQuantity}
-          />
-        )}
         {/* 素材 ATP 警告（充足=緑 / 不足+入荷予定あり=黄 / 不足+入荷予定なし=赤）。
             警告のみ — 保存はブロックしない（§5 素材判断は指示書承認側で行う）。 */}
         {materialIdValue && materialAtpInfo && (
@@ -759,7 +999,9 @@ export function WorkflowBuilder({
         )}
       </FormSection>
 
-      {(target === "SALES_ORDER" ? soInfo != null : !!productIdValue) && (
+      {(target === "SALES_ORDER"
+        ? allocRows.some((r) => r.info != null)
+        : !!productIdValue) && (
         <FormSection
           description="指示書は常に製品の工程リストに基づきます。既存のリストを選ぶと工程構成をプリフィル、未登録の製品はこの画面から新しいリストを作成します。構成を変更した場合は保存時に新バージョンとして自動保存されます（使用済みバージョンは変更されません）。"
           required
@@ -839,56 +1081,6 @@ export function WorkflowBuilder({
         {...form.getInputProps("notes")}
       />
     </FormShell>
-  );
-}
-
-/**
- * 在庫フロアのインライン表示 — 受注数量・引当済在庫・他の製造指示から
- * 最低予定数量を示す。下回る入力はサーバー側でも拒否される。
- */
-function StockFloorAlert({
-  info,
-  plannedQuantity,
-}: {
-  info: StockFloorInfo;
-  plannedQuantity: number;
-}) {
-  const planned = Number.isFinite(plannedQuantity) ? plannedQuantity : 0;
-  const parts = [
-    `受注数量 ${info.soQuantity.toLocaleString("ja-JP")}`,
-    `在庫引当済 ${info.reservedForSo.toLocaleString("ja-JP")}`,
-    ...(info.otherManufacture > 0
-      ? [`他の製造指示 ${info.otherManufacture.toLocaleString("ja-JP")}`]
-      : []),
-  ];
-  if (info.floor <= 0) {
-    return (
-      <Alert
-        color="green"
-        icon={<IconInfoCircle size={16} />}
-        mt="sm"
-        p="xs"
-        variant="light"
-      >
-        {parts.join(" ・ ")} — 必要数量は在庫・既存の製造指示で充足しています
-      </Alert>
-    );
-  }
-  const short = planned < info.floor;
-  return (
-    <Alert
-      color={short ? "red" : "blue"}
-      icon={
-        short ? <IconAlertTriangle size={16} /> : <IconInfoCircle size={16} />
-      }
-      mt="sm"
-      p="xs"
-      variant="light"
-    >
-      {parts.join(" ・ ")} → 最低予定数量 {info.floor.toLocaleString("ja-JP")}
-      （不良予備分として {info.floor.toLocaleString("ja-JP")}{" "}
-      より多く設定できます）
-    </Alert>
   );
 }
 

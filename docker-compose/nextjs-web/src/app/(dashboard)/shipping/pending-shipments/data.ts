@@ -19,6 +19,7 @@ import { checkPermission } from "@/lib/authz";
 import { prisma } from "@/lib/db";
 import { formatOrderLineNumber, formatProductNumber } from "@/lib/doc-number";
 import { type LocalizedText, localized } from "@/lib/format";
+import { distributeFinished } from "@/lib/work-order-alloc-core";
 import {
   computeFinishedQuantity,
   STEP_LINK_STATE_SELECT,
@@ -77,7 +78,7 @@ export async function fetchUnshippedOrderLines(): Promise<
           branch: { not: null },
           status: { in: [...OPEN_ORDER_LINE_STATUSES] },
           // 完了指示書が 1 件も無ければ出荷できる現物がまだ無い。
-          workOrders: { some: { status: "COMPLETED" } },
+          workOrderLinks: { some: { workOrder: { status: "COMPLETED" } } },
         },
         orderLineScopeWhere(authz.access, authz.userId),
       ],
@@ -85,16 +86,25 @@ export async function fetchUnshippedOrderLines(): Promise<
     include: {
       acceptance: { include: { customerBp: true } },
       product: true,
-      workOrders: {
-        where: { status: "COMPLETED" },
+      workOrderLinks: {
+        where: { workOrder: { status: "COMPLETED" } },
         // エンジンが読む列だけ（STEP_STATE_SELECT — workflow-core 参照）。
         // 全列 SELECT は列追加のたび migration 前の DB で P2022 に落ちる。
         select: {
-          workOrderNumber: true,
-          steps: { select: STEP_STATE_SELECT },
-          stepLinks: { select: STEP_LINK_STATE_SELECT },
+          workOrder: {
+            select: {
+              workOrderNumber: true,
+              steps: { select: STEP_STATE_SELECT },
+              stepLinks: { select: STEP_LINK_STATE_SELECT },
+              // 統合ロットの出来高配分（distributeFinished）に使う
+              orderLineLinks: {
+                select: { orderLineId: true, quantity: true },
+                orderBy: { sortOrder: "asc" },
+              },
+            },
+          },
         },
-        orderBy: { workOrderNumber: "asc" },
+        orderBy: { workOrder: { workOrderNumber: "asc" } },
       },
       // 出荷書に載っている数量（下書きも「もう手配済み」として数える）。
       shippingItems: { select: { quantity: true } },
@@ -109,11 +119,19 @@ export async function fetchUnshippedOrderLines(): Promise<
   const out: UnshippedOrderLineRow[] = [];
   for (const r of rows) {
     if (r.branch == null) continue;
-    const finishedQuantity = r.workOrders.reduce(
-      (sum, wo) =>
-        sum + computeFinishedQuantity(wo.steps.map(toStepState), wo.stepLinks),
-      0,
-    );
+    // 統合ロットでは 1 つの出来高を複数明細が二重取りしないよう、指示書の
+    // 完成数を割当順に配分して自明細ぶんだけ数える。
+    const finishedQuantity = r.workOrderLinks.reduce((sum, l) => {
+      const finished = computeFinishedQuantity(
+        l.workOrder.steps.map(toStepState),
+        l.workOrder.stepLinks,
+      );
+      return (
+        sum +
+        (distributeFinished(l.workOrder.orderLineLinks, finished).get(r.id) ??
+          0)
+      );
+    }, 0);
     const shippedQuantity = r.shippingItems.reduce(
       (sum, it) => sum + it.quantity,
       0,
@@ -138,7 +156,7 @@ export async function fetchUnshippedOrderLines(): Promise<
       finishedQuantity,
       shippedQuantity,
       unshippedQuantity,
-      completedLots: r.workOrders.map((wo) => wo.workOrderNumber),
+      completedLots: r.workOrderLinks.map((l) => l.workOrder.workOrderNumber),
       deliveryDate: r.deliveryDate?.toISOString().slice(0, 10) ?? null,
       status: r.status,
       updatedAt: r.updatedAt.toISOString(),
