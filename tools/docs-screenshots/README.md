@@ -30,13 +30,14 @@ pnpm exec tsx scripts/orchestrate.ts --only login-01
 
 ```bash
 pnpm exec tsx scripts/orchestrate.ts --only profile-preferences-01 \
-  --skip-seed production-demo-seed.sql,shipping-billing-demo-seed.sql
+  --skip-seed production-demo-seed.sql
 ```
 
-> ⚠️ `shared-db/sql/production-demo-seed.sql` は **注文明細（order_lines）統合に
-> 未追随**（ファイル冒頭に警告あり）。`app.sales_orders` を参照していて必ず落ちる。
-> これに続く `shipping-billing-demo-seed.sql` も同じ前提なので道連れになる。
-> 生産・出荷・請求まわりの撮り直しには、まずこのシードの書き換えが要る。
+> スキーマやテーブル名が変わったら、**シードとマニフェストの両方**が置き去りに
+> なる。シードは psql のエラーですぐ分かるが、マニフェストの `steps`（ラベル待ち・
+> クエリパラメータ）は 60 秒タイムアウトで初めて気づくので、UI 文言を変えたら
+> `pnpm docs:shots` を通しておくこと。過去に order_lines 統合と承認フロー刷新で
+> 両方が同時に腐り、しばらく撮影自体ができなくなっていた。
 
 PNG は `docker-compose/nextjs-web/content/manual/assets/screenshots/<id>.png` に
 出力され、**マニュアルと一緒にコミットする**。
