@@ -287,8 +287,10 @@ Operation codes provide keyboard-shortcut navigation. Format: `{CAT}{MODE}{IDX}`
 | 生産 | 2 | 指示書 | PD02 | PD12 | PD22 |
 | 生産 | 3 | 承認管理 | PD03 | PD13 | PD23 |
 | 生産 | 4 | 在庫管理 | PD04 | — | — |
+| 生産 | 5 | 未処理指示書 | PD05 | — | — |
 | 出荷 | 1 | 出荷書 | SH01 | SH11 | SH21 |
 | 出荷 | 2 | 納品書 | SH02 | SH12 | SH22 |
+| 出荷 | 3 | 未処理出荷書 | SH03 | — | — |
 | 請求 | 1 | 請求書 | BL01 | BL11 | BL21 |
 | 請求 | 2 | 締日処理 | BL02 | BL12 | BL22 |
 | マスタ | 1 | 取引先 | MS01 | MS11 | MS21 |
@@ -388,10 +390,12 @@ Stack (gap="xl", p="md", maw={1200})
 | 外注依頼 | `IconTruckDelivery` |
 | 素材発注書 | `IconShoppingCart` |
 | 指示書 | `IconSettings2` |
+| 未処理指示書 | `IconProgress` |
 | 承認管理 | `IconShieldCheck` |
 | 製品在庫 | `IconBoxSeam` |
 | 素材在庫 | `IconStack2` |
 | 出荷書 | `IconTruck` |
+| 未処理出荷書 | `IconTruckLoading` |
 | 納品書 | `IconReceipt` |
 | 請求書 | `IconFileInvoice` |
 | 締日処理 | `IconCalendarDue` |
@@ -1227,6 +1231,8 @@ Row click navigates to detail page.
 | SalesOrder | 注文明細番号 / 顧客 / 製品 / 数量 / 金額 / 納期 / 状態 |
 | WorkOrder | 指示書番号 / 注文明細番号 / 種別 / 予定数量 / 承認状態 / 状態 / 更新日 |
 | ShippingOrder | 出荷書番号 / 注文明細番号 / 種別 / 状態 / 出荷日 |
+| UnplannedOrderLine (PD05 未手配) | 注文明細番号 / 顧客 / 製品 / 受注数 / 手配済 / 未手配 / 在庫引当 / 納期 / 状態 |
+| UnshippedOrderLine (SH03 未手配) | 注文明細番号 / 顧客 / 製品 / 完了ロット / 完成数 / 出荷手配済 / 未手配 / 納期 / 状態 |
 | DeliveryNote | 納品番号 / 出荷書番号 / 納品先 / 方法 / 状態 / 納品日 |
 | Invoice | 請求番号 / 顧客 / 請求期間 / 合計金額 / 状態 / 発行日 |
 | BillingClosing | 顧客 / 締日 / 合計金額 / 状態 / 処理日 |

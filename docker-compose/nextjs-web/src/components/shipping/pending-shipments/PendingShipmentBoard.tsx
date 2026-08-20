@@ -1,0 +1,407 @@
+"use client";
+
+/**
+ * PendingShipmentBoard — 未処理出荷書 (SH03, design.md §8.1 / §14).
+ *
+ * タブ 2 枚:
+ *   未手配     — 完成分が出荷書に載っていない注文明細。行クリックで注文明細
+ *                詳細、右端のボタンでその明細を選んだ状態の出荷書作成へ直行。
+ *   出荷準備中 — まだ SHIPPED になっていない出荷書。行クリックで出荷書詳細。
+ *
+ * 出荷済みの出荷書は SH01（出荷書一覧）で見る — ここは作業キューに徹する。
+ */
+
+import { Badge, Group, Select, Stack, Text, TextInput } from "@mantine/core";
+import { IconSearch, IconTruck, IconTruckLoading } from "@tabler/icons-react";
+import { useRouter } from "next/navigation";
+import { useFormat } from "@/components/layout/PreferencesProvider";
+import type { ShippingOrder } from "@/components/shipping/shipping-orders/model";
+import { ShippingTypeBadge } from "@/components/shipping/shipping-orders/ShippingOrderTable";
+import { SecondaryButton } from "@/components/ui/buttons";
+import { type Column, DataTable } from "@/components/ui/DataTable";
+import { QueueTabs } from "@/components/ui/QueueTabs";
+import { StatusBadge, statusOptions } from "@/components/ui/StatusBadge";
+import { ListShell } from "@/components/ui/shells";
+import {
+  useTabParam,
+  useUrlSelectState,
+  useUrlStringState,
+} from "@/hooks/useUrlState";
+import { useIsMobile } from "@/hooks/useViewport";
+import { SHIPPING_TYPE_OPTIONS } from "@/lib/enum-labels";
+import type { UnshippedOrderLineRow } from "./model";
+
+const ORDER_LINES_PATH = "/sales/order-lines";
+const SHIPPING_ORDERS_PATH = "/shipping/shipping-orders";
+
+export function PendingShipmentBoard({
+  unshippedRows,
+  openRows,
+}: {
+  unshippedRows: UnshippedOrderLineRow[];
+  openRows: ShippingOrder[];
+}) {
+  const fmt = useFormat();
+  const router = useRouter();
+  const isMobile = useIsMobile();
+
+  const [tab, setTab] = useTabParam("unshipped");
+  const [search, setSearch] = useUrlStringState("q");
+  const [type, setType] = useUrlSelectState("type");
+  const [status, setStatus] = useUrlSelectState("status");
+
+  const reset = () => {
+    setSearch(null);
+    setType(null);
+    setStatus(null);
+  };
+
+  const filteredUnshipped = unshippedRows.filter((r) => {
+    const matchesSearch =
+      !search ||
+      r.orderLineNumber.includes(search) ||
+      r.customerName.includes(search) ||
+      r.productName.includes(search) ||
+      r.completedLots.some((lot) => String(lot).includes(search));
+    return matchesSearch && (!status || r.status === status);
+  });
+
+  const filteredOpen = openRows.filter((o) => {
+    const matchesSearch =
+      !search ||
+      o.shippingNumber.includes(search) ||
+      o.orderLineNumbers.some((n) => n.includes(search)) ||
+      o.customerName.includes(search);
+    return (
+      matchesSearch &&
+      (!type || o.type === type) &&
+      (!status || o.status === status)
+    );
+  });
+
+  const unshippedColumns: Column<UnshippedOrderLineRow>[] = [
+    {
+      key: "orderLineNumber",
+      header: "注文明細番号",
+      sortable: true,
+      width: 190,
+      render: (r) => (
+        <Text className="tabular-nums" ff="mono" size="sm">
+          {r.orderLineNumber}
+        </Text>
+      ),
+    },
+    {
+      key: "customerName",
+      header: "顧客",
+      sortable: true,
+      truncate: true,
+      render: (r) => r.customerName,
+    },
+    {
+      key: "productName",
+      header: "製品",
+      sortable: true,
+      truncate: true,
+      render: (r) => r.productName,
+    },
+    {
+      key: "completedLots",
+      header: "完了ロット",
+      hideable: true,
+      width: 140,
+      sortValue: (r) => r.completedLots.length,
+      render: (r) => (
+        <Text c="dimmed" className="tabular-nums" ff="mono" size="xs">
+          {r.completedLots.map((lot) => `#${lot}`).join(", ") || "—"}
+        </Text>
+      ),
+    },
+    {
+      key: "finishedQuantity",
+      header: "完成数",
+      align: "right",
+      width: 90,
+      sortable: true,
+      sortValue: (r) => r.finishedQuantity,
+      render: (r) => (
+        <Text className="tabular-nums" size="sm">
+          {r.finishedQuantity}
+        </Text>
+      ),
+    },
+    {
+      key: "shippedQuantity",
+      header: "出荷手配済",
+      align: "right",
+      width: 105,
+      sortable: true,
+      sortValue: (r) => r.shippedQuantity,
+      render: (r) => (
+        <Text c="dimmed" className="tabular-nums" size="sm">
+          {r.shippedQuantity}
+        </Text>
+      ),
+    },
+    {
+      key: "unshippedQuantity",
+      header: "未手配",
+      align: "right",
+      width: 100,
+      sortable: true,
+      sortValue: (r) => r.unshippedQuantity,
+      render: (r) => (
+        <Badge color="orange" variant="light">
+          {r.unshippedQuantity}
+        </Badge>
+      ),
+    },
+    {
+      key: "deliveryDate",
+      header: "納期",
+      width: 110,
+      sortable: true,
+      sortValue: (r) => r.deliveryDate ?? "",
+      render: (r) => (
+        <Text className="tabular-nums" size="sm">
+          {r.deliveryDate ? fmt.date(r.deliveryDate) : "—"}
+        </Text>
+      ),
+    },
+    {
+      key: "status",
+      header: "状態",
+      width: 110,
+      sortValue: (r) => r.status,
+      render: (r) => <StatusBadge entity="OrderLine" status={r.status} />,
+    },
+    {
+      key: "actions",
+      header: "",
+      width: 130,
+      render: (r) => (
+        <SecondaryButton
+          href={`${SHIPPING_ORDERS_PATH}/new?orderLine=${r.uuid}`}
+          leftSection={<IconTruck size={14} />}
+          onClick={(e) => e.stopPropagation()}
+          size="xs"
+        >
+          出荷書作成
+        </SecondaryButton>
+      ),
+    },
+  ];
+
+  const openColumns: Column<ShippingOrder>[] = [
+    {
+      key: "shippingNumber",
+      header: "出荷書番号",
+      sortable: true,
+      width: 170,
+      render: (o) => (
+        <Text ff="mono" size="sm">
+          {o.shippingNumber}
+        </Text>
+      ),
+    },
+    {
+      key: "customerName",
+      header: "顧客 / 注文明細",
+      sortable: true,
+      render: (o) => (
+        <>
+          <Text size="sm">{o.customerName}</Text>
+          <Text c="dimmed" ff="mono" size="xs">
+            {o.orderLineNumbers.join(", ") || "—"}
+          </Text>
+        </>
+      ),
+    },
+    {
+      key: "type",
+      header: "種別",
+      width: 110,
+      sortValue: (o) => o.type,
+      render: (o) => <ShippingTypeBadge type={o.type} />,
+    },
+    {
+      key: "totalQuantity",
+      header: "数量合計",
+      align: "right",
+      width: 100,
+      sortValue: (o) => o.totalQuantity,
+      render: (o) => (
+        <Text className="tabular-nums" size="sm">
+          {o.totalQuantity}
+        </Text>
+      ),
+    },
+    {
+      key: "status",
+      header: "状態",
+      width: 100,
+      sortValue: (o) => o.status,
+      render: (o) => <StatusBadge entity="ShippingOrder" status={o.status} />,
+    },
+    {
+      key: "updatedAt",
+      header: "更新日",
+      hideable: true,
+      width: 150,
+      sortValue: (o) => o.updatedAt,
+      render: (o) => (
+        <Text c="dimmed" className="tabular-nums" size="xs">
+          {fmt.dateTime(o.updatedAt)}
+        </Text>
+      ),
+    },
+  ];
+
+  const isUnshipped = tab === "unshipped";
+
+  return (
+    <ListShell
+      breadcrumbs={["出荷", "未処理出荷書"]}
+      filters={
+        <>
+          {!isUnshipped && (
+            <Select
+              clearable
+              data={SHIPPING_TYPE_OPTIONS}
+              flex={isMobile ? 1 : undefined}
+              onChange={setType}
+              placeholder="種別"
+              value={type}
+              w={isMobile ? undefined : 130}
+            />
+          )}
+          <Select
+            clearable
+            data={
+              isUnshipped
+                ? statusOptions("OrderLine").filter((o) =>
+                    ["CONFIRMED", "IN_PRODUCTION", "PARTIAL_SHIPPED"].includes(
+                      o.value,
+                    ),
+                  )
+                : statusOptions("ShippingOrder").filter((o) =>
+                    ["DRAFT", "CONFIRMED"].includes(o.value),
+                  )
+            }
+            flex={isMobile ? 1 : undefined}
+            onChange={setStatus}
+            placeholder="状態"
+            value={status}
+            w={isMobile ? undefined : 150}
+          />
+        </>
+      }
+      onReset={reset}
+      search={
+        <TextInput
+          leftSection={<IconSearch size={14} />}
+          onChange={(e) => setSearch(e.currentTarget.value)}
+          placeholder={
+            isUnshipped
+              ? "注文明細番号・顧客・製品・ロットで検索"
+              : "出荷書番号・注文明細番号・顧客で検索"
+          }
+          value={search}
+        />
+      }
+      title="未処理出荷書"
+    >
+      <QueueTabs
+        onChange={setTab}
+        tabs={[
+          {
+            value: "unshipped",
+            label: "未手配",
+            icon: <IconTruckLoading size={14} />,
+            count: unshippedRows.length,
+            color: "orange",
+          },
+          {
+            value: "inflight",
+            label: "出荷準備中",
+            icon: <IconTruck size={14} />,
+            count: openRows.length,
+          },
+        ]}
+        value={tab}
+      >
+        {isUnshipped ? (
+          <DataTable
+            columns={unshippedColumns}
+            data={filteredUnshipped}
+            defaultSort={{ key: "deliveryDate", dir: "asc" }}
+            emptyIcon={<IconTruckLoading size={24} />}
+            emptyMessage="出荷書待ちの注文明細はありません"
+            getRowId={(r) => r.id}
+            onRowClick={(r) => router.push(`${ORDER_LINES_PATH}/${r.id}`)}
+            renderCard={(r) => (
+              <Group align="flex-start" justify="space-between" wrap="nowrap">
+                <Stack className="min-w-0" gap={3}>
+                  <Text c="dimmed" ff="mono" size="xs">
+                    {r.orderLineNumber}
+                  </Text>
+                  <Text fw={600} size="sm" truncate>
+                    {r.customerName}
+                  </Text>
+                  <Text c="dimmed" size="xs" truncate>
+                    {r.productName}
+                  </Text>
+                  <Text c="dimmed" size="xs">
+                    完成 {r.finishedQuantity} 本 / 手配済 {r.shippedQuantity} 本
+                  </Text>
+                </Stack>
+                <Stack align="flex-end" className="shrink-0" gap={4}>
+                  <Badge color="orange" variant="light">
+                    未手配 {r.unshippedQuantity}
+                  </Badge>
+                  <Text c="dimmed" size="xs">
+                    納期 {r.deliveryDate ? fmt.date(r.deliveryDate) : "—"}
+                  </Text>
+                </Stack>
+              </Group>
+            )}
+            urlState
+          />
+        ) : (
+          <DataTable
+            columns={openColumns}
+            data={filteredOpen}
+            defaultSort={{ key: "shippingNumber", dir: "desc" }}
+            emptyIcon={<IconTruck size={24} />}
+            emptyMessage="出荷準備中の出荷書はありません"
+            getRowId={(o) => o.id}
+            onRowClick={(o) => router.push(`${SHIPPING_ORDERS_PATH}/${o.id}`)}
+            renderCard={(o) => (
+              <Group align="flex-start" justify="space-between" wrap="nowrap">
+                <Stack className="min-w-0" gap={3}>
+                  <Text c="dimmed" ff="mono" size="xs">
+                    {o.shippingNumber}
+                  </Text>
+                  <Text fw={600} size="sm" truncate>
+                    {o.customerName}
+                  </Text>
+                  <Text c="dimmed" ff="mono" size="xs" truncate>
+                    {o.orderLineNumbers.join(", ") || "—"}
+                  </Text>
+                  <Text c="dimmed" size="xs">
+                    {o.totalQuantity} 本
+                  </Text>
+                </Stack>
+                <Stack align="flex-end" className="shrink-0" gap={4}>
+                  <StatusBadge entity="ShippingOrder" status={o.status} />
+                  <ShippingTypeBadge type={o.type} />
+                </Stack>
+              </Group>
+            )}
+            urlState
+          />
+        )}
+      </QueueTabs>
+    </ListShell>
+  );
+}

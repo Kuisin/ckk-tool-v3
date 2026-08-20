@@ -185,8 +185,11 @@ function mapOrderLine(r: OrderLineRow): OrderLine {
 /**
  * 注文明細のスコープ where 断片（PLANT = 配下指示書の工程実施拠点経由 ∪
  * OWN = 注文請書の作成者）。ALL は {} — 従来通り全件。
+ *
+ * 未処理キュー（PD05 / SH03）も同じ断片を使う — 注文明細の可視範囲は
+ * どの画面から見ても 1 つであるべきなので、キュー側で別解釈をしない。
  */
-function orderLineScopeWhere(
+export function orderLineScopeWhere(
   access: Access,
   userId: string,
 ): Prisma.OrderLineWhereInput {

@@ -206,13 +206,21 @@ function workOrderRowInScope(
   );
 }
 
-/** 指示書一覧 (PD02)。 */
-export async function fetchWorkOrders(): Promise<WorkOrderRow[]> {
+/**
+ * 指示書一覧 (PD02)。
+ *
+ * `extraWhere` は未処理指示書 (PD05) の「進行中」タブが未完了だけを引くための
+ * 追加条件。スコープ条件と AND で合成する（キー衝突を避けるため spread しない）。
+ */
+export async function fetchWorkOrders(
+  extraWhere?: Prisma.WorkOrderWhereInput,
+): Promise<WorkOrderRow[]> {
   const authz = await checkPermission("work_order", "READ");
   if (!authz.ok) return [];
+  const scope = workOrderScopeWhere(authz.access, authz.userId);
   const rows = await prisma.workOrder.findMany({
     take: LIST_FETCH_CAP,
-    where: workOrderScopeWhere(authz.access, authz.userId),
+    where: extraWhere ? { AND: [scope, extraWhere] } : scope,
     include: {
       orderLine: {
         select: {

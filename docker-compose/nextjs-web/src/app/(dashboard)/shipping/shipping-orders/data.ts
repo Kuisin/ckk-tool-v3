@@ -131,17 +131,25 @@ function mapShippingOrder(r: ShippingOrderRow): ShippingOrder {
   };
 }
 
-/** 一覧 — 新しい採番から順に。 */
-export async function fetchShippingOrders(): Promise<ShippingOrder[]> {
+/**
+ * 一覧 — 新しい採番から順に。
+ *
+ * `extraWhere` は未処理出荷書 (SH03) の「出荷準備中」タブが未出荷だけを引く
+ * ための追加条件。スコープ条件と AND で合成する。
+ */
+export async function fetchShippingOrders(
+  extraWhere?: Prisma.ShippingOrderWhereInput,
+): Promise<ShippingOrder[]> {
   // スコープ行フィルタ（PLANT = 出荷元拠点。ALL は {} で従来通り全件）。
   const authz = await checkPermission("shipping_order", "READ");
   if (!authz.ok) return [];
+  const scope = plantWhere(
+    authz.access,
+    "fromPlantId",
+  ) as Prisma.ShippingOrderWhereInput;
   const rows = await prisma.shippingOrder.findMany({
     take: LIST_FETCH_CAP,
-    where: plantWhere(
-      authz.access,
-      "fromPlantId",
-    ) as Prisma.ShippingOrderWhereInput,
+    where: extraWhere ? { AND: [scope, extraWhere] } : scope,
     include: SHIPPING_ORDER_INCLUDE,
     orderBy: [{ yearMonth: "desc" }, { seq: "desc" }],
   });
