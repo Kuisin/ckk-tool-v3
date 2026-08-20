@@ -64,6 +64,13 @@ model OrderAcceptance {
   quoteSeq           Int?    @map("quote_seq")
   orderDate          DateTime? @map("order_date") @db.Date
 
+  // 出荷先（納入先の取引先。顧客本体と別の法人・支店でもよい。null = 顧客へ）
+  shipToBpId String? @map("ship_to_bp_id") @db.Uuid
+  // 担当拠点（この注文を処理する拠点。null = 未割当）
+  assignedPlantId Int? @map("assigned_plant_id")
+  // 出荷作業場所（作業場所マスタ MS0D。出荷作業を行う場所）
+  shippingWorkLocationId Int? @map("shipping_work_location_id")
+
   notes       String?
   completedAt DateTime? @map("completed_at") @db.Timestamptz(6)
   archivedAt  DateTime? @map("archived_at") @db.Timestamptz(6)
@@ -78,6 +85,9 @@ model OrderAcceptance {
   sourceFile       File?            @relation("AcceptanceSourceFile", fields: [sourceFileId], references: [id])
   customerBp       BusinessPartner? @relation("AcceptanceCustomer", fields: [customerBpId], references: [id])
   customerBranchBp BusinessPartner? @relation("AcceptanceCustomerBranch", fields: [customerBranchBpId], references: [id])
+  shipToBp         BusinessPartner? @relation("AcceptanceShipTo", fields: [shipToBpId], references: [id])
+  assignedPlant    Plant?           @relation("AcceptancePlant", fields: [assignedPlantId], references: [id])
+  shippingWorkLocation WorkLocation? @relation("AcceptanceShippingWorkLocation", fields: [shippingWorkLocationId], references: [id])
   createdByUser    User?            @relation("AcceptanceCreatedBy", fields: [createdBy], references: [id])
   salesRep         User?            @relation("AcceptanceSalesRep", fields: [salesRepId], references: [id])
 
@@ -121,7 +131,9 @@ model OrderLine {
 
   // ── 実行（旧 sales_orders） ──
   status      OrderLineStatus @default(DRAFT)
-  lotNumber   Int?            @unique @map("lot_number") // 通し連番（指示書番号と共用）
+  // 通し連番（指示書番号と共用）。統合ロット（1 指示書に複数明細）では
+  // 同じロット番号を複数明細が共有するため unique ではない。
+  lotNumber   Int?            @map("lot_number")
   isLocked    Boolean         @default(false) @map("is_locked") // 承認依頼中ロック
   endUserBpId String?         @map("end_user_bp_id") @db.Uuid // 最終需要家は行ごとに異なり得る
   confirmedAt DateTime?       @map("confirmed_at") @db.Timestamptz(6)
@@ -135,7 +147,7 @@ model OrderLine {
   product    Product?         @relation(fields: [productId], references: [id])
   endUserBp  BusinessPartner? @relation("OrderLineEndUser", fields: [endUserBpId], references: [id])
 
-  workOrders     WorkOrder[]
+  workOrderLinks WorkOrderOrderLine[]
   shippingItems  ShippingOrderItem[]
   reservations   InventoryReservation[]
   designRequests DesignRequest[]
@@ -145,6 +157,7 @@ model OrderLine {
   @@index([acceptanceYearMonth, acceptanceSeq])
   @@index([status])
   @@index([productId])
+  @@index([lotNumber])
   @@map("order_lines")
   @@schema("app")
 }
