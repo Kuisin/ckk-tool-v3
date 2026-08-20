@@ -17,8 +17,10 @@ export const dynamic = "force-dynamic";
 
 export default async function StepExecutionPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ stepId: string }>;
+  searchParams: Promise<{ from?: string }>;
 }) {
   const session = await getSession();
   if (!session) redirect("/login");
@@ -45,9 +47,15 @@ export default async function StepExecutionPage({
     session.locale,
   );
 
+  // 指示書スキャン（/wo-scan）から来たときは戻り先をその指示書にする。
+  // 任意 URL は受けない — from=wo のときだけ固定の遷移先を組み立てる。
+  const { from } = await searchParams;
+  const backTo = from === "wo" ? ("workOrder" as const) : ("list" as const);
+
   return (
     <I18nProvider locale={session.locale}>
       <StepExecutionView
+        backTo={backTo}
         otherActive={otherActive}
         recording={recording}
         step={step}

@@ -3,6 +3,7 @@ import type { KioskMessages } from "./ja";
 export const en: KioskMessages = {
   apps: {
     stepExecution: "Step Execution",
+    woScan: "Work Order Scan",
   },
   launcher: {
     greeting: (name: string) => name,
@@ -13,6 +14,36 @@ export const en: KioskMessages = {
   },
   activity: {
     autoLogout: (time: string) => `Auto logout in ${time}`,
+  },
+  woScan: {
+    title: "Work Order Scan",
+    back: "Back to apps",
+    scanHint: "Scan the QR code on the work order sheet",
+    invalidQr: "Not a work order QR code",
+    manualTitle: "Open by number",
+    manualPlaceholder: "Work order number",
+    open: "Open",
+    invalidNumber: "Enter a work order number",
+    notFound: (n: number) => `Work order #${n} was not found`,
+    rescan: "Scan again",
+    workOrder: (n: number) => `Work order #${n}`,
+    plannedQty: (n: number) => `Planned quantity: ${n} pcs`,
+    stepsTitle: "Steps",
+    noSteps: "This work order has no steps",
+    assignees: (names: string) => `Assigned: ${names}`,
+    unplanned: "Unassigned",
+    plannedForOthers: "Planned for another operator",
+    notExecutable:
+      "This work order is not approved/in progress, so steps cannot be operated",
+    backToWorkOrder: "Back to work order",
+    status: {
+      DRAFT: "Draft",
+      PENDING_APPROVAL: "Pending approval",
+      APPROVED: "Approved",
+      IN_PROGRESS: "In progress",
+      COMPLETED: "Completed",
+      CANCELLED: "Cancelled",
+    },
   },
   steps: {
     title: "Step Execution",
