@@ -64,6 +64,8 @@ const ARIA_LABELS = {
 // React Flow が警告 #002 を出し、ノードが作り直される。
 const nodeTypes = { workflowStep: WorkflowStepNode };
 
+const PRO_OPTIONS = { hideAttribution: true };
+
 export interface WorkflowGraphProps {
   steps: WorkOrderStepView[];
   links: StepLinkView[];
@@ -193,6 +195,9 @@ function Canvas({
         // ページのスクロールを奪わない（詳細画面に埋め込まれているため）。
         // 拡大縮小は Controls とピンチで行う。
         preventScrolling={false}
+        // 「React Flow」の帰属表示を出さない。MIT ライセンスなので削除して
+        // 差し支えない（作者は有料プランでの支援を求めているが、義務ではない）。
+        proOptions={PRO_OPTIONS}
         zoomOnScroll={false}
       >
         <Background gap={16} size={1} />

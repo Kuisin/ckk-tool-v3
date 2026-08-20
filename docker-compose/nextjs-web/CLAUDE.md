@@ -48,9 +48,10 @@ nodes so Japanese step names need no truncation, and accepts our own layout.
 keeps owning layer/lane, and `branchableQuantity` / `canStartStep` /
 `validateComposition` keep owning validity — never move that logic into the
 library, or the kiosk twin file (`workflow-core.ts`) silently diverges. Loaded
-through `next/dynamic` + `ssr:false`; the React Flow attribution mark is left in
-place (removing it is legal under MIT but the maintainers ask for a paid Pro
-plan). Not added to the kiosk — it has no flow graph.
+through `next/dynamic` + `ssr:false`; the React Flow attribution mark is hidden
+(`proOptions={{ hideAttribution: true }}`) — permitted under MIT, though the
+maintainers ask for a paid Pro plan in return. Not added to the kiosk — it has
+no flow graph.
 
 ## Layout
 
