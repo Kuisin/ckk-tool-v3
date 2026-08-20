@@ -90,6 +90,11 @@ export async function fetchOrderAcceptance(
       sourceFile: { select: { filename: true, mimeType: true } },
       customerBp: { select: { name: true } },
       customerBranchBp: { select: { name: true } },
+      shipToBp: { select: { name: true } },
+      assignedPlant: { select: { code: true, name: true } },
+      shippingWorkLocation: {
+        select: { name: true, group: { select: { name: true } } },
+      },
       salesRep: { select: { id: true, displayName: true } },
       createdByUser: { select: { displayName: true } },
       items: {
@@ -187,6 +192,22 @@ export async function fetchOrderAcceptance(
     customerBranchName: r.customerBranchBp
       ? localized(r.customerBranchBp.name as LocalizedText | null)
       : null,
+    shipToBpId: r.shipToBpId,
+    shipToName: r.shipToBp
+      ? localized(r.shipToBp.name as LocalizedText | null)
+      : null,
+    assignedPlantId:
+      r.assignedPlantId != null ? String(r.assignedPlantId) : null,
+    assignedPlantName: r.assignedPlant
+      ? `${r.assignedPlant.code} ${localized(r.assignedPlant.name as LocalizedText | null)}`
+      : null,
+    shippingWorkLocationId:
+      r.shippingWorkLocationId != null
+        ? String(r.shippingWorkLocationId)
+        : null,
+    shippingWorkLocationName: r.shippingWorkLocation
+      ? `${localized(r.shippingWorkLocation.group.name as LocalizedText | null)} / ${localized(r.shippingWorkLocation.name as LocalizedText | null)}`
+      : null,
     customerSuggestions: customerSuggestions.map((c) => ({
       id: c.id,
       label: c.label,
@@ -214,4 +235,22 @@ export async function fetchOrderAcceptance(
     createdAt: r.createdAt.toISOString(),
     updatedAt: r.updatedAt.toISOString(),
   };
+}
+
+/**
+ * 担当拠点 Select 用（有効のみ、`コード 名称` ラベル）。
+ * production/work-orders/data.ts の同名ヘルパと同じ形だが、
+ * 画面系統が別（並行改修中）のため import せずローカルに持つ。
+ */
+export async function fetchPlantOptions(): Promise<
+  { value: string; label: string }[]
+> {
+  const rows = await prisma.plant.findMany({
+    where: { isActive: true },
+    orderBy: { code: "asc" },
+  });
+  return rows.map((r) => ({
+    value: String(r.id),
+    label: `${r.code} ${localized(r.name as LocalizedText | null)}`,
+  }));
 }

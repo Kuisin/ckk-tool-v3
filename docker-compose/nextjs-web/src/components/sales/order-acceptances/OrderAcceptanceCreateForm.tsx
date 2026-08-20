@@ -7,7 +7,7 @@
  * DRAFT の注文請書を直接作成し、詳細ページへ遷移する。
  */
 
-import { SimpleGrid, TextInput } from "@mantine/core";
+import { Select, SimpleGrid, TextInput } from "@mantine/core";
 import { DatePickerInput } from "@mantine/dates";
 import { notifications } from "@mantine/notifications";
 import { IconCalendar } from "@tabler/icons-react";
@@ -16,6 +16,7 @@ import { useState, useTransition } from "react";
 import {
   searchCustomerOptions,
   searchQuoteOptions,
+  searchShipToOptions,
 } from "@/app/(dashboard)/_shared/option-search";
 import { createManualAcceptance } from "@/app/(dashboard)/sales/order-acceptances/actions";
 import { CUSTOMER_F4 } from "@/components/ui/f4-presets";
@@ -33,13 +34,26 @@ import {
 
 const BASE_PATH = "/sales/order-acceptances";
 
-export function OrderAcceptanceCreateForm() {
+export function OrderAcceptanceCreateForm({
+  plantOptions,
+  workLocationOptions,
+}: {
+  /** 担当拠点の選択肢（有効のみ — サーバーで取得して渡す）。 */
+  plantOptions: { value: string; label: string }[];
+  /** 出荷作業場所の選択肢（lib/work-locations fetchWorkLocationOptions）。 */
+  workLocationOptions: { value: string; label: string }[];
+}) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
 
   const [customerId, setCustomerId] = useState<string | null>(null);
   const [salesRepId, setSalesRepId] = useState<string | null>(null);
   const [customerError, setCustomerError] = useState<string | null>(null);
+  const [shipToBpId, setShipToBpId] = useState<string | null>(null);
+  const [assignedPlantId, setAssignedPlantId] = useState<string | null>(null);
+  const [shippingWorkLocationId, setShippingWorkLocationId] = useState<
+    string | null
+  >(null);
   const [customerOrderRef, setCustomerOrderRef] = useState("");
   const [quoteNumber, setQuoteNumber] = useState("");
   const [orderDate, setOrderDate] = useState<string | null>(null);
@@ -56,6 +70,11 @@ export function OrderAcceptanceCreateForm() {
       const result = await createManualAcceptance({
         customerBpId: customerId,
         salesRepId,
+        shipToBpId,
+        assignedPlantId: assignedPlantId ? Number(assignedPlantId) : null,
+        shippingWorkLocationId: shippingWorkLocationId
+          ? Number(shippingWorkLocationId)
+          : null,
         customerOrderRef: customerOrderRef || null,
         quoteNumber: quoteNumber || null,
         orderDate,
@@ -84,6 +103,9 @@ export function OrderAcceptanceCreateForm() {
     Boolean(
       customerId ||
         salesRepId ||
+        shipToBpId ||
+        assignedPlantId ||
+        shippingWorkLocationId ||
         customerOrderRef ||
         quoteNumber ||
         orderDate ||
@@ -138,6 +160,34 @@ export function OrderAcceptanceCreateForm() {
             customerBpId={customerId}
             onChange={setSalesRepId}
             value={salesRepId}
+          />
+          {/* 出荷先は顧客と異なり得る（直送・支店渡しなど）— 任意。 */}
+          <SearchSelect
+            clearable
+            label="出荷先"
+            onChange={setShipToBpId}
+            onSearch={searchShipToOptions}
+            placeholder="出荷先を検索（任意）"
+            storageKey="ship-to"
+            value={shipToBpId}
+          />
+          <Select
+            clearable
+            data={plantOptions}
+            label="担当拠点"
+            onChange={setAssignedPlantId}
+            placeholder="拠点を選択（任意）"
+            searchable
+            value={assignedPlantId}
+          />
+          <Select
+            clearable
+            data={workLocationOptions}
+            label="出荷作業場所"
+            onChange={setShippingWorkLocationId}
+            placeholder="作業場所を選択（任意）"
+            searchable
+            value={shippingWorkLocationId}
           />
           <TextInput
             label={

@@ -30,6 +30,7 @@ import {
   Grid,
   Group,
   Paper,
+  Select,
   Stack,
   Stepper,
   Table,
@@ -60,6 +61,7 @@ import { type ReactNode, useEffect, useState, useTransition } from "react";
 import {
   searchCustomerOptions,
   searchQuoteOptions,
+  searchShipToOptions,
 } from "@/app/(dashboard)/_shared/option-search";
 import {
   approveAcceptance,
@@ -179,6 +181,8 @@ export function OrderAcceptanceDetail({
   approvalTrail = [],
   approval,
   priceCheck = EMPTY_PRICE_CHECK,
+  plantOptions,
+  workLocationOptions,
 }: {
   acceptance: OrderAcceptanceView;
   /** 操作履歴（audit_logs 由来、履歴タブ）。 */
@@ -193,6 +197,10 @@ export function OrderAcceptanceDetail({
   approval: ApprovalActionState;
   /** §2 価格照合結果（保存済み明細 × 価格表 — サーバー側で計算）。 */
   priceCheck?: AcceptancePriceCheck;
+  /** 担当拠点の選択肢（DraftEditor 用 — サーバーで取得して渡す）。 */
+  plantOptions: { value: string; label: string }[];
+  /** 出荷作業場所の選択肢（lib/work-locations fetchWorkLocationOptions）。 */
+  workLocationOptions: { value: string; label: string }[];
 }) {
   const fmt = useFormat();
   const router = useRouter();
@@ -579,6 +587,8 @@ export function OrderAcceptanceDetail({
                 acceptance={a}
                 lineChecks={checkByItemId}
                 onClose={() => setEditing(false)}
+                plantOptions={plantOptions}
+                workLocationOptions={workLocationOptions}
               />
             ) : (
               <>
@@ -630,6 +640,12 @@ export function OrderAcceptanceDetail({
                     }
                   />
                   <FieldValue label="営業担当" value={a.salesRepName} />
+                  <FieldValue label="出荷先" value={a.shipToName} />
+                  <FieldValue label="担当拠点" value={a.assignedPlantName} />
+                  <FieldValue
+                    label="出荷作業場所"
+                    value={a.shippingWorkLocationName}
+                  />
                   <FieldValue
                     label="顧客注文書番号"
                     value={a.customerOrderRef}
@@ -1022,12 +1038,18 @@ function DraftEditor({
   acceptance,
   lineChecks,
   onClose,
+  plantOptions,
+  workLocationOptions,
 }: {
   acceptance: OrderAcceptanceView;
   /** 保存済み明細 id → 価格照合結果（行バッジ表示用）。 */
   lineChecks: Map<string, AcceptancePriceCheckLine>;
   /** 閲覧モードへ戻す（保存成功 / キャンセル）。 */
   onClose: () => void;
+  /** 担当拠点の選択肢（有効のみ）。 */
+  plantOptions: { value: string; label: string }[];
+  /** 出荷作業場所の選択肢（グループ / 場所）。 */
+  workLocationOptions: { value: string; label: string }[];
 }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -1046,6 +1068,13 @@ function DraftEditor({
       : null,
   );
   const [salesRepId, setSalesRepId] = useState<string | null>(a.salesRepId);
+  const [shipToBpId, setShipToBpId] = useState<string | null>(a.shipToBpId);
+  const [assignedPlantId, setAssignedPlantId] = useState<string | null>(
+    a.assignedPlantId,
+  );
+  const [shippingWorkLocationId, setShippingWorkLocationId] = useState<
+    string | null
+  >(a.shippingWorkLocationId);
   const [customerOrderRef, setCustomerOrderRef] = useState(
     a.customerOrderRef ?? "",
   );
@@ -1060,6 +1089,9 @@ function DraftEditor({
   const fingerprint = JSON.stringify([
     customerId,
     salesRepId,
+    shipToBpId,
+    assignedPlantId,
+    shippingWorkLocationId,
     customerOrderRef,
     quoteNumber,
     orderDate,
@@ -1076,6 +1108,11 @@ function DraftEditor({
       const result = await saveDraft(a.number, {
         customerBpId: customerId,
         salesRepId,
+        shipToBpId,
+        assignedPlantId: assignedPlantId ? Number(assignedPlantId) : null,
+        shippingWorkLocationId: shippingWorkLocationId
+          ? Number(shippingWorkLocationId)
+          : null,
         customerOrderRef: customerOrderRef || null,
         quoteNumber: quoteNumber || null,
         orderDate,
@@ -1195,6 +1232,41 @@ function DraftEditor({
               placeholder="日付を選択"
               value={orderDate}
               valueFormat="YYYY/MM/DD"
+            />
+          </Group>
+          <Group align="flex-end" gap="sm" grow preventGrowOverflow={false}>
+            {/* 出荷先は顧客と異なり得る（直送・支店渡しなど）— 任意。 */}
+            <SearchSelect
+              clearable
+              initialOption={
+                a.shipToBpId && a.shipToName
+                  ? { value: a.shipToBpId, label: a.shipToName }
+                  : null
+              }
+              label="出荷先"
+              onChange={setShipToBpId}
+              onSearch={searchShipToOptions}
+              placeholder="出荷先を検索（任意）"
+              storageKey="ship-to"
+              value={shipToBpId}
+            />
+            <Select
+              clearable
+              data={plantOptions}
+              label="担当拠点"
+              onChange={setAssignedPlantId}
+              placeholder="拠点を選択（任意）"
+              searchable
+              value={assignedPlantId}
+            />
+            <Select
+              clearable
+              data={workLocationOptions}
+              label="出荷作業場所"
+              onChange={setShippingWorkLocationId}
+              placeholder="作業場所を選択（任意）"
+              searchable
+              value={shippingWorkLocationId}
             />
           </Group>
           {/*

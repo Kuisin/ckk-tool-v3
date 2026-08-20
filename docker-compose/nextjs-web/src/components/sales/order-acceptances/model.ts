@@ -108,6 +108,15 @@ export interface OrderAcceptanceView {
   /** 営業担当（作成時に顧客の主担当を複写したスナップショット）。 */
   salesRepId: string | null;
   salesRepName: string | null;
+  /** 出荷先（顧客と異なり得る取引先。任意）。 */
+  shipToBpId: string | null;
+  shipToName: string | null;
+  /** 担当拠点（任意。id は Select 向けに文字列化）。 */
+  assignedPlantId: string | null;
+  assignedPlantName: string | null;
+  /** 出荷作業場所（作業場所マスタ MS0D。任意。id は Select 向けに文字列化）。 */
+  shippingWorkLocationId: string | null;
+  shippingWorkLocationName: string | null;
   /** 作成者（app.users.display_name）。 */
   createdByName: string | null;
   quoteNumber: string | null;
