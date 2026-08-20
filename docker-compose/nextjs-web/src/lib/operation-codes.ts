@@ -167,10 +167,34 @@ export const OPERATION_CODES: OperationCodeEntry[] = [
     mode: "0",
     index: "4",
   },
+  // 未処理指示書 — 作業キュー（未手配の注文明細 + 進行中の指示書）。
+  // 書類を作る画面ではないので list コードのみ（新規は PD12 と同じフォーム）。
+  {
+    code: "PD05",
+    label: "未処理指示書",
+    href: "/production/pending-work-orders",
+    category: "生産",
+    kind: "list",
+    categoryCode: "PD",
+    mode: "0",
+    index: "5",
+  },
 
   // ─── 出荷 (SH) ───────────────────────────────────────────────────────────
   ...makeResource("出荷", "SH", "1", "出荷書", "/shipping/shipping-orders"),
   ...makeResource("出荷", "SH", "2", "納品書", "/shipping/delivery-notes"),
+  // 未処理出荷書 — 作業キュー（未手配の注文明細 + 出荷準備中の出荷書）。
+  // list コードのみ（新規は SH11 と同じフォーム）。
+  {
+    code: "SH03",
+    label: "未処理出荷書",
+    href: "/shipping/pending-shipments",
+    category: "出荷",
+    kind: "list",
+    categoryCode: "SH",
+    mode: "0",
+    index: "3",
+  },
 
   // ─── 請求 (BL) ───────────────────────────────────────────────────────────
   ...makeResource("請求", "BL", "1", "請求書", "/billing/invoices"),

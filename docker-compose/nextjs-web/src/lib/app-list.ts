@@ -180,6 +180,18 @@ export const appList: AppEntry[] = [
     category: "生産",
     requiredPermission: "inventory",
   },
+  {
+    // 未処理指示書 — 「まだ指示書になっていない注文明細」＋「完了していない
+    // 指示書」の作業キュー。指示書一覧 (PD02) が台帳なのに対し、こちらは
+    // 「次に手を動かすもの」だけを出す。作成の入口は PD12（同じフォーム）。
+    key: "pending-work-orders",
+    label: "未処理指示書",
+    operationCode: "PD05",
+    href: "/production/pending-work-orders",
+    icon: "IconProgress",
+    category: "生産",
+    requiredPermission: "work_order",
+  },
 
   // ─── 出荷 ──────────────────────────────────────────────────────────────────
   {
@@ -199,6 +211,17 @@ export const appList: AppEntry[] = [
     icon: "IconReceipt",
     category: "出荷",
     requiredPermission: "delivery_note",
+  },
+  {
+    // 未処理出荷書 — 「完成したのに出荷書に載っていない注文明細」＋「まだ出て
+    // いない出荷書」の作業キュー。出荷書一覧 (SH01) が台帳、こちらが待ち行列。
+    key: "pending-shipments",
+    label: "未処理出荷書",
+    operationCode: "SH03",
+    href: "/shipping/pending-shipments",
+    icon: "IconTruckLoading",
+    category: "出荷",
+    requiredPermission: "shipping_order",
   },
 
   // ─── 請求 ──────────────────────────────────────────────────────────────────

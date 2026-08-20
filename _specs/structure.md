@@ -71,6 +71,8 @@ src/
 │   │   │   │       └── steps/
 │   │   │   │           └── [stepId]/
 │   │   │   │               └── page.tsx            # 工程実行画面（現場操作・数量/不良入力）
+│   │   │   ├── pending-work-orders/                # 未処理指示書（PD05 — 作業キュー）
+│   │   │   │   └── page.tsx                        #   未手配の注文明細 + 進行中の指示書
 │   │   │   ├── approvals/                          # 承認管理（§6）
 │   │   │   │   ├── page.tsx                        # 承認待ち一覧
 │   │   │   │   └── [id]/page.tsx
@@ -89,6 +91,8 @@ src/
 │   │   │   │   └── [id]/
 │   │   │   │       ├── page.tsx
 │   │   │   │       └── edit/page.tsx
+│   │   │   ├── pending-shipments/                  # 未処理出荷書（SH03 — 作業キュー）
+│   │   │   │   └── page.tsx                        #   未手配の注文明細 + 出荷準備中の出荷書
 │   │   │   └── delivery-notes/                     # 納品書
 │   │   │       ├── page.tsx
 │   │   │       ├── new/page.tsx
