@@ -1582,6 +1582,43 @@ Table bp_contacts {
 ### Other
 ```
 // ===========================
+// 学習した照合名（AI 突合）
+// ===========================
+//
+// 取込の突合が外れると人が画面で正しい取引先・製品を選ぶ。その判断は
+// 1 回きりで捨てられていて、同じ書式の注文書が来るたびに同じ直しをしていた。
+// ここに貯めて次から自動で当てる。
+//
+// **1 表記 = 1 マスタ**（unique(target_type, alias_key)）。別のマスタへ結び
+// 直すと行が移る（最後の訂正が勝つ）ので曖昧さが残らず、突合側は当たった
+// 時点で自動確定してよい。突合の順序は 学習済み → 推測（表記ゆれの段階的
+// 突合）— 人が決めたものを機械が上書きしない。
+//
+// マスタ側の match_names（人が先回りして登録する別名）とは役割が違う:
+//   match_names   = 「こう書かれるはず」と予想して登録する
+//   match_aliases = 「こう書かれていた」を実績から貯める
+//
+// target_type はテーブル名（audit_logs と同じ多態規約）。FK は張れないので
+// マスタを消しても行は残る — 突合時に存在しない target_id は無視する。
+Table match_aliases {
+  id              serial [pk]
+  target_type     varchar [not null]   // business_partners | products
+  target_id       varchar [not null]   // マスタ行の内部 id（文字列）
+  alias           varchar [not null]   // 書類に印字されていた表記（そのまま）
+  alias_key       varchar [not null]   // 突合用の正規化キー（アプリ側で作る）
+  hit_count       int [not null, default: 0]  // この表記で自動確定した回数
+  last_seen_at    timestamp
+  created_by      uuid [ref: > users.id]
+  created_at      timestamp
+  updated_at      timestamp
+
+  indexes {
+    (target_type, alias_key) [unique]
+    (target_type, target_id)
+  }
+}
+
+// ===========================
 // ファイルストレージ（SeaweedFS）
 // ===========================
 

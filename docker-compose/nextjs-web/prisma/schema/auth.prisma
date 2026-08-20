@@ -69,6 +69,7 @@ model User {
   fileFolderGrants        FileFolderGrant[]  @relation("FileFolderGrantUser")
   fileFolderGrantsCreated FileFolderGrant[]  @relation("FileFolderGrantCreatedBy")
   auditLogs               AuditLog[]         @relation("AuditLogUser")
+  matchAliasesCreated     MatchAlias[]       @relation("MatchAliasCreatedBy")
   systemSettingsUpdated   SystemSetting[]    @relation("SystemSettingUpdatedBy")
   featureFlagsUpdated     FeatureFlag[]      @relation("FeatureFlagUpdatedBy")
   approvalGroupMembers    ApprovalGroupMember[] @relation("ApprovalGroupMemberUser")

@@ -32,6 +32,9 @@ import {
   parseDocKey,
 } from "@/lib/doc-number";
 import { enqueueExtraction } from "@/lib/intake";
+import { normalizeExtraction } from "@/lib/intake-core";
+import { aliasLearnings } from "@/lib/match-alias-core";
+import { saveAliasLearnings } from "@/lib/match-aliases";
 import { allocateDocumentKey } from "@/lib/numbering";
 import {
   acceptanceReadiness,
@@ -259,6 +262,9 @@ export async function saveDraft(
         customerOrderRef: true,
         orderDate: true,
         notes: true,
+        // 学習（match_aliases）に使う: 抽出された社名と、保存前の突合状態。
+        extracted: true,
+        items: { select: { productId: true, productText: true } },
       },
     });
     if (!prior) return actionError("対象の注文請書が見つかりません");
@@ -316,6 +322,28 @@ export async function saveDraft(
         itemCount: creates.length,
       },
     });
+
+    // 人が手で結び付けた「印字された表記 → マスタ」を覚える（次の取込で効く）。
+    // 保存そのものは終わっている — 学習で失敗しても書類は保存済みのまま。
+    await saveAliasLearnings(
+      aliasLearnings({
+        extractedCustomerName: normalizeExtraction(prior.extracted)
+          .customerName,
+        customer: { before: prior.customerBpId, after: customerBpId },
+        items: {
+          before: prior.items.map((it) => ({
+            productText: it.productText,
+            productId: it.productId != null ? String(it.productId) : null,
+          })),
+          after: v.items.map((it) => ({
+            productText: it.productText,
+            productId: trimOrNull(it.productId),
+          })),
+        },
+      }),
+      authz.userId,
+    );
+
     revalidate(number);
     return actionOk();
   } catch (e) {

@@ -148,3 +148,48 @@ model OrderLine {
   @@map("order_lines")
   @@schema("app")
 }
+
+// ── 学習した照合名（人が手で結び付けた表記） ──────────────────────────
+//
+// AI 抽出は書類に**印字されたまま**の社名・品名を返す。マスタの名称でも
+// キーワード（match_names）でも当たらないとき、人が画面で正しいマスタを選ぶ
+// —— その「この表記はこのマスタのことだ」という判断が、これまで 1 回きりで
+// 捨てられていた。同じ取引先が同じ書式で毎月送ってくるのに、毎月人が直す。
+//
+// ここはその判断の置き場。**1 表記 = 1 マスタ**（unique(target_type,
+// alias_key)）で、後から別のマスタへ結び直すとその行が移る（最後の訂正が
+// 勝つ）。曖昧さが残らないので、突合側は当たった時点で自動確定してよい。
+//
+// マスタ側の match_names（人が先回りして登録する別名）とは役割が違う:
+//   match_names   = 「こう書かれるはず」と**予想して**登録する
+//   match_aliases = 「こう書かれていた」を**実績から**貯める
+//
+// target_type はテーブル名（audit_logs / approval_requests と同じ多態規約）。
+// FK は張れないので、マスタを消しても行は残る — 突合時に存在しない
+// target_id は黙って無視する（lib/match-aliases）。
+model MatchAlias {
+  id         Int      @id @default(autoincrement())
+  /// "business_partners" | "products"（テーブル名）
+  targetType String   @map("target_type")
+  /// マスタ行の内部 id を文字列化したもの（BP は uuid、製品は連番）
+  targetId   String   @map("target_id")
+  /// 書類に印字されていた表記（そのまま）
+  alias      String
+  /// 突合用の正規化キー（lib/bp-match / lib/product-match の normalize）
+  aliasKey   String   @map("alias_key")
+  /// この表記で突合できた回数（育ち具合の目安・整理の判断材料）
+  hitCount   Int      @default(0) @map("hit_count")
+  /// 最後にこの表記を見た日時
+  lastSeenAt DateTime @default(now()) @map("last_seen_at") @db.Timestamptz(6)
+  /// 結び付けた人
+  createdBy  String?  @map("created_by") @db.Uuid
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt  DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  createdByUser User? @relation("MatchAliasCreatedBy", fields: [createdBy], references: [id])
+
+  @@unique([targetType, aliasKey])
+  @@index([targetType, targetId])
+  @@map("match_aliases")
+  @@schema("app")
+}

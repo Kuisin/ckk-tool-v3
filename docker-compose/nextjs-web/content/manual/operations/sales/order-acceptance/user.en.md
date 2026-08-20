@@ -207,6 +207,8 @@ A. Reading the order form did not work. The message states **what happened, the 
 **Q. The customer stays 「未特定」(not identified).**
 A. The company name on the order form could not be matched to the business partner master. Differences in **how the name is written** — 「(株)」 versus 「株式会社」, full-width versus half-width, a branch name or 「御中」 following the company name — are absorbed automatically, so this only appears when the company is *not registered* or when *several candidates match and none can be singled out*. In edit mode, look under the「**顧客**」(customer) field: if candidates are offered under「**もしかして**」(did you mean), one press fills the field. Otherwise search for the customer, choose it, and press「保存」(save). For customers whose name is often written in different ways, register the other spellings in the [business partner master](/manual/en/operations/masters/business-partner/user) and they will be matched automatically next time.
 
+> 💡 **Your correction is remembered.** When you pick a customer (or a product) by hand and save, the system records "this wording on the order form means this record" and **matches it automatically the next time the same wording arrives**. For a customer who sends the same format every month, you only fix it once. Pick a different record later and it re-learns that one instead.
+
 **Q. I cannot press「承認依頼」(request approval).**
 A. Requesting approval needs **a customer, at least one line item, and a product and a unit price on every row**. Whatever is missing is listed in the card at the very top of the screen (for example「顧客が未特定です / 明細 2 行目: 単価が未入力です」). Fix it with「**編集**」(edit) and press「**保存**」(save), and the button becomes available.
 
