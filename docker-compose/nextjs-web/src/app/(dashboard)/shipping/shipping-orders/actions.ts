@@ -34,6 +34,7 @@ import {
   actionOk,
   prismaErrorMessage,
 } from "@/lib/server-action";
+import { distributeFinished } from "@/lib/work-order-alloc-core";
 import {
   computeFinishedQuantity,
   STEP_LINK_STATE_SELECT,
@@ -197,7 +198,10 @@ export async function fetchShippingSourceInfo(
     const productId = so.productId;
     const [workOrders, inventories] = await Promise.all([
       prisma.workOrder.findMany({
-        where: { orderLineId, status: "COMPLETED" },
+        where: {
+          orderLineLinks: { some: { orderLineId } },
+          status: "COMPLETED",
+        },
         // エンジンが読む列だけ（STEP_STATE_SELECT — workflow-core 参照）。
         // 全列 SELECT は列追加のたび migration 前の DB で P2022 に落ちる。
         select: {
@@ -205,6 +209,11 @@ export async function fetchShippingSourceInfo(
           plannedQuantity: true,
           steps: { select: STEP_STATE_SELECT },
           stepLinks: { select: STEP_LINK_STATE_SELECT },
+          // 統合ロットの出来高配分（distributeFinished）に使う
+          orderLineLinks: {
+            select: { orderLineId: true, quantity: true },
+            orderBy: { sortOrder: "asc" },
+          },
         },
         orderBy: { workOrderNumber: "asc" },
       }),
@@ -264,14 +273,23 @@ export async function fetchShippingSourceInfo(
       completedWorkOrders: workOrders.map((wo) => {
         // 出来高 = グラフ終端集計（分岐合流 DAG でも正しい残良品）。
         // toStepState 経由なので branchStock も渡り、半製品在庫で終わる
-        // 分岐終端を出荷可能数に数えない。
+        // 分岐終端を出荷可能数に数えない。統合ロットでは完成数を割当順に
+        // 配分し、この明細ぶんだけを既定数量にする。
         const finished = computeFinishedQuantity(
           wo.steps.map(toStepState),
           wo.stepLinks,
         );
+        const share =
+          distributeFinished(
+            wo.orderLineLinks,
+            finished > 0 ? finished : wo.plannedQuantity,
+          ).get(orderLineId) ?? 0;
+        const ownAlloc =
+          wo.orderLineLinks.find((l) => l.orderLineId === orderLineId)
+            ?.quantity ?? 0;
         return {
           workOrderNumber: wo.workOrderNumber,
-          outputQuantity: finished > 0 ? finished : wo.plannedQuantity,
+          outputQuantity: share > 0 ? share : ownAlloc,
         };
       }),
       stockLots,

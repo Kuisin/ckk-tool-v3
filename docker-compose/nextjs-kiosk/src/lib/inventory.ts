@@ -183,10 +183,11 @@ export async function ensureMaterialInventory(
 /**
  * 全工程完了フック: 最終工程の良品をロット入庫、半製品バケット合計を半製品
  * 入庫。completeStepExecution から呼ぶ。
- * - MANUFACTURE: WO/SO の製品予約を CONFIRMED に（在庫向けの独立指示書 =
- *   orderLineId null は予約なし — 入庫のみ）。
+ * - MANUFACTURE: WO/割当明細の製品予約を CONFIRMED に（在庫向けの独立指示書 =
+ *   割当なしは予約なし — 入庫のみ）。
  * - FROM_STOCK（在庫分）: 受注へ引当済みの在庫ロットを消費（RELEASE + OUT）
  *   して自ロットの IN と相殺する（付け替え — 二重計上を防ぐ）。
+ *   在庫分は割当 1 件のみ（work-order-alloc-core の不変条件）。
  */
 export async function onWorkOrderCompleted(workOrderId: string): Promise<void> {
   const wo = await prisma.workOrder.findUniqueOrThrow({
@@ -200,8 +201,13 @@ export async function onWorkOrderCompleted(workOrderId: string): Promise<void> {
         orderBy: { sortOrder: "asc" },
       },
       stepLinks: { select: STEP_LINK_STATE_SELECT },
+      orderLineLinks: {
+        select: { orderLineId: true },
+        orderBy: { sortOrder: "asc" },
+      },
     },
   });
+  const linkedLineIds = wo.orderLineLinks.map((l) => l.orderLineId);
   // 完成数 = 良品がどこにも流れない COMPLETED 工程の残良品合計。
   // sortOrder 最大では分岐合流 DAG（合流先が手前に並ぶ場合）で誤るため、
   // グラフ集計の純関数（workflow-core computeFinishedQuantity）で判定する
@@ -306,15 +312,16 @@ export async function onWorkOrderCompleted(workOrderId: string): Promise<void> {
       });
     }
 
-    if (wo.type === "FROM_STOCK" && wo.orderLineId) {
+    if (wo.type === "FROM_STOCK" && linkedLineIds.length > 0) {
       // 在庫分（FROM_STOCK）: 受注へ引当済みの在庫ロットから受入数分を消費
       // （RELEASE + OUT）— 上の自ロット IN との付け替えで二重計上を防ぐ。
       // 引当/台帳が不足しても完了は止めない（警告のみ — 素材消費と同方針）。
+      // 在庫分は割当 1 件のみなので linkedLineIds[0] がその明細。
       const head = wo.steps.find((s) => s.status !== "CANCELLED");
       let needed = head?.inputQuantity ?? wo.plannedQuantity;
       const productReservations = await tx.inventoryReservation.findMany({
         where: {
-          orderLineId: wo.orderLineId,
+          orderLineId: linkedLineIds[0],
           inventoryType: "PRODUCT",
           status: "RESERVED",
         },
@@ -368,12 +375,14 @@ export async function onWorkOrderCompleted(workOrderId: string): Promise<void> {
     } else {
       // 予約 → 確定（§7: 全工程完了時）。予約は orderLineId で作られる
       // （workOrderId は付かない）ため両方で照合 — 監査 P1-2 の修正。
-      // 在庫向けの独立指示書（orderLineId null）は workOrderId 分のみ。
+      // 在庫向けの独立指示書（割当なし）は workOrderId 分のみ。
       await tx.inventoryReservation.updateMany({
         where: {
           OR: [
             { workOrderId: wo.id },
-            ...(wo.orderLineId ? [{ orderLineId: wo.orderLineId }] : []),
+            ...(linkedLineIds.length > 0
+              ? [{ orderLineId: { in: linkedLineIds } }]
+              : []),
           ],
           inventoryType: "PRODUCT",
           status: "RESERVED",

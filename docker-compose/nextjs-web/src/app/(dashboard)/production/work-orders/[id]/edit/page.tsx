@@ -5,6 +5,7 @@ import { loadCatalog } from "@/lib/workflow";
 import {
   fetchInspectionTemplateOptions,
   fetchPlantOptions,
+  fetchStorageLocationOptions,
   fetchSupplierOptions,
   fetchWorkOrder,
 } from "../../data";
@@ -29,19 +30,26 @@ export default async function ProductionWorkOrdersEditPage({
     redirect(`/production/work-orders/${workOrderNumber}`);
   }
 
-  const [catalog, plantOptions, templateOptions, supplierOptions] =
-    await Promise.all([
-      loadCatalog(),
-      fetchPlantOptions(),
-      fetchInspectionTemplateOptions(),
-      fetchSupplierOptions(),
-    ]);
+  const [
+    catalog,
+    plantOptions,
+    templateOptions,
+    supplierOptions,
+    storageLocationOptions,
+  ] = await Promise.all([
+    loadCatalog(),
+    fetchPlantOptions(),
+    fetchInspectionTemplateOptions(),
+    fetchSupplierOptions(),
+    fetchStorageLocationOptions(),
+  ]);
 
   return (
     <WorkflowBuilder
       catalogSteps={catalog.steps}
       mode="edit"
       plantOptions={plantOptions}
+      storageLocationOptions={storageLocationOptions}
       supplierOptions={supplierOptions}
       templateOptions={templateOptions}
       useDeps={catalog.useDeps}

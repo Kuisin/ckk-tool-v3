@@ -82,9 +82,11 @@ export async function fetchUnplannedOrderLines(): Promise<
     include: {
       acceptance: { include: { customerBp: true } },
       product: true,
-      workOrders: {
-        where: { status: { not: "CANCELLED" } },
-        select: { plannedQuantity: true },
+      // 手配済み数量 = 指示書割当（work_order_order_lines）の合計。
+      // キャンセル済み指示書の割当は除く（作り直しの対象 → 未手配へ戻る）。
+      workOrderLinks: {
+        where: { workOrder: { status: { not: "CANCELLED" } } },
+        select: { quantity: true },
       },
       // 在庫分の指示書に回せる数（RESERVED のみ — 確定/解除は数えない）。
       reservations: {
@@ -102,8 +104,8 @@ export async function fetchUnplannedOrderLines(): Promise<
   const out: UnplannedOrderLineRow[] = [];
   for (const r of rows) {
     if (r.branch == null) continue;
-    const plannedQuantity = r.workOrders.reduce(
-      (sum, w) => sum + w.plannedQuantity,
+    const plannedQuantity = r.workOrderLinks.reduce(
+      (sum, l) => sum + l.quantity,
       0,
     );
     const unplannedQuantity = r.quantity - plannedQuantity;
@@ -129,7 +131,7 @@ export async function fetchUnplannedOrderLines(): Promise<
         (sum, rv) => sum + Number(rv.quantity),
         0,
       ),
-      workOrderCount: r.workOrders.length,
+      workOrderCount: r.workOrderLinks.length,
       deliveryDate: r.deliveryDate?.toISOString().slice(0, 10) ?? null,
       status: r.status,
       confirmedAt: r.confirmedAt?.toISOString() ?? null,

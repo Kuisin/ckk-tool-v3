@@ -231,6 +231,40 @@ export async function searchCustomerOptions(
     }));
 }
 
+/**
+ * 出荷先 — ロールを問わない有効な取引先（支店含む）。
+ * 注文請書の出荷先は顧客と異なり得る（直送・支店渡しなど）ため、
+ * searchCustomerOptions と違い CUSTOMER ロール・トップレベルでは絞らない。
+ */
+export async function searchShipToOptions(
+  query: string,
+): Promise<SearchOption[]> {
+  const q = query.trim();
+  const rows = await prisma.businessPartner.findMany({
+    where: { isActive: true },
+    orderBy: { bpCode: "asc" },
+  });
+  return rows
+    .filter((r) =>
+      bpMatchesQuery(
+        {
+          bpCode: r.bpCode,
+          nameJa: localized(r.name as LocalizedText | null),
+          nameKana: r.nameKana,
+          shortName: r.shortName,
+          matchNames: r.matchNames,
+          matchNamesAuto: r.matchNamesAuto,
+        },
+        q,
+      ),
+    )
+    .slice(0, LIMIT)
+    .map((r) => ({
+      value: r.id,
+      label: localized(r.name as LocalizedText | null),
+    }));
+}
+
 /** 変換済（コード構成あり）材種のみ — 素材ビルダーの親材種ピッカー用。 */
 export async function searchStructuredMaterialTypeOptions(
   query: string,

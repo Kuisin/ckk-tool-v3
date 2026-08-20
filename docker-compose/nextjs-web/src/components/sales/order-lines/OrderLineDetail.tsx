@@ -327,6 +327,7 @@ export function OrderLineDetail({
                   <Table.Tr>
                     <Table.Th>指示書番号</Table.Th>
                     <Table.Th>種別</Table.Th>
+                    <Table.Th ta="right">割当数量</Table.Th>
                     <Table.Th ta="right">予定数量</Table.Th>
                     <Table.Th>承認状態</Table.Th>
                     <Table.Th>状態</Table.Th>
@@ -350,6 +351,9 @@ export function OrderLineDetail({
                         <Badge color="gray" variant="light">
                           {WORK_ORDER_TYPE_LABEL[wo.type] ?? wo.type}
                         </Badge>
+                      </Table.Td>
+                      <Table.Td className="tabular-nums" ta="right">
+                        {wo.allocatedQuantity}
                       </Table.Td>
                       <Table.Td className="tabular-nums" ta="right">
                         {wo.plannedQuantity}

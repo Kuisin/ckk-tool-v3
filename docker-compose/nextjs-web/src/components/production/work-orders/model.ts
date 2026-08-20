@@ -30,7 +30,10 @@ export interface WorkOrderRow {
   workOrderNumber: number;
   /** 表示番号 YYYYMMDD-XXXXX の日付部分（作成日）。 */
   createdAt: string;
-  /** null = 在庫向けの独立指示書（注文明細なし）。 */
+  /**
+   * 割当明細の表示ラベル（複数は「ORD-… ほか n 件」）。
+   * null = 在庫向けの独立指示書（注文明細なし）。
+   */
   orderLineNumber: string | null;
   productName: string;
   type: string; // WORK_ORDER_TYPE
@@ -120,6 +123,19 @@ export interface WorkOrderCopyRef {
   createdAt: string;
 }
 
+/** 指示書に割り当てられた注文明細（work_order_order_lines 1 行）。 */
+export interface WorkOrderLineAllocView {
+  orderLineId: string;
+  number: string;
+  /** この指示書がこの明細のために充当する数量。 */
+  allocatedQuantity: number;
+  /** 明細の受注数量。 */
+  lineQuantity: number;
+  customerName: string | null;
+  status: string;
+  lotNumber: number | null;
+}
+
 export interface WorkOrderView {
   id: string; // uuid（内部）— アクションは workOrderNumber を使う
   workOrderNumber: number;
@@ -128,17 +144,20 @@ export interface WorkOrderView {
   type: string;
   plannedQuantity: number;
   notes: string | null;
-  /** null = 在庫向けの独立指示書（注文明細なし・製品直接指定）。 */
-  orderLineId: string | null;
-  orderLineNumber: string | null;
-  orderLineQuantity: number | null;
-  customerName: string | null;
+  /**
+   * 割当明細（sortOrder 順）。空 = 在庫向けの独立指示書（製品直接指定）。
+   * 分割（1 明細 → 複数指示書）・統合（複数明細 → 1 指示書）の両対応。
+   */
+  orderLines: WorkOrderLineAllocView[];
   /** 作成者の表示名（システム作成は null）。 */
   createdByName: string | null;
   productName: string;
   materialId: number | null;
   materialCode: string | null;
   materialName: string | null;
+  /** 完成品の保管場所（保管場所マスタ MS0E。null = 未指定）。 */
+  storageLocationId: number | null;
+  storageLocationName: string | null;
   /** 注文明細の対象製品（工程ルートのリンク先）。 */
   productId: number;
   /** 工程ルート出所（未使用 = null）。 */

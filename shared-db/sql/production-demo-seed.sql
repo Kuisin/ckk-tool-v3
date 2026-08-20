@@ -138,14 +138,14 @@ ON CONFLICT (id) DO NOTHING;
 --   requested_1st_* → requested_*、approved_1st/2nd_* → approved_*（最終）
 --   approval_status の PENDING_1ST → PENDING
 -- 各段の記録は approval_requests / approval_records 側にある。
-INSERT INTO app.work_orders (id, work_order_number, order_line_id, product_id, type,
+INSERT INTO app.work_orders (id, work_order_number, product_id, type,
   planned_quantity, material_id, status, approval_status, route_version_id,
   requested_at, requested_by, approved_at, approved_by, started_at, completed_at,
   history, notes, created_by, created_at, updated_at)
 VALUES
   -- #9001: 進行中（受注 50 + 予備 5 = 55。承認記録あり・工程は下の steps 参照）
   ('dc000000-0000-4000-8000-000000009001'::uuid, 9001,
-   'e0000000-0000-4000-8000-000000000001'::uuid, 9001, 'MANUFACTURE'::app."WORK_ORDER_TYPE",
+   9001, 'MANUFACTURE'::app."WORK_ORDER_TYPE",
    55, (SELECT id FROM app.materials WHERE code = 'B01A0001-B060-310'),
    'IN_PROGRESS'::app."WORK_ORDER_STATUS", 'APPROVED'::app."WORK_ORDER_APPROVAL_STATUS",
    'dc040000-0000-4000-8000-000000000001'::uuid,
@@ -161,7 +161,7 @@ VALUES
    '2026-07-14T10:30:00+09', '2026-07-21T09:00:00+09'),
   -- #9002: 承認待ち（PENDING_1ST — PD03 の主役。approval_requests 行あり）
   ('dc000000-0000-4000-8000-000000009002'::uuid, 9002,
-   'e0000000-0000-4000-8000-000000000002'::uuid, 9002, 'MANUFACTURE'::app."WORK_ORDER_TYPE",
+   9002, 'MANUFACTURE'::app."WORK_ORDER_TYPE",
    100, (SELECT id FROM app.materials WHERE code = 'B04A0001-B040-310'),
    'PENDING_APPROVAL'::app."WORK_ORDER_STATUS", 'PENDING'::app."WORK_ORDER_APPROVAL_STATUS",
    NULL,
@@ -173,7 +173,7 @@ VALUES
    '2026-07-19T15:00:00+09', '2026-07-20T09:30:00+09'),
   -- #9003: 下書き（在庫分 — 編集・コピー・キャンセル可の状態バリエーション）
   ('dc000000-0000-4000-8000-000000009003'::uuid, 9003,
-   'e0000000-0000-4000-8000-000000000001'::uuid, 9001, 'FROM_STOCK'::app."WORK_ORDER_TYPE",
+   9001, 'FROM_STOCK'::app."WORK_ORDER_TYPE",
    10, NULL,
    'DRAFT'::app."WORK_ORDER_STATUS", 'NONE'::app."WORK_ORDER_APPROVAL_STATUS",
    NULL, NULL, NULL, NULL, NULL, NULL, NULL,
@@ -182,7 +182,7 @@ VALUES
    '2026-07-19T16:20:00+09', '2026-07-19T16:20:00+09'),
   -- #9004: 完了（全工程完了 → 良品 55 を製品在庫ロット 9004 として入庫済み）
   ('dc000000-0000-4000-8000-000000009004'::uuid, 9004,
-   'e0000000-0000-4000-8000-000000000001'::uuid, 9001, 'MANUFACTURE'::app."WORK_ORDER_TYPE",
+   9001, 'MANUFACTURE'::app."WORK_ORDER_TYPE",
    60, (SELECT id FROM app.materials WHERE code = 'B01A0001-B060-310'),
    'COMPLETED'::app."WORK_ORDER_STATUS", 'APPROVED'::app."WORK_ORDER_APPROVAL_STATUS",
    'dc040000-0000-4000-8000-000000000001'::uuid,
@@ -195,6 +195,17 @@ VALUES
    NULL, 'a0b1c2d3-0000-4000-8000-000000005107'::uuid,
    '2026-07-08T08:30:00+09', '2026-07-18T16:00:00+09')
 ON CONFLICT (id) DO NOTHING;
+
+-- ── 指示書 ↔ 注文明細の割当（work_order_order_lines — m:n）─────────────────
+-- 旧 work_orders.order_line_id は割当表へ移行済み。割当数は明細の受注数量を
+-- 超えない範囲の充当数（不良予備分は planned_quantity 側にだけ乗る）。
+INSERT INTO app.work_order_order_lines (work_order_id, order_line_id, quantity, sort_order)
+VALUES
+  ('dc000000-0000-4000-8000-000000009001'::uuid, 'e0000000-0000-4000-8000-000000000001'::uuid, 50, 0),
+  ('dc000000-0000-4000-8000-000000009002'::uuid, 'e0000000-0000-4000-8000-000000000002'::uuid, 100, 0),
+  ('dc000000-0000-4000-8000-000000009003'::uuid, 'e0000000-0000-4000-8000-000000000001'::uuid, 10, 0),
+  ('dc000000-0000-4000-8000-000000009004'::uuid, 'e0000000-0000-4000-8000-000000000001'::uuid, 50, 0)
+ON CONFLICT (work_order_id, order_line_id) DO NOTHING;
 
 -- 採番 sequence を固定番号へ追従（アプリの nextSerialNumber と衝突しない）
 INSERT INTO app.numbering_sequences (key, prefix, last_year_month, last_sequence, updated_at)

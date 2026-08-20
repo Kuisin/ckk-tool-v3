@@ -27,25 +27,27 @@ import {
 import { type MaterialAtp, materialAtp } from "@/lib/atp";
 import { getCurrentActorId, recordAudit } from "@/lib/audit";
 import { checkPermission } from "@/lib/authz";
-import { prisma } from "@/lib/db";
+import { type Prisma, prisma } from "@/lib/db";
+import { orderLineNumberOf } from "@/lib/doc-number";
 import { nextSerialNumber } from "@/lib/numbering";
 import {
   fetchRouteVersionSteps,
   listProductRoutes,
   resolveRouteVersionTx,
 } from "@/lib/product-routes";
-import {
-  computePlannedFloor,
-  type RouteStepSnapshot,
-  type RouteView,
-  type StockFloorInfo,
-} from "@/lib/product-routes-core";
+import type { RouteStepSnapshot, RouteView } from "@/lib/product-routes-core";
 import {
   type ActionResult,
   actionError,
   actionOk,
   prismaErrorMessage,
 } from "@/lib/server-action";
+import {
+  type AllocationInput,
+  type LineAllocInfo,
+  remainingAllocatable,
+  validateAllocations,
+} from "@/lib/work-order-alloc-core";
 import {
   applyApprovedFlowChange,
   closeFlowChange,
@@ -119,23 +121,29 @@ const routeInput = z.union(
   { message: "工程リストを選択するか、新しい工程リスト名を入力してください" },
 );
 
-// orderLineId = null は在庫向けの独立指示書（在庫積み増し）。type は
-// MANUFACTURE のみ・製品を直接指定する。顧客注文分（FROM_STOCK 含む）は
-// 常に注文明細配下。
+// allocations = 指示書に割り当てる注文明細（m:n — 分割・統合の両方に対応）。
+// 空配列は在庫向けの独立指示書（在庫積み増し）。type は MANUFACTURE のみ・
+// 製品を直接指定する。顧客注文分（FROM_STOCK 含む）は常に割当を持つ。
+const allocationInput = z.object({
+  orderLineId: z.string().min(1),
+  quantity: z.number().int().min(1, "割当数量は1以上"),
+});
+
 const workOrderInput = z
   .object({
-    orderLineId: z.string().nullable(),
+    allocations: z.array(allocationInput),
     productId: z.number().int().positive().nullable(),
     type: z.enum(["FROM_STOCK", "MANUFACTURE"]),
     plannedQuantity: z.number().int().min(1, "予定数量は1以上"),
     materialId: z.number().int().positive().nullable(),
+    storageLocationId: z.number().int().positive().nullable(),
     inspectionTemplateIds: z.array(z.number().int().positive()),
     notes: z.string(),
     steps: z.array(stepInput).min(1, "工程を1つ以上選択してください"),
     route: routeInput,
   })
   .superRefine((v, refCtx) => {
-    if (!v.orderLineId) {
+    if (v.allocations.length === 0) {
       if (v.type !== "MANUFACTURE") {
         refCtx.addIssue({
           code: "custom",
@@ -154,26 +162,73 @@ const workOrderInput = z
 export type WorkOrderInput = z.infer<typeof workOrderInput>;
 
 /**
- * 保存対象の解決: 注文明細配下は SO の製品 + 在庫フロア検証、在庫向け
- * （orderLineId = null）は製品を直接検証する。エラー時は文字列を返す。
+ * 割当対象の明細現況を集める（他の指示書の割当合計は キャンセル除く・
+ * 編集時は自分を除く）。存在しない id は lines に載らず、検証側で弾かれる。
+ */
+async function loadLineAllocInfos(
+  orderLineIds: string[],
+  excludeWorkOrderNumber?: number | null,
+): Promise<LineAllocInfo[]> {
+  if (orderLineIds.length === 0) return [];
+  const rows = await prisma.orderLine.findMany({
+    where: { id: { in: orderLineIds } },
+    select: {
+      id: true,
+      acceptanceYearMonth: true,
+      acceptanceSeq: true,
+      branch: true,
+      quantity: true,
+      productId: true,
+      status: true,
+      workOrderLinks: {
+        where: {
+          workOrder: {
+            status: { not: "CANCELLED" },
+            ...(excludeWorkOrderNumber != null
+              ? { workOrderNumber: { not: excludeWorkOrderNumber } }
+              : {}),
+          },
+        },
+        select: { quantity: true },
+      },
+    },
+  });
+  return rows.map((r) => ({
+    orderLineId: r.id,
+    number: orderLineNumberOf(r) ?? r.id,
+    lineQuantity: r.quantity,
+    otherAllocated: r.workOrderLinks.reduce((sum, l) => sum + l.quantity, 0),
+    productId: r.productId,
+    status: r.status,
+  }));
+}
+
+/**
+ * 保存対象の解決: 割当あり = 明細の製品 + 割当検証（work-order-alloc-core）、
+ * 割当なし（在庫向け）= 製品を直接検証する。エラー時は文字列を返す。
  */
 async function resolveWorkOrderTarget(
   v: WorkOrderInput,
   excludeWorkOrderNumber?: number | null,
 ): Promise<{ productId: number } | string> {
-  if (v.orderLineId) {
-    const floorInfo = await stockFloorInfo(
-      v.orderLineId,
+  if (v.allocations.length > 0) {
+    const lines = await loadLineAllocInfos(
+      v.allocations.map((a) => a.orderLineId),
       excludeWorkOrderNumber,
     );
-    if (!floorInfo) return "対象の注文明細が見つかりません";
-    // §4 在庫考慮: 製造分は「受注数量 − 引当済在庫 − 他の製造指示」以上を要求
-    // （不良予備分の上乗せは常に可）。在庫分（FROM_STOCK）は対象外。
-    if (v.type === "MANUFACTURE") {
-      const floorError = describeFloorError(v.plannedQuantity, floorInfo);
-      if (floorError) return floorError;
-    }
-    return { productId: floorInfo.productId };
+    const error = validateAllocations({
+      type: v.type,
+      plannedQuantity: v.plannedQuantity,
+      allocations: v.allocations,
+      lines,
+    });
+    if (error) return error;
+    // validateAllocations が「全行同一製品・productId 非 null」を保証済み
+    const productId = lines.find(
+      (l) => l.orderLineId === v.allocations[0].orderLineId,
+    )?.productId;
+    if (productId == null) return "対象の注文明細が見つかりません";
+    return { productId };
   }
   const product = await prisma.product.findUnique({
     where: { id: v.productId ?? 0 },
@@ -181,6 +236,36 @@ async function resolveWorkOrderTarget(
   });
   if (!product) return "対象の製品が見つかりません";
   return { productId: product.id };
+}
+
+/** 保管場所（任意）の存在・有効チェック。null = 未指定は素通し。 */
+async function validateStorageLocation(
+  storageLocationId: number | null,
+): Promise<string | null> {
+  if (storageLocationId == null) return null;
+  const loc = await prisma.storageLocation.findUnique({
+    where: { id: storageLocationId },
+    select: { isActive: true },
+  });
+  if (!loc || !loc.isActive) return "指定された保管場所が見つかりません";
+  return null;
+}
+
+/**
+ * ロット番号 = 指示書番号。未採番（lot_number = null）の割当明細へ同番号を
+ * 書き込む（統合ロットでは複数明細が同じ番号を共有する。既に別ロットを持つ
+ * 明細は動かさない — 分割手配の 2 本目以降）。
+ */
+async function assignLotNumbersTx(
+  tx: Prisma.TransactionClient,
+  orderLineIds: string[],
+  workOrderNumber: number,
+): Promise<void> {
+  if (orderLineIds.length === 0) return;
+  await tx.orderLine.updateMany({
+    where: { id: { in: orderLineIds }, lotNumber: null },
+    data: { lotNumber: workOrderNumber },
+  });
 }
 
 /** 共通の工程 create 行 → work_order_steps 行（workHours → planned_work_hours）。 */
@@ -215,67 +300,18 @@ function toHistoryJson(list: HistoryEntry[]): Record<string, string | null>[] {
 }
 
 /**
- * 在庫フロア（§4 在庫考慮）: この受注へ引当済みの製品在庫と、同受注の他の
- * 製造指示の予定数量を差し引いた最低予定数量。編集時は自分自身を除外する。
+ * ビルダー表示用の明細割当状況（受注数量・手配済・残・引当済在庫）。
+ * 検証はサーバー側（create/update の validateAllocations）が最終判定する。
  */
-async function stockFloorInfo(
-  orderLineId: string,
-  excludeWorkOrderNumber?: number | null,
-): Promise<(StockFloorInfo & { productId: number }) | null> {
-  const so = await prisma.orderLine.findUnique({
-    where: { id: orderLineId },
-    select: { quantity: true, productId: true },
-  });
-  if (!so) return null;
-  const [reservedAgg, otherAgg] = await Promise.all([
-    prisma.inventoryReservation.aggregate({
-      where: {
-        orderLineId,
-        inventoryType: "PRODUCT",
-        status: { in: ["RESERVED", "CONFIRMED"] },
-      },
-      _sum: { quantity: true },
-    }),
-    prisma.workOrder.aggregate({
-      where: {
-        orderLineId,
-        type: "MANUFACTURE",
-        status: { not: "CANCELLED" },
-        ...(excludeWorkOrderNumber != null
-          ? { workOrderNumber: { not: excludeWorkOrderNumber } }
-          : {}),
-      },
-      _sum: { plannedQuantity: true },
-    }),
-  ]);
-  const reservedForSo = Number(reservedAgg._sum.quantity ?? 0);
-  const otherManufacture = otherAgg._sum.plannedQuantity ?? 0;
-  return {
-    soQuantity: so.quantity,
-    reservedForSo,
-    otherManufacture,
-    floor: computePlannedFloor({
-      soQuantity: so.quantity,
-      reservedForSo,
-      otherManufacture,
-    }),
-    productId: so.productId as number,
-  };
-}
-
-/** 製造分の予定数量が在庫フロアを下回っていればエラーメッセージを返す。 */
-function describeFloorError(
-  plannedQuantity: number,
-  info: StockFloorInfo,
-): string | null {
-  if (info.floor <= 0 || plannedQuantity >= info.floor) return null;
-  return (
-    `予定数量が不足しています（受注数量 ${info.soQuantity} − 在庫引当済 ${info.reservedForSo}` +
-    (info.otherManufacture > 0
-      ? ` − 他の製造指示 ${info.otherManufacture}`
-      : "") +
-    ` = 最低 ${info.floor}）。不良予備分を含め ${info.floor} 以上で入力してください`
-  );
+export interface LineAllocStatus {
+  orderLineId: string;
+  lineQuantity: number;
+  /** 他の指示書（キャンセル除く）の割当合計。 */
+  otherAllocated: number;
+  /** まだ割り当てられる数量（受注数量 − 手配済）。 */
+  remaining: number;
+  /** この明細へ引当済みの製品在庫（FROM_STOCK の参考値）。 */
+  reservedStock: number;
 }
 
 // ── 作成 / 更新 / コピー / キャンセル ────────────────────────────────────────
@@ -295,6 +331,8 @@ export async function createWorkOrder(
     if (!built.ok) return actionError(built.error);
     const target = await resolveWorkOrderTarget(v);
     if (typeof target === "string") return actionError(target);
+    const storageError = await validateStorageLocation(v.storageLocationId);
+    if (storageError) return actionError(storageError);
     const { productId } = target;
     const actor = await getCurrentActorId();
     const workOrderNumber = await nextSerialNumber("WORK_ORDER");
@@ -313,17 +351,24 @@ export async function createWorkOrder(
       await tx.workOrder.create({
         data: {
           workOrderNumber,
-          orderLineId: v.orderLineId,
           productId,
           type: v.type,
           plannedQuantity: v.plannedQuantity,
           materialId,
+          storageLocationId: v.storageLocationId,
           routeVersionId: resolvedRouteVersionId,
           status: "DRAFT",
           approvalStatus: "NONE",
           notes: v.notes.trim() || null,
           createdBy: actor,
           history: toHistoryJson([entry("CREATE", actor)]),
+          orderLineLinks: {
+            create: v.allocations.map((a, i) => ({
+              orderLineId: a.orderLineId,
+              quantity: a.quantity,
+              sortOrder: i,
+            })),
+          },
           steps: { create: toWorkOrderStepCreates(built.creates) },
           inspectionTemplates: {
             create: v.inspectionTemplateIds.map((id) => ({
@@ -332,19 +377,13 @@ export async function createWorkOrder(
           },
         },
       });
-      // ロット番号 = 指示書番号。注文明細が未採番なら同番号を採用する。
-      if (v.orderLineId) {
-        const so = await tx.orderLine.findUnique({
-          where: { id: v.orderLineId },
-          select: { lotNumber: true },
-        });
-        if (so && so.lotNumber == null) {
-          await tx.orderLine.update({
-            where: { id: v.orderLineId },
-            data: { lotNumber: workOrderNumber },
-          });
-        }
-      }
+      // ロット番号 = 指示書番号。未採番の割当明細に同番号を採用する
+      // （統合ロットでは複数明細が同じロット番号を共有する）。
+      await assignLotNumbersTx(
+        tx,
+        v.allocations.map((a) => a.orderLineId),
+        workOrderNumber,
+      );
       return resolvedRouteVersionId;
     });
 
@@ -353,11 +392,12 @@ export async function createWorkOrder(
       tableName: "work_orders",
       recordId: String(workOrderNumber),
       after: {
-        orderLineId: v.orderLineId,
+        allocations: v.allocations,
         productId,
         type: v.type,
         plannedQuantity: v.plannedQuantity,
         materialId,
+        storageLocationId: v.storageLocationId,
         routeVersionId,
         stepCount: built.creates.length,
         inspectionTemplateCount: v.inspectionTemplateIds.length,
@@ -390,6 +430,12 @@ export async function updateWorkOrder(
   try {
     const prior = await prisma.workOrder.findUnique({
       where: { workOrderNumber },
+      include: {
+        orderLineLinks: {
+          select: { orderLineId: true, quantity: true },
+          orderBy: { sortOrder: "asc" },
+        },
+      },
     });
     if (!prior) return actionError("対象の指示書が見つかりません");
     if (prior.status !== "DRAFT") {
@@ -399,6 +445,8 @@ export async function updateWorkOrder(
     if (!built.ok) return actionError(built.error);
     const target = await resolveWorkOrderTarget(v, workOrderNumber);
     if (typeof target === "string") return actionError(target);
+    const storageError = await validateStorageLocation(v.storageLocationId);
+    if (storageError) return actionError(storageError);
     const { productId } = target;
     const actor = await getCurrentActorId();
     const materialId = v.type === "MANUFACTURE" ? v.materialId : null;
@@ -416,19 +464,29 @@ export async function updateWorkOrder(
       await tx.workOrderInspectionTemplate.deleteMany({
         where: { workOrderId: prior.id },
       });
+      await tx.workOrderOrderLine.deleteMany({
+        where: { workOrderId: prior.id },
+      });
       await tx.workOrder.update({
         where: { id: prior.id },
         data: {
-          orderLineId: v.orderLineId,
           productId,
           type: v.type,
           plannedQuantity: v.plannedQuantity,
           materialId,
+          storageLocationId: v.storageLocationId,
           routeVersionId: resolvedRouteVersionId,
           notes: v.notes.trim() || null,
           history: toHistoryJson(
             appendHistory(prior.history, entry("UPDATE", actor)),
           ),
+          orderLineLinks: {
+            create: v.allocations.map((a, i) => ({
+              orderLineId: a.orderLineId,
+              quantity: a.quantity,
+              sortOrder: i,
+            })),
+          },
           steps: { create: toWorkOrderStepCreates(built.creates) },
           inspectionTemplates: {
             create: v.inspectionTemplateIds.map((id) => ({
@@ -437,18 +495,11 @@ export async function updateWorkOrder(
           },
         },
       });
-      if (v.orderLineId) {
-        const so = await tx.orderLine.findUnique({
-          where: { id: v.orderLineId },
-          select: { lotNumber: true },
-        });
-        if (so && so.lotNumber == null) {
-          await tx.orderLine.update({
-            where: { id: v.orderLineId },
-            data: { lotNumber: workOrderNumber },
-          });
-        }
-      }
+      await assignLotNumbersTx(
+        tx,
+        v.allocations.map((a) => a.orderLineId),
+        workOrderNumber,
+      );
       return resolvedRouteVersionId;
     });
 
@@ -457,17 +508,19 @@ export async function updateWorkOrder(
       tableName: "work_orders",
       recordId: String(workOrderNumber),
       before: {
-        orderLineId: prior.orderLineId,
+        allocations: prior.orderLineLinks,
         type: prior.type,
         plannedQuantity: prior.plannedQuantity,
         materialId: prior.materialId,
+        storageLocationId: prior.storageLocationId,
         routeVersionId: prior.routeVersionId,
       },
       after: {
-        orderLineId: v.orderLineId,
+        allocations: v.allocations,
         type: v.type,
         plannedQuantity: v.plannedQuantity,
         materialId,
+        storageLocationId: v.storageLocationId,
         routeVersionId,
         stepCount: built.creates.length,
       },
@@ -513,31 +566,65 @@ export async function copyWorkOrder(
         "在庫分の指示書は注文明細配下でのみ作成できます（対象の注文明細を選択してください）",
       );
     }
-    // コピー先: 注文明細指定 = その SO の製品 / 未指定 = 在庫向け（製品引継ぎ）
+    // コピー先: 注文明細指定 = その明細の製品 + 割当（受注残の範囲で予定数量
+    // まで充当）/ 未指定 = 在庫向け（製品引継ぎ・割当なし）
     let productId = source.productId;
+    let allocations: AllocationInput[] = [];
     if (targetOrderLineId) {
-      const targetSo = await prisma.orderLine.findUnique({
-        where: { id: targetOrderLineId },
-        select: { productId: true },
+      const lines = await loadLineAllocInfos([targetOrderLineId]);
+      const line = lines[0];
+      if (!line) return actionError("対象の注文明細が見つかりません");
+      const remaining = remainingAllocatable(line);
+      if (remaining <= 0) {
+        return actionError(
+          `注文明細 ${line.number} は受注数量まで手配済みです（残 0）`,
+        );
+      }
+      allocations = [
+        {
+          orderLineId: targetOrderLineId,
+          quantity: Math.min(source.plannedQuantity, remaining),
+        },
+      ];
+      const error = validateAllocations({
+        type: source.type,
+        plannedQuantity:
+          source.type === "FROM_STOCK"
+            ? allocations[0].quantity
+            : source.plannedQuantity,
+        allocations,
+        lines,
       });
-      if (!targetSo) return actionError("対象の注文明細が見つかりません");
-      if (targetSo.productId == null) {
+      if (error) return actionError(error);
+      if (line.productId == null) {
         return actionError("製品未特定の注文明細には指示書を作成できません");
       }
-      productId = targetSo.productId;
+      productId = line.productId;
     }
     const actor = await getCurrentActorId();
     const workOrderNumber = await nextSerialNumber("WORK_ORDER");
+    // 在庫分のコピーは割当 = 予定数量の不変条件を保つため、受注残まで縮める
+    const plannedQuantity =
+      source.type === "FROM_STOCK" && allocations.length > 0
+        ? allocations[0].quantity
+        : source.plannedQuantity;
 
     await prisma.$transaction(async (tx) => {
       await tx.workOrder.create({
         data: {
           workOrderNumber,
-          orderLineId: targetOrderLineId || null,
+          orderLineLinks: {
+            create: allocations.map((a, i) => ({
+              orderLineId: a.orderLineId,
+              quantity: a.quantity,
+              sortOrder: i,
+            })),
+          },
           productId,
           type: source.type,
-          plannedQuantity: source.plannedQuantity,
+          plannedQuantity,
           materialId: source.materialId,
+          storageLocationId: source.storageLocationId,
           status: "DRAFT",
           approvalStatus: "NONE",
           sourceWorkOrderId: source.id,
@@ -564,18 +651,11 @@ export async function copyWorkOrder(
           },
         },
       });
-      if (targetOrderLineId) {
-        const so = await tx.orderLine.findUnique({
-          where: { id: targetOrderLineId },
-          select: { lotNumber: true },
-        });
-        if (so && so.lotNumber == null) {
-          await tx.orderLine.update({
-            where: { id: targetOrderLineId },
-            data: { lotNumber: workOrderNumber },
-          });
-        }
-      }
+      await assignLotNumbersTx(
+        tx,
+        allocations.map((a) => a.orderLineId),
+        workOrderNumber,
+      );
     });
 
     await recordAudit({
@@ -583,10 +663,10 @@ export async function copyWorkOrder(
       tableName: "work_orders",
       recordId: String(workOrderNumber),
       after: {
-        orderLineId: targetOrderLineId,
+        allocations,
         sourceWorkOrderNumber,
         type: source.type,
-        plannedQuantity: source.plannedQuantity,
+        plannedQuantity,
         stepCount: source.steps.length,
       },
     });
@@ -610,12 +690,14 @@ export async function cancelWorkOrder(
   try {
     const prior = await prisma.workOrder.findUnique({
       where: { workOrderNumber },
+      include: { orderLineLinks: { select: { orderLineId: true } } },
     });
     if (!prior) return actionError("対象の指示書が見つかりません");
     if (prior.status !== "DRAFT" && prior.status !== "PENDING_APPROVAL") {
       return actionError("下書き・承認待ちの指示書のみキャンセルできます");
     }
     const actor = await getCurrentActorId();
+    const linkedLineIds = prior.orderLineLinks.map((l) => l.orderLineId);
     await prisma.$transaction([
       prisma.workOrder.update({
         where: { id: prior.id },
@@ -627,10 +709,10 @@ export async function cancelWorkOrder(
           ),
         },
       }),
-      ...(prior.orderLineId
+      ...(linkedLineIds.length > 0
         ? [
-            prisma.orderLine.update({
-              where: { id: prior.orderLineId },
+            prisma.orderLine.updateMany({
+              where: { id: { in: linkedLineIds } },
               data: { isLocked: false },
             }),
           ]
@@ -674,6 +756,7 @@ export async function requestApproval(
   try {
     const prior = await prisma.workOrder.findUnique({
       where: { workOrderNumber },
+      include: { orderLineLinks: { select: { orderLineId: true } } },
     });
     if (!prior) return actionError("対象の指示書が見つかりません");
     if (prior.status !== "DRAFT") {
@@ -684,6 +767,7 @@ export async function requestApproval(
     if (flowError) return actionError(flowError);
     const actor = await getCurrentActorId();
     const now = new Date();
+    const linkedLineIds = prior.orderLineLinks.map((l) => l.orderLineId);
     await prisma.$transaction([
       prisma.workOrder.update({
         where: { id: prior.id },
@@ -700,10 +784,10 @@ export async function requestApproval(
           ),
         },
       }),
-      ...(prior.orderLineId
+      ...(linkedLineIds.length > 0
         ? [
-            prisma.orderLine.update({
-              where: { id: prior.orderLineId },
+            prisma.orderLine.updateMany({
+              where: { id: { in: linkedLineIds } },
               data: { isLocked: true },
             }),
           ]
@@ -753,7 +837,14 @@ export async function approveWorkOrder(
   try {
     const prior = await prisma.workOrder.findUnique({
       where: { workOrderNumber },
-      include: { orderLine: { select: { status: true } } },
+      include: {
+        orderLineLinks: {
+          select: {
+            orderLineId: true,
+            orderLine: { select: { status: true } },
+          },
+        },
+      },
     });
     if (!prior) return actionError("対象の指示書が見つかりません");
     if (prior.approvalStatus !== "PENDING") {
@@ -804,8 +895,7 @@ export async function approveWorkOrder(
 
     // ── 最終承認 — ここから先が指示書を動かす副作用 ──
     const now = new Date();
-    const soStatus = prior.orderLine?.status ?? null;
-    const moveToProduction = soStatus === "DRAFT" || soStatus === "CONFIRMED";
+    const linkedLineIds = prior.orderLineLinks.map((l) => l.orderLineId);
     await prisma.$transaction([
       prisma.workOrder.update({
         where: { id: prior.id },
@@ -819,16 +909,19 @@ export async function approveWorkOrder(
           ),
         },
       }),
-      ...(prior.orderLineId
+      ...(linkedLineIds.length > 0
         ? [
-            prisma.orderLine.update({
-              where: { id: prior.orderLineId },
-              data: {
-                isLocked: false,
-                ...(moveToProduction
-                  ? { status: "IN_PRODUCTION" as const }
-                  : {}),
+            prisma.orderLine.updateMany({
+              where: { id: { in: linkedLineIds } },
+              data: { isLocked: false },
+            }),
+            // 出荷が先行している明細は戻さない（PARTIAL_SHIPPED/SHIPPED 維持）
+            prisma.orderLine.updateMany({
+              where: {
+                id: { in: linkedLineIds },
+                status: { in: ["DRAFT", "CONFIRMED"] },
               },
+              data: { status: "IN_PRODUCTION" },
             }),
           ]
         : []),
@@ -865,7 +958,8 @@ export async function approveWorkOrder(
               inventoryType: "MATERIAL",
               inventoryId: invId,
               workOrderId: prior.id,
-              orderLineId: prior.orderLineId,
+              // 割当が 1 明細だけなら明細にも紐付ける（統合ロットは指示書のみ）
+              orderLineId: linkedLineIds.length === 1 ? linkedLineIds[0] : null,
               quantity: prior.plannedQuantity,
               status: "RESERVED",
               reservedAt: new Date(),
@@ -905,6 +999,7 @@ export async function rejectWorkOrder(
   try {
     const prior = await prisma.workOrder.findUnique({
       where: { workOrderNumber },
+      include: { orderLineLinks: { select: { orderLineId: true } } },
     });
     if (!prior) return actionError("対象の指示書が見つかりません");
     if (prior.approvalStatus !== "PENDING") {
@@ -936,10 +1031,12 @@ export async function rejectWorkOrder(
           ),
         },
       }),
-      ...(prior.orderLineId
+      ...(prior.orderLineLinks.length > 0
         ? [
-            prisma.orderLine.update({
-              where: { id: prior.orderLineId },
+            prisma.orderLine.updateMany({
+              where: {
+                id: { in: prior.orderLineLinks.map((l) => l.orderLineId) },
+              },
               data: { isLocked: false },
             }),
           ]
@@ -1031,18 +1128,34 @@ export async function getRouteVersionSteps(
 }
 
 /**
- * 在庫フロア情報（§4 在庫考慮 — 製造分の最低予定数量）。ビルダーの表示 +
- * NumberInput min 用。検証はサーバー側（create/update）が最終判定する。
+ * 明細の割当状況（受注数量・手配済・残・引当済在庫）。ビルダーの割当行の
+ * 既定値・インライン表示用。検証はサーバー側（create/update）が最終判定する。
  */
-export async function getStockFloorInfo(
+export async function getLineAllocStatus(
   orderLineId: string,
   excludeWorkOrderNumber?: number,
-): Promise<StockFloorInfo | null> {
+): Promise<LineAllocStatus | null> {
   if (!orderLineId) return null;
-  const info = await stockFloorInfo(orderLineId, excludeWorkOrderNumber);
-  if (!info) return null;
-  const { productId: _productId, ...rest } = info;
-  return rest;
+  const [lines, reservedAgg] = await Promise.all([
+    loadLineAllocInfos([orderLineId], excludeWorkOrderNumber),
+    prisma.inventoryReservation.aggregate({
+      where: {
+        orderLineId,
+        inventoryType: "PRODUCT",
+        status: { in: ["RESERVED", "CONFIRMED"] },
+      },
+      _sum: { quantity: true },
+    }),
+  ]);
+  const line = lines[0];
+  if (!line) return null;
+  return {
+    orderLineId,
+    lineQuantity: line.lineQuantity,
+    otherAllocated: line.otherAllocated,
+    remaining: remainingAllocatable(line),
+    reservedStock: Number(reservedAgg._sum.quantity ?? 0),
+  };
 }
 
 // ── 工程フロー変更の承認 ─────────────────────────────────────────────────────
