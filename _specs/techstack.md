@@ -37,6 +37,9 @@ UI Library:     Mantine v9.x（固定）
 Forms:          @mantine/form
 Tables:         mantine-datatable（対応version固定）
 Icons:          Tabler Icons
+Flow Graph:     React Flow (@xyflow/react) 12.11.3（完全固定・MIT）
+                工程ワークフローの図示のみ。レイアウトと妥当性判定は
+                lib/workflow-core.ts が持ち、ライブラリは描画層に留める
 Styling:        Mantine + CSS Modules
 
 Server State:   React Server Components（標準）

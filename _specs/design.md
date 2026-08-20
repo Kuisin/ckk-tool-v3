@@ -912,12 +912,23 @@ Paper (withBorder, p="md", radius="md")
     │           │   └── [全工程 PENDING かつ実行可能] ActionIcon(red) 削除 → openConfirm → removeBranch
     │           └── Stack gap="xs" — 系列内 StepCard（分岐 off 分岐は再帰ネスト）
     └── Grid.Col span={{ base: 12, lg: 5 }} visibleFrom="lg" — フロー図（sticky top:76）
-        └── WorkflowGraph — 縦型 SVG キャンバス（直列でも常時表示）
-            `src/components/production/WorkflowGraph.tsx` — layer→Y（フロー方向）、
-            レーン→X（メインライン=0 / 分岐系列=1..）。メインラインの暗黙フロー
-            （kind:"flow"）は灰色実線・無ラベル、分岐/合流エッジ（kind:"link"）は
-            橙の破線 + 数量ラベル（動的エッジは解決値 or「全量」）。ノードクリックで
-            リスト側の StepCard を選択・スクロール同期（selected = blue 強調枠）
+        └── WorkflowGraph — 縦型フローキャンバス（直列でも常時表示）
+            `src/components/production/WorkflowGraph.tsx`（next/dynamic + ssr:false の
+            薄い入口）→ `WorkflowGraphCanvas.tsx`（React Flow / @xyflow/react）。
+            layer→Y（フロー方向）、レーン→X（メインライン=0 / 分岐系列=1..）。
+            **座標は lib/workflow-core.ts の layoutWorkflowGraph が決める** —
+            ライブラリにレイアウトも妥当性判定もさせない（描画層に留める）。
+            メインラインの暗黙フロー（kind:"flow"）は灰色実線・無ラベル、
+            分岐/合流エッジ（kind:"link"）は橙の破線 + 数量ラベル（動的エッジは
+            解決値 or「全量」）。進行中工程へ入るエッジのみ animated。
+            ノードクリックでリスト側の StepCard を選択・スクロール同期
+            （highlighted = blue 強調枠）。Controls（拡大縮小・全体表示）+
+            MiniMap（top-right・状態色）付き。ページのスクロールを奪わないよう
+            zoomOnScroll=false / preventScrolling=false。工程の増減時のみ
+            fitView で測り直す（数量だけの更新では視点を動かさない）。
+            ノード本体は `WorkflowStepNode.tsx` = Mantine の HTML ノード
+            （状態 ThemeIcon + 工程名 lineClamp 2 + 外注バッジ + 数量バッジ。
+            StepCard と STEP_STATUS_ICON を共有）
 ```
 
 **StepCard** (`src/components/production/StepCard.tsx`)

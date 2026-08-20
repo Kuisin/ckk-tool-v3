@@ -28,7 +28,11 @@ import { useFormat } from "@/components/layout/PreferencesProvider";
 import { PrimaryButton, SecondaryButton } from "@/components/ui/buttons";
 import type { WorkOrderStepView } from "./work-orders/model";
 
-const STATUS_ICON: Record<string, { color: string; icon: React.ReactNode }> = {
+/** 工程状態 → 色 + アイコン。フロー図のノード（WorkflowStepNode）と共有する。 */
+export const STEP_STATUS_ICON: Record<
+  string,
+  { color: string; icon: React.ReactNode }
+> = {
   PENDING: { color: "gray", icon: <IconClock size={14} /> },
   IN_PROGRESS: { color: "blue", icon: <IconLoader size={14} /> },
   COMPLETED: { color: "green", icon: <IconCheck size={14} /> },
@@ -53,7 +57,7 @@ export function StepCard({
   selected?: boolean;
 }) {
   const fmt = useFormat();
-  const icon = STATUS_ICON[step.status] ?? STATUS_ICON.PENDING;
+  const icon = STEP_STATUS_ICON[step.status] ?? STEP_STATUS_ICON.PENDING;
   const isOutsource = step.executionLocation === "OUTSOURCE";
   const locationName = isOutsource ? step.supplierName : step.plantName;
   const hasQuantities = step.inputQuantity != null;
