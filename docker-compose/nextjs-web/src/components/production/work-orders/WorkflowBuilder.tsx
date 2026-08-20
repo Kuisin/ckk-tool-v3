@@ -825,7 +825,11 @@ export function WorkflowBuilder({
                     </div>
                     <NumberInput
                       allowDecimal={false}
-                      label="割当数量"
+                      label={
+                        <HelpLabel
+                          {...fieldHelp("workOrder", "allocQuantity")}
+                        />
+                      }
                       max={
                         remaining != null && remaining > 0
                           ? remaining
@@ -969,7 +973,7 @@ export function WorkflowBuilder({
           <Select
             clearable
             data={storageLocationOptions}
-            label="保管場所"
+            label={<HelpLabel {...fieldHelp("workOrder", "storageLocation")} />}
             placeholder="完成品の保管場所を選択"
             searchable={storageLocationOptions.length > 5}
             {...form.getInputProps("storageLocationId")}

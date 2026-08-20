@@ -164,7 +164,7 @@ export function OrderAcceptanceCreateForm({
           {/* 出荷先は顧客と異なり得る（直送・支店渡しなど）— 任意。 */}
           <SearchSelect
             clearable
-            label="出荷先"
+            label={<HelpLabel {...fieldHelp("orderAcceptance", "shipTo")} />}
             onChange={setShipToBpId}
             onSearch={searchShipToOptions}
             placeholder="出荷先を検索（任意）"
@@ -174,7 +174,9 @@ export function OrderAcceptanceCreateForm({
           <Select
             clearable
             data={plantOptions}
-            label="担当拠点"
+            label={
+              <HelpLabel {...fieldHelp("orderAcceptance", "assignedPlant")} />
+            }
             onChange={setAssignedPlantId}
             placeholder="拠点を選択（任意）"
             searchable
@@ -183,7 +185,11 @@ export function OrderAcceptanceCreateForm({
           <Select
             clearable
             data={workLocationOptions}
-            label="出荷作業場所"
+            label={
+              <HelpLabel
+                {...fieldHelp("orderAcceptance", "shippingWorkLocation")}
+              />
+            }
             onChange={setShippingWorkLocationId}
             placeholder="作業場所を選択（任意）"
             searchable

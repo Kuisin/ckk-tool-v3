@@ -65,9 +65,10 @@ Put the file in the import folder on the server and it is imported automatically
 1. Press「**手入力で新規**」(new, typed in) at the top right of the list screen.
 2. Choose the「**顧客**」(customer). This one is required.
 3. Fill in「**顧客注文書番号**」(customer order form number),「**注文日**」(order date) and so on, as far as you know them.
-4. On the line item row, enter「**製品**」(product),「**種別**」(type) and「**数量**」(quantity). You can enter the unit price later.
-5. To add another row, press「**明細を追加**」(add line item).
-6. Press「**下書きを作成**」(create draft).
+4. If the destination or the site in charge is decided, also choose「**出荷先**」(ship-to),「**担当拠点**」(assigned plant) and「**出荷作業場所**」(shipping work location). All of them are optional and can be entered later.
+5. On the line item row, enter「**製品**」(product),「**種別**」(type) and「**数量**」(quantity). You can enter the unit price later.
+6. To add another row, press「**明細を追加**」(add line item).
+7. Press「**下書きを作成**」(create draft).
 
 ![Order acceptance manual entry screen](../../../assets/screenshots/order-acceptance-new-01.png)
 
@@ -82,9 +83,10 @@ A draft opens in **view mode** (read only). Switch to「**編集**」(edit) only
 3. In「**基本情報**」(basic information), check the customer, the customer order form number and the order date.
 4. If no customer is set, search for one in the「**顧客**」(customer) field and choose it.
 5. If the order follows on from a quote, enter the quote number in「**見積書番号（任意）**」(quote number, optional).
-6. In「**明細**」(line items), check the product, type, quantity, unit price and delivery date.
-7. On a row with an orange「**製品未特定**」(product not identified) badge, choose the correct product in the「**製品**」(product) field. If candidates are offered under the field as「**もしかして**」(did you mean), one press fills it.
-8. Press「**保存**」(save) at the very bottom of the screen. Saving returns you to view mode.
+6. Choose「**出荷先**」(ship-to),「**担当拠点**」(assigned plant) and「**出荷作業場所**」(shipping work location) if needed. They are optional.
+7. In「**明細**」(line items), check the product, type, quantity, unit price and delivery date.
+8. On a row with an orange「**製品未特定**」(product not identified) badge, choose the correct product in the「**製品**」(product) field. If candidates are offered under the field as「**もしかして**」(did you mean), one press fills it.
+9. Press「**保存**」(save) at the very bottom of the screen. Saving returns you to view mode.
 
 To stop editing, press「**キャンセル**」(cancel); if you changed something you are asked to confirm, and「**変更を破棄**」(discard changes) returns you to view mode. A draft that has no line items yet (for example one you just created by hand) opens in edit mode straight away.
 
@@ -138,6 +140,9 @@ Every field on the order acceptance screen. What the AI read from the order land
 | [Customer order no.](#field-customer-order-ref) | Optional | The number on the customer's own order |
 | [Quote number](#field-quote-number) | Optional | The quote it came from |
 | [Order date](#field-order-date) | Optional | The date the customer ordered |
+| [Ship-to](#field-ship-to) | Optional | Where the products are delivered |
+| [Assigned plant](#field-assigned-plant) | Optional | The site that handles this order |
+| [Shipping work location](#field-shipping-work-location) | Optional | Where the shipping work is done |
 | [Notes](#field-notes) | Optional | Notes for the whole acceptance |
 | [Product](#field-product) | Required | The product ordered |
 | [Item name (as read)](#field-extracted-name) | — | The item name printed on the order |
@@ -162,6 +167,18 @@ The quote this order came from. If it is set, that quote is marked accepted auto
 ### Order date [#field-order-date]
 
 The date the customer placed the order, as printed on their document.
+
+### Ship-to [#field-ship-to]
+
+Where the products are delivered. Choose it **when they go to a different company or branch** from the customer who ordered. Left empty, it means they go to the customer.
+
+### Assigned plant [#field-assigned-plant]
+
+The site of your own company that mainly handles this order. Choose it when you want to make clear which site's work it is.
+
+### Shipping work location [#field-shipping-work-location]
+
+The place where the shipping work (packing, loading and so on) is done. Choose from the [work location](/manual/en/operations/masters/work-location/user) master.
 
 ### Notes [#field-notes]
 
