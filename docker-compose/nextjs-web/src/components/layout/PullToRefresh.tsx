@@ -30,12 +30,12 @@ const THRESHOLD = 72;
 const MAX_PULL = 120;
 /** 指の移動量に対する追従率（ゴムのような手応え）。 */
 const RESISTANCE = 0.5;
-/** 縦の引き下げと判定するまでの遊び（px）。 */
-const SLOP = 10;
 /** 更新中にインジケータを留める位置（px）。 */
 const SPINNER_REST = 56;
 /** 更新が一瞬で終わったときの、インジケータの最低表示時間（ms）。 */
 const MIN_SPIN_MS = 400;
+/** 戻りアニメーション（CSS の transition）と揃える待ち時間（ms）。 */
+const SETTLE_MS = 260;
 
 /** ホーム画面 PWA（スタンドアロン）として起動しているか。 */
 function isStandaloneDisplay(): boolean {
@@ -58,13 +58,23 @@ function isBlocked(target: EventTarget | null): boolean {
   if (document.querySelector("[role='dialog']")) return true;
   // 明示的な除外領域。
   if (el.closest("[data-pull-refresh='off']")) return true;
-  // ページ本体が最上部でない。
+  // ページ本体が最上部でない（iOS はバウンド中に負値になるので > 0 で見る）。
   if (window.scrollY > 0 || document.documentElement.scrollTop > 0) return true;
   // 内側のスクロール領域（テーブル・ScrollArea 等）が最上部でない。
   for (let node: Element | null = el; node; node = node.parentElement) {
     if (node.scrollTop > 0) return true;
   }
   return false;
+}
+
+/**
+ * iOS ではバウンドが途中で止まると、文書のスクロール位置が負のまま残ることが
+ * あり、固定要素（ヘッダー / フッター）が本来より上にずれて描かれる。
+ * ジェスチャの終わりに最上部へ寄せ直して打ち消す（負値を報告しない
+ * ブラウザでは何も起きない）。
+ */
+function settleViewport(): void {
+  if (window.scrollY < 0) window.scrollTo(0, 0);
 }
 
 export function PullToRefresh() {
@@ -74,6 +84,7 @@ export function PullToRefresh() {
   const indicatorRef = useRef<HTMLDivElement>(null);
   const refreshingRef = useRef(false);
   const startedAtRef = useRef(0);
+  const idleTimerRef = useRef(0);
   const drag = useRef({
     active: false,
     engaged: false,
@@ -89,15 +100,30 @@ export function PullToRefresh() {
   /**
    * インジケータを直接 DOM で動かす（指の動きごとの再レンダを避ける）。
    * `settle` = 指を離した後のアニメーション付き移動。
+   *
+   * `data-active` は「いま画面に出ている」印。動いていない間は CSS 側で
+   * visibility: hidden + will-change 無しに落ちる — 常時 will-change を
+   * 付けたままにすると合成レイヤーが残り続け、iOS で固定ヘッダー /
+   * フッターの描画位置がずれることがあるため。
    */
   const paint = useCallback((pull: number, settle: boolean) => {
     const el = indicatorRef.current;
     if (!el) return;
+    window.clearTimeout(idleTimerRef.current);
     el.toggleAttribute("data-settling", settle);
     el.toggleAttribute("data-ready", pull >= THRESHOLD);
     el.style.setProperty("--ptr-y", `${Math.min(pull, MAX_PULL)}px`);
     el.style.setProperty("--ptr-opacity", `${Math.min(1, pull / THRESHOLD)}`);
     el.style.setProperty("--ptr-rotate", `${(pull / THRESHOLD) * 180}deg`);
+    if (pull > 0) {
+      el.toggleAttribute("data-active", true);
+      return;
+    }
+    // 0 に戻すときは、戻りアニメーションが終わってからレイヤーを畳む。
+    idleTimerRef.current = window.setTimeout(
+      () => el.removeAttribute("data-active"),
+      settle ? SETTLE_MS : 0,
+    );
   }, []);
 
   useEffect(() => {
@@ -117,6 +143,7 @@ export function PullToRefresh() {
       drag.current.pull = 0;
       detachMove();
       paint(0, settle);
+      settleViewport();
     }
 
     function onStart(e: TouchEvent) {
@@ -150,12 +177,15 @@ export function PullToRefresh() {
       const dx = touch.clientX - state.startX;
 
       if (!state.engaged) {
-        // 横スワイプ・上方向スクロールと判明した時点で降りる。
-        if (Math.abs(dx) > Math.abs(dy) || dy < -SLOP) {
+        // 最初の touchmove で決める。ここで preventDefault を逃すと、iOS は
+        // 以降その一連のジェスチャで preventDefault を無視する — バウンドが
+        // 始まってしまい、固定ヘッダー / フッターが道連れでずれる。なので
+        // 「遊び」を置かず、下方向と判った瞬間に押さえる。
+        if (dy <= 0 || Math.abs(dx) > Math.abs(dy)) {
+          // 上方向スクロール / 横スワイプ — ブラウザに任せて降りる。
           reset(false);
           return;
         }
-        if (dy < SLOP) return; // まだ方向が定まっていない
         state.engaged = true;
       }
 
@@ -164,14 +194,11 @@ export function PullToRefresh() {
         reset(true);
         return;
       }
-      if (dy <= SLOP) {
-        state.pull = 0;
-        paint(0, false);
-        return;
-      }
-      state.pull = (dy - SLOP) * RESISTANCE;
-      // ここで初めてブラウザ側の overscroll（iOS のバウンド）を止める。
+      // 最上部からの下方向 = ブラウザ側では overscroll（iOS のバウンド）に
+      // しかならない動き。常に押さえてよい。
       e.preventDefault();
+      // 引き戻して開始位置より上に戻ったら 0 に張り付かせる（負値にしない）。
+      state.pull = Math.max(0, dy * RESISTANCE);
       paint(state.pull, false);
     }
 
@@ -187,6 +214,7 @@ export function PullToRefresh() {
       state.engaged = false;
       state.pull = SPINNER_REST;
       detachMove();
+      settleViewport();
       refreshingRef.current = true;
       startedAtRef.current = performance.now();
       setRefreshing(true);
@@ -210,6 +238,7 @@ export function PullToRefresh() {
       document.removeEventListener("touchend", onEnd);
       document.removeEventListener("touchcancel", onCancel);
       detachMove();
+      window.clearTimeout(idleTimerRef.current);
     };
   }, [paint, router]);
 

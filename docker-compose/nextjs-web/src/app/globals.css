@@ -65,8 +65,12 @@ body {
  * 開いているときは触らない（ブラウザ標準の pull-to-refresh を残す）。
  */
 @media (display-mode: standalone), (display-mode: fullscreen) {
-  html,
-  body {
+  /*
+   * スクロールするのは文書（html）なので、指定もそこだけ。body にも重ねると
+   * WebKit で overscroll の扱いがぶれ、固定ヘッダー / フッターの描画位置が
+   * ずれることがある。
+   */
+  html {
     overscroll-behavior-y: contain;
   }
 }
@@ -172,6 +176,18 @@ body {
   .app-shell-main {
     background-color: var(--mantine-color-gray-0);
     box-shadow: 0 0 5px 0 rgba(0, 0, 0, 0.15);
+    /*
+     * Mantine の --app-shell-footer-offset は「指定した高さ」（= 40px）だが、
+     * フッターの実寸は 40px + env(safe-area-inset-bottom)。既定の
+     * padding-bottom はそのぶん足りず、ホームインジケータのある端末では
+     * ページ末尾がフッターの裏に隠れる。セーフエリア分を足して埋める
+     * （env() が 0 のデスクトップでは何も変わらない）。
+     */
+    padding-bottom: calc(
+      var(--app-shell-footer-offset, 0rem) +
+      var(--app-shell-padding) +
+      env(safe-area-inset-bottom, 0px)
+    );
   }
   [data-mantine-color-scheme="dark"] .app-shell-main {
     background-color: var(--mantine-color-dark-8);
@@ -184,6 +200,11 @@ body {
    * JS が CSS 変数で与え、transition はドラッグ中は切って（指に完全追従）
    * 指を離した後だけ効かせる（[data-settling]）。
    * z-index はヘッダー（AppShell = 200）より上、Popover（300）より下。
+   *
+   * 出ていない間（[data-active] 無し）は visibility: hidden で描画対象から
+   * 外し、will-change も付けない — 常時 will-change を付けたままにすると
+   * 合成レイヤーが残り続け、iOS で固定ヘッダー / フッターの描画位置が
+   * ずれることがある。
    */
   .ptr-indicator {
     position: fixed;
@@ -200,8 +221,12 @@ body {
     box-shadow: var(--mantine-shadow-md);
     color: var(--mantine-color-gray-6);
     pointer-events: none;
+    visibility: hidden;
     opacity: var(--ptr-opacity, 0);
     transform: translate(-50%, calc(var(--ptr-y, 0px) - 48px));
+  }
+  .ptr-indicator[data-active] {
+    visibility: visible;
     will-change: transform, opacity;
   }
   [data-mantine-color-scheme="dark"] .ptr-indicator {
@@ -260,7 +285,11 @@ body {
   @media (min-width: 768px) {
     .form-actions {
       position: sticky;
-      bottom: var(--app-shell-footer-offset, 0rem);
+      /* フッターの実寸はセーフエリアぶん高い（.app-shell-main のコメント参照）。 */
+      bottom: calc(
+        var(--app-shell-footer-offset, 0rem) +
+        env(safe-area-inset-bottom, 0px)
+      );
       z-index: 2;
       padding-block: var(--mantine-spacing-sm);
       background-color: var(--mantine-color-gray-0);
