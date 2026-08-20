@@ -16,12 +16,14 @@ import type {
   StepPlanView,
 } from "@/components/production/step-execution/model";
 import type {
+  StepAssigneeView,
   WorkOrderRow,
   WorkOrderView,
 } from "@/components/production/work-orders/model";
 import { fetchApprovalTrail, type HistoryEntry } from "@/lib/approvals";
 import { getCurrentActorId } from "@/lib/audit";
 import { checkPermission } from "@/lib/authz";
+import { avatarUrl } from "@/lib/avatar";
 import { type Prisma, prisma } from "@/lib/db";
 import { orderLineNumberOf } from "@/lib/doc-number";
 import { type LocalizedText, localized } from "@/lib/format";
@@ -33,6 +35,7 @@ import {
   parseStoredSamples,
   samplingSpecFromRow,
 } from "@/lib/inspection-core";
+import { sumActualWorkHours } from "@/lib/step-work-hours";
 import { fetchWorkLocationOptions } from "@/lib/work-locations";
 import { fetchWorkflowCtx, loadCatalog } from "@/lib/workflow";
 import { canStartStep, expectedInput } from "@/lib/workflow-core";
@@ -84,6 +87,23 @@ const WO_INCLUDE = {
       processStep: true,
       plant: true,
       supplierBp: true,
+      // 担当者（工程リストの「担当」）— 計画の割当ユーザー。写真は小サイズ。
+      plans: {
+        select: {
+          userId: true,
+          user: {
+            select: {
+              id: true,
+              displayName: true,
+              avatarFileId: true,
+              avatarThumbFileId: true,
+            },
+          },
+        },
+        orderBy: { plannedDate: "asc" as const },
+      },
+      // 実働時間の積算に使う（1 行 = 1 作業セッション）。
+      actuals: { select: { startedAt: true, endedAt: true } },
       _count: { select: { plans: true, actuals: true } },
     },
     orderBy: { sortOrder: "asc" as const },
@@ -93,6 +113,41 @@ const WO_INCLUDE = {
 };
 
 const iso = (d: Date | null | undefined) => d?.toISOString() ?? null;
+
+/**
+ * 作業計画の割当ユーザー → 担当者一覧（重複排除・計画日順）。
+ * 同じ人が複数日に割り当てられていても 1 人として出す。
+ */
+function stepAssignees(
+  plans: readonly {
+    user: {
+      id: string;
+      displayName: string | null;
+      avatarFileId: string | null;
+      avatarThumbFileId: string | null;
+    };
+  }[],
+): StepAssigneeView[] {
+  const seen = new Set<string>();
+  const out: StepAssigneeView[] = [];
+  for (const p of plans) {
+    if (seen.has(p.user.id)) continue;
+    seen.add(p.user.id);
+    const fileId = p.user.avatarThumbFileId ?? p.user.avatarFileId;
+    out.push({
+      userId: p.user.id,
+      name: p.user.displayName ?? "—",
+      avatarUrl: fileId
+        ? avatarUrl(
+            p.user.id,
+            fileId,
+            p.user.avatarThumbFileId ? "thumb" : "full",
+          )
+        : null,
+    });
+  }
+  return out;
+}
 
 function mapRow(r: {
   workOrderNumber: number;
@@ -296,6 +351,8 @@ export async function fetchWorkOrder(
       completedByName: s.completedBy ? nameOf(s.completedBy) : null,
       planCount: s._count.plans,
       actualCount: s._count.actuals,
+      assignees: stepAssignees(s.plans),
+      actualWorkHours: sumActualWorkHours(s.actuals),
       canStart: canStartStep(s.id, ctx, actorId).ok,
     })),
     stepLinks: r.stepLinks.map((l) => ({
