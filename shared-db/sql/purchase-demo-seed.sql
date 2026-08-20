@@ -206,25 +206,38 @@ ON CONFLICT (id) DO NOTHING;
 -- 形で必要（承認操作 actOnApprovalRequest も PENDING 行を消費する）。
 -- APPROVED/ORDERED の対象には APPROVED 行 + 記録（承認者 = システム — 第一承認
 -- グループ（デモ）の唯一のメンバー）を付けてトレイルを表示させる。
-INSERT INTO app.approval_requests (id, target_type, target_id, step, status,
-  requested_by, requested_at, notes)
-VALUES
-  ('db400000-0000-4000-8000-000000000001'::uuid, 'purchase_requests',
-   'PRQ-202607-00001', 'FIRST'::app."APPROVAL_STEP",
-   'PENDING'::app."APPROVAL_REQUEST_STATUS",
-   'a0b1c2d3-0000-4000-8000-000000005107'::uuid, '2026-07-02T09:30:00+09', NULL),
-  ('db400000-0000-4000-8000-000000000002'::uuid, 'purchase_requests',
-   'PRQ-202607-00002', 'FIRST'::app."APPROVAL_STEP",
-   'APPROVED'::app."APPROVAL_REQUEST_STATUS",
-   'a0b1c2d3-0000-4000-8000-000000005107'::uuid, '2026-07-03T10:30:00+09', NULL),
-  ('db400000-0000-4000-8000-000000000003'::uuid, 'material_purchase_orders',
-   'PO-202607-00002', 'FIRST'::app."APPROVAL_STEP",
-   'PENDING'::app."APPROVAL_REQUEST_STATUS",
-   'a0b1c2d3-0000-4000-8000-000000005107'::uuid, '2026-07-11T10:00:00+09', NULL),
-  ('db400000-0000-4000-8000-000000000004'::uuid, 'material_purchase_orders',
-   'PO-202607-00001', 'FIRST'::app."APPROVAL_STEP",
-   'APPROVED'::app."APPROVAL_REQUEST_STATUS",
-   'a0b1c2d3-0000-4000-8000-000000005107'::uuid, '2026-07-08T10:00:00+09', NULL)
+-- 段は enum（FIRST/SECOND）ではなく step_no（1..N）+ step_count になり、
+-- 依頼時点のフロー全体を flow_snapshot に複写するようになった。ここでは
+-- manufacturing-demo-seed が入れた 1 段フロー（第一承認グループ）をそのまま
+-- スナップショットにする — 実データと同じ形にしておかないと Stepper が
+-- 描けない。グループ id は serial なので名前で引く。
+INSERT INTO app.approval_requests (id, target_type, target_id, step_no, step_count,
+  group_id, mode, flow_snapshot, status, requested_by, requested_at, notes)
+SELECT
+  v.id::uuid, v.target_type, v.target_id, 1, 1,
+  g.id, 'ANY'::app."APPROVAL_MODE",
+  jsonb_build_array(jsonb_build_object(
+    'stepNo', 1,
+    'name', jsonb_build_object('ja', '第一承認', 'en', 'First approval'),
+    'groupId', g.id,
+    'groupName', g.name,
+    'mode', 'ANY'
+  )),
+  v.status::app."APPROVAL_REQUEST_STATUS",
+  'a0b1c2d3-0000-4000-8000-000000005107'::uuid, v.requested_at::timestamptz, NULL
+FROM (VALUES
+  ('db400000-0000-4000-8000-000000000001', 'purchase_requests',
+   'PRQ-202607-00001', 'PENDING',  '2026-07-02T09:30:00+09'),
+  ('db400000-0000-4000-8000-000000000002', 'purchase_requests',
+   'PRQ-202607-00002', 'APPROVED', '2026-07-03T10:30:00+09'),
+  ('db400000-0000-4000-8000-000000000003', 'material_purchase_orders',
+   'PO-202607-00002',  'PENDING',  '2026-07-11T10:00:00+09'),
+  ('db400000-0000-4000-8000-000000000004', 'material_purchase_orders',
+   'PO-202607-00001',  'APPROVED', '2026-07-08T10:00:00+09')
+) AS v(id, target_type, target_id, status, requested_at)
+CROSS JOIN (
+  SELECT id, name FROM app.approval_groups WHERE name->>'ja' = '第一承認グループ（デモ）'
+) AS g
 ON CONFLICT (id) DO NOTHING;
 
 INSERT INTO app.approval_records (id, approval_request_id, approver_id,

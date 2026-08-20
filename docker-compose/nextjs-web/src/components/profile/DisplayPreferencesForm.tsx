@@ -16,7 +16,15 @@
  * 共有なので、共有タブレット側の表示も変わる。
  */
 
-import { Paper, Select, SimpleGrid, Stack, Text, Title } from "@mantine/core";
+import {
+  Group,
+  Paper,
+  Select,
+  SimpleGrid,
+  Stack,
+  Text,
+  Title,
+} from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import { NextIntlClientProvider, useTranslations } from "next-intl";
 import { useEffect, useMemo, useState, useTransition } from "react";
@@ -85,24 +93,25 @@ function PreferencesFormBody({
    * タイムゾーンの選択肢には、その地域での**いまの時刻**を添える
    * （"Asia/Shanghai" だけでは日本と何時間ずれるのか分からないため）。
    *
-   * 現在時刻はマウント後にだけ入れる — レンダー中に `new Date()` を読むと
-   * サーバーとクライアントで値が食い違い、選択中ラベルが hydration 不一致に
-   * なる。SSR ではゾーン名だけを出し、マウント後に時刻を足す。
+   * 時刻を出すのは**開いたときの一覧だけ**で、閉じた入力欄はゾーン名だけに
+   * する。理由は 2 つ:
+   *   - 選択済みの欄に時計が入っていると、設定値なのか現在時刻なのか紛らわしい
+   *   - 欄の中身が毎分変わるとマニュアルのスクリーンショットが決定的にならない
+   *     （撮影のたびに差分が出る）
+   *
+   * 現在時刻はマウント後にだけ読む — レンダー中に `new Date()` を読むと
+   * サーバーとクライアントで値が食い違い hydration 不一致になる。
    */
   const [now, setNow] = useState<Date | null>(null);
   useEffect(() => {
     setNow(new Date());
   }, []);
   const timeZoneOptions = useMemo(
-    () =>
-      COMMON_TIME_ZONES.map((tz) => ({
-        value: tz,
-        label: now
-          ? `${tz}（${createFormatters({ ...prefs, timeZone: tz }).time(now)}）`
-          : tz,
-      })),
-    [prefs, now],
+    () => COMMON_TIME_ZONES.map((tz) => ({ value: tz, label: tz })),
+    [],
   );
+  const zoneTime = (tz: string): string | null =>
+    now ? createFormatters({ ...prefs, timeZone: tz }).time(now) : null;
 
   const set = <K extends keyof DisplayPreferences>(
     key: K,
@@ -153,6 +162,16 @@ function PreferencesFormBody({
             description={t("timeZoneHelp")}
             label={t("timeZone")}
             onChange={(v) => set("timeZone", v)}
+            renderOption={({ option }) => (
+              <Group gap="xs" justify="space-between" w="100%" wrap="nowrap">
+                <span>{option.label}</span>
+                {zoneTime(option.value) && (
+                  <Text c="dimmed" size="xs">
+                    {zoneTime(option.value)}
+                  </Text>
+                )}
+              </Group>
+            )}
             searchable
             value={prefs.timeZone}
           />

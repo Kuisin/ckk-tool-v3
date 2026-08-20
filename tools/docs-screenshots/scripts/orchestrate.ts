@@ -14,6 +14,11 @@
  *   --only <id>   manifest の 1 エントリだけ撮影
  *   --verify      コミット済み PNG を上書きせず一時出力へ撮影し、pixelmatch で
  *                 比較（diff 比率 >= 0.1% で失敗）— 決定性の受け入れ確認
+ *   --skip-seed <file[,file]>
+ *                 指定のデモシードを流さない（部分名一致）。データモデル変更に
+ *                 追随できていないシードがあるとき、それに依存しない画面だけを
+ *                 撮り直すための逃げ道。**既定では全て流す** — 依存する画面の
+ *                 撮影は当然失敗するので、使ったらログに出る警告を読むこと。
  *
  * 前提: Docker / pnpm。psql・gunzip はコンテナ内で実行するので不要。
  */
@@ -210,7 +215,15 @@ function seed(): void {
       psqlInput(gunzipped);
     }
   }
+  const skips = (flagValue("--skip-seed") ?? "")
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
   for (const f of SEED_FILES_POST) {
+    if (skips.some((s) => f.includes(s))) {
+      log(`seed: ${f} — SKIPPED (--skip-seed). このシードに依存する画面は撮れない`);
+      continue;
+    }
     log(`seed: ${f}`);
     psqlFile(join(SHARED_DB, f));
   }
@@ -330,7 +343,11 @@ function stopApp(): void {
 function capture(outDir?: string): void {
   const only = flagValue("--only");
   const pwArgs = ["exec", "playwright", "test"];
-  if (only) pwArgs.push("-g", `^${only}$`);
+  // Playwright の -g はテスト名だけでなく前置き（プロジェクト名 › ファイル名 ›）
+  // を含めた文字列に当たるため、`^id$` だと 1 件も一致しない（--only が黙って
+  // 「No tests found」で落ちていた）。id は manifest 内で一意なので、末尾一致で
+  // 十分に絞れる。
+  if (only) pwArgs.push("-g", `${only}$`);
   log(only ? `capturing only: ${only}` : "capturing all manifest entries");
   execFileSync("pnpm", pwArgs, {
     cwd: HERE,

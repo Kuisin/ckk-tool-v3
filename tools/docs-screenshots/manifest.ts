@@ -1294,6 +1294,20 @@ export const shots: Shot[] = [
       await page.getByText("お気に入り").first().waitFor();
     },
   },
+  {
+    id: "profile-preferences-01",
+    docPage: "user-settings",
+    path: "/profile/preferences",
+    steps: async (page) => {
+      // プレビュー（固定日時 2026/03/05 のサンプル）が出たら撮る。
+      await page.getByText("プレビュー").first().waitFor();
+    },
+    /*
+     * 揮発物なし: タイムゾーンの「その地域のいまの時刻」は開いた一覧にだけ出て、
+     * 閉じた入力欄はゾーン名だけ（DisplayPreferencesForm 参照）。プレビューは
+     * 固定サンプル時刻なので、mask/clip 無しで決定的に撮れる。
+     */
+  },
   // ── 設定: 試算計算（SY02, 管理者）──────────────────────────────────────────
   {
     id: "trial-pricing-hub-01",
