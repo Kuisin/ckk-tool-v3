@@ -1,7 +1,7 @@
 ---
 title: "User Settings Manual"
 description: "Settings for your own account. Open them from the avatar menu (top right) → Profile / Notification Settings / Home Screen Settings / Display Settings."
-screenshots: [profile-home-01]
+screenshots: [profile-home-01, profile-preferences-01]
 ---
 Settings for your own account. Open them from the avatar menu (top right) → **Profile** / **Notification Settings** / **Home Screen Settings** / **Display Settings**.
 
@@ -54,6 +54,8 @@ Use **Display Settings** in the avatar menu to change the language and how dates
 - **Time zone** — which region's clock dates and times are shown in; set it when working from an overseas site or on a trip. Each option shows the **current time** in that zone, so you can see the offset at a glance.
 
 Your choices appear immediately in the **Preview** below, so you can check them before saving. Once saved they apply **everywhere a date or time appears** — lists, detail pages, history.
+
+![Display settings](./assets/screenshots/profile-preferences-01.png)
 
 > 💡 **Changing the time zone does not change the recorded timestamps.** It only changes which region's clock you read them by.
 

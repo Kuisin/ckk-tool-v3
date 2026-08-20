@@ -196,7 +196,10 @@ VALUES
    'a0b1c2d3-0000-4000-8000-000000005107'::uuid, '2026-07-07T13:45:00+09', '2026-07-07T13:50:00+09')
 ON CONFLICT (year_month, seq) DO NOTHING;
 
-INSERT INTO app.order_acceptance_items (id, acceptance_year_month, acceptance_seq, product_id,
+-- 注文明細。20260907090000_order_lines_merge で order_acceptance_items から
+-- order_lines へ改名された（下書きと実行を 1 本にまとめた）。ここは下書き段階の
+-- 行なので status は既定の DRAFT、枝番・金額は確定時に入る（NULL のまま）。
+INSERT INTO app.order_lines (id, acceptance_year_month, acceptance_seq, product_id,
   product_text, order_type, quantity, unit_price, delivery_date, sort_order)
 VALUES
   -- ORD-1: 1行目は価格表（¥3,220）と異なる単価 → 価格差異バッジの実例
@@ -213,8 +216,9 @@ VALUES
 ON CONFLICT (id) DO NOTHING;
 
 -- ── 設計依頼書（DSG-202607-00001〜00003）────────────────────────────────────
+-- sales_order_id は order_line_id へ改名済み（同じ order_lines 統合による）。
 INSERT INTO app.design_requests (id, request_number, trigger, quote_year_month, quote_seq,
-  sales_order_id, product_id, description, status, completed_at, created_by, created_at, updated_at)
+  order_line_id, product_id, description, status, completed_at, created_by, created_at, updated_at)
 VALUES
   ('d7000000-0000-4000-8000-000000000001'::uuid, 'DSG-202607-00001', 'QUOTE'::app."DESIGN_TRIGGER",
    '202607', 1, NULL, 9001, '先端R0.5 の特殊形状。見積提出前に図面確認をお願いします。',
