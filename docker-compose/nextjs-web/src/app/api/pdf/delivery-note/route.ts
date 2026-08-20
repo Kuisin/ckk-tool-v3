@@ -20,6 +20,8 @@ import { isIssued, notIssuedResponse, pdfStorageKey } from "@/lib/document-pdf";
 import { DELIVERY_METHOD_LABEL } from "@/lib/enum-labels";
 import { documentFormatters } from "@/lib/format";
 import { renderPdf } from "@/lib/pdf";
+import { documentQrSvg } from "@/lib/pdf-qr";
+import { QR_KINDS } from "@/lib/qr-payload";
 import { getObject, putObject } from "@/lib/storage";
 
 // Reads request query params → always rendered at request time.
@@ -94,6 +96,8 @@ export async function GET(request: Request): Promise<Response> {
       name: note.recipientName,
       meta: metaLines.join("<br>"),
     },
+    // 書類 QR（CKK:DRN:<番号>）。URL は入れない。
+    doc_qr: documentQrSvg(QR_KINDS.DELIVERY_NOTE, note.deliveryNumber),
     doc: {
       number: note.deliveryNumber,
       issued_date: documentFormatters.date(note.createdAt),
