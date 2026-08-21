@@ -29,20 +29,57 @@ databases, use the host IP / hostname.
 > **Security:** keep on the LAN, or front with nginx + Cloudflare Access like the
 > other apps if you publish it.
 
+## データソース
+
+| db | 名前 | 接続ロール | スキーマ | 用途 |
+|----|------|-----------|----------|------|
+| 2 | King of Time (労務) | `kot_ro` | `kot`, `directory` | 勤怠・労務 |
+| 5 | CKK 業務 | `metabase_ro` | `app`（限定） | 受注・生産・請求・在庫 |
+
+`metabase_ro` は `app` スキーマに read-only（`shared-db/sql/grants.sql` +
+`docker-compose/shared-db/init/01-roles.sh`）。労務 DB の `kot_ro` とは分離。
+
 ## 表示名の日本語化（テーブル・列ラベル）
 
-`sql/metadata-ja.sql` が King of Time (労務) データソースのテーブル・列の
-表示名を、生の DB 名（`Hr Records` 等）ではなく意味の分かる日本語に揃える。
-正式名はスキーマ本体（`kot.*` / `directory.*`）に付け、`public.*` の互換
-ビュー（`shared-db/sql/metabase-compat.sql`）には「（旧）」を付けて新規
-クエリで選ばれにくくしている。
+生の DB 名の自動整形（`Hr Records` / `Order Acceptances` 等）ではなく意味の
+分かる日本語ラベルに揃える。適用先はいずれも Metabase の**アプリケーション
+DB（`metabase-db`）**への直接 UPDATE（冪等）。管理者 API キーがあれば REST
+でもよいが、SQL の方が一括で速く確実。
 
-適用先は Metabase の**アプリケーション DB（`metabase-db`）**。API キーが
-管理者権限を持たないため REST ではなく直接 UPDATE する（冪等）。列を追加
-したらこのファイルにラベルを足して再適用する:
+- **労務（db 2）**: `sql/metadata-ja.sql` — `kot.*` / `directory.*` にラベル。
+  かつて併存した `public.*` 互換ビューは**廃止済み**（下記）。
+- **業務（db 5）**: `sql/gen-business-ja.py` が対応表を持ち、出力
+  `sql/metabase-business-ja.sql`（108 表・全列）を適用する。フリーフォーム
+  JSON 列（監査差分・試算結果など）は展開を切って項目一覧を汚さない。列を
+  追加したら**生成元の .py を直して**再生成する:
 
 ```bash
+# 労務ラベル
 ssh 192.168.50.15 "docker exec -i metabase-db psql -U metabase -d metabase -v ON_ERROR_STOP=1" \
   < docker-compose/metabase/sql/metadata-ja.sql
+# 業務ラベル（生成 → 適用）
+python3 docker-compose/metabase/sql/gen-business-ja.py > docker-compose/metabase/sql/metabase-business-ja.sql
+ssh 192.168.50.15 "docker exec -i metabase-db psql -U metabase -d metabase -v ON_ERROR_STOP=1" \
+  < docker-compose/metabase/sql/metabase-business-ja.sql
 ssh 192.168.50.15 "cd ~/stacks/metabase && docker compose restart metabase"   # キャッシュ破棄
 ```
+
+## 業務ダッシュボード（db 5）
+
+`build-business-dashboards.py` がコレクション「CKK 業務」に **受注・売上 /
+生産進捗 / 請求 / 在庫** の 4 ダッシュボード + 25 カードを作る。カードは
+native SQL（`metabase_ro`、search_path=app）で、列別名・状態 enum を日本語化
+してある。名前で冪等なので、直したら再実行すれば作り直さず更新する:
+
+```bash
+MB_URL=http://192.168.50.15:3003 MB_API_KEY=mb_<admin> MB_DB_ID=5 MB_COLLECTION_ID=6 \
+  python3 docker-compose/metabase/build-business-dashboards.py
+```
+
+## 労務互換ビューの廃止（2026-08）
+
+労務ダッシュボードは元々 `public.*` の pass-through 互換ビュー経由だったが、
+全カード（構造化クエリ）と AI ラボ MCP を `kot.*` / `directory.*` 直参照へ
+付け替え、`public.*` の 8 ビューを撤去した（`shared-db/sql/metabase-compat.sql`
+が idempotent な DROP に変わっている）。bare 名で書かれた native カードは
+`kot_ro` の search_path で解決されるため影響なし。
