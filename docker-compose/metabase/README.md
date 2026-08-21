@@ -74,6 +74,27 @@ ssh 192.168.50.15 "docker exec -i metabase-db psql -U metabase -d metabase -v ON
 ssh 192.168.50.15 "cd ~/stacks/metabase && docker compose restart metabase"   # キャッシュ破棄
 ```
 
+## analytics ビュー層（db 5 が参照する名前解決済みビュー）
+
+生の `app` 108 テーブルは ID 列だらけで、関連レコードの「名前」が多段 FK の先に
+あって BI から読めない（特に `order_lines → order_acceptances → sales_rep` は
+**複合キー**で Metabase から辿れない。Metabase は複合 FK を扱えず、FK の名前置換も
+1 段だけ。加えてマスタ名は `jsonb {ja,en}` で表示値に使えない）。そこで
+`shared-db/sql/analytics-views.sql` が **`analytics` スキーマ**に業務エンティティごとの
+名前解決済みビュー（`v_order_lines` / `v_work_orders` / `v_invoices` / … 約 40 本）を
+作り、顧客・営業担当・製品などを平文列で公開する。Metabase db 5 と MCP はこれを参照する。
+
+- すべて `WITH (security_invoker = true)` — ビューは問い合わせたロールの権限で走るので、
+  `grants.sql` の metabase_ro マスキング（password_hash 等）がビュー越しでも効く。
+- db 5 の schema-filter は `app,analytics`（生テーブルと解決済みビューの両方が見える）。
+- 列ラベルは下記 `gen-business-ja.py` の analytics パスで日本語化。
+- 適用（`analytics-views.sql` を先に、その後 `grants.sql`。どちらも冪等）:
+
+```bash
+ssh 192.168.50.15 "docker exec -i shared-db psql -U postgres -d ckk -v ON_ERROR_STOP=1" < shared-db/sql/analytics-views.sql
+ssh 192.168.50.15 "docker exec -i shared-db psql -U postgres -d ckk -v ON_ERROR_STOP=1" < shared-db/sql/grants.sql
+```
+
 ## 業務ダッシュボード（db 5）
 
 `build-business-dashboards.py` がコレクション「CKK 業務」に **受注・売上 /
@@ -82,7 +103,9 @@ native SQL（`metabase_ro`、search_path=app）で、列別名・状態 enum を
 してある。名前で冪等なので、直したら再実行すれば作り直さず更新する:
 
 ```bash
-MB_URL=http://192.168.50.15:3003 MB_API_KEY=mb_<admin> MB_DB_ID=5 MB_COLLECTION_ID=6 \
+# MB_URL は正規ホストを使う（Metabase は http/LAN の GET を site-url へ 301 する）。
+# ビルダーは Cloudflare Access を通るよう通常の User-Agent を送る。
+MB_URL=https://bi.ckk-tool.co.jp MB_API_KEY=mb_<admin> MB_DB_ID=5 MB_COLLECTION_ID=6 \
   python3 docker-compose/metabase/build-business-dashboards.py
 ```
 

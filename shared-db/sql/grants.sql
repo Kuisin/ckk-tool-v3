@@ -12,8 +12,8 @@ ALTER ROLE kot        IN DATABASE ckk SET search_path = kot, directory;
 ALTER ROLE ldap_sync  IN DATABASE ckk SET search_path = directory, kot;
 ALTER ROLE admintools IN DATABASE ckk SET search_path = admintools;
 ALTER ROLE kot_ro     IN DATABASE ckk SET search_path = kot, directory;
-ALTER ROLE metabase_ro IN DATABASE ckk SET search_path = app;
-ALTER ROLE studio_ro  IN DATABASE ckk SET search_path = app, kot, directory, admintools;
+ALTER ROLE metabase_ro IN DATABASE ckk SET search_path = app, analytics;
+ALTER ROLE studio_ro  IN DATABASE ckk SET search_path = app, analytics, kot, directory, admintools;
 
 -- ── kot: KOT importer + admintools match_employees ───────────────────
 -- CREATE on schema kot: the apps run legacy `CREATE TABLE IF NOT EXISTS`
@@ -118,6 +118,17 @@ GRANT SELECT (id, name, location, plant_id, floor_map_id, map_x, map_y, status,
               device_token_expires_at, user_agent, activated_by, activated_at,
               last_activity_at, created_at, updated_at, linked_at, settings_code)
   ON app.kiosk_devices TO metabase_ro;  -- 隠す: device_token_hash, device_public_key, fingerprint, last_ip_address
+
+-- ── analytics: name-resolved reporting views for Metabase + AI/MCP ────
+-- Views defined in shared-db/sql/analytics-views.sql (run that FIRST — the schema
+-- must exist). They are WITH (security_invoker=true), so metabase_ro's own
+-- privileges (incl. the masking above) are enforced *through* the views; a view
+-- that touched a masked column would just fail for metabase_ro. USAGE + SELECT
+-- for the two read-only reporting roles; default privileges (grantor postgres,
+-- who owns the views) cover views added later. Not a Prisma-managed schema.
+GRANT USAGE ON SCHEMA analytics TO metabase_ro, studio_ro;
+GRANT SELECT ON ALL TABLES IN SCHEMA analytics TO metabase_ro, studio_ro;
+ALTER DEFAULT PRIVILEGES IN SCHEMA analytics GRANT SELECT ON TABLES TO metabase_ro, studio_ro;
 
 -- ── studio_ro: Prisma Studio browser (read-only, EVERY schema) ────────
 -- SELECT-only, so Studio can browse all data but edits fail at the DB.

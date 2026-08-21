@@ -575,6 +575,65 @@ BLOB_JSON = [
 ]
 
 
+# ─── analytics スキーマ（レポート用ビュー層）の表示名 ───────────────
+# analytics.v_* は shared-db/sql/analytics-views.sql で作る名前解決済みビュー。
+# 列は英 snake_case なので、ここで日本語表示名を付ける。共通列（status /
+# created_at / quantity …）は上の COLS を流用し、ビュー固有の解決名列だけ
+# ANALYTICS_COLS で足す（適用時に {**COLS, **ANALYTICS_COLS} で合成）。
+ANALYTICS_TABLES = {
+    "v_estimates": "試算", "v_price_list_entries": "価格表",
+    "v_price_list_variants": "価格表バリアント", "v_quotes": "見積書",
+    "v_quote_items": "見積明細", "v_order_acceptances": "注文請書",
+    "v_order_lines": "注文明細", "v_design_requests": "設計依頼",
+    "v_purchase_requests": "購買依頼", "v_purchase_request_items": "購買依頼明細",
+    "v_material_purchase_orders": "素材発注書",
+    "v_material_purchase_order_items": "素材発注明細",
+    "v_material_receipts": "素材入荷", "v_work_orders": "指示書",
+    "v_work_order_steps": "指示書工程", "v_work_order_step_plans": "工程作業計画",
+    "v_work_order_step_actuals": "工程作業実績", "v_inspection_records": "検査記録",
+    "v_defect_records": "不良記録", "v_product_inventory": "製品在庫",
+    "v_material_inventory": "素材在庫", "v_inventory_reservations": "在庫予約",
+    "v_inventory_transactions": "在庫取引", "v_shipping_orders": "出荷書",
+    "v_shipping_order_items": "出荷明細", "v_delivery_notes": "納品書",
+    "v_delivery_note_items": "納品明細", "v_invoices": "請求書",
+    "v_invoice_items": "請求明細", "v_billing_closings": "締日処理",
+    "v_approval_requests": "承認依頼", "v_approval_records": "承認記録",
+    "v_business_partners": "取引先", "v_products": "製品", "v_materials": "素材",
+    "v_material_types": "材種", "v_plants": "拠点", "v_users": "従業員",
+    "v_process_step_catalog": "工程マスタ", "v_inspection_templates": "検査表テンプレート",
+    "v_defect_types": "不良種類",
+}
+
+ANALYTICS_COLS = {
+    # 導出書類番号
+    "estimate_no": "試算番号", "price_list_no": "価格表番号", "quote_no": "見積番号",
+    "order_no": "注文番号", "order_line_no": "注文明細番号", "work_order_no": "指示書番号",
+    "shipping_no": "出荷番号", "delivery_no": "納品番号", "invoice_no": "請求番号",
+    "lot_number": "ロット番号",
+    # 解決した名前（人）
+    "sales_staff": "営業担当", "created_by_name": "作成者", "approved_by_name": "承認者",
+    "requested_by_name": "依頼者", "ordered_by_name": "発注者", "processed_by_name": "処理者",
+    "recorded_by_name": "記録者", "worker_name": "作業者", "assignee_name": "担当者",
+    "approver_name": "承認者", "delegate_for_name": "被代理者",
+    # 解決した名前（取引先・マスタ）
+    "customer_name": "顧客名", "customer_branch_name": "顧客支店名", "ship_to_name": "出荷先名",
+    "end_user_name": "需要家名", "recipient_name": "納品先名", "recipient_branch_name": "納品先支店名",
+    "supplier_name": "仕入先名", "product_name": "製品名", "material_name": "素材名",
+    "material_type_name": "材種名", "process_step_name": "工程名", "process_category": "工程カテゴリ",
+    "plant_name": "拠点名", "from_plant_name": "出荷元拠点", "assigned_plant_name": "担当拠点",
+    "storage_location_name": "保管場所", "work_location_name": "作業場所",
+    "template_name": "検査表", "related_process_step_name": "関連工程",
+    "defect_type_name": "不良種類", "approval_group_name": "承認グループ",
+    "manufacturer_name": "メーカー", "grade_name": "材種グレード", "shape_name": "形状",
+    "surface_finish_name": "黒皮研磨", "region_name": "地域",
+    # 多言語マスタの分割列
+    "name_ja": "名称(日本語)", "name_en": "名称(英語)",
+    # その他ビュー固有
+    "acceptance_status": "請書状態", "roles": "ロール", "work_hours": "作業時間",
+    "worked_date": "作業日",
+}
+
+
 def sql_lit(s: str) -> str:
     return "'" + s.replace("'", "''") + "'"
 
@@ -626,6 +685,29 @@ def main() -> None:
     out.append("WHERE f.table_id = t.id AND t.db_id = target.id AND t.schema = 'app'")
     out.append("  AND f.parent_id IS NULL AND f.name IN (" + ", ".join(sql_lit(b) for b in BLOB_JSON) + ")")
     out.append("  AND f.json_unfolding IS DISTINCT FROM false;")
+    out.append("")
+    out.append("-- ─── analytics ビューのテーブル表示名 ──────────────")
+    out.append("WITH target AS (SELECT id FROM metabase_database WHERE name = 'CKK 業務'),")
+    out.append("m(tbl, ja) AS (VALUES")
+    rows = [f"  ({sql_lit(k)}, {sql_lit(v)})" for k, v in ANALYTICS_TABLES.items()]
+    out.append(",\n".join(rows))
+    out.append(")")
+    out.append("UPDATE metabase_table t SET display_name = m.ja")
+    out.append("FROM m, target")
+    out.append("WHERE t.db_id = target.id AND t.schema = 'analytics' AND t.name = m.tbl")
+    out.append("  AND t.display_name IS DISTINCT FROM m.ja;")
+    out.append("")
+    out.append("-- ─── analytics ビューの列表示名（COLS ∪ ANALYTICS_COLS） ──")
+    out.append("WITH target AS (SELECT id FROM metabase_database WHERE name = 'CKK 業務'),")
+    out.append("m(col, ja) AS (VALUES")
+    merged = {**COLS, **ANALYTICS_COLS}
+    rows = [f"  ({sql_lit(k)}, {sql_lit(v)})" for k, v in merged.items()]
+    out.append(",\n".join(rows))
+    out.append(")")
+    out.append("UPDATE metabase_field f SET display_name = m.ja")
+    out.append("FROM m, metabase_table t, target")
+    out.append("WHERE f.table_id = t.id AND t.db_id = target.id AND t.schema = 'analytics'")
+    out.append("  AND f.name = m.col AND f.display_name IS DISTINCT FROM m.ja;")
     out.append("")
     out.append("COMMIT;")
     print("\n".join(out))
