@@ -20,7 +20,7 @@ const DOC_FORMATS = {
   DRN: { digits: 5 },
   INV: { digits: 5 },
   ORD: { digits: 5 }, // 注文請書（注文明細の枝番なし基底番号）
-  WO: { digits: 5 }, // 指示書（書類番号 — ロット番号は別の通し連番 int）
+  WOR: { digits: 5 }, // 指示書（書類番号 — ロット番号は別の通し連番 int）
 } as const;
 
 export type DocPrefix = keyof typeof DOC_FORMATS;

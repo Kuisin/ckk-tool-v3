@@ -214,9 +214,9 @@ ON CONFLICT (key) DO UPDATE
   SET last_sequence = GREATEST(app.numbering_sequences.last_sequence, 9004),
       updated_at = EXCLUDED.updated_at;
 
--- 書類番号（WO-YYYYMM-NNNNN）の採番も固定 seq へ追従
+-- 書類番号（WOR-YYYYMM-NNNNN）の採番も固定 seq へ追従
 INSERT INTO app.numbering_sequences (key, prefix, last_year_month, last_sequence, updated_at)
-VALUES ('WORK_ORDER_DOC', 'WO', '202607', 9004, '2026-07-21T09:00:00+09')
+VALUES ('WORK_ORDER_DOC', 'WOR', '202607', 9004, '2026-07-21T09:00:00+09')
 ON CONFLICT (key) DO UPDATE
   SET last_year_month = GREATEST(app.numbering_sequences.last_year_month, EXCLUDED.last_year_month),
       last_sequence = CASE

@@ -23,7 +23,7 @@ const SEQUENCES = {
   DESIGN: { prefix: "DSG", digits: 5 }, // 設計依頼書（request_number に文字列保存）
   // 指示書の書類番号（表示用）。ロット番号は別キー WORK_ORDER（通し連番）—
   // 同じキーにすると月次リセットの upsert が通し連番を壊すため分けている。
-  WORK_ORDER_DOC: { prefix: "WO", digits: 5 },
+  WORK_ORDER_DOC: { prefix: "WOR", digits: 5 },
 } as const;
 
 export type NumberingKey = keyof typeof SEQUENCES;

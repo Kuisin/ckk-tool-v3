@@ -652,7 +652,7 @@ Enum ORDER_LINE_STATUS {
 Table work_orders {
   id              uuid [pk]
   work_order_number int [unique, not null]  // 通し連番 = ロット番号（業務キー）
-  year_month      char(6) [not null]        // 書類番号 WO-YYYYMM-NNNNN（表示用）
+  year_month      char(6) [not null]        // 書類番号 WOR-YYYYMM-NNNNN（表示用）
   seq             int [not null]            // (year_month, seq) unique
   product_id      int [not null, ref: > products.id]  // 常に保持（明細から複写 or 直接指定）
   type            WORK_ORDER_TYPE [not null]
@@ -1669,7 +1669,7 @@ Table files {
 //   ORD-YYYYMM-NNNNN-NN（注文明細）
 //   DRN-YYYYMM-NNNNN（納品書）
 //   INV-YYYYMM-NNNNN（請求書）
-//   WO-YYYYMM-NNNNN（指示書の書類番号 — 表示用。キーは WORK_ORDER_DOC）
+//   WOR-YYYYMM-NNNNN（指示書の書類番号 — 表示用。キーは WORK_ORDER_DOC）
 //   ロット番号（= work_orders.work_order_number）: 通し連番 (int) —
 //     在庫ロット・QR・承認/メモ/監査の業務キーはこちらのまま
 Table numbering_sequences {

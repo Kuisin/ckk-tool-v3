@@ -77,10 +77,10 @@ BEGIN
     updated_at = now()
   RETURNING last_sequence INTO v_wo_number;
 
-  -- 書類番号（WO-YYYYMM-NNNNN）: nextjs-web allocateDocumentKey と同じ upsert
+  -- 書類番号（WOR-YYYYMM-NNNNN）: nextjs-web allocateDocumentKey と同じ upsert
   v_wo_ym := to_char(now() AT TIME ZONE 'Asia/Tokyo', 'YYYYMM');
   INSERT INTO app.numbering_sequences (key, prefix, last_year_month, last_sequence, updated_at)
-  VALUES ('WORK_ORDER_DOC', 'WO', v_wo_ym, 1, now())
+  VALUES ('WORK_ORDER_DOC', 'WOR', v_wo_ym, 1, now())
   ON CONFLICT (key) DO UPDATE SET
     last_sequence = CASE
       WHEN app.numbering_sequences.last_year_month = EXCLUDED.last_year_month

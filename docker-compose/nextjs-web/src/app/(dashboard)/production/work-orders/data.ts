@@ -209,7 +209,7 @@ function mapRow(r: {
 }): WorkOrderRow {
   return {
     workOrderNumber: r.workOrderNumber,
-    docNumber: formatDocNumber("WO", r),
+    docNumber: formatDocNumber("WOR", r),
     createdAt: r.createdAt.toISOString(),
     orderLineNumber: orderLineListLabel(r.orderLineLinks),
     productName: localized(r.product.name as LocalizedText | null),
@@ -357,7 +357,7 @@ export async function fetchWorkOrderStrips(
       ];
       return {
         workOrderNumber: r.workOrderNumber,
-        docNumber: formatDocNumber("WO", r),
+        docNumber: formatDocNumber("WOR", r),
         productName: localized(r.product.name as LocalizedText | null),
         orderLineNumber: orderLineListLabel(r.orderLineLinks),
         customerName:
@@ -423,7 +423,7 @@ export async function fetchWorkOrder(
   return {
     id: r.id,
     workOrderNumber: r.workOrderNumber,
-    docNumber: formatDocNumber("WO", r),
+    docNumber: formatDocNumber("WOR", r),
     status: r.status,
     approvalStatus: r.approvalStatus,
     type: r.type,
@@ -463,11 +463,11 @@ export async function fetchWorkOrder(
     lotNumber: r.orderLineLinks[0]?.orderLine.lotNumber ?? null,
     sourceWorkOrderNumber: r.sourceWorkOrder?.workOrderNumber ?? null,
     sourceWorkOrderDocNumber: r.sourceWorkOrder
-      ? formatDocNumber("WO", r.sourceWorkOrder)
+      ? formatDocNumber("WOR", r.sourceWorkOrder)
       : null,
     copies: r.copies.map((c) => ({
       workOrderNumber: c.workOrderNumber,
-      docNumber: formatDocNumber("WO", c),
+      docNumber: formatDocNumber("WOR", c),
       status: c.status,
       createdAt: c.createdAt.toISOString(),
     })),
@@ -609,7 +609,7 @@ export async function fetchWorkOrderStepNav(
   if (!workOrderRowInScope(authz.access, authz.userId, r)) return null;
   return {
     workOrderNumber: r.workOrderNumber,
-    docNumber: formatDocNumber("WO", r),
+    docNumber: formatDocNumber("WOR", r),
     createdAt: r.createdAt.toISOString(),
     steps: r.steps.map((s) => ({
       id: s.id,
@@ -869,7 +869,7 @@ export async function fetchStepExecution(
   return {
     actorId,
     workOrderNumber,
-    workOrderDocNumber: formatDocNumber("WO", wo),
+    workOrderDocNumber: formatDocNumber("WOR", wo),
     workOrderCreatedAt: wo.createdAt.toISOString(),
     workOrderStatus: wo.status,
     plannedQuantity: wo.plannedQuantity,
@@ -1034,7 +1034,7 @@ export async function resolveWorkOrderIdParam(
   id: string,
 ): Promise<number | null> {
   const decoded = decodeURIComponent(id);
-  const key = parseDocKey(decoded, "WO");
+  const key = parseDocKey(decoded, "WOR");
   if (key) {
     const row = await prisma.workOrder.findUnique({
       where: { yearMonth_seq: { yearMonth: key.yearMonth, seq: key.seq } },

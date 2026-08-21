@@ -339,7 +339,7 @@ export async function createWorkOrder(
     const actor = await getCurrentActorId();
     const workOrderNumber = await nextSerialNumber("WORK_ORDER");
     const docKey = await allocateDocumentKey("WORK_ORDER_DOC");
-    const docNumber = formatDocNumber("WO", docKey);
+    const docNumber = formatDocNumber("WOR", docKey);
     const materialId = v.type === "MANUFACTURE" ? v.materialId : null;
 
     const routeVersionId = await prisma.$transaction(async (tx) => {
@@ -532,7 +532,7 @@ export async function updateWorkOrder(
         stepCount: built.creates.length,
       },
     });
-    const docNumber = formatDocNumber("WO", {
+    const docNumber = formatDocNumber("WOR", {
       yearMonth: prior.yearMonth,
       seq: prior.seq,
     });
@@ -615,7 +615,7 @@ export async function copyWorkOrder(
     const actor = await getCurrentActorId();
     const workOrderNumber = await nextSerialNumber("WORK_ORDER");
     const docKey = await allocateDocumentKey("WORK_ORDER_DOC");
-    const docNumber = formatDocNumber("WO", docKey);
+    const docNumber = formatDocNumber("WOR", docKey);
     // 在庫分のコピーは割当 = 予定数量の不変条件を保つため、受注残まで縮める
     const plannedQuantity =
       source.type === "FROM_STOCK" && allocations.length > 0

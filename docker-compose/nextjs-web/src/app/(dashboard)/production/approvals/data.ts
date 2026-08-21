@@ -105,7 +105,7 @@ export async function fetchPendingApprovalRequests(): Promise<
             where: { workOrderNumber: { in: woNumbers } },
             select: { workOrderNumber: true, yearMonth: true, seq: true },
           })
-        ).map((w) => [String(w.workOrderNumber), formatDocNumber("WO", w)])
+        ).map((w) => [String(w.workOrderNumber), formatDocNumber("WOR", w)])
       : [],
   );
 

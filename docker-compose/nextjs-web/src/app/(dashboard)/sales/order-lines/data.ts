@@ -157,7 +157,7 @@ function mapOrderLine(r: OrderLineRow): OrderLine {
     notes: r.notes,
     workOrders: r.workOrderLinks.map((l) => ({
       workOrderNumber: l.workOrder.workOrderNumber,
-      docNumber: formatDocNumber("WO", l.workOrder),
+      docNumber: formatDocNumber("WOR", l.workOrder),
       type: l.workOrder.type,
       plannedQuantity: l.workOrder.plannedQuantity,
       allocatedQuantity: l.quantity,
