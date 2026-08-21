@@ -99,8 +99,13 @@ ssh 192.168.50.15 "docker exec -i shared-db psql -U postgres -d ckk -v ON_ERROR_
 
 `build-business-dashboards.py` がコレクション「CKK 業務」に **受注・売上 /
 生産進捗 / 請求 / 在庫** の 4 ダッシュボード + 25 カードを作る。カードは
-native SQL（`metabase_ro`、search_path=app）で、列別名・状態 enum を日本語化
-してある。名前で冪等なので、直したら再実行すれば作り直さず更新する:
+native SQL（`metabase_ro`、search_path=app,analytics）で、列別名・状態 enum を
+日本語化してある。名前で冪等なので、直したら再実行すれば作り直さず更新する。
+
+**フォルダ構成（維持すること）** — ダッシュボードはコレクション直下、質問
+（カード）は各コレクション配下の **`_カード`** サブコレクションに置く（労務側
+も同じ構成）。ビルダーは親と `_カード` の両方から名前でカードを探し、見つかった
+場所のまま更新する — カードを移動することはない。新規カードは `_カード` へ作る:
 
 ```bash
 # MB_URL は正規ホストを使う（Metabase は http/LAN の GET を site-url へ 301 する）。

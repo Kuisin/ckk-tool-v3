@@ -2,11 +2,17 @@
 """Metabase「CKK 業務」データソース（db 5 / app スキーマ）に受注・生産・請求・在庫の
 ダッシュボードとカードを作る。名前で冪等（同名カード/ダッシュボードは作り直さず更新）。
 
-  MB_URL=http://192.168.50.15:3003 MB_API_KEY=mb_... MB_DB_ID=5 MB_COLLECTION_ID=6 \
+  MB_URL=https://bi.ckk-tool.co.jp MB_API_KEY=mb_... MB_DB_ID=5 MB_COLLECTION_ID=6 \
     python3 build-business-dashboards.py
 
-カードは native SQL（metabase_ro は search_path=app、read-only）。列別名を日本語に
-して見出しがそのまま意味になるようにする。状態 enum は CASE で日本語化する。
+フォルダ構成（利用者が整理した形。維持すること）:
+  CKK 業務/            … ダッシュボード（受注・売上 / 生産進捗 / 請求 / 在庫）
+  CKK 業務/_カード/    … 質問（カード）は全部ここ
+既存カードは親と _カード の両方から名前で探し、見つかった場所のまま更新する —
+このスクリプトはカードを移動しない。新規カードは _カード へ作る。
+
+カードは native SQL（metabase_ro は search_path=app,analytics、read-only）。列別名を
+日本語にして見出しがそのまま意味になるようにする。状態 enum は CASE で日本語化する。
 """
 import json, os, sys, urllib.request
 
@@ -171,12 +177,29 @@ def dataset_query(sql):
     return {"database": DB_ID, "type": "native", "native": {"query": sql}}
 
 
+CARD_SUBCOLLECTION = "_カード"
+
+
 def main():
-    # 既存カード / ダッシュボードを名前で引く（冪等）
-    items = api("GET", f"/api/collection/{COLLECTION_ID}/items?models=card&models=dashboard")
+    # フォルダ構成: ダッシュボードは親コレクション直下、質問（カード）は
+    # 「_カード」サブコレクションに置く（利用者が整理した構成。壊さない）。
+    # 既存カードは親と _カード の両方から名前で探し、見つかったカードは
+    # 「今ある場所のまま」更新する — このスクリプトがカードを移動することはない。
+    # 新規カードは _カード サブコレクション（無ければ作る）へ入れる。
+    subs = api("GET", f"/api/collection/{COLLECTION_ID}/items?models=collection")
+    card_coll = next((it["id"] for it in subs.get("data", [])
+                      if it["name"] == CARD_SUBCOLLECTION), None)
+    if card_coll is None:
+        card_coll = api("POST", "/api/collection",
+                        {"name": CARD_SUBCOLLECTION, "parent_id": COLLECTION_ID})["id"]
+        print(f"created subcollection {CARD_SUBCOLLECTION} -> {card_coll}")
+
+    # 既存カード / ダッシュボードを名前で引く（冪等）。値 = (id, collection_id)
     existing = {}
-    for it in items.get("data", []):
-        existing[(it["model"], it["name"])] = it["id"]
+    for coll in (COLLECTION_ID, card_coll):
+        items = api("GET", f"/api/collection/{coll}/items?models=card&models=dashboard")
+        for it in items.get("data", []):
+            existing.setdefault((it["model"], it["name"]), (it["id"], coll))
 
     key_to_id = {}
     for c in CARDS:
@@ -184,18 +207,19 @@ def main():
             "name": c["name"], "display": c["display"],
             "dataset_query": dataset_query(c["sql"]),
             "visualization_settings": viz_for(c),
-            "collection_id": COLLECTION_ID,
         }
-        cid = existing.get(("card", c["name"]))
-        if cid:
-            api("PUT", f"/api/card/{cid}", body)
+        hit = existing.get(("card", c["name"]))
+        if hit:
+            cid, coll = hit
+            api("PUT", f"/api/card/{cid}", {**body, "collection_id": coll})
         else:
-            cid = api("POST", "/api/card", body)["id"]
+            cid = api("POST", "/api/card", {**body, "collection_id": card_coll})["id"]
         key_to_id[c["key"]] = cid
         print(f"card {c['name']} -> {cid}")
 
     for d in DASHBOARDS:
-        did = existing.get(("dashboard", d["name"]))
+        hit = existing.get(("dashboard", d["name"]))
+        did = hit[0] if hit else None
         if not did:
             did = api("POST", "/api/dashboard",
                       {"name": d["name"], "description": d["description"],
