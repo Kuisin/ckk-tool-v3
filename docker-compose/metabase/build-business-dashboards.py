@@ -80,6 +80,18 @@ CARDS = [
          sql="SELECT customer_name AS \"顧客\", COALESCE(sum(amount),0) AS \"受注金額\" "
              "FROM analytics.v_order_lines WHERE status <> 'CANCELLED' AND customer_name IS NOT NULL "
              "GROUP BY 1 ORDER BY 2 DESC LIMIT 10"),
+    dict(key="sales_by_staff", name="営業担当別 受注金額", display="row", dim="営業担当", met="受注金額",
+         sql="SELECT COALESCE(sales_staff,'（担当未設定）') AS \"営業担当\", "
+             "COALESCE(sum(amount),0) AS \"受注金額\" "
+             "FROM analytics.v_order_lines WHERE status <> 'CANCELLED' "
+             "GROUP BY 1 ORDER BY 2 DESC"),
+    dict(key="sales_staff_monthly", name="営業担当別 受注金額 月次", display="bar",
+         dim=["年月", "営業担当"], met="受注金額",
+         sql="SELECT to_char(created_at,'YYYY-MM') AS \"年月\", "
+             "COALESCE(sales_staff,'（担当未設定）') AS \"営業担当\", "
+             "COALESCE(sum(amount),0) AS \"受注金額\" "
+             "FROM analytics.v_order_lines WHERE status <> 'CANCELLED' "
+             "GROUP BY 1, 2 ORDER BY 1, 2"),
     dict(key="oa_recent", name="最近の注文明細", display="table",
          sql="SELECT order_line_no AS \"注文番号\", customer_name AS \"顧客\", sales_staff AS \"営業担当\", "
              "product_name AS \"製品\", quantity AS \"数量\", amount AS \"金額\", "
@@ -149,6 +161,7 @@ DASHBOARDS = [
         ("oa_total", 0, 0, 6, 3), ("ol_total", 0, 6, 6, 3), ("sales_total", 0, 12, 12, 3),
         ("oa_by_status", 3, 0, 8, 6), ("ol_by_status", 3, 8, 8, 6), ("sales_monthly", 3, 16, 8, 6),
         ("sales_by_customer", 9, 0, 12, 7), ("oa_recent", 9, 12, 12, 7),
+        ("sales_by_staff", 16, 0, 12, 7), ("sales_staff_monthly", 16, 12, 12, 7),
     ]),
     dict(name="生産進捗", description="指示書・工程の状態と進行中の指示書", layout=[
         ("wo_total", 0, 0, 8, 3), ("wo_inprogress", 0, 8, 8, 3), ("step_total", 0, 16, 8, 3),
@@ -168,8 +181,13 @@ DASHBOARDS = [
 
 
 def viz_for(c):
+    # dim は文字列（1 次元）またはリスト（第 2 要素がブレイクアウト = 積み上げ系列）
     if c["display"] in ("bar", "row") and c.get("dim") and c.get("met"):
-        return {"graph.dimensions": [c["dim"]], "graph.metrics": [c["met"]]}
+        dims = c["dim"] if isinstance(c["dim"], list) else [c["dim"]]
+        vs = {"graph.dimensions": dims, "graph.metrics": [c["met"]]}
+        if len(dims) > 1:
+            vs["stackable.stack_type"] = "stacked"
+        return vs
     return {}
 
 
