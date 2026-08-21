@@ -12,6 +12,7 @@ ALTER ROLE kot        IN DATABASE ckk SET search_path = kot, directory;
 ALTER ROLE ldap_sync  IN DATABASE ckk SET search_path = directory, kot;
 ALTER ROLE admintools IN DATABASE ckk SET search_path = admintools;
 ALTER ROLE kot_ro     IN DATABASE ckk SET search_path = kot, directory;
+ALTER ROLE metabase_ro IN DATABASE ckk SET search_path = app;
 ALTER ROLE studio_ro  IN DATABASE ckk SET search_path = app, kot, directory, admintools;
 
 -- ── kot: KOT importer + admintools match_employees ───────────────────
@@ -75,6 +76,15 @@ GRANT USAGE ON SCHEMA kot, directory TO kot_ro;
 GRANT SELECT ON ALL TABLES IN SCHEMA kot, directory TO kot_ro;
 ALTER DEFAULT PRIVILEGES IN SCHEMA kot GRANT SELECT ON TABLES TO kot_ro;
 ALTER DEFAULT PRIVILEGES IN SCHEMA directory GRANT SELECT ON TABLES TO kot_ro;
+
+-- ── metabase_ro: Metabase business DB (read-only, app schema only) ───
+-- The 「CKK 業務」 Metabase data source connects as this role. SELECT-only on
+-- the v3 business schema `app`; deliberately NOT granted kot/directory
+-- (those stay on the separate 労務 data source via kot_ro). Postgres is the
+-- grantor of Prisma migrations, so default privileges cover future app tables.
+GRANT USAGE ON SCHEMA app TO metabase_ro;
+GRANT SELECT ON ALL TABLES IN SCHEMA app TO metabase_ro;
+ALTER DEFAULT PRIVILEGES IN SCHEMA app GRANT SELECT ON TABLES TO metabase_ro;
 
 -- ── studio_ro: Prisma Studio browser (read-only, EVERY schema) ────────
 -- SELECT-only, so Studio can browse all data but edits fail at the DB.
