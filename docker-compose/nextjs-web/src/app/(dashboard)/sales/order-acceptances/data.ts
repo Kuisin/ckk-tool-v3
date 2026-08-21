@@ -72,6 +72,7 @@ export async function fetchOrderAcceptances(): Promise<
       ? localized(r.customerBp.name as LocalizedText | null)
       : null,
     itemCount: r._count.items,
+    orderDate: r.orderDate?.toISOString().slice(0, 10) ?? null,
     extractError: r.extractError,
     createdAt: r.createdAt.toISOString(),
     updatedAt: r.updatedAt.toISOString(),
