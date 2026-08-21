@@ -22,6 +22,9 @@ def api(method, path, body=None):
     req = urllib.request.Request(url, data=data, method=method)
     req.add_header("x-api-key", API_KEY)
     req.add_header("Content-Type", "application/json")
+    # When MB_URL is the public host (behind Cloudflare Access), the default
+    # python-urllib User-Agent is blocked (403). Send a normal UA.
+    req.add_header("User-Agent", "ckk-metabase-builder/1.0")
     with urllib.request.urlopen(req, timeout=60) as r:
         raw = r.read().decode()
         return json.loads(raw) if raw else {}
@@ -68,21 +71,15 @@ CARDS = [
          sql="SELECT to_char(created_at,'YYYY-MM') AS \"年月\", COALESCE(sum(amount),0) AS \"受注金額\" "
              "FROM app.order_lines WHERE status <> 'CANCELLED' GROUP BY 1 ORDER BY 1"),
     dict(key="sales_by_customer", name="顧客別 受注金額 上位", display="row", dim="顧客", met="受注金額",
-         sql="SELECT bp.name->>'ja' AS \"顧客\", COALESCE(sum(ol.amount),0) AS \"受注金額\" "
-             "FROM app.order_lines ol "
-             "JOIN app.order_acceptances oa ON oa.year_month=ol.acceptance_year_month AND oa.seq=ol.acceptance_seq "
-             "JOIN app.business_partners bp ON bp.id=oa.customer_bp_id "
-             "WHERE ol.status <> 'CANCELLED' GROUP BY 1 ORDER BY 2 DESC LIMIT 10"),
-    dict(key="oa_recent", name="最近の注文請書", display="table",
-         sql="SELECT 'ORD-'||oa.year_month||'-'||lpad(oa.seq::text,5,'0') AS \"注文番号\", "
-             "bp.name->>'ja' AS \"顧客\", " + f"{case('oa.status', OA_ST)} AS \"状態\", "
-             "oa.order_date AS \"注文日\", "
-             "COALESCE(sum(ol.amount),0) AS \"受注金額\" "
-             "FROM app.order_acceptances oa "
-             "LEFT JOIN app.order_lines ol ON ol.acceptance_year_month=oa.year_month AND ol.acceptance_seq=oa.seq "
-             "JOIN app.business_partners bp ON bp.id=oa.customer_bp_id "
-             "GROUP BY oa.year_month, oa.seq, bp.name, oa.status, oa.order_date "
-             "ORDER BY oa.year_month DESC, oa.seq DESC LIMIT 20"),
+         sql="SELECT customer_name AS \"顧客\", COALESCE(sum(amount),0) AS \"受注金額\" "
+             "FROM analytics.v_order_lines WHERE status <> 'CANCELLED' AND customer_name IS NOT NULL "
+             "GROUP BY 1 ORDER BY 2 DESC LIMIT 10"),
+    dict(key="oa_recent", name="最近の注文明細", display="table",
+         sql="SELECT order_line_no AS \"注文番号\", customer_name AS \"顧客\", sales_staff AS \"営業担当\", "
+             "product_name AS \"製品\", quantity AS \"数量\", amount AS \"金額\", "
+             + f"{case('status', OL_ST)} AS \"状態\" "
+             "FROM analytics.v_order_lines "
+             "ORDER BY acceptance_year_month DESC, acceptance_seq DESC, branch DESC NULLS LAST LIMIT 20"),
     # 生産進捗
     dict(key="wo_total", name="指示書 総数", display="scalar",
          sql="SELECT count(*) AS \"件数\" FROM app.work_orders"),
@@ -100,13 +97,13 @@ CARDS = [
          sql=f"SELECT {case('status', STEP_ST)} AS \"状態\", count(*) AS \"件数\" "
              "FROM app.work_order_steps GROUP BY status ORDER BY count(*) DESC"),
     dict(key="wo_active", name="進行中・承認待ちの指示書", display="table",
-         sql="SELECT 'WO-'||wo.year_month||'-'||lpad(wo.seq::text,5,'0') AS \"指示書番号\", "
-             "wo.work_order_number AS \"ロット番号\", p.name->>'ja' AS \"製品\", "
-             "wo.planned_quantity AS \"予定数量\", " + f"{case('wo.status', WO_ST)} AS \"状態\", "
-             + f"{case('wo.approval_status', WOA_ST)} AS \"承認状態\" "
-             "FROM app.work_orders wo LEFT JOIN app.products p ON p.id=wo.product_id "
-             "WHERE wo.status IN ('IN_PROGRESS','PENDING_APPROVAL','APPROVED') "
-             "ORDER BY wo.year_month DESC, wo.seq DESC LIMIT 20"),
+         sql="SELECT work_order_no AS \"指示書番号\", lot_number AS \"ロット番号\", "
+             "product_name AS \"製品\", planned_quantity AS \"予定数量\", "
+             "created_by_name AS \"作成者\", " + f"{case('status', WO_ST)} AS \"状態\", "
+             + f"{case('approval_status', WOA_ST)} AS \"承認状態\" "
+             "FROM analytics.v_work_orders "
+             "WHERE status IN ('IN_PROGRESS','PENDING_APPROVAL','APPROVED') "
+             "ORDER BY year_month DESC, seq DESC LIMIT 20"),
     # 請求
     dict(key="inv_total", name="請求書 総数", display="scalar",
          sql="SELECT count(*) AS \"件数\" FROM app.invoices"),
