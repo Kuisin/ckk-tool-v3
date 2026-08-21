@@ -28,6 +28,9 @@ export const en: KioskMessages = {
     rescan: "Scan again",
     workOrder: (n: number) => `Work order #${n}`,
     plannedQty: (n: number) => `Planned quantity: ${n} pcs`,
+    material: (name: string) => `Material: ${name}`,
+    progress: (done: number, total: number) =>
+      `${done} / ${total} steps completed`,
     stepsTitle: "Steps",
     noSteps: "This work order has no steps",
     assignees: (names: string) => `Assigned: ${names}`,
@@ -66,6 +69,8 @@ export const en: KioskMessages = {
       allDay: "All day",
       expectedInput: (n: number) => `${n} pcs expected`,
       inputRecorded: (n: number) => `${n} pcs received`,
+      okOutput: (n: number) => `${n} pcs OK`,
+      outsource: "Outsourced",
       elapsed: (t: string) => `Worked ${t}`,
       elapsedLabel: "Worked",
       plannedHours: (h: number) => `Planned ${h}h`,

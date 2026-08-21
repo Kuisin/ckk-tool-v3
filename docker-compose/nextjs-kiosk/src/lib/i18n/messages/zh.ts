@@ -28,6 +28,9 @@ export const zh: KioskMessages = {
     rescan: "重新扫描",
     workOrder: (n: number) => `工单 #${n}`,
     plannedQty: (n: number) => `计划数量 ${n} 支`,
+    material: (name: string) => `材料: ${name}`,
+    progress: (done: number, total: number) =>
+      `已完成 ${done} / ${total} 道工序`,
     stepsTitle: "工序",
     noSteps: "该工单没有工序",
     assignees: (names: string) => `负责人: ${names}`,
@@ -65,6 +68,8 @@ export const zh: KioskMessages = {
       allDay: "全天",
       expectedInput: (n: number) => `预计接收 ${n} 支`,
       inputRecorded: (n: number) => `接收 ${n} 支`,
+      okOutput: (n: number) => `良品 ${n} 支`,
+      outsource: "外协",
       elapsed: (t: string) => `作业 ${t}`,
       elapsedLabel: "作业",
       plannedHours: (h: number) => `计划 ${h}h`,
