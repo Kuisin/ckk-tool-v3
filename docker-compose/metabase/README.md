@@ -39,6 +39,16 @@ databases, use the host IP / hostname.
 `metabase_ro` は `app` スキーマに read-only（`shared-db/sql/grants.sql` +
 `docker-compose/shared-db/init/01-roles.sh`）。労務 DB の `kot_ro` とは分離。
 
+**機微データのマスキング** — BI に不要で漏れると危険な認証・セッション・端末鍵・
+PIN・プッシュ秘密は `grants.sql` の metabase_ro ブロックで隠している（DB 権限で
+強制）。まるごと剥奪: `kiosk_sessions` / `kiosk_link_requests` /
+`push_subscriptions`。列単位で剥奪: `users.password_hash`、`kiosk_cards.pin*`、
+`kiosk_devices.device_token_hash`/`device_public_key`/`fingerprint`/`last_ip_address`。
+権限の無いテーブルは再同期で Metabase から自動的に落ちる。列は pg_catalog 経由で
+一覧には残るため、`visibility_type='sensitive'` を metabase-db 側で立てて UI から
+隠す（クエリしても DB 権限で拒否されるので値は出ない）。列を増やしたら grants.sql
+の許可列リストを見直すこと。
+
 ## 表示名の日本語化（テーブル・列ラベル）
 
 生の DB 名の自動整形（`Hr Records` / `Order Acceptances` 等）ではなく意味の
