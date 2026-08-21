@@ -58,11 +58,17 @@ export interface MyStepView {
   plannedQuantityForMe: number | null;
   /** 指示書の予定数量 */
   workOrderPlannedQuantity: number;
+  /** 社内 / 外注（INTERNAL | OUTSOURCE）。 */
+  executionLocation: string;
   /** 記録済みの受入数（開始済みのみ） */
   inputQuantity: number | null;
   /** 未開始工程の想定受入数 */
   expectedInputQuantity: number | null;
   outputSuccessQuantity: number | null;
+  /** 不良内訳（完了工程の表示用）。 */
+  defectSemiFinished: number | null;
+  defectScrap: number | null;
+  defectRework: number | null;
   /** 予定作業時間 (h) — 任意。 */
   plannedWorkHours: number | null;
   /** 計画に割り当てられた作業場所名（任意）。 */
@@ -300,6 +306,7 @@ async function hydrateSteps(
       stepCode: r.processStep.code,
       plantName: r.plant ? localized(asText(r.plant.name), locale) : null,
       quantityMode: r.processStep.quantityTracking,
+      executionLocation: r.executionLocation,
       sessionState: state,
       blockReasons:
         state === "BLOCKED" ? canStartStep(r.id, ctx, userId).reasons : [],
@@ -313,6 +320,9 @@ async function hydrateSteps(
       inputQuantity: r.inputQuantity,
       expectedInputQuantity: expectedInput(r.id, ctx),
       outputSuccessQuantity: r.outputSuccessQuantity,
+      defectSemiFinished: r.outputDefectSemiFinished,
+      defectScrap: r.outputDefectScrap,
+      defectRework: r.outputDefectRework,
       plannedWorkHours:
         r.plannedWorkHours == null ? null : Number(r.plannedWorkHours),
       workLocationName: plan?.workLocation
@@ -519,6 +529,8 @@ export interface WorkOrderOverview {
   /** WORK_ORDER_STATUS（DRAFT..CANCELLED）。 */
   status: string;
   productName: string;
+  /** 使用素材（未指定は null）。 */
+  materialName: string | null;
   plannedQuantity: number;
   steps: WorkOrderStepItem[];
 }
@@ -543,6 +555,7 @@ export async function getWorkOrderOverview(
       status: true,
       plannedQuantity: true,
       product: { select: { name: true } },
+      material: { select: { name: true } },
       steps: { select: { id: true } },
     },
   });
@@ -603,6 +616,9 @@ export async function getWorkOrderOverview(
     workOrderNumber: wo.workOrderNumber,
     status: wo.status,
     productName: localized(asText(wo.product.name), locale),
+    materialName: wo.material
+      ? localized(asText(wo.material.name), locale)
+      : null,
     plannedQuantity: wo.plannedQuantity,
     steps: items,
   };
