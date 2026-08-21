@@ -37,6 +37,8 @@ export interface OrderAcceptanceListRow {
   sourceFilename: string | null;
   customerName: string | null;
   itemCount: number;
+  /** 注文日（お客様が注文した日 — 抽出 or 手入力。null = 未入力）。 */
+  orderDate: string | null;
   extractError: string | null;
   createdAt: string;
   updatedAt: string;

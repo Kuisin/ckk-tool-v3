@@ -325,6 +325,18 @@ export function OrderAcceptanceIntakeTable({
       ),
     },
     {
+      key: "orderDate",
+      header: "注文日",
+      width: 110,
+      sortable: true,
+      sortValue: (r) => r.orderDate ?? "",
+      render: (r) => (
+        <Text className="tabular-nums" size="sm">
+          {r.orderDate ? fmt.date(r.orderDate) : "—"}
+        </Text>
+      ),
+    },
+    {
       key: "status",
       header: "状態",
       width: 110,
@@ -462,6 +474,11 @@ export function OrderAcceptanceIntakeTable({
                     <Text c="dimmed" size="xs">
                       明細 {r.itemCount} 件
                     </Text>
+                    {r.orderDate && (
+                      <Text c="dimmed" size="xs">
+                        注文日 {fmt.date(r.orderDate)}
+                      </Text>
+                    )}
                     {r.extractError && (
                       <ExtractErrorBadge size="xs" stored={r.extractError} />
                     )}
