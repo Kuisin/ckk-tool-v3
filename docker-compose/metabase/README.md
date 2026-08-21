@@ -28,3 +28,21 @@ databases, use the host IP / hostname.
 
 > **Security:** keep on the LAN, or front with nginx + Cloudflare Access like the
 > other apps if you publish it.
+
+## 表示名の日本語化（テーブル・列ラベル）
+
+`sql/metadata-ja.sql` が King of Time (労務) データソースのテーブル・列の
+表示名を、生の DB 名（`Hr Records` 等）ではなく意味の分かる日本語に揃える。
+正式名はスキーマ本体（`kot.*` / `directory.*`）に付け、`public.*` の互換
+ビュー（`shared-db/sql/metabase-compat.sql`）には「（旧）」を付けて新規
+クエリで選ばれにくくしている。
+
+適用先は Metabase の**アプリケーション DB（`metabase-db`）**。API キーが
+管理者権限を持たないため REST ではなく直接 UPDATE する（冪等）。列を追加
+したらこのファイルにラベルを足して再適用する:
+
+```bash
+ssh 192.168.50.15 "docker exec -i metabase-db psql -U metabase -d metabase -v ON_ERROR_STOP=1" \
+  < docker-compose/metabase/sql/metadata-ja.sql
+ssh 192.168.50.15 "cd ~/stacks/metabase && docker compose restart metabase"   # キャッシュ破棄
+```
