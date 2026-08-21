@@ -14,13 +14,16 @@ import { stepFromSnapshot } from "@/lib/approval-flow";
 import { APPROVAL_TARGET, isApprovalTargetType } from "@/lib/approval-targets";
 import { checkPermission } from "@/lib/authz";
 import { prisma } from "@/lib/db";
+import { formatDocNumber } from "@/lib/doc-number";
 import { localized } from "@/lib/format";
 
 /** 承認管理 (PD03) の 1 行（client-safe）。 */
 export interface ApprovalRequestRow {
   id: string;
   targetType: string; // work_orders | material_purchase_orders | order_acceptances | purchase_requests
-  targetId: string; // 業務キー（指示書番号 / PO-… / ORD-…）
+  targetId: string; // 業務キー（ロット番号 int / PO-… / ORD-…）
+  /** 表示用番号（指示書はロット番号 → 書類番号 WO-… へ解決済み）。 */
+  targetDisplay: string;
   /** 何段目か（1 起点）と総段数 — 「2/3」と出す。 */
   stepNo: number;
   stepCount: number;
@@ -90,6 +93,22 @@ export async function fetchPendingApprovalRequests(): Promise<
 
   const readable = await readableTargetTypes(requests.map((r) => r.targetType));
 
+  // 指示書の target_id はロット番号（int 文字列）— 表示は書類番号へ解決する。
+  const woNumbers = requests
+    .filter((r) => r.targetType === "work_orders")
+    .map((r) => Number(r.targetId))
+    .filter((n) => Number.isInteger(n) && n >= 1);
+  const woDocNumbers = new Map<string, string>(
+    woNumbers.length
+      ? (
+          await prisma.workOrder.findMany({
+            where: { workOrderNumber: { in: woNumbers } },
+            select: { workOrderNumber: true, yearMonth: true, seq: true },
+          })
+        ).map((w) => [String(w.workOrderNumber), formatDocNumber("WO", w)])
+      : [],
+  );
+
   return requests.map((r) => {
     const step = stepFromSnapshot(r.flowSnapshot, r.stepNo);
     const mode = r.mode as "ANY" | "ALL";
@@ -97,6 +116,10 @@ export async function fetchPendingApprovalRequests(): Promise<
       id: r.id,
       targetType: r.targetType,
       targetId: r.targetId,
+      targetDisplay:
+        r.targetType === "work_orders"
+          ? (woDocNumbers.get(r.targetId) ?? `#${r.targetId}`)
+          : r.targetId,
       stepNo: r.stepNo,
       stepCount: r.stepCount,
       stepLabel: step ? localized(step.name) : `${r.stepNo} 段目`,

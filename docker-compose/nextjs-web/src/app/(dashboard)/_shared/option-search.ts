@@ -501,7 +501,10 @@ export async function searchUserOptions(
   }));
 }
 
-/** 注文明細検索（指示書ビルダー用）。value = uuid、label = 番号 + 製品 + 数量。 */
+/**
+ * 注文明細検索（出荷書・設計依頼などの汎用）。value = uuid、
+ * label = 番号 + 製品 + 数量。
+ */
 export async function searchOrderLineOptions(
   query: string,
 ): Promise<SearchOption[]> {
@@ -545,6 +548,32 @@ export async function searchOrderLineOptions(
     value: r.id,
     label: `${orderLineNumberOf(r) ?? "—"} ${localized(r.product?.name as LocalizedText | null)}（${r.quantity}）`,
   }));
+}
+
+/**
+ * 指示書に割り当てられる注文明細だけの検索（指示書ビルダー・コピー用）。
+ * 受注数量まで手配済み（実効ベース — 完了済み指示書は実際にできた分で数える。
+ * 不良で足りなかった明細は残が戻るので、また候補に出る）の明細は候補に
+ * 出さない — 割り当てても検証で弾かれるだけのため。
+ */
+export async function searchAllocatableOrderLineOptions(
+  query: string,
+): Promise<SearchOption[]> {
+  const options = await searchOrderLineOptions(query);
+  if (options.length === 0) return options;
+  const ids = options.map((o) => o.value);
+  const [{ effectiveAllocatedByLine }, lines] = await Promise.all([
+    import("@/lib/work-order-alloc"),
+    prisma.orderLine.findMany({
+      where: { id: { in: ids } },
+      select: { id: true, quantity: true },
+    }),
+  ]);
+  const allocated = await effectiveAllocatedByLine(ids);
+  const quantityOf = new Map(lines.map((l) => [l.id, l.quantity]));
+  return options.filter(
+    (o) => (allocated.get(o.value) ?? 0) < (quantityOf.get(o.value) ?? 0),
+  );
 }
 
 /** 素材検索（指示書の使用素材）。value = 内部 id、label = コード + 名称。 */

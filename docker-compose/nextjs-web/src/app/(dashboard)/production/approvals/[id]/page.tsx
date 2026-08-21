@@ -7,6 +7,7 @@ import { listMemos } from "@/lib/document-memos";
 import {
   fetchWorkOrder,
   fetchWorkOrderApprovalTrail,
+  resolveWorkOrderIdParam,
 } from "../../work-orders/data";
 
 export const dynamic = "force-dynamic";
@@ -33,8 +34,8 @@ export default async function ProductionApprovalsDetailPage({
   const denied = await requireAppRead("approvals");
   if (denied) return denied;
   const { id } = await params;
-  const workOrderNumber = Number(id);
-  if (!Number.isInteger(workOrderNumber) || workOrderNumber < 1) notFound();
+  const workOrderNumber = await resolveWorkOrderIdParam(id);
+  if (workOrderNumber == null) notFound();
 
   const [workOrder, auditEntries, approval, approvalTrail, memos] =
     await Promise.all([

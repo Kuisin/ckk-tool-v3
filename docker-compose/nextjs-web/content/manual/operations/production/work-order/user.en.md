@@ -21,7 +21,7 @@ This app is for making the document (**指示書**, work order) that decides whi
 - **割当** (allocation) … the link that says which order lines this work order makes pieces for, and how many. You may split one order line across several work orders (splitting), or combine several order lines of the same product into one work order (a combined lot).
 - **工程** (step) … one stage of the work, such as cutting, step machining, or inspection.
 - **工程リスト** (step list) … the order of the steps for making a product, registered in advance.
-- **ロット番号** (lot number) … the number given to a batch of products you made. The work order number becomes the lot number.
+- **ロット番号** (lot number) … a serial number such as `#9001` given to a batch of products you made. It is assigned automatically when a work order is created, and is used to trace the lot through stock and shipping.
 - **受入数 / 良品数** (received quantity / good quantity) … the received quantity is how many pieces came into that step; the good quantity is how many pieces are fine to pass on.
 - **承認グループ** (approval group) … the list of people who are allowed to approve. Only people on this list can approve.
 
@@ -37,7 +37,7 @@ When you open the app, you see a list of the work orders made so far.
 
 ![Work order list](../../../assets/screenshots/work-order-list-01.png)
 
-- **指示書番号** (work order number) … a serial number such as `#9001`. The system adds it for you. This number also becomes the lot number.
+- **指示書番号** (work order number) … a number such as `WO-202608-00001`, in the same format as other documents (quotes, order acceptances, …), restarting from 1 each month. The lot number (a serial number such as `#9001`) is assigned separately and shown on the detail screen.
 - **種別** (type) … either 「**在庫分**」 (from stock — using stock you already have) or 「**製造分**」 (to make — making new pieces).
 - **予定数量** (planned quantity) … how many pieces you plan to make.
 - **承認状態** (approval status) … a coloured badge shows 「承認待ち」 (waiting for approval), 「承認済」 (approved) or 「差し戻し」 (sent back). Which step it is currently on is shown on the card on the detail screen.

@@ -22,6 +22,7 @@ import {
   formatPriceListNumber,
   formatQuoteNumber,
   orderLineNumberOf,
+  parseDocKey,
 } from "@/lib/doc-number";
 import { type LocalizedText, localized } from "@/lib/format";
 import {
@@ -113,16 +114,22 @@ export async function searchDocuments(
         });
       }
       case "work_order": {
+        // 書類番号（WO-YYYYMM-NNNNN）でもロット番号（int）でも探せる
+        const docKey = parseDocKey(q, "WO");
         const n = asInt(q);
         const rows = await prisma.workOrder.findMany({
-          where: n ? { workOrderNumber: n } : undefined,
+          where: docKey
+            ? { yearMonth: docKey.yearMonth, seq: docKey.seq }
+            : n
+              ? { workOrderNumber: n }
+              : undefined,
           orderBy: { workOrderNumber: "desc" },
           take: LIMIT,
           include: { product: { select: { name: true } } },
         });
         return rows.map((r) => ({
-          href: `/production/work-orders/${r.workOrderNumber}`,
-          number: `指示書 #${r.workOrderNumber}`,
+          href: `/production/work-orders/${formatDocNumber("WO", r)}`,
+          number: formatDocNumber("WO", r),
           detail: name(r.product?.name),
         }));
       }

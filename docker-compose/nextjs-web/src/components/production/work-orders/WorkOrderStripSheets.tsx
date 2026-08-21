@@ -63,7 +63,7 @@ export function WorkOrderStripSheets({
                     <div className="wo-strip-body">
                       <div className="wo-strip-head">
                         <span className="wo-strip-number">
-                          指示書 #{wo.workOrderNumber}
+                          {wo.docNumber} ／ ロット #{wo.workOrderNumber}
                         </span>
                         <span className="wo-strip-type">
                           {WORK_ORDER_TYPE_LABEL[wo.type] ?? wo.type}

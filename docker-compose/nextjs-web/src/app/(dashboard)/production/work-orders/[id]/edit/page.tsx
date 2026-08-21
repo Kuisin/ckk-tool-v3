@@ -8,6 +8,7 @@ import {
   fetchStorageLocationOptions,
   fetchSupplierOptions,
   fetchWorkOrder,
+  resolveWorkOrderIdParam,
 } from "../../data";
 
 export const dynamic = "force-dynamic";
@@ -21,8 +22,8 @@ export default async function ProductionWorkOrdersEditPage({
   const denied = await requireAppRead("work-orders");
   if (denied) return denied;
   const { id } = await params;
-  const workOrderNumber = Number(id);
-  if (!Number.isInteger(workOrderNumber) || workOrderNumber < 1) notFound();
+  const workOrderNumber = await resolveWorkOrderIdParam(id);
+  if (workOrderNumber == null) notFound();
 
   const workOrder = await fetchWorkOrder(workOrderNumber);
   if (!workOrder) notFound();

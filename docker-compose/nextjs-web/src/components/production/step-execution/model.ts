@@ -138,7 +138,8 @@ export interface StepExecutionStepView {
 export interface StepExecutionData {
   actorId: string | null;
   workOrderNumber: number;
-  /** 表示番号 YYYYMMDD-XXXXX 用の作成日。 */
+  /** 書類番号 WO-YYYYMM-NNNNN。 */
+  workOrderDocNumber: string;
   workOrderCreatedAt: string;
   workOrderStatus: string; // WORK_ORDER_STATUS
   plannedQuantity: number;

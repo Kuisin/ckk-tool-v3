@@ -6,6 +6,7 @@
 import { describe, expect, it } from "vitest";
 import {
   distributeFinished,
+  effectiveAllocated,
   type LineAllocInfo,
   remainingAllocatable,
   validateAllocations,
@@ -213,6 +214,52 @@ describe("validateAllocations", () => {
         lines: [],
       }),
     ).toMatch(/見つかりません/);
+  });
+});
+
+describe("effectiveAllocated", () => {
+  it("未完了の指示書は割当数のまま数える", () => {
+    expect(
+      effectiveAllocated([
+        { quantity: 40, workOrderStatus: "IN_PROGRESS", finishedShare: null },
+        { quantity: 30, workOrderStatus: "DRAFT", finishedShare: null },
+      ]),
+    ).toBe(70);
+  });
+
+  it("完了済みは実際にできた分だけ — 不良の不足分は受注残へ戻る", () => {
+    // 割当 50 に対し完成 42（不良 8）→ 手配済みは 42 と数え、残 8 を再手配できる
+    expect(
+      effectiveAllocated([
+        { quantity: 50, workOrderStatus: "COMPLETED", finishedShare: 42 },
+      ]),
+    ).toBe(42);
+  });
+
+  it("完了済みの過剰生産は割当数で頭打ち", () => {
+    expect(
+      effectiveAllocated([
+        { quantity: 50, workOrderStatus: "COMPLETED", finishedShare: 55 },
+      ]),
+    ).toBe(50);
+  });
+
+  it("キャンセル済みは数えない", () => {
+    expect(
+      effectiveAllocated([
+        { quantity: 50, workOrderStatus: "CANCELLED", finishedShare: null },
+        { quantity: 20, workOrderStatus: "APPROVED", finishedShare: null },
+      ]),
+    ).toBe(20);
+  });
+
+  it("混在（進行中 + 不足完了）の合算", () => {
+    expect(
+      effectiveAllocated([
+        { quantity: 30, workOrderStatus: "COMPLETED", finishedShare: 25 },
+        { quantity: 20, workOrderStatus: "IN_PROGRESS", finishedShare: null },
+      ]),
+    ).toBe(45);
   });
 });
 

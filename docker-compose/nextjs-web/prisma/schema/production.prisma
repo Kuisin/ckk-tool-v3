@@ -76,7 +76,11 @@ enum BranchStockDisposition {
 // （明細配下は明細の製品から複写、独立指示書は直接指定）。
 model WorkOrder {
   id              String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  // ロット番号 = 通し連番（在庫・QR・業務キーはこちら。不変）
   workOrderNumber Int     @unique @map("work_order_number")
+  // 書類番号 WO-YYYYMM-NNNNN（月次リセット — 他書類と同形式。表示用の識別子）
+  yearMonth       String  @map("year_month") @db.Char(6)
+  seq             Int
   productId       Int     @map("product_id")
   type            WorkOrderType
   plannedQuantity Int     @map("planned_quantity")
@@ -128,6 +132,7 @@ model WorkOrder {
   shippingOrders      ShippingOrder[]
   reservations        InventoryReservation[]
 
+  @@unique([yearMonth, seq])
   @@index([productId])
   @@index([status])
   @@index([approvalStatus])

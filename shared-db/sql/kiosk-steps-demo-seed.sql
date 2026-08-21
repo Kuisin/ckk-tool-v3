@@ -22,6 +22,8 @@ DECLARE
   v_so uuid;
   v_wo uuid;
   v_wo_number int;
+  v_wo_ym char(6);
+  v_wo_doc_seq int;
   v_tpl int;
   v_step_cutting uuid;
   v_step_machining uuid;
@@ -75,13 +77,27 @@ BEGIN
     updated_at = now()
   RETURNING last_sequence INTO v_wo_number;
 
+  -- 書類番号（WO-YYYYMM-NNNNN）: nextjs-web allocateDocumentKey と同じ upsert
+  v_wo_ym := to_char(now() AT TIME ZONE 'Asia/Tokyo', 'YYYYMM');
+  INSERT INTO app.numbering_sequences (key, prefix, last_year_month, last_sequence, updated_at)
+  VALUES ('WORK_ORDER_DOC', 'WO', v_wo_ym, 1, now())
+  ON CONFLICT (key) DO UPDATE SET
+    last_sequence = CASE
+      WHEN app.numbering_sequences.last_year_month = EXCLUDED.last_year_month
+        THEN app.numbering_sequences.last_sequence + 1
+      ELSE 1
+    END,
+    last_year_month = EXCLUDED.last_year_month,
+    updated_at = now()
+  RETURNING last_sequence INTO v_wo_doc_seq;
+
   -- 指示書（承認済 — キオスクから開始できる状態）
   INSERT INTO app.work_orders
-    (id, work_order_number, product_id, type, planned_quantity,
+    (id, work_order_number, year_month, seq, product_id, type, planned_quantity,
      status, approval_status, approved_at, history, notes,
      created_by, created_at, updated_at)
   VALUES
-    (gen_random_uuid(), v_wo_number, 1, 'MANUFACTURE', 50,
+    (gen_random_uuid(), v_wo_number, v_wo_ym, v_wo_doc_seq, 1, 'MANUFACTURE', 50,
      'APPROVED', 'APPROVED', now(),
      jsonb_build_array(jsonb_build_object(
        'action', 'CREATE', 'user', v_sys::text, 'at', now()::text,

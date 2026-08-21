@@ -20,6 +20,7 @@ const DOC_FORMATS = {
   DRN: { digits: 5 },
   INV: { digits: 5 },
   ORD: { digits: 5 }, // 注文請書（注文明細の枝番なし基底番号）
+  WO: { digits: 5 }, // 指示書（書類番号 — ロット番号は別の通し連番 int）
 } as const;
 
 export type DocPrefix = keyof typeof DOC_FORMATS;
@@ -54,7 +55,8 @@ export function formatProductNumber(
  * Returns null when the string is not a valid document id.
  */
 export function parseDocKey(id: string, prefix?: DocPrefix): DocKey | null {
-  const m = /^(?:([A-Z]{3})-)?(\d{6})-(\d{1,6})$/.exec(id);
+  // プレフィクスは 2〜4 文字（WO / PO / EST / …）
+  const m = /^(?:([A-Z]{2,4})-)?(\d{6})-(\d{1,6})$/.exec(id);
   if (!m) return null;
   if (prefix && m[1] && m[1] !== prefix) return null;
   const seq = Number(m[3]);
