@@ -115,7 +115,7 @@ export async function searchDocuments(
       }
       case "work_order": {
         // 書類番号（WO-YYYYMM-NNNNN）でもロット番号（int）でも探せる
-        const docKey = parseDocKey(q, "WO");
+        const docKey = parseDocKey(q, "WOR");
         const n = asInt(q);
         const rows = await prisma.workOrder.findMany({
           where: docKey
@@ -128,8 +128,8 @@ export async function searchDocuments(
           include: { product: { select: { name: true } } },
         });
         return rows.map((r) => ({
-          href: `/production/work-orders/${formatDocNumber("WO", r)}`,
-          number: formatDocNumber("WO", r),
+          href: `/production/work-orders/${formatDocNumber("WOR", r)}`,
+          number: formatDocNumber("WOR", r),
           detail: name(r.product?.name),
         }));
       }

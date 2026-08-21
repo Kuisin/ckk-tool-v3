@@ -37,7 +37,7 @@ When you open the app, you see a list of the work orders made so far.
 
 ![Work order list](../../../assets/screenshots/work-order-list-01.png)
 
-- **指示書番号** (work order number) … a number such as `WO-202608-00001`, in the same format as other documents (quotes, order acceptances, …), restarting from 1 each month. The lot number (a serial number such as `#9001`) is assigned separately and shown on the detail screen.
+- **指示書番号** (work order number) … a number such as `WOR-202608-00001`, in the same format as other documents (quotes, order acceptances, …), restarting from 1 each month. The lot number (a serial number such as `#9001`) is assigned separately and shown on the detail screen.
 - **種別** (type) … either 「**在庫分**」 (from stock — using stock you already have) or 「**製造分**」 (to make — making new pieces).
 - **予定数量** (planned quantity) … how many pieces you plan to make.
 - **承認状態** (approval status) … a coloured badge shows 「承認待ち」 (waiting for approval), 「承認済」 (approved) or 「差し戻し」 (sent back). Which step it is currently on is shown on the card on the detail screen.
