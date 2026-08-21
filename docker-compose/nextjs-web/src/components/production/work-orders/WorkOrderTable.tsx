@@ -72,9 +72,7 @@ export function WorkOrderTable({
     const matchesSearch =
       !search ||
       String(r.workOrderNumber).includes(search) ||
-      fmt
-        .workOrderNumberLabel(r.workOrderNumber, r.createdAt)
-        .includes(search) ||
+      r.docNumber.includes(search) ||
       (r.orderLineNumber ?? "").includes(search) ||
       r.productName.includes(search);
     const matchesType = !type || r.type === type;
@@ -92,7 +90,7 @@ export function WorkOrderTable({
       sortValue: (r) => r.workOrderNumber,
       render: (r) => (
         <Text className="tabular-nums" ff="mono" size="sm">
-          {fmt.workOrderNumberLabel(r.workOrderNumber, r.createdAt)}
+          {r.docNumber}
         </Text>
       ),
     },
@@ -257,13 +255,12 @@ export function WorkOrderTable({
           isApprovals ? "承認待ちの指示書はありません" : "指示書がありません"
         }
         getRowId={(r) => String(r.workOrderNumber)}
-        onRowClick={(r) => router.push(`${basePath}/${r.workOrderNumber}`)}
+        onRowClick={(r) => router.push(`${basePath}/${r.docNumber}`)}
         renderCard={(r) => (
           <Group align="flex-start" justify="space-between" wrap="nowrap">
             <Stack className="min-w-0" gap={3}>
               <Text c="dimmed" ff="mono" size="xs">
-                {fmt.workOrderNumberLabel(r.workOrderNumber, r.createdAt)} ·{" "}
-                {r.orderLineNumber ?? "在庫向け"}
+                {r.docNumber} · {r.orderLineNumber ?? "在庫向け"}
               </Text>
               <Text fw={600} size="sm" truncate>
                 {r.productName}

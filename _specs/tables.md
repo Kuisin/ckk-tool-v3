@@ -651,7 +651,9 @@ Enum ORDER_LINE_STATUS {
 // 1 ロットで作る（統合）こともできる。割当ゼロ = 在庫向けの独立指示書。
 Table work_orders {
   id              uuid [pk]
-  work_order_number int [unique, not null]  // 通し連番
+  work_order_number int [unique, not null]  // 通し連番 = ロット番号（業務キー）
+  year_month      char(6) [not null]        // 書類番号 WO-YYYYMM-NNNNN（表示用）
+  seq             int [not null]            // (year_month, seq) unique
   product_id      int [not null, ref: > products.id]  // 常に保持（明細から複写 or 直接指定）
   type            WORK_ORDER_TYPE [not null]
   planned_quantity int [not null]           // ≥ Σ割当（不良予備分の上乗せは自由）
@@ -1667,7 +1669,9 @@ Table files {
 //   ORD-YYYYMM-NNNNN-NN（注文明細）
 //   DRN-YYYYMM-NNNNN（納品書）
 //   INV-YYYYMM-NNNNN（請求書）
-//   指示書・ロット番号: 通し連番 (int)
+//   WO-YYYYMM-NNNNN（指示書の書類番号 — 表示用。キーは WORK_ORDER_DOC）
+//   ロット番号（= work_orders.work_order_number）: 通し連番 (int) —
+//     在庫ロット・QR・承認/メモ/監査の業務キーはこちらのまま
 Table numbering_sequences {
   key             varchar [pk]            // ESTIMATE, QUOTE, ORDER_ACCEPT, DELIVERY, INVOICE
   prefix          varchar [not null]      // EST, QOT, ORD, DRN, INV

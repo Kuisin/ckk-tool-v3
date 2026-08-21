@@ -67,11 +67,8 @@ export function StepExecutionView({ data }: { data: StepExecutionData }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const { step, workOrderNumber } = data;
-  // 表示番号 YYYYMMDD-XXXXX（内部キーは通し連番の int のまま）。
-  const woLabel = fmt.workOrderNumberLabel(
-    workOrderNumber,
-    data.workOrderCreatedAt,
-  );
+  // 書類番号 WO-YYYYMM-NNNNN（内部キーは通し連番の int のまま）。
+  const woLabel = data.workOrderDocNumber;
 
   // 中断 / 巻き戻し 理由モーダル
   const [reasonMode, setReasonMode] = useState<"abort" | "rollback" | null>(

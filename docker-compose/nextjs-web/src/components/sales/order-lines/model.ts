@@ -22,8 +22,10 @@ export type OrderLineStatus =
 
 /** 詳細「指示書」タブの1行（work_order_order_lines 経由の抜粋）。 */
 export interface OrderLineWorkOrderRef {
-  /** 指示書番号 = ロット番号（通し連番 int）。 */
+  /** ロット番号（通し連番 int — 内部キー）。 */
   workOrderNumber: number;
+  /** 書類番号 WO-YYYYMM-NNNNN。 */
+  docNumber: string;
   /** WORK_ORDER_TYPE（在庫分 / 製造分）。 */
   type: string;
   plannedQuantity: number;

@@ -338,14 +338,12 @@ export function OrderLineDetail({
                     <Table.Tr
                       key={wo.workOrderNumber}
                       onClick={() =>
-                        router.push(
-                          `/production/work-orders/${wo.workOrderNumber}`,
-                        )
+                        router.push(`/production/work-orders/${wo.docNumber}`)
                       }
                       style={{ cursor: "pointer" }}
                     >
                       <Table.Td>
-                        <DocNumber>{wo.workOrderNumber}</DocNumber>
+                        <DocNumber>{wo.docNumber}</DocNumber>
                       </Table.Td>
                       <Table.Td>
                         <Badge color="gray" variant="light">

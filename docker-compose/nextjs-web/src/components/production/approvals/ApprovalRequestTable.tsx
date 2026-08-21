@@ -48,7 +48,8 @@ function targetHref(row: ApprovalRequestRow): string | null {
 }
 
 function targetLabel(row: ApprovalRequestRow): string {
-  return row.targetType === "work_orders" ? `#${row.targetId}` : row.targetId;
+  // 指示書はサーバー側で書類番号 WO-YYYYMM-NNNNN へ解決済み。
+  return row.targetDisplay;
 }
 
 function TargetTypeBadge({ targetType }: { targetType: string }) {
@@ -129,6 +130,7 @@ export function ApprovalRequestTable({ rows }: { rows: ApprovalRequestRow[] }) {
     const matchesSearch =
       !search ||
       r.targetId.includes(search) ||
+      r.targetDisplay.includes(search) ||
       r.requestedBy.includes(search) ||
       (r.notes ?? "").includes(search);
     const matchesType = !targetType || r.targetType === targetType;

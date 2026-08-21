@@ -53,8 +53,8 @@ import {
 } from "react";
 import { z } from "zod";
 import {
+  searchAllocatableOrderLineOptions,
   searchMaterialOptions,
-  searchOrderLineOptions,
   searchProductOptions,
 } from "@/app/(dashboard)/_shared/option-search";
 import {
@@ -550,13 +550,24 @@ export function WorkflowBuilder({
       if (!info) return;
       const own = ownAllocations.get(value) ?? 0;
       const remaining = info.remainingQuantity + own;
+      // 受注残ゼロの明細は割り当てられない（検索候補からも外れるが、
+      // 検索と選択の間に別の指示書が割当を埋めた場合の最終ガード）。
+      if (remaining <= 0) {
+        notifications.show({
+          title: "割り当てできません",
+          message: `注文明細 ${info.number} は受注数量まで手配済みです（残 0）`,
+          color: "yellow",
+        });
+        updateAllocRow(key, { orderLineId: null, info: null });
+        return;
+      }
       setAllocRows((rows) =>
         rows.map((r) =>
           r.key === key
             ? {
                 ...r,
                 info,
-                quantity: remaining > 0 ? remaining : Math.max(1, r.quantity),
+                quantity: remaining,
               }
             : r,
         ),
@@ -713,17 +724,11 @@ export function WorkflowBuilder({
           title: "保存しました",
           message:
             mode === "edit"
-              ? `指示書 ${fmt.workOrderNumberLabel(
-                  result.data.workOrderNumber,
-                  workOrder?.createdAt ?? new Date(),
-                )} を更新しました`
-              : `指示書 ${fmt.workOrderNumberLabel(
-                  result.data.workOrderNumber,
-                  new Date(),
-                )} を作成しました`,
+              ? `指示書 ${result.data.docNumber} を更新しました`
+              : `指示書 ${result.data.docNumber} を作成しました`,
           color: "green",
         });
-        router.push(`${BASE_PATH}/${result.data.workOrderNumber}`);
+        router.push(`${BASE_PATH}/${result.data.docNumber}`);
       } else {
         notifications.show({
           title: "エラー",
@@ -754,16 +759,13 @@ export function WorkflowBuilder({
       isPending={isPending}
       onCancel={() =>
         router.push(
-          workOrder ? `${BASE_PATH}/${workOrder.workOrderNumber}` : BASE_PATH,
+          workOrder ? `${BASE_PATH}/${workOrder.docNumber}` : BASE_PATH,
         )
       }
       onSubmit={form.onSubmit(handleSubmit)}
       title={
         mode === "edit"
-          ? `指示書 ${fmt.workOrderNumberLabel(
-              workOrder?.workOrderNumber,
-              workOrder?.createdAt,
-            )} 編集`
+          ? `指示書 ${workOrder?.docNumber ?? ""} 編集`
           : "指示書 新規作成"
       }
     >
@@ -816,7 +818,7 @@ export function WorkflowBuilder({
                           <HelpLabel {...fieldHelp("workOrder", "orderLine")} />
                         }
                         onChange={(v) => onRowLineChange(row.key, v)}
-                        onSearch={searchOrderLineOptions}
+                        onSearch={searchAllocatableOrderLineOptions}
                         placeholder="注文明細番号・製品・顧客で検索"
                         storageKey="sales-order"
                         value={row.orderLineId}

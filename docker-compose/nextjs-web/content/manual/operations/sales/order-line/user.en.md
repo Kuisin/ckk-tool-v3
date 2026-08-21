@@ -22,7 +22,7 @@ When an order acceptance is confirmed, each of its detail rows becomes an **orde
 - **Confirmation** — the step that finalises an approved order acceptance and assigns numbers to its lines.
 - **Branch number** — the trailing `-01` in `ORD-202608-00012-01`. It says which row of the order acceptance this is.
 - **Reservation** — setting stock aside for this order so another order cannot take it.
-- **Lot number** — the serial number of a production batch. It is the same number as the work order.
+- **Lot number** — the serial number of a production batch (e.g. `#9001`). It is assigned automatically when a work order is created (it is separate from the work order's document number `WO-…`).
 
 ## Reading the number
 
@@ -74,7 +74,7 @@ Press **Stock check** to look at stock for the product and **reserve whatever is
 
 ### Follow production
 
-The Work orders tab lists the work orders allocated to this line. **One order line can have any number of work orders** — split between stock and manufacture, part made first and the rest added later, and so on. The other way round, **several order lines of the same product can be combined into one work order (one lot)**. The allocation quantity is how many pieces are made for this line; the planned quantity is how many the whole work order makes (it can be higher, allowing spares for defects). The work order number is also the lot number.
+The Work orders tab lists the work orders allocated to this line. **One order line can have any number of work orders** — split between stock and manufacture, part made first and the rest added later, and so on. The other way round, **several order lines of the same product can be combined into one work order (one lot)**. The allocation quantity is how many pieces are made for this line; the planned quantity is how many the whole work order makes (it can be higher, allowing spares for defects).
 
 ### Follow shipping
 

@@ -24,7 +24,7 @@ import {
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
-import { searchOrderLineOptions } from "@/app/(dashboard)/_shared/option-search";
+import { searchAllocatableOrderLineOptions } from "@/app/(dashboard)/_shared/option-search";
 import {
   cancelWorkOrder,
   copyWorkOrder,
@@ -98,7 +98,7 @@ export function WorkOrderDetail({
 
   const wo = workOrder;
   // 表示番号 YYYYMMDD-XXXXX（保存側は従来どおり通し連番の int）。
-  const woLabel = fmt.workOrderNumberLabel(wo.workOrderNumber, wo.createdAt);
+  const woLabel = wo.docNumber;
   const isApproval = variant === "approval";
   const canEdit = wo.status === "DRAFT";
   const canCancel = wo.status === "DRAFT" || wo.status === "PENDING_APPROVAL";
@@ -112,10 +112,7 @@ export function WorkOrderDetail({
       if (result.ok) {
         notifications.show({
           title: "コピーしました",
-          message: `指示書 ${fmt.workOrderNumberLabel(
-            result.data.workOrderNumber,
-            new Date(),
-          )} を作成しました`,
+          message: `指示書 ${result.data.docNumber} を作成しました`,
           color: "green",
         });
         setCopyOpen(false);
@@ -260,7 +257,9 @@ export function WorkOrderDetail({
               href={`${BASE_PATH}/${wo.sourceWorkOrderNumber}`}
               size="sm"
             >
-              <DocNumber c="blue">#{wo.sourceWorkOrderNumber}</DocNumber>
+              <DocNumber c="blue">
+                {wo.sourceWorkOrderDocNumber ?? `#${wo.sourceWorkOrderNumber}`}
+              </DocNumber>
             </Anchor>
           ) : null
         }
@@ -425,16 +424,12 @@ export function WorkOrderDetail({
                   {wo.copies.map((c) => (
                     <Anchor
                       component={Link}
-                      href={`${BASE_PATH}/${c.workOrderNumber}`}
+                      href={`${BASE_PATH}/${c.docNumber}`}
                       key={c.workOrderNumber}
                       size="sm"
                     >
                       <DocNumber c="blue">
-                        {fmt.workOrderNumberLabel(
-                          c.workOrderNumber,
-                          c.createdAt,
-                        )}
-                        （{fmt.dateTime(c.createdAt)}）
+                        {c.docNumber}（{fmt.dateTime(c.createdAt)}）
                       </DocNumber>
                     </Anchor>
                   ))}
@@ -452,10 +447,13 @@ export function WorkOrderDetail({
                 </Text>
                 <Anchor
                   component={Link}
-                  href={`${BASE_PATH}/${wo.sourceWorkOrderNumber}`}
+                  href={`${BASE_PATH}/${wo.sourceWorkOrderDocNumber ?? wo.sourceWorkOrderNumber}`}
                   size="sm"
                 >
-                  <DocNumber c="blue">#{wo.sourceWorkOrderNumber}</DocNumber>
+                  <DocNumber c="blue">
+                    {wo.sourceWorkOrderDocNumber ??
+                      `#${wo.sourceWorkOrderNumber}`}
+                  </DocNumber>
                 </Anchor>
               </div>
             )}
@@ -509,7 +507,7 @@ export function WorkOrderDetail({
             }
             label="対象注文明細"
             onChange={setCopyTargetSoId}
-            onSearch={searchOrderLineOptions}
+            onSearch={searchAllocatableOrderLineOptions}
             placeholder="未選択 = 在庫向け（注文明細なし）としてコピー"
             storageKey="sales-order"
             value={copyTargetSoId}
