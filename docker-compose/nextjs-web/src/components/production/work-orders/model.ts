@@ -97,6 +97,8 @@ export interface WorkOrderStepView {
   /** 作業計画 / 実績の件数（工程実行ページで記録）。 */
   planCount: number;
   actualCount: number;
+  /** この検査工程で使う検査表テンプレート（検査工程以外は空）。 */
+  inspectionTemplates: { id: number; code: string; name: string }[];
   /**
    * 分岐系列の終端処理（§7）。値があれば「この工程で系列が終わり、良品は
    * この在庫へ入る」。null = 合流する / 分岐系列ではない。
@@ -175,7 +177,6 @@ export interface WorkOrderView {
   sourceWorkOrderNumber: number | null;
   sourceWorkOrderDocNumber: string | null;
   copies: WorkOrderCopyRef[];
-  inspectionTemplates: { id: number; code: string; name: string }[];
   steps: WorkOrderStepView[];
   stepLinks: StepLinkView[];
   rejectReason: string | null;

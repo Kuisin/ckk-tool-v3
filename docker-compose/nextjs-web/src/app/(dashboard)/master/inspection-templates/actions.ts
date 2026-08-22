@@ -198,7 +198,7 @@ function itemData(v: InspectionTemplateItemInput) {
 /** 指示書に割当済み or 検査記録があるバージョンは定義変更不可。 */
 export async function isTemplateLocked(templateId: number): Promise<boolean> {
   const [linkCount, recordCount] = await Promise.all([
-    prisma.workOrderInspectionTemplate.count({
+    prisma.workOrderStepInspectionTemplate.count({
       where: { inspectionTemplateId: templateId },
     }),
     prisma.inspectionRecord.count({ where: { templateId } }),

@@ -70,10 +70,16 @@ export interface StepCompositionInput {
   supplierBpId: string | null;
   /** 作業時間 (h) — 任意。指示書は planned_work_hours、ルートは work_hours へ。 */
   workHours: number | null;
+  /**
+   * 検査工程で使う検査表テンプレート（工程単位の割当）。指示書のみ —
+   * 工程ルートはテンプレートを持たないので未指定。検査工程以外は無視される。
+   */
+  inspectionTemplateIds?: number[];
 }
 
 export interface OrderedStepCreate extends StepCompositionInput {
   sortOrder: number;
+  inspectionTemplateIds: number[];
 }
 
 /**
@@ -105,6 +111,7 @@ export async function validateAndOrderSteps(
     };
   }
   const byId = new Map(steps.map((s) => [s.processStepId, s]));
+  const catalogById = new Map(catalog.steps.map((s) => [s.id, s]));
   const creates = defaultOrder(ids, catalog.steps).map((stepId, i) => {
     const s = byId.get(stepId);
     if (!s) throw new Error("step mapping failed");
@@ -115,6 +122,10 @@ export async function validateAndOrderSteps(
       plantId: s.executionLocation === "INTERNAL" ? s.plantId : null,
       supplierBpId: s.executionLocation === "OUTSOURCE" ? s.supplierBpId : null,
       workHours: s.workHours,
+      // 検査表は検査工程のみ保持（それ以外の指定は黙って落とす）
+      inspectionTemplateIds: catalogById.get(stepId)?.isInspection
+        ? [...new Set(s.inspectionTemplateIds ?? [])]
+        : [],
     };
   });
   return { ok: true, creates };
@@ -610,6 +621,37 @@ export async function addBranchSeries(input: {
 
   const maxSort = Math.max(...wo.steps.map((s) => s.sortOrder));
 
+  // 分岐で追加される検査工程には、その工程を関連工程に持つ検査表
+  // （有効・code ごとに最新バージョン）を既定で割り当てる — 検査表は
+  // 工程単位の割当なので、後から足した工程が空にならないようにする。
+  const inspectionCatalogIds = (
+    await prisma.processStepCatalog.findMany({
+      where: { id: { in: catalogStepIds }, isInspection: true },
+      select: { id: true },
+    })
+  ).map((c) => c.id);
+  const relatedTemplates = inspectionCatalogIds.length
+    ? await prisma.inspectionTemplate.findMany({
+        where: {
+          isActive: true,
+          relatedProcessStepId: { in: inspectionCatalogIds },
+        },
+        orderBy: [{ code: "asc" }, { version: "desc" }],
+        select: { id: true, code: true, relatedProcessStepId: true },
+      })
+    : [];
+  const defaultTemplateIdsByStep = new Map<number, number[]>();
+  {
+    const seenCodes = new Set<string>();
+    for (const t of relatedTemplates) {
+      if (seenCodes.has(t.code) || t.relatedProcessStepId == null) continue;
+      seenCodes.add(t.code);
+      const list = defaultTemplateIdsByStep.get(t.relatedProcessStepId) ?? [];
+      list.push(t.id);
+      defaultTemplateIdsByStep.set(t.relatedProcessStepId, list);
+    }
+  }
+
   const result = await prisma.$transaction(async (tx) => {
     const created: string[] = [];
     for (let i = 0; i < catalogStepIds.length; i++) {
@@ -626,6 +668,11 @@ export async function addBranchSeries(input: {
             isTerminal && input.termination.kind === "STOCK"
               ? input.termination.disposition
               : null,
+          inspectionTemplates: {
+            create: (defaultTemplateIdsByStep.get(catalogStepIds[i]) ?? []).map(
+              (id) => ({ inspectionTemplateId: id }),
+            ),
+          },
         },
         select: { id: true },
       });

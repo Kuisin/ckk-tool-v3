@@ -29,7 +29,7 @@ export default async function MasterInspectionTemplatesDetailPage({
         relatedProcessStep: true,
         items: { orderBy: [{ sortOrder: "asc" }, { id: "asc" }] },
         _count: {
-          select: { workOrderTemplates: true, inspectionRecords: true },
+          select: { workOrderStepTemplates: true, inspectionRecords: true },
         },
       },
     }),
@@ -44,7 +44,7 @@ export default async function MasterInspectionTemplatesDetailPage({
       _count: {
         select: {
           items: true,
-          workOrderTemplates: true,
+          workOrderStepTemplates: true,
           inspectionRecords: true,
         },
       },
@@ -68,14 +68,16 @@ export default async function MasterInspectionTemplatesDetailPage({
     samplingValue: r.samplingValue == null ? null : Number(r.samplingValue),
     recordStyle: r.recordStyle,
     isActive: r.isActive,
-    isLocked: r._count.workOrderTemplates > 0 || r._count.inspectionRecords > 0,
+    isLocked:
+      r._count.workOrderStepTemplates > 0 || r._count.inspectionRecords > 0,
     isLatestVersion: r.version === latestVersion,
     items: r.items.map(toItemRow),
     versions: siblings.map((s) => ({
       id: s.id,
       version: s.version,
       isActive: s.isActive,
-      inUse: s._count.workOrderTemplates > 0 || s._count.inspectionRecords > 0,
+      inUse:
+        s._count.workOrderStepTemplates > 0 || s._count.inspectionRecords > 0,
       itemCount: s._count.items,
       updatedAt: s.updatedAt.toISOString(),
     })),
