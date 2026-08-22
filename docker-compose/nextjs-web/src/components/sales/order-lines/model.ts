@@ -95,8 +95,3 @@ export interface OrderLineShippingRef {
   quantity: number;
   shippedAt: string | null;
 }
-
-/** キャンセル可能か — 出荷済・キャンセル済以降は不可。 */
-export function isCancellable(o: Pick<OrderLine, "status">) {
-  return o.status !== "SHIPPED" && o.status !== "CANCELLED";
-}

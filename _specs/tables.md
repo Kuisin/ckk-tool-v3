@@ -889,7 +889,11 @@ Table approval_group_members {
 
 Table approval_flows {
   target_type     varchar [pk]  // work_orders / order_acceptances /
-                                // material_purchase_orders / purchase_requests
+                                // material_purchase_orders / purchase_requests /
+                                // work_order_flow_changes /
+                                // order_acceptance_cancel_requests（注文請書キャンセル
+                                //   — 確定済みの請書はごとキャンセルを依頼して承認を通す。
+                                //   明細単位のキャンセル操作は廃止）
   updated_by      uuid [ref: > users.id]
   updated_at      timestamp
 }

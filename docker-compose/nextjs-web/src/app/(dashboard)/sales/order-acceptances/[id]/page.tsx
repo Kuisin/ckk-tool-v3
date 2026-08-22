@@ -6,6 +6,7 @@ import { fetchAuditEntries } from "@/lib/audit";
 import { requireAppRead } from "@/lib/authz-page";
 import { formatDocNumber, parseDocKey } from "@/lib/doc-number";
 import { listMemos } from "@/lib/document-memos";
+import { fetchPendingAcceptanceCancel } from "@/lib/order-acceptance-cancel";
 import { fetchWorkLocationOptions } from "@/lib/work-locations";
 import { fetchOrderAcceptance, fetchPlantOptions } from "../data";
 import { checkAcceptancePrices } from "../price-check";
@@ -46,6 +47,7 @@ export default async function OrderLineAcceptancesDetailPage({
     approval,
     plantOptions,
     workLocationOptions,
+    cancelRequest,
   ] = await Promise.all([
     fetchOrderAcceptance(key),
     fetchAuditEntries("order_acceptances", number),
@@ -55,8 +57,16 @@ export default async function OrderLineAcceptancesDetailPage({
     fetchApprovalState("order_acceptances", number),
     fetchPlantOptions(),
     fetchWorkLocationOptions(),
+    fetchPendingAcceptanceCancel(key),
   ]);
   if (!acceptance) notFound();
+  // 保留中のキャンセル依頼があれば、その依頼自体の承認状態も引く
+  const cancelApproval = cancelRequest
+    ? await fetchApprovalState(
+        "order_acceptance_cancel_requests",
+        cancelRequest.id,
+      )
+    : null;
 
   // §2 価格照合（P0-8）— 保存済み明細と価格表の差異。確定済み・アーカイブ
   // 済みは照合対象外（当時の価格表と現在の価格表のドリフトで誤警告するため）。
@@ -73,6 +83,8 @@ export default async function OrderLineAcceptancesDetailPage({
       approvalTrail={approvalTrail}
       attachments={attachments}
       auditEntries={auditEntries}
+      cancelApproval={cancelApproval}
+      cancelRequest={cancelRequest}
       memos={memos}
       plantOptions={plantOptions}
       priceCheck={priceCheck}

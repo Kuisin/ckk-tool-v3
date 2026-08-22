@@ -25,6 +25,9 @@ enum OrderAcceptanceStatus {
   APPROVED
   COMPLETED
   ARCHIVED
+  // キャンセル承認（order_acceptance_cancel_requests）の適用後。
+  // 配下の注文明細もすべて CANCELLED になっている。
+  CANCELLED
 
   @@map("ORDER_ACCEPTANCE_STATUS")
   @@schema("app")
@@ -93,13 +96,46 @@ model OrderAcceptance {
   createdByUser    User?            @relation("AcceptanceCreatedBy", fields: [createdBy], references: [id])
   salesRep         User?            @relation("AcceptanceSalesRep", fields: [salesRepId], references: [id])
 
-  items OrderLine[]
+  items          OrderLine[]
+  cancelRequests OrderAcceptanceCancelRequest[]
 
   @@id([yearMonth, seq])
   @@index([status])
   // 注文明細の顧客絞り込みはヘッダ経由になるため必須
   @@index([customerBpId])
   @@map("order_acceptances")
+  @@schema("app")
+}
+
+// 承認されるまで適用しない注文請書キャンセル依頼（§2 / §6）。
+//
+// 確定済み（COMPLETED）の注文請書は明細単位ではキャンセルできない —
+// キャンセルは注文請書ごと依頼し、承認設定（MS0B）の
+// 「注文請書キャンセル」フローを通す（1 段も無ければ即適用）。
+// 最終承認で全明細のキャンセル（予約解放・未着手指示書の連鎖キャンセル）と
+// ヘッダの CANCELLED 遷移が走る。approval_requests は業務キー（= id）で
+// 指すため FK は無い → AFTER DELETE トリガーで掃除（migration 参照）。
+model OrderAcceptanceCancelRequest {
+  id                  String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  acceptanceYearMonth String    @map("acceptance_year_month") @db.Char(6)
+  acceptanceSeq       Int       @map("acceptance_seq")
+  /// 依頼理由（必須 — 確定済みの受注を取り消す例外操作のため）。
+  reason              String
+  /// PENDING | APPLIED | REJECTED | CANCELLED | FAILED（DB 側 CHECK）
+  status              String    @default("PENDING")
+  /// 適用に失敗した理由（承認待ちの間に出荷された等）。承認後に出る。
+  error               String?
+  requestedBy         String?   @map("requested_by") @db.Uuid
+  requestedAt         DateTime  @default(now()) @map("requested_at") @db.Timestamptz(6)
+  resolvedBy          String?   @map("resolved_by") @db.Uuid
+  resolvedAt          DateTime? @map("resolved_at") @db.Timestamptz(6)
+
+  acceptance      OrderAcceptance @relation(fields: [acceptanceYearMonth, acceptanceSeq], references: [yearMonth, seq], onDelete: Cascade)
+  requestedByUser User?           @relation("AcceptanceCancelRequestedBy", fields: [requestedBy], references: [id])
+  resolvedByUser  User?           @relation("AcceptanceCancelResolvedBy", fields: [resolvedBy], references: [id])
+
+  @@index([acceptanceYearMonth, acceptanceSeq, status])
+  @@map("order_acceptance_cancel_requests")
   @@schema("app")
 }
 

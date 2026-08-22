@@ -30,14 +30,10 @@ import {
   IconLock,
   IconPackageImport,
   IconTruck,
-  IconX,
 } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
-import {
-  cancelOrderLine,
-  runStockCheck,
-} from "@/app/(dashboard)/sales/order-lines/actions";
+import { runStockCheck } from "@/app/(dashboard)/sales/order-lines/actions";
 import { useFormat } from "@/components/layout/PreferencesProvider";
 import { SecondaryButton } from "@/components/ui/buttons";
 import { DocNumber } from "@/components/ui/DocNumber";
@@ -46,7 +42,6 @@ import { FieldValue } from "@/components/ui/FieldValue";
 import { HistoryPanel } from "@/components/ui/HistoryPanel";
 import { MemoPanel } from "@/components/ui/MemoPanel";
 import { MoneyText } from "@/components/ui/MoneyText";
-import { ConfirmModal } from "@/components/ui/modals";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import {
   type AuditEntry,
@@ -64,7 +59,7 @@ import {
 // type-only import — lib/inventory は server-only（型はバンドルされない）。
 import type { StockCheckResult } from "@/lib/inventory";
 import { isLineStockCheckable } from "@/lib/order-line-core";
-import { isCancellable, type OrderLine } from "./model";
+import type { OrderLine } from "./model";
 
 const BASE_PATH = "/sales/order-lines";
 
@@ -83,8 +78,6 @@ export function OrderLineDetail({
   const router = useRouter();
   // アクティブタブを ?tab= に保持（URL 共有でタブまで再現）
   const [tab, setTab] = useTabParam("overview");
-  const [isPending, startTransition] = useTransition();
-  const [cancelOpen, setCancelOpen] = useState(false);
   const [isChecking, startStockCheck] = useTransition();
   const [stockResult, setStockResult] = useState<StockCheckResult | null>(null);
 
@@ -96,26 +89,6 @@ export function OrderLineDetail({
       const result = await runStockCheck(order.uuid);
       if (result.ok) {
         setStockResult(result.data);
-        router.refresh();
-      } else {
-        notifications.show({
-          title: "エラー",
-          message: result.error,
-          color: "red",
-        });
-      }
-    });
-  };
-
-  const runCancel = () => {
-    startTransition(async () => {
-      const result = await cancelOrderLine(order.orderNumber);
-      if (result.ok) {
-        notifications.show({
-          title: "キャンセルしました",
-          message: `注文明細 ${order.orderNumber} をキャンセルしました`,
-          color: "green",
-        });
         router.refresh();
       } else {
         notifications.show({
@@ -141,21 +114,8 @@ export function OrderLineDetail({
               在庫照合
             </SecondaryButton>
           )}
-          <ResourceActions
-            menuItems={[
-              ...(isCancellable(order)
-                ? [
-                    {
-                      label: "キャンセル",
-                      icon: <IconX size={14} />,
-                      color: "red",
-                      divider: true,
-                      onClick: () => setCancelOpen(true),
-                    },
-                  ]
-                : []),
-            ]}
-          />
+          {/* 明細単位のキャンセルは廃止 — キャンセルは注文請書（SA24）から
+              「キャンセル依頼」で承認を通す。 */}
         </Group>
       }
       breadcrumbs={["販売", { label: "注文明細", href: BASE_PATH }, "詳細"]}
@@ -558,16 +518,6 @@ export function OrderLineDetail({
           </Stack>
         )}
       </Modal>
-
-      <ConfirmModal
-        confirmLabel="キャンセルする"
-        loading={isPending}
-        message={`注文明細 ${order.orderNumber} をキャンセルします。この操作は取り消せません。`}
-        onClose={() => setCancelOpen(false)}
-        onConfirm={runCancel}
-        opened={cancelOpen}
-        title="キャンセルの確認"
-      />
     </DetailShell>
   );
 }
