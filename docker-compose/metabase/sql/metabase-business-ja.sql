@@ -92,7 +92,7 @@ m(tbl, ja) AS (VALUES
   ('work_order_step_links', '工程分岐・合流'),
   ('work_order_step_plans', '工程作業計画'),
   ('work_order_step_actuals', '工程作業実績'),
-  ('work_order_inspection_templates', '指示書検査表'),
+  ('work_order_step_inspection_templates', '工程検査表'),
   ('work_order_flow_changes', '工程フロー変更'),
   ('product_inventory', '製品在庫'),
   ('material_inventory', '素材在庫'),

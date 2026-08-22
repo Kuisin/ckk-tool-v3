@@ -269,7 +269,7 @@ model InspectionTemplate {
 
   relatedProcessStep ProcessStepCatalog?      @relation(fields: [relatedProcessStepId], references: [id])
   items              InspectionTemplateItem[]
-  workOrderTemplates WorkOrderInspectionTemplate[]
+  workOrderStepTemplates WorkOrderStepInspectionTemplate[]
   inspectionRecords  InspectionRecord[]            @relation("InspectionRecordTemplate")
 
   @@unique([code, version])

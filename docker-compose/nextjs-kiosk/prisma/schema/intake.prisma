@@ -63,6 +63,8 @@ model OrderAcceptance {
   quoteYearMonth     String? @map("quote_year_month") @db.Char(6)
   quoteSeq           Int?    @map("quote_seq")
   orderDate          DateTime? @map("order_date") @db.Date
+  /// 受注金額の通貨（currencies.code。既定 JPY — 明細はヘッダから読む。sales_rep と同じ規約）
+  currency           String    @default("JPY")
 
   // 出荷先（納入先の取引先。顧客本体と別の法人・支店でもよい。null = 顧客へ）
   shipToBpId String? @map("ship_to_bp_id") @db.Uuid

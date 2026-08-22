@@ -108,6 +108,8 @@ const stepInput = z.object({
   supplierBpId: z.string().nullable(),
   // 作業時間 (h) — 任意（0.01〜9999.99）
   workHours: z.number().positive().max(9999.99).nullable(),
+  // 検査工程で使う検査表テンプレート（工程単位の割当。検査工程以外は無視）
+  inspectionTemplateIds: z.array(z.number().int().positive()).default([]),
 });
 
 // 工程ルート（工程リスト）の出所指定 — 指示書は常に工程リストに基づく。
@@ -156,7 +158,6 @@ const workOrderInput = z
     plannedQuantity: z.number().int().min(1, "予定数量は1以上"),
     materialId: z.number().int().positive().nullable(),
     storageLocationId: z.number().int().positive().nullable(),
-    inspectionTemplateIds: z.array(z.number().int().positive()),
     notes: z.string(),
     steps: z.array(stepInput).min(1, "工程を1つ以上選択してください"),
     route: routeInput,
@@ -282,11 +283,19 @@ async function assignLotNumbersTx(
   });
 }
 
-/** 共通の工程 create 行 → work_order_steps 行（workHours → planned_work_hours）。 */
+/**
+ * 共通の工程 create 行 → work_order_steps 行（workHours → planned_work_hours、
+ * 検査表はネスト作成で工程に紐付ける）。
+ */
 function toWorkOrderStepCreates(creates: OrderedStepCreate[]) {
-  return creates.map(({ workHours, ...s }) => ({
+  return creates.map(({ workHours, inspectionTemplateIds, ...s }) => ({
     ...s,
     plannedWorkHours: workHours,
+    inspectionTemplates: {
+      create: inspectionTemplateIds.map((id) => ({
+        inspectionTemplateId: id,
+      })),
+    },
   }));
 }
 
@@ -388,11 +397,6 @@ export async function createWorkOrder(
             })),
           },
           steps: { create: toWorkOrderStepCreates(built.creates) },
-          inspectionTemplates: {
-            create: v.inspectionTemplateIds.map((id) => ({
-              inspectionTemplateId: id,
-            })),
-          },
         },
         select: {
           id: true,
@@ -445,7 +449,10 @@ export async function createWorkOrder(
         storageLocationId: v.storageLocationId,
         routeVersionId,
         stepCount: built.creates.length,
-        inspectionTemplateCount: v.inspectionTemplateIds.length,
+        inspectionTemplateCount: built.creates.reduce(
+          (n, c) => n + c.inspectionTemplateIds.length,
+          0,
+        ),
         planCount: v.plans.length,
       },
     });
@@ -506,10 +513,8 @@ export async function updateWorkOrder(
         productId,
         `指示書 #${workOrderNumber} 更新時に変更`,
       );
+      // 工程の作り直し — 工程単位の検査表割当は FK CASCADE で一緒に消える
       await tx.workOrderStep.deleteMany({ where: { workOrderId: prior.id } });
-      await tx.workOrderInspectionTemplate.deleteMany({
-        where: { workOrderId: prior.id },
-      });
       await tx.workOrderOrderLine.deleteMany({
         where: { workOrderId: prior.id },
       });
@@ -534,11 +539,6 @@ export async function updateWorkOrder(
             })),
           },
           steps: { create: toWorkOrderStepCreates(built.creates) },
-          inspectionTemplates: {
-            create: v.inspectionTemplateIds.map((id) => ({
-              inspectionTemplateId: id,
-            })),
-          },
         },
       });
       await assignLotNumbersTx(
@@ -606,8 +606,10 @@ export async function copyWorkOrder(
     const source = await prisma.workOrder.findUnique({
       where: { workOrderNumber: sourceWorkOrderNumber },
       include: {
-        steps: { orderBy: { sortOrder: "asc" } },
-        inspectionTemplates: true,
+        steps: {
+          orderBy: { sortOrder: "asc" },
+          include: { inspectionTemplates: true },
+        },
       },
     });
     if (!source) return actionError("コピー元の指示書が見つかりません");
@@ -696,11 +698,11 @@ export async function copyWorkOrder(
               plantId: s.plantId,
               supplierBpId: s.supplierBpId,
               plannedWorkHours: s.plannedWorkHours,
-            })),
-          },
-          inspectionTemplates: {
-            create: source.inspectionTemplates.map((t) => ({
-              inspectionTemplateId: t.inspectionTemplateId,
+              inspectionTemplates: {
+                create: s.inspectionTemplates.map((t) => ({
+                  inspectionTemplateId: t.inspectionTemplateId,
+                })),
+              },
             })),
           },
         },

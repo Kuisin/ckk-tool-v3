@@ -119,7 +119,7 @@
 - 外注・社内の実施場所設定: 工程ごとに社内 / 外注（企業選択）を指定
 - 指示書タイプ: `FROM_STOCK`（在庫分）/ `MANUFACTURE`（製造分）
 - 使用依存・実行依存バリデーション: `lib/workflow.ts` で依存関係を検証
-- 検査表テンプレートを指示書に複数紐付け: `work_order_inspection_templates`
+- 検査表テンプレートを検査工程ステップに複数紐付け: `work_order_step_inspection_templates`（工程単位の割当）
 
 ### 業務ルール
 

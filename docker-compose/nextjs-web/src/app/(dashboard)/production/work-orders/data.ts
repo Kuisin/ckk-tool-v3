@@ -127,11 +127,12 @@ const WO_INCLUDE = {
       // 実働時間の積算に使う（1 行 = 1 作業セッション）。
       actuals: { select: { startedAt: true, endedAt: true } },
       _count: { select: { plans: true, actuals: true } },
+      // 検査工程で使う検査表テンプレート（工程単位の割当）
+      inspectionTemplates: { include: { inspectionTemplate: true } },
     },
     orderBy: { sortOrder: "asc" as const },
   },
   stepLinks: true,
-  inspectionTemplates: { include: { inspectionTemplate: true } },
 };
 
 const iso = (d: Date | null | undefined) => d?.toISOString() ?? null;
@@ -471,11 +472,6 @@ export async function fetchWorkOrder(
       status: c.status,
       createdAt: c.createdAt.toISOString(),
     })),
-    inspectionTemplates: r.inspectionTemplates.map((t) => ({
-      id: t.inspectionTemplate.id,
-      code: t.inspectionTemplate.code,
-      name: localized(t.inspectionTemplate.name as LocalizedText | null),
-    })),
     steps: r.steps.map((s) => ({
       id: s.id,
       processStepId: s.processStepId,
@@ -515,6 +511,11 @@ export async function fetchWorkOrder(
       assignees: stepAssignees(s.plans),
       actualWorkHours: sumActualWorkHours(s.actuals),
       canStart: canStartStep(s.id, ctx, actorId).ok,
+      inspectionTemplates: s.inspectionTemplates.map((t) => ({
+        id: t.inspectionTemplate.id,
+        code: t.inspectionTemplate.code,
+        name: localized(t.inspectionTemplate.name as LocalizedText | null),
+      })),
     })),
     stepLinks: r.stepLinks.map((l) => ({
       sourceStepId: l.sourceStepId,
@@ -668,6 +669,14 @@ export async function fetchStepExecution(
       processStep: true,
       plant: true,
       supplierBp: true,
+      // この工程に割り当てられた検査表テンプレート（工程単位）
+      inspectionTemplates: {
+        include: {
+          inspectionTemplate: {
+            include: { items: { orderBy: { sortOrder: "asc" } } },
+          },
+        },
+      },
       inspectionRecords: {
         include: {
           template: true,
@@ -694,18 +703,10 @@ export async function fetchStepExecution(
   });
   if (!step) return null;
 
-  const [{ ctx }, actorId, templateLinks, defectTypes, workLocationOptions] =
+  const [{ ctx }, actorId, defectTypes, workLocationOptions] =
     await Promise.all([
       fetchWorkflowCtx(wo.id),
       getCurrentActorId(),
-      prisma.workOrderInspectionTemplate.findMany({
-        where: { workOrderId: wo.id },
-        include: {
-          inspectionTemplate: {
-            include: { items: { orderBy: { sortOrder: "asc" } } },
-          },
-        },
-      }),
       prisma.defectType.findMany({
         where: { isActive: true },
         orderBy: [{ sortOrder: "asc" }, { id: "asc" }],
@@ -787,14 +788,9 @@ export async function fetchStepExecution(
     })),
   });
 
-  // 検査工程で出すテンプレート: 関連工程がこの工程 or 未設定（汎用）のもの
-  const templates: InspectionTemplateView[] = templateLinks
-    .filter(
-      (t) =>
-        t.inspectionTemplate.relatedProcessStepId == null ||
-        t.inspectionTemplate.relatedProcessStepId === step.processStepId,
-    )
-    .map((t) => ({
+  // 検査工程で出すテンプレート: この工程に割り当てられたもの（工程単位）
+  const templates: InspectionTemplateView[] = step.inspectionTemplates.map(
+    (t) => ({
       id: t.inspectionTemplate.id,
       code: t.inspectionTemplate.code,
       version: t.inspectionTemplate.version,
@@ -805,7 +801,8 @@ export async function fetchStepExecution(
         name: localized(it.itemName as LocalizedText | null),
         ...itemSpecFromRow(it),
       })),
-    }));
+    }),
+  );
 
   const defectRecords: StepDefectRecordView[] = step.defectRecords.map((d) => ({
     id: d.id,
