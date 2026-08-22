@@ -11,7 +11,7 @@ import type {
   DeliveryMethod,
   DeliveryNote,
   DeliveryNoteStatus,
-  ShippingOrderCandidate,
+  DeliveryOrderCandidate,
 } from "@/components/shipping/delivery-notes/model";
 import { checkPermission } from "@/lib/authz";
 import { type Prisma, prisma } from "@/lib/db";
@@ -29,7 +29,7 @@ const LIST_FETCH_CAP = 1000;
 
 const DELIVERY_NOTE_INCLUDE = {
   // 1 出荷書は複数の注文明細を束ねられるので、明細行から番号を集める。
-  shippingOrder: {
+  deliveryOrder: {
     include: {
       items: {
         select: {
@@ -92,13 +92,13 @@ function mapDeliveryNote(r: DeliveryNoteRow): DeliveryNote {
   return {
     id: number,
     deliveryNumber: number,
-    shippingOrderNumber: formatDocNumber("SHP", {
-      yearMonth: r.shippingOrderYearMonth,
-      seq: r.shippingOrderSeq,
+    deliveryOrderNumber: formatDocNumber("DOR", {
+      yearMonth: r.deliveryOrderYearMonth,
+      seq: r.deliveryOrderSeq,
     }),
     orderLineNumbers: [
       ...new Set(
-        r.shippingOrder.items
+        r.deliveryOrder.items
           .map((it) => (it.orderLine ? orderLineNumberOf(it.orderLine) : null))
           .filter((n): n is string => n != null),
       ),
@@ -140,7 +140,7 @@ export async function fetchDeliveryNotes(): Promise<DeliveryNote[]> {
   const rows = await prisma.deliveryNote.findMany({
     take: LIST_FETCH_CAP,
     where: ownOrPlantWhere(authz.access, authz.userId, {
-      plantClause: (ids) => ({ shippingOrder: { fromPlantId: { in: ids } } }),
+      plantClause: (ids) => ({ deliveryOrder: { fromPlantId: { in: ids } } }),
       ownColumn: "createdBy",
     }) as Prisma.DeliveryNoteWhereInput,
     include: DELIVERY_NOTE_INCLUDE,
@@ -160,7 +160,7 @@ export async function fetchDeliveryNote(
   if (
     !rowInScope(
       authz.access,
-      { plantIds: [row.shippingOrder.fromPlantId], createdBy: row.createdBy },
+      { plantIds: [row.deliveryOrder.fromPlantId], createdBy: row.createdBy },
       authz.userId,
     )
   ) {
@@ -175,33 +175,42 @@ export async function fetchDeliveryNote(
  * 納品書を作成できる出荷書（CONFIRMED / SHIPPED）の候補一覧。
  * 少数想定のためサーバーで一括ロードして Select に渡す（最新 100 件）。
  */
-export async function fetchShippingOrderCandidates(): Promise<
-  ShippingOrderCandidate[]
+export async function fetchDeliveryOrderCandidates(): Promise<
+  DeliveryOrderCandidate[]
 > {
   // SCOPED ユーザーにはスコープ拠点の出荷書のみ候補に出す。
   const authz = await checkPermission("delivery_note", "READ");
   if (!authz.ok) return [];
-  const rows = await prisma.shippingOrder.findMany({
+  const rows = await prisma.deliveryOrder.findMany({
     where: {
       status: { in: ["CONFIRMED", "SHIPPED"] },
       ...(plantWhere(
         authz.access,
         "fromPlantId",
-      ) as Prisma.ShippingOrderWhereInput),
+      ) as Prisma.DeliveryOrderWhereInput),
     },
     include: {
       customerBp: true,
       customerBranchBp: true,
       items: {
         orderBy: { sortOrder: "asc" },
-        include: { product: true, orderLine: { include: { endUserBp: true } } },
+        include: {
+          product: true,
+          orderLine: {
+            include: {
+              endUserBp: true,
+              // 営業担当の導出用（出荷書には保存されない）。
+              acceptance: { select: { salesRepId: true } },
+            },
+          },
+        },
       },
     },
     orderBy: [{ yearMonth: "desc" }, { seq: "desc" }],
     take: 100,
   });
   return rows.map((r) => {
-    const number = formatDocNumber("SHP", {
+    const number = formatDocNumber("DOR", {
       yearMonth: r.yearMonth,
       seq: r.seq,
     });
@@ -218,13 +227,19 @@ export async function fetchShippingOrderCandidates(): Promise<
       ).values(),
     ];
     const endUser = endUsers.length === 1 ? endUsers[0] : null;
+    // 出荷書の営業担当は導出値（明細 → 注文請書ヘッダ）。1 人に定まる
+    // ときだけ納品書へ引き継ぐ。
+    const repIds = new Set(
+      r.items
+        .map((it) => it.orderLine?.acceptance.salesRepId)
+        .filter((id): id is string => Boolean(id)),
+    );
     return {
       number,
       label: `${number}　${customerName}（${totalQuantity}）`,
       customerBpId: r.customerBpId,
       customerName,
-      // 出荷書に営業担当が入っていれば納品書もそれを引き継ぐ。
-      salesRepId: r.salesRepId,
+      salesRepId: repIds.size === 1 ? [...repIds][0] : null,
       customerBranchName: r.customerBranchBp
         ? localized(r.customerBranchBp.name as LocalizedText | null)
         : null,

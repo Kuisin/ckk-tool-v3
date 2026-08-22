@@ -23,7 +23,7 @@ screenshots: [invoice-list-01, invoice-detail-01, invoice-items-01, invoice-menu
 - **消費税（消费税）** … 对小计征收的税。会按每个客户的规定自动计算。
 - **合計金額（税込）（合计金额（含税））** … 小计加上消费税，也就是客户实际支付的金额。
 - **支払期限（付款期限）** … 客户应该在什么时候之前付款的日期。
-- **由来（来源）** … 表示这一行是从哪张[出货单](/manual/zh/operations/shipping/shipping-order/user)或[送货单](/manual/zh/operations/shipping/delivery-note/user)来的。
+- **由来（来源）** … 表示这一行是从哪张[出货单](/manual/zh/operations/shipping/delivery-order/user)或[送货单](/manual/zh/operations/shipping/delivery-note/user)来的。
 
 ## 开始之前
 
@@ -57,7 +57,7 @@ screenshots: [invoice-list-01, invoice-detail-01, invoice-items-01, invoice-menu
 ![发票明细](../../../assets/screenshots/invoice-items-01.png)
 
 - **摘要（摘要）** … 产品名称和批次号。
-- **由来（来源）** … 点蓝色文字，可以打开作为依据的[出货单](/manual/zh/operations/shipping/shipping-order/user)或[送货单](/manual/zh/operations/shipping/delivery-note/user)。
+- **由来（来源）** … 点蓝色文字，可以打开作为依据的[出货单](/manual/zh/operations/shipping/delivery-order/user)或[送货单](/manual/zh/operations/shipping/delivery-note/user)。
 - 最下面会显示小计、消费税、合计金额（含税）。
 
 明细下面有两个标签页。「**概要**」（概要）可以看寄给客户的日期时间和备注，「**履歴**」（历史）可以看谁在什么时候推进了这张发票。
@@ -140,7 +140,7 @@ screenshots: [invoice-list-01, invoice-detail-01, invoice-items-01, invoice-menu
 A. 发票不在这个界面做。请打开[结算截止处理](/manual/zh/operations/billing/billing-closing/user)，在对应的行上点「請求書を生成」（生成发票）。
 
 **Q. 想改金额，却没有编辑界面。**
-A. 发票不能直接改。应该是作为依据的[出货单](/manual/zh/operations/shipping/shipping-order/user)的内容有问题，请联系财务或营业的负责人。
+A. 发票不能直接改。应该是作为依据的[出货单](/manual/zh/operations/shipping/delivery-order/user)的内容有问题，请联系财务或营业的负责人。
 
 **Q. 出现「下書きの請求書のみ発行できます」（只有草稿状态的发票才能发行）。**
 A. 这张发票已经发行过了。把界面关掉再打开，就能看到现在的状态。

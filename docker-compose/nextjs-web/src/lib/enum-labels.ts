@@ -171,15 +171,15 @@ export const ORDER_TYPE_OPTIONS = Object.entries(ORDER_TYPE_LABEL).map(
   ([value, label]) => ({ value, label }),
 );
 
-/** app.SHIPPING_TYPE（出荷書種別） */
-export const SHIPPING_TYPE_LABEL: Record<string, string> = {
+/** app.DELIVERY_ORDER_TYPE（出荷書種別） */
+export const DELIVERY_ORDER_TYPE_LABEL: Record<string, string> = {
   STOCK_STORAGE: "在庫保管",
   DISPATCH: "発送",
 };
 
-export const SHIPPING_TYPE_OPTIONS = Object.entries(SHIPPING_TYPE_LABEL).map(
-  ([value, label]) => ({ value, label }),
-);
+export const DELIVERY_ORDER_TYPE_OPTIONS = Object.entries(
+  DELIVERY_ORDER_TYPE_LABEL,
+).map(([value, label]) => ({ value, label }));
 
 /** app.DELIVERY_METHOD（納品方法） */
 export const DELIVERY_METHOD_LABEL: Record<string, string> = {

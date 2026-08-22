@@ -1,17 +1,17 @@
 /**
  * data.ts — 出荷書 (SH01) ページのサーバーサイド取得・マッピング。
  *
- * app.shipping_orders は (year_month, seq) の複合キー — 表示番号
- * SHP-YYYYMM-NNNNN は導出（保存しない）で、URL id を兼ねる。
+ * app.delivery_orders は (year_month, seq) の複合キー — 表示番号
+ * DOR-YYYYMM-NNNNN は導出（保存しない）で、URL id を兼ねる。
  * Prisma Decimal はここで Number() へ変換してからクライアントへ渡す。
  */
 
 import { plantWhere, rowInScope } from "@ckk/authz-core";
 import type {
-  ShippingOrder,
-  ShippingOrderStatus,
-  ShippingType,
-} from "@/components/shipping/shipping-orders/model";
+  DeliveryOrder,
+  DeliveryOrderStatus,
+  DeliveryOrderType,
+} from "@/components/shipping/delivery-orders/model";
 import { checkPermission } from "@/lib/authz";
 import { type Prisma, prisma } from "@/lib/db";
 import {
@@ -26,11 +26,10 @@ import { type LocalizedText, localized } from "@/lib/format";
 // DataTable はクライアントページングのため、最新分のみで実用上十分。
 const LIST_FETCH_CAP = 1000;
 
-const SHIPPING_ORDER_INCLUDE = {
+const DELIVERY_ORDER_INCLUDE = {
   // 顧客はヘッダが権威。注文明細は明細行ごとに紐付く。
   customerBp: true,
   customerBranchBp: true,
-  salesRep: { select: { id: true, displayName: true } },
   createdByUser: { select: { displayName: true } },
   workOrder: true,
   fromPlant: true,
@@ -43,6 +42,12 @@ const SHIPPING_ORDER_INCLUDE = {
           acceptanceYearMonth: true,
           acceptanceSeq: true,
           branch: true,
+          // 営業担当は書類に保存せず、注文請書ヘッダから導出する。
+          acceptance: {
+            select: {
+              salesRep: { select: { id: true, displayName: true } },
+            },
+          },
         },
       },
     },
@@ -53,12 +58,12 @@ const SHIPPING_ORDER_INCLUDE = {
   },
 };
 
-type ShippingOrderRow = NonNullable<Awaited<ReturnType<typeof findRow>>>;
+type DeliveryOrderRow = NonNullable<Awaited<ReturnType<typeof findRow>>>;
 
 function findRow(key: DocKey) {
-  return prisma.shippingOrder.findUnique({
+  return prisma.deliveryOrder.findUnique({
     where: { yearMonth_seq: { yearMonth: key.yearMonth, seq: key.seq } },
-    include: SHIPPING_ORDER_INCLUDE,
+    include: DELIVERY_ORDER_INCLUDE,
   });
 }
 
@@ -73,21 +78,27 @@ function productLabel(p: {
   return code ? `${name} ${code}` : name;
 }
 
-function mapShippingOrder(r: ShippingOrderRow): ShippingOrder {
-  const number = formatDocNumber("SHP", {
+function mapDeliveryOrder(r: DeliveryOrderRow): DeliveryOrder {
+  const number = formatDocNumber("DOR", {
     yearMonth: r.yearMonth,
     seq: r.seq,
   });
   return {
     id: number,
-    shippingNumber: number,
+    deliveryOrderNumber: number,
     customerId: r.customerBpId,
     customerName: localized(r.customerBp.name as LocalizedText | null),
     customerBranchName: r.customerBranchBp
       ? localized(r.customerBranchBp.name as LocalizedText | null)
       : null,
-    salesRepId: r.salesRep?.id ?? null,
-    salesRepName: r.salesRep?.displayName ?? null,
+    // 営業担当は明細 → 注文請書ヘッダから導出（重複排除・明細順）。
+    salesRepNames: [
+      ...new Set(
+        r.items
+          .map((it) => it.orderLine?.acceptance.salesRep?.displayName)
+          .filter((n): n is string => Boolean(n)),
+      ),
+    ],
     createdByName: r.createdByUser?.displayName ?? null,
     orderLineNumbers: [
       ...new Set(
@@ -101,8 +112,8 @@ function mapShippingOrder(r: ShippingOrderRow): ShippingOrder {
     fromPlantName: r.fromPlant
       ? localized(r.fromPlant.name as LocalizedText | null)
       : null,
-    type: r.type as ShippingType,
-    status: r.status as ShippingOrderStatus,
+    type: r.type as DeliveryOrderType,
+    status: r.status as DeliveryOrderStatus,
     shippedAt: r.shippedAt?.toISOString() ?? null,
     notes: r.notes,
     items: r.items.map((it) => ({
@@ -137,30 +148,30 @@ function mapShippingOrder(r: ShippingOrderRow): ShippingOrder {
  * `extraWhere` は未処理出荷書 (SH03) の「出荷準備中」タブが未出荷だけを引く
  * ための追加条件。スコープ条件と AND で合成する。
  */
-export async function fetchShippingOrders(
-  extraWhere?: Prisma.ShippingOrderWhereInput,
-): Promise<ShippingOrder[]> {
+export async function fetchDeliveryOrders(
+  extraWhere?: Prisma.DeliveryOrderWhereInput,
+): Promise<DeliveryOrder[]> {
   // スコープ行フィルタ（PLANT = 出荷元拠点。ALL は {} で従来通り全件）。
-  const authz = await checkPermission("shipping_order", "READ");
+  const authz = await checkPermission("delivery_order", "READ");
   if (!authz.ok) return [];
   const scope = plantWhere(
     authz.access,
     "fromPlantId",
-  ) as Prisma.ShippingOrderWhereInput;
-  const rows = await prisma.shippingOrder.findMany({
+  ) as Prisma.DeliveryOrderWhereInput;
+  const rows = await prisma.deliveryOrder.findMany({
     take: LIST_FETCH_CAP,
     where: extraWhere ? { AND: [scope, extraWhere] } : scope,
-    include: SHIPPING_ORDER_INCLUDE,
+    include: DELIVERY_ORDER_INCLUDE,
     orderBy: [{ yearMonth: "desc" }, { seq: "desc" }],
   });
-  return rows.map(mapShippingOrder);
+  return rows.map(mapDeliveryOrder);
 }
 
 /** 1件取得 — 未存在・スコープ外は null。 */
-export async function fetchShippingOrder(
+export async function fetchDeliveryOrder(
   key: DocKey,
-): Promise<ShippingOrder | null> {
-  const authz = await checkPermission("shipping_order", "READ");
+): Promise<DeliveryOrder | null> {
+  const authz = await checkPermission("delivery_order", "READ");
   if (!authz.ok) return null;
   const row = await findRow(key);
   if (!row) return null;
@@ -169,5 +180,5 @@ export async function fetchShippingOrder(
   ) {
     return null;
   }
-  return mapShippingOrder(row);
+  return mapDeliveryOrder(row);
 }

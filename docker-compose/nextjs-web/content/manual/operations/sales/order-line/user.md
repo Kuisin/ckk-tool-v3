@@ -121,5 +121,5 @@ ORD-202608-00012-01
 
 - [注文請書](/manual/ja/operations/sales/order-acceptance/user) — 注文明細を作る・直す画面
 - [指示書](/manual/ja/operations/production/work-order/user) — 製造を進める画面
-- [出荷書](/manual/ja/operations/shipping/shipping-order/user) — 出荷する画面
+- [出荷書](/manual/ja/operations/shipping/delivery-order/user) — 出荷する画面
 - [在庫管理](/manual/ja/operations/production/product-inventory/user) — 在庫と引き当ての状況

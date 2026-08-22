@@ -19,9 +19,9 @@ screenshots: []
 
 | 段階 | 何をするか | 担当 | 使うアプリ |
 |------|-----------|------|-----------|
-| 1. 出荷書を作る | 注文明細を選び、出す製品とロットを決めます | 出荷担当 | [出荷書](/manual/ja/operations/shipping/shipping-order/user)（`SH01`） |
-| 2. 確定する | 内容を確定し、出荷できる状態にします | 出荷担当 | [出荷書](/manual/ja/operations/shipping/shipping-order/user)（`SH01`） |
-| 3. 出荷する | 実際に送り出します。在庫が減ります | 出荷担当 | [出荷書](/manual/ja/operations/shipping/shipping-order/user)（`SH01`） |
+| 1. 出荷書を作る | 注文明細を選び、出す製品とロットを決めます | 出荷担当 | [出荷書](/manual/ja/operations/shipping/delivery-order/user)（`SH01`） |
+| 2. 確定する | 内容を確定し、出荷できる状態にします | 出荷担当 | [出荷書](/manual/ja/operations/shipping/delivery-order/user)（`SH01`） |
+| 3. 出荷する | 実際に送り出します。在庫が減ります | 出荷担当 | [出荷書](/manual/ja/operations/shipping/delivery-order/user)（`SH01`） |
 | 4. 納品書を作る | 届け先と、価格を載せるかどうかを決めます | 出荷担当 | [納品書](/manual/ja/operations/shipping/delivery-note/user)（`SH02`） |
 | 5. 発行・納品 | PDF を発行し、届いたら納品済にします | 出荷担当 | [納品書](/manual/ja/operations/shipping/delivery-note/user)（`SH02`） |
 

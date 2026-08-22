@@ -21,7 +21,7 @@ INSERT INTO app.permissions (code, display_name, description) VALUES
   ('work_order',      '{"ja":"指示書","en":"Work order"}',        '{"ja":"","en":""}'),
   ('approve',         '{"ja":"承認管理","en":"Approvals"}',           '{"ja":"","en":""}'),
   ('inventory',       '{"ja":"在庫","en":"Inventory"}',               '{"ja":"","en":""}'),
-  ('shipping_order',  '{"ja":"出荷書","en":"Shipping order"}',        '{"ja":"","en":""}'),
+  ('delivery_order',  '{"ja":"出荷書","en":"Delivery order"}',        '{"ja":"","en":""}'),
   ('delivery_note',   '{"ja":"納品書","en":"Delivery note"}',         '{"ja":"","en":""}'),
   ('invoice',         '{"ja":"請求書","en":"Invoice"}',               '{"ja":"","en":""}'),
   ('billing_closing', '{"ja":"締日処理","en":"Billing closing"}',     '{"ja":"","en":""}'),

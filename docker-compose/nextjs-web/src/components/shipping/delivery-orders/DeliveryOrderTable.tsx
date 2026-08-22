@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * ShippingOrderTable — 出荷書 一覧 (SH01, design.md §8.1 / §14).
+ * DeliveryOrderTable — 出荷書 一覧 (SH01, design.md §8.1 / §14).
  *
  * Columns: 出荷書番号 / 注文明細番号 / 種別 / 数量合計 / 状態 / 出荷日。
  * フィルタ: 検索（番号・顧客・製品）+ 種別 + 状態。行クリック → 詳細。
@@ -17,21 +17,24 @@ import { StatusBadge, statusOptions } from "@/components/ui/StatusBadge";
 import { ListShell } from "@/components/ui/shells";
 import { useUrlSelectState, useUrlStringState } from "@/hooks/useUrlState";
 import { useIsMobile } from "@/hooks/useViewport";
-import { SHIPPING_TYPE_LABEL, SHIPPING_TYPE_OPTIONS } from "@/lib/enum-labels";
-import type { ShippingOrder } from "./model";
+import {
+  DELIVERY_ORDER_TYPE_LABEL,
+  DELIVERY_ORDER_TYPE_OPTIONS,
+} from "@/lib/enum-labels";
+import type { DeliveryOrder } from "./model";
 
-const BASE_PATH = "/shipping/shipping-orders";
+const BASE_PATH = "/shipping/delivery-orders";
 
 /** 種別バッジ — DISPATCH=発送（青）/ STOCK_STORAGE=在庫保管（灰）。 */
-export function ShippingTypeBadge({ type }: { type: string }) {
+export function DeliveryOrderTypeBadge({ type }: { type: string }) {
   return (
     <Badge color={type === "DISPATCH" ? "blue" : "gray"} variant="light">
-      {SHIPPING_TYPE_LABEL[type] ?? type}
+      {DELIVERY_ORDER_TYPE_LABEL[type] ?? type}
     </Badge>
   );
 }
 
-export function ShippingOrderTable({ rows }: { rows: ShippingOrder[] }) {
+export function DeliveryOrderTable({ rows }: { rows: DeliveryOrder[] }) {
   const fmt = useFormat();
   const router = useRouter();
   const isMobile = useIsMobile();
@@ -50,7 +53,7 @@ export function ShippingOrderTable({ rows }: { rows: ShippingOrder[] }) {
   const filtered = rows.filter((o) => {
     const matchesSearch =
       !search ||
-      o.shippingNumber.includes(search) ||
+      o.deliveryOrderNumber.includes(search) ||
       o.orderLineNumbers.some((n) => n.includes(search)) ||
       o.customerName.includes(search);
     const matchesType = !type || o.type === type;
@@ -58,14 +61,14 @@ export function ShippingOrderTable({ rows }: { rows: ShippingOrder[] }) {
     return matchesSearch && matchesType && matchesStatus;
   });
 
-  const columns: Column<ShippingOrder>[] = [
+  const columns: Column<DeliveryOrder>[] = [
     {
-      key: "shippingNumber",
+      key: "deliveryOrderNumber",
       header: "出荷書番号",
       sortable: true,
       render: (o) => (
         <Text ff="mono" size="sm">
-          {o.shippingNumber}
+          {o.deliveryOrderNumber}
         </Text>
       ),
     },
@@ -87,7 +90,7 @@ export function ShippingOrderTable({ rows }: { rows: ShippingOrder[] }) {
       header: "種別",
       width: 110,
       sortValue: (o) => o.type,
-      render: (o) => <ShippingTypeBadge type={o.type} />,
+      render: (o) => <DeliveryOrderTypeBadge type={o.type} />,
     },
     {
       key: "totalQuantity",
@@ -106,7 +109,7 @@ export function ShippingOrderTable({ rows }: { rows: ShippingOrder[] }) {
       header: "状態",
       width: 100,
       sortValue: (o) => o.status,
-      render: (o) => <StatusBadge entity="ShippingOrder" status={o.status} />,
+      render: (o) => <StatusBadge entity="DeliveryOrder" status={o.status} />,
     },
     {
       key: "shippedAt",
@@ -129,7 +132,7 @@ export function ShippingOrderTable({ rows }: { rows: ShippingOrder[] }) {
         <>
           <Select
             clearable
-            data={SHIPPING_TYPE_OPTIONS}
+            data={DELIVERY_ORDER_TYPE_OPTIONS}
             flex={isMobile ? 1 : undefined}
             onChange={setType}
             placeholder="種別"
@@ -138,7 +141,7 @@ export function ShippingOrderTable({ rows }: { rows: ShippingOrder[] }) {
           />
           <Select
             clearable
-            data={statusOptions("ShippingOrder")}
+            data={statusOptions("DeliveryOrder")}
             flex={isMobile ? 1 : undefined}
             onChange={setStatus}
             placeholder="状態"
@@ -161,7 +164,7 @@ export function ShippingOrderTable({ rows }: { rows: ShippingOrder[] }) {
       <DataTable
         columns={columns}
         data={filtered}
-        defaultSort={{ key: "shippingNumber", dir: "desc" }}
+        defaultSort={{ key: "deliveryOrderNumber", dir: "desc" }}
         emptyAction={<NewButton href={`${BASE_PATH}/new`} />}
         emptyIcon={<IconTruck size={24} />}
         emptyMessage="出荷書がありません"
@@ -171,7 +174,7 @@ export function ShippingOrderTable({ rows }: { rows: ShippingOrder[] }) {
           <Group align="flex-start" justify="space-between" wrap="nowrap">
             <Stack className="min-w-0" gap={3}>
               <Text c="dimmed" ff="mono" size="xs">
-                {o.shippingNumber}
+                {o.deliveryOrderNumber}
               </Text>
               <Text fw={600} size="sm" truncate>
                 {o.customerName}
@@ -180,14 +183,14 @@ export function ShippingOrderTable({ rows }: { rows: ShippingOrder[] }) {
                 {o.orderLineNumbers.join(", ") || "—"}
               </Text>
               <Group gap="md" mt={2}>
-                <ShippingTypeBadge type={o.type} />
+                <DeliveryOrderTypeBadge type={o.type} />
                 <Text c="dimmed" size="xs">
                   {o.totalQuantity} 本
                 </Text>
               </Group>
             </Stack>
             <Stack align="flex-end" className="shrink-0" gap={4}>
-              <StatusBadge entity="ShippingOrder" status={o.status} />
+              <StatusBadge entity="DeliveryOrder" status={o.status} />
               <Text c="dimmed" size="xs">
                 {fmt.date(o.shippedAt)}
               </Text>

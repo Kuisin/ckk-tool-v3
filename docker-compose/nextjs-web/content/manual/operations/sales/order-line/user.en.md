@@ -121,5 +121,5 @@ It needs the same permission as order acceptances (`order_acceptance`). Contact 
 
 - [Order acceptance](/manual/en/operations/sales/order-acceptance/user) — where order lines are created and edited
 - [Work order](/manual/en/operations/production/work-order/user) — production
-- [Shipping order](/manual/en/operations/shipping/shipping-order/user) — shipping
+- [Shipping order](/manual/en/operations/shipping/delivery-order/user) — shipping
 - [Inventory](/manual/en/operations/production/product-inventory/user) — stock and reservations

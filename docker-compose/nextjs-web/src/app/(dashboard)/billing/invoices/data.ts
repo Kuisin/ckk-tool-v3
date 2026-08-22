@@ -40,7 +40,7 @@ function findRow(key: DocKey) {
 
 /** 由来キー（nullable ペア）→ 導出文書番号。片方でも欠ければ null。 */
 function provenanceNumber(
-  prefix: "SHP" | "DRN",
+  prefix: "DOR" | "DRN",
   yearMonth: string | null,
   seq: number | null,
 ): string | null {
@@ -56,10 +56,10 @@ function mapInvoice(r: InvoiceRow): Invoice {
     quantity: it.quantity,
     unitPrice: Number(it.unitPrice),
     amount: Number(it.amount),
-    shippingOrderNumber: provenanceNumber(
-      "SHP",
-      it.shippingOrderYearMonth,
-      it.shippingOrderSeq,
+    deliveryOrderNumber: provenanceNumber(
+      "DOR",
+      it.deliveryOrderYearMonth,
+      it.deliveryOrderSeq,
     ),
     deliveryNoteNumber: provenanceNumber(
       "DRN",

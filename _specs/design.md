@@ -632,9 +632,9 @@ Stack (gap="md")
 | StepStatus | IN_PROGRESS | blue | 進行中 |
 | StepStatus | COMPLETED | green | 完了 |
 | StepStatus | CANCELLED | red | キャンセル |
-| ShippingOrder | DRAFT | gray | 下書き |
-| ShippingOrder | CONFIRMED | blue | 確定 |
-| ShippingOrder | SHIPPED | green | 出荷済 |
+| DeliveryOrder | DRAFT | gray | 下書き |
+| DeliveryOrder | CONFIRMED | blue | 確定 |
+| DeliveryOrder | SHIPPED | green | 出荷済 |
 | DeliveryNote | DRAFT | gray | 下書き |
 | DeliveryNote | ISSUED | blue | 発行済 |
 | DeliveryNote | DELIVERED | green | 納品済 |
@@ -1259,7 +1259,7 @@ Row click navigates to detail page.
 | OrderAcceptance | 注文番号 / 顧客 / 顧客注文書番号 / 合計金額 / 状態 / 更新日 |
 | SalesOrder | 注文明細番号 / 顧客 / 製品 / 数量 / 金額 / 納期 / 状態 |
 | WorkOrder | 指示書番号 / 注文明細番号 / 種別 / 予定数量 / 承認状態 / 状態 / 更新日 |
-| ShippingOrder | 出荷書番号 / 注文明細番号 / 種別 / 状態 / 出荷日 |
+| DeliveryOrder | 出荷書番号 / 注文明細番号 / 種別 / 状態 / 出荷日 |
 | UnplannedOrderLine (PD05 未手配) | 注文明細番号 / 顧客 / 製品 / 受注数 / 手配済 / 未手配 / 在庫引当 / 納期 / 状態 |
 | UnshippedOrderLine (SH03 未手配) | 注文明細番号 / 顧客 / 製品 / 完了ロット / 完成数 / 出荷手配済 / 未手配 / 納期 / 状態 |
 | DeliveryNote | 納品番号 / 出荷書番号 / 納品先 / 方法 / 状態 / 納品日 |

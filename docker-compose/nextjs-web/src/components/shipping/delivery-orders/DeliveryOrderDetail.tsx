@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * ShippingOrderDetail — 出荷書 詳細 (SH21, design.md §8.2).
+ * DeliveryOrderDetail — 出荷書 詳細 (SH21, design.md §8.2).
  *
  * SummaryGrid（番号 / 注文明細番号 link / 顧客 / 種別 / 出荷元拠点 / 出荷日 …）+
  * 明細テーブル（製品 / ロット / 数量 / 備考）+
@@ -27,10 +27,10 @@ import { IconCheck, IconReceipt, IconTruck, IconX } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import {
-  confirmShippingOrder,
-  deleteShippingOrder,
-  shipShippingOrder,
-} from "@/app/(dashboard)/shipping/shipping-orders/actions";
+  confirmDeliveryOrder,
+  deleteDeliveryOrder,
+  shipDeliveryOrder,
+} from "@/app/(dashboard)/shipping/delivery-orders/actions";
 import { useFormat } from "@/components/layout/PreferencesProvider";
 import { SecondaryButton } from "@/components/ui/buttons";
 import { DocNumber } from "@/components/ui/DocNumber";
@@ -50,17 +50,17 @@ import { useTabParam } from "@/hooks/useUrlState";
 import type { MemoView } from "@/lib/document-memos";
 import { DELIVERY_METHOD_LABEL } from "@/lib/enum-labels";
 import type { ActionResult } from "@/lib/server-action";
-import { canCreateDeliveryNote, isEditable, type ShippingOrder } from "./model";
-import { ShippingTypeBadge } from "./ShippingOrderTable";
+import { DeliveryOrderTypeBadge } from "./DeliveryOrderTable";
+import { canCreateDeliveryNote, type DeliveryOrder, isEditable } from "./model";
 
-const BASE_PATH = "/shipping/shipping-orders";
+const BASE_PATH = "/shipping/delivery-orders";
 
-export function ShippingOrderDetail({
+export function DeliveryOrderDetail({
   order,
   auditEntries,
   memos,
 }: {
-  order: ShippingOrder;
+  order: DeliveryOrder;
   /** 操作履歴（audit_logs 由来、履歴タブ）。 */
   auditEntries: AuditEntry[];
   /** 社内メモ（document_memos 由来、メモタブ）。 */
@@ -145,14 +145,14 @@ export function ShippingOrderDetail({
       }
       breadcrumbs={["出荷", { label: "出荷書", href: BASE_PATH }, "詳細"]}
       createdAt={fmt.dateTime(order.createdAt)}
-      status={<StatusBadge entity="ShippingOrder" status={order.status} />}
-      title={order.shippingNumber}
+      status={<StatusBadge entity="DeliveryOrder" status={order.status} />}
+      title={order.deliveryOrderNumber}
       updatedAt={fmt.dateTime(order.updatedAt)}
     >
       <SummaryGrid>
         <FieldValue
           label="出荷書番号"
-          value={<DocNumber>{order.shippingNumber}</DocNumber>}
+          value={<DocNumber>{order.deliveryOrderNumber}</DocNumber>}
         />
         <FieldValue
           label="注文明細番号"
@@ -184,11 +184,18 @@ export function ShippingOrderDetail({
               : order.customerName
           }
         />
-        <FieldValue label="営業担当" value={order.salesRepName} />
+        <FieldValue
+          label="営業担当"
+          value={
+            order.salesRepNames.length > 0
+              ? order.salesRepNames.join("、")
+              : null
+          }
+        />
         <FieldValue label="作成者" value={order.createdByName} />
         <FieldValue
           label="種別"
-          value={<ShippingTypeBadge type={order.type} />}
+          value={<DeliveryOrderTypeBadge type={order.type} />}
         />
         <FieldValue label="出荷元拠点" value={order.fromPlantName ?? "—"} />
         <FieldValue
@@ -283,7 +290,7 @@ export function ShippingOrderDetail({
               action={
                 canCreateDeliveryNote(order) ? (
                   <SecondaryButton
-                    href={`/shipping/delivery-notes/new?shippingOrder=${order.id}`}
+                    href={`/shipping/delivery-notes/new?deliveryOrder=${order.id}`}
                     leftSection={<IconReceipt size={14} />}
                   >
                     納品書を作成
@@ -302,7 +309,7 @@ export function ShippingOrderDetail({
               {canCreateDeliveryNote(order) && (
                 <Group justify="flex-end">
                   <SecondaryButton
-                    href={`/shipping/delivery-notes/new?shippingOrder=${order.id}`}
+                    href={`/shipping/delivery-notes/new?deliveryOrder=${order.id}`}
                     leftSection={<IconReceipt size={14} />}
                   >
                     納品書を作成
@@ -364,8 +371,8 @@ export function ShippingOrderDetail({
           <MemoPanel
             memos={memos}
             mode="memo"
-            ownerId={order.shippingNumber}
-            ownerType="shipping_orders"
+            ownerId={order.deliveryOrderNumber}
+            ownerType="delivery_orders"
           />
         </Tabs.Panel>
 
@@ -378,13 +385,13 @@ export function ShippingOrderDetail({
         confirmColor="blue"
         confirmLabel="確定"
         loading={isPending}
-        message={`出荷書 ${order.shippingNumber} を確定します。確定後は編集できません。`}
+        message={`出荷書 ${order.deliveryOrderNumber} を確定します。確定後は編集できません。`}
         onClose={() => setConfirmOpen(false)}
         onConfirm={() =>
           run(
-            () => confirmShippingOrder(order.shippingNumber),
+            () => confirmDeliveryOrder(order.deliveryOrderNumber),
             "確定しました",
-            `出荷書 ${order.shippingNumber} を確定しました`,
+            `出荷書 ${order.deliveryOrderNumber} を確定しました`,
           )
         }
         opened={confirmOpen}
@@ -396,15 +403,15 @@ export function ShippingOrderDetail({
         loading={isPending}
         message={
           order.type === "DISPATCH"
-            ? `出荷書 ${order.shippingNumber} を出荷済みにします。注文明細の出荷状態も再計算されます。`
-            : `出荷書 ${order.shippingNumber} を出荷済みにします（在庫保管のため注文明細の出荷状態は変わりません）。`
+            ? `出荷書 ${order.deliveryOrderNumber} を出荷済みにします。注文明細の出荷状態も再計算されます。`
+            : `出荷書 ${order.deliveryOrderNumber} を出荷済みにします（在庫保管のため注文明細の出荷状態は変わりません）。`
         }
         onClose={() => setShipOpen(false)}
         onConfirm={() =>
           run(
-            () => shipShippingOrder(order.shippingNumber),
+            () => shipDeliveryOrder(order.deliveryOrderNumber),
             "出荷しました",
-            `出荷書 ${order.shippingNumber} を出荷済みにしました`,
+            `出荷書 ${order.deliveryOrderNumber} を出荷済みにしました`,
           )
         }
         opened={shipOpen}
@@ -413,13 +420,13 @@ export function ShippingOrderDetail({
       <ConfirmModal
         confirmLabel="キャンセルする"
         loading={isPending}
-        message={`出荷書 ${order.shippingNumber} を削除します。この操作は取り消せません。`}
+        message={`出荷書 ${order.deliveryOrderNumber} を削除します。この操作は取り消せません。`}
         onClose={() => setCancelOpen(false)}
         onConfirm={() =>
           run(
-            () => deleteShippingOrder(order.shippingNumber),
+            () => deleteDeliveryOrder(order.deliveryOrderNumber),
             "キャンセルしました",
-            `出荷書 ${order.shippingNumber} を削除しました`,
+            `出荷書 ${order.deliveryOrderNumber} を削除しました`,
             () => router.push(BASE_PATH),
           )
         }

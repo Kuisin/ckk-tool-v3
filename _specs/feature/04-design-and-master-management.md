@@ -45,7 +45,7 @@
 - 拠点（`plants`）は製造・在庫・出荷の拠点。`SCOPE.PLANT` の実体
 - `name` は `{ ja: '', en: '' }` JSON、`code` で一意
 - 在庫（`product_inventory` / `material_inventory`）・工程実行（`work_order_steps.plant_id`）・
-  出荷元（`shipping_orders.from_plant_id`）・入荷先（`material_receipts.plant_id`）から参照
+  出荷元（`delivery_orders.from_plant_id`）・入荷先（`material_receipts.plant_id`）から参照
 
 ### 取引先マスタ（顧客・最終需要家・仕入先/外注先を統合）
 

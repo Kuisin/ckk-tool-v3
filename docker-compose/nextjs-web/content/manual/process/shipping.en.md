@@ -19,9 +19,9 @@ Product kept in-house is recorded with the "stock storage" shipping type, and do
 
 | Stage | What happens | Who | App |
 |-------|--------------|-----|-----|
-| 1. Create the shipping order | Pick the order line, the product and the lot | Shipping | [Shipping Order](/manual/en/operations/shipping/shipping-order/user) (`SH01`) |
-| 2. Confirm | Fix the contents, ready to ship | Shipping | [Shipping Order](/manual/en/operations/shipping/shipping-order/user) (`SH01`) |
-| 3. Ship | Send it out; stock falls | Shipping | [Shipping Order](/manual/en/operations/shipping/shipping-order/user) (`SH01`) |
+| 1. Create the shipping order | Pick the order line, the product and the lot | Shipping | [Shipping Order](/manual/en/operations/shipping/delivery-order/user) (`SH01`) |
+| 2. Confirm | Fix the contents, ready to ship | Shipping | [Shipping Order](/manual/en/operations/shipping/delivery-order/user) (`SH01`) |
+| 3. Ship | Send it out; stock falls | Shipping | [Shipping Order](/manual/en/operations/shipping/delivery-order/user) (`SH01`) |
 | 4. Create the delivery note | Decide the destination and whether prices appear | Shipping | [Delivery Note](/manual/en/operations/shipping/delivery-note/user) (`SH02`) |
 | 5. Issue and deliver | Issue the PDF, then mark it delivered | Shipping | [Delivery Note](/manual/en/operations/shipping/delivery-note/user) (`SH02`) |
 

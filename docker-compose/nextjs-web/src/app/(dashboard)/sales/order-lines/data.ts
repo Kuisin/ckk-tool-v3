@@ -58,10 +58,10 @@ const ORDER_LINE_INCLUDE = {
   },
   // 出荷進捗（§8）— 出荷書は明細行経由で紐付く（1 出荷書に複数注文明細）。
   // ここで拾えるのは「この注文明細ぶんの数量」だけで、出荷書全体ではない。
-  shippingItems: {
+  deliveryItems: {
     select: {
       quantity: true,
-      shippingOrder: {
+      deliveryOrder: {
         select: {
           yearMonth: true,
           seq: true,
@@ -72,8 +72,8 @@ const ORDER_LINE_INCLUDE = {
       },
     },
     orderBy: [
-      { shippingOrderYearMonth: "desc" as const },
-      { shippingOrderSeq: "desc" as const },
+      { deliveryOrderYearMonth: "desc" as const },
+      { deliveryOrderSeq: "desc" as const },
     ],
   },
 };
@@ -165,22 +165,22 @@ function mapOrderLine(r: OrderLineRow): OrderLine {
       status: l.workOrder.status,
     })),
     // 出荷済み数量 = SHIPPED な発送（DISPATCH）出荷書における**この明細ぶん**の合計
-    shippedQuantity: r.shippingItems
+    shippedQuantity: r.deliveryItems
       .filter(
         (it) =>
-          it.shippingOrder.type === "DISPATCH" &&
-          it.shippingOrder.status === "SHIPPED",
+          it.deliveryOrder.type === "DISPATCH" &&
+          it.deliveryOrder.status === "SHIPPED",
       )
       .reduce((sum, it) => sum + it.quantity, 0),
-    shippingOrders: r.shippingItems.map((it) => ({
-      number: formatDocNumber("SHP", {
-        yearMonth: it.shippingOrder.yearMonth,
-        seq: it.shippingOrder.seq,
+    deliveryOrders: r.deliveryItems.map((it) => ({
+      number: formatDocNumber("DOR", {
+        yearMonth: it.deliveryOrder.yearMonth,
+        seq: it.deliveryOrder.seq,
       }),
-      type: it.shippingOrder.type,
-      status: it.shippingOrder.status,
+      type: it.deliveryOrder.type,
+      status: it.deliveryOrder.status,
       quantity: it.quantity,
-      shippedAt: it.shippingOrder.shippedAt?.toISOString() ?? null,
+      shippedAt: it.deliveryOrder.shippedAt?.toISOString() ?? null,
     })),
     createdAt: r.createdAt.toISOString(),
     updatedAt: r.updatedAt.toISOString(),

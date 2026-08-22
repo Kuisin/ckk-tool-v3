@@ -82,7 +82,7 @@ model User {
   stepPlansCreated        WorkOrderStepPlan[]          @relation("StepPlanCreatedBy")
   stepActualsAssigned     WorkOrderStepActual[]        @relation("StepActualUser")
   stepActualsCreated      WorkOrderStepActual[]        @relation("StepActualCreatedBy")
-  shippingOrdersCreated   ShippingOrder[]       @relation("ShippingOrderCreatedBy")
+  deliveryOrdersCreated   DeliveryOrder[]       @relation("DeliveryOrderCreatedBy")
   deliveryNotesCreated    DeliveryNote[]        @relation("DeliveryNoteCreatedBy")
   invoicesCreated         Invoice[]             @relation("InvoiceCreatedBy")
   designRequestsCreated   DesignRequest[]       @relation("DesignRequestCreatedBy")
@@ -111,7 +111,6 @@ model User {
   priceListsAsSalesRep    PriceListEntry[]  @relation("PriceListEntrySalesRep")
   quotesAsSalesRep        Quote[]           @relation("QuoteSalesRep")
   acceptancesAsSalesRep   OrderAcceptance[] @relation("AcceptanceSalesRep")
-  shippingOrdersAsSalesRep ShippingOrder[]  @relation("ShippingOrderSalesRep")
   deliveryNotesAsSalesRep DeliveryNote[]    @relation("DeliveryNoteSalesRep")
   invoicesAsSalesRep      Invoice[]         @relation("InvoiceSalesRep")
 

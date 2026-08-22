@@ -133,16 +133,16 @@ export async function searchDocuments(
           detail: name(r.product?.name),
         }));
       }
-      case "shipping_order": {
-        const rows = await prisma.shippingOrder.findMany({
+      case "delivery_order": {
+        const rows = await prisma.deliveryOrder.findMany({
           where: seq ? { seq } : undefined,
           orderBy: [{ yearMonth: "desc" }, { seq: "desc" }],
           take: LIMIT,
         });
         return rows.map((r) => {
-          const number = formatDocNumber("SHP", r);
+          const number = formatDocNumber("DOR", r);
           return {
-            href: `/shipping/shipping-orders/${number}`,
+            href: `/shipping/delivery-orders/${number}`,
             number,
             detail: "",
           };

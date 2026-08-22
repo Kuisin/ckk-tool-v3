@@ -5,7 +5,7 @@
  *
  * SummaryGrid（番号 / 顧客+支店 / 請求期間 / 小計 / 消費税 / 合計 / 支払期限 /
  * 発行日 / 弥生エクスポート）+ 明細テーブル（摘要 / 数量 / 単価 / 金額 / 由来
- * SHP・DRN リンク）+ Tabs: 概要 / 履歴。
+ * DOR・DRN リンク）+ Tabs: 概要 / 履歴。
  *
  * Actions: PDF（/api/pdf/invoice?id=INV-…）/ 発行（DRAFT → ISSUED）/
  * 送付済み（ISSUED → SENT）/ 入金済み（SENT → PAID）/
@@ -284,17 +284,17 @@ export function InvoiceDetail({
                   </Table.Td>
                   <Table.Td>
                     <Group gap="xs" wrap="wrap">
-                      {it.shippingOrderNumber && (
+                      {it.deliveryOrderNumber && (
                         <Anchor
                           onClick={() =>
                             router.push(
-                              `/shipping/shipping-orders/${it.shippingOrderNumber}`,
+                              `/shipping/delivery-orders/${it.deliveryOrderNumber}`,
                             )
                           }
                           size="sm"
                         >
                           <DocNumber c="blue">
-                            {it.shippingOrderNumber}
+                            {it.deliveryOrderNumber}
                           </DocNumber>
                         </Anchor>
                       )}
@@ -312,7 +312,7 @@ export function InvoiceDetail({
                           </DocNumber>
                         </Anchor>
                       )}
-                      {!it.shippingOrderNumber && !it.deliveryNoteNumber && (
+                      {!it.deliveryOrderNumber && !it.deliveryNoteNumber && (
                         <Text c="dimmed" size="sm">
                           —
                         </Text>

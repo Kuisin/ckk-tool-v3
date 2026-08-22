@@ -20,8 +20,8 @@ export interface InvoiceItem {
   quantity: number;
   unitPrice: number;
   amount: number;
-  /** 由来の出荷書番号 SHP-YYYYMM-NNNNN（手動明細は null）。 */
-  shippingOrderNumber: string | null;
+  /** 由来の出荷書番号 DOR-YYYYMM-NNNNN（手動明細は null）。 */
+  deliveryOrderNumber: string | null;
   /** 由来の納品書番号 DRN-YYYYMM-NNNNN（未発行時は null）。 */
   deliveryNoteNumber: string | null;
 }

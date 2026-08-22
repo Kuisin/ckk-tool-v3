@@ -78,16 +78,16 @@ export interface OrderLine {
   workOrders: OrderLineWorkOrderRef[];
   /** 出荷済み数量 = SHIPPED な発送出荷書の明細数量合計。 */
   shippedQuantity: number;
-  shippingOrders: OrderLineShippingRef[];
+  deliveryOrders: OrderLineShippingRef[];
   createdAt: string;
   updatedAt: string;
 }
 
 /** 注文明細配下の出荷書（出荷タブ・進捗表示用）。 */
 export interface OrderLineShippingRef {
-  /** SHP-YYYYMM-NNNNN（URL id と同一）。 */
+  /** DOR-YYYYMM-NNNNN（URL id と同一）。 */
   number: string;
-  /** SHIPPING_TYPE（DISPATCH / STOCK_STORAGE）。 */
+  /** DELIVERY_ORDER_TYPE（DISPATCH / STOCK_STORAGE）。 */
   type: string;
   /** SHIPPING_STATUS。 */
   status: string;

@@ -5,7 +5,7 @@
  * キャッシュ数量を同一 tx で更新）。実在庫は全工程完了時にのみ動く:
  * - onWorkOrderCompleted: 完成品をロット入庫 + 半製品バケットを入庫、
  *   予約 RESERVED → CONFIRMED。
- * - onShippingShipped: DISPATCH は出庫 + 予約 RELEASE。STOCK_STORAGE は
+ * - onDeliveryOrderShipped: DISPATCH は出庫 + 予約 RELEASE。STOCK_STORAGE は
  *   保管拠点へ入庫（請求フロー外）。
  * - reserveProductStock: §4 二段照合 → 引当予約（不足分は指示書分割の材料）。
  */
@@ -395,30 +395,30 @@ export async function onWorkOrderCompleted(workOrderId: string): Promise<void> {
 
 /**
  * 出荷フック: DISPATCH は SO ロット在庫から出庫 + 予約解除。STOCK_STORAGE は
- * 保管入庫（予備製作分）。shipShippingOrder から呼ぶ。
+ * 保管入庫（予備製作分）。shipDeliveryOrder から呼ぶ。
  */
-export async function onShippingShipped(key: {
+export async function onDeliveryOrderShipped(key: {
   yearMonth: string;
   seq: number;
 }): Promise<void> {
   await prisma.$transaction(async (tx) => {
-    await onShippingShippedTx(tx, key);
+    await onDeliveryOrderShippedTx(tx, key);
   });
 }
 
 /**
- * onShippingShipped の tx コア — 出荷アクションの状態遷移と同一
+ * onDeliveryOrderShipped の tx コア — 出荷アクションの状態遷移と同一
  * トランザクションで呼べる（在庫不足時に SHIPPED だけ立つ非整合を防ぐ）。
  */
-export async function onShippingShippedTx(
+export async function onDeliveryOrderShippedTx(
   tx: Tx,
   key: { yearMonth: string; seq: number },
 ): Promise<void> {
-  const so = await tx.shippingOrder.findUniqueOrThrow({
+  const so = await tx.deliveryOrder.findUniqueOrThrow({
     where: { yearMonth_seq: key },
     include: { items: true },
   });
-  const ref = `SHP-${key.yearMonth}-${String(key.seq).padStart(5, "0")}`;
+  const ref = `DOR-${key.yearMonth}-${String(key.seq).padStart(5, "0")}`;
   for (const item of so.items) {
     if (so.type === "DISPATCH") {
       // ロット在庫から出庫。行が無ければ失敗させる（黙ってスキップすると
@@ -448,7 +448,7 @@ export async function onShippingShippedTx(
           inventoryId: inv.id,
           transactionType: "OUT",
           quantity: take,
-          referenceType: "shipping_order",
+          referenceType: "delivery_order",
           referenceId: ref,
           notes: `出荷 ${ref}`,
         });
@@ -472,7 +472,7 @@ export async function onShippingShippedTx(
         inventoryId: invId,
         transactionType: "IN",
         quantity: item.quantity,
-        referenceType: "shipping_order",
+        referenceType: "delivery_order",
         referenceId: ref,
         notes: `在庫保管 ${ref}`,
       });
@@ -512,7 +512,7 @@ export async function onShippingShippedTx(
           inventoryId: r.inventoryId,
           transactionType: "RELEASE",
           quantity: release,
-          referenceType: "shipping_order",
+          referenceType: "delivery_order",
           referenceId: ref,
           notes: `出荷による予約解除 ${ref}`,
         });

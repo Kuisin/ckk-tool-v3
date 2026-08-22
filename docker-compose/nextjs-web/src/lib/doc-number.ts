@@ -16,7 +16,7 @@ const DOC_FORMATS = {
   QOT: { digits: 5 },
   PRC: { digits: 5 },
   PRD: { digits: 4 },
-  SHP: { digits: 5 },
+  DOR: { digits: 5 },
   DRN: { digits: 5 },
   INV: { digits: 5 },
   ORD: { digits: 5 }, // 注文請書（注文明細の枝番なし基底番号）

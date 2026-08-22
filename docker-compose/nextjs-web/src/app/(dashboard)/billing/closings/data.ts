@@ -2,7 +2,7 @@
  * data.ts — 締日処理 (BL02) のサーバーサイド取得・請求対象出荷の収集。
  *
  * 請求対象 = SHIPPED × DISPATCH の出荷書のうち「未請求」のもの。
- * 未請求判定は invoice_items の由来キー（shipping_order_year_month/seq）に
+ * 未請求判定は invoice_items の由来キー（delivery_order_year_month/seq）に
  * その出荷書が現れないこと（STOCK_STORAGE は請求フロー外なので対象外）。
  * runClosing / processClosing (actions.ts) と詳細画面がここを共用する。
  * Prisma Decimal はここで Number() へ変換してからクライアントへ渡す。
@@ -70,7 +70,13 @@ const SHIPMENT_INCLUDE = {
   customerBp: { include: { customerAttrs: true } },
   items: {
     orderBy: { sortOrder: "asc" as const },
-    include: { product: true, orderLine: true },
+    include: {
+      product: true,
+      // acceptance は営業担当の導出用（出荷書は担当を保存しない）。
+      orderLine: {
+        include: { acceptance: { select: { salesRepId: true } } },
+      },
+    },
   },
   deliveryNotes: {
     select: { yearMonth: true, seq: true },
@@ -88,7 +94,7 @@ export type BillableShipment = Awaited<
  */
 export async function fetchUninvoicedShipments(range: { gte: Date; lt: Date }) {
   const [rows, invoiced] = await Promise.all([
-    prisma.shippingOrder.findMany({
+    prisma.deliveryOrder.findMany({
       where: {
         type: "DISPATCH",
         status: "SHIPPED",
@@ -98,12 +104,12 @@ export async function fetchUninvoicedShipments(range: { gte: Date; lt: Date }) {
       orderBy: [{ yearMonth: "asc" }, { seq: "asc" }],
     }),
     prisma.invoiceItem.findMany({
-      where: { shippingOrderYearMonth: { not: null } },
-      select: { shippingOrderYearMonth: true, shippingOrderSeq: true },
+      where: { deliveryOrderYearMonth: { not: null } },
+      select: { deliveryOrderYearMonth: true, deliveryOrderSeq: true },
     }),
   ]);
   const invoicedSet = new Set(
-    invoiced.map((r) => `${r.shippingOrderYearMonth}-${r.shippingOrderSeq}`),
+    invoiced.map((r) => `${r.deliveryOrderYearMonth}-${r.deliveryOrderSeq}`),
   );
   return rows.filter((r) => !invoicedSet.has(`${r.yearMonth}-${r.seq}`));
 }
@@ -135,7 +141,7 @@ export function shipmentAmount(s: BillableShipment): number {
 
 function mapShipmentRow(s: BillableShipment): ClosingShipmentRow {
   return {
-    shippingOrderNumber: formatDocNumber("SHP", {
+    deliveryOrderNumber: formatDocNumber("DOR", {
       yearMonth: s.yearMonth,
       seq: s.seq,
     }),
@@ -162,11 +168,11 @@ async function fetchShipmentsFromInvoice(
     { yearMonth: string; seq: number; quantity: number; amount: number }
   >();
   for (const it of items) {
-    if (!it.shippingOrderYearMonth || it.shippingOrderSeq == null) continue;
-    const key = `${it.shippingOrderYearMonth}-${it.shippingOrderSeq}`;
+    if (!it.deliveryOrderYearMonth || it.deliveryOrderSeq == null) continue;
+    const key = `${it.deliveryOrderYearMonth}-${it.deliveryOrderSeq}`;
     const cur = byKey.get(key) ?? {
-      yearMonth: it.shippingOrderYearMonth,
-      seq: it.shippingOrderSeq,
+      yearMonth: it.deliveryOrderYearMonth,
+      seq: it.deliveryOrderSeq,
       quantity: 0,
       amount: 0,
     };
@@ -176,7 +182,7 @@ async function fetchShipmentsFromInvoice(
   }
   const keys = [...byKey.values()];
   if (keys.length === 0) return [];
-  const orders = await prisma.shippingOrder.findMany({
+  const orders = await prisma.deliveryOrder.findMany({
     where: {
       OR: keys.map((k) => ({ yearMonth: k.yearMonth, seq: k.seq })),
     },
@@ -186,7 +192,7 @@ async function fetchShipmentsFromInvoice(
     orders.map((o) => [`${o.yearMonth}-${o.seq}`, o.shippedAt]),
   );
   return keys.map((k) => ({
-    shippingOrderNumber: formatDocNumber("SHP", {
+    deliveryOrderNumber: formatDocNumber("DOR", {
       yearMonth: k.yearMonth,
       seq: k.seq,
     }),
@@ -263,7 +269,7 @@ export async function collectClosingCandidates(
     };
     cur.totalAmount += shipmentAmount(s);
     cur.shipmentNumbers.push(
-      formatDocNumber("SHP", { yearMonth: s.yearMonth, seq: s.seq }),
+      formatDocNumber("DOR", { yearMonth: s.yearMonth, seq: s.seq }),
     );
     byCustomer.set(customer.id, cur);
   }

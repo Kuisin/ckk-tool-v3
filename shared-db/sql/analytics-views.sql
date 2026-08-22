@@ -416,31 +416,44 @@ LEFT JOIN app.users cu ON cu.id = t.created_by;
 -- 出荷 (Shipping)
 -- =====================================================================
 
-CREATE OR REPLACE VIEW analytics.v_shipping_orders WITH (security_invoker = true) AS
+-- 出荷書は営業担当スナップショット列を持たない — 明細の注文明細 → 注文請書
+-- ヘッダの sales_rep_id から導出する（担当が一意に定まるときだけ名前を出す）。
+CREATE OR REPLACE VIEW analytics.v_delivery_orders WITH (security_invoker = true) AS
 SELECT
-  'SHP-'||so.year_month||'-'||lpad(so.seq::text,5,'0') AS shipping_no,
-  so.year_month, so.seq, so.type, so.status,
+  'DOR-'||dor.year_month||'-'||lpad(dor.seq::text,5,'0') AS delivery_order_no,
+  dor.year_month, dor.seq, dor.type, dor.status,
   coalesce(cust.name->>'ja', cust.name->>'en')     AS customer_name,
   coalesce(branch.name->>'ja', branch.name->>'en') AS customer_branch_name,
-  su.display_name AS sales_staff,
+  rep.sales_staff,
   coalesce(pl.name->>'ja', pl.name->>'en')         AS from_plant_name,
   CASE WHEN wo.id IS NOT NULL THEN 'WO-'||wo.year_month||'-'||lpad(wo.seq::text,5,'0') END AS work_order_no,
-  so.shipped_at, so.created_at, so.updated_at
-FROM app.shipping_orders so
-LEFT JOIN app.business_partners cust   ON cust.id = so.customer_bp_id
-LEFT JOIN app.business_partners branch ON branch.id = so.customer_branch_bp_id
-LEFT JOIN app.users su ON su.id = so.sales_rep_id
-LEFT JOIN app.plants pl ON pl.id = so.from_plant_id
-LEFT JOIN app.work_orders wo ON wo.id = so.work_order_id;
+  dor.shipped_at, dor.created_at, dor.updated_at
+FROM app.delivery_orders dor
+LEFT JOIN app.business_partners cust   ON cust.id = dor.customer_bp_id
+LEFT JOIN app.business_partners branch ON branch.id = dor.customer_branch_bp_id
+LEFT JOIN LATERAL (
+  SELECT CASE WHEN count(DISTINCT oa.sales_rep_id) = 1
+              THEN max(su.display_name) END AS sales_staff
+  FROM app.delivery_order_items di
+  JOIN app.order_lines ol        ON ol.id = di.order_line_id
+  JOIN app.order_acceptances oa  ON oa.year_month = ol.acceptance_year_month
+                                AND oa.seq = ol.acceptance_seq
+  LEFT JOIN app.users su         ON su.id = oa.sales_rep_id
+  WHERE di.delivery_order_year_month = dor.year_month
+    AND di.delivery_order_seq = dor.seq
+    AND oa.sales_rep_id IS NOT NULL
+) rep ON true
+LEFT JOIN app.plants pl ON pl.id = dor.from_plant_id
+LEFT JOIN app.work_orders wo ON wo.id = dor.work_order_id;
 
-CREATE OR REPLACE VIEW analytics.v_shipping_order_items WITH (security_invoker = true) AS
+CREATE OR REPLACE VIEW analytics.v_delivery_order_items WITH (security_invoker = true) AS
 SELECT
-  si.id,
-  'SHP-'||si.shipping_order_year_month||'-'||lpad(si.shipping_order_seq::text,5,'0') AS shipping_no,
+  di.id,
+  'DOR-'||di.delivery_order_year_month||'-'||lpad(di.delivery_order_seq::text,5,'0') AS delivery_order_no,
   coalesce(prod.name->>'ja', prod.name->>'en') AS product_name,
-  si.lot_number, si.quantity, si.sort_order
-FROM app.shipping_order_items si
-LEFT JOIN app.products prod ON prod.id = si.product_id;
+  di.lot_number, di.quantity, di.sort_order
+FROM app.delivery_order_items di
+LEFT JOIN app.products prod ON prod.id = di.product_id;
 
 CREATE OR REPLACE VIEW analytics.v_delivery_notes WITH (security_invoker = true) AS
 SELECT

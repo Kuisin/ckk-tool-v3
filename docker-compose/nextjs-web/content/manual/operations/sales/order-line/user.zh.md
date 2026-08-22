@@ -121,5 +121,5 @@ ORD-202608-00012-01
 
 - [订单请书](/manual/zh/operations/sales/order-acceptance/user) — 新建和修改订单明细的画面
 - [指示书](/manual/zh/operations/production/work-order/user) — 推进生产的画面
-- [发货书](/manual/zh/operations/shipping/shipping-order/user) — 发货的画面
+- [发货书](/manual/zh/operations/shipping/delivery-order/user) — 发货的画面
 - [库存管理](/manual/zh/operations/production/product-inventory/user) — 库存与预留的状况
