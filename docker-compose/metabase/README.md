@@ -29,6 +29,16 @@ databases, use the host IP / hostname.
 > **Security:** keep on the LAN, or front with nginx + Cloudflare Access like the
 > other apps if you publish it.
 
+## メール送信（通知・サブスクリプション）
+
+Metabase の送信元は専用アドレス **`noreply-bi@ckk-tool.co.jp`**。実体は
+admintools（メール管理）で作った共有メールボックス **`other-sys.noreply-bi`**
+（Sakura レンタルサーバ上。`noreply-bi@` はそのエイリアス — admintools の
+Sakura 同期が作成）。SMTP は Sakura 直（`ckk-tool.sakura.ne.jp:587` STARTTLS、
+認証ユーザー = `other-sys.noreply-bi@ckk-tool.co.jp` フルアドレス）。設定は
+Admin → Settings → Email（API では `PUT /api/email`）。パスワードは admintools
+のメール管理（DB `admintools.mail_accounts`）が正。
+
 ## データソース
 
 | db | 名前 | 接続ロール | スキーマ | 用途 |
