@@ -170,9 +170,9 @@ CARDS = [
     dict(key="ol_total", name="注文明細 総数", display="scalar",
          table="v_order_lines", date_col="created_at", cur=True,
          q=dict(agg=("count",))),
-    # 合計は JPY / USD の 2 行を常時表示するサマリー（フィルタ切替ではなく併記）
-    dict(key="sales_total", name="受注金額 合計", display="table",
-         table="v_order_lines_disp", date_col="created_at",
+    # 合計は通貨記号つきスカラー（表示通貨フィルタで JPY/USD 切替 — 常に 1 行）
+    dict(key="sales_total", name="受注金額 合計", display="scalar",
+         table="v_order_lines_disp", date_col="created_at", disp=True,
          q=dict(agg=("sum", "amount_disp"), breakout=["display_currency"],
                 filters=[("!=", "status", "CANCELLED")], money_text=True)),
     dict(key="oa_by_status", name="注文請書 状態別", display="bar",
@@ -182,23 +182,23 @@ CARDS = [
          table="v_order_lines", date_col="created_at", cur=True,
          q=dict(agg=("count",), breakout=["status"], order_desc_agg=True)),
     dict(key="sales_monthly", name="受注金額 月次", display="bar",
-         table="v_order_lines", date_col="created_at",
-         q=dict(agg=("sum", "amount_jpy"), breakout=[("created_at", "month")],
+         table="v_order_lines_disp", date_col="created_at", disp=True,
+         q=dict(agg=("sum", "amount_disp"), breakout=[("created_at", "month"), "display_currency"],
                 filters=[("!=", "status", "CANCELLED")])),
     dict(key="sales_by_customer", name="顧客別 受注金額 上位", display="row",
-         table="v_order_lines", date_col="created_at",
-         q=dict(agg=("sum", "amount_jpy"), breakout=["customer_name"],
+         table="v_order_lines_disp", date_col="created_at", disp=True,
+         q=dict(agg=("sum", "amount_disp"), breakout=["customer_name", "display_currency"],
                 filters=[("!=", "status", "CANCELLED"), ("not-null", "customer_name")],
                 order_desc_agg=True, limit=10)),
     dict(key="sales_by_staff", name="営業担当別 受注金額", display="row",
-         table="v_order_lines", date_col="created_at",
-         q=dict(agg=("sum", "amount_jpy"),
+         table="v_order_lines_disp", date_col="created_at", disp=True,
+         q=dict(agg=("sum", "amount_disp"),
                 expressions={"営業担当": ("coalesce", "sales_staff", "（担当未設定）")},
-                breakout=[("expr", "営業担当")],
+                breakout=[("expr", "営業担当"), "display_currency"],
                 filters=[("!=", "status", "CANCELLED")], order_desc_agg=True)),
     dict(key="sales_staff_monthly", name="営業担当別 受注金額 月次", display="bar", stacked=True,
-         table="v_order_lines", date_col="created_at",
-         q=dict(agg=("sum", "amount_jpy"),
+         table="v_order_lines_disp", date_col="created_at", disp=True,
+         q=dict(agg=("sum", "amount_disp"),
                 expressions={"営業担当": ("coalesce", "sales_staff", "（担当未設定）")},
                 breakout=[("created_at", "month"), ("expr", "営業担当")],
                 filters=[("!=", "status", "CANCELLED")])),
@@ -238,16 +238,16 @@ CARDS = [
     dict(key="inv_total", name="請求書 総数", display="scalar",
          table="v_invoices", date_col="created_at", cur=True,
          q=dict(agg=("count",))),
-    dict(key="inv_amount", name="請求額 合計", display="table",
-         table="v_invoices_disp", date_col="created_at",
+    dict(key="inv_amount", name="請求額 合計", display="scalar",
+         table="v_invoices_disp", date_col="created_at", disp=True,
          q=dict(agg=("sum", "total_amount_disp"), breakout=["display_currency"],
                 filters=[("!=", "status", "DRAFT")], money_text=True)),
     dict(key="inv_by_status", name="請求書 状態別", display="bar",
          table="v_invoices", date_col="created_at", cur=True,
          q=dict(agg=("count",), breakout=["status"], order_desc_agg=True)),
     dict(key="inv_monthly", name="請求額 月次", display="bar",
-         table="v_invoices", date_col="created_at",
-         q=dict(agg=("sum", "total_amount_jpy"), breakout=[("issued_at", "month")],
+         table="v_invoices_disp", date_col="created_at", disp=True,
+         q=dict(agg=("sum", "total_amount_disp"), breakout=[("issued_at", "month")],
                 filters=[("!=", "status", "DRAFT")])),
     dict(key="closing_by_status", name="締日処理 状態別", display="bar",
          table="v_billing_closings", date_col="created_at", cur=False,
@@ -403,8 +403,7 @@ def build_query(c, tables, fields):
 
 
 # 金額列（¥ プレフィックス）と本数系の数量列（〜本 サフィックス）
-MONEY_COLS = {"amount", "total_amount", "subtotal", "unit_price",
-              "amount_jpy", "total_amount_jpy"}
+MONEY_COLS = {"amount", "total_amount", "subtotal", "unit_price"}
 HONSU_COLS = {"quantity", "planned_quantity"}
 # 素材在庫は単位が混在（本/kg/m）するので単位を付けない
 NO_UNIT_TABLES = {"v_material_inventory"}
@@ -511,13 +510,21 @@ def main():
                        "collection_id": COLLECTION_ID})["id"]
         date_pid = det_id(d["name"], "param_date")[:8]
         status_pid = det_id(d["name"], "param_status")[:8]
+        disp_pid = det_id(d["name"], "param_display_currency")[:8]
         has_status = any(cards_by_key[ck]["table"] in STATUS_FILTER_TABLES for ck, *_ in d["layout"])
+        has_disp = any(cards_by_key[ck].get("disp") for ck, *_ in d["layout"])
         # 「通貨」（書類の原通貨）フィルタは廃止 — 換算切替は「表示通貨」が担い、
         # 原通貨での絞り込みは紛らわしいだけだった（利用者の指摘で撤去）。
         parameters = [
             {"id": date_pid, "name": "期間", "slug": "date_range",
              "type": "date/all-options", "sectionId": "date"},
         ]
+        if has_disp:
+            # 表示通貨（JPY/USD 切替ボタン）。金額は事前計算列（amount_disp）から。
+            # 縦持ちビューは 1 通貨に絞らないと二重計上のため required + 既定 JPY。
+            parameters.append({"id": disp_pid, "name": "表示通貨", "slug": "display_currency",
+                               "type": "string/=", "sectionId": "string",
+                               "default": ["JPY"], "required": True})
         if has_status:
             # 状態（注文明細 enum。注文請書カードは別 enum のため未配線）
             parameters.append({"id": status_pid, "name": "状態", "slug": "line_status",
@@ -530,6 +537,11 @@ def main():
                 "parameter_id": date_pid, "card_id": key_to_id[ck],
                 "target": ["dimension", ["field", fields[(c["table"], c["date_col"])], None]],
             }]
+            if c.get("disp"):
+                mappings.append({
+                    "parameter_id": disp_pid, "card_id": key_to_id[ck],
+                    "target": ["dimension", ["field", fields[(c["table"], "display_currency")], None]],
+                })
             if has_status and c["table"] in STATUS_FILTER_TABLES:
                 mappings.append({
                     "parameter_id": status_pid, "card_id": key_to_id[ck],
