@@ -591,7 +591,9 @@ m(tbl, ja) AS (VALUES
   ('v_process_step_catalog', '工程マスタ'),
   ('v_inspection_templates', '検査表テンプレート'),
   ('v_defect_types', '不良種類'),
-  ('v_currencies', '通貨マスタ')
+  ('v_currencies', '通貨マスタ'),
+  ('v_order_lines_disp', '注文明細(表示通貨別)'),
+  ('v_invoices_disp', '請求書(表示通貨別)')
 )
 UPDATE metabase_table t SET display_name = m.ja
 FROM m, target
@@ -1052,6 +1054,10 @@ m(col, ja) AS (VALUES
   ('roles', 'ロール'),
   ('unit_price_jpy', '単価(JPY)'),
   ('unit_price_usd', '単価(USD)'),
+  ('display_currency', '表示通貨'),
+  ('amount_disp', '金額(表示通貨)'),
+  ('unit_price_disp', '単価(表示通貨)'),
+  ('total_amount_disp', '合計金額(表示通貨)'),
   ('amount_jpy', '金額(JPY)'),
   ('amount_usd', '金額(USD)'),
   ('base_unit_price_jpy', '基準単価(JPY)'),

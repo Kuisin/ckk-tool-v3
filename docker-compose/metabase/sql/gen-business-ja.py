@@ -604,6 +604,7 @@ ANALYTICS_TABLES = {
     "v_material_types": "材種", "v_plants": "拠点", "v_users": "従業員",
     "v_process_step_catalog": "工程マスタ", "v_inspection_templates": "検査表テンプレート",
     "v_defect_types": "不良種類", "v_currencies": "通貨マスタ",
+    "v_order_lines_disp": "注文明細(表示通貨別)", "v_invoices_disp": "請求書(表示通貨別)",
 }
 
 ANALYTICS_COLS = {
@@ -637,6 +638,8 @@ ANALYTICS_COLS = {
     # 通貨換算（currencies.rate_per_100_jpy = 100円で買えるその通貨量）
     "rate_per_100_jpy": "レート(100円あたり)",
     "unit_price_jpy": "単価(JPY)", "unit_price_usd": "単価(USD)",
+    "display_currency": "表示通貨", "amount_disp": "金額(表示通貨)",
+    "unit_price_disp": "単価(表示通貨)", "total_amount_disp": "合計金額(表示通貨)",
     "amount_jpy": "金額(JPY)", "amount_usd": "金額(USD)",
     "base_unit_price_jpy": "基準単価(JPY)", "base_unit_price_usd": "基準単価(USD)",
     "total_amount_jpy": "合計金額(JPY)", "total_amount_usd": "合計金額(USD)",

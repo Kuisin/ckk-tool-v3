@@ -60,19 +60,25 @@ def load_tables():
 
 
 def targets_for_card(card, tables):
-    """カードに対する (date_target, currency_target)。マップ不能は None。"""
+    """カードに対する {slug: target}。マップ不能なスラッグは含まれない。"""
     if card.get("database_id") != DB_ID:
-        return None, None
+        return {}
     q = card.get("dataset_query") or {}
     if q.get("type") == "native" or q.get("native"):
         tags = (q.get("native") or {}).get("template-tags") or {}
-        d = ["dimension", ["template-tag", "date_range"]] if "date_range" in tags else None
-        c = ["dimension", ["template-tag", "currency"]] if "currency" in tags else None
-        return d, c
+        return {slug: ["dimension", ["template-tag", slug]] for slug in
+                ("date_range", "currency", "display_currency") if slug in tags}
     fields = tables.get(card.get("table_id")) or {}
-    d = next((["dimension", ["field", fields[col], None]] for col in DATE_PREF if col in fields), None)
-    c = ["dimension", ["field", fields["currency"], None]] if "currency" in fields else None
-    return d, c
+    out = {}
+    for col in DATE_PREF:
+        if col in fields:
+            out["date_range"] = ["dimension", ["field", fields[col], None]]
+            break
+    if "currency" in fields:
+        out["currency"] = ["dimension", ["field", fields["currency"], None]]
+    if "display_currency" in fields:
+        out["display_currency"] = ["dimension", ["field", fields["display_currency"], None]]
+    return out
 
 
 def main():
@@ -94,8 +100,18 @@ def main():
                            "slug": "currency", "type": "string/=", "sectionId": "string"})
             by_slug["currency"] = params[-1]
             changed = True
-        date_pid = by_slug["date_range"]["id"]
-        cur_pid = by_slug["currency"]["id"] if "currency" in by_slug else None
+        # 表示通貨（JPY/USD 切替）— *_disp ビューのカードがあるダッシュボードだけ。
+        # 縦持ちビューは 1 通貨に絞らないと二重計上のため required + 既定 JPY。
+        needs_disp = any("display_currency" in (tables.get((dc.get("card") or {}).get("table_id")) or {})
+                         for dc in d.get("dashcards", []))
+        if needs_disp and "display_currency" not in by_slug:
+            params.append({"id": det_id(d["name"], "param_display_currency")[:8], "name": "表示通貨",
+                           "slug": "display_currency", "type": "string/=", "sectionId": "string",
+                           "default": ["JPY"], "required": True})
+            by_slug["display_currency"] = params[-1]
+            changed = True
+        pid_by_slug = {slug: p["id"] for slug, p in by_slug.items()
+                       if slug in ("date_range", "currency", "display_currency")}
 
         dashcards = []
         wired = 0
@@ -103,14 +119,21 @@ def main():
             mappings = list(dc.get("parameter_mappings") or [])
             card = dc.get("card") or {}
             if dc.get("card_id"):
+                targets = targets_for_card(card, tables)
+                # 既存配線の修理: 自前スラッグのマッピングが今のソーステーブルと
+                # 合わない（カードのビューを差し替えた等）場合は付け替える
+                for m in mappings:
+                    for slug, pid in pid_by_slug.items():
+                        if m.get("parameter_id") == pid and slug in targets and m.get("target") != targets[slug]:
+                            m["target"] = targets[slug]
+                            m["card_id"] = dc["card_id"]
+                            wired += 1
                 have = {m.get("parameter_id") for m in mappings}
-                dt, ct = targets_for_card(card, tables)
-                if dt and date_pid not in have:
-                    mappings.append({"parameter_id": date_pid, "card_id": dc["card_id"], "target": dt})
-                    wired += 1
-                if ct and cur_pid is not None and cur_pid not in have:
-                    mappings.append({"parameter_id": cur_pid, "card_id": dc["card_id"], "target": ct})
-                    wired += 1
+                for slug, pid in pid_by_slug.items():
+                    if slug in targets and pid not in have:
+                        mappings.append({"parameter_id": pid, "card_id": dc["card_id"],
+                                         "target": targets[slug]})
+                        wired += 1
             dashcards.append({
                 "id": dc["id"], "card_id": dc.get("card_id"),
                 "row": dc["row"], "col": dc["col"],
