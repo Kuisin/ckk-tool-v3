@@ -11,18 +11,21 @@
 既存カードは親と _カード の両方から名前で探し、見つかった場所のまま更新する —
 このスクリプトはカードを移動しない。新規カードは _カード へ作る。
 
-カードは native SQL（metabase_ro は search_path=app,analytics、read-only）で、全カード
-analytics ビューを参照する（名前解決・通貨換算・フィルタ列がそろっているため）。
-列別名を日本語にして見出しがそのまま意味になるようにする。状態 enum は CASE で
-日本語化する。
+カードは **標準 UI エディタ（クエリビルダー / MBQL）** の質問として作る — 利用者が
+ノートブックエディタで開いて編集できる形（native SQL は使わない方針。表現できない
+ものが出たときだけ例外にする）。ソースは analytics ビュー（名前解決・通貨換算・
+フィルタ列がそろっている）。列見出しはビューの日本語表示名（metabase-business-ja.sql）
+がそのまま使われる。
 
-ダッシュボードフィルタ: 全ダッシュボードに「期間」（日付範囲）+「通貨」を持つ。
-native SQL カードにフィルタを効かせるには field filter（template tag）が要るので、
-各カードの SQL は `WHERE 1=1 [[AND {{date_range}}]] [[AND {{currency}}]]` の足場を
-持ち、タグは各ビューの日付列 / 通貨列（field id はビルド時に metadata API で解決）へ
-マップする。通貨列が無いビューのカード（工程・素材在庫・在庫予約・締日処理）は
-通貨フィルタの対象外（マッピングしない = そのカードはフィルタで変化しない）。
-指示書・製品在庫の通貨は「製品の通貨」。工程の期間は started_at（実行日）基準。
+状態 enum の日本語表示は SQL の CASE ではなく **field value remapping**（フィールド
+値のカスタム表示 — /api/field/:id/dimension + /values）で行う。表・グラフ・
+フィルタのドロップダウンすべてで日本語になる。
+
+ダッシュボードフィルタ: 全ダッシュボードに「期間」（日付範囲）+「通貨」。MBQL
+カードはダッシュボードパラメータを **列に直接マップ**できる（template tag 不要）。
+通貨列が無いビューのカード（工程・素材在庫・在庫予約・締日処理）は通貨フィルタの
+対象外（未マップ = フィルタで変化しない）。指示書・製品在庫の通貨は「製品の通貨」。
+工程の期間は started_at（実行日）基準。請求月次は issued_at 基準。
 """
 import json
 import os
@@ -41,28 +44,19 @@ def api(method, path, body=None):
     req = urllib.request.Request(url, data=data, method=method)
     req.add_header("x-api-key", API_KEY)
     req.add_header("Content-Type", "application/json")
-    # When MB_URL is the public host (behind Cloudflare Access), the default
-    # python-urllib User-Agent is blocked (403). Send a normal UA.
+    # 公開ホスト（Cloudflare Access 越し）は素の python-urllib UA を 403 にする
     req.add_header("User-Agent", "ckk-metabase-builder/1.0")
     with urllib.request.urlopen(req, timeout=60) as r:
         raw = r.read().decode()
         return json.loads(raw) if raw else {}
 
 
-def tag_id(card_key, tag):
-    """template tag / parameter の決定的 UUID（再実行で揺れない）。"""
-    return str(uuid.uuid5(uuid.NAMESPACE_URL, f"ckk-metabase://{card_key}/{tag}"))
+def det_id(*parts):
+    """決定的 ID（uuid5）— 再実行してもダッシュボード設定が揺れない。"""
+    return str(uuid.uuid5(uuid.NAMESPACE_URL, "ckk-metabase://" + "/".join(parts)))
 
 
-# ─── 状態 enum → 日本語（design.md §9） ───────────────────────────────
-def case(col, mapping, else_="その他"):
-    # 列を ::text にキャストしてから比較する。enum に無いラベルを WHEN に書いても
-    # 「invalid input value for enum」で落ちず、ELSE（原値）へ素通しする。
-    whens = " ".join(f"WHEN '{k}' THEN '{v}'" for k, v in mapping.items())
-    return f"CASE {col}::text {whens} ELSE {col}::text END"
-
-
-# 注文請書の実 enum（取込ワークフロー）: IMPORT/DRAFT/REQUESTED/APPROVED/COMPLETED/ARCHIVED
+# ─── 状態 enum → 日本語（design.md §9） — field value remapping に流し込む ──
 OA_ST = {"IMPORT": "取込中", "DRAFT": "下書き", "REQUESTED": "承認依頼中",
          "APPROVED": "承認済", "COMPLETED": "展開済", "ARCHIVED": "アーカイブ"}
 OL_ST = {"DRAFT": "下書き", "CONFIRMED": "確定", "IN_PRODUCTION": "製造中",
@@ -75,137 +69,140 @@ INV_ST = {"DRAFT": "下書き", "ISSUED": "発行済", "SENT": "送付済", "PAI
 BC_ST = {"PENDING": "未処理", "PROCESSED": "処理済", "EXPORTED": "エクスポート済"}
 RES_ST = {"RESERVED": "予約中", "CONFIRMED": "引当済", "RELEASED": "解除"}
 
-# フィルタ足場。field filter は「マップした列に対する真偽条件」に展開されるので、
-# SQL 側は optional 句 [[AND {{...}}]] を置くだけでよい（未指定なら消える）。
-F = "WHERE 1=1 [[AND {{date_range}}]] [[AND {{currency}}]]"       # 通貨列があるビュー
-FD = "WHERE 1=1 [[AND {{date_range}}]]"                            # 日付のみ
+# (ビュー, 列) → 値マップ。remapping はビュー側の列に付ける（カードが参照する列）。
+REMAP = {
+    ("v_order_acceptances", "status"): OA_ST,
+    ("v_order_lines", "status"): OL_ST,
+    ("v_order_lines", "acceptance_status"): OA_ST,
+    ("v_work_orders", "status"): WO_ST,
+    ("v_work_orders", "approval_status"): WOA_ST,
+    ("v_work_order_steps", "status"): STEP_ST,
+    ("v_invoices", "status"): INV_ST,
+    ("v_billing_closings", "status"): BC_ST,
+    ("v_inventory_reservations", "status"): RES_ST,
+}
 
-# ─── カード定義 ──────────────────────────────────────────────────────
-# table = フィルタをマップする analytics ビュー / date_col = 期間フィルタの列 /
-# cur = 通貨フィルタ対象（ビューに currency 列がある）
+# 通貨フィルタのドロップダウンに値一覧を出す列
+LIST_VALUE_FIELDS = [
+    ("v_order_acceptances", "currency"), ("v_order_lines", "currency"),
+    ("v_work_orders", "currency"), ("v_invoices", "currency"),
+    ("v_product_inventory", "currency"),
+]
+
+# ─── カード定義（MBQL） ──────────────────────────────────────────────
+# table   … analytics ビュー名（source-table + フィルタマップ先）
+# date_col… 期間フィルタの列 / cur … 通貨フィルタ対象（ビューに currency がある）
+# q       … クエリ仕様（下の build_query が MBQL に組み立てる）
+#   agg: ("count",) | ("sum", col)
+#   breakout: [col | (col, temporal-unit) | ("expr", name)]
+#   filters:  [("!=", col, v...) | ("=", col, v...) | ("not-null", col)]
+#   expressions: {name: ("coalesce", col, fallback)}
+#   fields / order_by / limit … 非集計テーブル用
 CARDS = [
     # 受注・売上
     dict(key="oa_total", name="注文請書 総数", display="scalar",
          table="v_order_acceptances", date_col="created_at", cur=True,
-         sql=f"SELECT count(*) AS \"件数\" FROM analytics.v_order_acceptances {F}"),
+         q=dict(agg=("count",))),
     dict(key="ol_total", name="注文明細 総数", display="scalar",
          table="v_order_lines", date_col="created_at", cur=True,
-         sql=f"SELECT count(*) AS \"件数\" FROM analytics.v_order_lines {F}"),
+         q=dict(agg=("count",))),
     dict(key="sales_total", name="受注金額 合計", display="scalar",
          table="v_order_lines", date_col="created_at", cur=True,
-         sql=f"SELECT COALESCE(sum(amount),0) AS \"受注金額\" FROM analytics.v_order_lines {F} "
-             "AND status <> 'CANCELLED'"),
-    dict(key="oa_by_status", name="注文請書 状態別", display="bar", dim="状態", met="件数",
+         q=dict(agg=("sum", "amount"), filters=[("!=", "status", "CANCELLED")])),
+    dict(key="oa_by_status", name="注文請書 状態別", display="bar",
          table="v_order_acceptances", date_col="created_at", cur=True,
-         sql=f"SELECT {case('status', OA_ST)} AS \"状態\", count(*) AS \"件数\" "
-             f"FROM analytics.v_order_acceptances {F} GROUP BY status ORDER BY count(*) DESC"),
-    dict(key="ol_by_status", name="注文明細 状態別", display="bar", dim="状態", met="件数",
+         q=dict(agg=("count",), breakout=["status"], order_desc_agg=True)),
+    dict(key="ol_by_status", name="注文明細 状態別", display="bar",
          table="v_order_lines", date_col="created_at", cur=True,
-         sql=f"SELECT {case('status', OL_ST)} AS \"状態\", count(*) AS \"件数\" "
-             f"FROM analytics.v_order_lines {F} GROUP BY status ORDER BY count(*) DESC"),
-    dict(key="sales_monthly", name="受注金額 月次", display="bar", dim="年月", met="受注金額",
+         q=dict(agg=("count",), breakout=["status"], order_desc_agg=True)),
+    dict(key="sales_monthly", name="受注金額 月次", display="bar",
          table="v_order_lines", date_col="created_at", cur=True,
-         sql=f"SELECT to_char(created_at,'YYYY-MM') AS \"年月\", COALESCE(sum(amount),0) AS \"受注金額\" "
-             f"FROM analytics.v_order_lines {F} AND status <> 'CANCELLED' GROUP BY 1 ORDER BY 1"),
-    dict(key="sales_by_customer", name="顧客別 受注金額 上位", display="row", dim="顧客", met="受注金額",
+         q=dict(agg=("sum", "amount"), breakout=[("created_at", "month")],
+                filters=[("!=", "status", "CANCELLED")])),
+    dict(key="sales_by_customer", name="顧客別 受注金額 上位", display="row",
          table="v_order_lines", date_col="created_at", cur=True,
-         sql=f"SELECT customer_name AS \"顧客\", COALESCE(sum(amount),0) AS \"受注金額\" "
-             f"FROM analytics.v_order_lines {F} AND status <> 'CANCELLED' AND customer_name IS NOT NULL "
-             "GROUP BY 1 ORDER BY 2 DESC LIMIT 10"),
-    dict(key="sales_by_staff", name="営業担当別 受注金額", display="row", dim="営業担当", met="受注金額",
+         q=dict(agg=("sum", "amount"), breakout=["customer_name"],
+                filters=[("!=", "status", "CANCELLED"), ("not-null", "customer_name")],
+                order_desc_agg=True, limit=10)),
+    dict(key="sales_by_staff", name="営業担当別 受注金額", display="row",
          table="v_order_lines", date_col="created_at", cur=True,
-         sql=f"SELECT COALESCE(sales_staff,'（担当未設定）') AS \"営業担当\", "
-             "COALESCE(sum(amount),0) AS \"受注金額\" "
-             f"FROM analytics.v_order_lines {F} AND status <> 'CANCELLED' "
-             "GROUP BY 1 ORDER BY 2 DESC"),
-    dict(key="sales_staff_monthly", name="営業担当別 受注金額 月次", display="bar",
-         dim=["年月", "営業担当"], met="受注金額",
+         q=dict(agg=("sum", "amount"),
+                expressions={"営業担当": ("coalesce", "sales_staff", "（担当未設定）")},
+                breakout=[("expr", "営業担当")],
+                filters=[("!=", "status", "CANCELLED")], order_desc_agg=True)),
+    dict(key="sales_staff_monthly", name="営業担当別 受注金額 月次", display="bar", stacked=True,
          table="v_order_lines", date_col="created_at", cur=True,
-         sql=f"SELECT to_char(created_at,'YYYY-MM') AS \"年月\", "
-             "COALESCE(sales_staff,'（担当未設定）') AS \"営業担当\", "
-             "COALESCE(sum(amount),0) AS \"受注金額\" "
-             f"FROM analytics.v_order_lines {F} AND status <> 'CANCELLED' "
-             "GROUP BY 1, 2 ORDER BY 1, 2"),
+         q=dict(agg=("sum", "amount"),
+                expressions={"営業担当": ("coalesce", "sales_staff", "（担当未設定）")},
+                breakout=[("created_at", "month"), ("expr", "営業担当")],
+                filters=[("!=", "status", "CANCELLED")])),
     dict(key="oa_recent", name="最近の注文明細", display="table",
          table="v_order_lines", date_col="created_at", cur=True,
-         sql="SELECT order_line_no AS \"注文番号\", customer_name AS \"顧客\", sales_staff AS \"営業担当\", "
-             "product_name AS \"製品\", quantity AS \"数量\", amount AS \"金額\", "
-             + f"{case('status', OL_ST)} AS \"状態\" "
-             f"FROM analytics.v_order_lines {F} "
-             "ORDER BY acceptance_year_month DESC, acceptance_seq DESC, branch DESC NULLS LAST LIMIT 20"),
+         q=dict(fields=["order_line_no", "customer_name", "sales_staff", "product_name",
+                        "quantity", "amount", "status"],
+                order_by=[("desc", "acceptance_year_month"), ("desc", "acceptance_seq"),
+                          ("desc", "branch")],
+                limit=20)),
     # 生産進捗（通貨 = 製品の通貨。工程は started_at 基準・通貨対象外）
     dict(key="wo_total", name="指示書 総数", display="scalar",
          table="v_work_orders", date_col="created_at", cur=True,
-         sql=f"SELECT count(*) AS \"件数\" FROM analytics.v_work_orders {F}"),
+         q=dict(agg=("count",))),
     dict(key="wo_inprogress", name="進行中の指示書", display="scalar",
          table="v_work_orders", date_col="created_at", cur=True,
-         sql=f"SELECT count(*) AS \"件数\" FROM analytics.v_work_orders {F} AND status='IN_PROGRESS'"),
+         q=dict(agg=("count",), filters=[("=", "status", "IN_PROGRESS")])),
     dict(key="step_total", name="工程 総数", display="scalar",
          table="v_work_order_steps", date_col="started_at", cur=False,
-         sql=f"SELECT count(*) AS \"件数\" FROM analytics.v_work_order_steps {FD}"),
-    dict(key="wo_by_status", name="指示書 状態別", display="bar", dim="状態", met="件数",
+         q=dict(agg=("count",))),
+    dict(key="wo_by_status", name="指示書 状態別", display="bar",
          table="v_work_orders", date_col="created_at", cur=True,
-         sql=f"SELECT {case('status', WO_ST)} AS \"状態\", count(*) AS \"件数\" "
-             f"FROM analytics.v_work_orders {F} GROUP BY status ORDER BY count(*) DESC"),
-    dict(key="wo_by_approval", name="指示書 承認状態別", display="bar", dim="承認状態", met="件数",
+         q=dict(agg=("count",), breakout=["status"], order_desc_agg=True)),
+    dict(key="wo_by_approval", name="指示書 承認状態別", display="bar",
          table="v_work_orders", date_col="created_at", cur=True,
-         sql=f"SELECT {case('approval_status', WOA_ST)} AS \"承認状態\", count(*) AS \"件数\" "
-             f"FROM analytics.v_work_orders {F} GROUP BY approval_status ORDER BY count(*) DESC"),
-    dict(key="step_by_status", name="工程 状態別", display="bar", dim="状態", met="件数",
+         q=dict(agg=("count",), breakout=["approval_status"], order_desc_agg=True)),
+    dict(key="step_by_status", name="工程 状態別", display="bar",
          table="v_work_order_steps", date_col="started_at", cur=False,
-         sql=f"SELECT {case('status', STEP_ST)} AS \"状態\", count(*) AS \"件数\" "
-             f"FROM analytics.v_work_order_steps {FD} GROUP BY status ORDER BY count(*) DESC"),
+         q=dict(agg=("count",), breakout=["status"], order_desc_agg=True)),
     dict(key="wo_active", name="進行中・承認待ちの指示書", display="table",
          table="v_work_orders", date_col="created_at", cur=True,
-         sql="SELECT work_order_no AS \"指示書番号\", lot_number AS \"ロット番号\", "
-             "product_name AS \"製品\", planned_quantity AS \"予定数量\", "
-             "created_by_name AS \"作成者\", " + f"{case('status', WO_ST)} AS \"状態\", "
-             + f"{case('approval_status', WOA_ST)} AS \"承認状態\" "
-             f"FROM analytics.v_work_orders {F} "
-             "AND status IN ('IN_PROGRESS','PENDING_APPROVAL','APPROVED') "
-             "ORDER BY year_month DESC, seq DESC LIMIT 20"),
+         q=dict(fields=["work_order_no", "lot_number", "product_name", "planned_quantity",
+                        "created_by_name", "status", "approval_status"],
+                filters=[("=", "status", "IN_PROGRESS", "PENDING_APPROVAL", "APPROVED")],
+                order_by=[("desc", "year_month"), ("desc", "seq")], limit=20)),
     # 請求
     dict(key="inv_total", name="請求書 総数", display="scalar",
          table="v_invoices", date_col="created_at", cur=True,
-         sql=f"SELECT count(*) AS \"件数\" FROM analytics.v_invoices {F}"),
+         q=dict(agg=("count",))),
     dict(key="inv_amount", name="請求額 合計", display="scalar",
          table="v_invoices", date_col="created_at", cur=True,
-         sql=f"SELECT COALESCE(sum(total_amount),0) AS \"請求額\" FROM analytics.v_invoices {F} "
-             "AND status <> 'DRAFT'"),
-    dict(key="inv_by_status", name="請求書 状態別", display="bar", dim="状態", met="件数",
+         q=dict(agg=("sum", "total_amount"), filters=[("!=", "status", "DRAFT")])),
+    dict(key="inv_by_status", name="請求書 状態別", display="bar",
          table="v_invoices", date_col="created_at", cur=True,
-         sql=f"SELECT {case('status', INV_ST)} AS \"状態\", count(*) AS \"件数\" "
-             f"FROM analytics.v_invoices {F} GROUP BY status ORDER BY count(*) DESC"),
-    dict(key="inv_monthly", name="請求額 月次", display="bar", dim="年月", met="請求額",
+         q=dict(agg=("count",), breakout=["status"], order_desc_agg=True)),
+    dict(key="inv_monthly", name="請求額 月次", display="bar",
          table="v_invoices", date_col="created_at", cur=True,
-         sql="SELECT to_char(COALESCE(issued_at,created_at),'YYYY-MM') AS \"年月\", "
-             f"COALESCE(sum(total_amount),0) AS \"請求額\" FROM analytics.v_invoices {F} "
-             "AND status <> 'DRAFT' GROUP BY 1 ORDER BY 1"),
-    dict(key="closing_by_status", name="締日処理 状態別", display="bar", dim="状態", met="件数",
+         q=dict(agg=("sum", "total_amount"), breakout=[("issued_at", "month")],
+                filters=[("!=", "status", "DRAFT")])),
+    dict(key="closing_by_status", name="締日処理 状態別", display="bar",
          table="v_billing_closings", date_col="created_at", cur=False,
-         sql=f"SELECT {case('status', BC_ST)} AS \"状態\", count(*) AS \"件数\" "
-             f"FROM analytics.v_billing_closings {FD} GROUP BY status ORDER BY count(*) DESC"),
+         q=dict(agg=("count",), breakout=["status"], order_desc_agg=True)),
     # 在庫（期間 = 更新日/予約日。通貨 = 製品の通貨（製品在庫のみ））
     dict(key="prod_stock_total", name="製品在庫 総数量", display="scalar",
          table="v_product_inventory", date_col="updated_at", cur=True,
-         sql=f"SELECT COALESCE(sum(quantity),0) AS \"数量\" FROM analytics.v_product_inventory {F}"),
+         q=dict(agg=("sum", "quantity"))),
     dict(key="mat_stock_total", name="素材在庫 総数量", display="scalar",
          table="v_material_inventory", date_col="updated_at", cur=False,
-         sql=f"SELECT COALESCE(sum(quantity),0) AS \"数量\" FROM analytics.v_material_inventory {FD}"),
-    dict(key="prod_stock_top", name="製品在庫 上位", display="row", dim="製品", met="在庫数",
+         q=dict(agg=("sum", "quantity"))),
+    dict(key="prod_stock_top", name="製品在庫 上位", display="row",
          table="v_product_inventory", date_col="updated_at", cur=True,
-         sql=f"SELECT product_name AS \"製品\", COALESCE(sum(quantity),0) AS \"在庫数\" "
-             f"FROM analytics.v_product_inventory {F} AND product_name IS NOT NULL "
-             "GROUP BY 1 ORDER BY 2 DESC LIMIT 10"),
-    dict(key="mat_stock_top", name="素材在庫 上位", display="row", dim="素材", met="在庫数",
+         q=dict(agg=("sum", "quantity"), breakout=["product_name"],
+                filters=[("not-null", "product_name")], order_desc_agg=True, limit=10)),
+    dict(key="mat_stock_top", name="素材在庫 上位", display="row",
          table="v_material_inventory", date_col="updated_at", cur=False,
-         sql=f"SELECT material_name AS \"素材\", COALESCE(sum(quantity),0) AS \"在庫数\" "
-             f"FROM analytics.v_material_inventory {FD} AND material_name IS NOT NULL "
-             "GROUP BY 1 ORDER BY 2 DESC LIMIT 10"),
-    dict(key="res_by_status", name="在庫予約 状態別", display="bar", dim="状態", met="件数",
+         q=dict(agg=("sum", "quantity"), breakout=["material_name"],
+                filters=[("not-null", "material_name")], order_desc_agg=True, limit=10)),
+    dict(key="res_by_status", name="在庫予約 状態別", display="bar",
          table="v_inventory_reservations", date_col="reserved_at", cur=False,
-         sql=f"SELECT {case('status', RES_ST)} AS \"状態\", count(*) AS \"件数\" "
-             f"FROM analytics.v_inventory_reservations {FD} GROUP BY status ORDER BY count(*) DESC"),
+         q=dict(agg=("count",), breakout=["status"], order_desc_agg=True)),
 ]
 
 # ─── ダッシュボード定義（グリッド: 幅 24。row/col/sizeX/sizeY） ──────
@@ -233,50 +230,99 @@ DASHBOARDS = [
 ]
 
 
-def viz_for(c):
-    # dim は文字列（1 次元）またはリスト（第 2 要素がブレイクアウト = 積み上げ系列）
-    if c["display"] in ("bar", "row") and c.get("dim") and c.get("met"):
-        dims = c["dim"] if isinstance(c["dim"], list) else [c["dim"]]
-        vs = {"graph.dimensions": dims, "graph.metrics": [c["met"]]}
-        if len(dims) > 1:
-            vs["stackable.stack_type"] = "stacked"
-        return vs
-    return {}
-
-
-def load_field_ids():
-    """analytics ビューの (table, column) → Metabase field id。field filter 用。"""
+def load_metadata():
+    """analytics ビューの table id と (table, column) → field id。"""
     meta = api("GET", f"/api/database/{DB_ID}/metadata")
-    ids = {}
+    tables, fields = {}, {}
     for t in meta.get("tables", []):
         if t.get("schema") != "analytics":
             continue
+        tables[t["name"]] = t["id"]
         for f in t.get("fields", []):
-            ids[(t["name"], f["name"])] = f["id"]
-    return ids
+            fields[(t["name"], f["name"])] = f["id"]
+    return tables, fields
 
 
-def dataset_query(c, field_ids):
-    tags = {}
-    date_fid = field_ids.get((c["table"], c["date_col"]))
-    if date_fid is None:
-        raise SystemExit(f"field not found: {c['table']}.{c['date_col']} — run a Metabase sync first")
-    tags["date_range"] = {
-        "id": tag_id(c["key"], "date_range"), "name": "date_range",
-        "display-name": "期間", "type": "dimension",
-        "dimension": ["field", date_fid, None], "widget-type": "date/all-options",
-    }
-    if c["cur"]:
-        cur_fid = field_ids.get((c["table"], "currency"))
-        if cur_fid is None:
-            raise SystemExit(f"field not found: {c['table']}.currency — run a Metabase sync first")
-        tags["currency"] = {
-            "id": tag_id(c["key"], "currency"), "name": "currency",
-            "display-name": "通貨", "type": "dimension",
-            "dimension": ["field", cur_fid, None], "widget-type": "string/=",
-        }
-    return {"database": DB_ID, "type": "native",
-            "native": {"query": c["sql"], "template-tags": tags}}
+def build_query(c, tables, fields):
+    """カード仕様 → 標準クエリビルダー（legacy MBQL）の dataset_query。"""
+    t = c["table"]
+    if t not in tables:
+        raise SystemExit(f"table not found in Metabase: analytics.{t} — run a sync first")
+
+    def fref(col, unit=None):
+        fid = fields.get((t, col))
+        if fid is None:
+            raise SystemExit(f"field not found: {t}.{col} — run a Metabase sync first")
+        return ["field", fid, {"temporal-unit": unit}] if unit else ["field", fid, None]
+
+    q = {"source-table": tables[t]}
+    spec = c["q"]
+
+    for name, (fn, col, fallback) in (spec.get("expressions") or {}).items():
+        assert fn == "coalesce"
+        q.setdefault("expressions", {})[name] = ["coalesce", fref(col), fallback]
+
+    if spec.get("agg"):
+        agg = spec["agg"]
+        q["aggregation"] = [["count"] if agg[0] == "count" else ["sum", fref(agg[1])]]
+
+    breakouts = []
+    for b in spec.get("breakout") or []:
+        if isinstance(b, tuple) and b[0] == "expr":
+            breakouts.append(["expression", b[1]])
+        elif isinstance(b, tuple):
+            breakouts.append(fref(b[0], b[1]))
+        else:
+            breakouts.append(fref(b))
+    if breakouts:
+        q["breakout"] = breakouts
+
+    filters = []
+    for f in spec.get("filters") or []:
+        op, col, *vals = f
+        if op == "not-null":
+            filters.append(["not-null", fref(col)])
+        else:
+            filters.append([op, fref(col), *vals])
+    if len(filters) == 1:
+        q["filter"] = filters[0]
+    elif filters:
+        q["filter"] = ["and", *filters]
+
+    if spec.get("fields"):
+        q["fields"] = [fref(col) for col in spec["fields"]]
+    if spec.get("order_desc_agg"):
+        q["order-by"] = [["desc", ["aggregation", 0]]]
+    elif spec.get("order_by"):
+        q["order-by"] = [[direction, fref(col)] for direction, col in spec["order_by"]]
+    if spec.get("limit"):
+        q["limit"] = spec["limit"]
+
+    return {"database": DB_ID, "type": "query", "query": q}
+
+
+def viz_for(c):
+    return {"stackable.stack_type": "stacked"} if c.get("stacked") else {}
+
+
+def apply_remappings(fields):
+    """状態 enum の日本語表示（internal remapping）+ 通貨のドロップダウン値。
+    表・グラフ・フィルタすべてで日本語表示になる。冪等（毎回上書き）。"""
+    for (tbl, col), mapping in REMAP.items():
+        fid = fields.get((tbl, col))
+        if fid is None:
+            print(f"remap skip: {tbl}.{col} not found")
+            continue
+        api("PUT", f"/api/field/{fid}", {"has_field_values": "list"})
+        api("POST", f"/api/field/{fid}/dimension",
+            {"type": "internal", "name": "状態", "human_readable_field_id": None})
+        api("POST", f"/api/field/{fid}/values",
+            {"values": [[k, v] for k, v in mapping.items()]})
+    for tbl, col in LIST_VALUE_FIELDS:
+        fid = fields.get((tbl, col))
+        if fid is not None:
+            api("PUT", f"/api/field/{fid}", {"has_field_values": "list"})
+    print(f"remappings applied ({len(REMAP)} enum fields)")
 
 
 CARD_SUBCOLLECTION = "_カード"
@@ -285,9 +331,6 @@ CARD_SUBCOLLECTION = "_カード"
 def main():
     # フォルダ構成: ダッシュボードは親コレクション直下、質問（カード）は
     # 「_カード」サブコレクションに置く（利用者が整理した構成。壊さない）。
-    # 既存カードは親と _カード の両方から名前で探し、見つかったカードは
-    # 「今ある場所のまま」更新する — このスクリプトがカードを移動することはない。
-    # 新規カードは _カード サブコレクション（無ければ作る）へ入れる。
     subs = api("GET", f"/api/collection/{COLLECTION_ID}/items?models=collection")
     card_coll = next((it["id"] for it in subs.get("data", [])
                       if it["name"] == CARD_SUBCOLLECTION), None)
@@ -296,9 +339,9 @@ def main():
                         {"name": CARD_SUBCOLLECTION, "parent_id": COLLECTION_ID})["id"]
         print(f"created subcollection {CARD_SUBCOLLECTION} -> {card_coll}")
 
-    field_ids = load_field_ids()
+    tables, fields = load_metadata()
+    apply_remappings(fields)
 
-    # 既存カード / ダッシュボードを名前で引く（冪等）。値 = (id, collection_id)
     existing = {}
     for coll in (COLLECTION_ID, card_coll):
         items = api("GET", f"/api/collection/{coll}/items?models=card&models=dashboard")
@@ -309,7 +352,7 @@ def main():
     for c in CARDS:
         body = {
             "name": c["name"], "display": c["display"],
-            "dataset_query": dataset_query(c, field_ids),
+            "dataset_query": build_query(c, tables, fields),
             "visualization_settings": viz_for(c),
         }
         hit = existing.get(("card", c["name"]))
@@ -329,9 +372,8 @@ def main():
             did = api("POST", "/api/dashboard",
                       {"name": d["name"], "description": d["description"],
                        "collection_id": COLLECTION_ID})["id"]
-        # ダッシュボードフィルタ（id は決定的 — 再実行で URL/設定が揺れない）
-        date_pid = tag_id(d["name"], "param_date")[:8]
-        cur_pid = tag_id(d["name"], "param_currency")[:8]
+        date_pid = det_id(d["name"], "param_date")[:8]
+        cur_pid = det_id(d["name"], "param_currency")[:8]
         parameters = [
             {"id": date_pid, "name": "期間", "slug": "date_range",
              "type": "date/all-options", "sectionId": "date"},
@@ -341,14 +383,15 @@ def main():
         dashcards = []
         for i, (ck, row, col, sx, sy) in enumerate(d["layout"]):
             c = cards_by_key[ck]
+            # MBQL カード: パラメータは列へ直接マップ（template tag 不要）
             mappings = [{
                 "parameter_id": date_pid, "card_id": key_to_id[ck],
-                "target": ["dimension", ["template-tag", "date_range"]],
+                "target": ["dimension", ["field", fields[(c["table"], c["date_col"])], None]],
             }]
             if c["cur"]:
                 mappings.append({
                     "parameter_id": cur_pid, "card_id": key_to_id[ck],
-                    "target": ["dimension", ["template-tag", "currency"]],
+                    "target": ["dimension", ["field", fields[(c["table"], "currency")], None]],
                 })
             dashcards.append({
                 "id": -(i + 1), "card_id": key_to_id[ck],
