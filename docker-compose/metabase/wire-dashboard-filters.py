@@ -50,11 +50,20 @@ def det_id(*parts):
     return str(uuid.uuid5(uuid.NAMESPACE_URL, "ckk-metabase://" + "/".join(parts)))
 
 
+LINE_STATUS_TABLE_IDS = set()
+ACCEPTANCE_STATUS_TABLE_IDS = set()
+
+
 def load_tables():
     meta = api("GET", f"/api/database/{DB_ID}/metadata")
     tables = {}
     for t in meta.get("tables", []):
         tables[t["id"]] = {f["name"]: f["id"] for f in t.get("fields", [])}
+        if t.get("schema") == "analytics" and t["name"] in ("v_order_lines", "v_order_lines_disp"):
+            LINE_STATUS_TABLE_IDS.add(t["id"])
+            ACCEPTANCE_STATUS_TABLE_IDS.add(t["id"])
+        if t.get("schema") == "analytics" and t["name"] == "v_order_acceptances":
+            ACCEPTANCE_STATUS_TABLE_IDS.add(t["id"])
     return tables
 
 
@@ -66,15 +75,24 @@ def targets_for_card(card, tables):
     if q.get("type") == "native" or q.get("native"):
         tags = (q.get("native") or {}).get("template-tags") or {}
         return {slug: ["dimension", ["template-tag", slug]] for slug in
-                ("date_range", "display_currency") if slug in tags}
+                ("date_range",) if slug in tags}
     fields = tables.get(card.get("table_id")) or {}
     out = {}
     for col in DATE_PREF:
         if col in fields:
             out["date_range"] = ["dimension", ["field", fields[col], None]]
             break
-    if "display_currency" in fields:
-        out["display_currency"] = ["dimension", ["field", fields["display_currency"], None]]
+    # 状態フィルタ（line_status）は注文明細系ビューの status のみ対象
+    # （注文請書などの status は別 enum — 誤配線しない）
+    if card.get("table_id") in LINE_STATUS_TABLE_IDS and "status" in fields:
+        out["line_status"] = ["dimension", ["field", fields["status"], None]]
+    # 通貨（原通貨）と 状態（請書）は利用者が UI で付けた場合のみ管理（新規追加しない）
+    if "currency" in fields:
+        out["currency"] = ["dimension", ["field", fields["currency"], None]]
+    if card.get("table_id") in ACCEPTANCE_STATUS_TABLE_IDS:
+        col = "status" if "acceptance_status" not in fields else "acceptance_status"
+        if col in fields:
+            out["acceptance_status"] = ["dimension", ["field", fields[col], None]]
     return out
 
 
@@ -92,18 +110,10 @@ def main():
                            "slug": "date_range", "type": "date/all-options", "sectionId": "date"})
             by_slug["date_range"] = params[-1]
             changed = True
-        # 表示通貨（JPY/USD 切替）— *_disp ビューのカードがあるダッシュボードだけ。
-        # 縦持ちビューは 1 通貨に絞らないと二重計上のため required + 既定 JPY。
-        needs_disp = any("display_currency" in (tables.get((dc.get("card") or {}).get("table_id")) or {})
-                         for dc in d.get("dashcards", []))
-        if needs_disp and "display_currency" not in by_slug:
-            params.append({"id": det_id(d["name"], "param_display_currency")[:8], "name": "表示通貨",
-                           "slug": "display_currency", "type": "string/=", "sectionId": "string",
-                           "default": ["JPY"], "required": True})
-            by_slug["display_currency"] = params[-1]
-            changed = True
+        # line_status（状態）はパラメータが既に存在するダッシュボードでのみ配線を管理
+        # （新規追加はしない — 状態フィルタはダッシュボード個別の判断）。
         pid_by_slug = {slug: p["id"] for slug, p in by_slug.items()
-                       if slug in ("date_range", "display_currency")}
+                       if slug in ("date_range", "line_status", "currency", "acceptance_status")}
 
         dashcards = []
         wired = 0
