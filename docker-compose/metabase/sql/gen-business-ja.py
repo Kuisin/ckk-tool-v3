@@ -643,6 +643,75 @@ ANALYTICS_COLS = {
 }
 
 
+# ─── ビュー間の PK/FK メタデータ ─────────────────────────────────────
+# analytics ビューは実 FK を持たないため、Metabase のノートブックで結合すると
+# 結合キーの自動提案が外れる（実例: 注文明細→注文請書で 連番(int)=注文番号(text)
+# を提案して SQL エラー）。書類番号キーに PK/FK を宣言しておくと、結合先の提案が
+# 正しくなり、暗黙結合（FK 先の列でそのまま集計・内訳）も使えるようになる。
+# 通貨列 → v_currencies.code の FK は「どのレート行で換算するかはビューの通貨列が
+# 決める」を Metabase にも教える宣言。
+VIEW_PKS = [
+    ("v_currencies", "code"),
+    ("v_order_acceptances", "order_no"), ("v_order_lines", "order_line_no"),
+    ("v_quotes", "quote_no"), ("v_work_orders", "work_order_no"),
+    ("v_material_purchase_orders", "po_number"), ("v_purchase_requests", "request_number"),
+    ("v_invoices", "invoice_no"), ("v_delivery_orders", "delivery_order_no"),
+    ("v_delivery_notes", "delivery_no"), ("v_price_list_entries", "price_list_no"),
+    ("v_estimates", "estimate_no"),
+]
+
+VIEW_FKS = [
+    # 通貨 → 通貨マスタ（換算に使うレート行はビューの通貨列が決める）
+    ("v_order_acceptances", "currency", "v_currencies", "code"),
+    ("v_order_lines", "currency", "v_currencies", "code"),
+    ("v_quotes", "currency", "v_currencies", "code"),
+    ("v_quote_items", "currency", "v_currencies", "code"),
+    ("v_invoices", "currency", "v_currencies", "code"),
+    ("v_material_purchase_orders", "currency", "v_currencies", "code"),
+    ("v_material_purchase_order_items", "currency", "v_currencies", "code"),
+    ("v_price_list_entries", "currency", "v_currencies", "code"),
+    ("v_price_list_variants", "currency", "v_currencies", "code"),
+    ("v_work_orders", "currency", "v_currencies", "code"),
+    ("v_product_inventory", "currency", "v_currencies", "code"),
+    ("v_products", "currency", "v_currencies", "code"),
+    # 受注（ORD）
+    ("v_order_lines", "order_no", "v_order_acceptances", "order_no"),
+    ("v_delivery_order_items", "order_line_no", "v_order_lines", "order_line_no"),
+    ("v_invoice_items", "order_line_no", "v_order_lines", "order_line_no"),
+    ("v_design_requests", "order_line_no", "v_order_lines", "order_line_no"),
+    ("v_inventory_reservations", "order_line_no", "v_order_lines", "order_line_no"),
+    # 見積（QOT）
+    ("v_quote_items", "quote_no", "v_quotes", "quote_no"),
+    ("v_order_acceptances", "quote_no", "v_quotes", "quote_no"),
+    ("v_order_lines", "quote_no", "v_quotes", "quote_no"),
+    ("v_design_requests", "quote_no", "v_quotes", "quote_no"),
+    # 指示書（WOR）
+    ("v_work_order_steps", "work_order_no", "v_work_orders", "work_order_no"),
+    ("v_work_order_step_plans", "work_order_no", "v_work_orders", "work_order_no"),
+    ("v_work_order_step_actuals", "work_order_no", "v_work_orders", "work_order_no"),
+    ("v_inspection_records", "work_order_no", "v_work_orders", "work_order_no"),
+    ("v_defect_records", "work_order_no", "v_work_orders", "work_order_no"),
+    ("v_delivery_orders", "work_order_no", "v_work_orders", "work_order_no"),
+    ("v_product_inventory", "work_order_no", "v_work_orders", "work_order_no"),
+    ("v_inventory_reservations", "work_order_no", "v_work_orders", "work_order_no"),
+    # 購買（PO）
+    ("v_material_purchase_order_items", "po_number", "v_material_purchase_orders", "po_number"),
+    ("v_material_receipts", "po_number", "v_material_purchase_orders", "po_number"),
+    ("v_purchase_requests", "po_number", "v_material_purchase_orders", "po_number"),
+    ("v_purchase_request_items", "request_number", "v_purchase_requests", "request_number"),
+    # 出荷・請求（DOR / DRN / INV）
+    ("v_delivery_order_items", "delivery_order_no", "v_delivery_orders", "delivery_order_no"),
+    ("v_delivery_notes", "delivery_order_no", "v_delivery_orders", "delivery_order_no"),
+    ("v_invoice_items", "delivery_order_no", "v_delivery_orders", "delivery_order_no"),
+    ("v_delivery_note_items", "delivery_no", "v_delivery_notes", "delivery_no"),
+    ("v_invoice_items", "delivery_no", "v_delivery_notes", "delivery_no"),
+    ("v_invoice_items", "invoice_no", "v_invoices", "invoice_no"),
+    # 価格表・試算（PRC / EST）
+    ("v_price_list_variants", "price_list_no", "v_price_list_entries", "price_list_no"),
+    ("v_price_list_variants", "estimate_no", "v_estimates", "estimate_no"),
+]
+
+
 def sql_lit(s: str) -> str:
     return "'" + s.replace("'", "''") + "'"
 
@@ -717,6 +786,27 @@ def main() -> None:
     out.append("FROM m, metabase_table t, target")
     out.append("WHERE f.table_id = t.id AND t.db_id = target.id AND t.schema = 'analytics'")
     out.append("  AND f.name = m.col AND f.display_name IS DISTINCT FROM m.ja;")
+    out.append("")
+    out.append("-- ─── ビュー間 PK/FK メタデータ（結合キーの自動提案・暗黙結合用） ──")
+    out.append("WITH target AS (SELECT id FROM metabase_database WHERE name = 'CKK 業務'),")
+    out.append("m(tbl, col) AS (VALUES")
+    out.append(",\n".join(f"  ({sql_lit(t)}, {sql_lit(c)})" for t, c in VIEW_PKS))
+    out.append(")")
+    out.append("UPDATE metabase_field f SET semantic_type = 'type/PK'")
+    out.append("FROM m, metabase_table t, target")
+    out.append("WHERE f.table_id = t.id AND t.db_id = target.id AND t.schema = 'analytics'")
+    out.append("  AND t.name = m.tbl AND f.name = m.col")
+    out.append("  AND f.semantic_type IS DISTINCT FROM 'type/PK';")
+    out.append("")
+    for st, sc, tt, tc in VIEW_FKS:
+        out.append("WITH target AS (SELECT id FROM metabase_database WHERE name = 'CKK 業務')")
+        out.append("UPDATE metabase_field f SET semantic_type = 'type/FK', fk_target_field_id = tf.id")
+        out.append("FROM metabase_table t, metabase_table tt, metabase_field tf, target")
+        out.append(f"WHERE f.table_id = t.id AND t.db_id = target.id AND t.schema = 'analytics'")
+        out.append(f"  AND t.name = {sql_lit(st)} AND f.name = {sql_lit(sc)}")
+        out.append(f"  AND tt.db_id = target.id AND tt.schema = 'analytics' AND tt.name = {sql_lit(tt)}")
+        out.append(f"  AND tf.table_id = tt.id AND tf.name = {sql_lit(tc)}")
+        out.append("  AND (f.semantic_type IS DISTINCT FROM 'type/FK' OR f.fk_target_field_id IS DISTINCT FROM tf.id);")
     out.append("")
     out.append("COMMIT;")
     print("\n".join(out))
