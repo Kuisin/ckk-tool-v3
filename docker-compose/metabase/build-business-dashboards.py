@@ -301,8 +301,39 @@ def build_query(c, tables, fields):
     return {"database": DB_ID, "type": "query", "query": q}
 
 
+# 金額列（¥ プレフィックス）と本数系の数量列（〜本 サフィックス）
+MONEY_COLS = {"amount", "total_amount", "subtotal", "unit_price"}
+HONSU_COLS = {"quantity", "planned_quantity"}
+# 素材在庫は単位が混在（本/kg/m）するので単位を付けない
+NO_UNIT_TABLES = {"v_material_inventory"}
+
+
 def viz_for(c):
-    return {"stackable.stack_type": "stacked"} if c.get("stacked") else {}
+    """表示設定。単位の接頭/接尾辞はクエリ仕様から導出する:
+    件数(count) → 「件」 / 金額 sum → 「¥」 / 本数系 quantity → 「本」。"""
+    vs = {}
+    if c.get("stacked"):
+        vs["stackable.stack_type"] = "stacked"
+
+    def colset(col_name, fmt):
+        vs.setdefault("column_settings", {})[json.dumps(["name", col_name])] = fmt
+
+    spec = c["q"]
+    agg = spec.get("agg")
+    if agg:
+        if agg[0] == "count":
+            colset("count", {"suffix": " 件"})
+        elif agg[0] == "sum":
+            if agg[1] in MONEY_COLS:
+                colset("sum", {"prefix": "¥"})
+            elif agg[1] in HONSU_COLS and c["table"] not in NO_UNIT_TABLES:
+                colset("sum", {"suffix": " 本"})
+    for col in spec.get("fields") or []:
+        if col in MONEY_COLS:
+            colset(col, {"prefix": "¥"})
+        elif col in HONSU_COLS and c["table"] not in NO_UNIT_TABLES:
+            colset(col, {"suffix": " 本"})
+    return vs
 
 
 def apply_remappings(fields):
