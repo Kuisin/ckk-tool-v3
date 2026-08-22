@@ -104,6 +104,26 @@ export function OrderLineDetail({
             ? "出荷段階の明細には作成できません"
             : undefined;
   const woCreateHref = `/production/work-orders/new?orderLine=${order.uuid}`;
+
+  // 出荷書作成の可否 — 確定済み以降（キャンセル・全量出荷済みを除く）で
+  // 未出荷数量が残っているときだけ。プリフィルは ?orderLine= が担う。
+  const unshipped = Math.max(0, order.quantity - order.shippedQuantity);
+  const doCreatable =
+    !order.isLocked &&
+    (order.status === "CONFIRMED" ||
+      order.status === "IN_PRODUCTION" ||
+      order.status === "PARTIAL_SHIPPED") &&
+    unshipped > 0;
+  const doDisabledReason = order.isLocked
+    ? "承認依頼中のためロックされています"
+    : order.status === "DRAFT"
+      ? "注文請書の確定後に作成できます"
+      : order.status === "CANCELLED"
+        ? "キャンセル済みの明細には作成できません"
+        : unshipped === 0
+          ? "受注数量まで出荷済みです"
+          : undefined;
+  const doCreateHref = `/shipping/delivery-orders/new?orderLine=${order.uuid}`;
   const [stockResult, setStockResult] = useState<StockCheckResult | null>(null);
 
   // 在庫照合（§4）は確定済み・製造前のみ（製造中以降は指示書側で管理）。
@@ -151,6 +171,13 @@ export function OrderLineDetail({
                 disabledReason: woDisabledReason,
                 onClick: () => router.push(woCreateHref),
               },
+              {
+                label: "出荷書を作成",
+                icon: <IconTruck size={14} />,
+                disabled: !doCreatable,
+                disabledReason: doDisabledReason,
+                onClick: () => router.push(doCreateHref),
+              },
             ]}
           />
         </Group>
@@ -161,8 +188,9 @@ export function OrderLineDetail({
       title={order.orderNumber}
       updatedAt={fmt.dateTime(order.updatedAt)}
     >
-      {/* 次のステップ — 未手配が残る確定済み明細は指示書の作成へ誘導する。 */}
-      {woCreatable && (
+      {/* 次のステップ — 未手配が残るうちは指示書の作成、手配し終えて
+          未出荷が残るなら出荷書の作成へ誘導する（1 度に出すのは 1 枚）。 */}
+      {woCreatable ? (
         <NextStepCard
           buttonLabel="指示書を作成"
           description={`未手配 ${remainingToAllocate} 本 — この注文明細をプリセレクトした状態で指示書ビルダーを開きます`}
@@ -170,7 +198,15 @@ export function OrderLineDetail({
           icon={<IconSettings2 size={20} />}
           title="次のステップ: 指示書の作成"
         />
-      )}
+      ) : doCreatable ? (
+        <NextStepCard
+          buttonLabel="出荷書を作成"
+          description={`未出荷 ${unshipped} 本 — この注文明細を読み込んだ状態で出荷書フォームを開きます`}
+          href={doCreateHref}
+          icon={<IconTruck size={20} />}
+          title="次のステップ: 出荷書の作成"
+        />
+      ) : null}
       {order.isLocked && (
         <Alert
           color="orange"
@@ -383,6 +419,17 @@ export function OrderLineDetail({
         <Tabs.Panel pt="md" value="shipping">
           {order.deliveryOrders.length === 0 ? (
             <EmptyState
+              action={
+                doCreatable ? (
+                  <SecondaryButton
+                    href={doCreateHref}
+                    leftSection={<IconTruck size={14} />}
+                    size="xs"
+                  >
+                    出荷書を作成
+                  </SecondaryButton>
+                ) : undefined
+              }
               icon={<IconTruck size={24} />}
               message="この注文明細の出荷書はまだありません"
             />
