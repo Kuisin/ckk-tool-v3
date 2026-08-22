@@ -960,6 +960,19 @@ export async function fetchPlantOptions(): Promise<Option[]> {
 }
 
 /**
+ * 担当者候補（有効な従業員アカウント）— 作成時の作業計画の MultiSelect 用。
+ * value = users.id (uuid)、label = 表示名。
+ */
+export async function fetchEmployeeOptions(): Promise<Option[]> {
+  const rows = await prisma.user.findMany({
+    where: { isActive: true, group: "EMPLOYEE" },
+    orderBy: { username: "asc" },
+    select: { id: true, displayName: true },
+  });
+  return rows.map((u) => ({ value: u.id, label: u.displayName }));
+}
+
+/**
  * 保管場所（有効のみ・拠点名付き）— 完成品の保管場所 Select。
  * value = String(内部 id)、label = 「拠点名 / 保管場所名」。
  */

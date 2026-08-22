@@ -2,6 +2,7 @@ import { WorkflowBuilder } from "@/components/production/work-orders/WorkflowBui
 import { requireAppRead } from "@/lib/authz-page";
 import { loadCatalog } from "@/lib/workflow";
 import {
+  fetchEmployeeOptions,
   fetchInspectionTemplateOptions,
   fetchOrderLineRef,
   fetchPlantOptions,
@@ -30,6 +31,7 @@ export default async function ProductionWorkOrdersNewPage({
     templateOptions,
     supplierOptions,
     storageLocationOptions,
+    employeeOptions,
     soRef,
   ] = await Promise.all([
     loadCatalog(),
@@ -37,6 +39,7 @@ export default async function ProductionWorkOrdersNewPage({
     fetchInspectionTemplateOptions(),
     fetchSupplierOptions(),
     fetchStorageLocationOptions(),
+    fetchEmployeeOptions(),
     sp.orderLine ? fetchOrderLineRef(sp.orderLine) : null,
   ]);
 
@@ -47,6 +50,7 @@ export default async function ProductionWorkOrdersNewPage({
   return (
     <WorkflowBuilder
       catalogSteps={catalog.steps}
+      employeeOptions={employeeOptions}
       initialOrderLine={soRef}
       initialQuantity={initialQty}
       initialType={initialType}
