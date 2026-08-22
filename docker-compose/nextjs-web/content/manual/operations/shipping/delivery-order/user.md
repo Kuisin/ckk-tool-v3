@@ -1,7 +1,7 @@
 ---
 title: "出荷書 — 操作マニュアル"
 description: "できあがった製品をお客様へ送るときに、何をいくつ送ったかを記録する書類です。"
-screenshots: [shipping-order-list-01, shipping-order-new-01, shipping-order-detail-01, shipping-order-menu-01, shipping-order-confirm-01, shipping-order-delivery-notes-01]
+screenshots: [delivery-order-list-01, delivery-order-new-01, delivery-order-detail-01, delivery-order-menu-01, delivery-order-confirm-01, delivery-order-delivery-notes-01]
 ---
 できあがった製品をお客様へ送るときに、**何をいくつ送ったか** を記録する **出荷書** を作るアプリです。操作コードは `SH01` です。
 
@@ -35,9 +35,9 @@ screenshots: [shipping-order-list-01, shipping-order-new-01, shipping-order-deta
 
 アプリを開くと、これまでに作った出荷書の一覧が出ます。
 
-![出荷書の一覧画面](../../../assets/screenshots/shipping-order-list-01.png)
+![出荷書の一覧画面](../../../assets/screenshots/delivery-order-list-01.png)
 
-- **出荷書番号** … `SHP-` で始まる番号です。システムが自動で付けます。
+- **出荷書番号** … `DOR-` で始まる番号です。システムが自動で付けます。
 - **種別** … 青い「発送」はお客様へ送る分、灰色の「在庫保管」は社内で預かる分です。
 - **状態** … 灰色は「下書き」、青は「確定」、緑は「出荷済」です。
 - 上の検索欄には、出荷書番号・注文明細番号・お客様の名前・製品名を入れて絞り込めます。この検索欄は **すでに作った出荷書を探すため** のもので、新規作成のときに注文明細を選ぶ欄とは別ものです。
@@ -55,7 +55,7 @@ screenshots: [shipping-order-list-01, shipping-order-new-01, shipping-order-deta
 7. 行を増やしたいときは「**明細を追加**」、消したいときは行の右にあるゴミ箱の印を押します。
 8. 「**保存**」を押します。
 
-![出荷書の新規作成フォーム](../../../assets/screenshots/shipping-order-new-01.png)
+![出荷書の新規作成フォーム](../../../assets/screenshots/delivery-order-new-01.png)
 
 保存すると「**下書き**」として登録され、詳しい画面が開きます。
 
@@ -65,7 +65,7 @@ screenshots: [shipping-order-list-01, shipping-order-new-01, shipping-order-deta
 
 ## 内容を確認する
 
-![出荷書の詳しい画面](../../../assets/screenshots/shipping-order-detail-01.png)
+![出荷書の詳しい画面](../../../assets/screenshots/delivery-order-detail-01.png)
 
 上のほうに、出荷書番号・注文明細番号・お客様・製品・種別・出荷元拠点・数量・出荷日が並びます。
 
@@ -77,7 +77,7 @@ screenshots: [shipping-order-list-01, shipping-order-new-01, shipping-order-deta
 
 出荷書は「下書き → 確定 → 出荷済」と 3 段階で進みます。操作は画面右上の「**…**」（点が 3 つのボタン）から行います。
 
-![詳しい画面の「…」メニュー](../../../assets/screenshots/shipping-order-menu-01.png)
+![詳しい画面の「…」メニュー](../../../assets/screenshots/delivery-order-menu-01.png)
 
 ### 1. 内容を固める（確定）
 
@@ -85,7 +85,7 @@ screenshots: [shipping-order-list-01, shipping-order-new-01, shipping-order-deta
 2. 「**確定**」を選びます。
 3. 「確定の確認」という小さな画面が出るので、内容を読んで「**確定**」を押します。
 
-![確定の確認画面](../../../assets/screenshots/shipping-order-confirm-01.png)
+![確定の確認画面](../../../assets/screenshots/delivery-order-confirm-01.png)
 
 確定すると **編集ができなくなり**、代わりに納品書が作れるようになります。
 
@@ -116,7 +116,7 @@ screenshots: [shipping-order-list-01, shipping-order-new-01, shipping-order-deta
 2. 「**納品書を作成**」を押します。
 3. 出荷書があらかじめ選ばれた状態で、[納品書](/manual/ja/operations/shipping/delivery-note/user)の作成画面が開きます。
 
-![納品書タブ](../../../assets/screenshots/shipping-order-delivery-notes-01.png)
+![納品書タブ](../../../assets/screenshots/delivery-order-delivery-notes-01.png)
 
 このタブには、この出荷書から作った納品書の一覧（納品番号・納品先・方法・状態・納品日）も並びます。
 

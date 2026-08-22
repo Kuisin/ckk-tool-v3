@@ -1,4 +1,4 @@
-import { ShippingOrderForm } from "@/components/shipping/shipping-orders/ShippingOrderForm";
+import { DeliveryOrderForm } from "@/components/shipping/delivery-orders/DeliveryOrderForm";
 import { requireAppRead } from "@/lib/authz-page";
 import {
   fetchOrderLineRef,
@@ -15,12 +15,12 @@ export const dynamic = "force-dynamic";
  * 「出荷書作成」からの起動用）。出荷元拠点 options は指示書ビルダーと同じ
  * 拠点マスタ参照を再利用する。
  */
-export default async function ShippingShippingOrdersNewPage({
+export default async function ShippingDeliveryOrdersNewPage({
   searchParams,
 }: {
   searchParams: Promise<{ orderLine?: string }>;
 }) {
-  const denied = await requireAppRead("shipping-orders");
+  const denied = await requireAppRead("delivery-orders");
   if (denied) return denied;
   const sp = await searchParams;
   const [plantOptions, orderLineRef] = await Promise.all([
@@ -28,7 +28,7 @@ export default async function ShippingShippingOrdersNewPage({
     sp.orderLine ? fetchOrderLineRef(sp.orderLine) : null,
   ]);
   return (
-    <ShippingOrderForm
+    <DeliveryOrderForm
       initialOrderLine={
         orderLineRef
           ? { id: orderLineRef.id, label: orderLineRef.label }

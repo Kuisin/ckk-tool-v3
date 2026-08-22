@@ -177,7 +177,7 @@ SELECT * FROM (VALUES
    NULL::jsonb, '{"type": "MANUFACTURE", "plannedQuantity": 55}'::jsonb),
   ('a0b1c2d3-0000-4000-8000-000000005107'::uuid, 'UPDATE', 'work_orders', '9001',
    '{"status": "APPROVED"}'::jsonb, '{"status": "IN_PROGRESS"}'::jsonb),
-  ('00000000-0000-0000-0000-000000000000'::uuid, 'CREATE', 'shipping_orders', 'SHP-202607-00001',
+  ('00000000-0000-0000-0000-000000000000'::uuid, 'CREATE', 'delivery_orders', 'DOR-202607-00001',
    NULL::jsonb, '{"type": "DISPATCH", "status": "SHIPPED"}'::jsonb)
 ) AS t(user_id, action, table_name, record_id, before_data, after_data)
 WHERE NOT EXISTS (

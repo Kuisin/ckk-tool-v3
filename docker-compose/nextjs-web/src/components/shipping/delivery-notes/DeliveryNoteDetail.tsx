@@ -196,12 +196,12 @@ export function DeliveryNoteDetail({
             <Anchor
               onClick={() =>
                 router.push(
-                  `/shipping/shipping-orders/${note.shippingOrderNumber}`,
+                  `/shipping/delivery-orders/${note.deliveryOrderNumber}`,
                 )
               }
               size="sm"
             >
-              <DocNumber c="blue">{note.shippingOrderNumber}</DocNumber>
+              <DocNumber c="blue">{note.deliveryOrderNumber}</DocNumber>
             </Anchor>
           }
         />

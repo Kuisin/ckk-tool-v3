@@ -195,13 +195,13 @@ export const appList: AppEntry[] = [
 
   // ─── 出荷 ──────────────────────────────────────────────────────────────────
   {
-    key: "shipping-orders",
+    key: "delivery-orders",
     label: "出荷書",
     operationCode: "SH01",
-    href: "/shipping/shipping-orders",
+    href: "/shipping/delivery-orders",
     icon: "IconTruck",
     category: "出荷",
-    requiredPermission: "shipping_order",
+    requiredPermission: "delivery_order",
   },
   {
     key: "delivery-notes",
@@ -221,7 +221,7 @@ export const appList: AppEntry[] = [
     href: "/shipping/pending-shipments",
     icon: "IconTruckLoading",
     category: "出荷",
-    requiredPermission: "shipping_order",
+    requiredPermission: "delivery_order",
   },
 
   // ─── 請求 ──────────────────────────────────────────────────────────────────

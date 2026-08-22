@@ -28,13 +28,15 @@
 **営業担当（sales_rep_id）は書類ごとのスナップショット** — 顧客が持つ担当候補は
 `bp_sales_reps`（CUSTOMER ロール固有・複数可・主担当 1 名）で、書類側は
 `sales_rep_id` に**作成時点の 1 名を複写**する（`estimates` / `price_list_entries` /
-`quotes` / `order_acceptances` / `shipping_orders` / `delivery_notes` / `invoices`）。
+`quotes` / `order_acceptances` / `delivery_notes` / `invoices`）。
 顧客マスタの担当が替わっても過去書類の担当は動かない。既定値の決め方は
 `lib/sales-rep.ts` `resolveSalesRepId()` が唯一の定義 — 明示指定が最優先、無ければ
 **顧客が変わったときだけ**その顧客の主担当を入れる（顧客据え置きで空 =
-利用者が意図的に外した、とみなして戻さない）。注文明細（`order_lines`）は列を持たず
-注文請書ヘッダから読む（顧客・作成者と同じ扱い）。納品書は出荷書の担当を、請求書は
-対象出荷の担当が 1 人に定まればそれを引き継ぐ。
+利用者が意図的に外した、とみなして戻さない）。注文明細（`order_lines`）と
+**出荷書（`delivery_orders`）は列を持たず**、明細の注文明細 → 注文請書ヘッダの
+担当を読む（複数の注文請書を束ねた出荷書では複数になり得る — 表示は導出値）。
+納品書は出荷書の導出担当が 1 人に定まればそれを、請求書も対象出荷の導出担当が
+1 人に定まればそれを引き継ぐ。
 
 ### Auth
 ```
@@ -1120,7 +1122,7 @@ Table inventory_transactions {
   inventory_id    uuid [not null]
   transaction_type TRANSACTION_TYPE [not null]
   quantity        numeric(12,3) [not null]
-  reference_type  varchar                   // work_order, shipping_order, material_receipt...
+  reference_type  varchar                   // work_order, delivery_order, material_receipt...
   reference_id    uuid
   notes           text
   created_by      uuid [ref: > users.id]
@@ -1223,13 +1225,16 @@ Table material_receipts {
 // 出荷・納品（§8）
 // ===========================
 
-Table shipping_orders {
+// 出荷書（delivery order / DO）。注文明細との紐付けは**明細行**の
+// order_line_id — 出荷書 ↔ 注文明細は m:n（1 出荷書に複数明細、
+// 1 明細も複数出荷書へ分割出荷できる）。営業担当は持たない（注文請書
+// ヘッダから導出）。
+Table delivery_orders {
   id              uuid [pk]
-  order_line_id   uuid [not null, ref: > order_lines.id]
   work_order_id   uuid [ref: > work_orders.id]
   from_plant_id uuid [ref: > plants.id]   // 出荷元拠点
-  type            SHIPPING_TYPE [not null]
-  status          SHIPPING_STATUS [not null, default: 'DRAFT']
+  type            DELIVERY_ORDER_TYPE [not null]
+  status          DELIVERY_ORDER_STATUS [not null, default: 'DRAFT']
   shipped_at      timestamp
   notes           text
   created_by      uuid [ref: > users.id]
@@ -1237,20 +1242,20 @@ Table shipping_orders {
   updated_at      timestamp
 }
 
-Enum SHIPPING_TYPE {
+Enum DELIVERY_ORDER_TYPE {
   STOCK_STORAGE   // 在庫保管（予備製作分・請求フロー外）
   DISPATCH        // 発送
 }
 
-Enum SHIPPING_STATUS {
+Enum DELIVERY_ORDER_STATUS {
   DRAFT
   CONFIRMED
   SHIPPED
 }
 
-Table shipping_order_items {
+Table delivery_order_items {
   id              uuid [pk]
-  shipping_order_id uuid [not null, ref: > shipping_orders.id]
+  delivery_order_id uuid [not null, ref: > delivery_orders.id]
   product_id      varchar [not null, ref: > products.id]
   lot_number      int
   quantity        int [not null]
@@ -1262,7 +1267,7 @@ Table shipping_order_items {
 Table delivery_notes {
   id              uuid [pk]
   delivery_number varchar [unique, not null]
-  shipping_order_id uuid [not null, ref: > shipping_orders.id]
+  delivery_order_id uuid [not null, ref: > delivery_orders.id]
   delivery_method DELIVERY_METHOD [not null]
   recipient_bp_id uuid [not null, ref: > business_partners.id]
   recipient_branch_bp_id uuid [ref: > business_partners.id]
@@ -1336,7 +1341,7 @@ Enum INVOICE_STATUS {
 Table invoice_items {
   id              uuid [pk]
   invoice_id      uuid [not null, ref: > invoices.id]
-  shipping_order_id uuid [ref: > shipping_orders.id]
+  delivery_order_id uuid [ref: > delivery_orders.id]
   delivery_note_id  uuid [ref: > delivery_notes.id]
   description     json [not null]         // { ja: '', en: '' }
   quantity        int [not null]

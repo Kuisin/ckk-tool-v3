@@ -10,7 +10,7 @@ This app makes the **delivery note** (納品書) that goes together with the pro
 ## What you can do with this app
 
 - Make the delivery note you hand to the place receiving the goods.
-- Just pick a [shipping order](/manual/en/operations/shipping/shipping-order/user), and **the receiver and the contents are filled in for you**.
+- Just pick a [shipping order](/manual/en/operations/shipping/delivery-order/user), and **the receiver and the contents are filled in for you**.
 - Choose whether to **show or hide** the amounts.
 - Turn the delivery note into a **PDF** to print it or put it in the box.
 - Record where things stand — "issued", "delivered".
@@ -25,7 +25,7 @@ This app makes the **delivery note** (納品書) that goes together with the pro
 
 ## Before you start
 
-- You need a [shipping order](/manual/en/operations/shipping/shipping-order/user) first. It must also be 「**確定**」 (Confirmed) or 「**出荷済**」 (Shipped). You cannot make a delivery note from a 「下書き」 (Draft) shipping order.
+- You need a [shipping order](/manual/en/operations/shipping/delivery-order/user) first. It must also be 「**確定**」 (Confirmed) or 「**出荷済**」 (Shipped). You cannot make a delivery note from a 「下書き」 (Draft) shipping order.
 - If you deliver direct to the end user, the receiving company must be registered as a [business partner](/manual/en/operations/masters/business-partner/user) with the 最終需要家 (End user) role.
 - You need delivery note permission to make one. If you cannot use it, please ask your administrator.
 
@@ -120,7 +120,7 @@ Every field on the delivery note screen. The **?** next to a field in the app li
 
 | Field | Required | What to enter |
 |-------|----------|---------------|
-| [Shipping order](#field-shipping-order) | Required | The shipping order it is based on |
+| [Shipping order](#field-delivery-order) | Required | The shipping order it is based on |
 | [Delivery method](#field-delivery-method) | Required | To the customer, or direct to the end user |
 | [Deliver to](#field-recipient) | Required | Who the note is addressed to |
 | [End user](#field-end-user) | Optional | The destination for a direct delivery |
@@ -130,7 +130,7 @@ Every field on the delivery note screen. The **?** next to a field in the app li
 | [Quantity](#field-quantity) | Required | How many pieces |
 | [Unit price](#field-unit-price) | Optional | The price shown on the note |
 
-### Shipping order [#field-shipping-order]
+### Shipping order [#field-delivery-order]
 
 The shipping order this note is based on. Choosing it carries over that shipment's products and quantities.
 
@@ -170,7 +170,7 @@ The price shown on the note. It is not printed when "show prices" is off.
 ## Questions and problems
 
 **Q. The shipping order I want does not appear in the box.**
-A. You can only pick shipping orders that are 「確定」 (Confirmed) or 「出荷済」 (Shipped). If it is still a 「下書き」 (Draft), first confirm it on the [shipping order](/manual/en/operations/shipping/shipping-order/user) side.
+A. You can only pick shipping orders that are 「確定」 (Confirmed) or 「出荷済」 (Shipped). If it is still a 「下書き」 (Draft), first confirm it on the [shipping order](/manual/en/operations/shipping/delivery-order/user) side.
 
 **Q. I want to change the delivery destination to another company, but I cannot choose it.**
 A. The delivery destination is decided by the customer on the order line behind the shipping order, so it cannot be changed on this screen. If the receiver is different, make the delivery note again from the correct shipping order.

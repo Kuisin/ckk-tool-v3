@@ -101,7 +101,7 @@ export async function GET(request: Request): Promise<Response> {
     doc: {
       number: note.deliveryNumber,
       issued_date: documentFormatters.date(note.createdAt),
-      shipping_number: note.shippingOrderNumber,
+      shipping_number: note.deliveryOrderNumber,
       method: DELIVERY_METHOD_LABEL[note.deliveryMethod] ?? note.deliveryMethod,
     },
     price_head: note.includePrice

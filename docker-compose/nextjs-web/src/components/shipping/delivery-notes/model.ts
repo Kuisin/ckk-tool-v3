@@ -31,8 +31,8 @@ export interface DeliveryNote {
   /** 導出文書番号 DRN-YYYYMM-NNNNN — URL id と同一。 */
   id: string;
   deliveryNumber: string;
-  /** 導出番号 SHP-YYYYMM-NNNNN。 */
-  shippingOrderNumber: string;
+  /** 導出番号 DOR-YYYYMM-NNNNN。 */
+  deliveryOrderNumber: string;
   /** 出荷書経由の注文明細番号（参考表示）。 */
   /** 束ねている注文明細の番号（1 出荷書は複数の注文明細を持てる）。 */
   orderLineNumbers: string[];
@@ -67,8 +67,8 @@ export function isEditable(n: Pick<DeliveryNote, "status">) {
 }
 
 /** 納品書フォームの出荷書候補 — 注文明細由来の既定値（納品先・単価）込み。 */
-export interface ShippingOrderCandidate {
-  /** 導出番号 SHP-YYYYMM-NNNNN（Select の値）。 */
+export interface DeliveryOrderCandidate {
+  /** 導出番号 DOR-YYYYMM-NNNNN（Select の値）。 */
   number: string;
   label: string;
   /** 納品先 = 出荷書の顧客（営業担当の候補を引くキー）。 */

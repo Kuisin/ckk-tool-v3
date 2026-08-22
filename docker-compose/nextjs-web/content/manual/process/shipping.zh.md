@@ -19,9 +19,9 @@ screenshots: []
 
 | 阶段 | 做什么 | 负责 | 使用的应用 |
 |------|--------|------|-----------|
-| 1. 制作发货单 | 选择订单明细，确定发出的产品与批次 | 发货担当 | [发货单](/manual/zh/operations/shipping/shipping-order/user)（`SH01`） |
-| 2. 确定 | 确定内容，进入可发货状态 | 发货担当 | [发货单](/manual/zh/operations/shipping/shipping-order/user)（`SH01`） |
-| 3. 发货 | 实际送出。库存减少 | 发货担当 | [发货单](/manual/zh/operations/shipping/shipping-order/user)（`SH01`） |
+| 1. 制作发货单 | 选择订单明细，确定发出的产品与批次 | 发货担当 | [发货单](/manual/zh/operations/shipping/delivery-order/user)（`SH01`） |
+| 2. 确定 | 确定内容，进入可发货状态 | 发货担当 | [发货单](/manual/zh/operations/shipping/delivery-order/user)（`SH01`） |
+| 3. 发货 | 实际送出。库存减少 | 发货担当 | [发货单](/manual/zh/operations/shipping/delivery-order/user)（`SH01`） |
 | 4. 制作送货单 | 确定送达方，以及是否记载价格 | 发货担当 | [送货单](/manual/zh/operations/shipping/delivery-note/user)（`SH02`） |
 | 5. 发行・交付 | 发行 PDF，送达后标记为已交付 | 发货担当 | [送货单](/manual/zh/operations/shipping/delivery-note/user)（`SH02`） |
 

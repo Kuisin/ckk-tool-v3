@@ -12,9 +12,9 @@ export interface InventoryTransactionRow {
   /** IN / OUT / RESERVE / RELEASE / ADJUST。 */
   transactionType: string;
   quantity: number;
-  /** work_order / shipping_order / order_line / material_receipt …（null = なし）。 */
+  /** work_order / delivery_order / order_line / material_receipt …（null = なし）。 */
   referenceType: string | null;
-  /** 解決済み参照ラベル（指示書 #N・ORD-…・SHP-… 等、mono 表示）。 */
+  /** 解決済み参照ラベル（指示書 #N・ORD-…・DOR-… 等、mono 表示）。 */
   referenceLabel: string | null;
   notes: string | null;
 }

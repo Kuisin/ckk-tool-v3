@@ -148,7 +148,7 @@ model OrderLine {
   endUserBp  BusinessPartner? @relation("OrderLineEndUser", fields: [endUserBpId], references: [id])
 
   workOrderLinks WorkOrderOrderLine[]
-  shippingItems  ShippingOrderItem[]
+  deliveryItems  DeliveryOrderItem[]
   reservations   InventoryReservation[]
   designRequests DesignRequest[]
   invoiceItems   InvoiceItem[]

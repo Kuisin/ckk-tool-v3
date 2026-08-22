@@ -10,10 +10,10 @@
 
 | パス | 内容 |
 |------|------|
-| `/shipping/shipping-orders` | 出荷書一覧 |
-| `/shipping/shipping-orders/new` | 出荷書新規作成 |
-| `/shipping/shipping-orders/[id]` | 出荷書詳細 |
-| `/shipping/shipping-orders/[id]/edit` | 出荷書編集 |
+| `/shipping/delivery-orders` | 出荷書一覧 |
+| `/shipping/delivery-orders/new` | 出荷書新規作成 |
+| `/shipping/delivery-orders/[id]` | 出荷書詳細 |
+| `/shipping/delivery-orders/[id]/edit` | 出荷書編集 |
 | `/shipping/delivery-notes` | 納品書一覧 |
 | `/shipping/delivery-notes/new` | 納品書新規作成 |
 | `/shipping/delivery-notes/[id]` | 納品書詳細 |
@@ -31,7 +31,7 @@
   - `DIRECT_TO_USER`: 完了書に価格記載なし、納品書は受注先経由で別送
   - `NORMAL`: 受注先へ発送、納品書同梱
 - `include_price` フラグ: 納品書に価格を記載するか制御
-- 出荷書 PDF 生成: `app/api/pdf/shipping-order/route.ts`
+- 出荷書 PDF 生成: `app/api/pdf/delivery-order/route.ts`
 
 ### 業務ルール
 

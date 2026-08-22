@@ -138,7 +138,7 @@ CROSS JOIN (VALUES
   ('material_receipt','READ'),('purchase_order','READ'),
   -- 注文明細（SA05）は order_acceptance 権限。在庫照合・キャンセルに UPDATE が要る。
   ('order_acceptance','READ'),('order_acceptance','UPDATE'),
-  ('shipping_order','READ'),
+  ('delivery_order','READ'),
   ('master','READ'),('approve','READ')
 ) AS g(code, action)
 WHERE r.rolename = 'production'
@@ -158,13 +158,13 @@ CROSS JOIN (VALUES
 WHERE r.rolename = 'quality'
 ON CONFLICT DO NOTHING;
 
--- shipping（shipping_order / inventory は拠点スコープ）
+-- shipping（delivery_order / inventory は拠点スコープ）
 INSERT INTO app.role_permission_relation (role_id, permission_code, action, scope)
 SELECT r.id, g.code, g.action::app."ACTION",
-       (CASE WHEN g.code IN ('shipping_order','inventory') THEN 'PLANT' ELSE 'ALL' END)::app."SCOPE"
+       (CASE WHEN g.code IN ('delivery_order','inventory') THEN 'PLANT' ELSE 'ALL' END)::app."SCOPE"
 FROM app.roles r
 CROSS JOIN (VALUES
-  ('shipping_order','READ'),('shipping_order','CREATE'),('shipping_order','UPDATE'),('shipping_order','DELETE'),('shipping_order','EXPORT'),
+  ('delivery_order','READ'),('delivery_order','CREATE'),('delivery_order','UPDATE'),('delivery_order','DELETE'),('delivery_order','EXPORT'),
   ('delivery_note','READ'),('delivery_note','CREATE'),('delivery_note','UPDATE'),('delivery_note','DELETE'),('delivery_note','EXPORT'),
   ('inventory','READ'),('inventory','UPDATE'),
   ('work_order','READ'),('order_acceptance','READ'),('master','READ')
@@ -179,7 +179,7 @@ FROM app.roles r
 CROSS JOIN (VALUES
   ('invoice','READ'),('invoice','CREATE'),('invoice','UPDATE'),('invoice','DELETE'),('invoice','EXPORT'),
   ('billing_closing','READ'),('billing_closing','CREATE'),('billing_closing','UPDATE'),('billing_closing','EXPORT'),
-  ('shipping_order','READ'),('delivery_note','READ'),
+  ('delivery_order','READ'),('delivery_note','READ'),
   ('quote','READ'),('order_acceptance','READ'),('price_list','READ'),('master','READ')
 ) AS g(code, action)
 WHERE r.rolename = 'accounting'
@@ -270,7 +270,7 @@ ON CONFLICT DO NOTHING;
 INSERT INTO app.role_permission_relation (role_id, permission_code, action, scope)
 SELECT r.id, c.code, a.action::app."ACTION", 'ALL'::app."SCOPE"
 FROM app.roles r
-CROSS JOIN (VALUES ('shipping_order'),('delivery_note'),('inventory')) AS c(code)
+CROSS JOIN (VALUES ('delivery_order'),('delivery_note'),('inventory')) AS c(code)
 CROSS JOIN (VALUES ('READ'),('CREATE'),('UPDATE'),('DELETE'),('EXPORT'),('APPROVE')) AS a(action)
 WHERE r.rolename = 'shipping_manager'
 ON CONFLICT DO NOTHING;

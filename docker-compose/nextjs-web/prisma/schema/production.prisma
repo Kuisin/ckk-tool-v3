@@ -129,7 +129,7 @@ model WorkOrder {
   stepLinks           WorkOrderStepLink[]
   flowChanges         WorkOrderFlowChange[]
   inspectionTemplates WorkOrderInspectionTemplate[]
-  shippingOrders      ShippingOrder[]
+  deliveryOrders      DeliveryOrder[]
   reservations        InventoryReservation[]
 
   @@unique([yearMonth, seq])

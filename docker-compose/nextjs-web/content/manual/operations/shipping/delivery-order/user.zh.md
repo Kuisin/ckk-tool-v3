@@ -1,7 +1,7 @@
 ---
 title: "出货单 — 操作手册"
 description: "把做好的产品发给客户时，用来记录发了什么、发了多少的单据。"
-screenshots: [shipping-order-list-01, shipping-order-new-01, shipping-order-detail-01, shipping-order-menu-01, shipping-order-confirm-01, shipping-order-delivery-notes-01]
+screenshots: [delivery-order-list-01, delivery-order-new-01, delivery-order-detail-01, delivery-order-menu-01, delivery-order-confirm-01, delivery-order-delivery-notes-01]
 ---
 把做好的产品发给客户时，用来记录 **发了什么、发了多少** 的 **出货单**（出荷書）。操作代码是 `SH01`。
 
@@ -35,9 +35,9 @@ screenshots: [shipping-order-list-01, shipping-order-new-01, shipping-order-deta
 
 打开应用后，会看到之前做过的出货单一览。
 
-![出货单一览界面](../../../assets/screenshots/shipping-order-list-01.png)
+![出货单一览界面](../../../assets/screenshots/delivery-order-list-01.png)
 
-- **出荷書番号（出货单号）** … 以 `SHP-` 开头的编号，由系统自动编。
+- **出荷書番号（出货单号）** … 以 `DOR-` 开头的编号，由系统自动编。
 - **種別（类别）** … 蓝色的「発送」（发送）是发给客户的部分，灰色的「在庫保管」（留库保管）是留在公司的部分。
 - **状態（状态）** … 灰色是「下書き」（草稿），蓝色是「確定」（确定），绿色是「出荷済」（已发货）。
 - 上面的搜索框里可以输入出货单号、订单明细号、客户名称、产品名称来筛选。这个搜索框是用来 **查找已经做好的出货单** 的，和新建时选择订单明细的那个栏位是两回事。
@@ -55,7 +55,7 @@ screenshots: [shipping-order-list-01, shipping-order-new-01, shipping-order-deta
 7. 想加一行时点「**明細を追加**」（添加明细），想删一行时点该行右边的垃圾桶图标。
 8. 点「**保存**」（保存）。
 
-![出货单新建表单](../../../assets/screenshots/shipping-order-new-01.png)
+![出货单新建表单](../../../assets/screenshots/delivery-order-new-01.png)
 
 保存后会登记为「**下書き**」（草稿），并打开详细界面。
 
@@ -65,7 +65,7 @@ screenshots: [shipping-order-list-01, shipping-order-new-01, shipping-order-deta
 
 ## 确认内容
 
-![出货单详细界面](../../../assets/screenshots/shipping-order-detail-01.png)
+![出货单详细界面](../../../assets/screenshots/delivery-order-detail-01.png)
 
 上方会显示出货单号、订单明细号、客户、产品、类别、发货据点、数量、发货日。
 
@@ -77,7 +77,7 @@ screenshots: [shipping-order-list-01, shipping-order-new-01, shipping-order-deta
 
 出货单按「下書き」（草稿）→「確定」（确定）→「出荷済」（已发货）三个阶段推进。操作在界面右上角的「**…**」（三个点的按钮）里进行。
 
-![详细界面的「…」菜单](../../../assets/screenshots/shipping-order-menu-01.png)
+![详细界面的「…」菜单](../../../assets/screenshots/delivery-order-menu-01.png)
 
 ### 1. 把内容定下来（确定）
 
@@ -85,7 +85,7 @@ screenshots: [shipping-order-list-01, shipping-order-new-01, shipping-order-deta
 2. 选「**確定**」（确定）。
 3. 会弹出一个叫「確定の確認」（确定确认）的小窗口，看完内容后点「**確定**」（确定）。
 
-![确定确认界面](../../../assets/screenshots/shipping-order-confirm-01.png)
+![确定确认界面](../../../assets/screenshots/delivery-order-confirm-01.png)
 
 确定之后 **就不能再编辑了**，但可以开始做送货单。
 
@@ -116,7 +116,7 @@ screenshots: [shipping-order-list-01, shipping-order-new-01, shipping-order-deta
 2. 点「**納品書を作成**」（创建送货单）。
 3. 会打开[送货单](/manual/zh/operations/shipping/delivery-note/user)的创建界面，出货单已经事先选好。
 
-![送货单标签页](../../../assets/screenshots/shipping-order-delivery-notes-01.png)
+![送货单标签页](../../../assets/screenshots/delivery-order-delivery-notes-01.png)
 
 这个标签页里也会列出从这张出货单做出的送货单（送货单号、送货对象、方式、状态、送货日）。
 

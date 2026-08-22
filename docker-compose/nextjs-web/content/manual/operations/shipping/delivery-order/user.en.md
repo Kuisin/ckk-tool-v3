@@ -1,7 +1,7 @@
 ---
 title: "Shipping Order — User Manual"
 description: "A document that records what products you sent, and how many, when you ship finished products to a customer."
-screenshots: [shipping-order-list-01, shipping-order-new-01, shipping-order-detail-01, shipping-order-menu-01, shipping-order-confirm-01, shipping-order-delivery-notes-01]
+screenshots: [delivery-order-list-01, delivery-order-new-01, delivery-order-detail-01, delivery-order-menu-01, delivery-order-confirm-01, delivery-order-delivery-notes-01]
 ---
 This app creates a **shipping order** (出荷書) — a document that records **what you sent and how many** when finished products go out to a customer. The operation code is `SH01`.
 
@@ -35,9 +35,9 @@ The shipping order is an important document — it is the source used later when
 
 When you open the app, you see a list of the shipping orders made so far.
 
-![Shipping order list screen](../../../assets/screenshots/shipping-order-list-01.png)
+![Shipping order list screen](../../../assets/screenshots/delivery-order-list-01.png)
 
-- **出荷書番号 (Shipping order number)** … A number that starts with `SHP-`. The system adds it for you.
+- **出荷書番号 (Shipping order number)** … A number that starts with `DOR-`. The system adds it for you.
 - **種別 (Type)** … A blue 「発送」 (Dispatch) means pieces sent to the customer. A grey 「在庫保管」 (Keep in stock) means pieces kept in-house.
 - **状態 (Status)** … Grey is 「下書き」 (Draft), blue is 「確定」 (Confirmed), green is 「出荷済」 (Shipped).
 - In the search box at the top you can type a shipping order number, a order line number, a customer name, or a product name to narrow the list. This box is for **finding shipping orders you have already made**; it is a different box from the one for picking a order line when you make a new shipping order.
@@ -55,7 +55,7 @@ When you open the app, you see a list of the shipping orders made so far.
 7. To add a row, press 「**明細を追加**」 (Add line). To remove a row, press the trash-can mark at the right of the row.
 8. Press 「**保存**」 (Save).
 
-![New shipping order form](../../../assets/screenshots/shipping-order-new-01.png)
+![New shipping order form](../../../assets/screenshots/delivery-order-new-01.png)
 
 After you save, it is registered as a 「**下書き**」 (Draft) and the detail screen opens.
 
@@ -65,7 +65,7 @@ After you save, it is registered as a 「**下書き**」 (Draft) and the detail
 
 ## Checking the contents
 
-![Shipping order detail screen](../../../assets/screenshots/shipping-order-detail-01.png)
+![Shipping order detail screen](../../../assets/screenshots/delivery-order-detail-01.png)
 
 At the top you see the shipping order number, order line number, customer, product, type, shipping site, quantity, and shipping date.
 
@@ -77,7 +77,7 @@ At the top you see the shipping order number, order line number, customer, produ
 
 A shipping order moves through three stages: 「下書き」 (Draft) → 「確定」 (Confirmed) → 「出荷済」 (Shipped). You do this from the 「**…**」 button (the three dots) at the top right of the screen.
 
-![The "…" menu on the detail screen](../../../assets/screenshots/shipping-order-menu-01.png)
+![The "…" menu on the detail screen](../../../assets/screenshots/delivery-order-menu-01.png)
 
 ### 1. Fixing the contents (Confirm)
 
@@ -85,7 +85,7 @@ A shipping order moves through three stages: 「下書き」 (Draft) → 「確�
 2. Choose 「**確定**」 (Confirm).
 3. A small window called 「確定の確認」 (Confirm check) appears. Read it and press 「**確定**」 (Confirm).
 
-![Confirm check window](../../../assets/screenshots/shipping-order-confirm-01.png)
+![Confirm check window](../../../assets/screenshots/delivery-order-confirm-01.png)
 
 Once confirmed, **you can no longer edit it**, but you can now make a delivery note.
 
@@ -116,7 +116,7 @@ When you choose 「在庫保管」 in Type, an explanation appears on the screen
 2. Press 「**納品書を作成**」 (Create delivery note).
 3. The [delivery note](/manual/en/operations/shipping/delivery-note/user) creation screen opens with the shipping order already chosen.
 
-![Delivery notes tab](../../../assets/screenshots/shipping-order-delivery-notes-01.png)
+![Delivery notes tab](../../../assets/screenshots/delivery-order-delivery-notes-01.png)
 
 This tab also lists the delivery notes made from this shipping order (delivery number, delivery destination, method, status, delivery date).
 

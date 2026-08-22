@@ -93,7 +93,7 @@ export const STATUS_MAPS = {
     COMPLETED: { label: "完了", color: "green" },
     CANCELLED: { label: "キャンセル", color: "red" },
   },
-  ShippingOrder: {
+  DeliveryOrder: {
     DRAFT: { label: "下書き", color: "gray" },
     CONFIRMED: { label: "確定", color: "blue" },
     SHIPPED: { label: "出荷済", color: "green" },

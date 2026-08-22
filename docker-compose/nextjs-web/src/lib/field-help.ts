@@ -33,7 +33,7 @@ const APP_MANUAL_PATH = {
   productInventory: "operations/production/product-inventory/user",
   materialInventory: "operations/production/material-inventory/user",
   approval: "operations/production/approval/user",
-  shippingOrder: "operations/shipping/shipping-order/user",
+  deliveryOrder: "operations/shipping/delivery-order/user",
   deliveryNote: "operations/shipping/delivery-note/user",
   businessPartner: "operations/masters/business-partner/user",
   product: "operations/masters/product/user",
@@ -543,7 +543,7 @@ export const FIELD_HELP = {
       summary: "差し戻すときの理由です。依頼した人に、そのまま見えます。",
     },
   },
-  shippingOrder: {
+  deliveryOrder: {
     orderLine: {
       label: "注文明細",
       summary:
@@ -573,7 +573,7 @@ export const FIELD_HELP = {
     },
   },
   deliveryNote: {
-    shippingOrder: {
+    deliveryOrder: {
       label: "出荷書",
       summary:
         "もとになる出荷書です。選ぶと、その出荷の製品・数量が引き継がれます。",

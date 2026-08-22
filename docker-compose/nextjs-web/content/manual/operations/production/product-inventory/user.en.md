@@ -39,7 +39,7 @@ Stock does not move on this screen; it moves automatically along with everyday w
 
 - **In** … when all the steps of a [work order](/manual/en/operations/production/work-order/user) are finished, the good pieces go into stock with the lot number. Pieces marked as 「半製品」 (semi-finished) go into stock as semi-finished items.
 - **Set aside** … when you run 「**在庫照合**」 (Check stock) on the order line screen, the stock you can use is reserved for that order.
-- **Out** … when you ship with a [shipping order](/manual/en/operations/shipping/shipping-order/user), the stock goes out and the reservation is released.
+- **Out** … when you ship with a [shipping order](/manual/en/operations/shipping/delivery-order/user), the stock goes out and the reservation is released.
 
 ## How to read the products tab
 

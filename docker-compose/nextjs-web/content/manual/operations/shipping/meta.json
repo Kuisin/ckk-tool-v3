@@ -1,4 +1,4 @@
 {
   "title": "出荷",
-  "pages": ["shipping-order", "delivery-note"]
+  "pages": ["delivery-order", "delivery-note"]
 }

@@ -61,7 +61,7 @@ const MEMO_OWNERS: Record<string, { permission: string; kind: MemoKind }> = {
   order_acceptances: { permission: "order_acceptance", kind: "MEMO" },
   order_lines: { permission: "order_acceptance", kind: "MEMO" },
   work_orders: { permission: "work_order", kind: "MEMO" },
-  shipping_orders: { permission: "shipping_order", kind: "MEMO" },
+  delivery_orders: { permission: "delivery_order", kind: "MEMO" },
   invoices: { permission: "invoice", kind: "MEMO" },
   price_list_entries: { permission: "price_list", kind: "COMMENT" },
   estimates: { permission: "price_list", kind: "COMMENT" },

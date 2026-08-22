@@ -25,7 +25,7 @@ Every month, the billing work starts in this app.
 
 ## Before you start
 
-- Only [shipping orders](/manual/en/operations/shipping/shipping-order/user) that are **「出荷済」 (Shipped) and of type 「発送」 (Dispatch)** are added up. Shipping orders still at 「下書き」 (Draft) or 「確定」 (Confirmed) are not included. Please record the shipment first.
+- Only [shipping orders](/manual/en/operations/shipping/delivery-order/user) that are **「出荷済」 (Shipped) and of type 「発送」 (Dispatch)** are added up. Shipping orders still at 「下書き」 (Draft) or 「確定」 (Confirmed) are not included. Please record the shipment first.
 - Each customer's cut-off date comes from the registered details of the [customer](/manual/en/operations/masters/business-partner/user). Customers with nothing set are gathered as **month-end**.
 - You need monthly billing close permission to run it. If you cannot use it, please ask your administrator.
 
@@ -67,7 +67,7 @@ Click a close row in the list to open the detail screen.
 
 - At the top you see the customer, cut-off date, total before tax, and status.
 - The 「**対象出荷**」 (Shipments included) table lists the gathered shipping orders one per row (shipping order number, shipping date, quantity, amount).
-- Click the blue shipping order number to open that [shipping order](/manual/en/operations/shipping/shipping-order/user) and check its contents.
+- Click the blue shipping order number to open that [shipping order](/manual/en/operations/shipping/delivery-order/user) and check its contents.
 - At the bottom of the table you see the totals for quantity and amount.
 
 If an amount is not what you expected, please check it here before making the invoice.

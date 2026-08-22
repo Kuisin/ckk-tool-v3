@@ -57,8 +57,8 @@ import {
 import { useTabParam } from "@/hooks/useUrlState";
 import type { MemoView } from "@/lib/document-memos";
 import {
+  DELIVERY_ORDER_TYPE_LABEL,
   ORDER_TYPE_LABEL,
-  SHIPPING_TYPE_LABEL,
   WORK_ORDER_TYPE_LABEL,
 } from "@/lib/enum-labels";
 // type-only import — lib/inventory は server-only（型はバンドルされない）。
@@ -287,7 +287,7 @@ export function OrderLineDetail({
             指示書（{order.workOrders.length}）
           </Tabs.Tab>
           <Tabs.Tab value="shipping">
-            出荷（{order.shippingOrders.length}）
+            出荷（{order.deliveryOrders.length}）
           </Tabs.Tab>
           <Tabs.Tab value="memo">メモ</Tabs.Tab>
           <Tabs.Tab value="history">履歴</Tabs.Tab>
@@ -374,7 +374,7 @@ export function OrderLineDetail({
         </Tabs.Panel>
 
         <Tabs.Panel pt="md" value="shipping">
-          {order.shippingOrders.length === 0 ? (
+          {order.deliveryOrders.length === 0 ? (
             <EmptyState
               icon={<IconTruck size={24} />}
               message="この注文明細の出荷書はまだありません"
@@ -392,11 +392,11 @@ export function OrderLineDetail({
                   </Table.Tr>
                 </Table.Thead>
                 <Table.Tbody>
-                  {order.shippingOrders.map((s) => (
+                  {order.deliveryOrders.map((s) => (
                     <Table.Tr
                       key={s.number}
                       onClick={() =>
-                        router.push(`/shipping/shipping-orders/${s.number}`)
+                        router.push(`/shipping/delivery-orders/${s.number}`)
                       }
                       style={{ cursor: "pointer" }}
                     >
@@ -408,14 +408,14 @@ export function OrderLineDetail({
                           color={s.type === "DISPATCH" ? "blue" : "gray"}
                           variant="light"
                         >
-                          {SHIPPING_TYPE_LABEL[s.type] ?? s.type}
+                          {DELIVERY_ORDER_TYPE_LABEL[s.type] ?? s.type}
                         </Badge>
                       </Table.Td>
                       <Table.Td className="tabular-nums" ta="right">
                         {s.quantity}
                       </Table.Td>
                       <Table.Td>
-                        <StatusBadge entity="ShippingOrder" status={s.status} />
+                        <StatusBadge entity="DeliveryOrder" status={s.status} />
                       </Table.Td>
                       <Table.Td>{fmt.date(s.shippedAt)}</Table.Td>
                     </Table.Tr>

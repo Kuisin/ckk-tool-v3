@@ -51,13 +51,13 @@ async function deliveryNoteInScope(
     where: { yearMonth_seq: key },
     select: {
       createdBy: true,
-      shippingOrder: { select: { fromPlantId: true } },
+      deliveryOrder: { select: { fromPlantId: true } },
     },
   });
   if (!row) return true;
   return rowInScope(
     access,
-    { plantIds: [row.shippingOrder.fromPlantId], createdBy: row.createdBy },
+    { plantIds: [row.deliveryOrder.fromPlantId], createdBy: row.createdBy },
     userId,
   );
 }
@@ -83,7 +83,7 @@ const baseInput = z.object({
 });
 
 const createInput = baseInput.extend({
-  shippingOrderNumber: z.string().min(1, "出荷書を選択してください"),
+  deliveryOrderNumber: z.string().min(1, "出荷書を選択してください"),
 });
 
 export type DeliveryNoteCreateInput = z.infer<typeof createInput>;
@@ -157,10 +157,10 @@ async function validateItemsAgainstShipment(
   shpKey: { yearMonth: string; seq: number },
   items: { productId: string | number; quantity: number }[],
 ): Promise<string | null> {
-  const shipItems = await prisma.shippingOrderItem.findMany({
+  const shipItems = await prisma.deliveryOrderItem.findMany({
     where: {
-      shippingOrderYearMonth: shpKey.yearMonth,
-      shippingOrderSeq: shpKey.seq,
+      deliveryOrderYearMonth: shpKey.yearMonth,
+      deliveryOrderSeq: shpKey.seq,
     },
     select: { productId: true, quantity: true },
   });
@@ -212,7 +212,7 @@ export async function createDeliveryNote(
     return actionError(parsed.error.issues[0]?.message ?? "入力が不正です");
   }
   const v = parsed.data;
-  const shpKey = parseDocKey(v.shippingOrderNumber, "SHP");
+  const shpKey = parseDocKey(v.deliveryOrderNumber, "DOR");
   if (!shpKey) return actionError("出荷書番号が不正です");
   if (v.deliveryMethod === "DIRECT_TO_USER" && !v.endUserBpId) {
     return actionError("ユーザー直送では最終需要家を選択してください");
@@ -220,8 +220,18 @@ export async function createDeliveryNote(
   try {
     // 納品先は出荷書ヘッダの顧客（+支店）から確定する。1 出荷書は複数の
     // 注文明細を束ねられるので、顧客は明細側ではなくヘッダが権威。
-    const shp = await prisma.shippingOrder.findUnique({
+    const shp = await prisma.deliveryOrder.findUnique({
       where: { yearMonth_seq: shpKey },
+      include: {
+        // 営業担当は出荷書に保存されない — 明細 → 注文請書ヘッダから導出する。
+        items: {
+          select: {
+            orderLine: {
+              select: { acceptance: { select: { salesRepId: true } } },
+            },
+          },
+        },
+      },
     });
     if (!shp) return actionError("対象の出荷書が見つかりません");
     // スコープ行チェック（PLANT）: 対象出荷書の出荷元拠点がスコープ内であること。
@@ -238,9 +248,16 @@ export async function createDeliveryNote(
     if (itemsError) return actionError(itemsError);
 
     const { yearMonth, seq } = await allocateDocumentKey("DELIVERY");
-    // 出荷書の営業担当をそのまま引き継ぐ（無ければ納品先の主担当）。
+    // 出荷書の導出担当（明細の注文請書の担当が 1 人に定まればそれ）を
+    // 引き継ぐ（無ければ納品先の主担当）。
+    const shpRepIds = new Set(
+      shp.items
+        .map((it) => it.orderLine?.acceptance.salesRepId)
+        .filter((id): id is string => Boolean(id)),
+    );
+    const inheritedRepId = shpRepIds.size === 1 ? [...shpRepIds][0] : null;
     const salesRepId = await resolveSalesRepId(
-      v.salesRepId ?? shp.salesRepId,
+      v.salesRepId ?? inheritedRepId,
       shp.customerBpId,
       null,
     );
@@ -248,8 +265,8 @@ export async function createDeliveryNote(
       data: {
         yearMonth,
         seq,
-        shippingOrderYearMonth: shpKey.yearMonth,
-        shippingOrderSeq: shpKey.seq,
+        deliveryOrderYearMonth: shpKey.yearMonth,
+        deliveryOrderSeq: shpKey.seq,
         deliveryMethod: v.deliveryMethod,
         recipientBpId: shp.customerBpId,
         recipientBranchBpId: shp.customerBranchBpId,
@@ -270,7 +287,7 @@ export async function createDeliveryNote(
       tableName: "delivery_notes",
       recordId: number,
       after: {
-        shippingOrderNumber: v.shippingOrderNumber,
+        deliveryOrderNumber: v.deliveryOrderNumber,
         deliveryMethod: v.deliveryMethod,
         recipientBpId: shp.customerBpId,
         salesRepId,
@@ -283,7 +300,7 @@ export async function createDeliveryNote(
       },
     });
     revalidate(number);
-    revalidatePath(`/shipping/shipping-orders/${v.shippingOrderNumber}`);
+    revalidatePath(`/shipping/delivery-orders/${v.deliveryOrderNumber}`);
     return actionOk({ number });
   } catch (e) {
     return actionError(prismaErrorMessage(e, "納品書の作成に失敗しました"));
@@ -319,19 +336,19 @@ export async function updateDeliveryNote(
         endUserBpId: true,
         includePrice: true,
         notes: true,
-        shippingOrderYearMonth: true,
-        shippingOrderSeq: true,
+        deliveryOrderYearMonth: true,
+        deliveryOrderSeq: true,
         items: {
           orderBy: { sortOrder: "asc" },
           select: { productId: true, quantity: true, notes: true },
         },
       },
     });
-    if (prior?.shippingOrderYearMonth && prior.shippingOrderSeq != null) {
+    if (prior?.deliveryOrderYearMonth && prior.deliveryOrderSeq != null) {
       const itemsError = await validateItemsAgainstShipment(
         {
-          yearMonth: prior.shippingOrderYearMonth,
-          seq: prior.shippingOrderSeq,
+          yearMonth: prior.deliveryOrderYearMonth,
+          seq: prior.deliveryOrderSeq,
         },
         v.items,
       );

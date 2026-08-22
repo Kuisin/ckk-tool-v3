@@ -23,7 +23,7 @@ There is no "New" button in this app. Invoices are made for you by [monthly bill
 - **消費税 (consumption tax)** … The tax on the subtotal. It is worked out for you using the rule set for each customer.
 - **合計金額（税込） (total with tax)** … The subtotal plus the tax — the amount the customer actually pays.
 - **支払期限 (payment due date)** … The date by which the customer should pay.
-- **由来 (source)** … Shows which [shipping order](/manual/en/operations/shipping/shipping-order/user) or [delivery note](/manual/en/operations/shipping/delivery-note/user) a line came from.
+- **由来 (source)** … Shows which [shipping order](/manual/en/operations/shipping/delivery-order/user) or [delivery note](/manual/en/operations/shipping/delivery-note/user) a line came from.
 
 ## Before you start
 
@@ -57,7 +57,7 @@ The 「明細」 (Lines) area below lists each line you are billing.
 ![Invoice lines](../../../assets/screenshots/invoice-items-01.png)
 
 - **摘要 (Description)** … The product name and lot number.
-- **由来 (Source)** … Click the blue text to open the [shipping order](/manual/en/operations/shipping/shipping-order/user) or [delivery note](/manual/en/operations/shipping/delivery-note/user) it came from.
+- **由来 (Source)** … Click the blue text to open the [shipping order](/manual/en/operations/shipping/delivery-order/user) or [delivery note](/manual/en/operations/shipping/delivery-note/user) it came from.
 - At the bottom you see the subtotal, the consumption tax, and the total with tax.
 
 Below the lines there are two tabs. 「**概要**」 (Overview) shows the date and time it was sent to the customer plus the notes, and 「**履歴**」 (History) shows who moved this invoice along and when.
@@ -140,7 +140,7 @@ The amounts are **collected automatically from delivery notes**. If something do
 A. Invoices are not made on this screen. Open [monthly billing close](/manual/en/operations/billing/billing-closing/user) and press "請求書を生成" (Generate invoice) on the row you want.
 
 **Q. I want to fix an amount, but there is no edit screen.**
-A. Invoices cannot be fixed directly. Something is probably wrong on the original [shipping order](/manual/en/operations/shipping/shipping-order/user), so please talk to the accounting or sales person in charge.
+A. Invoices cannot be fixed directly. Something is probably wrong on the original [shipping order](/manual/en/operations/shipping/delivery-order/user), so please talk to the accounting or sales person in charge.
 
 **Q. I get 「下書きの請求書のみ発行できます」 (Only draft invoices can be issued).**
 A. That invoice has already been issued. Close the screen and open it again to see where it stands now.

@@ -181,7 +181,7 @@ export const OPERATION_CODES: OperationCodeEntry[] = [
   },
 
   // ─── 出荷 (SH) ───────────────────────────────────────────────────────────
-  ...makeResource("出荷", "SH", "1", "出荷書", "/shipping/shipping-orders"),
+  ...makeResource("出荷", "SH", "1", "出荷書", "/shipping/delivery-orders"),
   ...makeResource("出荷", "SH", "2", "納品書", "/shipping/delivery-notes"),
   // 未処理出荷書 — 作業キュー（未手配の注文明細 + 出荷準備中の出荷書）。
   // list コードのみ（新規は SH11 と同じフォーム）。

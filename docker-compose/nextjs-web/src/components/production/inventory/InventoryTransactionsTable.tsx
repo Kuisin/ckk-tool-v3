@@ -4,7 +4,7 @@
  * InventoryTransactionsTable — 在庫取引履歴テーブル（PD24/PD25 共通）。
  *
  * 列: 日時 / 種別（IN=緑 入庫・OUT=赤 出庫・RESERVE=橙・RELEASE=灰・
- * ADJUST=紫）/ 数量 / 参照（SHP-・指示書番号などを mono 表示）/ 備考。
+ * ADJUST=紫）/ 数量 / 参照（DOR-・指示書番号などを mono 表示）/ 備考。
  */
 
 import { Badge, Table, Text } from "@mantine/core";

@@ -57,7 +57,7 @@ export function DeliveryNoteTable({ rows }: { rows: DeliveryNote[] }) {
     const matchesSearch =
       !search ||
       n.deliveryNumber.includes(search) ||
-      n.shippingOrderNumber.includes(search) ||
+      n.deliveryOrderNumber.includes(search) ||
       n.recipientName.includes(search) ||
       (n.endUserName ?? "").includes(search);
     const matchesMethod = !method || n.deliveryMethod === method;
@@ -77,12 +77,12 @@ export function DeliveryNoteTable({ rows }: { rows: DeliveryNote[] }) {
       ),
     },
     {
-      key: "shippingOrderNumber",
+      key: "deliveryOrderNumber",
       header: "出荷書番号",
       sortable: true,
       render: (n) => (
         <Text ff="mono" size="sm">
-          {n.shippingOrderNumber}
+          {n.deliveryOrderNumber}
         </Text>
       ),
     },
@@ -188,7 +188,7 @@ export function DeliveryNoteTable({ rows }: { rows: DeliveryNote[] }) {
                 {n.recipientName}
               </Text>
               <Text c="dimmed" size="xs" truncate>
-                {n.shippingOrderNumber}
+                {n.deliveryOrderNumber}
                 {n.endUserName ? ` · 届け先: ${n.endUserName}` : ""}
               </Text>
               <Group gap="md" mt={2}>

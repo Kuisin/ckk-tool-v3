@@ -10,7 +10,7 @@ screenshots: [delivery-note-list-01, delivery-note-new-01, delivery-note-detail-
 ## このアプリでできること
 
 - お届け先へ渡す納品書をつくれます。
-- [出荷書](/manual/ja/operations/shipping/shipping-order/user)を選ぶだけで、**お届け先と品物の中身が自動で入ります**。
+- [出荷書](/manual/ja/operations/shipping/delivery-order/user)を選ぶだけで、**お届け先と品物の中身が自動で入ります**。
 - 金額を **載せる / 載せない** を選べます。
 - 納品書を **PDF** にして、印刷したり同梱したりできます。
 - 「発行した」「届いた」といった今の状況を記録できます。
@@ -25,7 +25,7 @@ screenshots: [delivery-note-list-01, delivery-note-new-01, delivery-note-detail-
 
 ## はじめる前に
 
-- 先に[出荷書](/manual/ja/operations/shipping/shipping-order/user)が必要です。しかも、その出荷書が「**確定**」または「**出荷済**」になっている必要があります。「下書き」の出荷書からは作れません。
+- 先に[出荷書](/manual/ja/operations/shipping/delivery-order/user)が必要です。しかも、その出荷書が「**確定**」または「**出荷済**」になっている必要があります。「下書き」の出荷書からは作れません。
 - ユーザー直送でお届けする場合は、届け先の会社が[取引先](/manual/ja/operations/masters/business-partner/user)に登録され、「最終需要家」ロールが付いている必要があります。
 - 納品書を作るには、納品書の権限が必要です。使えないときは管理者にご相談ください。
 
@@ -120,7 +120,7 @@ screenshots: [delivery-note-list-01, delivery-note-new-01, delivery-note-detail-
 
 | 項目 | 必須 | 何を入れるか |
 |------|------|-------------|
-| [出荷書](#field-shipping-order) | 必須 | もとになる出荷書 |
+| [出荷書](#field-delivery-order) | 必須 | もとになる出荷書 |
 | [納品方法](#field-delivery-method) | 必須 | 受注元へ納めるか、直送か |
 | [納品先](#field-recipient) | 必須 | 納品書の宛先 |
 | [最終需要家](#field-end-user) | 任意 | 直送のときの届け先 |
@@ -130,7 +130,7 @@ screenshots: [delivery-note-list-01, delivery-note-new-01, delivery-note-detail-
 | [数量](#field-quantity) | 必須 | 納品する本数 |
 | [単価](#field-unit-price) | 任意 | 納品書に載せる単価 |
 
-### 出荷書 [#field-shipping-order]
+### 出荷書 [#field-delivery-order]
 
 もとになる出荷書です。選ぶと、その出荷の製品・数量が引き継がれます。
 
@@ -170,7 +170,7 @@ screenshots: [delivery-note-list-01, delivery-note-new-01, delivery-note-detail-
 ## よくある質問・困ったとき
 
 **Q. 出荷書の欄に、目当ての出荷書が出てきません。**
-A. 選べるのは「確定」または「出荷済」の出荷書だけです。まだ「下書き」の場合は、先に[出荷書](/manual/ja/operations/shipping/shipping-order/user)のほうで「確定」してください。
+A. 選べるのは「確定」または「出荷済」の出荷書だけです。まだ「下書き」の場合は、先に[出荷書](/manual/ja/operations/shipping/delivery-order/user)のほうで「確定」してください。
 
 **Q. 納品先をほかの会社に変えたいのですが、選べません。**
 A. 納品先は出荷書のもとになった注文明細のお客様から自動で決まるため、この画面では変えられません。届け先が違うときは、正しい出荷書から作り直してください。

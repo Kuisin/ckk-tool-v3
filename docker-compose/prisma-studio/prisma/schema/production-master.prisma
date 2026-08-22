@@ -47,7 +47,7 @@ model Plant {
   region Region? @relation("PlantRegion", fields: [regionId], references: [id])
 
   workOrderSteps WorkOrderStep[]
-  shippingOrders ShippingOrder[]
+  deliveryOrders DeliveryOrder[]
   poItems        MaterialPurchaseOrderItem[] @relation("PoItemPlant")
   receipts       MaterialReceipt[]           @relation("ReceiptPlant")
   prqItems       PurchaseRequestItem[]       @relation("PrqItemPlant")

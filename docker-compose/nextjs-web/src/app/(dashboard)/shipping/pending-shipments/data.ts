@@ -9,12 +9,12 @@
  * 未手配は**注文明細**を単位にする（指示書ロット単位ではない）— 出荷書の作成
  * フォームが注文明細を起点に完了ロットから明細を組み立てるため、キューの行と
  * 作成の入口が同じ単位でないと「押しても何も選ばれていない」状態になる。
- * 出荷済み数量はロット番号ではなく shipping_order_items.order_line_id で数える
+ * 出荷済み数量はロット番号ではなく delivery_order_items.order_line_id で数える
  * （ロット番号は任意列で、在庫保管の行などでは空になる）。
  */
 
+import type { DeliveryOrder } from "@/components/shipping/delivery-orders/model";
 import type { UnshippedOrderLineRow } from "@/components/shipping/pending-shipments/model";
-import type { ShippingOrder } from "@/components/shipping/shipping-orders/model";
 import { checkPermission } from "@/lib/authz";
 import { prisma } from "@/lib/db";
 import { formatOrderLineNumber, formatProductNumber } from "@/lib/doc-number";
@@ -27,7 +27,7 @@ import {
   toStepState,
 } from "@/lib/workflow-core";
 import { orderLineScopeWhere } from "../../sales/order-lines/data";
-import { fetchShippingOrders } from "../shipping-orders/data";
+import { fetchDeliveryOrders } from "../delivery-orders/data";
 
 // 一覧クエリの取得上限（監査 P2-8 — 全件フェッチのデータ増加対策）。
 const LIST_FETCH_CAP = 1000;
@@ -65,7 +65,7 @@ function productLabel(p: {
 export async function fetchUnshippedOrderLines(): Promise<
   UnshippedOrderLineRow[]
 > {
-  const authz = await checkPermission("shipping_order", "READ");
+  const authz = await checkPermission("delivery_order", "READ");
   if (!authz.ok) return [];
   const rows = await prisma.orderLine.findMany({
     take: LIST_FETCH_CAP,
@@ -107,7 +107,7 @@ export async function fetchUnshippedOrderLines(): Promise<
         orderBy: { workOrder: { workOrderNumber: "asc" } },
       },
       // 出荷書に載っている数量（下書きも「もう手配済み」として数える）。
-      shippingItems: { select: { quantity: true } },
+      deliveryItems: { select: { quantity: true } },
     },
     orderBy: [
       { acceptanceYearMonth: "desc" },
@@ -132,7 +132,7 @@ export async function fetchUnshippedOrderLines(): Promise<
           0)
       );
     }, 0);
-    const shippedQuantity = r.shippingItems.reduce(
+    const shippedQuantity = r.deliveryItems.reduce(
       (sum, it) => sum + it.quantity,
       0,
     );
@@ -166,6 +166,6 @@ export async function fetchUnshippedOrderLines(): Promise<
 }
 
 /** 出荷準備中キュー — まだ SHIPPED になっていない出荷書。 */
-export function fetchOpenShippingOrders(): Promise<ShippingOrder[]> {
-  return fetchShippingOrders({ status: { in: [...OPEN_SHIPPING_STATUSES] } });
+export function fetchOpenDeliveryOrders(): Promise<DeliveryOrder[]> {
+  return fetchDeliveryOrders({ status: { in: [...OPEN_SHIPPING_STATUSES] } });
 }

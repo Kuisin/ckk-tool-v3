@@ -122,8 +122,8 @@ TABLES = {
     "material_purchase_order_items": "素材発注明細",
     "material_receipts": "素材入荷",
     # 出荷・請求
-    "shipping_orders": "出荷書",
-    "shipping_order_items": "出荷明細",
+    "delivery_orders": "出荷書",
+    "delivery_order_items": "出荷明細",
     "delivery_notes": "納品書",
     "delivery_note_items": "納品明細",
     "invoices": "請求書",
@@ -483,9 +483,9 @@ COLS = {
     "request_id": "依頼",
     "desired_at": "希望日",
     # 出荷・請求
-    "shipping_order_id": "出荷書",
-    "shipping_order_year_month": "出荷書年月",
-    "shipping_order_seq": "出荷書連番",
+    "delivery_order_id": "出荷書",
+    "delivery_order_year_month": "出荷書年月",
+    "delivery_order_seq": "出荷書連番",
     "shipped_at": "出荷日時",
     "delivery_method": "納品方法",
     "delivery_note_year_month": "納品書年月",
@@ -593,8 +593,8 @@ ANALYTICS_TABLES = {
     "v_work_order_step_actuals": "工程作業実績", "v_inspection_records": "検査記録",
     "v_defect_records": "不良記録", "v_product_inventory": "製品在庫",
     "v_material_inventory": "素材在庫", "v_inventory_reservations": "在庫予約",
-    "v_inventory_transactions": "在庫取引", "v_shipping_orders": "出荷書",
-    "v_shipping_order_items": "出荷明細", "v_delivery_notes": "納品書",
+    "v_inventory_transactions": "在庫取引", "v_delivery_orders": "出荷書",
+    "v_delivery_order_items": "出荷明細", "v_delivery_notes": "納品書",
     "v_delivery_note_items": "納品明細", "v_invoices": "請求書",
     "v_invoice_items": "請求明細", "v_billing_closings": "締日処理",
     "v_approval_requests": "承認依頼", "v_approval_records": "承認記録",
@@ -608,7 +608,7 @@ ANALYTICS_COLS = {
     # 導出書類番号
     "estimate_no": "試算番号", "price_list_no": "価格表番号", "quote_no": "見積番号",
     "order_no": "注文番号", "order_line_no": "注文明細番号", "work_order_no": "指示書番号",
-    "shipping_no": "出荷番号", "delivery_no": "納品番号", "invoice_no": "請求番号",
+    "delivery_order_no": "出荷書番号", "delivery_no": "納品番号", "invoice_no": "請求番号",
     "lot_number": "ロット番号",
     # 解決した名前（人）
     "sales_staff": "営業担当", "created_by_name": "作成者", "approved_by_name": "承認者",

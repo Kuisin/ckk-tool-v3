@@ -161,17 +161,17 @@ export function ClosingDetail({
               </Table.Thead>
               <Table.Tbody>
                 {closing.shipments.map((s) => (
-                  <Table.Tr key={s.shippingOrderNumber}>
+                  <Table.Tr key={s.deliveryOrderNumber}>
                     <Table.Td>
                       <Anchor
                         onClick={() =>
                           router.push(
-                            `/shipping/shipping-orders/${s.shippingOrderNumber}`,
+                            `/shipping/delivery-orders/${s.deliveryOrderNumber}`,
                           )
                         }
                         size="sm"
                       >
-                        <DocNumber c="blue">{s.shippingOrderNumber}</DocNumber>
+                        <DocNumber c="blue">{s.deliveryOrderNumber}</DocNumber>
                       </Anchor>
                     </Table.Td>
                     <Table.Td className="tabular-nums">

@@ -247,7 +247,7 @@ model Product {
   priceListEntries PriceListEntry[]
   estimates        Estimate[]
   quoteItems       QuoteItem[]
-  shippingOrderItems ShippingOrderItem[]
+  deliveryOrderItems DeliveryOrderItem[]
   deliveryNoteItems  DeliveryNoteItem[]
   inventory          ProductInventory[]
   designRequests     DesignRequest[]
