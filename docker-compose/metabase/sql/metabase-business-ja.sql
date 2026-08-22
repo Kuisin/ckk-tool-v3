@@ -1064,4 +1064,355 @@ FROM m, metabase_table t, target
 WHERE f.table_id = t.id AND t.db_id = target.id AND t.schema = 'analytics'
   AND f.name = m.col AND f.display_name IS DISTINCT FROM m.ja;
 
+-- ─── ビュー間 PK/FK メタデータ（結合キーの自動提案・暗黙結合用） ──
+WITH target AS (SELECT id FROM metabase_database WHERE name = 'CKK 業務'),
+m(tbl, col) AS (VALUES
+  ('v_currencies', 'code'),
+  ('v_order_acceptances', 'order_no'),
+  ('v_order_lines', 'order_line_no'),
+  ('v_quotes', 'quote_no'),
+  ('v_work_orders', 'work_order_no'),
+  ('v_material_purchase_orders', 'po_number'),
+  ('v_purchase_requests', 'request_number'),
+  ('v_invoices', 'invoice_no'),
+  ('v_delivery_orders', 'delivery_order_no'),
+  ('v_delivery_notes', 'delivery_no'),
+  ('v_price_list_entries', 'price_list_no'),
+  ('v_estimates', 'estimate_no')
+)
+UPDATE metabase_field f SET semantic_type = 'type/PK'
+FROM m, metabase_table t, target
+WHERE f.table_id = t.id AND t.db_id = target.id AND t.schema = 'analytics'
+  AND t.name = m.tbl AND f.name = m.col
+  AND f.semantic_type IS DISTINCT FROM 'type/PK';
+
+WITH target AS (SELECT id FROM metabase_database WHERE name = 'CKK 業務')
+UPDATE metabase_field f SET semantic_type = 'type/FK', fk_target_field_id = tf.id
+FROM metabase_table t, metabase_table tt, metabase_field tf, target
+WHERE f.table_id = t.id AND t.db_id = target.id AND t.schema = 'analytics'
+  AND t.name = 'v_order_acceptances' AND f.name = 'currency'
+  AND tt.db_id = target.id AND tt.schema = 'analytics' AND tt.name = 'v_currencies'
+  AND tf.table_id = tt.id AND tf.name = 'code'
+  AND (f.semantic_type IS DISTINCT FROM 'type/FK' OR f.fk_target_field_id IS DISTINCT FROM tf.id);
+WITH target AS (SELECT id FROM metabase_database WHERE name = 'CKK 業務')
+UPDATE metabase_field f SET semantic_type = 'type/FK', fk_target_field_id = tf.id
+FROM metabase_table t, metabase_table tt, metabase_field tf, target
+WHERE f.table_id = t.id AND t.db_id = target.id AND t.schema = 'analytics'
+  AND t.name = 'v_order_lines' AND f.name = 'currency'
+  AND tt.db_id = target.id AND tt.schema = 'analytics' AND tt.name = 'v_currencies'
+  AND tf.table_id = tt.id AND tf.name = 'code'
+  AND (f.semantic_type IS DISTINCT FROM 'type/FK' OR f.fk_target_field_id IS DISTINCT FROM tf.id);
+WITH target AS (SELECT id FROM metabase_database WHERE name = 'CKK 業務')
+UPDATE metabase_field f SET semantic_type = 'type/FK', fk_target_field_id = tf.id
+FROM metabase_table t, metabase_table tt, metabase_field tf, target
+WHERE f.table_id = t.id AND t.db_id = target.id AND t.schema = 'analytics'
+  AND t.name = 'v_quotes' AND f.name = 'currency'
+  AND tt.db_id = target.id AND tt.schema = 'analytics' AND tt.name = 'v_currencies'
+  AND tf.table_id = tt.id AND tf.name = 'code'
+  AND (f.semantic_type IS DISTINCT FROM 'type/FK' OR f.fk_target_field_id IS DISTINCT FROM tf.id);
+WITH target AS (SELECT id FROM metabase_database WHERE name = 'CKK 業務')
+UPDATE metabase_field f SET semantic_type = 'type/FK', fk_target_field_id = tf.id
+FROM metabase_table t, metabase_table tt, metabase_field tf, target
+WHERE f.table_id = t.id AND t.db_id = target.id AND t.schema = 'analytics'
+  AND t.name = 'v_quote_items' AND f.name = 'currency'
+  AND tt.db_id = target.id AND tt.schema = 'analytics' AND tt.name = 'v_currencies'
+  AND tf.table_id = tt.id AND tf.name = 'code'
+  AND (f.semantic_type IS DISTINCT FROM 'type/FK' OR f.fk_target_field_id IS DISTINCT FROM tf.id);
+WITH target AS (SELECT id FROM metabase_database WHERE name = 'CKK 業務')
+UPDATE metabase_field f SET semantic_type = 'type/FK', fk_target_field_id = tf.id
+FROM metabase_table t, metabase_table tt, metabase_field tf, target
+WHERE f.table_id = t.id AND t.db_id = target.id AND t.schema = 'analytics'
+  AND t.name = 'v_invoices' AND f.name = 'currency'
+  AND tt.db_id = target.id AND tt.schema = 'analytics' AND tt.name = 'v_currencies'
+  AND tf.table_id = tt.id AND tf.name = 'code'
+  AND (f.semantic_type IS DISTINCT FROM 'type/FK' OR f.fk_target_field_id IS DISTINCT FROM tf.id);
+WITH target AS (SELECT id FROM metabase_database WHERE name = 'CKK 業務')
+UPDATE metabase_field f SET semantic_type = 'type/FK', fk_target_field_id = tf.id
+FROM metabase_table t, metabase_table tt, metabase_field tf, target
+WHERE f.table_id = t.id AND t.db_id = target.id AND t.schema = 'analytics'
+  AND t.name = 'v_material_purchase_orders' AND f.name = 'currency'
+  AND tt.db_id = target.id AND tt.schema = 'analytics' AND tt.name = 'v_currencies'
+  AND tf.table_id = tt.id AND tf.name = 'code'
+  AND (f.semantic_type IS DISTINCT FROM 'type/FK' OR f.fk_target_field_id IS DISTINCT FROM tf.id);
+WITH target AS (SELECT id FROM metabase_database WHERE name = 'CKK 業務')
+UPDATE metabase_field f SET semantic_type = 'type/FK', fk_target_field_id = tf.id
+FROM metabase_table t, metabase_table tt, metabase_field tf, target
+WHERE f.table_id = t.id AND t.db_id = target.id AND t.schema = 'analytics'
+  AND t.name = 'v_material_purchase_order_items' AND f.name = 'currency'
+  AND tt.db_id = target.id AND tt.schema = 'analytics' AND tt.name = 'v_currencies'
+  AND tf.table_id = tt.id AND tf.name = 'code'
+  AND (f.semantic_type IS DISTINCT FROM 'type/FK' OR f.fk_target_field_id IS DISTINCT FROM tf.id);
+WITH target AS (SELECT id FROM metabase_database WHERE name = 'CKK 業務')
+UPDATE metabase_field f SET semantic_type = 'type/FK', fk_target_field_id = tf.id
+FROM metabase_table t, metabase_table tt, metabase_field tf, target
+WHERE f.table_id = t.id AND t.db_id = target.id AND t.schema = 'analytics'
+  AND t.name = 'v_price_list_entries' AND f.name = 'currency'
+  AND tt.db_id = target.id AND tt.schema = 'analytics' AND tt.name = 'v_currencies'
+  AND tf.table_id = tt.id AND tf.name = 'code'
+  AND (f.semantic_type IS DISTINCT FROM 'type/FK' OR f.fk_target_field_id IS DISTINCT FROM tf.id);
+WITH target AS (SELECT id FROM metabase_database WHERE name = 'CKK 業務')
+UPDATE metabase_field f SET semantic_type = 'type/FK', fk_target_field_id = tf.id
+FROM metabase_table t, metabase_table tt, metabase_field tf, target
+WHERE f.table_id = t.id AND t.db_id = target.id AND t.schema = 'analytics'
+  AND t.name = 'v_price_list_variants' AND f.name = 'currency'
+  AND tt.db_id = target.id AND tt.schema = 'analytics' AND tt.name = 'v_currencies'
+  AND tf.table_id = tt.id AND tf.name = 'code'
+  AND (f.semantic_type IS DISTINCT FROM 'type/FK' OR f.fk_target_field_id IS DISTINCT FROM tf.id);
+WITH target AS (SELECT id FROM metabase_database WHERE name = 'CKK 業務')
+UPDATE metabase_field f SET semantic_type = 'type/FK', fk_target_field_id = tf.id
+FROM metabase_table t, metabase_table tt, metabase_field tf, target
+WHERE f.table_id = t.id AND t.db_id = target.id AND t.schema = 'analytics'
+  AND t.name = 'v_work_orders' AND f.name = 'currency'
+  AND tt.db_id = target.id AND tt.schema = 'analytics' AND tt.name = 'v_currencies'
+  AND tf.table_id = tt.id AND tf.name = 'code'
+  AND (f.semantic_type IS DISTINCT FROM 'type/FK' OR f.fk_target_field_id IS DISTINCT FROM tf.id);
+WITH target AS (SELECT id FROM metabase_database WHERE name = 'CKK 業務')
+UPDATE metabase_field f SET semantic_type = 'type/FK', fk_target_field_id = tf.id
+FROM metabase_table t, metabase_table tt, metabase_field tf, target
+WHERE f.table_id = t.id AND t.db_id = target.id AND t.schema = 'analytics'
+  AND t.name = 'v_product_inventory' AND f.name = 'currency'
+  AND tt.db_id = target.id AND tt.schema = 'analytics' AND tt.name = 'v_currencies'
+  AND tf.table_id = tt.id AND tf.name = 'code'
+  AND (f.semantic_type IS DISTINCT FROM 'type/FK' OR f.fk_target_field_id IS DISTINCT FROM tf.id);
+WITH target AS (SELECT id FROM metabase_database WHERE name = 'CKK 業務')
+UPDATE metabase_field f SET semantic_type = 'type/FK', fk_target_field_id = tf.id
+FROM metabase_table t, metabase_table tt, metabase_field tf, target
+WHERE f.table_id = t.id AND t.db_id = target.id AND t.schema = 'analytics'
+  AND t.name = 'v_products' AND f.name = 'currency'
+  AND tt.db_id = target.id AND tt.schema = 'analytics' AND tt.name = 'v_currencies'
+  AND tf.table_id = tt.id AND tf.name = 'code'
+  AND (f.semantic_type IS DISTINCT FROM 'type/FK' OR f.fk_target_field_id IS DISTINCT FROM tf.id);
+WITH target AS (SELECT id FROM metabase_database WHERE name = 'CKK 業務')
+UPDATE metabase_field f SET semantic_type = 'type/FK', fk_target_field_id = tf.id
+FROM metabase_table t, metabase_table tt, metabase_field tf, target
+WHERE f.table_id = t.id AND t.db_id = target.id AND t.schema = 'analytics'
+  AND t.name = 'v_order_lines' AND f.name = 'order_no'
+  AND tt.db_id = target.id AND tt.schema = 'analytics' AND tt.name = 'v_order_acceptances'
+  AND tf.table_id = tt.id AND tf.name = 'order_no'
+  AND (f.semantic_type IS DISTINCT FROM 'type/FK' OR f.fk_target_field_id IS DISTINCT FROM tf.id);
+WITH target AS (SELECT id FROM metabase_database WHERE name = 'CKK 業務')
+UPDATE metabase_field f SET semantic_type = 'type/FK', fk_target_field_id = tf.id
+FROM metabase_table t, metabase_table tt, metabase_field tf, target
+WHERE f.table_id = t.id AND t.db_id = target.id AND t.schema = 'analytics'
+  AND t.name = 'v_delivery_order_items' AND f.name = 'order_line_no'
+  AND tt.db_id = target.id AND tt.schema = 'analytics' AND tt.name = 'v_order_lines'
+  AND tf.table_id = tt.id AND tf.name = 'order_line_no'
+  AND (f.semantic_type IS DISTINCT FROM 'type/FK' OR f.fk_target_field_id IS DISTINCT FROM tf.id);
+WITH target AS (SELECT id FROM metabase_database WHERE name = 'CKK 業務')
+UPDATE metabase_field f SET semantic_type = 'type/FK', fk_target_field_id = tf.id
+FROM metabase_table t, metabase_table tt, metabase_field tf, target
+WHERE f.table_id = t.id AND t.db_id = target.id AND t.schema = 'analytics'
+  AND t.name = 'v_invoice_items' AND f.name = 'order_line_no'
+  AND tt.db_id = target.id AND tt.schema = 'analytics' AND tt.name = 'v_order_lines'
+  AND tf.table_id = tt.id AND tf.name = 'order_line_no'
+  AND (f.semantic_type IS DISTINCT FROM 'type/FK' OR f.fk_target_field_id IS DISTINCT FROM tf.id);
+WITH target AS (SELECT id FROM metabase_database WHERE name = 'CKK 業務')
+UPDATE metabase_field f SET semantic_type = 'type/FK', fk_target_field_id = tf.id
+FROM metabase_table t, metabase_table tt, metabase_field tf, target
+WHERE f.table_id = t.id AND t.db_id = target.id AND t.schema = 'analytics'
+  AND t.name = 'v_design_requests' AND f.name = 'order_line_no'
+  AND tt.db_id = target.id AND tt.schema = 'analytics' AND tt.name = 'v_order_lines'
+  AND tf.table_id = tt.id AND tf.name = 'order_line_no'
+  AND (f.semantic_type IS DISTINCT FROM 'type/FK' OR f.fk_target_field_id IS DISTINCT FROM tf.id);
+WITH target AS (SELECT id FROM metabase_database WHERE name = 'CKK 業務')
+UPDATE metabase_field f SET semantic_type = 'type/FK', fk_target_field_id = tf.id
+FROM metabase_table t, metabase_table tt, metabase_field tf, target
+WHERE f.table_id = t.id AND t.db_id = target.id AND t.schema = 'analytics'
+  AND t.name = 'v_inventory_reservations' AND f.name = 'order_line_no'
+  AND tt.db_id = target.id AND tt.schema = 'analytics' AND tt.name = 'v_order_lines'
+  AND tf.table_id = tt.id AND tf.name = 'order_line_no'
+  AND (f.semantic_type IS DISTINCT FROM 'type/FK' OR f.fk_target_field_id IS DISTINCT FROM tf.id);
+WITH target AS (SELECT id FROM metabase_database WHERE name = 'CKK 業務')
+UPDATE metabase_field f SET semantic_type = 'type/FK', fk_target_field_id = tf.id
+FROM metabase_table t, metabase_table tt, metabase_field tf, target
+WHERE f.table_id = t.id AND t.db_id = target.id AND t.schema = 'analytics'
+  AND t.name = 'v_quote_items' AND f.name = 'quote_no'
+  AND tt.db_id = target.id AND tt.schema = 'analytics' AND tt.name = 'v_quotes'
+  AND tf.table_id = tt.id AND tf.name = 'quote_no'
+  AND (f.semantic_type IS DISTINCT FROM 'type/FK' OR f.fk_target_field_id IS DISTINCT FROM tf.id);
+WITH target AS (SELECT id FROM metabase_database WHERE name = 'CKK 業務')
+UPDATE metabase_field f SET semantic_type = 'type/FK', fk_target_field_id = tf.id
+FROM metabase_table t, metabase_table tt, metabase_field tf, target
+WHERE f.table_id = t.id AND t.db_id = target.id AND t.schema = 'analytics'
+  AND t.name = 'v_order_acceptances' AND f.name = 'quote_no'
+  AND tt.db_id = target.id AND tt.schema = 'analytics' AND tt.name = 'v_quotes'
+  AND tf.table_id = tt.id AND tf.name = 'quote_no'
+  AND (f.semantic_type IS DISTINCT FROM 'type/FK' OR f.fk_target_field_id IS DISTINCT FROM tf.id);
+WITH target AS (SELECT id FROM metabase_database WHERE name = 'CKK 業務')
+UPDATE metabase_field f SET semantic_type = 'type/FK', fk_target_field_id = tf.id
+FROM metabase_table t, metabase_table tt, metabase_field tf, target
+WHERE f.table_id = t.id AND t.db_id = target.id AND t.schema = 'analytics'
+  AND t.name = 'v_order_lines' AND f.name = 'quote_no'
+  AND tt.db_id = target.id AND tt.schema = 'analytics' AND tt.name = 'v_quotes'
+  AND tf.table_id = tt.id AND tf.name = 'quote_no'
+  AND (f.semantic_type IS DISTINCT FROM 'type/FK' OR f.fk_target_field_id IS DISTINCT FROM tf.id);
+WITH target AS (SELECT id FROM metabase_database WHERE name = 'CKK 業務')
+UPDATE metabase_field f SET semantic_type = 'type/FK', fk_target_field_id = tf.id
+FROM metabase_table t, metabase_table tt, metabase_field tf, target
+WHERE f.table_id = t.id AND t.db_id = target.id AND t.schema = 'analytics'
+  AND t.name = 'v_design_requests' AND f.name = 'quote_no'
+  AND tt.db_id = target.id AND tt.schema = 'analytics' AND tt.name = 'v_quotes'
+  AND tf.table_id = tt.id AND tf.name = 'quote_no'
+  AND (f.semantic_type IS DISTINCT FROM 'type/FK' OR f.fk_target_field_id IS DISTINCT FROM tf.id);
+WITH target AS (SELECT id FROM metabase_database WHERE name = 'CKK 業務')
+UPDATE metabase_field f SET semantic_type = 'type/FK', fk_target_field_id = tf.id
+FROM metabase_table t, metabase_table tt, metabase_field tf, target
+WHERE f.table_id = t.id AND t.db_id = target.id AND t.schema = 'analytics'
+  AND t.name = 'v_work_order_steps' AND f.name = 'work_order_no'
+  AND tt.db_id = target.id AND tt.schema = 'analytics' AND tt.name = 'v_work_orders'
+  AND tf.table_id = tt.id AND tf.name = 'work_order_no'
+  AND (f.semantic_type IS DISTINCT FROM 'type/FK' OR f.fk_target_field_id IS DISTINCT FROM tf.id);
+WITH target AS (SELECT id FROM metabase_database WHERE name = 'CKK 業務')
+UPDATE metabase_field f SET semantic_type = 'type/FK', fk_target_field_id = tf.id
+FROM metabase_table t, metabase_table tt, metabase_field tf, target
+WHERE f.table_id = t.id AND t.db_id = target.id AND t.schema = 'analytics'
+  AND t.name = 'v_work_order_step_plans' AND f.name = 'work_order_no'
+  AND tt.db_id = target.id AND tt.schema = 'analytics' AND tt.name = 'v_work_orders'
+  AND tf.table_id = tt.id AND tf.name = 'work_order_no'
+  AND (f.semantic_type IS DISTINCT FROM 'type/FK' OR f.fk_target_field_id IS DISTINCT FROM tf.id);
+WITH target AS (SELECT id FROM metabase_database WHERE name = 'CKK 業務')
+UPDATE metabase_field f SET semantic_type = 'type/FK', fk_target_field_id = tf.id
+FROM metabase_table t, metabase_table tt, metabase_field tf, target
+WHERE f.table_id = t.id AND t.db_id = target.id AND t.schema = 'analytics'
+  AND t.name = 'v_work_order_step_actuals' AND f.name = 'work_order_no'
+  AND tt.db_id = target.id AND tt.schema = 'analytics' AND tt.name = 'v_work_orders'
+  AND tf.table_id = tt.id AND tf.name = 'work_order_no'
+  AND (f.semantic_type IS DISTINCT FROM 'type/FK' OR f.fk_target_field_id IS DISTINCT FROM tf.id);
+WITH target AS (SELECT id FROM metabase_database WHERE name = 'CKK 業務')
+UPDATE metabase_field f SET semantic_type = 'type/FK', fk_target_field_id = tf.id
+FROM metabase_table t, metabase_table tt, metabase_field tf, target
+WHERE f.table_id = t.id AND t.db_id = target.id AND t.schema = 'analytics'
+  AND t.name = 'v_inspection_records' AND f.name = 'work_order_no'
+  AND tt.db_id = target.id AND tt.schema = 'analytics' AND tt.name = 'v_work_orders'
+  AND tf.table_id = tt.id AND tf.name = 'work_order_no'
+  AND (f.semantic_type IS DISTINCT FROM 'type/FK' OR f.fk_target_field_id IS DISTINCT FROM tf.id);
+WITH target AS (SELECT id FROM metabase_database WHERE name = 'CKK 業務')
+UPDATE metabase_field f SET semantic_type = 'type/FK', fk_target_field_id = tf.id
+FROM metabase_table t, metabase_table tt, metabase_field tf, target
+WHERE f.table_id = t.id AND t.db_id = target.id AND t.schema = 'analytics'
+  AND t.name = 'v_defect_records' AND f.name = 'work_order_no'
+  AND tt.db_id = target.id AND tt.schema = 'analytics' AND tt.name = 'v_work_orders'
+  AND tf.table_id = tt.id AND tf.name = 'work_order_no'
+  AND (f.semantic_type IS DISTINCT FROM 'type/FK' OR f.fk_target_field_id IS DISTINCT FROM tf.id);
+WITH target AS (SELECT id FROM metabase_database WHERE name = 'CKK 業務')
+UPDATE metabase_field f SET semantic_type = 'type/FK', fk_target_field_id = tf.id
+FROM metabase_table t, metabase_table tt, metabase_field tf, target
+WHERE f.table_id = t.id AND t.db_id = target.id AND t.schema = 'analytics'
+  AND t.name = 'v_delivery_orders' AND f.name = 'work_order_no'
+  AND tt.db_id = target.id AND tt.schema = 'analytics' AND tt.name = 'v_work_orders'
+  AND tf.table_id = tt.id AND tf.name = 'work_order_no'
+  AND (f.semantic_type IS DISTINCT FROM 'type/FK' OR f.fk_target_field_id IS DISTINCT FROM tf.id);
+WITH target AS (SELECT id FROM metabase_database WHERE name = 'CKK 業務')
+UPDATE metabase_field f SET semantic_type = 'type/FK', fk_target_field_id = tf.id
+FROM metabase_table t, metabase_table tt, metabase_field tf, target
+WHERE f.table_id = t.id AND t.db_id = target.id AND t.schema = 'analytics'
+  AND t.name = 'v_product_inventory' AND f.name = 'work_order_no'
+  AND tt.db_id = target.id AND tt.schema = 'analytics' AND tt.name = 'v_work_orders'
+  AND tf.table_id = tt.id AND tf.name = 'work_order_no'
+  AND (f.semantic_type IS DISTINCT FROM 'type/FK' OR f.fk_target_field_id IS DISTINCT FROM tf.id);
+WITH target AS (SELECT id FROM metabase_database WHERE name = 'CKK 業務')
+UPDATE metabase_field f SET semantic_type = 'type/FK', fk_target_field_id = tf.id
+FROM metabase_table t, metabase_table tt, metabase_field tf, target
+WHERE f.table_id = t.id AND t.db_id = target.id AND t.schema = 'analytics'
+  AND t.name = 'v_inventory_reservations' AND f.name = 'work_order_no'
+  AND tt.db_id = target.id AND tt.schema = 'analytics' AND tt.name = 'v_work_orders'
+  AND tf.table_id = tt.id AND tf.name = 'work_order_no'
+  AND (f.semantic_type IS DISTINCT FROM 'type/FK' OR f.fk_target_field_id IS DISTINCT FROM tf.id);
+WITH target AS (SELECT id FROM metabase_database WHERE name = 'CKK 業務')
+UPDATE metabase_field f SET semantic_type = 'type/FK', fk_target_field_id = tf.id
+FROM metabase_table t, metabase_table tt, metabase_field tf, target
+WHERE f.table_id = t.id AND t.db_id = target.id AND t.schema = 'analytics'
+  AND t.name = 'v_material_purchase_order_items' AND f.name = 'po_number'
+  AND tt.db_id = target.id AND tt.schema = 'analytics' AND tt.name = 'v_material_purchase_orders'
+  AND tf.table_id = tt.id AND tf.name = 'po_number'
+  AND (f.semantic_type IS DISTINCT FROM 'type/FK' OR f.fk_target_field_id IS DISTINCT FROM tf.id);
+WITH target AS (SELECT id FROM metabase_database WHERE name = 'CKK 業務')
+UPDATE metabase_field f SET semantic_type = 'type/FK', fk_target_field_id = tf.id
+FROM metabase_table t, metabase_table tt, metabase_field tf, target
+WHERE f.table_id = t.id AND t.db_id = target.id AND t.schema = 'analytics'
+  AND t.name = 'v_material_receipts' AND f.name = 'po_number'
+  AND tt.db_id = target.id AND tt.schema = 'analytics' AND tt.name = 'v_material_purchase_orders'
+  AND tf.table_id = tt.id AND tf.name = 'po_number'
+  AND (f.semantic_type IS DISTINCT FROM 'type/FK' OR f.fk_target_field_id IS DISTINCT FROM tf.id);
+WITH target AS (SELECT id FROM metabase_database WHERE name = 'CKK 業務')
+UPDATE metabase_field f SET semantic_type = 'type/FK', fk_target_field_id = tf.id
+FROM metabase_table t, metabase_table tt, metabase_field tf, target
+WHERE f.table_id = t.id AND t.db_id = target.id AND t.schema = 'analytics'
+  AND t.name = 'v_purchase_requests' AND f.name = 'po_number'
+  AND tt.db_id = target.id AND tt.schema = 'analytics' AND tt.name = 'v_material_purchase_orders'
+  AND tf.table_id = tt.id AND tf.name = 'po_number'
+  AND (f.semantic_type IS DISTINCT FROM 'type/FK' OR f.fk_target_field_id IS DISTINCT FROM tf.id);
+WITH target AS (SELECT id FROM metabase_database WHERE name = 'CKK 業務')
+UPDATE metabase_field f SET semantic_type = 'type/FK', fk_target_field_id = tf.id
+FROM metabase_table t, metabase_table tt, metabase_field tf, target
+WHERE f.table_id = t.id AND t.db_id = target.id AND t.schema = 'analytics'
+  AND t.name = 'v_purchase_request_items' AND f.name = 'request_number'
+  AND tt.db_id = target.id AND tt.schema = 'analytics' AND tt.name = 'v_purchase_requests'
+  AND tf.table_id = tt.id AND tf.name = 'request_number'
+  AND (f.semantic_type IS DISTINCT FROM 'type/FK' OR f.fk_target_field_id IS DISTINCT FROM tf.id);
+WITH target AS (SELECT id FROM metabase_database WHERE name = 'CKK 業務')
+UPDATE metabase_field f SET semantic_type = 'type/FK', fk_target_field_id = tf.id
+FROM metabase_table t, metabase_table tt, metabase_field tf, target
+WHERE f.table_id = t.id AND t.db_id = target.id AND t.schema = 'analytics'
+  AND t.name = 'v_delivery_order_items' AND f.name = 'delivery_order_no'
+  AND tt.db_id = target.id AND tt.schema = 'analytics' AND tt.name = 'v_delivery_orders'
+  AND tf.table_id = tt.id AND tf.name = 'delivery_order_no'
+  AND (f.semantic_type IS DISTINCT FROM 'type/FK' OR f.fk_target_field_id IS DISTINCT FROM tf.id);
+WITH target AS (SELECT id FROM metabase_database WHERE name = 'CKK 業務')
+UPDATE metabase_field f SET semantic_type = 'type/FK', fk_target_field_id = tf.id
+FROM metabase_table t, metabase_table tt, metabase_field tf, target
+WHERE f.table_id = t.id AND t.db_id = target.id AND t.schema = 'analytics'
+  AND t.name = 'v_delivery_notes' AND f.name = 'delivery_order_no'
+  AND tt.db_id = target.id AND tt.schema = 'analytics' AND tt.name = 'v_delivery_orders'
+  AND tf.table_id = tt.id AND tf.name = 'delivery_order_no'
+  AND (f.semantic_type IS DISTINCT FROM 'type/FK' OR f.fk_target_field_id IS DISTINCT FROM tf.id);
+WITH target AS (SELECT id FROM metabase_database WHERE name = 'CKK 業務')
+UPDATE metabase_field f SET semantic_type = 'type/FK', fk_target_field_id = tf.id
+FROM metabase_table t, metabase_table tt, metabase_field tf, target
+WHERE f.table_id = t.id AND t.db_id = target.id AND t.schema = 'analytics'
+  AND t.name = 'v_invoice_items' AND f.name = 'delivery_order_no'
+  AND tt.db_id = target.id AND tt.schema = 'analytics' AND tt.name = 'v_delivery_orders'
+  AND tf.table_id = tt.id AND tf.name = 'delivery_order_no'
+  AND (f.semantic_type IS DISTINCT FROM 'type/FK' OR f.fk_target_field_id IS DISTINCT FROM tf.id);
+WITH target AS (SELECT id FROM metabase_database WHERE name = 'CKK 業務')
+UPDATE metabase_field f SET semantic_type = 'type/FK', fk_target_field_id = tf.id
+FROM metabase_table t, metabase_table tt, metabase_field tf, target
+WHERE f.table_id = t.id AND t.db_id = target.id AND t.schema = 'analytics'
+  AND t.name = 'v_delivery_note_items' AND f.name = 'delivery_no'
+  AND tt.db_id = target.id AND tt.schema = 'analytics' AND tt.name = 'v_delivery_notes'
+  AND tf.table_id = tt.id AND tf.name = 'delivery_no'
+  AND (f.semantic_type IS DISTINCT FROM 'type/FK' OR f.fk_target_field_id IS DISTINCT FROM tf.id);
+WITH target AS (SELECT id FROM metabase_database WHERE name = 'CKK 業務')
+UPDATE metabase_field f SET semantic_type = 'type/FK', fk_target_field_id = tf.id
+FROM metabase_table t, metabase_table tt, metabase_field tf, target
+WHERE f.table_id = t.id AND t.db_id = target.id AND t.schema = 'analytics'
+  AND t.name = 'v_invoice_items' AND f.name = 'delivery_no'
+  AND tt.db_id = target.id AND tt.schema = 'analytics' AND tt.name = 'v_delivery_notes'
+  AND tf.table_id = tt.id AND tf.name = 'delivery_no'
+  AND (f.semantic_type IS DISTINCT FROM 'type/FK' OR f.fk_target_field_id IS DISTINCT FROM tf.id);
+WITH target AS (SELECT id FROM metabase_database WHERE name = 'CKK 業務')
+UPDATE metabase_field f SET semantic_type = 'type/FK', fk_target_field_id = tf.id
+FROM metabase_table t, metabase_table tt, metabase_field tf, target
+WHERE f.table_id = t.id AND t.db_id = target.id AND t.schema = 'analytics'
+  AND t.name = 'v_invoice_items' AND f.name = 'invoice_no'
+  AND tt.db_id = target.id AND tt.schema = 'analytics' AND tt.name = 'v_invoices'
+  AND tf.table_id = tt.id AND tf.name = 'invoice_no'
+  AND (f.semantic_type IS DISTINCT FROM 'type/FK' OR f.fk_target_field_id IS DISTINCT FROM tf.id);
+WITH target AS (SELECT id FROM metabase_database WHERE name = 'CKK 業務')
+UPDATE metabase_field f SET semantic_type = 'type/FK', fk_target_field_id = tf.id
+FROM metabase_table t, metabase_table tt, metabase_field tf, target
+WHERE f.table_id = t.id AND t.db_id = target.id AND t.schema = 'analytics'
+  AND t.name = 'v_price_list_variants' AND f.name = 'price_list_no'
+  AND tt.db_id = target.id AND tt.schema = 'analytics' AND tt.name = 'v_price_list_entries'
+  AND tf.table_id = tt.id AND tf.name = 'price_list_no'
+  AND (f.semantic_type IS DISTINCT FROM 'type/FK' OR f.fk_target_field_id IS DISTINCT FROM tf.id);
+WITH target AS (SELECT id FROM metabase_database WHERE name = 'CKK 業務')
+UPDATE metabase_field f SET semantic_type = 'type/FK', fk_target_field_id = tf.id
+FROM metabase_table t, metabase_table tt, metabase_field tf, target
+WHERE f.table_id = t.id AND t.db_id = target.id AND t.schema = 'analytics'
+  AND t.name = 'v_price_list_variants' AND f.name = 'estimate_no'
+  AND tt.db_id = target.id AND tt.schema = 'analytics' AND tt.name = 'v_estimates'
+  AND tf.table_id = tt.id AND tf.name = 'estimate_no'
+  AND (f.semantic_type IS DISTINCT FROM 'type/FK' OR f.fk_target_field_id IS DISTINCT FROM tf.id);
+
 COMMIT;
