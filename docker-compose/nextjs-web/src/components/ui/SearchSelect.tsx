@@ -128,7 +128,12 @@ export function SearchSelect({
     if (!search.trim() && recents.length > 0) {
       groups.push({ group: "最近使用", items: dedupe(recents) });
     }
-    const rest = dedupe(selected ? [...results, selected] : results);
+    // 選択中 option を**先**に置く — 同じ value が検索結果に別ラベルで
+    // 現れても、表示ラベルが選択時のものから変わらないようにする。
+    // Mantine の searchable Select は選択中ラベルへ searchValue を同期する
+    // ため、ラベルが results / selected の間で揺れると 同期 → 再検索 →
+    // ラベル交代 → 同期 … の無限ループになる（出荷書フォームで発生）。
+    const rest = dedupe(selected ? [selected, ...results] : results);
     if (rest.length > 0) {
       groups.push({
         group: search.trim() ? "検索結果" : "一覧（先頭のみ）",
