@@ -729,10 +729,11 @@ export function OrderAcceptanceDetail({
                   <Title mb="sm" order={5}>
                     明細（{a.items.length}）
                   </Title>
-                  <Table.ScrollContainer minWidth={760}>
+                  <Table.ScrollContainer minWidth={900}>
                     <Table highlightOnHover striped>
                       <Table.Thead>
                         <Table.Tr>
+                          <Table.Th>注文明細</Table.Th>
                           <Table.Th>製品</Table.Th>
                           <Table.Th>品名（抽出）</Table.Th>
                           <Table.Th>種別</Table.Th>
@@ -748,6 +749,23 @@ export function OrderAcceptanceDetail({
                           const lc = checkByItemId.get(it.id);
                           return (
                             <Table.Tr key={it.id}>
+                              <Table.Td>
+                                {/* 確定済みの行は注文明細（SA25）へリンク。
+                                    未確定は枝番未採番のため番号なし。 */}
+                                {it.lineNumber ? (
+                                  <Anchor
+                                    ff="mono"
+                                    href={`${SALES_ORDERS_PATH}/${it.lineNumber}`}
+                                    size="sm"
+                                  >
+                                    {it.lineNumber}
+                                  </Anchor>
+                                ) : (
+                                  <Text c="dimmed" size="sm">
+                                    —
+                                  </Text>
+                                )}
+                              </Table.Td>
                               <Table.Td>
                                 {it.productLabel ?? (
                                   <Badge
@@ -828,7 +846,7 @@ export function OrderAcceptanceDetail({
                       {a.items.length > 0 && (
                         <Table.Tfoot>
                           <Table.Tr>
-                            <Table.Th colSpan={3} ta="right">
+                            <Table.Th colSpan={4} ta="right">
                               合計
                             </Table.Th>
                             <Table.Th className="tabular-nums" ta="right">
