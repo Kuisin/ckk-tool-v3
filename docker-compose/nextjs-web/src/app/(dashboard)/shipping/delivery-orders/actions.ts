@@ -296,6 +296,38 @@ export async function fetchDeliverySourceInfo(
 }
 
 /**
+ * 注文請書選択時のライブ取得 — 展開済みの注文請書の**出荷できる注文明細**
+ * すべての受注情報をまとめて返す（出荷書フォームは注文請書単位で選び、
+ * 明細グループは注文明細ごとに作る）。キャンセル済み・出荷済みステータスの
+ * 行は除外する（残数ゼロの最終判定はクライアント側でも行う）。
+ */
+export async function fetchDeliveryAcceptanceSourceInfo(
+  acceptanceNumber: string,
+): Promise<DeliverySourceInfo[]> {
+  const key = parseDocKey(acceptanceNumber, "ORD");
+  if (!key) return [];
+  try {
+    const lines = await prisma.orderLine.findMany({
+      where: {
+        acceptanceYearMonth: key.yearMonth,
+        acceptanceSeq: key.seq,
+        branch: { not: null },
+        status: { in: ["CONFIRMED", "IN_PRODUCTION", "PARTIAL_SHIPPED"] },
+      },
+      orderBy: { branch: "asc" },
+      select: { id: true },
+    });
+    const infos = await Promise.all(
+      lines.map((l) => fetchDeliverySourceInfo(l.id)),
+    );
+    return infos.filter((i): i is DeliverySourceInfo => i != null);
+  } catch (e) {
+    console.error("fetchDeliveryAcceptanceSourceInfo failed", e);
+    return [];
+  }
+}
+
+/**
  * DISPATCH 明細のロット在庫検証（fail-fast — 出荷時の在庫ガードは
  * onDeliveryOrderShippedTx が最終判定する）。ロット指定行のみ、現物数量
  * （非半製品バケット合計）に対して検証する。エラー時は文字列を返す。

@@ -502,6 +502,50 @@ export async function searchUserOptions(
 }
 
 /**
+ * 出荷元の注文請書検索（出荷書フォーム）。展開済み（COMPLETED — 注文明細が
+ * 確定済み）だけを候補にする。value = 表示番号 ORD-YYYYMM-NNNNN、
+ * label = 番号 + 顧客 + 明細件数。
+ */
+export async function searchShippableAcceptanceOptions(
+  query: string,
+): Promise<SearchOption[]> {
+  const q = query.trim();
+  const rows = await prisma.orderAcceptance.findMany({
+    where: {
+      status: "COMPLETED",
+      ...(q
+        ? {
+            OR: [
+              { customerOrderRef: { contains: q, mode: "insensitive" } },
+              { customerBp: { name: { path: ["ja"], string_contains: q } } },
+              {
+                items: {
+                  some: {
+                    product: { name: { path: ["ja"], string_contains: q } },
+                  },
+                },
+              },
+            ],
+          }
+        : {}),
+    },
+    include: {
+      customerBp: { select: { name: true } },
+      items: { select: { id: true }, where: { branch: { not: null } } },
+    },
+    orderBy: [{ yearMonth: "desc" }, { seq: "desc" }],
+    take: LIMIT,
+  });
+  const { formatDocNumber } = await import("@/lib/doc-number");
+  return rows.map((r) => ({
+    value: formatDocNumber("ORD", r),
+    label: `${formatDocNumber("ORD", r)} ${localized(
+      r.customerBp?.name as LocalizedText | null,
+    )}（明細 ${r.items.length} 件）`,
+  }));
+}
+
+/**
  * 注文明細検索（出荷書・設計依頼などの汎用）。value = uuid、
  * label = 番号 + 製品 + 数量。
  */
