@@ -62,7 +62,7 @@ dev と main を**常時両方**動かす（本番の隣で検証するため）
 | `ollama-vl` | 1 | 注文書抽出用（`qwen2.5vl` 常駐） |
 | `open-webui` | — | 社内チャット UI |
 | `searxng` | — | open-webui の Web 検索 |
-| `metabase-mcp` | — | 勤怠データを open-webui のツールとして出す |
+| `metabase-mcp` | — | 勤怠 + CKK 業務データ（analytics ビュー）を open-webui のツールとして出す |
 
 ollama は 1 プロセスで 1 枚しか使わないので**カードごとに 1 台**立てている。
 詳細は `ai-stack/README.md`。

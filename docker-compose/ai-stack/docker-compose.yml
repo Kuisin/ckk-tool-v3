@@ -116,17 +116,21 @@ services:
   # coolify/add-po-extract-apps.sh、デプロイは coolify/deploy.sh po-extract-dev|-main。
   # ここに残っていた同名サービスは、Coolify 側の別名と衝突するため削除した。
 
-  # Metabase MCP server (read-only labor data) exposed to Open WebUI as an
-  # OpenAPI tool server via mcpo. Replaces the hand-rolled metabase_labor tool.
-  # open-webui reaches it on the shared default network at http://metabase-mcp:8000.
+  # Metabase MCP server (read-only labor + CKK 業務 business data) exposed to
+  # Open WebUI as an OpenAPI tool server via mcpo. Business queries go through
+  # the analytics views on Metabase db 5 (metabase_ro — sensitive columns masked
+  # at the DB layer). open-webui reaches it at http://metabase-mcp:8000.
+  # METABASE_URL must be the public https URL: Metabase 307-redirects LAN API
+  # calls to its site-url and urllib does not follow 307 POSTs.
   metabase-mcp:
     build: ./metabase-mcp
     image: ckk-metabase-mcp
     container_name: metabase-mcp
     restart: unless-stopped
     environment:
-      - METABASE_URL=${METABASE_URL:-http://192.168.50.15:3003}
+      - METABASE_URL=${METABASE_URL:-https://bi.ckk-tool.co.jp}
       - METABASE_DB_ID=${METABASE_DB_ID:-2}
+      - METABASE_BUSINESS_DB_ID=${METABASE_BUSINESS_DB_ID:-5}
       - METABASE_API_KEY=${METABASE_API_KEY:-}
       # Protects the mcpo OpenAPI endpoints; Open WebUI sends it as the bearer token.
       - MCPO_API_KEY=${MCPO_API_KEY:-}
