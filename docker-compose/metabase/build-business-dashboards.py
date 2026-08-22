@@ -84,6 +84,8 @@ REMAP = {
     ("v_invoices", "status"): INV_ST,
     ("v_billing_closings", "status"): BC_ST,
     ("v_inventory_reservations", "status"): RES_ST,
+    ("v_order_lines_disp", "status"): OL_ST,
+    ("v_invoices_disp", "status"): INV_ST,
 }
 
 # 通貨フィルタのドロップダウンに値一覧を出す列
@@ -91,7 +93,13 @@ LIST_VALUE_FIELDS = [
     ("v_order_acceptances", "currency"), ("v_order_lines", "currency"),
     ("v_work_orders", "currency"), ("v_invoices", "currency"),
     ("v_product_inventory", "currency"),
+    ("v_order_lines_disp", "display_currency"), ("v_invoices_disp", "display_currency"),
+    ("v_order_lines", "status"), ("v_order_lines_disp", "status"),
 ]
+
+# 状態フィルタ（受注・売上）— 注文明細の status を持つビューのカードに配線する。
+# 注文請書の status は別 enum（取込ワークフロー）なので対象外。
+STATUS_FILTER_TABLES = {"v_order_lines", "v_order_lines_disp"}
 
 # ─── カード定義（MBQL） ──────────────────────────────────────────────
 # table   … analytics ビュー名（source-table + フィルタマップ先）
@@ -110,9 +118,11 @@ CARDS = [
     dict(key="ol_total", name="注文明細 総数", display="scalar",
          table="v_order_lines", date_col="created_at", cur=True,
          q=dict(agg=("count",))),
-    dict(key="sales_total", name="受注金額 合計", display="scalar",
+    # 合計は「表示通貨 | 金額」の 1 行テーブル — 選択中の通貨単位が数字の隣に見える
+    dict(key="sales_total", name="受注金額 合計", display="table",
          table="v_order_lines_disp", date_col="created_at", cur=True, disp=True,
-         q=dict(agg=("sum", "amount_disp"), filters=[("!=", "status", "CANCELLED")])),
+         q=dict(agg=("sum", "amount_disp"), breakout=["display_currency"],
+                filters=[("!=", "status", "CANCELLED")])),
     dict(key="oa_by_status", name="注文請書 状態別", display="bar",
          table="v_order_acceptances", date_col="created_at", cur=True,
          q=dict(agg=("count",), breakout=["status"], order_desc_agg=True)),
@@ -121,18 +131,18 @@ CARDS = [
          q=dict(agg=("count",), breakout=["status"], order_desc_agg=True)),
     dict(key="sales_monthly", name="受注金額 月次", display="bar",
          table="v_order_lines_disp", date_col="created_at", cur=True, disp=True,
-         q=dict(agg=("sum", "amount_disp"), breakout=[("created_at", "month")],
+         q=dict(agg=("sum", "amount_disp"), breakout=[("created_at", "month"), "display_currency"],
                 filters=[("!=", "status", "CANCELLED")])),
     dict(key="sales_by_customer", name="顧客別 受注金額 上位", display="row",
          table="v_order_lines_disp", date_col="created_at", cur=True, disp=True,
-         q=dict(agg=("sum", "amount_disp"), breakout=["customer_name"],
+         q=dict(agg=("sum", "amount_disp"), breakout=["customer_name", "display_currency"],
                 filters=[("!=", "status", "CANCELLED"), ("not-null", "customer_name")],
                 order_desc_agg=True, limit=10)),
     dict(key="sales_by_staff", name="営業担当別 受注金額", display="row",
          table="v_order_lines_disp", date_col="created_at", cur=True, disp=True,
          q=dict(agg=("sum", "amount_disp"),
                 expressions={"営業担当": ("coalesce", "sales_staff", "（担当未設定）")},
-                breakout=[("expr", "営業担当")],
+                breakout=[("expr", "営業担当"), "display_currency"],
                 filters=[("!=", "status", "CANCELLED")], order_desc_agg=True)),
     dict(key="sales_staff_monthly", name="営業担当別 受注金額 月次", display="bar", stacked=True,
          table="v_order_lines_disp", date_col="created_at", cur=True, disp=True,
@@ -176,9 +186,10 @@ CARDS = [
     dict(key="inv_total", name="請求書 総数", display="scalar",
          table="v_invoices", date_col="created_at", cur=True,
          q=dict(agg=("count",))),
-    dict(key="inv_amount", name="請求額 合計", display="scalar",
+    dict(key="inv_amount", name="請求額 合計", display="table",
          table="v_invoices_disp", date_col="created_at", cur=True, disp=True,
-         q=dict(agg=("sum", "total_amount_disp"), filters=[("!=", "status", "DRAFT")])),
+         q=dict(agg=("sum", "total_amount_disp"), breakout=["display_currency"],
+                filters=[("!=", "status", "DRAFT")])),
     dict(key="inv_by_status", name="請求書 状態別", display="bar",
          table="v_invoices", date_col="created_at", cur=True,
          q=dict(agg=("count",), breakout=["status"], order_desc_agg=True)),
@@ -414,7 +425,9 @@ def main():
         date_pid = det_id(d["name"], "param_date")[:8]
         cur_pid = det_id(d["name"], "param_currency")[:8]
         disp_pid = det_id(d["name"], "param_display_currency")[:8]
+        status_pid = det_id(d["name"], "param_status")[:8]
         has_disp = any(cards_by_key[ck].get("disp") for ck, *_ in d["layout"])
+        has_status = any(cards_by_key[ck]["table"] in STATUS_FILTER_TABLES for ck, *_ in d["layout"])
         parameters = [
             {"id": date_pid, "name": "期間", "slug": "date_range",
              "type": "date/all-options", "sectionId": "date"},
@@ -427,6 +440,10 @@ def main():
             parameters.append({"id": disp_pid, "name": "表示通貨", "slug": "display_currency",
                                "type": "string/=", "sectionId": "string",
                                "default": ["JPY"], "required": True})
+        if has_status:
+            # 状態（注文明細 enum。注文請書カードは別 enum のため未配線）
+            parameters.append({"id": status_pid, "name": "状態", "slug": "line_status",
+                               "type": "string/=", "sectionId": "string"})
         dashcards = []
         for i, (ck, row, col, sx, sy) in enumerate(d["layout"]):
             c = cards_by_key[ck]
@@ -444,6 +461,11 @@ def main():
                 mappings.append({
                     "parameter_id": disp_pid, "card_id": key_to_id[ck],
                     "target": ["dimension", ["field", fields[(c["table"], "display_currency")], None]],
+                })
+            if has_status and c["table"] in STATUS_FILTER_TABLES:
+                mappings.append({
+                    "parameter_id": status_pid, "card_id": key_to_id[ck],
+                    "target": ["dimension", ["field", fields[(c["table"], "status")], None]],
                 })
             dashcards.append({
                 "id": -(i + 1), "card_id": key_to_id[ck],
