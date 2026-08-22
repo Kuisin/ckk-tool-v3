@@ -269,7 +269,8 @@ model Product {
 // amount * from.rate_to_jpy / to.rate_to_jpy で換算する。書類・製品の
 // `currency` 列（プレーン varchar・既定 'JPY'）はこのマスタのコードを指すが、
 // 既存の price_list_entries.currency 等と同じく FK は張らない。
-// レートは手動更新（Metabase / AI の分析用換算 — 会計処理用ではない）。
+// レートは metabase スタックの fx-rates コンテナが毎日 07:15 JST に自動更新
+// （open.er-api.com、専用ロール fx_rates）。分析用換算 — 会計処理用ではない。
 model Currency {
   code      String   @id
   name      Json

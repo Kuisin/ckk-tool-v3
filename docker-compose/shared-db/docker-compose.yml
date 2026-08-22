@@ -47,6 +47,7 @@ services:
       - APP_DB_PASSWORD=${APP_DB_PASSWORD:?set APP_DB_PASSWORD in .env}
       - KOT_RO_DB_PASSWORD=${KOT_RO_DB_PASSWORD:?set KOT_RO_DB_PASSWORD in .env}
       - METABASE_RO_DB_PASSWORD=${METABASE_RO_DB_PASSWORD:?set METABASE_RO_DB_PASSWORD in .env}
+      - FX_DB_PASSWORD=${FX_DB_PASSWORD:?set FX_DB_PASSWORD in .env}
       - STUDIO_RO_DB_PASSWORD=${STUDIO_RO_DB_PASSWORD:?set STUDIO_RO_DB_PASSWORD in .env}
       - BACKUP_DB_PASSWORD=${BACKUP_DB_PASSWORD:?set BACKUP_DB_PASSWORD in .env}
     # summarize_wal=on is required for PG17 incremental backups (db-backup stack).
