@@ -137,6 +137,17 @@ const allocationInput = z.object({
   quantity: z.number().int().min(1, "割当数量は1以上"),
 });
 
+// 作成時の作業計画（工程 × 担当者 × 計画日）。指示書と同時に
+// work_order_step_plans を作る — 担当は指示書ごとに違うため、工程リストと
+// 違ってルートには保存しない。編集（updateWorkOrder）では無視する（計画の
+// 追加・削除は工程実行画面の計画パネルで行う）。
+const planInput = z.object({
+  processStepId: z.number().int().positive(),
+  userId: z.string().min(1),
+  /** 計画日（YYYY-MM-DD, JST）。 */
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "計画日が不正です"),
+});
+
 const workOrderInput = z
   .object({
     allocations: z.array(allocationInput),
@@ -149,6 +160,7 @@ const workOrderInput = z
     notes: z.string(),
     steps: z.array(stepInput).min(1, "工程を1つ以上選択してください"),
     route: routeInput,
+    plans: z.array(planInput),
   })
   .superRefine((v, refCtx) => {
     if (v.allocations.length === 0) {
@@ -352,7 +364,7 @@ export async function createWorkOrder(
         productId,
         `指示書 #${workOrderNumber} 作成時に変更`,
       );
-      await tx.workOrder.create({
+      const created = await tx.workOrder.create({
         data: {
           workOrderNumber,
           yearMonth: docKey.yearMonth,
@@ -382,7 +394,33 @@ export async function createWorkOrder(
             })),
           },
         },
+        select: {
+          id: true,
+          steps: { select: { id: true, processStepId: true } },
+        },
       });
+      // 作成時の作業計画（工程 × 担当者 × 計画日）。工程 id は作成結果から
+      // 引き直す — 選択に無い工程の計画は黙って捨てる（UI 側で作れない形）。
+      if (v.plans.length > 0) {
+        const stepIdByProcess = new Map(
+          created.steps.map((s) => [s.processStepId, s.id]),
+        );
+        const rows = v.plans.flatMap((p) => {
+          const stepId = stepIdByProcess.get(p.processStepId);
+          if (!stepId) return [];
+          return [
+            {
+              stepId,
+              userId: p.userId,
+              plannedDate: new Date(`${p.date}T00:00:00+09:00`),
+              createdBy: actor,
+            },
+          ];
+        });
+        if (rows.length > 0) {
+          await tx.workOrderStepPlan.createMany({ data: rows });
+        }
+      }
       // ロット番号 = 指示書番号。未採番の割当明細に同番号を採用する
       // （統合ロットでは複数明細が同じロット番号を共有する）。
       await assignLotNumbersTx(
@@ -408,6 +446,7 @@ export async function createWorkOrder(
         routeVersionId,
         stepCount: built.creates.length,
         inspectionTemplateCount: v.inspectionTemplateIds.length,
+        planCount: v.plans.length,
       },
     });
     revalidate(workOrderNumber, docNumber);

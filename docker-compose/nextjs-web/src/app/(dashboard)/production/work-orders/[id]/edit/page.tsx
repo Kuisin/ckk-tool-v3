@@ -3,6 +3,7 @@ import { WorkflowBuilder } from "@/components/production/work-orders/WorkflowBui
 import { requireAppRead } from "@/lib/authz-page";
 import { loadCatalog } from "@/lib/workflow";
 import {
+  fetchEmployeeOptions,
   fetchInspectionTemplateOptions,
   fetchPlantOptions,
   fetchStorageLocationOptions,
@@ -37,17 +38,20 @@ export default async function ProductionWorkOrdersEditPage({
     templateOptions,
     supplierOptions,
     storageLocationOptions,
+    employeeOptions,
   ] = await Promise.all([
     loadCatalog(),
     fetchPlantOptions(),
     fetchInspectionTemplateOptions(),
     fetchSupplierOptions(),
     fetchStorageLocationOptions(),
+    fetchEmployeeOptions(),
   ]);
 
   return (
     <WorkflowBuilder
       catalogSteps={catalog.steps}
+      employeeOptions={employeeOptions}
       mode="edit"
       plantOptions={plantOptions}
       storageLocationOptions={storageLocationOptions}
