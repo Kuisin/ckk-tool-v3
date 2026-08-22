@@ -102,6 +102,14 @@ export async function fetchOrderAcceptance(
         orderBy: { sortOrder: "asc" },
         include: {
           product: { select: { name: true, yearMonth: true, seq: true } },
+          // 明細に割り当てられた指示書（分割・統合の割当数を表に出す）。
+          workOrderLinks: {
+            orderBy: { sortOrder: "asc" },
+            select: {
+              quantity: true,
+              workOrder: { select: { workOrderNumber: true, status: true } },
+            },
+          },
         },
       },
     },
@@ -137,6 +145,11 @@ export async function fetchOrderAcceptance(
       it.branch != null
         ? formatOrderLineNumber({ ...key, branch: it.branch })
         : null,
+    workOrders: it.workOrderLinks.map((l) => ({
+      workOrderNumber: l.workOrder.workOrderNumber,
+      quantity: l.quantity,
+      status: l.workOrder.status,
+    })),
     productId: it.productId != null ? String(it.productId) : null,
     productLabel: it.product ? productLabel(it.product) : null,
     productName: it.product
