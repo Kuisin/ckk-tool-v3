@@ -47,6 +47,11 @@ export interface OrderAcceptanceListRow {
 /** 明細 1 行（詳細）。 */
 export interface OrderAcceptanceItemView {
   id: string;
+  /**
+   * 注文明細番号 ORD-YYYYMM-NNNNN-NN（確定時に枝番を採番して生まれる導出番号）。
+   * 未確定（branch なし）の行は null — 明細表では番号なしで表示する。
+   */
+  lineNumber: string | null;
   /** 製品マスタ突合済みの内部 id（文字列化）。null = 製品未特定。 */
   productId: string | null;
   /** 名称 + 製品コード（表・ピッカーの表示用）。 */

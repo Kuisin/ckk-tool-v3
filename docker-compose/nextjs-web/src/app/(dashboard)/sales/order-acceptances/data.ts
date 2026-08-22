@@ -132,6 +132,11 @@ export async function fetchOrderAcceptance(
 
   const items: OrderAcceptanceItemView[] = r.items.map((it) => ({
     id: it.id,
+    // 確定済みの行は注文明細番号（枝番）を持つ — 明細表から SA25 へリンクする。
+    lineNumber:
+      it.branch != null
+        ? formatOrderLineNumber({ ...key, branch: it.branch })
+        : null,
     productId: it.productId != null ? String(it.productId) : null,
     productLabel: it.product ? productLabel(it.product) : null,
     productName: it.product
