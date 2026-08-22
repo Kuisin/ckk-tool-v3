@@ -98,6 +98,10 @@ STEP_EXEC = {"INTERNAL": "社内", "OUTSOURCE": "外注"}
 PROC_CAT = {"MATERIAL_PREP": "材料準備", "MACHINING": "加工", "COATING": "コーティング",
             "INSPECTION": "検査", "APPROVAL": "検査承認", "SHIPPING": "出荷"}
 PROC_EXEC = {"INTERNAL": "社内のみ", "INTERNAL_OR_OUTSOURCE": "社内・外注"}
+INV_METHOD = {"EMAIL": "メール", "FAX": "FAX", "POST": "郵送", "PORTAL": "ポータル"}
+TAX_TYPE = {"TAXABLE": "課税", "EXEMPT": "非課税", "REDUCED": "軽減税率"}
+VENDOR_TYPE = {"SUPPLIER": "仕入先", "OUTSOURCE": "外注先"}
+USER_GROUP = {"SYSTEM": "システム", "EMPLOYEE": "従業員", "GUEST": "ゲスト"}
 
 # (ビュー, 列) → 値マップ。remapping はビュー側の列に付ける（カードが参照する列）。
 REMAP = {
@@ -111,6 +115,7 @@ REMAP = {
     ("v_billing_closings", "status"): BC_ST,
     ("v_inventory_reservations", "status"): RES_ST,
     ("v_order_lines_disp", "status"): OL_ST,
+    ("v_order_lines_disp", "acceptance_status"): OA_ST,
     ("v_invoices_disp", "status"): INV_ST,
     # 残りの enum も全ビューで日本語表示にする（生 enum 露出の解消）
     ("v_quotes", "status"): QUOTE_ST,
@@ -138,6 +143,10 @@ REMAP = {
     ("v_inventory_reservations", "inventory_type"): INV_TYPE,
     ("v_inventory_transactions", "inventory_type"): INV_TYPE,
     ("v_inventory_transactions", "transaction_type"): TXN_TYPE,
+    ("v_business_partners", "invoice_method"): INV_METHOD,
+    ("v_business_partners", "tax_type"): TAX_TYPE,
+    ("v_business_partners", "vendor_type"): VENDOR_TYPE,
+    ("v_users", "group"): USER_GROUP,
 }
 
 # 通貨フィルタのドロップダウンに値一覧を出す列
@@ -451,6 +460,8 @@ def apply_remappings(fields):
         api("POST", f"/api/field/{fid}/values",
             {"values": [[k, v] for k, v in mapping.items()]})
     for tbl, col in LIST_VALUE_FIELDS:
+        if (tbl, col) in REMAP:
+            continue  # REMAP 側で設定済み — 再 PUT すると remapping が消える
         fid = fields.get((tbl, col))
         if fid is not None:
             api("PUT", f"/api/field/{fid}", {"has_field_values": "list"})
