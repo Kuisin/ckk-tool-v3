@@ -172,7 +172,8 @@ SELECT
   round(ol.unit_price * 100 / nullif(cur.rate_per_100_jpy, 0), 2)                     AS unit_price_jpy,
   round(ol.unit_price * usd.rate_per_100_jpy / nullif(cur.rate_per_100_jpy, 0), 2)   AS unit_price_usd,
   round(ol.amount * 100 / nullif(cur.rate_per_100_jpy, 0), 2)                         AS amount_jpy,
-  round(ol.amount * usd.rate_per_100_jpy / nullif(cur.rate_per_100_jpy, 0), 2)       AS amount_usd
+  round(ol.amount * usd.rate_per_100_jpy / nullif(cur.rate_per_100_jpy, 0), 2)       AS amount_usd,
+  'ORD-'||ol.acceptance_year_month||'-'||lpad(ol.acceptance_seq::text,5,'0') AS order_no
 FROM app.order_lines ol
 JOIN app.order_acceptances oa
   ON oa.year_month = ol.acceptance_year_month AND oa.seq = ol.acceptance_seq
@@ -188,10 +189,15 @@ SELECT
   dr.id, dr.request_number, dr.trigger, dr.status,
   coalesce(prod.name->>'ja', prod.name->>'en') AS product_name,
   cu.display_name AS created_by_name,
-  dr.completed_at, dr.created_at, dr.updated_at
+  dr.completed_at, dr.created_at, dr.updated_at,
+  CASE WHEN ol.id IS NOT NULL THEN
+    'ORD-'||ol.acceptance_year_month||'-'||lpad(ol.acceptance_seq::text,5,'0')
+      || CASE WHEN ol.branch IS NOT NULL THEN '-'||lpad(ol.branch::text,2,'0') ELSE '' END
+  END AS order_line_no
 FROM app.design_requests dr
 LEFT JOIN app.products prod ON prod.id = dr.product_id
-LEFT JOIN app.users cu ON cu.id = dr.created_by;
+LEFT JOIN app.users cu ON cu.id = dr.created_by
+LEFT JOIN app.order_lines ol ON ol.id = dr.order_line_id;
 
 -- =====================================================================
 -- 購買 (Purchasing)
@@ -285,13 +291,23 @@ SELECT
   cu.display_name AS created_by_name,
   au.display_name AS approved_by_name,
   wo.approved_at, wo.started_at, wo.completed_at, wo.created_at, wo.updated_at,
-  prod.currency  -- 製品の通貨（指示書自体は通貨を持たない — フィルタ用）
+  prod.currency,  -- 製品の通貨（指示書自体は通貨を持たない — フィルタ用）
+  ords.order_line_nos  -- 割当済み注文明細番号（ORD-…-NN。m:n — 複数はカンマ区切り、割当ゼロ = NULL）
 FROM app.work_orders wo
 LEFT JOIN app.products prod          ON prod.id = wo.product_id
 LEFT JOIN app.materials m            ON m.id = wo.material_id
 LEFT JOIN app.storage_locations sl   ON sl.id = wo.storage_location_id
 LEFT JOIN app.users cu ON cu.id = wo.created_by
-LEFT JOIN app.users au ON au.id = wo.approved_by;
+LEFT JOIN app.users au ON au.id = wo.approved_by
+LEFT JOIN LATERAL (
+  SELECT string_agg(
+           'ORD-'||ol.acceptance_year_month||'-'||lpad(ol.acceptance_seq::text,5,'0')
+             || CASE WHEN ol.branch IS NOT NULL THEN '-'||lpad(ol.branch::text,2,'0') ELSE '' END,
+           ', ' ORDER BY ol.acceptance_year_month, ol.acceptance_seq, ol.branch) AS order_line_nos
+  FROM app.work_order_order_lines wol
+  JOIN app.order_lines ol ON ol.id = wol.order_line_id
+  WHERE wol.work_order_id = wo.id
+) ords ON true;
 
 CREATE OR REPLACE VIEW analytics.v_work_order_steps WITH (security_invoker = true) AS
 SELECT
@@ -305,12 +321,22 @@ SELECT
   coalesce(sup.name->>'ja', sup.name->>'en') AS supplier_name,
   wos.input_quantity, wos.output_success_quantity,
   wos.output_defect_semi_finished, wos.output_defect_scrap, wos.output_defect_rework,
-  wos.started_at, wos.completed_at, wos.sort_order
+  wos.started_at, wos.completed_at, wos.sort_order,
+  ords.order_line_nos  -- 指示書に割当済みの注文明細番号（ORD-…-NN）
 FROM app.work_order_steps wos
 JOIN app.work_orders wo ON wo.id = wos.work_order_id
 LEFT JOIN app.process_step_catalog ps ON ps.id = wos.process_step_id
 LEFT JOIN app.plants pl  ON pl.id = wos.plant_id
-LEFT JOIN app.business_partners sup ON sup.id = wos.supplier_bp_id;
+LEFT JOIN app.business_partners sup ON sup.id = wos.supplier_bp_id
+LEFT JOIN LATERAL (
+  SELECT string_agg(
+           'ORD-'||ol.acceptance_year_month||'-'||lpad(ol.acceptance_seq::text,5,'0')
+             || CASE WHEN ol.branch IS NOT NULL THEN '-'||lpad(ol.branch::text,2,'0') ELSE '' END,
+           ', ' ORDER BY ol.acceptance_year_month, ol.acceptance_seq, ol.branch) AS order_line_nos
+  FROM app.work_order_order_lines wol
+  JOIN app.order_lines ol ON ol.id = wol.order_line_id
+  WHERE wol.work_order_id = wo.id
+) ords ON true;
 
 CREATE OR REPLACE VIEW analytics.v_work_order_step_plans WITH (security_invoker = true) AS
 SELECT
@@ -430,8 +456,19 @@ SELECT
   rep.sales_staff,
   coalesce(pl.name->>'ja', pl.name->>'en')         AS from_plant_name,
   CASE WHEN wo.id IS NOT NULL THEN 'WO-'||wo.year_month||'-'||lpad(wo.seq::text,5,'0') END AS work_order_no,
-  dor.shipped_at, dor.created_at, dor.updated_at
+  dor.shipped_at, dor.created_at, dor.updated_at,
+  ords.order_line_nos  -- 明細が紐づく注文明細番号（ORD-…-NN。複数はカンマ区切り）
 FROM app.delivery_orders dor
+LEFT JOIN LATERAL (
+  SELECT string_agg(DISTINCT
+           'ORD-'||ol.acceptance_year_month||'-'||lpad(ol.acceptance_seq::text,5,'0')
+             || CASE WHEN ol.branch IS NOT NULL THEN '-'||lpad(ol.branch::text,2,'0') ELSE '' END,
+           ', ') AS order_line_nos
+  FROM app.delivery_order_items di2
+  JOIN app.order_lines ol ON ol.id = di2.order_line_id
+  WHERE di2.delivery_order_year_month = dor.year_month
+    AND di2.delivery_order_seq = dor.seq
+) ords ON true
 LEFT JOIN app.business_partners cust   ON cust.id = dor.customer_bp_id
 LEFT JOIN app.business_partners branch ON branch.id = dor.customer_branch_bp_id
 LEFT JOIN LATERAL (
@@ -454,9 +491,14 @@ SELECT
   di.id,
   'DOR-'||di.delivery_order_year_month||'-'||lpad(di.delivery_order_seq::text,5,'0') AS delivery_order_no,
   coalesce(prod.name->>'ja', prod.name->>'en') AS product_name,
-  di.lot_number, di.quantity, di.sort_order
+  di.lot_number, di.quantity, di.sort_order,
+  CASE WHEN ol.id IS NOT NULL THEN
+    'ORD-'||ol.acceptance_year_month||'-'||lpad(ol.acceptance_seq::text,5,'0')
+      || CASE WHEN ol.branch IS NOT NULL THEN '-'||lpad(ol.branch::text,2,'0') ELSE '' END
+  END AS order_line_no
 FROM app.delivery_order_items di
-LEFT JOIN app.products prod ON prod.id = di.product_id;
+LEFT JOIN app.products prod ON prod.id = di.product_id
+LEFT JOIN app.order_lines ol ON ol.id = di.order_line_id;
 
 CREATE OR REPLACE VIEW analytics.v_delivery_notes WITH (security_invoker = true) AS
 SELECT
@@ -466,12 +508,24 @@ SELECT
   coalesce(rb.name->>'ja', rb.name->>'en')   AS recipient_branch_name,
   coalesce(eu.name->>'ja', eu.name->>'en')   AS end_user_name,
   su.display_name AS sales_staff,
-  dn.delivered_at, dn.created_at, dn.updated_at
+  dn.delivered_at, dn.created_at, dn.updated_at,
+  'DOR-'||dn.delivery_order_year_month||'-'||lpad(dn.delivery_order_seq::text,5,'0') AS delivery_order_no,
+  ords.order_line_nos  -- 出荷書経由で紐づく注文明細番号（ORD-…-NN）
 FROM app.delivery_notes dn
 LEFT JOIN app.business_partners rc ON rc.id = dn.recipient_bp_id
 LEFT JOIN app.business_partners rb ON rb.id = dn.recipient_branch_bp_id
 LEFT JOIN app.business_partners eu ON eu.id = dn.end_user_bp_id
-LEFT JOIN app.users su ON su.id = dn.sales_rep_id;
+LEFT JOIN app.users su ON su.id = dn.sales_rep_id
+LEFT JOIN LATERAL (
+  SELECT string_agg(DISTINCT
+           'ORD-'||ol.acceptance_year_month||'-'||lpad(ol.acceptance_seq::text,5,'0')
+             || CASE WHEN ol.branch IS NOT NULL THEN '-'||lpad(ol.branch::text,2,'0') ELSE '' END,
+           ', ') AS order_line_nos
+  FROM app.delivery_order_items di
+  JOIN app.order_lines ol ON ol.id = di.order_line_id
+  WHERE di.delivery_order_year_month = dn.delivery_order_year_month
+    AND di.delivery_order_seq = dn.delivery_order_seq
+) ords ON true;
 
 CREATE OR REPLACE VIEW analytics.v_delivery_note_items WITH (security_invoker = true) AS
 SELECT
@@ -511,8 +565,16 @@ SELECT
   ii.id,
   'INV-'||ii.invoice_year_month||'-'||lpad(ii.invoice_seq::text,5,'0') AS invoice_no,
   ii.description->>'ja' AS description,
-  ii.quantity, ii.unit_price, ii.amount, ii.sort_order
-FROM app.invoice_items ii;
+  ii.quantity, ii.unit_price, ii.amount, ii.sort_order,
+  CASE WHEN ol.id IS NOT NULL THEN
+    'ORD-'||ol.acceptance_year_month||'-'||lpad(ol.acceptance_seq::text,5,'0')
+      || CASE WHEN ol.branch IS NOT NULL THEN '-'||lpad(ol.branch::text,2,'0') ELSE '' END
+  END AS order_line_no,
+  CASE WHEN ii.delivery_order_year_month IS NOT NULL THEN
+    'DOR-'||ii.delivery_order_year_month||'-'||lpad(ii.delivery_order_seq::text,5,'0')
+  END AS delivery_order_no
+FROM app.invoice_items ii
+LEFT JOIN app.order_lines ol ON ol.id = ii.order_line_id;
 
 CREATE OR REPLACE VIEW analytics.v_billing_closings WITH (security_invoker = true) AS
 SELECT

@@ -1004,6 +1004,7 @@ m(col, ja) AS (VALUES
   ('quote_no', '見積番号'),
   ('order_no', '注文番号'),
   ('order_line_no', '注文明細番号'),
+  ('order_line_nos', '注文明細番号(一覧)'),
   ('work_order_no', '指示書番号'),
   ('delivery_order_no', '出荷書番号'),
   ('delivery_no', '納品番号'),
