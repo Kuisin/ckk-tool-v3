@@ -85,7 +85,28 @@ Conventions:
 Views (column lists follow):
 """
 
+# 主要ビューの列一覧は query_business_data の **docstring に直接**書いてある —
+# 勤怠ツールが安定しているのはスキーマがツール説明に入っているからで、
+# 「先に get_business_schema を呼べ」という指示だけでは小さいモデルは従わず、
+# employee_id / business_person_name のような列を捏造していた（実測）。
+# docstring の列一覧が実ビューとずれたら直すこと（正は analytics-views.sql）。
 _business_schema_cache: str | None = None
+
+
+def _business_listing() -> str:
+    """analytics ビューの一覧（information_schema から動的取得・キャッシュ）。"""
+    global _business_schema_cache
+    if _business_schema_cache is None:
+        listing = _run_select(
+            "SELECT table_name AS view, string_agg(column_name, ', ' ORDER BY ordinal_position) AS columns "
+            "FROM information_schema.columns WHERE table_schema = 'analytics' "
+            "GROUP BY table_name ORDER BY table_name",
+            BUSINESS_DB_ID,
+        )
+        if listing.startswith(("Error", "Query", "SQL error")):
+            return listing  # 失敗はキャッシュしない
+        _business_schema_cache = listing
+    return _business_schema_cache
 
 
 def _dataset(sql: str, db_id: int) -> dict:
@@ -116,7 +137,13 @@ def _run_select(sql: str, db_id: int) -> str:
     try:
         result = _dataset(statement, db_id)
     except urllib.error.HTTPError as e:
-        return f"Query failed (HTTP {e.code}): {e.read().decode()[:300]}"
+        body = e.read().decode()
+        # Metabase の 400 は巨大な JSON — モデルに返すのは読める error だけ
+        try:
+            body = json.loads(body).get("error") or body
+        except ValueError:
+            pass
+        return f"Query failed (HTTP {e.code}): {body[:300]}"
     except Exception as e:  # noqa: BLE001
         return f"Query error: {e}"
     data = result.get("data", {})
@@ -179,50 +206,82 @@ def query_labor_data(sql: str) -> str:
 
 @mcp.tool()
 def get_business_schema() -> str:
-    """Return the CKK 業務 (business) database views and their columns — orders,
-    production work orders, shipping, invoices, inventory, and masters. ALWAYS
-    call this before writing business SQL so you use correct view/column names."""
-    global _business_schema_cache
-    if _business_schema_cache is None:
-        listing = _run_select(
-            "SELECT table_name AS view, string_agg(column_name, ', ' ORDER BY ordinal_position) AS columns "
-            "FROM information_schema.columns WHERE table_schema = 'analytics' "
-            "GROUP BY table_name ORDER BY table_name",
-            BUSINESS_DB_ID,
-        )
-        if listing.startswith(("Error", "Query", "SQL error")):
-            # Don't cache failures — return the header plus the error so the
-            # model knows the live listing is unavailable right now.
-            return BUSINESS_SCHEMA_HEADER + "\n" + listing
-        _business_schema_cache = BUSINESS_SCHEMA_HEADER + "\n" + listing
-    return _business_schema_cache
+    """Return ALL CKK 業務 (business) database views and their columns — orders,
+    production work orders, shipping, invoices, inventory, and masters. Call
+    this when a view you need is not in the core list shown by
+    query_business_data."""
+    listing = _business_listing()
+    return BUSINESS_SCHEMA_HEADER + "\n" + listing
 
 
 @mcp.tool()
 def query_business_data(sql: str) -> str:
     """Run a read-only PostgreSQL SELECT against the CKK 業務 (business)
-    database — sales orders, production work orders, shipping, invoices,
-    inventory, business partners, products — and return rows as a markdown
-    table.
+    database — orders (受注), production work orders (指示書), shipping (出荷),
+    invoices (請求), inventory (在庫), business partners (取引先), products
+    (製品) — and return rows as a markdown table. Query ONLY the views below
+    by bare name with their EXACT column names — do NOT invent tables or
+    columns.
 
-    ALWAYS call get_business_schema first and query the analytics views it
-    lists (v_order_lines, v_work_orders, v_business_partners, v_products,
-    v_invoices, v_product_inventory, …) by bare name. The views expose
-    readable text columns (customer_name, product_name, status, order_no) —
-    do NOT guess table names or join raw tables.
+    Core views (use EXACT names; text columns are pre-joined Japanese names):
+      v_order_lines(order_line_no, order_no, acceptance_status, order_date,
+        customer_name, sales_staff, product_name, order_type, quantity,
+        unit_price, amount, delivery_date, status, lot_number, created_at,
+        currency, amount_jpy, amount_usd)
+      v_order_acceptances(order_no, status, order_date, customer_name,
+        sales_staff, assigned_plant_name, created_at, currency, quote_no)
+      v_work_orders(work_order_no, lot_number, type, status, approval_status,
+        planned_quantity, product_name, material_name, created_by_name,
+        started_at, completed_at, created_at, currency, order_line_nos)
+      v_work_order_steps(work_order_no, lot_number, process_step_name,
+        process_category, execution_location, status, plant_name,
+        supplier_name, input_quantity, output_success_quantity, started_at,
+        completed_at, sort_order)
+      v_invoices(invoice_no, status, customer_name, sales_staff,
+        billing_period_from, billing_period_to, subtotal, tax_amount,
+        total_amount, issued_at, due_date, currency, total_amount_jpy)
+      v_business_partners(bp_code, name_ja, name_kana, short_name, roles,
+        customer_code, vendor_code, vendor_type, is_active)
+      v_products(id, name_ja, material_type_name, diameter_mm, length_mm,
+        unit, is_active)
+      v_product_inventory(product_name, plant_name, storage_location_name,
+        lot_number, quantity, reserved_quantity, is_semi_finished, updated_at)
+      v_material_inventory(material_name, plant_name, storage_location_name,
+        quantity, reserved_quantity, unit, updated_at)
+      v_delivery_orders(delivery_order_no, type, status, customer_name,
+        sales_staff, from_plant_name, shipped_at, order_line_nos)
+    More views (quotes, estimates, approvals, defects, receipts, …): call
+    get_business_schema for the full list.
+
+    Rules:
+    - Label people/companies by the *_name / sales_staff text columns. There
+      is NO employee_id / business_person / customer_id-style column here.
+    - 勤怠・労働時間 (attendance data, v_labor) is NOT in this database — use
+      query_labor_data for that.
+    - status columns hold enum text (DRAFT/CONFIRMED/IN_PROGRESS/SHIPPED/…).
+    - Amounts are in the document's `currency` (default JPY); `amount_jpy`
+      is the ¥-converted value — use it when totalling across currencies.
 
     Examples:
-      -- order lines with customer and amount
-      SELECT order_line_no, customer_name, product_name, quantity, amount, status
-      FROM v_order_lines ORDER BY order_line_no DESC LIMIT 20
+      -- this month's order amount
+      SELECT ROUND(SUM(amount_jpy)) AS total_jpy FROM v_order_lines
+      WHERE created_at >= date_trunc('month', CURRENT_DATE)
+        AND status <> 'CANCELLED'
       -- work orders in progress
-      SELECT work_order_number, product_name, planned_quantity, status
+      SELECT work_order_no, product_name, planned_quantity, status
       FROM v_work_orders WHERE status = 'IN_PROGRESS'
 
     sql: a single read-only SELECT or WITH...SELECT statement (no ';', no
     INSERT/UPDATE/DELETE/DDL).
     """
-    return _run_select(sql, BUSINESS_DB_ID)
+    result = _run_select(sql, BUSINESS_DB_ID)
+    if result.startswith(("SQL error", "Query failed")):
+        # 名前間違いに自力でリカバリできるよう、実在ビューの一覧を返す
+        listing = _business_listing()
+        if not listing.startswith(("Error", "Query", "SQL error")):
+            result += ("\n\nThe views that actually exist are listed below — "
+                       "fix the query to use these exact names:\n" + listing)
+    return result
 
 
 if __name__ == "__main__":
