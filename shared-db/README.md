@@ -115,6 +115,7 @@ server-side `~/stacks/shared-db/.env`); grants + per-role `search_path` in
 | `app` | nextjs-web Prisma Client | — (Prisma qualifies) | rw all v3 schemas, ro kot/directory |
 | `kot_ro` | Metabase db 2 (労務) | `kot, directory` | read-only |
 | `metabase_ro` | Metabase db 5 (CKK 業務) | `app, analytics` | read-only, `app` + `analytics` ビュー（機微列はマスク） |
+| `fx_rates` | metabase スタック fx-rates（為替レート日次更新） | `app` | `app.currencies` の `rate_to_jpy`/`updated_at` UPDATE のみ |
 | `studio_ro` | Prisma Studio (db.kai-lab.net) | all schemas | read-only, every schema |
 | `postgres` | Prisma migrations only | — | superuser |
 

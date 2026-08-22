@@ -51,7 +51,7 @@ dev と main を**常時両方**動かす（本番の隣で検証するため）
 |---|---|---|
 | `shared-db` | shared-db | **業務 DB 本体**（PG17 + PGroonga、スキーマ分割） |
 | `prisma-studio` | prisma-studio | DB ブラウザ |
-| `metabase` | metabase, metabase-db | BI ダッシュボード |
+| `metabase` | metabase, metabase-db, fx-rates | BI ダッシュボード + 為替レート日次更新（app.currencies） |
 | `legacy-db` | ckk-legacy-db | 旧 macOS 版の `ckk_system`（FileMaker 移行元・参照専用） |
 
 ### 5. AI — GPU を使うもの（32GB × 2 枚）

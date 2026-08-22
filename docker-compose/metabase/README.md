@@ -87,8 +87,15 @@ ssh 192.168.50.15 "cd ~/stacks/metabase && docker compose restart metabase"   # 
 - すべて `WITH (security_invoker = true)` — ビューは問い合わせたロールの権限で走るので、
   `grants.sql` の metabase_ro マスキング（password_hash 等）がビュー越しでも効く。
 - 金額系ビューは末尾に**通貨換算列**を持つ: `currency`（書類の通貨、既定 JPY）と
-  `*_jpy` / `*_usd`（`app.currencies` の対円レートで換算 — レートは手動更新の
-  分析用。`v_currencies` で参照・更新値の確認ができる）。
+  `*_jpy` / `*_usd`（`app.currencies` の対円レートで換算。`v_currencies` で
+  参照できる。分析用換算 — 会計処理用ではない）。
+- レートは同スタックの **`fx-rates`** コンテナが**毎日 07:15 JST に自動更新**
+  （起動時にも 1 回 — 再起動 = 即時リフレッシュ）。ソースは open.er-api.com
+  （キー不要の無料エンドポイント。Rates By Exchange Rate API —
+  https://www.exchangerate-api.com）。JPY 基準レートから `rate_to_jpy = 1/X` を
+  計算し、DB に登録済みの有効通貨だけ更新する（通貨の追加/削除はマスタが正）。
+  書き込みは専用ロール `fx_rates`（`rate_to_jpy`/`updated_at` の UPDATE のみ —
+  grants.sql）。ログは `docker logs fx-rates`。
 - db 5 の schema-filter は `app,analytics`（生テーブルと解決済みビューの両方が見える）。
 - 列ラベルは下記 `gen-business-ja.py` の analytics パスで日本語化。
 - 適用（`analytics-views.sql` を先に、その後 `grants.sql`。どちらも冪等）:
