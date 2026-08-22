@@ -12,7 +12,8 @@ export type OrderAcceptanceStatus =
   | "REQUESTED"
   | "APPROVED"
   | "COMPLETED"
-  | "ARCHIVED";
+  | "ARCHIVED"
+  | "CANCELLED";
 
 export type IntakeSource = "FOLDER" | "UPLOAD" | "MANUAL";
 

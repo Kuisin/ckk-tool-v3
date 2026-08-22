@@ -26,7 +26,8 @@ export type AcceptanceStatus =
   | "REQUESTED"
   | "APPROVED"
   | "COMPLETED"
-  | "ARCHIVED";
+  | "ARCHIVED"
+  | "CANCELLED";
 
 /** 編集可否の判定に必要な行の状態。 */
 export interface LineLockState {

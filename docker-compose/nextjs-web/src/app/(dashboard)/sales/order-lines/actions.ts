@@ -5,8 +5,9 @@
  *
  * この画面は**実行専用**。明細の作成・編集は注文請書 (SA04) の明細エディタが
  * 唯一の入口で、確定（承認 → 確定）後は変更不可
- * （判定は lib/order-line-core.ts に集約）。ここに残るのは在庫照合と
- * キャンセルという、確定後にしか意味を持たない操作だけ。
+ * （判定は lib/order-line-core.ts に集約）。ここに残るのは在庫照合だけ —
+ * **明細単位のキャンセルは廃止**。キャンセルは注文請書ごと依頼して承認を
+ * 通す（SA24 の「キャンセル依頼」→ lib/order-acceptance-cancel.ts）。
  *
  * 表示番号 ORD-YYYYMM-NNNNN-NN は注文請書キー + 枝番から導出（保存しない）。
  */
@@ -21,12 +22,8 @@ import {
   orderLineWhereKey,
   parseOrderLineKey,
 } from "@/lib/doc-number";
-import {
-  releaseOrderLineReservations,
-  reserveProductStock,
-  type StockCheckResult,
-} from "@/lib/inventory";
-import { isLineCancellable, isLineStockCheckable } from "@/lib/order-line-core";
+import { reserveProductStock, type StockCheckResult } from "@/lib/inventory";
+import { isLineStockCheckable } from "@/lib/order-line-core";
 import {
   type ActionResult,
   actionError,
@@ -136,117 +133,5 @@ export async function runStockCheck(
     return actionOk(result);
   } catch (e) {
     return actionError(prismaErrorMessage(e, "在庫照合に失敗しました"));
-  }
-}
-
-/** キャンセル — 出荷済（SHIPPED）以降・キャンセル済は不可。 */
-export async function cancelOrderLine(number: string): Promise<ActionResult> {
-  const authz = await checkPermission("order_acceptance", "UPDATE");
-  if (!authz.ok) return actionError(authz.error);
-  const key = parseOrderLineKey(number);
-  if (!key) return actionError("注文明細番号が不正です");
-  if (!(await orderLineInScope(authz.access, authz.userId, scopeKeyOf(key)))) {
-    return actionError(SCOPE_DENIED);
-  }
-  try {
-    const prior = await prisma.orderLine.findUnique({
-      where: orderLineWhereKey(key),
-      select: { status: true },
-    });
-    if (prior && !isLineCancellable(prior)) {
-      return actionError(
-        "出荷済・キャンセル済の注文明細はキャンセルできません",
-      );
-    }
-    // キャンセルの伝播（監査 P1-1）: 予約の全量解放 + 未着手の子指示書を
-    // 連鎖キャンセル — 予約リーク・孤児 WO を残さない。単一 tx。
-    const result = await prisma.$transaction(async (tx) => {
-      const updated = await tx.orderLine.updateMany({
-        where: {
-          ...scopeKeyOf(key),
-          status: {
-            in: ["DRAFT", "CONFIRMED", "IN_PRODUCTION", "PARTIAL_SHIPPED"],
-          },
-        },
-        data: { status: "CANCELLED", cancelledAt: new Date() },
-      });
-      if (updated.count === 0) return { cancelled: false as const };
-      const line = await tx.orderLine.findUniqueOrThrow({
-        where: orderLineWhereKey(key),
-        select: { id: true },
-      });
-      const released = await releaseOrderLineReservations(
-        tx,
-        line.id,
-        `注文明細 ${number} キャンセルによる予約解放`,
-      );
-      // 未完了の子指示書を連鎖キャンセル（完了済みは在庫計上済みのため対象外）。
-      // 統合ロット — 他の有効な明細も束ねている指示書 — は残す（他明細の
-      // 生産を止めない。割当行は監査のため残る）。
-      const childWos = await tx.workOrder.findMany({
-        where: {
-          orderLineLinks: { some: { orderLineId: line.id } },
-          status: { notIn: ["COMPLETED", "CANCELLED"] },
-        },
-        select: {
-          id: true,
-          workOrderNumber: true,
-          orderLineLinks: {
-            select: {
-              orderLineId: true,
-              orderLine: { select: { status: true } },
-            },
-          },
-        },
-      });
-      const cancelledWos: number[] = [];
-      for (const wo of childWos) {
-        const hasOtherActiveLine = wo.orderLineLinks.some(
-          (l) =>
-            l.orderLineId !== line.id && l.orderLine.status !== "CANCELLED",
-        );
-        if (hasOtherActiveLine) continue;
-        await tx.workOrder.update({
-          where: { id: wo.id },
-          data: { status: "CANCELLED" },
-        });
-        await tx.workOrderStep.updateMany({
-          where: {
-            workOrderId: wo.id,
-            status: { in: ["PENDING", "IN_PROGRESS"] },
-          },
-          data: {
-            status: "CANCELLED",
-            cancelledAt: new Date(),
-            cancelReason: `注文明細 ${number} キャンセルに伴う連鎖キャンセル`,
-          },
-        });
-        cancelledWos.push(wo.workOrderNumber);
-      }
-      return {
-        cancelled: true as const,
-        released,
-        cancelledWos,
-      };
-    });
-    if (!result.cancelled) {
-      return actionError(
-        "出荷済・キャンセル済の注文明細はキャンセルできません",
-      );
-    }
-    await recordAudit({
-      action: "UPDATE",
-      tableName: "order_lines",
-      recordId: number,
-      before: { status: prior?.status ?? null },
-      after: {
-        status: "CANCELLED",
-        note: `予約解放 ${result.released} 件 / 連鎖キャンセル指示書 ${result.cancelledWos.length} 件${result.cancelledWos.length ? `（#${result.cancelledWos.join(", #")}）` : ""}`,
-      },
-    });
-    revalidate(number);
-    return actionOk();
-  } catch (e) {
-    return actionError(prismaErrorMessage(e, "キャンセルに失敗しました"));
   }
 }

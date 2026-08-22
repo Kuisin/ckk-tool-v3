@@ -45,6 +45,7 @@ export const STATUS_MAPS = {
     APPROVED: { label: "承認済", color: "green" },
     COMPLETED: { label: "確定", color: "teal" },
     ARCHIVED: { label: "アーカイブ", color: "dark" },
+    CANCELLED: { label: "キャンセル", color: "red" },
   },
   MaterialPurchaseOrder: {
     DRAFT: { label: "下書き", color: "gray" },
