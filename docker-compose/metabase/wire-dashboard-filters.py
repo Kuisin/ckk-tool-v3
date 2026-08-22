@@ -29,7 +29,8 @@ DB_ID = int(os.environ.get("MB_DB_ID", "5"))
 COLLECTION_ID = int(os.environ.get("MB_COLLECTION_ID", "6"))
 
 # 期間フィルタの列の優先順（テーブルにある最初のもの）
-DATE_PREF = ["date", "created_at", "updated_at", "order_date", "started_at", "reserved_at",
+# 注文系ビューは 注文日 を期間の基準にする（order_date 最優先）
+DATE_PREF = ["order_date", "date", "created_at", "updated_at", "started_at", "reserved_at",
              "recorded_at", "worked_date", "planned_date", "issued_at",
              "delivered_at", "shipped_at", "requested_at", "acted_at"]
 

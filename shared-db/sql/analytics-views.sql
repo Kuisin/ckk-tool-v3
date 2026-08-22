@@ -755,7 +755,8 @@ SELECT
   d.display_currency,
   CASE d.display_currency WHEN 'JPY' THEN ol.amount_jpy     ELSE ol.amount_usd     END AS amount_disp,
   CASE d.display_currency WHEN 'JPY' THEN ol.unit_price_jpy ELSE ol.unit_price_usd END AS unit_price_disp,
-  ol.acceptance_status  -- 請書状態（ダッシュボードの 状態（請書） フィルタ用）
+  ol.acceptance_status,  -- 請書状態（ダッシュボードの 状態（請書） フィルタ用）
+  ol.order_date          -- 注文日（期間フィルタ・月次集計の基準）
 FROM analytics.v_order_lines ol
 CROSS JOIN (VALUES ('JPY'), ('USD')) AS d(display_currency);
 
