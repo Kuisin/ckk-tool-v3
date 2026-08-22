@@ -73,6 +73,32 @@ INV_ST = {"DRAFT": "下書き", "ISSUED": "発行済", "SENT": "送付済", "PAI
 BC_ST = {"PENDING": "未処理", "PROCESSED": "処理済", "EXPORTED": "エクスポート済"}
 RES_ST = {"RESERVED": "予約中", "CONFIRMED": "引当済", "RELEASED": "解除"}
 
+QUOTE_ST = {"DRAFT": "下書き", "ISSUED": "発行済", "ACCEPTED": "受諾済",
+            "REJECTED": "却下", "EXPIRED": "期限切れ"}
+EST_ST = {"DRAFT": "下書き", "CONFIRMED": "確定", "REGISTERED": "価格表登録済"}
+DOR_ST = {"DRAFT": "下書き", "CONFIRMED": "確定", "SHIPPED": "出荷済"}
+DOR_TYPE = {"STOCK_STORAGE": "在庫保管", "DISPATCH": "発送"}
+DRN_ST = {"DRAFT": "下書き", "ISSUED": "発行済", "DELIVERED": "納品済"}
+PO_ST = {"DRAFT": "下書き", "REQUESTED": "承認依頼中", "APPROVED": "承認済",
+         "ORDERED": "発注済", "COMPLETED": "入荷完了", "CANCELLED": "キャンセル"}
+PR_ST = {"DRAFT": "下書き", "REQUESTED": "承認依頼中", "APPROVED": "承認済",
+         "REJECTED": "差し戻し", "ORDERED": "発注済", "CANCELLED": "キャンセル"}
+DSG_ST = {"PENDING": "未着手", "IN_PROGRESS": "進行中", "COMPLETED": "完了"}
+DSG_TRG = {"QUOTE": "見積時", "SALES_ORDER": "受注時"}
+INSP_ST = {"PENDING": "未実施", "PASS": "合格", "FAIL": "不合格", "APPROVED": "承認済"}
+APRQ_ST = {"PENDING": "承認待ち", "APPROVED": "承認済", "REJECTED": "差し戻し"}
+APR_ACT = {"APPROVED": "承認", "REJECTED": "差し戻し"}
+APR_MODE = {"ANY": "いずれか1名", "ALL": "全員"}
+ORDER_TYPE = {"PRODUCTION": "本番", "TEST": "テスト", "SAMPLE": "サンプル", "OTHER": "その他"}
+WO_TYPE = {"FROM_STOCK": "在庫分", "MANUFACTURE": "製造分"}
+DELIV_METHOD = {"DIRECT_TO_USER": "ユーザー直送", "NORMAL": "通常納品"}
+INV_TYPE = {"PRODUCT": "製品", "MATERIAL": "素材"}
+TXN_TYPE = {"IN": "入庫", "OUT": "出庫", "RESERVE": "予約", "RELEASE": "解除", "ADJUST": "棚卸調整"}
+STEP_EXEC = {"INTERNAL": "社内", "OUTSOURCE": "外注"}
+PROC_CAT = {"MATERIAL_PREP": "材料準備", "MACHINING": "加工", "COATING": "コーティング",
+            "INSPECTION": "検査", "APPROVAL": "検査承認", "SHIPPING": "出荷"}
+PROC_EXEC = {"INTERNAL": "社内のみ", "INTERNAL_OR_OUTSOURCE": "社内・外注"}
+
 # (ビュー, 列) → 値マップ。remapping はビュー側の列に付ける（カードが参照する列）。
 REMAP = {
     ("v_order_acceptances", "status"): OA_ST,
@@ -86,6 +112,32 @@ REMAP = {
     ("v_inventory_reservations", "status"): RES_ST,
     ("v_order_lines_disp", "status"): OL_ST,
     ("v_invoices_disp", "status"): INV_ST,
+    # 残りの enum も全ビューで日本語表示にする（生 enum 露出の解消）
+    ("v_quotes", "status"): QUOTE_ST,
+    ("v_estimates", "status"): EST_ST,
+    ("v_delivery_orders", "status"): DOR_ST,
+    ("v_delivery_orders", "type"): DOR_TYPE,
+    ("v_delivery_notes", "status"): DRN_ST,
+    ("v_delivery_notes", "delivery_method"): DELIV_METHOD,
+    ("v_material_purchase_orders", "status"): PO_ST,
+    ("v_purchase_requests", "status"): PR_ST,
+    ("v_design_requests", "status"): DSG_ST,
+    ("v_design_requests", "trigger"): DSG_TRG,
+    ("v_inspection_records", "status"): INSP_ST,
+    ("v_approval_requests", "status"): APRQ_ST,
+    ("v_approval_requests", "mode"): APR_MODE,
+    ("v_approval_records", "action"): APR_ACT,
+    ("v_order_lines", "order_type"): ORDER_TYPE,
+    ("v_quote_items", "order_type"): ORDER_TYPE,
+    ("v_price_list_variants", "order_type"): ORDER_TYPE,
+    ("v_work_orders", "type"): WO_TYPE,
+    ("v_work_order_steps", "execution_location"): STEP_EXEC,
+    ("v_work_order_steps", "process_category"): PROC_CAT,
+    ("v_process_step_catalog", "category"): PROC_CAT,
+    ("v_process_step_catalog", "execution_location"): PROC_EXEC,
+    ("v_inventory_reservations", "inventory_type"): INV_TYPE,
+    ("v_inventory_transactions", "inventory_type"): INV_TYPE,
+    ("v_inventory_transactions", "transaction_type"): TXN_TYPE,
 }
 
 # 通貨フィルタのドロップダウンに値一覧を出す列
@@ -314,17 +366,37 @@ def build_query(c, tables, fields):
         q["limit"] = spec["limit"]
 
     if spec.get("money_text"):
-        # 2 段クエリ: 1 段目で表示通貨ごとに合計 → 2 段目のカスタム列で
-        # 「通貨記号 + 数値」のテキストを作る（¥ は整数、$ は小数 2 桁）。
-        # 表示通貨フィルタ（required・既定 JPY）で常に 1 行 = スカラー表示。
+        # 2 段クエリ: 1 段目で表示通貨ごとに合計 → 2 段目のカスタム列チェーンで
+        # 「通貨記号 + 桁区切りつき数値」（¥162,225 / $1,020.57）を作る。
+        # Metabase の legacy→pMBQL 変換は「case の値に式参照」を含む式を黙って
+        # 落とすため、case はリテラル値のみで使い、桁区切りは 12 桁ゼロ詰め →
+        # 固定位置 substring → regex で先頭の 0/, を除去、という case 不要の
+        # 組み立てにしてある（各式は浅く保ち、式参照でチェーンする）。
         disp_ref = ["field", "display_currency", {"base-type": "type/Text"}]
         sum_ref = ["field", "sum", {"base-type": "type/Float"}]
-        symbol = ["case", [[["=", disp_ref, "JPY"], "¥"]], {"default": "$"}]
-        value = ["case", [[["=", disp_ref, "JPY"], ["round", sum_ref]]],
-                 {"default": ["/", ["round", ["*", sum_ref, 100]], 100]}]
-        q = {"source-query": q,
-             "expressions": {"金額": ["concat", symbol, value]},
-             "fields": [["expression", "金額"]]}
+        E = lambda n: ["expression", n]
+        exprs = {
+            # 整数部（JPY: 四捨五入 / USD: 切り捨て）と USD セント
+            "xv": ["case", [[["=", disp_ref, "JPY"], ["floor", ["+", sum_ref, 0.5]]]],
+                   {"default": ["floor", sum_ref]}],
+            "ce": ["floor", ["+", ["-", ["*", sum_ref, 100], ["*", E("xv"), 100]], 0.5]],
+            # 12 桁ゼロ詰め → 3 桁ずつカンマ結合 → 先頭の 0 と , を除去
+            "pd": ["concat", "000000000000", E("xv")],
+            "p12": ["substring", E("pd"), ["-", ["length", E("pd")], 11], 12],
+            "gt_raw": ["concat", ["substring", E("p12"), 1, 3], ",",
+                       ["substring", E("p12"), 4, 3], ",",
+                       ["substring", E("p12"), 7, 3], ",",
+                       ["substring", E("p12"), 10, 3]],
+            "gt": ["coalesce", ["regex-match-first", E("gt_raw"), "[1-9][0-9,]*$"], "0"],
+            # セント 2 桁ゼロ詰めと、通貨ごとのサフィックス（JPY は空 = 長さ 0）
+            "pc": ["concat", "0", E("ce")],
+            "p2c": ["substring", E("pc"), ["-", ["length", E("pc")], 1], 2],
+            "sym": ["case", [[["=", disp_ref, "JPY"], "¥"]], {"default": "$"}],
+            "sfxlen": ["case", [[["=", disp_ref, "JPY"], 0]], {"default": 4}],
+            "sfx": ["substring", ["concat", ".", E("p2c")], 1, E("sfxlen")],
+            "金額": ["concat", E("sym"), E("gt"), E("sfx")],
+        }
+        q = {"source-query": q, "expressions": exprs, "fields": [["expression", "金額"]]}
 
     return {"database": DB_ID, "type": "query", "query": q}
 
@@ -374,7 +446,7 @@ def apply_remappings(fields):
             continue
         api("PUT", f"/api/field/{fid}", {"has_field_values": "list"})
         api("POST", f"/api/field/{fid}/dimension",
-            {"type": "internal", "name": "状態", "human_readable_field_id": None})
+            {"type": "internal", "name": col, "human_readable_field_id": None})
         api("POST", f"/api/field/{fid}/values",
             {"values": [[k, v] for k, v in mapping.items()]})
     for tbl, col in LIST_VALUE_FIELDS:
