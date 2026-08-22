@@ -68,6 +68,13 @@ export interface MenuItemDef {
    */
   href?: string;
   divider?: boolean;
+  /**
+   * 状態的にいま実行できない項目。**隠さずグレーアウトで残す** — 操作が
+   * 存在すること自体を見せ、なぜ押せないかを disabledReason で説明する。
+   */
+  disabled?: boolean;
+  /** disabled のときに項目の下に出す小さな説明（例: 「確定後に実行できます」）。 */
+  disabledReason?: string;
 }
 
 // ── ResourceActions (detail header actions) ─────────────────────────────────
@@ -99,32 +106,46 @@ export function ResourceActions({
           </Button>
         </Menu.Target>
         <Menu.Dropdown>
-          {extra.map((m, i) => (
-            <Box key={m.label}>
-              {m.divider && i > 0 && <Menu.Divider />}
-              {m.href ? (
-                // 実アンカー + target="_blank" — PWA でもアプリ内ブラウザで開く。
-                <Menu.Item
-                  color={m.color}
-                  component="a"
-                  href={m.href}
-                  leftSection={m.icon}
-                  rel="noopener noreferrer"
-                  target="_blank"
-                >
+          {extra.map((m, i) => {
+            const label =
+              m.disabled && m.disabledReason ? (
+                <Box>
                   {m.label}
-                </Menu.Item>
+                  <Text c="dimmed" size="xs">
+                    {m.disabledReason}
+                  </Text>
+                </Box>
               ) : (
-                <Menu.Item
-                  color={m.color}
-                  leftSection={m.icon}
-                  onClick={m.onClick}
-                >
-                  {m.label}
-                </Menu.Item>
-              )}
-            </Box>
-          ))}
+                m.label
+              );
+            return (
+              <Box key={m.label}>
+                {m.divider && i > 0 && <Menu.Divider />}
+                {m.href && !m.disabled ? (
+                  // 実アンカー + target="_blank" — PWA でもアプリ内ブラウザで開く。
+                  <Menu.Item
+                    color={m.color}
+                    component="a"
+                    href={m.href}
+                    leftSection={m.icon}
+                    rel="noopener noreferrer"
+                    target="_blank"
+                  >
+                    {label}
+                  </Menu.Item>
+                ) : (
+                  <Menu.Item
+                    color={m.color}
+                    disabled={m.disabled}
+                    leftSection={m.icon}
+                    onClick={m.disabled ? undefined : m.onClick}
+                  >
+                    {label}
+                  </Menu.Item>
+                )}
+              </Box>
+            );
+          })}
         </Menu.Dropdown>
       </Menu>
     ) : null;

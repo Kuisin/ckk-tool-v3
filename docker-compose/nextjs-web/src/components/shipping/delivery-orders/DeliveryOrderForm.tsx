@@ -171,6 +171,7 @@ export function DeliveryOrderForm({
   order,
   plantOptions,
   initialOrderLine,
+  initialAcceptance,
 }: {
   mode: "create" | "edit";
   /** 編集時: 対象出荷書（サーバー取得の view-model）。 */
@@ -182,6 +183,12 @@ export function DeliveryOrderForm({
    * 「出荷書作成」から来たとき）。ピッカーで選んだのと同じ経路を通す。
    */
   initialOrderLine?: { id: string; label: string } | null;
+  /**
+   * 新規時に `?acceptance=` でプリセレクトする注文請書番号（ORD-…。
+   * 注文請書詳細 SA24 の「出荷書を作成」から来たとき）。ピッカーで選んだのと
+   * 同じ経路で、出荷できる注文明細すべてをグループとして追加する。
+   */
+  initialAcceptance?: string | null;
 }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -364,11 +371,31 @@ export function DeliveryOrderForm({
   // addSourceGroups も毎レンダー作り直されるので依存に載せられないため。
   const seeded = useRef(false);
   useEffect(() => {
-    if (mode !== "create" || !initialOrderLine || seeded.current) return;
+    if (
+      mode !== "create" ||
+      (!initialOrderLine && !initialAcceptance) ||
+      seeded.current
+    )
+      return;
     seeded.current = true;
-    fetchDeliverySourceInfo(initialOrderLine.id).then((info) => {
-      if (info) addSourceGroups([info]);
-    });
+    if (initialOrderLine) {
+      fetchDeliverySourceInfo(initialOrderLine.id).then((info) => {
+        if (info) addSourceGroups([info]);
+      });
+    } else if (initialAcceptance) {
+      fetchDeliveryAcceptanceSourceInfo(initialAcceptance).then((infos) => {
+        if (infos.length > 0) {
+          addSourceGroups(infos);
+        } else {
+          notifications.show({
+            title: "追加できません",
+            message:
+              "出荷できる注文明細がありません（展開済みの注文請書を選択してください）",
+            color: "red",
+          });
+        }
+      });
+    }
   });
 
   const totalQuantity = form.values.items.reduce(

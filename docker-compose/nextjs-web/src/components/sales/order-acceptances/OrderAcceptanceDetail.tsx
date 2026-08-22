@@ -54,6 +54,7 @@ import {
   IconRefresh,
   IconSend,
   IconTransform,
+  IconTruck,
   IconX,
 } from "@tabler/icons-react";
 import Link from "next/link";
@@ -103,6 +104,7 @@ import { HistoryPanel } from "@/components/ui/HistoryPanel";
 import { MemoPanel } from "@/components/ui/MemoPanel";
 import { MoneyText } from "@/components/ui/MoneyText";
 import { ModalShell } from "@/components/ui/modals";
+import { NextStepCard } from "@/components/ui/NextStepCard";
 import { SalesRepSelect } from "@/components/ui/SalesRepSelect";
 import { SearchSelect } from "@/components/ui/SearchSelect";
 import { StatusBadge } from "@/components/ui/StatusBadge";
@@ -425,40 +427,63 @@ export function OrderAcceptanceDetail({
         tone="action"
       />
     );
+  } else if (a.status === "COMPLETED") {
+    // 確定後の次のステップ = 出荷書の作成（この注文請書をプリセレクト）。
+    // アーカイブ・キャンセル依頼は例外操作なのでメニューに置く。
+    actionCard = (
+      <NextStepCard
+        buttonLabel="出荷書を作成"
+        description="この注文請書の出荷できる注文明細を読み込んだ状態で出荷書フォームを開きます"
+        href={`/shipping/delivery-orders/new?acceptance=${a.number}`}
+        icon={<IconTruck size={20} />}
+        title="次のステップ: 出荷書の作成"
+      />
+    );
   }
-  // 確定後（COMPLETED）は ActionCard を出さない — 確定はゴールであって
-  // 「次にやること」ではない。アーカイブは任意の片付け操作なので、
-  // 急かさないよう ResourceActions のメニューにだけ置く。
 
   return (
     <DetailShell
       actions={
         <ResourceActions
           // 下書きの閲覧中だけ「編集」を出す（design.md §8.2 の定位置）。
-          menuItems={
-            a.status === "COMPLETED"
-              ? [
-                  {
-                    label: "アーカイブ",
-                    icon: <IconArchive size={14} />,
-                    onClick: () => setArchiveOpen(true),
-                  },
-                  // 明細単位のキャンセルは無い — 注文請書ごと依頼して
-                  // 承認設定（MS0B）の「注文請書キャンセル」フローを通す。
-                  ...(cancelRequest
-                    ? []
-                    : [
-                        {
-                          label: "キャンセル依頼",
-                          icon: <IconX size={14} />,
-                          color: "red",
-                          divider: true,
-                          onClick: () => setCancelReqOpen(true),
-                        },
-                      ]),
-                ]
-              : []
-          }
+          // 操作は状態に依らず全て並べ、押せないものはグレーアウトで理由を出す。
+          menuItems={[
+            {
+              label: "出荷書を作成",
+              icon: <IconTruck size={14} />,
+              disabled: a.status !== "COMPLETED",
+              disabledReason:
+                a.status === "COMPLETED" ? undefined : "確定後に作成できます",
+              onClick: () =>
+                router.push(
+                  `/shipping/delivery-orders/new?acceptance=${a.number}`,
+                ),
+            },
+            {
+              label: "アーカイブ",
+              icon: <IconArchive size={14} />,
+              disabled: a.status !== "COMPLETED",
+              disabledReason:
+                a.status === "COMPLETED" ? undefined : "確定後に実行できます",
+              onClick: () => setArchiveOpen(true),
+            },
+            // 明細単位のキャンセルは無い — 注文請書ごと依頼して
+            // 承認設定（MS0B）の「注文請書キャンセル」フローを通す。
+            {
+              label: "キャンセル依頼",
+              icon: <IconX size={14} />,
+              color: "red",
+              divider: true,
+              disabled: a.status !== "COMPLETED" || cancelRequest != null,
+              disabledReason:
+                cancelRequest != null
+                  ? "承認待ちのキャンセル依頼があります"
+                  : a.status !== "COMPLETED"
+                    ? "確定後に依頼できます"
+                    : undefined,
+              onClick: () => setCancelReqOpen(true),
+            },
+          ]}
           onEdit={
             a.status === "DRAFT" && !editing
               ? () => setEditing(true)
