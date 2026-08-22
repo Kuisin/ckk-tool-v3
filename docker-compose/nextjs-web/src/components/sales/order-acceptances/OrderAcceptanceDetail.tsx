@@ -729,11 +729,12 @@ export function OrderAcceptanceDetail({
                   <Title mb="sm" order={5}>
                     明細（{a.items.length}）
                   </Title>
-                  <Table.ScrollContainer minWidth={900}>
+                  <Table.ScrollContainer minWidth={1000}>
                     <Table highlightOnHover striped>
                       <Table.Thead>
                         <Table.Tr>
                           <Table.Th>注文明細</Table.Th>
+                          <Table.Th>指示書（割当）</Table.Th>
                           <Table.Th>製品</Table.Th>
                           <Table.Th>品名（抽出）</Table.Th>
                           <Table.Th>種別</Table.Th>
@@ -760,6 +761,40 @@ export function OrderAcceptanceDetail({
                                   >
                                     {it.lineNumber}
                                   </Anchor>
+                                ) : (
+                                  <Text c="dimmed" size="sm">
+                                    —
+                                  </Text>
+                                )}
+                              </Table.Td>
+                              <Table.Td>
+                                {/* 割当済みの指示書（#ロット番号 × 割当数）。
+                                    分割は複数行、統合は複数明細が同じ番号を持つ。 */}
+                                {it.workOrders.length > 0 ? (
+                                  <Stack gap={2}>
+                                    {it.workOrders.map((wo) => (
+                                      <Group
+                                        gap={6}
+                                        key={wo.workOrderNumber}
+                                        wrap="nowrap"
+                                      >
+                                        <Anchor
+                                          ff="mono"
+                                          href={`/production/work-orders/${wo.workOrderNumber}`}
+                                          size="sm"
+                                        >
+                                          #{wo.workOrderNumber}
+                                        </Anchor>
+                                        <Text
+                                          c="dimmed"
+                                          className="tabular-nums"
+                                          size="xs"
+                                        >
+                                          × {wo.quantity}
+                                        </Text>
+                                      </Group>
+                                    ))}
+                                  </Stack>
                                 ) : (
                                   <Text c="dimmed" size="sm">
                                     —
@@ -846,7 +881,7 @@ export function OrderAcceptanceDetail({
                       {a.items.length > 0 && (
                         <Table.Tfoot>
                           <Table.Tr>
-                            <Table.Th colSpan={4} ta="right">
+                            <Table.Th colSpan={5} ta="right">
                               合計
                             </Table.Th>
                             <Table.Th className="tabular-nums" ta="right">
