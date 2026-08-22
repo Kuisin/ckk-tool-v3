@@ -235,6 +235,8 @@ model Product {
   diameterMm     Decimal? @map("diameter_mm") @db.Decimal(8, 3)
   lengthMm       Decimal? @map("length_mm") @db.Decimal(10, 3)
   unit       String   @default("本")
+  /// 価格の通貨（currencies.code。既定 JPY）
+  currency   String   @default("JPY")
   spec       Json?
   /// 検索・AI 突合用のキーワード（別名・略称・読み・英字表記）。business_partners.match_names と同じ役割。
   matchNames String[] @default([]) @map("match_names")
@@ -259,5 +261,27 @@ model Product {
   @@unique([yearMonth, seq])
   @@index([materialTypeId])
   @@map("products")
+  @@schema("app")
+}
+
+// ─── 通貨マスタ ───────────────────────────────────────────────
+// 換算表。基準は **100 円**: rate_per_100_jpy = 「100 円で買えるその通貨の量」
+// （JPY 行は常に 100。例: USD 0.6291 = 100 円 ≒ $0.63、VND 16,434.7）。
+//   円へ:   amount_jpy = amount × 100 / rate_per_100_jpy
+//   通貨間: amount_in_to = amount × to.rate_per_100_jpy / from.rate_per_100_jpy
+// 書類・製品の `currency` 列（プレーン varchar・既定 'JPY'）はこのマスタの
+// コードを指すが、既存の price_list_entries.currency 等と同じく FK は張らない。
+// レートは shared-db スタックの fx-rates コンテナが毎日 07:15 JST に自動更新
+// （open.er-api.com、専用ロール fx_rates）。分析用換算 — 会計処理用ではない。
+model Currency {
+  code           String   @id
+  name           Json
+  ratePer100Jpy  Decimal  @map("rate_per_100_jpy") @db.Decimal(18, 6)
+  isActive       Boolean  @default(true) @map("is_active")
+  sortOrder      Int      @default(0) @map("sort_order")
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@map("currencies")
   @@schema("app")
 }

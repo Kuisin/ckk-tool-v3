@@ -29,15 +29,12 @@ import {
   IconClipboardList,
   IconLock,
   IconPackageImport,
+  IconSettings2,
   IconTruck,
-  IconX,
 } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
-import {
-  cancelOrderLine,
-  runStockCheck,
-} from "@/app/(dashboard)/sales/order-lines/actions";
+import { runStockCheck } from "@/app/(dashboard)/sales/order-lines/actions";
 import { useFormat } from "@/components/layout/PreferencesProvider";
 import { SecondaryButton } from "@/components/ui/buttons";
 import { DocNumber } from "@/components/ui/DocNumber";
@@ -46,7 +43,7 @@ import { FieldValue } from "@/components/ui/FieldValue";
 import { HistoryPanel } from "@/components/ui/HistoryPanel";
 import { MemoPanel } from "@/components/ui/MemoPanel";
 import { MoneyText } from "@/components/ui/MoneyText";
-import { ConfirmModal } from "@/components/ui/modals";
+import { NextStepCard } from "@/components/ui/NextStepCard";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import {
   type AuditEntry,
@@ -64,7 +61,7 @@ import {
 // type-only import — lib/inventory は server-only（型はバンドルされない）。
 import type { StockCheckResult } from "@/lib/inventory";
 import { isLineStockCheckable } from "@/lib/order-line-core";
-import { isCancellable, type OrderLine } from "./model";
+import type { OrderLine } from "./model";
 
 const BASE_PATH = "/sales/order-lines";
 
@@ -83,9 +80,50 @@ export function OrderLineDetail({
   const router = useRouter();
   // アクティブタブを ?tab= に保持（URL 共有でタブまで再現）
   const [tab, setTab] = useTabParam("overview");
-  const [isPending, startTransition] = useTransition();
-  const [cancelOpen, setCancelOpen] = useState(false);
   const [isChecking, startStockCheck] = useTransition();
+
+  // 指示書作成の可否 — 確定済み（製造に入れる状態）かつ 未手配数量が残って
+  // いるときだけ。押せない理由は三点メニューのグレーアウト項目で説明する。
+  const activeAllocated = order.workOrders
+    .filter((w) => w.status !== "CANCELLED")
+    .reduce((sum, w) => sum + w.allocatedQuantity, 0);
+  const remainingToAllocate = Math.max(0, order.quantity - activeAllocated);
+  const woCreatable =
+    !order.isLocked &&
+    (order.status === "CONFIRMED" || order.status === "IN_PRODUCTION") &&
+    remainingToAllocate > 0;
+  const woDisabledReason = order.isLocked
+    ? "承認依頼中のためロックされています"
+    : order.status === "DRAFT"
+      ? "注文請書の確定後に作成できます"
+      : order.status === "CANCELLED"
+        ? "キャンセル済みの明細には作成できません"
+        : remainingToAllocate === 0
+          ? "受注数量まで手配済みです"
+          : order.status === "SHIPPED" || order.status === "PARTIAL_SHIPPED"
+            ? "出荷段階の明細には作成できません"
+            : undefined;
+  const woCreateHref = `/production/work-orders/new?orderLine=${order.uuid}`;
+
+  // 出荷書作成の可否 — 確定済み以降（キャンセル・全量出荷済みを除く）で
+  // 未出荷数量が残っているときだけ。プリフィルは ?orderLine= が担う。
+  const unshipped = Math.max(0, order.quantity - order.shippedQuantity);
+  const doCreatable =
+    !order.isLocked &&
+    (order.status === "CONFIRMED" ||
+      order.status === "IN_PRODUCTION" ||
+      order.status === "PARTIAL_SHIPPED") &&
+    unshipped > 0;
+  const doDisabledReason = order.isLocked
+    ? "承認依頼中のためロックされています"
+    : order.status === "DRAFT"
+      ? "注文請書の確定後に作成できます"
+      : order.status === "CANCELLED"
+        ? "キャンセル済みの明細には作成できません"
+        : unshipped === 0
+          ? "受注数量まで出荷済みです"
+          : undefined;
+  const doCreateHref = `/shipping/delivery-orders/new?orderLine=${order.uuid}`;
   const [stockResult, setStockResult] = useState<StockCheckResult | null>(null);
 
   // 在庫照合（§4）は確定済み・製造前のみ（製造中以降は指示書側で管理）。
@@ -96,26 +134,6 @@ export function OrderLineDetail({
       const result = await runStockCheck(order.uuid);
       if (result.ok) {
         setStockResult(result.data);
-        router.refresh();
-      } else {
-        notifications.show({
-          title: "エラー",
-          message: result.error,
-          color: "red",
-        });
-      }
-    });
-  };
-
-  const runCancel = () => {
-    startTransition(async () => {
-      const result = await cancelOrderLine(order.orderNumber);
-      if (result.ok) {
-        notifications.show({
-          title: "キャンセルしました",
-          message: `注文明細 ${order.orderNumber} をキャンセルしました`,
-          color: "green",
-        });
         router.refresh();
       } else {
         notifications.show({
@@ -141,19 +159,25 @@ export function OrderLineDetail({
               在庫照合
             </SecondaryButton>
           )}
+          {/* 明細単位のキャンセルは廃止 — キャンセルは注文請書（SA24）から
+              「キャンセル依頼」で承認を通す。操作は状態に依らず全て並べ、
+              押せないものはグレーアウトで理由を出す。 */}
           <ResourceActions
             menuItems={[
-              ...(isCancellable(order)
-                ? [
-                    {
-                      label: "キャンセル",
-                      icon: <IconX size={14} />,
-                      color: "red",
-                      divider: true,
-                      onClick: () => setCancelOpen(true),
-                    },
-                  ]
-                : []),
+              {
+                label: "指示書を作成",
+                icon: <IconSettings2 size={14} />,
+                disabled: !woCreatable,
+                disabledReason: woDisabledReason,
+                onClick: () => router.push(woCreateHref),
+              },
+              {
+                label: "出荷書を作成",
+                icon: <IconTruck size={14} />,
+                disabled: !doCreatable,
+                disabledReason: doDisabledReason,
+                onClick: () => router.push(doCreateHref),
+              },
             ]}
           />
         </Group>
@@ -164,6 +188,25 @@ export function OrderLineDetail({
       title={order.orderNumber}
       updatedAt={fmt.dateTime(order.updatedAt)}
     >
+      {/* 次のステップ — 未手配が残るうちは指示書の作成、手配し終えて
+          未出荷が残るなら出荷書の作成へ誘導する（1 度に出すのは 1 枚）。 */}
+      {woCreatable ? (
+        <NextStepCard
+          buttonLabel="指示書を作成"
+          description={`未手配 ${remainingToAllocate} 本 — この注文明細をプリセレクトした状態で指示書ビルダーを開きます`}
+          href={woCreateHref}
+          icon={<IconSettings2 size={20} />}
+          title="次のステップ: 指示書の作成"
+        />
+      ) : doCreatable ? (
+        <NextStepCard
+          buttonLabel="出荷書を作成"
+          description={`未出荷 ${unshipped} 本 — この注文明細を読み込んだ状態で出荷書フォームを開きます`}
+          href={doCreateHref}
+          icon={<IconTruck size={20} />}
+          title="次のステップ: 出荷書の作成"
+        />
+      ) : null}
       {order.isLocked && (
         <Alert
           color="orange"
@@ -376,6 +419,17 @@ export function OrderLineDetail({
         <Tabs.Panel pt="md" value="shipping">
           {order.deliveryOrders.length === 0 ? (
             <EmptyState
+              action={
+                doCreatable ? (
+                  <SecondaryButton
+                    href={doCreateHref}
+                    leftSection={<IconTruck size={14} />}
+                    size="xs"
+                  >
+                    出荷書を作成
+                  </SecondaryButton>
+                ) : undefined
+              }
               icon={<IconTruck size={24} />}
               message="この注文明細の出荷書はまだありません"
             />
@@ -558,16 +612,6 @@ export function OrderLineDetail({
           </Stack>
         )}
       </Modal>
-
-      <ConfirmModal
-        confirmLabel="キャンセルする"
-        loading={isPending}
-        message={`注文明細 ${order.orderNumber} をキャンセルします。この操作は取り消せません。`}
-        onClose={() => setCancelOpen(false)}
-        onConfirm={runCancel}
-        opened={cancelOpen}
-        title="キャンセルの確認"
-      />
     </DetailShell>
   );
 }

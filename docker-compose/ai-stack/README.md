@@ -37,6 +37,25 @@ sed -i "s/CHANGE_ME_ON_DEPLOY/$(openssl rand -hex 32)/" ~/stacks/ai-stack/searxn
 docker compose up -d searxng open-webui
 ```
 
+## Data access (metabase-mcp tool server)
+
+`metabase-mcp` (built from [`./metabase-mcp`](./metabase-mcp)) exposes read-only
+data tools to Open WebUI via mcpo (OpenAPI at `http://metabase-mcp:8000`,
+protected by `MCPO_API_KEY`):
+
+| Tool | Data | Metabase db |
+|------|------|-------------|
+| `get_labor_schema` / `query_labor_data` | King of Time 勤怠 (`v_labor` …) | 2 (`kot_ro`) |
+| `get_business_schema` / `query_business_data` | CKK 業務 — 受注 / 指示書 / 出荷 / 請求 / 在庫 / マスタ via the `analytics` views | 5 (`metabase_ro`) |
+
+Queries run through Metabase `/api/dataset` with a read-only API key, so nothing
+can write and the DB-layer masking on `metabase_ro` (password hashes, kiosk
+tokens/PINs, push subscriptions) applies. `get_business_schema` lists the live
+`analytics` views from `information_schema`, so new views show up without a
+rebuild (restart the container to refresh the cache). ⚠️ `METABASE_URL` must be
+`https://bi.ckk-tool.co.jp` — Metabase 307-redirects LAN API calls to its
+site-url, which urllib won't follow for POSTs.
+
 ## Models
 
 The extractor defaults to a **vision** model (`MODEL=qwen2.5vl`) because it feeds

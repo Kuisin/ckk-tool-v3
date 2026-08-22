@@ -110,7 +110,6 @@ const schema = z.object({
   plannedQuantity: z.number().int().min(1, "予定数量は1以上"),
   materialId: z.string().nullable(),
   storageLocationId: z.string().nullable(),
-  inspectionTemplateIds: z.array(z.string()),
   notes: z.string(),
   selectedStepIds: z.array(z.number()).min(1, "工程を1つ以上選択してください"),
 });
@@ -138,7 +137,6 @@ function initialValues(
       plannedQuantity: 1,
       materialId: null,
       storageLocationId: null,
-      inspectionTemplateIds: [],
       notes: "",
       selectedStepIds: [],
     };
@@ -154,9 +152,6 @@ function initialValues(
       workOrder.storageLocationId != null
         ? String(workOrder.storageLocationId)
         : null,
-    inspectionTemplateIds: workOrder.inspectionTemplates.map((t) =>
-      String(t.id),
-    ),
     notes: workOrder.notes ?? "",
     selectedStepIds: workOrder.steps.map((s) => s.processStepId),
   };
@@ -203,6 +198,21 @@ function initialAllocRows(
     ];
   }
   return [{ key: 0, orderLineId: null, quantity: 1, info: null }];
+}
+
+/**
+ * 編集時の初期検査表割当（工程 → 検査表 id 列）。検査工程は空配列でも
+ * キーを持たせる — 「意図的に空」を既定値で上書きしないため。
+ */
+function initialStepTemplates(
+  workOrder: WorkOrderView | null | undefined,
+): Record<number, string[]> {
+  const map: Record<number, string[]> = {};
+  for (const s of workOrder?.steps ?? []) {
+    if (!s.isInspection) continue;
+    map[s.processStepId] = s.inspectionTemplates.map((t) => String(t.id));
+  }
+  return map;
 }
 
 function initialLocations(
@@ -339,38 +349,48 @@ export function WorkflowBuilder({
 
   const selected = form.values.selectedStepIds;
 
-  // 工程を追加したら、その工程を関連工程に持つ検査表を自動選択する
-  // （手動で外した選択は、工程を追加し直さない限り復活しない）。
+  // 検査表は検査工程ごとの割当。未編集（キー無し）の工程は、その工程を
+  // 関連工程に持つ検査表を既定にする。選択から外した工程はキーごと忘れて、
+  // 追加し直したときに既定へ戻す。
+  const [stepTemplates, setStepTemplates] = useState<Record<number, string[]>>(
+    () => initialStepTemplates(workOrder),
+  );
   const prevSelectedRef = useRef<Set<number>>(new Set(selected));
   useEffect(() => {
     const prev = prevSelectedRef.current;
-    const added = selected.filter((id) => !prev.has(id));
     prevSelectedRef.current = new Set(selected);
-    if (added.length === 0) return;
-    const suggest = templateOptions
-      .filter(
-        (t) =>
-          t.relatedProcessStepId != null &&
-          added.includes(t.relatedProcessStepId),
-      )
-      .map((t) => t.value);
-    if (suggest.length === 0) return;
-    const current = form.values.inspectionTemplateIds;
-    const merged = [...new Set([...current, ...suggest])];
-    if (merged.length !== current.length) {
-      form.setFieldValue("inspectionTemplateIds", merged);
-    }
-  }, [selected, templateOptions, form.values.inspectionTemplateIds, form]);
+    const removed = [...prev].filter((id) => !selected.includes(id));
+    if (removed.length === 0) return;
+    setStepTemplates((cur) => {
+      if (!removed.some((id) => id in cur)) return cur;
+      const next = { ...cur };
+      for (const id of removed) delete next[id];
+      return next;
+    });
+  }, [selected]);
+  const templatesFor = useCallback(
+    (stepId: number): string[] =>
+      stepTemplates[stepId] ??
+      templateOptions
+        .filter((t) => t.relatedProcessStepId === stepId)
+        .map((t) => t.value),
+    [stepTemplates, templateOptions],
+  );
 
   // 編集時: 割当済みだが最新でないバージョンも選択肢に残す（バージョン固定）
   const templateSelectData = useMemo(() => {
     const known = new Set(templateOptions.map((t) => t.value));
-    const extra = (workOrder?.inspectionTemplates ?? [])
-      .filter((t) => !known.has(String(t.id)))
-      .map((t) => ({ value: String(t.id), label: `${t.code} ${t.name}` }));
+    const extra = new Map<string, string>();
+    for (const step of workOrder?.steps ?? []) {
+      for (const t of step.inspectionTemplates) {
+        if (!known.has(String(t.id))) {
+          extra.set(String(t.id), `${t.code} ${t.name}`);
+        }
+      }
+    }
     return [
       ...templateOptions.map((t) => ({ value: t.value, label: t.label })),
-      ...extra,
+      ...[...extra].map(([value, label]) => ({ value, label })),
     ];
   }, [templateOptions, workOrder]);
 
@@ -509,6 +529,14 @@ export function WorkflowBuilder({
   const currentSnapshots = useMemo(
     () => toStepSnapshots(selected, locations, catalogSteps),
     [selected, locations, catalogSteps],
+  );
+  /** 検査工程のみ（検査表割当セクション用）。 */
+  const inspectionSnapshots = useMemo(
+    () =>
+      currentSnapshots.filter(
+        (s) => catalogSteps.find((c) => c.id === s.processStepId)?.isInspection,
+      ),
+    [currentSnapshots, catalogSteps],
   );
   const routeModified =
     routeSel != null &&
@@ -738,7 +766,6 @@ export function WorkflowBuilder({
       storageLocationId: values.storageLocationId
         ? Number(values.storageLocationId)
         : null,
-      inspectionTemplateIds: values.inspectionTemplateIds.map(Number),
       notes: values.notes,
       steps: currentSnapshots.map((s) => ({
         processStepId: s.processStepId,
@@ -746,6 +773,7 @@ export function WorkflowBuilder({
         plantId: s.plantId,
         supplierBpId: s.supplierBpId,
         workHours: s.workHours,
+        inspectionTemplateIds: templatesFor(s.processStepId).map(Number),
       })),
       route,
       // 作成時の作業計画（担当者 × 計画日）。編集では送らない（計画の管理は
@@ -1027,20 +1055,6 @@ export function WorkflowBuilder({
             searchable={storageLocationOptions.length > 5}
             {...form.getInputProps("storageLocationId")}
           />
-          <MultiSelect
-            clearable
-            data={templateSelectData}
-            label={
-              <HelpLabel {...fieldHelp("workOrder", "inspectionTemplates")} />
-            }
-            placeholder={
-              form.values.inspectionTemplateIds.length
-                ? undefined
-                : "検査表テンプレートを選択"
-            }
-            searchable
-            {...form.getInputProps("inspectionTemplateIds")}
-          />
         </SimpleGrid>
         {/* 素材 ATP 警告（充足=緑 / 不足+入荷予定あり=黄 / 不足+入荷予定なし=赤）。
             警告のみ — 保存はブロックしない（§5 素材判断は指示書承認側で行う）。 */}
@@ -1138,6 +1152,53 @@ export function WorkflowBuilder({
           selected={selected}
           supplierOptions={supplierOptions}
         />
+      )}
+
+      {/* 検査表は検査工程ごとの割当（work_order_step_inspection_templates）。
+          工程を追加すると、その工程を関連工程に持つ検査表が既定で選ばれる。 */}
+      {inspectionSnapshots.length > 0 && (
+        <FormSection
+          description="検査表は検査工程ごとに割り当てます。工程を追加すると、その工程を関連工程に持つ検査表が自動で選ばれます。"
+          title="検査表"
+        >
+          <Stack gap="xs">
+            {inspectionSnapshots.map((s) => {
+              const cat = catalogSteps.find((c) => c.id === s.processStepId);
+              return (
+                <Paper key={s.processStepId} p="sm" radius="sm" withBorder>
+                  <Group
+                    align={isMobile ? "flex-start" : "center"}
+                    gap="sm"
+                    wrap={isMobile ? "wrap" : "nowrap"}
+                  >
+                    <Text fw={600} size="sm" style={{ flexShrink: 0 }}>
+                      {cat?.nameJa ?? `工程#${s.processStepId}`}
+                    </Text>
+                    <MultiSelect
+                      clearable
+                      data={templateSelectData}
+                      onChange={(v) =>
+                        setStepTemplates((cur) => ({
+                          ...cur,
+                          [s.processStepId]: v,
+                        }))
+                      }
+                      placeholder={
+                        templatesFor(s.processStepId).length
+                          ? undefined
+                          : "検査表テンプレートを選択"
+                      }
+                      searchable
+                      size="xs"
+                      style={{ flex: 1, minWidth: isMobile ? "100%" : 260 }}
+                      value={templatesFor(s.processStepId)}
+                    />
+                  </Group>
+                </Paper>
+              );
+            })}
+          </Stack>
+        </FormSection>
       )}
 
       {/* 作成時の作業計画 — 担当は指示書ごとに違うため、工程リストと違って

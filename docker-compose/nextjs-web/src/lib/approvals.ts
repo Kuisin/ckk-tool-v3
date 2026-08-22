@@ -253,6 +253,13 @@ async function targetCreatedAt(
       });
       return row?.requestedAt ?? null;
     }
+    case "order_acceptance_cancel_requests": {
+      const row = await prisma.orderAcceptanceCancelRequest.findUnique({
+        where: { id: targetId },
+        select: { requestedAt: true },
+      });
+      return row?.requestedAt ?? null;
+    }
   }
 }
 

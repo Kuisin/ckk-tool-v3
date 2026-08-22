@@ -21,12 +21,14 @@ export default async function MasterInspectionTemplatesEditPage({
     where: { id },
     include: {
       relatedProcessStep: true,
-      _count: { select: { workOrderTemplates: true, inspectionRecords: true } },
+      _count: {
+        select: { workOrderStepTemplates: true, inspectionRecords: true },
+      },
     },
   });
   if (!r) notFound();
   // 使用中バージョンは定義変更不可 — 詳細（ロック案内 + 新バージョン作成）へ
-  if (r._count.workOrderTemplates > 0 || r._count.inspectionRecords > 0) {
+  if (r._count.workOrderStepTemplates > 0 || r._count.inspectionRecords > 0) {
     redirect(`/master/inspection-templates/${id}`);
   }
 

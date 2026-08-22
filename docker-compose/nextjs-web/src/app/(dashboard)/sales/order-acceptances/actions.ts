@@ -9,6 +9,8 @@
  *   REQUESTED → approveAcceptance（→ APPROVED）/ rejectAcceptance（→ DRAFT）
  *   APPROVED → confirmOrderLines（注文確定 → COMPLETED）
  *   COMPLETED → archiveAcceptance（→ ARCHIVED）
+ *   COMPLETED → requestAcceptanceCancel（キャンセル承認 → CANCELLED。
+ *               明細単位のキャンセルは廃止 — lib/order-acceptance-cancel.ts）
  *
  * 注文確定は注文請書と同じ (year_month, seq) の order_lines 枝番 1..N を
  * $transaction で一括作成する（§2: 注文請書 1 → 注文明細 N）。承認は
@@ -28,6 +30,7 @@ import { checkPermission } from "@/lib/authz";
 import { prisma } from "@/lib/db";
 import {
   type DocKey,
+  formatDocNumber,
   formatOrderLineNumber,
   parseDocKey,
 } from "@/lib/doc-number";
@@ -36,6 +39,11 @@ import { normalizeExtraction } from "@/lib/intake-core";
 import { aliasLearnings } from "@/lib/match-alias-core";
 import { saveAliasLearnings } from "@/lib/match-aliases";
 import { allocateDocumentKey } from "@/lib/numbering";
+import {
+  applyApprovedAcceptanceCancel,
+  closeAcceptanceCancelRequest,
+  submitAcceptanceCancelRequest,
+} from "@/lib/order-acceptance-cancel";
 import {
   acceptanceReadiness,
   readinessSummary,
@@ -828,5 +836,131 @@ export async function createManualAcceptance(
     return actionOk({ number });
   } catch (e) {
     return actionError(prismaErrorMessage(e, "注文請書の作成に失敗しました"));
+  }
+}
+
+// ── 注文請書キャンセル（承認フロー） ────────────────────────────────────────
+//
+// 確定済み（COMPLETED）の注文請書は明細単位ではキャンセルできない。
+// キャンセルは注文請書ごと依頼し、承認設定（MS0B）の「注文請書キャンセル」
+// フローを通す（1 段も無ければ即適用）。対象は依頼行
+// （order_acceptance_cancel_requests の id）。実体は lib/order-acceptance-cancel.ts。
+
+/** キャンセル依頼 — 承認設定があれば保留、無ければ即適用。理由必須。 */
+export async function requestAcceptanceCancel(
+  number: string,
+  reason: string,
+): Promise<ActionResult<{ pending: boolean }>> {
+  const key = keyOf(number);
+  if (!key) return actionError("注文請書番号が不正です");
+  const authz = await checkPermission("order_acceptance", "UPDATE");
+  if (!authz.ok) return actionError(authz.error);
+  if (!(await acceptanceInScope(authz.access, authz.userId, key))) {
+    return actionError(SCOPE_DENIED);
+  }
+  try {
+    const result = await submitAcceptanceCancelRequest({ key, reason });
+    if (!result.ok) {
+      return actionError(result.errors?.join(" / ") ?? "依頼に失敗しました");
+    }
+    revalidate(number);
+    revalidatePath(SALES_ORDERS_PATH);
+    return actionOk({ pending: result.pending ?? false });
+  } catch (e) {
+    return actionError(prismaErrorMessage(e, "キャンセル依頼に失敗しました"));
+  }
+}
+
+/** キャンセル依頼を承認する。最終承認なら、その場でキャンセルを適用する。 */
+export async function approveAcceptanceCancel(
+  requestId: string,
+): Promise<ActionResult<{ completed: boolean; applied: boolean }>> {
+  const authz = await checkPermission("order_acceptance", "APPROVE");
+  if (!authz.ok) return actionError(authz.error);
+  const row = await prisma.orderAcceptanceCancelRequest.findUnique({
+    where: { id: requestId },
+    select: { status: true, acceptanceYearMonth: true, acceptanceSeq: true },
+  });
+  if (!row) return actionError("対象のキャンセル依頼が見つかりません");
+  if (row.status !== "PENDING") {
+    return actionError("承認待ちのキャンセル依頼ではありません");
+  }
+  const key = { yearMonth: row.acceptanceYearMonth, seq: row.acceptanceSeq };
+  if (!(await acceptanceInScope(authz.access, authz.userId, key))) {
+    return actionError(SCOPE_DENIED);
+  }
+  try {
+    const acted = await actOnCurrentStep({
+      targetType: "order_acceptance_cancel_requests",
+      targetId: requestId,
+      action: "APPROVED",
+    });
+    if (!acted.ok) return actionError(acted.error ?? "承認の権限がありません");
+
+    const number = formatDocNumber("ORD", key);
+    if (!acted.flowCompleted) {
+      revalidate(number);
+      return actionOk({ completed: false, applied: false });
+    }
+
+    // 最終承認 — ここで初めてキャンセルを当てる（承認待ちの間に前提が変わって
+    // いれば同じ検証で弾かれ、FAILED として残る）。
+    const applied = await applyApprovedAcceptanceCancel(requestId);
+    revalidate(number);
+    revalidatePath(SALES_ORDERS_PATH);
+    if (!applied.ok) {
+      return actionError(
+        applied.errors?.join(" / ") ?? "キャンセルの適用に失敗しました",
+      );
+    }
+    return actionOk({ completed: true, applied: true });
+  } catch (e) {
+    return actionError(prismaErrorMessage(e, "承認に失敗しました"));
+  }
+}
+
+/** キャンセル依頼を差し戻す（注文請書は変わらないまま閉じる）。 */
+export async function rejectAcceptanceCancel(
+  requestId: string,
+  reason: string,
+): Promise<ActionResult> {
+  const authz = await checkPermission("order_acceptance", "APPROVE");
+  if (!authz.ok) return actionError(authz.error);
+  const trimmed = reason.trim();
+  if (!trimmed) return actionError("差し戻し理由を入力してください");
+  const row = await prisma.orderAcceptanceCancelRequest.findUnique({
+    where: { id: requestId },
+    select: { status: true, acceptanceYearMonth: true, acceptanceSeq: true },
+  });
+  if (!row) return actionError("対象のキャンセル依頼が見つかりません");
+  if (row.status !== "PENDING") {
+    return actionError("承認待ちのキャンセル依頼ではありません");
+  }
+  const key = { yearMonth: row.acceptanceYearMonth, seq: row.acceptanceSeq };
+  if (!(await acceptanceInScope(authz.access, authz.userId, key))) {
+    return actionError(SCOPE_DENIED);
+  }
+  try {
+    const acted = await actOnCurrentStep({
+      targetType: "order_acceptance_cancel_requests",
+      targetId: requestId,
+      action: "REJECTED",
+      comment: trimmed,
+    });
+    if (!acted.ok) {
+      return actionError(acted.error ?? "差し戻しの権限がありません");
+    }
+    await closeAcceptanceCancelRequest(requestId, "REJECTED");
+    const number = formatDocNumber("ORD", key);
+    await recordAudit({
+      action: "UPDATE",
+      tableName: "order_acceptances",
+      recordId: number,
+      after: { note: `キャンセル依頼を差し戻し（${trimmed}）` },
+    });
+    revalidate(number);
+    return actionOk();
+  } catch (e) {
+    return actionError(prismaErrorMessage(e, "差し戻しに失敗しました"));
   }
 }

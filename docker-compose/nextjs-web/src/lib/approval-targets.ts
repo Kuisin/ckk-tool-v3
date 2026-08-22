@@ -18,6 +18,7 @@ export const APPROVAL_TARGET_TYPES = [
   "material_purchase_orders",
   "purchase_requests",
   "work_order_flow_changes",
+  "order_acceptance_cancel_requests",
 ] as const;
 
 export type ApprovalTargetType = (typeof APPROVAL_TARGET_TYPES)[number];
@@ -86,6 +87,15 @@ export const APPROVAL_TARGET: Record<ApprovalTargetType, ApprovalTargetMeta> = {
     href: (id) => `/production/work-orders/flow-changes/${id}`,
     appKey: "work-orders",
     approvePermission: "work_order",
+  },
+  order_acceptance_cancel_requests: {
+    label: "注文請書キャンセル",
+    color: "red",
+    // 対象は依頼そのもの（uuid）だが、人が見たいのは注文請書 — 保留中の依頼は
+    // 注文請書詳細にカードで出る。番号へ読み替えて 302 する中継ページ。
+    href: (id) => `/sales/order-acceptances/cancel-requests/${id}`,
+    appKey: "order-acceptances",
+    approvePermission: "order_acceptance",
   },
   purchase_requests: {
     label: "購買依頼",

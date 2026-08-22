@@ -736,3 +736,35 @@ SELECT
   dt.id, dt.code, dt.name->>'ja' AS name_ja, dt.name->>'en' AS name_en,
   dt.is_active, dt.sort_order
 FROM app.defect_types dt;
+
+-- =====================================================================
+-- 表示通貨切替 (Display currency) — ダッシュボードの JPY / USD 切替用
+-- =====================================================================
+-- 金額カードを「表示通貨」フィルタ 1 つで JPY/USD 切替できるようにするための
+-- 縦持ちビュー。1 行を表示通貨ごとに 2 行（JPY / USD）へ展開し、amount_disp に
+-- 換算済み金額を持つ。**必ず display_currency で 1 通貨に絞って使う**（絞らずに
+-- 合計すると二重計上）— ダッシュボード側は必須フィルタ（既定 JPY）で保証する。
+-- アドホック探索は通常の v_order_lines / v_invoices（*_jpy / *_usd 列）を使うこと。
+
+CREATE OR REPLACE VIEW analytics.v_order_lines_disp WITH (security_invoker = true) AS
+SELECT
+  ol.order_line_no, ol.order_no,
+  ol.acceptance_year_month, ol.acceptance_seq, ol.branch,
+  ol.status, ol.customer_name, ol.sales_staff, ol.product_name,
+  ol.quantity, ol.currency, ol.created_at,
+  d.display_currency,
+  CASE d.display_currency WHEN 'JPY' THEN ol.amount_jpy     ELSE ol.amount_usd     END AS amount_disp,
+  CASE d.display_currency WHEN 'JPY' THEN ol.unit_price_jpy ELSE ol.unit_price_usd END AS unit_price_disp,
+  ol.acceptance_status,  -- 請書状態（ダッシュボードの 状態（請書） フィルタ用）
+  ol.order_date          -- 注文日（期間フィルタ・月次集計の基準）
+FROM analytics.v_order_lines ol
+CROSS JOIN (VALUES ('JPY'), ('USD')) AS d(display_currency);
+
+CREATE OR REPLACE VIEW analytics.v_invoices_disp WITH (security_invoker = true) AS
+SELECT
+  i.invoice_no, i.status, i.customer_name, i.customer_branch_name, i.sales_staff,
+  i.currency, i.issued_at, i.created_at,
+  d.display_currency,
+  CASE d.display_currency WHEN 'JPY' THEN i.total_amount_jpy ELSE i.total_amount_usd END AS total_amount_disp
+FROM analytics.v_invoices i
+CROSS JOIN (VALUES ('JPY'), ('USD')) AS d(display_currency);

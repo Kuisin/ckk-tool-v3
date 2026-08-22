@@ -610,6 +610,9 @@ export async function updateDeliveryOrder(
     if (v.type === "DISPATCH") {
       const lotError = await validateDispatchLots(v.items);
       if (lotError) return actionError(lotError);
+      // 受注残の過出荷ガード（作成時と同じ。自出荷書の行は除外して数える）
+      const remainingError = await validateLineRemaining(v.items, key);
+      if (remainingError) return actionError(remainingError);
     }
     const workOrderId = await resolveHeaderWorkOrderId(v.items);
     await prisma.$transaction(async (tx) => {

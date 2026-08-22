@@ -100,7 +100,7 @@ export interface DefectRecordView {
 export interface StepRecordingData {
   /** 検査工程か（カタログ is_inspection）。 */
   isInspection: boolean;
-  /** この工程で使う検査表テンプレート（関連工程が一致 or 未設定）。 */
+  /** この工程に割り当てられた検査表テンプレート（工程単位の割当）。 */
   templates: InspectionTemplateView[];
   /** この工程の既存検査記録（新しい順）。 */
   inspectionRecords: InspectionRecordView[];
@@ -130,8 +130,8 @@ export async function getStepRecordingData(
   if (!step) return null;
 
   const [templateLinks, records, defectTypes, defects] = await Promise.all([
-    prisma.workOrderInspectionTemplate.findMany({
-      where: { workOrderId: step.workOrderId },
+    prisma.workOrderStepInspectionTemplate.findMany({
+      where: { stepId },
       include: {
         inspectionTemplate: {
           include: { items: { orderBy: { sortOrder: "asc" } } },
@@ -201,24 +201,18 @@ export async function getStepRecordingData(
 
   return {
     isInspection: step.processStep.isInspection,
-    // 関連工程がこの工程 or 未設定（汎用）のテンプレートのみ（web 側と同じ規則）
-    templates: templateLinks
-      .filter(
-        (t) =>
-          t.inspectionTemplate.relatedProcessStepId == null ||
-          t.inspectionTemplate.relatedProcessStepId === step.processStepId,
-      )
-      .map((t) => ({
-        id: t.inspectionTemplate.id,
-        code: t.inspectionTemplate.code,
-        version: t.inspectionTemplate.version,
-        name: localized(asText(t.inspectionTemplate.name), locale),
-        ...samplingSpecFromRow(t.inspectionTemplate),
-        items: t.inspectionTemplate.items.map((it) => ({
-          name: localized(asText(it.itemName), locale),
-          ...itemSpecFromRow(it),
-        })),
+    // この工程に割り当てられたテンプレート（工程単位 — web 側と同じ規則）
+    templates: templateLinks.map((t) => ({
+      id: t.inspectionTemplate.id,
+      code: t.inspectionTemplate.code,
+      version: t.inspectionTemplate.version,
+      name: localized(asText(t.inspectionTemplate.name), locale),
+      ...samplingSpecFromRow(t.inspectionTemplate),
+      items: t.inspectionTemplate.items.map((it) => ({
+        name: localized(asText(it.itemName), locale),
+        ...itemSpecFromRow(it),
       })),
+    })),
     inspectionRecords: records.map((r) => ({
       id: r.id,
       templateName: localized(asText(r.template.name), locale),
@@ -304,18 +298,18 @@ export async function recordInspection(
   if (found.error) return found.error;
   const step = found.step;
 
-  // テンプレートが指示書に紐付いているか + 項目 id・サンプル値が妥当か
-  const link = await prisma.workOrderInspectionTemplate.findUnique({
+  // テンプレートがこの工程に割り当てられているか + 項目 id・サンプル値が妥当か
+  const link = await prisma.workOrderStepInspectionTemplate.findUnique({
     where: {
-      workOrderId_inspectionTemplateId: {
-        workOrderId: step.workOrderId,
+      stepId_inspectionTemplateId: {
+        stepId,
         inspectionTemplateId: templateId,
       },
     },
     include: { inspectionTemplate: { include: { items: true } } },
   });
   if (!link) {
-    return fail("TEMPLATE_INVALID", "この指示書の検査表ではありません");
+    return fail("TEMPLATE_INVALID", "この工程の検査表ではありません");
   }
   // 記録方式・検査対象はシート（テンプレート）単位
   const style = link.inspectionTemplate.recordStyle;

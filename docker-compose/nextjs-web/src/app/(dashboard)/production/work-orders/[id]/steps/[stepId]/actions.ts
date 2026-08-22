@@ -360,7 +360,7 @@ export type InspectionInput = z.infer<typeof inspectionInput>;
 
 /**
  * 検査記録の保存 — 全項目合格なら PASS、1 つでも不合格なら FAIL。
- * テンプレートは指示書に紐付くもののみ・項目 id はテンプレートと一致必須。
+ * テンプレートはこの工程に割り当てられたもののみ・項目 id はテンプレートと一致必須。
  * サンプル値は型検証（選択肢の membership）し、合否は自動判定を検証しつつ
  * クライアントの値（手動上書き可）を保存する。キオスク側
  * （nextjs-kiosk step-records.ts recordInspection）と同一規則。
@@ -384,18 +384,18 @@ export async function saveInspectionRecord(
     if (step.status !== "IN_PROGRESS") {
       return { ok: false, errors: ["進行中の工程でのみ記録できます"] };
     }
-    // テンプレートが指示書に紐付いているか + 項目 id・サンプル値が妥当か
-    const link = await prisma.workOrderInspectionTemplate.findUnique({
+    // テンプレートがこの工程に割り当てられているか + 項目 id・サンプル値が妥当か
+    const link = await prisma.workOrderStepInspectionTemplate.findUnique({
       where: {
-        workOrderId_inspectionTemplateId: {
-          workOrderId: step.workOrder.id,
+        stepId_inspectionTemplateId: {
+          stepId: step.id,
           inspectionTemplateId: v.templateId,
         },
       },
       include: { inspectionTemplate: { include: { items: true } } },
     });
     if (!link) {
-      return { ok: false, errors: ["この指示書の検査表ではありません"] };
+      return { ok: false, errors: ["この工程の検査表ではありません"] };
     }
     // 記録方式・検査対象はシート（テンプレート）単位
     const style = link.inspectionTemplate.recordStyle;
