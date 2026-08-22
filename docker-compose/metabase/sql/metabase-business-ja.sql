@@ -62,6 +62,7 @@ m(tbl, ja) AS (VALUES
   ('material_type_prices', '材種既定単価'),
   ('materials', '素材'),
   ('products', '製品'),
+  ('currencies', '通貨マスタ'),
   ('process_step_catalog', '工程マスタ'),
   ('process_step_exec_dependencies', '工程実行依存'),
   ('process_step_use_dependencies', '工程使用依存'),
@@ -372,6 +373,7 @@ m(col, ja) AS (VALUES
   ('quantity', '数量'),
   ('unit_price', '単価'),
   ('amount', '金額'),
+  ('rate_to_jpy', '対円レート'),
   ('subtotal', '小計'),
   ('tax_amount', '消費税額'),
   ('total_amount', '合計金額'),
@@ -588,7 +590,8 @@ m(tbl, ja) AS (VALUES
   ('v_users', '従業員'),
   ('v_process_step_catalog', '工程マスタ'),
   ('v_inspection_templates', '検査表テンプレート'),
-  ('v_defect_types', '不良種類')
+  ('v_defect_types', '不良種類'),
+  ('v_currencies', '通貨マスタ')
 )
 UPDATE metabase_table t SET display_name = m.ja
 FROM m, target
@@ -845,6 +848,7 @@ m(col, ja) AS (VALUES
   ('quantity', '数量'),
   ('unit_price', '単価'),
   ('amount', '金額'),
+  ('rate_to_jpy', '対円レート'),
   ('subtotal', '小計'),
   ('tax_amount', '消費税額'),
   ('total_amount', '合計金額'),
@@ -1044,7 +1048,15 @@ m(col, ja) AS (VALUES
   ('name_ja', '名称(日本語)'),
   ('name_en', '名称(英語)'),
   ('acceptance_status', '請書状態'),
-  ('roles', 'ロール')
+  ('roles', 'ロール'),
+  ('unit_price_jpy', '単価(JPY)'),
+  ('unit_price_usd', '単価(USD)'),
+  ('amount_jpy', '金額(JPY)'),
+  ('amount_usd', '金額(USD)'),
+  ('base_unit_price_jpy', '基準単価(JPY)'),
+  ('base_unit_price_usd', '基準単価(USD)'),
+  ('total_amount_jpy', '合計金額(JPY)'),
+  ('total_amount_usd', '合計金額(USD)')
 )
 UPDATE metabase_field f SET display_name = m.ja
 FROM m, metabase_table t, target

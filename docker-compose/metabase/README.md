@@ -86,6 +86,9 @@ ssh 192.168.50.15 "cd ~/stacks/metabase && docker compose restart metabase"   # 
 
 - すべて `WITH (security_invoker = true)` — ビューは問い合わせたロールの権限で走るので、
   `grants.sql` の metabase_ro マスキング（password_hash 等）がビュー越しでも効く。
+- 金額系ビューは末尾に**通貨換算列**を持つ: `currency`（書類の通貨、既定 JPY）と
+  `*_jpy` / `*_usd`（`app.currencies` の対円レートで換算 — レートは手動更新の
+  分析用。`v_currencies` で参照・更新値の確認ができる）。
 - db 5 の schema-filter は `app,analytics`（生テーブルと解決済みビューの両方が見える）。
 - 列ラベルは下記 `gen-business-ja.py` の analytics パスで日本語化。
 - 適用（`analytics-views.sql` を先に、その後 `grants.sql`。どちらも冪等）:
