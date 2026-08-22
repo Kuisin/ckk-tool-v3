@@ -1,14 +1,15 @@
 #!/bin/sh
-# app.currencies の対円レート（rate_to_jpy）を為替 API から更新する。
+# app.currencies の rate_per_100_jpy（100 円で買えるその通貨の量）を為替 API から更新する。
 #
 # API: open.er-api.com（ExchangeRate-API の無料オープンエンドポイント。キー不要・
 # 日次更新。Rates By Exchange Rate API — https://www.exchangerate-api.com）。
-# JPY 基準で「1 JPY = X 通貨」が返るので rate_to_jpy = 1 / X。
+# JPY 基準で「1 JPY = X 通貨」が返るので rate_per_100_jpy = X × 100。
+# JPY 行（= 100）は更新対象外。
 #
 # 更新対象は DB に登録済みの有効通貨（JPY 除く）だけ — 通貨の追加/削除はマスタ側
 # （app.currencies）が正で、このジョブはレートしか触らない。API に無い通貨・
 # 0 以下の値はスキップして残りを続行する（部分失敗で全体を落とさない）。
-# 書き込みは専用ロール fx_rates（app.currencies の rate_to_jpy/updated_at の
+# 書き込みは専用ロール fx_rates（app.currencies の rate_per_100_jpy/updated_at の
 # UPDATE のみ — grants.sql）。レートは分析用換算（会計処理用ではない）。
 set -u
 
@@ -32,11 +33,11 @@ for c in $codes; do
     ''|null) echo "fx-rates: $c not in API response, skipped"; continue ;;
   esac
   n=$($PSQL -c "UPDATE app.currencies
-                SET rate_to_jpy = round(1 / ($per_jpy)::numeric, 6), updated_at = now()
+                SET rate_per_100_jpy = round(($per_jpy)::numeric * 100, 6), updated_at = now()
                 WHERE code = '$c' AND ($per_jpy)::numeric > 0
                 RETURNING code" | wc -l)
   if [ "$n" -ge 1 ]; then
-    echo "fx-rates: $c -> rate_to_jpy $(printf '%s' "$json" | jq -r --arg c "$c" '1 / .rates[$c] * 1000000 | round / 1000000')"
+    echo "fx-rates: $c -> rate_per_100_jpy $(printf '%s' "$json" | jq -r --arg c "$c" '.rates[$c] * 100')"
     updated=$((updated + 1))
   else
     echo "fx-rates: $c not updated (non-positive rate?)"
