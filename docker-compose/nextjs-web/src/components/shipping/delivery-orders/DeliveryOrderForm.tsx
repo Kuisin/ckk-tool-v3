@@ -3,11 +3,10 @@
 /**
  * DeliveryOrderForm — 出荷書 新規作成 / 編集 (SH01, design.md §8.3).
  *
- * 出荷書 ↔ 注文明細（SO）は m:n — ヘッダの SearchSelect は「追加」用で、
- * 選ぶたびに注文明細グループが増える（1 注文明細は複数の出荷書へ分割出荷
- * できる）。明細は注文明細ごとのグループで編集し、既定行は
- * fetchDeliverySourceInfo が返す「完了指示書 1 件 = 1 行」（製品 = 受注製品 /
- * ロット = 指示書番号 / 数量 = 最終工程の残良品数）。
+ * 出荷元は**注文請書**で選ぶ — ヘッダの SearchSelect は「追加」用で、選ぶと
+ * その注文請書の出荷できる注文明細すべてがグループとして増える。出荷書 ↔
+ * 注文明細（SO）は m:n のまま（1 注文明細は複数の出荷書へ分割出荷できる）。
+ * 既定行は未出荷数量を関連ロットへ自動割付した結果（allocateLotUsage）。
  *
  * 指示書（ロット）は**その行の注文明細に紐づく完了指示書**から選ぶ —
  * グループごとに取得した stockLots が選択肢で、他の受注のロットは出ない
@@ -41,12 +40,13 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useTransition } from "react";
 import { z } from "zod";
 import {
-  searchOrderLineOptions,
   searchProductOptions,
+  searchShippableAcceptanceOptions,
 } from "@/app/(dashboard)/_shared/option-search";
 import {
   createDeliveryOrder,
   type DeliverySourceInfo,
+  fetchDeliveryAcceptanceSourceInfo,
   fetchDeliverySourceInfo,
   updateDeliveryOrder,
 } from "@/app/(dashboard)/shipping/delivery-orders/actions";
@@ -85,7 +85,7 @@ const itemSchema = z.object({
 
 const schema = z.object({
   /** 顧客はヘッダが権威（1 出荷書 = 1 顧客）。 */
-  customerBpId: z.string().min(1, "注文明細を選択してください"),
+  customerBpId: z.string().min(1, "注文請書を選択してください"),
   type: z.enum(DELIVERY_ORDER_TYPES),
   fromPlantId: z.string().nullable(),
   notes: z.string(),
@@ -192,7 +192,7 @@ export function DeliveryOrderForm({
     Record<string, DeliverySourceInfo>
   >({});
 
-  // ピッカー（グループ追加用）の選択値 — 追加後は空へ戻す。
+  // 注文請書ピッカー（グループ追加用）の選択値（ORD-…）— 追加後は空へ戻す。
   const [pickedLineId, setPickedLineId] = useState<string>("");
 
   const loadInfo = (lineId: string) => {
@@ -232,53 +232,48 @@ export function DeliveryOrderForm({
   });
 
   /**
-   * 注文明細を選ぶ → 受注情報を取得してグループを**追加**する。
+   * 受注情報（注文明細 1 件ぶん × N）から明細グループを**追加**する。
    * 既定行は未出荷数量（受注数 − 出荷済）を関連ロットへ自動割付した結果
    * （allocateLotUsage — 指示書番号順に、自明細の取り分と現物在庫の範囲で
    * 必要数まで。統合ロットの出来高が必要数より多くても必要なぶんだけ載せる）。
-   * 完了指示書なしは空行 1 件。既に同じ注文明細のグループがあれば何もしない。
+   * 完了指示書なしは空行 1 件。既にあるグループ・出荷済みの明細はスキップ。
    */
-  const onOrderLinePick = (orderLineId: string | null) => {
-    setPickedLineId(orderLineId ?? "");
-    if (!orderLineId) return;
-    fetchDeliverySourceInfo(orderLineId).then((info) => {
-      if (!info) {
-        notifications.show({
-          title: "追加できません",
-          message: "確定済みの注文明細を選択してください",
-          color: "red",
-        });
-        return;
-      }
-      setInfoByLine((prev) => ({ ...prev, [orderLineId]: info }));
-      // 1 出荷書 = 1 顧客 — 最初に選んだ注文明細の顧客で確定する。
-      if (
-        form.values.customerBpId &&
-        info.customerBpId &&
-        info.customerBpId !== form.values.customerBpId
-      ) {
-        notifications.show({
-          title: "追加できません",
-          message: "1 つの出荷書には同じ顧客の注文明細だけを載せられます",
-          color: "red",
-        });
-        return;
-      }
-      if (!form.values.customerBpId && info.customerBpId) {
-        form.setFieldValue("customerBpId", info.customerBpId);
-      }
+  const addSourceGroups = (infos: DeliverySourceInfo[]) => {
+    const first = infos[0];
+    if (!first) return;
+    // 1 出荷書 = 1 顧客 — 最初に選んだ注文請書の顧客で確定する
+    // （同一注文請書の明細は全て同じ顧客）。
+    if (
+      form.values.customerBpId &&
+      first.customerBpId &&
+      first.customerBpId !== form.values.customerBpId
+    ) {
+      notifications.show({
+        title: "追加できません",
+        message: "1 つの出荷書には同じ顧客の注文明細だけを載せられます",
+        color: "red",
+      });
+      return;
+    }
+    if (!form.values.customerBpId && first.customerBpId) {
+      form.setFieldValue("customerBpId", first.customerBpId);
+    }
+    setInfoByLine((prev) => ({
+      ...prev,
+      ...Object.fromEntries(infos.map((i) => [i.orderLineId, i])),
+    }));
+
+    const newItems: ItemForm[] = [];
+    const alreadyShipped: string[] = [];
+    const shortfalls: string[] = [];
+    for (const info of infos) {
       if (form.values.items.some((it) => it.orderLineId === info.orderLineId)) {
-        setPickedLineId("");
-        return;
+        continue; // 既にグループがある
       }
       const remaining = info.quantity - info.shippedQuantity;
       if (remaining <= 0) {
-        notifications.show({
-          title: "追加できません",
-          message: `${info.orderLineNumber} は受注数量まで出荷済みです`,
-          color: "orange",
-        });
-        return;
+        alreadyShipped.push(info.orderLineNumber);
+        continue;
       }
       // 未出荷数量を関連ロットへ自動割付（必要数までしか載せない）。
       const usage = allocateLotUsage(
@@ -317,25 +312,62 @@ export function DeliveryOrderForm({
             ];
       const covered = usage.reduce((sum, u) => sum + u.quantity, 0);
       if (usage.length > 0 && covered < remaining) {
-        notifications.show({
-          title: "在庫が不足しています",
-          message: `${info.orderLineNumber} の未出荷 ${remaining} に対して充当できたのは ${covered} です（不足分は指示書の完了・在庫引当が必要）`,
-          color: "orange",
-        });
+        shortfalls.push(
+          `${info.orderLineNumber}（未出荷 ${remaining} / 充当 ${covered}）`,
+        );
       }
-      form.setFieldValue("items", [...form.values.items, ...defaults]);
+      newItems.push(...defaults);
+    }
+
+    if (newItems.length > 0) {
+      form.setFieldValue("items", [...form.values.items, ...newItems]);
+    }
+    if (alreadyShipped.length > 0) {
+      notifications.show({
+        title: "出荷済みの明細をスキップしました",
+        message: `${alreadyShipped.join("、")} は受注数量まで出荷済みです`,
+        color: "orange",
+      });
+    }
+    if (shortfalls.length > 0) {
+      notifications.show({
+        title: "在庫が不足しています",
+        message: `${shortfalls.join("、")} — 不足分は指示書の完了・在庫引当が必要です`,
+        color: "orange",
+      });
+    }
+  };
+
+  /** 注文請書を選ぶ → 出荷できる注文明細すべてをグループとして追加する。 */
+  const onAcceptancePick = (acceptanceNumber: string | null) => {
+    setPickedLineId(acceptanceNumber ?? "");
+    if (!acceptanceNumber) return;
+    fetchDeliveryAcceptanceSourceInfo(acceptanceNumber).then((infos) => {
+      if (infos.length === 0) {
+        notifications.show({
+          title: "追加できません",
+          message:
+            "出荷できる注文明細がありません（展開済みの注文請書を選択してください）",
+          color: "red",
+        });
+        return;
+      }
+      addSourceGroups(infos);
       setPickedLineId("");
     });
   };
 
-  // 新規 + `?orderLine=` — ピッカーで選んだのと同じ初期化を 1 度だけ走らせる。
+  // 新規 + `?orderLine=` — 未処理出荷書（SH03）の「出荷書作成」から来たとき、
+  // その注文明細 1 件だけを注文請書ピッカーと同じ経路で 1 度だけ追加する。
   // 依存配列を持たない（毎レンダー実行）代わりに ref で 1 回に絞る — form も
-  // onOrderLinePick も毎レンダー作り直されるので依存に載せられないため。
+  // addSourceGroups も毎レンダー作り直されるので依存に載せられないため。
   const seeded = useRef(false);
   useEffect(() => {
     if (mode !== "create" || !initialOrderLine || seeded.current) return;
     seeded.current = true;
-    onOrderLinePick(initialOrderLine.id);
+    fetchDeliverySourceInfo(initialOrderLine.id).then((info) => {
+      if (info) addSourceGroups([info]);
+    });
   });
 
   const totalQuantity = form.values.items.reduce(
@@ -512,22 +544,15 @@ export function DeliveryOrderForm({
     >
       <FormSection title="基本情報">
         <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
-          {/* 注文明細ピッカー — 選ぶたびにグループを**追加**する（m:n）。 */}
+          {/* 注文請書ピッカー — 選ぶたびに、その注文請書の出荷できる
+              注文明細がグループとして**追加**される（m:n）。 */}
           <SearchSelect
             error={form.errors.customerBpId}
-            initialOption={
-              mode === "create" && initialOrderLine
-                ? {
-                    value: initialOrderLine.id,
-                    label: initialOrderLine.label,
-                  }
-                : undefined
-            }
             label={<HelpLabel {...fieldHelp("deliveryOrder", "orderLine")} />}
-            onChange={onOrderLinePick}
-            onSearch={searchOrderLineOptions}
-            placeholder="注文明細を検索して明細を追加"
-            storageKey="order-line"
+            onChange={onAcceptancePick}
+            onSearch={searchShippableAcceptanceOptions}
+            placeholder="注文請書を検索して明細を追加"
+            storageKey="order-acceptance"
             value={pickedLineId || null}
             withAsterisk={mode === "create"}
           />
@@ -576,7 +601,7 @@ export function DeliveryOrderForm({
       </FormSection>
 
       <FormSection
-        description="注文明細を選択すると、未出荷数量（受注数 − 出荷済）を関連ロットへ自動割付した明細が生成されます（指示書番号順・現物在庫と自明細の取り分の範囲）。ロットはその注文明細に紐づく指示書から選択し、在庫数に対して検証されます。"
+        description="注文請書を選択すると、その注文請書の出荷できる注文明細ごとにグループが追加され、未出荷数量（受注数 − 出荷済）を関連ロットへ自動割付した明細が生成されます（指示書番号順・現物在庫と自明細の取り分の範囲）。ロットは各注文明細に紐づく指示書から選択し、在庫数に対して検証されます。"
         title="明細"
       >
         <Group justify="flex-end" mb="xs">

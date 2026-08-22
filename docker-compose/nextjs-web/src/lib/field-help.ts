@@ -545,9 +545,10 @@ export const FIELD_HELP = {
   },
   deliveryOrder: {
     orderLine: {
-      label: "注文明細",
+      label: "注文請書",
       summary:
-        "どの受注に対する出荷かを選びます。選ぶと、その受注の製品と残りの数量が分かります。",
+        "どの受注に対する出荷かを注文請書で選びます。選ぶと、その注文請書の出荷できる明細が自動で入ります。",
+      anchor: "field-order-line",
     },
     type: {
       label: "種別",
