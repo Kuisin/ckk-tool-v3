@@ -86,9 +86,11 @@ def targets_for_card(card, tables):
     # （注文請書などの status は別 enum — 誤配線しない）
     if card.get("table_id") in LINE_STATUS_TABLE_IDS and "status" in fields:
         out["line_status"] = ["dimension", ["field", fields["status"], None]]
-    # 通貨（原通貨）と 状態（請書）は利用者が UI で付けた場合のみ管理（新規追加しない）
+    # 通貨（原通貨）・表示通貨・状態（請書）は該当パラメータが存在する場合のみ管理
     if "currency" in fields:
         out["currency"] = ["dimension", ["field", fields["currency"], None]]
+    if "display_currency" in fields:
+        out["display_currency"] = ["dimension", ["field", fields["display_currency"], None]]
     if card.get("table_id") in ACCEPTANCE_STATUS_TABLE_IDS:
         col = "status" if "acceptance_status" not in fields else "acceptance_status"
         if col in fields:
@@ -113,7 +115,8 @@ def main():
         # line_status（状態）はパラメータが既に存在するダッシュボードでのみ配線を管理
         # （新規追加はしない — 状態フィルタはダッシュボード個別の判断）。
         pid_by_slug = {slug: p["id"] for slug, p in by_slug.items()
-                       if slug in ("date_range", "line_status", "currency", "acceptance_status")}
+                       if slug in ("date_range", "line_status", "currency",
+                                   "acceptance_status", "display_currency")}
 
         dashcards = []
         wired = 0
