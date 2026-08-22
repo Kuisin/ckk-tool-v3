@@ -26,6 +26,7 @@ import {
   type SelectProps,
   Tooltip,
 } from "@mantine/core";
+import { notifications } from "@mantine/notifications";
 import { IconZoomScan } from "@tabler/icons-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { pushRecent, type RecentOption, readRecents } from "@/lib/recents";
@@ -75,6 +76,8 @@ export function SearchSelect({
   );
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const seq = useRef(0);
+  // 検索アクションの失敗通知は 1 マウント 1 回（デバウンスごとに鳴らさない）
+  const errorNotified = useRef(false);
   const [f4Open, setF4Open] = useState(false);
 
   // localStorage は client でしか読めない — SSR ミスマッチ回避のため effect で
@@ -104,7 +107,19 @@ export function SearchSelect({
           if (seq.current === id) setResults(rows);
         })
         .catch(() => {
-          if (seq.current === id) setResults([]);
+          if (seq.current !== id) return;
+          setResults([]);
+          // 黙って「該当なし」にしない — 典型はデプロイ跨ぎの古いタブで
+          // Server Action id が 404 になるケース。再読み込みで直ることを伝える。
+          if (!errorNotified.current) {
+            errorNotified.current = true;
+            notifications.show({
+              title: "検索に失敗しました",
+              message:
+                "通信エラーか、アプリが更新された可能性があります。ページを再読み込みしてください",
+              color: "red",
+            });
+          }
         })
         .finally(() => {
           if (seq.current === id) setLoading(false);
