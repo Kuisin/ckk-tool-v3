@@ -143,7 +143,9 @@ SELECT
   cu.display_name AS created_by_name,
   coalesce(pl.name->>'ja', pl.name->>'en')         AS assigned_plant_name,
   oa.created_at, oa.updated_at,
-  oa.currency
+  oa.currency,
+  CASE WHEN oa.quote_year_month IS NOT NULL THEN
+    'QOT-'||oa.quote_year_month||'-'||lpad(oa.quote_seq::text,5,'0') END AS quote_no
 FROM app.order_acceptances oa
 LEFT JOIN app.business_partners cust   ON cust.id = oa.customer_bp_id
 LEFT JOIN app.business_partners branch ON branch.id = oa.customer_branch_bp_id
@@ -173,7 +175,9 @@ SELECT
   round(ol.unit_price * usd.rate_per_100_jpy / nullif(cur.rate_per_100_jpy, 0), 2)   AS unit_price_usd,
   round(ol.amount * 100 / nullif(cur.rate_per_100_jpy, 0), 2)                         AS amount_jpy,
   round(ol.amount * usd.rate_per_100_jpy / nullif(cur.rate_per_100_jpy, 0), 2)       AS amount_usd,
-  'ORD-'||ol.acceptance_year_month||'-'||lpad(ol.acceptance_seq::text,5,'0') AS order_no
+  'ORD-'||ol.acceptance_year_month||'-'||lpad(ol.acceptance_seq::text,5,'0') AS order_no,
+  CASE WHEN oa.quote_year_month IS NOT NULL THEN
+    'QOT-'||oa.quote_year_month||'-'||lpad(oa.quote_seq::text,5,'0') END AS quote_no
 FROM app.order_lines ol
 JOIN app.order_acceptances oa
   ON oa.year_month = ol.acceptance_year_month AND oa.seq = ol.acceptance_seq
@@ -193,7 +197,9 @@ SELECT
   CASE WHEN ol.id IS NOT NULL THEN
     'ORD-'||ol.acceptance_year_month||'-'||lpad(ol.acceptance_seq::text,5,'0')
       || CASE WHEN ol.branch IS NOT NULL THEN '-'||lpad(ol.branch::text,2,'0') ELSE '' END
-  END AS order_line_no
+  END AS order_line_no,
+  CASE WHEN dr.quote_year_month IS NOT NULL THEN
+    'QOT-'||dr.quote_year_month||'-'||lpad(dr.quote_seq::text,5,'0') END AS quote_no
 FROM app.design_requests dr
 LEFT JOIN app.products prod ON prod.id = dr.product_id
 LEFT JOIN app.users cu ON cu.id = dr.created_by
@@ -208,10 +214,12 @@ SELECT
   pr.id, pr.request_number, pr.status, pr.purpose,
   ru.display_name AS requested_by_name,
   au.display_name AS approved_by_name,
-  pr.requested_at, pr.approved_at, pr.created_at, pr.updated_at
+  pr.requested_at, pr.approved_at, pr.created_at, pr.updated_at,
+  po.po_number
 FROM app.purchase_requests pr
 LEFT JOIN app.users ru ON ru.id = pr.requested_by
-LEFT JOIN app.users au ON au.id = pr.approved_by;
+LEFT JOIN app.users au ON au.id = pr.approved_by
+LEFT JOIN app.material_purchase_orders po ON po.id = pr.purchase_order_id;
 
 CREATE OR REPLACE VIEW analytics.v_purchase_request_items WITH (security_invoker = true) AS
 SELECT
@@ -219,10 +227,12 @@ SELECT
   coalesce(m.name->>'ja', m.name->>'en') AS material_name,
   pri.material_id, pri.quantity, pri.unit, pri.desired_at,
   coalesce(pl.name->>'ja', pl.name->>'en') AS plant_name,
-  pri.sort_order
+  pri.sort_order,
+  pr.request_number
 FROM app.purchase_request_items pri
 LEFT JOIN app.materials m ON m.id = pri.material_id
-LEFT JOIN app.plants pl ON pl.id = pri.plant_id;
+LEFT JOIN app.plants pl ON pl.id = pri.plant_id
+LEFT JOIN app.purchase_requests pr ON pr.id = pri.request_id;
 
 CREATE OR REPLACE VIEW analytics.v_material_purchase_orders WITH (security_invoker = true) AS
 SELECT
@@ -253,8 +263,10 @@ SELECT
   poi.quantity, poi.unit, poi.unit_price, poi.amount, poi.currency,
   poi.received_quantity, poi.expected_at, poi.sort_order,
   round(poi.amount * 100 / nullif(cur.rate_per_100_jpy, 0), 2)                   AS amount_jpy,
-  round(poi.amount * usd.rate_per_100_jpy / nullif(cur.rate_per_100_jpy, 0), 2) AS amount_usd
+  round(poi.amount * usd.rate_per_100_jpy / nullif(cur.rate_per_100_jpy, 0), 2) AS amount_usd,
+  po.po_number
 FROM app.material_purchase_order_items poi
+LEFT JOIN app.material_purchase_orders po ON po.id = poi.purchase_order_id
 LEFT JOIN app.materials m ON m.id = poi.material_id
 LEFT JOIN app.plants pl ON pl.id = poi.plant_id
 LEFT JOIN app.currencies cur ON cur.code = poi.currency
@@ -269,12 +281,15 @@ SELECT
   coalesce(pl.name->>'ja', pl.name->>'en') AS plant_name,
   mr.quantity, mr.unit, mr.received_at,
   cu.display_name AS created_by_name,
-  mr.created_at
+  mr.created_at,
+  po.po_number
 FROM app.material_receipts mr
 LEFT JOIN app.materials m ON m.id = mr.material_id
 LEFT JOIN app.business_partners sup ON sup.id = mr.supplier_bp_id
 LEFT JOIN app.plants pl ON pl.id = mr.plant_id
-LEFT JOIN app.users cu ON cu.id = mr.created_by;
+LEFT JOIN app.users cu ON cu.id = mr.created_by
+LEFT JOIN app.material_purchase_order_items poi ON poi.id = mr.purchase_order_item_id
+LEFT JOIN app.material_purchase_orders po ON po.id = poi.purchase_order_id;
 
 -- =====================================================================
 -- 生産 (Production)
@@ -282,7 +297,7 @@ LEFT JOIN app.users cu ON cu.id = mr.created_by;
 
 CREATE OR REPLACE VIEW analytics.v_work_orders WITH (security_invoker = true) AS
 SELECT
-  'WO-'||wo.year_month||'-'||lpad(wo.seq::text,5,'0') AS work_order_no,
+  'WOR-'||wo.year_month||'-'||lpad(wo.seq::text,5,'0') AS work_order_no,
   wo.work_order_number AS lot_number,
   wo.year_month, wo.seq, wo.type, wo.status, wo.approval_status, wo.planned_quantity,
   coalesce(prod.name->>'ja', prod.name->>'en') AS product_name,
@@ -312,7 +327,7 @@ LEFT JOIN LATERAL (
 CREATE OR REPLACE VIEW analytics.v_work_order_steps WITH (security_invoker = true) AS
 SELECT
   wos.id,
-  'WO-'||wo.year_month||'-'||lpad(wo.seq::text,5,'0') AS work_order_no,
+  'WOR-'||wo.year_month||'-'||lpad(wo.seq::text,5,'0') AS work_order_no,
   wo.work_order_number AS lot_number,
   coalesce(ps.name->>'ja', ps.name->>'en') AS process_step_name,
   ps.category AS process_category,
@@ -345,9 +360,12 @@ SELECT
   u.display_name AS assignee_name,
   coalesce(wl.name->>'ja', wl.name->>'en') AS work_location_name,
   sp.planned_date, sp.planned_start_at, sp.planned_end_at, sp.quantity,
-  sp.created_at
+  sp.created_at,
+  CASE WHEN wo.id IS NOT NULL THEN 'WOR-'||wo.year_month||'-'||lpad(wo.seq::text,5,'0') END AS work_order_no,
+  wo.work_order_number AS lot_number
 FROM app.work_order_step_plans sp
 LEFT JOIN app.work_order_steps wos ON wos.id = sp.work_order_step_id
+LEFT JOIN app.work_orders wo ON wo.id = wos.work_order_id
 LEFT JOIN app.process_step_catalog ps ON ps.id = wos.process_step_id
 LEFT JOIN app.users u ON u.id = sp.user_id
 LEFT JOIN app.work_locations wl ON wl.id = sp.work_location_id;
@@ -359,9 +377,12 @@ SELECT
   u.display_name AS worker_name,
   sa.worked_date, sa.started_at, sa.ended_at, sa.quantity,
   round(extract(epoch FROM (sa.ended_at - sa.started_at))/3600.0, 2) AS work_hours,
-  sa.created_at
+  sa.created_at,
+  CASE WHEN wo.id IS NOT NULL THEN 'WOR-'||wo.year_month||'-'||lpad(wo.seq::text,5,'0') END AS work_order_no,
+  wo.work_order_number AS lot_number
 FROM app.work_order_step_actuals sa
 LEFT JOIN app.work_order_steps wos ON wos.id = sa.work_order_step_id
+LEFT JOIN app.work_orders wo ON wo.id = wos.work_order_id
 LEFT JOIN app.process_step_catalog ps ON ps.id = wos.process_step_id
 LEFT JOIN app.users u ON u.id = sa.user_id;
 
@@ -372,11 +393,15 @@ SELECT
   ir.status,
   ru.display_name AS recorded_by_name,
   au.display_name AS approved_by_name,
-  ir.recorded_at, ir.approved_at
+  ir.recorded_at, ir.approved_at,
+  CASE WHEN wo.id IS NOT NULL THEN 'WOR-'||wo.year_month||'-'||lpad(wo.seq::text,5,'0') END AS work_order_no,
+  wo.work_order_number AS lot_number
 FROM app.inspection_records ir
 LEFT JOIN app.inspection_templates it ON it.id = ir.template_id
 LEFT JOIN app.users ru ON ru.id = ir.recorded_by
-LEFT JOIN app.users au ON au.id = ir.approved_by;
+LEFT JOIN app.users au ON au.id = ir.approved_by
+LEFT JOIN app.work_order_steps wos ON wos.id = ir.work_order_step_id
+LEFT JOIN app.work_orders wo ON wo.id = wos.work_order_id;
 
 CREATE OR REPLACE VIEW analytics.v_defect_records WITH (security_invoker = true) AS
 SELECT
@@ -384,10 +409,14 @@ SELECT
   coalesce(dt.name->>'ja', dt.name->>'en') AS defect_type_name,
   dr.description,
   ru.display_name AS recorded_by_name,
-  dr.recorded_at
+  dr.recorded_at,
+  CASE WHEN wo.id IS NOT NULL THEN 'WOR-'||wo.year_month||'-'||lpad(wo.seq::text,5,'0') END AS work_order_no,
+  wo.work_order_number AS lot_number
 FROM app.defect_records dr
 LEFT JOIN app.defect_types dt ON dt.id = dr.defect_type_id
-LEFT JOIN app.users ru ON ru.id = dr.recorded_by;
+LEFT JOIN app.users ru ON ru.id = dr.recorded_by
+LEFT JOIN app.work_order_steps wos ON wos.id = dr.work_order_step_id
+LEFT JOIN app.work_orders wo ON wo.id = wos.work_order_id;
 
 -- =====================================================================
 -- 在庫 (Inventory)
@@ -402,11 +431,13 @@ SELECT
   coalesce(sl.name->>'ja', sl.name->>'en') AS storage_location_name,
   pi.lot_number, pi.quantity, pi.reserved_quantity, pi.is_semi_finished,
   pi.updated_at,
-  prod.currency  -- 製品の通貨（フィルタ用）
+  prod.currency,  -- 製品の通貨（フィルタ用）
+  CASE WHEN wo.id IS NOT NULL THEN 'WOR-'||wo.year_month||'-'||lpad(wo.seq::text,5,'0') END AS work_order_no
 FROM app.product_inventory pi
 LEFT JOIN app.products prod ON prod.id = pi.product_id
 LEFT JOIN app.plants pl ON pl.id = pi.plant_id
-LEFT JOIN app.storage_locations sl ON sl.id = pi.storage_location_id;
+LEFT JOIN app.storage_locations sl ON sl.id = pi.storage_location_id
+LEFT JOIN app.work_orders wo ON wo.work_order_number = pi.lot_number;
 
 CREATE OR REPLACE VIEW analytics.v_material_inventory WITH (security_invoker = true) AS
 SELECT
@@ -426,7 +457,7 @@ SELECT
   r.id, r.inventory_type, r.inventory_id, r.quantity, r.status,
   'ORD-'||ol.acceptance_year_month||'-'||lpad(ol.acceptance_seq::text,5,'0')
     || CASE WHEN ol.branch IS NOT NULL THEN '-'||lpad(ol.branch::text,2,'0') ELSE '' END AS order_line_no,
-  CASE WHEN wo.id IS NOT NULL THEN 'WO-'||wo.year_month||'-'||lpad(wo.seq::text,5,'0') END AS work_order_no,
+  CASE WHEN wo.id IS NOT NULL THEN 'WOR-'||wo.year_month||'-'||lpad(wo.seq::text,5,'0') END AS work_order_no,
   r.reserved_at, r.confirmed_at, r.released_at
 FROM app.inventory_reservations r
 LEFT JOIN app.order_lines ol ON ol.id = r.order_line_id
@@ -455,7 +486,7 @@ SELECT
   coalesce(branch.name->>'ja', branch.name->>'en') AS customer_branch_name,
   rep.sales_staff,
   coalesce(pl.name->>'ja', pl.name->>'en')         AS from_plant_name,
-  CASE WHEN wo.id IS NOT NULL THEN 'WO-'||wo.year_month||'-'||lpad(wo.seq::text,5,'0') END AS work_order_no,
+  CASE WHEN wo.id IS NOT NULL THEN 'WOR-'||wo.year_month||'-'||lpad(wo.seq::text,5,'0') END AS work_order_no,
   dor.shipped_at, dor.created_at, dor.updated_at,
   ords.order_line_nos  -- 明細が紐づく注文明細番号（ORD-…-NN。複数はカンマ区切り）
 FROM app.delivery_orders dor
@@ -572,7 +603,10 @@ SELECT
   END AS order_line_no,
   CASE WHEN ii.delivery_order_year_month IS NOT NULL THEN
     'DOR-'||ii.delivery_order_year_month||'-'||lpad(ii.delivery_order_seq::text,5,'0')
-  END AS delivery_order_no
+  END AS delivery_order_no,
+  CASE WHEN ii.delivery_note_year_month IS NOT NULL THEN
+    'DRN-'||ii.delivery_note_year_month||'-'||lpad(ii.delivery_note_seq::text,5,'0')
+  END AS delivery_no
 FROM app.invoice_items ii
 LEFT JOIN app.order_lines ol ON ol.id = ii.order_line_id;
 
