@@ -9,8 +9,9 @@ build-business-dashboards.py はダッシュボードを**自分のレイアウ�
 消えるので、フィルタ配線だけを直したいときは**このスクリプト**を使う:
 
 - コレクション直下の全ダッシュボードを対象（利用者が新規に作ったものも含む）。
-- パラメータ「期間」(slug date_range) と「通貨」(slug currency) が無ければ追加
-  （既にあればその ID を使う — 利用者が UI で付けたフィルタも壊さない）。
+- パラメータ「期間」(slug date_range) が無ければ追加（既にあればその ID を使う —
+  利用者が UI で付けたフィルタも壊さない）。「通貨」（原通貨）フィルタは廃止済み —
+  このスクリプトは追加しない（換算切替は「表示通貨」が担う）。
 - 各カードのソーステーブル（analytics ビュー）の列から自動でマップ:
   期間 → DATE_PREF の優先順で最初に見つかった日付列 / 通貨 → currency 列があれば。
 - 既存の parameter_mappings は保持（同じパラメータの配線が無いときだけ追加）。
@@ -26,8 +27,6 @@ MB_URL = os.environ.get("MB_URL", "https://bi.ckk-tool.co.jp").rstrip("/")
 API_KEY = os.environ["MB_API_KEY"]
 DB_ID = int(os.environ.get("MB_DB_ID", "5"))
 COLLECTION_ID = int(os.environ.get("MB_COLLECTION_ID", "6"))
-# 通貨列が無いドメイン（労務など）は MB_SKIP_CURRENCY=1 で「期間」だけ配線する
-SKIP_CURRENCY = os.environ.get("MB_SKIP_CURRENCY", "") == "1"
 
 # 期間フィルタの列の優先順（テーブルにある最初のもの）
 DATE_PREF = ["date", "created_at", "updated_at", "order_date", "started_at", "reserved_at",
@@ -67,15 +66,13 @@ def targets_for_card(card, tables):
     if q.get("type") == "native" or q.get("native"):
         tags = (q.get("native") or {}).get("template-tags") or {}
         return {slug: ["dimension", ["template-tag", slug]] for slug in
-                ("date_range", "currency", "display_currency") if slug in tags}
+                ("date_range", "display_currency") if slug in tags}
     fields = tables.get(card.get("table_id")) or {}
     out = {}
     for col in DATE_PREF:
         if col in fields:
             out["date_range"] = ["dimension", ["field", fields[col], None]]
             break
-    if "currency" in fields:
-        out["currency"] = ["dimension", ["field", fields["currency"], None]]
     if "display_currency" in fields:
         out["display_currency"] = ["dimension", ["field", fields["display_currency"], None]]
     return out
@@ -95,11 +92,6 @@ def main():
                            "slug": "date_range", "type": "date/all-options", "sectionId": "date"})
             by_slug["date_range"] = params[-1]
             changed = True
-        if not SKIP_CURRENCY and "currency" not in by_slug:
-            params.append({"id": det_id(d["name"], "param_currency")[:8], "name": "通貨",
-                           "slug": "currency", "type": "string/=", "sectionId": "string"})
-            by_slug["currency"] = params[-1]
-            changed = True
         # 表示通貨（JPY/USD 切替）— *_disp ビューのカードがあるダッシュボードだけ。
         # 縦持ちビューは 1 通貨に絞らないと二重計上のため required + 既定 JPY。
         needs_disp = any("display_currency" in (tables.get((dc.get("card") or {}).get("table_id")) or {})
@@ -111,7 +103,7 @@ def main():
             by_slug["display_currency"] = params[-1]
             changed = True
         pid_by_slug = {slug: p["id"] for slug, p in by_slug.items()
-                       if slug in ("date_range", "currency", "display_currency")}
+                       if slug in ("date_range", "display_currency")}
 
         dashcards = []
         wired = 0

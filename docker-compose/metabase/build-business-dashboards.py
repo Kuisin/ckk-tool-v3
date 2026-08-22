@@ -118,11 +118,11 @@ CARDS = [
     dict(key="ol_total", name="注文明細 総数", display="scalar",
          table="v_order_lines", date_col="created_at", cur=True,
          q=dict(agg=("count",))),
-    # 合計は「表示通貨 | 金額」の 1 行テーブル — 選択中の通貨単位が数字の隣に見える
-    dict(key="sales_total", name="受注金額 合計", display="table",
+    # 合計はカスタム列 concat(通貨記号, 数値) のスカラー — 「¥162225」「$1020.57」
+    dict(key="sales_total", name="受注金額 合計", display="scalar",
          table="v_order_lines_disp", date_col="created_at", cur=True, disp=True,
          q=dict(agg=("sum", "amount_disp"), breakout=["display_currency"],
-                filters=[("!=", "status", "CANCELLED")])),
+                filters=[("!=", "status", "CANCELLED")], money_text=True)),
     dict(key="oa_by_status", name="注文請書 状態別", display="bar",
          table="v_order_acceptances", date_col="created_at", cur=True,
          q=dict(agg=("count",), breakout=["status"], order_desc_agg=True)),
@@ -186,10 +186,10 @@ CARDS = [
     dict(key="inv_total", name="請求書 総数", display="scalar",
          table="v_invoices", date_col="created_at", cur=True,
          q=dict(agg=("count",))),
-    dict(key="inv_amount", name="請求額 合計", display="table",
+    dict(key="inv_amount", name="請求額 合計", display="scalar",
          table="v_invoices_disp", date_col="created_at", cur=True, disp=True,
          q=dict(agg=("sum", "total_amount_disp"), breakout=["display_currency"],
-                filters=[("!=", "status", "DRAFT")])),
+                filters=[("!=", "status", "DRAFT")], money_text=True)),
     dict(key="inv_by_status", name="請求書 状態別", display="bar",
          table="v_invoices", date_col="created_at", cur=True,
          q=dict(agg=("count",), breakout=["status"], order_desc_agg=True)),
@@ -313,6 +313,19 @@ def build_query(c, tables, fields):
     if spec.get("limit"):
         q["limit"] = spec["limit"]
 
+    if spec.get("money_text"):
+        # 2 段クエリ: 1 段目で表示通貨ごとに合計 → 2 段目のカスタム列で
+        # 「通貨記号 + 数値」のテキストを作る（¥ は整数、$ は小数 2 桁）。
+        # 表示通貨フィルタ（required・既定 JPY）で常に 1 行 = スカラー表示。
+        disp_ref = ["field", "display_currency", {"base-type": "type/Text"}]
+        sum_ref = ["field", "sum", {"base-type": "type/Float"}]
+        symbol = ["case", [[["=", disp_ref, "JPY"], "¥"]], {"default": "$"}]
+        value = ["case", [[["=", disp_ref, "JPY"], ["round", sum_ref]]],
+                 {"default": ["/", ["round", ["*", sum_ref, 100]], 100]}]
+        q = {"source-query": q,
+             "expressions": {"金額": ["concat", symbol, value]},
+             "fields": [["expression", "金額"]]}
+
     return {"database": DB_ID, "type": "query", "query": q}
 
 
@@ -423,16 +436,15 @@ def main():
                       {"name": d["name"], "description": d["description"],
                        "collection_id": COLLECTION_ID})["id"]
         date_pid = det_id(d["name"], "param_date")[:8]
-        cur_pid = det_id(d["name"], "param_currency")[:8]
         disp_pid = det_id(d["name"], "param_display_currency")[:8]
         status_pid = det_id(d["name"], "param_status")[:8]
         has_disp = any(cards_by_key[ck].get("disp") for ck, *_ in d["layout"])
         has_status = any(cards_by_key[ck]["table"] in STATUS_FILTER_TABLES for ck, *_ in d["layout"])
+        # 「通貨」（書類の原通貨）フィルタは廃止 — 換算切替は「表示通貨」が担い、
+        # 原通貨での絞り込みは紛らわしいだけだった（利用者の指摘で撤去）。
         parameters = [
             {"id": date_pid, "name": "期間", "slug": "date_range",
              "type": "date/all-options", "sectionId": "date"},
-            {"id": cur_pid, "name": "通貨", "slug": "currency",
-             "type": "string/=", "sectionId": "string"},
         ]
         if has_disp:
             # 表示通貨（JPY/USD 切替）。縦持ちビュー（*_disp）は 1 通貨に絞らないと
@@ -452,11 +464,6 @@ def main():
                 "parameter_id": date_pid, "card_id": key_to_id[ck],
                 "target": ["dimension", ["field", fields[(c["table"], c["date_col"])], None]],
             }]
-            if c["cur"]:
-                mappings.append({
-                    "parameter_id": cur_pid, "card_id": key_to_id[ck],
-                    "target": ["dimension", ["field", fields[(c["table"], "currency")], None]],
-                })
             if c.get("disp"):
                 mappings.append({
                     "parameter_id": disp_pid, "card_id": key_to_id[ck],
@@ -477,8 +484,8 @@ def main():
             {"name": d["name"], "description": d["description"],
              "collection_id": COLLECTION_ID, "parameters": parameters,
              "dashcards": dashcards})
-        print(f"dashboard {d['name']} -> {did} ({len(dashcards)} cards, filters: 期間"
-              + (" + 通貨" if any(cards_by_key[ck]["cur"] for ck, *_ in d["layout"]) else "") + ")")
+        print(f"dashboard {d['name']} -> {did} ({len(dashcards)} cards, "
+              f"filters: {'/'.join(p['name'] for p in parameters)})")
 
 
 if __name__ == "__main__":
