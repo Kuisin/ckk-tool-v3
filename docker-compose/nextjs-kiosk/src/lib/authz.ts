@@ -9,7 +9,7 @@
  * - `hasPermission()` … **書き込み**の門番（nextjs-web の checkPermission 相当）
  *
  * 表示フィルタと書き込みゲートは意図的に別物にしてある。加えて工程実行では
- * 行レベルの割り当てゲート（step-execution.ts の `isAssignedToUser`）も
+ * 行レベルの割り当てゲート（step-execution.ts の `canOperateStep`）も
  * 通す — permission だけでは「他人の工程を操作できない」を担保できないため。
  * スコープ値に関わらず割り当てゲートを維持する（permissionAccess は将来の
  * 切替ポイントとしてのプラミング）。

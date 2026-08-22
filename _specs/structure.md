@@ -85,7 +85,7 @@ src/
 │   │   │           └── [id]/page.tsx
 │   │   │
 │   │   ├── shipping/                               # 出荷（§8）
-│   │   │   ├── shipping-orders/                    # 出荷書
+│   │   │   ├── delivery-orders/                    # 出荷書
 │   │   │   │   ├── page.tsx
 │   │   │   │   ├── new/page.tsx
 │   │   │   │   └── [id]/
@@ -176,7 +176,7 @@ src/
 │   │   │   ├── order-line/route.ts                 # 注文明細
 │   │   │   ├── purchase-order/route.ts             # 素材発注書
 │   │   │   ├── work-order/route.ts                 # 指示書
-│   │   │   ├── shipping-order/route.ts             # 出荷書
+│   │   │   ├── delivery-order/route.ts             # 出荷書
 │   │   │   ├── delivery-note/route.ts              # 納品書
 │   │   │   └── invoice/route.ts                    # 請求書
 │   │   ├── sse/                                    # SSE リアルタイム通知

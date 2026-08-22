@@ -96,6 +96,7 @@ import { PrimaryButton, SecondaryButton } from "@/components/ui/buttons";
 import { DocNumber } from "@/components/ui/DocNumber";
 import { FieldValue } from "@/components/ui/FieldValue";
 import { CUSTOMER_F4 } from "@/components/ui/f4-presets";
+import { HelpLabel } from "@/components/ui/HelpLabel";
 import { HistoryPanel } from "@/components/ui/HistoryPanel";
 import { MemoPanel } from "@/components/ui/MemoPanel";
 import { MoneyText } from "@/components/ui/MoneyText";
@@ -114,6 +115,7 @@ import {
 import { useTabParam } from "@/hooks/useUrlState";
 import type { MemoView } from "@/lib/document-memos";
 import { ORDER_TYPE_LABEL } from "@/lib/enum-labels";
+import { fieldHelp } from "@/lib/field-help";
 import { formatMoney } from "@/lib/format";
 import { parseExtractError } from "@/lib/intake-extract-error";
 import {
@@ -727,10 +729,12 @@ export function OrderAcceptanceDetail({
                   <Title mb="sm" order={5}>
                     明細（{a.items.length}）
                   </Title>
-                  <Table.ScrollContainer minWidth={760}>
+                  <Table.ScrollContainer minWidth={1000}>
                     <Table highlightOnHover striped>
                       <Table.Thead>
                         <Table.Tr>
+                          <Table.Th>注文明細</Table.Th>
+                          <Table.Th>指示書（割当）</Table.Th>
                           <Table.Th>製品</Table.Th>
                           <Table.Th>品名（抽出）</Table.Th>
                           <Table.Th>種別</Table.Th>
@@ -746,6 +750,57 @@ export function OrderAcceptanceDetail({
                           const lc = checkByItemId.get(it.id);
                           return (
                             <Table.Tr key={it.id}>
+                              <Table.Td>
+                                {/* 確定済みの行は注文明細（SA25）へリンク。
+                                    未確定は枝番未採番のため番号なし。 */}
+                                {it.lineNumber ? (
+                                  <Anchor
+                                    ff="mono"
+                                    href={`${SALES_ORDERS_PATH}/${it.lineNumber}`}
+                                    size="sm"
+                                  >
+                                    {it.lineNumber}
+                                  </Anchor>
+                                ) : (
+                                  <Text c="dimmed" size="sm">
+                                    —
+                                  </Text>
+                                )}
+                              </Table.Td>
+                              <Table.Td>
+                                {/* 割当済みの指示書（#ロット番号 × 割当数）。
+                                    分割は複数行、統合は複数明細が同じ番号を持つ。 */}
+                                {it.workOrders.length > 0 ? (
+                                  <Stack gap={2}>
+                                    {it.workOrders.map((wo) => (
+                                      <Group
+                                        gap={6}
+                                        key={wo.workOrderNumber}
+                                        wrap="nowrap"
+                                      >
+                                        <Anchor
+                                          ff="mono"
+                                          href={`/production/work-orders/${wo.workOrderNumber}`}
+                                          size="sm"
+                                        >
+                                          #{wo.workOrderNumber}
+                                        </Anchor>
+                                        <Text
+                                          c="dimmed"
+                                          className="tabular-nums"
+                                          size="xs"
+                                        >
+                                          × {wo.quantity}
+                                        </Text>
+                                      </Group>
+                                    ))}
+                                  </Stack>
+                                ) : (
+                                  <Text c="dimmed" size="sm">
+                                    —
+                                  </Text>
+                                )}
+                              </Table.Td>
                               <Table.Td>
                                 {it.productLabel ?? (
                                   <Badge
@@ -826,7 +881,7 @@ export function OrderAcceptanceDetail({
                       {a.items.length > 0 && (
                         <Table.Tfoot>
                           <Table.Tr>
-                            <Table.Th colSpan={3} ta="right">
+                            <Table.Th colSpan={5} ta="right">
                               合計
                             </Table.Th>
                             <Table.Th className="tabular-nums" ta="right">
@@ -1243,7 +1298,7 @@ function DraftEditor({
                   ? { value: a.shipToBpId, label: a.shipToName }
                   : null
               }
-              label="出荷先"
+              label={<HelpLabel {...fieldHelp("orderAcceptance", "shipTo")} />}
               onChange={setShipToBpId}
               onSearch={searchShipToOptions}
               placeholder="出荷先を検索（任意）"
@@ -1253,7 +1308,9 @@ function DraftEditor({
             <Select
               clearable
               data={plantOptions}
-              label="担当拠点"
+              label={
+                <HelpLabel {...fieldHelp("orderAcceptance", "assignedPlant")} />
+              }
               onChange={setAssignedPlantId}
               placeholder="拠点を選択（任意）"
               searchable
@@ -1262,7 +1319,11 @@ function DraftEditor({
             <Select
               clearable
               data={workLocationOptions}
-              label="出荷作業場所"
+              label={
+                <HelpLabel
+                  {...fieldHelp("orderAcceptance", "shippingWorkLocation")}
+                />
+              }
               onChange={setShippingWorkLocationId}
               placeholder="作業場所を選択（任意）"
               searchable

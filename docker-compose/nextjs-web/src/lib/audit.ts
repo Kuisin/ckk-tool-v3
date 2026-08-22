@@ -71,7 +71,7 @@ export const AUDIT_TABLE_LABELS: Record<string, string> = {
   approval_flows: "承認フロー",
   order_lines: "注文明細",
   work_orders: "指示書",
-  shipping_orders: "出荷書",
+  delivery_orders: "出荷書",
   delivery_notes: "納品書",
   purchase_requests: "購買依頼",
   purchase_request_items: "購買依頼明細",

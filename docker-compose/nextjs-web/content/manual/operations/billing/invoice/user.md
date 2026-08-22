@@ -23,7 +23,7 @@ screenshots: [invoice-list-01, invoice-detail-01, invoice-items-01, invoice-menu
 - **消費税** … 小計にかかる税金です。お客様ごとの決まりに合わせて自動で計算されます。
 - **合計金額（税込）** … 小計と消費税を足した、実際にお支払いいただく金額です。
 - **支払期限** … いつまでにお支払いいただくかの期日です。
-- **由来（ゆらい）** … その 1 行がどの[出荷書](/manual/ja/operations/shipping/shipping-order/user)・[納品書](/manual/ja/operations/shipping/delivery-note/user)から来たかを示します。
+- **由来（ゆらい）** … その 1 行がどの[出荷書](/manual/ja/operations/shipping/delivery-order/user)・[納品書](/manual/ja/operations/shipping/delivery-note/user)から来たかを示します。
 
 ## はじめる前に
 
@@ -57,7 +57,7 @@ screenshots: [invoice-list-01, invoice-detail-01, invoice-items-01, invoice-menu
 ![請求書の明細](../../../assets/screenshots/invoice-items-01.png)
 
 - **摘要（てきよう）** … 製品名とロット番号です。
-- **由来** … 青い文字をクリックすると、元になった[出荷書](/manual/ja/operations/shipping/shipping-order/user)や[納品書](/manual/ja/operations/shipping/delivery-note/user)を開けます。
+- **由来** … 青い文字をクリックすると、元になった[出荷書](/manual/ja/operations/shipping/delivery-order/user)や[納品書](/manual/ja/operations/shipping/delivery-note/user)を開けます。
 - 一番下に、小計・消費税・合計金額（税込）が出ます。
 
 明細の下には 2 つのタブがあります。「**概要**」ではお客様へ送った日時と備考を、「**履歴**」ではいつ誰がこの請求書を進めたかを確認できます。
@@ -140,7 +140,7 @@ screenshots: [invoice-list-01, invoice-detail-01, invoice-items-01, invoice-menu
 A. 請求書はこの画面では作れません。[締日処理](/manual/ja/operations/billing/billing-closing/user)を開き、対象の行で「請求書を生成」を押してください。
 
 **Q. 金額を直したいのですが、編集の画面がありません。**
-A. 請求書は直接直せません。元になった[出荷書](/manual/ja/operations/shipping/shipping-order/user)の内容が違っているはずなので、経理・営業の担当者にご相談ください。
+A. 請求書は直接直せません。元になった[出荷書](/manual/ja/operations/shipping/delivery-order/user)の内容が違っているはずなので、経理・営業の担当者にご相談ください。
 
 **Q. 「下書きの請求書のみ発行できます」と出ます。**
 A. その請求書はすでに発行済みです。画面をいったん閉じて開き直すと、今の状態が確認できます。

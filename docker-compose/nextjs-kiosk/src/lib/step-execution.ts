@@ -120,11 +120,15 @@ export async function fetchWorkflowCtx(workOrderId: string): Promise<{
 }
 
 /**
- * 行レベルの割り当てゲート（SCOPE.OWN 相当）。
- * 「自分に計画が割り当てられている」か「自分がロックを保持している」工程のみ
- * 操作できる。permission の有無とは独立した二段目の門。
+ * 行レベルの割り当てゲート（SCOPE.OWN 相当）。permission とは独立した二段目の門。
+ * 操作できるのは次のいずれか:
+ *   (a) 自分に計画（work_order_step_plans）が割り当てられている
+ *   (b) 自分がセッションロックを保持している
+ *   (c) 工程に計画が 1 行も無い（**未計画の工程は開放** — 指示書スキャン
+ *       /wo-scan の運用判断: 紙の指示書を持つ作業者が計画なしのアドホック
+ *       作業を進められる。誰かに計画された工程はその担当者だけが操作できる）
  */
-export async function isAssignedToUser(
+export async function canOperateStep(
   stepId: string,
   userId: string,
 ): Promise<boolean> {
@@ -138,7 +142,13 @@ export async function isAssignedToUser(
       select: { id: true },
     }),
   ]);
-  return plan != null || locked != null;
+  if (plan != null || locked != null) return true;
+  // (c) 未計画の工程 — 誰の計画も無ければ permission 保持者に開放
+  const anyPlan = await prisma.workOrderStepPlan.findFirst({
+    where: { stepId },
+    select: { id: true },
+  });
+  return anyPlan == null;
 }
 
 /**

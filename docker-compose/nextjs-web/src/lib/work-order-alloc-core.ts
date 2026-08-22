@@ -109,6 +109,41 @@ export function validateAllocations(args: {
   return null;
 }
 
+/** 実効割当の計算に使う 1 リンク分の入力。 */
+export interface EffectiveAllocLink {
+  quantity: number;
+  /** WORK_ORDER_STATUS。 */
+  workOrderStatus: string;
+  /**
+   * 完了済み指示書での、この明細への実際の完成配分（distributeFinished の
+   * 取り分）。未完了は null。
+   */
+  finishedShare: number | null;
+}
+
+/**
+ * 明細から見た「手配済み」の実効値。
+ *
+ * 未完了の指示書は割当数のまま（作る約束）。**完了済みは実際にできた分**
+ * （min(割当数, 完成配分)）— 不良が多くて割当より少なくしかできなかった
+ * 指示書のぶんは受注残へ戻り、追加の指示書を割り当て直せる。
+ * キャンセル済みは 0。
+ */
+export function effectiveAllocated(
+  links: readonly EffectiveAllocLink[],
+): number {
+  let total = 0;
+  for (const l of links) {
+    if (l.workOrderStatus === "CANCELLED") continue;
+    if (l.workOrderStatus === "COMPLETED" && l.finishedShare != null) {
+      total += Math.min(l.quantity, l.finishedShare);
+    } else {
+      total += l.quantity;
+    }
+  }
+  return total;
+}
+
 /**
  * 完成数量を割当順に明細へ配分する（出荷候補の既定数量など表示・既定値用）。
  * 統合ロットで 1 つの完成数を複数明細が二重取りしないための決定的な配分。

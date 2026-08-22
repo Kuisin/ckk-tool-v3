@@ -88,9 +88,9 @@ const TABLE_ROUTES: Record<string, TableRoute> = {
     directDetail: true,
   },
   // 出荷・請求
-  shipping_orders: {
+  delivery_orders: {
     appLabel: "出荷書",
-    listPath: "/shipping/shipping-orders",
+    listPath: "/shipping/delivery-orders",
     directDetail: true,
   },
   delivery_notes: {

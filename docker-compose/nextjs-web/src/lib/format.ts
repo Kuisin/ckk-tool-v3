@@ -97,11 +97,6 @@ export interface Formatters {
   localized(value: LocalizedText | null | undefined): string;
   /** kiosk_devices.name（{ja,en} または旧文字列）→ 表示名。 */
   deviceName(value: unknown): string | null;
-  /** 指示書番号 `YYYYMMDD-XXXXX`（暦日は設定のタイムゾーンで採る）。 */
-  workOrderNumberLabel(
-    workOrderNumber: number | null | undefined,
-    createdAt?: string | Date | null,
-  ): string;
   money(value: number | null | undefined, currency?: string): string;
 }
 
@@ -156,18 +151,6 @@ export function createFormatters(prefs: DisplayPreferences): Formatters {
     },
     localized: (value) => localized(value, textLocale),
     deviceName: (value) => deviceName(value, textLocale),
-    workOrderNumberLabel: (workOrderNumber, createdAt) => {
-      if (workOrderNumber == null) return "—";
-      const serial = String(workOrderNumber).padStart(5, "0");
-      const d = createdAt ? toDate(createdAt) : null;
-      if (!d) return `#${workOrderNumber}`;
-      const ymd = formatDateWith(
-        { ...prefs, dateFormat: "YYYY/MM/DD" },
-        dateParts,
-        d,
-      ).replace(/\D/g, "");
-      return `${ymd}-${serial}`;
-    },
     money: formatMoney,
   };
   formattersCache.set(key, formatters);

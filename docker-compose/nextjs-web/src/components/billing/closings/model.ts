@@ -32,8 +32,8 @@ export interface BillingClosing {
 
 /** 詳細画面に出す期間内出荷 1 行。 */
 export interface ClosingShipmentRow {
-  /** 導出番号 SHP-YYYYMM-NNNNN。 */
-  shippingOrderNumber: string;
+  /** 導出番号 DOR-YYYYMM-NNNNN。 */
+  deliveryOrderNumber: string;
   shippedAt: string | null;
   quantity: number;
   amount: number;

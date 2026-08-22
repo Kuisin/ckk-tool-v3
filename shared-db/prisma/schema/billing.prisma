@@ -34,6 +34,8 @@ model Invoice {
   subtotal            Decimal  @db.Decimal(12, 2)
   taxAmount           Decimal  @map("tax_amount") @db.Decimal(12, 2)
   totalAmount         Decimal  @map("total_amount") @db.Decimal(12, 2)
+  /// 請求金額の通貨（currencies.code。既定 JPY）
+  currency            String   @default("JPY")
   status              InvoiceStatus @default(DRAFT)
   issuedAt            DateTime? @map("issued_at") @db.Timestamptz(6)
   dueDate             DateTime? @map("due_date") @db.Date
@@ -68,8 +70,8 @@ model InvoiceItem {
   invoiceSeq       Int    @map("invoice_seq")
 
   // 由来（任意）: 出荷書 / 納品書の複合キー
-  shippingOrderYearMonth String? @map("shipping_order_year_month") @db.Char(6)
-  shippingOrderSeq       Int?    @map("shipping_order_seq")
+  deliveryOrderYearMonth String? @map("delivery_order_year_month") @db.Char(6)
+  deliveryOrderSeq       Int?    @map("delivery_order_seq")
   deliveryNoteYearMonth  String? @map("delivery_note_year_month") @db.Char(6)
   deliveryNoteSeq        Int?    @map("delivery_note_seq")
   // 由来の注文明細（1 出荷書が複数明細を束ねるため、単価はこの行から取る）

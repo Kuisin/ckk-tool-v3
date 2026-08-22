@@ -1,7 +1,7 @@
 ---
 title: "出货单 — 操作手册"
 description: "把做好的产品发给客户时，用来记录发了什么、发了多少的单据。"
-screenshots: [shipping-order-list-01, shipping-order-new-01, shipping-order-detail-01, shipping-order-menu-01, shipping-order-confirm-01, shipping-order-delivery-notes-01]
+screenshots: [delivery-order-list-01, delivery-order-new-01, delivery-order-detail-01, delivery-order-menu-01, delivery-order-confirm-01, delivery-order-delivery-notes-01]
 ---
 把做好的产品发给客户时，用来记录 **发了什么、发了多少** 的 **出货单**（出荷書）。操作代码是 `SH01`。
 
@@ -10,7 +10,7 @@ screenshots: [shipping-order-list-01, shipping-order-new-01, shipping-order-deta
 ## 本应用能做什么
 
 - 可以做一张出货单，写清要发的产品和数量。
-- 只要选一张订单明细，**做好的部分会自动填进明细里**（不用重新手打）。
+- 只要选一张订单回执，**还没发货的数量会自动填进明细里**（不用重新手打）。
 - 记录发货以后，**库存会自动减少**。
 - 可以从出货单做出[送货单](/manual/zh/operations/shipping/delivery-note/user)。
 - 不发出去、留在公司里保管的部分（比如多做的备品）也可以记录。
@@ -19,7 +19,8 @@ screenshots: [shipping-order-list-01, shipping-order-new-01, shipping-order-deta
 
 ## 本页出现的词
 
-- **订单明细** … 写明「发给哪个客户、什么产品、多少支、什么时候交」的单据。做出货单时要看它。
+- **订单回执（注文請書）** … 记录「接了哪个客户、什么产品、多少支、什么时候交」的单据。做出货单时先选它。
+- **订单明细** … 订单回执里的一行受订。出货单的明细按它分组。
 - **指示書（制造指示书）** … 发给工厂的单据，写着「请做这么多这个产品」。做完的指示书的量才可以发货。
 - **批次（ロット）** … 一次做出来的一批产品的编号。指示书的编号就是批次号。
 - **発送 / 在庫保管（发送 / 留库保管）** … 「発送」是发给客户的部分，「在庫保管」是不发出去、留在公司保管的部分。
@@ -27,7 +28,7 @@ screenshots: [shipping-order-list-01, shipping-order-new-01, shipping-order-deta
 
 ## 开始之前
 
-- 要发的那部分，必须先登记好 **订单明细**。
+- 要发的那部分，其 **订单回执** 必须已经确定（已展开成订单明细）。
 - 请确认产品已经做好（[指示書](/manual/zh/operations/production/work-order/user)已经完成）。完成的指示书的量会自动填进明细。
 - 做出货单或发货需要出货权限。如果不能用，请联系管理员。
 
@@ -35,9 +36,9 @@ screenshots: [shipping-order-list-01, shipping-order-new-01, shipping-order-deta
 
 打开应用后，会看到之前做过的出货单一览。
 
-![出货单一览界面](../../../assets/screenshots/shipping-order-list-01.png)
+![出货单一览界面](../../../assets/screenshots/delivery-order-list-01.png)
 
-- **出荷書番号（出货单号）** … 以 `SHP-` 开头的编号，由系统自动编。
+- **出荷書番号（出货单号）** … 以 `DOR-` 开头的编号，由系统自动编。
 - **種別（类别）** … 蓝色的「発送」（发送）是发给客户的部分，灰色的「在庫保管」（留库保管）是留在公司的部分。
 - **状態（状态）** … 灰色是「下書き」（草稿），蓝色是「確定」（确定），绿色是「出荷済」（已发货）。
 - 上面的搜索框里可以输入出货单号、订单明细号、客户名称、产品名称来筛选。这个搜索框是用来 **查找已经做好的出货单** 的，和新建时选择订单明细的那个栏位是两回事。
@@ -47,7 +48,7 @@ screenshots: [shipping-order-list-01, shipping-order-new-01, shipping-order-deta
 ## 做一张出货单
 
 1. 点一览界面右上角的「**新規作成**」（新建）。
-2. 点「**订单明细**」（订单明细）栏，选要发货的订单明细。在这个栏位里，是用 **客户名称、产品名称、客户的订单编号** 来查找的（与一览界面的搜索框不同，这里无法用 `ORD-` 开头的订单明细号查找）。
+2. 点「**注文請書**」（订单回执）栏，选要发货的订单回执。在这个栏位里，是用 **客户名称、产品名称、客户的订单编号** 来查找的。
 3. 做好的指示书的量会 **自动填进明细**（一张指示书一行）。数量填的是这张指示书做出的良品数（还没有记录时，就是原本预定做的数量）。
 4. 在「**種別**」（类别）里选「**発送**」（发送）或「**在庫保管**」（留库保管）。一般保持「発送」即可。
 5. 在「**出荷元拠点**」（发货据点）里选从哪里发出。
@@ -55,17 +56,17 @@ screenshots: [shipping-order-list-01, shipping-order-new-01, shipping-order-deta
 7. 想加一行时点「**明細を追加**」（添加明细），想删一行时点该行右边的垃圾桶图标。
 8. 点「**保存**」（保存）。
 
-![出货单新建表单](../../../assets/screenshots/shipping-order-new-01.png)
+![出货单新建表单](../../../assets/screenshots/delivery-order-new-01.png)
 
 保存后会登记为「**下書き**」（草稿），并打开详细界面。
 
-> 💡 选了订单明细之后，这张订单的内容（客户、产品、接单支数、已完成的指示书件数）会显示在一条蓝色横幅里。请确认无误后再继续。
+> 💡 选了订单回执之后，每条订单明细的分组里会显示这笔受订的内容（编号、产品、接单支数、已完成的指示书件数）。请确认无误后再继续。
 
 > ⚠️ 订单明细保存之后就不能改了。选错时，请把这张出货单取消，重新做一张。
 
 ## 确认内容
 
-![出货单详细界面](../../../assets/screenshots/shipping-order-detail-01.png)
+![出货单详细界面](../../../assets/screenshots/delivery-order-detail-01.png)
 
 上方会显示出货单号、订单明细号、客户、产品、类别、发货据点、数量、发货日。
 
@@ -77,7 +78,7 @@ screenshots: [shipping-order-list-01, shipping-order-new-01, shipping-order-deta
 
 出货单按「下書き」（草稿）→「確定」（确定）→「出荷済」（已发货）三个阶段推进。操作在界面右上角的「**…**」（三个点的按钮）里进行。
 
-![详细界面的「…」菜单](../../../assets/screenshots/shipping-order-menu-01.png)
+![详细界面的「…」菜单](../../../assets/screenshots/delivery-order-menu-01.png)
 
 ### 1. 把内容定下来（确定）
 
@@ -85,7 +86,7 @@ screenshots: [shipping-order-list-01, shipping-order-new-01, shipping-order-deta
 2. 选「**確定**」（确定）。
 3. 会弹出一个叫「確定の確認」（确定确认）的小窗口，看完内容后点「**確定**」（确定）。
 
-![确定确认界面](../../../assets/screenshots/shipping-order-confirm-01.png)
+![确定确认界面](../../../assets/screenshots/delivery-order-confirm-01.png)
 
 确定之后 **就不能再编辑了**，但可以开始做送货单。
 
@@ -116,7 +117,7 @@ screenshots: [shipping-order-list-01, shipping-order-new-01, shipping-order-deta
 2. 点「**納品書を作成**」（创建送货单）。
 3. 会打开[送货单](/manual/zh/operations/shipping/delivery-note/user)的创建界面，出货单已经事先选好。
 
-![送货单标签页](../../../assets/screenshots/shipping-order-delivery-notes-01.png)
+![送货单标签页](../../../assets/screenshots/delivery-order-delivery-notes-01.png)
 
 这个标签页里也会列出从这张出货单做出的送货单（送货单号、送货对象、方式、状态、送货日）。
 
@@ -126,7 +127,7 @@ screenshots: [shipping-order-list-01, shipping-order-new-01, shipping-order-deta
 
 | 项目 | 必填 | 填什么 |
 |------|------|--------|
-| [订单明细](#field-order-line) | 必填 | 针对哪笔受订发货 |
+| [订单回执](#field-order-line) | 必填 | 针对哪笔受订发货 |
 | [类别](#field-type) | 必填 | 发送或库存保管 |
 | [发货基地](#field-plant) | 必填 | 从哪个基地发出 |
 | [备注](#field-notes) | 选填 | 对整份发货单的补充 |
@@ -134,9 +135,9 @@ screenshots: [shipping-order-list-01, shipping-order-new-01, shipping-order-deta
 | [批次（库存）](#field-lot) | 必填 | 从哪一批制造中发出 |
 | [数量](#field-quantity) | 必填 | 发出的数量 |
 
-### 订单明细 [#field-order-line]
+### 订单回执 [#field-order-line]
 
-针对哪笔受订发货。选择后可看到该受订的产品与剩余数量。
+以订单回执选择针对哪笔受订发货。选择后，该回执下可发货的明细会自动填入。
 
 ### 类别 [#field-type]
 

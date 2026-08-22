@@ -31,7 +31,7 @@ import {
   IconWand,
 } from "@tabler/icons-react";
 import { useMemo, useState } from "react";
-import { SecondaryButton } from "@/components/ui/buttons";
+import { EditButton, SecondaryButton } from "@/components/ui/buttons";
 import { FormSection } from "@/components/ui/shells";
 import { useIsMobile } from "@/hooks/useViewport";
 import { PROCESS_CATEGORY_LABEL } from "@/lib/enum-labels";
@@ -101,6 +101,121 @@ export function toStepSnapshots(
       workHours: effectiveWorkHours(locations[stepId], cat),
     };
   });
+}
+
+/**
+ * ProcessListView — 工程構成の**閲覧**表示（実行順・作業時間・実施場所）。
+ *
+ * 工程リスト（ルート）を選んでプリフィルした構成は、まずこの閲覧表示で出す —
+ * 触るつもりのない構成をうっかり変えて新バージョンが量産されるのを防ぐため。
+ * 変更したいときだけ「工程を編集」で ProcessListEditor に切り替える。
+ */
+export function ProcessListView({
+  selected,
+  locations,
+  catalogSteps,
+  plantOptions,
+  supplierOptions,
+  onEdit,
+}: {
+  selected: number[];
+  locations: Record<number, StepLocation>;
+  catalogSteps: CatalogStep[];
+  plantOptions: Option[];
+  supplierOptions: Option[];
+  /** 「工程を編集」— エディタ表示へ切り替える。 */
+  onEdit: () => void;
+}) {
+  const isMobile = useIsMobile();
+  const stepById = useMemo(
+    () => new Map(catalogSteps.map((s) => [s.id, s])),
+    [catalogSteps],
+  );
+  const plantLabel = useMemo(
+    () => new Map(plantOptions.map((o) => [o.value, o.label])),
+    [plantOptions],
+  );
+  const supplierLabel = useMemo(
+    () => new Map(supplierOptions.map((o) => [o.value, o.label])),
+    [supplierOptions],
+  );
+  const orderedSelected = useMemo(
+    () => defaultOrder(selected, catalogSteps),
+    [selected, catalogSteps],
+  );
+
+  return (
+    <FormSection
+      description="選択した工程リストの構成です。工程・作業時間を変えるときは「工程を編集」を押してください（変更は保存時に新バージョンとして保存されます）。"
+      title="工程・作業時間"
+    >
+      <Group justify="flex-end" mb="xs">
+        <EditButton onClick={onEdit}>工程を編集</EditButton>
+      </Group>
+      {orderedSelected.length === 0 ? (
+        <Text c="dimmed" size="sm">
+          工程が未選択です
+        </Text>
+      ) : (
+        <Stack gap="xs">
+          {orderedSelected.map((stepId, i) => {
+            const cat = stepById.get(stepId);
+            if (!cat) return null;
+            const loc = locations[stepId];
+            const execution =
+              cat.executionLocation === "INTERNAL_OR_OUTSOURCE"
+                ? (loc?.executionLocation ?? "INTERNAL")
+                : "INTERNAL";
+            const hours = effectiveWorkHours(loc, cat);
+            const place =
+              execution === "OUTSOURCE"
+                ? (supplierLabel.get(loc?.supplierBpId ?? "") ?? "外注先未定")
+                : loc?.plantId
+                  ? plantLabel.get(loc.plantId)
+                  : null;
+            return (
+              <Paper key={stepId} p="sm" radius="sm" withBorder>
+                <Group
+                  align={isMobile ? "flex-start" : "center"}
+                  justify="space-between"
+                  wrap={isMobile ? "wrap" : "nowrap"}
+                >
+                  <Group gap="sm" wrap="nowrap">
+                    <Text c="dimmed" className="tabular-nums" size="xs" w={20}>
+                      {i + 1}
+                    </Text>
+                    <Text fw={600} size="sm">
+                      {cat.nameJa}
+                    </Text>
+                    <Text c="dimmed" size="xs">
+                      {PROCESS_CATEGORY_LABEL[cat.category] ?? cat.category}
+                    </Text>
+                  </Group>
+                  <Group gap="sm" wrap="nowrap">
+                    <Text className="tabular-nums" size="xs">
+                      {hours != null ? `${hours} h` : "作業時間なし"}
+                    </Text>
+                    <Badge
+                      color={execution === "OUTSOURCE" ? "orange" : "gray"}
+                      size="xs"
+                      variant="outline"
+                    >
+                      {execution === "OUTSOURCE" ? "外注" : "社内"}
+                    </Badge>
+                    {place && (
+                      <Text c="dimmed" size="xs">
+                        {place}
+                      </Text>
+                    )}
+                  </Group>
+                </Group>
+              </Paper>
+            );
+          })}
+        </Stack>
+      )}
+    </FormSection>
+  );
 }
 
 export function ProcessListEditor({

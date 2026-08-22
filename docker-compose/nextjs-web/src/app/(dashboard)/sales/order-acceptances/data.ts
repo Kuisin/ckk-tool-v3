@@ -72,6 +72,7 @@ export async function fetchOrderAcceptances(): Promise<
       ? localized(r.customerBp.name as LocalizedText | null)
       : null,
     itemCount: r._count.items,
+    orderDate: r.orderDate?.toISOString().slice(0, 10) ?? null,
     extractError: r.extractError,
     createdAt: r.createdAt.toISOString(),
     updatedAt: r.updatedAt.toISOString(),
@@ -101,6 +102,14 @@ export async function fetchOrderAcceptance(
         orderBy: { sortOrder: "asc" },
         include: {
           product: { select: { name: true, yearMonth: true, seq: true } },
+          // 明細に割り当てられた指示書（分割・統合の割当数を表に出す）。
+          workOrderLinks: {
+            orderBy: { sortOrder: "asc" },
+            select: {
+              quantity: true,
+              workOrder: { select: { workOrderNumber: true, status: true } },
+            },
+          },
         },
       },
     },
@@ -131,6 +140,16 @@ export async function fetchOrderAcceptance(
 
   const items: OrderAcceptanceItemView[] = r.items.map((it) => ({
     id: it.id,
+    // 確定済みの行は注文明細番号（枝番）を持つ — 明細表から SA25 へリンクする。
+    lineNumber:
+      it.branch != null
+        ? formatOrderLineNumber({ ...key, branch: it.branch })
+        : null,
+    workOrders: it.workOrderLinks.map((l) => ({
+      workOrderNumber: l.workOrder.workOrderNumber,
+      quantity: l.quantity,
+      status: l.workOrder.status,
+    })),
     productId: it.productId != null ? String(it.productId) : null,
     productLabel: it.product ? productLabel(it.product) : null,
     productName: it.product

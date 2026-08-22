@@ -169,7 +169,7 @@ model InventoryTransaction {
   inventoryId     String          @map("inventory_id") @db.Uuid
   transactionType TransactionType @map("transaction_type")
   quantity        Decimal         @db.Decimal(12, 3)
-  referenceType   String?         @map("reference_type") // work_order / shipping_order / material_receipt …
+  referenceType   String?         @map("reference_type") // work_order / delivery_order / material_receipt …
   referenceId     String?         @map("reference_id")
   notes           String?
   createdBy       String?         @map("created_by") @db.Uuid

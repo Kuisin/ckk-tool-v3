@@ -691,17 +691,17 @@ export const shots: Shot[] = [
   },
   // ── 出荷: 出荷書（SH01）────────────────────────────────────────────────────
   {
-    id: "shipping-order-list-01",
-    docPage: "operations/shipping/shipping-order/user",
-    path: "/shipping/shipping-orders",
+    id: "delivery-order-list-01",
+    docPage: "operations/shipping/delivery-order/user",
+    path: "/shipping/delivery-orders",
     steps: async (page) => {
-      await page.getByText("SHP-202607-00001").first().waitFor();
+      await page.getByText("DOR-202607-00001").first().waitFor();
     },
   },
   {
-    id: "shipping-order-detail-01",
-    docPage: "operations/shipping/shipping-order/user",
-    path: "/shipping/shipping-orders/SHP-202607-00001",
+    id: "delivery-order-detail-01",
+    docPage: "operations/shipping/delivery-order/user",
+    path: "/shipping/delivery-orders/DOR-202607-00001",
     steps: async (page) => {
       await page.getByText("明細").first().waitFor();
     },
@@ -760,27 +760,27 @@ export const shots: Shot[] = [
   // ── 出荷・請求: 初心者向けマニュアル用の追加撮影 ──────────────────────────
   // 確認モーダルは「開くだけ」— 確定を押すとデータが変わり撮影が非決定になる。
   {
-    id: "shipping-order-new-01",
-    docPage: "operations/shipping/shipping-order/user",
-    path: "/shipping/shipping-orders/new",
+    id: "delivery-order-new-01",
+    docPage: "operations/shipping/delivery-order/user",
+    path: "/shipping/delivery-orders/new",
     steps: async (page) => {
       // 出荷元は「注文請書」ではなく「注文明細」を選ぶ形に変わった。
       await page.getByText("注文明細").first().waitFor();
     },
   },
   {
-    id: "shipping-order-menu-01",
-    docPage: "operations/shipping/shipping-order/user",
-    path: "/shipping/shipping-orders/SHP-202607-00002",
+    id: "delivery-order-menu-01",
+    docPage: "operations/shipping/delivery-order/user",
+    path: "/shipping/delivery-orders/DOR-202607-00002",
     steps: async (page) => {
       await page.getByRole("button", { name: "操作メニュー" }).first().click();
       await page.getByRole("menuitem", { name: "出荷" }).first().waitFor();
     },
   },
   {
-    id: "shipping-order-confirm-01",
-    docPage: "operations/shipping/shipping-order/user",
-    path: "/shipping/shipping-orders/SHP-202607-00003",
+    id: "delivery-order-confirm-01",
+    docPage: "operations/shipping/delivery-order/user",
+    path: "/shipping/delivery-orders/DOR-202607-00003",
     steps: async (page) => {
       await page.getByRole("button", { name: "操作メニュー" }).first().click();
       await page.getByRole("menuitem", { name: "確定" }).first().click();
@@ -788,9 +788,9 @@ export const shots: Shot[] = [
     },
   },
   {
-    id: "shipping-order-delivery-notes-01",
-    docPage: "operations/shipping/shipping-order/user",
-    path: "/shipping/shipping-orders/SHP-202607-00001?tab=delivery-notes",
+    id: "delivery-order-delivery-notes-01",
+    docPage: "operations/shipping/delivery-order/user",
+    path: "/shipping/delivery-orders/DOR-202607-00001?tab=delivery-notes",
     steps: async (page) => {
       await page.getByText("DRN-202607-00001").first().waitFor();
     },
@@ -798,7 +798,7 @@ export const shots: Shot[] = [
   {
     id: "delivery-note-new-01",
     docPage: "operations/shipping/delivery-note/user",
-    path: "/shipping/delivery-notes/new?shippingOrder=SHP-202607-00002",
+    path: "/shipping/delivery-notes/new?deliveryOrder=DOR-202607-00002",
     steps: async (page) => {
       await page.getByText("納品方法").first().waitFor();
     },
@@ -815,7 +815,7 @@ export const shots: Shot[] = [
   {
     id: "delivery-note-direct-01",
     docPage: "operations/shipping/delivery-note/user",
-    path: "/shipping/delivery-notes/new?shippingOrder=SHP-202607-00002",
+    path: "/shipping/delivery-notes/new?deliveryOrder=DOR-202607-00002",
     steps: async (page) => {
       await page.getByText("ユーザー直送").first().click();
       await page.getByText("最終需要家").first().waitFor();
@@ -836,7 +836,7 @@ export const shots: Shot[] = [
     docPage: "operations/billing/invoice/user",
     path: "/billing/invoices/INV-202606-00001",
     steps: async (page) => {
-      await page.getByText("SHP-202606-00001").first().waitFor();
+      await page.getByText("DOR-202606-00001").first().waitFor();
     },
   },
   {

@@ -63,7 +63,7 @@ When several roles grant the same code, the **widest scope wins** (PLANT + ALL
 | `work_order` | Work order | PD02 Work orders (also kiosk step execution) |
 | `approve` | Approvals | PD03 Approvals |
 | `inventory` | Inventory | PD04 Inventory |
-| `shipping_order` | Shipping order | SH01 Shipping orders |
+| `delivery_order` | Shipping order | SH01 Shipping orders |
 | `delivery_note` | Delivery note | SH02 Delivery notes |
 | `invoice` | Invoice | BL01 Invoices |
 | `billing_closing` | Billing closing | BL02 Monthly closing (Yayoi CSV export is E) |

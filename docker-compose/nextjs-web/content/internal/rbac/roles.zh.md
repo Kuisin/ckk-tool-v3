@@ -61,7 +61,7 @@ description: "系统中所有角色与权限代码的一览：谁能做什么，
 | `work_order` | 工单 | PD02 工单（终端的工序执行使用同一代码） |
 | `approve` | 审批管理 | PD03 审批管理 |
 | `inventory` | 库存 | PD04 库存管理 |
-| `shipping_order` | 出货单 | SH01 出货单 |
+| `delivery_order` | 出货单 | SH01 出货单 |
 | `delivery_note` | 送货单 | SH02 送货单 |
 | `invoice` | 发票 | BL01 发票 |
 | `billing_closing` | 结算处理 | BL02 结算处理（弥生 CSV 导出为 E） |

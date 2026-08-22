@@ -18,15 +18,16 @@ This app is for making the document (**指示書**, work order) that decides whi
 ## Words used on this page
 
 - **注文明細** (order line) … an internal document that splits a customer's order by product and by quantity. You choose one of these to make a work order.
+- **割当** (allocation) … the link that says which order lines this work order makes pieces for, and how many. You may split one order line across several work orders (splitting), or combine several order lines of the same product into one work order (a combined lot).
 - **工程** (step) … one stage of the work, such as cutting, step machining, or inspection.
 - **工程リスト** (step list) … the order of the steps for making a product, registered in advance.
-- **ロット番号** (lot number) … the number given to a batch of products you made. The work order number becomes the lot number.
+- **ロット番号** (lot number) … a serial number such as `#9001` given to a batch of products you made. It is assigned automatically when a work order is created, and is used to trace the lot through stock and shipping.
 - **受入数 / 良品数** (received quantity / good quantity) … the received quantity is how many pieces came into that step; the good quantity is how many pieces are fine to pass on.
 - **承認グループ** (approval group) … the list of people who are allowed to approve. Only people on this list can approve.
 
 ## Before you start
 
-- You need a **order line** first. Order lines are made from the import screen of [order acceptance](/manual/en/operations/sales/order-acceptance/user), and you can check them on the order line screen (operation code `PD01`).
+- You need a **order line** first. Order lines are made from the import screen of [order acceptance](/manual/en/operations/sales/order-acceptance/user), and you can check them on the order line screen (operation code `SA05`).
 - When you run 「**在庫照合**」 (Check stock) on the order line screen, the stock you already have is set aside for that order. You make the missing amount with this app.
 - People who approve must be registered in an [approval group](/manual/en/operations/masters/approval-setting/user) in advance.
 
@@ -36,7 +37,7 @@ When you open the app, you see a list of the work orders made so far.
 
 ![Work order list](../../../assets/screenshots/work-order-list-01.png)
 
-- **指示書番号** (work order number) … a serial number such as `#9001`. The system adds it for you. This number also becomes the lot number.
+- **指示書番号** (work order number) … a number such as `WOR-202608-00001`, in the same format as other documents (quotes, order acceptances, …), restarting from 1 each month. The lot number (a serial number such as `#9001`) is assigned separately and shown on the detail screen.
 - **種別** (type) … either 「**在庫分**」 (from stock — using stock you already have) or 「**製造分**」 (to make — making new pieces).
 - **予定数量** (planned quantity) … how many pieces you plan to make.
 - **承認状態** (approval status) … a coloured badge shows 「承認待ち」 (waiting for approval), 「承認済」 (approved) or 「差し戻し」 (sent back). Which step it is currently on is shown on the card on the detail screen.
@@ -47,21 +48,23 @@ When you open the app, you see a list of the work orders made so far.
 ## Creating a work order
 
 1. Press 「**新規作成**」 (New) at the top right of the list screen. You can also open it from the order line screen, in which case the order line is already chosen.
-2. Click the 「**注文明細**」 (order line) box and choose the order line to base it on. You can search by order line number, product, or customer.
-3. Once you choose it, the customer name, the product, and the ordered quantity appear below.
-4. In 「**種別**」 (type), choose 「在庫分」 (from stock) or 「製造分」 (to make).
-5. Enter how many pieces to make in 「**予定数量**」 (planned quantity).
-6. If you chose 「製造分」 (to make), choose the 「**使用素材**」 (material to use).
-7. 「**検査表**」 (inspection sheets) — the ones you need are chosen automatically. Add more if any are missing.
-8. Choose the 「**工程リスト**」 (step list). See the next section.
-9. For steps that can be done either in-house or outside, choose 「**社内**」 (in-house) or 「**外注**」 (outsourced) — then choose the site for in-house, or the partner company for outsourced.
-10. Press 「**保存**」 (Save).
+2. In 「**注文明細の割当**」 (order line allocations), choose the order line to base it on. You can search by order line number, product, or customer. Once you choose it, the customer name, the product, the ordered quantity, and the **remaining allocatable quantity** (the ordered quantity minus what other work orders already cover) appear below.
+3. In 「**割当数量**」 (allocation quantity), enter how many pieces this work order makes for that order line. The remaining quantity is filled in automatically, so change it only when you make just a part (splitting).
+4. To make other order lines of the same product at the same time (a combined lot), press 「**明細を追加（統合ロット）**」 (add order line — combined lot) and add rows. Order lines for different products cannot go on the same work order.
+5. In 「**種別**」 (type), choose 「在庫分」 (from stock) or 「製造分」 (to make). A from-stock work order can have only one order line.
+6. Enter how many pieces to make in 「**予定数量**」 (planned quantity). The total of the allocations is filled in automatically and you cannot enter less than that. Adding extra as spares for defects is up to you.
+7. If you chose 「製造分」 (to make), choose the 「**使用素材**」 (material to use).
+8. If you already know where the finished products will be kept, choose the 「**保管場所**」 (storage location). It can stay empty.
+9. 「**検査表**」 (inspection sheets) — the ones you need are chosen automatically. Add more if any are missing.
+10. Choose the 「**工程リスト**」 (step list). See the next section.
+11. For steps that can be done either in-house or outside, choose 「**社内**」 (in-house) or 「**外注**」 (outsourced) — then choose the site for in-house, or the partner company for outsourced.
+12. Press 「**保存**」 (Save).
 
 ![New work order form](../../../assets/screenshots/work-order-new-01.png)
 
 When you save, a 「**下書き**」 (draft) work order is created and its detail screen opens.
 
-> 💡 Under 「予定数量」 (planned quantity) you may see a note such as 「最低 55（不良予備分は上乗せ可）」 (at least 55 — you may add extra for defects). This is the smallest number needed after subtracting stock and other work orders. You cannot save with less. Making more is up to you.
+> 💡 You can also make only part of an order line first (splitting). The remaining pieces stay listed under 「未手配」 (not yet arranged) on the 未処理指示書 (pending work orders) screen (operation code `PD05`), so you can make them later with another work order.
 
 If there is not enough material, you see a note such as 「**素材在庫が 30 不足しています**」 (material stock is short by 30). This is only a warning, so you can still save. If nothing is due to arrive, you see 「**入荷予定がありません。素材発注を検討してください**」 (nothing is due to arrive — please consider ordering material).
 
@@ -185,18 +188,24 @@ Every field on the work order screen. The order of the steps themselves is set i
 
 | Field | Required | What to enter |
 |-------|----------|---------------|
-| [Order line](#field-order-line) | Optional | Which order this work order is for |
+| [Order line allocations](#field-order-line) | Optional | Which orders this work order makes pieces for, and how many |
+| [Allocation quantity](#field-alloc-quantity) | Conditional | How many pieces for that order line |
 | [Product](#field-product) | Required | The product being made |
 | [Planned quantity](#field-planned-quantity) | Required | How many pieces |
 | [Material](#field-material) | Optional | The material used |
+| [Storage location](#field-storage-location) | Optional | Where the finished products are kept |
 | [Process list / version](#field-route) | Required | Which sequence of steps to use |
 | [New process list name](#field-new-route-name) | Conditional | Name when creating a new list |
 | [Inspection sheets](#field-inspection-templates) | Optional | Templates to use |
 | [Notes](#field-notes) | Optional | Notes |
 
-### Order line [#field-order-line]
+### Order line allocations [#field-order-line]
 
-Which order the work order is for. **It can be left empty for work orders that only build stock** (standalone stock work orders).
+Which orders the work order is for. By adding rows you can **combine several order lines of the same product into one work order (one lot)**, and the other way round, you can split one order line across several work orders. **It can be left empty for work orders that only build stock** (standalone stock work orders).
+
+### Allocation quantity [#field-alloc-quantity]
+
+How many pieces this work order makes for that order line. The upper limit is that line's **remaining allocatable quantity** (the ordered quantity minus what other work orders already cover).
 
 ### Product [#field-product]
 
@@ -204,11 +213,15 @@ The product being made. Choosing a order line fills in that order's product.
 
 ### Planned quantity [#field-planned-quantity]
 
-How many pieces to make. It becomes **the initial received quantity for the steps**, and is the basis for splitting between stock and manufacture.
+How many pieces to make. Enter **at least the total of the allocations** (adding extra as spares for defects is up to you; for a from-stock work order it equals the allocation total). It also becomes **the initial received quantity for the steps**.
 
 ### Material [#field-material]
 
 The material used. When the work order is approved, **this material is reserved from stock.**
+
+### Storage location [#field-storage-location]
+
+Where the finished products are kept. Choose from the [storage location](/manual/en/operations/masters/storage-location/user) master. If it is not decided yet, it can stay empty.
 
 ### Process list / version [#field-route]
 
@@ -244,7 +257,10 @@ A. The numbers you entered on the defect lines add up to more than the number of
 A. Something is missing in the combination of steps you chose. The red note says which step needs what, so please add that step.
 
 **Q. I reduced the planned quantity and could not save.**
-A. It is below the smallest number allowed, shown as something like 「最低 55（不良予備分は上乗せ可）」 (at least 55 — you may add extra for defects). Please enter at least the number shown in the note.
+A. The planned quantity is below the total of the 「割当数量」 (allocation quantities). Raise the planned quantity to at least the allocation total, or reduce the allocation quantities instead.
+
+**Q. I see 「割当が受注残を超えています」 (the allocation exceeds the remaining order quantity) and cannot save.**
+A. Part of that order line is already allocated to other work orders. You can only allocate up to the remaining quantity (「残」) shown in the note. If you want to make more pieces, leave the allocation as it is and raise the 「予定数量」 (planned quantity) instead (spares for defects).
 
 **Q. I cannot roll back a finished step.**
 A. Either the next step has already started, or the work order is finished and the pieces have already gone into stock. Differences in quantity after stock has been updated cannot be fixed on this screen. Please talk to an administrator.

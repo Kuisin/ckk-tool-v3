@@ -1,7 +1,8 @@
 /**
  * data.ts — 指示書 (app.work_orders) の server-side fetch/mapping.
  *
- * URL id = work_order_number（通し連番 int = ロット番号）。表示は生 int（mono）。
+ * URL id = 書類番号 WO-YYYYMM-NNNNN（旧・生 int も受ける — resolveWorkOrderIdParam）。
+ * 表示は書類番号、ロット番号（= work_order_number 通し連番 int）は別掲。
  * 承認履歴は history Json（{action,user,at,notes}）を displayName 解決して返す。
  */
 
@@ -25,7 +26,11 @@ import { getCurrentActorId } from "@/lib/audit";
 import { checkPermission } from "@/lib/authz";
 import { avatarUrl } from "@/lib/avatar";
 import { type Prisma, prisma } from "@/lib/db";
-import { orderLineNumberOf } from "@/lib/doc-number";
+import {
+  formatDocNumber,
+  orderLineNumberOf,
+  parseDocKey,
+} from "@/lib/doc-number";
 import { type LocalizedText, localized } from "@/lib/format";
 import {
   formatCounts,
@@ -37,6 +42,7 @@ import {
 } from "@/lib/inspection-core";
 import { sumActualWorkHours } from "@/lib/step-work-hours";
 import { fetchWorkLocationOptions } from "@/lib/work-locations";
+import { effectiveAllocatedByLine } from "@/lib/work-order-alloc";
 import { fetchWorkflowCtx, loadCatalog } from "@/lib/workflow";
 import { canStartStep, expectedInput } from "@/lib/workflow-core";
 
@@ -85,9 +91,17 @@ const WO_INCLUDE = {
       route: { select: { id: true, name: true, productId: true } },
     },
   },
-  sourceWorkOrder: { select: { workOrderNumber: true } },
+  sourceWorkOrder: {
+    select: { workOrderNumber: true, yearMonth: true, seq: true },
+  },
   copies: {
-    select: { workOrderNumber: true, status: true, createdAt: true },
+    select: {
+      workOrderNumber: true,
+      yearMonth: true,
+      seq: true,
+      status: true,
+      createdAt: true,
+    },
     orderBy: { createdAt: "desc" as const },
   },
   steps: {
@@ -175,6 +189,8 @@ function orderLineListLabel(
 
 function mapRow(r: {
   workOrderNumber: number;
+  yearMonth: string;
+  seq: number;
   orderLineLinks: {
     orderLine: {
       acceptanceYearMonth: string;
@@ -193,6 +209,7 @@ function mapRow(r: {
 }): WorkOrderRow {
   return {
     workOrderNumber: r.workOrderNumber,
+    docNumber: formatDocNumber("WOR", r),
     createdAt: r.createdAt.toISOString(),
     orderLineNumber: orderLineListLabel(r.orderLineLinks),
     productName: localized(r.product.name as LocalizedText | null),
@@ -270,6 +287,8 @@ export async function fetchWorkOrders(
 /** ストリップ印刷（帯）の 1 件ぶん — 最小限の要約だけ。 */
 export interface WorkOrderStripView {
   workOrderNumber: number;
+  /** 書類番号 WO-YYYYMM-NNNNN。 */
+  docNumber: string;
   productName: string;
   /** 注文明細番号（在庫向けの独立指示書は null）。 */
   orderLineNumber: string | null;
@@ -338,6 +357,7 @@ export async function fetchWorkOrderStrips(
       ];
       return {
         workOrderNumber: r.workOrderNumber,
+        docNumber: formatDocNumber("WOR", r),
         productName: localized(r.product.name as LocalizedText | null),
         orderLineNumber: orderLineListLabel(r.orderLineLinks),
         customerName:
@@ -403,6 +423,7 @@ export async function fetchWorkOrder(
   return {
     id: r.id,
     workOrderNumber: r.workOrderNumber,
+    docNumber: formatDocNumber("WOR", r),
     status: r.status,
     approvalStatus: r.approvalStatus,
     type: r.type,
@@ -441,8 +462,12 @@ export async function fetchWorkOrder(
     routeVersion: r.routeVersion?.version ?? null,
     lotNumber: r.orderLineLinks[0]?.orderLine.lotNumber ?? null,
     sourceWorkOrderNumber: r.sourceWorkOrder?.workOrderNumber ?? null,
+    sourceWorkOrderDocNumber: r.sourceWorkOrder
+      ? formatDocNumber("WOR", r.sourceWorkOrder)
+      : null,
     copies: r.copies.map((c) => ({
       workOrderNumber: c.workOrderNumber,
+      docNumber: formatDocNumber("WOR", c),
       status: c.status,
       createdAt: c.createdAt.toISOString(),
     })),
@@ -531,7 +556,8 @@ export interface StepNavItem {
 
 export interface WorkOrderStepNav {
   workOrderNumber: number;
-  /** 表示番号（YYYYMMDD-XXXXX）用の作成日。 */
+  /** 書類番号 WO-YYYYMM-NNNNN。 */
+  docNumber: string;
   createdAt: string;
   steps: StepNavItem[];
 }
@@ -549,6 +575,8 @@ export async function fetchWorkOrderStepNav(
     where: { workOrderNumber },
     select: {
       workOrderNumber: true,
+      yearMonth: true,
+      seq: true,
       createdAt: true,
       createdBy: true,
       steps: {
@@ -581,6 +609,7 @@ export async function fetchWorkOrderStepNav(
   if (!workOrderRowInScope(authz.access, authz.userId, r)) return null;
   return {
     workOrderNumber: r.workOrderNumber,
+    docNumber: formatDocNumber("WOR", r),
     createdAt: r.createdAt.toISOString(),
     steps: r.steps.map((s) => ({
       id: s.id,
@@ -622,6 +651,8 @@ export async function fetchStepExecution(
     select: {
       id: true,
       status: true,
+      yearMonth: true,
+      seq: true,
       createdAt: true,
       plannedQuantity: true,
       createdBy: true,
@@ -838,6 +869,7 @@ export async function fetchStepExecution(
   return {
     actorId,
     workOrderNumber,
+    workOrderDocNumber: formatDocNumber("WOR", wo),
     workOrderCreatedAt: wo.createdAt.toISOString(),
     workOrderStatus: wo.status,
     plannedQuantity: wo.plannedQuantity,
@@ -928,6 +960,19 @@ export async function fetchPlantOptions(): Promise<Option[]> {
 }
 
 /**
+ * 担当者候補（有効な従業員アカウント）— 作成時の作業計画の MultiSelect 用。
+ * value = users.id (uuid)、label = 表示名。
+ */
+export async function fetchEmployeeOptions(): Promise<Option[]> {
+  const rows = await prisma.user.findMany({
+    where: { isActive: true, group: "EMPLOYEE" },
+    orderBy: { username: "asc" },
+    select: { id: true, displayName: true },
+  });
+  return rows.map((u) => ({ value: u.id, label: u.displayName }));
+}
+
+/**
  * 保管場所（有効のみ・拠点名付き）— 完成品の保管場所 Select。
  * value = String(内部 id)、label = 「拠点名 / 保管場所名」。
  */
@@ -991,6 +1036,29 @@ export async function fetchSupplierOptions(): Promise<Option[]> {
   }));
 }
 
+// ── URL id 解決（書類番号 / 旧・生 int の両対応） ────────────────────────────
+
+/**
+ * URL の [id] を内部の指示書番号（通し連番 int = ロット番号）へ解決する。
+ * 新形式 WO-YYYYMM-NNNNN と、旧形式の生 int（監査・通知に残る過去リンク）を
+ * 両方受ける。見つからない・不正は null → 呼び出し側の notFound に乗せる。
+ */
+export async function resolveWorkOrderIdParam(
+  id: string,
+): Promise<number | null> {
+  const decoded = decodeURIComponent(id);
+  const key = parseDocKey(decoded, "WOR");
+  if (key) {
+    const row = await prisma.workOrder.findUnique({
+      where: { yearMonth_seq: { yearMonth: key.yearMonth, seq: key.seq } },
+      select: { workOrderNumber: true },
+    });
+    return row?.workOrderNumber ?? null;
+  }
+  const n = Number(decoded);
+  return Number.isInteger(n) && n >= 1 ? n : null;
+}
+
 // ── 注文明細参照（?orderLine= プリセレクト・ビルダーの選択情報） ────────────────
 
 export interface OrderLineRef {
@@ -1002,7 +1070,10 @@ export interface OrderLineRef {
   productId: number;
   quantity: number;
   status: string;
-  /** 他の指示書（キャンセル除く）の割当合計。 */
+  /**
+   * 手配済み（実効）— キャンセル除く割当合計。完了済み指示書は実際に
+   * できた分だけ数える（不良の不足分は受注残へ戻る）。
+   */
   allocatedQuantity: number;
   /** まだ割り当てられる数量（受注数量 − 手配済）。 */
   remainingQuantity: number;
@@ -1011,25 +1082,23 @@ export interface OrderLineRef {
 export async function fetchOrderLineRef(
   orderLineId: string,
 ): Promise<OrderLineRef | null> {
-  const r = await prisma.orderLine.findUnique({
-    where: { id: orderLineId },
-    include: {
-      acceptance: { include: { customerBp: true } },
-      product: true,
-      workOrderLinks: {
-        where: { workOrder: { status: { not: "CANCELLED" } } },
-        select: { quantity: true },
+  const [r, allocatedMap] = await Promise.all([
+    prisma.orderLine.findUnique({
+      where: { id: orderLineId },
+      include: {
+        acceptance: { include: { customerBp: true } },
+        product: true,
       },
-    },
-  });
+    }),
+    // 手配済みは実効値 — 完了済み指示書で不良が多く、割当より少なく
+    // しかできなかったぶんは受注残へ戻る（lib/work-order-alloc）。
+    effectiveAllocatedByLine([orderLineId]),
+  ]);
   if (!r) return null;
   const number = orderLineNumberOf(r);
   if (!number) return null; // 未確定の明細は指示書の対象にならない
   const productName = localized(r.product?.name as LocalizedText | null);
-  const allocatedQuantity = r.workOrderLinks.reduce(
-    (sum, l) => sum + l.quantity,
-    0,
-  );
+  const allocatedQuantity = allocatedMap.get(orderLineId) ?? 0;
   return {
     id: r.id,
     number,

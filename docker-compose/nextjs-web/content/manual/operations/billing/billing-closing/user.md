@@ -25,7 +25,7 @@ screenshots: [billing-closing-list-01, billing-closing-run-01, billing-closing-d
 
 ## はじめる前に
 
-- 集計されるのは、**「出荷済」になっていて、種別が「発送」の**[出荷書](/manual/ja/operations/shipping/shipping-order/user)だけです。まだ「下書き」「確定」のままの出荷書は入りません。先に出荷の記録を済ませてください。
+- 集計されるのは、**「出荷済」になっていて、種別が「発送」の**[出荷書](/manual/ja/operations/shipping/delivery-order/user)だけです。まだ「下書き」「確定」のままの出荷書は入りません。先に出荷の記録を済ませてください。
 - お客様ごとの締日は[顧客](/manual/ja/operations/masters/business-partner/user)の登録内容で決まります。決めていないお客様は **月末** としてまとめられます。
 - 締日処理を行うには、締日処理の権限が必要です。使えないときは管理者にご相談ください。
 
@@ -67,7 +67,7 @@ screenshots: [billing-closing-list-01, billing-closing-run-01, billing-closing-d
 
 - 上に、お客様・締日・合計金額（税抜）・状態が並びます。
 - 「**対象出荷**」の表に、まとめられた出荷書が 1 行ずつ並びます（出荷書番号・出荷日・数量・金額）。
-- 出荷書番号の青い文字をクリックすると、その[出荷書](/manual/ja/operations/shipping/shipping-order/user)を開いて中身を確認できます。
+- 出荷書番号の青い文字をクリックすると、その[出荷書](/manual/ja/operations/shipping/delivery-order/user)を開いて中身を確認できます。
 - 表の一番下に、数量と金額の合計が出ます。
 
 金額が思っていたものと違うときは、請求書を作る前にここで確かめてください。

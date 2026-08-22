@@ -21,6 +21,8 @@ const MANUAL_APP_CATEGORY: Record<string, string> = {
   approval: "production",
   "product-inventory": "production",
   "material-inventory": "production",
+  // 旧スラッグのまま残す（このマップは旧 URL の移設用）。shipping-order →
+  // delivery-order の改称は redirects() 内の個別エントリが受け持つ。
   "shipping-order": "shipping",
   "delivery-note": "shipping",
   invoice: "billing",
@@ -172,6 +174,27 @@ const nextConfig: NextConfig = {
       {
         source: "/master/approval-groups",
         destination: "/master/approval-settings",
+        permanent: true,
+      },
+
+      // 出荷書の英語名を shipping order → delivery order（DO）へ改称。
+      // 旧パス（アプリ・マニュアルとも）はメモ内リンク・通知・ブックマークに
+      // 残っているため引き継ぐ。文書番号 SHP-… の URL は詳細ページ側で
+      // DOR-… へ読み替える。
+      {
+        source: "/shipping/shipping-orders/:path*",
+        destination: "/shipping/delivery-orders/:path*",
+        permanent: true,
+      },
+      {
+        source: "/shipping/shipping-orders",
+        destination: "/shipping/delivery-orders",
+        permanent: true,
+      },
+      {
+        source:
+          "/manual/:lang(ja|en|zh)/operations/shipping/shipping-order/:path*",
+        destination: "/manual/:lang/operations/shipping/delivery-order/:path*",
         permanent: true,
       },
 

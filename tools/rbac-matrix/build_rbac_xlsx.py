@@ -73,7 +73,7 @@ CODE_ORDER = [
     "work_order",
     "approve",
     "inventory",
-    "shipping_order",
+    "delivery_order",
     "delivery_note",
     "invoice",
     "billing_closing",

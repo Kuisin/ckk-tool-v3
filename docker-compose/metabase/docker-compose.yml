@@ -56,6 +56,9 @@ services:
       - default     # metabase-db
       - ldap        # vpn-ldap_default — reach vpn-ldap:389
       - shareddb    # shared-db — read labor data (kot / directory schemas, kot_ro role)
+      - coolify     # ollama:11434 — Metabot/AI 用 LLM（ai-stack の ollama は
+                    # ホストポート非公開になったため、coolify ネットワーク経由で
+                    # エイリアス参照する。llm-openai-api-base-url=http://ollama:11434）
     ports:
       - "3003:3000"
     healthcheck:
@@ -77,3 +80,7 @@ networks:
   shareddb:
     external: true
     name: shared-db
+  # Coolify network — ollama (LLM, GPU) が接続している。Metabot/AI 連携用。
+  coolify:
+    external: true
+    name: coolify

@@ -15,12 +15,15 @@ const SEQUENCES = {
   QUOTE: { prefix: "QOT", digits: 5 },
   PRICE_LIST: { prefix: "PRC", digits: 5 },
   ORDER: { prefix: "ORD", digits: 5 }, // 注文明細ベース（枝番は行側で 1..N）
-  SHIPPING: { prefix: "SHP", digits: 5 }, // 出荷書
+  DELIVERY_ORDER: { prefix: "DOR", digits: 5 }, // 出荷書（delivery order）
   DELIVERY: { prefix: "DRN", digits: 5 }, // 納品書
   PURCHASE: { prefix: "PO", digits: 5 }, // 素材発注書（po_number に文字列保存）
   PURCHASE_REQUEST: { prefix: "PRQ", digits: 5 }, // 購買依頼（request_number に文字列保存）
   INVOICE: { prefix: "INV", digits: 5 }, // 請求書
   DESIGN: { prefix: "DSG", digits: 5 }, // 設計依頼書（request_number に文字列保存）
+  // 指示書の書類番号（表示用）。ロット番号は別キー WORK_ORDER（通し連番）—
+  // 同じキーにすると月次リセットの upsert が通し連番を壊すため分けている。
+  WORK_ORDER_DOC: { prefix: "WOR", digits: 5 },
 } as const;
 
 export type NumberingKey = keyof typeof SEQUENCES;

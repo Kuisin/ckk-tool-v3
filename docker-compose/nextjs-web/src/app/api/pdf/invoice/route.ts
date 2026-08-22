@@ -105,7 +105,7 @@ export async function GET(request: Request): Promise<Response> {
       quantity: yen(it.quantity),
       unit_price: yen(it.unitPrice),
       amount: yen(it.amount),
-      provenance: [it.shippingOrderNumber, it.deliveryNoteNumber]
+      provenance: [it.deliveryOrderNumber, it.deliveryNoteNumber]
         .filter(Boolean)
         .join(" / "),
     })),

@@ -63,7 +63,7 @@ description: "システムのロール（職務セット）と権限コードの
 | `work_order` | 指示書 | PD02 指示書（キオスクの工程実行も同じコード） |
 | `approve` | 承認管理 | PD03 承認管理 |
 | `inventory` | 在庫 | PD04 在庫管理 |
-| `shipping_order` | 出荷書 | SH01 出荷書 |
+| `delivery_order` | 出荷書 | SH01 出荷書 |
 | `delivery_note` | 納品書 | SH02 納品書 |
 | `invoice` | 請求書 | BL01 請求書 |
 | `billing_closing` | 締日処理 | BL02 締日処理（弥生 CSV の書き出しは E） |

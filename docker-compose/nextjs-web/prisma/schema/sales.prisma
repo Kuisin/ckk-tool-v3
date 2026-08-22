@@ -213,6 +213,8 @@ model Quote {
   customerBranchBpId String?     @map("customer_branch_bp_id") @db.Uuid
   status             QuoteStatus @default(DRAFT)
   validUntil         DateTime?   @map("valid_until") @db.Date
+  /// 見積金額の通貨（currencies.code。既定 JPY — 明細はヘッダの通貨で統一）
+  currency           String      @default("JPY")
   notes              String?
   pdfFileId          String?     @map("pdf_file_id") @db.Uuid
   // 営業担当（作成時に顧客の主担当を複写したスナップショット）。

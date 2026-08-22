@@ -39,7 +39,7 @@ screenshots: [inventory-products-01, inventory-product-detail-01, inventory-tran
 
 - **入る** … [指示書](/manual/ja/operations/production/work-order/user)のすべての工程が完了すると、良品がロット番号付きで在庫に入ります。「半製品」に振り分けた分は半製品として在庫に入ります。
 - **取り置きされる** … 注文明細の画面で「**在庫照合**」を実行すると、使える在庫がその注文のために予約されます。
-- **出る** … [出荷書](/manual/ja/operations/shipping/shipping-order/user)で出荷すると在庫から出て、予約も外れます。
+- **出る** … [出荷書](/manual/ja/operations/shipping/delivery-order/user)で出荷すると在庫から出て、予約も外れます。
 
 ## 製品タブの見かた
 

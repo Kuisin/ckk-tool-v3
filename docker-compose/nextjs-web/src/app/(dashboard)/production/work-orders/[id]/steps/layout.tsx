@@ -3,8 +3,7 @@ import type { ReactNode } from "react";
 import { StepListPane } from "@/components/production/step-execution/StepListPane";
 import { MasterDetailShell } from "@/components/ui/MasterDetailShell";
 import { PageHeader } from "@/components/ui/PageHeader";
-import { getServerFormatters } from "@/lib/user-preferences";
-import { fetchWorkOrderStepNav } from "../../data";
+import { fetchWorkOrderStepNav, resolveWorkOrderIdParam } from "../../data";
 
 export const dynamic = "force-dynamic";
 
@@ -22,15 +21,13 @@ export default async function WorkOrderStepsLayout({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const workOrderNumber = Number(id);
-  if (!Number.isInteger(workOrderNumber) || workOrderNumber < 1) notFound();
+  const workOrderNumber = await resolveWorkOrderIdParam(id);
+  if (workOrderNumber == null) notFound();
 
   const nav = await fetchWorkOrderStepNav(workOrderNumber);
   if (!nav) notFound();
-  // 表示番号 YYYYMMDD-XXXXX（内部キーは通し連番の int のまま）。
-  // 暦日は閲覧者のタイムゾーン設定で採る。
-  const fmt = await getServerFormatters();
-  const woLabel = fmt.workOrderNumberLabel(nav.workOrderNumber, nav.createdAt);
+  // 書類番号 WO-YYYYMM-NNNNN（内部キーは通し連番の int のまま）。
+  const woLabel = nav.docNumber;
 
   const basePath = `/production/work-orders/${workOrderNumber}/steps`;
   return (

@@ -24,9 +24,9 @@
 -- 請求の由来（provenance）設計 — 締日処理の「未請求」判定と整合させる:
 --   collectClosingCandidates は SHIPPED×DISPATCH の出荷書のうち invoice_items の
 --   由来キーに現れないものを未請求とみなす。そこで
---     - 6月出荷 SHP-202606-00001（SHIPPED）→ 6月請求書 INV-202606-00001 の明細が参照（請求済み）
---     - 7月出荷 SHP-202607-00001（SHIPPED）→ どの請求書からも未参照（未請求）
---   → 7月の PENDING 締日行の対象出荷が SHP-202607-00001 のみ（30×¥3,220 = ¥96,600）で
+--     - 6月出荷 DOR-202606-00001（SHIPPED）→ 6月請求書 INV-202606-00001 の明細が参照（請求済み）
+--     - 7月出荷 DOR-202607-00001（SHIPPED）→ どの請求書からも未参照（未請求）
+--   → 7月の PENDING 締日行の対象出荷が DOR-202607-00001 のみ（30×¥3,220 = ¥96,600）で
 --     ライブ計算と total_amount が一致する。
 --
 -- 拠点スコープについて: demo_shot は staff ロールのみ（rbac-seed.sql — 全業務コード
@@ -39,21 +39,21 @@ BEGIN;
 -- 撮影は APP_ENV=main で行うため、main 未公開の 4 アプリを撮影 DB に限り有効化する
 -- （キーは docker-compose/nextjs-web/src/lib/app-list.ts の key に一致）。
 INSERT INTO app.feature_flags (key, is_enabled, description, updated_at) VALUES
-  ('app:shipping-orders:main',  true, '出荷書（マニュアル撮影用）',   now()),
+  ('app:delivery-orders:main',  true, '出荷書（マニュアル撮影用）',   now()),
   ('app:delivery-notes:main',   true, '納品書（マニュアル撮影用）',   now()),
   ('app:invoices:main',         true, '請求書（マニュアル撮影用）',   now()),
   ('app:billing-closings:main', true, '締日処理（マニュアル撮影用）', now())
 ON CONFLICT (key) DO UPDATE
   SET is_enabled = EXCLUDED.is_enabled, updated_at = now();
 
--- ── 出荷書（SHP-202607-00001〜00003 + 請求由来用の SHP-202606-00001）────────
--- SHP-202607-00001: 出荷済（発送・F01）— 7月締めの未請求対象 + DRN-1 の元
--- SHP-202607-00002: 確定（発送・F01）— 納品書作成可の実例 + DRN-2（直送）の元
--- SHP-202607-00003: 下書き（在庫保管・F02）— 在庫保管バッジ + 下書き編集の実例
--- SHP-202606-00001: 出荷済（6月）— INV-202606-00001 の由来（請求済み → 7月締めから除外）
+-- ── 出荷書（DOR-202607-00001〜00003 + 請求由来用の DOR-202606-00001）────────
+-- DOR-202607-00001: 出荷済（発送・F01）— 7月締めの未請求対象 + DRN-1 の元
+-- DOR-202607-00002: 確定（発送・F01）— 納品書作成可の実例 + DRN-2（直送）の元
+-- DOR-202607-00003: 下書き（在庫保管・F02）— 在庫保管バッジ + 下書き編集の実例
+-- DOR-202606-00001: 出荷済（6月）— INV-202606-00001 の由来（請求済み → 7月締めから除外）
 -- ヘッダは顧客を持ち（明細をまたいで同一）、**注文明細へのリンクは明細行側**に
--- 移った（旧 shipping_orders.sales_order_id は廃止）。顧客はデモ商事。
-INSERT INTO app.shipping_orders (year_month, seq, customer_bp_id, work_order_id, from_plant_id,
+-- 移った（旧 delivery_orders.sales_order_id は廃止）。顧客はデモ商事。
+INSERT INTO app.delivery_orders (year_month, seq, customer_bp_id, work_order_id, from_plant_id,
   type, status, shipped_at, notes, created_by, created_at, updated_at)
 VALUES
   ('202607', 1, 'd0000000-0000-4000-8000-000000000001'::uuid, NULL,
@@ -78,11 +78,11 @@ VALUES
    'a0b1c2d3-0000-4000-8000-000000005107'::uuid, '2026-06-19T09:00:00+09', '2026-06-20T14:00:00+09')
 ON CONFLICT (year_month, seq) DO NOTHING;
 
--- 明細（ロット = 指示書番号。SHP-1 は完了指示書 9004 のロットを出荷する想定）。
+-- 明細（ロット = 指示書番号。DOR-1 は完了指示書 9004 のロットを出荷する想定）。
 -- どの注文明細を出荷したかは order_line_id で行ごとに持つ:
---   -01（製品 9001）… SHP-1 / SHP-2 / SHP-202606-1
---   -02（製品 9002）… SHP-3（在庫保管）
-INSERT INTO app.shipping_order_items (id, shipping_order_year_month, shipping_order_seq,
+--   -01（製品 9001）… DOR-1 / DOR-2 / DOR-202606-1
+--   -02（製品 9002）… DOR-3（在庫保管）
+INSERT INTO app.delivery_order_items (id, delivery_order_year_month, delivery_order_seq,
   order_line_id, product_id, lot_number, quantity, notes, sort_order)
 VALUES
   ('dd000000-0000-4000-8000-000000000011'::uuid, '202607', 1,
@@ -98,7 +98,7 @@ ON CONFLICT (id) DO NOTHING;
 -- ── 納品書（DRN-202607-00001〜00002）────────────────────────────────────────
 -- DRN-1: 通常納品・発行済・価格記載あり（明細に単価/金額 + 合計が写る）
 -- DRN-2: ユーザー直送・下書き・価格記載なし（最終需要家 = デモ電子工業、単価/金額は保存しない）
-INSERT INTO app.delivery_notes (year_month, seq, shipping_order_year_month, shipping_order_seq,
+INSERT INTO app.delivery_notes (year_month, seq, delivery_order_year_month, delivery_order_seq,
   delivery_method, recipient_bp_id, recipient_branch_bp_id, end_user_bp_id,
   include_price, pdf_file_id, status, delivered_at, notes, created_by, created_at, updated_at)
 VALUES
@@ -125,7 +125,7 @@ VALUES
 ON CONFLICT (id) DO NOTHING;
 
 -- ── 請求書（INV-202606-00001 — 6月分・発行済）───────────────────────────────
--- 6月出荷 SHP-202606-00001（50×¥3,220）から生成された想定。TAXABLE 10%:
+-- 6月出荷 DOR-202606-00001（50×¥3,220）から生成された想定。TAXABLE 10%:
 -- 小計 161,000 / 消費税 16,100 / 合計 177,100。支払期限 = 締日 2026-06-30 + 30日。
 INSERT INTO app.invoices (year_month, seq, customer_bp_id, customer_branch_bp_id,
   billing_period_from, billing_period_to, subtotal, tax_amount, total_amount,
@@ -138,10 +138,10 @@ VALUES
    'a0b1c2d3-0000-4000-8000-000000005107'::uuid, '2026-07-01T09:00:00+09', '2026-07-01T09:00:00+09')
 ON CONFLICT (year_month, seq) DO NOTHING;
 
--- 明細: 由来 = SHP-202606-00001（この参照が 6月出荷を「請求済み」にする。
--- 7月出荷 SHP-202607-00001 はどの明細からも未参照 → 7月締めの未請求対象に残る）
+-- 明細: 由来 = DOR-202606-00001（この参照が 6月出荷を「請求済み」にする。
+-- 7月出荷 DOR-202607-00001 はどの明細からも未参照 → 7月締めの未請求対象に残る）
 INSERT INTO app.invoice_items (id, invoice_year_month, invoice_seq,
-  shipping_order_year_month, shipping_order_seq, delivery_note_year_month, delivery_note_seq,
+  delivery_order_year_month, delivery_order_seq, delivery_note_year_month, delivery_note_seq,
   description, quantity, unit_price, amount, sort_order)
 VALUES
   ('dd000000-0000-4000-8000-000000000031'::uuid, '202606', 1,
@@ -151,7 +151,7 @@ VALUES
 ON CONFLICT (id) DO NOTHING;
 
 -- ── 締日処理 ────────────────────────────────────────────────────────────────
--- 7月: PENDING（未処理）— 対象出荷はライブ計算で SHP-202607-00001 のみ（30×¥3,220 = ¥96,600）
+-- 7月: PENDING（未処理）— 対象出荷はライブ計算で DOR-202607-00001 のみ（30×¥3,220 = ¥96,600）
 -- 6月: PROCESSED（処理済）— INV-202606-00001 へのリンク付き（生成請求書リンクの実例）
 -- 冪等アービタは unique (customer_bp_id, closing_date) — アプリの締日バッチが
 -- 同一ペアを upsert しても衝突しない。

@@ -10,7 +10,7 @@ screenshots: [delivery-note-list-01, delivery-note-new-01, delivery-note-detail-
 ## 本应用能做什么
 
 - 可以做出交给收货方的送货单。
-- 只要选一张[出货单](/manual/zh/operations/shipping/shipping-order/user)，**收货方和货物内容会自动填好**。
+- 只要选一张[出货单](/manual/zh/operations/shipping/delivery-order/user)，**收货方和货物内容会自动填好**。
 - 可以选择 **写上 / 不写上** 金额。
 - 可以把送货单转成 **PDF**，打印出来或随货附上。
 - 可以记录「已发行」「已送达」这些当前状况。
@@ -25,7 +25,7 @@ screenshots: [delivery-note-list-01, delivery-note-new-01, delivery-note-detail-
 
 ## 开始之前
 
-- 需要先有[出货单](/manual/zh/operations/shipping/shipping-order/user)，而且这张出货单必须是「**確定**」（确定）或「**出荷済**」（已发货）。「下書き」（草稿）状态的出货单做不了送货单。
+- 需要先有[出货单](/manual/zh/operations/shipping/delivery-order/user)，而且这张出货单必须是「**確定**」（确定）或「**出荷済**」（已发货）。「下書き」（草稿）状态的出货单做不了送货单。
 - 要直送最终需求方时，收货公司必须已经登记为[业务伙伴](/manual/zh/operations/masters/business-partner/user)，并且加上了「最終需要家」（最终需求方）角色。
 - 做送货单需要送货单权限。如果不能用，请联系管理员。
 
@@ -120,7 +120,7 @@ screenshots: [delivery-note-list-01, delivery-note-new-01, delivery-note-detail-
 
 | 项目 | 必填 | 填什么 |
 |------|------|--------|
-| [发货单](#field-shipping-order) | 必填 | 作为依据的发货单 |
+| [发货单](#field-delivery-order) | 必填 | 作为依据的发货单 |
 | [交付方式](#field-delivery-method) | 必填 | 交付受订客户或直送 |
 | [送达方](#field-recipient) | 必填 | 送货单的抬头 |
 | [最终需求方](#field-end-user) | 选填 | 直送时的收货方 |
@@ -130,7 +130,7 @@ screenshots: [delivery-note-list-01, delivery-note-new-01, delivery-note-detail-
 | [数量](#field-quantity) | 必填 | 交付的数量 |
 | [单价](#field-unit-price) | 选填 | 送货单上记载的单价 |
 
-### 发货单 [#field-shipping-order]
+### 发货单 [#field-delivery-order]
 
 作为依据的发货单。选择后会沿用该次发货的产品与数量。
 
@@ -170,7 +170,7 @@ screenshots: [delivery-note-list-01, delivery-note-new-01, delivery-note-detail-
 ## 常见问题与困扰
 
 **Q. 出货单栏里找不到想要的出货单。**
-A. 能选的只有「確定」（确定）或「出荷済」（已发货）的出货单。如果还是「下書き」（草稿），请先在[出货单](/manual/zh/operations/shipping/shipping-order/user)那边「確定」。
+A. 能选的只有「確定」（确定）或「出荷済」（已发货）的出货单。如果还是「下書き」（草稿），请先在[出货单](/manual/zh/operations/shipping/delivery-order/user)那边「確定」。
 
 **Q. 想把送货对象改成别的公司，却选不了。**
 A. 送货对象是根据出货单表头的客户自动决定的，在这个界面改不了。收货方不对时，请从正确的出货单重新做一张。

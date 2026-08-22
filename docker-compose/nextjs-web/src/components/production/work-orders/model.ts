@@ -28,7 +28,8 @@ export const WORK_ORDER_HISTORY_ACTION_LABEL: Record<string, string> = {
 
 export interface WorkOrderRow {
   workOrderNumber: number;
-  /** 表示番号 YYYYMMDD-XXXXX の日付部分（作成日）。 */
+  /** 書類番号 WO-YYYYMM-NNNNN（一覧・リンクの表示identity）。 */
+  docNumber: string;
   createdAt: string;
   /**
    * 割当明細の表示ラベル（複数は「ORD-… ほか n 件」）。
@@ -119,6 +120,8 @@ export interface WorkOrderHistoryView {
 
 export interface WorkOrderCopyRef {
   workOrderNumber: number;
+  /** 書類番号 WO-YYYYMM-NNNNN。 */
+  docNumber: string;
   status: string;
   createdAt: string;
 }
@@ -139,6 +142,8 @@ export interface WorkOrderLineAllocView {
 export interface WorkOrderView {
   id: string; // uuid（内部）— アクションは workOrderNumber を使う
   workOrderNumber: number;
+  /** 書類番号 WO-YYYYMM-NNNNN（ヘッダ・リンクの表示identity）。 */
+  docNumber: string;
   status: string;
   approvalStatus: string;
   type: string;
@@ -168,6 +173,7 @@ export interface WorkOrderView {
   /** ロット番号 = 指示書番号（注文明細側の lot_number）。 */
   lotNumber: number | null;
   sourceWorkOrderNumber: number | null;
+  sourceWorkOrderDocNumber: string | null;
   copies: WorkOrderCopyRef[];
   inspectionTemplates: { id: number; code: string; name: string }[];
   steps: WorkOrderStepView[];

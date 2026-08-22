@@ -1,4 +1,4 @@
 {
   "title": "Shipping",
-  "pages": ["shipping-order", "delivery-note"]
+  "pages": ["delivery-order", "delivery-note"]
 }

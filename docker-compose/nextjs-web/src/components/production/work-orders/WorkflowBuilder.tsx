@@ -34,6 +34,7 @@ import {
   Textarea,
   TextInput,
 } from "@mantine/core";
+import { DatePickerInput } from "@mantine/dates";
 import { useForm } from "@mantine/form";
 import { notifications } from "@mantine/notifications";
 import {
@@ -42,6 +43,7 @@ import {
   IconPlus,
   IconTrash,
 } from "@tabler/icons-react";
+import { format } from "date-fns";
 import { useRouter } from "next/navigation";
 import {
   useCallback,
@@ -53,8 +55,8 @@ import {
 } from "react";
 import { z } from "zod";
 import {
+  searchAllocatableOrderLineOptions,
   searchMaterialOptions,
-  searchOrderLineOptions,
   searchProductOptions,
 } from "@/app/(dashboard)/_shared/option-search";
 import {
@@ -74,6 +76,7 @@ import type {
 import { useFormat } from "@/components/layout/PreferencesProvider";
 import {
   ProcessListEditor,
+  ProcessListView,
   type StepLocation,
   toStepSnapshots,
 } from "@/components/production/ProcessListEditor";
@@ -243,6 +246,7 @@ export function WorkflowBuilder({
   templateOptions,
   supplierOptions,
   storageLocationOptions,
+  employeeOptions,
   initialType = null,
   initialQuantity = null,
 }: {
@@ -262,6 +266,8 @@ export function WorkflowBuilder({
   supplierOptions: Option[];
   /** 保管場所（有効のみ・拠点名付き）— 完成品の保管先。 */
   storageLocationOptions: Option[];
+  /** 担当者候補（有効な従業員）— 作成時の作業計画 MultiSelect。 */
+  employeeOptions: Option[];
 }) {
   const fmt = useFormat();
   const router = useRouter();
@@ -288,6 +294,31 @@ export function WorkflowBuilder({
   const [locations, setLocations] = useState<Record<number, StepLocation>>(
     initialLocations(workOrder),
   );
+  // 工程リストの編集モード。ルート選択でプリフィルした構成（および編集時の
+  // 既存構成）は**閲覧**から始め、「工程を編集」で初めてエディタを出す —
+  // 触るつもりのない構成の誤変更（= 新バージョンの量産）を防ぐ。
+  const [stepsEditing, setStepsEditing] = useState<boolean>(
+    () => !(mode === "edit" && (workOrder?.steps.length ?? 0) > 0),
+  );
+  // 作成時の作業計画（工程 → 担当者[] + 計画日）。担当は指示書ごとに違うので
+  // 工程リストとは別に、最初から編集状態で置く。
+  const [todayStr] = useState(() => format(new Date(), "yyyy-MM-dd"));
+  const [stepPlans, setStepPlans] = useState<
+    Record<number, { userIds: string[]; date: string | null }>
+  >({});
+  const setStepPlan = (
+    stepId: number,
+    patch: Partial<{ userIds: string[]; date: string | null }>,
+  ) => {
+    setStepPlans((prev) => ({
+      ...prev,
+      [stepId]: {
+        userIds: prev[stepId]?.userIds ?? [],
+        date: prev[stepId]?.date ?? todayStr,
+        ...patch,
+      },
+    }));
+  };
   // 対象: 注文明細配下 / 在庫向け（編集時は既存指示書から導出）
   const [target, setTarget] = useState<BuilderTarget>(
     workOrder && workOrder.orderLines.length === 0 ? "STOCK" : "SALES_ORDER",
@@ -440,6 +471,8 @@ export function WorkflowBuilder({
           usable.map((s) => s.processStepId),
         );
         setLocations(snapshotLocations(usable));
+        // プリフィルされた構成は閲覧モードから（誤編集で新バージョンを作らない）
+        setStepsEditing(false);
       });
     },
     [catalogSteps, form],
@@ -451,6 +484,8 @@ export function WorkflowBuilder({
     if (!value) {
       setVersionSel(null);
       setBaseSteps(null);
+      // ルートを使わない構成は自分で組む — エディタを開く
+      setStepsEditing(true);
       return;
     }
     const route = routesInfo?.routes.find((r) => String(r.id) === value);
@@ -550,13 +585,24 @@ export function WorkflowBuilder({
       if (!info) return;
       const own = ownAllocations.get(value) ?? 0;
       const remaining = info.remainingQuantity + own;
+      // 受注残ゼロの明細は割り当てられない（検索候補からも外れるが、
+      // 検索と選択の間に別の指示書が割当を埋めた場合の最終ガード）。
+      if (remaining <= 0) {
+        notifications.show({
+          title: "割り当てできません",
+          message: `注文明細 ${info.number} は受注数量まで手配済みです（残 0）`,
+          color: "yellow",
+        });
+        updateAllocRow(key, { orderLineId: null, info: null });
+        return;
+      }
       setAllocRows((rows) =>
         rows.map((r) =>
           r.key === key
             ? {
                 ...r,
                 info,
-                quantity: remaining > 0 ? remaining : Math.max(1, r.quantity),
+                quantity: remaining,
               }
             : r,
         ),
@@ -702,6 +748,18 @@ export function WorkflowBuilder({
         workHours: s.workHours,
       })),
       route,
+      // 作成時の作業計画（担当者 × 計画日）。編集では送らない（計画の管理は
+      // 工程実行画面の計画パネル — ここで送ると既存計画と二重になる）。
+      plans:
+        mode === "create"
+          ? currentSnapshots.flatMap((s) =>
+              (stepPlans[s.processStepId]?.userIds ?? []).map((userId) => ({
+                processStepId: s.processStepId,
+                userId,
+                date: stepPlans[s.processStepId]?.date ?? todayStr,
+              })),
+            )
+          : [],
     };
     startTransition(async () => {
       const result =
@@ -713,17 +771,11 @@ export function WorkflowBuilder({
           title: "保存しました",
           message:
             mode === "edit"
-              ? `指示書 ${fmt.workOrderNumberLabel(
-                  result.data.workOrderNumber,
-                  workOrder?.createdAt ?? new Date(),
-                )} を更新しました`
-              : `指示書 ${fmt.workOrderNumberLabel(
-                  result.data.workOrderNumber,
-                  new Date(),
-                )} を作成しました`,
+              ? `指示書 ${result.data.docNumber} を更新しました`
+              : `指示書 ${result.data.docNumber} を作成しました`,
           color: "green",
         });
-        router.push(`${BASE_PATH}/${result.data.workOrderNumber}`);
+        router.push(`${BASE_PATH}/${result.data.docNumber}`);
       } else {
         notifications.show({
           title: "エラー",
@@ -754,16 +806,13 @@ export function WorkflowBuilder({
       isPending={isPending}
       onCancel={() =>
         router.push(
-          workOrder ? `${BASE_PATH}/${workOrder.workOrderNumber}` : BASE_PATH,
+          workOrder ? `${BASE_PATH}/${workOrder.docNumber}` : BASE_PATH,
         )
       }
       onSubmit={form.onSubmit(handleSubmit)}
       title={
         mode === "edit"
-          ? `指示書 ${fmt.workOrderNumberLabel(
-              workOrder?.workOrderNumber,
-              workOrder?.createdAt,
-            )} 編集`
+          ? `指示書 ${workOrder?.docNumber ?? ""} 編集`
           : "指示書 新規作成"
       }
     >
@@ -816,7 +865,7 @@ export function WorkflowBuilder({
                           <HelpLabel {...fieldHelp("workOrder", "orderLine")} />
                         }
                         onChange={(v) => onRowLineChange(row.key, v)}
-                        onSearch={searchOrderLineOptions}
+                        onSearch={searchAllocatableOrderLineOptions}
                         placeholder="注文明細番号・製品・顧客で検索"
                         storageKey="sales-order"
                         value={row.orderLineId}
@@ -825,7 +874,11 @@ export function WorkflowBuilder({
                     </div>
                     <NumberInput
                       allowDecimal={false}
-                      label="割当数量"
+                      label={
+                        <HelpLabel
+                          {...fieldHelp("workOrder", "allocQuantity")}
+                        />
+                      }
                       max={
                         remaining != null && remaining > 0
                           ? remaining
@@ -969,7 +1022,7 @@ export function WorkflowBuilder({
           <Select
             clearable
             data={storageLocationOptions}
-            label="保管場所"
+            label={<HelpLabel {...fieldHelp("workOrder", "storageLocation")} />}
             placeholder="完成品の保管場所を選択"
             searchable={storageLocationOptions.length > 5}
             {...form.getInputProps("storageLocationId")}
@@ -1058,21 +1111,100 @@ export function WorkflowBuilder({
         </FormSection>
       )}
 
-      <ProcessListEditor
-        catalogSteps={catalogSteps}
-        error={
-          typeof form.errors.selectedStepIds === "string"
-            ? form.errors.selectedStepIds
-            : null
-        }
-        locations={locations}
-        onLocationsChange={setLocations}
-        onSelectedChange={(next) => form.setFieldValue("selectedStepIds", next)}
-        plantOptions={plantOptions}
-        selected={selected}
-        supplierOptions={supplierOptions}
-        useDeps={useDeps}
-      />
+      {stepsEditing ? (
+        <ProcessListEditor
+          catalogSteps={catalogSteps}
+          error={
+            typeof form.errors.selectedStepIds === "string"
+              ? form.errors.selectedStepIds
+              : null
+          }
+          locations={locations}
+          onLocationsChange={setLocations}
+          onSelectedChange={(next) =>
+            form.setFieldValue("selectedStepIds", next)
+          }
+          plantOptions={plantOptions}
+          selected={selected}
+          supplierOptions={supplierOptions}
+          useDeps={useDeps}
+        />
+      ) : (
+        <ProcessListView
+          catalogSteps={catalogSteps}
+          locations={locations}
+          onEdit={() => setStepsEditing(true)}
+          plantOptions={plantOptions}
+          selected={selected}
+          supplierOptions={supplierOptions}
+        />
+      )}
+
+      {/* 作成時の作業計画 — 担当は指示書ごとに違うため、工程リストと違って
+          最初から編集状態。担当を入れた工程だけ計画（work_order_step_plans）
+          が作られる。詳細な時間割・数量の計画は作成後の計画パネルで。 */}
+      {mode === "create" && currentSnapshots.length > 0 && (
+        <FormSection
+          description="工程ごとの担当者を割り当てます（任意）。担当を入れた工程に、計画日付きの作業計画が作成されます。時間帯・数量まで決める場合は、作成後に各工程の計画パネルで追加してください。"
+          title="作業計画（担当者）"
+        >
+          <Stack gap="xs">
+            {currentSnapshots.map((s, i) => {
+              const cat = catalogSteps.find((c) => c.id === s.processStepId);
+              if (!cat) return null;
+              const plan = stepPlans[s.processStepId];
+              return (
+                <Paper key={s.processStepId} p="sm" radius="sm" withBorder>
+                  <Group
+                    align={isMobile ? "flex-start" : "flex-end"}
+                    gap="sm"
+                    wrap={isMobile ? "wrap" : "nowrap"}
+                  >
+                    <Group gap="sm" style={{ flex: 1 }} wrap="nowrap">
+                      <Text
+                        c="dimmed"
+                        className="tabular-nums"
+                        size="xs"
+                        w={20}
+                      >
+                        {i + 1}
+                      </Text>
+                      <Text fw={600} size="sm">
+                        {cat.nameJa}
+                      </Text>
+                    </Group>
+                    <MultiSelect
+                      clearable
+                      data={employeeOptions}
+                      onChange={(v) =>
+                        setStepPlan(s.processStepId, { userIds: v })
+                      }
+                      placeholder={
+                        (plan?.userIds.length ?? 0) > 0 ? undefined : "担当者"
+                      }
+                      searchable
+                      size="xs"
+                      style={{ minWidth: isMobile ? "100%" : 260 }}
+                      value={plan?.userIds ?? []}
+                    />
+                    <DatePickerInput
+                      disabled={(plan?.userIds.length ?? 0) === 0}
+                      onChange={(v) =>
+                        setStepPlan(s.processStepId, { date: v })
+                      }
+                      placeholder="計画日"
+                      size="xs"
+                      value={plan?.date ?? todayStr}
+                      valueFormat="YYYY/MM/DD"
+                      w={isMobile ? "100%" : 140}
+                    />
+                  </Group>
+                </Paper>
+              );
+            })}
+          </Stack>
+        </FormSection>
+      )}
 
       <Textarea
         autosize

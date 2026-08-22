@@ -49,7 +49,7 @@ dev と main を**常時両方**動かす（本番の隣で検証するため）
 
 | スタック | コンテナ | 中身 |
 |---|---|---|
-| `shared-db` | shared-db | **業務 DB 本体**（PG17 + PGroonga、スキーマ分割） |
+| `shared-db` | shared-db, fx-rates | **業務 DB 本体**（PG17 + PGroonga、スキーマ分割）+ 為替レート日次更新（app.currencies） |
 | `prisma-studio` | prisma-studio | DB ブラウザ |
 | `metabase` | metabase, metabase-db | BI ダッシュボード |
 | `legacy-db` | ckk-legacy-db | 旧 macOS 版の `ckk_system`（FileMaker 移行元・参照専用） |

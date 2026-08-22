@@ -12,7 +12,9 @@ ALTER ROLE kot        IN DATABASE ckk SET search_path = kot, directory;
 ALTER ROLE ldap_sync  IN DATABASE ckk SET search_path = directory, kot;
 ALTER ROLE admintools IN DATABASE ckk SET search_path = admintools;
 ALTER ROLE kot_ro     IN DATABASE ckk SET search_path = kot, directory;
-ALTER ROLE studio_ro  IN DATABASE ckk SET search_path = app, kot, directory, admintools;
+ALTER ROLE metabase_ro IN DATABASE ckk SET search_path = app, analytics;
+ALTER ROLE fx_rates   IN DATABASE ckk SET search_path = app;
+ALTER ROLE studio_ro  IN DATABASE ckk SET search_path = app, analytics, kot, directory, admintools;
 
 -- ── kot: KOT importer + admintools match_employees ───────────────────
 -- CREATE on schema kot: the apps run legacy `CREATE TABLE IF NOT EXISTS`
@@ -75,6 +77,66 @@ GRANT USAGE ON SCHEMA kot, directory TO kot_ro;
 GRANT SELECT ON ALL TABLES IN SCHEMA kot, directory TO kot_ro;
 ALTER DEFAULT PRIVILEGES IN SCHEMA kot GRANT SELECT ON TABLES TO kot_ro;
 ALTER DEFAULT PRIVILEGES IN SCHEMA directory GRANT SELECT ON TABLES TO kot_ro;
+
+-- ── metabase_ro: Metabase business DB (read-only, app schema only) ───
+-- The 「CKK 業務」 Metabase data source connects as this role. SELECT-only on
+-- the v3 business schema `app`; deliberately NOT granted kot/directory
+-- (those stay on the separate 労務 data source via kot_ro). Postgres is the
+-- grantor of Prisma migrations, so default privileges cover future app tables.
+GRANT USAGE ON SCHEMA app TO metabase_ro;
+GRANT SELECT ON ALL TABLES IN SCHEMA app TO metabase_ro;
+ALTER DEFAULT PRIVILEGES IN SCHEMA app GRANT SELECT ON TABLES TO metabase_ro;
+
+-- ── metabase_ro data masking (must come AFTER the blanket GRANT above) ─
+-- BI には不要で、漏れると危険な認証・セッション・端末鍵・PIN・プッシュ秘密を
+-- metabase_ro から隠す。Postgres は権限の無いテーブル/列を information_schema
+-- に見せないので、これを適用して db 5 を再同期すると Metabase から自動的に
+-- 消える（列を追加したらこのリストを見直す — 明示列挙のため新列は既定で不可視）。
+--
+-- (1) まるごと不要なセッション/秘密テーブル — テーブルごと SELECT を剥奪
+REVOKE SELECT ON app.kiosk_sessions      FROM metabase_ro;  -- 稼働中セッション
+REVOKE SELECT ON app.kiosk_link_requests FROM metabase_ro;  -- 端末リンクコード
+REVOKE SELECT ON app.push_subscriptions  FROM metabase_ro;  -- Web Push 秘密鍵
+
+-- (2) 一部だけ秘密の表 — テーブル SELECT を剥奪し、安全な列だけ列単位で GRANT
+--     （Postgres ではテーブル SELECT があると列単位 REVOKE が効かないため、
+--      一旦落として許可列を足し直す）。
+REVOKE SELECT ON app.users FROM metabase_ro;
+GRANT SELECT (id, "group", employee_id, username, display_name, email,
+              is_active, last_login_at, created_at, updated_at, locale,
+              avatar_file_id, avatar_thumb_file_id, date_format, time_format,
+              time_zone)
+  ON app.users TO metabase_ro;  -- 隠す: password_hash
+
+REVOKE SELECT ON app.kiosk_cards FROM metabase_ro;
+GRANT SELECT (id, user_id, status, last_used_at, use_count, assigned_at,
+              assigned_by, revoked_at, revoked_by, created_at, updated_at,
+              valid_from, valid_until, max_active_sessions)
+  ON app.kiosk_cards TO metabase_ro;  -- 隠す: pin_hash, pin_set_at, pin_failed_attempts, pin_locked_until, pin_last_verified_at
+
+REVOKE SELECT ON app.kiosk_devices FROM metabase_ro;
+GRANT SELECT (id, name, location, plant_id, floor_map_id, map_x, map_y, status,
+              device_token_expires_at, user_agent, activated_by, activated_at,
+              last_activity_at, created_at, updated_at, linked_at, settings_code)
+  ON app.kiosk_devices TO metabase_ro;  -- 隠す: device_token_hash, device_public_key, fingerprint, last_ip_address
+
+-- ── fx_rates: 為替レート日次更新（shared-db スタックの fx-rates コンテナ） ──
+-- app.currencies の rate_per_100_jpy / updated_at だけを UPDATE できる最小権限。
+-- 通貨の追加・削除・名称変更はできない（それはマスタ管理の仕事）。
+GRANT USAGE ON SCHEMA app TO fx_rates;
+GRANT SELECT ON app.currencies TO fx_rates;
+GRANT UPDATE (rate_per_100_jpy, updated_at) ON app.currencies TO fx_rates;
+
+-- ── analytics: name-resolved reporting views for Metabase + AI/MCP ────
+-- Views defined in shared-db/sql/analytics-views.sql (run that FIRST — the schema
+-- must exist). They are WITH (security_invoker=true), so metabase_ro's own
+-- privileges (incl. the masking above) are enforced *through* the views; a view
+-- that touched a masked column would just fail for metabase_ro. USAGE + SELECT
+-- for the two read-only reporting roles; default privileges (grantor postgres,
+-- who owns the views) cover views added later. Not a Prisma-managed schema.
+GRANT USAGE ON SCHEMA analytics TO metabase_ro, studio_ro;
+GRANT SELECT ON ALL TABLES IN SCHEMA analytics TO metabase_ro, studio_ro;
+ALTER DEFAULT PRIVILEGES IN SCHEMA analytics GRANT SELECT ON TABLES TO metabase_ro, studio_ro;
 
 -- ── studio_ro: Prisma Studio browser (read-only, EVERY schema) ────────
 -- SELECT-only, so Studio can browse all data but edits fail at the DB.

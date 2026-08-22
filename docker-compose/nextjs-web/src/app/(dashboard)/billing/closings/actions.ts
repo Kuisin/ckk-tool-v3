@@ -132,8 +132,8 @@ export async function processClosing(
             ? `${localized(name, "en")} (Lot ${it.lotNumber})`
             : localized(name, "en");
         return {
-          shippingOrderYearMonth: s.yearMonth,
-          shippingOrderSeq: s.seq,
+          deliveryOrderYearMonth: s.yearMonth,
+          deliveryOrderSeq: s.seq,
           deliveryNoteYearMonth: deliveryNote?.yearMonth ?? null,
           deliveryNoteSeq: deliveryNote?.seq ?? null,
           // 注文明細 → 請求のトレーサビリティ（単価の出所）
@@ -166,10 +166,14 @@ export async function processClosing(
     const branchIds = new Set(shipments.map((s) => s.customerBranchBpId ?? ""));
     const customerBranchBpId =
       branchIds.size === 1 ? branchIds.values().next().value || null : null;
-    // 営業担当も同じ考え方 — 対象出荷の担当が 1 人に定まればそれを引き継ぎ、
-    // ばらけていれば顧客の主担当を入れる（請求書に編集フォームは無いので、
-    // ここで決めた値がそのまま残る）。
-    const repIds = new Set(shipments.map((s) => s.salesRepId ?? ""));
+    // 営業担当も同じ考え方 — 対象出荷の担当（明細の注文請書ヘッダから導出）が
+    // 1 人に定まればそれを引き継ぎ、ばらけていれば顧客の主担当を入れる
+    // （請求書に編集フォームは無いので、ここで決めた値がそのまま残る）。
+    const repIds = new Set(
+      shipments.flatMap((s) =>
+        s.items.map((it) => it.orderLine?.acceptance.salesRepId ?? ""),
+      ),
+    );
     const inheritedSalesRepId =
       repIds.size === 1 ? repIds.values().next().value || null : null;
     const salesRepId = await resolveSalesRepId(

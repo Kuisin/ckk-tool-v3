@@ -33,7 +33,7 @@ const APP_MANUAL_PATH = {
   productInventory: "operations/production/product-inventory/user",
   materialInventory: "operations/production/material-inventory/user",
   approval: "operations/production/approval/user",
-  shippingOrder: "operations/shipping/shipping-order/user",
+  deliveryOrder: "operations/shipping/delivery-order/user",
   deliveryNote: "operations/shipping/delivery-note/user",
   businessPartner: "operations/masters/business-partner/user",
   product: "operations/masters/product/user",
@@ -173,6 +173,21 @@ export const FIELD_HELP = {
     orderDate: {
       label: "注文日",
       summary: "お客様が注文した日です。注文書に書かれている日付を入れます。",
+    },
+    shipTo: {
+      label: "出荷先",
+      summary:
+        "製品の届け先です。注文をくれたお客様と別の会社・支店に届けるときに選びます。空のままなら、お客様へ届けるという意味です。",
+    },
+    assignedPlant: {
+      label: "担当拠点",
+      summary:
+        "この注文を主に処理する自社の拠点です。どの拠点の仕事かをはっきりさせたいときに選びます。",
+    },
+    shippingWorkLocation: {
+      label: "出荷作業場所",
+      summary:
+        "出荷の作業（梱包・積み込みなど）を行う場所です。作業場所マスタから選びます。",
     },
     notes: {
       label: "備考",
@@ -434,9 +449,14 @@ export const FIELD_HELP = {
   },
   workOrder: {
     orderLine: {
-      label: "注文明細",
+      label: "注文明細の割当",
       summary:
-        "どの受注に対する指示書かです。在庫を積むためだけの指示書では空のままにできます（独立した在庫用の指示書）。",
+        "どの受注のための指示書かです。行を足せば同じ製品の複数の明細を 1 つの指示書（1 ロット）にまとめられ、逆に 1 つの明細を複数の指示書に分けて作ることもできます。在庫を積むためだけの指示書では空のままにできます。",
+    },
+    allocQuantity: {
+      label: "割当数量",
+      summary:
+        "その明細のためにつくる本数です。明細ごとの割当可能残（受注数量からほかの指示書ぶんを引いた残り）が上限です。",
     },
     product: {
       label: "対象製品",
@@ -446,12 +466,17 @@ export const FIELD_HELP = {
     plannedQuantity: {
       label: "予定数量",
       summary:
-        "つくる本数です。工程の受入数の初期値になり、在庫から出す分と製造する分を分けるときの基準にもなります。",
+        "つくる本数です。割当の合計以上で入力します（不良予備分の上乗せは自由。在庫分は割当の合計と同じ本数になります）。工程の受入数の初期値にもなります。",
     },
     material: {
       label: "使用素材",
       summary:
         "使う素材です。指示書が承認されると、この素材が在庫から予約されます。",
+    },
+    storageLocation: {
+      label: "保管場所",
+      summary:
+        "できあがった製品をしまう場所です。保管場所マスタから選びます。決まっていなければ空のままでかまいません。",
     },
     route: {
       label: "工程リスト / バージョン",
@@ -518,11 +543,12 @@ export const FIELD_HELP = {
       summary: "差し戻すときの理由です。依頼した人に、そのまま見えます。",
     },
   },
-  shippingOrder: {
+  deliveryOrder: {
     orderLine: {
-      label: "注文明細",
+      label: "注文請書",
       summary:
-        "どの受注に対する出荷かを選びます。選ぶと、その受注の製品と残りの数量が分かります。",
+        "どの受注に対する出荷かを注文請書で選びます。選ぶと、その注文請書の出荷できる明細が自動で入ります。",
+      anchor: "field-order-line",
     },
     type: {
       label: "種別",
@@ -548,7 +574,7 @@ export const FIELD_HELP = {
     },
   },
   deliveryNote: {
-    shippingOrder: {
+    deliveryOrder: {
       label: "出荷書",
       summary:
         "もとになる出荷書です。選ぶと、その出荷の製品・数量が引き継がれます。",

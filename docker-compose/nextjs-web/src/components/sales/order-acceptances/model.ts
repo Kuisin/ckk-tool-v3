@@ -37,6 +37,8 @@ export interface OrderAcceptanceListRow {
   sourceFilename: string | null;
   customerName: string | null;
   itemCount: number;
+  /** 注文日（お客様が注文した日 — 抽出 or 手入力。null = 未入力）。 */
+  orderDate: string | null;
   extractError: string | null;
   createdAt: string;
   updatedAt: string;
@@ -45,6 +47,16 @@ export interface OrderAcceptanceListRow {
 /** 明細 1 行（詳細）。 */
 export interface OrderAcceptanceItemView {
   id: string;
+  /**
+   * 注文明細番号 ORD-YYYYMM-NNNNN-NN（確定時に枝番を採番して生まれる導出番号）。
+   * 未確定（branch なし）の行は null — 明細表では番号なしで表示する。
+   */
+  lineNumber: string | null;
+  /**
+   * この明細に割り当てられた指示書（work_order_order_lines）。quantity は
+   * その指示書がこの明細のために充当する数量（分割・統合の割当数）。
+   */
+  workOrders: OrderLineWorkOrderRef[];
   /** 製品マスタ突合済みの内部 id（文字列化）。null = 製品未特定。 */
   productId: string | null;
   /** 名称 + 製品コード（表・ピッカーの表示用）。 */
@@ -66,6 +78,16 @@ export interface OrderAcceptanceItemView {
   unitPrice: number | null;
   deliveryDate: string | null; // yyyy-mm-dd
   notes: string | null;
+}
+
+/** 明細に割り当てられた指示書 1 件（表示用）。 */
+export interface OrderLineWorkOrderRef {
+  /** 指示書番号 = ロット番号（業務キー。詳細 URL にもこのまま使える）。 */
+  workOrderNumber: number;
+  /** この明細への割当数量。 */
+  quantity: number;
+  /** WORK_ORDER_STATUS。 */
+  status: string;
 }
 
 /**

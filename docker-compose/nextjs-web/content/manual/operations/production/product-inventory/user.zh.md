@@ -39,7 +39,7 @@ screenshots: [inventory-products-01, inventory-product-detail-01, inventory-tran
 
 - **增加** … [制造指示书](/manual/zh/operations/production/work-order/user)的所有工序完成后，良品会带着批次号进入库存。划分为「半製品」（半成品）的部分会作为半成品进入库存。
 - **被预留** … 在订单明细画面执行「**在庫照合**」（库存核对）后，可用的库存会为该订单预留。
-- **减少** … 通过[出货单](/manual/zh/operations/shipping/shipping-order/user)出货后，库存会减少，预留也会解除。
+- **减少** … 通过[出货单](/manual/zh/operations/shipping/delivery-order/user)出货后，库存会减少，预留也会解除。
 
 ## 产品标签页的看法
 

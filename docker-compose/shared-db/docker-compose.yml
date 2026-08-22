@@ -46,6 +46,8 @@ services:
       - ADMINTOOLS_DB_PASSWORD=${ADMINTOOLS_DB_PASSWORD:?set ADMINTOOLS_DB_PASSWORD in .env}
       - APP_DB_PASSWORD=${APP_DB_PASSWORD:?set APP_DB_PASSWORD in .env}
       - KOT_RO_DB_PASSWORD=${KOT_RO_DB_PASSWORD:?set KOT_RO_DB_PASSWORD in .env}
+      - METABASE_RO_DB_PASSWORD=${METABASE_RO_DB_PASSWORD:?set METABASE_RO_DB_PASSWORD in .env}
+      - FX_DB_PASSWORD=${FX_DB_PASSWORD:?set FX_DB_PASSWORD in .env}
       - STUDIO_RO_DB_PASSWORD=${STUDIO_RO_DB_PASSWORD:?set STUDIO_RO_DB_PASSWORD in .env}
       - BACKUP_DB_PASSWORD=${BACKUP_DB_PASSWORD:?set BACKUP_DB_PASSWORD in .env}
     # summarize_wal=on is required for PG17 incremental backups (db-backup stack).
@@ -77,6 +79,25 @@ services:
     networks:
       - default     # shared-db network (kot-import, admintools, metabase, …)
       - coolify     # Coolify-deployed nextjs-web apps → shared-db:5432
+
+  # 為替レート日次更新 — app.currencies.rate_per_100_jpy（100 円で買えるその通貨量）
+  # を open.er-api.com（キー不要）から毎日 07:15 JST に更新（起動時にも 1 回 =
+  # 再起動で即時リフレッシュ）。通貨は業務システムでも使うため、Metabase では
+  # なくこの DB スタックに置く — スタックごと常設なのでサーバ再デプロイでも残る。
+  # 書き込みは専用ロール fx_rates（rate_per_100_jpy/updated_at の UPDATE のみ）。
+  # Rates By Exchange Rate API（https://www.exchangerate-api.com）。
+  fx-rates:
+    build: ./fx-rates
+    container_name: fx-rates
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      - TZ=Asia/Tokyo
+      - FX_DB_PASSWORD=${FX_DB_PASSWORD:?set FX_DB_PASSWORD in .env}
+    networks:
+      - default
 
 volumes:
   shared-db-data:

@@ -25,7 +25,7 @@ screenshots: [billing-closing-list-01, billing-closing-run-01, billing-closing-d
 
 ## 开始之前
 
-- 被汇总的，只有 **状态是「出荷済」（已发货）、类别是「発送」（发送）的**[出货单](/manual/zh/operations/shipping/shipping-order/user)。还停在「下書き」（草稿）「確定」（确定）的出货单不会算进去。请先完成发货记录。
+- 被汇总的，只有 **状态是「出荷済」（已发货）、类别是「発送」（发送）的**[出货单](/manual/zh/operations/shipping/delivery-order/user)。还停在「下書き」（草稿）「確定」（确定）的出货单不会算进去。请先完成发货记录。
 - 每个客户的结算截止日，由[客户](/manual/zh/operations/masters/business-partner/user)的登记内容决定。没有设定的客户，按 **月末** 汇总。
 - 做结算截止处理需要相应权限。如果不能用，请联系管理员。
 
@@ -67,7 +67,7 @@ screenshots: [billing-closing-list-01, billing-closing-run-01, billing-closing-d
 
 - 上方会显示客户、结算截止日、合计金额（不含税）、状态。
 - 「**対象出荷**」（对象出货）表里逐行列出被汇总的出货单（出货单号、发货日、数量、金额）。
-- 点出货单号的蓝色文字，可以打开该[出货单](/manual/zh/operations/shipping/shipping-order/user)确认内容。
+- 点出货单号的蓝色文字，可以打开该[出货单](/manual/zh/operations/shipping/delivery-order/user)确认内容。
 - 表格最下面会显示数量和金额的合计。
 
 金额和预想的不一样时，请在做发票之前先在这里确认。

@@ -13,7 +13,8 @@ LAN port `192.168.50.15:15432`, in-cluster host `shared-db:5432`).
 | `directory` | employee_directory (+ `ldap_guid`: the immutable AD objectGUID apps FK to), ldap_sync_log | vpn-ldap ldap-sync (role `ldap_sync`) |
 | `admintools` | mail_accounts, group_members | admintools (role `admintools`) |
 | `app` | ALL ckk-tool-v3 business tables in ONE schema — RBAC (users/roles/permissions), master data, business partners, sales (試算 → 価格表 → 見積書) — incl. the `app.user_permissions` view | nextjs-web (role `app`) |
-| `public` | pass-through compat views only (`sql/metabase-compat.sql`) | — (Metabase reads via `kot_ro`) |
+| `analytics` | BI/AI 用の名前解決済みレポートビューのみ（`sql/analytics-views.sql`、security_invoker。Prisma 管理外） | postgres（views） |
+| `public` | Prisma `_prisma_migrations` only (labor compat views retired 2026-08 — see `sql/metabase-compat.sql`) | — |
 
 The v3 web app owns a **single** `app` schema (Prisma-managed). Its scope is
 deliberately **minimal**: 試算 (`app.estimates`), 価格表
@@ -92,7 +93,7 @@ pnpm import:legacy                      # 5. legacy data (BP/材種/製品) — 
 pg_restore -d "$DATABASE_URL" --data-only --disable-triggers \
   -n kot -n directory -n admintools -n app \
   backups/ckk-<ts>.dump                 # 6. restore app-entered + other-app data
-psql "$ADMIN_URL" -d ckk -f sql/metabase-compat.sql  # 7. public compat views
+psql "$ADMIN_URL" -d ckk -f sql/metabase-compat.sql  # 7. drop retired labor compat views (idempotent)
 ```
 
 The init migration guards `CREATE EXTENSION pgroonga` in a `DO` block so it
@@ -112,7 +113,9 @@ server-side `~/stacks/shared-db/.env`); grants + per-role `search_path` in
 | `ldap_sync` | vpn-ldap ldap-sync | `directory, kot` | OWNS directory tables (its `CREATE INDEX IF NOT EXISTS` requires ownership) |
 | `admintools` | admintools DATABASE_URL | `admintools` | OWNS its tables (startup `ALTER TABLE` self-migration) |
 | `app` | nextjs-web Prisma Client | — (Prisma qualifies) | rw all v3 schemas, ro kot/directory |
-| `kot_ro` | Metabase db 2 | `kot, directory` | read-only |
+| `kot_ro` | Metabase db 2 (労務) | `kot, directory` | read-only |
+| `metabase_ro` | Metabase db 5 (CKK 業務) | `app, analytics` | read-only, `app` + `analytics` ビュー（機微列はマスク） |
+| `fx_rates` | shared-db スタック fx-rates（為替レート日次更新） | `app` | `app.currencies` の `rate_per_100_jpy`/`updated_at` UPDATE のみ |
 | `studio_ro` | Prisma Studio (db.kai-lab.net) | all schemas | read-only, every schema |
 | `postgres` | Prisma migrations only | — | superuser |
 
@@ -125,5 +128,8 @@ Consolidated 2026-07-05 from the standalone `kot-db` (kot-import stack) and
 `admintools-db` (admintools stack) containers. Their compose services were
 removed; the old volumes `kot-import_kot-db-data` and
 `admintools_admintools-db-data` remain as cold backups. Metabase db 2
-(King of Time 労務) now connects to shared-db as `kot_ro`; existing cards keep
-working via the `public` compat views.
+(King of Time 労務) now connects to shared-db as `kot_ro`. The `public.*`
+pass-through compat views it originally relied on were **retired 2026-08**: all
+cards + the AI labor MCP now read `kot.*` / `directory.*` directly (bare-name
+native SQL resolves via the `kot_ro` search_path). Metabase db 5
+(CKK 業務) connects as `metabase_ro`, read-only on the `app` business schema.

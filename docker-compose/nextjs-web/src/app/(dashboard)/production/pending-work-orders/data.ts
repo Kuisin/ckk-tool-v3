@@ -17,6 +17,7 @@ import { checkPermission } from "@/lib/authz";
 import { prisma } from "@/lib/db";
 import { formatOrderLineNumber, formatProductNumber } from "@/lib/doc-number";
 import { type LocalizedText, localized } from "@/lib/format";
+import { effectiveAllocatedByLine } from "@/lib/work-order-alloc";
 import { orderLineScopeWhere } from "../../sales/order-lines/data";
 import { fetchWorkOrders } from "../work-orders/data";
 
@@ -82,8 +83,7 @@ export async function fetchUnplannedOrderLines(): Promise<
     include: {
       acceptance: { include: { customerBp: true } },
       product: true,
-      // 手配済み数量 = 指示書割当（work_order_order_lines）の合計。
-      // キャンセル済み指示書の割当は除く（作り直しの対象 → 未手配へ戻る）。
+      // 件数バッジ用（手配済みの実効値は下で effectiveAllocatedByLine が計算）。
       workOrderLinks: {
         where: { workOrder: { status: { not: "CANCELLED" } } },
         select: { quantity: true },
@@ -101,13 +101,14 @@ export async function fetchUnplannedOrderLines(): Promise<
     ],
   });
 
+  // 手配済みは実効値 — 完了済み指示書で不良が多く、割当より少なくしか
+  // できなかった明細は、その不足分だけ未手配へ戻る（追加の指示書を作れる）。
+  const allocated = await effectiveAllocatedByLine(rows.map((r) => r.id));
+
   const out: UnplannedOrderLineRow[] = [];
   for (const r of rows) {
     if (r.branch == null) continue;
-    const plannedQuantity = r.workOrderLinks.reduce(
-      (sum, l) => sum + l.quantity,
-      0,
-    );
+    const plannedQuantity = allocated.get(r.id) ?? 0;
     const unplannedQuantity = r.quantity - plannedQuantity;
     // 手配済み（あるいは超過手配）の明細はキューに出さない。
     if (unplannedQuantity <= 0) continue;

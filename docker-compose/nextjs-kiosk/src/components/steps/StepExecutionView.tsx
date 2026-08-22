@@ -60,13 +60,26 @@ type Props = {
   recording: StepRecordingData;
   /** 自分が作業中の別工程（同時作業は 1 工程まで — 開始/再開をロック）。 */
   otherActive: MyActiveStep | null;
+  /** 戻り先: 担当工程一覧（既定） / 指示書スキャンの指示書ビュー。 */
+  backTo?: "list" | "workOrder";
 };
 
 type Phase = "IDLE" | "STARTING" | "COMPLETING";
 
-export function StepExecutionView({ step, recording, otherActive }: Props) {
+export function StepExecutionView({
+  step,
+  recording,
+  otherActive,
+  backTo = "list",
+}: Props) {
   const router = useRouter();
   const { m } = useI18n();
+
+  // 指示書スキャン経由なら戻り先はその指示書のビュー
+  const backHref =
+    backTo === "workOrder" ? `/wo-scan/${step.workOrderNumber}` : "/steps";
+  const backLabel =
+    backTo === "workOrder" ? m.woScan.backToWorkOrder : m.steps.backToList;
 
   const [phase, setPhase] = useState<Phase>("IDLE");
   const [busy, setBusy] = useState(false);
@@ -128,7 +141,7 @@ export function StepExecutionView({ step, recording, otherActive }: Props) {
       },
       () => {
         playLogoutSound();
-        router.replace("/steps");
+        router.replace(backHref);
       },
     );
 
@@ -140,10 +153,10 @@ export function StepExecutionView({ step, recording, otherActive }: Props) {
         <Group justify="space-between" wrap="nowrap">
           <Button
             leftSection={<IconArrowLeft size={20} />}
-            onClick={() => router.push("/steps")}
+            onClick={() => router.push(backHref)}
             variant="default"
           >
-            {m.steps.backToList}
+            {backLabel}
           </Button>
           <Badge
             color={stateColor(step.sessionState)}

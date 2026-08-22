@@ -1,6 +1,6 @@
 import { PendingShipmentBoard } from "@/components/shipping/pending-shipments/PendingShipmentBoard";
 import { requireAppRead } from "@/lib/authz-page";
-import { fetchOpenShippingOrders, fetchUnshippedOrderLines } from "./data";
+import { fetchOpenDeliveryOrders, fetchUnshippedOrderLines } from "./data";
 
 export const dynamic = "force-dynamic";
 
@@ -13,7 +13,7 @@ export default async function ShippingPendingShipmentsPage() {
   if (denied) return denied;
   const [unshippedRows, openRows] = await Promise.all([
     fetchUnshippedOrderLines(),
-    fetchOpenShippingOrders(),
+    fetchOpenDeliveryOrders(),
   ]);
   return (
     <PendingShipmentBoard openRows={openRows} unshippedRows={unshippedRows} />

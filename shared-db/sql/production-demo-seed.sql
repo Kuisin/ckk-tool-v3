@@ -138,13 +138,13 @@ ON CONFLICT (id) DO NOTHING;
 --   requested_1st_* → requested_*、approved_1st/2nd_* → approved_*（最終）
 --   approval_status の PENDING_1ST → PENDING
 -- 各段の記録は approval_requests / approval_records 側にある。
-INSERT INTO app.work_orders (id, work_order_number, product_id, type,
+INSERT INTO app.work_orders (id, work_order_number, year_month, seq, product_id, type,
   planned_quantity, material_id, status, approval_status, route_version_id,
   requested_at, requested_by, approved_at, approved_by, started_at, completed_at,
   history, notes, created_by, created_at, updated_at)
 VALUES
   -- #9001: 進行中（受注 50 + 予備 5 = 55。承認記録あり・工程は下の steps 参照）
-  ('dc000000-0000-4000-8000-000000009001'::uuid, 9001,
+  ('dc000000-0000-4000-8000-000000009001'::uuid, 9001, '202607', 9001,
    9001, 'MANUFACTURE'::app."WORK_ORDER_TYPE",
    55, (SELECT id FROM app.materials WHERE code = 'B01A0001-B060-310'),
    'IN_PROGRESS'::app."WORK_ORDER_STATUS", 'APPROVED'::app."WORK_ORDER_APPROVAL_STATUS",
@@ -160,7 +160,7 @@ VALUES
    NULL, 'a0b1c2d3-0000-4000-8000-000000005107'::uuid,
    '2026-07-14T10:30:00+09', '2026-07-21T09:00:00+09'),
   -- #9002: 承認待ち（PENDING_1ST — PD03 の主役。approval_requests 行あり）
-  ('dc000000-0000-4000-8000-000000009002'::uuid, 9002,
+  ('dc000000-0000-4000-8000-000000009002'::uuid, 9002, '202607', 9002,
    9002, 'MANUFACTURE'::app."WORK_ORDER_TYPE",
    100, (SELECT id FROM app.materials WHERE code = 'B04A0001-B040-310'),
    'PENDING_APPROVAL'::app."WORK_ORDER_STATUS", 'PENDING'::app."WORK_ORDER_APPROVAL_STATUS",
@@ -172,7 +172,7 @@ VALUES
    NULL, 'a0b1c2d3-0000-4000-8000-000000005107'::uuid,
    '2026-07-19T15:00:00+09', '2026-07-20T09:30:00+09'),
   -- #9003: 下書き（在庫分 — 編集・コピー・キャンセル可の状態バリエーション）
-  ('dc000000-0000-4000-8000-000000009003'::uuid, 9003,
+  ('dc000000-0000-4000-8000-000000009003'::uuid, 9003, '202607', 9003,
    9001, 'FROM_STOCK'::app."WORK_ORDER_TYPE",
    10, NULL,
    'DRAFT'::app."WORK_ORDER_STATUS", 'NONE'::app."WORK_ORDER_APPROVAL_STATUS",
@@ -181,7 +181,7 @@ VALUES
    NULL, 'a0b1c2d3-0000-4000-8000-000000005107'::uuid,
    '2026-07-19T16:20:00+09', '2026-07-19T16:20:00+09'),
   -- #9004: 完了（全工程完了 → 良品 55 を製品在庫ロット 9004 として入庫済み）
-  ('dc000000-0000-4000-8000-000000009004'::uuid, 9004,
+  ('dc000000-0000-4000-8000-000000009004'::uuid, 9004, '202607', 9004,
    9001, 'MANUFACTURE'::app."WORK_ORDER_TYPE",
    60, (SELECT id FROM app.materials WHERE code = 'B01A0001-B060-310'),
    'COMPLETED'::app."WORK_ORDER_STATUS", 'APPROVED'::app."WORK_ORDER_APPROVAL_STATUS",
@@ -212,6 +212,18 @@ INSERT INTO app.numbering_sequences (key, prefix, last_year_month, last_sequence
 VALUES ('WORK_ORDER', 'WO', NULL, 9004, '2026-07-21T09:00:00+09')
 ON CONFLICT (key) DO UPDATE
   SET last_sequence = GREATEST(app.numbering_sequences.last_sequence, 9004),
+      updated_at = EXCLUDED.updated_at;
+
+-- 書類番号（WOR-YYYYMM-NNNNN）の採番も固定 seq へ追従
+INSERT INTO app.numbering_sequences (key, prefix, last_year_month, last_sequence, updated_at)
+VALUES ('WORK_ORDER_DOC', 'WOR', '202607', 9004, '2026-07-21T09:00:00+09')
+ON CONFLICT (key) DO UPDATE
+  SET last_year_month = GREATEST(app.numbering_sequences.last_year_month, EXCLUDED.last_year_month),
+      last_sequence = CASE
+        WHEN app.numbering_sequences.last_year_month >= EXCLUDED.last_year_month
+          THEN app.numbering_sequences.last_sequence
+        ELSE EXCLUDED.last_sequence
+      END,
       updated_at = EXCLUDED.updated_at;
 
 -- ── 工程ステップ ─────────────────────────────────────────────────────────────

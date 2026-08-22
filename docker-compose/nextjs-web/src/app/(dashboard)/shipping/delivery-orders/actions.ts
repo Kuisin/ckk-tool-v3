@@ -1,10 +1,10 @@
 "use server";
 
 /**
- * Server Actions — 出荷書 (app.shipping_orders, SH01).
+ * Server Actions — 出荷書 (app.delivery_orders, SH01).
  *
- * 作成は allocateDocumentKey("SHIPPING") で (yearMonth, seq) を1回採番し、
- * 明細を nested create で一括作成する。表示番号 SHP-YYYYMM-NNNNN は導出。
+ * 作成は allocateDocumentKey("DELIVERY_ORDER") で (yearMonth, seq) を1回採番し、
+ * 明細を nested create で一括作成する。表示番号 DOR-YYYYMM-NNNNN は導出。
  *
  * ステータス遷移: DRAFT →(確定)→ CONFIRMED →(出荷)→ SHIPPED。
  * 出荷時（DISPATCH のみ）は注文明細の出荷進捗を再計算し、注文明細ステータスを
@@ -27,7 +27,6 @@ import {
 import { type LocalizedText, localized } from "@/lib/format";
 import { allocateDocumentKey } from "@/lib/numbering";
 import { lineShipStatus } from "@/lib/order-line-core";
-import { resolveSalesRepId } from "@/lib/sales-rep";
 import {
   type ActionResult,
   actionError,
@@ -42,20 +41,20 @@ import {
   toStepState,
 } from "@/lib/workflow-core";
 
-const BASE_PATH = "/shipping/shipping-orders";
+const BASE_PATH = "/shipping/delivery-orders";
 const SCOPE_DENIED = "この操作の権限がありません（対象範囲外）";
 
 /**
  * 対象出荷書がスコープ内か（PLANT = 出荷元拠点）。ALL は素通し。
  * 不存在は true — 既存の not-found 系エラー処理に委ねる。
  */
-async function shippingOrderInScope(
+async function deliveryOrderInScope(
   access: Access,
   userId: string,
   key: DocKey,
 ): Promise<boolean> {
   if (access.kind === "ALL") return true;
-  const row = await prisma.shippingOrder.findUnique({
+  const row = await prisma.deliveryOrder.findUnique({
     where: { yearMonth_seq: key },
     select: { fromPlantId: true },
   });
@@ -76,8 +75,6 @@ const createInput = z
   .object({
     customerBpId: z.string().min(1, "顧客を選択してください"),
     customerBranchBpId: z.string().nullable(),
-    /** 営業担当 — 未指定なら顧客の主担当が入る（lib/sales-rep）。 */
-    salesRepId: z.string().nullable().optional(),
     type: z.enum(["DISPATCH", "STOCK_STORAGE"]),
     fromPlantId: z.string().nullable(),
     notes: z.string().nullable(),
@@ -100,8 +97,6 @@ const createInput = z
 
 const updateInput = z
   .object({
-    /** 営業担当。顧客は作成後不変なので選ばれた値をそのまま保存する。 */
-    salesRepId: z.string().nullable().optional(),
     type: z.enum(["DISPATCH", "STOCK_STORAGE"]),
     fromPlantId: z.string().nullable(),
     notes: z.string().nullable(),
@@ -120,8 +115,8 @@ const updateInput = z
     });
   });
 
-export type ShippingOrderCreateInput = z.infer<typeof createInput>;
-export type ShippingOrderUpdateInput = z.infer<typeof updateInput>;
+export type DeliveryOrderCreateInput = z.infer<typeof createInput>;
+export type DeliveryOrderUpdateInput = z.infer<typeof updateInput>;
 
 function revalidate(number?: string) {
   revalidatePath(BASE_PATH);
@@ -146,7 +141,11 @@ export interface CompletedWorkOrderRef {
   outputQuantity: number;
 }
 
-/** 出荷に使える在庫ロット（product_inventory を lot 単位に集約）。 */
+/**
+ * 出荷に使えるロット = **その注文明細に紐づく完了指示書**のロット
+ * （work_order_order_lines 経由 — FROM_STOCK の在庫引当指示書も含む）。
+ * 在庫数は product_inventory を lot 単位に集約した現物。
+ */
 export interface StockLotRef {
   /** ロット番号 = 指示書番号。 */
   lotNumber: number;
@@ -154,11 +153,9 @@ export interface StockLotRef {
   quantity: number;
   /** 予約中数量。 */
   reserved: number;
-  /** この注文明細配下の指示書のロットか（他 SO / 在庫向け指示書由来 = false）。 */
-  fromThisOrderLine: boolean;
 }
 
-export interface ShippingSourceInfo {
+export interface DeliverySourceInfo {
   orderLineId: string;
   orderLineNumber: string;
   /** 出荷書ヘッダの顧客を決めるのに使う（1 出荷書 = 1 顧客の検証にも）。 */
@@ -172,18 +169,19 @@ export interface ShippingSourceInfo {
   quantity: number;
   status: string;
   completedWorkOrders: CompletedWorkOrderRef[];
-  /** 対象製品の在庫ロット（現物あり — この SO 以外の完成ロットも含む）。 */
+  /** この注文明細に紐づく完了指示書のロット（現物あり）。 */
   stockLots: StockLotRef[];
 }
 
 /**
- * 注文明細選択時のライブ取得 — 注文明細情報 + 完了済み指示書（ロット）+
- * 対象製品の在庫ロット一覧。明細の既定行（1 完了指示書 = 1 行、数量 =
- * グラフ終端集計の残良品）とロットピッカーの選択肢を組み立てる。
+ * 注文明細選択時のライブ取得 — 注文明細情報 + 完了済み指示書（ロット）。
+ * 明細の既定行（1 完了指示書 = 1 行、数量 = グラフ終端集計の残良品）と
+ * ロットピッカーの選択肢を組み立てる。ロットは**その注文明細に紐づく
+ * 指示書**（work_order_order_lines — FROM_STOCK の在庫引当も含む）から選ぶ。
  */
-export async function fetchShippingSourceInfo(
+export async function fetchDeliverySourceInfo(
   orderLineId: string,
-): Promise<ShippingSourceInfo | null> {
+): Promise<DeliverySourceInfo | null> {
   if (!orderLineId) return null;
   try {
     const so = await prisma.orderLine.findUnique({
@@ -217,8 +215,10 @@ export async function fetchShippingSourceInfo(
         },
         orderBy: { workOrderNumber: "asc" },
       }),
-      // 対象製品の在庫ロット（非半製品・ロット番号あり）— 他 SO / 在庫向け
-      // 指示書の完成ロットも出荷に充当できる。
+      // 在庫ロットの現物数量 — この注文明細に紐づく指示書のロットだけを
+      // ピッカーに出す（指示書は関連 SO 文書から選ぶ、が本画面の規約。
+      // 他の受注のロットを充てるときは先に FROM_STOCK の在庫引当指示書で
+      // この明細へ紐づける）。
       prisma.productInventory.findMany({
         where: {
           productId,
@@ -235,7 +235,7 @@ export async function fetchShippingSourceInfo(
     const soLots = new Set(workOrders.map((wo) => wo.workOrderNumber));
     const byLot = new Map<number, { quantity: number; reserved: number }>();
     for (const inv of inventories) {
-      if (inv.lotNumber == null) continue;
+      if (inv.lotNumber == null || !soLots.has(inv.lotNumber)) continue;
       const cur = byLot.get(inv.lotNumber) ?? { quantity: 0, reserved: 0 };
       cur.quantity += inv.quantity;
       cur.reserved += inv.reservedQuantity;
@@ -247,13 +247,8 @@ export async function fetchShippingSourceInfo(
         lotNumber,
         quantity: v.quantity,
         reserved: v.reserved,
-        fromThisOrderLine: soLots.has(lotNumber),
       }))
-      .sort(
-        (a, b) =>
-          Number(b.fromThisOrderLine) - Number(a.fromThisOrderLine) ||
-          a.lotNumber - b.lotNumber,
-      );
+      .sort((a, b) => a.lotNumber - b.lotNumber);
     return {
       orderLineId: so.id,
       orderLineNumber: formatOrderLineNumber({
@@ -295,14 +290,46 @@ export async function fetchShippingSourceInfo(
       stockLots,
     };
   } catch (e) {
-    console.error("fetchShippingSourceInfo failed", e);
+    console.error("fetchDeliverySourceInfo failed", e);
     return null;
   }
 }
 
 /**
+ * 注文請書選択時のライブ取得 — 展開済みの注文請書の**出荷できる注文明細**
+ * すべての受注情報をまとめて返す（出荷書フォームは注文請書単位で選び、
+ * 明細グループは注文明細ごとに作る）。キャンセル済み・出荷済みステータスの
+ * 行は除外する（残数ゼロの最終判定はクライアント側でも行う）。
+ */
+export async function fetchDeliveryAcceptanceSourceInfo(
+  acceptanceNumber: string,
+): Promise<DeliverySourceInfo[]> {
+  const key = parseDocKey(acceptanceNumber, "ORD");
+  if (!key) return [];
+  try {
+    const lines = await prisma.orderLine.findMany({
+      where: {
+        acceptanceYearMonth: key.yearMonth,
+        acceptanceSeq: key.seq,
+        branch: { not: null },
+        status: { in: ["CONFIRMED", "IN_PRODUCTION", "PARTIAL_SHIPPED"] },
+      },
+      orderBy: { branch: "asc" },
+      select: { id: true },
+    });
+    const infos = await Promise.all(
+      lines.map((l) => fetchDeliverySourceInfo(l.id)),
+    );
+    return infos.filter((i): i is DeliverySourceInfo => i != null);
+  } catch (e) {
+    console.error("fetchDeliveryAcceptanceSourceInfo failed", e);
+    return [];
+  }
+}
+
+/**
  * DISPATCH 明細のロット在庫検証（fail-fast — 出荷時の在庫ガードは
- * onShippingShippedTx が最終判定する）。ロット指定行のみ、現物数量
+ * onDeliveryOrderShippedTx が最終判定する）。ロット指定行のみ、現物数量
  * （非半製品バケット合計）に対して検証する。エラー時は文字列を返す。
  */
 async function validateDispatchLots(
@@ -373,11 +400,11 @@ async function validateSingleCustomer(
  * 過出荷ガードと残数表示の唯一の集計元。
  */
 async function shippedQuantityForLine(orderLineId: string): Promise<number> {
-  const agg = await prisma.shippingOrderItem.aggregate({
+  const agg = await prisma.deliveryOrderItem.aggregate({
     _sum: { quantity: true },
     where: {
       orderLineId,
-      shippingOrder: { type: "DISPATCH", status: "SHIPPED" },
+      deliveryOrder: { type: "DISPATCH", status: "SHIPPED" },
     },
   });
   return agg._sum?.quantity ?? 0;
@@ -385,7 +412,7 @@ async function shippedQuantityForLine(orderLineId: string): Promise<number> {
 
 /**
  * 明細が参照する注文明細の残数を超えていないか（作成・更新時の fail-fast）。
- * 確定的なガードは shipShippingOrder 側（出荷時点で数え直す）。
+ * 確定的なガードは shipDeliveryOrder 側（出荷時点で数え直す）。
  */
 async function validateLineRemaining(
   items: { orderLineId: string | null; quantity: number }[],
@@ -411,16 +438,16 @@ async function validateLineRemaining(
     }
     // 自分自身の未出荷ぶんは累計に含まれない（SHIPPED のみ数える）が、
     // 編集時に同じ出荷書の行を二重に数えないよう除外キーを見る。
-    const agg = await prisma.shippingOrderItem.aggregate({
+    const agg = await prisma.deliveryOrderItem.aggregate({
       _sum: { quantity: true },
       where: {
         orderLineId,
-        shippingOrder: { type: "DISPATCH", status: "SHIPPED" },
+        deliveryOrder: { type: "DISPATCH", status: "SHIPPED" },
         ...(excludeKey
           ? {
               NOT: {
-                shippingOrderYearMonth: excludeKey.yearMonth,
-                shippingOrderSeq: excludeKey.seq,
+                deliveryOrderYearMonth: excludeKey.yearMonth,
+                deliveryOrderSeq: excludeKey.seq,
               },
             }
           : {}),
@@ -442,7 +469,7 @@ async function validateLineRemaining(
 
 /**
  * 明細ロットが単一の指示書ロットなら、その指示書 id を返す
- * （shipping_orders.work_order_id — 表示・トレース用）。
+ * （delivery_orders.work_order_id — 表示・トレース用）。
  */
 async function resolveHeaderWorkOrderId(
   items: { lotNumber: number | null }[],
@@ -463,10 +490,10 @@ async function resolveHeaderWorkOrderId(
 // ── CRUD ─────────────────────────────────────────────────────────────────────
 
 /** 作成 — 採番1回 + ヘッダ・明細を一括作成。作成後は詳細ページへ。 */
-export async function createShippingOrder(
-  payload: ShippingOrderCreateInput,
+export async function createDeliveryOrder(
+  payload: DeliveryOrderCreateInput,
 ): Promise<ActionResult<{ number: string }>> {
-  const authz = await checkPermission("shipping_order", "CREATE");
+  const authz = await checkPermission("delivery_order", "CREATE");
   if (!authz.ok) return actionError(authz.error);
   const parsed = createInput.safeParse(payload);
   if (!parsed.success) {
@@ -499,19 +526,13 @@ export async function createShippingOrder(
       if (customerError) return actionError(customerError);
     }
     const workOrderId = await resolveHeaderWorkOrderId(v.items);
-    const { yearMonth, seq } = await allocateDocumentKey("SHIPPING");
-    const salesRepId = await resolveSalesRepId(
-      v.salesRepId,
-      v.customerBpId,
-      null,
-    );
-    await prisma.shippingOrder.create({
+    const { yearMonth, seq } = await allocateDocumentKey("DELIVERY_ORDER");
+    await prisma.deliveryOrder.create({
       data: {
         yearMonth,
         seq,
         customerBpId: v.customerBpId,
         customerBranchBpId: v.customerBranchBpId,
-        salesRepId,
         workOrderId,
         type: v.type,
         fromPlantId: v.fromPlantId ? Number(v.fromPlantId) : null,
@@ -529,14 +550,13 @@ export async function createShippingOrder(
         },
       },
     });
-    const number = formatDocNumber("SHP", { yearMonth, seq });
+    const number = formatDocNumber("DOR", { yearMonth, seq });
     await recordAudit({
       action: "CREATE",
-      tableName: "shipping_orders",
+      tableName: "delivery_orders",
       recordId: number,
       after: {
         customerBpId: v.customerBpId,
-        salesRepId,
         type: v.type,
         fromPlantId: v.fromPlantId,
         status: "DRAFT",
@@ -552,28 +572,27 @@ export async function createShippingOrder(
 }
 
 /** 更新 — 下書きのみ（明細は全置換）。サーバー側でも必ずガード。 */
-export async function updateShippingOrder(
+export async function updateDeliveryOrder(
   number: string,
-  payload: ShippingOrderUpdateInput,
+  payload: DeliveryOrderUpdateInput,
 ): Promise<ActionResult<{ number: string }>> {
-  const authz = await checkPermission("shipping_order", "UPDATE");
+  const authz = await checkPermission("delivery_order", "UPDATE");
   if (!authz.ok) return actionError(authz.error);
-  const key = parseDocKey(number, "SHP");
+  const key = parseDocKey(number, "DOR");
   if (!key) return actionError("出荷書番号が不正です");
   const parsed = updateInput.safeParse(payload);
   if (!parsed.success) {
     return actionError(parsed.error.issues[0]?.message ?? "入力が不正です");
   }
   const v = parsed.data;
-  if (!(await shippingOrderInScope(authz.access, authz.userId, key))) {
+  if (!(await deliveryOrderInScope(authz.access, authz.userId, key))) {
     return actionError(SCOPE_DENIED);
   }
   try {
-    const prior = await prisma.shippingOrder.findUnique({
+    const prior = await prisma.deliveryOrder.findUnique({
       where: { yearMonth_seq: key },
       select: {
         type: true,
-        salesRepId: true,
         fromPlantId: true,
         notes: true,
         items: {
@@ -595,12 +614,11 @@ export async function updateShippingOrder(
     const workOrderId = await resolveHeaderWorkOrderId(v.items);
     await prisma.$transaction(async (tx) => {
       // status を where に含めた updateMany で原子的にガードする。
-      const updated = await tx.shippingOrder.updateMany({
+      const updated = await tx.deliveryOrder.updateMany({
         where: { ...key, status: "DRAFT" },
         data: {
           type: v.type,
           workOrderId,
-          salesRepId: v.salesRepId?.trim() || null,
           fromPlantId: v.fromPlantId ? Number(v.fromPlantId) : null,
           notes: trimOrNull(v.notes),
         },
@@ -609,16 +627,16 @@ export async function updateShippingOrder(
         throw new Error("GUARD:下書きの出荷書のみ編集できます");
       }
       // 明細は全置換（DRAFT のみのため参照はまだ無い）。
-      await tx.shippingOrderItem.deleteMany({
+      await tx.deliveryOrderItem.deleteMany({
         where: {
-          shippingOrderYearMonth: key.yearMonth,
-          shippingOrderSeq: key.seq,
+          deliveryOrderYearMonth: key.yearMonth,
+          deliveryOrderSeq: key.seq,
         },
       });
-      await tx.shippingOrderItem.createMany({
+      await tx.deliveryOrderItem.createMany({
         data: v.items.map((it, i) => ({
-          shippingOrderYearMonth: key.yearMonth,
-          shippingOrderSeq: key.seq,
+          deliveryOrderYearMonth: key.yearMonth,
+          deliveryOrderSeq: key.seq,
           orderLineId: it.orderLineId,
           productId: Number(it.productId),
           lotNumber: it.lotNumber,
@@ -630,12 +648,11 @@ export async function updateShippingOrder(
     });
     await recordAudit({
       action: "UPDATE",
-      tableName: "shipping_orders",
+      tableName: "delivery_orders",
       recordId: number,
       before: prior ?? undefined,
       after: {
         type: v.type,
-        salesRepId: v.salesRepId?.trim() || null,
         fromPlantId: v.fromPlantId ? Number(v.fromPlantId) : null,
         notes: trimOrNull(v.notes),
         items: v.items,
@@ -652,18 +669,18 @@ export async function updateShippingOrder(
 }
 
 /** 確定 (DRAFT → CONFIRMED)。 */
-export async function confirmShippingOrder(
+export async function confirmDeliveryOrder(
   number: string,
 ): Promise<ActionResult> {
-  const authz = await checkPermission("shipping_order", "UPDATE");
+  const authz = await checkPermission("delivery_order", "UPDATE");
   if (!authz.ok) return actionError(authz.error);
-  const key = parseDocKey(number, "SHP");
+  const key = parseDocKey(number, "DOR");
   if (!key) return actionError("出荷書番号が不正です");
-  if (!(await shippingOrderInScope(authz.access, authz.userId, key))) {
+  if (!(await deliveryOrderInScope(authz.access, authz.userId, key))) {
     return actionError(SCOPE_DENIED);
   }
   try {
-    const updated = await prisma.shippingOrder.updateMany({
+    const updated = await prisma.deliveryOrder.updateMany({
       where: { ...key, status: "DRAFT" },
       data: { status: "CONFIRMED" },
     });
@@ -672,7 +689,7 @@ export async function confirmShippingOrder(
     }
     await recordAudit({
       action: "UPDATE",
-      tableName: "shipping_orders",
+      tableName: "delivery_orders",
       recordId: number,
       before: { status: "DRAFT" },
       after: { status: "CONFIRMED" },
@@ -691,16 +708,16 @@ export async function confirmShippingOrder(
  * SHIPPED な DISPATCH 出荷書の明細数量合計 vs 受注数量 → PARTIAL_SHIPPED /
  * SHIPPED。STOCK_STORAGE（在庫保管）は注文明細ステータスを変更しない。
  */
-export async function shipShippingOrder(number: string): Promise<ActionResult> {
-  const authz = await checkPermission("shipping_order", "UPDATE");
+export async function shipDeliveryOrder(number: string): Promise<ActionResult> {
+  const authz = await checkPermission("delivery_order", "UPDATE");
   if (!authz.ok) return actionError(authz.error);
-  const key = parseDocKey(number, "SHP");
+  const key = parseDocKey(number, "DOR");
   if (!key) return actionError("出荷書番号が不正です");
-  if (!(await shippingOrderInScope(authz.access, authz.userId, key))) {
+  if (!(await deliveryOrderInScope(authz.access, authz.userId, key))) {
     return actionError(SCOPE_DENIED);
   }
   try {
-    const row = await prisma.shippingOrder.findUnique({
+    const row = await prisma.deliveryOrder.findUnique({
       where: { yearMonth_seq: key },
       select: {
         type: true,
@@ -718,7 +735,7 @@ export async function shipShippingOrder(number: string): Promise<ActionResult> {
     }[] = [];
 
     await prisma.$transaction(async (tx) => {
-      const updated = await tx.shippingOrder.updateMany({
+      const updated = await tx.deliveryOrder.updateMany({
         where: { ...key, status: "CONFIRMED" },
         data: { status: "SHIPPED", shippedAt: new Date() },
       });
@@ -752,11 +769,11 @@ export async function shipShippingOrder(number: string): Promise<ActionResult> {
           continue;
         }
 
-        const agg = await tx.shippingOrderItem.aggregate({
+        const agg = await tx.deliveryOrderItem.aggregate({
           _sum: { quantity: true },
           where: {
             orderLineId: lineId,
-            shippingOrder: { type: "DISPATCH", status: "SHIPPED" },
+            deliveryOrder: { type: "DISPATCH", status: "SHIPPED" },
           },
         });
         const shipped = agg._sum?.quantity ?? 0;
@@ -787,13 +804,13 @@ export async function shipShippingOrder(number: string): Promise<ActionResult> {
 
       // 在庫反映（同一 tx）: DISPATCH は出庫 + 予約按分解除、STOCK_STORAGE は
       // 保管入庫。在庫不足・台帳欠落はここで throw され全体がロールバック。
-      const { onShippingShippedTx } = await import("@/lib/inventory");
-      await onShippingShippedTx(tx, key);
+      const { onDeliveryOrderShippedTx } = await import("@/lib/inventory");
+      await onDeliveryOrderShippedTx(tx, key);
     });
 
     await recordAudit({
       action: "UPDATE",
-      tableName: "shipping_orders",
+      tableName: "delivery_orders",
       recordId: number,
       before: { status: "CONFIRMED" },
       after: { status: "SHIPPED" },
@@ -826,7 +843,7 @@ export async function shipShippingOrder(number: string): Promise<ActionResult> {
             userIds,
             type: "SYSTEM",
             title: `出荷書 ${number} を出荷しました`,
-            linkPath: `/shipping/shipping-orders/${encodeURIComponent(number)}`,
+            linkPath: `/shipping/delivery-orders/${encodeURIComponent(number)}`,
           });
         }
       }
@@ -862,18 +879,18 @@ export async function shipShippingOrder(number: string): Promise<ActionResult> {
 }
 
 /** キャンセル（削除）— 下書きのみ hard delete（明細はカスケード削除）。 */
-export async function deleteShippingOrder(
+export async function deleteDeliveryOrder(
   number: string,
 ): Promise<ActionResult> {
-  const authz = await checkPermission("shipping_order", "DELETE");
+  const authz = await checkPermission("delivery_order", "DELETE");
   if (!authz.ok) return actionError(authz.error);
-  const key = parseDocKey(number, "SHP");
+  const key = parseDocKey(number, "DOR");
   if (!key) return actionError("出荷書番号が不正です");
-  if (!(await shippingOrderInScope(authz.access, authz.userId, key))) {
+  if (!(await deliveryOrderInScope(authz.access, authz.userId, key))) {
     return actionError(SCOPE_DENIED);
   }
   try {
-    const deleted = await prisma.shippingOrder.deleteMany({
+    const deleted = await prisma.deliveryOrder.deleteMany({
       where: { ...key, status: "DRAFT" },
     });
     if (deleted.count === 0) {
@@ -881,7 +898,7 @@ export async function deleteShippingOrder(
     }
     await recordAudit({
       action: "DELETE",
-      tableName: "shipping_orders",
+      tableName: "delivery_orders",
       recordId: number,
       before: { status: "DRAFT" },
     });

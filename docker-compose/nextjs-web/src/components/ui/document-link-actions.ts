@@ -22,6 +22,7 @@ import {
   formatPriceListNumber,
   formatQuoteNumber,
   orderLineNumberOf,
+  parseDocKey,
 } from "@/lib/doc-number";
 import { type LocalizedText, localized } from "@/lib/format";
 import {
@@ -113,29 +114,35 @@ export async function searchDocuments(
         });
       }
       case "work_order": {
+        // 書類番号（WO-YYYYMM-NNNNN）でもロット番号（int）でも探せる
+        const docKey = parseDocKey(q, "WOR");
         const n = asInt(q);
         const rows = await prisma.workOrder.findMany({
-          where: n ? { workOrderNumber: n } : undefined,
+          where: docKey
+            ? { yearMonth: docKey.yearMonth, seq: docKey.seq }
+            : n
+              ? { workOrderNumber: n }
+              : undefined,
           orderBy: { workOrderNumber: "desc" },
           take: LIMIT,
           include: { product: { select: { name: true } } },
         });
         return rows.map((r) => ({
-          href: `/production/work-orders/${r.workOrderNumber}`,
-          number: `指示書 #${r.workOrderNumber}`,
+          href: `/production/work-orders/${formatDocNumber("WOR", r)}`,
+          number: formatDocNumber("WOR", r),
           detail: name(r.product?.name),
         }));
       }
-      case "shipping_order": {
-        const rows = await prisma.shippingOrder.findMany({
+      case "delivery_order": {
+        const rows = await prisma.deliveryOrder.findMany({
           where: seq ? { seq } : undefined,
           orderBy: [{ yearMonth: "desc" }, { seq: "desc" }],
           take: LIMIT,
         });
         return rows.map((r) => {
-          const number = formatDocNumber("SHP", r);
+          const number = formatDocNumber("DOR", r);
           return {
-            href: `/shipping/shipping-orders/${number}`,
+            href: `/shipping/delivery-orders/${number}`,
             number,
             detail: "",
           };

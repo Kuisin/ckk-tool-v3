@@ -36,6 +36,7 @@ export interface KioskAppCatalogEntry {
  */
 export const KIOSK_APP_CATALOG: KioskAppCatalogEntry[] = [
   { key: "step-execution", label: "工程実行", permission: "work_order" },
+  { key: "wo-scan", label: "指示書スキャン", permission: "work_order" },
 ];
 
 const appFlagsSchema = z.record(z.string(), z.boolean());

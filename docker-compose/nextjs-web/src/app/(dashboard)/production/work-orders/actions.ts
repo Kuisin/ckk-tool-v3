@@ -6,8 +6,10 @@
  * - 作成/更新: 工程構成をサーバー側でも validateComposition で検証し、
  *   ブロッカー（AND 不足・排他違反）があれば保存を拒否する。工程の並びは
  *   defaultOrder（カタログ既定順）で採番する。
- * - 採番: nextSerialNumber("WORK_ORDER") — 指示書番号 = ロット番号（通し連番）。
- *   注文明細の lot_number が未採番なら同番号を書き込む。
+ * - 採番: 書類番号は allocateDocumentKey("WORK_ORDER_DOC")（WO-YYYYMM-NNNNN
+ *   — 月次リセット・表示用）、ロット番号は nextSerialNumber("WORK_ORDER")
+ *   （通し連番 — 在庫・QR・業務キー）。注文明細の lot_number が未採番なら
+ *   ロット番号を書き込む。
  * - 承認: approval_status + 遷移列 + history Json（MaterialPurchaseOrder と
  *   同型の row-workflow）を維持しつつ、承認依頼・記録を approval_requests /
  *   approval_records へ正規化する（§6 本実装 — PD03 横断表示・代理対応）。
@@ -28,8 +30,8 @@ import { type MaterialAtp, materialAtp } from "@/lib/atp";
 import { getCurrentActorId, recordAudit } from "@/lib/audit";
 import { checkPermission } from "@/lib/authz";
 import { type Prisma, prisma } from "@/lib/db";
-import { orderLineNumberOf } from "@/lib/doc-number";
-import { nextSerialNumber } from "@/lib/numbering";
+import { formatDocNumber, orderLineNumberOf } from "@/lib/doc-number";
+import { allocateDocumentKey, nextSerialNumber } from "@/lib/numbering";
 import {
   fetchRouteVersionSteps,
   listProductRoutes,
@@ -42,6 +44,7 @@ import {
   actionOk,
   prismaErrorMessage,
 } from "@/lib/server-action";
+import { effectiveAllocatedByLine } from "@/lib/work-order-alloc";
 import {
   type AllocationInput,
   type LineAllocInfo,
@@ -81,13 +84,18 @@ async function workOrderInScope(
   );
 }
 
-function revalidate(workOrderNumber?: number) {
+function revalidate(workOrderNumber?: number, docNumber?: string | null) {
   revalidatePath(BASE_PATH);
   revalidatePath(APPROVALS_PATH);
   if (workOrderNumber != null) {
     revalidatePath(`${BASE_PATH}/${workOrderNumber}`);
     revalidatePath(`${BASE_PATH}/${workOrderNumber}/edit`);
     revalidatePath(`${APPROVALS_PATH}/${workOrderNumber}`);
+  }
+  // 書類番号の URL でも同じページが出る（両形式を受ける）ため両方を再検証
+  if (docNumber) {
+    revalidatePath(`${BASE_PATH}/${docNumber}`);
+    revalidatePath(`${BASE_PATH}/${docNumber}/edit`);
   }
 }
 
@@ -129,6 +137,17 @@ const allocationInput = z.object({
   quantity: z.number().int().min(1, "割当数量は1以上"),
 });
 
+// 作成時の作業計画（工程 × 担当者 × 計画日）。指示書と同時に
+// work_order_step_plans を作る — 担当は指示書ごとに違うため、工程リストと
+// 違ってルートには保存しない。編集（updateWorkOrder）では無視する（計画の
+// 追加・削除は工程実行画面の計画パネルで行う）。
+const planInput = z.object({
+  processStepId: z.number().int().positive(),
+  userId: z.string().min(1),
+  /** 計画日（YYYY-MM-DD, JST）。 */
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "計画日が不正です"),
+});
+
 const workOrderInput = z
   .object({
     allocations: z.array(allocationInput),
@@ -141,6 +160,7 @@ const workOrderInput = z
     notes: z.string(),
     steps: z.array(stepInput).min(1, "工程を1つ以上選択してください"),
     route: routeInput,
+    plans: z.array(planInput),
   })
   .superRefine((v, refCtx) => {
     if (v.allocations.length === 0) {
@@ -163,41 +183,35 @@ export type WorkOrderInput = z.infer<typeof workOrderInput>;
 
 /**
  * 割当対象の明細現況を集める（他の指示書の割当合計は キャンセル除く・
- * 編集時は自分を除く）。存在しない id は lines に載らず、検証側で弾かれる。
+ * 編集時は自分を除く・**完了済みは実際にできた分だけ** —
+ * lib/work-order-alloc effectiveAllocatedByLine）。存在しない id は
+ * lines に載らず、検証側で弾かれる。
  */
 async function loadLineAllocInfos(
   orderLineIds: string[],
   excludeWorkOrderNumber?: number | null,
 ): Promise<LineAllocInfo[]> {
   if (orderLineIds.length === 0) return [];
-  const rows = await prisma.orderLine.findMany({
-    where: { id: { in: orderLineIds } },
-    select: {
-      id: true,
-      acceptanceYearMonth: true,
-      acceptanceSeq: true,
-      branch: true,
-      quantity: true,
-      productId: true,
-      status: true,
-      workOrderLinks: {
-        where: {
-          workOrder: {
-            status: { not: "CANCELLED" },
-            ...(excludeWorkOrderNumber != null
-              ? { workOrderNumber: { not: excludeWorkOrderNumber } }
-              : {}),
-          },
-        },
-        select: { quantity: true },
+  const [rows, allocated] = await Promise.all([
+    prisma.orderLine.findMany({
+      where: { id: { in: orderLineIds } },
+      select: {
+        id: true,
+        acceptanceYearMonth: true,
+        acceptanceSeq: true,
+        branch: true,
+        quantity: true,
+        productId: true,
+        status: true,
       },
-    },
-  });
+    }),
+    effectiveAllocatedByLine(orderLineIds, { excludeWorkOrderNumber }),
+  ]);
   return rows.map((r) => ({
     orderLineId: r.id,
     number: orderLineNumberOf(r) ?? r.id,
     lineQuantity: r.quantity,
-    otherAllocated: r.workOrderLinks.reduce((sum, l) => sum + l.quantity, 0),
+    otherAllocated: allocated.get(r.id) ?? 0,
     productId: r.productId,
     status: r.status,
   }));
@@ -318,7 +332,7 @@ export interface LineAllocStatus {
 
 export async function createWorkOrder(
   payload: WorkOrderInput,
-): Promise<ActionResult<{ workOrderNumber: number }>> {
+): Promise<ActionResult<{ workOrderNumber: number; docNumber: string }>> {
   const authz = await checkPermission("work_order", "CREATE");
   if (!authz.ok) return actionError(authz.error);
   const parsed = workOrderInput.safeParse(payload);
@@ -336,6 +350,8 @@ export async function createWorkOrder(
     const { productId } = target;
     const actor = await getCurrentActorId();
     const workOrderNumber = await nextSerialNumber("WORK_ORDER");
+    const docKey = await allocateDocumentKey("WORK_ORDER_DOC");
+    const docNumber = formatDocNumber("WOR", docKey);
     const materialId = v.type === "MANUFACTURE" ? v.materialId : null;
 
     const routeVersionId = await prisma.$transaction(async (tx) => {
@@ -348,9 +364,11 @@ export async function createWorkOrder(
         productId,
         `指示書 #${workOrderNumber} 作成時に変更`,
       );
-      await tx.workOrder.create({
+      const created = await tx.workOrder.create({
         data: {
           workOrderNumber,
+          yearMonth: docKey.yearMonth,
+          seq: docKey.seq,
           productId,
           type: v.type,
           plannedQuantity: v.plannedQuantity,
@@ -376,7 +394,33 @@ export async function createWorkOrder(
             })),
           },
         },
+        select: {
+          id: true,
+          steps: { select: { id: true, processStepId: true } },
+        },
       });
+      // 作成時の作業計画（工程 × 担当者 × 計画日）。工程 id は作成結果から
+      // 引き直す — 選択に無い工程の計画は黙って捨てる（UI 側で作れない形）。
+      if (v.plans.length > 0) {
+        const stepIdByProcess = new Map(
+          created.steps.map((s) => [s.processStepId, s.id]),
+        );
+        const rows = v.plans.flatMap((p) => {
+          const stepId = stepIdByProcess.get(p.processStepId);
+          if (!stepId) return [];
+          return [
+            {
+              stepId,
+              userId: p.userId,
+              plannedDate: new Date(`${p.date}T00:00:00+09:00`),
+              createdBy: actor,
+            },
+          ];
+        });
+        if (rows.length > 0) {
+          await tx.workOrderStepPlan.createMany({ data: rows });
+        }
+      }
       // ロット番号 = 指示書番号。未採番の割当明細に同番号を採用する
       // （統合ロットでは複数明細が同じロット番号を共有する）。
       await assignLotNumbersTx(
@@ -392,6 +436,7 @@ export async function createWorkOrder(
       tableName: "work_orders",
       recordId: String(workOrderNumber),
       after: {
+        docNumber,
         allocations: v.allocations,
         productId,
         type: v.type,
@@ -401,13 +446,14 @@ export async function createWorkOrder(
         routeVersionId,
         stepCount: built.creates.length,
         inspectionTemplateCount: v.inspectionTemplateIds.length,
+        planCount: v.plans.length,
       },
     });
-    revalidate(workOrderNumber);
+    revalidate(workOrderNumber, docNumber);
     if (v.route != null) {
       revalidatePath(`/master/products/${productId}`);
     }
-    return actionOk({ workOrderNumber });
+    return actionOk({ workOrderNumber, docNumber });
   } catch (e) {
     return actionError(prismaErrorMessage(e, "指示書の作成に失敗しました"));
   }
@@ -416,7 +462,7 @@ export async function createWorkOrder(
 export async function updateWorkOrder(
   workOrderNumber: number,
   payload: WorkOrderInput,
-): Promise<ActionResult<{ workOrderNumber: number }>> {
+): Promise<ActionResult<{ workOrderNumber: number; docNumber: string }>> {
   const authz = await checkPermission("work_order", "UPDATE");
   if (!authz.ok) return actionError(authz.error);
   if (!(await workOrderInScope(authz.access, authz.userId, workOrderNumber))) {
@@ -525,11 +571,15 @@ export async function updateWorkOrder(
         stepCount: built.creates.length,
       },
     });
-    revalidate(workOrderNumber);
+    const docNumber = formatDocNumber("WOR", {
+      yearMonth: prior.yearMonth,
+      seq: prior.seq,
+    });
+    revalidate(workOrderNumber, docNumber);
     if (v.route != null) {
       revalidatePath(`/master/products/${productId}`);
     }
-    return actionOk({ workOrderNumber });
+    return actionOk({ workOrderNumber, docNumber });
   } catch (e) {
     return actionError(prismaErrorMessage(e, "指示書の更新に失敗しました"));
   }
@@ -544,7 +594,7 @@ export async function updateWorkOrder(
 export async function copyWorkOrder(
   sourceWorkOrderNumber: number,
   targetOrderLineId: string,
-): Promise<ActionResult<{ workOrderNumber: number }>> {
+): Promise<ActionResult<{ workOrderNumber: number; docNumber: string }>> {
   const authz = await checkPermission("work_order", "CREATE");
   if (!authz.ok) return actionError(authz.error);
   if (
@@ -603,6 +653,8 @@ export async function copyWorkOrder(
     }
     const actor = await getCurrentActorId();
     const workOrderNumber = await nextSerialNumber("WORK_ORDER");
+    const docKey = await allocateDocumentKey("WORK_ORDER_DOC");
+    const docNumber = formatDocNumber("WOR", docKey);
     // 在庫分のコピーは割当 = 予定数量の不変条件を保つため、受注残まで縮める
     const plannedQuantity =
       source.type === "FROM_STOCK" && allocations.length > 0
@@ -613,6 +665,8 @@ export async function copyWorkOrder(
       await tx.workOrder.create({
         data: {
           workOrderNumber,
+          yearMonth: docKey.yearMonth,
+          seq: docKey.seq,
           orderLineLinks: {
             create: allocations.map((a, i) => ({
               orderLineId: a.orderLineId,
@@ -663,6 +717,7 @@ export async function copyWorkOrder(
       tableName: "work_orders",
       recordId: String(workOrderNumber),
       after: {
+        docNumber,
         allocations,
         sourceWorkOrderNumber,
         type: source.type,
@@ -670,9 +725,9 @@ export async function copyWorkOrder(
         stepCount: source.steps.length,
       },
     });
-    revalidate(workOrderNumber);
+    revalidate(workOrderNumber, docNumber);
     revalidate(sourceWorkOrderNumber);
-    return actionOk({ workOrderNumber });
+    return actionOk({ workOrderNumber, docNumber });
   } catch (e) {
     return actionError(prismaErrorMessage(e, "指示書のコピーに失敗しました"));
   }

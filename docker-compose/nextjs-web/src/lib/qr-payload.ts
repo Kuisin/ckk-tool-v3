@@ -32,7 +32,10 @@ export const QR_PREFIX = "CKK";
 export const QR_KINDS = {
   /** 従業員の QR カード（キオスクのログイン）。KEY = カード ID。 */
   CARD: "CARD",
-  /** 指示書。KEY = 指示書番号（通し連番）。 */
+  /**
+   * 指示書。KEY = ロット番号（通し連番 int — キオスクの数値入力と互換）。
+   * 書類番号 WO-YYYYMM-NNNNN は表示用で、QR には入れない。
+   */
   WO: "WO",
   /** 見積書。KEY = QOT-YYYYMM-NNNNN。 */
   QUOTE: "QOT",
