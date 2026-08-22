@@ -11,10 +11,14 @@
 > `system_logs` / `ad_sync_logs` / `material_purchase_approvers`
 > （DB にも存在しない。使う前に作る必要がある）
 >
-> **実装にあるが本書に未記載（31）** — 後から足した機能の分:
+> **実装にあるが本書に未記載（32）** — 後から足した機能の分:
 > - `directory.prisma`: `employee_directory` / `ldap_sync_log`
 > - `intake.prisma`: （`order_lines` は本書に記載済み）
 > - `inventory.prisma`: `storage_locations` / `storage_shelves`
+> - `master.prisma`: `currencies` — 対円レート（1 通貨 = rate_to_jpy 円）の換算マスタ。
+>   書類・製品の `currency` 列（products / quotes / order_acceptances / invoices に
+>   追加。既定 'JPY'、FK なし — 既存 price_list_entries.currency と同じ規約）が指す。
+>   レートは手動更新の分析用換算（会計処理用ではない）。注文明細はヘッダから読む。
 > - `kiosk.prisma`: `kiosk_cards` / `kiosk_device_locations` / `kiosk_device_logs` / `kiosk_devices` / `kiosk_floor_maps` / `kiosk_link_requests` / `kiosk_sessions`
 > - `notification.prisma`: `notifications` / `push_subscriptions` / `user_notification_settings`
 > - `product-routes.prisma`: `product_process_route_version_steps` / `product_process_route_versions` / `product_process_routes`

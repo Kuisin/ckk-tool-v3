@@ -74,6 +74,7 @@ TABLES = {
     "material_type_prices": "材種既定単価",
     "materials": "素材",
     "products": "製品",
+    "currencies": "通貨マスタ",
     # 工程マスタ
     "process_step_catalog": "工程マスタ",
     "process_step_exec_dependencies": "工程実行依存",
@@ -399,6 +400,7 @@ COLS = {
     "quantity": "数量",
     "unit_price": "単価",
     "amount": "金額",
+    "rate_to_jpy": "対円レート",
     "subtotal": "小計",
     "tax_amount": "消費税額",
     "total_amount": "合計金額",
@@ -601,7 +603,7 @@ ANALYTICS_TABLES = {
     "v_business_partners": "取引先", "v_products": "製品", "v_materials": "素材",
     "v_material_types": "材種", "v_plants": "拠点", "v_users": "従業員",
     "v_process_step_catalog": "工程マスタ", "v_inspection_templates": "検査表テンプレート",
-    "v_defect_types": "不良種類",
+    "v_defect_types": "不良種類", "v_currencies": "通貨マスタ",
 }
 
 ANALYTICS_COLS = {
@@ -631,6 +633,12 @@ ANALYTICS_COLS = {
     # その他ビュー固有
     "acceptance_status": "請書状態", "roles": "ロール", "work_hours": "作業時間",
     "worked_date": "作業日",
+    # 通貨換算（currencies.rate_to_jpy による分析用換算）
+    "rate_to_jpy": "対円レート",
+    "unit_price_jpy": "単価(JPY)", "unit_price_usd": "単価(USD)",
+    "amount_jpy": "金額(JPY)", "amount_usd": "金額(USD)",
+    "base_unit_price_jpy": "基準単価(JPY)", "base_unit_price_usd": "基準単価(USD)",
+    "total_amount_jpy": "合計金額(JPY)", "total_amount_usd": "合計金額(USD)",
 }
 
 

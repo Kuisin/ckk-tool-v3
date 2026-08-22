@@ -25,6 +25,23 @@
 
 CREATE SCHEMA IF NOT EXISTS analytics;
 
+-- 金額系ビューは通貨換算列を末尾に持つ:
+--   currency（書類/製品の通貨。既定 JPY）
+--   *_jpy = 原通貨 × currencies.rate_to_jpy
+--   *_usd = JPY 換算値 ÷ USD の rate_to_jpy
+-- レートは app.currencies（手動更新の分析用換算）。原値の列はそのまま残す。
+
+-- =====================================================================
+-- 通貨 (Currency)
+-- =====================================================================
+
+CREATE OR REPLACE VIEW analytics.v_currencies WITH (security_invoker = true) AS
+SELECT
+  c.code,
+  c.name->>'ja' AS name_ja, c.name->>'en' AS name_en,
+  c.rate_to_jpy, c.is_active, c.sort_order, c.updated_at
+FROM app.currencies c;
+
 -- =====================================================================
 -- 販売 (Sales)
 -- =====================================================================
@@ -69,11 +86,16 @@ SELECT
   v.order_type, v.base_unit_price, v.valid_from, v.valid_until,
   CASE WHEN v.estimate_year_month IS NOT NULL
        THEN 'EST-'||v.estimate_year_month||'-'||lpad(v.estimate_seq::text,5,'0') END AS estimate_no,
-  v.is_active, v.created_at, v.updated_at
+  v.is_active, v.created_at, v.updated_at,
+  pe.currency,
+  round(v.base_unit_price * cur.rate_to_jpy, 2)                   AS base_unit_price_jpy,
+  round(v.base_unit_price * cur.rate_to_jpy / usd.rate_to_jpy, 2) AS base_unit_price_usd
 FROM app.price_list_variants v
 JOIN app.price_list_entries pe ON pe.year_month = v.entry_year_month AND pe.seq = v.entry_seq
 LEFT JOIN app.business_partners cust ON cust.id = pe.customer_bp_id
-LEFT JOIN app.products prod          ON prod.id = pe.product_id;
+LEFT JOIN app.products prod          ON prod.id = pe.product_id
+LEFT JOIN app.currencies cur         ON cur.code = pe.currency
+LEFT JOIN app.currencies usd         ON usd.code = 'USD';
 
 CREATE OR REPLACE VIEW analytics.v_quotes WITH (security_invoker = true) AS
 SELECT
@@ -83,7 +105,8 @@ SELECT
   coalesce(branch.name->>'ja', branch.name->>'en') AS customer_branch_name,
   su.display_name AS sales_staff,
   cu.display_name AS created_by_name,
-  q.created_at, q.updated_at
+  q.created_at, q.updated_at,
+  q.currency
 FROM app.quotes q
 LEFT JOIN app.business_partners cust   ON cust.id = q.customer_bp_id
 LEFT JOIN app.business_partners branch ON branch.id = q.customer_branch_bp_id
@@ -96,9 +119,17 @@ SELECT
   'QOT-'||qi.quote_year_month||'-'||lpad(qi.quote_seq::text,5,'0') AS quote_no,
   coalesce(prod.name->>'ja', prod.name->>'en') AS product_name,
   qi.order_type, qi.quantity, qi.unit_price, qi.discount_amount, qi.amount,
-  qi.delivery_date, qi.sort_order
+  qi.delivery_date, qi.sort_order,
+  q.currency,
+  round(qi.unit_price * cur.rate_to_jpy, 2)                   AS unit_price_jpy,
+  round(qi.unit_price * cur.rate_to_jpy / usd.rate_to_jpy, 2) AS unit_price_usd,
+  round(qi.amount * cur.rate_to_jpy, 2)                       AS amount_jpy,
+  round(qi.amount * cur.rate_to_jpy / usd.rate_to_jpy, 2)     AS amount_usd
 FROM app.quote_items qi
-LEFT JOIN app.products prod ON prod.id = qi.product_id;
+LEFT JOIN app.products prod ON prod.id = qi.product_id
+LEFT JOIN app.quotes q ON q.year_month = qi.quote_year_month AND q.seq = qi.quote_seq
+LEFT JOIN app.currencies cur ON cur.code = q.currency
+LEFT JOIN app.currencies usd ON usd.code = 'USD';
 
 CREATE OR REPLACE VIEW analytics.v_order_acceptances WITH (security_invoker = true) AS
 SELECT
@@ -110,7 +141,8 @@ SELECT
   su.display_name AS sales_staff,
   cu.display_name AS created_by_name,
   coalesce(pl.name->>'ja', pl.name->>'en')         AS assigned_plant_name,
-  oa.created_at, oa.updated_at
+  oa.created_at, oa.updated_at,
+  oa.currency
 FROM app.order_acceptances oa
 LEFT JOIN app.business_partners cust   ON cust.id = oa.customer_bp_id
 LEFT JOIN app.business_partners branch ON branch.id = oa.customer_branch_bp_id
@@ -134,14 +166,21 @@ SELECT
   coalesce(eu.name->>'ja', eu.name->>'en')     AS end_user_name,
   ol.order_type, ol.quantity, ol.unit_price, ol.amount, ol.delivery_date,
   ol.status, ol.lot_number, ol.is_locked,
-  ol.created_at, ol.updated_at
+  ol.created_at, ol.updated_at,
+  oa.currency,
+  round(ol.unit_price * cur.rate_to_jpy, 2)                     AS unit_price_jpy,
+  round(ol.unit_price * cur.rate_to_jpy / usd.rate_to_jpy, 2)   AS unit_price_usd,
+  round(ol.amount * cur.rate_to_jpy, 2)                         AS amount_jpy,
+  round(ol.amount * cur.rate_to_jpy / usd.rate_to_jpy, 2)       AS amount_usd
 FROM app.order_lines ol
 JOIN app.order_acceptances oa
   ON oa.year_month = ol.acceptance_year_month AND oa.seq = ol.acceptance_seq
 LEFT JOIN app.business_partners cust ON cust.id = oa.customer_bp_id
 LEFT JOIN app.users su               ON su.id = oa.sales_rep_id
 LEFT JOIN app.products prod          ON prod.id = ol.product_id
-LEFT JOIN app.business_partners eu   ON eu.id = ol.end_user_bp_id;
+LEFT JOIN app.business_partners eu   ON eu.id = ol.end_user_bp_id
+LEFT JOIN app.currencies cur         ON cur.code = oa.currency
+LEFT JOIN app.currencies usd         ON usd.code = 'USD';
 
 CREATE OR REPLACE VIEW analytics.v_design_requests WITH (security_invoker = true) AS
 SELECT
@@ -187,12 +226,16 @@ SELECT
   au.display_name AS approved_by_name,
   ou.display_name AS ordered_by_name,
   po.requested_at, po.approved_at, po.ordered_at, po.completed_at,
-  po.created_at, po.updated_at
+  po.created_at, po.updated_at,
+  round(po.total_amount * cur.rate_to_jpy, 2)                   AS total_amount_jpy,
+  round(po.total_amount * cur.rate_to_jpy / usd.rate_to_jpy, 2) AS total_amount_usd
 FROM app.material_purchase_orders po
 LEFT JOIN app.business_partners sup ON sup.id = po.supplier_bp_id
 LEFT JOIN app.users ru ON ru.id = po.requested_by
 LEFT JOIN app.users au ON au.id = po.approved_by
-LEFT JOIN app.users ou ON ou.id = po.ordered_by;
+LEFT JOIN app.users ou ON ou.id = po.ordered_by
+LEFT JOIN app.currencies cur ON cur.code = po.currency
+LEFT JOIN app.currencies usd ON usd.code = 'USD';
 
 CREATE OR REPLACE VIEW analytics.v_material_purchase_order_items WITH (security_invoker = true) AS
 SELECT
@@ -201,10 +244,14 @@ SELECT
   poi.material_id,
   coalesce(pl.name->>'ja', pl.name->>'en') AS plant_name,
   poi.quantity, poi.unit, poi.unit_price, poi.amount, poi.currency,
-  poi.received_quantity, poi.expected_at, poi.sort_order
+  poi.received_quantity, poi.expected_at, poi.sort_order,
+  round(poi.amount * cur.rate_to_jpy, 2)                   AS amount_jpy,
+  round(poi.amount * cur.rate_to_jpy / usd.rate_to_jpy, 2) AS amount_usd
 FROM app.material_purchase_order_items poi
 LEFT JOIN app.materials m ON m.id = poi.material_id
-LEFT JOIN app.plants pl ON pl.id = poi.plant_id;
+LEFT JOIN app.plants pl ON pl.id = poi.plant_id
+LEFT JOIN app.currencies cur ON cur.code = poi.currency
+LEFT JOIN app.currencies usd ON usd.code = 'USD';
 
 CREATE OR REPLACE VIEW analytics.v_material_receipts WITH (security_invoker = true) AS
 SELECT
@@ -432,11 +479,16 @@ SELECT
   su.display_name AS sales_staff,
   i.billing_period_from, i.billing_period_to,
   i.subtotal, i.tax_amount, i.total_amount,
-  i.issued_at, i.due_date, i.sent_at, i.created_at, i.updated_at
+  i.issued_at, i.due_date, i.sent_at, i.created_at, i.updated_at,
+  i.currency,
+  round(i.total_amount * cur.rate_to_jpy, 2)                   AS total_amount_jpy,
+  round(i.total_amount * cur.rate_to_jpy / usd.rate_to_jpy, 2) AS total_amount_usd
 FROM app.invoices i
 LEFT JOIN app.business_partners cust   ON cust.id = i.customer_bp_id
 LEFT JOIN app.business_partners branch ON branch.id = i.customer_branch_bp_id
-LEFT JOIN app.users su ON su.id = i.sales_rep_id;
+LEFT JOIN app.users su ON su.id = i.sales_rep_id
+LEFT JOIN app.currencies cur ON cur.code = i.currency
+LEFT JOIN app.currencies usd ON usd.code = 'USD';
 
 CREATE OR REPLACE VIEW analytics.v_invoice_items WITH (security_invoker = true) AS
 SELECT
@@ -508,7 +560,8 @@ SELECT
   p.id, p.name->>'ja' AS name_ja, p.name->>'en' AS name_en,
   coalesce(mt.name->>'ja', mt.name->>'en') AS material_type_name,
   p.material_type_id, p.diameter_mm, p.length_mm, p.unit, p.is_active,
-  p.created_at, p.updated_at
+  p.created_at, p.updated_at,
+  p.currency
 FROM app.products p
 LEFT JOIN app.material_types mt ON mt.id = p.material_type_id;
 
