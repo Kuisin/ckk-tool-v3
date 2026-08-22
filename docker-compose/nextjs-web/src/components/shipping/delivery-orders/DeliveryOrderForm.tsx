@@ -380,7 +380,17 @@ export function DeliveryOrderForm({
     seeded.current = true;
     if (initialOrderLine) {
       fetchDeliverySourceInfo(initialOrderLine.id).then((info) => {
-        if (info) addSourceGroups([info]);
+        if (info) {
+          addSourceGroups([info]);
+        } else {
+          // 黙って空フォームにしない — 未確定・製品未特定などで読めなかった
+          // ことを伝える（プリフィルが「効いていない」ように見えるため）。
+          notifications.show({
+            title: "注文明細を読み込めませんでした",
+            message: `${initialOrderLine.label} — 確定済みの注文明細のみ出荷書に追加できます`,
+            color: "red",
+          });
+        }
       });
     } else if (initialAcceptance) {
       fetchDeliveryAcceptanceSourceInfo(initialAcceptance).then((infos) => {
