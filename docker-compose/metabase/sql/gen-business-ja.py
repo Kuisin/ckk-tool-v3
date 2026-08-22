@@ -609,7 +609,8 @@ ANALYTICS_TABLES = {
 ANALYTICS_COLS = {
     # 導出書類番号
     "estimate_no": "試算番号", "price_list_no": "価格表番号", "quote_no": "見積番号",
-    "order_no": "注文番号", "order_line_no": "注文明細番号", "work_order_no": "指示書番号",
+    "order_no": "注文番号", "order_line_no": "注文明細番号",
+    "order_line_nos": "注文明細番号(一覧)", "work_order_no": "指示書番号",
     "delivery_order_no": "出荷書番号", "delivery_no": "納品番号", "invoice_no": "請求番号",
     "lot_number": "ロット番号",
     # 解決した名前（人）
