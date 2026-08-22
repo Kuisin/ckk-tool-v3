@@ -400,7 +400,7 @@ COLS = {
     "quantity": "数量",
     "unit_price": "単価",
     "amount": "金額",
-    "rate_to_jpy": "対円レート",
+    "rate_per_100_jpy": "レート(100円あたり)",
     "subtotal": "小計",
     "tax_amount": "消費税額",
     "total_amount": "合計金額",
@@ -633,8 +633,8 @@ ANALYTICS_COLS = {
     # その他ビュー固有
     "acceptance_status": "請書状態", "roles": "ロール", "work_hours": "作業時間",
     "worked_date": "作業日",
-    # 通貨換算（currencies.rate_to_jpy による分析用換算）
-    "rate_to_jpy": "対円レート",
+    # 通貨換算（currencies.rate_per_100_jpy = 100円で買えるその通貨量）
+    "rate_per_100_jpy": "レート(100円あたり)",
     "unit_price_jpy": "単価(JPY)", "unit_price_usd": "単価(USD)",
     "amount_jpy": "金額(JPY)", "amount_usd": "金額(USD)",
     "base_unit_price_jpy": "基準単価(JPY)", "base_unit_price_usd": "基準単価(USD)",

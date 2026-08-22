@@ -120,12 +120,12 @@ GRANT SELECT (id, name, location, plant_id, floor_map_id, map_x, map_y, status,
               last_activity_at, created_at, updated_at, linked_at, settings_code)
   ON app.kiosk_devices TO metabase_ro;  -- 隠す: device_token_hash, device_public_key, fingerprint, last_ip_address
 
--- ── fx_rates: 為替レート日次更新（metabase スタックの fx-rates コンテナ） ──
--- app.currencies の rate_to_jpy / updated_at だけを UPDATE できる最小権限。
+-- ── fx_rates: 為替レート日次更新（shared-db スタックの fx-rates コンテナ） ──
+-- app.currencies の rate_per_100_jpy / updated_at だけを UPDATE できる最小権限。
 -- 通貨の追加・削除・名称変更はできない（それはマスタ管理の仕事）。
 GRANT USAGE ON SCHEMA app TO fx_rates;
 GRANT SELECT ON app.currencies TO fx_rates;
-GRANT UPDATE (rate_to_jpy, updated_at) ON app.currencies TO fx_rates;
+GRANT UPDATE (rate_per_100_jpy, updated_at) ON app.currencies TO fx_rates;
 
 -- ── analytics: name-resolved reporting views for Metabase + AI/MCP ────
 -- Views defined in shared-db/sql/analytics-views.sql (run that FIRST — the schema

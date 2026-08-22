@@ -27,19 +27,20 @@ CREATE SCHEMA IF NOT EXISTS analytics;
 
 -- 金額系ビューは通貨換算列を末尾に持つ:
 --   currency（書類/製品の通貨。既定 JPY）
---   *_jpy = 原通貨 × currencies.rate_to_jpy
---   *_usd = JPY 換算値 ÷ USD の rate_to_jpy
+--   *_jpy = 金額 × 100 ÷ rate_per_100_jpy（rate_per_100_jpy = 100 円で買えるその通貨量。JPY = 100）
+--   *_usd = 金額 × USD の rate_per_100_jpy ÷ 自通貨の rate_per_100_jpy
 -- レートは app.currencies（手動更新の分析用換算）。原値の列はそのまま残す。
 
 -- =====================================================================
 -- 通貨 (Currency)
 -- =====================================================================
 
+DROP VIEW IF EXISTS analytics.v_currencies;  -- 列名変更(rate_per_100_jpy)のため作り直し
 CREATE OR REPLACE VIEW analytics.v_currencies WITH (security_invoker = true) AS
 SELECT
   c.code,
   c.name->>'ja' AS name_ja, c.name->>'en' AS name_en,
-  c.rate_to_jpy, c.is_active, c.sort_order, c.updated_at
+  c.rate_per_100_jpy, c.is_active, c.sort_order, c.updated_at
 FROM app.currencies c;
 
 -- =====================================================================
@@ -88,8 +89,8 @@ SELECT
        THEN 'EST-'||v.estimate_year_month||'-'||lpad(v.estimate_seq::text,5,'0') END AS estimate_no,
   v.is_active, v.created_at, v.updated_at,
   pe.currency,
-  round(v.base_unit_price * cur.rate_to_jpy, 2)                   AS base_unit_price_jpy,
-  round(v.base_unit_price * cur.rate_to_jpy / usd.rate_to_jpy, 2) AS base_unit_price_usd
+  round(v.base_unit_price * 100 / nullif(cur.rate_per_100_jpy, 0), 2)                   AS base_unit_price_jpy,
+  round(v.base_unit_price * usd.rate_per_100_jpy / nullif(cur.rate_per_100_jpy, 0), 2) AS base_unit_price_usd
 FROM app.price_list_variants v
 JOIN app.price_list_entries pe ON pe.year_month = v.entry_year_month AND pe.seq = v.entry_seq
 LEFT JOIN app.business_partners cust ON cust.id = pe.customer_bp_id
@@ -121,10 +122,10 @@ SELECT
   qi.order_type, qi.quantity, qi.unit_price, qi.discount_amount, qi.amount,
   qi.delivery_date, qi.sort_order,
   q.currency,
-  round(qi.unit_price * cur.rate_to_jpy, 2)                   AS unit_price_jpy,
-  round(qi.unit_price * cur.rate_to_jpy / usd.rate_to_jpy, 2) AS unit_price_usd,
-  round(qi.amount * cur.rate_to_jpy, 2)                       AS amount_jpy,
-  round(qi.amount * cur.rate_to_jpy / usd.rate_to_jpy, 2)     AS amount_usd
+  round(qi.unit_price * 100 / nullif(cur.rate_per_100_jpy, 0), 2)                   AS unit_price_jpy,
+  round(qi.unit_price * usd.rate_per_100_jpy / nullif(cur.rate_per_100_jpy, 0), 2) AS unit_price_usd,
+  round(qi.amount * 100 / nullif(cur.rate_per_100_jpy, 0), 2)                       AS amount_jpy,
+  round(qi.amount * usd.rate_per_100_jpy / nullif(cur.rate_per_100_jpy, 0), 2)     AS amount_usd
 FROM app.quote_items qi
 LEFT JOIN app.products prod ON prod.id = qi.product_id
 LEFT JOIN app.quotes q ON q.year_month = qi.quote_year_month AND q.seq = qi.quote_seq
@@ -168,10 +169,10 @@ SELECT
   ol.status, ol.lot_number, ol.is_locked,
   ol.created_at, ol.updated_at,
   oa.currency,
-  round(ol.unit_price * cur.rate_to_jpy, 2)                     AS unit_price_jpy,
-  round(ol.unit_price * cur.rate_to_jpy / usd.rate_to_jpy, 2)   AS unit_price_usd,
-  round(ol.amount * cur.rate_to_jpy, 2)                         AS amount_jpy,
-  round(ol.amount * cur.rate_to_jpy / usd.rate_to_jpy, 2)       AS amount_usd
+  round(ol.unit_price * 100 / nullif(cur.rate_per_100_jpy, 0), 2)                     AS unit_price_jpy,
+  round(ol.unit_price * usd.rate_per_100_jpy / nullif(cur.rate_per_100_jpy, 0), 2)   AS unit_price_usd,
+  round(ol.amount * 100 / nullif(cur.rate_per_100_jpy, 0), 2)                         AS amount_jpy,
+  round(ol.amount * usd.rate_per_100_jpy / nullif(cur.rate_per_100_jpy, 0), 2)       AS amount_usd
 FROM app.order_lines ol
 JOIN app.order_acceptances oa
   ON oa.year_month = ol.acceptance_year_month AND oa.seq = ol.acceptance_seq
@@ -227,8 +228,8 @@ SELECT
   ou.display_name AS ordered_by_name,
   po.requested_at, po.approved_at, po.ordered_at, po.completed_at,
   po.created_at, po.updated_at,
-  round(po.total_amount * cur.rate_to_jpy, 2)                   AS total_amount_jpy,
-  round(po.total_amount * cur.rate_to_jpy / usd.rate_to_jpy, 2) AS total_amount_usd
+  round(po.total_amount * 100 / nullif(cur.rate_per_100_jpy, 0), 2)                   AS total_amount_jpy,
+  round(po.total_amount * usd.rate_per_100_jpy / nullif(cur.rate_per_100_jpy, 0), 2) AS total_amount_usd
 FROM app.material_purchase_orders po
 LEFT JOIN app.business_partners sup ON sup.id = po.supplier_bp_id
 LEFT JOIN app.users ru ON ru.id = po.requested_by
@@ -245,8 +246,8 @@ SELECT
   coalesce(pl.name->>'ja', pl.name->>'en') AS plant_name,
   poi.quantity, poi.unit, poi.unit_price, poi.amount, poi.currency,
   poi.received_quantity, poi.expected_at, poi.sort_order,
-  round(poi.amount * cur.rate_to_jpy, 2)                   AS amount_jpy,
-  round(poi.amount * cur.rate_to_jpy / usd.rate_to_jpy, 2) AS amount_usd
+  round(poi.amount * 100 / nullif(cur.rate_per_100_jpy, 0), 2)                   AS amount_jpy,
+  round(poi.amount * usd.rate_per_100_jpy / nullif(cur.rate_per_100_jpy, 0), 2) AS amount_usd
 FROM app.material_purchase_order_items poi
 LEFT JOIN app.materials m ON m.id = poi.material_id
 LEFT JOIN app.plants pl ON pl.id = poi.plant_id
@@ -494,8 +495,8 @@ SELECT
   i.subtotal, i.tax_amount, i.total_amount,
   i.issued_at, i.due_date, i.sent_at, i.created_at, i.updated_at,
   i.currency,
-  round(i.total_amount * cur.rate_to_jpy, 2)                   AS total_amount_jpy,
-  round(i.total_amount * cur.rate_to_jpy / usd.rate_to_jpy, 2) AS total_amount_usd
+  round(i.total_amount * 100 / nullif(cur.rate_per_100_jpy, 0), 2)                   AS total_amount_jpy,
+  round(i.total_amount * usd.rate_per_100_jpy / nullif(cur.rate_per_100_jpy, 0), 2) AS total_amount_usd
 FROM app.invoices i
 LEFT JOIN app.business_partners cust   ON cust.id = i.customer_bp_id
 LEFT JOIN app.business_partners branch ON branch.id = i.customer_branch_bp_id

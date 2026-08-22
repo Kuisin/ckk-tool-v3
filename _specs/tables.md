@@ -15,7 +15,8 @@
 > - `directory.prisma`: `employee_directory` / `ldap_sync_log`
 > - `intake.prisma`: （`order_lines` は本書に記載済み）
 > - `inventory.prisma`: `storage_locations` / `storage_shelves`
-> - `master.prisma`: `currencies` — 対円レート（1 通貨 = rate_to_jpy 円）の換算マスタ。
+> - `master.prisma`: `currencies` — 100 円基準の換算マスタ（rate_per_100_jpy =
+>   100 円で買えるその通貨量。JPY = 100）。shared-db スタックの fx-rates が日次自動更新。
 >   書類・製品の `currency` 列（products / quotes / order_acceptances / invoices に
 >   追加。既定 'JPY'、FK なし — 既存 price_list_entries.currency と同じ規約）が指す。
 >   レートは手動更新の分析用換算（会計処理用ではない）。注文明細はヘッダから読む。
