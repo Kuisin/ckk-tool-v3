@@ -284,7 +284,8 @@ SELECT
   coalesce(sl.name->>'ja', sl.name->>'en')     AS storage_location_name,
   cu.display_name AS created_by_name,
   au.display_name AS approved_by_name,
-  wo.approved_at, wo.started_at, wo.completed_at, wo.created_at, wo.updated_at
+  wo.approved_at, wo.started_at, wo.completed_at, wo.created_at, wo.updated_at,
+  prod.currency  -- 製品の通貨（指示書自体は通貨を持たない — フィルタ用）
 FROM app.work_orders wo
 LEFT JOIN app.products prod          ON prod.id = wo.product_id
 LEFT JOIN app.materials m            ON m.id = wo.material_id
@@ -374,7 +375,8 @@ SELECT
   coalesce(pl.name->>'ja', pl.name->>'en') AS plant_name,
   coalesce(sl.name->>'ja', sl.name->>'en') AS storage_location_name,
   pi.lot_number, pi.quantity, pi.reserved_quantity, pi.is_semi_finished,
-  pi.updated_at
+  pi.updated_at,
+  prod.currency  -- 製品の通貨（フィルタ用）
 FROM app.product_inventory pi
 LEFT JOIN app.products prod ON prod.id = pi.product_id
 LEFT JOIN app.plants pl ON pl.id = pi.plant_id
