@@ -61,7 +61,11 @@ import { DELIVERY_ORDER_TYPE_LABEL } from "@/lib/enum-labels";
 import { fieldHelp } from "@/lib/field-help";
 import { zodResolver } from "@/lib/form";
 import type { Option } from "@/lib/mock";
-import type { DeliveryOrder, DeliveryOrderType } from "./model";
+import {
+  allocateLotUsage,
+  type DeliveryOrder,
+  type DeliveryOrderType,
+} from "./model";
 
 const BASE_PATH = "/shipping/delivery-orders";
 
@@ -228,9 +232,11 @@ export function DeliveryOrderForm({
   });
 
   /**
-   * 注文明細を選ぶ → 受注情報を取得してグループを**追加**する
-   * （完了指示書 1 件 = 1 行。完了指示書なしは空行 1 件）。
-   * 既に同じ注文明細のグループがあるときは何もしない。
+   * 注文明細を選ぶ → 受注情報を取得してグループを**追加**する。
+   * 既定行は未出荷数量（受注数 − 出荷済）を関連ロットへ自動割付した結果
+   * （allocateLotUsage — 指示書番号順に、自明細の取り分と現物在庫の範囲で
+   * 必要数まで。統合ロットの出来高が必要数より多くても必要なぶんだけ載せる）。
+   * 完了指示書なしは空行 1 件。既に同じ注文明細のグループがあれば何もしない。
    */
   const onOrderLinePick = (orderLineId: string | null) => {
     setPickedLineId(orderLineId ?? "");
@@ -265,28 +271,58 @@ export function DeliveryOrderForm({
         setPickedLineId("");
         return;
       }
+      const remaining = info.quantity - info.shippedQuantity;
+      if (remaining <= 0) {
+        notifications.show({
+          title: "追加できません",
+          message: `${info.orderLineNumber} は受注数量まで出荷済みです`,
+          color: "orange",
+        });
+        return;
+      }
+      // 未出荷数量を関連ロットへ自動割付（必要数までしか載せない）。
+      const usage = allocateLotUsage(
+        remaining,
+        info.completedWorkOrders.map((wo) => ({
+          lotNumber: wo.workOrderNumber,
+          outputQuantity: wo.outputQuantity,
+          stockQuantity:
+            info.stockLots.find((l) => l.lotNumber === wo.workOrderNumber)
+              ?.quantity ?? 0,
+        })),
+      );
       const defaults =
-        info.completedWorkOrders.length > 0
-          ? info.completedWorkOrders.map((wo) =>
+        usage.length > 0
+          ? usage.map((u) =>
               emptyItem(
                 info.productId,
                 info.productName,
-                wo.workOrderNumber,
-                wo.outputQuantity,
+                u.lotNumber,
+                u.quantity,
                 info.orderLineId,
                 info.orderLineNumber,
               ),
             )
           : [
+              // 充当できるロットが無い（完了指示書なし・在庫なし）— 数量だけ
+              // 残数で置き、ロットは手で選ばせる。
               emptyItem(
                 info.productId,
                 info.productName,
                 null,
-                1,
+                remaining,
                 info.orderLineId,
                 info.orderLineNumber,
               ),
             ];
+      const covered = usage.reduce((sum, u) => sum + u.quantity, 0);
+      if (usage.length > 0 && covered < remaining) {
+        notifications.show({
+          title: "在庫が不足しています",
+          message: `${info.orderLineNumber} の未出荷 ${remaining} に対して充当できたのは ${covered} です（不足分は指示書の完了・在庫引当が必要）`,
+          color: "orange",
+        });
+      }
       form.setFieldValue("items", [...form.values.items, ...defaults]);
       setPickedLineId("");
     });
@@ -540,7 +576,7 @@ export function DeliveryOrderForm({
       </FormSection>
 
       <FormSection
-        description="注文明細を選択すると、完了済みの指示書（ロット）ごとに明細が既定生成されます（数量 = 残良品数、未記録は予定数量）。ロットはその注文明細に紐づく指示書から選択し、在庫数に対して検証されます。"
+        description="注文明細を選択すると、未出荷数量（受注数 − 出荷済）を関連ロットへ自動割付した明細が生成されます（指示書番号順・現物在庫と自明細の取り分の範囲）。ロットはその注文明細に紐づく指示書から選択し、在庫数に対して検証されます。"
         title="明細"
       >
         <Group justify="flex-end" mb="xs">

@@ -85,3 +85,44 @@ export function isEditable(o: Pick<DeliveryOrder, "status">) {
 export function canCreateDeliveryNote(o: Pick<DeliveryOrder, "status">) {
   return o.status === "CONFIRMED" || o.status === "SHIPPED";
 }
+
+// ── 出荷数量の自動割付（フォームの既定行） ──────────────────────────────────
+
+/** 割付元ロット = 注文明細に紐づく完了指示書 1 件。 */
+export interface UsageSourceLot {
+  /** ロット番号 = 指示書番号。 */
+  lotNumber: number;
+  /**
+   * この注文明細の取り分（グラフ終端集計の残良品を割当順に配分した値）。
+   * 統合ロット（1 指示書に複数明細）では指示書全体の出来高ではなく自明細ぶん。
+   */
+  outputQuantity: number;
+  /** ロットの現物在庫（非半製品バケット合計）。 */
+  stockQuantity: number;
+}
+
+/**
+ * 注文明細の未出荷数量を関連ロットへ割り付ける（出荷書フォームの既定行）。
+ *
+ * 指示書番号順に、各ロットから min(自明細の取り分, 現物在庫) まで取り、
+ * 残数（受注数 − 出荷済）に達したら止める。ロットの出来高が必要数より
+ * 多くても必要なぶんしか載せない（統合ロットで他明細の取り分を食わない）。
+ * 残数ゼロ・充当できるロットなしは空配列。
+ */
+export function allocateLotUsage(
+  remaining: number,
+  lots: UsageSourceLot[],
+): { lotNumber: number; quantity: number }[] {
+  const filled: { lotNumber: number; quantity: number }[] = [];
+  let rest = Math.max(0, Math.floor(remaining));
+  const sorted = [...lots].sort((a, b) => a.lotNumber - b.lotNumber);
+  for (const lot of sorted) {
+    if (rest <= 0) break;
+    const available = Math.min(lot.outputQuantity, lot.stockQuantity);
+    const take = Math.min(available, rest);
+    if (take <= 0) continue;
+    filled.push({ lotNumber: lot.lotNumber, quantity: take });
+    rest -= take;
+  }
+  return filled;
+}
