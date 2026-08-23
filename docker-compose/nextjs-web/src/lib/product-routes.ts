@@ -36,6 +36,7 @@ export async function listProductRoutes(
   const routes = await prisma.productProcessRoute.findMany({
     where: { productId },
     include: {
+      customerBp: { select: { name: true } },
       versions: {
         include: ROUTE_VERSION_INCLUDE,
         orderBy: { version: "desc" },
@@ -47,6 +48,10 @@ export async function listProductRoutes(
     id: r.id,
     name: localized(r.name as LocalizedText | null),
     nameEn: (r.name as LocalizedText | null)?.en ?? "",
+    customerBpId: r.customerBpId,
+    customerName: r.customerBp
+      ? localized(r.customerBp.name as LocalizedText | null)
+      : null,
     isActive: r.isActive,
     notes: r.notes,
     updatedAt: r.updatedAt.toISOString(),
@@ -142,6 +147,8 @@ export async function createRouteWithVersionTx(
   input: {
     productId: number;
     name: LocalizedText;
+    /** 対象の受注元。null/未指定 = 汎用ルート。 */
+    customerBpId?: string | null;
     steps: readonly RouteStepSnapshot[];
     actor: string | null;
     notes?: string | null;
@@ -150,6 +157,7 @@ export async function createRouteWithVersionTx(
   const route = await tx.productProcessRoute.create({
     data: {
       productId: input.productId,
+      customerBpId: input.customerBpId ?? null,
       name: input.name,
       createdBy: input.actor,
     },
@@ -166,7 +174,7 @@ export async function createRouteWithVersionTx(
 
 export type RouteResolveInput =
   | { mode: "existing"; routeId: number; baseVersionId: string }
-  | { mode: "new"; name: string }
+  | { mode: "new"; name: string; customerBpId?: string | null }
   | null;
 
 /**
@@ -190,6 +198,7 @@ export async function resolveRouteVersionTx(
     const created = await createRouteWithVersionTx(tx, {
       productId,
       name: { ja: input.name, en: input.name },
+      customerBpId: input.customerBpId ?? null,
       steps,
       actor,
     });

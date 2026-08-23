@@ -44,6 +44,8 @@ const stepInput = z.object({
 const routeCreateInput = z.object({
   nameJa: z.string().min(1, "ルート名（日本語）を入力してください"),
   nameEn: z.string().optional(),
+  // 対象の受注元（取引先）。null = 汎用ルート。
+  customerBpId: z.string().uuid().nullable().optional(),
   notes: z.string().optional(),
   steps: z.array(stepInput).min(1, "工程を1つ以上選択してください"),
 });
@@ -96,6 +98,7 @@ export async function createProductRoute(
       createRouteWithVersionTx(tx, {
         productId,
         name: localizedInput(v.nameJa, v.nameEn),
+        customerBpId: v.customerBpId ?? null,
         steps: built.creates,
         actor,
         notes: v.notes,
@@ -109,6 +112,7 @@ export async function createProductRoute(
       after: {
         productId,
         nameJa: v.nameJa,
+        customerBpId: v.customerBpId ?? null,
         stepCount: built.creates.length,
         version: 1,
       },

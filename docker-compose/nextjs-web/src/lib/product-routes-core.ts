@@ -71,9 +71,29 @@ export interface RouteView {
   id: number;
   name: string;
   nameEn: string;
+  /** 対象の受注元（取引先）。null = 汎用（どの顧客にも使える）。 */
+  customerBpId: string | null;
+  customerName: string | null;
   isActive: boolean;
   notes: string | null;
   updatedAt: string;
   /** version 降順（先頭 = 最新）。 */
   versions: RouteVersionView[];
+}
+
+/**
+ * ビルダーの既定ルート選択（唯一の優先規則）:
+ * 顧客一致ルート → 汎用ルート（customerBpId null）→ 先頭、の順。
+ * 他顧客専用のルートは自動選択しない（手動選択は可能）。
+ */
+export function pickDefaultRoute(
+  routes: readonly RouteView[],
+  customerBpId: string | null,
+): RouteView | null {
+  if (routes.length === 0) return null;
+  if (customerBpId != null) {
+    const match = routes.find((r) => r.customerBpId === customerBpId);
+    if (match) return match;
+  }
+  return routes.find((r) => r.customerBpId == null) ?? routes[0];
 }
