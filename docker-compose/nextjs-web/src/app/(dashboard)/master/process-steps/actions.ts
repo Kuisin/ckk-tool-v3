@@ -22,6 +22,7 @@ import {
   localizedInput,
   prismaErrorMessage,
 } from "@/lib/server-action";
+import { readWorkLocationTypes } from "@/lib/work-locations";
 
 const BASE_PATH = "/master/process-steps";
 
@@ -66,6 +67,9 @@ const processStepUpdateInput = z.object({
   notes: z.string().optional(),
   useDependencies: z.array(useDependencyInput),
   execDependencies: z.array(execDependencyInput),
+  // 許可作業場所（種別キー + 個別 id）。両方空 = 無制限。保存時は全置換。
+  allowedLocationTypeKeys: z.array(z.string().min(1)).max(50),
+  allowedLocationIds: z.array(z.number().int().positive()).max(500),
 });
 
 // 工程コードは作成後不変（識別キー）。例: CYLINDER_MACHINING
@@ -131,6 +135,48 @@ async function validateDependencies(
   return null;
 }
 
+/**
+ * 許可作業場所の整合性チェック（種別キーの存在・場所 id の存在）。
+ * エラー時はメッセージ、問題なければ正規化済み（重複除去）の値を返す。
+ */
+async function validateAllowedLocations(v: {
+  allowedLocationTypeKeys: string[];
+  allowedLocationIds: number[];
+}): Promise<
+  { error: string } | { error: null; typeKeys: string[]; locationIds: number[] }
+> {
+  const typeKeys = [...new Set(v.allowedLocationTypeKeys)];
+  const locationIds = [...new Set(v.allowedLocationIds)];
+  if (typeKeys.length > 0) {
+    const known = new Set((await readWorkLocationTypes()).map((t) => t.key));
+    const unknown = typeKeys.filter((k) => !known.has(k));
+    if (unknown.length > 0) {
+      return { error: `存在しない作業場所種別です: ${unknown.join(", ")}` };
+    }
+  }
+  if (locationIds.length > 0) {
+    const found = await prisma.workLocation.count({
+      where: { id: { in: locationIds } },
+    });
+    if (found !== locationIds.length) {
+      return { error: "許可作業場所に存在しない場所が含まれています" };
+    }
+  }
+  return { error: null, typeKeys, locationIds };
+}
+
+/** 許可作業場所リンク行（全置換用の createMany データ）。 */
+function allowedLocationRows(
+  processStepId: number,
+  typeKeys: string[],
+  locationIds: number[],
+) {
+  return [
+    ...typeKeys.map((typeKey) => ({ processStepId, typeKey })),
+    ...locationIds.map((workLocationId) => ({ processStepId, workLocationId })),
+  ];
+}
+
 /** 検査承認工程でなければ承認必要役職は保持しない（トグルと揃える）。 */
 function approvalMinRankValue(v: ProcessStepUpdateInput): string | null {
   return v.isApprovalStep ? v.approvalMinRank?.trim() || null : null;
@@ -149,6 +195,8 @@ export async function createProcessStep(
   try {
     const depError = await validateDependencies(null, v);
     if (depError) return actionError(depError);
+    const allowed = await validateAllowedLocations(v);
+    if (allowed.error != null) return actionError(allowed.error);
 
     const created = await prisma.$transaction(async (tx) => {
       const step = await tx.processStepCatalog.create({
@@ -190,6 +238,14 @@ export async function createProcessStep(
           })),
         });
       }
+      const locationRows = allowedLocationRows(
+        step.id,
+        allowed.typeKeys,
+        allowed.locationIds,
+      );
+      if (locationRows.length > 0) {
+        await tx.processStepWorkLocation.createMany({ data: locationRows });
+      }
       return step;
     });
     await recordAudit({
@@ -211,6 +267,8 @@ export async function createProcessStep(
         isActive: v.isActive,
         useDependencyCount: v.useDependencies.length,
         execDependencyCount: v.execDependencies.length,
+        allowedLocationTypeKeys: allowed.typeKeys,
+        allowedLocationIdCount: allowed.locationIds.length,
       },
     });
     revalidate(created.id);
@@ -241,6 +299,8 @@ export async function updateProcessStep(
   try {
     const depError = await validateDependencies(id, v);
     if (depError) return actionError(depError);
+    const allowed = await validateAllowedLocations(v);
+    if (allowed.error != null) return actionError(allowed.error);
 
     const prior = await prisma.processStepCatalog.findUnique({
       where: { id },
@@ -256,7 +316,13 @@ export async function updateProcessStep(
         sortOrder: true,
         isActive: true,
         notes: true,
-        _count: { select: { useDependencies: true, execDependencies: true } },
+        _count: {
+          select: {
+            useDependencies: true,
+            execDependencies: true,
+            allowedWorkLocations: true,
+          },
+        },
       },
     });
     if (!prior) return actionError("対象の工程が見つかりません");
@@ -303,6 +369,17 @@ export async function updateProcessStep(
           })),
         });
       }
+      await tx.processStepWorkLocation.deleteMany({
+        where: { processStepId: id },
+      });
+      const locationRows = allowedLocationRows(
+        id,
+        allowed.typeKeys,
+        allowed.locationIds,
+      );
+      if (locationRows.length > 0) {
+        await tx.processStepWorkLocation.createMany({ data: locationRows });
+      }
     });
     await recordAudit({
       action: "UPDATE",
@@ -325,6 +402,7 @@ export async function updateProcessStep(
         notes: prior.notes,
         useDependencyCount: prior._count.useDependencies,
         execDependencyCount: prior._count.execDependencies,
+        allowedLocationCount: prior._count.allowedWorkLocations,
       },
       after: {
         nameJa: v.nameJa,
@@ -341,6 +419,8 @@ export async function updateProcessStep(
         notes: v.notes?.trim() || null,
         useDependencyCount: v.useDependencies.length,
         execDependencyCount: v.execDependencies.length,
+        allowedLocationTypeKeys: allowed.typeKeys,
+        allowedLocationIdCount: allowed.locationIds.length,
       },
     });
     revalidate(id);

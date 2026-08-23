@@ -38,7 +38,7 @@ import { useState } from "react";
 import { QR_KINDS, qrKeyOfKind } from "@/lib/qr-payload";
 import { playLogoutSound, playWarnSound } from "@/lib/sound";
 import type { StepRecordingData } from "@/lib/step-records";
-import type { MyActiveStep, MyStepView } from "@/lib/steps";
+import type { MyActiveStep, MyStepView, StepLocationGate } from "@/lib/steps";
 import {
   cleanReasonEntries,
   type DefectReasonEntry,
@@ -64,6 +64,8 @@ type Props = {
   recording: StepRecordingData;
   /** 自分が作業中の別工程（同時作業は 1 工程まで — 開始/再開をロック）。 */
   otherActive: MyActiveStep | null;
+  /** 工程マスタの許可作業場所 × この端末（表示用 — 権威は API 側）。 */
+  locationGate: StepLocationGate;
   /** 戻り先: 担当工程一覧（既定） / 指示書スキャンの指示書ビュー。 */
   backTo?: "list" | "workOrder";
 };
@@ -74,6 +76,7 @@ export function StepExecutionView({
   step,
   recording,
   otherActive,
+  locationGate,
   backTo = "list",
 }: Props) {
   const router = useRouter();
@@ -111,6 +114,11 @@ export function StepExecutionView({
   const paused = step.sessionState === "PAUSED";
   // 別工程を作業中 → この工程の開始/再開/完了をロック（同時作業は 1 工程まで）
   const lockedByActive = otherActive != null && !working;
+  // 端末の「作業場所の制限」ON かつ端末の既定作業場所が許可外 → 開始/再開不可
+  const locationBlocked =
+    locationGate.enforced &&
+    locationGate.restricted &&
+    !locationGate.deviceAllowed;
 
   // 完了時の受入数は開始時に確定した値で固定（未記録なら想定/予定へフォールバック）
   const completeInput =
@@ -237,6 +245,39 @@ export function StepExecutionView({
           </Stack>
         </Paper>
 
+        {/* 作業場所の制限 — この端末の場所では実行できない工程 */}
+        {locationBlocked && !working && (
+          <Alert color="orange" icon={<IconAlertTriangle size={20} />}>
+            <Stack gap="xs">
+              <Text fw={600} size="sm">
+                {m.steps.location.deviceBlockedTitle}
+              </Text>
+              <Text size="sm">
+                {m.steps.location.deviceBlockedBody(
+                  locationGate.deviceDefaultLabel ?? m.steps.location.none,
+                )}
+              </Text>
+              {locationGate.allowed.length > 0 && (
+                <Stack gap={2}>
+                  <Text c="dimmed" size="sm">
+                    {m.steps.location.allowedListTitle}
+                  </Text>
+                  {locationGate.allowed.map((a) => (
+                    <Text key={a.label} size="sm">
+                      ・{a.label}
+                      {a.deviceNames.length > 0
+                        ? `（${m.steps.location.devicesAt(
+                            a.deviceNames.join(" / "),
+                          )}）`
+                        : ""}
+                    </Text>
+                  ))}
+                </Stack>
+              )}
+            </Stack>
+          </Alert>
+        )}
+
         {/* 作業場所 — 実績に記録される場所（端末既定 or QR 読み取り） */}
         {(step.sessionState === "STARTABLE" ||
           working ||
@@ -254,7 +295,8 @@ export function StepExecutionView({
                   </Text>
                 </Group>
                 {(step.sessionState === "STARTABLE" || working) &&
-                  !lockedByActive && (
+                  !lockedByActive &&
+                  !locationBlocked && (
                     <Button
                       leftSection={<IconQrcode size={18} />}
                       onClick={() => setLocationScanOpen((v) => !v)}
@@ -338,42 +380,44 @@ export function StepExecutionView({
         )}
 
         {/* 開始 — 受入数の確認（NONE は数量を聞かない） */}
-        {step.sessionState === "STARTABLE" && !lockedByActive && (
-          <Paper p="md" radius="md" withBorder>
-            <Stack gap="md">
-              <Title order={4}>{m.steps.start.title}</Title>
-              {trackedMode === null ? (
-                <Text c="dimmed">{m.steps.start.noneNote}</Text>
-              ) : (
-                <>
-                  <NumberStepper
-                    label={m.steps.quantity[trackedMode].input}
-                    min={0}
-                    onChange={setStartInput}
-                    value={startInput}
-                  />
-                  {step.expectedInputQuantity != null && (
-                    <Text c="dimmed" size="sm">
-                      {m.steps.start.expectedHint(step.expectedInputQuantity)}
-                      {startInput !== step.expectedInputQuantity
-                        ? ` — ${m.steps.start.differsHint}`
-                        : ""}
-                    </Text>
-                  )}
-                </>
-              )}
-              <Button
-                fullWidth
-                leftSection={<IconPlayerPlay size={20} />}
-                loading={busy && phase !== "COMPLETING"}
-                onClick={doStart}
-                size="lg"
-              >
-                {m.steps.actions.start}
-              </Button>
-            </Stack>
-          </Paper>
-        )}
+        {step.sessionState === "STARTABLE" &&
+          !lockedByActive &&
+          !locationBlocked && (
+            <Paper p="md" radius="md" withBorder>
+              <Stack gap="md">
+                <Title order={4}>{m.steps.start.title}</Title>
+                {trackedMode === null ? (
+                  <Text c="dimmed">{m.steps.start.noneNote}</Text>
+                ) : (
+                  <>
+                    <NumberStepper
+                      label={m.steps.quantity[trackedMode].input}
+                      min={0}
+                      onChange={setStartInput}
+                      value={startInput}
+                    />
+                    {step.expectedInputQuantity != null && (
+                      <Text c="dimmed" size="sm">
+                        {m.steps.start.expectedHint(step.expectedInputQuantity)}
+                        {startInput !== step.expectedInputQuantity
+                          ? ` — ${m.steps.start.differsHint}`
+                          : ""}
+                      </Text>
+                    )}
+                  </>
+                )}
+                <Button
+                  fullWidth
+                  leftSection={<IconPlayerPlay size={20} />}
+                  loading={busy && phase !== "COMPLETING"}
+                  onClick={doStart}
+                  size="lg"
+                >
+                  {m.steps.actions.start}
+                </Button>
+              </Stack>
+            </Paper>
+          )}
 
         {/* 進行中 / 一時停止中 — 完了フォームと操作 */}
         {(working || paused) && !lockedByActive && (
@@ -442,6 +486,7 @@ export function StepExecutionView({
                     </Button>
                   ) : (
                     <Button
+                      disabled={locationBlocked}
                       leftSection={<IconPlayerPlay size={20} />}
                       loading={busy}
                       onClick={doResume}

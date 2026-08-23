@@ -143,6 +143,8 @@ export type DeviceSettingsInfo = {
   plantId: number | null;
   /** 既定の作業場所（実績への自動記録に使う。未設定は null）。 */
   defaultWorkLocationId: number | null;
+  /** 作業場所の制限トグル（ON = 許可外の工程を開始できない）。 */
+  enforceWorkLocation: boolean;
 };
 
 /**
@@ -166,6 +168,7 @@ export async function getDeviceForSettings(): Promise<DeviceSettingsInfo | null>
       fingerprint: true,
       plantId: true,
       defaultWorkLocationId: true,
+      enforceWorkLocation: true,
     },
   });
   // 端末名は多言語 JSON。端末設定はログイン前画面なので ja 固定。

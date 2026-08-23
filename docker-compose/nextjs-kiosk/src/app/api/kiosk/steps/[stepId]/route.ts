@@ -19,6 +19,7 @@ import { hasPermission } from "@/lib/authz";
 import { prisma } from "@/lib/db";
 import { getSession } from "@/lib/kiosk-auth";
 import {
+  allowedWorkLocationIdsForStep,
   canOperateStep,
   completeStepExecution,
   pauseStepExecution,
@@ -173,30 +174,64 @@ export async function POST(
   // 作業場所の解決（実績への記録用）:
   //   スキャンした QR の場所（workLocationCode）＞ 端末の既定作業場所。
   //   計画の作業場所は実績のソースにしない（端末既定のみ — 仕様）。
+  //   工程マスタに許可作業場所（process_step_work_locations）がある工程では
+  //   許可外の場所を拒否/記録しない。端末の「作業場所の制限」トグルが ON なら
+  //   端末の既定作業場所が許可に含まれない工程は開始/再開そのものを拒否する。
   let scannedLocationId: number | null = null;
-  if (
-    (action === "START" || action === "SET_LOCATION") &&
-    workLocationCode != null
-  ) {
-    const resolved = await resolveWorkLocationByCode(workLocationCode);
-    if (!resolved) {
-      return NextResponse.json({
-        ok: false,
-        codes: ["LOCATION_NOT_FOUND"],
-      } satisfies StepActionResult);
-    }
-    scannedLocationId = resolved.id;
-  }
-  if (action === "SET_LOCATION" && scannedLocationId == null) {
-    return NextResponse.json({ error: "invalid request" }, { status: 400 });
-  }
   let deviceDefaultLocationId: number | null = null;
-  if (action === "START" || action === "RESUME") {
-    const deviceRow = await prisma.kioskDevice.findUnique({
-      where: { id: device },
-      select: { defaultWorkLocationId: true },
-    });
-    deviceDefaultLocationId = deviceRow?.defaultWorkLocationId ?? null;
+  if (action === "START" || action === "RESUME" || action === "SET_LOCATION") {
+    const [stepRow, deviceRow] = await Promise.all([
+      prisma.workOrderStep.findUnique({
+        where: { id: stepId },
+        select: { processStepId: true },
+      }),
+      prisma.kioskDevice.findUnique({
+        where: { id: device },
+        select: { defaultWorkLocationId: true, enforceWorkLocation: true },
+      }),
+    ]);
+    const allowed = stepRow
+      ? await allowedWorkLocationIdsForStep(stepRow.processStepId)
+      : null;
+
+    if (
+      (action === "START" || action === "SET_LOCATION") &&
+      workLocationCode != null
+    ) {
+      const resolved = await resolveWorkLocationByCode(workLocationCode);
+      if (!resolved) {
+        return NextResponse.json({
+          ok: false,
+          codes: ["LOCATION_NOT_FOUND"],
+        } satisfies StepActionResult);
+      }
+      if (allowed != null && !allowed.has(resolved.id)) {
+        return NextResponse.json({
+          ok: false,
+          codes: ["LOCATION_NOT_ALLOWED"],
+        } satisfies StepActionResult);
+      }
+      scannedLocationId = resolved.id;
+    }
+    if (action === "SET_LOCATION" && scannedLocationId == null) {
+      return NextResponse.json({ error: "invalid request" }, { status: 400 });
+    }
+
+    if (action === "START" || action === "RESUME") {
+      const deviceDefault = deviceRow?.defaultWorkLocationId ?? null;
+      const deviceAllowed =
+        allowed == null ||
+        (deviceDefault != null && allowed.has(deviceDefault));
+      if (deviceRow?.enforceWorkLocation && !deviceAllowed) {
+        // 制限トグル ON: この端末の場所に合わない工程は開始/再開できない
+        return NextResponse.json({
+          ok: false,
+          codes: ["DEVICE_LOCATION_BLOCKED"],
+        } satisfies StepActionResult);
+      }
+      // 許可外の既定は記録しない（トグル OFF でも工程マスタの制限は守る）
+      deviceDefaultLocationId = deviceAllowed ? deviceDefault : null;
+    }
   }
 
   // audit_logs / inventory_transactions の created_by をこの actor に束ねる

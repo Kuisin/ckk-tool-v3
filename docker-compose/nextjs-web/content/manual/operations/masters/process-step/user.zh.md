@@ -136,6 +136,7 @@ screenshots: [master-process-step-list-01, master-process-step-new-01, master-pr
 | [工序编码 / 名称](#field-code) | 必填 | 工序的管理编号与名称 |
 | [类别](#field-category) | 必填 | 材料准备・加工・检查 等区分 |
 | [实施地点](#field-execution) | 必填 | 仅社内或可委外 |
+| [允许的作业场所](#field-allowed-locations) | 选填 | 限制该工序可使用的作业场所 |
 | [数量管理](#field-quantity-tracking) | 必填 | 该工序如何处理数量 |
 | [默认作业时间](#field-default-time) | 选填 | 每次的大致时间 |
 | [可并行](#field-sync) | — | 是否可与其他工序并行 |
@@ -151,6 +152,14 @@ screenshots: [master-process-step-list-01, master-process-step-new-01, master-pr
 ### 类别 [#field-category]
 
 材料准备・加工・涂层・检查・检查审批・发货的区分。
+
+### 允许的作业场所 [#field-allowed-locations]
+
+限制该工序的**计划・实绩**中可使用的作业场所。可按类型（机械／区域等）批量指定，也可逐个指定场所（可并用，允许其并集）。**两者都留空则不限制**（可使用所有作业场所）。
+
+- 在指示单工序中添加计划・实绩时，选项只会显示允许的场所
+- 现场平板（Kiosk）也适用同样的限制：扫描不允许的作业场所二维码会被拒绝；终端默认作业场所不在允许列表内时，不会记录到实绩
+- 开启「作业场所限制」开关的 Kiosk 终端，只能开始允许列表中包含其默认作业场所的工序
 
 ### 实施地点 [#field-execution]
 

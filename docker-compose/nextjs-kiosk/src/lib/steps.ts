@@ -15,6 +15,7 @@
 
 import { prisma } from "./db";
 import {
+  deviceName,
   formatTime,
   jstDateOnly,
   jstDateString,
@@ -22,6 +23,7 @@ import {
   localized,
 } from "./format";
 import type { Locale } from "./i18n";
+import { allowedWorkLocationIdsForStep } from "./step-execution";
 import {
   accumulatedWorkMs,
   bucketOf,
@@ -637,5 +639,100 @@ export async function getWorkOrderOverview(
       : null,
     plannedQuantity: wo.plannedQuantity,
     steps: items,
+  };
+}
+
+// ── 作業場所ゲート（工程マスタの許可作業場所 × 端末） ────────────────────────
+
+export interface StepLocationGate {
+  /** 工程マスタに許可作業場所リンクがある（= 制限あり）。 */
+  restricted: boolean;
+  /** この端末の「作業場所の制限」トグルが ON。 */
+  enforced: boolean;
+  /** この端末の既定作業場所が許可に含まれる（制限なしなら常に true）。 */
+  deviceAllowed: boolean;
+  deviceDefaultLabel: string | null;
+  /** 許可作業場所（ラベル + そこを既定にしている稼働端末名）。制限ありのみ。 */
+  allowed: { label: string; deviceNames: string[] }[];
+}
+
+/**
+ * 工程実行画面のサーバー側ゲート情報。実行可否の権威はあくまで
+ * API 側（route.ts の DEVICE_LOCATION_BLOCKED）— これは表示用。
+ * enforced && restricted && !deviceAllowed のとき UI は開始/再開を隠し、
+ * 「どこ（どの端末）でなら実行できるか」を allowed で示す。
+ */
+export async function getStepLocationGate(
+  stepId: string,
+  deviceId: string,
+  locale: Locale,
+): Promise<StepLocationGate> {
+  const [stepRow, deviceRow] = await Promise.all([
+    prisma.workOrderStep.findUnique({
+      where: { id: stepId },
+      select: { processStepId: true },
+    }),
+    prisma.kioskDevice.findUnique({
+      where: { id: deviceId },
+      select: {
+        enforceWorkLocation: true,
+        defaultWorkLocationId: true,
+        defaultWorkLocation: {
+          select: { name: true, group: { select: { name: true } } },
+        },
+      },
+    }),
+  ]);
+  const label = (l: { name: unknown; group: { name: unknown } }): string =>
+    `${localized(asText(l.group.name), locale)} / ${localized(asText(l.name), locale)}`;
+  const deviceDefaultLabel = deviceRow?.defaultWorkLocation
+    ? label(deviceRow.defaultWorkLocation)
+    : null;
+  const enforced = deviceRow?.enforceWorkLocation ?? false;
+
+  const allowedIds = stepRow
+    ? await allowedWorkLocationIdsForStep(stepRow.processStepId)
+    : null;
+  if (allowedIds == null) {
+    return {
+      restricted: false,
+      enforced,
+      deviceAllowed: true,
+      deviceDefaultLabel,
+      allowed: [],
+    };
+  }
+
+  const ids = [...allowedIds];
+  const [locations, devices] = await Promise.all([
+    prisma.workLocation.findMany({
+      where: { id: { in: ids }, isActive: true },
+      include: { group: { select: { name: true } } },
+      orderBy: [{ groupId: "asc" }, { sortOrder: "asc" }, { id: "asc" }],
+    }),
+    prisma.kioskDevice.findMany({
+      where: { status: "ACTIVE", defaultWorkLocationId: { in: ids } },
+      select: { name: true, defaultWorkLocationId: true },
+    }),
+  ]);
+  const devicesByLocation = new Map<number, string[]>();
+  for (const d of devices) {
+    if (d.defaultWorkLocationId == null) continue;
+    const names = devicesByLocation.get(d.defaultWorkLocationId) ?? [];
+    const n = deviceName(d.name);
+    if (n) names.push(n);
+    devicesByLocation.set(d.defaultWorkLocationId, names);
+  }
+  return {
+    restricted: true,
+    enforced,
+    deviceAllowed:
+      deviceRow?.defaultWorkLocationId != null &&
+      allowedIds.has(deviceRow.defaultWorkLocationId),
+    deviceDefaultLabel,
+    allowed: locations.map((l) => ({
+      label: label(l),
+      deviceNames: devicesByLocation.get(l.id) ?? [],
+    })),
   };
 }

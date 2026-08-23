@@ -66,6 +66,9 @@ export interface ProcessStepDetailData {
   notes: string;
   useDependencies: ProcessStepDependencyRow[];
   execDependencies: ProcessStepDependencyRow[];
+  /** 許可作業場所（表示ラベル）。両方空 = 無制限。 */
+  allowedLocationTypeLabels: string[];
+  allowedLocationLabels: string[];
 }
 
 /** 依存表（使用依存 = 排他列あり / 実行依存 = なし）。 */
@@ -282,6 +285,21 @@ export function ProcessStepDetail({
 
         <Tabs.Panel pt="md" value="overview">
           <Stack gap="md">
+            <FieldValue
+              label="許可作業場所"
+              value={
+                record.allowedLocationTypeLabels.length +
+                  record.allowedLocationLabels.length ===
+                0
+                  ? "制限なし（すべての作業場所を使用可）"
+                  : [
+                      ...record.allowedLocationTypeLabels.map(
+                        (l) => `種別: ${l}`,
+                      ),
+                      ...record.allowedLocationLabels,
+                    ].join(" / ")
+              }
+            />
             <FieldValue label="備考" value={record.notes || "—"} />
           </Stack>
         </Tabs.Panel>

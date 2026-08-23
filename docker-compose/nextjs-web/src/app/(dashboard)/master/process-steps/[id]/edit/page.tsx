@@ -6,6 +6,10 @@ import {
 import { requireAppRead } from "@/lib/authz-page";
 import { prisma } from "@/lib/db";
 import { type LocalizedText, localized } from "@/lib/format";
+import {
+  fetchWorkLocationOptions,
+  readWorkLocationTypes,
+} from "@/lib/work-locations";
 
 export const dynamic = "force-dynamic";
 
@@ -20,23 +24,28 @@ export default async function MasterProcessStepsEditPage({
   const { id: idParam } = await params;
   const id = Number(idParam);
   if (!Number.isInteger(id)) notFound();
-  const r = await prisma.processStepCatalog.findUnique({
-    where: { id },
-    include: {
-      useDependencies: {
-        include: {
-          dependsOn: { select: { id: true, code: true, name: true } },
+  const [r, types, workLocationOptions] = await Promise.all([
+    prisma.processStepCatalog.findUnique({
+      where: { id },
+      include: {
+        useDependencies: {
+          include: {
+            dependsOn: { select: { id: true, code: true, name: true } },
+          },
+          orderBy: { dependsOnStepId: "asc" },
         },
-        orderBy: { dependsOnStepId: "asc" },
-      },
-      execDependencies: {
-        include: {
-          dependsOn: { select: { id: true, code: true, name: true } },
+        execDependencies: {
+          include: {
+            dependsOn: { select: { id: true, code: true, name: true } },
+          },
+          orderBy: { dependsOnStepId: "asc" },
         },
-        orderBy: { dependsOnStepId: "asc" },
+        allowedWorkLocations: { orderBy: { id: "asc" } },
       },
-    },
-  });
+    }),
+    readWorkLocationTypes(),
+    fetchWorkLocationOptions(),
+  ]);
   if (!r) notFound();
 
   const name = r.name as LocalizedText | null;
@@ -75,7 +84,19 @@ export default async function MasterProcessStepsEditPage({
         notes: r.notes ?? "",
         useDeps: r.useDependencies.map(mapDep),
         execDeps: r.execDependencies.map(mapDep),
+        allowedTypeKeys: r.allowedWorkLocations
+          .map((l) => l.typeKey)
+          .filter((k): k is string => k != null),
+        allowedLocationIds: r.allowedWorkLocations
+          .map((l) => l.workLocationId)
+          .filter((v): v is number => v != null)
+          .map(String),
       }}
+      workLocationOptions={workLocationOptions}
+      workLocationTypeOptions={types.map((t) => ({
+        value: t.key,
+        label: t.label.ja || t.key,
+      }))}
     />
   );
 }

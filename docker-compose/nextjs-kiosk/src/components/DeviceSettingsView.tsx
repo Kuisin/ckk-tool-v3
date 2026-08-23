@@ -25,6 +25,7 @@ import {
   Paper,
   Select,
   Stack,
+  Switch,
   Text,
   Title,
 } from "@mantine/core";
@@ -52,6 +53,8 @@ type DeviceInfo = {
   /** 既定の作業場所（開始/再開時に実績へ自動記録。未設定は null）。 */
   defaultWorkLocationId: number | null;
   defaultWorkLocationLabel: string | null;
+  /** 作業場所の制限トグル（ON = 許可外の工程を開始できない）。 */
+  enforceWorkLocation: boolean;
 };
 
 type WorkLocationOption = { value: string; label: string };
@@ -101,6 +104,7 @@ export function DeviceSettingsView({ hasDevice }: { hasDevice: boolean }) {
   );
   // 既定作業場所の編集（settings フェーズのみ使用）
   const [locationDraft, setLocationDraft] = useState<string | null>(null);
+  const [enforceDraft, setEnforceDraft] = useState(false);
   const [locationSaving, setLocationSaving] = useState(false);
   const [locationNotice, setLocationNotice] = useState<string | null>(null);
 
@@ -154,6 +158,7 @@ export function DeviceSettingsView({ hasDevice }: { hasDevice: boolean }) {
             ? String(data.device.defaultWorkLocationId)
             : null,
         );
+        setEnforceDraft(data.device.enforceWorkLocation);
         setLocationNotice(null);
         setState({
           phase: "settings",
@@ -226,6 +231,7 @@ export function DeviceSettingsView({ hasDevice }: { hasDevice: boolean }) {
         body: JSON.stringify({
           ticket: state.ticket,
           workLocationId: locationDraft ? Number(locationDraft) : null,
+          enforceWorkLocation: enforceDraft,
         }),
       });
       const data = (await res.json().catch(() => null)) as {
@@ -236,7 +242,7 @@ export function DeviceSettingsView({ hasDevice }: { hasDevice: boolean }) {
       } | null;
       setLocationSaving(false);
       if (data?.state === "OK" && data.ticket) {
-        setLocationNotice("既定の作業場所を保存しました");
+        setLocationNotice("作業場所の設定を保存しました");
         setState({
           ...state,
           ticket: data.ticket,
@@ -244,6 +250,7 @@ export function DeviceSettingsView({ hasDevice }: { hasDevice: boolean }) {
             ...state.device,
             defaultWorkLocationId: data.defaultWorkLocationId ?? null,
             defaultWorkLocationLabel: data.defaultWorkLocationLabel ?? null,
+            enforceWorkLocation: enforceDraft,
           },
         });
         return;
@@ -423,6 +430,12 @@ export function DeviceSettingsView({ hasDevice }: { hasDevice: boolean }) {
                   保存
                 </Button>
               </Group>
+              <Switch
+                checked={enforceDraft}
+                description="ON にすると、工程マスタで作業場所が制限された工程は、この端末の既定作業場所が許可に含まれる場合のみ開始・再開できます。既定作業場所の設定自体はこのトグルと無関係に可能です。"
+                label="作業場所の制限"
+                onChange={(e) => setEnforceDraft(e.currentTarget.checked)}
+              />
               {locationNotice && (
                 <Text
                   c={locationNotice.includes("保存しました") ? "teal" : "red"}

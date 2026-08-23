@@ -19,6 +19,7 @@ import {
   itemSpecFromRow,
   resolveItemPass,
 } from "@/lib/inspection-core";
+import { fetchAllowedWorkLocationIds } from "@/lib/work-locations";
 import { submitFlowChange } from "@/lib/work-order-flow-changes";
 import {
   abortStepExecution,
@@ -701,16 +702,26 @@ function validateTimeRange(v: {
   return null;
 }
 
-/** 作業場所の存在・有効チェック（null は許可）。エラー文言 or null。 */
+/**
+ * 作業場所の存在・有効チェック + 工程マスタの許可リスト検証（null は許可）。
+ * 許可リスト（process_step_work_locations）がある工程では、リストに含まれる
+ * 場所しか計画・実績に使えない。エラー文言 or null。
+ */
 async function invalidWorkLocation(
   workLocationId: number | null,
+  processStepId: number,
 ): Promise<string | null> {
   if (workLocationId == null) return null;
   const location = await prisma.workLocation.findFirst({
     where: { id: workLocationId, isActive: true },
     select: { id: true },
   });
-  return location ? null : "作業場所が見つかりません";
+  if (!location) return "作業場所が見つかりません";
+  const allowed = await fetchAllowedWorkLocationIds(processStepId);
+  if (allowed != null && !allowed.has(workLocationId)) {
+    return "この工程では使用できない作業場所です（工程マスタの許可リスト外）";
+  }
+  return null;
 }
 
 /** 作業計画の追加 — 未完了（PENDING / IN_PROGRESS）の工程のみ。 */
@@ -738,7 +749,10 @@ export async function addStepPlan(
         errors: ["完了・キャンセル済みの工程には計画を追加できません"],
       };
     }
-    const locationError = await invalidWorkLocation(v.workLocationId);
+    const locationError = await invalidWorkLocation(
+      v.workLocationId,
+      step.processStepId,
+    );
     if (locationError) return { ok: false, errors: [locationError] };
     const actor = await getCurrentActorId();
     await prisma.workOrderStepPlan.create({
@@ -821,7 +835,10 @@ export async function addStepActual(
     if (step.status !== "IN_PROGRESS") {
       return { ok: false, errors: ["進行中の工程のみ実績を記録できます"] };
     }
-    const locationError = await invalidWorkLocation(v.workLocationId);
+    const locationError = await invalidWorkLocation(
+      v.workLocationId,
+      step.processStepId,
+    );
     if (locationError) return { ok: false, errors: [locationError] };
     const actor = await getCurrentActorId();
     await prisma.workOrderStepActual.create({

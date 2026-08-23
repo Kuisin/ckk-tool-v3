@@ -95,6 +95,7 @@ export async function POST(req: Request) {
       fingerprint: device.fingerprint,
       defaultWorkLocationId: device.defaultWorkLocationId,
       defaultWorkLocationLabel: current ? locationLabel(current) : null,
+      enforceWorkLocation: device.enforceWorkLocation,
     },
     workLocationOptions: locations.map((l) => ({
       value: String(l.id),
