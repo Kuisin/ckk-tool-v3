@@ -15,6 +15,7 @@
 import { type Access, rowInScope } from "@ckk/authz-core";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
+import { combinabilityError } from "@/components/shipping/delivery-orders/model";
 import { recordAudit } from "@/lib/audit";
 import { checkPermission } from "@/lib/authz";
 import { prisma } from "@/lib/db";
@@ -25,7 +26,6 @@ import {
   parseDocKey,
 } from "@/lib/doc-number";
 import { type LocalizedText, localized } from "@/lib/format";
-import { combinabilityError } from "@/components/shipping/delivery-orders/model";
 import { allocateDocumentKey } from "@/lib/numbering";
 import { lineShipStatus } from "@/lib/order-line-core";
 import {

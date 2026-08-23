@@ -162,6 +162,8 @@ Every field on the order acceptance screen. What the AI read from the order land
 | [Quote number](#field-quote-number) | Optional | The quote it came from |
 | [Order date](#field-order-date) | Optional | The date the customer ordered |
 | [Ship-to](#field-ship-to) | Optional | Where the products are delivered |
+| [Delivery method](#field-delivery-method) | Required | Normal delivery / direct to end user |
+| [End user](#field-end-user) | Required for direct | Where a direct shipment goes (the end user) |
 | [Assigned plant](#field-assigned-plant) | Optional | The site that handles this order |
 | [Shipping work location](#field-shipping-work-location) | Optional | Where the shipping work is done |
 | [Notes](#field-notes) | Optional | Notes for the whole acceptance |
@@ -192,6 +194,14 @@ The date the customer placed the order, as printed on their document.
 ### Ship-to [#field-ship-to]
 
 Where the products are delivered. Choose it **when they go to a different company or branch** from the customer who ordered. Left empty, it means they go to the customer.
+
+### Delivery method [#field-delivery-method]
+
+How the products are delivered. **Normal delivery** goes to the customer (or the ship-to you chose). **Direct to user** ships straight to the end user. A delivery order can only combine lines with **the same ship-to and delivery method**, so this choice decides how shipments are grouped.
+
+### End user [#field-end-user]
+
+The actual destination (end user) for a direct shipment. **Required when direct to user is selected.** Choose from business partners registered with the end-user role.
 
 ### Assigned plant [#field-assigned-plant]
 

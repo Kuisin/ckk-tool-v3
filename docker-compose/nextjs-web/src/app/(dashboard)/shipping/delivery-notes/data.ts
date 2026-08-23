@@ -230,7 +230,8 @@ export async function fetchDeliveryOrderCandidates(): Promise<
       ...new Map(
         r.items
           .map(
-            (it) => it.orderLine?.endUserBp ?? it.orderLine?.acceptance.endUserBp,
+            (it) =>
+              it.orderLine?.endUserBp ?? it.orderLine?.acceptance.endUserBp,
           )
           .filter((bp): bp is NonNullable<typeof bp> => Boolean(bp))
           .map((bp) => [bp.id, bp] as const),

@@ -17,10 +17,7 @@ describe("combinabilityError — 1 出荷書に束ねられる条件", () => {
 
   it("同一顧客 × 同一出荷先 × 同一配送方法なら null", () => {
     expect(
-      combinabilityError(
-        [ref(), ref(), ref({ shipToBpId: null })],
-        "cust-1",
-      ),
+      combinabilityError([ref(), ref(), ref({ shipToBpId: null })], "cust-1"),
     ).toBeNull();
     expect(
       combinabilityError([

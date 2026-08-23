@@ -758,7 +758,9 @@ export function DeliveryOrderForm({
                         <Text c="dimmed" size="xs">
                           {info.customerName} / {info.productName}
                           {/* 束ねの条件（出荷先・配送方法）が見えるようにする */}
-                          {info.shipToName ? ` · 出荷先 ${info.shipToName}` : ""}
+                          {info.shipToName
+                            ? ` · 出荷先 ${info.shipToName}`
+                            : ""}
                           {info.deliveryMethod === "DIRECT_TO_USER"
                             ? " · ユーザー直送"
                             : ""}{" "}
