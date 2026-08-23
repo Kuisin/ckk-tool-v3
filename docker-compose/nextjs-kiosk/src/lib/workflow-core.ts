@@ -26,9 +26,25 @@ export interface CatalogStep {
   isInspection: boolean;
   isApprovalStep: boolean;
   quantityTracking: QuantityTrackingMode;
+  /** 実行時のロット入力の既定（app.LOT_INPUT_MODE）。未指定は NONE 扱い。 */
+  lotInputMode?: LotInputMode;
   /** 既定作業時間 (h) — ルート/指示書ビルダーの初期値（任意）。 */
   defaultWorkHours?: number | null;
   sortOrder: number;
+}
+
+/** 工程実行時のロット/伝票コード入力の要否（app.LOT_INPUT_MODE）。 */
+export type LotInputMode = "REQUIRED" | "OPTIONAL" | "NONE";
+
+/**
+ * ロット入力の実効モード — 唯一の定義（web / kiosk 共通）。
+ * 工程リスト・指示書工程の上書き（null = 継承）→ カタログ既定 → NONE の順。
+ */
+export function effectiveLotInputMode(
+  override: LotInputMode | null | undefined,
+  catalogDefault: LotInputMode | null | undefined,
+): LotInputMode {
+  return override ?? catalogDefault ?? "NONE";
 }
 
 /**

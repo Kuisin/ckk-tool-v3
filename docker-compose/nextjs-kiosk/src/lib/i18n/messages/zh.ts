@@ -73,6 +73,7 @@ export const zh: KioskMessages = {
       elapsed: (t: string) => `作业 ${t}`,
       elapsedLabel: "作业",
       plannedHours: (h: number) => `计划 ${h}h`,
+      lot: (t: string) => `批次 ${t}`,
     },
     state: {
       startable: "可开始",
@@ -104,6 +105,9 @@ export const zh: KioskMessages = {
       differsHint: "与预计数量不同（仍可开始）",
       noneNote: "该工序不记录数量，将直接开始。",
       submit: "开始",
+      lotRequired: "批次/单据编号（必填）",
+      lotOptional: "批次/单据编号（可选）",
+      lotPlaceholder: "材料批次、单据编号等",
     },
     complete: {
       title: "完成工序",
@@ -238,6 +242,7 @@ export const zh: KioskMessages = {
       QUANTITY_REQUIRED: "请输入数量",
       QUANTITY_INVALID: "请确认数量输入",
       DEFECT_REASONS_REQUIRED: "请为每行不良输入类型和详情",
+      LOT_REQUIRED: "请输入批次/单据编号",
       ROUTING_INVALID: "与分支数量不一致",
       TEMPLATE_INVALID: "检查表与此工单不匹配",
       ITEMS_REQUIRED: "没有可记录的内容",

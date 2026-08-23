@@ -23,6 +23,7 @@ import {
   Stack,
   Text,
   Textarea,
+  TextInput,
   Title,
 } from "@mantine/core";
 import { DatePickerInput } from "@mantine/dates";
@@ -43,6 +44,7 @@ import {
   rollbackStep,
   saveOutsourceDates,
   startStep,
+  updateStepLot,
 } from "@/app/(dashboard)/production/work-orders/[id]/steps/[stepId]/actions";
 import { useFormat } from "@/components/layout/PreferencesProvider";
 import { DefectRecordForm } from "@/components/production/DefectRecordForm";
@@ -75,6 +77,9 @@ export function StepExecutionView({ data }: { data: StepExecutionData }) {
     null,
   );
   const [reason, setReason] = useState("");
+
+  // ロット/伝票コード（開始時に記録・進行中は修正可）
+  const [lotText, setLotText] = useState(step.lotText ?? "");
 
   // 外注日程
   const [requestedAt, setRequestedAt] = useState<string | null>(
@@ -122,8 +127,23 @@ export function StepExecutionView({ data }: { data: StepExecutionData }) {
 
   const handleStart = () => {
     startTransition(async () => {
-      const result = await startStep(workOrderNumber, step.id);
+      const result = await startStep(
+        workOrderNumber,
+        step.id,
+        lotText.trim() || null,
+      );
       notifyResult(result, "工程を開始しました", "工程の開始に失敗しました");
+    });
+  };
+
+  const handleSaveLot = () => {
+    startTransition(async () => {
+      const result = await updateStepLot(workOrderNumber, step.id, lotText);
+      notifyResult(
+        result,
+        "ロット/伝票コードを保存しました",
+        "ロット/伝票コードの保存に失敗しました",
+      );
     });
   };
 
@@ -253,6 +273,36 @@ export function StepExecutionView({ data }: { data: StepExecutionData }) {
         </Alert>
       )}
 
+      {/* ── ロット/伝票コード（開始時に記録・進行中は修正可） ── */}
+      {step.status !== "PENDING" &&
+        (step.lotInputMode !== "NONE" || step.lotText != null) &&
+        (step.status === "IN_PROGRESS" && canOperate ? (
+          <Paper p="md" radius="md" withBorder>
+            <Group align="flex-end" gap="sm">
+              <TextInput
+                label="ロット/伝票コード"
+                maxLength={100}
+                onChange={(e) => setLotText(e.currentTarget.value)}
+                style={{ flex: 1 }}
+                value={lotText}
+                withAsterisk={step.lotInputMode === "REQUIRED"}
+              />
+              <Button
+                disabled={(lotText.trim() || null) === (step.lotText ?? null)}
+                loading={isPending}
+                onClick={handleSaveLot}
+                variant="default"
+              >
+                保存
+              </Button>
+            </Group>
+          </Paper>
+        ) : (
+          <Paper p="md" radius="md" withBorder>
+            <FieldValue label="ロット/伝票コード" value={step.lotText ?? "—"} />
+          </Paper>
+        ))}
+
       {/* ── PENDING: 開始可否・工程開始 ── */}
       {step.status === "PENDING" &&
         (!woExecutable ? (
@@ -260,16 +310,36 @@ export function StepExecutionView({ data }: { data: StepExecutionData }) {
             指示書が承認済み / 進行中ではないため、工程を開始できません。
           </Alert>
         ) : data.canStart.ok && !lockedByOther ? (
-          <Group justify="center" mt="md">
-            <Button
-              color="blue"
-              leftSection={<IconPlayerPlay size={16} />}
-              loading={isPending}
-              onClick={handleStart}
-            >
-              工程開始
-            </Button>
-          </Group>
+          <Stack gap="sm" mt="md">
+            {step.lotInputMode !== "NONE" && (
+              <TextInput
+                description="素材ロット・伝票コードなど（開始時に記録されます）"
+                label="ロット/伝票コード"
+                maxLength={100}
+                onChange={(e) => setLotText(e.currentTarget.value)}
+                placeholder={
+                  step.lotInputMode === "REQUIRED"
+                    ? "ロット/伝票コード（必須）"
+                    : "ロット/伝票コード（任意）"
+                }
+                value={lotText}
+                withAsterisk={step.lotInputMode === "REQUIRED"}
+              />
+            )}
+            <Group justify="center">
+              <Button
+                color="blue"
+                disabled={
+                  step.lotInputMode === "REQUIRED" && lotText.trim() === ""
+                }
+                leftSection={<IconPlayerPlay size={16} />}
+                loading={isPending}
+                onClick={handleStart}
+              >
+                工程開始
+              </Button>
+            </Group>
+          </Stack>
         ) : (
           <Alert color="yellow" title="開始できません" variant="light">
             <List size="sm">

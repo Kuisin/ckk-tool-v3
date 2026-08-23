@@ -60,6 +60,8 @@ const processStepUpdateInput = z.object({
   isApprovalStep: z.boolean(),
   approvalMinRank: z.string().optional(),
   quantityTracking: z.enum(["NONE", "FLOW", "INSPECTION"]),
+  // 実行時のロット/伝票コード入力の既定（工程リスト/指示書で上書き可）
+  lotInputMode: z.enum(["REQUIRED", "OPTIONAL", "NONE"]).default("NONE"),
   // 既定作業時間 (h) — 任意。ルート/指示書ビルダーの初期値
   defaultWorkHours: z.number().positive().max(9999.99).nullable(),
   sortOrder: z.number().int(),
@@ -210,6 +212,7 @@ export async function createProcessStep(
           isApprovalStep: v.isApprovalStep,
           approvalMinRank: approvalMinRankValue(v),
           quantityTracking: v.quantityTracking,
+          lotInputMode: v.lotInputMode,
           defaultWorkHours: v.defaultWorkHours,
           sortOrder: v.sortOrder,
           isActive: v.isActive,
@@ -262,6 +265,7 @@ export async function createProcessStep(
         isApprovalStep: v.isApprovalStep,
         approvalMinRank: approvalMinRankValue(v),
         quantityTracking: v.quantityTracking,
+        lotInputMode: v.lotInputMode,
         defaultWorkHours: v.defaultWorkHours,
         sortOrder: v.sortOrder,
         isActive: v.isActive,
@@ -312,6 +316,7 @@ export async function updateProcessStep(
         isApprovalStep: true,
         approvalMinRank: true,
         quantityTracking: true,
+        lotInputMode: true,
         defaultWorkHours: true,
         sortOrder: true,
         isActive: true,
@@ -340,6 +345,7 @@ export async function updateProcessStep(
           isApprovalStep: v.isApprovalStep,
           approvalMinRank: approvalMinRankValue(v),
           quantityTracking: v.quantityTracking,
+          lotInputMode: v.lotInputMode,
           defaultWorkHours: v.defaultWorkHours,
           sortOrder: v.sortOrder,
           isActive: v.isActive,
@@ -393,6 +399,7 @@ export async function updateProcessStep(
         isApprovalStep: prior.isApprovalStep,
         approvalMinRank: prior.approvalMinRank,
         quantityTracking: prior.quantityTracking,
+        lotInputMode: prior.lotInputMode,
         defaultWorkHours:
           prior.defaultWorkHours == null
             ? null
@@ -413,6 +420,7 @@ export async function updateProcessStep(
         isApprovalStep: v.isApprovalStep,
         approvalMinRank: approvalMinRankValue(v),
         quantityTracking: v.quantityTracking,
+        lotInputMode: v.lotInputMode,
         defaultWorkHours: v.defaultWorkHours,
         sortOrder: v.sortOrder,
         isActive: v.isActive,

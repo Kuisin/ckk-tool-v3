@@ -22,6 +22,7 @@ import {
   Paper,
   Stack,
   Text,
+  TextInput,
   Title,
 } from "@mantine/core";
 import {
@@ -104,6 +105,8 @@ export function StepExecutionView({
   const [startInput, setStartInput] = useState<number>(
     step.expectedInputQuantity ?? step.workOrderPlannedQuantity,
   );
+  // 開始時のロット/伝票コード（REQUIRED は未入力だと開始できない）
+  const [lotText, setLotText] = useState("");
   // 完了フォームの不良リスト（{種別, 理由, 数}）。良品・区分合計はここから導出。
   const [defects, setDefects] = useState<DefectReasonEntry[]>([]);
 
@@ -147,6 +150,8 @@ export function StepExecutionView({
       {
         action: "START",
         inputQuantity: isNone ? null : startInput,
+        lotText:
+          step.lotInputMode !== "NONE" ? lotText.trim() || null : undefined,
         workLocationCode: pendingLocationCode ?? undefined,
       },
       () => {
@@ -228,6 +233,11 @@ export function StepExecutionView({
               {step.inputQuantity != null && (
                 <Text size="sm">
                   {m.steps.card.inputRecorded(step.inputQuantity)}
+                </Text>
+              )}
+              {step.lotText != null && (
+                <Text c="dimmed" ff="monospace" size="sm">
+                  {m.steps.card.lot(step.lotText)}
                 </Text>
               )}
               {step.plannedWorkHours != null && (
@@ -406,7 +416,25 @@ export function StepExecutionView({
                     )}
                   </>
                 )}
+                {step.lotInputMode !== "NONE" && (
+                  <TextInput
+                    label={
+                      step.lotInputMode === "REQUIRED"
+                        ? m.steps.start.lotRequired
+                        : m.steps.start.lotOptional
+                    }
+                    maxLength={100}
+                    onChange={(e) => setLotText(e.currentTarget.value)}
+                    placeholder={m.steps.start.lotPlaceholder}
+                    size="lg"
+                    value={lotText}
+                    withAsterisk={step.lotInputMode === "REQUIRED"}
+                  />
+                )}
                 <Button
+                  disabled={
+                    step.lotInputMode === "REQUIRED" && lotText.trim() === ""
+                  }
                   fullWidth
                   leftSection={<IconPlayerPlay size={20} />}
                   loading={busy && phase !== "COMPLETING"}

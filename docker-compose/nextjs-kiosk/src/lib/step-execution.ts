@@ -25,6 +25,7 @@ import { prisma } from "./db";
 import { jstDateOnly } from "./format";
 import {
   canStartStep,
+  effectiveLotInputMode,
   expectedInput,
   isWorkOrderComplete,
   STEP_LINK_STATE_SELECT,
@@ -68,6 +69,7 @@ export type StepErrorCode =
   | "QUANTITY_REQUIRED"
   | "QUANTITY_INVALID"
   | "DEFECT_REASONS_REQUIRED"
+  | "LOT_REQUIRED"
   | "ROUTING_INVALID"
   | "TEMPLATE_INVALID"
   | "ITEMS_REQUIRED"
@@ -184,7 +186,7 @@ export async function findMyActiveStep(
 }
 
 /**
- * 工程開始: 依存検証 → セッションロック原子取得 → IN_PROGRESS。
+ * 工程開始: 依存検証 → ロット入力検証 → セッションロック原子取得 → IN_PROGRESS。
  * 受入数は作業者の入力（`inputQuantity`）を優先し、未指定なら想定受入数。
  * 作業セッション行（work_order_step_actuals）を 1 行 open する。
  */
@@ -193,10 +195,14 @@ export async function startStepExecution(
   actorId: string,
   inputQuantity?: number | null,
   workLocationId?: number | null,
+  lotText?: string | null,
 ): Promise<StepActionResult> {
   const stepRow = await prisma.workOrderStep.findUnique({
     where: { id: stepId },
-    include: { workOrder: true },
+    include: {
+      workOrder: true,
+      processStep: { select: { lotInputMode: true } },
+    },
   });
   if (!stepRow) return fail("NOT_FOUND", "工程が見つかりません");
   if (
@@ -220,6 +226,17 @@ export async function startStepExecution(
   if (!check.ok)
     return { ok: false, codes: ["NOT_STARTABLE"], errors: check.reasons };
 
+  // ロット/伝票コード — 実効モードは 上書き → カタログ既定（唯一の定義は
+  // workflow-core.effectiveLotInputMode）。REQUIRED は未入力で開始不可。
+  const lotMode = effectiveLotInputMode(
+    stepRow.lotInputMode,
+    stepRow.processStep.lotInputMode,
+  );
+  const lot = lotText?.trim() || null;
+  if (lotMode === "REQUIRED" && lot == null) {
+    return fail("LOT_REQUIRED", "ロット/伝票コードを入力してください");
+  }
+
   const input = inputQuantity ?? expectedInput(stepId, ctx);
   const now = new Date();
 
@@ -240,6 +257,7 @@ export async function startStepExecution(
         startedAt: now,
         startedBy: actorId,
         inputQuantity: input ?? undefined,
+        ...(lotMode !== "NONE" && lot != null ? { lotText: lot } : {}),
       },
     });
     if (c.count === 0) return 0;

@@ -84,6 +84,10 @@ export interface WorkOrderStepView {
   supplierName: string | null;
   /** 予定作業時間 (h) — 任意。 */
   plannedWorkHours: number | null;
+  /** ロット入力の上書き（null = 工程マスタの既定を継承）— ビルダー編集用。 */
+  lotInputMode: "REQUIRED" | "OPTIONAL" | "NONE" | null;
+  /** 開始時に記録したロット/伝票コード。 */
+  lotText: string | null;
   status: string; // STEP_STATUS
   inputQuantity: number | null;
   outputSuccessQuantity: number | null;

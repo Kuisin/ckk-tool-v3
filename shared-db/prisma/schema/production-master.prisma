@@ -158,6 +158,20 @@ enum QuantityTracking {
   @@schema("app")
 }
 
+// 工程実行時のロット/伝票コード入力（work_order_steps.lot_text）の要否。
+// REQUIRED は開始をブロックする。カタログが既定を持ち、工程リスト
+// （route_version_steps）と指示書工程（work_order_steps）は null = 継承の
+// 上書き列を持つ。実効値は nextjs-web lib/workflow-core.ts
+// effectiveLotInputMode（kiosk と twin）が唯一の定義。
+enum LotInputMode {
+  REQUIRED // 開始時に必須
+  OPTIONAL // 任意入力
+  NONE // 入力欄を出さない
+
+  @@map("LOT_INPUT_MODE")
+  @@schema("app")
+}
+
 // CKK 実工程カタログ（_docs/manufacturing_details.md）。テンプレート定義であり、
 // 実行順は指示書側の依存解決で決まる（sort_order は既定順の参考）。
 model ProcessStepCatalog {
@@ -171,6 +185,7 @@ model ProcessStepCatalog {
   isApprovalStep    Boolean          @default(false) @map("is_approval_step") // 検査承認工程
   approvalMinRank   String?          @map("approval_min_rank") // 係長以上等
   quantityTracking  QuantityTracking @default(FLOW) @map("quantity_tracking")
+  lotInputMode      LotInputMode     @default(NONE) @map("lot_input_mode") // 実行時のロット入力の既定（工程リスト/指示書で上書き可）
   defaultWorkHours  Decimal?         @map("default_work_hours") @db.Decimal(6, 2) // 既定作業時間 (h) — ルート/指示書の初期値
   sortOrder         Int              @default(0) @map("sort_order")
   isActive          Boolean          @default(true) @map("is_active")

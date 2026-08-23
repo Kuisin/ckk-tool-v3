@@ -18,6 +18,8 @@ export type StepAction =
 export interface StepActionRequest {
   action: StepAction;
   inputQuantity?: number | null;
+  /** START のみ: ロット/伝票コード（工程のロット入力モードが NONE 以外）。 */
+  lotText?: string | null;
   /**
    * START / SET_LOCATION: 作業場所 QR（CKK:LOC:<code>）の code。
    * START では端末の既定作業場所より優先される。

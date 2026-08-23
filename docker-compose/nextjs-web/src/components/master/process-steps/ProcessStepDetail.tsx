@@ -25,6 +25,7 @@ import { useTabParam } from "@/hooks/useUrlState";
 import { useIsMobile } from "@/hooks/useViewport";
 import {
   DEPENDENCY_RELATION_LABEL,
+  LOT_INPUT_MODE_LABEL,
   PROCESS_CATEGORY_LABEL,
   PROCESS_EXECUTION_LABEL,
   QUANTITY_TRACKING_LABEL,
@@ -59,6 +60,7 @@ export interface ProcessStepDetailData {
   isApprovalStep: boolean;
   approvalMinRank: string | null;
   quantityTracking: string;
+  lotInputMode: string;
   /** 既定作業時間 (h) — 任意。 */
   defaultWorkHours: number | null;
   sortOrder: number;
@@ -256,6 +258,12 @@ export function ProcessStepDetail({
           value={
             QUANTITY_TRACKING_LABEL[record.quantityTracking] ??
             record.quantityTracking
+          }
+        />
+        <FieldValue
+          label="ロット入力（既定）"
+          value={
+            LOT_INPUT_MODE_LABEL[record.lotInputMode] ?? record.lotInputMode
           }
         />
         <FieldValue

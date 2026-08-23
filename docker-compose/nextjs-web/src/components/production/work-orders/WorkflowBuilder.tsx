@@ -230,6 +230,7 @@ function initialLocations(
       plantId: s.plantId != null ? String(s.plantId) : null,
       supplierBpId: s.supplierBpId,
       workHours: s.plannedWorkHours,
+      lotInputMode: s.lotInputMode ?? null,
     };
   }
   return map;
@@ -246,6 +247,7 @@ function snapshotLocations(
       plantId: s.plantId != null ? String(s.plantId) : null,
       supplierBpId: s.supplierBpId,
       workHours: s.workHours,
+      lotInputMode: s.lotInputMode ?? null,
     };
   }
   return map;
@@ -842,6 +844,7 @@ export function WorkflowBuilder({
         plantId: s.plantId,
         supplierBpId: s.supplierBpId,
         workHours: s.workHours,
+        lotInputMode: s.lotInputMode ?? null,
         inspectionTemplateIds: templatesFor(s.processStepId).map(Number),
       })),
       route,

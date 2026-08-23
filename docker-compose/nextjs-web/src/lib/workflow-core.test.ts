@@ -242,6 +242,7 @@ import {
   danglingBranches,
   downstreamStepIds,
   type ExecDep,
+  effectiveLotInputMode,
   expectedInput,
   isOffMainline,
   isWorkOrderComplete,
@@ -916,5 +917,20 @@ describe("分岐の終端（合流 or 在庫）", () => {
     const links = [branchIn];
     expect(computeFinishedQuantity(steps, links)).toBe(10);
     expect(computeBranchSemiFinishedQuantity(steps, links)).toBe(0);
+  });
+});
+
+describe("effectiveLotInputMode（上書き → カタログ既定 → NONE）", () => {
+  it("上書きが最優先", () => {
+    expect(effectiveLotInputMode("REQUIRED", "NONE")).toBe("REQUIRED");
+    expect(effectiveLotInputMode("NONE", "REQUIRED")).toBe("NONE");
+  });
+  it("上書き null はカタログ既定を継承", () => {
+    expect(effectiveLotInputMode(null, "OPTIONAL")).toBe("OPTIONAL");
+    expect(effectiveLotInputMode(undefined, "REQUIRED")).toBe("REQUIRED");
+  });
+  it("両方無ければ NONE", () => {
+    expect(effectiveLotInputMode(null, null)).toBe("NONE");
+    expect(effectiveLotInputMode(undefined, undefined)).toBe("NONE");
   });
 });

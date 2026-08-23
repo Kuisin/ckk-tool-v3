@@ -82,6 +82,7 @@ export const ja = {
       elapsed: (t: string) => `作業 ${t}`,
       elapsedLabel: "作業",
       plannedHours: (h: number) => `予定 ${h}h`,
+      lot: (t: string) => `ロット ${t}`,
     },
     state: {
       startable: "開始可",
@@ -113,6 +114,9 @@ export const ja = {
       differsHint: "想定と異なる本数です（このまま開始できます）",
       noneNote: "この工程は数量を記録しません。そのまま開始します。",
       submit: "開始する",
+      lotRequired: "ロット/伝票コード（必須）",
+      lotOptional: "ロット/伝票コード（任意）",
+      lotPlaceholder: "素材ロット・伝票コードなど",
     },
     complete: {
       title: "工程を完了",
@@ -249,6 +253,7 @@ export const ja = {
       QUANTITY_REQUIRED: "数量を入力してください",
       QUANTITY_INVALID: "数量の入力を確認してください",
       DEFECT_REASONS_REQUIRED: "不良の各行に種類と詳細を入力してください",
+      LOT_REQUIRED: "ロット/伝票コードを入力してください",
       ROUTING_INVALID: "分岐数量と一致しません",
       TEMPLATE_INVALID: "検査表がこの指示書と一致しません",
       ITEMS_REQUIRED: "記録する内容がありません",

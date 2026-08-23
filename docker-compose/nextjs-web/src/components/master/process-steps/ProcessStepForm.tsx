@@ -43,6 +43,7 @@ import {
 import { useIsMobile } from "@/hooks/useViewport";
 import {
   DEPENDENCY_RELATION_OPTIONS,
+  LOT_INPUT_MODE_OPTIONS,
   PROCESS_CATEGORY_OPTIONS,
   PROCESS_EXECUTION_OPTIONS,
   QUANTITY_TRACKING_OPTIONS,
@@ -99,6 +100,7 @@ const processStepSchema = z
     isApprovalStep: z.boolean(),
     approvalMinRank: z.string(),
     quantityTracking: z.enum(["NONE", "FLOW", "INSPECTION"]),
+    lotInputMode: z.enum(["REQUIRED", "OPTIONAL", "NONE"]),
     // NumberInput の未入力は "" — 送信時に null へ変換する
     defaultWorkHours: z.union([
       z.number().positive("既定作業時間は正の数で入力してください"),
@@ -139,6 +141,7 @@ export interface ProcessStepFormInitial {
   isApprovalStep: boolean;
   approvalMinRank: string;
   quantityTracking: string;
+  lotInputMode: string;
   defaultWorkHours: number | null;
   sortOrder: number;
   isActive: boolean;
@@ -207,6 +210,11 @@ export function ProcessStepForm({
         initial?.quantityTracking === "INSPECTION"
           ? initial.quantityTracking
           : "FLOW",
+      lotInputMode:
+        initial?.lotInputMode === "REQUIRED" ||
+        initial?.lotInputMode === "OPTIONAL"
+          ? initial.lotInputMode
+          : "NONE",
       defaultWorkHours: initial?.defaultWorkHours ?? "",
       sortOrder: initial?.sortOrder ?? 0,
       isActive: initial?.isActive ?? true,
@@ -269,6 +277,7 @@ export function ProcessStepForm({
       isApprovalStep: values.isApprovalStep,
       approvalMinRank: values.approvalMinRank,
       quantityTracking: values.quantityTracking,
+      lotInputMode: values.lotInputMode,
       defaultWorkHours:
         values.defaultWorkHours === "" ? null : values.defaultWorkHours,
       sortOrder: values.sortOrder,
@@ -461,6 +470,13 @@ export function ProcessStepForm({
               <HelpLabel {...fieldHelp("processStep", "quantityTracking")} />
             }
             {...form.getInputProps("quantityTracking")}
+          />
+          <Select
+            allowDeselect={false}
+            data={LOT_INPUT_MODE_OPTIONS}
+            description="工程開始時のロット/伝票コード入力。必須 = 未入力では開始不可（工程リスト・指示書で工程別に上書き可）"
+            label="ロット入力（既定）"
+            {...form.getInputProps("lotInputMode")}
           />
           <NumberInput
             decimalScale={2}

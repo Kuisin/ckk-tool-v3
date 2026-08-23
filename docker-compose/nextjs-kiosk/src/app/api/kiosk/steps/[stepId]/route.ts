@@ -51,6 +51,8 @@ const bodySchema = z.object({
   ]),
   /** START のみ: 作業者が実際に受け取った本数（未指定は想定受入数） */
   inputQuantity: z.number().int().min(0).nullable().optional(),
+  /** START のみ: ロット/伝票コード（工程のロット入力モードが NONE 以外） */
+  lotText: z.string().trim().max(100).nullable().optional(),
   /**
    * START / SET_LOCATION: 作業場所 QR（CKK:LOC:<code>）の code。
    * START では端末の既定作業場所より優先。SET_LOCATION では必須。
@@ -138,6 +140,7 @@ export async function POST(
   const {
     action,
     inputQuantity,
+    lotText,
     workLocationCode,
     quantities,
     defectReasons,
@@ -247,6 +250,7 @@ export async function POST(
             actor,
             inputQuantity ?? null,
             scannedLocationId ?? deviceDefaultLocationId,
+            lotText ?? null,
           );
         case "PAUSE":
           return pauseStepExecution(stepId, actor);

@@ -102,6 +102,7 @@ export function RouteEditorForm({
           plantId: s.plantId != null ? String(s.plantId) : null,
           supplierBpId: s.supplierBpId,
           workHours: s.workHours,
+          lotInputMode: s.lotInputMode ?? null,
         };
       }
       return map;
@@ -145,6 +146,7 @@ export function RouteEditorForm({
         plantId: s.plantId,
         supplierBpId: s.supplierBpId,
         workHours: s.workHours,
+        lotInputMode: s.lotInputMode ?? null,
       }),
     );
     startTransition(async () => {

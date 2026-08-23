@@ -109,6 +109,10 @@ export interface StepExecutionStepView {
   isApprovalStep: boolean;
   /** 数量管理モード（NONE = 記録なしパススルー / FLOW / INSPECTION）。 */
   quantityTracking: "NONE" | "FLOW" | "INSPECTION";
+  /** ロット/伝票コード入力の実効モード（上書き → カタログ既定）。 */
+  lotInputMode: "REQUIRED" | "OPTIONAL" | "NONE";
+  /** 開始時に記録したロット/伝票コード。 */
+  lotText: string | null;
   sortOrder: number;
   executionLocation: "INTERNAL" | "OUTSOURCE";
   plantName: string | null;
