@@ -172,6 +172,7 @@ At a site that does not have a layout drawing yet, 「**この拠点にはフロ
 | [Plant](#field-plant) | Required | Where the device lives |
 | [Location](#field-location) | Optional | Where within that plant |
 | [Link code](#field-link-code) | Required | The code shown on the tablet |
+| [Default work location](#field-default-work-location) | Optional | Work location auto-recorded on actuals from this device |
 
 ### Device name (Japanese / English) [#field-name]
 
@@ -184,6 +185,14 @@ Where the device lives. Devices are listed per plant.
 ### Location [#field-location]
 
 Where it sits inside the plant. Placing a pin on the floor map also shows its position on screen.
+
+### Default work location [#field-default-work-location]
+
+The work location (machine / area) automatically recorded on work actuals when a step is **started or resumed** on this tablet. Set it to where the tablet is physically placed. Only work locations belonging to the device's plant (or groups with no plant) can be selected.
+
+- Changing the plant clears the default work location
+- It can also be changed from the tablet's **device settings screen** (tap the header 5 times → settings code)
+- If work actually happened elsewhere, scanning a work-location QR code on the step execution screen overrides the location on that actual record
 
 ### Link code [#field-link-code]
 

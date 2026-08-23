@@ -171,6 +171,7 @@ screenshots: [kiosk-devices-01, kiosk-devices-create-01, kiosk-devices-link-01, 
 | [端末名（日本語 / English）](#field-name) | 必須 | 一覧やログに出る端末の名前 |
 | [拠点](#field-plant) | 必須 | その端末を置く拠点 |
 | [場所](#field-location) | 任意 | 拠点の中のどこに置くか |
+| [既定の作業場所](#field-default-work-location) | 任意 | この端末からの作業実績に自動で記録される作業場所 |
 | [リンクコード](#field-link-code) | 必須 | タブレット側に出ている確認用のコード |
 
 ### 端末名（日本語 / English） [#field-name]
@@ -184,6 +185,14 @@ screenshots: [kiosk-devices-01, kiosk-devices-create-01, kiosk-devices-link-01, 
 ### 場所 [#field-location]
 
 拠点の中での置き場所です。フロアマップにピンを置くと、画面上でも位置がわかります。
+
+### 既定の作業場所 [#field-default-work-location]
+
+この端末で工程を**開始・再開**したときに、作業実績へ自動で記録される作業場所（機械・エリア）です。端末を置いている場所を設定してください。端末の拠点にある作業場所（または拠点指定のないグループの場所）だけが選べます。
+
+- 拠点を変更すると、既定の作業場所はクリアされます（拠点をまたぐ設定は成立しないため）
+- タブレット側の**端末設定画面**（画面上部を 5 回タップ → 設定コード）からも変更できます
+- 作業中に別の場所で作業した場合は、工程の実行画面で作業場所の QR コードを読み取ると、その実績の作業場所を上書きできます
 
 ### リンクコード [#field-link-code]
 

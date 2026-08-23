@@ -262,9 +262,29 @@ export async function deleteWorkLocation(id: number): Promise<ActionResult> {
   try {
     const prior = await prisma.workLocation.findUnique({
       where: { id },
-      select: { groupId: true, name: true },
+      select: {
+        groupId: true,
+        name: true,
+        _count: {
+          select: { stepPlans: true, stepActuals: true, kioskDevices: true },
+        },
+      },
     });
     if (!prior) return actionError("対象の作業場所が見つかりません");
+    // FK は SET NULL なので DB は削除を止めない — 使用中はここで拒否する
+    // （計画・実績の記録を黙って失わせない。端末の既定作業場所も同様）。
+    const used: string[] = [];
+    if (prior._count.stepPlans > 0)
+      used.push(`作業計画 ${prior._count.stepPlans} 件`);
+    if (prior._count.stepActuals > 0)
+      used.push(`作業実績 ${prior._count.stepActuals} 件`);
+    if (prior._count.kioskDevices > 0)
+      used.push(`キオスク端末の既定 ${prior._count.kioskDevices} 台`);
+    if (used.length > 0) {
+      return actionError(
+        `使用中の作業場所は削除できません（${used.join(" / ")}）`,
+      );
+    }
     await prisma.workLocation.delete({ where: { id } });
     await recordAudit({
       action: "UPDATE",

@@ -239,6 +239,9 @@ export interface KioskDeviceRow {
   status: "PENDING" | "LINKED" | "ACTIVE" | "DISABLED" | "REVOKED";
   plantId: number | null;
   plantLabel: string | null;
+  /** 既定の作業場所（実績への自動記録に使う。未設定は null）。 */
+  defaultWorkLocationId: number | null;
+  defaultWorkLocationLabel: string | null;
   floorMapId: string | null;
   /** フロアマップ上のピン座標（%）。未配置は null。 */
   mapX: number | null;
@@ -270,6 +273,9 @@ export interface KioskDeviceRow {
 function deviceInclude(now: number) {
   return {
     plant: { select: { code: true, name: true } },
+    defaultWorkLocation: {
+      select: { id: true, name: true, group: { select: { name: true } } },
+    },
     activatedBy: { select: { displayName: true } },
     sessions: liveSessionInclude(now),
     locations: {
@@ -302,6 +308,10 @@ function toDeviceRow(r: DeviceWithIncludes, now: number): KioskDeviceRow {
     plantId: r.plantId,
     plantLabel: r.plant
       ? `${r.plant.code} ${localized(r.plant.name as LocalizedText | null)}`
+      : null,
+    defaultWorkLocationId: r.defaultWorkLocation?.id ?? null,
+    defaultWorkLocationLabel: r.defaultWorkLocation
+      ? `${localized(r.defaultWorkLocation.group.name as LocalizedText | null)} / ${localized(r.defaultWorkLocation.name as LocalizedText | null)}`
       : null,
     floorMapId: r.floorMapId,
     mapX: r.mapX != null ? Number(r.mapX) : null,
