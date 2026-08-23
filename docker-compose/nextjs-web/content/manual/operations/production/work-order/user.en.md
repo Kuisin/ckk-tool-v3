@@ -79,7 +79,7 @@ The order of the steps is registered per product as a 「工程リスト」 (ste
 
 You pick steps from a checklist. The layout and rules are:
 
-- Pick **at least one** step from the top section 「**出し・受渡し（開始）**」 (issue / handoff — start): 素材出し, 半製品出し, 素材受渡し or 製品受渡し. **Every step sequence starts there.**
+- Pick **exactly one** step from the top section 「**出し・受渡し（開始）**」 (issue / handoff — start): 素材出し, 半製品出し, 素材受渡し or 製品受渡し (picking another one replaces it). **Every step sequence starts there.**
 - A step whose prerequisite has not been picked yet is disabled (grayed out) with a hint such as 「**要: 全長合わせ**」 (requires: length adjust). The other way around, inspections and approvals a step needs are added automatically when you pick it.
 - The bottom section 「**出荷前検査（任意）**」 (pre-ship inspection — optional) can be added or left out; when added it always runs last. **Shipping itself is not a step — it is managed by the [delivery order](/manual/en/operations/shipping/delivery-order/user).**
 - If the combination has a problem, a red note appears and you cannot save (「**工程構成にエラーがあります**」 — there is an error in the step setup). Please fix the steps until the red note is gone.

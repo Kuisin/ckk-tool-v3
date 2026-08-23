@@ -208,5 +208,7 @@ export function describeIssue(
       return `${step}には${related.join("・")}のいずれかが必要です（素材条件で充足される場合があります）`;
     case "MISSING_START":
       return `工程は「出し・受渡し」（${related.join("・")}）のいずれかから始める必要があります`;
+    case "MULTIPLE_START":
+      return `「出し・受渡し」は 1 つだけ選択できます（選択中: ${related.join("・")}）`;
   }
 }

@@ -167,6 +167,14 @@ describe("validateComposition — 開始工程ルール", () => {
     expect(validateComposition([1, 7], [], catalog)).toEqual([]);
   });
 
+  it("開始工程が複数ある構成は MULTIPLE_START（ブロック — 1 つだけ）", () => {
+    const issues = validateComposition([1, 2, 7], [], catalog);
+    expect(issues).toHaveLength(1);
+    expect(issues[0].kind).toBe("MULTIPLE_START");
+    expect(issues[0].relatedStepIds.sort()).toEqual([1, 2]);
+    expect(isBlockingIssue(issues[0])).toBe(true);
+  });
+
   it("空選択は開始工程を要求しない", () => {
     expect(validateComposition([], [], catalog)).toEqual([]);
   });
