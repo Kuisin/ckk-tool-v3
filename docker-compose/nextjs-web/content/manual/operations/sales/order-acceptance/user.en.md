@@ -201,7 +201,7 @@ How the products are delivered. **Normal delivery** goes to the customer (or the
 
 ### End user [#field-end-user]
 
-The actual destination (end user) for a direct shipment. **Required when direct to user is selected.** Choose from business partners registered with the end-user role.
+The actual destination (end user). **Required when direct to user is selected**; with normal delivery it can be recorded optionally. Choose from business partners registered with the end-user role.
 
 ### Assigned plant [#field-assigned-plant]
 

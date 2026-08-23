@@ -347,9 +347,9 @@ export async function saveDraft(
     const creates = buildItemCreates(v.items);
     const customerBpId = trimOrNull(v.customerBpId);
     const shipToBpId = trimOrNull(v.shipToBpId);
-    // エンドユーザーは直送のときだけ保持（通常配送に戻したら外す）。
-    const endUserBpId =
-      v.deliveryMethod === "DIRECT_TO_USER" ? trimOrNull(v.endUserBpId) : null;
+    // エンドユーザーは配送方法に依らず保持できる（直送では必須 —
+    // headerRefsError。通常配送でも記録用に任意で持てる）。
+    const endUserBpId = trimOrNull(v.endUserBpId);
     const assignedPlantId = v.assignedPlantId ?? null;
     const shippingWorkLocationId = v.shippingWorkLocationId ?? null;
     const salesRepId = await resolveSalesRepId(
@@ -822,9 +822,8 @@ export async function createManualAcceptance(
     const refsError = await headerRefsError(v);
     if (refsError) return actionError(refsError);
     const shipToBpId = trimOrNull(v.shipToBpId);
-    // エンドユーザーは直送のときだけ保持。
-    const endUserBpId =
-      v.deliveryMethod === "DIRECT_TO_USER" ? trimOrNull(v.endUserBpId) : null;
+    // エンドユーザーは配送方法に依らず保持できる（直送では必須）。
+    const endUserBpId = trimOrNull(v.endUserBpId);
     const assignedPlantId = v.assignedPlantId ?? null;
     const shippingWorkLocationId = v.shippingWorkLocationId ?? null;
     const actor = await getCurrentActorId();

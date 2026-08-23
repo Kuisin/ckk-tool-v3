@@ -708,9 +708,7 @@ export function OrderAcceptanceDetail({
                     label="配送方法"
                     value={ACCEPTANCE_DELIVERY_METHOD_LABEL[a.deliveryMethod]}
                   />
-                  {a.deliveryMethod === "DIRECT_TO_USER" && (
-                    <FieldValue label="エンドユーザー" value={a.endUserName} />
-                  )}
+                  <FieldValue label="エンドユーザー" value={a.endUserName} />
                   <FieldValue label="担当拠点" value={a.assignedPlantName} />
                   <FieldValue
                     label="出荷作業場所"
@@ -1458,29 +1456,30 @@ function DraftEditor({
               value={deliveryMethod}
               withAsterisk
             />
-            {deliveryMethod === "DIRECT_TO_USER" && (
-              <SearchSelect
-                clearable
-                error={endUserError}
-                initialOption={
-                  a.endUserBpId && a.endUserName
-                    ? { value: a.endUserBpId, label: a.endUserName }
-                    : null
-                }
-                label={
-                  <HelpLabel {...fieldHelp("orderAcceptance", "endUser")} />
-                }
-                onChange={(v) => {
-                  setEndUserBpId(v);
-                  if (v) setEndUserError(null);
-                }}
-                onSearch={searchEndUserOptions}
-                placeholder="エンドユーザーを検索"
-                storageKey="end-user"
-                value={endUserBpId}
-                withAsterisk
-              />
-            )}
+            {/* エンドユーザー — 直送では必須、通常配送でも記録用に任意で選べる。 */}
+            <SearchSelect
+              clearable
+              error={endUserError}
+              initialOption={
+                a.endUserBpId && a.endUserName
+                  ? { value: a.endUserBpId, label: a.endUserName }
+                  : null
+              }
+              label={<HelpLabel {...fieldHelp("orderAcceptance", "endUser")} />}
+              onChange={(v) => {
+                setEndUserBpId(v);
+                if (v) setEndUserError(null);
+              }}
+              onSearch={searchEndUserOptions}
+              placeholder={
+                deliveryMethod === "DIRECT_TO_USER"
+                  ? "エンドユーザーを検索"
+                  : "エンドユーザーを検索（任意）"
+              }
+              storageKey="end-user"
+              value={endUserBpId}
+              withAsterisk={deliveryMethod === "DIRECT_TO_USER"}
+            />
             <Select
               clearable
               data={plantOptions}
