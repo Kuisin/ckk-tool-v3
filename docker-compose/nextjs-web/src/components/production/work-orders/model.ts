@@ -132,6 +132,16 @@ export interface WorkOrderCopyRef {
   createdAt: string;
 }
 
+/** 指示書→指示書リンク（work_order_links）の相手方 1 件。 */
+export interface WoLinkView {
+  id: string;
+  workOrderNumber: number;
+  docNumber: string;
+  status: string;
+  /** 受け渡し数量（null = 完了時の完成数全量）。 */
+  quantity: number | null;
+}
+
 /** 指示書に割り当てられた注文明細（work_order_order_lines 1 行）。 */
 export interface WorkOrderLineAllocView {
   orderLineId: string;
@@ -181,6 +191,10 @@ export interface WorkOrderView {
   sourceWorkOrderNumber: number | null;
   sourceWorkOrderDocNumber: string | null;
   copies: WorkOrderCopyRef[];
+  /** 先行指示書（この指示書へ数量を渡す — 完了まで先頭工程は開始不可）。 */
+  woLinksIncoming: WoLinkView[];
+  /** 後続指示書（この指示書の完成数を受け取る）。 */
+  woLinksOutgoing: WoLinkView[];
   steps: WorkOrderStepView[];
   stepLinks: StepLinkView[];
   rejectReason: string | null;

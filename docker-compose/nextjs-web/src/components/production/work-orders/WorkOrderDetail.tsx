@@ -55,6 +55,7 @@ import type { MemoView } from "@/lib/document-memos";
 import { WORK_ORDER_TYPE_LABEL } from "@/lib/enum-labels";
 import { FlowChangeCard, type PendingFlowChangeView } from "./FlowChangeCard";
 import type { WorkOrderView } from "./model";
+import { WorkOrderLinksCard } from "./WorkOrderLinksCard";
 
 const BASE_PATH = "/production/work-orders";
 const SALES_ORDERS_PATH = "/sales/order-lines";
@@ -370,6 +371,14 @@ export function WorkOrderDetail({
 
         <Tabs.Panel pt="md" value="overview">
           <Stack gap="md">
+            {!isApproval && (
+              <WorkOrderLinksCard
+                incoming={wo.woLinksIncoming}
+                outgoing={wo.woLinksOutgoing}
+                status={wo.status}
+                workOrderNumber={wo.workOrderNumber}
+              />
+            )}
             <WorkOrderStepsPanel
               catalogOptions={catalogOptions}
               stepLinks={wo.stepLinks}

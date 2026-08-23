@@ -113,6 +113,37 @@ const WO_INCLUDE = {
     },
     orderBy: { createdAt: "desc" as const },
   },
+  // 指示書→指示書リンク（先行 = incoming / 後続 = outgoing）
+  incomingWoLinks: {
+    select: {
+      id: true,
+      quantity: true,
+      sourceWorkOrder: {
+        select: {
+          workOrderNumber: true,
+          yearMonth: true,
+          seq: true,
+          status: true,
+        },
+      },
+    },
+    orderBy: { createdAt: "asc" as const },
+  },
+  outgoingWoLinks: {
+    select: {
+      id: true,
+      quantity: true,
+      targetWorkOrder: {
+        select: {
+          workOrderNumber: true,
+          yearMonth: true,
+          seq: true,
+          status: true,
+        },
+      },
+    },
+    orderBy: { createdAt: "asc" as const },
+  },
   steps: {
     include: {
       processStep: true,
@@ -480,6 +511,20 @@ export async function fetchWorkOrder(
       docNumber: formatDocNumber("WOR", c),
       status: c.status,
       createdAt: c.createdAt.toISOString(),
+    })),
+    woLinksIncoming: r.incomingWoLinks.map((l) => ({
+      id: l.id,
+      workOrderNumber: l.sourceWorkOrder.workOrderNumber,
+      docNumber: formatDocNumber("WOR", l.sourceWorkOrder),
+      status: l.sourceWorkOrder.status,
+      quantity: l.quantity,
+    })),
+    woLinksOutgoing: r.outgoingWoLinks.map((l) => ({
+      id: l.id,
+      workOrderNumber: l.targetWorkOrder.workOrderNumber,
+      docNumber: formatDocNumber("WOR", l.targetWorkOrder),
+      status: l.targetWorkOrder.status,
+      quantity: l.quantity,
     })),
     steps: r.steps.map((s) => ({
       id: s.id,
