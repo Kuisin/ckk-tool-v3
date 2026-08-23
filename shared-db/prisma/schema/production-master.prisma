@@ -107,6 +107,8 @@ model WorkLocation {
 
   group     WorkLocationGroup   @relation(fields: [groupId], references: [id], onDelete: Cascade)
   stepPlans WorkOrderStepPlan[] @relation("StepPlanWorkLocation")
+  stepActuals WorkOrderStepActual[] @relation("StepActualWorkLocation")
+  kioskDevices KioskDevice[] @relation("KioskDeviceDefaultWorkLocation")
   orderAcceptances OrderAcceptance[] @relation("AcceptanceShippingWorkLocation")
 
   @@index([groupId, sortOrder])
