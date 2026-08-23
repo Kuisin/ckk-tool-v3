@@ -39,6 +39,8 @@ const stepInput = z.object({
   supplierBpId: z.string().nullable(),
   // 標準作業時間 (h) — 任意（0.01〜9999.99）
   workHours: z.number().positive().max(9999.99).nullable(),
+  // ロット入力の上書き（null/未指定 = 工程マスタの既定を継承）
+  lotInputMode: z.enum(["REQUIRED", "OPTIONAL", "NONE"]).nullable().optional(),
 });
 
 const routeCreateInput = z.object({

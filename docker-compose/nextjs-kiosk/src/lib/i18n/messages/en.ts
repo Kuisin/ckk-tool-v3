@@ -74,6 +74,7 @@ export const en: KioskMessages = {
       elapsed: (t: string) => `Worked ${t}`,
       elapsedLabel: "Worked",
       plannedHours: (h: number) => `Planned ${h}h`,
+      lot: (t: string) => `Lot ${t}`,
     },
     state: {
       startable: "Ready",
@@ -105,6 +106,9 @@ export const en: KioskMessages = {
       differsHint: "Differs from the expected count (you can still start)",
       noneNote: "This step records no quantities. It will start right away.",
       submit: "Start",
+      lotRequired: "Lot / slip code (required)",
+      lotOptional: "Lot / slip code (optional)",
+      lotPlaceholder: "Material lot, slip code, etc.",
     },
     complete: {
       title: "Complete step",
@@ -242,6 +246,7 @@ export const en: KioskMessages = {
       ALREADY_COMPLETED: "This step is already completed",
       QUANTITY_REQUIRED: "Please enter the quantities",
       QUANTITY_INVALID: "Please check the quantities",
+      LOT_REQUIRED: "Enter the lot / slip code",
       DEFECT_REASONS_REQUIRED:
         "Enter a defect type and detail for every defect row",
       ROUTING_INVALID: "Does not match the branch quantities",

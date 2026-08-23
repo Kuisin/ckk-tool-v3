@@ -47,7 +47,11 @@ import {
 } from "@/lib/work-locations";
 import { effectiveAllocatedByLine } from "@/lib/work-order-alloc";
 import { fetchWorkflowCtx, loadCatalog } from "@/lib/workflow";
-import { canStartStep, expectedInput } from "@/lib/workflow-core";
+import {
+  canStartStep,
+  effectiveLotInputMode,
+  expectedInput,
+} from "@/lib/workflow-core";
 
 // 一覧クエリの取得上限（監査 P2-8 — 全件フェッチのデータ増加対策）。
 // DataTable はクライアントページングのため、最新分のみで実用上十分。
@@ -497,6 +501,8 @@ export async function fetchWorkOrder(
       supplierBpId: s.supplierBpId,
       plannedWorkHours:
         s.plannedWorkHours == null ? null : Number(s.plannedWorkHours),
+      lotInputMode: s.lotInputMode,
+      lotText: s.lotText,
       supplierName: s.supplierBp
         ? localized(s.supplierBp.name as LocalizedText | null)
         : null,
@@ -893,6 +899,11 @@ export async function fetchStepExecution(
       isInspection: step.processStep.isInspection,
       isApprovalStep: step.processStep.isApprovalStep,
       quantityTracking: step.processStep.quantityTracking,
+      lotInputMode: effectiveLotInputMode(
+        step.lotInputMode,
+        step.processStep.lotInputMode,
+      ),
+      lotText: step.lotText,
       sortOrder: step.sortOrder,
       executionLocation: step.executionLocation,
       plantName: step.plant

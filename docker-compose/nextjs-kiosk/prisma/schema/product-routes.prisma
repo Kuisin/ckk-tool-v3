@@ -59,6 +59,7 @@ model ProductProcessRouteVersionStep {
   plantId         Int?          @map("plant_id")
   supplierBpId      String?       @map("supplier_bp_id") @db.Uuid
   workHours         Decimal?      @map("work_hours") @db.Decimal(6, 2) // 標準作業時間 (h) — 任意
+  lotInputMode      LotInputMode? @map("lot_input_mode") // 実行時のロット入力（null = 工程マスタの既定を継承）
 
   routeVersion ProductProcessRouteVersion @relation(fields: [routeVersionId], references: [id], onDelete: Cascade)
   processStep  ProcessStepCatalog         @relation(fields: [processStepId], references: [id])

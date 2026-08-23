@@ -92,6 +92,7 @@ export async function fetchRouteVersionSteps(
     plantId: s.plantId,
     supplierBpId: s.supplierBpId,
     workHours: s.workHours == null ? null : Number(s.workHours),
+    lotInputMode: s.lotInputMode,
   }));
 }
 
@@ -128,6 +129,7 @@ export async function createRouteVersionTx(
           plantId: s.plantId,
           supplierBpId: s.supplierBpId,
           workHours: s.workHours,
+          lotInputMode: s.lotInputMode ?? null,
         })),
       },
     },
@@ -225,6 +227,7 @@ export async function resolveRouteVersionTx(
     plantId: s.plantId,
     supplierBpId: s.supplierBpId,
     workHours: s.workHours == null ? null : Number(s.workHours),
+    lotInputMode: s.lotInputMode,
   }));
   if (routeStepsEqual(baseSteps, steps)) return input.baseVersionId;
   const created = await createRouteVersionTx(tx, {

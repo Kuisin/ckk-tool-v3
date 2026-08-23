@@ -42,9 +42,12 @@ import { useMemo, useState } from "react";
 import { EditButton, SecondaryButton } from "@/components/ui/buttons";
 import { FormSection } from "@/components/ui/shells";
 import { useIsMobile } from "@/hooks/useViewport";
-import { PROCESS_CATEGORY_LABEL } from "@/lib/enum-labels";
+import {
+  LOT_INPUT_MODE_LABEL,
+  PROCESS_CATEGORY_LABEL,
+} from "@/lib/enum-labels";
 import type { RouteStepSnapshot } from "@/lib/product-routes-core";
-import type { CatalogStep, UseDep } from "@/lib/workflow-core";
+import type { CatalogStep, LotInputMode, UseDep } from "@/lib/workflow-core";
 import {
   defaultOrder,
   isBlockingIssue,
@@ -68,6 +71,8 @@ export interface StepLocation {
   supplierBpId: string | null;
   /** 作業時間 (h)。undefined = 未設定（カタログ既定値を使う）/ null = 明示的になし。 */
   workHours?: number | null;
+  /** ロット入力の上書き。undefined/null = 工程マスタの既定を継承。 */
+  lotInputMode?: LotInputMode | null;
 }
 
 const DEFAULT_LOCATION: StepLocation = {
@@ -110,6 +115,7 @@ export function toStepSnapshots(
       supplierBpId:
         execution === "OUTSOURCE" ? (loc?.supplierBpId ?? null) : null,
       workHours: effectiveWorkHours(locations[stepId], cat),
+      lotInputMode: locations[stepId]?.lotInputMode ?? null,
     };
   });
 }
@@ -558,6 +564,30 @@ export function ProcessListEditor({
                       </Text>
                     </Group>
                     <Group gap="xs" wrap={isMobile ? "wrap" : "nowrap"}>
+                      <Select
+                        allowDeselect={false}
+                        aria-label={`${cat.nameJa} のロット入力`}
+                        data={[
+                          {
+                            value: "INHERIT",
+                            label: `既定（${LOT_INPUT_MODE_LABEL[cat.lotInputMode ?? "NONE"]}）`,
+                          },
+                          { value: "REQUIRED", label: "ロット必須" },
+                          { value: "OPTIONAL", label: "ロット任意" },
+                          { value: "NONE", label: "ロットなし" },
+                        ]}
+                        onChange={(v) =>
+                          setLocation(stepId, {
+                            lotInputMode:
+                              v == null || v === "INHERIT"
+                                ? null
+                                : (v as LotInputMode),
+                          })
+                        }
+                        size="xs"
+                        value={loc.lotInputMode ?? "INHERIT"}
+                        w={140}
+                      />
                       <NumberInput
                         aria-label={`${cat.nameJa} の作業時間 (h)`}
                         decimalScale={2}

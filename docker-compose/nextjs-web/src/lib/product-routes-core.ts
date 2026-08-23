@@ -16,6 +16,8 @@ export interface RouteStepSnapshot {
   supplierBpId: string | null;
   /** 標準作業時間 (h) — 任意。 */
   workHours: number | null;
+  /** ロット入力の上書き（null = 工程マスタの既定を継承）。 */
+  lotInputMode?: "REQUIRED" | "OPTIONAL" | "NONE" | null;
 }
 
 /**
@@ -41,7 +43,8 @@ export function routeStepsEqual(
       s.executionLocation === t.executionLocation &&
       (s.plantId ?? null) === (t.plantId ?? null) &&
       (s.supplierBpId ?? null) === (t.supplierBpId ?? null) &&
-      (s.workHours ?? null) === (t.workHours ?? null)
+      (s.workHours ?? null) === (t.workHours ?? null) &&
+      (s.lotInputMode ?? null) === (t.lotInputMode ?? null)
     );
   });
 }

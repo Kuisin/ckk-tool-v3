@@ -109,6 +109,8 @@ const stepInput = z.object({
   supplierBpId: z.string().nullable(),
   // 作業時間 (h) — 任意（0.01〜9999.99）
   workHours: z.number().positive().max(9999.99).nullable(),
+  // ロット入力の上書き（null/未指定 = 工程マスタの既定を継承）
+  lotInputMode: z.enum(["REQUIRED", "OPTIONAL", "NONE"]).nullable().optional(),
   // 検査工程で使う検査表テンプレート（工程単位の割当。検査工程以外は無視）
   inspectionTemplateIds: z.array(z.number().int().positive()).default([]),
 });
@@ -708,6 +710,8 @@ export async function copyWorkOrder(
               plantId: s.plantId,
               supplierBpId: s.supplierBpId,
               plannedWorkHours: s.plannedWorkHours,
+              // ロット入力の上書きは複写する（lot_text は実績なので複写しない）
+              lotInputMode: s.lotInputMode,
               inspectionTemplates: {
                 create: s.inspectionTemplates.map((t) => ({
                   inspectionTemplateId: t.inspectionTemplateId,

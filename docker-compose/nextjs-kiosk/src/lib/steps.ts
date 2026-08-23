@@ -34,7 +34,9 @@ import {
 } from "./steps-core";
 import {
   canStartStep,
+  effectiveLotInputMode,
   expectedInput,
+  type LotInputMode,
   type QuantityTrackingMode,
   type StepLinkState,
   type StepState,
@@ -73,6 +75,10 @@ export interface MyStepView {
   defectRework: number | null;
   /** 予定作業時間 (h) — 任意。 */
   plannedWorkHours: number | null;
+  /** ロット/伝票コード入力の実効モード（上書き → カタログ既定）。 */
+  lotInputMode: LotInputMode;
+  /** 開始時に記録したロット/伝票コード。 */
+  lotText: string | null;
   /** 計画に割り当てられた作業場所名（任意）。 */
   workLocationName: string | null;
   /**
@@ -254,7 +260,12 @@ async function hydrateSteps(
     where: { id: { in: stepIds } },
     include: {
       processStep: {
-        select: { code: true, name: true, quantityTracking: true },
+        select: {
+          code: true,
+          name: true,
+          quantityTracking: true,
+          lotInputMode: true,
+        },
       },
       plant: { select: { name: true } },
       workOrder: {
@@ -337,6 +348,11 @@ async function hydrateSteps(
       defectRework: r.outputDefectRework,
       plannedWorkHours:
         r.plannedWorkHours == null ? null : Number(r.plannedWorkHours),
+      lotInputMode: effectiveLotInputMode(
+        r.lotInputMode,
+        r.processStep.lotInputMode,
+      ),
+      lotText: r.lotText,
       workLocationName: plan?.workLocation
         ? localized(asText(plan.workLocation.name), locale)
         : null,

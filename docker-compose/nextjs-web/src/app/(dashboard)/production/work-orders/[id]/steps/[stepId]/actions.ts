@@ -67,17 +67,71 @@ async function findStep(workOrderNumber: number, stepId: string) {
 export async function startStep(
   workOrderNumber: number,
   stepId: string,
+  lotText?: string | null,
 ): Promise<StepActionResult> {
   const denied = await deniedStepPermission("UPDATE");
   if (denied) return denied;
+  const parsedLot = z
+    .string()
+    .trim()
+    .max(100)
+    .nullable()
+    .optional()
+    .safeParse(lotText);
+  if (!parsedLot.success) {
+    return { ok: false, errors: ["ロット/伝票コードの入力が不正です"] };
+  }
   try {
     const step = await findStep(workOrderNumber, stepId);
     if (!step) return { ok: false, errors: ["工程が見つかりません"] };
-    const result = await startStepExecution(stepId);
+    const result = await startStepExecution(stepId, parsedLot.data ?? null);
     if (result.ok) revalidate(workOrderNumber, stepId);
     return result;
   } catch (e) {
     return failed(e, "工程の開始に失敗しました");
+  }
+}
+
+/** 進行中のロット/伝票コード修正（ロック保持者のみ。空文字は削除）。 */
+export async function updateStepLot(
+  workOrderNumber: number,
+  stepId: string,
+  lotText: string,
+): Promise<StepActionResult> {
+  const denied = await deniedStepPermission("UPDATE");
+  if (denied) return denied;
+  const parsedLot = z.string().trim().max(100).safeParse(lotText);
+  if (!parsedLot.success) {
+    return { ok: false, errors: ["ロット/伝票コードの入力が不正です"] };
+  }
+  try {
+    const step = await findStep(workOrderNumber, stepId);
+    if (!step) return { ok: false, errors: ["工程が見つかりません"] };
+    const actor = await getCurrentActorId();
+    const updated = await prisma.workOrderStep.updateMany({
+      where: {
+        id: stepId,
+        status: "IN_PROGRESS",
+        OR: [{ sessionLockedBy: null }, { sessionLockedBy: actor }],
+      },
+      data: { lotText: parsedLot.data || null },
+    });
+    if (updated.count !== 1) {
+      return {
+        ok: false,
+        errors: ["進行中の工程でないか、別のユーザーが作業中です"],
+      };
+    }
+    await recordAudit({
+      action: "UPDATE",
+      tableName: "work_orders",
+      recordId: String(workOrderNumber),
+      after: { note: "ロット/伝票コードを更新", lotText: parsedLot.data },
+    });
+    revalidate(workOrderNumber, stepId);
+    return { ok: true };
+  } catch (e) {
+    return failed(e, "ロット/伝票コードの更新に失敗しました");
   }
 }
 

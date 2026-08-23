@@ -36,6 +36,7 @@ export async function loadCatalog(): Promise<WorkflowCatalog> {
       isInspection: s.isInspection,
       isApprovalStep: s.isApprovalStep,
       quantityTracking: s.quantityTracking,
+      lotInputMode: s.lotInputMode,
       defaultWorkHours:
         s.defaultWorkHours == null ? null : Number(s.defaultWorkHours),
       sortOrder: s.sortOrder,
@@ -72,6 +73,8 @@ export interface StepCompositionInput {
   supplierBpId: string | null;
   /** 作業時間 (h) — 任意。指示書は planned_work_hours、ルートは work_hours へ。 */
   workHours: number | null;
+  /** 実行時のロット入力の上書き（null/未指定 = 工程マスタの既定を継承）。 */
+  lotInputMode?: "REQUIRED" | "OPTIONAL" | "NONE" | null;
   /**
    * 検査工程で使う検査表テンプレート（工程単位の割当）。指示書のみ —
    * 工程ルートはテンプレートを持たないので未指定。検査工程以外は無視される。
@@ -161,6 +164,7 @@ export async function validateAndOrderSteps(
       plantId: s.executionLocation === "INTERNAL" ? s.plantId : null,
       supplierBpId: s.executionLocation === "OUTSOURCE" ? s.supplierBpId : null,
       workHours: s.workHours,
+      lotInputMode: s.lotInputMode ?? null,
       // 検査表は検査工程のみ保持（それ以外の指定は黙って落とす）
       inspectionTemplateIds: catalogById.get(stepId)?.isInspection
         ? [...new Set(s.inspectionTemplateIds ?? [])]
@@ -182,6 +186,7 @@ import {
   branchSeriesList,
   canStartStep,
   downstreamStepIds,
+  effectiveLotInputMode,
   expectedInput,
   isOffMainline,
   isWorkOrderComplete,
@@ -260,14 +265,18 @@ export interface StepActionResult {
   errors?: string[];
 }
 
-/** 工程開始: 依存検証 → セッションロック原子取得 → IN_PROGRESS。 */
+/** 工程開始: 依存検証 → ロット入力検証 → セッションロック原子取得 → IN_PROGRESS。 */
 export async function startStepExecution(
   stepId: string,
+  lotText: string | null = null,
 ): Promise<StepActionResult> {
   const actor = await getCurrentActorId();
   const stepRow = await prisma.workOrderStep.findUniqueOrThrow({
     where: { id: stepId },
-    include: { workOrder: true },
+    include: {
+      workOrder: true,
+      processStep: { select: { lotInputMode: true } },
+    },
   });
   if (
     stepRow.workOrder.status !== "APPROVED" &&
@@ -278,6 +287,17 @@ export async function startStepExecution(
   const { ctx } = await fetchWorkflowCtx(stepRow.workOrderId);
   const check = canStartStep(stepId, ctx, actor);
   if (!check.ok) return { ok: false, errors: check.reasons };
+
+  // ロット/伝票コード — 実効モードは 上書き → カタログ既定（唯一の定義は
+  // workflow-core.effectiveLotInputMode）。REQUIRED は未入力で開始不可。
+  const lotMode = effectiveLotInputMode(
+    stepRow.lotInputMode,
+    stepRow.processStep.lotInputMode,
+  );
+  const lot = lotText?.trim() || null;
+  if (lotMode === "REQUIRED" && lot == null) {
+    return { ok: false, errors: ["ロット/伝票コードを入力してください"] };
+  }
 
   const input = expectedInput(stepId, ctx);
 
@@ -295,6 +315,7 @@ export async function startStepExecution(
       startedAt: new Date(),
       startedBy: actor,
       inputQuantity: input ?? undefined,
+      ...(lotMode !== "NONE" && lot != null ? { lotText: lot } : {}),
     },
   });
   if (claimed.count === 0) {

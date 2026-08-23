@@ -225,6 +225,8 @@ model WorkOrderStep {
   plantId     Int?          @map("plant_id") // 社内実行時の拠点
   supplierBpId  String?       @map("supplier_bp_id") @db.Uuid // 外注時
   plannedWorkHours Decimal?   @map("planned_work_hours") @db.Decimal(6, 2) // 予定作業時間 (h) — 任意
+  lotInputMode  LotInputMode? @map("lot_input_mode") // 実行時のロット入力（null = 工程マスタの既定を継承）
+  lotText       String?       @map("lot_text") // 素材ロット・伝票コード等（開始時に記録）
 
   outsourceRequestedAt DateTime? @map("outsource_requested_at") @db.Date
   outsourceExpectedAt  DateTime? @map("outsource_expected_at") @db.Date
