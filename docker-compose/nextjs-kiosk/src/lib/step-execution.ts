@@ -70,6 +70,8 @@ export type StepErrorCode =
   | "ITEMS_REQUIRED"
   | "DEFECT_TYPE_INVALID"
   | "LOCATION_NOT_FOUND"
+  | "LOCATION_NOT_ALLOWED"
+  | "DEVICE_LOCATION_BLOCKED"
   | "NO_OPEN_SESSION";
 
 export interface StepActionResult {
@@ -387,6 +389,36 @@ export async function resumeStepExecution(
     after: { note: `工程を再開（step ${stepRow.sortOrder}）` },
   });
   return { ok: true };
+}
+
+/**
+ * 工程マスタの許可作業場所を id 集合へ解決する（nextjs-web
+ * lib/work-locations.ts fetchAllowedWorkLocationIds と同義）。
+ * リンク行が無い工程は **null = 無制限**。
+ */
+export async function allowedWorkLocationIdsForStep(
+  processStepId: number,
+): Promise<Set<number> | null> {
+  const links = await prisma.processStepWorkLocation.findMany({
+    where: { processStepId },
+    select: { typeKey: true, workLocationId: true },
+  });
+  if (links.length === 0) return null;
+  const ids = new Set<number>();
+  const typeKeys = links
+    .map((l) => l.typeKey)
+    .filter((k): k is string => k != null);
+  for (const l of links) {
+    if (l.workLocationId != null) ids.add(l.workLocationId);
+  }
+  if (typeKeys.length > 0) {
+    const byType = await prisma.workLocation.findMany({
+      where: { group: { typeKey: { in: typeKeys } } },
+      select: { id: true },
+    });
+    for (const l of byType) ids.add(l.id);
+  }
+  return ids;
 }
 
 /**

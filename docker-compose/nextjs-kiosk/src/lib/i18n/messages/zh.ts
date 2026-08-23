@@ -201,6 +201,11 @@ export const zh: KioskMessages = {
       deviceDefaultHint: "未扫描时，将记录该终端的默认作业场所",
       invalidQr: "不是作业场所的二维码",
       updated: "已记录作业场所",
+      deviceBlockedTitle: "该终端无法执行此工序",
+      deviceBlockedBody: (label: string) =>
+        `此工序限制了作业场所，该终端的默认作业场所（${label}）不在允许范围内。`,
+      allowedListTitle: "可执行的作业场所:",
+      devicesAt: (names: string) => `终端: ${names}`,
     },
     defects: {
       title: "不良记录",
@@ -233,6 +238,9 @@ export const zh: KioskMessages = {
       ITEMS_REQUIRED: "没有可记录的内容",
       DEFECT_TYPE_INVALID: "不良类型无效",
       LOCATION_NOT_FOUND: "未找到作业场所（请确认是否已停用）",
+      LOCATION_NOT_ALLOWED: "此工序不能使用该作业场所",
+      DEVICE_LOCATION_BLOCKED:
+        "该终端所在的作业场所无法执行此工序（请使用允许场所的终端）",
       NO_OPEN_SESSION: "没有进行中的作业会话（请先恢复工序再扫描）",
       NO_PERMISSION: "您没有此操作的权限",
       UNKNOWN: "处理失败",

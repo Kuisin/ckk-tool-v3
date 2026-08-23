@@ -11,7 +11,7 @@ import { StepExecutionView } from "@/components/steps/StepExecutionView";
 import { readableCodes } from "@/lib/authz";
 import { getSession } from "@/lib/kiosk-auth";
 import { getStepRecordingData } from "@/lib/step-records";
-import { getMyActiveStep, getMyStep } from "@/lib/steps";
+import { getMyActiveStep, getMyStep, getStepLocationGate } from "@/lib/steps";
 
 export const dynamic = "force-dynamic";
 
@@ -41,11 +41,11 @@ export default async function StepExecutionPage({
   if (!recording) notFound();
 
   // 同時作業は 1 工程まで — 別工程を作業中なら開始/再開をロック表示する
-  const otherActive = await getMyActiveStep(
-    session.userId,
-    step.stepId,
-    session.locale,
-  );
+  const [otherActive, locationGate] = await Promise.all([
+    getMyActiveStep(session.userId, step.stepId, session.locale),
+    // 工程マスタの許可作業場所 × この端末（表示用 — 権威は API 側）
+    getStepLocationGate(step.stepId, session.deviceId, session.locale),
+  ]);
 
   // 指示書スキャン（/wo-scan）から来たときは戻り先をその指示書にする。
   // 任意 URL は受けない — from=wo のときだけ固定の遷移先を組み立てる。
@@ -56,6 +56,7 @@ export default async function StepExecutionPage({
     <I18nProvider locale={session.locale}>
       <StepExecutionView
         backTo={backTo}
+        locationGate={locationGate}
         otherActive={otherActive}
         recording={recording}
         step={step}

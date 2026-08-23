@@ -205,6 +205,11 @@ export const en: KioskMessages = {
         "If not scanned, this device's default work location is recorded",
       invalidQr: "Not a work-location QR code",
       updated: "Work location recorded",
+      deviceBlockedTitle: "This step cannot run on this device",
+      deviceBlockedBody: (label: string) =>
+        `Work locations are restricted for this step, and this device's default location (${label}) is not allowed.`,
+      allowedListTitle: "Allowed work locations:",
+      devicesAt: (names: string) => `devices: ${names}`,
     },
     defects: {
       title: "Defect records",
@@ -238,6 +243,9 @@ export const en: KioskMessages = {
       ITEMS_REQUIRED: "There is nothing to record",
       DEFECT_TYPE_INVALID: "Invalid defect type",
       LOCATION_NOT_FOUND: "Work location not found (it may be deactivated)",
+      LOCATION_NOT_ALLOWED: "This work location is not allowed for this step",
+      DEVICE_LOCATION_BLOCKED:
+        "This step cannot run at this device's work location (use a device at an allowed location)",
       NO_OPEN_SESSION: "No active work session (resume the step, then scan)",
       NO_PERMISSION: "You do not have permission for this action",
       UNKNOWN: "The operation failed",

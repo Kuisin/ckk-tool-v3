@@ -23,6 +23,12 @@ const bodySchema = z.object({
   ticket: z.string().min(1),
   /** null = 既定を外す */
   workLocationId: z.number().int().positive().nullable(),
+  /**
+   * 作業場所の制限トグル。ON のとき、許可作業場所のある工程はこの端末の
+   * 既定作業場所が許可に含まれる場合のみ開始/再開できる。
+   * 既定作業場所の設定自体はトグルと無関係に可能。
+   */
+  enforceWorkLocation: z.boolean(),
 });
 
 export async function POST(req: Request) {
@@ -41,7 +47,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ state: "TICKET_INVALID" }, { status: 403 });
   }
 
-  const { workLocationId } = parsed.data;
+  const { workLocationId, enforceWorkLocation } = parsed.data;
   let label: string | null = null;
   if (workLocationId != null) {
     // 有効な場所・有効なグループ・端末の拠点（or 拠点未指定グループ）のみ
@@ -71,7 +77,7 @@ export async function POST(req: Request) {
 
   await prisma.kioskDevice.update({
     where: { id: device.id },
-    data: { defaultWorkLocationId: workLocationId },
+    data: { defaultWorkLocationId: workLocationId, enforceWorkLocation },
   });
 
   // 監査: 端末側操作なので actor なし（設定コード認証済みであることを注記）
@@ -82,10 +88,14 @@ export async function POST(req: Request) {
         action: "UPDATE",
         tableName: "kiosk_devices",
         recordId: device.id,
-        beforeData: { defaultWorkLocationId: device.defaultWorkLocationId },
+        beforeData: {
+          defaultWorkLocationId: device.defaultWorkLocationId,
+          enforceWorkLocation: device.enforceWorkLocation,
+        },
         afterData: {
           defaultWorkLocationId: workLocationId,
-          note: "端末側から既定作業場所を変更（設定コード認証）",
+          enforceWorkLocation,
+          note: "端末側から作業場所設定を変更（設定コード認証）",
         },
       },
     })
@@ -98,5 +108,6 @@ export async function POST(req: Request) {
     ticket: issueTicket("", device.id, "DEVICE_SETTINGS"),
     defaultWorkLocationId: workLocationId,
     defaultWorkLocationLabel: label,
+    enforceWorkLocation,
   });
 }

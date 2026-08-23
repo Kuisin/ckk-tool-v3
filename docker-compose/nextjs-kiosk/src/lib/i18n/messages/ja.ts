@@ -211,6 +211,11 @@ export const ja = {
       deviceDefaultHint: "未読み取りの場合は端末の既定作業場所が記録されます",
       invalidQr: "作業場所の QR コードではありません",
       updated: "作業場所を記録しました",
+      deviceBlockedTitle: "この端末では実行できません",
+      deviceBlockedBody: (label: string) =>
+        `この工程は作業場所が制限されています。端末の既定作業場所（${label}）は許可されていません。`,
+      allowedListTitle: "実行できる作業場所:",
+      devicesAt: (names: string) => `端末: ${names}`,
     },
     defects: {
       title: "不良記録",
@@ -245,6 +250,9 @@ export const ja = {
       DEFECT_TYPE_INVALID: "不良種類が不正です",
       LOCATION_NOT_FOUND:
         "作業場所が見つかりません（無効化されていないか確認）",
+      LOCATION_NOT_ALLOWED: "この工程では使用できない作業場所です",
+      DEVICE_LOCATION_BLOCKED:
+        "この端末の作業場所ではこの工程を実行できません（許可された場所の端末を使用してください）",
       NO_OPEN_SESSION:
         "作業セッションがありません（再開してから読み取ってください）",
       NO_PERMISSION: "この操作の権限がありません",
