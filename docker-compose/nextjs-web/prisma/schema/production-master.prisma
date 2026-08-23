@@ -107,6 +107,7 @@ model WorkLocation {
 
   group     WorkLocationGroup   @relation(fields: [groupId], references: [id], onDelete: Cascade)
   stepPlans WorkOrderStepPlan[] @relation("StepPlanWorkLocation")
+  stepCatalogLinks ProcessStepWorkLocation[] @relation("StepAllowedWorkLocation")
   stepActuals WorkOrderStepActual[] @relation("StepActualWorkLocation")
   kioskDevices KioskDevice[] @relation("KioskDeviceDefaultWorkLocation")
   orderAcceptances OrderAcceptance[] @relation("AcceptanceShippingWorkLocation")
@@ -176,6 +177,7 @@ model ProcessStepCatalog {
   notes             String?
 
   useDependencies    ProcessStepUseDependency[]  @relation("UseDepStep")
+  allowedWorkLocations ProcessStepWorkLocation[]   @relation("StepAllowedWorkLocations")
   usedBy             ProcessStepUseDependency[]  @relation("UseDepTarget")
   execDependencies   ProcessStepExecDependency[] @relation("ExecDepStep")
   execRequiredBy     ProcessStepExecDependency[] @relation("ExecDepTarget")
@@ -184,6 +186,29 @@ model ProcessStepCatalog {
   routeVersionSteps   ProductProcessRouteVersionStep[]
 
   @@map("process_step_catalog")
+  @@schema("app")
+}
+
+// 工程で使える作業場所の許可リスト（計画・実績の両方に適用）。
+// 1 行 = 種別（type_key — work_location.types のキー）or 個別
+// （work_location_id）のどちらか一方（CHECK はマイグレーション側で担保 —
+// Prisma は CHECK 制約を表現できない）。
+// **行が 1 つも無い工程は無制限**（全作業場所を使用可）。許可集合の解決は
+// nextjs-web lib/work-locations.ts fetchAllowedWorkLocationIds /
+// nextjs-kiosk lib/step-execution.ts allowedWorkLocationIdsForStep。
+model ProcessStepWorkLocation {
+  id             Int      @id @default(autoincrement())
+  processStepId  Int      @map("process_step_id")
+  typeKey        String?  @map("type_key")
+  workLocationId Int?     @map("work_location_id")
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  processStep  ProcessStepCatalog @relation("StepAllowedWorkLocations", fields: [processStepId], references: [id], onDelete: Cascade)
+  workLocation WorkLocation?      @relation("StepAllowedWorkLocation", fields: [workLocationId], references: [id], onDelete: Cascade)
+
+  @@index([processStepId])
+  @@index([workLocationId])
+  @@map("process_step_work_locations")
   @@schema("app")
 }
 
