@@ -15,7 +15,7 @@
  * 「必須工程を自動追加」ボタンをフォールバック表示する。
  *
  * セクション構成（§7 再編）:
- *   出し・受渡し（開始） — 全ての構成はここから始まる（1 つ以上必須）
+ *   出し・受渡し（開始） — 全ての構成はここから始まる（ちょうど 1 つ・単一選択）
  *   カテゴリ別（準備・加工・コーティング・検査・検査承認）
  *   出荷前検査（任意） — 追加すると常に末尾（出荷は工程ではなく出荷書 SH01 の責務）
  */
@@ -281,8 +281,18 @@ export function ProcessListEditor({
       onSelectedChange(selected.filter((id) => id !== stepId));
       return;
     }
+    // 開始（出し・受渡し）は単一選択 — 別の開始工程を選んだら置き換える
+    // （validateComposition の MULTIPLE_START と同じルール）。
+    const picked = stepById.get(stepId);
+    const base =
+      picked && isStartStep(picked)
+        ? selected.filter((id) => {
+            const s = stepById.get(id);
+            return !(s && isStartStep(s));
+          })
+        : selected;
     // 追加時は必須随伴工程（AND 使用依存の閉包）を自動で一括追加する。
-    const next = [...selected, stepId];
+    const next = [...base, stepId];
     const companions = requiredCompanions(next, useDeps);
     setAutoAdded(companions);
     onSelectedChange([...next, ...companions]);
@@ -464,7 +474,7 @@ export function ProcessListEditor({
                     出し・受渡し（開始）
                   </Text>
                   <Text c="dimmed" size="xs">
-                    — 全ての工程はここから始まります（1 つ以上必須）
+                    — 全ての工程はここから始まります（1 つだけ選択・必須）
                   </Text>
                 </Group>
                 <SimpleGrid cols={isMobile ? 1 : 2} spacing="xs">

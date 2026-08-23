@@ -70,11 +70,11 @@ export const QUANTITY_LABELS: Record<
 
 // ─── 工程構成の区分（開始・出荷） ────────────────────────────────────────────
 //
-// 工程構成は必ず「出し・受渡し」のいずれかで始まり、出荷系（任意）は常に
-// 末尾（出荷前検査 → 出荷）。カタログの sort_order は管理者が変えられるので、
-// 区分の同定は code で行い、並びは orderRank で強制する。
+// 工程構成は必ず「出し・受渡し」の**ちょうど 1 つ**で始まり、出荷系（任意）は
+// 常に末尾（出荷前検査 → 出荷）。カタログの sort_order は管理者が変えられる
+// ので、区分の同定は code で行い、並びは orderRank で強制する。
 
-/** 開始工程（出し・受渡し）— 全ての工程構成はこのいずれかで始まる。 */
+/** 開始工程（出し・受渡し）— 全ての工程構成はこのうちちょうど 1 つで始まる。 */
 export const START_STEP_CODES = [
   "MATERIAL_ISSUE",
   "SEMI_FINISHED_ISSUE",
@@ -124,7 +124,8 @@ export type CompositionIssueKind =
   | "MISSING_AND" // AND 依存先が未選択（ブロック）
   | "MISSING_OR_GROUP" // OR グループ全員不在（警告 — 素材属性で充足の可能性）
   | "EXCLUSION" // 排他工程が同時選択（ブロック）
-  | "MISSING_START"; // 開始工程（出し・受渡し）が無い（ブロック）
+  | "MISSING_START" // 開始工程（出し・受渡し）が無い（ブロック）
+  | "MULTIPLE_START"; // 開始工程が複数選択されている（ブロック — 1 つだけ）
 
 export interface CompositionIssue {
   stepId: number;
@@ -155,18 +156,25 @@ export function validateComposition(
   const sel = new Set(selected);
   const issues: CompositionIssue[] = [];
 
-  // 全ての工程構成は「出し・受渡し」のいずれかで始まる（§7）。
+  // 全ての工程構成は「出し・受渡し」の**ちょうど 1 つ**で始まる（§7）。
+  // 0 個は開始点が無く、2 個以上は数量伝播の起点が割れるのでどちらもブロック。
   if (catalog && selected.length > 0) {
     const byId = new Map(catalog.map((c) => [c.id, c]));
-    const hasStart = selected.some((id) => {
+    const startSelected = selected.filter((id) => {
       const step = byId.get(id);
       return step != null && isStartStep(step);
     });
-    if (!hasStart) {
+    if (startSelected.length === 0) {
       issues.push({
         stepId: selected[0],
         kind: "MISSING_START",
         relatedStepIds: catalog.filter((c) => isStartStep(c)).map((c) => c.id),
+      });
+    } else if (startSelected.length > 1) {
+      issues.push({
+        stepId: startSelected[0],
+        kind: "MULTIPLE_START",
+        relatedStepIds: startSelected,
       });
     }
   }
