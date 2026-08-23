@@ -1,7 +1,7 @@
 ---
 title: "Shop-floor Tablet — Recording Work"
 description: "How to check today's work on the tablet and record the start, the finish, and the number of pieces."
-screenshots: [kiosk-steps-01, kiosk-step-detail-01]
+screenshots: [kiosk-steps-01, kiosk-step-detail-01, kiosk-step-location-01]
 ---
 In 「**工程実行**」 (Run step) on the tablet, you check the work given to you and record when you start and finish it.
 
@@ -60,6 +60,20 @@ Once you start, the status changes to 「作業中」 (in progress) and the work
 - To carry on, press 「**再開**」 (Restart).
 
 Even if you pause, the work time so far is kept. You can stop and restart as many times as you like.
+
+## Recording the work location
+
+The step screen has a 「**作業場所**」 (work location) box: **which machine or area the work happened at** is recorded on the work actual.
+
+![The work location box and the scan button](../../../assets/screenshots/kiosk-step-location-01.png)
+
+- Usually you don't need to do anything. **When you start or resume, the default work location set on this tablet is recorded automatically**
+- When you work at a different machine, tap 「**作業場所を読み取り**」 (scan work location) and scan the **work-location QR label** on the machine with the camera. The location for the current work changes to the scanned one
+- If you scan before starting, that location is recorded the moment you start
+
+> ⚠️ If you see 「**この工程では使用できない作業場所です**」 (this work location is not allowed for this step), the step is limited to certain places (set by an administrator in the process step master). Check that the machine's QR is one this step may use.
+>
+> ⚠️ If you see 「**この端末の作業場所ではこの工程を実行できません**」 (this step cannot run at this device's work location), this tablet's place is not allowed for the step. Check the **allowed work locations** (and the tablets there) shown on the screen, and work from one of those tablets.
 
 ## Finishing the work
 

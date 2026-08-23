@@ -1,7 +1,7 @@
 ---
 title: "Device Management — User Manual"
 description: "An app for registering the shared tablets placed in the plant so they can be used."
-screenshots: [kiosk-devices-01, kiosk-devices-create-01, kiosk-devices-link-01, kiosk-devices-detail-01]
+screenshots: [kiosk-devices-01, kiosk-devices-create-01, kiosk-devices-link-01, kiosk-devices-detail-01, kiosk-devices-edit-01, kiosk-device-settings-01]
 ---
 This is an app for registering the **shared tablets** placed in the plant so that they can be used. The operation code is `SY09`.
 
@@ -188,11 +188,17 @@ Where it sits inside the plant. Placing a pin on the floor map also shows its po
 
 ### Default work location [#field-default-work-location]
 
+![The device edit modal (default work location)](../../../assets/screenshots/kiosk-devices-edit-01.png)
+
 The work location (machine / area) automatically recorded on work actuals when a step is **started or resumed** on this tablet. Set it to where the tablet is physically placed. Only work locations belonging to the device's plant (or groups with no plant) can be selected.
 
 - Changing the plant clears the default work location
 - It can also be changed from the tablet's **device settings screen** (tap the header 5 times → settings code). The "restrict work location" toggle on the same screen, when ON, only lets the device start/resume steps whose allowed work locations include the device's default
 - If work actually happened elsewhere, scanning a work-location QR code on the step execution screen overrides the location on that actual record
+
+The device settings screen on the tablet looks like this (it opens after entering the settings code):
+
+![The device settings screen (default work location and the restriction toggle)](../../../assets/screenshots/kiosk-device-settings-01.png)
 
 ### Link code [#field-link-code]
 

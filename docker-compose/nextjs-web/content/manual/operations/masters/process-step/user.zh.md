@@ -1,7 +1,7 @@
 ---
 title: "工序主数据 — 操作手册"
 description: "用于登记工厂中所做作业种类的应用，例如「切断」（切断）、「円筒加工」（圆筒加工）、「製作検査」（制作检查）。指示书就是把这里登记的工序排列起来制作的。"
-screenshots: [master-process-step-list-01, master-process-step-new-01, master-process-step-deps-01, master-process-step-detail-01, master-process-step-dependencies-01]
+screenshots: [master-process-step-list-01, master-process-step-new-01, master-process-step-deps-01, master-process-step-detail-01, master-process-step-dependencies-01, master-process-step-locations-01]
 ---
 这是用于登记工厂中所做 **作业种类** 的应用，例如「切断」（切断）、「円筒加工」（圆筒加工）、「製作検査」（制作检查）。操作代码是 `MS08`。
 
@@ -154,6 +154,8 @@ screenshots: [master-process-step-list-01, master-process-step-new-01, master-pr
 材料准备・加工・涂层・检查・检查审批・发货的区分。
 
 ### 允许的作业场所 [#field-allowed-locations]
+
+![编辑画面的允许作业场所栏目](../../../assets/screenshots/master-process-step-locations-01.png)
 
 限制该工序的**计划・实绩**中可使用的作业场所。可按类型（机械／区域等）批量指定，也可逐个指定场所（可并用，允许其并集）。**两者都留空则不限制**（可使用所有作业场所）。
 

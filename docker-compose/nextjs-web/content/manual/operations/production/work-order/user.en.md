@@ -1,7 +1,7 @@
 ---
 title: "Work Order — User Manual"
 description: "An app for making the document that decides which product to make, how many, and in what order at the factory, and for recording everything from approval to the end of the work."
-screenshots: [work-order-list-01, work-order-new-01, work-order-detail-01, work-order-approval-01, work-order-steps-01, work-order-step-quantity-01]
+screenshots: [work-order-list-01, work-order-new-01, work-order-detail-01, work-order-approval-01, work-order-steps-01, work-order-step-quantity-01, work-order-step-records-01]
 ---
 This app is for making the document (**指示書**, work order) that decides which product to make, how many, and in what order at the factory, and for recording everything from approval to the end of the work. The operation code is `PD02`.
 
@@ -147,8 +147,18 @@ On inspection steps, the boxes are named differently, such as 「**検査数**�
 
 - **検査記録** (inspection record) … on inspection steps, you enter the measured value for each item on the inspection sheet. Pass or fail is judged automatically according to the type of item. For sampling inspections, where you do not measure everything, the number to inspect is decided by the sample size rules. On inspection approval steps, you can approve inspection records that passed.
 - **不良記録（任意）** (defect record, optional) … you can write down the defect type and what happened.
-- **作業計画 / 作業実績** (work plan / work result) … you can record who, when, where, and how many pieces will be done (or were done), using the person in charge, date, time, quantity, and work place.
+- **作業計画 / 作業実績** (work plan / work result) … you can record who, when, where, and how many pieces will be done (or were done), using the person in charge, date, time, quantity, and work place (see "Work plans and work actuals" below).
 - **外注日程** (outsourcing schedule) … on outsourced steps, you can record 「依頼日」 (sent date), 「入荷予定日」 (expected return date), 「入荷日」 (return date), and 「外注費」 (outsourcing cost).
+
+### Work plans and work actuals
+
+Near the bottom of the step screen there are 「**作業計画**」 (work plans) and 「**作業実績**」 (work actuals) tables. Each row records the person, date (or times), quantity, and the **work location**.
+
+![The work plan and work actual tables with work locations](../../../assets/screenshots/work-order-step-records-01.png)
+
+- **作業場所（任意）** (work location, optional) … which machine or area the work happens (happened) at. For steps whose [process step](/manual/en/operations/masters/process-step/user#field-allowed-locations) restricts allowed work locations, only the allowed places can be chosen
+- When a step is started or resumed from a shared floor tablet, the actual row is created automatically and its work location is filled with the tablet's **default work location** (or a scanned work-location QR)
+- Actuals entered by hand here can carry a work location the same way
 
 ### When you want to redo something
 
