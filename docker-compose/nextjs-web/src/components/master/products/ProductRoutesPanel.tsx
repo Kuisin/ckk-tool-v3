@@ -106,6 +106,12 @@ function RouteCard({
             <Text fw={600} size="sm" truncate>
               {route.name}
             </Text>
+            <Badge
+              color={route.customerBpId != null ? "blue" : "gray"}
+              variant="light"
+            >
+              {route.customerName ?? "汎用"}
+            </Badge>
             <ActiveBadge active={route.isActive} />
             <Text c="dimmed" size="xs">
               {route.versions.length} バージョン

@@ -91,7 +91,7 @@ import { WORK_ORDER_TYPE_OPTIONS } from "@/lib/enum-labels";
 import { fieldHelp } from "@/lib/field-help";
 import { zodResolver } from "@/lib/form";
 import type { RouteStepSnapshot, RouteView } from "@/lib/product-routes-core";
-import { routeStepsEqual } from "@/lib/product-routes-core";
+import { pickDefaultRoute, routeStepsEqual } from "@/lib/product-routes-core";
 import type { CatalogStep, UseDep } from "@/lib/workflow-core";
 import {
   isBlockingIssue,
@@ -445,6 +445,9 @@ export function WorkflowBuilder({
   // ── 工程ルート（製品の工程リスト） ──────────────────────────────────────────
   const [routesInfo, setRoutesInfo] = useState<{
     productId: number;
+    /** 明細の受注元（在庫向けは null）— 顧客一致ルートの優先選択に使う。 */
+    customerBpId: string | null;
+    customerName: string | null;
     routes: RouteView[];
   } | null>(null);
   /** 選択中ルート id（文字列）。null = ルートを使わない。 */
@@ -458,6 +461,10 @@ export function WorkflowBuilder({
   const [baseSteps, setBaseSteps] = useState<RouteStepSnapshot[] | null>(null);
   /** ルートを使わない構成を保存する場合の新ルート名（空 = 保存しない）。 */
   const [newRouteName, setNewRouteName] = useState("");
+  /** 新ルートの対象顧客（customer = 明細の受注元専用 / generic = 汎用）。 */
+  const [newRouteScope, setNewRouteScope] = useState<"customer" | "generic">(
+    "customer",
+  );
 
   // 割当先頭の明細（工程ルート解決・素材 ATP の基準）
   const firstOrderLineId =
@@ -561,15 +568,16 @@ export function WorkflowBuilder({
     applyVersion(latest?.id ?? null);
   };
 
-  // 指示書は工程リスト必須 — ルートのある製品では先頭ルートを初期選択する
-  // （create 時にルート情報のロード完了ごとに 1 回。手動クリア後は再発火しない）。
+  // 指示書は工程リスト必須 — ルートのある製品では既定ルートを初期選択する
+  // （顧客一致 → 汎用 → 先頭の順: pickDefaultRoute が唯一の規則。create 時に
+  // ルート情報のロード完了ごとに 1 回。手動クリア後は再発火しない）。
   // biome-ignore lint/correctness/useExhaustiveDependencies: routesInfo ロード時のみ発火させる
   useEffect(() => {
     if (mode !== "create" || routesInfo == null || routeSel != null) return;
-    const first = routesInfo.routes[0];
-    if (first) {
-      setRouteSel(String(first.id));
-      applyVersion(first.versions[0]?.id ?? null);
+    const picked = pickDefaultRoute(routesInfo.routes, routesInfo.customerBpId);
+    if (picked) {
+      setRouteSel(String(picked.id));
+      applyVersion(picked.versions[0]?.id ?? null);
     }
   }, [routesInfo]);
 
@@ -794,7 +802,14 @@ export function WorkflowBuilder({
               baseVersionId: versionSel,
             }
           : newRouteName.trim()
-            ? { mode: "new", name: newRouteName.trim() }
+            ? {
+                mode: "new",
+                name: newRouteName.trim(),
+                customerBpId:
+                  newRouteScope === "customer"
+                    ? (routesInfo?.customerBpId ?? null)
+                    : null,
+              }
             : null;
     if (values.type !== "FROM_STOCK" && route == null) {
       notifications.show({
@@ -868,9 +883,16 @@ export function WorkflowBuilder({
     });
   };
 
+  // 顧客専用ルートが混ざる一覧では対象（顧客名 / 汎用）をラベルで区別する。
+  const anyCustomerRoute =
+    routesInfo?.routes.some((r) => r.customerBpId != null) ?? false;
   const routeOptions: Option[] =
-    routesInfo?.routes.map((r) => ({ value: String(r.id), label: r.name })) ??
-    [];
+    routesInfo?.routes.map((r) => ({
+      value: String(r.id),
+      label: anyCustomerRoute
+        ? `${r.name}（${r.customerName ?? "汎用"}）`
+        : r.name,
+    })) ?? [];
   const versionOptions: Option[] =
     selectedRoute?.versions.map((v) => ({
       value: v.id,
@@ -1170,6 +1192,26 @@ export function WorkflowBuilder({
                   withAsterisk
                 />
               )}
+              {routeSel == null &&
+                target === "SALES_ORDER" &&
+                routesInfo?.customerBpId != null && (
+                  <Select
+                    allowDeselect={false}
+                    data={[
+                      {
+                        value: "customer",
+                        label: `${routesInfo.customerName ?? "この顧客"} 専用`,
+                      },
+                      { value: "generic", label: "汎用（全顧客）" },
+                    ]}
+                    description="専用にすると同じ顧客×製品の指示書で優先選択されます"
+                    label="対象顧客"
+                    onChange={(v) =>
+                      setNewRouteScope(v === "generic" ? "generic" : "customer")
+                    }
+                    value={newRouteScope}
+                  />
+                )}
             </SimpleGrid>
             {routeModified && selectedRoute && (
               <Alert

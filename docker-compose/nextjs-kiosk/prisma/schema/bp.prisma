@@ -90,6 +90,7 @@ model BusinessPartner {
   deliveryOrdersAsBranch   DeliveryOrder[] @relation("DeliveryOrderCustomerBranch")
   stepsAsSupplier       WorkOrderStep[] @relation("StepSupplier")
   routeStepsAsSupplier  ProductProcessRouteVersionStep[] @relation("RouteStepSupplier")
+  routesAsCustomer      ProductProcessRoute[] @relation("RouteCustomerBp")
 
   deliveryNotesAsRecipient DeliveryNote[] @relation("DeliveryNoteRecipient")
   deliveryNotesAsBranch    DeliveryNote[] @relation("DeliveryNoteRecipientBranch")
@@ -101,6 +102,7 @@ model BusinessPartner {
   acceptancesAsCustomer OrderAcceptance[] @relation("AcceptanceCustomer")
   acceptancesAsBranch   OrderAcceptance[] @relation("AcceptanceCustomerBranch")
   acceptancesAsShipTo   OrderAcceptance[] @relation("AcceptanceShipTo")
+  acceptancesAsEndUser  OrderAcceptance[] @relation("AcceptanceEndUser")
 
   @@index([parentId])
   @@map("business_partners")

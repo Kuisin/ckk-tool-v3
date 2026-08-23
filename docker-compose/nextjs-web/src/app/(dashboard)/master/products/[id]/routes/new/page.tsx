@@ -3,6 +3,7 @@ import {
   fetchPlantOptions,
   fetchSupplierOptions,
 } from "@/app/(dashboard)/production/work-orders/data";
+import { fetchCustomerOptions } from "@/app/(dashboard)/sales/trial-estimates/data";
 import { RouteEditorForm } from "@/components/master/products/RouteEditorForm";
 import { requireAppRead } from "@/lib/authz-page";
 import { prisma } from "@/lib/db";
@@ -23,15 +24,17 @@ export default async function ProductRouteNewPage({
   const { id: idParam } = await params;
   const id = Number(idParam);
   if (!Number.isInteger(id)) notFound();
-  const [product, catalog, plantOptions, supplierOptions] = await Promise.all([
-    prisma.product.findUnique({
-      where: { id },
-      select: { id: true, name: true, yearMonth: true, seq: true },
-    }),
-    loadCatalog(),
-    fetchPlantOptions(),
-    fetchSupplierOptions(),
-  ]);
+  const [product, catalog, plantOptions, supplierOptions, customerOptions] =
+    await Promise.all([
+      prisma.product.findUnique({
+        where: { id },
+        select: { id: true, name: true, yearMonth: true, seq: true },
+      }),
+      loadCatalog(),
+      fetchPlantOptions(),
+      fetchSupplierOptions(),
+      fetchCustomerOptions(),
+    ]);
   if (!product) notFound();
 
   const productLabel =
@@ -41,6 +44,7 @@ export default async function ProductRouteNewPage({
   return (
     <RouteEditorForm
       catalogSteps={catalog.steps}
+      customerOptions={customerOptions}
       mode="create"
       plantOptions={plantOptions}
       productId={product.id}

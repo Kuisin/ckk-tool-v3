@@ -9,7 +9,7 @@
  * createProductRouteVersion（同一構成は server が拒否）。
  */
 
-import { Alert, SimpleGrid, TextInput } from "@mantine/core";
+import { Alert, Select, SimpleGrid, TextInput } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import { IconAlertTriangle } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
@@ -46,6 +46,7 @@ export function RouteEditorForm({
   useDeps,
   plantOptions,
   supplierOptions,
+  customerOptions,
 }: {
   mode: "create" | "new-version";
   productId: number;
@@ -60,10 +61,13 @@ export function RouteEditorForm({
   useDeps: UseDep[];
   plantOptions: Option[];
   supplierOptions: Option[];
+  /** create 時のみ: 対象顧客の選択肢（未指定 = 汎用のみ）。 */
+  customerOptions?: Option[];
 }) {
   const router = useRouter();
   const isMobile = useIsMobile();
   const [isPending, startTransition] = useTransition();
+  const [customerBpId, setCustomerBpId] = useState<string | null>(null);
   const backPath = `/master/products/${productId}?tab=routes`;
 
   // 工程リストは製造分（MANUFACTURE）の構成 — 在庫分専用の
@@ -149,6 +153,7 @@ export function RouteEditorForm({
           ? await createProductRoute(productId, {
               nameJa,
               nameEn,
+              customerBpId,
               notes,
               steps,
             })
@@ -210,6 +215,16 @@ export function RouteEditorForm({
                 label="ルート名（英語）"
                 onChange={(e2) => setNameEn(e2.currentTarget.value)}
                 value={nameEn}
+              />
+              <Select
+                clearable
+                data={customerOptions ?? []}
+                description="指定すると同じ顧客×製品の指示書で優先選択されます（空 = 汎用）"
+                label="対象顧客"
+                onChange={setCustomerBpId}
+                placeholder="汎用（全顧客）"
+                searchable
+                value={customerBpId}
               />
             </>
           ) : (

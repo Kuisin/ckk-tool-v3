@@ -31,6 +31,7 @@ import { getCurrentActorId, recordAudit } from "@/lib/audit";
 import { checkPermission } from "@/lib/authz";
 import { type Prisma, prisma } from "@/lib/db";
 import { formatDocNumber, orderLineNumberOf } from "@/lib/doc-number";
+import { type LocalizedText, localized } from "@/lib/format";
 import { allocateDocumentKey, nextSerialNumber } from "@/lib/numbering";
 import {
   fetchRouteVersionSteps,
@@ -126,6 +127,8 @@ const routeInput = z.union(
     z.object({
       mode: z.literal("new"),
       name: z.string().trim().min(1),
+      // 対象の受注元（取引先）。null/未指定 = 汎用ルート。
+      customerBpId: z.string().uuid().nullable().optional(),
     }),
   ],
   { message: "工程リストを選択するか、新しい工程リスト名を入力してください" },
@@ -1150,14 +1153,31 @@ export async function getMaterialAtp(
   }
 }
 
-/** 注文明細 → 対象製品の工程ルート一覧（ビルダーのルート選択用）。 */
+/**
+ * 注文明細 → 対象製品の工程ルート一覧（ビルダーのルート選択用）。
+ * 明細の受注元（注文請書ヘッダの顧客）も返す — 顧客一致ルートの優先選択と
+ * 新規ルート保存時の対象顧客の既定値に使う。
+ */
 export async function getProductRoutesForOrderLine(
   orderLineId: string,
-): Promise<{ productId: number; routes: RouteView[] } | null> {
+): Promise<{
+  productId: number;
+  customerBpId: string | null;
+  customerName: string | null;
+  routes: RouteView[];
+} | null> {
   if (!orderLineId) return null;
   const so = await prisma.orderLine.findUnique({
     where: { id: orderLineId },
-    select: { productId: true },
+    select: {
+      productId: true,
+      acceptance: {
+        select: {
+          customerBpId: true,
+          customerBp: { select: { name: true } },
+        },
+      },
+    },
   });
   // 確定前の明細（製品未特定）は指示書の対象にならない。
   if (!so || so.productId == null) return null;
@@ -1165,14 +1185,21 @@ export async function getProductRoutesForOrderLine(
   const routes = await listProductRoutes(productId);
   return {
     productId,
+    customerBpId: so.acceptance.customerBpId,
+    customerName: so.acceptance.customerBp
+      ? localized(so.acceptance.customerBp.name as LocalizedText | null)
+      : null,
     routes: routes.filter((r) => r.isActive),
   };
 }
 
 /** 製品直接指定（在庫向け指示書）の工程ルート一覧。 */
-export async function getProductRoutesForProduct(
-  productId: number,
-): Promise<{ productId: number; routes: RouteView[] } | null> {
+export async function getProductRoutesForProduct(productId: number): Promise<{
+  productId: number;
+  customerBpId: string | null;
+  customerName: string | null;
+  routes: RouteView[];
+} | null> {
   if (!Number.isInteger(productId) || productId <= 0) return null;
   const product = await prisma.product.findUnique({
     where: { id: productId },
@@ -1180,7 +1207,12 @@ export async function getProductRoutesForProduct(
   });
   if (!product) return null;
   const routes = await listProductRoutes(productId);
-  return { productId, routes: routes.filter((r) => r.isActive) };
+  return {
+    productId,
+    customerBpId: null,
+    customerName: null,
+    routes: routes.filter((r) => r.isActive),
+  };
 }
 
 /** ルートバージョンの工程スナップショット（ビルダーのプリフィル・比較基準）。 */
