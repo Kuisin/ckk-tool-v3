@@ -8,6 +8,7 @@ import { fetchAuditEntries } from "@/lib/audit";
 import { requireAppRead } from "@/lib/authz-page";
 import { prisma } from "@/lib/db";
 import { type LocalizedText, localized } from "@/lib/format";
+import { readWorkLocationTypes, typeLabelOf } from "@/lib/work-locations";
 
 export const dynamic = "force-dynamic";
 
@@ -22,7 +23,7 @@ export default async function MasterProcessStepsDetailPage({
   const { id: idParam } = await params;
   const id = Number(idParam);
   if (!Number.isInteger(id)) notFound();
-  const [r, auditEntries] = await Promise.all([
+  const [r, auditEntries, types] = await Promise.all([
     prisma.processStepCatalog.findUnique({
       where: { id },
       include: {
@@ -38,9 +39,18 @@ export default async function MasterProcessStepsDetailPage({
           },
           orderBy: { dependsOnStepId: "asc" },
         },
+        allowedWorkLocations: {
+          include: {
+            workLocation: {
+              select: { name: true, group: { select: { name: true } } },
+            },
+          },
+          orderBy: { id: "asc" },
+        },
       },
     }),
     fetchAuditEntries("process_step_catalog", String(id)),
+    readWorkLocationTypes(),
   ]);
   if (!r) notFound();
 
@@ -82,6 +92,17 @@ export default async function MasterProcessStepsDetailPage({
       ...mapDep(d),
       isNegation: false,
     })),
+    allowedLocationTypeLabels: r.allowedWorkLocations
+      .map((l) => l.typeKey)
+      .filter((k): k is string => k != null)
+      .map((k) => typeLabelOf(types, k)),
+    allowedLocationLabels: r.allowedWorkLocations
+      .map((l) => l.workLocation)
+      .filter((w): w is NonNullable<typeof w> => w != null)
+      .map(
+        (w) =>
+          `${localized(w.group.name as LocalizedText | null)} / ${localized(w.name as LocalizedText | null)}`,
+      ),
   };
 
   return <ProcessStepDetail auditEntries={auditEntries} record={record} />;

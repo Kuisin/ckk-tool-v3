@@ -191,7 +191,7 @@ Where it sits inside the plant. Placing a pin on the floor map also shows its po
 The work location (machine / area) automatically recorded on work actuals when a step is **started or resumed** on this tablet. Set it to where the tablet is physically placed. Only work locations belonging to the device's plant (or groups with no plant) can be selected.
 
 - Changing the plant clears the default work location
-- It can also be changed from the tablet's **device settings screen** (tap the header 5 times → settings code)
+- It can also be changed from the tablet's **device settings screen** (tap the header 5 times → settings code). The "restrict work location" toggle on the same screen, when ON, only lets the device start/resume steps whose allowed work locations include the device's default
 - If work actually happened elsewhere, scanning a work-location QR code on the step execution screen overrides the location on that actual record
 
 ### Link code [#field-link-code]

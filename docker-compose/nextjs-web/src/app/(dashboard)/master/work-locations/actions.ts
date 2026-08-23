@@ -332,17 +332,29 @@ export async function saveWorkLocationTypes(
     return actionError("種別キーが重複しています");
   }
   try {
-    // 使用中の種別は削除不可（グループが参照している custom キー）
-    const inUse = await prisma.workLocationGroup.findMany({
-      where: {
-        typeKey: { notIn: [...BUILTIN_TYPES.map((b) => b.key), ...keys] },
-      },
-      select: { typeKey: true },
-      distinct: ["typeKey"],
-    });
-    if (inUse.length > 0) {
+    // 使用中の種別は削除不可（グループ or 工程マスタの許可作業場所が参照）
+    const keptKeys = [...BUILTIN_TYPES.map((b) => b.key), ...keys];
+    const [inUse, inUseByCatalog] = await Promise.all([
+      prisma.workLocationGroup.findMany({
+        where: { typeKey: { notIn: keptKeys } },
+        select: { typeKey: true },
+        distinct: ["typeKey"],
+      }),
+      prisma.processStepWorkLocation.findMany({
+        where: { typeKey: { notIn: keptKeys, not: null } },
+        select: { typeKey: true },
+        distinct: ["typeKey"],
+      }),
+    ]);
+    const usedKeys = [
+      ...new Set([
+        ...inUse.map((g) => g.typeKey),
+        ...inUseByCatalog.map((l) => l.typeKey ?? ""),
+      ]),
+    ].filter(Boolean);
+    if (usedKeys.length > 0) {
       return actionError(
-        `使用中の種別は削除できません: ${inUse.map((g) => g.typeKey).join(", ")}`,
+        `使用中の種別は削除できません: ${usedKeys.join(", ")}`,
       );
     }
     await writeWorkLocationTypes(

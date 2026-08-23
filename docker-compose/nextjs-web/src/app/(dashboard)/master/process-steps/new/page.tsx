@@ -1,5 +1,9 @@
 import { ProcessStepForm } from "@/components/master/process-steps/ProcessStepForm";
 import { requireAppRead } from "@/lib/authz-page";
+import {
+  fetchWorkLocationOptions,
+  readWorkLocationTypes,
+} from "@/lib/work-locations";
 
 export const dynamic = "force-dynamic";
 
@@ -7,5 +11,17 @@ export const dynamic = "force-dynamic";
 export default async function MasterProcessStepsNewPage() {
   const denied = await requireAppRead("master-process-steps");
   if (denied) return denied;
-  return <ProcessStepForm />;
+  const [types, workLocationOptions] = await Promise.all([
+    readWorkLocationTypes(),
+    fetchWorkLocationOptions(),
+  ]);
+  return (
+    <ProcessStepForm
+      workLocationOptions={workLocationOptions}
+      workLocationTypeOptions={types.map((t) => ({
+        value: t.key,
+        label: t.label.ja || t.key,
+      }))}
+    />
+  );
 }

@@ -136,6 +136,7 @@ Every field on the process step screen. Steps registered here are the building b
 | [Step code / name](#field-code) | Required | Reference code and name |
 | [Category](#field-category) | Required | Material prep, machining, inspection and so on |
 | [Location](#field-execution) | Required | Internal only, or outsourcing allowed |
+| [Allowed work locations](#field-allowed-locations) | Optional | Restricts which work locations this step can use |
 | [Quantity tracking](#field-quantity-tracking) | Required | How the step handles piece counts |
 | [Default work time](#field-default-time) | Optional | Typical time per run |
 | [Can run in parallel](#field-sync) | — | Whether it can run alongside others |
@@ -151,6 +152,14 @@ The step's reference code and name; the name is what appears in the work order.
 ### Category [#field-category]
 
 Material preparation, machining, coating, inspection, inspection approval or shipping.
+
+### Allowed work locations [#field-allowed-locations]
+
+Restricts which work locations can be used in **plans and actuals** of this step. Specify by type (machine / area, etc.), by individual locations, or both (the union is allowed). **Leave both empty for no restriction** (all work locations usable).
+
+- When adding plans/actuals on a work-order step, the select is filtered to allowed locations only
+- The same restriction applies on shop-floor tablets (kiosk): scanning a disallowed work-location QR is rejected, and a device default outside the list is not recorded on actuals
+- Kiosk devices with the "restrict work location" toggle ON can only start steps whose allowed list includes the device's default location
 
 ### Location [#field-execution]
 

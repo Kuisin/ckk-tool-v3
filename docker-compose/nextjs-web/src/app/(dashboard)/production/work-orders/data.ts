@@ -41,7 +41,10 @@ import {
   samplingSpecFromRow,
 } from "@/lib/inspection-core";
 import { sumActualWorkHours } from "@/lib/step-work-hours";
-import { fetchWorkLocationOptions } from "@/lib/work-locations";
+import {
+  fetchAllowedWorkLocationIds,
+  fetchWorkLocationOptions,
+} from "@/lib/work-locations";
 import { effectiveAllocatedByLine } from "@/lib/work-order-alloc";
 import { fetchWorkflowCtx, loadCatalog } from "@/lib/workflow";
 import { canStartStep, expectedInput } from "@/lib/workflow-core";
@@ -706,7 +709,7 @@ export async function fetchStepExecution(
   });
   if (!step) return null;
 
-  const [{ ctx }, actorId, defectTypes, workLocationOptions] =
+  const [{ ctx }, actorId, defectTypes, allOptions, allowedLocationIds] =
     await Promise.all([
       fetchWorkflowCtx(wo.id),
       getCurrentActorId(),
@@ -715,7 +718,13 @@ export async function fetchStepExecution(
         orderBy: [{ sortOrder: "asc" }, { id: "asc" }],
       }),
       fetchWorkLocationOptions(),
+      fetchAllowedWorkLocationIds(step.processStepId),
     ]);
+  // 工程マスタに許可リストがあれば選択肢を絞る（計画・実績とも同じ制限）
+  const workLocationOptions =
+    allowedLocationIds == null
+      ? allOptions
+      : allOptions.filter((o) => allowedLocationIds.has(Number(o.value)));
 
   // 承認工程は指示書全体の検査記録を承認対象として表示する
   const woRecordsRaw = step.processStep.isApprovalStep
