@@ -449,6 +449,28 @@ export interface WorkflowCtx {
   steps: StepState[];
   links: StepLinkState[];
   execDeps: ExecDep[];
+  /**
+   * 先行指示書リンク（work_order_links の target = この指示書）。
+   * 未完了の source があると先頭メインライン工程を開始できない。
+   * 省略時は従来動作（リンクなし扱い）。
+   */
+  incomingWoLinks?: { sourceWorkOrderNumber: number; sourceStatus: string }[];
+  /**
+   * 先行指示書から渡る受入数の合計（全 source が COMPLETED のとき解決。
+   * 未完了があれば null）。先頭メインライン工程の想定受入に使う。
+   */
+  incomingWoQuantity?: number | null;
+}
+
+/**
+ * 先頭のメインライン工程 id（CANCELLED とオフメインラインを除き
+ * (sortOrder, id) 順で先頭）。先行指示書リンクのゲート・受入既定の対象。
+ */
+export function firstMainlineStepId(ctx: WorkflowCtx): string | null {
+  const ordered = [...ctx.steps]
+    .filter((s) => s.status !== "CANCELLED" && !isOffMainline(s.id, ctx))
+    .sort((a, b) => a.sortOrder - b.sortOrder || a.id.localeCompare(b.id));
+  return ordered[0]?.id ?? null;
 }
 
 export interface QuantityIssue {
@@ -510,6 +532,18 @@ export function canStartStep(
     const src = ctx.steps.find((s) => s.id === l.sourceStepId);
     if (src && src.status !== "COMPLETED" && src.status !== "CANCELLED")
       reasons.push("分岐元の工程が未完了です");
+  }
+
+  // 先行指示書リンク（work_order_links）— 先頭メインライン工程のみゲート。
+  // source の完成数が受入として渡るため、全 source の完了を待つ。
+  if (
+    (ctx.incomingWoLinks?.length ?? 0) > 0 &&
+    firstMainlineStepId(ctx) === stepId
+  ) {
+    for (const l of ctx.incomingWoLinks ?? []) {
+      if (l.sourceStatus !== "COMPLETED" && l.sourceStatus !== "CANCELLED")
+        reasons.push(`先行指示書 #${l.sourceWorkOrderNumber} が未完了です`);
+    }
   }
 
   return { ok: reasons.length === 0, reasons };
@@ -598,6 +632,13 @@ export function expectedInput(stepId: string, ctx: WorkflowCtx): number | null {
     if (isOffMainline(prev.id, ctx)) continue;
     if (prev.outputSuccess == null) return null; // 前工程が未記録
     return prev.outputSuccess + linkSum;
+  }
+  // 先頭メインライン工程 — 先行指示書リンクがあればその受け渡し数量を優先
+  // （未解決 = source 未完了なら null を返し「未確定」扱い）。
+  if ((ctx.incomingWoLinks?.length ?? 0) > 0) {
+    return ctx.incomingWoQuantity == null
+      ? null
+      : ctx.incomingWoQuantity + linkSum;
   }
   return ctx.plannedQuantity + linkSum;
 }

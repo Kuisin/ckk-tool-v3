@@ -25,6 +25,7 @@ import { prisma } from "./db";
 import { jstDateOnly } from "./format";
 import {
   canStartStep,
+  computeFinishedQuantity,
   effectiveLotInputMode,
   expectedInput,
   isWorkOrderComplete,
@@ -109,6 +110,7 @@ export async function fetchWorkflowCtx(workOrderId: string): Promise<{
   const execDeps = await prisma.processStepExecDependency.findMany();
   const steps: StepState[] = wo.steps.map(toStepState);
   const links: StepLinkState[] = wo.stepLinks;
+  const woLinkCtx = await fetchIncomingWoLinks(workOrderId);
   return {
     ctx: {
       plannedQuantity: wo.plannedQuantity,
@@ -119,6 +121,7 @@ export async function fetchWorkflowCtx(workOrderId: string): Promise<{
         dependsOnStepId: d.dependsOnStepId,
         relation: d.relation,
       })),
+      ...woLinkCtx,
     },
     workOrder: {
       id: wo.id,
@@ -126,6 +129,55 @@ export async function fetchWorkflowCtx(workOrderId: string): Promise<{
       status: wo.status,
     },
   };
+}
+
+/**
+ * 先行指示書リンク（work_order_links の target = この指示書）の ctx 部分。
+ * nextjs-web lib/workflow.ts fetchIncomingWoLinks と同一不変条件 —
+ * 受け渡し数量は 全 source 完了時のみ解決（quantity 指定はその値、
+ * 未指定 = source の完成数 computeFinishedQuantity）。
+ */
+async function fetchIncomingWoLinks(workOrderId: string): Promise<{
+  incomingWoLinks?: { sourceWorkOrderNumber: number; sourceStatus: string }[];
+  incomingWoQuantity?: number | null;
+}> {
+  const rows = await prisma.workOrderLink.findMany({
+    where: { targetWorkOrderId: workOrderId },
+    select: {
+      quantity: true,
+      sourceWorkOrder: {
+        select: { id: true, workOrderNumber: true, status: true },
+      },
+    },
+  });
+  if (rows.length === 0) return {};
+  const incomingWoLinks = rows.map((r) => ({
+    sourceWorkOrderNumber: r.sourceWorkOrder.workOrderNumber,
+    sourceStatus: r.sourceWorkOrder.status,
+  }));
+  const allDone = rows.every(
+    (r) =>
+      r.sourceWorkOrder.status === "COMPLETED" ||
+      r.sourceWorkOrder.status === "CANCELLED",
+  );
+  if (!allDone) return { incomingWoLinks, incomingWoQuantity: null };
+  let sum = 0;
+  for (const r of rows) {
+    if (r.sourceWorkOrder.status === "CANCELLED") continue;
+    if (r.quantity != null) {
+      sum += r.quantity;
+      continue;
+    }
+    const src = await prisma.workOrder.findUniqueOrThrow({
+      where: { id: r.sourceWorkOrder.id },
+      include: {
+        steps: { select: STEP_STATE_SELECT },
+        stepLinks: { select: STEP_LINK_STATE_SELECT },
+      },
+    });
+    sum += computeFinishedQuantity(src.steps.map(toStepState), src.stepLinks);
+  }
+  return { incomingWoLinks, incomingWoQuantity: sum };
 }
 
 /**

@@ -56,6 +56,10 @@ import {
   applyApprovedFlowChange,
   closeFlowChange,
 } from "@/lib/work-order-flow-changes";
+import {
+  addWorkOrderLink as addWoLink,
+  removeWorkOrderLink as removeWoLink,
+} from "@/lib/work-order-links";
 import { type OrderedStepCreate, validateAndOrderSteps } from "@/lib/workflow";
 import { fetchOrderLineRef, type OrderLineRef } from "./data";
 
@@ -603,6 +607,58 @@ export async function updateWorkOrder(
  * 対象注文明細が未指定のときは在庫向けの独立指示書としてコピーする
  * （製品はコピー元を引き継ぐ。在庫分 FROM_STOCK は注文明細必須）。
  */
+// ── 指示書→指示書リンク（数量受け渡し。例: リブ母材 WO → 製品 WO） ──────────
+
+const woLinkInput = z.object({
+  sourceWorkOrderNumber: z.number().int().positive(),
+  targetWorkOrderNumber: z.number().int().positive(),
+  // null = source 完了時の完成数全量
+  quantity: z.number().int().min(1).nullable(),
+  notes: z.string().max(500).optional(),
+});
+
+export type WorkOrderLinkInput = z.infer<typeof woLinkInput>;
+
+/** 先行指示書リンクの追加（不変条件は lib/work-order-links-core.ts）。 */
+export async function addWorkOrderLinkAction(
+  input: WorkOrderLinkInput,
+): Promise<ActionResult> {
+  const authz = await checkPermission("work_order", "UPDATE");
+  if (!authz.ok) return actionError(authz.error);
+  const parsed = woLinkInput.safeParse(input);
+  if (!parsed.success) {
+    return actionError(parsed.error.issues[0]?.message ?? "入力が不正です");
+  }
+  const v = parsed.data;
+  try {
+    const result = await addWoLink(v);
+    if (!result.ok) return actionError(result.error ?? "追加に失敗しました");
+    revalidate(v.targetWorkOrderNumber);
+    revalidate(v.sourceWorkOrderNumber);
+    return actionOk();
+  } catch (e) {
+    return actionError(prismaErrorMessage(e, "リンクの追加に失敗しました"));
+  }
+}
+
+/** 先行指示書リンクの解除。 */
+export async function removeWorkOrderLinkAction(
+  linkId: string,
+  workOrderNumber: number,
+): Promise<ActionResult> {
+  const authz = await checkPermission("work_order", "UPDATE");
+  if (!authz.ok) return actionError(authz.error);
+  if (!linkId) return actionError("対象が不正です");
+  try {
+    const result = await removeWoLink(linkId);
+    if (!result.ok) return actionError(result.error ?? "解除に失敗しました");
+    revalidate(workOrderNumber);
+    return actionOk();
+  } catch (e) {
+    return actionError(prismaErrorMessage(e, "リンクの解除に失敗しました"));
+  }
+}
+
 export async function copyWorkOrder(
   sourceWorkOrderNumber: number,
   targetOrderLineId: string,

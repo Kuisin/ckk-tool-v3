@@ -74,6 +74,7 @@ model User {
   featureFlagsUpdated     FeatureFlag[]      @relation("FeatureFlagUpdatedBy")
   approvalGroupMembers    ApprovalGroupMember[] @relation("ApprovalGroupMemberUser")
   workOrdersCreated       WorkOrder[]           @relation("WorkOrderCreatedBy")
+  workOrderLinksCreated   WorkOrderLink[]       @relation("WoLinkCreatedBy")
   flowChangesRequested    WorkOrderFlowChange[] @relation("FlowChangeRequestedBy")
   flowChangesResolved     WorkOrderFlowChange[] @relation("FlowChangeResolvedBy")
   acceptanceCancelsRequested OrderAcceptanceCancelRequest[] @relation("AcceptanceCancelRequestedBy")

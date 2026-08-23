@@ -244,6 +244,7 @@ import {
   type ExecDep,
   effectiveLotInputMode,
   expectedInput,
+  firstMainlineStepId,
   isOffMainline,
   isWorkOrderComplete,
   layoutWorkflowGraph,
@@ -917,6 +918,69 @@ describe("分岐の終端（合流 or 在庫）", () => {
     const links = [branchIn];
     expect(computeFinishedQuantity(steps, links)).toBe(10);
     expect(computeBranchSemiFinishedQuantity(steps, links)).toBe(0);
+  });
+});
+
+describe("先行指示書リンク（work_order_links → ctx.incomingWoLinks）", () => {
+  const base = {
+    plannedQuantity: 10,
+    steps: [step("a", 100, 10), step("b", 200, 20)],
+    links: [],
+    execDeps: [],
+  } satisfies WorkflowCtx;
+
+  it("firstMainlineStepId は (sortOrder, id) 順の先頭", () => {
+    expect(firstMainlineStepId(base)).toBe("a");
+    expect(firstMainlineStepId({ ...base, steps: [] })).toBeNull();
+  });
+
+  it("source 未完了なら先頭工程は開始不可（後続工程はゲートしない）", () => {
+    const ctx: WorkflowCtx = {
+      ...base,
+      incomingWoLinks: [
+        { sourceWorkOrderNumber: 77, sourceStatus: "IN_PROGRESS" },
+      ],
+      incomingWoQuantity: null,
+    };
+    const check = canStartStep("a", ctx);
+    expect(check.ok).toBe(false);
+    expect(check.reasons.join()).toContain("先行指示書 #77");
+    // 後続工程には先行指示書ゲートは掛からない（通常の依存判定のみ）
+    const later = canStartStep("b", {
+      ...ctx,
+      steps: [
+        step("a", 100, 10, "COMPLETED", { outputSuccess: 8 }),
+        step("b", 200, 20),
+      ],
+    });
+    expect(later.reasons.join()).not.toContain("先行指示書");
+  });
+
+  it("source 完了で開始可・受入は受け渡し数量を優先", () => {
+    const ctx: WorkflowCtx = {
+      ...base,
+      incomingWoLinks: [
+        { sourceWorkOrderNumber: 77, sourceStatus: "COMPLETED" },
+      ],
+      incomingWoQuantity: 6,
+    };
+    expect(canStartStep("a", ctx).ok).toBe(true);
+    expect(expectedInput("a", ctx)).toBe(6);
+  });
+
+  it("source 未完了の間、先頭工程の想定受入は未確定（null）", () => {
+    const ctx: WorkflowCtx = {
+      ...base,
+      incomingWoLinks: [
+        { sourceWorkOrderNumber: 77, sourceStatus: "IN_PROGRESS" },
+      ],
+      incomingWoQuantity: null,
+    };
+    expect(expectedInput("a", ctx)).toBeNull();
+  });
+
+  it("リンク無し（省略）は従来どおり plannedQuantity", () => {
+    expect(expectedInput("a", base)).toBe(10);
   });
 });
 

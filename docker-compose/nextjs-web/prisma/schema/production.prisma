@@ -131,6 +131,9 @@ model WorkOrder {
   deliveryOrders      DeliveryOrder[]
   reservations        InventoryReservation[]
 
+  outgoingWoLinks WorkOrderLink[] @relation("WoLinkSource")
+  incomingWoLinks WorkOrderLink[] @relation("WoLinkTarget")
+
   @@unique([yearMonth, seq])
   @@index([productId])
   @@index([status])
@@ -138,6 +141,33 @@ model WorkOrder {
   @@index([routeVersionId])
   @@index([storageLocationId])
   @@map("work_orders")
+  @@schema("app")
+}
+
+// 指示書 → 指示書 の数量受け渡しリンク（例: リブ母材の指示書 → 製品の指示書）。
+// source の完成数が target の受入数として渡る。target の先頭メインライン工程は
+// source が COMPLETED になるまで開始できない（canStartStep — workflow-core）。
+// quantity = null は「完了時の完成数全量」。在庫計上は従来どおり両指示書で行う
+// （リンクはゲート + 受入既定値 + 表示のみ — 母材と製品は別品目なので二重計上に
+// ならない）。閉路の禁止は lib/work-order-links-core.ts wouldCreateCycle が
+// 唯一の判定元（サーバー tx 内で検証）。
+model WorkOrderLink {
+  id                String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  sourceWorkOrderId String   @map("source_work_order_id") @db.Uuid
+  targetWorkOrderId String   @map("target_work_order_id") @db.Uuid
+  // 渡す数量。null = source 完了時の完成数全量
+  quantity          Int?
+  notes             String?
+  createdBy         String?  @map("created_by") @db.Uuid
+  createdAt         DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  sourceWorkOrder WorkOrder @relation("WoLinkSource", fields: [sourceWorkOrderId], references: [id], onDelete: Cascade)
+  targetWorkOrder WorkOrder @relation("WoLinkTarget", fields: [targetWorkOrderId], references: [id], onDelete: Cascade)
+  createdByUser   User?     @relation("WoLinkCreatedBy", fields: [createdBy], references: [id])
+
+  @@unique([sourceWorkOrderId, targetWorkOrderId])
+  @@index([targetWorkOrderId])
+  @@map("work_order_links")
   @@schema("app")
 }
 
