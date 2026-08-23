@@ -88,6 +88,20 @@ export async function getApprovalFlow(
   }));
 }
 
+/**
+ * 承認フローの適用モード（approval_flows.apply_mode）。行が無ければ PRE
+ * （= 承認後に適用・従来動作）。POST の意味は lib/flow-change-core.ts。
+ */
+export async function getApprovalApplyMode(
+  targetType: ApprovalTargetType,
+): Promise<string> {
+  const row = await prisma.approvalFlow.findUnique({
+    where: { targetType },
+    select: { applyMode: true },
+  });
+  return row?.applyMode ?? "PRE";
+}
+
 /** 依頼を出す前の確認。未設定ならエラー文言、設定済みなら null。 */
 export async function assertFlowConfigured(
   targetType: ApprovalTargetType,

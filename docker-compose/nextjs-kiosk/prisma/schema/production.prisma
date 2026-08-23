@@ -216,6 +216,12 @@ model WorkOrderFlowChange {
   status      String   @default("PENDING")
   /// 適用に失敗した理由（数量が足りなくなった等）。承認後に出る。
   error       String?
+  /// 事後承認（apply_mode = POST）で即時適用した日時。
+  /// REJECTED + applied_at あり + 未 ack = 「差し戻されたが適用済み」の警告対象。
+  appliedAt      DateTime? @map("applied_at") @db.Timestamptz(6)
+  /// 上の警告を確認済みにした操作（人が手で直したことの記録）。
+  acknowledgedAt DateTime? @map("acknowledged_at") @db.Timestamptz(6)
+  acknowledgedBy String?   @map("acknowledged_by") @db.Uuid
   requestedBy String?  @map("requested_by") @db.Uuid
   requestedAt DateTime @default(now()) @map("requested_at") @db.Timestamptz(6)
   resolvedBy  String?  @map("resolved_by") @db.Uuid
@@ -224,6 +230,7 @@ model WorkOrderFlowChange {
   workOrder       WorkOrder @relation(fields: [workOrderId], references: [id], onDelete: Cascade)
   requestedByUser User?     @relation("FlowChangeRequestedBy", fields: [requestedBy], references: [id])
   resolvedByUser  User?     @relation("FlowChangeResolvedBy", fields: [resolvedBy], references: [id])
+  acknowledgedByUser User?  @relation("FlowChangeAcknowledgedBy", fields: [acknowledgedBy], references: [id])
 
   @@index([workOrderId, status])
   @@map("work_order_flow_changes")

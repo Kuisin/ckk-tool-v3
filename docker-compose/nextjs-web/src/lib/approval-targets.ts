@@ -23,6 +23,15 @@ export const APPROVAL_TARGET_TYPES = [
 
 export type ApprovalTargetType = (typeof APPROVAL_TARGET_TYPES)[number];
 
+/**
+ * 適用モード（approval_flows.apply_mode: PRE = 承認後に適用 / POST = 即時適用 +
+ * 事後承認）を設定できる書類種別。列は汎用だが、対象の操作が「保留 → 適用」の
+ * 形を持つものだけ UI に出す — 現状は 工程フロー変更のみ。
+ */
+export const APPLY_MODE_TARGETS: readonly ApprovalTargetType[] = [
+  "work_order_flow_changes",
+];
+
 export interface ApprovalTargetMeta {
   /** 画面に出る書類名。 */
   label: string;

@@ -1,11 +1,16 @@
 import { notFound } from "next/navigation";
+import { ApplyModeControl } from "@/components/master/approval-flows/ApplyModeControl";
 import { ApprovalFlowEditor } from "@/components/master/approval-flows/ApprovalFlowEditor";
 import { ApprovalFlowRulesSection } from "@/components/master/approval-flows/ApprovalFlowRulesSection";
 import type { FlowApprover } from "@/components/master/approval-flows/ApproverPermissionBadge";
 import { conditionsFromJson } from "@/lib/approval-conditions";
 import type { ApprovalMode } from "@/lib/approval-flow";
 import { loadGroupApprovers } from "@/lib/approval-permissions";
-import { APPROVAL_TARGET, isApprovalTargetType } from "@/lib/approval-targets";
+import {
+  APPLY_MODE_TARGETS,
+  APPROVAL_TARGET,
+  isApprovalTargetType,
+} from "@/lib/approval-targets";
 import { requireAppRead } from "@/lib/authz-page";
 import { prisma } from "@/lib/db";
 import { type LocalizedText, localized } from "@/lib/format";
@@ -24,33 +29,40 @@ export default async function ApprovalFlowEditPage({
   if (!isApprovalTargetType(targetType)) notFound();
 
   const permissionCode = APPROVAL_TARGET[targetType].approvePermission;
-  const [steps, groups, permission, rules, plants] = await Promise.all([
-    prisma.approvalFlowStep.findMany({
-      where: { targetType },
-      orderBy: { stepNo: "asc" },
-    }),
-    prisma.approvalGroup.findMany({
-      where: { isActive: true },
-      orderBy: { id: "asc" },
-      select: { id: true, name: true },
-    }),
-    prisma.permission.findUnique({
-      where: { code: permissionCode },
-      select: { displayName: true },
-    }),
-    // 条件付きフロー（無効も出す — 一覧でトグルできる）
-    prisma.approvalFlowRule.findMany({
-      where: { targetType },
-      include: { steps: { orderBy: { stepNo: "asc" } } },
-      orderBy: { priority: "asc" },
-    }),
-    // 条件の動的選択肢（担当拠点）
-    prisma.plant.findMany({
-      where: { isActive: true },
-      orderBy: { code: "asc" },
-      select: { id: true, code: true, name: true },
-    }),
-  ]);
+  const [steps, groups, permission, rules, plants, flowRow] = await Promise.all(
+    [
+      prisma.approvalFlowStep.findMany({
+        where: { targetType },
+        orderBy: { stepNo: "asc" },
+      }),
+      prisma.approvalGroup.findMany({
+        where: { isActive: true },
+        orderBy: { id: "asc" },
+        select: { id: true, name: true },
+      }),
+      prisma.permission.findUnique({
+        where: { code: permissionCode },
+        select: { displayName: true },
+      }),
+      // 条件付きフロー（無効も出す — 一覧でトグルできる）
+      prisma.approvalFlowRule.findMany({
+        where: { targetType },
+        include: { steps: { orderBy: { stepNo: "asc" } } },
+        orderBy: { priority: "asc" },
+      }),
+      // 条件の動的選択肢（担当拠点）
+      prisma.plant.findMany({
+        where: { isActive: true },
+        orderBy: { code: "asc" },
+        select: { id: true, code: true, name: true },
+      }),
+      // 適用モード（PRE/POST — 対応 target のみ UI に出す）
+      prisma.approvalFlow.findUnique({
+        where: { targetType },
+        select: { applyMode: true },
+      }),
+    ],
+  );
 
   // 選択肢に出る全グループぶん引く — 段のグループを付け替えた瞬間に
   // 「その人たちは承認できるのか」を出せるようにするため。
@@ -83,6 +95,14 @@ export default async function ApprovalFlowEditPage({
 
   return (
     <ApprovalFlowEditor
+      applyModeSection={
+        APPLY_MODE_TARGETS.includes(targetType) ? (
+          <ApplyModeControl
+            initialMode={flowRow?.applyMode ?? "PRE"}
+            targetType={targetType}
+          />
+        ) : undefined
+      }
       approversByGroup={approversByGroup}
       groupOptions={groupOptions}
       initialSteps={steps.map((s) => {

@@ -86,6 +86,7 @@ export function ApprovalFlowEditor({
   permissionCode,
   permissionLabel,
   rulesSection,
+  applyModeSection,
 }: {
   targetType: string;
   targetLabel: string;
@@ -98,6 +99,8 @@ export function ApprovalFlowEditor({
   permissionLabel: string;
   /** 条件付きフロー（ApprovalFlowRulesSection）— 既定フローの下に出す。 */
   rulesSection?: React.ReactNode;
+  /** 適用モード設定（ApplyModeControl）— 対応 target のみ既定フローの下に出す。 */
+  applyModeSection?: React.ReactNode;
 }) {
   const router = useRouter();
   const isMobile = useIsMobile();
@@ -346,6 +349,9 @@ export function ApprovalFlowEditor({
           </GhostButton>
         </Stack>
       </FormSection>
+
+      {/* 適用モード（PRE/POST）— 保存は独立・即時反映 */}
+      {applyModeSection}
 
       {/* 条件付きフロー — 保存は独立（このページの保存ボタンは既定フローのみ） */}
       {rulesSection}
