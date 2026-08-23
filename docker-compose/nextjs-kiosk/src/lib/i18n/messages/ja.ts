@@ -146,11 +146,15 @@ export const ja = {
       overInput: (sum: number, input: number) =>
         `不良の合計（${sum}）が受入数（${input}）を超えています`,
       negative: "数量は 0 以上の整数で入力してください",
+      incomplete: "不良の各行に種類と詳細を入力してください",
     },
     reasons: {
       title: "不良理由（任意）",
       reason: "理由",
+      defectType: "不良種類",
       reasonPlaceholder: "不良種類を選択",
+      detail: "詳細",
+      detailPlaceholder: "不良の詳細（必須）",
       count: "本数",
       add: "理由を追加",
       remove: "削除",
@@ -244,6 +248,7 @@ export const ja = {
       ALREADY_COMPLETED: "この工程は既に完了しています",
       QUANTITY_REQUIRED: "数量を入力してください",
       QUANTITY_INVALID: "数量の入力を確認してください",
+      DEFECT_REASONS_REQUIRED: "不良の各行に種類と詳細を入力してください",
       ROUTING_INVALID: "分岐数量と一致しません",
       TEMPLATE_INVALID: "検査表がこの指示書と一致しません",
       ITEMS_REQUIRED: "記録する内容がありません",

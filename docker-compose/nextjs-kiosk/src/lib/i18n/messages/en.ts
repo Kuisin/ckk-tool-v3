@@ -138,11 +138,15 @@ export const en: KioskMessages = {
       overInput: (sum: number, input: number) =>
         `Defect total (${sum}) exceeds the received count (${input})`,
       negative: "Quantities must be whole numbers of 0 or more",
+      incomplete: "Enter a defect type and detail for every defect row",
     },
     reasons: {
       title: "Defect reasons (optional)",
       reason: "Reason",
+      defectType: "Defect type",
       reasonPlaceholder: "Select a defect type",
+      detail: "Detail",
+      detailPlaceholder: "Defect detail (required)",
       count: "Count",
       add: "Add reason",
       remove: "Remove",
@@ -238,6 +242,8 @@ export const en: KioskMessages = {
       ALREADY_COMPLETED: "This step is already completed",
       QUANTITY_REQUIRED: "Please enter the quantities",
       QUANTITY_INVALID: "Please check the quantities",
+      DEFECT_REASONS_REQUIRED:
+        "Enter a defect type and detail for every defect row",
       ROUTING_INVALID: "Does not match the branch quantities",
       TEMPLATE_INVALID: "The template does not belong to this work order",
       ITEMS_REQUIRED: "There is nothing to record",

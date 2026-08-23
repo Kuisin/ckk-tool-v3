@@ -145,9 +145,21 @@ export async function deleteDefectTypes(ids: number[]): Promise<ActionResult> {
   if (!authz.ok) return actionError(authz.error);
   if (ids.length === 0) return actionError("対象が選択されていません");
   try {
-    // Guard: 不良記録（defect_records）は未実装。参照テーブルが増えたら
-    // products と同様の count ガードを追加する。FK 違反は P2003 として
-    // prismaErrorMessage が日本語メッセージに変換する。
+    // Guard: 工程完了の不良内訳（work_order_steps.defect_reasons JSON）が
+    // 参照している種類は消させない（FK ではないので DB は守ってくれない）。
+    // defect_records の FK 違反は P2003 として prismaErrorMessage が変換する。
+    for (const id of ids) {
+      const used = await prisma.$queryRaw<{ exists: boolean }[]>`
+        SELECT EXISTS (
+          SELECT 1 FROM app.work_order_steps
+          WHERE defect_reasons @> ${JSON.stringify([{ defectTypeId: id }])}::jsonb
+        ) AS "exists"`;
+      if (used[0]?.exists) {
+        return actionError(
+          "不良記録で使用中の不良種類は削除できません（無効化してください）",
+        );
+      }
+    }
     await prisma.defectType.deleteMany({ where: { id: { in: ids } } });
     for (const id of ids) {
       await recordAudit({

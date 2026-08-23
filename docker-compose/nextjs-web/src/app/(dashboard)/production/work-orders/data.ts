@@ -53,7 +53,7 @@ import { canStartStep, expectedInput } from "@/lib/workflow-core";
 // DataTable はクライアントページングのため、最新分のみで実用上十分。
 const LIST_FETCH_CAP = 1000;
 
-/** work_order_steps.defect_reasons（Json）→ 表示用の {種別, 理由, 数} 配列。 */
+/** work_order_steps.defect_reasons（Json）→ 表示用の {種別, 種類, 詳細, 数} 配列。 */
 function parseDefectReasons(value: unknown): StepDefectReasonView[] {
   if (!Array.isArray(value)) return [];
   const out: StepDefectReasonView[] = [];
@@ -66,6 +66,8 @@ function parseDefectReasons(value: unknown): StepDefectReasonView[] {
     ) {
       out.push({
         type: r.type,
+        defectTypeId:
+          typeof r.defectTypeId === "number" ? r.defectTypeId : null,
         reason: typeof r.reason === "string" ? r.reason : "",
         count: r.count,
       });

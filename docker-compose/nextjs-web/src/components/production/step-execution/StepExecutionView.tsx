@@ -378,7 +378,18 @@ export function StepExecutionView({ data }: { data: StepExecutionData }) {
                             ? qtyLabels.scrap
                             : qtyLabels.rework}
                       </Badge>
-                      <Text size="sm">{r.reason || "—"}</Text>
+                      <Text size="sm">
+                        {[
+                          r.defectTypeId != null
+                            ? (data.defectTypeOptions.find(
+                                (o) => o.value === String(r.defectTypeId),
+                              )?.label ?? `#${r.defectTypeId}`)
+                            : null,
+                          r.reason || null,
+                        ]
+                          .filter(Boolean)
+                          .join(" / ") || "—"}
+                      </Text>
                       <Text fw={600} size="sm">
                         {r.count}
                       </Text>

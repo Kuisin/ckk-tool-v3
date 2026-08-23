@@ -93,7 +93,9 @@ const defectReasonsInput = z
   .array(
     z.object({
       type: z.enum(["SEMI", "SCRAP", "REWORK"]),
-      reason: z.string().trim().max(100),
+      // 必須化はサーバー業務検証（completeStepExecution）が行う — zod は形だけ。
+      defectTypeId: z.number().int().positive().nullable().optional(),
+      reason: z.string().trim().max(200),
       count: z.number().int().min(1).max(1_000_000),
     }),
   )

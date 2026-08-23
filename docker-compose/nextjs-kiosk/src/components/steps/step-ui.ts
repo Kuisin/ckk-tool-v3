@@ -30,9 +30,10 @@ export interface StepActionRequest {
     outputDefectScrap: number;
     outputDefectRework: number;
   } | null;
-  /** COMPLETE のみ: 不良の内訳（{種別, 理由, 数} のリスト）。 */
+  /** COMPLETE のみ: 不良の内訳（{種別, 種類, 詳細, 数} のリスト）。 */
   defectReasons?: {
     type: "SEMI" | "SCRAP" | "REWORK";
+    defectTypeId: number | null;
     reason: string;
     count: number;
   }[];
