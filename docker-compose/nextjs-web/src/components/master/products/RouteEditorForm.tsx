@@ -111,7 +111,7 @@ export function RouteEditorForm({
       validateComposition(selected, useDeps, manufactureCatalog).filter(
         isBlockingIssue,
       ),
-    [selected, useDeps],
+    [selected, useDeps, manufactureCatalog],
   );
 
   const handleSubmit = (e: React.FormEvent) => {
