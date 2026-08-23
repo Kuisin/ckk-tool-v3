@@ -68,6 +68,37 @@ for (const shot of shots) {
 
     await page.goto(shot.path, { waitUntil: "networkidle" });
     if (shot.steps) await shot.steps(page);
+    if (shot.highlight?.length) {
+      // Playwright ロケータで解決した要素に data 属性を付け、CSS 1 ルールで
+      // 赤枠を注入する。outline + box-shadow はレイアウトに関与しないので
+      // 下地の描画は非強調時とピクセル同一（docs:verify の決定性を保つ）。
+      for (const target of shot.highlight) {
+        let loc;
+        if (typeof target === "string") {
+          loc = page.locator(target).first();
+        } else if ("text" in target) {
+          loc = page.getByText(target.text, { exact: target.exact }).first();
+        } else {
+          const scope = target.inDialog ? page.getByRole("dialog") : page;
+          loc = scope
+            .getByRole(target.role as never, {
+              name: target.name,
+              exact: target.exact,
+            })
+            .first();
+        }
+        await loc.waitFor(); // セレクタ腐りは即失敗させる
+        await loc.evaluate((el) => el.setAttribute("data-shot-highlight", ""));
+      }
+      await page.addStyleTag({
+        content: `[data-shot-highlight]{
+          outline: 3px solid #e03131 !important;
+          outline-offset: 2px;
+          box-shadow: 0 0 0 6px rgba(224, 49, 49, 0.18) !important;
+          border-radius: 4px;
+        }`,
+      });
+    }
     // フォント・画像の残り読み込みを確実に終わらせる
     await page.evaluate(() => document.fonts.ready);
 

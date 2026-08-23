@@ -1,7 +1,13 @@
 ---
 title: "出荷の流れ"
 description: "できあがった製品を出荷書で送り出し、納品書を発行して届けるまでの流れと、その各段階で使うアプリをまとめたページです。"
-screenshots: []
+screenshots:
+  [
+    delivery-order-new-01,
+    delivery-order-confirm-01,
+    delivery-note-new-01,
+    delivery-note-issue-01,
+  ]
 ---
 
 できあがった製品を送り出し、納品書を発行して届けるまでの流れをまとめたページです。「いまどの段階で、次に誰が何をするのか」を確認するときに開いてください。
@@ -38,6 +44,10 @@ screenshots: []
 
 確定してから出荷すると、在庫が減り、注文明細の状態が「一部出荷」または「出荷済」に変わります。
 
+![出荷する明細とロットを選ぶ出荷書の新規画面](../assets/screenshots/delivery-order-new-01.png)
+
+![出荷書を確定する確認モーダル](../assets/screenshots/delivery-order-confirm-01.png)
+
 ### 4〜5. 納品書
 
 出荷書をもとに納品書を作ります。ここで決めるのは主に 2 つです。
@@ -46,6 +56,10 @@ screenshots: []
 - **価格記載** … 納品書に単価・金額を載せるかどうか。**ユーザー直送のときは載せないのが通常**です（金額を知らせない）
 
 発行すると PDF が保存されます。届いたら「納品済」にします。ここまでが済んだ出荷が、[請求の流れ](/manual/ja/process/billing)の対象になります。
+
+![納品方法と価格記載を決める納品書の新規画面](../assets/screenshots/delivery-note-new-01.png)
+
+![納品書を発行する確認モーダル](../assets/screenshots/delivery-note-issue-01.png)
 
 ## 書類の状態
 
@@ -70,6 +84,7 @@ screenshots: []
 
 ## 関連ページ
 
+- 一つの注文を通しで追う … [標準フロー](/manual/ja/process/default-flow)
 - 各アプリの操作と入力欄の意味 … 左の **操作方法 › 出荷**
 - 前の流れ … [生産の流れ](/manual/ja/process/production)
 - 次の流れ … [請求の流れ](/manual/ja/process/billing)

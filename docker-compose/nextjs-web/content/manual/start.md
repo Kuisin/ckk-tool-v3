@@ -46,6 +46,8 @@ CKK 業務管理システムへようこそ。このページは **初めて使�
 販売は **試算 → 価格表 → 見積書 → 注文請書** の順に進みます。
 それぞれの業務で誰が何をして、どのアプリを使うのかは
 [販売の流れ](/manual/ja/process/sales) にまとめてあります。
+受注から請求までの全体を通しで知りたいときは
+[標準フロー](/manual/ja/process/default-flow) を読んでください。
 
 - 単価を計算する … [試算](/manual/ja/operations/sales/trial-estimate/user)（`SA01`）
 - 顧客ごとの価格を決める … [価格表](/manual/ja/operations/sales/price-list/user)（`SA02`）

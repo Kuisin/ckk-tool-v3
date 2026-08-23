@@ -1,7 +1,7 @@
 ---
 title: "請求の流れ"
 description: "納品した分を締めて請求書を作り、送付して入金を記録するまでの流れと、その各段階で使うアプリをまとめたページです。"
-screenshots: []
+screenshots: [billing-closing-run-01, invoice-items-01, invoice-menu-01]
 ---
 
 納品した分を締めて請求書を作り、送付して入金を記録するまでの流れをまとめたページです。「いまどの段階で、次に誰が何をするのか」を確認するときに開いてください。
@@ -30,13 +30,19 @@ screenshots: []
 
 顧客ごとに決めた**締日**で、その期間に納品した分をまとめます。締日と支払サイトは[顧客マスタ](/manual/ja/operations/masters/business-partner/user)に登録されているものが使われます。締めると、その期間の納品分から請求書が作られます。
 
+![締日処理を実行するモーダル](../assets/screenshots/billing-closing-run-01.png)
+
 ### 2〜5. 請求書
 
 作られた請求書の明細と金額（小計・消費税・合計）を確認し、発行します。発行すると PDF が保存されます。お客様へ送ったら「送付済」、入金を確認したら「支払済」にします。**この状態はお金の管理そのもの**なので、実際の入金を確認してから変えてください。
 
+![納品分がまとまった請求書の明細](../assets/screenshots/invoice-items-01.png)
+
 ### 6. 会計へ渡す
 
 締めた分は、弥生会計向けの CSV として書き出せます。書き出した締日処理は「エクスポート済」になります。
+
+![請求書の操作メニュー（弥生会計CSV）](../assets/screenshots/invoice-menu-01.png)
 
 ## 書類の状態
 
@@ -58,6 +64,7 @@ screenshots: []
 
 ## 関連ページ
 
+- 一つの注文を通しで追う … [標準フロー](/manual/ja/process/default-flow)
 - 各アプリの操作と入力欄の意味 … 左の **操作方法 › 請求**
 - 前の流れ … [出荷の流れ](/manual/ja/process/shipping)
 - 顧客ごとの締日設定 … [顧客マスタ](/manual/ja/operations/masters/business-partner/user)

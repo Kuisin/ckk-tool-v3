@@ -1,4 +1,11 @@
 {
   "title": "业务流程",
-  "pages": ["sales", "purchasing", "production", "shipping", "billing"]
+  "pages": [
+    "default-flow",
+    "sales",
+    "purchasing",
+    "production",
+    "shipping",
+    "billing"
+  ]
 }

@@ -1,7 +1,13 @@
 ---
 title: "購買の流れ"
 description: "素材が足りないと分かってから、発注して受け取り、在庫として使えるようになるまでの流れと、その各段階で使うアプリをまとめたページです。"
-screenshots: []
+screenshots:
+  [
+    purchase-request-detail-01,
+    purchase-order-detail-01,
+    material-receipt-new-01,
+    outsource-order-list-01,
+  ]
 ---
 
 素材が足りないと分かってから、発注して受け取り、在庫として使えるようになるまでの流れをまとめたページです。「いまどの段階で、次に誰が何をするのか」を確認するときに開いてください。
@@ -33,17 +39,25 @@ screenshots: []
 
 ほしい素材・数量・入荷先の拠点・希望納期を入れ、**なぜ必要なのか**を書いて承認を依頼します。承認する人はその理由を見て判断するので、どの製品のどの工程で使うのかまで書いてあると早く進みます。差し戻された場合は、内容を直してもう一度依頼します。
 
+![購買依頼の詳細画面](../assets/screenshots/purchase-request-detail-01.png)
+
 ### 3〜5. 発注（素材発注書）
 
 承認された依頼から発注書を作ります（依頼を通さず直接作ることもできます）。ここで **仕入先・単価・入荷予定日** を決めます。単価は後で試算の材料費の参考にも使われるので、実際の取引価格を入れてください。承認されたら発注し、状態が「発注済」になります。
+
+![素材発注書の詳細画面](../assets/screenshots/purchase-order-detail-01.png)
 
 ### 6. 受け取り（素材入荷）
 
 届いた素材を記録します。**記録した入荷日で、指定した拠点の在庫が増えます。** 発注した数と違っても構いません — 分けて届く場合は、届いた分だけを記録し、残りは次の入荷として記録します。すべて届くと発注書が「入荷完了」になります。
 
+![素材入荷の記録画面](../assets/screenshots/material-receipt-new-01.png)
+
 ### 外注依頼について
 
 外注は購買依頼や発注書からではなく、**指示書の工程**から生まれます。工程の実施場所に「外注」を選び、外注先を指定すると、[外注依頼](/manual/ja/operations/purchasing/outsource-order/user)の一覧に出てきます。外注依頼の画面は状況を見るための一覧で、そこから新しく外注を作ることはできません。
+
+![外注依頼の一覧画面](../assets/screenshots/outsource-order-list-01.png)
 
 ## 書類の状態
 
@@ -68,6 +82,7 @@ screenshots: []
 
 ## 関連ページ
 
+- 一つの注文を通しで追う … [標準フロー](/manual/ja/process/default-flow)
 - 各アプリの操作と入力欄の意味 … 左の **操作方法 › 購買**
 - 素材そのものの登録 … [素材マスタ](/manual/ja/operations/masters/material/user)
 - 在庫の確認 … [在庫管理](/manual/ja/operations/production/material-inventory/user)
