@@ -4,11 +4,11 @@
  * StepQuantityForm.tsx — 完了時の数量入力（数量管理モード対応）。
  *
  * 受入数は開始時に確定した値で**固定表示**（完了時は編集不可）。不良は
- * **1 本のリスト**で入力し、各行に 種別（半製品/廃棄/工程分岐）・理由（任意）・数
- * を持つ。区分ごとの合計はこのリストの合計として導出し、良品数 = 受入 − 総不良
- * も自動計算する（いずれも読み取り専用表示）。在庫連携は区分合計をそのまま使う
- * ので不変。インライン検証は steps-core.checkDefectList（負値 / 不良超過）—
- * 権威はサーバー。
+ * **1 本のリスト**で入力し、各行に 種別（半製品/廃棄/工程分岐）・不良種類
+ * （マスタ FK・必須）・詳細（必須）・数 を持つ。区分ごとの合計はこのリストの
+ * 合計として導出し、良品数 = 受入 − 総不良も自動計算する（いずれも読み取り
+ * 専用表示）。在庫連携は区分合計をそのまま使うので不変。インライン検証は
+ * steps-core.checkDefectList（負値 / 不良超過 / 必須未入力）— 権威はサーバー。
  */
 
 import {
@@ -23,6 +23,7 @@ import {
   SimpleGrid,
   Stack,
   Text,
+  TextInput,
 } from "@mantine/core";
 import { IconAlertTriangle, IconPlus, IconTrash } from "@tabler/icons-react";
 import type { DefectTypeView } from "@/lib/step-records";
@@ -66,7 +67,10 @@ export function StepQuantityForm({
     onChange(defects.map((r, i) => (i === index ? { ...r, ...patch } : r)));
 
   const addRow = () =>
-    onChange([...defects, { type: "SCRAP", reason: "", count: 1 }]);
+    onChange([
+      ...defects,
+      { type: "SCRAP", defectTypeId: null, reason: "", count: 1 },
+    ]);
 
   return (
     <Stack gap="md">
@@ -154,17 +158,20 @@ export function StepQuantityForm({
                 value={row.type}
               />
               <Select
-                aria-label={m.steps.reasons.reason}
-                clearable
+                aria-label={m.steps.reasons.defectType}
                 data={defectTypes.map((d) => ({
-                  value: d.name,
+                  value: String(d.id),
                   label: d.name,
                 }))}
-                onChange={(v) => setRow(index, { reason: v ?? "" })}
+                onChange={(v) =>
+                  setRow(index, { defectTypeId: v ? Number(v) : null })
+                }
                 placeholder={m.steps.reasons.reasonPlaceholder}
                 searchable
                 style={{ flex: 1 }}
-                value={row.reason || null}
+                value={
+                  row.defectTypeId != null ? String(row.defectTypeId) : null
+                }
               />
               {defects.length > 0 && (
                 <ActionIcon
@@ -180,6 +187,13 @@ export function StepQuantityForm({
                 </ActionIcon>
               )}
             </Group>
+            <TextInput
+              aria-label={m.steps.reasons.detail}
+              maxLength={200}
+              onChange={(e) => setRow(index, { reason: e.currentTarget.value })}
+              placeholder={m.steps.reasons.detailPlaceholder}
+              value={row.reason}
+            />
             <Box style={{ maxWidth: 220 }}>
               <NumberStepper
                 ariaLabel={m.steps.reasons.count}
@@ -206,7 +220,9 @@ export function StepQuantityForm({
         <Alert color="orange" icon={<IconAlertTriangle size={20} />}>
           {issue.kind === "NEGATIVE"
             ? m.steps.quantity.negative
-            : m.steps.quantity.overInput(issue.sum, issue.input)}
+            : issue.kind === "INCOMPLETE"
+              ? m.steps.quantity.incomplete
+              : m.steps.quantity.overInput(issue.sum, issue.input)}
         </Alert>
       )}
     </Stack>

@@ -136,11 +136,15 @@ export const zh: KioskMessages = {
       overInput: (sum: number, input: number) =>
         `不良合计（${sum}）超过接收数（${input}）`,
       negative: "数量请输入 0 以上的整数",
+      incomplete: "请为每行不良输入类型和详情",
     },
     reasons: {
       title: "不良原因（可选）",
       reason: "原因",
+      defectType: "不良类型",
       reasonPlaceholder: "选择不良类型",
+      detail: "详情",
+      detailPlaceholder: "不良详情（必填）",
       count: "数量",
       add: "添加原因",
       remove: "删除",
@@ -233,6 +237,7 @@ export const zh: KioskMessages = {
       ALREADY_COMPLETED: "该工序已完成",
       QUANTITY_REQUIRED: "请输入数量",
       QUANTITY_INVALID: "请确认数量输入",
+      DEFECT_REASONS_REQUIRED: "请为每行不良输入类型和详情",
       ROUTING_INVALID: "与分支数量不一致",
       TEMPLATE_INVALID: "检查表与此工单不匹配",
       ITEMS_REQUIRED: "没有可记录的内容",

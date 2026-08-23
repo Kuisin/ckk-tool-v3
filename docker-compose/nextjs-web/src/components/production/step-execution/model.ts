@@ -68,9 +68,11 @@ export interface StepDefectRecordView {
   recordedByName: string | null;
 }
 
-/** 完了時の不良の内訳（{種別, 理由, 数}）。work_order_steps.defect_reasons 由来。 */
+/** 完了時の不良の内訳（{種別, 種類, 詳細, 数}）。work_order_steps.defect_reasons 由来。 */
 export interface StepDefectReasonView {
   type: "SEMI" | "SCRAP" | "REWORK";
+  /** 不良種類（defect_types.id）。旧データは null（reason に種類名が入る）。 */
+  defectTypeId: number | null;
   reason: string;
   count: number;
 }

@@ -58,12 +58,14 @@ const bodySchema = z.object({
   workLocationCode: z.string().trim().min(1).max(100).optional(),
   /** COMPLETE のみ: NONE モードは null */
   quantities: quantitiesSchema.nullable().optional(),
-  /** COMPLETE のみ: 不良の内訳（{種別, 理由, 数} のリスト）。 */
+  /** COMPLETE のみ: 不良の内訳（{種別, 種類, 詳細, 数} のリスト）。 */
   defectReasons: z
     .array(
       z.object({
         type: z.enum(["SEMI", "SCRAP", "REWORK"]),
-        reason: z.string().trim().max(100),
+        // 必須化はサーバー業務検証（completeStepExecution）が行う — zod は形だけ。
+        defectTypeId: z.number().int().positive().nullable().optional(),
+        reason: z.string().trim().max(200),
         count: z.number().int().min(1).max(1_000_000),
       }),
     )

@@ -205,9 +205,11 @@ export interface StepQuantities {
   outputDefectRework: number;
 }
 
-/** 不良の内訳（{種別, 理由, 数} — defect_reasons JSON + 区分列の権威）。 */
+/** 不良の内訳（{種別, 種類, 詳細, 数} — defect_reasons JSON + 区分列の権威）。 */
 export interface StepDefectReason {
   type: "SEMI" | "SCRAP" | "REWORK";
+  /** 不良種類（defect_types.id・必須）。旧データのみ null。 */
+  defectTypeId?: number | null;
   reason: string;
   count: number;
 }
@@ -370,21 +372,41 @@ export async function completeStepExecution(
     // 受入数は開始時に確定した値を権威とする（完了時のクライアント値は無視）。
     const authoritativeInput =
       stepRow.inputQuantity ?? quantities?.inputQuantity ?? 0;
-    // 区分合計（半製品/廃棄/工程分岐）は**不良リストから導出**して権威とする。
-    // リストが無い場合のみ quantities の区分へフォールバック（後方互換）。
+    // 区分合計（半製品/廃棄/工程分岐）は**不良リストのみから導出**して権威とする。
+    // リスト無しで区分数量だけが来るのは旧クライアント — 黙って受けず再入力を求める。
     const list = defectReasons ?? [];
+    const quantitiesDefects =
+      (quantities?.outputDefectSemiFinished ?? 0) +
+      (quantities?.outputDefectScrap ?? 0) +
+      (quantities?.outputDefectRework ?? 0);
+    if (list.length === 0 && quantitiesDefects > 0) {
+      return {
+        ok: false,
+        errors: ["不良の内訳（種類・詳細）を入力してください"],
+      };
+    }
+    // 各行の 不良種類（FK）と詳細は必須。種類はマスタの実在 + 有効を再検証する。
+    if (list.some((r) => r.defectTypeId == null || r.reason.trim() === "")) {
+      return {
+        ok: false,
+        errors: ["不良の各行に種類と詳細を入力してください"],
+      };
+    }
+    if (list.length > 0) {
+      const ids = [...new Set(list.map((r) => r.defectTypeId as number))];
+      const known = await prisma.defectType.findMany({
+        where: { id: { in: ids }, isActive: true },
+        select: { id: true },
+      });
+      if (known.length !== ids.length) {
+        return { ok: false, errors: ["不良種類が不正です"] };
+      }
+    }
     const sumType = (t: StepDefectReason["type"]) =>
       list.reduce((s, r) => (r.type === t ? s + r.count : s), 0);
-    const semi =
-      list.length > 0
-        ? sumType("SEMI")
-        : (quantities?.outputDefectSemiFinished ?? 0);
-    const scrap =
-      list.length > 0 ? sumType("SCRAP") : (quantities?.outputDefectScrap ?? 0);
-    const rework =
-      list.length > 0
-        ? sumType("REWORK")
-        : (quantities?.outputDefectRework ?? 0);
+    const semi = sumType("SEMI");
+    const scrap = sumType("SCRAP");
+    const rework = sumType("REWORK");
     persisted = {
       inputQuantity: authoritativeInput,
       outputSuccessQuantity: authoritativeInput - semi - scrap - rework,
@@ -406,10 +428,15 @@ export async function completeStepExecution(
       return { ok: false, errors: qIssues.map((i) => i.message) };
   }
 
-  // 不良の内訳（{種別, 理由, 数}）— 有効行のみ。空なら列を触らない。
+  // 不良の内訳（{種別, 種類, 詳細, 数}）— 有効行のみ。空なら列を触らない。
   const cleanedReasons = (defectReasons ?? [])
     .filter((r) => Number.isFinite(r.count) && r.count > 0)
-    .map((r) => ({ type: r.type, reason: r.reason.trim(), count: r.count }));
+    .map((r) => ({
+      type: r.type,
+      defectTypeId: r.defectTypeId ?? null,
+      reason: r.reason.trim(),
+      count: r.count,
+    }));
 
   const rIssues = validateRouting(
     {
