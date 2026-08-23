@@ -20,6 +20,7 @@
  * （一時停止 = IN_PROGRESS かつ session_locked_by IS NULL）。
  */
 
+import type { Prisma as PrismaNS } from "../../generated/client/client";
 import { recordAudit } from "./audit";
 import { prisma } from "./db";
 import { jstDateOnly } from "./format";
@@ -62,7 +63,6 @@ export type StepErrorCode =
   | "NOT_ASSIGNED"
   | "WO_NOT_APPROVED"
   | "NOT_STARTABLE"
-  | "OTHER_STEP_ACTIVE"
   | "LOCK_TAKEN"
   | "LOCK_HELD_BY_OTHER"
   | "NOT_IN_PROGRESS"
@@ -86,6 +86,8 @@ export interface StepActionResult {
   errors?: string[];
   codes?: StepErrorCode[];
 }
+
+type Tx = PrismaNS.TransactionClient;
 
 const fail = (code: StepErrorCode, ...errors: string[]): StepActionResult => ({
   ok: false,
@@ -213,28 +215,50 @@ export async function canOperateStep(
 }
 
 /**
- * 「作業中の別工程」= 自分がセッションロックを保持している進行中の工程。
- * 同時に作業できる工程は 1 つ — 開始・再開の前ゲートに使う
- * （一時停止すればロックが空くので、別工程を開始できるようになる）。
+ * 同一作業者の open セグメント（endedAt null）の同時数を現状に合わせて
+ * 張り直す — **同時実行の実績按分の唯一の実装**。
+ *
+ * 「1 実績行 = 一定の同時数（concurrent_count）を持つ作業セグメント」を
+ * 不変条件とし、同時数が変わる瞬間（開始/再開/一時停止/完了）に、数の
+ * 合わない open 行を endedAt で閉じて同条件 + 新しい同時数で開き直す。
+ * 実働時間は duration / concurrent_count の合算（steps-core
+ * accumulatedWorkMs / nextjs-web step-work-hours.ts）。
+ * 必ず対象行の増減を済ませた後、同じ tx 内で呼ぶこと。
  */
-export async function findMyActiveStep(
-  actorId: string,
-  excludeStepId?: string,
-): Promise<{ stepId: string; workOrderNumber: number } | null> {
-  const active = await prisma.workOrderStep.findFirst({
-    where: {
-      sessionLockedBy: actorId,
-      status: "IN_PROGRESS",
-      ...(excludeStepId ? { id: { not: excludeStepId } } : {}),
-    },
+async function resegmentOpenActuals(
+  tx: Tx,
+  userId: string,
+  now: Date,
+): Promise<void> {
+  const open = await tx.workOrderStepActual.findMany({
+    where: { userId, endedAt: null },
     select: {
       id: true,
-      workOrder: { select: { workOrderNumber: true } },
+      stepId: true,
+      workLocationId: true,
+      concurrentCount: true,
     },
   });
-  return active
-    ? { stepId: active.id, workOrderNumber: active.workOrder.workOrderNumber }
-    : null;
+  const n = open.length;
+  if (n === 0) return;
+  for (const row of open) {
+    if (row.concurrentCount === n) continue;
+    await tx.workOrderStepActual.update({
+      where: { id: row.id },
+      data: { endedAt: now },
+    });
+    await tx.workOrderStepActual.create({
+      data: {
+        stepId: row.stepId,
+        userId,
+        workedDate: jstDateOnly(now),
+        startedAt: now,
+        workLocationId: row.workLocationId,
+        concurrentCount: n,
+        createdBy: userId,
+      },
+    });
+  }
 }
 
 /**
@@ -262,15 +286,6 @@ export async function startStepExecution(
     stepRow.workOrder.status !== "IN_PROGRESS"
   ) {
     return fail("WO_NOT_APPROVED", "指示書が承認済み/進行中ではありません");
-  }
-
-  // 同時に作業できる工程は 1 つ（先に一時停止 or 完了させる）
-  const active = await findMyActiveStep(actorId, stepId);
-  if (active) {
-    return fail(
-      "OTHER_STEP_ACTIVE",
-      `指示書 #${active.workOrderNumber} の工程を作業中です。先に一時停止または完了してください`,
-    );
   }
 
   const { ctx } = await fetchWorkflowCtx(stepRow.workOrderId);
@@ -313,6 +328,11 @@ export async function startStepExecution(
       },
     });
     if (c.count === 0) return 0;
+    // 同時作業数 = 既存 open セグメント + この工程。新規行は最初から
+    // 正しい同時数で開き、既存行は resegment で張り直す（按分の不変条件）。
+    const openBefore = await tx.workOrderStepActual.count({
+      where: { userId: actorId, endedAt: null },
+    });
     await tx.workOrderStepActual.create({
       data: {
         stepId,
@@ -320,9 +340,11 @@ export async function startStepExecution(
         workedDate: jstDateOnly(now),
         startedAt: now,
         workLocationId: workLocationId ?? null,
+        concurrentCount: openBefore + 1,
         createdBy: actorId,
       },
     });
+    if (openBefore > 0) await resegmentOpenActuals(tx, actorId, now);
     return c.count;
   });
   if (claimed === 0) {
@@ -376,6 +398,8 @@ export async function pauseStepExecution(
       where: { stepId, userId: actorId, endedAt: null },
       data: { endedAt: now },
     });
+    // 残りの open セグメントの同時数を張り直す（3 → 2 など）
+    await resegmentOpenActuals(tx, actorId, now);
     return c.count;
   });
   if (released === 0) {
@@ -416,15 +440,6 @@ export async function resumeStepExecution(
     return fail("WO_NOT_APPROVED", "指示書が承認済み/進行中ではありません");
   }
 
-  // 同時に作業できる工程は 1 つ（先に一時停止 or 完了させる）
-  const active = await findMyActiveStep(actorId, stepId);
-  if (active) {
-    return fail(
-      "OTHER_STEP_ACTIVE",
-      `指示書 #${active.workOrderNumber} の工程を作業中です。先に一時停止または完了してください`,
-    );
-  }
-
   // 同じ工程を続きから — 直前の自分のセッションと同じ場所とみなす。
   const lastActual = await prisma.workOrderStepActual.findFirst({
     where: { stepId, userId: actorId },
@@ -439,6 +454,9 @@ export async function resumeStepExecution(
       data: { sessionLockedBy: actorId, sessionLockedAt: now },
     });
     if (c.count === 0) return 0;
+    const openBefore = await tx.workOrderStepActual.count({
+      where: { userId: actorId, endedAt: null },
+    });
     await tx.workOrderStepActual.create({
       data: {
         stepId,
@@ -446,9 +464,11 @@ export async function resumeStepExecution(
         workedDate: jstDateOnly(now),
         startedAt: now,
         workLocationId: lastActual?.workLocationId ?? workLocationId ?? null,
+        concurrentCount: openBefore + 1,
         createdBy: actorId,
       },
     });
+    if (openBefore > 0) await resegmentOpenActuals(tx, actorId, now);
     return c.count;
   });
   if (claimed === 0) {
@@ -716,11 +736,19 @@ export async function completeStepExecution(
       },
     });
     if (c.count !== 1) return c.count;
-    // この工程の open な作業セッションを全て閉じる（誰のものでも残さない）
+    // この工程の open な作業セッションを全て閉じる（誰のものでも残さない）。
+    // 閉じた作業者の残りセグメントは同時数が減るので張り直す。
+    const openRows = await tx.workOrderStepActual.findMany({
+      where: { stepId, endedAt: null },
+      select: { userId: true },
+    });
     await tx.workOrderStepActual.updateMany({
       where: { stepId, endedAt: null },
       data: { endedAt: now },
     });
+    for (const uid of new Set(openRows.map((r) => r.userId))) {
+      await resegmentOpenActuals(tx, uid, now);
+    }
     return c.count;
   });
   if (claimed !== 1) {

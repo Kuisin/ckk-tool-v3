@@ -93,12 +93,6 @@ export const ja = {
       completed: "完了",
       cancelled: "キャンセル",
     },
-    activeLock: {
-      badge: "他工程を作業中",
-      alert: (workOrderNumber: number, stepName: string) =>
-        `指示書 #${workOrderNumber}「${stepName}」を作業中です。他の工程を操作するには、先に一時停止または完了してください。`,
-      goto: "作業中の工程へ",
-    },
     actions: {
       start: "工程開始",
       pause: "一時停止",
@@ -244,8 +238,6 @@ export const ja = {
       NOT_ASSIGNED: "この工程は担当ではありません",
       WO_NOT_APPROVED: "指示書が承認済み/進行中ではありません",
       NOT_STARTABLE: "前工程が完了していないため開始できません",
-      OTHER_STEP_ACTIVE:
-        "別の工程を作業中のため操作できません（先に一時停止または完了してください）",
       LOCK_TAKEN: "別の人が先に開始しました",
       LOCK_HELD_BY_OTHER: "別の人が作業中です",
       NOT_IN_PROGRESS: "進行中の工程ではありません",

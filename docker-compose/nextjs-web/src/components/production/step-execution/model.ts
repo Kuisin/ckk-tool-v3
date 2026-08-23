@@ -93,6 +93,8 @@ export interface StepPlanView {
   workLocationId: number | null;
   workLocationName: string | null;
   notes: string | null;
+  /** 実績のみ: セグメント中の同時作業工程数（実働は duration/n で按分）。 */
+  concurrentCount?: number | null;
 }
 
 export type StepActualView = StepPlanView;

@@ -135,6 +135,24 @@ describe("accumulatedWorkMs", () => {
     expect(ms).toBe(60 * 60 * 1000);
   });
 
+  it("同時実行セグメントは duration / concurrent_count で按分する", () => {
+    const ms = accumulatedWorkMs(
+      [
+        {
+          startedAt: t("2026-08-14T01:00:00Z"),
+          endedAt: t("2026-08-14T03:00:00Z"),
+          concurrentCount: 2, // 2h を 2 工程同時 → 1h 扱い
+        },
+        {
+          startedAt: t("2026-08-14T04:00:00Z"),
+          endedAt: null, // 未指定は従来どおり（1 扱い）
+        },
+      ],
+      now,
+    );
+    expect(ms).toBe(2 * 60 * 60 * 1000);
+  });
+
   it("一時停止を挟んだ複数セッションは合算される（休憩は含まない）", () => {
     const ms = accumulatedWorkMs(
       [

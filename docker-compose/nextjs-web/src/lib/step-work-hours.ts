@@ -12,6 +12,8 @@
 export interface WorkSessionTimes {
   startedAt: Date | string | null;
   endedAt: Date | string | null;
+  /** セグメント中の同時作業工程数（同時実行の按分。未指定/0 以下は 1 扱い）。 */
+  concurrentCount?: number | null;
 }
 
 const MS_PER_HOUR = 1000 * 60 * 60;
@@ -25,6 +27,8 @@ function toMs(value: Date | string | null): number | null {
 /**
  * 実働時間の合計（h、小数第 2 位まで）。数えられる行が 1 つも無ければ null
  * （0 ではない — 「実績なし」と「0 時間」を区別するため）。
+ * 同時実行中のセグメントは duration / concurrent_count で按分する
+ * （kiosk steps-core.accumulatedWorkMs と同じ規則）。
  */
 export function sumActualWorkHours(
   sessions: readonly WorkSessionTimes[],
@@ -35,7 +39,7 @@ export function sumActualWorkHours(
     const start = toMs(s.startedAt);
     const end = toMs(s.endedAt);
     if (start == null || end == null || end < start) continue;
-    totalMs += end - start;
+    totalMs += (end - start) / Math.max(1, s.concurrentCount ?? 1);
     counted += 1;
   }
   if (counted === 0) return null;

@@ -85,12 +85,6 @@ export const en: KioskMessages = {
       completed: "Completed",
       cancelled: "Cancelled",
     },
-    activeLock: {
-      badge: "Working on another step",
-      alert: (workOrderNumber: number, stepName: string) =>
-        `You are working on "${stepName}" (order #${workOrderNumber}). Pause or complete it before operating another step.`,
-      goto: "Go to active step",
-    },
     actions: {
       start: "Start",
       pause: "Pause",
@@ -238,8 +232,6 @@ export const en: KioskMessages = {
       NOT_ASSIGNED: "This step is not assigned to you",
       WO_NOT_APPROVED: "The work order is not approved or in progress",
       NOT_STARTABLE: "Cannot start — a previous step is not complete",
-      OTHER_STEP_ACTIVE:
-        "You are working on another step — pause or complete it first",
       LOCK_TAKEN: "Someone else started this first",
       LOCK_HELD_BY_OTHER: "Someone else is working on this",
       NOT_IN_PROGRESS: "This step is not in progress",

@@ -41,18 +41,11 @@ type Props = {
   steps: MyStepView[];
   upcomingCount: number;
   completedSteps: MyStepView[];
-  /** 自分が作業中の工程 id（同時作業は 1 工程まで — 他はロック表示）。 */
-  activeStepId: string | null;
 };
 
 const SECTION_ORDER: StepBucket[] = ["OVERDUE", "TODAY", "UPCOMING"];
 
-export function StepListView({
-  steps,
-  upcomingCount,
-  completedSteps,
-  activeStepId,
-}: Props) {
+export function StepListView({ steps, upcomingCount, completedSteps }: Props) {
   const router = useRouter();
   const { m } = useI18n();
   const [refreshing, setRefreshing] = useState(false);
@@ -124,13 +117,7 @@ export function StepListView({
                       : m.steps.sections.upcoming}
                 </Text>
                 {rows.map((step) => (
-                  <StepCard
-                    key={step.stepId}
-                    lockedByActive={
-                      activeStepId != null && step.stepId !== activeStepId
-                    }
-                    step={step}
-                  />
+                  <StepCard key={step.stepId} step={step} />
                 ))}
               </Stack>
             );
@@ -159,11 +146,7 @@ export function StepListView({
             </Button>
             {showCompleted &&
               completedSteps.map((step) => (
-                <StepCard
-                  key={step.stepId}
-                  lockedByActive={false}
-                  step={step}
-                />
+                <StepCard key={step.stepId} step={step} />
               ))}
           </Stack>
         )}
@@ -172,24 +155,14 @@ export function StepListView({
   );
 }
 
-function StepCard({
-  step,
-  lockedByActive,
-}: {
-  step: MyStepView;
-  /** 別工程を作業中（このカードは開始/再開できない — 詳細は開ける）。 */
-  lockedByActive: boolean;
-}) {
+function StepCard({ step }: { step: MyStepView }) {
   const router = useRouter();
   const { m } = useI18n();
   const openable =
     step.sessionState === "STARTABLE" ||
     step.sessionState === "WORKING" ||
     step.sessionState === "PAUSED";
-  const dimmed =
-    !openable ||
-    (lockedByActive &&
-      (step.sessionState === "STARTABLE" || step.sessionState === "PAUSED"));
+  const dimmed = !openable;
 
   return (
     <UnstyledButton
@@ -248,18 +221,12 @@ function StepCard({
             >
               {stateLabel(m, step.sessionState, step.lockedByName)}
             </Badge>
-            {lockedByActive &&
-              (step.sessionState === "STARTABLE" ||
-                step.sessionState === "PAUSED") && (
-                <Badge color="gray" size="sm" variant="outline">
-                  {m.steps.activeLock.badge}
-                </Badge>
-              )}
             {step.workedMs > 0 && (
               <Text c="dimmed" size="sm">
                 {m.steps.card.elapsedLabel}{" "}
                 <LiveElapsed
                   baseMs={step.workedMs}
+                  rate={1 / step.openConcurrentCount}
                   running={step.sessionState === "WORKING"}
                 />
               </Text>

@@ -351,6 +351,10 @@ model WorkOrderStepActual {
   endedAt    DateTime? @map("ended_at") @db.Timestamptz(6)
   quantity   Int? // 実施数量（任意）
   workLocationId Int? @map("work_location_id") // 作業場所（任意。キオスクは端末の既定作業場所を書き込む）
+  // このセグメント中に同じ作業者が同時に開いていた工程数。実働時間は
+  // duration / concurrent_count で按分する。同時数が変わる瞬間に行を閉じて
+  // 張り直す（1 行 = 一定の同時数のセグメント — kiosk resegmentOpenActuals）。
+  concurrentCount Int @default(1) @map("concurrent_count")
   notes      String?
   createdBy  String?   @map("created_by") @db.Uuid
   createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
