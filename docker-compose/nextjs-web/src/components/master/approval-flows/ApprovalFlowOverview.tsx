@@ -55,6 +55,8 @@ export interface FlowOverviewRow {
   permissionCode: string;
   /** 権限コードの表示名（app.permissions.display_name）。 */
   permissionLabel: string;
+  /** 有効な条件付きフローの本数（0 = バッジなし）。 */
+  ruleCount: number;
   steps: FlowOverviewStep[];
 }
 
@@ -100,6 +102,11 @@ export function ApprovalFlowOverview({ rows }: { rows: FlowOverviewRow[] }) {
                   <Badge color={meta.color} size="sm" variant="light">
                     {meta.label}
                   </Badge>
+                  {r.ruleCount > 0 && (
+                    <Badge color="indigo" size="xs" variant="light">
+                      条件付き {r.ruleCount} 本
+                    </Badge>
+                  )}
                   {empty && (
                     <Group c="red" gap={4} wrap="nowrap">
                       <IconAlertTriangle size={14} />

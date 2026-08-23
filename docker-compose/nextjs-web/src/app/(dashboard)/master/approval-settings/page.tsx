@@ -21,10 +21,16 @@ export default async function MasterApprovalSettingsPage() {
       APPROVAL_TARGET_TYPES.map((t) => APPROVAL_TARGET[t].approvePermission),
     ),
   ];
-  const [flowSteps, groupRecords, permissions] = await Promise.all([
+  const [flowSteps, ruleCounts, groupRecords, permissions] = await Promise.all([
     prisma.approvalFlowStep.findMany({
       include: { group: { select: { name: true } } },
       orderBy: [{ targetType: "asc" }, { stepNo: "asc" }],
+    }),
+    // 条件付きフロー（有効のみ）の本数 — カードのバッジ用
+    prisma.approvalFlowRule.groupBy({
+      by: ["targetType"],
+      where: { isActive: true },
+      _count: { _all: true },
     }),
     prisma.approvalGroup.findMany({
       include: {
@@ -61,6 +67,8 @@ export default async function MasterApprovalSettingsPage() {
       permissionCode: code,
       // 権限マスタが未投入でもコードだけは出す（画面が空欄になるより読める）。
       permissionLabel: permissionLabels.get(code) || code,
+      ruleCount:
+        ruleCounts.find((r) => r.targetType === targetType)?._count._all ?? 0,
       steps: flowSteps
         .filter((s) => s.targetType === targetType)
         .map((s) => ({

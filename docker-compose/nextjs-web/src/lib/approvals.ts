@@ -18,6 +18,12 @@
 
 import type { Prisma } from "../../generated/client/client";
 import {
+  type ApprovalDocInfo,
+  conditionsFromJson,
+  type FlowCondition,
+  matchFlowRule,
+} from "./approval-conditions";
+import {
   type ApprovalMode,
   type ApprovalPhase,
   decideAfterApproval,
@@ -90,6 +96,178 @@ export async function assertFlowConfigured(
   return count > 0
     ? null
     : `${APPROVAL_TARGET[targetType].label}の承認フローが未設定です（承認設定 MS0B で設定してください）`;
+}
+
+// ─── 条件付きフロー（approval_flow_rules）────────────────────────────────────
+
+/** 条件付きフローのルール 1 本（優先順・有効のみ返す）。 */
+export interface FlowRuleDef {
+  id: number;
+  name: LocalizedText;
+  priority: number;
+  isActive: boolean;
+  conditions: FlowCondition[];
+  steps: FlowStepDef[];
+}
+
+/**
+ * 書類種別の有効な条件付きフロー（priority 昇順）。段が 0 のルールは
+ * 使いようがないので除く（保存時の検証でも防いでいる — 二重の安全網）。
+ */
+export async function getApprovalFlowRules(
+  targetType: ApprovalTargetType,
+): Promise<FlowRuleDef[]> {
+  const rows = await prisma.approvalFlowRule.findMany({
+    where: { targetType, isActive: true },
+    include: {
+      steps: {
+        include: { group: { select: { name: true } } },
+        orderBy: { stepNo: "asc" },
+      },
+    },
+    orderBy: { priority: "asc" },
+  });
+  return rows
+    .filter((r) => r.steps.length > 0)
+    .map((r) => ({
+      id: r.id,
+      name: (r.name ?? { ja: "", en: "" }) as LocalizedText,
+      priority: r.priority,
+      isActive: r.isActive,
+      conditions: conditionsFromJson(r.conditions),
+      steps: r.steps.map((s) => ({
+        stepNo: s.stepNo,
+        name: (s.name ?? { ja: "", en: "" }) as LocalizedText,
+        groupId: s.groupId,
+        groupName: (s.group.name ?? { ja: "", en: "" }) as LocalizedText,
+        mode: s.mode as ApprovalMode,
+      })),
+    }));
+}
+
+/**
+ * 条件評価に使う書類の属性を抽出する。キーは
+ * lib/approval-conditions.ts の APPROVAL_CONDITION_FIELDS と一致させること。
+ * 書類が見つからない・読めないときは null（→ ルールは使わず既定フロー）。
+ */
+export async function fetchApprovalDocInfo(
+  targetType: ApprovalTargetType,
+  targetId: string,
+): Promise<ApprovalDocInfo | null> {
+  switch (targetType) {
+    case "order_acceptances": {
+      const key = parseDocKey(targetId, "ORD");
+      if (!key) return null;
+      const row = await prisma.orderAcceptance.findUnique({
+        where: { yearMonth_seq: { yearMonth: key.yearMonth, seq: key.seq } },
+        select: {
+          deliveryMethod: true,
+          assignedPlantId: true,
+          items: {
+            select: { quantity: true, unitPrice: true, amount: true },
+          },
+        },
+      });
+      if (!row) return null;
+      // 確定前は amount が null なので quantity × unitPrice で補完。
+      const totalAmount = row.items.reduce((sum, it) => {
+        if (it.amount != null) return sum + Number(it.amount);
+        if (it.unitPrice != null)
+          return sum + it.quantity * Number(it.unitPrice);
+        return sum;
+      }, 0);
+      return {
+        total_amount: totalAmount,
+        delivery_method: row.deliveryMethod,
+        assigned_plant_id:
+          row.assignedPlantId != null ? String(row.assignedPlantId) : null,
+      };
+    }
+    case "work_orders": {
+      const workOrderNumber = Number(targetId);
+      if (!Number.isInteger(workOrderNumber)) return null;
+      const row = await prisma.workOrder.findUnique({
+        where: { workOrderNumber },
+        select: { type: true, plannedQuantity: true },
+      });
+      if (!row) return null;
+      return { type: row.type, planned_quantity: row.plannedQuantity };
+    }
+    case "material_purchase_orders": {
+      const row = await prisma.materialPurchaseOrder.findUnique({
+        where: { poNumber: targetId },
+        select: { totalAmount: true },
+      });
+      if (!row) return null;
+      return { total_amount: Number(row.totalAmount) };
+    }
+    case "purchase_requests": {
+      const row = await prisma.purchaseRequest.findUnique({
+        where: { requestNumber: targetId },
+        select: { _count: { select: { items: true } } },
+      });
+      if (!row) return null;
+      return { item_count: row._count.items };
+    }
+    case "work_order_flow_changes": {
+      const row = await prisma.workOrderFlowChange.findUnique({
+        where: { id: targetId },
+        select: {
+          workOrder: { select: { type: true, plannedQuantity: true } },
+        },
+      });
+      if (!row) return null;
+      return {
+        wo_type: row.workOrder.type,
+        wo_planned_quantity: row.workOrder.plannedQuantity,
+      };
+    }
+    case "order_acceptance_cancel_requests": {
+      const row = await prisma.orderAcceptanceCancelRequest.findUnique({
+        where: { id: targetId },
+        select: {
+          acceptance: {
+            select: {
+              deliveryMethod: true,
+              items: {
+                select: { quantity: true, unitPrice: true, amount: true },
+              },
+            },
+          },
+        },
+      });
+      if (!row) return null;
+      const totalAmount = row.acceptance.items.reduce((sum, it) => {
+        if (it.amount != null) return sum + Number(it.amount);
+        if (it.unitPrice != null)
+          return sum + it.quantity * Number(it.unitPrice);
+        return sum;
+      }, 0);
+      return {
+        total_amount: totalAmount,
+        delivery_method: row.acceptance.deliveryMethod,
+      };
+    }
+  }
+}
+
+/**
+ * 依頼時のフロー解決 — 条件付きフローが一致すればその段構成、なければ
+ * 既定フロー。既定フローが未設定なら空配列（呼び出し側がエラーにする —
+ * ルールは既定フローの**上書き**であり、単体では承認ゲートを作らない）。
+ */
+async function resolveFlowForTarget(
+  targetType: ApprovalTargetType,
+  targetId: string,
+): Promise<FlowStepDef[]> {
+  const flow = await getApprovalFlow(targetType);
+  if (flow.length === 0) return flow;
+  const rules = await getApprovalFlowRules(targetType);
+  if (rules.length === 0) return flow;
+  const info = await fetchApprovalDocInfo(targetType, targetId);
+  if (!info) return flow;
+  const matched = matchFlowRule(rules, info);
+  return matched ? matched.steps : flow;
 }
 
 /** フロー定義をスナップショット形に落とす。 */
@@ -444,7 +622,10 @@ export async function startApprovalFlow(input: {
   targetId: string;
   notes?: string;
 }): Promise<{ ok: boolean; error?: string }> {
-  const flow = await getApprovalFlow(input.targetType);
+  // 条件付きフロー（approval_flow_rules）を書類の属性で解決する。
+  // 一致すればその段構成、なければ既定フロー。以降は従来と同じ
+  // （スナップショットに落ちるので、進行中の扱いに違いは無い）。
+  const flow = await resolveFlowForTarget(input.targetType, input.targetId);
   if (flow.length === 0) {
     return {
       ok: false,
