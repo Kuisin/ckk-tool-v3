@@ -7,10 +7,10 @@
  * 編集は種別ごとの編集ページへ。未設定の書類は赤いカードで出す — 未設定のまま
  * だと承認依頼そのものが出せないため、放置に気づける必要がある。
  *
- * 各カードには「承認に必要な権限」（<code>:APPROVE）を出し、段ごとに
- * 承認グループのメンバーがその権限を持っているかを突き合わせて出す。
- * 権限が無い人は承認画面のボタンを押しても弾かれる（承認グループに入れた
- * だけでは承認できない）ので、設定画面で先に気づけるようにする。
+ * 各カードには「承認に必要な権限」（<code>:READ / UPDATE — 書類を閲覧・
+ * 編集できること）を出し、段ごとに承認グループのメンバーがそれを持って
+ * いるかを突き合わせて出す。誰が承認するかは承認グループだけで決まるが、
+ * 書類を開けない人は押しても弾かれるので、設定画面で先に気づけるようにする。
  *
  * モバイルでは編集ボタンを次の行へ落として全幅にする（design.md §20.2）。
  * 横に並べたままだと段の列が数十 px まで潰れて読めなくなるため。
@@ -25,7 +25,6 @@ import {
 import { EditButton } from "@/components/ui/buttons";
 import { useIsMobile } from "@/hooks/useViewport";
 import {
-  APPROVAL_ACTION,
   APPROVAL_TARGET,
   type ApprovalTargetType,
 } from "@/lib/approval-targets";
@@ -51,7 +50,7 @@ export interface FlowOverviewStep {
 
 export interface FlowOverviewRow {
   targetType: ApprovalTargetType;
-  /** 承認に必要な権限コード（ACTION は APPROVE 固定）。 */
+  /** 承認に必要な権限コード（書類の READ / UPDATE を突き合わせる）。 */
   permissionCode: string;
   /** 権限コードの表示名（app.permissions.display_name）。 */
   permissionLabel: string;
@@ -69,9 +68,9 @@ export function ApprovalFlowOverview({ rows }: { rows: FlowOverviewRow[] }) {
         適用され、進行中の書類は依頼した時点の設定のまま進みます。
       </Text>
       <Text c="dimmed" size="sm">
-        承認を押すには「承認グループに入っていること」に加えて、書類ごとの
-        承認権限が要ります。段のバッジは、今その段にいるメンバーが権限を
-        持っているかを表します。
+        誰が承認できるかは承認グループだけで決まります。加えて、承認を押すには
+        その書類を閲覧または編集できる権限が要ります。段のバッジは、今その段に
+        いるメンバーが書類を開けるかを表します。
       </Text>
       {rows.map((r) => {
         const meta = APPROVAL_TARGET[r.targetType];
@@ -119,10 +118,10 @@ export function ApprovalFlowOverview({ rows }: { rows: FlowOverviewRow[] }) {
                 <Group c="dimmed" gap={6} wrap="nowrap">
                   <IconShieldCheck size={14} />
                   <Text size="xs">
-                    承認に必要な権限: {r.permissionLabel} の承認
+                    承認に必要な権限: {r.permissionLabel} の閲覧または編集
                   </Text>
                   <Text ff="mono" size="xs">
-                    {r.permissionCode}:{APPROVAL_ACTION}
+                    {r.permissionCode}:READ / UPDATE
                   </Text>
                 </Group>
                 {!empty && (

@@ -40,11 +40,14 @@ export interface ApprovalTargetMeta {
    */
   appKey: string;
   /**
-   * 承認 / 差し戻しを押すのに必要な権限コード。ACTION は常に APPROVE
-   * （`checkPermission(code, "APPROVE")` — 各書類の approve* Server Action）。
+   * 承認 / 差し戻しを押すのに必要な権限コード。要求されるのは
+   * **その書類の閲覧（READ）または編集（UPDATE）**
+   * （lib/authz.ts `checkApprovalDocAccess(code)` — 各書類の approve* Server
+   * Action）。承認そのものの可否は権限アクションではなく、承認設定（MS0B）の
+   * 承認グループ所属だけが決める（旧 `code:APPROVE` 要件は廃止）。
    *
    * これは**追加ゲート**で、実際に押せるかは
-   *   ① この権限（code:APPROVE。code:ADMIN と system:ADMIN も内包）
+   *   ① この権限（code:READ / code:UPDATE。code:ADMIN と system:ADMIN も内包）
    *   ② 承認グループの所属（本人 or 代理 — actOnCurrentStep）
    *   ③ 書類のスコープ（拠点 — *InScope。ALL 以外の grant は書類ごとに変わる）
    * の **すべて**を満たしたときだけ。承認設定 (MS0B) はこのコードを画面に出し、
@@ -52,9 +55,6 @@ export interface ApprovalTargetMeta {
    */
   approvePermission: string;
 }
-
-/** 承認操作の ACTION（書類種別に依らず APPROVE 固定）。 */
-export const APPROVAL_ACTION = "APPROVE" as const;
 
 export const APPROVAL_TARGET: Record<ApprovalTargetType, ApprovalTargetMeta> = {
   order_acceptances: {

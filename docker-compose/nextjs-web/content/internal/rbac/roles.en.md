@@ -17,8 +17,10 @@ A permission answers "**who** (role) may do **what** (action) to **which area**
 
 - **Permission code** — one business area. Not necessarily one app (`master`
   covers all 12 master-data apps; `order_acceptance` covers both SA04 and SA05).
-- **Action** — R=read / C=create / U=update / D=delete / E=export / A=approve /
-  ◎=ADMIN (every action on that code).
+- **Action** — R=read / C=create / U=update / D=delete / E=export /
+  ◎=ADMIN (every action on that code). Approval is not an action — who can
+  approve is decided solely by approval-group membership in **MS0B approval
+  settings**.
 - **Scope** — how far the action reaches. Blank means **ALL** (every row).
   - **OWN** — only rows the user created
   - **PLANT** — only rows of the user's assigned plants (set in SY01)
@@ -32,7 +34,7 @@ When several roles grant the same code, the **widest scope wins** (PLANT + ALL
 | Role | rolename | Purpose |
 |---|---|---|
 | Administrator | `admin` | Everything. The only role that can touch system admin (SY01+) and kiosk admin (SY08+) |
-| Manager | `manager` | Read, export and approve across every area — for cross-department approvers |
+| Manager | `manager` | Read and export across every area — for cross-department approvers (whether they can approve is decided by MS0B group membership) |
 | Sales manager | `sales_manager` | Full control of sales data + read everywhere |
 | Sales | `sales` | Create and edit sales data, **own records only** (OWN) |
 | Sales assistant | `sales_assistant` | Read-only across sales data. No create, edit or approve |
@@ -77,13 +79,13 @@ When several roles grant the same code, the **widest scope wins** (PLANT + ALL
 | Role | Price list | Quote | Order acc. | Design req. | Purchasing | Receipt | Outsource |
 |---|---|---|---|---|---|---|---|
 | **Administrator**<br/>`admin` | ◎ | ◎ | ◎ | ◎ | ◎ | ◎ | ◎ |
-| **Manager**<br/>`manager` | REA | REA | REA | REA | REA | REA | REA |
-| **Sales manager**<br/>`sales_manager` | RCUDEA | RCUDEA | RCUDEA | RCUDEA | — | — | — |
+| **Manager**<br/>`manager` | RE | RE | RE | RE | RE | RE | RE |
+| **Sales manager**<br/>`sales_manager` | RCUDE | RCUDE | RCUDE | RCUDE | — | — | — |
 | **Sales**<br/>`sales` | RCU<br/>OWN | RCU<br/>OWN | RCU<br/>OWN | RCU<br/>OWN | — | — | — |
 | **Sales assistant**<br/>`sales_assistant` | R | R | R | R | — | — | — |
-| **Purchasing manager**<br/>`purchasing_manager` | R | R | R | R | RCUDEA | RCUDEA | RCUDEA |
-| **Purchasing**<br/>`purchasing` | — | — | — | — | RCUDEA | RCUDE | RCUD |
-| **Production manager**<br/>`production_manager` | R | R | R | R | R | R | RCUDEA |
+| **Purchasing manager**<br/>`purchasing_manager` | R | R | R | R | RCUDE | RCUDE | RCUDE |
+| **Purchasing**<br/>`purchasing` | — | — | — | — | RCUDE | RCUDE | RCUD |
+| **Production manager**<br/>`production_manager` | R | R | R | R | R | R | RCUDE |
 | **Production**<br/>`production` | — | — | RU | — | R | R | RU |
 | **Quality manager**<br/>`quality_manager` | R | R | R | R | R | R | R |
 | **Quality**<br/>`quality` | — | — | R | — | — | — | — |
@@ -92,37 +94,40 @@ When several roles grant the same code, the **widest scope wins** (PLANT + ALL
 | **Accounting manager**<br/>`accounting_manager` | R | R | R | R | R | R | R |
 | **Accounting**<br/>`accounting` | R | R | R | — | — | — | — |
 | **Viewer**<br/>`viewer` | R | R | R | R | R | R | R |
-| **Staff**<br/>`staff` | RCUDEA | RCUDEA | RCUDEA | RCUDEA | RCUDEA | RCUDEA | RCUDEA |
+| **Staff**<br/>`staff` | RCUDE | RCUDE | RCUDE | RCUDE | RCUDE | RCUDE | RCUDE |
 
 ## Matrix — production, shipping, billing, admin
 
 | Role | Work order | Approvals | Inventory | Shipping | Delivery | Invoice | Closing | Master | Internal docs | Kiosk | System |
 |---|---|---|---|---|---|---|---|---|---|---|---|
 | **Administrator**<br/>`admin` | ◎ | ◎ | ◎ | ◎ | ◎ | ◎ | ◎ | ◎ | ◎ | ◎ | ◎ |
-| **Manager**<br/>`manager` | REA | REA | REA | REA | REA | REA | REA | REA | REA | — | — |
+| **Manager**<br/>`manager` | RE | RE | RE | RE | RE | RE | RE | RE | RE | — | — |
 | **Sales manager**<br/>`sales_manager` | — | R | — | — | — | — | — | R | — | — | — |
 | **Sales**<br/>`sales` | — | — | — | — | — | — | — | R | — | — | — |
 | **Sales assistant**<br/>`sales_assistant` | — | — | — | — | — | — | — | R | — | — | — |
 | **Purchasing manager**<br/>`purchasing_manager` | R | R | R | R | R | R | R | R | R | — | — |
 | **Purchasing**<br/>`purchasing` | R | R | R | — | — | — | — | R | — | — | — |
-| **Production manager**<br/>`production_manager` | RCUDEA | R | RCUDEA | R | R | R | R | R | R | — | — |
-| **Production**<br/>`production` | RCUDEA<br/>PLANT | R | RCUE<br/>PLANT | R | — | — | — | R | — | — | — |
-| **Quality manager**<br/>`quality_manager` | RCUDEA | R | R | R | R | R | R | R | R | — | — |
-| **Quality**<br/>`quality` | RUA<br/>PLANT | R | R | — | — | — | — | R | — | — | — |
-| **Shipping manager**<br/>`shipping_manager` | R | R | RCUDEA | RCUDEA | RCUDEA | R | R | R | R | — | — |
+| **Production manager**<br/>`production_manager` | RCUDE | R | RCUDE | R | R | R | R | R | R | — | — |
+| **Production**<br/>`production` | RCUDE<br/>PLANT | R | RCUE<br/>PLANT | R | — | — | — | R | — | — | — |
+| **Quality manager**<br/>`quality_manager` | RCUDE | R | R | R | R | R | R | R | R | — | — |
+| **Quality**<br/>`quality` | RU<br/>PLANT | R | R | — | — | — | — | R | — | — | — |
+| **Shipping manager**<br/>`shipping_manager` | R | R | RCUDE | RCUDE | RCUDE | R | R | R | R | — | — |
 | **Shipping**<br/>`shipping` | R | — | RU<br/>PLANT | RCUDE<br/>PLANT | RCUDE | — | — | R | — | — | — |
-| **Accounting manager**<br/>`accounting_manager` | R | R | R | R | R | RCUDEA | RCUDEA | R | R | — | — |
+| **Accounting manager**<br/>`accounting_manager` | R | R | R | R | R | RCUDE | RCUDE | R | R | — | — |
 | **Accounting**<br/>`accounting` | — | — | — | R | R | RCUDE | RCUE | R | — | — | — |
 | **Viewer**<br/>`viewer` | R | R | R | R | R | R | R | R | R | — | — |
-| **Staff**<br/>`staff` | RCUDEA | RCUDEA | RCUDEA | RCUDEA | RCUDEA | RCUDEA | RCUDEA | RCUDEA | — | — | — |
+| **Staff**<br/>`staff` | RCUDE | RCUDE | RCUDE | RCUDE | RCUDE | RCUDE | RCUDE | RCUDE | — | — | — |
 
 ## How to read this
 
-### Approval (A) needs more than the permission
+### Approval is managed by approval groups, not a permission action
 
-Holding the approve action is not enough: the user must also be a member of the
-relevant **approval group** (MS0B). The permission is the gate on the approval
-screen; the group decides whose approval a document actually needs.
+Who can approve is managed **only in approval settings (MS0B)**. The RBAC
+requirement for pressing approve / reject is simply being able to **read (R) or
+update (U)** the document — there is no approve-action grant any more (the old
+A=approve grants were removed entirely). A user who can open the document and
+is a member (or in-period stand-in) of the step's approval group can approve.
+This is why assigning a manager role alone does not let someone approve.
 
 ### "Allowed to" is not "sees it"
 

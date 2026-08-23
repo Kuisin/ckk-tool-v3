@@ -5,7 +5,7 @@
  *
  * サマリ（名称・種別・状態）+ タブ: グループ情報 / メンバー / 代理設定 / 履歴。
  * メンバー・代理人には「この書類の承認権限を持っているか」を並べる — 承認
- * グループに入れただけでは押せず、書類ごとの `<code>:APPROVE` が要るため
+ * グループに入れただけでは押せず、書類の閲覧・編集権限（`<code>:READ / UPDATE`）が要るため
  * （lib/approval-permissions.ts）。
  * メンバーはタブ内でインライン追加・削除・有効/無効切替する。
  * 代理設定（approval_delegates — 期間限定代理）はタブ内で追加・削除する。
@@ -84,7 +84,7 @@ export interface GroupFlowUsage {
   label: string;
   /** バッジ色（APPROVAL_TARGET の色）。 */
   color: string;
-  /** 承認に必要な権限コード（ACTION は APPROVE 固定）。 */
+  /** 承認に必要な権限コード（書類の READ / UPDATE を突き合わせる）。 */
   permissionCode: string;
   /** この書類で任されている段（「1. 第一承認」）。 */
   steps: string[];
@@ -95,7 +95,7 @@ export interface MemberApproval {
   targetType: string;
   label: string;
   permissionCode: string;
-  /** `<code>:APPROVE` を持つか。false = 承認ボタンを押しても弾かれる。 */
+  /** 書類の READ / UPDATE を持つか。false = 承認ボタンを押しても弾かれる。 */
   allowed: boolean;
   /** 全社スコープか。false = 拠点等に限定され、書類によっては押せない。 */
   unrestricted: boolean;
@@ -194,13 +194,14 @@ function GroupUsageNote({ usages }: { usages: GroupFlowUsage[] }) {
               {u.steps.join(" / ")}
             </Text>
             <Text ff="mono" size="xs">
-              {u.permissionCode}:APPROVE
+              {u.permissionCode}:READ / UPDATE
             </Text>
           </Group>
         ))}
         <Text c="dimmed" size="xs">
-          メンバーがこの権限を持っていないと、承認ボタンを押しても弾かれます。
-          権限はユーザー管理 (SY01) のロールで決まります。
+          承認に必要なのは、その書類を閲覧または編集できる権限です。書類を
+          開けないメンバーは、承認ボタンを押しても弾かれます。権限は
+          ユーザー管理 (SY01) のロールで決まります。
         </Text>
       </Stack>
     </Alert>
@@ -230,7 +231,7 @@ function ApprovalPermissionCell({
             : `${a.label}を承認できますが、権限の範囲が${a.scopes
                 .map(permissionScopeLabel)
                 .join("・")}に限定されています（範囲外の書類は承認できません）`
-          : `${a.label}の承認権限（${a.permissionCode}:APPROVE）がありません — 承認ボタンを押しても弾かれます`;
+          : `${a.label}を閲覧・編集できる権限（${a.permissionCode}:READ / UPDATE）がありません — 承認ボタンを押しても弾かれます`;
         return (
           <Tooltip key={a.targetType} label={label} withinPortal>
             <Badge color={color} size="sm" variant="light">

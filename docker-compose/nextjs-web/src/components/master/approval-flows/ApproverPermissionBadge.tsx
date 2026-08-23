@@ -1,13 +1,14 @@
 "use client";
 
 /**
- * ApproverPermissionBadge — 承認の段にいるメンバーが、その書類の承認権限
- * （`<code>:APPROVE`）を持っているかを 1 つのバッジで表す。
+ * ApproverPermissionBadge — 承認の段にいるメンバーが、その書類を閲覧・編集
+ * できる権限（`<code>:READ / UPDATE` — 承認の RBAC 要件）を持っているかを
+ * 1 つのバッジで表す。
  *
- * 承認グループに入れただけでは承認できない（権限・所属・スコープの 3 つが
- * 揃って初めて押せる — lib/approval-permissions.ts）。設定側で気づけるよう、
- * 承認設定の一覧（ApprovalFlowOverview）とフロー編集（ApprovalFlowEditor）が
- * この同じバッジを使う。
+ * 誰が承認するかは承認グループだけで決まるが、書類を開けない人は押しても
+ * 弾かれる（権限・所属・スコープの 3 つが揃って初めて押せる —
+ * lib/approval-permissions.ts）。設定側で気づけるよう、承認設定の一覧
+ * （ApprovalFlowOverview）とフロー編集（ApprovalFlowEditor）が同じバッジを使う。
  */
 
 import { Badge, Tooltip } from "@mantine/core";
@@ -17,7 +18,7 @@ import { permissionScopeLabel } from "@/lib/enum-labels";
 export interface FlowApprover {
   userId: string;
   displayName: string;
-  /** `<code>:APPROVE` を持つか。false = 承認ボタンを押しても弾かれる。 */
+  /** 書類の READ / UPDATE を持つか。false = 承認ボタンを押しても弾かれる。 */
   allowed: boolean;
   /** 全社スコープか。false = 拠点等に限定され、書類によっては押せない。 */
   unrestricted: boolean;
@@ -61,7 +62,7 @@ export function ApproverPermissionBadge({
   if (missing.length > 0) {
     return (
       <Tooltip
-        label={`承認権限なし: ${missing.map((a) => a.displayName).join("、")}`}
+        label={`この書類を閲覧・編集できる権限がありません: ${missing.map((a) => a.displayName).join("、")}`}
         withinPortal
       >
         <Badge color="red" size="sm" variant="light">
