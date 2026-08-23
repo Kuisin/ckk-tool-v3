@@ -85,7 +85,7 @@ For work orders there is also a screen used only for approving. It shows the sam
 
 When you approve or send back, an **approval record** stays under 「承認状況」 (approval status). It shows who, when, at which stage, whether they approved or sent it back, and any comment. Ones approved by a stand-in are marked 「（代理: 原承認者）」 (stand-in for the original approver).
 
-You need approval permission to use this app.
+You need read permission for Approvals to use this app. Actually approving or rejecting requires being a member (or in-period stand-in) of the step's approval group, plus being able to view or edit the target document.
 
 ## Input fields
 

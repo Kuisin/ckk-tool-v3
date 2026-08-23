@@ -11,9 +11,9 @@
  * 変更が効くのは次の承認依頼から — 進行中の書類は依頼時点のスナップショットの
  * まま進む。画面にもそう書いておく。
  *
- * 段ごとに、選んだ承認グループのメンバーがこの書類の承認権限
- * （<code>:APPROVE）を持っているかを出す。グループに入れただけでは承認
- * できないので、保存する前にここで気づけるようにする。
+ * 段ごとに、選んだ承認グループのメンバーがこの書類を閲覧・編集できるか
+ * （<code>:READ / UPDATE — 承認の RBAC 要件）を出す。書類を開けない人は
+ * グループに入れても承認できないので、保存する前にここで気づけるようにする。
  *
  * レイアウト（design.md §20.2）: デスクトップは 1 段 = 1 行。モバイルは
  * 同じものを縦に積む — 入力 3 つ + 操作 3 つを 1 行に並べると 375px では
@@ -50,7 +50,7 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { FormActions, FormSection } from "@/components/ui/shells";
 import { useIsMobile } from "@/hooks/useViewport";
 import { type ApprovalMode, validateFlowSteps } from "@/lib/approval-flow";
-import { APPROVAL_ACTION } from "@/lib/approval-targets";
+
 import { APPROVAL_MODE_OPTIONS } from "@/lib/enum-labels";
 import { fieldHelp } from "@/lib/field-help";
 import {
@@ -199,11 +199,13 @@ export function ApprovalFlowEditor({
         variant="light"
       >
         <Text size="sm">
-          {targetLabel}の承認・差し戻しには「{permissionLabel}」の承認権限（
+          {targetLabel}の承認・差し戻しには、「{permissionLabel}
+          」を閲覧または編集できる権限（
           <Text component="span" ff="mono" size="sm">
-            {permissionCode}:{APPROVAL_ACTION}
+            {permissionCode}:READ / UPDATE
           </Text>
-          ）が要ります。権限が無い人は、承認グループに入れても承認できません
+          ）が要ります。誰が承認するかは、この画面の承認グループだけで
+          決まります。書類を開けない人は、承認グループに入れても承認できません
           （権限はユーザー管理 SY01 のロールで決まります）。
         </Text>
       </Alert>

@@ -102,6 +102,29 @@ export async function checkPermission(
   };
 }
 
+/**
+ * 承認・差し戻し操作の RBAC 門番 — **書類を閲覧（READ）または編集（UPDATE）
+ * できればよい**。承認そのものの可否は権限アクションではなく、承認設定
+ * （MS0B）の承認グループ所属だけが決める（lib/approvals.ts resolveApprover）。
+ *
+ * 旧: `<code>:APPROVE` を要求していたが、承認できる人の管理が RBAC と MS0B の
+ * 2 箇所に割れて運用事故のもとだったため、承認の管理は MS0B に一本化した。
+ * スコープ（access）は一致した方（READ 優先）のものを返す — 呼び出し側の
+ * *InScope 判定は「その書類が見える範囲か」で従来どおり働く。
+ */
+export async function checkApprovalDocAccess(
+  code: string,
+): Promise<AuthzResult> {
+  const read = await checkPermission(code, "READ");
+  if (read.ok) return read;
+  const update = await checkPermission(code, "UPDATE");
+  if (update.ok) return update;
+  return {
+    ok: false,
+    error: `この操作の権限がありません（${code} の閲覧または編集権限が必要です）`,
+  };
+}
+
 /** Route Handler 用: 失敗時に 401/403 Response を返す。成功時 null。 */
 export async function requirePermissionResponse(
   code: string,

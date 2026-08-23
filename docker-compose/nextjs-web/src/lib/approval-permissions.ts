@@ -4,8 +4,13 @@ import "server-only";
  * approval-permissions.ts — 「この人はこの書類の承認を押せるのか」を
  * 権限（RBAC）側から見る。承認設定 (MS0B) の表示専用。
  *
+ * 承認できるかは承認グループ所属（MS0B）が決める — RBAC 側の要件は
+ * **その書類を閲覧（READ）または編集（UPDATE）できること**だけ
+ * （lib/authz.ts checkApprovalDocAccess。旧 `<code>:APPROVE` 要件は廃止 —
+ * 承認者の管理が RBAC と MS0B の 2 箇所に割れないようにするため）。
+ *
  * 承認が通らない相談は、たいてい次のどれかで止まっている:
- *   ① 権限     — `<code>:APPROVE` を持っていない（ここで見るのはこれ）
+ *   ① 権限     — 書類の READ / UPDATE を持っていない（ここで見るのはこれ）
  *   ② 所属     — 承認グループのメンバーでない / 期間外（approval-membership.ts）
  *   ③ スコープ — 権限が拠点限定で、その書類の拠点が範囲外（*InScope）
  *
@@ -13,8 +18,8 @@ import "server-only";
  * 開かないと分からなかった。ここでまとめて引き、承認グループの各メンバーに
  * 突き合わせる。
  *
- * 判定規則は @ckk/authz-core の decide() と同じ（食い違うと画面が嘘をつく）:
- *   一致 = (code, APPROVE) or (code, ADMIN) or (system, ADMIN)
+ * 判定規則は checkApprovalDocAccess と同じ（食い違うと画面が嘘をつく）:
+ *   一致 = (code, READ) or (code, UPDATE) or (code, ADMIN) or (system, ADMIN)
  *   ALL の一致行が 1 つでもあれば全社 — なければ拠点等に限定される。
  * スコープの実効解決（所属拠点との交差）は書類が決まらないとできないので、
  * ここでは「全社か、限定か」までを返す。
@@ -32,7 +37,7 @@ export interface ApprovePermissionRow {
 }
 
 export interface ApproveCapability {
-  /** `code:APPROVE` を持つか（code:ADMIN・system:ADMIN を内包）。 */
+  /** 書類の READ / UPDATE を持つか（code:ADMIN・system:ADMIN を内包）。 */
   allowed: boolean;
   /** 全社スコープ — どの書類でも押せる。false = 拠点等に限定。 */
   unrestricted: boolean;
@@ -57,7 +62,9 @@ export function buildApproveCapability(
   if (superuser) return { allowed: true, unrestricted: true, scopes: [] };
 
   const matching = rows.filter(
-    (r) => r.code === code && (r.action === "APPROVE" || r.action === "ADMIN"),
+    (r) =>
+      r.code === code &&
+      (r.action === "READ" || r.action === "UPDATE" || r.action === "ADMIN"),
   );
   if (matching.length === 0) return NO_APPROVE_CAPABILITY;
   if (matching.some((r) => r.scope === "ALL")) {
@@ -83,7 +90,7 @@ export async function loadApproveCapabilities(
   const wanted = [...new Set(codes)];
   if (ids.length === 0 || wanted.length === 0) return result;
 
-  // ADMIN も引く（code:ADMIN は APPROVE を内包し、system:ADMIN は全コードを内包）。
+  // ADMIN も引く（code:ADMIN は全アクションを内包し、system:ADMIN は全コードを内包）。
   const rows = await prisma.$queryRaw<
     {
       user_id: string;
@@ -96,7 +103,7 @@ export async function loadApproveCapabilities(
            scope::text AS scope
       FROM app.user_permissions
      WHERE user_id = ANY(${ids}::uuid[])
-       AND action::text IN ('APPROVE', 'ADMIN')
+       AND action::text IN ('READ', 'UPDATE', 'ADMIN')
   `;
 
   const byUser = new Map<string, ApprovePermissionRow[]>();

@@ -26,7 +26,7 @@ import {
   startApprovalFlow,
 } from "@/lib/approvals";
 import { getCurrentActorId, recordAudit } from "@/lib/audit";
-import { checkPermission } from "@/lib/authz";
+import { checkApprovalDocAccess, checkPermission } from "@/lib/authz";
 import { prisma } from "@/lib/db";
 import {
   type DocKey,
@@ -552,7 +552,7 @@ export async function submitForApproval(
 export async function approveAcceptance(number: string): Promise<ActionResult> {
   const key = keyOf(number);
   if (!key) return actionError("注文請書番号が不正です");
-  const authz = await checkPermission("order_acceptance", "APPROVE");
+  const authz = await checkApprovalDocAccess("order_acceptance");
   if (!authz.ok) return actionError(authz.error);
   if (!(await acceptanceInScope(authz.access, authz.userId, key))) {
     return actionError(SCOPE_DENIED);
@@ -614,7 +614,7 @@ export async function rejectAcceptance(
   if (!key) return actionError("注文請書番号が不正です");
   const trimmed = reason.trim();
   if (!trimmed) return actionError("差し戻し理由を入力してください");
-  const authz = await checkPermission("order_acceptance", "APPROVE");
+  const authz = await checkApprovalDocAccess("order_acceptance");
   if (!authz.ok) return actionError(authz.error);
   if (!(await acceptanceInScope(authz.access, authz.userId, key))) {
     return actionError(SCOPE_DENIED);
@@ -916,7 +916,7 @@ export async function requestAcceptanceCancel(
 export async function approveAcceptanceCancel(
   requestId: string,
 ): Promise<ActionResult<{ completed: boolean; applied: boolean }>> {
-  const authz = await checkPermission("order_acceptance", "APPROVE");
+  const authz = await checkApprovalDocAccess("order_acceptance");
   if (!authz.ok) return actionError(authz.error);
   const row = await prisma.orderAcceptanceCancelRequest.findUnique({
     where: { id: requestId },
@@ -965,7 +965,7 @@ export async function rejectAcceptanceCancel(
   requestId: string,
   reason: string,
 ): Promise<ActionResult> {
-  const authz = await checkPermission("order_acceptance", "APPROVE");
+  const authz = await checkApprovalDocAccess("order_acceptance");
   if (!authz.ok) return actionError(authz.error);
   const trimmed = reason.trim();
   if (!trimmed) return actionError("差し戻し理由を入力してください");

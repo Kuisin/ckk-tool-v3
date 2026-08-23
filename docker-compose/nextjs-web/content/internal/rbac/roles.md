@@ -18,7 +18,8 @@ description: "システムのロール（職務セット）と権限コードの
 - **権限コード** … 業務のまとまり 1 つ。アプリ 1 個とは限りません（例: `master`
   はマスタ管理 12 アプリ全部、`order_acceptance` は受注請書と受注明細の 2 つ）。
 - **アクション** … R=閲覧 / C=作成 / U=更新 / D=削除 / E=エクスポート /
-  A=承認 / ◎=ADMIN（そのコードの全アクション）。
+  ◎=ADMIN（そのコードの全アクション）。承認はアクションではありません —
+  誰が承認できるかは **MS0B 承認設定** の承認グループ所属で決まります。
 - **スコープ** … その操作が及ぶ範囲。無印は **ALL（全件）**。
   - **OWN** … 自分が作成した行だけ
   - **PLANT** … 自分の所属拠点の行だけ（所属は SY01 ユーザー管理で設定）
@@ -32,7 +33,7 @@ description: "システムのロール（職務セット）と権限コードの
 | ロール | rolename | 用途 |
 |---|---|---|
 | 管理者 | `admin` | 全権限。システム管理（SY01〜）とキオスク管理（SY08〜）を触れる唯一のロール |
-| 管理職（承認者） | `manager` | 全業務の閲覧・エクスポート・承認。部門をまたいで承認する人 |
+| 管理職（承認者） | `manager` | 全業務の閲覧・エクスポート。部門をまたぐ承認者向け（承認可否は MS0B のグループ所属で決まる） |
 | 営業部長 | `sales_manager` | 営業データを全件フル操作 + 全業務閲覧 |
 | 営業 | `sales` | 営業データを **自分の分だけ** 作成・編集（OWN） |
 | 営業補佐 | `sales_assistant` | 営業データを全件閲覧のみ。作成・編集・承認は不可 |
@@ -77,13 +78,13 @@ description: "システムのロール（職務セット）と権限コードの
 | ロール | 価格表 | 見積書 | 受注請書 | 設計依頼 | 購買 | 入荷 | 外注 |
 |---|---|---|---|---|---|---|---|
 | **管理者**<br/>`admin` | ◎ | ◎ | ◎ | ◎ | ◎ | ◎ | ◎ |
-| **管理職（承認者）**<br/>`manager` | REA | REA | REA | REA | REA | REA | REA |
-| **営業部長**<br/>`sales_manager` | RCUDEA | RCUDEA | RCUDEA | RCUDEA | — | — | — |
+| **管理職（承認者）**<br/>`manager` | RE | RE | RE | RE | RE | RE | RE |
+| **営業部長**<br/>`sales_manager` | RCUDE | RCUDE | RCUDE | RCUDE | — | — | — |
 | **営業**<br/>`sales` | RCU<br/>OWN | RCU<br/>OWN | RCU<br/>OWN | RCU<br/>OWN | — | — | — |
 | **営業補佐**<br/>`sales_assistant` | R | R | R | R | — | — | — |
-| **購買部長**<br/>`purchasing_manager` | R | R | R | R | RCUDEA | RCUDEA | RCUDEA |
-| **購買**<br/>`purchasing` | — | — | — | — | RCUDEA | RCUDE | RCUD |
-| **製造部長**<br/>`production_manager` | R | R | R | R | R | R | RCUDEA |
+| **購買部長**<br/>`purchasing_manager` | R | R | R | R | RCUDE | RCUDE | RCUDE |
+| **購買**<br/>`purchasing` | — | — | — | — | RCUDE | RCUDE | RCUD |
+| **製造部長**<br/>`production_manager` | R | R | R | R | R | R | RCUDE |
 | **製造・生産管理**<br/>`production` | — | — | RU | — | R | R | RU |
 | **品質部長**<br/>`quality_manager` | R | R | R | R | R | R | R |
 | **品質・検査**<br/>`quality` | — | — | R | — | — | — | — |
@@ -92,38 +93,40 @@ description: "システムのロール（職務セット）と権限コードの
 | **経理部長**<br/>`accounting_manager` | R | R | R | R | R | R | R |
 | **経理**<br/>`accounting` | R | R | R | — | — | — | — |
 | **閲覧**<br/>`viewer` | R | R | R | R | R | R | R |
-| **一般**<br/>`staff` | RCUDEA | RCUDEA | RCUDEA | RCUDEA | RCUDEA | RCUDEA | RCUDEA |
+| **一般**<br/>`staff` | RCUDE | RCUDE | RCUDE | RCUDE | RCUDE | RCUDE | RCUDE |
 
 ## 権限マトリクス（生産・出荷・請求・管理）
 
 | ロール | 指示書 | 承認管理 | 在庫 | 出荷書 | 納品書 | 請求書 | 締日 | マスタ | 社内文書 | キオスク | システム |
 |---|---|---|---|---|---|---|---|---|---|---|---|
 | **管理者**<br/>`admin` | ◎ | ◎ | ◎ | ◎ | ◎ | ◎ | ◎ | ◎ | ◎ | ◎ | ◎ |
-| **管理職（承認者）**<br/>`manager` | REA | REA | REA | REA | REA | REA | REA | REA | REA | — | — |
+| **管理職（承認者）**<br/>`manager` | RE | RE | RE | RE | RE | RE | RE | RE | RE | — | — |
 | **営業部長**<br/>`sales_manager` | — | R | — | — | — | — | — | R | — | — | — |
 | **営業**<br/>`sales` | — | — | — | — | — | — | — | R | — | — | — |
 | **営業補佐**<br/>`sales_assistant` | — | — | — | — | — | — | — | R | — | — | — |
 | **購買部長**<br/>`purchasing_manager` | R | R | R | R | R | R | R | R | R | — | — |
 | **購買**<br/>`purchasing` | R | R | R | — | — | — | — | R | — | — | — |
-| **製造部長**<br/>`production_manager` | RCUDEA | R | RCUDEA | R | R | R | R | R | R | — | — |
-| **製造・生産管理**<br/>`production` | RCUDEA<br/>PLANT | R | RCUE<br/>PLANT | R | — | — | — | R | — | — | — |
-| **品質部長**<br/>`quality_manager` | RCUDEA | R | R | R | R | R | R | R | R | — | — |
-| **品質・検査**<br/>`quality` | RUA<br/>PLANT | R | R | — | — | — | — | R | — | — | — |
-| **出荷部長**<br/>`shipping_manager` | R | R | RCUDEA | RCUDEA | RCUDEA | R | R | R | R | — | — |
+| **製造部長**<br/>`production_manager` | RCUDE | R | RCUDE | R | R | R | R | R | R | — | — |
+| **製造・生産管理**<br/>`production` | RCUDE<br/>PLANT | R | RCUE<br/>PLANT | R | — | — | — | R | — | — | — |
+| **品質部長**<br/>`quality_manager` | RCUDE | R | R | R | R | R | R | R | R | — | — |
+| **品質・検査**<br/>`quality` | RU<br/>PLANT | R | R | — | — | — | — | R | — | — | — |
+| **出荷部長**<br/>`shipping_manager` | R | R | RCUDE | RCUDE | RCUDE | R | R | R | R | — | — |
 | **出荷**<br/>`shipping` | R | — | RU<br/>PLANT | RCUDE<br/>PLANT | RCUDE | — | — | R | — | — | — |
-| **経理部長**<br/>`accounting_manager` | R | R | R | R | R | RCUDEA | RCUDEA | R | R | — | — |
+| **経理部長**<br/>`accounting_manager` | R | R | R | R | R | RCUDE | RCUDE | R | R | — | — |
 | **経理**<br/>`accounting` | — | — | — | R | R | RCUDE | RCUE | R | — | — | — |
 | **閲覧**<br/>`viewer` | R | R | R | R | R | R | R | R | R | — | — |
-| **一般**<br/>`staff` | RCUDEA | RCUDEA | RCUDEA | RCUDEA | RCUDEA | RCUDEA | RCUDEA | RCUDEA | — | — | — |
+| **一般**<br/>`staff` | RCUDE | RCUDE | RCUDE | RCUDE | RCUDE | RCUDE | RCUDE | RCUDE | — | — | — |
 
 ## 読むときの注意
 
-### 承認（A）は権限だけでは通らない
+### 承認は権限アクションではなく承認グループで決まる
 
-承認アクション（A）を持っていても、その段の **承認グループ**（MS0B 承認設定）の
-メンバーでなければ承認ボタンは通りません。権限は「承認画面を触ってよいか」の
-門番で、実際に誰の承認が要るかは承認フローとグループが決めます。部長ロールを
-付けただけでは承認できない、というのはこのためです。
+承認できる人の管理は **承認設定（MS0B）だけ**で行います。承認・差し戻しを
+押すのに必要な権限は、その書類の **閲覧（R）または更新（U）** だけで、
+「承認」というアクションのグラントはありません（旧 A=承認 は全廃済み）。
+つまり「その書類を開ける + その段の承認グループのメンバー（または期間内の
+代理）」が揃えば承認できます。部長ロールを付けただけでは承認できない、
+というのはこのためです。
 
 ### 「できる」と「見える」は別
 

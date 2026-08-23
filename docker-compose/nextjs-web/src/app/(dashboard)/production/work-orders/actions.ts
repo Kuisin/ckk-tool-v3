@@ -28,7 +28,7 @@ import {
 } from "@/lib/approvals";
 import { type MaterialAtp, materialAtp } from "@/lib/atp";
 import { getCurrentActorId, recordAudit } from "@/lib/audit";
-import { checkPermission } from "@/lib/authz";
+import { checkApprovalDocAccess, checkPermission } from "@/lib/authz";
 import { type Prisma, prisma } from "@/lib/db";
 import { formatDocNumber, orderLineNumberOf } from "@/lib/doc-number";
 import { allocateDocumentKey, nextSerialNumber } from "@/lib/numbering";
@@ -893,7 +893,7 @@ export async function approveWorkOrder(
 ): Promise<ActionResult<{ remaining: number; completed: boolean }>> {
   // 権限チェックは追加ゲート — 実体の承認可否（本人/代理）は
   // actOnCurrentStep のグループ所属判定が引き続き行う。
-  const authz = await checkPermission("work_order", "APPROVE");
+  const authz = await checkApprovalDocAccess("work_order");
   if (!authz.ok) return actionError(authz.error);
   if (!(await workOrderInScope(authz.access, authz.userId, workOrderNumber))) {
     return actionError(SCOPE_DENIED);
@@ -1053,7 +1053,7 @@ export async function rejectWorkOrder(
   workOrderNumber: number,
   reason: string,
 ): Promise<ActionResult> {
-  const authz = await checkPermission("work_order", "APPROVE");
+  const authz = await checkApprovalDocAccess("work_order");
   if (!authz.ok) return actionError(authz.error);
   const trimmed = reason.trim();
   if (!trimmed) return actionError("差し戻し理由を入力してください");
@@ -1232,7 +1232,7 @@ export async function getLineAllocStatus(
 export async function approveFlowChange(
   flowChangeId: string,
 ): Promise<ActionResult<{ completed: boolean; applied: boolean }>> {
-  const authz = await checkPermission("work_order", "APPROVE");
+  const authz = await checkApprovalDocAccess("work_order");
   if (!authz.ok) return actionError(authz.error);
   const change = await prisma.workOrderFlowChange.findUnique({
     where: { id: flowChangeId },
@@ -1288,7 +1288,7 @@ export async function rejectFlowChange(
   flowChangeId: string,
   reason: string,
 ): Promise<ActionResult> {
-  const authz = await checkPermission("work_order", "APPROVE");
+  const authz = await checkApprovalDocAccess("work_order");
   if (!authz.ok) return actionError(authz.error);
   if (!reason.trim()) return actionError("差し戻し理由を入力してください");
   const change = await prisma.workOrderFlowChange.findUnique({
