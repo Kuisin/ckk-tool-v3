@@ -28,7 +28,11 @@ import { FormSection, FormShell } from "@/components/ui/shells";
 import { useIsMobile } from "@/hooks/useViewport";
 import type { RouteStepSnapshot } from "@/lib/product-routes-core";
 import type { CatalogStep, UseDep } from "@/lib/workflow-core";
-import { isBlockingIssue, validateComposition } from "@/lib/workflow-core";
+import {
+  isBlockingIssue,
+  STOCK_ISSUE_STEP_CODE,
+  validateComposition,
+} from "@/lib/workflow-core";
 
 export function RouteEditorForm({
   mode,
@@ -62,9 +66,16 @@ export function RouteEditorForm({
   const [isPending, startTransition] = useTransition();
   const backPath = `/master/products/${productId}?tab=routes`;
 
-  const knownIds = useMemo(
-    () => new Set(catalogSteps.map((s) => s.id)),
+  // 工程リストは製造分（MANUFACTURE）の構成 — 在庫分専用の
+  // 製品出し（在庫）は選択肢に出さない。
+  const manufactureCatalog = useMemo(
+    () => catalogSteps.filter((c) => c.code !== STOCK_ISSUE_STEP_CODE),
     [catalogSteps],
+  );
+
+  const knownIds = useMemo(
+    () => new Set(manufactureCatalog.map((s) => s.id)),
+    [manufactureCatalog],
   );
   const usableInitial = useMemo(
     () => (initialSteps ?? []).filter((s) => knownIds.has(s.processStepId)),
@@ -96,7 +107,10 @@ export function RouteEditorForm({
   const [stepsError, setStepsError] = useState<string | null>(null);
 
   const blockers = useMemo(
-    () => validateComposition(selected, useDeps).filter(isBlockingIssue),
+    () =>
+      validateComposition(selected, useDeps, manufactureCatalog).filter(
+        isBlockingIssue,
+      ),
     [selected, useDeps],
   );
 
@@ -120,7 +134,7 @@ export function RouteEditorForm({
       });
       return;
     }
-    const steps = toStepSnapshots(selected, locations, catalogSteps).map(
+    const steps = toStepSnapshots(selected, locations, manufactureCatalog).map(
       (s) => ({
         processStepId: s.processStepId,
         executionLocation: s.executionLocation,
@@ -227,7 +241,7 @@ export function RouteEditorForm({
       </FormSection>
 
       <ProcessListEditor
-        catalogSteps={catalogSteps}
+        catalogSteps={manufactureCatalog}
         error={stepsError}
         locations={locations}
         onLocationsChange={setLocations}

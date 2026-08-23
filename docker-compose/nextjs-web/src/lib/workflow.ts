@@ -60,6 +60,8 @@ import { describeIssue } from "@/components/production/work-orders/model";
 import {
   defaultOrder,
   isBlockingIssue,
+  isShipStep,
+  STOCK_ISSUE_STEP_CODE,
   validateComposition,
 } from "./workflow-core";
 
@@ -84,11 +86,15 @@ export interface OrderedStepCreate extends StepCompositionInput {
 
 /**
  * 工程構成のサーバー側検証 + カタログ既定順の並び。
- * 未知/重複工程・ブロッカー（AND 不足・排他違反）はエラーメッセージを返す。
+ * 未知/重複工程・ブロッカー（AND 不足・排他違反・開始工程なし）は
+ * エラーメッセージを返す。type で構成規則が変わる:
+ *   MANUFACTURE（既定・工程ルートも同じ）= 製品出し（在庫）は使えない
+ *   FROM_STOCK = 製品出し（在庫）必須 + 出荷前検査/出荷 のみ許可
  * 実施場所は INTERNAL → plantId / OUTSOURCE → supplierBpId のみ保持する。
  */
 export async function validateAndOrderSteps(
   steps: readonly StepCompositionInput[],
+  type: "FROM_STOCK" | "MANUFACTURE" = "MANUFACTURE",
 ): Promise<
   { ok: false; error: string } | { ok: true; creates: OrderedStepCreate[] }
 > {
@@ -101,9 +107,43 @@ export async function validateAndOrderSteps(
   if (new Set(ids).size !== ids.length) {
     return { ok: false, error: "同じ工程が重複しています" };
   }
-  const blocking = validateComposition(ids, catalog.useDeps).filter(
-    isBlockingIssue,
-  );
+  const catalogById = new Map(catalog.steps.map((s) => [s.id, s]));
+  if (type === "FROM_STOCK") {
+    // 在庫分は固定構成: 製品出し（必須）+ 出荷前検査/出荷（任意）のみ。
+    const invalid = ids.filter((id) => {
+      const step = catalogById.get(id);
+      return (
+        !step || (step.code !== STOCK_ISSUE_STEP_CODE && !isShipStep(step))
+      );
+    });
+    if (invalid.length > 0) {
+      return {
+        ok: false,
+        error:
+          "在庫分の指示書に選べる工程は 製品出し（在庫）・出荷前検査・出荷 だけです",
+      };
+    }
+    if (
+      !ids.some((id) => catalogById.get(id)?.code === STOCK_ISSUE_STEP_CODE)
+    ) {
+      return {
+        ok: false,
+        error: "在庫分の指示書には 製品出し（在庫） が必要です",
+      };
+    }
+  } else if (
+    ids.some((id) => catalogById.get(id)?.code === STOCK_ISSUE_STEP_CODE)
+  ) {
+    return {
+      ok: false,
+      error: "製品出し（在庫）は在庫分（FROM_STOCK）の指示書専用です",
+    };
+  }
+  const blocking = validateComposition(
+    ids,
+    catalog.useDeps,
+    catalog.steps,
+  ).filter(isBlockingIssue);
   if (blocking.length > 0) {
     return {
       ok: false,
@@ -111,7 +151,6 @@ export async function validateAndOrderSteps(
     };
   }
   const byId = new Map(steps.map((s) => [s.processStepId, s]));
-  const catalogById = new Map(catalog.steps.map((s) => [s.id, s]));
   const creates = defaultOrder(ids, catalog.steps).map((stepId, i) => {
     const s = byId.get(stepId);
     if (!s) throw new Error("step mapping failed");
