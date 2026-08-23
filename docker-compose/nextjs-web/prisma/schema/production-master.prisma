@@ -353,10 +353,11 @@ model ApprovalGroup {
   name     Json
   isActive Boolean @default(true) @map("is_active")
 
-  members   ApprovalGroupMember[]
-  delegates ApprovalDelegate[]
-  flowSteps ApprovalFlowStep[]
-  requests  ApprovalRequest[]
+  members       ApprovalGroupMember[]
+  delegates     ApprovalDelegate[]
+  flowSteps     ApprovalFlowStep[]
+  flowRuleSteps ApprovalFlowRuleStep[]
+  requests      ApprovalRequest[]
 
   @@map("approval_groups")
   @@schema("app")
@@ -401,6 +402,7 @@ model ApprovalFlow {
   updatedAt  DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   steps         ApprovalFlowStep[]
+  rules         ApprovalFlowRule[]
   updatedByUser User?              @relation("ApprovalFlowUpdatedBy", fields: [updatedBy], references: [id])
 
   @@map("approval_flows")
@@ -423,6 +425,56 @@ model ApprovalFlowStep {
   @@unique([targetType, stepNo])
   @@index([groupId])
   @@map("approval_flow_steps")
+  @@schema("app")
+}
+
+// ─── 条件付き承認フロー（書類の属性でフローを分岐するルール） ───────────────
+//
+// 書類種別ごとに 0..N 本のルールを優先順（priority 昇順）で持ち、承認依頼を
+// 出す時点で書類の属性（金額・種別・拠点など — lib/approvals.ts の
+// fetchApprovalDocInfo が抽出）を条件と突き合わせ、**最初に一致した 1 本**の
+// 段構成を既定フロー（approval_flow_steps）の代わりに使う。どれにも一致
+// しなければ既定フロー。条件の語彙と評価は lib/approval-conditions.ts が
+// 唯一の定義（conditions Json = [{ field, op, value }] の AND。空 = 常に一致）。
+// 進行中の書類は従来どおり flow_snapshot で固定される — ルールは依頼時にだけ効く。
+
+model ApprovalFlowRule {
+  id         Int     @id @default(autoincrement())
+  targetType String  @map("target_type")
+  name       Json // { ja, en } 例「50万円以上」
+  priority   Int     @default(0) // 小さい順に評価。最初に一致した 1 本を適用
+  isActive   Boolean @default(true) @map("is_active")
+  conditions Json // [{ field, op, value }] — AND。lib/approval-conditions.ts が検証・評価
+
+  updatedBy String?  @map("updated_by") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  flow          ApprovalFlow           @relation(fields: [targetType], references: [targetType], onDelete: Cascade)
+  steps         ApprovalFlowRuleStep[]
+  updatedByUser User?                  @relation("ApprovalFlowRuleUpdatedBy", fields: [updatedBy], references: [id])
+
+  @@index([targetType, priority])
+  @@map("approval_flow_rules")
+  @@schema("app")
+}
+
+// ルールの段。approval_flow_steps と同型（step_no 1..N 詰めて保存 / 全削除 +
+// 再作成で並べ替え）。進行中の依頼は flow_snapshot を持つのでこの行を参照しない。
+model ApprovalFlowRuleStep {
+  id      Int          @id @default(autoincrement())
+  ruleId  Int          @map("rule_id")
+  stepNo  Int          @map("step_no")
+  name    Json // { ja, en }
+  groupId Int          @map("group_id")
+  mode    ApprovalMode @default(ANY)
+
+  rule  ApprovalFlowRule @relation(fields: [ruleId], references: [id], onDelete: Cascade)
+  group ApprovalGroup    @relation(fields: [groupId], references: [id], onDelete: Restrict)
+
+  @@unique([ruleId, stepNo])
+  @@index([groupId])
+  @@map("approval_flow_rule_steps")
   @@schema("app")
 }
 
