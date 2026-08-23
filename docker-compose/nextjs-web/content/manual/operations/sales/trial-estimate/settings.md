@@ -7,6 +7,8 @@ screenshots: [trial-pricing-hub-01, trial-pricing-criteria-01, trial-pricing-too
 
 計算のしかた自体を変える画面なので、**社内の決まりを分かっている担当者だけ** が触ってください。
 
+> このアプリが属するフロー … [販売の流れ](/manual/ja/process/sales)
+
 ## このアプリでできること
 
 - 見積単価をどう積み上げるかの、計算の順番と中身を決められます。

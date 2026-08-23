@@ -1,0 +1,11 @@
+{
+  "name": "swimlane-tool",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "description": "kai-swimlane DSL → SVG 生成（マニュアルのフロー図用。依存ゼロ・plain node で実行）",
+  "license": "MIT",
+  "scripts": {
+    "build": "node build-diagrams.mjs"
+  }
+}

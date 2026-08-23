@@ -7,6 +7,8 @@ screenshots: [billing-closing-list-01, billing-closing-run-01, billing-closing-d
 
 > ⚠️ このアプリはまだ準備中です。正式に使えるようになるまでに、画面や手順が変わることがあります。
 
+> このアプリが属するフロー … [請求の流れ](/manual/ja/process/billing)
+
 ## このアプリでできること
 
 - 対象の月に送った分を、**お客様ごとにまとめて** 集計できます。

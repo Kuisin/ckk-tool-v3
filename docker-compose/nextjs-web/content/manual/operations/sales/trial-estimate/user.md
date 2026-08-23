@@ -5,6 +5,8 @@ screenshots: [trial-estimate-list-01, trial-estimate-new-01, trial-estimate-new-
 ---
 材料費や加工の条件を入れると、その製品を **1 本いくらで売るか** を自動で計算してくれるアプリです。操作コードは `SA01` です。
 
+> このアプリが属するフロー … [販売の流れ](/manual/ja/process/sales)
+
 ## このアプリでできること
 
 - 材料費・加工費・コート代などから、**1 本あたりの売値（見積単価）が自動で計算** されます。

@@ -1,0 +1,91 @@
+// 出荷の流れ — 発送／在庫保管の分岐を含む。
+
+/title/
+出荷の流れ — 出荷書から納品まで
+
+/option/
+show-step-block-captions: false;
+show-right-gutter: false;
+left-title: 手順;
+left-subtitle: 説明;
+
+/role/
+
+<role_ship>
+label: 出荷担当;
+text-color: #9a3412;
+background-color: #ffedd5;
+
+<role_system>
+label: システム;
+text-color: #3730a3;
+background-color: #eef2ff;
+icon: #database;
+
+/block/
+
+<block_apply>
+background-color: #dbeafe;
+text-color: #1e40af;
+border-color: #2563eb;
+shape: rounded;
+icon: #zap;
+
+<block_system>
+background-color: #e0e7ff;
+text-color: #3730a3;
+border-color: #4f46e5;
+shape: rect;
+icon: #database;
+
+<block_wait>
+background-color: #f4f4f5;
+text-color: #52525b;
+border-color: #71717a;
+shape: hex;
+icon: #clock;
+
+/prop/
+
+<SHIPPING>
+label: 出荷書;
+side: right;
+background-color: #fff7ed;
+border-color: #ea580c;
+text-color: #9a3412;
+
+<DELIVERY>
+label: 納品書;
+side: right;
+background-color: #fff7ed;
+border-color: #ea580c;
+text-color: #9a3412;
+
+/line/
+
+[role_ship: 出荷書を作成する] <block_apply>
+label: 出荷書;
+props: SHIPPING;
+desc: 注文請書を選ぶと出荷できる注文明細が入る。出すロットと数量、出荷元拠点を決める。;
+[role_ship: 出荷書を確定する] <block_apply>
+label: 確定;
+desc: 内容を確定し、出荷できる状態にする。;
+[role_ship: 出荷を記録する] <block_apply>
+label: 出荷;
+desc: 実際に送り出したら「出荷」にする。;
+[role_system: 在庫を減らす] <block_system>
+label: 在庫反映;
+desc: 出荷元拠点の在庫が減り、注文明細の状態が「一部出荷」または「出荷済」に変わる。;
+if (種別) is (発送) than #orange
+  [role_ship: 納品書を発行する] <block_apply>
+  label: 納品書;
+  props: DELIVERY;
+  desc: 納品方法（通常納品・ユーザー直送）と価格記載の有無を決めて発行する。;
+  [role_ship: 納品済にする] <block_apply>
+  label: 納品;
+  desc: 届いたら「納品済」にする。ここまで済んだ出荷が請求の対象になる。;
+else
+  [role_ship: 社内に保管する] <block_wait>
+  label: 在庫保管;
+  desc: 予備製作分を社内に置いておく種別。請求には進まない。;
+endif

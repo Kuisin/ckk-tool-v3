@@ -7,6 +7,8 @@ screenshots: [design-request-list-01, design-request-new-01, design-request-deta
 
 > ⚠️ このアプリはまだ試験公開中です。画面や手順が今後変わることがあります。
 
+> このアプリが属するフロー … [販売の流れ](/manual/ja/process/sales)
+
 ## このアプリでできること
 
 - 設計をお願いする内容を書いて、依頼として登録できます。

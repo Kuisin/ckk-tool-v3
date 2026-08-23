@@ -7,6 +7,8 @@ screenshots: [delivery-order-list-01, delivery-order-new-01, delivery-order-deta
 
 > ⚠️ このアプリはまだ準備中です。正式に使えるようになるまでに、画面や手順が変わることがあります。
 
+> このアプリが属するフロー … [出荷の流れ](/manual/ja/process/shipping)
+
 ## このアプリでできること
 
 - 送る製品と本数をまとめた出荷書をつくれます。

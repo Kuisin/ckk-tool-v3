@@ -7,6 +7,8 @@ screenshots: [inventory-materials-01, inventory-material-detail-01, inventory-ma
 
 > ⚠️ このアプリは今のところ **テスト用の環境だけ** で使えます。本番で使えるようになるまでに、画面や手順が変わることがあります。
 
+> このアプリが属するフロー … [生産の流れ](/manual/ja/process/production)
+
 ## このページでできること
 
 - 素材が、どの拠点にどれだけあるかを確認できます。

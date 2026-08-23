@@ -7,6 +7,8 @@ screenshots: [outsource-order-list-01, outsource-order-list-02, outsource-order-
 
 > ⚠️ このアプリはまだ準備中のため、本番の画面には出ていないことがあります。見当たらないときは、社内の担当者にご確認ください。
 
+> このアプリが属するフロー … [購買の流れ](/manual/ja/process/purchasing)
+
 ## このアプリでできること
 
 - 外の会社にお願いしている加工を、ひとつの表でまとめて見られます。
