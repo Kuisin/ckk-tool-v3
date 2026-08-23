@@ -14,14 +14,9 @@
 
 import { type Access, rowInScope } from "@ckk/authz-core";
 import { revalidatePath } from "next/cache";
-import { recordAudit } from "@/lib/audit";
 import { checkPermission } from "@/lib/authz";
 import { prisma } from "@/lib/db";
-import {
-  formatOrderLineNumber,
-  orderLineWhereKey,
-  parseOrderLineKey,
-} from "@/lib/doc-number";
+import { formatOrderLineNumber } from "@/lib/doc-number";
 import { reserveProductStock, type StockCheckResult } from "@/lib/inventory";
 import { isLineStockCheckable } from "@/lib/order-line-core";
 import {
@@ -73,15 +68,6 @@ async function orderLineInScope(
 function revalidate(number?: string) {
   revalidatePath(BASE_PATH);
   if (number) revalidatePath(`${BASE_PATH}/${encodeURIComponent(number)}`);
-}
-
-/** parseOrderLineKey の結果 → Prisma の where 用スコープキー。 */
-function scopeKeyOf(key: { yearMonth: string; seq: number; branch: number }) {
-  return {
-    acceptanceYearMonth: key.yearMonth,
-    acceptanceSeq: key.seq,
-    branch: key.branch,
-  };
 }
 
 /**
