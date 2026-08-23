@@ -76,6 +76,21 @@ Once a group is chosen, the same badge and the member names appear below it as *
 
 > ⚠️ **Changing the settings does not affect documents that are already in approval.** A document in progress runs to the end with the settings as they were when the approval was requested. Changes apply to approval requests made from now on.
 
+## Splitting the flow by document content (conditional flows)
+
+You can vary the approval steps by what is in the document (amount, type and so on) — for example "material purchase orders of ¥500,000 or more get an extra executive step" or "direct-to-user order acceptances go through the sales manager".
+
+Set this up in the "**条件付きフロー**" (conditional flows) section of the edit page.
+
+- A rule = **conditions** (matched when all of them hold) + **its own approval steps**.
+- At the moment an approval request is submitted, rules are evaluated **top to bottom** and the **first matching rule's** steps are used. Documents that match no rule proceed with the **default flow** configured above.
+- The available condition fields depend on the document type: order acceptances (total amount / delivery method / assigned plant), work orders (type / planned quantity), material purchase orders (total amount), purchase requests (line count), process-flow changes (the work order's type / planned quantity) and acceptance cancellations (the acceptance's total amount / delivery method).
+- Use "**条件付きフローを追加**" to add a rule with its name, conditions and steps. A rule with **no conditions matches every document** (rules below it and the default flow are never reached — mind the order).
+- Use **↑ ↓** to change the evaluation order and the switch to enable / disable a rule.
+- Conditional flows **replace** the default flow; they do not create an approval gate on their own. A document type with no default flow cannot submit approval requests even if rules exist — always configure the default flow too.
+
+> ⚠️ As with the default flow, **changes take effect from the next approval request**. Documents already in approval are unaffected.
+
 ## Making a group
 
 Open the **Approval groups** tab and press **New** at the top right.
