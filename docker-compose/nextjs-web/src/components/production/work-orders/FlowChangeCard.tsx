@@ -31,6 +31,8 @@ export interface PendingFlowChangeView {
   summary: string;
   requestedByName: string | null;
   requestedAt: string;
+  /** 事後承認（POST）で即時適用済みの日時（PRE = 承認後に適用 は null）。 */
+  appliedAt: string | null;
 }
 
 export function FlowChangeCard({
@@ -60,7 +62,9 @@ export function FlowChangeCard({
       if (result.ok) {
         notifications.show({
           title: result.data?.applied
-            ? "工程フロー変更を適用しました"
+            ? change.appliedAt != null
+              ? "工程フロー変更を承認しました（適用済み）"
+              : "工程フロー変更を適用しました"
             : "承認しました",
           message: result.data?.applied
             ? change.summary
@@ -86,7 +90,10 @@ export function FlowChangeCard({
         setReason("");
         notifications.show({
           title: "差し戻しました",
-          message: "工程は変更されていません",
+          message:
+            change.appliedAt != null
+              ? "変更は適用済みです — 工程は自動では戻りません（詳細に警告が出ます）"
+              : "工程は変更されていません",
           color: "orange",
         });
         router.refresh();
@@ -114,7 +121,11 @@ export function FlowChangeCard({
             </>
           ) : null
         }
-        description={`${change.summary}｜依頼: ${change.requestedByName ?? "—"}｜${stepLabel}。承認されるまで工程は変わりません。`}
+        description={`${change.summary}｜依頼: ${change.requestedByName ?? "—"}｜${stepLabel}。${
+          change.appliedAt != null
+            ? "適用済みです（事後承認 — 差し戻されても自動では戻りません）。"
+            : "承認されるまで工程は変わりません。"
+        }`}
         icon={<IconGitBranch size={20} />}
         title={canAct ? "工程フロー変更の承認" : "工程フロー変更の承認待ち"}
         tone={canAct ? "approve" : "wait"}

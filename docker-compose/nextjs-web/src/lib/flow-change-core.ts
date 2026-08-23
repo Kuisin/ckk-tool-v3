@@ -30,6 +30,44 @@ export const FLOW_CHANGE_STATUS_LABEL: Record<string, string> = {
 };
 
 /**
+ * 承認フローの適用モード（approval_flows.apply_mode）。
+ * PRE（既定）= 承認後に適用（従来動作）/ POST = 即時適用 + 事後承認。
+ */
+export function isPostApply(applyMode: string | null | undefined): boolean {
+  return applyMode === "POST";
+}
+
+/**
+ * 状態表示 — status × applied_at の直交を 1 つのラベルに畳む
+ * （status の enum 自体は増やさない）。
+ */
+export function displayFlowChangeStatus(
+  status: string,
+  appliedAt: string | Date | null,
+): string {
+  if (status === "PENDING" && appliedAt != null) return "適用済み・承認待ち";
+  if (status === "REJECTED" && appliedAt != null) return "差し戻し（適用済み）";
+  return FLOW_CHANGE_STATUS_LABEL[status] ?? status;
+}
+
+/**
+ * 「差し戻されたが適用済み」の警告を出すべきか — 事後承認（POST）で即時適用
+ * した変更が差し戻された場合、工程は自動では戻らない。人が確認して手で直す
+ * まで指示書詳細に赤アラートを出し続ける。
+ */
+export function needsRejectedAppliedAlert(row: {
+  status: string;
+  appliedAt: string | Date | null;
+  acknowledgedAt: string | Date | null;
+}): boolean {
+  return (
+    row.status === "REJECTED" &&
+    row.appliedAt != null &&
+    row.acknowledgedAt == null
+  );
+}
+
+/**
  * 承認を通すべきか。
  *
  * **承認設定（MS0B）で「工程フロー変更」の段が 1 つも無ければ素通し** —

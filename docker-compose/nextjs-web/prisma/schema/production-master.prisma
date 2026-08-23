@@ -413,6 +413,10 @@ enum ApprovalMode {
 
 model ApprovalFlow {
   targetType String   @id @map("target_type")
+  /// PRE（既定）= 承認後に適用 / POST = 即時適用 + 事後承認（DB 側 CHECK）。
+  /// 現状 UI が出すのは 工程フロー変更（work_order_flow_changes）のみ —
+  /// 対応 target は nextjs-web lib/approval-targets.ts APPLY_MODE_TARGETS。
+  applyMode  String   @default("PRE") @map("apply_mode")
   updatedBy  String?  @map("updated_by") @db.Uuid
   updatedAt  DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
 

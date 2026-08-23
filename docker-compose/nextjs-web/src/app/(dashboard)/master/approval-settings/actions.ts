@@ -22,7 +22,11 @@ import {
   isMemberEffective,
   validateMemberPeriod,
 } from "@/lib/approval-membership";
-import { APPROVAL_TARGET_TYPES } from "@/lib/approval-targets";
+import {
+  APPLY_MODE_TARGETS,
+  APPROVAL_TARGET_TYPES,
+  type ApprovalTargetType,
+} from "@/lib/approval-targets";
 import { getCurrentActorId, recordAudit } from "@/lib/audit";
 import { checkPermission } from "@/lib/authz";
 import { prisma } from "@/lib/db";
@@ -788,5 +792,48 @@ export async function moveApprovalFlowRule(
     return actionOk();
   } catch (e) {
     return actionError(prismaErrorMessage(e, "並べ替えに失敗しました"));
+  }
+}
+
+/**
+ * 承認フローの適用モード（approval_flows.apply_mode）。
+ * PRE = 承認後に適用（既定） / POST = 即時適用 + 事後承認。
+ * 対応 target（APPLY_MODE_TARGETS — 現状 工程フロー変更のみ）に限る。
+ */
+export async function setApprovalApplyMode(
+  targetType: string,
+  applyMode: "PRE" | "POST",
+): Promise<ActionResult> {
+  const authz = await checkPermission("master", "UPDATE");
+  if (!authz.ok) return actionError(authz.error);
+  if (!APPLY_MODE_TARGETS.includes(targetType as ApprovalTargetType)) {
+    return actionError("この書類種別では適用モードを設定できません");
+  }
+  if (applyMode !== "PRE" && applyMode !== "POST") {
+    return actionError("適用モードが不正です");
+  }
+  try {
+    const actor = await getCurrentActorId();
+    const before = await prisma.approvalFlow.findUnique({
+      where: { targetType },
+      select: { applyMode: true },
+    });
+    await prisma.approvalFlow.upsert({
+      where: { targetType },
+      create: { targetType, applyMode, updatedBy: actor },
+      update: { applyMode, updatedBy: actor },
+    });
+    await recordAudit({
+      action: "UPDATE",
+      tableName: "approval_flows",
+      recordId: targetType,
+      before: { applyMode: before?.applyMode ?? "PRE" },
+      after: { applyMode },
+    });
+    revalidatePath(BASE_PATH);
+    revalidatePath(`${BASE_PATH}/flows/${targetType}`);
+    return actionOk();
+  } catch (e) {
+    return actionError(prismaErrorMessage(e, "適用モードの保存に失敗しました"));
   }
 }

@@ -53,6 +53,7 @@ import {
   validateAllocations,
 } from "@/lib/work-order-alloc-core";
 import {
+  acknowledgeFlowChange,
   applyApprovedFlowChange,
   closeFlowChange,
 } from "@/lib/work-order-flow-changes";
@@ -1372,6 +1373,33 @@ export async function approveFlowChange(
     return actionOk({ completed: true, applied: true });
   } catch (e) {
     return actionError(prismaErrorMessage(e, "承認に失敗しました"));
+  }
+}
+
+/**
+ * 「差し戻されたが適用済み」の工程フロー変更を確認済みにする（事後承認 POST
+ * 専用 — 人が工程を手で直したことの記録。赤アラートを閉じる）。
+ */
+export async function acknowledgeFlowChangeAction(
+  flowChangeId: string,
+  workOrderNumber: number,
+): Promise<ActionResult> {
+  const authz = await checkPermission("work_order", "UPDATE");
+  if (!authz.ok) return actionError(authz.error);
+  if (!flowChangeId) return actionError("対象が不正です");
+  try {
+    const done = await acknowledgeFlowChange(flowChangeId);
+    if (!done) return actionError("対象の変更が見つかりません（確認済み？）");
+    await recordAudit({
+      action: "UPDATE",
+      tableName: "work_orders",
+      recordId: String(workOrderNumber),
+      after: { note: "差し戻された工程フロー変更を確認済みにした" },
+    });
+    revalidate(workOrderNumber);
+    return actionOk();
+  } catch (e) {
+    return actionError(prismaErrorMessage(e, "確認の記録に失敗しました"));
   }
 }
 
