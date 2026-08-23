@@ -1,0 +1,87 @@
+// 請求の流れ — 締めから会計連携まで。
+
+/title/
+請求の流れ — 締日処理から入金まで
+
+/option/
+show-step-block-captions: false;
+show-right-gutter: false;
+left-title: 手順;
+left-subtitle: 説明;
+
+/role/
+
+<role_billing>
+label: 経理;
+text-color: #9d174d;
+background-color: #fce7f3;
+
+<role_system>
+label: システム;
+text-color: #3730a3;
+background-color: #eef2ff;
+icon: #database;
+
+/block/
+
+<block_apply>
+background-color: #dbeafe;
+text-color: #1e40af;
+border-color: #2563eb;
+shape: rounded;
+icon: #zap;
+
+<block_approve>
+background-color: #dcfce7;
+text-color: #166534;
+border-color: #16a34a;
+shape: rounded;
+icon: #circle-check;
+
+<block_system>
+background-color: #e0e7ff;
+text-color: #3730a3;
+border-color: #4f46e5;
+shape: rect;
+icon: #database;
+
+<block_notify>
+background-color: #e0f2fe;
+text-color: #075985;
+border-color: #0284c7;
+shape: rect;
+icon: #send;
+
+/prop/
+
+<INVOICE>
+label: 請求書;
+side: right;
+background-color: #fdf2f8;
+border-color: #db2777;
+text-color: #9d174d;
+
+/line/
+
+[role_billing: 締日処理を実行する] <block_apply>
+label: 締日処理;
+desc: 顧客ごとに決めた締日で実行する。締日・支払サイトは顧客マスタの設定に従う。;
+[role_system: 納品分を集計する] <block_system>
+label: 集計;
+desc: その期間に納品した分が自動で集計される。在庫保管の出荷は対象にならない。;
+[role_billing: 請求書を生成する] <block_apply>
+label: 請求書生成;
+props: INVOICE;
+desc: 締めた内容から請求書を生成し、明細と金額（小計・消費税・合計）を確認する。;
+[role_billing: 請求書を発行する] <block_apply>
+label: 発行;
+desc: 発行すると PDF が保存される。;
+[role_billing: 送付済にする] <block_notify>
+label: 送付;
+desc: 顧客へ送付したら「送付済」にする。;
+[role_billing: 支払済にする] <block_approve>
+label: 入金確認;
+desc: 実際の入金を確認してから「支払済」にする。;
+[role_billing: 会計へ書き出す] <block_apply>
+label: 会計連携;
+desc: 締めた分を弥生会計向けの CSV として書き出す。書き出した締日処理は「エクスポート済」になる。;

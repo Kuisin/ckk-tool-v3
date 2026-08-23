@@ -2142,4 +2142,190 @@ export const shots: Shot[] = [
     },
     highlight: [{ role: "menuitem", name: "送付済みにする" }],
   },
+  // ── プロセス: 分野別ページ（process/sales〜billing）───────────────────────
+  // 各分野ページの「それぞれの段階でおきること」に 1 段階 1 枚で載せる赤枠カット。
+  {
+    // 試算の新規フォーム — 保存ボタンを強調
+    id: "flow-trial-estimate-save-01",
+    docPage: "process/sales",
+    path: "/sales/trial-estimates/new",
+    steps: async (page) => {
+      await page.getByRole("combobox", { name: "材種" }).click();
+      await page.getByRole("option", { name: /^B01A0001/ }).click();
+      await page.getByRole("combobox", { name: "直径" }).click();
+      await page.getByRole("option", { name: "φ6", exact: true }).click();
+      await page.getByRole("combobox", { name: "黒皮/研磨" }).click();
+      await page.getByRole("option", { name: "研磨", exact: true }).click();
+      await page.getByRole("textbox", { name: /^最大径/ }).fill("6");
+      await page.getByRole("textbox", { name: /^全長/ }).fill("60");
+      await page.getByText(/参照価格/).first().waitFor();
+    },
+    highlight: [{ role: "button", name: "保存" }],
+  },
+  {
+    // 価格差異が表示された注文請書 — 差異表示を強調
+    id: "flow-order-acceptance-diff-01",
+    docPage: "process/sales",
+    path: "/sales/order-acceptances/ORD-202607-00001",
+    steps: async (page) => {
+      await page.getByText("価格差異").first().waitFor();
+    },
+    highlight: [{ text: "価格差異" }],
+  },
+  {
+    // 未着手の設計依頼 — 着手ボタンを強調
+    id: "flow-design-request-01",
+    docPage: "process/sales",
+    path: "/sales/design-requests/DSG-202607-00003",
+    steps: async (page) => {
+      await page.getByRole("button", { name: "着手" }).first().waitFor();
+    },
+    highlight: [{ role: "button", name: "着手" }],
+  },
+  {
+    // 購買依頼の新規フォーム — 保存ボタンを強調
+    id: "flow-purchase-request-01",
+    docPage: "process/purchasing",
+    path: "/purchase/purchase-requests/new",
+    steps: async (page) => {
+      await page.getByRole("button", { name: "明細を追加" }).first().waitFor();
+    },
+    highlight: [{ role: "button", name: "保存" }],
+  },
+  {
+    // 承認依頼中の購買依頼 — 承認ボタンを強調
+    id: "flow-purchase-request-approve-01",
+    docPage: "process/purchasing",
+    path: "/purchase/purchase-requests/PRQ-202607-00001",
+    steps: async (page) => {
+      await page.getByText("承認依頼中").first().waitFor();
+    },
+    highlight: [{ role: "button", name: "承認", exact: true }],
+  },
+  {
+    // 承認済みの購買依頼 — 「発注書へ変換」を強調
+    id: "flow-purchase-order-create-01",
+    docPage: "process/purchasing",
+    path: "/purchase/purchase-requests/PRQ-202607-00002",
+    steps: async (page) => {
+      await page.getByText("発注書へ変換").first().waitFor();
+    },
+    highlight: [{ role: "button", name: "発注書へ変換", exact: true }],
+  },
+  {
+    // 下書きの素材発注書 — 「承認依頼」を強調
+    id: "flow-purchase-order-approve-01",
+    docPage: "process/purchasing",
+    path: "/purchase/purchase-orders/PO-202607-00003",
+    steps: async (page) => {
+      await page.getByRole("button", { name: "承認依頼" }).first().waitFor();
+    },
+    highlight: [{ role: "button", name: "承認依頼" }],
+  },
+  {
+    // 素材入荷の記録フォーム — 登録ボタンを強調
+    // 入荷日の既定値は実行日由来 — 揮発領域なので mask で塗りつぶす
+    id: "flow-material-receipt-01",
+    docPage: "process/purchasing",
+    path: "/purchase/material-receipts/new",
+    steps: async (page) => {
+      await page.getByText("証憑（任意）").first().waitFor();
+    },
+    highlight: [{ role: "button", name: "登録", exact: true }],
+    mask: ["text=/\\d{4}\\/\\d{2}\\/\\d{2}/"],
+  },
+  {
+    // 外注依頼の一覧 — 外注先の行を強調
+    id: "flow-outsource-order-01",
+    docPage: "process/purchasing",
+    path: "/purchase/outsource-orders",
+    steps: async (page) => {
+      await page.getByText("デモ研磨工業").first().waitFor();
+    },
+    highlight: [{ text: "デモ研磨工業" }],
+  },
+  {
+    // 在庫管理（製品タブ）— 利用可能列を強調
+    id: "flow-inventory-products-01",
+    docPage: "process/production",
+    path: "/production/inventory",
+    steps: async (page) => {
+      await page.getByText("超硬エンドミル").first().waitFor();
+    },
+    highlight: [{ text: "利用可能" }],
+  },
+  {
+    // 在庫管理（素材タブ）— 利用可能列を強調
+    id: "flow-inventory-materials-01",
+    docPage: "process/production",
+    path: "/production/inventory?tab=materials",
+    steps: async (page) => {
+      await page.getByText("B01A0001").first().waitFor();
+    },
+    highlight: [{ role: "columnheader", name: "利用可能" }],
+  },
+  {
+    // 工程の数量・不良入力 — 完了ボタンを強調
+    id: "flow-step-complete-01",
+    docPage: "process/production",
+    path: "/production/work-orders/9001/steps/dc011000-0000-4000-8000-000000000004",
+    steps: async (page) => {
+      await page.getByText("数量・不良").first().waitFor();
+    },
+    highlight: [{ role: "button", name: /完了/ }],
+  },
+  {
+    // 製品在庫の取引履歴 — 入庫行を強調
+    id: "flow-inventory-in-01",
+    docPage: "process/production",
+    path: "/production/inventory/products/dc050000-0000-4000-8000-000000000001?tab=transactions",
+    steps: async (page) => {
+      await page.getByText("取引履歴").first().waitFor();
+    },
+    highlight: [{ text: "入庫" }],
+  },
+  {
+    // 出荷書の確定モーダル — モーダル内の確定ボタンを強調
+    id: "flow-delivery-order-confirm-01",
+    docPage: "process/shipping",
+    path: "/shipping/delivery-orders/DOR-202607-00003",
+    steps: async (page) => {
+      await page.getByRole("button", { name: "操作メニュー" }).first().click();
+      await page.getByRole("menuitem", { name: "確定" }).first().click();
+      await page.getByText("確定の確認").first().waitFor();
+    },
+    highlight: [{ role: "button", name: "確定", exact: true, inDialog: true }],
+  },
+  {
+    // 発行済み納品書の操作メニュー — 「納品済みにする」を強調
+    id: "flow-delivery-note-delivered-01",
+    docPage: "process/shipping",
+    path: "/shipping/delivery-notes/DRN-202607-00001",
+    steps: async (page) => {
+      await page.getByRole("button", { name: "操作メニュー" }).first().click();
+      await page.getByRole("menuitem", { name: /納品済/ }).first().waitFor();
+    },
+    highlight: [{ role: "menuitem", name: /納品済/ }],
+  },
+  {
+    // 請求書の明細と金額 — 合計を強調
+    id: "flow-invoice-check-01",
+    docPage: "process/billing",
+    path: "/billing/invoices/INV-202606-00001",
+    steps: async (page) => {
+      await page.getByText("DOR-202606-00001").first().waitFor();
+    },
+    highlight: [{ text: /合計/ }],
+  },
+  {
+    // 請求書の操作メニュー — 「弥生会計CSV」を強調
+    id: "flow-invoice-csv-01",
+    docPage: "process/billing",
+    path: "/billing/invoices/INV-202606-00001",
+    steps: async (page) => {
+      await page.getByRole("button", { name: "操作メニュー" }).first().click();
+      await page.getByRole("menuitem", { name: "弥生会計CSV" }).first().waitFor();
+    },
+    highlight: [{ role: "menuitem", name: "弥生会計CSV" }],
+  },
 ];

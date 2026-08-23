@@ -1,5 +1,10 @@
 # マニュアル整備プラン — 業務フロー編・管理設定編（2026-08）
 
+> **このプランの業務フロー編は実装済み・改稿済み**（`flow/` ではなく
+> `content/manual/process/` に標準フロー + 分野別 5 ページとして着地。
+> 文体・図・スクリーンショットの現行規約は `_docs/manual-style-beginner.md`
+> の「プロセス編の例外」を参照）。残る未実装は管理・設定編（`admin/`）のみ。
+
 対象: `/manual`（fumadocs, `docker-compose/nextjs-web/content/manual/`）。
 前提: アプリ別マニュアル（apps/・masters/・system/ 全ページ × ja/en/zh × 実
 スクリーンショット）は整備済み（PR #326–#328）。操作コードは 2026-08 に業務

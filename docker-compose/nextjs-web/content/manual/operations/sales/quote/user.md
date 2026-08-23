@@ -5,6 +5,8 @@ screenshots: [quote-list-01, quote-new-01, quote-detail-01, quote-issue-01, quot
 ---
 お客様に提出する **見積書** を作り、PDF にして発行するアプリです。操作コードは `SA03` です。
 
+> このアプリが属するフロー … [販売の流れ](/manual/ja/process/sales)
+
 ## このアプリでできること
 
 - お客様に出す見積書をつくれます。

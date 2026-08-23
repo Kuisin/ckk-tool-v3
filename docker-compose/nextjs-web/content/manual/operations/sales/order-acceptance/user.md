@@ -7,6 +7,8 @@ screenshots: [order-acceptance-list-01, order-acceptance-new-01, order-acceptanc
 
 > ⚠️ このアプリはまだ試験公開中です。画面や手順が今後変わることがあります。
 
+> このアプリが属するフロー … [販売の流れ](/manual/ja/process/sales)
+
 ## このアプリでできること
 
 - 注文書のファイルを読み込ませると、**お客様名や品物・本数が自動で入力** された状態で登録できます。

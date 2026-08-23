@@ -7,6 +7,8 @@ screenshots: [purchase-order-list-01, purchase-order-new-01, purchase-order-deta
 
 > ⚠️ このアプリはまだ準備中のため、本番の画面には出ていないことがあります。見当たらないときは、社内の担当者にご確認ください。
 
+> このアプリが属するフロー … [購買の流れ](/manual/ja/process/purchasing)
+
 ## このアプリでできること
 
 - どの仕入先に、どの素材を何本、いくらで注文するかを書けます。

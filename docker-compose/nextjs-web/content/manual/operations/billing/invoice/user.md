@@ -7,6 +7,8 @@ screenshots: [invoice-list-01, invoice-detail-01, invoice-items-01, invoice-menu
 
 > ⚠️ このアプリはまだ準備中です。正式に使えるようになるまでに、画面や手順が変わることがあります。
 
+> このアプリが属するフロー … [請求の流れ](/manual/ja/process/billing)
+
 ## このアプリでできること
 
 - 請求書の中身（何をいくつ、いくらで請求するか）を確認できます。

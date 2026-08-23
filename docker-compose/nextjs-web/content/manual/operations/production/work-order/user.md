@@ -7,6 +7,8 @@ screenshots: [work-order-list-01, work-order-new-01, work-order-detail-01, work-
 
 > ⚠️ このアプリは今のところ **テスト用の環境だけ** で使えます。本番で使えるようになるまでに、画面や手順が変わることがあります。
 
+> このアプリが属するフロー … [生産の流れ](/manual/ja/process/production)
+
 ## このアプリでできること
 
 - お客様の注文（注文明細）をもとに、工場への作業指示をつくれます。
