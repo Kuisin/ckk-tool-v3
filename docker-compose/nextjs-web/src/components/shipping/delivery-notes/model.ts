@@ -77,7 +77,12 @@ export interface DeliveryOrderCandidate {
   customerBranchName: string | null;
   /** 出荷書の営業担当（納品書の既定値）。 */
   salesRepId: string | null;
-  /** 注文明細の最終需要家（ユーザー直送時の届け先既定値）。 */
+  /**
+   * 納品方法の既定値 — 注文請書ヘッダの配送方法（出荷書の全明細で 1 つに
+   * 定まるときのみ。旧データ混在や注文明細なしは null = 既定を変えない）。
+   */
+  deliveryMethod: "NORMAL" | "DIRECT_TO_USER" | null;
+  /** 最終需要家（ユーザー直送時の届け先既定値 — 明細行 → 注文請書ヘッダ）。 */
   endUserBpId: string | null;
   endUserName: string | null;
   /** 出荷書明細 → 納品書明細の既定行（単価は注文明細の単価）。 */
