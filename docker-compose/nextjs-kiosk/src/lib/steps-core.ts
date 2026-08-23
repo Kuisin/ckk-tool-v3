@@ -70,12 +70,16 @@ export function availableActions(
 export interface WorkSession {
   startedAt: Date | null;
   endedAt: Date | null;
+  /** セグメント中の同時作業工程数（同時実行の按分。未指定/0 以下は 1 扱い）。 */
+  concurrentCount?: number | null;
 }
 
 /**
  * 累計作業時間 (ms)。open な行（endedAt = null）は now まで数える。
  * 一時停止のたびに 1 行閉じ、再開のたびに 1 行開くので、休憩を挟んだ
- * 実作業時間の合計になる。
+ * 実作業時間の合計になる。同時実行中のセグメントは
+ * duration / concurrent_count で按分する（nextjs-web
+ * lib/step-work-hours.ts と同じ規則）。
  */
 export function accumulatedWorkMs(
   sessions: readonly WorkSession[],
@@ -86,7 +90,7 @@ export function accumulatedWorkMs(
     if (!s.startedAt) continue;
     const end = s.endedAt ?? now;
     const ms = end.getTime() - s.startedAt.getTime();
-    if (ms > 0) total += ms;
+    if (ms > 0) total += ms / Math.max(1, s.concurrentCount ?? 1);
   }
   return total;
 }

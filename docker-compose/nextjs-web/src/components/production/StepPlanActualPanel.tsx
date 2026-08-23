@@ -10,6 +10,7 @@
 
 import {
   ActionIcon,
+  Badge,
   Group,
   NumberInput,
   Paper,
@@ -88,9 +89,16 @@ function RecordTable({
               <Text size="sm">{fmt.date(r.date)}</Text>
             </Table.Td>
             <Table.Td>
-              <Text size="sm">
-                {r.startTime ? `${r.startTime}〜${r.endTime ?? ""}` : "終日"}
-              </Text>
+              <Group gap={6} wrap="nowrap">
+                <Text size="sm">
+                  {r.startTime ? `${r.startTime}〜${r.endTime ?? ""}` : "終日"}
+                </Text>
+                {(r.concurrentCount ?? 1) > 1 && (
+                  <Badge color="grape" size="xs" variant="light">
+                    同時 {r.concurrentCount}
+                  </Badge>
+                )}
+              </Group>
             </Table.Td>
             <Table.Td ta="right">
               <Text className="tabular-nums" size="sm">

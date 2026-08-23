@@ -86,8 +86,10 @@ export interface MyStepView {
    * 端末の既定 or 作業場所 QR の読み取りで入る（未記録は null）。
    */
   actualWorkLocationName: string | null;
-  /** 自分の累計作業時間 (ms) */
+  /** 自分の累計作業時間 (ms) — 同時実行セグメントは按分済み。 */
   workedMs: number;
+  /** 自分の open セグメントの同時作業数（作業中でなければ 1）。 */
+  openConcurrentCount: number;
   /** OTHER のときの作業者名 */
   lockedByName: string | null;
 }
@@ -98,45 +100,6 @@ export interface MyStepsResult {
   upcomingCount: number;
   /** 最近（既定 14 日）完了した自分の工程（既定は非表示・ボタンで開く）。 */
   completedSteps: MyStepView[];
-  /** 自分が現在作業中（ロック保持）の工程 id。同時作業は 1 工程まで。 */
-  activeStepId: string | null;
-}
-
-/** 作業中の別工程（実行画面のロック表示・誘導用）。 */
-export interface MyActiveStep {
-  stepId: string;
-  stepName: string;
-  workOrderNumber: number;
-}
-
-/**
- * 自分が現在作業中（ロック保持）の工程を返す（excludeStepId 以外）。
- * 開始/再開ボタンのロック表示に使う — サーバー側の権威は
- * step-execution.findMyActiveStep（開始・再開時に同条件で拒否）。
- */
-export async function getMyActiveStep(
-  userId: string,
-  excludeStepId: string,
-  locale: Locale,
-): Promise<MyActiveStep | null> {
-  const active = await prisma.workOrderStep.findFirst({
-    where: {
-      sessionLockedBy: userId,
-      status: "IN_PROGRESS",
-      id: { not: excludeStepId },
-    },
-    select: {
-      id: true,
-      processStep: { select: { name: true } },
-      workOrder: { select: { workOrderNumber: true } },
-    },
-  });
-  if (!active) return null;
-  return {
-    stepId: active.id,
-    stepName: localized(asText(active.processStep.name), locale),
-    workOrderNumber: active.workOrder.workOrderNumber,
-  };
 }
 
 /** 完了工程を出す遡り期間（ミリ秒）。 */
@@ -281,6 +244,7 @@ async function hydrateSteps(
         select: {
           startedAt: true,
           endedAt: true,
+          concurrentCount: true,
           workLocation: { select: { name: true } },
         },
         orderBy: { startedAt: "asc" },
@@ -363,6 +327,10 @@ async function hydrateSteps(
           : null;
       })(),
       workedMs: accumulatedWorkMs(r.actuals, now),
+      openConcurrentCount: Math.max(
+        1,
+        r.actuals.find((a) => a.endedAt == null)?.concurrentCount ?? 1,
+      ),
       lockedByName:
         state === "OTHER" && r.sessionLockedBy
           ? (lockOwners.get(r.sessionLockedBy) ?? null)
@@ -488,7 +456,6 @@ export async function listMySteps(
     steps,
     upcomingCount,
     completedSteps,
-    activeStepId: held[0]?.id ?? null,
   };
 }
 

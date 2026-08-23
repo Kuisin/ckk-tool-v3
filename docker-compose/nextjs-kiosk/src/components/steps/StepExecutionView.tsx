@@ -39,7 +39,7 @@ import { useState } from "react";
 import { QR_KINDS, qrKeyOfKind } from "@/lib/qr-payload";
 import { playLogoutSound, playWarnSound } from "@/lib/sound";
 import type { StepRecordingData } from "@/lib/step-records";
-import type { MyActiveStep, MyStepView, StepLocationGate } from "@/lib/steps";
+import type { MyStepView, StepLocationGate } from "@/lib/steps";
 import {
   cleanReasonEntries,
   type DefectReasonEntry,
@@ -63,8 +63,6 @@ import {
 type Props = {
   step: MyStepView;
   recording: StepRecordingData;
-  /** 自分が作業中の別工程（同時作業は 1 工程まで — 開始/再開をロック）。 */
-  otherActive: MyActiveStep | null;
   /** 工程マスタの許可作業場所 × この端末（表示用 — 権威は API 側）。 */
   locationGate: StepLocationGate;
   /** 戻り先: 担当工程一覧（既定） / 指示書スキャンの指示書ビュー。 */
@@ -76,7 +74,6 @@ type Phase = "IDLE" | "STARTING" | "COMPLETING";
 export function StepExecutionView({
   step,
   recording,
-  otherActive,
   locationGate,
   backTo = "list",
 }: Props) {
@@ -115,8 +112,6 @@ export function StepExecutionView({
   const isNone = trackedMode === null;
   const working = step.sessionState === "WORKING";
   const paused = step.sessionState === "PAUSED";
-  // 別工程を作業中 → この工程の開始/再開/完了をロック（同時作業は 1 工程まで）
-  const lockedByActive = otherActive != null && !working;
   // 端末の「作業場所の制限」ON かつ端末の既定作業場所が許可外 → 開始/再開不可
   const locationBlocked =
     locationGate.enforced &&
@@ -248,7 +243,11 @@ export function StepExecutionView({
               {(working || paused) && (
                 <Text c="dimmed" size="sm">
                   {m.steps.card.elapsedLabel}{" "}
-                  <LiveElapsed baseMs={step.workedMs} running={working} />
+                  <LiveElapsed
+                    baseMs={step.workedMs}
+                    rate={1 / step.openConcurrentCount}
+                    running={working}
+                  />
                 </Text>
               )}
             </Group>
@@ -305,7 +304,6 @@ export function StepExecutionView({
                   </Text>
                 </Group>
                 {(step.sessionState === "STARTABLE" || working) &&
-                  !lockedByActive &&
                   !locationBlocked && (
                     <Button
                       leftSection={<IconQrcode size={18} />}
@@ -368,87 +366,64 @@ export function StepExecutionView({
           </Alert>
         )}
 
-        {/* 別工程を作業中 — 開始/再開/完了の代わりに誘導を出す */}
-        {lockedByActive && otherActive && (
-          <Alert color="orange" icon={<IconAlertTriangle size={20} />}>
-            <Stack align="flex-start" gap="sm">
-              <Text size="sm">
-                {m.steps.activeLock.alert(
-                  otherActive.workOrderNumber,
-                  otherActive.stepName,
-                )}
-              </Text>
+        {/* 開始 — 受入数の確認（NONE は数量を聞かない） */}
+        {step.sessionState === "STARTABLE" && !locationBlocked && (
+          <Paper p="md" radius="md" withBorder>
+            <Stack gap="md">
+              <Title order={4}>{m.steps.start.title}</Title>
+              {trackedMode === null ? (
+                <Text c="dimmed">{m.steps.start.noneNote}</Text>
+              ) : (
+                <>
+                  <NumberStepper
+                    label={m.steps.quantity[trackedMode].input}
+                    min={0}
+                    onChange={setStartInput}
+                    value={startInput}
+                  />
+                  {step.expectedInputQuantity != null && (
+                    <Text c="dimmed" size="sm">
+                      {m.steps.start.expectedHint(step.expectedInputQuantity)}
+                      {startInput !== step.expectedInputQuantity
+                        ? ` — ${m.steps.start.differsHint}`
+                        : ""}
+                    </Text>
+                  )}
+                </>
+              )}
+              {step.lotInputMode !== "NONE" && (
+                <TextInput
+                  label={
+                    step.lotInputMode === "REQUIRED"
+                      ? m.steps.start.lotRequired
+                      : m.steps.start.lotOptional
+                  }
+                  maxLength={100}
+                  onChange={(e) => setLotText(e.currentTarget.value)}
+                  placeholder={m.steps.start.lotPlaceholder}
+                  size="lg"
+                  value={lotText}
+                  withAsterisk={step.lotInputMode === "REQUIRED"}
+                />
+              )}
               <Button
-                onClick={() => router.push(`/steps/${otherActive.stepId}`)}
-                size="sm"
-                variant="light"
+                disabled={
+                  step.lotInputMode === "REQUIRED" && lotText.trim() === ""
+                }
+                fullWidth
+                leftSection={<IconPlayerPlay size={20} />}
+                loading={busy && phase !== "COMPLETING"}
+                onClick={doStart}
+                size="lg"
               >
-                {m.steps.activeLock.goto}
+                {m.steps.actions.start}
               </Button>
             </Stack>
-          </Alert>
+          </Paper>
         )}
 
-        {/* 開始 — 受入数の確認（NONE は数量を聞かない） */}
-        {step.sessionState === "STARTABLE" &&
-          !lockedByActive &&
-          !locationBlocked && (
-            <Paper p="md" radius="md" withBorder>
-              <Stack gap="md">
-                <Title order={4}>{m.steps.start.title}</Title>
-                {trackedMode === null ? (
-                  <Text c="dimmed">{m.steps.start.noneNote}</Text>
-                ) : (
-                  <>
-                    <NumberStepper
-                      label={m.steps.quantity[trackedMode].input}
-                      min={0}
-                      onChange={setStartInput}
-                      value={startInput}
-                    />
-                    {step.expectedInputQuantity != null && (
-                      <Text c="dimmed" size="sm">
-                        {m.steps.start.expectedHint(step.expectedInputQuantity)}
-                        {startInput !== step.expectedInputQuantity
-                          ? ` — ${m.steps.start.differsHint}`
-                          : ""}
-                      </Text>
-                    )}
-                  </>
-                )}
-                {step.lotInputMode !== "NONE" && (
-                  <TextInput
-                    label={
-                      step.lotInputMode === "REQUIRED"
-                        ? m.steps.start.lotRequired
-                        : m.steps.start.lotOptional
-                    }
-                    maxLength={100}
-                    onChange={(e) => setLotText(e.currentTarget.value)}
-                    placeholder={m.steps.start.lotPlaceholder}
-                    size="lg"
-                    value={lotText}
-                    withAsterisk={step.lotInputMode === "REQUIRED"}
-                  />
-                )}
-                <Button
-                  disabled={
-                    step.lotInputMode === "REQUIRED" && lotText.trim() === ""
-                  }
-                  fullWidth
-                  leftSection={<IconPlayerPlay size={20} />}
-                  loading={busy && phase !== "COMPLETING"}
-                  onClick={doStart}
-                  size="lg"
-                >
-                  {m.steps.actions.start}
-                </Button>
-              </Stack>
-            </Paper>
-          )}
-
         {/* 進行中 / 一時停止中 — 完了フォームと操作 */}
-        {(working || paused) && !lockedByActive && (
+        {(working || paused) && (
           <Paper p="md" radius="md" withBorder>
             <Stack gap="md">
               {phase === "COMPLETING" ? (

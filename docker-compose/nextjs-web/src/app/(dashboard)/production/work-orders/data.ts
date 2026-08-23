@@ -165,7 +165,9 @@ const WO_INCLUDE = {
         orderBy: { plannedDate: "asc" as const },
       },
       // 実働時間の積算に使う（1 行 = 1 作業セッション）。
-      actuals: { select: { startedAt: true, endedAt: true } },
+      actuals: {
+        select: { startedAt: true, endedAt: true, concurrentCount: true },
+      },
       _count: { select: { plans: true, actuals: true } },
       // 検査工程で使う検査表テンプレート（工程単位の割当）
       inspectionTemplates: { include: { inspectionTemplate: true } },
@@ -919,14 +921,15 @@ export async function fetchStepExecution(
       end: p.plannedEndAt,
     }),
   );
-  const actuals = step.actuals.map((a) =>
-    mapPlanRow({
+  const actuals = step.actuals.map((a) => ({
+    ...mapPlanRow({
       ...a,
       date: a.workedDate,
       start: a.startedAt,
       end: a.endedAt,
     }),
-  );
+    concurrentCount: a.concurrentCount,
+  }));
 
   return {
     actorId,
