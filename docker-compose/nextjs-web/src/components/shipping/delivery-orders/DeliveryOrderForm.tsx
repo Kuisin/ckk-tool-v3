@@ -64,6 +64,7 @@ import { zodResolver } from "@/lib/form";
 import type { Option } from "@/lib/mock";
 import {
   allocateLotUsage,
+  combinabilityError,
   type DeliveryOrder,
   type DeliveryOrderType,
 } from "./model";
@@ -249,16 +250,21 @@ export function DeliveryOrderForm({
   const addSourceGroups = (infos: DeliverySourceInfo[]) => {
     const first = infos[0];
     if (!first) return;
-    // 1 出荷書 = 1 顧客 — 最初に選んだ注文請書の顧客で確定する
-    // （同一注文請書の明細は全て同じ顧客）。
-    if (
-      form.values.customerBpId &&
-      first.customerBpId &&
-      first.customerBpId !== form.values.customerBpId
-    ) {
+    // 束ね可否 — 同一顧客 × 同一出荷先 × 同一配送方法（注文請書ヘッダ由来）
+    // だけを 1 出荷書に載せられる。既に載っているグループの属性
+    // （infoByLine — 追加時 / 編集時のシードでロード済み）と比較する。
+    // サーバー（validateCombinable）も同じ判定で最終ガードする。
+    const existingRefs = form.values.items
+      .map((it) => (it.orderLineId ? infoByLine[it.orderLineId] : null))
+      .filter((i): i is DeliverySourceInfo => Boolean(i));
+    const combineError = combinabilityError(
+      [...existingRefs, first],
+      form.values.customerBpId || undefined,
+    );
+    if (combineError) {
       notifications.show({
         title: "追加できません",
-        message: "1 つの出荷書には同じ顧客の注文明細だけを載せられます",
+        message: combineError,
         color: "red",
       });
       return;
@@ -750,8 +756,15 @@ export function DeliveryOrderForm({
                       </DocNumber>
                       {info && (
                         <Text c="dimmed" size="xs">
-                          {info.customerName} / {info.productName} · 受注{" "}
-                          {info.quantity}
+                          {info.customerName} / {info.productName}
+                          {/* 束ねの条件（出荷先・配送方法）が見えるようにする */}
+                          {info.shipToName
+                            ? ` · 出荷先 ${info.shipToName}`
+                            : ""}
+                          {info.deliveryMethod === "DIRECT_TO_USER"
+                            ? " · ユーザー直送"
+                            : ""}{" "}
+                          · 受注 {info.quantity}
                           {info.shippedQuantity > 0
                             ? ` · 出荷済 ${info.shippedQuantity}`
                             : ""}{" "}

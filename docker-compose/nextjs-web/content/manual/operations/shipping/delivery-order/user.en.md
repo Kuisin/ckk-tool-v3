@@ -139,6 +139,8 @@ Every field on the shipping order screen. The **?** next to a field in the app l
 
 Which order this shipment is for, picked as an order acceptance. Choosing it fills in the shippable lines of that acceptance for you. The quantities come from the **finished output of the connected work orders**, within the physical stock and the order remainder.
 
+Multiple order acceptances can be combined into one delivery order only when they share **the same customer, the same ship-to and the same delivery method (normal / direct to user)**. Trying to add one that differs shows the reason on the spot.
+
 ### Type [#field-type]
 
 The kind of shipment. **Only dispatch goes on to a delivery note and billing.**

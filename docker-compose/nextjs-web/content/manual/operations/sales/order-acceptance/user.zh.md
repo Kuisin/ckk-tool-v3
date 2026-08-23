@@ -162,6 +162,8 @@ screenshots: [order-acceptance-list-01, order-acceptance-new-01, order-acceptanc
 | [报价单号](#field-quote-number) | 选填 | 对应的报价单 |
 | [订单日期](#field-order-date) | 选填 | 客户下单的日期 |
 | [发货目的地](#field-ship-to) | 选填 | 产品的送达地点 |
+| [配送方式](#field-delivery-method) | 必填 | 普通配送 / 直送最终用户 |
+| [最终用户](#field-end-user) | 直送时必填 | 直送时的实际送达对象（最终需要方） |
 | [负责据点](#field-assigned-plant) | 选填 | 处理这笔订单的据点 |
 | [发货作业场所](#field-shipping-work-location) | 选填 | 进行发货作业的场所 |
 | [备注](#field-notes) | 选填 | 对整份受理书的补充 |
@@ -192,6 +194,14 @@ screenshots: [order-acceptance-list-01, order-acceptance-new-01, order-acceptanc
 ### 发货目的地 [#field-ship-to]
 
 产品的送达地点。要送到**与下单客户不同的公司・分店**时选择。留空则表示送到该客户处。
+
+### 配送方式 [#field-delivery-method]
+
+产品的送达方式。**普通配送**送到下单客户（或指定的发货目的地）。**直送最终用户**则直接发给最终用户。一份发货单只能汇总**发货目的地・配送方式相同**的订单明细，因此这里的选择决定了发货的合并方式。
+
+### 最终用户 [#field-end-user]
+
+直送时的实际送达对象（最终需要方）。**选择直送时为必填**。从登记为最终需要方的往来单位中选择。
 
 ### 负责据点 [#field-assigned-plant]
 

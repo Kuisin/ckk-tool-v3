@@ -71,6 +71,12 @@ model OrderAcceptance {
 
   // 出荷先（納入先の取引先。顧客本体と別の法人・支店でもよい。null = 顧客へ）
   shipToBpId String? @map("ship_to_bp_id") @db.Uuid
+  // 配送方法（通常配送 / ユーザー直送）。出荷書は同じ出荷先×配送方法の
+  // 注文明細だけを束ねられる（アプリで検証）。納品書の既定値の源でもある。
+  deliveryMethod DeliveryMethod @default(NORMAL) @map("delivery_method")
+  // エンドユーザー（最終需要家）。ユーザー直送では必須（アプリで強制）。
+  // 明細行の end_user_bp_id（行ごとの例外）より先に読む既定値。
+  endUserBpId String? @map("end_user_bp_id") @db.Uuid
   // 担当拠点（この注文を処理する拠点。null = 未割当）
   assignedPlantId Int? @map("assigned_plant_id")
   // 出荷作業場所（作業場所マスタ MS0D。出荷作業を行う場所）
@@ -91,6 +97,7 @@ model OrderAcceptance {
   customerBp       BusinessPartner? @relation("AcceptanceCustomer", fields: [customerBpId], references: [id])
   customerBranchBp BusinessPartner? @relation("AcceptanceCustomerBranch", fields: [customerBranchBpId], references: [id])
   shipToBp         BusinessPartner? @relation("AcceptanceShipTo", fields: [shipToBpId], references: [id])
+  endUserBp        BusinessPartner? @relation("AcceptanceEndUser", fields: [endUserBpId], references: [id])
   assignedPlant    Plant?           @relation("AcceptancePlant", fields: [assignedPlantId], references: [id])
   shippingWorkLocation WorkLocation? @relation("AcceptanceShippingWorkLocation", fields: [shippingWorkLocationId], references: [id])
   createdByUser    User?            @relation("AcceptanceCreatedBy", fields: [createdBy], references: [id])

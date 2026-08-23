@@ -62,6 +62,7 @@ import { useRouter } from "next/navigation";
 import { type ReactNode, useEffect, useState, useTransition } from "react";
 import {
   searchCustomerOptions,
+  searchEndUserOptions,
   searchQuoteOptions,
   searchShipToOptions,
 } from "@/app/(dashboard)/_shared/option-search";
@@ -118,7 +119,11 @@ import {
 } from "@/components/ui/shells";
 import { useTabParam } from "@/hooks/useUrlState";
 import type { MemoView } from "@/lib/document-memos";
-import { ORDER_TYPE_LABEL } from "@/lib/enum-labels";
+import {
+  ACCEPTANCE_DELIVERY_METHOD_LABEL,
+  ACCEPTANCE_DELIVERY_METHOD_OPTIONS,
+  ORDER_TYPE_LABEL,
+} from "@/lib/enum-labels";
 import { fieldHelp } from "@/lib/field-help";
 import { formatMoney } from "@/lib/format";
 import { parseExtractError } from "@/lib/intake-extract-error";
@@ -261,6 +266,8 @@ export function OrderAcceptanceDetail({
   // 同じ関数）。足りない項目があるうちはボタンを押せなくし、理由をカードに出す。
   const readiness = acceptanceReadiness({
     customerBpId: a.customerBpId,
+    deliveryMethod: a.deliveryMethod,
+    endUserBpId: a.endUserBpId,
     items: a.items,
   });
 
@@ -697,6 +704,13 @@ export function OrderAcceptanceDetail({
                   />
                   <FieldValue label="営業担当" value={a.salesRepName} />
                   <FieldValue label="出荷先" value={a.shipToName} />
+                  <FieldValue
+                    label="配送方法"
+                    value={ACCEPTANCE_DELIVERY_METHOD_LABEL[a.deliveryMethod]}
+                  />
+                  {a.deliveryMethod === "DIRECT_TO_USER" && (
+                    <FieldValue label="エンドユーザー" value={a.endUserName} />
+                  )}
                   <FieldValue label="担当拠点" value={a.assignedPlantName} />
                   <FieldValue
                     label="出荷作業場所"
@@ -1232,6 +1246,11 @@ function DraftEditor({
   );
   const [salesRepId, setSalesRepId] = useState<string | null>(a.salesRepId);
   const [shipToBpId, setShipToBpId] = useState<string | null>(a.shipToBpId);
+  const [deliveryMethod, setDeliveryMethod] = useState<
+    "NORMAL" | "DIRECT_TO_USER"
+  >(a.deliveryMethod);
+  const [endUserBpId, setEndUserBpId] = useState<string | null>(a.endUserBpId);
+  const [endUserError, setEndUserError] = useState<string | null>(null);
   const [assignedPlantId, setAssignedPlantId] = useState<string | null>(
     a.assignedPlantId,
   );
@@ -1253,6 +1272,8 @@ function DraftEditor({
     customerId,
     salesRepId,
     shipToBpId,
+    deliveryMethod,
+    endUserBpId,
     assignedPlantId,
     shippingWorkLocationId,
     customerOrderRef,
@@ -1267,11 +1288,17 @@ function DraftEditor({
   const isDirty = fingerprint !== initialFingerprint;
 
   const save = () => {
+    if (deliveryMethod === "DIRECT_TO_USER" && !endUserBpId) {
+      setEndUserError("ユーザー直送ではエンドユーザーを選択してください");
+      return;
+    }
     startTransition(async () => {
       const result = await saveDraft(a.number, {
         customerBpId: customerId,
         salesRepId,
         shipToBpId,
+        deliveryMethod,
+        endUserBpId,
         assignedPlantId: assignedPlantId ? Number(assignedPlantId) : null,
         shippingWorkLocationId: shippingWorkLocationId
           ? Number(shippingWorkLocationId)
@@ -1413,6 +1440,47 @@ function DraftEditor({
               storageKey="ship-to"
               value={shipToBpId}
             />
+            {/* 配送方法 — 出荷書は同じ出荷先×配送方法の明細だけを束ねられる。 */}
+            <Select
+              allowDeselect={false}
+              data={ACCEPTANCE_DELIVERY_METHOD_OPTIONS}
+              label={
+                <HelpLabel
+                  {...fieldHelp("orderAcceptance", "deliveryMethod")}
+                />
+              }
+              onChange={(v) => {
+                setDeliveryMethod(
+                  (v as "NORMAL" | "DIRECT_TO_USER") ?? "NORMAL",
+                );
+                if (v !== "DIRECT_TO_USER") setEndUserError(null);
+              }}
+              value={deliveryMethod}
+              withAsterisk
+            />
+            {deliveryMethod === "DIRECT_TO_USER" && (
+              <SearchSelect
+                clearable
+                error={endUserError}
+                initialOption={
+                  a.endUserBpId && a.endUserName
+                    ? { value: a.endUserBpId, label: a.endUserName }
+                    : null
+                }
+                label={
+                  <HelpLabel {...fieldHelp("orderAcceptance", "endUser")} />
+                }
+                onChange={(v) => {
+                  setEndUserBpId(v);
+                  if (v) setEndUserError(null);
+                }}
+                onSearch={searchEndUserOptions}
+                placeholder="エンドユーザーを検索"
+                storageKey="end-user"
+                value={endUserBpId}
+                withAsterisk
+              />
+            )}
             <Select
               clearable
               data={plantOptions}

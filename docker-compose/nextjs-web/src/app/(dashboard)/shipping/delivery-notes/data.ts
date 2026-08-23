@@ -199,8 +199,15 @@ export async function fetchDeliveryOrderCandidates(): Promise<
           orderLine: {
             include: {
               endUserBp: true,
-              // 営業担当の導出用（出荷書には保存されない）。
-              acceptance: { select: { salesRepId: true } },
+              // 営業担当・配送方法・エンドユーザーの導出用
+              // （出荷書には保存されない）。
+              acceptance: {
+                select: {
+                  salesRepId: true,
+                  deliveryMethod: true,
+                  endUserBp: true,
+                },
+              },
             },
           },
         },
@@ -218,15 +225,27 @@ export async function fetchDeliveryOrderCandidates(): Promise<
     const customerName = localized(r.customerBp.name as LocalizedText | null);
     const totalQuantity = r.items.reduce((sum, it) => sum + it.quantity, 0);
     // 最終需要家は注文明細ごとに異なり得る — 1 つに定まるときだけ既定値にする。
+    // 明細行の指定（行ごとの例外）→ 注文請書ヘッダのエンドユーザー の順に読む。
     const endUsers = [
       ...new Map(
         r.items
-          .map((it) => it.orderLine?.endUserBp)
+          .map(
+            (it) =>
+              it.orderLine?.endUserBp ?? it.orderLine?.acceptance.endUserBp,
+          )
           .filter((bp): bp is NonNullable<typeof bp> => Boolean(bp))
           .map((bp) => [bp.id, bp] as const),
       ).values(),
     ];
     const endUser = endUsers.length === 1 ? endUsers[0] : null;
+    // 配送方法（注文請書ヘッダ）— 全明細で 1 つに定まるときだけ既定値にする
+    // （束ね条件の導入後は常に 1 つだが、旧データの混在は null で既定を触らない）。
+    const methods = new Set(
+      r.items
+        .map((it) => it.orderLine?.acceptance.deliveryMethod)
+        .filter((m): m is NonNullable<typeof m> => Boolean(m)),
+    );
+    const deliveryMethod = methods.size === 1 ? [...methods][0] : null;
     // 出荷書の営業担当は導出値（明細 → 注文請書ヘッダ）。1 人に定まる
     // ときだけ納品書へ引き継ぐ。
     const repIds = new Set(
@@ -243,6 +262,7 @@ export async function fetchDeliveryOrderCandidates(): Promise<
       customerBranchName: r.customerBranchBp
         ? localized(r.customerBranchBp.name as LocalizedText | null)
         : null,
+      deliveryMethod,
       endUserBpId: endUser?.id ?? null,
       endUserName: endUser
         ? localized(endUser.name as LocalizedText | null)

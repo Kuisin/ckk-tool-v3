@@ -101,6 +101,7 @@ model BusinessPartner {
   acceptancesAsCustomer OrderAcceptance[] @relation("AcceptanceCustomer")
   acceptancesAsBranch   OrderAcceptance[] @relation("AcceptanceCustomerBranch")
   acceptancesAsShipTo   OrderAcceptance[] @relation("AcceptanceShipTo")
+  acceptancesAsEndUser  OrderAcceptance[] @relation("AcceptanceEndUser")
 
   @@index([parentId])
   @@map("business_partners")
