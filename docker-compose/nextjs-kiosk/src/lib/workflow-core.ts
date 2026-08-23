@@ -86,8 +86,11 @@ export const START_STEP_CODES = [
 /** 在庫分（FROM_STOCK）専用の開始工程。製造分の構成には含めない。 */
 export const STOCK_ISSUE_STEP_CODE = "PRODUCT_ISSUE";
 
-/** 出荷工程（任意・常に末尾。両方あれば 出荷前検査 → 出荷）。 */
-export const SHIP_STEP_CODES = ["PRE_SHIP_INSPECTION", "SHIPPING"] as const;
+/**
+ * 出荷側の工程（任意・常に末尾）。出荷前検査のみ — **出荷そのものは工程では
+ * なく出荷書（delivery_orders / SH01）が管理する**（旧 SHIPPING 工程は廃止）。
+ */
+export const SHIP_STEP_CODES = ["PRE_SHIP_INSPECTION"] as const;
 
 export function isStartStep(step: Pick<CatalogStep, "code">): boolean {
   return (START_STEP_CODES as readonly string[]).includes(step.code);
@@ -97,11 +100,10 @@ export function isShipStep(step: Pick<CatalogStep, "code">): boolean {
   return (SHIP_STEP_CODES as readonly string[]).includes(step.code);
 }
 
-/** 並び区分: 0 = 開始 / 1 = 中間 / 2 = 出荷前検査 / 3 = 出荷。 */
+/** 並び区分: 0 = 開始 / 1 = 中間 / 2 = 出荷前検査（常に末尾）。 */
 function orderRank(code: string): number {
   if ((START_STEP_CODES as readonly string[]).includes(code)) return 0;
-  if (code === "PRE_SHIP_INSPECTION") return 2;
-  if (code === "SHIPPING") return 3;
+  if ((SHIP_STEP_CODES as readonly string[]).includes(code)) return 2;
   return 1;
 }
 
