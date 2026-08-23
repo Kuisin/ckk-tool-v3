@@ -14,9 +14,18 @@ import {
 const item = (over: { productId?: string | null; unitPrice?: number | null }) =>
   ({ productId: "12", unitPrice: 1000, ...over }) as const;
 
+/** 配送方法の既定（通常配送・エンドユーザーなし）。 */
+const delivery = (
+  over: Partial<{
+    deliveryMethod: "NORMAL" | "DIRECT_TO_USER";
+    endUserBpId: string | null;
+  }> = {},
+) => ({ deliveryMethod: "NORMAL" as const, endUserBpId: null, ...over });
+
 describe("acceptanceReadiness", () => {
   it("顧客 + 全行に製品と単価が揃えば ok", () => {
     const r = acceptanceReadiness({
+      ...delivery(),
       customerBpId: "bp-1",
       items: [item({}), item({})],
     });
@@ -25,6 +34,7 @@ describe("acceptanceReadiness", () => {
 
   it("顧客未特定を拾う", () => {
     const r = acceptanceReadiness({
+      ...delivery(),
       customerBpId: null,
       items: [item({})],
     });
@@ -33,7 +43,11 @@ describe("acceptanceReadiness", () => {
   });
 
   it("明細 0 件はそこで打ち切る（行の指摘は出さない）", () => {
-    const r = acceptanceReadiness({ customerBpId: "bp-1", items: [] });
+    const r = acceptanceReadiness({
+      ...delivery(),
+      customerBpId: "bp-1",
+      items: [],
+    });
     expect(r.issues).toEqual([
       { kind: "items", message: "明細が 1 件もありません" },
     ]);
@@ -41,6 +55,7 @@ describe("acceptanceReadiness", () => {
 
   it("製品未特定・単価未入力を行番号つきで挙げる", () => {
     const r = acceptanceReadiness({
+      ...delivery(),
       customerBpId: "bp-1",
       items: [
         item({}),
@@ -58,6 +73,7 @@ describe("acceptanceReadiness", () => {
 
   it("単価 0 は「未入力」ではない（サンプルは 0 円がある）", () => {
     const r = acceptanceReadiness({
+      ...delivery(),
       customerBpId: "bp-1",
       items: [item({ unitPrice: 0 })],
     });
@@ -66,16 +82,42 @@ describe("acceptanceReadiness", () => {
 
   it("空文字の productId は未特定として扱う", () => {
     const r = acceptanceReadiness({
+      ...delivery(),
       customerBpId: "bp-1",
       items: [item({ productId: "" })],
     });
     expect(r.ok).toBe(false);
+  });
+
+  it("ユーザー直送でエンドユーザー未指定を拾う", () => {
+    const r = acceptanceReadiness({
+      ...delivery({ deliveryMethod: "DIRECT_TO_USER" }),
+      customerBpId: "bp-1",
+      items: [item({})],
+    });
+    expect(r.ok).toBe(false);
+    expect(r.issues).toEqual([
+      {
+        kind: "endUser",
+        message: "ユーザー直送ですがエンドユーザーが未指定です",
+      },
+    ]);
+  });
+
+  it("ユーザー直送でもエンドユーザーが居れば ok", () => {
+    const r = acceptanceReadiness({
+      ...delivery({ deliveryMethod: "DIRECT_TO_USER", endUserBpId: "bp-9" }),
+      customerBpId: "bp-1",
+      items: [item({})],
+    });
+    expect(r.ok).toBe(true);
   });
 });
 
 describe("readinessSummary", () => {
   it("先頭 3 件までを並べ、残りは件数で示す", () => {
     const issues = acceptanceReadiness({
+      ...delivery(),
       customerBpId: null,
       items: [item({ productId: null, unitPrice: null })],
     }).issues;

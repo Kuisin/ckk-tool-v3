@@ -191,6 +191,19 @@ export const DELIVERY_METHOD_OPTIONS = Object.entries(
   DELIVERY_METHOD_LABEL,
 ).map(([value, label]) => ({ value, label }));
 
+/**
+ * 注文請書の配送方法（同じ app.DELIVERY_METHOD を受注文脈で表示）。
+ * 納品書側の「納品方法」と区別して「通常配送」と呼ぶ。
+ */
+export const ACCEPTANCE_DELIVERY_METHOD_LABEL: Record<string, string> = {
+  NORMAL: "通常配送",
+  DIRECT_TO_USER: "ユーザー直送",
+};
+
+export const ACCEPTANCE_DELIVERY_METHOD_OPTIONS = Object.entries(
+  ACCEPTANCE_DELIVERY_METHOD_LABEL,
+).map(([value, label]) => ({ value, label }));
+
 /** app.PURCHASE_STATUS（素材発注書） */
 export const PURCHASE_STATUS_LABEL: Record<string, string> = {
   DRAFT: "作成中",

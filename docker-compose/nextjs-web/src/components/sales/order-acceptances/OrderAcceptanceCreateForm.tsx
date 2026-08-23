@@ -15,6 +15,7 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import {
   searchCustomerOptions,
+  searchEndUserOptions,
   searchQuoteOptions,
   searchShipToOptions,
 } from "@/app/(dashboard)/_shared/option-search";
@@ -24,6 +25,7 @@ import { HelpLabel } from "@/components/ui/HelpLabel";
 import { SalesRepSelect } from "@/components/ui/SalesRepSelect";
 import { SearchSelect } from "@/components/ui/SearchSelect";
 import { FormSection, FormShell } from "@/components/ui/shells";
+import { ACCEPTANCE_DELIVERY_METHOD_OPTIONS } from "@/lib/enum-labels";
 import { fieldHelp } from "@/lib/field-help";
 import {
   type ItemRowForm,
@@ -50,6 +52,11 @@ export function OrderAcceptanceCreateForm({
   const [salesRepId, setSalesRepId] = useState<string | null>(null);
   const [customerError, setCustomerError] = useState<string | null>(null);
   const [shipToBpId, setShipToBpId] = useState<string | null>(null);
+  const [deliveryMethod, setDeliveryMethod] = useState<
+    "NORMAL" | "DIRECT_TO_USER"
+  >("NORMAL");
+  const [endUserBpId, setEndUserBpId] = useState<string | null>(null);
+  const [endUserError, setEndUserError] = useState<string | null>(null);
   const [assignedPlantId, setAssignedPlantId] = useState<string | null>(null);
   const [shippingWorkLocationId, setShippingWorkLocationId] = useState<
     string | null
@@ -66,11 +73,17 @@ export function OrderAcceptanceCreateForm({
       setCustomerError("顧客を選択してください");
       return;
     }
+    if (deliveryMethod === "DIRECT_TO_USER" && !endUserBpId) {
+      setEndUserError("ユーザー直送ではエンドユーザーを選択してください");
+      return;
+    }
     startTransition(async () => {
       const result = await createManualAcceptance({
         customerBpId: customerId,
         salesRepId,
         shipToBpId,
+        deliveryMethod,
+        endUserBpId,
         assignedPlantId: assignedPlantId ? Number(assignedPlantId) : null,
         shippingWorkLocationId: shippingWorkLocationId
           ? Number(shippingWorkLocationId)
@@ -104,6 +117,8 @@ export function OrderAcceptanceCreateForm({
       customerId ||
         salesRepId ||
         shipToBpId ||
+        deliveryMethod !== "NORMAL" ||
+        endUserBpId ||
         assignedPlantId ||
         shippingWorkLocationId ||
         customerOrderRef ||
@@ -171,6 +186,36 @@ export function OrderAcceptanceCreateForm({
             storageKey="ship-to"
             value={shipToBpId}
           />
+          {/* 配送方法 — 出荷書は同じ出荷先×配送方法の明細だけを束ねられる。 */}
+          <Select
+            allowDeselect={false}
+            data={ACCEPTANCE_DELIVERY_METHOD_OPTIONS}
+            label={
+              <HelpLabel {...fieldHelp("orderAcceptance", "deliveryMethod")} />
+            }
+            onChange={(v) => {
+              setDeliveryMethod((v as "NORMAL" | "DIRECT_TO_USER") ?? "NORMAL");
+              if (v !== "DIRECT_TO_USER") setEndUserError(null);
+            }}
+            value={deliveryMethod}
+            withAsterisk
+          />
+          {deliveryMethod === "DIRECT_TO_USER" && (
+            <SearchSelect
+              clearable
+              error={endUserError}
+              label={<HelpLabel {...fieldHelp("orderAcceptance", "endUser")} />}
+              onChange={(v) => {
+                setEndUserBpId(v);
+                if (v) setEndUserError(null);
+              }}
+              onSearch={searchEndUserOptions}
+              placeholder="エンドユーザーを検索"
+              storageKey="end-user"
+              value={endUserBpId}
+              withAsterisk
+            />
+          )}
           <Select
             clearable
             data={plantOptions}

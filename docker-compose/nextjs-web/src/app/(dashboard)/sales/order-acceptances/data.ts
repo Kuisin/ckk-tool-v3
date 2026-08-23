@@ -92,6 +92,7 @@ export async function fetchOrderAcceptance(
       customerBp: { select: { name: true } },
       customerBranchBp: { select: { name: true } },
       shipToBp: { select: { name: true } },
+      endUserBp: { select: { name: true } },
       assignedPlant: { select: { code: true, name: true } },
       shippingWorkLocation: {
         select: { name: true, group: { select: { name: true } } },
@@ -214,6 +215,11 @@ export async function fetchOrderAcceptance(
     shipToBpId: r.shipToBpId,
     shipToName: r.shipToBp
       ? localized(r.shipToBp.name as LocalizedText | null)
+      : null,
+    deliveryMethod: r.deliveryMethod,
+    endUserBpId: r.endUserBpId,
+    endUserName: r.endUserBp
+      ? localized(r.endUserBp.name as LocalizedText | null)
       : null,
     assignedPlantId:
       r.assignedPlantId != null ? String(r.assignedPlantId) : null,

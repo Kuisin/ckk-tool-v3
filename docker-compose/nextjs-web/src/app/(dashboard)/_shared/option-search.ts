@@ -265,6 +265,42 @@ export async function searchShipToOptions(
     }));
 }
 
+/**
+ * エンドユーザー（最終需要家）— END_USER ロールの有効 BP。
+ * 注文請書のユーザー直送の届け先ピッカー用。
+ */
+export async function searchEndUserOptions(
+  query: string,
+): Promise<SearchOption[]> {
+  const q = query.trim();
+  const rows = await prisma.businessPartner.findMany({
+    where: {
+      isActive: true,
+      roleAssignments: { some: { role: "END_USER", isActive: true } },
+    },
+    orderBy: { bpCode: "asc" },
+  });
+  return rows
+    .filter((r) =>
+      bpMatchesQuery(
+        {
+          bpCode: r.bpCode,
+          nameJa: localized(r.name as LocalizedText | null),
+          nameKana: r.nameKana,
+          shortName: r.shortName,
+          matchNames: r.matchNames,
+          matchNamesAuto: r.matchNamesAuto,
+        },
+        q,
+      ),
+    )
+    .slice(0, LIMIT)
+    .map((r) => ({
+      value: r.id,
+      label: localized(r.name as LocalizedText | null),
+    }));
+}
+
 /** 変換済（コード構成あり）材種のみ — 素材ビルダーの親材種ピッカー用。 */
 export async function searchStructuredMaterialTypeOptions(
   query: string,

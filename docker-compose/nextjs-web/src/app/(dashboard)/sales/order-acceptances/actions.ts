@@ -120,6 +120,10 @@ const draftInput = z.object({
   salesRepId: z.string().nullable().optional(),
   // 出荷先（顧客と異なり得る取引先。任意）
   shipToBpId: z.string().nullable().optional(),
+  // 配送方法（通常配送 / ユーザー直送）。省略時は通常配送。
+  deliveryMethod: z.enum(["NORMAL", "DIRECT_TO_USER"]).default("NORMAL"),
+  // エンドユーザー（最終需要家）— ユーザー直送では必須（headerRefsError で強制）
+  endUserBpId: z.string().nullable().optional(),
   // 担当拠点（任意）
   assignedPlantId: z.number().int().positive().nullable().optional(),
   // 出荷作業場所（作業場所マスタ MS0D。任意）
@@ -157,6 +161,8 @@ function quoteKeyOf(quoteNumber: string | null | undefined) {
  */
 async function headerRefsError(v: {
   shipToBpId?: string | null;
+  deliveryMethod?: "NORMAL" | "DIRECT_TO_USER";
+  endUserBpId?: string | null;
   assignedPlantId?: number | null;
   shippingWorkLocationId?: number | null;
 }): Promise<string | null> {
@@ -167,6 +173,18 @@ async function headerRefsError(v: {
       select: { isActive: true },
     });
     if (!bp?.isActive) return "出荷先の取引先が存在しないか無効です";
+  }
+  // ユーザー直送は届け先（エンドユーザー）が無いと出荷・納品書まで進めない。
+  const endUserBpId = trimOrNull(v.endUserBpId);
+  if (v.deliveryMethod === "DIRECT_TO_USER" && !endUserBpId) {
+    return "ユーザー直送ではエンドユーザーの指定が必要です";
+  }
+  if (endUserBpId) {
+    const bp = await prisma.businessPartner.findUnique({
+      where: { id: endUserBpId },
+      select: { isActive: true },
+    });
+    if (!bp?.isActive) return "エンドユーザーの取引先が存在しないか無効です";
   }
   if (v.assignedPlantId != null) {
     const plant = await prisma.plant.findUnique({
@@ -311,6 +329,8 @@ export async function saveDraft(
         customerBpId: true,
         salesRepId: true,
         shipToBpId: true,
+        deliveryMethod: true,
+        endUserBpId: true,
         assignedPlantId: true,
         shippingWorkLocationId: true,
         customerOrderRef: true,
@@ -327,6 +347,9 @@ export async function saveDraft(
     const creates = buildItemCreates(v.items);
     const customerBpId = trimOrNull(v.customerBpId);
     const shipToBpId = trimOrNull(v.shipToBpId);
+    // エンドユーザーは直送のときだけ保持（通常配送に戻したら外す）。
+    const endUserBpId =
+      v.deliveryMethod === "DIRECT_TO_USER" ? trimOrNull(v.endUserBpId) : null;
     const assignedPlantId = v.assignedPlantId ?? null;
     const shippingWorkLocationId = v.shippingWorkLocationId ?? null;
     const salesRepId = await resolveSalesRepId(
@@ -353,6 +376,8 @@ export async function saveDraft(
           customerBpId,
           salesRepId,
           shipToBpId,
+          deliveryMethod: v.deliveryMethod,
+          endUserBpId,
           assignedPlantId,
           shippingWorkLocationId,
           customerOrderRef: trimOrNull(v.customerOrderRef),
@@ -372,6 +397,8 @@ export async function saveDraft(
         customerBpId: prior.customerBpId,
         salesRepId: prior.salesRepId,
         shipToBpId: prior.shipToBpId,
+        deliveryMethod: prior.deliveryMethod,
+        endUserBpId: prior.endUserBpId,
         assignedPlantId: prior.assignedPlantId,
         shippingWorkLocationId: prior.shippingWorkLocationId,
         customerOrderRef: prior.customerOrderRef,
@@ -382,6 +409,8 @@ export async function saveDraft(
         customerBpId,
         salesRepId,
         shipToBpId,
+        deliveryMethod: v.deliveryMethod,
+        endUserBpId,
         assignedPlantId,
         shippingWorkLocationId,
         customerOrderRef: trimOrNull(v.customerOrderRef),
@@ -446,6 +475,8 @@ export async function submitForApproval(
       select: {
         status: true,
         customerBpId: true,
+        deliveryMethod: true,
+        endUserBpId: true,
         items: {
           orderBy: { sortOrder: "asc" },
           select: { productId: true, unitPrice: true },
@@ -461,6 +492,8 @@ export async function submitForApproval(
     // 古い画面からの依頼だけ。
     const readiness = acceptanceReadiness({
       customerBpId: prior.customerBpId,
+      deliveryMethod: prior.deliveryMethod,
+      endUserBpId: prior.endUserBpId,
       items: prior.items.map((it) => ({
         productId: it.productId,
         unitPrice: it.unitPrice == null ? null : Number(it.unitPrice),
@@ -653,6 +686,8 @@ export async function confirmOrderLines(
     // 言い切れないので確定の直前にも確かめる。
     const readiness = acceptanceReadiness({
       customerBpId: prior.customerBpId,
+      deliveryMethod: prior.deliveryMethod,
+      endUserBpId: prior.endUserBpId,
       items: prior.items.map((it) => ({
         productId: it.productId,
         unitPrice: it.unitPrice == null ? null : Number(it.unitPrice),
@@ -787,6 +822,9 @@ export async function createManualAcceptance(
     const refsError = await headerRefsError(v);
     if (refsError) return actionError(refsError);
     const shipToBpId = trimOrNull(v.shipToBpId);
+    // エンドユーザーは直送のときだけ保持。
+    const endUserBpId =
+      v.deliveryMethod === "DIRECT_TO_USER" ? trimOrNull(v.endUserBpId) : null;
     const assignedPlantId = v.assignedPlantId ?? null;
     const shippingWorkLocationId = v.shippingWorkLocationId ?? null;
     const actor = await getCurrentActorId();
@@ -807,6 +845,8 @@ export async function createManualAcceptance(
         customerBpId: v.customerBpId,
         salesRepId,
         shipToBpId,
+        deliveryMethod: v.deliveryMethod,
+        endUserBpId,
         assignedPlantId,
         shippingWorkLocationId,
         customerOrderRef: trimOrNull(v.customerOrderRef),
@@ -826,6 +866,8 @@ export async function createManualAcceptance(
         customerBpId: v.customerBpId,
         salesRepId,
         shipToBpId,
+        deliveryMethod: v.deliveryMethod,
+        endUserBpId,
         assignedPlantId,
         shippingWorkLocationId,
         itemCount: v.items.length,
