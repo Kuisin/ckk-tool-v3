@@ -160,10 +160,17 @@ const workOrderInput = z
     storageLocationId: z.number().int().positive().nullable(),
     notes: z.string(),
     steps: z.array(stepInput).min(1, "工程を1つ以上選択してください"),
-    route: routeInput,
+    // 製造分は必須。在庫分（FROM_STOCK）は固定構成のため工程リストを使わない。
+    route: routeInput.nullable(),
     plans: z.array(planInput),
   })
   .superRefine((v, refCtx) => {
+    if (v.type !== "FROM_STOCK" && v.route == null) {
+      refCtx.addIssue({
+        code: "custom",
+        message: "工程リストを選択するか、新しい工程リスト名を入力してください",
+      });
+    }
     if (v.allocations.length === 0) {
       if (v.type !== "MANUFACTURE") {
         refCtx.addIssue({
@@ -350,7 +357,7 @@ export async function createWorkOrder(
   }
   const v = parsed.data;
   try {
-    const built = await validateAndOrderSteps(v.steps);
+    const built = await validateAndOrderSteps(v.steps, v.type);
     if (!built.ok) return actionError(built.error);
     const target = await resolveWorkOrderTarget(v);
     if (typeof target === "string") return actionError(target);
@@ -367,7 +374,7 @@ export async function createWorkOrder(
       // 工程構成 → ルートバージョン解決（変更があれば新バージョンを自動保存）
       const resolvedRouteVersionId = await resolveRouteVersionTx(
         tx,
-        v.route,
+        v.type === "FROM_STOCK" ? null : v.route,
         built.creates,
         actor,
         productId,
@@ -494,7 +501,7 @@ export async function updateWorkOrder(
     if (prior.status !== "DRAFT") {
       return actionError("下書きの指示書のみ編集できます");
     }
-    const built = await validateAndOrderSteps(v.steps);
+    const built = await validateAndOrderSteps(v.steps, v.type);
     if (!built.ok) return actionError(built.error);
     const target = await resolveWorkOrderTarget(v, workOrderNumber);
     if (typeof target === "string") return actionError(target);
@@ -507,7 +514,7 @@ export async function updateWorkOrder(
     const routeVersionId = await prisma.$transaction(async (tx) => {
       const resolvedRouteVersionId = await resolveRouteVersionTx(
         tx,
-        v.route,
+        v.type === "FROM_STOCK" ? null : v.route,
         built.creates,
         actor,
         productId,

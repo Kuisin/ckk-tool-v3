@@ -206,5 +206,7 @@ export function describeIssue(
       return `${step}と${related[0]}は同時に選択できません`;
     case "MISSING_OR_GROUP":
       return `${step}には${related.join("・")}のいずれかが必要です（素材条件で充足される場合があります）`;
+    case "MISSING_START":
+      return `工程は「出し・受渡し」（${related.join("・")}）のいずれかから始める必要があります`;
   }
 }

@@ -7,9 +7,17 @@
  * コンポーネント。カテゴリ別チェックリストで工程を選び、選択のたびに
  * validateComposition で構成検証する（ブロッカーは赤 Alert）。
  *
- * 工程をチェックすると、その工程が必要とする随伴工程（AND 使用依存の推移的
- * 閉包 — 例: 加工 → 検査 → 検査承認）を自動で一括追加する。プリフィル由来で
- * 不足が残る場合のみ「必須工程を自動追加」ボタンをフォールバック表示する。
+ * 工程をチェックすると、その工程が必要とする随伴工程（AND 使用依存のうち
+ * 既定順で**後ろ**に来るもの — 例: 加工 → 検査 → 検査承認）を自動で一括追加
+ * する。逆に既定順で**前**に来る AND（例: C面 → 全長合わせ）は先行前提 —
+ * 前提が選ばれるまでチェックボックスを無効化し「要: X」を出す。排他相手が
+ * 選択中の工程も同様に無効化する。プリフィル由来で不足が残る場合のみ
+ * 「必須工程を自動追加」ボタンをフォールバック表示する。
+ *
+ * セクション構成（§7 再編）:
+ *   出し・受渡し（開始） — 全ての構成はここから始まる（1 つ以上必須）
+ *   カテゴリ別（準備・加工・コーティング・検査・検査承認）
+ *   出荷（任意） — 追加すると常に末尾（出荷前検査 → 出荷）
  */
 
 import {
@@ -40,7 +48,10 @@ import type { CatalogStep, UseDep } from "@/lib/workflow-core";
 import {
   defaultOrder,
   isBlockingIssue,
+  isShipStep,
+  isStartStep,
   requiredCompanions,
+  stepSelectBlockers,
   validateComposition,
 } from "@/lib/workflow-core";
 import { describeIssue } from "./work-orders/model";
@@ -249,8 +260,8 @@ export function ProcessListEditor({
   const [autoAdded, setAutoAdded] = useState<number[]>([]);
 
   const issues = useMemo(
-    () => validateComposition(selected, useDeps),
-    [selected, useDeps],
+    () => validateComposition(selected, useDeps, catalogSteps),
+    [selected, useDeps, catalogSteps],
   );
   const blockers = issues.filter(isBlockingIssue);
   const warnings = issues.filter((i) => !isBlockingIssue(i));
@@ -292,9 +303,95 @@ export function ProcessListEditor({
     });
   };
 
-  const categories = Object.keys(PROCESS_CATEGORY_LABEL).filter((cat) =>
-    catalogSteps.some((s) => s.category === cat),
+  // セクション分割: 開始（出し・受渡し）/ 出荷（末尾固定）/ 残りはカテゴリ別
+  const startSteps = catalogSteps.filter((s) => isStartStep(s));
+  const shipSteps = catalogSteps.filter((s) => isShipStep(s));
+  const middleSteps = catalogSteps.filter(
+    (s) => !isStartStep(s) && !isShipStep(s),
   );
+  const categories = Object.keys(PROCESS_CATEGORY_LABEL).filter((cat) =>
+    middleSteps.some((s) => s.category === cat),
+  );
+
+  /** 1 工程ぶんのチェックボックス（無効化 + 「要: X」ヒント付き）。 */
+  const renderStepCheckbox = (s: CatalogStep) => {
+    const checked = selected.includes(s.id);
+    const blockersOf = stepSelectBlockers(
+      s.id,
+      selected,
+      useDeps,
+      catalogSteps,
+    );
+    // 選択済みの工程は常に外せる（外した結果の不整合は Alert が知らせる）
+    const disabled =
+      !checked &&
+      (blockersOf.missingPrereqs.length > 0 || blockersOf.conflicts.length > 0);
+    const hint = !checked
+      ? [
+          blockersOf.missingPrereqs.length > 0
+            ? `要: ${blockersOf.missingPrereqs
+                .map((id) => stepById.get(id)?.nameJa ?? `工程#${id}`)
+                .join("・")}`
+            : null,
+          blockersOf.conflicts.length > 0
+            ? `${blockersOf.conflicts
+                .map((id) => stepById.get(id)?.nameJa ?? `工程#${id}`)
+                .join("・")}とは併用不可`
+            : null,
+        ]
+          .filter(Boolean)
+          .join(" / ")
+      : "";
+    return (
+      <Checkbox
+        checked={checked}
+        disabled={disabled}
+        key={s.id}
+        label={
+          <Group gap={6} wrap="wrap">
+            <Text c={disabled ? "dimmed" : undefined} size="sm">
+              {s.nameJa}
+            </Text>
+            {s.isInspection && (
+              <Badge color="blue" size="xs" variant="light">
+                検査
+              </Badge>
+            )}
+            {s.isApprovalStep && (
+              <Badge color="teal" size="xs" variant="light">
+                承認
+              </Badge>
+            )}
+            {s.isSyncCapable && (
+              <Badge color="grape" size="xs" variant="light">
+                同期
+              </Badge>
+            )}
+            <Badge
+              color={
+                s.executionLocation === "INTERNAL_OR_OUTSOURCE"
+                  ? "orange"
+                  : "gray"
+              }
+              size="xs"
+              variant="outline"
+            >
+              {s.executionLocation === "INTERNAL_OR_OUTSOURCE"
+                ? "社内・外注"
+                : "社内"}
+            </Badge>
+            {hint && (
+              <Text c="dimmed" size="xs">
+                {hint}
+              </Text>
+            )}
+          </Group>
+        }
+        onChange={(e) => toggleStep(s.id, e.currentTarget.checked)}
+        size="xs"
+      />
+    );
+  };
 
   return (
     <>
@@ -358,58 +455,56 @@ export function ProcessListEditor({
             {error}
           </Text>
         )}
-        <SimpleGrid cols={isMobile ? 1 : 2} spacing="md">
-          {categories.map((cat) => (
-            <Stack gap="xs" key={cat}>
-              <Text c="dimmed" fw={600} size="xs">
-                {PROCESS_CATEGORY_LABEL[cat]}
-              </Text>
-              {catalogSteps
-                .filter((s) => s.category === cat)
-                .map((s) => (
-                  <Checkbox
-                    checked={selected.includes(s.id)}
-                    key={s.id}
-                    label={
-                      <Group gap={6} wrap="wrap">
-                        <Text size="sm">{s.nameJa}</Text>
-                        {s.isInspection && (
-                          <Badge color="blue" size="xs" variant="light">
-                            検査
-                          </Badge>
-                        )}
-                        {s.isApprovalStep && (
-                          <Badge color="teal" size="xs" variant="light">
-                            承認
-                          </Badge>
-                        )}
-                        {s.isSyncCapable && (
-                          <Badge color="grape" size="xs" variant="light">
-                            同期
-                          </Badge>
-                        )}
-                        <Badge
-                          color={
-                            s.executionLocation === "INTERNAL_OR_OUTSOURCE"
-                              ? "orange"
-                              : "gray"
-                          }
-                          size="xs"
-                          variant="outline"
-                        >
-                          {s.executionLocation === "INTERNAL_OR_OUTSOURCE"
-                            ? "社内・外注"
-                            : "社内"}
-                        </Badge>
-                      </Group>
-                    }
-                    onChange={(e) => toggleStep(s.id, e.currentTarget.checked)}
-                    size="xs"
-                  />
-                ))}
-            </Stack>
-          ))}
-        </SimpleGrid>
+        <Stack gap="md">
+          {startSteps.length > 0 && (
+            <Paper bg="var(--mantine-color-blue-light)" p="sm" radius="sm">
+              <Stack gap="xs">
+                <Group gap={6}>
+                  <Text c="blue" fw={600} size="xs">
+                    出し・受渡し（開始）
+                  </Text>
+                  <Text c="dimmed" size="xs">
+                    — 全ての工程はここから始まります（1 つ以上必須）
+                  </Text>
+                </Group>
+                <SimpleGrid cols={isMobile ? 1 : 2} spacing="xs">
+                  {startSteps.map(renderStepCheckbox)}
+                </SimpleGrid>
+              </Stack>
+            </Paper>
+          )}
+          {categories.length > 0 && (
+            <SimpleGrid cols={isMobile ? 1 : 2} spacing="md">
+              {categories.map((cat) => (
+                <Stack gap="xs" key={cat}>
+                  <Text c="dimmed" fw={600} size="xs">
+                    {PROCESS_CATEGORY_LABEL[cat]}
+                  </Text>
+                  {middleSteps
+                    .filter((s) => s.category === cat)
+                    .map(renderStepCheckbox)}
+                </Stack>
+              ))}
+            </SimpleGrid>
+          )}
+          {shipSteps.length > 0 && (
+            <Paper bg="var(--mantine-color-gray-light)" p="sm" radius="sm">
+              <Stack gap="xs">
+                <Group gap={6}>
+                  <Text c="dimmed" fw={600} size="xs">
+                    出荷（任意）
+                  </Text>
+                  <Text c="dimmed" size="xs">
+                    — 追加すると常に最後に実行されます（出荷前検査 → 出荷）
+                  </Text>
+                </Group>
+                <SimpleGrid cols={isMobile ? 1 : 2} spacing="xs">
+                  {shipSteps.map(renderStepCheckbox)}
+                </SimpleGrid>
+              </Stack>
+            </Paper>
+          )}
+        </Stack>
       </FormSection>
 
       <FormSection

@@ -68,6 +68,43 @@ export const QUANTITY_LABELS: Record<
   },
 };
 
+// ─── 工程構成の区分（開始・出荷） ────────────────────────────────────────────
+//
+// 工程構成は必ず「出し・受渡し」のいずれかで始まり、出荷系（任意）は常に
+// 末尾（出荷前検査 → 出荷）。カタログの sort_order は管理者が変えられるので、
+// 区分の同定は code で行い、並びは orderRank で強制する。
+
+/** 開始工程（出し・受渡し）— 全ての工程構成はこのいずれかで始まる。 */
+export const START_STEP_CODES = [
+  "MATERIAL_ISSUE",
+  "SEMI_FINISHED_ISSUE",
+  "MATERIAL_HANDOFF",
+  "PRODUCT_HANDOFF",
+  "PRODUCT_ISSUE",
+] as const;
+
+/** 在庫分（FROM_STOCK）専用の開始工程。製造分の構成には含めない。 */
+export const STOCK_ISSUE_STEP_CODE = "PRODUCT_ISSUE";
+
+/** 出荷工程（任意・常に末尾。両方あれば 出荷前検査 → 出荷）。 */
+export const SHIP_STEP_CODES = ["PRE_SHIP_INSPECTION", "SHIPPING"] as const;
+
+export function isStartStep(step: Pick<CatalogStep, "code">): boolean {
+  return (START_STEP_CODES as readonly string[]).includes(step.code);
+}
+
+export function isShipStep(step: Pick<CatalogStep, "code">): boolean {
+  return (SHIP_STEP_CODES as readonly string[]).includes(step.code);
+}
+
+/** 並び区分: 0 = 開始 / 1 = 中間 / 2 = 出荷前検査 / 3 = 出荷。 */
+function orderRank(code: string): number {
+  if ((START_STEP_CODES as readonly string[]).includes(code)) return 0;
+  if (code === "PRE_SHIP_INSPECTION") return 2;
+  if (code === "SHIPPING") return 3;
+  return 1;
+}
+
 export interface UseDep {
   stepId: number;
   dependsOnStepId: number;
@@ -84,7 +121,8 @@ export interface ExecDep {
 export type CompositionIssueKind =
   | "MISSING_AND" // AND 依存先が未選択（ブロック）
   | "MISSING_OR_GROUP" // OR グループ全員不在（警告 — 素材属性で充足の可能性）
-  | "EXCLUSION"; // 排他工程が同時選択（ブロック）
+  | "EXCLUSION" // 排他工程が同時選択（ブロック）
+  | "MISSING_START"; // 開始工程（出し・受渡し）が無い（ブロック）
 
 export interface CompositionIssue {
   stepId: number;
@@ -106,9 +144,30 @@ export function isBlockingIssue(issue: CompositionIssue): boolean {
 export function validateComposition(
   selected: readonly number[],
   useDeps: readonly UseDep[],
+  /**
+   * カタログを渡すと開始工程ルールも検証する（未指定なら従来どおり依存のみ —
+   * 呼び出し側の移行を壊さないための後方互換）。
+   */
+  catalog?: readonly CatalogStep[],
 ): CompositionIssue[] {
   const sel = new Set(selected);
   const issues: CompositionIssue[] = [];
+
+  // 全ての工程構成は「出し・受渡し」のいずれかで始まる（§7）。
+  if (catalog && selected.length > 0) {
+    const byId = new Map(catalog.map((c) => [c.id, c]));
+    const hasStart = selected.some((id) => {
+      const step = byId.get(id);
+      return step != null && isStartStep(step);
+    });
+    if (!hasStart) {
+      issues.push({
+        stepId: selected[0],
+        kind: "MISSING_START",
+        relatedStepIds: catalog.filter((c) => isStartStep(c)).map((c) => c.id),
+      });
+    }
+  }
 
   for (const stepId of selected) {
     const deps = useDeps.filter((d) => d.stepId === stepId);
@@ -178,15 +237,83 @@ export function requiredCompanions(
   return [...result].filter((id) => !selected.includes(id));
 }
 
-/** カタログ既定順（sortOrder → id）で並べた工程 id 列。 */
+/**
+ * 先行前提 — AND 使用依存のうち、依存先がカタログ既定順で**自分より前**に
+ * 来るもの（例: C面 → 全長合わせ、ホーニング → 先端）。UI はこの前提が
+ * 選択されるまでチェックボックスを無効化して「要: X」を出す。
+ * 依存先が後ろに来る AND（加工 → 検査・承認）は随伴 — 選択時に自動追加する。
+ */
+export function stepPrerequisites(
+  stepId: number,
+  useDeps: readonly UseDep[],
+  catalog: readonly CatalogStep[],
+): number[] {
+  const order = new Map(catalog.map((c) => [c.id, c.sortOrder]));
+  const own = order.get(stepId);
+  if (own == null) return [];
+  return useDeps
+    .filter(
+      (d) =>
+        d.stepId === stepId &&
+        d.relation === "AND" &&
+        !d.isNegation &&
+        (order.get(d.dependsOnStepId) ?? Number.MAX_SAFE_INTEGER) < own,
+    )
+    .map((d) => d.dependsOnStepId);
+}
+
+/** 排他相手（negation の使用依存 — 双方向に見る）。 */
+export function stepExclusions(
+  stepId: number,
+  useDeps: readonly UseDep[],
+): number[] {
+  const out = new Set<number>();
+  for (const d of useDeps) {
+    if (!d.isNegation) continue;
+    if (d.stepId === stepId) out.add(d.dependsOnStepId);
+    if (d.dependsOnStepId === stepId) out.add(d.stepId);
+  }
+  return [...out];
+}
+
+/**
+ * いま選択に追加できるか — 未充足の先行前提と、選択中の排他相手を返す。
+ * どちらも空ならチェック可能。
+ */
+export function stepSelectBlockers(
+  stepId: number,
+  selected: readonly number[],
+  useDeps: readonly UseDep[],
+  catalog: readonly CatalogStep[],
+): { missingPrereqs: number[]; conflicts: number[] } {
+  const sel = new Set(selected);
+  return {
+    missingPrereqs: stepPrerequisites(stepId, useDeps, catalog).filter(
+      (id) => !sel.has(id),
+    ),
+    conflicts: stepExclusions(stepId, useDeps).filter((id) => sel.has(id)),
+  };
+}
+
+/**
+ * カタログ既定順で並べた工程 id 列。区分（開始 → 中間 → 出荷前検査 → 出荷）を
+ * 最優先し、区分内は sortOrder → id。sort_order の管理変更で出荷系が
+ * 中間へ紛れ込まないよう、区分は code で強制する。
+ */
 export function defaultOrder(
   selected: readonly number[],
   catalog: readonly CatalogStep[],
 ): number[] {
-  const order = new Map(catalog.map((c) => [c.id, c.sortOrder]));
-  return [...selected].sort(
-    (a, b) => (order.get(a) ?? 0) - (order.get(b) ?? 0) || a - b,
-  );
+  const byId = new Map(catalog.map((c) => [c.id, c]));
+  const key = (id: number): [number, number, number] => {
+    const step = byId.get(id);
+    return [step ? orderRank(step.code) : 1, step?.sortOrder ?? 0, id];
+  };
+  return [...selected].sort((a, b) => {
+    const ka = key(a);
+    const kb = key(b);
+    return ka[0] - kb[0] || ka[1] - kb[1] || ka[2] - kb[2];
+  });
 }
 
 // ─── 実行側（§7: 開始可否・数量伝播・DAG 検証・レイアウト） ─────────────────
