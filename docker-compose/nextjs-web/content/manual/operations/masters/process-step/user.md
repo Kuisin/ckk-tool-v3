@@ -1,7 +1,7 @@
 ---
 title: "工程マスタ — 操作マニュアル"
 description: "「切断」「円筒加工」「製作検査」など、工場で行う作業の種類を登録しておくアプリです。指示書はここに登録した工程を並べて作られます。"
-screenshots: [master-process-step-list-01, master-process-step-new-01, master-process-step-deps-01, master-process-step-detail-01, master-process-step-dependencies-01]
+screenshots: [master-process-step-list-01, master-process-step-new-01, master-process-step-deps-01, master-process-step-detail-01, master-process-step-dependencies-01, master-process-step-locations-01]
 ---
 「切断」「円筒加工」「製作検査」など、工場で行う **作業の種類** を登録しておくアプリです。操作コードは `MS08` です。
 
@@ -154,6 +154,8 @@ screenshots: [master-process-step-list-01, master-process-step-new-01, master-pr
 材料準備・加工・コーティング・検査・検査承認・出荷の区分です。
 
 ### 許可作業場所 [#field-allowed-locations]
+
+![編集画面の許可作業場所セクション](../../../assets/screenshots/master-process-step-locations-01.png)
 
 この工程の**計画・実績で使える作業場所**を制限します。種別（機械・エリアなど）でまとめて指定するか、場所を個別に指定します（併用可 — 和集合が許可されます）。**両方とも空なら制限なし**（すべての作業場所を使えます）。
 

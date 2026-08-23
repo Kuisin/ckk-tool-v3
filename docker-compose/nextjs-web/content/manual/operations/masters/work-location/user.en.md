@@ -1,7 +1,7 @@
 ---
 title: "Work Location — User Manual"
 description: "An app for registering the machines and areas where work is really done, such as NC lathe no. 1. They become selectable in the work plan of a work order."
-screenshots: [master-work-location-01, master-work-location-group-new-01, master-work-location-add-01, master-work-location-types-01]
+screenshots: [master-work-location-01, master-work-location-group-new-01, master-work-location-add-01, master-work-location-types-01, master-work-location-qr-01, master-work-location-qr-print-01]
 ---
 This app is for registering the **machines and areas where work is really done**, such as NC旋盤 1号機 (NC lathe no. 1). The operation code is `MS0D`.
 
@@ -51,7 +51,7 @@ This app is not split into a list and a detail screen. **You do everything on on
 - At the top right of the screen there are the 「**種別管理**」 (Manage types) and 「**グループ追加**」 (Add group) buttons.
 - The groups are shown as cards. The top of a card shows the code, name, type, site and status of that group.
 - At the right of a card there are the 「**場所を追加**」 (Add location), 「**編集**」 (Edit) and 「**削除**」 (Delete) buttons.
-- The table inside a card lists the machines of that group in the order **コード** (code) / **名称** (name) / **キャパシティ** (capacity) / **計画数** (planned count) / **状態** (status).
+- The table inside a card lists the machines of that group in the order **コード** (code) / **名称** (name) / **キャパシティ** (capacity) / **計画 / 実績** (plan / actual counts) / **状態** (status).
 - When nothing is registered yet, 「**作業場所が未登録です。グループ（機械種別・エリアなど）を作成し、配下に物理的な場所（機械 1 台・1 区画）を追加してください。**」 (no work locations are registered; create a group such as a machine kind or area, and add physical places under it, one machine or one area at a time) is shown.
 
 ## Make a group
@@ -99,11 +99,32 @@ You can add your own divisions for sorting the groups. Use this when you want gr
 
 「**機械**」 (machine) and 「**エリア**」 (area) are prepared from the start. They are shown as 「**組み込み**」 (built in) and cannot be deleted or renamed.
 
+## Print QR labels
+
+You can print **QR labels** to stick on machines and areas. When a worker scans the QR on a shared floor tablet while running a step, "where the work happened" is recorded on the work actual.
+
+- The 「**QR印刷**」 (print QR) button on a group prints all locations in that group at once
+- The QR icon on a row prints just that one location
+
+![The QR print button on a group](../../../assets/screenshots/master-work-location-qr-01.png)
+
+The print sheet opens in a new tab. Print it on plain A4 paper as-is, cut along the cross marks, and stick the labels somewhere easy to see on the machine or area.
+
+![The QR label print sheet](../../../assets/screenshots/master-work-location-qr-print-01.png)
+
+> 💡 Print from the browser at 100% scale. If the "50mm" ruler printed at the top of the sheet measures 50mm with a real ruler, the labels are actual size.
+>
+> ⚠️ If you change a work location's **code**, printed labels stop working. Re-print and replace them after a change.
+
 ## How it connects to work orders
 
-In the 「**作業計画**」 (work plan) of a step on a work order, you can choose 「**作業場所（任意）**」 (work location, optional) for each plan row. The work location you choose is shown in the plan list, and can also be seen on the shared tablet screen on the floor.
+In the 「**作業計画**」 (work plan) and 「**作業実績**」 (work actuals) of a step on a work order, you can choose 「**作業場所（任意）**」 (work location, optional) for each row. The chosen location is shown in the lists, and can also be seen on the shared tablet screen on the floor.
 
-The number of times it has been chosen appears in the 「**計画数**」 (planned count) column of the work location table. A place whose planned count is not 0 is still in use.
+When a step is started or resumed from a shared floor tablet, the tablet's **default work location** is recorded on the actual automatically (set in [Kiosk devices](/manual/en/operations/system/kiosk-device/user#field-default-work-location)). Scanning a work-location QR overrides it.
+
+[Process steps](/manual/en/operations/masters/process-step/user#field-allowed-locations) can also restrict which work locations a step may use, by type or by individual location.
+
+Usage counts appear in the 「**計画 / 実績**」 (plans / actuals) column of the work location table. A place where either count is not 0 is still in use (places in use cannot be deleted — deactivate them instead).
 
 ## Input fields
 

@@ -613,6 +613,18 @@ export const shots: Shot[] = [
     },
   },
   {
+    // 作業計画 / 作業実績パネル — 作業場所列（計画・実績とも NC-01 が入った状態）
+    id: "work-order-step-records-01",
+    docPage: "operations/production/work-order/user",
+    path: "/production/work-orders/9001/steps/dc011000-0000-4000-8000-000000000004",
+    steps: async (page) => {
+      const heading = page.getByRole("heading", { name: "作業実績" });
+      await heading.waitFor();
+      await heading.scrollIntoViewIfNeeded();
+      await page.getByText("NC旋盤 1号機").first().waitFor();
+    },
+  },
+  {
     // 差し戻しの確認モーダル（実行はしない）
     id: "approval-reject-01",
     docPage: "operations/production/approval/user",
@@ -1458,6 +1470,21 @@ export const shots: Shot[] = [
     },
   },
   {
+    // 許可作業場所（種別 / 個別）— 段加工は「機械」種別 + 研磨機 1号機を許可
+    // （masters-demo-seed の process_step_work_locations）
+    id: "master-process-step-locations-01",
+    docPage: "operations/masters/process-step/user",
+    path: "/master/process-steps",
+    steps: async (page) => {
+      await page.getByText("段加工", { exact: true }).first().click();
+      await page.getByRole("button", { name: "編集" }).first().click();
+      const heading = page.getByRole("heading", { name: "許可作業場所" });
+      await heading.waitFor();
+      await heading.scrollIntoViewIfNeeded();
+    },
+    highlight: [{ role: "heading", name: "許可作業場所" }],
+  },
+  {
     id: "master-inspection-template-new-01",
     docPage: "operations/masters/inspection-template/user",
     path: "/master/inspection-templates/new",
@@ -1604,6 +1631,27 @@ export const shots: Shot[] = [
       await page.getByRole("button", { name: "種別管理" }).first().click();
       await page.getByText("組み込み").first().waitFor();
     },
+  },
+  {
+    // QR ラベル印刷 — グループの「QR印刷」ボタン（行の QR アイコンでも 1 枚ずつ刷れる）
+    id: "master-work-location-qr-01",
+    docPage: "operations/masters/work-location/user",
+    path: "/master/work-locations",
+    steps: async (page) => {
+      await page.getByText("切削エリア").first().waitFor();
+    },
+    highlight: [{ role: "button", name: "QR印刷" }],
+  },
+  {
+    // 作業場所 QR ラベルの印刷シート（A4 — 機械・エリアに貼るラベル）。
+    // ids は撮影 DB では masters-demo-seed の投入順で 1..5 に固定される。
+    id: "master-work-location-qr-print-01",
+    docPage: "operations/masters/work-location/user",
+    path: "/master/work-locations/print?ids=1,2,3,4,5",
+    steps: async (page) => {
+      await page.getByText("NC旋盤 1号機").first().waitFor();
+    },
+    clip: ".wl-print-sheet",
   },
   {
     id: "master-storage-location-new-01",
@@ -1909,6 +1957,41 @@ export const shots: Shot[] = [
     },
   },
   {
+    // 作業場所パネル — 実績に記録される場所（端末既定 or QR 読み取り）。
+    // #9001 段加工は demo_shot が作業中（WORKING）なので読み取りボタンが出る。
+    id: "kiosk-step-location-01",
+    mask: ["text=/\\d+\\/\\d+\\(.\\) \\d+:\\d+/", "text=/作業 \\d+:\\d+/"],
+    docPage: "operations/kiosk/steps/user",
+    app: "kiosk",
+    path: "/login",
+    steps: async (page) => {
+      await kioskLogin(page);
+      await page.goto("/steps", { waitUntil: "networkidle" });
+      await page.getByText(/指示書 #/).first().click();
+      await page.getByText("工程一覧へ").first().waitFor();
+      await page.getByText("NC旋盤 1号機").first().waitFor();
+    },
+    highlight: [{ role: "button", name: "作業場所を読み取り" }],
+  },
+  {
+    // 端末設定画面（5タップ + 設定コード）— 既定の作業場所と「作業場所の制限」
+    // トグル。設定コードは kiosk-shot-seed の固定値 901234。
+    id: "kiosk-device-settings-01",
+    // ヘッダーの時計は実時刻由来 — 塗りつぶして決定的にする
+    mask: ["text=/\\d+\\/\\d+\\(.\\) \\d+:\\d+/"],
+    docPage: "operations/system/kiosk-device/user",
+    app: "kiosk",
+    path: "/device-settings",
+    steps: async (page) => {
+      for (const d of ["9", "0", "1", "2", "3", "4"]) {
+        await page.getByRole("button", { name: d, exact: true }).click();
+      }
+      await page.getByRole("button", { name: "確定" }).click();
+      await page.getByText("既定の作業場所").first().waitFor();
+    },
+    highlight: [{ text: "作業場所の制限", exact: true }],
+  },
+  {
     id: "kiosk-devices-link-01",
     docPage: "operations/system/kiosk-device/user",
     path: "/settings/kiosk-devices",
@@ -1923,6 +2006,26 @@ export const shots: Shot[] = [
       await page.getByRole("menuitem", { name: "端末をリンク" }).click();
       await page.getByRole("dialog").first().waitFor();
     },
+  },
+  {
+    // 端末の編集モーダル — 既定の作業場所（端末の拠点の作業場所で絞り込み）
+    id: "kiosk-devices-edit-01",
+    docPage: "operations/system/kiosk-device/user",
+    path: "/settings/kiosk-devices",
+    user: "admin",
+    steps: async (page) => {
+      // 撮影用端末（既定の作業場所 = NC旋盤 1号機 が入っている行）を開く
+      await page
+        .getByRole("row", { name: /撮影用/ })
+        .first()
+        .getByRole("button", { name: "操作" })
+        .click();
+      await page.getByRole("menuitem", { name: "編集" }).click();
+      await page.getByRole("dialog").first().waitFor();
+      await page.getByText("既定の作業場所").first().waitFor();
+    },
+    clip: ".mantine-Modal-content",
+    highlight: [{ text: "既定の作業場所", exact: true }],
   },
   {
     // 環境別の表示スイッチ（切り替えはしない — 状態を変えず一覧のまま撮る）

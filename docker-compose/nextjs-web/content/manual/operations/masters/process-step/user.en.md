@@ -1,7 +1,7 @@
 ---
 title: "Process Step Master — User Manual"
 description: "An app for registering the kinds of work done in the factory, such as 「切断」 (cutting), 「円筒加工」 (cylinder machining) and 「製作検査」 (production inspection). Work orders are built by lining up the steps registered here."
-screenshots: [master-process-step-list-01, master-process-step-new-01, master-process-step-deps-01, master-process-step-detail-01, master-process-step-dependencies-01]
+screenshots: [master-process-step-list-01, master-process-step-new-01, master-process-step-deps-01, master-process-step-detail-01, master-process-step-dependencies-01, master-process-step-locations-01]
 ---
 This app is for registering the **kinds of work** done in the factory, such as 「切断」 (cutting), 「円筒加工」 (cylinder machining) and 「製作検査」 (production inspection). The operation code is `MS08`.
 
@@ -154,6 +154,8 @@ The step's reference code and name; the name is what appears in the work order.
 Material preparation, machining, coating, inspection, inspection approval or shipping.
 
 ### Allowed work locations [#field-allowed-locations]
+
+![The allowed work locations section on the edit form](../../../assets/screenshots/master-process-step-locations-01.png)
 
 Restricts which work locations can be used in **plans and actuals** of this step. Specify by type (machine / area, etc.), by individual locations, or both (the union is allowed). **Leave both empty for no restriction** (all work locations usable).
 
