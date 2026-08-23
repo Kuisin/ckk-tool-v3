@@ -42,13 +42,16 @@ Opening the app shows two tabs.
 
 ## Setting an approval flow
 
-The **Approval flows** tab lists the four documents that need approval.
+The **Approval flows** tab lists the six targets that can go through approval.
 
 > 📷 A screenshot of this screen will be added at the next capture run.
 
-- The four are **Order acknowledgement**, **Work order**, **Material purchase order** and **Purchase request**.
+- The six are **Order acknowledgement**, **Work order**, **Material purchase order**, **Purchase request**, **Workflow change** and **Order acknowledgement cancellation**.
+  - **Workflow change** … approval for adding, editing or removing step branches on an approved / in-progress work order.
+  - **Order acknowledgement cancellation** … approval for cancelling a confirmed order acknowledgement as a whole (there is no per-line cancellation).
 - Each card lists its steps as "1 First approval · Plant manager · Any one person".
 - A document with no approval flow is shown with a red border and the note that **no approval can be requested for it**. In that state the request button will not take you anywhere, so be sure to set one up.
+  - **Workflow change** and **Order acknowledgement cancellation** are exceptions: with no steps configured they are **applied immediately without approval** (so sites that do not run approvals are not blocked). Configure at least one step if you want them approved.
 - Each card also shows the **permission needed to approve** it (for example, an order acknowledgement needs approval rights for "Order acceptance"). **Someone without that permission cannot approve, even when they are in the approval group.**
 - Every step carries a badge for the people who can approve it right now.
   - **N can approve** (green) … everyone in the step has the permission.

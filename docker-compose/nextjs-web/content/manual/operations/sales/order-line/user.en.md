@@ -11,7 +11,7 @@ When an order acceptance is confirmed, each of its detail rows becomes an **orde
 - See confirmed order lines from every order acceptance in **one list**.
 - Check production, shipping and reservation progress for each line.
 - Check available stock and **reserve** it for the order.
-- Cancel a line when the order is withdrawn.
+- When an order is withdrawn, request cancellation of the **whole order acknowledgement** (individual lines cannot be cancelled on their own).
 
 **You cannot create or edit order lines here.** Both are done on the [order acceptance](/manual/en/operations/sales/order-acceptance/user) screen. See [When you need to change something](#when-you-need-to-change-something) below for why.
 
@@ -82,14 +82,16 @@ The Shipping tab lists the shipping orders that include this line. The quantity 
 
 As shipping progresses the status moves automatically to Partially shipped and then Shipped. **You cannot ship more than the ordered quantity.** An attempt to do so is stopped, and the screen names the order line that would be exceeded.
 
-### Cancel
+### When you need to cancel
 
-Press Cancel when an order is withdrawn. Two things happen automatically:
+A single order line cannot be cancelled by itself. When an order is withdrawn, open the **parent order acknowledgement** and request cancellation from the three-dot menu ("**Request cancellation**", reason required). If the approval flow "Order acknowledgement cancellation" has steps, it goes through approval; on final approval the following happens automatically:
+
+- Every order line is **cancelled**.
 
 - All reserved stock is **released**.
 - Unfinished work orders are **cancelled along with it** (completed ones are left alone). However, **a work order that also makes pieces for other order lines (a combined lot) is not cancelled** and is left as it is.
 
-Lines that have already shipped, and lines already cancelled, cannot be cancelled.
+If even one line has already shipped, cancellation cannot be requested.
 
 ## When you need to change something
 

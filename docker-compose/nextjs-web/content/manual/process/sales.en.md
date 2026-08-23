@@ -26,7 +26,7 @@ When a product has no drawing yet, a **design request** is raised alongside this
 | 3. Issue a quote | Build the quote from price-list prices and send the PDF to the customer | Sales | [Quote](/manual/en/operations/sales/quote/user) (`SA03`) |
 | 4. Take the order | Import the customer's order, check it and accept it | Sales support | [Order Acceptance](/manual/en/operations/sales/order-acceptance/user) (`SA04`) |
 | 5. Confirm the order | Order lines are created from the accepted content (one per product) | Sales support | Sales Order (`PD01`) |
-| 6. Instruct production | Split into stock and manufacture, and lay out the process steps | Sales support | [Work Order](/manual/en/operations/production/work-order/user) (`PD02`) |
+| 6. Instruct production | Split into stock and manufacture (steps are laid out for manufacture only; stock work orders have a fixed set) | Sales support | [Work Order](/manual/en/operations/production/work-order/user) (`PD02`) |
 | (parallel) No drawing yet | Raise a design request; production produces the drawing | Sales / Sales support → Manufacturing | [Design Request](/manual/en/operations/sales/design-request/user) (`SA05`) |
 
 ## What happens at each stage
@@ -49,7 +49,7 @@ Import the order the customer sent (fax or PDF). It is read automatically, and y
 
 ### 5–6. Confirm the order and instruct production (Sales Order, Work Order)
 
-Confirming the order acceptance creates a **order line** per line. You then create a **work order** against it, splitting what comes from stock and what is manufactured, and laying out the process steps in order. From here the production flow takes over.
+Confirming the order acceptance creates an **order line** per line. You then create a **work order** against it, splitting what comes from stock and what is manufactured (steps are laid out for manufacture; a stock work order is a fixed set of product issue plus optional pre-ship inspection). From here the production flow takes over. From a deployed order acceptance you can also go straight on to **creating the delivery order**.
 
 ## Document states
 
@@ -57,8 +57,8 @@ Confirming the order acceptance creates a **order line** per line. You then crea
 |----------|--------|
 | Trial estimate | Draft → Confirmed → Registered to price list |
 | Quote | Draft → Issued → Accepted / Rejected / Expired |
-| Order acceptance | Importing → Draft → Approval requested → Approved → Expanded → Archived |
-| Order line | Draft → Confirmed → In production → Partially shipped → Shipped |
+| Order acceptance | Importing → Draft → Approval requested → Approved → Expanded → Archived / Cancelled (cancellation is requested, then approved) |
+| Order line | Draft → Confirmed → In production → Partially shipped → Shipped (cancellation only via the whole order acceptance) |
 | Work order | Draft → Pending approval → Approved → In progress → Completed |
 | Design request | Not started → In progress → Completed |
 

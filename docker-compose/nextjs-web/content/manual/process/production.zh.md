@@ -21,7 +21,7 @@ screenshots: []
 |------|--------|------|-----------|
 | 1. 确认产品库存 | 区分可从库存出货的部分与需新制造的部分 | 生产管理 | [库存管理](/manual/zh/operations/production/product-inventory/user)（`PD04`） |
 | 2. 确认材料 | 查看制造所需材料是否充足 | 生产管理 | [库存管理](/manual/zh/operations/production/material-inventory/user)（`PD04`） |
-| 3. 制作指示书 | 区分库存分・制造分，并依序排列工序 | 销售助理 | [指示书](/manual/zh/operations/production/work-order/user)（`PD02`） |
+| 3. 制作指示书 | 区分库存分・制造分（依序排列工序仅限制造分；库存分为固定构成） | 销售助理 | [指示书](/manual/zh/operations/production/work-order/user)（`PD02`） |
 | 4. 取得审批 | 经第一审批・第二审批后方可开始制造 | 审批者 | [审批管理](/manual/zh/operations/production/approval/user)（`PD03`） |
 | 5. 执行工序 | 现场登记开始・完成与数量 | 制造 | [指示书](/manual/zh/operations/production/work-order/user) / 现场平板 |
 | 6. 完成 | 全部工序结束后成为产品库存 | 制造・生产管理 | [库存管理](/manual/zh/operations/production/product-inventory/user) |
@@ -34,7 +34,7 @@ screenshots: []
 
 ### 3. 制作指示书
 
-分别为库存分与制造分制作指示书，并依序排列工序。若同一客户・产品有上次的指示书，可以复制（内容有变更时会显示警告）。每道工序可选择社内进行或委外，选择委外后会出现在[外协委托](/manual/zh/operations/purchasing/outsource-order/user)一览中。
+分别为库存分与制造分制作指示书。依序排列工序仅限制造分，且总是从「出库・交接」类工序开始（库存分是「产品出库」＋可选「发货前检查」的固定构成）。发货本身不是工序，由[发货单](/manual/zh/operations/shipping/delivery-order/user)管理。若同一客户・产品有上次的指示书，可以复制（内容有变更时会显示警告）。每道工序可选择社内进行或委外，选择委外后会出现在[外协委托](/manual/zh/operations/purchasing/outsource-order/user)一览中。
 
 ### 4. 审批
 
@@ -54,7 +54,7 @@ screenshots: []
 
 | 单据 | 状态变化 |
 |------|---------|
-| 订单明细 | 草稿 → 确定 → 制造中 → 部分发货 → 已发货（可取消） |
+| 订单明细 | 草稿 → 确定 → 制造中 → 部分发货 → 已发货（取消只能按订单请书整单申请并经审批） |
 | 指示书 | 草稿 → 待审批 → 已审批 → 进行中 → 完成（可取消） |
 | 指示书审批 | 待第一审批 → 第一审批完成 → 待第二审批 → 已审批（可退回） |
 | 工序 | 未开始 → 进行中 → 完成（可取消；暂停中仍为进行中） |
