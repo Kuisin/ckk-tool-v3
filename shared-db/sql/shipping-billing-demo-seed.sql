@@ -1,9 +1,3 @@
--- ⚠️ 注文明細（order_lines）統合により、このデモシードは未更新です。
---    app.sales_orders は削除され、受注ラインは app.order_lines
---    （注文請書 order_acceptances の明細行）に統合されました。
---    実行すると "relation app.sales_orders does not exist" で失敗します。
---    親の注文請書を作ったうえで order_lines を挿入する形へ書き換えが必要です。
-
 -- shipping-billing-demo-seed.sql — 出荷・請求アプリ（SH01/SH02/BL01/BL02）のマニュアル撮影用デモデータ。
 --
 -- tools/docs-screenshots のローカル一時 DB に流す（orchestrate.ts SEED_FILES_POST）。
@@ -58,22 +52,22 @@ INSERT INTO app.delivery_orders (year_month, seq, customer_bp_id, work_order_id,
 VALUES
   ('202607', 1, 'd0000000-0000-4000-8000-000000000001'::uuid, NULL,
    (SELECT id FROM app.plants WHERE code = 'F01'),
-   'DISPATCH'::app."SHIPPING_TYPE", 'SHIPPED'::app."SHIPPING_STATUS",
+   'DISPATCH'::app."DELIVERY_ORDER_TYPE", 'SHIPPED'::app."DELIVERY_ORDER_STATUS",
    '2026-07-10T10:30:00+09', NULL,
    'a0b1c2d3-0000-4000-8000-000000005107'::uuid, '2026-07-09T09:00:00+09', '2026-07-10T10:30:00+09'),
   ('202607', 2, 'd0000000-0000-4000-8000-000000000001'::uuid, NULL,
    (SELECT id FROM app.plants WHERE code = 'F01'),
-   'DISPATCH'::app."SHIPPING_TYPE", 'CONFIRMED'::app."SHIPPING_STATUS",
+   'DISPATCH'::app."DELIVERY_ORDER_TYPE", 'CONFIRMED'::app."DELIVERY_ORDER_STATUS",
    NULL, NULL,
    'a0b1c2d3-0000-4000-8000-000000005107'::uuid, '2026-07-13T11:00:00+09', '2026-07-13T14:00:00+09'),
   ('202607', 3, 'd0000000-0000-4000-8000-000000000001'::uuid, NULL,
    (SELECT id FROM app.plants WHERE code = 'F02'),
-   'STOCK_STORAGE'::app."SHIPPING_TYPE", 'DRAFT'::app."SHIPPING_STATUS",
+   'STOCK_STORAGE'::app."DELIVERY_ORDER_TYPE", 'DRAFT'::app."DELIVERY_ORDER_STATUS",
    NULL, '予備製作分の在庫保管（請求フロー外）',
    'a0b1c2d3-0000-4000-8000-000000005107'::uuid, '2026-07-14T15:00:00+09', '2026-07-14T15:00:00+09'),
   ('202606', 1, 'd0000000-0000-4000-8000-000000000001'::uuid, NULL,
    (SELECT id FROM app.plants WHERE code = 'F01'),
-   'DISPATCH'::app."SHIPPING_TYPE", 'SHIPPED'::app."SHIPPING_STATUS",
+   'DISPATCH'::app."DELIVERY_ORDER_TYPE", 'SHIPPED'::app."DELIVERY_ORDER_STATUS",
    '2026-06-20T14:00:00+09', NULL,
    'a0b1c2d3-0000-4000-8000-000000005107'::uuid, '2026-06-19T09:00:00+09', '2026-06-20T14:00:00+09')
 ON CONFLICT (year_month, seq) DO NOTHING;

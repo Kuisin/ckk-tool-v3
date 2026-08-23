@@ -13,6 +13,18 @@
 
 import type { Page } from "@playwright/test";
 
+/**
+ * 強調（赤枠）対象。CSS セレクタ文字列 / getByRole 相当の role 指定 /
+ * getByText 相当の text 指定のいずれか。日本語ラベルのボタンは CSS では
+ * 選べないため role 指定を推奨。読み取り専用の表示（ラベル等）は text 指定。
+ * inDialog: 開いているモーダル内で解決する（確認モーダルの確定ボタンなど、
+ * 背後のページに同名ボタンがある場合に使う）。
+ */
+export type HighlightTarget =
+  | string
+  | { role: string; name?: string | RegExp; exact?: boolean; inDialog?: boolean }
+  | { text: string | RegExp; exact?: boolean };
+
 export interface Shot {
   /** PNG ファイル名（拡張子なし）。マニュアルからの参照キー。 */
   id: string;
@@ -34,6 +46,13 @@ export interface Shot {
   fullPage?: boolean;
   /** 撮影時に塗りつぶす揮発領域（時計・相対時刻など）。 */
   mask?: string[];
+  /**
+   * steps 実行後・撮影直前に赤枠で強調する要素（各対象 .first() 一致）。
+   * outline + box-shadow のみでレイアウトを動かさない（docs:verify 安全）。
+   * clip と併用する場合は対象が clip 要素の内側にあること（枠のにじみは
+   * clip 縁で切れる）。
+   */
+  highlight?: HighlightTarget[];
 }
 
 /**
@@ -1246,7 +1265,11 @@ export const shots: Shot[] = [
     path: "/master/materials?q=A02A0001",
     steps: async (page) => {
       await page.getByText(/^A02A0001-/).first().click();
-      await page.getByText("素材コード").first().waitFor();
+      // 「素材コード」は一覧の列見出しにもあるため遷移完了の判定に使えない
+      // （一覧のまま撮れてしまうレース）。URL（数値 id）と詳細タブで
+      // 遷移を確定させる。
+      await page.waitForURL(/\/master\/materials\/\d+/);
+      await page.getByRole("tab", { name: "概要" }).waitFor();
       // 行クリック→詳細は遷移直後に撮ると描画途中が写る（負荷時に顕著）
       await page.waitForLoadState("networkidle");
     },
@@ -1937,5 +1960,186 @@ export const shots: Shot[] = [
     steps: async (page) => {
       await page.getByText("キー列").first().waitFor();
     },
+  },
+  // ── プロセス: 標準フロー（process/default-flow）───────────────────────────
+  // 一つの注文を試算 → 請求まで通しで追うページ用。既存カットの steps を流用し、
+  // その段階で押すボタン・見る欄を highlight で赤枠強調する。
+  {
+    // 下書き試算の操作メニュー — 「確定」を強調
+    id: "flow-trial-estimate-01",
+    docPage: "process/default-flow",
+    path: "/sales/trial-estimates/EST-202607-00003",
+    steps: async (page) => {
+      await page.getByRole("button", { name: "操作メニュー" }).first().click();
+      await page.getByRole("menuitem", { name: "確定" }).first().waitFor();
+    },
+    highlight: [{ role: "menuitem", name: "確定" }],
+  },
+  {
+    // 価格表の新規フォーム — 保存ボタンを強調
+    id: "flow-price-list-01",
+    docPage: "process/default-flow",
+    path: "/sales/price-lists/new",
+    steps: async (page) => {
+      await page.getByText("注文種別: 本番").first().waitFor();
+    },
+    highlight: [{ role: "button", name: "保存" }],
+  },
+  {
+    // 見積書の新規フォーム — 価格表から自動計算される単価表示を強調
+    // （単価は入力欄ではなく読み取り専用の表示 — 手入力できない設計）
+    id: "flow-quote-01",
+    docPage: "process/default-flow",
+    path: "/sales/quotes/new",
+    steps: async (page) => {
+      await page.getByRole("combobox", { name: "顧客" }).click();
+      await page.getByRole("option", { name: /デモ商事/ }).first().click();
+      await page.getByRole("combobox", { name: "製品" }).first().click();
+      await page.getByRole("option").first().click();
+      await page.getByText("合計（税込）").first().waitFor();
+    },
+    highlight: [{ text: "単価（価格表）" }],
+  },
+  {
+    // 発行モーダル — モーダル内の発行ボタンを強調
+    id: "flow-quote-issue-01",
+    docPage: "process/default-flow",
+    path: "/sales/quotes/QOT-202607-00002",
+    steps: async (page) => {
+      await page.getByRole("button", { name: "操作メニュー" }).first().click();
+      await page.getByRole("menuitem", { name: "発行" }).click();
+      await page.getByText("見積書の発行").first().waitFor();
+    },
+    highlight: [{ role: "button", name: "発行", exact: true, inDialog: true }],
+  },
+  {
+    // 承認依頼中の注文請書 — 承認操作（ActionCard）を強調
+    id: "flow-order-acceptance-01",
+    docPage: "process/default-flow",
+    path: "/sales/order-acceptances/ORD-202607-00003",
+    steps: async (page) => {
+      await page.getByText("承認依頼中").first().waitFor();
+    },
+    highlight: [{ role: "button", name: "承認", exact: true }],
+  },
+  {
+    // 確定の確認モーダル — モーダル内の「展開する」ボタンを強調
+    id: "flow-order-deploy-01",
+    docPage: "process/default-flow",
+    path: "/sales/order-acceptances/ORD-202607-00002",
+    steps: async (page) => {
+      await page.getByRole("button", { name: "確定", exact: true }).click();
+      await page.getByText("確定の確認").first().waitFor();
+    },
+    highlight: [{ role: "button", name: "展開する", inDialog: true }],
+  },
+  {
+    // 注文明細から作る指示書の新規フォーム — 保存ボタンを強調
+    id: "flow-work-order-new-01",
+    docPage: "process/default-flow",
+    path: "/production/work-orders/new?orderLine=e0000000-0000-4000-8000-000000000002",
+    steps: async (page) => {
+      await page.getByText("工程").first().waitFor();
+    },
+    highlight: [{ role: "button", name: "保存" }],
+  },
+  {
+    // 承認待ちの指示書 — 承認ボタンを強調（demo_shot は承認者）
+    id: "flow-approval-01",
+    docPage: "process/default-flow",
+    path: "/production/work-orders/9002",
+    steps: async (page) => {
+      await page.getByText("承認状況").first().waitFor();
+    },
+    highlight: [{ role: "button", name: "承認", exact: true }],
+  },
+  {
+    // 工程実行ビュー — 進行中の工程（段加工）のカードを強調
+    // （一覧は master-detail で、開始/完了ボタンは工程を開いてから出る）
+    id: "flow-steps-01",
+    docPage: "process/default-flow",
+    path: "/production/work-orders/9001/steps",
+    steps: async (page) => {
+      await page.getByText("段加工").first().waitFor();
+    },
+    highlight: ['a[href$="/steps/dc011000-0000-4000-8000-000000000004"]'],
+  },
+  {
+    // 出荷書の新規フォーム — 注文請書の選択欄を強調
+    // （注文請書を選ぶと、その出荷できる注文明細が明細に展開される）
+    id: "flow-delivery-order-01",
+    docPage: "process/default-flow",
+    path: "/shipping/delivery-orders/new",
+    steps: async (page) => {
+      await page.getByText("注文明細").first().waitFor();
+    },
+    highlight: [{ role: "combobox", name: /注文請書/ }],
+  },
+  {
+    // 確定済み出荷書の操作メニュー — 「出荷」を強調
+    id: "flow-delivery-order-ship-01",
+    docPage: "process/default-flow",
+    path: "/shipping/delivery-orders/DOR-202607-00002",
+    steps: async (page) => {
+      await page.getByRole("button", { name: "操作メニュー" }).first().click();
+      await page.getByRole("menuitem", { name: "出荷" }).first().waitFor();
+    },
+    highlight: [{ role: "menuitem", name: "出荷" }],
+  },
+  {
+    // 納品書の新規フォーム — 納品方法の選択を強調
+    // （radiogroup にアクセシブル名が無いため name なしで解決 — フォーム先頭の
+    //   radiogroup = 納品方法）
+    id: "flow-delivery-note-01",
+    docPage: "process/default-flow",
+    path: "/shipping/delivery-notes/new?deliveryOrder=DOR-202607-00002",
+    steps: async (page) => {
+      await page.getByText("納品方法").first().waitFor();
+    },
+    highlight: [{ role: "radiogroup" }],
+  },
+  {
+    // 発行の確認モーダル — モーダル内の発行ボタンを強調
+    id: "flow-delivery-note-issue-01",
+    docPage: "process/default-flow",
+    path: "/shipping/delivery-notes/DRN-202607-00002",
+    steps: async (page) => {
+      await page.getByRole("button", { name: "操作メニュー" }).first().click();
+      await page.getByRole("menuitem", { name: "発行" }).first().click();
+      await page.getByText("発行の確認").first().waitFor();
+    },
+    highlight: [{ role: "button", name: "発行", exact: true, inDialog: true }],
+  },
+  {
+    // 締日処理の一覧 — 「締日処理を実行」ボタンを強調（モーダルは開かない —
+    // 年/月の既定値が実行日由来で揮発するため）
+    id: "flow-billing-closing-01",
+    docPage: "process/default-flow",
+    path: "/billing/closings",
+    steps: async (page) => {
+      await page.getByText("デモ商事株式会社").first().waitFor();
+    },
+    highlight: [{ role: "button", name: "締日処理を実行" }],
+  },
+  {
+    // 処理済み締日の詳細 — 「請求書を生成」ボタンを強調
+    id: "flow-invoice-generate-01",
+    docPage: "process/default-flow",
+    path: "/billing/closings/dd000000-0000-4000-8000-000000000041",
+    steps: async (page) => {
+      await page.getByText("請求書を生成").first().waitFor();
+    },
+    highlight: [{ role: "button", name: "請求書を生成" }],
+  },
+  {
+    // 請求書の操作メニュー — 「送付済みにする」を強調（クリックはしない）
+    id: "flow-invoice-send-01",
+    docPage: "process/default-flow",
+    path: "/billing/invoices/INV-202606-00001",
+    steps: async (page) => {
+      await page.getByRole("button", { name: "操作メニュー" }).first().click();
+      await page.getByRole("menuitem", { name: "送付済みにする" }).first().waitFor();
+    },
+    highlight: [{ role: "menuitem", name: "送付済みにする" }],
   },
 ];
