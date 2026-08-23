@@ -172,6 +172,7 @@ screenshots: [kiosk-devices-01, kiosk-devices-create-01, kiosk-devices-link-01, 
 | [基地](#field-plant) | 必填 | 放置该设备的基地 |
 | [位置](#field-location) | 选填 | 在基地内的放置位置 |
 | [关联码](#field-link-code) | 必填 | 平板端显示的确认用编码 |
+| [默认作业场所](#field-default-work-location) | 选填 | 自动记录到该终端作业实绩的作业场所 |
 
 ### 设备名称（日语 / English） [#field-name]
 
@@ -184,6 +185,14 @@ screenshots: [kiosk-devices-01, kiosk-devices-create-01, kiosk-devices-link-01, 
 ### 位置 [#field-location]
 
 在基地内的放置位置。在平面图上放置图钉后，画面上也可看到位置。
+
+### 默认作业场所 [#field-default-work-location]
+
+在该终端上**开始・恢复**工序时，自动记录到作业实绩的作业场所（机械／区域）。请设置为平板实际放置的位置。只能选择属于该终端基地的作业场所（或未指定基地的分组）。
+
+- 更改基地后，默认作业场所会被清除
+- 也可以在平板端的**终端设置画面**（点按画面上部 5 次 → 设置码）中更改
+- 如果实际在其他场所作业，可在工序执行画面扫描作业场所的二维码，覆盖该实绩的作业场所
 
 ### 关联码 [#field-link-code]
 

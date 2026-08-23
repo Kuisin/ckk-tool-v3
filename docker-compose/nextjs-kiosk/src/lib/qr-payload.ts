@@ -49,6 +49,12 @@ export const QR_KINDS = {
   INVOICE: "INV",
   /** 検査表。KEY = 検査表コード。 */
   INSPECTION: "INSP",
+  /**
+   * 作業場所（MS0D）。KEY = 作業場所コード（work_locations.code — unique）。
+   * 機械・エリアに貼るラベル。キオスクの工程実行画面で読むと、その実績の
+   * 作業場所を上書きできる（端末の既定作業場所より優先）。
+   */
+  WORK_LOCATION: "LOC",
 } as const;
 
 export type QrKind = (typeof QR_KINDS)[keyof typeof QR_KINDS];

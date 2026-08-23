@@ -674,14 +674,12 @@ const planActualBase = {
     .regex(timePattern, "時刻は HH:mm 形式で入力してください")
     .nullable(),
   quantity: z.number().int().min(1).nullable(),
+  // 作業場所（機械/エリア — 任意。計画・実績とも）
+  workLocationId: z.number().int().positive().nullable(),
   notes: z.string(),
 };
 
-const stepPlanInput = z.object({
-  ...planActualBase,
-  // 作業場所（機械/エリア — 任意。計画のみ）
-  workLocationId: z.number().int().positive().nullable(),
-});
+const stepPlanInput = z.object(planActualBase);
 const stepActualInput = z.object(planActualBase);
 
 export type StepPlanInput = z.infer<typeof stepPlanInput>;
@@ -701,6 +699,18 @@ function validateTimeRange(v: {
     return "終了時刻は開始時刻より後にしてください";
   }
   return null;
+}
+
+/** 作業場所の存在・有効チェック（null は許可）。エラー文言 or null。 */
+async function invalidWorkLocation(
+  workLocationId: number | null,
+): Promise<string | null> {
+  if (workLocationId == null) return null;
+  const location = await prisma.workLocation.findFirst({
+    where: { id: workLocationId, isActive: true },
+    select: { id: true },
+  });
+  return location ? null : "作業場所が見つかりません";
 }
 
 /** 作業計画の追加 — 未完了（PENDING / IN_PROGRESS）の工程のみ。 */
@@ -728,15 +738,8 @@ export async function addStepPlan(
         errors: ["完了・キャンセル済みの工程には計画を追加できません"],
       };
     }
-    if (v.workLocationId != null) {
-      const location = await prisma.workLocation.findFirst({
-        where: { id: v.workLocationId, isActive: true },
-        select: { id: true },
-      });
-      if (!location) {
-        return { ok: false, errors: ["作業場所が見つかりません"] };
-      }
-    }
+    const locationError = await invalidWorkLocation(v.workLocationId);
+    if (locationError) return { ok: false, errors: [locationError] };
     const actor = await getCurrentActorId();
     await prisma.workOrderStepPlan.create({
       data: {
@@ -818,6 +821,8 @@ export async function addStepActual(
     if (step.status !== "IN_PROGRESS") {
       return { ok: false, errors: ["進行中の工程のみ実績を記録できます"] };
     }
+    const locationError = await invalidWorkLocation(v.workLocationId);
+    if (locationError) return { ok: false, errors: [locationError] };
     const actor = await getCurrentActorId();
     await prisma.workOrderStepActual.create({
       data: {
@@ -827,6 +832,7 @@ export async function addStepActual(
         startedAt: toJstTimestamp(v.date, v.startTime),
         endedAt: toJstTimestamp(v.date, v.endTime),
         quantity: v.quantity,
+        workLocationId: v.workLocationId,
         notes: v.notes.trim() || null,
         createdBy: actor,
       },

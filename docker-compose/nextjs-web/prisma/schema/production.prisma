@@ -318,6 +318,7 @@ model WorkOrderStepActual {
   startedAt  DateTime? @map("started_at") @db.Timestamptz(6)
   endedAt    DateTime? @map("ended_at") @db.Timestamptz(6)
   quantity   Int? // 実施数量（任意）
+  workLocationId Int? @map("work_location_id") // 作業場所（任意。キオスクは端末の既定作業場所を書き込む）
   notes      String?
   createdBy  String?   @map("created_by") @db.Uuid
   createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
@@ -325,6 +326,7 @@ model WorkOrderStepActual {
   step          WorkOrderStep @relation(fields: [stepId], references: [id], onDelete: Cascade)
   user          User          @relation("StepActualUser", fields: [userId], references: [id])
   createdByUser User?         @relation("StepActualCreatedBy", fields: [createdBy], references: [id])
+  workLocation  WorkLocation? @relation("StepActualWorkLocation", fields: [workLocationId], references: [id])
 
   @@index([stepId, workedDate])
   @@index([userId, workedDate])

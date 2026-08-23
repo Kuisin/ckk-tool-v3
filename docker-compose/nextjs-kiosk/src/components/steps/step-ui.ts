@@ -12,11 +12,17 @@ export type StepAction =
   | "RESUME"
   | "COMPLETE"
   | "INSPECTION"
-  | "DEFECTS";
+  | "DEFECTS"
+  | "SET_LOCATION";
 
 export interface StepActionRequest {
   action: StepAction;
   inputQuantity?: number | null;
+  /**
+   * START / SET_LOCATION: 作業場所 QR（CKK:LOC:<code>）の code。
+   * START では端末の既定作業場所より優先される。
+   */
+  workLocationCode?: string;
   quantities?: {
     inputQuantity: number;
     outputSuccessQuantity: number;

@@ -73,6 +73,11 @@ export interface MyStepView {
   plannedWorkHours: number | null;
   /** 計画に割り当てられた作業場所名（任意）。 */
   workLocationName: string | null;
+  /**
+   * 実績（自分の最新セッション行）に記録された作業場所名。
+   * 端末の既定 or 作業場所 QR の読み取りで入る（未記録は null）。
+   */
+  actualWorkLocationName: string | null;
   /** 自分の累計作業時間 (ms) */
   workedMs: number;
   /** OTHER のときの作業者名 */
@@ -260,7 +265,12 @@ async function hydrateSteps(
       },
       actuals: {
         where: { userId },
-        select: { startedAt: true, endedAt: true },
+        select: {
+          startedAt: true,
+          endedAt: true,
+          workLocation: { select: { name: true } },
+        },
+        orderBy: { startedAt: "asc" },
       },
     },
   });
@@ -328,6 +338,12 @@ async function hydrateSteps(
       workLocationName: plan?.workLocation
         ? localized(asText(plan.workLocation.name), locale)
         : null,
+      actualWorkLocationName: (() => {
+        const last = r.actuals.at(-1);
+        return last?.workLocation
+          ? localized(asText(last.workLocation.name), locale)
+          : null;
+      })(),
       workedMs: accumulatedWorkMs(r.actuals, now),
       lockedByName:
         state === "OTHER" && r.sessionLockedBy

@@ -52,7 +52,7 @@ function RecordTable({
   canEdit: boolean;
   onDelete: (id: string) => void;
   deleting: boolean;
-  /** 作業場所列（計画のみ）。 */
+  /** 作業場所列。 */
   showLocation?: boolean;
 }) {
   const fmt = useFormat();
@@ -149,7 +149,7 @@ function RecordSection({
   stepId: string;
   /** 数量の目安（残数などは設けず参考表示のみ）。 */
   suggestedQuantity: number | null;
-  /** 作業場所の選択肢（計画のみ）。 */
+  /** 作業場所の選択肢。 */
   workLocationOptions?: { value: string; label: string }[];
 }) {
   const router = useRouter();
@@ -161,7 +161,7 @@ function RecordSection({
   const [quantity, setQuantity] = useState<number | "">("");
   const [workLocationId, setWorkLocationId] = useState<string | null>(null);
   const [notes, setNotes] = useState("");
-  const showLocation = kind === "plan" && workLocationOptions.length > 0;
+  const showLocation = workLocationOptions.length > 0;
 
   const handleAdd = () => {
     if (!userId) {
@@ -252,7 +252,9 @@ function RecordSection({
           deleting={isPending}
           onDelete={handleDelete}
           rows={rows}
-          showLocation={kind === "plan"}
+          showLocation={
+            showLocation || rows.some((r) => r.workLocationName != null)
+          }
         />
         {canEdit && (
           <Stack gap="xs">
@@ -352,7 +354,7 @@ export function StepPlanActualPanel({
   plans: StepPlanView[];
   actuals: StepActualView[];
   expectedInputQuantity: number | null;
-  /** 作業場所の選択肢（計画フォーム用）。 */
+  /** 作業場所の選択肢（計画・実績フォーム用）。 */
   workLocationOptions: { value: string; label: string }[];
 }) {
   const planEditable =
@@ -374,12 +376,13 @@ export function StepPlanActualPanel({
       />
       <RecordSection
         canEdit={actualEditable}
-        description="実施した作業を担当者・日付ごとに記録します（進行中のみ追加可）。"
+        description="実施した作業を担当者・日付ごとに記録します（進行中のみ追加可）。キオスクからの実績には端末の既定作業場所が入ります。"
         kind="actual"
         rows={actuals}
         stepId={stepId}
         suggestedQuantity={expectedInputQuantity}
         title="作業実績"
+        workLocationOptions={workLocationOptions}
         workOrderNumber={workOrderNumber}
       />
     </>

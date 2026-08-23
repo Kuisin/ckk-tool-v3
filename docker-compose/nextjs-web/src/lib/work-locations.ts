@@ -89,3 +89,22 @@ export async function fetchWorkLocationOptions(): Promise<
     label: `${localized(r.group.name as LocalizedText | null)} / ${localized(r.name as LocalizedText | null)}`,
   }));
 }
+
+/**
+ * 拠点付きの作業場所 Select 用（SY09 端末の既定作業場所など）。
+ * plantId はグループの拠点（null = 拠点指定なし — どの拠点でも選択可）。
+ */
+export async function fetchWorkLocationOptionsWithPlant(): Promise<
+  { value: string; label: string; plantId: number | null }[]
+> {
+  const rows = await prisma.workLocation.findMany({
+    where: { isActive: true, group: { isActive: true } },
+    include: { group: { select: { name: true, plantId: true } } },
+    orderBy: [{ groupId: "asc" }, { sortOrder: "asc" }, { id: "asc" }],
+  });
+  return rows.map((r) => ({
+    value: String(r.id),
+    label: `${localized(r.group.name as LocalizedText | null)} / ${localized(r.name as LocalizedText | null)}`,
+    plantId: r.group.plantId,
+  }));
+}

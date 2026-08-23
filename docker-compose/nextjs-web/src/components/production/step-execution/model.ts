@@ -87,7 +87,7 @@ export interface StepPlanView {
   startTime: string | null;
   endTime: string | null;
   quantity: number | null;
-  /** 作業場所（計画のみ・任意 — 実績は常に null）。 */
+  /** 作業場所（任意）。実績はキオスク端末の既定 or 手入力/QR 読取で入る。 */
   workLocationId: number | null;
   workLocationName: string | null;
   notes: string | null;

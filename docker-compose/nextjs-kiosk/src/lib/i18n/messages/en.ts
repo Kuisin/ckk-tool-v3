@@ -195,6 +195,17 @@ export const en: KioskMessages = {
         APPROVED: "Approved",
       },
     },
+    location: {
+      label: "Work location",
+      none: "Not recorded",
+      scan: "Scan work location",
+      close: "Stop scanning",
+      pendingScanned: (code: string) => `Scanned: ${code} (recorded on start)`,
+      deviceDefaultHint:
+        "If not scanned, this device's default work location is recorded",
+      invalidQr: "Not a work-location QR code",
+      updated: "Work location recorded",
+    },
     defects: {
       title: "Defect records",
       type: "Defect type",
@@ -226,6 +237,8 @@ export const en: KioskMessages = {
       TEMPLATE_INVALID: "The template does not belong to this work order",
       ITEMS_REQUIRED: "There is nothing to record",
       DEFECT_TYPE_INVALID: "Invalid defect type",
+      LOCATION_NOT_FOUND: "Work location not found (it may be deactivated)",
+      NO_OPEN_SESSION: "No active work session (resume the step, then scan)",
       NO_PERMISSION: "You do not have permission for this action",
       UNKNOWN: "The operation failed",
     },

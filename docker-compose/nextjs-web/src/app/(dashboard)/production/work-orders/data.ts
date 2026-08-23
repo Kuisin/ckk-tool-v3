@@ -696,7 +696,10 @@ export async function fetchStepExecution(
         orderBy: [{ plannedDate: "asc" }, { plannedStartAt: "asc" }],
       },
       actuals: {
-        include: { user: { select: { displayName: true } } },
+        include: {
+          user: { select: { displayName: true } },
+          workLocation: { select: { id: true, name: true } },
+        },
         orderBy: [{ workedDate: "asc" }, { startedAt: "asc" }],
       },
     },

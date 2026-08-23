@@ -411,11 +411,13 @@ const updateInput = z.object({
   nameEn: z.string().optional(),
   plantId: z.number().int().positive("拠点を選択してください"),
   location: z.string().optional(),
+  // 既定の作業場所（任意）。工程の開始/再開時に実績へ自動記録される。
+  defaultWorkLocationId: z.number().int().positive().nullable(),
 });
 
 export type UpdateDeviceInput = z.infer<typeof updateInput>;
 
-/** 端末情報（名称・場所・拠点）を更新する。拠点変更時はピン配置を解除。 */
+/** 端末情報（名称・場所・拠点・既定作業場所）を更新する。拠点変更時はピン配置を解除。 */
 export async function updateDevice(
   raw: UpdateDeviceInput,
 ): Promise<ActionResult> {
@@ -431,6 +433,23 @@ export async function updateDevice(
     const device = await prisma.kioskDevice.findUnique({ where: { id: v.id } });
     if (!device) return actionError("対象の端末が見つかりません");
     const plantChanged = device.plantId !== v.plantId;
+    if (v.defaultWorkLocationId != null) {
+      // 既定作業場所は端末の拠点の作業場所（or 拠点未指定グループ）に限る。
+      const location = await prisma.workLocation.findFirst({
+        where: {
+          id: v.defaultWorkLocationId,
+          isActive: true,
+          group: {
+            isActive: true,
+            OR: [{ plantId: v.plantId }, { plantId: null }],
+          },
+        },
+        select: { id: true },
+      });
+      if (!location) {
+        return actionError("既定の作業場所が端末の拠点と一致しません");
+      }
+    }
     const name = localizedInput(v.nameJa, v.nameEn);
     await prisma.kioskDevice.update({
       where: { id: v.id },
@@ -438,6 +457,7 @@ export async function updateDevice(
         name,
         plantId: v.plantId,
         location: v.location?.trim() || null,
+        defaultWorkLocationId: v.defaultWorkLocationId,
         // 拠点をまたぐ移動はフロアマップのピンを外す（マップは拠点単位）。
         ...(plantChanged ? { floorMapId: null, mapX: null, mapY: null } : {}),
       },
@@ -450,11 +470,13 @@ export async function updateDevice(
         name: device.name,
         location: device.location,
         plantId: device.plantId,
+        defaultWorkLocationId: device.defaultWorkLocationId,
       },
       after: {
         name,
         location: v.location?.trim() || null,
         plantId: v.plantId,
+        defaultWorkLocationId: v.defaultWorkLocationId,
       },
     });
     revalidate();

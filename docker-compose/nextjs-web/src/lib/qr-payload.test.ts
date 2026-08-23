@@ -83,4 +83,12 @@ describe("qrKeyOfKind", () => {
     const raw = encodeQrPayload(QR_KINDS.WO, "4321");
     expect(qrKeyOfKind(raw, QR_KINDS.WO)).toBe("4321");
   });
+
+  it("作業場所ラベル（LOC）を kind 指定で読める", () => {
+    const raw = encodeQrPayload(QR_KINDS.WORK_LOCATION, "WL-A-01");
+    expect(raw).toBe("CKK:LOC:WL-A-01");
+    expect(qrKeyOfKind(raw, QR_KINDS.WORK_LOCATION)).toBe("WL-A-01");
+    // 他種別の QR は作業場所として解釈されない
+    expect(qrKeyOfKind("CKK:WO:1234", QR_KINDS.WORK_LOCATION)).toBeNull();
+  });
 });

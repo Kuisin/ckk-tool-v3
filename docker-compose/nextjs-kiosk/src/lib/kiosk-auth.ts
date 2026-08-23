@@ -140,6 +140,9 @@ export type DeviceSettingsInfo = {
   linkedAt: Date | null;
   deviceTokenExpiresAt: Date | null;
   fingerprint: string | null;
+  plantId: number | null;
+  /** 既定の作業場所（実績への自動記録に使う。未設定は null）。 */
+  defaultWorkLocationId: number | null;
 };
 
 /**
@@ -161,6 +164,8 @@ export async function getDeviceForSettings(): Promise<DeviceSettingsInfo | null>
       linkedAt: true,
       deviceTokenExpiresAt: true,
       fingerprint: true,
+      plantId: true,
+      defaultWorkLocationId: true,
     },
   });
   // 端末名は多言語 JSON。端末設定はログイン前画面なので ja 固定。
