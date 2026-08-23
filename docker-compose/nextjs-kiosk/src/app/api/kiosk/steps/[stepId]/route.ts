@@ -16,13 +16,16 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { runWithActor } from "@/lib/audit";
 import { hasPermission } from "@/lib/authz";
+import { prisma } from "@/lib/db";
 import { getSession } from "@/lib/kiosk-auth";
 import {
   canOperateStep,
   completeStepExecution,
   pauseStepExecution,
+  resolveWorkLocationByCode,
   resumeStepExecution,
   type StepActionResult,
+  setStepWorkLocation,
   startStepExecution,
 } from "@/lib/step-execution";
 import { recordDefects, recordInspection } from "@/lib/step-records";
@@ -43,9 +46,15 @@ const bodySchema = z.object({
     "COMPLETE",
     "INSPECTION",
     "DEFECTS",
+    "SET_LOCATION",
   ]),
   /** START のみ: 作業者が実際に受け取った本数（未指定は想定受入数） */
   inputQuantity: z.number().int().min(0).nullable().optional(),
+  /**
+   * START / SET_LOCATION: 作業場所 QR（CKK:LOC:<code>）の code。
+   * START では端末の既定作業場所より優先。SET_LOCATION では必須。
+   */
+  workLocationCode: z.string().trim().min(1).max(100).optional(),
   /** COMPLETE のみ: NONE モードは null */
   quantities: quantitiesSchema.nullable().optional(),
   /** COMPLETE のみ: 不良の内訳（{種別, 理由, 数} のリスト）。 */
@@ -126,6 +135,7 @@ export async function POST(
   const {
     action,
     inputQuantity,
+    workLocationCode,
     quantities,
     defectReasons,
     templateId,
@@ -160,23 +170,64 @@ export async function POST(
     return NextResponse.json(result);
   }
 
+  // 作業場所の解決（実績への記録用）:
+  //   スキャンした QR の場所（workLocationCode）＞ 端末の既定作業場所。
+  //   計画の作業場所は実績のソースにしない（端末既定のみ — 仕様）。
+  let scannedLocationId: number | null = null;
+  if (
+    (action === "START" || action === "SET_LOCATION") &&
+    workLocationCode != null
+  ) {
+    const resolved = await resolveWorkLocationByCode(workLocationCode);
+    if (!resolved) {
+      return NextResponse.json({
+        ok: false,
+        codes: ["LOCATION_NOT_FOUND"],
+      } satisfies StepActionResult);
+    }
+    scannedLocationId = resolved.id;
+  }
+  if (action === "SET_LOCATION" && scannedLocationId == null) {
+    return NextResponse.json({ error: "invalid request" }, { status: 400 });
+  }
+  let deviceDefaultLocationId: number | null = null;
+  if (action === "START" || action === "RESUME") {
+    const deviceRow = await prisma.kioskDevice.findUnique({
+      where: { id: device },
+      select: { defaultWorkLocationId: true },
+    });
+    deviceDefaultLocationId = deviceRow?.defaultWorkLocationId ?? null;
+  }
+
   // audit_logs / inventory_transactions の created_by をこの actor に束ねる
   const result: StepActionResult = await runWithActor(
     actor,
     async () => {
       switch (action) {
         case "START":
-          return startStepExecution(stepId, actor, inputQuantity ?? null);
+          return startStepExecution(
+            stepId,
+            actor,
+            inputQuantity ?? null,
+            scannedLocationId ?? deviceDefaultLocationId,
+          );
         case "PAUSE":
           return pauseStepExecution(stepId, actor);
         case "RESUME":
-          return resumeStepExecution(stepId, actor);
+          return resumeStepExecution(stepId, actor, deviceDefaultLocationId);
         case "COMPLETE":
           return completeStepExecution(
             stepId,
             actor,
             quantities ?? null,
             defectReasons ?? null,
+          );
+        case "SET_LOCATION":
+          // scannedLocationId は上で必須検証済み
+          return setStepWorkLocation(
+            stepId,
+            actor,
+            scannedLocationId as number,
           );
       }
     },

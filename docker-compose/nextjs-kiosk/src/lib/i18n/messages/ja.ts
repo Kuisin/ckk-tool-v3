@@ -202,6 +202,16 @@ export const ja = {
         APPROVED: "承認済",
       },
     },
+    location: {
+      label: "作業場所",
+      none: "未記録",
+      scan: "作業場所を読み取り",
+      close: "読み取りをやめる",
+      pendingScanned: (code: string) => `読み取り済み: ${code}（開始時に記録）`,
+      deviceDefaultHint: "未読み取りの場合は端末の既定作業場所が記録されます",
+      invalidQr: "作業場所の QR コードではありません",
+      updated: "作業場所を記録しました",
+    },
     defects: {
       title: "不良記録",
       type: "不良種類",
@@ -233,6 +243,10 @@ export const ja = {
       TEMPLATE_INVALID: "検査表がこの指示書と一致しません",
       ITEMS_REQUIRED: "記録する内容がありません",
       DEFECT_TYPE_INVALID: "不良種類が不正です",
+      LOCATION_NOT_FOUND:
+        "作業場所が見つかりません（無効化されていないか確認）",
+      NO_OPEN_SESSION:
+        "作業セッションがありません（再開してから読み取ってください）",
       NO_PERMISSION: "この操作の権限がありません",
       UNKNOWN: "処理に失敗しました",
     },

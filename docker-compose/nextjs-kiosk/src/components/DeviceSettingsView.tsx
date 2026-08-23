@@ -23,13 +23,16 @@ import {
   Divider,
   Group,
   Paper,
+  Select,
   Stack,
   Text,
   Title,
 } from "@mantine/core";
 import {
   IconArrowLeft,
+  IconDeviceFloppy,
   IconLockOpen,
+  IconMapPin,
   IconRefresh,
   IconSettings,
   IconTrash,
@@ -46,12 +49,22 @@ type DeviceInfo = {
   linkedAt: string | null;
   deviceTokenExpiresAt: string | null;
   fingerprint: string | null;
+  /** 既定の作業場所（開始/再開時に実績へ自動記録。未設定は null）。 */
+  defaultWorkLocationId: number | null;
+  defaultWorkLocationLabel: string | null;
 };
+
+type WorkLocationOption = { value: string; label: string };
 
 type Phase =
   | { phase: "gate"; error: string | null; submitting: boolean }
   | { phase: "locked"; until: string | null }
-  | { phase: "settings"; ticket: string; device: DeviceInfo }
+  | {
+      phase: "settings";
+      ticket: string;
+      device: DeviceInfo;
+      workLocationOptions: WorkLocationOption[];
+    }
   | { phase: "resetting" };
 
 const STATUS_LABEL: Record<DeviceInfo["status"], string> = {
@@ -86,6 +99,10 @@ export function DeviceSettingsView({ hasDevice }: { hasDevice: boolean }) {
   const [confirmMode, setConfirmMode] = useState<"local" | "unlink" | null>(
     null,
   );
+  // 既定作業場所の編集（settings フェーズのみ使用）
+  const [locationDraft, setLocationDraft] = useState<string | null>(null);
+  const [locationSaving, setLocationSaving] = useState(false);
+  const [locationNotice, setLocationNotice] = useState<string | null>(null);
 
   // ── 端末 Cookie なし: ローカル消去のみ ────────────────────────────────────
   if (!hasDevice) {
@@ -129,12 +146,20 @@ export function DeviceSettingsView({ hasDevice }: { hasDevice: boolean }) {
         until?: string;
         ticket?: string;
         device?: DeviceInfo;
+        workLocationOptions?: WorkLocationOption[];
       } | null;
       if (data?.state === "OK" && data.ticket && data.device) {
+        setLocationDraft(
+          data.device.defaultWorkLocationId != null
+            ? String(data.device.defaultWorkLocationId)
+            : null,
+        );
+        setLocationNotice(null);
         setState({
           phase: "settings",
           ticket: data.ticket,
           device: data.device,
+          workLocationOptions: data.workLocationOptions ?? [],
         });
       } else if (data?.state === "LOCKED") {
         setState({ phase: "locked", until: data.until ?? null });
@@ -186,6 +211,59 @@ export function DeviceSettingsView({ hasDevice }: { hasDevice: boolean }) {
         error: "通信に失敗しました。もう一度お試しください",
         submitting: false,
       });
+    }
+  };
+
+  // 既定作業場所の保存 — チケットを消費し、応答の新チケットへ差し替える
+  const saveLocation = async () => {
+    if (state.phase !== "settings") return;
+    setLocationSaving(true);
+    setLocationNotice(null);
+    try {
+      const res = await fetch("/api/kiosk/device-settings/work-location", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ticket: state.ticket,
+          workLocationId: locationDraft ? Number(locationDraft) : null,
+        }),
+      });
+      const data = (await res.json().catch(() => null)) as {
+        state?: string;
+        ticket?: string;
+        defaultWorkLocationId?: number | null;
+        defaultWorkLocationLabel?: string | null;
+      } | null;
+      setLocationSaving(false);
+      if (data?.state === "OK" && data.ticket) {
+        setLocationNotice("既定の作業場所を保存しました");
+        setState({
+          ...state,
+          ticket: data.ticket,
+          device: {
+            ...state.device,
+            defaultWorkLocationId: data.defaultWorkLocationId ?? null,
+            defaultWorkLocationLabel: data.defaultWorkLocationLabel ?? null,
+          },
+        });
+        return;
+      }
+      if (data?.state === "LOCATION_INVALID" && data.ticket) {
+        setLocationNotice(
+          "その作業場所は選択できません（無効化・拠点違いの可能性）",
+        );
+        setState({ ...state, ticket: data.ticket });
+        return;
+      }
+      // チケット期限切れ等 — コード入力からやり直し
+      setState({
+        phase: "gate",
+        error: "操作の有効期限が切れました。コードを再入力してください",
+        submitting: false,
+      });
+    } catch {
+      setLocationSaving(false);
+      setLocationNotice("通信に失敗しました。もう一度お試しください");
     }
   };
 
@@ -311,6 +389,48 @@ export function DeviceSettingsView({ hasDevice }: { hasDevice: boolean }) {
                   {wrapperVersion ? `v${wrapperVersion}` : "未使用（ブラウザ）"}
                 </Text>
               </Group>
+            </Stack>
+
+            <Divider />
+
+            <Stack gap="xs">
+              <Group gap="xs">
+                <IconMapPin size={18} />
+                <Text fw={600} size="sm">
+                  既定の作業場所
+                </Text>
+              </Group>
+              <Text c="dimmed" size="xs">
+                この端末で工程を開始・再開したときに、作業実績へ自動で記録される
+                作業場所です（SY09 からも変更できます）。
+              </Text>
+              <Group align="flex-end" gap="xs" wrap="nowrap">
+                <Select
+                  clearable
+                  data={state.workLocationOptions}
+                  onChange={setLocationDraft}
+                  placeholder="機械・エリア（未設定）"
+                  searchable
+                  style={{ flex: 1 }}
+                  value={locationDraft}
+                />
+                <Button
+                  leftSection={<IconDeviceFloppy size={16} />}
+                  loading={locationSaving}
+                  onClick={saveLocation}
+                  variant="light"
+                >
+                  保存
+                </Button>
+              </Group>
+              {locationNotice && (
+                <Text
+                  c={locationNotice.includes("保存しました") ? "teal" : "red"}
+                  size="xs"
+                >
+                  {locationNotice}
+                </Text>
+              )}
             </Stack>
 
             <Divider />

@@ -68,7 +68,9 @@ export type StepErrorCode =
   | "ROUTING_INVALID"
   | "TEMPLATE_INVALID"
   | "ITEMS_REQUIRED"
-  | "DEFECT_TYPE_INVALID";
+  | "DEFECT_TYPE_INVALID"
+  | "LOCATION_NOT_FOUND"
+  | "NO_OPEN_SESSION";
 
 export interface StepActionResult {
   ok: boolean;
@@ -185,6 +187,7 @@ export async function startStepExecution(
   stepId: string,
   actorId: string,
   inputQuantity?: number | null,
+  workLocationId?: number | null,
 ): Promise<StepActionResult> {
   const stepRow = await prisma.workOrderStep.findUnique({
     where: { id: stepId },
@@ -241,6 +244,7 @@ export async function startStepExecution(
         userId: actorId,
         workedDate: jstDateOnly(now),
         startedAt: now,
+        workLocationId: workLocationId ?? null,
         createdBy: actorId,
       },
     });
@@ -312,10 +316,15 @@ export async function pauseStepExecution(
   return { ok: true };
 }
 
-/** 再開: 空きロックを原子的に取り直し、新しい作業セッションを open する。 */
+/**
+ * 再開: 空きロックを原子的に取り直し、新しい作業セッションを open する。
+ * 作業場所は直前の自分のセッション行から引き継ぎ、無ければ端末の既定
+ * （workLocationId 引数）を使う。
+ */
 export async function resumeStepExecution(
   stepId: string,
   actorId: string,
+  workLocationId?: number | null,
 ): Promise<StepActionResult> {
   const stepRow = await prisma.workOrderStep.findUnique({
     where: { id: stepId },
@@ -341,6 +350,13 @@ export async function resumeStepExecution(
     );
   }
 
+  // 同じ工程を続きから — 直前の自分のセッションと同じ場所とみなす。
+  const lastActual = await prisma.workOrderStepActual.findFirst({
+    where: { stepId, userId: actorId },
+    orderBy: { startedAt: "desc" },
+    select: { workLocationId: true },
+  });
+
   const now = new Date();
   const claimed = await prisma.$transaction(async (tx) => {
     const c = await tx.workOrderStep.updateMany({
@@ -354,6 +370,7 @@ export async function resumeStepExecution(
         userId: actorId,
         workedDate: jstDateOnly(now),
         startedAt: now,
+        workLocationId: lastActual?.workLocationId ?? workLocationId ?? null,
         createdBy: actorId,
       },
     });
@@ -368,6 +385,59 @@ export async function resumeStepExecution(
     tableName: "work_orders",
     recordId: String(stepRow.workOrder.workOrderNumber),
     after: { note: `工程を再開（step ${stepRow.sortOrder}）` },
+  });
+  return { ok: true };
+}
+
+/**
+ * 作業場所コード（QR `CKK:LOC:<code>`）→ id 解決。
+ * 有効な場所・有効なグループのみ。見つからなければ null。
+ */
+export async function resolveWorkLocationByCode(
+  code: string,
+): Promise<{ id: number } | null> {
+  const location = await prisma.workLocation.findFirst({
+    where: { code, isActive: true, group: { isActive: true } },
+    select: { id: true },
+  });
+  return location;
+}
+
+/**
+ * 作業中セッションの作業場所を付け替える（作業場所 QR の読み取り）。
+ * 対象は自分の open セッション行（endedAt null）のみ — 過去の実績は変えない。
+ * 一時停止中は open 行が無いので失敗する（再開してから読む）。
+ */
+export async function setStepWorkLocation(
+  stepId: string,
+  actorId: string,
+  workLocationId: number,
+): Promise<StepActionResult> {
+  const stepRow = await prisma.workOrderStep.findUnique({
+    where: { id: stepId },
+    include: { workOrder: { select: { workOrderNumber: true } } },
+  });
+  if (!stepRow) return fail("NOT_FOUND", "工程が見つかりません");
+  if (stepRow.status !== "IN_PROGRESS") {
+    return fail("NOT_IN_PROGRESS", "進行中の工程ではありません");
+  }
+  const updated = await prisma.workOrderStepActual.updateMany({
+    where: { stepId, userId: actorId, endedAt: null },
+    data: { workLocationId },
+  });
+  if (updated.count === 0) {
+    return fail(
+      "NO_OPEN_SESSION",
+      "作業セッションがありません（再開してから読み取ってください）",
+    );
+  }
+  await recordAudit({
+    action: "UPDATE",
+    tableName: "work_orders",
+    recordId: String(stepRow.workOrder.workOrderNumber),
+    after: {
+      note: `作業場所を変更（step ${stepRow.sortOrder} / 作業場所 ${workLocationId}）`,
+    },
   });
   return { ok: true };
 }

@@ -28,12 +28,15 @@ import {
   IconAlertTriangle,
   IconArrowLeft,
   IconCheck,
+  IconMapPin,
   IconPlayerPause,
   IconPlayerPlay,
+  IconQrcode,
 } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { playLogoutSound } from "@/lib/sound";
+import { QR_KINDS, qrKeyOfKind } from "@/lib/qr-payload";
+import { playLogoutSound, playWarnSound } from "@/lib/sound";
 import type { StepRecordingData } from "@/lib/step-records";
 import type { MyActiveStep, MyStepView } from "@/lib/steps";
 import {
@@ -43,6 +46,7 @@ import {
 } from "@/lib/steps-core";
 import { ActivityMonitor } from "../ActivityMonitor";
 import { useI18n } from "../I18nProvider";
+import { QrScannerView } from "../QrScannerView";
 import { LiveElapsed } from "./LiveElapsed";
 import { NumberStepper } from "./NumberStepper";
 import { StepDefectForm } from "./StepDefectForm";
@@ -85,6 +89,14 @@ export function StepExecutionView({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // 作業場所 QR（CKK:LOC:<code>）の読み取り。
+  // 開始前 = code を保持して START に同送 / 作業中 = SET_LOCATION で即時反映。
+  const [locationScanOpen, setLocationScanOpen] = useState(false);
+  const [pendingLocationCode, setPendingLocationCode] = useState<string | null>(
+    null,
+  );
+  const [locationNotice, setLocationNotice] = useState<string | null>(null);
+
   // 開始時の受入数（想定値を初期値に、作業者が上書きできる）
   const [startInput, setStartInput] = useState<number>(
     step.expectedInputQuantity ?? step.workOrderPlannedQuantity,
@@ -123,10 +135,38 @@ export function StepExecutionView({
   };
 
   const doStart = () =>
-    run({ action: "START", inputQuantity: isNone ? null : startInput }, () => {
-      setPhase("IDLE");
-      router.refresh();
-    });
+    run(
+      {
+        action: "START",
+        inputQuantity: isNone ? null : startInput,
+        workLocationCode: pendingLocationCode ?? undefined,
+      },
+      () => {
+        setPhase("IDLE");
+        setPendingLocationCode(null);
+        router.refresh();
+      },
+    );
+
+  const handleLocationScan = (payload: string) => {
+    const code = qrKeyOfKind(payload, QR_KINDS.WORK_LOCATION);
+    if (!code) {
+      playWarnSound();
+      setError(m.steps.location.invalidQr);
+      return;
+    }
+    setError(null);
+    setLocationScanOpen(false);
+    if (working) {
+      run({ action: "SET_LOCATION", workLocationCode: code }, () => {
+        setLocationNotice(m.steps.location.updated);
+        router.refresh();
+      });
+    } else {
+      // 開始前 — START と一緒に送る
+      setPendingLocationCode(code);
+    }
+  };
 
   const doPause = () => run({ action: "PAUSE" }, () => router.refresh());
   const doResume = () => run({ action: "RESUME" }, () => router.refresh());
@@ -196,6 +236,60 @@ export function StepExecutionView({
             </Group>
           </Stack>
         </Paper>
+
+        {/* 作業場所 — 実績に記録される場所（端末既定 or QR 読み取り） */}
+        {(step.sessionState === "STARTABLE" ||
+          working ||
+          paused ||
+          step.actualWorkLocationName != null ||
+          pendingLocationCode != null) && (
+          <Paper p="md" radius="md" withBorder>
+            <Stack gap="sm">
+              <Group justify="space-between" wrap="nowrap">
+                <Group gap="xs" wrap="nowrap">
+                  <IconMapPin size={20} />
+                  <Text fw={600}>{m.steps.location.label}</Text>
+                  <Text c={step.actualWorkLocationName ? undefined : "dimmed"}>
+                    {step.actualWorkLocationName ?? m.steps.location.none}
+                  </Text>
+                </Group>
+                {(step.sessionState === "STARTABLE" || working) &&
+                  !lockedByActive && (
+                    <Button
+                      leftSection={<IconQrcode size={18} />}
+                      onClick={() => setLocationScanOpen((v) => !v)}
+                      size="sm"
+                      variant="light"
+                    >
+                      {locationScanOpen
+                        ? m.steps.location.close
+                        : m.steps.location.scan}
+                    </Button>
+                  )}
+              </Group>
+              {pendingLocationCode != null &&
+                step.sessionState === "STARTABLE" && (
+                  <Text c="teal" size="sm">
+                    {m.steps.location.pendingScanned(pendingLocationCode)}
+                  </Text>
+                )}
+              {step.sessionState === "STARTABLE" &&
+                pendingLocationCode == null && (
+                  <Text c="dimmed" size="sm">
+                    {m.steps.location.deviceDefaultHint}
+                  </Text>
+                )}
+              {locationNotice && (
+                <Text c="teal" size="sm">
+                  {locationNotice}
+                </Text>
+              )}
+              {locationScanOpen && (
+                <QrScannerView onScan={handleLocationScan} paused={busy} />
+              )}
+            </Stack>
+          </Paper>
+        )}
 
         {error && (
           <Alert color="red" icon={<IconAlertTriangle size={20} />}>
