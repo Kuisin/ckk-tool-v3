@@ -5,7 +5,7 @@ screenshots: [master-inspection-template-list-01, master-inspection-template-new
 ---
 这是用于事先决定 **检查时测量什么** 的检查表 **样板** 的应用。操作代码是 `MS09`。
 
-把样板附加到[指示书](/manual/zh/operations/production/work-order/user)上，现场就会按照这个样板输入检查记录。
+把样板附加到[指示书](/manual/zh/operations/production/work-order/user)的**检查工序**上，现场就会按照这个样板输入检查记录。
 
 > ⚠️ 本应用处于试用公开阶段。根据您使用的环境，可能还看不到它。
 
@@ -19,7 +19,7 @@ screenshots: [master-inspection-template-list-01, master-inspection-template-new
 
 ## 本页出现的词语
 
-- **检查表模板** … 检查表的样板。附加到指示书上，表示「请用这个样板进行检查」。
+- **检查表模板** … 检查表的样板。附加到指示书的检查工序上，表示「请用这个样板进行检查」。
 - **检查项目** … 样板中的一行。表示「测量外径」「查看有无划伤」等一项确认内容。
 - **合格标准** … 判定为「合格」的条件。数值的话，可以设定为「在 5.98 ～ 6.02 mm 之间算合格」。
 - **抽检** … 不是检查全部产品，而是只取出一部分进行检查。本界面上通过「**検査対象**」（检查对象）设定。
@@ -134,13 +134,13 @@ screenshots: [master-inspection-template-list-01, master-inspection-template-new
 
 | 项目 | 填什么 |
 |------|--------|
-| [编码 / 名称](#field-code) | 模板的管理编号与名称，关联指示书时按该名称选择 |
+| [编码 / 名称](#field-code) | 模板的管理编号与名称，关联到指示书的检查工序时按该名称选择 |
 | [关联工序](#field-process-step) | 该检查表用于哪道工序 |
-| [有效](#field-active) | 取消后，关联指示书的选项中将不再显示 |
+| [有效](#field-active) | 取消后，关联到指示书检查工序的选项中将不再显示 |
 
 ### 编码 / 名称 [#field-code]
 
-模板的管理编号与名称，关联指示书时按该名称选择。
+模板的管理编号与名称，关联到指示书的检查工序时按该名称选择。
 
 ### 关联工序 [#field-process-step]
 
@@ -148,7 +148,7 @@ screenshots: [master-inspection-template-list-01, master-inspection-template-new
 
 ### 有效 [#field-active]
 
-取消后，关联指示书的选项中将不再显示。
+取消后，关联到指示书检查工序的选项中将不再显示。
 
 ## 常见问题・遇到麻烦时
 

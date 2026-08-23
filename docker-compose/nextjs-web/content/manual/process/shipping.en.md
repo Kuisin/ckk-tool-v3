@@ -10,7 +10,7 @@ This page describes how finished product is sent out, and how the delivery note 
 
 ```
 Shipping order ─→ Confirm ─→ Ship ─→ Delivery note ─→ Issue ─→ Delivered
- (choose the lot)          (stock falls) (destination, prices?)   (on to billing)
+ (pick the order acceptance) (stock falls) (destination, prices?)  (on to billing)
 ```
 
 Product kept in-house is recorded with the "stock storage" shipping type, and does not go on to billing.
@@ -19,7 +19,7 @@ Product kept in-house is recorded with the "stock storage" shipping type, and do
 
 | Stage | What happens | Who | App |
 |-------|--------------|-----|-----|
-| 1. Create the shipping order | Pick the order line, the product and the lot | Shipping | [Shipping Order](/manual/en/operations/shipping/delivery-order/user) (`SH01`) |
+| 1. Create the shipping order | Pick the order acceptance, then the lines and lots | Shipping | [Shipping Order](/manual/en/operations/shipping/delivery-order/user) (`SH01`) |
 | 2. Confirm | Fix the contents, ready to ship | Shipping | [Shipping Order](/manual/en/operations/shipping/delivery-order/user) (`SH01`) |
 | 3. Ship | Send it out; stock falls | Shipping | [Shipping Order](/manual/en/operations/shipping/delivery-order/user) (`SH01`) |
 | 4. Create the delivery note | Decide the destination and whether prices appear | Shipping | [Delivery Note](/manual/en/operations/shipping/delivery-note/user) (`SH02`) |
@@ -29,7 +29,7 @@ Product kept in-house is recorded with the "stock storage" shipping type, and do
 
 ### 1–3. Shipping order
 
-Choose the order line, then the product and the **lot**. The lot is the same number as the work order, so which production run went out stays on record. Choose the shipping plant too — **stock falls at that plant**.
+Pick the **order acceptance** — its shippable order lines come in as groups, with quantities filled from the work orders' finished output. Choose the **lot** per group. The lot is the same number as the work order, so which production run went out stays on record. Choose the shipping plant too — **stock falls at that plant**. You cannot ship more than the order remainder; shipping less brings up a partial-shipment confirmation.
 
 There are two types:
 

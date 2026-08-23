@@ -21,7 +21,7 @@ Order line ─→ Check stock ─→ Work order ─→ Approval ─→ Run the s
 |-------|--------------|-----|-----|
 | 1. Check product stock | Split what can come from stock and what must be made | Production control | [Inventory](/manual/en/operations/production/product-inventory/user) (`PD04`) |
 | 2. Check material | See whether there is enough material to make it | Production control | [Inventory](/manual/en/operations/production/material-inventory/user) (`PD04`) |
-| 3. Create the work order | Split stock/manufacture and lay out the process steps | Sales support | [Work Order](/manual/en/operations/production/work-order/user) (`PD02`) |
+| 3. Create the work order | Split stock/manufacture (steps are laid out for manufacture only; stock work orders have a fixed set) | Sales support | [Work Order](/manual/en/operations/production/work-order/user) (`PD02`) |
 | 4. Get approval | First and second approval before production may start | Approvers | [Approvals](/manual/en/operations/production/approval/user) (`PD03`) |
 | 5. Run the steps | The shop floor records start, finish and quantities | Manufacturing | [Work Order](/manual/en/operations/production/work-order/user) / shop-floor tablet |
 | 6. Complete | When every step is done the product enters stock | Manufacturing / production control | [Inventory](/manual/en/operations/production/product-inventory/user) |
@@ -34,7 +34,7 @@ Look at product stock first and split the order into **what can ship from stock*
 
 ### 3. Creating the work order
 
-Create work orders for the stock portion and the manufacturing portion, and lay out the process steps in order. If there is an earlier work order for the same customer and product you can copy it (a warning appears if the content has changed). Each step is either internal or outsourced; outsourced steps appear in the [Outsource Order](/manual/en/operations/purchasing/outsource-order/user) list.
+Create work orders for the stock portion and the manufacturing portion. Steps are laid out for the manufacturing portion, always starting from an issue / handoff step (a stock work order is a fixed set: product issue plus optional pre-ship inspection). Shipping itself is not a step — it is managed by the [delivery order](/manual/en/operations/shipping/delivery-order/user). If there is an earlier work order for the same customer and product you can copy it (a warning appears if the content has changed). Each step is either internal or outsourced; outsourced steps appear in the [Outsource Order](/manual/en/operations/purchasing/outsource-order/user) list.
 
 ### 4. Approval
 
@@ -54,7 +54,7 @@ Once every step is finished, the product enters stock and [the shipping flow](/m
 
 | Document | States |
 |----------|--------|
-| Order line | Draft → Confirmed → In production → Partially shipped → Shipped (can be cancelled) |
+| Order line | Draft → Confirmed → In production → Partially shipped → Shipped (cancellation only via the whole order acceptance, with approval) |
 | Work order | Draft → Pending approval → Approved → In progress → Completed (can be cancelled) |
 | Work order approval | 1st pending → 1st approved → 2nd pending → Approved (can be sent back) |
 | Process step | Not started → In progress → Completed (can be cancelled; paused stays in progress) |

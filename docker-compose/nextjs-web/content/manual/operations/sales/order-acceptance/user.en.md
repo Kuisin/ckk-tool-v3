@@ -14,6 +14,8 @@ The computer reads the order form sent by the customer (a PDF or a scanned image
 - If a unit price differs from the [price list](/manual/en/operations/sales/price-list/user), **the screen tells you**.
 - After you get your manager's approval, you can make the **注文明細 (order lines)** all at once — one per line item.
 - If there is no order form file, you can register it by typing it in.
+- From a deployed order acceptance you can go straight on to **creating the delivery order**.
+- When an order is withdrawn, you can **request cancellation of the whole order acceptance** (it goes through approval).
 
 Use this when an order form arrives from a customer by fax or email.
 
@@ -24,7 +26,7 @@ Use this when an order form arrives from a customer by fax or email.
 - **明細 (line item)** … one row inside the order. It says which product and how many pieces.
 - **注文確定 (deploy)** … the action of making the order lines from an order acceptance all at once.
 - **価格差異 (price difference)** … when the unit price written on the order form differs from the price on the price list.
-- **取込中 (importing) / 下書き (draft) / 承認依頼中 (waiting for approval) / 承認済 (approved) / 確定済 (deployed) / アーカイブ (archived)** … where the order acceptance stands now.
+- **取込中 (importing) / 下書き (draft) / 承認依頼中 (waiting for approval) / 承認済 (approved) / 確定済 (deployed) / アーカイブ (archived) / キャンセル (cancelled)** … where the order acceptance stands now.
 
 ## Before you start
 
@@ -128,7 +130,26 @@ One 注文明細 (order line) is made per line item. The numbers follow the orde
 
 If you entered a quote number, that [quote](/manual/en/operations/sales/quote/user) becomes 「受諾済」(accepted) automatically.
 
-When the work is finished, press「**アーカイブ**」(archive) to put it away. Archived records cannot be edited after that.
+After deployment, a card 「**次のステップ: 出荷書の作成**」 (next step: create the delivery order) appears at the top. Pressing 「**出荷書を作成**」 opens the [delivery order](/manual/en/operations/shipping/delivery-order/user) form with this order acceptance's shippable lines already loaded.
+
+The 「…」 menu at the top right always lists 「**出荷書を作成**」 (create delivery order), 「**アーカイブ**」 (archive) and 「**キャンセル依頼**」 (request cancellation). Actions you cannot use right now are grayed out with the reason underneath. When the work is finished, press 「**アーカイブ**」 to put it away (optional). Archived records cannot be edited after that.
+
+## Requesting a cancellation
+
+When an order is withdrawn, you cancel the **whole order acceptance** (there is no per-line cancellation).
+
+1. On a deployed order acceptance, choose 「**キャンセル依頼**」 (request cancellation) from the 「…」 menu.
+2. Enter the **reason** (required) and press 「**キャンセルを依頼する**」.
+
+If the 「**注文請書キャンセル**」 (order acknowledgement cancellation) flow in the [approval settings](/manual/en/operations/masters/approval-setting/user) has steps, **nothing changes until approval finishes**. A pending card appears at the top of the screen; approvers see 「**承認**」 (approve) and 「**差し戻し**」 (reject) buttons there (they can also act from the [approval management](/manual/en/operations/production/approval/user) list). With no steps configured, the cancellation applies immediately.
+
+On final approval, the following happens automatically:
+
+- Every order line is **cancelled** and the order acceptance itself becomes 「**キャンセル**」 (cancelled).
+- All reserved stock is **released**.
+- Unfinished work orders are **cancelled along with it** (completed ones, and combined-lot work orders that also make pieces for other lines, are left alone).
+
+If even one line has already shipped, cancellation cannot be requested. If the request is rejected, nothing changes and the request is closed.
 
 ## Input fields
 
