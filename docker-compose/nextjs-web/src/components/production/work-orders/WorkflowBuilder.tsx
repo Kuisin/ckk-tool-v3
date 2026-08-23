@@ -355,7 +355,7 @@ export function WorkflowBuilder({
   const selected = form.values.selectedStepIds;
 
   // 種別で使える工程が変わる（§7 再編）:
-  //   在庫分   = 製品出し（在庫）+ 出荷前検査/出荷 のみ（工程リスト不要）
+  //   在庫分   = 製品出し（在庫）+ 出荷前検査 のみ（工程リスト不要）
   //   製造分   = 製品出し（在庫）以外（従来どおり工程リスト必須）
   const isStock = form.values.type === "FROM_STOCK";
   const productIssueId = useMemo(

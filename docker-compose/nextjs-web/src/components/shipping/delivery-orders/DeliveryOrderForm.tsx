@@ -755,7 +755,14 @@ export function DeliveryOrderForm({
                           {info.shippedQuantity > 0
                             ? ` · 出荷済 ${info.shippedQuantity}`
                             : ""}{" "}
-                          · 完了指示書 {info.completedWorkOrders.length} 件
+                          {/* 完成 = 接続された指示書の完成数のうちこの明細への配分
+                              （distributeFinished）— DO の数量はこれが源泉 */}
+                          · 完成{" "}
+                          {info.completedWorkOrders.reduce(
+                            (sum, wo) => sum + wo.outputQuantity,
+                            0,
+                          )}
+                          （完了指示書 {info.completedWorkOrders.length} 件）
                         </Text>
                       )}
                       {info &&

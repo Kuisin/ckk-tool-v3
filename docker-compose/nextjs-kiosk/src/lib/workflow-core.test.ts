@@ -138,14 +138,13 @@ describe("defaultOrder", () => {
     expect(defaultOrder([13, 7, 1], catalog)).toEqual([1, 7, 13]);
   });
 
-  it("出荷系は常に末尾（出荷前検査 → 出荷）", () => {
+  it("出荷前検査は常に末尾（出荷そのものは出荷書 DO の責務 — 工程には無い）", () => {
     const catalog = [
       cat(1, "MATERIAL_ISSUE", 10),
       cat(7, "S7", 70),
-      cat(41, "SHIPPING", 5), // sort_order をいじられても末尾
-      cat(40, "PRE_SHIP_INSPECTION", 6),
+      cat(40, "PRE_SHIP_INSPECTION", 6), // sort_order をいじられても末尾
     ];
-    expect(defaultOrder([41, 40, 7, 1], catalog)).toEqual([1, 7, 40, 41]);
+    expect(defaultOrder([40, 7, 1], catalog)).toEqual([1, 7, 40]);
   });
 });
 

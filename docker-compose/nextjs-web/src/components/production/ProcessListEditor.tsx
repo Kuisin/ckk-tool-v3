@@ -17,7 +17,7 @@
  * セクション構成（§7 再編）:
  *   出し・受渡し（開始） — 全ての構成はここから始まる（1 つ以上必須）
  *   カテゴリ別（準備・加工・コーティング・検査・検査承認）
- *   出荷（任意） — 追加すると常に末尾（出荷前検査 → 出荷）
+ *   出荷前検査（任意） — 追加すると常に末尾（出荷は工程ではなく出荷書 SH01 の責務）
  */
 
 import {
@@ -492,10 +492,11 @@ export function ProcessListEditor({
               <Stack gap="xs">
                 <Group gap={6}>
                   <Text c="dimmed" fw={600} size="xs">
-                    出荷（任意）
+                    出荷前検査（任意）
                   </Text>
                   <Text c="dimmed" size="xs">
-                    — 追加すると常に最後に実行されます（出荷前検査 → 出荷）
+                    —
+                    追加すると常に最後に実行されます。出荷そのものは出荷書（SH01）で管理します
                   </Text>
                 </Group>
                 <SimpleGrid cols={isMobile ? 1 : 2} spacing="xs">

@@ -89,7 +89,7 @@ export interface OrderedStepCreate extends StepCompositionInput {
  * 未知/重複工程・ブロッカー（AND 不足・排他違反・開始工程なし）は
  * エラーメッセージを返す。type で構成規則が変わる:
  *   MANUFACTURE（既定・工程ルートも同じ）= 製品出し（在庫）は使えない
- *   FROM_STOCK = 製品出し（在庫）必須 + 出荷前検査/出荷 のみ許可
+ *   FROM_STOCK = 製品出し（在庫）必須 + 出荷前検査 のみ許可
  * 実施場所は INTERNAL → plantId / OUTSOURCE → supplierBpId のみ保持する。
  */
 export async function validateAndOrderSteps(
@@ -109,7 +109,7 @@ export async function validateAndOrderSteps(
   }
   const catalogById = new Map(catalog.steps.map((s) => [s.id, s]));
   if (type === "FROM_STOCK") {
-    // 在庫分は固定構成: 製品出し（必須）+ 出荷前検査/出荷（任意）のみ。
+    // 在庫分は固定構成: 製品出し（必須）+ 出荷前検査（任意）のみ。
     const invalid = ids.filter((id) => {
       const step = catalogById.get(id);
       return (
@@ -120,7 +120,7 @@ export async function validateAndOrderSteps(
       return {
         ok: false,
         error:
-          "在庫分の指示書に選べる工程は 製品出し（在庫）・出荷前検査・出荷 だけです",
+          "在庫分の指示書に選べる工程は 製品出し（在庫）・出荷前検査 だけです",
       };
     }
     if (

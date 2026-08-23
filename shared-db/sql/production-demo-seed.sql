@@ -322,17 +322,11 @@ VALUES
    'PENDING'::app."STEP_STATUS", NULL, NULL, NULL, NULL, NULL, NULL, NULL,
    NULL, NULL, NULL, NULL, NULL),
 
-  -- #9003（在庫分）: 出荷前検査 → 出荷 のみ
+  -- #9003（在庫分）: 出荷前検査 のみ（出荷は工程ではなく出荷書 DO の責務）
   ('dc013000-0000-4000-8000-000000000001'::uuid, 'dc000000-0000-4000-8000-000000009003'::uuid,
    (SELECT id FROM app.process_step_catalog WHERE code = 'PRE_SHIP_INSPECTION'), 1,
    'INTERNAL'::app."STEP_EXECUTION", (SELECT id FROM app.plants WHERE code = 'F01'),
    NULL, 0.5, NULL, NULL, NULL, NULL,
-   'PENDING'::app."STEP_STATUS", NULL, NULL, NULL, NULL, NULL, NULL, NULL,
-   NULL, NULL, NULL, NULL, NULL),
-  ('dc013000-0000-4000-8000-000000000002'::uuid, 'dc000000-0000-4000-8000-000000009003'::uuid,
-   (SELECT id FROM app.process_step_catalog WHERE code = 'SHIPPING'), 2,
-   'INTERNAL'::app."STEP_EXECUTION", (SELECT id FROM app.plants WHERE code = 'F01'),
-   NULL, NULL, NULL, NULL, NULL, NULL,
    'PENDING'::app."STEP_STATUS", NULL, NULL, NULL, NULL, NULL, NULL, NULL,
    NULL, NULL, NULL, NULL, NULL),
 
