@@ -200,22 +200,25 @@ export function OrderAcceptanceCreateForm({
             value={deliveryMethod}
             withAsterisk
           />
-          {deliveryMethod === "DIRECT_TO_USER" && (
-            <SearchSelect
-              clearable
-              error={endUserError}
-              label={<HelpLabel {...fieldHelp("orderAcceptance", "endUser")} />}
-              onChange={(v) => {
-                setEndUserBpId(v);
-                if (v) setEndUserError(null);
-              }}
-              onSearch={searchEndUserOptions}
-              placeholder="エンドユーザーを検索"
-              storageKey="end-user"
-              value={endUserBpId}
-              withAsterisk
-            />
-          )}
+          {/* エンドユーザー — 直送では必須、通常配送でも記録用に任意で選べる。 */}
+          <SearchSelect
+            clearable
+            error={endUserError}
+            label={<HelpLabel {...fieldHelp("orderAcceptance", "endUser")} />}
+            onChange={(v) => {
+              setEndUserBpId(v);
+              if (v) setEndUserError(null);
+            }}
+            onSearch={searchEndUserOptions}
+            placeholder={
+              deliveryMethod === "DIRECT_TO_USER"
+                ? "エンドユーザーを検索"
+                : "エンドユーザーを検索（任意）"
+            }
+            storageKey="end-user"
+            value={endUserBpId}
+            withAsterisk={deliveryMethod === "DIRECT_TO_USER"}
+          />
           <Select
             clearable
             data={plantOptions}

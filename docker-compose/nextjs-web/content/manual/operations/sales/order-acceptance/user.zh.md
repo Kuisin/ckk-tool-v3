@@ -201,7 +201,7 @@ screenshots: [order-acceptance-list-01, order-acceptance-new-01, order-acceptanc
 
 ### 最终用户 [#field-end-user]
 
-直送时的实际送达对象（最终需要方）。**选择直送时为必填**。从登记为最终需要方的往来单位中选择。
+实际送达对象（最终需要方）。**选择直送时为必填**，普通配送时也可作为记录选填。从登记为最终需要方的往来单位中选择。
 
 ### 负责据点 [#field-assigned-plant]
 
