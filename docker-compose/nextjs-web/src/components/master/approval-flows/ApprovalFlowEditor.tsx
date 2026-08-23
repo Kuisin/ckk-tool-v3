@@ -85,6 +85,7 @@ export function ApprovalFlowEditor({
   approversByGroup,
   permissionCode,
   permissionLabel,
+  rulesSection,
 }: {
   targetType: string;
   targetLabel: string;
@@ -95,6 +96,8 @@ export function ApprovalFlowEditor({
   /** この書類の承認に必要な権限コード。 */
   permissionCode: string;
   permissionLabel: string;
+  /** 条件付きフロー（ApprovalFlowRulesSection）— 既定フローの下に出す。 */
+  rulesSection?: React.ReactNode;
 }) {
   const router = useRouter();
   const isMobile = useIsMobile();
@@ -341,6 +344,9 @@ export function ApprovalFlowEditor({
           </GhostButton>
         </Stack>
       </FormSection>
+
+      {/* 条件付きフロー — 保存は独立（このページの保存ボタンは既定フローのみ） */}
+      {rulesSection}
 
       {issues.length > 0 && (
         <Text c="red" size="xs">

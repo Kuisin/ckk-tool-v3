@@ -172,7 +172,8 @@ export async function fetchApprovalDocInfo(
       // 確定前は amount が null なので quantity × unitPrice で補完。
       const totalAmount = row.items.reduce((sum, it) => {
         if (it.amount != null) return sum + Number(it.amount);
-        if (it.unitPrice != null) return sum + it.quantity * Number(it.unitPrice);
+        if (it.unitPrice != null)
+          return sum + it.quantity * Number(it.unitPrice);
         return sum;
       }, 0);
       return {
@@ -238,7 +239,8 @@ export async function fetchApprovalDocInfo(
       if (!row) return null;
       const totalAmount = row.acceptance.items.reduce((sum, it) => {
         if (it.amount != null) return sum + Number(it.amount);
-        if (it.unitPrice != null) return sum + it.quantity * Number(it.unitPrice);
+        if (it.unitPrice != null)
+          return sum + it.quantity * Number(it.unitPrice);
         return sum;
       }, 0);
       return {

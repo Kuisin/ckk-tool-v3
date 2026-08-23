@@ -1,6 +1,8 @@
 import { notFound } from "next/navigation";
 import { ApprovalFlowEditor } from "@/components/master/approval-flows/ApprovalFlowEditor";
+import { ApprovalFlowRulesSection } from "@/components/master/approval-flows/ApprovalFlowRulesSection";
 import type { FlowApprover } from "@/components/master/approval-flows/ApproverPermissionBadge";
+import { conditionsFromJson } from "@/lib/approval-conditions";
 import type { ApprovalMode } from "@/lib/approval-flow";
 import { loadGroupApprovers } from "@/lib/approval-permissions";
 import { APPROVAL_TARGET, isApprovalTargetType } from "@/lib/approval-targets";
@@ -22,7 +24,7 @@ export default async function ApprovalFlowEditPage({
   if (!isApprovalTargetType(targetType)) notFound();
 
   const permissionCode = APPROVAL_TARGET[targetType].approvePermission;
-  const [steps, groups, permission] = await Promise.all([
+  const [steps, groups, permission, rules, plants] = await Promise.all([
     prisma.approvalFlowStep.findMany({
       where: { targetType },
       orderBy: { stepNo: "asc" },
@@ -35,6 +37,18 @@ export default async function ApprovalFlowEditPage({
     prisma.permission.findUnique({
       where: { code: permissionCode },
       select: { displayName: true },
+    }),
+    // 条件付きフロー（無効も出す — 一覧でトグルできる）
+    prisma.approvalFlowRule.findMany({
+      where: { targetType },
+      include: { steps: { orderBy: { stepNo: "asc" } } },
+      orderBy: { priority: "asc" },
+    }),
+    // 条件の動的選択肢（担当拠点）
+    prisma.plant.findMany({
+      where: { isActive: true },
+      orderBy: { code: "asc" },
+      select: { id: true, code: true, name: true },
     }),
   ]);
 
@@ -56,14 +70,21 @@ export default async function ApprovalFlowEditPage({
   }
 
   const targetLabel = APPROVAL_TARGET[targetType].label;
+  const groupOptions = groups.map((g) => ({
+    value: String(g.id),
+    label: localized(g.name as LocalizedText | null),
+  }));
+  const dynamicOptions = {
+    plants: plants.map((p) => ({
+      value: String(p.id),
+      label: `${p.code} ${localized(p.name as LocalizedText | null)}`,
+    })),
+  };
 
   return (
     <ApprovalFlowEditor
       approversByGroup={approversByGroup}
-      groupOptions={groups.map((g) => ({
-        value: String(g.id),
-        label: localized(g.name as LocalizedText | null),
-      }))}
+      groupOptions={groupOptions}
       initialSteps={steps.map((s) => {
         const name = s.name as LocalizedText | null;
         return {
@@ -79,6 +100,33 @@ export default async function ApprovalFlowEditPage({
         permission
           ? localized(permission.displayName as LocalizedText | null)
           : permissionCode
+      }
+      rulesSection={
+        <ApprovalFlowRulesSection
+          dynamicOptions={dynamicOptions}
+          groupOptions={groupOptions}
+          rules={rules.map((r) => {
+            const name = r.name as LocalizedText | null;
+            return {
+              id: r.id,
+              nameJa: name?.ja ?? "",
+              nameEn: name?.en ?? "",
+              isActive: r.isActive,
+              conditions: conditionsFromJson(r.conditions),
+              steps: r.steps.map((s) => {
+                const stepName = s.name as LocalizedText | null;
+                return {
+                  nameJa: stepName?.ja ?? "",
+                  nameEn: stepName?.en ?? "",
+                  groupId: String(s.groupId),
+                  mode: s.mode as ApprovalMode,
+                };
+              }),
+            };
+          })}
+          targetLabel={targetLabel}
+          targetType={targetType}
+        />
       }
       targetLabel={targetLabel}
       targetType={targetType}
