@@ -59,9 +59,14 @@ body {
 }
 
 /*
- * ホーム画面 PWA（スタンドアロン起動）では、最上部より上への overscroll を
- * 止める — iOS のバウンドが自前の「引き下げて更新」
- * (components/layout/PullToRefresh.tsx) と競合するため。ブラウザのタブで
+ * ホーム画面 PWA（スタンドアロン起動）では、縦の overscroll（iOS の
+ * ラバーバンドバウンド）そのものを止める。バウンドが途中で断ち切られると
+ * （バウンド戻り中に指で触れてスクロールを始めた等）、WebKit は文書の
+ * スクロール位置を負のまま残し、固定ヘッダー / フッターが画面の 4 割ほど
+ * 上へずれて描かれることがある。`contain` はスクロール連鎖を止めるだけで
+ * ルートスクローラにはバウンドが残るため、`none` でバウンド自体を消す。
+ * 自前の「引き下げて更新」(components/layout/PullToRefresh.tsx) は touch
+ * イベント駆動でバウンドに依存しないので影響なし。ブラウザのタブで
  * 開いているときは触らない（ブラウザ標準の pull-to-refresh を残す）。
  */
 @media (display-mode: standalone), (display-mode: fullscreen) {
@@ -71,7 +76,7 @@ body {
    * ずれることがある。
    */
   html {
-    overscroll-behavior-y: contain;
+    overscroll-behavior-y: none;
   }
 }
 

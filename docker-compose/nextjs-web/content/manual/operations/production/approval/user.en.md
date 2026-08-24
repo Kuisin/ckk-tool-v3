@@ -16,22 +16,24 @@ This app gathers, on one screen, only the documents that are waiting for approva
 
 These are the documents that appear in the list.
 
-- **指示書** (work order) … first and second approval ([work order](/manual/en/operations/production/work-order/user) PD02)
+- **指示書** (work order) … the stages decided in the approval settings ([work order](/manual/en/operations/production/work-order/user) PD02)
+- **注文請書** (order acceptance) … the approval before it is confirmed ([order acceptance](/manual/en/operations/sales/order-acceptance/user) SA04)
+- **注文請書キャンセル** (order acceptance cancellation) … a request to cancel a confirmed order acceptance. Clicking the row opens the screen of that order acceptance
 - **素材発注書** (material purchase order) … the approval before the order is placed ([material purchase order](/manual/en/operations/purchasing/purchase-order/user) PU02)
 - **購買依頼** (purchase request) … [purchase request](/manual/en/operations/purchasing/purchase-request/user) PU01
-- **注文請書** (order acceptance) … it appears in the list, but because there is no dedicated approval screen for it yet, clicking the row does not take you anywhere
+- **工程フロー変更** (step flow change) … a change that adds or fixes a step branch on an approved or in-progress work order. Clicking the row opens the screen of that work order
 
 ## Words used on this page
 
-- **承認グループ** (approval group) … the list of people who are allowed to approve. Only people on this list can approve or send back.
+- **承認グループ** (approval group) … the list of people who are allowed to approve. Only people on this list can approve or send back. Which group approves each stage is decided in the approval settings (`MS0B`).
 - **代理** (stand-in) … a person appointed for a set period to approve while the usual approver is away.
-- **段階** (stage) … the order of approvals. A work order is split into two: first and second.
+- **段階** (stage) … the order of approvals. How many stages a document goes through is decided per document type in the approval settings (`MS0B`), and can also differ depending on what is in the document.
 - **差し戻し** (send back) … returning a document to the person who made it when there is a problem. The document goes back to draft.
 
 ## Before you start
 
 - To approve or send back, **you must be in the approval group for that stage**. If you are not, the buttons do not appear on the screen.
-- Being added to a group and setting up stand-ins is done in [approval group](/manual/en/operations/masters/approval-setting/user). It is not something you set up yourself, so please ask an administrator when you need it.
+- Being added to a group and setting up stand-ins is done in [approval settings](/manual/en/operations/masters/approval-setting/user). It is not something you set up yourself, so please ask an administrator when you need it.
 
 ## How to read the screen
 
@@ -39,14 +41,14 @@ When you open the app, the documents waiting for approval are listed.
 
 ![Approval management list](../../../assets/screenshots/approval-list-01.png)
 
-- **種別** (document type) … a coloured badge shows which of 「指示書」 (work order), 「素材発注書」 (material purchase order), 「購買依頼」 (purchase request), or 「注文請書」 (order acceptance) it is.
+- **種別** (document type) … a coloured badge shows which of 「指示書」 (work order), 「注文請書」 (order acceptance), 「注文請書キャンセル」 (order acceptance cancellation), 「素材発注書」 (material purchase order), 「購買依頼」 (purchase request), or 「工程フロー変更」 (step flow change) it is.
 - **対象番号** (document number) … the number of that document.
-- **段階** (stage) … either 「**第一**」 (first) or 「**第二**」 (second). Everything except work orders is approved once.
+- **段階** (stage) … shows **which stage it is on out of how many**, with the stage name — such as 「**2/3 部門承認**」 (2/3, department approval). When there is only one stage, only the stage name is shown. The last stage changes colour, so you can see it is one approval away from going through. When the stage is set to "everyone", 「全員 ◯/◯」 (everyone ◯/◯) is added as well.
 - **依頼者** (requester) … the person who asked for approval.
 - **依頼日時** (request date and time) … when it was asked for. **The oldest are at the top**, so the ones that have been waiting longest come first.
 - **備考** (notes) … any note written when the approval was requested.
-- Use the search box at the top to search by **document number, requester, or notes**. You can also narrow it down with 「**種別**」 (document type) and 「**段階**」 (stage).
-- Rows with a 「**旧データ**」 (older data) badge are requests made before the way of recording was changed. You can approve them just as before.
+- Use the search box at the top to search by **document number, requester, or notes**. You can also narrow it down with 「**種別**」 (document type).
+- Rows with a 「**閲覧権限なし**」 (no view permission) badge are ones where you are in the approval group but do not have permission to open that document. Approval happens on the document's screen, so please ask an administrator about granting the permission.
 - When the list is empty, it shows 「**承認待ちの依頼はありません**」 (There are no requests waiting for approval).
 
 ## Approving
@@ -58,7 +60,9 @@ When you open the app, the documents waiting for approval are listed.
 
 ![Approval status shown on the work order screen](../../../assets/screenshots/approval-panel-01.png)
 
-A work order goes through **first approval → second approval**, two stages. Once the second approval is done, the factory can start the work.
+How many stages of approval a document goes through is decided per document. The card shows which stage it is on, such as 「第 2/3 段「部門承認」・製造部長」 (stage 2 of 3, "department approval" — manufacturing manager). Once the last stage is through, the next work can go ahead (for a work order, manufacturing can start).
+
+When a stage is set to 「**全員**」 (everyone), it does not move on until everyone covered by that stage has approved. The card shows 「残り ◯ 名」 (◯ people remaining) with the names of those who have not approved yet.
 
 > 💡 Only people in the approval group for that step, and stand-ins within their period, can approve. If the button does not appear, the screen shows 「◯◯ のメンバーのみ承認・差し戻しできます」 with the group name (Only members of that group can approve or send back).
 
@@ -109,8 +113,8 @@ A. There are no requests waiting for approval right now. Requests that have been
 **Q. The approval button does not appear.**
 A. You are not in the approval group for that stage. Please ask an administrator about being added to the approval group.
 
-**Q. Nothing happens when I click a row.**
-A. That row is of the type 「注文請書」 (order acceptance). There is no dedicated approval screen for this document yet, so it only appears in the list.
+**Q. A row has a 「閲覧権限なし」 (no view permission) badge.**
+A. You are in the approval group, but you do not have permission to open that document. Approving and sending back happen on the document's detail screen, so please ask an administrator about granting the permission.
 
 **Q. I pressed the send-back button and saw 「差し戻し理由を入力してください」 (Please enter a reason for sending back).**
 A. The reason is still empty. A reason is required, so please write it and press 「差し戻す」 (Send back) again.
@@ -119,4 +123,4 @@ A. The reason is still empty. A reason is required, so please write it and press
 A. Another person who can approve may have dealt with it first. Requests that have been dealt with disappear from this list automatically. You can still open the document itself from its own app.
 
 **Q. Approvals stop while I am away.**
-A. A stand-in can be set up for a set period. This is set in [approval group](/manual/en/operations/masters/approval-setting/user), so please ask an administrator.
+A. A stand-in can be set up for a set period. This is set in [approval settings](/manual/en/operations/masters/approval-setting/user), so please ask an administrator.

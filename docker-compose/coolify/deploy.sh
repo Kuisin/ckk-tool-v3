@@ -11,12 +11,20 @@
 #   ./deploy.sh kiosk-main       deploy nextjs-kiosk prod (ckk-kiosk.kai-lab.net:3007)
 #   ./deploy.sh po-extract-dev   deploy po-extract dev  (internal only — 公開ポート無し)
 #   ./deploy.sh po-extract-main  deploy po-extract prod (internal only — 公開ポート無し)
+#   ./deploy.sh db-migrate-dev   apply DB migrations to ckk-db-dev  (通常は push で自動)
+#   ./deploy.sh db-migrate-main  apply DB migrations to ckk-db-main (通常は push で自動)
+#   ./deploy.sh ckk-db-dev       ⚠ DB コンテナを作り直す（イメージ更新時のみ）
+#   ./deploy.sh ckk-db-main      ⚠ 同上・本番
+#
+# ⚠ ckk-db-* はデータベース本体。自動デプロイは切ってあり、ここから明示的に
+#   流したときだけ再作成される。永続ボリュームが付いていることを確認してから。
 #
 # Uses the server-side API token; nothing secret leaves the server.
 
 set -euo pipefail
 
-TARGET=${1:?usage: deploy.sh dev|main|admin-dev|admin-main|kiosk-dev|kiosk-main|po-extract-dev|po-extract-main [git-sha]}
+USAGE="usage: deploy.sh dev|main|admin-dev|admin-main|kiosk-dev|kiosk-main|po-extract-dev|po-extract-main|db-migrate-dev|db-migrate-main|ckk-db-dev|ckk-db-main [git-sha]"
+TARGET=${1:?$USAGE}
 SHA=${2:-}
 case "$TARGET" in
   dev)                    APP_NAME=nextjs-web-dev ;;
@@ -27,7 +35,20 @@ case "$TARGET" in
   kiosk-main)             APP_NAME=nextjs-kiosk-main ;;
   po-extract-dev)         APP_NAME=po-extract-dev ;;
   po-extract-main)        APP_NAME=po-extract-main ;;
-  *) echo "unknown target: $TARGET (dev|main|admin-dev|admin-main|kiosk-dev|kiosk-main|po-extract-dev|po-extract-main)"; exit 1 ;;
+  db-migrate-dev)         APP_NAME=db-migrate-dev ;;
+  db-migrate-main)        APP_NAME=db-migrate-main ;;
+  ckk-db-dev|ckk-db-main) APP_NAME=$TARGET ;;
+  *) echo "unknown target: $TARGET"; echo "$USAGE"; exit 1 ;;
+esac
+
+case "$TARGET" in
+  ckk-db-*)
+    echo "⚠  $APP_NAME はデータベース本体です。再デプロイでコンテナが作り直されます。"
+    echo "   永続ボリューム（/var/lib/postgresql/data）が付いていることを確認しましたか？"
+    printf "   続けるには 'yes' と入力: "
+    read -r confirm
+    [ "$confirm" = "yes" ] || { echo "中止しました"; exit 1; }
+    ;;
 esac
 
 ssh 192.168.50.15 bash -s -- "$APP_NAME" "$SHA" <<'EOS'

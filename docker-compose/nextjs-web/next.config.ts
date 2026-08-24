@@ -76,6 +76,18 @@ const nextConfig: NextConfig = {
     : {}),
   async redirects() {
     return [
+      // 旧 承認管理 (PD03) → 一般カテゴリの 承認・予定 (CM01)。
+      // 詳細 URL は指示書詳細へ（承認カードは指示書詳細に出る）。
+      {
+        source: "/production/approvals",
+        destination: "/general/tasks",
+        permanent: true,
+      },
+      {
+        source: "/production/approvals/:id",
+        destination: "/production/work-orders/:id",
+        permanent: true,
+      },
       // 旧 /docs（?lang= クエリ方式）→ 新 /manual・/internal-docs（ロケール
       // セグメント方式）。スラッグは維持。system/* だけ社内ツリーへ。
       ...(["en", "zh"] as const).flatMap((lang) => [

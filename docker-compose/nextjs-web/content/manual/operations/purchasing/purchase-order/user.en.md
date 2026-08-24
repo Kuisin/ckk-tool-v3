@@ -63,7 +63,7 @@ There are two ways to make one.
 2. Choose the 「**仕入先**」 (supplier). You must choose one.
 3. Enter the 「**発注日**」 (order date). You may leave it blank.
 4. Click the 「**素材**」 (material) box on the line item, search by material code or name, and choose one.
-5. Choose the site that will receive it in 「**入荷先拠点**」 (receiving site).
+5. Choose the site that will receive it in 「**入荷先拠点**」 (receiving site). You may leave it blank.
 6. Enter the 「**数量**」 (quantity) and the 「**単位**」 (unit).
 7. Enter the price for one piece in 「**単価**」 (unit price).
 8. Enter the date the material should arrive in 「**入荷予定日**」 (expected arrival date). You may leave it blank.
@@ -83,7 +83,7 @@ If a [purchase request](/manual/en/operations/purchasing/purchase-request/user) 
 ## Asking for approval
 
 1. Open the purchase order screen.
-2. Press 「**承認依頼**」 (Request approval) in the 「**承認・発注状況**」 (approval and ordering status) box.
+2. Press 「**承認依頼**」 (Request approval) on the 「**承認依頼が必要です**」 (approval request needed) card near the top of the screen.
 
 ![Draft material purchase order](../../../assets/screenshots/purchase-order-detail-02.png)
 
@@ -157,10 +157,10 @@ Every field on the material purchase order screen. The **?** next to a field in 
 | Field | Required | What to enter |
 |-------|----------|---------------|
 | [Supplier](#field-supplier) | Required | Who you are buying from |
-| [Order date](#field-order-date) | Required | The date of the order |
+| [Order date](#field-order-date) | Optional | The date of the order |
 | [Notes](#field-notes) | Optional | Notes for the whole order |
 | [Material](#field-material) | Required | The material being ordered |
-| [Receiving plant](#field-plant) | Required | Where it will be received |
+| [Receiving plant](#field-plant) | Optional | Where it will be received |
 | [Quantity](#field-quantity) | Required | How much to order |
 | [Unit](#field-unit) | Required | Pieces, kg and so on |
 | [Unit price](#field-unit-price) | Required | Price per unit |
@@ -169,11 +169,11 @@ Every field on the material purchase order screen. The **?** next to a field in 
 
 ### Supplier [#field-supplier]
 
-Who you are buying the material from. If they are not listed, register them in [Suppliers](/manual/en/operations/masters/business-partner/user).
+Who you are buying the material from. If they are not listed, register them in the [business partner master](/manual/en/operations/masters/business-partner/user).
 
 ### Order date [#field-order-date]
 
-The date of the order. Today's date is filled in by default.
+The date of the order. You may leave it blank — when it is empty, the day you press 「発注」 (Order) is filled in automatically.
 
 ### Notes [#field-notes]
 
@@ -185,7 +185,7 @@ The material being ordered. If the order was created from a purchase request, th
 
 ### Receiving plant [#field-plant]
 
-The plant that receives the material. **Recording the arrival increases stock at this plant.**
+The plant that receives the material. **Recording the arrival increases stock at this plant.** If it is not decided yet, you may leave it blank.
 
 ### Quantity [#field-quantity]
 

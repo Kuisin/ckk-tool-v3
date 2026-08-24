@@ -51,7 +51,7 @@ When you open the app, the records are listed newest first.
 - **操作** (Operation) … normally one of 作成 (create) / 更新 (update) / 削除 (delete). For work done by the system rather than a person, it can also show 「**初期データ**」 (seed data) or 「**マイグレーション**」 (migration).
 - **対象** (Target) … what kind of data it is (quotation, trial estimate, price list, and so on).
 - **レコード** (Record) … the number of that document. For data with no number, "—" is shown.
-- **ユーザー** (User) … the name of the person who did it. Work done by the system rather than a person is shown as 「**システム**」 (System).
+- **ユーザー** (User) … the name of the person who did it. Work done by the system rather than a person is shown as 「**システム**」 (System). Actions performed from a shared shop-floor tablet also carry a **device-name badge** under the name showing which device they came from (actions from a PC have none).
 - **変更内容** (Changes) … a summary of what changed and how. It is listed in the form "field name: before → after".
 
 > 💡 This screen shows up to the **300 newest** records. If you need to look into anything older than that, please ask your system administrator.
@@ -99,17 +99,17 @@ Activity log is a **read-only screen**. There is nothing to type — you only ch
 
 | Filter | What it changes |
 |--------|-----------------|
-| [Period](#field-period) | Which dates are shown |
-| [User](#field-user) | Whose actions are shown |
+| [Search](#field-user) | Search by document number, a person's name, or words in the changes |
+| [Operation](#field-period) | Narrow down by the kind of operation — create, update, delete and so on |
 | [Target](#field-target) | Which documents or master data are shown |
 
-### Period [#field-period]
+### Search [#field-user]
 
-The date range of records to show.
+The search box 「**レコード・ユーザー・内容で検索**」 (Search by record, user, or content). You can search by any of a document number (`QOT-…` and so on), the name of the person who acted, or words contained in the changes.
 
-### User [#field-user]
+### Operation [#field-period]
 
-Filters by who acted. Actions from a shop-floor tablet also carry a **badge** showing which device it was.
+Narrows down by the kind of operation — create, update, delete. When the system has done work of its own, 「初期データ」 (seed data) and 「マイグレーション」 (migration) can be chosen too.
 
 ### Target [#field-target]
 

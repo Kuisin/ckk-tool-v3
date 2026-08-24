@@ -15,6 +15,7 @@
  */
 
 export type AppCategory =
+  | "一般"
   | "販売"
   | "購買"
   | "生産"
@@ -46,6 +47,20 @@ export interface AppEntry {
 }
 
 export const appList: AppEntry[] = [
+  // ─── 一般 ──────────────────────────────────────────────────────────────────
+  {
+    // 承認・予定 — 自分の作業予定（work_order_step_plans）と、承認待ちの
+    // 承認依頼（旧 承認管理 PD03 の横断一覧）をまとめた個人のやることアプリ。
+    // 承認セクションは approve 権限がある人にだけ出る（ページ側で判定）。
+    key: "my-tasks",
+    label: "承認・予定",
+    operationCode: "CM01",
+    href: "/general/tasks",
+    icon: "IconClipboardList",
+    category: "一般",
+    requiredPermission: null,
+  },
+
   // ─── 販売 ──────────────────────────────────────────────────────────────────
   // 業務フロー順: 試算 → 価格表 → 見積書 → 注文請書（設計依頼書は並行フロー）
   {
@@ -160,15 +175,8 @@ export const appList: AppEntry[] = [
     category: "生産",
     requiredPermission: "work_order",
   },
-  {
-    key: "approvals",
-    label: "承認管理",
-    operationCode: "PD03",
-    href: "/production/approvals",
-    icon: "IconShieldCheck",
-    category: "生産",
-    requiredPermission: "approve",
-  },
+  // 旧 承認管理 (PD03, /production/approvals) は廃止 — 承認待ちの横断一覧は
+  // 一般カテゴリの 承認・予定 (CM01, /general/tasks) に移った。
   {
     // 在庫管理 — 旧 製品在庫 (PD04) / 素材在庫 (PD05) を統合した単一アプリ。
     // 製品・素材・仕掛品・ロケーション（保管場所×棚）+ 在庫移動。
@@ -530,6 +538,7 @@ export function workprocessHomeHref(category: AppCategory): string {
  * [Custom] Each category gets a consistent color across all views.
  */
 export const CATEGORY_COLORS: Record<AppCategory, string> = {
+  一般: "indigo",
   販売: "blue",
   購買: "teal",
   生産: "violet",
@@ -549,6 +558,7 @@ export function getAppsByCategory(): Array<{
   color: string;
 }> {
   const order: AppCategory[] = [
+    "一般",
     "販売",
     "購買",
     "生産",

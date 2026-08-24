@@ -8,6 +8,8 @@
     "activity-log",
     "kiosk-card",
     "kiosk-device",
-    "kiosk-settings"
+    "kiosk-settings",
+    "link-management",
+    "order-intake"
   ]
 }

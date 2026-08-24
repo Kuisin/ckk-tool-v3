@@ -42,12 +42,13 @@ When you open the app, you see a list of the quotes made so far.
 1. Press「**新規作成**」(New) at the top right of the list screen.
 2. Click the「**顧客**」(customer) field and choose the customer.
 3. If the customer has branches, also choose「**支店**」(branch). If there are none, just leave it.
-4. Enter the date this quote is valid until in「**有効期限**」(valid until). You can leave it empty and still save.
-5. On the line item row, choose「**製品**」(product),「**注文種別**」(order type) and「**数量**」(quantity).
-6. As you enter them, **the unit price, discount and amount appear automatically**. You do not need to correct the amount by hand.
-7. If a delivery date is fixed for the product, also enter「**納期**」(delivery date).
-8. To add another row, press「**明細を追加**」(add line item).
-9. Finally press「**保存**」(save).
+4. Check「**営業担当**」(sales rep). Choosing the customer fills in their primary rep automatically — change it if needed.
+5. Enter the date this quote is valid until in「**有効期限**」(valid until). You can leave it empty and still save.
+6. On the line item row, choose「**製品**」(product),「**注文種別**」(order type) and「**数量**」(quantity).
+7. As you enter them, **the unit price, discount and amount appear automatically**. You do not need to correct the amount by hand.
+8. If a delivery date is fixed for the product, also enter「**納期**」(delivery date).
+9. To add another row, press「**明細を追加**」(add line item).
+10. Finally press「**保存**」(save).
 
 ![New quote form](../../../assets/screenshots/quote-new-01.png)
 
@@ -59,13 +60,14 @@ Once saved, the quote is registered as 「下書き」(draft) and the detail scr
 
 ## Checking the contents
 
-The screen of a saved quote has four tabs.
+The screen of a saved quote has five tabs.
 
 ![Quote detail screen](../../../assets/screenshots/quote-detail-01.png)
 
 - **明細 (line items)** … the list of products, pieces and amounts. The subtotal, consumption tax and total are shown below.
 - **PDF** … after issuing, you can view or download the PDF here.
 - **関連 (related)** … you can check which price list and which trial estimate the amounts came from.
+- **メモ (memo)** … you can leave internal notes about this quote.
 - **履歴 (history)** … the record of who changed what, and when.
 
 ## Issuing (making it ready for the customer)
@@ -82,7 +84,7 @@ After issuing, the status changes to「**発行済**」(issued) and **the PDF is
 
 ![PDF tab](../../../assets/screenshots/quote-pdf-01.png)
 
-Open the PDF tab to view the finished quote, or download it and print it.
+Open the PDF tab to view the finished quote, or download it and print it. After issuing, you can also save it from「**PDFをダウンロード**」(download PDF) in the「**…**」menu at the top right.
 
 ## Recording what happens after issuing
 
@@ -115,6 +117,7 @@ Every field on the quote screen. The **?** next to a field in the app links stra
 |-------|----------|---------------|
 | [Customer](#field-customer) | Required | The customer the quote is for |
 | [Branch](#field-customer-branch) | Optional | The branch it is addressed to, if any |
+| [Sales rep](#field-sales-rep) | Optional | Your company's sales rep for this quote |
 | [Valid until](#field-valid-until) | Optional | Last day the quote is valid |
 | [Status](#field-status) | — | Where the quote stands now |
 | [Product](#field-product) | Required | The product being quoted |
@@ -133,6 +136,10 @@ The customer the quote is for. **The unit price comes from this customer's price
 
 The branch the quote is addressed to. If no branch is registered for that customer you cannot choose one — leaving it empty is fine.
 
+### Sales rep [#field-sales-rep]
+
+Your company's sales person in charge of this quote. Choosing the customer fills in that customer's primary rep automatically. If needed, you can pick someone else from the people registered as that customer's reps.
+
 ### Valid until [#field-valid-until]
 
 The last day this quote is valid. Past that date the quote can be treated as expired in the list. It may be left empty.
@@ -147,7 +154,7 @@ The product being quoted. Choosing it fills in the unit price that matches the c
 
 ### Order type [#field-order-type]
 
-Production, test, sample or other. **The price differs by type even for the same product**, so choose the one that matches the real order. Samples are handled at zero value.
+Production, test, sample or other. **The price differs by type even for the same product**, so choose the one that matches the real order. (For samples, the practice is to set the unit price to zero in the price list.)
 
 ### Quantity [#field-quantity]
 

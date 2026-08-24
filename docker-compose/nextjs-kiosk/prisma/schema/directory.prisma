@@ -29,7 +29,7 @@ model EmployeeDirectory {
   mobile         String?
   fax            String?
   description    String?
-  memberOf       String[] @map("member_of")
+  memberOf       String[] @default([]) @map("member_of")
   whenCreated    DateTime? @map("when_created") @db.Timestamptz(6)
   whenChanged    DateTime? @map("when_changed") @db.Timestamptz(6)
   accountExpires DateTime? @map("account_expires") @db.Timestamptz(6)

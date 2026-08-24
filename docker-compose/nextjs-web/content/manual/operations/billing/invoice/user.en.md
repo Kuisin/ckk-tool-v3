@@ -60,7 +60,7 @@ The 「明細」 (Lines) area below lists each line you are billing.
 - **由来 (Source)** … Click the blue text to open the [shipping order](/manual/en/operations/shipping/delivery-order/user) or [delivery note](/manual/en/operations/shipping/delivery-note/user) it came from.
 - At the bottom you see the subtotal, the consumption tax, and the total with tax.
 
-Below the lines there are two tabs. 「**概要**」 (Overview) shows the date and time it was sent to the customer plus the notes, and 「**履歴**」 (History) shows who moved this invoice along and when.
+Below the lines there are four tabs. 「**概要**」 (Overview) shows the date and time it was sent to the customer plus the notes, 「**PDF**」 shows the invoice PDF after issuing, 「**メモ**」 (Memo) holds a shared internal memo, and 「**履歴**」 (History) shows who moved this invoice along and when.
 
 > 💡 If you want to make sure the amount is right, open the original shipping order from the "由来" (Source) link — you can check there and then how many pieces were sent and when.
 
@@ -98,7 +98,9 @@ The status becomes 「**支払済**」 (Paid) and that invoice is finished.
 
 ## Printing (PDF)
 
-Press 「**PDF**」 at the top right of the screen and the invoice PDF opens in another tab. From there you can print it or save it.
+You can see the PDF **only after issuing**. While it is a draft the PDF has not been made yet, and the 「**PDF**」 tab shows 「発行後に PDF を閲覧できます。」 (the PDF can be viewed after issuing).
+
+After issuing, press 「**PDF**」 at the top right of the screen and the invoice PDF opens in another tab; from there you can print it or save it. The 「**PDF**」 tab also shows it right on the screen.
 
 ## Making the file for the accounting software
 
@@ -116,13 +118,13 @@ This screen has no input boxes. Invoices are **created together by the closing r
 
 | Action | What happens |
 |--------|--------------|
-| [Issue](#field-issue) | The invoice is fixed and given a number |
+| [Issue](#field-issue) | The contents of the invoice are fixed |
 | [Mark as sent](#field-sent) | Records that it went to the customer |
 | [Mark as paid](#field-paid) | Records that payment arrived |
 
 ### Issue [#field-issue]
 
-Fixes the invoice after you have checked it. **Issuing gives it a number and locks the contents.** If you spot a mistake, go back to the delivery or the closing run to correct it.
+Fixes the invoice after you have checked it. The invoice number is already there — it was given when the closing run generated the invoice. **Issuing fixes the contents; they can no longer be changed.** If you spot a mistake, go back to the shipment or the closing run to correct it.
 
 ### Mark as sent [#field-sent]
 
@@ -132,7 +134,7 @@ Records that it went to the customer. How it is sent (email, fax, post) is set p
 
 Records that payment arrived, so unpaid invoices can be found.
 
-The amounts are **collected automatically from delivery notes**. If something does not add up, check the delivery side rather than this screen.
+The amounts are **collected automatically from shipping orders (dispatches that have been shipped)**. Delivery notes are attached as each line's "source" link. If an amount does not add up, check the shipping side rather than this screen.
 
 ## Questions and problems
 

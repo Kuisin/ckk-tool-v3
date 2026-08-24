@@ -58,8 +58,8 @@ const TABLE_ROUTES: Record<string, TableRoute> = {
     directDetail: true,
   },
   approval_requests: {
-    appLabel: "承認管理",
-    listPath: "/production/approvals",
+    appLabel: "承認・予定",
+    listPath: "/general/tasks",
   },
   product_inventory: {
     appLabel: "在庫管理（製品）",

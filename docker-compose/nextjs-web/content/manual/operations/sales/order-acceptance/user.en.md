@@ -60,17 +60,18 @@ Put the file in the import folder on the server and it is imported automatically
 1. Press「**優先取込**」(priority import) at the top right of the list screen.
 2. Choose the order form file (PDF, PNG, JPG or WebP; you can choose several at once).
 3. **All** the chosen files are added to the list first (status 「取込中」/ importing). Only once they are all listed does the reading (AI extraction) start, one after another.
-4. The progress is shown at the top right of the screen. Reading takes about **30 to 60 seconds** per file.
+4. The progress is shown at the top right of the screen. Reading takes about **1 to 3 minutes** per file.
 
 **3. Type it in by hand**
 
 1. Press「**手入力で新規**」(new, typed in) at the top right of the list screen.
-2. Choose the「**顧客**」(customer). This one is required.
+2. Choose the「**顧客**」(customer). This one is required. Choosing it fills「**営業担当**」(sales rep) with that customer's primary rep automatically — change it if needed.
 3. Fill in「**顧客注文書番号**」(customer order form number),「**注文日**」(order date) and so on, as far as you know them.
-4. If the destination or the site in charge is decided, also choose「**出荷先**」(ship-to),「**担当拠点**」(assigned plant) and「**出荷作業場所**」(shipping work location). All of them are optional and can be entered later.
-5. On the line item row, enter「**製品**」(product),「**種別**」(type) and「**数量**」(quantity). You can enter the unit price later.
-6. To add another row, press「**明細を追加**」(add line item).
-7. Press「**下書きを作成**」(create draft).
+4. Choose the「**配送方法**」(delivery method) — normal delivery or direct to user. With direct to user, the「**エンドユーザー**」(end user) must also be chosen.
+5. If the destination or the site in charge is decided, also choose「**出荷先**」(ship-to),「**担当拠点**」(assigned plant) and「**出荷作業場所**」(shipping work location). All of them are optional and can be entered later.
+6. On the line item row, enter「**製品**」(product),「**種別**」(type) and「**数量**」(quantity). You can enter the unit price later.
+7. To add another row, press「**明細を追加**」(add line item).
+8. Press「**下書きを作成**」(create draft).
 
 ![Order acceptance manual entry screen](../../../assets/screenshots/order-acceptance-new-01.png)
 
@@ -83,12 +84,13 @@ A draft opens in **view mode** (read only). Switch to「**編集**」(edit) only
 1. Click the row you want in the list. What was read is listed for you to compare against the original order form.
 2. To change anything, press「**編集**」(edit) at the top right of the screen. The screen turns into input fields.
 3. In「**基本情報**」(basic information), check the customer, the customer order form number and the order date.
-4. If no customer is set, search for one in the「**顧客**」(customer) field and choose it.
-5. If the order follows on from a quote, enter the quote number in「**見積書番号（任意）**」(quote number, optional).
-6. Choose「**出荷先**」(ship-to),「**担当拠点**」(assigned plant) and「**出荷作業場所**」(shipping work location) if needed. They are optional.
-7. In「**明細**」(line items), check the product, type, quantity, unit price and delivery date.
-8. On a row with an orange「**製品未特定**」(product not identified) badge, choose the correct product in the「**製品**」(product) field. If candidates are offered under the field as「**もしかして**」(did you mean), one press fills it.
-9. Press「**保存**」(save) at the very bottom of the screen. Saving returns you to view mode.
+4. If no customer is set, search for one in the「**顧客**」(customer) field and choose it. Choosing the customer fills「**営業担当**」(sales rep) with that customer's primary rep automatically — change it if needed.
+5. If the order follows on from a quote, search for the original quote in the「**見積書（任意）**」(quote, optional) field and choose it (with a customer chosen, only that customer's quotes are listed).
+6. Check the「**配送方法**」(delivery method). With direct to user, the「**エンドユーザー**」(end user) must also be chosen.
+7. Choose「**出荷先**」(ship-to),「**担当拠点**」(assigned plant) and「**出荷作業場所**」(shipping work location) if needed. They are optional.
+8. In「**明細**」(line items), check the product, type, quantity, unit price and delivery date.
+9. On a row with an orange「**製品未特定**」(product not identified) badge, choose the correct product in the「**製品**」(product) field. If candidates are offered under the field as「**もしかして**」(did you mean), one press fills it.
+10. Press「**保存**」(save) at the very bottom of the screen. Saving returns you to view mode.
 
 To stop editing, press「**キャンセル**」(cancel); if you changed something you are asked to confirm, and「**変更を破棄**」(discard changes) returns you to view mode. A draft that has no line items yet (for example one you just created by hand) opens in edit mode straight away.
 
@@ -109,6 +111,8 @@ At the top of the screen, 「**製品**」 (products), 「**明細数 / 合計�
 
 The status changes to「**承認依頼中**」(waiting for approval).
 
+> 💡 How many approval steps there are and who approves is decided in the [approval settings](/manual/en/operations/masters/approval-setting/user). Depending on conditions such as the total amount, the delivery method or the assigned plant, the number and makeup of the steps can differ from document to document.
+
 ![Order acceptance waiting for approval](../../../assets/screenshots/order-acceptance-detail-03.png)
 
 The person who approves presses「**承認**」(approve) or「**差し戻し**」(send back) on this screen. To send it back, they enter a reason and then press「**差し戻す**」(send back). An order acceptance that is sent back returns to 「下書き」(draft), so you correct it and ask for approval again.
@@ -117,18 +121,18 @@ The person who approves presses「**承認**」(approve) or「**差し戻し**�
 
 ## Making the order lines (注文確定 / deploy)
 
-Once approved, a「**注文確定**」(deploy) button appears on the screen.
+Once approved, the card at the very top of the screen says「**確定できます**」(ready to deploy) and a「**確定**」(deploy) button appears.
 
 ![Approved order acceptance](../../../assets/screenshots/order-acceptance-detail-02.png)
 
-1. Press「**注文確定**」(deploy).
-2. On the confirmation screen, check how many will be made and press「**確定する**」(deploy).
+1. Press「**確定**」(deploy).
+2. On the screen called「**確定の確認**」(confirm deployment), check how many will be made and press「**展開する**」(deploy).
 
 ![Deploy confirmation screen](../../../assets/screenshots/order-acceptance-deploy-01.png)
 
 One 注文明細 (order line) is made per line item. The numbers follow the order acceptance number with `-01`, `-02` and so on. You can open the order lines that were made from the「**生成された注文明細**」(generated order lines) links on the screen, or from「**注文明細一覧**」(order line list) at the top right of the list screen.
 
-If you entered a quote number, that [quote](/manual/en/operations/sales/quote/user) becomes 「受諾済」(accepted) automatically.
+If you chose a quote, that [quote](/manual/en/operations/sales/quote/user) becomes 「受諾済」(accepted) automatically if it is 「発行済」(issued) — a quote still in draft is left unchanged.
 
 After deployment, a card 「**次のステップ: 出荷書の作成**」 (next step: create the delivery order) appears at the top. Pressing 「**出荷書を作成**」 opens the [delivery order](/manual/en/operations/shipping/delivery-order/user) form with this order acceptance's shippable lines already loaded.
 
@@ -158,8 +162,9 @@ Every field on the order acceptance screen. What the AI read from the order land
 | Field | Required | What to enter |
 |-------|----------|---------------|
 | [Customer](#field-customer) | Required | The customer who ordered |
+| [Sales rep](#field-sales-rep) | Optional | Your company's sales rep for this order |
 | [Customer order no.](#field-customer-order-ref) | Optional | The number on the customer's own order |
-| [Quote number](#field-quote-number) | Optional | The quote it came from |
+| [Quote](#field-quote-number) | Optional | The quote it came from |
 | [Order date](#field-order-date) | Optional | The date the customer ordered |
 | [Ship-to](#field-ship-to) | Optional | Where the products are delivered |
 | [Delivery method](#field-delivery-method) | Required | Normal delivery / direct to end user |
@@ -179,13 +184,17 @@ Every field on the order acceptance screen. What the AI read from the order land
 
 The customer who placed the order. This is detected from the imported order, but **detection can fail** — choose it here when it does. Prices cannot be checked until the customer is known.
 
+### Sales rep [#field-sales-rep]
+
+Your company's sales person in charge of this order. Choosing the customer fills in that customer's primary rep automatically. If needed, you can pick someone else from the people registered as that customer's reps. Even if the rep in the customer master changes later, the rep on this document does not change.
+
 ### Customer order no. [#field-customer-order-ref]
 
 The number printed on the customer's own order document. It is what you search by when they ask about it later.
 
-### Quote number [#field-quote-number]
+### Quote [#field-quote-number]
 
-The quote this order came from. If it is set, that quote is marked accepted automatically when the order is accepted.
+The quote this order came from. Search for it and choose it (with a customer chosen, only that customer's quotes are listed). If it is set, that quote becomes 「受諾済」(accepted) automatically on deployment, provided it is 「発行済」(issued).
 
 ### Order date [#field-order-date]
 
@@ -197,7 +206,7 @@ Where the products are delivered. Choose it **when they go to a different compan
 
 ### Delivery method [#field-delivery-method]
 
-How the products are delivered. **Normal delivery** goes to the customer (or the ship-to you chose). **Direct to user** ships straight to the end user. A delivery order can only combine lines with **the same ship-to and delivery method**, so this choice decides how shipments are grouped.
+How the products are delivered. **Normal delivery** goes to the customer (or the ship-to you chose). **Direct to user** ships straight to the end user. A delivery order can only combine lines with **the same customer, the same ship-to and the same delivery method**, so this choice decides how shipments are grouped.
 
 ### End user [#field-end-user]
 
@@ -270,4 +279,4 @@ A. Only people in the approval group can approve or send back. The screen shows 
 A. A draft opens read only — press「**編集**」(edit) first (top right of the screen). You can only change the contents while the status is 「下書き」(draft). You cannot change them while it is waiting for approval, approved or deployed. If you see 「下書きの注文請書のみ編集できます」(only draft order acceptances can be edited), ask for it to be sent back.
 
 **Q. The import does not finish.**
-A. Reading takes about 30 to 60 seconds per file. When you choose several files, they are handled one after another, so it takes that much longer.
+A. Reading takes about 1 to 3 minutes per file. When you choose several files, they are handled one after another, so it takes that much longer.

@@ -12,7 +12,7 @@ It holds the files you uploaded yourself, and also the PDFs the system made for 
 - Move through folders and see the files inside them.
 - Pick a file and check its contents on the right-hand side (images and PDFs).
 - **Download** a file, or **open** it in a new tab.
-- **Upload** files into the folders you are allowed to.
+- **Upload** files into the folders you are allowed to write to.
 - Look for a file by name across every folder.
 - A system administrator can decide, person by person, who may look inside which folder.
 
@@ -115,11 +115,11 @@ When no one has been allowed anything yet, you will see 「**個別付与はあ�
 
 ## Input fields
 
-You only type something when creating a folder or granting access.
+You only type something when granting access (system administrators only). Everything else just switches what is shown.
 
 | Field | Required | What to enter |
 |-------|----------|---------------|
-| [Folder name](#field-folder-name) | Required | Name of the new folder |
+| [Folder name](#field-folder-name) | — | The name marking where files are kept (display only) |
 | [Show system files](#field-show-system-files) | — | Whether leftover files appear |
 | [Folder (path prefix)](#field-grant-folder) | Required | The folder being granted |
 | [User](#field-grant-user) | Required | Who is granted access |
@@ -127,7 +127,7 @@ You only type something when creating a folder or granting access.
 
 ### Folder name [#field-folder-name]
 
-The name of the new folder. Files are not really in folders — they are **sorted by how they are named** — so the folder name is what marks where they go.
+The name that marks where files are kept. You cannot create a new folder from this screen — folders appear by themselves when a document PDF is generated or a file is uploaded. Files are not really in folders — they are **sorted by how they are named** — so the folder name is what marks where they go. Click an entry in the 「パス」 (path) row at the top of the screen to go back to that spot.
 
 ### Show system files [#field-show-system-files]
 

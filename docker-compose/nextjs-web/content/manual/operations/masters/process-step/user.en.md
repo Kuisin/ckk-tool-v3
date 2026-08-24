@@ -51,9 +51,10 @@ When you open the app, a list of the registered steps is shown.
 4. Choose 「**カテゴリ**」 (category).
 5. Choose 「**実施場所**」 (place of work). For a step that may be asked of an outside company, choose 「**社内・外注**」 (in house or outsourced).
 6. Choose 「**数量管理**」 (quantity tracking). See the explanation below.
-7. If you need it, enter the time this step usually takes in 「**既定作業時間**」 (default work time). The unit is hours.
-8. Enter a number in 「**表示順**」 (display order). A smaller number comes higher in the list.
-9. Press 「**保存**」 (Save).
+7. Choose 「**ロット入力（既定）**」 (lot input — default). This decides whether the operator is asked to enter the material lot or slip code when starting the step (required / optional / none).
+8. If you need it, enter the time this step usually takes in 「**既定作業時間**」 (default work time). The unit is hours.
+9. Enter a number in 「**表示順**」 (display order). A smaller number comes higher in the list.
+10. Press 「**保存**」 (Save).
 
 ![New entry form of the process step master](../../../assets/screenshots/master-process-step-new-01.png)
 
@@ -109,7 +110,7 @@ Click a row in the list to open the detail screen of that step.
 
 The step code, name, category, place of work, quantity tracking, default work time, display order and so on are shown together at the top. Below there are three tabs.
 
-- **概要** (overview) … shows what you wrote in the remarks.
+- **概要** (overview) … shows the allowed work locations (「制限なし」 — no restriction — when there is none, or the list of types and locations when there is) and what you wrote in the remarks.
 - **依存関係** (dependencies) … shows the use dependencies and the execution dependencies, each in its own table. Click a row to move to the screen of the other step.
 - **履歴** (history) … the record of who changed what and when.
 
@@ -138,6 +139,7 @@ Every field on the process step screen. Steps registered here are the building b
 | [Location](#field-execution) | Required | Internal only, or outsourcing allowed |
 | [Allowed work locations](#field-allowed-locations) | Optional | Restricts which work locations this step can use |
 | [Quantity tracking](#field-quantity-tracking) | Required | How the step handles piece counts |
+| [Lot input (default)](#field-lot-input-mode) | Required | Whether a lot / slip code must be entered at start |
 | [Default work time](#field-default-time) | Optional | Typical time per run |
 | [Can run in parallel](#field-sync) | — | Whether it can run alongside others |
 | [Inspection / inspection approval](#field-inspection) | — | Whether it is an inspection step |
@@ -171,6 +173,10 @@ Restricts which work locations can be used in **plans and actuals** of this step
 
 How the step handles piece counts: **pass through, count as inspection, or do not count.** It changes which inputs appear on the execution screen.
 
+### Lot input (default) [#field-lot-input-mode]
+
+Whether the operator is asked to enter the material **lot or slip code** when starting the step. With 「**必須**」 (required), the step cannot start until the code is entered. 「**任意**」 (optional) lets the step start with or without it, and 「**なし**」 (none) shows no input box. This is only the default — it **can be changed per step** on the product's process list or on the work order.
+
 ### Default work time [#field-default-time]
 
 Typical time per run, used as the initial value when a work order is created.
@@ -189,7 +195,7 @@ The rank required to approve this step.
 
 ### Sort order [#field-sort-order]
 
-Order in lists and pick lists. Smaller comes first. **The order steps actually run in is set by the product's process list, not here.**
+Order in lists and pick lists. Smaller comes first. **This number also decides the initial order of the steps when you pick them into a process list or a work order** (issue / handoff steps always come first and pre-ship inspection always comes last, regardless of the number). The order of process lists and work orders already created does not change when you change the number later.
 
 ### Active / notes [#field-active]
 
@@ -215,5 +221,5 @@ A. It cannot be corrected after you save. Register a new step with the correct c
 **Q. I want to change the order of the list.**
 A. Change the 「**表示順**」 (display order) number of each step. A smaller number comes higher. If you leave gaps, such as 10, 20 and 30, it is easier to add a step in between later.
 
-**Q. I changed the display order, but the order of the steps on the work order did not change.**
-A. The display order only changes how the list looks. The real order of the work is decided by the rules you set in the execution dependency.
+**Q. Which decides the order of the work — the display order or the execution dependency?**
+A. The order is decided by the 「**表示順**」 (display order). When you pick steps into a process list or a work order, they line up from the smallest number first (the order of work orders already created does not change when you change the number later). The 「**実行依存**」 (execution dependency) is not an order itself — it sets the **condition for starting**, such as "this step cannot start until that step is finished".

@@ -64,6 +64,12 @@ Lines that have not been confirmed do not appear here, because they have no numb
 
 Select a row to open its detail screen.
 
+### Moving on to the next task
+
+A "**Next step**" card appears at the top of the screen. While unallocated pieces remain it points to **creating a work order**; once allocation is done and unshipped pieces remain it points to **creating a delivery order**. Pressing the button on the card opens the [work order](/manual/en/operations/production/work-order/user) or [delivery order](/manual/en/operations/shipping/delivery-order/user) creation screen with this order line already selected.
+
+The three-dot "**…**" menu at the top right also always lists "**Create work order**" and "**Create delivery order**". Actions you cannot use right now are grayed out, with the reason shown (for example "available once the order acceptance is deployed").
+
 ### Check and reserve stock
 
 Press **Stock check** to look at stock for the product and **reserve whatever is available**.

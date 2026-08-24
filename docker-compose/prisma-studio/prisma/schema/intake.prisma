@@ -184,7 +184,7 @@ model OrderLine {
   confirmedAt DateTime?       @map("confirmed_at") @db.Timestamptz(6)
   cancelledAt DateTime?       @map("cancelled_at") @db.Timestamptz(6)
   createdAt   DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt   DateTime        @updatedAt @map("updated_at") @db.Timestamptz(6)
+  updatedAt   DateTime        @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   // 顧客・注文書番号・見積キー・作成者はヘッダ（acceptance）から読む —
   // 行に複写すると乖離するため持たない。
@@ -242,9 +242,9 @@ model MatchAlias {
   /// 結び付けた人
   createdBy  String?  @map("created_by") @db.Uuid
   createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt  DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  updatedAt  DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  createdByUser User? @relation("MatchAliasCreatedBy", fields: [createdBy], references: [id])
+  createdByUser User? @relation("MatchAliasCreatedBy", fields: [createdBy], references: [id], onDelete: NoAction, onUpdate: NoAction)
 
   @@unique([targetType, aliasKey])
   @@index([targetType, targetId])

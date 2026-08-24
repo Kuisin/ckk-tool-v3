@@ -63,7 +63,7 @@ screenshots: [purchase-order-list-01, purchase-order-new-01, purchase-order-deta
 2. 选择「**仕入先**」（供应商）（必须选择）。
 3. 输入「**発注日**」（订购日）（留空也可以）。
 4. 点击明细的「**素材**」（材料）栏，用材料编码或名称搜索并选择。
-5. 在「**入荷先拠点**」（收货据点）中选择接收的据点。
+5. 在「**入荷先拠点**」（收货据点）中选择接收的据点（留空也没关系）。
 6. 输入「**数量**」（数量）和「**単位**」（单位）。
 7. 在「**単価**」（单价）中输入每根的价格。
 8. 在「**入荷予定日**」（预计到货日）中输入预计送达的日期（留空也可以）。
@@ -83,7 +83,7 @@ screenshots: [purchase-order-list-01, purchase-order-new-01, purchase-order-deta
 ## 提交审批
 
 1. 打开订购单的画面。
-2. 点击「**承認・発注状況**」（审批・下单状况）框中的「**承認依頼**」（提交审批）。
+2. 点击画面上方「**承認依頼が必要です**」（需要提交审批）卡片中的「**承認依頼**」（提交审批）。
 
 ![草稿状态的材料订购单](../../../assets/screenshots/purchase-order-detail-02.png)
 
@@ -157,10 +157,10 @@ screenshots: [purchase-order-list-01, purchase-order-new-01, purchase-order-deta
 | 项目 | 必填 | 填什么 |
 |------|------|--------|
 | [供应商](#field-supplier) | 必填 | 向谁采购 |
-| [采购日期](#field-order-date) | 必填 | 下单的日期 |
+| [采购日期](#field-order-date) | 选填 | 下单的日期 |
 | [备注](#field-notes) | 选填 | 对整份采购单的补充 |
 | [材料](#field-material) | 必填 | 采购的材料 |
-| [到货基地](#field-plant) | 必填 | 接收的基地 |
+| [到货基地](#field-plant) | 选填 | 接收的基地 |
 | [数量](#field-quantity) | 必填 | 采购的数量 |
 | [单位](#field-unit) | 必填 | 支・kg 等 |
 | [单价](#field-unit-price) | 必填 | 每单位的价格 |
@@ -169,11 +169,11 @@ screenshots: [purchase-order-list-01, purchase-order-new-01, purchase-order-deta
 
 ### 供应商 [#field-supplier]
 
-采购材料的对象。列表中没有时，请在[外协企业主数据](/manual/zh/operations/masters/business-partner/user)中登记。
+采购材料的对象。列表中没有时，请在[业务伙伴主数据](/manual/zh/operations/masters/business-partner/user)中登记。
 
 ### 采购日期 [#field-order-date]
 
-下单的日期。默认填入当天。
+下单的日期。留空也没关系 — 未填写时，会自动填入点击「発注」（下单）的那一天。
 
 ### 备注 [#field-notes]
 
@@ -185,7 +185,7 @@ screenshots: [purchase-order-list-01, purchase-order-new-01, purchase-order-deta
 
 ### 到货基地 [#field-plant]
 
-接收该材料的基地。**登记到货后，该基地的库存会增加。**
+接收该材料的基地。**登记到货后，该基地的库存会增加。** 还没定下来时留空也没关系。
 
 ### 数量 [#field-quantity]
 

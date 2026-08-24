@@ -10,7 +10,7 @@
 #
 # Restore (data-only, into a freshly migrated DB — see README "Reset / re-baseline"):
 #   pg_restore -d "$DATABASE_URL" --data-only --disable-triggers \
-#     -n kot -n directory -n admintools -n auth -n master -n bp -n sales -n sys ckk-....dump
+#     -n app -n directory -n kot -n admintools ckk-....dump
 set -euo pipefail
 
 cd "$(dirname "$0")/.."
@@ -23,7 +23,9 @@ fi
 OUT_DIR="${1:-backups}"
 mkdir -p "$OUT_DIR"
 TS="$(date -u +%Y%m%d-%H%M%S)"
-SCHEMAS=(kot directory admintools auth master bp sales sys)
+# 業務データは 2026-07-06 の統合以降すべて `app` にある（旧 auth/master/bp/sales/sys
+# は存在しない）。ここを間違えると .data.sql が「エラーなく空」になるので注意。
+SCHEMAS=(app directory kot admintools)
 
 # 1. Full custom-format dump (DDL + data + views) — for disaster recovery.
 pg_dump -d "$DATABASE_URL" -Fc -f "$OUT_DIR/ckk-$TS.dump"

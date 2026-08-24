@@ -86,7 +86,7 @@ screenshots: [material-receipt-list-01, material-receipt-new-01, material-receip
 |------|------|-------------|
 | [素材](#field-material) | 必須 | 届いた素材 |
 | [仕入先](#field-supplier) | 任意 | 届けてくれた会社 |
-| [入荷先拠点](#field-plant) | 必須 | 受け取った拠点 |
+| [入荷先拠点](#field-plant) | 任意 | 受け取った拠点 |
 | [入荷日](#field-received-date) | 必須 | 受け取った日 |
 | [数量](#field-quantity) | 必須 | 実際に届いた数 |
 | [単位](#field-unit) | 必須 | 本・kg など |

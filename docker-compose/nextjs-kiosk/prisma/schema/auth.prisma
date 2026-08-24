@@ -155,12 +155,12 @@ model User {
   locale String @default("ja")
   // 日付の並び。値は表示パターンそのもの（"YYYY/MM/DD" | "YYYY-MM-DD" |
   // "DD/MM/YYYY" | "MM/DD/YYYY"）。既定は日本の慣習。
-  dateFormat String @default("YYYY/MM/DD") @map("date_format")
+  dateFormat String @default("YYYY/MM/DD") @map("date_format") @db.VarChar(16)
   // 時刻表記（"24h" | "12h"）。
-  timeFormat String @default("24h") @map("time_format")
+  timeFormat String @default("24h") @map("time_format") @db.VarChar(8)
   // 表示タイムゾーン（IANA 名。例 "Asia/Tokyo"）。保存は常に UTC で、
   // ここは「画面に出すときどこの時刻で読むか」だけを決める。
-  timeZone String @default("Asia/Tokyo") @map("time_zone")
+  timeZone String @default("Asia/Tokyo") @map("time_zone") @db.VarChar(64)
 
   // Employees link to the shared directory by AD objectGUID (stable across
   // username/attribute changes). Null for SYSTEM / GUEST users.

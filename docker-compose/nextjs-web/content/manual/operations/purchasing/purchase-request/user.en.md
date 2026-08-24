@@ -77,7 +77,7 @@ When you save, the request is registered as 「下書き」 (draft) and the deta
 Once you have checked the content, ask your manager to look at it.
 
 1. Open the request screen.
-2. Press 「**承認依頼**」 (Request approval) in the 「**承認・変換状況**」 (approval and conversion status) box.
+2. Press 「**承認依頼**」 (Request approval) on the 「**承認依頼が必要です**」 (approval request needed) card near the top of the screen.
 
 The status changes to 「**承認依頼中**」 (waiting for approval), and the request reaches the person who approves it. The same request also appears on the [approval management](/manual/en/operations/production/approval/user) screen.
 
@@ -134,7 +134,7 @@ Every field on the purchase request screen. The **?** next to a field in the app
 | [Reason](#field-reason) | Optional | Why it is needed — the approver reads this |
 | [Notes](#field-notes) | Optional | Notes for the whole request |
 | [Material](#field-material) | Required | The material you want |
-| [Receiving plant](#field-plant) | Required | Where it will be received |
+| [Receiving plant](#field-plant) | Optional | Where it will be received |
 | [Quantity](#field-quantity) | Required | How much you want |
 | [Unit](#field-unit) | Required | Pieces, kg and so on |
 | [Requested date](#field-desired-date) | Optional | When you need it by |
@@ -154,7 +154,7 @@ The material you want. If it is not in the list, register it first in [Materials
 
 ### Receiving plant [#field-plant]
 
-The plant that will receive the material. **It enters stock at the plant you choose here**, so pick where it will actually be used.
+The plant that will receive the material. **It enters stock at the plant you choose here**, so pick where it will actually be used. If it is not decided yet, you may leave it blank.
 
 ### Quantity [#field-quantity]
 

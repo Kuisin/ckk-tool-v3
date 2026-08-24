@@ -1,8 +1,39 @@
 -- Role grants + search_path for the CKK shared DB.
--- Run once as postgres AFTER the initial Prisma migration created the schemas:
---   docker exec -i shared-db psql -U postgres -d ckk < grants.sql
--- Idempotent. Default privileges cover tables added by future migrations
--- (Prisma migrations run as postgres, so postgres is always the grantor).
+--
+-- 適用は自動 — Coolify の db-migrate-dev / db-migrate-main が **毎デプロイ**
+-- 流す（migration ではなく毎回流すのは、後から増えたテーブルにも権限を
+-- 行き渡らせる必要があるため）。手で流すときは postgres で:
+--   docker exec -i <db> psql -U postgres -d ckk < grants.sql
+--
+-- 冪等。既定権限（ALTER DEFAULT PRIVILEGES）が今後の migration で増える
+-- テーブルもカバーする（migration は postgres で走るので付与者は常に postgres）。
+
+-- ── 前提の作成 ───────────────────────────────────────────────────────
+-- まっさらな DB では他アプリのスキーマもロールもまだ無い。ここで先に作って
+-- おくことで、このファイルが「新規 DB でもそのまま通る」状態を保つ。
+--   kot        — KOT 勤怠取込が自分でテーブルを作る
+--   admintools — admintools が自分でテーブルを作る
+--   analytics  — analytics-views.sql が使う
+CREATE SCHEMA IF NOT EXISTS kot;
+CREATE SCHEMA IF NOT EXISTS admintools;
+CREATE SCHEMA IF NOT EXISTS analytics;
+
+-- ロールは通常 init/01-roles.sh（初回起動時）が env のパスワード付きで作る。
+-- 無い場合（撮影用の使い捨て DB など）だけ、権限の受け皿として NOLOGIN で
+-- 用意する — 既にあるロールには一切触れない。
+DO $$
+DECLARE r text;
+BEGIN
+  FOREACH r IN ARRAY ARRAY['kot','ldap_sync','admintools','app','kot_ro',
+                           'metabase_ro','fx_rates','studio_ro','backup']
+  LOOP
+    IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = r) THEN
+      EXECUTE format('CREATE ROLE %I NOLOGIN', r);
+      RAISE NOTICE 'created placeholder role % (NOLOGIN)', r;
+    END IF;
+  END LOOP;
+END
+$$;
 
 -- ── search_path per role ─────────────────────────────────────────────
 -- Apps use unqualified table names; the first schema in the path is where
@@ -41,7 +72,15 @@ ALTER SEQUENCE directory.ldap_sync_log_id_seq OWNER TO ldap_sync;
 GRANT ALL ON ALL TABLES IN SCHEMA directory TO ldap_sync;
 GRANT ALL ON ALL SEQUENCES IN SCHEMA directory TO ldap_sync;
 GRANT SELECT ON ALL TABLES IN SCHEMA kot TO ldap_sync;
-GRANT INSERT, UPDATE ON kot.employees TO ldap_sync;
+-- kot.employees は KOT 取込アプリが作る。新規 DB ではまだ無いので条件付き
+-- （その後 kot-import が起動すれば、次のデプロイでこの GRANT が効く）。
+DO $$
+BEGIN
+  IF to_regclass('kot.employees') IS NOT NULL THEN
+    GRANT INSERT, UPDATE ON kot.employees TO ldap_sync;
+  END IF;
+END
+$$;
 ALTER DEFAULT PRIVILEGES IN SCHEMA directory GRANT ALL ON TABLES TO ldap_sync;
 ALTER DEFAULT PRIVILEGES IN SCHEMA directory GRANT ALL ON SEQUENCES TO ldap_sync;
 ALTER DEFAULT PRIVILEGES IN SCHEMA kot GRANT SELECT ON TABLES TO ldap_sync;
@@ -55,10 +94,24 @@ GRANT ALL ON ALL TABLES IN SCHEMA admintools TO admintools;
 GRANT ALL ON ALL SEQUENCES IN SCHEMA admintools TO admintools;
 ALTER DEFAULT PRIVILEGES IN SCHEMA admintools GRANT ALL ON TABLES TO admintools;
 ALTER DEFAULT PRIVILEGES IN SCHEMA admintools GRANT ALL ON SEQUENCES TO admintools;
-ALTER TABLE admintools.mail_accounts OWNER TO admintools;
-ALTER TABLE admintools.group_members OWNER TO admintools;
-ALTER SEQUENCE admintools.mail_accounts_id_seq OWNER TO admintools;
-ALTER SEQUENCE admintools.group_members_id_seq OWNER TO admintools;
+-- admintools のテーブルはアプリ自身が作る。新規 DB ではまだ無いので条件付き。
+DO $$
+DECLARE obj text;
+BEGIN
+  FOREACH obj IN ARRAY ARRAY['admintools.mail_accounts', 'admintools.group_members']
+  LOOP
+    IF to_regclass(obj) IS NOT NULL THEN
+      EXECUTE format('ALTER TABLE %s OWNER TO admintools', obj);
+    END IF;
+  END LOOP;
+  FOREACH obj IN ARRAY ARRAY['admintools.mail_accounts_id_seq', 'admintools.group_members_id_seq']
+  LOOP
+    IF to_regclass(obj) IS NOT NULL THEN
+      EXECUTE format('ALTER SEQUENCE %s OWNER TO admintools', obj);
+    END IF;
+  END LOOP;
+END
+$$;
 
 -- ── app: nextjs-web (Prisma Client) — full rw on v3 schemas,
 --        read-only on labor data ─────────────────────────────────────

@@ -93,7 +93,7 @@ When there is no purchase record for the material yet, the material cost in a [T
 1. On the material type screen, open the 「**既定単価**」 (Default unit price) tab.
 2. Press 「**直径を追加**」 (Add diameter). One row is added.
 3. In the 「**直径**」 (Diameter) field of the new row, choose the diameter.
-4. Enter the price in the field for each surface finish (「黒皮」 black skin, 「研磨」 ground).
+4. Enter the price in the field for each surface finish (「黒皮」 black skin, 「研磨」 ground, 「研磨済黒皮」 ground black skin). There is one column for each registered surface finish.
 5. To add more diameters, press 「**直径を追加**」 (Add diameter) again.
 6. Finally, press 「**既定単価を保存**」 (Save default unit prices).
 

@@ -3,7 +3,7 @@ title: "Design Request — User Manual"
 description: "An app for asking the design department to make a drawing, and for keeping each version of the finished drawing file."
 screenshots: [design-request-list-01, design-request-new-01, design-request-detail-01, design-request-detail-02, design-request-files-01]
 ---
-An app for asking the design department to make a drawing, and for **keeping each version** of the finished drawing file. The operation code is `SA05`.
+An app for asking the design department to make a drawing, and for **keeping each version** of the finished drawing file. The operation code is `SA06`.
 
 > ⚠️ This app is still in trial release. The screens and the steps may change later.
 
