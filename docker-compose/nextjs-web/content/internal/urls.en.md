@@ -14,10 +14,16 @@ check the URL before you touch anything.
 
 | URL | Environment | What it is |
 | --- | --- | --- |
-| `https://app.ckk-tool.co.jp` | **Production** | Business management system (reachable from outside the office) |
-| `https://ckk.kai-lab.net` | **Production** | Same app, for the internal network |
+| `https://ckk.kai-lab.net` | **Production** | Business management system — **use this one for now** |
 | `https://ckk-dev.kai-lab.net` | Staging | Staging — check new features here |
 | `https://dev.kai-lab.net` | Staging | Same as above (older address) |
+| `https://app.ckk-tool.co.jp` | **Production** | Future address (staged — see below) |
+| `https://app-dev.ckk-tool.co.jp` | Staging | Future address (staged — see below) |
+
+> **The `ckk-tool.co.jp` addresses are staged, not live yet.** The pages load, but
+> the SSO callback still points at `kai-lab.net`, so logging in sends you back to
+> `ckk.kai-lab.net`. They become the real addresses once Authentik's allowed
+> callback list is updated. Until then, **use the `kai-lab.net` addresses.**
 
 ## Kiosk (shared shop-floor tablets)
 
@@ -68,8 +74,8 @@ The old `.kai-lab.net` addresses for `dock` / `monitor` / `chat` still work for 
   database), but they should not be reachable by anyone who merely knows the URL.
   The same applies to `dock`, `deploy` and `monitor`.
 - CKK systems are **being consolidated under `ckk-tool.co.jp`**. The kiosk and the
-  platform tools have moved; the business app itself (`ckk` / `ckk-dev.kai-lab.net`)
-  has not, because the SSO (Authentik) allowed-callback list has to be updated
-  first. Old addresses stay up until each move is finished.
+  platform tools have moved. The business app has its `ckk-tool.co.jp` addresses
+  prepared, but **keep using `kai-lab.net` until the SSO switch is done**.
+  Old addresses stay up until each move is finished.
 - Staging data may be rebuilt without notice. **Do not enter anything there that
   you expect to keep.**
