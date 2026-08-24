@@ -14,6 +14,9 @@
 #   seaweedfs-dev  / seaweedfs-main   file storage       (http://seaweedfs-<env>:8888)
 #   ckk-db-dev     / ckk-db-main      database           (own Coolify apps)
 #
+# 移行中は旧 `gotenberg` / `seaweedfs` も残っている — 本番の env がまだそちらを
+# 指しているため。本番を切り替えたら旧 2 サービスと seaweed-data を撤去する。
+#
 # This stack also keeps the ingress relays:
 #   web         relay: nextjs-web_default :3000 -> host :3004 (dev app)
 #   web-main    relay: nextjs-web_default :3000 -> host :3005 (main app)
@@ -90,6 +93,47 @@ services:
     networks:
       - default
 
+  # ── 移行期間中だけ残す旧サービス ──────────────────────────────────────────
+  # `nextjs-web-main` / `nextjs-kiosk-main` の env はまだ gotenberg:3000 /
+  # seaweedfs:8888 を指している。本番を ckk-db-main + *-main へ切り替えるまで
+  # **消さないこと** — 消した瞬間に本番の PDF 生成とファイル参照が落ちる。
+  # 本番切替が済んだらこの 2 サービスと seaweed-data ボリュームを撤去する。
+  gotenberg:
+    image: gotenberg/gotenberg:8.17
+    container_name: nextjs-gotenberg
+    restart: unless-stopped
+    command:
+      - gotenberg
+      - --chromium-disable-javascript=true
+      - --chromium-allow-list=file:///tmp/.*
+    networks:
+      - default
+      - coolify
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://127.0.0.1:3000/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  seaweedfs:
+    image: chrislusf/seaweedfs:latest
+    container_name: nextjs-seaweedfs
+    restart: unless-stopped
+    command: "server -ip.bind=0.0.0.0 -dir=/data -filer -s3 -volume.max=0 -master.volumeSizeLimitMB=1024"
+    volumes:
+      - seaweed-data:/data
+    networks:
+      - default
+      - coolify
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8888/"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
+  # ── 環境別（新） ──────────────────────────────────────────────────────────
   # HTML → PDF rendering (Chromium). Internal only, one per environment so a
   # dev render can never queue behind (or be affected by) a production one.
   gotenberg-dev:
@@ -174,8 +218,8 @@ services:
       start_period: 15s
 
 volumes:
-  # 旧・dev と main が共有していたボリューム。切り替え確認が済むまで消さない
-  # （切り戻し先 + dev 用データのコピー元）。
+  # 旧・dev と main が共有していたボリューム。**本番がまだ使っている**ので
+  # 消さない（本番切替後は dev データのコピー元 + 切り戻し先として暫く残す）。
   seaweed-data:
   seaweed-data-dev:
   seaweed-data-main:
