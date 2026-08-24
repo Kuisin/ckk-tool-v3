@@ -38,7 +38,7 @@ When you open the app, you see a list of the delivery notes made so far.
 - **納品番号 (Delivery number)** … A number that starts with `DRN-`. The system adds it for you.
 - **方法 (Method)** … An orange 「ユーザー直送」 (Direct to end user) means it goes straight to the company using the product; a grey 「通常納品」 (Normal delivery) means it goes to the customer.
 - **状態 (Status)** … Grey is 「下書き」 (Draft), blue is 「発行済」 (Issued), green is 「納品済」 (Delivered).
-- In the search box at the top you can type a delivery number, a shipping order number, or the receiver's name to narrow the list.
+- In the search box at the top you can type a delivery number, a shipping order number, or the name of the receiver or the end user to narrow the list.
 - The list shows **delivery notes sent from the site you belong to** and **delivery notes you made yourself**.
 - Click a row to open the detail screen for that delivery note.
 
@@ -46,8 +46,8 @@ When you open the app, you see a list of the delivery notes made so far.
 
 1. Press 「**新規作成**」 (New) at the top right of the list screen.
 2. Click the 「**出荷書**」 (Shipping order) box and pick the shipping order.
-3. The 「**納品先**」 (Delivery destination) and the lines (product, quantity, unit price) are **filled in for you**.
-4. In 「**納品方法**」 (Delivery method), choose 「**通常納品**」 (Normal delivery) or 「**ユーザー直送**」 (Direct to end user).
+3. The 「**納品先**」 (Delivery destination) and the lines (product, quantity, unit price) are **filled in for you**. In addition, when the delivery method registered on the order acceptance settles to one, the 「**納品方法**」 (Delivery method) — and the starting value of "show prices" — is filled in too; when the destination company settles to one, the 「**最終需要家**」 (End user) is filled in as well (whatever cannot be settled stays empty).
+4. Check the 「**納品方法**」 (Delivery method). If needed, switch it to 「**通常納品**」 (Normal delivery) or 「**ユーザー直送**」 (Direct to end user).
 5. If you do not want to show the amounts, turn off the 「**価格記載（納品書に単価・金額を記載する）**」 (Show prices — print unit prices and amounts on the delivery note) switch.
 6. If a quantity is different from what you really sent, change the 「**数量**」 (Quantity) on that line.
 7. Press 「**保存**」 (Save).
@@ -64,6 +64,7 @@ Whether unit prices and amounts appear on the delivery note is decided by the �
 
 - If you choose **通常納品** (Normal delivery), it starts as "show".
 - If you choose **ユーザー直送** (Direct to end user), it switches to "hide". This is so the company using the product does not see the amounts.
+- When the delivery method was filled in automatically on choosing the shipping order, the starting value of "show prices" is decided by the same rule.
 - These starting settings are only a guide — you can change the switch if you need to.
 
 When the switch is off, you cannot type in the unit price boxes. If you save it that way, **no amounts appear on the screen or in the PDF**.
@@ -108,7 +109,10 @@ By the way, this delivery note's number appears later as the "source" on the lin
 
 ## Printing (PDF)
 
-Press 「**PDF**」 at the top right of the screen and the delivery note PDF opens in another tab. From there you can print it or save it. You can print it while it is still a draft, so you can also use it to check before sending.
+You can see the PDF **only after issuing**. While it is a draft the PDF has not been made yet, and the 「**PDF**」 tab shows 「発行後に PDF を閲覧できます。」 (the PDF can be viewed after issuing).
+
+- After issuing, the 「**PDF**」 tab shows the PDF right on the screen. To make it again, press 「**再生成**」 (Regenerate).
+- Choose 「**PDFをダウンロード**」 (Download PDF) from the 「**…**」 button (the three dots) at the top right of the screen to save it as a file. Print from there.
 
 ![Delivery note detail screen](../../../assets/screenshots/delivery-note-detail-01.png)
 
@@ -124,6 +128,7 @@ Every field on the delivery note screen. The **?** next to a field in the app li
 | [Delivery method](#field-delivery-method) | Required | To the customer, or direct to the end user |
 | [Deliver to](#field-recipient) | Required | Who the note is addressed to |
 | [End user](#field-end-user) | Optional | The destination for a direct delivery |
+| [Sales rep](#field-sales-rep) | Optional | The sales rep for this delivery note |
 | [Show prices](#field-include-price) | — | Whether prices and amounts appear |
 | [Notes](#field-notes) | Optional | Notes on the delivery note |
 | [Product](#field-product) | Required | The product being delivered |
@@ -132,12 +137,14 @@ Every field on the delivery note screen. The **?** next to a field in the app li
 
 ### Shipping order [#field-delivery-order]
 
-The shipping order this note is based on. Choosing it carries over that shipment's products and quantities.
+The shipping order this note is based on. Choosing it carries over that shipment's products and quantities. In addition, the delivery method, the end user and the sales rep are filled in automatically when the shipping order side settles each of them to one (when the lines differ and nothing can be settled, they are left empty).
 
 ### Delivery method [#field-delivery-method]
 
 - **Normal** — delivered to the customer who ordered, with the note enclosed with the goods
 - **Direct to end user** — sent straight to the end user. **The note is sent separately**, and prices are normally hidden
+
+When you choose a shipping order, if the delivery method registered on its order acceptance settles to one, it is filled in here automatically.
 
 ### Deliver to [#field-recipient]
 
@@ -145,7 +152,11 @@ Who the note is addressed to: usually the ordering customer, or the destination 
 
 ### End user [#field-end-user]
 
-The actual destination for a direct delivery. Only major customers are registered as end users.
+The actual destination for a direct delivery. Only major customers are registered as end users. When you choose a shipping order and the destination company settles to one, it is filled in automatically (the one named on the order line if any, otherwise the company registered on the order acceptance).
+
+### Sales rep [#field-sales-rep]
+
+The sales rep for this delivery note. When the shipping order's sales rep settles to one person, that person is filled in from the start; otherwise the delivery destination's primary rep is. You can change it if needed.
 
 ### Show prices [#field-include-price]
 
@@ -153,7 +164,7 @@ Whether unit prices and amounts appear on the note. **For direct-to-end-user del
 
 ### Notes [#field-notes]
 
-Notes to appear on the delivery note. **It appears on the delivery note PDF.** Keep internal remarks on the memo tab instead.
+Notes to appear on the delivery note. **It appears on the delivery note PDF**, so do not write anything the customer should not see.
 
 ### Product [#field-product]
 

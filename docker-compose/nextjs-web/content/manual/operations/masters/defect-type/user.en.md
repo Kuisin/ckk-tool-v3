@@ -5,7 +5,7 @@ screenshots: [master-defect-type-list-01, master-defect-type-new-01, master-defe
 ---
 This app is for registering the **categories** you choose when a defect appears, such as 「キズ」 (scratch), 「欠け」 (chip) and 「寸法不良」 (wrong size). The operation code is `MS0A`.
 
-The categories registered here become the choices when a defect is recorded on a step of a [指示書 (work order)](/manual/en/operations/production/work-order/user).
+The categories registered here become the choices when a defect is recorded on a step of a [指示書 (work order)](/manual/en/operations/production/work-order/user). Defects are recorded one line at a time with a type, a defect type, details, and a count, and **the defect type must always be chosen**. The step cannot be completed until every line is filled in, and the defect totals are calculated automatically from these records.
 
 > ⚠️ This app is in trial release. Depending on your environment, it may not be shown yet.
 
@@ -70,7 +70,7 @@ For a category you no longer use, it is better to **make it inactive** than to d
 2. Choose 「**無効化**」 (Deactivate).
 3. A small confirmation window appears, so press 「**無効化する**」 (Deactivate).
 
-You can also tick several rows and take them out together with 「**一括無効化**」 (Deactivate selected). If you want to use one again, follow the same steps and choose 「**有効化**」 (Activate).
+You can also tick several rows and take them out together with 「**一括無効化**」 (Deactivate selected). If you want to use one again, follow the same steps and choose 「**有効化**」 (Activate). There is also 「**一括削除**」 (Delete selected), which deletes the ticked rows together — but a category with defect records left cannot be deleted.
 
 ![Delete confirmation screen for a defect type](../../../assets/screenshots/master-defect-type-delete-01.png)
 
@@ -96,7 +96,7 @@ Order in the pick list. Putting common ones first speeds up shop-floor entry.
 
 ### Active [#field-active]
 
-Turning it off removes it from the defect pick list.
+Turning it off removes it from the defect pick list. **With no active category at all, the floor can no longer record defects.** Leave at least one category active.
 
 ## Questions and problems
 
@@ -106,8 +106,8 @@ A. This app has no detail screen. It is correct that clicking a row opens the sm
 **Q. I entered the wrong code. Can I correct it?**
 A. It cannot be corrected after you save. Register a new one with the correct code and deactivate the wrong one.
 
-**Q. I see 「不良種類の削除に失敗しました」 (deleting the defect type failed) and cannot delete it.**
-A. Most likely there are still defect records that used that category. This is there to protect the records, so make it inactive instead of deleting it.
+**Q. I see 「不良記録で使用中の不良種類は削除できません（無効化してください）」 (a defect type used by defect records cannot be deleted — deactivate it instead) and cannot delete it.**
+A. There are still defect records that used that category. This is there to protect the records, so make it inactive instead of deleting it.
 
 **Q. If I make a category inactive, does it disappear from the past records too?**
 A. No. The past records stay as they are. It only means the category can no longer be chosen in new records from now on.

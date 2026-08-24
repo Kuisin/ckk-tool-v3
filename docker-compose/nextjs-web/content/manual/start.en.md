@@ -28,7 +28,7 @@ These three connect in order: **Trial Estimate → Price List → Quote** (see "
 - Click the **logo (top left)** → the app launcher opens.
 - **Center search box** — type an app name or an "operation code" (e.g. `SA01`) and press Enter to jump straight to that screen.
 - **Bell (top right)** — notifications. **Avatar** — Profile, Notification Settings, Home Screen Settings, Display Settings, Sign out.
-- **Home** — available apps grouped by category. Apps you lack permission for are hidden, and the set of published apps also differs per environment (production / development).
+- **Home** — available apps grouped by category (choose "Custom (by group)" in Home Screen Settings to arrange them by the groups you create instead). Apps you lack permission for are hidden, and the set of published apps also differs per environment (production / development).
 
 ![App launcher](./assets/screenshots/launcher-01.png)
 
@@ -39,13 +39,15 @@ These three connect in order: **Trial Estimate → Price List → Quote** (see "
 Every screen has a 4-character code. Remembering them lets you jump from the search box.
 
 - `SA01` Trial Estimate / `SA02` Price List / `SA03` Quote
-- `MS01` Customers / `MS02` End Users / `MS0B` Approval Settingss
+- `MS01` Business Partners / `MS0B` Approval Settings
 
 ## 4. The sales flow (start here)
 
 Sales moves in this order: **trial estimate → price list → quote → order acceptance**.
 Who does what at each step, and which app they use, is described in
 [The sales flow](/manual/en/process/sales).
+To follow the whole journey from order to invoice end to end, read
+[The standard flow](/manual/en/process/default-flow).
 
 - Work out a unit price … [Trial Estimate](/manual/en/operations/sales/trial-estimate/user) (`SA01`)
 - Set the price for a customer … [Price List](/manual/en/operations/sales/price-list/user) (`SA02`)

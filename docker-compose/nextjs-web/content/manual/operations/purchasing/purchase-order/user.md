@@ -65,7 +65,7 @@ screenshots: [purchase-order-list-01, purchase-order-new-01, purchase-order-deta
 2. 「**仕入先**」を選びます（必ず選んでください）。
 3. 「**発注日**」を入れます（空欄でもかまいません）。
 4. 明細の「**素材**」の欄をクリックし、素材コードや名前で検索して選びます。
-5. 「**入荷先拠点**」で、受け取る拠点を選びます。
+5. 「**入荷先拠点**」で、受け取る拠点を選びます（空欄のままでもかまいません）。
 6. 「**数量**」と「**単位**」を入れます。
 7. 「**単価**」に 1 本あたりの値段を入れます。
 8. 「**入荷予定日**」に、届く予定の日を入れます（空欄でもかまいません）。
@@ -85,7 +85,7 @@ screenshots: [purchase-order-list-01, purchase-order-new-01, purchase-order-deta
 ## 承認をお願いする
 
 1. 発注書の画面を開きます。
-2. 「**承認・発注状況**」の枠にある「**承認依頼**」を押します。
+2. 画面の上のほうに出ている「**承認依頼が必要です**」というカードの「**承認依頼**」を押します。
 
 ![下書きの素材発注書](../../../assets/screenshots/purchase-order-detail-02.png)
 
@@ -159,10 +159,10 @@ screenshots: [purchase-order-list-01, purchase-order-new-01, purchase-order-deta
 | 項目 | 必須 | 何を入れるか |
 |------|------|-------------|
 | [仕入先](#field-supplier) | 必須 | 素材を買う相手 |
-| [発注日](#field-order-date) | 必須 | 発注する日 |
+| [発注日](#field-order-date) | 任意 | 発注する日 |
 | [備考](#field-notes) | 任意 | 発注書全体への補足 |
 | [素材](#field-material) | 必須 | 発注する素材 |
-| [入荷先拠点](#field-plant) | 必須 | 受け取る拠点 |
+| [入荷先拠点](#field-plant) | 任意 | 受け取る拠点 |
 | [数量](#field-quantity) | 必須 | 発注する数 |
 | [単位](#field-unit) | 必須 | 本・kg など |
 | [単価](#field-unit-price) | 必須 | 1 単位あたりの価格 |
@@ -171,11 +171,11 @@ screenshots: [purchase-order-list-01, purchase-order-new-01, purchase-order-deta
 
 ### 仕入先 [#field-supplier]
 
-素材を買う相手です。一覧に無いときは[外注企業マスタ](/manual/ja/operations/masters/business-partner/user)へ登録してください。
+素材を買う相手です。一覧に無いときは[取引先マスタ](/manual/ja/operations/masters/business-partner/user)へ登録してください。
 
 ### 発注日 [#field-order-date]
 
-発注する日です。既定で今日が入ります。
+発注する日です。空欄のままでもかまいません — 未入力のときは、「発注」を押した日が自動で入ります。
 
 ### 備考 [#field-notes]
 
@@ -187,7 +187,7 @@ screenshots: [purchase-order-list-01, purchase-order-new-01, purchase-order-deta
 
 ### 入荷先拠点 [#field-plant]
 
-その素材を受け取る拠点です。**入荷を記録するとこの拠点の在庫が増えます。**
+その素材を受け取る拠点です。**入荷を記録するとこの拠点の在庫が増えます。** まだ決まっていないときは空欄のままでもかまいません。
 
 ### 数量 [#field-quantity]
 

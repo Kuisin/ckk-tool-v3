@@ -100,13 +100,14 @@ After confirming, the status changes to「**確定**」(confirmed) and a note sa
 
 ## Looking at a saved estimate
 
-The screen of a saved estimate has four tabs.
+The screen of a saved estimate has five tabs.
 
 ![Trial estimate detail screen](../../../assets/screenshots/trial-estimate-detail-01.png)
 
 - **試算結果 (estimate result)** … the quoted unit price and the cost breakdown. The prices from the time you saved stay as they are.
 - **素材価格推移 (material price history)** … a graph of how the purchase price of that material changed over time.
 - **関連 (related)** … the list of price lists that use this estimate.
+- **コメント (comments)** … a thread where you can post exchanges about this estimate.
 - **履歴 (history)** … the record of who did what, and when.
 
 ![Material price history tab](../../../assets/screenshots/trial-estimate-detail-02.png)

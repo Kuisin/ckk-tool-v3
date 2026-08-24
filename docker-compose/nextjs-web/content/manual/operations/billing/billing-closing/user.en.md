@@ -97,18 +97,15 @@ This screen has no input boxes. What to close and for which dates follows **the 
 
 | Action | What happens |
 |--------|--------------|
-| [Close](#field-process) | Gathers the period's deliveries and creates invoices |
-| [Export to Yayoi](#field-export) | Writes the journal entries out as CSV |
+| [Close](#field-process) | Gathers the period's shipments and creates invoices |
 
 ### Close [#field-process]
 
-Gathers what was delivered in the period and creates **one invoice per customer.**
+Gathers what was shipped in the period (「発送」 dispatch shipping orders that became 「出荷済」 shipped) and creates **one invoice per customer.**
 
-Before closing, check that every delivery in the period has been recorded. **A delivery added afterwards does not join a closed invoice** — it moves to the next period.
+Before closing, check that every shipment in the period has been recorded. **A shipment added afterwards does not join a closed invoice** — it moves to the next period.
 
-### Export to Yayoi [#field-export]
-
-Writes the closed contents out as a CSV the accounting software can import. The export date is kept, which helps avoid importing twice.
+The CSV export for the accounting software (Yayoi Kaikei Next) is done **per invoice**, not on this screen. On the [invoice](/manual/en/operations/billing/invoice/user) screen, choose 「**弥生会計CSV**」 (Yayoi accounting CSV) from the 「**…**」 at the top right. The date and time of the export is recorded on that invoice.
 
 ## Questions and problems
 

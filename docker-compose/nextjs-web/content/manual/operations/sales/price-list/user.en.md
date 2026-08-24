@@ -69,13 +69,14 @@ When you enter a multiplier, the amount appears on the spot in「**自動計算�
 
 ## Looking at what you registered
 
-The price list screen has four tabs.
+The price list screen has five tabs.
 
 ![Price list detail screen](../../../assets/screenshots/price-list-detail-01.png)
 
 - **価格設定 (price settings)** … the base unit price, the valid period, and the price per quantity, for each order type.
 - **値引き設定 (discount settings)** … the list of discount rules.
 - **関連 (related)** … which estimate the price came from, and the quotes made from this price list.
+- **コメント (comments)** … a thread where you can post exchanges about this price list.
 - **履歴 (history)** … the record of who changed what, and when.
 
 In the quantity table, a row with an orange「**手動**」(manual) badge uses a price typed in by hand instead of the one worked out from the multiplier.
@@ -158,11 +159,11 @@ Which product the price is for. Like the customer, it cannot be changed after cr
 
 ### Active (whole list) [#field-active]
 
-Whether this price list is in use. **Turning it off means quotes can no longer resolve a price** from it. Use it to retire a list without deleting it.
+A field for marking a price list you no longer use as 「無効」(inactive), to keep things tidy. Turning it off does not, at present, affect how quotes work out their unit prices.
 
 ### Order type [#field-order-type]
 
-Production, test, sample or other. **The same customer and product can hold a different price per type.** Samples are handled at zero value.
+Production, test, sample or other. **The same customer and product can hold a different price per type.** For samples, the practice is to set the unit price to zero yourself (it does not become zero automatically).
 
 ### Price source (trial estimate) [#field-estimate]
 
@@ -174,7 +175,7 @@ The price the quantity tiers work from. Each tier's price is this price times it
 
 ### Valid from [#field-valid-from]
 
-When this price starts to apply. A quote uses **the price that is valid at that moment**.
+A date recording when you started using this price. Quote unit prices do not switch over on this date. What does start and stop automatically by period is the discount rules (each rule's own valid period).
 
 ### Valid until [#field-valid-until]
 

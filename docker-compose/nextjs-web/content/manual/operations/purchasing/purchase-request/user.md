@@ -79,7 +79,7 @@ screenshots: [purchase-request-list-01, purchase-request-new-01, purchase-reques
 内容を確認したら、上長に見てもらいます。
 
 1. 依頼の画面を開きます。
-2. 「**承認・変換状況**」の枠にある「**承認依頼**」を押します。
+2. 画面の上のほうに出ている「**承認依頼が必要です**」というカードの「**承認依頼**」を押します。
 
 状態が「**承認依頼中**」に変わり、承認する人に依頼が届きます。同じ依頼は[承認管理](/manual/ja/operations/production/approval/user)の画面にも並びます。
 
@@ -136,7 +136,7 @@ screenshots: [purchase-request-list-01, purchase-request-new-01, purchase-reques
 | [依頼理由](#field-reason) | 任意 | なぜ必要なのか（承認する人が見ます） |
 | [備考](#field-notes) | 任意 | 依頼全体への補足 |
 | [素材](#field-material) | 必須 | ほしい素材 |
-| [入荷先拠点](#field-plant) | 必須 | 受け取る拠点 |
+| [入荷先拠点](#field-plant) | 任意 | 受け取る拠点 |
 | [数量](#field-quantity) | 必須 | ほしい数 |
 | [単位](#field-unit) | 必須 | 本・kg など |
 | [希望納期](#field-desired-date) | 任意 | いつまでに欲しいか |
@@ -156,7 +156,7 @@ screenshots: [purchase-request-list-01, purchase-request-new-01, purchase-reques
 
 ### 入荷先拠点 [#field-plant]
 
-その素材を受け取る拠点です。**ここで指定した拠点の在庫として入ります**ので、実際に使う場所を選んでください。
+その素材を受け取る拠点です。**ここで指定した拠点の在庫として入ります**ので、実際に使う場所を選んでください。まだ決まっていないときは空欄のままでもかまいません。
 
 ### 数量 [#field-quantity]
 

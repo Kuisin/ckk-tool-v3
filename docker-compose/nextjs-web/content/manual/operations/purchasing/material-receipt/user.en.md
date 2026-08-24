@@ -84,7 +84,7 @@ Every field on the material receipt screen. The **?** next to a field in the app
 |-------|----------|---------------|
 | [Material](#field-material) | Required | The material that arrived |
 | [Supplier](#field-supplier) | Optional | Who delivered it |
-| [Receiving plant](#field-plant) | Required | Where it was received |
+| [Receiving plant](#field-plant) | Optional | Where it was received |
 | [Received date](#field-received-date) | Required | The day it arrived |
 | [Quantity](#field-quantity) | Required | How much actually arrived |
 | [Unit](#field-unit) | Required | Pieces, kg and so on |

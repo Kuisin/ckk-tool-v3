@@ -84,7 +84,7 @@ This is the list of what the person can actually do right now. If the person has
 Here is how to read the table.
 
 - 「**権限コード**」 (Permission code) … which app it is about (`quote` is 見積書 (quotes), `master` is マスタ (master data), `system` is system administration, and so on).
-- 「**アクション**」 (Action) … what the person may do: 閲覧 (look only), 作成 (create), 更新 (change), 削除 (remove), 書き出し (export), 承認 (approve), and 管理 (operations for administrators).
+- 「**アクション**」 (Action) … what the person may do: 閲覧 (look only), 作成 (create), 更新 (change), 削除 (remove), 書き出し (export), and 管理 (operations for administrators). Note that whether someone can **approve** documents is not decided here — who can approve is decided by the approval groups in [承認設定](/manual/en/operations/masters/approval-setting/user) (Approval Settings, MS0B).
 - 「**スコープ**」 (Scope) … how far the permission reaches: 全社 (the whole company), 拠点 (their own site only), 地域 (their own region only), 自分の担当 (only the data they are responsible for), and so on. For site and region, the targets follow in brackets.
 
 When there is nothing, 「**権限がありません**」 (No permissions) is shown.

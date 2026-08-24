@@ -15,4 +15,4 @@ This is the public manual for the CKK business management system. Use the sideba
 ## Contents
 
 - **Operations** — step-by-step instructions and what each input field means, grouped by category: sales, purchasing, production, shipping, billing, master data, system and shop-floor tablet
-- **Process** — how the business flows from order to shipment, and which app is used at each stage
+- **Process** — how the business flows from order to shipment, and which app is used at each stage. A good place to start is [The standard flow](/manual/en/process/default-flow), which follows a single order end to end from trial estimate to invoice

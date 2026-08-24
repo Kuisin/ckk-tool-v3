@@ -131,8 +131,8 @@ Near the top you will see the online status, the user, the site, the location, t
 
 There are 2 numbers for operating the tablet on the floor. Both are normally hidden as "••••••", and you can see them by pressing 「**表示**」 (Show). They hide again after 60 seconds.
 
-- 「**メンテナンス PIN（全端末共通・毎日 4:00 自動更新）**」 (Maintenance PIN (same for all devices, updated automatically at 4:00 every day)) … a number that temporarily unlocks the tablet's screen for free use. Use it when changing Wi-Fi settings, for example. Tap the top left of the device screen 5 times in a row and an input box appears.
-- 「**端末設定コード（この端末・左上 5 タップ用）**」 (Device setting code (this device only, for 5 taps at the top left)) … a number for that one tablet only. Use it when resetting a device or connecting it again. Press 「**再生成**」 (Regenerate) to get a new number — **the previous number then stops working**.
+- 「**メンテナンス PIN（全端末共通・毎日 4:00 自動更新）**」 (Maintenance PIN (same for all devices, updated automatically at 4:00 every day)) … a number that temporarily removes the tablet's screen lock so it can be used freely. Use it when changing Wi-Fi settings, for example. Tap the **top right** of the device screen 5 times in a row and an input box appears.
+- 「**端末設定コード（この端末・左上 5 タップ用）**」 (Device setting code (this device only, for 5 taps at the top left)) … a number for that one tablet only. Tap the **top left** of the device screen 5 times in a row and the device settings screen opens; unlock it with this number. Use it when resetting a device or connecting it again. Press 「**再生成**」 (Regenerate) to get a new number — **the previous number then stops working**.
 
 > ⚠️ Pressing 「**表示**」 is recorded. Tell the numbers only to the staff on the floor, and do not post them on a wall or similar.
 

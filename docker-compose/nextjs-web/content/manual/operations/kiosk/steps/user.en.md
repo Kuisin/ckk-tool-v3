@@ -9,8 +9,8 @@ In 「**工程実行**」 (Run step) on the tablet, you check the work given to 
 
 - You can see the list of the work (the steps) to do today.
 - You can record when you **start, pause, restart, and finish** the work.
-- You can enter how many pieces you received and how many became good pieces.
-- When defects come out, you can leave the type and the number of pieces.
+- You can enter how many pieces you received and any defects that came out (the good quantity is calculated automatically).
+- When defects come out, you can leave the type, the number of pieces, and the details.
 - On inspection steps, you can record the values you measured and whether they passed.
 
 ## Words used on this page
@@ -36,7 +36,9 @@ Each card shows the work order number, the site, the step name, the product name
 - **前工程待ち** (waiting for the previous step) … the work before it is not finished. You cannot start.
 - **作業中** (in progress) … you are working on it now.
 - **一時停止中** (paused) … it is stopped. Press 「再開」 (Restart) to carry on from where you were.
+- **◯◯ さんが作業中** (◯◯ is working on it) … someone else is working on that step. You cannot operate it until they finish or pause it.
 - **完了** (finished) … the work is done.
+- **キャンセル** (cancelled) … work that was called off.
 
 > 💡 You can hide finished work from the list with 「**完了した工程を隠す**」 (Hide finished steps). Use it when there are too many items on the screen.
 
@@ -46,13 +48,14 @@ Each card shows the work order number, the site, the step name, the product name
 2. Press 「**工程開始**」 (Start step) at the bottom of the screen.
 3. On the 「工程を開始」 (Start step) screen, check the **受入数** (received quantity — how many pieces came into that step). The number carried over from the previous step is already filled in.
 4. If it is different from the real number, change the number.
-5. Press 「**開始する**」 (Start).
+5. On steps that show a 「**ロット/伝票コード**」 (lot / slip code) box, enter the material lot or slip code. On "required" steps you cannot start without it; on "optional" steps it can stay empty. The code you enter is shown on the step card as 「ロット ◯◯」 (lot ◯◯).
+6. Press 「**開始する**」 (Start).
 
 ![Step screen](../../../assets/screenshots/kiosk-step-detail-01.png)
 
 Once you start, the status changes to 「作業中」 (in progress) and the work time starts being counted.
 
-> ⚠️ You can work on **only one step at a time**. To start another step, first set the current step to 「一時停止」 (pause) or 「完了」 (finish). When the screen shows 「他工程を作業中」 (working on another step), you can go back with 「**作業中の工程へ**」 (Go to the step in progress).
+> 💡 You can also work on several steps at the same time. While you do, the working time is **divided by the number of steps you are working on at once** and recorded on each step (for example, two at once means the time counts half for each).
 
 ## Stopping partway and restarting
 
@@ -78,13 +81,15 @@ The step screen has a 「**作業場所**」 (work location) box: **which machin
 ## Finishing the work
 
 1. Press 「**工程完了**」 (Complete step) at the bottom of the screen.
-2. On the 「工程を完了」 (Complete step) screen, check the **良品数** (good quantity — how many pieces you can pass on).
-3. When defects came out, press 「**不良を追加**」 (Add defect) and enter the **種別** (type — 半製品 semi-finished / 廃棄 scrapped / 手直し rework) and the **本数** (number of pieces). You can also choose a reason if you need to.
+2. On the 「工程を完了」 (Complete step) screen, check the **良品数** (good quantity — how many pieces you can pass on). The good quantity is **calculated automatically** as the received quantity minus the total of the defects (it shows 「自動計算」 — calculated automatically). You only enter the defects.
+3. When defects came out, press 「**不良を追加**」 (Add defect) and fill in the following on each line.
+   - **種別** (type) … one of 半製品 (semi-finished), 廃棄 (scrapped), or 工程分岐 (step branch — pieces sent to another step, such as rework)
+   - **不良種類** (defect type, required) … choose from the defect types registered in advance
+   - **本数** (number of pieces)
+   - **詳細** (details, required) … describe in words what the defect was
 4. Press 「**完了する**」 (Complete).
 
-The good quantity is **calculated automatically** as the received quantity minus the total of the defects (it shows 「自動計算」 — calculated automatically).
-
-> ⚠️ If the defects add up to more than the received quantity, you see 「**不良の合計（n）が受入数（n）を超えています**」 (the defect total, n, is more than the received quantity, n) and you cannot finish. Please check the numbers again.
+> ⚠️ If the defects add up to more than the received quantity, you see 「**不良の合計（n）が受入数（n）を超えています**」 (the defect total, n, is more than the received quantity, n) and you cannot finish. Please check the numbers again. Also, if a defect line is missing its type or details, you see 「**不良の各行に種類と詳細を入力してください**」 (enter a type and details on every defect line). Fill in every line before finishing.
 
 ## Inspection steps
 
@@ -102,32 +107,37 @@ Which quantities you are asked for depends on the step. Steps that do not track 
 | Field | Required | What to enter |
 |-------|----------|---------------|
 | [Received / inspected](#field-input) | Required | How many arrived in your hands |
-| [Good / passed](#field-success) | Required | How many go on to the next step |
-| [Defect breakdown](#field-defects) | Conditional | Semi-finished, scrapped, branched |
-| [Defect reasons](#field-reasons) | Optional | Counts per defect type |
+| [Lot / slip code](#field-lot) | Conditional | The material lot or slip code |
+| [Good / passed](#field-success) | Calculated | How many go on to the next step (not entered) |
+| [Defect breakdown](#field-defects) | Conditional | Type, defect type, count, and details per defect line |
+| [Defect reasons](#field-reasons) | Conditional | The defect type and details on each defect line |
 | [Inspection record](#field-inspection) | Conditional | Measured values on the sheet |
 
 ### Received / inspected [#field-input]
 
 Entered **when starting** the step: how many actually arrived. The previous step's good count is filled in for you. If what arrived differs, **change it to what arrived.**
 
+### Lot / slip code [#field-lot]
+
+Entered **when starting** the step: the material lot or slip code. Each step is set to "required", "optional", or "none"; on required steps you cannot start without it. The code you enter is shown on the step card as 「ロット ◯◯」 (lot ◯◯).
+
 ### Good / passed [#field-success]
 
-Entered **when completing** the step: how many can go on to the next step.
+How many can go on to the next step. **You do not enter it yourself** — the received quantity minus the total of the defects is calculated and shown automatically.
 
 ### Defect breakdown [#field-defects]
 
-What became of the rest.
+A list of what did not become good pieces, one line per defect. On each line you enter the **type**, the **defect type** (required), the **count**, and the **details** (required). The type is one of these three.
 
 - **Semi-finished** — not a product, but kept as stock
 - **Scrapped** — thrown away
 - **Branched** — sent to another step, such as rework
 
-**Received must equal good plus all defects.** The screen warns you when it does not.
+The totals per type and how they affect stock are calculated automatically from this list. The only condition is that **the defect total must not exceed the received quantity** — the screen warns you when it does (the good quantity becomes the received quantity minus the defect total).
 
 ### Defect reasons [#field-reasons]
 
-Counts per defect type. They **do not affect stock** — they are a side record for looking back at causes.
+The **defect type** and **details** entered on each defect line. These used to be a separate box, but they are now part of the defect breakdown list. A step cannot be completed until every line has a defect type chosen and details written. They become clues when looking back at causes later.
 
 ### Inspection record [#field-inspection]
 
@@ -144,9 +154,6 @@ A. If the screen shows 「**本日の担当工程はありません**」 (You ha
 
 **Q. I cannot start because it says 「前工程待ち」 (waiting for the previous step).**
 A. The step before it is not finished yet. Once the person doing that work finishes it, you can start.
-
-**Q. I cannot press the 「工程開始」 (Start step) button.**
-A. You may be working on another step. Check 「他工程を作業中」 (working on another step) at the top of the screen, and pause or finish that step first.
 
 **Q. The received quantity is different from the real number.**
 A. Please change the number when you start. It is only the number carried over from the previous step as a starting value, so it is fine to match it to the number of pieces you really received.
