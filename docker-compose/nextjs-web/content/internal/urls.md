@@ -22,8 +22,15 @@ description: "業務アプリ・キオスク・管理ツール・DB ブラウザ
 
 | URL | 環境 | 中身 |
 | --- | --- | --- |
-| `https://ckk-kiosk.kai-lab.net` | **本番** | 工程実行・指示書スキャン |
-| `https://ckk-kiosk-dev.kai-lab.net` | 検証 | 検証用 |
+| `https://kiosk.ckk-tool.co.jp` | **本番** | 工程実行・指示書スキャン |
+| `https://kiosk-dev.ckk-tool.co.jp` | 検証 | 検証用 |
+| `https://ckk-kiosk.kai-lab.net` | **本番** | 旧アドレス（当面つながる） |
+| `https://ckk-kiosk-dev.kai-lab.net` | 検証 | 旧アドレス（当面つながる） |
+
+> **タブレットの向き先を新しい URL へ変えてください。** 端末アプリには URL が
+> 固定で入っており、端末の信頼情報（デバイストークン）はドメインごとに別物なので、
+> 新 URL では**再度デバイス登録が必要**です（SY09 端末管理でリンクし直す）。
+> 旧アドレスは移行が済むまで残してあります。
 
 ## 管理・分析ツール
 
@@ -40,9 +47,11 @@ description: "業務アプリ・キオスク・管理ツール・DB ブラウザ
 | URL | 中身 |
 | --- | --- |
 | `https://deploy.ckk-tool.co.jp` | Coolify（アプリのデプロイ管理） |
-| `https://dock.kai-lab.net` | Portainer（Docker コンテナの管理） |
-| `https://monitor.kai-lab.net` | Grafana（ログ・監視ダッシュボード） |
-| `https://chat.kai-lab.net` | Open WebUI（社内 AI チャット） |
+| `https://dock.ckk-tool.co.jp` | Portainer（Docker コンテナの管理） |
+| `https://monitor.ckk-tool.co.jp` | Grafana（ログ・監視ダッシュボード） |
+| `https://chat.ckk-tool.co.jp` | Open WebUI（社内 AI チャット） |
+
+旧アドレス（`dock` / `monitor` / `chat` の `.kai-lab.net`）も当面つながります。
 
 ## 公開ドキュメント
 
@@ -57,7 +66,9 @@ description: "業務アプリ・キオスク・管理ツール・DB ブラウザ
   勤怠まで含みます。閲覧専用（書き込みはデータベース側で拒否）ですが、URL を知って
   いる人が開ける状態にはしないでください。`dock` / `deploy` / `monitor` も同様に
   管理者向けです。
-- `.kai-lab.net` は社内ネットワーク用、`.ckk-tool.co.jp` は社外からも到達できる
-  アドレスです。用途で使い分けてください。
+- CKK のシステムは **`ckk-tool.co.jp` へ集約中**です。キオスクと基盤・運用ツールは
+  移行済み、業務アプリ本体（`ckk` / `ckk-dev.kai-lab.net`）はまだ `kai-lab.net` の
+  ままです — SSO（Authentik）の許可 URL を先に更新する必要があるためで、それが
+  済んでから移します。旧アドレスは移行が済むまで残します。
 - 検証環境（dev）のデータは予告なく作り替えることがあります。**本番のつもりで
   入力しない**でください。

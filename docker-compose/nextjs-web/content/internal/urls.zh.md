@@ -22,8 +22,14 @@ description: "业务系统、平板终端、管理工具、数据库浏览器、
 
 | URL | 环境 | 内容 |
 | --- | --- | --- |
-| `https://ckk-kiosk.kai-lab.net` | **生产** | 工序执行、指示书扫描 |
-| `https://ckk-kiosk-dev.kai-lab.net` | 验证 | 验证用 |
+| `https://kiosk.ckk-tool.co.jp` | **生产** | 工序执行、指示书扫描 |
+| `https://kiosk-dev.ckk-tool.co.jp` | 验证 | 验证用 |
+| `https://ckk-kiosk.kai-lab.net` | **生产** | 旧地址（暂时仍可访问） |
+| `https://ckk-kiosk-dev.kai-lab.net` | 验证 | 旧地址（暂时仍可访问） |
+
+> **请将平板终端指向新的 URL。** 终端应用内固定写有 URL，且设备信任信息
+> （设备令牌）按域名区分，因此在新地址上**需要重新进行设备注册**
+> （在 SY09 终端管理中重新关联）。旧地址会保留到迁移完成为止。
 
 ## 管理・分析工具
 
@@ -40,9 +46,11 @@ description: "业务系统、平板终端、管理工具、数据库浏览器、
 | URL | 内容 |
 | --- | --- |
 | `https://deploy.ckk-tool.co.jp` | Coolify（应用部署管理） |
-| `https://dock.kai-lab.net` | Portainer（Docker 容器管理） |
-| `https://monitor.kai-lab.net` | Grafana（日志・监控仪表板） |
-| `https://chat.kai-lab.net` | Open WebUI（公司内部 AI 聊天） |
+| `https://dock.ckk-tool.co.jp` | Portainer（Docker 容器管理） |
+| `https://monitor.ckk-tool.co.jp` | Grafana（日志・监控仪表板） |
+| `https://chat.ckk-tool.co.jp` | Open WebUI（公司内部 AI 聊天） |
+
+`dock` / `monitor` / `chat` 的旧地址（`.kai-lab.net`）暂时仍可访问。
 
 ## 文档
 
@@ -56,5 +64,7 @@ description: "业务系统、平板终端、管理工具、数据库浏览器、
 - **`db` / `db-dev` 可以直接看到数据库的全部内容**，包括客户、单价、成本、考勤。
   虽然是只读（写入会被数据库拒绝），但不应让仅知道 URL 的人就能打开。
   `dock` / `deploy` / `monitor` 同样是面向管理员的。
-- `.kai-lab.net` 用于公司内部网络，`.ckk-tool.co.jp` 从公司外也能访问，请按用途区分使用。
+- CKK 的各系统正在**统一到 `ckk-tool.co.jp`**。平板终端与基础设施工具已迁移完成；
+  业务系统本体（`ckk` / `ckk-dev.kai-lab.net`）尚未迁移 —— 需要先更新 SSO
+  （Authentik）的回调地址白名单，之后再迁移。旧地址会保留到各自迁移完成为止。
 - 验证环境（dev）的数据可能会在没有预告的情况下重建，**请勿当作生产环境输入重要数据**。
