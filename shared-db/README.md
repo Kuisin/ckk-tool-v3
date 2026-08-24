@@ -152,6 +152,12 @@ migration にせず、`db-migrate-*` コンテナが毎回流す:
 - `sql/grants.sql` — 後から増えたテーブルにも権限を行き渡らせる必要がある
 - `sql/kiosk-cron.sql` — pg_cron ジョブ定義
 - `sql/analytics-views.sql` — 分析ビュー（CREATE OR REPLACE）
+- `sql/user-provision-cron.sql` — **本番のみ**（`USER_PROVISION_CRON=1` のときだけ）。
+  AD（`directory.employee_directory`）から `app.users` を毎日 02:00 JST に作る
+  pg_cron ジョブ + 関数 `app.provision_users_from_directory()`。
+  対象は「有効かつ department が入っている」行だけ（AD には ANCA1..14 のような
+  機械アカウントが混ざっているため）。`cron.timezone` は GMT なので
+  `0 17 * * *` と書く。手で流すなら `SELECT app.provision_users_from_directory();`
 
 `grants.sql` は新規 DB でも通るようにしてある（`kot` / `admintools` / `analytics`
 スキーマを作り、init スクリプトが走っていない環境では受け皿ロールを NOLOGIN で
