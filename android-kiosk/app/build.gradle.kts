@@ -28,6 +28,9 @@ android {
             dimension = "env"
             applicationIdSuffix = ".dev"
             buildConfigField("String", "BASE_URL", "\"https://ckk-kiosk-dev.kai-lab.net\"")
+            // 社内 LAN 用のアドレス（社内 CA 発行の証明書。将来はこちらだけにする）。
+            // 起動先は BASE_URL のままなので、社内 DNS が整うまで挙動は変わらない。
+            buildConfigField("String", "LAN_URL", "\"https://kiosk-dev.ckk-tools.loc\"")
             // 自己更新（SelfUpdater）: version.json のキーと配布 APK 名
             buildConfigField("String", "UPDATE_FLAVOR", "\"dev\"")
             buildConfigField("String", "APK_NAME", "\"ckk-kiosk-dev.apk\"")
@@ -36,6 +39,7 @@ android {
         create("prod") {
             dimension = "env"
             buildConfigField("String", "BASE_URL", "\"https://ckk-kiosk.kai-lab.net\"")
+            buildConfigField("String", "LAN_URL", "\"https://kiosk.ckk-tools.loc\"")
             buildConfigField("String", "UPDATE_FLAVOR", "\"prod\"")
             buildConfigField("String", "APK_NAME", "\"ckk-kiosk.apk\"")
             resValue("string", "app_name", "CKK Kiosk")

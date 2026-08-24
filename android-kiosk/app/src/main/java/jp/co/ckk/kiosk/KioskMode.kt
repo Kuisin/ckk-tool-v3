@@ -95,6 +95,61 @@ object KioskMode {
         )
     }
 
+    /**
+     * 社内 CA を端末へインストールする（デバイスオーナー権限）。
+     *
+     * 社内 LAN のキオスク URL（`*.ckk-tools.loc`）は公開 TLD ではないため公的 CA の
+     * 証明書が取れず、社内 CA 発行の証明書を使う。targetSdk 24 以降のアプリは
+     * ユーザー領域の CA を既定では信頼しないので、`network_security_config.xml` で
+     * **その 2 ホストに限って** user ストアを信頼するようにしてある。
+     *
+     * CA は **プロビジョニング QR の admin extras** で運ばれる（アプリに同梱しない）。
+     * ネットワーク越しに取りに行かないのは、その経路自体がまだ検証できないため —
+     * 攻撃者に差し替えられた CA を入れると全通信が覗かれる。QR は物理的に配る
+     * ＝ 信頼できる経路。
+     *
+     * QR には base64 で入っている（PEM をそのまま JSON に置くと改行のエスケープで
+     * 壊れやすく、壊れても QR は生成できてしまうため）。
+     *
+     * 冪等: 既に入っていれば何もしない。
+     */
+    fun installInternalCa(context: Context, caBytes: ByteArray) {
+        if (!isDeviceOwner(context)) return
+        val bytes = caBytes
+        if (bytes.isEmpty()) return
+        val dpm = dpm(context)
+        val admin = admin(context)
+        try {
+            if (dpm.hasCaCertInstalled(admin, bytes)) return
+            val ok = dpm.installCaCert(admin, bytes)
+            android.util.Log.i("KioskMode", "internal CA install: $ok")
+        } catch (e: Exception) {
+            // CA が入らなくても公開 URL（BASE_URL）では動くので、致命傷にはしない。
+            android.util.Log.w("KioskMode", "internal CA install failed", e)
+        }
+    }
+
+    /**
+     * プロビジョニング時の admin extras から CA を取り出して入れる。
+     * QR に CA が入っていない（従来どおりの運用）なら何もしない。
+     */
+    fun installCaFromProvisioningExtras(context: Context, intent: Intent?) {
+        val extras = intent?.getParcelableExtra<android.os.PersistableBundle>(
+            DevicePolicyManager.EXTRA_PROVISIONING_ADMIN_EXTRAS_BUNDLE,
+        ) ?: return
+        val b64 = extras.getString(EXTRA_INTERNAL_CA_PEM_BASE64) ?: return
+        val bytes = try {
+            android.util.Base64.decode(b64, android.util.Base64.DEFAULT)
+        } catch (e: IllegalArgumentException) {
+            android.util.Log.w("KioskMode", "internal CA is not valid base64", e)
+            return
+        }
+        installInternalCa(context, bytes)
+    }
+
+    /** プロビジョニング QR の admin extras で CA を渡すときのキー（base64）。 */
+    const val EXTRA_INTERNAL_CA_PEM_BASE64 = "jp.co.ckk.kiosk.INTERNAL_CA_PEM_BASE64"
+
     /** メンテナンス退出時にステータスバーを一時的に戻す（復帰時に再適用）。 */
     fun setStatusBarDisabled(context: Context, disabled: Boolean) {
         if (!isDeviceOwner(context)) return

@@ -22,6 +22,8 @@ class KioskDeviceAdminReceiver : DeviceAdminReceiver() {
     // AdminPolicyComplianceActivity 経由）
     override fun onProfileProvisioningComplete(context: Context, intent: Intent) {
         super.onProfileProvisioningComplete(context, intent)
+        // QR の admin extras に社内 CA が入っていれば端末へ入れる（LAN URL 用）。
+        KioskMode.installCaFromProvisioningExtras(context, intent)
         KioskMode.applyPolicies(context)
         context.startActivity(
             Intent(context, MainActivity::class.java)

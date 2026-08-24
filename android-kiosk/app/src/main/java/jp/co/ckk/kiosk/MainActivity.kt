@@ -123,7 +123,16 @@ class MainActivity : ComponentActivity() {
         webView = WebView(this)
         setContentView(webView)
 
-        val baseHost = Uri.parse(BuildConfig.BASE_URL).host
+        // 許可ホスト = 公開 URL（BASE_URL）+ 社内 LAN URL（LAN_URL, *.ckk-tools.loc）。
+        // キオスクは将来 LAN 限定にする方針で、その間はどちらのアドレスでも
+        // 動く必要がある。LAN 側の証明書は社内 CA 発行 —
+        // res/xml/network_security_config.xml でアンカーを同梱している。
+        val allowedHosts = setOfNotNull(
+            Uri.parse(BuildConfig.BASE_URL).host,
+            Uri.parse(BuildConfig.LAN_URL).host,
+        )
+        // Uri.host は null になりうるので、判定は明示的に包む（null は常に不許可）。
+        val isAllowedHost = { host: String? -> host != null && allowedHosts.contains(host) }
 
         webView.settings.apply {
             javaScriptEnabled = true
@@ -142,7 +151,7 @@ class MainActivity : ComponentActivity() {
                 request: WebResourceRequest,
             ): Boolean {
                 // キオスクのホスト以外へは遷移させない
-                return request.url.host != baseHost
+                return !isAllowedHost(request.url.host)
             }
 
             override fun onReceivedError(
@@ -179,7 +188,7 @@ class MainActivity : ComponentActivity() {
                 callback: GeolocationPermissions.Callback,
             ) {
                 // キオスクのオリジンのみ許可。実行時権限が無ければ要求してから応答
-                if (Uri.parse(origin).host != baseHost) {
+                if (!isAllowedHost(Uri.parse(origin).host)) {
                     callback.invoke(origin, false, false)
                     return
                 }
@@ -200,7 +209,7 @@ class MainActivity : ComponentActivity() {
             override fun onPermissionRequest(request: PermissionRequest) {
                 val wantsCamera =
                     request.resources.contains(PermissionRequest.RESOURCE_VIDEO_CAPTURE)
-                val fromKiosk = Uri.parse(request.origin.toString()).host == baseHost
+                val fromKiosk = isAllowedHost(Uri.parse(request.origin.toString()).host)
                 if (!wantsCamera || !fromKiosk) {
                     request.deny()
                     return
