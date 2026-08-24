@@ -1,11 +1,16 @@
 # Metabase — BI / analytics dashboards.
 #
-# Deployed on docker-mac-pro at ~/stacks/metabase. Uses a dedicated Postgres for
-# its application metadata (recommended over the embedded H2). Connect data sources
-# (the app DB, etc.) from the Metabase UI after first-run setup.
+# ⚠️ **このスタックは Coolify 管理**（プロジェクト ckk / `common` 環境 / dev 追従）。
+# `deploy-stack.sh metabase` を使わないこと — Coolify が建てたコンテナと二重になる。
 #
 #   metabase     host :3003 -> container :3000  (UI)
 #   metabase-db  internal Postgres (app metadata)
+#
+# データソースは **新しい環境別 DB** を見る（旧 shared-db は退役するので繋がない）:
+#   CKK 業務        → ckk-db-main (metabase_ro)  ※本番。業務データが入り次第埋まる
+#   CKK 業務 (dev)  → ckk-db-dev  (metabase_ro)
+#   King of Time    → ckk-db-main (kot_ro)       ※労務データは移行済み
+# いずれも `coolify` ネットワーク上の別名で引く。
 
 services:
   metabase-db:
@@ -55,10 +60,9 @@ services:
     networks:
       - default     # metabase-db
       - ldap        # vpn-ldap_default — reach vpn-ldap:389
-      - shareddb    # shared-db — read labor data (kot / directory schemas, kot_ro role)
-      - coolify     # ollama:11434 — Metabot/AI 用 LLM（ai-stack の ollama は
-                    # ホストポート非公開になったため、coolify ネットワーク経由で
-                    # エイリアス参照する。llm-openai-api-base-url=http://ollama:11434）
+      - coolify     # ckk-db-main / ckk-db-dev（業務・労務データ）と
+                    # ollama:11434（Metabot/AI 用 LLM）。旧 shared-db ネットワークは
+                    # 退役に伴い外した — データは環境別 DB へ移行済み。
     ports:
       - "3003:3000"
     healthcheck:
@@ -76,11 +80,7 @@ networks:
   ldap:
     external: true
     name: vpn-ldap_default
-  # shared-db stack's network — labor/attendance data (kot / directory schemas).
-  shareddb:
-    external: true
-    name: shared-db
-  # Coolify network — ollama (LLM, GPU) が接続している。Metabot/AI 連携用。
+  # Coolify network — 業務 DB（ckk-db-main / ckk-db-dev）と ollama（LLM, GPU）。
   coolify:
     external: true
     name: coolify
