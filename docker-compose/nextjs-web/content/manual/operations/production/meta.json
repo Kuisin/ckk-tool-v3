@@ -1,4 +1,10 @@
 {
   "title": "生産",
-  "pages": ["work-order", "approval", "product-inventory", "material-inventory"]
+  "pages": [
+    "work-order",
+    "pending-work-order",
+    "approval",
+    "product-inventory",
+    "material-inventory"
+  ]
 }
