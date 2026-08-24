@@ -8,6 +8,7 @@ This page is about the **shared tablet** in the factory (the shop-floor device).
 ## What you can do with this tablet
 
 - You can see **today's work (the steps)** given to you.
+- You can scan the QR code on a work order and open that work order's steps.
 - You can record when you **start, pause, and finish** the work.
 - You can enter how many pieces you made and how many defects came out.
 - You can leave inspection records.
@@ -59,7 +60,10 @@ On the app list screen you can switch the **screen language** (日本語 / Engli
 
 ## Starting your work
 
-Choose 「**工程実行**」 (Run step) from the app list to open the list of your work. For how to use it, see [Recording Work](/manual/en/operations/kiosk/steps/user).
+The app list has the following two apps.
+
+- 「**工程実行**」 (Run step) … opens the list of the work given to you. For how to use it, see [Recording Work](/manual/en/operations/kiosk/steps/user).
+- 「**指示書スキャン**」 (Scan work order) … scan the QR code printed on a work order with the camera (you can also type the number by hand), and **all the steps** of that work order appear in step order. Choose a step and the same recording screen as 「工程実行」 opens. Steps given to someone else show 「**他の担当者の工程です**」 (This step belongs to another person) and only that person can operate them.
 
 ## When you have finished
 
