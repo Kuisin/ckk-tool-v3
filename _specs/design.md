@@ -31,6 +31,7 @@ All tokens are derived from Mantine's theme object. Reference semantic tokens in
 
 | Category | Color |
 |----------|-------|
+| 一般 | `indigo` |
 | 販売 | `blue` |
 | 購買 | `teal` |
 | 生産 | `violet` |
@@ -274,6 +275,7 @@ Operation codes provide keyboard-shortcut navigation. Format: `{CAT}{MODE}{IDX}`
 | Category | IDX | Base label | list | new | detail |
 |----------|-----|-----------|------|-----|--------|
 | 共通 | — | ダッシュボード | CM00 | — | — |
+| 一般 | 1 | 承認・予定 | CM01 | — | — |
 | 販売 | 1 | 試算 | SA01 | SA11 | SA21 |
 | 販売 | 2 | 価格表 | SA02 | SA12 | SA22 |
 | 販売 | 3 | 見積書 | SA03 | SA13 | SA23 |
@@ -285,7 +287,6 @@ Operation codes provide keyboard-shortcut navigation. Format: `{CAT}{MODE}{IDX}`
 | 購買 | 3 | 素材入荷 | PU03 | PU13 | PU23 |
 | 購買 | 4 | 外注依頼 | PU04 | PU14 | PU24 |
 | 生産 | 2 | 指示書 | PD02 | PD12 | PD22 |
-| 生産 | 3 | 承認管理 | PD03 | PD13 | PD23 |
 | 生産 | 4 | 在庫管理 | PD04 | — | — |
 | 生産 | 5 | 未処理指示書 | PD05 | — | — |
 | 出荷 | 1 | 出荷書 | SH01 | SH11 | SH21 |
@@ -323,6 +324,10 @@ Operation codes provide keyboard-shortcut navigation. Format: `{CAT}{MODE}{IDX}`
 > `CM00`（ダッシュボード）は**アプリ一覧（`lib/app-list.ts`）には登録されて
 > いない** — ホーム自体だから。ランチャーに出るアプリの正は常に
 > `lib/app-list.ts`。
+>
+> `PD03` / `PD13` / `PD23` は**欠番**。旧 承認管理 は 一般カテゴリの
+> 承認・予定（`CM01`, `/general/tasks` — 自分の作業予定 + 承認待ちの
+> 横断一覧）へ移設した。旧 `/production/approvals` はリダイレクト。
 >
 > `PD01` / `PD11` / `PD21` は**欠番**。旧 注文請書 は注文請書の明細に統合され、
 > 注文明細（`SA05`）として販売カテゴリへ移った。注文明細は新規・編集画面を
@@ -391,7 +396,7 @@ Stack (gap="xl", p="md", maw={1200})
 | 素材発注書 | `IconShoppingCart` |
 | 指示書 | `IconSettings2` |
 | 未処理指示書 | `IconProgress` |
-| 承認管理 | `IconShieldCheck` |
+| 承認・予定 | `IconClipboardList` |
 | 製品在庫 | `IconBoxSeam` |
 | 素材在庫 | `IconStack2` |
 | 出荷書 | `IconTruck` |

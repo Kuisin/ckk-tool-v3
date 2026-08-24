@@ -39,7 +39,7 @@ import {
 
 const BASE_PATH = "/purchase/purchase-orders";
 const RECEIPTS_PATH = "/purchase/material-receipts";
-const APPROVALS_PATH = "/production/approvals";
+const APPROVALS_PATH = "/general/tasks";
 
 function revalidate(poNumber?: string) {
   revalidatePath(BASE_PATH);

@@ -34,7 +34,6 @@ const BASE_PATH = "/production/work-orders";
 function revalidate(workOrderNumber: number, stepId?: string) {
   revalidatePath(BASE_PATH);
   revalidatePath(`${BASE_PATH}/${workOrderNumber}`);
-  revalidatePath(`/production/approvals/${workOrderNumber}`);
   if (stepId) {
     revalidatePath(`${BASE_PATH}/${workOrderNumber}/steps/${stepId}`);
   }

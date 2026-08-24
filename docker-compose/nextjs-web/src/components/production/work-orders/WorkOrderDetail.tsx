@@ -338,11 +338,7 @@ export function WorkOrderDetail({
       }
       breadcrumbs={
         isApproval
-          ? [
-              "生産",
-              { label: "承認管理", href: "/production/approvals" },
-              woLabel,
-            ]
+          ? ["生産", { label: "承認・予定", href: "/general/tasks" }, woLabel]
           : ["生産", { label: "指示書", href: BASE_PATH }, woLabel]
       }
       createdAt={fmt.dateTime(wo.createdAt)}
