@@ -16,8 +16,35 @@
 `common/` の各ディレクトリはサーバーの `~/stacks/<name>/` と 1:1 で対応する。
 `apps/` にサーバー側の対応ディレクトリは無い（Coolify が git から直接建てる）。
 
-> **移行中** — `common/` の 14 スタックは Coolify 管理（`common` 環境）へ
-> 移していく予定。移し終えるまでは `deploy-stack.sh` が正。
+> **移行中** — `common/` は Coolify 管理（プロジェクト `ckk` の **`common` 環境**）へ
+> 1 スタックずつ移している。**移行済みのものに `deploy-stack.sh` を使ってはいけない**
+> （Coolify が建てたコンテナと二重になる）。現況は下表。
+
+### `common/` の移行状況
+
+| スタック | 管理 | 備考 |
+|---|---|---|
+| `prisma-studio` | **Coolify**（`common` 環境・dev 追従） | 第 1 号。状態を持たないので試験台にした |
+| 他 13 スタック | `deploy-stack.sh` | 未移行 |
+
+**Coolify 化で判ったこと（次のスタックでも同じ）**
+
+- `container_name:` は Coolify が握る — `prisma-studio-main` は
+  `prisma-studio-main-<appUUID>-<連番>` になる。ただし **compose の
+  サービス名はネットワーク別名として残る**ので、`prisma-studio-main:5555` で
+  引いている cloudflared 側は無傷（検証済み: 両方とも HTTP 200）。
+  影響は `docker exec <名前>` と Portainer の見た目だけ。
+- サーバーの `.env` は引き継がれない。**Coolify の env 変数へ入れ直す**
+  （値は `~/stacks/<stack>/.env` から移す。`${VAR:?}` の必須変数を落とすと
+  デプロイが即失敗するので、キーを数えて確認すること）。
+- **名前付きボリュームは名前が変わる**（compose プロジェクト名がアプリ UUID に
+  なるため）。状態を持つスタックは「停止 → 新ボリュームへコピー → 起動」を
+  1 スタックずつやる。`prisma-studio` はボリュームが無いので影響なし。
+- 移行の直前に **旧スタックを `docker compose down`** する。`container_name` が
+  衝突して新デプロイが失敗するため。
+- 自動デプロイには **アプリごとの GitHub webhook** が要る（Coolify 側で
+  `manual_webhook_secret_github` を作り、同じ secret で
+  `https://deploy.ckk-tool.co.jp/webhooks/source/github/events/manual` を登録）。
 
 ---
 
