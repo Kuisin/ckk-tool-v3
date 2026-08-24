@@ -1,13 +1,21 @@
 # Prisma Studio — web DB browser, one instance per environment.
 #
-# Public URLs (cloudflared tunnel → these container names on the `coolify` net):
+# ⚠️ **このスタックは Coolify 管理**（プロジェクト ckk / `common` 環境 / dev 追従）。
+# `deploy-stack.sh prisma-studio` を使わないこと — Coolify が建てたコンテナと
+# 二重になる。変更は dev へマージすれば webhook で反映される。
+#
+# Public URLs (cloudflared tunnel → these **service names** on the `coolify` net):
 #   https://db.ckk-tool.co.jp      → prisma-studio-main : ckk-db-main  (本番)
 #   https://db-dev.ckk-tool.co.jp  → prisma-studio-dev  : ckk-db-dev   (開発)
 #
+# 下の `container_name:` は Coolify 管理下では効かない（UUID 付きに置き換わる）。
+# 名前で引けるのは **サービス名がネットワーク別名として残る**ため — トンネルの
+# 向き先はサービス名であって container_name ではない、と理解しておくこと。
+#
 # Both connect as `studio_ro` — SELECT on every schema, so they can browse all
 # tables but cannot modify data (edits fail at the DB). Passwords differ per
-# environment; they live in this stack's server-side .env (gitignored) and come
-# from /data/coolify/source/.ckk-db-passwords.
+# environment; **Coolify の env 変数**に入っている（旧: このスタックの
+# サーバー側 .env。値の出所は /data/coolify/source/.ckk-db-passwords）。
 #
 # ⚠️ These expose the whole database read-only to anyone who reaches the URL —
 # keep both hostnames behind Cloudflare Access.
