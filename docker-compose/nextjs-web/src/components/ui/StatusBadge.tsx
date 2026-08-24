@@ -168,6 +168,11 @@ export function StatusBadge({ entity, status, ...props }: StatusBadgeProps) {
   );
 }
 
+/** 状態のラベルだけ欲しいとき用（手続き状況の補足文など）。未知の値はそのまま。 */
+export function statusLabel(entity: StatusEntity, status: string): string {
+  return (STATUS_MAPS[entity] as StatusMap)[status]?.label ?? status;
+}
+
 /** Build Select options from a status map (for filter bars). */
 export function statusOptions(
   entity: StatusEntity,

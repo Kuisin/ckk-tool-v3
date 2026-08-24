@@ -39,7 +39,12 @@ import { FieldValue } from "@/components/ui/FieldValue";
 import { HistoryPanel } from "@/components/ui/HistoryPanel";
 import { MemoPanel } from "@/components/ui/MemoPanel";
 import { ConfirmModal } from "@/components/ui/modals";
-import { StatusBadge } from "@/components/ui/StatusBadge";
+import {
+  type HandoffGroup,
+  ProcedurePanel,
+  type ProcedureStage,
+} from "@/components/ui/ProcedurePanel";
+import { StatusBadge, statusLabel } from "@/components/ui/StatusBadge";
 import {
   type AuditEntry,
   DetailShell,
@@ -54,6 +59,61 @@ import { DeliveryOrderTypeBadge } from "./DeliveryOrderTable";
 import { canCreateDeliveryNote, type DeliveryOrder, isEditable } from "./model";
 
 const BASE_PATH = "/shipping/delivery-orders";
+
+/** 手続き状況（作成 → 確定 → 出荷）+ 納品書への受け渡し。 */
+function DeliveryOrderProcedurePanel({
+  order,
+  fmtDate,
+}: {
+  order: DeliveryOrder;
+  fmtDate: (v: string | null) => string | null;
+}) {
+  const isStock = order.type === "STOCK_STORAGE";
+  const stages: ProcedureStage[] = [
+    { key: "created", label: "作成", description: fmtDate(order.createdAt) },
+    { key: "confirmed", label: "確定", description: null },
+    {
+      key: "shipped",
+      label: isStock ? "保管（在庫へ）" : "出荷",
+      description: order.shippedAt ? fmtDate(order.shippedAt) : null,
+    },
+  ];
+  const active =
+    order.status === "DRAFT" ? 1 : order.status === "CONFIRMED" ? 2 : 3;
+
+  // 在庫保管（請求フロー外）は納品書を作らない — セクション自体を出さない。
+  const handoffGroups: HandoffGroup[] | undefined = isStock
+    ? undefined
+    : [
+        {
+          key: "delivery-notes",
+          title: "納品書",
+          summary:
+            order.deliveryNotes.length > 0
+              ? `${order.deliveryNotes.length} 件`
+              : null,
+          items: order.deliveryNotes.map((dn) => ({
+            key: dn.deliveryNumber,
+            label: dn.deliveryNumber,
+            href: `/shipping/delivery-notes/${dn.deliveryNumber}`,
+            done: dn.status === "DELIVERED",
+            note: `${statusLabel("DeliveryNote", dn.status)}・${dn.recipientName}`,
+          })),
+          emptyNote:
+            order.status === "SHIPPED"
+              ? "納品書は未作成です"
+              : "未作成（出荷後に納品書を作成します）",
+        },
+      ];
+
+  return (
+    <ProcedurePanel
+      active={active}
+      handoffGroups={handoffGroups}
+      stages={stages}
+    />
+  );
+}
 
 export function DeliveryOrderDetail({
   order,
@@ -218,6 +278,11 @@ export function DeliveryOrderDetail({
           }
         />
       </SummaryGrid>
+
+      <DeliveryOrderProcedurePanel
+        fmtDate={(v) => (v ? fmt.date(v) : null)}
+        order={order}
+      />
 
       <Paper p="md" radius="md" withBorder>
         <Title mb="sm" order={5}>

@@ -155,6 +155,16 @@ export interface WorkOrderLineAllocView {
   lotNumber: number | null;
 }
 
+/** この指示書のロットが載った出荷書（手続き状況の「次の書類へ」）。 */
+export interface WorkOrderShipmentView {
+  /** 書類番号 DOR-YYYYMM-NNNNN。 */
+  number: string;
+  type: string; // DELIVERY_ORDER_TYPE
+  status: string; // DELIVERY_ORDER_STATUS
+  /** この指示書ロットぶんの数量。 */
+  quantity: number;
+}
+
 export interface WorkOrderView {
   id: string; // uuid（内部）— アクションは workOrderNumber を使う
   workOrderNumber: number;
@@ -162,6 +172,13 @@ export interface WorkOrderView {
   docNumber: string;
   status: string;
   approvalStatus: string;
+  /** 手続き状況（作成 → 承認 → 製造 → 完了）の日時。 */
+  requestedAt: string | null;
+  approvedAt: string | null;
+  startedAt: string | null;
+  completedAt: string | null;
+  /** この指示書のロットが載った出荷書（次の書類への受け渡し状況）。 */
+  shipments: WorkOrderShipmentView[];
   type: string;
   plannedQuantity: number;
   notes: string | null;

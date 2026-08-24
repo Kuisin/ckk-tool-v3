@@ -463,12 +463,34 @@ export async function fetchWorkOrder(
   const nameOf = (id: string | null | undefined) =>
     (id && users.find((u) => u.id === id)?.displayName) || "システム";
 
+  // この指示書のロットが載った出荷書（手続き状況の「次の書類へ」）。
+  // 出荷書 ↔ 指示書は明細のロット番号（= 指示書番号）でつながる。
+  const shipmentItems = await prisma.deliveryOrderItem.findMany({
+    where: { lotNumber: r.workOrderNumber },
+    select: {
+      quantity: true,
+      deliveryOrder: {
+        select: { yearMonth: true, seq: true, type: true, status: true },
+      },
+    },
+  });
+
   return {
     id: r.id,
     workOrderNumber: r.workOrderNumber,
     docNumber: formatDocNumber("WOR", r),
     status: r.status,
     approvalStatus: r.approvalStatus,
+    requestedAt: iso(r.requestedAt),
+    approvedAt: iso(r.approvedAt),
+    startedAt: iso(r.startedAt),
+    completedAt: iso(r.completedAt),
+    shipments: shipmentItems.map((it) => ({
+      number: formatDocNumber("DOR", it.deliveryOrder),
+      type: it.deliveryOrder.type,
+      status: it.deliveryOrder.status,
+      quantity: it.quantity,
+    })),
     type: r.type,
     plannedQuantity: r.plannedQuantity,
     notes: r.notes,
