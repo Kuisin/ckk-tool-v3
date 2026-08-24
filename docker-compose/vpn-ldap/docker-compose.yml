@@ -60,6 +60,10 @@ services:
       # の入力なので、本番 DB に無いとユーザーが 1 人も作られない。
       - DATABASE_URL=${LDAP_SYNC_DB_URL:?set LDAP_SYNC_DB_URL in .env}
       - LDAP_SYNC_INTERVAL_SECONDS=${LDAP_SYNC_INTERVAL_SECONDS:-21600}
+      # Python は TTY でないと stdout をバッファするので、これが無いと
+      # `docker logs ldap-sync` が**空のまま**になる。同期が失敗しても何も出ず、
+      # 原因を掴むのにコンテナ内で sync.full_sync() を直接呼ぶ羽目になった。
+      - PYTHONUNBUFFERED=1
     env_file:
       - ./ldap.env       # LDAP_SERVER_HOST / LDAP_APP_DN / LDAP_APP_PASSWORD / base
     networks:

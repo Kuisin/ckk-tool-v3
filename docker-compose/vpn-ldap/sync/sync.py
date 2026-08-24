@@ -307,13 +307,26 @@ def _write(rows: list[dict], kind: str) -> int:
                 else:
                     cur.execute(UPSERT_NO_GUID, r)
             # Refresh the KOT code->username map from the authoritative PX codes.
-            for r in rows:
-                if r["employee_code"] is not None:
-                    cur.execute(
-                        "INSERT INTO employees (employee_code, username) VALUES (%s,%s) "
-                        "ON CONFLICT (employee_code) DO UPDATE SET username = EXCLUDED.username",
-                        (r["employee_code"], r["username"]),
-                    )
+            #
+            # `kot.employees` belongs to the KOT attendance importer, which does
+            # not necessarily live in the same database as the directory: since
+            # the 2026-08-24 dev/prod split the app DB (ckk-db-main) has no `kot`
+            # schema, while the labor stack still runs on the old shared DB.
+            # Skip the map there instead of failing — this whole write is one
+            # transaction, so a missing table would roll the directory back too
+            # and leave employee_directory permanently empty.
+            cur.execute("SELECT to_regclass('kot.employees')")
+            has_kot_employees = cur.fetchone()[0] is not None
+            if has_kot_employees:
+                for r in rows:
+                    if r["employee_code"] is not None:
+                        cur.execute(
+                            "INSERT INTO employees (employee_code, username) VALUES (%s,%s) "
+                            "ON CONFLICT (employee_code) DO UPDATE SET username = EXCLUDED.username",
+                            (r["employee_code"], r["username"]),
+                        )
+            else:
+                print("[ldap-sync] kot.employees absent — skipped the KOT code map")
             cur.execute(
                 "INSERT INTO ldap_sync_log (kind, status, total, message) VALUES (%s,%s,%s,%s)",
                 (kind, "ok", len(rows), f"{len(rows)} users"),

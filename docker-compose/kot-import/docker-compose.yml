@@ -19,14 +19,24 @@ services:
       # King of Time admin login (https://s2.ta.kingoftime.jp/admin).
       - KOT_ID=${KOT_ID:-}
       - KOT_PW=${KOT_PW:-}
-      - DATABASE_URL=postgresql://kot:${DB_PASSWORD:?set DB_PASSWORD in .env}@shared-db:5432/ckk
+      # 本番 DB `ckk-db-main`（2026-08-24 に shared-db から移行。kot スキーマごと
+      # 移してある）。Coolify のコンテナ名はハッシュなので `coolify` ネットワーク上の
+      # 安定した別名で引く。ホストは env で上書きできる。
+      - DATABASE_URL=postgresql://kot:${DB_PASSWORD:?set DB_PASSWORD in .env}@${KOT_DB_HOST:-ckk-db-main}:5432/ckk
       - KOT_INTERVAL_SECONDS=${KOT_INTERVAL_SECONDS:-21600}
       - KOT_DAYS=${KOT_DAYS:-7}
+      # Python の stdout バッファ無効化 — 無いと取込が失敗しても
+      # `docker logs kot-import` に何も出ない（ldap-sync で踏んだ）。
+      - PYTHONUNBUFFERED=1
     networks:
       - default
-      - shareddb
+      - coolify
+      - shareddb # 旧 shared-db（移行期間中のみ・撤去したら外す）
 
 networks:
   shareddb:
     external: true
     name: shared-db
+  coolify:
+    external: true
+    name: coolify
