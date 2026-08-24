@@ -27,10 +27,24 @@ Android Studio（Ladybug 以降）でこのディレクトリを開く。フレ�
 
 | Variant | 接続先 | applicationId |
 |---|---|---|
-| `devDebug` / `devRelease` | https://ckk-kiosk-dev.kai-lab.net | `jp.co.ckk.kiosk.dev` |
-| `prodRelease` | https://ckk-kiosk.kai-lab.net | `jp.co.ckk.kiosk` |
+| `devDebug` / `devRelease` | https://ckk-kiosk-dev.kai-lab.net（LAN: https://kiosk-dev.ckk-tools.loc） | `jp.co.ckk.kiosk.dev` |
+| `prodRelease` | https://ckk-kiosk.kai-lab.net（LAN: https://kiosk.ckk-tools.loc） | `jp.co.ckk.kiosk` |
 
-CLI: `./gradlew assembleDevDebug`。release 署名とリリース手順は下の「配布」を参照。
+CLI からもビルドできる（この Mac には Android SDK が入っている）:
+
+```bash
+cd android-kiosk
+# 初回のみ — local.properties は .gitignore 済み（各自の SDK パスなのでコミットしない）
+echo "sdk.dir=$HOME/Library/Android/sdk" > local.properties
+
+export JAVA_HOME="/Applications/Android Studio.app/Contents/jbr/Contents/Home"
+./gradlew assembleDevDebug      # → app/build/outputs/apk/dev/debug/app-dev-debug.apk
+./gradlew assembleProdDebug
+```
+
+`JAVA_HOME` を指定するのは、Gradle が要求する JDK が Android Studio 同梱の
+JBR だけだから（システムの java では通らない）。release 署名とリリース手順は
+下の「配布」を参照。
 
 ## キオスクモード（端末ロック — デバイスオーナー）
 
@@ -90,6 +104,67 @@ PIN の既定値は `246810`。**既定値のまま配布しないこと** — �
   **アプリ固定（screen pinning）**でも可（弱い — 上のキオスクモード推奨）
 - dev 版と prod 版は併存インストール可能（id suffix `.dev`）だが、
   デバイスオーナーになれるのは端末につき 1 アプリのみ
+
+## 社内 LAN のアドレス（*.ckk-tools.loc）と証明書
+
+キオスクは将来 **社内ネットワーク限定** にする方針で、そのための LAN 用アドレスを
+用意してある:
+
+| flavor | 公開 URL（`BASE_URL` — 起動先） | LAN URL（`LAN_URL`） |
+|---|---|---|
+| dev | `https://ckk-kiosk-dev.kai-lab.net` | `https://kiosk-dev.ckk-tools.loc` |
+| prod | `https://ckk-kiosk.kai-lab.net` | `https://kiosk.ckk-tools.loc` |
+
+**「タブレットに証明書をインストールする」だけでは動かない。** `targetSdk` 24 以降の
+Android アプリは、ユーザー領域にインストールされた CA を**既定では信頼しない**
+（ブラウザは信頼するので「ブラウザでは開けるがアプリでは開けない」という切り分けに
+なる）。opt-in が要る。
+
+そこで:
+
+1. `res/xml/network_security_config.xml` で、**`*.ckk-tools.loc` の 2 ホストに限って**
+   user ストアの CA を信頼する。`base-config` ではなく `domain-config` にしてあるのが
+   肝で、他の通信の TLS は既定（system のみ）のまま厳格に保たれる
+2. CA 自体は**アプリに同梱せず**、**プロビジョニング QR の admin extras** で運び、
+   デバイスオーナー権限の `DevicePolicyManager.installCaCert()` で端末へ入れる
+   （`KioskMode.installCaFromProvisioningExtras`）。端末ごとの手作業は不要で、
+   CA を差し替えても APK の作り直しは要らない
+
+QR には **base64** で載る（PEM をそのまま JSON に置くと改行のエスケープで壊れ、
+しかも壊れたまま QR は生成できてしまうため）。生成:
+
+```sh
+./provisioning-qr.sh <apk> <apk-url> dev|prod ~/ckk-internal-ca.crt
+```
+
+`MainActivity` のホストロックは `BASE_URL` と `LAN_URL` の**両方**を許可する
+（`allowedHosts`）。起動先は `BASE_URL` のままなので、社内 DNS が未整備でも挙動は
+変わらない。LAN 限定へ切り替えるときに `BASE_URL` を `LAN_URL` と同じ値にする。
+
+### ⚠️ 初期プロビジョニングの APK ダウンロード URL は社内 https にできない
+
+QR の `PROVISIONING_DEVICE_ADMIN_PACKAGE_DOWNLOAD_LOCATION` を
+`https://kiosk.ckk-tools.loc/...` にすることはできない。この取得を行うのは**アプリが
+入る前の初期設定ウィザード**で、その時点では社内 CA はまだ端末に無く（CA はこの QR で
+アプリと一緒に入る）、証明書検証に失敗する — 鶏と卵。
+
+選択肢は 2 つ:
+
+| 方法 | 可否 | 備考 |
+|---|---|---|
+| 公開 https（現行 `ckk-kiosk*.kai-lab.net`） | ✅ | 公的 CA なのでウィザードが検証できる |
+| 社内 **http**（例 `http://kiosk.ckk-tools.loc/apk/...`） | ✅ | QR の SHA-256 チェックサムが改ざんを防ぐ。完全 LAN 内で完結させたい場合はこちら |
+| 社内 https（社内 CA） | ❌ | ウィザードが検証できない |
+
+**プロビジョニングが終わった後**は LAN の https URL を普通に使える（CA が入るため）。
+
+前提（サーバー／ネットワーク側）:
+
+- 社内 DNS に `kiosk.ckk-tools.loc` / `kiosk-dev.ckk-tools.loc` → `192.168.50.15`
+  （`ckk-tools.loc` は AD のドメインなので AD DNS に A レコードを足す）
+- nginx-proxy に vhost 2 本（`docker-compose/nginx-proxy/conf.d/kiosk*.ckk-tools.loc.conf`）。
+  証明書の発行手順はその vhost 先頭のコメント参照
+- CA の秘密鍵はサーバーの `~/stacks/nginx-proxy/certs/` から出さない（配るのは証明書のみ）
 
 ## サーバー側の有効化
 

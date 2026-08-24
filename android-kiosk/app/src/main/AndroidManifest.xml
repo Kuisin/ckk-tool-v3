@@ -12,10 +12,15 @@
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <uses-feature android:name="android.hardware.location.gps" android:required="false" />
 
+    <!-- networkSecurityConfig: 社内 LAN の *.ckk-tools.loc だけ社内 CA を信頼する。
+         端末への証明書インストールでは解決しない（targetSdk 24+ のアプリは
+         ユーザー CA を信頼しない）ため、CA を同梱してアンカーに指定している。
+         詳細は res/xml/network_security_config.xml のコメント参照。 -->
     <application
         android:allowBackup="false"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
+        android:networkSecurityConfig="@xml/network_security_config"
         android:supportsRtl="false"
         android:theme="@style/Theme.CkkKiosk"
         android:usesCleartextTraffic="false">

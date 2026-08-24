@@ -25,6 +25,9 @@ class GetProvisioningModeActivity : Activity() {
 class AdminPolicyComplianceActivity : Activity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // Android 12+ はこちらがプロビジョニング完了の入口。QR の admin extras に
+        // 社内 CA が入っていれば端末へ入れる（LAN URL 用）。
+        KioskMode.installCaFromProvisioningExtras(this, intent)
         KioskMode.applyPolicies(this)
         setResult(RESULT_OK)
         finish()
