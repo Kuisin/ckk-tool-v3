@@ -34,13 +34,18 @@ else
   DB_APP="ckk-db-main"
 fi
 
-WORKSPACE_WATCH='packages/**\npnpm-lock.yaml\npnpm-workspace.yaml\npackage.json'
+# watch_paths は **本物の改行** 区切りで Coolify に渡すこと。`\n` の 2 文字を
+# 入れると全体が 1 つのパターン扱いになり何にも一致しない = push してもデプロイ
+# されない（静かに壊れるので気付きにくい。実際これで一度踏んだ）。
+# 下の表は 1 行 = 1 アプリなので、表の中では `;` を改行の代わりに使い、
+# 送る直前に本物の改行へ戻す。
+WORKSPACE_WATCH="packages/**;pnpm-lock.yaml;pnpm-workspace.yaml;package.json"
 
-# name|base_directory|dockerfile_location|watch_paths
+# name|base_directory|dockerfile_location|watch_paths（`;` = 改行）
 # dockerfile_location が空の行は送らない（admintools は nixpacks ビルドで null）。
 APPS="
-nextjs-web-${ENV_SUFFIX}|/|/coolify/apps/nextjs-web/Dockerfile|coolify/apps/nextjs-web/**\n${WORKSPACE_WATCH}
-nextjs-kiosk-${ENV_SUFFIX}|/|/coolify/apps/nextjs-kiosk/Dockerfile|coolify/apps/nextjs-kiosk/**\n${WORKSPACE_WATCH}
+nextjs-web-${ENV_SUFFIX}|/|/coolify/apps/nextjs-web/Dockerfile|coolify/apps/nextjs-web/**;${WORKSPACE_WATCH}
+nextjs-kiosk-${ENV_SUFFIX}|/|/coolify/apps/nextjs-kiosk/Dockerfile|coolify/apps/nextjs-kiosk/**;${WORKSPACE_WATCH}
 admintools-${ENV_SUFFIX}|/coolify/apps/admintools||coolify/apps/admintools/**
 po-extract-${ENV_SUFFIX}|/coolify/apps/po-extract|/Dockerfile|coolify/apps/po-extract/**
 ${DB_APP}|/coolify/apps/ckk-db|/Dockerfile|coolify/apps/ckk-db/**
@@ -58,7 +63,10 @@ echo "$APPS" | while IFS='|' read -r name base dockerfile watch; do
     continue
   fi
 
-  patch=$(jq -nc --arg base "$base" --arg watch "$watch" --arg df "$dockerfile" '
+  # `;` → 本物の改行。jq が JSON の "\n" へ正しくエンコードしてくれる。
+  watch_real=$(printf '%s' "$watch" | tr ';' '\n')
+
+  patch=$(jq -nc --arg base "$base" --arg watch "$watch_real" --arg df "$dockerfile" '
     {base_directory: $base, watch_paths: $watch}
     + (if ($df | length) > 0 then {dockerfile_location: $df} else {} end)')
 
@@ -68,6 +76,7 @@ echo "$APPS" | while IFS='|' read -r name base dockerfile watch; do
 done
 
 echo
-echo "反映後の確認:"
+echo "反映後の確認（watch_paths は改行が本物か = 複数行に見えるかを必ず見る）:"
 curl -sf -H "Authorization: Bearer $TOKEN" "$API/applications" \
-  | jq -r '.[] | "\(.name)\t\(.base_directory)\t\(.dockerfile_location // "-")"' | sort
+  | jq -r '.[] | "\(.name)\t\(.base_directory)\t\(.dockerfile_location // "-")\t\((.watch_paths // "") | split("\n") | length)行"' \
+  | sort
