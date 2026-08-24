@@ -27,10 +27,24 @@ Android Studio（Ladybug 以降）でこのディレクトリを開く。フレ�
 
 | Variant | 接続先 | applicationId |
 |---|---|---|
-| `devDebug` / `devRelease` | https://ckk-kiosk-dev.kai-lab.net | `jp.co.ckk.kiosk.dev` |
-| `prodRelease` | https://ckk-kiosk.kai-lab.net | `jp.co.ckk.kiosk` |
+| `devDebug` / `devRelease` | https://ckk-kiosk-dev.kai-lab.net（LAN: https://kiosk-dev.ckk-tools.loc） | `jp.co.ckk.kiosk.dev` |
+| `prodRelease` | https://ckk-kiosk.kai-lab.net（LAN: https://kiosk.ckk-tools.loc） | `jp.co.ckk.kiosk` |
 
-CLI: `./gradlew assembleDevDebug`。release 署名とリリース手順は下の「配布」を参照。
+CLI からもビルドできる（この Mac には Android SDK が入っている）:
+
+```bash
+cd android-kiosk
+# 初回のみ — local.properties は .gitignore 済み（各自の SDK パスなのでコミットしない）
+echo "sdk.dir=$HOME/Library/Android/sdk" > local.properties
+
+export JAVA_HOME="/Applications/Android Studio.app/Contents/jbr/Contents/Home"
+./gradlew assembleDevDebug      # → app/build/outputs/apk/dev/debug/app-dev-debug.apk
+./gradlew assembleProdDebug
+```
+
+`JAVA_HOME` を指定するのは、Gradle が要求する JDK が Android Studio 同梱の
+JBR だけだから（システムの java では通らない）。release 署名とリリース手順は
+下の「配布」を参照。
 
 ## キオスクモード（端末ロック — デバイスオーナー）
 

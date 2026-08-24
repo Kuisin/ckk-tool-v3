@@ -134,9 +134,14 @@ object KioskMode {
      * QR に CA が入っていない（従来どおりの運用）なら何もしない。
      */
     fun installCaFromProvisioningExtras(context: Context, intent: Intent?) {
-        val extras = intent?.getParcelableExtra<android.os.PersistableBundle>(
-            DevicePolicyManager.EXTRA_PROVISIONING_ADMIN_EXTRAS_BUNDLE,
-        ) ?: return
+        if (intent == null) return
+        val key = DevicePolicyManager.EXTRA_PROVISIONING_ADMIN_EXTRAS_BUNDLE
+        val extras = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+            intent.getParcelableExtra(key, android.os.PersistableBundle::class.java)
+        } else {
+            @Suppress("DEPRECATION")
+            intent.getParcelableExtra<android.os.PersistableBundle>(key)
+        } ?: return
         val b64 = extras.getString(EXTRA_INTERNAL_CA_PEM_BASE64) ?: return
         val bytes = try {
             android.util.Base64.decode(b64, android.util.Base64.DEFAULT)
