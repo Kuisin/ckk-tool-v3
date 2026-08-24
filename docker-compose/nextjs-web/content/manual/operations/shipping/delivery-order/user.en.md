@@ -41,7 +41,7 @@ When you open the app, you see a list of the shipping orders made so far.
 - **出荷書番号 (Shipping order number)** … A number that starts with `DOR-`. The system adds it for you.
 - **種別 (Type)** … A blue 「発送」 (Dispatch) means pieces sent to the customer. A grey 「在庫保管」 (Keep in stock) means pieces kept in-house.
 - **状態 (Status)** … Grey is 「下書き」 (Draft), blue is 「確定」 (Confirmed), green is 「出荷済」 (Shipped).
-- In the search box at the top you can type a shipping order number, a order line number, a customer name, or a product name to narrow the list. This box is for **finding shipping orders you have already made**; it is a different box from the one for picking a order line when you make a new shipping order.
+- In the search box at the top you can type a shipping order number, a order line number, or a customer name to narrow the list. This box is for **finding shipping orders you have already made**; it is a different box from the one for picking a order line when you make a new shipping order.
 - The list shows **shipping orders sent from the site you belong to**.
 - Click a row to open the detail screen for that shipping order.
 
@@ -60,7 +60,7 @@ When you open the app, you see a list of the shipping orders made so far.
 
 After you save, it is registered as a 「**下書き**」 (Draft) and the detail screen opens.
 
-> 💡 When you pick an order acceptance, each order line group shows its contents (number, product, **ordered pieces, shipped pieces, finished pieces with the number of completed work orders**). "Finished" is the share of the connected work orders' output allocated to this line. Please check that it is correct before going on.
+> 💡 When you pick an order acceptance, each order line group shows its contents (number, customer, product, ship-to, whether it is direct to the end user, **ordered pieces, shipped pieces, finished pieces**). "Finished" is the share of the connected work orders' output allocated to this line. Please check that it is correct before going on.
 
 > ⚠️ The order line cannot be changed after you save. If you picked the wrong one, cancel that shipping order and make a new one.
 
@@ -72,7 +72,7 @@ At the top you see the shipping order number, order line number, customer, produ
 
 - **数量合計 (Total quantity)** … Shown as "30 / 受注 50", so you can see the pieces being sent next to the pieces that were ordered.
 - The 「明細」 (Lines) area below shows the product, lot, quantity, and notes.
-- There are three tabs. **概要** (Overview) shows the notes, **納品書** (Delivery notes) shows the delivery notes made from this shipping order, and **履歴** (History) shows a record of who changed what and when.
+- There are four tabs. **概要** (Overview) shows the notes, **納品書** (Delivery notes) shows the delivery notes made from this shipping order, **メモ** (Memo) is a shared internal memo, and **履歴** (History) shows a record of who changed what and when.
 
 ## The three stages before shipping
 
@@ -150,7 +150,7 @@ The kind of shipment. **Only dispatch goes on to a delivery note and billing.**
 
 ### Shipping plant [#field-plant]
 
-Which plant it leaves from. **Stock falls at this plant**, so choose the one the goods physically leave.
+Which plant it leaves from. This field records, on the documents and in the records, where the shipment went out from — so choose the plant the goods physically leave. When the type is 「在庫保管」 (Keep in stock), **the pieces are kept as this plant's stock**. Note that the stock that falls on a 「発送」 (Dispatch) is not the plant's but that of the lot chosen on each line.
 
 ### Notes [#field-notes]
 
@@ -158,11 +158,11 @@ Notes about the shipping order as a whole. Notes about one line go in that line'
 
 ### Product [#field-product]
 
-The product going out, chosen from the products on the order line.
+The product going out. Picking an order acceptance fills it in from that order's products. You can also click the field and search all products to choose a different one.
 
 ### Lot (stock) [#field-lot]
 
-Which production run (lot) it comes from. **The lot number is the same as the work order number**, which is how you can trace later which production run went to which customer. Only lots with stock at the shipping plant can be chosen.
+Which production run (lot) it comes from. **The lot number is the same as the work order number**, which is how you can trace later which production run went to which customer. You can choose from the lots of the completed work orders made for that order line that still have stock left.
 
 ### Quantity [#field-quantity]
 
@@ -170,8 +170,8 @@ How many pieces go out. It cannot exceed the lot's stock, nor the **order remain
 
 ## Questions and problems
 
-**Q. In the 「注文明細」 box on the new shipping order screen, I search but the order line I want to ship does not appear.**
-A. In this box, type the **customer name, product name, or the customer's order number**. Here you cannot find it by the order line number starting with `ORD-` (this is a different box from the search box at the top of the list screen, where order line numbers do work). If it still does not appear, that order line may already be shipped or cancelled.
+**Q. In the 「注文請書」 (Order acceptance) box on the new shipping order screen, I search but the order acceptance I want to ship does not appear.**
+A. In this box, type the **customer name, product name, or the customer's order number**. If it still does not appear, that order acceptance may not be deployed (confirmed) yet, or its lines may all be 「出荷済」 (Shipped) or cancelled.
 
 **Q. I picked an order acceptance, but hardly any quantities were filled in.**
 A. Quantities are filled from the connected work orders' finished output (within physical stock), so a line with no completed work order yet gets a single row with only the quantity (you can tell by 「完成 0」 in the group header). Either make the shipping order again after the products are finished, or pick the lot yourself. Lines already shipped up to the ordered quantity are skipped.
@@ -180,7 +180,7 @@ A. Quantities are filled from the connected work orders' finished output (within
 A. You are trying to send more pieces than were ordered on the same order line (the group header shows a red 「受注残 N を超えています」). Lower the quantity on this shipping order, or check what has already been shipped.
 
 **Q. I get 「在庫が不足」 (Not enough stock) and cannot ship.**
-A. The site you are sending from does not have enough stock for the pieces you want to send. Check the numbers in [product stock](/manual/en/operations/production/product-inventory/user) and try again.
+A. The lot you chose does not have enough stock left for the pieces you want to send. Check the numbers in [product stock](/manual/en/operations/production/product-inventory/user) and try again.
 
 **Q. I made a mistake and want to fix it, but 「編集」 (Edit) does not appear.**
 A. You can only edit while it is a 「下書き」 (Draft). After it is confirmed it cannot be fixed, so leave that shipping order as it is and make a new one with the correct contents.

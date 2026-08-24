@@ -77,7 +77,7 @@ screenshots: [purchase-request-list-01, purchase-request-new-01, purchase-reques
 确认内容后，请上级过目。
 
 1. 打开申请的画面。
-2. 点击「**承認・変換状況**」（审批・转换状况）框中的「**承認依頼**」（提交审批）。
+2. 点击画面上方「**承認依頼が必要です**」（需要提交审批）卡片中的「**承認依頼**」（提交审批）。
 
 状态会变成「**承認依頼中**」（审批中），申请会送到审批人那里。同一份申请也会出现在[审批管理](/manual/zh/operations/production/approval/user)画面上。
 
@@ -134,7 +134,7 @@ screenshots: [purchase-request-list-01, purchase-request-new-01, purchase-reques
 | [申请理由](#field-reason) | 选填 | 为何需要（审批人会查看） |
 | [备注](#field-notes) | 选填 | 对整份申请的补充 |
 | [材料](#field-material) | 必填 | 需要的材料 |
-| [到货基地](#field-plant) | 必填 | 接收的基地 |
+| [到货基地](#field-plant) | 选填 | 接收的基地 |
 | [数量](#field-quantity) | 必填 | 需要的数量 |
 | [单位](#field-unit) | 必填 | 支・kg 等 |
 | [希望交期](#field-desired-date) | 选填 | 希望何时到货 |
@@ -154,7 +154,7 @@ screenshots: [purchase-request-list-01, purchase-request-new-01, purchase-reques
 
 ### 到货基地 [#field-plant]
 
-接收该材料的基地。**会计入此处指定基地的库存**，请选择实际使用的地点。
+接收该材料的基地。**会计入此处指定基地的库存**，请选择实际使用的地点。还没定下来时留空也没关系。
 
 ### 数量 [#field-quantity]
 

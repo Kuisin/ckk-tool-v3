@@ -84,7 +84,7 @@ screenshots: [material-receipt-list-01, material-receipt-new-01, material-receip
 |------|------|--------|
 | [材料](#field-material) | 必填 | 送达的材料 |
 | [供应商](#field-supplier) | 选填 | 送货的公司 |
-| [到货基地](#field-plant) | 必填 | 接收的基地 |
+| [到货基地](#field-plant) | 选填 | 接收的基地 |
 | [到货日](#field-received-date) | 必填 | 收到的日期 |
 | [数量](#field-quantity) | 必填 | 实际送达的数量 |
 | [单位](#field-unit) | 必填 | 支・kg 等 |
