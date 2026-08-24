@@ -47,6 +47,9 @@ model User {
   email       String?
   // credentials ログイン用（scrypt: salt:hash hex）。SSO ユーザーは null。
   passwordHash String?  @map("password_hash")
+  // true の間は /password-change 以外を開けない。初期管理者（既定パスワード
+  // `admin`）に立てておき、本人が変更した時点で false になる。
+  passwordChangeRequired Boolean @default(false) @map("password_change_required")
   // プロフィール写真（アプリ内でアップロード — AD からは取得しない）。
   // 実体は SeaweedFS `avatars/…`、参照は app.files 行。正方形で保存する。
   // 大 = 詳細・ホーム用、小 = 一覧・ヘッダー・履歴用のサムネイル。

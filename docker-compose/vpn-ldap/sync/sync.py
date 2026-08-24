@@ -259,7 +259,11 @@ def _row(e) -> dict:
         "mobile": _val(e, "mobile"),
         "fax": _val(e, "facsimileTelephoneNumber"),
         "description": desc or None,
-        "member_of": _multi(e, "memberOf"),
+        # 所属グループが無い人は「空のリスト」— NULL ではない。
+        # employee_directory.member_of は Prisma のスカラー配列（text[] NOT NULL
+        # DEFAULT '{}'）なので、NULL を書くと NOT NULL 違反でその人の同期だけが
+        # 落ちる。旧 shared-db では列が nullable だったため表面化しなかった。
+        "member_of": _multi(e, "memberOf") or [],
         "when_created": _dt(e, "whenCreated"),
         "when_changed": _dt(e, "whenChanged"),
         "account_expires": _account_expires(e),

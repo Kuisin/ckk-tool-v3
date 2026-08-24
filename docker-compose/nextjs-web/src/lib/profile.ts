@@ -76,3 +76,23 @@ export async function getCurrentProfile(): Promise<UserProfile | null> {
       : null,
   };
 }
+
+/**
+ * 初期パスワードのまま使われていないか（`users.password_change_required`）。
+ *
+ * 初期管理者アカウントは既定パスワードで作られるため、変更するまで他の画面を
+ * 開かせない。ダッシュボードのレイアウトがこれを見て /password-change へ飛ばす。
+ * 判定は毎回 DB を引く — セッション（JWT）に持たせるとパスワード変更後も
+ * 古い値が残り、いつまでも変更画面に閉じ込められる。
+ */
+export async function isPasswordChangeRequired(): Promise<boolean> {
+  const session = await auth();
+  const username = (session?.user as { username?: string } | undefined)
+    ?.username;
+  if (!username) return false;
+  const user = await prisma.user.findUnique({
+    where: { username },
+    select: { passwordChangeRequired: true },
+  });
+  return user?.passwordChangeRequired ?? false;
+}

@@ -1,4 +1,8 @@
-# CKK db-backup — scheduled PG17 incremental base backups of shared-db.
+# CKK db-backup — scheduled PG17 incremental base backups of the production DB.
+#
+# 2026-08-24: 本番は `shared-db` から Coolify 管理の `ckk-db-main` へ移行した。
+# バックアップ対象も追随させる（`PGHOST` / `LOGICAL_DB_URL` / `RESTORE_DB_URL`）。
+# 対象は **本番だけ** — dev（ckk-db-dev）は取らない。
 #
 # One loop container ticks at the top of every hour (kot-import style):
 #   daily/YYYY-MM-DD/      full pg_basebackup      — kept DAILY_KEEP_DAYS (14)
@@ -18,7 +22,9 @@ services:
     restart: unless-stopped
     user: "70:70" # postgres uid/gid in the alpine image; matches BACKUP_DIR chown
     environment:
-      - PGHOST=shared-db
+      # 本番 DB。Coolify アプリなのでコンテナ名はハッシュ — `coolify` ネットワーク上の
+      # 安定した別名 `ckk-db-main` で引く。
+      - PGHOST=${PGHOST:-ckk-db-main}
       - PGUSER=backup
       - PGPASSWORD=${BACKUP_DB_PASSWORD:?set BACKUP_DB_PASSWORD in .env}
       - TZ=${TZ:-Asia/Tokyo} # daily/monthly boundaries in local time
@@ -29,7 +35,8 @@ services:
     volumes:
       - ${BACKUP_DIR:-/data/db-backups}:/backups
     networks:
-      - shareddb
+      - shareddb # 旧 shared-db（移行期間中のみ・撤去したら外す）
+      - coolify
 
   # 日次の論理バックアップ（pg_dump カスタム形式）。restore-agent がワンクリック
   # 復元できる自己完結スナップショット（物理 basebackup とは別レイヤ）。
@@ -50,7 +57,8 @@ services:
       - ./logical-dump.sh:/logical-dump.sh:ro
       - ${BACKUP_DIR:-/data/db-backups}:/backups
     networks:
-      - shareddb
+      - shareddb # 旧 shared-db（移行期間中のみ・撤去したら外す）
+      - coolify
 
   # 復元エグゼキュータ。admintools UI から token 付きで呼ばれ、DB（pg_restore）と
   # SeaweedFS ボリュームの復元を実行する。docker.sock を持つのはこの非公開サービス
@@ -67,8 +75,8 @@ services:
       - BACKUP_HOST_DIR=${BACKUP_DIR:-/data/db-backups} # ワンショット bind mount 用のホストパス
       - RESTORE_AGENT_TOKEN=${RESTORE_AGENT_TOKEN:-}
       - RESTORE_DB_URL=${RESTORE_DB_URL:-} # ckk へのスーパーユーザ DSN（空 = DB 復元無効）
-      - SEAWEED_CONTAINER=${SEAWEED_CONTAINER:-nextjs-seaweedfs}
-      - SEAWEED_VOLUME=${SEAWEED_VOLUME:-nextjs-web_seaweed-data}
+      - SEAWEED_CONTAINER=${SEAWEED_CONTAINER:-seaweedfs-main}
+      - SEAWEED_VOLUME=${SEAWEED_VOLUME:-nextjs-web_seaweed-data-main}
       - SHARED_DB_NETWORK=${SHARED_DB_NETWORK:-shared-db}
       # 物理復元（全停止）: shared-db を停止しデータボリュームを入れ替える
       - SHARED_DB_CONTAINER=${SHARED_DB_CONTAINER:-shared-db}
@@ -150,9 +158,11 @@ services:
       - ${BACKUP_DIR:-/data/db-backups}:/backups:ro
 
 volumes:
+  # 本番のファイルストレージ（2026-08-24 に環境別へ分割。旧 nextjs-web_seaweed-data
+  # は dev 側へコピー済みで、本番切替後は使っていない）。
   seaweed-data:
     external: true
-    name: nextjs-web_seaweed-data
+    name: ${SEAWEED_VOLUME:-nextjs-web_seaweed-data-main}
   grafana-data:
     external: true
     name: monitoring_grafana-data

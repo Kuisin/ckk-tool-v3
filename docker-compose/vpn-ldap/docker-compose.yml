@@ -54,14 +54,18 @@ services:
     depends_on:
       - vpn-ldap
     environment:
-      # shared-db, db ckk (role ldap_sync, search_path=directory,kot). Set in .env (gitignored).
+      # 本番 DB `ckk-db-main`（role ldap_sync, search_path=directory,kot）。
+      # DSN は .env（gitignore）。2026-08-24 に shared-db から本番 DB へ移した —
+      # employee_directory はアプリのユーザー自動作成（provision_users_from_directory）
+      # の入力なので、本番 DB に無いとユーザーが 1 人も作られない。
       - DATABASE_URL=${LDAP_SYNC_DB_URL:?set LDAP_SYNC_DB_URL in .env}
       - LDAP_SYNC_INTERVAL_SECONDS=${LDAP_SYNC_INTERVAL_SECONDS:-21600}
     env_file:
       - ./ldap.env       # LDAP_SERVER_HOST / LDAP_APP_DN / LDAP_APP_PASSWORD / base
     networks:
       - default          # reach vpn-ldap:389
-      - shareddb         # reach shared-db (directory.employee_directory / kot.employees)
+      - coolify          # reach ckk-db-main（Coolify アプリ — 別名で引く）
+      - shareddb         # 旧 shared-db（移行期間中のみ・撤去したら外す）
 
 networks:
   default:
