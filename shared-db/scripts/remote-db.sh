@@ -12,7 +12,7 @@
 #   ./scripts/remote-db.sh pnpm prisma migrate deploy
 #   ./scripts/remote-db.sh pnpm prisma migrate status
 #   ./scripts/remote-db.sh psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f sql/grants.sql
-#   ./scripts/remote-db.sh sh -c 'gunzip -c ../data-migration/imports/010_bp.sql.gz | psql "$DATABASE_URL"'
+#   ./scripts/remote-db.sh sh -c 'gunzip -c ../tools/data-migration/imports/010_bp.sql.gz | psql "$DATABASE_URL"'
 #
 # Env overrides: DB_SSH_HOST (192.168.50.15), DB_CONTAINER (shared-db),
 #                DB_TUNNEL_PORT (25432).

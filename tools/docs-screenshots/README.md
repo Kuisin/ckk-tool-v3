@@ -39,7 +39,7 @@ pnpm exec tsx scripts/orchestrate.ts --only profile-preferences-01 \
 > `pnpm docs:shots` を通しておくこと。過去に order_lines 統合と承認フロー刷新で
 > 両方が同時に腐り、しばらく撮影自体ができなくなっていた。
 
-PNG は `docker-compose/nextjs-web/content/manual/assets/screenshots/<id>.png` に
+PNG は `coolify/apps/nextjs-web/content/manual/assets/screenshots/<id>.png` に
 出力され、**マニュアルと一緒にコミットする**。
 
 ## 撮影の追加手順

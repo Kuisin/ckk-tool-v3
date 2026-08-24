@@ -17,7 +17,7 @@ import { fileURLToPath } from "node:url";
 import { shots } from "../manifest";
 
 const HERE = join(fileURLToPath(import.meta.url), "../..");
-const MANUAL_DIR = resolve(HERE, "../../docker-compose/nextjs-web/content/manual");
+const MANUAL_DIR = resolve(HERE, "../../coolify/apps/nextjs-web/content/manual");
 const SHOT_DIR = join(MANUAL_DIR, "assets/screenshots");
 
 const manifestIds = new Set(shots.map((s) => s.id));

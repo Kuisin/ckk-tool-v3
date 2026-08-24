@@ -8,11 +8,11 @@ importers:
 
   .: {}
 
-  docker-compose/nextjs-kiosk:
+  coolify/apps/nextjs-kiosk:
     dependencies:
       '@ckk/authz-core':
         specifier: workspace:*
-        version: link:../../packages/authz-core
+        version: link:../../../packages/authz-core
       '@mantine/core':
         specifier: ^9.3.1
         version: 9.5.1(@mantine/hooks@9.5.1(react@19.2.4))(@types/react@19.2.18)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
@@ -84,11 +84,11 @@ importers:
         specifier: 4.1.9
         version: 4.1.9(@types/node@20.19.43)(vite@8.2.1(@types/node@20.19.43)(esbuild@0.28.2)(jiti@2.7.0)(yaml@2.9.0))
 
-  docker-compose/nextjs-web:
+  coolify/apps/nextjs-web:
     dependencies:
       '@ckk/authz-core':
         specifier: workspace:*
-        version: link:../../packages/authz-core
+        version: link:../../../packages/authz-core
       '@mantine/core':
         specifier: ^9.3.1
         version: 9.5.1(@mantine/hooks@9.5.1(react@19.2.4))(@types/react@19.2.18)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)

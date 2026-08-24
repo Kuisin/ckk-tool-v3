@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  社内 LAN のキオスク URL（*.ckk-tools.loc）でのみ、端末にインストール済みの
+  CA（user ストア）を信頼する。
+
+  なぜ必要か: `.loc` は公開 TLD ではないため公的 CA の証明書が取れない。そして
+  targetSdk 24 以降の Android アプリは、**端末にインストールされたユーザー CA を
+  既定では信頼しない**（ブラウザは信頼するので「ブラウザでは開けるがアプリでは
+  開けない」という切り分けになる）。ここで明示的に opt-in する。
+
+  CA はアプリに同梱しない。**プロビジョニング QR の admin extras で運び、
+  デバイスオーナー権限で `DevicePolicyManager.installCaCert()` する**
+  （KioskMode.installCaFromProvisioningExtras）。こうすると CA を差し替えても
+  APK を作り直す必要がなく、端末ごとの手作業も要らない。
+
+  **範囲を domain-config に閉じているのが肝。** base-config で user を信頼させると
+  アプリの通信すべて（インターネット向けを含む）が、端末に入った任意の CA で
+  傍受可能になる。ここは LAN の 2 ホストに限定し、他は既定（system のみ）のまま。
+-->
+<network-security-config>
+    <domain-config>
+        <domain includeSubdomains="false">kiosk.ckk-tools.loc</domain>
+        <domain includeSubdomains="false">kiosk-dev.ckk-tools.loc</domain>
+        <trust-anchors>
+            <certificates src="user" />
+            <certificates src="system" />
+        </trust-anchors>
+    </domain-config>
+</network-security-config>

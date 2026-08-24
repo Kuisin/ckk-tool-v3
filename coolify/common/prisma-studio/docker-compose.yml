@@ -1,0 +1,65 @@
+# Prisma Studio — web DB browser, one instance per environment.
+#
+# ⚠️ **このスタックは Coolify 管理**（プロジェクト ckk / `common` 環境 / dev 追従）。
+# `deploy-stack.sh prisma-studio` を使わないこと — Coolify が建てたコンテナと
+# 二重になる。変更は dev へマージすれば webhook で反映される。
+#
+# Public URLs (cloudflared tunnel → these **service names** on the `coolify` net):
+#   https://db.ckk-tool.co.jp      → prisma-studio-main : ckk-db-main  (本番)
+#   https://db-dev.ckk-tool.co.jp  → prisma-studio-dev  : ckk-db-dev   (開発)
+#
+# 下の `container_name:` は Coolify 管理下では効かない（UUID 付きに置き換わる）。
+# 名前で引けるのは **サービス名がネットワーク別名として残る**ため — トンネルの
+# 向き先はサービス名であって container_name ではない、と理解しておくこと。
+#
+# Both connect as `studio_ro` — SELECT on every schema, so they can browse all
+# tables but cannot modify data (edits fail at the DB). Passwords differ per
+# environment; **Coolify の env 変数**に入っている（旧: このスタックの
+# サーバー側 .env。値の出所は /data/coolify/source/.ckk-db-passwords）。
+#
+# ⚠️ These expose the whole database read-only to anyone who reaches the URL —
+# keep both hostnames behind Cloudflare Access.
+#
+# The schema under prisma/schema is a synced copy of shared-db/prisma/schema —
+# refresh it with `pnpm db:sync-schema` here when models change, then rebuild.
+
+services:
+  prisma-studio-main:
+    build: .
+    image: ckk-prisma-studio
+    container_name: prisma-studio-main
+    restart: unless-stopped
+    environment:
+      - DATABASE_URL=postgresql://studio_ro:${STUDIO_RO_MAIN_PASSWORD:?set STUDIO_RO_MAIN_PASSWORD in .env}@ckk-db-main:5432/ckk
+    networks:
+      - coolify
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:5555/').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  prisma-studio-dev:
+    build: .
+    image: ckk-prisma-studio
+    container_name: prisma-studio-dev
+    restart: unless-stopped
+    environment:
+      - DATABASE_URL=postgresql://studio_ro:${STUDIO_RO_DEV_PASSWORD:?set STUDIO_RO_DEV_PASSWORD in .env}@ckk-db-dev:5432/ckk
+    networks:
+      - coolify
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:5555/').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+# `coolify` is where both databases live (ckk-db-dev / ckk-db-main are network
+# aliases on it) and where cloudflared already attaches, so the tunnel can reach
+# these by container name without any extra relay.
+networks:
+  coolify:
+    external: true
+    name: coolify

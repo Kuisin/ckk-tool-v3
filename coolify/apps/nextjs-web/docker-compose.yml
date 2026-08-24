@@ -1,0 +1,234 @@
+# CKK nextjs-web stack — per-environment infra + traffic relays.
+#
+# The Next.js app itself is built and run by Coolify (git-push deploy from
+# github.com/Kuisin/ckk-tool-v3, base dir coolify/apps/nextjs-web):
+#   branch dev  -> app published on host :3004 -> https://ckk-dev.kai-lab.net
+#   branch main -> app published on host :3005 -> https://ckk.kai-lab.net
+# Coolify apps run on the external `coolify` network; they reach the gotenberg /
+# seaweedfs instances here (attached to `coolify`), their database (ckk-db-dev /
+# ckk-db-main) and po-extract on their own stacks (also attached to `coolify`).
+#
+# **dev and production share nothing.** Each environment has its own database,
+# its own object storage and its own PDF renderer:
+#   gotenberg-dev  / gotenberg-main   HTML->PDF          (http://gotenberg-<env>:3000)
+#   seaweedfs-dev  / seaweedfs-main   file storage       (http://seaweedfs-<env>:8888)
+#   ckk-db-dev     / ckk-db-main      database           (own Coolify apps)
+#
+# 移行中は旧 `gotenberg` / `seaweedfs` も残っている — 本番の env がまだそちらを
+# 指しているため。本番を切り替えたら旧 2 サービスと seaweed-data を撤去する。
+#
+# This stack also keeps the ingress relays:
+#   web         relay: nextjs-web_default :3000 -> host :3004 (dev app)
+#   web-main    relay: nextjs-web_default :3000 -> host :3005 (main app)
+#
+# The relays exist so cloudflared and nginx-proxy keep resolving the stable
+# names `web` / `web-main` on nextjs-web_default regardless of Coolify's
+# per-deploy container names — no Cloudflare dashboard or vhost changes on
+# redeploys or rollbacks.
+
+services:
+  # Stable ingress name for the dev app (cloudflared/nginx target web:3000).
+  web:
+    image: alpine/socat:1.8.0.0
+    container_name: web-relay-dev
+    restart: unless-stopped
+    command: tcp-listen:3000,fork,reuseaddr tcp:host.docker.internal:3004
+    extra_hosts:
+      - host.docker.internal:host-gateway
+    networks:
+      - default
+
+  # Stable ingress name for the production (main) app.
+  web-main:
+    image: alpine/socat:1.8.0.0
+    container_name: web-relay-main
+    restart: unless-stopped
+    command: tcp-listen:3000,fork,reuseaddr tcp:host.docker.internal:3005
+    extra_hosts:
+      - host.docker.internal:host-gateway
+    networks:
+      - default
+
+  # Stable ingress names for admintools (Coolify apps; per-deploy container names).
+  # cloudflared targets admin-dev:8000 / admin:8000 → host ports 8090 (dev) / 8091 (main).
+  admin-dev:
+    image: alpine/socat:1.8.0.0
+    container_name: admin-relay-dev
+    restart: unless-stopped
+    command: tcp-listen:8000,fork,reuseaddr tcp:host.docker.internal:8090
+    extra_hosts:
+      - host.docker.internal:host-gateway
+    networks:
+      - default
+
+  admin:
+    image: alpine/socat:1.8.0.0
+    container_name: admin-relay-main
+    restart: unless-stopped
+    command: tcp-listen:8000,fork,reuseaddr tcp:host.docker.internal:8091
+    extra_hosts:
+      - host.docker.internal:host-gateway
+    networks:
+      - default
+
+  # Stable ingress names for nextjs-kiosk (Coolify apps; per-deploy container names).
+  # cloudflared/nginx target kiosk:3000 / kiosk-main:3000 → host ports 3006 (dev) / 3007 (main).
+  kiosk:
+    image: alpine/socat:1.8.0.0
+    container_name: kiosk-relay-dev
+    restart: unless-stopped
+    command: tcp-listen:3000,fork,reuseaddr tcp:host.docker.internal:3006
+    extra_hosts:
+      - host.docker.internal:host-gateway
+    networks:
+      - default
+
+  kiosk-main:
+    image: alpine/socat:1.8.0.0
+    container_name: kiosk-relay-main
+    restart: unless-stopped
+    command: tcp-listen:3000,fork,reuseaddr tcp:host.docker.internal:3007
+    extra_hosts:
+      - host.docker.internal:host-gateway
+    networks:
+      - default
+
+  # ── 移行期間中だけ残す旧サービス ──────────────────────────────────────────
+  # `nextjs-web-main` / `nextjs-kiosk-main` の env はまだ gotenberg:3000 /
+  # seaweedfs:8888 を指している。本番を ckk-db-main + *-main へ切り替えるまで
+  # **消さないこと** — 消した瞬間に本番の PDF 生成とファイル参照が落ちる。
+  # 本番切替が済んだらこの 2 サービスと seaweed-data ボリュームを撤去する。
+  gotenberg:
+    image: gotenberg/gotenberg:8.17
+    container_name: nextjs-gotenberg
+    restart: unless-stopped
+    command:
+      - gotenberg
+      - --chromium-disable-javascript=true
+      - --chromium-allow-list=file:///tmp/.*
+    networks:
+      - default
+      - coolify
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://127.0.0.1:3000/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  seaweedfs:
+    image: chrislusf/seaweedfs:latest
+    container_name: nextjs-seaweedfs
+    restart: unless-stopped
+    command: "server -ip.bind=0.0.0.0 -dir=/data -filer -s3 -volume.max=0 -master.volumeSizeLimitMB=1024"
+    volumes:
+      - seaweed-data:/data
+    networks:
+      - default
+      - coolify
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8888/"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
+  # ── 環境別（新） ──────────────────────────────────────────────────────────
+  # HTML → PDF rendering (Chromium). Internal only, one per environment so a
+  # dev render can never queue behind (or be affected by) a production one.
+  gotenberg-dev:
+    image: gotenberg/gotenberg:8.17
+    container_name: gotenberg-dev
+    restart: unless-stopped
+    command:
+      - gotenberg
+      - --chromium-disable-javascript=true
+      - --chromium-allow-list=file:///tmp/.*
+    networks:
+      - default
+      - coolify
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://127.0.0.1:3000/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  gotenberg-main:
+    image: gotenberg/gotenberg:8.17
+    container_name: gotenberg-main
+    restart: unless-stopped
+    command:
+      - gotenberg
+      - --chromium-disable-javascript=true
+      - --chromium-allow-list=file:///tmp/.*
+    networks:
+      - default
+      - coolify
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://127.0.0.1:3000/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  # File storage (generated PDFs, attachments, avatars, floor maps). SeaweedFS
+  # S3/Filer; the apps read/write via the Filer HTTP API at :8888.
+  #
+  # **One instance per environment, separate volumes.** dev and production share
+  # no object storage: a dev upload must never land next to a production file,
+  # and `files.storage_key` rows only make sense against their own environment's
+  # store now that the databases are split too.
+  #
+  # -ip.bind=0.0.0.0: 既定では最初のネットワーク（nextjs-web_default）の IP に
+  # しかバインドせず、coolify ネット側（Coolify ビルドのアプリ）から接続拒否に
+  # なるため全インターフェースで待ち受ける。
+  seaweedfs-dev:
+    image: chrislusf/seaweedfs:latest
+    container_name: seaweedfs-dev
+    restart: unless-stopped
+    command: "server -ip.bind=0.0.0.0 -dir=/data -filer -s3 -volume.max=0 -master.volumeSizeLimitMB=1024"
+    volumes:
+      - seaweed-data-dev:/data
+    networks:
+      - default
+      - coolify
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8888/"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
+  seaweedfs-main:
+    image: chrislusf/seaweedfs:latest
+    container_name: seaweedfs-main
+    restart: unless-stopped
+    command: "server -ip.bind=0.0.0.0 -dir=/data -filer -s3 -volume.max=0 -master.volumeSizeLimitMB=1024"
+    volumes:
+      - seaweed-data-main:/data
+    networks:
+      - default
+      - coolify
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8888/"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
+volumes:
+  # 旧・dev と main が共有していたボリューム。**本番がまだ使っている**ので
+  # 消さない（本番切替後は dev データのコピー元 + 切り戻し先として暫く残す）。
+  seaweed-data:
+  seaweed-data-dev:
+  seaweed-data-main:
+
+networks:
+  # Stack-local network — cloudflared / nginx-proxy attach here and reach the
+  # relays at web:3000 / web-main:3000.
+  default:
+  # Coolify apps' network — gotenberg + seaweedfs are resolvable there by
+  # service name for the Coolify-deployed Next.js containers.
+  coolify:
+    external: true

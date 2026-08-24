@@ -1,0 +1,110 @@
+# CKK shared database — single PostgreSQL instance for all business data.
+#
+# One database (`ckk`), one schema per domain:
+#   kot / directory / admintools          — existing apps (KOT importer, LDAP sync, admintools)
+#   auth / master / bp / sales / production / inventory / shipping / billing / design / sys / log
+#                                         — ckk-tool-v3 business tables
+#
+# DDL is owned by Prisma (repo: shared-db/). Never hand-edit tables here;
+# edit shared-db/prisma/schema/*.prisma and run `pnpm migrate:dev`.
+#
+# App roles (created by init/01-roles.sh, grants in shared-db/sql/grants.sql):
+#   kot        — kot-import + admintools match_employees   (search_path: kot, directory)
+#   ldap_sync  — vpn-ldap directory sync                   (search_path: directory, kot)
+#   admintools — admintools app                            (search_path: admintools)
+#   app        — nextjs-web (Prisma Client)
+#   kot_ro     — read-only reporting (Metabase)
+#   studio_ro  — read-only, all schemas (Prisma Studio browser)
+#   backup     — REPLICATION-only role for the db-backup stack (pg_basebackup)
+#
+# Other stacks reach this DB over the external `shared-db` network at
+# shared-db:5432. Host port 15432 is published for migrations from the LAN.
+#
+# Backups: the db-backup stack (coolify/common/db-backup/) takes PG17
+# incremental base backups over the replication protocol. That needs
+# `summarize_wal=on` (command below) and a pg_hba entry for the backup role
+# (conf/pg_hba.conf). NOTE: applying the command/volume change recreates the
+# container (a few seconds of DB downtime) — deploy at a quiet moment. On the
+# existing cluster the backup role must be created manually once (init scripts
+# only run on fresh clusters) — see coolify/common/db-backup/README.md.
+
+services:
+  db:
+    # PGroonga + pg_cron（Dockerfile 参照）。pg_cron はキオスクのプレゼンス
+    # バックストップ（sql/kiosk-cron.sql — アプリ全停止時のオフライン検知 +
+    # stale セッション掃除）に使う。
+    build: .
+    image: ckk-shared-db:pgroonga-4.0.6-pgcron-1.6.7
+    container_name: shared-db
+    restart: unless-stopped
+    environment:
+      - POSTGRES_DB=ckk
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+      - KOT_DB_PASSWORD=${KOT_DB_PASSWORD:?set KOT_DB_PASSWORD in .env}
+      - LDAP_SYNC_DB_PASSWORD=${LDAP_SYNC_DB_PASSWORD:?set LDAP_SYNC_DB_PASSWORD in .env}
+      - ADMINTOOLS_DB_PASSWORD=${ADMINTOOLS_DB_PASSWORD:?set ADMINTOOLS_DB_PASSWORD in .env}
+      - APP_DB_PASSWORD=${APP_DB_PASSWORD:?set APP_DB_PASSWORD in .env}
+      - KOT_RO_DB_PASSWORD=${KOT_RO_DB_PASSWORD:?set KOT_RO_DB_PASSWORD in .env}
+      - METABASE_RO_DB_PASSWORD=${METABASE_RO_DB_PASSWORD:?set METABASE_RO_DB_PASSWORD in .env}
+      - FX_DB_PASSWORD=${FX_DB_PASSWORD:?set FX_DB_PASSWORD in .env}
+      - STUDIO_RO_DB_PASSWORD=${STUDIO_RO_DB_PASSWORD:?set STUDIO_RO_DB_PASSWORD in .env}
+      - BACKUP_DB_PASSWORD=${BACKUP_DB_PASSWORD:?set BACKUP_DB_PASSWORD in .env}
+    # summarize_wal=on is required for PG17 incremental backups (db-backup stack).
+    # hba_file points at the repo-managed pg_hba.conf (adds a replication entry
+    # for the backup role — the image default only allows replication locally).
+    # shared_preload_libraries=pg_cron + cron.database_name=ckk enable the
+    # pg_cron scheduler (jobs are created by shared-db/sql/kiosk-cron.sql —
+    # run `pnpm cron:remote` there AFTER this image/command change is live).
+    command:
+      - postgres
+      - -c
+      - summarize_wal=on
+      - -c
+      - hba_file=/etc/postgresql/pg_hba.conf
+      - -c
+      - shared_preload_libraries=pg_cron
+      - -c
+      - cron.database_name=ckk
+    volumes:
+      - shared-db-data:/var/lib/postgresql/data
+      - ./init:/docker-entrypoint-initdb.d:ro
+      - ./conf/pg_hba.conf:/etc/postgresql/pg_hba.conf:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d ckk"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    networks:
+      - default     # shared-db network (kot-import, admintools, metabase, …)
+      - coolify     # Coolify-deployed nextjs-web apps → shared-db:5432
+
+  # 為替レート日次更新 — app.currencies.rate_per_100_jpy（100 円で買えるその通貨量）
+  # を open.er-api.com（キー不要）から毎日 07:15 JST に更新（起動時にも 1 回 =
+  # 再起動で即時リフレッシュ）。通貨は業務システムでも使うため、Metabase では
+  # なくこの DB スタックに置く — スタックごと常設なのでサーバ再デプロイでも残る。
+  # 書き込みは専用ロール fx_rates（rate_per_100_jpy/updated_at の UPDATE のみ）。
+  # Rates By Exchange Rate API（https://www.exchangerate-api.com）。
+  fx-rates:
+    build: ./fx-rates
+    container_name: fx-rates
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      - TZ=Asia/Tokyo
+      - FX_DB_PASSWORD=${FX_DB_PASSWORD:?set FX_DB_PASSWORD in .env}
+    networks:
+      - default
+
+volumes:
+  shared-db-data:
+
+networks:
+  default:
+    name: shared-db
+  # Coolify apps' network — the nextjs-web containers resolve `shared-db` there.
+  coolify:
+    external: true
