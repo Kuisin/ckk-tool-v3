@@ -142,23 +142,27 @@ Powers the AI-first 注文請書 intake (scan image + auto-filled form → user 
 
 **Polymorphic children are cascaded by trigger, not FK** — 承認依頼 (`approval_requests.target_type/target_id`), メモ (`document_memos`), メモ改訂 (`document_memo_revisions`), 添付 (`document_attachments`) all point at a document by its **business-key string**, not an FK, so deleting a document would leave them behind — and if 採番 is ever reset, a reused number inherits them (this happened on dev: an approval record predating the document). Each document table therefore carries an `AFTER DELETE` trigger `purge_children_after_delete` → `app.purge_document_children()` (migration `20260911090000_document_children_cascade`) covering the 12 owner tables. It is invisible to the Prisma schema, so **add the trigger when you add a document table**. `audit_logs` is deliberately excluded — audit records outlive the document. The app has no document-delete path at all; the trigger exists because real deletions happen via psql/scripts/restores.
 
-**Database migrations (shared-db)** — Schema source of truth is `shared-db/prisma/schema/` (one `.prisma` per PG schema); migrations are owned by `shared-db` and NEVER run from nextjs-web. Authoring flow (from `shared-db/`): edit schema → `pnpm validate` → `pnpm migrate:dev -- --name <change>` → `pnpm generate` → sync consumer copies (`cd docker-compose/nextjs-web && pnpm db:sync-schema && pnpm db:generate`; same for `docker-compose/prisma-studio`).
+**Database migrations (shared-db)** — Schema source of truth is `shared-db/prisma/schema/` (one `.prisma` per domain); migrations are owned by `shared-db` and NEVER run from nextjs-web. Authoring flow (from `shared-db/`): edit schema → `pnpm validate` → `pnpm migrate:dev -- --name <change>` → `pnpm generate` → sync **all three** consumer copies (`docker-compose/nextjs-web`, `nextjs-kiosk`, `prisma-studio` — each has `pnpm db:sync-schema && pnpm db:generate`).
 
-**Applying to the dev DB** after a merge to `dev` (all idempotent). Note: the dev DB has **no published host port** — it is only reachable inside Docker on the server, so a workstation cannot hit `192.168.50.15:15432` directly. From **this Mac** (has `ssh 192.168.50.15` + the repo + `shared-db/.env`), use the `:remote` scripts — they open an SSH tunnel to the `shared-db` container (`scripts/remote-db.sh`) and run the same command against it:
+The history was **squashed on 2026-08-24** into 9 readable migrations: `20260824000001`–`000006` are the schema baseline (schemas/enums → master tables → business tables → system tables → constraints+indexes+FKs → views/functions/triggers; FKs live in the constraints file so table-file membership never matters), and `000007`–`000009` are the one-shot seed data (材種 + 工程マスタ + 試算設定 + 通貨 + `system` user; RBAC permissions + roles; feature flags). **A brand-new DB needs nothing but `prisma migrate deploy`** — no seed runbook. Master data that must NOT be in a fresh production DB (素材, 拠点, 不良種類, 承認フロー) cannot live in a migration, since migrations apply to every environment identically — it sits in `shared-db/sql/extended-master-seed.sql`, which dev/screenshot DBs load and production does not. `prisma migrate diff` against such a DB must be **empty**; GIN `match_names` indexes and the `settings_code` default are declared in the schema now, so any diff is a real change.
+
+Never paste a pg_dump preamble into a migration: `set_config('search_path','')` blinds Prisma to `_prisma_migrations` and the deploy dies with **P1014** *after* writing data.
+
+**Migrations apply themselves.** Merging to `dev` / `main` triggers the Coolify apps `db-migrate-dev` / `db-migrate-main` (watch path `shared-db/**`), which run `prisma migrate deploy` and then re-apply the three idempotent, evolving artifacts — `grants.sql`, `kiosk-cron.sql`, `analytics-views.sql` — which are deliberately **not** migrations because they must re-run as the schema grows. A failure fails the deployment. Do not apply migrations by hand as part of normal work.
+
+**Break-glass / inspection** — the DBs publish no host port, so from this Mac use the `:remote` scripts, which open an SSH tunnel to the container (`scripts/remote-db.sh`) and run the command against it:
 
 ```bash
 cd shared-db
-pnpm migrate:status:remote     # inspect pending migrations first
-pnpm migrate:deploy:remote     # 1. apply pending migrations (real prisma migrate deploy)
-pnpm grants:remote             # 2. re-grant (needed whenever tables/roles were added)
-pnpm import:legacy:remote      # 3. legacy data (BP/材種/製品) — ALWAYS after a reset/re-provision
+pnpm migrate:status:remote     # inspect applied/pending
+pnpm migrate:deploy:remote     # apply by hand (normally the migrator's job)
+pnpm grants:remote             # re-grant (whenever tables/roles were added)
+pnpm import:legacy:remote      # 取引先マスタ (010_bp) — after a reset/re-provision
 ```
 
-`scripts/remote-db.sh <cmd>` is the general form (tunnel + DATABASE_URL rewrite, e.g. `pnpm remote psql "$DATABASE_URL" -c '\\dt app.*'`). Overrides: `DB_SSH_HOST`, `DB_CONTAINER`, `DB_TUNNEL_PORT`. If the host port is ever republished on the LAN, the plain `pnpm migrate:deploy` / `sh -c '. ./.env; psql "$DATABASE_URL" …'` forms work again from a LAN machine.
+`scripts/remote-db.sh <cmd>` is the general form (tunnel + DATABASE_URL rewrite, e.g. `pnpm remote psql "$DATABASE_URL" -c '\\dt app.*'`). Overrides: `DB_SSH_HOST`, `DB_CONTAINER`, `DB_TUNNEL_PORT`.
 
-Step 3 applies the committed `data-migration/imports/*.sql.gz` (idempotent upserts generated from the FileMaker migration). There is no demo seed — master/BP data comes from this import. Regenerate artifacts with `data-migration/make_imports.sh` (needs `mapped.sqlite`).
-
-Skipping `grants.sql` after adding tables makes the app 500 on those tables (role `app` has no rights). **From a cloud Claude session** (sandbox has no LAN route — no SSH, no 192.168.50.x): run the same steps through Claude Code Remote in the Mac bridge environment (`kaisei-mac-studio:ckk-tool-v3`) — `create_trigger` with `create_new_session_on_fire: true` + that `environment_id`, then `fire_trigger`; have the session post its result as a PR comment and subscribe to the PR to receive it.
+Skipping `grants.sql` after adding tables makes the app 500 on those tables (role `app` has no rights) — which is why the migrator always runs it. **From a cloud Claude session** (sandbox has no LAN route — no SSH, no 192.168.50.x): run the same steps through Claude Code Remote in the Mac bridge environment (`kaisei-mac-studio:ckk-tool-v3`) — `create_trigger` with `create_new_session_on_fire: true` + that `environment_id`, then `fire_trigger`; have the session post its result as a PR comment and subscribe to the PR to receive it.
 
 **Server** — `192.168.50.15` (hostname `docker-mac-pro`; despite the name it runs Linux — Ubuntu noble / t2 kernel). Access: `ssh 192.168.50.15` (key-based, user `kaiseisawada`). All services run as Docker Compose stacks, one dir per stack under `~/stacks/` on the server: `nextjs-web`, `coolify`, `shared-db`, `prisma-studio`, `metabase`, `legacy-db`, `ai-stack`, `monitoring`, `db-backup`, `authentik`, `vpn-ldap`, `kot-import`, `mailrelay`, `nginx-proxy`, `cloudflared`, `portainer`. Browsing/inspection is **Portainer** (`dock.kai-lab.net` — the hostname and its `dockge` network alias are leftovers from Dockge, which is gone).
 

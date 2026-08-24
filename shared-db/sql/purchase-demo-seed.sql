@@ -7,7 +7,7 @@
 --     本ファイルでは bp_code で参照するのみ（作成しない）。
 --   - 拠点は F01（本社工場 — migration 20260714110000 でシード）と
 --     F02（masters-demo-seed が追加）を code で参照するのみ（作成しない）。
---   - 素材は migration 20260719120000_materials_from_excel の実在コードを
+--   - 素材は baseline-seed.sql（旧 materials_from_excel）の実在コードを
 --     code で参照する（materials.id は Int autoincrement のため subselect）。
 --   - 承認グループ（第一/第二承認グループ（デモ））+ システムユーザー
 --     （00000000-…-000000000000）は manufacturing-demo-seed が作成済み。

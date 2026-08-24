@@ -216,6 +216,8 @@ model Material {
   inventory          MaterialInventory[]
 
   @@unique([materialTypeId, surfaceFinishCode, diameterCode, lengthVariantCode])
+  // 照合名の配列検索。GIN でないと全表走査になる。
+  @@index([matchNames(ops: ArrayOps)], map: "materials_match_names_idx", type: Gin)
   @@map("materials")
   @@schema("app")
 }
@@ -260,6 +262,8 @@ model Product {
 
   @@unique([yearMonth, seq])
   @@index([materialTypeId])
+  // 照合名の配列検索（lib/intake matchProduct）。GIN でないと全表走査になる。
+  @@index([matchNames(ops: ArrayOps)], map: "products_match_names_idx", type: Gin)
   @@map("products")
   @@schema("app")
 }

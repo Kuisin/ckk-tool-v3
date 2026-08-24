@@ -29,17 +29,30 @@
 | `nextjs-kiosk-dev` / `-main` | dev / main | リポジトリ root | ckk-kiosk-dev / ckk-kiosk.kai-lab.net |
 | `admintools-dev` / `-main` | dev / main | `admintools/` | 内部のみ |
 | `po-extract-dev` / `-main` | dev / main | `ai-stack/extractor/` | 内部のみ（alias 有り） |
+| `ckk-db-dev` / `ckk-db-main` | dev / main | `ckk-db/` | 内部のみ（alias 有り）**業務 DB 本体** |
+| `db-migrate-dev` / `-main` | dev / main | リポジトリ root（`db-migrate/`） | 内部のみ・ポート無し |
 
 dev と main を**常時両方**動かす（本番の隣で検証するため）。これがコンテナ数が
 多い一番の理由で、意図的な構成。
+
+**dev と本番は何も共有しない** — DB（`ckk-db-dev` / `ckk-db-main`）も
+ファイルストレージ（`seaweedfs-dev` / `seaweedfs-main`）も PDF 生成
+（`gotenberg-dev` / `gotenberg-main`）も環境ごとに別。唯一の例外は GPU の
+`ollama`（1 枚しかないので共有・状態を持たない）。
+
+`db-migrate-*` は `shared-db/**` の変更を監視していて、マージのたびに
+`prisma migrate deploy` → `grants.sql` → `kiosk-cron.sql` →
+`analytics-views.sql` を流す。失敗すればデプロイが失敗として残る。
+`ckk-db-*` は**自動デプロイを切ってある**（push で DB コンテナが作り直される
+事故を防ぐため）。登録は `coolify/add-db-apps.sh`。
 
 ### 3. App support — アプリが必要とする周辺（`nextjs-web` スタック）
 
 | コンテナ | 役割 |
 |---|---|
 | `web` / `web-main` / `kiosk` / `kiosk-main` / `admin` / `admin-dev` | socat リレー。ハッシュ名の Coolify コンテナに**安定した名前**を与える |
-| `nextjs-gotenberg` | PDF 生成 |
-| `nextjs-seaweedfs` | ファイル本体（S3 API + filer） |
+| `gotenberg-dev` / `gotenberg-main` | PDF 生成（環境別） |
+| `seaweedfs-dev` / `seaweedfs-main` | ファイル本体（S3 API + filer）。**ボリュームも環境別** |
 
 > リレー 6 本は Coolify の `custom_network_aliases`（po-extract で使っている
 > 仕組み）で置き換えられる。置き換えると Edge から Coolify コンテナへ直接
@@ -49,7 +62,7 @@ dev と main を**常時両方**動かす（本番の隣で検証するため）
 
 | スタック | コンテナ | 中身 |
 |---|---|---|
-| `shared-db` | shared-db, fx-rates | **業務 DB 本体**（PG17 + PGroonga、スキーマ分割）+ 為替レート日次更新（app.currencies） |
+| `shared-db` | shared-db, fx-rates | **旧・共有 DB**。`ckk-db-dev` / `ckk-db-main`（Coolify アプリ）へ移行中。移行完了後に停止する（ボリュームは切り戻し用に暫く残す） |
 | `prisma-studio` | prisma-studio | DB ブラウザ |
 | `metabase` | metabase, metabase-db | BI ダッシュボード |
 | `legacy-db` | ckk-legacy-db | 旧 macOS 版の `ckk_system`（FileMaker 移行元・参照専用） |

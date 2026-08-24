@@ -47,13 +47,16 @@ const DATABASE_URL = `postgresql://postgres:shots@127.0.0.1:${DB_PORT}/ckk`;
 const AUTH_SECRET = "docs-screenshots-fixed-secret-not-production";
 
 // import:legacy（BP マスタ）より前に流す基盤シード。
+// 権限コード / 業務ロール / フィーチャーフラグ自体は migration が入れるので、
+// ここに残すのは **撮影用 DB にしか居ないデモユーザー** 関連だけ。
 // 順序が重要: demo-users を rbac より先に（rbac-seed の demo1〜5 ロール割当は
 // ユーザーが既に居るときだけ効く — 逆順だと 1 回目と 2 回目で結果が変わる）。
 const SEED_FILES_PRE = [
+  // 本番には入れないマスタ（素材 / 拠点 / 不良種類 / 承認フロー）。
+  // 材種・工程マスタ・試算設定・RBAC・フラグは migration が入れる。
+  "sql/extended-master-seed.sql",
   "sql/demo-users-seed.sql",
-  "sql/rbac-seed.sql",
-  "sql/roles-seed.sql",
-  "sql/feature-flags-seed.sql",
+  "sql/rbac-seed.sql", // デモユーザーへのロール割当（権限定義そのものは migration）
   "sql/dev-role-users-seed.sql",
   "sql/screenshot-user-seed.sql",
 ];
@@ -164,33 +167,14 @@ function psqlInput(sql: Buffer | string): void {
   );
 }
 
-/**
- * directory-bootstrap で DB が「空でない」状態になると prisma migrate deploy が
- * P3005 で拒否する。一時 DB 専用の回避: 空の _prisma_migrations を先に作って
- * おく（deploy は履歴テーブルがあれば未適用 migration を全部流すだけになる）。
- */
-const PRISMA_MIGRATIONS_TABLE = `
-CREATE TABLE IF NOT EXISTS _prisma_migrations (
-  id                  varchar(36)  PRIMARY KEY,
-  checksum            varchar(64)  NOT NULL,
-  finished_at         timestamptz,
-  migration_name      varchar(255) NOT NULL,
-  logs                text,
-  rolled_back_at      timestamptz,
-  started_at          timestamptz  NOT NULL DEFAULT now(),
-  applied_steps_count integer      NOT NULL DEFAULT 0
-);`;
-
 function seed(): void {
   if (!existsSync(join(SHARED_DB, "node_modules"))) {
     log("installing shared-db deps (first run)");
     sh("pnpm", ["install", "--frozen-lockfile"], { cwd: SHARED_DB });
   }
-  // directory.* は ldap-sync 所有で migration は ALTER しかしない —
-  // まっさらな DB では先に土台を作る（冪等）。
-  log("bootstrap: sql/directory-bootstrap.sql");
-  psqlInput(PRISMA_MIGRATIONS_TABLE);
-  psqlFile(join(SHARED_DB, "sql/directory-bootstrap.sql"));
+  // ベースライン（2026-08-24 のスクウォッシュ）は directory.* も作り、初期マスタ /
+  // RBAC / フィーチャーフラグも migration として入るので、directory-bootstrap も
+  // P3005 回避（空の _prisma_migrations 手動作成）もシード流しも要らない。
   log("prisma migrate deploy");
   sh("pnpm", ["exec", "prisma", "migrate", "deploy"], {
     cwd: SHARED_DB,
