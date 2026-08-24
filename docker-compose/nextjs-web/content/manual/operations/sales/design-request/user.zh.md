@@ -3,7 +3,7 @@ title: "设计委托单 — 操作手册"
 description: "委托设计部门制作图纸，并把做好的图纸文件按版本保存下来的应用。"
 screenshots: [design-request-list-01, design-request-new-01, design-request-detail-01, design-request-detail-02, design-request-files-01]
 ---
-委托设计部门制作图纸，并把做好的图纸文件 **按版本（バージョン）保存下来** 的应用。操作码是 `SA05`。
+委托设计部门制作图纸，并把做好的图纸文件 **按版本（バージョン）保存下来** 的应用。操作码是 `SA06`。
 
 > ⚠️ 本应用仍在试验公开中，画面和步骤今后可能会变更。
 

@@ -100,13 +100,14 @@ screenshots: [trial-estimate-list-01, trial-estimate-new-01, trial-estimate-new-
 
 ## 查看保存的试算
 
-保存后的试算画面有 4 个标签页。
+保存后的试算画面有 5 个标签页。
 
 ![试算详细画面](../../../assets/screenshots/trial-estimate-detail-01.png)
 
 - **「試算結果」（试算结果）** … 报价单价与成本明细。保存时的价格会原样保留。
 - **「素材価格推移」（材料价格推移）** … 可以用图表查看该材料采购价格的变化。
 - **「関連」（关联）** … 使用了这份试算的价格表一览。
+- **「コメント」（评论）** … 可以就这份试算发帖交流的讨论串。
 - **「履歴」（历史）** … 什么时候、谁做了操作的记录。
 
 ![材料价格推移标签页](../../../assets/screenshots/trial-estimate-detail-02.png)
