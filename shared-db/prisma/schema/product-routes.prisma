@@ -4,21 +4,27 @@
 // 最新 = max(version)（is_latest 列は持たない）。
 
 model ProductProcessRoute {
-  id        Int      @id @default(autoincrement())
-  productId Int      @map("product_id")
-  name      Json // { ja, en }
-  isActive  Boolean  @default(true) @map("is_active")
-  notes     String?
-  createdBy String?  @map("created_by") @db.Uuid
-  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  id           Int      @id @default(autoincrement())
+  productId    Int      @map("product_id")
+  // 対象の受注元（取引先）。null = 汎用（どの顧客にも使える）。
+  // 指示書ビルダーは顧客一致ルートを優先し、無ければ汎用へフォールバックする
+  // （選択規則は nextjs-web lib/product-routes-core.ts pickDefaultRoute）。
+  customerBpId String?  @map("customer_bp_id") @db.Uuid
+  name         Json // { ja, en }
+  isActive     Boolean  @default(true) @map("is_active")
+  notes        String?
+  createdBy    String?  @map("created_by") @db.Uuid
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  product       Product @relation(fields: [productId], references: [id])
-  createdByUser User?   @relation("RouteCreatedBy", fields: [createdBy], references: [id])
+  product       Product          @relation(fields: [productId], references: [id])
+  customerBp    BusinessPartner? @relation("RouteCustomerBp", fields: [customerBpId], references: [id])
+  createdByUser User?            @relation("RouteCreatedBy", fields: [createdBy], references: [id])
 
   versions ProductProcessRouteVersion[]
 
   @@index([productId])
+  @@index([productId, customerBpId])
   @@map("product_process_routes")
   @@schema("app")
 }
@@ -53,6 +59,7 @@ model ProductProcessRouteVersionStep {
   plantId         Int?          @map("plant_id")
   supplierBpId      String?       @map("supplier_bp_id") @db.Uuid
   workHours         Decimal?      @map("work_hours") @db.Decimal(6, 2) // 標準作業時間 (h) — 任意
+  lotInputMode      LotInputMode? @map("lot_input_mode") // 実行時のロット入力（null = 工程マスタの既定を継承）
 
   routeVersion ProductProcessRouteVersion @relation(fields: [routeVersionId], references: [id], onDelete: Cascade)
   processStep  ProcessStepCatalog         @relation(fields: [processStepId], references: [id])

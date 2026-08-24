@@ -9,8 +9,9 @@ build-business-dashboards.py はダッシュボードを**自分のレイアウ�
 消えるので、フィルタ配線だけを直したいときは**このスクリプト**を使う:
 
 - コレクション直下の全ダッシュボードを対象（利用者が新規に作ったものも含む）。
-- パラメータ「期間」(slug date_range) と「通貨」(slug currency) が無ければ追加
-  （既にあればその ID を使う — 利用者が UI で付けたフィルタも壊さない）。
+- パラメータ「期間」(slug date_range) が無ければ追加（既にあればその ID を使う —
+  利用者が UI で付けたフィルタも壊さない）。「通貨」（原通貨）フィルタは廃止済み —
+  このスクリプトは追加しない（換算切替は「表示通貨」が担う）。
 - 各カードのソーステーブル（analytics ビュー）の列から自動でマップ:
   期間 → DATE_PREF の優先順で最初に見つかった日付列 / 通貨 → currency 列があれば。
 - 既存の parameter_mappings は保持（同じパラメータの配線が無いときだけ追加）。
@@ -26,11 +27,10 @@ MB_URL = os.environ.get("MB_URL", "https://bi.ckk-tool.co.jp").rstrip("/")
 API_KEY = os.environ["MB_API_KEY"]
 DB_ID = int(os.environ.get("MB_DB_ID", "5"))
 COLLECTION_ID = int(os.environ.get("MB_COLLECTION_ID", "6"))
-# 通貨列が無いドメイン（労務など）は MB_SKIP_CURRENCY=1 で「期間」だけ配線する
-SKIP_CURRENCY = os.environ.get("MB_SKIP_CURRENCY", "") == "1"
 
 # 期間フィルタの列の優先順（テーブルにある最初のもの）
-DATE_PREF = ["date", "created_at", "updated_at", "order_date", "started_at", "reserved_at",
+# 注文系ビューは 注文日 を期間の基準にする（order_date 最優先）
+DATE_PREF = ["order_date", "date", "created_at", "updated_at", "started_at", "reserved_at",
              "recorded_at", "worked_date", "planned_date", "issued_at",
              "delivered_at", "shipped_at", "requested_at", "acted_at"]
 
@@ -51,28 +51,52 @@ def det_id(*parts):
     return str(uuid.uuid5(uuid.NAMESPACE_URL, "ckk-metabase://" + "/".join(parts)))
 
 
+LINE_STATUS_TABLE_IDS = set()
+ACCEPTANCE_STATUS_TABLE_IDS = set()
+
+
 def load_tables():
     meta = api("GET", f"/api/database/{DB_ID}/metadata")
     tables = {}
     for t in meta.get("tables", []):
         tables[t["id"]] = {f["name"]: f["id"] for f in t.get("fields", [])}
+        if t.get("schema") == "analytics" and t["name"] in ("v_order_lines", "v_order_lines_disp"):
+            LINE_STATUS_TABLE_IDS.add(t["id"])
+            ACCEPTANCE_STATUS_TABLE_IDS.add(t["id"])
+        if t.get("schema") == "analytics" and t["name"] == "v_order_acceptances":
+            ACCEPTANCE_STATUS_TABLE_IDS.add(t["id"])
     return tables
 
 
 def targets_for_card(card, tables):
-    """カードに対する (date_target, currency_target)。マップ不能は None。"""
+    """カードに対する {slug: target}。マップ不能なスラッグは含まれない。"""
     if card.get("database_id") != DB_ID:
-        return None, None
+        return {}
     q = card.get("dataset_query") or {}
     if q.get("type") == "native" or q.get("native"):
         tags = (q.get("native") or {}).get("template-tags") or {}
-        d = ["dimension", ["template-tag", "date_range"]] if "date_range" in tags else None
-        c = ["dimension", ["template-tag", "currency"]] if "currency" in tags else None
-        return d, c
+        return {slug: ["dimension", ["template-tag", slug]] for slug in
+                ("date_range",) if slug in tags}
     fields = tables.get(card.get("table_id")) or {}
-    d = next((["dimension", ["field", fields[col], None]] for col in DATE_PREF if col in fields), None)
-    c = ["dimension", ["field", fields["currency"], None]] if "currency" in fields else None
-    return d, c
+    out = {}
+    for col in DATE_PREF:
+        if col in fields:
+            out["date_range"] = ["dimension", ["field", fields[col], None]]
+            break
+    # 状態フィルタ（line_status）は注文明細系ビューの status のみ対象
+    # （注文請書などの status は別 enum — 誤配線しない）
+    if card.get("table_id") in LINE_STATUS_TABLE_IDS and "status" in fields:
+        out["line_status"] = ["dimension", ["field", fields["status"], None]]
+    # 通貨（原通貨）・表示通貨・状態（請書）は該当パラメータが存在する場合のみ管理
+    if "currency" in fields:
+        out["currency"] = ["dimension", ["field", fields["currency"], None]]
+    if "display_currency" in fields:
+        out["display_currency"] = ["dimension", ["field", fields["display_currency"], None]]
+    if card.get("table_id") in ACCEPTANCE_STATUS_TABLE_IDS:
+        col = "status" if "acceptance_status" not in fields else "acceptance_status"
+        if col in fields:
+            out["acceptance_status"] = ["dimension", ["field", fields[col], None]]
+    return out
 
 
 def main():
@@ -89,13 +113,11 @@ def main():
                            "slug": "date_range", "type": "date/all-options", "sectionId": "date"})
             by_slug["date_range"] = params[-1]
             changed = True
-        if not SKIP_CURRENCY and "currency" not in by_slug:
-            params.append({"id": det_id(d["name"], "param_currency")[:8], "name": "通貨",
-                           "slug": "currency", "type": "string/=", "sectionId": "string"})
-            by_slug["currency"] = params[-1]
-            changed = True
-        date_pid = by_slug["date_range"]["id"]
-        cur_pid = by_slug["currency"]["id"] if "currency" in by_slug else None
+        # line_status（状態）はパラメータが既に存在するダッシュボードでのみ配線を管理
+        # （新規追加はしない — 状態フィルタはダッシュボード個別の判断）。
+        pid_by_slug = {slug: p["id"] for slug, p in by_slug.items()
+                       if slug in ("date_range", "line_status", "currency",
+                                   "acceptance_status", "display_currency")}
 
         dashcards = []
         wired = 0
@@ -103,14 +125,21 @@ def main():
             mappings = list(dc.get("parameter_mappings") or [])
             card = dc.get("card") or {}
             if dc.get("card_id"):
+                targets = targets_for_card(card, tables)
+                # 既存配線の修理: 自前スラッグのマッピングが今のソーステーブルと
+                # 合わない（カードのビューを差し替えた等）場合は付け替える
+                for m in mappings:
+                    for slug, pid in pid_by_slug.items():
+                        if m.get("parameter_id") == pid and slug in targets and m.get("target") != targets[slug]:
+                            m["target"] = targets[slug]
+                            m["card_id"] = dc["card_id"]
+                            wired += 1
                 have = {m.get("parameter_id") for m in mappings}
-                dt, ct = targets_for_card(card, tables)
-                if dt and date_pid not in have:
-                    mappings.append({"parameter_id": date_pid, "card_id": dc["card_id"], "target": dt})
-                    wired += 1
-                if ct and cur_pid is not None and cur_pid not in have:
-                    mappings.append({"parameter_id": cur_pid, "card_id": dc["card_id"], "target": ct})
-                    wired += 1
+                for slug, pid in pid_by_slug.items():
+                    if slug in targets and pid not in have:
+                        mappings.append({"parameter_id": pid, "card_id": dc["card_id"],
+                                         "target": targets[slug]})
+                        wired += 1
             dashcards.append({
                 "id": dc["id"], "card_id": dc.get("card_id"),
                 "row": dc["row"], "col": dc["col"],

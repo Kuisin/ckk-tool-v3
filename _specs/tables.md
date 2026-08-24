@@ -716,12 +716,14 @@ Enum WORK_ORDER_APPROVAL_STATUS {
   REJECTED
 }
 
-// 指示書に紐付く検査表テンプレート（複数可）
-Table work_order_inspection_templates {
-  work_order_id         uuid [not null, ref: > work_orders.id]
-  inspection_template_id uuid [not null, ref: > inspection_templates.id]
+// 検査工程ステップに紐付く検査表テンプレート（複数可）。
+// 旧 work_order_inspection_templates（指示書単位）から工程単位へ移行済み —
+// 検査工程が複数ある指示書で、どの検査表がどの工程のものかを一意にするため。
+Table work_order_step_inspection_templates {
+  work_order_step_id     uuid [not null, ref: > work_order_steps.id]
+  inspection_template_id int  [not null, ref: > inspection_templates.id]
   indexes {
-    (work_order_id, inspection_template_id) [pk]
+    (work_order_step_id, inspection_template_id) [pk]
   }
 }
 
@@ -887,7 +889,11 @@ Table approval_group_members {
 
 Table approval_flows {
   target_type     varchar [pk]  // work_orders / order_acceptances /
-                                // material_purchase_orders / purchase_requests
+                                // material_purchase_orders / purchase_requests /
+                                // work_order_flow_changes /
+                                // order_acceptance_cancel_requests（注文請書キャンセル
+                                //   — 確定済みの請書はごとキャンセルを依頼して承認を通す。
+                                //   明細単位のキャンセル操作は廃止）
   updated_by      uuid [ref: > users.id]
   updated_at      timestamp
 }

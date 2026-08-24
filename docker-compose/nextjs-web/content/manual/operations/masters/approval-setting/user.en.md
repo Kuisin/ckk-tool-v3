@@ -42,14 +42,17 @@ Opening the app shows two tabs.
 
 ## Setting an approval flow
 
-The **Approval flows** tab lists the four documents that need approval.
+The **Approval flows** tab lists the six targets that can go through approval.
 
 > 📷 A screenshot of this screen will be added at the next capture run.
 
-- The four are **Order acknowledgement**, **Work order**, **Material purchase order** and **Purchase request**.
+- The six are **Order acknowledgement**, **Work order**, **Material purchase order**, **Purchase request**, **Workflow change** and **Order acknowledgement cancellation**.
+  - **Workflow change** … approval for adding, editing or removing step branches on an approved / in-progress work order.
+  - **Order acknowledgement cancellation** … approval for cancelling a confirmed order acknowledgement as a whole (there is no per-line cancellation).
 - Each card lists its steps as "1 First approval · Plant manager · Any one person".
 - A document with no approval flow is shown with a red border and the note that **no approval can be requested for it**. In that state the request button will not take you anywhere, so be sure to set one up.
-- Each card also shows the **permission needed to approve** it (for example, an order acknowledgement needs approval rights for "Order acceptance"). **Someone without that permission cannot approve, even when they are in the approval group.**
+  - **Workflow change** and **Order acknowledgement cancellation** are exceptions: with no steps configured they are **applied immediately without approval** (so sites that do not run approvals are not blocked). Configure at least one step if you want them approved.
+- Each card also shows the **permission needed to approve** it — being able to **view or edit** that document (for example, an order acknowledgement needs read/edit rights for "Order acceptance"). There is no approve-action permission: **who can approve is decided solely by the approval groups on this screen**, and someone who cannot open the document cannot approve even when they are in the group.
 - Every step carries a badge for the people who can approve it right now.
   - **N can approve** (green) … everyone in the step has the permission.
   - **N of N without permission** (red) … those people are turned away when they press Approve. Hover the badge to see their names.
@@ -72,6 +75,21 @@ To set it up, press **Edit** on the card (**Set up** when it is empty).
 Once a group is chosen, the same badge and the member names appear below it as **people who can approve this step** — so you can check before saving that the group you picked really can approve.
 
 > ⚠️ **Changing the settings does not affect documents that are already in approval.** A document in progress runs to the end with the settings as they were when the approval was requested. Changes apply to approval requests made from now on.
+
+## Splitting the flow by document content (conditional flows)
+
+You can vary the approval steps by what is in the document (amount, type and so on) — for example "material purchase orders of ¥500,000 or more get an extra executive step" or "direct-to-user order acceptances go through the sales manager".
+
+Set this up in the "**条件付きフロー**" (conditional flows) section of the edit page.
+
+- A rule = **conditions** (matched when all of them hold) + **its own approval steps**.
+- At the moment an approval request is submitted, rules are evaluated **top to bottom** and the **first matching rule's** steps are used. Documents that match no rule proceed with the **default flow** configured above.
+- The available condition fields depend on the document type: order acceptances (total amount / delivery method / assigned plant), work orders (type / planned quantity), material purchase orders (total amount), purchase requests (line count), process-flow changes (the work order's type / planned quantity) and acceptance cancellations (the acceptance's total amount / delivery method).
+- Use "**条件付きフローを追加**" to add a rule with its name, conditions and steps. A rule with **no conditions matches every document** (rules below it and the default flow are never reached — mind the order).
+- Use **↑ ↓** to change the evaluation order and the switch to enable / disable a rule.
+- Conditional flows **replace** the default flow; they do not create an approval gate on their own. A document type with no default flow cannot submit approval requests even if rules exist — always configure the default flow too.
+
+> ⚠️ As with the default flow, **changes take effect from the next approval request**. Documents already in approval are unaffected.
 
 ## Making a group
 
@@ -110,7 +128,7 @@ The member table shows **Name / Username / Term / State / Approval permission**.
 - **Ended** … fixed term, and the end has passed. Can no longer approve.
 - **Disabled** … stopped by hand; cannot approve regardless of the period.
 
-The **Approval permission** column shows one badge per document this group approves. **Green** … they can approve. **Yellow** … they have the permission but only within their own plants. **Red** … they lack the permission for that document and are turned away when they press Approve. Permissions come from **roles in User management (SY01)**, not from this app.
+The **Approval permission** column shows one badge per document this group approves. **Green** … they can approve. **Yellow** … they have the permission but only within their own plants. **Red** … they cannot view or edit that document and are turned away when they press Approve. Permissions come from **roles in User management (SY01)**, not from this app.
 
 > 💡 The same column appears for stand-ins on the **Stand-ins** tab. A stand-in approves with **their own** permission, so they also need approval rights for the document.
 
@@ -193,7 +211,7 @@ When a fixed-term member stops being able to approve. It does not apply to perma
 A. That document has no approval flow yet. Open its card on the **Approval flows** tab and set up at least one step.
 
 **Q. Someone who was asked to approve says they cannot.**
-A. Three things must line up: (1) they hold the **approval permission** for that document (green in the Approval permission column), (2) they are a **member of the group** for that step, and (3) their state is **Permanent** or **Active** (**Disabled**, **Scheduled** and **Expired** cannot approve). Check the step's group on the Approval flows tab, then check all three on that group's Members tab.
+A. Three things must line up: (1) they can **view or edit** that document (green in the Approval permission column), (2) they are a **member of the group** for that step, and (3) their state is **Permanent** or **Active** (**Disabled**, **Scheduled** and **Expired** cannot approve). Check the step's group on the Approval flows tab, then check all three on that group's Members tab.
 
 **Q. A member's approval permission is red (no permission).**
 A. They do not hold the approval permission for that document. Permissions come from roles, so check that person in **User management (SY01)** — this app cannot change them. Pass on the permission name shown on the card or badge.

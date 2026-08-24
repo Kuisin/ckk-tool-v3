@@ -20,11 +20,14 @@
  * （一時停止 = IN_PROGRESS かつ session_locked_by IS NULL）。
  */
 
+import type { Prisma as PrismaNS } from "../../generated/client/client";
 import { recordAudit } from "./audit";
 import { prisma } from "./db";
 import { jstDateOnly } from "./format";
 import {
   canStartStep,
+  computeFinishedQuantity,
+  effectiveLotInputMode,
   expectedInput,
   isWorkOrderComplete,
   STEP_LINK_STATE_SELECT,
@@ -45,9 +48,11 @@ export interface StepQuantities {
   outputDefectRework: number;
 }
 
-/** 不良の内訳（{種別, 理由, 数} — defect_reasons JSON + 区分列の権威）。 */
+/** 不良の内訳（{種別, 種類, 詳細, 数} — defect_reasons JSON + 区分列の権威）。 */
 export interface StepDefectReason {
   type: "SEMI" | "SCRAP" | "REWORK";
+  /** 不良種類（defect_types.id・必須）。旧データのみ null。 */
+  defectTypeId?: number | null;
   reason: string;
   count: number;
 }
@@ -58,17 +63,22 @@ export type StepErrorCode =
   | "NOT_ASSIGNED"
   | "WO_NOT_APPROVED"
   | "NOT_STARTABLE"
-  | "OTHER_STEP_ACTIVE"
   | "LOCK_TAKEN"
   | "LOCK_HELD_BY_OTHER"
   | "NOT_IN_PROGRESS"
   | "ALREADY_COMPLETED"
   | "QUANTITY_REQUIRED"
   | "QUANTITY_INVALID"
+  | "DEFECT_REASONS_REQUIRED"
+  | "LOT_REQUIRED"
   | "ROUTING_INVALID"
   | "TEMPLATE_INVALID"
   | "ITEMS_REQUIRED"
-  | "DEFECT_TYPE_INVALID";
+  | "DEFECT_TYPE_INVALID"
+  | "LOCATION_NOT_FOUND"
+  | "LOCATION_NOT_ALLOWED"
+  | "DEVICE_LOCATION_BLOCKED"
+  | "NO_OPEN_SESSION";
 
 export interface StepActionResult {
   ok: boolean;
@@ -76,6 +86,8 @@ export interface StepActionResult {
   errors?: string[];
   codes?: StepErrorCode[];
 }
+
+type Tx = PrismaNS.TransactionClient;
 
 const fail = (code: StepErrorCode, ...errors: string[]): StepActionResult => ({
   ok: false,
@@ -100,6 +112,7 @@ export async function fetchWorkflowCtx(workOrderId: string): Promise<{
   const execDeps = await prisma.processStepExecDependency.findMany();
   const steps: StepState[] = wo.steps.map(toStepState);
   const links: StepLinkState[] = wo.stepLinks;
+  const woLinkCtx = await fetchIncomingWoLinks(workOrderId);
   return {
     ctx: {
       plannedQuantity: wo.plannedQuantity,
@@ -110,6 +123,7 @@ export async function fetchWorkflowCtx(workOrderId: string): Promise<{
         dependsOnStepId: d.dependsOnStepId,
         relation: d.relation,
       })),
+      ...woLinkCtx,
     },
     workOrder: {
       id: wo.id,
@@ -117,6 +131,55 @@ export async function fetchWorkflowCtx(workOrderId: string): Promise<{
       status: wo.status,
     },
   };
+}
+
+/**
+ * 先行指示書リンク（work_order_links の target = この指示書）の ctx 部分。
+ * nextjs-web lib/workflow.ts fetchIncomingWoLinks と同一不変条件 —
+ * 受け渡し数量は 全 source 完了時のみ解決（quantity 指定はその値、
+ * 未指定 = source の完成数 computeFinishedQuantity）。
+ */
+async function fetchIncomingWoLinks(workOrderId: string): Promise<{
+  incomingWoLinks?: { sourceWorkOrderNumber: number; sourceStatus: string }[];
+  incomingWoQuantity?: number | null;
+}> {
+  const rows = await prisma.workOrderLink.findMany({
+    where: { targetWorkOrderId: workOrderId },
+    select: {
+      quantity: true,
+      sourceWorkOrder: {
+        select: { id: true, workOrderNumber: true, status: true },
+      },
+    },
+  });
+  if (rows.length === 0) return {};
+  const incomingWoLinks = rows.map((r) => ({
+    sourceWorkOrderNumber: r.sourceWorkOrder.workOrderNumber,
+    sourceStatus: r.sourceWorkOrder.status,
+  }));
+  const allDone = rows.every(
+    (r) =>
+      r.sourceWorkOrder.status === "COMPLETED" ||
+      r.sourceWorkOrder.status === "CANCELLED",
+  );
+  if (!allDone) return { incomingWoLinks, incomingWoQuantity: null };
+  let sum = 0;
+  for (const r of rows) {
+    if (r.sourceWorkOrder.status === "CANCELLED") continue;
+    if (r.quantity != null) {
+      sum += r.quantity;
+      continue;
+    }
+    const src = await prisma.workOrder.findUniqueOrThrow({
+      where: { id: r.sourceWorkOrder.id },
+      include: {
+        steps: { select: STEP_STATE_SELECT },
+        stepLinks: { select: STEP_LINK_STATE_SELECT },
+      },
+    });
+    sum += computeFinishedQuantity(src.steps.map(toStepState), src.stepLinks);
+  }
+  return { incomingWoLinks, incomingWoQuantity: sum };
 }
 
 /**
@@ -152,32 +215,54 @@ export async function canOperateStep(
 }
 
 /**
- * 「作業中の別工程」= 自分がセッションロックを保持している進行中の工程。
- * 同時に作業できる工程は 1 つ — 開始・再開の前ゲートに使う
- * （一時停止すればロックが空くので、別工程を開始できるようになる）。
+ * 同一作業者の open セグメント（endedAt null）の同時数を現状に合わせて
+ * 張り直す — **同時実行の実績按分の唯一の実装**。
+ *
+ * 「1 実績行 = 一定の同時数（concurrent_count）を持つ作業セグメント」を
+ * 不変条件とし、同時数が変わる瞬間（開始/再開/一時停止/完了）に、数の
+ * 合わない open 行を endedAt で閉じて同条件 + 新しい同時数で開き直す。
+ * 実働時間は duration / concurrent_count の合算（steps-core
+ * accumulatedWorkMs / nextjs-web step-work-hours.ts）。
+ * 必ず対象行の増減を済ませた後、同じ tx 内で呼ぶこと。
  */
-export async function findMyActiveStep(
-  actorId: string,
-  excludeStepId?: string,
-): Promise<{ stepId: string; workOrderNumber: number } | null> {
-  const active = await prisma.workOrderStep.findFirst({
-    where: {
-      sessionLockedBy: actorId,
-      status: "IN_PROGRESS",
-      ...(excludeStepId ? { id: { not: excludeStepId } } : {}),
-    },
+async function resegmentOpenActuals(
+  tx: Tx,
+  userId: string,
+  now: Date,
+): Promise<void> {
+  const open = await tx.workOrderStepActual.findMany({
+    where: { userId, endedAt: null },
     select: {
       id: true,
-      workOrder: { select: { workOrderNumber: true } },
+      stepId: true,
+      workLocationId: true,
+      concurrentCount: true,
     },
   });
-  return active
-    ? { stepId: active.id, workOrderNumber: active.workOrder.workOrderNumber }
-    : null;
+  const n = open.length;
+  if (n === 0) return;
+  for (const row of open) {
+    if (row.concurrentCount === n) continue;
+    await tx.workOrderStepActual.update({
+      where: { id: row.id },
+      data: { endedAt: now },
+    });
+    await tx.workOrderStepActual.create({
+      data: {
+        stepId: row.stepId,
+        userId,
+        workedDate: jstDateOnly(now),
+        startedAt: now,
+        workLocationId: row.workLocationId,
+        concurrentCount: n,
+        createdBy: userId,
+      },
+    });
+  }
 }
 
 /**
- * 工程開始: 依存検証 → セッションロック原子取得 → IN_PROGRESS。
+ * 工程開始: 依存検証 → ロット入力検証 → セッションロック原子取得 → IN_PROGRESS。
  * 受入数は作業者の入力（`inputQuantity`）を優先し、未指定なら想定受入数。
  * 作業セッション行（work_order_step_actuals）を 1 行 open する。
  */
@@ -185,10 +270,15 @@ export async function startStepExecution(
   stepId: string,
   actorId: string,
   inputQuantity?: number | null,
+  workLocationId?: number | null,
+  lotText?: string | null,
 ): Promise<StepActionResult> {
   const stepRow = await prisma.workOrderStep.findUnique({
     where: { id: stepId },
-    include: { workOrder: true },
+    include: {
+      workOrder: true,
+      processStep: { select: { lotInputMode: true } },
+    },
   });
   if (!stepRow) return fail("NOT_FOUND", "工程が見つかりません");
   if (
@@ -198,19 +288,21 @@ export async function startStepExecution(
     return fail("WO_NOT_APPROVED", "指示書が承認済み/進行中ではありません");
   }
 
-  // 同時に作業できる工程は 1 つ（先に一時停止 or 完了させる）
-  const active = await findMyActiveStep(actorId, stepId);
-  if (active) {
-    return fail(
-      "OTHER_STEP_ACTIVE",
-      `指示書 #${active.workOrderNumber} の工程を作業中です。先に一時停止または完了してください`,
-    );
-  }
-
   const { ctx } = await fetchWorkflowCtx(stepRow.workOrderId);
   const check = canStartStep(stepId, ctx, actorId);
   if (!check.ok)
     return { ok: false, codes: ["NOT_STARTABLE"], errors: check.reasons };
+
+  // ロット/伝票コード — 実効モードは 上書き → カタログ既定（唯一の定義は
+  // workflow-core.effectiveLotInputMode）。REQUIRED は未入力で開始不可。
+  const lotMode = effectiveLotInputMode(
+    stepRow.lotInputMode,
+    stepRow.processStep.lotInputMode,
+  );
+  const lot = lotText?.trim() || null;
+  if (lotMode === "REQUIRED" && lot == null) {
+    return fail("LOT_REQUIRED", "ロット/伝票コードを入力してください");
+  }
 
   const input = inputQuantity ?? expectedInput(stepId, ctx);
   const now = new Date();
@@ -232,18 +324,27 @@ export async function startStepExecution(
         startedAt: now,
         startedBy: actorId,
         inputQuantity: input ?? undefined,
+        ...(lotMode !== "NONE" && lot != null ? { lotText: lot } : {}),
       },
     });
     if (c.count === 0) return 0;
+    // 同時作業数 = 既存 open セグメント + この工程。新規行は最初から
+    // 正しい同時数で開き、既存行は resegment で張り直す（按分の不変条件）。
+    const openBefore = await tx.workOrderStepActual.count({
+      where: { userId: actorId, endedAt: null },
+    });
     await tx.workOrderStepActual.create({
       data: {
         stepId,
         userId: actorId,
         workedDate: jstDateOnly(now),
         startedAt: now,
+        workLocationId: workLocationId ?? null,
+        concurrentCount: openBefore + 1,
         createdBy: actorId,
       },
     });
+    if (openBefore > 0) await resegmentOpenActuals(tx, actorId, now);
     return c.count;
   });
   if (claimed === 0) {
@@ -297,6 +398,8 @@ export async function pauseStepExecution(
       where: { stepId, userId: actorId, endedAt: null },
       data: { endedAt: now },
     });
+    // 残りの open セグメントの同時数を張り直す（3 → 2 など）
+    await resegmentOpenActuals(tx, actorId, now);
     return c.count;
   });
   if (released === 0) {
@@ -312,10 +415,15 @@ export async function pauseStepExecution(
   return { ok: true };
 }
 
-/** 再開: 空きロックを原子的に取り直し、新しい作業セッションを open する。 */
+/**
+ * 再開: 空きロックを原子的に取り直し、新しい作業セッションを open する。
+ * 作業場所は直前の自分のセッション行から引き継ぎ、無ければ端末の既定
+ * （workLocationId 引数）を使う。
+ */
 export async function resumeStepExecution(
   stepId: string,
   actorId: string,
+  workLocationId?: number | null,
 ): Promise<StepActionResult> {
   const stepRow = await prisma.workOrderStep.findUnique({
     where: { id: stepId },
@@ -332,14 +440,12 @@ export async function resumeStepExecution(
     return fail("WO_NOT_APPROVED", "指示書が承認済み/進行中ではありません");
   }
 
-  // 同時に作業できる工程は 1 つ（先に一時停止 or 完了させる）
-  const active = await findMyActiveStep(actorId, stepId);
-  if (active) {
-    return fail(
-      "OTHER_STEP_ACTIVE",
-      `指示書 #${active.workOrderNumber} の工程を作業中です。先に一時停止または完了してください`,
-    );
-  }
+  // 同じ工程を続きから — 直前の自分のセッションと同じ場所とみなす。
+  const lastActual = await prisma.workOrderStepActual.findFirst({
+    where: { stepId, userId: actorId },
+    orderBy: { startedAt: "desc" },
+    select: { workLocationId: true },
+  });
 
   const now = new Date();
   const claimed = await prisma.$transaction(async (tx) => {
@@ -348,15 +454,21 @@ export async function resumeStepExecution(
       data: { sessionLockedBy: actorId, sessionLockedAt: now },
     });
     if (c.count === 0) return 0;
+    const openBefore = await tx.workOrderStepActual.count({
+      where: { userId: actorId, endedAt: null },
+    });
     await tx.workOrderStepActual.create({
       data: {
         stepId,
         userId: actorId,
         workedDate: jstDateOnly(now),
         startedAt: now,
+        workLocationId: lastActual?.workLocationId ?? workLocationId ?? null,
+        concurrentCount: openBefore + 1,
         createdBy: actorId,
       },
     });
+    if (openBefore > 0) await resegmentOpenActuals(tx, actorId, now);
     return c.count;
   });
   if (claimed === 0) {
@@ -373,6 +485,89 @@ export async function resumeStepExecution(
 }
 
 /**
+ * 工程マスタの許可作業場所を id 集合へ解決する（nextjs-web
+ * lib/work-locations.ts fetchAllowedWorkLocationIds と同義）。
+ * リンク行が無い工程は **null = 無制限**。
+ */
+export async function allowedWorkLocationIdsForStep(
+  processStepId: number,
+): Promise<Set<number> | null> {
+  const links = await prisma.processStepWorkLocation.findMany({
+    where: { processStepId },
+    select: { typeKey: true, workLocationId: true },
+  });
+  if (links.length === 0) return null;
+  const ids = new Set<number>();
+  const typeKeys = links
+    .map((l) => l.typeKey)
+    .filter((k): k is string => k != null);
+  for (const l of links) {
+    if (l.workLocationId != null) ids.add(l.workLocationId);
+  }
+  if (typeKeys.length > 0) {
+    const byType = await prisma.workLocation.findMany({
+      where: { group: { typeKey: { in: typeKeys } } },
+      select: { id: true },
+    });
+    for (const l of byType) ids.add(l.id);
+  }
+  return ids;
+}
+
+/**
+ * 作業場所コード（QR `CKK:LOC:<code>`）→ id 解決。
+ * 有効な場所・有効なグループのみ。見つからなければ null。
+ */
+export async function resolveWorkLocationByCode(
+  code: string,
+): Promise<{ id: number } | null> {
+  const location = await prisma.workLocation.findFirst({
+    where: { code, isActive: true, group: { isActive: true } },
+    select: { id: true },
+  });
+  return location;
+}
+
+/**
+ * 作業中セッションの作業場所を付け替える（作業場所 QR の読み取り）。
+ * 対象は自分の open セッション行（endedAt null）のみ — 過去の実績は変えない。
+ * 一時停止中は open 行が無いので失敗する（再開してから読む）。
+ */
+export async function setStepWorkLocation(
+  stepId: string,
+  actorId: string,
+  workLocationId: number,
+): Promise<StepActionResult> {
+  const stepRow = await prisma.workOrderStep.findUnique({
+    where: { id: stepId },
+    include: { workOrder: { select: { workOrderNumber: true } } },
+  });
+  if (!stepRow) return fail("NOT_FOUND", "工程が見つかりません");
+  if (stepRow.status !== "IN_PROGRESS") {
+    return fail("NOT_IN_PROGRESS", "進行中の工程ではありません");
+  }
+  const updated = await prisma.workOrderStepActual.updateMany({
+    where: { stepId, userId: actorId, endedAt: null },
+    data: { workLocationId },
+  });
+  if (updated.count === 0) {
+    return fail(
+      "NO_OPEN_SESSION",
+      "作業セッションがありません（再開してから読み取ってください）",
+    );
+  }
+  await recordAudit({
+    action: "UPDATE",
+    tableName: "work_orders",
+    recordId: String(stepRow.workOrder.workOrderNumber),
+    after: {
+      note: `作業場所を変更（step ${stepRow.sortOrder} / 作業場所 ${workLocationId}）`,
+    },
+  });
+  return { ok: true };
+}
+
+/**
  * 工程完了: 数量整合 + ルーティング整合 → 永続化 → 全完了なら WO 完了 + 在庫計上。
  *
  * 数量管理モード（カタログ quantity_tracking）— nextjs-web と同一契約:
@@ -382,8 +577,8 @@ export async function resumeStepExecution(
  * - FLOW / INSPECTION: quantities 必須。保存則は同一、ラベルのみ異なる。
  *   受入数は**開始時に確定した stepRow.inputQuantity を権威**とし、完了時の
  *   クライアント値では上書きしない（受入は開始後編集不可）。良品数は
- *   受入 − 不良（区分合計）で導出する。不良理由（defectReasons）は補助記録
- *   として defect_reasons JSON に保存する（在庫連携には使わない）。
+ *   受入 − 不良（区分合計）で導出する。区分合計は不良リスト（defectReasons —
+ *   各行に 種類 FK + 詳細 必須）のみから導出し、defect_reasons JSON に保存する。
  */
 export async function completeStepExecution(
   stepId: string,
@@ -429,21 +624,41 @@ export async function completeStepExecution(
     // 受入数は開始時に確定した値を権威とする（完了時のクライアント値は無視）。
     const authoritativeInput =
       stepRow.inputQuantity ?? quantities?.inputQuantity ?? 0;
-    // 区分合計（半製品/廃棄/工程分岐）は**不良リストから導出**して権威とする。
-    // リストが無い場合のみ quantities の区分へフォールバック（後方互換）。
+    // 区分合計（半製品/廃棄/工程分岐）は**不良リストのみから導出**して権威とする。
+    // リスト無しで区分数量だけが来るのは旧クライアント — 黙って受けず再入力を求める。
     const list = defectReasons ?? [];
+    const quantitiesDefects =
+      (quantities?.outputDefectSemiFinished ?? 0) +
+      (quantities?.outputDefectScrap ?? 0) +
+      (quantities?.outputDefectRework ?? 0);
+    if (list.length === 0 && quantitiesDefects > 0) {
+      return fail(
+        "DEFECT_REASONS_REQUIRED",
+        "不良の内訳（種類・詳細）を入力してください",
+      );
+    }
+    // 各行の 不良種類（FK）と詳細は必須。種類はマスタの実在 + 有効を再検証する。
+    if (list.some((r) => r.defectTypeId == null || r.reason.trim() === "")) {
+      return fail(
+        "DEFECT_REASONS_REQUIRED",
+        "不良の各行に種類と詳細を入力してください",
+      );
+    }
+    if (list.length > 0) {
+      const ids = [...new Set(list.map((r) => r.defectTypeId as number))];
+      const known = await prisma.defectType.findMany({
+        where: { id: { in: ids }, isActive: true },
+        select: { id: true },
+      });
+      if (known.length !== ids.length) {
+        return fail("DEFECT_TYPE_INVALID", "不良種類が不正です");
+      }
+    }
     const sumType = (t: StepDefectReason["type"]) =>
       list.reduce((s, r) => (r.type === t ? s + r.count : s), 0);
-    const semi =
-      list.length > 0
-        ? sumType("SEMI")
-        : (quantities?.outputDefectSemiFinished ?? 0);
-    const scrap =
-      list.length > 0 ? sumType("SCRAP") : (quantities?.outputDefectScrap ?? 0);
-    const rework =
-      list.length > 0
-        ? sumType("REWORK")
-        : (quantities?.outputDefectRework ?? 0);
+    const semi = sumType("SEMI");
+    const scrap = sumType("SCRAP");
+    const rework = sumType("REWORK");
     const totalDefects = semi + scrap + rework;
     persisted = {
       inputQuantity: authoritativeInput,
@@ -490,10 +705,15 @@ export async function completeStepExecution(
     };
   }
 
-  // 不良の内訳（{種別, 理由, 数}）— 有効行のみ。空なら列を触らない。
+  // 不良の内訳（{種別, 種類, 詳細, 数}）— 有効行のみ。空なら列を触らない。
   const cleanedReasons = (defectReasons ?? [])
     .filter((r) => Number.isFinite(r.count) && r.count > 0)
-    .map((r) => ({ type: r.type, reason: r.reason.trim(), count: r.count }));
+    .map((r) => ({
+      type: r.type,
+      defectTypeId: r.defectTypeId ?? null,
+      reason: r.reason.trim(),
+      count: r.count,
+    }));
 
   const now = new Date();
   // 完了クレームは条件付き更新 — 同時完了はどちらか一方だけ成立し、
@@ -516,11 +736,19 @@ export async function completeStepExecution(
       },
     });
     if (c.count !== 1) return c.count;
-    // この工程の open な作業セッションを全て閉じる（誰のものでも残さない）
+    // この工程の open な作業セッションを全て閉じる（誰のものでも残さない）。
+    // 閉じた作業者の残りセグメントは同時数が減るので張り直す。
+    const openRows = await tx.workOrderStepActual.findMany({
+      where: { stepId, endedAt: null },
+      select: { userId: true },
+    });
     await tx.workOrderStepActual.updateMany({
       where: { stepId, endedAt: null },
       data: { endedAt: now },
     });
+    for (const uid of new Set(openRows.map((r) => r.userId))) {
+      await resegmentOpenActuals(tx, uid, now);
+    }
     return c.count;
   });
   if (claimed !== 1) {

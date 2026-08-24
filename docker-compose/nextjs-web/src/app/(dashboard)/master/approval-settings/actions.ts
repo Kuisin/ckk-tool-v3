@@ -16,12 +16,17 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
+import { validateConditions } from "@/lib/approval-conditions";
 import { validateFlowSteps } from "@/lib/approval-flow";
 import {
   isMemberEffective,
   validateMemberPeriod,
 } from "@/lib/approval-membership";
-import { APPROVAL_TARGET_TYPES } from "@/lib/approval-targets";
+import {
+  APPLY_MODE_TARGETS,
+  APPROVAL_TARGET_TYPES,
+  type ApprovalTargetType,
+} from "@/lib/approval-targets";
 import { getCurrentActorId, recordAudit } from "@/lib/audit";
 import { checkPermission } from "@/lib/authz";
 import { prisma } from "@/lib/db";
@@ -553,5 +558,282 @@ export async function updateGroupMemberValidity(
     return actionOk();
   } catch (e) {
     return actionError(prismaErrorMessage(e, "在籍期間の更新に失敗しました"));
+  }
+}
+
+// ── 条件付き承認フロー（approval_flow_rules） ────────────────────────────────
+//
+// 書類種別ごとに 0..N 本。priority 昇順で評価し、依頼時に最初に一致した 1 本の
+// 段構成を既定フローの代わりに使う（解決は lib/approvals.ts）。条件の語彙と
+// 検証は lib/approval-conditions.ts が唯一の定義。監査は recordId =
+// `<target_type>#<rule id>` で残す。
+
+const flowConditionInput = z.object({
+  field: z.string().min(1, "条件の項目を選択してください"),
+  op: z.enum(["eq", "ne", "gte", "lte"]),
+  value: z.union([z.string(), z.number()]),
+});
+
+const flowRuleInput = z.object({
+  targetType: z.enum(APPROVAL_TARGET_TYPES),
+  nameJa: z.string().min(1, "ルール名（日本語）を入力してください"),
+  nameEn: z.string().optional(),
+  conditions: z.array(flowConditionInput),
+  steps: z
+    .array(flowStepInput)
+    .min(1, "承認ステップを 1 段以上設定してください"),
+});
+
+export type ApprovalFlowRuleInput = Omit<
+  z.infer<typeof flowRuleInput>,
+  "targetType"
+>;
+
+function revalidateFlow(targetType: string) {
+  revalidatePath(BASE_PATH);
+  revalidatePath(`${BASE_PATH}/flows/${targetType}`);
+}
+
+/** 作成（ruleId = null）/ 更新。段と条件は全置換。 */
+export async function saveApprovalFlowRule(
+  targetType: string,
+  ruleId: number | null,
+  input: ApprovalFlowRuleInput,
+): Promise<ActionResult<{ ruleId: number }>> {
+  const authz = await checkPermission("master", "UPDATE");
+  if (!authz.ok) return actionError(authz.error);
+  const parsed = flowRuleInput.safeParse({ targetType, ...input });
+  if (!parsed.success) {
+    return actionError(parsed.error.issues[0]?.message ?? "入力が不正です");
+  }
+  const v = parsed.data;
+  // 画面と同じ検証をサーバー側でも通す（段: approval-flow / 条件: approval-conditions）
+  const stepIssues = validateFlowSteps(
+    v.steps.map((s) => ({
+      nameJa: s.nameJa,
+      groupId: s.groupId,
+      mode: s.mode,
+    })),
+  );
+  if (stepIssues.length > 0) return actionError(stepIssues[0]);
+  const condIssues = validateConditions(v.targetType, v.conditions);
+  if (condIssues.length > 0) return actionError(condIssues[0]);
+
+  try {
+    const actor = await getCurrentActorId();
+    const savedId = await prisma.$transaction(async (tx) => {
+      // ルールは approval_flows 行にぶら下がる（FK）— 既定フロー未保存でも
+      // 作れるよう upsert しておく
+      await tx.approvalFlow.upsert({
+        where: { targetType: v.targetType },
+        create: { targetType: v.targetType, updatedBy: actor },
+        update: {},
+      });
+      let id: number;
+      if (ruleId == null) {
+        const last = await tx.approvalFlowRule.aggregate({
+          where: { targetType: v.targetType },
+          _max: { priority: true },
+        });
+        const created = await tx.approvalFlowRule.create({
+          data: {
+            targetType: v.targetType,
+            name: localizedInput(v.nameJa, v.nameEn),
+            priority: (last._max.priority ?? -1) + 1,
+            conditions: v.conditions,
+            updatedBy: actor,
+          },
+          select: { id: true },
+        });
+        id = created.id;
+      } else {
+        const updated = await tx.approvalFlowRule.updateMany({
+          where: { id: ruleId, targetType: v.targetType },
+          data: {
+            name: localizedInput(v.nameJa, v.nameEn),
+            conditions: v.conditions,
+            updatedBy: actor,
+          },
+        });
+        if (updated.count === 0) {
+          throw new Error("GUARD:対象のルールが見つかりません");
+        }
+        id = ruleId;
+        await tx.approvalFlowRuleStep.deleteMany({ where: { ruleId: id } });
+      }
+      await tx.approvalFlowRuleStep.createMany({
+        data: v.steps.map((s, i) => ({
+          ruleId: id,
+          stepNo: i + 1,
+          name: localizedInput(s.nameJa, s.nameEn),
+          groupId: s.groupId,
+          mode: s.mode,
+        })),
+      });
+      return id;
+    });
+    await recordAudit({
+      action: ruleId == null ? "CREATE" : "UPDATE",
+      tableName: "approval_flow_rules",
+      recordId: `${v.targetType}#${savedId}`,
+      after: {
+        name: v.nameJa,
+        conditions: v.conditions,
+        steps: v.steps.map((s, i) => ({
+          stepNo: i + 1,
+          name: s.nameJa,
+          groupId: s.groupId,
+          mode: s.mode,
+        })),
+      },
+    });
+    revalidateFlow(v.targetType);
+    return actionOk({ ruleId: savedId });
+  } catch (e) {
+    if (e instanceof Error && e.message.startsWith("GUARD:")) {
+      return actionError(e.message.slice("GUARD:".length));
+    }
+    return actionError(
+      prismaErrorMessage(e, "条件付きフローの保存に失敗しました"),
+    );
+  }
+}
+
+/** 削除（段はカスケード）。進行中の依頼は flow_snapshot を持つので影響しない。 */
+export async function deleteApprovalFlowRule(
+  targetType: string,
+  ruleId: number,
+): Promise<ActionResult> {
+  const authz = await checkPermission("master", "UPDATE");
+  if (!authz.ok) return actionError(authz.error);
+  try {
+    const prior = await prisma.approvalFlowRule.findFirst({
+      where: { id: ruleId, targetType },
+      select: { name: true, conditions: true },
+    });
+    if (!prior) return actionError("対象のルールが見つかりません");
+    await prisma.approvalFlowRule.delete({ where: { id: ruleId } });
+    await recordAudit({
+      action: "DELETE",
+      tableName: "approval_flow_rules",
+      recordId: `${targetType}#${ruleId}`,
+      before: {
+        name: localized(prior.name as LocalizedText | null),
+        conditions: prior.conditions,
+      },
+    });
+    revalidateFlow(targetType);
+    return actionOk();
+  } catch (e) {
+    return actionError(
+      prismaErrorMessage(e, "条件付きフローの削除に失敗しました"),
+    );
+  }
+}
+
+/** 有効 / 無効の切り替え（無効は依頼時の評価から外れる）。 */
+export async function toggleApprovalFlowRule(
+  targetType: string,
+  ruleId: number,
+  isActive: boolean,
+): Promise<ActionResult> {
+  const authz = await checkPermission("master", "UPDATE");
+  if (!authz.ok) return actionError(authz.error);
+  try {
+    const updated = await prisma.approvalFlowRule.updateMany({
+      where: { id: ruleId, targetType },
+      data: { isActive },
+    });
+    if (updated.count === 0) {
+      return actionError("対象のルールが見つかりません");
+    }
+    await recordAudit({
+      action: "UPDATE",
+      tableName: "approval_flow_rules",
+      recordId: `${targetType}#${ruleId}`,
+      after: { isActive },
+    });
+    revalidateFlow(targetType);
+    return actionOk();
+  } catch (e) {
+    return actionError(prismaErrorMessage(e, "切り替えに失敗しました"));
+  }
+}
+
+/** 優先順の移動（up = 先に評価される側へ）。priority は 0..N-1 に振り直す。 */
+export async function moveApprovalFlowRule(
+  targetType: string,
+  ruleId: number,
+  direction: "up" | "down",
+): Promise<ActionResult> {
+  const authz = await checkPermission("master", "UPDATE");
+  if (!authz.ok) return actionError(authz.error);
+  try {
+    const rows = await prisma.approvalFlowRule.findMany({
+      where: { targetType },
+      orderBy: { priority: "asc" },
+      select: { id: true },
+    });
+    const index = rows.findIndex((r) => r.id === ruleId);
+    if (index < 0) return actionError("対象のルールが見つかりません");
+    const to = index + (direction === "up" ? -1 : 1);
+    if (to < 0 || to >= rows.length) return actionOk(); // 端 — 何もしない
+    const order = [...rows];
+    [order[index], order[to]] = [order[to], order[index]];
+    await prisma.$transaction(
+      order.map((r, i) =>
+        prisma.approvalFlowRule.update({
+          where: { id: r.id },
+          data: { priority: i },
+        }),
+      ),
+    );
+    revalidateFlow(targetType);
+    return actionOk();
+  } catch (e) {
+    return actionError(prismaErrorMessage(e, "並べ替えに失敗しました"));
+  }
+}
+
+/**
+ * 承認フローの適用モード（approval_flows.apply_mode）。
+ * PRE = 承認後に適用（既定） / POST = 即時適用 + 事後承認。
+ * 対応 target（APPLY_MODE_TARGETS — 現状 工程フロー変更のみ）に限る。
+ */
+export async function setApprovalApplyMode(
+  targetType: string,
+  applyMode: "PRE" | "POST",
+): Promise<ActionResult> {
+  const authz = await checkPermission("master", "UPDATE");
+  if (!authz.ok) return actionError(authz.error);
+  if (!APPLY_MODE_TARGETS.includes(targetType as ApprovalTargetType)) {
+    return actionError("この書類種別では適用モードを設定できません");
+  }
+  if (applyMode !== "PRE" && applyMode !== "POST") {
+    return actionError("適用モードが不正です");
+  }
+  try {
+    const actor = await getCurrentActorId();
+    const before = await prisma.approvalFlow.findUnique({
+      where: { targetType },
+      select: { applyMode: true },
+    });
+    await prisma.approvalFlow.upsert({
+      where: { targetType },
+      create: { targetType, applyMode, updatedBy: actor },
+      update: { applyMode, updatedBy: actor },
+    });
+    await recordAudit({
+      action: "UPDATE",
+      tableName: "approval_flows",
+      recordId: targetType,
+      before: { applyMode: before?.applyMode ?? "PRE" },
+      after: { applyMode },
+    });
+    revalidatePath(BASE_PATH);
+    revalidatePath(`${BASE_PATH}/flows/${targetType}`);
+    return actionOk();
+  } catch (e) {
+    return actionError(prismaErrorMessage(e, "適用モードの保存に失敗しました"));
   }
 }

@@ -54,12 +54,15 @@ import {
   IconRefresh,
   IconSend,
   IconTransform,
+  IconTruck,
+  IconX,
 } from "@tabler/icons-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { type ReactNode, useEffect, useState, useTransition } from "react";
 import {
   searchCustomerOptions,
+  searchEndUserOptions,
   searchQuoteOptions,
   searchShipToOptions,
 } from "@/app/(dashboard)/_shared/option-search";
@@ -68,6 +71,7 @@ import {
   archiveAcceptance,
   confirmOrderLines,
   rejectAcceptance,
+  requestAcceptanceCancel,
   retryExtraction,
   saveDraft,
   submitForApproval,
@@ -101,6 +105,7 @@ import { HistoryPanel } from "@/components/ui/HistoryPanel";
 import { MemoPanel } from "@/components/ui/MemoPanel";
 import { MoneyText } from "@/components/ui/MoneyText";
 import { ModalShell } from "@/components/ui/modals";
+import { NextStepCard } from "@/components/ui/NextStepCard";
 import { SalesRepSelect } from "@/components/ui/SalesRepSelect";
 import { SearchSelect } from "@/components/ui/SearchSelect";
 import { StatusBadge } from "@/components/ui/StatusBadge";
@@ -114,10 +119,15 @@ import {
 } from "@/components/ui/shells";
 import { useTabParam } from "@/hooks/useUrlState";
 import type { MemoView } from "@/lib/document-memos";
-import { ORDER_TYPE_LABEL } from "@/lib/enum-labels";
+import {
+  ACCEPTANCE_DELIVERY_METHOD_LABEL,
+  ACCEPTANCE_DELIVERY_METHOD_OPTIONS,
+  ORDER_TYPE_LABEL,
+} from "@/lib/enum-labels";
 import { fieldHelp } from "@/lib/field-help";
 import { formatMoney } from "@/lib/format";
 import { parseExtractError } from "@/lib/intake-extract-error";
+import type { PendingAcceptanceCancelView } from "@/lib/order-acceptance-cancel";
 import {
   acceptanceReadiness,
   readinessSummary,
@@ -127,6 +137,7 @@ import {
   productSummary,
 } from "@/lib/order-acceptance-totals";
 import type { ActionResult } from "@/lib/server-action";
+import { AcceptanceCancelCard } from "./AcceptanceCancelCard";
 import { IntakeDocumentPane } from "./IntakeDocumentPane";
 import { IntakeReviewPanel } from "./IntakeReviewPanel";
 import { MatchSuggestions } from "./MatchSuggestions";
@@ -185,6 +196,8 @@ export function OrderAcceptanceDetail({
   priceCheck = EMPTY_PRICE_CHECK,
   plantOptions,
   workLocationOptions,
+  cancelRequest = null,
+  cancelApproval = null,
 }: {
   acceptance: OrderAcceptanceView;
   /** 操作履歴（audit_logs 由来、履歴タブ）。 */
@@ -203,6 +216,10 @@ export function OrderAcceptanceDetail({
   plantOptions: { value: string; label: string }[];
   /** 出荷作業場所の選択肢（lib/work-locations fetchWorkLocationOptions）。 */
   workLocationOptions: { value: string; label: string }[];
+  /** 保留中のキャンセル依頼（COMPLETED のみあり得る。無ければ null）。 */
+  cancelRequest?: PendingAcceptanceCancelView | null;
+  /** キャンセル依頼の承認状態（cancelRequest があるときだけ使う）。 */
+  cancelApproval?: ApprovalActionState | null;
 }) {
   const fmt = useFormat();
   const router = useRouter();
@@ -213,6 +230,8 @@ export function OrderAcceptanceDetail({
   const [rejectReason, setRejectReason] = useState("");
   const [deployOpen, setDeployOpen] = useState(false);
   const [archiveOpen, setArchiveOpen] = useState(false);
+  const [cancelReqOpen, setCancelReqOpen] = useState(false);
+  const [cancelReason, setCancelReason] = useState("");
   /**
    * 下書きの表示モード。既定は**閲覧** — 開いた直後に入力欄が並んでいると、
    * 何を確認すればよいのかが分からず、触るつもりのない値まで変わり得る。
@@ -247,6 +266,8 @@ export function OrderAcceptanceDetail({
   // 同じ関数）。足りない項目があるうちはボタンを押せなくし、理由をカードに出す。
   const readiness = acceptanceReadiness({
     customerBpId: a.customerBpId,
+    deliveryMethod: a.deliveryMethod,
+    endUserBpId: a.endUserBpId,
     items: a.items,
   });
 
@@ -342,7 +363,11 @@ export function OrderAcceptanceDetail({
    * — 権限あり = 緑 + 承認/差し戻し、権限なし = グレーの「承認待ち」表示。
    */
   let actionCard: ReactNode = null;
-  if (a.status === "DRAFT") {
+  if (cancelRequest && cancelApproval) {
+    actionCard = (
+      <AcceptanceCancelCard approval={cancelApproval} request={cancelRequest} />
+    );
+  } else if (a.status === "DRAFT") {
     actionCard = editing ? (
       // 編集中は承認依頼を出さない — 押した瞬間に未保存の編集が消えるため。
       // 保存 / キャンセル（画面下に貼り付く FormActions）に集中させる。
@@ -409,27 +434,63 @@ export function OrderAcceptanceDetail({
         tone="action"
       />
     );
+  } else if (a.status === "COMPLETED") {
+    // 確定後の次のステップ = 出荷書の作成（この注文請書をプリセレクト）。
+    // アーカイブ・キャンセル依頼は例外操作なのでメニューに置く。
+    actionCard = (
+      <NextStepCard
+        buttonLabel="出荷書を作成"
+        description="この注文請書の出荷できる注文明細を読み込んだ状態で出荷書フォームを開きます"
+        href={`/shipping/delivery-orders/new?acceptance=${a.number}`}
+        icon={<IconTruck size={20} />}
+        title="次のステップ: 出荷書の作成"
+      />
+    );
   }
-  // 確定後（COMPLETED）は ActionCard を出さない — 確定はゴールであって
-  // 「次にやること」ではない。アーカイブは任意の片付け操作なので、
-  // 急かさないよう ResourceActions のメニューにだけ置く。
 
   return (
     <DetailShell
       actions={
         <ResourceActions
           // 下書きの閲覧中だけ「編集」を出す（design.md §8.2 の定位置）。
-          menuItems={
-            a.status === "COMPLETED"
-              ? [
-                  {
-                    label: "アーカイブ",
-                    icon: <IconArchive size={14} />,
-                    onClick: () => setArchiveOpen(true),
-                  },
-                ]
-              : []
-          }
+          // 操作は状態に依らず全て並べ、押せないものはグレーアウトで理由を出す。
+          menuItems={[
+            {
+              label: "出荷書を作成",
+              icon: <IconTruck size={14} />,
+              disabled: a.status !== "COMPLETED",
+              disabledReason:
+                a.status === "COMPLETED" ? undefined : "確定後に作成できます",
+              onClick: () =>
+                router.push(
+                  `/shipping/delivery-orders/new?acceptance=${a.number}`,
+                ),
+            },
+            {
+              label: "アーカイブ",
+              icon: <IconArchive size={14} />,
+              disabled: a.status !== "COMPLETED",
+              disabledReason:
+                a.status === "COMPLETED" ? undefined : "確定後に実行できます",
+              onClick: () => setArchiveOpen(true),
+            },
+            // 明細単位のキャンセルは無い — 注文請書ごと依頼して
+            // 承認設定（MS0B）の「注文請書キャンセル」フローを通す。
+            {
+              label: "キャンセル依頼",
+              icon: <IconX size={14} />,
+              color: "red",
+              divider: true,
+              disabled: a.status !== "COMPLETED" || cancelRequest != null,
+              disabledReason:
+                cancelRequest != null
+                  ? "承認待ちのキャンセル依頼があります"
+                  : a.status !== "COMPLETED"
+                    ? "確定後に依頼できます"
+                    : undefined,
+              onClick: () => setCancelReqOpen(true),
+            },
+          ]}
           onEdit={
             a.status === "DRAFT" && !editing
               ? () => setEditing(true)
@@ -643,6 +704,11 @@ export function OrderAcceptanceDetail({
                   />
                   <FieldValue label="営業担当" value={a.salesRepName} />
                   <FieldValue label="出荷先" value={a.shipToName} />
+                  <FieldValue
+                    label="配送方法"
+                    value={ACCEPTANCE_DELIVERY_METHOD_LABEL[a.deliveryMethod]}
+                  />
+                  <FieldValue label="エンドユーザー" value={a.endUserName} />
                   <FieldValue label="担当拠点" value={a.assignedPlantName} />
                   <FieldValue
                     label="出荷作業場所"
@@ -1078,6 +1144,60 @@ export function OrderAcceptanceDetail({
           注文請書 {a.number} をアーカイブします。以後の編集はできません。
         </Text>
       </ModalShell>
+
+      {/* キャンセル依頼（理由必須）。承認設定があれば保留、無ければ即適用。 */}
+      <ModalShell
+        confirmColor="red"
+        confirmDisabled={!cancelReason.trim()}
+        confirmLabel="キャンセルを依頼する"
+        loading={isPending}
+        onClose={() => setCancelReqOpen(false)}
+        onConfirm={() =>
+          startTransition(async () => {
+            const result = await requestAcceptanceCancel(
+              a.number,
+              cancelReason,
+            );
+            if (result.ok) {
+              setCancelReqOpen(false);
+              setCancelReason("");
+              notifications.show({
+                title: result.data?.pending
+                  ? "キャンセルを承認依頼しました"
+                  : "キャンセルしました",
+                message: result.data?.pending
+                  ? "承認されるまで注文請書と注文明細は変わりません"
+                  : "全明細をキャンセルしました",
+                color: result.data?.pending ? "yellow" : "green",
+              });
+              router.refresh();
+            } else {
+              notifications.show({
+                title: "エラー",
+                message: result.error,
+                color: "red",
+              });
+            }
+          })
+        }
+        opened={cancelReqOpen}
+        size="sm"
+        title="キャンセル依頼"
+      >
+        <Text size="sm">
+          注文請書 {a.number} と配下の注文明細をすべてキャンセルします。
+          承認設定（MS0B）に「注文請書キャンセル」の段があれば、承認されるまで
+          何も変わりません。出荷済みの明細があるとキャンセルできません。
+        </Text>
+        <Textarea
+          label="キャンセル理由"
+          minRows={3}
+          onChange={(e) => setCancelReason(e.currentTarget.value)}
+          placeholder="理由を入力"
+          value={cancelReason}
+          withAsterisk
+        />
+      </ModalShell>
     </DetailShell>
   );
 }
@@ -1124,6 +1244,11 @@ function DraftEditor({
   );
   const [salesRepId, setSalesRepId] = useState<string | null>(a.salesRepId);
   const [shipToBpId, setShipToBpId] = useState<string | null>(a.shipToBpId);
+  const [deliveryMethod, setDeliveryMethod] = useState<
+    "NORMAL" | "DIRECT_TO_USER"
+  >(a.deliveryMethod);
+  const [endUserBpId, setEndUserBpId] = useState<string | null>(a.endUserBpId);
+  const [endUserError, setEndUserError] = useState<string | null>(null);
   const [assignedPlantId, setAssignedPlantId] = useState<string | null>(
     a.assignedPlantId,
   );
@@ -1145,6 +1270,8 @@ function DraftEditor({
     customerId,
     salesRepId,
     shipToBpId,
+    deliveryMethod,
+    endUserBpId,
     assignedPlantId,
     shippingWorkLocationId,
     customerOrderRef,
@@ -1159,11 +1286,17 @@ function DraftEditor({
   const isDirty = fingerprint !== initialFingerprint;
 
   const save = () => {
+    if (deliveryMethod === "DIRECT_TO_USER" && !endUserBpId) {
+      setEndUserError("ユーザー直送ではエンドユーザーを選択してください");
+      return;
+    }
     startTransition(async () => {
       const result = await saveDraft(a.number, {
         customerBpId: customerId,
         salesRepId,
         shipToBpId,
+        deliveryMethod,
+        endUserBpId,
         assignedPlantId: assignedPlantId ? Number(assignedPlantId) : null,
         shippingWorkLocationId: shippingWorkLocationId
           ? Number(shippingWorkLocationId)
@@ -1304,6 +1437,48 @@ function DraftEditor({
               placeholder="出荷先を検索（任意）"
               storageKey="ship-to"
               value={shipToBpId}
+            />
+            {/* 配送方法 — 出荷書は同じ出荷先×配送方法の明細だけを束ねられる。 */}
+            <Select
+              allowDeselect={false}
+              data={ACCEPTANCE_DELIVERY_METHOD_OPTIONS}
+              label={
+                <HelpLabel
+                  {...fieldHelp("orderAcceptance", "deliveryMethod")}
+                />
+              }
+              onChange={(v) => {
+                setDeliveryMethod(
+                  (v as "NORMAL" | "DIRECT_TO_USER") ?? "NORMAL",
+                );
+                if (v !== "DIRECT_TO_USER") setEndUserError(null);
+              }}
+              value={deliveryMethod}
+              withAsterisk
+            />
+            {/* エンドユーザー — 直送では必須、通常配送でも記録用に任意で選べる。 */}
+            <SearchSelect
+              clearable
+              error={endUserError}
+              initialOption={
+                a.endUserBpId && a.endUserName
+                  ? { value: a.endUserBpId, label: a.endUserName }
+                  : null
+              }
+              label={<HelpLabel {...fieldHelp("orderAcceptance", "endUser")} />}
+              onChange={(v) => {
+                setEndUserBpId(v);
+                if (v) setEndUserError(null);
+              }}
+              onSearch={searchEndUserOptions}
+              placeholder={
+                deliveryMethod === "DIRECT_TO_USER"
+                  ? "エンドユーザーを検索"
+                  : "エンドユーザーを検索（任意）"
+              }
+              storageKey="end-user"
+              value={endUserBpId}
+              withAsterisk={deliveryMethod === "DIRECT_TO_USER"}
             />
             <Select
               clearable

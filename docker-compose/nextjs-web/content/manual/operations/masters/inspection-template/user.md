@@ -5,7 +5,7 @@ screenshots: [master-inspection-template-list-01, master-inspection-template-new
 ---
 検査で **何を測るか** をあらかじめ決めておく、検査表の **ひな形** を作るアプリです。操作コードは `MS09` です。
 
-[指示書](/manual/ja/operations/production/work-order/user)にひな形を付けておくと、現場ではこのひな形にそって検査の記録を入力します。
+[指示書](/manual/ja/operations/production/work-order/user)の**検査工程ごと**にひな形を付けておくと、現場ではこのひな形にそって検査の記録を入力します。
 
 > ⚠️ このアプリは試験公開中です。ご利用の環境によっては、まだ表示されないことがあります。
 
@@ -19,7 +19,7 @@ screenshots: [master-inspection-template-list-01, master-inspection-template-new
 
 ## 用語（このページで出てくる言葉）
 
-- **検査表テンプレート** … 検査表のひな形のことです。「このひな形を使って検査してください」と指示書に付けて使います。
+- **検査表テンプレート** … 検査表のひな形のことです。「このひな形を使って検査してください」と、指示書の**検査工程**に付けて使います。
 - **検査項目** … ひな形の中の 1 行です。「外径を測る」「キズが無いか見る」など、1 つの確認内容を表します。
 - **合格基準** … 「合格」と判断するための条件です。数値なら「5.98 〜 6.02 mm の間なら合格」のように決めます。
 - **抜取（ぬきとり）** … 作った全部ではなく、一部だけを取り出して検査することです。この画面では「**検査対象**」で決めます。
@@ -136,11 +136,11 @@ screenshots: [master-inspection-template-list-01, master-inspection-template-new
 |------|-------------|
 | [コード / 名称](#field-code) | テンプレートの管理番号と名前です |
 | [関連工程](#field-process-step) | どの工程で使う検査表かです |
-| [有効](#field-active) | 外すと、指示書に紐づける選択肢に出なくなります |
+| [有効](#field-active) | 外すと、指示書の検査工程に紐づける選択肢に出なくなります |
 
 ### コード / 名称 [#field-code]
 
-テンプレートの管理番号と名前です。指示書に紐づけるときにこの名前で選びます。
+テンプレートの管理番号と名前です。指示書の検査工程に紐づけるときにこの名前で選びます。
 
 ### 関連工程 [#field-process-step]
 
@@ -148,7 +148,7 @@ screenshots: [master-inspection-template-list-01, master-inspection-template-new
 
 ### 有効 [#field-active]
 
-外すと、指示書に紐づける選択肢に出なくなります。
+外すと、指示書の検査工程に紐づける選択肢に出なくなります。
 
 ## よくある質問・困ったとき
 

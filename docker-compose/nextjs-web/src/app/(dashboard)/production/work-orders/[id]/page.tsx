@@ -4,7 +4,10 @@ import { fetchApprovalState } from "@/lib/approvals";
 import { fetchAuditEntries } from "@/lib/audit";
 import { requireAppRead } from "@/lib/authz-page";
 import { listMemos } from "@/lib/document-memos";
-import { fetchPendingFlowChange } from "@/lib/work-order-flow-changes";
+import {
+  fetchPendingFlowChange,
+  fetchRejectedAppliedFlowChange,
+} from "@/lib/work-order-flow-changes";
 import {
   fetchCatalogStepOptions,
   fetchWorkOrder,
@@ -59,6 +62,10 @@ export default async function ProductionWorkOrdersDetailPage({
   const flowChangeApproval = pendingFlowChange
     ? await fetchApprovalState("work_order_flow_changes", pendingFlowChange.id)
     : null;
+  // 事後承認（POST）で差し戻されたが適用済み・未確認の変更（赤アラート）。
+  const rejectedAppliedFlowChange = await fetchRejectedAppliedFlowChange(
+    workOrder.id,
+  );
 
   return (
     <WorkOrderDetail
@@ -69,6 +76,7 @@ export default async function ProductionWorkOrdersDetailPage({
       flowChange={pendingFlowChange}
       flowChangeApproval={flowChangeApproval}
       memos={memos}
+      rejectedAppliedFlowChange={rejectedAppliedFlowChange}
       workOrder={workOrder}
     />
   );

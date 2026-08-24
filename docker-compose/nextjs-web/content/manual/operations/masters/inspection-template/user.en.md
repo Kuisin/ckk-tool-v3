@@ -5,7 +5,7 @@ screenshots: [master-inspection-template-list-01, master-inspection-template-new
 ---
 This app is for making a **template** of the inspection sheet, deciding in advance **what will be measured**. The operation code is `MS09`.
 
-When you attach a template to a [指示書 (work order)](/manual/en/operations/production/work-order/user), the floor follows this template when entering the inspection record.
+When you attach a template to an **inspection step** of a [指示書 (work order)](/manual/en/operations/production/work-order/user), the floor follows this template when entering the inspection record.
 
 > ⚠️ This app is in trial release. Depending on your environment, it may not be shown yet.
 
@@ -19,7 +19,7 @@ When you attach a template to a [指示書 (work order)](/manual/en/operations/p
 
 ## Words used on this page
 
-- **Inspection sheet template** … the template of an inspection sheet. You attach it to a work order to say "please inspect using this template".
+- **Inspection sheet template** … the template of an inspection sheet. You attach it to an inspection step of a work order to say "please inspect using this template".
 - **Inspection item** … one line inside the template. It stands for one thing to check, such as "measure the outer diameter" or "look for scratches".
 - **Pass rule** … the condition for judging something as a pass. For a number, you set something like "it passes if it is between 5.98 and 6.02 mm".
 - **Sampling** … taking out only a part instead of everything made, and inspecting that. On this screen you set it in 「**検査対象**」 (what is inspected).
@@ -134,13 +134,13 @@ Every field on the Inspection template screen.
 
 | Field | What to enter |
 |-------|---------------|
-| [Code / name](#field-code) | The template's reference code and name, used when linking it to a work order |
+| [Code / name](#field-code) | The template's reference code and name, used when linking it to a work order's inspection step |
 | [Related process step](#field-process-step) | Which step the sheet belongs to |
-| [Active](#field-active) | Turning it off removes it from the pick list when linking to a work order |
+| [Active](#field-active) | Turning it off removes it from the pick list when linking to a work order's inspection step |
 
 ### Code / name [#field-code]
 
-The template's reference code and name, used when linking it to a work order.
+The template's reference code and name, used when linking it to a work order's inspection step.
 
 ### Related process step [#field-process-step]
 
@@ -148,7 +148,7 @@ Which step the sheet belongs to. Setting it makes the sheet easier to pick durin
 
 ### Active [#field-active]
 
-Turning it off removes it from the pick list when linking to a work order.
+Turning it off removes it from the pick list when linking to a work order's inspection step.
 
 ## Questions and problems
 

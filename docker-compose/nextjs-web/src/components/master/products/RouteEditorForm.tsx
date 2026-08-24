@@ -9,7 +9,7 @@
  * createProductRouteVersion（同一構成は server が拒否）。
  */
 
-import { Alert, SimpleGrid, TextInput } from "@mantine/core";
+import { Alert, Select, SimpleGrid, TextInput } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import { IconAlertTriangle } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
@@ -28,7 +28,11 @@ import { FormSection, FormShell } from "@/components/ui/shells";
 import { useIsMobile } from "@/hooks/useViewport";
 import type { RouteStepSnapshot } from "@/lib/product-routes-core";
 import type { CatalogStep, UseDep } from "@/lib/workflow-core";
-import { isBlockingIssue, validateComposition } from "@/lib/workflow-core";
+import {
+  isBlockingIssue,
+  STOCK_ISSUE_STEP_CODE,
+  validateComposition,
+} from "@/lib/workflow-core";
 
 export function RouteEditorForm({
   mode,
@@ -42,6 +46,7 @@ export function RouteEditorForm({
   useDeps,
   plantOptions,
   supplierOptions,
+  customerOptions,
 }: {
   mode: "create" | "new-version";
   productId: number;
@@ -56,15 +61,25 @@ export function RouteEditorForm({
   useDeps: UseDep[];
   plantOptions: Option[];
   supplierOptions: Option[];
+  /** create 時のみ: 対象顧客の選択肢（未指定 = 汎用のみ）。 */
+  customerOptions?: Option[];
 }) {
   const router = useRouter();
   const isMobile = useIsMobile();
   const [isPending, startTransition] = useTransition();
+  const [customerBpId, setCustomerBpId] = useState<string | null>(null);
   const backPath = `/master/products/${productId}?tab=routes`;
 
-  const knownIds = useMemo(
-    () => new Set(catalogSteps.map((s) => s.id)),
+  // 工程リストは製造分（MANUFACTURE）の構成 — 在庫分専用の
+  // 製品出し（在庫）は選択肢に出さない。
+  const manufactureCatalog = useMemo(
+    () => catalogSteps.filter((c) => c.code !== STOCK_ISSUE_STEP_CODE),
     [catalogSteps],
+  );
+
+  const knownIds = useMemo(
+    () => new Set(manufactureCatalog.map((s) => s.id)),
+    [manufactureCatalog],
   );
   const usableInitial = useMemo(
     () => (initialSteps ?? []).filter((s) => knownIds.has(s.processStepId)),
@@ -87,6 +102,7 @@ export function RouteEditorForm({
           plantId: s.plantId != null ? String(s.plantId) : null,
           supplierBpId: s.supplierBpId,
           workHours: s.workHours,
+          lotInputMode: s.lotInputMode ?? null,
         };
       }
       return map;
@@ -96,8 +112,11 @@ export function RouteEditorForm({
   const [stepsError, setStepsError] = useState<string | null>(null);
 
   const blockers = useMemo(
-    () => validateComposition(selected, useDeps).filter(isBlockingIssue),
-    [selected, useDeps],
+    () =>
+      validateComposition(selected, useDeps, manufactureCatalog).filter(
+        isBlockingIssue,
+      ),
+    [selected, useDeps, manufactureCatalog],
   );
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -120,13 +139,14 @@ export function RouteEditorForm({
       });
       return;
     }
-    const steps = toStepSnapshots(selected, locations, catalogSteps).map(
+    const steps = toStepSnapshots(selected, locations, manufactureCatalog).map(
       (s) => ({
         processStepId: s.processStepId,
         executionLocation: s.executionLocation,
         plantId: s.plantId,
         supplierBpId: s.supplierBpId,
         workHours: s.workHours,
+        lotInputMode: s.lotInputMode ?? null,
       }),
     );
     startTransition(async () => {
@@ -135,6 +155,7 @@ export function RouteEditorForm({
           ? await createProductRoute(productId, {
               nameJa,
               nameEn,
+              customerBpId,
               notes,
               steps,
             })
@@ -197,6 +218,16 @@ export function RouteEditorForm({
                 onChange={(e2) => setNameEn(e2.currentTarget.value)}
                 value={nameEn}
               />
+              <Select
+                clearable
+                data={customerOptions ?? []}
+                description="指定すると同じ顧客×製品の指示書で優先選択されます（空 = 汎用）"
+                label="対象顧客"
+                onChange={setCustomerBpId}
+                placeholder="汎用（全顧客）"
+                searchable
+                value={customerBpId}
+              />
             </>
           ) : (
             <TextInput disabled label="ルート名" value={routeName ?? ""} />
@@ -227,7 +258,7 @@ export function RouteEditorForm({
       </FormSection>
 
       <ProcessListEditor
-        catalogSteps={catalogSteps}
+        catalogSteps={manufactureCatalog}
         error={stepsError}
         locations={locations}
         onLocationsChange={setLocations}

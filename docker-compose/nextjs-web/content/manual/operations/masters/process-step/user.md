@@ -1,7 +1,7 @@
 ---
 title: "工程マスタ — 操作マニュアル"
 description: "「切断」「円筒加工」「製作検査」など、工場で行う作業の種類を登録しておくアプリです。指示書はここに登録した工程を並べて作られます。"
-screenshots: [master-process-step-list-01, master-process-step-new-01, master-process-step-deps-01, master-process-step-detail-01, master-process-step-dependencies-01]
+screenshots: [master-process-step-list-01, master-process-step-new-01, master-process-step-deps-01, master-process-step-detail-01, master-process-step-dependencies-01, master-process-step-locations-01]
 ---
 「切断」「円筒加工」「製作検査」など、工場で行う **作業の種類** を登録しておくアプリです。操作コードは `MS08` です。
 
@@ -136,6 +136,7 @@ screenshots: [master-process-step-list-01, master-process-step-new-01, master-pr
 | [工程コード / 名称](#field-code) | 必須 | 工程の管理番号と名前 |
 | [カテゴリ](#field-category) | 必須 | 材料準備・加工・検査 などの区分 |
 | [実施場所](#field-execution) | 必須 | 社内のみか、外注も可か |
+| [許可作業場所](#field-allowed-locations) | 任意 | この工程で使える作業場所の制限 |
 | [数量管理](#field-quantity-tracking) | 必須 | 本数をどう扱う工程か |
 | [既定作業時間](#field-default-time) | 任意 | 1 回あたりの目安時間 |
 | [同期可](#field-sync) | — | 並行して進められるか |
@@ -151,6 +152,16 @@ screenshots: [master-process-step-list-01, master-process-step-new-01, master-pr
 ### カテゴリ [#field-category]
 
 材料準備・加工・コーティング・検査・検査承認・出荷の区分です。
+
+### 許可作業場所 [#field-allowed-locations]
+
+![編集画面の許可作業場所セクション](../../../assets/screenshots/master-process-step-locations-01.png)
+
+この工程の**計画・実績で使える作業場所**を制限します。種別（機械・エリアなど）でまとめて指定するか、場所を個別に指定します（併用可 — 和集合が許可されます）。**両方とも空なら制限なし**（すべての作業場所を使えます）。
+
+- 指示書の工程で計画・実績を追加するとき、選択肢は許可された場所だけに絞られます
+- 現場タブレット（キオスク）でも同じ制限が効きます — 許可外の作業場所 QR は拒否され、端末の既定作業場所が許可外なら実績に記録されません
+- キオスク端末側で「作業場所の制限」トグルが ON の端末は、端末の既定作業場所が許可に含まれる工程しか開始できません
 
 ### 実施場所 [#field-execution]
 

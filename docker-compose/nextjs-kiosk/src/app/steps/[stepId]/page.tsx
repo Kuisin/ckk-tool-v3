@@ -11,7 +11,7 @@ import { StepExecutionView } from "@/components/steps/StepExecutionView";
 import { readableCodes } from "@/lib/authz";
 import { getSession } from "@/lib/kiosk-auth";
 import { getStepRecordingData } from "@/lib/step-records";
-import { getMyActiveStep, getMyStep } from "@/lib/steps";
+import { getMyStep, getStepLocationGate } from "@/lib/steps";
 
 export const dynamic = "force-dynamic";
 
@@ -40,10 +40,10 @@ export default async function StepExecutionPage({
   const recording = await getStepRecordingData(step.stepId, session.locale);
   if (!recording) notFound();
 
-  // 同時作業は 1 工程まで — 別工程を作業中なら開始/再開をロック表示する
-  const otherActive = await getMyActiveStep(
-    session.userId,
+  // 工程マスタの許可作業場所 × この端末（表示用 — 権威は API 側）
+  const locationGate = await getStepLocationGate(
     step.stepId,
+    session.deviceId,
     session.locale,
   );
 
@@ -56,7 +56,7 @@ export default async function StepExecutionPage({
     <I18nProvider locale={session.locale}>
       <StepExecutionView
         backTo={backTo}
-        otherActive={otherActive}
+        locationGate={locationGate}
         recording={recording}
         step={step}
       />

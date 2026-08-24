@@ -74,6 +74,7 @@ export const en: KioskMessages = {
       elapsed: (t: string) => `Worked ${t}`,
       elapsedLabel: "Worked",
       plannedHours: (h: number) => `Planned ${h}h`,
+      lot: (t: string) => `Lot ${t}`,
     },
     state: {
       startable: "Ready",
@@ -83,12 +84,6 @@ export const en: KioskMessages = {
       othersWorking: (name: string) => `${name} is working on this`,
       completed: "Completed",
       cancelled: "Cancelled",
-    },
-    activeLock: {
-      badge: "Working on another step",
-      alert: (workOrderNumber: number, stepName: string) =>
-        `You are working on "${stepName}" (order #${workOrderNumber}). Pause or complete it before operating another step.`,
-      goto: "Go to active step",
     },
     actions: {
       start: "Start",
@@ -105,6 +100,9 @@ export const en: KioskMessages = {
       differsHint: "Differs from the expected count (you can still start)",
       noneNote: "This step records no quantities. It will start right away.",
       submit: "Start",
+      lotRequired: "Lot / slip code (required)",
+      lotOptional: "Lot / slip code (optional)",
+      lotPlaceholder: "Material lot, slip code, etc.",
     },
     complete: {
       title: "Complete step",
@@ -138,11 +136,15 @@ export const en: KioskMessages = {
       overInput: (sum: number, input: number) =>
         `Defect total (${sum}) exceeds the received count (${input})`,
       negative: "Quantities must be whole numbers of 0 or more",
+      incomplete: "Enter a defect type and detail for every defect row",
     },
     reasons: {
       title: "Defect reasons (optional)",
       reason: "Reason",
+      defectType: "Defect type",
       reasonPlaceholder: "Select a defect type",
+      detail: "Detail",
+      detailPlaceholder: "Defect detail (required)",
       count: "Count",
       add: "Add reason",
       remove: "Remove",
@@ -195,6 +197,22 @@ export const en: KioskMessages = {
         APPROVED: "Approved",
       },
     },
+    location: {
+      label: "Work location",
+      none: "Not recorded",
+      scan: "Scan work location",
+      close: "Stop scanning",
+      pendingScanned: (code: string) => `Scanned: ${code} (recorded on start)`,
+      deviceDefaultHint:
+        "If not scanned, this device's default work location is recorded",
+      invalidQr: "Not a work-location QR code",
+      updated: "Work location recorded",
+      deviceBlockedTitle: "This step cannot run on this device",
+      deviceBlockedBody: (label: string) =>
+        `Work locations are restricted for this step, and this device's default location (${label}) is not allowed.`,
+      allowedListTitle: "Allowed work locations:",
+      devicesAt: (names: string) => `devices: ${names}`,
+    },
     defects: {
       title: "Defect records",
       type: "Defect type",
@@ -214,18 +232,24 @@ export const en: KioskMessages = {
       NOT_ASSIGNED: "This step is not assigned to you",
       WO_NOT_APPROVED: "The work order is not approved or in progress",
       NOT_STARTABLE: "Cannot start — a previous step is not complete",
-      OTHER_STEP_ACTIVE:
-        "You are working on another step — pause or complete it first",
       LOCK_TAKEN: "Someone else started this first",
       LOCK_HELD_BY_OTHER: "Someone else is working on this",
       NOT_IN_PROGRESS: "This step is not in progress",
       ALREADY_COMPLETED: "This step is already completed",
       QUANTITY_REQUIRED: "Please enter the quantities",
       QUANTITY_INVALID: "Please check the quantities",
+      LOT_REQUIRED: "Enter the lot / slip code",
+      DEFECT_REASONS_REQUIRED:
+        "Enter a defect type and detail for every defect row",
       ROUTING_INVALID: "Does not match the branch quantities",
       TEMPLATE_INVALID: "The template does not belong to this work order",
       ITEMS_REQUIRED: "There is nothing to record",
       DEFECT_TYPE_INVALID: "Invalid defect type",
+      LOCATION_NOT_FOUND: "Work location not found (it may be deactivated)",
+      LOCATION_NOT_ALLOWED: "This work location is not allowed for this step",
+      DEVICE_LOCATION_BLOCKED:
+        "This step cannot run at this device's work location (use a device at an allowed location)",
+      NO_OPEN_SESSION: "No active work session (resume the step, then scan)",
       NO_PERMISSION: "You do not have permission for this action",
       UNKNOWN: "The operation failed",
     },

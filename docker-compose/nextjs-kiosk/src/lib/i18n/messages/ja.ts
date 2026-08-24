@@ -82,6 +82,7 @@ export const ja = {
       elapsed: (t: string) => `作業 ${t}`,
       elapsedLabel: "作業",
       plannedHours: (h: number) => `予定 ${h}h`,
+      lot: (t: string) => `ロット ${t}`,
     },
     state: {
       startable: "開始可",
@@ -91,12 +92,6 @@ export const ja = {
       othersWorking: (name: string) => `${name} さんが作業中`,
       completed: "完了",
       cancelled: "キャンセル",
-    },
-    activeLock: {
-      badge: "他工程を作業中",
-      alert: (workOrderNumber: number, stepName: string) =>
-        `指示書 #${workOrderNumber}「${stepName}」を作業中です。他の工程を操作するには、先に一時停止または完了してください。`,
-      goto: "作業中の工程へ",
     },
     actions: {
       start: "工程開始",
@@ -113,6 +108,9 @@ export const ja = {
       differsHint: "想定と異なる本数です（このまま開始できます）",
       noneNote: "この工程は数量を記録しません。そのまま開始します。",
       submit: "開始する",
+      lotRequired: "ロット/伝票コード（必須）",
+      lotOptional: "ロット/伝票コード（任意）",
+      lotPlaceholder: "素材ロット・伝票コードなど",
     },
     complete: {
       title: "工程を完了",
@@ -146,11 +144,15 @@ export const ja = {
       overInput: (sum: number, input: number) =>
         `不良の合計（${sum}）が受入数（${input}）を超えています`,
       negative: "数量は 0 以上の整数で入力してください",
+      incomplete: "不良の各行に種類と詳細を入力してください",
     },
     reasons: {
       title: "不良理由（任意）",
       reason: "理由",
+      defectType: "不良種類",
       reasonPlaceholder: "不良種類を選択",
+      detail: "詳細",
+      detailPlaceholder: "不良の詳細（必須）",
       count: "本数",
       add: "理由を追加",
       remove: "削除",
@@ -202,6 +204,21 @@ export const ja = {
         APPROVED: "承認済",
       },
     },
+    location: {
+      label: "作業場所",
+      none: "未記録",
+      scan: "作業場所を読み取り",
+      close: "読み取りをやめる",
+      pendingScanned: (code: string) => `読み取り済み: ${code}（開始時に記録）`,
+      deviceDefaultHint: "未読み取りの場合は端末の既定作業場所が記録されます",
+      invalidQr: "作業場所の QR コードではありません",
+      updated: "作業場所を記録しました",
+      deviceBlockedTitle: "この端末では実行できません",
+      deviceBlockedBody: (label: string) =>
+        `この工程は作業場所が制限されています。端末の既定作業場所（${label}）は許可されていません。`,
+      allowedListTitle: "実行できる作業場所:",
+      devicesAt: (names: string) => `端末: ${names}`,
+    },
     defects: {
       title: "不良記録",
       type: "不良種類",
@@ -221,18 +238,25 @@ export const ja = {
       NOT_ASSIGNED: "この工程は担当ではありません",
       WO_NOT_APPROVED: "指示書が承認済み/進行中ではありません",
       NOT_STARTABLE: "前工程が完了していないため開始できません",
-      OTHER_STEP_ACTIVE:
-        "別の工程を作業中のため操作できません（先に一時停止または完了してください）",
       LOCK_TAKEN: "別の人が先に開始しました",
       LOCK_HELD_BY_OTHER: "別の人が作業中です",
       NOT_IN_PROGRESS: "進行中の工程ではありません",
       ALREADY_COMPLETED: "この工程は既に完了しています",
       QUANTITY_REQUIRED: "数量を入力してください",
       QUANTITY_INVALID: "数量の入力を確認してください",
+      DEFECT_REASONS_REQUIRED: "不良の各行に種類と詳細を入力してください",
+      LOT_REQUIRED: "ロット/伝票コードを入力してください",
       ROUTING_INVALID: "分岐数量と一致しません",
       TEMPLATE_INVALID: "検査表がこの指示書と一致しません",
       ITEMS_REQUIRED: "記録する内容がありません",
       DEFECT_TYPE_INVALID: "不良種類が不正です",
+      LOCATION_NOT_FOUND:
+        "作業場所が見つかりません（無効化されていないか確認）",
+      LOCATION_NOT_ALLOWED: "この工程では使用できない作業場所です",
+      DEVICE_LOCATION_BLOCKED:
+        "この端末の作業場所ではこの工程を実行できません（許可された場所の端末を使用してください）",
+      NO_OPEN_SESSION:
+        "作業セッションがありません（再開してから読み取ってください）",
       NO_PERMISSION: "この操作の権限がありません",
       UNKNOWN: "処理に失敗しました",
     },

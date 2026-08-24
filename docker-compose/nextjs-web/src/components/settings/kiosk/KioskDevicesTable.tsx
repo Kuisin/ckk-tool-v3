@@ -264,6 +264,8 @@ interface DeviceFormState {
   nameEn: string;
   plantId: string | null;
   location: string;
+  /** 既定の作業場所（編集のみ — 作成時は拠点未定のため設定不可）。 */
+  defaultWorkLocationId: string | null;
 }
 
 const EMPTY_FORM: DeviceFormState = {
@@ -271,14 +273,22 @@ const EMPTY_FORM: DeviceFormState = {
   nameEn: "",
   plantId: null,
   location: "",
+  defaultWorkLocationId: null,
 };
 
 export function KioskDevicesTable({
   rows,
   plantOptions,
+  workLocationOptions = [],
 }: {
   rows: KioskDeviceRow[];
   plantOptions: KioskPlantOption[];
+  /** 既定作業場所の選択肢（グループの拠点付き — 端末の拠点で絞り込む）。 */
+  workLocationOptions?: {
+    value: string;
+    label: string;
+    plantId: number | null;
+  }[];
 }) {
   const fmt = useFormat();
   const router = useRouter();
@@ -431,6 +441,10 @@ export function KioskDevicesTable({
       nameEn: r.nameEn,
       plantId: r.plantId != null ? String(r.plantId) : null,
       location: r.location ?? "",
+      defaultWorkLocationId:
+        r.defaultWorkLocationId != null
+          ? String(r.defaultWorkLocationId)
+          : null,
     });
   };
 
@@ -453,6 +467,9 @@ export function KioskDevicesTable({
         nameEn: editForm.nameEn,
         plantId,
         location: editForm.location,
+        defaultWorkLocationId: editForm.defaultWorkLocationId
+          ? Number(editForm.defaultWorkLocationId)
+          : null,
       });
       if (result.ok) {
         setEditTarget(null);
@@ -975,7 +992,14 @@ export function KioskDevicesTable({
           <Select
             data={plantOptions}
             label={<HelpLabel {...fieldHelp("kioskDevice", "plant")} />}
-            onChange={(v) => setEditForm((s) => ({ ...s, plantId: v }))}
+            onChange={(v) =>
+              setEditForm((s) => ({
+                ...s,
+                plantId: v,
+                // 拠点をまたぐ既定作業場所は成立しないのでクリアする。
+                ...(v !== s.plantId ? { defaultWorkLocationId: null } : {}),
+              }))
+            }
             searchable
             value={editForm.plantId}
             withAsterisk
@@ -987,6 +1011,23 @@ export function KioskDevicesTable({
               setEditForm((s) => ({ ...s, location }));
             }}
             value={editForm.location}
+          />
+          <Select
+            clearable
+            data={workLocationOptions.filter(
+              (o) =>
+                o.plantId == null || String(o.plantId) === editForm.plantId,
+            )}
+            description="工程の開始・再開時に、この端末からの作業実績へ自動で記録されます"
+            label={
+              <HelpLabel {...fieldHelp("kioskDevice", "defaultWorkLocation")} />
+            }
+            onChange={(v) =>
+              setEditForm((s) => ({ ...s, defaultWorkLocationId: v }))
+            }
+            placeholder="機械・エリア（任意）"
+            searchable
+            value={editForm.defaultWorkLocationId}
           />
           <Text c="dimmed" size="xs">
             拠点を変更するとフロアマップ上のピン配置は解除されます。

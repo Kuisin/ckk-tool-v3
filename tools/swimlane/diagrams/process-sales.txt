@@ -1,0 +1,165 @@
+// 販売の流れ — 分岐（価格差異・承認差し戻し）と並行の設計依頼を含む。
+// 用語は _specs/design.md §17（注文請書・注文明細）。
+
+/title/
+販売の流れ — 試算から受注確定まで
+
+/option/
+show-step-block-captions: false;
+show-right-gutter: false;
+left-title: 手順;
+left-subtitle: 説明;
+
+/role/
+
+<role_partner>
+label: 社外（顧客）;
+text-color: #92400e;
+background-color: #fffbeb;
+icon: #mail;
+
+<role_sales>
+label: 社内営業;
+text-color: #1e293b;
+background-color: #dbeafe;
+
+<role_support>
+label: 社内営業補助;
+text-color: #92400e;
+background-color: #fef3c7;
+
+<role_approver>
+label: 承認・判断;
+text-color: #166534;
+background-color: #f0fdf4;
+
+<role_system>
+label: システム;
+text-color: #3730a3;
+background-color: #eef2ff;
+icon: #database;
+
+/block/
+
+<block_neutral>
+background-color: #f8fafc;
+text-color: #334155;
+border-color: #64748b;
+shape: rounded;
+
+<block_apply>
+background-color: #dbeafe;
+text-color: #1e40af;
+border-color: #2563eb;
+shape: rounded;
+icon: #zap;
+
+<block_approve>
+background-color: #dcfce7;
+text-color: #166534;
+border-color: #16a34a;
+shape: rounded;
+icon: #circle-check;
+
+<block_condition>
+background-color: #f3e8ff;
+text-color: #6b21a8;
+border-color: #9333ea;
+shape: subroutine;
+icon: #git-branch;
+
+<block_system>
+background-color: #e0e7ff;
+text-color: #3730a3;
+border-color: #4f46e5;
+shape: rect;
+icon: #database;
+
+<block_reject>
+background-color: #fee2e2;
+text-color: #991b1b;
+border-color: #dc2626;
+shape: hex;
+icon: #alert-triangle;
+
+<block_memo>
+background-color: #fef3c7;
+text-color: #92400e;
+border-color: #d97706;
+shape: note;
+icon: #file-text;
+
+/prop/
+
+<PRICE_LIST>
+label: 価格表;
+side: right;
+
+<QUOTE>
+label: 見積書;
+side: right;
+background-color: #f0f9ff;
+border-color: #2563eb;
+text-color: #1e40af;
+
+<ORDER_DOC>
+label: 注文書;
+side: right;
+
+<ORDER_ACCEPT>
+label: 注文請書;
+side: right;
+background-color: #fef3c7;
+border-color: #d97706;
+text-color: #92400e;
+
+/line/
+
+[role_sales: 単価を試算する] <block_apply>
+label: 試算;
+desc: 材料・寸法・加工条件から見積単価を算出し、確定する。確定した試算だけが価格表の基準に使える。;
+[role_sales: 価格表を作成する] <block_apply>
+label: 価格表;
+props: PRICE_LIST;
+desc: 顧客×製品ごとに、注文種別・数量段階別の価格を決める。;
+[role_sales: 見積書を発行する] <block_apply>
+label: 見積書;
+props: QUOTE;
+desc: 価格表から単価が自動で入る。発行した PDF を顧客へ提出する。;
+[role_partner: 注文書を送付する] <block_neutral>
+label: 注文;
+props: ORDER_DOC;
+desc: FAX・PDF などで注文書が届く。;
+[role_support: 注文請書を確認する] <block_apply>
+label: 取込・確認;
+props: ORDER_ACCEPT;
+desc: 取り込んだ読み取り結果を確認・修正する。;
+[role_system: 注文価格を照合する] <block_system>
+label: 価格照合;
+desc: 注文の価格と見積・価格表の価格が自動で突き合わされる。;
+if (価格差異) is (あり) than #orange
+  [role_sales: 価格を調整する] <block_condition>
+  label: 価格調整;
+  props: QUOTE;
+  desc: 見積書へ戻って価格を直すか、注文請書側の価格を修正して確認し直す。;
+  [loop]
+else
+  [role_support: 承認を依頼する] <block_apply>
+  label: 承認依頼;
+  desc: 内容が確定したら承認を依頼する。依頼中は編集できない。;
+endif
+if (承認判断) is (差し戻し) than #red
+  [role_support: 修正し再依頼する] <block_reject>
+  label: 差し戻し;
+  desc: 指摘を反映して内容を直し、もう一度承認を依頼する。;
+  [loop]
+else
+  [role_approver: 注文請書を承認する] <block_approve>
+  label: 承認;
+endif
+[role_support: 注文明細を確定する] <block_apply>
+label: 明細確定;
+desc: 明細ごとに注文明細が作られ、金額が確定する。以後は生産の流れへ進む。;
+[role_sales: 設計依頼を出す] <block_memo>
+label: （並行）設計依頼;
+desc: 設計図が無い製品では、この流れと並行して設計依頼書を起票し、製造が図面を作る。;

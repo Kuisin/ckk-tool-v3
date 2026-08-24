@@ -41,16 +41,23 @@ import {
   samplingSpecFromRow,
 } from "@/lib/inspection-core";
 import { sumActualWorkHours } from "@/lib/step-work-hours";
-import { fetchWorkLocationOptions } from "@/lib/work-locations";
+import {
+  fetchAllowedWorkLocationIds,
+  fetchWorkLocationOptions,
+} from "@/lib/work-locations";
 import { effectiveAllocatedByLine } from "@/lib/work-order-alloc";
 import { fetchWorkflowCtx, loadCatalog } from "@/lib/workflow";
-import { canStartStep, expectedInput } from "@/lib/workflow-core";
+import {
+  canStartStep,
+  effectiveLotInputMode,
+  expectedInput,
+} from "@/lib/workflow-core";
 
 // 一覧クエリの取得上限（監査 P2-8 — 全件フェッチのデータ増加対策）。
 // DataTable はクライアントページングのため、最新分のみで実用上十分。
 const LIST_FETCH_CAP = 1000;
 
-/** work_order_steps.defect_reasons（Json）→ 表示用の {種別, 理由, 数} 配列。 */
+/** work_order_steps.defect_reasons（Json）→ 表示用の {種別, 種類, 詳細, 数} 配列。 */
 function parseDefectReasons(value: unknown): StepDefectReasonView[] {
   if (!Array.isArray(value)) return [];
   const out: StepDefectReasonView[] = [];
@@ -63,6 +70,8 @@ function parseDefectReasons(value: unknown): StepDefectReasonView[] {
     ) {
       out.push({
         type: r.type,
+        defectTypeId:
+          typeof r.defectTypeId === "number" ? r.defectTypeId : null,
         reason: typeof r.reason === "string" ? r.reason : "",
         count: r.count,
       });
@@ -104,6 +113,37 @@ const WO_INCLUDE = {
     },
     orderBy: { createdAt: "desc" as const },
   },
+  // 指示書→指示書リンク（先行 = incoming / 後続 = outgoing）
+  incomingWoLinks: {
+    select: {
+      id: true,
+      quantity: true,
+      sourceWorkOrder: {
+        select: {
+          workOrderNumber: true,
+          yearMonth: true,
+          seq: true,
+          status: true,
+        },
+      },
+    },
+    orderBy: { createdAt: "asc" as const },
+  },
+  outgoingWoLinks: {
+    select: {
+      id: true,
+      quantity: true,
+      targetWorkOrder: {
+        select: {
+          workOrderNumber: true,
+          yearMonth: true,
+          seq: true,
+          status: true,
+        },
+      },
+    },
+    orderBy: { createdAt: "asc" as const },
+  },
   steps: {
     include: {
       processStep: true,
@@ -125,13 +165,16 @@ const WO_INCLUDE = {
         orderBy: { plannedDate: "asc" as const },
       },
       // 実働時間の積算に使う（1 行 = 1 作業セッション）。
-      actuals: { select: { startedAt: true, endedAt: true } },
+      actuals: {
+        select: { startedAt: true, endedAt: true, concurrentCount: true },
+      },
       _count: { select: { plans: true, actuals: true } },
+      // 検査工程で使う検査表テンプレート（工程単位の割当）
+      inspectionTemplates: { include: { inspectionTemplate: true } },
     },
     orderBy: { sortOrder: "asc" as const },
   },
   stepLinks: true,
-  inspectionTemplates: { include: { inspectionTemplate: true } },
 };
 
 const iso = (d: Date | null | undefined) => d?.toISOString() ?? null;
@@ -471,10 +514,19 @@ export async function fetchWorkOrder(
       status: c.status,
       createdAt: c.createdAt.toISOString(),
     })),
-    inspectionTemplates: r.inspectionTemplates.map((t) => ({
-      id: t.inspectionTemplate.id,
-      code: t.inspectionTemplate.code,
-      name: localized(t.inspectionTemplate.name as LocalizedText | null),
+    woLinksIncoming: r.incomingWoLinks.map((l) => ({
+      id: l.id,
+      workOrderNumber: l.sourceWorkOrder.workOrderNumber,
+      docNumber: formatDocNumber("WOR", l.sourceWorkOrder),
+      status: l.sourceWorkOrder.status,
+      quantity: l.quantity,
+    })),
+    woLinksOutgoing: r.outgoingWoLinks.map((l) => ({
+      id: l.id,
+      workOrderNumber: l.targetWorkOrder.workOrderNumber,
+      docNumber: formatDocNumber("WOR", l.targetWorkOrder),
+      status: l.targetWorkOrder.status,
+      quantity: l.quantity,
     })),
     steps: r.steps.map((s) => ({
       id: s.id,
@@ -496,6 +548,8 @@ export async function fetchWorkOrder(
       supplierBpId: s.supplierBpId,
       plannedWorkHours:
         s.plannedWorkHours == null ? null : Number(s.plannedWorkHours),
+      lotInputMode: s.lotInputMode,
+      lotText: s.lotText,
       supplierName: s.supplierBp
         ? localized(s.supplierBp.name as LocalizedText | null)
         : null,
@@ -515,6 +569,11 @@ export async function fetchWorkOrder(
       assignees: stepAssignees(s.plans),
       actualWorkHours: sumActualWorkHours(s.actuals),
       canStart: canStartStep(s.id, ctx, actorId).ok,
+      inspectionTemplates: s.inspectionTemplates.map((t) => ({
+        id: t.inspectionTemplate.id,
+        code: t.inspectionTemplate.code,
+        name: localized(t.inspectionTemplate.name as LocalizedText | null),
+      })),
     })),
     stepLinks: r.stepLinks.map((l) => ({
       sourceStepId: l.sourceStepId,
@@ -668,6 +727,14 @@ export async function fetchStepExecution(
       processStep: true,
       plant: true,
       supplierBp: true,
+      // この工程に割り当てられた検査表テンプレート（工程単位）
+      inspectionTemplates: {
+        include: {
+          inspectionTemplate: {
+            include: { items: { orderBy: { sortOrder: "asc" } } },
+          },
+        },
+      },
       inspectionRecords: {
         include: {
           template: true,
@@ -687,31 +754,32 @@ export async function fetchStepExecution(
         orderBy: [{ plannedDate: "asc" }, { plannedStartAt: "asc" }],
       },
       actuals: {
-        include: { user: { select: { displayName: true } } },
+        include: {
+          user: { select: { displayName: true } },
+          workLocation: { select: { id: true, name: true } },
+        },
         orderBy: [{ workedDate: "asc" }, { startedAt: "asc" }],
       },
     },
   });
   if (!step) return null;
 
-  const [{ ctx }, actorId, templateLinks, defectTypes, workLocationOptions] =
+  const [{ ctx }, actorId, defectTypes, allOptions, allowedLocationIds] =
     await Promise.all([
       fetchWorkflowCtx(wo.id),
       getCurrentActorId(),
-      prisma.workOrderInspectionTemplate.findMany({
-        where: { workOrderId: wo.id },
-        include: {
-          inspectionTemplate: {
-            include: { items: { orderBy: { sortOrder: "asc" } } },
-          },
-        },
-      }),
       prisma.defectType.findMany({
         where: { isActive: true },
         orderBy: [{ sortOrder: "asc" }, { id: "asc" }],
       }),
       fetchWorkLocationOptions(),
+      fetchAllowedWorkLocationIds(step.processStepId),
     ]);
+  // 工程マスタに許可リストがあれば選択肢を絞る（計画・実績とも同じ制限）
+  const workLocationOptions =
+    allowedLocationIds == null
+      ? allOptions
+      : allOptions.filter((o) => allowedLocationIds.has(Number(o.value)));
 
   // 承認工程は指示書全体の検査記録を承認対象として表示する
   const woRecordsRaw = step.processStep.isApprovalStep
@@ -787,14 +855,9 @@ export async function fetchStepExecution(
     })),
   });
 
-  // 検査工程で出すテンプレート: 関連工程がこの工程 or 未設定（汎用）のもの
-  const templates: InspectionTemplateView[] = templateLinks
-    .filter(
-      (t) =>
-        t.inspectionTemplate.relatedProcessStepId == null ||
-        t.inspectionTemplate.relatedProcessStepId === step.processStepId,
-    )
-    .map((t) => ({
+  // 検査工程で出すテンプレート: この工程に割り当てられたもの（工程単位）
+  const templates: InspectionTemplateView[] = step.inspectionTemplates.map(
+    (t) => ({
       id: t.inspectionTemplate.id,
       code: t.inspectionTemplate.code,
       version: t.inspectionTemplate.version,
@@ -805,7 +868,8 @@ export async function fetchStepExecution(
         name: localized(it.itemName as LocalizedText | null),
         ...itemSpecFromRow(it),
       })),
-    }));
+    }),
+  );
 
   const defectRecords: StepDefectRecordView[] = step.defectRecords.map((d) => ({
     id: d.id,
@@ -857,14 +921,15 @@ export async function fetchStepExecution(
       end: p.plannedEndAt,
     }),
   );
-  const actuals = step.actuals.map((a) =>
-    mapPlanRow({
+  const actuals = step.actuals.map((a) => ({
+    ...mapPlanRow({
       ...a,
       date: a.workedDate,
       start: a.startedAt,
       end: a.endedAt,
     }),
-  );
+    concurrentCount: a.concurrentCount,
+  }));
 
   return {
     actorId,
@@ -882,6 +947,11 @@ export async function fetchStepExecution(
       isInspection: step.processStep.isInspection,
       isApprovalStep: step.processStep.isApprovalStep,
       quantityTracking: step.processStep.quantityTracking,
+      lotInputMode: effectiveLotInputMode(
+        step.lotInputMode,
+        step.processStep.lotInputMode,
+      ),
+      lotText: step.lotText,
       sortOrder: step.sortOrder,
       executionLocation: step.executionLocation,
       plantName: step.plant

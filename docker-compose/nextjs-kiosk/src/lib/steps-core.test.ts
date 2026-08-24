@@ -21,6 +21,7 @@ import {
   inspectionOutcome,
   isDefectEntryComplete,
   isReasonEntryComplete,
+  isReasonEntryCountable,
   missingRequiredItems,
   quantitiesFromList,
   quantityFormDefaults,
@@ -132,6 +133,24 @@ describe("accumulatedWorkMs", () => {
       now,
     );
     expect(ms).toBe(60 * 60 * 1000);
+  });
+
+  it("同時実行セグメントは duration / concurrent_count で按分する", () => {
+    const ms = accumulatedWorkMs(
+      [
+        {
+          startedAt: t("2026-08-14T01:00:00Z"),
+          endedAt: t("2026-08-14T03:00:00Z"),
+          concurrentCount: 2, // 2h を 2 工程同時 → 1h 扱い
+        },
+        {
+          startedAt: t("2026-08-14T04:00:00Z"),
+          endedAt: null, // 未指定は従来どおり（1 扱い）
+        },
+      ],
+      now,
+    );
+    expect(ms).toBe(2 * 60 * 60 * 1000);
   });
 
   it("一時停止を挟んだ複数セッションは合算される（休憩は含まない）", () => {
@@ -247,15 +266,15 @@ describe("quantityFormDefaults", () => {
   });
 });
 
-describe("不良リスト（{種別, 理由, 数}）", () => {
+describe("不良リスト（{種別, 種類, 詳細, 数}）", () => {
   const list: DefectReasonEntry[] = [
-    { type: "SEMI", reason: "寸法不良", count: 3 },
-    { type: "SCRAP", reason: "キズ", count: 2 },
-    { type: "SCRAP", reason: "", count: 1 },
-    { type: "REWORK", reason: "バリ", count: 4 },
+    { type: "SEMI", defectTypeId: 1, reason: "寸法不良", count: 3 },
+    { type: "SCRAP", defectTypeId: 2, reason: "キズ", count: 2 },
+    { type: "SCRAP", defectTypeId: null, reason: "", count: 1 },
+    { type: "REWORK", defectTypeId: 3, reason: "バリ", count: 4 },
   ];
 
-  it("dispositionTotals: 種別ごとに合計", () => {
+  it("dispositionTotals: 種別ごとに合計（入力途中の行も数える）", () => {
     expect(dispositionTotals(list)).toEqual({ semi: 3, scrap: 3, rework: 4 });
   });
 
@@ -266,7 +285,9 @@ describe("不良リスト（{種別, 理由, 数}）", () => {
 
   it("良品は負にならない（下限 0）", () => {
     expect(
-      deriveSuccessFromList(5, [{ type: "SCRAP", reason: "", count: 20 }]),
+      deriveSuccessFromList(5, [
+        { type: "SCRAP", defectTypeId: 1, reason: "x", count: 20 },
+      ]),
     ).toBe(0);
   });
 
@@ -280,28 +301,76 @@ describe("不良リスト（{種別, 理由, 数}）", () => {
     });
   });
 
-  it("isReasonEntryComplete: 種別あり + 数≥1（理由は任意）", () => {
-    expect(isReasonEntryComplete({ type: "SCRAP", reason: "", count: 2 })).toBe(
-      true,
-    );
+  it("isReasonEntryComplete: 種別 + 数≥1 + 種類 FK + 詳細が必須", () => {
     expect(
-      isReasonEntryComplete({ type: "SCRAP", reason: "x", count: 0 }),
+      isReasonEntryComplete({
+        type: "SCRAP",
+        defectTypeId: 1,
+        reason: "キズ",
+        count: 2,
+      }),
+    ).toBe(true);
+    // 種類なし / 詳細なし / 数 0 はすべて不可
+    expect(
+      isReasonEntryComplete({
+        type: "SCRAP",
+        defectTypeId: null,
+        reason: "キズ",
+        count: 2,
+      }),
+    ).toBe(false);
+    expect(
+      isReasonEntryComplete({
+        type: "SCRAP",
+        defectTypeId: 1,
+        reason: "  ",
+        count: 2,
+      }),
+    ).toBe(false);
+    expect(
+      isReasonEntryComplete({
+        type: "SCRAP",
+        defectTypeId: 1,
+        reason: "x",
+        count: 0,
+      }),
     ).toBe(false);
   });
 
-  it("cleanReasonEntries: 有効行のみ・reason をトリム・種別を保持", () => {
+  it("isReasonEntryCountable: 種別 + 数≥1 だけで集計対象（種類・詳細は不問）", () => {
+    expect(
+      isReasonEntryCountable({
+        type: "SCRAP",
+        defectTypeId: null,
+        reason: "",
+        count: 2,
+      }),
+    ).toBe(true);
+    expect(
+      isReasonEntryCountable({
+        type: "SCRAP",
+        defectTypeId: 1,
+        reason: "x",
+        count: 0,
+      }),
+    ).toBe(false);
+  });
+
+  it("cleanReasonEntries: 集計対象行のみ・reason をトリム・種類を保持", () => {
     expect(
       cleanReasonEntries([
-        { type: "SEMI", reason: " 寸法不良 ", count: 2 },
-        { type: "SCRAP", reason: "x", count: 0 },
+        { type: "SEMI", defectTypeId: 5, reason: " 寸法不良 ", count: 2 },
+        { type: "SCRAP", defectTypeId: 1, reason: "x", count: 0 },
       ]),
-    ).toEqual([{ type: "SEMI", reason: "寸法不良", count: 2 }]);
+    ).toEqual([
+      { type: "SEMI", defectTypeId: 5, reason: "寸法不良", count: 2 },
+    ]);
   });
 });
 
 describe("checkDefectList（良品は導出なので保存則は常に成立）", () => {
   const scrap = (count: number): DefectReasonEntry[] => [
-    { type: "SCRAP", reason: "", count },
+    { type: "SCRAP", defectTypeId: 1, reason: "キズ", count },
   ];
 
   it("NONE は常に問題なし（サーバーがパススルーする）", () => {
@@ -317,13 +386,30 @@ describe("checkDefectList（良品は導出なので保存則は常に成立）"
   it("不良が受入を超えれば OVER_INPUT", () => {
     const issue = checkDefectList(
       [
-        { type: "SCRAP", reason: "", count: 60 },
-        { type: "REWORK", reason: "", count: 50 },
+        { type: "SCRAP", defectTypeId: 1, reason: "a", count: 60 },
+        { type: "REWORK", defectTypeId: 2, reason: "b", count: 50 },
       ],
       100,
       "FLOW",
     );
     expect(issue).toEqual({ kind: "OVER_INPUT", sum: 110, input: 100 });
+  });
+
+  it("種類 FK か詳細が欠けた集計対象行は INCOMPLETE", () => {
+    expect(
+      checkDefectList(
+        [{ type: "SCRAP", defectTypeId: null, reason: "キズ", count: 2 }],
+        100,
+        "FLOW",
+      ),
+    ).toEqual({ kind: "INCOMPLETE" });
+    expect(
+      checkDefectList(
+        [{ type: "SCRAP", defectTypeId: 1, reason: "", count: 2 }],
+        100,
+        "FLOW",
+      ),
+    ).toEqual({ kind: "INCOMPLETE" });
   });
 
   it("負値は NEGATIVE", () => {

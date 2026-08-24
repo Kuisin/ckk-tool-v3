@@ -26,7 +26,7 @@ import {
   startApprovalFlow,
 } from "@/lib/approvals";
 import { getCurrentActorId, recordAudit } from "@/lib/audit";
-import { checkPermission } from "@/lib/authz";
+import { checkApprovalDocAccess, checkPermission } from "@/lib/authz";
 import { prisma } from "@/lib/db";
 import { onMaterialReceipt } from "@/lib/inventory";
 import { nextDocumentNumber } from "@/lib/numbering";
@@ -289,7 +289,7 @@ export async function approvePurchaseOrder(
 ): Promise<ActionResult> {
   // 権限コード上の APPROVE に加え、承認グループ所属（本人 or 代理）は
   // 引き続き actOnCurrentStep 内で検証する。
-  const authz = await checkPermission("purchase_order", "APPROVE");
+  const authz = await checkApprovalDocAccess("purchase_order");
   if (!authz.ok) return actionError(authz.error);
   try {
     const prior = await prisma.materialPurchaseOrder.findUnique({
@@ -354,7 +354,7 @@ export async function rejectPurchaseOrder(
 ): Promise<ActionResult> {
   // 権限コード上の APPROVE に加え、承認グループ所属（本人 or 代理）は
   // 引き続き actOnCurrentStep 内で検証する。
-  const authz = await checkPermission("purchase_order", "APPROVE");
+  const authz = await checkApprovalDocAccess("purchase_order");
   if (!authz.ok) return actionError(authz.error);
   const trimmed = reason.trim();
   if (!trimmed) return actionError("差し戻し理由を入力してください");

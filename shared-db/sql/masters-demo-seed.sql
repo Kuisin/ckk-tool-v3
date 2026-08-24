@@ -171,6 +171,19 @@ VALUES
    '2026-07-01T10:12:00+09', '2026-07-01T10:12:00+09')
 ON CONFLICT (code) DO NOTHING;
 
+-- ── 工程マスタの許可作業場所（MS08 — 段加工は「機械」種別 + 研磨機 1号機）──
+-- 1 行 = 種別 or 個別のどちらか一方。行が無い工程は無制限。
+-- 固定 id + setval — テーブルに unique 制約が無いので再実行の重複を防ぐ。
+INSERT INTO app.process_step_work_locations (id, process_step_id, type_key, work_location_id, created_at)
+VALUES
+  (9501, (SELECT id FROM app.process_step_catalog WHERE code = 'STEP_MACHINING'),
+   'machine', NULL, '2026-07-01T10:15:00+09'),
+  (9502, (SELECT id FROM app.process_step_catalog WHERE code = 'STEP_MACHINING'),
+   NULL, (SELECT id FROM app.work_locations WHERE code = 'GR-01'), '2026-07-01T10:15:00+09')
+ON CONFLICT (id) DO NOTHING;
+SELECT setval(pg_get_serial_sequence('app.process_step_work_locations', 'id'),
+  GREATEST(9502, (SELECT COALESCE(MAX(id), 1) FROM app.process_step_work_locations)));
+
 -- ── 検査表テンプレート（MS09 — DEMO-INS-01 v1/v2）──────────────────────────
 -- 固定 id（9101/9102, 項目 9111〜/9121〜）+ setval — 項目 FK と撮影パスを決定的に
 -- する。v2 が最新（型付き項目 4 件・抜取 5 本）、v1 は旧版（バージョンタブ表示用。

@@ -4,10 +4,11 @@
  * StepQuantityForm — 工程の数量・不良入力 (design.md §12.3)。
  *
  * 受入数は開始時に確定した値で**固定表示**（完了時は編集不可）。不良は
- * **1 本のリスト**で入力し、各行に 種別（半製品/廃棄/工程分岐）・理由（任意）・数
- * を持つ。区分ごとの合計はこのリストの合計として導出し、良品数 = 受入 − 総不良
- * も自動計算する（キオスクと同一モデル）。在庫連携は区分合計をそのまま使うので
- * 不変。「工程完了」で completeStep アクションを呼ぶ（サーバー側でも再検証）。
+ * **1 本のリスト**で入力し、各行に 種別（半製品/廃棄/工程分岐）・不良種類
+ * （マスタ FK・必須）・詳細（必須）・数 を持つ。区分ごとの合計はこのリストの
+ * 合計として導出し、良品数 = 受入 − 総不良も自動計算する（キオスクと同一
+ * モデル）。在庫連携は区分合計をそのまま使うので不変。「工程完了」で
+ * completeStep アクションを呼ぶ（サーバー側でも再検証）。
  */
 
 import {
@@ -22,6 +23,7 @@ import {
   SimpleGrid,
   Stack,
   Text,
+  TextInput,
   Title,
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
@@ -78,9 +80,9 @@ export function StepQuantityForm({
   const success = deriveSuccessFromList(input, defects);
   const totals = dispositionTotals(defects);
 
-  // 理由の候補は名称（value=label）で保持し、保存も名称文字列にする。
-  const reasonData = defectTypeOptions.map((o) => ({
-    value: o.label,
+  // 不良種類はマスタ FK（value = defect_types.id の文字列）で保持・保存する。
+  const typeData = defectTypeOptions.map((o) => ({
+    value: o.value,
     label: o.label,
   }));
 
@@ -181,65 +183,89 @@ export function StepQuantityForm({
         </Group>
 
         {defects.map((row, index) => (
-          <Group
-            align="flex-end"
-            gap="sm"
+          <Paper
             // biome-ignore lint/suspicious/noArrayIndexKey: 追記専用の行フォーム
             key={index}
-            wrap="nowrap"
+            p="sm"
+            radius="sm"
+            withBorder
           >
-            <Select
-              aria-label="種別"
-              data={[
-                { value: "SEMI", label: labels.semi },
-                { value: "SCRAP", label: labels.scrap },
-                { value: "REWORK", label: labels.rework },
-              ]}
-              disabled={disabled}
-              onChange={(v) =>
-                v && setRow(index, { type: v as DefectDisposition })
-              }
-              style={{ width: 160, flexShrink: 0 }}
-              value={row.type}
-            />
-            <Select
-              aria-label="理由"
-              clearable
-              data={reasonData}
-              disabled={disabled}
-              onChange={(v) => setRow(index, { reason: v ?? "" })}
-              placeholder="不良種類を選択"
-              searchable
-              style={{ flex: 1 }}
-              value={row.reason || null}
-            />
-            <NumberInput
-              allowDecimal={false}
-              allowNegative={false}
-              aria-label="本数"
-              disabled={disabled}
-              min={1}
-              onChange={(v) =>
-                setRow(index, {
-                  count: typeof v === "number" ? v : Number(v) || 1,
-                })
-              }
-              style={{ width: 120 }}
-              value={row.count}
-            />
-            <ActionIcon
-              aria-label="削除"
-              color="red"
-              disabled={disabled}
-              onClick={() =>
-                setDefects((prev) => prev.filter((_, i) => i !== index))
-              }
-              size={36}
-              variant="light"
-            >
-              <IconTrash size={18} />
-            </ActionIcon>
-          </Group>
+            <Stack gap="xs">
+              <Group align="flex-end" gap="sm" wrap="nowrap">
+                <Select
+                  aria-label="種別"
+                  data={[
+                    { value: "SEMI", label: labels.semi },
+                    { value: "SCRAP", label: labels.scrap },
+                    { value: "REWORK", label: labels.rework },
+                  ]}
+                  disabled={disabled}
+                  label="種別"
+                  onChange={(v) =>
+                    v && setRow(index, { type: v as DefectDisposition })
+                  }
+                  style={{ width: 160, flexShrink: 0 }}
+                  value={row.type}
+                />
+                <Select
+                  aria-label="不良種類"
+                  data={typeData}
+                  disabled={disabled}
+                  label="不良種類"
+                  onChange={(v) =>
+                    setRow(index, { defectTypeId: v ? Number(v) : null })
+                  }
+                  placeholder="不良種類を選択"
+                  searchable
+                  style={{ flex: 1 }}
+                  value={
+                    row.defectTypeId != null ? String(row.defectTypeId) : null
+                  }
+                  withAsterisk
+                />
+                <NumberInput
+                  allowDecimal={false}
+                  allowNegative={false}
+                  aria-label="本数"
+                  disabled={disabled}
+                  label="本数"
+                  min={1}
+                  onChange={(v) =>
+                    setRow(index, {
+                      count: typeof v === "number" ? v : Number(v) || 1,
+                    })
+                  }
+                  style={{ width: 120 }}
+                  value={row.count}
+                />
+                <ActionIcon
+                  aria-label="削除"
+                  color="red"
+                  disabled={disabled}
+                  mb={4}
+                  onClick={() =>
+                    setDefects((prev) => prev.filter((_, i) => i !== index))
+                  }
+                  size={36}
+                  variant="light"
+                >
+                  <IconTrash size={18} />
+                </ActionIcon>
+              </Group>
+              <TextInput
+                aria-label="詳細"
+                disabled={disabled}
+                label="詳細"
+                maxLength={200}
+                onChange={(e) =>
+                  setRow(index, { reason: e.currentTarget.value })
+                }
+                placeholder="不良の詳細（必須）"
+                value={row.reason}
+                withAsterisk
+              />
+            </Stack>
+          </Paper>
         ))}
 
         <Button
@@ -248,7 +274,7 @@ export function StepQuantityForm({
           onClick={() =>
             setDefects((prev) => [
               ...prev,
-              { type: "SCRAP", reason: "", count: 1 },
+              { type: "SCRAP", defectTypeId: null, reason: "", count: 1 },
             ])
           }
           variant="light"
@@ -264,7 +290,9 @@ export function StepQuantityForm({
           >
             {issue.kind === "NEGATIVE"
               ? "数量は 0 以上の整数で入力してください"
-              : `不良の合計（${issue.sum}）が受入数（${issue.input}）を超えています`}
+              : issue.kind === "INCOMPLETE"
+                ? "不良の各行に種類と詳細を入力してください"
+                : `不良の合計（${issue.sum}）が受入数（${issue.input}）を超えています`}
           </Alert>
         )}
 

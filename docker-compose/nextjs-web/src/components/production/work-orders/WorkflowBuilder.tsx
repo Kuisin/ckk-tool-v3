@@ -91,9 +91,14 @@ import { WORK_ORDER_TYPE_OPTIONS } from "@/lib/enum-labels";
 import { fieldHelp } from "@/lib/field-help";
 import { zodResolver } from "@/lib/form";
 import type { RouteStepSnapshot, RouteView } from "@/lib/product-routes-core";
-import { routeStepsEqual } from "@/lib/product-routes-core";
+import { pickDefaultRoute, routeStepsEqual } from "@/lib/product-routes-core";
 import type { CatalogStep, UseDep } from "@/lib/workflow-core";
-import { isBlockingIssue, validateComposition } from "@/lib/workflow-core";
+import {
+  isBlockingIssue,
+  isShipStep,
+  STOCK_ISSUE_STEP_CODE,
+  validateComposition,
+} from "@/lib/workflow-core";
 import type { WorkOrderView } from "./model";
 
 const BASE_PATH = "/production/work-orders";
@@ -110,7 +115,6 @@ const schema = z.object({
   plannedQuantity: z.number().int().min(1, "予定数量は1以上"),
   materialId: z.string().nullable(),
   storageLocationId: z.string().nullable(),
-  inspectionTemplateIds: z.array(z.string()),
   notes: z.string(),
   selectedStepIds: z.array(z.number()).min(1, "工程を1つ以上選択してください"),
 });
@@ -138,7 +142,6 @@ function initialValues(
       plannedQuantity: 1,
       materialId: null,
       storageLocationId: null,
-      inspectionTemplateIds: [],
       notes: "",
       selectedStepIds: [],
     };
@@ -154,9 +157,6 @@ function initialValues(
       workOrder.storageLocationId != null
         ? String(workOrder.storageLocationId)
         : null,
-    inspectionTemplateIds: workOrder.inspectionTemplates.map((t) =>
-      String(t.id),
-    ),
     notes: workOrder.notes ?? "",
     selectedStepIds: workOrder.steps.map((s) => s.processStepId),
   };
@@ -205,6 +205,21 @@ function initialAllocRows(
   return [{ key: 0, orderLineId: null, quantity: 1, info: null }];
 }
 
+/**
+ * 編集時の初期検査表割当（工程 → 検査表 id 列）。検査工程は空配列でも
+ * キーを持たせる — 「意図的に空」を既定値で上書きしないため。
+ */
+function initialStepTemplates(
+  workOrder: WorkOrderView | null | undefined,
+): Record<number, string[]> {
+  const map: Record<number, string[]> = {};
+  for (const s of workOrder?.steps ?? []) {
+    if (!s.isInspection) continue;
+    map[s.processStepId] = s.inspectionTemplates.map((t) => String(t.id));
+  }
+  return map;
+}
+
 function initialLocations(
   workOrder: WorkOrderView | null | undefined,
 ): Record<number, StepLocation> {
@@ -215,6 +230,7 @@ function initialLocations(
       plantId: s.plantId != null ? String(s.plantId) : null,
       supplierBpId: s.supplierBpId,
       workHours: s.plannedWorkHours,
+      lotInputMode: s.lotInputMode ?? null,
     };
   }
   return map;
@@ -231,6 +247,7 @@ function snapshotLocations(
       plantId: s.plantId != null ? String(s.plantId) : null,
       supplierBpId: s.supplierBpId,
       workHours: s.workHours,
+      lotInputMode: s.lotInputMode ?? null,
     };
   }
   return map;
@@ -339,44 +356,100 @@ export function WorkflowBuilder({
 
   const selected = form.values.selectedStepIds;
 
-  // 工程を追加したら、その工程を関連工程に持つ検査表を自動選択する
-  // （手動で外した選択は、工程を追加し直さない限り復活しない）。
+  // 種別で使える工程が変わる（§7 再編）:
+  //   在庫分   = 製品出し（在庫）+ 出荷前検査 のみ（工程リスト不要）
+  //   製造分   = 製品出し（在庫）以外（従来どおり工程リスト必須）
+  const isStock = form.values.type === "FROM_STOCK";
+  const productIssueId = useMemo(
+    () =>
+      catalogSteps.find((c) => c.code === STOCK_ISSUE_STEP_CODE)?.id ?? null,
+    [catalogSteps],
+  );
+  const catalogForType = useMemo(
+    () =>
+      isStock
+        ? catalogSteps.filter(
+            (c) => c.code === STOCK_ISSUE_STEP_CODE || isShipStep(c),
+          )
+        : catalogSteps.filter((c) => c.code !== STOCK_ISSUE_STEP_CODE),
+    [isStock, catalogSteps],
+  );
+  /** 種別切替時に選択工程を合わせる（在庫分は 製品出し 必須 + 出荷系のみ）。 */
+  const applyTypeToSteps = useCallback(
+    (type: "FROM_STOCK" | "MANUFACTURE") => {
+      const current = form.values.selectedStepIds;
+      if (type === "FROM_STOCK") {
+        const allowed = new Set(
+          catalogSteps
+            .filter((c) => c.code === STOCK_ISSUE_STEP_CODE || isShipStep(c))
+            .map((c) => c.id),
+        );
+        const next = current.filter((id) => allowed.has(id));
+        if (productIssueId != null && !next.includes(productIssueId)) {
+          next.unshift(productIssueId);
+        }
+        form.setFieldValue("selectedStepIds", next);
+      } else if (productIssueId != null) {
+        form.setFieldValue(
+          "selectedStepIds",
+          current.filter((id) => id !== productIssueId),
+        );
+      }
+    },
+    [form, catalogSteps, productIssueId],
+  );
+
+  // 検査表は検査工程ごとの割当。未編集（キー無し）の工程は、その工程を
+  // 関連工程に持つ検査表を既定にする。選択から外した工程はキーごと忘れて、
+  // 追加し直したときに既定へ戻す。
+  const [stepTemplates, setStepTemplates] = useState<Record<number, string[]>>(
+    () => initialStepTemplates(workOrder),
+  );
   const prevSelectedRef = useRef<Set<number>>(new Set(selected));
   useEffect(() => {
     const prev = prevSelectedRef.current;
-    const added = selected.filter((id) => !prev.has(id));
     prevSelectedRef.current = new Set(selected);
-    if (added.length === 0) return;
-    const suggest = templateOptions
-      .filter(
-        (t) =>
-          t.relatedProcessStepId != null &&
-          added.includes(t.relatedProcessStepId),
-      )
-      .map((t) => t.value);
-    if (suggest.length === 0) return;
-    const current = form.values.inspectionTemplateIds;
-    const merged = [...new Set([...current, ...suggest])];
-    if (merged.length !== current.length) {
-      form.setFieldValue("inspectionTemplateIds", merged);
-    }
-  }, [selected, templateOptions, form.values.inspectionTemplateIds, form]);
+    const removed = [...prev].filter((id) => !selected.includes(id));
+    if (removed.length === 0) return;
+    setStepTemplates((cur) => {
+      if (!removed.some((id) => id in cur)) return cur;
+      const next = { ...cur };
+      for (const id of removed) delete next[id];
+      return next;
+    });
+  }, [selected]);
+  const templatesFor = useCallback(
+    (stepId: number): string[] =>
+      stepTemplates[stepId] ??
+      templateOptions
+        .filter((t) => t.relatedProcessStepId === stepId)
+        .map((t) => t.value),
+    [stepTemplates, templateOptions],
+  );
 
   // 編集時: 割当済みだが最新でないバージョンも選択肢に残す（バージョン固定）
   const templateSelectData = useMemo(() => {
     const known = new Set(templateOptions.map((t) => t.value));
-    const extra = (workOrder?.inspectionTemplates ?? [])
-      .filter((t) => !known.has(String(t.id)))
-      .map((t) => ({ value: String(t.id), label: `${t.code} ${t.name}` }));
+    const extra = new Map<string, string>();
+    for (const step of workOrder?.steps ?? []) {
+      for (const t of step.inspectionTemplates) {
+        if (!known.has(String(t.id))) {
+          extra.set(String(t.id), `${t.code} ${t.name}`);
+        }
+      }
+    }
     return [
       ...templateOptions.map((t) => ({ value: t.value, label: t.label })),
-      ...extra,
+      ...[...extra].map(([value, label]) => ({ value, label })),
     ];
   }, [templateOptions, workOrder]);
 
   // ── 工程ルート（製品の工程リスト） ──────────────────────────────────────────
   const [routesInfo, setRoutesInfo] = useState<{
     productId: number;
+    /** 明細の受注元（在庫向けは null）— 顧客一致ルートの優先選択に使う。 */
+    customerBpId: string | null;
+    customerName: string | null;
     routes: RouteView[];
   } | null>(null);
   /** 選択中ルート id（文字列）。null = ルートを使わない。 */
@@ -390,6 +463,10 @@ export function WorkflowBuilder({
   const [baseSteps, setBaseSteps] = useState<RouteStepSnapshot[] | null>(null);
   /** ルートを使わない構成を保存する場合の新ルート名（空 = 保存しない）。 */
   const [newRouteName, setNewRouteName] = useState("");
+  /** 新ルートの対象顧客（customer = 明細の受注元専用 / generic = 汎用）。 */
+  const [newRouteScope, setNewRouteScope] = useState<"customer" | "generic">(
+    "customer",
+  );
 
   // 割当先頭の明細（工程ルート解決・素材 ATP の基準）
   const firstOrderLineId =
@@ -493,15 +570,16 @@ export function WorkflowBuilder({
     applyVersion(latest?.id ?? null);
   };
 
-  // 指示書は工程リスト必須 — ルートのある製品では先頭ルートを初期選択する
-  // （create 時にルート情報のロード完了ごとに 1 回。手動クリア後は再発火しない）。
+  // 指示書は工程リスト必須 — ルートのある製品では既定ルートを初期選択する
+  // （顧客一致 → 汎用 → 先頭の順: pickDefaultRoute が唯一の規則。create 時に
+  // ルート情報のロード完了ごとに 1 回。手動クリア後は再発火しない）。
   // biome-ignore lint/correctness/useExhaustiveDependencies: routesInfo ロード時のみ発火させる
   useEffect(() => {
     if (mode !== "create" || routesInfo == null || routeSel != null) return;
-    const first = routesInfo.routes[0];
-    if (first) {
-      setRouteSel(String(first.id));
-      applyVersion(first.versions[0]?.id ?? null);
+    const picked = pickDefaultRoute(routesInfo.routes, routesInfo.customerBpId);
+    if (picked) {
+      setRouteSel(String(picked.id));
+      applyVersion(picked.versions[0]?.id ?? null);
     }
   }, [routesInfo]);
 
@@ -509,6 +587,14 @@ export function WorkflowBuilder({
   const currentSnapshots = useMemo(
     () => toStepSnapshots(selected, locations, catalogSteps),
     [selected, locations, catalogSteps],
+  );
+  /** 検査工程のみ（検査表割当セクション用）。 */
+  const inspectionSnapshots = useMemo(
+    () =>
+      currentSnapshots.filter(
+        (s) => catalogSteps.find((c) => c.id === s.processStepId)?.isInspection,
+      ),
+    [currentSnapshots, catalogSteps],
   );
   const routeModified =
     routeSel != null &&
@@ -654,8 +740,11 @@ export function WorkflowBuilder({
 
   // ── ライブ構成検証（保存ガード — 表示は ProcessListEditor 側） ───────────────
   const blockers = useMemo(
-    () => validateComposition(selected, useDeps).filter(isBlockingIssue),
-    [selected, useDeps],
+    () =>
+      validateComposition(selected, useDeps, catalogForType).filter(
+        isBlockingIssue,
+      ),
+    [selected, useDeps, catalogForType],
   );
 
   const handleSubmit = (values: FormValues) => {
@@ -703,18 +792,28 @@ export function WorkflowBuilder({
       );
       return;
     }
-    // 指示書は常に工程リスト（ルート）に基づく — 既存を選ぶか新規作成する
-    const route: WorkOrderInput["route"] | null =
-      routeSel != null && versionSel != null
-        ? {
-            mode: "existing",
-            routeId: Number(routeSel),
-            baseVersionId: versionSel,
-          }
-        : newRouteName.trim()
-          ? { mode: "new", name: newRouteName.trim() }
-          : null;
-    if (route == null) {
+    // 製造分は常に工程リスト（ルート）に基づく — 既存を選ぶか新規作成する。
+    // 在庫分は固定構成（製品出し + 出荷系）なので工程リストを使わない。
+    const route: WorkOrderInput["route"] =
+      values.type === "FROM_STOCK"
+        ? null
+        : routeSel != null && versionSel != null
+          ? {
+              mode: "existing",
+              routeId: Number(routeSel),
+              baseVersionId: versionSel,
+            }
+          : newRouteName.trim()
+            ? {
+                mode: "new",
+                name: newRouteName.trim(),
+                customerBpId:
+                  newRouteScope === "customer"
+                    ? (routesInfo?.customerBpId ?? null)
+                    : null,
+              }
+            : null;
+    if (values.type !== "FROM_STOCK" && route == null) {
       notifications.show({
         title: "工程リストが必要です",
         message:
@@ -738,7 +837,6 @@ export function WorkflowBuilder({
       storageLocationId: values.storageLocationId
         ? Number(values.storageLocationId)
         : null,
-      inspectionTemplateIds: values.inspectionTemplateIds.map(Number),
       notes: values.notes,
       steps: currentSnapshots.map((s) => ({
         processStepId: s.processStepId,
@@ -746,6 +844,8 @@ export function WorkflowBuilder({
         plantId: s.plantId,
         supplierBpId: s.supplierBpId,
         workHours: s.workHours,
+        lotInputMode: s.lotInputMode ?? null,
+        inspectionTemplateIds: templatesFor(s.processStepId).map(Number),
       })),
       route,
       // 作成時の作業計画（担当者 × 計画日）。編集では送らない（計画の管理は
@@ -786,9 +886,16 @@ export function WorkflowBuilder({
     });
   };
 
+  // 顧客専用ルートが混ざる一覧では対象（顧客名 / 汎用）をラベルで区別する。
+  const anyCustomerRoute =
+    routesInfo?.routes.some((r) => r.customerBpId != null) ?? false;
   const routeOptions: Option[] =
-    routesInfo?.routes.map((r) => ({ value: String(r.id), label: r.name })) ??
-    [];
+    routesInfo?.routes.map((r) => ({
+      value: String(r.id),
+      label: anyCustomerRoute
+        ? `${r.name}（${r.customerName ?? "汎用"}）`
+        : r.name,
+    })) ?? [];
   const versionOptions: Option[] =
     selectedRoute?.versions.map((v) => ({
       value: v.id,
@@ -974,6 +1081,7 @@ export function WorkflowBuilder({
               }))}
               onChange={(v) => {
                 form.setFieldValue("type", v as FormValues["type"]);
+                applyTypeToSteps(v as FormValues["type"]);
                 if (v === "FROM_STOCK") {
                   form.setFieldValue("materialId", null);
                   // 在庫分は割当 1 件のみ — 先頭の有効行だけ残す
@@ -982,6 +1090,12 @@ export function WorkflowBuilder({
                       rows.find((r) => r.orderLineId != null) ?? rows[0];
                     return [first];
                   });
+                  // 在庫分は固定構成 — 工程リスト（ルート）は使わない
+                  setRouteSel(null);
+                  setVersionSel(null);
+                  setBaseSteps(null);
+                  setNewRouteName("");
+                  setStepsEditing(true);
                 }
               }}
               value={form.values.type}
@@ -1027,20 +1141,6 @@ export function WorkflowBuilder({
             searchable={storageLocationOptions.length > 5}
             {...form.getInputProps("storageLocationId")}
           />
-          <MultiSelect
-            clearable
-            data={templateSelectData}
-            label={
-              <HelpLabel {...fieldHelp("workOrder", "inspectionTemplates")} />
-            }
-            placeholder={
-              form.values.inspectionTemplateIds.length
-                ? undefined
-                : "検査表テンプレートを選択"
-            }
-            searchable
-            {...form.getInputProps("inspectionTemplateIds")}
-          />
         </SimpleGrid>
         {/* 素材 ATP 警告（充足=緑 / 不足+入荷予定あり=黄 / 不足+入荷予定なし=赤）。
             警告のみ — 保存はブロックしない（§5 素材判断は指示書承認側で行う）。 */}
@@ -1052,68 +1152,89 @@ export function WorkflowBuilder({
         )}
       </FormSection>
 
-      {(target === "SALES_ORDER"
-        ? allocRows.some((r) => r.info != null)
-        : !!productIdValue) && (
-        <FormSection
-          description="指示書は常に製品の工程リストに基づきます。既存のリストを選ぶと工程構成をプリフィル、未登録の製品はこの画面から新しいリストを作成します。構成を変更した場合は保存時に新バージョンとして自動保存されます（使用済みバージョンは変更されません）。"
-          required
-          title="工程リスト"
-        >
-          <SimpleGrid cols={isMobile ? 1 : 2} spacing="sm">
-            <Select
-              clearable
-              data={routeOptions}
-              label="工程リスト"
-              onChange={onRouteChange}
-              placeholder={
-                routeOptions.length
-                  ? "工程リストを選択"
-                  : "この製品の工程リストは未登録です（下で新規作成）"
-              }
-              searchable
-              value={routeSel}
-            />
-            {routeSel != null ? (
+      {!isStock &&
+        (target === "SALES_ORDER"
+          ? allocRows.some((r) => r.info != null)
+          : !!productIdValue) && (
+          <FormSection
+            description="指示書は常に製品の工程リストに基づきます。既存のリストを選ぶと工程構成をプリフィル、未登録の製品はこの画面から新しいリストを作成します。構成を変更した場合は保存時に新バージョンとして自動保存されます（使用済みバージョンは変更されません）。"
+            required
+            title="工程リスト"
+          >
+            <SimpleGrid cols={isMobile ? 1 : 2} spacing="sm">
               <Select
-                allowDeselect={false}
-                data={versionOptions}
-                label="バージョン"
-                onChange={(v) => applyVersion(v)}
-                value={versionSel}
-              />
-            ) : (
-              <TextInput
-                description="この工程構成を製品の工程リスト v1 として保存します"
-                label={
-                  <HelpLabel {...fieldHelp("workOrder", "newRouteName")} />
+                clearable
+                data={routeOptions}
+                label="工程リスト"
+                onChange={onRouteChange}
+                placeholder={
+                  routeOptions.length
+                    ? "工程リストを選択"
+                    : "この製品の工程リストは未登録です（下で新規作成）"
                 }
-                onChange={(e) => setNewRouteName(e.currentTarget.value)}
-                placeholder="例: 標準工程"
-                value={newRouteName}
-                withAsterisk
+                searchable
+                value={routeSel}
               />
+              {routeSel != null ? (
+                <Select
+                  allowDeselect={false}
+                  data={versionOptions}
+                  label="バージョン"
+                  onChange={(v) => applyVersion(v)}
+                  value={versionSel}
+                />
+              ) : (
+                <TextInput
+                  description="この工程構成を製品の工程リスト v1 として保存します"
+                  label={
+                    <HelpLabel {...fieldHelp("workOrder", "newRouteName")} />
+                  }
+                  onChange={(e) => setNewRouteName(e.currentTarget.value)}
+                  placeholder="例: 標準工程"
+                  value={newRouteName}
+                  withAsterisk
+                />
+              )}
+              {routeSel == null &&
+                target === "SALES_ORDER" &&
+                routesInfo?.customerBpId != null && (
+                  <Select
+                    allowDeselect={false}
+                    data={[
+                      {
+                        value: "customer",
+                        label: `${routesInfo.customerName ?? "この顧客"} 専用`,
+                      },
+                      { value: "generic", label: "汎用（全顧客）" },
+                    ]}
+                    description="専用にすると同じ顧客×製品の指示書で優先選択されます"
+                    label="対象顧客"
+                    onChange={(v) =>
+                      setNewRouteScope(v === "generic" ? "generic" : "customer")
+                    }
+                    value={newRouteScope}
+                  />
+                )}
+            </SimpleGrid>
+            {routeModified && selectedRoute && (
+              <Alert
+                color="blue"
+                icon={<IconInfoCircle size={16} />}
+                mt="sm"
+                p="xs"
+                variant="light"
+              >
+                工程構成がルート「{selectedRoute.name}」の選択バージョンから
+                変更されています — 保存時に新バージョン v
+                {latestVersionOfRoute + 1} として保存されます
+              </Alert>
             )}
-          </SimpleGrid>
-          {routeModified && selectedRoute && (
-            <Alert
-              color="blue"
-              icon={<IconInfoCircle size={16} />}
-              mt="sm"
-              p="xs"
-              variant="light"
-            >
-              工程構成がルート「{selectedRoute.name}」の選択バージョンから
-              変更されています — 保存時に新バージョン v
-              {latestVersionOfRoute + 1} として保存されます
-            </Alert>
-          )}
-        </FormSection>
-      )}
+          </FormSection>
+        )}
 
       {stepsEditing ? (
         <ProcessListEditor
-          catalogSteps={catalogSteps}
+          catalogSteps={catalogForType}
           error={
             typeof form.errors.selectedStepIds === "string"
               ? form.errors.selectedStepIds
@@ -1131,13 +1252,60 @@ export function WorkflowBuilder({
         />
       ) : (
         <ProcessListView
-          catalogSteps={catalogSteps}
+          catalogSteps={catalogForType}
           locations={locations}
           onEdit={() => setStepsEditing(true)}
           plantOptions={plantOptions}
           selected={selected}
           supplierOptions={supplierOptions}
         />
+      )}
+
+      {/* 検査表は検査工程ごとの割当（work_order_step_inspection_templates）。
+          工程を追加すると、その工程を関連工程に持つ検査表が既定で選ばれる。 */}
+      {inspectionSnapshots.length > 0 && (
+        <FormSection
+          description="検査表は検査工程ごとに割り当てます。工程を追加すると、その工程を関連工程に持つ検査表が自動で選ばれます。"
+          title="検査表"
+        >
+          <Stack gap="xs">
+            {inspectionSnapshots.map((s) => {
+              const cat = catalogSteps.find((c) => c.id === s.processStepId);
+              return (
+                <Paper key={s.processStepId} p="sm" radius="sm" withBorder>
+                  <Group
+                    align={isMobile ? "flex-start" : "center"}
+                    gap="sm"
+                    wrap={isMobile ? "wrap" : "nowrap"}
+                  >
+                    <Text fw={600} size="sm" style={{ flexShrink: 0 }}>
+                      {cat?.nameJa ?? `工程#${s.processStepId}`}
+                    </Text>
+                    <MultiSelect
+                      clearable
+                      data={templateSelectData}
+                      onChange={(v) =>
+                        setStepTemplates((cur) => ({
+                          ...cur,
+                          [s.processStepId]: v,
+                        }))
+                      }
+                      placeholder={
+                        templatesFor(s.processStepId).length
+                          ? undefined
+                          : "検査表テンプレートを選択"
+                      }
+                      searchable
+                      size="xs"
+                      style={{ flex: 1, minWidth: isMobile ? "100%" : 260 }}
+                      value={templatesFor(s.processStepId)}
+                    />
+                  </Group>
+                </Paper>
+              );
+            })}
+          </Stack>
+        </FormSection>
       )}
 
       {/* 作成時の作業計画 — 担当は指示書ごとに違うため、工程リストと違って

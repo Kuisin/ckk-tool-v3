@@ -1,0 +1,163 @@
+// 標準フロー（受注から請求まで）の全体像 — ハッピーパスのみ。
+// 分岐・例外は各分野の図（process-sales 等）が持つ。
+// 用語は _specs/design.md §17（注文請書・注文明細）。
+
+/title/
+標準フロー — 受注から請求まで
+
+/option/
+show-step-block-captions: false;
+show-right-gutter: false;
+left-title: 手順;
+left-subtitle: 説明;
+
+/role/
+
+<role_partner>
+label: 社外（顧客）;
+text-color: #92400e;
+background-color: #fffbeb;
+icon: #mail;
+
+<role_sales>
+label: 社内営業;
+text-color: #1e293b;
+background-color: #dbeafe;
+
+<role_support>
+label: 社内営業補助;
+text-color: #92400e;
+background-color: #fef3c7;
+
+<role_approver>
+label: 承認・判断;
+text-color: #166534;
+background-color: #f0fdf4;
+
+<role_mfg>
+label: 製造;
+text-color: #134e4a;
+background-color: #ccfbf1;
+
+<role_billing>
+label: 経理;
+text-color: #9d174d;
+background-color: #fce7f3;
+
+/block/
+
+<block_neutral>
+background-color: #f8fafc;
+text-color: #334155;
+border-color: #64748b;
+shape: rounded;
+
+<block_apply>
+background-color: #dbeafe;
+text-color: #1e40af;
+border-color: #2563eb;
+shape: rounded;
+icon: #zap;
+
+<block_approve>
+background-color: #dcfce7;
+text-color: #166534;
+border-color: #16a34a;
+shape: rounded;
+icon: #circle-check;
+
+/prop/
+
+<PRICE_LIST>
+label: 価格表;
+side: right;
+
+<QUOTE>
+label: 見積書;
+side: right;
+background-color: #f0f9ff;
+border-color: #2563eb;
+text-color: #1e40af;
+
+<ORDER_ACCEPT>
+label: 注文請書;
+side: right;
+background-color: #fef3c7;
+border-color: #d97706;
+text-color: #92400e;
+
+<WORK_ORDER>
+label: 指示書;
+side: right;
+background-color: #f5f3ff;
+border-color: #7c3aed;
+text-color: #5b21b6;
+
+<SHIPPING>
+label: 出荷書;
+side: right;
+background-color: #fff7ed;
+border-color: #ea580c;
+text-color: #9a3412;
+
+<DELIVERY>
+label: 納品書;
+side: right;
+background-color: #fff7ed;
+border-color: #ea580c;
+text-color: #9a3412;
+
+<INVOICE>
+label: 請求書;
+side: right;
+background-color: #fdf2f8;
+border-color: #db2777;
+text-color: #9d174d;
+
+/line/
+
+[role_sales: 単価を試算する] <block_apply>
+label: 試算;
+desc: 材料・寸法・加工条件から見積単価を算出し、内容が固まったら確定する。;
+[role_sales: 価格表を作成する] <block_apply>
+label: 価格表;
+props: PRICE_LIST;
+desc: 顧客×製品の価格を決める。確定した試算を単価の基準にできる。;
+[role_sales: 見積書を発行する] <block_apply>
+label: 見積書;
+props: QUOTE;
+desc: 価格表から単価が自動で入る。発行した PDF を顧客へ提出する。;
+[role_partner: 注文書を送付する] <block_neutral>
+label: 注文;
+desc: FAX・PDF などで注文書が届く。;
+[role_support: 注文請書を確認する] <block_apply>
+label: 注文請書;
+props: ORDER_ACCEPT;
+desc: 読み取りは自動で行われ、価格の照合結果もここで確認する。;
+[role_approver: 注文請書を承認する] <block_approve>
+label: 承認;
+[role_support: 注文明細を確定する] <block_apply>
+label: 明細確定;
+desc: 明細ごとに注文明細が作られ、金額が確定する。;
+[role_support: 指示書を作成する] <block_apply>
+label: 指示書;
+props: WORK_ORDER;
+desc: 在庫分と製造分に分け、製造分は工程を並べる。;
+[role_approver: 指示書を承認する] <block_approve>
+label: 承認;
+[role_mfg: 工程を実行する] <block_apply>
+label: 製造;
+desc: 工程ごとに開始・完了と数量・不良を記録する。;
+[role_support: 出荷書で出荷する] <block_apply>
+label: 出荷;
+props: SHIPPING;
+desc: 出荷で在庫が減り、注文明細の状態が変わる。;
+[role_support: 納品書で納品する] <block_apply>
+label: 納品;
+props: DELIVERY;
+[role_billing: 締日処理で締める] <block_apply>
+label: 締日処理;
+desc: 顧客ごとの締日で納品分をまとめる。;
+[role_billing: 請求書を送付する] <block_apply>
+label: 請求;
+props: INVOICE;

@@ -36,6 +36,7 @@ export async function loadCatalog(): Promise<WorkflowCatalog> {
       isInspection: s.isInspection,
       isApprovalStep: s.isApprovalStep,
       quantityTracking: s.quantityTracking,
+      lotInputMode: s.lotInputMode,
       defaultWorkHours:
         s.defaultWorkHours == null ? null : Number(s.defaultWorkHours),
       sortOrder: s.sortOrder,
@@ -60,6 +61,8 @@ import { describeIssue } from "@/components/production/work-orders/model";
 import {
   defaultOrder,
   isBlockingIssue,
+  isShipStep,
+  STOCK_ISSUE_STEP_CODE,
   validateComposition,
 } from "./workflow-core";
 
@@ -70,19 +73,31 @@ export interface StepCompositionInput {
   supplierBpId: string | null;
   /** 作業時間 (h) — 任意。指示書は planned_work_hours、ルートは work_hours へ。 */
   workHours: number | null;
+  /** 実行時のロット入力の上書き（null/未指定 = 工程マスタの既定を継承）。 */
+  lotInputMode?: "REQUIRED" | "OPTIONAL" | "NONE" | null;
+  /**
+   * 検査工程で使う検査表テンプレート（工程単位の割当）。指示書のみ —
+   * 工程ルートはテンプレートを持たないので未指定。検査工程以外は無視される。
+   */
+  inspectionTemplateIds?: number[];
 }
 
 export interface OrderedStepCreate extends StepCompositionInput {
   sortOrder: number;
+  inspectionTemplateIds: number[];
 }
 
 /**
  * 工程構成のサーバー側検証 + カタログ既定順の並び。
- * 未知/重複工程・ブロッカー（AND 不足・排他違反）はエラーメッセージを返す。
+ * 未知/重複工程・ブロッカー（AND 不足・排他違反・開始工程なし）は
+ * エラーメッセージを返す。type で構成規則が変わる:
+ *   MANUFACTURE（既定・工程ルートも同じ）= 製品出し（在庫）は使えない
+ *   FROM_STOCK = 製品出し（在庫）必須 + 出荷前検査 のみ許可
  * 実施場所は INTERNAL → plantId / OUTSOURCE → supplierBpId のみ保持する。
  */
 export async function validateAndOrderSteps(
   steps: readonly StepCompositionInput[],
+  type: "FROM_STOCK" | "MANUFACTURE" = "MANUFACTURE",
 ): Promise<
   { ok: false; error: string } | { ok: true; creates: OrderedStepCreate[] }
 > {
@@ -95,9 +110,43 @@ export async function validateAndOrderSteps(
   if (new Set(ids).size !== ids.length) {
     return { ok: false, error: "同じ工程が重複しています" };
   }
-  const blocking = validateComposition(ids, catalog.useDeps).filter(
-    isBlockingIssue,
-  );
+  const catalogById = new Map(catalog.steps.map((s) => [s.id, s]));
+  if (type === "FROM_STOCK") {
+    // 在庫分は固定構成: 製品出し（必須）+ 出荷前検査（任意）のみ。
+    const invalid = ids.filter((id) => {
+      const step = catalogById.get(id);
+      return (
+        !step || (step.code !== STOCK_ISSUE_STEP_CODE && !isShipStep(step))
+      );
+    });
+    if (invalid.length > 0) {
+      return {
+        ok: false,
+        error:
+          "在庫分の指示書に選べる工程は 製品出し（在庫）・出荷前検査 だけです",
+      };
+    }
+    if (
+      !ids.some((id) => catalogById.get(id)?.code === STOCK_ISSUE_STEP_CODE)
+    ) {
+      return {
+        ok: false,
+        error: "在庫分の指示書には 製品出し（在庫） が必要です",
+      };
+    }
+  } else if (
+    ids.some((id) => catalogById.get(id)?.code === STOCK_ISSUE_STEP_CODE)
+  ) {
+    return {
+      ok: false,
+      error: "製品出し（在庫）は在庫分（FROM_STOCK）の指示書専用です",
+    };
+  }
+  const blocking = validateComposition(
+    ids,
+    catalog.useDeps,
+    catalog.steps,
+  ).filter(isBlockingIssue);
   if (blocking.length > 0) {
     return {
       ok: false,
@@ -115,6 +164,11 @@ export async function validateAndOrderSteps(
       plantId: s.executionLocation === "INTERNAL" ? s.plantId : null,
       supplierBpId: s.executionLocation === "OUTSOURCE" ? s.supplierBpId : null,
       workHours: s.workHours,
+      lotInputMode: s.lotInputMode ?? null,
+      // 検査表は検査工程のみ保持（それ以外の指定は黙って落とす）
+      inspectionTemplateIds: catalogById.get(stepId)?.isInspection
+        ? [...new Set(s.inspectionTemplateIds ?? [])]
+        : [],
     };
   });
   return { ok: true, creates };
@@ -131,7 +185,9 @@ import {
   branchableQuantity,
   branchSeriesList,
   canStartStep,
+  computeFinishedQuantity,
   downstreamStepIds,
+  effectiveLotInputMode,
   expectedInput,
   isOffMainline,
   isWorkOrderComplete,
@@ -155,9 +211,11 @@ export interface StepQuantities {
   outputDefectRework: number;
 }
 
-/** 不良の内訳（{種別, 理由, 数} — defect_reasons JSON + 区分列の権威）。 */
+/** 不良の内訳（{種別, 種類, 詳細, 数} — defect_reasons JSON + 区分列の権威）。 */
 export interface StepDefectReason {
   type: "SEMI" | "SCRAP" | "REWORK";
+  /** 不良種類（defect_types.id・必須）。旧データのみ null。 */
+  defectTypeId?: number | null;
   reason: string;
   count: number;
 }
@@ -183,6 +241,7 @@ export async function fetchWorkflowCtx(workOrderId: string): Promise<{
   const execDeps = await prisma.processStepExecDependency.findMany();
   const steps: StepState[] = wo.steps.map(toStepState);
   const links: StepLinkState[] = wo.stepLinks;
+  const woLinkCtx = await fetchIncomingWoLinks(workOrderId);
   return {
     ctx: {
       plannedQuantity: wo.plannedQuantity,
@@ -193,6 +252,7 @@ export async function fetchWorkflowCtx(workOrderId: string): Promise<{
         dependsOnStepId: d.dependsOnStepId,
         relation: d.relation,
       })),
+      ...woLinkCtx,
     },
     workOrder: {
       id: wo.id,
@@ -203,19 +263,71 @@ export async function fetchWorkflowCtx(workOrderId: string): Promise<{
   };
 }
 
+/**
+ * 先行指示書リンク（work_order_links の target = この指示書）の ctx 部分。
+ * 受け渡し数量は 全 source が完了しているときだけ解決する — quantity 指定は
+ * その値、未指定（全量）は source の完成数（computeFinishedQuantity）。
+ */
+export async function fetchIncomingWoLinks(workOrderId: string): Promise<{
+  incomingWoLinks?: { sourceWorkOrderNumber: number; sourceStatus: string }[];
+  incomingWoQuantity?: number | null;
+}> {
+  const rows = await prisma.workOrderLink.findMany({
+    where: { targetWorkOrderId: workOrderId },
+    select: {
+      quantity: true,
+      sourceWorkOrder: {
+        select: { id: true, workOrderNumber: true, status: true },
+      },
+    },
+  });
+  if (rows.length === 0) return {};
+  const incomingWoLinks = rows.map((r) => ({
+    sourceWorkOrderNumber: r.sourceWorkOrder.workOrderNumber,
+    sourceStatus: r.sourceWorkOrder.status,
+  }));
+  const allDone = rows.every(
+    (r) =>
+      r.sourceWorkOrder.status === "COMPLETED" ||
+      r.sourceWorkOrder.status === "CANCELLED",
+  );
+  if (!allDone) return { incomingWoLinks, incomingWoQuantity: null };
+  let sum = 0;
+  for (const r of rows) {
+    if (r.sourceWorkOrder.status === "CANCELLED") continue;
+    if (r.quantity != null) {
+      sum += r.quantity;
+      continue;
+    }
+    const src = await prisma.workOrder.findUniqueOrThrow({
+      where: { id: r.sourceWorkOrder.id },
+      include: {
+        steps: { select: STEP_STATE_SELECT },
+        stepLinks: { select: STEP_LINK_STATE_SELECT },
+      },
+    });
+    sum += computeFinishedQuantity(src.steps.map(toStepState), src.stepLinks);
+  }
+  return { incomingWoLinks, incomingWoQuantity: sum };
+}
+
 export interface StepActionResult {
   ok: boolean;
   errors?: string[];
 }
 
-/** 工程開始: 依存検証 → セッションロック原子取得 → IN_PROGRESS。 */
+/** 工程開始: 依存検証 → ロット入力検証 → セッションロック原子取得 → IN_PROGRESS。 */
 export async function startStepExecution(
   stepId: string,
+  lotText: string | null = null,
 ): Promise<StepActionResult> {
   const actor = await getCurrentActorId();
   const stepRow = await prisma.workOrderStep.findUniqueOrThrow({
     where: { id: stepId },
-    include: { workOrder: true },
+    include: {
+      workOrder: true,
+      processStep: { select: { lotInputMode: true } },
+    },
   });
   if (
     stepRow.workOrder.status !== "APPROVED" &&
@@ -226,6 +338,17 @@ export async function startStepExecution(
   const { ctx } = await fetchWorkflowCtx(stepRow.workOrderId);
   const check = canStartStep(stepId, ctx, actor);
   if (!check.ok) return { ok: false, errors: check.reasons };
+
+  // ロット/伝票コード — 実効モードは 上書き → カタログ既定（唯一の定義は
+  // workflow-core.effectiveLotInputMode）。REQUIRED は未入力で開始不可。
+  const lotMode = effectiveLotInputMode(
+    stepRow.lotInputMode,
+    stepRow.processStep.lotInputMode,
+  );
+  const lot = lotText?.trim() || null;
+  if (lotMode === "REQUIRED" && lot == null) {
+    return { ok: false, errors: ["ロット/伝票コードを入力してください"] };
+  }
 
   const input = expectedInput(stepId, ctx);
 
@@ -243,6 +366,7 @@ export async function startStepExecution(
       startedAt: new Date(),
       startedBy: actor,
       inputQuantity: input ?? undefined,
+      ...(lotMode !== "NONE" && lot != null ? { lotText: lot } : {}),
     },
   });
   if (claimed.count === 0) {
@@ -320,21 +444,41 @@ export async function completeStepExecution(
     // 受入数は開始時に確定した値を権威とする（完了時のクライアント値は無視）。
     const authoritativeInput =
       stepRow.inputQuantity ?? quantities?.inputQuantity ?? 0;
-    // 区分合計（半製品/廃棄/工程分岐）は**不良リストから導出**して権威とする。
-    // リストが無い場合のみ quantities の区分へフォールバック（後方互換）。
+    // 区分合計（半製品/廃棄/工程分岐）は**不良リストのみから導出**して権威とする。
+    // リスト無しで区分数量だけが来るのは旧クライアント — 黙って受けず再入力を求める。
     const list = defectReasons ?? [];
+    const quantitiesDefects =
+      (quantities?.outputDefectSemiFinished ?? 0) +
+      (quantities?.outputDefectScrap ?? 0) +
+      (quantities?.outputDefectRework ?? 0);
+    if (list.length === 0 && quantitiesDefects > 0) {
+      return {
+        ok: false,
+        errors: ["不良の内訳（種類・詳細）を入力してください"],
+      };
+    }
+    // 各行の 不良種類（FK）と詳細は必須。種類はマスタの実在 + 有効を再検証する。
+    if (list.some((r) => r.defectTypeId == null || r.reason.trim() === "")) {
+      return {
+        ok: false,
+        errors: ["不良の各行に種類と詳細を入力してください"],
+      };
+    }
+    if (list.length > 0) {
+      const ids = [...new Set(list.map((r) => r.defectTypeId as number))];
+      const known = await prisma.defectType.findMany({
+        where: { id: { in: ids }, isActive: true },
+        select: { id: true },
+      });
+      if (known.length !== ids.length) {
+        return { ok: false, errors: ["不良種類が不正です"] };
+      }
+    }
     const sumType = (t: StepDefectReason["type"]) =>
       list.reduce((s, r) => (r.type === t ? s + r.count : s), 0);
-    const semi =
-      list.length > 0
-        ? sumType("SEMI")
-        : (quantities?.outputDefectSemiFinished ?? 0);
-    const scrap =
-      list.length > 0 ? sumType("SCRAP") : (quantities?.outputDefectScrap ?? 0);
-    const rework =
-      list.length > 0
-        ? sumType("REWORK")
-        : (quantities?.outputDefectRework ?? 0);
+    const semi = sumType("SEMI");
+    const scrap = sumType("SCRAP");
+    const rework = sumType("REWORK");
     persisted = {
       inputQuantity: authoritativeInput,
       outputSuccessQuantity: authoritativeInput - semi - scrap - rework,
@@ -356,10 +500,15 @@ export async function completeStepExecution(
       return { ok: false, errors: qIssues.map((i) => i.message) };
   }
 
-  // 不良の内訳（{種別, 理由, 数}）— 有効行のみ。空なら列を触らない。
+  // 不良の内訳（{種別, 種類, 詳細, 数}）— 有効行のみ。空なら列を触らない。
   const cleanedReasons = (defectReasons ?? [])
     .filter((r) => Number.isFinite(r.count) && r.count > 0)
-    .map((r) => ({ type: r.type, reason: r.reason.trim(), count: r.count }));
+    .map((r) => ({
+      type: r.type,
+      defectTypeId: r.defectTypeId ?? null,
+      reason: r.reason.trim(),
+      count: r.count,
+    }));
 
   const rIssues = validateRouting(
     {
@@ -610,6 +759,37 @@ export async function addBranchSeries(input: {
 
   const maxSort = Math.max(...wo.steps.map((s) => s.sortOrder));
 
+  // 分岐で追加される検査工程には、その工程を関連工程に持つ検査表
+  // （有効・code ごとに最新バージョン）を既定で割り当てる — 検査表は
+  // 工程単位の割当なので、後から足した工程が空にならないようにする。
+  const inspectionCatalogIds = (
+    await prisma.processStepCatalog.findMany({
+      where: { id: { in: catalogStepIds }, isInspection: true },
+      select: { id: true },
+    })
+  ).map((c) => c.id);
+  const relatedTemplates = inspectionCatalogIds.length
+    ? await prisma.inspectionTemplate.findMany({
+        where: {
+          isActive: true,
+          relatedProcessStepId: { in: inspectionCatalogIds },
+        },
+        orderBy: [{ code: "asc" }, { version: "desc" }],
+        select: { id: true, code: true, relatedProcessStepId: true },
+      })
+    : [];
+  const defaultTemplateIdsByStep = new Map<number, number[]>();
+  {
+    const seenCodes = new Set<string>();
+    for (const t of relatedTemplates) {
+      if (seenCodes.has(t.code) || t.relatedProcessStepId == null) continue;
+      seenCodes.add(t.code);
+      const list = defaultTemplateIdsByStep.get(t.relatedProcessStepId) ?? [];
+      list.push(t.id);
+      defaultTemplateIdsByStep.set(t.relatedProcessStepId, list);
+    }
+  }
+
   const result = await prisma.$transaction(async (tx) => {
     const created: string[] = [];
     for (let i = 0; i < catalogStepIds.length; i++) {
@@ -626,6 +806,11 @@ export async function addBranchSeries(input: {
             isTerminal && input.termination.kind === "STOCK"
               ? input.termination.disposition
               : null,
+          inspectionTemplates: {
+            create: (defaultTemplateIdsByStep.get(catalogStepIds[i]) ?? []).map(
+              (id) => ({ inspectionTemplateId: id }),
+            ),
+          },
         },
         select: { id: true },
       });

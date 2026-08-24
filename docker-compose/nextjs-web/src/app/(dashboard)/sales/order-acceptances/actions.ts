@@ -9,6 +9,8 @@
  *   REQUESTED → approveAcceptance（→ APPROVED）/ rejectAcceptance（→ DRAFT）
  *   APPROVED → confirmOrderLines（注文確定 → COMPLETED）
  *   COMPLETED → archiveAcceptance（→ ARCHIVED）
+ *   COMPLETED → requestAcceptanceCancel（キャンセル承認 → CANCELLED。
+ *               明細単位のキャンセルは廃止 — lib/order-acceptance-cancel.ts）
  *
  * 注文確定は注文請書と同じ (year_month, seq) の order_lines 枝番 1..N を
  * $transaction で一括作成する（§2: 注文請書 1 → 注文明細 N）。承認は
@@ -24,10 +26,11 @@ import {
   startApprovalFlow,
 } from "@/lib/approvals";
 import { getCurrentActorId, recordAudit } from "@/lib/audit";
-import { checkPermission } from "@/lib/authz";
+import { checkApprovalDocAccess, checkPermission } from "@/lib/authz";
 import { prisma } from "@/lib/db";
 import {
   type DocKey,
+  formatDocNumber,
   formatOrderLineNumber,
   parseDocKey,
 } from "@/lib/doc-number";
@@ -36,6 +39,11 @@ import { normalizeExtraction } from "@/lib/intake-core";
 import { aliasLearnings } from "@/lib/match-alias-core";
 import { saveAliasLearnings } from "@/lib/match-aliases";
 import { allocateDocumentKey } from "@/lib/numbering";
+import {
+  applyApprovedAcceptanceCancel,
+  closeAcceptanceCancelRequest,
+  submitAcceptanceCancelRequest,
+} from "@/lib/order-acceptance-cancel";
 import {
   acceptanceReadiness,
   readinessSummary,
@@ -112,6 +120,10 @@ const draftInput = z.object({
   salesRepId: z.string().nullable().optional(),
   // 出荷先（顧客と異なり得る取引先。任意）
   shipToBpId: z.string().nullable().optional(),
+  // 配送方法（通常配送 / ユーザー直送）。省略時は通常配送。
+  deliveryMethod: z.enum(["NORMAL", "DIRECT_TO_USER"]).default("NORMAL"),
+  // エンドユーザー（最終需要家）— ユーザー直送では必須（headerRefsError で強制）
+  endUserBpId: z.string().nullable().optional(),
   // 担当拠点（任意）
   assignedPlantId: z.number().int().positive().nullable().optional(),
   // 出荷作業場所（作業場所マスタ MS0D。任意）
@@ -149,6 +161,8 @@ function quoteKeyOf(quoteNumber: string | null | undefined) {
  */
 async function headerRefsError(v: {
   shipToBpId?: string | null;
+  deliveryMethod?: "NORMAL" | "DIRECT_TO_USER";
+  endUserBpId?: string | null;
   assignedPlantId?: number | null;
   shippingWorkLocationId?: number | null;
 }): Promise<string | null> {
@@ -159,6 +173,18 @@ async function headerRefsError(v: {
       select: { isActive: true },
     });
     if (!bp?.isActive) return "出荷先の取引先が存在しないか無効です";
+  }
+  // ユーザー直送は届け先（エンドユーザー）が無いと出荷・納品書まで進めない。
+  const endUserBpId = trimOrNull(v.endUserBpId);
+  if (v.deliveryMethod === "DIRECT_TO_USER" && !endUserBpId) {
+    return "ユーザー直送ではエンドユーザーの指定が必要です";
+  }
+  if (endUserBpId) {
+    const bp = await prisma.businessPartner.findUnique({
+      where: { id: endUserBpId },
+      select: { isActive: true },
+    });
+    if (!bp?.isActive) return "エンドユーザーの取引先が存在しないか無効です";
   }
   if (v.assignedPlantId != null) {
     const plant = await prisma.plant.findUnique({
@@ -303,6 +329,8 @@ export async function saveDraft(
         customerBpId: true,
         salesRepId: true,
         shipToBpId: true,
+        deliveryMethod: true,
+        endUserBpId: true,
         assignedPlantId: true,
         shippingWorkLocationId: true,
         customerOrderRef: true,
@@ -319,6 +347,9 @@ export async function saveDraft(
     const creates = buildItemCreates(v.items);
     const customerBpId = trimOrNull(v.customerBpId);
     const shipToBpId = trimOrNull(v.shipToBpId);
+    // エンドユーザーは配送方法に依らず保持できる（直送では必須 —
+    // headerRefsError。通常配送でも記録用に任意で持てる）。
+    const endUserBpId = trimOrNull(v.endUserBpId);
     const assignedPlantId = v.assignedPlantId ?? null;
     const shippingWorkLocationId = v.shippingWorkLocationId ?? null;
     const salesRepId = await resolveSalesRepId(
@@ -345,6 +376,8 @@ export async function saveDraft(
           customerBpId,
           salesRepId,
           shipToBpId,
+          deliveryMethod: v.deliveryMethod,
+          endUserBpId,
           assignedPlantId,
           shippingWorkLocationId,
           customerOrderRef: trimOrNull(v.customerOrderRef),
@@ -364,6 +397,8 @@ export async function saveDraft(
         customerBpId: prior.customerBpId,
         salesRepId: prior.salesRepId,
         shipToBpId: prior.shipToBpId,
+        deliveryMethod: prior.deliveryMethod,
+        endUserBpId: prior.endUserBpId,
         assignedPlantId: prior.assignedPlantId,
         shippingWorkLocationId: prior.shippingWorkLocationId,
         customerOrderRef: prior.customerOrderRef,
@@ -374,6 +409,8 @@ export async function saveDraft(
         customerBpId,
         salesRepId,
         shipToBpId,
+        deliveryMethod: v.deliveryMethod,
+        endUserBpId,
         assignedPlantId,
         shippingWorkLocationId,
         customerOrderRef: trimOrNull(v.customerOrderRef),
@@ -438,6 +475,8 @@ export async function submitForApproval(
       select: {
         status: true,
         customerBpId: true,
+        deliveryMethod: true,
+        endUserBpId: true,
         items: {
           orderBy: { sortOrder: "asc" },
           select: { productId: true, unitPrice: true },
@@ -453,6 +492,8 @@ export async function submitForApproval(
     // 古い画面からの依頼だけ。
     const readiness = acceptanceReadiness({
       customerBpId: prior.customerBpId,
+      deliveryMethod: prior.deliveryMethod,
+      endUserBpId: prior.endUserBpId,
       items: prior.items.map((it) => ({
         productId: it.productId,
         unitPrice: it.unitPrice == null ? null : Number(it.unitPrice),
@@ -511,7 +552,7 @@ export async function submitForApproval(
 export async function approveAcceptance(number: string): Promise<ActionResult> {
   const key = keyOf(number);
   if (!key) return actionError("注文請書番号が不正です");
-  const authz = await checkPermission("order_acceptance", "APPROVE");
+  const authz = await checkApprovalDocAccess("order_acceptance");
   if (!authz.ok) return actionError(authz.error);
   if (!(await acceptanceInScope(authz.access, authz.userId, key))) {
     return actionError(SCOPE_DENIED);
@@ -573,7 +614,7 @@ export async function rejectAcceptance(
   if (!key) return actionError("注文請書番号が不正です");
   const trimmed = reason.trim();
   if (!trimmed) return actionError("差し戻し理由を入力してください");
-  const authz = await checkPermission("order_acceptance", "APPROVE");
+  const authz = await checkApprovalDocAccess("order_acceptance");
   if (!authz.ok) return actionError(authz.error);
   if (!(await acceptanceInScope(authz.access, authz.userId, key))) {
     return actionError(SCOPE_DENIED);
@@ -645,6 +686,8 @@ export async function confirmOrderLines(
     // 言い切れないので確定の直前にも確かめる。
     const readiness = acceptanceReadiness({
       customerBpId: prior.customerBpId,
+      deliveryMethod: prior.deliveryMethod,
+      endUserBpId: prior.endUserBpId,
       items: prior.items.map((it) => ({
         productId: it.productId,
         unitPrice: it.unitPrice == null ? null : Number(it.unitPrice),
@@ -779,6 +822,8 @@ export async function createManualAcceptance(
     const refsError = await headerRefsError(v);
     if (refsError) return actionError(refsError);
     const shipToBpId = trimOrNull(v.shipToBpId);
+    // エンドユーザーは配送方法に依らず保持できる（直送では必須）。
+    const endUserBpId = trimOrNull(v.endUserBpId);
     const assignedPlantId = v.assignedPlantId ?? null;
     const shippingWorkLocationId = v.shippingWorkLocationId ?? null;
     const actor = await getCurrentActorId();
@@ -799,6 +844,8 @@ export async function createManualAcceptance(
         customerBpId: v.customerBpId,
         salesRepId,
         shipToBpId,
+        deliveryMethod: v.deliveryMethod,
+        endUserBpId,
         assignedPlantId,
         shippingWorkLocationId,
         customerOrderRef: trimOrNull(v.customerOrderRef),
@@ -818,6 +865,8 @@ export async function createManualAcceptance(
         customerBpId: v.customerBpId,
         salesRepId,
         shipToBpId,
+        deliveryMethod: v.deliveryMethod,
+        endUserBpId,
         assignedPlantId,
         shippingWorkLocationId,
         itemCount: v.items.length,
@@ -828,5 +877,131 @@ export async function createManualAcceptance(
     return actionOk({ number });
   } catch (e) {
     return actionError(prismaErrorMessage(e, "注文請書の作成に失敗しました"));
+  }
+}
+
+// ── 注文請書キャンセル（承認フロー） ────────────────────────────────────────
+//
+// 確定済み（COMPLETED）の注文請書は明細単位ではキャンセルできない。
+// キャンセルは注文請書ごと依頼し、承認設定（MS0B）の「注文請書キャンセル」
+// フローを通す（1 段も無ければ即適用）。対象は依頼行
+// （order_acceptance_cancel_requests の id）。実体は lib/order-acceptance-cancel.ts。
+
+/** キャンセル依頼 — 承認設定があれば保留、無ければ即適用。理由必須。 */
+export async function requestAcceptanceCancel(
+  number: string,
+  reason: string,
+): Promise<ActionResult<{ pending: boolean }>> {
+  const key = keyOf(number);
+  if (!key) return actionError("注文請書番号が不正です");
+  const authz = await checkPermission("order_acceptance", "UPDATE");
+  if (!authz.ok) return actionError(authz.error);
+  if (!(await acceptanceInScope(authz.access, authz.userId, key))) {
+    return actionError(SCOPE_DENIED);
+  }
+  try {
+    const result = await submitAcceptanceCancelRequest({ key, reason });
+    if (!result.ok) {
+      return actionError(result.errors?.join(" / ") ?? "依頼に失敗しました");
+    }
+    revalidate(number);
+    revalidatePath(SALES_ORDERS_PATH);
+    return actionOk({ pending: result.pending ?? false });
+  } catch (e) {
+    return actionError(prismaErrorMessage(e, "キャンセル依頼に失敗しました"));
+  }
+}
+
+/** キャンセル依頼を承認する。最終承認なら、その場でキャンセルを適用する。 */
+export async function approveAcceptanceCancel(
+  requestId: string,
+): Promise<ActionResult<{ completed: boolean; applied: boolean }>> {
+  const authz = await checkApprovalDocAccess("order_acceptance");
+  if (!authz.ok) return actionError(authz.error);
+  const row = await prisma.orderAcceptanceCancelRequest.findUnique({
+    where: { id: requestId },
+    select: { status: true, acceptanceYearMonth: true, acceptanceSeq: true },
+  });
+  if (!row) return actionError("対象のキャンセル依頼が見つかりません");
+  if (row.status !== "PENDING") {
+    return actionError("承認待ちのキャンセル依頼ではありません");
+  }
+  const key = { yearMonth: row.acceptanceYearMonth, seq: row.acceptanceSeq };
+  if (!(await acceptanceInScope(authz.access, authz.userId, key))) {
+    return actionError(SCOPE_DENIED);
+  }
+  try {
+    const acted = await actOnCurrentStep({
+      targetType: "order_acceptance_cancel_requests",
+      targetId: requestId,
+      action: "APPROVED",
+    });
+    if (!acted.ok) return actionError(acted.error ?? "承認の権限がありません");
+
+    const number = formatDocNumber("ORD", key);
+    if (!acted.flowCompleted) {
+      revalidate(number);
+      return actionOk({ completed: false, applied: false });
+    }
+
+    // 最終承認 — ここで初めてキャンセルを当てる（承認待ちの間に前提が変わって
+    // いれば同じ検証で弾かれ、FAILED として残る）。
+    const applied = await applyApprovedAcceptanceCancel(requestId);
+    revalidate(number);
+    revalidatePath(SALES_ORDERS_PATH);
+    if (!applied.ok) {
+      return actionError(
+        applied.errors?.join(" / ") ?? "キャンセルの適用に失敗しました",
+      );
+    }
+    return actionOk({ completed: true, applied: true });
+  } catch (e) {
+    return actionError(prismaErrorMessage(e, "承認に失敗しました"));
+  }
+}
+
+/** キャンセル依頼を差し戻す（注文請書は変わらないまま閉じる）。 */
+export async function rejectAcceptanceCancel(
+  requestId: string,
+  reason: string,
+): Promise<ActionResult> {
+  const authz = await checkApprovalDocAccess("order_acceptance");
+  if (!authz.ok) return actionError(authz.error);
+  const trimmed = reason.trim();
+  if (!trimmed) return actionError("差し戻し理由を入力してください");
+  const row = await prisma.orderAcceptanceCancelRequest.findUnique({
+    where: { id: requestId },
+    select: { status: true, acceptanceYearMonth: true, acceptanceSeq: true },
+  });
+  if (!row) return actionError("対象のキャンセル依頼が見つかりません");
+  if (row.status !== "PENDING") {
+    return actionError("承認待ちのキャンセル依頼ではありません");
+  }
+  const key = { yearMonth: row.acceptanceYearMonth, seq: row.acceptanceSeq };
+  if (!(await acceptanceInScope(authz.access, authz.userId, key))) {
+    return actionError(SCOPE_DENIED);
+  }
+  try {
+    const acted = await actOnCurrentStep({
+      targetType: "order_acceptance_cancel_requests",
+      targetId: requestId,
+      action: "REJECTED",
+      comment: trimmed,
+    });
+    if (!acted.ok) {
+      return actionError(acted.error ?? "差し戻しの権限がありません");
+    }
+    await closeAcceptanceCancelRequest(requestId, "REJECTED");
+    const number = formatDocNumber("ORD", key);
+    await recordAudit({
+      action: "UPDATE",
+      tableName: "order_acceptances",
+      recordId: number,
+      after: { note: `キャンセル依頼を差し戻し（${trimmed}）` },
+    });
+    revalidate(number);
+    return actionOk();
+  } catch (e) {
+    return actionError(prismaErrorMessage(e, "差し戻しに失敗しました"));
   }
 }

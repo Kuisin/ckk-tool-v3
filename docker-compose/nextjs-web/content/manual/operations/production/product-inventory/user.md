@@ -7,6 +7,8 @@ screenshots: [inventory-products-01, inventory-product-detail-01, inventory-tran
 
 > ⚠️ このアプリは今のところ **テスト用の環境だけ** で使えます。本番で使えるようになるまでに、画面や手順が変わることがあります。
 
+> このアプリが属するフロー … [生産の流れ](/manual/ja/process/production)
+
 ## このアプリでできること
 
 - できあがった製品が、どの拠点のどの棚に何本あるかを確認できます。

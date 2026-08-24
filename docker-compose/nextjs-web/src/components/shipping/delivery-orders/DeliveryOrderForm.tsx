@@ -34,6 +34,7 @@ import {
   TextInput,
 } from "@mantine/core";
 import { useForm } from "@mantine/form";
+import { modals } from "@mantine/modals";
 import { notifications } from "@mantine/notifications";
 import { IconInfoCircle, IconPlus, IconTrash } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
@@ -63,6 +64,7 @@ import { zodResolver } from "@/lib/form";
 import type { Option } from "@/lib/mock";
 import {
   allocateLotUsage,
+  combinabilityError,
   type DeliveryOrder,
   type DeliveryOrderType,
 } from "./model";
@@ -170,6 +172,7 @@ export function DeliveryOrderForm({
   order,
   plantOptions,
   initialOrderLine,
+  initialAcceptance,
 }: {
   mode: "create" | "edit";
   /** 編集時: 対象出荷書（サーバー取得の view-model）。 */
@@ -181,6 +184,12 @@ export function DeliveryOrderForm({
    * 「出荷書作成」から来たとき）。ピッカーで選んだのと同じ経路を通す。
    */
   initialOrderLine?: { id: string; label: string } | null;
+  /**
+   * 新規時に `?acceptance=` でプリセレクトする注文請書番号（ORD-…。
+   * 注文請書詳細 SA24 の「出荷書を作成」から来たとき）。ピッカーで選んだのと
+   * 同じ経路で、出荷できる注文明細すべてをグループとして追加する。
+   */
+  initialAcceptance?: string | null;
 }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -241,16 +250,21 @@ export function DeliveryOrderForm({
   const addSourceGroups = (infos: DeliverySourceInfo[]) => {
     const first = infos[0];
     if (!first) return;
-    // 1 出荷書 = 1 顧客 — 最初に選んだ注文請書の顧客で確定する
-    // （同一注文請書の明細は全て同じ顧客）。
-    if (
-      form.values.customerBpId &&
-      first.customerBpId &&
-      first.customerBpId !== form.values.customerBpId
-    ) {
+    // 束ね可否 — 同一顧客 × 同一出荷先 × 同一配送方法（注文請書ヘッダ由来）
+    // だけを 1 出荷書に載せられる。既に載っているグループの属性
+    // （infoByLine — 追加時 / 編集時のシードでロード済み）と比較する。
+    // サーバー（validateCombinable）も同じ判定で最終ガードする。
+    const existingRefs = form.values.items
+      .map((it) => (it.orderLineId ? infoByLine[it.orderLineId] : null))
+      .filter((i): i is DeliverySourceInfo => Boolean(i));
+    const combineError = combinabilityError(
+      [...existingRefs, first],
+      form.values.customerBpId || undefined,
+    );
+    if (combineError) {
       notifications.show({
         title: "追加できません",
-        message: "1 つの出荷書には同じ顧客の注文明細だけを載せられます",
+        message: combineError,
         color: "red",
       });
       return;
@@ -363,11 +377,41 @@ export function DeliveryOrderForm({
   // addSourceGroups も毎レンダー作り直されるので依存に載せられないため。
   const seeded = useRef(false);
   useEffect(() => {
-    if (mode !== "create" || !initialOrderLine || seeded.current) return;
+    if (
+      mode !== "create" ||
+      (!initialOrderLine && !initialAcceptance) ||
+      seeded.current
+    )
+      return;
     seeded.current = true;
-    fetchDeliverySourceInfo(initialOrderLine.id).then((info) => {
-      if (info) addSourceGroups([info]);
-    });
+    if (initialOrderLine) {
+      fetchDeliverySourceInfo(initialOrderLine.id).then((info) => {
+        if (info) {
+          addSourceGroups([info]);
+        } else {
+          // 黙って空フォームにしない — 未確定・製品未特定などで読めなかった
+          // ことを伝える（プリフィルが「効いていない」ように見えるため）。
+          notifications.show({
+            title: "注文明細を読み込めませんでした",
+            message: `${initialOrderLine.label} — 確定済みの注文明細のみ出荷書に追加できます`,
+            color: "red",
+          });
+        }
+      });
+    } else if (initialAcceptance) {
+      fetchDeliveryAcceptanceSourceInfo(initialAcceptance).then((infos) => {
+        if (infos.length > 0) {
+          addSourceGroups(infos);
+        } else {
+          notifications.show({
+            title: "追加できません",
+            message:
+              "出荷できる注文明細がありません（展開済みの注文請書を選択してください）",
+            color: "red",
+          });
+        }
+      });
+    }
   });
 
   const totalQuantity = form.values.items.reduce(
@@ -377,7 +421,33 @@ export function DeliveryOrderForm({
 
   const groups = groupItems(form.values.items);
 
-  const handleSubmit = (values: FormValues) => {
+  /**
+   * 注文明細グループごとの数量チェック（DISPATCH のみ・受注情報のある
+   * グループのみ）。remaining = 受注数 − 出荷済（SHIPPED のみ集計）、
+   * coverable = 完了指示書の現物在庫から自明細の取り分の範囲で引当できる数量。
+   */
+  const groupQuantityChecks = () =>
+    groups
+      .filter((g) => g.orderLineId)
+      .flatMap((g) => {
+        const info = infoByLine[g.orderLineId as string];
+        if (!info) return [];
+        const total = g.rows.reduce((sum, r) => sum + r.item.quantity, 0);
+        const remaining = info.quantity - info.shippedQuantity;
+        const coverable = allocateLotUsage(
+          remaining,
+          info.completedWorkOrders.map((wo) => ({
+            lotNumber: wo.workOrderNumber,
+            outputQuantity: wo.outputQuantity,
+            stockQuantity:
+              info.stockLots.find((l) => l.lotNumber === wo.workOrderNumber)
+                ?.quantity ?? 0,
+          })),
+        ).reduce((sum, u) => sum + u.quantity, 0);
+        return [{ number: info.orderLineNumber, total, remaining, coverable }];
+      });
+
+  const doSubmit = (values: FormValues) => {
     startTransition(async () => {
       const payload = {
         type: values.type,
@@ -419,6 +489,59 @@ export function DeliveryOrderForm({
           color: "red",
         });
       }
+    });
+  };
+
+  const handleSubmit = (values: FormValues) => {
+    // 在庫保管（STOCK_STORAGE）は受注数量と独立 — チェックは発送のみ。
+    if (values.type !== "DISPATCH") {
+      doSubmit(values);
+      return;
+    }
+    const checks = groupQuantityChecks();
+    // 受注残を超える出荷はブロック（サーバー側 validateLineRemaining と同じ規則）
+    const over = checks.filter((c) => c.total > c.remaining);
+    if (over.length > 0) {
+      notifications.show({
+        title: "受注数を超えています",
+        message: `${over
+          .map((c) => `${c.number}（残 ${c.remaining} / 出荷 ${c.total}）`)
+          .join("、")} — 受注数を超える出荷はできません`,
+        color: "red",
+      });
+      return;
+    }
+    // 一部出荷（受注残に満たない）/ 完成品不足は警告 + 確認してから保存
+    const partial = checks.filter((c) => c.total < c.remaining);
+    const notReady = checks.filter((c) => c.coverable < c.remaining);
+    if (partial.length === 0 && notReady.length === 0) {
+      doSubmit(values);
+      return;
+    }
+    modals.openConfirmModal({
+      title: "一部出荷の確認",
+      children: (
+        <Box>
+          {notReady.map((c) => (
+            <Text key={`nr-${c.number}`} size="sm">
+              {c.number} は完成品が受注残に足りません（引当可能 {c.coverable} /
+              残 {c.remaining}）
+            </Text>
+          ))}
+          {partial.map((c) => (
+            <Text key={`pt-${c.number}`} size="sm">
+              {c.number} の出荷数が受注残に満たしていません（出荷 {c.total} / 残{" "}
+              {c.remaining}）
+            </Text>
+          ))}
+          <Text c="dimmed" mt="xs" size="sm">
+            このまま保存すると一部出荷になります。残りは後から別の出荷書で
+            出荷できます。
+          </Text>
+        </Box>
+      ),
+      labels: { confirm: "一部出荷として保存", cancel: "戻る" },
+      onConfirm: () => doSubmit(values),
     });
   };
 
@@ -633,14 +756,54 @@ export function DeliveryOrderForm({
                       </DocNumber>
                       {info && (
                         <Text c="dimmed" size="xs">
-                          {info.customerName} / {info.productName} · 受注{" "}
-                          {info.quantity}
+                          {info.customerName} / {info.productName}
+                          {/* 束ねの条件（出荷先・配送方法）が見えるようにする */}
+                          {info.shipToName
+                            ? ` · 出荷先 ${info.shipToName}`
+                            : ""}
+                          {info.deliveryMethod === "DIRECT_TO_USER"
+                            ? " · ユーザー直送"
+                            : ""}{" "}
+                          · 受注 {info.quantity}
                           {info.shippedQuantity > 0
                             ? ` · 出荷済 ${info.shippedQuantity}`
                             : ""}{" "}
-                          · 完了指示書 {info.completedWorkOrders.length} 件
+                          {/* 完成 = 接続された指示書の完成数のうちこの明細への配分
+                              （distributeFinished）— DO の数量はこれが源泉 */}
+                          · 完成{" "}
+                          {info.completedWorkOrders.reduce(
+                            (sum, wo) => sum + wo.outputQuantity,
+                            0,
+                          )}
+                          （完了指示書 {info.completedWorkOrders.length} 件）
                         </Text>
                       )}
+                      {info &&
+                        form.values.type === "DISPATCH" &&
+                        (() => {
+                          const total = group.rows.reduce(
+                            (sum, r) => sum + r.item.quantity,
+                            0,
+                          );
+                          const remaining =
+                            info.quantity - info.shippedQuantity;
+                          if (total > remaining) {
+                            return (
+                              <Text c="red" fw={600} size="xs">
+                                受注残 {remaining} を超えています（出荷 {total}
+                                ）
+                              </Text>
+                            );
+                          }
+                          if (total < remaining) {
+                            return (
+                              <Text c="orange" size="xs">
+                                一部出荷（出荷 {total} / 受注残 {remaining}）
+                              </Text>
+                            );
+                          }
+                          return null;
+                        })()}
                     </>
                   ) : (
                     <Text c="dimmed" fw={600} size="sm">

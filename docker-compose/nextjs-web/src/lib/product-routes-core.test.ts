@@ -3,7 +3,12 @@
  */
 
 import { describe, expect, it } from "vitest";
-import { type RouteStepSnapshot, routeStepsEqual } from "./product-routes-core";
+import {
+  pickDefaultRoute,
+  type RouteStepSnapshot,
+  type RouteView,
+  routeStepsEqual,
+} from "./product-routes-core";
 
 const step = (
   processStepId: number,
@@ -77,5 +82,39 @@ describe("routeStepsEqual", () => {
 
   it("空 vs 空は true", () => {
     expect(routeStepsEqual([], [])).toBe(true);
+  });
+});
+
+describe("pickDefaultRoute（顧客一致 → 汎用 → 先頭）", () => {
+  const route = (id: number, customerBpId: string | null): RouteView => ({
+    id,
+    name: `route-${id}`,
+    nameEn: "",
+    customerBpId,
+    customerName: customerBpId ? `顧客-${customerBpId}` : null,
+    isActive: true,
+    notes: null,
+    updatedAt: "",
+    versions: [],
+  });
+
+  it("顧客一致ルートを最優先", () => {
+    const routes = [route(1, null), route(2, "bp-a"), route(3, "bp-b")];
+    expect(pickDefaultRoute(routes, "bp-b")?.id).toBe(3);
+  });
+
+  it("一致が無ければ汎用ルート", () => {
+    const routes = [route(2, "bp-a"), route(1, null)];
+    expect(pickDefaultRoute(routes, "bp-x")?.id).toBe(1);
+    expect(pickDefaultRoute(routes, null)?.id).toBe(1);
+  });
+
+  it("汎用も無ければ先頭（他顧客専用でも手動選択の起点として返す）", () => {
+    const routes = [route(2, "bp-a")];
+    expect(pickDefaultRoute(routes, null)?.id).toBe(2);
+  });
+
+  it("空配列は null", () => {
+    expect(pickDefaultRoute([], "bp-a")).toBeNull();
   });
 });

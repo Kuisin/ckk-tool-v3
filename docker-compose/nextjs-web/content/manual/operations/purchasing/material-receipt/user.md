@@ -7,6 +7,8 @@ screenshots: [material-receipt-list-01, material-receipt-new-01, material-receip
 
 > ⚠️ このアプリはまだ準備中のため、本番の画面には出ていないことがあります。見当たらないときは、社内の担当者にご確認ください。
 
+> このアプリが属するフロー … [購買の流れ](/manual/ja/process/purchasing)
+
 ## このアプリでできること
 
 - 素材が届いたことを記録できます。記録すると、その拠点の **在庫がその分だけ増えます**。

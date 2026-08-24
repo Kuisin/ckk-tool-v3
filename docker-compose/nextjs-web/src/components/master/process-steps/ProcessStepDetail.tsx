@@ -25,6 +25,7 @@ import { useTabParam } from "@/hooks/useUrlState";
 import { useIsMobile } from "@/hooks/useViewport";
 import {
   DEPENDENCY_RELATION_LABEL,
+  LOT_INPUT_MODE_LABEL,
   PROCESS_CATEGORY_LABEL,
   PROCESS_EXECUTION_LABEL,
   QUANTITY_TRACKING_LABEL,
@@ -59,6 +60,7 @@ export interface ProcessStepDetailData {
   isApprovalStep: boolean;
   approvalMinRank: string | null;
   quantityTracking: string;
+  lotInputMode: string;
   /** 既定作業時間 (h) — 任意。 */
   defaultWorkHours: number | null;
   sortOrder: number;
@@ -66,6 +68,9 @@ export interface ProcessStepDetailData {
   notes: string;
   useDependencies: ProcessStepDependencyRow[];
   execDependencies: ProcessStepDependencyRow[];
+  /** 許可作業場所（表示ラベル）。両方空 = 無制限。 */
+  allowedLocationTypeLabels: string[];
+  allowedLocationLabels: string[];
 }
 
 /** 依存表（使用依存 = 排他列あり / 実行依存 = なし）。 */
@@ -256,6 +261,12 @@ export function ProcessStepDetail({
           }
         />
         <FieldValue
+          label="ロット入力（既定）"
+          value={
+            LOT_INPUT_MODE_LABEL[record.lotInputMode] ?? record.lotInputMode
+          }
+        />
+        <FieldValue
           label="既定作業時間"
           value={
             record.defaultWorkHours != null
@@ -282,6 +293,21 @@ export function ProcessStepDetail({
 
         <Tabs.Panel pt="md" value="overview">
           <Stack gap="md">
+            <FieldValue
+              label="許可作業場所"
+              value={
+                record.allowedLocationTypeLabels.length +
+                  record.allowedLocationLabels.length ===
+                0
+                  ? "制限なし（すべての作業場所を使用可）"
+                  : [
+                      ...record.allowedLocationTypeLabels.map(
+                        (l) => `種別: ${l}`,
+                      ),
+                      ...record.allowedLocationLabels,
+                    ].join(" / ")
+              }
+            />
             <FieldValue label="備考" value={record.notes || "—"} />
           </Stack>
         </Tabs.Panel>

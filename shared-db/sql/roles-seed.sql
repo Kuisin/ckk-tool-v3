@@ -4,8 +4,9 @@
 --
 -- 前提: rbac-seed.sql（permissions 18 コード + admin/staff ロール）適用済み。
 -- 本番ではここで定義するロールを実ユーザーへ割り当てる（user_role_relation）。
--- 承認（APPROVE）は権限に加えて、その段の承認グループ所属（approval_group_members）が
--- 実ゲートである点に注意 — 権限はコード×アクションの門番のみ。
+-- 承認は権限アクションでは管理しない — APPROVE グラントは全廃（rbac-seed.sql が
+-- 削除する）。承認できる人は承認設定（MS0B）の承認グループ所属だけが決め、
+-- RBAC 側の要件はその書類の READ / UPDATE（閲覧または編集）のみ。
 --
 -- 管理系 2 コードは業務ロールに配らない:
 --   system — システム管理（SY01–SY0C）。admin のみ。
@@ -14,20 +15,20 @@
 --            管理職・部門長・閲覧ロールに QRカード/端末管理の READ が付いていた。
 --   internal_docs は一括付与の対象（DC02 社内ドキュメントは管理職も読む）。
 --
--- マトリクス（R=READ C=CREATE U=UPDATE D=DELETE E=EXPORT A=APPROVE）:
---   manager    : 全業務 R+E+A（承認者・閲覧横断）
+-- マトリクス（R=READ C=CREATE U=UPDATE D=DELETE E=EXPORT）:
+--   manager    : 全業務 R+E（承認者・閲覧横断 — 承認の可否は MS0B のグループ所属）
 --   sales (営業メンバー)  : 見積(quote)/価格表(price_list)/受注請書(order_acceptance)/
 --                           設計依頼(design_request) C·R·U（自分=OWN）+ マスタ R
---   purchasing : 購買依頼・発注/入荷/外注 RCUDE(+発注 A)、在庫 R、他 R
---   production : 指示書 RCUDEA（拠点スコープ）、在庫 RCUE（拠点スコープ）、
+--   purchasing : 購買依頼・発注/入荷/外注 RCUDE、在庫 R、他 R
+--   production : 指示書 RCUDE（拠点スコープ）、在庫 RCUE（拠点スコープ）、
 --                受注明細 RU、外注 RU、他 R
---   quality    : 指示書（検査記録・検査承認） RUA（拠点スコープ）、他 R
+--   quality    : 指示書（検査記録・検査承認） RU（拠点スコープ）、他 R
 --   shipping   : 出荷書/納品書 RCUDE（出荷書は拠点スコープ）、在庫 RU（拠点スコープ）、他 R
 --   accounting : 請求書/締日 RCUDE、販売・出荷 R、他 R
 --   viewer     : 全業務 R
 --   sales_assistant (営業補佐) : 営業 4 コード R（全件=ALL）+ マスタ R。作成/編集/承認なし
---   sales_manager (営業部長)   : 営業 4 コード R·C·U·D·E·A（全件=ALL）+ マスタ/承認 R
---   <division>_manager（×5・他部門長） : 自部門コード RCUDEA + 全業務 R
+--   sales_manager (営業部長)   : 営業 4 コード R·C·U·D·E（全件=ALL）+ マスタ/承認 R
+--   <division>_manager（×5・他部門長） : 自部門コード RCUDE + 全業務 R
 --   （member = 既存の部門ロール。manager = 部門フル + 横断閲覧 + 承認）
 
 BEGIN;
@@ -70,12 +71,12 @@ WHERE role_id IN (
   )
 );
 
--- manager: 全業務コード（system 以外）に R + E + A
+-- manager: 全業務コード（system 以外）に R + E（承認は MS0B のグループ所属で）
 INSERT INTO app.role_permission_relation (role_id, permission_code, action, scope)
 SELECT r.id, p.code, a.action::app."ACTION", 'ALL'::app."SCOPE"
 FROM app.roles r
 CROSS JOIN app.permissions p
-CROSS JOIN (VALUES ('READ'),('EXPORT'),('APPROVE')) AS a(action)
+CROSS JOIN (VALUES ('READ'),('EXPORT')) AS a(action)
 WHERE r.rolename = 'manager' AND p.code NOT IN ('system', 'kiosk')
 ON CONFLICT DO NOTHING;
 
@@ -118,7 +119,7 @@ INSERT INTO app.role_permission_relation (role_id, permission_code, action, scop
 SELECT r.id, g.code, g.action::app."ACTION", 'ALL'::app."SCOPE"
 FROM app.roles r
 CROSS JOIN (VALUES
-  ('purchase_order','READ'),('purchase_order','CREATE'),('purchase_order','UPDATE'),('purchase_order','DELETE'),('purchase_order','EXPORT'),('purchase_order','APPROVE'),
+  ('purchase_order','READ'),('purchase_order','CREATE'),('purchase_order','UPDATE'),('purchase_order','DELETE'),('purchase_order','EXPORT'),
   ('material_receipt','READ'),('material_receipt','CREATE'),('material_receipt','UPDATE'),('material_receipt','DELETE'),('material_receipt','EXPORT'),
   ('outsource_order','READ'),('outsource_order','CREATE'),('outsource_order','UPDATE'),('outsource_order','DELETE'),
   ('inventory','READ'),('work_order','READ'),('master','READ'),('approve','READ')
@@ -132,7 +133,7 @@ SELECT r.id, g.code, g.action::app."ACTION",
        (CASE WHEN g.code IN ('work_order','inventory') THEN 'PLANT' ELSE 'ALL' END)::app."SCOPE"
 FROM app.roles r
 CROSS JOIN (VALUES
-  ('work_order','READ'),('work_order','CREATE'),('work_order','UPDATE'),('work_order','DELETE'),('work_order','EXPORT'),('work_order','APPROVE'),
+  ('work_order','READ'),('work_order','CREATE'),('work_order','UPDATE'),('work_order','DELETE'),('work_order','EXPORT'),
   ('inventory','READ'),('inventory','CREATE'),('inventory','UPDATE'),('inventory','EXPORT'),
   ('outsource_order','READ'),('outsource_order','UPDATE'),
   ('material_receipt','READ'),('purchase_order','READ'),
@@ -144,13 +145,13 @@ CROSS JOIN (VALUES
 WHERE r.rolename = 'production'
 ON CONFLICT DO NOTHING;
 
--- quality（検査記録・検査承認は work_order の UPDATE/APPROVE。work_order は拠点スコープ）
+-- quality（検査記録・検査承認は work_order の UPDATE。work_order は拠点スコープ）
 INSERT INTO app.role_permission_relation (role_id, permission_code, action, scope)
 SELECT r.id, g.code, g.action::app."ACTION",
        (CASE WHEN g.code = 'work_order' THEN 'PLANT' ELSE 'ALL' END)::app."SCOPE"
 FROM app.roles r
 CROSS JOIN (VALUES
-  ('work_order','READ'),('work_order','UPDATE'),('work_order','APPROVE'),
+  ('work_order','READ'),('work_order','UPDATE'),
   -- 注文明細（SA05）の参照。旧 work_order 権限で見えていたぶんを引き継ぐ。
   ('order_acceptance','READ'),
   ('inventory','READ'),('master','READ'),('approve','READ')
@@ -201,7 +202,7 @@ ON CONFLICT DO NOTHING;
 -- ─── 部門長ロール（member = 既存部門ロール / manager = 部門フル + 横断閲覧） ───
 
 -- sales_manager（営業部長）: 営業データ（試算/見積・価格表・受注請書・設計依頼）を
---   全件フル（R・C・U・D・E・APPROVE, scope ALL — 他者データの閲覧含む） +
+--   全件フル（R・C・U・D・E, scope ALL — 他者データの閲覧含む） +
 --   参照マスタ READ + 承認閲覧。
 DELETE FROM app.role_permission_relation
 WHERE role_id = (SELECT id FROM app.roles WHERE rolename = 'sales_manager');
@@ -211,7 +212,7 @@ FROM app.roles r
 CROSS JOIN (VALUES
   ('quote'),('price_list'),('order_acceptance'),('design_request')
 ) AS c(code)
-CROSS JOIN (VALUES ('READ'),('CREATE'),('UPDATE'),('DELETE'),('EXPORT'),('APPROVE')) AS a(action)
+CROSS JOIN (VALUES ('READ'),('CREATE'),('UPDATE'),('DELETE'),('EXPORT')) AS a(action)
 WHERE r.rolename = 'sales_manager'
 ON CONFLICT DO NOTHING;
 
@@ -221,12 +222,12 @@ FROM app.roles r CROSS JOIN (VALUES ('master'),('approve')) AS g(code)
 WHERE r.rolename = 'sales_manager'
 ON CONFLICT DO NOTHING;
 
--- purchasing_manager: 自部門フル（RCUDEA） + 全業務 READ
+-- purchasing_manager: 自部門フル（RCUDE） + 全業務 READ
 INSERT INTO app.role_permission_relation (role_id, permission_code, action, scope)
 SELECT r.id, c.code, a.action::app."ACTION", 'ALL'::app."SCOPE"
 FROM app.roles r
 CROSS JOIN (VALUES ('purchase_order'),('material_receipt'),('outsource_order')) AS c(code)
-CROSS JOIN (VALUES ('READ'),('CREATE'),('UPDATE'),('DELETE'),('EXPORT'),('APPROVE')) AS a(action)
+CROSS JOIN (VALUES ('READ'),('CREATE'),('UPDATE'),('DELETE'),('EXPORT')) AS a(action)
 WHERE r.rolename = 'purchasing_manager'
 ON CONFLICT DO NOTHING;
 
@@ -236,12 +237,12 @@ FROM app.roles r CROSS JOIN app.permissions p
 WHERE r.rolename = 'purchasing_manager' AND p.code NOT IN ('system', 'kiosk')
 ON CONFLICT DO NOTHING;
 
--- production_manager: 自部門フル（RCUDEA） + 全業務 READ
+-- production_manager: 自部門フル（RCUDE） + 全業務 READ
 INSERT INTO app.role_permission_relation (role_id, permission_code, action, scope)
 SELECT r.id, c.code, a.action::app."ACTION", 'ALL'::app."SCOPE"
 FROM app.roles r
 CROSS JOIN (VALUES ('work_order'),('inventory'),('outsource_order')) AS c(code)
-CROSS JOIN (VALUES ('READ'),('CREATE'),('UPDATE'),('DELETE'),('EXPORT'),('APPROVE')) AS a(action)
+CROSS JOIN (VALUES ('READ'),('CREATE'),('UPDATE'),('DELETE'),('EXPORT')) AS a(action)
 WHERE r.rolename = 'production_manager'
 ON CONFLICT DO NOTHING;
 
@@ -251,12 +252,12 @@ FROM app.roles r CROSS JOIN app.permissions p
 WHERE r.rolename = 'production_manager' AND p.code NOT IN ('system', 'kiosk')
 ON CONFLICT DO NOTHING;
 
--- quality_manager: 自部門フル（RCUDEA） + 全業務 READ
+-- quality_manager: 自部門フル（RCUDE） + 全業務 READ
 INSERT INTO app.role_permission_relation (role_id, permission_code, action, scope)
 SELECT r.id, c.code, a.action::app."ACTION", 'ALL'::app."SCOPE"
 FROM app.roles r
 CROSS JOIN (VALUES ('work_order')) AS c(code)
-CROSS JOIN (VALUES ('READ'),('CREATE'),('UPDATE'),('DELETE'),('EXPORT'),('APPROVE')) AS a(action)
+CROSS JOIN (VALUES ('READ'),('CREATE'),('UPDATE'),('DELETE'),('EXPORT')) AS a(action)
 WHERE r.rolename = 'quality_manager'
 ON CONFLICT DO NOTHING;
 
@@ -266,12 +267,12 @@ FROM app.roles r CROSS JOIN app.permissions p
 WHERE r.rolename = 'quality_manager' AND p.code NOT IN ('system', 'kiosk')
 ON CONFLICT DO NOTHING;
 
--- shipping_manager: 自部門フル（RCUDEA） + 全業務 READ
+-- shipping_manager: 自部門フル（RCUDE） + 全業務 READ
 INSERT INTO app.role_permission_relation (role_id, permission_code, action, scope)
 SELECT r.id, c.code, a.action::app."ACTION", 'ALL'::app."SCOPE"
 FROM app.roles r
 CROSS JOIN (VALUES ('delivery_order'),('delivery_note'),('inventory')) AS c(code)
-CROSS JOIN (VALUES ('READ'),('CREATE'),('UPDATE'),('DELETE'),('EXPORT'),('APPROVE')) AS a(action)
+CROSS JOIN (VALUES ('READ'),('CREATE'),('UPDATE'),('DELETE'),('EXPORT')) AS a(action)
 WHERE r.rolename = 'shipping_manager'
 ON CONFLICT DO NOTHING;
 
@@ -281,12 +282,12 @@ FROM app.roles r CROSS JOIN app.permissions p
 WHERE r.rolename = 'shipping_manager' AND p.code NOT IN ('system', 'kiosk')
 ON CONFLICT DO NOTHING;
 
--- accounting_manager: 自部門フル（RCUDEA） + 全業務 READ
+-- accounting_manager: 自部門フル（RCUDE） + 全業務 READ
 INSERT INTO app.role_permission_relation (role_id, permission_code, action, scope)
 SELECT r.id, c.code, a.action::app."ACTION", 'ALL'::app."SCOPE"
 FROM app.roles r
 CROSS JOIN (VALUES ('invoice'),('billing_closing')) AS c(code)
-CROSS JOIN (VALUES ('READ'),('CREATE'),('UPDATE'),('DELETE'),('EXPORT'),('APPROVE')) AS a(action)
+CROSS JOIN (VALUES ('READ'),('CREATE'),('UPDATE'),('DELETE'),('EXPORT')) AS a(action)
 WHERE r.rolename = 'accounting_manager'
 ON CONFLICT DO NOTHING;
 

@@ -68,9 +68,11 @@ export interface StepDefectRecordView {
   recordedByName: string | null;
 }
 
-/** 完了時の不良の内訳（{種別, 理由, 数}）。work_order_steps.defect_reasons 由来。 */
+/** 完了時の不良の内訳（{種別, 種類, 詳細, 数}）。work_order_steps.defect_reasons 由来。 */
 export interface StepDefectReasonView {
   type: "SEMI" | "SCRAP" | "REWORK";
+  /** 不良種類（defect_types.id）。旧データは null（reason に種類名が入る）。 */
+  defectTypeId: number | null;
   reason: string;
   count: number;
 }
@@ -87,10 +89,12 @@ export interface StepPlanView {
   startTime: string | null;
   endTime: string | null;
   quantity: number | null;
-  /** 作業場所（計画のみ・任意 — 実績は常に null）。 */
+  /** 作業場所（任意）。実績はキオスク端末の既定 or 手入力/QR 読取で入る。 */
   workLocationId: number | null;
   workLocationName: string | null;
   notes: string | null;
+  /** 実績のみ: セグメント中の同時作業工程数（実働は duration/n で按分）。 */
+  concurrentCount?: number | null;
 }
 
 export type StepActualView = StepPlanView;
@@ -107,6 +111,10 @@ export interface StepExecutionStepView {
   isApprovalStep: boolean;
   /** 数量管理モード（NONE = 記録なしパススルー / FLOW / INSPECTION）。 */
   quantityTracking: "NONE" | "FLOW" | "INSPECTION";
+  /** ロット/伝票コード入力の実効モード（上書き → カタログ既定）。 */
+  lotInputMode: "REQUIRED" | "OPTIONAL" | "NONE";
+  /** 開始時に記録したロット/伝票コード。 */
+  lotText: string | null;
   sortOrder: number;
   executionLocation: "INTERNAL" | "OUTSOURCE";
   plantName: string | null;

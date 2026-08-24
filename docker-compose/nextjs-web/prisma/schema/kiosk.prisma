@@ -67,6 +67,14 @@ model KioskDevice {
   location String?
   // 有効化時に管理者が設定（PENDING の間は null）
   plantId Int? @map("plant_id")
+  // 既定の作業場所（任意 — 端末の拠点の作業場所グループに属すること）。
+  // キオスクの工程 開始/再開 時に実績（work_order_step_actuals）へ複写される。
+  // 端末設定画面（設定コード認証）と SY09 の両方から変更できる。
+  defaultWorkLocationId Int? @map("default_work_location_id")
+  // 作業場所の制限を有効化（端末設定画面のトグル）。ON のとき、工程マスタに
+  // 許可作業場所がある工程は、この端末の既定作業場所が許可に含まれる場合のみ
+  // 開始/再開できる。既定作業場所の設定自体はトグルと無関係に可能。
+  enforceWorkLocation Boolean @default(false) @map("enforce_work_location")
   // フロアマップ上のピン（%座標。null = 未配置）
   floorMapId String?  @map("floor_map_id") @db.Uuid
   mapX       Decimal? @map("map_x") @db.Decimal(5, 2)
@@ -101,6 +109,7 @@ model KioskDevice {
   updatedAt      DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   plant     Plant?       @relation("KioskDevicePlant", fields: [plantId], references: [id])
+  defaultWorkLocation WorkLocation? @relation("KioskDeviceDefaultWorkLocation", fields: [defaultWorkLocationId], references: [id])
   floorMap    KioskFloorMap? @relation("KioskDeviceFloorMap", fields: [floorMapId], references: [id])
   activatedBy User?          @relation("KioskDeviceActivatedBy", fields: [activatedById], references: [id])
   sessions    KioskSession[] @relation("KioskSessionDevice")

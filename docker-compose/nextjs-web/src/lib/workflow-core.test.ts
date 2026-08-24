@@ -12,9 +12,29 @@ import {
   defaultOrder,
   isBlockingIssue,
   requiredCompanions,
+  stepPrerequisites,
+  stepSelectBlockers,
   type UseDep,
   validateComposition,
 } from "./workflow-core";
+
+/** カタログ行フィクスチャ（既定順 = id×10。code は実カタログの区分判定に使う）。 */
+const cat = (
+  id: number,
+  code: string,
+  sortOrder: number = id * 10,
+): CatalogStep => ({
+  id,
+  code,
+  nameJa: code,
+  category: "MACHINING",
+  executionLocation: "INTERNAL",
+  isSyncCapable: false,
+  isInspection: false,
+  isApprovalStep: false,
+  quantityTracking: "FLOW" as const,
+  sortOrder,
+});
 
 const dep = (
   stepId: number,
@@ -104,23 +124,109 @@ describe("requiredCompanions", () => {
 
 describe("defaultOrder", () => {
   it("sortOrder 順に整列", () => {
-    const catalog: CatalogStep[] = [
-      { id: 7, sortOrder: 70 },
-      { id: 1, sortOrder: 10 },
-      { id: 9, sortOrder: 90 },
-      { id: 8, sortOrder: 80 },
-    ].map((c) => ({
-      ...c,
-      code: `S${c.id}`,
-      nameJa: "",
-      category: "MACHINING",
-      executionLocation: "INTERNAL",
-      isSyncCapable: false,
-      isInspection: false,
-      isApprovalStep: false,
-      quantityTracking: "FLOW" as const,
-    }));
+    const catalog = [cat(7, "S7"), cat(1, "S1"), cat(9, "S9"), cat(8, "S8")];
     expect(defaultOrder([9, 7, 1, 8], catalog)).toEqual([1, 7, 8, 9]);
+  });
+
+  it("開始（出し・受渡し）は sort_order に依らず常に先頭", () => {
+    // 管理者が sort_order を大きくしても、開始工程は code で先頭に固定される
+    const catalog = [
+      cat(1, "MATERIAL_ISSUE", 999),
+      cat(7, "S7", 70),
+      cat(13, "S13", 130),
+    ];
+    expect(defaultOrder([13, 7, 1], catalog)).toEqual([1, 7, 13]);
+  });
+
+  it("出荷前検査は常に末尾（出荷そのものは出荷書 DO の責務 — 工程には無い）", () => {
+    const catalog = [
+      cat(1, "MATERIAL_ISSUE", 10),
+      cat(7, "S7", 70),
+      cat(40, "PRE_SHIP_INSPECTION", 6), // sort_order をいじられても末尾
+    ];
+    expect(defaultOrder([40, 7, 1], catalog)).toEqual([1, 7, 40]);
+  });
+});
+
+describe("validateComposition — 開始工程ルール", () => {
+  const catalog = [
+    cat(1, "MATERIAL_ISSUE"),
+    cat(2, "SEMI_FINISHED_ISSUE"),
+    cat(7, "S7"),
+  ];
+
+  it("開始工程が無い構成は MISSING_START（ブロック）", () => {
+    const issues = validateComposition([7], [], catalog);
+    expect(issues).toHaveLength(1);
+    expect(issues[0].kind).toBe("MISSING_START");
+    expect(issues[0].relatedStepIds.sort()).toEqual([1, 2]);
+    expect(isBlockingIssue(issues[0])).toBe(true);
+  });
+
+  it("開始工程があれば issue なし", () => {
+    expect(validateComposition([1, 7], [], catalog)).toEqual([]);
+  });
+
+  it("開始工程が複数ある構成は MULTIPLE_START（ブロック — 1 つだけ）", () => {
+    const issues = validateComposition([1, 2, 7], [], catalog);
+    expect(issues).toHaveLength(1);
+    expect(issues[0].kind).toBe("MULTIPLE_START");
+    expect(issues[0].relatedStepIds.sort()).toEqual([1, 2]);
+    expect(isBlockingIssue(issues[0])).toBe(true);
+  });
+
+  it("空選択は開始工程を要求しない", () => {
+    expect(validateComposition([], [], catalog)).toEqual([]);
+  });
+
+  it("カタログを渡さなければ従来どおり（後方互換）", () => {
+    expect(validateComposition([7], [])).toEqual([]);
+  });
+});
+
+describe("stepPrerequisites / stepSelectBlockers", () => {
+  // 既定順が前の AND = 先行前提（例: C面(11) → 全長合わせ(10)）、
+  // 後ろの AND = 随伴（例: 円筒加工(7) → 検査(8)・承認(9)）
+  const catalog = [
+    cat(1, "MATERIAL_ISSUE"),
+    cat(7, "S7"),
+    cat(8, "S8"),
+    cat(9, "S9"),
+    cat(10, "S10"),
+    cat(11, "S11"),
+    cat(18, "S18"),
+    cat(19, "S19"),
+  ];
+  const deps: UseDep[] = [
+    dep(7, 8), // 加工 → 検査（後ろ = 随伴）
+    dep(7, 9),
+    dep(8, 7), // 検査 → 加工（前 = 先行前提）
+    dep(9, 8),
+    dep(11, 10), // C面 → 全長合わせ（前 = 先行前提）
+    dep(18, 19, "AND", true), // 排他
+    dep(19, 18, "AND", true),
+  ];
+
+  it("既定順が前の AND だけを先行前提として返す", () => {
+    expect(stepPrerequisites(7, deps, catalog)).toEqual([]); // 8,9 は後ろ = 随伴
+    expect(stepPrerequisites(8, deps, catalog)).toEqual([7]);
+    expect(stepPrerequisites(11, deps, catalog)).toEqual([10]);
+  });
+
+  it("前提未充足はチェック不可（missingPrereqs）", () => {
+    const b = stepSelectBlockers(11, [1], deps, catalog);
+    expect(b.missingPrereqs).toEqual([10]);
+    expect(b.conflicts).toEqual([]);
+  });
+
+  it("前提充足でチェック可", () => {
+    const b = stepSelectBlockers(11, [1, 10], deps, catalog);
+    expect(b.missingPrereqs).toEqual([]);
+  });
+
+  it("排他相手が選択中ならチェック不可（conflicts）", () => {
+    const b = stepSelectBlockers(18, [1, 19], deps, catalog);
+    expect(b.conflicts).toEqual([19]);
   });
 });
 
@@ -136,7 +242,9 @@ import {
   danglingBranches,
   downstreamStepIds,
   type ExecDep,
+  effectiveLotInputMode,
   expectedInput,
+  firstMainlineStepId,
   isOffMainline,
   isWorkOrderComplete,
   layoutWorkflowGraph,
@@ -810,5 +918,83 @@ describe("分岐の終端（合流 or 在庫）", () => {
     const links = [branchIn];
     expect(computeFinishedQuantity(steps, links)).toBe(10);
     expect(computeBranchSemiFinishedQuantity(steps, links)).toBe(0);
+  });
+});
+
+describe("先行指示書リンク（work_order_links → ctx.incomingWoLinks）", () => {
+  const base = {
+    plannedQuantity: 10,
+    steps: [step("a", 100, 10), step("b", 200, 20)],
+    links: [],
+    execDeps: [],
+  } satisfies WorkflowCtx;
+
+  it("firstMainlineStepId は (sortOrder, id) 順の先頭", () => {
+    expect(firstMainlineStepId(base)).toBe("a");
+    expect(firstMainlineStepId({ ...base, steps: [] })).toBeNull();
+  });
+
+  it("source 未完了なら先頭工程は開始不可（後続工程はゲートしない）", () => {
+    const ctx: WorkflowCtx = {
+      ...base,
+      incomingWoLinks: [
+        { sourceWorkOrderNumber: 77, sourceStatus: "IN_PROGRESS" },
+      ],
+      incomingWoQuantity: null,
+    };
+    const check = canStartStep("a", ctx);
+    expect(check.ok).toBe(false);
+    expect(check.reasons.join()).toContain("先行指示書 #77");
+    // 後続工程には先行指示書ゲートは掛からない（通常の依存判定のみ）
+    const later = canStartStep("b", {
+      ...ctx,
+      steps: [
+        step("a", 100, 10, "COMPLETED", { outputSuccess: 8 }),
+        step("b", 200, 20),
+      ],
+    });
+    expect(later.reasons.join()).not.toContain("先行指示書");
+  });
+
+  it("source 完了で開始可・受入は受け渡し数量を優先", () => {
+    const ctx: WorkflowCtx = {
+      ...base,
+      incomingWoLinks: [
+        { sourceWorkOrderNumber: 77, sourceStatus: "COMPLETED" },
+      ],
+      incomingWoQuantity: 6,
+    };
+    expect(canStartStep("a", ctx).ok).toBe(true);
+    expect(expectedInput("a", ctx)).toBe(6);
+  });
+
+  it("source 未完了の間、先頭工程の想定受入は未確定（null）", () => {
+    const ctx: WorkflowCtx = {
+      ...base,
+      incomingWoLinks: [
+        { sourceWorkOrderNumber: 77, sourceStatus: "IN_PROGRESS" },
+      ],
+      incomingWoQuantity: null,
+    };
+    expect(expectedInput("a", ctx)).toBeNull();
+  });
+
+  it("リンク無し（省略）は従来どおり plannedQuantity", () => {
+    expect(expectedInput("a", base)).toBe(10);
+  });
+});
+
+describe("effectiveLotInputMode（上書き → カタログ既定 → NONE）", () => {
+  it("上書きが最優先", () => {
+    expect(effectiveLotInputMode("REQUIRED", "NONE")).toBe("REQUIRED");
+    expect(effectiveLotInputMode("NONE", "REQUIRED")).toBe("NONE");
+  });
+  it("上書き null はカタログ既定を継承", () => {
+    expect(effectiveLotInputMode(null, "OPTIONAL")).toBe("OPTIONAL");
+    expect(effectiveLotInputMode(undefined, "REQUIRED")).toBe("REQUIRED");
+  });
+  it("両方無ければ NONE", () => {
+    expect(effectiveLotInputMode(null, null)).toBe("NONE");
+    expect(effectiveLotInputMode(undefined, undefined)).toBe("NONE");
   });
 });

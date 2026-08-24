@@ -86,6 +86,48 @@ export function canCreateDeliveryNote(o: Pick<DeliveryOrder, "status">) {
   return o.status === "CONFIRMED" || o.status === "SHIPPED";
 }
 
+// ── 束ね可否（1 出荷書に載せられる注文明細の条件） ──────────────────────────
+
+/** 束ね可否の判定に使う注文明細の属性（注文請書ヘッダ由来）。 */
+export interface CombinableLineRef {
+  customerBpId: string | null;
+  /** 出荷先（null = 顧客へ）。 */
+  shipToBpId: string | null;
+  /** 配送方法（通常配送 / ユーザー直送）。 */
+  deliveryMethod: string;
+}
+
+/**
+ * 1 出荷書に束ねられるのは **同一顧客 × 同一出荷先 × 同一配送方法** の
+ * 注文明細だけ。顧客が違うと請求の顧客判定と納品書の宛先が壊れ、出荷先・
+ * 配送方法が違うと物理的に 1 つの荷物にならない。クライアント
+ * （グループ追加時の通知）とサーバー（作成・更新の検証）が同じ判定を使う。
+ * 違反していれば人が読むエラー文、問題なければ null。
+ */
+export function combinabilityError(
+  refs: CombinableLineRef[],
+  headerCustomerBpId?: string,
+): string | null {
+  if (refs.length === 0) return null;
+  const first = refs[0];
+  if (
+    headerCustomerBpId &&
+    refs.some((r) => r.customerBpId !== headerCustomerBpId)
+  ) {
+    return "1 つの出荷書には同じ顧客の注文明細だけを載せられます";
+  }
+  if (refs.some((r) => r.customerBpId !== first.customerBpId)) {
+    return "1 つの出荷書には同じ顧客の注文明細だけを載せられます";
+  }
+  if (refs.some((r) => (r.shipToBpId ?? null) !== (first.shipToBpId ?? null))) {
+    return "1 つの出荷書には同じ出荷先の注文明細だけを載せられます";
+  }
+  if (refs.some((r) => r.deliveryMethod !== first.deliveryMethod)) {
+    return "1 つの出荷書には同じ配送方法（通常配送 / ユーザー直送）の注文明細だけを載せられます";
+  }
+  return null;
+}
+
 // ── 出荷数量の自動割付（フォームの既定行） ──────────────────────────────────
 
 /** 割付元ロット = 注文明細に紐づく完了指示書 1 件。 */

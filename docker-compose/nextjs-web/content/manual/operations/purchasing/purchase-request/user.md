@@ -7,6 +7,8 @@ screenshots: [purchase-request-list-01, purchase-request-new-01, purchase-reques
 
 > ⚠️ このアプリはまだ準備中のため、本番の画面には出ていないことがあります。見当たらないときは、社内の担当者にご確認ください。
 
+> このアプリが属するフロー … [購買の流れ](/manual/ja/process/purchasing)
+
 ## このアプリでできること
 
 - 必要な素材を「何を・どこへ・いくつ・いつまでに」だけ書いて、購入をお願いできます。

@@ -12,11 +12,19 @@ export type StepAction =
   | "RESUME"
   | "COMPLETE"
   | "INSPECTION"
-  | "DEFECTS";
+  | "DEFECTS"
+  | "SET_LOCATION";
 
 export interface StepActionRequest {
   action: StepAction;
   inputQuantity?: number | null;
+  /** START のみ: ロット/伝票コード（工程のロット入力モードが NONE 以外）。 */
+  lotText?: string | null;
+  /**
+   * START / SET_LOCATION: 作業場所 QR（CKK:LOC:<code>）の code。
+   * START では端末の既定作業場所より優先される。
+   */
+  workLocationCode?: string;
   quantities?: {
     inputQuantity: number;
     outputSuccessQuantity: number;
@@ -24,9 +32,10 @@ export interface StepActionRequest {
     outputDefectScrap: number;
     outputDefectRework: number;
   } | null;
-  /** COMPLETE のみ: 不良の内訳（{種別, 理由, 数} のリスト）。 */
+  /** COMPLETE のみ: 不良の内訳（{種別, 種類, 詳細, 数} のリスト）。 */
   defectReasons?: {
     type: "SEMI" | "SCRAP" | "REWORK";
+    defectTypeId: number | null;
     reason: string;
     count: number;
   }[];

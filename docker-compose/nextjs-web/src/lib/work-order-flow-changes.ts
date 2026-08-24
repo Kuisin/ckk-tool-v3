@@ -5,22 +5,31 @@
  * **承認設定（MS0B）に「工程フロー変更」の段が 1 つでもあれば承認を通す**。
  * 1 段も無ければ何も保留せず即適用する（未設定 = 素通し）。
  *
- * 承認は**変更を止める**: 依頼時点では工程を一切触らず、やろうとした操作を
- * work_order_flow_changes に保留し、最終承認で初めて適用する。差し戻し・取消は
- * 適用せずに終わる。適用は承認後にサーバーで**再検証**してから走るので、
- * 承認待ちの間に前提が崩れていれば（分岐可能数が減った等）FAILED で残る
- * ——黙って古い前提のまま当てない。
+ * 適用のタイミングは承認フロー設定（approval_flows.apply_mode）で選ぶ:
+ * - PRE（既定）: 承認は**変更を止める** — 依頼時点では工程を一切触らず、
+ *   やろうとした操作を work_order_flow_changes に保留し、最終承認で初めて
+ *   適用する。差し戻し・取消は適用せずに終わる。適用は承認後にサーバーで
+ *   **再検証**してから走るので、承認待ちの間に前提が崩れていれば FAILED で
+ *   残る ——黙って古い前提のまま当てない。
+ * - POST: **即時適用 + 事後承認** — 変更をその場で適用してから承認依頼を出す
+ *   （現場を止めない運用）。差し戻されても工程は自動では戻らない — 指示書
+ *   詳細に赤アラートを出し、人が確認（acknowledge）して手で直す。
  */
 
 import "server-only";
 
-import { getApprovalFlow, startApprovalFlow } from "./approvals";
+import {
+  getApprovalApplyMode,
+  getApprovalFlow,
+  startApprovalFlow,
+} from "./approvals";
 import { getCurrentActorId, recordAudit } from "./audit";
 import { prisma } from "./db";
 import {
   describeFlowChange,
   type FlowChangeKind,
   isFlowChangeGated,
+  isPostApply,
   requiresApproval,
 } from "./flow-change-core";
 import {
@@ -37,6 +46,8 @@ export interface FlowChangeResult {
   errors?: string[];
   /** true = 承認待ちとして保留した（工程はまだ変わっていない）。 */
   pending?: boolean;
+  /** true = 即時適用した（事後承認 POST — 承認は別途進行中）。 */
+  applied?: boolean;
 }
 
 /** 保留する操作の中身（Server Action の入力そのもの）。 */
@@ -98,12 +109,49 @@ export async function submitFlowChange(input: {
     select: { id: true },
   });
 
+  // 適用モード POST = 即時適用 + 事後承認（現場を止めない運用）。
+  const postApply = isPostApply(await getApprovalApplyMode(TARGET_TYPE));
+  if (postApply) {
+    const applied = await applyPayload(workOrderId, payload);
+    if (!applied.ok) {
+      // 適用できない変更は保留も残さない — 依頼者がその場で直して出し直す。
+      await prisma.workOrderFlowChange.delete({ where: { id: row.id } });
+      return applied;
+    }
+    await prisma.workOrderFlowChange.update({
+      where: { id: row.id },
+      data: { appliedAt: new Date() },
+    });
+  }
+
   const started = await startApprovalFlow({
     targetType: TARGET_TYPE,
     targetId: row.id,
   });
   if (!started.ok) {
-    // 依頼が作れないなら保留行も残さない（承認できない幽霊を作らない）。
+    if (postApply) {
+      // 適用済みの事実は消せない — 行を APPLIED で確定し、承認が始められ
+      // なかったことをメモに残す（幽霊 PENDING を作らない）。
+      await prisma.workOrderFlowChange.update({
+        where: { id: row.id },
+        data: {
+          status: "APPLIED",
+          error: `承認依頼を開始できませんでした: ${started.error ?? "不明"}`,
+          resolvedBy: actor,
+          resolvedAt: new Date(),
+        },
+      });
+      await recordAudit({
+        action: "UPDATE",
+        tableName: "work_orders",
+        recordId: String(workOrderNumber),
+        after: {
+          note: `工程フロー変更を適用（承認依頼の開始に失敗 — ${started.error ?? "不明"}）`,
+        },
+      });
+      return { ok: true, applied: true };
+    }
+    // PRE: 依頼が作れないなら保留行も残さない（承認できない幽霊を作らない）。
     await prisma.workOrderFlowChange.delete({ where: { id: row.id } });
     return { ok: false, errors: [started.error ?? "承認依頼に失敗しました"] };
   }
@@ -113,10 +161,14 @@ export async function submitFlowChange(input: {
     tableName: "work_orders",
     recordId: String(workOrderNumber),
     after: {
-      note: `工程フロー変更を承認依頼（${describeFlowChange(payload.kind, payload)}）`,
+      note: postApply
+        ? `工程フロー変更を適用し承認依頼（${describeFlowChange(payload.kind, payload)}）`
+        : `工程フロー変更を承認依頼（${describeFlowChange(payload.kind, payload)}）`,
     },
   });
-  return { ok: true, pending: true };
+  return postApply
+    ? { ok: true, pending: true, applied: true }
+    : { ok: true, pending: true };
 }
 
 /**
@@ -136,10 +188,14 @@ export async function applyApprovedFlowChange(
   }
 
   const actor = await getCurrentActorId();
-  const result = await applyPayload(
-    row.workOrderId,
-    row.payload as unknown as FlowChangePayload,
-  );
+  // 事後承認（POST）で既に適用済みなら再適用しない — 承認は状態遷移のみ。
+  const result: FlowChangeResult =
+    row.appliedAt != null
+      ? { ok: true, applied: true }
+      : await applyPayload(
+          row.workOrderId,
+          row.payload as unknown as FlowChangePayload,
+        );
 
   await prisma.workOrderFlowChange.update({
     where: { id: row.id },
@@ -156,15 +212,21 @@ export async function applyApprovedFlowChange(
     tableName: "work_orders",
     recordId: String(row.workOrder.workOrderNumber),
     after: {
-      note: result.ok
-        ? `工程フロー変更を適用（${describeFlowChange(row.kind, row.payload)}）`
-        : `工程フロー変更の適用に失敗（${result.errors?.join(" / ")}）`,
+      note: !result.ok
+        ? `工程フロー変更の適用に失敗（${result.errors?.join(" / ")}）`
+        : row.appliedAt != null
+          ? `工程フロー変更を承認（適用済み — ${describeFlowChange(row.kind, row.payload)}）`
+          : `工程フロー変更を適用（${describeFlowChange(row.kind, row.payload)}）`,
     },
   });
   return result;
 }
 
-/** 差し戻し・取消で保留を閉じる（工程は触らない）。 */
+/**
+ * 差し戻し・取消で保留を閉じる（工程は触らない）。
+ * 事後承認（POST）で適用済みの行は applied_at を保持したまま REJECTED になる —
+ * 「差し戻されたが適用済み」の赤アラート対象（needsRejectedAppliedAlert）。
+ */
 export async function closeFlowChange(
   flowChangeId: string,
   status: "REJECTED" | "CANCELLED",
@@ -176,6 +238,26 @@ export async function closeFlowChange(
   });
 }
 
+/**
+ * 「差し戻されたが適用済み・未確認」の変更を確認済みにする（人が手で直した
+ * ことの記録）。対象外の行は何もしない。
+ */
+export async function acknowledgeFlowChange(
+  flowChangeId: string,
+): Promise<boolean> {
+  const actor = await getCurrentActorId();
+  const updated = await prisma.workOrderFlowChange.updateMany({
+    where: {
+      id: flowChangeId,
+      status: "REJECTED",
+      appliedAt: { not: null },
+      acknowledgedAt: null,
+    },
+    data: { acknowledgedAt: new Date(), acknowledgedBy: actor },
+  });
+  return updated.count === 1;
+}
+
 /** 指示書の保留中の変更（無ければ null）。 */
 export async function fetchPendingFlowChange(workOrderId: string): Promise<{
   id: string;
@@ -183,6 +265,8 @@ export async function fetchPendingFlowChange(workOrderId: string): Promise<{
   summary: string;
   requestedByName: string | null;
   requestedAt: string;
+  /** 事後承認（POST）で即時適用済みの日時（PRE は null）。 */
+  appliedAt: string | null;
 } | null> {
   const row = await prisma.workOrderFlowChange.findFirst({
     where: { workOrderId, status: "PENDING" },
@@ -196,6 +280,34 @@ export async function fetchPendingFlowChange(workOrderId: string): Promise<{
     summary: describeFlowChange(row.kind, row.payload),
     requestedByName: row.requestedByUser?.displayName ?? null,
     requestedAt: row.requestedAt.toISOString(),
+    appliedAt: row.appliedAt?.toISOString() ?? null,
+  };
+}
+
+/**
+ * 「差し戻されたが適用済み・未確認」の変更（赤アラート用。無ければ null）。
+ */
+export async function fetchRejectedAppliedFlowChange(
+  workOrderId: string,
+): Promise<{
+  id: string;
+  summary: string;
+  resolvedAt: string | null;
+} | null> {
+  const row = await prisma.workOrderFlowChange.findFirst({
+    where: {
+      workOrderId,
+      status: "REJECTED",
+      appliedAt: { not: null },
+      acknowledgedAt: null,
+    },
+    orderBy: { resolvedAt: "desc" },
+  });
+  if (!row) return null;
+  return {
+    id: row.id,
+    summary: describeFlowChange(row.kind, row.payload),
+    resolvedAt: row.resolvedAt?.toISOString() ?? null,
   };
 }
 

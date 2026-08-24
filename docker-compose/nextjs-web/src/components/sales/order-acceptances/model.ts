@@ -12,7 +12,8 @@ export type OrderAcceptanceStatus =
   | "REQUESTED"
   | "APPROVED"
   | "COMPLETED"
-  | "ARCHIVED";
+  | "ARCHIVED"
+  | "CANCELLED";
 
 export type IntakeSource = "FOLDER" | "UPLOAD" | "MANUAL";
 
@@ -133,6 +134,11 @@ export interface OrderAcceptanceView {
   /** 出荷先（顧客と異なり得る取引先。任意）。 */
   shipToBpId: string | null;
   shipToName: string | null;
+  /** 配送方法（通常配送 / ユーザー直送）。 */
+  deliveryMethod: "NORMAL" | "DIRECT_TO_USER";
+  /** エンドユーザー（最終需要家）— ユーザー直送では必須。 */
+  endUserBpId: string | null;
+  endUserName: string | null;
   /** 担当拠点（任意。id は Select 向けに文字列化）。 */
   assignedPlantId: string | null;
   assignedPlantName: string | null;

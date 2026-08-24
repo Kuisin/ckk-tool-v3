@@ -13,6 +13,18 @@
 
 import type { Page } from "@playwright/test";
 
+/**
+ * 強調（赤枠）対象。CSS セレクタ文字列 / getByRole 相当の role 指定 /
+ * getByText 相当の text 指定のいずれか。日本語ラベルのボタンは CSS では
+ * 選べないため role 指定を推奨。読み取り専用の表示（ラベル等）は text 指定。
+ * inDialog: 開いているモーダル内で解決する（確認モーダルの確定ボタンなど、
+ * 背後のページに同名ボタンがある場合に使う）。
+ */
+export type HighlightTarget =
+  | string
+  | { role: string; name?: string | RegExp; exact?: boolean; inDialog?: boolean }
+  | { text: string | RegExp; exact?: boolean };
+
 export interface Shot {
   /** PNG ファイル名（拡張子なし）。マニュアルからの参照キー。 */
   id: string;
@@ -34,6 +46,13 @@ export interface Shot {
   fullPage?: boolean;
   /** 撮影時に塗りつぶす揮発領域（時計・相対時刻など）。 */
   mask?: string[];
+  /**
+   * steps 実行後・撮影直前に赤枠で強調する要素（各対象 .first() 一致）。
+   * outline + box-shadow のみでレイアウトを動かさない（docs:verify 安全）。
+   * clip と併用する場合は対象が clip 要素の内側にあること（枠のにじみは
+   * clip 縁で切れる）。
+   */
+  highlight?: HighlightTarget[];
 }
 
 /**
@@ -591,6 +610,18 @@ export const shots: Shot[] = [
       await page.getByText("数量・不良").first().waitFor();
       await page.getByRole("button", { name: "不良を追加" }).first().click();
       await page.getByRole("combobox", { name: "種別" }).first().waitFor();
+    },
+  },
+  {
+    // 作業計画 / 作業実績パネル — 作業場所列（計画・実績とも NC-01 が入った状態）
+    id: "work-order-step-records-01",
+    docPage: "operations/production/work-order/user",
+    path: "/production/work-orders/9001/steps/dc011000-0000-4000-8000-000000000004",
+    steps: async (page) => {
+      const heading = page.getByRole("heading", { name: "作業実績" });
+      await heading.waitFor();
+      await heading.scrollIntoViewIfNeeded();
+      await page.getByText("NC旋盤 1号機").first().waitFor();
     },
   },
   {
@@ -1246,7 +1277,11 @@ export const shots: Shot[] = [
     path: "/master/materials?q=A02A0001",
     steps: async (page) => {
       await page.getByText(/^A02A0001-/).first().click();
-      await page.getByText("素材コード").first().waitFor();
+      // 「素材コード」は一覧の列見出しにもあるため遷移完了の判定に使えない
+      // （一覧のまま撮れてしまうレース）。URL（数値 id）と詳細タブで
+      // 遷移を確定させる。
+      await page.waitForURL(/\/master\/materials\/\d+/);
+      await page.getByRole("tab", { name: "概要" }).waitFor();
       // 行クリック→詳細は遷移直後に撮ると描画途中が写る（負荷時に顕著）
       await page.waitForLoadState("networkidle");
     },
@@ -1435,6 +1470,21 @@ export const shots: Shot[] = [
     },
   },
   {
+    // 許可作業場所（種別 / 個別）— 段加工は「機械」種別 + 研磨機 1号機を許可
+    // （masters-demo-seed の process_step_work_locations）
+    id: "master-process-step-locations-01",
+    docPage: "operations/masters/process-step/user",
+    path: "/master/process-steps",
+    steps: async (page) => {
+      await page.getByText("段加工", { exact: true }).first().click();
+      await page.getByRole("button", { name: "編集" }).first().click();
+      const heading = page.getByRole("heading", { name: "許可作業場所" });
+      await heading.waitFor();
+      await heading.scrollIntoViewIfNeeded();
+    },
+    highlight: [{ role: "heading", name: "許可作業場所" }],
+  },
+  {
     id: "master-inspection-template-new-01",
     docPage: "operations/masters/inspection-template/user",
     path: "/master/inspection-templates/new",
@@ -1581,6 +1631,27 @@ export const shots: Shot[] = [
       await page.getByRole("button", { name: "種別管理" }).first().click();
       await page.getByText("組み込み").first().waitFor();
     },
+  },
+  {
+    // QR ラベル印刷 — グループの「QR印刷」ボタン（行の QR アイコンでも 1 枚ずつ刷れる）
+    id: "master-work-location-qr-01",
+    docPage: "operations/masters/work-location/user",
+    path: "/master/work-locations",
+    steps: async (page) => {
+      await page.getByText("切削エリア").first().waitFor();
+    },
+    highlight: [{ role: "button", name: "QR印刷" }],
+  },
+  {
+    // 作業場所 QR ラベルの印刷シート（A4 — 機械・エリアに貼るラベル）。
+    // ids は撮影 DB では masters-demo-seed の投入順で 1..5 に固定される。
+    id: "master-work-location-qr-print-01",
+    docPage: "operations/masters/work-location/user",
+    path: "/master/work-locations/print?ids=1,2,3,4,5",
+    steps: async (page) => {
+      await page.getByText("NC旋盤 1号機").first().waitFor();
+    },
+    clip: ".wl-print-sheet",
   },
   {
     id: "master-storage-location-new-01",
@@ -1886,6 +1957,41 @@ export const shots: Shot[] = [
     },
   },
   {
+    // 作業場所パネル — 実績に記録される場所（端末既定 or QR 読み取り）。
+    // #9001 段加工は demo_shot が作業中（WORKING）なので読み取りボタンが出る。
+    id: "kiosk-step-location-01",
+    mask: ["text=/\\d+\\/\\d+\\(.\\) \\d+:\\d+/", "text=/作業 \\d+:\\d+/"],
+    docPage: "operations/kiosk/steps/user",
+    app: "kiosk",
+    path: "/login",
+    steps: async (page) => {
+      await kioskLogin(page);
+      await page.goto("/steps", { waitUntil: "networkidle" });
+      await page.getByText(/指示書 #/).first().click();
+      await page.getByText("工程一覧へ").first().waitFor();
+      await page.getByText("NC旋盤 1号機").first().waitFor();
+    },
+    highlight: [{ role: "button", name: "作業場所を読み取り" }],
+  },
+  {
+    // 端末設定画面（5タップ + 設定コード）— 既定の作業場所と「作業場所の制限」
+    // トグル。設定コードは kiosk-shot-seed の固定値 901234。
+    id: "kiosk-device-settings-01",
+    // ヘッダーの時計は実時刻由来 — 塗りつぶして決定的にする
+    mask: ["text=/\\d+\\/\\d+\\(.\\) \\d+:\\d+/"],
+    docPage: "operations/system/kiosk-device/user",
+    app: "kiosk",
+    path: "/device-settings",
+    steps: async (page) => {
+      for (const d of ["9", "0", "1", "2", "3", "4"]) {
+        await page.getByRole("button", { name: d, exact: true }).click();
+      }
+      await page.getByRole("button", { name: "確定" }).click();
+      await page.getByText("既定の作業場所").first().waitFor();
+    },
+    highlight: [{ text: "作業場所の制限", exact: true }],
+  },
+  {
     id: "kiosk-devices-link-01",
     docPage: "operations/system/kiosk-device/user",
     path: "/settings/kiosk-devices",
@@ -1900,6 +2006,26 @@ export const shots: Shot[] = [
       await page.getByRole("menuitem", { name: "端末をリンク" }).click();
       await page.getByRole("dialog").first().waitFor();
     },
+  },
+  {
+    // 端末の編集モーダル — 既定の作業場所（端末の拠点の作業場所で絞り込み）
+    id: "kiosk-devices-edit-01",
+    docPage: "operations/system/kiosk-device/user",
+    path: "/settings/kiosk-devices",
+    user: "admin",
+    steps: async (page) => {
+      // 撮影用端末（既定の作業場所 = NC旋盤 1号機 が入っている行）を開く
+      await page
+        .getByRole("row", { name: /撮影用/ })
+        .first()
+        .getByRole("button", { name: "操作" })
+        .click();
+      await page.getByRole("menuitem", { name: "編集" }).click();
+      await page.getByRole("dialog").first().waitFor();
+      await page.getByText("既定の作業場所").first().waitFor();
+    },
+    clip: ".mantine-Modal-content",
+    highlight: [{ text: "既定の作業場所", exact: true }],
   },
   {
     // 環境別の表示スイッチ（切り替えはしない — 状態を変えず一覧のまま撮る）
@@ -1937,5 +2063,372 @@ export const shots: Shot[] = [
     steps: async (page) => {
       await page.getByText("キー列").first().waitFor();
     },
+  },
+  // ── プロセス: 標準フロー（process/default-flow）───────────────────────────
+  // 一つの注文を試算 → 請求まで通しで追うページ用。既存カットの steps を流用し、
+  // その段階で押すボタン・見る欄を highlight で赤枠強調する。
+  {
+    // 下書き試算の操作メニュー — 「確定」を強調
+    id: "flow-trial-estimate-01",
+    docPage: "process/default-flow",
+    path: "/sales/trial-estimates/EST-202607-00003",
+    steps: async (page) => {
+      await page.getByRole("button", { name: "操作メニュー" }).first().click();
+      await page.getByRole("menuitem", { name: "確定" }).first().waitFor();
+    },
+    highlight: [{ role: "menuitem", name: "確定" }],
+  },
+  {
+    // 価格表の新規フォーム — 保存ボタンを強調
+    id: "flow-price-list-01",
+    docPage: "process/default-flow",
+    path: "/sales/price-lists/new",
+    steps: async (page) => {
+      await page.getByText("注文種別: 本番").first().waitFor();
+    },
+    highlight: [{ role: "button", name: "保存" }],
+  },
+  {
+    // 見積書の新規フォーム — 価格表から自動計算される単価表示を強調
+    // （単価は入力欄ではなく読み取り専用の表示 — 手入力できない設計）
+    id: "flow-quote-01",
+    docPage: "process/default-flow",
+    path: "/sales/quotes/new",
+    steps: async (page) => {
+      await page.getByRole("combobox", { name: "顧客" }).click();
+      await page.getByRole("option", { name: /デモ商事/ }).first().click();
+      await page.getByRole("combobox", { name: "製品" }).first().click();
+      await page.getByRole("option").first().click();
+      await page.getByText("合計（税込）").first().waitFor();
+    },
+    highlight: [{ text: "単価（価格表）" }],
+  },
+  {
+    // 発行モーダル — モーダル内の発行ボタンを強調
+    id: "flow-quote-issue-01",
+    docPage: "process/default-flow",
+    path: "/sales/quotes/QOT-202607-00002",
+    steps: async (page) => {
+      await page.getByRole("button", { name: "操作メニュー" }).first().click();
+      await page.getByRole("menuitem", { name: "発行" }).click();
+      await page.getByText("見積書の発行").first().waitFor();
+    },
+    highlight: [{ role: "button", name: "発行", exact: true, inDialog: true }],
+  },
+  {
+    // 承認依頼中の注文請書 — 承認操作（ActionCard）を強調
+    id: "flow-order-acceptance-01",
+    docPage: "process/default-flow",
+    path: "/sales/order-acceptances/ORD-202607-00003",
+    steps: async (page) => {
+      await page.getByText("承認依頼中").first().waitFor();
+    },
+    highlight: [{ role: "button", name: "承認", exact: true }],
+  },
+  {
+    // 確定の確認モーダル — モーダル内の「展開する」ボタンを強調
+    id: "flow-order-deploy-01",
+    docPage: "process/default-flow",
+    path: "/sales/order-acceptances/ORD-202607-00002",
+    steps: async (page) => {
+      await page.getByRole("button", { name: "確定", exact: true }).click();
+      await page.getByText("確定の確認").first().waitFor();
+    },
+    highlight: [{ role: "button", name: "展開する", inDialog: true }],
+  },
+  {
+    // 注文明細から作る指示書の新規フォーム — 保存ボタンを強調
+    id: "flow-work-order-new-01",
+    docPage: "process/default-flow",
+    path: "/production/work-orders/new?orderLine=e0000000-0000-4000-8000-000000000002",
+    steps: async (page) => {
+      await page.getByText("工程").first().waitFor();
+    },
+    highlight: [{ role: "button", name: "保存" }],
+  },
+  {
+    // 承認待ちの指示書 — 承認ボタンを強調（demo_shot は承認者）
+    id: "flow-approval-01",
+    docPage: "process/default-flow",
+    path: "/production/work-orders/9002",
+    steps: async (page) => {
+      await page.getByText("承認状況").first().waitFor();
+    },
+    highlight: [{ role: "button", name: "承認", exact: true }],
+  },
+  {
+    // 工程実行ビュー — 進行中の工程（段加工）のカードを強調
+    // （一覧は master-detail で、開始/完了ボタンは工程を開いてから出る）
+    id: "flow-steps-01",
+    docPage: "process/default-flow",
+    path: "/production/work-orders/9001/steps",
+    steps: async (page) => {
+      await page.getByText("段加工").first().waitFor();
+    },
+    highlight: ['a[href$="/steps/dc011000-0000-4000-8000-000000000004"]'],
+  },
+  {
+    // 出荷書の新規フォーム — 注文請書の選択欄を強調
+    // （注文請書を選ぶと、その出荷できる注文明細が明細に展開される）
+    id: "flow-delivery-order-01",
+    docPage: "process/default-flow",
+    path: "/shipping/delivery-orders/new",
+    steps: async (page) => {
+      await page.getByText("注文明細").first().waitFor();
+    },
+    highlight: [{ role: "combobox", name: /注文請書/ }],
+  },
+  {
+    // 確定済み出荷書の操作メニュー — 「出荷」を強調
+    id: "flow-delivery-order-ship-01",
+    docPage: "process/default-flow",
+    path: "/shipping/delivery-orders/DOR-202607-00002",
+    steps: async (page) => {
+      await page.getByRole("button", { name: "操作メニュー" }).first().click();
+      await page.getByRole("menuitem", { name: "出荷" }).first().waitFor();
+    },
+    highlight: [{ role: "menuitem", name: "出荷" }],
+  },
+  {
+    // 納品書の新規フォーム — 納品方法の選択を強調
+    // （radiogroup にアクセシブル名が無いため name なしで解決 — フォーム先頭の
+    //   radiogroup = 納品方法）
+    id: "flow-delivery-note-01",
+    docPage: "process/default-flow",
+    path: "/shipping/delivery-notes/new?deliveryOrder=DOR-202607-00002",
+    steps: async (page) => {
+      await page.getByText("納品方法").first().waitFor();
+    },
+    highlight: [{ role: "radiogroup" }],
+  },
+  {
+    // 発行の確認モーダル — モーダル内の発行ボタンを強調
+    id: "flow-delivery-note-issue-01",
+    docPage: "process/default-flow",
+    path: "/shipping/delivery-notes/DRN-202607-00002",
+    steps: async (page) => {
+      await page.getByRole("button", { name: "操作メニュー" }).first().click();
+      await page.getByRole("menuitem", { name: "発行" }).first().click();
+      await page.getByText("発行の確認").first().waitFor();
+    },
+    highlight: [{ role: "button", name: "発行", exact: true, inDialog: true }],
+  },
+  {
+    // 締日処理の一覧 — 「締日処理を実行」ボタンを強調（モーダルは開かない —
+    // 年/月の既定値が実行日由来で揮発するため）
+    id: "flow-billing-closing-01",
+    docPage: "process/default-flow",
+    path: "/billing/closings",
+    steps: async (page) => {
+      await page.getByText("デモ商事株式会社").first().waitFor();
+    },
+    highlight: [{ role: "button", name: "締日処理を実行" }],
+  },
+  {
+    // 処理済み締日の詳細 — 「請求書を生成」ボタンを強調
+    id: "flow-invoice-generate-01",
+    docPage: "process/default-flow",
+    path: "/billing/closings/dd000000-0000-4000-8000-000000000041",
+    steps: async (page) => {
+      await page.getByText("請求書を生成").first().waitFor();
+    },
+    highlight: [{ role: "button", name: "請求書を生成" }],
+  },
+  {
+    // 請求書の操作メニュー — 「送付済みにする」を強調（クリックはしない）
+    id: "flow-invoice-send-01",
+    docPage: "process/default-flow",
+    path: "/billing/invoices/INV-202606-00001",
+    steps: async (page) => {
+      await page.getByRole("button", { name: "操作メニュー" }).first().click();
+      await page.getByRole("menuitem", { name: "送付済みにする" }).first().waitFor();
+    },
+    highlight: [{ role: "menuitem", name: "送付済みにする" }],
+  },
+  // ── プロセス: 分野別ページ（process/sales〜billing）───────────────────────
+  // 各分野ページの「それぞれの段階でおきること」に 1 段階 1 枚で載せる赤枠カット。
+  {
+    // 試算の新規フォーム — 保存ボタンを強調
+    id: "flow-trial-estimate-save-01",
+    docPage: "process/sales",
+    path: "/sales/trial-estimates/new",
+    steps: async (page) => {
+      await page.getByRole("combobox", { name: "材種" }).click();
+      await page.getByRole("option", { name: /^B01A0001/ }).click();
+      await page.getByRole("combobox", { name: "直径" }).click();
+      await page.getByRole("option", { name: "φ6", exact: true }).click();
+      await page.getByRole("combobox", { name: "黒皮/研磨" }).click();
+      await page.getByRole("option", { name: "研磨", exact: true }).click();
+      await page.getByRole("textbox", { name: /^最大径/ }).fill("6");
+      await page.getByRole("textbox", { name: /^全長/ }).fill("60");
+      await page.getByText(/参照価格/).first().waitFor();
+    },
+    highlight: [{ role: "button", name: "保存" }],
+  },
+  {
+    // 価格差異が表示された注文請書 — 差異表示を強調
+    id: "flow-order-acceptance-diff-01",
+    docPage: "process/sales",
+    path: "/sales/order-acceptances/ORD-202607-00001",
+    steps: async (page) => {
+      await page.getByText("価格差異").first().waitFor();
+    },
+    highlight: [{ text: "価格差異" }],
+  },
+  {
+    // 未着手の設計依頼 — 着手ボタンを強調
+    id: "flow-design-request-01",
+    docPage: "process/sales",
+    path: "/sales/design-requests/DSG-202607-00003",
+    steps: async (page) => {
+      await page.getByRole("button", { name: "着手" }).first().waitFor();
+    },
+    highlight: [{ role: "button", name: "着手" }],
+  },
+  {
+    // 購買依頼の新規フォーム — 保存ボタンを強調
+    id: "flow-purchase-request-01",
+    docPage: "process/purchasing",
+    path: "/purchase/purchase-requests/new",
+    steps: async (page) => {
+      await page.getByRole("button", { name: "明細を追加" }).first().waitFor();
+    },
+    highlight: [{ role: "button", name: "保存" }],
+  },
+  {
+    // 承認依頼中の購買依頼 — 承認ボタンを強調
+    id: "flow-purchase-request-approve-01",
+    docPage: "process/purchasing",
+    path: "/purchase/purchase-requests/PRQ-202607-00001",
+    steps: async (page) => {
+      await page.getByText("承認依頼中").first().waitFor();
+    },
+    highlight: [{ role: "button", name: "承認", exact: true }],
+  },
+  {
+    // 承認済みの購買依頼 — 「発注書へ変換」を強調
+    id: "flow-purchase-order-create-01",
+    docPage: "process/purchasing",
+    path: "/purchase/purchase-requests/PRQ-202607-00002",
+    steps: async (page) => {
+      await page.getByText("発注書へ変換").first().waitFor();
+    },
+    highlight: [{ role: "button", name: "発注書へ変換", exact: true }],
+  },
+  {
+    // 下書きの素材発注書 — 「承認依頼」を強調
+    id: "flow-purchase-order-approve-01",
+    docPage: "process/purchasing",
+    path: "/purchase/purchase-orders/PO-202607-00003",
+    steps: async (page) => {
+      await page.getByRole("button", { name: "承認依頼" }).first().waitFor();
+    },
+    highlight: [{ role: "button", name: "承認依頼" }],
+  },
+  {
+    // 素材入荷の記録フォーム — 登録ボタンを強調
+    // 入荷日の既定値は実行日由来 — 揮発領域なので mask で塗りつぶす
+    id: "flow-material-receipt-01",
+    docPage: "process/purchasing",
+    path: "/purchase/material-receipts/new",
+    steps: async (page) => {
+      await page.getByText("証憑（任意）").first().waitFor();
+    },
+    highlight: [{ role: "button", name: "登録", exact: true }],
+    mask: ["text=/\\d{4}\\/\\d{2}\\/\\d{2}/"],
+  },
+  {
+    // 外注依頼の一覧 — 外注先の行を強調
+    id: "flow-outsource-order-01",
+    docPage: "process/purchasing",
+    path: "/purchase/outsource-orders",
+    steps: async (page) => {
+      await page.getByText("デモ研磨工業").first().waitFor();
+    },
+    highlight: [{ text: "デモ研磨工業" }],
+  },
+  {
+    // 在庫管理（製品タブ）— 利用可能列を強調
+    id: "flow-inventory-products-01",
+    docPage: "process/production",
+    path: "/production/inventory",
+    steps: async (page) => {
+      await page.getByText("超硬エンドミル").first().waitFor();
+    },
+    highlight: [{ text: "利用可能" }],
+  },
+  {
+    // 在庫管理（素材タブ）— 利用可能列を強調
+    id: "flow-inventory-materials-01",
+    docPage: "process/production",
+    path: "/production/inventory?tab=materials",
+    steps: async (page) => {
+      await page.getByText("B01A0001").first().waitFor();
+    },
+    highlight: [{ role: "columnheader", name: "利用可能" }],
+  },
+  {
+    // 工程の数量・不良入力 — 完了ボタンを強調
+    id: "flow-step-complete-01",
+    docPage: "process/production",
+    path: "/production/work-orders/9001/steps/dc011000-0000-4000-8000-000000000004",
+    steps: async (page) => {
+      await page.getByText("数量・不良").first().waitFor();
+    },
+    highlight: [{ role: "button", name: /完了/ }],
+  },
+  {
+    // 製品在庫の取引履歴 — 入庫行を強調
+    id: "flow-inventory-in-01",
+    docPage: "process/production",
+    path: "/production/inventory/products/dc050000-0000-4000-8000-000000000001?tab=transactions",
+    steps: async (page) => {
+      await page.getByText("取引履歴").first().waitFor();
+    },
+    highlight: [{ text: "入庫" }],
+  },
+  {
+    // 出荷書の確定モーダル — モーダル内の確定ボタンを強調
+    id: "flow-delivery-order-confirm-01",
+    docPage: "process/shipping",
+    path: "/shipping/delivery-orders/DOR-202607-00003",
+    steps: async (page) => {
+      await page.getByRole("button", { name: "操作メニュー" }).first().click();
+      await page.getByRole("menuitem", { name: "確定" }).first().click();
+      await page.getByText("確定の確認").first().waitFor();
+    },
+    highlight: [{ role: "button", name: "確定", exact: true, inDialog: true }],
+  },
+  {
+    // 発行済み納品書の操作メニュー — 「納品済みにする」を強調
+    id: "flow-delivery-note-delivered-01",
+    docPage: "process/shipping",
+    path: "/shipping/delivery-notes/DRN-202607-00001",
+    steps: async (page) => {
+      await page.getByRole("button", { name: "操作メニュー" }).first().click();
+      await page.getByRole("menuitem", { name: /納品済/ }).first().waitFor();
+    },
+    highlight: [{ role: "menuitem", name: /納品済/ }],
+  },
+  {
+    // 請求書の明細と金額 — 合計を強調
+    id: "flow-invoice-check-01",
+    docPage: "process/billing",
+    path: "/billing/invoices/INV-202606-00001",
+    steps: async (page) => {
+      await page.getByText("DOR-202606-00001").first().waitFor();
+    },
+    highlight: [{ text: /合計/ }],
+  },
+  {
+    // 請求書の操作メニュー — 「弥生会計CSV」を強調
+    id: "flow-invoice-csv-01",
+    docPage: "process/billing",
+    path: "/billing/invoices/INV-202606-00001",
+    steps: async (page) => {
+      await page.getByRole("button", { name: "操作メニュー" }).first().click();
+      await page.getByRole("menuitem", { name: "弥生会計CSV" }).first().waitFor();
+    },
+    highlight: [{ role: "menuitem", name: "弥生会計CSV" }],
   },
 ];

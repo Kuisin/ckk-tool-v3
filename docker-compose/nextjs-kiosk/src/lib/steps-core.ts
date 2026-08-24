@@ -70,12 +70,16 @@ export function availableActions(
 export interface WorkSession {
   startedAt: Date | null;
   endedAt: Date | null;
+  /** セグメント中の同時作業工程数（同時実行の按分。未指定/0 以下は 1 扱い）。 */
+  concurrentCount?: number | null;
 }
 
 /**
  * 累計作業時間 (ms)。open な行（endedAt = null）は now まで数える。
  * 一時停止のたびに 1 行閉じ、再開のたびに 1 行開くので、休憩を挟んだ
- * 実作業時間の合計になる。
+ * 実作業時間の合計になる。同時実行中のセグメントは
+ * duration / concurrent_count で按分する（nextjs-web
+ * lib/step-work-hours.ts と同じ規則）。
  */
 export function accumulatedWorkMs(
   sessions: readonly WorkSession[],
@@ -86,7 +90,7 @@ export function accumulatedWorkMs(
     if (!s.startedAt) continue;
     const end = s.endedAt ?? now;
     const ms = end.getTime() - s.startedAt.getTime();
-    if (ms > 0) total += ms;
+    if (ms > 0) total += ms / Math.max(1, s.concurrentCount ?? 1);
   }
   return total;
 }
@@ -217,12 +221,12 @@ export function isDefectEntryComplete(entry: DefectEntry): boolean {
   return entry.defectTypeId != null && entry.description.trim().length > 0;
 }
 
-// ── 不良の内訳（完了フォーム — {種別, 理由, 数} の 1 本のリスト） ────────────
+// ── 不良の内訳（完了フォーム — {種別, 種類, 詳細, 数} の 1 本のリスト） ──────
 //
-// 作業者は不良を 1 行ずつ足す。各行に **種別（在庫区分）** と理由・数を持ち、
-// 区分ごとの合計（半製品/廃棄/工程分岐）はこのリストの合計として導出する
-// （旧: 区分ごとの数値入力 + 別の理由リスト、を 1 本化）。在庫連携は区分合計を
-// そのまま使うので不変。良品 = 受入 − 総不良（全行の合計）。
+// 作業者は不良を 1 行ずつ足す。各行に **種別（在庫区分）** と不良種類
+// （defect_types FK・必須）・詳細（必須）・数を持ち、区分ごとの合計
+// （半製品/廃棄/工程分岐）はこのリストの合計として導出する。在庫連携は
+// 区分合計をそのまま使うので不変。良品 = 受入 − 総不良（全行の合計）。
 
 /** 不良の在庫区分（在庫連携の権威。列 output_defect_* に対応）。 */
 export type DefectDisposition = "SEMI" | "SCRAP" | "REWORK";
@@ -235,14 +239,16 @@ export const DEFECT_DISPOSITIONS: DefectDisposition[] = [
 export interface DefectReasonEntry {
   /** 種別（半製品/廃棄/工程分岐）。 */
   type: DefectDisposition;
-  /** 理由（不良種類名など・任意）。 */
+  /** 不良種類（defect_types.id・必須）。旧データのみ null。 */
+  defectTypeId: number | null;
+  /** 詳細（必須テキスト）。旧データは不良種類名が入っていることがある。 */
   reason: string;
   /** 本数。 */
   count: number;
 }
 
-/** 行が有効か（種別が正当・数が 1 以上）。理由は任意。 */
-export function isReasonEntryComplete(e: DefectReasonEntry): boolean {
+/** 行が集計対象か（種別が正当・数が 1 以上）。入力途中でも数は数える。 */
+export function isReasonEntryCountable(e: DefectReasonEntry): boolean {
   return (
     DEFECT_DISPOSITIONS.includes(e.type) &&
     Number.isFinite(e.count) &&
@@ -250,7 +256,18 @@ export function isReasonEntryComplete(e: DefectReasonEntry): boolean {
   );
 }
 
-/** 区分ごとの合計（在庫列にそのまま入る）。無効行は無視。 */
+/** 行が保存可能か（集計対象 + 不良種類 FK + 詳細あり）。 */
+export function isReasonEntryComplete(e: DefectReasonEntry): boolean {
+  return (
+    isReasonEntryCountable(e) &&
+    e.defectTypeId != null &&
+    Number.isInteger(e.defectTypeId) &&
+    e.defectTypeId > 0 &&
+    e.reason.trim() !== ""
+  );
+}
+
+/** 区分ごとの合計（在庫列にそのまま入る）。集計対象外の行は無視。 */
 export function dispositionTotals(entries: readonly DefectReasonEntry[]): {
   semi: number;
   scrap: number;
@@ -260,7 +277,7 @@ export function dispositionTotals(entries: readonly DefectReasonEntry[]): {
   let scrap = 0;
   let rework = 0;
   for (const e of entries) {
-    if (!isReasonEntryComplete(e)) continue;
+    if (!isReasonEntryCountable(e)) continue;
     if (e.type === "SEMI") semi += e.count;
     else if (e.type === "SCRAP") scrap += e.count;
     else rework += e.count;
@@ -301,18 +318,23 @@ export function quantitiesFromList(
 export function cleanReasonEntries(
   entries: readonly DefectReasonEntry[],
 ): DefectReasonEntry[] {
-  return entries
-    .filter(isReasonEntryComplete)
-    .map((e) => ({ type: e.type, reason: e.reason.trim(), count: e.count }));
+  return entries.filter(isReasonEntryCountable).map((e) => ({
+    type: e.type,
+    defectTypeId: e.defectTypeId,
+    reason: e.reason.trim(),
+    count: e.count,
+  }));
 }
 
 export type ConservationIssue =
   | { kind: "NEGATIVE" }
-  | { kind: "OVER_INPUT"; sum: number; input: number };
+  | { kind: "OVER_INPUT"; sum: number; input: number }
+  | { kind: "INCOMPLETE" };
 
 /**
  * 完了フォームの数量検証（良品は導出値なので保存則の一致は常に成立）。
- * 残る不正は「負の値」と「不良の合計が受入数を超える（良品が負になる）」のみ。
+ * 不正は「負の値」「不良の合計が受入数を超える（良品が負になる）」
+ * 「不良種類・詳細の未入力（必須）」。
  * 文言を持たずコードだけ返すので、i18n はコンポーネント側で行う。権威は
  * サーバー側 validateQuantities — こちらは即時フィードバック用。
  */
@@ -327,5 +349,9 @@ export function checkDefectList(
   const sum = defectListTotal(entries);
   if (sum > inputQuantity)
     return { kind: "OVER_INPUT", sum, input: inputQuantity };
+  if (
+    entries.some((e) => isReasonEntryCountable(e) && !isReasonEntryComplete(e))
+  )
+    return { kind: "INCOMPLETE" };
   return null;
 }

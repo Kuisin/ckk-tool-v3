@@ -18,7 +18,9 @@ export default async function MasterWorkLocationsPage() {
       include: {
         plant: { select: { name: true } },
         locations: {
-          include: { _count: { select: { stepPlans: true } } },
+          include: {
+            _count: { select: { stepPlans: true, stepActuals: true } },
+          },
           orderBy: [{ sortOrder: "asc" }, { id: "asc" }],
         },
       },
@@ -59,6 +61,7 @@ export default async function MasterWorkLocationsPage() {
           isActive: l.isActive,
           notes: l.notes ?? "",
           planCount: l._count.stepPlans,
+          actualCount: l._count.stepActuals,
         };
       }),
     };

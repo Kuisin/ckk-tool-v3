@@ -15,6 +15,7 @@
 
 import { prisma } from "./db";
 import {
+  deviceName,
   formatTime,
   jstDateOnly,
   jstDateString,
@@ -22,6 +23,7 @@ import {
   localized,
 } from "./format";
 import type { Locale } from "./i18n";
+import { allowedWorkLocationIdsForStep } from "./step-execution";
 import {
   accumulatedWorkMs,
   bucketOf,
@@ -32,7 +34,9 @@ import {
 } from "./steps-core";
 import {
   canStartStep,
+  effectiveLotInputMode,
   expectedInput,
+  type LotInputMode,
   type QuantityTrackingMode,
   type StepLinkState,
   type StepState,
@@ -71,10 +75,21 @@ export interface MyStepView {
   defectRework: number | null;
   /** 予定作業時間 (h) — 任意。 */
   plannedWorkHours: number | null;
+  /** ロット/伝票コード入力の実効モード（上書き → カタログ既定）。 */
+  lotInputMode: LotInputMode;
+  /** 開始時に記録したロット/伝票コード。 */
+  lotText: string | null;
   /** 計画に割り当てられた作業場所名（任意）。 */
   workLocationName: string | null;
-  /** 自分の累計作業時間 (ms) */
+  /**
+   * 実績（自分の最新セッション行）に記録された作業場所名。
+   * 端末の既定 or 作業場所 QR の読み取りで入る（未記録は null）。
+   */
+  actualWorkLocationName: string | null;
+  /** 自分の累計作業時間 (ms) — 同時実行セグメントは按分済み。 */
   workedMs: number;
+  /** 自分の open セグメントの同時作業数（作業中でなければ 1）。 */
+  openConcurrentCount: number;
   /** OTHER のときの作業者名 */
   lockedByName: string | null;
 }
@@ -85,45 +100,6 @@ export interface MyStepsResult {
   upcomingCount: number;
   /** 最近（既定 14 日）完了した自分の工程（既定は非表示・ボタンで開く）。 */
   completedSteps: MyStepView[];
-  /** 自分が現在作業中（ロック保持）の工程 id。同時作業は 1 工程まで。 */
-  activeStepId: string | null;
-}
-
-/** 作業中の別工程（実行画面のロック表示・誘導用）。 */
-export interface MyActiveStep {
-  stepId: string;
-  stepName: string;
-  workOrderNumber: number;
-}
-
-/**
- * 自分が現在作業中（ロック保持）の工程を返す（excludeStepId 以外）。
- * 開始/再開ボタンのロック表示に使う — サーバー側の権威は
- * step-execution.findMyActiveStep（開始・再開時に同条件で拒否）。
- */
-export async function getMyActiveStep(
-  userId: string,
-  excludeStepId: string,
-  locale: Locale,
-): Promise<MyActiveStep | null> {
-  const active = await prisma.workOrderStep.findFirst({
-    where: {
-      sessionLockedBy: userId,
-      status: "IN_PROGRESS",
-      id: { not: excludeStepId },
-    },
-    select: {
-      id: true,
-      processStep: { select: { name: true } },
-      workOrder: { select: { workOrderNumber: true } },
-    },
-  });
-  if (!active) return null;
-  return {
-    stepId: active.id,
-    stepName: localized(asText(active.processStep.name), locale),
-    workOrderNumber: active.workOrder.workOrderNumber,
-  };
 }
 
 /** 完了工程を出す遡り期間（ミリ秒）。 */
@@ -247,7 +223,12 @@ async function hydrateSteps(
     where: { id: { in: stepIds } },
     include: {
       processStep: {
-        select: { code: true, name: true, quantityTracking: true },
+        select: {
+          code: true,
+          name: true,
+          quantityTracking: true,
+          lotInputMode: true,
+        },
       },
       plant: { select: { name: true } },
       workOrder: {
@@ -260,7 +241,13 @@ async function hydrateSteps(
       },
       actuals: {
         where: { userId },
-        select: { startedAt: true, endedAt: true },
+        select: {
+          startedAt: true,
+          endedAt: true,
+          concurrentCount: true,
+          workLocation: { select: { name: true } },
+        },
+        orderBy: { startedAt: "asc" },
       },
     },
   });
@@ -325,10 +312,25 @@ async function hydrateSteps(
       defectRework: r.outputDefectRework,
       plannedWorkHours:
         r.plannedWorkHours == null ? null : Number(r.plannedWorkHours),
+      lotInputMode: effectiveLotInputMode(
+        r.lotInputMode,
+        r.processStep.lotInputMode,
+      ),
+      lotText: r.lotText,
       workLocationName: plan?.workLocation
         ? localized(asText(plan.workLocation.name), locale)
         : null,
+      actualWorkLocationName: (() => {
+        const last = r.actuals.at(-1);
+        return last?.workLocation
+          ? localized(asText(last.workLocation.name), locale)
+          : null;
+      })(),
       workedMs: accumulatedWorkMs(r.actuals, now),
+      openConcurrentCount: Math.max(
+        1,
+        r.actuals.find((a) => a.endedAt == null)?.concurrentCount ?? 1,
+      ),
       lockedByName:
         state === "OTHER" && r.sessionLockedBy
           ? (lockOwners.get(r.sessionLockedBy) ?? null)
@@ -454,7 +456,6 @@ export async function listMySteps(
     steps,
     upcomingCount,
     completedSteps,
-    activeStepId: held[0]?.id ?? null,
   };
 }
 
@@ -621,5 +622,100 @@ export async function getWorkOrderOverview(
       : null,
     plannedQuantity: wo.plannedQuantity,
     steps: items,
+  };
+}
+
+// ── 作業場所ゲート（工程マスタの許可作業場所 × 端末） ────────────────────────
+
+export interface StepLocationGate {
+  /** 工程マスタに許可作業場所リンクがある（= 制限あり）。 */
+  restricted: boolean;
+  /** この端末の「作業場所の制限」トグルが ON。 */
+  enforced: boolean;
+  /** この端末の既定作業場所が許可に含まれる（制限なしなら常に true）。 */
+  deviceAllowed: boolean;
+  deviceDefaultLabel: string | null;
+  /** 許可作業場所（ラベル + そこを既定にしている稼働端末名）。制限ありのみ。 */
+  allowed: { label: string; deviceNames: string[] }[];
+}
+
+/**
+ * 工程実行画面のサーバー側ゲート情報。実行可否の権威はあくまで
+ * API 側（route.ts の DEVICE_LOCATION_BLOCKED）— これは表示用。
+ * enforced && restricted && !deviceAllowed のとき UI は開始/再開を隠し、
+ * 「どこ（どの端末）でなら実行できるか」を allowed で示す。
+ */
+export async function getStepLocationGate(
+  stepId: string,
+  deviceId: string,
+  locale: Locale,
+): Promise<StepLocationGate> {
+  const [stepRow, deviceRow] = await Promise.all([
+    prisma.workOrderStep.findUnique({
+      where: { id: stepId },
+      select: { processStepId: true },
+    }),
+    prisma.kioskDevice.findUnique({
+      where: { id: deviceId },
+      select: {
+        enforceWorkLocation: true,
+        defaultWorkLocationId: true,
+        defaultWorkLocation: {
+          select: { name: true, group: { select: { name: true } } },
+        },
+      },
+    }),
+  ]);
+  const label = (l: { name: unknown; group: { name: unknown } }): string =>
+    `${localized(asText(l.group.name), locale)} / ${localized(asText(l.name), locale)}`;
+  const deviceDefaultLabel = deviceRow?.defaultWorkLocation
+    ? label(deviceRow.defaultWorkLocation)
+    : null;
+  const enforced = deviceRow?.enforceWorkLocation ?? false;
+
+  const allowedIds = stepRow
+    ? await allowedWorkLocationIdsForStep(stepRow.processStepId)
+    : null;
+  if (allowedIds == null) {
+    return {
+      restricted: false,
+      enforced,
+      deviceAllowed: true,
+      deviceDefaultLabel,
+      allowed: [],
+    };
+  }
+
+  const ids = [...allowedIds];
+  const [locations, devices] = await Promise.all([
+    prisma.workLocation.findMany({
+      where: { id: { in: ids }, isActive: true },
+      include: { group: { select: { name: true } } },
+      orderBy: [{ groupId: "asc" }, { sortOrder: "asc" }, { id: "asc" }],
+    }),
+    prisma.kioskDevice.findMany({
+      where: { status: "ACTIVE", defaultWorkLocationId: { in: ids } },
+      select: { name: true, defaultWorkLocationId: true },
+    }),
+  ]);
+  const devicesByLocation = new Map<number, string[]>();
+  for (const d of devices) {
+    if (d.defaultWorkLocationId == null) continue;
+    const names = devicesByLocation.get(d.defaultWorkLocationId) ?? [];
+    const n = deviceName(d.name);
+    if (n) names.push(n);
+    devicesByLocation.set(d.defaultWorkLocationId, names);
+  }
+  return {
+    restricted: true,
+    enforced,
+    deviceAllowed:
+      deviceRow?.defaultWorkLocationId != null &&
+      allowedIds.has(deviceRow.defaultWorkLocationId),
+    deviceDefaultLabel,
+    allowed: locations.map((l) => ({
+      label: label(l),
+      deviceNames: devicesByLocation.get(l.id) ?? [],
+    })),
   };
 }

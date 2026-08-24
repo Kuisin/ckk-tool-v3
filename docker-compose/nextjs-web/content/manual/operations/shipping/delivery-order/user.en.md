@@ -49,18 +49,18 @@ When you open the app, you see a list of the shipping orders made so far.
 
 1. Press 「**新規作成**」 (New) at the top right of the list screen.
 2. Click the 「**注文請書**」 (Order acceptance) box and pick the order acceptance you want to ship. Inside this box you search by the **customer name, product name, or the customer's order number**.
-3. For every shippable order line of that acceptance, **the not-yet-shipped quantity is filled in for you**, allocated to the finished work orders (lots) in number order — never more than what is still needed.
+3. For every shippable order line of that acceptance, **the not-yet-shipped quantity is filled in for you**. The source of the quantity is the **finished output of the connected work orders** (the pieces made for that line), allocated to the lots in number order within the physical stock — never more than what is still needed.
 4. In 「**種別**」 (Type), choose 「**発送**」 (Dispatch) or 「**在庫保管**」 (Keep in stock). Normally you leave it as 「発送」.
 5. In 「**出荷元拠点**」 (Shipping site), choose where you are sending from.
-6. Change the 「**数量**」 (Quantity) on each line to the number of pieces you are really sending.
-7. To add a row, press 「**明細を追加**」 (Add line). To remove a row, press the trash-can mark at the right of the row.
-8. Press 「**保存**」 (Save).
+6. Change the 「**数量**」 (Quantity) on each line to the number of pieces you are really sending. **You cannot enter more than the order remainder (ordered − shipped)** — a red warning appears and saving is blocked.
+7. To add a row, press 「**行を追加**」 (Add row). To remove a row, press the trash-can mark at the right of the row.
+8. Press 「**保存**」 (Save). If the shipment falls short of the order remainder, or the finished pieces do not cover it, a **「一部出荷の確認」 (partial shipment confirmation)** dialog appears — check it and press 「**一部出荷として保存**」 (save as partial shipment) to save (the rest can go on a later shipping order).
 
 ![New shipping order form](../../../assets/screenshots/delivery-order-new-01.png)
 
 After you save, it is registered as a 「**下書き**」 (Draft) and the detail screen opens.
 
-> 💡 When you pick an order acceptance, each order line group shows its contents (number, product, ordered pieces, number of finished work orders). Please check that it is correct before going on.
+> 💡 When you pick an order acceptance, each order line group shows its contents (number, product, **ordered pieces, shipped pieces, finished pieces with the number of completed work orders**). "Finished" is the share of the connected work orders' output allocated to this line. Please check that it is correct before going on.
 
 > ⚠️ The order line cannot be changed after you save. If you picked the wrong one, cancel that shipping order and make a new one.
 
@@ -137,7 +137,9 @@ Every field on the shipping order screen. The **?** next to a field in the app l
 
 ### Order acceptance [#field-order-line]
 
-Which order this shipment is for, picked as an order acceptance. Choosing it fills in the shippable lines of that acceptance for you.
+Which order this shipment is for, picked as an order acceptance. Choosing it fills in the shippable lines of that acceptance for you. The quantities come from the **finished output of the connected work orders**, within the physical stock and the order remainder.
+
+Multiple order acceptances can be combined into one delivery order only when they share **the same customer, the same ship-to and the same delivery method (normal / direct to user)**. Trying to add one that differs shows the reason on the spot.
 
 ### Type [#field-type]
 
@@ -164,18 +166,18 @@ Which production run (lot) it comes from. **The lot number is the same as the wo
 
 ### Quantity [#field-quantity]
 
-How many pieces go out. It cannot exceed the lot's stock. To ship in parts, create separate shipping orders.
+How many pieces go out. It cannot exceed the lot's stock, nor the **order remainder (ordered − shipped)**. Saving with less than the order remainder brings up the partial-shipment confirmation. To ship in parts, create separate shipping orders.
 
 ## Questions and problems
 
 **Q. In the 「注文明細」 box on the new shipping order screen, I search but the order line I want to ship does not appear.**
 A. In this box, type the **customer name, product name, or the customer's order number**. Here you cannot find it by the order line number starting with `ORD-` (this is a different box from the search box at the top of the list screen, where order line numbers do work). If it still does not appear, that order line may already be shipped or cancelled.
 
-**Q. I picked a order line, but only one line was filled in.**
-A. When there are no finished work orders yet, only one empty row is added. Either make the shipping order again after the products are finished, or type the number of pieces yourself.
+**Q. I picked an order acceptance, but hardly any quantities were filled in.**
+A. Quantities are filled from the connected work orders' finished output (within physical stock), so a line with no completed work order yet gets a single row with only the quantity (you can tell by 「完成 0」 in the group header). Either make the shipping order again after the products are finished, or pick the lot yourself. Lines already shipped up to the ordered quantity are skipped.
 
-**Q. I get 「ORD-202608-00012-01 の受注数量 50 を超える出荷になります（累計 60）」 (This ships more than the ordered quantity of 50; total 60) and cannot ship.**
-A. You are trying to send more pieces than were ordered on the same order line. Lower the quantity on this shipping order, or check what has already been shipped.
+**Q. I get 「受注数を超えています」 (exceeds the ordered quantity) and cannot save.**
+A. You are trying to send more pieces than were ordered on the same order line (the group header shows a red 「受注残 N を超えています」). Lower the quantity on this shipping order, or check what has already been shipped.
 
 **Q. I get 「在庫が不足」 (Not enough stock) and cannot ship.**
 A. The site you are sending from does not have enough stock for the pieces you want to send. Check the numbers in [product stock](/manual/en/operations/production/product-inventory/user) and try again.

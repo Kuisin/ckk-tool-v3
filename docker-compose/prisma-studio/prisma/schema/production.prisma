@@ -128,7 +128,6 @@ model WorkOrder {
   steps               WorkOrderStep[]
   stepLinks           WorkOrderStepLink[]
   flowChanges         WorkOrderFlowChange[]
-  inspectionTemplates WorkOrderInspectionTemplate[]
   deliveryOrders      DeliveryOrder[]
   reservations        InventoryReservation[]
 
@@ -201,16 +200,18 @@ model WorkOrderFlowChange {
   @@schema("app")
 }
 
-// 指示書に紐付く検査表テンプレート（複数可）
-model WorkOrderInspectionTemplate {
-  workOrderId          String @map("work_order_id") @db.Uuid
+// 検査工程ステップに紐付く検査表テンプレート（複数可）。
+// 旧: 指示書単位（work_order_inspection_templates）— 検査工程が複数ある
+// 指示書でどの検査表がどの工程のものか曖昧だったため、工程単位へ移行した。
+model WorkOrderStepInspectionTemplate {
+  stepId               String @map("work_order_step_id") @db.Uuid
   inspectionTemplateId Int    @map("inspection_template_id")
 
-  workOrder          WorkOrder          @relation(fields: [workOrderId], references: [id], onDelete: Cascade)
+  step               WorkOrderStep      @relation(fields: [stepId], references: [id], onDelete: Cascade)
   inspectionTemplate InspectionTemplate @relation(fields: [inspectionTemplateId], references: [id])
 
-  @@id([workOrderId, inspectionTemplateId])
-  @@map("work_order_inspection_templates")
+  @@id([stepId, inspectionTemplateId])
+  @@map("work_order_step_inspection_templates")
   @@schema("app")
 }
 
@@ -270,10 +271,11 @@ model WorkOrderStep {
   outgoingLinks WorkOrderStepLink[] @relation("LinkSource")
   incomingLinks WorkOrderStepLink[] @relation("LinkTarget")
 
-  inspectionRecords InspectionRecord[]
-  defectRecords     DefectRecord[]
-  plans             WorkOrderStepPlan[]
-  actuals           WorkOrderStepActual[]
+  inspectionRecords   InspectionRecord[]
+  defectRecords       DefectRecord[]
+  plans               WorkOrderStepPlan[]
+  actuals             WorkOrderStepActual[]
+  inspectionTemplates WorkOrderStepInspectionTemplate[]
 
   @@index([workOrderId, sortOrder])
   @@index([status])
@@ -316,6 +318,7 @@ model WorkOrderStepActual {
   startedAt  DateTime? @map("started_at") @db.Timestamptz(6)
   endedAt    DateTime? @map("ended_at") @db.Timestamptz(6)
   quantity   Int? // 実施数量（任意）
+  workLocationId Int? @map("work_location_id") // 作業場所（任意。キオスクは端末の既定作業場所を書き込む）
   notes      String?
   createdBy  String?   @map("created_by") @db.Uuid
   createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
@@ -323,6 +326,7 @@ model WorkOrderStepActual {
   step          WorkOrderStep @relation(fields: [stepId], references: [id], onDelete: Cascade)
   user          User          @relation("StepActualUser", fields: [userId], references: [id])
   createdByUser User?         @relation("StepActualCreatedBy", fields: [createdBy], references: [id])
+  workLocation  WorkLocation? @relation("StepActualWorkLocation", fields: [workLocationId], references: [id])
 
   @@index([stepId, workedDate])
   @@index([userId, workedDate])

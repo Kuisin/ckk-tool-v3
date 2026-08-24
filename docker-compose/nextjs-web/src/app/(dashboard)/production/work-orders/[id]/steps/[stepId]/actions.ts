@@ -19,6 +19,7 @@ import {
   itemSpecFromRow,
   resolveItemPass,
 } from "@/lib/inspection-core";
+import { fetchAllowedWorkLocationIds } from "@/lib/work-locations";
 import { submitFlowChange } from "@/lib/work-order-flow-changes";
 import {
   abortStepExecution,
@@ -66,17 +67,71 @@ async function findStep(workOrderNumber: number, stepId: string) {
 export async function startStep(
   workOrderNumber: number,
   stepId: string,
+  lotText?: string | null,
 ): Promise<StepActionResult> {
   const denied = await deniedStepPermission("UPDATE");
   if (denied) return denied;
+  const parsedLot = z
+    .string()
+    .trim()
+    .max(100)
+    .nullable()
+    .optional()
+    .safeParse(lotText);
+  if (!parsedLot.success) {
+    return { ok: false, errors: ["ロット/伝票コードの入力が不正です"] };
+  }
   try {
     const step = await findStep(workOrderNumber, stepId);
     if (!step) return { ok: false, errors: ["工程が見つかりません"] };
-    const result = await startStepExecution(stepId);
+    const result = await startStepExecution(stepId, parsedLot.data ?? null);
     if (result.ok) revalidate(workOrderNumber, stepId);
     return result;
   } catch (e) {
     return failed(e, "工程の開始に失敗しました");
+  }
+}
+
+/** 進行中のロット/伝票コード修正（ロック保持者のみ。空文字は削除）。 */
+export async function updateStepLot(
+  workOrderNumber: number,
+  stepId: string,
+  lotText: string,
+): Promise<StepActionResult> {
+  const denied = await deniedStepPermission("UPDATE");
+  if (denied) return denied;
+  const parsedLot = z.string().trim().max(100).safeParse(lotText);
+  if (!parsedLot.success) {
+    return { ok: false, errors: ["ロット/伝票コードの入力が不正です"] };
+  }
+  try {
+    const step = await findStep(workOrderNumber, stepId);
+    if (!step) return { ok: false, errors: ["工程が見つかりません"] };
+    const actor = await getCurrentActorId();
+    const updated = await prisma.workOrderStep.updateMany({
+      where: {
+        id: stepId,
+        status: "IN_PROGRESS",
+        OR: [{ sessionLockedBy: null }, { sessionLockedBy: actor }],
+      },
+      data: { lotText: parsedLot.data || null },
+    });
+    if (updated.count !== 1) {
+      return {
+        ok: false,
+        errors: ["進行中の工程でないか、別のユーザーが作業中です"],
+      };
+    }
+    await recordAudit({
+      action: "UPDATE",
+      tableName: "work_orders",
+      recordId: String(workOrderNumber),
+      after: { note: "ロット/伝票コードを更新", lotText: parsedLot.data },
+    });
+    revalidate(workOrderNumber, stepId);
+    return { ok: true };
+  } catch (e) {
+    return failed(e, "ロット/伝票コードの更新に失敗しました");
   }
 }
 
@@ -92,7 +147,9 @@ const defectReasonsInput = z
   .array(
     z.object({
       type: z.enum(["SEMI", "SCRAP", "REWORK"]),
-      reason: z.string().trim().max(100),
+      // 必須化はサーバー業務検証（completeStepExecution）が行う — zod は形だけ。
+      defectTypeId: z.number().int().positive().nullable().optional(),
+      reason: z.string().trim().max(200),
       count: z.number().int().min(1).max(1_000_000),
     }),
   )
@@ -360,7 +417,7 @@ export type InspectionInput = z.infer<typeof inspectionInput>;
 
 /**
  * 検査記録の保存 — 全項目合格なら PASS、1 つでも不合格なら FAIL。
- * テンプレートは指示書に紐付くもののみ・項目 id はテンプレートと一致必須。
+ * テンプレートはこの工程に割り当てられたもののみ・項目 id はテンプレートと一致必須。
  * サンプル値は型検証（選択肢の membership）し、合否は自動判定を検証しつつ
  * クライアントの値（手動上書き可）を保存する。キオスク側
  * （nextjs-kiosk step-records.ts recordInspection）と同一規則。
@@ -384,18 +441,18 @@ export async function saveInspectionRecord(
     if (step.status !== "IN_PROGRESS") {
       return { ok: false, errors: ["進行中の工程でのみ記録できます"] };
     }
-    // テンプレートが指示書に紐付いているか + 項目 id・サンプル値が妥当か
-    const link = await prisma.workOrderInspectionTemplate.findUnique({
+    // テンプレートがこの工程に割り当てられているか + 項目 id・サンプル値が妥当か
+    const link = await prisma.workOrderStepInspectionTemplate.findUnique({
       where: {
-        workOrderId_inspectionTemplateId: {
-          workOrderId: step.workOrder.id,
+        stepId_inspectionTemplateId: {
+          stepId: step.id,
           inspectionTemplateId: v.templateId,
         },
       },
       include: { inspectionTemplate: { include: { items: true } } },
     });
     if (!link) {
-      return { ok: false, errors: ["この指示書の検査表ではありません"] };
+      return { ok: false, errors: ["この工程の検査表ではありません"] };
     }
     // 記録方式・検査対象はシート（テンプレート）単位
     const style = link.inspectionTemplate.recordStyle;
@@ -492,9 +549,10 @@ export async function approveInspectionRecord(
   stepId: string,
   recordId: string,
 ): Promise<StepActionResult> {
-  // 検査承認 — approve* の規約に従い ACTION=APPROVE（コードは工程実行の
-  // 文脈なので "work_order" のまま。承認グループとは別系統 — 判断メモ）。
-  const denied = await deniedStepPermission("APPROVE");
+  // 検査承認 — 工程実行と同じ work_order:UPDATE でゲートする。
+  // （承認アクション（APPROVE）は廃止 — N 段承認の可否は承認設定 MS0B の
+  //   グループ所属だけが決め、こちらの検査承認は工程実行の一部として扱う。）
+  const denied = await deniedStepPermission("UPDATE");
   if (denied) return denied;
   try {
     const record = await prisma.inspectionRecord.findFirst({
@@ -674,14 +732,12 @@ const planActualBase = {
     .regex(timePattern, "時刻は HH:mm 形式で入力してください")
     .nullable(),
   quantity: z.number().int().min(1).nullable(),
+  // 作業場所（機械/エリア — 任意。計画・実績とも）
+  workLocationId: z.number().int().positive().nullable(),
   notes: z.string(),
 };
 
-const stepPlanInput = z.object({
-  ...planActualBase,
-  // 作業場所（機械/エリア — 任意。計画のみ）
-  workLocationId: z.number().int().positive().nullable(),
-});
+const stepPlanInput = z.object(planActualBase);
 const stepActualInput = z.object(planActualBase);
 
 export type StepPlanInput = z.infer<typeof stepPlanInput>;
@@ -699,6 +755,28 @@ function validateTimeRange(v: {
 }): string | null {
   if (v.startTime && v.endTime && v.startTime >= v.endTime) {
     return "終了時刻は開始時刻より後にしてください";
+  }
+  return null;
+}
+
+/**
+ * 作業場所の存在・有効チェック + 工程マスタの許可リスト検証（null は許可）。
+ * 許可リスト（process_step_work_locations）がある工程では、リストに含まれる
+ * 場所しか計画・実績に使えない。エラー文言 or null。
+ */
+async function invalidWorkLocation(
+  workLocationId: number | null,
+  processStepId: number,
+): Promise<string | null> {
+  if (workLocationId == null) return null;
+  const location = await prisma.workLocation.findFirst({
+    where: { id: workLocationId, isActive: true },
+    select: { id: true },
+  });
+  if (!location) return "作業場所が見つかりません";
+  const allowed = await fetchAllowedWorkLocationIds(processStepId);
+  if (allowed != null && !allowed.has(workLocationId)) {
+    return "この工程では使用できない作業場所です（工程マスタの許可リスト外）";
   }
   return null;
 }
@@ -728,15 +806,11 @@ export async function addStepPlan(
         errors: ["完了・キャンセル済みの工程には計画を追加できません"],
       };
     }
-    if (v.workLocationId != null) {
-      const location = await prisma.workLocation.findFirst({
-        where: { id: v.workLocationId, isActive: true },
-        select: { id: true },
-      });
-      if (!location) {
-        return { ok: false, errors: ["作業場所が見つかりません"] };
-      }
-    }
+    const locationError = await invalidWorkLocation(
+      v.workLocationId,
+      step.processStepId,
+    );
+    if (locationError) return { ok: false, errors: [locationError] };
     const actor = await getCurrentActorId();
     await prisma.workOrderStepPlan.create({
       data: {
@@ -818,6 +892,11 @@ export async function addStepActual(
     if (step.status !== "IN_PROGRESS") {
       return { ok: false, errors: ["進行中の工程のみ実績を記録できます"] };
     }
+    const locationError = await invalidWorkLocation(
+      v.workLocationId,
+      step.processStepId,
+    );
+    if (locationError) return { ok: false, errors: [locationError] };
     const actor = await getCurrentActorId();
     await prisma.workOrderStepActual.create({
       data: {
@@ -827,6 +906,7 @@ export async function addStepActual(
         startedAt: toJstTimestamp(v.date, v.startTime),
         endedAt: toJstTimestamp(v.date, v.endTime),
         quantity: v.quantity,
+        workLocationId: v.workLocationId,
         notes: v.notes.trim() || null,
         createdBy: actor,
       },

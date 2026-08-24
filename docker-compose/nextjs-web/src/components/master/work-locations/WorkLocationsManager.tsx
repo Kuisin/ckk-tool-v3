@@ -32,6 +32,7 @@ import {
   IconEdit,
   IconMapPin,
   IconPlus,
+  IconQrcode,
   IconTrash,
 } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
@@ -64,6 +65,21 @@ import {
 import { PageHeader } from "@/components/ui/PageHeader";
 import { fieldHelp } from "@/lib/field-help";
 
+/**
+ * QR ラベル印刷シートを新しいタブで開く（SY08 と同じ実 <a> クリック方式 —
+ * スタンドアロン PWA でも window.open ブロックに掛からない）。
+ */
+function openQrPrintSheet(ids: number[]) {
+  const url = `/master/work-locations/print?ids=${encodeURIComponent(ids.join(","))}`;
+  const a = document.createElement("a");
+  a.href = url;
+  a.target = "_blank";
+  a.rel = "noopener noreferrer";
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+}
+
 export interface WorkLocationRow {
   id: number;
   code: string;
@@ -75,6 +91,8 @@ export interface WorkLocationRow {
   notes: string;
   /** この場所を参照する作業計画数（削除可否の目安）。 */
   planCount: number;
+  /** この場所を参照する作業実績数（削除可否の目安）。 */
+  actualCount: number;
 }
 
 export interface WorkLocationGroupRow {
@@ -673,6 +691,16 @@ export function WorkLocationsManager({
                     場所を追加
                   </GhostButton>
                   <GhostButton
+                    disabled={group.locations.length === 0}
+                    leftSection={<IconQrcode size={14} />}
+                    onClick={() =>
+                      openQrPrintSheet(group.locations.map((l) => l.id))
+                    }
+                    size="xs"
+                  >
+                    QR印刷
+                  </GhostButton>
+                  <GhostButton
                     leftSection={<IconEdit size={14} />}
                     onClick={() => setGroupModal({ opened: true, group })}
                     size="xs"
@@ -701,7 +729,7 @@ export function WorkLocationsManager({
                       <Table.Th w={140}>コード</Table.Th>
                       <Table.Th>名称</Table.Th>
                       <Table.Th w={120}>キャパシティ</Table.Th>
-                      <Table.Th w={90}>計画数</Table.Th>
+                      <Table.Th w={110}>計画 / 実績</Table.Th>
                       <Table.Th w={80}>状態</Table.Th>
                       <Table.Th w={80} />
                     </Table.Tr>
@@ -729,7 +757,7 @@ export function WorkLocationsManager({
                         </Table.Td>
                         <Table.Td>
                           <Text c="dimmed" className="tabular-nums" size="sm">
-                            {loc.planCount}
+                            {loc.planCount} / {loc.actualCount}
                           </Text>
                         </Table.Td>
                         <Table.Td>
@@ -737,6 +765,16 @@ export function WorkLocationsManager({
                         </Table.Td>
                         <Table.Td>
                           <Group gap={4} justify="flex-end" wrap="nowrap">
+                            <Tooltip label="QRラベルを印刷" withinPortal>
+                              <ActionIcon
+                                aria-label="作業場所のQRラベルを印刷"
+                                color="gray"
+                                onClick={() => openQrPrintSheet([loc.id])}
+                                variant="subtle"
+                              >
+                                <IconQrcode size={14} />
+                              </ActionIcon>
+                            </Tooltip>
                             <Tooltip label="編集" withinPortal>
                               <ActionIcon
                                 aria-label="作業場所を編集"
@@ -823,7 +861,7 @@ export function WorkLocationsManager({
         }}
         opened={!!deleteGroup}
         title="グループの削除"
-        warning="作業計画で使用中の場所が含まれる場合は削除できません。"
+        warning="作業計画・実績で使用中の場所が含まれる場合は削除できません。"
       />
       <ConfirmModal
         confirmLabel="削除する"
@@ -851,8 +889,9 @@ export function WorkLocationsManager({
         opened={!!deleteLocation}
         title="作業場所の削除"
         warning={
-          deleteLocation && deleteLocation.planCount > 0
-            ? `この場所は ${deleteLocation.planCount} 件の作業計画から参照されています（削除できません — 無効化をご検討ください）。`
+          deleteLocation &&
+          deleteLocation.planCount + deleteLocation.actualCount > 0
+            ? `この場所は 作業計画 ${deleteLocation.planCount} 件 / 作業実績 ${deleteLocation.actualCount} 件 から参照されています（削除できません — 無効化をご検討ください）。`
             : undefined
         }
       />

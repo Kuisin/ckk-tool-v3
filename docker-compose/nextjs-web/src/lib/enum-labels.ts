@@ -93,6 +93,17 @@ export const PROCESS_CATEGORY_OPTIONS = Object.entries(
   PROCESS_CATEGORY_LABEL,
 ).map(([value, label]) => ({ value, label }));
 
+/** app.LOT_INPUT_MODE（工程実行時のロット/伝票コード入力） */
+export const LOT_INPUT_MODE_LABEL: Record<string, string> = {
+  REQUIRED: "必須",
+  OPTIONAL: "任意",
+  NONE: "なし",
+};
+
+export const LOT_INPUT_MODE_OPTIONS = Object.entries(LOT_INPUT_MODE_LABEL).map(
+  ([value, label]) => ({ value, label }),
+);
+
 /**
  * 工程種別 → 色（_specs/design.md §12.2）。工程フロー図のノードはこの色で
  * 塗る（= 何の工程かが一目で判る）。工程の**状態**の色（gray/blue/green/red —
@@ -189,6 +200,19 @@ export const DELIVERY_METHOD_LABEL: Record<string, string> = {
 
 export const DELIVERY_METHOD_OPTIONS = Object.entries(
   DELIVERY_METHOD_LABEL,
+).map(([value, label]) => ({ value, label }));
+
+/**
+ * 注文請書の配送方法（同じ app.DELIVERY_METHOD を受注文脈で表示）。
+ * 納品書側の「納品方法」と区別して「通常配送」と呼ぶ。
+ */
+export const ACCEPTANCE_DELIVERY_METHOD_LABEL: Record<string, string> = {
+  NORMAL: "通常配送",
+  DIRECT_TO_USER: "ユーザー直送",
+};
+
+export const ACCEPTANCE_DELIVERY_METHOD_OPTIONS = Object.entries(
+  ACCEPTANCE_DELIVERY_METHOD_LABEL,
 ).map(([value, label]) => ({ value, label }));
 
 /** app.PURCHASE_STATUS（素材発注書） */

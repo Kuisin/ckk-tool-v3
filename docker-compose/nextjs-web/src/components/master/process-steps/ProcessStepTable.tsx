@@ -72,6 +72,8 @@ export interface ProcessStepRow {
   isInspection: boolean;
   isApprovalStep: boolean;
   quantityTracking: string;
+  /** 実行時のロット入力の既定（REQUIRED/OPTIONAL/NONE）。 */
+  lotInputMode: string;
   sortOrder: number;
   isActive: boolean;
 }

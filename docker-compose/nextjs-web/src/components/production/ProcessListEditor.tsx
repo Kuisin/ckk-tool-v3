@@ -7,9 +7,17 @@
  * コンポーネント。カテゴリ別チェックリストで工程を選び、選択のたびに
  * validateComposition で構成検証する（ブロッカーは赤 Alert）。
  *
- * 工程をチェックすると、その工程が必要とする随伴工程（AND 使用依存の推移的
- * 閉包 — 例: 加工 → 検査 → 検査承認）を自動で一括追加する。プリフィル由来で
- * 不足が残る場合のみ「必須工程を自動追加」ボタンをフォールバック表示する。
+ * 工程をチェックすると、その工程が必要とする随伴工程（AND 使用依存のうち
+ * 既定順で**後ろ**に来るもの — 例: 加工 → 検査 → 検査承認）を自動で一括追加
+ * する。逆に既定順で**前**に来る AND（例: C面 → 全長合わせ）は先行前提 —
+ * 前提が選ばれるまでチェックボックスを無効化し「要: X」を出す。排他相手が
+ * 選択中の工程も同様に無効化する。プリフィル由来で不足が残る場合のみ
+ * 「必須工程を自動追加」ボタンをフォールバック表示する。
+ *
+ * セクション構成（§7 再編）:
+ *   出し・受渡し（開始） — 全ての構成はここから始まる（ちょうど 1 つ・単一選択）
+ *   カテゴリ別（準備・加工・コーティング・検査・検査承認）
+ *   出荷前検査（任意） — 追加すると常に末尾（出荷は工程ではなく出荷書 SH01 の責務）
  */
 
 import {
@@ -34,13 +42,19 @@ import { useMemo, useState } from "react";
 import { EditButton, SecondaryButton } from "@/components/ui/buttons";
 import { FormSection } from "@/components/ui/shells";
 import { useIsMobile } from "@/hooks/useViewport";
-import { PROCESS_CATEGORY_LABEL } from "@/lib/enum-labels";
+import {
+  LOT_INPUT_MODE_LABEL,
+  PROCESS_CATEGORY_LABEL,
+} from "@/lib/enum-labels";
 import type { RouteStepSnapshot } from "@/lib/product-routes-core";
-import type { CatalogStep, UseDep } from "@/lib/workflow-core";
+import type { CatalogStep, LotInputMode, UseDep } from "@/lib/workflow-core";
 import {
   defaultOrder,
   isBlockingIssue,
+  isShipStep,
+  isStartStep,
   requiredCompanions,
+  stepSelectBlockers,
   validateComposition,
 } from "@/lib/workflow-core";
 import { describeIssue } from "./work-orders/model";
@@ -57,6 +71,8 @@ export interface StepLocation {
   supplierBpId: string | null;
   /** 作業時間 (h)。undefined = 未設定（カタログ既定値を使う）/ null = 明示的になし。 */
   workHours?: number | null;
+  /** ロット入力の上書き。undefined/null = 工程マスタの既定を継承。 */
+  lotInputMode?: LotInputMode | null;
 }
 
 const DEFAULT_LOCATION: StepLocation = {
@@ -99,6 +115,7 @@ export function toStepSnapshots(
       supplierBpId:
         execution === "OUTSOURCE" ? (loc?.supplierBpId ?? null) : null,
       workHours: effectiveWorkHours(locations[stepId], cat),
+      lotInputMode: locations[stepId]?.lotInputMode ?? null,
     };
   });
 }
@@ -249,8 +266,8 @@ export function ProcessListEditor({
   const [autoAdded, setAutoAdded] = useState<number[]>([]);
 
   const issues = useMemo(
-    () => validateComposition(selected, useDeps),
-    [selected, useDeps],
+    () => validateComposition(selected, useDeps, catalogSteps),
+    [selected, useDeps, catalogSteps],
   );
   const blockers = issues.filter(isBlockingIssue);
   const warnings = issues.filter((i) => !isBlockingIssue(i));
@@ -270,8 +287,18 @@ export function ProcessListEditor({
       onSelectedChange(selected.filter((id) => id !== stepId));
       return;
     }
+    // 開始（出し・受渡し）は単一選択 — 別の開始工程を選んだら置き換える
+    // （validateComposition の MULTIPLE_START と同じルール）。
+    const picked = stepById.get(stepId);
+    const base =
+      picked && isStartStep(picked)
+        ? selected.filter((id) => {
+            const s = stepById.get(id);
+            return !(s && isStartStep(s));
+          })
+        : selected;
     // 追加時は必須随伴工程（AND 使用依存の閉包）を自動で一括追加する。
-    const next = [...selected, stepId];
+    const next = [...base, stepId];
     const companions = requiredCompanions(next, useDeps);
     setAutoAdded(companions);
     onSelectedChange([...next, ...companions]);
@@ -292,9 +319,95 @@ export function ProcessListEditor({
     });
   };
 
-  const categories = Object.keys(PROCESS_CATEGORY_LABEL).filter((cat) =>
-    catalogSteps.some((s) => s.category === cat),
+  // セクション分割: 開始（出し・受渡し）/ 出荷（末尾固定）/ 残りはカテゴリ別
+  const startSteps = catalogSteps.filter((s) => isStartStep(s));
+  const shipSteps = catalogSteps.filter((s) => isShipStep(s));
+  const middleSteps = catalogSteps.filter(
+    (s) => !isStartStep(s) && !isShipStep(s),
   );
+  const categories = Object.keys(PROCESS_CATEGORY_LABEL).filter((cat) =>
+    middleSteps.some((s) => s.category === cat),
+  );
+
+  /** 1 工程ぶんのチェックボックス（無効化 + 「要: X」ヒント付き）。 */
+  const renderStepCheckbox = (s: CatalogStep) => {
+    const checked = selected.includes(s.id);
+    const blockersOf = stepSelectBlockers(
+      s.id,
+      selected,
+      useDeps,
+      catalogSteps,
+    );
+    // 選択済みの工程は常に外せる（外した結果の不整合は Alert が知らせる）
+    const disabled =
+      !checked &&
+      (blockersOf.missingPrereqs.length > 0 || blockersOf.conflicts.length > 0);
+    const hint = !checked
+      ? [
+          blockersOf.missingPrereqs.length > 0
+            ? `要: ${blockersOf.missingPrereqs
+                .map((id) => stepById.get(id)?.nameJa ?? `工程#${id}`)
+                .join("・")}`
+            : null,
+          blockersOf.conflicts.length > 0
+            ? `${blockersOf.conflicts
+                .map((id) => stepById.get(id)?.nameJa ?? `工程#${id}`)
+                .join("・")}とは併用不可`
+            : null,
+        ]
+          .filter(Boolean)
+          .join(" / ")
+      : "";
+    return (
+      <Checkbox
+        checked={checked}
+        disabled={disabled}
+        key={s.id}
+        label={
+          <Group gap={6} wrap="wrap">
+            <Text c={disabled ? "dimmed" : undefined} size="sm">
+              {s.nameJa}
+            </Text>
+            {s.isInspection && (
+              <Badge color="blue" size="xs" variant="light">
+                検査
+              </Badge>
+            )}
+            {s.isApprovalStep && (
+              <Badge color="teal" size="xs" variant="light">
+                承認
+              </Badge>
+            )}
+            {s.isSyncCapable && (
+              <Badge color="grape" size="xs" variant="light">
+                同期
+              </Badge>
+            )}
+            <Badge
+              color={
+                s.executionLocation === "INTERNAL_OR_OUTSOURCE"
+                  ? "orange"
+                  : "gray"
+              }
+              size="xs"
+              variant="outline"
+            >
+              {s.executionLocation === "INTERNAL_OR_OUTSOURCE"
+                ? "社内・外注"
+                : "社内"}
+            </Badge>
+            {hint && (
+              <Text c="dimmed" size="xs">
+                {hint}
+              </Text>
+            )}
+          </Group>
+        }
+        onChange={(e) => toggleStep(s.id, e.currentTarget.checked)}
+        size="xs"
+      />
+    );
+  };
 
   return (
     <>
@@ -358,58 +471,57 @@ export function ProcessListEditor({
             {error}
           </Text>
         )}
-        <SimpleGrid cols={isMobile ? 1 : 2} spacing="md">
-          {categories.map((cat) => (
-            <Stack gap="xs" key={cat}>
-              <Text c="dimmed" fw={600} size="xs">
-                {PROCESS_CATEGORY_LABEL[cat]}
-              </Text>
-              {catalogSteps
-                .filter((s) => s.category === cat)
-                .map((s) => (
-                  <Checkbox
-                    checked={selected.includes(s.id)}
-                    key={s.id}
-                    label={
-                      <Group gap={6} wrap="wrap">
-                        <Text size="sm">{s.nameJa}</Text>
-                        {s.isInspection && (
-                          <Badge color="blue" size="xs" variant="light">
-                            検査
-                          </Badge>
-                        )}
-                        {s.isApprovalStep && (
-                          <Badge color="teal" size="xs" variant="light">
-                            承認
-                          </Badge>
-                        )}
-                        {s.isSyncCapable && (
-                          <Badge color="grape" size="xs" variant="light">
-                            同期
-                          </Badge>
-                        )}
-                        <Badge
-                          color={
-                            s.executionLocation === "INTERNAL_OR_OUTSOURCE"
-                              ? "orange"
-                              : "gray"
-                          }
-                          size="xs"
-                          variant="outline"
-                        >
-                          {s.executionLocation === "INTERNAL_OR_OUTSOURCE"
-                            ? "社内・外注"
-                            : "社内"}
-                        </Badge>
-                      </Group>
-                    }
-                    onChange={(e) => toggleStep(s.id, e.currentTarget.checked)}
-                    size="xs"
-                  />
-                ))}
-            </Stack>
-          ))}
-        </SimpleGrid>
+        <Stack gap="md">
+          {startSteps.length > 0 && (
+            <Paper bg="var(--mantine-color-blue-light)" p="sm" radius="sm">
+              <Stack gap="xs">
+                <Group gap={6}>
+                  <Text c="blue" fw={600} size="xs">
+                    出し・受渡し（開始）
+                  </Text>
+                  <Text c="dimmed" size="xs">
+                    — 全ての工程はここから始まります（1 つだけ選択・必須）
+                  </Text>
+                </Group>
+                <SimpleGrid cols={isMobile ? 1 : 2} spacing="xs">
+                  {startSteps.map(renderStepCheckbox)}
+                </SimpleGrid>
+              </Stack>
+            </Paper>
+          )}
+          {categories.length > 0 && (
+            <SimpleGrid cols={isMobile ? 1 : 2} spacing="md">
+              {categories.map((cat) => (
+                <Stack gap="xs" key={cat}>
+                  <Text c="dimmed" fw={600} size="xs">
+                    {PROCESS_CATEGORY_LABEL[cat]}
+                  </Text>
+                  {middleSteps
+                    .filter((s) => s.category === cat)
+                    .map(renderStepCheckbox)}
+                </Stack>
+              ))}
+            </SimpleGrid>
+          )}
+          {shipSteps.length > 0 && (
+            <Paper bg="var(--mantine-color-gray-light)" p="sm" radius="sm">
+              <Stack gap="xs">
+                <Group gap={6}>
+                  <Text c="dimmed" fw={600} size="xs">
+                    出荷前検査（任意）
+                  </Text>
+                  <Text c="dimmed" size="xs">
+                    —
+                    追加すると常に最後に実行されます。出荷そのものは出荷書（SH01）で管理します
+                  </Text>
+                </Group>
+                <SimpleGrid cols={isMobile ? 1 : 2} spacing="xs">
+                  {shipSteps.map(renderStepCheckbox)}
+                </SimpleGrid>
+              </Stack>
+            </Paper>
+          )}
+        </Stack>
       </FormSection>
 
       <FormSection
@@ -452,6 +564,30 @@ export function ProcessListEditor({
                       </Text>
                     </Group>
                     <Group gap="xs" wrap={isMobile ? "wrap" : "nowrap"}>
+                      <Select
+                        allowDeselect={false}
+                        aria-label={`${cat.nameJa} のロット入力`}
+                        data={[
+                          {
+                            value: "INHERIT",
+                            label: `既定（${LOT_INPUT_MODE_LABEL[cat.lotInputMode ?? "NONE"]}）`,
+                          },
+                          { value: "REQUIRED", label: "ロット必須" },
+                          { value: "OPTIONAL", label: "ロット任意" },
+                          { value: "NONE", label: "ロットなし" },
+                        ]}
+                        onChange={(v) =>
+                          setLocation(stepId, {
+                            lotInputMode:
+                              v == null || v === "INHERIT"
+                                ? null
+                                : (v as LotInputMode),
+                          })
+                        }
+                        size="xs"
+                        value={loc.lotInputMode ?? "INHERIT"}
+                        w={140}
+                      />
                       <NumberInput
                         aria-label={`${cat.nameJa} の作業時間 (h)`}
                         decimalScale={2}

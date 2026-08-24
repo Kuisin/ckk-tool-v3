@@ -322,17 +322,11 @@ VALUES
    'PENDING'::app."STEP_STATUS", NULL, NULL, NULL, NULL, NULL, NULL, NULL,
    NULL, NULL, NULL, NULL, NULL),
 
-  -- #9003（在庫分）: 出荷前検査 → 出荷 のみ
+  -- #9003（在庫分）: 出荷前検査 のみ（出荷は工程ではなく出荷書 DO の責務）
   ('dc013000-0000-4000-8000-000000000001'::uuid, 'dc000000-0000-4000-8000-000000009003'::uuid,
    (SELECT id FROM app.process_step_catalog WHERE code = 'PRE_SHIP_INSPECTION'), 1,
    'INTERNAL'::app."STEP_EXECUTION", (SELECT id FROM app.plants WHERE code = 'F01'),
    NULL, 0.5, NULL, NULL, NULL, NULL,
-   'PENDING'::app."STEP_STATUS", NULL, NULL, NULL, NULL, NULL, NULL, NULL,
-   NULL, NULL, NULL, NULL, NULL),
-  ('dc013000-0000-4000-8000-000000000002'::uuid, 'dc000000-0000-4000-8000-000000009003'::uuid,
-   (SELECT id FROM app.process_step_catalog WHERE code = 'SHIPPING'), 2,
-   'INTERNAL'::app."STEP_EXECUTION", (SELECT id FROM app.plants WHERE code = 'F01'),
-   NULL, NULL, NULL, NULL, NULL, NULL,
    'PENDING'::app."STEP_STATUS", NULL, NULL, NULL, NULL, NULL, NULL, NULL,
    NULL, NULL, NULL, NULL, NULL),
 
@@ -389,7 +383,8 @@ INSERT INTO app.work_order_step_plans (id, work_order_step_id, user_id,
 VALUES
   ('dc020000-0000-4000-8000-000000000001'::uuid, 'dc011000-0000-4000-8000-000000000004'::uuid,
    'a0b1c2d3-0000-4000-8000-000000005107'::uuid, '2026-07-21',
-   '2026-07-21T09:00:00+09', '2026-07-21T17:00:00+09', 51, NULL, NULL,
+   '2026-07-21T09:00:00+09', '2026-07-21T17:00:00+09', 51,
+   (SELECT id FROM app.work_locations WHERE code = 'NC-01'), NULL,
    'a0b1c2d3-0000-4000-8000-000000005107'::uuid, '2026-07-15T15:00:00+09'),
   ('dc020000-0000-4000-8000-000000000002'::uuid, 'dc011000-0000-4000-8000-000000000005'::uuid,
    'a0b1c2d3-0000-4000-8000-000000005107'::uuid, '2026-07-22',
@@ -401,17 +396,21 @@ VALUES
    'a0b1c2d3-0000-4000-8000-000000005107'::uuid, '2026-07-20T10:00:00+09')
 ON CONFLICT (id) DO NOTHING;
 
--- 実績: 切断は完了実績、段加工は open（ended_at NULL = セッション作業中）
+-- 実績: 切断は完了実績、段加工は open（ended_at NULL = セッション作業中）。
+-- 段加工の実績は 作業場所 NC-01 付き（キオスクの端末既定/QR 読取で入る想定の
+-- デモ — 計画・実績パネルと キオスク実行画面の 作業場所 表示に使う）。
 INSERT INTO app.work_order_step_actuals (id, work_order_step_id, user_id,
-  worked_date, started_at, ended_at, quantity, notes, created_by, created_at)
+  worked_date, started_at, ended_at, quantity, work_location_id, notes,
+  created_by, created_at)
 VALUES
   ('dc021000-0000-4000-8000-000000000001'::uuid, 'dc011000-0000-4000-8000-000000000002'::uuid,
    'a0b1c2d3-0000-4000-8000-000000005107'::uuid, '2026-07-16',
-   '2026-07-16T09:10:00+09', '2026-07-16T11:30:00+09', 55, NULL,
+   '2026-07-16T09:10:00+09', '2026-07-16T11:30:00+09', 55, NULL, NULL,
    'a0b1c2d3-0000-4000-8000-000000005107'::uuid, '2026-07-16T09:10:00+09'),
   ('dc021000-0000-4000-8000-000000000002'::uuid, 'dc011000-0000-4000-8000-000000000004'::uuid,
    'a0b1c2d3-0000-4000-8000-000000005107'::uuid, '2026-07-21',
-   '2026-07-21T09:00:00+09', NULL, NULL, NULL,
+   '2026-07-21T09:00:00+09', NULL, NULL,
+   (SELECT id FROM app.work_locations WHERE code = 'NC-01'), NULL,
    'a0b1c2d3-0000-4000-8000-000000005107'::uuid, '2026-07-21T09:00:00+09')
 ON CONFLICT (id) DO NOTHING;
 

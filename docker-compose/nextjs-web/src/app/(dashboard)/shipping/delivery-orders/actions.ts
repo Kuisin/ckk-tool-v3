@@ -15,6 +15,7 @@
 import { type Access, rowInScope } from "@ckk/authz-core";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
+import { combinabilityError } from "@/components/shipping/delivery-orders/model";
 import { recordAudit } from "@/lib/audit";
 import { checkPermission } from "@/lib/authz";
 import { prisma } from "@/lib/db";
@@ -161,6 +162,11 @@ export interface DeliverySourceInfo {
   /** 出荷書ヘッダの顧客を決めるのに使う（1 出荷書 = 1 顧客の検証にも）。 */
   customerBpId: string | null;
   customerName: string;
+  /** 注文請書ヘッダの出荷先（null = 顧客へ）— 束ね可否の判定に使う。 */
+  shipToBpId: string | null;
+  shipToName: string | null;
+  /** 注文請書ヘッダの配送方法 — 同じ配送方法の明細だけを束ねられる。 */
+  deliveryMethod: "NORMAL" | "DIRECT_TO_USER";
   /** 既に出荷済みの数量（残数の算出用）。 */
   shippedQuantity: number;
   /** 注文明細の製品（明細の既定製品）。 */
@@ -187,7 +193,7 @@ export async function fetchDeliverySourceInfo(
     const so = await prisma.orderLine.findUnique({
       where: { id: orderLineId },
       include: {
-        acceptance: { include: { customerBp: true } },
+        acceptance: { include: { customerBp: true, shipToBp: true } },
         product: true,
       },
     });
@@ -260,6 +266,11 @@ export async function fetchDeliverySourceInfo(
       customerName: localized(
         so.acceptance.customerBp?.name as LocalizedText | null,
       ),
+      shipToBpId: so.acceptance.shipToBpId,
+      shipToName: so.acceptance.shipToBp
+        ? localized(so.acceptance.shipToBp.name as LocalizedText | null)
+        : null,
+      deliveryMethod: so.acceptance.deliveryMethod,
       shippedQuantity: await shippedQuantityForLine(so.id),
       productId: String(productId),
       productName: localized(so.product?.name as LocalizedText | null),
@@ -368,10 +379,11 @@ async function validateDispatchLots(
 }
 
 /**
- * 1 出荷書 = 1 顧客の不変条件。明細の注文明細がヘッダの顧客と食い違うと、
- * 請求の顧客判定と納品書の宛先が壊れる。
+ * 束ね可否の不変条件 — 1 出荷書に載せられるのは同一顧客 × 同一出荷先 ×
+ * 同一配送方法（注文請書ヘッダ由来）の注文明細だけ。判定はクライアントと
+ * 共有の combinabilityError（components/shipping/delivery-orders/model）。
  */
-async function validateSingleCustomer(
+async function validateCombinable(
   items: { orderLineId: string | null }[],
   customerBpId: string,
 ): Promise<string | null> {
@@ -385,14 +397,16 @@ async function validateSingleCustomer(
   if (ids.length === 0) return null;
   const lines = await prisma.orderLine.findMany({
     where: { id: { in: ids } },
-    select: { acceptance: { select: { customerBpId: true } } },
+    select: {
+      acceptance: {
+        select: { customerBpId: true, shipToBpId: true, deliveryMethod: true },
+      },
+    },
   });
-  const mismatched = lines.some(
-    (l) => l.acceptance.customerBpId !== customerBpId,
+  return combinabilityError(
+    lines.map((l) => l.acceptance),
+    customerBpId,
   );
-  return mismatched
-    ? "1 つの出荷書には同じ顧客の注文明細だけを載せられます"
-    : null;
 }
 
 /**
@@ -519,11 +533,8 @@ export async function createDeliveryOrder(
       if (lotError) return actionError(lotError);
       const remainingError = await validateLineRemaining(v.items);
       if (remainingError) return actionError(remainingError);
-      const customerError = await validateSingleCustomer(
-        v.items,
-        v.customerBpId,
-      );
-      if (customerError) return actionError(customerError);
+      const combineError = await validateCombinable(v.items, v.customerBpId);
+      if (combineError) return actionError(combineError);
     }
     const workOrderId = await resolveHeaderWorkOrderId(v.items);
     const { yearMonth, seq } = await allocateDocumentKey("DELIVERY_ORDER");
@@ -592,6 +603,7 @@ export async function updateDeliveryOrder(
     const prior = await prisma.deliveryOrder.findUnique({
       where: { yearMonth_seq: key },
       select: {
+        customerBpId: true,
         type: true,
         fromPlantId: true,
         notes: true,
@@ -610,6 +622,17 @@ export async function updateDeliveryOrder(
     if (v.type === "DISPATCH") {
       const lotError = await validateDispatchLots(v.items);
       if (lotError) return actionError(lotError);
+      // 受注残の過出荷ガード（作成時と同じ。自出荷書の行は除外して数える）
+      const remainingError = await validateLineRemaining(v.items, key);
+      if (remainingError) return actionError(remainingError);
+      // 束ね可否（同一顧客 × 同一出荷先 × 同一配送方法）— 作成時と同じ
+      if (prior?.customerBpId) {
+        const combineError = await validateCombinable(
+          v.items,
+          prior.customerBpId,
+        );
+        if (combineError) return actionError(combineError);
+      }
     }
     const workOrderId = await resolveHeaderWorkOrderId(v.items);
     await prisma.$transaction(async (tx) => {

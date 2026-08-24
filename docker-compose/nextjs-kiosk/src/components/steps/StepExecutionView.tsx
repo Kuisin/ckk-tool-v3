@@ -22,20 +22,24 @@ import {
   Paper,
   Stack,
   Text,
+  TextInput,
   Title,
 } from "@mantine/core";
 import {
   IconAlertTriangle,
   IconArrowLeft,
   IconCheck,
+  IconMapPin,
   IconPlayerPause,
   IconPlayerPlay,
+  IconQrcode,
 } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { playLogoutSound } from "@/lib/sound";
+import { QR_KINDS, qrKeyOfKind } from "@/lib/qr-payload";
+import { playLogoutSound, playWarnSound } from "@/lib/sound";
 import type { StepRecordingData } from "@/lib/step-records";
-import type { MyActiveStep, MyStepView } from "@/lib/steps";
+import type { MyStepView, StepLocationGate } from "@/lib/steps";
 import {
   cleanReasonEntries,
   type DefectReasonEntry,
@@ -43,6 +47,7 @@ import {
 } from "@/lib/steps-core";
 import { ActivityMonitor } from "../ActivityMonitor";
 import { useI18n } from "../I18nProvider";
+import { QrScannerView } from "../QrScannerView";
 import { LiveElapsed } from "./LiveElapsed";
 import { NumberStepper } from "./NumberStepper";
 import { StepDefectForm } from "./StepDefectForm";
@@ -58,8 +63,8 @@ import {
 type Props = {
   step: MyStepView;
   recording: StepRecordingData;
-  /** 自分が作業中の別工程（同時作業は 1 工程まで — 開始/再開をロック）。 */
-  otherActive: MyActiveStep | null;
+  /** 工程マスタの許可作業場所 × この端末（表示用 — 権威は API 側）。 */
+  locationGate: StepLocationGate;
   /** 戻り先: 担当工程一覧（既定） / 指示書スキャンの指示書ビュー。 */
   backTo?: "list" | "workOrder";
 };
@@ -69,7 +74,7 @@ type Phase = "IDLE" | "STARTING" | "COMPLETING";
 export function StepExecutionView({
   step,
   recording,
-  otherActive,
+  locationGate,
   backTo = "list",
 }: Props) {
   const router = useRouter();
@@ -85,10 +90,20 @@ export function StepExecutionView({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // 作業場所 QR（CKK:LOC:<code>）の読み取り。
+  // 開始前 = code を保持して START に同送 / 作業中 = SET_LOCATION で即時反映。
+  const [locationScanOpen, setLocationScanOpen] = useState(false);
+  const [pendingLocationCode, setPendingLocationCode] = useState<string | null>(
+    null,
+  );
+  const [locationNotice, setLocationNotice] = useState<string | null>(null);
+
   // 開始時の受入数（想定値を初期値に、作業者が上書きできる）
   const [startInput, setStartInput] = useState<number>(
     step.expectedInputQuantity ?? step.workOrderPlannedQuantity,
   );
+  // 開始時のロット/伝票コード（REQUIRED は未入力だと開始できない）
+  const [lotText, setLotText] = useState("");
   // 完了フォームの不良リスト（{種別, 理由, 数}）。良品・区分合計はここから導出。
   const [defects, setDefects] = useState<DefectReasonEntry[]>([]);
 
@@ -97,8 +112,11 @@ export function StepExecutionView({
   const isNone = trackedMode === null;
   const working = step.sessionState === "WORKING";
   const paused = step.sessionState === "PAUSED";
-  // 別工程を作業中 → この工程の開始/再開/完了をロック（同時作業は 1 工程まで）
-  const lockedByActive = otherActive != null && !working;
+  // 端末の「作業場所の制限」ON かつ端末の既定作業場所が許可外 → 開始/再開不可
+  const locationBlocked =
+    locationGate.enforced &&
+    locationGate.restricted &&
+    !locationGate.deviceAllowed;
 
   // 完了時の受入数は開始時に確定した値で固定（未記録なら想定/予定へフォールバック）
   const completeInput =
@@ -123,10 +141,40 @@ export function StepExecutionView({
   };
 
   const doStart = () =>
-    run({ action: "START", inputQuantity: isNone ? null : startInput }, () => {
-      setPhase("IDLE");
-      router.refresh();
-    });
+    run(
+      {
+        action: "START",
+        inputQuantity: isNone ? null : startInput,
+        lotText:
+          step.lotInputMode !== "NONE" ? lotText.trim() || null : undefined,
+        workLocationCode: pendingLocationCode ?? undefined,
+      },
+      () => {
+        setPhase("IDLE");
+        setPendingLocationCode(null);
+        router.refresh();
+      },
+    );
+
+  const handleLocationScan = (payload: string) => {
+    const code = qrKeyOfKind(payload, QR_KINDS.WORK_LOCATION);
+    if (!code) {
+      playWarnSound();
+      setError(m.steps.location.invalidQr);
+      return;
+    }
+    setError(null);
+    setLocationScanOpen(false);
+    if (working) {
+      run({ action: "SET_LOCATION", workLocationCode: code }, () => {
+        setLocationNotice(m.steps.location.updated);
+        router.refresh();
+      });
+    } else {
+      // 開始前 — START と一緒に送る
+      setPendingLocationCode(code);
+    }
+  };
 
   const doPause = () => run({ action: "PAUSE" }, () => router.refresh());
   const doResume = () => run({ action: "RESUME" }, () => router.refresh());
@@ -182,6 +230,11 @@ export function StepExecutionView({
                   {m.steps.card.inputRecorded(step.inputQuantity)}
                 </Text>
               )}
+              {step.lotText != null && (
+                <Text c="dimmed" ff="monospace" size="sm">
+                  {m.steps.card.lot(step.lotText)}
+                </Text>
+              )}
               {step.plannedWorkHours != null && (
                 <Text c="dimmed" size="sm">
                   {m.steps.card.plannedHours(step.plannedWorkHours)}
@@ -190,12 +243,103 @@ export function StepExecutionView({
               {(working || paused) && (
                 <Text c="dimmed" size="sm">
                   {m.steps.card.elapsedLabel}{" "}
-                  <LiveElapsed baseMs={step.workedMs} running={working} />
+                  <LiveElapsed
+                    baseMs={step.workedMs}
+                    rate={1 / step.openConcurrentCount}
+                    running={working}
+                  />
                 </Text>
               )}
             </Group>
           </Stack>
         </Paper>
+
+        {/* 作業場所の制限 — この端末の場所では実行できない工程 */}
+        {locationBlocked && !working && (
+          <Alert color="orange" icon={<IconAlertTriangle size={20} />}>
+            <Stack gap="xs">
+              <Text fw={600} size="sm">
+                {m.steps.location.deviceBlockedTitle}
+              </Text>
+              <Text size="sm">
+                {m.steps.location.deviceBlockedBody(
+                  locationGate.deviceDefaultLabel ?? m.steps.location.none,
+                )}
+              </Text>
+              {locationGate.allowed.length > 0 && (
+                <Stack gap={2}>
+                  <Text c="dimmed" size="sm">
+                    {m.steps.location.allowedListTitle}
+                  </Text>
+                  {locationGate.allowed.map((a) => (
+                    <Text key={a.label} size="sm">
+                      ・{a.label}
+                      {a.deviceNames.length > 0
+                        ? `（${m.steps.location.devicesAt(
+                            a.deviceNames.join(" / "),
+                          )}）`
+                        : ""}
+                    </Text>
+                  ))}
+                </Stack>
+              )}
+            </Stack>
+          </Alert>
+        )}
+
+        {/* 作業場所 — 実績に記録される場所（端末既定 or QR 読み取り） */}
+        {(step.sessionState === "STARTABLE" ||
+          working ||
+          paused ||
+          step.actualWorkLocationName != null ||
+          pendingLocationCode != null) && (
+          <Paper p="md" radius="md" withBorder>
+            <Stack gap="sm">
+              <Group justify="space-between" wrap="nowrap">
+                <Group gap="xs" wrap="nowrap">
+                  <IconMapPin size={20} />
+                  <Text fw={600}>{m.steps.location.label}</Text>
+                  <Text c={step.actualWorkLocationName ? undefined : "dimmed"}>
+                    {step.actualWorkLocationName ?? m.steps.location.none}
+                  </Text>
+                </Group>
+                {(step.sessionState === "STARTABLE" || working) &&
+                  !locationBlocked && (
+                    <Button
+                      leftSection={<IconQrcode size={18} />}
+                      onClick={() => setLocationScanOpen((v) => !v)}
+                      size="sm"
+                      variant="light"
+                    >
+                      {locationScanOpen
+                        ? m.steps.location.close
+                        : m.steps.location.scan}
+                    </Button>
+                  )}
+              </Group>
+              {pendingLocationCode != null &&
+                step.sessionState === "STARTABLE" && (
+                  <Text c="teal" size="sm">
+                    {m.steps.location.pendingScanned(pendingLocationCode)}
+                  </Text>
+                )}
+              {step.sessionState === "STARTABLE" &&
+                pendingLocationCode == null && (
+                  <Text c="dimmed" size="sm">
+                    {m.steps.location.deviceDefaultHint}
+                  </Text>
+                )}
+              {locationNotice && (
+                <Text c="teal" size="sm">
+                  {locationNotice}
+                </Text>
+              )}
+              {locationScanOpen && (
+                <QrScannerView onScan={handleLocationScan} paused={busy} />
+              )}
+            </Stack>
+          </Paper>
+        )}
 
         {error && (
           <Alert color="red" icon={<IconAlertTriangle size={20} />}>
@@ -222,29 +366,8 @@ export function StepExecutionView({
           </Alert>
         )}
 
-        {/* 別工程を作業中 — 開始/再開/完了の代わりに誘導を出す */}
-        {lockedByActive && otherActive && (
-          <Alert color="orange" icon={<IconAlertTriangle size={20} />}>
-            <Stack align="flex-start" gap="sm">
-              <Text size="sm">
-                {m.steps.activeLock.alert(
-                  otherActive.workOrderNumber,
-                  otherActive.stepName,
-                )}
-              </Text>
-              <Button
-                onClick={() => router.push(`/steps/${otherActive.stepId}`)}
-                size="sm"
-                variant="light"
-              >
-                {m.steps.activeLock.goto}
-              </Button>
-            </Stack>
-          </Alert>
-        )}
-
         {/* 開始 — 受入数の確認（NONE は数量を聞かない） */}
-        {step.sessionState === "STARTABLE" && !lockedByActive && (
+        {step.sessionState === "STARTABLE" && !locationBlocked && (
           <Paper p="md" radius="md" withBorder>
             <Stack gap="md">
               <Title order={4}>{m.steps.start.title}</Title>
@@ -268,7 +391,25 @@ export function StepExecutionView({
                   )}
                 </>
               )}
+              {step.lotInputMode !== "NONE" && (
+                <TextInput
+                  label={
+                    step.lotInputMode === "REQUIRED"
+                      ? m.steps.start.lotRequired
+                      : m.steps.start.lotOptional
+                  }
+                  maxLength={100}
+                  onChange={(e) => setLotText(e.currentTarget.value)}
+                  placeholder={m.steps.start.lotPlaceholder}
+                  size="lg"
+                  value={lotText}
+                  withAsterisk={step.lotInputMode === "REQUIRED"}
+                />
+              )}
               <Button
+                disabled={
+                  step.lotInputMode === "REQUIRED" && lotText.trim() === ""
+                }
                 fullWidth
                 leftSection={<IconPlayerPlay size={20} />}
                 loading={busy && phase !== "COMPLETING"}
@@ -282,7 +423,7 @@ export function StepExecutionView({
         )}
 
         {/* 進行中 / 一時停止中 — 完了フォームと操作 */}
-        {(working || paused) && !lockedByActive && (
+        {(working || paused) && (
           <Paper p="md" radius="md" withBorder>
             <Stack gap="md">
               {phase === "COMPLETING" ? (
@@ -348,6 +489,7 @@ export function StepExecutionView({
                     </Button>
                   ) : (
                     <Button
+                      disabled={locationBlocked}
                       leftSection={<IconPlayerPlay size={20} />}
                       loading={busy}
                       onClick={doResume}

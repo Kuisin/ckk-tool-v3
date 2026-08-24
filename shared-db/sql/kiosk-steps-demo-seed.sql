@@ -3,7 +3,7 @@
 -- demo1（田中 一郎）に「本日の担当工程」が見えるように、
 --   受注（既存の注文請書に紐付く注文請書 branch=90）
 --   → 指示書（承認済・切断 → 段加工 → 段加工検査 の 3 工程）
---   → 検査表テンプレート（デモ・3 項目）を指示書へ紐付け
+--   → 検査表テンプレート（デモ・3 項目）を段加工検査の工程へ紐付け
 --   → 本日分の作業計画（work_order_step_plans）を demo1 へ割り当て
 -- を作成する。段加工検査は STEP_MACHINING 完了までは実行依存で「前工程待ち」
 -- になるので、開始可 / 前工程待ち / 検査（INSPECTION モード）の 3 状態が
@@ -127,7 +127,7 @@ BEGIN
   VALUES (gen_random_uuid(), v_wo, 14, 3, 'INTERNAL', 1, 'PENDING')
   RETURNING id INTO v_step_inspection;
 
-  -- 検査表テンプレート（デモ）+ 指示書への紐付け
+  -- 検査表テンプレート（デモ）+ 検査工程への紐付け
   SELECT id INTO v_tpl FROM app.inspection_templates WHERE code = 'DEMO-STEP-INSP';
   IF v_tpl IS NULL THEN
     INSERT INTO app.inspection_templates (code, name, related_process_step_id, is_active, created_at, updated_at)
@@ -142,8 +142,8 @@ BEGIN
       (v_tpl, jsonb_build_object('ja', '全長', 'en', 'Overall length'), 'mm', 329.5, 330.5, true, 2),
       (v_tpl, jsonb_build_object('ja', '外観', 'en', 'Appearance'), NULL, NULL, NULL, false, 3);
   END IF;
-  INSERT INTO app.work_order_inspection_templates (work_order_id, inspection_template_id)
-  VALUES (v_wo, v_tpl)
+  INSERT INTO app.work_order_step_inspection_templates (work_order_step_id, inspection_template_id)
+  VALUES (v_step_inspection, v_tpl)
   ON CONFLICT DO NOTHING;
 
   -- 本日の作業計画を demo1 へ（3 工程とも・数量 50・時刻指定なし = 終日）

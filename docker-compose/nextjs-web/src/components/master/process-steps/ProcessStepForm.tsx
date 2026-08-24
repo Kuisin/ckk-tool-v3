@@ -11,6 +11,7 @@
 import {
   Box,
   Group,
+  MultiSelect,
   NumberInput,
   Select,
   SimpleGrid,
@@ -42,6 +43,7 @@ import {
 import { useIsMobile } from "@/hooks/useViewport";
 import {
   DEPENDENCY_RELATION_OPTIONS,
+  LOT_INPUT_MODE_OPTIONS,
   PROCESS_CATEGORY_OPTIONS,
   PROCESS_EXECUTION_OPTIONS,
   QUANTITY_TRACKING_OPTIONS,
@@ -98,6 +100,7 @@ const processStepSchema = z
     isApprovalStep: z.boolean(),
     approvalMinRank: z.string(),
     quantityTracking: z.enum(["NONE", "FLOW", "INSPECTION"]),
+    lotInputMode: z.enum(["REQUIRED", "OPTIONAL", "NONE"]),
     // NumberInput の未入力は "" — 送信時に null へ変換する
     defaultWorkHours: z.union([
       z.number().positive("既定作業時間は正の数で入力してください"),
@@ -108,6 +111,8 @@ const processStepSchema = z
     notes: z.string(),
     useDeps: z.array(depRowSchema),
     execDeps: z.array(depRowSchema),
+    allowedTypeKeys: z.array(z.string()),
+    allowedLocationIds: z.array(z.string()),
   })
   .superRefine((v, ctx) => {
     refineDepRows(v.useDeps, "useDeps", ctx);
@@ -136,12 +141,16 @@ export interface ProcessStepFormInitial {
   isApprovalStep: boolean;
   approvalMinRank: string;
   quantityTracking: string;
+  lotInputMode: string;
   defaultWorkHours: number | null;
   sortOrder: number;
   isActive: boolean;
   notes: string;
   useDeps: ProcessStepFormDep[];
   execDeps: ProcessStepFormDep[];
+  /** 許可作業場所（種別キー / 場所 id 文字列）。両方空 = 無制限。 */
+  allowedTypeKeys: string[];
+  allowedLocationIds: string[];
 }
 
 let depKeySeq = 0;
@@ -170,8 +179,14 @@ function toDepRows(deps: ProcessStepFormDep[], prefix: string): DepRow[] {
 
 export function ProcessStepForm({
   initial,
+  workLocationTypeOptions,
+  workLocationOptions,
 }: {
   initial?: ProcessStepFormInitial;
+  /** 作業場所種別の選択肢（machine / area + 管理者定義）。 */
+  workLocationTypeOptions: { value: string; label: string }[];
+  /** 作業場所の選択肢（有効のみ、「グループ / 場所」ラベル）。 */
+  workLocationOptions: { value: string; label: string }[];
 }) {
   const router = useRouter();
   const isMobile = useIsMobile();
@@ -195,12 +210,19 @@ export function ProcessStepForm({
         initial?.quantityTracking === "INSPECTION"
           ? initial.quantityTracking
           : "FLOW",
+      lotInputMode:
+        initial?.lotInputMode === "REQUIRED" ||
+        initial?.lotInputMode === "OPTIONAL"
+          ? initial.lotInputMode
+          : "NONE",
       defaultWorkHours: initial?.defaultWorkHours ?? "",
       sortOrder: initial?.sortOrder ?? 0,
       isActive: initial?.isActive ?? true,
       notes: initial?.notes ?? "",
       useDeps: toDepRows(initial?.useDeps ?? [], "use"),
       execDeps: toDepRows(initial?.execDeps ?? [], "exec"),
+      allowedTypeKeys: initial?.allowedTypeKeys ?? [],
+      allowedLocationIds: initial?.allowedLocationIds ?? [],
     },
   });
 
@@ -255,6 +277,7 @@ export function ProcessStepForm({
       isApprovalStep: values.isApprovalStep,
       approvalMinRank: values.approvalMinRank,
       quantityTracking: values.quantityTracking,
+      lotInputMode: values.lotInputMode,
       defaultWorkHours:
         values.defaultWorkHours === "" ? null : values.defaultWorkHours,
       sortOrder: values.sortOrder,
@@ -262,6 +285,8 @@ export function ProcessStepForm({
       notes: values.notes,
       useDependencies,
       execDependencies,
+      allowedLocationTypeKeys: values.allowedTypeKeys,
+      allowedLocationIds: values.allowedLocationIds.map((v) => Number(v)),
     };
     startTransition(async () => {
       const result = isEdit
@@ -446,6 +471,13 @@ export function ProcessStepForm({
             }
             {...form.getInputProps("quantityTracking")}
           />
+          <Select
+            allowDeselect={false}
+            data={LOT_INPUT_MODE_OPTIONS}
+            description="工程開始時のロット/伝票コード入力。必須 = 未入力では開始不可（工程リスト・指示書で工程別に上書き可）"
+            label="ロット入力（既定）"
+            {...form.getInputProps("lotInputMode")}
+          />
           <NumberInput
             decimalScale={2}
             description="ルート/指示書の工程に入る初期値（任意・上書き可）"
@@ -538,6 +570,44 @@ export function ProcessStepForm({
         title="実行依存"
       >
         {depRowsEditor("execDeps")}
+      </FormSection>
+
+      <FormSection
+        description="この工程の計画・実績で使える作業場所を制限します（種別と個別の和集合が許可されます）。両方空 = 制限なし。キオスクでも同じ制限が効きます。"
+        title="許可作業場所"
+      >
+        <SimpleGrid cols={isMobile ? 1 : 2} spacing="sm">
+          <MultiSelect
+            clearable
+            data={workLocationTypeOptions}
+            description="種別に属する全場所を許可（種別は MS0D の種別管理で定義）"
+            label={
+              <HelpLabel
+                {...fieldHelp("processStep", "allowedLocations", {
+                  label: "種別で許可",
+                })}
+              />
+            }
+            placeholder={
+              form.values.allowedTypeKeys.length > 0 ? undefined : "種別を選択"
+            }
+            searchable
+            {...form.getInputProps("allowedTypeKeys")}
+          />
+          <MultiSelect
+            clearable
+            data={workLocationOptions}
+            description="個別の機械・エリアを許可"
+            label="場所で許可"
+            placeholder={
+              form.values.allowedLocationIds.length > 0
+                ? undefined
+                : "作業場所を検索"
+            }
+            searchable
+            {...form.getInputProps("allowedLocationIds")}
+          />
+        </SimpleGrid>
       </FormSection>
     </FormShell>
   );

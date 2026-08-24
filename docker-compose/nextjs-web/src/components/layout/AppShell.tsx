@@ -11,6 +11,7 @@ import { AppShell } from "@mantine/core";
 import type { ReactNode } from "react";
 import { AppFooter } from "./AppFooter";
 import { AppHeader, DEV_BAR_HEIGHT, type HeaderUser } from "./AppHeader";
+import { VersionSkewBanner } from "./VersionSkewBanner";
 
 export function DashboardShell({
   children,
@@ -34,7 +35,11 @@ export function DashboardShell({
        * Subtle inner shadow + off-white background on the main area
        * (design.md §1.5). light-dark() keeps both color schemes correct.
        */}
-      <AppShell.Main className="app-shell-main">{children}</AppShell.Main>
+      <AppShell.Main className="app-shell-main">
+        {/* デプロイ跨ぎの古いタブへの再読み込み案内（スキュー時のみ表示）。 */}
+        <VersionSkewBanner />
+        {children}
+      </AppShell.Main>
 
       <AppFooter />
     </AppShell>

@@ -11,7 +11,8 @@
 import { timingSafeEqual } from "node:crypto";
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { deviceName } from "@/lib/format";
+import { prisma } from "@/lib/db";
+import { deviceName, type LocalizedText, localized } from "@/lib/format";
 import { getDeviceForSettings } from "@/lib/kiosk-auth";
 import {
   clearGate,
@@ -54,6 +55,34 @@ export async function POST(req: Request) {
 
   clearGate(device.id);
   const ticket = issueTicket("", device.id, "DEVICE_SETTINGS");
+
+  // 既定の作業場所 — 現在値 + 選択肢（端末の拠点 or 拠点未指定グループ）。
+  // この画面はログイン前 = ja 固定なのでラベルは日本語で解決する。
+  const [current, locations] = await Promise.all([
+    device.defaultWorkLocationId != null
+      ? prisma.workLocation.findUnique({
+          where: { id: device.defaultWorkLocationId },
+          select: { id: true, name: true, group: { select: { name: true } } },
+        })
+      : null,
+    prisma.workLocation.findMany({
+      where: {
+        isActive: true,
+        group: {
+          isActive: true,
+          OR: [{ plantId: device.plantId }, { plantId: null }],
+        },
+      },
+      include: { group: { select: { name: true } } },
+      orderBy: [{ groupId: "asc" }, { sortOrder: "asc" }, { id: "asc" }],
+    }),
+  ]);
+  const locationLabel = (l: {
+    name: unknown;
+    group: { name: unknown };
+  }): string =>
+    `${localized(l.group.name as LocalizedText | null, "ja")} / ${localized(l.name as LocalizedText | null, "ja")}`;
+
   return NextResponse.json({
     state: "OK",
     ticket,
@@ -64,6 +93,13 @@ export async function POST(req: Request) {
       linkedAt: device.linkedAt,
       deviceTokenExpiresAt: device.deviceTokenExpiresAt,
       fingerprint: device.fingerprint,
+      defaultWorkLocationId: device.defaultWorkLocationId,
+      defaultWorkLocationLabel: current ? locationLabel(current) : null,
+      enforceWorkLocation: device.enforceWorkLocation,
     },
+    workLocationOptions: locations.map((l) => ({
+      value: String(l.id),
+      label: locationLabel(l),
+    })),
   });
 }

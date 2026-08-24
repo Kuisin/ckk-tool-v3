@@ -15,6 +15,7 @@ BEGIN;
 
 -- 撮影用端末（有効・トークン期限は固定の未来日）
 INSERT INTO app.kiosk_devices (id, name, location, plant_id,
+  default_work_location_id, enforce_work_location,
   floor_map_id, map_x, map_y, status, settings_code, linked_at,
   device_token_hash, device_token_expires_at, device_public_key, fingerprint,
   user_agent, last_ip_address, activated_by, activated_at, last_activity_at,
@@ -23,6 +24,8 @@ VALUES
   ('de000000-0000-4000-8000-000000000901'::uuid,
    '{"ja": "1F 加工場 タブレット（撮影用）", "en": "1F Machining Floor Tablet (docs)"}'::jsonb, '加工場入口',
    (SELECT id FROM app.plants WHERE code = 'F01'),
+   -- 既定の作業場所（撮影: SY09 編集モーダル・キオスク実行画面・端末設定画面）
+   (SELECT id FROM app.work_locations WHERE code = 'NC-01'), false,
    NULL, NULL, NULL, 'ACTIVE'::app."KIOSK_DEVICE_STATUS", '901234',
    '2026-07-01T09:00:00+09',
    -- sha256('ckk-shot-device-token-fixed-0001')
@@ -34,7 +37,9 @@ VALUES
 ON CONFLICT (id) DO UPDATE SET
   status = EXCLUDED.status,
   device_token_hash = EXCLUDED.device_token_hash,
-  device_token_expires_at = EXCLUDED.device_token_expires_at;
+  device_token_expires_at = EXCLUDED.device_token_expires_at,
+  default_work_location_id = EXCLUDED.default_work_location_id,
+  enforce_work_location = EXCLUDED.enforce_work_location;
 
 -- 撮影用カード（demo_shot に割当・PIN 4321・工程が割り当たっている人）
 INSERT INTO app.kiosk_cards (id, user_id, status,

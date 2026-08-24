@@ -247,6 +247,14 @@ export function DeliveryNoteForm({
       // 納品先の主担当を入れる）。
       salesRepId: cand.salesRepId,
       endUserBpId: cand.endUserBpId,
+      // 納品方法は注文請書の配送方法を既定にする（価格記載の既定も連動 —
+      // onMethodChange と同じ規則）。導出できないときは触らない。
+      ...(cand.deliveryMethod
+        ? {
+            deliveryMethod: cand.deliveryMethod,
+            includePrice: cand.deliveryMethod === "NORMAL",
+          }
+        : {}),
       items: candidateItems(cand),
     }));
   };

@@ -28,9 +28,10 @@ import {
 } from "@/lib/approvals";
 import { type MaterialAtp, materialAtp } from "@/lib/atp";
 import { getCurrentActorId, recordAudit } from "@/lib/audit";
-import { checkPermission } from "@/lib/authz";
+import { checkApprovalDocAccess, checkPermission } from "@/lib/authz";
 import { type Prisma, prisma } from "@/lib/db";
 import { formatDocNumber, orderLineNumberOf } from "@/lib/doc-number";
+import { type LocalizedText, localized } from "@/lib/format";
 import { allocateDocumentKey, nextSerialNumber } from "@/lib/numbering";
 import {
   fetchRouteVersionSteps,
@@ -52,9 +53,14 @@ import {
   validateAllocations,
 } from "@/lib/work-order-alloc-core";
 import {
+  acknowledgeFlowChange,
   applyApprovedFlowChange,
   closeFlowChange,
 } from "@/lib/work-order-flow-changes";
+import {
+  addWorkOrderLink as addWoLink,
+  removeWorkOrderLink as removeWoLink,
+} from "@/lib/work-order-links";
 import { type OrderedStepCreate, validateAndOrderSteps } from "@/lib/workflow";
 import { fetchOrderLineRef, type OrderLineRef } from "./data";
 
@@ -108,6 +114,10 @@ const stepInput = z.object({
   supplierBpId: z.string().nullable(),
   // 作業時間 (h) — 任意（0.01〜9999.99）
   workHours: z.number().positive().max(9999.99).nullable(),
+  // ロット入力の上書き（null/未指定 = 工程マスタの既定を継承）
+  lotInputMode: z.enum(["REQUIRED", "OPTIONAL", "NONE"]).nullable().optional(),
+  // 検査工程で使う検査表テンプレート（工程単位の割当。検査工程以外は無視）
+  inspectionTemplateIds: z.array(z.number().int().positive()).default([]),
 });
 
 // 工程ルート（工程リスト）の出所指定 — 指示書は常に工程リストに基づく。
@@ -124,6 +134,8 @@ const routeInput = z.union(
     z.object({
       mode: z.literal("new"),
       name: z.string().trim().min(1),
+      // 対象の受注元（取引先）。null/未指定 = 汎用ルート。
+      customerBpId: z.string().uuid().nullable().optional(),
     }),
   ],
   { message: "工程リストを選択するか、新しい工程リスト名を入力してください" },
@@ -156,13 +168,19 @@ const workOrderInput = z
     plannedQuantity: z.number().int().min(1, "予定数量は1以上"),
     materialId: z.number().int().positive().nullable(),
     storageLocationId: z.number().int().positive().nullable(),
-    inspectionTemplateIds: z.array(z.number().int().positive()),
     notes: z.string(),
     steps: z.array(stepInput).min(1, "工程を1つ以上選択してください"),
-    route: routeInput,
+    // 製造分は必須。在庫分（FROM_STOCK）は固定構成のため工程リストを使わない。
+    route: routeInput.nullable(),
     plans: z.array(planInput),
   })
   .superRefine((v, refCtx) => {
+    if (v.type !== "FROM_STOCK" && v.route == null) {
+      refCtx.addIssue({
+        code: "custom",
+        message: "工程リストを選択するか、新しい工程リスト名を入力してください",
+      });
+    }
     if (v.allocations.length === 0) {
       if (v.type !== "MANUFACTURE") {
         refCtx.addIssue({
@@ -282,11 +300,19 @@ async function assignLotNumbersTx(
   });
 }
 
-/** 共通の工程 create 行 → work_order_steps 行（workHours → planned_work_hours）。 */
+/**
+ * 共通の工程 create 行 → work_order_steps 行（workHours → planned_work_hours、
+ * 検査表はネスト作成で工程に紐付ける）。
+ */
 function toWorkOrderStepCreates(creates: OrderedStepCreate[]) {
-  return creates.map(({ workHours, ...s }) => ({
+  return creates.map(({ workHours, inspectionTemplateIds, ...s }) => ({
     ...s,
     plannedWorkHours: workHours,
+    inspectionTemplates: {
+      create: inspectionTemplateIds.map((id) => ({
+        inspectionTemplateId: id,
+      })),
+    },
   }));
 }
 
@@ -341,7 +367,7 @@ export async function createWorkOrder(
   }
   const v = parsed.data;
   try {
-    const built = await validateAndOrderSteps(v.steps);
+    const built = await validateAndOrderSteps(v.steps, v.type);
     if (!built.ok) return actionError(built.error);
     const target = await resolveWorkOrderTarget(v);
     if (typeof target === "string") return actionError(target);
@@ -358,7 +384,7 @@ export async function createWorkOrder(
       // 工程構成 → ルートバージョン解決（変更があれば新バージョンを自動保存）
       const resolvedRouteVersionId = await resolveRouteVersionTx(
         tx,
-        v.route,
+        v.type === "FROM_STOCK" ? null : v.route,
         built.creates,
         actor,
         productId,
@@ -388,11 +414,6 @@ export async function createWorkOrder(
             })),
           },
           steps: { create: toWorkOrderStepCreates(built.creates) },
-          inspectionTemplates: {
-            create: v.inspectionTemplateIds.map((id) => ({
-              inspectionTemplateId: id,
-            })),
-          },
         },
         select: {
           id: true,
@@ -445,7 +466,10 @@ export async function createWorkOrder(
         storageLocationId: v.storageLocationId,
         routeVersionId,
         stepCount: built.creates.length,
-        inspectionTemplateCount: v.inspectionTemplateIds.length,
+        inspectionTemplateCount: built.creates.reduce(
+          (n, c) => n + c.inspectionTemplateIds.length,
+          0,
+        ),
         planCount: v.plans.length,
       },
     });
@@ -487,7 +511,7 @@ export async function updateWorkOrder(
     if (prior.status !== "DRAFT") {
       return actionError("下書きの指示書のみ編集できます");
     }
-    const built = await validateAndOrderSteps(v.steps);
+    const built = await validateAndOrderSteps(v.steps, v.type);
     if (!built.ok) return actionError(built.error);
     const target = await resolveWorkOrderTarget(v, workOrderNumber);
     if (typeof target === "string") return actionError(target);
@@ -500,16 +524,14 @@ export async function updateWorkOrder(
     const routeVersionId = await prisma.$transaction(async (tx) => {
       const resolvedRouteVersionId = await resolveRouteVersionTx(
         tx,
-        v.route,
+        v.type === "FROM_STOCK" ? null : v.route,
         built.creates,
         actor,
         productId,
         `指示書 #${workOrderNumber} 更新時に変更`,
       );
+      // 工程の作り直し — 工程単位の検査表割当は FK CASCADE で一緒に消える
       await tx.workOrderStep.deleteMany({ where: { workOrderId: prior.id } });
-      await tx.workOrderInspectionTemplate.deleteMany({
-        where: { workOrderId: prior.id },
-      });
       await tx.workOrderOrderLine.deleteMany({
         where: { workOrderId: prior.id },
       });
@@ -534,11 +556,6 @@ export async function updateWorkOrder(
             })),
           },
           steps: { create: toWorkOrderStepCreates(built.creates) },
-          inspectionTemplates: {
-            create: v.inspectionTemplateIds.map((id) => ({
-              inspectionTemplateId: id,
-            })),
-          },
         },
       });
       await assignLotNumbersTx(
@@ -591,6 +608,58 @@ export async function updateWorkOrder(
  * 対象注文明細が未指定のときは在庫向けの独立指示書としてコピーする
  * （製品はコピー元を引き継ぐ。在庫分 FROM_STOCK は注文明細必須）。
  */
+// ── 指示書→指示書リンク（数量受け渡し。例: リブ母材 WO → 製品 WO） ──────────
+
+const woLinkInput = z.object({
+  sourceWorkOrderNumber: z.number().int().positive(),
+  targetWorkOrderNumber: z.number().int().positive(),
+  // null = source 完了時の完成数全量
+  quantity: z.number().int().min(1).nullable(),
+  notes: z.string().max(500).optional(),
+});
+
+export type WorkOrderLinkInput = z.infer<typeof woLinkInput>;
+
+/** 先行指示書リンクの追加（不変条件は lib/work-order-links-core.ts）。 */
+export async function addWorkOrderLinkAction(
+  input: WorkOrderLinkInput,
+): Promise<ActionResult> {
+  const authz = await checkPermission("work_order", "UPDATE");
+  if (!authz.ok) return actionError(authz.error);
+  const parsed = woLinkInput.safeParse(input);
+  if (!parsed.success) {
+    return actionError(parsed.error.issues[0]?.message ?? "入力が不正です");
+  }
+  const v = parsed.data;
+  try {
+    const result = await addWoLink(v);
+    if (!result.ok) return actionError(result.error ?? "追加に失敗しました");
+    revalidate(v.targetWorkOrderNumber);
+    revalidate(v.sourceWorkOrderNumber);
+    return actionOk();
+  } catch (e) {
+    return actionError(prismaErrorMessage(e, "リンクの追加に失敗しました"));
+  }
+}
+
+/** 先行指示書リンクの解除。 */
+export async function removeWorkOrderLinkAction(
+  linkId: string,
+  workOrderNumber: number,
+): Promise<ActionResult> {
+  const authz = await checkPermission("work_order", "UPDATE");
+  if (!authz.ok) return actionError(authz.error);
+  if (!linkId) return actionError("対象が不正です");
+  try {
+    const result = await removeWoLink(linkId);
+    if (!result.ok) return actionError(result.error ?? "解除に失敗しました");
+    revalidate(workOrderNumber);
+    return actionOk();
+  } catch (e) {
+    return actionError(prismaErrorMessage(e, "リンクの解除に失敗しました"));
+  }
+}
+
 export async function copyWorkOrder(
   sourceWorkOrderNumber: number,
   targetOrderLineId: string,
@@ -606,8 +675,10 @@ export async function copyWorkOrder(
     const source = await prisma.workOrder.findUnique({
       where: { workOrderNumber: sourceWorkOrderNumber },
       include: {
-        steps: { orderBy: { sortOrder: "asc" } },
-        inspectionTemplates: true,
+        steps: {
+          orderBy: { sortOrder: "asc" },
+          include: { inspectionTemplates: true },
+        },
       },
     });
     if (!source) return actionError("コピー元の指示書が見つかりません");
@@ -696,11 +767,13 @@ export async function copyWorkOrder(
               plantId: s.plantId,
               supplierBpId: s.supplierBpId,
               plannedWorkHours: s.plannedWorkHours,
-            })),
-          },
-          inspectionTemplates: {
-            create: source.inspectionTemplates.map((t) => ({
-              inspectionTemplateId: t.inspectionTemplateId,
+              // ロット入力の上書きは複写する（lot_text は実績なので複写しない）
+              lotInputMode: s.lotInputMode,
+              inspectionTemplates: {
+                create: s.inspectionTemplates.map((t) => ({
+                  inspectionTemplateId: t.inspectionTemplateId,
+                })),
+              },
             })),
           },
         },
@@ -884,7 +957,7 @@ export async function approveWorkOrder(
 ): Promise<ActionResult<{ remaining: number; completed: boolean }>> {
   // 権限チェックは追加ゲート — 実体の承認可否（本人/代理）は
   // actOnCurrentStep のグループ所属判定が引き続き行う。
-  const authz = await checkPermission("work_order", "APPROVE");
+  const authz = await checkApprovalDocAccess("work_order");
   if (!authz.ok) return actionError(authz.error);
   if (!(await workOrderInScope(authz.access, authz.userId, workOrderNumber))) {
     return actionError(SCOPE_DENIED);
@@ -1044,7 +1117,7 @@ export async function rejectWorkOrder(
   workOrderNumber: number,
   reason: string,
 ): Promise<ActionResult> {
-  const authz = await checkPermission("work_order", "APPROVE");
+  const authz = await checkApprovalDocAccess("work_order");
   if (!authz.ok) return actionError(authz.error);
   const trimmed = reason.trim();
   if (!trimmed) return actionError("差し戻し理由を入力してください");
@@ -1141,14 +1214,31 @@ export async function getMaterialAtp(
   }
 }
 
-/** 注文明細 → 対象製品の工程ルート一覧（ビルダーのルート選択用）。 */
+/**
+ * 注文明細 → 対象製品の工程ルート一覧（ビルダーのルート選択用）。
+ * 明細の受注元（注文請書ヘッダの顧客）も返す — 顧客一致ルートの優先選択と
+ * 新規ルート保存時の対象顧客の既定値に使う。
+ */
 export async function getProductRoutesForOrderLine(
   orderLineId: string,
-): Promise<{ productId: number; routes: RouteView[] } | null> {
+): Promise<{
+  productId: number;
+  customerBpId: string | null;
+  customerName: string | null;
+  routes: RouteView[];
+} | null> {
   if (!orderLineId) return null;
   const so = await prisma.orderLine.findUnique({
     where: { id: orderLineId },
-    select: { productId: true },
+    select: {
+      productId: true,
+      acceptance: {
+        select: {
+          customerBpId: true,
+          customerBp: { select: { name: true } },
+        },
+      },
+    },
   });
   // 確定前の明細（製品未特定）は指示書の対象にならない。
   if (!so || so.productId == null) return null;
@@ -1156,14 +1246,21 @@ export async function getProductRoutesForOrderLine(
   const routes = await listProductRoutes(productId);
   return {
     productId,
+    customerBpId: so.acceptance.customerBpId,
+    customerName: so.acceptance.customerBp
+      ? localized(so.acceptance.customerBp.name as LocalizedText | null)
+      : null,
     routes: routes.filter((r) => r.isActive),
   };
 }
 
 /** 製品直接指定（在庫向け指示書）の工程ルート一覧。 */
-export async function getProductRoutesForProduct(
-  productId: number,
-): Promise<{ productId: number; routes: RouteView[] } | null> {
+export async function getProductRoutesForProduct(productId: number): Promise<{
+  productId: number;
+  customerBpId: string | null;
+  customerName: string | null;
+  routes: RouteView[];
+} | null> {
   if (!Number.isInteger(productId) || productId <= 0) return null;
   const product = await prisma.product.findUnique({
     where: { id: productId },
@@ -1171,7 +1268,12 @@ export async function getProductRoutesForProduct(
   });
   if (!product) return null;
   const routes = await listProductRoutes(productId);
-  return { productId, routes: routes.filter((r) => r.isActive) };
+  return {
+    productId,
+    customerBpId: null,
+    customerName: null,
+    routes: routes.filter((r) => r.isActive),
+  };
 }
 
 /** ルートバージョンの工程スナップショット（ビルダーのプリフィル・比較基準）。 */
@@ -1223,7 +1325,7 @@ export async function getLineAllocStatus(
 export async function approveFlowChange(
   flowChangeId: string,
 ): Promise<ActionResult<{ completed: boolean; applied: boolean }>> {
-  const authz = await checkPermission("work_order", "APPROVE");
+  const authz = await checkApprovalDocAccess("work_order");
   if (!authz.ok) return actionError(authz.error);
   const change = await prisma.workOrderFlowChange.findUnique({
     where: { id: flowChangeId },
@@ -1274,12 +1376,39 @@ export async function approveFlowChange(
   }
 }
 
+/**
+ * 「差し戻されたが適用済み」の工程フロー変更を確認済みにする（事後承認 POST
+ * 専用 — 人が工程を手で直したことの記録。赤アラートを閉じる）。
+ */
+export async function acknowledgeFlowChangeAction(
+  flowChangeId: string,
+  workOrderNumber: number,
+): Promise<ActionResult> {
+  const authz = await checkPermission("work_order", "UPDATE");
+  if (!authz.ok) return actionError(authz.error);
+  if (!flowChangeId) return actionError("対象が不正です");
+  try {
+    const done = await acknowledgeFlowChange(flowChangeId);
+    if (!done) return actionError("対象の変更が見つかりません（確認済み？）");
+    await recordAudit({
+      action: "UPDATE",
+      tableName: "work_orders",
+      recordId: String(workOrderNumber),
+      after: { note: "差し戻された工程フロー変更を確認済みにした" },
+    });
+    revalidate(workOrderNumber);
+    return actionOk();
+  } catch (e) {
+    return actionError(prismaErrorMessage(e, "確認の記録に失敗しました"));
+  }
+}
+
 /** 工程フロー変更を差し戻す（工程は変わらないまま閉じる）。 */
 export async function rejectFlowChange(
   flowChangeId: string,
   reason: string,
 ): Promise<ActionResult> {
-  const authz = await checkPermission("work_order", "APPROVE");
+  const authz = await checkApprovalDocAccess("work_order");
   if (!authz.ok) return actionError(authz.error);
   if (!reason.trim()) return actionError("差し戻し理由を入力してください");
   const change = await prisma.workOrderFlowChange.findUnique({

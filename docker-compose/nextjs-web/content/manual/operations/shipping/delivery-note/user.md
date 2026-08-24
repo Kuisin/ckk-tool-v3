@@ -7,6 +7,8 @@ screenshots: [delivery-note-list-01, delivery-note-new-01, delivery-note-detail-
 
 > ⚠️ このアプリはまだ準備中です。正式に使えるようになるまでに、画面や手順が変わることがあります。
 
+> このアプリが属するフロー … [出荷の流れ](/manual/ja/process/shipping)
+
 ## このアプリでできること
 
 - お届け先へ渡す納品書をつくれます。

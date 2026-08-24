@@ -84,6 +84,10 @@ export interface WorkOrderStepView {
   supplierName: string | null;
   /** 予定作業時間 (h) — 任意。 */
   plannedWorkHours: number | null;
+  /** ロット入力の上書き（null = 工程マスタの既定を継承）— ビルダー編集用。 */
+  lotInputMode: "REQUIRED" | "OPTIONAL" | "NONE" | null;
+  /** 開始時に記録したロット/伝票コード。 */
+  lotText: string | null;
   status: string; // STEP_STATUS
   inputQuantity: number | null;
   outputSuccessQuantity: number | null;
@@ -97,6 +101,8 @@ export interface WorkOrderStepView {
   /** 作業計画 / 実績の件数（工程実行ページで記録）。 */
   planCount: number;
   actualCount: number;
+  /** この検査工程で使う検査表テンプレート（検査工程以外は空）。 */
+  inspectionTemplates: { id: number; code: string; name: string }[];
   /**
    * 分岐系列の終端処理（§7）。値があれば「この工程で系列が終わり、良品は
    * この在庫へ入る」。null = 合流する / 分岐系列ではない。
@@ -124,6 +130,16 @@ export interface WorkOrderCopyRef {
   docNumber: string;
   status: string;
   createdAt: string;
+}
+
+/** 指示書→指示書リンク（work_order_links）の相手方 1 件。 */
+export interface WoLinkView {
+  id: string;
+  workOrderNumber: number;
+  docNumber: string;
+  status: string;
+  /** 受け渡し数量（null = 完了時の完成数全量）。 */
+  quantity: number | null;
 }
 
 /** 指示書に割り当てられた注文明細（work_order_order_lines 1 行）。 */
@@ -175,7 +191,10 @@ export interface WorkOrderView {
   sourceWorkOrderNumber: number | null;
   sourceWorkOrderDocNumber: string | null;
   copies: WorkOrderCopyRef[];
-  inspectionTemplates: { id: number; code: string; name: string }[];
+  /** 先行指示書（この指示書へ数量を渡す — 完了まで先頭工程は開始不可）。 */
+  woLinksIncoming: WoLinkView[];
+  /** 後続指示書（この指示書の完成数を受け取る）。 */
+  woLinksOutgoing: WoLinkView[];
   steps: WorkOrderStepView[];
   stepLinks: StepLinkView[];
   rejectReason: string | null;
@@ -205,5 +224,9 @@ export function describeIssue(
       return `${step}と${related[0]}は同時に選択できません`;
     case "MISSING_OR_GROUP":
       return `${step}には${related.join("・")}のいずれかが必要です（素材条件で充足される場合があります）`;
+    case "MISSING_START":
+      return `工程は「出し・受渡し」（${related.join("・")}）のいずれかから始める必要があります`;
+    case "MULTIPLE_START":
+      return `「出し・受渡し」は 1 つだけ選択できます（選択中: ${related.join("・")}）`;
   }
 }

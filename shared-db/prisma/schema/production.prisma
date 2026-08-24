@@ -128,9 +128,11 @@ model WorkOrder {
   steps               WorkOrderStep[]
   stepLinks           WorkOrderStepLink[]
   flowChanges         WorkOrderFlowChange[]
-  inspectionTemplates WorkOrderInspectionTemplate[]
   deliveryOrders      DeliveryOrder[]
   reservations        InventoryReservation[]
+
+  outgoingWoLinks WorkOrderLink[] @relation("WoLinkSource")
+  incomingWoLinks WorkOrderLink[] @relation("WoLinkTarget")
 
   @@unique([yearMonth, seq])
   @@index([productId])
@@ -139,6 +141,33 @@ model WorkOrder {
   @@index([routeVersionId])
   @@index([storageLocationId])
   @@map("work_orders")
+  @@schema("app")
+}
+
+// 指示書 → 指示書 の数量受け渡しリンク（例: リブ母材の指示書 → 製品の指示書）。
+// source の完成数が target の受入数として渡る。target の先頭メインライン工程は
+// source が COMPLETED になるまで開始できない（canStartStep — workflow-core）。
+// quantity = null は「完了時の完成数全量」。在庫計上は従来どおり両指示書で行う
+// （リンクはゲート + 受入既定値 + 表示のみ — 母材と製品は別品目なので二重計上に
+// ならない）。閉路の禁止は lib/work-order-links-core.ts wouldCreateCycle が
+// 唯一の判定元（サーバー tx 内で検証）。
+model WorkOrderLink {
+  id                String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  sourceWorkOrderId String   @map("source_work_order_id") @db.Uuid
+  targetWorkOrderId String   @map("target_work_order_id") @db.Uuid
+  // 渡す数量。null = source 完了時の完成数全量
+  quantity          Int?
+  notes             String?
+  createdBy         String?  @map("created_by") @db.Uuid
+  createdAt         DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  sourceWorkOrder WorkOrder @relation("WoLinkSource", fields: [sourceWorkOrderId], references: [id], onDelete: Cascade)
+  targetWorkOrder WorkOrder @relation("WoLinkTarget", fields: [targetWorkOrderId], references: [id], onDelete: Cascade)
+  createdByUser   User?     @relation("WoLinkCreatedBy", fields: [createdBy], references: [id])
+
+  @@unique([sourceWorkOrderId, targetWorkOrderId])
+  @@index([targetWorkOrderId])
+  @@map("work_order_links")
   @@schema("app")
 }
 
@@ -187,6 +216,12 @@ model WorkOrderFlowChange {
   status      String   @default("PENDING")
   /// 適用に失敗した理由（数量が足りなくなった等）。承認後に出る。
   error       String?
+  /// 事後承認（apply_mode = POST）で即時適用した日時。
+  /// REJECTED + applied_at あり + 未 ack = 「差し戻されたが適用済み」の警告対象。
+  appliedAt      DateTime? @map("applied_at") @db.Timestamptz(6)
+  /// 上の警告を確認済みにした操作（人が手で直したことの記録）。
+  acknowledgedAt DateTime? @map("acknowledged_at") @db.Timestamptz(6)
+  acknowledgedBy String?   @map("acknowledged_by") @db.Uuid
   requestedBy String?  @map("requested_by") @db.Uuid
   requestedAt DateTime @default(now()) @map("requested_at") @db.Timestamptz(6)
   resolvedBy  String?  @map("resolved_by") @db.Uuid
@@ -195,22 +230,25 @@ model WorkOrderFlowChange {
   workOrder       WorkOrder @relation(fields: [workOrderId], references: [id], onDelete: Cascade)
   requestedByUser User?     @relation("FlowChangeRequestedBy", fields: [requestedBy], references: [id])
   resolvedByUser  User?     @relation("FlowChangeResolvedBy", fields: [resolvedBy], references: [id])
+  acknowledgedByUser User?  @relation("FlowChangeAcknowledgedBy", fields: [acknowledgedBy], references: [id])
 
   @@index([workOrderId, status])
   @@map("work_order_flow_changes")
   @@schema("app")
 }
 
-// 指示書に紐付く検査表テンプレート（複数可）
-model WorkOrderInspectionTemplate {
-  workOrderId          String @map("work_order_id") @db.Uuid
+// 検査工程ステップに紐付く検査表テンプレート（複数可）。
+// 旧: 指示書単位（work_order_inspection_templates）— 検査工程が複数ある
+// 指示書でどの検査表がどの工程のものか曖昧だったため、工程単位へ移行した。
+model WorkOrderStepInspectionTemplate {
+  stepId               String @map("work_order_step_id") @db.Uuid
   inspectionTemplateId Int    @map("inspection_template_id")
 
-  workOrder          WorkOrder          @relation(fields: [workOrderId], references: [id], onDelete: Cascade)
+  step               WorkOrderStep      @relation(fields: [stepId], references: [id], onDelete: Cascade)
   inspectionTemplate InspectionTemplate @relation(fields: [inspectionTemplateId], references: [id])
 
-  @@id([workOrderId, inspectionTemplateId])
-  @@map("work_order_inspection_templates")
+  @@id([stepId, inspectionTemplateId])
+  @@map("work_order_step_inspection_templates")
   @@schema("app")
 }
 
@@ -224,6 +262,8 @@ model WorkOrderStep {
   plantId     Int?          @map("plant_id") // 社内実行時の拠点
   supplierBpId  String?       @map("supplier_bp_id") @db.Uuid // 外注時
   plannedWorkHours Decimal?   @map("planned_work_hours") @db.Decimal(6, 2) // 予定作業時間 (h) — 任意
+  lotInputMode  LotInputMode? @map("lot_input_mode") // 実行時のロット入力（null = 工程マスタの既定を継承）
+  lotText       String?       @map("lot_text") // 素材ロット・伝票コード等（開始時に記録）
 
   outsourceRequestedAt DateTime? @map("outsource_requested_at") @db.Date
   outsourceExpectedAt  DateTime? @map("outsource_expected_at") @db.Date
@@ -270,10 +310,11 @@ model WorkOrderStep {
   outgoingLinks WorkOrderStepLink[] @relation("LinkSource")
   incomingLinks WorkOrderStepLink[] @relation("LinkTarget")
 
-  inspectionRecords InspectionRecord[]
-  defectRecords     DefectRecord[]
-  plans             WorkOrderStepPlan[]
-  actuals           WorkOrderStepActual[]
+  inspectionRecords   InspectionRecord[]
+  defectRecords       DefectRecord[]
+  plans               WorkOrderStepPlan[]
+  actuals             WorkOrderStepActual[]
+  inspectionTemplates WorkOrderStepInspectionTemplate[]
 
   @@index([workOrderId, sortOrder])
   @@index([status])
@@ -316,6 +357,11 @@ model WorkOrderStepActual {
   startedAt  DateTime? @map("started_at") @db.Timestamptz(6)
   endedAt    DateTime? @map("ended_at") @db.Timestamptz(6)
   quantity   Int? // 実施数量（任意）
+  workLocationId Int? @map("work_location_id") // 作業場所（任意。キオスクは端末の既定作業場所を書き込む）
+  // このセグメント中に同じ作業者が同時に開いていた工程数。実働時間は
+  // duration / concurrent_count で按分する。同時数が変わる瞬間に行を閉じて
+  // 張り直す（1 行 = 一定の同時数のセグメント — kiosk resegmentOpenActuals）。
+  concurrentCount Int @default(1) @map("concurrent_count")
   notes      String?
   createdBy  String?   @map("created_by") @db.Uuid
   createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
@@ -323,6 +369,7 @@ model WorkOrderStepActual {
   step          WorkOrderStep @relation(fields: [stepId], references: [id], onDelete: Cascade)
   user          User          @relation("StepActualUser", fields: [userId], references: [id])
   createdByUser User?         @relation("StepActualCreatedBy", fields: [createdBy], references: [id])
+  workLocation  WorkLocation? @relation("StepActualWorkLocation", fields: [workLocationId], references: [id])
 
   @@index([stepId, workedDate])
   @@index([userId, workedDate])

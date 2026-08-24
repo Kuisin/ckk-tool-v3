@@ -5,6 +5,8 @@ screenshots: [price-list-list-01, price-list-new-01, price-list-detail-01, price
 ---
 お客様ごとに「この[製品](/manual/ja/operations/masters/product/user)はいくら」という値段を登録しておく台帳です。操作コードは `SA02` です。
 
+> このアプリが属するフロー … [販売の流れ](/manual/ja/process/sales)
+
 ## このアプリでできること
 
 - [お客様](/manual/ja/operations/masters/business-partner/user)ごとの製品の売値を登録できます。

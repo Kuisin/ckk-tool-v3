@@ -1,0 +1,125 @@
+// 購買の流れ — 依頼承認の差し戻しループと分割入荷ループを含む。
+
+/title/
+購買の流れ — 依頼から入荷完了まで
+
+/option/
+show-step-block-captions: false;
+show-right-gutter: false;
+left-title: 手順;
+left-subtitle: 説明;
+
+/role/
+
+<role_prod>
+label: 生産管理・現場;
+text-color: #065f46;
+background-color: #d1fae5;
+
+<role_approver>
+label: 承認・判断;
+text-color: #166534;
+background-color: #f0fdf4;
+
+<role_purchase>
+label: 購買担当;
+text-color: #115e59;
+background-color: #ccfbf1;
+
+<role_receiving>
+label: 受入担当;
+text-color: #155e75;
+background-color: #cffafe;
+
+<role_system>
+label: システム;
+text-color: #3730a3;
+background-color: #eef2ff;
+icon: #database;
+
+/block/
+
+<block_apply>
+background-color: #dbeafe;
+text-color: #1e40af;
+border-color: #2563eb;
+shape: rounded;
+icon: #zap;
+
+<block_approve>
+background-color: #dcfce7;
+text-color: #166534;
+border-color: #16a34a;
+shape: rounded;
+icon: #circle-check;
+
+<block_system>
+background-color: #e0e7ff;
+text-color: #3730a3;
+border-color: #4f46e5;
+shape: rect;
+icon: #database;
+
+<block_reject>
+background-color: #fee2e2;
+text-color: #991b1b;
+border-color: #dc2626;
+shape: hex;
+icon: #alert-triangle;
+
+<block_wait>
+background-color: #f4f4f5;
+text-color: #52525b;
+border-color: #71717a;
+shape: hex;
+icon: #clock;
+
+<block_memo>
+background-color: #fef3c7;
+text-color: #92400e;
+border-color: #d97706;
+shape: note;
+icon: #file-text;
+
+/line/
+
+[role_prod: 購買依頼を起票する] <block_apply>
+label: 購買依頼;
+desc: ほしい素材・数量・入荷先拠点・希望納期と、必要な理由を書いて承認を依頼する。;
+if (依頼の承認) is (差し戻し) than #red
+  [role_prod: 修正し再依頼する] <block_reject>
+  label: 差し戻し;
+  desc: 理由や数量を直して、もう一度依頼する。;
+  [loop]
+else
+  [role_approver: 依頼を承認する] <block_approve>
+  label: 依頼承認;
+endif
+[role_purchase: 発注書を作成する] <block_apply>
+label: 発注書;
+desc: 仕入先・単価・入荷予定日を決める。急ぎや少額では依頼を通さず直接作成できる。;
+[role_approver: 発注書を承認する] <block_approve>
+label: 発注承認;
+desc: 金額と条件を確認して承認する。差し戻しの場合は修正して再依頼する。;
+[role_purchase: 仕入先へ発注する] <block_apply>
+label: 発注;
+desc: 発注すると入荷予定として扱われる。;
+[role_receiving: 入荷を記録する] <block_apply>
+label: 素材入荷;
+desc: 届いた数と入荷日、受け取った拠点を記録する。;
+[role_system: 拠点の在庫を増やす] <block_system>
+label: 在庫反映;
+desc: 記録した入荷日で、指定した拠点の素材在庫が増える。;
+if (発注数との差) is (残りあり) than #orange
+  [role_receiving: 次の入荷を待つ] <block_wait>
+  label: 分割入荷;
+  desc: 分けて届く場合は、届いた分だけを記録し、残りは次の入荷として記録する。;
+  [loop]
+else
+  [role_system: 入荷完了になる] <block_system>
+  label: 入荷完了;
+  desc: 発注した数がすべて届くと、発注書の状態が「入荷完了」になる。;
+endif
+[role_prod: 外注は工程から] <block_memo>
+label: （参考）外注;
+desc: 外注依頼は購買からではなく、指示書の工程の実施場所に「外注」を選ぶと外注依頼の一覧に現れる。;

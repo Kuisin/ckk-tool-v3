@@ -1,7 +1,7 @@
 ---
 title: "Work Order — User Manual"
 description: "An app for making the document that decides which product to make, how many, and in what order at the factory, and for recording everything from approval to the end of the work."
-screenshots: [work-order-list-01, work-order-new-01, work-order-detail-01, work-order-approval-01, work-order-steps-01, work-order-step-quantity-01]
+screenshots: [work-order-list-01, work-order-new-01, work-order-detail-01, work-order-approval-01, work-order-steps-01, work-order-step-quantity-01, work-order-step-records-01]
 ---
 This app is for making the document (**指示書**, work order) that decides which product to make, how many, and in what order at the factory, and for recording everything from approval to the end of the work. The operation code is `PD02`.
 
@@ -51,12 +51,12 @@ When you open the app, you see a list of the work orders made so far.
 2. In 「**注文明細の割当**」 (order line allocations), choose the order line to base it on. You can search by order line number, product, or customer. Once you choose it, the customer name, the product, the ordered quantity, and the **remaining allocatable quantity** (the ordered quantity minus what other work orders already cover) appear below.
 3. In 「**割当数量**」 (allocation quantity), enter how many pieces this work order makes for that order line. The remaining quantity is filled in automatically, so change it only when you make just a part (splitting).
 4. To make other order lines of the same product at the same time (a combined lot), press 「**明細を追加（統合ロット）**」 (add order line — combined lot) and add rows. Order lines for different products cannot go on the same work order.
-5. In 「**種別**」 (type), choose 「在庫分」 (from stock) or 「製造分」 (to make). A from-stock work order can have only one order line.
+5. In 「**種別**」 (type), choose 「在庫分」 (from stock) or 「製造分」 (to make). A from-stock work order can have only one order line. **A from-stock work order has a fixed step set — 「製品出し（在庫）」 (product issue from stock) plus, if needed, 「出荷前検査」 (pre-ship inspection) — and does not use a step list**, so steps 10–11 below apply to made-to-order work orders only.
 6. Enter how many pieces to make in 「**予定数量**」 (planned quantity). The total of the allocations is filled in automatically and you cannot enter less than that. Adding extra as spares for defects is up to you.
 7. If you chose 「製造分」 (to make), choose the 「**使用素材**」 (material to use).
 8. If you already know where the finished products will be kept, choose the 「**保管場所**」 (storage location). It can stay empty.
-9. 「**検査表**」 (inspection sheets) — the ones you need are chosen automatically. Add more if any are missing.
-10. Choose the 「**工程リスト**」 (step list). See the next section.
+9. 「**検査表**」 (inspection sheets) are assigned **per inspection step**. When you pick a step, the sheets that name it as their related step are chosen automatically; add more in each step's selector if any are missing.
+10. Choose the 「**工程リスト**」 (step list). See the next section (made-to-order only).
 11. For steps that can be done either in-house or outside, choose 「**社内**」 (in-house) or 「**外注**」 (outsourced) — then choose the site for in-house, or the partner company for outsourced.
 12. Press 「**保存**」 (Save).
 
@@ -70,14 +70,19 @@ If there is not enough material, you see a note such as 「**素材在庫が 30 
 
 ### About the step list
 
-The order of the steps is registered per product as a 「工程リスト」 (step list).
+The order of the steps is registered per product as a 「工程リスト」 (step list). **Made-to-order work orders only** — from-stock work orders have a fixed step set and do not use one.
 
 - When you choose a order line, the step list for that product is chosen automatically and the steps are filled in.
 - If you choose a different 「**バージョン**」 (version), you can use an earlier order of steps.
 - If the product has no step list yet, you see 「**この製品の工程リストは未登録です（下で新規作成）**」 (this product has no step list yet — create one below). Enter a 「**新しい工程リスト名**」 (new step list name), such as "standard steps", and saving registers it as a new list.
 - If you add or remove steps, you see a note saying the list will be saved as a new version. The contents of work orders you used before do not change.
 
-You pick steps from checklists grouped by category. If a step needs an inspection or something similar, that is added automatically when you pick it. If the combination has a problem, a red note appears and you cannot save (「**工程構成にエラーがあります**」 — there is an error in the step setup). Please fix the steps until the red note is gone.
+You pick steps from a checklist. The layout and rules are:
+
+- Pick **exactly one** step from the top section 「**出し・受渡し（開始）**」 (issue / handoff — start): 素材出し, 半製品出し, 素材受渡し or 製品受渡し (picking another one replaces it). **Every step sequence starts there.**
+- A step whose prerequisite has not been picked yet is disabled (grayed out) with a hint such as 「**要: 全長合わせ**」 (requires: length adjust). The other way around, inspections and approvals a step needs are added automatically when you pick it.
+- The bottom section 「**出荷前検査（任意）**」 (pre-ship inspection — optional) can be added or left out; when added it always runs last. **Shipping itself is not a step — it is managed by the [delivery order](/manual/en/operations/shipping/delivery-order/user).**
+- If the combination has a problem, a red note appears and you cannot save (「**工程構成にエラーがあります**」 — there is an error in the step setup). Please fix the steps until the red note is gone.
 
 After saving, the work order detail screen shows 「**工程ルート**」 (step route) with the name and version of the step list used, for example "standard steps v1". You can open the product's step list from there.
 
@@ -142,8 +147,18 @@ On inspection steps, the boxes are named differently, such as 「**検査数**�
 
 - **検査記録** (inspection record) … on inspection steps, you enter the measured value for each item on the inspection sheet. Pass or fail is judged automatically according to the type of item. For sampling inspections, where you do not measure everything, the number to inspect is decided by the sample size rules. On inspection approval steps, you can approve inspection records that passed.
 - **不良記録（任意）** (defect record, optional) … you can write down the defect type and what happened.
-- **作業計画 / 作業実績** (work plan / work result) … you can record who, when, where, and how many pieces will be done (or were done), using the person in charge, date, time, quantity, and work place.
+- **作業計画 / 作業実績** (work plan / work result) … you can record who, when, where, and how many pieces will be done (or were done), using the person in charge, date, time, quantity, and work place (see "Work plans and work actuals" below).
 - **外注日程** (outsourcing schedule) … on outsourced steps, you can record 「依頼日」 (sent date), 「入荷予定日」 (expected return date), 「入荷日」 (return date), and 「外注費」 (outsourcing cost).
+
+### Work plans and work actuals
+
+Near the bottom of the step screen there are 「**作業計画**」 (work plans) and 「**作業実績**」 (work actuals) tables. Each row records the person, date (or times), quantity, and the **work location**.
+
+![The work plan and work actual tables with work locations](../../../assets/screenshots/work-order-step-records-01.png)
+
+- **作業場所（任意）** (work location, optional) … which machine or area the work happens (happened) at. For steps whose [process step](/manual/en/operations/masters/process-step/user#field-allowed-locations) restricts allowed work locations, only the allowed places can be chosen
+- When a step is started or resumed from a shared floor tablet, the actual row is created automatically and its work location is filled with the tablet's **default work location** (or a scanned work-location QR)
+- Actuals entered by hand here can carry a work location the same way
 
 ### When you want to redo something
 
@@ -194,9 +209,9 @@ Every field on the work order screen. The order of the steps themselves is set i
 | [Planned quantity](#field-planned-quantity) | Required | How many pieces |
 | [Material](#field-material) | Optional | The material used |
 | [Storage location](#field-storage-location) | Optional | Where the finished products are kept |
-| [Process list / version](#field-route) | Required | Which sequence of steps to use |
+| [Process list / version](#field-route) | Required (made-to-order) | Which sequence of steps to use |
 | [New process list name](#field-new-route-name) | Conditional | Name when creating a new list |
-| [Inspection sheets](#field-inspection-templates) | Optional | Templates to use |
+| [Inspection sheets](#field-inspection-templates) | Optional | Templates per inspection step |
 | [Notes](#field-notes) | Optional | Notes |
 
 ### Order line allocations [#field-order-line]
@@ -225,7 +240,7 @@ Where the finished products are kept. Choose from the [storage location](/manual
 
 ### Process list / version [#field-route]
 
-Which sequence of steps to use, chosen from the lists registered for that product. **Choosing a version copies that sequence as it stands** — editing the process list later does not change work orders already created.
+Which sequence of steps to use, chosen from the lists registered for that product. **Choosing a version copies that sequence as it stands** — editing the process list later does not change work orders already created. Not used for from-stock work orders (their step set is fixed).
 
 ### New process list name [#field-new-route-name]
 
@@ -233,7 +248,7 @@ The name when creating a new process list here. It becomes selectable for the sa
 
 ### Inspection sheets [#field-inspection-templates]
 
-The inspection templates used by this work order. Several can be selected; they are what the inspection steps offer during execution.
+The inspection templates used per inspection step. Several can be selected; picking a step auto-selects the sheets that name it as their related step, and each inspection step offers its own assigned sheets during execution.
 
 ### Notes [#field-notes]
 

@@ -67,6 +67,7 @@ export function StepCard({
   const hasQuantities = step.inputQuantity != null;
   const hasWorkHours =
     step.plannedWorkHours != null || step.actualWorkHours != null;
+  const hasLot = step.lotText != null;
 
   // 状態別の実行ボタン（PENDING=開始 / IN_PROGRESS=実行 / COMPLETED=詳細）。
   // 指示書が操作不可のときは、どの状態でも「詳細」（閲覧）に倒す。
@@ -160,7 +161,7 @@ export function StepCard({
         </Group>
       </Group>
 
-      {(step.assignees.length > 0 || hasWorkHours) && (
+      {(step.assignees.length > 0 || hasWorkHours || hasLot) && (
         <Group gap="md" mt="xs" pl={28} wrap="wrap">
           {step.assignees.length > 0 && (
             <Group gap={6} wrap="wrap">
@@ -188,6 +189,11 @@ export function StepCard({
                 step.actualWorkHours != null &&
                 " / "}
               {step.actualWorkHours != null && `実績 ${step.actualWorkHours}h`}
+            </Text>
+          )}
+          {step.lotText != null && (
+            <Text c="dimmed" ff="mono" size="xs">
+              ロット {step.lotText}
             </Text>
           )}
         </Group>

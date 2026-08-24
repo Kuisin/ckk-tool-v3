@@ -1,6 +1,7 @@
 import { KioskDevicesTable } from "@/components/settings/kiosk/KioskDevicesTable";
 import { requireAppRead } from "@/lib/authz-page";
 import { listKioskDevices, listKioskPlantOptions } from "@/lib/kiosk-admin";
+import { fetchWorkLocationOptionsWithPlant } from "@/lib/work-locations";
 
 export const dynamic = "force-dynamic";
 
@@ -8,9 +9,16 @@ export const dynamic = "force-dynamic";
 export default async function KioskDevicesPage() {
   const denied = await requireAppRead("kiosk-devices");
   if (denied) return denied;
-  const [devices, plantOptions] = await Promise.all([
+  const [devices, plantOptions, workLocationOptions] = await Promise.all([
     listKioskDevices(),
     listKioskPlantOptions(),
+    fetchWorkLocationOptionsWithPlant(),
   ]);
-  return <KioskDevicesTable plantOptions={plantOptions} rows={devices} />;
+  return (
+    <KioskDevicesTable
+      plantOptions={plantOptions}
+      rows={devices}
+      workLocationOptions={workLocationOptions}
+    />
+  );
 }

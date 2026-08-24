@@ -48,12 +48,18 @@ FROM app.roles r CROSS JOIN app.permissions p
 WHERE r.rolename = 'admin'
 ON CONFLICT DO NOTHING;
 
--- staff: system / kiosk 以外の業務コードに実務アクション（APPROVE は承認グループ所属が実ゲート）
+-- 承認は権限アクションでは管理しない — APPROVE グラントは全ロールから全廃。
+-- 承認できる人は承認設定（MS0B）の承認グループ所属だけが決め、RBAC 側の要件は
+-- その書類の READ / UPDATE（閲覧または編集 — lib/authz.ts checkApprovalDocAccess）。
+-- ACTION enum の 'APPROVE' 値自体は互換のため残す（行を作らないだけ）。
+DELETE FROM app.role_permission_relation WHERE action = 'APPROVE';
+
+-- staff: system / kiosk 以外の業務コードに実務アクション
 INSERT INTO app.role_permission_relation (role_id, permission_code, action, scope)
 SELECT r.id, p.code, a.action::app."ACTION", 'ALL'::app."SCOPE"
 FROM app.roles r
 CROSS JOIN app.permissions p
-CROSS JOIN (VALUES ('READ'),('CREATE'),('UPDATE'),('DELETE'),('EXPORT'),('APPROVE')) AS a(action)
+CROSS JOIN (VALUES ('READ'),('CREATE'),('UPDATE'),('DELETE'),('EXPORT')) AS a(action)
 WHERE r.rolename = 'staff' AND p.code NOT IN ('system', 'kiosk', 'internal_docs')
 ON CONFLICT DO NOTHING;
 

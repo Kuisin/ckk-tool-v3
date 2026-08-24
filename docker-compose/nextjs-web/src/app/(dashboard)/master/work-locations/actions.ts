@@ -262,9 +262,29 @@ export async function deleteWorkLocation(id: number): Promise<ActionResult> {
   try {
     const prior = await prisma.workLocation.findUnique({
       where: { id },
-      select: { groupId: true, name: true },
+      select: {
+        groupId: true,
+        name: true,
+        _count: {
+          select: { stepPlans: true, stepActuals: true, kioskDevices: true },
+        },
+      },
     });
     if (!prior) return actionError("対象の作業場所が見つかりません");
+    // FK は SET NULL なので DB は削除を止めない — 使用中はここで拒否する
+    // （計画・実績の記録を黙って失わせない。端末の既定作業場所も同様）。
+    const used: string[] = [];
+    if (prior._count.stepPlans > 0)
+      used.push(`作業計画 ${prior._count.stepPlans} 件`);
+    if (prior._count.stepActuals > 0)
+      used.push(`作業実績 ${prior._count.stepActuals} 件`);
+    if (prior._count.kioskDevices > 0)
+      used.push(`キオスク端末の既定 ${prior._count.kioskDevices} 台`);
+    if (used.length > 0) {
+      return actionError(
+        `使用中の作業場所は削除できません（${used.join(" / ")}）`,
+      );
+    }
     await prisma.workLocation.delete({ where: { id } });
     await recordAudit({
       action: "UPDATE",
@@ -312,17 +332,29 @@ export async function saveWorkLocationTypes(
     return actionError("種別キーが重複しています");
   }
   try {
-    // 使用中の種別は削除不可（グループが参照している custom キー）
-    const inUse = await prisma.workLocationGroup.findMany({
-      where: {
-        typeKey: { notIn: [...BUILTIN_TYPES.map((b) => b.key), ...keys] },
-      },
-      select: { typeKey: true },
-      distinct: ["typeKey"],
-    });
-    if (inUse.length > 0) {
+    // 使用中の種別は削除不可（グループ or 工程マスタの許可作業場所が参照）
+    const keptKeys = [...BUILTIN_TYPES.map((b) => b.key), ...keys];
+    const [inUse, inUseByCatalog] = await Promise.all([
+      prisma.workLocationGroup.findMany({
+        where: { typeKey: { notIn: keptKeys } },
+        select: { typeKey: true },
+        distinct: ["typeKey"],
+      }),
+      prisma.processStepWorkLocation.findMany({
+        where: { typeKey: { notIn: keptKeys, not: null } },
+        select: { typeKey: true },
+        distinct: ["typeKey"],
+      }),
+    ]);
+    const usedKeys = [
+      ...new Set([
+        ...inUse.map((g) => g.typeKey),
+        ...inUseByCatalog.map((l) => l.typeKey ?? ""),
+      ]),
+    ].filter(Boolean);
+    if (usedKeys.length > 0) {
       return actionError(
-        `使用中の種別は削除できません: ${inUse.map((g) => g.typeKey).join(", ")}`,
+        `使用中の種別は削除できません: ${usedKeys.join(", ")}`,
       );
     }
     await writeWorkLocationTypes(

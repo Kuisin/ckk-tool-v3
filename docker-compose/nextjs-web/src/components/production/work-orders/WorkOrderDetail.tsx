@@ -13,7 +13,16 @@
  * 新しい版があれば警告）/ キャンセル（DRAFT・承認待ちのみ）。
  */
 
-import { Alert, Anchor, Badge, Group, Stack, Tabs, Text } from "@mantine/core";
+import {
+  Alert,
+  Anchor,
+  Badge,
+  Button,
+  Group,
+  Stack,
+  Tabs,
+  Text,
+} from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import {
   IconAlertTriangle,
@@ -26,6 +35,7 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { searchAllocatableOrderLineOptions } from "@/app/(dashboard)/_shared/option-search";
 import {
+  acknowledgeFlowChangeAction,
   cancelWorkOrder,
   copyWorkOrder,
 } from "@/app/(dashboard)/production/work-orders/actions";
@@ -55,6 +65,7 @@ import type { MemoView } from "@/lib/document-memos";
 import { WORK_ORDER_TYPE_LABEL } from "@/lib/enum-labels";
 import { FlowChangeCard, type PendingFlowChangeView } from "./FlowChangeCard";
 import type { WorkOrderView } from "./model";
+import { WorkOrderLinksCard } from "./WorkOrderLinksCard";
 
 const BASE_PATH = "/production/work-orders";
 const SALES_ORDERS_PATH = "/sales/order-lines";
@@ -68,6 +79,7 @@ export function WorkOrderDetail({
   memos = [],
   flowChange = null,
   flowChangeApproval = null,
+  rejectedAppliedFlowChange = null,
   variant = "default",
 }: {
   workOrder: WorkOrderView;
@@ -83,6 +95,12 @@ export function WorkOrderDetail({
   flowChange?: PendingFlowChangeView | null;
   /** 上の変更そのものの承認状態（指示書の承認とは別物）。 */
   flowChangeApproval?: ApprovalActionState | null;
+  /** 事後承認（POST）で差し戻されたが適用済み・未確認の変更（赤アラート）。 */
+  rejectedAppliedFlowChange?: {
+    id: string;
+    summary: string;
+    resolvedAt: string | null;
+  } | null;
   /** "approval" = 承認管理 (PD03) からの承認画面。 */
   variant?: "default" | "approval";
 }) {
@@ -266,11 +284,16 @@ export function WorkOrderDetail({
       />
       <FieldValue
         label="検査表"
-        value={
-          wo.inspectionTemplates.length > 0
-            ? wo.inspectionTemplates.map((t) => t.name).join(" / ")
-            : null
-        }
+        value={(() => {
+          // 工程単位の割当を検査工程ごとに要約（工程名: 検査表 / …）
+          const rows = wo.steps
+            .filter((s) => s.inspectionTemplates.length > 0)
+            .map(
+              (s) =>
+                `${s.name}: ${s.inspectionTemplates.map((t) => t.name).join("・")}`,
+            );
+          return rows.length > 0 ? rows.join(" / ") : null;
+        })()}
       />
     </SummaryGrid>
   );
@@ -339,6 +362,53 @@ export function WorkOrderDetail({
     >
       {/* 「いまやること」カードは常に最上部。承認画面は承認状況もサマリより上 */}
       {approvalCard}
+      {/* 事後承認（POST）で差し戻されたが適用済みの変更 — 人が直すまで出続ける */}
+      {rejectedAppliedFlowChange && (
+        <Alert
+          color="red"
+          icon={<IconAlertTriangle size={16} />}
+          title="差し戻された工程フロー変更が適用されたままです"
+          variant="light"
+        >
+          <Stack align="flex-start" gap="xs">
+            <Text size="sm">
+              {rejectedAppliedFlowChange.summary}
+              は即時適用の後に差し戻されましたが、工程は自動では元に戻りません。
+              工程を確認して必要なら手で直し、「確認済みにする」を押してください。
+            </Text>
+            <Button
+              color="red"
+              loading={isPending}
+              onClick={() =>
+                startTransition(async () => {
+                  const result = await acknowledgeFlowChangeAction(
+                    rejectedAppliedFlowChange.id,
+                    wo.workOrderNumber,
+                  );
+                  if (result.ok) {
+                    notifications.show({
+                      title: "確認済みにしました",
+                      message: "",
+                      color: "green",
+                    });
+                    router.refresh();
+                  } else {
+                    notifications.show({
+                      title: "エラー",
+                      message: result.error,
+                      color: "red",
+                    });
+                  }
+                })
+              }
+              size="xs"
+              variant="light"
+            >
+              確認済みにする
+            </Button>
+          </Stack>
+        </Alert>
+      )}
       {/* 承認待ちの工程フロー変更（承認設定が未設定なら出ない = 即適用） */}
       {flowChange && flowChangeApproval && (
         <FlowChangeCard approval={flowChangeApproval} change={flowChange} />
@@ -365,6 +435,14 @@ export function WorkOrderDetail({
 
         <Tabs.Panel pt="md" value="overview">
           <Stack gap="md">
+            {!isApproval && (
+              <WorkOrderLinksCard
+                incoming={wo.woLinksIncoming}
+                outgoing={wo.woLinksOutgoing}
+                status={wo.status}
+                workOrderNumber={wo.workOrderNumber}
+              />
+            )}
             <WorkOrderStepsPanel
               catalogOptions={catalogOptions}
               stepLinks={wo.stepLinks}

@@ -26,9 +26,25 @@ export interface CatalogStep {
   isInspection: boolean;
   isApprovalStep: boolean;
   quantityTracking: QuantityTrackingMode;
+  /** 実行時のロット入力の既定（app.LOT_INPUT_MODE）。未指定は NONE 扱い。 */
+  lotInputMode?: LotInputMode;
   /** 既定作業時間 (h) — ルート/指示書ビルダーの初期値（任意）。 */
   defaultWorkHours?: number | null;
   sortOrder: number;
+}
+
+/** 工程実行時のロット/伝票コード入力の要否（app.LOT_INPUT_MODE）。 */
+export type LotInputMode = "REQUIRED" | "OPTIONAL" | "NONE";
+
+/**
+ * ロット入力の実効モード — 唯一の定義（web / kiosk 共通）。
+ * 工程リスト・指示書工程の上書き（null = 継承）→ カタログ既定 → NONE の順。
+ */
+export function effectiveLotInputMode(
+  override: LotInputMode | null | undefined,
+  catalogDefault: LotInputMode | null | undefined,
+): LotInputMode {
+  return override ?? catalogDefault ?? "NONE";
 }
 
 /**
@@ -68,6 +84,45 @@ export const QUANTITY_LABELS: Record<
   },
 };
 
+// ─── 工程構成の区分（開始・出荷） ────────────────────────────────────────────
+//
+// 工程構成は必ず「出し・受渡し」の**ちょうど 1 つ**で始まり、出荷系（任意）は
+// 常に末尾（出荷前検査 → 出荷）。カタログの sort_order は管理者が変えられる
+// ので、区分の同定は code で行い、並びは orderRank で強制する。
+
+/** 開始工程（出し・受渡し）— 全ての工程構成はこのうちちょうど 1 つで始まる。 */
+export const START_STEP_CODES = [
+  "MATERIAL_ISSUE",
+  "SEMI_FINISHED_ISSUE",
+  "MATERIAL_HANDOFF",
+  "PRODUCT_HANDOFF",
+  "PRODUCT_ISSUE",
+] as const;
+
+/** 在庫分（FROM_STOCK）専用の開始工程。製造分の構成には含めない。 */
+export const STOCK_ISSUE_STEP_CODE = "PRODUCT_ISSUE";
+
+/**
+ * 出荷側の工程（任意・常に末尾）。出荷前検査のみ — **出荷そのものは工程では
+ * なく出荷書（delivery_orders / SH01）が管理する**（旧 SHIPPING 工程は廃止）。
+ */
+export const SHIP_STEP_CODES = ["PRE_SHIP_INSPECTION"] as const;
+
+export function isStartStep(step: Pick<CatalogStep, "code">): boolean {
+  return (START_STEP_CODES as readonly string[]).includes(step.code);
+}
+
+export function isShipStep(step: Pick<CatalogStep, "code">): boolean {
+  return (SHIP_STEP_CODES as readonly string[]).includes(step.code);
+}
+
+/** 並び区分: 0 = 開始 / 1 = 中間 / 2 = 出荷前検査（常に末尾）。 */
+function orderRank(code: string): number {
+  if ((START_STEP_CODES as readonly string[]).includes(code)) return 0;
+  if ((SHIP_STEP_CODES as readonly string[]).includes(code)) return 2;
+  return 1;
+}
+
 export interface UseDep {
   stepId: number;
   dependsOnStepId: number;
@@ -84,7 +139,9 @@ export interface ExecDep {
 export type CompositionIssueKind =
   | "MISSING_AND" // AND 依存先が未選択（ブロック）
   | "MISSING_OR_GROUP" // OR グループ全員不在（警告 — 素材属性で充足の可能性）
-  | "EXCLUSION"; // 排他工程が同時選択（ブロック）
+  | "EXCLUSION" // 排他工程が同時選択（ブロック）
+  | "MISSING_START" // 開始工程（出し・受渡し）が無い（ブロック）
+  | "MULTIPLE_START"; // 開始工程が複数選択されている（ブロック — 1 つだけ）
 
 export interface CompositionIssue {
   stepId: number;
@@ -106,9 +163,37 @@ export function isBlockingIssue(issue: CompositionIssue): boolean {
 export function validateComposition(
   selected: readonly number[],
   useDeps: readonly UseDep[],
+  /**
+   * カタログを渡すと開始工程ルールも検証する（未指定なら従来どおり依存のみ —
+   * 呼び出し側の移行を壊さないための後方互換）。
+   */
+  catalog?: readonly CatalogStep[],
 ): CompositionIssue[] {
   const sel = new Set(selected);
   const issues: CompositionIssue[] = [];
+
+  // 全ての工程構成は「出し・受渡し」の**ちょうど 1 つ**で始まる（§7）。
+  // 0 個は開始点が無く、2 個以上は数量伝播の起点が割れるのでどちらもブロック。
+  if (catalog && selected.length > 0) {
+    const byId = new Map(catalog.map((c) => [c.id, c]));
+    const startSelected = selected.filter((id) => {
+      const step = byId.get(id);
+      return step != null && isStartStep(step);
+    });
+    if (startSelected.length === 0) {
+      issues.push({
+        stepId: selected[0],
+        kind: "MISSING_START",
+        relatedStepIds: catalog.filter((c) => isStartStep(c)).map((c) => c.id),
+      });
+    } else if (startSelected.length > 1) {
+      issues.push({
+        stepId: startSelected[0],
+        kind: "MULTIPLE_START",
+        relatedStepIds: startSelected,
+      });
+    }
+  }
 
   for (const stepId of selected) {
     const deps = useDeps.filter((d) => d.stepId === stepId);
@@ -178,15 +263,83 @@ export function requiredCompanions(
   return [...result].filter((id) => !selected.includes(id));
 }
 
-/** カタログ既定順（sortOrder → id）で並べた工程 id 列。 */
+/**
+ * 先行前提 — AND 使用依存のうち、依存先がカタログ既定順で**自分より前**に
+ * 来るもの（例: C面 → 全長合わせ、ホーニング → 先端）。UI はこの前提が
+ * 選択されるまでチェックボックスを無効化して「要: X」を出す。
+ * 依存先が後ろに来る AND（加工 → 検査・承認）は随伴 — 選択時に自動追加する。
+ */
+export function stepPrerequisites(
+  stepId: number,
+  useDeps: readonly UseDep[],
+  catalog: readonly CatalogStep[],
+): number[] {
+  const order = new Map(catalog.map((c) => [c.id, c.sortOrder]));
+  const own = order.get(stepId);
+  if (own == null) return [];
+  return useDeps
+    .filter(
+      (d) =>
+        d.stepId === stepId &&
+        d.relation === "AND" &&
+        !d.isNegation &&
+        (order.get(d.dependsOnStepId) ?? Number.MAX_SAFE_INTEGER) < own,
+    )
+    .map((d) => d.dependsOnStepId);
+}
+
+/** 排他相手（negation の使用依存 — 双方向に見る）。 */
+export function stepExclusions(
+  stepId: number,
+  useDeps: readonly UseDep[],
+): number[] {
+  const out = new Set<number>();
+  for (const d of useDeps) {
+    if (!d.isNegation) continue;
+    if (d.stepId === stepId) out.add(d.dependsOnStepId);
+    if (d.dependsOnStepId === stepId) out.add(d.stepId);
+  }
+  return [...out];
+}
+
+/**
+ * いま選択に追加できるか — 未充足の先行前提と、選択中の排他相手を返す。
+ * どちらも空ならチェック可能。
+ */
+export function stepSelectBlockers(
+  stepId: number,
+  selected: readonly number[],
+  useDeps: readonly UseDep[],
+  catalog: readonly CatalogStep[],
+): { missingPrereqs: number[]; conflicts: number[] } {
+  const sel = new Set(selected);
+  return {
+    missingPrereqs: stepPrerequisites(stepId, useDeps, catalog).filter(
+      (id) => !sel.has(id),
+    ),
+    conflicts: stepExclusions(stepId, useDeps).filter((id) => sel.has(id)),
+  };
+}
+
+/**
+ * カタログ既定順で並べた工程 id 列。区分（開始 → 中間 → 出荷前検査 → 出荷）を
+ * 最優先し、区分内は sortOrder → id。sort_order の管理変更で出荷系が
+ * 中間へ紛れ込まないよう、区分は code で強制する。
+ */
 export function defaultOrder(
   selected: readonly number[],
   catalog: readonly CatalogStep[],
 ): number[] {
-  const order = new Map(catalog.map((c) => [c.id, c.sortOrder]));
-  return [...selected].sort(
-    (a, b) => (order.get(a) ?? 0) - (order.get(b) ?? 0) || a - b,
-  );
+  const byId = new Map(catalog.map((c) => [c.id, c]));
+  const key = (id: number): [number, number, number] => {
+    const step = byId.get(id);
+    return [step ? orderRank(step.code) : 1, step?.sortOrder ?? 0, id];
+  };
+  return [...selected].sort((a, b) => {
+    const ka = key(a);
+    const kb = key(b);
+    return ka[0] - kb[0] || ka[1] - kb[1] || ka[2] - kb[2];
+  });
 }
 
 // ─── 実行側（§7: 開始可否・数量伝播・DAG 検証・レイアウト） ─────────────────
@@ -296,6 +449,28 @@ export interface WorkflowCtx {
   steps: StepState[];
   links: StepLinkState[];
   execDeps: ExecDep[];
+  /**
+   * 先行指示書リンク（work_order_links の target = この指示書）。
+   * 未完了の source があると先頭メインライン工程を開始できない。
+   * 省略時は従来動作（リンクなし扱い）。
+   */
+  incomingWoLinks?: { sourceWorkOrderNumber: number; sourceStatus: string }[];
+  /**
+   * 先行指示書から渡る受入数の合計（全 source が COMPLETED のとき解決。
+   * 未完了があれば null）。先頭メインライン工程の想定受入に使う。
+   */
+  incomingWoQuantity?: number | null;
+}
+
+/**
+ * 先頭のメインライン工程 id（CANCELLED とオフメインラインを除き
+ * (sortOrder, id) 順で先頭）。先行指示書リンクのゲート・受入既定の対象。
+ */
+export function firstMainlineStepId(ctx: WorkflowCtx): string | null {
+  const ordered = [...ctx.steps]
+    .filter((s) => s.status !== "CANCELLED" && !isOffMainline(s.id, ctx))
+    .sort((a, b) => a.sortOrder - b.sortOrder || a.id.localeCompare(b.id));
+  return ordered[0]?.id ?? null;
 }
 
 export interface QuantityIssue {
@@ -357,6 +532,18 @@ export function canStartStep(
     const src = ctx.steps.find((s) => s.id === l.sourceStepId);
     if (src && src.status !== "COMPLETED" && src.status !== "CANCELLED")
       reasons.push("分岐元の工程が未完了です");
+  }
+
+  // 先行指示書リンク（work_order_links）— 先頭メインライン工程のみゲート。
+  // source の完成数が受入として渡るため、全 source の完了を待つ。
+  if (
+    (ctx.incomingWoLinks?.length ?? 0) > 0 &&
+    firstMainlineStepId(ctx) === stepId
+  ) {
+    for (const l of ctx.incomingWoLinks ?? []) {
+      if (l.sourceStatus !== "COMPLETED" && l.sourceStatus !== "CANCELLED")
+        reasons.push(`先行指示書 #${l.sourceWorkOrderNumber} が未完了です`);
+    }
   }
 
   return { ok: reasons.length === 0, reasons };
@@ -445,6 +632,13 @@ export function expectedInput(stepId: string, ctx: WorkflowCtx): number | null {
     if (isOffMainline(prev.id, ctx)) continue;
     if (prev.outputSuccess == null) return null; // 前工程が未記録
     return prev.outputSuccess + linkSum;
+  }
+  // 先頭メインライン工程 — 先行指示書リンクがあればその受け渡し数量を優先
+  // （未解決 = source 未完了なら null を返し「未確定」扱い）。
+  if ((ctx.incomingWoLinks?.length ?? 0) > 0) {
+    return ctx.incomingWoQuantity == null
+      ? null
+      : ctx.incomingWoQuantity + linkSum;
   }
   return ctx.plannedQuantity + linkSum;
 }

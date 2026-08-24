@@ -1,4 +1,11 @@
 {
   "title": "プロセス",
-  "pages": ["sales", "purchasing", "production", "shipping", "billing"]
+  "pages": [
+    "default-flow",
+    "sales",
+    "purchasing",
+    "production",
+    "shipping",
+    "billing"
+  ]
 }

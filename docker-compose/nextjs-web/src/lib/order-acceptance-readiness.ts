@@ -14,13 +14,17 @@
 /** 未完成の理由 1 件（画面にも API のエラーにもそのまま出る）。 */
 export interface ReadinessIssue {
   /** 種別 — 表示の出し分け用。 */
-  kind: "customer" | "items" | "product" | "price";
+  kind: "customer" | "items" | "product" | "price" | "endUser";
   /** 人が読む説明。 */
   message: string;
 }
 
 export interface ReadinessInput {
   customerBpId: string | null;
+  /** 配送方法（通常配送 / ユーザー直送）。 */
+  deliveryMethod: "NORMAL" | "DIRECT_TO_USER";
+  /** エンドユーザー（最終需要家）— ユーザー直送では必須。 */
+  endUserBpId: string | null;
   items: {
     /** 製品マスタ突合済みか（null = 未特定）。 */
     productId: string | number | null;
@@ -44,6 +48,16 @@ export function acceptanceReadiness(input: ReadinessInput): Readiness {
     issues.push({
       kind: "customer",
       message: "顧客が未特定です",
+    });
+  }
+
+  // ユーザー直送は最終的な届け先（エンドユーザー）が決まっていないと
+  // 出荷・納品書まで進めない — 保存時にも強制するが、既存データの
+  // 取りこぼしをここで確実に止める。
+  if (input.deliveryMethod === "DIRECT_TO_USER" && !input.endUserBpId) {
+    issues.push({
+      kind: "endUser",
+      message: "ユーザー直送ですがエンドユーザーが未指定です",
     });
   }
 
