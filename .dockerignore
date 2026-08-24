@@ -1,5 +1,5 @@
-# Docker build context = repo root (nextjs-web / nextjs-kiosk の Coolify ビルド)。
-# deny-all + allowlist で context を workspace 必要分に絞る。
+# Docker build context = repo root (nextjs-web / nextjs-kiosk / db-migrate の
+# Coolify ビルド)。deny-all + allowlist で context を必要分に絞る。
 *
 !package.json
 !pnpm-workspace.yaml
@@ -7,6 +7,10 @@
 !packages/
 !docker-compose/nextjs-web/
 !docker-compose/nextjs-kiosk/
+# db-migrate は shared-db（migration + SQL + prisma スキーマ）ごと必要。
+!docker-compose/db-migrate/
+!shared-db/
+shared-db/backups/
 **/node_modules
 **/.next
 **/dist

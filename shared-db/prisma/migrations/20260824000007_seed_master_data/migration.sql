@@ -14,83 +14,58 @@
 
 SET session_replication_role = replica;
 
--- Data for Name: approval_groups; Type: TABLE DATA; Schema: app; Owner: postgres
 
-INSERT INTO app.approval_groups VALUES (1, '{"en": "First approval group", "ja": "第一承認グループ"}', true);
-INSERT INTO app.approval_groups VALUES (2, '{"en": "Second approval group", "ja": "第二承認グループ"}', true);
+-- directory.employee_directory
 
--- Data for Name: employee_directory; Type: TABLE DATA; Schema: directory; Owner: postgres
-
--- Data for Name: users; Type: TABLE DATA; Schema: app; Owner: postgres
+-- app.users
 
 INSERT INTO app.users VALUES ('00000000-0000-0000-0000-000000000000', 'SYSTEM', NULL, 'system', 'システム', NULL, true, NULL, '2026-08-24 09:19:51.439601+00', '2026-08-24 09:19:51.439601+00', NULL, 'ja', NULL, NULL, 'YYYY/MM/DD', '24h', 'Asia/Tokyo');
 
--- Data for Name: approval_delegates; Type: TABLE DATA; Schema: app; Owner: postgres
+-- app.approval_delegates
 
--- Data for Name: approval_flows; Type: TABLE DATA; Schema: app; Owner: postgres
+-- app.approval_flow_rules
 
-INSERT INTO app.approval_flows VALUES ('work_orders', NULL, '2026-08-24 09:19:52.505685+00', 'PRE');
-INSERT INTO app.approval_flows VALUES ('order_acceptances', NULL, '2026-08-24 09:19:52.505685+00', 'PRE');
-INSERT INTO app.approval_flows VALUES ('material_purchase_orders', NULL, '2026-08-24 09:19:52.505685+00', 'PRE');
-INSERT INTO app.approval_flows VALUES ('purchase_requests', NULL, '2026-08-24 09:19:52.505685+00', 'PRE');
-INSERT INTO app.approval_flows VALUES ('work_order_flow_changes', NULL, '2026-08-24 09:19:52.5434+00', 'PRE');
-INSERT INTO app.approval_flows VALUES ('order_acceptance_cancel_requests', NULL, '2026-08-24 09:19:52.575477+00', 'PRE');
+-- app.approval_flow_rule_steps
 
--- Data for Name: approval_flow_rules; Type: TABLE DATA; Schema: app; Owner: postgres
+-- app.approval_group_members
 
--- Data for Name: approval_flow_rule_steps; Type: TABLE DATA; Schema: app; Owner: postgres
+-- app.approval_requests
 
--- Data for Name: approval_flow_steps; Type: TABLE DATA; Schema: app; Owner: postgres
+-- app.approval_records
 
-INSERT INTO app.approval_flow_steps VALUES (1, 'work_orders', 1, '{"en": "First approval", "ja": "第一承認"}', 1, 'ANY');
-INSERT INTO app.approval_flow_steps VALUES (2, 'work_orders', 2, '{"en": "Second approval", "ja": "第二承認"}', 2, 'ANY');
-INSERT INTO app.approval_flow_steps VALUES (3, 'order_acceptances', 1, '{"en": "First approval", "ja": "第一承認"}', 1, 'ANY');
-INSERT INTO app.approval_flow_steps VALUES (4, 'material_purchase_orders', 1, '{"en": "First approval", "ja": "第一承認"}', 1, 'ANY');
-INSERT INTO app.approval_flow_steps VALUES (5, 'purchase_requests', 1, '{"en": "First approval", "ja": "第一承認"}', 1, 'ANY');
+-- app.approval_request_approvers
 
--- Data for Name: approval_group_members; Type: TABLE DATA; Schema: app; Owner: postgres
+-- app.files
 
--- Data for Name: approval_requests; Type: TABLE DATA; Schema: app; Owner: postgres
+-- app.regions
 
--- Data for Name: approval_records; Type: TABLE DATA; Schema: app; Owner: postgres
+-- app.kiosk_floor_maps
 
--- Data for Name: approval_request_approvers; Type: TABLE DATA; Schema: app; Owner: postgres
+-- app.work_location_groups
 
--- Data for Name: files; Type: TABLE DATA; Schema: app; Owner: postgres
+-- app.work_locations
 
--- Data for Name: regions; Type: TABLE DATA; Schema: app; Owner: postgres
+-- app.kiosk_devices
 
--- Data for Name: plants; Type: TABLE DATA; Schema: app; Owner: postgres
+-- app.audit_logs
 
-INSERT INTO app.plants VALUES (1, 'F01', '{"en": "Main factory", "ja": "本社工場"}', NULL, 'JP', NULL, NULL, NULL, NULL, NULL, true, NULL, '2026-08-24 09:19:51.573232+00', '2026-08-24 09:19:51.573232+00', NULL);
+-- app.business_partners
 
--- Data for Name: kiosk_floor_maps; Type: TABLE DATA; Schema: app; Owner: postgres
+-- app.billing_closings
 
--- Data for Name: work_location_groups; Type: TABLE DATA; Schema: app; Owner: postgres
+-- app.bp_contacts
 
--- Data for Name: work_locations; Type: TABLE DATA; Schema: app; Owner: postgres
+-- app.bp_customer_attrs
 
--- Data for Name: kiosk_devices; Type: TABLE DATA; Schema: app; Owner: postgres
+-- app.bp_end_user_attrs
 
--- Data for Name: audit_logs; Type: TABLE DATA; Schema: app; Owner: postgres
+-- app.bp_role_assignments
 
--- Data for Name: business_partners; Type: TABLE DATA; Schema: app; Owner: postgres
+-- app.bp_sales_reps
 
--- Data for Name: billing_closings; Type: TABLE DATA; Schema: app; Owner: postgres
+-- app.bp_vendor_attrs
 
--- Data for Name: bp_contacts; Type: TABLE DATA; Schema: app; Owner: postgres
-
--- Data for Name: bp_customer_attrs; Type: TABLE DATA; Schema: app; Owner: postgres
-
--- Data for Name: bp_end_user_attrs; Type: TABLE DATA; Schema: app; Owner: postgres
-
--- Data for Name: bp_role_assignments; Type: TABLE DATA; Schema: app; Owner: postgres
-
--- Data for Name: bp_sales_reps; Type: TABLE DATA; Schema: app; Owner: postgres
-
--- Data for Name: bp_vendor_attrs; Type: TABLE DATA; Schema: app; Owner: postgres
-
--- Data for Name: currencies; Type: TABLE DATA; Schema: app; Owner: postgres
+-- app.currencies
 
 INSERT INTO app.currencies VALUES ('JPY', '{"en": "Japanese Yen", "ja": "日本円"}', 100.000000, true, 0, '2026-08-24 09:19:52.565666+00', '2026-08-24 09:19:52.5687+00');
 INSERT INTO app.currencies VALUES ('USD', '{"en": "US Dollar", "ja": "米ドル"}', 0.666667, true, 1, '2026-08-24 09:19:52.565666+00', '2026-08-24 09:19:52.5687+00');
@@ -99,16 +74,7 @@ INSERT INTO app.currencies VALUES ('CNY', '{"en": "Chinese Yuan", "ja": "中国�
 INSERT INTO app.currencies VALUES ('THB', '{"en": "Thai Baht", "ja": "タイバーツ"}', 23.255814, true, 4, '2026-08-24 09:19:52.565666+00', '2026-08-24 09:19:52.5687+00');
 INSERT INTO app.currencies VALUES ('VND', '{"en": "Vietnamese Dong", "ja": "ベトナムドン"}', 17543.859649, true, 5, '2026-08-24 09:19:52.565666+00', '2026-08-24 09:19:52.5687+00');
 
--- Data for Name: defect_types; Type: TABLE DATA; Schema: app; Owner: postgres
-
-INSERT INTO app.defect_types VALUES (1, 'DIMENSION', '{"en": "Dimensional defect", "ja": "寸法不良"}', true, 10);
-INSERT INTO app.defect_types VALUES (2, 'SCRATCH', '{"en": "Scratch", "ja": "キズ"}', true, 20);
-INSERT INTO app.defect_types VALUES (3, 'CHIP', '{"en": "Chipping", "ja": "欠け"}', true, 30);
-INSERT INTO app.defect_types VALUES (4, 'BREAKAGE', '{"en": "Breakage", "ja": "折損"}', true, 40);
-INSERT INTO app.defect_types VALUES (5, 'COATING', '{"en": "Coating defect", "ja": "コーティング不良"}', true, 50);
-INSERT INTO app.defect_types VALUES (6, 'OTHER', '{"en": "Other", "ja": "その他"}', true, 90);
-
--- Data for Name: material_diameters; Type: TABLE DATA; Schema: app; Owner: postgres
+-- app.material_diameters
 
 INSERT INTO app.material_diameters VALUES ('010', 1.000, '{"en": "φ1.0", "ja": "φ1.0"}', true, '2026-08-24 09:19:51.792969+00', '2026-08-24 09:19:51.792969+00');
 INSERT INTO app.material_diameters VALUES ('015', 1.500, '{"en": "φ1.5", "ja": "φ1.5"}', true, '2026-08-24 09:19:51.793275+00', '2026-08-24 09:19:51.793275+00');
@@ -179,12 +145,12 @@ INSERT INTO app.material_diameters VALUES ('400', 40.000, '{"en": "φ40.0", "ja"
 INSERT INTO app.material_diameters VALUES ('420', 42.000, '{"en": "φ42.0", "ja": "φ42.0"}', true, '2026-08-24 09:19:51.809009+00', '2026-08-24 09:19:51.809009+00');
 INSERT INTO app.material_diameters VALUES ('460', 46.000, '{"en": "φ46.0", "ja": "φ46.0"}', true, '2026-08-24 09:19:51.809247+00', '2026-08-24 09:19:51.809247+00');
 
--- Data for Name: material_length_variants; Type: TABLE DATA; Schema: app; Owner: postgres
+-- app.material_length_variants
 
 INSERT INTO app.material_length_variants VALUES ('310', 310.000, NULL, '{"en": "310mm", "ja": "310mm"}', NULL, true, '2026-08-24 09:19:51.809576+00', '2026-08-24 09:19:51.809576+00');
 INSERT INTO app.material_length_variants VALUES ('330', 330.000, NULL, '{"en": "330mm", "ja": "330mm"}', NULL, true, '2026-08-24 09:19:51.810025+00', '2026-08-24 09:19:51.810025+00');
 
--- Data for Name: material_manufacturers; Type: TABLE DATA; Schema: app; Owner: postgres
+-- app.material_manufacturers
 
 INSERT INTO app.material_manufacturers VALUES ('A', '{"en": "AXIS", "ja": "アクシス"}', true, '2026-08-24 09:19:51.786552+00', '2026-08-24 09:19:51.786552+00');
 INSERT INTO app.material_manufacturers VALUES ('B', '{"en": "AFC", "ja": "AFC"}', true, '2026-08-24 09:19:51.787151+00', '2026-08-24 09:19:51.787151+00');
@@ -192,7 +158,7 @@ INSERT INTO app.material_manufacturers VALUES ('C', '{"en": "Nippon Kinsagi", "j
 INSERT INTO app.material_manufacturers VALUES ('D', '{"en": "Ceratizit", "ja": "セラティジット"}', true, '2026-08-24 09:19:51.787625+00', '2026-08-24 09:19:51.787625+00');
 INSERT INTO app.material_manufacturers VALUES ('E', '{"en": "Nippon Tokushu Gokin", "ja": "日本特殊合金"}', true, '2026-08-24 09:19:51.78786+00', '2026-08-24 09:19:51.78786+00');
 
--- Data for Name: material_manufacturer_grades; Type: TABLE DATA; Schema: app; Owner: postgres
+-- app.material_manufacturer_grades
 
 INSERT INTO app.material_manufacturer_grades VALUES ('B', '01', '{"en": "K10UF", "ja": "K10UF"}', true, '2026-08-24 09:19:51.789735+00', '2026-08-24 09:19:51.789735+00');
 INSERT INTO app.material_manufacturer_grades VALUES ('B', '02', '{"en": "K20CF", "ja": "K20CF"}', true, '2026-08-24 09:19:51.790106+00', '2026-08-24 09:19:51.790106+00');
@@ -208,18 +174,18 @@ INSERT INTO app.material_manufacturer_grades VALUES ('D', '02', '{"en": "CTS20D"
 INSERT INTO app.material_manufacturer_grades VALUES ('E', '01', '{"en": "SH10", "ja": "SH10"}', true, '2026-08-24 09:19:51.792497+00', '2026-08-24 09:19:51.792497+00');
 INSERT INTO app.material_manufacturer_grades VALUES ('C', '01', '{"en": "GU20F", "ja": "GU20F"}', true, '2026-08-24 09:19:51.792741+00', '2026-08-24 09:19:51.792741+00');
 
--- Data for Name: material_shapes; Type: TABLE DATA; Schema: app; Owner: postgres
+-- app.material_shapes
 
 INSERT INTO app.material_shapes VALUES ('A', '{"en": "Standard", "ja": "通常"}', true, '2026-08-24 09:19:51.788076+00', '2026-08-24 09:19:51.788076+00');
 INSERT INTO app.material_shapes VALUES ('B', '{"en": "OH", "ja": "OH"}', true, '2026-08-24 09:19:51.788362+00', '2026-08-24 09:19:51.788362+00');
 INSERT INTO app.material_shapes VALUES ('C', '{"en": "Cylinder", "ja": "円筒"}', true, '2026-08-24 09:19:51.788603+00', '2026-08-24 09:19:51.788603+00');
 
--- Data for Name: material_surface_finishes; Type: TABLE DATA; Schema: app; Owner: postgres
+-- app.material_surface_finishes
 
 INSERT INTO app.material_surface_finishes VALUES ('A', '{"en": "Black skin", "ja": "黒皮"}', true, '2026-08-24 09:19:51.789256+00', '2026-08-24 09:19:51.789256+00');
 INSERT INTO app.material_surface_finishes VALUES ('B', '{"en": "Polished", "ja": "研磨"}', true, '2026-08-24 09:19:51.78953+00', '2026-08-24 09:19:51.78953+00');
 
--- Data for Name: material_types; Type: TABLE DATA; Schema: app; Owner: postgres
+-- app.material_types
 
 INSERT INTO app.material_types VALUES ('{"en": "K10UF", "ja": "K10UF"}', NULL, true, '2026-08-24 09:19:51.810312+00', '2026-08-24 09:19:51.810312+00', '01', '0001', 'B', 'A', 1, 'B01A0001', NULL);
 INSERT INTO app.material_types VALUES ('{"en": "K20CF", "ja": "K20CF"}', NULL, true, '2026-08-24 09:19:51.810864+00', '2026-08-24 09:19:51.810864+00', '02', '0001', 'B', 'A', 2, 'B02A0001', NULL);
@@ -235,914 +201,7 @@ INSERT INTO app.material_types VALUES ('{"en": "CTS20D", "ja": "CTS20D"}', NULL,
 INSERT INTO app.material_types VALUES ('{"en": "SH10", "ja": "SH10"}', NULL, true, '2026-08-24 09:19:51.813524+00', '2026-08-24 09:19:51.813524+00', '01', '0001', 'E', 'A', 12, 'E01A0001', NULL);
 INSERT INTO app.material_types VALUES ('{"en": "GU20F", "ja": "GU20F"}', NULL, true, '2026-08-24 09:19:51.813793+00', '2026-08-24 09:19:51.813793+00', '01', '0001', 'C', 'A', 13, 'C01A0001', NULL);
 
--- Data for Name: materials; Type: TABLE DATA; Schema: app; Owner: postgres
-
-INSERT INTO app.materials VALUES ('A02A0001-A250-310', '{"en": "AF510 Black skin φ25.0x310", "ja": "AF510 黒皮 φ25.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.81405+00', '2026-08-24 09:19:51.81405+00', '250', 25.000, 'A0', 310.000, '310', NULL, NULL, 'A', 8, 1, '{}');
-INSERT INTO app.materials VALUES ('A02A0001-A200-310', '{"en": "AF510 Black skin φ20.0x310", "ja": "AF510 黒皮 φ20.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.814614+00', '2026-08-24 09:19:51.814614+00', '200', 20.000, 'A0', 310.000, '310', NULL, NULL, 'A', 8, 2, '{}');
-INSERT INTO app.materials VALUES ('A02A0001-A190-310', '{"en": "AF510 Black skin φ19.0x310", "ja": "AF510 黒皮 φ19.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.814933+00', '2026-08-24 09:19:51.814933+00', '190', 19.000, 'A0', 310.000, '310', NULL, NULL, 'A', 8, 3, '{}');
-INSERT INTO app.materials VALUES ('A02A0001-A180-310', '{"en": "AF510 Black skin φ18.0x310", "ja": "AF510 黒皮 φ18.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.815229+00', '2026-08-24 09:19:51.815229+00', '180', 18.000, 'A0', 310.000, '310', NULL, NULL, 'A', 8, 4, '{}');
-INSERT INTO app.materials VALUES ('A02A0001-A170-310', '{"en": "AF510 Black skin φ17.0x310", "ja": "AF510 黒皮 φ17.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.815568+00', '2026-08-24 09:19:51.815568+00', '170', 17.000, 'A0', 310.000, '310', NULL, NULL, 'A', 8, 5, '{}');
-INSERT INTO app.materials VALUES ('A02A0001-A160-310', '{"en": "AF510 Black skin φ16.0x310", "ja": "AF510 黒皮 φ16.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.815914+00', '2026-08-24 09:19:51.815914+00', '160', 16.000, 'A0', 310.000, '310', NULL, NULL, 'A', 8, 6, '{}');
-INSERT INTO app.materials VALUES ('A02A0001-A150-310', '{"en": "AF510 Black skin φ15.0x310", "ja": "AF510 黒皮 φ15.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.816254+00', '2026-08-24 09:19:51.816254+00', '150', 15.000, 'A0', 310.000, '310', NULL, NULL, 'A', 8, 7, '{}');
-INSERT INTO app.materials VALUES ('A02A0001-A140-310', '{"en": "AF510 Black skin φ14.0x310", "ja": "AF510 黒皮 φ14.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.816604+00', '2026-08-24 09:19:51.816604+00', '140', 14.000, 'A0', 310.000, '310', NULL, NULL, 'A', 8, 8, '{}');
-INSERT INTO app.materials VALUES ('A02A0001-A130-310', '{"en": "AF510 Black skin φ13.0x310", "ja": "AF510 黒皮 φ13.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.816899+00', '2026-08-24 09:19:51.816899+00', '130', 13.000, 'A0', 310.000, '310', NULL, NULL, 'A', 8, 9, '{}');
-INSERT INTO app.materials VALUES ('A02A0001-A120-310', '{"en": "AF510 Black skin φ12.0x310", "ja": "AF510 黒皮 φ12.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.817201+00', '2026-08-24 09:19:51.817201+00', '120', 12.000, 'A0', 310.000, '310', NULL, NULL, 'A', 8, 10, '{}');
-INSERT INTO app.materials VALUES ('A02A0001-A110-310', '{"en": "AF510 Black skin φ11.0x310", "ja": "AF510 黒皮 φ11.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.817493+00', '2026-08-24 09:19:51.817493+00', '110', 11.000, 'A0', 310.000, '310', NULL, NULL, 'A', 8, 11, '{}');
-INSERT INTO app.materials VALUES ('A02A0001-A100-310', '{"en": "AF510 Black skin φ10.0x310", "ja": "AF510 黒皮 φ10.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.817793+00', '2026-08-24 09:19:51.817793+00', '100', 10.000, 'A0', 310.000, '310', NULL, NULL, 'A', 8, 12, '{}');
-INSERT INTO app.materials VALUES ('A02A0001-A090-310', '{"en": "AF510 Black skin φ9.0x310", "ja": "AF510 黒皮 φ9.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.818171+00', '2026-08-24 09:19:51.818171+00', '090', 9.000, 'A0', 310.000, '310', NULL, NULL, 'A', 8, 13, '{}');
-INSERT INTO app.materials VALUES ('A02A0001-A080-310', '{"en": "AF510 Black skin φ8.0x310", "ja": "AF510 黒皮 φ8.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.818476+00', '2026-08-24 09:19:51.818476+00', '080', 8.000, 'A0', 310.000, '310', NULL, NULL, 'A', 8, 14, '{}');
-INSERT INTO app.materials VALUES ('A02A0001-A070-310', '{"en": "AF510 Black skin φ7.0x310", "ja": "AF510 黒皮 φ7.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.818761+00', '2026-08-24 09:19:51.818761+00', '070', 7.000, 'A0', 310.000, '310', NULL, NULL, 'A', 8, 15, '{}');
-INSERT INTO app.materials VALUES ('A02A0001-A060-310', '{"en": "AF510 Black skin φ6.0x310", "ja": "AF510 黒皮 φ6.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.819089+00', '2026-08-24 09:19:51.819089+00', '060', 6.000, 'A0', 310.000, '310', NULL, NULL, 'A', 8, 16, '{}');
-INSERT INTO app.materials VALUES ('A02A0001-A050-310', '{"en": "AF510 Black skin φ5.0x310", "ja": "AF510 黒皮 φ5.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.819357+00', '2026-08-24 09:19:51.819357+00', '050', 5.000, 'A0', 310.000, '310', NULL, NULL, 'A', 8, 17, '{}');
-INSERT INTO app.materials VALUES ('A02A0001-A040-310', '{"en": "AF510 Black skin φ4.0x310", "ja": "AF510 黒皮 φ4.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.819619+00', '2026-08-24 09:19:51.819619+00', '040', 4.000, 'A0', 310.000, '310', NULL, NULL, 'A', 8, 18, '{}');
-INSERT INTO app.materials VALUES ('A02A0001-A030-310', '{"en": "AF510 Black skin φ3.0x310", "ja": "AF510 黒皮 φ3.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.819904+00', '2026-08-24 09:19:51.819904+00', '030', 3.000, 'A0', 310.000, '310', NULL, NULL, 'A', 8, 19, '{}');
-INSERT INTO app.materials VALUES ('A02A0001-A020-310', '{"en": "AF510 Black skin φ2.0x310", "ja": "AF510 黒皮 φ2.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.820171+00', '2026-08-24 09:19:51.820171+00', '020', 2.000, 'A0', 310.000, '310', NULL, NULL, 'A', 8, 20, '{}');
-INSERT INTO app.materials VALUES ('A02A0001-A010-310', '{"en": "AF510 Black skin φ1.0x310", "ja": "AF510 黒皮 φ1.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.820454+00', '2026-08-24 09:19:51.820454+00', '010', 1.000, 'A0', 310.000, '310', NULL, NULL, 'A', 8, 21, '{}');
-INSERT INTO app.materials VALUES ('A03A0001-A250-310', '{"en": "AF805 Black skin φ25.0x310", "ja": "AF805 黒皮 φ25.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.820816+00', '2026-08-24 09:19:51.820816+00', '250', 25.000, 'A0', 310.000, '310', NULL, NULL, 'A', 9, 22, '{}');
-INSERT INTO app.materials VALUES ('A03A0001-A200-310', '{"en": "AF805 Black skin φ20.0x310", "ja": "AF805 黒皮 φ20.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.82113+00', '2026-08-24 09:19:51.82113+00', '200', 20.000, 'A0', 310.000, '310', NULL, NULL, 'A', 9, 23, '{}');
-INSERT INTO app.materials VALUES ('A03A0001-A190-310', '{"en": "AF805 Black skin φ19.0x310", "ja": "AF805 黒皮 φ19.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.821407+00', '2026-08-24 09:19:51.821407+00', '190', 19.000, 'A0', 310.000, '310', NULL, NULL, 'A', 9, 24, '{}');
-INSERT INTO app.materials VALUES ('A03A0001-A180-310', '{"en": "AF805 Black skin φ18.0x310", "ja": "AF805 黒皮 φ18.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.821681+00', '2026-08-24 09:19:51.821681+00', '180', 18.000, 'A0', 310.000, '310', NULL, NULL, 'A', 9, 25, '{}');
-INSERT INTO app.materials VALUES ('A03A0001-A170-310', '{"en": "AF805 Black skin φ17.0x310", "ja": "AF805 黒皮 φ17.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.821952+00', '2026-08-24 09:19:51.821952+00', '170', 17.000, 'A0', 310.000, '310', NULL, NULL, 'A', 9, 26, '{}');
-INSERT INTO app.materials VALUES ('A03A0001-A160-310', '{"en": "AF805 Black skin φ16.0x310", "ja": "AF805 黒皮 φ16.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.822244+00', '2026-08-24 09:19:51.822244+00', '160', 16.000, 'A0', 310.000, '310', NULL, NULL, 'A', 9, 27, '{}');
-INSERT INTO app.materials VALUES ('A03A0001-A150-310', '{"en": "AF805 Black skin φ15.0x310", "ja": "AF805 黒皮 φ15.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.822523+00', '2026-08-24 09:19:51.822523+00', '150', 15.000, 'A0', 310.000, '310', NULL, NULL, 'A', 9, 28, '{}');
-INSERT INTO app.materials VALUES ('A03A0001-A140-310', '{"en": "AF805 Black skin φ14.0x310", "ja": "AF805 黒皮 φ14.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.82279+00', '2026-08-24 09:19:51.82279+00', '140', 14.000, 'A0', 310.000, '310', NULL, NULL, 'A', 9, 29, '{}');
-INSERT INTO app.materials VALUES ('A03A0001-A130-310', '{"en": "AF805 Black skin φ13.0x310", "ja": "AF805 黒皮 φ13.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.823086+00', '2026-08-24 09:19:51.823086+00', '130', 13.000, 'A0', 310.000, '310', NULL, NULL, 'A', 9, 30, '{}');
-INSERT INTO app.materials VALUES ('A03A0001-A120-310', '{"en": "AF805 Black skin φ12.0x310", "ja": "AF805 黒皮 φ12.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.823355+00', '2026-08-24 09:19:51.823355+00', '120', 12.000, 'A0', 310.000, '310', NULL, NULL, 'A', 9, 31, '{}');
-INSERT INTO app.materials VALUES ('A03A0001-A110-310', '{"en": "AF805 Black skin φ11.0x310", "ja": "AF805 黒皮 φ11.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.82362+00', '2026-08-24 09:19:51.82362+00', '110', 11.000, 'A0', 310.000, '310', NULL, NULL, 'A', 9, 32, '{}');
-INSERT INTO app.materials VALUES ('A03A0001-A100-310', '{"en": "AF805 Black skin φ10.0x310", "ja": "AF805 黒皮 φ10.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.823886+00', '2026-08-24 09:19:51.823886+00', '100', 10.000, 'A0', 310.000, '310', NULL, NULL, 'A', 9, 33, '{}');
-INSERT INTO app.materials VALUES ('A03A0001-A090-310', '{"en": "AF805 Black skin φ9.0x310", "ja": "AF805 黒皮 φ9.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.824232+00', '2026-08-24 09:19:51.824232+00', '090', 9.000, 'A0', 310.000, '310', NULL, NULL, 'A', 9, 34, '{}');
-INSERT INTO app.materials VALUES ('A03A0001-A080-310', '{"en": "AF805 Black skin φ8.0x310", "ja": "AF805 黒皮 φ8.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.824503+00', '2026-08-24 09:19:51.824503+00', '080', 8.000, 'A0', 310.000, '310', NULL, NULL, 'A', 9, 35, '{}');
-INSERT INTO app.materials VALUES ('A03A0001-A070-310', '{"en": "AF805 Black skin φ7.0x310", "ja": "AF805 黒皮 φ7.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.82478+00', '2026-08-24 09:19:51.82478+00', '070', 7.000, 'A0', 310.000, '310', NULL, NULL, 'A', 9, 36, '{}');
-INSERT INTO app.materials VALUES ('A03A0001-A060-310', '{"en": "AF805 Black skin φ6.0x310", "ja": "AF805 黒皮 φ6.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.825054+00', '2026-08-24 09:19:51.825054+00', '060', 6.000, 'A0', 310.000, '310', NULL, NULL, 'A', 9, 37, '{}');
-INSERT INTO app.materials VALUES ('A03A0001-A050-310', '{"en": "AF805 Black skin φ5.0x310", "ja": "AF805 黒皮 φ5.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.825316+00', '2026-08-24 09:19:51.825316+00', '050', 5.000, 'A0', 310.000, '310', NULL, NULL, 'A', 9, 38, '{}');
-INSERT INTO app.materials VALUES ('A03A0001-A040-310', '{"en": "AF805 Black skin φ4.0x310", "ja": "AF805 黒皮 φ4.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.825591+00', '2026-08-24 09:19:51.825591+00', '040', 4.000, 'A0', 310.000, '310', NULL, NULL, 'A', 9, 39, '{}');
-INSERT INTO app.materials VALUES ('A03A0001-A030-310', '{"en": "AF805 Black skin φ3.0x310", "ja": "AF805 黒皮 φ3.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.825865+00', '2026-08-24 09:19:51.825865+00', '030', 3.000, 'A0', 310.000, '310', NULL, NULL, 'A', 9, 40, '{}');
-INSERT INTO app.materials VALUES ('A03A0001-A020-310', '{"en": "AF805 Black skin φ2.0x310", "ja": "AF805 黒皮 φ2.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.826144+00', '2026-08-24 09:19:51.826144+00', '020', 2.000, 'A0', 310.000, '310', NULL, NULL, 'A', 9, 41, '{}');
-INSERT INTO app.materials VALUES ('A03A0001-A010-310', '{"en": "AF805 Black skin φ1.0x310", "ja": "AF805 黒皮 φ1.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.826407+00', '2026-08-24 09:19:51.826407+00', '010', 1.000, 'A0', 310.000, '310', NULL, NULL, 'A', 9, 42, '{}');
-INSERT INTO app.materials VALUES ('A01A0001-A250-310', '{"en": "AF308 Black skin φ25.0x310", "ja": "AF308 黒皮 φ25.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.826701+00', '2026-08-24 09:19:51.826701+00', '250', 25.000, 'A0', 310.000, '310', NULL, NULL, 'A', 7, 43, '{}');
-INSERT INTO app.materials VALUES ('A01A0001-A200-310', '{"en": "AF308 Black skin φ20.0x310", "ja": "AF308 黒皮 φ20.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.826971+00', '2026-08-24 09:19:51.826971+00', '200', 20.000, 'A0', 310.000, '310', NULL, NULL, 'A', 7, 44, '{}');
-INSERT INTO app.materials VALUES ('A01A0001-A190-310', '{"en": "AF308 Black skin φ19.0x310", "ja": "AF308 黒皮 φ19.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.827243+00', '2026-08-24 09:19:51.827243+00', '190', 19.000, 'A0', 310.000, '310', NULL, NULL, 'A', 7, 45, '{}');
-INSERT INTO app.materials VALUES ('A01A0001-A180-310', '{"en": "AF308 Black skin φ18.0x310", "ja": "AF308 黒皮 φ18.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.827503+00', '2026-08-24 09:19:51.827503+00', '180', 18.000, 'A0', 310.000, '310', NULL, NULL, 'A', 7, 46, '{}');
-INSERT INTO app.materials VALUES ('A01A0001-A170-310', '{"en": "AF308 Black skin φ17.0x310", "ja": "AF308 黒皮 φ17.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.827786+00', '2026-08-24 09:19:51.827786+00', '170', 17.000, 'A0', 310.000, '310', NULL, NULL, 'A', 7, 47, '{}');
-INSERT INTO app.materials VALUES ('A01A0001-A160-310', '{"en": "AF308 Black skin φ16.0x310", "ja": "AF308 黒皮 φ16.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.828087+00', '2026-08-24 09:19:51.828087+00', '160', 16.000, 'A0', 310.000, '310', NULL, NULL, 'A', 7, 48, '{}');
-INSERT INTO app.materials VALUES ('A01A0001-A150-310', '{"en": "AF308 Black skin φ15.0x310", "ja": "AF308 黒皮 φ15.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.828402+00', '2026-08-24 09:19:51.828402+00', '150', 15.000, 'A0', 310.000, '310', NULL, NULL, 'A', 7, 49, '{}');
-INSERT INTO app.materials VALUES ('A01A0001-A140-310', '{"en": "AF308 Black skin φ14.0x310", "ja": "AF308 黒皮 φ14.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.82868+00', '2026-08-24 09:19:51.82868+00', '140', 14.000, 'A0', 310.000, '310', NULL, NULL, 'A', 7, 50, '{}');
-INSERT INTO app.materials VALUES ('A01A0001-A130-310', '{"en": "AF308 Black skin φ13.0x310", "ja": "AF308 黒皮 φ13.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.828955+00', '2026-08-24 09:19:51.828955+00', '130', 13.000, 'A0', 310.000, '310', NULL, NULL, 'A', 7, 51, '{}');
-INSERT INTO app.materials VALUES ('A01A0001-A120-310', '{"en": "AF308 Black skin φ12.0x310", "ja": "AF308 黒皮 φ12.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.829236+00', '2026-08-24 09:19:51.829236+00', '120', 12.000, 'A0', 310.000, '310', NULL, NULL, 'A', 7, 52, '{}');
-INSERT INTO app.materials VALUES ('A01A0001-A110-310', '{"en": "AF308 Black skin φ11.0x310", "ja": "AF308 黒皮 φ11.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.829511+00', '2026-08-24 09:19:51.829511+00', '110', 11.000, 'A0', 310.000, '310', NULL, NULL, 'A', 7, 53, '{}');
-INSERT INTO app.materials VALUES ('A01A0001-A100-310', '{"en": "AF308 Black skin φ10.0x310", "ja": "AF308 黒皮 φ10.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.829797+00', '2026-08-24 09:19:51.829797+00', '100', 10.000, 'A0', 310.000, '310', NULL, NULL, 'A', 7, 54, '{}');
-INSERT INTO app.materials VALUES ('A01A0001-A090-310', '{"en": "AF308 Black skin φ9.0x310", "ja": "AF308 黒皮 φ9.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.830089+00', '2026-08-24 09:19:51.830089+00', '090', 9.000, 'A0', 310.000, '310', NULL, NULL, 'A', 7, 55, '{}');
-INSERT INTO app.materials VALUES ('A01A0001-A080-310', '{"en": "AF308 Black skin φ8.0x310", "ja": "AF308 黒皮 φ8.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.830394+00', '2026-08-24 09:19:51.830394+00', '080', 8.000, 'A0', 310.000, '310', NULL, NULL, 'A', 7, 56, '{}');
-INSERT INTO app.materials VALUES ('A01A0001-A070-310', '{"en": "AF308 Black skin φ7.0x310", "ja": "AF308 黒皮 φ7.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.83067+00', '2026-08-24 09:19:51.83067+00', '070', 7.000, 'A0', 310.000, '310', NULL, NULL, 'A', 7, 57, '{}');
-INSERT INTO app.materials VALUES ('A01A0001-A060-310', '{"en": "AF308 Black skin φ6.0x310", "ja": "AF308 黒皮 φ6.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.830932+00', '2026-08-24 09:19:51.830932+00', '060', 6.000, 'A0', 310.000, '310', NULL, NULL, 'A', 7, 58, '{}');
-INSERT INTO app.materials VALUES ('A01A0001-A050-310', '{"en": "AF308 Black skin φ5.0x310", "ja": "AF308 黒皮 φ5.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.831223+00', '2026-08-24 09:19:51.831223+00', '050', 5.000, 'A0', 310.000, '310', NULL, NULL, 'A', 7, 59, '{}');
-INSERT INTO app.materials VALUES ('A01A0001-A040-310', '{"en": "AF308 Black skin φ4.0x310", "ja": "AF308 黒皮 φ4.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.831528+00', '2026-08-24 09:19:51.831528+00', '040', 4.000, 'A0', 310.000, '310', NULL, NULL, 'A', 7, 60, '{}');
-INSERT INTO app.materials VALUES ('A01A0001-A030-310', '{"en": "AF308 Black skin φ3.0x310", "ja": "AF308 黒皮 φ3.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.831834+00', '2026-08-24 09:19:51.831834+00', '030', 3.000, 'A0', 310.000, '310', NULL, NULL, 'A', 7, 61, '{}');
-INSERT INTO app.materials VALUES ('A01A0001-A020-310', '{"en": "AF308 Black skin φ2.0x310", "ja": "AF308 黒皮 φ2.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.832111+00', '2026-08-24 09:19:51.832111+00', '020', 2.000, 'A0', 310.000, '310', NULL, NULL, 'A', 7, 62, '{}');
-INSERT INTO app.materials VALUES ('A01A0001-A010-310', '{"en": "AF308 Black skin φ1.0x310", "ja": "AF308 黒皮 φ1.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.832359+00', '2026-08-24 09:19:51.832359+00', '010', 1.000, 'A0', 310.000, '310', NULL, NULL, 'A', 7, 63, '{}');
-INSERT INTO app.materials VALUES ('B04A0001-B350-310', '{"en": "K40UF Polished φ35.0x310", "ja": "K40UF 研磨 φ35.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.832623+00', '2026-08-24 09:19:51.832623+00', '350', 35.000, 'A0', 310.000, '310', NULL, NULL, 'B', 4, 64, '{}');
-INSERT INTO app.materials VALUES ('B04A0001-B340-310', '{"en": "K40UF Polished φ34.0x310", "ja": "K40UF 研磨 φ34.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.832888+00', '2026-08-24 09:19:51.832888+00', '340', 34.000, 'A0', 310.000, '310', NULL, NULL, 'B', 4, 65, '{}');
-INSERT INTO app.materials VALUES ('B04A0001-B330-310', '{"en": "K40UF Polished φ33.0x310", "ja": "K40UF 研磨 φ33.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.83315+00', '2026-08-24 09:19:51.83315+00', '330', 33.000, 'A0', 310.000, '310', NULL, NULL, 'B', 4, 66, '{}');
-INSERT INTO app.materials VALUES ('B04A0001-B320-310', '{"en": "K40UF Polished φ32.0x310", "ja": "K40UF 研磨 φ32.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.833424+00', '2026-08-24 09:19:51.833424+00', '320', 32.000, 'A0', 310.000, '310', NULL, NULL, 'B', 4, 67, '{}');
-INSERT INTO app.materials VALUES ('B04A0001-B310-310', '{"en": "K40UF Polished φ31.0x310", "ja": "K40UF 研磨 φ31.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.833682+00', '2026-08-24 09:19:51.833682+00', '310', 31.000, 'A0', 310.000, '310', NULL, NULL, 'B', 4, 68, '{}');
-INSERT INTO app.materials VALUES ('B04A0001-B300-310', '{"en": "K40UF Polished φ30.0x310", "ja": "K40UF 研磨 φ30.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.833938+00', '2026-08-24 09:19:51.833938+00', '300', 30.000, 'A0', 310.000, '310', NULL, NULL, 'B', 4, 69, '{}');
-INSERT INTO app.materials VALUES ('B04A0001-B290-310', '{"en": "K40UF Polished φ29.0x310", "ja": "K40UF 研磨 φ29.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.834219+00', '2026-08-24 09:19:51.834219+00', '290', 29.000, 'A0', 310.000, '310', NULL, NULL, 'B', 4, 70, '{}');
-INSERT INTO app.materials VALUES ('B04A0001-B280-310', '{"en": "K40UF Polished φ28.0x310", "ja": "K40UF 研磨 φ28.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.834482+00', '2026-08-24 09:19:51.834482+00', '280', 28.000, 'A0', 310.000, '310', NULL, NULL, 'B', 4, 71, '{}');
-INSERT INTO app.materials VALUES ('B04A0001-B270-310', '{"en": "K40UF Polished φ27.0x310", "ja": "K40UF 研磨 φ27.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.834747+00', '2026-08-24 09:19:51.834747+00', '270', 27.000, 'A0', 310.000, '310', NULL, NULL, 'B', 4, 72, '{}');
-INSERT INTO app.materials VALUES ('B04A0001-B260-310', '{"en": "K40UF Polished φ26.0x310", "ja": "K40UF 研磨 φ26.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.835026+00', '2026-08-24 09:19:51.835026+00', '260', 26.000, 'A0', 310.000, '310', NULL, NULL, 'B', 4, 73, '{}');
-INSERT INTO app.materials VALUES ('B04A0001-B250-310', '{"en": "K40UF Polished φ25.0x310", "ja": "K40UF 研磨 φ25.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.835288+00', '2026-08-24 09:19:51.835288+00', '250', 25.000, 'A0', 310.000, '310', NULL, NULL, 'B', 4, 74, '{}');
-INSERT INTO app.materials VALUES ('B04A0001-B240-310', '{"en": "K40UF Polished φ24.0x310", "ja": "K40UF 研磨 φ24.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.835585+00', '2026-08-24 09:19:51.835585+00', '240', 24.000, 'A0', 310.000, '310', NULL, NULL, 'B', 4, 75, '{}');
-INSERT INTO app.materials VALUES ('B04A0001-B230-310', '{"en": "K40UF Polished φ23.0x310", "ja": "K40UF 研磨 φ23.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.835898+00', '2026-08-24 09:19:51.835898+00', '230', 23.000, 'A0', 310.000, '310', NULL, NULL, 'B', 4, 76, '{}');
-INSERT INTO app.materials VALUES ('B04A0001-B220-310', '{"en": "K40UF Polished φ22.0x310", "ja": "K40UF 研磨 φ22.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.836163+00', '2026-08-24 09:19:51.836163+00', '220', 22.000, 'A0', 310.000, '310', NULL, NULL, 'B', 4, 77, '{}');
-INSERT INTO app.materials VALUES ('B04A0001-B210-310', '{"en": "K40UF Polished φ21.0x310", "ja": "K40UF 研磨 φ21.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.836485+00', '2026-08-24 09:19:51.836485+00', '210', 21.000, 'A0', 310.000, '310', NULL, NULL, 'B', 4, 78, '{}');
-INSERT INTO app.materials VALUES ('B04A0001-B200-310', '{"en": "K40UF Polished φ20.0x310", "ja": "K40UF 研磨 φ20.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.836764+00', '2026-08-24 09:19:51.836764+00', '200', 20.000, 'A0', 310.000, '310', NULL, NULL, 'B', 4, 79, '{}');
-INSERT INTO app.materials VALUES ('B04A0001-B190-310', '{"en": "K40UF Polished φ19.0x310", "ja": "K40UF 研磨 φ19.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.837049+00', '2026-08-24 09:19:51.837049+00', '190', 19.000, 'A0', 310.000, '310', NULL, NULL, 'B', 4, 80, '{}');
-INSERT INTO app.materials VALUES ('B04A0001-B180-310', '{"en": "K40UF Polished φ18.0x310", "ja": "K40UF 研磨 φ18.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.837364+00', '2026-08-24 09:19:51.837364+00', '180', 18.000, 'A0', 310.000, '310', NULL, NULL, 'B', 4, 81, '{}');
-INSERT INTO app.materials VALUES ('B04A0001-B170-310', '{"en": "K40UF Polished φ17.0x310", "ja": "K40UF 研磨 φ17.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.837654+00', '2026-08-24 09:19:51.837654+00', '170', 17.000, 'A0', 310.000, '310', NULL, NULL, 'B', 4, 82, '{}');
-INSERT INTO app.materials VALUES ('B04A0001-B160-310', '{"en": "K40UF Polished φ16.0x310", "ja": "K40UF 研磨 φ16.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.837918+00', '2026-08-24 09:19:51.837918+00', '160', 16.000, 'A0', 310.000, '310', NULL, NULL, 'B', 4, 83, '{}');
-INSERT INTO app.materials VALUES ('B04A0001-B155-310', '{"en": "K40UF Polished φ15.5x310", "ja": "K40UF 研磨 φ15.5×310"}', '本', true, NULL, '2026-08-24 09:19:51.838188+00', '2026-08-24 09:19:51.838188+00', '155', 15.500, 'A0', 310.000, '310', NULL, NULL, 'B', 4, 84, '{}');
-INSERT INTO app.materials VALUES ('B04A0001-B150-310', '{"en": "K40UF Polished φ15.0x310", "ja": "K40UF 研磨 φ15.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.838462+00', '2026-08-24 09:19:51.838462+00', '150', 15.000, 'A0', 310.000, '310', NULL, NULL, 'B', 4, 85, '{}');
-INSERT INTO app.materials VALUES ('B04A0001-B145-310', '{"en": "K40UF Polished φ14.5x310", "ja": "K40UF 研磨 φ14.5×310"}', '本', true, NULL, '2026-08-24 09:19:51.838787+00', '2026-08-24 09:19:51.838787+00', '145', 14.500, 'A0', 310.000, '310', NULL, NULL, 'B', 4, 86, '{}');
-INSERT INTO app.materials VALUES ('B04A0001-B140-310', '{"en": "K40UF Polished φ14.0x310", "ja": "K40UF 研磨 φ14.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.839073+00', '2026-08-24 09:19:51.839073+00', '140', 14.000, 'A0', 310.000, '310', NULL, NULL, 'B', 4, 87, '{}');
-INSERT INTO app.materials VALUES ('B04A0001-B135-310', '{"en": "K40UF Polished φ13.5x310", "ja": "K40UF 研磨 φ13.5×310"}', '本', true, NULL, '2026-08-24 09:19:51.839352+00', '2026-08-24 09:19:51.839352+00', '135', 13.500, 'A0', 310.000, '310', NULL, NULL, 'B', 4, 88, '{}');
-INSERT INTO app.materials VALUES ('B04A0001-B130-310', '{"en": "K40UF Polished φ13.0x310", "ja": "K40UF 研磨 φ13.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.839639+00', '2026-08-24 09:19:51.839639+00', '130', 13.000, 'A0', 310.000, '310', NULL, NULL, 'B', 4, 89, '{}');
-INSERT INTO app.materials VALUES ('B04A0001-B125-310', '{"en": "K40UF Polished φ12.5x310", "ja": "K40UF 研磨 φ12.5×310"}', '本', true, NULL, '2026-08-24 09:19:51.839959+00', '2026-08-24 09:19:51.839959+00', '125', 12.500, 'A0', 310.000, '310', NULL, NULL, 'B', 4, 90, '{}');
-INSERT INTO app.materials VALUES ('B04A0001-B120-310', '{"en": "K40UF Polished φ12.0x310", "ja": "K40UF 研磨 φ12.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.840248+00', '2026-08-24 09:19:51.840248+00', '120', 12.000, 'A0', 310.000, '310', NULL, NULL, 'B', 4, 91, '{}');
-INSERT INTO app.materials VALUES ('B04A0001-B115-310', '{"en": "K40UF Polished φ11.5x310", "ja": "K40UF 研磨 φ11.5×310"}', '本', true, NULL, '2026-08-24 09:19:51.840528+00', '2026-08-24 09:19:51.840528+00', '115', 11.500, 'A0', 310.000, '310', NULL, NULL, 'B', 4, 92, '{}');
-INSERT INTO app.materials VALUES ('B04A0001-B110-310', '{"en": "K40UF Polished φ11.0x310", "ja": "K40UF 研磨 φ11.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.840795+00', '2026-08-24 09:19:51.840795+00', '110', 11.000, 'A0', 310.000, '310', NULL, NULL, 'B', 4, 93, '{}');
-INSERT INTO app.materials VALUES ('B04A0001-B105-310', '{"en": "K40UF Polished φ10.5x310", "ja": "K40UF 研磨 φ10.5×310"}', '本', true, NULL, '2026-08-24 09:19:51.841116+00', '2026-08-24 09:19:51.841116+00', '105', 10.500, 'A0', 310.000, '310', NULL, NULL, 'B', 4, 94, '{}');
-INSERT INTO app.materials VALUES ('B04A0001-B100-310', '{"en": "K40UF Polished φ10.0x310", "ja": "K40UF 研磨 φ10.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.84142+00', '2026-08-24 09:19:51.84142+00', '100', 10.000, 'A0', 310.000, '310', NULL, NULL, 'B', 4, 95, '{}');
-INSERT INTO app.materials VALUES ('B04A0001-B095-310', '{"en": "K40UF Polished φ9.5x310", "ja": "K40UF 研磨 φ9.5×310"}', '本', true, NULL, '2026-08-24 09:19:51.841682+00', '2026-08-24 09:19:51.841682+00', '095', 9.500, 'A0', 310.000, '310', NULL, NULL, 'B', 4, 96, '{}');
-INSERT INTO app.materials VALUES ('B04A0001-B090-310', '{"en": "K40UF Polished φ9.0x310", "ja": "K40UF 研磨 φ9.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.841936+00', '2026-08-24 09:19:51.841936+00', '090', 9.000, 'A0', 310.000, '310', NULL, NULL, 'B', 4, 97, '{}');
-INSERT INTO app.materials VALUES ('B04A0001-B085-310', '{"en": "K40UF Polished φ8.5x310", "ja": "K40UF 研磨 φ8.5×310"}', '本', true, NULL, '2026-08-24 09:19:51.842242+00', '2026-08-24 09:19:51.842242+00', '085', 8.500, 'A0', 310.000, '310', NULL, NULL, 'B', 4, 98, '{}');
-INSERT INTO app.materials VALUES ('B04A0001-B080-310', '{"en": "K40UF Polished φ8.0x310", "ja": "K40UF 研磨 φ8.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.842502+00', '2026-08-24 09:19:51.842502+00', '080', 8.000, 'A0', 310.000, '310', NULL, NULL, 'B', 4, 99, '{}');
-INSERT INTO app.materials VALUES ('B04A0001-B075-310', '{"en": "K40UF Polished φ7.5x310", "ja": "K40UF 研磨 φ7.5×310"}', '本', true, NULL, '2026-08-24 09:19:51.842785+00', '2026-08-24 09:19:51.842785+00', '075', 7.500, 'A0', 310.000, '310', NULL, NULL, 'B', 4, 100, '{}');
-INSERT INTO app.materials VALUES ('B04A0001-B070-310', '{"en": "K40UF Polished φ7.0x310", "ja": "K40UF 研磨 φ7.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.843107+00', '2026-08-24 09:19:51.843107+00', '070', 7.000, 'A0', 310.000, '310', NULL, NULL, 'B', 4, 101, '{}');
-INSERT INTO app.materials VALUES ('B04A0001-B065-310', '{"en": "K40UF Polished φ6.5x310", "ja": "K40UF 研磨 φ6.5×310"}', '本', true, NULL, '2026-08-24 09:19:51.843379+00', '2026-08-24 09:19:51.843379+00', '065', 6.500, 'A0', 310.000, '310', NULL, NULL, 'B', 4, 102, '{}');
-INSERT INTO app.materials VALUES ('B04A0001-B060-310', '{"en": "K40UF Polished φ6.0x310", "ja": "K40UF 研磨 φ6.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.843661+00', '2026-08-24 09:19:51.843661+00', '060', 6.000, 'A0', 310.000, '310', NULL, NULL, 'B', 4, 103, '{}');
-INSERT INTO app.materials VALUES ('B04A0001-B055-310', '{"en": "K40UF Polished φ5.5x310", "ja": "K40UF 研磨 φ5.5×310"}', '本', true, NULL, '2026-08-24 09:19:51.843939+00', '2026-08-24 09:19:51.843939+00', '055', 5.500, 'A0', 310.000, '310', NULL, NULL, 'B', 4, 104, '{}');
-INSERT INTO app.materials VALUES ('B04A0001-B050-310', '{"en": "K40UF Polished φ5.0x310", "ja": "K40UF 研磨 φ5.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.844255+00', '2026-08-24 09:19:51.844255+00', '050', 5.000, 'A0', 310.000, '310', NULL, NULL, 'B', 4, 105, '{}');
-INSERT INTO app.materials VALUES ('B04A0001-B045-310', '{"en": "K40UF Polished φ4.5x310", "ja": "K40UF 研磨 φ4.5×310"}', '本', true, NULL, '2026-08-24 09:19:51.844533+00', '2026-08-24 09:19:51.844533+00', '045', 4.500, 'A0', 310.000, '310', NULL, NULL, 'B', 4, 106, '{}');
-INSERT INTO app.materials VALUES ('B04A0001-B040-310', '{"en": "K40UF Polished φ4.0x310", "ja": "K40UF 研磨 φ4.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.844862+00', '2026-08-24 09:19:51.844862+00', '040', 4.000, 'A0', 310.000, '310', NULL, NULL, 'B', 4, 107, '{}');
-INSERT INTO app.materials VALUES ('B04A0001-B035-310', '{"en": "K40UF Polished φ3.5x310", "ja": "K40UF 研磨 φ3.5×310"}', '本', true, NULL, '2026-08-24 09:19:51.845115+00', '2026-08-24 09:19:51.845115+00', '035', 3.500, 'A0', 310.000, '310', NULL, NULL, 'B', 4, 108, '{}');
-INSERT INTO app.materials VALUES ('B04A0001-B030-310', '{"en": "K40UF Polished φ3.0x310", "ja": "K40UF 研磨 φ3.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.845388+00', '2026-08-24 09:19:51.845388+00', '030', 3.000, 'A0', 310.000, '310', NULL, NULL, 'B', 4, 109, '{}');
-INSERT INTO app.materials VALUES ('B04A0001-B025-310', '{"en": "K40UF Polished φ2.5x310", "ja": "K40UF 研磨 φ2.5×310"}', '本', true, NULL, '2026-08-24 09:19:51.845663+00', '2026-08-24 09:19:51.845663+00', '025', 2.500, 'A0', 310.000, '310', NULL, NULL, 'B', 4, 110, '{}');
-INSERT INTO app.materials VALUES ('B04A0001-B020-310', '{"en": "K40UF Polished φ2.0x310", "ja": "K40UF 研磨 φ2.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.845934+00', '2026-08-24 09:19:51.845934+00', '020', 2.000, 'A0', 310.000, '310', NULL, NULL, 'B', 4, 111, '{}');
-INSERT INTO app.materials VALUES ('B04A0001-B015-310', '{"en": "K40UF Polished φ1.5x310", "ja": "K40UF 研磨 φ1.5×310"}', '本', true, NULL, '2026-08-24 09:19:51.846214+00', '2026-08-24 09:19:51.846214+00', '015', 1.500, 'A0', 310.000, '310', NULL, NULL, 'B', 4, 112, '{}');
-INSERT INTO app.materials VALUES ('B04A0001-B010-310', '{"en": "K40UF Polished φ1.0x310", "ja": "K40UF 研磨 φ1.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.846494+00', '2026-08-24 09:19:51.846494+00', '010', 1.000, 'A0', 310.000, '310', NULL, NULL, 'B', 4, 113, '{}');
-INSERT INTO app.materials VALUES ('B01A0001-B350-310', '{"en": "K10UF Polished φ35.0x310", "ja": "K10UF 研磨 φ35.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.846775+00', '2026-08-24 09:19:51.846775+00', '350', 35.000, 'A0', 310.000, '310', NULL, NULL, 'B', 1, 114, '{}');
-INSERT INTO app.materials VALUES ('B01A0001-B340-310', '{"en": "K10UF Polished φ34.0x310", "ja": "K10UF 研磨 φ34.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.847091+00', '2026-08-24 09:19:51.847091+00', '340', 34.000, 'A0', 310.000, '310', NULL, NULL, 'B', 1, 115, '{}');
-INSERT INTO app.materials VALUES ('B01A0001-B330-310', '{"en": "K10UF Polished φ33.0x310", "ja": "K10UF 研磨 φ33.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.847405+00', '2026-08-24 09:19:51.847405+00', '330', 33.000, 'A0', 310.000, '310', NULL, NULL, 'B', 1, 116, '{}');
-INSERT INTO app.materials VALUES ('B01A0001-B320-310', '{"en": "K10UF Polished φ32.0x310", "ja": "K10UF 研磨 φ32.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.84767+00', '2026-08-24 09:19:51.84767+00', '320', 32.000, 'A0', 310.000, '310', NULL, NULL, 'B', 1, 117, '{}');
-INSERT INTO app.materials VALUES ('B01A0001-B310-310', '{"en": "K10UF Polished φ31.0x310", "ja": "K10UF 研磨 φ31.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.847956+00', '2026-08-24 09:19:51.847956+00', '310', 31.000, 'A0', 310.000, '310', NULL, NULL, 'B', 1, 118, '{}');
-INSERT INTO app.materials VALUES ('B01A0001-B300-310', '{"en": "K10UF Polished φ30.0x310", "ja": "K10UF 研磨 φ30.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.848238+00', '2026-08-24 09:19:51.848238+00', '300', 30.000, 'A0', 310.000, '310', NULL, NULL, 'B', 1, 119, '{}');
-INSERT INTO app.materials VALUES ('B01A0001-B290-310', '{"en": "K10UF Polished φ29.0x310", "ja": "K10UF 研磨 φ29.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.848514+00', '2026-08-24 09:19:51.848514+00', '290', 29.000, 'A0', 310.000, '310', NULL, NULL, 'B', 1, 120, '{}');
-INSERT INTO app.materials VALUES ('B01A0001-B280-310', '{"en": "K10UF Polished φ28.0x310", "ja": "K10UF 研磨 φ28.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.848797+00', '2026-08-24 09:19:51.848797+00', '280', 28.000, 'A0', 310.000, '310', NULL, NULL, 'B', 1, 121, '{}');
-INSERT INTO app.materials VALUES ('B01A0001-B270-310', '{"en": "K10UF Polished φ27.0x310", "ja": "K10UF 研磨 φ27.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.849175+00', '2026-08-24 09:19:51.849175+00', '270', 27.000, 'A0', 310.000, '310', NULL, NULL, 'B', 1, 122, '{}');
-INSERT INTO app.materials VALUES ('B01A0001-B260-310', '{"en": "K10UF Polished φ26.0x310", "ja": "K10UF 研磨 φ26.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.849461+00', '2026-08-24 09:19:51.849461+00', '260', 26.000, 'A0', 310.000, '310', NULL, NULL, 'B', 1, 123, '{}');
-INSERT INTO app.materials VALUES ('B01A0001-B250-310', '{"en": "K10UF Polished φ25.0x310", "ja": "K10UF 研磨 φ25.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.84976+00', '2026-08-24 09:19:51.84976+00', '250', 25.000, 'A0', 310.000, '310', NULL, NULL, 'B', 1, 124, '{}');
-INSERT INTO app.materials VALUES ('B01A0001-B240-310', '{"en": "K10UF Polished φ24.0x310", "ja": "K10UF 研磨 φ24.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.850076+00', '2026-08-24 09:19:51.850076+00', '240', 24.000, 'A0', 310.000, '310', NULL, NULL, 'B', 1, 125, '{}');
-INSERT INTO app.materials VALUES ('B01A0001-B230-310', '{"en": "K10UF Polished φ23.0x310", "ja": "K10UF 研磨 φ23.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.850355+00', '2026-08-24 09:19:51.850355+00', '230', 23.000, 'A0', 310.000, '310', NULL, NULL, 'B', 1, 126, '{}');
-INSERT INTO app.materials VALUES ('B01A0001-B220-310', '{"en": "K10UF Polished φ22.0x310", "ja": "K10UF 研磨 φ22.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.850637+00', '2026-08-24 09:19:51.850637+00', '220', 22.000, 'A0', 310.000, '310', NULL, NULL, 'B', 1, 127, '{}');
-INSERT INTO app.materials VALUES ('B01A0001-B210-310', '{"en": "K10UF Polished φ21.0x310", "ja": "K10UF 研磨 φ21.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.850905+00', '2026-08-24 09:19:51.850905+00', '210', 21.000, 'A0', 310.000, '310', NULL, NULL, 'B', 1, 128, '{}');
-INSERT INTO app.materials VALUES ('B01A0001-B200-310', '{"en": "K10UF Polished φ20.0x310", "ja": "K10UF 研磨 φ20.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.851161+00', '2026-08-24 09:19:51.851161+00', '200', 20.000, 'A0', 310.000, '310', NULL, NULL, 'B', 1, 129, '{}');
-INSERT INTO app.materials VALUES ('B01A0001-B190-310', '{"en": "K10UF Polished φ19.0x310", "ja": "K10UF 研磨 φ19.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.851428+00', '2026-08-24 09:19:51.851428+00', '190', 19.000, 'A0', 310.000, '310', NULL, NULL, 'B', 1, 130, '{}');
-INSERT INTO app.materials VALUES ('B01A0001-B180-310', '{"en": "K10UF Polished φ18.0x310", "ja": "K10UF 研磨 φ18.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.851704+00', '2026-08-24 09:19:51.851704+00', '180', 18.000, 'A0', 310.000, '310', NULL, NULL, 'B', 1, 131, '{}');
-INSERT INTO app.materials VALUES ('B01A0001-B170-310', '{"en": "K10UF Polished φ17.0x310", "ja": "K10UF 研磨 φ17.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.851974+00', '2026-08-24 09:19:51.851974+00', '170', 17.000, 'A0', 310.000, '310', NULL, NULL, 'B', 1, 132, '{}');
-INSERT INTO app.materials VALUES ('B01A0001-B160-310', '{"en": "K10UF Polished φ16.0x310", "ja": "K10UF 研磨 φ16.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.852235+00', '2026-08-24 09:19:51.852235+00', '160', 16.000, 'A0', 310.000, '310', NULL, NULL, 'B', 1, 133, '{}');
-INSERT INTO app.materials VALUES ('B01A0001-B155-310', '{"en": "K10UF Polished φ15.5x310", "ja": "K10UF 研磨 φ15.5×310"}', '本', true, NULL, '2026-08-24 09:19:51.852507+00', '2026-08-24 09:19:51.852507+00', '155', 15.500, 'A0', 310.000, '310', NULL, NULL, 'B', 1, 134, '{}');
-INSERT INTO app.materials VALUES ('B01A0001-B150-310', '{"en": "K10UF Polished φ15.0x310", "ja": "K10UF 研磨 φ15.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.852817+00', '2026-08-24 09:19:51.852817+00', '150', 15.000, 'A0', 310.000, '310', NULL, NULL, 'B', 1, 135, '{}');
-INSERT INTO app.materials VALUES ('B01A0001-B145-310', '{"en": "K10UF Polished φ14.5x310", "ja": "K10UF 研磨 φ14.5×310"}', '本', true, NULL, '2026-08-24 09:19:51.853109+00', '2026-08-24 09:19:51.853109+00', '145', 14.500, 'A0', 310.000, '310', NULL, NULL, 'B', 1, 136, '{}');
-INSERT INTO app.materials VALUES ('B01A0001-B140-310', '{"en": "K10UF Polished φ14.0x310", "ja": "K10UF 研磨 φ14.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.853382+00', '2026-08-24 09:19:51.853382+00', '140', 14.000, 'A0', 310.000, '310', NULL, NULL, 'B', 1, 137, '{}');
-INSERT INTO app.materials VALUES ('B01A0001-B135-310', '{"en": "K10UF Polished φ13.5x310", "ja": "K10UF 研磨 φ13.5×310"}', '本', true, NULL, '2026-08-24 09:19:51.853652+00', '2026-08-24 09:19:51.853652+00', '135', 13.500, 'A0', 310.000, '310', NULL, NULL, 'B', 1, 138, '{}');
-INSERT INTO app.materials VALUES ('B01A0001-B130-310', '{"en": "K10UF Polished φ13.0x310", "ja": "K10UF 研磨 φ13.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.853926+00', '2026-08-24 09:19:51.853926+00', '130', 13.000, 'A0', 310.000, '310', NULL, NULL, 'B', 1, 139, '{}');
-INSERT INTO app.materials VALUES ('B01A0001-B125-310', '{"en": "K10UF Polished φ12.5x310", "ja": "K10UF 研磨 φ12.5×310"}', '本', true, NULL, '2026-08-24 09:19:51.854208+00', '2026-08-24 09:19:51.854208+00', '125', 12.500, 'A0', 310.000, '310', NULL, NULL, 'B', 1, 140, '{}');
-INSERT INTO app.materials VALUES ('B01A0001-B120-310', '{"en": "K10UF Polished φ12.0x310", "ja": "K10UF 研磨 φ12.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.854475+00', '2026-08-24 09:19:51.854475+00', '120', 12.000, 'A0', 310.000, '310', NULL, NULL, 'B', 1, 141, '{}');
-INSERT INTO app.materials VALUES ('B01A0001-B115-310', '{"en": "K10UF Polished φ11.5x310", "ja": "K10UF 研磨 φ11.5×310"}', '本', true, NULL, '2026-08-24 09:19:51.854754+00', '2026-08-24 09:19:51.854754+00', '115', 11.500, 'A0', 310.000, '310', NULL, NULL, 'B', 1, 142, '{}');
-INSERT INTO app.materials VALUES ('B01A0001-B110-310', '{"en": "K10UF Polished φ11.0x310", "ja": "K10UF 研磨 φ11.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.855053+00', '2026-08-24 09:19:51.855053+00', '110', 11.000, 'A0', 310.000, '310', NULL, NULL, 'B', 1, 143, '{}');
-INSERT INTO app.materials VALUES ('B01A0001-B105-310', '{"en": "K10UF Polished φ10.5x310", "ja": "K10UF 研磨 φ10.5×310"}', '本', true, NULL, '2026-08-24 09:19:51.855319+00', '2026-08-24 09:19:51.855319+00', '105', 10.500, 'A0', 310.000, '310', NULL, NULL, 'B', 1, 144, '{}');
-INSERT INTO app.materials VALUES ('B01A0001-B100-310', '{"en": "K10UF Polished φ10.0x310", "ja": "K10UF 研磨 φ10.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.855682+00', '2026-08-24 09:19:51.855682+00', '100', 10.000, 'A0', 310.000, '310', NULL, NULL, 'B', 1, 145, '{}');
-INSERT INTO app.materials VALUES ('B01A0001-B095-310', '{"en": "K10UF Polished φ9.5x310", "ja": "K10UF 研磨 φ9.5×310"}', '本', true, NULL, '2026-08-24 09:19:51.855954+00', '2026-08-24 09:19:51.855954+00', '095', 9.500, 'A0', 310.000, '310', NULL, NULL, 'B', 1, 146, '{}');
-INSERT INTO app.materials VALUES ('B01A0001-B090-310', '{"en": "K10UF Polished φ9.0x310", "ja": "K10UF 研磨 φ9.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.856247+00', '2026-08-24 09:19:51.856247+00', '090', 9.000, 'A0', 310.000, '310', NULL, NULL, 'B', 1, 147, '{}');
-INSERT INTO app.materials VALUES ('B01A0001-B085-310', '{"en": "K10UF Polished φ8.5x310", "ja": "K10UF 研磨 φ8.5×310"}', '本', true, NULL, '2026-08-24 09:19:51.856538+00', '2026-08-24 09:19:51.856538+00', '085', 8.500, 'A0', 310.000, '310', NULL, NULL, 'B', 1, 148, '{}');
-INSERT INTO app.materials VALUES ('B01A0001-B080-310', '{"en": "K10UF Polished φ8.0x310", "ja": "K10UF 研磨 φ8.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.856794+00', '2026-08-24 09:19:51.856794+00', '080', 8.000, 'A0', 310.000, '310', NULL, NULL, 'B', 1, 149, '{}');
-INSERT INTO app.materials VALUES ('B01A0001-B075-310', '{"en": "K10UF Polished φ7.5x310", "ja": "K10UF 研磨 φ7.5×310"}', '本', true, NULL, '2026-08-24 09:19:51.857083+00', '2026-08-24 09:19:51.857083+00', '075', 7.500, 'A0', 310.000, '310', NULL, NULL, 'B', 1, 150, '{}');
-INSERT INTO app.materials VALUES ('B01A0001-B070-310', '{"en": "K10UF Polished φ7.0x310", "ja": "K10UF 研磨 φ7.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.857345+00', '2026-08-24 09:19:51.857345+00', '070', 7.000, 'A0', 310.000, '310', NULL, NULL, 'B', 1, 151, '{}');
-INSERT INTO app.materials VALUES ('B01A0001-B065-310', '{"en": "K10UF Polished φ6.5x310", "ja": "K10UF 研磨 φ6.5×310"}', '本', true, NULL, '2026-08-24 09:19:51.857595+00', '2026-08-24 09:19:51.857595+00', '065', 6.500, 'A0', 310.000, '310', NULL, NULL, 'B', 1, 152, '{}');
-INSERT INTO app.materials VALUES ('B01A0001-B060-310', '{"en": "K10UF Polished φ6.0x310", "ja": "K10UF 研磨 φ6.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.857854+00', '2026-08-24 09:19:51.857854+00', '060', 6.000, 'A0', 310.000, '310', NULL, NULL, 'B', 1, 153, '{}');
-INSERT INTO app.materials VALUES ('B01A0001-B055-310', '{"en": "K10UF Polished φ5.5x310", "ja": "K10UF 研磨 φ5.5×310"}', '本', true, NULL, '2026-08-24 09:19:51.858217+00', '2026-08-24 09:19:51.858217+00', '055', 5.500, 'A0', 310.000, '310', NULL, NULL, 'B', 1, 154, '{}');
-INSERT INTO app.materials VALUES ('B01A0001-B050-310', '{"en": "K10UF Polished φ5.0x310", "ja": "K10UF 研磨 φ5.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.858497+00', '2026-08-24 09:19:51.858497+00', '050', 5.000, 'A0', 310.000, '310', NULL, NULL, 'B', 1, 155, '{}');
-INSERT INTO app.materials VALUES ('B01A0001-B045-310', '{"en": "K10UF Polished φ4.5x310", "ja": "K10UF 研磨 φ4.5×310"}', '本', true, NULL, '2026-08-24 09:19:51.858782+00', '2026-08-24 09:19:51.858782+00', '045', 4.500, 'A0', 310.000, '310', NULL, NULL, 'B', 1, 156, '{}');
-INSERT INTO app.materials VALUES ('B01A0001-B040-310', '{"en": "K10UF Polished φ4.0x310", "ja": "K10UF 研磨 φ4.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.859086+00', '2026-08-24 09:19:51.859086+00', '040', 4.000, 'A0', 310.000, '310', NULL, NULL, 'B', 1, 157, '{}');
-INSERT INTO app.materials VALUES ('B01A0001-B035-310', '{"en": "K10UF Polished φ3.5x310", "ja": "K10UF 研磨 φ3.5×310"}', '本', true, NULL, '2026-08-24 09:19:51.859386+00', '2026-08-24 09:19:51.859386+00', '035', 3.500, 'A0', 310.000, '310', NULL, NULL, 'B', 1, 158, '{}');
-INSERT INTO app.materials VALUES ('B01A0001-B030-310', '{"en": "K10UF Polished φ3.0x310", "ja": "K10UF 研磨 φ3.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.859696+00', '2026-08-24 09:19:51.859696+00', '030', 3.000, 'A0', 310.000, '310', NULL, NULL, 'B', 1, 159, '{}');
-INSERT INTO app.materials VALUES ('B01A0001-B025-310', '{"en": "K10UF Polished φ2.5x310", "ja": "K10UF 研磨 φ2.5×310"}', '本', true, NULL, '2026-08-24 09:19:51.859974+00', '2026-08-24 09:19:51.859974+00', '025', 2.500, 'A0', 310.000, '310', NULL, NULL, 'B', 1, 160, '{}');
-INSERT INTO app.materials VALUES ('B01A0001-B020-310', '{"en": "K10UF Polished φ2.0x310", "ja": "K10UF 研磨 φ2.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.860262+00', '2026-08-24 09:19:51.860262+00', '020', 2.000, 'A0', 310.000, '310', NULL, NULL, 'B', 1, 161, '{}');
-INSERT INTO app.materials VALUES ('B01A0001-B015-310', '{"en": "K10UF Polished φ1.5x310", "ja": "K10UF 研磨 φ1.5×310"}', '本', true, NULL, '2026-08-24 09:19:51.860556+00', '2026-08-24 09:19:51.860556+00', '015', 1.500, 'A0', 310.000, '310', NULL, NULL, 'B', 1, 162, '{}');
-INSERT INTO app.materials VALUES ('B01A0001-B010-310', '{"en": "K10UF Polished φ1.0x310", "ja": "K10UF 研磨 φ1.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.860848+00', '2026-08-24 09:19:51.860848+00', '010', 1.000, 'A0', 310.000, '310', NULL, NULL, 'B', 1, 163, '{}');
-INSERT INTO app.materials VALUES ('B02A0001-B350-310', '{"en": "K20CF Polished φ35.0x310", "ja": "K20CF 研磨 φ35.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.861117+00', '2026-08-24 09:19:51.861117+00', '350', 35.000, 'A0', 310.000, '310', NULL, NULL, 'B', 2, 164, '{}');
-INSERT INTO app.materials VALUES ('B02A0001-B340-310', '{"en": "K20CF Polished φ34.0x310", "ja": "K20CF 研磨 φ34.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.8614+00', '2026-08-24 09:19:51.8614+00', '340', 34.000, 'A0', 310.000, '310', NULL, NULL, 'B', 2, 165, '{}');
-INSERT INTO app.materials VALUES ('B02A0001-B330-310', '{"en": "K20CF Polished φ33.0x310", "ja": "K20CF 研磨 φ33.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.861675+00', '2026-08-24 09:19:51.861675+00', '330', 33.000, 'A0', 310.000, '310', NULL, NULL, 'B', 2, 166, '{}');
-INSERT INTO app.materials VALUES ('B02A0001-B320-310', '{"en": "K20CF Polished φ32.0x310", "ja": "K20CF 研磨 φ32.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.861963+00', '2026-08-24 09:19:51.861963+00', '320', 32.000, 'A0', 310.000, '310', NULL, NULL, 'B', 2, 167, '{}');
-INSERT INTO app.materials VALUES ('B02A0001-B310-310', '{"en": "K20CF Polished φ31.0x310", "ja": "K20CF 研磨 φ31.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.862251+00', '2026-08-24 09:19:51.862251+00', '310', 31.000, 'A0', 310.000, '310', NULL, NULL, 'B', 2, 168, '{}');
-INSERT INTO app.materials VALUES ('B02A0001-B300-310', '{"en": "K20CF Polished φ30.0x310", "ja": "K20CF 研磨 φ30.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.862542+00', '2026-08-24 09:19:51.862542+00', '300', 30.000, 'A0', 310.000, '310', NULL, NULL, 'B', 2, 169, '{}');
-INSERT INTO app.materials VALUES ('B02A0001-B290-310', '{"en": "K20CF Polished φ29.0x310", "ja": "K20CF 研磨 φ29.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.862902+00', '2026-08-24 09:19:51.862902+00', '290', 29.000, 'A0', 310.000, '310', NULL, NULL, 'B', 2, 170, '{}');
-INSERT INTO app.materials VALUES ('B02A0001-B280-310', '{"en": "K20CF Polished φ28.0x310", "ja": "K20CF 研磨 φ28.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.863192+00', '2026-08-24 09:19:51.863192+00', '280', 28.000, 'A0', 310.000, '310', NULL, NULL, 'B', 2, 171, '{}');
-INSERT INTO app.materials VALUES ('B02A0001-B270-310', '{"en": "K20CF Polished φ27.0x310", "ja": "K20CF 研磨 φ27.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.863522+00', '2026-08-24 09:19:51.863522+00', '270', 27.000, 'A0', 310.000, '310', NULL, NULL, 'B', 2, 172, '{}');
-INSERT INTO app.materials VALUES ('B02A0001-B260-310', '{"en": "K20CF Polished φ26.0x310", "ja": "K20CF 研磨 φ26.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.863833+00', '2026-08-24 09:19:51.863833+00', '260', 26.000, 'A0', 310.000, '310', NULL, NULL, 'B', 2, 173, '{}');
-INSERT INTO app.materials VALUES ('B02A0001-B250-310', '{"en": "K20CF Polished φ25.0x310", "ja": "K20CF 研磨 φ25.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.864148+00', '2026-08-24 09:19:51.864148+00', '250', 25.000, 'A0', 310.000, '310', NULL, NULL, 'B', 2, 174, '{}');
-INSERT INTO app.materials VALUES ('B02A0001-B240-310', '{"en": "K20CF Polished φ24.0x310", "ja": "K20CF 研磨 φ24.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.864445+00', '2026-08-24 09:19:51.864445+00', '240', 24.000, 'A0', 310.000, '310', NULL, NULL, 'B', 2, 175, '{}');
-INSERT INTO app.materials VALUES ('B02A0001-B230-310', '{"en": "K20CF Polished φ23.0x310", "ja": "K20CF 研磨 φ23.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.864762+00', '2026-08-24 09:19:51.864762+00', '230', 23.000, 'A0', 310.000, '310', NULL, NULL, 'B', 2, 176, '{}');
-INSERT INTO app.materials VALUES ('B02A0001-B220-310', '{"en": "K20CF Polished φ22.0x310", "ja": "K20CF 研磨 φ22.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.865122+00', '2026-08-24 09:19:51.865122+00', '220', 22.000, 'A0', 310.000, '310', NULL, NULL, 'B', 2, 177, '{}');
-INSERT INTO app.materials VALUES ('B02A0001-B210-310', '{"en": "K20CF Polished φ21.0x310", "ja": "K20CF 研磨 φ21.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.865424+00', '2026-08-24 09:19:51.865424+00', '210', 21.000, 'A0', 310.000, '310', NULL, NULL, 'B', 2, 178, '{}');
-INSERT INTO app.materials VALUES ('B02A0001-B200-310', '{"en": "K20CF Polished φ20.0x310", "ja": "K20CF 研磨 φ20.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.8657+00', '2026-08-24 09:19:51.8657+00', '200', 20.000, 'A0', 310.000, '310', NULL, NULL, 'B', 2, 179, '{}');
-INSERT INTO app.materials VALUES ('B02A0001-B190-310', '{"en": "K20CF Polished φ19.0x310", "ja": "K20CF 研磨 φ19.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.865977+00', '2026-08-24 09:19:51.865977+00', '190', 19.000, 'A0', 310.000, '310', NULL, NULL, 'B', 2, 180, '{}');
-INSERT INTO app.materials VALUES ('B02A0001-B180-310', '{"en": "K20CF Polished φ18.0x310", "ja": "K20CF 研磨 φ18.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.86634+00', '2026-08-24 09:19:51.86634+00', '180', 18.000, 'A0', 310.000, '310', NULL, NULL, 'B', 2, 181, '{}');
-INSERT INTO app.materials VALUES ('B02A0001-B170-310', '{"en": "K20CF Polished φ17.0x310", "ja": "K20CF 研磨 φ17.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.866599+00', '2026-08-24 09:19:51.866599+00', '170', 17.000, 'A0', 310.000, '310', NULL, NULL, 'B', 2, 182, '{}');
-INSERT INTO app.materials VALUES ('B02A0001-B160-310', '{"en": "K20CF Polished φ16.0x310", "ja": "K20CF 研磨 φ16.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.866865+00', '2026-08-24 09:19:51.866865+00', '160', 16.000, 'A0', 310.000, '310', NULL, NULL, 'B', 2, 183, '{}');
-INSERT INTO app.materials VALUES ('B02A0001-B155-310', '{"en": "K20CF Polished φ15.5x310", "ja": "K20CF 研磨 φ15.5×310"}', '本', true, NULL, '2026-08-24 09:19:51.867143+00', '2026-08-24 09:19:51.867143+00', '155', 15.500, 'A0', 310.000, '310', NULL, NULL, 'B', 2, 184, '{}');
-INSERT INTO app.materials VALUES ('B02A0001-B150-310', '{"en": "K20CF Polished φ15.0x310", "ja": "K20CF 研磨 φ15.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.867416+00', '2026-08-24 09:19:51.867416+00', '150', 15.000, 'A0', 310.000, '310', NULL, NULL, 'B', 2, 185, '{}');
-INSERT INTO app.materials VALUES ('B02A0001-B145-310', '{"en": "K20CF Polished φ14.5x310", "ja": "K20CF 研磨 φ14.5×310"}', '本', true, NULL, '2026-08-24 09:19:51.867698+00', '2026-08-24 09:19:51.867698+00', '145', 14.500, 'A0', 310.000, '310', NULL, NULL, 'B', 2, 186, '{}');
-INSERT INTO app.materials VALUES ('B02A0001-B140-310', '{"en": "K20CF Polished φ14.0x310", "ja": "K20CF 研磨 φ14.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.867963+00', '2026-08-24 09:19:51.867963+00', '140', 14.000, 'A0', 310.000, '310', NULL, NULL, 'B', 2, 187, '{}');
-INSERT INTO app.materials VALUES ('B02A0001-B135-310', '{"en": "K20CF Polished φ13.5x310", "ja": "K20CF 研磨 φ13.5×310"}', '本', true, NULL, '2026-08-24 09:19:51.868247+00', '2026-08-24 09:19:51.868247+00', '135', 13.500, 'A0', 310.000, '310', NULL, NULL, 'B', 2, 188, '{}');
-INSERT INTO app.materials VALUES ('B02A0001-B130-310', '{"en": "K20CF Polished φ13.0x310", "ja": "K20CF 研磨 φ13.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.86856+00', '2026-08-24 09:19:51.86856+00', '130', 13.000, 'A0', 310.000, '310', NULL, NULL, 'B', 2, 189, '{}');
-INSERT INTO app.materials VALUES ('B02A0001-B125-310', '{"en": "K20CF Polished φ12.5x310", "ja": "K20CF 研磨 φ12.5×310"}', '本', true, NULL, '2026-08-24 09:19:51.868884+00', '2026-08-24 09:19:51.868884+00', '125', 12.500, 'A0', 310.000, '310', NULL, NULL, 'B', 2, 190, '{}');
-INSERT INTO app.materials VALUES ('B02A0001-B120-310', '{"en": "K20CF Polished φ12.0x310", "ja": "K20CF 研磨 φ12.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.869154+00', '2026-08-24 09:19:51.869154+00', '120', 12.000, 'A0', 310.000, '310', NULL, NULL, 'B', 2, 191, '{}');
-INSERT INTO app.materials VALUES ('B02A0001-B115-310', '{"en": "K20CF Polished φ11.5x310", "ja": "K20CF 研磨 φ11.5×310"}', '本', true, NULL, '2026-08-24 09:19:51.869437+00', '2026-08-24 09:19:51.869437+00', '115', 11.500, 'A0', 310.000, '310', NULL, NULL, 'B', 2, 192, '{}');
-INSERT INTO app.materials VALUES ('B02A0001-B110-310', '{"en": "K20CF Polished φ11.0x310", "ja": "K20CF 研磨 φ11.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.86975+00', '2026-08-24 09:19:51.86975+00', '110', 11.000, 'A0', 310.000, '310', NULL, NULL, 'B', 2, 193, '{}');
-INSERT INTO app.materials VALUES ('B02A0001-B105-310', '{"en": "K20CF Polished φ10.5x310", "ja": "K20CF 研磨 φ10.5×310"}', '本', true, NULL, '2026-08-24 09:19:51.870043+00', '2026-08-24 09:19:51.870043+00', '105', 10.500, 'A0', 310.000, '310', NULL, NULL, 'B', 2, 194, '{}');
-INSERT INTO app.materials VALUES ('B02A0001-B100-310', '{"en": "K20CF Polished φ10.0x310", "ja": "K20CF 研磨 φ10.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.870309+00', '2026-08-24 09:19:51.870309+00', '100', 10.000, 'A0', 310.000, '310', NULL, NULL, 'B', 2, 195, '{}');
-INSERT INTO app.materials VALUES ('B02A0001-B095-310', '{"en": "K20CF Polished φ9.5x310", "ja": "K20CF 研磨 φ9.5×310"}', '本', true, NULL, '2026-08-24 09:19:51.870599+00', '2026-08-24 09:19:51.870599+00', '095', 9.500, 'A0', 310.000, '310', NULL, NULL, 'B', 2, 196, '{}');
-INSERT INTO app.materials VALUES ('B02A0001-B090-310', '{"en": "K20CF Polished φ9.0x310", "ja": "K20CF 研磨 φ9.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.870873+00', '2026-08-24 09:19:51.870873+00', '090', 9.000, 'A0', 310.000, '310', NULL, NULL, 'B', 2, 197, '{}');
-INSERT INTO app.materials VALUES ('B02A0001-B085-310', '{"en": "K20CF Polished φ8.5x310", "ja": "K20CF 研磨 φ8.5×310"}', '本', true, NULL, '2026-08-24 09:19:51.871147+00', '2026-08-24 09:19:51.871147+00', '085', 8.500, 'A0', 310.000, '310', NULL, NULL, 'B', 2, 198, '{}');
-INSERT INTO app.materials VALUES ('B02A0001-B080-310', '{"en": "K20CF Polished φ8.0x310", "ja": "K20CF 研磨 φ8.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.871453+00', '2026-08-24 09:19:51.871453+00', '080', 8.000, 'A0', 310.000, '310', NULL, NULL, 'B', 2, 199, '{}');
-INSERT INTO app.materials VALUES ('B02A0001-B075-310', '{"en": "K20CF Polished φ7.5x310", "ja": "K20CF 研磨 φ7.5×310"}', '本', true, NULL, '2026-08-24 09:19:51.871742+00', '2026-08-24 09:19:51.871742+00', '075', 7.500, 'A0', 310.000, '310', NULL, NULL, 'B', 2, 200, '{}');
-INSERT INTO app.materials VALUES ('B02A0001-B070-310', '{"en": "K20CF Polished φ7.0x310", "ja": "K20CF 研磨 φ7.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.872027+00', '2026-08-24 09:19:51.872027+00', '070', 7.000, 'A0', 310.000, '310', NULL, NULL, 'B', 2, 201, '{}');
-INSERT INTO app.materials VALUES ('B02A0001-B065-310', '{"en": "K20CF Polished φ6.5x310", "ja": "K20CF 研磨 φ6.5×310"}', '本', true, NULL, '2026-08-24 09:19:51.872328+00', '2026-08-24 09:19:51.872328+00', '065', 6.500, 'A0', 310.000, '310', NULL, NULL, 'B', 2, 202, '{}');
-INSERT INTO app.materials VALUES ('B02A0001-B060-310', '{"en": "K20CF Polished φ6.0x310", "ja": "K20CF 研磨 φ6.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.872626+00', '2026-08-24 09:19:51.872626+00', '060', 6.000, 'A0', 310.000, '310', NULL, NULL, 'B', 2, 203, '{}');
-INSERT INTO app.materials VALUES ('B02A0001-B055-310', '{"en": "K20CF Polished φ5.5x310", "ja": "K20CF 研磨 φ5.5×310"}', '本', true, NULL, '2026-08-24 09:19:51.872886+00', '2026-08-24 09:19:51.872886+00', '055', 5.500, 'A0', 310.000, '310', NULL, NULL, 'B', 2, 204, '{}');
-INSERT INTO app.materials VALUES ('B02A0001-B050-310', '{"en": "K20CF Polished φ5.0x310", "ja": "K20CF 研磨 φ5.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.873153+00', '2026-08-24 09:19:51.873153+00', '050', 5.000, 'A0', 310.000, '310', NULL, NULL, 'B', 2, 205, '{}');
-INSERT INTO app.materials VALUES ('B02A0001-B045-310', '{"en": "K20CF Polished φ4.5x310", "ja": "K20CF 研磨 φ4.5×310"}', '本', true, NULL, '2026-08-24 09:19:51.873424+00', '2026-08-24 09:19:51.873424+00', '045', 4.500, 'A0', 310.000, '310', NULL, NULL, 'B', 2, 206, '{}');
-INSERT INTO app.materials VALUES ('B02A0001-B040-310', '{"en": "K20CF Polished φ4.0x310", "ja": "K20CF 研磨 φ4.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.873684+00', '2026-08-24 09:19:51.873684+00', '040', 4.000, 'A0', 310.000, '310', NULL, NULL, 'B', 2, 207, '{}');
-INSERT INTO app.materials VALUES ('B02A0001-B035-310', '{"en": "K20CF Polished φ3.5x310", "ja": "K20CF 研磨 φ3.5×310"}', '本', true, NULL, '2026-08-24 09:19:51.873951+00', '2026-08-24 09:19:51.873951+00', '035', 3.500, 'A0', 310.000, '310', NULL, NULL, 'B', 2, 208, '{}');
-INSERT INTO app.materials VALUES ('B02A0001-B030-310', '{"en": "K20CF Polished φ3.0x310", "ja": "K20CF 研磨 φ3.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.874232+00', '2026-08-24 09:19:51.874232+00', '030', 3.000, 'A0', 310.000, '310', NULL, NULL, 'B', 2, 209, '{}');
-INSERT INTO app.materials VALUES ('B02A0001-B025-310', '{"en": "K20CF Polished φ2.5x310", "ja": "K20CF 研磨 φ2.5×310"}', '本', true, NULL, '2026-08-24 09:19:51.874484+00', '2026-08-24 09:19:51.874484+00', '025', 2.500, 'A0', 310.000, '310', NULL, NULL, 'B', 2, 210, '{}');
-INSERT INTO app.materials VALUES ('B02A0001-B020-310', '{"en": "K20CF Polished φ2.0x310", "ja": "K20CF 研磨 φ2.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.874745+00', '2026-08-24 09:19:51.874745+00', '020', 2.000, 'A0', 310.000, '310', NULL, NULL, 'B', 2, 211, '{}');
-INSERT INTO app.materials VALUES ('B02A0001-B015-310', '{"en": "K20CF Polished φ1.5x310", "ja": "K20CF 研磨 φ1.5×310"}', '本', true, NULL, '2026-08-24 09:19:51.875015+00', '2026-08-24 09:19:51.875015+00', '015', 1.500, 'A0', 310.000, '310', NULL, NULL, 'B', 2, 212, '{}');
-INSERT INTO app.materials VALUES ('B02A0001-B010-310', '{"en": "K20CF Polished φ1.0x310", "ja": "K20CF 研磨 φ1.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.875272+00', '2026-08-24 09:19:51.875272+00', '010', 1.000, 'A0', 310.000, '310', NULL, NULL, 'B', 2, 213, '{}');
-INSERT INTO app.materials VALUES ('B05A0001-B350-310', '{"en": "K44EF Polished φ35.0x310", "ja": "K44EF 研磨 φ35.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.875559+00', '2026-08-24 09:19:51.875559+00', '350', 35.000, 'A0', 310.000, '310', NULL, NULL, 'B', 5, 214, '{}');
-INSERT INTO app.materials VALUES ('B05A0001-B340-310', '{"en": "K44EF Polished φ34.0x310", "ja": "K44EF 研磨 φ34.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.875813+00', '2026-08-24 09:19:51.875813+00', '340', 34.000, 'A0', 310.000, '310', NULL, NULL, 'B', 5, 215, '{}');
-INSERT INTO app.materials VALUES ('B05A0001-B330-310', '{"en": "K44EF Polished φ33.0x310", "ja": "K44EF 研磨 φ33.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.876092+00', '2026-08-24 09:19:51.876092+00', '330', 33.000, 'A0', 310.000, '310', NULL, NULL, 'B', 5, 216, '{}');
-INSERT INTO app.materials VALUES ('B05A0001-B320-310', '{"en": "K44EF Polished φ32.0x310", "ja": "K44EF 研磨 φ32.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.876374+00', '2026-08-24 09:19:51.876374+00', '320', 32.000, 'A0', 310.000, '310', NULL, NULL, 'B', 5, 217, '{}');
-INSERT INTO app.materials VALUES ('B05A0001-B310-310', '{"en": "K44EF Polished φ31.0x310", "ja": "K44EF 研磨 φ31.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.876656+00', '2026-08-24 09:19:51.876656+00', '310', 31.000, 'A0', 310.000, '310', NULL, NULL, 'B', 5, 218, '{}');
-INSERT INTO app.materials VALUES ('B05A0001-B300-310', '{"en": "K44EF Polished φ30.0x310", "ja": "K44EF 研磨 φ30.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.876923+00', '2026-08-24 09:19:51.876923+00', '300', 30.000, 'A0', 310.000, '310', NULL, NULL, 'B', 5, 219, '{}');
-INSERT INTO app.materials VALUES ('B05A0001-B290-310', '{"en": "K44EF Polished φ29.0x310", "ja": "K44EF 研磨 φ29.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.877168+00', '2026-08-24 09:19:51.877168+00', '290', 29.000, 'A0', 310.000, '310', NULL, NULL, 'B', 5, 220, '{}');
-INSERT INTO app.materials VALUES ('B05A0001-B280-310', '{"en": "K44EF Polished φ28.0x310", "ja": "K44EF 研磨 φ28.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.877419+00', '2026-08-24 09:19:51.877419+00', '280', 28.000, 'A0', 310.000, '310', NULL, NULL, 'B', 5, 221, '{}');
-INSERT INTO app.materials VALUES ('B05A0001-B270-310', '{"en": "K44EF Polished φ27.0x310", "ja": "K44EF 研磨 φ27.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.877691+00', '2026-08-24 09:19:51.877691+00', '270', 27.000, 'A0', 310.000, '310', NULL, NULL, 'B', 5, 222, '{}');
-INSERT INTO app.materials VALUES ('B05A0001-B260-310', '{"en": "K44EF Polished φ26.0x310", "ja": "K44EF 研磨 φ26.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.877964+00', '2026-08-24 09:19:51.877964+00', '260', 26.000, 'A0', 310.000, '310', NULL, NULL, 'B', 5, 223, '{}');
-INSERT INTO app.materials VALUES ('B05A0001-B250-310', '{"en": "K44EF Polished φ25.0x310", "ja": "K44EF 研磨 φ25.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.87822+00', '2026-08-24 09:19:51.87822+00', '250', 25.000, 'A0', 310.000, '310', NULL, NULL, 'B', 5, 224, '{}');
-INSERT INTO app.materials VALUES ('B05A0001-B240-310', '{"en": "K44EF Polished φ24.0x310", "ja": "K44EF 研磨 φ24.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.878489+00', '2026-08-24 09:19:51.878489+00', '240', 24.000, 'A0', 310.000, '310', NULL, NULL, 'B', 5, 225, '{}');
-INSERT INTO app.materials VALUES ('B05A0001-B230-310', '{"en": "K44EF Polished φ23.0x310", "ja": "K44EF 研磨 φ23.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.878748+00', '2026-08-24 09:19:51.878748+00', '230', 23.000, 'A0', 310.000, '310', NULL, NULL, 'B', 5, 226, '{}');
-INSERT INTO app.materials VALUES ('B05A0001-B220-310', '{"en": "K44EF Polished φ22.0x310", "ja": "K44EF 研磨 φ22.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.879017+00', '2026-08-24 09:19:51.879017+00', '220', 22.000, 'A0', 310.000, '310', NULL, NULL, 'B', 5, 227, '{}');
-INSERT INTO app.materials VALUES ('B05A0001-B210-310', '{"en": "K44EF Polished φ21.0x310", "ja": "K44EF 研磨 φ21.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.879314+00', '2026-08-24 09:19:51.879314+00', '210', 21.000, 'A0', 310.000, '310', NULL, NULL, 'B', 5, 228, '{}');
-INSERT INTO app.materials VALUES ('B05A0001-B200-310', '{"en": "K44EF Polished φ20.0x310", "ja": "K44EF 研磨 φ20.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.879588+00', '2026-08-24 09:19:51.879588+00', '200', 20.000, 'A0', 310.000, '310', NULL, NULL, 'B', 5, 229, '{}');
-INSERT INTO app.materials VALUES ('B05A0001-B190-310', '{"en": "K44EF Polished φ19.0x310", "ja": "K44EF 研磨 φ19.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.879872+00', '2026-08-24 09:19:51.879872+00', '190', 19.000, 'A0', 310.000, '310', NULL, NULL, 'B', 5, 230, '{}');
-INSERT INTO app.materials VALUES ('B05A0001-B180-310', '{"en": "K44EF Polished φ18.0x310", "ja": "K44EF 研磨 φ18.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.880161+00', '2026-08-24 09:19:51.880161+00', '180', 18.000, 'A0', 310.000, '310', NULL, NULL, 'B', 5, 231, '{}');
-INSERT INTO app.materials VALUES ('B05A0001-B170-310', '{"en": "K44EF Polished φ17.0x310", "ja": "K44EF 研磨 φ17.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.880433+00', '2026-08-24 09:19:51.880433+00', '170', 17.000, 'A0', 310.000, '310', NULL, NULL, 'B', 5, 232, '{}');
-INSERT INTO app.materials VALUES ('B05A0001-B160-310', '{"en": "K44EF Polished φ16.0x310", "ja": "K44EF 研磨 φ16.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.880688+00', '2026-08-24 09:19:51.880688+00', '160', 16.000, 'A0', 310.000, '310', NULL, NULL, 'B', 5, 233, '{}');
-INSERT INTO app.materials VALUES ('B05A0001-B155-310', '{"en": "K44EF Polished φ15.5x310", "ja": "K44EF 研磨 φ15.5×310"}', '本', true, NULL, '2026-08-24 09:19:51.880943+00', '2026-08-24 09:19:51.880943+00', '155', 15.500, 'A0', 310.000, '310', NULL, NULL, 'B', 5, 234, '{}');
-INSERT INTO app.materials VALUES ('B05A0001-B150-310', '{"en": "K44EF Polished φ15.0x310", "ja": "K44EF 研磨 φ15.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.881203+00', '2026-08-24 09:19:51.881203+00', '150', 15.000, 'A0', 310.000, '310', NULL, NULL, 'B', 5, 235, '{}');
-INSERT INTO app.materials VALUES ('B05A0001-B145-310', '{"en": "K44EF Polished φ14.5x310", "ja": "K44EF 研磨 φ14.5×310"}', '本', true, NULL, '2026-08-24 09:19:51.881454+00', '2026-08-24 09:19:51.881454+00', '145', 14.500, 'A0', 310.000, '310', NULL, NULL, 'B', 5, 236, '{}');
-INSERT INTO app.materials VALUES ('B05A0001-B140-310', '{"en": "K44EF Polished φ14.0x310", "ja": "K44EF 研磨 φ14.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.881726+00', '2026-08-24 09:19:51.881726+00', '140', 14.000, 'A0', 310.000, '310', NULL, NULL, 'B', 5, 237, '{}');
-INSERT INTO app.materials VALUES ('B05A0001-B135-310', '{"en": "K44EF Polished φ13.5x310", "ja": "K44EF 研磨 φ13.5×310"}', '本', true, NULL, '2026-08-24 09:19:51.881978+00', '2026-08-24 09:19:51.881978+00', '135', 13.500, 'A0', 310.000, '310', NULL, NULL, 'B', 5, 238, '{}');
-INSERT INTO app.materials VALUES ('B05A0001-B130-310', '{"en": "K44EF Polished φ13.0x310", "ja": "K44EF 研磨 φ13.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.882254+00', '2026-08-24 09:19:51.882254+00', '130', 13.000, 'A0', 310.000, '310', NULL, NULL, 'B', 5, 239, '{}');
-INSERT INTO app.materials VALUES ('B05A0001-B125-310', '{"en": "K44EF Polished φ12.5x310", "ja": "K44EF 研磨 φ12.5×310"}', '本', true, NULL, '2026-08-24 09:19:51.882621+00', '2026-08-24 09:19:51.882621+00', '125', 12.500, 'A0', 310.000, '310', NULL, NULL, 'B', 5, 240, '{}');
-INSERT INTO app.materials VALUES ('B05A0001-B120-310', '{"en": "K44EF Polished φ12.0x310", "ja": "K44EF 研磨 φ12.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.882902+00', '2026-08-24 09:19:51.882902+00', '120', 12.000, 'A0', 310.000, '310', NULL, NULL, 'B', 5, 241, '{}');
-INSERT INTO app.materials VALUES ('B05A0001-B115-310', '{"en": "K44EF Polished φ11.5x310", "ja": "K44EF 研磨 φ11.5×310"}', '本', true, NULL, '2026-08-24 09:19:51.88316+00', '2026-08-24 09:19:51.88316+00', '115', 11.500, 'A0', 310.000, '310', NULL, NULL, 'B', 5, 242, '{}');
-INSERT INTO app.materials VALUES ('B05A0001-B110-310', '{"en": "K44EF Polished φ11.0x310", "ja": "K44EF 研磨 φ11.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.883415+00', '2026-08-24 09:19:51.883415+00', '110', 11.000, 'A0', 310.000, '310', NULL, NULL, 'B', 5, 243, '{}');
-INSERT INTO app.materials VALUES ('B05A0001-B105-310', '{"en": "K44EF Polished φ10.5x310", "ja": "K44EF 研磨 φ10.5×310"}', '本', true, NULL, '2026-08-24 09:19:51.883679+00', '2026-08-24 09:19:51.883679+00', '105', 10.500, 'A0', 310.000, '310', NULL, NULL, 'B', 5, 244, '{}');
-INSERT INTO app.materials VALUES ('B05A0001-B100-310', '{"en": "K44EF Polished φ10.0x310", "ja": "K44EF 研磨 φ10.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.883939+00', '2026-08-24 09:19:51.883939+00', '100', 10.000, 'A0', 310.000, '310', NULL, NULL, 'B', 5, 245, '{}');
-INSERT INTO app.materials VALUES ('B05A0001-B095-310', '{"en": "K44EF Polished φ9.5x310", "ja": "K44EF 研磨 φ9.5×310"}', '本', true, NULL, '2026-08-24 09:19:51.884188+00', '2026-08-24 09:19:51.884188+00', '095', 9.500, 'A0', 310.000, '310', NULL, NULL, 'B', 5, 246, '{}');
-INSERT INTO app.materials VALUES ('B05A0001-B090-310', '{"en": "K44EF Polished φ9.0x310", "ja": "K44EF 研磨 φ9.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.884465+00', '2026-08-24 09:19:51.884465+00', '090', 9.000, 'A0', 310.000, '310', NULL, NULL, 'B', 5, 247, '{}');
-INSERT INTO app.materials VALUES ('B05A0001-B085-310', '{"en": "K44EF Polished φ8.5x310", "ja": "K44EF 研磨 φ8.5×310"}', '本', true, NULL, '2026-08-24 09:19:51.884736+00', '2026-08-24 09:19:51.884736+00', '085', 8.500, 'A0', 310.000, '310', NULL, NULL, 'B', 5, 248, '{}');
-INSERT INTO app.materials VALUES ('B05A0001-B080-310', '{"en": "K44EF Polished φ8.0x310", "ja": "K44EF 研磨 φ8.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.884999+00', '2026-08-24 09:19:51.884999+00', '080', 8.000, 'A0', 310.000, '310', NULL, NULL, 'B', 5, 249, '{}');
-INSERT INTO app.materials VALUES ('B05A0001-B075-310', '{"en": "K44EF Polished φ7.5x310", "ja": "K44EF 研磨 φ7.5×310"}', '本', true, NULL, '2026-08-24 09:19:51.885256+00', '2026-08-24 09:19:51.885256+00', '075', 7.500, 'A0', 310.000, '310', NULL, NULL, 'B', 5, 250, '{}');
-INSERT INTO app.materials VALUES ('B05A0001-B070-310', '{"en": "K44EF Polished φ7.0x310", "ja": "K44EF 研磨 φ7.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.885505+00', '2026-08-24 09:19:51.885505+00', '070', 7.000, 'A0', 310.000, '310', NULL, NULL, 'B', 5, 251, '{}');
-INSERT INTO app.materials VALUES ('B05A0001-B065-310', '{"en": "K44EF Polished φ6.5x310", "ja": "K44EF 研磨 φ6.5×310"}', '本', true, NULL, '2026-08-24 09:19:51.885761+00', '2026-08-24 09:19:51.885761+00', '065', 6.500, 'A0', 310.000, '310', NULL, NULL, 'B', 5, 252, '{}');
-INSERT INTO app.materials VALUES ('B05A0001-B060-310', '{"en": "K44EF Polished φ6.0x310", "ja": "K44EF 研磨 φ6.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.886048+00', '2026-08-24 09:19:51.886048+00', '060', 6.000, 'A0', 310.000, '310', NULL, NULL, 'B', 5, 253, '{}');
-INSERT INTO app.materials VALUES ('B05A0001-B055-310', '{"en": "K44EF Polished φ5.5x310", "ja": "K44EF 研磨 φ5.5×310"}', '本', true, NULL, '2026-08-24 09:19:51.886314+00', '2026-08-24 09:19:51.886314+00', '055', 5.500, 'A0', 310.000, '310', NULL, NULL, 'B', 5, 254, '{}');
-INSERT INTO app.materials VALUES ('B05A0001-B050-310', '{"en": "K44EF Polished φ5.0x310", "ja": "K44EF 研磨 φ5.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.886578+00', '2026-08-24 09:19:51.886578+00', '050', 5.000, 'A0', 310.000, '310', NULL, NULL, 'B', 5, 255, '{}');
-INSERT INTO app.materials VALUES ('B05A0001-B045-310', '{"en": "K44EF Polished φ4.5x310", "ja": "K44EF 研磨 φ4.5×310"}', '本', true, NULL, '2026-08-24 09:19:51.886831+00', '2026-08-24 09:19:51.886831+00', '045', 4.500, 'A0', 310.000, '310', NULL, NULL, 'B', 5, 256, '{}');
-INSERT INTO app.materials VALUES ('B05A0001-B040-310', '{"en": "K44EF Polished φ4.0x310", "ja": "K44EF 研磨 φ4.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.8871+00', '2026-08-24 09:19:51.8871+00', '040', 4.000, 'A0', 310.000, '310', NULL, NULL, 'B', 5, 257, '{}');
-INSERT INTO app.materials VALUES ('B05A0001-B035-310', '{"en": "K44EF Polished φ3.5x310", "ja": "K44EF 研磨 φ3.5×310"}', '本', true, NULL, '2026-08-24 09:19:51.88743+00', '2026-08-24 09:19:51.88743+00', '035', 3.500, 'A0', 310.000, '310', NULL, NULL, 'B', 5, 258, '{}');
-INSERT INTO app.materials VALUES ('B05A0001-B030-310', '{"en": "K44EF Polished φ3.0x310", "ja": "K44EF 研磨 φ3.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.887691+00', '2026-08-24 09:19:51.887691+00', '030', 3.000, 'A0', 310.000, '310', NULL, NULL, 'B', 5, 259, '{}');
-INSERT INTO app.materials VALUES ('B05A0001-B025-310', '{"en": "K44EF Polished φ2.5x310", "ja": "K44EF 研磨 φ2.5×310"}', '本', true, NULL, '2026-08-24 09:19:51.887962+00', '2026-08-24 09:19:51.887962+00', '025', 2.500, 'A0', 310.000, '310', NULL, NULL, 'B', 5, 260, '{}');
-INSERT INTO app.materials VALUES ('B05A0001-B020-310', '{"en": "K44EF Polished φ2.0x310", "ja": "K44EF 研磨 φ2.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.888229+00', '2026-08-24 09:19:51.888229+00', '020', 2.000, 'A0', 310.000, '310', NULL, NULL, 'B', 5, 261, '{}');
-INSERT INTO app.materials VALUES ('B05A0001-B015-310', '{"en": "K44EF Polished φ1.5x310", "ja": "K44EF 研磨 φ1.5×310"}', '本', true, NULL, '2026-08-24 09:19:51.8885+00', '2026-08-24 09:19:51.8885+00', '015', 1.500, 'A0', 310.000, '310', NULL, NULL, 'B', 5, 262, '{}');
-INSERT INTO app.materials VALUES ('B05A0001-B010-310', '{"en": "K44EF Polished φ1.0x310", "ja": "K44EF 研磨 φ1.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.888766+00', '2026-08-24 09:19:51.888766+00', '010', 1.000, 'A0', 310.000, '310', NULL, NULL, 'B', 5, 263, '{}');
-INSERT INTO app.materials VALUES ('B03A0001-B350-310', '{"en": "K34EF Polished φ35.0x310", "ja": "K34EF 研磨 φ35.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.88905+00', '2026-08-24 09:19:51.88905+00', '350', 35.000, 'A0', 310.000, '310', NULL, NULL, 'B', 3, 264, '{}');
-INSERT INTO app.materials VALUES ('B03A0001-B340-310', '{"en": "K34EF Polished φ34.0x310", "ja": "K34EF 研磨 φ34.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.889317+00', '2026-08-24 09:19:51.889317+00', '340', 34.000, 'A0', 310.000, '310', NULL, NULL, 'B', 3, 265, '{}');
-INSERT INTO app.materials VALUES ('B03A0001-B330-310', '{"en": "K34EF Polished φ33.0x310", "ja": "K34EF 研磨 φ33.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.889588+00', '2026-08-24 09:19:51.889588+00', '330', 33.000, 'A0', 310.000, '310', NULL, NULL, 'B', 3, 266, '{}');
-INSERT INTO app.materials VALUES ('B03A0001-B320-310', '{"en": "K34EF Polished φ32.0x310", "ja": "K34EF 研磨 φ32.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.889851+00', '2026-08-24 09:19:51.889851+00', '320', 32.000, 'A0', 310.000, '310', NULL, NULL, 'B', 3, 267, '{}');
-INSERT INTO app.materials VALUES ('B03A0001-B310-310', '{"en": "K34EF Polished φ31.0x310", "ja": "K34EF 研磨 φ31.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.890188+00', '2026-08-24 09:19:51.890188+00', '310', 31.000, 'A0', 310.000, '310', NULL, NULL, 'B', 3, 268, '{}');
-INSERT INTO app.materials VALUES ('B03A0001-B300-310', '{"en": "K34EF Polished φ30.0x310", "ja": "K34EF 研磨 φ30.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.890506+00', '2026-08-24 09:19:51.890506+00', '300', 30.000, 'A0', 310.000, '310', NULL, NULL, 'B', 3, 269, '{}');
-INSERT INTO app.materials VALUES ('B03A0001-B290-310', '{"en": "K34EF Polished φ29.0x310", "ja": "K34EF 研磨 φ29.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.890804+00', '2026-08-24 09:19:51.890804+00', '290', 29.000, 'A0', 310.000, '310', NULL, NULL, 'B', 3, 270, '{}');
-INSERT INTO app.materials VALUES ('B03A0001-B280-310', '{"en": "K34EF Polished φ28.0x310", "ja": "K34EF 研磨 φ28.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.891067+00', '2026-08-24 09:19:51.891067+00', '280', 28.000, 'A0', 310.000, '310', NULL, NULL, 'B', 3, 271, '{}');
-INSERT INTO app.materials VALUES ('B03A0001-B270-310', '{"en": "K34EF Polished φ27.0x310", "ja": "K34EF 研磨 φ27.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.891329+00', '2026-08-24 09:19:51.891329+00', '270', 27.000, 'A0', 310.000, '310', NULL, NULL, 'B', 3, 272, '{}');
-INSERT INTO app.materials VALUES ('B03A0001-B260-310', '{"en": "K34EF Polished φ26.0x310", "ja": "K34EF 研磨 φ26.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.89159+00', '2026-08-24 09:19:51.89159+00', '260', 26.000, 'A0', 310.000, '310', NULL, NULL, 'B', 3, 273, '{}');
-INSERT INTO app.materials VALUES ('B03A0001-B250-310', '{"en": "K34EF Polished φ25.0x310", "ja": "K34EF 研磨 φ25.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.891858+00', '2026-08-24 09:19:51.891858+00', '250', 25.000, 'A0', 310.000, '310', NULL, NULL, 'B', 3, 274, '{}');
-INSERT INTO app.materials VALUES ('B03A0001-B240-310', '{"en": "K34EF Polished φ24.0x310", "ja": "K34EF 研磨 φ24.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.89213+00', '2026-08-24 09:19:51.89213+00', '240', 24.000, 'A0', 310.000, '310', NULL, NULL, 'B', 3, 275, '{}');
-INSERT INTO app.materials VALUES ('B03A0001-B230-310', '{"en": "K34EF Polished φ23.0x310", "ja": "K34EF 研磨 φ23.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.892408+00', '2026-08-24 09:19:51.892408+00', '230', 23.000, 'A0', 310.000, '310', NULL, NULL, 'B', 3, 276, '{}');
-INSERT INTO app.materials VALUES ('B03A0001-B220-310', '{"en": "K34EF Polished φ22.0x310", "ja": "K34EF 研磨 φ22.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.892699+00', '2026-08-24 09:19:51.892699+00', '220', 22.000, 'A0', 310.000, '310', NULL, NULL, 'B', 3, 277, '{}');
-INSERT INTO app.materials VALUES ('B03A0001-B210-310', '{"en": "K34EF Polished φ21.0x310", "ja": "K34EF 研磨 φ21.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.893004+00', '2026-08-24 09:19:51.893004+00', '210', 21.000, 'A0', 310.000, '310', NULL, NULL, 'B', 3, 278, '{}');
-INSERT INTO app.materials VALUES ('B03A0001-B200-310', '{"en": "K34EF Polished φ20.0x310", "ja": "K34EF 研磨 φ20.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.893269+00', '2026-08-24 09:19:51.893269+00', '200', 20.000, 'A0', 310.000, '310', NULL, NULL, 'B', 3, 279, '{}');
-INSERT INTO app.materials VALUES ('B03A0001-B190-310', '{"en": "K34EF Polished φ19.0x310", "ja": "K34EF 研磨 φ19.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.893557+00', '2026-08-24 09:19:51.893557+00', '190', 19.000, 'A0', 310.000, '310', NULL, NULL, 'B', 3, 280, '{}');
-INSERT INTO app.materials VALUES ('B03A0001-B180-310', '{"en": "K34EF Polished φ18.0x310", "ja": "K34EF 研磨 φ18.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.893825+00', '2026-08-24 09:19:51.893825+00', '180', 18.000, 'A0', 310.000, '310', NULL, NULL, 'B', 3, 281, '{}');
-INSERT INTO app.materials VALUES ('B03A0001-B170-310', '{"en": "K34EF Polished φ17.0x310", "ja": "K34EF 研磨 φ17.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.894113+00', '2026-08-24 09:19:51.894113+00', '170', 17.000, 'A0', 310.000, '310', NULL, NULL, 'B', 3, 282, '{}');
-INSERT INTO app.materials VALUES ('B03A0001-B160-310', '{"en": "K34EF Polished φ16.0x310", "ja": "K34EF 研磨 φ16.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.894404+00', '2026-08-24 09:19:51.894404+00', '160', 16.000, 'A0', 310.000, '310', NULL, NULL, 'B', 3, 283, '{}');
-INSERT INTO app.materials VALUES ('B03A0001-B155-310', '{"en": "K34EF Polished φ15.5x310", "ja": "K34EF 研磨 φ15.5×310"}', '本', true, NULL, '2026-08-24 09:19:51.894665+00', '2026-08-24 09:19:51.894665+00', '155', 15.500, 'A0', 310.000, '310', NULL, NULL, 'B', 3, 284, '{}');
-INSERT INTO app.materials VALUES ('B03A0001-B150-310', '{"en": "K34EF Polished φ15.0x310", "ja": "K34EF 研磨 φ15.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.894953+00', '2026-08-24 09:19:51.894953+00', '150', 15.000, 'A0', 310.000, '310', NULL, NULL, 'B', 3, 285, '{}');
-INSERT INTO app.materials VALUES ('B03A0001-B145-310', '{"en": "K34EF Polished φ14.5x310", "ja": "K34EF 研磨 φ14.5×310"}', '本', true, NULL, '2026-08-24 09:19:51.895308+00', '2026-08-24 09:19:51.895308+00', '145', 14.500, 'A0', 310.000, '310', NULL, NULL, 'B', 3, 286, '{}');
-INSERT INTO app.materials VALUES ('B03A0001-B140-310', '{"en": "K34EF Polished φ14.0x310", "ja": "K34EF 研磨 φ14.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.895656+00', '2026-08-24 09:19:51.895656+00', '140', 14.000, 'A0', 310.000, '310', NULL, NULL, 'B', 3, 287, '{}');
-INSERT INTO app.materials VALUES ('B03A0001-B135-310', '{"en": "K34EF Polished φ13.5x310", "ja": "K34EF 研磨 φ13.5×310"}', '本', true, NULL, '2026-08-24 09:19:51.895914+00', '2026-08-24 09:19:51.895914+00', '135', 13.500, 'A0', 310.000, '310', NULL, NULL, 'B', 3, 288, '{}');
-INSERT INTO app.materials VALUES ('B03A0001-B130-310', '{"en": "K34EF Polished φ13.0x310", "ja": "K34EF 研磨 φ13.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.896187+00', '2026-08-24 09:19:51.896187+00', '130', 13.000, 'A0', 310.000, '310', NULL, NULL, 'B', 3, 289, '{}');
-INSERT INTO app.materials VALUES ('B03A0001-B125-310', '{"en": "K34EF Polished φ12.5x310", "ja": "K34EF 研磨 φ12.5×310"}', '本', true, NULL, '2026-08-24 09:19:51.896487+00', '2026-08-24 09:19:51.896487+00', '125', 12.500, 'A0', 310.000, '310', NULL, NULL, 'B', 3, 290, '{}');
-INSERT INTO app.materials VALUES ('B03A0001-B120-310', '{"en": "K34EF Polished φ12.0x310", "ja": "K34EF 研磨 φ12.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.896788+00', '2026-08-24 09:19:51.896788+00', '120', 12.000, 'A0', 310.000, '310', NULL, NULL, 'B', 3, 291, '{}');
-INSERT INTO app.materials VALUES ('B03A0001-B115-310', '{"en": "K34EF Polished φ11.5x310", "ja": "K34EF 研磨 φ11.5×310"}', '本', true, NULL, '2026-08-24 09:19:51.897117+00', '2026-08-24 09:19:51.897117+00', '115', 11.500, 'A0', 310.000, '310', NULL, NULL, 'B', 3, 292, '{}');
-INSERT INTO app.materials VALUES ('B03A0001-B110-310', '{"en": "K34EF Polished φ11.0x310", "ja": "K34EF 研磨 φ11.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.897426+00', '2026-08-24 09:19:51.897426+00', '110', 11.000, 'A0', 310.000, '310', NULL, NULL, 'B', 3, 293, '{}');
-INSERT INTO app.materials VALUES ('B03A0001-B105-310', '{"en": "K34EF Polished φ10.5x310", "ja": "K34EF 研磨 φ10.5×310"}', '本', true, NULL, '2026-08-24 09:19:51.89771+00', '2026-08-24 09:19:51.89771+00', '105', 10.500, 'A0', 310.000, '310', NULL, NULL, 'B', 3, 294, '{}');
-INSERT INTO app.materials VALUES ('B03A0001-B100-310', '{"en": "K34EF Polished φ10.0x310", "ja": "K34EF 研磨 φ10.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.897995+00', '2026-08-24 09:19:51.897995+00', '100', 10.000, 'A0', 310.000, '310', NULL, NULL, 'B', 3, 295, '{}');
-INSERT INTO app.materials VALUES ('B03A0001-B095-310', '{"en": "K34EF Polished φ9.5x310", "ja": "K34EF 研磨 φ9.5×310"}', '本', true, NULL, '2026-08-24 09:19:51.898284+00', '2026-08-24 09:19:51.898284+00', '095', 9.500, 'A0', 310.000, '310', NULL, NULL, 'B', 3, 296, '{}');
-INSERT INTO app.materials VALUES ('B03A0001-B090-310', '{"en": "K34EF Polished φ9.0x310", "ja": "K34EF 研磨 φ9.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.898564+00', '2026-08-24 09:19:51.898564+00', '090', 9.000, 'A0', 310.000, '310', NULL, NULL, 'B', 3, 297, '{}');
-INSERT INTO app.materials VALUES ('B03A0001-B085-310', '{"en": "K34EF Polished φ8.5x310", "ja": "K34EF 研磨 φ8.5×310"}', '本', true, NULL, '2026-08-24 09:19:51.898832+00', '2026-08-24 09:19:51.898832+00', '085', 8.500, 'A0', 310.000, '310', NULL, NULL, 'B', 3, 298, '{}');
-INSERT INTO app.materials VALUES ('B03A0001-B080-310', '{"en": "K34EF Polished φ8.0x310", "ja": "K34EF 研磨 φ8.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.899119+00', '2026-08-24 09:19:51.899119+00', '080', 8.000, 'A0', 310.000, '310', NULL, NULL, 'B', 3, 299, '{}');
-INSERT INTO app.materials VALUES ('B03A0001-B075-310', '{"en": "K34EF Polished φ7.5x310", "ja": "K34EF 研磨 φ7.5×310"}', '本', true, NULL, '2026-08-24 09:19:51.899384+00', '2026-08-24 09:19:51.899384+00', '075', 7.500, 'A0', 310.000, '310', NULL, NULL, 'B', 3, 300, '{}');
-INSERT INTO app.materials VALUES ('B03A0001-B070-310', '{"en": "K34EF Polished φ7.0x310", "ja": "K34EF 研磨 φ7.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.899647+00', '2026-08-24 09:19:51.899647+00', '070', 7.000, 'A0', 310.000, '310', NULL, NULL, 'B', 3, 301, '{}');
-INSERT INTO app.materials VALUES ('B03A0001-B065-310', '{"en": "K34EF Polished φ6.5x310", "ja": "K34EF 研磨 φ6.5×310"}', '本', true, NULL, '2026-08-24 09:19:51.899911+00', '2026-08-24 09:19:51.899911+00', '065', 6.500, 'A0', 310.000, '310', NULL, NULL, 'B', 3, 302, '{}');
-INSERT INTO app.materials VALUES ('B03A0001-B060-310', '{"en": "K34EF Polished φ6.0x310", "ja": "K34EF 研磨 φ6.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.900176+00', '2026-08-24 09:19:51.900176+00', '060', 6.000, 'A0', 310.000, '310', NULL, NULL, 'B', 3, 303, '{}');
-INSERT INTO app.materials VALUES ('B03A0001-B055-310', '{"en": "K34EF Polished φ5.5x310", "ja": "K34EF 研磨 φ5.5×310"}', '本', true, NULL, '2026-08-24 09:19:51.900447+00', '2026-08-24 09:19:51.900447+00', '055', 5.500, 'A0', 310.000, '310', NULL, NULL, 'B', 3, 304, '{}');
-INSERT INTO app.materials VALUES ('B03A0001-B050-310', '{"en": "K34EF Polished φ5.0x310", "ja": "K34EF 研磨 φ5.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.900726+00', '2026-08-24 09:19:51.900726+00', '050', 5.000, 'A0', 310.000, '310', NULL, NULL, 'B', 3, 305, '{}');
-INSERT INTO app.materials VALUES ('B03A0001-B045-310', '{"en": "K34EF Polished φ4.5x310", "ja": "K34EF 研磨 φ4.5×310"}', '本', true, NULL, '2026-08-24 09:19:51.901019+00', '2026-08-24 09:19:51.901019+00', '045', 4.500, 'A0', 310.000, '310', NULL, NULL, 'B', 3, 306, '{}');
-INSERT INTO app.materials VALUES ('B03A0001-B040-310', '{"en": "K34EF Polished φ4.0x310", "ja": "K34EF 研磨 φ4.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.901297+00', '2026-08-24 09:19:51.901297+00', '040', 4.000, 'A0', 310.000, '310', NULL, NULL, 'B', 3, 307, '{}');
-INSERT INTO app.materials VALUES ('B03A0001-B035-310', '{"en": "K34EF Polished φ3.5x310", "ja": "K34EF 研磨 φ3.5×310"}', '本', true, NULL, '2026-08-24 09:19:51.901567+00', '2026-08-24 09:19:51.901567+00', '035', 3.500, 'A0', 310.000, '310', NULL, NULL, 'B', 3, 308, '{}');
-INSERT INTO app.materials VALUES ('B03A0001-B030-310', '{"en": "K34EF Polished φ3.0x310", "ja": "K34EF 研磨 φ3.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.901849+00', '2026-08-24 09:19:51.901849+00', '030', 3.000, 'A0', 310.000, '310', NULL, NULL, 'B', 3, 309, '{}');
-INSERT INTO app.materials VALUES ('B03A0001-B025-310', '{"en": "K34EF Polished φ2.5x310", "ja": "K34EF 研磨 φ2.5×310"}', '本', true, NULL, '2026-08-24 09:19:51.902114+00', '2026-08-24 09:19:51.902114+00', '025', 2.500, 'A0', 310.000, '310', NULL, NULL, 'B', 3, 310, '{}');
-INSERT INTO app.materials VALUES ('B03A0001-B020-310', '{"en": "K34EF Polished φ2.0x310", "ja": "K34EF 研磨 φ2.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.902373+00', '2026-08-24 09:19:51.902373+00', '020', 2.000, 'A0', 310.000, '310', NULL, NULL, 'B', 3, 311, '{}');
-INSERT INTO app.materials VALUES ('B03A0001-B015-310', '{"en": "K34EF Polished φ1.5x310", "ja": "K34EF 研磨 φ1.5×310"}', '本', true, NULL, '2026-08-24 09:19:51.902652+00', '2026-08-24 09:19:51.902652+00', '015', 1.500, 'A0', 310.000, '310', NULL, NULL, 'B', 3, 312, '{}');
-INSERT INTO app.materials VALUES ('B03A0001-B010-310', '{"en": "K34EF Polished φ1.0x310", "ja": "K34EF 研磨 φ1.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.902962+00', '2026-08-24 09:19:51.902962+00', '010', 1.000, 'A0', 310.000, '310', NULL, NULL, 'B', 3, 313, '{}');
-INSERT INTO app.materials VALUES ('B06A0001-B350-310', '{"en": "K45EF Polished φ35.0x310", "ja": "K45EF 研磨 φ35.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.903219+00', '2026-08-24 09:19:51.903219+00', '350', 35.000, 'A0', 310.000, '310', NULL, NULL, 'B', 6, 314, '{}');
-INSERT INTO app.materials VALUES ('B06A0001-B340-310', '{"en": "K45EF Polished φ34.0x310", "ja": "K45EF 研磨 φ34.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.903474+00', '2026-08-24 09:19:51.903474+00', '340', 34.000, 'A0', 310.000, '310', NULL, NULL, 'B', 6, 315, '{}');
-INSERT INTO app.materials VALUES ('B06A0001-B330-310', '{"en": "K45EF Polished φ33.0x310", "ja": "K45EF 研磨 φ33.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.903722+00', '2026-08-24 09:19:51.903722+00', '330', 33.000, 'A0', 310.000, '310', NULL, NULL, 'B', 6, 316, '{}');
-INSERT INTO app.materials VALUES ('B06A0001-B320-310', '{"en": "K45EF Polished φ32.0x310", "ja": "K45EF 研磨 φ32.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.903996+00', '2026-08-24 09:19:51.903996+00', '320', 32.000, 'A0', 310.000, '310', NULL, NULL, 'B', 6, 317, '{}');
-INSERT INTO app.materials VALUES ('B06A0001-B310-310', '{"en": "K45EF Polished φ31.0x310", "ja": "K45EF 研磨 φ31.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.904263+00', '2026-08-24 09:19:51.904263+00', '310', 31.000, 'A0', 310.000, '310', NULL, NULL, 'B', 6, 318, '{}');
-INSERT INTO app.materials VALUES ('B06A0001-B300-310', '{"en": "K45EF Polished φ30.0x310", "ja": "K45EF 研磨 φ30.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.904519+00', '2026-08-24 09:19:51.904519+00', '300', 30.000, 'A0', 310.000, '310', NULL, NULL, 'B', 6, 319, '{}');
-INSERT INTO app.materials VALUES ('B06A0001-B290-310', '{"en": "K45EF Polished φ29.0x310", "ja": "K45EF 研磨 φ29.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.904802+00', '2026-08-24 09:19:51.904802+00', '290', 29.000, 'A0', 310.000, '310', NULL, NULL, 'B', 6, 320, '{}');
-INSERT INTO app.materials VALUES ('B06A0001-B280-310', '{"en": "K45EF Polished φ28.0x310", "ja": "K45EF 研磨 φ28.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.905087+00', '2026-08-24 09:19:51.905087+00', '280', 28.000, 'A0', 310.000, '310', NULL, NULL, 'B', 6, 321, '{}');
-INSERT INTO app.materials VALUES ('B06A0001-B270-310', '{"en": "K45EF Polished φ27.0x310", "ja": "K45EF 研磨 φ27.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.905346+00', '2026-08-24 09:19:51.905346+00', '270', 27.000, 'A0', 310.000, '310', NULL, NULL, 'B', 6, 322, '{}');
-INSERT INTO app.materials VALUES ('B06A0001-B260-310', '{"en": "K45EF Polished φ26.0x310", "ja": "K45EF 研磨 φ26.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.905608+00', '2026-08-24 09:19:51.905608+00', '260', 26.000, 'A0', 310.000, '310', NULL, NULL, 'B', 6, 323, '{}');
-INSERT INTO app.materials VALUES ('B06A0001-B250-310', '{"en": "K45EF Polished φ25.0x310", "ja": "K45EF 研磨 φ25.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.905901+00', '2026-08-24 09:19:51.905901+00', '250', 25.000, 'A0', 310.000, '310', NULL, NULL, 'B', 6, 324, '{}');
-INSERT INTO app.materials VALUES ('B06A0001-B240-310', '{"en": "K45EF Polished φ24.0x310", "ja": "K45EF 研磨 φ24.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.906181+00', '2026-08-24 09:19:51.906181+00', '240', 24.000, 'A0', 310.000, '310', NULL, NULL, 'B', 6, 325, '{}');
-INSERT INTO app.materials VALUES ('B06A0001-B230-310', '{"en": "K45EF Polished φ23.0x310", "ja": "K45EF 研磨 φ23.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.906449+00', '2026-08-24 09:19:51.906449+00', '230', 23.000, 'A0', 310.000, '310', NULL, NULL, 'B', 6, 326, '{}');
-INSERT INTO app.materials VALUES ('B06A0001-B220-310', '{"en": "K45EF Polished φ22.0x310", "ja": "K45EF 研磨 φ22.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.906715+00', '2026-08-24 09:19:51.906715+00', '220', 22.000, 'A0', 310.000, '310', NULL, NULL, 'B', 6, 327, '{}');
-INSERT INTO app.materials VALUES ('B06A0001-B210-310', '{"en": "K45EF Polished φ21.0x310", "ja": "K45EF 研磨 φ21.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.906989+00', '2026-08-24 09:19:51.906989+00', '210', 21.000, 'A0', 310.000, '310', NULL, NULL, 'B', 6, 328, '{}');
-INSERT INTO app.materials VALUES ('B06A0001-B200-310', '{"en": "K45EF Polished φ20.0x310", "ja": "K45EF 研磨 φ20.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.907287+00', '2026-08-24 09:19:51.907287+00', '200', 20.000, 'A0', 310.000, '310', NULL, NULL, 'B', 6, 329, '{}');
-INSERT INTO app.materials VALUES ('B06A0001-B190-310', '{"en": "K45EF Polished φ19.0x310", "ja": "K45EF 研磨 φ19.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.907563+00', '2026-08-24 09:19:51.907563+00', '190', 19.000, 'A0', 310.000, '310', NULL, NULL, 'B', 6, 330, '{}');
-INSERT INTO app.materials VALUES ('B06A0001-B180-310', '{"en": "K45EF Polished φ18.0x310", "ja": "K45EF 研磨 φ18.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.907824+00', '2026-08-24 09:19:51.907824+00', '180', 18.000, 'A0', 310.000, '310', NULL, NULL, 'B', 6, 331, '{}');
-INSERT INTO app.materials VALUES ('B06A0001-B170-310', '{"en": "K45EF Polished φ17.0x310", "ja": "K45EF 研磨 φ17.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.908103+00', '2026-08-24 09:19:51.908103+00', '170', 17.000, 'A0', 310.000, '310', NULL, NULL, 'B', 6, 332, '{}');
-INSERT INTO app.materials VALUES ('B06A0001-B160-310', '{"en": "K45EF Polished φ16.0x310", "ja": "K45EF 研磨 φ16.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.908356+00', '2026-08-24 09:19:51.908356+00', '160', 16.000, 'A0', 310.000, '310', NULL, NULL, 'B', 6, 333, '{}');
-INSERT INTO app.materials VALUES ('B06A0001-B155-310', '{"en": "K45EF Polished φ15.5x310", "ja": "K45EF 研磨 φ15.5×310"}', '本', true, NULL, '2026-08-24 09:19:51.908652+00', '2026-08-24 09:19:51.908652+00', '155', 15.500, 'A0', 310.000, '310', NULL, NULL, 'B', 6, 334, '{}');
-INSERT INTO app.materials VALUES ('B06A0001-B150-310', '{"en": "K45EF Polished φ15.0x310", "ja": "K45EF 研磨 φ15.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.908941+00', '2026-08-24 09:19:51.908941+00', '150', 15.000, 'A0', 310.000, '310', NULL, NULL, 'B', 6, 335, '{}');
-INSERT INTO app.materials VALUES ('B06A0001-B145-310', '{"en": "K45EF Polished φ14.5x310", "ja": "K45EF 研磨 φ14.5×310"}', '本', true, NULL, '2026-08-24 09:19:51.909217+00', '2026-08-24 09:19:51.909217+00', '145', 14.500, 'A0', 310.000, '310', NULL, NULL, 'B', 6, 336, '{}');
-INSERT INTO app.materials VALUES ('B06A0001-B140-310', '{"en": "K45EF Polished φ14.0x310", "ja": "K45EF 研磨 φ14.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.909508+00', '2026-08-24 09:19:51.909508+00', '140', 14.000, 'A0', 310.000, '310', NULL, NULL, 'B', 6, 337, '{}');
-INSERT INTO app.materials VALUES ('B06A0001-B135-310', '{"en": "K45EF Polished φ13.5x310", "ja": "K45EF 研磨 φ13.5×310"}', '本', true, NULL, '2026-08-24 09:19:51.909784+00', '2026-08-24 09:19:51.909784+00', '135', 13.500, 'A0', 310.000, '310', NULL, NULL, 'B', 6, 338, '{}');
-INSERT INTO app.materials VALUES ('B06A0001-B130-310', '{"en": "K45EF Polished φ13.0x310", "ja": "K45EF 研磨 φ13.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.910085+00', '2026-08-24 09:19:51.910085+00', '130', 13.000, 'A0', 310.000, '310', NULL, NULL, 'B', 6, 339, '{}');
-INSERT INTO app.materials VALUES ('B06A0001-B125-310', '{"en": "K45EF Polished φ12.5x310", "ja": "K45EF 研磨 φ12.5×310"}', '本', true, NULL, '2026-08-24 09:19:51.910354+00', '2026-08-24 09:19:51.910354+00', '125', 12.500, 'A0', 310.000, '310', NULL, NULL, 'B', 6, 340, '{}');
-INSERT INTO app.materials VALUES ('B06A0001-B120-310', '{"en": "K45EF Polished φ12.0x310", "ja": "K45EF 研磨 φ12.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.910623+00', '2026-08-24 09:19:51.910623+00', '120', 12.000, 'A0', 310.000, '310', NULL, NULL, 'B', 6, 341, '{}');
-INSERT INTO app.materials VALUES ('B06A0001-B115-310', '{"en": "K45EF Polished φ11.5x310", "ja": "K45EF 研磨 φ11.5×310"}', '本', true, NULL, '2026-08-24 09:19:51.910884+00', '2026-08-24 09:19:51.910884+00', '115', 11.500, 'A0', 310.000, '310', NULL, NULL, 'B', 6, 342, '{}');
-INSERT INTO app.materials VALUES ('B06A0001-B110-310', '{"en": "K45EF Polished φ11.0x310", "ja": "K45EF 研磨 φ11.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.911152+00', '2026-08-24 09:19:51.911152+00', '110', 11.000, 'A0', 310.000, '310', NULL, NULL, 'B', 6, 343, '{}');
-INSERT INTO app.materials VALUES ('B06A0001-B105-310', '{"en": "K45EF Polished φ10.5x310", "ja": "K45EF 研磨 φ10.5×310"}', '本', true, NULL, '2026-08-24 09:19:51.911431+00', '2026-08-24 09:19:51.911431+00', '105', 10.500, 'A0', 310.000, '310', NULL, NULL, 'B', 6, 344, '{}');
-INSERT INTO app.materials VALUES ('B06A0001-B100-310', '{"en": "K45EF Polished φ10.0x310", "ja": "K45EF 研磨 φ10.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.911696+00', '2026-08-24 09:19:51.911696+00', '100', 10.000, 'A0', 310.000, '310', NULL, NULL, 'B', 6, 345, '{}');
-INSERT INTO app.materials VALUES ('B06A0001-B095-310', '{"en": "K45EF Polished φ9.5x310", "ja": "K45EF 研磨 φ9.5×310"}', '本', true, NULL, '2026-08-24 09:19:51.911982+00', '2026-08-24 09:19:51.911982+00', '095', 9.500, 'A0', 310.000, '310', NULL, NULL, 'B', 6, 346, '{}');
-INSERT INTO app.materials VALUES ('B06A0001-B090-310', '{"en": "K45EF Polished φ9.0x310", "ja": "K45EF 研磨 φ9.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.91223+00', '2026-08-24 09:19:51.91223+00', '090', 9.000, 'A0', 310.000, '310', NULL, NULL, 'B', 6, 347, '{}');
-INSERT INTO app.materials VALUES ('B06A0001-B085-310', '{"en": "K45EF Polished φ8.5x310", "ja": "K45EF 研磨 φ8.5×310"}', '本', true, NULL, '2026-08-24 09:19:51.912499+00', '2026-08-24 09:19:51.912499+00', '085', 8.500, 'A0', 310.000, '310', NULL, NULL, 'B', 6, 348, '{}');
-INSERT INTO app.materials VALUES ('B06A0001-B080-310', '{"en": "K45EF Polished φ8.0x310", "ja": "K45EF 研磨 φ8.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.912769+00', '2026-08-24 09:19:51.912769+00', '080', 8.000, 'A0', 310.000, '310', NULL, NULL, 'B', 6, 349, '{}');
-INSERT INTO app.materials VALUES ('B06A0001-B075-310', '{"en": "K45EF Polished φ7.5x310", "ja": "K45EF 研磨 φ7.5×310"}', '本', true, NULL, '2026-08-24 09:19:51.913059+00', '2026-08-24 09:19:51.913059+00', '075', 7.500, 'A0', 310.000, '310', NULL, NULL, 'B', 6, 350, '{}');
-INSERT INTO app.materials VALUES ('B06A0001-B070-310', '{"en": "K45EF Polished φ7.0x310", "ja": "K45EF 研磨 φ7.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.913311+00', '2026-08-24 09:19:51.913311+00', '070', 7.000, 'A0', 310.000, '310', NULL, NULL, 'B', 6, 351, '{}');
-INSERT INTO app.materials VALUES ('B06A0001-B065-310', '{"en": "K45EF Polished φ6.5x310", "ja": "K45EF 研磨 φ6.5×310"}', '本', true, NULL, '2026-08-24 09:19:51.913578+00', '2026-08-24 09:19:51.913578+00', '065', 6.500, 'A0', 310.000, '310', NULL, NULL, 'B', 6, 352, '{}');
-INSERT INTO app.materials VALUES ('B06A0001-B060-310', '{"en": "K45EF Polished φ6.0x310", "ja": "K45EF 研磨 φ6.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.913851+00', '2026-08-24 09:19:51.913851+00', '060', 6.000, 'A0', 310.000, '310', NULL, NULL, 'B', 6, 353, '{}');
-INSERT INTO app.materials VALUES ('B06A0001-B055-310', '{"en": "K45EF Polished φ5.5x310", "ja": "K45EF 研磨 φ5.5×310"}', '本', true, NULL, '2026-08-24 09:19:51.914167+00', '2026-08-24 09:19:51.914167+00', '055', 5.500, 'A0', 310.000, '310', NULL, NULL, 'B', 6, 354, '{}');
-INSERT INTO app.materials VALUES ('B06A0001-B050-310', '{"en": "K45EF Polished φ5.0x310", "ja": "K45EF 研磨 φ5.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.914492+00', '2026-08-24 09:19:51.914492+00', '050', 5.000, 'A0', 310.000, '310', NULL, NULL, 'B', 6, 355, '{}');
-INSERT INTO app.materials VALUES ('B06A0001-B045-310', '{"en": "K45EF Polished φ4.5x310", "ja": "K45EF 研磨 φ4.5×310"}', '本', true, NULL, '2026-08-24 09:19:51.9148+00', '2026-08-24 09:19:51.9148+00', '045', 4.500, 'A0', 310.000, '310', NULL, NULL, 'B', 6, 356, '{}');
-INSERT INTO app.materials VALUES ('B06A0001-B040-310', '{"en": "K45EF Polished φ4.0x310", "ja": "K45EF 研磨 φ4.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.915098+00', '2026-08-24 09:19:51.915098+00', '040', 4.000, 'A0', 310.000, '310', NULL, NULL, 'B', 6, 357, '{}');
-INSERT INTO app.materials VALUES ('B06A0001-B035-310', '{"en": "K45EF Polished φ3.5x310", "ja": "K45EF 研磨 φ3.5×310"}', '本', true, NULL, '2026-08-24 09:19:51.915372+00', '2026-08-24 09:19:51.915372+00', '035', 3.500, 'A0', 310.000, '310', NULL, NULL, 'B', 6, 358, '{}');
-INSERT INTO app.materials VALUES ('B06A0001-B030-310', '{"en": "K45EF Polished φ3.0x310", "ja": "K45EF 研磨 φ3.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.915645+00', '2026-08-24 09:19:51.915645+00', '030', 3.000, 'A0', 310.000, '310', NULL, NULL, 'B', 6, 359, '{}');
-INSERT INTO app.materials VALUES ('B06A0001-B025-310', '{"en": "K45EF Polished φ2.5x310", "ja": "K45EF 研磨 φ2.5×310"}', '本', true, NULL, '2026-08-24 09:19:51.91591+00', '2026-08-24 09:19:51.91591+00', '025', 2.500, 'A0', 310.000, '310', NULL, NULL, 'B', 6, 360, '{}');
-INSERT INTO app.materials VALUES ('B06A0001-B020-310', '{"en": "K45EF Polished φ2.0x310", "ja": "K45EF 研磨 φ2.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.91617+00', '2026-08-24 09:19:51.91617+00', '020', 2.000, 'A0', 310.000, '310', NULL, NULL, 'B', 6, 361, '{}');
-INSERT INTO app.materials VALUES ('B06A0001-B015-310', '{"en": "K45EF Polished φ1.5x310", "ja": "K45EF 研磨 φ1.5×310"}', '本', true, NULL, '2026-08-24 09:19:51.916453+00', '2026-08-24 09:19:51.916453+00', '015', 1.500, 'A0', 310.000, '310', NULL, NULL, 'B', 6, 362, '{}');
-INSERT INTO app.materials VALUES ('B06A0001-B010-310', '{"en": "K45EF Polished φ1.0x310", "ja": "K45EF 研磨 φ1.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.916741+00', '2026-08-24 09:19:51.916741+00', '010', 1.000, 'A0', 310.000, '310', NULL, NULL, 'B', 6, 363, '{}');
-INSERT INTO app.materials VALUES ('B04A0001-A350-310', '{"en": "K40UF Black skin φ35.0x310", "ja": "K40UF 黒皮 φ35.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.917058+00', '2026-08-24 09:19:51.917058+00', '350', 35.000, 'A0', 310.000, '310', NULL, NULL, 'A', 4, 364, '{}');
-INSERT INTO app.materials VALUES ('B04A0001-A340-310', '{"en": "K40UF Black skin φ34.0x310", "ja": "K40UF 黒皮 φ34.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.917343+00', '2026-08-24 09:19:51.917343+00', '340', 34.000, 'A0', 310.000, '310', NULL, NULL, 'A', 4, 365, '{}');
-INSERT INTO app.materials VALUES ('B04A0001-A330-310', '{"en": "K40UF Black skin φ33.0x310", "ja": "K40UF 黒皮 φ33.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.91761+00', '2026-08-24 09:19:51.91761+00', '330', 33.000, 'A0', 310.000, '310', NULL, NULL, 'A', 4, 366, '{}');
-INSERT INTO app.materials VALUES ('B04A0001-A320-310', '{"en": "K40UF Black skin φ32.0x310", "ja": "K40UF 黒皮 φ32.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.917885+00', '2026-08-24 09:19:51.917885+00', '320', 32.000, 'A0', 310.000, '310', NULL, NULL, 'A', 4, 367, '{}');
-INSERT INTO app.materials VALUES ('B04A0001-A310-310', '{"en": "K40UF Black skin φ31.0x310", "ja": "K40UF 黒皮 φ31.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.918245+00', '2026-08-24 09:19:51.918245+00', '310', 31.000, 'A0', 310.000, '310', NULL, NULL, 'A', 4, 368, '{}');
-INSERT INTO app.materials VALUES ('B04A0001-A300-310', '{"en": "K40UF Black skin φ30.0x310", "ja": "K40UF 黒皮 φ30.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.918539+00', '2026-08-24 09:19:51.918539+00', '300', 30.000, 'A0', 310.000, '310', NULL, NULL, 'A', 4, 369, '{}');
-INSERT INTO app.materials VALUES ('B04A0001-A290-310', '{"en": "K40UF Black skin φ29.0x310", "ja": "K40UF 黒皮 φ29.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.918834+00', '2026-08-24 09:19:51.918834+00', '290', 29.000, 'A0', 310.000, '310', NULL, NULL, 'A', 4, 370, '{}');
-INSERT INTO app.materials VALUES ('B04A0001-A280-310', '{"en": "K40UF Black skin φ28.0x310", "ja": "K40UF 黒皮 φ28.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.919156+00', '2026-08-24 09:19:51.919156+00', '280', 28.000, 'A0', 310.000, '310', NULL, NULL, 'A', 4, 371, '{}');
-INSERT INTO app.materials VALUES ('B04A0001-A270-310', '{"en": "K40UF Black skin φ27.0x310", "ja": "K40UF 黒皮 φ27.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.919588+00', '2026-08-24 09:19:51.919588+00', '270', 27.000, 'A0', 310.000, '310', NULL, NULL, 'A', 4, 372, '{}');
-INSERT INTO app.materials VALUES ('B04A0001-A260-310', '{"en": "K40UF Black skin φ26.0x310", "ja": "K40UF 黒皮 φ26.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.919896+00', '2026-08-24 09:19:51.919896+00', '260', 26.000, 'A0', 310.000, '310', NULL, NULL, 'A', 4, 373, '{}');
-INSERT INTO app.materials VALUES ('B04A0001-A255-310', '{"en": "K40UF Black skin φ25.5x310", "ja": "K40UF 黒皮 φ25.5×310"}', '本', true, NULL, '2026-08-24 09:19:51.920225+00', '2026-08-24 09:19:51.920225+00', '255', 25.500, 'A0', 310.000, '310', NULL, NULL, 'A', 4, 374, '{}');
-INSERT INTO app.materials VALUES ('B04A0001-A250-310', '{"en": "K40UF Black skin φ25.0x310", "ja": "K40UF 黒皮 φ25.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.920536+00', '2026-08-24 09:19:51.920536+00', '250', 25.000, 'A0', 310.000, '310', NULL, NULL, 'A', 4, 375, '{}');
-INSERT INTO app.materials VALUES ('B04A0001-A240-310', '{"en": "K40UF Black skin φ24.0x310", "ja": "K40UF 黒皮 φ24.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.920865+00', '2026-08-24 09:19:51.920865+00', '240', 24.000, 'A0', 310.000, '310', NULL, NULL, 'A', 4, 376, '{}');
-INSERT INTO app.materials VALUES ('B04A0001-A235-310', '{"en": "K40UF Black skin φ23.5x310", "ja": "K40UF 黒皮 φ23.5×310"}', '本', true, NULL, '2026-08-24 09:19:51.921209+00', '2026-08-24 09:19:51.921209+00', '235', 23.500, 'A0', 310.000, '310', NULL, NULL, 'A', 4, 377, '{}');
-INSERT INTO app.materials VALUES ('B04A0001-A230-310', '{"en": "K40UF Black skin φ23.0x310", "ja": "K40UF 黒皮 φ23.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.921551+00', '2026-08-24 09:19:51.921551+00', '230', 23.000, 'A0', 310.000, '310', NULL, NULL, 'A', 4, 378, '{}');
-INSERT INTO app.materials VALUES ('B04A0001-A225-310', '{"en": "K40UF Black skin φ22.5x310", "ja": "K40UF 黒皮 φ22.5×310"}', '本', true, NULL, '2026-08-24 09:19:51.921906+00', '2026-08-24 09:19:51.921906+00', '225', 22.500, 'A0', 310.000, '310', NULL, NULL, 'A', 4, 379, '{}');
-INSERT INTO app.materials VALUES ('B04A0001-A220-310', '{"en": "K40UF Black skin φ22.0x310", "ja": "K40UF 黒皮 φ22.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.922293+00', '2026-08-24 09:19:51.922293+00', '220', 22.000, 'A0', 310.000, '310', NULL, NULL, 'A', 4, 380, '{}');
-INSERT INTO app.materials VALUES ('B04A0001-A215-310', '{"en": "K40UF Black skin φ21.5x310", "ja": "K40UF 黒皮 φ21.5×310"}', '本', true, NULL, '2026-08-24 09:19:51.922598+00', '2026-08-24 09:19:51.922598+00', '215', 21.500, 'A0', 310.000, '310', NULL, NULL, 'A', 4, 381, '{}');
-INSERT INTO app.materials VALUES ('B04A0001-A210-310', '{"en": "K40UF Black skin φ21.0x310", "ja": "K40UF 黒皮 φ21.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.922915+00', '2026-08-24 09:19:51.922915+00', '210', 21.000, 'A0', 310.000, '310', NULL, NULL, 'A', 4, 382, '{}');
-INSERT INTO app.materials VALUES ('B04A0001-A205-310', '{"en": "K40UF Black skin φ20.5x310", "ja": "K40UF 黒皮 φ20.5×310"}', '本', true, NULL, '2026-08-24 09:19:51.923263+00', '2026-08-24 09:19:51.923263+00', '205', 20.500, 'A0', 310.000, '310', NULL, NULL, 'A', 4, 383, '{}');
-INSERT INTO app.materials VALUES ('B04A0001-A200-310', '{"en": "K40UF Black skin φ20.0x310", "ja": "K40UF 黒皮 φ20.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.923615+00', '2026-08-24 09:19:51.923615+00', '200', 20.000, 'A0', 310.000, '310', NULL, NULL, 'A', 4, 384, '{}');
-INSERT INTO app.materials VALUES ('B04A0001-A195-310', '{"en": "K40UF Black skin φ19.5x310", "ja": "K40UF 黒皮 φ19.5×310"}', '本', true, NULL, '2026-08-24 09:19:51.923922+00', '2026-08-24 09:19:51.923922+00', '195', 19.500, 'A0', 310.000, '310', NULL, NULL, 'A', 4, 385, '{}');
-INSERT INTO app.materials VALUES ('B04A0001-A190-310', '{"en": "K40UF Black skin φ19.0x310", "ja": "K40UF 黒皮 φ19.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.924285+00', '2026-08-24 09:19:51.924285+00', '190', 19.000, 'A0', 310.000, '310', NULL, NULL, 'A', 4, 386, '{}');
-INSERT INTO app.materials VALUES ('B04A0001-A185-310', '{"en": "K40UF Black skin φ18.5x310", "ja": "K40UF 黒皮 φ18.5×310"}', '本', true, NULL, '2026-08-24 09:19:51.924653+00', '2026-08-24 09:19:51.924653+00', '185', 18.500, 'A0', 310.000, '310', NULL, NULL, 'A', 4, 387, '{}');
-INSERT INTO app.materials VALUES ('B04A0001-A180-310', '{"en": "K40UF Black skin φ18.0x310", "ja": "K40UF 黒皮 φ18.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.924972+00', '2026-08-24 09:19:51.924972+00', '180', 18.000, 'A0', 310.000, '310', NULL, NULL, 'A', 4, 388, '{}');
-INSERT INTO app.materials VALUES ('B04A0001-A175-310', '{"en": "K40UF Black skin φ17.5x310", "ja": "K40UF 黒皮 φ17.5×310"}', '本', true, NULL, '2026-08-24 09:19:51.925296+00', '2026-08-24 09:19:51.925296+00', '175', 17.500, 'A0', 310.000, '310', NULL, NULL, 'A', 4, 389, '{}');
-INSERT INTO app.materials VALUES ('B04A0001-A170-310', '{"en": "K40UF Black skin φ17.0x310", "ja": "K40UF 黒皮 φ17.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.925605+00', '2026-08-24 09:19:51.925605+00', '170', 17.000, 'A0', 310.000, '310', NULL, NULL, 'A', 4, 390, '{}');
-INSERT INTO app.materials VALUES ('B04A0001-A165-310', '{"en": "K40UF Black skin φ16.5x310", "ja": "K40UF 黒皮 φ16.5×310"}', '本', true, NULL, '2026-08-24 09:19:51.92594+00', '2026-08-24 09:19:51.92594+00', '165', 16.500, 'A0', 310.000, '310', NULL, NULL, 'A', 4, 391, '{}');
-INSERT INTO app.materials VALUES ('B04A0001-A160-310', '{"en": "K40UF Black skin φ16.0x310", "ja": "K40UF 黒皮 φ16.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.926252+00', '2026-08-24 09:19:51.926252+00', '160', 16.000, 'A0', 310.000, '310', NULL, NULL, 'A', 4, 392, '{}');
-INSERT INTO app.materials VALUES ('B04A0001-A155-310', '{"en": "K40UF Black skin φ15.5x310", "ja": "K40UF 黒皮 φ15.5×310"}', '本', true, NULL, '2026-08-24 09:19:51.926546+00', '2026-08-24 09:19:51.926546+00', '155', 15.500, 'A0', 310.000, '310', NULL, NULL, 'A', 4, 393, '{}');
-INSERT INTO app.materials VALUES ('B04A0001-A150-310', '{"en": "K40UF Black skin φ15.0x310", "ja": "K40UF 黒皮 φ15.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.926854+00', '2026-08-24 09:19:51.926854+00', '150', 15.000, 'A0', 310.000, '310', NULL, NULL, 'A', 4, 394, '{}');
-INSERT INTO app.materials VALUES ('B04A0001-A145-310', '{"en": "K40UF Black skin φ14.5x310", "ja": "K40UF 黒皮 φ14.5×310"}', '本', true, NULL, '2026-08-24 09:19:51.92716+00', '2026-08-24 09:19:51.92716+00', '145', 14.500, 'A0', 310.000, '310', NULL, NULL, 'A', 4, 395, '{}');
-INSERT INTO app.materials VALUES ('B04A0001-A140-310', '{"en": "K40UF Black skin φ14.0x310", "ja": "K40UF 黒皮 φ14.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.927486+00', '2026-08-24 09:19:51.927486+00', '140', 14.000, 'A0', 310.000, '310', NULL, NULL, 'A', 4, 396, '{}');
-INSERT INTO app.materials VALUES ('B04A0001-A135-310', '{"en": "K40UF Black skin φ13.5x310", "ja": "K40UF 黒皮 φ13.5×310"}', '本', true, NULL, '2026-08-24 09:19:51.927803+00', '2026-08-24 09:19:51.927803+00', '135', 13.500, 'A0', 310.000, '310', NULL, NULL, 'A', 4, 397, '{}');
-INSERT INTO app.materials VALUES ('B04A0001-A130-310', '{"en": "K40UF Black skin φ13.0x310", "ja": "K40UF 黒皮 φ13.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.928132+00', '2026-08-24 09:19:51.928132+00', '130', 13.000, 'A0', 310.000, '310', NULL, NULL, 'A', 4, 398, '{}');
-INSERT INTO app.materials VALUES ('B04A0001-A125-310', '{"en": "K40UF Black skin φ12.5x310", "ja": "K40UF 黒皮 φ12.5×310"}', '本', true, NULL, '2026-08-24 09:19:51.928401+00', '2026-08-24 09:19:51.928401+00', '125', 12.500, 'A0', 310.000, '310', NULL, NULL, 'A', 4, 399, '{}');
-INSERT INTO app.materials VALUES ('B04A0001-A120-310', '{"en": "K40UF Black skin φ12.0x310", "ja": "K40UF 黒皮 φ12.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.928768+00', '2026-08-24 09:19:51.928768+00', '120', 12.000, 'A0', 310.000, '310', NULL, NULL, 'A', 4, 400, '{}');
-INSERT INTO app.materials VALUES ('B04A0001-A115-310', '{"en": "K40UF Black skin φ11.5x310", "ja": "K40UF 黒皮 φ11.5×310"}', '本', true, NULL, '2026-08-24 09:19:51.929068+00', '2026-08-24 09:19:51.929068+00', '115', 11.500, 'A0', 310.000, '310', NULL, NULL, 'A', 4, 401, '{}');
-INSERT INTO app.materials VALUES ('B04A0001-A110-310', '{"en": "K40UF Black skin φ11.0x310", "ja": "K40UF 黒皮 φ11.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.92934+00', '2026-08-24 09:19:51.92934+00', '110', 11.000, 'A0', 310.000, '310', NULL, NULL, 'A', 4, 402, '{}');
-INSERT INTO app.materials VALUES ('B04A0001-A105-310', '{"en": "K40UF Black skin φ10.5x310", "ja": "K40UF 黒皮 φ10.5×310"}', '本', true, NULL, '2026-08-24 09:19:51.929612+00', '2026-08-24 09:19:51.929612+00', '105', 10.500, 'A0', 310.000, '310', NULL, NULL, 'A', 4, 403, '{}');
-INSERT INTO app.materials VALUES ('B04A0001-A100-310', '{"en": "K40UF Black skin φ10.0x310", "ja": "K40UF 黒皮 φ10.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.929886+00', '2026-08-24 09:19:51.929886+00', '100', 10.000, 'A0', 310.000, '310', NULL, NULL, 'A', 4, 404, '{}');
-INSERT INTO app.materials VALUES ('B04A0001-A095-310', '{"en": "K40UF Black skin φ9.5x310", "ja": "K40UF 黒皮 φ9.5×310"}', '本', true, NULL, '2026-08-24 09:19:51.930163+00', '2026-08-24 09:19:51.930163+00', '095', 9.500, 'A0', 310.000, '310', NULL, NULL, 'A', 4, 405, '{}');
-INSERT INTO app.materials VALUES ('B04A0001-A090-310', '{"en": "K40UF Black skin φ9.0x310", "ja": "K40UF 黒皮 φ9.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.930521+00', '2026-08-24 09:19:51.930521+00', '090', 9.000, 'A0', 310.000, '310', NULL, NULL, 'A', 4, 406, '{}');
-INSERT INTO app.materials VALUES ('B04A0001-A085-310', '{"en": "K40UF Black skin φ8.5x310", "ja": "K40UF 黒皮 φ8.5×310"}', '本', true, NULL, '2026-08-24 09:19:51.930949+00', '2026-08-24 09:19:51.930949+00', '085', 8.500, 'A0', 310.000, '310', NULL, NULL, 'A', 4, 407, '{}');
-INSERT INTO app.materials VALUES ('B04A0001-A080-310', '{"en": "K40UF Black skin φ8.0x310", "ja": "K40UF 黒皮 φ8.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.931306+00', '2026-08-24 09:19:51.931306+00', '080', 8.000, 'A0', 310.000, '310', NULL, NULL, 'A', 4, 408, '{}');
-INSERT INTO app.materials VALUES ('B04A0001-A075-310', '{"en": "K40UF Black skin φ7.5x310", "ja": "K40UF 黒皮 φ7.5×310"}', '本', true, NULL, '2026-08-24 09:19:51.931681+00', '2026-08-24 09:19:51.931681+00', '075', 7.500, 'A0', 310.000, '310', NULL, NULL, 'A', 4, 409, '{}');
-INSERT INTO app.materials VALUES ('B04A0001-A070-310', '{"en": "K40UF Black skin φ7.0x310", "ja": "K40UF 黒皮 φ7.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.931981+00', '2026-08-24 09:19:51.931981+00', '070', 7.000, 'A0', 310.000, '310', NULL, NULL, 'A', 4, 410, '{}');
-INSERT INTO app.materials VALUES ('B04A0001-A065-310', '{"en": "K40UF Black skin φ6.5x310", "ja": "K40UF 黒皮 φ6.5×310"}', '本', true, NULL, '2026-08-24 09:19:51.932268+00', '2026-08-24 09:19:51.932268+00', '065', 6.500, 'A0', 310.000, '310', NULL, NULL, 'A', 4, 411, '{}');
-INSERT INTO app.materials VALUES ('B04A0001-A060-310', '{"en": "K40UF Black skin φ6.0x310", "ja": "K40UF 黒皮 φ6.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.932607+00', '2026-08-24 09:19:51.932607+00', '060', 6.000, 'A0', 310.000, '310', NULL, NULL, 'A', 4, 412, '{}');
-INSERT INTO app.materials VALUES ('B04A0001-A055-310', '{"en": "K40UF Black skin φ5.5x310", "ja": "K40UF 黒皮 φ5.5×310"}', '本', true, NULL, '2026-08-24 09:19:51.932907+00', '2026-08-24 09:19:51.932907+00', '055', 5.500, 'A0', 310.000, '310', NULL, NULL, 'A', 4, 413, '{}');
-INSERT INTO app.materials VALUES ('B04A0001-A050-310', '{"en": "K40UF Black skin φ5.0x310", "ja": "K40UF 黒皮 φ5.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.933191+00', '2026-08-24 09:19:51.933191+00', '050', 5.000, 'A0', 310.000, '310', NULL, NULL, 'A', 4, 414, '{}');
-INSERT INTO app.materials VALUES ('B04A0001-A045-310', '{"en": "K40UF Black skin φ4.5x310", "ja": "K40UF 黒皮 φ4.5×310"}', '本', true, NULL, '2026-08-24 09:19:51.933449+00', '2026-08-24 09:19:51.933449+00', '045', 4.500, 'A0', 310.000, '310', NULL, NULL, 'A', 4, 415, '{}');
-INSERT INTO app.materials VALUES ('B04A0001-A040-310', '{"en": "K40UF Black skin φ4.0x310", "ja": "K40UF 黒皮 φ4.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.933703+00', '2026-08-24 09:19:51.933703+00', '040', 4.000, 'A0', 310.000, '310', NULL, NULL, 'A', 4, 416, '{}');
-INSERT INTO app.materials VALUES ('B04A0001-A035-310', '{"en": "K40UF Black skin φ3.5x310", "ja": "K40UF 黒皮 φ3.5×310"}', '本', true, NULL, '2026-08-24 09:19:51.934098+00', '2026-08-24 09:19:51.934098+00', '035', 3.500, 'A0', 310.000, '310', NULL, NULL, 'A', 4, 417, '{}');
-INSERT INTO app.materials VALUES ('B04A0001-A030-310', '{"en": "K40UF Black skin φ3.0x310", "ja": "K40UF 黒皮 φ3.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.934371+00', '2026-08-24 09:19:51.934371+00', '030', 3.000, 'A0', 310.000, '310', NULL, NULL, 'A', 4, 418, '{}');
-INSERT INTO app.materials VALUES ('B04A0001-A025-310', '{"en": "K40UF Black skin φ2.5x310", "ja": "K40UF 黒皮 φ2.5×310"}', '本', true, NULL, '2026-08-24 09:19:51.934708+00', '2026-08-24 09:19:51.934708+00', '025', 2.500, 'A0', 310.000, '310', NULL, NULL, 'A', 4, 419, '{}');
-INSERT INTO app.materials VALUES ('B04A0001-A020-310', '{"en": "K40UF Black skin φ2.0x310", "ja": "K40UF 黒皮 φ2.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.935012+00', '2026-08-24 09:19:51.935012+00', '020', 2.000, 'A0', 310.000, '310', NULL, NULL, 'A', 4, 420, '{}');
-INSERT INTO app.materials VALUES ('B04A0001-A015-310', '{"en": "K40UF Black skin φ1.5x310", "ja": "K40UF 黒皮 φ1.5×310"}', '本', true, NULL, '2026-08-24 09:19:51.935326+00', '2026-08-24 09:19:51.935326+00', '015', 1.500, 'A0', 310.000, '310', NULL, NULL, 'A', 4, 421, '{}');
-INSERT INTO app.materials VALUES ('B04A0001-A010-310', '{"en": "K40UF Black skin φ1.0x310", "ja": "K40UF 黒皮 φ1.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.935671+00', '2026-08-24 09:19:51.935671+00', '010', 1.000, 'A0', 310.000, '310', NULL, NULL, 'A', 4, 422, '{}');
-INSERT INTO app.materials VALUES ('B02A0001-A350-310', '{"en": "K20CF Black skin φ35.0x310", "ja": "K20CF 黒皮 φ35.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.936013+00', '2026-08-24 09:19:51.936013+00', '350', 35.000, 'A0', 310.000, '310', NULL, NULL, 'A', 2, 423, '{}');
-INSERT INTO app.materials VALUES ('B02A0001-A340-310', '{"en": "K20CF Black skin φ34.0x310", "ja": "K20CF 黒皮 φ34.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.936301+00', '2026-08-24 09:19:51.936301+00', '340', 34.000, 'A0', 310.000, '310', NULL, NULL, 'A', 2, 424, '{}');
-INSERT INTO app.materials VALUES ('B02A0001-A330-310', '{"en": "K20CF Black skin φ33.0x310", "ja": "K20CF 黒皮 φ33.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.936574+00', '2026-08-24 09:19:51.936574+00', '330', 33.000, 'A0', 310.000, '310', NULL, NULL, 'A', 2, 425, '{}');
-INSERT INTO app.materials VALUES ('B02A0001-A320-310', '{"en": "K20CF Black skin φ32.0x310", "ja": "K20CF 黒皮 φ32.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.93688+00', '2026-08-24 09:19:51.93688+00', '320', 32.000, 'A0', 310.000, '310', NULL, NULL, 'A', 2, 426, '{}');
-INSERT INTO app.materials VALUES ('B02A0001-A310-310', '{"en": "K20CF Black skin φ31.0x310", "ja": "K20CF 黒皮 φ31.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.937225+00', '2026-08-24 09:19:51.937225+00', '310', 31.000, 'A0', 310.000, '310', NULL, NULL, 'A', 2, 427, '{}');
-INSERT INTO app.materials VALUES ('B02A0001-A300-310', '{"en": "K20CF Black skin φ30.0x310", "ja": "K20CF 黒皮 φ30.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.937502+00', '2026-08-24 09:19:51.937502+00', '300', 30.000, 'A0', 310.000, '310', NULL, NULL, 'A', 2, 428, '{}');
-INSERT INTO app.materials VALUES ('B02A0001-A290-310', '{"en": "K20CF Black skin φ29.0x310", "ja": "K20CF 黒皮 φ29.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.937797+00', '2026-08-24 09:19:51.937797+00', '290', 29.000, 'A0', 310.000, '310', NULL, NULL, 'A', 2, 429, '{}');
-INSERT INTO app.materials VALUES ('B02A0001-A280-310', '{"en": "K20CF Black skin φ28.0x310", "ja": "K20CF 黒皮 φ28.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.93811+00', '2026-08-24 09:19:51.93811+00', '280', 28.000, 'A0', 310.000, '310', NULL, NULL, 'A', 2, 430, '{}');
-INSERT INTO app.materials VALUES ('B02A0001-A270-310', '{"en": "K20CF Black skin φ27.0x310", "ja": "K20CF 黒皮 φ27.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.938482+00', '2026-08-24 09:19:51.938482+00', '270', 27.000, 'A0', 310.000, '310', NULL, NULL, 'A', 2, 431, '{}');
-INSERT INTO app.materials VALUES ('B02A0001-A260-310', '{"en": "K20CF Black skin φ26.0x310", "ja": "K20CF 黒皮 φ26.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.938792+00', '2026-08-24 09:19:51.938792+00', '260', 26.000, 'A0', 310.000, '310', NULL, NULL, 'A', 2, 432, '{}');
-INSERT INTO app.materials VALUES ('B02A0001-A255-310', '{"en": "K20CF Black skin φ25.5x310", "ja": "K20CF 黒皮 φ25.5×310"}', '本', true, NULL, '2026-08-24 09:19:51.939094+00', '2026-08-24 09:19:51.939094+00', '255', 25.500, 'A0', 310.000, '310', NULL, NULL, 'A', 2, 433, '{}');
-INSERT INTO app.materials VALUES ('B02A0001-A250-310', '{"en": "K20CF Black skin φ25.0x310", "ja": "K20CF 黒皮 φ25.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.939481+00', '2026-08-24 09:19:51.939481+00', '250', 25.000, 'A0', 310.000, '310', NULL, NULL, 'A', 2, 434, '{}');
-INSERT INTO app.materials VALUES ('B02A0001-A240-310', '{"en": "K20CF Black skin φ24.0x310", "ja": "K20CF 黒皮 φ24.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.939804+00', '2026-08-24 09:19:51.939804+00', '240', 24.000, 'A0', 310.000, '310', NULL, NULL, 'A', 2, 435, '{}');
-INSERT INTO app.materials VALUES ('B02A0001-A235-310', '{"en": "K20CF Black skin φ23.5x310", "ja": "K20CF 黒皮 φ23.5×310"}', '本', true, NULL, '2026-08-24 09:19:51.94014+00', '2026-08-24 09:19:51.94014+00', '235', 23.500, 'A0', 310.000, '310', NULL, NULL, 'A', 2, 436, '{}');
-INSERT INTO app.materials VALUES ('B02A0001-A230-310', '{"en": "K20CF Black skin φ23.0x310", "ja": "K20CF 黒皮 φ23.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.940439+00', '2026-08-24 09:19:51.940439+00', '230', 23.000, 'A0', 310.000, '310', NULL, NULL, 'A', 2, 437, '{}');
-INSERT INTO app.materials VALUES ('B02A0001-A225-310', '{"en": "K20CF Black skin φ22.5x310", "ja": "K20CF 黒皮 φ22.5×310"}', '本', true, NULL, '2026-08-24 09:19:51.940735+00', '2026-08-24 09:19:51.940735+00', '225', 22.500, 'A0', 310.000, '310', NULL, NULL, 'A', 2, 438, '{}');
-INSERT INTO app.materials VALUES ('B02A0001-A220-310', '{"en": "K20CF Black skin φ22.0x310", "ja": "K20CF 黒皮 φ22.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.941068+00', '2026-08-24 09:19:51.941068+00', '220', 22.000, 'A0', 310.000, '310', NULL, NULL, 'A', 2, 439, '{}');
-INSERT INTO app.materials VALUES ('B02A0001-A215-310', '{"en": "K20CF Black skin φ21.5x310", "ja": "K20CF 黒皮 φ21.5×310"}', '本', true, NULL, '2026-08-24 09:19:51.941344+00', '2026-08-24 09:19:51.941344+00', '215', 21.500, 'A0', 310.000, '310', NULL, NULL, 'A', 2, 440, '{}');
-INSERT INTO app.materials VALUES ('B02A0001-A210-310', '{"en": "K20CF Black skin φ21.0x310", "ja": "K20CF 黒皮 φ21.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.941616+00', '2026-08-24 09:19:51.941616+00', '210', 21.000, 'A0', 310.000, '310', NULL, NULL, 'A', 2, 441, '{}');
-INSERT INTO app.materials VALUES ('B02A0001-A205-310', '{"en": "K20CF Black skin φ20.5x310", "ja": "K20CF 黒皮 φ20.5×310"}', '本', true, NULL, '2026-08-24 09:19:51.941896+00', '2026-08-24 09:19:51.941896+00', '205', 20.500, 'A0', 310.000, '310', NULL, NULL, 'A', 2, 442, '{}');
-INSERT INTO app.materials VALUES ('B02A0001-A200-310', '{"en": "K20CF Black skin φ20.0x310", "ja": "K20CF 黒皮 φ20.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.942192+00', '2026-08-24 09:19:51.942192+00', '200', 20.000, 'A0', 310.000, '310', NULL, NULL, 'A', 2, 443, '{}');
-INSERT INTO app.materials VALUES ('B02A0001-A195-310', '{"en": "K20CF Black skin φ19.5x310", "ja": "K20CF 黒皮 φ19.5×310"}', '本', true, NULL, '2026-08-24 09:19:51.942466+00', '2026-08-24 09:19:51.942466+00', '195', 19.500, 'A0', 310.000, '310', NULL, NULL, 'A', 2, 444, '{}');
-INSERT INTO app.materials VALUES ('B02A0001-A190-310', '{"en": "K20CF Black skin φ19.0x310", "ja": "K20CF 黒皮 φ19.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.9428+00', '2026-08-24 09:19:51.9428+00', '190', 19.000, 'A0', 310.000, '310', NULL, NULL, 'A', 2, 445, '{}');
-INSERT INTO app.materials VALUES ('B02A0001-A185-310', '{"en": "K20CF Black skin φ18.5x310", "ja": "K20CF 黒皮 φ18.5×310"}', '本', true, NULL, '2026-08-24 09:19:51.943099+00', '2026-08-24 09:19:51.943099+00', '185', 18.500, 'A0', 310.000, '310', NULL, NULL, 'A', 2, 446, '{}');
-INSERT INTO app.materials VALUES ('B02A0001-A180-310', '{"en": "K20CF Black skin φ18.0x310", "ja": "K20CF 黒皮 φ18.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.943402+00', '2026-08-24 09:19:51.943402+00', '180', 18.000, 'A0', 310.000, '310', NULL, NULL, 'A', 2, 447, '{}');
-INSERT INTO app.materials VALUES ('B02A0001-A175-310', '{"en": "K20CF Black skin φ17.5x310", "ja": "K20CF 黒皮 φ17.5×310"}', '本', true, NULL, '2026-08-24 09:19:51.94368+00', '2026-08-24 09:19:51.94368+00', '175', 17.500, 'A0', 310.000, '310', NULL, NULL, 'A', 2, 448, '{}');
-INSERT INTO app.materials VALUES ('B02A0001-A170-310', '{"en": "K20CF Black skin φ17.0x310", "ja": "K20CF 黒皮 φ17.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.943972+00', '2026-08-24 09:19:51.943972+00', '170', 17.000, 'A0', 310.000, '310', NULL, NULL, 'A', 2, 449, '{}');
-INSERT INTO app.materials VALUES ('B02A0001-A165-310', '{"en": "K20CF Black skin φ16.5x310", "ja": "K20CF 黒皮 φ16.5×310"}', '本', true, NULL, '2026-08-24 09:19:51.944274+00', '2026-08-24 09:19:51.944274+00', '165', 16.500, 'A0', 310.000, '310', NULL, NULL, 'A', 2, 450, '{}');
-INSERT INTO app.materials VALUES ('B02A0001-A160-310', '{"en": "K20CF Black skin φ16.0x310", "ja": "K20CF 黒皮 φ16.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.944559+00', '2026-08-24 09:19:51.944559+00', '160', 16.000, 'A0', 310.000, '310', NULL, NULL, 'A', 2, 451, '{}');
-INSERT INTO app.materials VALUES ('B02A0001-A155-310', '{"en": "K20CF Black skin φ15.5x310", "ja": "K20CF 黒皮 φ15.5×310"}', '本', true, NULL, '2026-08-24 09:19:51.944832+00', '2026-08-24 09:19:51.944832+00', '155', 15.500, 'A0', 310.000, '310', NULL, NULL, 'A', 2, 452, '{}');
-INSERT INTO app.materials VALUES ('B02A0001-A150-310', '{"en": "K20CF Black skin φ15.0x310", "ja": "K20CF 黒皮 φ15.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.945129+00', '2026-08-24 09:19:51.945129+00', '150', 15.000, 'A0', 310.000, '310', NULL, NULL, 'A', 2, 453, '{}');
-INSERT INTO app.materials VALUES ('B02A0001-A145-310', '{"en": "K20CF Black skin φ14.5x310", "ja": "K20CF 黒皮 φ14.5×310"}', '本', true, NULL, '2026-08-24 09:19:51.945428+00', '2026-08-24 09:19:51.945428+00', '145', 14.500, 'A0', 310.000, '310', NULL, NULL, 'A', 2, 454, '{}');
-INSERT INTO app.materials VALUES ('B02A0001-A140-310', '{"en": "K20CF Black skin φ14.0x310", "ja": "K20CF 黒皮 φ14.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.945694+00', '2026-08-24 09:19:51.945694+00', '140', 14.000, 'A0', 310.000, '310', NULL, NULL, 'A', 2, 455, '{}');
-INSERT INTO app.materials VALUES ('B02A0001-A135-310', '{"en": "K20CF Black skin φ13.5x310", "ja": "K20CF 黒皮 φ13.5×310"}', '本', true, NULL, '2026-08-24 09:19:51.945979+00', '2026-08-24 09:19:51.945979+00', '135', 13.500, 'A0', 310.000, '310', NULL, NULL, 'A', 2, 456, '{}');
-INSERT INTO app.materials VALUES ('B02A0001-A130-310', '{"en": "K20CF Black skin φ13.0x310", "ja": "K20CF 黒皮 φ13.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.946289+00', '2026-08-24 09:19:51.946289+00', '130', 13.000, 'A0', 310.000, '310', NULL, NULL, 'A', 2, 457, '{}');
-INSERT INTO app.materials VALUES ('B02A0001-A125-310', '{"en": "K20CF Black skin φ12.5x310", "ja": "K20CF 黒皮 φ12.5×310"}', '本', true, NULL, '2026-08-24 09:19:51.946627+00', '2026-08-24 09:19:51.946627+00', '125', 12.500, 'A0', 310.000, '310', NULL, NULL, 'A', 2, 458, '{}');
-INSERT INTO app.materials VALUES ('B02A0001-A120-310', '{"en": "K20CF Black skin φ12.0x310", "ja": "K20CF 黒皮 φ12.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.946903+00', '2026-08-24 09:19:51.946903+00', '120', 12.000, 'A0', 310.000, '310', NULL, NULL, 'A', 2, 459, '{}');
-INSERT INTO app.materials VALUES ('B02A0001-A115-310', '{"en": "K20CF Black skin φ11.5x310", "ja": "K20CF 黒皮 φ11.5×310"}', '本', true, NULL, '2026-08-24 09:19:51.947179+00', '2026-08-24 09:19:51.947179+00', '115', 11.500, 'A0', 310.000, '310', NULL, NULL, 'A', 2, 460, '{}');
-INSERT INTO app.materials VALUES ('B02A0001-A110-310', '{"en": "K20CF Black skin φ11.0x310", "ja": "K20CF 黒皮 φ11.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.947463+00', '2026-08-24 09:19:51.947463+00', '110', 11.000, 'A0', 310.000, '310', NULL, NULL, 'A', 2, 461, '{}');
-INSERT INTO app.materials VALUES ('B02A0001-A105-310', '{"en": "K20CF Black skin φ10.5x310", "ja": "K20CF 黒皮 φ10.5×310"}', '本', true, NULL, '2026-08-24 09:19:51.947738+00', '2026-08-24 09:19:51.947738+00', '105', 10.500, 'A0', 310.000, '310', NULL, NULL, 'A', 2, 462, '{}');
-INSERT INTO app.materials VALUES ('B02A0001-A100-310', '{"en": "K20CF Black skin φ10.0x310", "ja": "K20CF 黒皮 φ10.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.948001+00', '2026-08-24 09:19:51.948001+00', '100', 10.000, 'A0', 310.000, '310', NULL, NULL, 'A', 2, 463, '{}');
-INSERT INTO app.materials VALUES ('B02A0001-A095-310', '{"en": "K20CF Black skin φ9.5x310", "ja": "K20CF 黒皮 φ9.5×310"}', '本', true, NULL, '2026-08-24 09:19:51.94827+00', '2026-08-24 09:19:51.94827+00', '095', 9.500, 'A0', 310.000, '310', NULL, NULL, 'A', 2, 464, '{}');
-INSERT INTO app.materials VALUES ('B02A0001-A090-310', '{"en": "K20CF Black skin φ9.0x310", "ja": "K20CF 黒皮 φ9.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.948548+00', '2026-08-24 09:19:51.948548+00', '090', 9.000, 'A0', 310.000, '310', NULL, NULL, 'A', 2, 465, '{}');
-INSERT INTO app.materials VALUES ('B02A0001-A085-310', '{"en": "K20CF Black skin φ8.5x310", "ja": "K20CF 黒皮 φ8.5×310"}', '本', true, NULL, '2026-08-24 09:19:51.948846+00', '2026-08-24 09:19:51.948846+00', '085', 8.500, 'A0', 310.000, '310', NULL, NULL, 'A', 2, 466, '{}');
-INSERT INTO app.materials VALUES ('B02A0001-A080-310', '{"en": "K20CF Black skin φ8.0x310", "ja": "K20CF 黒皮 φ8.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.949134+00', '2026-08-24 09:19:51.949134+00', '080', 8.000, 'A0', 310.000, '310', NULL, NULL, 'A', 2, 467, '{}');
-INSERT INTO app.materials VALUES ('B02A0001-A075-310', '{"en": "K20CF Black skin φ7.5x310", "ja": "K20CF 黒皮 φ7.5×310"}', '本', true, NULL, '2026-08-24 09:19:51.949403+00', '2026-08-24 09:19:51.949403+00', '075', 7.500, 'A0', 310.000, '310', NULL, NULL, 'A', 2, 468, '{}');
-INSERT INTO app.materials VALUES ('B02A0001-A070-310', '{"en": "K20CF Black skin φ7.0x310", "ja": "K20CF 黒皮 φ7.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.94967+00', '2026-08-24 09:19:51.94967+00', '070', 7.000, 'A0', 310.000, '310', NULL, NULL, 'A', 2, 469, '{}');
-INSERT INTO app.materials VALUES ('B02A0001-A065-310', '{"en": "K20CF Black skin φ6.5x310", "ja": "K20CF 黒皮 φ6.5×310"}', '本', true, NULL, '2026-08-24 09:19:51.949935+00', '2026-08-24 09:19:51.949935+00', '065', 6.500, 'A0', 310.000, '310', NULL, NULL, 'A', 2, 470, '{}');
-INSERT INTO app.materials VALUES ('B02A0001-A060-310', '{"en": "K20CF Black skin φ6.0x310", "ja": "K20CF 黒皮 φ6.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.950201+00', '2026-08-24 09:19:51.950201+00', '060', 6.000, 'A0', 310.000, '310', NULL, NULL, 'A', 2, 471, '{}');
-INSERT INTO app.materials VALUES ('B02A0001-A055-310', '{"en": "K20CF Black skin φ5.5x310", "ja": "K20CF 黒皮 φ5.5×310"}', '本', true, NULL, '2026-08-24 09:19:51.950472+00', '2026-08-24 09:19:51.950472+00', '055', 5.500, 'A0', 310.000, '310', NULL, NULL, 'A', 2, 472, '{}');
-INSERT INTO app.materials VALUES ('B02A0001-A050-310', '{"en": "K20CF Black skin φ5.0x310", "ja": "K20CF 黒皮 φ5.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.950742+00', '2026-08-24 09:19:51.950742+00', '050', 5.000, 'A0', 310.000, '310', NULL, NULL, 'A', 2, 473, '{}');
-INSERT INTO app.materials VALUES ('B02A0001-A045-310', '{"en": "K20CF Black skin φ4.5x310", "ja": "K20CF 黒皮 φ4.5×310"}', '本', true, NULL, '2026-08-24 09:19:51.951029+00', '2026-08-24 09:19:51.951029+00', '045', 4.500, 'A0', 310.000, '310', NULL, NULL, 'A', 2, 474, '{}');
-INSERT INTO app.materials VALUES ('B02A0001-A040-310', '{"en": "K20CF Black skin φ4.0x310", "ja": "K20CF 黒皮 φ4.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.95131+00', '2026-08-24 09:19:51.95131+00', '040', 4.000, 'A0', 310.000, '310', NULL, NULL, 'A', 2, 475, '{}');
-INSERT INTO app.materials VALUES ('B02A0001-A035-310', '{"en": "K20CF Black skin φ3.5x310", "ja": "K20CF 黒皮 φ3.5×310"}', '本', true, NULL, '2026-08-24 09:19:51.951585+00', '2026-08-24 09:19:51.951585+00', '035', 3.500, 'A0', 310.000, '310', NULL, NULL, 'A', 2, 476, '{}');
-INSERT INTO app.materials VALUES ('B02A0001-A030-310', '{"en": "K20CF Black skin φ3.0x310", "ja": "K20CF 黒皮 φ3.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.951855+00', '2026-08-24 09:19:51.951855+00', '030', 3.000, 'A0', 310.000, '310', NULL, NULL, 'A', 2, 477, '{}');
-INSERT INTO app.materials VALUES ('B02A0001-A025-310', '{"en": "K20CF Black skin φ2.5x310", "ja": "K20CF 黒皮 φ2.5×310"}', '本', true, NULL, '2026-08-24 09:19:51.952152+00', '2026-08-24 09:19:51.952152+00', '025', 2.500, 'A0', 310.000, '310', NULL, NULL, 'A', 2, 478, '{}');
-INSERT INTO app.materials VALUES ('B02A0001-A020-310', '{"en": "K20CF Black skin φ2.0x310", "ja": "K20CF 黒皮 φ2.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.952407+00', '2026-08-24 09:19:51.952407+00', '020', 2.000, 'A0', 310.000, '310', NULL, NULL, 'A', 2, 479, '{}');
-INSERT INTO app.materials VALUES ('B02A0001-A015-310', '{"en": "K20CF Black skin φ1.5x310", "ja": "K20CF 黒皮 φ1.5×310"}', '本', true, NULL, '2026-08-24 09:19:51.952763+00', '2026-08-24 09:19:51.952763+00', '015', 1.500, 'A0', 310.000, '310', NULL, NULL, 'A', 2, 480, '{}');
-INSERT INTO app.materials VALUES ('B02A0001-A010-310', '{"en": "K20CF Black skin φ1.0x310", "ja": "K20CF 黒皮 φ1.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.95307+00', '2026-08-24 09:19:51.95307+00', '010', 1.000, 'A0', 310.000, '310', NULL, NULL, 'A', 2, 481, '{}');
-INSERT INTO app.materials VALUES ('B01A0001-A350-310', '{"en": "K10UF Black skin φ35.0x310", "ja": "K10UF 黒皮 φ35.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.953345+00', '2026-08-24 09:19:51.953345+00', '350', 35.000, 'A0', 310.000, '310', NULL, NULL, 'A', 1, 482, '{}');
-INSERT INTO app.materials VALUES ('B01A0001-A340-310', '{"en": "K10UF Black skin φ34.0x310", "ja": "K10UF 黒皮 φ34.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.953638+00', '2026-08-24 09:19:51.953638+00', '340', 34.000, 'A0', 310.000, '310', NULL, NULL, 'A', 1, 483, '{}');
-INSERT INTO app.materials VALUES ('B01A0001-A330-310', '{"en": "K10UF Black skin φ33.0x310", "ja": "K10UF 黒皮 φ33.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.953922+00', '2026-08-24 09:19:51.953922+00', '330', 33.000, 'A0', 310.000, '310', NULL, NULL, 'A', 1, 484, '{}');
-INSERT INTO app.materials VALUES ('B01A0001-A320-310', '{"en": "K10UF Black skin φ32.0x310", "ja": "K10UF 黒皮 φ32.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.954261+00', '2026-08-24 09:19:51.954261+00', '320', 32.000, 'A0', 310.000, '310', NULL, NULL, 'A', 1, 485, '{}');
-INSERT INTO app.materials VALUES ('B01A0001-A310-310', '{"en": "K10UF Black skin φ31.0x310", "ja": "K10UF 黒皮 φ31.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.954553+00', '2026-08-24 09:19:51.954553+00', '310', 31.000, 'A0', 310.000, '310', NULL, NULL, 'A', 1, 486, '{}');
-INSERT INTO app.materials VALUES ('B01A0001-A300-310', '{"en": "K10UF Black skin φ30.0x310", "ja": "K10UF 黒皮 φ30.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.954855+00', '2026-08-24 09:19:51.954855+00', '300', 30.000, 'A0', 310.000, '310', NULL, NULL, 'A', 1, 487, '{}');
-INSERT INTO app.materials VALUES ('B01A0001-A290-310', '{"en": "K10UF Black skin φ29.0x310", "ja": "K10UF 黒皮 φ29.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.955223+00', '2026-08-24 09:19:51.955223+00', '290', 29.000, 'A0', 310.000, '310', NULL, NULL, 'A', 1, 488, '{}');
-INSERT INTO app.materials VALUES ('B01A0001-A280-310', '{"en": "K10UF Black skin φ28.0x310", "ja": "K10UF 黒皮 φ28.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.955521+00', '2026-08-24 09:19:51.955521+00', '280', 28.000, 'A0', 310.000, '310', NULL, NULL, 'A', 1, 489, '{}');
-INSERT INTO app.materials VALUES ('B01A0001-A270-310', '{"en": "K10UF Black skin φ27.0x310", "ja": "K10UF 黒皮 φ27.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.955869+00', '2026-08-24 09:19:51.955869+00', '270', 27.000, 'A0', 310.000, '310', NULL, NULL, 'A', 1, 490, '{}');
-INSERT INTO app.materials VALUES ('B01A0001-A260-310', '{"en": "K10UF Black skin φ26.0x310", "ja": "K10UF 黒皮 φ26.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.956177+00', '2026-08-24 09:19:51.956177+00', '260', 26.000, 'A0', 310.000, '310', NULL, NULL, 'A', 1, 491, '{}');
-INSERT INTO app.materials VALUES ('B01A0001-A255-310', '{"en": "K10UF Black skin φ25.5x310", "ja": "K10UF 黒皮 φ25.5×310"}', '本', true, NULL, '2026-08-24 09:19:51.956532+00', '2026-08-24 09:19:51.956532+00', '255', 25.500, 'A0', 310.000, '310', NULL, NULL, 'A', 1, 492, '{}');
-INSERT INTO app.materials VALUES ('B01A0001-A250-310', '{"en": "K10UF Black skin φ25.0x310", "ja": "K10UF 黒皮 φ25.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.956917+00', '2026-08-24 09:19:51.956917+00', '250', 25.000, 'A0', 310.000, '310', NULL, NULL, 'A', 1, 493, '{}');
-INSERT INTO app.materials VALUES ('B01A0001-A240-310', '{"en": "K10UF Black skin φ24.0x310", "ja": "K10UF 黒皮 φ24.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.95725+00', '2026-08-24 09:19:51.95725+00', '240', 24.000, 'A0', 310.000, '310', NULL, NULL, 'A', 1, 494, '{}');
-INSERT INTO app.materials VALUES ('B01A0001-A235-310', '{"en": "K10UF Black skin φ23.5x310", "ja": "K10UF 黒皮 φ23.5×310"}', '本', true, NULL, '2026-08-24 09:19:51.957527+00', '2026-08-24 09:19:51.957527+00', '235', 23.500, 'A0', 310.000, '310', NULL, NULL, 'A', 1, 495, '{}');
-INSERT INTO app.materials VALUES ('B01A0001-A230-310', '{"en": "K10UF Black skin φ23.0x310", "ja": "K10UF 黒皮 φ23.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.957888+00', '2026-08-24 09:19:51.957888+00', '230', 23.000, 'A0', 310.000, '310', NULL, NULL, 'A', 1, 496, '{}');
-INSERT INTO app.materials VALUES ('B01A0001-A225-310', '{"en": "K10UF Black skin φ22.5x310", "ja": "K10UF 黒皮 φ22.5×310"}', '本', true, NULL, '2026-08-24 09:19:51.958156+00', '2026-08-24 09:19:51.958156+00', '225', 22.500, 'A0', 310.000, '310', NULL, NULL, 'A', 1, 497, '{}');
-INSERT INTO app.materials VALUES ('B01A0001-A220-310', '{"en": "K10UF Black skin φ22.0x310", "ja": "K10UF 黒皮 φ22.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.95842+00', '2026-08-24 09:19:51.95842+00', '220', 22.000, 'A0', 310.000, '310', NULL, NULL, 'A', 1, 498, '{}');
-INSERT INTO app.materials VALUES ('B01A0001-A215-310', '{"en": "K10UF Black skin φ21.5x310", "ja": "K10UF 黒皮 φ21.5×310"}', '本', true, NULL, '2026-08-24 09:19:51.958676+00', '2026-08-24 09:19:51.958676+00', '215', 21.500, 'A0', 310.000, '310', NULL, NULL, 'A', 1, 499, '{}');
-INSERT INTO app.materials VALUES ('B01A0001-A210-310', '{"en": "K10UF Black skin φ21.0x310", "ja": "K10UF 黒皮 φ21.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.958931+00', '2026-08-24 09:19:51.958931+00', '210', 21.000, 'A0', 310.000, '310', NULL, NULL, 'A', 1, 500, '{}');
-INSERT INTO app.materials VALUES ('B01A0001-A205-310', '{"en": "K10UF Black skin φ20.5x310", "ja": "K10UF 黒皮 φ20.5×310"}', '本', true, NULL, '2026-08-24 09:19:51.959188+00', '2026-08-24 09:19:51.959188+00', '205', 20.500, 'A0', 310.000, '310', NULL, NULL, 'A', 1, 501, '{}');
-INSERT INTO app.materials VALUES ('B01A0001-A200-310', '{"en": "K10UF Black skin φ20.0x310", "ja": "K10UF 黒皮 φ20.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.959487+00', '2026-08-24 09:19:51.959487+00', '200', 20.000, 'A0', 310.000, '310', NULL, NULL, 'A', 1, 502, '{}');
-INSERT INTO app.materials VALUES ('B01A0001-A195-310', '{"en": "K10UF Black skin φ19.5x310", "ja": "K10UF 黒皮 φ19.5×310"}', '本', true, NULL, '2026-08-24 09:19:51.959757+00', '2026-08-24 09:19:51.959757+00', '195', 19.500, 'A0', 310.000, '310', NULL, NULL, 'A', 1, 503, '{}');
-INSERT INTO app.materials VALUES ('B01A0001-A190-310', '{"en": "K10UF Black skin φ19.0x310", "ja": "K10UF 黒皮 φ19.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.960034+00', '2026-08-24 09:19:51.960034+00', '190', 19.000, 'A0', 310.000, '310', NULL, NULL, 'A', 1, 504, '{}');
-INSERT INTO app.materials VALUES ('B01A0001-A185-310', '{"en": "K10UF Black skin φ18.5x310", "ja": "K10UF 黒皮 φ18.5×310"}', '本', true, NULL, '2026-08-24 09:19:51.960259+00', '2026-08-24 09:19:51.960259+00', '185', 18.500, 'A0', 310.000, '310', NULL, NULL, 'A', 1, 505, '{}');
-INSERT INTO app.materials VALUES ('B01A0001-A180-310', '{"en": "K10UF Black skin φ18.0x310", "ja": "K10UF 黒皮 φ18.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.960508+00', '2026-08-24 09:19:51.960508+00', '180', 18.000, 'A0', 310.000, '310', NULL, NULL, 'A', 1, 506, '{}');
-INSERT INTO app.materials VALUES ('B01A0001-A175-310', '{"en": "K10UF Black skin φ17.5x310", "ja": "K10UF 黒皮 φ17.5×310"}', '本', true, NULL, '2026-08-24 09:19:51.960747+00', '2026-08-24 09:19:51.960747+00', '175', 17.500, 'A0', 310.000, '310', NULL, NULL, 'A', 1, 507, '{}');
-INSERT INTO app.materials VALUES ('B01A0001-A170-310', '{"en": "K10UF Black skin φ17.0x310", "ja": "K10UF 黒皮 φ17.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.961019+00', '2026-08-24 09:19:51.961019+00', '170', 17.000, 'A0', 310.000, '310', NULL, NULL, 'A', 1, 508, '{}');
-INSERT INTO app.materials VALUES ('B01A0001-A165-310', '{"en": "K10UF Black skin φ16.5x310", "ja": "K10UF 黒皮 φ16.5×310"}', '本', true, NULL, '2026-08-24 09:19:51.961246+00', '2026-08-24 09:19:51.961246+00', '165', 16.500, 'A0', 310.000, '310', NULL, NULL, 'A', 1, 509, '{}');
-INSERT INTO app.materials VALUES ('B01A0001-A160-310', '{"en": "K10UF Black skin φ16.0x310", "ja": "K10UF 黒皮 φ16.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.961491+00', '2026-08-24 09:19:51.961491+00', '160', 16.000, 'A0', 310.000, '310', NULL, NULL, 'A', 1, 510, '{}');
-INSERT INTO app.materials VALUES ('B01A0001-A155-310', '{"en": "K10UF Black skin φ15.5x310", "ja": "K10UF 黒皮 φ15.5×310"}', '本', true, NULL, '2026-08-24 09:19:51.961762+00', '2026-08-24 09:19:51.961762+00', '155', 15.500, 'A0', 310.000, '310', NULL, NULL, 'A', 1, 511, '{}');
-INSERT INTO app.materials VALUES ('B01A0001-A150-310', '{"en": "K10UF Black skin φ15.0x310", "ja": "K10UF 黒皮 φ15.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.962047+00', '2026-08-24 09:19:51.962047+00', '150', 15.000, 'A0', 310.000, '310', NULL, NULL, 'A', 1, 512, '{}');
-INSERT INTO app.materials VALUES ('B01A0001-A145-310', '{"en": "K10UF Black skin φ14.5x310", "ja": "K10UF 黒皮 φ14.5×310"}', '本', true, NULL, '2026-08-24 09:19:51.962332+00', '2026-08-24 09:19:51.962332+00', '145', 14.500, 'A0', 310.000, '310', NULL, NULL, 'A', 1, 513, '{}');
-INSERT INTO app.materials VALUES ('B01A0001-A140-310', '{"en": "K10UF Black skin φ14.0x310", "ja": "K10UF 黒皮 φ14.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.962569+00', '2026-08-24 09:19:51.962569+00', '140', 14.000, 'A0', 310.000, '310', NULL, NULL, 'A', 1, 514, '{}');
-INSERT INTO app.materials VALUES ('B01A0001-A135-310', '{"en": "K10UF Black skin φ13.5x310", "ja": "K10UF 黒皮 φ13.5×310"}', '本', true, NULL, '2026-08-24 09:19:51.962811+00', '2026-08-24 09:19:51.962811+00', '135', 13.500, 'A0', 310.000, '310', NULL, NULL, 'A', 1, 515, '{}');
-INSERT INTO app.materials VALUES ('B01A0001-A130-310', '{"en": "K10UF Black skin φ13.0x310", "ja": "K10UF 黒皮 φ13.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.963077+00', '2026-08-24 09:19:51.963077+00', '130', 13.000, 'A0', 310.000, '310', NULL, NULL, 'A', 1, 516, '{}');
-INSERT INTO app.materials VALUES ('B01A0001-A125-310', '{"en": "K10UF Black skin φ12.5x310", "ja": "K10UF 黒皮 φ12.5×310"}', '本', true, NULL, '2026-08-24 09:19:51.963305+00', '2026-08-24 09:19:51.963305+00', '125', 12.500, 'A0', 310.000, '310', NULL, NULL, 'A', 1, 517, '{}');
-INSERT INTO app.materials VALUES ('B01A0001-A120-310', '{"en": "K10UF Black skin φ12.0x310", "ja": "K10UF 黒皮 φ12.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.963566+00', '2026-08-24 09:19:51.963566+00', '120', 12.000, 'A0', 310.000, '310', NULL, NULL, 'A', 1, 518, '{}');
-INSERT INTO app.materials VALUES ('B01A0001-A115-310', '{"en": "K10UF Black skin φ11.5x310", "ja": "K10UF 黒皮 φ11.5×310"}', '本', true, NULL, '2026-08-24 09:19:51.963857+00', '2026-08-24 09:19:51.963857+00', '115', 11.500, 'A0', 310.000, '310', NULL, NULL, 'A', 1, 519, '{}');
-INSERT INTO app.materials VALUES ('B01A0001-A110-310', '{"en": "K10UF Black skin φ11.0x310", "ja": "K10UF 黒皮 φ11.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.964121+00', '2026-08-24 09:19:51.964121+00', '110', 11.000, 'A0', 310.000, '310', NULL, NULL, 'A', 1, 520, '{}');
-INSERT INTO app.materials VALUES ('B01A0001-A105-310', '{"en": "K10UF Black skin φ10.5x310", "ja": "K10UF 黒皮 φ10.5×310"}', '本', true, NULL, '2026-08-24 09:19:51.96436+00', '2026-08-24 09:19:51.96436+00', '105', 10.500, 'A0', 310.000, '310', NULL, NULL, 'A', 1, 521, '{}');
-INSERT INTO app.materials VALUES ('B01A0001-A100-310', '{"en": "K10UF Black skin φ10.0x310", "ja": "K10UF 黒皮 φ10.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.964627+00', '2026-08-24 09:19:51.964627+00', '100', 10.000, 'A0', 310.000, '310', NULL, NULL, 'A', 1, 522, '{}');
-INSERT INTO app.materials VALUES ('B01A0001-A095-310', '{"en": "K10UF Black skin φ9.5x310", "ja": "K10UF 黒皮 φ9.5×310"}', '本', true, NULL, '2026-08-24 09:19:51.964887+00', '2026-08-24 09:19:51.964887+00', '095', 9.500, 'A0', 310.000, '310', NULL, NULL, 'A', 1, 523, '{}');
-INSERT INTO app.materials VALUES ('B01A0001-A090-310', '{"en": "K10UF Black skin φ9.0x310", "ja": "K10UF 黒皮 φ9.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.965168+00', '2026-08-24 09:19:51.965168+00', '090', 9.000, 'A0', 310.000, '310', NULL, NULL, 'A', 1, 524, '{}');
-INSERT INTO app.materials VALUES ('B01A0001-A085-310', '{"en": "K10UF Black skin φ8.5x310", "ja": "K10UF 黒皮 φ8.5×310"}', '本', true, NULL, '2026-08-24 09:19:51.965435+00', '2026-08-24 09:19:51.965435+00', '085', 8.500, 'A0', 310.000, '310', NULL, NULL, 'A', 1, 525, '{}');
-INSERT INTO app.materials VALUES ('B01A0001-A080-310', '{"en": "K10UF Black skin φ8.0x310", "ja": "K10UF 黒皮 φ8.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.965679+00', '2026-08-24 09:19:51.965679+00', '080', 8.000, 'A0', 310.000, '310', NULL, NULL, 'A', 1, 526, '{}');
-INSERT INTO app.materials VALUES ('B01A0001-A075-310', '{"en": "K10UF Black skin φ7.5x310", "ja": "K10UF 黒皮 φ7.5×310"}', '本', true, NULL, '2026-08-24 09:19:51.965923+00', '2026-08-24 09:19:51.965923+00', '075', 7.500, 'A0', 310.000, '310', NULL, NULL, 'A', 1, 527, '{}');
-INSERT INTO app.materials VALUES ('B01A0001-A070-310', '{"en": "K10UF Black skin φ7.0x310", "ja": "K10UF 黒皮 φ7.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.966198+00', '2026-08-24 09:19:51.966198+00', '070', 7.000, 'A0', 310.000, '310', NULL, NULL, 'A', 1, 528, '{}');
-INSERT INTO app.materials VALUES ('B01A0001-A065-310', '{"en": "K10UF Black skin φ6.5x310", "ja": "K10UF 黒皮 φ6.5×310"}', '本', true, NULL, '2026-08-24 09:19:51.966438+00', '2026-08-24 09:19:51.966438+00', '065', 6.500, 'A0', 310.000, '310', NULL, NULL, 'A', 1, 529, '{}');
-INSERT INTO app.materials VALUES ('B01A0001-A060-310', '{"en": "K10UF Black skin φ6.0x310", "ja": "K10UF 黒皮 φ6.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.966686+00', '2026-08-24 09:19:51.966686+00', '060', 6.000, 'A0', 310.000, '310', NULL, NULL, 'A', 1, 530, '{}');
-INSERT INTO app.materials VALUES ('B01A0001-A055-310', '{"en": "K10UF Black skin φ5.5x310", "ja": "K10UF 黒皮 φ5.5×310"}', '本', true, NULL, '2026-08-24 09:19:51.966937+00', '2026-08-24 09:19:51.966937+00', '055', 5.500, 'A0', 310.000, '310', NULL, NULL, 'A', 1, 531, '{}');
-INSERT INTO app.materials VALUES ('B01A0001-A050-310', '{"en": "K10UF Black skin φ5.0x310", "ja": "K10UF 黒皮 φ5.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.967176+00', '2026-08-24 09:19:51.967176+00', '050', 5.000, 'A0', 310.000, '310', NULL, NULL, 'A', 1, 532, '{}');
-INSERT INTO app.materials VALUES ('B01A0001-A045-310', '{"en": "K10UF Black skin φ4.5x310", "ja": "K10UF 黒皮 φ4.5×310"}', '本', true, NULL, '2026-08-24 09:19:51.967438+00', '2026-08-24 09:19:51.967438+00', '045', 4.500, 'A0', 310.000, '310', NULL, NULL, 'A', 1, 533, '{}');
-INSERT INTO app.materials VALUES ('B01A0001-A040-310', '{"en": "K10UF Black skin φ4.0x310", "ja": "K10UF 黒皮 φ4.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.967689+00', '2026-08-24 09:19:51.967689+00', '040', 4.000, 'A0', 310.000, '310', NULL, NULL, 'A', 1, 534, '{}');
-INSERT INTO app.materials VALUES ('B01A0001-A035-310', '{"en": "K10UF Black skin φ3.5x310", "ja": "K10UF 黒皮 φ3.5×310"}', '本', true, NULL, '2026-08-24 09:19:51.967912+00', '2026-08-24 09:19:51.967912+00', '035', 3.500, 'A0', 310.000, '310', NULL, NULL, 'A', 1, 535, '{}');
-INSERT INTO app.materials VALUES ('B01A0001-A030-310', '{"en": "K10UF Black skin φ3.0x310", "ja": "K10UF 黒皮 φ3.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.968193+00', '2026-08-24 09:19:51.968193+00', '030', 3.000, 'A0', 310.000, '310', NULL, NULL, 'A', 1, 536, '{}');
-INSERT INTO app.materials VALUES ('B01A0001-A025-310', '{"en": "K10UF Black skin φ2.5x310", "ja": "K10UF 黒皮 φ2.5×310"}', '本', true, NULL, '2026-08-24 09:19:51.968434+00', '2026-08-24 09:19:51.968434+00', '025', 2.500, 'A0', 310.000, '310', NULL, NULL, 'A', 1, 537, '{}');
-INSERT INTO app.materials VALUES ('B01A0001-A020-310', '{"en": "K10UF Black skin φ2.0x310", "ja": "K10UF 黒皮 φ2.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.968684+00', '2026-08-24 09:19:51.968684+00', '020', 2.000, 'A0', 310.000, '310', NULL, NULL, 'A', 1, 538, '{}');
-INSERT INTO app.materials VALUES ('B01A0001-A015-310', '{"en": "K10UF Black skin φ1.5x310", "ja": "K10UF 黒皮 φ1.5×310"}', '本', true, NULL, '2026-08-24 09:19:51.968939+00', '2026-08-24 09:19:51.968939+00', '015', 1.500, 'A0', 310.000, '310', NULL, NULL, 'A', 1, 539, '{}');
-INSERT INTO app.materials VALUES ('B01A0001-A010-310', '{"en": "K10UF Black skin φ1.0x310", "ja": "K10UF 黒皮 φ1.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.969176+00', '2026-08-24 09:19:51.969176+00', '010', 1.000, 'A0', 310.000, '310', NULL, NULL, 'A', 1, 540, '{}');
-INSERT INTO app.materials VALUES ('B05A0001-A350-310', '{"en": "K44EF Black skin φ35.0x310", "ja": "K44EF 黒皮 φ35.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.969405+00', '2026-08-24 09:19:51.969405+00', '350', 35.000, 'A0', 310.000, '310', NULL, NULL, 'A', 5, 541, '{}');
-INSERT INTO app.materials VALUES ('B05A0001-A340-310', '{"en": "K44EF Black skin φ34.0x310", "ja": "K44EF 黒皮 φ34.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.969623+00', '2026-08-24 09:19:51.969623+00', '340', 34.000, 'A0', 310.000, '310', NULL, NULL, 'A', 5, 542, '{}');
-INSERT INTO app.materials VALUES ('B05A0001-A330-310', '{"en": "K44EF Black skin φ33.0x310", "ja": "K44EF 黒皮 φ33.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.96989+00', '2026-08-24 09:19:51.96989+00', '330', 33.000, 'A0', 310.000, '310', NULL, NULL, 'A', 5, 543, '{}');
-INSERT INTO app.materials VALUES ('B05A0001-A320-310', '{"en": "K44EF Black skin φ32.0x310", "ja": "K44EF 黒皮 φ32.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.970199+00', '2026-08-24 09:19:51.970199+00', '320', 32.000, 'A0', 310.000, '310', NULL, NULL, 'A', 5, 544, '{}');
-INSERT INTO app.materials VALUES ('B05A0001-A310-310', '{"en": "K44EF Black skin φ31.0x310", "ja": "K44EF 黒皮 φ31.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.970447+00', '2026-08-24 09:19:51.970447+00', '310', 31.000, 'A0', 310.000, '310', NULL, NULL, 'A', 5, 545, '{}');
-INSERT INTO app.materials VALUES ('B05A0001-A300-310', '{"en": "K44EF Black skin φ30.0x310", "ja": "K44EF 黒皮 φ30.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.970683+00', '2026-08-24 09:19:51.970683+00', '300', 30.000, 'A0', 310.000, '310', NULL, NULL, 'A', 5, 546, '{}');
-INSERT INTO app.materials VALUES ('B05A0001-A290-310', '{"en": "K44EF Black skin φ29.0x310", "ja": "K44EF 黒皮 φ29.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.970912+00', '2026-08-24 09:19:51.970912+00', '290', 29.000, 'A0', 310.000, '310', NULL, NULL, 'A', 5, 547, '{}');
-INSERT INTO app.materials VALUES ('B05A0001-A280-310', '{"en": "K44EF Black skin φ28.0x310", "ja": "K44EF 黒皮 φ28.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.971127+00', '2026-08-24 09:19:51.971127+00', '280', 28.000, 'A0', 310.000, '310', NULL, NULL, 'A', 5, 548, '{}');
-INSERT INTO app.materials VALUES ('B05A0001-A270-310', '{"en": "K44EF Black skin φ27.0x310", "ja": "K44EF 黒皮 φ27.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.97135+00', '2026-08-24 09:19:51.97135+00', '270', 27.000, 'A0', 310.000, '310', NULL, NULL, 'A', 5, 549, '{}');
-INSERT INTO app.materials VALUES ('B05A0001-A260-310', '{"en": "K44EF Black skin φ26.0x310", "ja": "K44EF 黒皮 φ26.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.971607+00', '2026-08-24 09:19:51.971607+00', '260', 26.000, 'A0', 310.000, '310', NULL, NULL, 'A', 5, 550, '{}');
-INSERT INTO app.materials VALUES ('B05A0001-A255-310', '{"en": "K44EF Black skin φ25.5x310", "ja": "K44EF 黒皮 φ25.5×310"}', '本', true, NULL, '2026-08-24 09:19:51.971864+00', '2026-08-24 09:19:51.971864+00', '255', 25.500, 'A0', 310.000, '310', NULL, NULL, 'A', 5, 551, '{}');
-INSERT INTO app.materials VALUES ('B05A0001-A250-310', '{"en": "K44EF Black skin φ25.0x310", "ja": "K44EF 黒皮 φ25.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.972111+00', '2026-08-24 09:19:51.972111+00', '250', 25.000, 'A0', 310.000, '310', NULL, NULL, 'A', 5, 552, '{}');
-INSERT INTO app.materials VALUES ('B05A0001-A240-310', '{"en": "K44EF Black skin φ24.0x310", "ja": "K44EF 黒皮 φ24.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.972343+00', '2026-08-24 09:19:51.972343+00', '240', 24.000, 'A0', 310.000, '310', NULL, NULL, 'A', 5, 553, '{}');
-INSERT INTO app.materials VALUES ('B05A0001-A235-310', '{"en": "K44EF Black skin φ23.5x310", "ja": "K44EF 黒皮 φ23.5×310"}', '本', true, NULL, '2026-08-24 09:19:51.972578+00', '2026-08-24 09:19:51.972578+00', '235', 23.500, 'A0', 310.000, '310', NULL, NULL, 'A', 5, 554, '{}');
-INSERT INTO app.materials VALUES ('B05A0001-A230-310', '{"en": "K44EF Black skin φ23.0x310", "ja": "K44EF 黒皮 φ23.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.972813+00', '2026-08-24 09:19:51.972813+00', '230', 23.000, 'A0', 310.000, '310', NULL, NULL, 'A', 5, 555, '{}');
-INSERT INTO app.materials VALUES ('B05A0001-A225-310', '{"en": "K44EF Black skin φ22.5x310", "ja": "K44EF 黒皮 φ22.5×310"}', '本', true, NULL, '2026-08-24 09:19:51.973087+00', '2026-08-24 09:19:51.973087+00', '225', 22.500, 'A0', 310.000, '310', NULL, NULL, 'A', 5, 556, '{}');
-INSERT INTO app.materials VALUES ('B05A0001-A220-310', '{"en": "K44EF Black skin φ22.0x310", "ja": "K44EF 黒皮 φ22.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.97332+00', '2026-08-24 09:19:51.97332+00', '220', 22.000, 'A0', 310.000, '310', NULL, NULL, 'A', 5, 557, '{}');
-INSERT INTO app.materials VALUES ('B05A0001-A215-310', '{"en": "K44EF Black skin φ21.5x310", "ja": "K44EF 黒皮 φ21.5×310"}', '本', true, NULL, '2026-08-24 09:19:51.973545+00', '2026-08-24 09:19:51.973545+00', '215', 21.500, 'A0', 310.000, '310', NULL, NULL, 'A', 5, 558, '{}');
-INSERT INTO app.materials VALUES ('B05A0001-A210-310', '{"en": "K44EF Black skin φ21.0x310", "ja": "K44EF 黒皮 φ21.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.973796+00', '2026-08-24 09:19:51.973796+00', '210', 21.000, 'A0', 310.000, '310', NULL, NULL, 'A', 5, 559, '{}');
-INSERT INTO app.materials VALUES ('B05A0001-A205-310', '{"en": "K44EF Black skin φ20.5x310", "ja": "K44EF 黒皮 φ20.5×310"}', '本', true, NULL, '2026-08-24 09:19:51.974064+00', '2026-08-24 09:19:51.974064+00', '205', 20.500, 'A0', 310.000, '310', NULL, NULL, 'A', 5, 560, '{}');
-INSERT INTO app.materials VALUES ('B05A0001-A200-310', '{"en": "K44EF Black skin φ20.0x310", "ja": "K44EF 黒皮 φ20.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.97434+00', '2026-08-24 09:19:51.97434+00', '200', 20.000, 'A0', 310.000, '310', NULL, NULL, 'A', 5, 561, '{}');
-INSERT INTO app.materials VALUES ('B05A0001-A195-310', '{"en": "K44EF Black skin φ19.5x310", "ja": "K44EF 黒皮 φ19.5×310"}', '本', true, NULL, '2026-08-24 09:19:51.97463+00', '2026-08-24 09:19:51.97463+00', '195', 19.500, 'A0', 310.000, '310', NULL, NULL, 'A', 5, 562, '{}');
-INSERT INTO app.materials VALUES ('B05A0001-A190-310', '{"en": "K44EF Black skin φ19.0x310", "ja": "K44EF 黒皮 φ19.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.974881+00', '2026-08-24 09:19:51.974881+00', '190', 19.000, 'A0', 310.000, '310', NULL, NULL, 'A', 5, 563, '{}');
-INSERT INTO app.materials VALUES ('B05A0001-A185-310', '{"en": "K44EF Black skin φ18.5x310", "ja": "K44EF 黒皮 φ18.5×310"}', '本', true, NULL, '2026-08-24 09:19:51.97512+00', '2026-08-24 09:19:51.97512+00', '185', 18.500, 'A0', 310.000, '310', NULL, NULL, 'A', 5, 564, '{}');
-INSERT INTO app.materials VALUES ('B05A0001-A180-310', '{"en": "K44EF Black skin φ18.0x310", "ja": "K44EF 黒皮 φ18.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.975398+00', '2026-08-24 09:19:51.975398+00', '180', 18.000, 'A0', 310.000, '310', NULL, NULL, 'A', 5, 565, '{}');
-INSERT INTO app.materials VALUES ('B05A0001-A175-310', '{"en": "K44EF Black skin φ17.5x310", "ja": "K44EF 黒皮 φ17.5×310"}', '本', true, NULL, '2026-08-24 09:19:51.975632+00', '2026-08-24 09:19:51.975632+00', '175', 17.500, 'A0', 310.000, '310', NULL, NULL, 'A', 5, 566, '{}');
-INSERT INTO app.materials VALUES ('B05A0001-A170-310', '{"en": "K44EF Black skin φ17.0x310", "ja": "K44EF 黒皮 φ17.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.975868+00', '2026-08-24 09:19:51.975868+00', '170', 17.000, 'A0', 310.000, '310', NULL, NULL, 'A', 5, 567, '{}');
-INSERT INTO app.materials VALUES ('B05A0001-A165-310', '{"en": "K44EF Black skin φ16.5x310", "ja": "K44EF 黒皮 φ16.5×310"}', '本', true, NULL, '2026-08-24 09:19:51.976097+00', '2026-08-24 09:19:51.976097+00', '165', 16.500, 'A0', 310.000, '310', NULL, NULL, 'A', 5, 568, '{}');
-INSERT INTO app.materials VALUES ('B05A0001-A160-310', '{"en": "K44EF Black skin φ16.0x310", "ja": "K44EF 黒皮 φ16.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.976376+00', '2026-08-24 09:19:51.976376+00', '160', 16.000, 'A0', 310.000, '310', NULL, NULL, 'A', 5, 569, '{}');
-INSERT INTO app.materials VALUES ('B05A0001-A155-310', '{"en": "K44EF Black skin φ15.5x310", "ja": "K44EF 黒皮 φ15.5×310"}', '本', true, NULL, '2026-08-24 09:19:51.976684+00', '2026-08-24 09:19:51.976684+00', '155', 15.500, 'A0', 310.000, '310', NULL, NULL, 'A', 5, 570, '{}');
-INSERT INTO app.materials VALUES ('B05A0001-A150-310', '{"en": "K44EF Black skin φ15.0x310", "ja": "K44EF 黒皮 φ15.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.976997+00', '2026-08-24 09:19:51.976997+00', '150', 15.000, 'A0', 310.000, '310', NULL, NULL, 'A', 5, 571, '{}');
-INSERT INTO app.materials VALUES ('B05A0001-A145-310', '{"en": "K44EF Black skin φ14.5x310", "ja": "K44EF 黒皮 φ14.5×310"}', '本', true, NULL, '2026-08-24 09:19:51.977242+00', '2026-08-24 09:19:51.977242+00', '145', 14.500, 'A0', 310.000, '310', NULL, NULL, 'A', 5, 572, '{}');
-INSERT INTO app.materials VALUES ('B05A0001-A140-310', '{"en": "K44EF Black skin φ14.0x310", "ja": "K44EF 黒皮 φ14.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.977498+00', '2026-08-24 09:19:51.977498+00', '140', 14.000, 'A0', 310.000, '310', NULL, NULL, 'A', 5, 573, '{}');
-INSERT INTO app.materials VALUES ('B05A0001-A135-310', '{"en": "K44EF Black skin φ13.5x310", "ja": "K44EF 黒皮 φ13.5×310"}', '本', true, NULL, '2026-08-24 09:19:51.977728+00', '2026-08-24 09:19:51.977728+00', '135', 13.500, 'A0', 310.000, '310', NULL, NULL, 'A', 5, 574, '{}');
-INSERT INTO app.materials VALUES ('B05A0001-A130-310', '{"en": "K44EF Black skin φ13.0x310", "ja": "K44EF 黒皮 φ13.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.978002+00', '2026-08-24 09:19:51.978002+00', '130', 13.000, 'A0', 310.000, '310', NULL, NULL, 'A', 5, 575, '{}');
-INSERT INTO app.materials VALUES ('B05A0001-A125-310', '{"en": "K44EF Black skin φ12.5x310", "ja": "K44EF 黒皮 φ12.5×310"}', '本', true, NULL, '2026-08-24 09:19:51.97825+00', '2026-08-24 09:19:51.97825+00', '125', 12.500, 'A0', 310.000, '310', NULL, NULL, 'A', 5, 576, '{}');
-INSERT INTO app.materials VALUES ('B05A0001-A120-310', '{"en": "K44EF Black skin φ12.0x310", "ja": "K44EF 黒皮 φ12.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.978513+00', '2026-08-24 09:19:51.978513+00', '120', 12.000, 'A0', 310.000, '310', NULL, NULL, 'A', 5, 577, '{}');
-INSERT INTO app.materials VALUES ('B05A0001-A115-310', '{"en": "K44EF Black skin φ11.5x310", "ja": "K44EF 黒皮 φ11.5×310"}', '本', true, NULL, '2026-08-24 09:19:51.978724+00', '2026-08-24 09:19:51.978724+00', '115', 11.500, 'A0', 310.000, '310', NULL, NULL, 'A', 5, 578, '{}');
-INSERT INTO app.materials VALUES ('B05A0001-A110-310', '{"en": "K44EF Black skin φ11.0x310", "ja": "K44EF 黒皮 φ11.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.978943+00', '2026-08-24 09:19:51.978943+00', '110', 11.000, 'A0', 310.000, '310', NULL, NULL, 'A', 5, 579, '{}');
-INSERT INTO app.materials VALUES ('B05A0001-A105-310', '{"en": "K44EF Black skin φ10.5x310", "ja": "K44EF 黒皮 φ10.5×310"}', '本', true, NULL, '2026-08-24 09:19:51.979181+00', '2026-08-24 09:19:51.979181+00', '105', 10.500, 'A0', 310.000, '310', NULL, NULL, 'A', 5, 580, '{}');
-INSERT INTO app.materials VALUES ('B05A0001-A100-310', '{"en": "K44EF Black skin φ10.0x310", "ja": "K44EF 黒皮 φ10.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.979444+00', '2026-08-24 09:19:51.979444+00', '100', 10.000, 'A0', 310.000, '310', NULL, NULL, 'A', 5, 581, '{}');
-INSERT INTO app.materials VALUES ('B05A0001-A095-310', '{"en": "K44EF Black skin φ9.5x310", "ja": "K44EF 黒皮 φ9.5×310"}', '本', true, NULL, '2026-08-24 09:19:51.979693+00', '2026-08-24 09:19:51.979693+00', '095', 9.500, 'A0', 310.000, '310', NULL, NULL, 'A', 5, 582, '{}');
-INSERT INTO app.materials VALUES ('B05A0001-A090-310', '{"en": "K44EF Black skin φ9.0x310", "ja": "K44EF 黒皮 φ9.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.979997+00', '2026-08-24 09:19:51.979997+00', '090', 9.000, 'A0', 310.000, '310', NULL, NULL, 'A', 5, 583, '{}');
-INSERT INTO app.materials VALUES ('B05A0001-A085-310', '{"en": "K44EF Black skin φ8.5x310", "ja": "K44EF 黒皮 φ8.5×310"}', '本', true, NULL, '2026-08-24 09:19:51.980243+00', '2026-08-24 09:19:51.980243+00', '085', 8.500, 'A0', 310.000, '310', NULL, NULL, 'A', 5, 584, '{}');
-INSERT INTO app.materials VALUES ('B05A0001-A080-310', '{"en": "K44EF Black skin φ8.0x310", "ja": "K44EF 黒皮 φ8.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.980518+00', '2026-08-24 09:19:51.980518+00', '080', 8.000, 'A0', 310.000, '310', NULL, NULL, 'A', 5, 585, '{}');
-INSERT INTO app.materials VALUES ('B05A0001-A075-310', '{"en": "K44EF Black skin φ7.5x310", "ja": "K44EF 黒皮 φ7.5×310"}', '本', true, NULL, '2026-08-24 09:19:51.980799+00', '2026-08-24 09:19:51.980799+00', '075', 7.500, 'A0', 310.000, '310', NULL, NULL, 'A', 5, 586, '{}');
-INSERT INTO app.materials VALUES ('B05A0001-A070-310', '{"en": "K44EF Black skin φ7.0x310", "ja": "K44EF 黒皮 φ7.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.981078+00', '2026-08-24 09:19:51.981078+00', '070', 7.000, 'A0', 310.000, '310', NULL, NULL, 'A', 5, 587, '{}');
-INSERT INTO app.materials VALUES ('B05A0001-A065-310', '{"en": "K44EF Black skin φ6.5x310", "ja": "K44EF 黒皮 φ6.5×310"}', '本', true, NULL, '2026-08-24 09:19:51.981305+00', '2026-08-24 09:19:51.981305+00', '065', 6.500, 'A0', 310.000, '310', NULL, NULL, 'A', 5, 588, '{}');
-INSERT INTO app.materials VALUES ('B05A0001-A060-310', '{"en": "K44EF Black skin φ6.0x310", "ja": "K44EF 黒皮 φ6.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.981539+00', '2026-08-24 09:19:51.981539+00', '060', 6.000, 'A0', 310.000, '310', NULL, NULL, 'A', 5, 589, '{}');
-INSERT INTO app.materials VALUES ('B05A0001-A055-310', '{"en": "K44EF Black skin φ5.5x310", "ja": "K44EF 黒皮 φ5.5×310"}', '本', true, NULL, '2026-08-24 09:19:51.981786+00', '2026-08-24 09:19:51.981786+00', '055', 5.500, 'A0', 310.000, '310', NULL, NULL, 'A', 5, 590, '{}');
-INSERT INTO app.materials VALUES ('B05A0001-A050-310', '{"en": "K44EF Black skin φ5.0x310", "ja": "K44EF 黒皮 φ5.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.982048+00', '2026-08-24 09:19:51.982048+00', '050', 5.000, 'A0', 310.000, '310', NULL, NULL, 'A', 5, 591, '{}');
-INSERT INTO app.materials VALUES ('B05A0001-A045-310', '{"en": "K44EF Black skin φ4.5x310", "ja": "K44EF 黒皮 φ4.5×310"}', '本', true, NULL, '2026-08-24 09:19:51.982319+00', '2026-08-24 09:19:51.982319+00', '045', 4.500, 'A0', 310.000, '310', NULL, NULL, 'A', 5, 592, '{}');
-INSERT INTO app.materials VALUES ('B05A0001-A040-310', '{"en": "K44EF Black skin φ4.0x310", "ja": "K44EF 黒皮 φ4.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.982559+00', '2026-08-24 09:19:51.982559+00', '040', 4.000, 'A0', 310.000, '310', NULL, NULL, 'A', 5, 593, '{}');
-INSERT INTO app.materials VALUES ('B05A0001-A035-310', '{"en": "K44EF Black skin φ3.5x310", "ja": "K44EF 黒皮 φ3.5×310"}', '本', true, NULL, '2026-08-24 09:19:51.982782+00', '2026-08-24 09:19:51.982782+00', '035', 3.500, 'A0', 310.000, '310', NULL, NULL, 'A', 5, 594, '{}');
-INSERT INTO app.materials VALUES ('B05A0001-A030-310', '{"en": "K44EF Black skin φ3.0x310", "ja": "K44EF 黒皮 φ3.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.983033+00', '2026-08-24 09:19:51.983033+00', '030', 3.000, 'A0', 310.000, '310', NULL, NULL, 'A', 5, 595, '{}');
-INSERT INTO app.materials VALUES ('B05A0001-A025-310', '{"en": "K44EF Black skin φ2.5x310", "ja": "K44EF 黒皮 φ2.5×310"}', '本', true, NULL, '2026-08-24 09:19:51.983276+00', '2026-08-24 09:19:51.983276+00', '025', 2.500, 'A0', 310.000, '310', NULL, NULL, 'A', 5, 596, '{}');
-INSERT INTO app.materials VALUES ('B05A0001-A020-310', '{"en": "K44EF Black skin φ2.0x310", "ja": "K44EF 黒皮 φ2.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.983549+00', '2026-08-24 09:19:51.983549+00', '020', 2.000, 'A0', 310.000, '310', NULL, NULL, 'A', 5, 597, '{}');
-INSERT INTO app.materials VALUES ('B05A0001-A015-310', '{"en": "K44EF Black skin φ1.5x310", "ja": "K44EF 黒皮 φ1.5×310"}', '本', true, NULL, '2026-08-24 09:19:51.983777+00', '2026-08-24 09:19:51.983777+00', '015', 1.500, 'A0', 310.000, '310', NULL, NULL, 'A', 5, 598, '{}');
-INSERT INTO app.materials VALUES ('B05A0001-A010-310', '{"en": "K44EF Black skin φ1.0x310", "ja": "K44EF 黒皮 φ1.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.984041+00', '2026-08-24 09:19:51.984041+00', '010', 1.000, 'A0', 310.000, '310', NULL, NULL, 'A', 5, 599, '{}');
-INSERT INTO app.materials VALUES ('B03A0001-A350-310', '{"en": "K34EF Black skin φ35.0x310", "ja": "K34EF 黒皮 φ35.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.984292+00', '2026-08-24 09:19:51.984292+00', '350', 35.000, 'A0', 310.000, '310', NULL, NULL, 'A', 3, 600, '{}');
-INSERT INTO app.materials VALUES ('B03A0001-A340-310', '{"en": "K34EF Black skin φ34.0x310", "ja": "K34EF 黒皮 φ34.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.98452+00', '2026-08-24 09:19:51.98452+00', '340', 34.000, 'A0', 310.000, '310', NULL, NULL, 'A', 3, 601, '{}');
-INSERT INTO app.materials VALUES ('B03A0001-A330-310', '{"en": "K34EF Black skin φ33.0x310", "ja": "K34EF 黒皮 φ33.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.984754+00', '2026-08-24 09:19:51.984754+00', '330', 33.000, 'A0', 310.000, '310', NULL, NULL, 'A', 3, 602, '{}');
-INSERT INTO app.materials VALUES ('B03A0001-A320-310', '{"en": "K34EF Black skin φ32.0x310", "ja": "K34EF 黒皮 φ32.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.985004+00', '2026-08-24 09:19:51.985004+00', '320', 32.000, 'A0', 310.000, '310', NULL, NULL, 'A', 3, 603, '{}');
-INSERT INTO app.materials VALUES ('B03A0001-A310-310', '{"en": "K34EF Black skin φ31.0x310", "ja": "K34EF 黒皮 φ31.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.985244+00', '2026-08-24 09:19:51.985244+00', '310', 31.000, 'A0', 310.000, '310', NULL, NULL, 'A', 3, 604, '{}');
-INSERT INTO app.materials VALUES ('B03A0001-A300-310', '{"en": "K34EF Black skin φ30.0x310", "ja": "K34EF 黒皮 φ30.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.985486+00', '2026-08-24 09:19:51.985486+00', '300', 30.000, 'A0', 310.000, '310', NULL, NULL, 'A', 3, 605, '{}');
-INSERT INTO app.materials VALUES ('B03A0001-A290-310', '{"en": "K34EF Black skin φ29.0x310", "ja": "K34EF 黒皮 φ29.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.985713+00', '2026-08-24 09:19:51.985713+00', '290', 29.000, 'A0', 310.000, '310', NULL, NULL, 'A', 3, 606, '{}');
-INSERT INTO app.materials VALUES ('B03A0001-A280-310', '{"en": "K34EF Black skin φ28.0x310", "ja": "K34EF 黒皮 φ28.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.985983+00', '2026-08-24 09:19:51.985983+00', '280', 28.000, 'A0', 310.000, '310', NULL, NULL, 'A', 3, 607, '{}');
-INSERT INTO app.materials VALUES ('B03A0001-A270-310', '{"en": "K34EF Black skin φ27.0x310", "ja": "K34EF 黒皮 φ27.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.986271+00', '2026-08-24 09:19:51.986271+00', '270', 27.000, 'A0', 310.000, '310', NULL, NULL, 'A', 3, 608, '{}');
-INSERT INTO app.materials VALUES ('B03A0001-A260-310', '{"en": "K34EF Black skin φ26.0x310", "ja": "K34EF 黒皮 φ26.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.986532+00', '2026-08-24 09:19:51.986532+00', '260', 26.000, 'A0', 310.000, '310', NULL, NULL, 'A', 3, 609, '{}');
-INSERT INTO app.materials VALUES ('B03A0001-A255-310', '{"en": "K34EF Black skin φ25.5x310", "ja": "K34EF 黒皮 φ25.5×310"}', '本', true, NULL, '2026-08-24 09:19:51.986785+00', '2026-08-24 09:19:51.986785+00', '255', 25.500, 'A0', 310.000, '310', NULL, NULL, 'A', 3, 610, '{}');
-INSERT INTO app.materials VALUES ('B03A0001-A250-310', '{"en": "K34EF Black skin φ25.0x310", "ja": "K34EF 黒皮 φ25.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.987028+00', '2026-08-24 09:19:51.987028+00', '250', 25.000, 'A0', 310.000, '310', NULL, NULL, 'A', 3, 611, '{}');
-INSERT INTO app.materials VALUES ('B03A0001-A240-310', '{"en": "K34EF Black skin φ24.0x310", "ja": "K34EF 黒皮 φ24.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.987276+00', '2026-08-24 09:19:51.987276+00', '240', 24.000, 'A0', 310.000, '310', NULL, NULL, 'A', 3, 612, '{}');
-INSERT INTO app.materials VALUES ('B03A0001-A235-310', '{"en": "K34EF Black skin φ23.5x310", "ja": "K34EF 黒皮 φ23.5×310"}', '本', true, NULL, '2026-08-24 09:19:51.987537+00', '2026-08-24 09:19:51.987537+00', '235', 23.500, 'A0', 310.000, '310', NULL, NULL, 'A', 3, 613, '{}');
-INSERT INTO app.materials VALUES ('B03A0001-A230-310', '{"en": "K34EF Black skin φ23.0x310", "ja": "K34EF 黒皮 φ23.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.987756+00', '2026-08-24 09:19:51.987756+00', '230', 23.000, 'A0', 310.000, '310', NULL, NULL, 'A', 3, 614, '{}');
-INSERT INTO app.materials VALUES ('B03A0001-A225-310', '{"en": "K34EF Black skin φ22.5x310", "ja": "K34EF 黒皮 φ22.5×310"}', '本', true, NULL, '2026-08-24 09:19:51.987999+00', '2026-08-24 09:19:51.987999+00', '225', 22.500, 'A0', 310.000, '310', NULL, NULL, 'A', 3, 615, '{}');
-INSERT INTO app.materials VALUES ('B03A0001-A220-310', '{"en": "K34EF Black skin φ22.0x310", "ja": "K34EF 黒皮 φ22.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.988236+00', '2026-08-24 09:19:51.988236+00', '220', 22.000, 'A0', 310.000, '310', NULL, NULL, 'A', 3, 616, '{}');
-INSERT INTO app.materials VALUES ('B03A0001-A215-310', '{"en": "K34EF Black skin φ21.5x310", "ja": "K34EF 黒皮 φ21.5×310"}', '本', true, NULL, '2026-08-24 09:19:51.988468+00', '2026-08-24 09:19:51.988468+00', '215', 21.500, 'A0', 310.000, '310', NULL, NULL, 'A', 3, 617, '{}');
-INSERT INTO app.materials VALUES ('B03A0001-A210-310', '{"en": "K34EF Black skin φ21.0x310", "ja": "K34EF 黒皮 φ21.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.988739+00', '2026-08-24 09:19:51.988739+00', '210', 21.000, 'A0', 310.000, '310', NULL, NULL, 'A', 3, 618, '{}');
-INSERT INTO app.materials VALUES ('B03A0001-A205-310', '{"en": "K34EF Black skin φ20.5x310", "ja": "K34EF 黒皮 φ20.5×310"}', '本', true, NULL, '2026-08-24 09:19:51.989021+00', '2026-08-24 09:19:51.989021+00', '205', 20.500, 'A0', 310.000, '310', NULL, NULL, 'A', 3, 619, '{}');
-INSERT INTO app.materials VALUES ('B03A0001-A200-310', '{"en": "K34EF Black skin φ20.0x310", "ja": "K34EF 黒皮 φ20.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.989268+00', '2026-08-24 09:19:51.989268+00', '200', 20.000, 'A0', 310.000, '310', NULL, NULL, 'A', 3, 620, '{}');
-INSERT INTO app.materials VALUES ('B03A0001-A195-310', '{"en": "K34EF Black skin φ19.5x310", "ja": "K34EF 黒皮 φ19.5×310"}', '本', true, NULL, '2026-08-24 09:19:51.9895+00', '2026-08-24 09:19:51.9895+00', '195', 19.500, 'A0', 310.000, '310', NULL, NULL, 'A', 3, 621, '{}');
-INSERT INTO app.materials VALUES ('B03A0001-A190-310', '{"en": "K34EF Black skin φ19.0x310", "ja": "K34EF 黒皮 φ19.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.98973+00', '2026-08-24 09:19:51.98973+00', '190', 19.000, 'A0', 310.000, '310', NULL, NULL, 'A', 3, 622, '{}');
-INSERT INTO app.materials VALUES ('B03A0001-A185-310', '{"en": "K34EF Black skin φ18.5x310", "ja": "K34EF 黒皮 φ18.5×310"}', '本', true, NULL, '2026-08-24 09:19:51.990026+00', '2026-08-24 09:19:51.990026+00', '185', 18.500, 'A0', 310.000, '310', NULL, NULL, 'A', 3, 623, '{}');
-INSERT INTO app.materials VALUES ('B03A0001-A180-310', '{"en": "K34EF Black skin φ18.0x310", "ja": "K34EF 黒皮 φ18.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.990265+00', '2026-08-24 09:19:51.990265+00', '180', 18.000, 'A0', 310.000, '310', NULL, NULL, 'A', 3, 624, '{}');
-INSERT INTO app.materials VALUES ('B03A0001-A175-310', '{"en": "K34EF Black skin φ17.5x310", "ja": "K34EF 黒皮 φ17.5×310"}', '本', true, NULL, '2026-08-24 09:19:51.990512+00', '2026-08-24 09:19:51.990512+00', '175', 17.500, 'A0', 310.000, '310', NULL, NULL, 'A', 3, 625, '{}');
-INSERT INTO app.materials VALUES ('B03A0001-A170-310', '{"en": "K34EF Black skin φ17.0x310", "ja": "K34EF 黒皮 φ17.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.990747+00', '2026-08-24 09:19:51.990747+00', '170', 17.000, 'A0', 310.000, '310', NULL, NULL, 'A', 3, 626, '{}');
-INSERT INTO app.materials VALUES ('B03A0001-A165-310', '{"en": "K34EF Black skin φ16.5x310", "ja": "K34EF 黒皮 φ16.5×310"}', '本', true, NULL, '2026-08-24 09:19:51.991034+00', '2026-08-24 09:19:51.991034+00', '165', 16.500, 'A0', 310.000, '310', NULL, NULL, 'A', 3, 627, '{}');
-INSERT INTO app.materials VALUES ('B03A0001-A160-310', '{"en": "K34EF Black skin φ16.0x310", "ja": "K34EF 黒皮 φ16.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.991307+00', '2026-08-24 09:19:51.991307+00', '160', 16.000, 'A0', 310.000, '310', NULL, NULL, 'A', 3, 628, '{}');
-INSERT INTO app.materials VALUES ('B03A0001-A155-310', '{"en": "K34EF Black skin φ15.5x310", "ja": "K34EF 黒皮 φ15.5×310"}', '本', true, NULL, '2026-08-24 09:19:51.991553+00', '2026-08-24 09:19:51.991553+00', '155', 15.500, 'A0', 310.000, '310', NULL, NULL, 'A', 3, 629, '{}');
-INSERT INTO app.materials VALUES ('B03A0001-A150-310', '{"en": "K34EF Black skin φ15.0x310", "ja": "K34EF 黒皮 φ15.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.991777+00', '2026-08-24 09:19:51.991777+00', '150', 15.000, 'A0', 310.000, '310', NULL, NULL, 'A', 3, 630, '{}');
-INSERT INTO app.materials VALUES ('B03A0001-A145-310', '{"en": "K34EF Black skin φ14.5x310", "ja": "K34EF 黒皮 φ14.5×310"}', '本', true, NULL, '2026-08-24 09:19:51.992035+00', '2026-08-24 09:19:51.992035+00', '145', 14.500, 'A0', 310.000, '310', NULL, NULL, 'A', 3, 631, '{}');
-INSERT INTO app.materials VALUES ('B03A0001-A140-310', '{"en": "K34EF Black skin φ14.0x310", "ja": "K34EF 黒皮 φ14.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.992253+00', '2026-08-24 09:19:51.992253+00', '140', 14.000, 'A0', 310.000, '310', NULL, NULL, 'A', 3, 632, '{}');
-INSERT INTO app.materials VALUES ('B03A0001-A135-310', '{"en": "K34EF Black skin φ13.5x310", "ja": "K34EF 黒皮 φ13.5×310"}', '本', true, NULL, '2026-08-24 09:19:51.992514+00', '2026-08-24 09:19:51.992514+00', '135', 13.500, 'A0', 310.000, '310', NULL, NULL, 'A', 3, 633, '{}');
-INSERT INTO app.materials VALUES ('B03A0001-A130-310', '{"en": "K34EF Black skin φ13.0x310", "ja": "K34EF 黒皮 φ13.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.99274+00', '2026-08-24 09:19:51.99274+00', '130', 13.000, 'A0', 310.000, '310', NULL, NULL, 'A', 3, 634, '{}');
-INSERT INTO app.materials VALUES ('B03A0001-A125-310', '{"en": "K34EF Black skin φ12.5x310", "ja": "K34EF 黒皮 φ12.5×310"}', '本', true, NULL, '2026-08-24 09:19:51.99299+00', '2026-08-24 09:19:51.99299+00', '125', 12.500, 'A0', 310.000, '310', NULL, NULL, 'A', 3, 635, '{}');
-INSERT INTO app.materials VALUES ('B03A0001-A120-310', '{"en": "K34EF Black skin φ12.0x310", "ja": "K34EF 黒皮 φ12.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.993232+00', '2026-08-24 09:19:51.993232+00', '120', 12.000, 'A0', 310.000, '310', NULL, NULL, 'A', 3, 636, '{}');
-INSERT INTO app.materials VALUES ('B03A0001-A115-310', '{"en": "K34EF Black skin φ11.5x310", "ja": "K34EF 黒皮 φ11.5×310"}', '本', true, NULL, '2026-08-24 09:19:51.993507+00', '2026-08-24 09:19:51.993507+00', '115', 11.500, 'A0', 310.000, '310', NULL, NULL, 'A', 3, 637, '{}');
-INSERT INTO app.materials VALUES ('B03A0001-A110-310', '{"en": "K34EF Black skin φ11.0x310", "ja": "K34EF 黒皮 φ11.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.993733+00', '2026-08-24 09:19:51.993733+00', '110', 11.000, 'A0', 310.000, '310', NULL, NULL, 'A', 3, 638, '{}');
-INSERT INTO app.materials VALUES ('B03A0001-A105-310', '{"en": "K34EF Black skin φ10.5x310", "ja": "K34EF 黒皮 φ10.5×310"}', '本', true, NULL, '2026-08-24 09:19:51.993982+00', '2026-08-24 09:19:51.993982+00', '105', 10.500, 'A0', 310.000, '310', NULL, NULL, 'A', 3, 639, '{}');
-INSERT INTO app.materials VALUES ('B03A0001-A100-310', '{"en": "K34EF Black skin φ10.0x310", "ja": "K34EF 黒皮 φ10.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.994239+00', '2026-08-24 09:19:51.994239+00', '100', 10.000, 'A0', 310.000, '310', NULL, NULL, 'A', 3, 640, '{}');
-INSERT INTO app.materials VALUES ('B03A0001-A095-310', '{"en": "K34EF Black skin φ9.5x310", "ja": "K34EF 黒皮 φ9.5×310"}', '本', true, NULL, '2026-08-24 09:19:51.994505+00', '2026-08-24 09:19:51.994505+00', '095', 9.500, 'A0', 310.000, '310', NULL, NULL, 'A', 3, 641, '{}');
-INSERT INTO app.materials VALUES ('B03A0001-A090-310', '{"en": "K34EF Black skin φ9.0x310", "ja": "K34EF 黒皮 φ9.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.994827+00', '2026-08-24 09:19:51.994827+00', '090', 9.000, 'A0', 310.000, '310', NULL, NULL, 'A', 3, 642, '{}');
-INSERT INTO app.materials VALUES ('B03A0001-A085-310', '{"en": "K34EF Black skin φ8.5x310", "ja": "K34EF 黒皮 φ8.5×310"}', '本', true, NULL, '2026-08-24 09:19:51.995231+00', '2026-08-24 09:19:51.995231+00', '085', 8.500, 'A0', 310.000, '310', NULL, NULL, 'A', 3, 643, '{}');
-INSERT INTO app.materials VALUES ('B03A0001-A080-310', '{"en": "K34EF Black skin φ8.0x310", "ja": "K34EF 黒皮 φ8.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.995546+00', '2026-08-24 09:19:51.995546+00', '080', 8.000, 'A0', 310.000, '310', NULL, NULL, 'A', 3, 644, '{}');
-INSERT INTO app.materials VALUES ('B03A0001-A075-310', '{"en": "K34EF Black skin φ7.5x310", "ja": "K34EF 黒皮 φ7.5×310"}', '本', true, NULL, '2026-08-24 09:19:51.995857+00', '2026-08-24 09:19:51.995857+00', '075', 7.500, 'A0', 310.000, '310', NULL, NULL, 'A', 3, 645, '{}');
-INSERT INTO app.materials VALUES ('B03A0001-A070-310', '{"en": "K34EF Black skin φ7.0x310", "ja": "K34EF 黒皮 φ7.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.996166+00', '2026-08-24 09:19:51.996166+00', '070', 7.000, 'A0', 310.000, '310', NULL, NULL, 'A', 3, 646, '{}');
-INSERT INTO app.materials VALUES ('B03A0001-A065-310', '{"en": "K34EF Black skin φ6.5x310", "ja": "K34EF 黒皮 φ6.5×310"}', '本', true, NULL, '2026-08-24 09:19:51.996446+00', '2026-08-24 09:19:51.996446+00', '065', 6.500, 'A0', 310.000, '310', NULL, NULL, 'A', 3, 647, '{}');
-INSERT INTO app.materials VALUES ('B03A0001-A060-310', '{"en": "K34EF Black skin φ6.0x310", "ja": "K34EF 黒皮 φ6.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.996843+00', '2026-08-24 09:19:51.996843+00', '060', 6.000, 'A0', 310.000, '310', NULL, NULL, 'A', 3, 648, '{}');
-INSERT INTO app.materials VALUES ('B03A0001-A055-310', '{"en": "K34EF Black skin φ5.5x310", "ja": "K34EF 黒皮 φ5.5×310"}', '本', true, NULL, '2026-08-24 09:19:51.997125+00', '2026-08-24 09:19:51.997125+00', '055', 5.500, 'A0', 310.000, '310', NULL, NULL, 'A', 3, 649, '{}');
-INSERT INTO app.materials VALUES ('B03A0001-A050-310', '{"en": "K34EF Black skin φ5.0x310", "ja": "K34EF 黒皮 φ5.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.997394+00', '2026-08-24 09:19:51.997394+00', '050', 5.000, 'A0', 310.000, '310', NULL, NULL, 'A', 3, 650, '{}');
-INSERT INTO app.materials VALUES ('B03A0001-A045-310', '{"en": "K34EF Black skin φ4.5x310", "ja": "K34EF 黒皮 φ4.5×310"}', '本', true, NULL, '2026-08-24 09:19:51.997664+00', '2026-08-24 09:19:51.997664+00', '045', 4.500, 'A0', 310.000, '310', NULL, NULL, 'A', 3, 651, '{}');
-INSERT INTO app.materials VALUES ('B03A0001-A040-310', '{"en": "K34EF Black skin φ4.0x310", "ja": "K34EF 黒皮 φ4.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.997983+00', '2026-08-24 09:19:51.997983+00', '040', 4.000, 'A0', 310.000, '310', NULL, NULL, 'A', 3, 652, '{}');
-INSERT INTO app.materials VALUES ('B03A0001-A035-310', '{"en": "K34EF Black skin φ3.5x310", "ja": "K34EF 黒皮 φ3.5×310"}', '本', true, NULL, '2026-08-24 09:19:51.998298+00', '2026-08-24 09:19:51.998298+00', '035', 3.500, 'A0', 310.000, '310', NULL, NULL, 'A', 3, 653, '{}');
-INSERT INTO app.materials VALUES ('B03A0001-A030-310', '{"en": "K34EF Black skin φ3.0x310", "ja": "K34EF 黒皮 φ3.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.998581+00', '2026-08-24 09:19:51.998581+00', '030', 3.000, 'A0', 310.000, '310', NULL, NULL, 'A', 3, 654, '{}');
-INSERT INTO app.materials VALUES ('B03A0001-A025-310', '{"en": "K34EF Black skin φ2.5x310", "ja": "K34EF 黒皮 φ2.5×310"}', '本', true, NULL, '2026-08-24 09:19:51.998889+00', '2026-08-24 09:19:51.998889+00', '025', 2.500, 'A0', 310.000, '310', NULL, NULL, 'A', 3, 655, '{}');
-INSERT INTO app.materials VALUES ('B03A0001-A020-310', '{"en": "K34EF Black skin φ2.0x310", "ja": "K34EF 黒皮 φ2.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.999197+00', '2026-08-24 09:19:51.999197+00', '020', 2.000, 'A0', 310.000, '310', NULL, NULL, 'A', 3, 656, '{}');
-INSERT INTO app.materials VALUES ('B03A0001-A015-310', '{"en": "K34EF Black skin φ1.5x310", "ja": "K34EF 黒皮 φ1.5×310"}', '本', true, NULL, '2026-08-24 09:19:51.999637+00', '2026-08-24 09:19:51.999637+00', '015', 1.500, 'A0', 310.000, '310', NULL, NULL, 'A', 3, 657, '{}');
-INSERT INTO app.materials VALUES ('B03A0001-A010-310', '{"en": "K34EF Black skin φ1.0x310", "ja": "K34EF 黒皮 φ1.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.999911+00', '2026-08-24 09:19:51.999911+00', '010', 1.000, 'A0', 310.000, '310', NULL, NULL, 'A', 3, 658, '{}');
-INSERT INTO app.materials VALUES ('B06A0001-A350-310', '{"en": "K45EF Black skin φ35.0x310", "ja": "K45EF 黒皮 φ35.0×310"}', '本', true, NULL, '2026-08-24 09:19:52.000191+00', '2026-08-24 09:19:52.000191+00', '350', 35.000, 'A0', 310.000, '310', NULL, NULL, 'A', 6, 659, '{}');
-INSERT INTO app.materials VALUES ('B06A0001-A340-310', '{"en": "K45EF Black skin φ34.0x310", "ja": "K45EF 黒皮 φ34.0×310"}', '本', true, NULL, '2026-08-24 09:19:52.000459+00', '2026-08-24 09:19:52.000459+00', '340', 34.000, 'A0', 310.000, '310', NULL, NULL, 'A', 6, 660, '{}');
-INSERT INTO app.materials VALUES ('B06A0001-A330-310', '{"en": "K45EF Black skin φ33.0x310", "ja": "K45EF 黒皮 φ33.0×310"}', '本', true, NULL, '2026-08-24 09:19:52.000713+00', '2026-08-24 09:19:52.000713+00', '330', 33.000, 'A0', 310.000, '310', NULL, NULL, 'A', 6, 661, '{}');
-INSERT INTO app.materials VALUES ('B06A0001-A320-310', '{"en": "K45EF Black skin φ32.0x310", "ja": "K45EF 黒皮 φ32.0×310"}', '本', true, NULL, '2026-08-24 09:19:52.000996+00', '2026-08-24 09:19:52.000996+00', '320', 32.000, 'A0', 310.000, '310', NULL, NULL, 'A', 6, 662, '{}');
-INSERT INTO app.materials VALUES ('B06A0001-A310-310', '{"en": "K45EF Black skin φ31.0x310", "ja": "K45EF 黒皮 φ31.0×310"}', '本', true, NULL, '2026-08-24 09:19:52.001265+00', '2026-08-24 09:19:52.001265+00', '310', 31.000, 'A0', 310.000, '310', NULL, NULL, 'A', 6, 663, '{}');
-INSERT INTO app.materials VALUES ('B06A0001-A300-310', '{"en": "K45EF Black skin φ30.0x310", "ja": "K45EF 黒皮 φ30.0×310"}', '本', true, NULL, '2026-08-24 09:19:52.001523+00', '2026-08-24 09:19:52.001523+00', '300', 30.000, 'A0', 310.000, '310', NULL, NULL, 'A', 6, 664, '{}');
-INSERT INTO app.materials VALUES ('B06A0001-A290-310', '{"en": "K45EF Black skin φ29.0x310", "ja": "K45EF 黒皮 φ29.0×310"}', '本', true, NULL, '2026-08-24 09:19:52.001786+00', '2026-08-24 09:19:52.001786+00', '290', 29.000, 'A0', 310.000, '310', NULL, NULL, 'A', 6, 665, '{}');
-INSERT INTO app.materials VALUES ('B06A0001-A280-310', '{"en": "K45EF Black skin φ28.0x310", "ja": "K45EF 黒皮 φ28.0×310"}', '本', true, NULL, '2026-08-24 09:19:52.00212+00', '2026-08-24 09:19:52.00212+00', '280', 28.000, 'A0', 310.000, '310', NULL, NULL, 'A', 6, 666, '{}');
-INSERT INTO app.materials VALUES ('B06A0001-A270-310', '{"en": "K45EF Black skin φ27.0x310", "ja": "K45EF 黒皮 φ27.0×310"}', '本', true, NULL, '2026-08-24 09:19:52.002444+00', '2026-08-24 09:19:52.002444+00', '270', 27.000, 'A0', 310.000, '310', NULL, NULL, 'A', 6, 667, '{}');
-INSERT INTO app.materials VALUES ('B06A0001-A260-310', '{"en": "K45EF Black skin φ26.0x310", "ja": "K45EF 黒皮 φ26.0×310"}', '本', true, NULL, '2026-08-24 09:19:52.002716+00', '2026-08-24 09:19:52.002716+00', '260', 26.000, 'A0', 310.000, '310', NULL, NULL, 'A', 6, 668, '{}');
-INSERT INTO app.materials VALUES ('B06A0001-A255-310', '{"en": "K45EF Black skin φ25.5x310", "ja": "K45EF 黒皮 φ25.5×310"}', '本', true, NULL, '2026-08-24 09:19:52.002991+00', '2026-08-24 09:19:52.002991+00', '255', 25.500, 'A0', 310.000, '310', NULL, NULL, 'A', 6, 669, '{}');
-INSERT INTO app.materials VALUES ('B06A0001-A250-310', '{"en": "K45EF Black skin φ25.0x310", "ja": "K45EF 黒皮 φ25.0×310"}', '本', true, NULL, '2026-08-24 09:19:52.003258+00', '2026-08-24 09:19:52.003258+00', '250', 25.000, 'A0', 310.000, '310', NULL, NULL, 'A', 6, 670, '{}');
-INSERT INTO app.materials VALUES ('B06A0001-A240-310', '{"en": "K45EF Black skin φ24.0x310", "ja": "K45EF 黒皮 φ24.0×310"}', '本', true, NULL, '2026-08-24 09:19:52.003514+00', '2026-08-24 09:19:52.003514+00', '240', 24.000, 'A0', 310.000, '310', NULL, NULL, 'A', 6, 671, '{}');
-INSERT INTO app.materials VALUES ('B06A0001-A235-310', '{"en": "K45EF Black skin φ23.5x310", "ja": "K45EF 黒皮 φ23.5×310"}', '本', true, NULL, '2026-08-24 09:19:52.003783+00', '2026-08-24 09:19:52.003783+00', '235', 23.500, 'A0', 310.000, '310', NULL, NULL, 'A', 6, 672, '{}');
-INSERT INTO app.materials VALUES ('B06A0001-A230-310', '{"en": "K45EF Black skin φ23.0x310", "ja": "K45EF 黒皮 φ23.0×310"}', '本', true, NULL, '2026-08-24 09:19:52.004079+00', '2026-08-24 09:19:52.004079+00', '230', 23.000, 'A0', 310.000, '310', NULL, NULL, 'A', 6, 673, '{}');
-INSERT INTO app.materials VALUES ('B06A0001-A225-310', '{"en": "K45EF Black skin φ22.5x310", "ja": "K45EF 黒皮 φ22.5×310"}', '本', true, NULL, '2026-08-24 09:19:52.004349+00', '2026-08-24 09:19:52.004349+00', '225', 22.500, 'A0', 310.000, '310', NULL, NULL, 'A', 6, 674, '{}');
-INSERT INTO app.materials VALUES ('B06A0001-A220-310', '{"en": "K45EF Black skin φ22.0x310", "ja": "K45EF 黒皮 φ22.0×310"}', '本', true, NULL, '2026-08-24 09:19:52.00461+00', '2026-08-24 09:19:52.00461+00', '220', 22.000, 'A0', 310.000, '310', NULL, NULL, 'A', 6, 675, '{}');
-INSERT INTO app.materials VALUES ('B06A0001-A215-310', '{"en": "K45EF Black skin φ21.5x310", "ja": "K45EF 黒皮 φ21.5×310"}', '本', true, NULL, '2026-08-24 09:19:52.004919+00', '2026-08-24 09:19:52.004919+00', '215', 21.500, 'A0', 310.000, '310', NULL, NULL, 'A', 6, 676, '{}');
-INSERT INTO app.materials VALUES ('B06A0001-A210-310', '{"en": "K45EF Black skin φ21.0x310", "ja": "K45EF 黒皮 φ21.0×310"}', '本', true, NULL, '2026-08-24 09:19:52.005209+00', '2026-08-24 09:19:52.005209+00', '210', 21.000, 'A0', 310.000, '310', NULL, NULL, 'A', 6, 677, '{}');
-INSERT INTO app.materials VALUES ('B06A0001-A205-310', '{"en": "K45EF Black skin φ20.5x310", "ja": "K45EF 黒皮 φ20.5×310"}', '本', true, NULL, '2026-08-24 09:19:52.005487+00', '2026-08-24 09:19:52.005487+00', '205', 20.500, 'A0', 310.000, '310', NULL, NULL, 'A', 6, 678, '{}');
-INSERT INTO app.materials VALUES ('B06A0001-A200-310', '{"en": "K45EF Black skin φ20.0x310", "ja": "K45EF 黒皮 φ20.0×310"}', '本', true, NULL, '2026-08-24 09:19:52.005752+00', '2026-08-24 09:19:52.005752+00', '200', 20.000, 'A0', 310.000, '310', NULL, NULL, 'A', 6, 679, '{}');
-INSERT INTO app.materials VALUES ('B06A0001-A195-310', '{"en": "K45EF Black skin φ19.5x310", "ja": "K45EF 黒皮 φ19.5×310"}', '本', true, NULL, '2026-08-24 09:19:52.006055+00', '2026-08-24 09:19:52.006055+00', '195', 19.500, 'A0', 310.000, '310', NULL, NULL, 'A', 6, 680, '{}');
-INSERT INTO app.materials VALUES ('B06A0001-A190-310', '{"en": "K45EF Black skin φ19.0x310", "ja": "K45EF 黒皮 φ19.0×310"}', '本', true, NULL, '2026-08-24 09:19:52.006348+00', '2026-08-24 09:19:52.006348+00', '190', 19.000, 'A0', 310.000, '310', NULL, NULL, 'A', 6, 681, '{}');
-INSERT INTO app.materials VALUES ('B06A0001-A185-310', '{"en": "K45EF Black skin φ18.5x310", "ja": "K45EF 黒皮 φ18.5×310"}', '本', true, NULL, '2026-08-24 09:19:52.006629+00', '2026-08-24 09:19:52.006629+00', '185', 18.500, 'A0', 310.000, '310', NULL, NULL, 'A', 6, 682, '{}');
-INSERT INTO app.materials VALUES ('B06A0001-A180-310', '{"en": "K45EF Black skin φ18.0x310", "ja": "K45EF 黒皮 φ18.0×310"}', '本', true, NULL, '2026-08-24 09:19:52.006889+00', '2026-08-24 09:19:52.006889+00', '180', 18.000, 'A0', 310.000, '310', NULL, NULL, 'A', 6, 683, '{}');
-INSERT INTO app.materials VALUES ('B06A0001-A175-310', '{"en": "K45EF Black skin φ17.5x310", "ja": "K45EF 黒皮 φ17.5×310"}', '本', true, NULL, '2026-08-24 09:19:52.007162+00', '2026-08-24 09:19:52.007162+00', '175', 17.500, 'A0', 310.000, '310', NULL, NULL, 'A', 6, 684, '{}');
-INSERT INTO app.materials VALUES ('B06A0001-A170-310', '{"en": "K45EF Black skin φ17.0x310", "ja": "K45EF 黒皮 φ17.0×310"}', '本', true, NULL, '2026-08-24 09:19:52.007459+00', '2026-08-24 09:19:52.007459+00', '170', 17.000, 'A0', 310.000, '310', NULL, NULL, 'A', 6, 685, '{}');
-INSERT INTO app.materials VALUES ('B06A0001-A165-310', '{"en": "K45EF Black skin φ16.5x310", "ja": "K45EF 黒皮 φ16.5×310"}', '本', true, NULL, '2026-08-24 09:19:52.007746+00', '2026-08-24 09:19:52.007746+00', '165', 16.500, 'A0', 310.000, '310', NULL, NULL, 'A', 6, 686, '{}');
-INSERT INTO app.materials VALUES ('B06A0001-A160-310', '{"en": "K45EF Black skin φ16.0x310", "ja": "K45EF 黒皮 φ16.0×310"}', '本', true, NULL, '2026-08-24 09:19:52.008029+00', '2026-08-24 09:19:52.008029+00', '160', 16.000, 'A0', 310.000, '310', NULL, NULL, 'A', 6, 687, '{}');
-INSERT INTO app.materials VALUES ('B06A0001-A155-310', '{"en": "K45EF Black skin φ15.5x310", "ja": "K45EF 黒皮 φ15.5×310"}', '本', true, NULL, '2026-08-24 09:19:52.008304+00', '2026-08-24 09:19:52.008304+00', '155', 15.500, 'A0', 310.000, '310', NULL, NULL, 'A', 6, 688, '{}');
-INSERT INTO app.materials VALUES ('B06A0001-A150-310', '{"en": "K45EF Black skin φ15.0x310", "ja": "K45EF 黒皮 φ15.0×310"}', '本', true, NULL, '2026-08-24 09:19:52.00862+00', '2026-08-24 09:19:52.00862+00', '150', 15.000, 'A0', 310.000, '310', NULL, NULL, 'A', 6, 689, '{}');
-INSERT INTO app.materials VALUES ('B06A0001-A145-310', '{"en": "K45EF Black skin φ14.5x310", "ja": "K45EF 黒皮 φ14.5×310"}', '本', true, NULL, '2026-08-24 09:19:52.008912+00', '2026-08-24 09:19:52.008912+00', '145', 14.500, 'A0', 310.000, '310', NULL, NULL, 'A', 6, 690, '{}');
-INSERT INTO app.materials VALUES ('B06A0001-A140-310', '{"en": "K45EF Black skin φ14.0x310", "ja": "K45EF 黒皮 φ14.0×310"}', '本', true, NULL, '2026-08-24 09:19:52.009184+00', '2026-08-24 09:19:52.009184+00', '140', 14.000, 'A0', 310.000, '310', NULL, NULL, 'A', 6, 691, '{}');
-INSERT INTO app.materials VALUES ('B06A0001-A135-310', '{"en": "K45EF Black skin φ13.5x310", "ja": "K45EF 黒皮 φ13.5×310"}', '本', true, NULL, '2026-08-24 09:19:52.00945+00', '2026-08-24 09:19:52.00945+00', '135', 13.500, 'A0', 310.000, '310', NULL, NULL, 'A', 6, 692, '{}');
-INSERT INTO app.materials VALUES ('B06A0001-A130-310', '{"en": "K45EF Black skin φ13.0x310", "ja": "K45EF 黒皮 φ13.0×310"}', '本', true, NULL, '2026-08-24 09:19:52.00975+00', '2026-08-24 09:19:52.00975+00', '130', 13.000, 'A0', 310.000, '310', NULL, NULL, 'A', 6, 693, '{}');
-INSERT INTO app.materials VALUES ('B06A0001-A125-310', '{"en": "K45EF Black skin φ12.5x310", "ja": "K45EF 黒皮 φ12.5×310"}', '本', true, NULL, '2026-08-24 09:19:52.010116+00', '2026-08-24 09:19:52.010116+00', '125', 12.500, 'A0', 310.000, '310', NULL, NULL, 'A', 6, 694, '{}');
-INSERT INTO app.materials VALUES ('B06A0001-A120-310', '{"en": "K45EF Black skin φ12.0x310", "ja": "K45EF 黒皮 φ12.0×310"}', '本', true, NULL, '2026-08-24 09:19:52.010411+00', '2026-08-24 09:19:52.010411+00', '120', 12.000, 'A0', 310.000, '310', NULL, NULL, 'A', 6, 695, '{}');
-INSERT INTO app.materials VALUES ('B06A0001-A115-310', '{"en": "K45EF Black skin φ11.5x310", "ja": "K45EF 黒皮 φ11.5×310"}', '本', true, NULL, '2026-08-24 09:19:52.010711+00', '2026-08-24 09:19:52.010711+00', '115', 11.500, 'A0', 310.000, '310', NULL, NULL, 'A', 6, 696, '{}');
-INSERT INTO app.materials VALUES ('B06A0001-A110-310', '{"en": "K45EF Black skin φ11.0x310", "ja": "K45EF 黒皮 φ11.0×310"}', '本', true, NULL, '2026-08-24 09:19:52.010988+00', '2026-08-24 09:19:52.010988+00', '110', 11.000, 'A0', 310.000, '310', NULL, NULL, 'A', 6, 697, '{}');
-INSERT INTO app.materials VALUES ('B06A0001-A105-310', '{"en": "K45EF Black skin φ10.5x310", "ja": "K45EF 黒皮 φ10.5×310"}', '本', true, NULL, '2026-08-24 09:19:52.011259+00', '2026-08-24 09:19:52.011259+00', '105', 10.500, 'A0', 310.000, '310', NULL, NULL, 'A', 6, 698, '{}');
-INSERT INTO app.materials VALUES ('B06A0001-A100-310', '{"en": "K45EF Black skin φ10.0x310", "ja": "K45EF 黒皮 φ10.0×310"}', '本', true, NULL, '2026-08-24 09:19:52.01156+00', '2026-08-24 09:19:52.01156+00', '100', 10.000, 'A0', 310.000, '310', NULL, NULL, 'A', 6, 699, '{}');
-INSERT INTO app.materials VALUES ('B06A0001-A095-310', '{"en": "K45EF Black skin φ9.5x310", "ja": "K45EF 黒皮 φ9.5×310"}', '本', true, NULL, '2026-08-24 09:19:52.011853+00', '2026-08-24 09:19:52.011853+00', '095', 9.500, 'A0', 310.000, '310', NULL, NULL, 'A', 6, 700, '{}');
-INSERT INTO app.materials VALUES ('B06A0001-A090-310', '{"en": "K45EF Black skin φ9.0x310", "ja": "K45EF 黒皮 φ9.0×310"}', '本', true, NULL, '2026-08-24 09:19:52.012138+00', '2026-08-24 09:19:52.012138+00', '090', 9.000, 'A0', 310.000, '310', NULL, NULL, 'A', 6, 701, '{}');
-INSERT INTO app.materials VALUES ('B06A0001-A085-310', '{"en": "K45EF Black skin φ8.5x310", "ja": "K45EF 黒皮 φ8.5×310"}', '本', true, NULL, '2026-08-24 09:19:52.012418+00', '2026-08-24 09:19:52.012418+00', '085', 8.500, 'A0', 310.000, '310', NULL, NULL, 'A', 6, 702, '{}');
-INSERT INTO app.materials VALUES ('B06A0001-A080-310', '{"en": "K45EF Black skin φ8.0x310", "ja": "K45EF 黒皮 φ8.0×310"}', '本', true, NULL, '2026-08-24 09:19:52.012688+00', '2026-08-24 09:19:52.012688+00', '080', 8.000, 'A0', 310.000, '310', NULL, NULL, 'A', 6, 703, '{}');
-INSERT INTO app.materials VALUES ('B06A0001-A075-310', '{"en": "K45EF Black skin φ7.5x310", "ja": "K45EF 黒皮 φ7.5×310"}', '本', true, NULL, '2026-08-24 09:19:52.012999+00', '2026-08-24 09:19:52.012999+00', '075', 7.500, 'A0', 310.000, '310', NULL, NULL, 'A', 6, 704, '{}');
-INSERT INTO app.materials VALUES ('B06A0001-A070-310', '{"en": "K45EF Black skin φ7.0x310", "ja": "K45EF 黒皮 φ7.0×310"}', '本', true, NULL, '2026-08-24 09:19:52.013287+00', '2026-08-24 09:19:52.013287+00', '070', 7.000, 'A0', 310.000, '310', NULL, NULL, 'A', 6, 705, '{}');
-INSERT INTO app.materials VALUES ('B06A0001-A065-310', '{"en": "K45EF Black skin φ6.5x310", "ja": "K45EF 黒皮 φ6.5×310"}', '本', true, NULL, '2026-08-24 09:19:52.013553+00', '2026-08-24 09:19:52.013553+00', '065', 6.500, 'A0', 310.000, '310', NULL, NULL, 'A', 6, 706, '{}');
-INSERT INTO app.materials VALUES ('B06A0001-A060-310', '{"en": "K45EF Black skin φ6.0x310", "ja": "K45EF 黒皮 φ6.0×310"}', '本', true, NULL, '2026-08-24 09:19:52.013825+00', '2026-08-24 09:19:52.013825+00', '060', 6.000, 'A0', 310.000, '310', NULL, NULL, 'A', 6, 707, '{}');
-INSERT INTO app.materials VALUES ('B06A0001-A055-310', '{"en": "K45EF Black skin φ5.5x310", "ja": "K45EF 黒皮 φ5.5×310"}', '本', true, NULL, '2026-08-24 09:19:52.01413+00', '2026-08-24 09:19:52.01413+00', '055', 5.500, 'A0', 310.000, '310', NULL, NULL, 'A', 6, 708, '{}');
-INSERT INTO app.materials VALUES ('B06A0001-A050-310', '{"en": "K45EF Black skin φ5.0x310", "ja": "K45EF 黒皮 φ5.0×310"}', '本', true, NULL, '2026-08-24 09:19:52.014451+00', '2026-08-24 09:19:52.014451+00', '050', 5.000, 'A0', 310.000, '310', NULL, NULL, 'A', 6, 709, '{}');
-INSERT INTO app.materials VALUES ('B06A0001-A045-310', '{"en": "K45EF Black skin φ4.5x310", "ja": "K45EF 黒皮 φ4.5×310"}', '本', true, NULL, '2026-08-24 09:19:52.014719+00', '2026-08-24 09:19:52.014719+00', '045', 4.500, 'A0', 310.000, '310', NULL, NULL, 'A', 6, 710, '{}');
-INSERT INTO app.materials VALUES ('B06A0001-A040-310', '{"en": "K45EF Black skin φ4.0x310", "ja": "K45EF 黒皮 φ4.0×310"}', '本', true, NULL, '2026-08-24 09:19:52.014999+00', '2026-08-24 09:19:52.014999+00', '040', 4.000, 'A0', 310.000, '310', NULL, NULL, 'A', 6, 711, '{}');
-INSERT INTO app.materials VALUES ('B06A0001-A035-310', '{"en": "K45EF Black skin φ3.5x310", "ja": "K45EF 黒皮 φ3.5×310"}', '本', true, NULL, '2026-08-24 09:19:52.015293+00', '2026-08-24 09:19:52.015293+00', '035', 3.500, 'A0', 310.000, '310', NULL, NULL, 'A', 6, 712, '{}');
-INSERT INTO app.materials VALUES ('B06A0001-A030-310', '{"en": "K45EF Black skin φ3.0x310", "ja": "K45EF 黒皮 φ3.0×310"}', '本', true, NULL, '2026-08-24 09:19:52.015617+00', '2026-08-24 09:19:52.015617+00', '030', 3.000, 'A0', 310.000, '310', NULL, NULL, 'A', 6, 713, '{}');
-INSERT INTO app.materials VALUES ('B06A0001-A025-310', '{"en": "K45EF Black skin φ2.5x310", "ja": "K45EF 黒皮 φ2.5×310"}', '本', true, NULL, '2026-08-24 09:19:52.015905+00', '2026-08-24 09:19:52.015905+00', '025', 2.500, 'A0', 310.000, '310', NULL, NULL, 'A', 6, 714, '{}');
-INSERT INTO app.materials VALUES ('B06A0001-A020-310', '{"en": "K45EF Black skin φ2.0x310", "ja": "K45EF 黒皮 φ2.0×310"}', '本', true, NULL, '2026-08-24 09:19:52.016193+00', '2026-08-24 09:19:52.016193+00', '020', 2.000, 'A0', 310.000, '310', NULL, NULL, 'A', 6, 715, '{}');
-INSERT INTO app.materials VALUES ('B06A0001-A015-310', '{"en": "K45EF Black skin φ1.5x310", "ja": "K45EF 黒皮 φ1.5×310"}', '本', true, NULL, '2026-08-24 09:19:52.016492+00', '2026-08-24 09:19:52.016492+00', '015', 1.500, 'A0', 310.000, '310', NULL, NULL, 'A', 6, 716, '{}');
-INSERT INTO app.materials VALUES ('B06A0001-A010-310', '{"en": "K45EF Black skin φ1.0x310", "ja": "K45EF 黒皮 φ1.0×310"}', '本', true, NULL, '2026-08-24 09:19:52.016825+00', '2026-08-24 09:19:52.016825+00', '010', 1.000, 'A0', 310.000, '310', NULL, NULL, 'A', 6, 717, '{}');
-INSERT INTO app.materials VALUES ('D02A0001-A460-310', '{"en": "CTS20D Black skin φ46.0x310", "ja": "CTS20D 黒皮 φ46.0×310"}', '本', true, NULL, '2026-08-24 09:19:52.017156+00', '2026-08-24 09:19:52.017156+00', '460', 46.000, 'A0', 310.000, '310', NULL, NULL, 'A', 11, 718, '{}');
-INSERT INTO app.materials VALUES ('D02A0001-A420-310', '{"en": "CTS20D Black skin φ42.0x310", "ja": "CTS20D 黒皮 φ42.0×310"}', '本', true, NULL, '2026-08-24 09:19:52.017435+00', '2026-08-24 09:19:52.017435+00', '420', 42.000, 'A0', 310.000, '310', NULL, NULL, 'A', 11, 719, '{}');
-INSERT INTO app.materials VALUES ('D02A0001-A400-310', '{"en": "CTS20D Black skin φ40.0x310", "ja": "CTS20D 黒皮 φ40.0×310"}', '本', true, NULL, '2026-08-24 09:19:52.017706+00', '2026-08-24 09:19:52.017706+00', '400', 40.000, 'A0', 310.000, '310', NULL, NULL, 'A', 11, 720, '{}');
-INSERT INTO app.materials VALUES ('D02A0001-A380-310', '{"en": "CTS20D Black skin φ38.0x310", "ja": "CTS20D 黒皮 φ38.0×310"}', '本', true, NULL, '2026-08-24 09:19:52.018154+00', '2026-08-24 09:19:52.018154+00', '380', 38.000, 'A0', 310.000, '310', NULL, NULL, 'A', 11, 721, '{}');
-INSERT INTO app.materials VALUES ('D02A0001-A360-310', '{"en": "CTS20D Black skin φ36.0x310", "ja": "CTS20D 黒皮 φ36.0×310"}', '本', true, NULL, '2026-08-24 09:19:52.018468+00', '2026-08-24 09:19:52.018468+00', '360', 36.000, 'A0', 310.000, '310', NULL, NULL, 'A', 11, 722, '{}');
-INSERT INTO app.materials VALUES ('D02A0001-A340-310', '{"en": "CTS20D Black skin φ34.0x310", "ja": "CTS20D 黒皮 φ34.0×310"}', '本', true, NULL, '2026-08-24 09:19:52.018777+00', '2026-08-24 09:19:52.018777+00', '340', 34.000, 'A0', 310.000, '310', NULL, NULL, 'A', 11, 723, '{}');
-INSERT INTO app.materials VALUES ('D02A0001-A320-310', '{"en": "CTS20D Black skin φ32.0x310", "ja": "CTS20D 黒皮 φ32.0×310"}', '本', true, NULL, '2026-08-24 09:19:52.019102+00', '2026-08-24 09:19:52.019102+00', '320', 32.000, 'A0', 310.000, '310', NULL, NULL, 'A', 11, 724, '{}');
-INSERT INTO app.materials VALUES ('D02A0001-A300-310', '{"en": "CTS20D Black skin φ30.0x310", "ja": "CTS20D 黒皮 φ30.0×310"}', '本', true, NULL, '2026-08-24 09:19:52.01938+00', '2026-08-24 09:19:52.01938+00', '300', 30.000, 'A0', 310.000, '310', NULL, NULL, 'A', 11, 725, '{}');
-INSERT INTO app.materials VALUES ('D02A0001-A280-310', '{"en": "CTS20D Black skin φ28.0x310", "ja": "CTS20D 黒皮 φ28.0×310"}', '本', true, NULL, '2026-08-24 09:19:52.019668+00', '2026-08-24 09:19:52.019668+00', '280', 28.000, 'A0', 310.000, '310', NULL, NULL, 'A', 11, 726, '{}');
-INSERT INTO app.materials VALUES ('D02A0001-A260-310', '{"en": "CTS20D Black skin φ26.0x310", "ja": "CTS20D 黒皮 φ26.0×310"}', '本', true, NULL, '2026-08-24 09:19:52.019929+00', '2026-08-24 09:19:52.019929+00', '260', 26.000, 'A0', 310.000, '310', NULL, NULL, 'A', 11, 727, '{}');
-INSERT INTO app.materials VALUES ('D02A0001-A255-310', '{"en": "CTS20D Black skin φ25.5x310", "ja": "CTS20D 黒皮 φ25.5×310"}', '本', true, NULL, '2026-08-24 09:19:52.020194+00', '2026-08-24 09:19:52.020194+00', '255', 25.500, 'A0', 310.000, '310', NULL, NULL, 'A', 11, 728, '{}');
-INSERT INTO app.materials VALUES ('D02A0001-A250-310', '{"en": "CTS20D Black skin φ25.0x310", "ja": "CTS20D 黒皮 φ25.0×310"}', '本', true, NULL, '2026-08-24 09:19:52.020472+00', '2026-08-24 09:19:52.020472+00', '250', 25.000, 'A0', 310.000, '310', NULL, NULL, 'A', 11, 729, '{}');
-INSERT INTO app.materials VALUES ('D02A0001-A240-310', '{"en": "CTS20D Black skin φ24.0x310", "ja": "CTS20D 黒皮 φ24.0×310"}', '本', true, NULL, '2026-08-24 09:19:52.02079+00', '2026-08-24 09:19:52.02079+00', '240', 24.000, 'A0', 310.000, '310', NULL, NULL, 'A', 11, 730, '{}');
-INSERT INTO app.materials VALUES ('D02A0001-A230-310', '{"en": "CTS20D Black skin φ23.0x310", "ja": "CTS20D 黒皮 φ23.0×310"}', '本', true, NULL, '2026-08-24 09:19:52.021101+00', '2026-08-24 09:19:52.021101+00', '230', 23.000, 'A0', 310.000, '310', NULL, NULL, 'A', 11, 731, '{}');
-INSERT INTO app.materials VALUES ('D02A0001-A220-310', '{"en": "CTS20D Black skin φ22.0x310", "ja": "CTS20D 黒皮 φ22.0×310"}', '本', true, NULL, '2026-08-24 09:19:52.021374+00', '2026-08-24 09:19:52.021374+00', '220', 22.000, 'A0', 310.000, '310', NULL, NULL, 'A', 11, 732, '{}');
-INSERT INTO app.materials VALUES ('D02A0001-A210-310', '{"en": "CTS20D Black skin φ21.0x310", "ja": "CTS20D 黒皮 φ21.0×310"}', '本', true, NULL, '2026-08-24 09:19:52.021636+00', '2026-08-24 09:19:52.021636+00', '210', 21.000, 'A0', 310.000, '310', NULL, NULL, 'A', 11, 733, '{}');
-INSERT INTO app.materials VALUES ('D02A0001-A200-310', '{"en": "CTS20D Black skin φ20.0x310", "ja": "CTS20D 黒皮 φ20.0×310"}', '本', true, NULL, '2026-08-24 09:19:52.021896+00', '2026-08-24 09:19:52.021896+00', '200', 20.000, 'A0', 310.000, '310', NULL, NULL, 'A', 11, 734, '{}');
-INSERT INTO app.materials VALUES ('D02A0001-A190-310', '{"en": "CTS20D Black skin φ19.0x310", "ja": "CTS20D 黒皮 φ19.0×310"}', '本', true, NULL, '2026-08-24 09:19:52.022168+00', '2026-08-24 09:19:52.022168+00', '190', 19.000, 'A0', 310.000, '310', NULL, NULL, 'A', 11, 735, '{}');
-INSERT INTO app.materials VALUES ('D02A0001-A180-310', '{"en": "CTS20D Black skin φ18.0x310", "ja": "CTS20D 黒皮 φ18.0×310"}', '本', true, NULL, '2026-08-24 09:19:52.022443+00', '2026-08-24 09:19:52.022443+00', '180', 18.000, 'A0', 310.000, '310', NULL, NULL, 'A', 11, 736, '{}');
-INSERT INTO app.materials VALUES ('D02A0001-A170-310', '{"en": "CTS20D Black skin φ17.0x310", "ja": "CTS20D 黒皮 φ17.0×310"}', '本', true, NULL, '2026-08-24 09:19:52.022698+00', '2026-08-24 09:19:52.022698+00', '170', 17.000, 'A0', 310.000, '310', NULL, NULL, 'A', 11, 737, '{}');
-INSERT INTO app.materials VALUES ('D02A0001-A160-310', '{"en": "CTS20D Black skin φ16.0x310", "ja": "CTS20D 黒皮 φ16.0×310"}', '本', true, NULL, '2026-08-24 09:19:52.022967+00', '2026-08-24 09:19:52.022967+00', '160', 16.000, 'A0', 310.000, '310', NULL, NULL, 'A', 11, 738, '{}');
-INSERT INTO app.materials VALUES ('D02A0001-A150-310', '{"en": "CTS20D Black skin φ15.0x310", "ja": "CTS20D 黒皮 φ15.0×310"}', '本', true, NULL, '2026-08-24 09:19:52.023256+00', '2026-08-24 09:19:52.023256+00', '150', 15.000, 'A0', 310.000, '310', NULL, NULL, 'A', 11, 739, '{}');
-INSERT INTO app.materials VALUES ('D02A0001-A145-310', '{"en": "CTS20D Black skin φ14.5x310", "ja": "CTS20D 黒皮 φ14.5×310"}', '本', true, NULL, '2026-08-24 09:19:52.023625+00', '2026-08-24 09:19:52.023625+00', '145', 14.500, 'A0', 310.000, '310', NULL, NULL, 'A', 11, 740, '{}');
-INSERT INTO app.materials VALUES ('D02A0001-A140-310', '{"en": "CTS20D Black skin φ14.0x310", "ja": "CTS20D 黒皮 φ14.0×310"}', '本', true, NULL, '2026-08-24 09:19:52.023982+00', '2026-08-24 09:19:52.023982+00', '140', 14.000, 'A0', 310.000, '310', NULL, NULL, 'A', 11, 741, '{}');
-INSERT INTO app.materials VALUES ('D02A0001-A130-310', '{"en": "CTS20D Black skin φ13.0x310", "ja": "CTS20D 黒皮 φ13.0×310"}', '本', true, NULL, '2026-08-24 09:19:52.024333+00', '2026-08-24 09:19:52.024333+00', '130', 13.000, 'A0', 310.000, '310', NULL, NULL, 'A', 11, 742, '{}');
-INSERT INTO app.materials VALUES ('D02A0001-A127-310', '{"en": "CTS20D Black skin φ12.7x310", "ja": "CTS20D 黒皮 φ12.7×310"}', '本', true, NULL, '2026-08-24 09:19:52.024635+00', '2026-08-24 09:19:52.024635+00', '127', 12.700, 'A0', 310.000, '310', NULL, NULL, 'A', 11, 743, '{}');
-INSERT INTO app.materials VALUES ('D02A0001-A125-310', '{"en": "CTS20D Black skin φ12.5x310", "ja": "CTS20D 黒皮 φ12.5×310"}', '本', true, NULL, '2026-08-24 09:19:52.024908+00', '2026-08-24 09:19:52.024908+00', '125', 12.500, 'A0', 310.000, '310', NULL, NULL, 'A', 11, 744, '{}');
-INSERT INTO app.materials VALUES ('D02A0001-A120-310', '{"en": "CTS20D Black skin φ12.0x310", "ja": "CTS20D 黒皮 φ12.0×310"}', '本', true, NULL, '2026-08-24 09:19:52.025184+00', '2026-08-24 09:19:52.025184+00', '120', 12.000, 'A0', 310.000, '310', NULL, NULL, 'A', 11, 745, '{}');
-INSERT INTO app.materials VALUES ('D02A0001-A115-310', '{"en": "CTS20D Black skin φ11.5x310", "ja": "CTS20D 黒皮 φ11.5×310"}', '本', true, NULL, '2026-08-24 09:19:52.025476+00', '2026-08-24 09:19:52.025476+00', '115', 11.500, 'A0', 310.000, '310', NULL, NULL, 'A', 11, 746, '{}');
-INSERT INTO app.materials VALUES ('D02A0001-A110-310', '{"en": "CTS20D Black skin φ11.0x310", "ja": "CTS20D 黒皮 φ11.0×310"}', '本', true, NULL, '2026-08-24 09:19:52.025781+00', '2026-08-24 09:19:52.025781+00', '110', 11.000, 'A0', 310.000, '310', NULL, NULL, 'A', 11, 747, '{}');
-INSERT INTO app.materials VALUES ('D02A0001-A105-310', '{"en": "CTS20D Black skin φ10.5x310", "ja": "CTS20D 黒皮 φ10.5×310"}', '本', true, NULL, '2026-08-24 09:19:52.026151+00', '2026-08-24 09:19:52.026151+00', '105', 10.500, 'A0', 310.000, '310', NULL, NULL, 'A', 11, 748, '{}');
-INSERT INTO app.materials VALUES ('D02A0001-A100-310', '{"en": "CTS20D Black skin φ10.0x310", "ja": "CTS20D 黒皮 φ10.0×310"}', '本', true, NULL, '2026-08-24 09:19:52.026452+00', '2026-08-24 09:19:52.026452+00', '100', 10.000, 'A0', 310.000, '310', NULL, NULL, 'A', 11, 749, '{}');
-INSERT INTO app.materials VALUES ('D02A0001-A095-310', '{"en": "CTS20D Black skin φ9.5x310", "ja": "CTS20D 黒皮 φ9.5×310"}', '本', true, NULL, '2026-08-24 09:19:52.026748+00', '2026-08-24 09:19:52.026748+00', '095', 9.500, 'A0', 310.000, '310', NULL, NULL, 'A', 11, 750, '{}');
-INSERT INTO app.materials VALUES ('D02A0001-A090-310', '{"en": "CTS20D Black skin φ9.0x310", "ja": "CTS20D 黒皮 φ9.0×310"}', '本', true, NULL, '2026-08-24 09:19:52.027056+00', '2026-08-24 09:19:52.027056+00', '090', 9.000, 'A0', 310.000, '310', NULL, NULL, 'A', 11, 751, '{}');
-INSERT INTO app.materials VALUES ('D02A0001-A085-310', '{"en": "CTS20D Black skin φ8.5x310", "ja": "CTS20D 黒皮 φ8.5×310"}', '本', true, NULL, '2026-08-24 09:19:52.027343+00', '2026-08-24 09:19:52.027343+00', '085', 8.500, 'A0', 310.000, '310', NULL, NULL, 'A', 11, 752, '{}');
-INSERT INTO app.materials VALUES ('D02A0001-A080-310', '{"en": "CTS20D Black skin φ8.0x310", "ja": "CTS20D 黒皮 φ8.0×310"}', '本', true, NULL, '2026-08-24 09:19:52.027613+00', '2026-08-24 09:19:52.027613+00', '080', 8.000, 'A0', 310.000, '310', NULL, NULL, 'A', 11, 753, '{}');
-INSERT INTO app.materials VALUES ('D02A0001-A075-310', '{"en": "CTS20D Black skin φ7.5x310", "ja": "CTS20D 黒皮 φ7.5×310"}', '本', true, NULL, '2026-08-24 09:19:52.027893+00', '2026-08-24 09:19:52.027893+00', '075', 7.500, 'A0', 310.000, '310', NULL, NULL, 'A', 11, 754, '{}');
-INSERT INTO app.materials VALUES ('D02A0001-A070-310', '{"en": "CTS20D Black skin φ7.0x310", "ja": "CTS20D 黒皮 φ7.0×310"}', '本', true, NULL, '2026-08-24 09:19:52.028188+00', '2026-08-24 09:19:52.028188+00', '070', 7.000, 'A0', 310.000, '310', NULL, NULL, 'A', 11, 755, '{}');
-INSERT INTO app.materials VALUES ('D02A0001-A065-310', '{"en": "CTS20D Black skin φ6.5x310", "ja": "CTS20D 黒皮 φ6.5×310"}', '本', true, NULL, '2026-08-24 09:19:52.028481+00', '2026-08-24 09:19:52.028481+00', '065', 6.500, 'A0', 310.000, '310', NULL, NULL, 'A', 11, 756, '{}');
-INSERT INTO app.materials VALUES ('D02A0001-A064-310', '{"en": "CTS20D Black skin φ6.35x310", "ja": "CTS20D 黒皮 φ6.35×310"}', '本', true, NULL, '2026-08-24 09:19:52.028822+00', '2026-08-24 09:19:52.028822+00', '064', 6.350, 'A0', 310.000, '310', NULL, NULL, 'A', 11, 757, '{}');
-INSERT INTO app.materials VALUES ('D02A0001-A060-310', '{"en": "CTS20D Black skin φ6.0x310", "ja": "CTS20D 黒皮 φ6.0×310"}', '本', true, NULL, '2026-08-24 09:19:52.029123+00', '2026-08-24 09:19:52.029123+00', '060', 6.000, 'A0', 310.000, '310', NULL, NULL, 'A', 11, 758, '{}');
-INSERT INTO app.materials VALUES ('D02A0001-A055-310', '{"en": "CTS20D Black skin φ5.5x310", "ja": "CTS20D 黒皮 φ5.5×310"}', '本', true, NULL, '2026-08-24 09:19:52.029386+00', '2026-08-24 09:19:52.029386+00', '055', 5.500, 'A0', 310.000, '310', NULL, NULL, 'A', 11, 759, '{}');
-INSERT INTO app.materials VALUES ('D02A0001-A050-310', '{"en": "CTS20D Black skin φ5.0x310", "ja": "CTS20D 黒皮 φ5.0×310"}', '本', true, NULL, '2026-08-24 09:19:52.029662+00', '2026-08-24 09:19:52.029662+00', '050', 5.000, 'A0', 310.000, '310', NULL, NULL, 'A', 11, 760, '{}');
-INSERT INTO app.materials VALUES ('D02A0001-A045-310', '{"en": "CTS20D Black skin φ4.5x310", "ja": "CTS20D 黒皮 φ4.5×310"}', '本', true, NULL, '2026-08-24 09:19:52.029934+00', '2026-08-24 09:19:52.029934+00', '045', 4.500, 'A0', 310.000, '310', NULL, NULL, 'A', 11, 761, '{}');
-INSERT INTO app.materials VALUES ('D02A0001-A040-310', '{"en": "CTS20D Black skin φ4.0x310", "ja": "CTS20D 黒皮 φ4.0×310"}', '本', true, NULL, '2026-08-24 09:19:52.030202+00', '2026-08-24 09:19:52.030202+00', '040', 4.000, 'A0', 310.000, '310', NULL, NULL, 'A', 11, 762, '{}');
-INSERT INTO app.materials VALUES ('D02A0001-A035-310', '{"en": "CTS20D Black skin φ3.5x310", "ja": "CTS20D 黒皮 φ3.5×310"}', '本', true, NULL, '2026-08-24 09:19:52.030469+00', '2026-08-24 09:19:52.030469+00', '035', 3.500, 'A0', 310.000, '310', NULL, NULL, 'A', 11, 763, '{}');
-INSERT INTO app.materials VALUES ('D02A0001-A030-310', '{"en": "CTS20D Black skin φ3.0x310", "ja": "CTS20D 黒皮 φ3.0×310"}', '本', true, NULL, '2026-08-24 09:19:52.03073+00', '2026-08-24 09:19:52.03073+00', '030', 3.000, 'A0', 310.000, '310', NULL, NULL, 'A', 11, 764, '{}');
-INSERT INTO app.materials VALUES ('D02A0001-A025-310', '{"en": "CTS20D Black skin φ2.5x310", "ja": "CTS20D 黒皮 φ2.5×310"}', '本', true, NULL, '2026-08-24 09:19:52.031007+00', '2026-08-24 09:19:52.031007+00', '025', 2.500, 'A0', 310.000, '310', NULL, NULL, 'A', 11, 765, '{}');
-INSERT INTO app.materials VALUES ('D02A0001-A020-310', '{"en": "CTS20D Black skin φ2.0x310", "ja": "CTS20D 黒皮 φ2.0×310"}', '本', true, NULL, '2026-08-24 09:19:52.031283+00', '2026-08-24 09:19:52.031283+00', '020', 2.000, 'A0', 310.000, '310', NULL, NULL, 'A', 11, 766, '{}');
-INSERT INTO app.materials VALUES ('D02A0001-A017-310', '{"en": "CTS20D Black skin φ1.7x310", "ja": "CTS20D 黒皮 φ1.7×310"}', '本', true, NULL, '2026-08-24 09:19:52.03157+00', '2026-08-24 09:19:52.03157+00', '017', 1.700, 'A0', 310.000, '310', NULL, NULL, 'A', 11, 767, '{}');
-INSERT INTO app.materials VALUES ('D02A0001-A016-310', '{"en": "CTS20D Black skin φ1.55x310", "ja": "CTS20D 黒皮 φ1.55×310"}', '本', true, NULL, '2026-08-24 09:19:52.031876+00', '2026-08-24 09:19:52.031876+00', '016', 1.550, 'A0', 310.000, '310', NULL, NULL, 'A', 11, 768, '{}');
-INSERT INTO app.materials VALUES ('D02A0001-A010-310', '{"en": "CTS20D Black skin φ1.0x310", "ja": "CTS20D 黒皮 φ1.0×310"}', '本', true, NULL, '2026-08-24 09:19:52.032135+00', '2026-08-24 09:19:52.032135+00', '010', 1.000, 'A0', 310.000, '310', NULL, NULL, 'A', 11, 769, '{}');
-INSERT INTO app.materials VALUES ('D02A0001-B400-310', '{"en": "CTS20D Polished φ40.0x310", "ja": "CTS20D 研磨 φ40.0×310"}', '本', true, NULL, '2026-08-24 09:19:52.032421+00', '2026-08-24 09:19:52.032421+00', '400', 40.000, 'A0', 310.000, '310', NULL, NULL, 'B', 11, 770, '{}');
-INSERT INTO app.materials VALUES ('D02A0001-B380-310', '{"en": "CTS20D Polished φ38.0x310", "ja": "CTS20D 研磨 φ38.0×310"}', '本', true, NULL, '2026-08-24 09:19:52.0327+00', '2026-08-24 09:19:52.0327+00', '380', 38.000, 'A0', 310.000, '310', NULL, NULL, 'B', 11, 771, '{}');
-INSERT INTO app.materials VALUES ('D02A0001-B320-310', '{"en": "CTS20D Polished φ32.0x310", "ja": "CTS20D 研磨 φ32.0×310"}', '本', true, NULL, '2026-08-24 09:19:52.032994+00', '2026-08-24 09:19:52.032994+00', '320', 32.000, 'A0', 310.000, '310', NULL, NULL, 'B', 11, 772, '{}');
-INSERT INTO app.materials VALUES ('D02A0001-B300-310', '{"en": "CTS20D Polished φ30.0x310", "ja": "CTS20D 研磨 φ30.0×310"}', '本', true, NULL, '2026-08-24 09:19:52.033285+00', '2026-08-24 09:19:52.033285+00', '300', 30.000, 'A0', 310.000, '310', NULL, NULL, 'B', 11, 773, '{}');
-INSERT INTO app.materials VALUES ('D02A0001-B280-310', '{"en": "CTS20D Polished φ28.0x310", "ja": "CTS20D 研磨 φ28.0×310"}', '本', true, NULL, '2026-08-24 09:19:52.033576+00', '2026-08-24 09:19:52.033576+00', '280', 28.000, 'A0', 310.000, '310', NULL, NULL, 'B', 11, 774, '{}');
-INSERT INTO app.materials VALUES ('D02A0001-B250-310', '{"en": "CTS20D Polished φ25.0x310", "ja": "CTS20D 研磨 φ25.0×310"}', '本', true, NULL, '2026-08-24 09:19:52.033881+00', '2026-08-24 09:19:52.033881+00', '250', 25.000, 'A0', 310.000, '310', NULL, NULL, 'B', 11, 775, '{}');
-INSERT INTO app.materials VALUES ('D02A0001-B240-310', '{"en": "CTS20D Polished φ24.0x310", "ja": "CTS20D 研磨 φ24.0×310"}', '本', true, NULL, '2026-08-24 09:19:52.034154+00', '2026-08-24 09:19:52.034154+00', '240', 24.000, 'A0', 310.000, '310', NULL, NULL, 'B', 11, 776, '{}');
-INSERT INTO app.materials VALUES ('D02A0001-B220-310', '{"en": "CTS20D Polished φ22.0x310", "ja": "CTS20D 研磨 φ22.0×310"}', '本', true, NULL, '2026-08-24 09:19:52.034453+00', '2026-08-24 09:19:52.034453+00', '220', 22.000, 'A0', 310.000, '310', NULL, NULL, 'B', 11, 777, '{}');
-INSERT INTO app.materials VALUES ('D02A0001-B200-310', '{"en": "CTS20D Polished φ20.0x310", "ja": "CTS20D 研磨 φ20.0×310"}', '本', true, NULL, '2026-08-24 09:19:52.034724+00', '2026-08-24 09:19:52.034724+00', '200', 20.000, 'A0', 310.000, '310', NULL, NULL, 'B', 11, 778, '{}');
-INSERT INTO app.materials VALUES ('D02A0001-B190-310', '{"en": "CTS20D Polished φ19.0x310", "ja": "CTS20D 研磨 φ19.0×310"}', '本', true, NULL, '2026-08-24 09:19:52.035004+00', '2026-08-24 09:19:52.035004+00', '190', 19.000, 'A0', 310.000, '310', NULL, NULL, 'B', 11, 779, '{}');
-INSERT INTO app.materials VALUES ('D02A0001-B180-310', '{"en": "CTS20D Polished φ18.0x310", "ja": "CTS20D 研磨 φ18.0×310"}', '本', true, NULL, '2026-08-24 09:19:52.035304+00', '2026-08-24 09:19:52.035304+00', '180', 18.000, 'A0', 310.000, '310', NULL, NULL, 'B', 11, 780, '{}');
-INSERT INTO app.materials VALUES ('D02A0001-B160-310', '{"en": "CTS20D Polished φ16.0x310", "ja": "CTS20D 研磨 φ16.0×310"}', '本', true, NULL, '2026-08-24 09:19:52.0356+00', '2026-08-24 09:19:52.0356+00', '160', 16.000, 'A0', 310.000, '310', NULL, NULL, 'B', 11, 781, '{}');
-INSERT INTO app.materials VALUES ('D02A0001-B150-310', '{"en": "CTS20D Polished φ15.0x310", "ja": "CTS20D 研磨 φ15.0×310"}', '本', true, NULL, '2026-08-24 09:19:52.035913+00', '2026-08-24 09:19:52.035913+00', '150', 15.000, 'A0', 310.000, '310', NULL, NULL, 'B', 11, 782, '{}');
-INSERT INTO app.materials VALUES ('D02A0001-B140-310', '{"en": "CTS20D Polished φ14.0x310", "ja": "CTS20D 研磨 φ14.0×310"}', '本', true, NULL, '2026-08-24 09:19:52.036245+00', '2026-08-24 09:19:52.036245+00', '140', 14.000, 'A0', 310.000, '310', NULL, NULL, 'B', 11, 783, '{}');
-INSERT INTO app.materials VALUES ('D02A0001-B130-310', '{"en": "CTS20D Polished φ13.0x310", "ja": "CTS20D 研磨 φ13.0×310"}', '本', true, NULL, '2026-08-24 09:19:52.036566+00', '2026-08-24 09:19:52.036566+00', '130', 13.000, 'A0', 310.000, '310', NULL, NULL, 'B', 11, 784, '{}');
-INSERT INTO app.materials VALUES ('D02A0001-B120-310', '{"en": "CTS20D Polished φ12.0x310", "ja": "CTS20D 研磨 φ12.0×310"}', '本', true, NULL, '2026-08-24 09:19:52.036849+00', '2026-08-24 09:19:52.036849+00', '120', 12.000, 'A0', 310.000, '310', NULL, NULL, 'B', 11, 785, '{}');
-INSERT INTO app.materials VALUES ('D02A0001-B110-310', '{"en": "CTS20D Polished φ11.0x310", "ja": "CTS20D 研磨 φ11.0×310"}', '本', true, NULL, '2026-08-24 09:19:52.037188+00', '2026-08-24 09:19:52.037188+00', '110', 11.000, 'A0', 310.000, '310', NULL, NULL, 'B', 11, 786, '{}');
-INSERT INTO app.materials VALUES ('D02A0001-B100-310', '{"en": "CTS20D Polished φ10.0x310", "ja": "CTS20D 研磨 φ10.0×310"}', '本', true, NULL, '2026-08-24 09:19:52.037512+00', '2026-08-24 09:19:52.037512+00', '100', 10.000, 'A0', 310.000, '310', NULL, NULL, 'B', 11, 787, '{}');
-INSERT INTO app.materials VALUES ('D02A0001-B095-310', '{"en": "CTS20D Polished φ9.5x310", "ja": "CTS20D 研磨 φ9.5×310"}', '本', true, NULL, '2026-08-24 09:19:52.037816+00', '2026-08-24 09:19:52.037816+00', '095', 9.500, 'A0', 310.000, '310', NULL, NULL, 'B', 11, 788, '{}');
-INSERT INTO app.materials VALUES ('D02A0001-B090-310', '{"en": "CTS20D Polished φ9.0x310", "ja": "CTS20D 研磨 φ9.0×310"}', '本', true, NULL, '2026-08-24 09:19:52.038119+00', '2026-08-24 09:19:52.038119+00', '090', 9.000, 'A0', 310.000, '310', NULL, NULL, 'B', 11, 789, '{}');
-INSERT INTO app.materials VALUES ('D02A0001-B085-310', '{"en": "CTS20D Polished φ8.5x310", "ja": "CTS20D 研磨 φ8.5×310"}', '本', true, NULL, '2026-08-24 09:19:52.038416+00', '2026-08-24 09:19:52.038416+00', '085', 8.500, 'A0', 310.000, '310', NULL, NULL, 'B', 11, 790, '{}');
-INSERT INTO app.materials VALUES ('D02A0001-B080-310', '{"en": "CTS20D Polished φ8.0x310", "ja": "CTS20D 研磨 φ8.0×310"}', '本', true, NULL, '2026-08-24 09:19:52.038704+00', '2026-08-24 09:19:52.038704+00', '080', 8.000, 'A0', 310.000, '310', NULL, NULL, 'B', 11, 791, '{}');
-INSERT INTO app.materials VALUES ('D02A0001-B075-310', '{"en": "CTS20D Polished φ7.5x310", "ja": "CTS20D 研磨 φ7.5×310"}', '本', true, NULL, '2026-08-24 09:19:52.038981+00', '2026-08-24 09:19:52.038981+00', '075', 7.500, 'A0', 310.000, '310', NULL, NULL, 'B', 11, 792, '{}');
-INSERT INTO app.materials VALUES ('D02A0001-B070-310', '{"en": "CTS20D Polished φ7.0x310", "ja": "CTS20D 研磨 φ7.0×310"}', '本', true, NULL, '2026-08-24 09:19:52.039265+00', '2026-08-24 09:19:52.039265+00', '070', 7.000, 'A0', 310.000, '310', NULL, NULL, 'B', 11, 793, '{}');
-INSERT INTO app.materials VALUES ('D02A0001-B065-310', '{"en": "CTS20D Polished φ6.5x310", "ja": "CTS20D 研磨 φ6.5×310"}', '本', true, NULL, '2026-08-24 09:19:52.039612+00', '2026-08-24 09:19:52.039612+00', '065', 6.500, 'A0', 310.000, '310', NULL, NULL, 'B', 11, 794, '{}');
-INSERT INTO app.materials VALUES ('D02A0001-B060-310', '{"en": "CTS20D Polished φ6.0x310", "ja": "CTS20D 研磨 φ6.0×310"}', '本', true, NULL, '2026-08-24 09:19:52.039925+00', '2026-08-24 09:19:52.039925+00', '060', 6.000, 'A0', 310.000, '310', NULL, NULL, 'B', 11, 795, '{}');
-INSERT INTO app.materials VALUES ('D02A0001-B055-310', '{"en": "CTS20D Polished φ5.5x310", "ja": "CTS20D 研磨 φ5.5×310"}', '本', true, NULL, '2026-08-24 09:19:52.040235+00', '2026-08-24 09:19:52.040235+00', '055', 5.500, 'A0', 310.000, '310', NULL, NULL, 'B', 11, 796, '{}');
-INSERT INTO app.materials VALUES ('D02A0001-B050-310', '{"en": "CTS20D Polished φ5.0x310", "ja": "CTS20D 研磨 φ5.0×310"}', '本', true, NULL, '2026-08-24 09:19:52.040531+00', '2026-08-24 09:19:52.040531+00', '050', 5.000, 'A0', 310.000, '310', NULL, NULL, 'B', 11, 797, '{}');
-INSERT INTO app.materials VALUES ('D02A0001-B045-310', '{"en": "CTS20D Polished φ4.5x310", "ja": "CTS20D 研磨 φ4.5×310"}', '本', true, NULL, '2026-08-24 09:19:52.040811+00', '2026-08-24 09:19:52.040811+00', '045', 4.500, 'A0', 310.000, '310', NULL, NULL, 'B', 11, 798, '{}');
-INSERT INTO app.materials VALUES ('D02A0001-B040-310', '{"en": "CTS20D Polished φ4.0x310", "ja": "CTS20D 研磨 φ4.0×310"}', '本', true, NULL, '2026-08-24 09:19:52.041105+00', '2026-08-24 09:19:52.041105+00', '040', 4.000, 'A0', 310.000, '310', NULL, NULL, 'B', 11, 799, '{}');
-INSERT INTO app.materials VALUES ('D02A0001-B035-310', '{"en": "CTS20D Polished φ3.5x310", "ja": "CTS20D 研磨 φ3.5×310"}', '本', true, NULL, '2026-08-24 09:19:52.041399+00', '2026-08-24 09:19:52.041399+00', '035', 3.500, 'A0', 310.000, '310', NULL, NULL, 'B', 11, 800, '{}');
-INSERT INTO app.materials VALUES ('D02A0001-B030-310', '{"en": "CTS20D Polished φ3.0x310", "ja": "CTS20D 研磨 φ3.0×310"}', '本', true, NULL, '2026-08-24 09:19:52.041692+00', '2026-08-24 09:19:52.041692+00', '030', 3.000, 'A0', 310.000, '310', NULL, NULL, 'B', 11, 801, '{}');
-INSERT INTO app.materials VALUES ('D02A0001-B025-310', '{"en": "CTS20D Polished φ2.5x310", "ja": "CTS20D 研磨 φ2.5×310"}', '本', true, NULL, '2026-08-24 09:19:52.041963+00', '2026-08-24 09:19:52.041963+00', '025', 2.500, 'A0', 310.000, '310', NULL, NULL, 'B', 11, 802, '{}');
-INSERT INTO app.materials VALUES ('D02A0001-B020-310', '{"en": "CTS20D Polished φ2.0x310", "ja": "CTS20D 研磨 φ2.0×310"}', '本', true, NULL, '2026-08-24 09:19:52.042236+00', '2026-08-24 09:19:52.042236+00', '020', 2.000, 'A0', 310.000, '310', NULL, NULL, 'B', 11, 803, '{}');
-INSERT INTO app.materials VALUES ('D02A0001-B015-310', '{"en": "CTS20D Polished φ1.5x310", "ja": "CTS20D 研磨 φ1.5×310"}', '本', true, NULL, '2026-08-24 09:19:52.042519+00', '2026-08-24 09:19:52.042519+00', '015', 1.500, 'A0', 310.000, '310', NULL, NULL, 'B', 11, 804, '{}');
-INSERT INTO app.materials VALUES ('D02A0001-B010-310', '{"en": "CTS20D Polished φ1.0x310", "ja": "CTS20D 研磨 φ1.0×310"}', '本', true, NULL, '2026-08-24 09:19:52.042789+00', '2026-08-24 09:19:52.042789+00', '010', 1.000, 'A0', 310.000, '310', NULL, NULL, 'B', 11, 805, '{}');
-INSERT INTO app.materials VALUES ('D01A0001-A200-310', '{"en": "CTS12D Black skin φ20.0x310", "ja": "CTS12D 黒皮 φ20.0×310"}', '本', true, NULL, '2026-08-24 09:19:52.043073+00', '2026-08-24 09:19:52.043073+00', '200', 20.000, 'A0', 310.000, '310', NULL, NULL, 'A', 10, 806, '{}');
-INSERT INTO app.materials VALUES ('D01A0001-A180-310', '{"en": "CTS12D Black skin φ18.0x310", "ja": "CTS12D 黒皮 φ18.0×310"}', '本', true, NULL, '2026-08-24 09:19:52.043375+00', '2026-08-24 09:19:52.043375+00', '180', 18.000, 'A0', 310.000, '310', NULL, NULL, 'A', 10, 807, '{}');
-INSERT INTO app.materials VALUES ('D01A0001-A160-310', '{"en": "CTS12D Black skin φ16.0x310", "ja": "CTS12D 黒皮 φ16.0×310"}', '本', true, NULL, '2026-08-24 09:19:52.043656+00', '2026-08-24 09:19:52.043656+00', '160', 16.000, 'A0', 310.000, '310', NULL, NULL, 'A', 10, 808, '{}');
-INSERT INTO app.materials VALUES ('D01A0001-A140-310', '{"en": "CTS12D Black skin φ14.0x310", "ja": "CTS12D 黒皮 φ14.0×310"}', '本', true, NULL, '2026-08-24 09:19:52.043935+00', '2026-08-24 09:19:52.043935+00', '140', 14.000, 'A0', 310.000, '310', NULL, NULL, 'A', 10, 809, '{}');
-INSERT INTO app.materials VALUES ('D01A0001-A120-310', '{"en": "CTS12D Black skin φ12.0x310", "ja": "CTS12D 黒皮 φ12.0×310"}', '本', true, NULL, '2026-08-24 09:19:52.044253+00', '2026-08-24 09:19:52.044253+00', '120', 12.000, 'A0', 310.000, '310', NULL, NULL, 'A', 10, 810, '{}');
-INSERT INTO app.materials VALUES ('D01A0001-A100-310', '{"en": "CTS12D Black skin φ10.0x310", "ja": "CTS12D 黒皮 φ10.0×310"}', '本', true, NULL, '2026-08-24 09:19:52.044534+00', '2026-08-24 09:19:52.044534+00', '100', 10.000, 'A0', 310.000, '310', NULL, NULL, 'A', 10, 811, '{}');
-INSERT INTO app.materials VALUES ('D01A0001-A080-310', '{"en": "CTS12D Black skin φ8.0x310", "ja": "CTS12D 黒皮 φ8.0×310"}', '本', true, NULL, '2026-08-24 09:19:52.044828+00', '2026-08-24 09:19:52.044828+00', '080', 8.000, 'A0', 310.000, '310', NULL, NULL, 'A', 10, 812, '{}');
-INSERT INTO app.materials VALUES ('D01A0001-A060-310', '{"en": "CTS12D Black skin φ6.0x310", "ja": "CTS12D 黒皮 φ6.0×310"}', '本', true, NULL, '2026-08-24 09:19:52.045114+00', '2026-08-24 09:19:52.045114+00', '060', 6.000, 'A0', 310.000, '310', NULL, NULL, 'A', 10, 813, '{}');
-INSERT INTO app.materials VALUES ('D01A0001-A050-310', '{"en": "CTS12D Black skin φ5.0x310", "ja": "CTS12D 黒皮 φ5.0×310"}', '本', true, NULL, '2026-08-24 09:19:52.045384+00', '2026-08-24 09:19:52.045384+00', '050', 5.000, 'A0', 310.000, '310', NULL, NULL, 'A', 10, 814, '{}');
-INSERT INTO app.materials VALUES ('D01A0001-A040-310', '{"en": "CTS12D Black skin φ4.0x310", "ja": "CTS12D 黒皮 φ4.0×310"}', '本', true, NULL, '2026-08-24 09:19:52.045667+00', '2026-08-24 09:19:52.045667+00', '040', 4.000, 'A0', 310.000, '310', NULL, NULL, 'A', 10, 815, '{}');
-INSERT INTO app.materials VALUES ('D01A0001-A030-310', '{"en": "CTS12D Black skin φ3.0x310", "ja": "CTS12D 黒皮 φ3.0×310"}', '本', true, NULL, '2026-08-24 09:19:52.045933+00', '2026-08-24 09:19:52.045933+00', '030', 3.000, 'A0', 310.000, '310', NULL, NULL, 'A', 10, 816, '{}');
-INSERT INTO app.materials VALUES ('D01A0001-A020-310', '{"en": "CTS12D Black skin φ2.0x310", "ja": "CTS12D 黒皮 φ2.0×310"}', '本', true, NULL, '2026-08-24 09:19:52.046198+00', '2026-08-24 09:19:52.046198+00', '020', 2.000, 'A0', 310.000, '310', NULL, NULL, 'A', 10, 817, '{}');
-INSERT INTO app.materials VALUES ('D01A0001-A010-310', '{"en": "CTS12D Black skin φ1.0x310", "ja": "CTS12D 黒皮 φ1.0×310"}', '本', true, NULL, '2026-08-24 09:19:52.046473+00', '2026-08-24 09:19:52.046473+00', '010', 1.000, 'A0', 310.000, '310', NULL, NULL, 'A', 10, 818, '{}');
-INSERT INTO app.materials VALUES ('D01A0001-B200-310', '{"en": "CTS12D Polished φ20.0x310", "ja": "CTS12D 研磨 φ20.0×310"}', '本', true, NULL, '2026-08-24 09:19:52.046747+00', '2026-08-24 09:19:52.046747+00', '200', 20.000, 'A0', 310.000, '310', NULL, NULL, 'B', 10, 819, '{}');
-INSERT INTO app.materials VALUES ('D01A0001-B160-310', '{"en": "CTS12D Polished φ16.0x310", "ja": "CTS12D 研磨 φ16.0×310"}', '本', true, NULL, '2026-08-24 09:19:52.047024+00', '2026-08-24 09:19:52.047024+00', '160', 16.000, 'A0', 310.000, '310', NULL, NULL, 'B', 10, 820, '{}');
-INSERT INTO app.materials VALUES ('D01A0001-B140-310', '{"en": "CTS12D Polished φ14.0x310", "ja": "CTS12D 研磨 φ14.0×310"}', '本', true, NULL, '2026-08-24 09:19:52.047309+00', '2026-08-24 09:19:52.047309+00', '140', 14.000, 'A0', 310.000, '310', NULL, NULL, 'B', 10, 821, '{}');
-INSERT INTO app.materials VALUES ('D01A0001-B120-310', '{"en": "CTS12D Polished φ12.0x310", "ja": "CTS12D 研磨 φ12.0×310"}', '本', true, NULL, '2026-08-24 09:19:52.047603+00', '2026-08-24 09:19:52.047603+00', '120', 12.000, 'A0', 310.000, '310', NULL, NULL, 'B', 10, 822, '{}');
-INSERT INTO app.materials VALUES ('D01A0001-B100-310', '{"en": "CTS12D Polished φ10.0x310", "ja": "CTS12D 研磨 φ10.0×310"}', '本', true, NULL, '2026-08-24 09:19:52.047871+00', '2026-08-24 09:19:52.047871+00', '100', 10.000, 'A0', 310.000, '310', NULL, NULL, 'B', 10, 823, '{}');
-INSERT INTO app.materials VALUES ('D01A0001-B080-310', '{"en": "CTS12D Polished φ8.0x310", "ja": "CTS12D 研磨 φ8.0×310"}', '本', true, NULL, '2026-08-24 09:19:52.048142+00', '2026-08-24 09:19:52.048142+00', '080', 8.000, 'A0', 310.000, '310', NULL, NULL, 'B', 10, 824, '{}');
-INSERT INTO app.materials VALUES ('D01A0001-B060-310', '{"en": "CTS12D Polished φ6.0x310", "ja": "CTS12D 研磨 φ6.0×310"}', '本', true, NULL, '2026-08-24 09:19:52.04841+00', '2026-08-24 09:19:52.04841+00', '060', 6.000, 'A0', 310.000, '310', NULL, NULL, 'B', 10, 825, '{}');
-INSERT INTO app.materials VALUES ('D01A0001-B040-310', '{"en": "CTS12D Polished φ4.0x310", "ja": "CTS12D 研磨 φ4.0×310"}', '本', true, NULL, '2026-08-24 09:19:52.048676+00', '2026-08-24 09:19:52.048676+00', '040', 4.000, 'A0', 310.000, '310', NULL, NULL, 'B', 10, 826, '{}');
-INSERT INTO app.materials VALUES ('D01A0001-B030-310', '{"en": "CTS12D Polished φ3.0x310", "ja": "CTS12D 研磨 φ3.0×310"}', '本', true, NULL, '2026-08-24 09:19:52.048962+00', '2026-08-24 09:19:52.048962+00', '030', 3.000, 'A0', 310.000, '310', NULL, NULL, 'B', 10, 827, '{}');
-INSERT INTO app.materials VALUES ('C01A0001-A030-330', '{"en": "GU20F Black skin φ3.0x330", "ja": "GU20F 黒皮 φ3.0×330"}', '本', true, NULL, '2026-08-24 09:19:52.049231+00', '2026-08-24 09:19:52.049231+00', '030', 3.000, 'A0', 330.000, '330', NULL, NULL, 'A', 13, 828, '{}');
-INSERT INTO app.materials VALUES ('C01A0001-A040-330', '{"en": "GU20F Black skin φ4.0x330", "ja": "GU20F 黒皮 φ4.0×330"}', '本', true, NULL, '2026-08-24 09:19:52.049492+00', '2026-08-24 09:19:52.049492+00', '040', 4.000, 'A0', 330.000, '330', NULL, NULL, 'A', 13, 829, '{}');
-INSERT INTO app.materials VALUES ('C01A0001-A050-330', '{"en": "GU20F Black skin φ5.0x330", "ja": "GU20F 黒皮 φ5.0×330"}', '本', true, NULL, '2026-08-24 09:19:52.049772+00', '2026-08-24 09:19:52.049772+00', '050', 5.000, 'A0', 330.000, '330', NULL, NULL, 'A', 13, 830, '{}');
-INSERT INTO app.materials VALUES ('C01A0001-A060-330', '{"en": "GU20F Black skin φ6.0x330", "ja": "GU20F 黒皮 φ6.0×330"}', '本', true, NULL, '2026-08-24 09:19:52.050058+00', '2026-08-24 09:19:52.050058+00', '060', 6.000, 'A0', 330.000, '330', NULL, NULL, 'A', 13, 831, '{}');
-INSERT INTO app.materials VALUES ('C01A0001-A070-330', '{"en": "GU20F Black skin φ7.0x330", "ja": "GU20F 黒皮 φ7.0×330"}', '本', true, NULL, '2026-08-24 09:19:52.050332+00', '2026-08-24 09:19:52.050332+00', '070', 7.000, 'A0', 330.000, '330', NULL, NULL, 'A', 13, 832, '{}');
-INSERT INTO app.materials VALUES ('C01A0001-A080-330', '{"en": "GU20F Black skin φ8.0x330", "ja": "GU20F 黒皮 φ8.0×330"}', '本', true, NULL, '2026-08-24 09:19:52.050584+00', '2026-08-24 09:19:52.050584+00', '080', 8.000, 'A0', 330.000, '330', NULL, NULL, 'A', 13, 833, '{}');
-INSERT INTO app.materials VALUES ('C01A0001-A090-330', '{"en": "GU20F Black skin φ9.0x330", "ja": "GU20F 黒皮 φ9.0×330"}', '本', true, NULL, '2026-08-24 09:19:52.050844+00', '2026-08-24 09:19:52.050844+00', '090', 9.000, 'A0', 330.000, '330', NULL, NULL, 'A', 13, 834, '{}');
-INSERT INTO app.materials VALUES ('C01A0001-A100-330', '{"en": "GU20F Black skin φ10.0x330", "ja": "GU20F 黒皮 φ10.0×330"}', '本', true, NULL, '2026-08-24 09:19:52.051096+00', '2026-08-24 09:19:52.051096+00', '100', 10.000, 'A0', 330.000, '330', NULL, NULL, 'A', 13, 835, '{}');
-INSERT INTO app.materials VALUES ('C01A0001-A110-330', '{"en": "GU20F Black skin φ11.0x330", "ja": "GU20F 黒皮 φ11.0×330"}', '本', true, NULL, '2026-08-24 09:19:52.051348+00', '2026-08-24 09:19:52.051348+00', '110', 11.000, 'A0', 330.000, '330', NULL, NULL, 'A', 13, 836, '{}');
-INSERT INTO app.materials VALUES ('C01A0001-A120-330', '{"en": "GU20F Black skin φ12.0x330", "ja": "GU20F 黒皮 φ12.0×330"}', '本', true, NULL, '2026-08-24 09:19:52.051596+00', '2026-08-24 09:19:52.051596+00', '120', 12.000, 'A0', 330.000, '330', NULL, NULL, 'A', 13, 837, '{}');
-INSERT INTO app.materials VALUES ('C01A0001-A130-330', '{"en": "GU20F Black skin φ13.0x330", "ja": "GU20F 黒皮 φ13.0×330"}', '本', true, NULL, '2026-08-24 09:19:52.051865+00', '2026-08-24 09:19:52.051865+00', '130', 13.000, 'A0', 330.000, '330', NULL, NULL, 'A', 13, 838, '{}');
-INSERT INTO app.materials VALUES ('C01A0001-A140-330', '{"en": "GU20F Black skin φ14.0x330", "ja": "GU20F 黒皮 φ14.0×330"}', '本', true, NULL, '2026-08-24 09:19:52.052139+00', '2026-08-24 09:19:52.052139+00', '140', 14.000, 'A0', 330.000, '330', NULL, NULL, 'A', 13, 839, '{}');
-INSERT INTO app.materials VALUES ('C01A0001-A150-330', '{"en": "GU20F Black skin φ15.0x330", "ja": "GU20F 黒皮 φ15.0×330"}', '本', true, NULL, '2026-08-24 09:19:52.052419+00', '2026-08-24 09:19:52.052419+00', '150', 15.000, 'A0', 330.000, '330', NULL, NULL, 'A', 13, 840, '{}');
-INSERT INTO app.materials VALUES ('C01A0001-A160-330', '{"en": "GU20F Black skin φ16.0x330", "ja": "GU20F 黒皮 φ16.0×330"}', '本', true, NULL, '2026-08-24 09:19:52.052701+00', '2026-08-24 09:19:52.052701+00', '160', 16.000, 'A0', 330.000, '330', NULL, NULL, 'A', 13, 841, '{}');
-INSERT INTO app.materials VALUES ('C01A0001-A170-330', '{"en": "GU20F Black skin φ17.0x330", "ja": "GU20F 黒皮 φ17.0×330"}', '本', true, NULL, '2026-08-24 09:19:52.05305+00', '2026-08-24 09:19:52.05305+00', '170', 17.000, 'A0', 330.000, '330', NULL, NULL, 'A', 13, 842, '{}');
-INSERT INTO app.materials VALUES ('C01A0001-A180-330', '{"en": "GU20F Black skin φ18.0x330", "ja": "GU20F 黒皮 φ18.0×330"}', '本', true, NULL, '2026-08-24 09:19:52.053334+00', '2026-08-24 09:19:52.053334+00', '180', 18.000, 'A0', 330.000, '330', NULL, NULL, 'A', 13, 843, '{}');
-INSERT INTO app.materials VALUES ('C01A0001-A190-330', '{"en": "GU20F Black skin φ19.0x330", "ja": "GU20F 黒皮 φ19.0×330"}', '本', true, NULL, '2026-08-24 09:19:52.053633+00', '2026-08-24 09:19:52.053633+00', '190', 19.000, 'A0', 330.000, '330', NULL, NULL, 'A', 13, 844, '{}');
-INSERT INTO app.materials VALUES ('C01A0001-A200-330', '{"en": "GU20F Black skin φ20.0x330", "ja": "GU20F 黒皮 φ20.0×330"}', '本', true, NULL, '2026-08-24 09:19:52.053925+00', '2026-08-24 09:19:52.053925+00', '200', 20.000, 'A0', 330.000, '330', NULL, NULL, 'A', 13, 845, '{}');
-INSERT INTO app.materials VALUES ('C01A0001-A210-330', '{"en": "GU20F Black skin φ21.0x330", "ja": "GU20F 黒皮 φ21.0×330"}', '本', true, NULL, '2026-08-24 09:19:52.054196+00', '2026-08-24 09:19:52.054196+00', '210', 21.000, 'A0', 330.000, '330', NULL, NULL, 'A', 13, 846, '{}');
-INSERT INTO app.materials VALUES ('C01A0001-A220-330', '{"en": "GU20F Black skin φ22.0x330", "ja": "GU20F 黒皮 φ22.0×330"}', '本', true, NULL, '2026-08-24 09:19:52.054471+00', '2026-08-24 09:19:52.054471+00', '220', 22.000, 'A0', 330.000, '330', NULL, NULL, 'A', 13, 847, '{}');
-INSERT INTO app.materials VALUES ('C01A0001-A230-330', '{"en": "GU20F Black skin φ23.0x330", "ja": "GU20F 黒皮 φ23.0×330"}', '本', true, NULL, '2026-08-24 09:19:52.054738+00', '2026-08-24 09:19:52.054738+00', '230', 23.000, 'A0', 330.000, '330', NULL, NULL, 'A', 13, 848, '{}');
-INSERT INTO app.materials VALUES ('C01A0001-A240-330', '{"en": "GU20F Black skin φ24.0x330", "ja": "GU20F 黒皮 φ24.0×330"}', '本', true, NULL, '2026-08-24 09:19:52.055087+00', '2026-08-24 09:19:52.055087+00', '240', 24.000, 'A0', 330.000, '330', NULL, NULL, 'A', 13, 849, '{}');
-INSERT INTO app.materials VALUES ('C01A0001-A250-330', '{"en": "GU20F Black skin φ25.0x330", "ja": "GU20F 黒皮 φ25.0×330"}', '本', true, NULL, '2026-08-24 09:19:52.055391+00', '2026-08-24 09:19:52.055391+00', '250', 25.000, 'A0', 330.000, '330', NULL, NULL, 'A', 13, 850, '{}');
-INSERT INTO app.materials VALUES ('C01A0001-A260-330', '{"en": "GU20F Black skin φ26.0x330", "ja": "GU20F 黒皮 φ26.0×330"}', '本', true, NULL, '2026-08-24 09:19:52.055668+00', '2026-08-24 09:19:52.055668+00', '260', 26.000, 'A0', 330.000, '330', NULL, NULL, 'A', 13, 851, '{}');
-INSERT INTO app.materials VALUES ('C01A0001-A270-330', '{"en": "GU20F Black skin φ27.0x330", "ja": "GU20F 黒皮 φ27.0×330"}', '本', true, NULL, '2026-08-24 09:19:52.055951+00', '2026-08-24 09:19:52.055951+00', '270', 27.000, 'A0', 330.000, '330', NULL, NULL, 'A', 13, 852, '{}');
-INSERT INTO app.materials VALUES ('C01A0001-A280-330', '{"en": "GU20F Black skin φ28.0x330", "ja": "GU20F 黒皮 φ28.0×330"}', '本', true, NULL, '2026-08-24 09:19:52.056228+00', '2026-08-24 09:19:52.056228+00', '280', 28.000, 'A0', 330.000, '330', NULL, NULL, 'A', 13, 853, '{}');
-INSERT INTO app.materials VALUES ('C01A0001-A290-330', '{"en": "GU20F Black skin φ29.0x330", "ja": "GU20F 黒皮 φ29.0×330"}', '本', true, NULL, '2026-08-24 09:19:52.056516+00', '2026-08-24 09:19:52.056516+00', '290', 29.000, 'A0', 330.000, '330', NULL, NULL, 'A', 13, 854, '{}');
-INSERT INTO app.materials VALUES ('C01A0001-A300-330', '{"en": "GU20F Black skin φ30.0x330", "ja": "GU20F 黒皮 φ30.0×330"}', '本', true, NULL, '2026-08-24 09:19:52.056789+00', '2026-08-24 09:19:52.056789+00', '300', 30.000, 'A0', 330.000, '330', NULL, NULL, 'A', 13, 855, '{}');
-INSERT INTO app.materials VALUES ('C01A0001-A310-330', '{"en": "GU20F Black skin φ31.0x330", "ja": "GU20F 黒皮 φ31.0×330"}', '本', true, NULL, '2026-08-24 09:19:52.057129+00', '2026-08-24 09:19:52.057129+00', '310', 31.000, 'A0', 330.000, '330', NULL, NULL, 'A', 13, 856, '{}');
-INSERT INTO app.materials VALUES ('C01A0001-A320-330', '{"en": "GU20F Black skin φ32.0x330", "ja": "GU20F 黒皮 φ32.0×330"}', '本', true, NULL, '2026-08-24 09:19:52.057456+00', '2026-08-24 09:19:52.057456+00', '320', 32.000, 'A0', 330.000, '330', NULL, NULL, 'A', 13, 857, '{}');
-INSERT INTO app.materials VALUES ('C01A0001-A330-330', '{"en": "GU20F Black skin φ33.0x330", "ja": "GU20F 黒皮 φ33.0×330"}', '本', true, NULL, '2026-08-24 09:19:52.057732+00', '2026-08-24 09:19:52.057732+00', '330', 33.000, 'A0', 330.000, '330', NULL, NULL, 'A', 13, 858, '{}');
-INSERT INTO app.materials VALUES ('C01A0001-A340-330', '{"en": "GU20F Black skin φ34.0x330", "ja": "GU20F 黒皮 φ34.0×330"}', '本', true, NULL, '2026-08-24 09:19:52.058037+00', '2026-08-24 09:19:52.058037+00', '340', 34.000, 'A0', 330.000, '330', NULL, NULL, 'A', 13, 859, '{}');
-INSERT INTO app.materials VALUES ('C01A0001-A350-330', '{"en": "GU20F Black skin φ35.0x330", "ja": "GU20F 黒皮 φ35.0×330"}', '本', true, NULL, '2026-08-24 09:19:52.058403+00', '2026-08-24 09:19:52.058403+00', '350', 35.000, 'A0', 330.000, '330', NULL, NULL, 'A', 13, 860, '{}');
-INSERT INTO app.materials VALUES ('C01A0001-B030-330', '{"en": "GU20F Polished φ3.0x330", "ja": "GU20F 研磨 φ3.0×330"}', '本', true, NULL, '2026-08-24 09:19:52.058716+00', '2026-08-24 09:19:52.058716+00', '030', 3.000, 'A0', 330.000, '330', NULL, NULL, 'B', 13, 861, '{}');
-INSERT INTO app.materials VALUES ('C01A0001-B040-330', '{"en": "GU20F Polished φ4.0x330", "ja": "GU20F 研磨 φ4.0×330"}', '本', true, NULL, '2026-08-24 09:19:52.05903+00', '2026-08-24 09:19:52.05903+00', '040', 4.000, 'A0', 330.000, '330', NULL, NULL, 'B', 13, 862, '{}');
-INSERT INTO app.materials VALUES ('C01A0001-B050-330', '{"en": "GU20F Polished φ5.0x330", "ja": "GU20F 研磨 φ5.0×330"}', '本', true, NULL, '2026-08-24 09:19:52.059346+00', '2026-08-24 09:19:52.059346+00', '050', 5.000, 'A0', 330.000, '330', NULL, NULL, 'B', 13, 863, '{}');
-INSERT INTO app.materials VALUES ('C01A0001-B060-330', '{"en": "GU20F Polished φ6.0x330", "ja": "GU20F 研磨 φ6.0×330"}', '本', true, NULL, '2026-08-24 09:19:52.059639+00', '2026-08-24 09:19:52.059639+00', '060', 6.000, 'A0', 330.000, '330', NULL, NULL, 'B', 13, 864, '{}');
-INSERT INTO app.materials VALUES ('C01A0001-B070-330', '{"en": "GU20F Polished φ7.0x330", "ja": "GU20F 研磨 φ7.0×330"}', '本', true, NULL, '2026-08-24 09:19:52.059911+00', '2026-08-24 09:19:52.059911+00', '070', 7.000, 'A0', 330.000, '330', NULL, NULL, 'B', 13, 865, '{}');
-INSERT INTO app.materials VALUES ('C01A0001-B080-330', '{"en": "GU20F Polished φ8.0x330", "ja": "GU20F 研磨 φ8.0×330"}', '本', true, NULL, '2026-08-24 09:19:52.060201+00', '2026-08-24 09:19:52.060201+00', '080', 8.000, 'A0', 330.000, '330', NULL, NULL, 'B', 13, 866, '{}');
-INSERT INTO app.materials VALUES ('C01A0001-B090-330', '{"en": "GU20F Polished φ9.0x330", "ja": "GU20F 研磨 φ9.0×330"}', '本', true, NULL, '2026-08-24 09:19:52.060478+00', '2026-08-24 09:19:52.060478+00', '090', 9.000, 'A0', 330.000, '330', NULL, NULL, 'B', 13, 867, '{}');
-INSERT INTO app.materials VALUES ('C01A0001-B100-330', '{"en": "GU20F Polished φ10.0x330", "ja": "GU20F 研磨 φ10.0×330"}', '本', true, NULL, '2026-08-24 09:19:52.060808+00', '2026-08-24 09:19:52.060808+00', '100', 10.000, 'A0', 330.000, '330', NULL, NULL, 'B', 13, 868, '{}');
-INSERT INTO app.materials VALUES ('C01A0001-B110-330', '{"en": "GU20F Polished φ11.0x330", "ja": "GU20F 研磨 φ11.0×330"}', '本', true, NULL, '2026-08-24 09:19:52.061131+00', '2026-08-24 09:19:52.061131+00', '110', 11.000, 'A0', 330.000, '330', NULL, NULL, 'B', 13, 869, '{}');
-INSERT INTO app.materials VALUES ('C01A0001-B120-330', '{"en": "GU20F Polished φ12.0x330", "ja": "GU20F 研磨 φ12.0×330"}', '本', true, NULL, '2026-08-24 09:19:52.061425+00', '2026-08-24 09:19:52.061425+00', '120', 12.000, 'A0', 330.000, '330', NULL, NULL, 'B', 13, 870, '{}');
-INSERT INTO app.materials VALUES ('C01A0001-B130-330', '{"en": "GU20F Polished φ13.0x330", "ja": "GU20F 研磨 φ13.0×330"}', '本', true, NULL, '2026-08-24 09:19:52.061693+00', '2026-08-24 09:19:52.061693+00', '130', 13.000, 'A0', 330.000, '330', NULL, NULL, 'B', 13, 871, '{}');
-INSERT INTO app.materials VALUES ('C01A0001-B140-330', '{"en": "GU20F Polished φ14.0x330", "ja": "GU20F 研磨 φ14.0×330"}', '本', true, NULL, '2026-08-24 09:19:52.061961+00', '2026-08-24 09:19:52.061961+00', '140', 14.000, 'A0', 330.000, '330', NULL, NULL, 'B', 13, 872, '{}');
-INSERT INTO app.materials VALUES ('C01A0001-B150-330', '{"en": "GU20F Polished φ15.0x330", "ja": "GU20F 研磨 φ15.0×330"}', '本', true, NULL, '2026-08-24 09:19:52.062251+00', '2026-08-24 09:19:52.062251+00', '150', 15.000, 'A0', 330.000, '330', NULL, NULL, 'B', 13, 873, '{}');
-INSERT INTO app.materials VALUES ('C01A0001-B160-330', '{"en": "GU20F Polished φ16.0x330", "ja": "GU20F 研磨 φ16.0×330"}', '本', true, NULL, '2026-08-24 09:19:52.062516+00', '2026-08-24 09:19:52.062516+00', '160', 16.000, 'A0', 330.000, '330', NULL, NULL, 'B', 13, 874, '{}');
-INSERT INTO app.materials VALUES ('C01A0001-B170-330', '{"en": "GU20F Polished φ17.0x330", "ja": "GU20F 研磨 φ17.0×330"}', '本', true, NULL, '2026-08-24 09:19:52.062784+00', '2026-08-24 09:19:52.062784+00', '170', 17.000, 'A0', 330.000, '330', NULL, NULL, 'B', 13, 875, '{}');
-INSERT INTO app.materials VALUES ('C01A0001-B180-330', '{"en": "GU20F Polished φ18.0x330", "ja": "GU20F 研磨 φ18.0×330"}', '本', true, NULL, '2026-08-24 09:19:52.063072+00', '2026-08-24 09:19:52.063072+00', '180', 18.000, 'A0', 330.000, '330', NULL, NULL, 'B', 13, 876, '{}');
-INSERT INTO app.materials VALUES ('C01A0001-B190-330', '{"en": "GU20F Polished φ19.0x330", "ja": "GU20F 研磨 φ19.0×330"}', '本', true, NULL, '2026-08-24 09:19:52.063342+00', '2026-08-24 09:19:52.063342+00', '190', 19.000, 'A0', 330.000, '330', NULL, NULL, 'B', 13, 877, '{}');
-INSERT INTO app.materials VALUES ('C01A0001-B200-330', '{"en": "GU20F Polished φ20.0x330", "ja": "GU20F 研磨 φ20.0×330"}', '本', true, NULL, '2026-08-24 09:19:52.063632+00', '2026-08-24 09:19:52.063632+00', '200', 20.000, 'A0', 330.000, '330', NULL, NULL, 'B', 13, 878, '{}');
-INSERT INTO app.materials VALUES ('C01A0001-B210-330', '{"en": "GU20F Polished φ21.0x330", "ja": "GU20F 研磨 φ21.0×330"}', '本', true, NULL, '2026-08-24 09:19:52.063927+00', '2026-08-24 09:19:52.063927+00', '210', 21.000, 'A0', 330.000, '330', NULL, NULL, 'B', 13, 879, '{}');
-INSERT INTO app.materials VALUES ('C01A0001-B220-330', '{"en": "GU20F Polished φ22.0x330", "ja": "GU20F 研磨 φ22.0×330"}', '本', true, NULL, '2026-08-24 09:19:52.064192+00', '2026-08-24 09:19:52.064192+00', '220', 22.000, 'A0', 330.000, '330', NULL, NULL, 'B', 13, 880, '{}');
-INSERT INTO app.materials VALUES ('C01A0001-B230-330', '{"en": "GU20F Polished φ23.0x330", "ja": "GU20F 研磨 φ23.0×330"}', '本', true, NULL, '2026-08-24 09:19:52.064458+00', '2026-08-24 09:19:52.064458+00', '230', 23.000, 'A0', 330.000, '330', NULL, NULL, 'B', 13, 881, '{}');
-INSERT INTO app.materials VALUES ('C01A0001-B240-330', '{"en": "GU20F Polished φ24.0x330", "ja": "GU20F 研磨 φ24.0×330"}', '本', true, NULL, '2026-08-24 09:19:52.064722+00', '2026-08-24 09:19:52.064722+00', '240', 24.000, 'A0', 330.000, '330', NULL, NULL, 'B', 13, 882, '{}');
-INSERT INTO app.materials VALUES ('C01A0001-B250-330', '{"en": "GU20F Polished φ25.0x330", "ja": "GU20F 研磨 φ25.0×330"}', '本', true, NULL, '2026-08-24 09:19:52.064998+00', '2026-08-24 09:19:52.064998+00', '250', 25.000, 'A0', 330.000, '330', NULL, NULL, 'B', 13, 883, '{}');
-INSERT INTO app.materials VALUES ('C01A0001-B260-330', '{"en": "GU20F Polished φ26.0x330", "ja": "GU20F 研磨 φ26.0×330"}', '本', true, NULL, '2026-08-24 09:19:52.065294+00', '2026-08-24 09:19:52.065294+00', '260', 26.000, 'A0', 330.000, '330', NULL, NULL, 'B', 13, 884, '{}');
-INSERT INTO app.materials VALUES ('C01A0001-B270-330', '{"en": "GU20F Polished φ27.0x330", "ja": "GU20F 研磨 φ27.0×330"}', '本', true, NULL, '2026-08-24 09:19:52.065564+00', '2026-08-24 09:19:52.065564+00', '270', 27.000, 'A0', 330.000, '330', NULL, NULL, 'B', 13, 885, '{}');
-INSERT INTO app.materials VALUES ('C01A0001-B280-330', '{"en": "GU20F Polished φ28.0x330", "ja": "GU20F 研磨 φ28.0×330"}', '本', true, NULL, '2026-08-24 09:19:52.065833+00', '2026-08-24 09:19:52.065833+00', '280', 28.000, 'A0', 330.000, '330', NULL, NULL, 'B', 13, 886, '{}');
-INSERT INTO app.materials VALUES ('C01A0001-B290-330', '{"en": "GU20F Polished φ29.0x330", "ja": "GU20F 研磨 φ29.0×330"}', '本', true, NULL, '2026-08-24 09:19:52.066155+00', '2026-08-24 09:19:52.066155+00', '290', 29.000, 'A0', 330.000, '330', NULL, NULL, 'B', 13, 887, '{}');
-INSERT INTO app.materials VALUES ('C01A0001-B300-330', '{"en": "GU20F Polished φ30.0x330", "ja": "GU20F 研磨 φ30.0×330"}', '本', true, NULL, '2026-08-24 09:19:52.066444+00', '2026-08-24 09:19:52.066444+00', '300', 30.000, 'A0', 330.000, '330', NULL, NULL, 'B', 13, 888, '{}');
-INSERT INTO app.materials VALUES ('C01A0001-B310-330', '{"en": "GU20F Polished φ31.0x330", "ja": "GU20F 研磨 φ31.0×330"}', '本', true, NULL, '2026-08-24 09:19:52.066714+00', '2026-08-24 09:19:52.066714+00', '310', 31.000, 'A0', 330.000, '330', NULL, NULL, 'B', 13, 889, '{}');
-INSERT INTO app.materials VALUES ('C01A0001-B320-330', '{"en": "GU20F Polished φ32.0x330", "ja": "GU20F 研磨 φ32.0×330"}', '本', true, NULL, '2026-08-24 09:19:52.066961+00', '2026-08-24 09:19:52.066961+00', '320', 32.000, 'A0', 330.000, '330', NULL, NULL, 'B', 13, 890, '{}');
-INSERT INTO app.materials VALUES ('C01A0001-B330-330', '{"en": "GU20F Polished φ33.0x330", "ja": "GU20F 研磨 φ33.0×330"}', '本', true, NULL, '2026-08-24 09:19:52.067267+00', '2026-08-24 09:19:52.067267+00', '330', 33.000, 'A0', 330.000, '330', NULL, NULL, 'B', 13, 891, '{}');
-INSERT INTO app.materials VALUES ('C01A0001-B340-330', '{"en": "GU20F Polished φ34.0x330", "ja": "GU20F 研磨 φ34.0×330"}', '本', true, NULL, '2026-08-24 09:19:52.06754+00', '2026-08-24 09:19:52.06754+00', '340', 34.000, 'A0', 330.000, '330', NULL, NULL, 'B', 13, 892, '{}');
-INSERT INTO app.materials VALUES ('C01A0001-B350-330', '{"en": "GU20F Polished φ35.0x330", "ja": "GU20F 研磨 φ35.0×330"}', '本', true, NULL, '2026-08-24 09:19:52.067805+00', '2026-08-24 09:19:52.067805+00', '350', 35.000, 'A0', 330.000, '330', NULL, NULL, 'B', 13, 893, '{}');
-INSERT INTO app.materials VALUES ('E01A0001-A040-310', '{"en": "SH10 Black skin φ4.0x310", "ja": "SH10 黒皮 φ4.0×310"}', '本', true, NULL, '2026-08-24 09:19:52.068084+00', '2026-08-24 09:19:52.068084+00', '040', 4.000, 'A0', 310.000, '310', NULL, NULL, 'A', 12, 894, '{}');
-INSERT INTO app.materials VALUES ('E01A0001-A050-310', '{"en": "SH10 Black skin φ5.0x310", "ja": "SH10 黒皮 φ5.0×310"}', '本', true, NULL, '2026-08-24 09:19:52.068345+00', '2026-08-24 09:19:52.068345+00', '050', 5.000, 'A0', 310.000, '310', NULL, NULL, 'A', 12, 895, '{}');
-INSERT INTO app.materials VALUES ('E01A0001-A060-310', '{"en": "SH10 Black skin φ6.0x310", "ja": "SH10 黒皮 φ6.0×310"}', '本', true, NULL, '2026-08-24 09:19:52.068653+00', '2026-08-24 09:19:52.068653+00', '060', 6.000, 'A0', 310.000, '310', NULL, NULL, 'A', 12, 896, '{}');
-INSERT INTO app.materials VALUES ('E01A0001-A070-310', '{"en": "SH10 Black skin φ7.0x310", "ja": "SH10 黒皮 φ7.0×310"}', '本', true, NULL, '2026-08-24 09:19:52.068949+00', '2026-08-24 09:19:52.068949+00', '070', 7.000, 'A0', 310.000, '310', NULL, NULL, 'A', 12, 897, '{}');
-INSERT INTO app.materials VALUES ('E01A0001-A080-310', '{"en": "SH10 Black skin φ8.0x310", "ja": "SH10 黒皮 φ8.0×310"}', '本', true, NULL, '2026-08-24 09:19:52.069233+00', '2026-08-24 09:19:52.069233+00', '080', 8.000, 'A0', 310.000, '310', NULL, NULL, 'A', 12, 898, '{}');
-INSERT INTO app.materials VALUES ('E01A0001-A090-310', '{"en": "SH10 Black skin φ9.0x310", "ja": "SH10 黒皮 φ9.0×310"}', '本', true, NULL, '2026-08-24 09:19:52.069534+00', '2026-08-24 09:19:52.069534+00', '090', 9.000, 'A0', 310.000, '310', NULL, NULL, 'A', 12, 899, '{}');
-INSERT INTO app.materials VALUES ('E01A0001-A100-310', '{"en": "SH10 Black skin φ10.0x310", "ja": "SH10 黒皮 φ10.0×310"}', '本', true, NULL, '2026-08-24 09:19:52.06981+00', '2026-08-24 09:19:52.06981+00', '100', 10.000, 'A0', 310.000, '310', NULL, NULL, 'A', 12, 900, '{}');
-INSERT INTO app.materials VALUES ('E01A0001-A110-310', '{"en": "SH10 Black skin φ11.0x310", "ja": "SH10 黒皮 φ11.0×310"}', '本', true, NULL, '2026-08-24 09:19:52.070093+00', '2026-08-24 09:19:52.070093+00', '110', 11.000, 'A0', 310.000, '310', NULL, NULL, 'A', 12, 901, '{}');
-INSERT INTO app.materials VALUES ('E01A0001-A120-310', '{"en": "SH10 Black skin φ12.0x310", "ja": "SH10 黒皮 φ12.0×310"}', '本', true, NULL, '2026-08-24 09:19:52.070367+00', '2026-08-24 09:19:52.070367+00', '120', 12.000, 'A0', 310.000, '310', NULL, NULL, 'A', 12, 902, '{}');
-INSERT INTO app.materials VALUES ('E01A0001-A130-310', '{"en": "SH10 Black skin φ13.0x310", "ja": "SH10 黒皮 φ13.0×310"}', '本', true, NULL, '2026-08-24 09:19:52.070639+00', '2026-08-24 09:19:52.070639+00', '130', 13.000, 'A0', 310.000, '310', NULL, NULL, 'A', 12, 903, '{}');
-INSERT INTO app.materials VALUES ('E01A0001-A140-310', '{"en": "SH10 Black skin φ14.0x310", "ja": "SH10 黒皮 φ14.0×310"}', '本', true, NULL, '2026-08-24 09:19:52.070908+00', '2026-08-24 09:19:52.070908+00', '140', 14.000, 'A0', 310.000, '310', NULL, NULL, 'A', 12, 904, '{}');
-
--- Data for Name: process_step_catalog; Type: TABLE DATA; Schema: app; Owner: postgres
+-- app.process_step_catalog
 
 INSERT INTO app.process_step_catalog VALUES (1, 'MATERIAL_ISSUE', '{"en": "Material issue (stock)", "ja": "素材出し（在庫）"}', 'MATERIAL_PREP', 'INTERNAL', false, false, false, NULL, 10, true, '在庫の移動', 'FLOW', NULL, 'NONE');
 INSERT INTO app.process_step_catalog VALUES (2, 'SEMI_FINISHED_ISSUE', '{"en": "Semi-finished issue (stock)", "ja": "半製品出し（在庫）"}', 'MATERIAL_PREP', 'INTERNAL', false, false, false, NULL, 20, true, '在庫の移動。半製品にリブ母材を含む', 'FLOW', NULL, 'NONE');
@@ -1186,97 +245,97 @@ INSERT INTO app.process_step_catalog VALUES (38, 'CUSTOMER_INSPECTION_2', '{"en"
 INSERT INTO app.process_step_catalog VALUES (40, 'PRE_SHIP_INSPECTION', '{"en": "Pre-shipment inspection", "ja": "出荷前検査"}', 'INSPECTION', 'INTERNAL', false, true, false, NULL, 400, true, '全工程完了後。再研磨・在庫で検査済みの場合は省略可', 'INSPECTION', NULL, 'NONE');
 INSERT INTO app.process_step_catalog VALUES (42, 'PRODUCT_ISSUE', '{"en": "Product issue (stock)", "ja": "製品出し（在庫）"}', 'MATERIAL_PREP', 'INTERNAL', false, false, false, NULL, 25, true, '在庫の移動（在庫分指示書の開始工程 — 製造分の工程選択には出さない）', 'FLOW', NULL, 'NONE');
 
--- Data for Name: products; Type: TABLE DATA; Schema: app; Owner: postgres
+-- app.products
 
--- Data for Name: product_process_routes; Type: TABLE DATA; Schema: app; Owner: postgres
+-- app.product_process_routes
 
--- Data for Name: product_process_route_versions; Type: TABLE DATA; Schema: app; Owner: postgres
+-- app.product_process_route_versions
 
--- Data for Name: storage_locations; Type: TABLE DATA; Schema: app; Owner: postgres
+-- app.storage_locations
 
--- Data for Name: work_orders; Type: TABLE DATA; Schema: app; Owner: postgres
+-- app.work_orders
 
--- Data for Name: work_order_steps; Type: TABLE DATA; Schema: app; Owner: postgres
+-- app.work_order_steps
 
--- Data for Name: defect_records; Type: TABLE DATA; Schema: app; Owner: postgres
+-- app.defect_records
 
--- Data for Name: delivery_orders; Type: TABLE DATA; Schema: app; Owner: postgres
+-- app.delivery_orders
 
--- Data for Name: delivery_notes; Type: TABLE DATA; Schema: app; Owner: postgres
+-- app.delivery_notes
 
--- Data for Name: delivery_note_items; Type: TABLE DATA; Schema: app; Owner: postgres
+-- app.delivery_note_items
 
--- Data for Name: order_acceptances; Type: TABLE DATA; Schema: app; Owner: postgres
+-- app.order_acceptances
 
--- Data for Name: order_lines; Type: TABLE DATA; Schema: app; Owner: postgres
+-- app.order_lines
 
--- Data for Name: delivery_order_items; Type: TABLE DATA; Schema: app; Owner: postgres
+-- app.delivery_order_items
 
--- Data for Name: quotes; Type: TABLE DATA; Schema: app; Owner: postgres
+-- app.quotes
 
--- Data for Name: design_requests; Type: TABLE DATA; Schema: app; Owner: postgres
+-- app.design_requests
 
--- Data for Name: design_files; Type: TABLE DATA; Schema: app; Owner: postgres
+-- app.design_files
 
--- Data for Name: document_attachments; Type: TABLE DATA; Schema: app; Owner: postgres
+-- app.document_attachments
 
--- Data for Name: document_memos; Type: TABLE DATA; Schema: app; Owner: postgres
+-- app.document_memos
 
--- Data for Name: document_memo_revisions; Type: TABLE DATA; Schema: app; Owner: postgres
+-- app.document_memo_revisions
 
--- Data for Name: estimates; Type: TABLE DATA; Schema: app; Owner: postgres
+-- app.estimates
 
--- Data for Name: feature_flags; Type: TABLE DATA; Schema: app; Owner: postgres
+-- app.feature_flags
 
--- Data for Name: file_folder_grants; Type: TABLE DATA; Schema: app; Owner: postgres
+-- app.file_folder_grants
 
--- Data for Name: inspection_templates; Type: TABLE DATA; Schema: app; Owner: postgres
+-- app.inspection_templates
 
--- Data for Name: inspection_records; Type: TABLE DATA; Schema: app; Owner: postgres
+-- app.inspection_records
 
--- Data for Name: inspection_template_items; Type: TABLE DATA; Schema: app; Owner: postgres
+-- app.inspection_template_items
 
--- Data for Name: inspection_record_items; Type: TABLE DATA; Schema: app; Owner: postgres
+-- app.inspection_record_items
 
--- Data for Name: inventory_reservations; Type: TABLE DATA; Schema: app; Owner: postgres
+-- app.inventory_reservations
 
--- Data for Name: inventory_transactions; Type: TABLE DATA; Schema: app; Owner: postgres
+-- app.inventory_transactions
 
--- Data for Name: invoices; Type: TABLE DATA; Schema: app; Owner: postgres
+-- app.invoices
 
--- Data for Name: invoice_items; Type: TABLE DATA; Schema: app; Owner: postgres
+-- app.invoice_items
 
--- Data for Name: kiosk_cards; Type: TABLE DATA; Schema: app; Owner: postgres
+-- app.kiosk_cards
 
--- Data for Name: kiosk_device_locations; Type: TABLE DATA; Schema: app; Owner: postgres
+-- app.kiosk_device_locations
 
--- Data for Name: kiosk_device_logs; Type: TABLE DATA; Schema: app; Owner: postgres
+-- app.kiosk_device_logs
 
--- Data for Name: kiosk_link_requests; Type: TABLE DATA; Schema: app; Owner: postgres
+-- app.kiosk_link_requests
 
--- Data for Name: kiosk_sessions; Type: TABLE DATA; Schema: app; Owner: postgres
+-- app.kiosk_sessions
 
--- Data for Name: link_blacklist; Type: TABLE DATA; Schema: app; Owner: postgres
+-- app.link_blacklist
 
--- Data for Name: link_index; Type: TABLE DATA; Schema: app; Owner: postgres
+-- app.link_index
 
--- Data for Name: match_aliases; Type: TABLE DATA; Schema: app; Owner: postgres
+-- app.match_aliases
 
--- Data for Name: storage_shelves; Type: TABLE DATA; Schema: app; Owner: postgres
+-- app.storage_shelves
 
--- Data for Name: material_inventory; Type: TABLE DATA; Schema: app; Owner: postgres
+-- app.material_inventory
 
--- Data for Name: material_kinds; Type: TABLE DATA; Schema: app; Owner: postgres
+-- app.material_kinds
 
 INSERT INTO app.material_kinds VALUES ('A', 'A0', '{"en": "Standard", "ja": "通常"}', true, '2026-08-24 09:19:51.788864+00', '2026-08-24 09:19:51.788864+00');
 
--- Data for Name: material_purchase_orders; Type: TABLE DATA; Schema: app; Owner: postgres
+-- app.material_purchase_orders
 
--- Data for Name: material_purchase_order_items; Type: TABLE DATA; Schema: app; Owner: postgres
+-- app.material_purchase_order_items
 
--- Data for Name: material_receipts; Type: TABLE DATA; Schema: app; Owner: postgres
+-- app.material_receipts
 
--- Data for Name: material_type_prices; Type: TABLE DATA; Schema: app; Owner: postgres
+-- app.material_type_prices
 
 INSERT INTO app.material_type_prices VALUES (1, 7, '010', 'A', 929.03, '2026-08-24 09:19:52.086925+00', '2026-08-24 09:19:52.086925+00');
 INSERT INTO app.material_type_prices VALUES (2, 7, '020', 'A', 1412.90, '2026-08-24 09:19:52.087479+00', '2026-08-24 09:19:52.087479+00');
@@ -2044,23 +1103,23 @@ INSERT INTO app.material_type_prices VALUES (763, 12, '120', 'A', 45951.61, '202
 INSERT INTO app.material_type_prices VALUES (764, 12, '130', 'A', 53225.81, '2026-08-24 09:19:52.28305+00', '2026-08-24 09:19:52.28305+00');
 INSERT INTO app.material_type_prices VALUES (765, 12, '140', 'A', 60500.00, '2026-08-24 09:19:52.283284+00', '2026-08-24 09:19:52.283284+00');
 
--- Data for Name: notifications; Type: TABLE DATA; Schema: app; Owner: postgres
+-- app.notifications
 
--- Data for Name: numbering_sequences; Type: TABLE DATA; Schema: app; Owner: postgres
+-- app.numbering_sequences
 
--- Data for Name: order_acceptance_cancel_requests; Type: TABLE DATA; Schema: app; Owner: postgres
+-- app.order_acceptance_cancel_requests
 
--- Data for Name: permissions; Type: TABLE DATA; Schema: app; Owner: postgres
+-- app.permissions
 
--- Data for Name: price_list_entries; Type: TABLE DATA; Schema: app; Owner: postgres
+-- app.price_list_entries
 
--- Data for Name: price_list_variants; Type: TABLE DATA; Schema: app; Owner: postgres
+-- app.price_list_variants
 
--- Data for Name: price_list_discounts; Type: TABLE DATA; Schema: app; Owner: postgres
+-- app.price_list_discounts
 
--- Data for Name: price_list_tiers; Type: TABLE DATA; Schema: app; Owner: postgres
+-- app.price_list_tiers
 
--- Data for Name: process_step_exec_dependencies; Type: TABLE DATA; Schema: app; Owner: postgres
+-- app.process_step_exec_dependencies
 
 INSERT INTO app.process_step_exec_dependencies VALUES (30, 1, 'OR', '素材手配の完了');
 INSERT INTO app.process_step_exec_dependencies VALUES (7, 1, 'OR', '素材手配の完了');
@@ -2116,7 +1175,7 @@ INSERT INTO app.process_step_exec_dependencies VALUES (37, 36, 'OR', 'コーテ�
 INSERT INTO app.process_step_exec_dependencies VALUES (35, 36, 'AND', 'すべて完了');
 INSERT INTO app.process_step_exec_dependencies VALUES (39, 38, 'AND', '客先向け検査２の完了');
 
--- Data for Name: process_step_use_dependencies; Type: TABLE DATA; Schema: app; Owner: postgres
+-- app.process_step_use_dependencies
 
 INSERT INTO app.process_step_use_dependencies VALUES (30, 1, 'OR', false, '素材手配');
 INSERT INTO app.process_step_use_dependencies VALUES (7, 1, 'OR', false, '素材手配');
@@ -2183,25 +1242,25 @@ INSERT INTO app.process_step_use_dependencies VALUES (37, 36, 'OR', false, 'コ�
 INSERT INTO app.process_step_use_dependencies VALUES (39, 38, 'AND', false, NULL);
 INSERT INTO app.process_step_use_dependencies VALUES (38, 39, 'AND', false, '検査承認必須');
 
--- Data for Name: process_step_work_locations; Type: TABLE DATA; Schema: app; Owner: postgres
+-- app.process_step_work_locations
 
--- Data for Name: product_inventory; Type: TABLE DATA; Schema: app; Owner: postgres
+-- app.product_inventory
 
--- Data for Name: product_process_route_version_steps; Type: TABLE DATA; Schema: app; Owner: postgres
+-- app.product_process_route_version_steps
 
--- Data for Name: purchase_requests; Type: TABLE DATA; Schema: app; Owner: postgres
+-- app.purchase_requests
 
--- Data for Name: purchase_request_items; Type: TABLE DATA; Schema: app; Owner: postgres
+-- app.purchase_request_items
 
--- Data for Name: push_subscriptions; Type: TABLE DATA; Schema: app; Owner: postgres
+-- app.push_subscriptions
 
--- Data for Name: quote_items; Type: TABLE DATA; Schema: app; Owner: postgres
+-- app.quote_items
 
--- Data for Name: roles; Type: TABLE DATA; Schema: app; Owner: postgres
+-- app.roles
 
--- Data for Name: role_permission_relation; Type: TABLE DATA; Schema: app; Owner: postgres
+-- app.role_permission_relation
 
--- Data for Name: system_settings; Type: TABLE DATA; Schema: app; Owner: postgres
+-- app.system_settings
 
 INSERT INTO app.system_settings VALUES ('trial_pricing.material_price_basis', '"MAX"', '材料参照価格の算出方法（MAX/LATEST/AVERAGE）', NULL, '2026-08-24 09:19:51.478759+00');
 INSERT INTO app.system_settings VALUES ('trial_pricing.lookback_months', '6', '仕入実績の参照期間（月）', NULL, '2026-08-24 09:19:51.478759+00');
@@ -2210,131 +1269,115 @@ INSERT INTO app.system_settings VALUES ('trial_pricing.spare_shape_count', '3', 
 INSERT INTO app.system_settings VALUES ('trial_pricing.correction_factor', '1.25', '補正値', NULL, '2026-08-24 09:19:51.478759+00');
 INSERT INTO app.system_settings VALUES ('trial_pricing.ld_charge_per_10min', '7500', 'LD加算（¥/10分）', NULL, '2026-08-24 09:19:51.478759+00');
 
--- Data for Name: user_home_settings; Type: TABLE DATA; Schema: app; Owner: postgres
+-- app.user_home_settings
 
--- Data for Name: user_notification_settings; Type: TABLE DATA; Schema: app; Owner: postgres
+-- app.user_notification_settings
 
--- Data for Name: user_plants; Type: TABLE DATA; Schema: app; Owner: postgres
+-- app.user_plants
 
--- Data for Name: user_role_relation; Type: TABLE DATA; Schema: app; Owner: postgres
+-- app.user_role_relation
 
--- Data for Name: work_order_flow_changes; Type: TABLE DATA; Schema: app; Owner: postgres
+-- app.work_order_flow_changes
 
--- Data for Name: work_order_links; Type: TABLE DATA; Schema: app; Owner: postgres
+-- app.work_order_links
 
--- Data for Name: work_order_order_lines; Type: TABLE DATA; Schema: app; Owner: postgres
+-- app.work_order_order_lines
 
--- Data for Name: work_order_step_actuals; Type: TABLE DATA; Schema: app; Owner: postgres
+-- app.work_order_step_actuals
 
--- Data for Name: work_order_step_inspection_templates; Type: TABLE DATA; Schema: app; Owner: postgres
+-- app.work_order_step_inspection_templates
 
--- Data for Name: work_order_step_links; Type: TABLE DATA; Schema: app; Owner: postgres
+-- app.work_order_step_links
 
--- Data for Name: work_order_step_plans; Type: TABLE DATA; Schema: app; Owner: postgres
+-- app.work_order_step_plans
 
--- Data for Name: ldap_sync_log; Type: TABLE DATA; Schema: directory; Owner: postgres
+-- directory.ldap_sync_log
 
--- Name: approval_flow_rule_steps_id_seq; Type: SEQUENCE SET; Schema: app; Owner: postgres
+-- app.approval_flow_rule_steps_id_seq (sequence position)
 
 SELECT pg_catalog.setval('app.approval_flow_rule_steps_id_seq', 1, false);
 
--- Name: approval_flow_rules_id_seq; Type: SEQUENCE SET; Schema: app; Owner: postgres
+-- app.approval_flow_rules_id_seq (sequence position)
 
 SELECT pg_catalog.setval('app.approval_flow_rules_id_seq', 1, false);
 
--- Name: approval_flow_steps_id_seq; Type: SEQUENCE SET; Schema: app; Owner: postgres
-
-SELECT pg_catalog.setval('app.approval_flow_steps_id_seq', 5, true);
-
--- Name: approval_groups_id_seq; Type: SEQUENCE SET; Schema: app; Owner: postgres
-
-SELECT pg_catalog.setval('app.approval_groups_id_seq', 2, true);
-
--- Name: audit_logs_id_seq; Type: SEQUENCE SET; Schema: app; Owner: postgres
+-- app.audit_logs_id_seq (sequence position)
 
 SELECT pg_catalog.setval('app.audit_logs_id_seq', 1, false);
 
--- Name: defect_types_id_seq; Type: SEQUENCE SET; Schema: app; Owner: postgres
-
-SELECT pg_catalog.setval('app.defect_types_id_seq', 6, true);
-
--- Name: file_folder_grants_id_seq; Type: SEQUENCE SET; Schema: app; Owner: postgres
+-- app.file_folder_grants_id_seq (sequence position)
 
 SELECT pg_catalog.setval('app.file_folder_grants_id_seq', 1, false);
 
--- Name: inspection_template_items_id_seq; Type: SEQUENCE SET; Schema: app; Owner: postgres
+-- app.inspection_template_items_id_seq (sequence position)
 
 SELECT pg_catalog.setval('app.inspection_template_items_id_seq', 1, false);
 
--- Name: inspection_templates_id_seq; Type: SEQUENCE SET; Schema: app; Owner: postgres
+-- app.inspection_templates_id_seq (sequence position)
 
 SELECT pg_catalog.setval('app.inspection_templates_id_seq', 1, false);
 
--- Name: kiosk_device_logs_id_seq; Type: SEQUENCE SET; Schema: app; Owner: postgres
+-- app.kiosk_device_logs_id_seq (sequence position)
 
 SELECT pg_catalog.setval('app.kiosk_device_logs_id_seq', 1, false);
 
--- Name: match_aliases_id_seq; Type: SEQUENCE SET; Schema: app; Owner: postgres
+-- app.match_aliases_id_seq (sequence position)
 
 SELECT pg_catalog.setval('app.match_aliases_id_seq', 1, false);
 
--- Name: material_type_prices_id_seq; Type: SEQUENCE SET; Schema: app; Owner: postgres
+-- app.material_type_prices_id_seq (sequence position)
 
 SELECT pg_catalog.setval('app.material_type_prices_id_seq', 765, true);
 
--- Name: material_types_id_new_seq; Type: SEQUENCE SET; Schema: app; Owner: postgres
+-- app.material_types_id_new_seq (sequence position)
 
 SELECT pg_catalog.setval('app.material_types_id_new_seq', 13, true);
 
--- Name: materials_id_new_seq; Type: SEQUENCE SET; Schema: app; Owner: postgres
+-- app.materials_id_new_seq (sequence position)
 
 SELECT pg_catalog.setval('app.materials_id_new_seq', 904, true);
 
--- Name: plants_id_seq; Type: SEQUENCE SET; Schema: app; Owner: postgres
-
-SELECT pg_catalog.setval('app.plants_id_seq', 1, true);
-
--- Name: process_step_catalog_id_seq; Type: SEQUENCE SET; Schema: app; Owner: postgres
+-- app.process_step_catalog_id_seq (sequence position)
 
 SELECT pg_catalog.setval('app.process_step_catalog_id_seq', 42, true);
 
--- Name: process_step_work_locations_id_seq; Type: SEQUENCE SET; Schema: app; Owner: postgres
+-- app.process_step_work_locations_id_seq (sequence position)
 
 SELECT pg_catalog.setval('app.process_step_work_locations_id_seq', 1, false);
 
--- Name: product_process_routes_id_seq; Type: SEQUENCE SET; Schema: app; Owner: postgres
+-- app.product_process_routes_id_seq (sequence position)
 
 SELECT pg_catalog.setval('app.product_process_routes_id_seq', 1, false);
 
--- Name: products_id_new_seq; Type: SEQUENCE SET; Schema: app; Owner: postgres
+-- app.products_id_new_seq (sequence position)
 
 SELECT pg_catalog.setval('app.products_id_new_seq', 1, false);
 
--- Name: regions_id_seq; Type: SEQUENCE SET; Schema: app; Owner: postgres
+-- app.regions_id_seq (sequence position)
 
 SELECT pg_catalog.setval('app.regions_id_seq', 1, false);
 
--- Name: roles_id_seq; Type: SEQUENCE SET; Schema: app; Owner: postgres
+-- app.roles_id_seq (sequence position)
 
 SELECT pg_catalog.setval('app.roles_id_seq', 1, false);
 
--- Name: storage_locations_id_seq; Type: SEQUENCE SET; Schema: app; Owner: postgres
+-- app.storage_locations_id_seq (sequence position)
 
 SELECT pg_catalog.setval('app.storage_locations_id_seq', 1, false);
 
--- Name: storage_shelves_id_seq; Type: SEQUENCE SET; Schema: app; Owner: postgres
+-- app.storage_shelves_id_seq (sequence position)
 
 SELECT pg_catalog.setval('app.storage_shelves_id_seq', 1, false);
 
--- Name: work_location_groups_id_seq; Type: SEQUENCE SET; Schema: app; Owner: postgres
+-- app.work_location_groups_id_seq (sequence position)
 
 SELECT pg_catalog.setval('app.work_location_groups_id_seq', 1, false);
 
--- Name: work_locations_id_seq; Type: SEQUENCE SET; Schema: app; Owner: postgres
+-- app.work_locations_id_seq (sequence position)
 
 SELECT pg_catalog.setval('app.work_locations_id_seq', 1, false);
 
--- Name: ldap_sync_log_id_seq; Type: SEQUENCE SET; Schema: directory; Owner: postgres
+-- directory.ldap_sync_log_id_seq (sequence position)
 
 SELECT pg_catalog.setval('directory.ldap_sync_log_id_seq', 1, false);
 

@@ -52,6 +52,9 @@ const AUTH_SECRET = "docs-screenshots-fixed-secret-not-production";
 // 順序が重要: demo-users を rbac より先に（rbac-seed の demo1〜5 ロール割当は
 // ユーザーが既に居るときだけ効く — 逆順だと 1 回目と 2 回目で結果が変わる）。
 const SEED_FILES_PRE = [
+  // 本番には入れないマスタ（素材 / 拠点 / 不良種類 / 承認フロー）。
+  // 材種・工程マスタ・試算設定・RBAC・フラグは migration が入れる。
+  "sql/extended-master-seed.sql",
   "sql/demo-users-seed.sql",
   "sql/rbac-seed.sql", // デモユーザーへのロール割当（権限定義そのものは migration）
   "sql/dev-role-users-seed.sql",

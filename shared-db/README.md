@@ -119,13 +119,19 @@ FK を最終ファイルに集めてあるので、テーブルがどのファ�
 
 | migration | 中身 |
 |---|---|
-| `..0007_seed_master_data` | 採番マスタ / 材種・素材 / 工程マスタ / 承認フロー / 検査テンプレ / 通貨 / `system` ユーザー |
+| `..0007_seed_master_data` | 材種（コード構成要素 + 材種 + 既定単価）/ 工程マスタ + 工程依存 / 試算設定（`system_settings`）/ 通貨 / `system` ユーザー |
 | `..0008_seed_rbac_roles` | 権限コード 18 種 + admin/staff + 業務ロール 15 種 |
 | `..0009_seed_feature_flags` | main で公開するアプリ |
 
 つまり **まっさらな DB に `prisma migrate deploy` を流すだけで使える状態になる**
 （検証済み: テーブル 114 / 権限 18 / ロール 17 / 権限付与 381 / フラグ 18 /
-工程 41 / 材種 13 / 素材 904）。
+工程 41 / 材種 13 / 既定単価 765）。
+
+**本番に入れたくないマスタは migration に置けない** — migration はどの DB にも
+同じように適用されるため。素材（904）/ 拠点 / 不良種類 / 承認グループ・承認フローは
+`sql/extended-master-seed.sql` に分けてある。本番はこれらを運用に合わせて画面から
+作る。dev は現行 DB のスナップショットを復元するので実データが入る。撮影用 DB は
+`tools/docs-screenshots` がこのファイルを流す。
 
 > **migration に pg_dump の前置きを貼らないこと** — `SELECT pg_catalog.set_config(
 > 'search_path', '', false);` が入るとセッションの search_path が空になり、Prisma が
