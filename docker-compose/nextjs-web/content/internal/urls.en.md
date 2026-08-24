@@ -29,15 +29,19 @@ check the URL before you touch anything.
 
 | URL | Environment | What it is |
 | --- | --- | --- |
-| `https://kiosk.ckk-tool.co.jp` | **Production** | Step execution, work-order scanning |
-| `https://kiosk-dev.ckk-tool.co.jp` | Staging | Staging |
-| `https://ckk-kiosk.kai-lab.net` | **Production** | Old address (still works for now) |
-| `https://ckk-kiosk-dev.kai-lab.net` | Staging | Old address (still works for now) |
+| `https://ckk-kiosk.kai-lab.net` | **Production** | Step execution, work-order scanning |
+| `https://ckk-kiosk-dev.kai-lab.net` | Staging | Staging |
+| `https://kiosk.ckk-tools.loc` | **Production** | Internal-only address (self-signed cert) |
 
-> **Point the tablets at the new URL.** The device app has the URL fixed in it,
-> and device-trust tokens are per-domain, so each tablet must be **enrolled again**
-> on the new address (re-link it in SY09 端末管理). The old addresses stay up until
-> that is done.
+> The kiosk **stays on `kai-lab.net`** — it is not moving to `ckk-tool.co.jp`.
+> It is only ever used from shop-floor tablets, and the plan is to make it
+> reachable **from the internal network only**. Nothing to change on the tablets.
+>
+> `kiosk.ckk-tools.loc` is that internal-only address. `.loc` is not a public
+> domain, so the certificate is **self-signed**, which needs two things: an
+> internal DNS record `kiosk.ckk-tools.loc → 192.168.50.15`, and **the tablet app
+> trusting that certificate** (today it refuses self-signed certs — see the note
+> below). A browser can reach it by accepting the warning.
 
 ## Admin & analytics
 
@@ -73,6 +77,11 @@ The old `.kai-lab.net` addresses for `dock` / `monitor` / `chat` still work for 
   prices, costs, attendance. They are read-only (writes are refused by the
   database), but they should not be reachable by anyone who merely knows the URL.
   The same applies to `dock`, `deploy` and `monitor`.
+- **`kiosk.ckk-tools.loc` cannot be opened from the tablets as things stand.**
+  The Android kiosk app rejects self-signed certificates (it ships no
+  `network_security_config` and does not intercept SSL errors), so using it from a
+  tablet needs either an app change that trusts the certificate plus a rebuild, or
+  an internal CA.
 - CKK systems are **being consolidated under `ckk-tool.co.jp`**. The kiosk and the
   platform tools have moved. The business app has its `ckk-tool.co.jp` addresses
   prepared, but **keep using `kai-lab.net` until the SSO switch is done**.
