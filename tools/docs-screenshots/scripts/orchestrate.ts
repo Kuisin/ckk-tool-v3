@@ -47,13 +47,13 @@ const DATABASE_URL = `postgresql://postgres:shots@127.0.0.1:${DB_PORT}/ckk`;
 const AUTH_SECRET = "docs-screenshots-fixed-secret-not-production";
 
 // import:legacy（BP マスタ）より前に流す基盤シード。
+// 権限コード / 業務ロール / フィーチャーフラグ自体は migration が入れるので、
+// ここに残すのは **撮影用 DB にしか居ないデモユーザー** 関連だけ。
 // 順序が重要: demo-users を rbac より先に（rbac-seed の demo1〜5 ロール割当は
 // ユーザーが既に居るときだけ効く — 逆順だと 1 回目と 2 回目で結果が変わる）。
 const SEED_FILES_PRE = [
   "sql/demo-users-seed.sql",
-  "sql/rbac-seed.sql",
-  "sql/roles-seed.sql",
-  "sql/feature-flags-seed.sql",
+  "sql/rbac-seed.sql", // デモユーザーへのロール割当（権限定義そのものは migration）
   "sql/dev-role-users-seed.sql",
   "sql/screenshot-user-seed.sql",
 ];
@@ -169,18 +169,14 @@ function seed(): void {
     log("installing shared-db deps (first run)");
     sh("pnpm", ["install", "--frozen-lockfile"], { cwd: SHARED_DB });
   }
-  // ベースライン（2026-08-24 のスクウォッシュ）は directory.* も自分で作るので、
-  // directory-bootstrap も P3005 回避（空の _prisma_migrations 手動作成）も要らない
-  // — まっさらな DB に素直に deploy できる。
+  // ベースライン（2026-08-24 のスクウォッシュ）は directory.* も作り、初期マスタ /
+  // RBAC / フィーチャーフラグも migration として入るので、directory-bootstrap も
+  // P3005 回避（空の _prisma_migrations 手動作成）もシード流しも要らない。
   log("prisma migrate deploy");
   sh("pnpm", ["exec", "prisma", "migrate", "deploy"], {
     cwd: SHARED_DB,
     env: { DATABASE_URL },
   });
-  // 旧 migration に埋まっていた初期データ（採番マスタ / 材種・素材 / 工程マスタ /
-  // 承認フロー / 検査テンプレ / 通貨 / system ユーザー）はここへ移した。
-  log("seed: sql/baseline-seed.sql");
-  psqlFile(join(SHARED_DB, "sql/baseline-seed.sql"));
   for (const f of SEED_FILES_PRE) {
     log(`seed: ${f}`);
     psqlFile(join(SHARED_DB, f));

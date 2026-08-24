@@ -72,14 +72,8 @@ client generation only).
 
 ## 初期データ
 
-新規 DB を作ったら **`sql/baseline-seed.sql` を 1 回だけ**流す。旧 migration
-（`materials_from_excel` 等）に埋まっていた DML をスクウォッシュ時に切り出したもの:
-採番マスタ / 材種・素材（Excel 由来）/ 工程マスタ / 承認フロー / 検査テンプレ /
-通貨 / `system` ユーザー。**冪等ではない** ので既存 DB には流さないこと。
-
-```bash
-psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f sql/baseline-seed.sql
-```
+初期マスタ / RBAC / フィーチャーフラグは **migration `0007`〜`0009`** が入れる
+（下の「Migration history」参照）。手で流すものは無い。
 
 `pnpm import:legacy` は FileMaker 由来の取引先マスタ
 （`../data-migration/imports/010_bp.sql.gz` — 取引先 459 件、`match_names` 付き。
@@ -119,31 +113,49 @@ FK を最終ファイルに集めてあるので、テーブルがどのファ�
 バイト一致**することを確認済み（カタログ比較も一致）。旧履歴に埋まっていた DML は
 `sql/baseline-seed.sql` へ分離した。
 
-新規 DB を 1 から作る手順:
+### 初期データも migration に入っている
 
-```bash
-cd shared-db
-pnpm migrate:deploy                                    # 1. ベースライン 6 本
-psql "$ADMIN_URL" -f sql/grants.sql                    # 2. ロール/権限（冪等）
-psql "$ADMIN_URL" -f sql/baseline-seed.sql             # 3. 初期データ（1 回だけ）
-psql "$ADMIN_URL" -f sql/rbac-seed.sql                 # 4. 権限コード + admin/staff
-psql "$ADMIN_URL" -f sql/roles-seed.sql                # 5. 業務ロール 15 種
-psql "$ADMIN_URL" -f sql/feature-flags-seed.sql        # 6. main で公開するアプリ
-psql "$ADMIN_URL" -f sql/kiosk-cron.sql                # 7. pg_cron ジョブ
-psql "$ADMIN_URL" -f sql/analytics-views.sql           # 8. 分析ビュー
-pnpm import:legacy                                     # 9. 取引先マスタ（任意）
-```
+「1 回だけ流すもの」は全部 migration にした。手で流す手順書は無い:
 
-1〜2 と 7〜8 は冪等なので `db-migrate-*` が毎デプロイ流す。3〜6・9 は
-**プロビジョニング時に 1 回だけ**（migrator は流さない）。
+| migration | 中身 |
+|---|---|
+| `..0007_seed_master_data` | 採番マスタ / 材種・素材 / 工程マスタ / 承認フロー / 検査テンプレ / 通貨 / `system` ユーザー |
+| `..0008_seed_rbac_roles` | 権限コード 18 種 + admin/staff + 業務ロール 15 種 |
+| `..0009_seed_feature_flags` | main で公開するアプリ |
 
-既存 DB を新しい履歴に合わせ直すとき（データはそのまま）:
+つまり **まっさらな DB に `prisma migrate deploy` を流すだけで使える状態になる**
+（検証済み: テーブル 114 / 権限 18 / ロール 17 / 権限付与 381 / フラグ 18 /
+工程 41 / 材種 13 / 素材 904）。
+
+> **migration に pg_dump の前置きを貼らないこと** — `SELECT pg_catalog.set_config(
+> 'search_path', '', false);` が入るとセッションの search_path が空になり、Prisma が
+> `_prisma_migrations` を見失って **P1014** で落ちる（データは入った後に落ちるので
+> 中途半端な状態になる）。0007 を作り直したときに踏んだ。
+
+一方 **毎デプロイ流し直すもの**（スキーマが育つたびに再適用が要る／冪等）は
+migration にせず、`db-migrate-*` コンテナが毎回流す:
+
+- `sql/grants.sql` — 後から増えたテーブルにも権限を行き渡らせる必要がある
+- `sql/kiosk-cron.sql` — pg_cron ジョブ定義
+- `sql/analytics-views.sql` — 分析ビュー（CREATE OR REPLACE）
+
+`grants.sql` は新規 DB でも通るようにしてある（`kot` / `admintools` / `analytics`
+スキーマを作り、init スクリプトが走っていない環境では受け皿ロールを NOLOGIN で
+用意し、他アプリのテーブルへの GRANT は存在チェック付き）。
+
+取引先マスタだけは任意の追加ステップ: `pnpm import:legacy`（冪等 upsert）。
+
+既存 DB（既にデータもマスタも入っている）を新しい履歴に合わせ直すとき —
+**9 本すべてを「適用済み」として記録する**（0007〜0009 のデータは既に入って
+いるので、実行してはいけない）:
 
 ```bash
 pnpm remote sh -c 'psql "$DATABASE_URL" -c "TRUNCATE public._prisma_migrations"'
 for m in 20260824000001_baseline_schemas_enums 20260824000002_baseline_tables_master \
          20260824000003_baseline_tables_business 20260824000004_baseline_tables_system \
-         20260824000005_baseline_constraints_indexes 20260824000006_baseline_views_functions_triggers; do
+         20260824000005_baseline_constraints_indexes 20260824000006_baseline_views_functions_triggers \
+         20260824000007_seed_master_data 20260824000008_seed_rbac_roles \
+         20260824000009_seed_feature_flags; do
   pnpm remote pnpm exec prisma migrate resolve --applied "$m"
 done
 pnpm migrate:status:remote   # → up to date

@@ -1,67 +1,33 @@
--- baseline-seed.sql — 初期データ（旧 migration に埋まっていた DML の抽出）
+-- 初期マスタデータ。
 --
--- 99 本の migration を 1 本のベースラインへ潰した際、migration 内に書かれていた
--- INSERT（採番マスタ / 材種・素材（Excel 由来）/ 工程マスタ / 承認フロー /
--- 検査テンプレ / 通貨 / system ユーザー 等）をここへ移した。
+-- 旧 99 本の migration に埋め込まれていた DML をここへ集約した:
+--   採番マスタ / 材種・素材（Excel「最新見積書試算」由来）/ 工程マスタ +
+--   工程依存 / 承認フロー・承認グループ / 検査テンプレート / 不良種類 /
+--   通貨 / 拠点 / `system` ユーザー。
 --
--- **新規 DB の初期化時に 1 回だけ流す**。冪等ではないので既存 DB に流さないこと。
---   psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f sql/baseline-seed.sql
+-- migration なので **DB ごとに 1 回だけ**適用される（手で流す必要はない）。
 --
--- FK の順序を気にせず流せるよう、セッション中だけトリガ（FK 検査）を止める。
--- superuser 専用 — migration/プロビジョニングは postgres で流すので問題ない。
-BEGIN;
+-- FK の順序を気にせず流せるよう、この migration の間だけ FK トリガを止める
+-- （migrate deploy は postgres 接続なので可能）。
+-- pg_dump の前置き（statement_timeout や search_path='' の設定）は **入れないこと** —
+-- search_path を空にすると Prisma が _prisma_migrations を見失い P1014 で落ちる。
+
 SET session_replication_role = replica;
 
---
--- PostgreSQL database dump
---
-
-
--- Dumped from database version 17.9
--- Dumped by pg_dump version 18.4
-
-SET statement_timeout = 0;
-SET lock_timeout = 0;
-SET idle_in_transaction_session_timeout = 0;
-SET transaction_timeout = 0;
-SET client_encoding = 'UTF8';
-SET standard_conforming_strings = on;
-SELECT pg_catalog.set_config('search_path', '', false);
-SET check_function_bodies = false;
-SET xmloption = content;
-SET client_min_messages = warning;
-SET row_security = off;
-
---
 -- Data for Name: approval_groups; Type: TABLE DATA; Schema: app; Owner: postgres
---
 
 INSERT INTO app.approval_groups VALUES (1, '{"en": "First approval group", "ja": "第一承認グループ"}', true);
 INSERT INTO app.approval_groups VALUES (2, '{"en": "Second approval group", "ja": "第二承認グループ"}', true);
 
-
---
 -- Data for Name: employee_directory; Type: TABLE DATA; Schema: directory; Owner: postgres
---
 
-
-
---
 -- Data for Name: users; Type: TABLE DATA; Schema: app; Owner: postgres
---
 
 INSERT INTO app.users VALUES ('00000000-0000-0000-0000-000000000000', 'SYSTEM', NULL, 'system', 'システム', NULL, true, NULL, '2026-08-24 09:19:51.439601+00', '2026-08-24 09:19:51.439601+00', NULL, 'ja', NULL, NULL, 'YYYY/MM/DD', '24h', 'Asia/Tokyo');
 
-
---
 -- Data for Name: approval_delegates; Type: TABLE DATA; Schema: app; Owner: postgres
---
 
-
-
---
 -- Data for Name: approval_flows; Type: TABLE DATA; Schema: app; Owner: postgres
---
 
 INSERT INTO app.approval_flows VALUES ('work_orders', NULL, '2026-08-24 09:19:52.505685+00', 'PRE');
 INSERT INTO app.approval_flows VALUES ('order_acceptances', NULL, '2026-08-24 09:19:52.505685+00', 'PRE');
@@ -70,22 +36,11 @@ INSERT INTO app.approval_flows VALUES ('purchase_requests', NULL, '2026-08-24 09
 INSERT INTO app.approval_flows VALUES ('work_order_flow_changes', NULL, '2026-08-24 09:19:52.5434+00', 'PRE');
 INSERT INTO app.approval_flows VALUES ('order_acceptance_cancel_requests', NULL, '2026-08-24 09:19:52.575477+00', 'PRE');
 
-
---
 -- Data for Name: approval_flow_rules; Type: TABLE DATA; Schema: app; Owner: postgres
---
 
-
-
---
 -- Data for Name: approval_flow_rule_steps; Type: TABLE DATA; Schema: app; Owner: postgres
---
 
-
-
---
 -- Data for Name: approval_flow_steps; Type: TABLE DATA; Schema: app; Owner: postgres
---
 
 INSERT INTO app.approval_flow_steps VALUES (1, 'work_orders', 1, '{"en": "First approval", "ja": "第一承認"}', 1, 'ANY');
 INSERT INTO app.approval_flow_steps VALUES (2, 'work_orders', 2, '{"en": "Second approval", "ja": "第二承認"}', 2, 'ANY');
@@ -93,131 +48,49 @@ INSERT INTO app.approval_flow_steps VALUES (3, 'order_acceptances', 1, '{"en": "
 INSERT INTO app.approval_flow_steps VALUES (4, 'material_purchase_orders', 1, '{"en": "First approval", "ja": "第一承認"}', 1, 'ANY');
 INSERT INTO app.approval_flow_steps VALUES (5, 'purchase_requests', 1, '{"en": "First approval", "ja": "第一承認"}', 1, 'ANY');
 
-
---
 -- Data for Name: approval_group_members; Type: TABLE DATA; Schema: app; Owner: postgres
---
 
-
-
---
 -- Data for Name: approval_requests; Type: TABLE DATA; Schema: app; Owner: postgres
---
 
-
-
---
 -- Data for Name: approval_records; Type: TABLE DATA; Schema: app; Owner: postgres
---
 
-
-
---
 -- Data for Name: approval_request_approvers; Type: TABLE DATA; Schema: app; Owner: postgres
---
 
-
-
---
 -- Data for Name: files; Type: TABLE DATA; Schema: app; Owner: postgres
---
 
-
-
---
 -- Data for Name: regions; Type: TABLE DATA; Schema: app; Owner: postgres
---
 
-
-
---
 -- Data for Name: plants; Type: TABLE DATA; Schema: app; Owner: postgres
---
 
 INSERT INTO app.plants VALUES (1, 'F01', '{"en": "Main factory", "ja": "本社工場"}', NULL, 'JP', NULL, NULL, NULL, NULL, NULL, true, NULL, '2026-08-24 09:19:51.573232+00', '2026-08-24 09:19:51.573232+00', NULL);
 
-
---
 -- Data for Name: kiosk_floor_maps; Type: TABLE DATA; Schema: app; Owner: postgres
---
 
-
-
---
 -- Data for Name: work_location_groups; Type: TABLE DATA; Schema: app; Owner: postgres
---
 
-
-
---
 -- Data for Name: work_locations; Type: TABLE DATA; Schema: app; Owner: postgres
---
 
-
-
---
 -- Data for Name: kiosk_devices; Type: TABLE DATA; Schema: app; Owner: postgres
---
 
-
-
---
 -- Data for Name: audit_logs; Type: TABLE DATA; Schema: app; Owner: postgres
---
 
-
-
---
 -- Data for Name: business_partners; Type: TABLE DATA; Schema: app; Owner: postgres
---
 
-
-
---
 -- Data for Name: billing_closings; Type: TABLE DATA; Schema: app; Owner: postgres
---
 
-
-
---
 -- Data for Name: bp_contacts; Type: TABLE DATA; Schema: app; Owner: postgres
---
 
-
-
---
 -- Data for Name: bp_customer_attrs; Type: TABLE DATA; Schema: app; Owner: postgres
---
 
-
-
---
 -- Data for Name: bp_end_user_attrs; Type: TABLE DATA; Schema: app; Owner: postgres
---
 
-
-
---
 -- Data for Name: bp_role_assignments; Type: TABLE DATA; Schema: app; Owner: postgres
---
 
-
-
---
 -- Data for Name: bp_sales_reps; Type: TABLE DATA; Schema: app; Owner: postgres
---
 
-
-
---
 -- Data for Name: bp_vendor_attrs; Type: TABLE DATA; Schema: app; Owner: postgres
---
 
-
-
---
 -- Data for Name: currencies; Type: TABLE DATA; Schema: app; Owner: postgres
---
 
 INSERT INTO app.currencies VALUES ('JPY', '{"en": "Japanese Yen", "ja": "日本円"}', 100.000000, true, 0, '2026-08-24 09:19:52.565666+00', '2026-08-24 09:19:52.5687+00');
 INSERT INTO app.currencies VALUES ('USD', '{"en": "US Dollar", "ja": "米ドル"}', 0.666667, true, 1, '2026-08-24 09:19:52.565666+00', '2026-08-24 09:19:52.5687+00');
@@ -226,10 +99,7 @@ INSERT INTO app.currencies VALUES ('CNY', '{"en": "Chinese Yuan", "ja": "中国�
 INSERT INTO app.currencies VALUES ('THB', '{"en": "Thai Baht", "ja": "タイバーツ"}', 23.255814, true, 4, '2026-08-24 09:19:52.565666+00', '2026-08-24 09:19:52.5687+00');
 INSERT INTO app.currencies VALUES ('VND', '{"en": "Vietnamese Dong", "ja": "ベトナムドン"}', 17543.859649, true, 5, '2026-08-24 09:19:52.565666+00', '2026-08-24 09:19:52.5687+00');
 
-
---
 -- Data for Name: defect_types; Type: TABLE DATA; Schema: app; Owner: postgres
---
 
 INSERT INTO app.defect_types VALUES (1, 'DIMENSION', '{"en": "Dimensional defect", "ja": "寸法不良"}', true, 10);
 INSERT INTO app.defect_types VALUES (2, 'SCRATCH', '{"en": "Scratch", "ja": "キズ"}', true, 20);
@@ -238,10 +108,7 @@ INSERT INTO app.defect_types VALUES (4, 'BREAKAGE', '{"en": "Breakage", "ja": "�
 INSERT INTO app.defect_types VALUES (5, 'COATING', '{"en": "Coating defect", "ja": "コーティング不良"}', true, 50);
 INSERT INTO app.defect_types VALUES (6, 'OTHER', '{"en": "Other", "ja": "その他"}', true, 90);
 
-
---
 -- Data for Name: material_diameters; Type: TABLE DATA; Schema: app; Owner: postgres
---
 
 INSERT INTO app.material_diameters VALUES ('010', 1.000, '{"en": "φ1.0", "ja": "φ1.0"}', true, '2026-08-24 09:19:51.792969+00', '2026-08-24 09:19:51.792969+00');
 INSERT INTO app.material_diameters VALUES ('015', 1.500, '{"en": "φ1.5", "ja": "φ1.5"}', true, '2026-08-24 09:19:51.793275+00', '2026-08-24 09:19:51.793275+00');
@@ -312,18 +179,12 @@ INSERT INTO app.material_diameters VALUES ('400', 40.000, '{"en": "φ40.0", "ja"
 INSERT INTO app.material_diameters VALUES ('420', 42.000, '{"en": "φ42.0", "ja": "φ42.0"}', true, '2026-08-24 09:19:51.809009+00', '2026-08-24 09:19:51.809009+00');
 INSERT INTO app.material_diameters VALUES ('460', 46.000, '{"en": "φ46.0", "ja": "φ46.0"}', true, '2026-08-24 09:19:51.809247+00', '2026-08-24 09:19:51.809247+00');
 
-
---
 -- Data for Name: material_length_variants; Type: TABLE DATA; Schema: app; Owner: postgres
---
 
 INSERT INTO app.material_length_variants VALUES ('310', 310.000, NULL, '{"en": "310mm", "ja": "310mm"}', NULL, true, '2026-08-24 09:19:51.809576+00', '2026-08-24 09:19:51.809576+00');
 INSERT INTO app.material_length_variants VALUES ('330', 330.000, NULL, '{"en": "330mm", "ja": "330mm"}', NULL, true, '2026-08-24 09:19:51.810025+00', '2026-08-24 09:19:51.810025+00');
 
-
---
 -- Data for Name: material_manufacturers; Type: TABLE DATA; Schema: app; Owner: postgres
---
 
 INSERT INTO app.material_manufacturers VALUES ('A', '{"en": "AXIS", "ja": "アクシス"}', true, '2026-08-24 09:19:51.786552+00', '2026-08-24 09:19:51.786552+00');
 INSERT INTO app.material_manufacturers VALUES ('B', '{"en": "AFC", "ja": "AFC"}', true, '2026-08-24 09:19:51.787151+00', '2026-08-24 09:19:51.787151+00');
@@ -331,10 +192,7 @@ INSERT INTO app.material_manufacturers VALUES ('C', '{"en": "Nippon Kinsagi", "j
 INSERT INTO app.material_manufacturers VALUES ('D', '{"en": "Ceratizit", "ja": "セラティジット"}', true, '2026-08-24 09:19:51.787625+00', '2026-08-24 09:19:51.787625+00');
 INSERT INTO app.material_manufacturers VALUES ('E', '{"en": "Nippon Tokushu Gokin", "ja": "日本特殊合金"}', true, '2026-08-24 09:19:51.78786+00', '2026-08-24 09:19:51.78786+00');
 
-
---
 -- Data for Name: material_manufacturer_grades; Type: TABLE DATA; Schema: app; Owner: postgres
---
 
 INSERT INTO app.material_manufacturer_grades VALUES ('B', '01', '{"en": "K10UF", "ja": "K10UF"}', true, '2026-08-24 09:19:51.789735+00', '2026-08-24 09:19:51.789735+00');
 INSERT INTO app.material_manufacturer_grades VALUES ('B', '02', '{"en": "K20CF", "ja": "K20CF"}', true, '2026-08-24 09:19:51.790106+00', '2026-08-24 09:19:51.790106+00');
@@ -350,27 +208,18 @@ INSERT INTO app.material_manufacturer_grades VALUES ('D', '02', '{"en": "CTS20D"
 INSERT INTO app.material_manufacturer_grades VALUES ('E', '01', '{"en": "SH10", "ja": "SH10"}', true, '2026-08-24 09:19:51.792497+00', '2026-08-24 09:19:51.792497+00');
 INSERT INTO app.material_manufacturer_grades VALUES ('C', '01', '{"en": "GU20F", "ja": "GU20F"}', true, '2026-08-24 09:19:51.792741+00', '2026-08-24 09:19:51.792741+00');
 
-
---
 -- Data for Name: material_shapes; Type: TABLE DATA; Schema: app; Owner: postgres
---
 
 INSERT INTO app.material_shapes VALUES ('A', '{"en": "Standard", "ja": "通常"}', true, '2026-08-24 09:19:51.788076+00', '2026-08-24 09:19:51.788076+00');
 INSERT INTO app.material_shapes VALUES ('B', '{"en": "OH", "ja": "OH"}', true, '2026-08-24 09:19:51.788362+00', '2026-08-24 09:19:51.788362+00');
 INSERT INTO app.material_shapes VALUES ('C', '{"en": "Cylinder", "ja": "円筒"}', true, '2026-08-24 09:19:51.788603+00', '2026-08-24 09:19:51.788603+00');
 
-
---
 -- Data for Name: material_surface_finishes; Type: TABLE DATA; Schema: app; Owner: postgres
---
 
 INSERT INTO app.material_surface_finishes VALUES ('A', '{"en": "Black skin", "ja": "黒皮"}', true, '2026-08-24 09:19:51.789256+00', '2026-08-24 09:19:51.789256+00');
 INSERT INTO app.material_surface_finishes VALUES ('B', '{"en": "Polished", "ja": "研磨"}', true, '2026-08-24 09:19:51.78953+00', '2026-08-24 09:19:51.78953+00');
 
-
---
 -- Data for Name: material_types; Type: TABLE DATA; Schema: app; Owner: postgres
---
 
 INSERT INTO app.material_types VALUES ('{"en": "K10UF", "ja": "K10UF"}', NULL, true, '2026-08-24 09:19:51.810312+00', '2026-08-24 09:19:51.810312+00', '01', '0001', 'B', 'A', 1, 'B01A0001', NULL);
 INSERT INTO app.material_types VALUES ('{"en": "K20CF", "ja": "K20CF"}', NULL, true, '2026-08-24 09:19:51.810864+00', '2026-08-24 09:19:51.810864+00', '02', '0001', 'B', 'A', 2, 'B02A0001', NULL);
@@ -386,10 +235,7 @@ INSERT INTO app.material_types VALUES ('{"en": "CTS20D", "ja": "CTS20D"}', NULL,
 INSERT INTO app.material_types VALUES ('{"en": "SH10", "ja": "SH10"}', NULL, true, '2026-08-24 09:19:51.813524+00', '2026-08-24 09:19:51.813524+00', '01', '0001', 'E', 'A', 12, 'E01A0001', NULL);
 INSERT INTO app.material_types VALUES ('{"en": "GU20F", "ja": "GU20F"}', NULL, true, '2026-08-24 09:19:51.813793+00', '2026-08-24 09:19:51.813793+00', '01', '0001', 'C', 'A', 13, 'C01A0001', NULL);
 
-
---
 -- Data for Name: materials; Type: TABLE DATA; Schema: app; Owner: postgres
---
 
 INSERT INTO app.materials VALUES ('A02A0001-A250-310', '{"en": "AF510 Black skin φ25.0x310", "ja": "AF510 黒皮 φ25.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.81405+00', '2026-08-24 09:19:51.81405+00', '250', 25.000, 'A0', 310.000, '310', NULL, NULL, 'A', 8, 1, '{}');
 INSERT INTO app.materials VALUES ('A02A0001-A200-310', '{"en": "AF510 Black skin φ20.0x310", "ja": "AF510 黒皮 φ20.0×310"}', '本', true, NULL, '2026-08-24 09:19:51.814614+00', '2026-08-24 09:19:51.814614+00', '200', 20.000, 'A0', 310.000, '310', NULL, NULL, 'A', 8, 2, '{}');
@@ -1296,10 +1142,7 @@ INSERT INTO app.materials VALUES ('E01A0001-A120-310', '{"en": "SH10 Black skin 
 INSERT INTO app.materials VALUES ('E01A0001-A130-310', '{"en": "SH10 Black skin φ13.0x310", "ja": "SH10 黒皮 φ13.0×310"}', '本', true, NULL, '2026-08-24 09:19:52.070639+00', '2026-08-24 09:19:52.070639+00', '130', 13.000, 'A0', 310.000, '310', NULL, NULL, 'A', 12, 903, '{}');
 INSERT INTO app.materials VALUES ('E01A0001-A140-310', '{"en": "SH10 Black skin φ14.0x310", "ja": "SH10 黒皮 φ14.0×310"}', '本', true, NULL, '2026-08-24 09:19:52.070908+00', '2026-08-24 09:19:52.070908+00', '140', 14.000, 'A0', 310.000, '310', NULL, NULL, 'A', 12, 904, '{}');
 
-
---
 -- Data for Name: process_step_catalog; Type: TABLE DATA; Schema: app; Owner: postgres
---
 
 INSERT INTO app.process_step_catalog VALUES (1, 'MATERIAL_ISSUE', '{"en": "Material issue (stock)", "ja": "素材出し（在庫）"}', 'MATERIAL_PREP', 'INTERNAL', false, false, false, NULL, 10, true, '在庫の移動', 'FLOW', NULL, 'NONE');
 INSERT INTO app.process_step_catalog VALUES (2, 'SEMI_FINISHED_ISSUE', '{"en": "Semi-finished issue (stock)", "ja": "半製品出し（在庫）"}', 'MATERIAL_PREP', 'INTERNAL', false, false, false, NULL, 20, true, '在庫の移動。半製品にリブ母材を含む', 'FLOW', NULL, 'NONE');
@@ -1343,275 +1186,97 @@ INSERT INTO app.process_step_catalog VALUES (38, 'CUSTOMER_INSPECTION_2', '{"en"
 INSERT INTO app.process_step_catalog VALUES (40, 'PRE_SHIP_INSPECTION', '{"en": "Pre-shipment inspection", "ja": "出荷前検査"}', 'INSPECTION', 'INTERNAL', false, true, false, NULL, 400, true, '全工程完了後。再研磨・在庫で検査済みの場合は省略可', 'INSPECTION', NULL, 'NONE');
 INSERT INTO app.process_step_catalog VALUES (42, 'PRODUCT_ISSUE', '{"en": "Product issue (stock)", "ja": "製品出し（在庫）"}', 'MATERIAL_PREP', 'INTERNAL', false, false, false, NULL, 25, true, '在庫の移動（在庫分指示書の開始工程 — 製造分の工程選択には出さない）', 'FLOW', NULL, 'NONE');
 
-
---
 -- Data for Name: products; Type: TABLE DATA; Schema: app; Owner: postgres
---
 
-
-
---
 -- Data for Name: product_process_routes; Type: TABLE DATA; Schema: app; Owner: postgres
---
 
-
-
---
 -- Data for Name: product_process_route_versions; Type: TABLE DATA; Schema: app; Owner: postgres
---
 
-
-
---
 -- Data for Name: storage_locations; Type: TABLE DATA; Schema: app; Owner: postgres
---
 
-
-
---
 -- Data for Name: work_orders; Type: TABLE DATA; Schema: app; Owner: postgres
---
 
-
-
---
 -- Data for Name: work_order_steps; Type: TABLE DATA; Schema: app; Owner: postgres
---
 
-
-
---
 -- Data for Name: defect_records; Type: TABLE DATA; Schema: app; Owner: postgres
---
 
-
-
---
 -- Data for Name: delivery_orders; Type: TABLE DATA; Schema: app; Owner: postgres
---
 
-
-
---
 -- Data for Name: delivery_notes; Type: TABLE DATA; Schema: app; Owner: postgres
---
 
-
-
---
 -- Data for Name: delivery_note_items; Type: TABLE DATA; Schema: app; Owner: postgres
---
 
-
-
---
 -- Data for Name: order_acceptances; Type: TABLE DATA; Schema: app; Owner: postgres
---
 
-
-
---
 -- Data for Name: order_lines; Type: TABLE DATA; Schema: app; Owner: postgres
---
 
-
-
---
 -- Data for Name: delivery_order_items; Type: TABLE DATA; Schema: app; Owner: postgres
---
 
-
-
---
 -- Data for Name: quotes; Type: TABLE DATA; Schema: app; Owner: postgres
---
 
-
-
---
 -- Data for Name: design_requests; Type: TABLE DATA; Schema: app; Owner: postgres
---
 
-
-
---
 -- Data for Name: design_files; Type: TABLE DATA; Schema: app; Owner: postgres
---
 
-
-
---
 -- Data for Name: document_attachments; Type: TABLE DATA; Schema: app; Owner: postgres
---
 
-
-
---
 -- Data for Name: document_memos; Type: TABLE DATA; Schema: app; Owner: postgres
---
 
-
-
---
 -- Data for Name: document_memo_revisions; Type: TABLE DATA; Schema: app; Owner: postgres
---
 
-
-
---
 -- Data for Name: estimates; Type: TABLE DATA; Schema: app; Owner: postgres
---
 
-
-
---
 -- Data for Name: feature_flags; Type: TABLE DATA; Schema: app; Owner: postgres
---
 
-
-
---
 -- Data for Name: file_folder_grants; Type: TABLE DATA; Schema: app; Owner: postgres
---
 
-
-
---
 -- Data for Name: inspection_templates; Type: TABLE DATA; Schema: app; Owner: postgres
---
 
-
-
---
 -- Data for Name: inspection_records; Type: TABLE DATA; Schema: app; Owner: postgres
---
 
-
-
---
 -- Data for Name: inspection_template_items; Type: TABLE DATA; Schema: app; Owner: postgres
---
 
-
-
---
 -- Data for Name: inspection_record_items; Type: TABLE DATA; Schema: app; Owner: postgres
---
 
-
-
---
 -- Data for Name: inventory_reservations; Type: TABLE DATA; Schema: app; Owner: postgres
---
 
-
-
---
 -- Data for Name: inventory_transactions; Type: TABLE DATA; Schema: app; Owner: postgres
---
 
-
-
---
 -- Data for Name: invoices; Type: TABLE DATA; Schema: app; Owner: postgres
---
 
-
-
---
 -- Data for Name: invoice_items; Type: TABLE DATA; Schema: app; Owner: postgres
---
 
-
-
---
 -- Data for Name: kiosk_cards; Type: TABLE DATA; Schema: app; Owner: postgres
---
 
-
-
---
 -- Data for Name: kiosk_device_locations; Type: TABLE DATA; Schema: app; Owner: postgres
---
 
-
-
---
 -- Data for Name: kiosk_device_logs; Type: TABLE DATA; Schema: app; Owner: postgres
---
 
-
-
---
 -- Data for Name: kiosk_link_requests; Type: TABLE DATA; Schema: app; Owner: postgres
---
 
-
-
---
 -- Data for Name: kiosk_sessions; Type: TABLE DATA; Schema: app; Owner: postgres
---
 
-
-
---
 -- Data for Name: link_blacklist; Type: TABLE DATA; Schema: app; Owner: postgres
---
 
-
-
---
 -- Data for Name: link_index; Type: TABLE DATA; Schema: app; Owner: postgres
---
 
-
-
---
 -- Data for Name: match_aliases; Type: TABLE DATA; Schema: app; Owner: postgres
---
 
-
-
---
 -- Data for Name: storage_shelves; Type: TABLE DATA; Schema: app; Owner: postgres
---
 
-
-
---
 -- Data for Name: material_inventory; Type: TABLE DATA; Schema: app; Owner: postgres
---
 
-
-
---
 -- Data for Name: material_kinds; Type: TABLE DATA; Schema: app; Owner: postgres
---
 
 INSERT INTO app.material_kinds VALUES ('A', 'A0', '{"en": "Standard", "ja": "通常"}', true, '2026-08-24 09:19:51.788864+00', '2026-08-24 09:19:51.788864+00');
 
-
---
 -- Data for Name: material_purchase_orders; Type: TABLE DATA; Schema: app; Owner: postgres
---
 
-
-
---
 -- Data for Name: material_purchase_order_items; Type: TABLE DATA; Schema: app; Owner: postgres
---
 
-
-
---
 -- Data for Name: material_receipts; Type: TABLE DATA; Schema: app; Owner: postgres
---
 
-
-
---
 -- Data for Name: material_type_prices; Type: TABLE DATA; Schema: app; Owner: postgres
---
 
 INSERT INTO app.material_type_prices VALUES (1, 7, '010', 'A', 929.03, '2026-08-24 09:19:52.086925+00', '2026-08-24 09:19:52.086925+00');
 INSERT INTO app.material_type_prices VALUES (2, 7, '020', 'A', 1412.90, '2026-08-24 09:19:52.087479+00', '2026-08-24 09:19:52.087479+00');
@@ -2379,58 +2044,23 @@ INSERT INTO app.material_type_prices VALUES (763, 12, '120', 'A', 45951.61, '202
 INSERT INTO app.material_type_prices VALUES (764, 12, '130', 'A', 53225.81, '2026-08-24 09:19:52.28305+00', '2026-08-24 09:19:52.28305+00');
 INSERT INTO app.material_type_prices VALUES (765, 12, '140', 'A', 60500.00, '2026-08-24 09:19:52.283284+00', '2026-08-24 09:19:52.283284+00');
 
-
---
 -- Data for Name: notifications; Type: TABLE DATA; Schema: app; Owner: postgres
---
 
-
-
---
 -- Data for Name: numbering_sequences; Type: TABLE DATA; Schema: app; Owner: postgres
---
 
-
-
---
 -- Data for Name: order_acceptance_cancel_requests; Type: TABLE DATA; Schema: app; Owner: postgres
---
 
-
-
---
 -- Data for Name: permissions; Type: TABLE DATA; Schema: app; Owner: postgres
---
 
-
-
---
 -- Data for Name: price_list_entries; Type: TABLE DATA; Schema: app; Owner: postgres
---
 
-
-
---
 -- Data for Name: price_list_variants; Type: TABLE DATA; Schema: app; Owner: postgres
---
 
-
-
---
 -- Data for Name: price_list_discounts; Type: TABLE DATA; Schema: app; Owner: postgres
---
 
-
-
---
 -- Data for Name: price_list_tiers; Type: TABLE DATA; Schema: app; Owner: postgres
---
 
-
-
---
 -- Data for Name: process_step_exec_dependencies; Type: TABLE DATA; Schema: app; Owner: postgres
---
 
 INSERT INTO app.process_step_exec_dependencies VALUES (30, 1, 'OR', '素材手配の完了');
 INSERT INTO app.process_step_exec_dependencies VALUES (7, 1, 'OR', '素材手配の完了');
@@ -2486,10 +2116,7 @@ INSERT INTO app.process_step_exec_dependencies VALUES (37, 36, 'OR', 'コーテ�
 INSERT INTO app.process_step_exec_dependencies VALUES (35, 36, 'AND', 'すべて完了');
 INSERT INTO app.process_step_exec_dependencies VALUES (39, 38, 'AND', '客先向け検査２の完了');
 
-
---
 -- Data for Name: process_step_use_dependencies; Type: TABLE DATA; Schema: app; Owner: postgres
---
 
 INSERT INTO app.process_step_use_dependencies VALUES (30, 1, 'OR', false, '素材手配');
 INSERT INTO app.process_step_use_dependencies VALUES (7, 1, 'OR', false, '素材手配');
@@ -2556,64 +2183,25 @@ INSERT INTO app.process_step_use_dependencies VALUES (37, 36, 'OR', false, 'コ�
 INSERT INTO app.process_step_use_dependencies VALUES (39, 38, 'AND', false, NULL);
 INSERT INTO app.process_step_use_dependencies VALUES (38, 39, 'AND', false, '検査承認必須');
 
-
---
 -- Data for Name: process_step_work_locations; Type: TABLE DATA; Schema: app; Owner: postgres
---
 
-
-
---
 -- Data for Name: product_inventory; Type: TABLE DATA; Schema: app; Owner: postgres
---
 
-
-
---
 -- Data for Name: product_process_route_version_steps; Type: TABLE DATA; Schema: app; Owner: postgres
---
 
-
-
---
 -- Data for Name: purchase_requests; Type: TABLE DATA; Schema: app; Owner: postgres
---
 
-
-
---
 -- Data for Name: purchase_request_items; Type: TABLE DATA; Schema: app; Owner: postgres
---
 
-
-
---
 -- Data for Name: push_subscriptions; Type: TABLE DATA; Schema: app; Owner: postgres
---
 
-
-
---
 -- Data for Name: quote_items; Type: TABLE DATA; Schema: app; Owner: postgres
---
 
-
-
---
 -- Data for Name: roles; Type: TABLE DATA; Schema: app; Owner: postgres
---
 
-
-
---
 -- Data for Name: role_permission_relation; Type: TABLE DATA; Schema: app; Owner: postgres
---
 
-
-
---
 -- Data for Name: system_settings; Type: TABLE DATA; Schema: app; Owner: postgres
---
 
 INSERT INTO app.system_settings VALUES ('trial_pricing.material_price_basis', '"MAX"', '材料参照価格の算出方法（MAX/LATEST/AVERAGE）', NULL, '2026-08-24 09:19:51.478759+00');
 INSERT INTO app.system_settings VALUES ('trial_pricing.lookback_months', '6', '仕入実績の参照期間（月）', NULL, '2026-08-24 09:19:51.478759+00');
@@ -2622,266 +2210,132 @@ INSERT INTO app.system_settings VALUES ('trial_pricing.spare_shape_count', '3', 
 INSERT INTO app.system_settings VALUES ('trial_pricing.correction_factor', '1.25', '補正値', NULL, '2026-08-24 09:19:51.478759+00');
 INSERT INTO app.system_settings VALUES ('trial_pricing.ld_charge_per_10min', '7500', 'LD加算（¥/10分）', NULL, '2026-08-24 09:19:51.478759+00');
 
-
---
 -- Data for Name: user_home_settings; Type: TABLE DATA; Schema: app; Owner: postgres
---
 
-
-
---
 -- Data for Name: user_notification_settings; Type: TABLE DATA; Schema: app; Owner: postgres
---
 
-
-
---
 -- Data for Name: user_plants; Type: TABLE DATA; Schema: app; Owner: postgres
---
 
-
-
---
 -- Data for Name: user_role_relation; Type: TABLE DATA; Schema: app; Owner: postgres
---
 
-
-
---
 -- Data for Name: work_order_flow_changes; Type: TABLE DATA; Schema: app; Owner: postgres
---
 
-
-
---
 -- Data for Name: work_order_links; Type: TABLE DATA; Schema: app; Owner: postgres
---
 
-
-
---
 -- Data for Name: work_order_order_lines; Type: TABLE DATA; Schema: app; Owner: postgres
---
 
-
-
---
 -- Data for Name: work_order_step_actuals; Type: TABLE DATA; Schema: app; Owner: postgres
---
 
-
-
---
 -- Data for Name: work_order_step_inspection_templates; Type: TABLE DATA; Schema: app; Owner: postgres
---
 
-
-
---
 -- Data for Name: work_order_step_links; Type: TABLE DATA; Schema: app; Owner: postgres
---
 
-
-
---
 -- Data for Name: work_order_step_plans; Type: TABLE DATA; Schema: app; Owner: postgres
---
 
-
-
---
 -- Data for Name: ldap_sync_log; Type: TABLE DATA; Schema: directory; Owner: postgres
---
 
-
-
---
 -- Name: approval_flow_rule_steps_id_seq; Type: SEQUENCE SET; Schema: app; Owner: postgres
---
 
 SELECT pg_catalog.setval('app.approval_flow_rule_steps_id_seq', 1, false);
 
-
---
 -- Name: approval_flow_rules_id_seq; Type: SEQUENCE SET; Schema: app; Owner: postgres
---
 
 SELECT pg_catalog.setval('app.approval_flow_rules_id_seq', 1, false);
 
-
---
 -- Name: approval_flow_steps_id_seq; Type: SEQUENCE SET; Schema: app; Owner: postgres
---
 
 SELECT pg_catalog.setval('app.approval_flow_steps_id_seq', 5, true);
 
-
---
 -- Name: approval_groups_id_seq; Type: SEQUENCE SET; Schema: app; Owner: postgres
---
 
 SELECT pg_catalog.setval('app.approval_groups_id_seq', 2, true);
 
-
---
 -- Name: audit_logs_id_seq; Type: SEQUENCE SET; Schema: app; Owner: postgres
---
 
 SELECT pg_catalog.setval('app.audit_logs_id_seq', 1, false);
 
-
---
 -- Name: defect_types_id_seq; Type: SEQUENCE SET; Schema: app; Owner: postgres
---
 
 SELECT pg_catalog.setval('app.defect_types_id_seq', 6, true);
 
-
---
 -- Name: file_folder_grants_id_seq; Type: SEQUENCE SET; Schema: app; Owner: postgres
---
 
 SELECT pg_catalog.setval('app.file_folder_grants_id_seq', 1, false);
 
-
---
 -- Name: inspection_template_items_id_seq; Type: SEQUENCE SET; Schema: app; Owner: postgres
---
 
 SELECT pg_catalog.setval('app.inspection_template_items_id_seq', 1, false);
 
-
---
 -- Name: inspection_templates_id_seq; Type: SEQUENCE SET; Schema: app; Owner: postgres
---
 
 SELECT pg_catalog.setval('app.inspection_templates_id_seq', 1, false);
 
-
---
 -- Name: kiosk_device_logs_id_seq; Type: SEQUENCE SET; Schema: app; Owner: postgres
---
 
 SELECT pg_catalog.setval('app.kiosk_device_logs_id_seq', 1, false);
 
-
---
 -- Name: match_aliases_id_seq; Type: SEQUENCE SET; Schema: app; Owner: postgres
---
 
 SELECT pg_catalog.setval('app.match_aliases_id_seq', 1, false);
 
-
---
 -- Name: material_type_prices_id_seq; Type: SEQUENCE SET; Schema: app; Owner: postgres
---
 
 SELECT pg_catalog.setval('app.material_type_prices_id_seq', 765, true);
 
-
---
 -- Name: material_types_id_new_seq; Type: SEQUENCE SET; Schema: app; Owner: postgres
---
 
 SELECT pg_catalog.setval('app.material_types_id_new_seq', 13, true);
 
-
---
 -- Name: materials_id_new_seq; Type: SEQUENCE SET; Schema: app; Owner: postgres
---
 
 SELECT pg_catalog.setval('app.materials_id_new_seq', 904, true);
 
-
---
 -- Name: plants_id_seq; Type: SEQUENCE SET; Schema: app; Owner: postgres
---
 
 SELECT pg_catalog.setval('app.plants_id_seq', 1, true);
 
-
---
 -- Name: process_step_catalog_id_seq; Type: SEQUENCE SET; Schema: app; Owner: postgres
---
 
 SELECT pg_catalog.setval('app.process_step_catalog_id_seq', 42, true);
 
-
---
 -- Name: process_step_work_locations_id_seq; Type: SEQUENCE SET; Schema: app; Owner: postgres
---
 
 SELECT pg_catalog.setval('app.process_step_work_locations_id_seq', 1, false);
 
-
---
 -- Name: product_process_routes_id_seq; Type: SEQUENCE SET; Schema: app; Owner: postgres
---
 
 SELECT pg_catalog.setval('app.product_process_routes_id_seq', 1, false);
 
-
---
 -- Name: products_id_new_seq; Type: SEQUENCE SET; Schema: app; Owner: postgres
---
 
 SELECT pg_catalog.setval('app.products_id_new_seq', 1, false);
 
-
---
 -- Name: regions_id_seq; Type: SEQUENCE SET; Schema: app; Owner: postgres
---
 
 SELECT pg_catalog.setval('app.regions_id_seq', 1, false);
 
-
---
 -- Name: roles_id_seq; Type: SEQUENCE SET; Schema: app; Owner: postgres
---
 
 SELECT pg_catalog.setval('app.roles_id_seq', 1, false);
 
-
---
 -- Name: storage_locations_id_seq; Type: SEQUENCE SET; Schema: app; Owner: postgres
---
 
 SELECT pg_catalog.setval('app.storage_locations_id_seq', 1, false);
 
-
---
 -- Name: storage_shelves_id_seq; Type: SEQUENCE SET; Schema: app; Owner: postgres
---
 
 SELECT pg_catalog.setval('app.storage_shelves_id_seq', 1, false);
 
-
---
 -- Name: work_location_groups_id_seq; Type: SEQUENCE SET; Schema: app; Owner: postgres
---
 
 SELECT pg_catalog.setval('app.work_location_groups_id_seq', 1, false);
 
-
---
 -- Name: work_locations_id_seq; Type: SEQUENCE SET; Schema: app; Owner: postgres
---
 
 SELECT pg_catalog.setval('app.work_locations_id_seq', 1, false);
 
-
---
 -- Name: ldap_sync_log_id_seq; Type: SEQUENCE SET; Schema: directory; Owner: postgres
---
 
 SELECT pg_catalog.setval('directory.ldap_sync_log_id_seq', 1, false);
 
-
---
--- PostgreSQL database dump complete
---
-
-
-
 SET session_replication_role = DEFAULT;
-COMMIT;
