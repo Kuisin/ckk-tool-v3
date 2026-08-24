@@ -1,3 +1,4 @@
+import { redirect } from "next/navigation";
 import { NextIntlClientProvider } from "next-intl";
 import type { ReactNode } from "react";
 import {
@@ -11,7 +12,7 @@ import { PwaRegister } from "@/components/layout/PwaRegister";
 import { currentAppEnv, getDisabledAppKeys } from "@/lib/app-flags";
 import { appList } from "@/lib/app-list";
 import { getVisibleAppKeys } from "@/lib/authz";
-import { getCurrentProfile } from "@/lib/profile";
+import { getCurrentProfile, isPasswordChangeRequired } from "@/lib/profile";
 import { getCurrentPreferences } from "@/lib/user-preferences";
 
 // feature_flags はリクエスト毎に読む（静的プリレンダだとビルド時の値で固まり、
@@ -23,6 +24,9 @@ export default async function DashboardLayout({
 }: {
   children: ReactNode;
 }) {
+  // 初期パスワードのままなら、変更するまでダッシュボードには入れない。
+  // /password-change は (auth) グループ ＝ このレイアウトの外なのでループしない。
+  if (await isPasswordChangeRequired()) redirect("/password-change");
   // アプリの環境別 ON/OFF（feature_flags）。行が無ければ有効・失敗時は全表示。
   // main 無効 = 未リリース。DEV リボンは dev 環境のみ（main では未リリース
   // アプリ自体が非表示になるため、リボン情報は配布しない）。

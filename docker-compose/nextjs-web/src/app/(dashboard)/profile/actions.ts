@@ -71,7 +71,11 @@ export async function changePasswordAction(input: {
   }
   await prisma.user.update({
     where: { id: userId },
-    data: { passwordHash: hashPassword(input.newPassword) },
+    // 変更が済んだので強制フラグを下ろす（初期管理者のブートストラップ用）。
+    data: {
+      passwordHash: hashPassword(input.newPassword),
+      passwordChangeRequired: false,
+    },
   });
   await recordAudit({
     action: "UPDATE",
