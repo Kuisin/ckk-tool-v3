@@ -4,6 +4,22 @@ Self-hosted [Coolify](https://coolify.io) v4.1.2 on docker-mac-pro (`~/stacks/co
 It builds and runs the **nextjs-web** app from git; every other stack stays on the
 rsync + `docker compose up -d --build` flow.
 
+## サーバーへの同期
+
+このディレクトリは `coolify/common/` の**外**にあるので `deploy-stack.sh` の
+対象ではない（あれは 1 スタック = 1 ディレクトリの前提で、最後に
+`docker compose up -d --build` まで走る。Coolify 自身をそれで bounce したくない）。
+ここのスクリプトは明示的に上げる:
+
+```bash
+rsync -a --exclude '.env' --exclude '*.upstream' \
+  coolify/platform/ 192.168.50.15:~/stacks/coolify/
+```
+
+サーバー側のディレクトリ名は `~/stacks/coolify` のまま（リポジトリ側だけ
+`coolify/platform` に移動した）。compose 自体を更新したときだけ、下の
+「Upgrades」に従って `docker compose up -d` を別途流す。
+
 ## Topology
 
 Project `ckk` — dev app in the `development` environment, main in `production`:
