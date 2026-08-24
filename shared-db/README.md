@@ -156,16 +156,14 @@ migration にせず、`db-migrate-*` コンテナが毎回流す:
 いるので、実行してはいけない）:
 
 ```bash
-pnpm remote sh -c 'psql "$DATABASE_URL" -c "TRUNCATE public._prisma_migrations"'
-for m in 20260824000001_baseline_schemas_enums 20260824000002_baseline_tables_master \
-         20260824000003_baseline_tables_business 20260824000004_baseline_tables_system \
-         20260824000005_baseline_constraints_indexes 20260824000006_baseline_views_functions_triggers \
-         20260824000007_seed_master_data 20260824000008_seed_rbac_roles \
-         20260824000009_seed_feature_flags; do
-  pnpm remote pnpm exec prisma migrate resolve --applied "$m"
-done
-pnpm migrate:status:remote   # → up to date
+cd shared-db
+./scripts/reconcile-baseline.sh            # SSH トンネル経由（確認プロンプト付き）
+# ローカル DB なら: DATABASE_URL=… ./scripts/reconcile-baseline.sh --direct
 ```
+
+`_prisma_migrations` を書き換えるだけで、スキーマにもデータにも触らない。
+**スクウォッシュ前に取ったダンプを復元したとき**も同じ手順が要る。
+逆に空の DB では使わないこと（そこは `migrate deploy` が正しい）。
 
 ベースラインは `CREATE EXTENSION pgroonga` を `DO` ブロックで包んであるので、
 pgroonga の無い開発ホストでも通る（本番の `groonga/pgroonga` イメージには常にある）。
