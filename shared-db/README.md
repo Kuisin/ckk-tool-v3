@@ -58,6 +58,14 @@ the script).
 を流す。失敗すればそのデプロイが失敗として残る（Coolify のログで見える）。
 `:remote` スクリプトは緊急時の手動口として残してある。
 
+きっかけは GitHub の push webhook（`deploy.ckk-tool.co.jp/webhooks/source/github/
+events/manual`。アプリごとに別のシークレット）。**Coolify にアプリを足しただけでは
+動かない** — GitHub 側の webhook 登録が別に要る。`add-db-apps.sh` が発行した
+シークレットは `/data/coolify/source/.webhook-secrets` にあり、それを使って
+`gh api -X POST repos/Kuisin/ckk-tool-v3/hooks` で登録する。
+`ckk-db-*`（DB 本体）には **わざと登録していない** — push で DB コンテナが
+作り直される事故を防ぐため。
+
 ### 期待どおり「差分ゼロ」であること
 
 `prisma migrate diff --from-config-datasource --to-schema prisma/schema --script`
