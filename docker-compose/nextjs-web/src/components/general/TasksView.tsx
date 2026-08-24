@@ -3,12 +3,13 @@
 /**
  * TasksView — 承認・予定 (CM01, /general/tasks)。
  *
- * 個人の「やること」ビュー: 自分の作業予定（work_order_step_plans の未完了分 —
- * 行クリックで工程実行画面へ）と、承認待ちの承認依頼の横断一覧
- * （旧 承認管理 PD03 — approve 権限がある人にだけ出る）。
+ * 個人の「やること」ビュー。タブ 2 枚: 作業予定（work_order_step_plans の
+ * 未完了分 — 行クリックで工程実行画面へ）/ 承認待ち（承認依頼の横断一覧 —
+ * 旧 承認管理 PD03。approve 権限がある人にだけタブが出る）。
+ * アクティブタブは ?tab= に保持（URL 共有でタブまで再現）。
  */
 
-import { Badge, Group, Paper, Stack, Text, Title } from "@mantine/core";
+import { Badge, Group, Paper, Stack, Tabs, Text } from "@mantine/core";
 import { IconCalendarTime } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
 import type { ApprovalRequestRow } from "@/app/(dashboard)/general/tasks/approvals-data";
@@ -18,6 +19,7 @@ import { DocNumber } from "@/components/ui/DocNumber";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { StatusBadge } from "@/components/ui/StatusBadge";
+import { useTabParam } from "@/hooks/useUrlState";
 import { ApprovalRequestTable } from "./ApprovalRequestTable";
 
 const WORK_ORDERS_PATH = "/production/work-orders";
@@ -90,38 +92,64 @@ export function TasksView({
   /** null = approve 権限なし（セクション自体を出さない）。 */
   approvals: ApprovalRequestRow[] | null;
 }) {
+  const [tab, setTab] = useTabParam("plans");
   return (
     <Stack gap="md">
       <PageHeader breadcrumbs={["一般", "承認・予定"]} title="承認・予定" />
 
-      <Stack gap="xs">
-        <Title c="dimmed" order={5}>
-          作業予定（自分の担当 {plans.length} 件）
-        </Title>
-        {plans.length === 0 ? (
-          <Paper p="md" radius="md" withBorder>
-            <EmptyState
-              icon={<IconCalendarTime size={24} />}
-              message="割り当てられた作業予定はありません"
-            />
-          </Paper>
-        ) : (
-          <Stack gap="xs">
-            {plans.map((p) => (
-              <PlanRow key={p.id} plan={p} />
-            ))}
-          </Stack>
-        )}
-      </Stack>
+      <Tabs onChange={setTab} value={tab}>
+        <Tabs.List>
+          <Tabs.Tab
+            rightSection={
+              plans.length > 0 && (
+                <Badge color="indigo" size="sm" variant="light">
+                  {plans.length}
+                </Badge>
+              )
+            }
+            value="plans"
+          >
+            作業予定
+          </Tabs.Tab>
+          {approvals != null && (
+            <Tabs.Tab
+              rightSection={
+                approvals.length > 0 && (
+                  <Badge color="yellow" size="sm" variant="light">
+                    {approvals.length}
+                  </Badge>
+                )
+              }
+              value="approvals"
+            >
+              承認待ち
+            </Tabs.Tab>
+          )}
+        </Tabs.List>
 
-      {approvals != null && (
-        <Stack gap="xs">
-          <Title c="dimmed" order={5}>
-            承認待ち（{approvals.length} 件）
-          </Title>
-          <ApprovalRequestTable embedded rows={approvals} />
-        </Stack>
-      )}
+        <Tabs.Panel pt="md" value="plans">
+          {plans.length === 0 ? (
+            <Paper p="md" radius="md" withBorder>
+              <EmptyState
+                icon={<IconCalendarTime size={24} />}
+                message="割り当てられた作業予定はありません"
+              />
+            </Paper>
+          ) : (
+            <Stack gap="xs">
+              {plans.map((p) => (
+                <PlanRow key={p.id} plan={p} />
+              ))}
+            </Stack>
+          )}
+        </Tabs.Panel>
+
+        {approvals != null && (
+          <Tabs.Panel pt="md" value="approvals">
+            <ApprovalRequestTable embedded rows={approvals} />
+          </Tabs.Panel>
+        )}
+      </Tabs>
     </Stack>
   );
 }
