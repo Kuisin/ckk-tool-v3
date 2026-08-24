@@ -164,38 +164,23 @@ function psqlInput(sql: Buffer | string): void {
   );
 }
 
-/**
- * directory-bootstrap で DB が「空でない」状態になると prisma migrate deploy が
- * P3005 で拒否する。一時 DB 専用の回避: 空の _prisma_migrations を先に作って
- * おく（deploy は履歴テーブルがあれば未適用 migration を全部流すだけになる）。
- */
-const PRISMA_MIGRATIONS_TABLE = `
-CREATE TABLE IF NOT EXISTS _prisma_migrations (
-  id                  varchar(36)  PRIMARY KEY,
-  checksum            varchar(64)  NOT NULL,
-  finished_at         timestamptz,
-  migration_name      varchar(255) NOT NULL,
-  logs                text,
-  rolled_back_at      timestamptz,
-  started_at          timestamptz  NOT NULL DEFAULT now(),
-  applied_steps_count integer      NOT NULL DEFAULT 0
-);`;
-
 function seed(): void {
   if (!existsSync(join(SHARED_DB, "node_modules"))) {
     log("installing shared-db deps (first run)");
     sh("pnpm", ["install", "--frozen-lockfile"], { cwd: SHARED_DB });
   }
-  // directory.* は ldap-sync 所有で migration は ALTER しかしない —
-  // まっさらな DB では先に土台を作る（冪等）。
-  log("bootstrap: sql/directory-bootstrap.sql");
-  psqlInput(PRISMA_MIGRATIONS_TABLE);
-  psqlFile(join(SHARED_DB, "sql/directory-bootstrap.sql"));
+  // ベースライン（2026-08-24 のスクウォッシュ）は directory.* も自分で作るので、
+  // directory-bootstrap も P3005 回避（空の _prisma_migrations 手動作成）も要らない
+  // — まっさらな DB に素直に deploy できる。
   log("prisma migrate deploy");
   sh("pnpm", ["exec", "prisma", "migrate", "deploy"], {
     cwd: SHARED_DB,
     env: { DATABASE_URL },
   });
+  // 旧 migration に埋まっていた初期データ（採番マスタ / 材種・素材 / 工程マスタ /
+  // 承認フロー / 検査テンプレ / 通貨 / system ユーザー）はここへ移した。
+  log("seed: sql/baseline-seed.sql");
+  psqlFile(join(SHARED_DB, "sql/baseline-seed.sql"));
   for (const f of SEED_FILES_PRE) {
     log(`seed: ${f}`);
     psqlFile(join(SHARED_DB, f));

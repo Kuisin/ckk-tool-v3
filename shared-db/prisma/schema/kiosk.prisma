@@ -85,7 +85,9 @@ model KioskDevice {
   // 端末設定画面（ヘッダー5タップ）の解錠コード。SY09 の編集モーダルで管理者が
   // 確認・再生成し、フロア担当者に伝える運用。平文保持は仕様（低感度の便宜
   // ゲート — 5回失敗/15分ロックで総当たりは不可。認証はデバイストークンが担う）。
-  settingsCode String @default(dbgenerated("lpad(floor(random() * 1000000)::text, 6, '0')")) @map("settings_code")
+  // dbgenerated の文字列は **PostgreSQL が正規化した後の既定値式** と字面まで
+  // 一致させること（一致しないと migrate diff が毎回 SET DEFAULT を出す）。
+  settingsCode String @default(dbgenerated("lpad((floor((random() * (1000000)::double precision)))::text, 6, '0'::text)")) @map("settings_code")
 
   linkedAt DateTime? @map("linked_at") @db.Timestamptz(6)
 

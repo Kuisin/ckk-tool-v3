@@ -4,7 +4,7 @@
 -- tools/docs-screenshots のローカル一時 DB に流す（orchestrate.ts SEED_FILES_POST —
 -- sales-demo-seed.sql の後）。前提:
 --   - マイグレーション済み（process_step_catalog 41 工程 + 依存、拠点 F01、
---     素材マスタ = 20260719120000_materials_from_excel）
+--     素材マスタ = baseline-seed.sql）
 --   - screenshot-user-seed.sql（demo_shot = a0b1c2d3-…5107）
 --   - manufacturing-demo-seed.sql（第一/第二承認グループ（デモ）+ system ユーザー）
 --   - sales-demo-seed.sql（デモ商事 d0…01、製品 9001〜9003、注文請書 ORD-202607-1〜3）

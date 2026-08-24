@@ -90,6 +90,7 @@ model BusinessPartner {
   deliveryOrdersAsBranch   DeliveryOrder[] @relation("DeliveryOrderCustomerBranch")
   stepsAsSupplier       WorkOrderStep[] @relation("StepSupplier")
   routeStepsAsSupplier  ProductProcessRouteVersionStep[] @relation("RouteStepSupplier")
+  routesAsCustomer      ProductProcessRoute[] @relation("RouteCustomerBp")
 
   deliveryNotesAsRecipient DeliveryNote[] @relation("DeliveryNoteRecipient")
   deliveryNotesAsBranch    DeliveryNote[] @relation("DeliveryNoteRecipientBranch")
@@ -104,6 +105,8 @@ model BusinessPartner {
   acceptancesAsEndUser  OrderAcceptance[] @relation("AcceptanceEndUser")
 
   @@index([parentId])
+  // 照合名の配列検索（lib/bp-match）。GIN でないと全表走査になる。
+  @@index([matchNamesAuto(ops: ArrayOps)], map: "business_partners_match_names_auto_idx", type: Gin)
   @@map("business_partners")
   @@schema("app")
 }
