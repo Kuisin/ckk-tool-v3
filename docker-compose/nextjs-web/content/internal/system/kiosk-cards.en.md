@@ -4,8 +4,6 @@ description: "Operation code SY08. Issues and manages the QR cards employees use
 ---
 Operation code **SY08**. Issues and manages the **QR cards** employees use to log in to shared plant-floor tablets (kiosk devices).
 
-> This app is currently available **in the development (dev) environment only**. Screens and steps may change before the production release.
-
 > This app requires the **kiosk administration permission**. All operations are recorded in the audit log.
 
 ## What you can do here
@@ -14,6 +12,8 @@ Operation code **SY08**. Issues and manages the **QR cards** employees use to lo
 - **Assign** cards to users (one card per user)
 - **Print** cards from the print sheet (business-card size)
 - **Suspend / resume / revoke** cards
+- **Time-limited assignment** (temporary cards with a start / end date)
+- Change the **concurrent-login limit** (1–10 devices)
 - **Reset a PIN / clear a PIN lock**
 
 ## Card statuses
@@ -45,6 +45,11 @@ For security, the list shows only the **last 8 characters** of each card ID. The
 - **PINリセット** (Reset PIN) … erases the PIN. Use this when the employee has forgotten it; they set a new PIN at the next login.
 
 After login, sessions end automatically after **5 minutes** of inactivity, with a hard limit of **8 hours**.
+
+## Validity period and concurrent-login limit
+
+- **Validity period** … a card can carry a **start date and end date** (temporary cards; either side alone is fine, and clearing both returns the card to no expiry). The start date takes effect at 0:00 of that day, and the end date lasts until 23:59 of that day. A card outside its period **cannot log in** on the kiosk (the check happens only at login — existing sessions simply expire via the 8-hour hard limit / 5-minute idle timeout). The list shows the period, and out-of-period cards carry a 「**期限切れ**」 (Expired, red) / 「**開始前**」 (Not yet started, yellow) badge.
+- **Concurrent-login limit** … how many devices can be logged in with one card at the same time (default 1, changeable between **1–10**). When a login exceeds the limit, **the session with the oldest last activity expires first** (= the oldest device is logged out). Lowering the limit does not cut existing sessions immediately; it takes effect at the next login.
 
 ## Suspending and revoking
 

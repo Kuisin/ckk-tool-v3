@@ -62,10 +62,10 @@ When several roles grant the same code, the **widest scope wins** (PLANT + ALL
 | `purchase_order` | Purchasing | PU01 Purchase requests / PU02 Material purchase orders |
 | `material_receipt` | Material receipt | PU03 Material receipts |
 | `outsource_order` | Outsource order | PU04 Outsource orders |
-| `work_order` | Work order | PD02 Work orders (also kiosk step execution) |
+| `work_order` | Work order | PD02 Work orders / PD05 Pending work orders (also kiosk step execution and work-order scan) |
 | `approve` | Approvals | PD03 Approvals |
 | `inventory` | Inventory | PD04 Inventory |
-| `delivery_order` | Shipping order | SH01 Shipping orders |
+| `delivery_order` | Shipping order | SH01 Shipping orders / SH03 Pending shipments |
 | `delivery_note` | Delivery note | SH02 Delivery notes |
 | `invoice` | Invoice | BL01 Invoices |
 | `billing_closing` | Billing closing | BL02 Monthly closing (Yayoi CSV export is E) |
@@ -139,8 +139,12 @@ permission. In dev everything is shown by default.
 ### System and kiosk admin are administrator-only
 
 `system` and `kiosk` are deliberately not granted to any business role. User
-management, app management, file management, activity log, QR cards and device
-management are reachable by the **administrator role only**.
+management, app management, activity log, QR cards and device management are
+reachable by the **administrator role only**.
+File management (SY06) is the exception — it **opens for anyone, no permission
+required**: what is visible is decided by folder grants (individual) and by the
+business apps the user can read (the PDFs those apps generated), so without
+either it simply shows up empty.
 
 ## Assigning roles
 

@@ -49,7 +49,7 @@ You are done when 「**保存しました**」 (Saved) and 「**キオスクの�
 
 > ⚠️ If you turn a switch off, **the app also disappears for people who have permission to use it.** You cannot use this to show an app to only some people.
 
-Right now 「**工程実行**」 (Step Execution) is the only app available on the tablets. As more apps are added, they will appear in this list.
+Right now there are 2 apps available on the tablets: 「**工程実行**」 (Step Execution) and 「**指示書スキャン**」 (Work Order Scan). As more apps are added, they will appear in this list.
 
 Under each app name you will see text such as 「**権限コード: work_order**」 (Permission code: work_order). This tells you which permission a person needs in order to use that app. Even if the switch is on, the app will not appear for a person who does not have that permission.
 

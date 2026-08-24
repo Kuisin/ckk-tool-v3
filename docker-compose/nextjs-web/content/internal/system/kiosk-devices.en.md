@@ -43,8 +43,10 @@ If the code expires, have the tablet display it again and retry. Only profiles i
 
 ## Editing and the device settings code
 
-- **編集** (Edit) changes the name, plant, and location. **Changing the plant removes the pin from the floor map** (maps are per plant).
+- **編集** (Edit) changes the name, plant, location, and **default work location**. **Changing the plant removes the pin from the floor map** (maps are per plant).
+- **Default work location** (optional) … the work location recorded automatically onto the work actuals from this device when a step is started or resumed. Only **work locations of the device's plant** (plus locations in groups with no plant set) can be chosen, and it is **cleared when the plant is changed**.
 - The **device settings code** (6 digits) and the **maintenance PIN** (shared by all devices, auto-rotated daily at 4:00) are shown on the **device detail page under "PIN・設定コード"**. Revealing them requires a confirmation and **is recorded in the audit log** (auto-hidden after 60 s). The settings code can also be **regenerated** there.
+- Device settings such as the default work location can also be changed from the tablet-side **device settings screen** (5 taps at the top left of the screen → unlock with the device settings code). When the 「**作業場所の制限**」 (restrict work location) toggle on the same screen is ON, steps whose work locations are restricted in the process-step master **can only be started / resumed when this device's default work location is among the allowed ones** (they are blocked at non-allowed locations; even when OFF, a non-allowed location is never recorded onto the actuals).
 
 ## Replacing or stopping a device
 
@@ -67,7 +69,7 @@ In edit mode (toggle switch) you can:
 - **Drag** pins to move them (positions are saved automatically).
 - Click an unplaced device in the sidebar to drop it at the center, then drag to adjust.
 - Remove a pin with **解除** (Unpin) on a placed device.
-- **Add, rename, and delete** floors (a floor with placed devices cannot be deleted).
+- **Add, rename, and delete** floors (a floor with placed devices or **storage locations** cannot be deleted — remove the pins first).
 - Upload or replace the **floor drawing image** (PNG / JPG / WEBP / SVG, up to 10MB).
 
 ## Related pages
