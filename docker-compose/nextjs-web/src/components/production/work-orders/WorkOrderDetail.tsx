@@ -42,9 +42,9 @@ import {
 import type { ApprovalActionState } from "@/components/approvals/ApprovalActionCard";
 import { useFormat } from "@/components/layout/PreferencesProvider";
 import {
-  ApprovalStatusPanel,
   type ApprovalTrailView,
   WorkOrderApprovalCard,
+  WorkOrderProcedurePanel,
 } from "@/components/production/ApprovalStatusPanel";
 import { WorkOrderStepsPanel } from "@/components/production/WorkOrderStepsPanel";
 import { DocNumber } from "@/components/ui/DocNumber";
@@ -183,11 +183,12 @@ export function WorkOrderDetail({
   );
 
   const approvalPanel = (
-    <ApprovalStatusPanel
+    <WorkOrderProcedurePanel
       approval={approval}
       history={wo.history}
       rejectReason={wo.rejectReason}
       trail={approvalTrail}
+      workOrder={wo}
     />
   );
 

@@ -44,7 +44,12 @@ import { HistoryPanel } from "@/components/ui/HistoryPanel";
 import { MemoPanel } from "@/components/ui/MemoPanel";
 import { MoneyText } from "@/components/ui/MoneyText";
 import { NextStepCard } from "@/components/ui/NextStepCard";
-import { StatusBadge } from "@/components/ui/StatusBadge";
+import {
+  type HandoffGroup,
+  ProcedurePanel,
+  type ProcedureStage,
+} from "@/components/ui/ProcedurePanel";
+import { StatusBadge, statusLabel } from "@/components/ui/StatusBadge";
 import {
   type AuditEntry,
   DetailShell,
@@ -64,6 +69,102 @@ import { isLineStockCheckable } from "@/lib/order-line-core";
 import type { OrderLine } from "./model";
 
 const BASE_PATH = "/sales/order-lines";
+
+/** 手続き状況（作成 → 確定 → 製造 → 出荷）+ 次の書類への受け渡し。 */
+function OrderLineProcedurePanel({
+  order,
+  fmtDate,
+}: {
+  order: OrderLine;
+  fmtDate: (v: string | null) => string;
+}) {
+  const stages: ProcedureStage[] = [
+    { key: "created", label: "作成", description: fmtDate(order.createdAt) },
+    { key: "confirmed", label: "確定", description: null },
+    {
+      key: "production",
+      label: "製造",
+      description:
+        order.workOrders.length > 0
+          ? `指示書 ${order.workOrders.length} 件`
+          : null,
+      loading:
+        order.status === "IN_PRODUCTION" || order.status === "PARTIAL_SHIPPED",
+    },
+    {
+      key: "shipped",
+      label: "出荷",
+      description:
+        order.status === "PARTIAL_SHIPPED"
+          ? `一部出荷 ${order.shippedQuantity}/${order.quantity}`
+          : order.status === "SHIPPED"
+            ? `${order.shippedQuantity} 本`
+            : null,
+    },
+  ];
+  const active = (() => {
+    switch (order.status) {
+      case "DRAFT":
+        return 1;
+      case "CONFIRMED":
+        return 2;
+      case "IN_PRODUCTION":
+      case "PARTIAL_SHIPPED":
+        return 3;
+      case "SHIPPED":
+        return stages.length;
+      default:
+        // CANCELLED — 進んだところまで
+        return order.workOrders.length > 0 ? 3 : 1;
+    }
+  })();
+
+  const allocated = order.workOrders.reduce(
+    (sum, w) => sum + w.allocatedQuantity,
+    0,
+  );
+  const handoffGroups: HandoffGroup[] = [
+    {
+      key: "work-orders",
+      title: "指示書（製造手配）",
+      summary: `手配済 ${allocated} / 受注 ${order.quantity} 本${
+        order.reservedStockQuantity > 0
+          ? `・在庫引当 ${order.reservedStockQuantity} 本`
+          : ""
+      }`,
+      items: order.workOrders.map((w) => ({
+        key: w.docNumber,
+        label: w.docNumber,
+        href: `/production/work-orders/${w.workOrderNumber}`,
+        done: w.status === "COMPLETED",
+        note: `${statusLabel("WorkOrder", w.status)}・割当 ${w.allocatedQuantity} 本`,
+      })),
+      emptyNote: "未手配（指示書なし）",
+    },
+    {
+      key: "delivery-orders",
+      title: "出荷書",
+      summary: `出荷済 ${order.shippedQuantity} / 受注 ${order.quantity} 本`,
+      items: order.deliveryOrders.map((s, i) => ({
+        key: `${s.number}-${i}`,
+        label: s.number,
+        href: `/shipping/delivery-orders/${s.number}`,
+        done: s.status === "SHIPPED",
+        note: `${statusLabel("DeliveryOrder", s.status)}・${s.quantity} 本${s.type === "STOCK_STORAGE" ? "（在庫保管）" : ""}`,
+      })),
+      emptyNote: "未手配（出荷書なし）",
+    },
+  ];
+
+  return (
+    <ProcedurePanel
+      active={active}
+      cancelled={order.status === "CANCELLED"}
+      handoffGroups={handoffGroups}
+      stages={stages}
+    />
+  );
+}
 
 export function OrderLineDetail({
   order,
@@ -322,6 +423,8 @@ export function OrderLineDetail({
           }
         />
       </SummaryGrid>
+
+      <OrderLineProcedurePanel fmtDate={(v) => fmt.date(v)} order={order} />
 
       <Tabs onChange={setTab} value={tab}>
         <Tabs.List>

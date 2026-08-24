@@ -43,8 +43,15 @@ import {
 } from "@/components/approvals/ApprovalTrailList";
 import { useFormat } from "@/components/layout/PreferencesProvider";
 import {
+  type HandoffGroup,
+  ProcedurePanel,
+  type ProcedureStage,
+} from "@/components/ui/ProcedurePanel";
+import { statusLabel } from "@/components/ui/StatusBadge";
+import {
   WORK_ORDER_HISTORY_ACTION_LABEL,
   type WorkOrderHistoryView,
+  type WorkOrderView,
 } from "./work-orders/model";
 
 export type {
@@ -83,6 +90,185 @@ export function WorkOrderApprovalCard({
       rejectReason={rejectReason}
       subject={`指示書 #${workOrderNumber}`}
     />
+  );
+}
+
+/**
+ * WorkOrderProcedurePanel — 指示書の手続き状況（作成 → 承認段 → 製造 → 完了）。
+ *
+ * 旧 承認状況（承認段だけの Stepper）を全ライフサイクルへ広げたもの。承認段は
+ * 依頼時スナップショット（approval.steps）由来で、承認記録・操作履歴も
+ * 従来どおりパネル内に出す。「次の書類へ」で出荷書（ロット単位）と
+ * 後続指示書（work_order_links）への受け渡しを追跡する。
+ */
+export function WorkOrderProcedurePanel({
+  workOrder,
+  approval,
+  rejectReason,
+  history,
+  trail = [],
+}: {
+  workOrder: WorkOrderView;
+  approval: ApprovalActionState;
+  rejectReason: string | null;
+  history: WorkOrderHistoryView[];
+  trail?: ApprovalTrailView[];
+}) {
+  const fmt = useFormat();
+  const wo = workOrder;
+  const records = [...history].reverse();
+
+  // ── 段の組み立て: 作成 → 承認段（スナップショット）→ 製造 → 完了 ──────────
+  const approvalSteps =
+    approval.steps.length > 0
+      ? approval.steps
+      : [{ stepNo: 1, label: "承認", groupLabel: "", mode: "ANY" as const }];
+  const n = approvalSteps.length;
+  const rejected = approval.phase === "REJECTED";
+
+  const stages: ProcedureStage[] = [
+    { key: "created", label: "作成", description: fmt.date(wo.createdAt) },
+    ...approvalSteps.map((s, i) => ({
+      key: `approval-${s.stepNo}`,
+      label: s.label || `第${s.stepNo}承認`,
+      description:
+        rejected && s.stepNo === approval.stepNo
+          ? "差し戻し"
+          : i === n - 1 && wo.approvedAt && wo.status !== "DRAFT"
+            ? fmt.date(wo.approvedAt)
+            : s.groupLabel
+              ? s.mode === "ALL"
+                ? `${s.groupLabel}（全員承認）`
+                : s.groupLabel
+              : null,
+      color: rejected && s.stepNo === approval.stepNo ? "red" : undefined,
+    })),
+    {
+      key: "production",
+      label: "製造",
+      description: wo.startedAt
+        ? `開始 ${fmt.date(wo.startedAt)}`
+        : wo.status === "APPROVED"
+          ? "開始待ち"
+          : null,
+      loading: wo.status === "IN_PROGRESS",
+    },
+    {
+      key: "done",
+      label: "完了",
+      description: wo.completedAt ? fmt.date(wo.completedAt) : null,
+    },
+  ];
+
+  const active = (() => {
+    switch (wo.status) {
+      case "DRAFT":
+        // 差し戻しは止まっている段、依頼前は先頭の承認段が現在
+        return 1 + (rejected ? approval.stepNo - 1 : 0);
+      case "PENDING_APPROVAL":
+        return 1 + (approval.stepNo - 1);
+      case "APPROVED":
+      case "IN_PROGRESS":
+        return 1 + n;
+      case "COMPLETED":
+        return stages.length;
+      default:
+        // CANCELLED — 進んだところまで（開始済み > 承認済み > 依頼済み > 作成）
+        return wo.startedAt ? 1 + n : wo.approvedAt ? 1 + n : 1;
+    }
+  })();
+
+  // ── 次の書類へ: 出荷書（ロット単位）+ 後続指示書 ────────────────────────────
+  const shippedToDo = wo.shipments.reduce((sum, s) => sum + s.quantity, 0);
+  const handoffGroups: HandoffGroup[] = [
+    {
+      key: "delivery-orders",
+      title: "出荷書",
+      summary:
+        wo.shipments.length > 0
+          ? `割当 ${shippedToDo} 本 / 予定 ${wo.plannedQuantity} 本`
+          : null,
+      items: wo.shipments.map((s, i) => ({
+        key: `${s.number}-${i}`,
+        label: s.number,
+        href: `/shipping/delivery-orders/${s.number}`,
+        done: s.status === "SHIPPED",
+        note: `${statusLabel("DeliveryOrder", s.status)}・${s.quantity} 本${s.type === "STOCK_STORAGE" ? "（在庫保管）" : ""}`,
+      })),
+      emptyNote:
+        wo.status === "COMPLETED"
+          ? "出荷書への割当はまだありません"
+          : "未割当（完了後に出荷書で引き当てます）",
+    },
+    ...(wo.woLinksOutgoing.length > 0
+      ? [
+          {
+            key: "wo-links",
+            title: "後続指示書（数量受け渡し）",
+            summary: null,
+            items: wo.woLinksOutgoing.map((l) => ({
+              key: l.id,
+              label: l.docNumber,
+              href: `/production/work-orders/${l.workOrderNumber}`,
+              done: wo.status === "COMPLETED",
+              note: `${l.quantity != null ? `${l.quantity} 本` : "完成数全量"}を受け渡し`,
+            })),
+            emptyNote: "—",
+          },
+        ]
+      : []),
+  ];
+
+  return (
+    <ProcedurePanel
+      active={active}
+      cancelled={wo.status === "CANCELLED"}
+      handoffGroups={handoffGroups}
+      stages={stages}
+    >
+      {rejected && rejectReason && (
+        <Alert
+          color="red"
+          icon={<IconAlertTriangle size={16} />}
+          mt="md"
+          title="差し戻し"
+          variant="light"
+        >
+          {rejectReason}
+        </Alert>
+      )}
+
+      {countTrailRecords(trail) > 0 && (
+        <>
+          <Divider my="md" />
+          <ApprovalTrailList trail={trail} />
+        </>
+      )}
+
+      {records.length > 0 && (
+        <>
+          <Divider my="md" />
+          <Stack gap="xs">
+            {records.map((h, i) => (
+              <Group gap="sm" key={`${h.at}-${h.action}-${i}`} wrap="nowrap">
+                <Badge color="gray" size="sm" variant="light">
+                  {WORK_ORDER_HISTORY_ACTION_LABEL[h.action] ?? h.action}
+                </Badge>
+                <Text size="xs">{h.user}</Text>
+                <Text c="dimmed" className="tabular-nums" size="xs">
+                  {fmt.dateTime(h.at)}
+                </Text>
+                {h.notes && (
+                  <Text c="dimmed" size="xs" truncate>
+                    {h.notes}
+                  </Text>
+                )}
+              </Group>
+            ))}
+          </Stack>
+        </>
+      )}
+    </ProcedurePanel>
   );
 }
 
