@@ -9,8 +9,15 @@ Settings for your own account. Open them from the avatar menu (top right) → **
 
 ## Profile
 
-- **Display name / department**: synced from the company directory (AD). Ask IT to change them.
+- **Display name / username**: synced from the company directory (AD). Ask IT to change them. The profile screen also shows your account type and last login (your department appears only in the header avatar menu).
+- **Approval groups**: the approval groups you belong to. Whether you can approve documents is decided by the groups listed here. Ask an administrator to change them.
 - **Email (notification address)**: the address that receives notifications. If empty, no email notifications are sent.
+
+### Profile photo
+
+- Upload your own photo from "Set photo" on the profile screen ("Change" once one is set). Choosing an image opens a square-crop dialog — adjust the position and size, then save.
+- The saved photo is stored in two sizes; the same photo is used for the header icon and for the small icons in lists and history.
+- Photos are never pulled from the company directory (AD) — they are set inside this system. The trash button deletes the photo, reverting to your name initials.
 
 ## Password
 
@@ -22,6 +29,7 @@ Settings for your own account. Open them from the avatar menu (top right) → **
 - **In-app**: delivered to the bell in the header. Use "Mark all read" to clear them.
 - **Email**: sent to the address on your profile.
 - **Push**: enable per device under **Profile → Notifications** to receive lock-screen / desktop notifications.
+- **Channel toggles**: at the top of **Profile → Notifications** are on/off switches for "Email notifications" and "Push notifications". Turning email notifications off stops approval-request and other emails.
 
 ## Enabling push per platform
 
