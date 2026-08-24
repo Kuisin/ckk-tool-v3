@@ -33,7 +33,7 @@ There are three apps about places, and they are easy to mix up. Please take care
 - **Group** … the unit that brings work locations together. You make them by machine kind or by area, such as 「NC旋盤」 (NC lathe) or 「研磨エリア」 (polishing area). A group always belongs to one of the sites.
 - **Work location** … one machine, or one area. It is always registered under one of the groups.
 - **Capacity** … the number of jobs that can be put on that place at the same time. Leave it empty and there is no limit.
-- **Planned count** … the number of work plans that are set to use that place.
+- **計画 / 実績** (plan / actual counts) … the number of work plans and work actuals that use that place.
 - **Type** … the division used for sorting the groups. 「機械」 (machine) and 「エリア」 (area) are there from the start.
 
 ## Before you start
@@ -50,7 +50,7 @@ This app is not split into a list and a detail screen. **You do everything on on
 
 - At the top right of the screen there are the 「**種別管理**」 (Manage types) and 「**グループ追加**」 (Add group) buttons.
 - The groups are shown as cards. The top of a card shows the code, name, type, site and status of that group.
-- At the right of a card there are the 「**場所を追加**」 (Add location), 「**編集**」 (Edit) and 「**削除**」 (Delete) buttons.
+- At the right of a card there are the 「**場所を追加**」 (Add location), 「**QR印刷**」 (Print QR), 「**編集**」 (Edit) and 「**削除**」 (Delete) buttons. 「QR印刷」 cannot be pressed while the group has no locations.
 - The table inside a card lists the machines of that group in the order **コード** (code) / **名称** (name) / **キャパシティ** (capacity) / **計画 / 実績** (plan / actual counts) / **状態** (status).
 - When nothing is registered yet, 「**作業場所が未登録です。グループ（機械種別・エリアなど）を作成し、配下に物理的な場所（機械 1 台・1 区画）を追加してください。**」 (no work locations are registered; create a group such as a machine kind or area, and add physical places under it, one machine or one area at a time) is shown.
 
@@ -163,8 +163,8 @@ Ordering, whether it is offered, and notes.
 **Q. I want to add a machine, but I cannot find the 「場所を追加」 (Add location) button.**
 A. This button is inside a group card. When there is no group at all yet, make one first with 「**グループ追加**」 (Add group).
 
-**Q. I see 「この場所は 3 件の作業計画から参照されています（削除できません — 無効化をご検討ください）。」 (this location is referred to by 3 work plans; it cannot be deleted, please consider deactivating it).**
-A. That machine is in use in the work plan of a work order. Do not delete it. Turn off 「**有効**」 (active) on the edit screen to make it inactive. Once it is inactive it can no longer be chosen in plans made from now on.
+**Q. I see 「この場所は 作業計画 3 件 / 作業実績 1 件 から参照されています（削除できません — 無効化をご検討ください）。」 (this location is referred to by 3 work plans / 1 work actual; it cannot be deleted, please consider deactivating it).**
+A. That machine is in use in the work plans or work actuals of a work order. Do not delete it. Turn off 「**有効**」 (active) on the edit screen to make it inactive. Once it is inactive it can no longer be chosen in plans made from now on.
 
 **Q. I see 「グループの削除に失敗しました（作業計画で使用中の場所が含まれる場合は削除できません）」 (deleting the group failed; it cannot be deleted if it contains a location in use in a work plan).**
 A. That group still contains a machine that is in use. Check which machine is in use, do not delete the whole group, and make that machine inactive instead.

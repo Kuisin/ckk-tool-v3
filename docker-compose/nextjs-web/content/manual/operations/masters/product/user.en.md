@@ -84,7 +84,7 @@ The screen of a saved product has four tabs.
 ![Product detail screen](../../../assets/screenshots/master-product-detail-01.png)
 
 - **概要** (Overview) … the product type, the specification (a table of items and values) and the notes.
-- **工程** (Processes) … the order of the process steps used to make this product.
+- **工程** (Processes) … the order of the process steps used to make this product. Each route shows its target customer (「汎用」 — generic — when none is set) and its 「◯ バージョン」 (number of versions).
 - **関連** (Related) … the price lists for this product, listed per customer. Click one to open that price list.
 - **履歴** (History) … the record of when and who changed this registration.
 
@@ -99,12 +99,14 @@ On the 「工程」 (Processes) tab you can register the order of the process st
 1. Open the 「**工程**」 (Processes) tab.
 2. Press 「**ルート新規作成**」 (New route).
 3. Enter 「**ルート名（日本語）**」 (Route name in Japanese) — for example, 標準工程 (standard process). **This field must always be filled in.**
-4. In 「**工程選択**」 (Choose steps), tick the steps you use.
-5. The steps you ticked are listed in 「**選択済み工程・実施場所**」 (Chosen steps and where they are done).
-6. For a step that can be done in-house or outside, choose 「**社内**」 (In-house) or 「**外注**」 (Outsourced).
-7. When you choose 「**外注**」 (Outsourced), also choose 「**仕入先（外注先）**」 (Supplier / outsourcing company).
-8. For the steps you know, enter 「**作業時間**」 (Work time) (you can leave it empty).
-9. Press 「**保存**」 (Save).
+4. To make the route for a specific customer, choose that customer in 「**対象顧客**」 (Target customer). Left empty, it becomes 「**汎用**」 (generic — usable for any customer). A route with a customer set is chosen first when making a work order for the same customer × the same product.
+5. In 「**工程選択**」 (Choose steps), tick the steps you use.
+6. The steps you ticked are listed in 「**選択済み工程・実施場所**」 (Chosen steps and where they are done).
+7. For a step that can be done in-house or outside, choose 「**社内**」 (In-house) or 「**外注**」 (Outsourced).
+8. When you choose 「**外注**」 (Outsourced), also choose 「**仕入先（外注先）**」 (Supplier / outsourcing company).
+9. For the steps you know, enter 「**作業時間**」 (Work time) (you can leave it empty).
+10. If you need to, add a note in 「**備考**」 (Notes).
+11. Press 「**保存**」 (Save).
 
 ![New process route screen](../../../assets/screenshots/master-product-route-new-01.png)
 
@@ -114,8 +116,8 @@ On the 「工程」 (Processes) tab you can register the order of the process st
 
 The order of the steps is kept by **version**. The earlier content is kept too, so you can see later when and how it changed.
 
-- To change the steps → press 「**新バージョン**」 (New version) on the route. It starts with the earlier content already filled in.
-- To correct only the name → press 「**編集**」 (Edit).
+- To change the steps → press 「**新バージョン**」 (New version) on the route. It starts with the earlier content already filled in. If you note what you changed in 「**備考**」 (Notes), it is shown next to the version selector, so the reason for the change can be seen later.
+- To correct the route name (Japanese / English) or the 「**有効**」 (Active) switch → press 「**編集**」 (Edit).
 - To remove the whole route → press 「**削除**」 (Delete).
 
 ## Making a similar product

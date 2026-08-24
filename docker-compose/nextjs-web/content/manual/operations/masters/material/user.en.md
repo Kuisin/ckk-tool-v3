@@ -106,7 +106,7 @@ At the top of the screen you see the material code, material type, surface finis
 - **関連** (Related) … an explanation of how it connects to products.
 - **履歴** (History) … the record of when and who changed this registration.
 
-To correct the content, press 「**編集**」 (Edit) at the top right of the screen. **You can edit the name, the unit, the maker model, the nominal diameter, the active setting and the notes.**
+To correct the content, press 「**編集**」 (Edit) at the top right of the screen. **You can edit the name, the unit, the maker model, the nominal diameter, the keywords, the active setting and the notes.**
 
 ## What to do with a material you no longer buy
 
