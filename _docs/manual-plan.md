@@ -5,7 +5,7 @@
 > 文体・図・スクリーンショットの現行規約は `_docs/manual-style-beginner.md`
 > の「プロセス編の例外」を参照）。残る未実装は管理・設定編（`admin/`）のみ。
 
-対象: `/manual`（fumadocs, `docker-compose/nextjs-web/content/manual/`）。
+対象: `/manual`（fumadocs, `coolify/apps/nextjs-web/content/manual/`）。
 前提: アプリ別マニュアル（apps/・masters/・system/ 全ページ × ja/en/zh × 実
 スクリーンショット）は整備済み（PR #326–#328）。操作コードは 2026-08 に業務
 フロー順へ再編済み（`_specs/operation-code.md` が正）。

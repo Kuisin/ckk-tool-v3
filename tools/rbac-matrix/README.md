@@ -25,7 +25,7 @@ DB へは psql の CSV 出力経由で読むので Python 側の DB ドライバ
 読む（正はこの 2 つ）:
 
 - `app.roles` / `app.permissions` / `app.role_permission_relation` / `app.users` — DB の実データ
-- `docker-compose/nextjs-web/src/lib/app-list.ts` — アプリ → 権限コード・操作コード
+- `coolify/apps/nextjs-web/src/lib/app-list.ts` — アプリ → 権限コード・操作コード
 
 書く: `_docs/rbac-role-matrix.xlsx`（5 シート）
 
@@ -40,4 +40,4 @@ DB へは psql の CSV 出力経由で読むので Python 側の DB ドライバ
 権限そのものを変えるときは SQL シード（`shared-db/sql/rbac-seed.sql` /
 `roles-seed.sql`）を直して適用し、そのうえでこのスクリプトを回す。
 同じ内容の読み物（社内向け）は DC02 社内ドキュメントの「ロールと権限」
-（`docker-compose/nextjs-web/content/internal/rbac/`）。
+（`coolify/apps/nextjs-web/content/internal/rbac/`）。

@@ -1,6 +1,6 @@
 -- kiosk-cron.sql — キオスクプレゼンスの pg_cron バックストップジョブ。
 --
--- 前提: shared-db イメージに pg_cron が入っており（docker-compose/shared-db/
+-- 前提: shared-db イメージに pg_cron が入っており（coolify/common/shared-db/
 -- Dockerfile）、compose の command に shared_preload_libraries=pg_cron と
 -- cron.database_name=ckk が設定済みであること。イメージ/コマンド変更の
 -- 反映後に `pnpm cron:remote`（shared-db/）で適用する。冪等 — 再実行可。

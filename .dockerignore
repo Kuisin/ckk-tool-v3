@@ -5,10 +5,10 @@
 !pnpm-workspace.yaml
 !pnpm-lock.yaml
 !packages/
-!docker-compose/nextjs-web/
-!docker-compose/nextjs-kiosk/
+!coolify/apps/nextjs-web/
+!coolify/apps/nextjs-kiosk/
 # db-migrate は shared-db（migration + SQL + prisma スキーマ）ごと必要。
-!docker-compose/db-migrate/
+!coolify/apps/db-migrate/
 !shared-db/
 shared-db/backups/
 **/node_modules

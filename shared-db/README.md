@@ -42,7 +42,7 @@ pnpm validate
 pnpm migrate:dev -- --name <change>
 # 3. regenerate + resync every consumer copy
 pnpm generate
-cd ../docker-compose/nextjs-web    && pnpm db:sync-schema && pnpm db:generate
+cd ../coolify/apps/nextjs-web    && pnpm db:sync-schema && pnpm db:generate
 cd ../nextjs-kiosk                 && pnpm db:sync-schema && pnpm db:generate
 cd ../prisma-studio                && pnpm db:sync-schema && pnpm db:generate
 ```
@@ -84,7 +84,7 @@ client generation only).
 （下の「Migration history」参照）。手で流すものは無い。
 
 `pnpm import:legacy` は FileMaker 由来の取引先マスタ
-（`../data-migration/imports/010_bp.sql.gz` — 取引先 459 件、`match_names` 付き。
+（`../tools/data-migration/imports/010_bp.sql.gz` — 取引先 459 件、`match_names` 付き。
 冪等 upsert）。材種・製品はここには**もう無い** — 2026-07-19 に Excel 由来へ置き換え、
 いまは baseline-seed が持っている。
 
@@ -184,7 +184,7 @@ pgroonga の無い開発ホストでも通る（本番の `groonga/pgroonga` イ
 
 ## Roles / connections
 
-Created by `docker-compose/shared-db/init/01-roles.sh` (passwords in the
+Created by `coolify/common/shared-db/init/01-roles.sh` (passwords in the
 server-side `~/stacks/shared-db/.env`); grants + per-role `search_path` in
 `sql/grants.sql` (idempotent — re-run after adding a schema or role;
 `ALTER DEFAULT PRIVILEGES` already covers new tables in existing schemas).

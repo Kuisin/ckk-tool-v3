@@ -20,7 +20,7 @@ const HERE = dirname(fileURLToPath(import.meta.url));
 const SRC_DIR = join(HERE, "diagrams");
 const OUT_DIR = resolve(
   HERE,
-  "../../docker-compose/nextjs-web/content/manual/assets/diagrams",
+  "../../coolify/apps/nextjs-web/content/manual/assets/diagrams",
 );
 
 const files = readdirSync(SRC_DIR)
