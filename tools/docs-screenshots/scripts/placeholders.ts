@@ -18,7 +18,7 @@ import { shots } from "../manifest";
 
 const OUT_DIR = join(
   dirname(fileURLToPath(import.meta.url)),
-  "../../../docker-compose/nextjs-web/content/manual/assets/screenshots",
+  "../../../coolify/apps/nextjs-web/content/manual/assets/screenshots",
 );
 
 const CRC_TABLE = Array.from({ length: 256 }, (_, n) => {

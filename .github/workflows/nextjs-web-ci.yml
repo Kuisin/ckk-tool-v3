@@ -53,7 +53,7 @@ jobs:
     timeout-minutes: 15
     defaults:
       run:
-        working-directory: docker-compose/nextjs-web
+        working-directory: coolify/apps/nextjs-web
     steps:
       - uses: actions/checkout@v4
 
@@ -110,7 +110,7 @@ jobs:
     timeout-minutes: 15
     defaults:
       run:
-        working-directory: docker-compose/nextjs-kiosk
+        working-directory: coolify/apps/nextjs-kiosk
     steps:
       - uses: actions/checkout@v4
 

@@ -32,8 +32,8 @@ import { fileURLToPath } from "node:url";
 const HERE = join(fileURLToPath(import.meta.url), "../..");
 const REPO = resolve(HERE, "../..");
 const SHARED_DB = join(REPO, "shared-db");
-const NEXTJS_WEB = join(REPO, "docker-compose/nextjs-web");
-const NEXTJS_KIOSK = join(REPO, "docker-compose/nextjs-kiosk");
+const NEXTJS_WEB = join(REPO, "coolify/apps/nextjs-web");
+const NEXTJS_KIOSK = join(REPO, "coolify/apps/nextjs-kiosk");
 const SHOT_DIR = join(NEXTJS_WEB, "content/manual/assets/screenshots");
 
 const DB_PORT = Number(process.env.SHOT_DB_PORT ?? 55432);
@@ -184,7 +184,7 @@ function seed(): void {
     log(`seed: ${f}`);
     psqlFile(join(SHARED_DB, f));
   }
-  const importsDir = join(REPO, "data-migration/imports");
+  const importsDir = join(REPO, "tools/data-migration/imports");
   if (existsSync(importsDir)) {
     // 999_audit_backfill は旧スキーマ前提（e.base_unit_price）で新規 DB では
     // 落ちる + 撮影に不要なのでスキップ。マスタ import（010_bp 等）だけ流す。

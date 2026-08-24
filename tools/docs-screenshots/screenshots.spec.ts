@@ -16,7 +16,7 @@ const OUT_DIR = resolve(
   process.env.PW_OUT_DIR ??
     join(
       dirname(fileURLToPath(import.meta.url)),
-      "../../docker-compose/nextjs-web/content/manual/assets/screenshots",
+      "../../coolify/apps/nextjs-web/content/manual/assets/screenshots",
     ),
 );
 

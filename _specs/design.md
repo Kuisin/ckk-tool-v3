@@ -268,7 +268,7 @@ Operation codes provide keyboard-shortcut navigation. Format: `{CAT}{MODE}{IDX}`
 | MODE | 3 | `0`=list `1`=new `2`=detail |
 | IDX | 4 | `1`–`9`, `A`–`Z` |
 
-**Full table** — 実装の正は `docker-compose/nextjs-web/src/lib/app-list.ts`
+**Full table** — 実装の正は `coolify/apps/nextjs-web/src/lib/app-list.ts`
 （コードの組み立ては `src/lib/operation-codes.ts`）。`design-preview/` 配下は
 デザイン確認用の複製なので、参照しないこと。
 

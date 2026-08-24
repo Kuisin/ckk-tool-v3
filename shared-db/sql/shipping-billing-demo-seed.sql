@@ -31,7 +31,7 @@ BEGIN;
 
 -- ── 撮影用フラグ ────────────────────────────────────────────────────────────
 -- 撮影は APP_ENV=main で行うため、main 未公開の 4 アプリを撮影 DB に限り有効化する
--- （キーは docker-compose/nextjs-web/src/lib/app-list.ts の key に一致）。
+-- （キーは coolify/apps/nextjs-web/src/lib/app-list.ts の key に一致）。
 INSERT INTO app.feature_flags (key, is_enabled, description, updated_at) VALUES
   ('app:delivery-orders:main',  true, '出荷書（マニュアル撮影用）',   now()),
   ('app:delivery-notes:main',   true, '納品書（マニュアル撮影用）',   now()),

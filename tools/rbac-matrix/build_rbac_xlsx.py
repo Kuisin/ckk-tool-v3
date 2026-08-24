@@ -6,7 +6,7 @@
 置き、2 つの実体だけを読む:
 
   1. app.roles / app.permissions / app.role_permission_relation（dev DB の実データ）
-  2. docker-compose/nextjs-web/src/lib/app-list.ts（アプリ → 権限コードの正）
+  2. coolify/apps/nextjs-web/src/lib/app-list.ts（アプリ → 権限コードの正）
 
 つまり出力は「シードにこう書いたつもり」ではなく「いま DB がこうなっている」。
 
@@ -37,7 +37,7 @@ from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 from openpyxl.utils import get_column_letter
 
 REPO = Path(__file__).resolve().parents[2]
-APP_LIST = REPO / "docker-compose/nextjs-web/src/lib/app-list.ts"
+APP_LIST = REPO / "coolify/apps/nextjs-web/src/lib/app-list.ts"
 OUT = REPO / "_docs/rbac-role-matrix.xlsx"
 
 # 表示順（業務フロー順）。ここに無いロールは末尾へ回す。

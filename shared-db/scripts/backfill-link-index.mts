@@ -21,9 +21,9 @@
  *   pnpm backfill:links:remote           # dev DB に対して（SSH トンネル経由）
  *
  * ロジックは以下と一対一で対応させること（変更時は両方を直す）:
- *   docker-compose/nextjs-web/src/lib/link-index-core.ts   （normalizeUrl）
- *   docker-compose/nextjs-web/src/lib/rich-text-core.ts    （collect / rewrite）
- *   docker-compose/nextjs-web/src/lib/crockford.ts         （generateCode）
+ *   coolify/apps/nextjs-web/src/lib/link-index-core.ts   （normalizeUrl）
+ *   coolify/apps/nextjs-web/src/lib/rich-text-core.ts    （collect / rewrite）
+ *   coolify/apps/nextjs-web/src/lib/crockford.ts         （generateCode）
  */
 
 import { PrismaPg } from "@prisma/adapter-pg";

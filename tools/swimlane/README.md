@@ -1,6 +1,6 @@
 # swimlane — マニュアル用フロー図（kai-swimlane DSL → SVG）
 
-マニュアル（`docker-compose/nextjs-web/content/manual/`）のプロセス編に載せる
+マニュアル（`coolify/apps/nextjs-web/content/manual/`）のプロセス編に載せる
 スイムレーン図を、kai-swimlane DSL から静的 SVG として生成するツール。
 生成物はコミットする（実行時依存なし — マニュアルは生成済み SVG を
 通常の画像として参照するだけ）。
@@ -19,7 +19,7 @@
     アイコンの `<path>` がエスケープされて空白になるバグを `join()` ヘルパで修正。
     上流に取り込んだら次回同期でパッチを外す。
 - `diagrams/*.txt` — 図の DSL ソース（コミット対象）。文法は swimlane-cloud の
-  `dsl-rule.md`（旧版: このリポジトリの `_external/kai-swimlane.md`）。
+  `dsl-rule.md`（旧版: このリポジトリの `tools/external-refs/kai-swimlane.md`）。
 - `build-diagrams.mjs` — `diagrams/*.txt` → `content/manual/assets/diagrams/<名前>.svg`
 
 ## 使い方
@@ -28,7 +28,7 @@
 node tools/swimlane/build-diagrams.mjs   # リポジトリのどこからでも可（スクリプト位置基準）
 ```
 
-- 出力先: `docker-compose/nextjs-web/content/manual/assets/diagrams/`（コミットする）
+- 出力先: `coolify/apps/nextjs-web/content/manual/assets/diagrams/`（コミットする）
 - DSL にエラーがあれば一覧を表示して exit 1（部分出力はしない）
 - 生成 SVG に `viewBox` / `width` / `height` が無ければ exit 1
   （fumadocs の remark-image → next/image 静的 import が寸法を要求するため）
