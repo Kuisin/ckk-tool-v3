@@ -24,9 +24,18 @@
 #
 # ■ 永続ボリューム
 #   DB の data ディレクトリは Coolify の Persistent Storage で
-#   /var/lib/postgresql/data に付ける。API に storages エンドポイントが無い版が
-#   あるので、失敗したら UI で付ける（下の案内を参照）。**これを忘れたまま
-#   再デプロイするとデータが消える。**
+#   /var/lib/postgresql/data に付ける（`type: persistent`）。失敗したら UI で
+#   付ける（下の案内を参照）。**これを忘れたまま再デプロイするとデータが消える。**
+#
+# ■ Coolify のヘルスチェックは切る（health_check_enabled=false）
+#   Coolify の内蔵チェックは公開ポートへの HTTP GET なので Postgres には通じず、
+#   `invalid length of startup packet` を吐いて「not healthy」→ ロールバックで
+#   デプロイが失敗する（実際に踏んだ）。migrator も HTTP を持たない。
+#   代わりに **イメージ側の HEALTHCHECK** を使う:
+#     ckk-db     → pg_isready
+#     db-migrate → /tmp/migrate-ok の有無（= マイグレーションが通ったか）
+#   Coolify はコンテナの health 状態を見てロールバックするので、
+#   「マイグレーション失敗＝デプロイ失敗」は保たれる。
 
 set -euo pipefail
 
@@ -82,7 +91,7 @@ create_app() { # name branch env_name base_dir dockerfile ports watch alias desc
       \"dockerfile_location\": \"$dockerfile\",
       \"ports_exposes\": \"$ports\",
       \"autogenerate_domain\": false,
-      \"health_check_enabled\": true,
+      \"health_check_enabled\": false,
       \"is_auto_deploy_enabled\": $auto,
       \"manual_webhook_secret_github\": \"$secret\",
       \"instant_deploy\": false
@@ -117,8 +126,15 @@ set_envs() { # uuid name json_data
 
 add_volume() { # uuid name
   local uuid=$1 name=$2
-  # 版によってはこのエンドポイントが無い。無ければ UI で付ける（下の案内）。
+  # 既に付いていれば何もしない（重複マウントを作らない）。
+  if api GET "/applications/$uuid/storages" \
+       | jq -e '.persistent_storages[]? | select(.mount_path == "/var/lib/postgresql/data")' >/dev/null 2>&1; then
+    echo "  persistent volume already attached"
+    return 0
+  fi
+  # type は persistent | file の 2 択（Coolify v4 の create_storage バリデーション）。
   if api POST "/applications/$uuid/storages" -d "{
+        \"type\": \"persistent\",
         \"name\": \"${name}-data\",
         \"mount_path\": \"/var/lib/postgresql/data\"
       }" >/dev/null 2>&1; then
