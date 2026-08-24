@@ -17,7 +17,8 @@ set -euo pipefail
 
 SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
 ANDROID_DIR=$(dirname "$SCRIPT_DIR")
-REPO_DIR=$(dirname "$ANDROID_DIR")
+# external/android-kiosk → external → リポジトリルート（2 つ上）。
+REPO_DIR=$(dirname "$(dirname "$ANDROID_DIR")")
 APK_DIR="$REPO_DIR/coolify/apps/nextjs-kiosk/public/apk"
 OUT_DIR="$SCRIPT_DIR/out"
 

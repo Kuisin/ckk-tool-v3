@@ -12,7 +12,7 @@
     "format": "biome format --write",
     "test": "vitest run",
     "test:watch": "vitest",
-    "db:sync-schema": "rm -rf prisma/schema && cp -R ../../shared-db/prisma/schema prisma/schema",
+    "db:sync-schema": "rm -rf prisma/schema && cp -R ../../../shared-db/prisma/schema prisma/schema",
     "db:generate": "prisma generate"
   },
   "dependencies": {

@@ -12,7 +12,7 @@
     "format": "biome format --write",
     "test": "vitest run",
     "test:watch": "vitest",
-    "db:sync-schema": "rm -rf prisma/schema && cp -R ../../shared-db/prisma/schema prisma/schema",
+    "db:sync-schema": "rm -rf prisma/schema && cp -R ../../../shared-db/prisma/schema prisma/schema",
     "db:generate": "prisma generate",
     "twin:sync": "for f in workflow-core.ts workflow-core.test.ts inventory.ts inspection-core.ts inspection-core.test.ts qr-payload.ts qr-payload.test.ts; do cp ../nextjs-web/src/lib/$f src/lib/$f; done"
   },

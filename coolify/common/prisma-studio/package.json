@@ -4,7 +4,7 @@
   "version": "1.0.0",
   "description": "Prisma Studio browser for the shared CKK database (read-only)",
   "scripts": {
-    "db:sync-schema": "rm -rf prisma/schema && cp -R ../../shared-db/prisma/schema prisma/schema",
+    "db:sync-schema": "rm -rf prisma/schema && cp -R ../../../shared-db/prisma/schema prisma/schema",
     "db:generate": "prisma generate"
   },
   "dependencies": {

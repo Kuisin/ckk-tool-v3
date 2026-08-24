@@ -21,7 +21,7 @@ APP_PORT="${PORT:-3000}"
 
 cd "$(dirname "$0")/.."   # nextjs-web root
 ROOT="$(pwd)"
-SHARED_ENV="$ROOT/../../shared-db/.env"
+SHARED_ENV="$ROOT/../../../shared-db/.env"
 ENV_LOCAL="$ROOT/.env.local"
 
 log() { printf '\033[1;36m[dev-local]\033[0m %s\n' "$*"; }
