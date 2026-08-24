@@ -37,7 +37,7 @@ import {
 
 const BASE_PATH = "/purchase/purchase-requests";
 const PO_PATH = "/purchase/purchase-orders";
-const APPROVALS_PATH = "/production/approvals";
+const APPROVALS_PATH = "/general/tasks";
 
 function revalidate(requestNumber?: string) {
   revalidatePath(BASE_PATH);

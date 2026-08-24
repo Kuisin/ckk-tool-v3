@@ -115,6 +115,7 @@ export const ICON_MAP: Record<string, AppIcon> = {
 
 /** Representative icon for each category section header. */
 export const CATEGORY_SECTION_ICONS: Record<AppCategory, AppIcon> = {
+  一般: IconClipboardList,
   販売: IconCurrencyYen,
   購買: IconPackageImport,
   生産: IconSettings2,

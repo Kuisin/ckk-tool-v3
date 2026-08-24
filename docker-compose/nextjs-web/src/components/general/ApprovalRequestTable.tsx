@@ -24,7 +24,7 @@ import {
 } from "@mantine/core";
 import { IconLock, IconSearch, IconShieldCheck } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
-import type { ApprovalRequestRow } from "@/app/(dashboard)/production/approvals/data";
+import type { ApprovalRequestRow } from "@/app/(dashboard)/general/tasks/approvals-data";
 import { useFormat } from "@/components/layout/PreferencesProvider";
 import { type Column, DataTable } from "@/components/ui/DataTable";
 import { ListShell } from "@/components/ui/shells";
@@ -112,7 +112,14 @@ function StepBadge({ row }: { row: ApprovalRequestRow }) {
   );
 }
 
-export function ApprovalRequestTable({ rows }: { rows: ApprovalRequestRow[] }) {
+export function ApprovalRequestTable({
+  rows,
+  embedded = false,
+}: {
+  rows: ApprovalRequestRow[];
+  /** 承認・予定 (CM01) のセクションとして埋め込む（見出しは親が出す）。 */
+  embedded?: boolean;
+}) {
   const fmt = useFormat();
   const router = useRouter();
   const isMobile = useIsMobile();
@@ -202,7 +209,8 @@ export function ApprovalRequestTable({ rows }: { rows: ApprovalRequestRow[] }) {
 
   return (
     <ListShell
-      breadcrumbs={["生産", "承認管理"]}
+      breadcrumbs={["一般", "承認・予定"]}
+      embedded={embedded}
       filters=<Select
         clearable
         data={TARGET_TYPE_OPTIONS}
@@ -221,7 +229,7 @@ export function ApprovalRequestTable({ rows }: { rows: ApprovalRequestRow[] }) {
           value={search}
         />
       }
-      title="承認管理"
+      title="承認・予定"
     >
       <DataTable
         columns={columns}

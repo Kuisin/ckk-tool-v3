@@ -65,7 +65,7 @@ import { type OrderedStepCreate, validateAndOrderSteps } from "@/lib/workflow";
 import { fetchOrderLineRef, type OrderLineRef } from "./data";
 
 const BASE_PATH = "/production/work-orders";
-const APPROVALS_PATH = "/production/approvals";
+const APPROVALS_PATH = "/general/tasks";
 const SCOPE_DENIED = "この操作の権限がありません（対象範囲外）";
 
 /**
@@ -96,7 +96,6 @@ function revalidate(workOrderNumber?: number, docNumber?: string | null) {
   if (workOrderNumber != null) {
     revalidatePath(`${BASE_PATH}/${workOrderNumber}`);
     revalidatePath(`${BASE_PATH}/${workOrderNumber}/edit`);
-    revalidatePath(`${APPROVALS_PATH}/${workOrderNumber}`);
   }
   // 書類番号の URL でも同じページが出る（両形式を受ける）ため両方を再検証
   if (docNumber) {

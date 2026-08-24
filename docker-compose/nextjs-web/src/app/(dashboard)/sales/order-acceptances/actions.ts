@@ -60,7 +60,7 @@ import { checkAcceptancePrices, priceDiffSummary } from "./price-check";
 
 const BASE_PATH = "/sales/order-acceptances";
 const SALES_ORDERS_PATH = "/sales/order-lines";
-const APPROVALS_PATH = "/production/approvals";
+const APPROVALS_PATH = "/general/tasks";
 
 function revalidate(number?: string) {
   revalidatePath(BASE_PATH);
