@@ -30,7 +30,7 @@ INSERT INTO app.feature_flags (key, is_enabled, description, updated_at) VALUES
   ('app:master-material-types:main',  true, '材種 本番公開',            now()),
   ('app:master-approval-groups:main', true, '承認グループ 本番公開',    now()),
   ('app:docs:main',                   true, 'マニュアル 本番公開',      now()),
-  ('app:internal-docs:main',          true, '社内ドキュメント 本番公開（閲覧は internal_docs 権限）', now()),
+  ('app:admin-manual:main',          true, '管理マニュアル 本番公開（閲覧は admin_manual 権限）', now()),
   ('app:user-management:main',        true, 'ユーザー管理 本番公開',    now()),
   ('app:app-management:main',         true, 'アプリ管理 本番公開',      now()),
   ('app:file-management:main',        true, 'ファイル管理 本番公開',    now()),

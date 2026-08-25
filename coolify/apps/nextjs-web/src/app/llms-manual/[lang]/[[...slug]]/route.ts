@@ -3,7 +3,7 @@
  *
  * next.config.ts の rewrites で /manual/:lang/:slug*.md がここへ写像される
  * （proxy.ts でも llms-manual を公開除外している）。manualSource のみ import
- * 可 — 社内ドキュメントの生 Markdown 配信は存在しない。
+ * 可 — 管理マニュアルの生 Markdown 配信は存在しない。
  */
 
 import { notFound } from "next/navigation";

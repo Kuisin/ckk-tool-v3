@@ -381,15 +381,18 @@ export const appList: AppEntry[] = [
     requiredPermission: null,
   },
   {
-    // 社内ドキュメント（/internal-docs）。端末セットアップ等の管理者向け手順。
-    // 公開マニュアル（DC01）とは別権限 — internal_docs を持つ人だけに見せる。
-    key: "internal-docs",
-    label: "社内ドキュメント",
+    // 管理マニュアル（/admin-manual）。端末セットアップ等の管理者向け手順。
+    // 公開マニュアル（DC01）とは別権限 — admin_manual を持つ人だけに見せる。
+    // 旧称は「社内ドキュメント」(/internal-docs, internal_docs)。一般カテゴリの
+    // 社内文書 (CM03) と紛らわしいので改名した。key はフィーチャーフラグの
+    // キーでもあるので、変えるときは feature_flags 側も一緒に直すこと。
+    key: "admin-manual",
+    label: "管理マニュアル",
     operationCode: "DC02",
-    href: "/internal-docs/ja",
+    href: "/admin-manual/ja",
     icon: "IconBookmarks",
     category: "ドキュメント",
-    requiredPermission: "internal_docs",
+    requiredPermission: "admin_manual",
   },
 
   // ─── システム ──────────────────────────────────────────────────────────────

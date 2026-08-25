@@ -65,5 +65,5 @@ description: "操作コード SY08。拠点フロアの共有タブレット（�
 
 ## 関連ページ
 
-- 端末側の管理（リンク・有効化・フロアマップ）は [端末管理](/internal-docs/ja/system/kiosk-devices) を参照してください。
-- タブレット本体の初期セットアップは [キオスク端末セットアップ](/internal-docs/ja/system/kiosk-device-setup) を参照してください。
+- 端末側の管理（リンク・有効化・フロアマップ）は [端末管理](/admin-manual/ja/system/kiosk-devices) を参照してください。
+- タブレット本体の初期セットアップは [キオスク端末セットアップ](/admin-manual/ja/system/kiosk-device-setup) を参照してください。

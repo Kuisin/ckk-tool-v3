@@ -3,7 +3,7 @@
  *
  * 2 ツリー構成:
  *   - manual   → content/manual   （公開ユーザーマニュアル /manual）
- *   - internal → content/internal （社内ドキュメント /internal-docs・要ログイン）
+ *   - internal → content/internal （管理マニュアル /admin-manual・要ログイン）
  *
  * ロケールはファイル名サフィックス（`x.md` = ja / `x.en.md` / `x.zh.md`、
  * lib/docs-i18n.ts の parser: "dot" と対応）。manual は llms.txt / 生 Markdown

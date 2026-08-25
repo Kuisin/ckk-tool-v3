@@ -28,7 +28,7 @@ INSERT INTO app.permissions (code, display_name, description) VALUES
   ('master',          '{"ja":"マスタ管理","en":"Master data"}',       '{"ja":"","en":""}'),
   ('system',          '{"ja":"システム管理","en":"System admin"}',    '{"ja":"アプリ設定・ファイル管理・操作履歴","en":""}'),
   ('kiosk',           '{"ja":"キオスク管理","en":"Kiosk admin"}',     '{"ja":"QRカード・共有端末の管理","en":""}'),
-  ('internal_docs',   '{"ja":"社内ドキュメント","en":"Internal docs"}','{"ja":"端末セットアップ等の社内向け手順書（公開マニュアルとは別権限）","en":""}')
+  ('admin_manual',   '{"ja":"管理マニュアル","en":"Internal docs"}','{"ja":"端末セットアップ等の社内向け手順書（公開マニュアルとは別権限）","en":""}')
 ON CONFLICT (code) DO NOTHING;
 
 -- ─── roles ───────────────────────────────────────────────────────────────────
@@ -60,7 +60,7 @@ SELECT r.id, p.code, a.action::app."ACTION", 'ALL'::app."SCOPE"
 FROM app.roles r
 CROSS JOIN app.permissions p
 CROSS JOIN (VALUES ('READ'),('CREATE'),('UPDATE'),('DELETE'),('EXPORT')) AS a(action)
-WHERE r.rolename = 'staff' AND p.code NOT IN ('system', 'kiosk', 'internal_docs')
+WHERE r.rolename = 'staff' AND p.code NOT IN ('system', 'kiosk', 'admin_manual')
 ON CONFLICT DO NOTHING;
 
 -- ─── demo ユーザーへのロール割当 ─────────────────────────────────────────────

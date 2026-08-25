@@ -37,7 +37,7 @@
 @import "tailwindcss";
 
 /*
- * fumadocs (/manual・/internal-docs) のスタイル。fd- プレフィックスの CSS
+ * fumadocs (/manual・/admin-manual) のスタイル。fd- プレフィックスの CSS
  * 変数とクラスで概ね自己完結する（Mantine 画面への波及はスモークテスト済み
  * の前提 — 崩れが出た場合は docs レイアウト専用 CSS へ隔離する）。
  */

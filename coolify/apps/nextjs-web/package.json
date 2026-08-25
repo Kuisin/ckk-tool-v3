@@ -17,6 +17,9 @@
   },
   "dependencies": {
     "@ckk/authz-core": "workspace:*",
+    "@dnd-kit/core": "6.3.1",
+    "@dnd-kit/sortable": "10.0.0",
+    "@dnd-kit/utilities": "3.2.2",
     "@mantine/core": "^9.3.1",
     "@mantine/dates": "^9.3.1",
     "@mantine/form": "^9.3.1",
@@ -35,6 +38,7 @@
     "@xyflow/react": "12.11.3",
     "date-fns": "^4.4.0",
     "dayjs": "^1.11.21",
+    "diff": "9.0.0",
     "fumadocs-core": "16.14.4",
     "fumadocs-mdx": "15.2.3",
     "fumadocs-ui": "16.14.4",
@@ -46,6 +50,8 @@
     "qr-scanner": "1.4.2",
     "react": "19.2.4",
     "react-dom": "19.2.4",
+    "react-markdown": "10.1.0",
+    "remark-gfm": "4.0.1",
     "web-push": "^3.6.7",
     "zod": "^4.4.3"
   },

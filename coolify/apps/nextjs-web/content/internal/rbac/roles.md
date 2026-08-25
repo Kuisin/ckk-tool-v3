@@ -69,7 +69,7 @@ description: "システムのロール（職務セット）と権限コードの
 | `invoice` | 請求書 | BL01 請求書 |
 | `billing_closing` | 締日処理 | BL02 締日処理（弥生 CSV の書き出しは E） |
 | `master` | マスタ管理 | MS01〜MS0E のマスタ 12 アプリすべて |
-| `internal_docs` | 社内ドキュメント | DC02 社内ドキュメント（このページ） |
+| `admin_manual` | 管理マニュアル | DC02 管理マニュアル（このページ） |
 | `kiosk` | キオスク管理 | SY08 QRカード管理 / SY09 端末管理 / SY0A キオスク設定 |
 | `system` | システム管理 | SY01〜SY0C のシステムアプリすべて |
 

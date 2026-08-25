@@ -78,7 +78,7 @@
 - ルート `meta.json` の `pages` 末尾（system の前）に `admin` を挿入。
 - キオスク運用（カード・端末・設定）は既存の `system/kiosk-*` 3 ページが
   カバー済み — admin/ からリンクだけ張る。端末セットアップ（APK 配布等）は
-  引き続き `/internal-docs`（社内のみ）。
+  引き続き `/admin-manual`（社内のみ）。
 
 ## 3. 既存ページへの接続（小修正）
 

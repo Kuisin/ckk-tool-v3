@@ -17,13 +17,18 @@
 #   ./scripts/remote-db.sh psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f sql/grants.sql
 #   ./scripts/remote-db.sh sh -c 'gunzip -c ../tools/data-migration/imports/010_bp.sql.gz | psql "$DATABASE_URL"'
 #
-# Env overrides: DB_SSH_HOST (192.168.50.15), DB_CONTAINER (ckk-db-dev の
-#                コンテナ名 — Coolify なのでハッシュ入り),
+# Env overrides: DB_SSH_HOST (192.168.50.15),
+#                DB_ALIAS (ckk-db-dev — 環境を切り替えるならここ。ckk-db-main),
+#                DB_CONTAINER (コンテナ名を直に指定して別名解決を飛ばす),
 #                DB_TUNNEL_PORT (25432).
 set -euo pipefail
 
 SERVER="${DB_SSH_HOST:-192.168.50.15}"
-CONTAINER="${DB_CONTAINER:-ckk-db-dev}"
+# DB を Coolify へ移してからコンテナ**名**はハッシュになった（デプロイのたびに
+# 変わる）。名前で docker inspect すると `no such object: ckk-db-dev` で落ちる。
+# 安定しているのは **ネットワーク別名** のほうなので、既定ではそれで引く。
+ALIAS="${DB_ALIAS:-ckk-db-dev}"
+CONTAINER="${DB_CONTAINER:-}"
 LOCAL_PORT="${DB_TUNNEL_PORT:-25432}"
 
 cd "$(dirname "$0")/.."   # shared-db root
@@ -37,10 +42,30 @@ REMOTE_HOSTPORT="$(printf '%s' "$DATABASE_URL" | sed -n 's#.*@\([^/?]*\).*#\1#p'
 [ -n "$REMOTE_HOSTPORT" ] || { echo "remote-db: could not parse host from DATABASE_URL" >&2; exit 1; }
 
 # Resolve the container's Docker IP (reachable from the server host).
-CIP="$(ssh -o ConnectTimeout=10 "$SERVER" \
-  "docker inspect $CONTAINER --format '{{range .NetworkSettings.Networks}}{{.IPAddress}} {{end}}'" \
-  | awk '{print $1}')"
-[ -n "$CIP" ] || { echo "remote-db: could not resolve $CONTAINER IP on $SERVER" >&2; exit 1; }
+# コンテナ名が明示されていればそれを、無ければネットワーク別名から引く。
+if [ -n "$CONTAINER" ]; then
+  TARGET_DESC="container $CONTAINER"
+  CIP="$(ssh -o ConnectTimeout=10 "$SERVER" \
+    "docker inspect '$CONTAINER' --format '{{range .NetworkSettings.Networks}}{{.IPAddress}} {{end}}'" \
+    2>/dev/null | awk '{print $1}')"
+else
+  TARGET_DESC="alias $ALIAS"
+  # 稼働中コンテナを走査し、ネットワーク別名が一致するものの IP を返す。
+  CIP="$(ssh -o ConnectTimeout=10 "$SERVER" "
+    for c in \$(docker ps --format '{{.Names}}'); do
+      docker inspect \"\$c\" --format '{{range \$n, \$v := .NetworkSettings.Networks}}{{range \$v.Aliases}}{{.}} {{end}}{{end}}|{{range .NetworkSettings.Networks}}{{.IPAddress}} {{end}}' 2>/dev/null |
+        awk -v want='$ALIAS' -F'|' '{
+          n = split(\$1, a, \" \");
+          for (i = 1; i <= n; i++) if (a[i] == want) { split(\$2, ip, \" \"); print ip[1]; exit }
+        }'
+    done" | head -1)"
+fi
+[ -n "$CIP" ] || {
+  echo "remote-db: could not resolve $TARGET_DESC on $SERVER" >&2
+  echo "  ヒント: Coolify のコンテナ名はハッシュなので、名前ではなく別名で引く。" >&2
+  echo "  一覧: ssh $SERVER 'docker ps --format \"{{.Names}}\"'" >&2
+  exit 1
+}
 
 # Open a tunnel via a control socket so we can close it cleanly on exit.
 CTRL="$(mktemp -u "${TMPDIR:-/tmp}/remote-db-XXXXXX.sock")"
@@ -59,5 +84,5 @@ export DATABASE_URL="$(printf '%s' "$DATABASE_URL" | sed "s#@${REMOTE_HOSTPORT}#
 # Make Homebrew libpq's psql findable when a command uses it.
 [ -d /opt/homebrew/opt/libpq/bin ] && export PATH="/opt/homebrew/opt/libpq/bin:$PATH"
 
-echo "remote-db: tunnel 127.0.0.1:${LOCAL_PORT} -> ${CONTAINER}(${CIP}):5432 on ${SERVER}" >&2
+echo "remote-db: tunnel 127.0.0.1:${LOCAL_PORT} -> ${TARGET_DESC}(${CIP}):5432 on ${SERVER}" >&2
 "$@"

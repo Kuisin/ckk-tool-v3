@@ -78,7 +78,7 @@ CODE_ORDER = [
     "invoice",
     "billing_closing",
     "master",
-    "internal_docs",
+    "admin_manual",
     "kiosk",
     "system",
 ]
