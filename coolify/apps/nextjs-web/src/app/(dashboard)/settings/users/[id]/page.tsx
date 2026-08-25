@@ -1,8 +1,16 @@
 import { notFound } from "next/navigation";
+import { BootstrapAdminCard } from "@/components/settings/BootstrapAdminCard";
 import { UserDetail } from "@/components/settings/UserDetail";
-import { checkPermission } from "@/lib/authz";
+import { UserSuspensionPanel } from "@/components/settings/UserSuspensionPanel";
+import { checkPermission, sessionUserId } from "@/lib/authz";
 import { requireAppRead } from "@/lib/authz-page";
-import { getAdminUser, listActivePlantOptions } from "@/lib/users-admin";
+import { bootstrapAdminState } from "@/lib/bootstrap-admin-core";
+import {
+  getAdminCoverage,
+  getAdminUser,
+  getBootstrapAdminSnapshot,
+  listActivePlantOptions,
+} from "@/lib/users-admin";
 
 export const dynamic = "force-dynamic";
 
@@ -15,17 +23,47 @@ export default async function UserDetailPage({
   const denied = await requireAppRead("user-management");
   if (denied) return denied;
   const { id } = await params;
-  const [user, plantOptions, adminAuthz] = await Promise.all([
-    getAdminUser(id),
-    listActivePlantOptions(),
-    checkPermission("system", "ADMIN"),
-  ]);
+  const [user, plantOptions, adminAuthz, bootstrap, actorId, coverage] =
+    await Promise.all([
+      getAdminUser(id),
+      listActivePlantOptions(),
+      checkPermission("system", "ADMIN"),
+      getBootstrapAdminSnapshot(),
+      sessionUserId(),
+      getAdminCoverage(id),
+    ]);
   if (!user) notFound();
+
+  // 初期管理者の詳細を開いたときだけカードを出す。判定は純関数に委ねる
+  // （サーバー側 disableBootstrapAdmin と同じ関数）。
+  const bootstrapState = bootstrapAdminState({
+    username: user.username,
+    isActive: user.isActive,
+    passwordChangeRequired: bootstrap?.passwordChangeRequired ?? false,
+    otherActiveAdminCount: bootstrap?.otherActiveAdminCount ?? 0,
+  });
+
   return (
-    <UserDetail
-      canEditPlants={adminAuthz.ok}
-      plantOptions={plantOptions}
-      user={user}
-    />
+    <>
+      <BootstrapAdminCard
+        canAdminister={adminAuthz.ok}
+        state={bootstrapState}
+      />
+      <UserDetail
+        canEditPlants={adminAuthz.ok}
+        plantOptions={plantOptions}
+        user={user}
+      />
+      {/* 初期管理者は専用カード（BootstrapAdminCard）が担当するので二重に出さない。 */}
+      {bootstrapState.status === "not-bootstrap" && actorId && (
+        <UserSuspensionPanel
+          actorId={actorId}
+          canAdminister={adminAuthz.ok}
+          otherActiveAdminCount={coverage.otherActiveAdminCount}
+          targetIsAdmin={coverage.targetIsAdmin}
+          user={user}
+        />
+      )}
+    </>
   );
 }

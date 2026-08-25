@@ -8,6 +8,7 @@ import "server-only";
  * （system:READ）でゲート — 呼び出し側ページで checkPermission を通すこと。
  */
 
+import { BOOTSTRAP_ADMIN_USERNAME } from "./bootstrap-admin-core";
 import { prisma } from "./db";
 import type { LocalizedText } from "./format";
 
@@ -23,6 +24,9 @@ export interface AdminUserRow {
   email: string | null;
   group: "SYSTEM" | "EMPLOYEE" | "GUEST";
   isActive: boolean;
+  /** 一時停止の解除予定（ISO）。null かつ isActive=false は恒久停止。 */
+  disabledUntil: string | null;
+  disabledReason: string | null;
   /** ISO 文字列（クライアント側で formatDateTime）。 */
   lastLoginAt: string | null;
   roles: AdminUserRole[];
@@ -93,6 +97,8 @@ export async function listAdminUsers(): Promise<AdminUserRow[]> {
     email: u.email,
     group: u.group,
     isActive: u.isActive,
+    disabledUntil: u.disabledUntil?.toISOString() ?? null,
+    disabledReason: u.disabledReason ?? null,
     lastLoginAt: u.lastLoginAt?.toISOString() ?? null,
     roles: u.roleAssignments.map((a) => ({
       rolename: a.role.rolename,
@@ -143,6 +149,8 @@ export async function getAdminUser(
     email: u.email,
     group: u.group,
     isActive: u.isActive,
+    disabledUntil: u.disabledUntil?.toISOString() ?? null,
+    disabledReason: u.disabledReason ?? null,
     lastLoginAt: u.lastLoginAt?.toISOString() ?? null,
     roles: activeAssignments.map((a) => ({
       rolename: a.role.rolename,
@@ -172,4 +180,65 @@ export async function getAdminUser(
       isActive: up.plant.isActive,
     })),
   };
+}
+
+/**
+ * 初期管理者（ローカル `admin`）の現況を 1 回のクエリ束で読む。
+ *
+ * 「他に管理者が居るか」は **user_permissions ビュー**で数える（roles テーブルの
+ * `admin` ロール名ではなく）。ロール名は運用で増減しうるが、実際に管理できるか
+ * どうかは `system:ADMIN` を持つかどうかで決まるため。ビューは users.is_active も
+ * 見ているので、無効化されたユーザーは自動的に数から外れる。
+ */
+export async function getBootstrapAdminSnapshot(): Promise<{
+  id: string;
+  isActive: boolean;
+  passwordChangeRequired: boolean;
+  otherActiveAdminCount: number;
+} | null> {
+  const u = await prisma.user.findUnique({
+    where: { username: BOOTSTRAP_ADMIN_USERNAME },
+    select: { id: true, isActive: true, passwordChangeRequired: true },
+  });
+  if (!u) return null;
+  const rows = await prisma.$queryRaw<{ n: bigint }[]>`
+    SELECT COUNT(DISTINCT user_id) AS n
+    FROM app.user_permissions
+    WHERE permission_code = 'system'
+      AND action = 'ADMIN'
+      AND user_id <> ${u.id}::uuid`;
+  return {
+    id: u.id,
+    isActive: u.isActive,
+    passwordChangeRequired: u.passwordChangeRequired,
+    otherActiveAdminCount: Number(rows[0]?.n ?? 0),
+  };
+}
+
+/**
+ * 対象**以外**で system:ADMIN を持つ有効ユーザー数と、対象自身が管理者かどうか。
+ *
+ * 「管理者を全滅させない」ガードの土台。ロール名（`admin`）ではなく
+ * user_permissions ビュー = 実効権限で数えるのは、ロール構成が変わっても
+ * 「実際に管理できる人が居るか」という問いの答えが変わらないため。
+ * ビューは users.is_active を JOIN 済みなので、停止中の管理者は数に入らない。
+ */
+export async function getAdminCoverage(targetUserId: string): Promise<{
+  targetIsAdmin: boolean;
+  otherActiveAdminCount: number;
+}> {
+  const rows = await prisma.$queryRaw<{ is_target: boolean; n: bigint }[]>`
+    SELECT (user_id = ${targetUserId}::uuid) AS is_target,
+           COUNT(DISTINCT user_id) AS n
+      FROM app.user_permissions
+     WHERE permission_code = 'system'
+       AND action = 'ADMIN'
+     GROUP BY (user_id = ${targetUserId}::uuid)`;
+  let targetIsAdmin = false;
+  let others = 0;
+  for (const r of rows) {
+    if (r.is_target) targetIsAdmin = Number(r.n) > 0;
+    else others = Number(r.n);
+  }
+  return { targetIsAdmin, otherActiveAdminCount: others };
 }
