@@ -3,6 +3,7 @@ import { checkPermission } from "@/lib/authz";
 import { requireAppRead } from "@/lib/authz-page";
 import { fetchPendingApprovalRequests } from "./approvals-data";
 import { fetchMyPendingPlans } from "./data";
+import { fetchFormTasks } from "./forms-data";
 
 export const dynamic = "force-dynamic";
 
@@ -15,10 +16,11 @@ export default async function GeneralTasksPage() {
   if (denied) return denied;
 
   const approveAuthz = await checkPermission("approve", "READ");
-  const [plans, approvals] = await Promise.all([
+  const [plans, approvals, forms] = await Promise.all([
     fetchMyPendingPlans(),
     approveAuthz.ok ? fetchPendingApprovalRequests() : Promise.resolve(null),
+    fetchFormTasks(),
   ]);
 
-  return <TasksView approvals={approvals} plans={plans} />;
+  return <TasksView approvals={approvals} forms={forms} plans={plans} />;
 }

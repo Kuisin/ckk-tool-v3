@@ -14,6 +14,7 @@ import { IconCalendarTime } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
 import type { ApprovalRequestRow } from "@/app/(dashboard)/general/tasks/approvals-data";
 import type { MyPlanRow } from "@/app/(dashboard)/general/tasks/data";
+import type { FormTasks } from "@/app/(dashboard)/general/tasks/forms-data";
 import { useFormat } from "@/components/layout/PreferencesProvider";
 import { DocNumber } from "@/components/ui/DocNumber";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -21,6 +22,7 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { useTabParam } from "@/hooks/useUrlState";
 import { ApprovalRequestTable } from "./ApprovalRequestTable";
+import { MyResponsesList, PendingFormsList } from "./FormTasksPanel";
 
 const WORK_ORDERS_PATH = "/production/work-orders";
 
@@ -87,10 +89,12 @@ function PlanRow({ plan }: { plan: MyPlanRow }) {
 export function TasksView({
   plans,
   approvals,
+  forms,
 }: {
   plans: MyPlanRow[];
   /** null = approve 権限なし（セクション自体を出さない）。 */
   approvals: ApprovalRequestRow[] | null;
+  forms: FormTasks;
 }) {
   const [tab, setTab] = useTabParam("plans");
   return (
@@ -125,6 +129,19 @@ export function TasksView({
               承認待ち
             </Tabs.Tab>
           )}
+          <Tabs.Tab
+            rightSection={
+              forms.pending.length > 0 && (
+                <Badge color="cyan" size="sm" variant="light">
+                  {forms.pending.length}
+                </Badge>
+              )
+            }
+            value="forms"
+          >
+            未回答のフォーム
+          </Tabs.Tab>
+          <Tabs.Tab value="my-forms">回答済みのフォーム</Tabs.Tab>
         </Tabs.List>
 
         <Tabs.Panel pt="md" value="plans">
@@ -149,6 +166,14 @@ export function TasksView({
             <ApprovalRequestTable embedded rows={approvals} />
           </Tabs.Panel>
         )}
+
+        <Tabs.Panel pt="md" value="forms">
+          <PendingFormsList rows={forms.pending} />
+        </Tabs.Panel>
+
+        <Tabs.Panel pt="md" value="my-forms">
+          <MyResponsesList rows={forms.mine} />
+        </Tabs.Panel>
       </Tabs>
     </Stack>
   );

@@ -25,6 +25,7 @@ export const APP_PREFIX_PERMISSIONS: { prefix: string; code: string }[] = [
   { prefix: "pdfs/kiosk-cards", code: "kiosk" },
   { prefix: "attachments/material_purchase_orders", code: "purchase_order" },
   { prefix: "attachments/purchase_requests", code: "purchase_order" },
+  { prefix: "attachments/form_responses", code: "form" },
   { prefix: "attachments/material_receipts", code: "material_receipt" },
   { prefix: "attachments/order_acceptances", code: "order_acceptance" },
   { prefix: "attachments/work_orders", code: "work_order" },

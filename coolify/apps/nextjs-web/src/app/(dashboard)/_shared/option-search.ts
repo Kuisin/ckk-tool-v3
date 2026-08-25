@@ -511,6 +511,91 @@ export async function searchProcessStepOptions(
   }));
 }
 
+/**
+ * 拠点検索。value = plants.id（文字列）。
+ *
+ * 拠点は件数が少ないので、これまでは各ドメインが全件を props で配っていた
+ * （production/work-orders/data.ts と sales/order-acceptances/data.ts に同じ
+ * fetchPlantOptions が二重にある）。フォーム (CM02) の業務データ項目は
+ * SearchSelect 経由で引くので、共通の検索版をここに置く。
+ */
+export async function searchPlantOptions(
+  query: string,
+): Promise<SearchOption[]> {
+  const q = query.trim();
+  const rows = await prisma.plant.findMany({
+    where: {
+      isActive: true,
+      ...(q
+        ? {
+            OR: [
+              { code: { contains: q, mode: "insensitive" } },
+              { name: { path: ["ja"], string_contains: q } },
+            ],
+          }
+        : {}),
+    },
+    orderBy: { code: "asc" },
+    take: LIMIT,
+  });
+  return rows.map((r) => ({
+    value: String(r.id),
+    label: `${localized(r.name as LocalizedText | null)}（${r.code}）`,
+  }));
+}
+
+/** 保管場所検索。value = storage_locations.id（文字列）。 */
+export async function searchStorageLocationOptions(
+  query: string,
+): Promise<SearchOption[]> {
+  const q = query.trim();
+  const rows = await prisma.storageLocation.findMany({
+    where: {
+      isActive: true,
+      ...(q
+        ? {
+            OR: [
+              { code: { contains: q, mode: "insensitive" } },
+              { name: { path: ["ja"], string_contains: q } },
+            ],
+          }
+        : {}),
+    },
+    orderBy: { code: "asc" },
+    take: LIMIT,
+  });
+  return rows.map((r) => ({
+    value: String(r.id),
+    label: `${localized(r.name as LocalizedText | null)}（${r.code}）`,
+  }));
+}
+
+/** 作業場所検索。value = work_locations.id（文字列）。 */
+export async function searchWorkLocationOptions(
+  query: string,
+): Promise<SearchOption[]> {
+  const q = query.trim();
+  const rows = await prisma.workLocation.findMany({
+    where: {
+      isActive: true,
+      ...(q
+        ? {
+            OR: [
+              { code: { contains: q, mode: "insensitive" } },
+              { name: { path: ["ja"], string_contains: q } },
+            ],
+          }
+        : {}),
+    },
+    orderBy: { code: "asc" },
+    take: LIMIT,
+  });
+  return rows.map((r) => ({
+    value: String(r.id),
+    label: `${localized(r.name as LocalizedText | null)}（${r.code}）`,
+  }));
+}
+
 /** ユーザー検索（承認グループのメンバー選択用）。value = uuid。 */
 export async function searchUserOptions(
   query: string,

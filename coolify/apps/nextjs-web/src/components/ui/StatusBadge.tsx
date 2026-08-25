@@ -56,6 +56,20 @@ export const STATUS_MAPS = {
     CANCELLED: { label: "キャンセル", color: "red" },
   },
   /** 購買依頼 (app.purchase_requests — 発注書の前段, PU01)。 */
+  // フォーム (CM02)。受付中/受付終了は status ではなく日時から導出するので
+  // ここには置かない（lib/form-schema.ts formAvailability の AVAILABILITY_LABEL）。
+  Form: {
+    DRAFT: { label: "下書き", color: "gray" },
+    PUBLISHED: { label: "公開中", color: "blue" },
+    ARCHIVED: { label: "アーカイブ", color: "dark" },
+  },
+  FormResponse: {
+    DRAFT: { label: "下書き", color: "gray" },
+    SUBMITTED: { label: "提出済", color: "blue" },
+    REQUESTED: { label: "承認依頼中", color: "yellow" },
+    APPROVED: { label: "承認済", color: "green" },
+    REJECTED: { label: "差し戻し", color: "red" },
+  },
   PurchaseRequest: {
     DRAFT: { label: "下書き", color: "gray" },
     REQUESTED: { label: "承認依頼中", color: "yellow" },

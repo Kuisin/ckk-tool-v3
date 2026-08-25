@@ -165,6 +165,13 @@ model User {
   loginAttempts LoginAttempt[] @relation("LoginAttemptUser")
   userDevices   UserDevice[]   @relation("UserDeviceUser")
 
+  // 一般カテゴリ: フォーム (CM02) / 社内文書 (CM03) の共有。
+  formsCreated       Form[]         @relation("FormCreatedBy")
+  formsUpdated       Form[]         @relation("FormUpdatedBy")
+  formVersionsPublished FormVersion[] @relation("FormVersionPublishedBy")
+  formResponses      FormResponse[] @relation("FormResponseSubmittedBy")
+  shareGrantsCreated ShareGrant[]   @relation("ShareGrantCreatedBy")
+
   // 表示設定（本人が /profile/preferences で変更する。AD 由来ではない）。
   //
   // UI 言語（"ja" | "en" | "zh" — docs の DOCS_LANGS と同じ集合）。

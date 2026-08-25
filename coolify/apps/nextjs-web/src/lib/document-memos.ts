@@ -65,6 +65,7 @@ const MEMO_OWNERS: Record<string, { permission: string; kind: MemoKind }> = {
   invoices: { permission: "invoice", kind: "MEMO" },
   price_list_entries: { permission: "price_list", kind: "COMMENT" },
   estimates: { permission: "price_list", kind: "COMMENT" },
+  form_responses: { permission: "form", kind: "COMMENT" },
 };
 
 /** owner の種別（MEMO / COMMENT）。未登録なら null。 */
