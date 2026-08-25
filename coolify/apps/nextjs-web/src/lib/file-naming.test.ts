@@ -29,13 +29,13 @@ describe("sanitizeFileName", () => {
 describe("systematicFileName", () => {
   it("matches {timestamp}_{rand}_{name}", () => {
     expect(systematicFileName("scan.pdf")).toMatch(
-      /^\d{8}-\d{6}_[a-z2-9]{4}_scan\.pdf$/,
+      /^\d{8}-\d{6}_[a-z2-9]{6}_scan\.pdf$/,
     );
   });
 
   it("prepends the label when given", () => {
     expect(systematicFileName("納品書.pdf", "PO-202608-00001")).toMatch(
-      /^\d{8}-\d{6}_[a-z2-9]{4}_PO-202608-00001_納品書\.pdf$/,
+      /^\d{8}-\d{6}_[a-z2-9]{6}_PO-202608-00001_納品書\.pdf$/,
     );
   });
 
@@ -43,7 +43,8 @@ describe("systematicFileName", () => {
     const names = new Set(
       Array.from({ length: 50 }, () => systematicFileName("a.txt")),
     );
-    // 同一秒内でも乱数 4 桁で衝突確率は無視できる（50 件で重複なしを確認）
+    // 乱数 6 文字（31^6 ≈ 8.9 億）。50 件なら衝突は約 140 万分の 1
+    // （4 文字だと約 750 分の 1 で、実際 CI が落ちた）
     expect(names.size).toBe(50);
   });
 });
