@@ -33,8 +33,15 @@ LOCAL_PORT="${DB_TUNNEL_PORT:-25432}"
 
 cd "$(dirname "$0")/.."   # shared-db root
 [ -f .env ] || { echo "remote-db: shared-db/.env not found" >&2; exit 1; }
+# 明示的に渡された DATABASE_URL は .env より優先する。
+# `. ./.env` は無条件に代入するので、退避しておかないと
+#   DB_ALIAS=ckk-db-main DATABASE_URL="$MAIN_DATABASE_URL" ./scripts/remote-db.sh …
+# が「main のトンネルに dev のパスワード」という最悪の組み合わせになる
+# （繋がらないので実害は出ないが、原因が分かりにくい）。
+PRESET_DATABASE_URL="${DATABASE_URL:-}"
 # shellcheck disable=SC1091
 . ./.env
+[ -n "$PRESET_DATABASE_URL" ] && DATABASE_URL="$PRESET_DATABASE_URL"
 [ -n "${DATABASE_URL:-}" ] || { echo "remote-db: DATABASE_URL not set in .env" >&2; exit 1; }
 
 # The host:port in .env is the (unpublished) LAN endpoint; we swap it for the tunnel.
