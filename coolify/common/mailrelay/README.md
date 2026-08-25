@@ -6,22 +6,36 @@ network only); the relay authenticates to the mailbox's host on **Sakura Rental
 Server (`ckk-tool.sakura.ne.jp`)** and hands off — Sakura applies the domain's DKIM on
 authenticated send, so delivery is reputable (no self-hosted-IP / PTR problem).
 
-Deployed on `docker-mac-pro` at `~/stacks/mailrelay`. Postfix (`boky/postfix`).
+**Coolify 管理**（プロジェクト ckk / `common` 環境 / main 追従）。Postfix
+（`boky/postfix`）。`deploy-stack.sh mailrelay` を使わないこと。
 
 ## How apps use it
 
-Attach the app's stack to the `mailrelay_default` network, then point its SMTP at:
+リレーは **`coolify` ネットワーク**に居る（アプリが元から居るネットワーク。
+以前の README は `mailrelay_default` に繋げと書いていたが、それだとアプリ側の
+ネットワークを増やすことになるので、リレー側を `coolify` に出す形に変えた）。
 
 | Setting | Value |
 |---------|-------|
 | SMTP host | `mailrelay` |
 | SMTP port | `587` |
-| Auth / TLS | none (internal trusted network) |
+| Auth / TLS | 認証なし（社内ネットワークの 1 ホップ）。STARTTLS は自己署名なので検証しない |
 | From address | `no-reply@ckk-tool.co.jp` |
 
-Per-app examples (set after the relay is live):
-- **Metabase:** Admin → Settings → Email → host `mailrelay`, port `587`, no auth, from `no-reply@ckk-tool.co.jp`.
-- **Open WebUI / Grafana / Next.js app:** the usual `SMTP_HOST=mailrelay`, `SMTP_PORT=587` env.
+**nextjs-web は 2026-08-25 からこの経路**（`SMTP_HOST=mailrelay`,
+`SMTP_PORT=587`, `MAIL_FROM` 明示、`SMTP_USER`/`SMTP_PASS` は**設定しない**）。
+`lib/mailer.ts` は資格情報が無ければ `auth` を渡さない実装になっている
+（空の auth を渡すと nodemailer が AUTH を試み、認証を求めないリレーに拒否される）。
+
+**なぜ直送をやめたか** — `sendMail` は失敗しても throw せず false を返すだけで
+再送もしないので、さくら側が一時的に詰まると**通知メールが黙って消えていた**。
+リレーを挟むと Postfix が受け取って数日間再送する。代わりに「配送できない」が
+見えにくくなるため、Grafana に deferred / bounced のアラートを入れてある
+（`monitoring/grafana/provisioning/alerting/mail-alerts.yaml`）。
+
+その他のアプリ（未設定）:
+- **Metabase:** Admin → Settings → Email → host `mailrelay`, port `587`, no auth。
+- **Open WebUI / Grafana:** `SMTP_HOST=mailrelay`, `SMTP_PORT=587`。
 
 ## Upstream (delivery via Sakura Rental Server)
 

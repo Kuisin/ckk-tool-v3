@@ -1,0 +1,81 @@
+# メール配送のアラート（provisioned）。
+#
+# なぜ要るか: アプリの sendMail は失敗しても throw せず false を返すだけ
+# （通知はベストエフォートで業務を止めない設計）。社内リレーを挟むと、送信は
+# 常に成功したように見え、**配送できないメールはリレーのキューに静かに溜まる**。
+# 「見える失敗」を「見えない失敗」に変えないために、キューに溜まった時点で鳴らす。
+#
+# Prometheus に postfix exporter は入れていない（コンテナを 1 つ増やすため）。
+# 代わりに Postfix 自身のログを Loki で見る — deferred / bounced は
+# 「配送できなかった」ことの一次情報で、キュー長より意味がはっきりしている。
+apiVersion: 1
+groups:
+  - orgId: 1
+    name: Mail
+    folder: Containers
+    interval: 1m
+    rules:
+      # 一時的な失敗（相手が詰まっている等）。Postfix は再送するので、
+      # 少数なら正常。continuously 出るなら経路が壊れている。
+      - uid: mail_deferred
+        title: Mail deferred (relay could not deliver)
+        condition: C
+        for: 10m
+        noDataState: OK
+        execErrState: OK
+        labels:
+          severity: warning
+        annotations:
+          summary: >-
+            mailrelay が 10 分間で 5 通以上を deferred にしている。
+            さくら側の障害・認証エラー・ネットワーク断のいずれか。
+            `docker logs <mailrelay> | grep deferred` で理由を見る。
+        data:
+          - refId: A
+            relativeTimeRange: { from: 600, to: 0 }
+            datasourceUid: loki
+            model:
+              datasource: { type: loki, uid: loki }
+              expr: 'sum(count_over_time({stack=~".*mailrelay.*"} |~ `status=deferred` [10m]))'
+              queryType: instant
+              refId: A
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: A
+              refId: C
+              conditions:
+                - evaluator: { type: gt, params: [5] }
+
+      # 恒久的な失敗。再送されないので、1 通でも捨てられたら知りたい。
+      - uid: mail_bounced
+        title: Mail bounced (permanently rejected)
+        condition: C
+        for: 0m
+        noDataState: OK
+        execErrState: OK
+        labels:
+          severity: critical
+        annotations:
+          summary: >-
+            mailrelay が配送を恒久的に拒否された（bounced）。
+            宛先誤り・送信ドメイン制限（ALLOWED_SENDER_DOMAINS）・
+            さくらの認証失敗が典型。該当メールは再送されない。
+        data:
+          - refId: A
+            relativeTimeRange: { from: 600, to: 0 }
+            datasourceUid: loki
+            model:
+              datasource: { type: loki, uid: loki }
+              expr: 'sum(count_over_time({stack=~".*mailrelay.*"} |~ `status=bounced` [10m]))'
+              queryType: instant
+              refId: A
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: A
+              refId: C
+              conditions:
+                - evaluator: { type: gt, params: [0] }
