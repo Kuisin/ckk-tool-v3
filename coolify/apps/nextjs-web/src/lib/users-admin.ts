@@ -24,6 +24,9 @@ export interface AdminUserRow {
   email: string | null;
   group: "SYSTEM" | "EMPLOYEE" | "GUEST";
   isActive: boolean;
+  /** 一時停止の解除予定（ISO）。null かつ isActive=false は恒久停止。 */
+  disabledUntil: string | null;
+  disabledReason: string | null;
   /** ISO 文字列（クライアント側で formatDateTime）。 */
   lastLoginAt: string | null;
   roles: AdminUserRole[];
@@ -94,6 +97,8 @@ export async function listAdminUsers(): Promise<AdminUserRow[]> {
     email: u.email,
     group: u.group,
     isActive: u.isActive,
+    disabledUntil: u.disabledUntil?.toISOString() ?? null,
+    disabledReason: u.disabledReason ?? null,
     lastLoginAt: u.lastLoginAt?.toISOString() ?? null,
     roles: u.roleAssignments.map((a) => ({
       rolename: a.role.rolename,
@@ -144,6 +149,8 @@ export async function getAdminUser(
     email: u.email,
     group: u.group,
     isActive: u.isActive,
+    disabledUntil: u.disabledUntil?.toISOString() ?? null,
+    disabledReason: u.disabledReason ?? null,
     lastLoginAt: u.lastLoginAt?.toISOString() ?? null,
     roles: activeAssignments.map((a) => ({
       rolename: a.role.rolename,
@@ -206,4 +213,32 @@ export async function getBootstrapAdminSnapshot(): Promise<{
     passwordChangeRequired: u.passwordChangeRequired,
     otherActiveAdminCount: Number(rows[0]?.n ?? 0),
   };
+}
+
+/**
+ * 対象**以外**で system:ADMIN を持つ有効ユーザー数と、対象自身が管理者かどうか。
+ *
+ * 「管理者を全滅させない」ガードの土台。ロール名（`admin`）ではなく
+ * user_permissions ビュー = 実効権限で数えるのは、ロール構成が変わっても
+ * 「実際に管理できる人が居るか」という問いの答えが変わらないため。
+ * ビューは users.is_active を JOIN 済みなので、停止中の管理者は数に入らない。
+ */
+export async function getAdminCoverage(targetUserId: string): Promise<{
+  targetIsAdmin: boolean;
+  otherActiveAdminCount: number;
+}> {
+  const rows = await prisma.$queryRaw<{ is_target: boolean; n: bigint }[]>`
+    SELECT (user_id = ${targetUserId}::uuid) AS is_target,
+           COUNT(DISTINCT user_id) AS n
+      FROM app.user_permissions
+     WHERE permission_code = 'system'
+       AND action = 'ADMIN'
+     GROUP BY (user_id = ${targetUserId}::uuid)`;
+  let targetIsAdmin = false;
+  let others = 0;
+  for (const r of rows) {
+    if (r.is_target) targetIsAdmin = Number(r.n) > 0;
+    else others = Number(r.n);
+  }
+  return { targetIsAdmin, otherActiveAdminCount: others };
 }

@@ -1,10 +1,12 @@
 import { notFound } from "next/navigation";
 import { BootstrapAdminCard } from "@/components/settings/BootstrapAdminCard";
 import { UserDetail } from "@/components/settings/UserDetail";
-import { checkPermission } from "@/lib/authz";
+import { UserSuspensionPanel } from "@/components/settings/UserSuspensionPanel";
+import { checkPermission, sessionUserId } from "@/lib/authz";
 import { requireAppRead } from "@/lib/authz-page";
 import { bootstrapAdminState } from "@/lib/bootstrap-admin-core";
 import {
+  getAdminCoverage,
   getAdminUser,
   getBootstrapAdminSnapshot,
   listActivePlantOptions,
@@ -21,12 +23,15 @@ export default async function UserDetailPage({
   const denied = await requireAppRead("user-management");
   if (denied) return denied;
   const { id } = await params;
-  const [user, plantOptions, adminAuthz, bootstrap] = await Promise.all([
-    getAdminUser(id),
-    listActivePlantOptions(),
-    checkPermission("system", "ADMIN"),
-    getBootstrapAdminSnapshot(),
-  ]);
+  const [user, plantOptions, adminAuthz, bootstrap, actorId, coverage] =
+    await Promise.all([
+      getAdminUser(id),
+      listActivePlantOptions(),
+      checkPermission("system", "ADMIN"),
+      getBootstrapAdminSnapshot(),
+      sessionUserId(),
+      getAdminCoverage(id),
+    ]);
   if (!user) notFound();
 
   // 初期管理者の詳細を開いたときだけカードを出す。判定は純関数に委ねる
@@ -49,6 +54,16 @@ export default async function UserDetailPage({
         plantOptions={plantOptions}
         user={user}
       />
+      {/* 初期管理者は専用カード（BootstrapAdminCard）が担当するので二重に出さない。 */}
+      {bootstrapState.status === "not-bootstrap" && actorId && (
+        <UserSuspensionPanel
+          actorId={actorId}
+          canAdminister={adminAuthz.ok}
+          otherActiveAdminCount={coverage.otherActiveAdminCount}
+          targetIsAdmin={coverage.targetIsAdmin}
+          user={user}
+        />
+      )}
     </>
   );
 }

@@ -56,10 +56,19 @@ model User {
   avatarFileId      String? @map("avatar_file_id") @db.Uuid
   avatarThumbFileId String? @map("avatar_thumb_file_id") @db.Uuid
   isActive    Boolean   @default(true) @map("is_active")
+  // 利用停止（SY01）。is_active が唯一のゲートで、ここは「なぜ / いつまで」だけを持つ。
+  // disabled_until = NULL かつ is_active=false → 恒久停止（手で戻すまで戻らない）
+  // disabled_until = 日時                      → 一時停止（pg_cron が期限で戻す）
+  disabledUntil  DateTime? @map("disabled_until") @db.Timestamptz(6)
+  disabledReason String?   @map("disabled_reason")
+  disabledAt     DateTime? @map("disabled_at") @db.Timestamptz(6)
+  disabledById   String?   @map("disabled_by") @db.Uuid
   lastLoginAt DateTime? @map("last_login_at") @db.Timestamptz(6)
   createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt   DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
 
+  disabledBy              User?              @relation("UserDisabledBy", fields: [disabledById], references: [id], onDelete: SetNull)
+  usersDisabled           User[]             @relation("UserDisabledBy")
   avatarFile              File?              @relation("UserAvatarFile", fields: [avatarFileId], references: [id], onDelete: SetNull)
   avatarThumbFile         File?              @relation("UserAvatarThumbFile", fields: [avatarThumbFileId], references: [id], onDelete: SetNull)
   roleAssignments         UserRoleRelation[] @relation("UserRoles")
