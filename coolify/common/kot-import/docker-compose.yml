@@ -1,12 +1,15 @@
 # King of Time auto-importer — headless Playwright export -> Postgres (hr_records).
 # Replicates kuisin/ckk-tool-compose _automation/bpo_kot, run on a schedule.
 #
-# Deployed on docker-mac-pro at ~/stacks/kot-import.
+# ⚠️ **このスタックは Coolify 管理**（プロジェクト ckk / `common` 環境 / main 追従）。
+# `deploy-stack.sh kot-import` を使わないこと — Coolify が建てたコンテナと二重になる。
+#
 #   kot-import  scheduler: every KOT_INTERVAL_SECONDS, login to King of Time,
 #               download the last N days CSV, upsert into hr_records.
 #
-# Data lives in the shared-db stack (db `ckk`, schema `kot`; role `kot` has
-# search_path=kot,directory so unqualified table names keep working).
+# データは **ckk-db-main**（db `ckk`, schema `kot`; role `kot` は
+# search_path=kot,directory なので非修飾のテーブル名がそのまま通る）。
+# 旧 shared-db からは移行済みなので、そのネットワークからは外した。
 # DDL is owned by Prisma — see repo shared-db/.
 
 services:
@@ -30,13 +33,9 @@ services:
       - PYTHONUNBUFFERED=1
     networks:
       - default
-      - coolify
-      - shareddb # 旧 shared-db（移行期間中のみ・撤去したら外す）
+      - coolify   # ckk-db-main（kot スキーマの移行先）
 
 networks:
-  shareddb:
-    external: true
-    name: shared-db
   coolify:
     external: true
     name: coolify
