@@ -43,8 +43,16 @@ for f in "$TMP"/*.sql; do
 done
 rm -rf "$TMP"
 
-# 999: 監査ログ backfill — 生きているマスタから SEED 行を生成する静的 SQL
-# （mapped.sqlite 不要）。import:legacy が 010–030 の後に適用する。
-gzip -9 -n -c audit_backfill.sql > imports/999_audit_backfill.sql.gz
+# 999: 監査ログ backfill — **生成しない**（2026-08-25 に取りやめ）。
+#
+# audit_backfill.sql は **DB squash 以前のスキーマ**を前提にしていて
+# （`e.base_unit_price` など、今は price_list_variants 側にある列を参照）、
+# 現行スキーマでは必ず失敗する。それでいて imports/ に置くと
+# `pnpm import:legacy` が `*.sql.gz` を総なめ + ON_ERROR_STOP=1 で流すため、
+# **復旧手順そのものが落ちていた**（CLAUDE.md が案内している手順）。
+#
+# 生成を止めて成果物も消した。中身を復活させたいときは、まず
+# audit_backfill.sql を現行スキーマに合わせて書き直すこと。
+# gzip -9 -n -c audit_backfill.sql > imports/999_audit_backfill.sql.gz
 
 ls -la imports/
