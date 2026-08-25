@@ -1,11 +1,51 @@
 apiVersion: 1
+
+# ダッシュボードは**フォルダごとに provider を 1 つ**置く。
+#
+# `foldersFromFilesStructure: true`（ディレクトリ構造からフォルダを作る）は
+# Grafana 11.6 では**フォルダは作られるがダッシュボードがルートに残る**ため
+# 使わない（実機で確認済み）。`folder:` を明示する昔からの方式が確実。
+#
+#   Dev / Prod  — Coolify のアプリ（Loki の environment ラベルで分岐）
+#   External    — Coolify 以外のコンテナ（compose スタック）
+#   Platform    — ハードウェアと全体横断
 providers:
-  - name: default
+  - name: dev
     orgId: 1
-    folder: ''
+    folder: Dev
     type: file
     disableDeletion: false
     updateIntervalSeconds: 30
     allowUiUpdates: true
     options:
-      path: /var/lib/grafana/dashboards
+      path: /var/lib/grafana/dashboards/Dev
+
+  - name: prod
+    orgId: 1
+    folder: Prod
+    type: file
+    disableDeletion: false
+    updateIntervalSeconds: 30
+    allowUiUpdates: true
+    options:
+      path: /var/lib/grafana/dashboards/Prod
+
+  - name: external
+    orgId: 1
+    folder: External
+    type: file
+    disableDeletion: false
+    updateIntervalSeconds: 30
+    allowUiUpdates: true
+    options:
+      path: /var/lib/grafana/dashboards/External
+
+  - name: platform
+    orgId: 1
+    folder: Platform
+    type: file
+    disableDeletion: false
+    updateIntervalSeconds: 30
+    allowUiUpdates: true
+    options:
+      path: /var/lib/grafana/dashboards/Platform
