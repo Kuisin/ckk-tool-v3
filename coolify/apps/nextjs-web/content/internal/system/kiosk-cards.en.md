@@ -65,5 +65,5 @@ To move a card to a different user, **revoke** the existing card first, then ass
 
 ## Related pages
 
-- Device-side management (linking, activation, floor maps): see [Kiosk Device Management](/internal-docs/en/system/kiosk-devices).
-- Initial setup of the tablet itself: see [Kiosk Device Setup](/internal-docs/en/system/kiosk-device-setup).
+- Device-side management (linking, activation, floor maps): see [Kiosk Device Management](/admin-manual/en/system/kiosk-devices).
+- Initial setup of the tablet itself: see [Kiosk Device Setup](/admin-manual/en/system/kiosk-device-setup).

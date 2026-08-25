@@ -1,5 +1,5 @@
 /**
- * docs-i18n.ts — fumadocs の i18n 設定（/manual・/internal-docs 共通）。
+ * docs-i18n.ts — fumadocs の i18n 設定（/manual・/admin-manual 共通）。
  *
  * 旧 /docs の ?lang= クエリ方式に代わり、URL セグメント方式
  * （/manual/ja/… /manual/en/… /manual/zh/…）を用いる。デフォルトは ja。

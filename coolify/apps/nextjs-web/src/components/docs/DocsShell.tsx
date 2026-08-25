@@ -1,7 +1,7 @@
 /**
  * DocsShell.tsx — fumadocs の RootProvider + DocsLayout 共通シェル。
  *
- * /manual（公開）と /internal-docs（要ログイン）の両レイアウトから使う。
+ * /manual（公開）と /admin-manual（要ログイン）の両レイアウトから使う。
  * テーマ切替は無効（ライト固定）— アプリ本体は Mantine の
  * data-mantine-color-scheme で dark: variant を制御しており、fumadocs の
  * next-themes による <html> クラス切替と衝突するため。
@@ -38,7 +38,7 @@ export function DocsShell({
   tree: PageTreeRoot;
   title: string;
   searchApi: string;
-  /** もう一方のドキュメント（マニュアル ⇄ 社内ドキュメント）へのリンク。 */
+  /** もう一方のドキュメント（マニュアル ⇄ 管理マニュアル）へのリンク。 */
   crossLink?: { text: string; url: string };
   children: ReactNode;
 }) {

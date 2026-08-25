@@ -50,5 +50,5 @@ The list shows the latest **300 entries**.
 - **I only want one document's history** — the quickest way is the "History" tab on that document's detail page. On this screen, search by its document number.
 - **Older entries are missing** — this screen shows the latest 300 entries. For anything older, ask your system administrator.
 - **No login or PDF-download records** — those are out of scope here (only data creates/updates/deletes are recorded).
-- **What is the "App Management" target?** — records of app visibility ON/OFF toggles made in [App Management](/internal-docs/en/system/app-management).
-- For users and permissions, see [User Management](/internal-docs/en/system/user-management).
+- **What is the "App Management" target?** — records of app visibility ON/OFF toggles made in [App Management](/admin-manual/en/system/app-management).
+- For users and permissions, see [User Management](/admin-manual/en/system/user-management).

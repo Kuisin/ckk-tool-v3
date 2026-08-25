@@ -26,10 +26,12 @@ import {
   IconCylinder,
   IconDeviceTablet,
   IconDeviceTabletCog,
+  IconFileDescription,
   IconFileImport,
   IconFileInvoice,
   IconFileText,
   IconFolder,
+  IconForms,
   IconGitBranch,
   IconHash,
   IconHistory,
@@ -113,6 +115,9 @@ export const ICON_MAP: Record<string, AppIcon> = {
   IconDeviceTabletCog,
   IconFileImport,
   IconShieldLock,
+  // 一般カテゴリ: フォーム (CM02) / 社内文書 (CM03)
+  IconForms,
+  IconFileDescription,
 };
 
 /** Representative icon for each category section header. */

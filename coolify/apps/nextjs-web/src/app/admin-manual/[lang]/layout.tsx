@@ -1,8 +1,8 @@
 /**
- * /internal-docs/[lang] — 社内ドキュメントのレイアウト（要ログイン + 権限）。
+ * /admin-manual/[lang] — 管理マニュアルのレイアウト（要ログイン + 権限）。
  *
- * 認証は三重: proxy.ts の matcher が /internal-docs を包含（未ログインは
- * /login へリダイレクト）+ このレイアウトでのセッション確認 + `internal_docs`
+ * 認証は三重: proxy.ts の matcher が /admin-manual を包含（未ログインは
+ * /login へリダイレクト）+ このレイアウトでのセッション確認 + `admin_manual`
  * 権限の確認。ランチャー（DC02）を隠すだけでは URL 直打ちで開けてしまうため、
  * ルート側でも必ず権限を見る。公開マニュアル（DC01）とは別権限。
  */
@@ -26,7 +26,7 @@ export default async function InternalDocsLayout({
 }) {
   const session = await auth();
   if (!session?.user) redirect("/login");
-  const authz = await checkPermission("internal_docs", "READ");
+  const authz = await checkPermission("admin_manual", "READ");
   if (!authz.ok) notFound();
 
   const { lang } = await params;
@@ -35,8 +35,8 @@ export default async function InternalDocsLayout({
     <DocsShell
       crossLink={{ text: "マニュアル", url: `/manual/${lang}` }}
       lang={lang}
-      searchApi="/internal-docs/search"
-      title="CKK 社内ドキュメント"
+      searchApi="/admin-manual/search"
+      title="CKK 管理マニュアル"
       tree={internalSource.getPageTree(lang)}
     >
       {children}

@@ -39,5 +39,5 @@ DB へは psql の CSV 出力経由で読むので Python 側の DB ドライバ
 
 権限そのものを変えるときは SQL シード（`shared-db/sql/rbac-seed.sql` /
 `roles-seed.sql`）を直して適用し、そのうえでこのスクリプトを回す。
-同じ内容の読み物（社内向け）は DC02 社内ドキュメントの「ロールと権限」
+同じ内容の読み物（社内向け）は DC02 管理マニュアルの「ロールと権限」
 （`coolify/apps/nextjs-web/content/internal/rbac/`）。

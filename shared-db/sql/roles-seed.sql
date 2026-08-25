@@ -13,7 +13,7 @@
 --   kiosk  — 共有端末の管理（SY08–SY0A）。admin のみ（CLAUDE.md「admin-only」）。
 --            以前は「system 以外の全コード READ」の一括付与に kiosk が混ざり、
 --            管理職・部門長・閲覧ロールに QRカード/端末管理の READ が付いていた。
---   internal_docs は一括付与の対象（DC02 社内ドキュメントは管理職も読む）。
+--   admin_manual は一括付与の対象（DC02 管理マニュアルは管理職も読む）。
 --
 -- マトリクス（R=READ C=CREATE U=UPDATE D=DELETE E=EXPORT）:
 --   manager    : 全業務 R+E（承認者・閲覧横断 — 承認の可否は MS0B のグループ所属）

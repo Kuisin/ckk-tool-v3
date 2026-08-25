@@ -2,7 +2,7 @@
  * manual-source.ts — 公開ユーザーマニュアル（/manual）のコンテンツソース。
  *
  * 重要: 公開ルート（/manual 配下・検索・llms.txt）はこのファイルだけを
- * import する。internal-source.ts を import してはならない — 社内ドキュメントが
+ * import する。internal-source.ts を import してはならない — 管理マニュアルが
  * 公開インデックスへ混入するのを import 境界で防ぐ。
  */
 

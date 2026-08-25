@@ -70,7 +70,7 @@ When several roles grant the same code, the **widest scope wins** (PLANT + ALL
 | `invoice` | Invoice | BL01 Invoices |
 | `billing_closing` | Billing closing | BL02 Monthly closing (Yayoi CSV export is E) |
 | `master` | Master data | All 12 master apps, MS01–MS0E |
-| `internal_docs` | Internal docs | DC02 Internal documents (this page) |
+| `admin_manual` | Admin manual | DC02 Admin manual (this page) |
 | `kiosk` | Kiosk admin | SY08 QR cards / SY09 Devices / SY0A Kiosk settings |
 | `system` | System admin | All system apps, SY01–SY0C |
 
@@ -98,7 +98,7 @@ When several roles grant the same code, the **widest scope wins** (PLANT + ALL
 
 ## Matrix — production, shipping, billing, admin
 
-| Role | Work order | Approvals | Inventory | Shipping | Delivery | Invoice | Closing | Master | Internal docs | Kiosk | System |
+| Role | Work order | Approvals | Inventory | Shipping | Delivery | Invoice | Closing | Master | Admin manual | Kiosk | System |
 |---|---|---|---|---|---|---|---|---|---|---|---|
 | **Administrator**<br/>`admin` | ◎ | ◎ | ◎ | ◎ | ◎ | ◎ | ◎ | ◎ | ◎ | ◎ | ◎ |
 | **Manager**<br/>`manager` | RE | RE | RE | RE | RE | RE | RE | RE | RE | — | — |

@@ -70,7 +70,7 @@ description: "業務アプリ・キオスク・管理ツール・DB ブラウザ
 | URL | 中身 |
 | --- | --- |
 | `https://app.ckk-tool.co.jp/manual` | 操作マニュアル（**ログイン不要**） |
-| `https://app.ckk-tool.co.jp/internal-docs` | 社内ドキュメント（このページ・要ログイン） |
+| `https://app.ckk-tool.co.jp/admin-manual` | 管理マニュアル（このページ・要ログイン） |
 
 ## 注意
 

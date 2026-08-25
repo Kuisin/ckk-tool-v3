@@ -65,5 +65,5 @@ description: "操作代码 SY08。用于签发和管理登录工厂现场共享�
 
 ## 相关页面
 
-- 终端侧的管理（链接・启用・楼层平面图）请参见[终端管理](/internal-docs/zh/system/kiosk-devices)。
-- 平板本体的初始设置请参见 [Kiosk 终端设置](/internal-docs/zh/system/kiosk-device-setup)。
+- 终端侧的管理（链接・启用・楼层平面图）请参见[终端管理](/admin-manual/zh/system/kiosk-devices)。
+- 平板本体的初始设置请参见 [Kiosk 终端设置](/admin-manual/zh/system/kiosk-device-setup)。

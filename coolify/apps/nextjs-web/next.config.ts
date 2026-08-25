@@ -90,13 +90,13 @@ const nextConfig: NextConfig = {
         destination: "/production/work-orders/:id",
         permanent: true,
       },
-      // 旧 /docs（?lang= クエリ方式）→ 新 /manual・/internal-docs（ロケール
+      // 旧 /docs（?lang= クエリ方式）→ 新 /manual・/admin-manual（ロケール
       // セグメント方式）。スラッグは維持。system/* だけ社内ツリーへ。
       ...(["en", "zh"] as const).flatMap((lang) => [
         {
           source: "/docs/system/:path*",
           has: [{ type: "query", key: "lang", value: lang } as const],
-          destination: `/internal-docs/${lang}/system/:path*`,
+          destination: `/admin-manual/${lang}/system/:path*`,
           permanent: true,
         },
         {
@@ -108,7 +108,7 @@ const nextConfig: NextConfig = {
       ]),
       {
         source: "/docs/system/:path*",
-        destination: "/internal-docs/ja/system/:path*",
+        destination: "/admin-manual/ja/system/:path*",
         permanent: true,
       },
       {
@@ -133,8 +133,21 @@ const nextConfig: NextConfig = {
         permanent: true,
       })),
       {
+        source: "/admin-manual",
+        destination: "/admin-manual/ja",
+        permanent: true,
+      },
+      // 社内ドキュメント → 管理マニュアル 改名（2026-08）。一般カテゴリの
+      // 社内文書 (CM03) と紛らわしかったので改名した。ブックマークと社内チャットに
+      // 貼られた旧 URL を維持する。
+      {
         source: "/internal-docs",
-        destination: "/internal-docs/ja",
+        destination: "/admin-manual/ja",
+        permanent: true,
+      },
+      {
+        source: "/internal-docs/:path*",
+        destination: "/admin-manual/:path*",
         permanent: true,
       },
 
